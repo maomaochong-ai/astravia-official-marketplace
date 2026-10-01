@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "bundle",
   "slug": "shimo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "icon": "assets/icon.png",
   "name": "Shimo",
   "description": "An immersive bilingual reading workspace for books, poetry and study notes in Astravia, with Shimo reading Skills shipped inside the reader plugin.",
