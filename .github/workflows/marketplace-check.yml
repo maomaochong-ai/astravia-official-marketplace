@@ -1,0 +1,45 @@
+name: Marketplace checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  marketplace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.21.1
+      - run: node scripts/marketplace.mjs check
+      - name: Build candidate against the current distribution
+        run: |
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git worktree add --detach "$RUNNER_TEMP/marketplace-previous" origin/gh-pages
+            node scripts/marketplace.mjs build --previous "$RUNNER_TEMP/marketplace-previous"
+          else
+            node scripts/marketplace.mjs build
+          fi
+      - name: Check source and built package contracts
+        run: node --test tests/*.test.mjs
+      - name: Resolve publication tool revision
+        id: tooling
+        run: echo "commit=$(node -p 'require("./.astravia/publish.json").toolingCommit')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: maomaochong-ai/open-astravia
+          ref: ${{ steps.tooling.outputs.commit }}
+          path: .tooling/open-astravia
+          persist-credentials: false
+      - name: Check stable Desktop compatibility and package digests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/marketplace.mjs verify

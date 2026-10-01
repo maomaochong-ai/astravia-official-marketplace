@@ -1,0 +1,101 @@
+{
+  "id": "xiaohongshu",
+  "name": "%name%",
+  "icon": "assets/icon.png",
+  "version": "1.1.22",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "styles": [
+    "dist/style.css"
+  ],
+  "moduleFederation": {
+    "remoteName": "xiaohongshu",
+    "expose": "./plugin"
+  },
+  "permissions": [
+    "agent.mcp.control",
+    "ui.slot.ability-detail",
+    "ui.slot.workspace-view",
+    "storage.read",
+    "storage.write",
+    "secrets.read",
+    "secrets.write",
+    "network.fetch"
+  ],
+  "network": {
+    "allowedHosts": [
+      "github.com",
+      "release-assets.githubusercontent.com"
+    ]
+  },
+  "providers": {
+    "services": [
+      {
+        "id": "xhs",
+        "runtime": {
+          "kind": "host-node",
+          "version": "1.1.22",
+          "entry": "service/dist/main.js",
+          "platforms": {
+            "win32-x64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "11b57b5071a614ba7768fb0371cd9d2c0dd9d3130bef4f246ee7546c139f5afc",
+                  "archive": "zip",
+                  "destination": "service"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "11b57b5071a614ba7768fb0371cd9d2c0dd9d3130bef4f246ee7546c139f5afc",
+                  "archive": "zip",
+                  "destination": "service"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "11b57b5071a614ba7768fb0371cd9d2c0dd9d3130bef4f246ee7546c139f5afc",
+                  "archive": "zip",
+                  "destination": "service"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "XHS_HEADLESS": "false"
+          }
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 120000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "mcpServers": {
+      "xiaohongshu": {
+        "type": "service",
+        "serviceId": "xhs",
+        "path": "/mcp",
+        "displayName": "Xiaohongshu tools",
+        "description": "Use a selected Xiaohongshu account for search, note and interaction operations; omit account_id to use the active account."
+      }
+    }
+  },
+  "description": "%description%",
+  "author": "Astravia",
+  "defaultLocale": "zh"
+}

@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@plugin "@iconify/tailwind4";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-destructive: var(--destructive);
+}

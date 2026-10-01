@@ -1,0 +1,5 @@
+# Local dependencies and superseded local archives are not committed. Keep the
+# current tested release archive with the marketplace source.
+node_modules/
+release/*
+bun.lock

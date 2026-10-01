@@ -1,0 +1,106 @@
+import { describe, expect, it } from "vitest";
+import { groupModels, reconcileModels, type ReconcileSources } from "../src/model-reconciler";
+import type { ChannelModel, ModelCatalog, ProxyAccount, ProxyModel } from "../src/proxy-client";
+
+function catalogOf(channels: Record<string, ChannelModel[]>): ModelCatalog {
+  const entries = new Map(Object.entries(channels));
+  return { size: 0, channels: entries, lookup: () => undefined };
+}
+
+function account(provider: string, overrides: Partial<ProxyAccount> = {}): ProxyAccount {
+  return {
+    key: `${provider}:0`, provider, displayName: provider, active: true, disabled: false,
+    removable: true, success: 0, failed: 0, recentRequests: [], ...overrides
+  };
+}
+
+const ANTIGRAVITY_CHANNEL: ChannelModel[] = [{ id: "gemini-3-flash" }, { id: "claude-sonnet-4-6" }];
+const CODEX_CHANNEL: ChannelModel[] = [{ id: "gpt-5.5" }];
+const codexModel: ProxyModel = { id: "gpt-5.5", ownedBy: "openai" };
+
+function sources(overrides: Partial<ReconcileSources> = {}): ReconcileSources {
+  return {
+    published: groupModels([{ id: "gemini-3-flash", ownedBy: "antigravity" }, { id: "claude-sonnet-4-6", ownedBy: "antigravity" }, codexModel]),
+    routable: [codexModel],
+    accounts: [account("antigravity"), account("codex")],
+    catalog: catalogOf({ antigravity: ANTIGRAVITY_CHANNEL, codex: CODEX_CHANNEL }),
+    ...overrides
+  };
+}
+
+describe("model reconciliation", () => {
+  it("keeps a credential's models while the gateway is still registering them", () => {
+    // The reported cold start: /v1/models answers with codex a second or two
+    // before antigravity finishes registering, and publishing that read as the
+    // whole truth is what used to erase the antigravity models on every launch.
+    expect(reconcileModels(sources()).models.map((model) => `${model.group}/${model.id}`)).toEqual([
+      "anthropic/claude-sonnet-4-6", "google/gemini-3-flash", "responses/gpt-5.5"
+    ]);
+  });
+
+  it("drops the models of a credential that is gone or switched off", () => {
+    expect(reconcileModels(sources({ accounts: [account("codex")] })).models.map((model) => model.id)).toEqual(["gpt-5.5"]);
+    const disabled = [account("antigravity", { active: false, disabled: true }), account("codex")];
+    expect(reconcileModels(sources({ accounts: disabled })).models.map((model) => model.id)).toEqual(["gpt-5.5"]);
+  });
+
+  it("keeps the models of a credential that is only temporarily unavailable", () => {
+    // Antigravity access tokens last an hour, so a launch after a break starts
+    // with the credential refreshing or cooling down (`unavailable` with a
+    // `next_retry_after`). That is the gateway saying "not right now", not
+    // "gone": dropping here swapped the user's selected Gemini model for another.
+    const cooling = [account("antigravity", { active: false, disabled: false }), account("codex")];
+    const { models, complete } = reconcileModels(sources({ accounts: cooling }));
+    expect(models.map((model) => `${model.group}/${model.id}`)).toEqual([
+      "anthropic/claude-sonnet-4-6", "google/gemini-3-flash", "responses/gpt-5.5"
+    ]);
+    expect(complete).toBe(false);
+  });
+
+  it("drops a model its own channel answered without", () => {
+    const catalog = catalogOf({ antigravity: [{ id: "gemini-3-flash" }], codex: CODEX_CHANNEL });
+    expect(reconcileModels(sources({ catalog })).models.map((model) => model.id)).toEqual(["gemini-3-flash", "gpt-5.5"]);
+  });
+
+  it("keeps everything when a backing channel answered nothing at all", () => {
+    // Unknown is not denial: the credential is there, this pass just could not
+    // ask it. Dropping here would be the same defect with a different trigger.
+    const catalog = catalogOf({ codex: CODEX_CHANNEL });
+    expect(reconcileModels(sources({ catalog })).models.map((model) => model.id)).toEqual([
+      "claude-sonnet-4-6", "gemini-3-flash", "gpt-5.5"
+    ]);
+  });
+
+  it("keeps everything for a credential whose provider the plugin does not model", () => {
+    const accounts = [account("openai-compatibility"), account("codex")];
+    expect(reconcileModels(sources({ accounts })).models.map((model) => model.id)).toEqual([
+      "claude-sonnet-4-6", "gemini-3-flash", "gpt-5.5"
+    ]);
+  });
+
+  it("publishes only what is routable when the host offers no read-back", () => {
+    expect(reconcileModels(sources({ published: undefined })).models.map((model) => model.id)).toEqual(["gpt-5.5"]);
+  });
+
+  it("reports the pass incomplete until every claimed model is registered", () => {
+    // The signal that stops the cold-start loop: retention alone cannot bring
+    // back models a fresh install never published, so the caller has to look
+    // again — and this says when looking again is still worth it.
+    expect(reconcileModels(sources()).complete).toBe(false);
+    const routable = [
+      codexModel,
+      { id: "gemini-3-flash", ownedBy: "antigravity" },
+      { id: "claude-sonnet-4-6", ownedBy: "antigravity" }
+    ];
+    expect(reconcileModels(sources({ routable })).complete).toBe(true);
+    // A channel that answered nothing is unproven, so the pass is not complete
+    // even though everything it could name is registered.
+    expect(reconcileModels(sources({ routable, catalog: catalogOf({ codex: CODEX_CHANNEL }) })).complete).toBe(false);
+  });
+
+  it("prefers the freshly read capabilities over the published copy", () => {
+    const routable: ProxyModel[] = [{ id: "gemini-3-flash", ownedBy: "antigravity", contextWindow: 1_048_576 }];
+    const { models: reconciled } = reconcileModels(sources({ routable }));
+    expect(reconciled.find((model) => model.id === "gemini-3-flash")).toMatchObject({ contextWindow: 1_048_576 });
+  });
+});

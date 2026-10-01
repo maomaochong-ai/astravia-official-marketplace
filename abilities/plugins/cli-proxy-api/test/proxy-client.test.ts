@@ -1,0 +1,347 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createProxyClient, isImageOnlyModelId, safeExternalUrl } from "../src/proxy-client";
+import { OAUTH_PROVIDERS, protocolGroupFor } from "../src/provider-contract";
+import { maintainModelConnection } from "../src/model-connection";
+import { groupModels } from "../src/model-reconciler";
+import { fixture } from "./helpers";
+
+afterEach(() => vi.useRealTimers());
+
+describe("CLIProxyAPI contracts", () => {
+  it.each([{ levels: [] }, { levels: ["high", 42] }, { levels: [" "] }])("omits malformed or empty upstream level lists: $levels", async ({ levels }) => {
+    const f = fixture();
+    f.handle.mockImplementation(async ({ path }) => {
+      if (path === "/v1/models") return { data: [{ id: "gpt-6", owned_by: "openai" }] };
+      if (path.endsWith("/codex")) return { models: [{ id: "gpt-6", owned_by: "openai", thinking: { levels } }] };
+      return { models: [] };
+    });
+    const { models } = await createProxyClient(f.context).loadModels();
+    expect(models).toEqual([{ id: "gpt-6", ownedBy: "openai", reasoning: true }]);
+  });
+  it("publishes discovered GPT effort levels and retains them while discovery is unavailable", async () => {
+    const f = fixture();
+    const levels = ["none", "low", "medium", "high", "xhigh", "max"];
+    let discovering = true;
+    f.handle.mockImplementation(async ({ path }) => {
+      if (path === "/v1/models") return { data: discovering ? [{ id: "gpt-6", owned_by: "openai" }] : [] };
+      if (path === "/v0/management/auth-files") return { files: [{ name: "codex.json", provider: "codex" }] };
+      if (path === "/v0/management/model-definitions/codex" && discovering) {
+        return { models: [{ id: "gpt-6", owned_by: "openai", thinking: { levels } }] };
+      }
+      throw new Error("catalog unavailable");
+    });
+    const client = createProxyClient(f.context);
+    const first = await client.loadPublishableModels();
+    await client.publishModels(first.models);
+    expect(f.replaceOwnedProviders).toHaveBeenLastCalledWith(expect.objectContaining({
+      responses: expect.objectContaining({ models: [{ id: "gpt-6", api: "openai-responses", reasoning: true, reasoningLevels: levels }] })
+    }));
+    discovering = false;
+    const retained = await client.loadPublishableModels();
+    await client.publishModels(retained.models);
+    expect(retained.models[0]).toMatchObject({ id: "gpt-6", reasoningLevels: levels });
+    expect(f.replaceOwnedProviders).toHaveBeenLastCalledWith(expect.objectContaining({
+      responses: expect.objectContaining({ models: [{ id: "gpt-6", api: "openai-responses", reasoning: true, reasoningLevels: levels }] })
+    }));
+  });
+  it("selects known native protocols and keeps unknown owners on compatible Completions", () => {
+    expect(protocolGroupFor("google", "alias")).toBe("google");
+    expect(protocolGroupFor("antigravity", "claude-sonnet")).toBe("anthropic");
+    expect(protocolGroupFor("kimi", "alias")).toBe("anthropic");
+    expect(protocolGroupFor("openai", "alias")).toBe("responses");
+    expect(protocolGroupFor("openrouter", "gpt-or-claude-or-gemini")).toBe("completions");
+    expect(protocolGroupFor("", "gemini")).toBe("completions");
+  });
+  it("uses callback forwarders for desktop browser flows and device flows for Kimi/xAI", () => {
+    for (const id of ["claude", "codex", "antigravity"]) expect(OAUTH_PROVIDERS.find((p) => p.id === id)?.authPath).toContain("is_webui=true");
+    expect(OAUTH_PROVIDERS.filter((p) => p.deviceFlow).map((p) => p.id)).toEqual(["kimi", "xai"]);
+    for (const url of ["javascript:alert(1)", "http://localhost", "https://name:secret@example.com"]) expect(() => safeExternalUrl(url)).toThrow();
+  });
+  it("registers discovered models without leaking the management key and rejects malformed catalogs", async () => {
+    const f = fixture();
+    const client = createProxyClient(f.context);
+    expect(() => client.readModels({ unexpected: [] })).toThrow("model catalog");
+    await client.publishModels(groupModels(client.readModels({ data: [
+      { id: "g", owned_by: "google" }, { id: "g", owned_by: "google" },
+      { id: "c", owned_by: "claude" }, { id: "o", owned_by: "codex" }, { id: "x", owned_by: "unknown" }
+    ] })));
+    expect(f.replaceOwnedProviders).toHaveBeenCalledWith(expect.objectContaining({
+      google: expect.objectContaining({ baseUrl: "http://127.0.0.1:12345/v1beta", apiKey: "local-api-key", api: "google-generative-ai", models: [{ id: "g", api: "google-generative-ai" }] }),
+      anthropic: expect.objectContaining({ baseUrl: "http://127.0.0.1:12345", api: "anthropic-messages" }),
+      responses: expect.objectContaining({ api: "openai-responses" }),
+      completions: expect.objectContaining({ api: "openai-completions" })
+    }));
+    expect(f.context.services.connection).toHaveBeenCalledWith("proxy", "api-key");
+  });
+  it("keeps image-only models out of the text model provider", () => {
+    const client = createProxyClient(fixture().context);
+    expect(isImageOnlyModelId("gpt-image-2")).toBe(true);
+    expect(client.readModels({ data: [
+      { id: "gpt-image-2", owned_by: "openai" },
+      { id: "gpt-5.5", owned_by: "openai" }
+    ] })).toEqual([{ id: "gpt-5.5", ownedBy: "openai" }]);
+  });
+  it("publishes the upstream context window instead of letting the host fall back to 128k", async () => {
+    const f = fixture();
+    const client = createProxyClient(f.context);
+    const { models, catalog } = await client.loadModels();
+    expect(models).toEqual([{ id: "gemini-test", ownedBy: "google", contextWindow: 1048576, maxTokens: 65536, reasoning: true }]);
+    // The channel listing is what the workspace view renders as "supported models".
+    expect(catalog.channels.get("gemini")).toEqual([
+      { id: "gemini-test", contextWindow: 1048576, maxTokens: 65536, reasoning: true }
+    ]);
+    await client.publishModels(groupModels(models));
+    expect(f.replaceOwnedProviders).toHaveBeenCalledWith(expect.objectContaining({
+      google: expect.objectContaining({
+        models: [{ id: "gemini-test", api: "google-generative-ai", contextWindow: 1048576, maxTokens: 65536, reasoning: true }]
+      })
+    }));
+  });
+  it("omits figures the catalog does not state and survives channels the runtime rejects", async () => {
+    const f = fixture();
+    f.handle.mockImplementation(async (request: { path: string }) => {
+      if (request.path === "/v1/models") return { data: [{ id: "mystery", owned_by: "kimi" }] };
+      if (request.path === "/v0/management/model-definitions/kimi") {
+        // context_length 0 is upstream's "unknown"; publishing it would fail host validation.
+        return { models: [{ id: "mystery", owned_by: "kimi", context_length: 0 }] };
+      }
+      throw new Error("unknown channel");
+    });
+    const client = createProxyClient(f.context);
+    const { models } = await client.loadModels();
+    expect(models).toEqual([{ id: "mystery", ownedBy: "kimi" }]);
+    await client.publishModels(groupModels(models));
+    expect(f.replaceOwnedProviders).toHaveBeenCalledWith(expect.objectContaining({
+      anthropic: expect.objectContaining({ models: [{ id: "mystery", api: "anthropic-messages" }] })
+    }));
+  });
+  it("reads the provider's limit headers as remaining budget, ignoring what it cannot parse", () => {
+    const client = createProxyClient(fixture().context);
+    const [account] = client.readAccounts({ files: [{
+      auth_index: "codex-1",
+      name: "codex.json",
+      provider: "codex",
+      email: "user@example.com",
+      next_retry_after: "2026-09-04T18:13:10+08:00",
+      id_token: { plan_type: "plus", chatgpt_subscription_active_until: "2026-09-19T03:00:53+00:00" },
+      quota: { observed_at: "2026-09-04T14:47:24+08:00", signals: {
+        "X-Codex-Plan-Type": "plus",
+        "X-Codex-Primary-Used-Percent": "100",
+        "X-Codex-Primary-Window-Minutes": "300",
+        "X-Codex-Primary-Reset-After-Seconds": "12347",
+        "X-Codex-Secondary-Used-Percent": "32",
+        "X-Codex-Secondary-Window-Minutes": "10080",
+        "X-Codex-Credits-Balance": "0",
+        "X-Codex-Credits-Unlimited": "False",
+        "X-Codex-Active-Limit": "premium"
+      } }
+    }] });
+
+    // Upstream states what is used; a budget reads as what is left.
+    expect(account?.quota).toMatchObject({
+      plan: "plus",
+      subscriptionUntil: "2026-09-19T03:00:53+00:00",
+      nextRetryAfter: "2026-09-04T18:13:10+08:00",
+      credits: { unlimited: false, balance: 0 },
+      windows: [
+        { windowMinutes: 300, remainingPercent: 0, resetInSeconds: 12347 },
+        { windowMinutes: 10080, remainingPercent: 68 }
+      ]
+    });
+  });
+  it("reports no quota at all rather than an empty one when the provider never answered", () => {
+    const client = createProxyClient(fixture().context);
+    // Antigravity credentials carry only tokens until a request observes limits.
+    const [account] = client.readAccounts({ files: [
+      { auth_index: "ag-1", name: "ag.json", provider: "antigravity", quota: { signals: {} } }
+    ] });
+    expect(account?.quota).toBeUndefined();
+  });
+  it("keeps account identity and removal capability without exposing upstream paths", () => {
+    const client = createProxyClient(fixture().context);
+    expect(client.readAccounts({ files: [
+      {
+        auth_index: "codex-1",
+        name: "codex-user@example.com.json",
+        provider: "codex",
+        email: "user@example.com",
+        path: "C:/private/auths/codex-user@example.com.json",
+        disabled: false,
+        unavailable: false,
+        runtime_only: false,
+        source: "file"
+      },
+      {
+        auth_index: "memory-1",
+        name: "virtual-account",
+        provider: "xai",
+        label: "Runtime account",
+        runtime_only: true,
+        source: "memory"
+      },
+      null
+    ] })).toEqual([
+      {
+        key: "codex-1:0",
+        provider: "codex",
+        displayName: "user@example.com",
+        deleteName: "codex-user@example.com.json",
+        active: true,
+        disabled: false,
+        removable: true,
+        authIndex: "codex-1",
+        email: "user@example.com",
+        success: 0,
+        failed: 0,
+        recentRequests: []
+      },
+      {
+        key: "memory-1:1",
+        provider: "xai",
+        displayName: "Runtime account",
+        deleteName: "virtual-account",
+        active: true,
+        disabled: false,
+        removable: false,
+        authIndex: "memory-1",
+        success: 0,
+        failed: 0,
+        recentRequests: []
+      }
+    ]);
+  });
+  it("updates the endpoint on restart without mounting the UI and ignores repeated ready log events", async () => {
+    const f = fixture();
+    const connection = maintainModelConnection(f.context);
+    await vi.waitFor(() => expect(f.replaceOwnedProviders).toHaveBeenCalledTimes(1));
+    f.emit({ ...f.ready, recentOutput: "log" });
+    f.emit({ ...f.ready, phase: "stopped" });
+    f.setBaseUrl("http://127.0.0.1:23456");
+    f.emit(f.ready);
+    await vi.waitFor(() => expect(f.replaceOwnedProviders).toHaveBeenCalledTimes(2));
+    expect(f.replaceOwnedProviders).toHaveBeenLastCalledWith(expect.objectContaining({
+      google: expect.objectContaining({ baseUrl: "http://127.0.0.1:23456/v1beta" })
+    }));
+    await connection.dispose();
+    f.emit({ ...f.ready, phase: "stopped" });
+    f.emit(f.ready);
+    expect(f.replaceOwnedProviders).toHaveBeenCalledTimes(2);
+  });
+  it("keeps an authorized channel's models through a cold start that has not registered them", async () => {
+    const f = fixture();
+    // What last session published, as the host still holds it.
+    f.setOwnedProviders({
+      google: { models: [{ id: "gemini-3-flash", contextWindow: 1048576 }] },
+      responses: { models: [{ id: "gpt-5.5" }] }
+    });
+    const stable = f.handle.getMockImplementation();
+    f.handle.mockImplementation(async (request: { path: string; method?: string }) => {
+      // The gateway answers for codex a beat before antigravity finishes
+      // registering — the cold start that used to erase the antigravity models.
+      if (request.path === "/v1/models") return { data: [{ id: "gpt-5.5", owned_by: "openai" }] };
+      if (request.path === "/v0/management/auth-files") {
+        return { files: [
+          { auth_index: "ag-1", name: "ag.json", provider: "antigravity" },
+          { auth_index: "codex-1", name: "codex.json", provider: "codex" }
+        ] };
+      }
+      if (request.path === "/v0/management/model-definitions/antigravity") {
+        return { models: [{ id: "gemini-3-flash", owned_by: "antigravity" }] };
+      }
+      if (request.path === "/v0/management/model-definitions/codex") {
+        return { models: [{ id: "gpt-5.5", owned_by: "openai" }] };
+      }
+      if (!stable) throw new Error("missing fixture handler");
+      return stable(request);
+    });
+
+    const connection = maintainModelConnection(f.context);
+
+    await vi.waitFor(() => expect(f.replaceOwnedProviders).toHaveBeenCalledTimes(1));
+    expect(f.replaceOwnedProviders).toHaveBeenCalledWith(expect.objectContaining({
+      google: expect.objectContaining({
+        models: [{ id: "gemini-3-flash", api: "google-generative-ai", contextWindow: 1048576 }]
+      }),
+      responses: expect.objectContaining({ models: [{ id: "gpt-5.5", api: "openai-responses" }] })
+    }));
+    await connection.dispose();
+  });
+
+  it("picks up a channel the gateway registers after the first publish", async () => {
+    // A fresh install has nothing published to retain, so retention alone cannot
+    // save it: the pass has to look again until the credentials' claims are all
+    // registered. This is the case that leaves the model picker empty.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const f = fixture();
+    let registered = false;
+    const stable = f.handle.getMockImplementation();
+    f.handle.mockImplementation(async (request: { path: string; method?: string }) => {
+      if (request.path === "/v1/models") {
+        return { data: registered
+          ? [{ id: "gpt-5.5", owned_by: "openai" }, { id: "gemini-3-flash", owned_by: "antigravity" }]
+          : [{ id: "gpt-5.5", owned_by: "openai" }] };
+      }
+      if (request.path === "/v0/management/auth-files") {
+        return { files: [
+          { auth_index: "ag-1", name: "ag.json", provider: "antigravity" },
+          { auth_index: "codex-1", name: "codex.json", provider: "codex" }
+        ] };
+      }
+      if (request.path === "/v0/management/model-definitions/antigravity") {
+        return { models: [{ id: "gemini-3-flash", owned_by: "antigravity" }] };
+      }
+      if (request.path === "/v0/management/model-definitions/codex") {
+        return { models: [{ id: "gpt-5.5", owned_by: "openai" }] };
+      }
+      if (!stable) throw new Error("missing fixture handler");
+      return stable(request);
+    });
+
+    const connection = maintainModelConnection(f.context);
+
+    await vi.waitFor(() => expect(f.replaceOwnedProviders).toHaveBeenCalledTimes(1));
+    expect(f.replaceOwnedProviders).toHaveBeenLastCalledWith({
+      responses: expect.objectContaining({ models: [{ id: "gpt-5.5", api: "openai-responses" }] })
+    });
+
+    registered = true;
+    await vi.advanceTimersByTimeAsync(500);
+    await vi.waitFor(() => expect(f.replaceOwnedProviders).toHaveBeenLastCalledWith(expect.objectContaining({
+      google: expect.objectContaining({ models: [{ id: "gemini-3-flash", api: "google-generative-ai" }] }),
+      responses: expect.objectContaining({ models: [{ id: "gpt-5.5", api: "openai-responses" }] })
+    })));
+    await connection.dispose();
+  });
+
+  it("drops published models once no credential backs them any more", async () => {
+    const f = fixture();
+    f.setOwnedProviders({ google: { models: [{ id: "gemini-test" }] } });
+    const stable = f.handle.getMockImplementation();
+    f.handle.mockImplementation(async (request: { path: string; method?: string }) => {
+      // No credentials left, so an empty catalog is a settled state, not a race.
+      if (request.path === "/v1/models") return { data: [] };
+      if (!stable) throw new Error("missing fixture handler");
+      return stable(request);
+    });
+
+    const connection = maintainModelConnection(f.context);
+
+    await vi.waitFor(() => expect(f.replaceOwnedProviders).toHaveBeenCalledWith({}));
+    await connection.dispose();
+  });
+
+  it("reconciles a ready transition when the host status event was missed", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const f = fixture();
+    let phase: "starting" | "ready" = "starting";
+    f.context.services.getStatus = vi.fn(async () => ({ ...f.ready, phase }));
+    const connection = maintainModelConnection(f.context);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(f.replaceOwnedProviders).not.toHaveBeenCalled();
+    phase = "ready";
+    await vi.advanceTimersByTimeAsync(1_000);
+    await vi.waitFor(() => expect(f.replaceOwnedProviders).toHaveBeenCalledTimes(1));
+    await connection.dispose();
+  });
+});
