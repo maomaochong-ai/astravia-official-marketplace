@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notion — component reference</title>
+<style>
+	/* Mirrors theme.css. Plain custom properties so this file opens standalone. */
+	:root {
+		--color-primary: #2383e2;
+		--color-primary-foreground: #ffffff;
+		--color-surface: #ffffff;
+		--color-surface-foreground: #37352f;
+		--color-surface-raised: #f7f6f3;
+		--color-muted: #787774;
+		--color-accent: #d9730d;
+		--color-danger: #eb5757;
+		--color-border: #e9e9e7;
+
+		--radius-sm: 3px;
+		--radius-md: 4px;
+		--radius-lg: 6px;
+		--radius-xl: 8px;
+		--radius-2xl: 12px;
+
+		--shadow-sm: 0 1px 2px rgb(15 15 15 / 0.06);
+		--shadow-md: 0 2px 6px rgb(15 15 15 / 0.08), 0 0 0 1px rgb(15 15 15 / 0.03);
+		--shadow-lg: 0 8px 24px rgb(15 15 15 / 0.12), 0 0 0 1px rgb(15 15 15 / 0.04);
+
+		--sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+		--mono: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+	}
+
+	*, *::before, *::after { box-sizing: border-box; }
+	body {
+		margin: 0;
+		background: var(--color-surface);
+		color: var(--color-surface-foreground);
+		font-family: var(--sans);
+		font-size: 16px;
+		line-height: 1.65;
+		-webkit-font-smoothing: antialiased;
+	}
+	h1, h2, h3 { margin: 0; line-height: 1.3; }
+	p { margin: 0; }
+	::selection { background: rgb(35 131 226 / 0.2); }
+	code { font-family: var(--mono); font-size: 0.88em; background: var(--color-surface-raised); color: #eb5757; padding: 1px 5px; border-radius: var(--radius-sm); }
+
+	/* ── Workspace: 240px sidebar, then a 700px reading column ─────── */
+	.app { display: grid; grid-template-columns: 1fr; min-height: 100vh; }
+	@media (min-width: 900px) { .app { grid-template-columns: 240px 1fr; } }
+
+	.side { display: none; background: var(--color-surface-raised); padding: 12px 8px; border-right: 1px solid var(--color-border); }
+	@media (min-width: 900px) { .side { display: block; } }
+	.side-user { display: flex; align-items: center; gap: 8px; padding: 6px 8px 14px; font-size: 14px; font-weight: 600; }
+	.side-user .ws { width: 20px; height: 20px; border-radius: var(--radius-md); background: var(--color-surface-foreground); color: #fff; font-size: 11px; display: grid; place-items: center; font-weight: 500; }
+	/* 24px rows, 12–13px text, chevrons — the sidebar is a list, not a nav bar. */
+	.s-item { display: flex; align-items: center; gap: 6px; height: 27px; padding: 0 8px; border-radius: var(--radius-md); font-size: 14px; color: var(--color-muted); }
+	.s-item .ico { width: 16px; text-align: center; font-size: 13px; opacity: 0.7; }
+	.s-item.is-active { background: rgb(0 0 0 / 0.05); color: var(--color-surface-foreground); font-weight: 500; }
+	.s-item.child { padding-left: 24px; }
+	.s-group { font-size: 12px; color: var(--color-muted); padding: 16px 8px 4px; }
+
+	.doc { min-width: 0; }
+	.doc-bar { display: flex; align-items: center; gap: 10px; height: 45px; padding: 0 16px; font-size: 14px; color: var(--color-muted); border-bottom: 1px solid transparent; }
+	@media (min-width: 768px) { .doc-bar { padding: 0 40px; } }
+	.spacer { flex: 1; }
+	.page { max-width: 708px; margin: 0 auto; padding: 8px 16px 64px; }
+	@media (min-width: 768px) { .page { padding: 24px 24px 96px; } }
+
+	.page-icon { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+	.page h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.01em; }
+	@media (min-width: 768px) { .page h1 { font-size: 40px; } }
+	.page-props { margin-top: 14px; font-size: 14px; }
+	.prop { display: flex; gap: 8px; align-items: center; padding: 3px 0; color: var(--color-muted); }
+	.prop .name { width: 120px; flex: none; display: flex; gap: 6px; align-items: center; }
+	.prop .val { color: var(--color-surface-foreground); }
+
+	/* ── Blocks: the whole vocabulary ─────────────────────────────── */
+	.block { padding: 3px 2px; margin-top: 2px; }
+	.h2 { font-size: 22px; font-weight: 600; margin-top: 28px; padding-bottom: 2px; }
+	.h3 { font-size: 18px; font-weight: 600; margin-top: 20px; }
+	.text { font-size: 16px; }
+	.muted { color: var(--color-muted); }
+	.hl { background: #fdecc8; border-radius: 2px; padding: 0 2px; }
+	.hl-orange { color: var(--color-accent); font-weight: 500; }
+	.link { color: var(--color-primary); border-bottom: 1px solid rgb(35 131 226 / 0.3); text-decoration: none; }
+
+	.todo { display: flex; gap: 10px; align-items: flex-start; padding: 3px 2px; }
+	.box { width: 16px; height: 16px; border: 1.5px solid #b1b0ad; border-radius: var(--radius-sm); flex: none; margin-top: 4px; }
+	.box.on { background: var(--color-primary); border-color: var(--color-primary); position: relative; }
+	.box.on::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(42deg); }
+	.todo.done span { color: var(--color-muted); text-decoration: line-through; }
+
+	.toggle { display: flex; gap: 8px; align-items: flex-start; padding: 3px 2px; }
+	.chev { flex: none; margin-top: 6px; width: 0; height: 0; border-left: 5px solid var(--color-muted); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+	.chev.open { transform: rotate(90deg); }
+
+	.quote { border-left: 3px solid var(--color-surface-foreground); padding: 2px 0 2px 14px; margin: 8px 0; font-size: 16px; }
+	.callout {
+		display: flex; gap: 10px; align-items: flex-start;
+		background: var(--color-surface-raised);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		padding: 16px; margin: 12px 0; font-size: 15px;
+	}
+	.callout .emoji { font-size: 18px; line-height: 1.3; }
+	.callout.warn { background: #fdf3e6; border-color: #f3e0c4; }
+	.codeblock {
+		background: var(--color-surface-raised); border-radius: var(--radius-md);
+		padding: 16px 18px; font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+		color: var(--color-surface-foreground); overflow-x: auto; margin: 12px 0;
+	}
+	.codeblock .c { color: var(--color-muted); }
+	.divider { border: 0; border-top: 1px solid var(--color-border); margin: 24px 0; }
+
+	/* Database table: hairline grid, 33px rows, gray headers. */
+	.db { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+	.db th { text-align: left; font-weight: 400; font-size: 12px; color: var(--color-muted); padding: 6px 8px; border-bottom: 1px solid var(--color-border); }
+	.db td { padding: 7px 8px; border-bottom: 1px solid var(--color-border); height: 33px; }
+	.db td:first-child, .db th:first-child { padding-left: 0; }
+	.tag { display: inline-block; border-radius: var(--radius-sm); padding: 1px 7px; font-size: 12px; background: var(--color-surface-raised); color: var(--color-muted); }
+	.tag.blue { background: #e7f3f8; color: #183347; }
+	.tag.orange { background: #fbecdd; color: #5c3b23; }
+	.tag.green { background: #edf3ec; color: #1c3829; }
+	.tag.red { background: #fdebec; color: #5d1715; }
+	@media (max-width: 620px) { .db .hide-sm { display: none; } }
+
+	/* ── Buttons: text until hover ─────────────────────────────────── */
+	.btn {
+		font: inherit; font-size: 14px; font-weight: 500;
+		height: 32px; padding: 0 10px;
+		border: 0; border-radius: var(--radius-md);
+		background: transparent; color: var(--color-muted);
+		cursor: pointer; transition: background-color 20ms ease-in;
+	}
+	.btn:hover { background: rgb(55 53 47 / 0.08); color: var(--color-surface-foreground); }
+	.btn:focus-visible { outline: none; box-shadow: 0 0 0 2px rgb(35 131 226 / 0.5); }
+	.btn-primary { background: var(--color-primary); color: var(--color-primary-foreground); }
+	.btn-primary:hover { background: #0b6fca; color: #fff; }
+	.btn-outline { border: 1px solid var(--color-border); color: var(--color-surface-foreground); }
+	.btn-outline:hover { background: var(--color-surface-raised); }
+	.btn[disabled] { cursor: not-allowed; color: #c5c4c1; background: transparent; }
+	.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+	.input {
+		font: inherit; font-size: 14px; width: 100%; max-width: 340px; height: 32px; padding: 0 10px;
+		border: 1px solid var(--color-border); border-radius: var(--radius-md);
+		background: var(--color-surface-raised); color: var(--color-surface-foreground);
+	}
+	.input:focus { outline: none; background: var(--color-surface); border-color: var(--color-primary); box-shadow: 0 0 0 2px rgb(35 131 226 / 0.2); }
+
+	/* Popover: the one place a shadow appears, always with its hairline ring. */
+	.menu {
+		max-width: 300px; background: var(--color-surface);
+		border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+		padding: 6px; margin-top: 12px;
+	}
+	.menu .g { font-size: 11px; color: var(--color-muted); padding: 6px 10px 4px; }
+	.menu .i { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: var(--radius-md); font-size: 14px; }
+	.menu .i:first-of-type { background: rgb(55 53 47 / 0.06); }
+	.menu .i small { display: block; font-size: 12px; color: var(--color-muted); }
+	.menu .i .g2 { width: 26px; height: 26px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); flex: none; display: grid; place-items: center; font-size: 13px; }
+
+	/* ── Reference sections below the document ────────────────────── */
+	.ref { max-width: 708px; margin: 0 auto; padding: 0 16px 96px; }
+	@media (min-width: 768px) { .ref { padding: 0 24px 128px; } }
+	.section { padding-top: 48px; }
+	.section-label { font-size: 12px; color: var(--color-accent); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
+	.section h2 { font-size: 22px; font-weight: 600; }
+	.lede { color: var(--color-muted); margin-top: 8px; font-size: 15px; }
+	.note { margin-top: 14px; font-size: 13px; color: var(--color-muted); }
+
+	.swatches { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 18px; }
+	@media (min-width: 620px) { .swatches { grid-template-columns: repeat(4, 1fr); } }
+	.sw .fill { height: 48px; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
+	.sw b { display: block; font-size: 13px; font-weight: 500; margin-top: 6px; }
+	.sw span { font-size: 12px; color: var(--color-muted); }
+
+	/* ── Mobile ───────────────────────────────────────────────────── */
+	.mobile { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 22px; align-items: start; }
+	@media (min-width: 820px) { .mobile { grid-template-columns: 272px 1fr; gap: 36px; } }
+	.phone {
+		width: 272px; max-width: 100%; margin: 0 auto;
+		border: 1px solid var(--color-border); border-radius: 22px;
+		background: var(--color-surface); box-shadow: var(--shadow-lg); overflow: hidden;
+	}
+	.phone-status { display: flex; justify-content: space-between; padding: 9px 16px 4px; font-size: 10px; color: var(--color-muted); }
+	.phone-bar { display: flex; align-items: center; gap: 8px; padding: 6px 14px 10px; font-size: 12px; color: var(--color-muted); }
+	.phone-page { padding: 4px 16px 14px; }
+	.phone-page .pi { font-size: 26px; }
+	.phone-page h4 { margin: 4px 0 10px; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
+	.phone-page .text { font-size: 14px; }
+	.phone-page .todo { font-size: 14px; }
+	.phone-page .callout { padding: 10px; font-size: 12.5px; margin: 10px 0; }
+	/* The block toolbar replaces the slash menu on touch: same items, docked. */
+	.blocktool { display: flex; gap: 4px; border-top: 1px solid var(--color-border); background: var(--color-surface-raised); padding: 8px 10px 14px; }
+	.blocktool span { flex: 1; height: 30px; border-radius: var(--radius-md); background: var(--color-surface); border: 1px solid var(--color-border); display: grid; place-items: center; font-size: 13px; color: var(--color-muted); }
+
+	.rules { margin: 0; padding: 0; list-style: none; }
+	.rules li { padding: 11px 0; border-bottom: 1px solid var(--color-border); font-size: 14px; color: var(--color-muted); }
+	.rules b { display: block; color: var(--color-surface-foreground); font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+
+	/* ── Off-style ────────────────────────────────────────────────── */
+	.compare { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 18px; }
+	@media (min-width: 620px) { .compare { grid-template-columns: repeat(2, 1fr); } }
+	.cmp-off {
+		padding: 22px; border-radius: 18px; color: #fff;
+		background: linear-gradient(135deg, #6366f1, #a855f7);
+		box-shadow: 0 14px 34px rgb(99 102 241 / 0.4);
+		font-size: 15px; font-weight: 600;
+	}
+	.cmp-off small { display: block; font-weight: 400; font-size: 13px; opacity: 0.9; margin-top: 8px; }
+	.cmp-on { padding: 22px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-raised); font-size: 15px; font-weight: 600; }
+	.cmp-on small { display: block; font-weight: 400; font-size: 13px; color: var(--color-muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- COVER — a page in a workspace. The document is the interface; there is no
+     product chrome to speak of, and nothing on screen is a colored card. -->
+<div class="app">
+	<aside class="side">
+		<div class="side-user"><span class="ws">A</span>Astravia Design<span class="spacer"></span><span style="color:var(--color-muted);font-weight:400">⌄</span></div>
+		<div class="s-item"><span class="ico">⌕</span>Search</div>
+		<div class="s-item"><span class="ico">⏱</span>Updates</div>
+		<div class="s-item"><span class="ico">⚙</span>Settings</div>
+		<div class="s-group">Workspace</div>
+		<div class="s-item"><span class="ico">📘</span>Handbook</div>
+		<div class="s-item is-active"><span class="ico">🎛</span>Design tokens</div>
+		<div class="s-item child"><span class="ico">·</span>Color roles</div>
+		<div class="s-item child"><span class="ico">·</span>Type scale</div>
+		<div class="s-item"><span class="ico">🗂</span>Component audit</div>
+		<div class="s-item"><span class="ico">📅</span>Release calendar</div>
+		<div class="s-group">Private</div>
+		<div class="s-item"><span class="ico">📝</span>Scratchpad</div>
+		<div class="s-item"><span class="ico">＋</span>New page</div>
+	</aside>
+
+	<main class="doc">
+		<div class="doc-bar">
+			<span>Workspace</span><span>/</span><span style="color:var(--color-surface-foreground)">Design tokens</span>
+			<span class="spacer"></span>
+			<button class="btn">Share</button><button class="btn">···</button>
+		</div>
+
+		<article class="page">
+			<div class="page-icon">🎛</div>
+			<h1>Design tokens</h1>
+
+			<div class="page-props">
+				<div class="prop"><span class="name">📌 Status</span><span class="val"><span class="tag green">In review</span></span></div>
+				<div class="prop"><span class="name">👤 Owner</span><span class="val">Kaori M.</span></div>
+				<div class="prop"><span class="name">🏷 Tags</span><span class="val"><span class="tag blue">system</span> <span class="tag orange">v1.4</span></span></div>
+				<div class="prop"><span class="name">🗓 Updated</span><span class="val">April 12</span></div>
+			</div>
+
+			<hr class="divider">
+
+			<div class="block text">Everything visual in this workspace resolves to a token. If a value is worth
+				repeating twice, it belongs here first and in a component second. <span class="hl">Highlight is the
+				only fill a sentence ever gets</span> — the page never turns into a colored card.</div>
+
+			<div class="h2">Working agreements</div>
+			<div class="todo done"><span class="box on"></span><span>Freeze the seven base color roles</span></div>
+			<div class="todo"><span class="box"></span><span>Audit radius usage across the component library</span></div>
+			<div class="todo"><span class="box"></span><span>Write the <code>surface-raised</code> hover rule into the linter</span></div>
+
+			<div class="toggle"><span class="chev open"></span><span><b>Why hover fills instead of shadows</b></span></div>
+			<div class="block text muted" style="padding-left: 21px;">A shadow implies the element left the page. Nothing here
+				leaves the page except a menu, so state is expressed by a 6% ink wash instead.</div>
+
+			<blockquote class="quote">A page that needs decoration to feel finished is a page that hasn't found its
+				hierarchy yet.</blockquote>
+
+			<div class="callout"><span class="emoji">💡</span><span>Callouts sit on <code>surface-raised</code> with a hairline
+				border and an icon. They are the loudest object allowed inside prose — and they still have no shadow.</span></div>
+
+			<div class="callout warn"><span class="emoji">⚠️</span><span>Ink is <span class="hl-orange">#37352f</span>, never
+				pure black. Pure black on white is the fastest way to make this system look like something else.</span></div>
+
+			<div class="h3">Token snapshot</div>
+			<div class="codeblock"><span class="c">/* the seven that never change name */</span>
+--color-primary: #2383e2;
+--color-surface: #ffffff;
+--color-surface-foreground: #37352f;  <span class="c">/* warm ink */</span>
+--color-muted: #787774;
+--color-accent: #d9730d;              <span class="c">/* highlighter */</span></div>
+
+			<div class="h2">Component audit</div>
+			<table class="db">
+				<thead><tr><th>Name</th><th>Status</th><th class="hide-sm">Owner</th><th class="hide-sm">Updated</th></tr></thead>
+				<tbody>
+					<tr><td>Sidebar item</td><td><span class="tag green">Shipped</span></td><td class="hide-sm">Kaori M.</td><td class="hide-sm muted">Apr 12</td></tr>
+					<tr><td>Callout</td><td><span class="tag blue">In review</span></td><td class="hide-sm">Ana R.</td><td class="hide-sm muted">Apr 09</td></tr>
+					<tr><td>Database table</td><td><span class="tag orange">Drafting</span></td><td class="hide-sm">Jun S.</td><td class="hide-sm muted">Apr 07</td></tr>
+					<tr><td>Slash menu</td><td><span class="tag red">Blocked</span></td><td class="hide-sm">Mo O.</td><td class="hide-sm muted">Apr 02</td></tr>
+				</tbody>
+			</table>
+		</article>
+	</main>
+</div>
+
+<div class="ref">
+	<!-- 01 -->
+	<section class="section">
+		<p class="section-label">01 — Chrome</p>
+		<h2>Buttons look like text until you hover</h2>
+		<p class="lede">Every control starts as plain ink and gains a 6% wash on hover. A filled blue
+			button is rare enough that one per page is usually one too many.</p>
+		<div class="row" style="margin-top: 16px;">
+			<button class="btn">Share</button>
+			<button class="btn">Comment</button>
+			<button class="btn btn-outline">Duplicate</button>
+			<button class="btn btn-primary">New page</button>
+			<button class="btn" disabled>Syncing…</button>
+		</div>
+		<div class="row" style="margin-top: 14px;"><input class="input" placeholder="Search pages…"></div>
+		<div class="menu">
+			<div class="g">Basic blocks</div>
+			<div class="i"><span class="g2">T</span><span>Text<small>Just start writing</small></span></div>
+			<div class="i"><span class="g2">H</span><span>Heading 2<small>Medium section heading</small></span></div>
+			<div class="i"><span class="g2">☑</span><span>To-do list<small>Track tasks with a checkbox</small></span></div>
+			<div class="i"><span class="g2">💡</span><span>Callout<small>Make writing stand out</small></span></div>
+		</div>
+		<p class="note">The slash menu is the only floating surface, and it carries <code>shadow-lg</code> plus a hairline ring so it still reads as paper.</p>
+	</section>
+
+	<!-- 02 -->
+	<section class="section">
+		<p class="section-label">02 — Color</p>
+		<h2>Color arrives as text and highlight, never as a fill</h2>
+		<div class="swatches">
+			<div class="sw"><div class="fill" style="background: var(--color-surface-raised)"></div><b>surface-raised</b><span>#f7f6f3 · sidebar, hover, code</span></div>
+			<div class="sw"><div class="fill" style="background: var(--color-surface-foreground)"></div><b>ink</b><span>#37352f · warm, never #000</span></div>
+			<div class="sw"><div class="fill" style="background: var(--color-primary)"></div><b>primary</b><span>#2383e2 · links, rare button</span></div>
+			<div class="sw"><div class="fill" style="background: var(--color-accent)"></div><b>accent</b><span>#d9730d · highlighter</span></div>
+		</div>
+		<p class="note">Tags are the one saturated object, and even those are pastel washes with dark matching text. Radii stop at 4–6px; nothing in this system is bubbly.</p>
+	</section>
+
+	<!-- 03 MOBILE -->
+	<section class="section">
+		<p class="section-label">03 — Mobile</p>
+		<h2>The reading column was already the mobile layout</h2>
+		<p class="lede">Because the page is a single 700px column of text blocks, the phone build barely
+			changes: the sidebar becomes a drawer, the slash menu becomes a docked block toolbar, and the
+			line length finally matches what the column was designed for.</p>
+		<div class="mobile">
+			<div class="phone">
+				<div class="phone-status"><span>9:41</span><span>LTE ▮</span></div>
+				<div class="phone-bar"><span>☰</span><span>Design tokens</span><span class="spacer"></span><span>···</span></div>
+				<div class="phone-page">
+					<div class="pi">🎛</div>
+					<h4>Design tokens</h4>
+					<div class="prop" style="font-size:12px"><span class="name" style="width:78px">📌 Status</span><span class="tag green">In review</span></div>
+					<hr class="divider" style="margin:12px 0">
+					<div class="text">Everything visual resolves to a token. <span class="hl">Highlight is the only fill a sentence gets.</span></div>
+					<div class="todo done" style="margin-top:8px"><span class="box on"></span><span>Freeze the color roles</span></div>
+					<div class="todo"><span class="box"></span><span>Audit radius usage</span></div>
+					<div class="callout"><span class="emoji">💡</span><span>Ink is warm, never pure black.</span></div>
+				</div>
+				<div class="blocktool"><span>T</span><span>H</span><span>☑</span><span>💡</span><span>＋</span></div>
+			</div>
+			<ul class="rules">
+				<li><b>&lt; 900px — sidebar</b>The 240px page tree slides out as a full-height drawer over a light scrim. It keeps its 27px rows and 14px labels; it does not turn into an icon rail.</li>
+				<li><b>Reading column</b>708px max-width becomes the viewport with 16px gutters. Page padding drops from 24px to 16px; the text itself keeps 16px/1.65 leading at every width.</li>
+				<li><b>Page title</b>40px → 32px → 21px inside the phone frame. Body text never scales down — long-form reading is the point of the system.</li>
+				<li><b>Slash menu → toolbar</b>Typing <code>/</code> has no touch equivalent, so the same block list docks above the keyboard as a row of tappable glyphs in the same order.</li>
+				<li><b>Hover states</b>The 6% ink wash maps to <code>:active</code>. Block handles and drag grips only appear after a long press, so prose stays clean.</li>
+				<li><b>Databases</b>Below 620px the table sheds owner and date columns; the title and its status tag stay. Rows keep the 33px height and hairline grid — no card view.</li>
+				<li><b>Targets</b>32px controls grow to 40px, but the visual weight stays ghost — a bigger tap area, not a heavier button.</li>
+			</ul>
+		</div>
+	</section>
+
+	<!-- 04 DON'T -->
+	<section class="section">
+		<p class="section-label">04 — Off-style, for contrast</p>
+		<h2>What breaks the quiet</h2>
+		<div class="compare">
+			<div class="cmp-off">Saturated gradient card
+				<small>18px radius · indigo→purple fill · colored shadow · white text. Colorful cards are the fastest way out of this system.</small></div>
+			<div class="cmp-on">Same content, on-style
+				<small>4px radius, warm #f7f6f3 fill, hairline border, warm ink text, no shadow. Hierarchy comes from type size and spacing, not from boxes.</small></div>
+		</div>
+		<p class="note">Also out: pure black text, <code>rounded-2xl</code> anything, glassmorphism, and big drop shadows on elements that never left the page.</p>
+	</section>
+</div>
+
+</body>
+</html>
