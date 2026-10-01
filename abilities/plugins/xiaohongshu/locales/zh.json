@@ -13,6 +13,8 @@
   "setup.login": "登录小红书",
   "setup.refresh": "刷新状态",
   "setup.waitingQr": "正在获取二维码…",
+  "setup.preparingBrowser": "正在准备浏览器（首次登录会慢一些）…",
+  "setup.preparingBrowserProgress": "正在准备浏览器组件 {{percent}}%…",
   "setup.waitingScan": "请使用小红书扫码登录",
   "setup.verifying": "正在验证登录…",
   "setup.connected": "登录成功",

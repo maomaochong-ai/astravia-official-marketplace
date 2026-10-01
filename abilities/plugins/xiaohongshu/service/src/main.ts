@@ -21,13 +21,25 @@ const port = Number(process.env.ASTRAVIA_SERVICE_PORT ?? 0);
 const dataRoot = process.env.ASTRAVIA_SERVICE_DATA_DIR ?? "./service-data";
 const store = createAccountStore(dataRoot);
 const browser = new BrowserManager(store, dataRoot);
+type LoginSessionState = "preparing" | "waiting" | "failed";
+
 type LoginSession = {
-	page: import("playwright-core").Page;
-	context: import("playwright-core").BrowserContext;
+	state: LoginSessionState;
+	page?: import("playwright-core").Page;
+	context?: import("playwright-core").BrowserContext;
 	createdAt: number;
 	accountId?: string;
 	completion?: Promise<AccountMetadata>;
+	qrCode?: string;
+	error?: string;
 };
+
+/** Seconds the QR stays valid once it has been rendered. */
+const LOGIN_SESSION_TTL_MS = 180_000;
+
+function errorText(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
 const sessions = new Map<string, LoginSession>();
 let activeAccountId: string | undefined;
 let latestLoginSessionId: string | undefined;
@@ -96,17 +108,86 @@ async function qrPayload(page: import("playwright-core").Page): Promise<string> 
 		throw new Error(message ? `小红书未返回二维码：${message}` : "小红书未返回二维码");
 }
 
+function loginSessionPayload(
+	sessionId: string,
+	session: LoginSession,
+	options: { includeQr?: boolean } = {},
+): Record<string, unknown> {
+	if (session.state === "preparing") {
+		return { id: sessionId, status: "preparing", progress: browser.provisionProgress() };
+	}
+	if (session.state === "failed") {
+		return {
+			id: sessionId,
+			status: "failed",
+			error: session.error ?? "浏览器准备失败",
+		};
+	}
+	return {
+		id: sessionId,
+		status: "waiting",
+		expiresAt: session.createdAt + LOGIN_SESSION_TTL_MS,
+		...(options.includeQr && session.qrCode ? { qrCode: session.qrCode } : {}),
+	};
+}
+
+function pendingLoginSession(): LoginSession | undefined {
+	return latestLoginSessionId ? sessions.get(latestLoginSessionId) : undefined;
+}
+
+/** Creates a session immediately and provisions the browser in the background. */
+function beginLoginSession(accountId?: string): { id: string; session: LoginSession } {
+	const sessionId = randomUUID();
+	const session: LoginSession = {
+		state: "preparing",
+		createdAt: Date.now(),
+		...(accountId ? { accountId } : {}),
+	};
+	sessions.set(sessionId, session);
+	latestLoginSessionId = sessionId;
+	void provisionLoginSession(sessionId, session);
+	return { id: sessionId, session };
+}
+
+async function provisionLoginSession(sessionId: string, session: LoginSession): Promise<void> {
+	try {
+		const login = await browser.createLoginSession();
+		if (sessions.get(sessionId) !== session) {
+			await login.context.close().catch(() => undefined);
+			return;
+		}
+		const qr = await qrPayload(login.page);
+		if (sessions.get(sessionId) !== session) {
+			await login.context.close().catch(() => undefined);
+			return;
+		}
+		session.page = login.page;
+		session.context = login.context;
+		session.qrCode = qr;
+		// The scan window starts when the QR is actually on screen.
+		session.createdAt = Date.now();
+		session.state = "waiting";
+	} catch (error) {
+		if (sessions.get(sessionId) !== session) return;
+		session.state = "failed";
+		session.error = errorText(error);
+	}
+}
+
 async function completeLoginSession(sessionId: string, session: LoginSession): Promise<AccountMetadata> {
 	if (session.completion) return session.completion;
 	session.completion = (async () => {
 		const accountId = session.accountId ?? `account-${Date.now().toString(36)}`;
-		const profile = await browser.readProfile(session.page);
+		const page = session.page;
+		const context = session.context;
+		if (!page || !context) throw new Error("登录会话尚未准备好");
+		const profile = await browser.readProfile(page);
 		const account = accountMetadata(accountId, profile, await store.get(accountId));
 		await store.upsert(account);
-		await browser.persist(accountId, session.context);
+		await browser.persist(accountId, context);
 		activeAccountId = accountId;
 		await persistActiveAccountId();
-		await session.context.close();
+		await context.close();
 		sessions.delete(sessionId);
 		if (latestLoginSessionId === sessionId) latestLoginSessionId = undefined;
 		return account;
@@ -115,7 +196,7 @@ async function completeLoginSession(sessionId: string, session: LoginSession): P
 }
 
 async function discardLoginSession(sessionId: string, session: LoginSession): Promise<void> {
-	await session.context.close().catch(() => undefined);
+	await session.context?.close().catch(() => undefined);
 	sessions.delete(sessionId);
 	if (latestLoginSessionId === sessionId) latestLoginSessionId = undefined;
 }
@@ -368,16 +449,24 @@ async function callMcpTool(name: string, args: Record<string, unknown>): Promise
 	if (name === "xiaohongshu_list_accounts") return { accounts: await store.list(), activeAccountId };
 	if (name === "xiaohongshu_active_account") return { account: activeAccountId ? await store.get(activeAccountId) : undefined };
 	if (name === "get_login_qrcode") {
+		// The MCP tool keeps its blocking contract: an agent asking for a QR needs one.
 		const login = await browser.createLoginSession();
 		const sessionId = randomUUID();
-		sessions.set(sessionId, { ...login, createdAt: Date.now() });
+		const qr = await qrPayload(login.page);
+		sessions.set(sessionId, {
+			state: "waiting",
+			page: login.page,
+			context: login.context,
+			createdAt: Date.now(),
+			qrCode: qr,
+		});
 		latestLoginSessionId = sessionId;
-		return { id: sessionId, status: "waiting", url: await qrPayload(login.page), expiresAt: Date.now() + 180_000 };
+		return { id: sessionId, status: "waiting", url: qr, expiresAt: Date.now() + LOGIN_SESSION_TTL_MS };
 	}
 	if (name === "delete_cookies") {
 		if (latestLoginSessionId) {
 			const session = sessions.get(latestLoginSessionId);
-			await session?.context.close();
+			await session?.context?.close().catch(() => undefined);
 			sessions.delete(latestLoginSessionId);
 			latestLoginSessionId = undefined;
 		}
@@ -489,19 +578,41 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 			: json(response, 401, { error: "not logged in" });
 	}
 	if (request.method === "GET" && url.pathname === "/api/v1/login/qrcode") {
+		// Kept blocking: the MCP setup contract reads the image from this response.
 		const login = await browser.createLoginSession();
 		const sessionId = randomUUID();
-		sessions.set(sessionId, { ...login, createdAt: Date.now() });
-		latestLoginSessionId = sessionId;
 		const qr = await qrPayload(login.page);
-		return json(response, 200, { url: qr, id: sessionId, status: "waiting", expiresAt: Date.now() + 180_000 });
+		sessions.set(sessionId, {
+			state: "waiting",
+			page: login.page,
+			context: login.context,
+			createdAt: Date.now(),
+			qrCode: qr,
+		});
+		latestLoginSessionId = sessionId;
+		return json(response, 200, { url: qr, img: qr, id: sessionId, status: "waiting", expiresAt: Date.now() + LOGIN_SESSION_TTL_MS });
 	}
 	if (request.method === "GET" && url.pathname === "/api/v1/login/status") {
 		const sessionId = latestLoginSessionId;
 		const session = sessionId ? sessions.get(sessionId) : undefined;
+		if (sessionId && session?.state === "preparing") {
+			// Still provisioning: answer right away so callers are not blocked.
+			return json(response, 200, {
+				data: { is_logged_in: false },
+				status: "preparing",
+				progress: browser.provisionProgress(),
+			});
+		}
+		if (sessionId && session?.state === "failed") {
+			return json(response, 200, {
+				data: { is_logged_in: false },
+				status: "failed",
+				error: session.error ?? "浏览器准备失败",
+			});
+		}
 		if (sessionId && session) {
 			const currentSessionId = sessionId;
-			const loginState = await browser.loginStatus(session.page, session.context);
+			const loginState = await browser.loginStatus(session.page!, session.context!);
 			const status = loginSessionStatus({
 				createdAt: session.createdAt,
 				now: Date.now(),
@@ -529,7 +640,7 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 	if (request.method === "DELETE" && url.pathname === "/api/v1/login/cookies") {
 		if (latestLoginSessionId) {
 			const session = sessions.get(latestLoginSessionId);
-			await session?.context.close();
+			await session?.context?.close().catch(() => undefined);
 			sessions.delete(latestLoginSessionId);
 			latestLoginSessionId = undefined;
 		}
@@ -539,18 +650,52 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 	}
 	if (request.method === "POST" && url.pathname === "/api/v1/login/sessions") {
 		const input = await body(request);
-		const sessionId = randomUUID();
-		const login = await browser.createLoginSession();
-		sessions.set(sessionId, { ...login, createdAt: Date.now(), accountId: typeof input.accountId === "string" ? input.accountId : undefined });
-		latestLoginSessionId = sessionId;
-		const qr = await qrPayload(login.page);
-		return json(response, 201, { id: sessionId, accountId: typeof input.accountId === "string" ? input.accountId : undefined, status: "waiting", qrCode: qr, expiresAt: Date.now() + 180_000 });
+		const accountId = typeof input.accountId === "string" ? input.accountId : undefined;
+		// Reuse an in-flight preparation instead of spawning a second download.
+		const pending = pendingLoginSession();
+		if (pending?.state === "preparing" && latestLoginSessionId) {
+			return json(response, 202, loginSessionPayload(latestLoginSessionId, pending));
+		}
+		if (browser.isReady()) {
+			const login = await browser.createLoginSession();
+			const qr = await qrPayload(login.page);
+			const sessionId = randomUUID();
+			sessions.set(sessionId, {
+				state: "waiting",
+				page: login.page,
+				context: login.context,
+				createdAt: Date.now(),
+				qrCode: qr,
+				...(accountId ? { accountId } : {}),
+			});
+			latestLoginSessionId = sessionId;
+			return json(response, 201, {
+				id: sessionId,
+				...(accountId ? { accountId } : {}),
+				status: "waiting",
+				qrCode: qr,
+				expiresAt: Date.now() + LOGIN_SESSION_TTL_MS,
+			});
+		}
+		const started = beginLoginSession(accountId);
+		return json(response, 202, {
+			id: started.id,
+			...(accountId ? { accountId } : {}),
+			status: "preparing",
+			progress: browser.provisionProgress(),
+		});
 	}
 	const sessionMatch = url.pathname.match(/^\/api\/v1\/login\/sessions\/([^/]+)$/u);
 	if (request.method === "GET" && sessionMatch) {
 		const session = sessions.get(sessionMatch[1]);
 		if (!session) return json(response, 404, { error: "login session not found" });
-		const loginState = await browser.loginStatus(session.page, session.context);
+		if (session.state === "preparing")
+			return json(response, 200, loginSessionPayload(sessionMatch[1], session));
+		if (session.state === "failed")
+			return json(response, 500, loginSessionPayload(sessionMatch[1], session));
+		if (url.searchParams.get("qr") === "1" && session.qrCode)
+			return json(response, 200, loginSessionPayload(sessionMatch[1], session, { includeQr: true }));
+		const loginState = await browser.loginStatus(session.page!, session.context!);
 		const status = loginSessionStatus({ createdAt: session.createdAt, now: Date.now(), loggedIn: loginState.loggedIn });
 		if (status === "waiting")
 			return json(response, 200, { id: sessionMatch[1], status: "waiting" });

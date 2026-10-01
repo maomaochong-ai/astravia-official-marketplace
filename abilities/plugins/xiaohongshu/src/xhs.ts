@@ -305,7 +305,19 @@ export async function updateAccountIdentity(
 	return next;
 }
 
-export async function requestQrPayload(ctx: PluginContext): Promise<string> {
+/** Progress reported while the managed service prepares a browser for login. */
+export type QrPreparationProgress = {
+	phase?: string;
+	percent?: number;
+};
+
+const PREPARATION_POLL_INTERVAL_MS = 1_500;
+const PREPARATION_BUDGET_MS = 30 * 60_000;
+
+export async function requestQrPayload(
+	ctx: PluginContext,
+	options: { onProgress?: (progress: QrPreparationProgress) => void } = {},
+): Promise<string> {
 	const response = await services(ctx).request<unknown>(SERVICE_ID, {
 		path: "/api/v1/login/sessions",
 		method: "POST",
@@ -323,6 +335,15 @@ export async function requestQrPayload(ctx: PluginContext): Promise<string> {
 	}
 	const body = response.body as Record<string, unknown>;
 	if (typeof body.id === "string") loginSessionId = body.id;
+	const payload = qrPayloadFromBody(body);
+	if (payload) return payload;
+	if (body.status === "preparing" && typeof body.id === "string") {
+		return await awaitQrPreparation(ctx, body.id, options.onProgress);
+	}
+	throw new Error("QR response did not contain a URL");
+}
+
+function qrPayloadFromBody(body: Record<string, unknown>): string | undefined {
 	const data = body?.data as Record<string, unknown> | undefined;
 	const candidates = [
 		data?.url,
@@ -336,12 +357,47 @@ export async function requestQrPayload(ctx: PluginContext): Promise<string> {
 		body?.qrCode,
 		body?.img,
 	];
-	const payload = candidates.find(
+	return candidates.find(
 		(value): value is string =>
 			typeof value === "string" && value.trim().length > 0,
 	);
-	if (!payload) throw new Error("QR response did not contain a URL");
-	return payload;
+}
+
+/**
+ * The first login on a fresh machine may need to provision a browser, which can
+ * take a long time. The service answers immediately with a progress object, so
+ * the UI shows what is happening instead of failing on the request timeout.
+ */
+async function awaitQrPreparation(
+	ctx: PluginContext,
+	sessionId: string,
+	onProgress?: (progress: QrPreparationProgress) => void,
+): Promise<string> {
+	const deadline = Date.now() + PREPARATION_BUDGET_MS;
+	while (Date.now() < deadline) {
+		const response = await services(ctx).request<unknown>(SERVICE_ID, {
+			path: `/api/v1/login/sessions/${sessionId}?qr=1`,
+			method: "GET",
+			responseType: "json",
+			timeoutMs: 15_000,
+		});
+		const body = (response.body ?? {}) as Record<string, unknown>;
+		onProgress?.(body.progress as QrPreparationProgress ?? { phase: "preparing" });
+		const payload = qrPayloadFromBody(body);
+		if (payload) return payload;
+		if (body.status === "failed") {
+			const detail = typeof body.error === "string" ? body.error : undefined;
+			throw new Error(detail ? `二维码获取失败：${detail}` : "二维码获取失败（准备浏览器失败）");
+		}
+		if (!response.ok && body.status !== "preparing") {
+			const detail = errorMessageFromResponse(response.body);
+			throw new Error(
+				detail ? `二维码获取失败：${detail}` : `二维码获取失败（HTTP ${response.status}）`,
+			);
+		}
+		await new Promise((resolve) => setTimeout(resolve, PREPARATION_POLL_INTERVAL_MS));
+	}
+	throw new Error("二维码获取失败（浏览器准备超时）");
 }
 
 export async function captureCurrentSession(

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	arrayAtPath,
 	detailAtPath,
+	downloadPercentFromChunk,
 	ensureChromiumExecutable,
 	loggedInFromSignals,
 	normalizePublishOptions,
@@ -128,9 +129,72 @@ describe("ensureChromiumExecutable", () => {
 			cliPath: "playwright-cli.js",
 			install,
 			locate: async (directory) => directory === cacheDir && (await import("node:fs")).existsSync(executable) ? executable : undefined,
+			locateSystem: async () => undefined,
 		})).resolves.toBe(executable);
 		expect(install).toHaveBeenCalledOnce();
-		expect(install).toHaveBeenCalledWith("playwright-cli.js", cacheDir);
+		expect(install).toHaveBeenCalledWith("playwright-cli.js", cacheDir, expect.any(Function));
+	});
+
+	it("reuses a browser already installed on the machine instead of downloading", async () => {
+		const cacheDir = await temporaryDirectory();
+		const install = vi.fn(async () => undefined);
+		const onProgress = vi.fn();
+
+		await expect(ensureChromiumExecutable({
+			cacheDir,
+			cliPath: "playwright-cli.js",
+			install,
+			locate: async () => undefined,
+			locateSystem: async () => "/usr/bin/google-chrome",
+			onProgress,
+		})).resolves.toBe("/usr/bin/google-chrome");
+		expect(install).not.toHaveBeenCalled();
+		expect(onProgress).toHaveBeenCalledWith({ phase: "system" });
+	});
+
+	it("prefers the cache over a system browser and reports the cache phase", async () => {
+		const cacheDir = await temporaryDirectory();
+		const executable = join(cacheDir, "chromium");
+		await writeFile(executable, "browser");
+		const locateSystem = vi.fn(async () => "/usr/bin/google-chrome");
+		const onProgress = vi.fn();
+
+		await expect(ensureChromiumExecutable({
+			cacheDir,
+			locate: async () => executable,
+			locateSystem,
+			onProgress,
+		})).resolves.toBe(executable);
+		expect(locateSystem).not.toHaveBeenCalled();
+		expect(onProgress).toHaveBeenNthCalledWith(1, { phase: "cache" });
+	});
+
+	it("forwards download percentages while installing", async () => {
+		const cacheDir = await temporaryDirectory();
+		const executable = join(cacheDir, "chromium");
+		const install = vi.fn(async (_cliPath: string, _cache: string, onProgress?: (percent?: number) => void) => {
+			onProgress?.(42);
+			await writeFile(executable, "browser");
+		});
+		const onProgress = vi.fn();
+
+		await expect(ensureChromiumExecutable({
+			cacheDir,
+			cliPath: "playwright-cli.js",
+			install,
+			locate: async (directory) => (await import("node:fs")).existsSync(executable) ? executable : undefined,
+			locateSystem: async () => undefined,
+			onProgress,
+		})).resolves.toBe(executable);
+		expect(onProgress).toHaveBeenCalledWith({ phase: "downloading", percent: 42 });
+		// Once installed, the browser is served from the plugin cache.
+		expect(onProgress).toHaveBeenLastCalledWith({ phase: "cache" });
+	});
+
+	it("parses the percentage out of Playwright download output", () => {
+		expect(downloadPercentFromChunk("|■■■■      | 45% of 150.2 MiB")).toBe(45);
+		expect(downloadPercentFromChunk("Downloading Chromium 1243\n|■■■■■■■■■■| 100% of 150.2 MiB")).toBe(100);
+		expect(downloadPercentFromChunk("no progress here")).toBeUndefined();
 	});
 
 	it("shares one download across concurrent requests for the same cache", async () => {
@@ -143,8 +207,8 @@ describe("ensureChromiumExecutable", () => {
 		});
 		const locate = async (directory: string) => (await import("node:fs")).existsSync(executable) ? executable : undefined;
 
-		const first = ensureChromiumExecutable({ cacheDir, cliPath: "playwright-cli.js", install, locate });
-		const second = ensureChromiumExecutable({ cacheDir, cliPath: "playwright-cli.js", install, locate });
+		const first = ensureChromiumExecutable({ cacheDir, cliPath: "playwright-cli.js", install, locate, locateSystem: async () => undefined });
+		const second = ensureChromiumExecutable({ cacheDir, cliPath: "playwright-cli.js", install, locate, locateSystem: async () => undefined });
 		await vi.waitFor(() => expect(install).toHaveBeenCalledOnce());
 		release();
 		await expect(Promise.all([first, second])).resolves.toEqual([executable, executable]);
@@ -154,8 +218,10 @@ describe("ensureChromiumExecutable", () => {
 		const cacheDir = await temporaryDirectory();
 		const executable = join(cacheDir, "custom-browser.exe");
 		await writeFile(executable, "browser");
+		const locateSystem = vi.fn(async () => "/usr/bin/google-chrome");
 
-		await expect(ensureChromiumExecutable({ cacheDir, executableOverride: executable })).resolves.toBe(executable);
+		await expect(ensureChromiumExecutable({ cacheDir, executableOverride: executable, locateSystem })).resolves.toBe(executable);
+		expect(locateSystem).not.toHaveBeenCalled();
 		await expect(ensureChromiumExecutable({ cacheDir, executableOverride: join(cacheDir, "missing.exe") })).rejects.toThrow("XHS_BROWSER_EXECUTABLE does not exist");
 	});
 
@@ -170,6 +236,7 @@ describe("ensureChromiumExecutable", () => {
 			cliPath: "playwright-cli.js",
 			install: async () => undefined,
 			locate: async (directory) => directory === firstCache ? firstExecutable : undefined,
+			locateSystem: async () => undefined,
 		})).rejects.toThrow("no executable was found");
 	});
 });

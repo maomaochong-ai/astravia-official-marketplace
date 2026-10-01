@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { promisify } from "node:util";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
@@ -10,15 +10,34 @@ import type { AccountStore } from "../accounts/account-store.js";
 
 const HOME_URL = "https://www.xiaohongshu.com/";
 const CREATOR_PUBLISH_URL = "https://creator.xiaohongshu.com/publish/publish?source=official";
-const execFileAsync = promisify(execFile);
 const browserInstallations = new Map<string, Promise<void>>();
+
+/** Where the browser used by the login flow came from. */
+export type BrowserProvisionPhase =
+	| "cache"
+	| "system"
+	| "downloading"
+	| "launching"
+	| "ready";
+
+export interface BrowserProvisionProgress {
+	phase: BrowserProvisionPhase;
+	percent?: number;
+}
 
 export interface ChromiumProvisionOptions {
 	cacheDir: string;
 	executableOverride?: string;
 	cliPath?: string;
-	install?: (cliPath: string, cacheDir: string) => Promise<void>;
+	install?: (
+		cliPath: string,
+		cacheDir: string,
+		onProgress?: (percent?: number) => void,
+	) => Promise<void>;
 	locate?: (cacheDir: string) => Promise<string | undefined>;
+	/** System browsers are reused before any download happens. */
+	locateSystem?: () => Promise<string | undefined>;
+	onProgress?: (progress: BrowserProvisionProgress) => void;
 }
 
 export interface ProfileIdentity {
@@ -330,19 +349,119 @@ function defaultCliPath(): string | undefined {
 	return existsSync(cliPath) ? cliPath : undefined;
 }
 
-async function installChromium(cliPath: string, cacheDir: string): Promise<void> {
-	await execFileAsync(process.execPath, [cliPath, "install", "chromium", "--no-shell", "--no-progress"], {
-		env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: cacheDir },
-		maxBuffer: 2 * 1024 * 1024,
+const DARWIN_BROWSER_APPS = [
+	"Google Chrome.app/Contents/MacOS/Google Chrome",
+	"Chromium.app/Contents/MacOS/Chromium",
+	"Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+];
+
+/** Candidate system browsers, in preference order, for the current platform. */
+export function systemBrowserPaths(): string[] {
+	if (process.platform === "darwin") {
+		const home = homedir();
+		return DARWIN_BROWSER_APPS.flatMap((app) => [
+			join("/Applications", app),
+			join(home, "Applications", app),
+		]);
+	}
+	if (process.platform === "win32") {
+		const roots = [
+			process.env.LOCALAPPDATA,
+			process.env.PROGRAMFILES,
+			process.env["PROGRAMFILES(X86)"],
+		].filter((root): root is string => Boolean(root));
+		const suffixes = [
+			join("Google", "Chrome", "Application", "chrome.exe"),
+			join("Chromium", "Application", "chrome.exe"),
+			join("Microsoft", "Edge", "Application", "msedge.exe"),
+		];
+		return roots.flatMap((root) => suffixes.map((suffix) => join(root, suffix)));
+	}
+	return [
+		"/usr/bin/google-chrome",
+		"/usr/bin/chromium",
+		"/usr/bin/chromium-browser",
+		"/usr/bin/microsoft-edge",
+		"/snap/bin/chromium",
+	];
+}
+
+async function findSystemBrowser(): Promise<string | undefined> {
+	return systemBrowserPaths().find((candidate) => existsSync(candidate));
+}
+
+/** Last download percentage reported by a Playwright CLI output chunk. */
+export function downloadPercentFromChunk(text: string): number | undefined {
+	const matches = [...text.matchAll(/(\d{1,3})%/gu)];
+	const percent = Number(matches[matches.length - 1]?.[1]);
+	return Number.isFinite(percent) ? percent : undefined;
+}
+
+/**
+ * Playwright reports its download as `|■■■…| 42% of 150 MiB`. Progress is best
+ * effort: an unparsable stream still installs, it just reports no percentage.
+ */
+async function installChromium(
+	cliPath: string,
+	cacheDir: string,
+	onProgress?: (percent?: number) => void,
+): Promise<void> {
+	const environment: NodeJS.ProcessEnv = {
+		...process.env,
+		PLAYWRIGHT_BROWSERS_PATH: cacheDir,
+	};
+	const mirror = process.env.PLAYWRIGHT_DOWNLOAD_HOST?.trim();
+	if (mirror) environment.PLAYWRIGHT_DOWNLOAD_HOST = mirror;
+
+	await new Promise<void>((resolveInstall, rejectInstall) => {
+		const child = spawn(
+			process.execPath,
+			[cliPath, "install", "chromium", "--no-shell"],
+			{ env: environment, stdio: ["ignore", "pipe", "pipe"] },
+		);
+		let tail = "";
+		let lastPercent = -1;
+		const observe = (chunk: Buffer): void => {
+			const text = chunk.toString();
+			tail = `${tail}${text}`.slice(-2000);
+			const percent = downloadPercentFromChunk(text);
+			if (percent === undefined || percent === lastPercent) return;
+			lastPercent = percent;
+			onProgress?.(percent);
+		};
+		child.stdout?.on("data", observe);
+		child.stderr?.on("data", observe);
+		child.once("error", rejectInstall);
+		child.once("exit", (code) => {
+			if (code === 0) {
+				onProgress?.(100);
+				resolveInstall();
+				return;
+			}
+			rejectInstall(
+				new Error(
+					`Playwright Chromium installation failed (exit ${code ?? "unknown"}): ${tail.trim().slice(-400)}`,
+				),
+			);
+		});
 	});
 }
 
-async function installOnce(cacheDir: string, cliPath: string, installer: (path: string, cache: string) => Promise<void>): Promise<void> {
+async function installOnce(
+	cacheDir: string,
+	cliPath: string,
+	installer: (
+		path: string,
+		cache: string,
+		onProgress?: (percent?: number) => void,
+	) => Promise<void>,
+	onProgress?: (percent?: number) => void,
+): Promise<void> {
 	const key = resolve(cacheDir);
 	const existing = browserInstallations.get(key);
 	if (existing) return existing;
 	const installation = Promise.resolve()
-		.then(() => installer(cliPath, key))
+		.then(() => installer(cliPath, key, onProgress))
 		.finally(() => browserInstallations.delete(key));
 	browserInstallations.set(key, installation);
 	return installation;
@@ -350,6 +469,7 @@ async function installOnce(cacheDir: string, cliPath: string, installer: (path: 
 
 export async function ensureChromiumExecutable(options: ChromiumProvisionOptions): Promise<string> {
 	const cacheDir = resolve(options.cacheDir);
+	const report = (progress: BrowserProvisionProgress): void => options.onProgress?.(progress);
 	const override = options.executableOverride?.trim();
 	if (override) {
 		if (!existsSync(override)) throw new Error(`XHS_BROWSER_EXECUTABLE does not exist: ${override}`);
@@ -357,15 +477,28 @@ export async function ensureChromiumExecutable(options: ChromiumProvisionOptions
 	}
 
 	const locate = options.locate ?? findChromiumExecutable;
-	let executable = await locate(cacheDir);
-	if (executable) return executable;
+	const cached = await locate(cacheDir);
+	if (cached) {
+		report({ phase: "cache" });
+		return cached;
+	}
+
+	// Reusing a browser the machine already has avoids a ~150 MB download that
+	// can take a very long time on slow links.
+	const locateSystem = options.locateSystem ?? findSystemBrowser;
+	const system = await locateSystem();
+	if (system) {
+		report({ phase: "system" });
+		return system;
+	}
 
 	const cliPath = options.cliPath ?? defaultCliPath();
 	const installer = options.install ?? installChromium;
-	if (!cliPath) throw new Error("Playwright CLI is unavailable; cannot download Chromium");
-	await installOnce(cacheDir, cliPath, installer);
-	executable = await locate(cacheDir);
+	if (!cliPath) throw new Error("No system browser was found and the Playwright CLI is unavailable; cannot prepare a browser");
+	await installOnce(cacheDir, cliPath, installer, (percent) => report({ phase: "downloading", percent }));
+	const executable = await locate(cacheDir);
 	if (!executable) throw new Error(`Chromium installation completed but no executable was found in ${cacheDir}`);
+	report({ phase: "cache" });
 	return executable;
 }
 
@@ -374,8 +507,18 @@ export class BrowserManager {
 	private browserStartup?: Promise<Browser>;
 	private readonly contexts = new Map<string, BrowserContext>();
 	private readonly contextStarts = new Map<string, Promise<BrowserContext>>();
+	private provision: BrowserProvisionProgress = { phase: "cache" };
 
 	constructor(private readonly store: AccountStore, private readonly dataRoot: string) {}
+	/** True once a browser process is running and can serve a login page. */
+	isReady(): boolean {
+		return Boolean(this.browser);
+	}
+
+	/** Latest browser provisioning step, safe to expose through the HTTP API. */
+	provisionProgress(): BrowserProvisionProgress {
+		return this.provision;
+	}
 
 	private async ensureBrowser(): Promise<Browser> {
 		if (this.browser) return this.browser;
@@ -394,11 +537,16 @@ export class BrowserManager {
 			cacheDir: browserCache,
 			executableOverride: process.env.XHS_BROWSER_EXECUTABLE,
 			cliPath: existsSync(runtimeCli) ? runtimeCli : undefined,
+			onProgress: (progress) => {
+				this.provision = progress;
+			},
 		});
+		this.provision = { phase: "launching" };
 		this.browser = await chromium.launch({
 			headless: process.env.XHS_HEADLESS !== "false",
 			executablePath,
 		});
+		this.provision = { phase: "ready" };
 		return this.browser;
 	}
 

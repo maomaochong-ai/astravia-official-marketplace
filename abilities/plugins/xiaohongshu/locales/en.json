@@ -13,6 +13,8 @@
   "setup.login": "Sign in to Xiaohongshu",
   "setup.refresh": "Refresh status",
   "setup.waitingQr": "Getting QR code…",
+  "setup.preparingBrowser": "Preparing the browser (the first sign-in takes longer)…",
+  "setup.preparingBrowserProgress": "Preparing the browser component {{percent}}%…",
   "setup.waitingScan": "Scan with Xiaohongshu to sign in",
   "setup.verifying": "Verifying sign-in…",
   "setup.connected": "Signed in",

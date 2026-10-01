@@ -21,6 +21,7 @@ import {
 	SERVICE_ID,
 	switchAccount,
 	updateAccountIdentity,
+	type QrPreparationProgress,
 	type XhsAccount,
 } from "../../../xhs";
 import { AccountAvatar } from "../../../shared/components/account-avatar";
@@ -41,6 +42,16 @@ import { AccountCardItem } from "./account-card-item";
 import { DeleteAccountDialog } from "./delete-account-dialog";
 import { RenameAccountDialog } from "./rename-account-dialog";
 
+/** Human readable text for the browser provisioning step shown before the QR. */
+function describePreparation(
+	progress: QrPreparationProgress,
+	t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+	if (progress.percent !== undefined) {
+		return t("setup.preparingBrowserProgress", { percent: progress.percent });
+	}
+	return t("setup.preparingBrowser");
+}
 /* 主工作区视图 (Workspace View) */
 export function XhsAccountsView({
 	context,
@@ -56,6 +67,7 @@ export function XhsAccountsView({
 	const [qrCodeData, setQrCodeData] = useState<string>();
 	const [qrStatus, setQrStatus] = useState<UiStatus>("waitingQr");
 	const [qrError, setQrError] = useState<string>();
+	const [qrPreparingText, setQrPreparingText] = useState<string>();
 	const [renamingAccount, setRenamingAccount] = useState<XhsAccount | null>(
 		null,
 	);
@@ -163,13 +175,20 @@ export function XhsAccountsView({
 		setQrStatus("waitingQr");
 		setQrError(undefined);
 		setQrCodeData(undefined);
+		setQrPreparingText(undefined);
 		setBusy(true);
 
 		try {
 			await ensureServiceStarted(context);
 			const next = await beginLogin(context);
-			const qrPayload = await requestQrPayload(context);
+			const qrPayload = await requestQrPayload(context, {
+				onProgress: (progress) => {
+					if (disposedRef.current) return;
+					setQrPreparingText(describePreparation(progress, t));
+				},
+			});
 
+			setQrPreparingText(undefined);
 			setQrCodeData(await renderQrPayload(qrPayload));
 			setQrStatus("waitingScan");
 
@@ -225,10 +244,11 @@ export function XhsAccountsView({
 	const active = accounts.find((account) => account.id === activeId);
 	const activeName = active ? accountDisplayName(active) : undefined;
 	const qrStatusText =
-		t(`setup.${STATUS_META[qrStatus].key}`) ===
+		qrPreparingText ??
+		(t(`setup.${STATUS_META[qrStatus].key}`) ===
 		`setup.${STATUS_META[qrStatus].key}`
 			? STATUS_FALLBACKS[qrStatus]
-			: t(`setup.${STATUS_META[qrStatus].key}`);
+			: t(`setup.${STATUS_META[qrStatus].key}`));
 
 	return (
 		<main
