@@ -507,6 +507,10 @@ export class BrowserManager {
 	private browserStartup?: Promise<Browser>;
 	private readonly contexts = new Map<string, BrowserContext>();
 	private readonly contextStarts = new Map<string, Promise<BrowserContext>>();
+	private readonly profiles = new Map<string, ProfileIdentity>();
+	private readonly profileReads = new Map<string, Promise<ProfileIdentity>>();
+	private readonly logins = new Map<string, boolean>();
+	private readonly loginChecks = new Map<string, Promise<void>>();
 	private provision: BrowserProvisionProgress = { phase: "cache" };
 
 	constructor(private readonly store: AccountStore, private readonly dataRoot: string) {}
@@ -594,6 +598,8 @@ export class BrowserManager {
 
 	async readProfile(page: Page): Promise<ProfileIdentity> {
 		let identity: ProfileIdentity = {};
+		const budgetMs = 12_000;
+		const startedAt = Date.now();
 		for (let attempt = 0; attempt < 4; attempt += 1) {
 			const pageState = await this.pageUserState(page);
 			if (pageState.guest === true) return {};
@@ -603,23 +609,25 @@ export class BrowserManager {
 				userId: next.userId ?? identity.userId,
 				avatarUrl: next.avatarUrl ?? identity.avatarUrl,
 			};
-			if (identity.nickname && identity.userId && identity.avatarUrl) break;
+			if (identity.nickname && identity.userId) break;
+			const remaining = budgetMs - (Date.now() - startedAt);
+			if (remaining <= 0) break;
 			if (identity.userId && !page.url().includes(`/user/profile/${identity.userId}`)) {
 				await page.goto(`${HOME_URL}user/profile/${encodeURIComponent(identity.userId)}`, {
 					waitUntil: "domcontentloaded",
-					timeout: 20_000,
+					timeout: Math.min(8_000, remaining),
 				}).catch(() => undefined);
 			}
-			if (attempt < 3) await page.waitForTimeout(500);
+			if (attempt < 3 && remaining > 500) await page.waitForTimeout(500);
 		}
 
 		return identity;
 	}
 
+	/** Cheap login check: page signals plus the session cookie, never a navigation. */
 	async loginStatus(page: Page, context: BrowserContext): Promise<{ loggedIn: boolean; profile: ProfileIdentity }> {
 		const pageState = await this.pageUserState(page);
 		if (pageState.guest === true) return { loggedIn: false, profile: {} };
-		const profile = await this.readProfile(page);
 		const hasUserNavigation = (await page.locator(".main-container .user .link-wrapper .channel").count()) > 0;
 		const cookies = await context.cookies("https://www.xiaohongshu.com");
 		const hasSessionCookie = cookies.some((cookie) => cookie.name === "web_session");
@@ -627,22 +635,91 @@ export class BrowserManager {
 			guest: pageState.guest,
 			hasUserNavigation,
 			hasSessionCookie,
-			profile,
+			profile: {},
 		});
-		return { loggedIn, profile };
+		return { loggedIn, profile: {} };
 	}
 
 	async checkLogin(accountId: string): Promise<{ loggedIn: boolean; username?: string; userId?: string; avatarUrl?: string }> {
-		const context = await this.contextFor(accountId);
-		const page = await context.newPage();
+		const cached = this.profiles.get(accountId);
+		if (!(await this.hasPersistedSession(accountId))) return { loggedIn: false };
+		// Reading the persisted session is instant, so the browser confirmation runs
+		// off the request path; until it lands the persisted cookie is the answer.
+		const verified = this.logins.get(accountId);
+		if (verified === undefined) void this.verifyLogin(accountId);
+		return { loggedIn: verified ?? true, username: cached?.nickname, userId: cached?.userId, avatarUrl: cached?.avatarUrl };
+	}
+
+	/** True when the persisted storage state still carries a xiaohongshu login cookie. */
+	private async hasPersistedSession(accountId: string): Promise<boolean> {
 		try {
-			await page.goto(HOME_URL, { waitUntil: "domcontentloaded", timeout: 30_000 });
-			const status = await this.loginStatus(page, context);
-			if (!status.loggedIn) return { loggedIn: false };
-			return { loggedIn: true, username: status.profile.nickname, userId: status.profile.userId, avatarUrl: status.profile.avatarUrl };
-		} finally {
-			await page.close();
+			const path = this.store.storagePath(accountId);
+			if (!existsSync(path)) return false;
+			const state = JSON.parse(await readFile(path, "utf8")) as { cookies?: { name?: string }[] };
+			return (state.cookies ?? []).some((cookie) => cookie.name === "web_session");
+		} catch {
+			return false;
 		}
+	}
+
+	/** Confirms the persisted session in a real browser, away from the request path. */
+	private verifyLogin(accountId: string): Promise<void> {
+		const running = this.loginChecks.get(accountId);
+		if (running) return running;
+		const job = (async () => {
+			try {
+				const context = await this.contextFor(accountId);
+				const cookies = await context.cookies("https://www.xiaohongshu.com");
+				const loggedIn = cookies.some((cookie) => cookie.name === "web_session");
+				this.logins.set(accountId, loggedIn);
+				if (loggedIn && !this.profiles.get(accountId)?.nickname) await this.refreshProfile(accountId, context);
+			} catch {
+				/* keep the last known state */
+			} finally {
+				this.loginChecks.delete(accountId);
+			}
+		})();
+		this.loginChecks.set(accountId, job);
+		return job;
+	}
+	/**
+	 * Resolves the display identity in the background. Status requests must stay
+	 * inside the host timeout, so this navigation is never awaited by a caller.
+	 */
+	refreshProfile(accountId: string, context: BrowserContext): Promise<ProfileIdentity> {
+		const cached = this.profiles.get(accountId);
+		if (cached?.nickname) return Promise.resolve(cached);
+		const running = this.profileReads.get(accountId);
+		if (running) return running;
+		const job = (async () => {
+			const page = await context.newPage();
+			try {
+				await page.goto(HOME_URL, { waitUntil: "domcontentloaded", timeout: 20_000 }).catch(() => undefined);
+				return await this.readProfile(page);
+			} finally {
+				await page.close().catch(() => undefined);
+			}
+		})()
+			.then((identity) => {
+				if (identity.nickname || identity.userId) this.profiles.set(accountId, identity);
+				return identity;
+			})
+			.catch((): ProfileIdentity => ({}))
+			.finally(() => {
+				this.profileReads.delete(accountId);
+			});
+		this.profileReads.set(accountId, job);
+		return job;
+	}
+
+	/** Records a profile that was just read, so later status checks can reuse it. */
+	rememberProfile(key: string, profile: ProfileIdentity): void {
+		if (profile.nickname || profile.userId) this.profiles.set(key, profile);
+	}
+
+	/** Last resolved identity for an account, if any. */
+	cachedProfile(key: string): ProfileIdentity | undefined {
+		return this.profiles.get(key);
 	}
 
 	async createLoginSession(): Promise<{ page: Page; context: BrowserContext }> {

@@ -1,27 +1,27 @@
 {
-  "version": "1.1.25",
+   "version": "1.1.26",
   "platforms": {
     "win32-x64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/xiaohongshu-1.1.25/xiaohongshu-service.zip",
-        "sha256": "4b60503fca8addc5abccdf1a388e5c69742446659409f4be64dc4b5c1ca22b0b",
+         "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/xiaohongshu-1.1.26/xiaohongshu-service.zip",
+         "sha256": "fb4e9e48306fd11c46b3db5da4e75d625da6cc132e27cab6e833c8ae79c07d0c",
         "archive": "zip"
       }
     ],
     "darwin-arm64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/xiaohongshu-1.1.25/xiaohongshu-service.zip",
-        "sha256": "4b60503fca8addc5abccdf1a388e5c69742446659409f4be64dc4b5c1ca22b0b",
+         "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/xiaohongshu-1.1.26/xiaohongshu-service.zip",
+         "sha256": "fb4e9e48306fd11c46b3db5da4e75d625da6cc132e27cab6e833c8ae79c07d0c",
         "archive": "zip"
       }
     ],
     "linux-x64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/xiaohongshu-1.1.25/xiaohongshu-service.zip",
-        "sha256": "4b60503fca8addc5abccdf1a388e5c69742446659409f4be64dc4b5c1ca22b0b",
+         "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/xiaohongshu-1.1.26/xiaohongshu-service.zip",
+         "sha256": "fb4e9e48306fd11c46b3db5da4e75d625da6cc132e27cab6e833c8ae79c07d0c",
         "archive": "zip"
       }
     ]

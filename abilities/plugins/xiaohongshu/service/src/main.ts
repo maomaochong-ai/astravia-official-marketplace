@@ -182,6 +182,7 @@ async function completeLoginSession(sessionId: string, session: LoginSession): P
 		const context = session.context;
 		if (!page || !context) throw new Error("登录会话尚未准备好");
 		const profile = await browser.readProfile(page);
+		browser.rememberProfile(accountId, profile);
 		const account = accountMetadata(accountId, profile, await store.get(accountId));
 		await store.upsert(account);
 		await browser.persist(accountId, context);
@@ -199,6 +200,27 @@ async function discardLoginSession(sessionId: string, session: LoginSession): Pr
 	await session.context?.close().catch(() => undefined);
 	sessions.delete(sessionId);
 	if (latestLoginSessionId === sessionId) latestLoginSessionId = undefined;
+}
+
+/** The host aborts GET requests after 10s, so status responses stay well inside that. */
+const LOGIN_STATUS_BUDGET_MS = 6_000;
+
+/**
+ * Resolves with the promise result, or undefined when the budget runs out first.
+ * The underlying work keeps running in the background.
+ */
+async function withDeadline<T>(promise: Promise<T>, timeoutMs: number): Promise<T | undefined> {
+	let timer: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<undefined>((resolve) => {
+				timer = setTimeout(() => resolve(undefined), timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
 }
 
 function json(response: ServerResponse, status: number, body: unknown): void {
@@ -624,8 +646,10 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 				await discardLoginSession(currentSessionId, session);
 				return json(response, 200, { data: { is_logged_in: false } });
 			}
-			const account = await completeLoginSession(currentSessionId, session);
-			return json(response, 200, { data: { is_logged_in: true, nickname: account.username ?? account.name, user_id: account.userId ?? account.id, avatar_url: account.avatarUrl } });
+			const account = await withDeadline(completeLoginSession(currentSessionId, session), LOGIN_STATUS_BUDGET_MS);
+			return json(response, 200, account
+				? { data: { is_logged_in: true, nickname: account.username ?? account.name, user_id: account.userId ?? account.id, avatar_url: account.avatarUrl } }
+				: { data: { is_logged_in: true } });
 		}
 		if (!activeAccountId) return json(response, 200, { data: { is_logged_in: false } });
 		const status = await browser.checkLogin(activeAccountId);
@@ -635,7 +659,7 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 			await store.upsert(account);
 			return json(response, 200, { data: { is_logged_in: true, username: account.username, user_id: account.userId ?? account.id, avatar_url: account.avatarUrl } });
 		}
-		return json(response, 200, { data: { is_logged_in: status.loggedIn, username: status.username, user_id: status.userId, avatar_url: status.avatarUrl } });
+		return json(response, 200, { data: { is_logged_in: status.loggedIn, username: status.username ?? current?.username, user_id: status.userId ?? current?.userId, avatar_url: status.avatarUrl ?? current?.avatarUrl } });
 	}
 	if (request.method === "DELETE" && url.pathname === "/api/v1/login/cookies") {
 		if (latestLoginSessionId) {
@@ -703,8 +727,10 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 			await discardLoginSession(sessionMatch[1], session);
 			return json(response, 410, { id: sessionMatch[1], status: "expired" });
 		}
-		const account = await completeLoginSession(sessionMatch[1], session);
-		return json(response, 200, { id: sessionMatch[1], status: "authenticated", account });
+		const account = await withDeadline(completeLoginSession(sessionMatch[1], session), LOGIN_STATUS_BUDGET_MS);
+		return json(response, 200, account
+			? { id: sessionMatch[1], status: "authenticated", account }
+			: { id: sessionMatch[1], status: "authenticated" });
 	}
 	const activateMatch = url.pathname.match(/^\/api\/v1\/accounts\/([^/]+)\/activate$/u);
 	if (request.method === "POST" && activateMatch) {
@@ -758,6 +784,8 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 
 await mkdir(dataRoot, { recursive: true });
 await restoreActiveAccountId();
+// Warm the browser in the background so the first status request does not pay for the launch.
+if (activeAccountId) void browser.checkLogin(activeAccountId).catch(() => undefined);
 const server = createServer((request, response) => void route(request, response).catch((error: unknown) => json(response, 500, { error: error instanceof Error ? error.message : String(error) })));
 server.listen(port, "127.0.0.1", () => process.stdout.write(`ready:${(server.address() as { port: number }).port}\n`));
 const shutdown = () => void browser.close().finally(() => server.close());
