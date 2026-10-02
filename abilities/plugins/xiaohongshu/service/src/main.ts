@@ -192,7 +192,11 @@ async function completeLoginSession(sessionId: string, session: LoginSession): P
 		sessions.delete(sessionId);
 		if (latestLoginSessionId === sessionId) latestLoginSessionId = undefined;
 		return account;
-	})();
+	})().catch(async (error: unknown) => {
+		// Never cache a rejected completion: it would poison every later status poll.
+		await discardLoginSession(sessionId, session).catch(() => undefined);
+		throw error;
+	});
 	return session.completion;
 }
 
@@ -634,22 +638,38 @@ async function route(request: IncomingMessage, response: ServerResponse): Promis
 		}
 		if (sessionId && session) {
 			const currentSessionId = sessionId;
-			const loginState = await browser.loginStatus(session.page!, session.context!);
-			const status = loginSessionStatus({
-				createdAt: session.createdAt,
-				now: Date.now(),
-				loggedIn: loginState.loggedIn,
-			});
-			if (status === "waiting")
-				return json(response, 200, { data: { is_logged_in: false } });
-			if (status === "expired") {
-				await discardLoginSession(currentSessionId, session);
-				return json(response, 200, { data: { is_logged_in: false } });
+			try {
+				const loginState = await browser.loginStatus(session.page!, session.context!);
+				const status = loginSessionStatus({
+					createdAt: session.createdAt,
+					now: Date.now(),
+					loggedIn: loginState.loggedIn,
+				});
+				if (status === "waiting")
+					return json(response, 200, { data: { is_logged_in: false } });
+				if (status === "expired") {
+					await discardLoginSession(currentSessionId, session);
+					return json(response, 200, { data: { is_logged_in: false } });
+				}
+				const account = await withDeadline(completeLoginSession(currentSessionId, session), LOGIN_STATUS_BUDGET_MS);
+				return json(response, 200, account
+					? { data: { is_logged_in: true, nickname: account.username ?? account.name, user_id: account.userId ?? account.id, avatar_url: account.avatarUrl } }
+					: { data: { is_logged_in: true } });
+			} catch (error) {
+				// A broken login window must not turn every status poll into a 500.
+				await discardLoginSession(currentSessionId, session).catch(() => undefined);
+				const current = activeAccountId ? await store.get(activeAccountId) : undefined;
+				return json(response, 200, {
+					data: {
+						is_logged_in: Boolean(current),
+						username: current?.username,
+						user_id: current?.userId,
+						avatar_url: current?.avatarUrl,
+					},
+					status: "failed",
+					error: errorText(error),
+				});
 			}
-			const account = await withDeadline(completeLoginSession(currentSessionId, session), LOGIN_STATUS_BUDGET_MS);
-			return json(response, 200, account
-				? { data: { is_logged_in: true, nickname: account.username ?? account.name, user_id: account.userId ?? account.id, avatar_url: account.avatarUrl } }
-				: { data: { is_logged_in: true } });
 		}
 		if (!activeAccountId) return json(response, 200, { data: { is_logged_in: false } });
 		const status = await browser.checkLogin(activeAccountId);

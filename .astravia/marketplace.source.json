@@ -397,7 +397,7 @@
       "slug": "xiaohongshu",
       "name": "Xiaohongshu Accounts",
       "description": "Manage multiple Xiaohongshu accounts and run built-in MCP tasks concurrently through the account selected for each task.",
-       "version": "1.1.26",
+        "version": "1.1.27",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / xpzouying",
