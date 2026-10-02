@@ -593,6 +593,49 @@
         "path": "abilities/plugins/build-apple-apps"
       },
       "minAppVersion": "0.5.60"
+    },
+    {
+      "type": "plugin",
+      "slug": "web-element-picker",
+      "name": "Web Element Picker",
+      "description": "Open any webpage inside Astravia, click to pick elements, and generate structured context — CSS selectors, XPath, semantic paths, React component chains. Copy instantly or send straight to the AI for code changes.",
+      "version": "0.3.3",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "web",
+        "css",
+        "selector",
+        "browser",
+        "ui",
+        "element"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "网页元素选择器",
+            "description": "在 Astravia 内置浏览器中打开任意网页，点选元素并生成结构化上下文——选择器、XPath、语义路径、React 组件链。一键复制或发送给 AI 直接改代码。",
+            "tags": [
+              "网页",
+              "CSS",
+              "选择器",
+              "浏览器",
+              "UI",
+              "元素"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/web-element-picker"
+      },
+      "minAppVersion": "0.5.59"
     }
   ]
 }

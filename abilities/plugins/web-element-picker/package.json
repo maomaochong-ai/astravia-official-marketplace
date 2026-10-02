@@ -1,0 +1,25 @@
+{
+  "name": "@astravia-marketplace/web-element-picker",
+  "version": "0.3.3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:kernel": "bun scripts/build-kernel.mjs",
+    "build": "bun run build:kernel && vite build",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/node": "^22.10.5",
+    "@types/react": "19.1.1",
+    "@types/react-dom": "19.1.1",
+    "@astravia-org/plugin-cli": "^0.1.7",
+    "@astravia-org/plugin-sdk": "^0.3.10",
+    "@astravia-org/plugin-vite": "^0.2.4",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
+  }
+}

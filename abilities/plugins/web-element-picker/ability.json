@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "web-element-picker",
+  "version": "0.3.3",
+  "icon": "assets/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "i18n": { "zh": { "path": "detail.zh.json" } },
+    "meta": [
+      { "key": "license", "value": "Apache-2.0" }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "type": "heading",
+    "level": 2,
+    "text": "Web Element Picker"
+  },
+  {
+    "type": "paragraph",
+    "text": "Open any webpage inside Astravia, click to pick elements, and generate structured context — CSS selectors, XPath, semantic paths, React component chains. Copy instantly or send straight to the AI for code changes."
+  },
+  {
+    "type": "heading",
+    "level": 3,
+    "text": "What it does"
+  },
+  {
+    "type": "list",
+    "items": [
+      "Click / Shift-click / drag-marquee to select",
+      "Keyboard navigation (arrows, undo, pause)",
+      "Structured context: CSS selector, XPath, semantic path, React chain, visible text",
+      "Clone mode (Sharingan) for full DOM + computed styles + fonts + animations report",
+      "One-click send to AI conversation with automatic prompt injection"
+    ]
+  }
+]

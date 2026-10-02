@@ -1,0 +1,5 @@
+node_modules
+dist
+.kernel-build
+*.log
+.DS_Store
