@@ -1,22 +1,22 @@
 /**
- * dbx-pro 插件装配入口 — 只负责 activate + registerActivityTab。
+ * dbx-pro 插件装配入口 — activate + registerActivityTab + 初始化运行时契约。
  *
- * 业务逻辑在 features/ 和 domain/ 下；主面板在
- * features/main-panel/components/dbx-pro-panel.tsx。
+ * 宿主 ctx 被 setRuntime(ctx) 保存到 runtime-contract.ts，各 feature 层通过
+ * getCommand/getConversation/getAgent 访问。
  */
 
 import "./style.css";
 import { definePlugin } from "@astravia-org/plugin-sdk";
-import { setCommand } from "./runtime-contract";
+import { setRuntime } from "./runtime-contract";
 import { DbxProPanel } from "./features/main-panel/components/dbx-pro-panel";
 
 export default definePlugin({
 	activate(ctx) {
-		setCommand(ctx.command);
+		setRuntime(ctx);
 
 		ctx.ui.registerActivityTab({
 			id: "dbx-pro",
-			label: { zh: "dbx-pro", en: "dbx-pro" },
+			label: "dbx-pro",
 			icon: (
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 					<ellipse cx="12" cy="5" rx="8" ry="3" />
@@ -25,9 +25,8 @@ export default definePlugin({
 				</svg>
 			),
 			component: DbxProPanel,
-			scope_use: ["project", "conversation"],
 			initiallyVisible: true,
-			orderAfter: ["browser"],
 		});
 	},
 });
+
