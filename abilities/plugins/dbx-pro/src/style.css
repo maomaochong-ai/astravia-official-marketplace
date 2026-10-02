@@ -168,12 +168,12 @@ textarea.dbx-form-input {
 	font-variant-ligatures: none;
 }
 .dbx-editor-hl code { font-family: inherit; }
-.dbx-editor-hl .kw { color: #b45309; font-weight: 600; }
-.dbx-editor-hl .str { color: #047857; }
-.dbx-editor-hl .num { color: #0369a1; }
-.dbx-editor-hl .cmt { color: #94a3b8; font-style: italic; }
-.dbx-editor-hl .id { color: var(--foreground, #111); }
-.dbx-editor-hl .ph { color: #94a3b8; font-style: italic; }
+.dbx-editor-hl .kw { color: #111; font-weight: 700; }
+.dbx-editor-hl .str { color: #555; font-weight: 400; }
+.dbx-editor-hl .num { color: #333; font-weight: 400; }
+.dbx-editor-hl .cmt { color: #999; font-style: italic; font-weight: 400; }
+.dbx-editor-hl .id { color: var(--foreground, #111); font-weight: 400; }
+.dbx-editor-hl .ph { color: #aaa; font-style: italic; font-weight: 400; }
 
 /* === 错误 === */
 .dbx-error {
@@ -308,11 +308,11 @@ textarea.dbx-form-input {
 .dark .dbx-editor-hl {
 	color: #e8e8e8;
 }
-.dark .dbx-editor-hl .kw { color: #fbbf24; }
-.dark .dbx-editor-hl .str { color: #86efac; }
-.dark .dbx-editor-hl .num { color: #7dd3fc; }
-.dark .dbx-editor-hl .cmt { color: #64748b; }
-.dark .dbx-editor-hl .ph { color: #64748b; }
+.dark .dbx-editor-hl .kw { color: #f0f0f0; font-weight: 700; }
+.dark .dbx-editor-hl .str { color: #b0b0b0; }
+.dark .dbx-editor-hl .num { color: #d0d0d0; }
+.dark .dbx-editor-hl .cmt { color: #555; font-style: italic; }
+.dark .dbx-editor-hl .ph { color: #555; font-style: italic; }
 .dark .dbx-connection-item:hover { background: #1e1e1e; }
 .dark .dbx-connection-item.active { background: #242424; }
 .dark .dbx-result {
