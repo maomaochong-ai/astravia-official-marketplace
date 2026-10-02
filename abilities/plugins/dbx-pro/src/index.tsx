@@ -1,11 +1,24 @@
 import "./style.css";
-import { definePlugin, type PluginActivityTabDefinition } from "@astravia-org/plugin-sdk";
+import { definePlugin, type PluginCommandApi } from "@astravia-org/plugin-sdk";
 import { DbxProPanel } from "./DbxProPanel";
 
-export const plugin = definePlugin({
-	id: "dbx-pro",
-	activityTabs: [
-		{
+/**
+ * 把宿主的 PluginCommandApi 存到模块级变量——React 组件通过 getCommand() 拿到。
+ * 这和 plugin-workbench 的 setWorkbenchRuntime 是同一个模式。
+ */
+let _command: PluginCommandApi | null = null;
+
+export function setCommand(c: PluginCommandApi) { _command = c; }
+export function getCommand(): PluginCommandApi {
+	if (!_command) throw new Error("dbx-pro plugin not activated yet");
+	return _command;
+}
+
+export default definePlugin({
+	activate(ctx) {
+		setCommand(ctx.command);
+
+		ctx.ui.registerActivityTab({
 			id: "dbx-pro",
 			label: { zh: "dbx-pro", en: "dbx-pro" },
 			icon: (
@@ -15,14 +28,10 @@ export const plugin = definePlugin({
 					<path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
 				</svg>
 			),
+			component: DbxProPanel,
+			scope_use: ["project", "conversation"],
 			initiallyVisible: true,
-			width: "flex",
 			orderAfter: ["browser"],
-		} satisfies PluginActivityTabDefinition,
-	],
-	renderActivityTab: ({ ctx }) => {
-		return <DbxProPanel ctx={ctx} />;
+		});
 	},
 });
-
-export default plugin;

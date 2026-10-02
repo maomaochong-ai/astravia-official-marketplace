@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -20,7 +20,7 @@
     "storage.write",
     "shell.openExternal"
   ],
-  "commands": ["dbx"],
+  "commands": ["dbx", "sqlite3"],
   "defaultLocale": "zh",
   "description": "%plugin.description%",
   "author": "Astravia"
