@@ -1111,8 +1111,21 @@ function onClick(event: Event): void {
 		return;
 	}
 	if (!target || target.closest("#wep-root")) return;
-	e.preventDefault();
-	e.stopPropagation();
+
+	// ── 导航直通（不拦截，让页面自己跳转） ──
+	// 1. Ctrl/⌘ + 点击 → 用户明确想导航
+	// 2. 中键点击 → 同上（浏览器级"新标签"手势，但 webview 里等同）
+	// 3. target=_blank 的 <a> → 宿主 main 进程 did-attach-webview 已做 setWindowOpenHandler
+	//    拦截并重定向到同一 webview（open-astravia/window-manager.ts:86），内核不再重复拦截
+	if (e.ctrlKey || e.metaKey || e.button === 1) return;
+	const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
+	if (anchor && (anchor.target === "_blank" || anchor.hasAttribute("download"))) {
+		// 仅放行 target=_blank / download，普通 <a href> 仍做选择（最常见场景）
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
 	if (e.shiftKey) {
 		pushHistory();
 		const index = state.selected.indexOf(target);

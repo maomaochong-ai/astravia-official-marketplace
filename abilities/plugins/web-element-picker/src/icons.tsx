@@ -105,23 +105,55 @@ export function IconSpinner(props: IconProps) {
 	);
 }
 
+/**
+ * 写轮眼（激活/复刻模式开）：实心轮廓 + 黑色瞳孔，一眼可见"已开"。
+ * 使用 fill=currentColor，按钮容器传 text-foreground 即黑色 / text-background 即白色。
+ */
 export function IconEye(props: IconProps) {
 	return (
-		<IconBase {...props}>
-			<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
-			<circle cx="12" cy="12" r="3" />
-		</IconBase>
+		<svg
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth={1.5}
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+			{...props}
+		>
+			{/* 眼轮廓（粗线 + 微填充，让形状一眼可辨） */}
+			<path d="M1 12s4.5-8 11-8 11 8 11 8-4.5 8-11 8S1 12 1 12Z" fill="currentColor" fillOpacity="0.12" />
+			{/* 瞳孔（实填充 = 已开） */}
+			<circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none" />
+			<circle cx="12" cy="12" r="3.2" />
+		</svg>
 	);
 }
 
+/**
+ * 写轮眼关：空眼 + 斜线，一眼看出"被划掉/关闭"。
+ */
 export function IconEyeOff(props: IconProps) {
 	return (
-		<IconBase {...props}>
-			<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+		<svg
+			viewBox="0 0 24 24"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth={1.5}
+			strokeLinecap="round"
+			strokeLinejoin="round"
+			aria-hidden="true"
+			{...props}
+		>
+			{/* 下半眼（眼形被斜线截断感） */}
+			<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12a18.45 18.45 0 0 1 5.06-5.94" />
+			{/* 上半眼 */}
 			<path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-			<path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-			<path d="M1 1l22 22" />
-		</IconBase>
+			{/* 瞳孔空心（关 = 无填充） */}
+			<circle cx="12" cy="12" r="3" />
+			{/* 斜线贯穿 */}
+			<path d="M3 3l18 18" />
+		</svg>
 	);
 }
 
