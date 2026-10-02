@@ -103,7 +103,7 @@ function copyPackage(from, to, presentationOnly) {
   const include = path => {
     const parts = path.split('/');
     if (parts.some(x => excluded.has(x) || x.startsWith('.env'))) return false;
-    return !presentationOnly || [...resources].some(item => item === path || item.startsWith(`${path}/`)) || parts[0] === 'assets' || parts.length === 1 && (/^detail.*\.json$/.test(path) || /\.md$/.test(path) || /^LICENSE/.test(path));
+    return !presentationOnly || [...resources].some(item => item === path || item.startsWith(`${path}/`)) || parts[0] === 'assets' || parts[0] === 'locales' || parts.length === 1 && (/^detail.*\.json$/.test(path) || /\.md$/.test(path) || /^LICENSE/.test(path));
   };
   for (const path of files(from, include)) {
     const target = inside(to, path);

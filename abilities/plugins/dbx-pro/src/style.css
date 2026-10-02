@@ -1,3 +1,20 @@
+@import "tailwindcss";
+
+/* lucide / solar 图标按需生成（icon-[lucide--*] / icon-[solar--*]），与旧工作台图标语言一致。 */
+@plugin "@iconify/tailwind4";
+
+/* 只映射已被同仓插件验证的宿主语义 token；其余外观走 legacy .dbx-* 规则。 */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-border: var(--border);
+	--color-card: var(--card);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-primary: var(--primary);
+	--color-destructive: var(--destructive);
+}
+
 /* === dbx-pro 全局主题 === */
 .dbx-panel {
 	display: flex;
@@ -237,13 +254,13 @@ textarea.dbx-form-input {
 
 /* === 侧栏表单 === */
 .dbx-sheet-backdrop {
-	position: fixed; inset: 0;
+  	position: absolute; inset: 0;
 	background: rgba(0,0,0,0.25);
 	z-index: 100;
 	backdrop-filter: blur(1px);
 }
 .dbx-sheet {
-	position: fixed;
+  	position: absolute;
 	right: 0; top: 0; bottom: 0;
 	background: var(--background, #fff);
 	border-left: 1px solid var(--border, rgba(0,0,0,0.1));

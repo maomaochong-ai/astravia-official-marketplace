@@ -140,7 +140,9 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
     if (args[0] === 'api') {
       if (args[1] === 'repos/test/market') return JSON.stringify({ private: isPrivate });
       if (!release || release.draft) { const error = new Error('HTTP 404'); error.stderr = '404'; throw error; }
-      return JSON.stringify(release);
+      // GitHub API format: assets have id, name, url (API), browser_download_url (public)
+      const apiRelease = { ...release, assets: release.assets.map(a => ({ id: a.id, name: a.name, url: a.url, browser_download_url: a.browser_download_url })) };
+      return JSON.stringify(apiRelease);
     }
     if (args[1] === 'view') {
       if (!release) { const error = new Error('release not found'); error.stderr = 'release not found'; throw error; }
@@ -154,14 +156,21 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
     if (args[1] === 'create') {
       assert.equal(release, undefined);
       uploaded.set(basename(args[3]), readFileSync(args[3]));
-      release = { tag_name: first.packages[0].tag, draft: true, target_commitish: sha, assets: [{ name: first.packages[0].filename, url: 'https://api.github.com/repos/test/market/releases/assets/123' }] };
+      const filename = first.packages[0].filename;
+      release = { tag_name: first.packages[0].tag, draft: true, target_commitish: sha, assets: [{ id: 123, name: filename, url: `https://api.github.com/repos/test/market/releases/assets/123`, browser_download_url: `https://github.com/test/market/releases/download/plugin-demo/${filename}` }] };
       if (fail) throw new Error('upload response lost');
       return '';
     }
     if (args[1] === 'upload') {
       const filename = basename(args[3]);
       uploaded.set(filename, readFileSync(args[3]));
-      release.assets.push({ name: filename, url: `https://api.github.com/repos/test/market/releases/assets/${123 + release.assets.length}` });
+      const newId = 123 + release.assets.length;
+      release.assets.push({ id: newId, name: filename, url: `https://api.github.com/repos/test/market/releases/assets/${newId}`, browser_download_url: `https://github.com/test/market/releases/download/${release.tag_name}/${filename}` });
+      return '';
+    }
+    if (args[1] === 'delete-asset') {
+      const assetId = args[2];
+      release.assets = release.assets.filter(a => String(a.id) !== assetId);
       return '';
     }
     if (args[1] === 'download') {
@@ -199,9 +208,13 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
   const nextManifest = JSON.parse(git('show', `${visible}:.astravia/marketplace.json`));
   assert.equal(nextManifest.abilities[0].releases.length, 2);
   assert.ok(nextManifest.abilities[0].releases.every(item => isPrivate ? item.artifact.url.startsWith('https://api.github.com/') : item.artifact.url.includes('/releases/download/plugin-demo/')));
+  // 篡改 GitHub Release 上的 artifact → publish 会自动 delete + upload 修复
   uploaded.set('demo-1.1.0.astraviapkg', Buffer.from('replaced package')); visible = undefined;
-  await assert.rejects(publishMarketplace({ ...nextOptions, readRemote: name => name === 'gh-pages' ? firstVisible : sha }), /Published bytes differ/);
-  assert.equal(visible, undefined);
+  const repaired = await publishMarketplace({ ...nextOptions, readRemote: name => name === 'gh-pages' ? firstVisible : sha });
+  assert.equal(repaired.published, true);
+  assert.ok(visible);
+  // 被篡改的上传内容已被本地 artifact 覆盖
+  assert.notDeepEqual(uploaded.get('demo-1.1.0.astraviapkg'), Buffer.from('replaced package'));
   await assert.rejects(publishMarketplace({ ...options, readRemote: () => 'f'.repeat(40) }), /advanced/);
 });
 
