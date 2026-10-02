@@ -337,6 +337,84 @@ export function DbxProPanel() {
 		return ident(t.name);
 	}
 
+	/** columns state 里的 PK 列名数组（供 inline 编辑做 WHERE 条件） */
+	const pkColumns = useMemo(
+		() => columns.filter((c) => c.is_primary_key).map((c) => c.name),
+		[columns],
+	);
+
+	/** SQL 字符串字面量转义 */
+	function sqlVal(v: unknown): string {
+		if (v === null || v === undefined) return "NULL";
+		if (typeof v === "number" || typeof v === "boolean") return String(v);
+		return `'${String(v).replace(/'/g, "''")}'`;
+	}
+
+	async function handleEditCell(row: Record<string, unknown>, column: string, newValue: unknown) {
+		if (!activeConn || !selectedTable || pkColumns.length === 0) return;
+		const tbl = qualifiedTable(selectedTable);
+		const setPart = `"${column.replace(/"/g, '""')}" = ${sqlVal(newValue)}`;
+		const wherePart = pkColumns
+			.map((pk) => `"${pk.replace(/"/g, '""')}" = ${sqlVal(row[pk])}`)
+			.join(" AND ");
+		const sqlText = `UPDATE ${tbl} SET ${setPart} WHERE ${wherePart}`;
+		if (!confirm(`执行 UPDATE？\n${sqlText}\n\n操作不可逆！`)) return;
+		try {
+			const result = await executeQuery(command, activeConn, sqlText, { allowWrites: true });
+			// 刷新当前结果
+			const currentSql = sql.trim();
+			if (currentSql) {
+				const fresh = await executeQuery(command, activeConn, currentSql, { timeoutMs: 15_000 });
+				setRunState({ kind: "result", data: fresh, elapsedMs: 0, allowWrites: false });
+				setResultPage(0);
+			}
+			void result;
+		} catch (err) {
+			alert(`UPDATE 失败: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+
+	async function handleDeleteRow(row: Record<string, unknown>) {
+		if (!activeConn || !selectedTable || pkColumns.length === 0) return;
+		const tbl = qualifiedTable(selectedTable);
+		const wherePart = pkColumns
+			.map((pk) => `"${pk.replace(/"/g, '""')}" = ${sqlVal(row[pk])}`)
+			.join(" AND ");
+		const sqlText = `DELETE FROM ${tbl} WHERE ${wherePart}`;
+		if (!confirm(`确定删除这一行？\n${sqlText}\n\n操作不可逆！`)) return;
+		try {
+			const result = await executeQuery(command, activeConn, sqlText, { allowWrites: true });
+			const currentSql = sql.trim();
+			if (currentSql) {
+				const fresh = await executeQuery(command, activeConn, currentSql, { timeoutMs: 15_000 });
+				setRunState({ kind: "result", data: fresh, elapsedMs: 0, allowWrites: false });
+				setResultPage(0);
+			}
+			void result;
+		} catch (err) {
+			alert(`DELETE 失败: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+
+	async function handleAddRow() {
+		if (!activeConn || !selectedTable || pkColumns.length === 0) return;
+		const tbl = qualifiedTable(selectedTable);
+		// 简单策略：INSERT INTO tbl DEFAULT VALUES，然后刷新
+		const sqlText = `INSERT INTO ${tbl} DEFAULT VALUES`;
+		if (!confirm(`执行 INSERT？\n${sqlText}`)) return;
+		try {
+			await executeQuery(command, activeConn, sqlText, { allowWrites: true });
+			const currentSql = sql.trim();
+			if (currentSql) {
+				const fresh = await executeQuery(command, activeConn, currentSql, { timeoutMs: 15_000 });
+				setRunState({ kind: "result", data: fresh, elapsedMs: 0, allowWrites: false });
+				setResultPage(0);
+			}
+		} catch (err) {
+			alert(`INSERT 失败: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+
 	return (
 		<div className="dbx-panel" onContextMenu={(e) => { /* 阻止浏览器默认右键 */ }}>
 			{/* 顶部栏 */}
@@ -597,6 +675,10 @@ export function DbxProPanel() {
 								rows={pagedRows}
 								totalRows={runState.data.row_count}
 								highlightKeyword={resultFilter}
+								primaryKeys={pkColumns}
+								onEditCell={handleEditCell}
+								onDeleteRow={handleDeleteRow}
+								onAddRow={handleAddRow}
 							/>
 						</div>
 					)}
@@ -840,28 +922,86 @@ function WriteConfirmDialog({
 
 function ResultGrid({
 	columns, rows, totalRows, highlightKeyword,
+	primaryKeys,
+	onEditCell, onDeleteRow, onAddRow,
 }: {
 	columns: string[];
 	rows: Record<string, unknown>[];
 	totalRows: number;
 	highlightKeyword?: string;
+	primaryKeys?: string[];
+	onEditCell?: (row: Record<string, unknown>, column: string, newValue: unknown) => void;
+	onDeleteRow?: (row: Record<string, unknown>) => void;
+	onAddRow?: () => void;
 }) {
+	const [editing, setEditing] = useState<{ rowIdx: number; col: string } | null>(null);
+	const [editVal, setEditVal] = useState("");
+	const canEdit = !!onEditCell;
+	const canDelete = !!onDeleteRow && !!primaryKeys && primaryKeys.length > 0;
+
 	const colList = columns.length > 0
 		? columns
 		: Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
 
 	if (colList.length === 0 || totalRows === 0) {
-		return <div className="dbx-empty" style={{ flex: 1 }}>0 行（affected rows: {totalRows}）</div>;
+		return (
+			<div className="dbx-empty" style={{ flex: 1, flexDirection: "column", gap: 12 }}>
+				<div>0 行（affected rows: {totalRows}）</div>
+				{onAddRow && (
+					<button className="dbx-btn primary" onClick={onAddRow}>+ 新增行</button>
+				)}
+			</div>
+		);
+	}
+
+	function startEdit(rowIdx: number, col: string, val: unknown) {
+		if (!canEdit) return;
+		if (primaryKeys?.includes(col)) return; // PK 列不允许编辑
+		setEditing({ rowIdx, col });
+		setEditVal(val === null || val === undefined ? "" : String(val));
+	}
+
+	function commitEdit() {
+		if (!editing) return;
+		const row = rows[editing.rowIdx];
+		const oldVal = row[editing.col];
+		// 保持原类型：如果原值是 number 且新值能解析成数字，就转 number
+		let newVal: unknown = editVal;
+		if (oldVal === null || oldVal === undefined) {
+			newVal = editVal === "" ? null : editVal;
+		} else if (typeof oldVal === "number") {
+			const n = Number(editVal);
+			newVal = Number.isNaN(n) ? editVal : n;
+		} else if (typeof oldVal === "boolean") {
+			newVal = editVal.toLowerCase() === "true" || editVal === "1";
+		}
+		onEditCell!(row, editing.col, newVal);
+		setEditing(null);
 	}
 
 	return (
-		<div className="dbx-result" style={{ flex: 1 }}>
+		<div className="dbx-result" style={{ flex: 1, position: "relative" }}>
+			{onAddRow && (
+				<div style={{ padding: "4px 8px", borderBottom: "1px solid var(--border)" }}>
+					<button className="dbx-btn ghost" onClick={onAddRow} style={{ fontSize: 11, padding: "2px 8px" }}>
+						+ 新增行
+					</button>
+				</div>
+			)}
 			<table>
 				<thead>
 					<tr>
-						<th style={{ width: 40, color: "var(--muted-foreground)", fontSize: 11 }}>#</th>
+						<th style={{ width: 32, color: "var(--muted-foreground)", fontSize: 11 }}>#</th>
+						{canDelete && <th style={{ width: 36 }} />}
 						{colList.map((c) => (
-							<th key={c} title={c} style={{ minWidth: 100 }}>{c}</th>
+							<th
+								key={c}
+								title={c}
+								style={{ minWidth: 100, userSelect: "none" }}
+							>
+								{primaryKeys?.includes(c) && <span style={{ color: "#dc2626", marginRight: 2 }}>🔑</span>}
+								{c}
+							</th>
 						))}
 					</tr>
 				</thead>
@@ -869,11 +1009,51 @@ function ResultGrid({
 					{rows.map((row, i) => (
 						<tr key={i}>
 							<td style={{ color: "var(--muted-foreground)", fontSize: 11 }}>{i + 1}</td>
-							{colList.map((c) => (
-								<td key={c} title={String(row[c] ?? "NULL")}>
-									{formatCell(row[c], highlightKeyword)}
+							{canDelete && (
+								<td style={{ textAlign: "center", padding: "2px 4px" }}>
+									<button
+										className="dbx-btn ghost"
+										onClick={() => onDeleteRow!(row)}
+										style={{ padding: "0 4px", fontSize: 13, color: "#dc2626", border: "none" }}
+										title="删除这行"
+									>🗑</button>
 								</td>
-							))}
+							)}
+							{colList.map((c) => {
+								const isEditing = editing?.rowIdx === i && editing?.col === c;
+								const isPkCol = primaryKeys?.includes(c);
+								return (
+									<td
+										key={c}
+										title={String(row[c] ?? "NULL")}
+										onDoubleClick={() => startEdit(i, c, row[c])}
+										style={{
+											cursor: canEdit && !isPkCol ? "pointer" : "default",
+											background: isEditing ? "rgba(251,191,36,0.1)" : undefined,
+										}}
+									>
+										{isEditing ? (
+											<input
+												autoFocus
+												value={editVal}
+												onChange={(e) => setEditVal(e.target.value)}
+												onBlur={commitEdit}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") { e.preventDefault(); commitEdit(); }
+													if (e.key === "Escape") { setEditing(null); }
+												}}
+												style={{
+													width: "100%", minWidth: 60, padding: "1px 4px",
+													fontSize: 12, border: "1px solid #fbbf24", borderRadius: 3,
+													fontFamily: "inherit",
+												}}
+											/>
+										) : (
+											formatCell(row[c], highlightKeyword)
+										)}
+									</td>
+								);
+							})}
 						</tr>
 					))}
 				</tbody>
