@@ -1,0 +1,9 @@
+{
+  "plugin": {
+    "name": { "zh": "dbx-pro 数据库工作台", "en": "dbx-pro Database Workbench" },
+    "description": {
+      "zh": "通过 dbx CLI 直连 PostgreSQL、MySQL、MongoDB、ClickHouse 等数据库。左侧连接管理、中间表浏览器、右侧 SQL 编辑器+结果表格，内置写保护和生产环境安全闸。",
+      "en": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and more via dbx CLI. Connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with built-in write protection and production safety gates."
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "blocks": [
+    { "type": "h1", "text": "dbx-pro 数据库工作台" },
+    { "type": "p",  "text": "通过 dbx CLI 直连 PostgreSQL、MySQL、MongoDB、ClickHouse 等 60+ 种数据库。" },
+    { "type": "h2", "text": "核心功能" },
+    { "type": "ul",  "items": [
+      "连接管理：从 dbx 桌面应用同步连接，或手动添加",
+      "SQL 编辑器 + 结果表格：类 IDE 的查询体验",
+      "表浏览器：Schema 浏览、字段描述、采样预览",
+      "安全闸：生产环境默认阻断写入和 DDL",
+      "MongoDB 支持：legacy shell 语法 + 写入安全策略"
+    ] },
+    { "type": "h2", "text": "前置要求" },
+    { "type": "p",  "text": "需要系统已安装 dbx CLI（brew install dbx）或 dbx 桌面应用。" }
+  ]
+}

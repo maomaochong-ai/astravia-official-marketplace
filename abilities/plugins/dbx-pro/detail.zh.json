@@ -1,0 +1,16 @@
+{
+  "blocks": [
+    { "type": "h1", "text": "dbx-pro Database Workbench" },
+    { "type": "p",  "text": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and 60+ more databases via dbx CLI." },
+    { "type": "h2", "text": "Features" },
+    { "type": "ul",  "items": [
+      "Connection manager — sync from DBX Desktop or add manually",
+      "SQL editor + result grid",
+      "Table browser — schema explore, column describe, sample preview",
+      "Safety gates — writes and DDL blocked for production DBs",
+      "MongoDB support — legacy shell syntax + write safety policies"
+    ] },
+    { "type": "h2", "text": "Requirements" },
+    { "type": "p",  "text": "dbx CLI (`brew install dbx`) or DBX Desktop must be installed on the system." }
+  ]
+}

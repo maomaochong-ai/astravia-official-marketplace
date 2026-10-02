@@ -1,0 +1,9 @@
+{
+  "plugin": {
+    "name": { "zh": "dbx-pro Database Workbench", "en": "dbx-pro Database Workbench" },
+    "description": {
+      "zh": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and more via dbx CLI. Connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with built-in write protection and production safety gates.",
+      "en": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and more via dbx CLI. Connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with built-in write protection and production safety gates."
+    }
+  }
+}

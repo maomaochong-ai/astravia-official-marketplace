@@ -636,6 +636,49 @@
         "path": "abilities/plugins/web-element-picker"
       },
       "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "dbx-pro",
+      "name": "dbx-pro Database Workbench",
+      "description": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and 60+ databases via dbx CLI. Connection manager, SQL editor + result grid, table browser, built-in write protection and production safety gates.",
+      "version": "0.1.0",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "database",
+        "sql",
+        "query",
+        "dbx",
+        "postgres",
+        "mysql"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "dbx-pro 数据库工作台",
+            "description": "通过 dbx CLI 直连 PostgreSQL、MySQL、MongoDB、ClickHouse 等 60+ 种数据库。连接管理、SQL 编辑器+结果表格、表浏览器、内置写保护和生产安全闸。",
+            "tags": [
+              "数据库",
+              "SQL",
+              "查询",
+              "dbx",
+              "Postgres",
+              "MySQL"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/dbx-pro"
+      },
+      "minAppVersion": "0.5.59"
     }
   ]
 }

@@ -1,0 +1,27 @@
+{
+  "id": "dbx-pro",
+  "name": "%plugin.name%",
+  "icon": "assets/icon.png",
+  "version": "0.1.0",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "dbx_pro",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "ui.slot.ability-detail",
+    "agent.command.run",
+    "storage.read",
+    "storage.write",
+    "shell.openExternal"
+  ],
+  "commands": ["dbx"],
+  "defaultLocale": "zh",
+  "description": "%plugin.description%",
+  "author": "Astravia"
+}
