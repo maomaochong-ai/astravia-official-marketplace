@@ -106,8 +106,8 @@ export function IconSpinner(props: IconProps) {
 }
 
 /**
- * 写轮眼（激活/复刻模式开）：实心轮廓 + 黑色瞳孔，一眼可见"已开"。
- * 使用 fill=currentColor，按钮容器传 text-foreground 即黑色 / text-background 即白色。
+ * 写轮眼（激活=开）：眼轮廓 + 实心瞳孔 + 中心小高光圈。
+ * 瞳孔区域是"实心 + 微空"——有内容、有焦点。
  */
 export function IconEye(props: IconProps) {
 	return (
@@ -121,18 +121,21 @@ export function IconEye(props: IconProps) {
 			aria-hidden="true"
 			{...props}
 		>
-			{/* 眼轮廓（粗线 + 微填充，让形状一眼可辨） */}
-			<path d="M1 12s4.5-8 11-8 11 8 11 8-4.5 8-11 8S1 12 1 12Z" fill="currentColor" fillOpacity="0.12" />
-			{/* 瞳孔（实填充 = 已开） */}
-			<circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none" />
-			<circle cx="12" cy="12" r="3.2" />
+			{/* 眼轮廓（微填充让形状一眼可辨） */}
+			<path d="M1 12s4.5-8 11-8 11 8 11 8-4.5 8-11 8S1 12 1 12Z" fill="currentColor" fillOpacity="0.08" />
+			{/* 瞳孔：实填充 + 轮廓 */}
+			<circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+			<circle cx="12" cy="12" r="3" />
+			{/* 瞳孔中心小高光：暗示"聚焦"的微空 */}
+			<circle cx="12" cy="11.3" r="0.8" fill="var(--astravia-eye-highlight, transparent)" stroke="none" />
 		</svg>
 	);
 }
 
 /**
- * 写轮眼关：完整眼轮廓 + 瞳孔位置一条水平闭眼线（而非斜线贯穿）。
- * 与 IconEye（实心瞳孔 = 睁眼）形成正负对比，语义干净。
+ * 写轮眼（未激活=关）：同眼轮廓 + 瞳孔变空心环 + 中心极小实点。
+ * 与 IconEye 共用眼轮廓 path，只有瞳孔区域"实心 → 空心环"——
+ * 完全没有斜线/横线的粗暴盖掉感。
  */
 export function IconEyeOff(props: IconProps) {
 	return (
@@ -146,10 +149,12 @@ export function IconEyeOff(props: IconProps) {
 			aria-hidden="true"
 			{...props}
 		>
-			{/* 完整眼轮廓（和 IconEye 同一个眼形） */}
+			{/* 同一个眼轮廓（去掉微填充，让"无焦点"更干净） */}
 			<path d="M1 12s4.5-8 11-8 11 8 11 8-4.5 8-11 8-11-8-11-8Z" />
-			{/* 闭眼线：盖住瞳孔的短横线，替代斜线贯穿 */}
-			<path d="M8.5 12h7" />
+			{/* 瞳孔：空心环（比 IconEye 实心瞳孔略大，圈住一个空的焦点） */}
+			<circle cx="12" cy="12" r="3.4" />
+			{/* 中心极小点：存在但无内容（与 IconEye 实心瞳孔形成正负对比） */}
+			<circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
 		</svg>
 	);
 }
