@@ -7,3 +7,4 @@ build/
 .gh-pages-wt/
 abilities/plugins/*/dist/
 abilities/plugins/*/release/
+_vendor/

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { prepareMarketplace, readJson, sourceCatalog, writeJson, digest, inside, entries, missingPackagedResources } from './static-marketplace.mjs';
@@ -75,11 +75,110 @@ async function main() {
   const settings = publicationSettings(root);
   const previous = option('--previous');
   const output = resolve(option('--output') ?? '.marketplace-build');
+  const vendorDir = join(root, '_vendor/@astravia-org');
+  const hasVendor = existsSync(vendorDir);
+
+  function installVendorPackages(directory) {
+    if (!hasVendor) return;
+    const nmDir = join(directory, 'node_modules/@astravia-org');
+    mkdirSync(nmDir, { recursive: true });
+    for (const pkg of readdirSync(vendorDir)) {
+      const src = join(vendorDir, pkg);
+      const dest = join(nmDir, pkg);
+      if (!lstatSync(src).isDirectory()) continue;
+      if (existsSync(dest)) execFileSync('rm', ['-rf', dest]);
+      execFileSync('cp', ['-R', src, dest]);
+    }
+  }
+
+  // Install vendor packages with all their dependencies into node_modules.
+  // Each _vendor package has its own node_modules from `npm install --legacy-peer-deps`.
+  // We flatten them into the plugin's node_modules.
+  function installVendorPackages(directory) {
+    if (!hasVendor) return;
+    const nmDir = join(directory, 'node_modules');
+    const aoDir = join(nmDir, '@astravia-org');
+    mkdirSync(aoDir, { recursive: true });
+    // Remove any stale vendored packages first
+    for (const pkg of readdirSync(vendorDir)) {
+      const dest = join(aoDir, pkg);
+      if (existsSync(dest)) execFileSync('rm', ['-rf', dest]);
+    }
+    for (const pkg of readdirSync(vendorDir)) {
+      const src = join(vendorDir, pkg);
+      const dest = join(aoDir, pkg);
+      if (!lstatSync(src).isDirectory()) continue;
+      execFileSync('cp', ['-R', src, dest]);
+      // Flatten vendor package's node_modules into plugin's node_modules
+      const vendorNm = join(src, 'node_modules');
+      if (existsSync(vendorNm)) {
+        for (const dep of readdirSync(vendorNm)) {
+          const depSrc = join(vendorNm, dep);
+          const depDest = join(nmDir, dep);
+          if (existsSync(depDest)) continue; // skip if already installed
+          if (dep.startsWith('@')) {
+            const scopeNm = join(nmDir, dep);
+            mkdirSync(scopeNm, { recursive: true });
+            for (const sub of readdirSync(depSrc)) {
+              const subSrc = join(depSrc, sub);
+              const subDest = join(scopeNm, sub);
+              if (!existsSync(subDest)) execFileSync('cp', ['-R', subSrc, subDest]);
+            }
+          } else {
+            execFileSync('cp', ['-R', depSrc, depDest]);
+          }
+        }
+      }
+    }
+  }
+
+  // Create a temporary package.json that removes @astravia-org/* deps
+  // so npm install doesn't try to resolve them from the registry.
+  function tempPackageJsonForInstall(directory) {
+    if (!hasVendor) return null;
+    const pkgPath = join(directory, 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+    let changed = false;
+    for (const field of ['dependencies', 'devDependencies']) {
+      const deps = pkg[field];
+      if (!deps) continue;
+      for (const key of Object.keys(deps)) {
+        if (key.startsWith('@astravia-org/')) {
+          delete deps[key];
+          changed = true;
+        }
+      }
+    }
+    if (!changed) return null;
+    const backup = pkgPath + '.bak';
+    writeFileSync(backup, readFileSync(pkgPath, 'utf8'));
+    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+    return backup;
+  }
+
+  function restorePackageJson(backup) {
+    if (!backup) return;
+    const pkgPath = backup.replace(/\.bak$/, '');
+    writeFileSync(pkgPath, readFileSync(backup, 'utf8'));
+    execFileSync('rm', [backup]);
+  }
+
   const result = await prepareMarketplace({
     root, output, previous: previous && resolve(previous), sourceSha: git('rev-parse', 'HEAD'),
     buildPlugin: directory => {
       const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-      for (const args of [['ci'], ['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
+      // @astravia-org/* packages are not on npm registry.
+      // Temporarily remove them from package.json, npm install remaining deps,
+      // then inject vendored packages with their dependencies flattened.
+      const backup = tempPackageJsonForInstall(directory);
+      try {
+        if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, 'install', '--no-package-lock'], { cwd: directory, stdio: 'inherit' });
+        else execFileSync('npm', ['install', '--no-package-lock'], { cwd: directory, stdio: 'inherit' });
+      } finally {
+        installVendorPackages(directory);
+        restorePackageJson(backup);
+      }
+      for (const args of [['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
         if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, ...args], { cwd: directory, stdio: 'inherit' });
         else execFileSync('npm', args, { cwd: directory, stdio: 'inherit' });
       }
