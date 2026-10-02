@@ -247,6 +247,19 @@ function FormFields({
 				</select>
 			</div>
 
+			{conn.db_type === "mongodb" && (
+				<div className="dbx-form-row">
+					<label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+						<input
+							type="checkbox"
+							checked={Boolean((conn as any).useLegacyShell)}
+							onChange={(e) => onChange({ ...conn, useLegacyShell: e.target.checked })}
+						/>
+						使用 legacy mongo shell（旧版 API 兼容模式）
+					</label>
+				</div>
+			)}
+
 			<div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 8 }}>
 				<div className="dbx-form-row">
 					<label className="dbx-form-label">{isFileBased ? "文件路径" : "Host"} *</label>
