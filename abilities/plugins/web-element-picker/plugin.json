@@ -2,7 +2,7 @@
   "id": "web-element-picker",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.3.5",
+  "version": "0.0.7",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {

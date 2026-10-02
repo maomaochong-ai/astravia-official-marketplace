@@ -1,6 +1,6 @@
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { WebElementPickerPanel } from "./WebElementPickerPanel";
-import { pushPickerIntent, setPluginCtx } from "./plugin-context";
+import { pushPickerIntent, setRuntime } from "./runtime-contract";
 import "./style.css";
 
 // 地球图标（活动 Tab 与输入栏 action 共用）。注意：MF 插件共享依赖异步填充，
@@ -14,7 +14,7 @@ const earthIcon = () => (
 
 export default definePlugin({
 	activate(ctx) {
-		setPluginCtx(ctx);
+		setRuntime(ctx);
 		ctx.ui.registerActivityTab({
 			id: "web-element-picker",
 			label: "%tab.label%",

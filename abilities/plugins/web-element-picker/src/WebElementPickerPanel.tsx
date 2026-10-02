@@ -17,7 +17,7 @@ import {
 	IconStop,
 	IconWeb,
 } from "./icons";
-import { consumePickerIntent, getPluginCtx, onPickerIntent } from "./plugin-context";
+import { consumePickerIntent, getRuntime, onPickerIntent } from "./runtime-contract";
 
 
 /** 复用内置浏览器的持久分区，登录态共享。 */
@@ -117,7 +117,7 @@ async function hasActiveConversation(ctx: PluginContext | null): Promise<boolean
 
 export function WebElementPickerPanel(): JSX.Element {
 	const { t, locale } = useTranslation();
-	const ctx = getPluginCtx();
+	const ctx = getRuntime();
 	const webviewRef = useRef<WebviewTag | null>(null);
 	const [address, setAddress] = useState("");
 	const [currentUrl, setCurrentUrl] = useState("");
