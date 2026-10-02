@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PluginCommandApi } from "@astravia-org/plugin-sdk";
-import { getCommand } from "../../../runtime-contract";
+import { getCommand, getConversation } from "../../../runtime-contract";
 import {
 	findDbType,
 	inferCatalogFamily,
@@ -366,6 +366,18 @@ export function DbxProPanel() {
 		setSql(`SELECT * FROM ${qualifiedTable({ name: menu.table, schema: menu.schema })} LIMIT 1000;`);
 		setMenu(null);
 	}
+	function menuSendToAI() {
+		if (!menu || !activeConnection) return;
+		const ctx = getConversation();
+		const scope = menu.schema ? `\`${menu.schema}\`.` : "";
+		const family = inferCatalogFamily(activeConnection.db_type);
+		ctx.insertText(
+			`[dbx-pro context]\n` +
+			`connection: ${activeConnection.name} (${activeConnection.db_type}, family=${family})\n` +
+			`table: ${scope}\`${menu.table}\`\n\n请帮我分析这个表的结构，看看有没有问题，或者生成一个查询。`
+		);
+		setMenu(null);
+	}
 	function menuTruncate() {
 		if (!menu) return;
 		const qt = qualifiedTable({ name: menu.table, schema: menu.schema });
@@ -662,6 +674,8 @@ export function DbxProPanel() {
 					<MenuRow label="👁 预览前 20 行" onClick={menuPreview} />
 					<MenuRow label="📄 DESCRIBE 结构" onClick={menuDescribe} />
 					<MenuRow label="📤 导出 CSV（前 1000 行）" onClick={menuExport} />
+					<div style={{ height: 1, background: "var(--border)", margin: "4px 8px" }} />
+					<MenuRow label="🤖 发送到 AI 分析" onClick={menuSendToAI} />
 					<div style={{ height: 1, background: "var(--border)", margin: "4px 8px" }} />
 					<MenuRow label="⚠️ TRUNCATE TABLE" onClick={menuTruncate} danger />
 					<MenuRow label="⚠️ DROP TABLE" onClick={menuDrop} danger />
