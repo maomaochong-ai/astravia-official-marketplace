@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -89,14 +89,16 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
     }
     writeJson(catalogPath, catalog);
   }
-  // ====== SHA 兜底修复 ======
-  // 遍历 marketplace.json 里所有 plugin releases（包括那些没重新 build 的），
-  // 从 GitHub Release 下载真实 artifact 算 SHA，覆写 marketplace.json。
-  // 根治"有人手动覆盖 GitHub Release artifact 导致 SHA mismatch"的问题。
-  let shaFixed = 0;
+  // ====== 兜底同步：确保 GitHub Release 上的 artifact 跟 marketplace.json 声明的一致 ======
+  // 遍历 marketplace.json 里所有 plugin（含 bundle 成员如 shimo-reader），
+  // 用本地 .marketplace-build/artifacts/ 里的文件算 SHA，覆写 marketplace.json，
+  // 并上传覆盖 GitHub Release（防止有人手动覆盖 artifact 导致 mismatch）。
+  // 方向：本地 build 为准 → 上传 GitHub Release → 推 gh-pages。
+  const artifactsDir = join(directory, 'artifacts');
+  let synced = 0;
   const allPluginRecords = catalog.abilities.flatMap(entry => {
     const records = [];
-    if (entry.type === 'plugin' && entry.releases) records.push({ owner: entry.slug, record: entry.releases[0] });
+    if (entry.type === 'plugin' && entry.releases) records.push({ owner: entry.slug, record: entry.releases[0], slug: entry.slug });
     if (entry.type === 'bundle') {
       for (const member of entry.config?.members ?? []) {
         if (member.type === 'plugin' && member.releases) records.push({ owner: `${entry.slug}.${member.slug}`, record: member.releases[0], slug: member.slug });
@@ -108,25 +110,60 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
     const url = record?.artifact?.url;
     if (!url) continue;
     const filename = url.split('/').pop();
-    const realSlug = slug ?? owner;
-    const tag = `plugin-${realSlug}`;
-    const tmpDir = mkdtempSync(join(tmpdir(), 'astravia-sha-fix-'));
-    try {
-      gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', tmpDir);
-      const realSha = digest(readFileSync(join(tmpDir, filename)));
-      if (realSha !== record.artifact.sha256) {
-        console.error(`[sha-fix] ${owner}: marketplace.json=${record.artifact.sha256.slice(0,16)}... → GitHub=${realSha.slice(0,16)}... 覆写`);
-        record.artifact.sha256 = realSha;
-        shaFixed++;
+    const localPath = join(artifactsDir, filename);
+    const tag = `plugin-${slug}`;
+
+    // 1. 如果本地有 artifact → 用本地算的 SHA 覆写 marketplace.json
+    if (existsSync(localPath)) {
+      const localSha = digest(readFileSync(localPath));
+      if (localSha !== record.artifact.sha256) {
+        console.error(`[sync] ${owner}: marketplace.json=${record.artifact.sha256.slice(0,16)}... → 本地=${localSha.slice(0,16)}... 覆写`);
+        record.artifact.sha256 = localSha;
       }
-    } catch (e) {
-      console.error(`[sha-fix] ${owner}: 下载失败 ${e.message}`);
-    } finally { rmSync(tmpDir, { recursive: true, force: true }); }
+
+      // 2. 上传本地 artifact 覆盖 GitHub Release（确保 GitHub 跟 marketplace.json 一致）
+      let release = releaseByTag(gh, repository, tag);
+      if (!release) {
+        gh('release', 'create', tag, localPath, '--repo', repository, '--draft', '--target', publication.sourceSha, '--title', `${slug} plugin packages`, '--notes', `Append-only Astravia plugin packages for ${slug}.`);
+        release = releaseByTag(gh, repository, tag);
+        if (!release) throw new Error(`Created draft release is unavailable: ${tag}`);
+      }
+      const hasAsset = release.assets?.some(a => a.name === filename);
+      if (hasAsset) {
+        // GitHub 不允许直接覆盖 asset，先删再传
+        gh('release', 'delete-asset', release.assets.find(a => a.name === filename).id, '--repo', repository);
+      }
+      gh('release', 'upload', tag, localPath, '--repo', repository);
+      if (release.draft) gh('release', 'edit', tag, '--repo', repository, '--draft=false', '--latest=false');
+
+      // 3. 从 GitHub 下载回来验证上传成功
+      const verifyTmp = mkdtempSync(join(tmpdir(), 'astravia-sync-verify-'));
+      try {
+        gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', verifyTmp);
+        const remoteSha = digest(readFileSync(join(verifyTmp, filename)));
+        if (remoteSha !== localSha) {
+          throw new Error(`[sync] ${owner}: 上传后 SHA 不一致 本地=${localSha.slice(0,16)}... GitHub=${remoteSha.slice(0,16)}...`);
+        }
+      } finally { rmSync(verifyTmp, { recursive: true, force: true }); }
+
+      synced++;
+    } else {
+      // 本地没有（build 跳过了），下载 GitHub Release 验证 SHA 是否跟 marketplace.json 一致
+      const verifyTmp = mkdtempSync(join(tmpdir(), 'astravia-sync-verify-'));
+      try {
+        gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', verifyTmp);
+        const remoteSha = digest(readFileSync(join(verifyTmp, filename)));
+        if (remoteSha !== record.artifact.sha256) {
+          console.error(`[sync] ${owner}: 本地无 artifact，GitHub=${remoteSha.slice(0,16)}... marketplace=${record.artifact.sha256.slice(0,16)}... 覆写 marketplace`);
+          record.artifact.sha256 = remoteSha;
+        }
+      } catch (e) {
+        console.error(`[sync] ${owner}: 本地无 artifact，GitHub 下载失败 ${e.message}`);
+      } finally { rmSync(verifyTmp, { recursive: true, force: true }); }
+    }
   }
-  if (shaFixed > 0) {
-    writeJson(catalogPath, catalog);
-    console.error(`[sha-fix] 修复了 ${shaFixed} 个 SHA mismatch，已覆写 marketplace.json`);
-  }
+  writeJson(catalogPath, catalog);
+  console.error(`[sync] 同步了 ${synced} 个 plugin artifact，marketplace.json SHA 已对齐`);
 
   // Check the public/authenticated download paths before making the index discoverable.
   await verify(directory, true);
