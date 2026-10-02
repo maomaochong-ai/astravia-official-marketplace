@@ -12,22 +12,11 @@ import type {
 	DbTableInfo,
 	DbQueryResult,
 } from "../../../domain/connection-config";
+import { DBX_ENV } from "../../../domain/db-env";
 
 export interface DbxCliError {
 	code: string;
 	message: string;
-}
-
-const DBX_ENV: Record<string, string> = {
-	DBX_DATA_DIR: getDbxDataDir(),
-};
-
-function getDbxDataDir(): string {
-	const home = typeof process !== "undefined" && process.env
-		? (process.env.HOME ?? process.env.USERPROFILE)
-		: "";
-	if (home) return `${home}/.astravia/dbx-pro`;
-	return ".";
 }
 
 async function run(

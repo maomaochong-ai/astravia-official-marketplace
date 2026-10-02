@@ -1,13 +1,13 @@
 /**
  * dbx-pro 插件装配入口 — 只负责 activate + registerActivityTab。
  *
- * 业务逻辑全部在 features/ 和 domain/ 下，主面板在
+ * 业务逻辑在 features/ 和 domain/ 下；主面板在
  * features/main-panel/components/dbx-pro-panel.tsx。
  */
 
 import "./style.css";
 import { definePlugin } from "@astravia-org/plugin-sdk";
-import { setCommand } from "./features/main-panel/components/dbx-pro-panel";
+import { setCommand } from "./runtime-contract";
 import { DbxProPanel } from "./features/main-panel/components/dbx-pro-panel";
 
 export default definePlugin({

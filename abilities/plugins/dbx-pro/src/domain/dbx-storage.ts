@@ -15,16 +15,7 @@
  */
 
 import type { PluginCommandApi } from "@astravia-org/plugin-sdk";
-
-const DBX_ENV = { DBX_DATA_DIR: getDbxDataDir() };
-
-function getDbxDataDir(): string {
-	const home = typeof process !== "undefined" && process.env
-		? (process.env.HOME ?? process.env.USERPROFILE)
-		: "";
-	if (home) return `${home}/.astravia/dbx-pro`;
-	return ".";
-}
+import { DBX_ENV } from "./db-env";
 
 function dbxDbPath(): string {
 	return `${DBX_ENV.DBX_DATA_DIR}/dbx.db`;

@@ -11,6 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PluginCommandApi } from "@astravia-org/plugin-sdk";
+import { getCommand } from "../../../runtime-contract";
 import {
 	findDbType,
 	inferCatalogFamily,
@@ -782,13 +783,3 @@ function downloadFile(name: string, content: string) {
 	URL.revokeObjectURL(url);
 }
 
-/**
- * 宿主命令执行 API 句柄。在 activate() 中注入后可被所有组件获取。
- * 这是插件级的共享引用——所有子组件通过 getCommand() 调用 dbx / sqlite3。
- */
-let _command: PluginCommandApi | null = null;
-export function setCommand(c: PluginCommandApi) { _command = c; }
-function getCommand(): PluginCommandApi {
-	if (!_command) throw new Error("dbx-pro plugin not activated");
-	return _command;
-}
