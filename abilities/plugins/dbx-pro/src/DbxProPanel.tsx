@@ -8,6 +8,16 @@ import {
 	type DbxCliError,
 } from "./db/dbx-cli";
 import { readAllConfigs } from "./db/dbx-sqlite";
+import {
+	inferFamily,
+	filterSystemNames,
+	listSchemasSql,
+	listDatabasesSql,
+	listTablesInScopeSql,
+	tableObjectSql,
+	type CatalogScope,
+	type TableObjectKind,
+} from "./db/dbx-catalog";
 import type {
 	DbColumn,
 	DbConnection,
@@ -72,7 +82,8 @@ export function DbxProPanel() {
 	const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set(["public"]));
 	const [selectedTable, setSelectedTable] = useState<{ name: string; schema?: string } | null>(null);
 	const [columns, setColumns] = useState<DbColumn[]>([]);
-	const [tableMetaTab, setTableMetaTab] = useState<"columns" | "sample">("columns");
+	const [tableMetaTab, setTableMetaTab] = useState<"columns" | "indexes" | "constraints" | "triggers" | "sample">("columns");
+	const [tableObjects, setTableObjects] = useState<Record<string, string[]>>({});
 
 	// === 中间 SQL 编辑器 ===
 	const [sql, setSql] = useState<string>("-- ⌘/Ctrl+Enter 执行\nSELECT 1;");
@@ -150,24 +161,53 @@ export function DbxProPanel() {
 
 	async function refreshSchemas() {
 		if (!activeConn) return;
+		const conn = connections.find((c) => c.name === activeConn);
+		if (!conn) return;
+		const family = inferFamily(conn.db_type);
+
 		try {
-			const list = await listTables(command, activeConn);
-			// dbx CLI 默认把所有表返回在 flat list；我们按 table_type 分组 + 按表名再分组到默认 schema
-			// 如果 dbx 有 --schema 扩展参数后续可以补，但先用 table_type 分类
-			// 为了兼容旧项目的 schema 分层 UI，这里做个简化：把所有表都挂在默认 schema 下
-			// PostgreSQL 的表返回时 schema 信息在后续 introspection SQL 里可以拿到
-			const defaultSchema = "public";
-			const existingIdx = new Map<string, SchemaNode>();
-			const node = existingIdx.get(defaultSchema) ?? { schema: defaultSchema, tables: [] };
-			for (const t of list) {
-				node.tables.push(t);
+			if (family === "flat") {
+				// SQLite/DuckDB 等 — 直接用 dbx CLI flat list
+				const list = await listTables(command, activeConn);
+				setSchemas([{ schema: "(default)", tables: list }]);
+				setExpandedSchemas(new Set(["(default)"]));
+				return;
 			}
-			existingIdx.set(defaultSchema, node);
-			// 也按 table_type 加分类（view/materialized_view/其他）
-			// 暂先只放一张表，后续 introspection SQL 补上真实 schema
-			setSchemas([{ schema: defaultSchema, tables: list }]);
+
+			// schemas 或 databases family — 先查作用域名，再逐域查表
+			const catalogSql = family === "schemas" ? listSchemasSql() : listDatabasesSql();
+			const catalogResult = await executeQuery(command, activeConn, catalogSql, { limit: 500, timeoutMs: 15_000 });
+			const rawNames = catalogResult.rows.map((r) => String(r.name ?? ""));
+			const catalogNames = filterSystemNames(family, rawNames);
+
+			// 对每个作用域跑 listTablesInScopeSql
+			const nodes: SchemaNode[] = [];
+			for (const cat of catalogNames) {
+				const scope: CatalogScope = family === "schemas" ? { schema: cat } : { database: cat };
+				const tSql = listTablesInScopeSql(family, scope);
+				try {
+					const tRes = await executeQuery(command, activeConn, tSql, { limit: 2000, timeoutMs: 15_000 });
+					const tables: DbTableInfo[] = tRes.rows.map((r) => ({
+						name: String(r.name ?? r.table_name ?? ""),
+						table_type: String(r.table_type ?? "BASE TABLE"),
+					})).filter((t) => t.name);
+					if (tables.length > 0) {
+						nodes.push({ schema: cat, tables });
+					}
+				} catch {
+					// 某个 scope 查失败不阻断其他
+				}
+			}
+			setSchemas(nodes);
+			setExpandedSchemas(new Set(nodes.slice(0, 3).map((n) => n.schema)));
 		} catch {
-			setSchemas([]);
+			// introspection 失败降级到 dbx CLI flat
+			try {
+				const list = await listTables(command, activeConn);
+				setSchemas([{ schema: "(default)", tables: list }]);
+			} catch {
+				setSchemas([]);
+			}
 		}
 	}
 
@@ -179,6 +219,34 @@ export function DbxProPanel() {
 		} catch {
 			setColumns([]);
 		}
+		await loadTableObjects();
+	}
+
+	async function loadTableObjects() {
+		if (!activeConn || !selectedTable) { setTableObjects({}); return; }
+		const conn = connections.find((c) => c.name === activeConn);
+		if (!conn) return;
+		const family = inferFamily(conn.db_type);
+		const scope: CatalogScope = family === "schemas"
+			? { schema: selectedTable.schema ?? "public" }
+			: family === "databases"
+				? { database: selectedTable.schema ?? conn.database ?? "" }
+				: {};
+
+		const kinds: TableObjectKind[] = ["index", "constraint", "trigger"];
+		const result: Record<string, string[]> = {};
+		for (const k of kinds) {
+			const sql = tableObjectSql(family, k, selectedTable.name, scope);
+			if (!sql) continue;
+			try {
+				const r = await executeQuery(command, activeConn, sql, { limit: 200, timeoutMs: 10_000 });
+				const colName = r.columns.includes("name") ? "name" : r.columns[0];
+				result[k] = r.rows.map((row) => String(row[colName] ?? "")).filter(Boolean);
+			} catch {
+				result[k] = [];
+			}
+		}
+		setTableObjects(result);
 	}
 
 	async function runQuery(checkWrite = true, allowWrites = false, allowDangerous = false) {
@@ -261,6 +329,13 @@ export function DbxProPanel() {
 	const totalPages = Math.max(1, Math.ceil(filteredRows.length / resultPageSize));
 
 	const activeConnection = connections.find((c) => c.name === activeConn);
+	const connDbType = activeConnection?.db_type ?? "";
+
+	function qualifiedTable(t: { name: string; schema?: string }): string {
+		const ident = (s: string) => `"${s.replace(/"/g, '""')}"`;
+		if (t.schema && t.schema !== "(default)") return `${ident(t.schema)}.${ident(t.name)}`;
+		return ident(t.name);
+	}
 
 	return (
 		<div className="dbx-panel" onContextMenu={(e) => { /* 阻止浏览器默认右键 */ }}>
@@ -531,33 +606,46 @@ export function DbxProPanel() {
 						<div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
 							<div style={{
 								padding: "6px 12px", borderBottom: "1px solid var(--border)",
-								display: "flex", alignItems: "center", gap: 12,
+								display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
 							}}>
-								<span style={{ fontWeight: 600 }}>{selectedTable.name}</span>
+								<span style={{ fontWeight: 600 }}>
+									{selectedTable.schema ? `${selectedTable.schema}.` : ""}{selectedTable.name}
+								</span>
 								<div style={{ display: "flex", gap: 2, marginLeft: 8 }}>
-									{(["columns", "sample"] as const).map((t) => (
+									{([
+										{ key: "columns", label: `列 (${columns.length})` },
+										{ key: "indexes", label: `索引 (${tableObjects.index?.length ?? "—"})` },
+										{ key: "constraints", label: `约束 (${tableObjects.constraint?.length ?? "—"})` },
+										{ key: "triggers", label: `触发器 (${tableObjects.trigger?.length ?? "—"})` },
+										{ key: "sample", label: "采样数据" },
+									] as const).map((t) => (
 										<button
-											key={t}
+											key={t.key}
 											className="dbx-btn"
 											style={{
 												padding: "2px 10px", fontSize: 12,
-												background: tableMetaTab === t ? "var(--foreground)" : "transparent",
-												color: tableMetaTab === t ? "var(--background)" : "inherit",
+												background: tableMetaTab === t.key ? "var(--foreground)" : "transparent",
+												color: tableMetaTab === t.key ? "var(--background)" : "inherit",
 												borderRadius: 4,
 											}}
-											onClick={() => setTableMetaTab(t)}
-										>
-											{t === "columns" ? `列 (${columns.length})` : "采样数据"}
-										</button>
+											onClick={() => setTableMetaTab(t.key)}
+										>{t.label}</button>
 									))}
 								</div>
 							</div>
 							{tableMetaTab === "columns" && <ColumnsGrid columns={columns} />}
+							{(tableMetaTab === "indexes" || tableMetaTab === "constraints" || tableMetaTab === "triggers") && (
+								<ObjectList
+									title={tableMetaTab === "indexes" ? "索引" : tableMetaTab === "constraints" ? "约束" : "触发器"}
+									items={tableObjects[tableMetaTab] ?? []}
+									emptyHint={`此 ${connDbType} 暂未检测到 ${tableMetaTab} 或当前连接不支持 introspection`}
+								/>
+							)}
 							{tableMetaTab === "sample" && (
 								<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
 									<button className="dbx-btn primary" onClick={() => {
-										const tab = selectedTable.name.replace(/"/g, '""');
-										setSql(`SELECT * FROM "${tab}" LIMIT 20;`);
+										const q = qualifiedTable(selectedTable);
+										setSql(`SELECT * FROM ${q} LIMIT 20;`);
 										runQuery(true);
 									}}>▶ 加载采样数据</button>
 								</div>
@@ -786,6 +874,32 @@ function ResultGrid({
 									{formatCell(row[c], highlightKeyword)}
 								</td>
 							))}
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	);
+}
+
+function ObjectList({ title, items, emptyHint }: { title: string; items: string[]; emptyHint?: string }) {
+	if (items.length === 0) {
+		return (
+			<div style={{ flex: 1, padding: 24, color: "var(--muted-foreground)", fontSize: 13, textAlign: "center" }}>
+				暂无{title} · {emptyHint ?? ""}
+			</div>
+		);
+	}
+	return (
+		<div className="dbx-result" style={{ flex: 1 }}>
+			<table>
+				<thead>
+					<tr><th>{title}</th></tr>
+				</thead>
+				<tbody>
+					{items.map((n, i) => (
+						<tr key={i}>
+							<td style={{ fontFamily: "monospace", fontSize: 12 }}>{n}</td>
 						</tr>
 					))}
 				</tbody>

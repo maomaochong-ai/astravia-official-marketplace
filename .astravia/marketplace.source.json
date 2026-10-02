@@ -639,10 +639,11 @@
     },
     {
       "type": "plugin",
+      
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and 60+ databases via dbx CLI. Connection manager, SQL editor + result grid, table browser, built-in write protection and production safety gates.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
