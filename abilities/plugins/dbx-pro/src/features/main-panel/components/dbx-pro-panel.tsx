@@ -67,7 +67,19 @@ export function DbxProPanel() {
 	const [tableObjects, setTableObjects] = useState<Record<string, string[]>>({});
 	const [tableMetaTab, setTableMetaTab] = useState<"columns" | "indexes" | "constraints" | "triggers" | "sample">("columns");
 
-	const [sql, setSql] = useState<string>("-- ⌘/Ctrl+Enter 执行\nSELECT 1;");
+interface SqlTab { id: string; label: string; sql: string; }
+
+const INITIAL_TABS: SqlTab[] = [
+	{ id: "t1", label: "查询 1", sql: "-- ⌘/Ctrl+Enter 执行\nSELECT 1;" },
+];
+
+	const [sqlTabs, setSqlTabs] = useState<SqlTab[]>(INITIAL_TABS);
+	const [activeTabId, setActiveTabId] = useState<string>("t1");
+	const activeTab = useMemo(() => sqlTabs.find((t) => t.id === activeTabId) ?? sqlTabs[0], [sqlTabs, activeTabId]);
+	const sql = activeTab?.sql ?? "";
+	function setSqlTab(newSql: string) {
+		setSqlTabs((tabs) => tabs.map((t) => t.id === activeTabId ? { ...t, sql: newSql } : t));
+	}
 	const [runState, setRunState] = useState<RunState>({ kind: "idle" });
 	const [queryHistory, setQueryHistory] = useState<string[]>([]);
 
@@ -235,7 +247,7 @@ export function DbxProPanel() {
 		const trimmed = sql.trim();
 		if (!trimmed) return;
 		const explainSql = withAnalyze ? `EXPLAIN ANALYZE ${trimmed}` : `EXPLAIN ${trimmed}`;
-		setSql(explainSql);
+		setSqlTab(explainSql);
 
 		setRunState({ kind: "running" });
 		try {
@@ -352,7 +364,7 @@ export function DbxProPanel() {
 	function menuPreview() {
 		if (!menu) return;
 		setSelectedTable({ name: menu.table, schema: menu.schema });
-		setSql(`SELECT * FROM ${qualifiedTable({ name: menu.table, schema: menu.schema })} LIMIT 20;`);
+		setSqlTab(`SELECT * FROM ${qualifiedTable({ name: menu.table, schema: menu.schema })} LIMIT 20;`);
 		setMenu(null);
 	}
 	function menuDescribe() {
@@ -363,7 +375,7 @@ export function DbxProPanel() {
 	function menuExport() {
 		if (!menu) return;
 		setSelectedTable({ name: menu.table, schema: menu.schema });
-		setSql(`SELECT * FROM ${qualifiedTable({ name: menu.table, schema: menu.schema })} LIMIT 1000;`);
+		setSqlTab(`SELECT * FROM ${qualifiedTable({ name: menu.table, schema: menu.schema })} LIMIT 1000;`);
 		setMenu(null);
 	}
 	function menuSendToAI() {
@@ -381,13 +393,13 @@ export function DbxProPanel() {
 	function menuTruncate() {
 		if (!menu) return;
 		const qt = qualifiedTable({ name: menu.table, schema: menu.schema });
-		setSql(`TRUNCATE TABLE ${qt};`);
+		setSqlTab(`TRUNCATE TABLE ${qt};`);
 		setMenu(null);
 	}
 	function menuDrop() {
 		if (!menu) return;
 		const qt = qualifiedTable({ name: menu.table, schema: menu.schema });
-		setSql(`DROP TABLE IF EXISTS ${qt};`);
+		setSqlTab(`DROP TABLE IF EXISTS ${qt};`);
 		setMenu(null);
 	}
 
@@ -444,7 +456,7 @@ export function DbxProPanel() {
 				<div style={{ flex: 1 }} />
 				{runState.kind !== "running" && activeConn && (
 					<>
-						<button className="dbx-btn ghost" onClick={() => setSql(`SELECT * FROM ${selectedTable ? qualifiedTable(selectedTable) : "your_table"} LIMIT 20;`)}>
+						<button className="dbx-btn ghost" onClick={() => setSqlTab(`SELECT * FROM ${selectedTable ? qualifiedTable(selectedTable) : "your_table"} LIMIT 20;`)}>
 							⟳ SELECT *
 						</button>
 					</>
@@ -545,9 +557,43 @@ export function DbxProPanel() {
 
 				{/* 右栏 SQL + 结果 */}
 				<div className="dbx-main">
+					{/* SQL Tabs */}
+					<div style={{ display: "flex", alignItems: "center", gap: 2, padding: "4px 6px 0", borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
+						{sqlTabs.map((t, i) => (
+							<div key={t.id}
+								style={{
+									display: "flex", alignItems: "center", gap: 6,
+									padding: "3px 10px", fontSize: 12, borderRadius: "4px 4px 0 0",
+									background: t.id === activeTabId ? "var(--foreground, #111)" : "transparent",
+									color: t.id === activeTabId ? "var(--background, #fff)" : "var(--muted-foreground)",
+									cursor: "pointer", userSelect: "none",
+								}}
+								onClick={() => setActiveTabId(t.id)}
+							>
+								<span>{t.label}</span>
+								{sqlTabs.length > 1 && (
+									<span
+										onClick={(e) => { e.stopPropagation(); setSqlTabs((tabs) => tabs.length <= 1 ? tabs : tabs.filter((x) => x.id !== t.id)); if (activeTabId === t.id) setActiveTabId(sqlTabs.find((x) => x.id !== t.id)?.id ?? t.id); }}
+										style={{ opacity: 0.6, fontSize: 14, lineHeight: 1 }}
+										title="关闭"
+									>×</span>
+								)}
+							</div>
+						))}
+						<button
+							className="dbx-btn ghost"
+							style={{ padding: "3px 8px", fontSize: 12, marginLeft: 4 }}
+							onClick={() => {
+								const newId = `t${Date.now()}`;
+								const n = sqlTabs.length + 1;
+								setSqlTabs([...sqlTabs, { id: newId, label: `查询 ${n}`, sql: "-- ⌘/Ctrl+Enter 执行\nSELECT 1;" }]);
+								setActiveTabId(newId);
+							}}
+						>+ 新标签</button>
+					</div>
 					{/* 编辑器 */}
 					<div style={{ height: "38%", position: "relative" }}>
-						<SqlEditor value={sql} onChange={setSql} onRun={() => runQuery(true)} placeholder="SELECT * FROM users LIMIT 20;" />
+						<SqlEditor value={sql} onChange={setSqlTab} onRun={() => runQuery(true)} placeholder="SELECT * FROM users LIMIT 20;" />
 						<div style={{
 							position: "absolute", bottom: 6, right: 10,
 							fontSize: 11, color: "var(--muted-foreground)", pointerEvents: "none",
@@ -557,7 +603,7 @@ export function DbxProPanel() {
 								<div style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 600, marginBottom: 2 }}>历史（点一下回填）</div>
 								{queryHistory.slice(0, 5).map((h, i) => (
 									<div key={i}
-										onClick={() => setSql(h)}
+										onClick={() => setSqlTab(h)}
 										style={{ fontSize: 11, padding: "2px 4px", cursor: "pointer", fontFamily: "monospace", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
 										title={h}
 									>{h.slice(0, 80)}{h.length > 80 ? "…" : ""}</div>
@@ -647,7 +693,7 @@ export function DbxProPanel() {
 							{tableMetaTab === "sample" && (
 								<div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
 									<button className="dbx-btn primary" onClick={() => {
-										setSql(`SELECT * FROM ${qualifiedTable(selectedTable)} LIMIT 20;`);
+										setSqlTab(`SELECT * FROM ${qualifiedTable(selectedTable)} LIMIT 20;`);
 										runQuery(true);
 									}}>▶ 加载采样数据</button>
 								</div>
