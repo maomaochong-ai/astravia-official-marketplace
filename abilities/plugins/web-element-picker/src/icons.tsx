@@ -131,7 +131,8 @@ export function IconEye(props: IconProps) {
 }
 
 /**
- * 写轮眼关：空眼 + 斜线，一眼看出"被划掉/关闭"。
+ * 写轮眼关：完整眼轮廓 + 瞳孔位置一条水平闭眼线（而非斜线贯穿）。
+ * 与 IconEye（实心瞳孔 = 睁眼）形成正负对比，语义干净。
  */
 export function IconEyeOff(props: IconProps) {
 	return (
@@ -145,14 +146,10 @@ export function IconEyeOff(props: IconProps) {
 			aria-hidden="true"
 			{...props}
 		>
-			{/* 下半眼（眼形被斜线截断感） */}
-			<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20C5 20 1 12 1 12a18.45 18.45 0 0 1 5.06-5.94" />
-			{/* 上半眼 */}
-			<path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-			{/* 瞳孔空心（关 = 无填充） */}
-			<circle cx="12" cy="12" r="3" />
-			{/* 斜线贯穿 */}
-			<path d="M3 3l18 18" />
+			{/* 完整眼轮廓（和 IconEye 同一个眼形） */}
+			<path d="M1 12s4.5-8 11-8 11 8 11 8-4.5 8-11 8-11-8-11-8Z" />
+			{/* 闭眼线：盖住瞳孔的短横线，替代斜线贯穿 */}
+			<path d="M8.5 12h7" />
 		</svg>
 	);
 }
