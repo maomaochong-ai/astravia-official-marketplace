@@ -26,6 +26,7 @@ import type {
 	RunState,
 } from "./db-types";
 import { DbConnectionForm } from "./components/DbConnectionForm";
+import { SqlEditor } from "./components/SqlEditor";
 
 /**
  * dbx-pro 数据库工作台 — 完整复刻旧项目 DatabaseWorkspace。
@@ -415,6 +416,41 @@ export function DbxProPanel() {
 		}
 	}
 
+	/** 用 EXPLAIN / EXPLAIN ANALYZE 包装当前 SQL 执行 */
+	async function runExplain(withAnalyze: boolean) {
+		if (!activeConn) return;
+		const trimmed = sql.trim();
+		if (!trimmed) return;
+		const conn = connections.find((c) => c.name === activeConn);
+		const family = inferFamily(conn?.db_type ?? "");
+
+		// 各方言 EXPLAIN 语法
+		let explainSql: string;
+		if (family === "schemas") {
+			// PG: EXPLAIN [ANALYZE] <sql>
+			explainSql = withAnalyze ? `EXPLAIN ANALYZE ${trimmed}` : `EXPLAIN ${trimmed}`;
+		} else if (family === "databases") {
+			// MySQL: EXPLAIN [ANALYZE] <sql>
+			explainSql = withAnalyze ? `EXPLAIN ANALYZE ${trimmed}` : `EXPLAIN ${trimmed}`;
+		} else {
+			// flat fallback
+			explainSql = withAnalyze ? `EXPLAIN ANALYZE ${trimmed}` : `EXPLAIN ${trimmed}`;
+		}
+		setSql(explainSql);
+
+		setRunState({ kind: "running" });
+		try {
+			const t0 = performance.now();
+			const result = await executeQuery(command, activeConn, explainSql, { timeoutMs: 30_000 });
+			setRunState({ kind: "result", data: result, elapsedMs: Math.round(performance.now() - t0), allowWrites: false });
+			setResultPage(0);
+		} catch (err) {
+			const msg = (err as Error).message;
+			const codeMatch = msg.match(/\[([A-Z_]+)\]/);
+			setRunState({ kind: "error", message: msg, code: codeMatch?.[1] });
+		}
+	}
+
 	return (
 		<div className="dbx-panel" onContextMenu={(e) => { /* 阻止浏览器默认右键 */ }}>
 			{/* 顶部栏 */}
@@ -454,6 +490,12 @@ export function DbxProPanel() {
 					</>
 				)}
 				<button className="dbx-btn ghost" onClick={refreshConnections}>🔄 刷新</button>
+				<button className="dbx-btn ghost" onClick={() => runExplain(false)} disabled={!activeConn || runState.kind === "running"} title="EXPLAIN">
+					📋 EXPLAIN
+				</button>
+				<button className="dbx-btn ghost" onClick={() => runExplain(true)} disabled={!activeConn || runState.kind === "running"} title="EXPLAIN ANALYZE">
+					📊 ANALYZE
+				</button>
 				<button className="dbx-btn ghost" onClick={() => setConnFormOpen(true)}>⚙️ 管理连接</button>
 				<button className="dbx-btn primary" onClick={() => runQuery(true)} disabled={!activeConn || runState.kind === "running"}>
 					{runState.kind === "running" ? "执行中…" : "▶ 运行"}
@@ -562,29 +604,19 @@ export function DbxProPanel() {
 				{/* === 右栏 SQL + 结果 === */}
 				<div className="dbx-main">
 					{/* 编辑器 */}
-					<div style={{ height: "38%", display: "flex", flexDirection: "column" }}>
-						<div className="dbx-editor-wrap">
-							<textarea
-								ref={sqlRef}
-								className="dbx-editor"
-								value={sql}
-								onChange={(e) => setSql(e.target.value)}
-								onKeyDown={(e) => {
-									if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-										e.preventDefault();
-										runQuery(true);
-									}
-								}}
-								placeholder="SELECT * FROM users LIMIT 20;"
-								spellCheck={false}
-							/>
-							<div style={{
-								position: "absolute", bottom: 6, right: 10,
-								fontSize: 11, color: "var(--muted-foreground)",
-							}}>
-								⌘/Ctrl+Enter 执行
-							</div>
-						</div>
+					<div style={{ height: "38%", display: "flex", flexDirection: "column", position: "relative" }}>
+						<SqlEditor
+							value={sql}
+							onChange={setSql}
+							onRun={() => runQuery(true)}
+							placeholder="SELECT * FROM users LIMIT 20;"
+							height="100%"
+						/>
+						<div style={{
+							position: "absolute", bottom: 6, right: 10,
+							fontSize: 11, color: "var(--muted-foreground)",
+							pointerEvents: "none", zIndex: 10,
+						}}>⌘/Ctrl+Enter 执行</div>
 						{/* 历史 */}
 						{queryHistory.length > 0 && (
 							<div style={{

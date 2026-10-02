@@ -129,6 +129,7 @@ textarea.dbx-form-input {
 	position: relative;
 	flex: 1;
 	min-height: 120px;
+	overflow: hidden;
 }
 .dbx-editor {
 	width: 100%;
@@ -139,11 +140,40 @@ textarea.dbx-form-input {
 	line-height: 1.55;
 	border: none;
 	outline: none;
-	background: var(--background, #fff);
-	color: var(--foreground, #111);
+	background: transparent;
+	color: transparent;
+	caret-color: currentColor;
 	resize: none;
 	tab-size: 4;
+	z-index: 2;
+	position: relative;
 }
+.dbx-editor::selection { background: rgba(37, 99, 235, 0.3); }
+
+.dbx-editor-hl {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	padding: 12px 16px;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+	font-size: 13px;
+	line-height: 1.55;
+	white-space: pre-wrap;
+	word-break: normal;
+	overflow-wrap: normal;
+	tab-size: 4;
+	pointer-events: none;
+	z-index: 1;
+	color: var(--foreground, #111);
+	font-variant-ligatures: none;
+}
+.dbx-editor-hl code { font-family: inherit; }
+.dbx-editor-hl .kw { color: #b45309; font-weight: 600; }
+.dbx-editor-hl .str { color: #047857; }
+.dbx-editor-hl .num { color: #0369a1; }
+.dbx-editor-hl .cmt { color: #94a3b8; font-style: italic; }
+.dbx-editor-hl .id { color: var(--foreground, #111); }
+.dbx-editor-hl .ph { color: #94a3b8; font-style: italic; }
 
 /* === 错误 === */
 .dbx-error {
@@ -273,9 +303,16 @@ textarea.dbx-form-input {
 }
 .dark .dbx-form-input:focus { border-color: #eee; }
 .dark .dbx-editor {
-	background: #0a0a0a;
+	background: transparent;
+}
+.dark .dbx-editor-hl {
 	color: #e8e8e8;
 }
+.dark .dbx-editor-hl .kw { color: #fbbf24; }
+.dark .dbx-editor-hl .str { color: #86efac; }
+.dark .dbx-editor-hl .num { color: #7dd3fc; }
+.dark .dbx-editor-hl .cmt { color: #64748b; }
+.dark .dbx-editor-hl .ph { color: #64748b; }
 .dark .dbx-connection-item:hover { background: #1e1e1e; }
 .dark .dbx-connection-item.active { background: #242424; }
 .dark .dbx-result {
