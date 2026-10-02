@@ -1,14 +1,12 @@
 /**
- * dbx-pro 的数据库目录 introspection SQL — 从旧项目 database-catalog.ts 移植。
+ * 数据库目录 introspection SQL 生成器。
  *
- * 所有查询都是通过 dbx query 执行的只读 SQL，不需要特殊 CLI 子命令。
- * family 由 db_type 推断：
- *   "schemas"   — PostgreSQL 系（pg_*），按 schema 分层
- *   "databases" — MySQL 系，按 database 分层
- *   "flat"      — SQLite / DuckDB / ClickHouse / Redis / MongoDB ... 单库无中间层
+ * 引擎没有独立的 list_databases / list_schemas 工具，目录枚举和子对象
+ * 枚举都通过只读的 information_schema / 系统表查询完成。这层封装把
+ * 各 family 的 introspection SQL 集中起来，对外暴露稳定的纯函数。
  */
 
-export type CatalogFamily = "schemas" | "databases" | "flat";
+import type { CatalogFamily } from "./connection-config";
 
 export type TableObjectKind = "index" | "constraint" | "foreign-key" | "trigger" | "partition";
 
@@ -20,44 +18,18 @@ export interface CatalogScope {
 const SCHEMA_SYSTEM = new Set(["information_schema", "pg_catalog", "pg_toast"]);
 const DATABASE_SYSTEM = new Set(["information_schema", "performance_schema", "mysql", "sys"]);
 
-/**
- * 根据 db_type 推断 catalog family：
- * - postgres / redshift  → schemas
- * - mysql / mariadb / percona → databases
- * - sqlite / duckdb / clickhouse / mongodb / redis / elasticsearch / ... → flat
- */
-export function inferFamily(dbType: string): CatalogFamily {
-	switch (dbType.toLowerCase()) {
-		case "postgres": case "postgresql": case "psql": case "redshift":
-			return "schemas";
-		case "mysql": case "mariadb": case "percona":
-			return "databases";
-		default:
-			return "flat";
-	}
-}
-
 export function escapeSqlLiteral(value: string): string {
 	return `'${value.replaceAll("'", "''")}'`;
 }
 
-/**
- * 列出 schemas（schemas family）——通过 information_schema.schemata
- */
 export function listSchemasSql(): string {
 	return "SELECT schema_name AS name FROM information_schema.schemata ORDER BY schema_name";
 }
 
-/**
- * 列出 databases（databases family）
- */
 export function listDatabasesSql(): string {
 	return "SELECT schema_name AS name FROM information_schema.schemata ORDER BY schema_name";
 }
 
-/**
- * 过滤系统对象
- */
 export function filterSystemNames(family: CatalogFamily, names: string[]): string[] {
 	const system = family === "schemas" ? SCHEMA_SYSTEM : DATABASE_SYSTEM;
 	const kept = names.filter((n) => {
@@ -76,9 +48,6 @@ export function filterSystemNames(family: CatalogFamily, names: string[]): strin
 	return kept;
 }
 
-/**
- * 列出指定 scope 下的表（information_schema.tables）
- */
 export function listTablesInScopeSql(family: CatalogFamily, scope: CatalogScope): string {
 	if (family === "schemas" && scope.schema) {
 		const s = escapeSqlLiteral(scope.schema);
@@ -88,12 +57,12 @@ export function listTablesInScopeSql(family: CatalogFamily, scope: CatalogScope)
 		const d = escapeSqlLiteral(scope.database);
 		return `SELECT table_name AS name, table_type FROM information_schema.tables WHERE table_schema = ${d} ORDER BY table_name`;
 	}
-	// flat: 不限制 schema
 	return "SELECT table_name AS name, table_type FROM information_schema.tables ORDER BY table_name";
 }
 
 /**
- * 表级子对象 introspection SQL（索引/约束/触发器/FK/分区）
+ * 表级子对象 introspection SQL（索引/约束/触发器/FK/分区）。
+ * flat family 各引擎系统表差异大，返回 null 表示该引擎暂不支持。
  */
 export function tableObjectSql(
 	family: CatalogFamily,
@@ -141,6 +110,5 @@ export function tableObjectSql(
 		return null;
 	}
 
-	// flat: 各引擎系统表差异太大，不枚举
 	return null;
 }

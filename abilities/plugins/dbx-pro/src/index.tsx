@@ -1,18 +1,14 @@
-import "./style.css";
-import { definePlugin, type PluginCommandApi } from "@astravia-org/plugin-sdk";
-import { DbxProPanel } from "./DbxProPanel";
-
 /**
- * 把宿主的 PluginCommandApi 存到模块级变量——React 组件通过 getCommand() 拿到。
- * 这和 plugin-workbench 的 setWorkbenchRuntime 是同一个模式。
+ * dbx-pro 插件装配入口 — 只负责 activate + registerActivityTab。
+ *
+ * 业务逻辑全部在 features/ 和 domain/ 下，主面板在
+ * features/main-panel/components/dbx-pro-panel.tsx。
  */
-let _command: PluginCommandApi | null = null;
 
-export function setCommand(c: PluginCommandApi) { _command = c; }
-export function getCommand(): PluginCommandApi {
-	if (!_command) throw new Error("dbx-pro plugin not activated yet");
-	return _command;
-}
+import "./style.css";
+import { definePlugin } from "@astravia-org/plugin-sdk";
+import { setCommand } from "./features/main-panel/components/dbx-pro-panel";
+import { DbxProPanel } from "./features/main-panel/components/dbx-pro-panel";
 
 export default definePlugin({
 	activate(ctx) {
