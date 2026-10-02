@@ -89,6 +89,45 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
     }
     writeJson(catalogPath, catalog);
   }
+  // ====== SHA 兜底修复 ======
+  // 遍历 marketplace.json 里所有 plugin releases（包括那些没重新 build 的），
+  // 从 GitHub Release 下载真实 artifact 算 SHA，覆写 marketplace.json。
+  // 根治"有人手动覆盖 GitHub Release artifact 导致 SHA mismatch"的问题。
+  let shaFixed = 0;
+  const allPluginRecords = catalog.abilities.flatMap(entry => {
+    const records = [];
+    if (entry.type === 'plugin' && entry.releases) records.push({ owner: entry.slug, record: entry.releases[0] });
+    if (entry.type === 'bundle') {
+      for (const member of entry.config?.members ?? []) {
+        if (member.type === 'plugin' && member.releases) records.push({ owner: `${entry.slug}.${member.slug}`, record: member.releases[0], slug: member.slug });
+      }
+    }
+    return records;
+  });
+  for (const { owner, record, slug } of allPluginRecords) {
+    const url = record?.artifact?.url;
+    if (!url) continue;
+    const filename = url.split('/').pop();
+    const realSlug = slug ?? owner;
+    const tag = `plugin-${realSlug}`;
+    const tmpDir = mkdtempSync(join(tmpdir(), 'astravia-sha-fix-'));
+    try {
+      gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', tmpDir);
+      const realSha = digest(readFileSync(join(tmpDir, filename)));
+      if (realSha !== record.artifact.sha256) {
+        console.error(`[sha-fix] ${owner}: marketplace.json=${record.artifact.sha256.slice(0,16)}... → GitHub=${realSha.slice(0,16)}... 覆写`);
+        record.artifact.sha256 = realSha;
+        shaFixed++;
+      }
+    } catch (e) {
+      console.error(`[sha-fix] ${owner}: 下载失败 ${e.message}`);
+    } finally { rmSync(tmpDir, { recursive: true, force: true }); }
+  }
+  if (shaFixed > 0) {
+    writeJson(catalogPath, catalog);
+    console.error(`[sha-fix] 修复了 ${shaFixed} 个 SHA mismatch，已覆写 marketplace.json`);
+  }
+
   // Check the public/authenticated download paths before making the index discoverable.
   await verify(directory, true);
   const site = join(directory, 'site');
