@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "web-element-picker",
-  "version": "0.0.7",
+  "version": "0.3.6",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",

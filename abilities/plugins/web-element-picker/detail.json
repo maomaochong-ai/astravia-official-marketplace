@@ -1,26 +1,30 @@
-[
-  {
-    "type": "heading",
-    "level": 2,
-    "text": "Web Element Picker"
-  },
-  {
-    "type": "paragraph",
-    "text": "Open any webpage inside Astravia, click to pick elements, and generate structured context — CSS selectors, XPath, semantic paths, React component chains. Copy instantly or send straight to the AI for code changes."
-  },
-  {
-    "type": "heading",
-    "level": 3,
-    "text": "What it does"
-  },
-  {
-    "type": "list",
-    "items": [
-      "Click / Shift-click / drag-marquee to select",
-      "Keyboard navigation (arrows, undo, pause)",
-      "Structured context: CSS selector, XPath, semantic path, React chain, visible text",
-      "Clone mode (Sharingan) for full DOM + computed styles + fonts + animations report",
-      "One-click send to AI conversation with automatic prompt injection"
-    ]
-  }
-]
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Web tooling",
+      "title": "Pick any element, get structured context",
+      "description": "Open any webpage inside Astravia, click to pick elements, and generate structured context — CSS selectors, XPath, semantic paths and React component chains. Copy instantly or send straight to the AI.",
+      "badges": ["Click to pick", "Structured context", "Send to AI"]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        { "title": "Precise selection", "description": "Click, Shift-click or drag a marquee to select elements." },
+        { "title": "Keyboard navigation", "description": "Move with arrow keys, undo selections, pause picking." },
+        { "title": "Structured context", "description": "CSS selector, XPath, semantic path, React chain and visible text." },
+        { "title": "Clone mode", "description": "Export full DOM plus computed styles, fonts and animations." },
+        { "title": "Send to AI", "description": "Inject the picked context into the AI conversation in one click." }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        { "title": "Open a webpage", "description": "Load any URL inside the Astravia browser." },
+        { "title": "Pick elements", "description": "Click, Shift-click or drag-marquee the elements you need." },
+        { "title": "Copy or send", "description": "Copy the generated context, or send it to the AI for code changes." }
+      ]
+    }
+  ]
+}

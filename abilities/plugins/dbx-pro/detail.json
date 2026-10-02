@@ -1,16 +1,36 @@
 {
+  "schemaVersion": 1,
   "blocks": [
-    { "type": "h1", "text": "dbx-pro 数据库工作台" },
-    { "type": "p",  "text": "通过 dbx CLI 直连 PostgreSQL、MySQL、MongoDB、ClickHouse 等 60+ 种数据库。" },
-    { "type": "h2", "text": "核心功能" },
-    { "type": "ul",  "items": [
-      "连接管理：从 dbx 桌面应用同步连接，或手动添加",
-      "SQL 编辑器 + 结果表格：类 IDE 的查询体验",
-      "表浏览器：Schema 浏览、字段描述、采样预览",
-      "安全闸：生产环境默认阻断写入和 DDL",
-      "MongoDB 支持：legacy shell 语法 + 写入安全策略"
-    ] },
-    { "type": "h2", "text": "前置要求" },
-    { "type": "p",  "text": "需要系统已安装 dbx CLI（brew install dbx）或 dbx 桌面应用。" }
+    {
+      "type": "hero",
+      "eyebrow": "Database workbench",
+      "title": "dbx-pro — query 60+ databases from Astravia",
+      "description": "Connect through the dbx CLI to PostgreSQL, MySQL, MongoDB, ClickHouse and 60+ more. Manage connections, write SQL, browse schemas, and keep production writes behind a safety gate.",
+      "badges": ["60+ databases", "SQL editor", "Production safety gate"]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        { "title": "Connection manager", "description": "Sync connections from DBX Desktop or add them manually." },
+        { "title": "SQL editor + result grid", "description": "IDE-style editing with multi-tab queries and inline-editable results." },
+        { "title": "Table browser", "description": "Explore schemas, describe columns, and preview sample rows." },
+        { "title": "Safety gates", "description": "Writes and DDL are blocked by default for production databases." },
+        { "title": "MongoDB support", "description": "Legacy shell syntax plus write-safety policies." },
+        { "title": "Send to AI", "description": "Right-click a table to inject structured context into the AI conversation." }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        { "title": "Install the dbx CLI", "description": "Run brew install dbx, or use the DBX Desktop app." },
+        { "title": "Add a connection", "description": "Sync from DBX Desktop or enter the connection details manually." },
+        { "title": "Run a query", "description": "Open the dbx-pro activity tab and press ⌘/Ctrl+Enter to execute." }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "Writes and DDL are blocked for databases detected as production. Enable them explicitly per connection when you really need to."
+    }
   ]
 }
