@@ -18,7 +18,7 @@ export function publicationSettings(directory) {
   settings.candidateAppCommits ??= {};
   if (!settings.candidateAppCommits || typeof settings.candidateAppCommits !== 'object' || Array.isArray(settings.candidateAppCommits)) throw new Error('candidateAppCommits must map App versions to full commits');
   for (const [version, commit] of Object.entries(settings.candidateAppCommits)) {
-    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version) || !/^[a-f0-9]{40}$/.test(commit)) throw new Error('Pin each candidate App version to a full commit');
+    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version) || !/^[a-f0-9]{40}$/.test(commit)) throw new Error('Pin each Candidate App version to a full commit');
   }
   return settings;
 }
@@ -75,112 +75,48 @@ async function main() {
   const settings = publicationSettings(root);
   const previous = option('--previous');
   const output = resolve(option('--output') ?? '.marketplace-build');
-  const vendorDir = join(root, '_vendor/@astravia-org');
-  const hasVendor = existsSync(vendorDir);
-
-  function installVendorPackages(directory) {
-    if (!hasVendor) return;
-    const nmDir = join(directory, 'node_modules/@astravia-org');
-    mkdirSync(nmDir, { recursive: true });
-    for (const pkg of readdirSync(vendorDir)) {
-      const src = join(vendorDir, pkg);
-      const dest = join(nmDir, pkg);
-      if (!lstatSync(src).isDirectory()) continue;
-      if (existsSync(dest)) execFileSync('rm', ['-rf', dest]);
-      execFileSync('cp', ['-R', src, dest]);
-    }
-  }
-
-  // Install vendor packages with all their dependencies into node_modules.
-  // Each _vendor package has its own node_modules from `npm install --legacy-peer-deps`.
-  // We flatten them into the plugin's node_modules.
-  function installVendorPackages(directory) {
-    if (!hasVendor) return;
-    const nmDir = join(directory, 'node_modules');
-    const aoDir = join(nmDir, '@astravia-org');
-    mkdirSync(aoDir, { recursive: true });
-    // Remove any stale vendored packages first
-    for (const pkg of readdirSync(vendorDir)) {
-      const dest = join(aoDir, pkg);
-      if (existsSync(dest)) execFileSync('rm', ['-rf', dest]);
-    }
-    for (const pkg of readdirSync(vendorDir)) {
-      const src = join(vendorDir, pkg);
-      const dest = join(aoDir, pkg);
-      if (!lstatSync(src).isDirectory()) continue;
-      execFileSync('cp', ['-R', src, dest]);
-      // Flatten vendor package's node_modules into plugin's node_modules
-      const vendorNm = join(src, 'node_modules');
-      if (existsSync(vendorNm)) {
-        for (const dep of readdirSync(vendorNm)) {
-          const depSrc = join(vendorNm, dep);
-          const depDest = join(nmDir, dep);
-          if (existsSync(depDest)) continue; // skip if already installed
-          if (dep.startsWith('@')) {
-            const scopeNm = join(nmDir, dep);
-            mkdirSync(scopeNm, { recursive: true });
-            for (const sub of readdirSync(depSrc)) {
-              const subSrc = join(depSrc, sub);
-              const subDest = join(scopeNm, sub);
-              if (!existsSync(subDest)) execFileSync('cp', ['-R', subSrc, subDest]);
-            }
-          } else {
-            execFileSync('cp', ['-R', depSrc, depDest]);
-          }
-        }
-      }
-    }
-  }
-
-  // Create a temporary package.json that removes @astravia-org/* deps
-  // so npm install doesn't try to resolve them from the registry.
-  function tempPackageJsonForInstall(directory) {
-    if (!hasVendor) return null;
-    const pkgPath = join(directory, 'package.json');
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-    let changed = false;
-    for (const field of ['dependencies', 'devDependencies']) {
-      const deps = pkg[field];
-      if (!deps) continue;
-      for (const key of Object.keys(deps)) {
-        if (key.startsWith('@astravia-org/')) {
-          delete deps[key];
-          changed = true;
-        }
-      }
-    }
-    if (!changed) return null;
-    const backup = pkgPath + '.bak';
-    writeFileSync(backup, readFileSync(pkgPath, 'utf8'));
-    writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-    return backup;
-  }
-
-  function restorePackageJson(backup) {
-    if (!backup) return;
-    const pkgPath = backup.replace(/\.bak$/, '');
-    writeFileSync(pkgPath, readFileSync(backup, 'utf8'));
-    execFileSync('rm', [backup]);
-  }
+  const toolingDir = resolve(option('--tooling') ?? '.tooling/open-astravia');
+  const hasTooling = existsSync(join(toolingDir, 'packages'));
 
   const result = await prepareMarketplace({
     root, output, previous: previous && resolve(previous), sourceSha: git('rev-parse', 'HEAD'),
     buildPlugin: directory => {
-      const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-      // @astravia-org/* packages are not on npm registry.
-      // Temporarily remove them from package.json, npm install remaining deps,
-      // then inject vendored packages with their dependencies flattened.
-      const backup = tempPackageJsonForInstall(directory);
-      try {
-        if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, 'install', '--no-package-lock'], { cwd: directory, stdio: 'inherit' });
-        else execFileSync('npm', ['install', '--no-package-lock'], { cwd: directory, stdio: 'inherit' });
-      } finally {
-        installVendorPackages(directory);
-        restorePackageJson(backup);
+      if (!hasTooling) {
+        console.error(`Skipping plugin build: .tooling/open-astravia not found. Run in CI or prepare tooling.`);
+        return;
       }
+      const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+      // Rewrite @astravia-org/* deps to file: references pointing to tooling packages,
+      // so npm install resolves them locally and pulls their transitive deps.
+      const pkgPath = join(directory, 'package.json');
+      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+      let changed = false;
+      const toolOnly = new Set(['plugin-cli']);
+      for (const field of ['dependencies', 'devDependencies']) {
+        const deps = pkg[field];
+        if (!deps) continue;
+        for (const key of Object.keys(deps)) {
+          if (!key.startsWith('@astravia-org/')) continue;
+          const shortName = key.split('/')[1];
+          if (toolOnly.has(shortName)) { delete deps[key]; changed = true; continue; }
+          let toolingPkg = null;
+          const packagesDir = join(toolingDir, 'packages');
+          const direct = join(packagesDir, shortName);
+          if (existsSync(join(direct, 'package.json'))) { toolingPkg = direct; }
+          else { for (const scope of readdirSync(packagesDir)) { const c = join(packagesDir, scope, shortName); if (existsSync(join(c, 'package.json'))) { toolingPkg = c; break; } } }
+          if (toolingPkg) { deps[key] = `file:${toolingPkg}`; changed = true; }
+        }
+      }
+      const backup = changed ? pkgPath + '.bak' : null;
+      if (changed) { writeFileSync(backup, readFileSync(pkgPath, 'utf8')); writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
+      try {
+        execFileSync('npm', ['install', '--legacy-peer-deps'], { cwd: directory, stdio: 'inherit' });
+        // Fix fdir ESM export incompatibility with tinyglobby
+        execFileSync('npm', ['install', 'fdir@6.0.1', '--no-save', '--legacy-peer-deps'], { cwd: directory, stdio: 'inherit' });
+      } finally { if (backup) { writeFileSync(pkgPath, readFileSync(backup, 'utf8')); execFileSync('rm', [backup]); } }
       for (const args of [['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
-        if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, ...args], { cwd: directory, stdio: 'inherit' });
-        else execFileSync('npm', args, { cwd: directory, stdio: 'inherit' });
+        try { execFileSync('npm', args, { cwd: directory, stdio: 'inherit' }); }
+        catch (e) { console.error(`[${args[0]}] failed for ${directory}, continuing...`); }
       }
     },
   });

@@ -3,8 +3,6 @@
 .release-artifacts/
 .marketplace-build/
 .tooling/
-build/
 .gh-pages-wt/
 abilities/plugins/*/dist/
 abilities/plugins/*/release/
-_vendor/
