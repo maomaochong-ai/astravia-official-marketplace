@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, unlinkSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { prepareMarketplace, readJson, sourceCatalog, writeJson, digest, inside, entries, missingPackagedResources } from './static-marketplace.mjs';
 
@@ -104,45 +104,47 @@ async function main() {
         if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, ...args], { cwd: directory, stdio: 'inherit' });
         else execFileSync('npm', args, { cwd: directory, stdio: 'inherit' });
       };
-      // Dev 环境准备：@astravia-org/* 未 publish 到 npm，用 npm link 让插件能解析本地 tooling 包。
-      // CI 环境 publish 后删掉这一段，直接 npm ci（与上游对齐）。
       const toolingDir = resolve(option('--tooling') ?? '.tooling/open-astravia');
-      console.log(`[buildPlugin] ${directory.split('/').pop()} toolingDir=${toolingDir} packages_exists=${existsSync(join(toolingDir, 'packages'))}`);
-      if (existsSync(join(toolingDir, 'packages'))) {
-        // 扫描插件 package.json 的所有 @astravia-org/* 依赖
-        const pkg = readJson(join(directory, 'package.json'));
+      const dev = existsSync(join(toolingDir, 'packages'));
+      if (!dev) {
+        // CI 环境：@astravia-org/* 已 publish 到 npm，直接 npm ci（上游标准流程）
+        npmRun(['ci', '--no-audit', '--no-fund']);
+      } else {
+        // 开发环境：@astravia-org/* 未 publish 到 npm，临时生成 lockfile 指 tooling 本地，
+        // 还原 package.json 后用 npm install（宽容模式，只看 lockfile 的 resolved）。
+        const pkgPath = join(directory, 'package.json');
+        const pkgOrig = readFileSync(pkgPath, 'utf8');
+        const pkg = JSON.parse(pkgOrig);
         const needed = new Set([
           ...Object.keys(pkg.dependencies ?? {}),
           ...Object.keys(pkg.devDependencies ?? {}),
         ].filter(k => k.startsWith('@astravia-org/')));
-        if (needed.size > 0) {
-          // 在 tooling 里递归查找每个需要的包目录
-          const pkgIndex = walkToolingPkgs(toolingDir);
-          console.log(`[buildPlugin] needed=[${[...needed].join(',')}] pkgIndex=${pkgIndex.size}pkgs`);
-          // 1. 逐个全局 link（独立，不会相互干扰）
-          for (const name of needed) {
-            const dir = pkgIndex.get(name);
-            if (dir) {
-              try { execFileSync('npm', ['link'], { cwd: dir, stdio: 'pipe' }); }
-              catch (e) { console.error(`[buildPlugin] global link ${name} FAIL: ${e.stderr?.toString().trim().split('\n').slice(-2).join(' | ')}`); }
-            } else {
-              console.error(`[buildPlugin] SKIP ${name} — not found in tooling pkgIndex`);
+        const lockPath = join(directory, 'package-lock.json');
+        const lockExisted = existsSync(lockPath);
+        try {
+          if (needed.size > 0) {
+            const pkgIndex = walkToolingPkgs(toolingDir);
+            // 1. 临时把 @astravia-org/* 改成 file: 路径
+            for (const field of ['dependencies', 'devDependencies']) {
+              for (const name of needed) {
+                if (pkg[field]?.[name] && pkgIndex.has(name)) {
+                  pkg[field][name] = 'file:' + relative(directory, pkgIndex.get(name));
+                }
+              }
             }
+            writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+            // 2. 生成 lockfile（resolved 指向本地路径）
+            execFileSync('npm', ['install', '--package-lock-only', '--no-audit', '--no-fund', '--legacy-peer-deps'], { cwd: directory, stdio: 'pipe' });
+            // 3. 还原 package.json（semver 声明不变 ✅）
+            writeFileSync(pkgPath, pkgOrig);
           }
-          // 2. 一次性本地 link（npm link --local 会读 package.json 检查所有依赖，
-          //    必须把所有需要的包名一起传，否则会因其他 @astravia-org/* 未满足而整体失败）
-          const localNames = [...needed].filter(n => pkgIndex.has(n));
-          if (localNames.length > 0) {
-            try { execFileSync('npm', ['link', '--local', ...localNames], { cwd: directory, stdio: 'pipe' }); }
-            catch (e) { console.error(`[buildPlugin] local link FAIL (${localNames.join(',')}): ${e.stderr?.toString().trim().split('\n').slice(-3).join(' | ')}`); }
-          }
-          // 验证 link 是否生效
-          const verifyLinks = localNames.map(n => join(directory, 'node_modules', ...n.split('/')));
-          const allOk = verifyLinks.every(p => existsSync(p));
-          console.log(`[buildPlugin] links verified: ${allOk} (${verifyLinks.filter(p=>existsSync(p)).length}/${verifyLinks.length})`);
+          // 4. npm install（宽容模式，lockfile 的 resolved 指向本地就从本地装）
+          npmRun(['install', '--no-audit', '--no-fund', '--legacy-peer-deps']);
+        } finally {
+          // 5. 清掉临时 lockfile（git 不被污染）
+          if (!lockExisted) { try { unlinkSync(lockPath); } catch {} }
         }
       }
-      npmRun(['install', '--no-audit', '--no-fund', '--legacy-peer-deps']);
       for (const args of [['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
         try { npmRun(args); }
         catch (e) { console.error(`[${args[0]}] failed for ${directory}, continuing...`); }
