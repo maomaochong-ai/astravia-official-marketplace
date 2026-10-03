@@ -60,42 +60,113 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
   if (remote !== publication.previousCommit) throw new Error('Distribution advanced; rebuild against the latest gh-pages');
   if (!publication.changed) return { published: false };
   await verify(directory);
+
+  // ========== Step 1: 处理 publication.packages ==========
+  // 这些 plugin 本地肯定有 artifact（prepareMarketplace 里 stage-plugin-release.py 打包的）
+  // 方向：本地 artifact → SHA → marketplace.json / GitHub Release
   for (const item of publication.packages) {
     if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(item.slug) || item.tag !== `plugin-${item.slug}` || item.filename !== `${item.slug}-${item.release.version}.astraviapkg`) throw new Error('Invalid publication package');
     const archive = inside(join(directory, 'artifacts'), item.filename);
-    assertExistingRelease(item, readFileSync(archive));
+    const localBytes = readFileSync(archive);
+    const localSha = digest(localBytes);
+    // 防御性保证：marketplace.json SHA 必须跟本地 artifact 一致
+    if (localSha !== item.release.artifact.sha256) throw new Error(`${item.slug}: marketplace.json SHA 与本地 artifact 不一致，应先修复构建`);
+
+    // 确保 GitHub Release 存在
     let release = releaseByTag(gh, repository, item.tag);
     if (!release) {
       gh('release', 'create', item.tag, archive, '--repo', repository, '--draft', '--target', publication.sourceSha, '--title', `${item.slug} plugin packages`, '--notes', `Append-only Astravia plugin packages for ${item.slug}. The first package was built from ${publication.sourceSha}; version metadata and SHA-256 digests are recorded in the gh-pages marketplace index.`);
       release = releaseByTag(gh, repository, item.tag);
       if (!release) throw new Error(`Created draft release is unavailable: ${item.tag}`);
     }
-    const asset = release.assets.find(x => x.name === item.filename);
-    if (asset) {
-      // GitHub 上已有 asset — 验证 SHA，不一致则 delete + upload 覆盖
-      const probe = mkdtempSync(join(tmpdir(), 'astravia-release-probe-'));
-      let shaMismatch = false;
-      try {
-        gh('release', 'download', item.tag, '--repo', repository, '--pattern', item.filename, '--dir', probe);
-        if (digest(readFileSync(join(probe, item.filename))) !== item.release.artifact.sha256) shaMismatch = true;
-      } finally { rmSync(probe, { recursive: true, force: true }); }
-      if (shaMismatch) {
-        console.error(`[fix] ${item.slug}: GitHub asset SHA mismatch → delete + re-upload`);
-        gh('release', 'delete-asset', String(asset.id), '--repo', repository);
-        gh('release', 'upload', item.tag, archive, '--repo', repository);
-      }
-    } else {
-      if (release.draft && release.target_commitish !== publication.sourceSha) throw new Error(`Incomplete existing release: ${item.tag}`);
-      gh('release', 'upload', item.tag, archive, '--repo', repository);
+
+    // 本地为准：delete + upload 覆盖 GitHub 上同名 asset（不管之前有没有、SHA 一不一样）
+    const existingAsset = release.assets.find(x => x.name === item.filename);
+    if (existingAsset) {
+      gh('release', 'delete-asset', String(existingAsset.id), '--repo', repository);
     }
-    // 最终验证：从 GitHub 下载确认 SHA 一致
-    const download = mkdtempSync(join(tmpdir(), 'astravia-release-verify-'));
+    gh('release', 'upload', item.tag, archive, '--repo', repository);
+
+    // verify: 从 GitHub 下载确认上传成功
+    const download = mkdtempSync(join(tmpdir(), 'astravia-verify-'));
     try {
       gh('release', 'download', item.tag, '--repo', repository, '--pattern', item.filename, '--dir', download);
       assertExistingRelease(item, readFileSync(join(download, item.filename)));
     } finally { rmSync(download, { recursive: true, force: true }); }
     if (release.draft) gh('release', 'edit', item.tag, '--repo', repository, '--draft=false', '--latest=false');
   }
+
+  // ========== Step 2: 遍历 marketplace.json 所有 plugin ==========
+  // - 已在 packages 里的：上面处理过了，跳过
+  // - 不在 packages 里的（旧版本 plugin，本地可能没有 artifact）：
+  //   本地有 → delete+upload 覆盖 GitHub Release（同 Step 1）
+  //   本地没有 → 从 GitHub download verify（不改 marketplace.json，只验证没被篡改）
+  const handledPackages = new Set(publication.packages.map(p => p.slug));
+  const artifactDir = join(directory, 'artifacts');
+  const allPluginRecords = catalog.abilities.flatMap(entry => {
+    const records = [];
+    if (entry.type === 'plugin') {
+      for (const record of entry.releases ?? []) {
+        records.push({ owner: entry.slug, record, slug: entry.slug });
+      }
+    }
+    if (entry.type === 'bundle') {
+      for (const member of entry.config?.members ?? []) {
+        if (member.type === 'plugin') {
+          for (const record of member.releases ?? []) {
+            records.push({ owner: `${entry.slug}.${member.slug}`, record, slug: member.slug });
+          }
+        }
+      }
+    }
+    return records;
+  });
+
+  for (const { owner, record, slug } of allPluginRecords) {
+    const url = record?.artifact?.url;
+    if (!url) continue;
+    const filename = url.split('/').pop();
+    const tag = `plugin-${slug}`;
+
+    if (handledPackages.has(slug)) continue; // Step 1 已处理
+
+    const localPath = join(artifactDir, filename);
+    if (existsSync(localPath)) {
+      // 本地有 artifact 但没进 packages → delete+upload 覆盖 GitHub Release
+      const localBytes = readFileSync(localPath);
+      const localSha = digest(localBytes);
+      if (localSha !== record.artifact.sha256) {
+        console.error(`[fix] ${owner}: 本地 artifact SHA=${localSha.slice(0, 16)}... 覆写 marketplace.json=${record.artifact.sha256.slice(0, 16)}...`);
+        record.artifact.sha256 = localSha;
+      }
+      let release = releaseByTag(gh, repository, tag);
+      if (!release) {
+        gh('release', 'create', tag, localPath, '--repo', repository, '--draft', '--target', publication.sourceSha, '--title', `${slug} plugin packages`, '--notes', `Append-only Astravia plugin packages for ${slug}.`);
+        release = releaseByTag(gh, repository, tag);
+        if (!release) throw new Error(`Created draft release is unavailable: ${tag}`);
+      }
+      const existing = release.assets.find(x => x.name === filename);
+      if (existing) gh('release', 'delete-asset', String(existing.id), '--repo', repository);
+      gh('release', 'upload', tag, localPath, '--repo', repository);
+      const verifyTmp = mkdtempSync(join(tmpdir(), 'astravia-pkg-verify-'));
+      try {
+        gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', verifyTmp);
+        if (digest(readFileSync(join(verifyTmp, filename))) !== record.artifact.sha256) throw new Error(`${owner}: 上传后 GitHub SHA 与 marketplace.json 不一致`);
+      } finally { rmSync(verifyTmp, { recursive: true, force: true }); }
+      if (release.draft) gh('release', 'edit', tag, '--repo', repository, '--draft=false', '--latest=false');
+    } else {
+      // 本地没有 artifact → 从 GitHub download verify（不改 marketplace.json，只确认没被篡改）
+      const verifyTmp = mkdtempSync(join(tmpdir(), 'astravia-prev-verify-'));
+      try {
+        gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', verifyTmp);
+        const remoteSha = digest(readFileSync(join(verifyTmp, filename)));
+        if (remoteSha !== record.artifact.sha256) {
+          throw new Error(`${owner}: GitHub artifact SHA mismatch (GitHub=${remoteSha.slice(0, 16)}... marketplace=${record.artifact.sha256.slice(0, 16)}...) — 本地无 artifact，无法自动修复，需重新构建`);
+        }
+      } finally { rmSync(verifyTmp, { recursive: true, force: true }); }
+    }
+  }
+  writeJson(catalogPath, catalog);
   // Private repositories use authenticated asset API URLs; public repositories keep readable download URLs.
   const isPrivate = JSON.parse(gh('api', `repos/${repository}`)).private;
   if (isPrivate) {
