@@ -20,6 +20,9 @@ import { SqlEditor } from "./sql-editor";
 import { ResultGrid } from "./result-grid";
 import { TableInspector } from "./table-inspector";
 import { ConnectionForm } from "./connection-form";
+import { SettingsPanel } from "./settings-panel";
+import { HistoryPanel } from "../../query-history/components/history-panel";
+import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 
 // ─── 拖拽分隔条 ───────────────────────────────────────────
 
@@ -126,13 +129,11 @@ function SplitLayout({ children, onDragStart }: { children: [JSX.Element, JSX.El
 
 // ─── 顶栏 ─────────────────────────────────────────────────
 
-function TopBar({ onOpenConnectionForm }: { onOpenConnectionForm: () => void }): JSX.Element {
-	const { state, refreshConnections } = useWorkbench();
+function TopBar({ onOpenConnectionForm, onOpenSettings }: { onOpenConnectionForm: () => void; onOpenSettings: () => void }): JSX.Element {
+	const { state, refreshConnections, history, rightView, setRightView } = useWorkbench();
 	const activeConn = state.activeConnectionName
 		? state.connections.find((c) => c.name === state.activeConnectionName)
 		: null;
-	// activeResult 类型检查通过 tsc --noUnusedLocals 前暂未消费
-	state.tabs.find((t) => t.id === state.activeTabId)?.result;
 
 	return (
 		<header className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
@@ -169,11 +170,31 @@ function TopBar({ onOpenConnectionForm }: { onOpenConnectionForm: () => void }):
 			<div className="flex shrink-0 items-center gap-1">
 				<button
 					type="button"
+					onClick={() => setRightView(rightView === "history" ? "inspector" : "history")}
+					title="查询历史"
+					aria-expanded={rightView === "history"}
+					className={`flex h-7 items-center gap-1 rounded px-2 text-[11px] ${
+						rightView === "history" ? "bg-blue-500/15 text-blue-300" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+					}`}
+				>
+					<span className="icon-[lucide--history] h-3.5 w-3.5" />
+					{history.length > 0 && <span className="text-[10px]">{history.length}</span>}
+				</button>
+				<button
+					type="button"
 					onClick={() => { void refreshConnections(); }}
 					title="刷新"
 					className="flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
 				>
 					<span className="icon-[lucide--refresh-cw] h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					onClick={() => onOpenSettings()}
+					title="工作台设置"
+					className="flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+				>
+					<span className="icon-[lucide--settings] h-3.5 w-3.5" />
 				</button>
 				<button
 					type="button"
@@ -211,6 +232,8 @@ function ResultPanel(): JSX.Element {
 							columns={result.columns}
 							rows={result.rows}
 							totalRows={result.rowCount}
+							connectionName={activeTab?.connectionName ?? undefined}
+							sql={activeTab?.sql}
 						/>
 					) : (
 						<div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
@@ -294,6 +317,33 @@ function SqlEditorWorkspace(): JSX.Element {
 	);
 }
 
+// ─── 右栏：结构 / 历史 切换 ──────────────────────────────
+
+function RightPanel(): JSX.Element {
+	const {
+		settings,
+		history,
+		rightView,
+		loadHistoryIntoEditor,
+		rerunHistoryEntry,
+		removeHistory,
+		clearAllHistory,
+	} = useWorkbench();
+	if (rightView === "history") {
+		return (
+			<HistoryPanel
+				entries={history}
+				limit={settings.historyLimit}
+				onLoad={loadHistoryIntoEditor}
+				onRerun={(entry) => void rerunHistoryEntry(entry)}
+				onDelete={(id) => void removeHistory(id)}
+				onClear={() => void clearAllHistory()}
+			/>
+		);
+	}
+	return <TableInspector />;
+}
+
 // ─── 主面板（Provider 外层） ──────────────────────────────
 
 export function DatabaseWorkspace(): JSX.Element {
@@ -306,22 +356,41 @@ export function DatabaseWorkspace(): JSX.Element {
 
 function DatabaseWorkspaceInner(): JSX.Element {
 	const [connectionFormOpen, setConnectionFormOpen] = useState(false);
+	const [settingsOpen, setSettingsOpen] = useState(false);
+	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections } = useWorkbench();
 
 	return (
 		<div className="relative flex h-full w-full min-h-0 flex-col bg-background text-zinc-200">
-			<TopBar onOpenConnectionForm={() => setConnectionFormOpen(true)} />
+			<TopBar
+				onOpenConnectionForm={() => setConnectionFormOpen(true)}
+				onOpenSettings={() => setSettingsOpen(true)}
+			/>
 			<SplitLayout>
 				{[
-					<ConnectionTree key="left" />,
+					<ConnectionTree key="left" onAddConnection={() => setConnectionFormOpen(true)} />,
 					<SqlEditorWorkspace key="mid" />,
-					<TableInspector key="right" />,
+					<RightPanel key="right" />,
 				]}
 			</SplitLayout>
 
 			{connectionFormOpen && (
 				<ConnectionForm
-					onChange={() => { /* 内部已调 refreshConnections */ }}
+					onChange={() => { void refreshConnections(); }}
 					onCancel={() => setConnectionFormOpen(false)}
+				/>
+			)}
+
+			{settingsOpen && (
+				<SettingsPanel
+					settings={settings}
+					onChange={(next) => void updateSettings(next)}
+					onReset={() => void updateSettings({ ...DEFAULT_SETTINGS })}
+					onClearHistory={() => void clearAllHistory()}
+					onClose={() => setSettingsOpen(false)}
+					onWipeData={() => {
+						setSettingsOpen(false);
+						void wipeAllData();
+					}}
 				/>
 			)}
 		</div>

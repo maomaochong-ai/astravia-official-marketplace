@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.17",
+  "version": "0.0.19",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -19,8 +19,16 @@
     "agent.command.run",
     "storage.read",
     "storage.write",
-    "shell.openExternal"
+    "shell.openExternal",
+    "network.fetch"
   ],
+  "network": {
+    "allowedHosts": [
+      "github.com",
+      "release-assets.githubusercontent.com",
+      "objects.githubusercontent.com"
+    ]
+  },
   "providers": {
     "services": [
       {
@@ -28,50 +36,50 @@
         "runtime": {
           "kind": "host-node",
           "version": "0.0.16",
-          "entry": "service/main.mjs",
+          "entry": "server/main.mjs",
           "platforms": {
             "darwin-arm64": {
-              "executable": "service/main.mjs",
+              "executable": "server/bin/dbx-mcp-darwin-arm64",
               "artifacts": [
                 {
-                  "sha256": "394e86f51a38e5275ea0a25043539731abd95d7ab20791c2f0d5e8e1b8903fb6",
+                  "sha256": "5338cb0436b23207c3e4659cfab554643d8e49b518ab1ba7b2e569eb75102cf6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "server/main.mjs"
                 },
                 {
                   "sha256": "7ef5d8cd0affe51caf33ab78263da9e78fb33dfb97264897dba2defd67c3845d",
                   "archive": "file",
-                  "destination": "service/bin/dbx-mcp-darwin-arm64"
+                  "destination": "server/bin/dbx-mcp-darwin-arm64"
                 }
               ]
             },
             "darwin-x64": {
-              "executable": "service/main.mjs",
+              "executable": "server/bin/dbx-mcp-darwin-x64",
               "artifacts": [
                 {
-                  "sha256": "394e86f51a38e5275ea0a25043539731abd95d7ab20791c2f0d5e8e1b8903fb6",
+                  "sha256": "5338cb0436b23207c3e4659cfab554643d8e49b518ab1ba7b2e569eb75102cf6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "server/main.mjs"
                 },
                 {
                   "sha256": "b48f619a4b33c35c3cd90a495cd2b9fb45506ee420de590afa830f50866c3f36",
                   "archive": "file",
-                  "destination": "service/bin/dbx-mcp-darwin-x64"
+                  "destination": "server/bin/dbx-mcp-darwin-x64"
                 }
               ]
             },
             "win32-x64": {
-              "executable": "service/main.mjs",
+              "executable": "server/bin/dbx-mcp-win-x64.exe",
               "artifacts": [
                 {
-                  "sha256": "394e86f51a38e5275ea0a25043539731abd95d7ab20791c2f0d5e8e1b8903fb6",
+                  "sha256": "5338cb0436b23207c3e4659cfab554643d8e49b518ab1ba7b2e569eb75102cf6",
                   "archive": "file",
-                  "destination": "service/main.mjs"
+                  "destination": "server/main.mjs"
                 },
                 {
                   "sha256": "25484f9b5af527dd0af7dde44d9f2a929ad92b2c4cfe654c9460ca7be51950a8",
                   "archive": "file",
-                  "destination": "service/bin/dbx-mcp-win-x64.exe"
+                  "destination": "server/bin/dbx-mcp-win-x64.exe"
                 }
               ]
             }
@@ -97,23 +105,23 @@
         ],
         "templates": [
           {
-            "source": "service/main.mjs",
-            "destination": "service/main.mjs",
+            "source": "server/main.mjs",
+            "destination": "server/main.mjs",
             "mode": "create"
           },
           {
-            "source": "service/bin/dbx-mcp-darwin-arm64",
-            "destination": "service/bin/dbx-mcp-darwin-arm64",
+            "source": "server/bin/dbx-mcp-darwin-arm64",
+            "destination": "server/bin/dbx-mcp-darwin-arm64",
             "mode": "create"
           },
           {
-            "source": "service/bin/dbx-mcp-darwin-x64",
-            "destination": "service/bin/dbx-mcp-darwin-x64",
+            "source": "server/bin/dbx-mcp-darwin-x64",
+            "destination": "server/bin/dbx-mcp-darwin-x64",
             "mode": "create"
           },
           {
-            "source": "service/bin/dbx-mcp-win-x64.exe",
-            "destination": "service/bin/dbx-mcp-win-x64.exe",
+            "source": "server/bin/dbx-mcp-win-x64.exe",
+            "destination": "server/bin/dbx-mcp-win-x64.exe",
             "mode": "create"
           }
         ]

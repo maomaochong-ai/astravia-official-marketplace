@@ -10,6 +10,7 @@
 import { lazy, Suspense, type ComponentType, type ReactElement } from "react";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { setRuntime } from "./runtime-contract";
+import { ensureEngineStarted } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
 import "./style.css";
 
@@ -27,11 +28,10 @@ const DatabaseWorkspace = lazyPanel(async () => ({
 }));
 
 export default definePlugin({
-	activate(ctx) {
+	async activate(ctx) {
 		setRuntime(ctx);
 		// 绑定宿主 service 能力（plugin.json#providers.services → dbx-engine）。
-		// 宿主不提供 services 时绑定 null：engine-client 会报 ENGINE_NOT_READY，
-		// 由查询路由按设置回退本地 sqlite3 CLI。
+		// 宿主不提供 services 时绑定 null：engine-client 会报 ENGINE_NOT_READY。
 		bindEngineServices(((ctx as { services?: unknown }).services ?? null) as EngineServicesApi | null);
 
 		const activityTab = ctx.ui.registerActivityTab({
@@ -41,7 +41,7 @@ export default definePlugin({
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
 					<ellipse cx="12" cy="5" rx="8" ry="3" />
 					<path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
-					<path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
+					<path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v6" />
 				</svg>
 			),
 			component: DatabaseWorkspace,
@@ -49,6 +49,18 @@ export default definePlugin({
 			retention: "pinned",
 			initiallyVisible: true,
 		});
+
+		// 安装并启动引擎 runtime（bridge 内联 + 平台二进制下载校验）。
+		// 失败必须上报，不能静默，否则保存连接时只会得到笼统的 not ready。
+		try {
+			await ensureEngineStarted(ctx);
+		} catch (reason: unknown) {
+			ctx.ui.notify({
+				message: "dbx-pro 引擎服务启动失败",
+				error: reason,
+				variant: "error",
+			});
+		}
 
 		return () => {
 			activityTab.dispose();

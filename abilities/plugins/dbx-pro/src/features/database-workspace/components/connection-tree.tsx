@@ -11,7 +11,12 @@ import { useState, type JSX } from "react";
 import { useWorkbench, type TreeNode } from "./workbench-context";
 import { ConnectionNode } from "./connection-node";
 
-export function ConnectionTree(): JSX.Element {
+interface ConnectionTreeProps {
+	/** 打开「新建连接」表单；未提供时 + 按钮仅刷新。 */
+	onAddConnection?: () => void;
+}
+
+export function ConnectionTree({ onAddConnection }: ConnectionTreeProps = {}): JSX.Element {
 	const { state, refreshConnections } = useWorkbench();
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
@@ -29,10 +34,6 @@ export function ConnectionTree(): JSX.Element {
 	const visibleConnectionNodes = needle
 		? connectionNodes.filter((n) => n.label.toLowerCase().includes(needle))
 		: connectionNodes;
-
-	function handleAddConnection() {
-		void refreshConnections();
-	}
 
 	return (
 		<div className="flex h-full flex-col bg-background">
@@ -81,11 +82,12 @@ export function ConnectionTree(): JSX.Element {
 				</button>
 				<button
 					type="button"
-					onClick={handleAddConnection}
-					title="添加连接（通过连接表单）"
-					className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+					onClick={() => (onAddConnection ? onAddConnection() : void refreshConnections())}
+					title="添加连接"
+					className="flex h-6 items-center gap-1 rounded bg-blue-600/90 px-2 text-[10.5px] font-medium text-white hover:bg-blue-500"
 				>
 					<span className="icon-[lucide--plus] h-3 w-3" />
+					连接
 				</button>
 			</div>
 

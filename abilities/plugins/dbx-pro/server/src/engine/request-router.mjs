@@ -32,8 +32,8 @@ import {
   ok,
 } from "./protocol.mjs";
 import { getDbxMcpClient } from "./dbx-mcp-client.mjs";
-import { maybeBlockWrite, classifyQuery, splitStatements } from "./sql-safety.mjs";
-import { executeDirect, isSqlBlocked, DRIVER_FAMILY } from "./direct-driver.mjs";
+import { classifyQuery } from "./sql-safety.mjs";
+import { executeWrite } from "../write/direct-write.mjs";
 import {
   textOf,
   parseMarkdownTable,
@@ -208,67 +208,48 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         };
       }
 
-      // --- 路径 2：dbx-mcp 返回错误 ---
+      // --- dbx-mcp 返回错误 ---
       const errorText = textOf(result);
       const err = classifyError(errorText);
+      const blocked = err.code === "SQL_BLOCKED" || errorText.includes("SQL_BLOCKED");
 
-      // 触发 direct-driver fallback 的条件：
-      //   dbx-mcp 原生支持 SQLite、PostgreSQL、MySQL 等绝大多数数据库，
-      //   只有硬编码的 SQL_BLOCKED（McpGlobalPolicy 拦截 DDL/DML）才 fallback。
-      //   连接失败、协议错误等其他情况，dbx-mcp 和 direct-driver 都会失败，
-      //   不再盲目 fallback，让真实错误透传给调用方。
-      const conn = body?.connection;
-      const dbType = (conn?.dbType ?? conn?.db_type ?? "").toLowerCase();
-      const supportedByDirect = DRIVER_FAMILY[dbType] != null;
-      const shouldFallback = (err.code === "SQL_BLOCKED" || isSqlBlocked(result)) && supportedByDirect;
-
-      if (conn && dbType && shouldFallback) {
+      // dbx-mcp 只读、拒绝写操作：若调用方显式授权写且确认文本逐字节匹配，
+      // 走自研写驱动绕过（仅写/DDL；读不会到这里）。
+      const connSpec = body?.connection;
+      if (blocked && body?.allowWrite === true && connSpec) {
+        if (body.confirmedWriteSql !== sql) {
+          throw engineError("CONFIRM_MISMATCH", "写确认文本与待执行 SQL 不一致", errorText);
+        }
         try {
-          const direct = await executeDirect({
-            dbType,
-            host: conn.host,
-            port: conn.port,
-            username: conn.username ?? conn.user,
-            password: conn.password,
-            database: conn.database,
-            ssl: conn.ssl,
+          const writeResult = await executeWrite(
+            { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType, name: connectionName },
             sql,
-            timeoutMs,
-          });
-
-          // 直连成功：统一成与 dbx-mcp 兼容的返回格式
-          const rowCount = direct.rows?.length ?? direct.rowCount ?? 0;
-          const truncated = rowLimit > 0 && rowCount > rowLimit;
-          const visibleRows = truncated ? direct.rows.slice(0, rowLimit) : direct.rows;
-
+          );
           return {
             connection: connectionName,
             kind: classified.kind,
             statement_count: classified.statements.length,
-            columns: direct.columns ?? [],
-            rows: visibleRows,
-            row_count: rowCount,
-            truncated,
+            columns: writeResult.columns,
+            rows: writeResult.rows,
+            row_count: writeResult.rows.length,
+            truncated: false,
             row_limit: rowLimit,
-            duration_ms: direct.elapsedMs ?? (now() - started),
-            duration_hint: "direct-driver",
+            duration_ms: now() - started,
+            duration_hint: "self-write",
             raw_text: null,
-            affected_rows: direct.rowCount ?? null,
-            direct_executed: true,
+            affected_rows: writeResult.affectedRows,
+            write_executed: true,
           };
-        } catch (directErr) {
-          // direct-driver 也失败了 — 报告 dbx-mcp 原始错误 + direct-driver 原因
-          const directMsg = directErr?.message ?? String(directErr);
-          const combinedErr = engineError(
-            directErr?.code ?? "DIRECT_DRIVER_ERROR",
-            `dbx-mcp 执行失败 + 直连回退也失败：${directMsg}`,
-            `${errorText}\n--- direct-driver ---\n${directMsg}`,
+        } catch (writeErr) {
+          throw engineError(
+            writeErr.code ?? "WRITE_FAILED",
+            `自研写驱动执行失败: ${writeErr.message}`,
+            errorText,
           );
-          throw combinedErr;
         }
       }
 
-      // 非 direct-driver 支持的错误 — 原样返回
+      // 未授权写 / 其他错误：原样透传
       throw engineError(err.code, `dbx_execute_query failed: ${err.detail}`, errorText);
     }],
 

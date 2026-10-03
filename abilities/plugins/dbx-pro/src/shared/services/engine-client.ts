@@ -14,7 +14,7 @@
  * 否则连接池/慢查询会正好压在默认边界上。
  */
 
-import type { DbConnection, DbQueryResult } from "../../domain/connection-config";
+import type { DbQueryResult } from "../../domain/connection-config";
 
 export const ENGINE_SERVICE_ID = "dbx-engine";
 export const ENGINE_NOT_READY = "ENGINE_NOT_READY";
@@ -115,30 +115,6 @@ export interface EngineHealth {
 	drivers: { id: string; label: string; tier: string; ready: boolean; reason?: string }[];
 }
 
-export interface EngineCatalog {
-	connection: string | null;
-	namespaces: { name: string; file: string | null; default: boolean }[];
-	objects: { schema: string; name: string; kind: string; system: boolean }[];
-}
-
-export interface EngineTableDescription {
-	connection: string | null;
-	schema: string;
-	table: string;
-	hidden?: boolean;
-	sql?: string;
-	columns: { name: string; type: string; nullable: boolean; primaryKey: boolean; defaultValue: unknown }[];
-}
-
-export interface EngineTestOutcome {
-	connection: string | null;
-	serverVersion?: string;
-	database?: string;
-	latencyMs: number;
-	readOnly?: boolean;
-	driver: { id: string; tier: string };
-}
-
 interface CallOptions {
 	/** 覆盖默认超时；会被夹在 1s ~ 5min 之间。 */
 	timeoutMs?: number;
@@ -191,60 +167,29 @@ async function engineRequest<T>(path: string, body: unknown, options: CallOption
 	});
 }
 
-/** 连接描述：引擎接受 camelCase 与 snake_case，这里统一转 camelCase。 */
-function toEngineConnection(connection: DbConnection): Record<string, unknown> {
-	return {
-		id: connection.id,
-		name: connection.name,
-		dbType: connection.db_type,
-		host: connection.host,
-		port: connection.port,
-		username: connection.username,
-		password: connection.password,
-		database: connection.database,
-		readOnly: connection.read_only === true,
-	};
-}
-
 /** 健康检查：宿主侧探测同样走这里。 */
 export function engineHealth(options: CallOptions = {}): Promise<EngineHealth> {
 	return engineRequest<EngineHealth>("/health", undefined, { timeoutMs: options.timeoutMs ?? TEST_TIMEOUT_MS });
 }
 
-export function engineTestConnection(
-	connection: DbConnection,
-	options: CallOptions = {},
-): Promise<EngineTestOutcome> {
-	return engineRequest<EngineTestOutcome>(
-		"/test",
-		{ connection: toEngineConnection(connection) },
-		{ timeoutMs: options.timeoutMs ?? TEST_TIMEOUT_MS },
-	);
-}
-
-export function engineListCatalog(connection: DbConnection, options: CallOptions = {}): Promise<EngineCatalog> {
-	return engineRequest<EngineCatalog>("/catalog", { connection: toEngineConnection(connection) }, options);
-}
-
-export function engineDescribeTable(
-	connection: DbConnection,
-	target: { schema?: string; table: string },
-	options: CallOptions = {},
-): Promise<EngineTableDescription> {
-	return engineRequest<EngineTableDescription>(
-		"/describe",
-		{ connection: toEngineConnection(connection), target },
-		options,
-	);
-}
-
 export interface EngineExecuteOptions extends CallOptions {
-	allowWrites?: boolean;
+	/** 显式授权写操作；dbx-mcp 只读拦截后由自研写驱动执行。 */
+	allowWrite?: boolean;
 	/** 危险语句必须回传与 SQL 逐字节一致的原文，否则引擎返回 CONFIRM_MISMATCH。 */
 	confirmedWriteSql?: string;
 	rowLimit?: number;
-	/** DDL/DML 直连回退用：附带完整连接配置（含密码），service 层在 SQL_BLOCKED 时使用。 */
-	connection?: DbConnection;
+	/** 写驱动所需的完整连接配置（db_type/host/port/凭据/库）。 */
+	connection?: {
+		db_type?: string;
+		dbType?: string;
+		host: string;
+		port?: number;
+		username?: string;
+		password?: string;
+		database?: string;
+		ssl?: boolean;
+		read_only?: boolean;
+	};
 }
 
 // ─── 新版 API：基于 connectionName（dbx-mcp 连接自管）──────────────
@@ -327,38 +272,15 @@ export function engineExecuteByName(
 	const body: Record<string, unknown> = {
 		connectionName,
 		sql,
-		allowWrites: options.allowWrites === true,
+		allowWrite: options.allowWrite === true,
 		confirmedWriteSql: options.confirmedWriteSql,
 		rowLimit: options.rowLimit,
 		timeoutMs: clampTimeout(options.timeoutMs),
 	};
-	// DDL/DML 回退直连需要完整连接凭据：workbench 持有完整 DbConnection（含密码），
-	// 随请求附带过去，service 层 SQL_BLOCKED 时用它走 direct-driver。
-	if (options.connection) {
-		body.connection = toEngineConnection(options.connection);
-	}
+	if (options.connection) body.connection = options.connection;
 	return engineRequest<EngineQueryOutcome>(
 		"/query",
 		body,
-		{ timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS },
-	);
-}
-
-export function engineExecuteQuery(
-	connection: DbConnection,
-	sql: string,
-	options: EngineExecuteOptions = {},
-): Promise<EngineQueryOutcome> {
-	return engineRequest<EngineQueryOutcome>(
-		"/query",
-		{
-			connection: toEngineConnection(connection),
-			sql,
-			allowWrites: options.allowWrites === true,
-			confirmedWriteSql: options.confirmedWriteSql,
-			rowLimit: options.rowLimit,
-			timeoutMs: clampTimeout(options.timeoutMs),
-		},
 		{ timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS },
 	);
 }

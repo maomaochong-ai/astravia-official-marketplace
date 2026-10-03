@@ -1,89 +1,67 @@
 @import "tailwindcss";
 
-/* lucide / solar 图标按需生成（icon-[lucide--*] / icon-[solar--*]），与旧工作台图标语言一致。 */
+/* lucide / solar 图标按需生成（icon-[lucide--*] / icon-[solar--*]）。 */
 @plugin "@iconify/tailwind4";
 
-/* 只映射已被同仓插件验证的宿主语义 token；其余外观走 legacy .dbx-* 规则。 */
+/* 映射宿主语义 token，组件统一用 bg-background / text-foreground / border-border 等。 */
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-border: var(--border);
 	--color-card: var(--card);
+	--color-popover: var(--popover);
+	--color-accent: var(--accent);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
 	--color-primary: var(--primary);
 	--color-destructive: var(--destructive);
 }
 
-/* === dbx-pro 全局主题 === */
-.dbx-panel {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	width: 100%;
-	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-	font-size: 13px;
-	color: var(--foreground, #111);
-	background: var(--background, #fff);
-}
-.dbx-panel * { box-sizing: border-box; }
+/* 连接管理侧滑表单（connection-form）使用的少量语义类，颜色全部跟随宿主主题变量。 */
 
-/* === 顶部工具栏 === */
-.dbx-topbar {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	padding: 10px 16px;
-	border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
-	background: var(--panel-bg, rgba(0,0,0,0.015));
-	flex-shrink: 0;
-}
-
-/* === 按钮 === */
 .dbx-btn {
 	padding: 6px 12px;
 	font-size: 12px;
-	border: 1px solid var(--border, rgba(0,0,0,0.12));
-	background: var(--background, #fff);
-	color: var(--foreground, #111);
-	border-radius: 6px;
-	cursor: pointer;
-	font-weight: 500;
 	line-height: 1.2;
+	font-weight: 500;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--background);
+	color: var(--foreground);
+	cursor: pointer;
 	transition: background 0.12s;
 }
-.dbx-btn:hover:not(:disabled) { background: rgba(0,0,0,0.04); }
+.dbx-btn:hover:not(:disabled) { background: var(--accent); }
 .dbx-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .dbx-btn.primary {
-	background: var(--foreground, #111);
-	color: var(--background, #fff);
-	border-color: var(--foreground, #111);
+	background: var(--foreground);
+	color: var(--background);
+	border-color: var(--foreground);
 }
-.dbx-btn.primary:hover:not(:disabled) { opacity: 0.88; background: var(--foreground, #111); }
+.dbx-btn.primary:hover:not(:disabled) { opacity: 0.88; }
 .dbx-btn.ghost {
 	background: transparent;
 	border-color: transparent;
 }
 .dbx-btn.ghost:hover:not(:disabled) {
-	background: rgba(0,0,0,0.04);
-	border-color: var(--border, rgba(0,0,0,0.12));
+	background: var(--accent);
+	border-color: var(--border);
 }
 
-/* === 输入 === */
 .dbx-form-input {
 	width: 100%;
 	padding: 6px 10px;
 	font-size: 13px;
-	border: 1px solid var(--border, rgba(0,0,0,0.12));
+	border: 1px solid var(--border);
 	border-radius: 6px;
-	background: var(--background, #fff);
-	color: var(--foreground, #111);
+	background: var(--background);
+	color: var(--foreground);
 	font-family: inherit;
 	outline: none;
 }
 .dbx-form-input:focus {
-	border-color: var(--foreground, #111);
-	box-shadow: 0 0 0 2px rgba(0,0,0,0.06);
+	border-color: var(--foreground);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 select.dbx-form-input { cursor: pointer; }
 textarea.dbx-form-input {
@@ -93,191 +71,52 @@ textarea.dbx-form-input {
 }
 
 .dbx-form-label {
+	display: block;
+	margin-bottom: 4px;
 	font-size: 11px;
 	font-weight: 600;
-	color: var(--muted-foreground, #666);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
-	margin-bottom: 4px;
-	display: block;
+	color: var(--muted-foreground);
 }
-.dbx-form-row {
-	margin-bottom: 10px;
-}
+.dbx-form-row { margin-bottom: 10px; }
 
-/* === 侧边栏 === */
-.dbx-sidebar {
-	width: 260px;
-	flex-shrink: 0;
-	border-right: 1px solid var(--border, rgba(0,0,0,0.08));
-	background: var(--panel-bg, rgba(0,0,0,0.015));
-	display: flex;
-	flex-direction: column;
-	min-height: 0;
-	overflow: hidden;
-}
-.dbx-connection-item {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	padding: 6px 12px;
-	font-size: 12.5px;
-	cursor: pointer;
-	border-radius: 4px;
-	margin: 1px 6px;
-}
-.dbx-connection-item:hover { background: rgba(0,0,0,0.04); }
-.dbx-connection-item.active {
-	background: rgba(0,0,0,0.06);
-	font-weight: 500;
-}
-
-/* === 主区 === */
-.dbx-main {
-	flex: 1;
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	min-height: 0;
-}
-
-/* === SQL 编辑器 === */
-.dbx-editor-wrap {
-	position: relative;
-	flex: 1;
-	min-height: 120px;
-	overflow: hidden;
-}
-.dbx-editor {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	padding: 12px 16px;
-	font-family: "SF Mono", Menlo, Consolas, monospace;
-	font-size: 13px;
-	line-height: 1.55;
-	border: none;
-	outline: none;
-	background: transparent;
-	color: transparent;
-	caret-color: currentColor;
-	resize: none;
-	tab-size: 4;
-	z-index: 2;
-}
-.dbx-editor::selection { background: rgba(37, 99, 235, 0.3); }
-
-.dbx-editor-hl {
-	position: absolute;
-	inset: 0;
-	margin: 0;
-	padding: 12px 16px;
-	font-family: "SF Mono", Menlo, Consolas, monospace;
-	font-size: 13px;
-	line-height: 1.55;
-	white-space: pre-wrap;
-	word-break: normal;
-	overflow-wrap: normal;
-	tab-size: 4;
-	pointer-events: none;
-	z-index: 1;
-	color: var(--foreground, #111);
-	font-variant-ligatures: none;
-}
-.dbx-editor-hl code { font-family: inherit; }
-.dbx-editor-hl .kw { color: #111; font-weight: 700; }
-.dbx-editor-hl .str { color: #555; font-weight: 400; }
-.dbx-editor-hl .num { color: #333; font-weight: 400; }
-.dbx-editor-hl .cmt { color: #999; font-style: italic; font-weight: 400; }
-.dbx-editor-hl .id { color: var(--foreground, #111); font-weight: 400; }
-.dbx-editor-hl .ph { color: #aaa; font-style: italic; font-weight: 400; }
-
-/* === 错误 === */
-.dbx-error {
-	padding: 16px 20px;
-	background: rgba(220, 38, 38, 0.06);
-	color: #dc2626;
-	font-family: "SF Mono", Menlo, Consolas, monospace;
-	font-size: 13px;
-	white-space: pre-wrap;
-	word-break: break-word;
-	max-height: 30vh;
-	overflow: auto;
-}
-
-/* === 空态 === */
 .dbx-empty {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--muted-foreground, #888);
+	color: var(--muted-foreground);
 	font-size: 13px;
 	padding: 16px;
 }
 
-/* === 结果表格 === */
-.dbx-result {
-	overflow: auto;
-	border-top: 1px solid var(--border, rgba(0,0,0,0.08));
-	background: var(--background, #fff);
-}
-.dbx-result table {
-	width: 100%;
-	border-collapse: collapse;
-	font-size: 12.5px;
-}
-.dbx-result th,
-.dbx-result td {
-	padding: 6px 12px;
-	text-align: left;
-	border-bottom: 1px solid var(--border, rgba(0,0,0,0.06));
-	white-space: nowrap;
-	max-width: 400px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-.dbx-result thead th {
-	position: sticky;
-	top: 0;
-	background: rgba(0,0,0,0.025);
-	font-weight: 600;
-	color: var(--muted-foreground, #555);
-	resize: horizontal;
-	overflow: hidden;
-	font-size: 11.5px;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	border-bottom: 1px solid var(--border, rgba(0,0,0,0.12));
-	z-index: 1;
-}
-.dbx-result tbody tr:hover td { background: rgba(0,0,0,0.02); }
-
-/* === 侧栏表单 === */
 .dbx-sheet-backdrop {
-  	position: absolute; inset: 0;
-	background: rgba(0,0,0,0.25);
+	position: absolute;
+	inset: 0;
+	background: rgb(0 0 0 / 0.45);
 	z-index: 100;
 	backdrop-filter: blur(1px);
 }
 .dbx-sheet {
-  	position: absolute;
-	right: 0; top: 0; bottom: 0;
-	background: var(--background, #fff);
-	border-left: 1px solid var(--border, rgba(0,0,0,0.1));
-	box-shadow: -4px 0 24px rgba(0,0,0,0.1);
-	z-index: 101;
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	background: var(--background);
+	border-left: 1px solid var(--border);
+	box-shadow: -8px 0 32px rgb(0 0 0 / 0.2);
+	z-index: 101;
 }
 .dbx-sheet-header {
-	padding: 14px 20px;
-	border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	flex-shrink: 0;
+	padding: 14px 20px;
+	border-bottom: 1px solid var(--border);
 }
 .dbx-sheet-body {
 	flex: 1;
@@ -285,71 +124,10 @@ textarea.dbx-form-input {
 	padding: 16px 20px;
 }
 .dbx-sheet-footer {
-	padding: 12px 20px;
-	border-top: 1px solid var(--border, rgba(0,0,0,0.08));
 	display: flex;
 	justify-content: flex-end;
 	gap: 8px;
 	flex-shrink: 0;
+	padding: 12px 20px;
+	border-top: 1px solid var(--border);
 }
-
-/* === 深色 override === */
-.dbx-panel.dark,
-.dark .dbx-panel {
-	color: #eee;
-	background: #0a0a0a;
-}
-.dark .dbx-topbar,
-.dark .dbx-sidebar {
-	background: #141414;
-	border-color: #222;
-}
-.dark .dbx-btn {
-	background: #1a1a1a;
-	border-color: #2a2a2a;
-	color: #eee;
-}
-.dark .dbx-btn:hover:not(:disabled) { background: #222; }
-.dark .dbx-btn.primary {
-	background: #eee;
-	color: #0a0a0a;
-	border-color: #eee;
-}
-.dark .dbx-btn.primary:hover:not(:disabled) { background: #ddd; }
-.dark .dbx-form-input {
-	background: #141414;
-	border-color: #2a2a2a;
-	color: #eee;
-}
-.dark .dbx-form-input:focus { border-color: #eee; }
-.dark .dbx-editor {
-	background: transparent;
-}
-.dark .dbx-editor-hl {
-	color: #e8e8e8;
-}
-.dark .dbx-editor-hl .kw { color: #f0f0f0; font-weight: 700; }
-.dark .dbx-editor-hl .str { color: #b0b0b0; }
-.dark .dbx-editor-hl .num { color: #d0d0d0; }
-.dark .dbx-editor-hl .cmt { color: #555; font-style: italic; }
-.dark .dbx-editor-hl .ph { color: #555; font-style: italic; }
-.dark .dbx-connection-item:hover { background: #1e1e1e; }
-.dark .dbx-connection-item.active { background: #242424; }
-.dark .dbx-result {
-	background: #0a0a0a;
-	border-color: #222;
-}
-.dark .dbx-result thead th {
-	background: #141414;
-	border-color: #222;
-}
-.dark .dbx-result tbody tr:hover td { background: #141414; }
-.dark .dbx-result th,
-.dark .dbx-result td { border-color: #1e1e1e; }
-.dark .dbx-empty { color: #666; }
-.dark .dbx-sheet {
-	background: #0a0a0a;
-	border-color: #222;
-}
-.dark .dbx-sheet-header,
-.dark .dbx-sheet-footer { border-color: #222; }

@@ -5,9 +5,24 @@
  * 活动 tab、右栏选中表。Action 类型集中声明，reducer 纯函数处理。
  */
 
-import { createContext, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import type { DbConnection } from "../../../domain/connection-config";
-import { readAllConfigs } from "../../../domain/dbx-storage";
+import { deleteConfig, PASSWORD_PREFIX, readAllConfigs } from "../../../domain/dbx-storage";
+import type { QueryHistoryEntry } from "../../../domain/query-history";
+import { newHistoryId } from "../../../domain/query-history";
+import {
+	appendHistoryEntry,
+	clearHistory,
+	dropHistoryEntry,
+	pruneHistoryStore,
+	readHistory,
+} from "../../../domain/query-history-store";
+import {
+	DEFAULT_SETTINGS,
+	type WorkbenchSettings,
+} from "../../../domain/workbench-settings";
+import { readSettings, resetSettings, writeSettings } from "../../../domain/workbench-settings-store";
+import { getSecrets } from "../../../runtime-contract";
 import {
 	engineListTables,
 	engineDescribeByName,
@@ -15,6 +30,7 @@ import {
 	EngineClientError,
 	toQueryResult,
 } from "../../../shared/services/engine-client";
+import { WriteConfirmDialog, type PendingWrite } from "./write-confirm-dialog";
 
 // ─── 类型 ─────────────────────────────────────────────────
 
@@ -106,7 +122,7 @@ const INITIAL_TABS: EditorTab[] = [
 		id: "tab-1",
 		label: "查询 1",
 		connectionName: null,
-		sql: "-- ⌘/Ctrl + Enter 执行\nSELECT 1;",
+		sql: "SELECT 1;",
 		isRunning: false,
 	},
 ];
@@ -238,10 +254,28 @@ interface WorkbenchContextValue {
 	refreshConnections: () => Promise<void>;
 	/** 加载树节点子节点（懒加载入口） */
 	loadNodeChildren: (nodeKey: string, connectionName?: string, extra?: { schema?: string }) => Promise<void>;
-	/** 执行一个 tab 的 SQL */
-	runTabSql: (tabId: string) => Promise<void>;
+	/** 执行一个 tab 的 SQL；overrideSql 存在时只执行给定片段（选中执行）。 */
+	runTabSql: (tabId: string, overrideSql?: string) => Promise<void>;
 	/** 打开一个新 tab 并执行（常用于预览） */
 	openPreviewTab: (connectionName: string, sql: string, label?: string) => Promise<void>;
+
+	// ─── 设置 ───
+	settings: WorkbenchSettings;
+	updateSettings: (next: WorkbenchSettings) => Promise<void>;
+
+	// ─── 查询历史 ───
+	history: QueryHistoryEntry[];
+	loadHistoryIntoEditor: (entry: QueryHistoryEntry) => void;
+	rerunHistoryEntry: (entry: QueryHistoryEntry) => Promise<void>;
+	removeHistory: (id: string) => Promise<void>;
+	clearAllHistory: () => Promise<void>;
+
+	// ─── 右栏视图（结构 / 历史） ───
+	rightView: "inspector" | "history";
+	setRightView: (view: "inspector" | "history") => void;
+
+	/** 清除全部本地数据：连接（含引擎+密文）、历史、设置、密码 secret。 */
+	wipeAllData: () => Promise<void>;
 }
 
 const WorkbenchContext = createContext<WorkbenchContextValue | null>(null);
@@ -265,9 +299,25 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 	const stateRef = useRef(state);
 	stateRef.current = state;
 
-	// 初始加载连接列表
+	const [settings, setSettings] = useState<WorkbenchSettings>(DEFAULT_SETTINGS);
+	const settingsRef = useRef(settings);
+	settingsRef.current = settings;
+
+	const [history, setHistory] = useState<QueryHistoryEntry[]>([]);
+	const [rightView, setRightView] = useState<"inspector" | "history">("inspector");
+
+	// 初始加载：连接 + 设置 + 历史
 	useEffect(() => {
-		void refreshConnections();
+		async function bootstrap() {
+			await refreshConnections();
+			const [loadedSettings, loadedHistory] = await Promise.all([
+				readSettings().catch(() => DEFAULT_SETTINGS),
+				readHistory().catch(() => [] as QueryHistoryEntry[]),
+			]);
+			setSettings(loadedSettings);
+			setHistory(loadedHistory);
+		}
+		void bootstrap();
 	}, []);
 
 	async function refreshConnections() {
@@ -333,61 +383,206 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		}
 	}
 
-	async function runTabSql(tabId: string) {
+	const [pendingWrite, setPendingWrite] = useState<(PendingWrite & { tabId: string }) | null>(null);
+
+	/** 写入成功/读取成功后的结果派发。 */
+	function applySuccess(tabId: string, startedAt: number, outcome: ReturnType<typeof toQueryResult>) {
+		dispatch({
+			type: "updateTab",
+			id: tabId,
+			patch: {
+				isRunning: false,
+				result: {
+					ok: true,
+					columns: outcome.columns,
+					rows: outcome.rows,
+					rowCount: outcome.row_count,
+					elapsedMs: Date.now() - startedAt,
+					note: outcome.note,
+				},
+			},
+		});
+	}
+
+	/** 按当前设置追加一条查询历史（关闭记录时跳过）。 */
+	async function recordHistory(params: {
+		connName: string;
+		sql: string;
+		status: "ok" | "error";
+		rowCount: number;
+		durationMs: number;
+		error?: string;
+	}): Promise<void> {
+		const current = settingsRef.current;
+		if (!current.historyEnabled) return;
+		const conn = stateRef.current.connections.find((c) => c.name === params.connName);
+		const entry: QueryHistoryEntry = {
+			id: newHistoryId(),
+			connName: params.connName,
+			dbType: conn?.db_type ?? "",
+			sql: params.sql,
+			status: params.status,
+			path: "engine",
+			rowCount: params.rowCount,
+			durationMs: params.durationMs,
+			...(params.error ? { error: params.error } : {}),
+			createdAt: new Date().toISOString(),
+		};
+		try {
+			setHistory(await appendHistoryEntry(entry, current.historyLimit));
+		} catch { /* 历史落盘失败不影响主流程 */ }
+	}
+
+	async function runTabSql(tabId: string, overrideSql?: string) {
 		const st = stateRef.current;
 		const tab = st.tabs.find((t) => t.id === tabId);
 		if (!tab || tab.isRunning || !tab.connectionName) {
 			dispatch({ type: "setError", message: tab ? "请选择一个连接后再执行" : "Tab 不存在" });
 			return;
 		}
-		const conn = st.connections.find((c) => c.name === tab.connectionName);
+		const sqlToRun = overrideSql && overrideSql.trim() ? overrideSql : tab.sql;
 		dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true, result: undefined } });
 		dispatch({ type: "setConnectionStatus", name: tab.connectionName, status: "running" });
 		const startedAt = Date.now();
 		try {
-			const outcome = await engineExecuteByName(tab.connectionName, tab.sql, {
-				timeoutMs: 120_000,
-				// 附带完整连接配置（含密码）—— service 层 SQL_BLOCKED 时走 direct-driver 回退
-				connection: conn,
-			});
-			const qr = toQueryResult(outcome);
-			dispatch({
-				type: "updateTab",
-				id: tabId,
-				patch: {
-					isRunning: false,
-					result: {
-						ok: true,
-						columns: qr.columns,
-						rows: qr.rows,
-						rowCount: qr.row_count,
-						elapsedMs: Date.now() - startedAt,
-						note: qr.note,
-					},
-				},
-			});
+			const current = settingsRef.current;
+			const outcome = toQueryResult(
+				await engineExecuteByName(tab.connectionName, sqlToRun, {
+					timeoutMs: current.queryTimeoutSecs * 1000,
+					rowLimit: current.rowLimit,
+				}),
+			);
+			applySuccess(tabId, startedAt, outcome);
 			dispatch({ type: "setConnectionStatus", name: tab.connectionName, status: "ok" });
 			dispatch({ type: "setError", message: null });
+			await recordHistory({
+				connName: tab.connectionName,
+				sql: sqlToRun,
+				status: "ok",
+				rowCount: outcome.row_count,
+				durationMs: Date.now() - startedAt,
+			});
 		} catch (e) {
+			const isBlocked = e instanceof EngineClientError && e.code === "SQL_BLOCKED";
+			if (isBlocked) {
+				// 安全闸（弹确认框之前）：只读连接直接硬拒绝，不再弹写确认框。
+				const targetConn = stateRef.current.connections.find((c) => c.name === tab.connectionName);
+				if (targetConn?.read_only) {
+					const roMsg = "连接已设为只读，写/DDL 被拒绝";
+					dispatch({ type: "updateTab", id: tabId, patch: { isRunning: false } });
+					dispatch({ type: "setConnectionStatus", name: tab.connectionName, status: "error" });
+					dispatch({
+						type: "updateTab",
+						id: tabId,
+						patch: { result: { ok: false, columns: [], rows: [], rowCount: 0, elapsedMs: 0, error: roMsg } },
+					});
+					dispatch({ type: "setError", message: roMsg });
+					await recordHistory({
+						connName: tab.connectionName,
+						sql: sqlToRun,
+						status: "error",
+						rowCount: 0,
+						durationMs: Date.now() - startedAt,
+						error: roMsg,
+					});
+					return;
+				}
+				// 非只读：复位执行态，弹出写确认框（生产连接在弹窗内额外强提示）。
+				dispatch({ type: "updateTab", id: tabId, patch: { isRunning: false } });
+				dispatch({ type: "setConnectionStatus", name: tab.connectionName, status: "idle" });
+				setPendingWrite({ tabId, sql: sqlToRun, connectionName: tab.connectionName });
+				return;
+			}
 			const msg = e instanceof EngineClientError ? e.message : e instanceof Error ? e.message : String(e);
 			dispatch({
 				type: "updateTab",
 				id: tabId,
 				patch: {
 					isRunning: false,
-					result: {
-						ok: false,
-						columns: [],
-						rows: [],
-						rowCount: 0,
-						elapsedMs: Date.now() - startedAt,
-						error: msg,
-					},
+					result: { ok: false, columns: [], rows: [], rowCount: 0, elapsedMs: Date.now() - startedAt, error: msg },
 				},
 			});
 			dispatch({ type: "setConnectionStatus", name: tab.connectionName, status: "error" });
 			dispatch({ type: "setError", message: msg });
+			await recordHistory({
+				connName: tab.connectionName,
+				sql: sqlToRun,
+				status: "error",
+				rowCount: 0,
+				durationMs: Date.now() - startedAt,
+				error: msg,
+			});
 		}
+	}
+
+	/** 用户在确认弹窗中批准写操作：带授权 + 完整连接配置重跑。 */
+	async function confirmPendingWrite() {
+		const pending = pendingWrite;
+		setPendingWrite(null);
+		if (!pending) return;
+		const st = stateRef.current;
+		const conn: DbConnection | undefined = st.connections.find((c) => c.name === pending.connectionName);
+		dispatch({ type: "updateTab", id: pending.tabId, patch: { isRunning: true } });
+		dispatch({ type: "setConnectionStatus", name: pending.connectionName, status: "running" });
+		const startedAt = Date.now();
+		try {
+			const current = settingsRef.current;
+			const outcome = toQueryResult(
+				await engineExecuteByName(pending.connectionName, pending.sql, {
+					timeoutMs: current.queryTimeoutSecs * 1000,
+					rowLimit: current.rowLimit,
+					allowWrite: true,
+					confirmedWriteSql: pending.sql,
+					connection: conn
+						? {
+								db_type: conn.db_type,
+								host: conn.host,
+								port: conn.port,
+								username: conn.username,
+								password: conn.password,
+								database: conn.database,
+								ssl: conn.ssl,
+								read_only: conn.read_only,
+							}
+						: undefined,
+				}),
+			);
+			applySuccess(pending.tabId, startedAt, outcome);
+			dispatch({ type: "setConnectionStatus", name: pending.connectionName, status: "ok" });
+			await recordHistory({
+				connName: pending.connectionName,
+				sql: pending.sql,
+				status: "ok",
+				rowCount: outcome.row_count,
+				durationMs: Date.now() - startedAt,
+			});
+		} catch (e) {
+			const msg = e instanceof EngineClientError ? e.message : e instanceof Error ? e.message : String(e);
+			dispatch({
+				type: "updateTab",
+				id: pending.tabId,
+				patch: {
+					isRunning: false,
+					result: { ok: false, columns: [], rows: [], rowCount: 0, elapsedMs: Date.now() - startedAt, error: msg },
+				},
+			});
+			dispatch({ type: "setConnectionStatus", name: pending.connectionName, status: "error" });
+			dispatch({ type: "setError", message: msg });
+			await recordHistory({
+				connName: pending.connectionName,
+				sql: pending.sql,
+				status: "error",
+				rowCount: 0,
+				durationMs: Date.now() - startedAt,
+				error: msg,
+			});
+		}
+	}
+
+	function cancelPendingWrite() {
+		const pending = pendingWrite;
+		setPendingWrite(null);
+		if (pending) dispatch({ type: "setError", message: "已取消写操作" });
 	}
 
 	async function openPreviewTab(connectionName: string, sql: string, label?: string) {
@@ -405,12 +600,94 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		setTimeout(() => { void runTabSql(id); }, 0);
 	}
 
+	// ─── 设置 ─────────────────────────────────────────────
+	async function updateSettings(next: WorkbenchSettings) {
+		const saved = await writeSettings(next);
+		setSettings(saved);
+		if (saved.historyEnabled) {
+			try { setHistory(await pruneHistoryStore(saved.historyLimit)); } catch { /* ignore */ }
+		}
+	}
+
+	// ─── 历史 ─────────────────────────────────────────────
+	function loadHistoryIntoEditor(entry: QueryHistoryEntry) {
+		const tabId = stateRef.current.activeTabId;
+		if (!tabId) return;
+		const connName = entry.connName === "(未命名连接)" ? null : entry.connName;
+		if (connName) dispatch({ type: "setActiveConnection", name: connName });
+		dispatch({ type: "updateTab", id: tabId, patch: { connectionName: connName, sql: entry.sql } });
+		setRightView("inspector");
+	}
+
+	async function rerunHistoryEntry(entry: QueryHistoryEntry) {
+		loadHistoryIntoEditor(entry);
+		const tabId = stateRef.current.activeTabId;
+		if (tabId && entry.connName !== "(未命名连接)") await runTabSql(tabId);
+	}
+
+	async function removeHistory(id: string) {
+		try { setHistory(await dropHistoryEntry(id, settingsRef.current.historyLimit)); } catch { /* ignore */ }
+	}
+
+	async function clearAllHistory() {
+		await clearHistory();
+		setHistory([]);
+	}
+
+	// ─── 清除本地数据 ─────────────────────────────────────
+	async function wipeAllData() {
+		const conns = [...stateRef.current.connections];
+		for (const conn of conns) {
+			try { await deleteConfig(conn.id); } catch { /* ignore */ }
+		}
+		await clearAllHistory();
+		setSettings(await resetSettings().catch(() => DEFAULT_SETTINGS));
+		try {
+			const keys = await getSecrets().keys();
+			await Promise.all(
+				keys.filter((k: string) => k.startsWith(PASSWORD_PREFIX)).map((k: string) => getSecrets().delete(k)),
+			);
+		} catch { /* ignore */ }
+		dispatch({ type: "setError", message: null });
+	}
+
 	const value = useMemo<WorkbenchContextValue>(
-		() => ({ state, dispatch, refreshConnections, loadNodeChildren, runTabSql, openPreviewTab }),
-		[state],
+		() => ({
+			state,
+			dispatch,
+			refreshConnections,
+			loadNodeChildren,
+			runTabSql,
+			openPreviewTab,
+			settings,
+			updateSettings,
+			history,
+			loadHistoryIntoEditor,
+			rerunHistoryEntry,
+			removeHistory,
+			clearAllHistory,
+			rightView,
+			setRightView,
+			wipeAllData,
+		}),
+		[state, settings, history, rightView],
 	);
 
-	return <WorkbenchContext.Provider value={value}>{children}</WorkbenchContext.Provider>;
+	return (
+		<WorkbenchContext.Provider value={value}>
+			{children}
+			{pendingWrite && (
+				<WriteConfirmDialog
+					pending={{ sql: pendingWrite.sql, connectionName: pendingWrite.connectionName }}
+					isProduction={
+						state.connections.find((c) => c.name === pendingWrite.connectionName)?.is_production ?? false
+					}
+					onConfirm={() => void confirmPendingWrite()}
+					onCancel={cancelPendingWrite}
+				/>
+			)}
+		</WorkbenchContext.Provider>
+	);
 }
 
 export function useWorkbench(): WorkbenchContextValue {

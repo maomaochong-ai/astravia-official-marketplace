@@ -21,19 +21,19 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// bundle 后 import.meta.url = service/main.mjs → dirname = service/
-// 开发期 import.meta.url = service/src/engine/*.mjs → dirname = service/src/engine/
-// 两种情况都要找到 service/ 目录
+// bundle 后 import.meta.url = server/main.mjs → dirname = server/
+// 开发期 import.meta.url = server/src/engine/*.mjs → dirname = server/src/engine/
+// 两种情况都要找到 server/ 目录
 const _thisDir = join(fileURLToPath(import.meta.url), "..");
-const _serviceDir = _thisDir.endsWith("engine")
-  ? join(_thisDir, "..", "..")   // 开发期：service/src/engine/ → service/
-  : _thisDir;                    // bundle 后：service/ 直接用
+const _serverDir = _thisDir.endsWith("engine")
+  ? join(_thisDir, "..", "..")   // 开发期：server/src/engine/ → server/
+  : _thisDir;                    // bundle 后：server/ 直接用
 
-/** dbx-mcp 二进制路径表（按平台映射到 service/bin/）。 */
+/** dbx-mcp 二进制路径表（按平台映射到 server/bin/）。 */
 const BIN_PATH_BY_PLATFORM = {
-  "darwin-arm64": join(_serviceDir, "bin", "dbx-mcp-darwin-arm64"),
-  "darwin-x64":   join(_serviceDir, "bin", "dbx-mcp-darwin-x64"),
-  "win32-x64":    join(_serviceDir, "bin", "dbx-mcp-win-x64.exe"),
+  "darwin-arm64": join(_serverDir, "bin", "dbx-mcp-darwin-arm64"),
+  "darwin-x64":   join(_serverDir, "bin", "dbx-mcp-darwin-x64"),
+  "win32-x64":    join(_serverDir, "bin", "dbx-mcp-win-x64.exe"),
 };
 
 /** DBX_DATA_DIR：与宿主 Open-astravia 隔离，使用服务数据目录或回退到 ~/.astravia-dbx-data */
@@ -215,7 +215,7 @@ class DbxMcpClient {
   /** 列出 dbx-mcp 暴露的所有 MCP 工具。 */
   async listTools(timeoutMs = 30_000) {
     await this.ensureInitialized();
-    const result = await this.request(++this.seq, "tools/list", {}, timeoutMs);
+    const result = await this.request(this.nextId++, "tools/list", {}, timeoutMs);
     return result?.tools ?? [];
   }
 

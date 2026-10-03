@@ -1,10 +1,18 @@
 /**
- * 连接树节点 — 递归渲染 connection / table / column 节点。
+ * 连接树节点 — 递归渲染 connection / table / column。
+ *
+ * 交互（对标 dbx 桌面壳）：
+ * - 单击 connection：设为活动连接并绑定当前 tab；单击 table：选中查看结构
+ * - 双击 connection：新建查询 tab；双击 table：SELECT * 预览
+ * - 右键：新建查询 / 预览 / 查看结构 / 复制名称 / COUNT
+ * - 箭头：展开懒加载子节点
  */
 
 import { useState, type JSX } from "react";
 import { useWorkbench, type TreeNode as TreeNodeType } from "./workbench-context";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
+import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
+import { sendConnectionToAi, sendTableToAi } from "../../../shared/ai/send-context";
 
 interface Props {
 	node: TreeNodeType;
@@ -13,108 +21,209 @@ interface Props {
 	schema?: string;
 }
 
+let querySeq = 0;
+
 export function ConnectionNode({ node, depth, connectionName, schema }: Props): JSX.Element {
-	const { state, dispatch, loadNodeChildren } = useWorkbench();
+	const { state, dispatch, loadNodeChildren, openPreviewTab } = useWorkbench();
+	const [menu, setMenu] = useState<ContextMenuState | null>(null);
+
 	const isExpanded = state.expandedNodes.has(node.key);
 	const isLoading = state.loadingNodes.has(node.key);
 	const children = state.treeChildren.get(node.key) ?? [];
 	const hasLoadedChildren = state.treeChildren.has(node.key);
-	// hover 状态暂未消费，保留 useState 以便后续添加 hover 交互
-	useState(false);
 
-	const selected = (() => {
-		if (state.rightPanelTable && node.kind === "table") {
-			const sel = state.rightPanelTable;
-			if (sel.connectionName === connectionName && sel.tableName === node.label) return true;
-		}
-		return false;
-	})();
+	const selected =
+		node.kind === "table" &&
+		state.rightPanelTable?.connectionName === connectionName &&
+		state.rightPanelTable?.tableName === node.label;
 
-	const active = state.activeConnectionName === connectionName && node.kind === "connection";
+	const active = node.kind === "connection" && state.activeConnectionName === connectionName;
 
-	async function handleToggle() {
-		if (node.kind === "connection" || node.kind === "table") {
-			dispatch({ type: "toggleNode", key: node.key });
-			if (!hasLoadedChildren) {
-				await loadNodeChildren(node.key, connectionName ?? node.label, { schema });
-			}
-			if (isExpanded) return;
+	const qualifiedName = schema ? `${schema}.${node.label}` : node.label;
+
+	function expand(): void {
+		dispatch({ type: "toggleNode", key: node.key });
+	}
+
+	async function ensureChildren(): Promise<void> {
+		if (!hasLoadedChildren) {
+			await loadNodeChildren(node.key, connectionName ?? node.label, { schema });
 		}
 	}
 
-	function handleSelect(e: React.MouseEvent) {
-		e.stopPropagation();
+	function activateConnection(): void {
+		dispatch({ type: "setActiveConnection", name: node.label });
+		if (state.activeTabId) {
+			dispatch({ type: "updateTab", id: state.activeTabId, patch: { connectionName: node.label } });
+		}
+	}
+
+	/** connection 双击：新建查询 tab 并绑定。 */
+	function newQueryForConnection(): void {
+		dispatch({ type: "setActiveConnection", name: node.label });
+		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+		dispatch({
+			type: "addTab",
+			tab: { id, label: node.label, connectionName: node.label, sql: "", isRunning: false },
+		});
+	}
+
+	function handleClick(): void {
 		if (node.kind === "connection") {
-			dispatch({ type: "setActiveConnection", name: node.label });
-			// 同时把首个 tab 绑定到这个连接
-			if (state.activeTabId) {
-				dispatch({ type: "updateTab", id: state.activeTabId, patch: { connectionName: node.label } });
-			}
-			void handleToggle();
+			activateConnection();
+			void ensureChildren();
+			if (!isExpanded) expand();
 		} else if (node.kind === "table") {
 			if (!connectionName) return;
 			dispatch({
 				type: "selectRightTable",
 				selection: { connectionName, tableName: node.label, schema },
 			});
-			// 确保表详情被懒加载（列信息）
 			void loadNodeChildren(node.key, connectionName, { schema });
 		}
 	}
 
-	function handleContextMenu(e: React.MouseEvent) {
-		e.preventDefault();
-		e.stopPropagation();
-		if (node.kind === "table" && connectionName) {
-			// 预览
-			const qualified = schema ? `${schema}.${node.label}` : node.label;
-			const sql = `SELECT * FROM ${qualified} LIMIT 200;`;
-			// 直接用 workbench 打开预览 tab
-			setPreview(connectionName, sql, node.label);
+	function handleDoubleClick(): void {
+		if (node.kind === "connection") {
+			newQueryForConnection();
+		} else if (node.kind === "table" && connectionName) {
+			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+		} else {
+			void ensureChildren();
+			if (!isExpanded) expand();
 		}
 	}
 
-	const statusDot = node.kind === "connection"
-		? state.connectionStatuses[node.label] ?? "idle"
-		: undefined;
+	function previewTable(): void {
+		if (!connectionName) return;
+		void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+	}
+
+	function showStructure(): void {
+		if (!connectionName) return;
+		dispatch({
+			type: "selectRightTable",
+			selection: { connectionName, tableName: node.label, schema },
+		});
+		void loadNodeChildren(node.key, connectionName, { schema });
+	}
+
+	function countTable(): void {
+		if (!connectionName) return;
+		void openPreviewTab(connectionName, `SELECT COUNT(*) AS cnt FROM ${qualifiedName};`, "计数");
+	}
+
+	function handleContextMenu(e: React.MouseEvent): void {
+		e.preventDefault();
+		e.stopPropagation();
+		if (node.kind === "connection") {
+			setMenu({
+				x: e.clientX,
+				y: e.clientY,
+				items: [
+					{ type: "item", label: "新建查询", icon: "icon-[lucide--file-plus-2]", onClick: newQueryForConnection },
+					{
+						type: "item",
+						label: isExpanded ? "折叠" : "展开表",
+						icon: isExpanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
+						onClick: () => {
+							void ensureChildren();
+							if (!isExpanded) expand();
+							else dispatch({ type: "toggleNode", key: node.key });
+						},
+					},
+					{ type: "separator" },
+					{
+						type: "item",
+						label: "发送到 AI 分析",
+						icon: "icon-[lucide--sparkles]",
+						onClick: () => sendConnectionToAi({ connectionName: node.label, dbType: node.dbType ?? "database" }),
+					},
+					{
+						type: "item",
+						label: "复制连接名",
+						icon: "icon-[lucide--copy]",
+						onClick: () => void navigator.clipboard.writeText(node.label).catch(() => {}),
+					},
+				],
+			});
+			return;
+		}
+		if (node.kind === "table" && connectionName) {
+			setMenu({
+				x: e.clientX,
+				y: e.clientY,
+				items: [
+					{ type: "item", label: "SELECT * 预览", icon: "icon-[lucide--table-2]", onClick: previewTable },
+					{ type: "item", label: "查看表结构", icon: "icon-[lucide--columns-3]", onClick: showStructure },
+					{ type: "item", label: "统计行数", icon: "icon-[lucide--hash]", onClick: countTable },
+					{ type: "separator" },
+					{
+						type: "item",
+						label: "发送到 AI 分析",
+						icon: "icon-[lucide--sparkles]",
+						onClick: () => sendTableToAi({ connectionName, schema, table: node.label }),
+					},
+					{
+						type: "item",
+						label: "复制表名",
+						icon: "icon-[lucide--copy]",
+						onClick: () => void navigator.clipboard.writeText(node.label).catch(() => {}),
+					},
+					{
+						type: "item",
+						label: "复制限定名",
+						icon: "icon-[lucide--clipboard-copy]",
+						onClick: () => void navigator.clipboard.writeText(qualifiedName).catch(() => {}),
+					},
+				],
+			});
+		}
+	}
+
+	const statusDot = node.kind === "connection" ? state.connectionStatuses[node.label] ?? "idle" : undefined;
 
 	return (
 		<div>
 			<div
-				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] transition-colors ${
+				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-blue-500/60 ${
 					active
 						? "bg-blue-500/15 text-blue-300"
 						: selected
-						? "bg-blue-500/10 text-blue-200"
-						: "text-zinc-300 hover:bg-zinc-800/60"
+							? "bg-blue-500/10 text-blue-200"
+							: "text-zinc-300 hover:bg-zinc-800/60"
 				}`}
 				style={{ paddingLeft: 6 + depth * 14 }}
-				onClick={handleSelect}
-				onDoubleClick={handleToggle}
+				onClick={handleClick}
+				onDoubleClick={handleDoubleClick}
 				onContextMenu={handleContextMenu}
 				tabIndex={0}
 			>
 				{(node.kind === "connection" || node.kind === "table") && (
 					<span
-						onClick={(e) => { e.stopPropagation(); void handleToggle(); }}
-						className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center text-zinc-500 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+						onClick={(e) => {
+							e.stopPropagation();
+							void ensureChildren();
+							expand();
+						}}
+						className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center text-zinc-500 transition-transform hover:text-zinc-200 ${isExpanded ? "rotate-90" : ""}`}
 					>
 						<span className="icon-[lucide--chevron-right] h-3 w-3" />
 					</span>
 				)}
-				{node.kind === "connection" && (
-					<ConnectionIcon dbType={node.dbType} status={statusDot} />
-				)}
+				{node.kind === "connection" && <ConnectionIcon dbType={node.dbType} status={statusDot} />}
 				{node.kind === "table" && (
-					<span className={`h-3 w-3 shrink-0 ${node.tableKind === "VIEW" ? "icon-[lucide--eye-off] text-sky-400/70" : "icon-[lucide--table-2] text-emerald-400/70"}`} />
+					<span
+						className={`h-3 w-3 shrink-0 ${node.tableKind === "VIEW" ? "icon-[lucide--eye-off] text-sky-400/70" : "icon-[lucide--table-2] text-emerald-400/70"}`}
+					/>
 				)}
 				{node.kind === "column" && (
-					<span className={`h-3 w-3 shrink-0 ${node.label.includes("(PK)") ? "icon-[lucide--key-round] text-amber-400" : "icon-[lucide--columns-3] text-zinc-500"}`} />
+					<span
+						className={`h-3 w-3 shrink-0 ${node.label.includes("(PK)") ? "icon-[lucide--key-round] text-amber-400" : "icon-[lucide--columns-3] text-zinc-500"}`}
+					/>
 				)}
 				<span className="min-w-0 flex-1 truncate">{node.label}</span>
-				{isLoading && (
-					<span className="icon-[lucide--loader] h-3 w-3 shrink-0 animate-spin text-zinc-500" />
-				)}
+				{isLoading && <span className="icon-[lucide--loader] h-3 w-3 shrink-0 animate-spin text-zinc-500" />}
 			</div>
 			{isExpanded && children.length > 0 && (
 				<div>
@@ -129,14 +238,22 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 					))}
 				</div>
 			)}
+			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
 		</div>
 	);
 }
 
 function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }): JSX.Element {
-	if (!dbType) return <span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
+	if (!dbType) return <span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0 text-zinc-400" />;
 	const visual = getDatabaseTypeVisual(dbType);
-	const dotCls = status === "ok" ? "bg-emerald-500" : status === "error" ? "bg-red-500" : status === "running" ? "animate-pulse bg-amber-400" : "bg-zinc-500/40";
+	const dotCls =
+		status === "ok"
+			? "bg-emerald-500"
+			: status === "error"
+				? "bg-red-500"
+				: status === "running"
+					? "animate-pulse bg-amber-400"
+					: "bg-zinc-500/40";
 	return (
 		<span className="relative shrink-0">
 			<span
@@ -145,16 +262,7 @@ function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }
 			>
 				{visual.badge}
 			</span>
-			<span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-[#0f1117] ${dotCls}`} />
+			<span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-[#0f1218] ${dotCls}`} />
 		</span>
 	);
-}
-
-// 在 ConnectionNode 内部通过 ref 间接拿 setPreview（避免循环 import）
-function setPreview(_connectionName: string, _sql: string, _label?: string) {
-	// 占位 — 由上层 ConnectionTree 注入
-}
-
-export function setPreviewHandler(fn: (connectionName: string, sql: string, label?: string) => void) {
-	(setPreview as unknown as { fn: typeof fn }).fn = fn;
 }

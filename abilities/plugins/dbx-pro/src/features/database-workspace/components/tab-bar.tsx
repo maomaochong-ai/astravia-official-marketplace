@@ -25,7 +25,7 @@ export function TabBar(): JSX.Element {
 				id,
 				label,
 				connectionName: state.activeConnectionName,
-				sql: "-- ⌘/Ctrl + Enter 执行\n",
+				sql: "",
 				isRunning: false,
 			},
 		});

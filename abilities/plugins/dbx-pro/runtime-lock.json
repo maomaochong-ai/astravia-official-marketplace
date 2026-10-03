@@ -1,0 +1,26 @@
+{
+  "version": "0.4.61",
+  "platforms": {
+    "darwin-arm64": [
+      {
+        "destination": "server/bin/dbx-mcp-darwin-arm64",
+        "url": "https://github.com/maomaochong-ai/dbx/releases/download/dbx-mcp-astravia-v0.4.61/dbx-mcp-0.4.61-astravia-darwin-arm64",
+        "sha256": "7ef5d8cd0affe51caf33ab78263da9e78fb33dfb97264897dba2defd67c3845d"
+      }
+    ],
+    "darwin-x64": [
+      {
+        "destination": "server/bin/dbx-mcp-darwin-x64",
+        "url": "https://github.com/maomaochong-ai/dbx/releases/download/dbx-mcp-astravia-v0.4.61/dbx-mcp-0.4.61-astravia-darwin-x64",
+        "sha256": "b48f619a4b33c35c3cd90a495cd2b9fb45506ee420de590afa830f50866c3f36"
+      }
+    ],
+    "win32-x64": [
+      {
+        "destination": "server/bin/dbx-mcp-win-x64.exe",
+        "url": "https://github.com/maomaochong-ai/dbx/releases/download/dbx-mcp-astravia-v0.4.61/dbx-mcp-0.4.61-astravia-win-x64.exe",
+        "sha256": "25484f9b5af527dd0af7dde44d9f2a929ad92b2c4cfe654c9460ca7be51950a8"
+      }
+    ]
+  }
+}

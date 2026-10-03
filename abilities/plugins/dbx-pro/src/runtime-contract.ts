@@ -33,6 +33,11 @@ export function getStorage() {
 	return requireCtx().storage;
 }
 
+/** 宿主加密凭据库（secrets.get / secrets.set）：密码等敏感凭据只存这里，不进明文 JSON。 */
+export function getSecrets() {
+	return requireCtx().secrets;
+}
+
 /**
  * 宿主托管的 service 能力（plugin.json#providers.services）。
  * 插件未声明 services、或宿主版本不支持时返回 null —— 调用方（查询路由）据此自动降级到

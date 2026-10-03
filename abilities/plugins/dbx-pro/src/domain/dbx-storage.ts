@@ -1,13 +1,17 @@
 /**
  * 连接配置仓储 — 所有连接的真实权威来源是 dbx-mcp。
  *
- * localStorage 只做 UI 表单临时缓存（writeConfig 在新连接时生成 id）。
+ * 敏感凭据（密码）不写入明文 JSON：
+ * - 非密元数据（host/port/库/标记等）存宿主托管的 connections.json 镜像；
+ * - 密码存宿主加密凭据库 secrets（`db-password:<连接名>`），执行时才取回；
+ * - 读到历史镜像里遗留的明文密码时，自动迁入 secrets 并擦除镜像。
+ *
  * 读/删操作统一走 dbx-mcp（dbx_list_connections / dbx_remove_connection）。
  */
 
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import type { DbConnection } from "./connection-config";
-import { getStorage } from "../runtime-contract";
+import { getSecrets, getStorage } from "../runtime-contract";
 import {
 	engineListConnections,
 	engineAddConnection,
@@ -17,6 +21,11 @@ import {
 } from "../shared/services/engine-client";
 
 const STORE_PATH = "connections.json";
+export const PASSWORD_PREFIX = "db-password:";
+
+function passwordKey(name: string): string {
+	return `${PASSWORD_PREFIX}${name}`;
+}
 
 export function genUuid(): string {
 	const cryptoRef = globalThis.crypto as Crypto | undefined;
@@ -24,7 +33,7 @@ export function genUuid(): string {
 	return `conn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** dbx-mcp EngineConnectionSummary → 面板组件期望的 DbConnection。 */
+/** dbx-mcp EngineConnectionSummary → 面板组件期望的 DbConnection（不含密码）。 */
 function toDbConnection(summary: EngineConnectionSummary): DbConnection {
 	return {
 		id: summary.id || genUuid(),
@@ -39,27 +48,58 @@ function toDbConnection(summary: EngineConnectionSummary): DbConnection {
 }
 
 /**
- * 把 dbx-mcp summary 和 localStorage 镜像 merge。
- * - localStorage 镜像有完整密码（用户添加连接时写入的）
- * - dbx-mcp summary 有最新的元数据（host/port/database 可能被用户在 dbx 桌面改过）
- * - localStorage 优先密码，dbx-mcp 覆盖元数据
+ * 合并 dbx-mcp summary 与本地镜像的非密元数据。
+ * dbx-mcp 提供最新 host/port/database；本地镜像补 username / ssl / 安全标记。
+ * 密码不在这里处理，统一由加密 vault 取回。
  */
 function mergeWithLocalMirror(serverList: DbConnection[], localList: DbConnection[]): DbConnection[] {
 	const localByName = new Map(localList.map((c) => [c.name, c]));
 	return serverList.map((serverConn) => {
 		const local = localByName.get(serverConn.name);
-		if (!local) return serverConn; // 本地没有 → 纯 dbx-mcp 连接，没密码
+		if (!local) return serverConn;
 		return {
-			...serverConn,          // dbx-mcp 元数据优先（最新）
+			...serverConn,
 			username: local.username || serverConn.username,
-			password: local.password || serverConn.password,
 			ssl: local.ssl ?? serverConn.ssl,
+			read_only: local.read_only ?? serverConn.read_only,
+			is_production: local.is_production ?? serverConn.is_production,
+			note: local.note ?? serverConn.note,
 			database: serverConn.database || local.database,
 		};
 	});
 }
 
-/** 读：优先 dbx-mcp（有完整密码走 merge，dbx-mcp 不可用 fallback localStorage）。 */
+/** 从加密 vault 取回该连接密码并附加（vault 不可用时保持原状）。 */
+async function attachPassword(conn: DbConnection): Promise<DbConnection> {
+	try {
+		const secret = await getSecrets().get(passwordKey(conn.name));
+		if (typeof secret === "string" && secret) return { ...conn, password: secret };
+	} catch { /* vault 暂不可用 */ }
+	return conn;
+}
+
+/**
+ * 迁移历史镜像里遗留的明文密码：迁入加密 vault，随后重写镜像擦除密码。
+ * 只在确实存在明文时动作。
+ */
+async function migrateLegacyPlaintext(localList: DbConnection[]): Promise<void> {
+	const legacy = localList.filter((c) => c.password);
+	if (legacy.length === 0) return;
+	await Promise.all(
+		legacy.map(async (c) => {
+			try {
+				const existing = await getSecrets().get(passwordKey(c.name));
+				if (!existing && c.password) await getSecrets().set(passwordKey(c.name), c.password);
+			} catch { /* ignore */ }
+		}),
+	);
+	try {
+		const scrubbed = localList.map((c) => (c.password ? { ...c, password: "" } : c));
+		await writeLocalOnly(scrubbed);
+	} catch { /* ignore */ }
+}
+
+/** 读：优先 dbx-mcp，密码从加密 vault 补全；dbx-mcp 不可用时 fallback 镜像 + vault。 */
 export async function readAllConfigs(): Promise<DbConnection[]> {
 	try {
 		const { connections } = await engineListConnections();
@@ -67,28 +107,28 @@ export async function readAllConfigs(): Promise<DbConnection[]> {
 			.map(toDbConnection)
 			.filter((c): c is DbConnection => Boolean(c.name && c.db_type));
 
-		// 用 localStorage 镜像补密码（用户添加连接时写入的完整配置）
 		let localList: DbConnection[] = [];
 		try { localList = await readLocalOnly(); } catch { /* ignore */ }
 
-		return mergeWithLocalMirror(serverList, localList)
-			.sort((a, b) => a.name.localeCompare(b.name));
+		const merged = mergeWithLocalMirror(serverList, localList).sort((a, b) => a.name.localeCompare(b.name));
+		await migrateLegacyPlaintext(localList);
+		return Promise.all(merged.map((c) => attachPassword(c)));
 	} catch (e) {
 		if (!(e instanceof EngineClientError)) throw e;
-		// 引擎不可用时 fallback localStorage
 	}
 	try {
 		const doc = await readJsonFile<{ connections?: DbConnection[] }>(getStorage(), STORE_PATH);
 		const list = Array.isArray(doc?.connections) ? doc!.connections : [];
-		return list
+		const filtered = list
 			.filter((c): c is DbConnection => Boolean(c && typeof c.id === "string" && typeof c.name === "string"))
 			.sort((a, b) => a.name.localeCompare(b.name));
+		return Promise.all(filtered.map((c) => attachPassword(c)));
 	} catch {
 		return [];
 	}
 }
 
-/** 写：优先 dbx-mcp，同时写 localStorage 镜像（给表单生成 id 用）。 */
+/** 写：dbx-mcp + 加密 vault 存密码；镜像只存非密元数据。 */
 export async function writeConfig(config: DbConnection): Promise<void> {
 	await engineAddConnection({
 		name: config.name,
@@ -101,20 +141,26 @@ export async function writeConfig(config: DbConnection): Promise<void> {
 		ssl: config.ssl,
 	});
 	try {
+		if (config.password) await getSecrets().set(passwordKey(config.name), config.password);
+		else await getSecrets().delete(passwordKey(config.name));
+	} catch { /* vault 暂不可用时不阻断连接保存 */ }
+	try {
 		const configs = await readLocalOnly();
+		const mirror: DbConnection = { ...config, password: "" };
 		const index = configs.findIndex((c) => c.id === config.id);
-		if (index >= 0) configs[index] = config;
-		else configs.push(config);
+		if (index >= 0) configs[index] = mirror;
+		else configs.push(mirror);
 		await writeLocalOnly(configs);
 	} catch { /* ignore */ }
 }
 
-/** 删：先查 name（dbx 删连接用 name 不是 id），再调 dbx-mcp，最后清 localStorage 镜像。 */
+/** 删：dbx-mcp + 加密密码 + 镜像。 */
 export async function deleteConfig(id: string): Promise<void> {
 	const configs = await readLocalOnly();
 	const target = configs.find((c) => c.id === id);
 	if (target?.name) {
 		try { await engineRemoveConnection(target.name); } catch { /* ignore */ }
+		try { await getSecrets().delete(passwordKey(target.name)); } catch { /* ignore */ }
 	}
 	try {
 		await writeLocalOnly(configs.filter((c) => c.id !== id));

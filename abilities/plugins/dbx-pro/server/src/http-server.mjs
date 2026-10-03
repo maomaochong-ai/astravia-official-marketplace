@@ -98,6 +98,8 @@ function readJsonBody(req) {
 
 export function createEngineServer({ token, dataDir = null, authDisabled = false } = {}) {
   const auth = createAuth({ token, disabled: authDisabled });
+  // 用宿主分配的数据目录预热引擎客户端；否则 --data 会被忽略、连接数据落到默认 home 目录。
+  getDbxMcpClient(dataDir ? { dataDir } : undefined);
   const router = createRouter({ auth });
 
   const server = createServer(async (req, res) => {
