@@ -45,9 +45,55 @@ function bytesFromBase64(value: string): Uint8Array<ArrayBuffer> {
 	return bytes;
 }
 
-async function sha256Base64(value: string): Promise<string> {
-	const digest = await crypto.subtle.digest("SHA-256", bytesFromBase64(value));
+/** 任意字节 → base64（分块，避免 fromCharCode 参数超限）。 */
+function bytesToBase64(bytes: Uint8Array): string {
+	let binary = "";
+	const chunkSize = 0x8000;
+	for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+		binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+	}
+	return btoa(binary);
+}
+
+async function sha256Bytes(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+	const digest = await crypto.subtle.digest("SHA-256", bytes);
 	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha256Base64(value: string): Promise<string> {
+	return sha256Bytes(bytesFromBase64(value));
+}
+
+/**
+ * 插件包根 URL。
+ *
+ * 本模块被打进 <root>/dist（chunks 可能在 dist/assets/），故从 import.meta.url
+ * 中定位 /dist/ 段并取其前的版本目录作为包根，与 chunk 深度无关。
+ */
+function packageRootUrl(): URL {
+	const moduleUrl = new URL(import.meta.url);
+	const distAt = moduleUrl.pathname.indexOf("/dist/");
+	const rootPath = distAt >= 0 ? moduleUrl.pathname.slice(0, distAt + 1) : "/";
+	return new URL(rootPath, moduleUrl);
+}
+
+/**
+ * 读取插件包内已内置的引擎二进制作为安装载荷。
+ *
+ * 二进制随 .astraviapkg 分发（server/bin），无需再访问网络；这同时消除了
+ * GitHub release 下载链路抖动导致 service 永远不就绪的问题。文件缺失等任何
+ * 异常都返回 null，交由网络下载兜底。
+ */
+async function readBundledBinary(asset: BinaryAsset): Promise<PluginServiceArtifactPayload | null> {
+	try {
+		const response = await fetch(new URL(asset.destination, packageRootUrl()), { cache: "no-store" });
+		if (!response.ok) return null;
+		const bytes = new Uint8Array(await response.arrayBuffer());
+		if ((await sha256Bytes(bytes)) !== asset.sha256) return null;
+		return { destination: asset.destination, data: bytesToBase64(bytes) };
+	} catch {
+		return null;
+	}
 }
 
 async function downloadBinary(context: PluginContext, asset: BinaryAsset): Promise<PluginServiceArtifactPayload> {
@@ -112,7 +158,10 @@ async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
 		const payloads: PluginServiceArtifactPayload[] = [
 			{ destination: "server/main.mjs", data: utf8ToBase64(bridgeSource) },
 		];
-		for (const asset of assets) payloads.push(await downloadBinary(context, asset));
+		for (const asset of assets) {
+			// 优先用包内已内置二进制；读不到（如裁剪安装）再从 release 网络下载。
+			payloads.push((await readBundledBinary(asset)) ?? (await downloadBinary(context, asset)));
+		}
 		status = await context.services.install(SERVICE_ID, payloads);
 		if (!status.installed) throw new Error(status.message ?? "引擎 runtime 安装失败");
 	}
