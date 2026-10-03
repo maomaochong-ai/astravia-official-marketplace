@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.13",
+  "version": "0.0.15",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -13,6 +13,7 @@
     "dist/style.css"
   ],
   "permissions": [
+    "agent.mcp.control",
     "ui.slot.activity-tab",
     "ui.slot.ability-detail",
     "agent.command.run",
@@ -26,21 +27,21 @@
         "id": "dbx-engine",
         "runtime": {
           "kind": "host-node",
-          "version": "0.1.1",
+          "version": "0.0.15",
           "entry": "service/main.mjs",
           "platforms": {
             "darwin-arm64": {
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "sha256": "0e6a7654c876b51257a077a76e9ffc22396bb98c79e4be760dd90217a1e3ed9d",
                   "archive": "file",
                   "destination": "service/main.mjs"
                 },
                 {
-                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "sha256": "7ef5d8cd0affe51caf33ab78263da9e78fb33dfb97264897dba2defd67c3845d",
                   "archive": "file",
-                  "destination": "service/drivers/sqlite-driver.mjs"
+                  "destination": "service/bin/dbx-mcp-darwin-arm64"
                 }
               ]
             },
@@ -48,44 +49,14 @@
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "sha256": "0e6a7654c876b51257a077a76e9ffc22396bb98c79e4be760dd90217a1e3ed9d",
                   "archive": "file",
                   "destination": "service/main.mjs"
                 },
                 {
-                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "sha256": "b48f619a4b33c35c3cd90a495cd2b9fb45506ee420de590afa830f50866c3f36",
                   "archive": "file",
-                  "destination": "service/drivers/sqlite-driver.mjs"
-                }
-              ]
-            },
-            "linux-arm64": {
-              "executable": "service/main.mjs",
-              "artifacts": [
-                {
-                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
-                  "archive": "file",
-                  "destination": "service/main.mjs"
-                },
-                {
-                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
-                  "archive": "file",
-                  "destination": "service/drivers/sqlite-driver.mjs"
-                }
-              ]
-            },
-            "linux-x64": {
-              "executable": "service/main.mjs",
-              "artifacts": [
-                {
-                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
-                  "archive": "file",
-                  "destination": "service/main.mjs"
-                },
-                {
-                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
-                  "archive": "file",
-                  "destination": "service/drivers/sqlite-driver.mjs"
+                  "destination": "service/bin/dbx-mcp-darwin-x64"
                 }
               ]
             },
@@ -93,14 +64,14 @@
               "executable": "service/main.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "sha256": "0e6a7654c876b51257a077a76e9ffc22396bb98c79e4be760dd90217a1e3ed9d",
                   "archive": "file",
                   "destination": "service/main.mjs"
                 },
                 {
-                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "sha256": "25484f9b5af527dd0af7dde44d9f2a929ad92b2c4cfe654c9460ca7be51950a8",
                   "archive": "file",
-                  "destination": "service/drivers/sqlite-driver.mjs"
+                  "destination": "service/bin/dbx-mcp-win-x64.exe"
                 }
               ]
             }
@@ -131,8 +102,18 @@
             "mode": "create"
           },
           {
-            "source": "service/drivers/sqlite-driver.mjs",
-            "destination": "service/drivers/sqlite-driver.mjs",
+            "source": "service/bin/dbx-mcp-darwin-arm64",
+            "destination": "service/bin/dbx-mcp-darwin-arm64",
+            "mode": "create"
+          },
+          {
+            "source": "service/bin/dbx-mcp-darwin-x64",
+            "destination": "service/bin/dbx-mcp-darwin-x64",
+            "mode": "create"
+          },
+          {
+            "source": "service/bin/dbx-mcp-win-x64.exe",
+            "destination": "service/bin/dbx-mcp-win-x64.exe",
             "mode": "create"
           }
         ]
@@ -140,9 +121,19 @@
     ]
   },
   "commands": [
-    "dbx",
-    "sqlite3"
+    "dbx"
   ],
+  "agent": {
+    "mcpServers": {
+      "dbx-pro": {
+        "type": "service",
+        "serviceId": "dbx-engine",
+        "path": "/mcp",
+        "displayName": "dbx数据库",
+        "description": "100+ 数据库连接与查询能力，支持列出连接、执行 SQL、查看表结构、获取 schema 上下文，用于 AI 数据分析、报表生成、表结构查询等数据库相关协作场景。"
+      }
+    }
+  },
   "defaultLocale": "zh",
   "description": "%plugin.description%",
   "author": "Astravia"

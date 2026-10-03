@@ -1,8 +1,8 @@
 {
-  "plugin.name": "dbx-pro Database Workbench",
-  "plugin.description": "A database workbench with SQLite ready out of the box: connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with write protection, production safety gates, and an honest support tier for all 85 connection types.",
+  "plugin.name": "dbx Database",
+  "plugin.description": "dbx-mcp powered database workbench: connection tree on the left, multi-tab SQL editor + result grid in the middle, table details on the right. Full DDL/DML support.",
   "tab.label": "Database",
-  "tab.tooltip": "dbx-pro Database Workbench",
+  "tab.tooltip": "dbx Database Workbench",
   "connection.title": "Connections",
   "connection.add": "Add Connection",
   "connection.sync": "Sync DBX Connections",
@@ -15,7 +15,7 @@
   "sql.clear": "Clear",
   "sql.empty": "Enter SQL query",
   "sql.resultEmpty": "No results",
-  "safety.title": "Production Safety Gates",
+  "safety.title": "Safety Gates",
   "safety.writeProtect": "Write protection enabled",
   "safety.writeProtectOff": "Write protection disabled",
   "safety.noDatabase": "No database selected"

@@ -1,10 +1,8 @@
-import { useCallback, useRef, useState } from "react";
-
 /**
- * SQL 语法高亮编辑器 — CSS overlay 实现，零运行时依赖。
+ * SQL 语法高亮 —— 纯函数，零运行时依赖。
  *
- * 底层透明 textarea 接收输入，上层 <pre><code> 渲染高亮。
- * 两者尺寸/滚动同步。支持关键词/字符串/数字/注释四类着色。
+ * 输入一段 SQL 字符串，返回带 <span class="dbx-hl-*"> 的 HTML 片段。
+ * 供透明 textarea + CSS overlay 的编辑器使用。
  */
 
 const KEYWORDS = new Set([
@@ -29,7 +27,7 @@ const KEYWORDS = new Set([
 
 type SegKind = "kw" | "str" | "num" | "cmt" | "id" | "text";
 
-function highlight(sql: string): string {
+export function highlightSql(sql: string): string {
 	const segs: { k: SegKind; t: string }[] = [];
 	let buf = "";
 	let i = 0;
@@ -109,62 +107,3 @@ function highlight(sql: string): string {
 		return esc;
 	}).join("");
 }
-
-interface Props {
-	value: string;
-	onChange: (v: string) => void;
-	onRun: () => void;
-	placeholder?: string;
-	disabled?: boolean;
-	/** 查询执行中：阻断重复提交，并在右上角提示。 */
-	busy?: boolean;
-}
-
-export function SqlEditor({ value, onChange, onRun, placeholder, disabled, busy }: Props) {
-	const taRef = useRef<HTMLTextAreaElement>(null);
-	const preRef = useRef<HTMLPreElement>(null);
-	const [scrollTop, setScrollTop] = useState(0);
-
-	const onScroll = useCallback(() => {
-		if (!taRef.current) return;
-		setScrollTop(taRef.current.scrollTop);
-	}, []);
-
-	const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-			e.preventDefault();
-			if (!busy) onRun();
-		}
-	}, [onRun, busy]);
-
-	const html = highlight(value);
-
-	return (
-		<div className="dbx-editor-wrap relative">
-			{busy ? (
-				<span className="absolute right-2 top-2 z-10 rounded bg-background/90 px-1.5 py-0.5 text-[10px] text-muted-foreground">执行中…</span>
-			) : null}
-			<pre
-				ref={preRef}
-				className="dbx-editor-hl"
-				style={{ transform: `translateY(${-scrollTop}px)` }}
-				aria-hidden="true"
-			>
-				<code dangerouslySetInnerHTML={{ __html: html + "\n" }} />
-			</pre>
-			<textarea
-				ref={taRef}
-				className="dbx-editor"
-				value={value}
-				onChange={(e) => onChange(e.target.value)}
-				onScroll={onScroll}
-				onKeyDown={onKeyDown}
-				placeholder={placeholder}
-				disabled={disabled}
-				spellCheck={false}
-			/>
-		</div>
-	);
-}
-
-export { highlight as highlightSql };

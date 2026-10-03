@@ -23,5 +23,10 @@
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.7"
+  },
+  "dependencies": {
+    "mssql": "^12.7.2",
+    "mysql2": "^3.24.5",
+    "pg": "^8.23.1"
   }
 }
