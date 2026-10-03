@@ -45,23 +45,7 @@
       "source": {
         "path": "abilities/plugins/feishu"
       },
-      "releases": [
-        {
-          "version": "1.0.6",
-          "minAppVersion": "0.5.59",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.ability-detail",
-            "shell.openExternal",
-            "agent.skills.control"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-feishu/feishu-1.0.6.astraviapkg",
-            "sha256": "6c2ef133c4ed9a5da939f9ca7604b8ea339655b5f971abd4a96c8b893fdfa2f2"
-          }
-        }
-      ]
+      "minAppVersion": "0.5.59"
     },
     {
       "type": "plugin",
@@ -104,28 +88,7 @@
       "source": {
         "path": "abilities/plugins/cli-proxy-api"
       },
-      "releases": [
-        {
-          "version": "1.10.4",
-          "minAppVersion": "0.5.59",
-          "pluginApiVersion": "^2.4.0",
-          "permissions": [
-            "ui.slot.ability-detail",
-            "ui.slot.workspace-view",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal",
-            "models.manage",
-            "media.provider.register",
-            "network.fetch"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-cli-proxy-api/cli-proxy-api-1.10.4.astraviapkg",
-            "sha256": "cd0338dc3da6c355bbb7234b19b2c85c78b51fe40c0939abdf4897dedb1b1735"
-          }
-        }
-      ]
+      "minAppVersion": "0.5.59"
     },
     {
       "type": "mcp",
@@ -216,30 +179,7 @@
               "path": "abilities/plugins/shimo"
             },
             "version": "1.0.25",
-            "releases": [
-              {
-                "version": "1.0.25",
-                "minAppVersion": "0.5.59",
-                "pluginApiVersion": "^2.1.0",
-                "permissions": [
-                  "ui.slot.workspace-view",
-                  "ui.slot.activity-tab",
-                  "ui.file-explorer.context-menu",
-                  "agent.skills.control",
-                  "fs.write",
-                  "storage.read",
-                  "storage.write",
-                  "ai.models.list",
-                  "ai.complete",
-                  "ai.ocr.recognize"
-                ],
-                "commands": [],
-                "artifact": {
-                  "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-shimo-reader/shimo-reader-1.0.25.astraviapkg",
-                  "sha256": "a6b72e9ee92673569af7ab71b56a39efa9cd819be867170bda2651010e15ac53"
-                }
-              }
-            ]
+            "minAppVersion": "0.5.59"
           },
           {
             "type": "skill",
@@ -484,28 +424,7 @@
       "source": {
         "path": "abilities/plugins/xiaohongshu"
       },
-      "releases": [
-        {
-          "version": "1.1.28",
-          "minAppVersion": "0.5.59",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "agent.mcp.control",
-            "ui.slot.ability-detail",
-            "ui.slot.workspace-view",
-            "storage.read",
-            "storage.write",
-            "secrets.read",
-            "secrets.write",
-            "network.fetch"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-xiaohongshu/xiaohongshu-1.1.28.astraviapkg",
-            "sha256": "5398f894d9f8d49807bbb497466dc557814e3e3c4860f141e62e47d21cde26b2"
-          }
-        }
-      ]
+      "minAppVersion": "0.5.59"
     },
     {
       "type": "mcp",
@@ -632,23 +551,7 @@
       "source": {
         "path": "abilities/plugins/astravia-tihu"
       },
-      "releases": [
-        {
-          "version": "0.3.2",
-          "minAppVersion": "0.5.59",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-astravia-tihu/astravia-tihu-0.3.2.astraviapkg",
-            "sha256": "3ab3d8efebbec5b473c7e2b6ea5db867acc9bb5df33b5982142de7f9ce65c924"
-          }
-        }
-      ]
+      "minAppVersion": "0.5.59"
     },
     {
       "type": "plugin",
@@ -689,32 +592,7 @@
       "source": {
         "path": "abilities/plugins/build-apple-apps"
       },
-      "releases": [
-        {
-          "version": "0.2.3",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "ui.slot.workspace-view",
-            "agent.command.run",
-            "agent.command.spawn",
-            "agent.skills.control",
-            "agent.session.read",
-            "fs.read",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [
-            "baguette"
-          ],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-build-apple-apps/build-apple-apps-0.2.3.astraviapkg",
-            "sha256": "78bb9a623fe6181417185079d881f05fbd2f2b8cd541c5a25dcdbdb02aec105b"
-          }
-        }
-      ]
+      "minAppVersion": "0.5.60"
     },
     {
       "type": "plugin",
@@ -757,28 +635,7 @@
       "source": {
         "path": "abilities/plugins/web-element-picker"
       },
-      "releases": [
-        {
-          "version": "0.3.7",
-          "minAppVersion": "0.5.59",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "ui.slot.input-action",
-            "ui.slot.ability-detail",
-            "agent.session.read",
-            "agent.session.write",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-web-element-picker/web-element-picker-0.3.7.astraviapkg",
-            "sha256": "2dfdf0c6591ff8e0ff56a8417150f857c7b1871f380b12566a26ea4020dddf5a"
-          }
-        }
-      ]
+      "minAppVersion": "0.5.59"
     },
     {
       "type": "plugin",
@@ -821,31 +678,8 @@
       "source": {
         "path": "abilities/plugins/dbx-pro"
       },
-      "releases": [
-        {
-          "version": "0.0.17",
-          "minAppVersion": "0.5.59",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "agent.mcp.control",
-            "ui.slot.activity-tab",
-            "ui.slot.ability-detail",
-            "agent.command.run",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [
-            "dbx"
-          ],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.0.17.astraviapkg",
-            "sha256": "0d61f019d4a5c912fe9dacbf19247564f23d04b56d33fdc8d3f102eea6640842"
-          }
-        }
-      ]
+      "minAppVersion": "0.5.59"
     }
   ],
-  "version": "0.0.11",
-  "marketplaceVersion": "2026.10.03-1"
+  "version": "0.0.11"
 }
