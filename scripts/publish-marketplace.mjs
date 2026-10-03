@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -165,16 +165,20 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
         releaseNotes: `Append-only Astravia plugin packages for ${slug}.`,
       });
     } else {
-      // 本地没有 artifact → 这是历史版本（当前 entry 版本 bump 后，旧版本成了 releases 数组里的历史记录）
-      // 只读 verify：从 GitHub download 算 SHA 对比 marketplace.json
-      // 不改 marketplace.json — 方向绝不反
+      // 本地没有 artifact → 从 GitHub download verify，写回本地 artifacts/ 重建缓存
+      // 不改 marketplace.json — SHA 已经对了就不需要改
       const verifyTmp = mkdtempSync(join(tmpdir(), 'astravia-history-verify-'));
       try {
         gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', verifyTmp);
-        const remoteSha = digest(readFileSync(join(verifyTmp, filename)));
+        const downloaded = join(verifyTmp, filename);
+        const remoteSha = digest(readFileSync(downloaded));
         if (remoteSha !== record.artifact.sha256) {
-          throw new Error(`${owner}: GitHub artifact SHA mismatch (GitHub=${remoteSha.slice(0, 16)}... marketplace=${record.artifact.sha256.slice(0, 16)}...) — 本地无历史 artifact，无法自动修复`);
+          throw new Error(`${owner}: GitHub artifact SHA mismatch (GitHub=${remoteSha.slice(0, 16)}... marketplace=${record.artifact.sha256.slice(0, 16)}...) — 无法自动修复，需要手动检查 GitHub Release`);
         }
+        // SHA 匹配 → 重建本地缓存
+        mkdirSync(artifactDir, { recursive: true });
+        writeFileSync(localPath, readFileSync(downloaded));
+        console.error(`[cache] ${owner}: 本地 artifact 缺失，从 GitHub 下载 ${filename} 重建缓存 (SHA=${remoteSha.slice(0, 16)}...)`);
       } finally { rmSync(verifyTmp, { recursive: true, force: true }); }
     }
   }
