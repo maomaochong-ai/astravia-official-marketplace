@@ -243,6 +243,105 @@ export interface EngineExecuteOptions extends CallOptions {
 	/** 危险语句必须回传与 SQL 逐字节一致的原文，否则引擎返回 CONFIRM_MISMATCH。 */
 	confirmedWriteSql?: string;
 	rowLimit?: number;
+	/** DDL/DML 直连回退用：附带完整连接配置（含密码），service 层在 SQL_BLOCKED 时使用。 */
+	connection?: DbConnection;
+}
+
+// ─── 新版 API：基于 connectionName（dbx-mcp 连接自管）──────────────
+
+export interface EngineConnectionSummary {
+	id: string;
+	name: string;
+	groupPath: string;
+	type: string;
+	host: string;
+	port: number;
+	database: string;
+}
+
+export interface EngineListTablesOutcome {
+	connection: string;
+	tables: { name: string; kind: string }[];
+}
+
+export interface EngineDescribeOutcome {
+	connection: string;
+	table: string;
+	columns: { name: string; type: string; nullable: boolean; hasDefault: boolean; defaultValue: string; comment: string; isPrimaryKey: boolean }[];
+}
+
+/** 列出所有已保存连接（GET /connections）。 */
+export function engineListConnections(options: CallOptions = {}): Promise<{ connections: EngineConnectionSummary[] }> {
+	return engineRequest<{ connections: EngineConnectionSummary[] }>("/connections", undefined, options);
+}
+
+/** 新增连接（POST /connections）。 */
+export function engineAddConnection(
+	spec: { name: string; dbType: string; host: string; port?: number; username?: string; password?: string; database?: string; ssl?: boolean },
+	options: CallOptions = {},
+): Promise<{ id: string; name: string; detail?: string }> {
+	return engineRequest<{ id: string; name: string; detail?: string }>("/connections", spec, options);
+}
+
+/** 删除连接（DELETE /connections）。 */
+export function engineRemoveConnection(name: string, options: CallOptions = {}): Promise<{ deleted: string }> {
+	return engineRequest<{ deleted: string }>("/connections", { name }, options);
+}
+
+/** 测试连接（已存或草稿，POST /connections/test）。 */
+export function engineTestConnectionByName(
+	connectionName?: string,
+	draft?: Record<string, unknown>,
+	options: CallOptions = {},
+): Promise<{ tableCount: number; detail?: string }> {
+	const body: Record<string, unknown> = {};
+	if (connectionName) body.connectionName = connectionName;
+	if (draft) body.draft = draft;
+	return engineRequest<{ tableCount: number; detail?: string }>("/connections/test", body, { timeoutMs: options.timeoutMs ?? TEST_TIMEOUT_MS });
+}
+
+/** 列出连接下全部表（POST /tables）。 */
+export function engineListTables(
+	connectionName: string,
+	scope?: { schema?: string; database?: string },
+	options: CallOptions = {},
+): Promise<EngineListTablesOutcome> {
+	return engineRequest<EngineListTablesOutcome>("/tables", { connectionName, scope: scope ?? {} }, options);
+}
+
+/** 查看表结构（POST /describe，用 connectionName）。 */
+export function engineDescribeByName(
+	connectionName: string,
+	target: { schema?: string; table: string },
+	options: CallOptions = {},
+): Promise<EngineDescribeOutcome> {
+	return engineRequest<EngineDescribeOutcome>("/describe", { connectionName, target }, options);
+}
+
+/** 执行 SQL（POST /query）——直接用 connectionName，不走 connection spec。 */
+export function engineExecuteByName(
+	connectionName: string,
+	sql: string,
+	options: EngineExecuteOptions = {},
+): Promise<EngineQueryOutcome> {
+	const body: Record<string, unknown> = {
+		connectionName,
+		sql,
+		allowWrites: options.allowWrites === true,
+		confirmedWriteSql: options.confirmedWriteSql,
+		rowLimit: options.rowLimit,
+		timeoutMs: clampTimeout(options.timeoutMs),
+	};
+	// DDL/DML 回退直连需要完整连接凭据：workbench 持有完整 DbConnection（含密码），
+	// 随请求附带过去，service 层 SQL_BLOCKED 时用它走 direct-driver。
+	if (options.connection) {
+		body.connection = toEngineConnection(options.connection);
+	}
+	return engineRequest<EngineQueryOutcome>(
+		"/query",
+		body,
+		{ timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS },
+	);
 }
 
 export function engineExecuteQuery(

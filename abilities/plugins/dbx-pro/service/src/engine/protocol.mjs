@@ -9,7 +9,7 @@
 
 // 0.1.1：修复第三轮审计的 B1/B2/B3（字符串感知剥离、打开前头校验、密钥缺失拒绝启动）。
 // 产物字节变了就必须抬版本，否则宿主不会重装已有版本（见 scripts/build-engine.mjs）。
-export const ENGINE_VERSION = "0.1.1";
+export const ENGINE_VERSION = "0.0.16";
 export const PROTOCOL_VERSION = 1;
 
 /** 请求体上限：与宿主 16MB 响应上限错开，留足序列化余量。 */

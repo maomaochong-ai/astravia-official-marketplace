@@ -6,7 +6,6 @@ import { getStorage } from "../runtime-contract";
 import { DEFAULT_SETTINGS, normalizeSettings, type WorkbenchSettings } from "./workbench-settings";
 
 const STORE_PATH = "workbench-settings.json";
-const STORE_SCHEMA_VERSION = 1;
 
 export async function readSettings(): Promise<WorkbenchSettings> {
 	const doc = await readJsonFile<Partial<WorkbenchSettings>>(getStorage(), STORE_PATH);
@@ -15,10 +14,8 @@ export async function readSettings(): Promise<WorkbenchSettings> {
 
 export async function writeSettings(settings: WorkbenchSettings): Promise<WorkbenchSettings> {
 	const normalized = normalizeSettings(settings);
-	await writeJsonFile(getStorage(), STORE_PATH, {
-		schemaVersion: STORE_SCHEMA_VERSION,
-		...normalized,
-	});
+	// normalized 本身已含 schemaVersion（由 normalizeSettings 强制为 1），无需重复声明。
+	await writeJsonFile(getStorage(), STORE_PATH, normalized);
 	return normalized;
 }
 

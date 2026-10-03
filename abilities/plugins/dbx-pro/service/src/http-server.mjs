@@ -2,21 +2,18 @@
  * 引擎进程入口（会被 scripts/build-engine.mjs 打成 service/main.mjs）。
  *
  * 职责边界：只做「绑定回环端口 + 读鉴权 + 读请求体 + 交给 router + 写响应 + 优雅退出」。
- * 任何数据库语义都在 drivers/ 与 engine/ 里，本文件不碰 SQL。
+ * 数据库语义全部在 engine/ 里，通过 dbx-mcp 子进程走 MCP stdio JSON-RPC。
  *
  * 命令行（宿主 process.args 注入）：
  *   --port <n>       监听端口（宿主分配；本机验证用 0 取随机端口）
- *   --data <dir>     宿主的服务私有数据目录（沿用，D1 不主动写）
+ *   --data <dir>     宿主的服务私有数据目录（dbx-mcp 用它存 dbx.db）
  *   --auth-disabled  显式关闭鉴权（仅本机联调用）
- *
- * 鉴权密钥来自宿主注入的环境变量，凭据 id `engine-key` →
- * ASTRAVIA_SERVICE_SECRET_ENGINE_KEY（宿主按 id 大写、非字母数字转下划线）。
  */
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
-import { ConnectionPool } from "./engine/connection-pool.mjs";
 import { createRouter } from "./engine/request-router.mjs";
+import { disposeDbxMcpClient, getDbxMcpClient } from "./engine/dbx-mcp-client.mjs";
 import {
   ENGINE_VERSION,
   MAX_BODY_BYTES,
@@ -99,10 +96,9 @@ function readJsonBody(req) {
   });
 }
 
-export function createEngineServer({ token, dataDir = null, authDisabled = false, idleTtlMs } = {}) {
-  const pool = new ConnectionPool(idleTtlMs ? { idleTtlMs } : {});
+export function createEngineServer({ token, dataDir = null, authDisabled = false } = {}) {
   const auth = createAuth({ token, disabled: authDisabled });
-  const router = createRouter({ pool, auth });
+  const router = createRouter({ auth });
 
   const server = createServer(async (req, res) => {
     const send = (status, body) => {
@@ -125,7 +121,38 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
     }
 
     try {
-      const body = req.method === "POST" ? await readJsonBody(req) : null;
+      const body = req.method === "POST" || req.method === "DELETE" ? await readJsonBody(req) : null;
+
+      // === MCP endpoint（宿主 AI 通过 agent.mcpServers 发现并调用）===
+      if (req.method === "POST" && url.pathname === "/mcp") {
+        auth.verify(req.headers);
+        const rpc = body ?? {};
+        const id = rpc.id ?? null;
+        const client = getDbxMcpClient();
+        try {
+          if (rpc.method === "initialize") {
+            await client.ensureInitialized();
+            return send(200, { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "dbx-pro", version: ENGINE_VERSION } } });
+          }
+          if (rpc.method === "tools/list") {
+            const list = await client.listTools();
+            return send(200, { jsonrpc: "2.0", id, result: { tools: list } });
+          }
+          if (rpc.method === "tools/call") {
+            const params = rpc.params ?? {};
+            const name = params.name;
+            const args = params.arguments ?? {};
+            if (!name) return send(200, { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } });
+            const callResult = await client.callTool(name, args);
+            return send(200, { jsonrpc: "2.0", id, result: callResult });
+          }
+          return send(200, { jsonrpc: "2.0", id, error: { code: -32601, message: `Unsupported MCP method: ${rpc.method}` } });
+        } catch (e) {
+          emit("mcp-error", { method: rpc.method, message: e.message });
+          return send(200, { jsonrpc: "2.0", id, result: { isError: true, content: [{ type: "text", text: e.message }] } });
+        }
+      }
+
       const outcome = await router.handle({
         method: req.method,
         pathname: url.pathname,
@@ -134,7 +161,6 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
       });
       send(outcome.status, outcome.body);
     } catch (error) {
-      // 读体失败（超限 / 非法 JSON）走这里：状态码交给协议表。
       const code = error?.code ?? "INTERNAL";
       const status = code === "PAYLOAD_TOO_LARGE" ? 413 : code === "BAD_REQUEST" ? 400 : 500;
       emit("request-error", { path: url.pathname, code });
@@ -147,19 +173,14 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
     if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
   });
 
-  const reaper = setInterval(() => {
-    pool.reap().catch(() => {});
-  }, 60_000);
-  reaper.unref?.();
-
-  return { server, pool, auth, router, dataDir, reaper };
+  return { server, auth, router, dataDir };
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     process.stdout.write(
-      "dbx-pro engine\n  --port <n>        listen port (0 = random)\n  --data <dir>      service data directory\n  --auth-disabled   disable token auth (local dev only)\n",
+      "dbx-pro engine (dbx-mcp bridge)\n  --port <n>        listen port (0 = random)\n  --data <dir>      service data directory (dbx-mcp stores dbx.db here)\n  --auth-disabled   disable token auth (local dev only)\n",
     );
     return;
   }
@@ -168,9 +189,6 @@ async function main() {
     process.exit(1);
   }
 
-  // B3 修复：密钥缺失/为空时**拒绝启动**（fail-closed），绝不静默关闭鉴权。
-  // 此前 token 为空会让 createAuth 得到 enabled:false，未带令牌的 /query 可直接执行到 SQL 层；
-  // 本机回环也可能被其它进程访问，所以本地调试必须显式传 --auth-disabled。
   const token = process.env[SECRET_KEY_ENV];
   if (typeof token !== "string" || token.length === 0) {
     if (!args.authDisabled) {
@@ -182,7 +200,7 @@ async function main() {
     }
   }
 
-  const { server, pool, auth, reaper } = createEngineServer({
+  const { server, auth } = createEngineServer({
     token,
     dataDir: args.dataDir,
     authDisabled: args.authDisabled,
@@ -207,19 +225,15 @@ async function main() {
     protocol: PROTOCOL_VERSION,
     auth: auth.enabled ? "enabled" : "disabled",
     dataDir: args.dataDir,
+    backend: "dbx-mcp",
   });
 
   let closing = false;
   const shutdown = async (signal) => {
     if (closing) return;
     closing = true;
-    clearInterval(reaper);
     await new Promise((resolve) => server.close(() => resolve()));
-    try {
-      await pool.closeAll();
-    } catch {
-      // 关停期的清理失败不改变退出码。
-    }
+    try { await disposeDbxMcpClient(); } catch {}
     emit("shutdown", { signal });
     process.exit(0);
   };

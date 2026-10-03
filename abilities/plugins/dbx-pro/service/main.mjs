@@ -2,11 +2,11 @@
 
 
 // service/src/http-server.mjs
-import { createHash as createHash2, timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 
 // service/src/engine/protocol.mjs
-var ENGINE_VERSION = "0.1.1";
+var ENGINE_VERSION = "0.0.15";
 var PROTOCOL_VERSION = 1;
 var MAX_BODY_BYTES = 8 * 1024 * 1024;
 var DEFAULT_ROW_LIMIT = 500;
@@ -85,101 +85,232 @@ function stringifyJson(value) {
   return JSON.stringify(value, jsonReplacer);
 }
 
-// service/src/engine/connection-pool.mjs
-var ConnectionPool = class {
-  constructor({ idleTtlMs = 3e5, now = () => Date.now() } = {}) {
-    this.idleTtlMs = idleTtlMs;
-    this.now = now;
-    this.entries = /* @__PURE__ */ new Map();
+// service/src/engine/dbx-mcp-client.mjs
+import { spawn } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+var _thisDir = join(fileURLToPath(import.meta.url), "..");
+var _serviceDir = _thisDir.endsWith("engine") ? join(_thisDir, "..", "..") : _thisDir;
+var BIN_PATH_BY_PLATFORM = {
+  "darwin-arm64": join(_serviceDir, "bin", "dbx-mcp-darwin-arm64"),
+  "darwin-x64": join(_serviceDir, "bin", "dbx-mcp-darwin-x64"),
+  "win32-x64": join(_serviceDir, "bin", "dbx-mcp-win-x64.exe")
+};
+function resolveDataDir(explicitDir) {
+  const dir = explicitDir ?? join(homedir(), ".astravia-dbx-data");
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+var HANDSHAKE_TIMEOUT_MS = 15e3;
+var CALL_TIMEOUT_MS = 6e4;
+var SHUTDOWN_GRACE_MS = 2e3;
+function detectPlatform() {
+  const platform = process.platform;
+  const arch = process.arch;
+  if (platform === "darwin" && arch === "arm64") return "darwin-arm64";
+  if (platform === "darwin" && arch === "x64") return "darwin-x64";
+  if (platform === "win32" && arch === "x64") return "win32-x64";
+  return null;
+}
+function resolveBinaryPath() {
+  const platform = detectPlatform();
+  if (!platform) {
+    throw new Error(`dbx-mcp: \u4E0D\u652F\u6301\u7684\u5E73\u53F0 ${process.platform}-${process.arch}\uFF08\u9700\u8981 darwin-arm64 / darwin-x64 / win32-x64\uFF09`);
+  }
+  return BIN_PATH_BY_PLATFORM[platform];
+}
+var DbxMcpClient = class {
+  constructor(options = {}) {
+    this.handshakeTimeoutMs = options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS;
+    this.callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
+    this.extraEnv = options.extraEnv ?? {};
+    this.dataDir = options.dataDir ?? null;
+    this.child = null;
+    this.buffer = "";
+    this.nextId = 1;
     this.pending = /* @__PURE__ */ new Map();
-    this.invalidations = 0;
+    this.initialized = null;
   }
-  /**
-   * 借出句柄。openHandle 由调用方提供（通常是 `() => driver.acquire(spec)`），
-   * 池只负责身份复用与生命周期，不依赖驱动契约。
-   */
-  async acquire(key, openHandle) {
-    const existing = this.entries.get(key);
-    if (existing) {
-      existing.lastUsed = this.now();
-      return existing.handle;
+  ensureInitialized() {
+    if (!this.initialized) {
+      this.initialized = this.spawnAndHandshake().catch((err) => {
+        this.initialized = null;
+        this.reapCurrentChild();
+        throw err;
+      });
     }
-    const inflight = this.pending.get(key);
-    if (inflight) return inflight;
-    const opening = (async () => {
-      try {
-        const handle = await openHandle();
-        this.entries.set(key, { handle, lastUsed: this.now() });
-        return handle;
-      } catch (error) {
-        if (isEngineError(error)) throw error;
-        throw engineError("CONNECTION_ERROR", error instanceof Error ? error.message : String(error));
-      } finally {
-        this.pending.delete(key);
-      }
-    })();
-    this.pending.set(key, opening);
-    return opening;
+    return this.initialized;
   }
-  /**
-   * 借出句柄执行 fn。**任何**抛出都会让该连接失效
-   * （网络抖动或语法错误之后，句柄状态已不可信）。
-   */
-  async withConnection(key, openHandle, fn) {
-    const handle = await this.acquire(key, openHandle);
-    try {
-      const result = await fn(handle);
-      const entry = this.entries.get(key);
-      if (entry) entry.lastUsed = this.now();
-      return result;
-    } catch (error) {
-      await this.invalidate(key);
-      throw error;
-    }
+  reapCurrentChild() {
+    const child = this.child;
+    this.child = null;
+    if (!child || child.killed) return;
+    child.kill();
+    const force = setTimeout(() => {
+      if (child && !child.killed) child.kill("SIGKILL");
+    }, SHUTDOWN_GRACE_MS);
+    if (force.unref) force.unref();
   }
-  async invalidate(key) {
-    const entry = this.entries.get(key);
-    if (!entry) return;
-    this.entries.delete(key);
-    this.invalidations += 1;
-    try {
-      await entry.handle.close();
-    } catch {
-    }
+  async callTool(name, args, timeoutMs) {
+    await this.ensureInitialized();
+    const id = this.nextId++;
+    const result = await this.request(
+      id,
+      "tools/call",
+      { name, arguments: args },
+      timeoutMs ?? this.callTimeoutMs
+    );
+    return result;
   }
-  async reap() {
-    const deadline = this.now() - this.idleTtlMs;
-    for (const [key, entry] of [...this.entries]) {
-      if (entry.lastUsed <= deadline) await this.invalidate(key);
-    }
-  }
-  async closeAll() {
-    const keys = [...this.entries.keys()];
-    for (const key of keys) await this.invalidate(key);
+  async dispose() {
+    const child = this.child;
+    this.child = null;
+    this.initialized = null;
+    for (const p of this.pending.values()) p.reject(new Error("dbx-mcp client disposed"));
     this.pending.clear();
+    if (!child || child.killed) return;
+    const exited = new Promise((resolve) => child.once("exit", () => resolve()));
+    child.kill();
+    await Promise.race([
+      exited,
+      new Promise((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS))
+    ]);
+    if (!child.killed) child.kill("SIGKILL");
   }
-  stats() {
-    const now = this.now();
-    return {
-      size: this.entries.size,
-      invalidations: this.invalidations,
-      connections: [...this.entries.entries()].map(([key, entry]) => ({
-        // key 是 8 位摘要，不含任何凭据，可安全回给 UI 做诊断
-        key: key.slice(0, 8),
-        idleMs: now - entry.lastUsed
-      }))
-    };
+  spawnAndHandshake() {
+    const bin = resolveBinaryPath();
+    const dbxDataDir = resolveDataDir(this.dataDir);
+    const child = spawn(bin, [], {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        DBX_DATA_DIR: dbxDataDir,
+        ...this.extraEnv
+      }
+    });
+    this.child = child;
+    const isCurrent = () => this.child === child;
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => this.onData(chunk));
+    child.stderr.on("data", (chunk) => {
+    });
+    child.on("exit", (code, signal) => {
+      if (!isCurrent()) return;
+      const err = new Error(`dbx-mcp exited (code=${code}, signal=${signal})`);
+      for (const p of this.pending.values()) p.reject(err);
+      this.pending.clear();
+      this.child = null;
+      this.initialized = null;
+    });
+    child.on("error", (err) => {
+      if (!isCurrent()) return;
+      for (const p of this.pending.values()) p.reject(err);
+      this.pending.clear();
+      this.child = null;
+      this.initialized = null;
+    });
+    return new Promise((resolve, reject) => {
+      this.request(
+        0,
+        "initialize",
+        {
+          protocolVersion: "2024-11-05",
+          capabilities: {},
+          clientInfo: { name: "dbx-pro-plugin", version: "0.1.1" }
+        },
+        this.handshakeTimeoutMs
+      ).then(() => {
+        if (!isCurrent()) {
+          reject(new Error("dbx-mcp client disposed during handshake"));
+          return;
+        }
+        this.sendNotification("notifications/initialized", {});
+        resolve();
+      }).catch((err) => reject(err));
+    });
+  }
+  request(id, method, params, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`dbx-mcp request "${method}" timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+      this.pending.set(id, {
+        resolve: (result) => {
+          clearTimeout(timer);
+          resolve(result);
+        },
+        reject: (err) => {
+          clearTimeout(timer);
+          reject(err);
+        }
+      });
+      this.sendMessage({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+  sendNotification(method, params) {
+    this.sendMessage({ jsonrpc: "2.0", method, params });
+  }
+  /** 列出 dbx-mcp 暴露的所有 MCP 工具。 */
+  async listTools(timeoutMs = 3e4) {
+    await this.ensureInitialized();
+    const result = await this.request(++this.seq, "tools/list", {}, timeoutMs);
+    return result?.tools ?? [];
+  }
+  sendMessage(message) {
+    if (!this.child) throw new Error("dbx-mcp client not started");
+    this.child.stdin.write(`${JSON.stringify(message)}
+`);
+  }
+  onData(chunk) {
+    this.buffer += chunk;
+    let idx = this.buffer.indexOf("\n");
+    while (idx !== -1) {
+      const line = this.buffer.slice(0, idx).trim();
+      this.buffer = this.buffer.slice(idx + 1);
+      if (!line) continue;
+      this.handleLine(line);
+      idx = this.buffer.indexOf("\n");
+    }
+  }
+  handleLine(line) {
+    let message;
+    try {
+      message = JSON.parse(line);
+    } catch {
+      return;
+    }
+    if (typeof message.id !== "number") return;
+    const p = this.pending.get(message.id);
+    if (!p) return;
+    this.pending.delete(message.id);
+    if (message.error) {
+      const msg = typeof message.error === "object" && message.error !== null && "message" in message.error ? String(message.error.message) : "dbx-mcp request error";
+      p.reject(new Error(msg));
+    } else {
+      p.resolve(message.result);
+    }
   }
 };
+var client = null;
+function getDbxMcpClient(options) {
+  if (!client) client = new DbxMcpClient(options);
+  return client;
+}
+async function disposeDbxMcpClient() {
+  if (client) {
+    await client.dispose();
+    client = null;
+  }
+}
 
-// service/src/engine/request-router.mjs
-import { createHash } from "node:crypto";
-
-// service/src/engine/query-guard.mjs
+// service/src/engine/sql-safety.mjs
 var READ_LEADERS = /* @__PURE__ */ new Set(["SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN", "USE", "VALUES"]);
 var DDL_KEYWORDS = ["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME"];
 var DDL_LEADERS = new Set(DDL_KEYWORDS);
-var DDL_KEYWORD_RE = new RegExp(`\\b(${DDL_KEYWORDS.join("|")})\\b`);
+var DDL_KEYWORD_RE = new RegExp("\\b(?:" + DDL_KEYWORDS.join("|") + ")\\b");
 var WRITE_KEYWORDS = [
   "INSERT",
   "UPDATE",
@@ -209,302 +340,477 @@ var WRITE_KEYWORDS = [
   "ANALYZE",
   "SET"
 ];
-var WRITE_KEYWORD_RE = new RegExp(`\\b(${WRITE_KEYWORDS.join("|")})\\b`);
-var DESTRUCTIVE_LEADERS = /* @__PURE__ */ new Set([
-  "DELETE",
-  "UPDATE",
-  "TRUNCATE",
-  "DROP",
-  "ALTER",
-  "VACUUM",
-  "REINDEX",
-  "GRANT",
-  "REVOKE",
-  "ATTACH",
-  "DETACH",
-  "REPLACE",
-  "MERGE"
-]);
-var QUOTE_CLOSERS = { "'": "'", '"': '"', "`": "`", "[": "]" };
-function scanSql(sql, { onCode, onLiteral }) {
-  const text = String(sql ?? "");
-  const length = text.length;
-  let index = 0;
-  let code = "";
-  const flushCode = () => {
-    if (code.length > 0) {
-      onCode(code);
-      code = "";
-    }
-  };
-  while (index < length) {
-    const char = text[index];
-    const closer = QUOTE_CLOSERS[char];
-    if (closer !== void 0) {
-      flushCode();
-      let literal = char;
-      index += 1;
-      while (index < length) {
-        const inner = text[index];
-        literal += inner;
-        if (inner === closer) {
-          if (closer !== "]" && text[index + 1] === closer) {
-            literal += text[index + 1];
-            index += 2;
-            continue;
-          }
-          index += 1;
-          break;
-        }
-        index += 1;
-      }
-      onLiteral(literal);
-      continue;
-    }
-    if (char === "-" && text[index + 1] === "-") {
-      while (index < length && text[index] !== "\n" && text[index] !== "\r") index += 1;
-      code += " ";
-      continue;
-    }
-    if (char === "/" && text[index + 1] === "*") {
-      index += 2;
-      while (index < length && !(text[index] === "*" && text[index + 1] === "/")) index += 1;
-      index = Math.min(index + 2, length);
-      code += " ";
-      continue;
-    }
-    code += char;
-    index += 1;
-  }
-  flushCode();
-}
+var WRITE_KEYWORD_RE = new RegExp("\\b(?:" + WRITE_KEYWORDS.join("|") + ")\\b");
 function stripSqlComments(sql) {
-  let stripped = "";
-  scanSql(sql, {
-    onCode: (chunk) => {
-      stripped += chunk;
-    },
-    onLiteral: (literal) => {
-      stripped += literal;
+  let out = "";
+  let i = 0;
+  let inLine = false;
+  let inBlock = false;
+  while (i < sql.length) {
+    const ch = sql[i];
+    const next = sql[i + 1];
+    if (!inLine && !inBlock && ch === "-" && next === "-") {
+      inLine = true;
+      i += 2;
+      continue;
     }
-  });
-  return stripped.trim();
-}
-function keywords(sql) {
-  return stripSqlComments(sql).toUpperCase().split(/[^A-Z0-9_$]+/).filter((token) => token.length > 0);
+    if (!inLine && !inBlock && ch === "/" && next === "*") {
+      inBlock = true;
+      i += 2;
+      continue;
+    }
+    if (inLine) {
+      if (ch === "\n") inLine = false;
+      else {
+        i += 1;
+        continue;
+      }
+    }
+    if (inBlock) {
+      if (ch === "*" && next === "/") {
+        inBlock = false;
+        i += 2;
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
 }
 function firstKeyword(sql) {
-  const tokens = keywords(sql);
-  return tokens.length > 0 ? tokens[0] : "";
+  const m = sql.trim().match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
+  return m ? m[0].toUpperCase() : "";
 }
 function isWriteStatement(sql) {
-  const cleaned = stripSqlComments(sql);
-  if (cleaned.length === 0) return false;
-  const tokens = keywords(sql);
-  if (tokens.length === 0) return false;
-  const [first, second] = tokens;
-  if (first === "EXPLAIN" && second === "ANALYZE") {
-    return isWriteStatement(cleaned.slice(cleaned.toUpperCase().indexOf("ANALYZE") + "ANALYZE".length));
+  const cleaned = stripSqlComments(sql).trim();
+  if (!cleaned) return false;
+  const first = firstKeyword(cleaned);
+  if (READ_LEADERS.has(first)) {
+    if (first === "EXPLAIN") {
+      const rest = cleaned.slice(first.length).trim();
+      if (rest.toUpperCase().startsWith("ANALYZE")) {
+        const body = rest.slice(7).trim();
+        const bodyFirst = firstKeyword(body);
+        if (bodyFirst && !READ_LEADERS.has(bodyFirst)) return true;
+        return WRITE_KEYWORD_RE.test(body.toUpperCase());
+      }
+    }
+    return false;
   }
-  if (first === "WITH") {
-    return WRITE_KEYWORD_RE.test(cleaned.toUpperCase());
-  }
-  if (READ_LEADERS.has(first)) return false;
+  if (first === "WITH") return WRITE_KEYWORD_RE.test(cleaned.toUpperCase());
   return true;
 }
 function isDdlStatement(sql) {
-  const cleaned = stripSqlComments(sql);
-  if (cleaned.length === 0) return false;
+  const cleaned = stripSqlComments(sql).trim();
+  if (!cleaned) return false;
   const first = firstKeyword(cleaned);
   if (DDL_LEADERS.has(first)) return true;
   if (first === "WITH") return DDL_KEYWORD_RE.test(cleaned.toUpperCase());
   return false;
 }
-function isDestructiveStatement(sql) {
-  if (isDdlStatement(sql)) return true;
-  return DESTRUCTIVE_LEADERS.has(firstKeyword(sql));
-}
 function splitStatements(sql) {
-  const statements = [];
-  let current = "";
-  const flush = () => {
-    const trimmed = current.trim();
-    if (trimmed.length > 0) statements.push(trimmed);
-    current = "";
-  };
-  scanSql(sql, {
-    onCode: (chunk) => {
-      for (const char of chunk) {
-        if (char === ";") flush();
-        else current += char;
-      }
-    },
-    onLiteral: (literal) => {
-      current += literal;
-    }
-  });
-  flush();
-  return statements;
-}
-function classifySql(sql) {
-  if (isDdlStatement(sql)) return "ddl";
-  if (!isWriteStatement(sql)) return "read";
-  return isDestructiveStatement(sql) ? "destructive" : "write";
+  return stripSqlComments(sql).split(";").map((s) => s.trim()).filter((s) => s.length > 0);
 }
 function classifyQuery(sql) {
   const statements = splitStatements(sql);
-  const kinds = statements.map(classifySql);
-  const requiresConfirmation = kinds.includes("ddl") || kinds.includes("destructive");
+  const kinds = statements.map((s) => {
+    if (isDdlStatement(s)) return "ddl";
+    return isWriteStatement(s) ? "write" : "read";
+  });
   let kind = "read";
-  for (const current of kinds) {
-    if (current === "ddl") kind = "ddl";
-    else if (current === "destructive" && kind !== "ddl") kind = "destructive";
-    else if (current === "write" && kind === "read") kind = "write";
+  for (const k of kinds) {
+    if (k === "ddl") kind = "ddl";
+    else if (k === "write" && kind !== "ddl") kind = "write";
   }
+  const requiresConfirmation = kind !== "read";
   return { kind, kinds, statements, requiresConfirmation };
 }
-function guardQuery({ sql, allowWrites = false, confirmedWriteSql } = {}) {
-  if (typeof sql !== "string" || sql.trim().length === 0) {
-    throw engineError("BAD_REQUEST", "SQL \u4E0D\u80FD\u4E3A\u7A7A");
-  }
-  const classified = classifyQuery(sql);
-  if (classified.statements.length === 0) {
-    throw engineError("BAD_REQUEST", "\u6CA1\u6709\u53EF\u6267\u884C\u7684 SQL \u8BED\u53E5\uFF08\u53EF\u80FD\u53EA\u6709\u6CE8\u91CA\uFF09");
-  }
-  if (classified.kind === "read") return classified;
-  if (!allowWrites) {
-    if (classified.kind === "ddl") {
-      throw engineError("DDL_BLOCKED", "\u5F53\u524D\u8FDE\u63A5\u672A\u5F00\u542F\u5199\u6743\u9650\uFF0CDDL \u8BED\u53E5\u5DF2\u88AB\u62E6\u622A", {
-        statementCount: classified.statements.length,
-        kind: classified.kind
-      });
-    }
-    throw engineError("WRITE_BLOCKED", "\u5F53\u524D\u8FDE\u63A5\u672A\u5F00\u542F\u5199\u6743\u9650\uFF0C\u5199\u8BED\u53E5\u5DF2\u88AB\u62E6\u622A", {
-      statementCount: classified.statements.length,
-      kind: classified.kind
-    });
-  }
-  if (classified.requiresConfirmation && confirmedWriteSql !== sql) {
-    throw engineError(
-      "CONFIRM_MISMATCH",
-      "\u5371\u9669\u8BED\u53E5\u9700\u8981\u6309\u539F\u6587\u786E\u8BA4\u540E\u624D\u53EF\u6267\u884C\uFF08\u786E\u8BA4\u6587\u672C\u4E0E\u5B9E\u9645 SQL \u4E0D\u4E00\u81F4\uFF09",
-      { statementCount: classified.statements.length, kind: classified.kind }
+
+// service/src/engine/direct-driver.mjs
+var DRIVER_FAMILY = {
+  // PostgreSQL 家族
+  postgres: "pg",
+  postgresql: "pg",
+  redshift: "pg",
+  greenplum: "pg",
+  cockroachdb: "pg",
+  timescaledb: "pg",
+  oceanbase: "pg",
+  opengauss: "pg",
+  gaussdb: "pg",
+  highgo: "pg",
+  edb: "pg",
+  postgis: "pg",
+  // MySQL 家族
+  mysql: "mysql",
+  mariadb: "mysql",
+  tidb: "mysql",
+  starrocks: "mysql",
+  doris: "mysql",
+  // SQLite
+  sqlite: "sqlite",
+  sqlite3: "sqlite",
+  // SQL Server
+  mssql: "mssql",
+  sqlserver: "mssql",
+  // ClickHouse
+  clickhouse: "clickhouse",
+  // DuckDB — 用 node:sqlite 兼容？DuckDB 有自己协议但本地文件模式类似
+  duckdb: "sqlite"
+};
+var DEFAULT_PORT = { pg: 5432, mysql: 3306, mssql: 1433, clickhouse: 9e3 };
+async function executeDirect(opts) {
+  const { dbType, host, port, username, password, database, sql, ssl, timeoutMs = 3e4 } = opts ?? {};
+  if (!dbType) throw mkError("DIRECT_DRIVER_BAD_CONFIG", "Direct driver \u7F3A\u5C11 dbType");
+  if (!sql || typeof sql !== "string" || sql.trim().length === 0) throw mkError("BAD_REQUEST", "SQL \u4E0D\u80FD\u4E3A\u7A7A");
+  const family = DRIVER_FAMILY[dbType.toLowerCase()];
+  if (!family) {
+    throw mkError(
+      "DIRECT_DRIVER_UNSUPPORTED",
+      `Direct driver \u4E0D\u652F\u6301\u7684 dbType: ${dbType}\u3002\u652F\u6301: ${Object.keys(DRIVER_FAMILY).join(", ")}`
     );
   }
-  return classified;
+  if (family !== "sqlite" && !host) {
+    throw mkError("DIRECT_DRIVER_BAD_CONFIG", `Direct driver (${family}) \u7F3A\u5C11 host`);
+  }
+  if (family === "sqlite" && !database) {
+    throw mkError("DIRECT_DRIVER_BAD_CONFIG", "SQLite \u6A21\u5F0F\u7F3A\u5C11 database\uFF08\u6587\u4EF6\u8DEF\u5F84\uFF09");
+  }
+  const started = Date.now();
+  const result = { columns: [], rows: [], rowCount: 0 };
+  try {
+    switch (family) {
+      case "pg":
+        return await execPg({ dbType, host, port, username, password, database, sql, ssl, timeoutMs, started });
+      case "mysql":
+        return await execMy({ dbType, host, port, username, password, database, sql, ssl, timeoutMs, started });
+      case "mssql":
+        return await execMs({ dbType, host, port, username, password, database, sql, timeoutMs, started });
+      case "sqlite":
+        return await execSqlite({ dbType, database, sql, started });
+      case "clickhouse":
+        return await execClickHouse({ dbType, host, port, username, password, database, sql, timeoutMs, started });
+    }
+  } catch (e) {
+    if (e?.code?.startsWith("DIRECT_DRIVER")) throw e;
+    const msg = e?.message ?? String(e);
+    const err = mkError("DIRECT_DRIVER_ERROR", `Direct driver \u6267\u884C\u5931\u8D25 (${family}): ${msg}`);
+    err.cause = e;
+    throw err;
+  }
+}
+async function execPg({ dbType, host, port, username, password, database, sql, ssl, timeoutMs, started }) {
+  const { default: pg } = await import("pg");
+  const pool = new pg.Pool({
+    host,
+    port: Number(port) || DEFAULT_PORT.pg,
+    user: username,
+    password,
+    database,
+    max: 1,
+    idleTimeoutMillis: 1e4,
+    connectionTimeoutMillis: Math.min(timeoutMs, 1e4),
+    ssl: ssl ? { rejectUnauthorized: false } : void 0
+  });
+  try {
+    const client2 = await pool.connect();
+    try {
+      const r = await client2.query({ text: sql, rowMode: "array" });
+      return shapeResult(r.fields, r.rows, r.rowCount, started, dbType, host, port, database, sql);
+    } finally {
+      client2.release();
+    }
+  } finally {
+    await pool.end();
+  }
+}
+async function execMy({ dbType, host, port, username, password, database, sql, ssl, timeoutMs, started }) {
+  const { default: mysql } = await import("mysql2/promise");
+  const conn = await mysql.createConnection({
+    host,
+    port: Number(port) || DEFAULT_PORT.mysql,
+    user: username,
+    password,
+    database,
+    ssl: ssl ? { rejectUnauthorized: false } : void 0,
+    connectTimeout: Math.min(timeoutMs, 1e4)
+  });
+  try {
+    const [result, fields] = await conn.query({ sql, rowsAsArray: true });
+    const columns = fields ? fields.map((f) => f.name) : [];
+    let rows = [];
+    let rowCount = 0;
+    if (Array.isArray(result)) {
+      rows = result.map((row) => {
+        const obj = {};
+        fields.forEach((f, i) => {
+          obj[f.name] = row[i];
+        });
+        return obj;
+      });
+      rowCount = rows.length;
+    } else if (result && typeof result === "object") {
+      rowCount = result.affectedRows ?? result.changedRows ?? 0;
+    }
+    return { columns, rows, rowCount, ...meta(started, dbType, host, port, database, sql) };
+  } finally {
+    await conn.end();
+  }
+}
+async function execMs({ dbType, host, port, username, password, database, sql, timeoutMs, started }) {
+  const sqlSrvModule = await import("mssql");
+  const sqlSrv = sqlSrvModule.default ?? sqlSrvModule;
+  const pool = await sqlSrv.connect({
+    server: host,
+    port: Number(port) || DEFAULT_PORT.mssql,
+    userName: username,
+    password,
+    database,
+    options: { trustServerCertificate: true, connectTimeout: Math.min(timeoutMs, 1e4) }
+  });
+  try {
+    const r = await pool.request().query(sql);
+    const recordsets = r.recordsets || [];
+    const first = recordsets[0] || [];
+    const columns = r.columns && r.columns[0] ? r.columns[0].map((c) => c.name) : [];
+    return {
+      columns,
+      rows: first,
+      rowCount: first.length,
+      ...meta(started, dbType, host, port, database, sql)
+    };
+  } finally {
+    await pool.close();
+  }
+}
+async function execSqlite({ dbType, database, sql, started }) {
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(database);
+  try {
+    const rows = [];
+    let columns = [];
+    if (/\b(SELECT|PRAGMA|WITH)\b/i.test(sql)) {
+      const stmt = db.prepare(sql);
+      for (const row of stmt.all()) {
+        if (columns.length === 0) columns = Object.keys(row);
+        rows.push({ ...row });
+      }
+    } else {
+      db.exec(sql);
+    }
+    return { columns, rows, rowCount: rows.length, ...meta(started, dbType, void 0, void 0, database, sql) };
+  } finally {
+    db.close();
+  }
+}
+async function execClickHouse({ dbType, host, port, username, password, database, sql, timeoutMs, started }) {
+  const url = `http://${host}:${port || DEFAULT_PORT.clickhouse}/`;
+  const auth = username ? `Basic ${Buffer.from(`${username}:${password ?? ""}`).toString("base64")}` : void 0;
+  const headers = { "Content-Type": "text/plain" };
+  if (auth) headers.Authorization = auth;
+  if (database) headers["X-ClickHouse-Database"] = database;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const query = sql.replace(/;?\s*$/, "") + " FORMAT JSON";
+    const res = await fetch(url, {
+      method: "POST",
+      body: query,
+      headers,
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    const text = await res.text();
+    if (!res.ok) throw new Error(`ClickHouse HTTP ${res.status}: ${text.slice(0, 200)}`);
+    if (!text.trim()) {
+      return { columns: [], rows: [], rowCount: 0, ...meta(started, dbType, host, port, database, sql) };
+    }
+    const parsed = JSON.parse(text);
+    const data = parsed.data || [];
+    const metaCols = parsed.meta || [];
+    return {
+      columns: metaCols.map((m) => m.name),
+      rows: data,
+      rowCount: data.length,
+      ...meta(started, dbType, host, port, database, sql)
+    };
+  } catch (e) {
+    clearTimeout(timer);
+    if (e.name === "AbortError") throw new Error("ClickHouse \u67E5\u8BE2\u8D85\u65F6");
+    throw e;
+  }
+}
+function shapeResult(fields, rows, rowCount, started, dbType, host, port, database, sql) {
+  const columns = fields ? fields.map((f) => f.name) : [];
+  let shapedRows = [];
+  if (fields && Array.isArray(rows)) {
+    shapedRows = rows.map((row) => {
+      const obj = {};
+      fields.forEach((f, i) => {
+        obj[f.name] = row[i];
+      });
+      return obj;
+    });
+  }
+  return { columns, rows: shapedRows, rowCount: rowCount ?? shapedRows.length, ...meta(started, dbType, host, port, database, sql) };
+}
+function meta(started, dbType, host, port, database, sql) {
+  return {
+    elapsedMs: Date.now() - started,
+    connectionName: `${dbType}://${host ?? ""}${port ? ":" + port : ""}/${database ?? ""}`.replace(/:\/\//, host ? "://" : ""),
+    sql,
+    directExecuted: true
+  };
+}
+function mkError(code, message) {
+  const err = new Error(message);
+  err.code = code;
+  return err;
+}
+function isSqlBlocked(result) {
+  if (!result?.isError) return false;
+  const text = extractText(result);
+  if (!text) return false;
+  const upper = text.toUpperCase();
+  return upper.includes("SQL_BLOCKED") || upper.includes("HIGH-RISK SQL IS DISABLED") || upper.includes("HIGH RISK SQL") || upper.includes("WRITE DISABLED") || upper.includes("BLOCKED");
+}
+function extractText(result) {
+  if (!result?.content) return "";
+  if (Array.isArray(result.content)) {
+    return result.content.map((c) => c?.text ?? "").join("");
+  }
+  return result.content?.text ?? "";
 }
 
-// service/src/driver-registry.mjs
-var DRIVER_TABLE = Object.freeze([
-  {
-    id: "sqlite",
-    label: "SQLite",
-    family: "sqlite",
-    tier: "first-class",
-    defaultPort: 0,
-    fileBased: true,
-    aliases: ["sqlite3"]
+// service/src/engine/markdown-parser.mjs
+function textOf(result) {
+  return result?.content?.map((c) => c.text ?? "").join("\n") ?? "";
+}
+function parseMarkdownTable(text) {
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("|"));
+  if (lines.length < 2) return { columns: [], rows: [] };
+  const split = (line) => line.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+  const columns = split(lines[0]);
+  const rows = lines.slice(2).map((line) => {
+    const cells = split(line);
+    const row = {};
+    columns.forEach((col, i) => {
+      row[col] = cells[i] ?? "";
+    });
+    return row;
+  });
+  return { columns, rows };
+}
+function pick(row, names) {
+  for (const n of names) {
+    const v = row[n];
+    if (v !== void 0 && v !== "") return v;
   }
-]);
-var PENDING_DRIVERS = Object.freeze([
-  { id: "postgres", label: "PostgreSQL", family: "postgres", tier: "experimental", defaultPort: 5432, reason: "driver.pending.postgres" },
-  { id: "mysql", label: "MySQL", family: "mysql", tier: "experimental", defaultPort: 3306, reason: "driver.pending.mysql" },
-  { id: "mariadb", label: "MariaDB", family: "mysql", tier: "experimental", defaultPort: 3306, reason: "driver.pending.mariadb" },
-  { id: "mssql", label: "SQL Server", family: "mssql", tier: "experimental", defaultPort: 1433, reason: "driver.pending.mssql" },
-  { id: "mongodb", label: "MongoDB", family: "mongodb", tier: "experimental", defaultPort: 27017, reason: "driver.pending.mongodb" },
-  { id: "redis", label: "Redis", family: "redis", tier: "experimental", defaultPort: 6379, reason: "driver.pending.redis" },
-  { id: "clickhouse", label: "ClickHouse", family: "clickhouse", tier: "experimental", defaultPort: 8123, reason: "driver.pending.clickhouse" },
-  { id: "duckdb", label: "DuckDB", family: "duckdb", tier: "out-of-scope", defaultPort: 0, reason: "driver.pending.duckdb" },
-  { id: "cloudflare-d1", label: "Cloudflare D1", family: "cloudflare-d1", tier: "out-of-scope", defaultPort: 0, reason: "driver.pending.cloudflare-d1" }
-]);
-var ALIASES = /* @__PURE__ */ new Map();
-for (const entry of DRIVER_TABLE) {
-  ALIASES.set(entry.id, entry.id);
-  for (const alias of entry.aliases ?? []) ALIASES.set(alias, entry.id);
+  return "";
 }
-function normalizeDriverId(id) {
-  if (typeof id !== "string" || id.trim().length === 0) return "";
-  const raw = id.trim().toLowerCase();
-  return ALIASES.get(raw) ?? raw;
+function parseBulletList(text) {
+  const items = [];
+  for (const line of text.split("\n")) {
+    const m = line.trim().match(/^[-*]\s*(.+)$/);
+    if (m) items.push(m[1].trim());
+  }
+  return items;
 }
-function listDriverDescriptors() {
-  return [
-    ...DRIVER_TABLE.map((entry) => ({ ...entry, ready: true })),
-    ...PENDING_DRIVERS.map((entry) => ({ ...entry, ready: false }))
-  ];
-}
-var cache = /* @__PURE__ */ new Map();
-async function loadDriver(id) {
-  const normalized = normalizeDriverId(id);
-  if (normalized.length === 0) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u7C7B\u578B\uFF08dbType\uFF09");
-  if (cache.has(normalized)) return cache.get(normalized);
-  const entry = DRIVER_TABLE.find((candidate) => candidate.id === normalized);
-  if (!entry) {
-    const pending = PENDING_DRIVERS.find((candidate) => candidate.id === normalized);
-    if (pending) {
-      throw engineError("DRIVER_UNSUPPORTED", `\u9A71\u52A8 ${pending.label}\uFF08${pending.id}\uFF09\u5C1A\u672A\u5728\u63D2\u4EF6\u5F15\u64CE\u4E2D\u5B9E\u73B0`, {
-        driver: pending.id,
-        tier: pending.tier,
-        reason: pending.reason
-      });
+function parseTableList(text) {
+  const tables = [];
+  for (const item of parseBulletList(text)) {
+    const m = item.match(/^(.+?)\s*\(([^)]+)\)(?:\s*--.*)?$/);
+    if (m) {
+      tables.push({ name: m[1].trim(), kind: m[2].trim() });
+    } else {
+      tables.push({ name: item.replace(/\s+--.*$/, "").trim(), kind: "" });
     }
-    throw engineError("DRIVER_UNSUPPORTED", `\u672A\u77E5\u7684\u6570\u636E\u5E93\u7C7B\u578B\uFF1A${id}`, { driver: String(id) });
   }
-  const url = new URL(`./drivers/${entry.id}-driver.mjs`, import.meta.url);
-  const module = await import(url.href);
-  if (typeof module.createDriver !== "function") {
-    throw engineError("INTERNAL", `\u9A71\u52A8\u6A21\u5757\u7F3A\u5C11 createDriver()\uFF1A${entry.id}`);
+  if (tables.length === 0) {
+    const { rows } = parseMarkdownTable(text);
+    for (const row of rows) {
+      const name = pick(row, ["Name", "name", "Table", "table", "Table Name", "\u8868\u540D"]);
+      if (name) tables.push({ name, kind: pick(row, ["Type", "type", "Kind", "kind", "Table Type", "\u7C7B\u578B"]) });
+    }
   }
-  cache.set(normalized, module);
-  return module;
+  return tables;
+}
+function isPkMarker(cells) {
+  const hay = cells.join(" ").toUpperCase();
+  return hay.includes("(PK)") || /\bPK\b/.test(hay) || /\bPRI\b/.test(hay) || /\bPRIMARY KEY\b/.test(hay);
+}
+function parseDescribeColumns(rows) {
+  return rows.map((row) => {
+    const nameCell = pick(row, ["Column", "Name", "name"]);
+    const keyCell = pick(row, ["Key", "KeyType", "Key type", "keys"]);
+    const commentCell = pick(row, ["Comment", "comment"]);
+    const isPrimaryKey = isPkMarker([nameCell, keyCell, commentCell]);
+    const name = nameCell.replace(/\s*\((?:PK|PRIMARY KEY)\)\s*/gi, "").trim();
+    const defaultCell = pick(row, ["Default", "default"]);
+    return {
+      name,
+      type: pick(row, ["Type", "type"]),
+      nullable: (pick(row, ["Nullable", "nullable"]) || "YES").toUpperCase() !== "NO",
+      hasDefault: defaultCell.length > 0,
+      defaultValue: defaultCell,
+      comment: commentCell,
+      isPrimaryKey
+    };
+  });
+}
+function dedupeConnections(connections) {
+  const seenIds = /* @__PURE__ */ new Set();
+  const seenNames = /* @__PURE__ */ new Set();
+  const unique = [];
+  for (const connection of connections) {
+    const id = (connection.id ?? "").trim();
+    const name = (connection.name ?? "").trim();
+    if (!id && !name) {
+      unique.push(connection);
+      continue;
+    }
+    if (id && seenIds.has(id) || name && seenNames.has(name)) continue;
+    if (id) seenIds.add(id);
+    if (name) seenNames.add(name);
+    unique.push(connection);
+  }
+  return unique;
+}
+function parseConnections(text) {
+  const { rows } = parseMarkdownTable(text);
+  return rows.map((row) => ({
+    id: pick(row, ["ID", "Id", "id"]),
+    name: pick(row, ["Name", "name"]),
+    groupPath: pick(row, ["Group Path", "GroupPath", "group"]),
+    type: pick(row, ["Type", "type", "DB Type"]),
+    host: pick(row, ["Host", "host"]),
+    port: Number(pick(row, ["Port", "port"])) || 0,
+    database: pick(row, ["Database", "database", "DB"])
+  }));
+}
+function classifyError(raw) {
+  if (!raw) return { code: "UNKNOWN", detail: "" };
+  if (raw.includes("SQL_BLOCKED")) return { code: "SQL_BLOCKED", detail: raw };
+  if (raw.includes("DBX_NOT_RUNNING")) return { code: "DBX_NOT_RUNNING", detail: raw };
+  if (/connection.*not.*found|ConnectionNotFound/i.test(raw)) return { code: "CONNECTION_NOT_FOUND", detail: raw };
+  if (/MCP_READ_ONLY|read-only mode/i.test(raw)) return { code: "READ_ONLY", detail: raw };
+  if (/already exists/i.test(raw)) return { code: "CONNECTION_EXISTS", detail: raw };
+  if (/INVALID_CONNECTION_TYPE|Unsupported database type|INVALID_CONNECTION|Port is required/i.test(raw))
+    return { code: "INVALID_PARAMS", detail: raw };
+  if (/timed?\s*out|timeout/i.test(raw)) return { code: "TIMEOUT", detail: raw };
+  if (/connection|failed|refused|ECONN|TABLE_LIST_ERROR|CONNECTION_LOAD_ERROR|CONNECTION_SAVE_ERROR/i.test(raw))
+    return { code: "CONNECTION_FAILED", detail: raw };
+  return { code: "UNKNOWN", detail: raw };
+}
+function extractDuration(text) {
+  const m = text.match(/(\d+(?:\.\d+)?)\s*(ms|s)\b/i);
+  return m ? m[0] : "";
 }
 
 // service/src/engine/request-router.mjs
-function pick(source, ...keys) {
-  for (const key of keys) {
-    const value = source[key];
-    if (value !== void 0 && value !== null && String(value).trim() !== "") return value;
-  }
-  return void 0;
-}
-function normalizePort(value) {
-  if (value === void 0) return void 0;
-  const port = Number(value);
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw engineError("BAD_REQUEST", `\u7AEF\u53E3\u4E0D\u5408\u6CD5\uFF1A${value}`);
-  }
-  return port;
-}
-function normalizeSpec(raw) {
-  const dbType = normalizeDriverId(pick(raw, "dbType", "db_type", "type"));
-  if (dbType.length === 0) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u7C7B\u578B\uFF08dbType\uFF09");
-  const asString = (value) => typeof value === "string" && value.length > 0 ? value : void 0;
-  return {
-    id: asString(pick(raw, "id")),
-    name: asString(pick(raw, "name")),
-    dbType,
-    host: asString(pick(raw, "host")),
-    port: normalizePort(pick(raw, "port")),
-    username: asString(pick(raw, "username", "user")),
-    password: typeof raw.password === "string" ? raw.password : void 0,
-    database: asString(pick(raw, "database", "db")),
-    file: asString(pick(raw, "file", "filePath", "file_path")),
-    readOnly: pick(raw, "readOnly", "read_only") === true
-  };
-}
-function poolKeyFor(spec) {
-  const identity = [
-    spec.dbType,
-    spec.host ?? "",
-    spec.port ?? "",
-    spec.database ?? "",
-    spec.file ?? "",
-    spec.username ?? "",
-    spec.readOnly === true ? "ro" : "rw"
-  ].join("|");
-  const credential = typeof spec.password === "string" && spec.password.length > 0 ? createHash("sha256").update(spec.password).digest("hex").slice(0, 8) : "";
-  return `${identity}|${credential}`;
-}
 function clampRowLimit(rowLimit) {
   const value = Number.isFinite(rowLimit) ? Math.trunc(rowLimit) : DEFAULT_ROW_LIMIT;
   return Math.min(Math.max(value, 1), MAX_ROW_LIMIT);
@@ -513,150 +819,246 @@ function clampTimeout(timeoutMs) {
   const value = Number.isFinite(timeoutMs) ? Math.trunc(timeoutMs) : 3e4;
   return Math.min(Math.max(value, 1e3), MAX_TIMEOUT_MS);
 }
-function requireConnection(body) {
-  const raw = body?.connection ?? body?.conn;
-  if (!raw || typeof raw !== "object") throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connection");
-  return normalizeSpec(raw);
+function extractText2(result, toolName) {
+  const text = textOf(result);
+  if (result.isError) {
+    const err = classifyError(text);
+    throw engineError(err.code, `${toolName} failed: ${err.detail}`, text);
+  }
+  return text;
 }
-function createRouter({ pool, auth, now = () => Date.now() } = {}) {
-  if (!pool) throw new Error("createRouter \u9700\u8981 pool");
-  const resolveDriver = async (spec) => {
-    const module = await loadDriver(spec.dbType);
-    return { module, driver: module.createDriver() };
-  };
-  const routes = /* @__PURE__ */ new Map([
-    [
-      "/health",
-      {
-        method: "GET",
-        auth: false,
-        handler: () => ({
-          status: "ok",
-          version: ENGINE_VERSION,
-          protocol: PROTOCOL_VERSION,
-          pid: process.pid,
-          node: process.version,
-          platform: `${process.platform}-${process.arch}`,
-          uptimeMs: Math.round(process.uptime() * 1e3),
-          auth: auth?.enabled ? "enabled" : "disabled",
-          pool: pool.stats(),
-          drivers: listDriverDescriptors()
-        })
+function toDbxAddParams(body) {
+  const args = { name: body.name, db_type: body.dbType, host: body.host };
+  if (body.port) args.port = body.port;
+  if (body.username) args.username = body.username;
+  if (body.password) args.password = body.password;
+  if (body.database) args.database = body.database;
+  if (body.ssl !== void 0) args.ssl = body.ssl === true;
+  if (!args.host && body.file) args.host = body.file;
+  return args;
+}
+function createRouter({ auth, now = () => Date.now() } = {}) {
+  if (!auth) throw new Error("createRouter \u9700\u8981 auth");
+  const mcpClient = () => getDbxMcpClient();
+  const routeDefs = [
+    // === 健康检查 ===
+    ["/health", "GET", false, async () => {
+      let dbxInfo = { status: "unknown" };
+      try {
+        await mcpClient().ensureInitialized();
+        dbxInfo = { status: "connected" };
+      } catch (e) {
+        dbxInfo = { status: "error", message: e.message };
       }
-    ],
-    [
-      "/test",
-      {
-        method: "POST",
-        auth: true,
-        handler: async ({ body, pool: connectionPool }) => {
-          const spec = requireConnection(body);
-          const { module, driver } = await resolveDriver(spec);
-          const outcome = await connectionPool.withConnection(
-            poolKeyFor(spec),
-            () => driver.acquire(spec),
-            (handle2) => handle2.test()
-          );
-          return { connection: spec.name ?? spec.id ?? null, ...outcome, driver: { id: module.descriptor.id, tier: module.descriptor.tier } };
-        }
+      return {
+        status: "ok",
+        version: ENGINE_VERSION,
+        protocol: PROTOCOL_VERSION,
+        pid: process.pid,
+        node: process.version,
+        platform: `${process.platform}-${process.arch}`,
+        uptimeMs: Math.round(process.uptime() * 1e3),
+        auth: auth?.enabled ? "enabled" : "disabled",
+        dbx: dbxInfo,
+        drivers: [{ id: "dbx-cli", label: "dbx CLI (100+ databases)", tier: "first-class", ready: true }]
+      };
+    }],
+    // === 连接管理 ===
+    ["/connections", "GET", true, async () => {
+      const result = await mcpClient().callTool("dbx_list_connections", {});
+      const text = extractText2(result, "dbx_list_connections");
+      const raw = parseConnections(text);
+      return { connections: dedupeConnections(raw) };
+    }],
+    ["/connections", "POST", true, async ({ body }) => {
+      if (!body?.name || !body?.dbType) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 name / dbType");
+      const dbxArgs = toDbxAddParams(body);
+      const result = await mcpClient().callTool("dbx_add_connection", dbxArgs);
+      const text = extractText2(result, "dbx_add_connection");
+      const idMatch = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      return { id: idMatch?.[0] ?? "", name: body.name, detail: text };
+    }],
+    ["/connections", "DELETE", true, async ({ body }) => {
+      const name = body?.name;
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connection name");
+      const result = await mcpClient().callTool("dbx_remove_connection", { connection_name: name });
+      extractText2(result, "dbx_remove_connection");
+      return { deleted: name };
+    }],
+    ["/connections/test", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName;
+      let tempName = null;
+      let actualName = connectionName;
+      if (!connectionName && body?.draft) {
+        tempName = `astravia-test-${Date.now().toString(36)}`;
+        const addResult = await mcpClient().callTool("dbx_add_connection", toDbxAddParams({ ...body.draft, name: tempName }));
+        extractText2(addResult, "dbx_add_connection");
+        actualName = tempName;
       }
-    ],
-    [
-      "/catalog",
-      {
-        method: "POST",
-        auth: true,
-        handler: async ({ body, pool: connectionPool }) => {
-          const spec = requireConnection(body);
-          const { driver } = await resolveDriver(spec);
-          const result = await connectionPool.withConnection(
-            poolKeyFor(spec),
-            () => driver.acquire(spec),
-            (handle2) => handle2.catalog(body?.scope ?? {})
-          );
-          return { connection: spec.name ?? spec.id ?? null, ...result };
-        }
-      }
-    ],
-    [
-      "/describe",
-      {
-        method: "POST",
-        auth: true,
-        handler: async ({ body, pool: connectionPool }) => {
-          const spec = requireConnection(body);
-          const target = body?.target ?? { schema: body?.schema, table: body?.table };
-          const { driver } = await resolveDriver(spec);
-          const result = await connectionPool.withConnection(
-            poolKeyFor(spec),
-            () => driver.acquire(spec),
-            (handle2) => handle2.describe({ schema: target?.schema ?? "main", table: target?.table })
-          );
-          return { connection: spec.name ?? spec.id ?? null, ...result };
-        }
-      }
-    ],
-    [
-      "/query",
-      {
-        method: "POST",
-        auth: true,
-        handler: async ({ body, pool: connectionPool }) => {
-          const spec = requireConnection(body);
-          const allowWrites = body?.allowWrites === true;
-          const confirmedWriteSql = typeof body?.confirmedWriteSql === "string" ? body.confirmedWriteSql : void 0;
-          const classified = guardQuery({ sql: body?.sql, allowWrites, confirmedWriteSql });
-          const { driver } = await resolveDriver(spec);
-          const timeoutMs = clampTimeout(body?.timeoutMs);
-          const rowLimit = clampRowLimit(body?.rowLimit);
-          const deadline = now() + timeoutMs;
-          const shouldAbort = () => now() > deadline;
-          const key = poolKeyFor(spec);
-          const started = now();
-          const statements = [];
-          for (const statement of classified.statements) {
-            statements.push(
-              await connectionPool.withConnection(
-                key,
-                () => driver.acquire(spec),
-                (handle2) => handle2.query({ sql: statement, rowLimit, shouldAbort })
-              )
-            );
+      if (!actualName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName \u6216 draft");
+      try {
+        const testResult = await mcpClient().callTool("dbx_list_tables", { connection_name: actualName });
+        const text = extractText2(testResult, "dbx_list_tables");
+        const tableCount = parseTableList(text).length;
+        return { tableCount, detail: text };
+      } finally {
+        if (tempName) {
+          try {
+            await mcpClient().callTool("dbx_remove_connection", { connection_name: tempName });
+          } catch {
           }
-          const last = statements[statements.length - 1];
-          return {
-            connection: spec.name ?? spec.id ?? null,
-            kind: classified.kind,
-            statement_count: statements.length,
-            statements,
-            truncated: statements.some((entry) => entry.truncated),
-            row_limit: rowLimit,
-            timeout_ms: timeoutMs,
-            duration_ms: now() - started,
-            // 顶层镜像最后一条结果集：旧版 UI 就是「只展示最后一个结果集」的语义。
-            columns: last.columns,
-            rows: last.rows,
-            row_count: last.row_count,
-            affected_rows: last.affected_rows
-          };
         }
       }
-    ]
-  ]);
+    }],
+    // === 查询执行 ===
+    ["/query", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      const sql = body?.sql;
+      if (typeof sql !== "string" || sql.trim().length === 0) throw engineError("BAD_REQUEST", "SQL \u4E0D\u80FD\u4E3A\u7A7A");
+      const classified = classifyQuery(sql);
+      const timeoutMs = clampTimeout(body?.timeoutMs);
+      const rowLimit = clampRowLimit(body?.rowLimit);
+      const started = now();
+      let result;
+      try {
+        result = await mcpClient().callTool(
+          "dbx_execute_query",
+          { connection_name: connectionName, sql },
+          timeoutMs
+        );
+      } catch (e) {
+        const msg = e?.message ?? String(e);
+        throw engineError("DBX_MCP_ERROR", `dbx-mcp \u8C03\u7528\u5931\u8D25: ${msg}`);
+      }
+      if (!result.isError) {
+        const text = extractText2(result, "dbx_execute_query");
+        const { columns, rows } = parseMarkdownTable(text);
+        const rowCount = rows.length;
+        const truncated = rowLimit > 0 && rowCount > rowLimit;
+        const visibleRows = truncated ? rows.slice(0, rowLimit) : rows;
+        return {
+          connection: connectionName,
+          kind: classified.kind,
+          statement_count: classified.statements.length,
+          columns,
+          rows: visibleRows,
+          row_count: rowCount,
+          truncated,
+          row_limit: rowLimit,
+          duration_ms: now() - started,
+          duration_hint: extractDuration(text),
+          raw_text: text,
+          affected_rows: (() => {
+            const m = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
+            return m ? parseInt(m[1], 10) : null;
+          })()
+        };
+      }
+      const errorText = textOf(result);
+      const err = classifyError(errorText);
+      const conn = body?.connection;
+      const dbType = (conn?.dbType ?? conn?.db_type ?? "").toLowerCase();
+      const supportedByDirect = DRIVER_FAMILY[dbType] != null;
+      const shouldFallback = (err.code === "SQL_BLOCKED" || isSqlBlocked(result)) && supportedByDirect;
+      if (conn && dbType && shouldFallback) {
+        try {
+          const direct = await executeDirect({
+            dbType,
+            host: conn.host,
+            port: conn.port,
+            username: conn.username ?? conn.user,
+            password: conn.password,
+            database: conn.database,
+            ssl: conn.ssl,
+            sql,
+            timeoutMs
+          });
+          const rowCount = direct.rows?.length ?? direct.rowCount ?? 0;
+          const truncated = rowLimit > 0 && rowCount > rowLimit;
+          const visibleRows = truncated ? direct.rows.slice(0, rowLimit) : direct.rows;
+          return {
+            connection: connectionName,
+            kind: classified.kind,
+            statement_count: classified.statements.length,
+            columns: direct.columns ?? [],
+            rows: visibleRows,
+            row_count: rowCount,
+            truncated,
+            row_limit: rowLimit,
+            duration_ms: direct.elapsedMs ?? now() - started,
+            duration_hint: "direct-driver",
+            raw_text: null,
+            affected_rows: direct.rowCount ?? null,
+            direct_executed: true
+          };
+        } catch (directErr) {
+          const directMsg = directErr?.message ?? String(directErr);
+          const combinedErr = engineError(
+            directErr?.code ?? "DIRECT_DRIVER_ERROR",
+            `dbx-mcp \u6267\u884C\u5931\u8D25 + \u76F4\u8FDE\u56DE\u9000\u4E5F\u5931\u8D25\uFF1A${directMsg}`,
+            `${errorText}
+--- direct-driver ---
+${directMsg}`
+          );
+          throw combinedErr;
+        }
+      }
+      throw engineError(err.code, `dbx_execute_query failed: ${err.detail}`, errorText);
+    }],
+    // === 对象浏览 ===
+    ["/tables", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      const scope = body?.scope ?? {};
+      const args = { connection_name: connectionName };
+      if (scope.schema) args.schema = scope.schema;
+      if (scope.database) args.database = scope.database;
+      const result = await mcpClient().callTool("dbx_list_tables", args);
+      const text = extractText2(result, "dbx_list_tables");
+      return { connection: connectionName, tables: parseTableList(text) };
+    }],
+    ["/describe", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      const target = body?.target ?? { schema: body?.schema, table: body?.table };
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      if (!target?.table) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 table");
+      const args = { connection_name: connectionName, table: target.table };
+      if (target.schema) args.schema = target.schema;
+      const result = await mcpClient().callTool("dbx_describe_table", args);
+      const text = extractText2(result, "dbx_describe_table");
+      const { rows } = parseMarkdownTable(text);
+      return { connection: connectionName, table: target.table, columns: parseDescribeColumns(rows) };
+    }],
+    ["/schema-context", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      const result = await mcpClient().callTool("dbx_get_schema_context", { connection_name: connectionName });
+      const text = extractText2(result, "dbx_get_schema_context");
+      return { connection: connectionName, schema: text };
+    }]
+  ];
+  const routes = /* @__PURE__ */ new Map();
+  for (const [pathname, method, auth2, handler] of routeDefs) {
+    if (!routes.has(pathname)) routes.set(pathname, /* @__PURE__ */ new Map());
+    routes.get(pathname).set(method, { auth: auth2, handler });
+  }
   async function handle(request) {
     const { method = "GET", pathname, headers = {}, body = null } = request ?? {};
-    const route = routes.get(pathname);
-    if (!route) {
+    const methodMap = routes.get(pathname);
+    if (!methodMap) {
       const error = engineError("NOT_FOUND", `\u672A\u77E5\u8DEF\u5F84\uFF1A${pathname}`);
       return { status: httpStatusForCode(error.code), body: fail(error) };
     }
-    if (method !== route.method) {
-      const error = engineError("METHOD_NOT_ALLOWED", `${pathname} \u53EA\u63A5\u53D7 ${route.method}`);
+    const route = methodMap.get(method);
+    if (!route) {
+      const allowed = [...methodMap.keys()].join(", ");
+      const error = engineError("METHOD_NOT_ALLOWED", `${pathname} \u53EA\u63A5\u53D7 ${allowed}`);
       return { status: httpStatusForCode(error.code), body: fail(error) };
     }
     try {
       if (route.auth) auth.verify(headers);
-      const data = await route.handler({ body, headers, pool });
+      const data = await route.handler({ body, headers });
       return { status: 200, body: ok(data) };
     } catch (error) {
       const normalized = normalizeThrown(error);
@@ -687,7 +1089,7 @@ function parseArgs(argv) {
   return args;
 }
 function digest(value) {
-  return createHash2("sha256").update(value).digest();
+  return createHash("sha256").update(value).digest();
 }
 function createAuth({ token, disabled = false } = {}) {
   const enabled = !disabled && typeof token === "string" && token.length > 0;
@@ -736,10 +1138,9 @@ function readJsonBody(req) {
     });
   });
 }
-function createEngineServer({ token, dataDir = null, authDisabled = false, idleTtlMs } = {}) {
-  const pool = new ConnectionPool(idleTtlMs ? { idleTtlMs } : {});
+function createEngineServer({ token, dataDir = null, authDisabled = false } = {}) {
   const auth = createAuth({ token, disabled: authDisabled });
-  const router = createRouter({ pool, auth });
+  const router = createRouter({ auth });
   const server = createServer(async (req, res) => {
     const send = (status, body) => {
       if (res.writableEnded) return;
@@ -759,7 +1160,35 @@ function createEngineServer({ token, dataDir = null, authDisabled = false, idleT
       return send(400, { ok: false, error: { code: error.code, message: error.message } });
     }
     try {
-      const body = req.method === "POST" ? await readJsonBody(req) : null;
+      const body = req.method === "POST" || req.method === "DELETE" ? await readJsonBody(req) : null;
+      if (req.method === "POST" && url.pathname === "/mcp") {
+        auth.verify(req.headers);
+        const rpc = body ?? {};
+        const id = rpc.id ?? null;
+        const client2 = getDbxMcpClient();
+        try {
+          if (rpc.method === "initialize") {
+            await client2.ensureInitialized();
+            return send(200, { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "dbx-pro", version: ENGINE_VERSION } } });
+          }
+          if (rpc.method === "tools/list") {
+            const list = await client2.listTools();
+            return send(200, { jsonrpc: "2.0", id, result: { tools: list } });
+          }
+          if (rpc.method === "tools/call") {
+            const params = rpc.params ?? {};
+            const name = params.name;
+            const args = params.arguments ?? {};
+            if (!name) return send(200, { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } });
+            const callResult = await client2.callTool(name, args);
+            return send(200, { jsonrpc: "2.0", id, result: callResult });
+          }
+          return send(200, { jsonrpc: "2.0", id, error: { code: -32601, message: `Unsupported MCP method: ${rpc.method}` } });
+        } catch (e) {
+          emit("mcp-error", { method: rpc.method, message: e.message });
+          return send(200, { jsonrpc: "2.0", id, result: { isError: true, content: [{ type: "text", text: e.message }] } });
+        }
+      }
       const outcome = await router.handle({
         method: req.method,
         pathname: url.pathname,
@@ -778,18 +1207,13 @@ function createEngineServer({ token, dataDir = null, authDisabled = false, idleT
     emit("request-error", { path: null, code: "CLIENT_ERROR", message: error.message });
     if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
   });
-  const reaper = setInterval(() => {
-    pool.reap().catch(() => {
-    });
-  }, 6e4);
-  reaper.unref?.();
-  return { server, pool, auth, router, dataDir, reaper };
+  return { server, auth, router, dataDir };
 }
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     process.stdout.write(
-      "dbx-pro engine\n  --port <n>        listen port (0 = random)\n  --data <dir>      service data directory\n  --auth-disabled   disable token auth (local dev only)\n"
+      "dbx-pro engine (dbx-mcp bridge)\n  --port <n>        listen port (0 = random)\n  --data <dir>      service data directory (dbx-mcp stores dbx.db here)\n  --auth-disabled   disable token auth (local dev only)\n"
     );
     return;
   }
@@ -807,7 +1231,7 @@ async function main() {
       process.exit(1);
     }
   }
-  const { server, pool, auth, reaper } = createEngineServer({
+  const { server, auth } = createEngineServer({
     token,
     dataDir: args.dataDir,
     authDisabled: args.authDisabled
@@ -828,16 +1252,16 @@ async function main() {
     node: process.version,
     protocol: PROTOCOL_VERSION,
     auth: auth.enabled ? "enabled" : "disabled",
-    dataDir: args.dataDir
+    dataDir: args.dataDir,
+    backend: "dbx-mcp"
   });
   let closing = false;
   const shutdown = async (signal) => {
     if (closing) return;
     closing = true;
-    clearInterval(reaper);
     await new Promise((resolve) => server.close(() => resolve()));
     try {
-      await pool.closeAll();
+      await disposeDbxMcpClient();
     } catch {
     }
     emit("shutdown", { signal });
