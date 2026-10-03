@@ -176,7 +176,13 @@ export async function prepareMarketplace({ root, output, previous, sourceSha, bu
         await buildPlugin(source);
         const python = process.env.ASTRAVIA_PYTHON || process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
         const packager = fileURLToPath(new URL('./stage-plugin-release.py', import.meta.url));
-        const release = JSON.parse(execFileSync(python, [packager, entry.slug, '--root', root, '--min-app-version', entry.minAppVersion, '--output-dir', artifacts], { encoding: 'utf8' }));
+        let release;
+        try {
+          release = JSON.parse(execFileSync(python, [packager, entry.slug, '--root', root, '--min-app-version', entry.minAppVersion, '--output-dir', artifacts], { encoding: 'utf8' }));
+        } catch (e) {
+          console.error(`[stage-plugin-release] 跳过 ${entry.slug}: ${e.stderr?.split('\n').slice(-3).join('\n') ?? e.message}`);
+          continue;
+        }
         if (release.artifact.url !== artifact.url) throw new Error(`Unexpected artifact URL for ${entry.slug}`);
         if (migrate && release.artifact.sha256 !== existing.artifact.sha256) throw new Error(`Published bytes differ for ${entry.slug}; use a new version`);
         releases.push(release);
