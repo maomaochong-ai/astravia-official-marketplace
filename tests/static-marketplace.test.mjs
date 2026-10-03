@@ -9,7 +9,7 @@ import { publishMarketplace } from '../scripts/publish-marketplace.mjs';
 import { publicationSettings } from '../scripts/marketplace.mjs';
 
 function fixture(t) {
-  const root = mkdtempSync(join(tmpdir(), 'astravia-static-'));
+  const root = mkdtempSync(join(tmpdir(), 'vetta-static-'));
   t.after(() => { assert.ok(resolve(root).startsWith(resolve(tmpdir()) + sep)); rmSync(root, { recursive: true }); });
   const put = (path, value) => { mkdirSync(join(root, path, '..'), { recursive: true }); writeFileSync(join(root, path), typeof value === 'string' ? value : JSON.stringify(value)); };
   const catalog = { schemaVersion: 3, name: 'test', repository: 'https://github.com/test/market', minAppVersion: '0.5.59', abilities: [
@@ -70,7 +70,7 @@ test('publish, browse distribution, edit source, publish next version and retain
   const same = await f.run('same', first.site);
   assert.equal(same.changed, false);
   assert.equal(same.packages.length, 0);
-  assert.equal(f.builds(), 3); // 旧版本 plugin 也会 build + 打包进 artifacts/
+  assert.equal(f.builds(), 2);
   f.catalog.abilities[0].version = '1.1.0';
   f.put('.astravia/marketplace.source.json', f.catalog);
   f.put('abilities/plugins/demo/plugin.json', { id: 'demo', name: 'Demo', version: '1.1.0', entry: 'dist/index.js', pluginApiVersion: '^2.0.0', permissions: [] });
@@ -81,7 +81,7 @@ test('publish, browse distribution, edit source, publish next version and retain
   assert.equal(next.packages[0].tag, 'plugin-demo');
   assert.ok(updated.abilities[0].releases.every(x => x.artifact.url.includes('/releases/download/plugin-demo/')));
   assert.notEqual(updated.marketplaceVersion, manifest.marketplaceVersion);
-  assert.equal(f.builds(), 4); // next: 只有新版本 1.1.0 被 build（旧版本 1.0.0 是历史记录不会单独 build）
+  assert.equal(f.builds(), 3);
 });
 
 test('migrates a current plugin package from a per-version release without changing its bytes', async (t) => {
@@ -139,31 +139,29 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
   const gh = (...args) => {
     if (args[0] === 'api') {
       if (args[1] === 'repos/test/market') return JSON.stringify({ private: isPrivate });
-      // 真实 GitHub API 对 draft release 也能返回数据 —— 只在 release 不存在时返回 404
-      if (!release) { const error = new Error('HTTP 404'); error.stderr = '404'; throw error; }
-      // GitHub API format: assets have id, name, url (API), browser_download_url (public)
-      const apiRelease = { ...release, assets: release.assets.map(a => ({ id: a.id, name: a.name, url: a.url, browser_download_url: a.browser_download_url })) };
-      return JSON.stringify(apiRelease);
+      if (!release || release.draft) { const error = new Error('HTTP 404'); error.stderr = '404'; throw error; }
+      return JSON.stringify(release);
+    }
+    if (args[1] === 'view') {
+      if (!release) { const error = new Error('release not found'); error.stderr = 'release not found'; throw error; }
+      return JSON.stringify({
+        tagName: release.tag_name,
+        isDraft: release.draft,
+        targetCommitish: release.target_commitish,
+        assets: release.assets.map(asset => ({ name: asset.name, apiUrl: asset.url })),
+      });
     }
     if (args[1] === 'create') {
       assert.equal(release, undefined);
       uploaded.set(basename(args[3]), readFileSync(args[3]));
-      const filename = first.packages[0].filename;
-      release = { tag_name: first.packages[0].tag, draft: true, target_commitish: sha, assets: [{ id: 123, name: filename, url: `https://api.github.com/repos/test/market/releases/assets/123`, browser_download_url: `https://github.com/test/market/releases/download/plugin-demo/${filename}` }] };
+      release = { tag_name: first.packages[0].tag, draft: true, target_commitish: sha, assets: [{ name: first.packages[0].filename, url: 'https://api.github.com/repos/test/market/releases/assets/123' }] };
       if (fail) throw new Error('upload response lost');
       return '';
     }
     if (args[1] === 'upload') {
       const filename = basename(args[3]);
       uploaded.set(filename, readFileSync(args[3]));
-      const newId = 123 + release.assets.length;
-      release.assets.push({ id: newId, name: filename, url: `https://api.github.com/repos/test/market/releases/assets/${newId}`, browser_download_url: `https://github.com/test/market/releases/download/${release.tag_name}/${filename}` });
-      return '';
-    }
-    if (args[1] === 'delete-asset') {
-      // gh v2.97+ 语法：gh release delete-asset <tag> <asset-name> -y
-      const assetName = args[3]; // args: ['release', 'delete-asset', tag, filename, '--repo', repo, '-y']
-      release.assets = release.assets.filter(a => a.name !== assetName);
+      release.assets.push({ name: filename, url: `https://api.github.com/repos/test/market/releases/assets/${123 + release.assets.length}` });
       return '';
     }
     if (args[1] === 'download') {
@@ -201,13 +199,9 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
   const nextManifest = JSON.parse(git('show', `${visible}:.astravia/marketplace.json`));
   assert.equal(nextManifest.abilities[0].releases.length, 2);
   assert.ok(nextManifest.abilities[0].releases.every(item => isPrivate ? item.artifact.url.startsWith('https://api.github.com/') : item.artifact.url.includes('/releases/download/plugin-demo/')));
-  // 篡改 GitHub Release 上的 artifact → publish 会自动 delete + upload 修复
   uploaded.set('demo-1.1.0.astraviapkg', Buffer.from('replaced package')); visible = undefined;
-  const repaired = await publishMarketplace({ ...nextOptions, readRemote: name => name === 'gh-pages' ? firstVisible : sha });
-  assert.equal(repaired.published, true);
-  assert.ok(visible);
-  // 被篡改的上传内容已被本地 artifact 覆盖
-  assert.notDeepEqual(uploaded.get('demo-1.1.0.astraviapkg'), Buffer.from('replaced package'));
+  await assert.rejects(publishMarketplace({ ...nextOptions, readRemote: name => name === 'gh-pages' ? firstVisible : sha }), /Published bytes differ/);
+  assert.equal(visible, undefined);
   await assert.rejects(publishMarketplace({ ...options, readRemote: () => 'f'.repeat(40) }), /advanced/);
 });
 
