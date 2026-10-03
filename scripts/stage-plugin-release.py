@@ -18,7 +18,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_FILES = {"plugin.json", "package.json", "README.md", "LICENSE", "runtime-lock.json", "upstream.json"}
-RUNTIME_DIRS = {"dist", "locales", "agent", "assets", "service"}
+RUNTIME_DIRS = {"dist", "locales", "agent", "assets", "service", "server"}
 SKIP_DIRS = {"node_modules", "src", "test", "tests", "release", ".git", ".vite"}
 MAX_BYTES = 50 * 1024 * 1024
 
