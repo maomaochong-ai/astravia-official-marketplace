@@ -27,6 +27,22 @@ jobs:
         with:
           node-version: 22.21.1
       - run: node scripts/marketplace.mjs check
+      - name: Resolve publication tool revision
+        id: tooling
+        run: echo "commit=$(node -p 'require("./.astravia/publish.json").toolingCommit')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: maomaochong-ai/open-astravia
+          ref: ${{ steps.tooling.outputs.commit }}
+          path: .tooling/open-astravia
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Build tooling源码 (plugin-vite/sdk 等包无 dist/)
+        run: |
+          cd .tooling/open-astravia
+          bun install --frozen-lockfile 2>&1 | tail -5
+          bun run build 2>&1 | tail -10
+          find packages -name "dist/index.js" -maxdepth 4 2>/dev/null | head -10
       - name: Build unpublished versions
         run: |
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then

@@ -39,6 +39,12 @@ jobs:
           ref: ${{ steps.tooling.outputs.commit }}
           path: .tooling/open-astravia
           persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Build tooling (open-astravia 源码无 dist/)
+        run: |
+          cd .tooling/open-astravia
+          bun install --frozen-lockfile 2>&1 | tail -5
+          bun run build 2>&1 | tail -10
       - name: Check stable Desktop compatibility and package digests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
