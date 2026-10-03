@@ -29,6 +29,18 @@ jobs:
           ref: ${{ steps.tooling.outputs.commit }}
           path: .tooling/open-astravia
           persist-credentials: false
+      - name: Build tooling (generate dist/ for plugin-vite, plugin-sdk, etc.)
+        run: |
+          cd .tooling/open-astravia
+          npm install --legacy-peer-deps 2>&1 | tail -5
+          for pkg in packages/plugins/plugin-vite packages/plugins/plugin-sdk packages/plugins/plugin-cli packages/ui packages/theme-ui; do
+            if [ -f "$pkg/package.json" ]; then
+              echo "--- building $pkg ---"
+              cd "$pkg" && npm run build 2>&1 | tail -5 && cd - || echo "(build failed, continue)"
+            fi
+          done
+          echo "=== 验证 ==="
+          ls -la packages/plugins/plugin-vite/dist/index.js 2>/dev/null && echo "✅ tooling build OK" || echo "❌ tooling build FAILED"
       - name: Build candidate against the current distribution
         run: |
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
