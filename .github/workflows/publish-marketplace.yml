@@ -27,23 +27,6 @@ jobs:
         with:
           node-version: 22.21.1
       - run: node scripts/marketplace.mjs check
-      - name: Resolve publication tool revision
-        id: tooling
-        run: echo "commit=$(node -p 'require("./.astravia/publish.json").toolingCommit')" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
-        with:
-          repository: maomaochong-ai/open-astravia
-          ref: ${{ steps.tooling.outputs.commit }}
-          path: .tooling/open-astravia
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-      - name: Build tooling packages (plugin-vite dist, etc.)
-        run: |
-          cd .tooling/open-astravia
-          bun install --frozen-lockfile 2>&1 | tail -5
-          bun run build 2>&1 | tail -10
-          echo "=== plugin-vite dist 验证 ==="
-          ls -la packages/plugins/plugin-vite/dist/index.js 2>/dev/null && echo "✅ tooling build 成功" || echo "❌ tooling build 失败"
       - name: Build unpublished versions
         run: |
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
@@ -54,6 +37,15 @@ jobs:
           fi
       - name: Check source and built package contracts
         run: node --test tests/*.test.mjs
+      - name: Resolve publication tool revision
+        id: tooling
+        run: echo "commit=$(node -p 'require("./.astravia/publish.json").toolingCommit')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: maomaochong-ai/open-astravia
+          ref: ${{ steps.tooling.outputs.commit }}
+          path: .tooling/open-astravia
+          persist-credentials: false
       - name: Check compatibility before uploading
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -87,12 +79,6 @@ jobs:
           ref: ${{ needs.build.outputs.tooling }}
           path: .tooling/open-astravia
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-      - name: Build tooling packages (publish-marketplace needs tooling scripts)
-        run: |
-          cd .tooling/open-astravia
-          bun install --frozen-lockfile 2>&1 | tail -3
-          bun run build 2>&1 | tail -5
       - name: Publish immutable packages, then advance the generated index
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
