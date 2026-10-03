@@ -4,32 +4,33 @@
     {
       "type": "hero",
       "eyebrow": "数据库工作台",
-      "title": "dbx-pro —— Astravia 里的数据库工作台",
-      "description": "在 Astravia 内管理连接、浏览表结构、编写 SQL、查看可编辑的结果表格。SQLite 开箱即用；连接类型选择器收录 85 种数据库，并如实标注各自当前的可用档位。",
-      "badges": ["SQLite 已可用", "SQL 编辑器", "写入安全闸"]
+      "title": "dbx-pro —— Astravia 里的完整数据库工作台",
+      "description": "管理连接、浏览 Schema、编写并运行 SQL、查看可排序结果表格，还能让 AI 直接调用数据库能力。读路径经 dbx-mcp 支持 PostgreSQL、MySQL、SQLite、ClickHouse 等 100+ 种数据库；写 / DDL 经内置驱动执行。",
+      "badges": ["100+ 数据库", "DDL 写入", "AI 双向联动", "加密存储"]
     },
     {
       "type": "feature-grid",
       "items": [
-        { "title": "连接管理", "description": "本地保存连接配置（主机、端口、数据库、环境标签），类型从 85 项目录中选择。" },
-        { "title": "SQL 编辑器 + 结果表格", "description": "多标签编辑，一个快捷键执行，结果以可排序行网格呈现，并回车数与耗时。" },
-        { "title": "表浏览器", "description": "浏览 Schema 树，查看字段类型与主键，采样预览数据。" },
-        { "title": "写入安全闸", "description": "标记为生产环境的连接，写入与 DDL 默认被闸住，需显式放行。" },
-        { "title": "可用档位如实标注", "description": "每种类型都标明「可直接查询 / 实验性 / 暂不可达」，不做静默失败。" }
+        { "title": "连接管理", "description": "保存主机、端口、数据库与环境标签，支持只读 / 生产标记；密码保存在宿主加密凭据库，不以明文落盘。" },
+        { "title": "SQL 编辑器", "description": "多标签 CodeMirror 编辑器，按数据库方言高亮与补全，⌘/Ctrl+Enter 执行，支持只运行选中片段。" },
+        { "title": "结果表格", "description": "行网格支持点击表头排序、分页、行号、复制 TSV / 导出 CSV 与单元格详情，显示行数与耗时。" },
+        { "title": "DDL 与写入", "description": "建表、改表等写操作经内置 pg / mysql2 / mssql 驱动执行；执行前弹出完整 SQL 确认，只读连接直接拦截。" },
+        { "title": "查询历史", "description": "自动记录每条查询的 SQL、状态、行数与耗时（不保存结果行），可一键载入编辑器重新执行。" },
+        { "title": "AI 双向联动", "description": "插件作为 MCP 工具注册给 AI，AI 可列连接、执行查询；在树和结果上也能把上下文一键发送给 AI。" }
       ]
     },
     {
       "type": "steps",
       "items": [
-        { "title": "打开工作台", "description": "从能力市场安装 dbx-pro，打开它的能力标签页，无需额外安装任何工具。" },
-        { "title": "添加连接", "description": "选择 SQLite 并指定数据库文件即可直接查询；其它类型会保存为连接配置，待对应驱动接入后可用。" },
-        { "title": "执行查询", "description": "输入 SQL，按 ⌘/Ctrl+Enter 执行。" }
+        { "title": "打开工作台", "description": "从能力市场安装 dbx-pro，打开其活动标签页，引擎随插件自动就绪，无需另装命令行。" },
+        { "title": "添加连接", "description": "点右上角「连接」，选择数据库类型并填写信息；SQLite 选定文件即可查询。" },
+        { "title": "运行查询", "description": "在编辑器输入 SQL，按 ⌘/Ctrl+Enter；涉及写入或 DDL 时确认后执行。" }
       ]
     },
     {
       "type": "callout",
-      "tone": "warning",
-      "content": "当前只有 SQLite 可直接查询。PostgreSQL、MySQL、ClickHouse 等类型已在选择器中列出并标注档位，将随插件驱动逐步接通。"
+      "tone": "info",
+      "content": "读取统一走 dbx-mcp，写入与 DDL 走插件内置驱动；两条通道隔离。所有服务仅监听本机回环地址，不对外暴露。"
     }
   ]
 }
