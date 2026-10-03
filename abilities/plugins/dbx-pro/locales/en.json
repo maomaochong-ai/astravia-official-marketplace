@@ -1,7 +1,7 @@
 {
   "plugin": {
     "name": "dbx-pro Database Workbench",
-    "description": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and more via dbx CLI. Connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with built-in write protection and production safety gates."
+    "description": "A database workbench with SQLite ready out of the box: connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with write protection, production safety gates, and an honest support tier for all 85 connection types."
   },
   "tab": {
     "label": "Database",

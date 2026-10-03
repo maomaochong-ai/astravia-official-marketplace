@@ -20,7 +20,129 @@
     "storage.write",
     "shell.openExternal"
   ],
-  "commands": ["dbx", "sqlite3"],
+  "providers": {
+    "services": [
+      {
+        "id": "dbx-engine",
+        "runtime": {
+          "kind": "host-node",
+          "version": "0.1.1",
+          "entry": "service/main.mjs",
+          "platforms": {
+            "darwin-arm64": {
+              "executable": "service/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "archive": "file",
+                  "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "archive": "file",
+                  "destination": "service/drivers/sqlite-driver.mjs"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "service/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "archive": "file",
+                  "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "archive": "file",
+                  "destination": "service/drivers/sqlite-driver.mjs"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "service/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "archive": "file",
+                  "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "archive": "file",
+                  "destination": "service/drivers/sqlite-driver.mjs"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "service/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "archive": "file",
+                  "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "archive": "file",
+                  "destination": "service/drivers/sqlite-driver.mjs"
+                }
+              ]
+            },
+            "win32-x64": {
+              "executable": "service/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "dbe2350b083cf2d0e2b7c0d64ef0bb608c189ddddb413e55f11274bfd58c814e",
+                  "archive": "file",
+                  "destination": "service/main.mjs"
+                },
+                {
+                  "sha256": "f22a82ca773409c07604b4be5f191a45a27172d397eafb15d53106ce4fb9417f",
+                  "archive": "file",
+                  "destination": "service/drivers/sqlite-driver.mjs"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [
+            "--port",
+            "${ASTRAVIA_SERVICE_PORT}",
+            "--data",
+            "${ASTRAVIA_SERVICE_DATA_DIR}"
+          ]
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 30000
+        },
+        "credentials": [
+          {
+            "id": "engine-key",
+            "bytes": 32
+          }
+        ],
+        "templates": [
+          {
+            "source": "service/main.mjs",
+            "destination": "service/main.mjs",
+            "mode": "create"
+          },
+          {
+            "source": "service/drivers/sqlite-driver.mjs",
+            "destination": "service/drivers/sqlite-driver.mjs",
+            "mode": "create"
+          }
+        ]
+      }
+    ]
+  },
+  "commands": [
+    "dbx",
+    "sqlite3"
+  ],
   "defaultLocale": "zh",
   "description": "%plugin.description%",
   "author": "Astravia"

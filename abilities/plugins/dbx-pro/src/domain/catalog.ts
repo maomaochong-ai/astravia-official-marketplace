@@ -8,7 +8,7 @@
 
 import type { CatalogFamily } from "./connection-config";
 
-export type TableObjectKind = "index" | "constraint" | "foreign-key" | "trigger" | "partition";
+export type TableObjectKind = "column" | "index" | "constraint" | "foreign-key" | "trigger" | "partition";
 
 export interface CatalogScope {
 	schema?: string;
@@ -61,6 +61,32 @@ export function listTablesInScopeSql(family: CatalogFamily, scope: CatalogScope)
 }
 
 /**
+ * flat family 的表清单。
+ * flat 引擎各自有私有系统表，与 information_schema 无关；这里只给已直连支持的引擎，
+ * 其余返回 null（调用方据此显示「需引擎支持」而不是拿错误 SQL 去撞库）。
+ */
+export function listFlatTablesSql(dbType: string): string | null {
+	if (dbType === "sqlite") {
+		return "SELECT name AS table_name, type AS table_type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name";
+	}
+	return null;
+}
+
+/** 单表的列清单（flat family）。键名与 information_schema 分支保持一致，面板无需分支。 */
+export function flatColumnsSql(dbType: string, table: string): string | null {
+	if (dbType !== "sqlite") return null;
+	const t = escapeSqlLiteral(table);
+	return `SELECT name AS column_name, type AS data_type, CASE WHEN "notnull" = 1 THEN 'NO' ELSE 'YES' END AS is_nullable, dflt_value AS column_default FROM pragma_table_info(${t}) ORDER BY cid`;
+}
+
+/** 单表的索引清单（flat family）。输出 name / is_unique，与 information_schema 分支的 name 对齐。 */
+export function listFlatIndexesSql(dbType: string, table: string): string | null {
+	if (dbType !== "sqlite") return null;
+	const t = escapeSqlLiteral(table);
+	return `SELECT name AS name, CASE WHEN "unique" = 1 THEN 'YES' ELSE 'NO' END AS is_unique FROM pragma_index_list(${t}) ORDER BY name`;
+}
+
+/**
  * 表级子对象 introspection SQL（索引/约束/触发器/FK/分区）。
  * flat family 各引擎系统表差异大，返回 null 表示该引擎暂不支持。
  */
@@ -77,6 +103,8 @@ export function tableObjectSql(
 		if (!schema) return null;
 		const s = escapeSqlLiteral(schema);
 		switch (kind) {
+			case "column":
+				return `SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = ${s} AND table_name = ${t} ORDER BY ordinal_position`;
 			case "index":
 				return `SELECT indexname AS name FROM pg_indexes WHERE schemaname = ${s} AND tablename = ${t} ORDER BY indexname`;
 			case "constraint":
@@ -96,6 +124,8 @@ export function tableObjectSql(
 		if (!db) return null;
 		const d = escapeSqlLiteral(db);
 		switch (kind) {
+			case "column":
+				return `SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = ${d} AND table_name = ${t} ORDER BY ordinal_position`;
 			case "index":
 				return `SELECT DISTINCT index_name AS name FROM information_schema.statistics WHERE table_schema = ${d} AND table_name = ${t} ORDER BY index_name`;
 			case "constraint":

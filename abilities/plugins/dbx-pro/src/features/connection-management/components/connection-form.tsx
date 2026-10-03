@@ -7,7 +7,6 @@
  */
 
 import { useEffect, useState } from "react";
-import type { PluginCommandApi } from "@astravia-org/plugin-sdk";
 import {
 	DB_TYPE_MANIFEST,
 	defaultPortFor,
@@ -15,13 +14,15 @@ import {
 	type DbType,
 } from "../../../domain/connection-config";
 import { genUuid, readAllConfigs, writeConfig, deleteConfig } from "../../../domain/dbx-storage";
-import { executeQuery } from "../services/dbx-cli";
+import { tierFor, tierLabel, tierReasonText, isReadyDbType, tierStats } from "../../../domain/driver-tiers";
+import { describeFallbackReason, queryRouter } from "../../../shared/services/query-router";
 
 interface Props {
-	open: boolean;
-	command: PluginCommandApi;
-	onClose: () => void;
-	onSaved: () => void;
+	/** 连接增/删/改后通知外层重载列表。 */
+	onChange: () => void;
+	onCancel: () => void;
+	/** 从连接树右键「编辑连接」进入时，直接打开该连接的表单。 */
+	initialEditName?: string;
 }
 
 function emptyConnection(): DbConnection {
@@ -44,7 +45,7 @@ function isSqliteFamily(dbType: DbType): boolean {
 	return ["sqlite", "duckdb", "cloudflare-d1"].includes(dbType);
 }
 
-export function ConnectionForm({ open, command, onClose, onSaved }: Props) {
+export function ConnectionForm({ onChange, onCancel, initialEditName }: Props) {
 	const [connections, setConnections] = useState<DbConnection[]>([]);
 	const [editing, setEditing] = useState<DbConnection | null>(null);
 	const [activeTab, setActiveTab] = useState<"list" | "form">("list");
@@ -52,13 +53,18 @@ export function ConnectionForm({ open, command, onClose, onSaved }: Props) {
 	const [testResult, setTestResult] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (open) refresh();
-	}, [open]);
+		void (async () => {
+			const cfgs = await readAllConfigs().catch(() => [] as DbConnection[]);
+			setConnections(cfgs);
+			const target = initialEditName ? cfgs.find((c) => c.name === initialEditName) : undefined;
+			if (target) { setEditing({ ...target }); setActiveTab("form"); }
+		})();
+	}, [initialEditName]);
 
 	async function refresh() {
 		try {
-			const cfgs = await readAllConfigs(command);
-			setConnections(cfgs as DbConnection[]);
+			const cfgs = await readAllConfigs();
+			setConnections(cfgs);
 		} catch {
 			setConnections([]);
 		}
@@ -99,9 +105,9 @@ export function ConnectionForm({ open, command, onClose, onSaved }: Props) {
 		if (!editing) return;
 		if (!editing.name.trim()) { alert("请填写连接名称"); return; }
 		try {
-			await writeConfig(command, editing);
+			await writeConfig(editing);
 			await refresh();
-			onSaved();
+			onChange();
 			back();
 		} catch (err) {
 			alert(`保存失败: ${err instanceof Error ? err.message : String(err)}`);
@@ -111,9 +117,9 @@ export function ConnectionForm({ open, command, onClose, onSaved }: Props) {
 	async function remove(c: DbConnection) {
 		if (!confirm(`删除连接 "${c.name}" ？此操作不可撤销。`)) return;
 		try {
-			await deleteConfig(command, c.id);
+			await deleteConfig(c.id);
 			await refresh();
-			onSaved();
+			onChange();
 		} catch (err) {
 			alert(`删除失败: ${err instanceof Error ? err.message : String(err)}`);
 		}
@@ -123,27 +129,30 @@ export function ConnectionForm({ open, command, onClose, onSaved }: Props) {
 		setTesting(true);
 		setTestResult(null);
 		try {
-			await writeConfig(command, c);
-			const r = await executeQuery(command, c.name, "SELECT 1 AS ok", { limit: 1, timeoutMs: 10_000 });
-			setTestResult(`✅ 连接成功 · 返回 ${r.row_count} 行`);
+			await writeConfig(c);
+			const outcome = await queryRouter.test(c);
+			onChange();
+			const via = outcome.path === "engine" ? "引擎" : "回退 sqlite3 CLI";
+			const why = outcome.fallbackReason ? `（${describeFallbackReason(outcome.fallbackReason)}）` : "";
+			setTestResult(`✅ 连接成功 · 取数路径：${via}${why}`);
 		} catch (err) {
-			setTestResult(`❌ 连接失败: ${err instanceof Error ? err.message : String(err)}`);
+			const code = (err as { code?: string } | null)?.code;
+			setTestResult(`❌ 连接失败${code ? ` [${code}]` : ""}: ${err instanceof Error ? err.message : String(err)}`);
 		} finally {
 			setTesting(false);
 		}
 	}
 
-	if (!open) return null;
 
 	return (
 		<>
-			<div className="dbx-sheet-backdrop" onClick={onClose} />
+			<div className="dbx-sheet-backdrop" onClick={onCancel} />
 			<div className="dbx-sheet" style={{ width: 540 }}>
 				<div className="dbx-sheet-header">
 					<div style={{ fontWeight: 600, fontSize: 14 }}>
 						{activeTab === "form" ? (editing?.name ? "编辑连接" : "新建连接") : "管理连接"}
 					</div>
-					<button className="dbx-btn ghost" onClick={onClose} style={{ padding: "4px 8px" }}>✕</button>
+					<button className="dbx-btn ghost" onClick={onCancel} style={{ padding: "4px 8px" }}>✕</button>
 				</div>
 
 				<div className="dbx-sheet-body">
@@ -236,15 +245,28 @@ function FormFields({
 			</div>
 
 			<div className="dbx-form-row">
-				<label className="dbx-form-label">数据库类型 *（{DB_TYPE_MANIFEST.length} 种）</label>
+				<label className="dbx-form-label">数据库类型 *（{DB_TYPE_MANIFEST.length} 种，{tierStats().ready} 种可直接查询）</label>
 				<select className="dbx-form-input" value={conn.db_type} onChange={(e) => onTypeChange(e.target.value)}>
 					{DB_TYPE_MANIFEST.map((e) => (
 						<option key={e.dbType} value={e.dbType}>
-							{e.label} ({e.dbType})
+							{e.label} ({e.dbType}) · {tierLabel(tierFor(e.dbType))}
 							{e.runtimeMode === "bridge" ? " · bridge" : ""}
 						</option>
 					))}
 				</select>
+				<div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.5 }}>
+					档位只表示当前实现状态：<b>可直接查询</b>（引擎已实现，现仅 SQLite）/ <b>试验性</b>（引擎已登记未实现，连接会如实返回 DRIVER_UNSUPPORTED）/ <b>范围外</b>（仅保留配置形态）。
+				</div>
+				<div
+					style={{
+						fontSize: 11,
+						marginTop: 4,
+						lineHeight: 1.5,
+						color: isReadyDbType(conn.db_type) ? "var(--muted-foreground)" : "var(--destructive, #c0392b)",
+					}}
+				>
+					当前选中：<b>{conn.db_type}</b> —— {tierLabel(tierFor(conn.db_type))}：{tierReasonText(conn.db_type)}
+				</div>
 			</div>
 
 			{conn.db_type === "mongodb" && (

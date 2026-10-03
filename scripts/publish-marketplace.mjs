@@ -55,7 +55,8 @@ function uploadArtifact({ gh, repository, tag, localPath, filename, expectedSha,
   // delete + upload 覆盖同名 asset
   const existing = release.assets.find(x => x.name === filename);
   if (existing) {
-    gh('release', 'delete-asset', String(existing.id), '--repo', repository);
+    // gh v2.97+ 语法：gh release delete-asset <tag> <asset-name> -y
+    gh('release', 'delete-asset', tag, filename, '--repo', repository, '-y');
   }
   gh('release', 'upload', tag, localPath, '--repo', repository);
   // verify: 从 GitHub 下载确认 SHA == expectedSha

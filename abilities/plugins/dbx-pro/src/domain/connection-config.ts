@@ -89,7 +89,6 @@ export const DB_TYPE_MANIFEST: DbTypeManifestEntry[] = [
 	{ dbType: "turso", label: "Turso", dialect: "SQLite", defaultPort: 443, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 270 },
 	{ dbType: "influxdb3", label: "InfluxDB 3", dialect: "InfluxDB", defaultPort: 8086, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 271 },
 	{ dbType: "questdb", label: "QuestDB", dialect: "QuestDB", defaultPort: 8812, runtimeMode: "native", mcpMode: "direct", schemaAware: false, treeSchema: false, tableDataEdit: true, sqlExplain: true, family: "flat", order: 272 },
-	{ dbType: "mongodb", label: "MongoDB", dialect: "MongoDB", defaultPort: 27017, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 280 },
 	{ dbType: "nebula", label: "NebulaGraph", dialect: "NebulaGraph", defaultPort: 9669, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 281 },
 	{ dbType: "meilisearch", label: "Meilisearch", dialect: "Meilisearch", defaultPort: 7700, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 290 },
 	{ dbType: "solr", label: "Apache Solr", dialect: "Solr", defaultPort: 8983, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 291 },
@@ -97,7 +96,6 @@ export const DB_TYPE_MANIFEST: DbTypeManifestEntry[] = [
 	{ dbType: "mq", label: "Apache RocketMQ", dialect: "RocketMQ", defaultPort: 9876, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 300 },
 	{ dbType: "mqtt", label: "MQTT Broker", dialect: "MQTT", defaultPort: 1883, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 301 },
 	{ dbType: "hbase", label: "Apache HBase", dialect: "HBase", defaultPort: 16010, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: false, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "flat", order: 310 },
-	{ dbType: "cassandra", label: "Cassandra", dialect: "Cassandra", defaultPort: 9042, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: true, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "schemas", order: 311 },
 	{ dbType: "ignite", label: "Apache Ignite", dialect: "Ignite", defaultPort: 10800, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: true, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "schemas", order: 320 },
 	{ dbType: "ignite3", label: "Apache Ignite 3", dialect: "Ignite", defaultPort: 10800, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: true, treeSchema: false, tableDataEdit: false, sqlExplain: false, family: "schemas", order: 321 },
 	{ dbType: "impala", label: "Apache Impala", dialect: "Impala", defaultPort: 21050, runtimeMode: "bridge", mcpMode: "bridge", schemaAware: true, treeSchema: false, tableDataEdit: false, sqlExplain: true, family: "schemas", order: 322 },
@@ -195,6 +193,10 @@ export interface DbQueryResult {
 	columns: string[];
 	rows: Record<string, unknown>[];
 	row_count: number;
+	/** 执行失败时的原因；成功时缺省。带 error 的结果集 columns/rows 为空。 */
+	error?: string;
+	/** 成功但有需要告知用户的情况时给出（例如多语句只展示了最后一个结果集）。 */
+	note?: string;
 }
 
 /** SQL 执行运行状态 */

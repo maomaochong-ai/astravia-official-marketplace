@@ -161,8 +161,9 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
       return '';
     }
     if (args[1] === 'delete-asset') {
-      const assetId = args[2];
-      release.assets = release.assets.filter(a => String(a.id) !== assetId);
+      // gh v2.97+ 语法：gh release delete-asset <tag> <asset-name> -y
+      const assetName = args[3]; // args: ['release', 'delete-asset', tag, filename, '--repo', repo, '-y']
+      release.assets = release.assets.filter(a => a.name !== assetName);
       return '';
     }
     if (args[1] === 'download') {

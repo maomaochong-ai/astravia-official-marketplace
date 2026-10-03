@@ -1,7 +1,7 @@
 {
   "plugin": {
     "name": "dbx-pro 数据库工作台",
-    "description": "通过 dbx CLI 直连 PostgreSQL、MySQL、MongoDB、ClickHouse 等数据库。左侧连接管理、中间表浏览器、右侧 SQL 编辑器+结果表格，内置写保护和生产环境安全闸。"
+    "description": "SQLite 开箱即用的数据库工作台：左侧连接管理、中间表浏览器、右侧 SQL 编辑器+结果表格，内置写保护与生产环境安全闸，并如实标注 85 种连接类型的可用档位。"
   },
   "tab": {
     "label": "数据库",

@@ -1,60 +1,44 @@
 /**
  * 宿主运行时契约 — 持有 PluginContext 句柄。
  * 用 any 避免导入 plugin-sdk 深层类型触发 MF idle timeout。
+ *
+ * 只暴露 feature 层实际需要的四个门面：command / conversation / storage / services。
+ * 连接配置与查询历史走 storage（宿主托管的插件私有目录），不再自行拼接
+ * 文件路径 —— 插件拿不到宿主 userData，也不应假设外层目录存在。
  */
-
-const DBX_ENV = { DBX_DATA_DIR: `${process.env.HOME}/.astravia/dbx-pro` };
 
 let _ctx: any = null;
 
-export function setRuntime(ctx: unknown) { _ctx = ctx; }
+export function setRuntime(ctx: unknown) {
+	_ctx = ctx;
+}
 
 function requireCtx(): any {
 	if (!_ctx) throw new Error("dbx-pro plugin not activated");
 	return _ctx;
 }
 
-export function getCommand() { return requireCtx().command; }
-export function getConversation() { return requireCtx().conversation; }
+/** 执行宿主白名单内的外部命令（plugin.json#commands）。 */
+export function getCommand() {
+	return requireCtx().command;
+}
 
-// Agent tool registration — called lazily when first needed
-export function registerAgentTool(ctx: any) {
-	ctx.agent.registerTool({
-		id: "dbx-query",
-		label: "dbx-pro 查询",
-		description: "Execute SQL against a configured dbx-pro database connection.",
-		parameters: {
-			type: "object",
-			required: ["connection", "sql"],
-			properties: {
-				connection: { type: "string" },
-				sql: { type: "string" },
-				limit: { type: "number", default: 100 },
-				timeout: { type: "number", default: 30 },
-				allow_writes: { type: "boolean", default: false },
-			},
-		},
-		scope_use: ["conversation", "project"],
-		timeoutMs: 60_000,
-		async handler(context: any) {
-			const t = context.trigger.input;
-			const timeout = t.timeout ?? 30;
-			const args = [
-				"query", String(t.connection), String(t.sql),
-				"--json", "--limit", String(t.limit ?? 100),
-				"--timeout", `${timeout}s`,
-			];
-			if (t.allow_writes) args.push("--allow-writes");
-			const result = await ctx.command.run("dbx", args, {
-				timeoutMs: timeout * 1000 + 5000,
-				env: DBX_ENV,
-			});
-			if (result.exitCode !== 0) {
-				const err = result.stderr || result.stdout || `dbx exit ${result.exitCode}`;
-				return { ok: false, error: String(err).slice(0, 2000) };
-			}
-			try { return { ok: true, result: JSON.parse(result.stdout) }; }
-			catch { return { ok: true, raw: result.stdout }; }
-		},
-	});
+/** 读取当前会话上下文（AI 注入用）。 */
+export function getConversation() {
+	return requireCtx().conversation;
+}
+
+/** 插件私有持久化存储（storage.read / storage.write）。 */
+export function getStorage() {
+	return requireCtx().storage;
+}
+
+/**
+ * 宿主托管的 service 能力（plugin.json#providers.services）。
+ * 插件未声明 services、或宿主版本不支持时返回 null —— 调用方（查询路由）据此自动降级到
+ * 本地 sqlite3 CLI，而不是抛错。
+ */
+export function getServices(): any | null {
+	const ctx = requireCtx();
+	return (ctx as { services?: unknown }).services ?? null;
 }

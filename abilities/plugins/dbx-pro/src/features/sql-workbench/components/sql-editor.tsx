@@ -116,9 +116,11 @@ interface Props {
 	onRun: () => void;
 	placeholder?: string;
 	disabled?: boolean;
+	/** 查询执行中：阻断重复提交，并在右上角提示。 */
+	busy?: boolean;
 }
 
-export function SqlEditor({ value, onChange, onRun, placeholder, disabled }: Props) {
+export function SqlEditor({ value, onChange, onRun, placeholder, disabled, busy }: Props) {
 	const taRef = useRef<HTMLTextAreaElement>(null);
 	const preRef = useRef<HTMLPreElement>(null);
 	const [scrollTop, setScrollTop] = useState(0);
@@ -131,14 +133,17 @@ export function SqlEditor({ value, onChange, onRun, placeholder, disabled }: Pro
 	const onKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
 		if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 			e.preventDefault();
-			onRun();
+			if (!busy) onRun();
 		}
-	}, [onRun]);
+	}, [onRun, busy]);
 
 	const html = highlight(value);
 
 	return (
-		<div className="dbx-editor-wrap">
+		<div className="dbx-editor-wrap relative">
+			{busy ? (
+				<span className="absolute right-2 top-2 z-10 rounded bg-background/90 px-1.5 py-0.5 text-[10px] text-muted-foreground">执行中…</span>
+			) : null}
 			<pre
 				ref={preRef}
 				className="dbx-editor-hl"
