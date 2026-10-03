@@ -1,34 +1,22 @@
 {
-  "plugin": {
-    "name": "dbx-pro 数据库工作台",
-    "description": "SQLite 开箱即用的数据库工作台：左侧连接管理、中间表浏览器、右侧 SQL 编辑器+结果表格，内置写保护与生产环境安全闸，并如实标注 85 种连接类型的可用档位。"
-  },
-  "tab": {
-    "label": "数据库",
-    "tooltip": "dbx-pro 数据库工作台"
-  },
-  "connection": {
-    "title": "连接管理",
-    "add": "添加连接",
-    "sync": "同步 DBX 连接",
-    "empty": "暂无连接",
-    "syncHint": "从 DBX Desktop 同步或手动添加"
-  },
-  "table": {
-    "title": "表浏览器",
-    "empty": "选择连接查看表"
-  },
-  "sql": {
-    "title": "SQL 编辑器",
-    "run": "执行",
-    "clear": "清空",
-    "empty": "输入 SQL 查询",
-    "resultEmpty": "无结果"
-  },
-  "safety": {
-    "title": "生产安全闸",
-    "writeProtect": "写保护已启用",
-    "writeProtectOff": "写保护已关闭",
-    "noDatabase": "未选择数据库"
-  }
+  "plugin.name": "dbx-pro 数据库工作台",
+  "plugin.description": "SQLite 开箱即用的数据库工作台：左侧连接管理、中间表浏览器、右侧 SQL 编辑器+结果表格，内置写保护与生产环境安全闸，并如实标注 85 种连接类型的可用档位。",
+  "tab.label": "数据库",
+  "tab.tooltip": "dbx-pro 数据库工作台",
+  "connection.title": "连接管理",
+  "connection.add": "添加连接",
+  "connection.sync": "同步 DBX 连接",
+  "connection.empty": "暂无连接",
+  "connection.syncHint": "从 DBX Desktop 同步或手动添加",
+  "table.title": "表浏览器",
+  "table.empty": "选择连接查看表",
+  "sql.title": "SQL 编辑器",
+  "sql.run": "执行",
+  "sql.clear": "清空",
+  "sql.empty": "输入 SQL 查询",
+  "sql.resultEmpty": "无结果",
+  "safety.title": "生产安全闸",
+  "safety.writeProtect": "写保护已启用",
+  "safety.writeProtectOff": "写保护已关闭",
+  "safety.noDatabase": "未选择数据库"
 }

@@ -1,34 +1,22 @@
 {
-  "plugin": {
-    "name": "dbx-pro Database Workbench",
-    "description": "A database workbench with SQLite ready out of the box: connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with write protection, production safety gates, and an honest support tier for all 85 connection types."
-  },
-  "tab": {
-    "label": "Database",
-    "tooltip": "dbx-pro Database Workbench"
-  },
-  "connection": {
-    "title": "Connections",
-    "add": "Add Connection",
-    "sync": "Sync DBX Connections",
-    "empty": "No connections",
-    "syncHint": "Sync from DBX Desktop or add manually"
-  },
-  "table": {
-    "title": "Table Browser",
-    "empty": "Select a connection to view tables"
-  },
-  "sql": {
-    "title": "SQL Editor",
-    "run": "Run",
-    "clear": "Clear",
-    "empty": "Enter SQL query",
-    "resultEmpty": "No results"
-  },
-  "safety": {
-    "title": "Production Safety Gates",
-    "writeProtect": "Write protection enabled",
-    "writeProtectOff": "Write protection disabled",
-    "noDatabase": "No database selected"
-  }
+  "plugin.name": "dbx-pro Database Workbench",
+  "plugin.description": "A database workbench with SQLite ready out of the box: connection manager on the left, table browser in the middle, SQL editor + result grid on the right, with write protection, production safety gates, and an honest support tier for all 85 connection types.",
+  "tab.label": "Database",
+  "tab.tooltip": "dbx-pro Database Workbench",
+  "connection.title": "Connections",
+  "connection.add": "Add Connection",
+  "connection.sync": "Sync DBX Connections",
+  "connection.empty": "No connections",
+  "connection.syncHint": "Sync from DBX Desktop or add manually",
+  "table.title": "Table Browser",
+  "table.empty": "Select a connection to view tables",
+  "sql.title": "SQL Editor",
+  "sql.run": "Run",
+  "sql.clear": "Clear",
+  "sql.empty": "Enter SQL query",
+  "sql.resultEmpty": "No results",
+  "safety.title": "Production Safety Gates",
+  "safety.writeProtect": "Write protection enabled",
+  "safety.writeProtectOff": "Write protection disabled",
+  "safety.noDatabase": "No database selected"
 }

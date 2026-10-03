@@ -109,11 +109,8 @@ async function main() {
       }
       const backup = changed ? pkgPath + '.bak' : null;
       if (changed) { writeFileSync(backup, readFileSync(pkgPath, 'utf8')); writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
-      try {
-        execFileSync('npm', ['install', '--legacy-peer-deps'], { cwd: directory, stdio: 'inherit' });
-        // Fix fdir ESM export incompatibility with tinyglobby
-        execFileSync('npm', ['install', 'fdir@6.0.1', '--no-save', '--legacy-peer-deps'], { cwd: directory, stdio: 'inherit' });
-      } finally { if (backup) { writeFileSync(pkgPath, readFileSync(backup, 'utf8')); execFileSync('rm', [backup]); } }
+      try { execFileSync('npm', ['install', '--legacy-peer-deps'], { cwd: directory, stdio: 'inherit' }); }
+      finally { if (backup) { writeFileSync(pkgPath, readFileSync(backup, 'utf8')); execFileSync('rm', [backup]); } }
       for (const args of [['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
         try { execFileSync('npm', args, { cwd: directory, stdio: 'inherit' }); }
         catch (e) { console.error(`[${args[0]}] failed for ${directory}, continuing...`); }
