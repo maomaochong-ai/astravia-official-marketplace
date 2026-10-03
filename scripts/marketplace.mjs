@@ -107,6 +107,7 @@ async function main() {
       // Dev 环境准备：@astravia-org/* 未 publish 到 npm，用 npm link 让插件能解析本地 tooling 包。
       // CI 环境 publish 后删掉这一段，直接 npm ci（与上游对齐）。
       const toolingDir = resolve(option('--tooling') ?? '.tooling/open-astravia');
+      console.log(`[buildPlugin] ${directory.split('/').pop()} toolingDir=${toolingDir} packages_exists=${existsSync(join(toolingDir, 'packages'))}`);
       if (existsSync(join(toolingDir, 'packages'))) {
         // 扫描插件 package.json 的所有 @astravia-org/* 依赖
         const pkg = readJson(join(directory, 'package.json'));
@@ -117,19 +118,28 @@ async function main() {
         if (needed.size > 0) {
           // 在 tooling 里递归查找每个需要的包目录
           const pkgIndex = walkToolingPkgs(toolingDir);
+          console.log(`[buildPlugin] needed=[${[...needed].join(',')}] pkgIndex=${pkgIndex.size}pkgs`);
           // 1. 逐个全局 link（独立，不会相互干扰）
           for (const name of needed) {
             const dir = pkgIndex.get(name);
             if (dir) {
-              try { execFileSync('npm', ['link'], { cwd: dir, stdio: 'pipe' }); } catch {}
+              try { execFileSync('npm', ['link'], { cwd: dir, stdio: 'pipe' }); }
+              catch (e) { console.error(`[buildPlugin] global link ${name} FAIL: ${e.stderr?.toString().trim().split('\n').slice(-2).join(' | ')}`); }
+            } else {
+              console.error(`[buildPlugin] SKIP ${name} — not found in tooling pkgIndex`);
             }
           }
           // 2. 一次性本地 link（npm link --local 会读 package.json 检查所有依赖，
           //    必须把所有需要的包名一起传，否则会因其他 @astravia-org/* 未满足而整体失败）
           const localNames = [...needed].filter(n => pkgIndex.has(n));
           if (localNames.length > 0) {
-            try { execFileSync('npm', ['link', '--local', ...localNames], { cwd: directory, stdio: 'pipe' }); } catch {}
+            try { execFileSync('npm', ['link', '--local', ...localNames], { cwd: directory, stdio: 'pipe' }); }
+            catch (e) { console.error(`[buildPlugin] local link FAIL (${localNames.join(',')}): ${e.stderr?.toString().trim().split('\n').slice(-3).join(' | ')}`); }
           }
+          // 验证 link 是否生效
+          const verifyLinks = localNames.map(n => join(directory, 'node_modules', ...n.split('/')));
+          const allOk = verifyLinks.every(p => existsSync(p));
+          console.log(`[buildPlugin] links verified: ${allOk} (${verifyLinks.filter(p=>existsSync(p)).length}/${verifyLinks.length})`);
         }
       }
       npmRun(['install', '--no-audit', '--no-fund', '--legacy-peer-deps']);
