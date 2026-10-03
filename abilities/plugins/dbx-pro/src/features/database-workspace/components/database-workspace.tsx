@@ -94,7 +94,8 @@ function SplitLayout({ children, onDragStart }: { children: [JSX.Element, JSX.El
 			{/* 左分隔条 */}
 			<div
 				onPointerDown={(e) => startDrag("left", e)}
-				className={`group relative w-1 shrink-0 cursor-col-resize ${dragging === "left" ? "bg-blue-500" : "bg-zinc-800 hover:bg-blue-500/70"}`}
+				className="group relative w-1 shrink-0 cursor-col-resize"
+				style={{ backgroundColor: dragging === "left" ? "var(--foreground)" : "var(--dbx-line-soft)" }}
 			>
 				<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
 			</div>
@@ -107,7 +108,8 @@ function SplitLayout({ children, onDragStart }: { children: [JSX.Element, JSX.El
 			{/* 右分隔条 */}
 			<div
 				onPointerDown={(e) => startDrag("right", e)}
-				className={`group relative w-1 shrink-0 cursor-col-resize ${dragging === "right" ? "bg-blue-500" : "bg-zinc-800 hover:bg-blue-500/70"}`}
+				className="group relative w-1 shrink-0 cursor-col-resize"
+				style={{ backgroundColor: dragging === "right" ? "var(--foreground)" : "var(--dbx-line-soft)" }}
 			>
 				<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
 			</div>
@@ -136,46 +138,43 @@ function TopBar({ onOpenConnectionForm, onOpenSettings }: { onOpenConnectionForm
 		: null;
 
 	return (
-		<header className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
+		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
 			{/* 左：Logo + 连接路径 */}
 			<div className="flex min-w-0 flex-1 items-center gap-2">
-				<span className="icon-[solar--database-bold] h-4 w-4 text-blue-400" />
-				<span className="text-[12px] font-semibold text-zinc-200">dbx-pro</span>
-				<span className="text-zinc-700">/</span>
+				<span className="icon-[solar--database-bold] h-4 w-4 text-foreground opacity-80" />
+				<span className="text-[12px] font-semibold text-foreground">dbx-pro</span>
+				<span className="text-muted-foreground/50">/</span>
 				{activeConn ? (
 					<>
 						<span
-							className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold text-foreground"
-							style={{
-								backgroundColor: "#336791",
-								fontStyle: "normal",
-							}}
+							className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold"
+							style={{ backgroundColor: "var(--dbx-surface-2)", color: "var(--foreground)" }}
 						>
 							{activeConn.db_type.slice(0, 2).toUpperCase()}
 						</span>
-						<span className="min-w-0 truncate text-[12px] text-zinc-300">{activeConn.name}</span>
-						<span className={`h-1.5 w-1.5 rounded-full ${
-							(state.connectionStatuses[activeConn.name] ?? "idle") === "ok" ? "bg-emerald-500"
-							: (state.connectionStatuses[activeConn.name] ?? "idle") === "error" ? "bg-red-500"
-							: (state.connectionStatuses[activeConn.name] ?? "idle") === "running" ? "animate-pulse bg-amber-400"
-							: "bg-zinc-500"
-						}`} />
+						<span className="min-w-0 truncate text-[12px] text-foreground/80">{activeConn.name}</span>
+						<span
+							className="h-1.5 w-1.5 rounded-full"
+							style={{ backgroundColor:
+								(state.connectionStatuses[activeConn.name] ?? "idle") === "ok" ? "var(--success, #4ade80)"
+								: (state.connectionStatuses[activeConn.name] ?? "idle") === "error" ? "var(--destructive)"
+								: (state.connectionStatuses[activeConn.name] ?? "idle") === "running" ? "var(--warning, #fbbf24)"
+								: "var(--muted-foreground)" }}
+						/>
 					</>
 				) : (
-					<span className="text-[11px] text-zinc-500">未选择连接</span>
+					<span className="text-[11px] text-muted-foreground">未选择连接</span>
 				)}
 			</div>
 
-			{/* 右：工具按钮 */}
+			{/* 右：工具按钮（统一中性图标按钮，单一新增连接入口） */}
 			<div className="flex shrink-0 items-center gap-1">
 				<button
 					type="button"
 					onClick={() => setRightView(rightView === "history" ? "inspector" : "history")}
 					title="查询历史"
 					aria-expanded={rightView === "history"}
-					className={`flex h-7 items-center gap-1 rounded px-2 text-[11px] ${
-						rightView === "history" ? "bg-blue-500/15 text-blue-300" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
-					}`}
+					className={`dbx-iconbtn ${rightView === "history" ? "is-active" : ""}`}
 				>
 					<span className="icon-[lucide--history] h-3.5 w-3.5" />
 					{history.length > 0 && <span className="text-[10px]">{history.length}</span>}
@@ -183,8 +182,8 @@ function TopBar({ onOpenConnectionForm, onOpenSettings }: { onOpenConnectionForm
 				<button
 					type="button"
 					onClick={() => { void refreshConnections(); }}
-					title="刷新"
-					className="flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+					title="刷新连接"
+					className="dbx-iconbtn"
 				>
 					<span className="icon-[lucide--refresh-cw] h-3.5 w-3.5" />
 				</button>
@@ -192,7 +191,7 @@ function TopBar({ onOpenConnectionForm, onOpenSettings }: { onOpenConnectionForm
 					type="button"
 					onClick={() => onOpenSettings()}
 					title="工作台设置"
-					className="flex h-7 w-7 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+					className="dbx-iconbtn"
 				>
 					<span className="icon-[lucide--settings] h-3.5 w-3.5" />
 				</button>
@@ -200,7 +199,7 @@ function TopBar({ onOpenConnectionForm, onOpenSettings }: { onOpenConnectionForm
 					type="button"
 					onClick={() => onOpenConnectionForm()}
 					title="添加连接"
-					className="flex h-7 items-center gap-1 rounded bg-blue-600/90 px-2 text-[11px] font-medium text-foreground hover:bg-blue-500"
+					className="dbx-cta"
 				>
 					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
 					连接
@@ -222,8 +221,8 @@ function ResultPanel(): JSX.Element {
 			{/* 结果 / 错误视图 */}
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{activeTab?.isRunning ? (
-					<div className="flex h-full flex-col items-center justify-center gap-2 text-zinc-500">
-						<span className="icon-[lucide--loader] h-6 w-6 animate-spin text-blue-400" />
+					<div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+						<span className="icon-[lucide--loader] h-6 w-6 animate-spin text-muted-foreground" />
 						<p className="text-[12px]">执行中…</p>
 					</div>
 				) : result ? (
@@ -245,7 +244,7 @@ function ResultPanel(): JSX.Element {
 						</div>
 					)
 				) : (
-					<div className="flex h-full flex-col items-center justify-center gap-2 text-zinc-600">
+					<div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground/70">
 						<span className="icon-[lucide--table] h-8 w-8 opacity-30" />
 						<p className="text-[12px]">执行查询后显示结果</p>
 					</div>
@@ -253,50 +252,47 @@ function ResultPanel(): JSX.Element {
 			</div>
 
 			{/* 状态栏 */}
-			<div className="flex h-6 shrink-0 items-center gap-3 border-t border-border bg-background px-3 text-[10.5px] text-zinc-500">
+			<div className="flex h-6 shrink-0 items-center gap-2 px-3 text-[10.5px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)", borderTop: "1px solid var(--dbx-line-soft)" }}>
 				{activeTab?.connectionName ? (
-					<span className="flex items-center gap-1">
-						<span className="icon-[lucide--database] h-3 w-3" />
-						<span className="text-muted-foreground">{activeTab.connectionName}</span>
+					<span className="flex min-w-0 items-center gap-1">
+						<span className="icon-[lucide--database] h-3 w-3 shrink-0" />
+						<span className="truncate">{activeTab.connectionName}</span>
 					</span>
 				) : (
-					<span>未绑定连接</span>
+					<span className="shrink-0">未绑定连接</span>
 				)}
-				<span className="text-zinc-800">·</span>
-				{activeTab?.isRunning && <span className="text-amber-400">执行中…</span>}
+				<span className="text-muted-foreground/40">·</span>
+				{activeTab?.isRunning && <span className="shrink-0 text-warning">执行中…</span>}
 				{result?.ok && (
 					<>
-						<span>
-							<span className="text-zinc-300 font-medium">{result.rowCount}</span> 行
+						<span className="shrink-0">
+							<span className="font-medium text-foreground">{result.rowCount}</span> 行
 						</span>
-						<span className="text-zinc-800">·</span>
-						<span>
-							<span className="text-zinc-300 font-medium">{result.elapsedMs}</span> ms
+						<span className="text-muted-foreground/40">·</span>
+						<span className="shrink-0">
+							<span className="font-medium text-foreground">{result.elapsedMs}</span> ms
 						</span>
 						{result.note && (
 							<>
-								<span className="text-zinc-800">·</span>
-								<span className="text-amber-400">{result.note}</span>
+								<span className="text-muted-foreground/40">·</span>
+								<span className="truncate text-warning">{result.note}</span>
 							</>
 						)}
 					</>
 				)}
-				{result && !result.ok && <span className="text-red-400">错误</span>}
+				{result && !result.ok && <span className="shrink-0 text-destructive">错误</span>}
 
-				<span className="ml-auto flex items-center gap-2">
+				<span className="ml-auto flex min-w-0 items-center gap-2">
 					{state.rightPanelTable && (
-						<>
-							<span className="text-zinc-800">·</span>
-							<span className="flex items-center gap-1 truncate">
-								<span className="icon-[lucide--table-2] h-2.5 w-2.5 text-emerald-400" />
-								{state.rightPanelTable.tableName}
-							</span>
-						</>
+						<span className="flex min-w-0 items-center gap-1">
+							<span className="icon-[lucide--table-2] h-2.5 w-2.5 shrink-0 text-success" />
+							<span className="truncate">{state.rightPanelTable.tableName}</span>
+						</span>
 					)}
 					{state.errorBanner && (
-						<span className="flex items-center gap-1 text-red-400">
-							<span className="icon-[lucide--alert-circle] h-3 w-3" />
-							{state.errorBanner.length > 50 ? state.errorBanner.slice(0, 49) + "…" : state.errorBanner}
+						<span className="flex min-w-0 items-center gap-1 text-destructive">
+							<span className="icon-[lucide--alert-circle] h-3 w-3 shrink-0" />
+							<span className="truncate">{state.errorBanner}</span>
 						</span>
 					)}
 				</span>
@@ -360,14 +356,14 @@ function DatabaseWorkspaceInner(): JSX.Element {
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections } = useWorkbench();
 
 	return (
-		<div className="relative flex h-full w-full min-h-0 flex-col bg-background text-zinc-200">
+		<div className="dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground">
 			<TopBar
 				onOpenConnectionForm={() => setConnectionFormOpen(true)}
 				onOpenSettings={() => setSettingsOpen(true)}
 			/>
 			<SplitLayout>
 				{[
-					<ConnectionTree key="left" onAddConnection={() => setConnectionFormOpen(true)} />,
+					<ConnectionTree key="left" />,
 					<SqlEditorWorkspace key="mid" />,
 					<RightPanel key="right" />,
 				]}

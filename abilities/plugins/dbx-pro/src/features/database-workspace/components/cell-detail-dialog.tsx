@@ -59,15 +59,15 @@ export function CellDetailDialog({ detail, onClose }: { detail: CellDetail; onCl
 			>
 				<div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
 					<span className="icon-[lucide--info] h-4 w-4 text-blue-400" />
-					<h3 className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-zinc-100">{detail.column}</h3>
-					<span className="shrink-0 rounded bg-zinc-800 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-zinc-400">
+					<h3 className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-foreground">{detail.column}</h3>
+					<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-foreground/70">
 						{parsed.kind}
 					</span>
 					<button
 						type="button"
 						onClick={copy}
 						title="复制"
-						className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+						className="flex h-6 w-6 items-center justify-center rounded text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 					>
 						<span className={`h-3.5 w-3.5 ${copied ? "icon-[lucide--check] text-emerald-400" : "icon-[lucide--copy]"}`} />
 					</button>
@@ -75,16 +75,16 @@ export function CellDetailDialog({ detail, onClose }: { detail: CellDetail; onCl
 						type="button"
 						onClick={onClose}
 						title="关闭"
-						className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+						className="flex h-6 w-6 items-center justify-center rounded text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 					>
 						<span className="icon-[lucide--x] h-3.5 w-3.5" />
 					</button>
 				</div>
 				<div className="min-h-0 flex-1 overflow-auto bg-[#0b0d13] p-3">
 					{parsed.kind === "null" ? (
-						<p className="text-center font-mono text-[12px] italic text-zinc-600">NULL</p>
+						<p className="text-center font-mono text-[12px] italic text-muted-foreground/70">NULL</p>
 					) : (
-						<pre className="whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-zinc-300">
+						<pre className="whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-foreground/80">
 							{parsed.text}
 						</pre>
 					)}

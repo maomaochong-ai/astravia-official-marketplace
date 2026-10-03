@@ -96,26 +96,30 @@ export function SqlEditor(): JSX.Element {
 
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const activeConn = state.connections.find((c) => c.name === activeTab?.connectionName);
+	// 用稳定的 tab id / running 作为回调依赖：若依赖整个 activeTab 对象，每次输入
+	// 更新 sql 都会产生新对象，进而让 EditorView effect 反复重建、无法连续输入。
+	const activeTabId = activeTab?.id;
+	const activeTabRunning = activeTab?.isRunning ?? false;
 
 	const setSql = useCallback(
 		(next: string) => {
-			if (activeTab) dispatch({ type: "updateTab", id: activeTab.id, patch: { sql: next } });
+			if (activeTabId) dispatch({ type: "updateTab", id: activeTabId, patch: { sql: next } });
 		},
-		[activeTab, dispatch],
+		[activeTabId, dispatch],
 	);
 
 	const runCurrent = useCallback(
 		(view: EditorView) => {
-			if (!activeTab || activeTab.isRunning) return;
+			if (!activeTabId || activeTabRunning) return;
 			const { from, to } = view.state.selection.main;
 			let selected: string | undefined;
 			if (to > from) {
 				const fragment = view.state.doc.sliceString(from, to);
 				if (fragment.trim()) selected = fragment;
 			}
-			void runTabSql(activeTab.id, selected);
+			void runTabSql(activeTabId, selected);
 		},
-		[activeTab, runTabSql],
+		[activeTabId, activeTabRunning, runTabSql],
 	);
 
 	// 按 activeTab 构建 EditorView。
@@ -186,23 +190,23 @@ export function SqlEditor(): JSX.Element {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 */}
-			<div className="flex h-8 shrink-0 items-center gap-1 border-b border-border bg-[#111320]/60 px-2">
+			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-1 px-2">
 				<button
 					type="button"
 					onClick={() => viewRef.current && runCurrent(viewRef.current)}
 					disabled={running || !hasConn}
 					title="执行（⌘/Ctrl + Enter）"
-					className="flex h-6 items-center gap-1 rounded bg-emerald-600/90 px-2 text-[11px] font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+					className="flex h-6 items-center gap-1 rounded bg-emerald-600/90 px-2 text-[11px] font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[var(--dbx-surface-2)] disabled:text-muted-foreground"
 				>
 					{running ? <span className="icon-[lucide--loader] h-3 w-3 animate-spin" /> : <span className="icon-[lucide--play] h-3 w-3" />}
 					{running ? "执行中" : "执行"}
 				</button>
-				<div className="mx-1 h-4 w-px bg-zinc-700" />
+				<div className="mx-1 h-4 w-px bg-[var(--dbx-surface-2)]" />
 				<button
 					type="button"
 					onClick={tidy}
 					title="整理 SQL"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 				>
 					<span className="icon-[lucide--list-filter] h-3 w-3" />
 					整理
@@ -211,12 +215,12 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={clearEditor}
 					title="清空"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 				>
 					<span className="icon-[lucide--trash-2] h-3 w-3" />
 					清空
 				</button>
-				<div className="ml-auto flex items-center gap-1 text-[10px] text-zinc-500">
+				<div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
 					<span className="icon-[lucide--database] h-2.5 w-2.5" />
 					{activeTab?.connectionName ?? "未绑定"}
 					{!hasConn && <span className="ml-1 rounded bg-red-500/10 px-1 text-red-400">请先选中连接</span>}
@@ -227,7 +231,7 @@ export function SqlEditor(): JSX.Element {
 			<div className="relative min-h-0 flex-1">
 				<div key={activeTab?.id} ref={hostRef} className="absolute inset-0 overflow-hidden" />
 				{!editorReady && (
-					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-zinc-600">
+					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground/70">
 						<span className="icon-[lucide--loader] mr-2 h-3 w-3 animate-spin" />
 						加载编辑器…
 					</div>

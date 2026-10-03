@@ -15,6 +15,11 @@
 import type { PluginContext, PluginServiceArtifactPayload, PluginServiceStatus } from "@astravia-org/plugin-sdk";
 import bridgeSource from "../server/main.mjs?raw";
 import runtimeLock from "../runtime-lock.json";
+// 平台二进制以 vite 资源方式随插件包分发到 dist/assets（?url），运行时按当前平台
+// 直接读取，无需访问 GitHub；SHA 校验仍以 runtime-lock.json 为准。
+import arm64BinUrl from "../server/bin/dbx-mcp-darwin-arm64?url";
+import x64BinUrl from "../server/bin/dbx-mcp-darwin-x64?url";
+import winBinUrl from "../server/bin/dbx-mcp-win-x64.exe?url";
 
 const SERVICE_ID = "dbx-engine";
 
@@ -26,6 +31,13 @@ interface BinaryAsset {
 }
 
 const BINARY_ASSETS = runtimeLock.platforms as Record<PlatformTag, BinaryAsset[]>;
+
+/** 各平台二进制在包内的相对资源 URL（vite ?url 生成，随包必然存在）。 */
+const BUNDLED_BINARY_URL: Record<PlatformTag, string> = {
+	"darwin-arm64": arm64BinUrl,
+	"darwin-x64": x64BinUrl,
+	"win32-x64": winBinUrl,
+};
 
 /** UTF-8 文本 → base64（分块，避免 fromCharCode 参数超限）。 */
 function utf8ToBase64(text: string): string {
@@ -65,28 +77,15 @@ async function sha256Base64(value: string): Promise<string> {
 }
 
 /**
- * 插件包根 URL。
- *
- * 本模块被打进 <root>/dist（chunks 可能在 dist/assets/），故从 import.meta.url
- * 中定位 /dist/ 段并取其前的版本目录作为包根，与 chunk 深度无关。
- */
-function packageRootUrl(): URL {
-	const moduleUrl = new URL(import.meta.url);
-	const distAt = moduleUrl.pathname.indexOf("/dist/");
-	const rootPath = distAt >= 0 ? moduleUrl.pathname.slice(0, distAt + 1) : "/";
-	return new URL(rootPath, moduleUrl);
-}
-
-/**
  * 读取插件包内已内置的引擎二进制作为安装载荷。
  *
- * 二进制随 .astraviapkg 分发（server/bin），无需再访问网络；这同时消除了
- * GitHub release 下载链路抖动导致 service 永远不就绪的问题。文件缺失等任何
- * 异常都返回 null，交由网络下载兜底。
+ * 二进制由 vite `?url` 作为资源随 .astraviapkg 分发到 dist/assets，运行时相对
+ * 本模块解析 URL 直接读取，无需访问网络，消除 GitHub release 抖动导致 service
+ * 永不就绪的问题。读取/校验异常返回 null，交由网络下载兜底。
  */
-async function readBundledBinary(asset: BinaryAsset): Promise<PluginServiceArtifactPayload | null> {
+async function readBundledBinary(asset: BinaryAsset, bundledUrl: string): Promise<PluginServiceArtifactPayload | null> {
 	try {
-		const response = await fetch(new URL(asset.destination, packageRootUrl()), { cache: "no-store" });
+		const response = await fetch(new URL(bundledUrl, import.meta.url), { cache: "no-store" });
 		if (!response.ok) return null;
 		const bytes = new Uint8Array(await response.arrayBuffer());
 		if ((await sha256Bytes(bytes)) !== asset.sha256) return null;
@@ -153,14 +152,18 @@ async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
 	}
 	if (!status.installed) {
 		const { tag } = await context.services.getPlatform();
-		const assets = BINARY_ASSETS[tag as PlatformTag];
+		const platformTag = tag as PlatformTag;
+		const assets = BINARY_ASSETS[platformTag];
 		if (!assets) throw new Error(`不支持的引擎运行平台：${tag}`);
 		const payloads: PluginServiceArtifactPayload[] = [
 			{ destination: "server/main.mjs", data: utf8ToBase64(bridgeSource) },
 		];
 		for (const asset of assets) {
-			// 优先用包内已内置二进制；读不到（如裁剪安装）再从 release 网络下载。
-			payloads.push((await readBundledBinary(asset)) ?? (await downloadBinary(context, asset)));
+			// 优先用包内 vite 资源二进制；读不到（如裁剪安装）再从 release 网络下载。
+			payloads.push(
+				(await readBundledBinary(asset, BUNDLED_BINARY_URL[platformTag])) ??
+					(await downloadBinary(context, asset)),
+			);
 		}
 		status = await context.services.install(SERVICE_ID, payloads);
 		if (!status.installed) throw new Error(status.message ?? "引擎 runtime 安装失败");

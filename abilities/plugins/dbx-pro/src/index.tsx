@@ -7,19 +7,60 @@
  * getCommand/getConversation/getAgent 访问。
  */
 
-import { lazy, Suspense, type ComponentType, type ReactElement } from "react";
+import { Component, lazy, Suspense, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { setRuntime } from "./runtime-contract";
 import { ensureEngineStarted } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
 import "./style.css";
 
-/** Lazy-load the panel with Suspense fallback — matches shimo's pattern. */
+/** 面板加载中：可见的轻量占位，避免点击后空白。 */
+function PanelLoading(): ReactElement {
+	return (
+		<div className="flex h-full w-full items-center justify-center text-[12px] text-muted-foreground">
+			<span className="icon-[lucide--loader] mr-2 h-3.5 w-3.5 animate-spin" />
+			正在加载数据库工作台…
+		</div>
+	);
+}
+
+/** 面板 chunk 加载失败时给出可重试的提示，而不是整页空白。 */
+class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+	state = { failed: false };
+	static getDerivedStateFromError(): { failed: boolean } {
+		return { failed: true };
+	}
+	render(): ReactNode {
+		if (this.state.failed) {
+			return (
+				<div className="flex h-full w-full flex-col items-center justify-center gap-3 text-[12px] text-muted-foreground">
+					<span>工作台加载失败</span>
+					<button
+						type="button"
+						className="dbx-cta"
+						onClick={() => this.setState({ failed: false })}
+					>
+						重试
+					</button>
+				</div>
+			);
+		}
+		return this.props.children;
+	}
+}
+
+/** Lazy-load the panel with a visible fallback + error boundary. */
 function lazyPanel<P extends object>(load: () => Promise<{ default: ComponentType<P> }>): () => ReactElement {
 	// 面板不接收任何 props；显式收窄为「无 props 组件」，避免 P 被推成 unknown。
 	const Lazy = lazy(load) as unknown as ComponentType<Record<string, never>>;
 	return function LazyPanel(): ReactElement {
-		return <Suspense fallback={null}><Lazy /></Suspense>;
+		return (
+			<PanelErrorBoundary>
+				<Suspense fallback={<PanelLoading />}>
+					<Lazy />
+				</Suspense>
+			</PanelErrorBoundary>
+		);
 	};
 }
 

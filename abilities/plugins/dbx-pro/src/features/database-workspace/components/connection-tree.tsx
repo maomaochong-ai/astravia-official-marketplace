@@ -11,13 +11,8 @@ import { useState, type JSX } from "react";
 import { useWorkbench, type TreeNode } from "./workbench-context";
 import { ConnectionNode } from "./connection-node";
 
-interface ConnectionTreeProps {
-	/** 打开「新建连接」表单；未提供时 + 按钮仅刷新。 */
-	onAddConnection?: () => void;
-}
-
-export function ConnectionTree({ onAddConnection }: ConnectionTreeProps = {}): JSX.Element {
-	const { state, refreshConnections } = useWorkbench();
+export function ConnectionTree(): JSX.Element {
+	const { state } = useWorkbench();
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
 
@@ -38,31 +33,37 @@ export function ConnectionTree({ onAddConnection }: ConnectionTreeProps = {}): J
 	return (
 		<div className="flex h-full flex-col bg-background">
 			{/* 标题栏 */}
-			<div className="flex h-8 shrink-0 items-center gap-2 border-b border-border px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
 				<span className="icon-[lucide--database] h-3 w-3" />
 				连接
 				{connectionNodes.length > 0 && (
-					<span className="ml-auto rounded-full bg-zinc-800/70 px-1.5 text-[10px] font-medium text-muted-foreground">
+					<span
+						className="ml-auto rounded-full px-1.5 text-[10px] font-medium"
+						style={{ backgroundColor: "var(--dbx-surface-2)", color: "var(--muted-foreground)" }}
+					>
 						{connectionNodes.length}
 					</span>
 				)}
 			</div>
 
-			{/* 搜索 + 工具 */}
-			<div className="shrink-0 border-b border-border/70 px-2 py-1.5">
-				<div className="flex items-center gap-1 rounded-md bg-zinc-800/70 px-2 py-1">
-					<span className="icon-[lucide--search] h-3 w-3 shrink-0 text-zinc-500" />
+			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}
+			<div className="shrink-0 px-2 py-1.5" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>
+				<div
+					className="flex items-center gap-1 rounded-md px-2 py-1"
+					style={{ backgroundColor: "var(--dbx-surface-2)" }}
+				>
+					<span className="icon-[lucide--search] h-3 w-3 shrink-0 text-muted-foreground" />
 					<input
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 						placeholder="过滤连接/表..."
-						className="min-w-0 flex-1 bg-transparent text-[11px] text-zinc-200 outline-none placeholder:text-zinc-600"
+						className="min-w-0 flex-1 bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground/70"
 					/>
 					{query && (
 						<button
 							type="button"
 							onClick={() => setQuery("")}
-							className="shrink-0 text-zinc-500 hover:text-zinc-200"
+							className="shrink-0 text-muted-foreground hover:text-foreground"
 						>
 							<span className="icon-[lucide--x] h-3 w-3" />
 						</button>
@@ -70,37 +71,16 @@ export function ConnectionTree({ onAddConnection }: ConnectionTreeProps = {}): J
 				</div>
 			</div>
 
-			{/* 操作按钮 */}
-			<div className="flex shrink-0 items-center gap-1 border-b border-border/70 px-2 py-1">
-				<button
-					type="button"
-					onClick={() => { void refreshConnections(); }}
-					title="刷新连接"
-					className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
-				>
-					<span className="icon-[lucide--refresh-cw] h-3 w-3" />
-				</button>
-				<button
-					type="button"
-					onClick={() => (onAddConnection ? onAddConnection() : void refreshConnections())}
-					title="添加连接"
-					className="flex h-6 items-center gap-1 rounded bg-blue-600/90 px-2 text-[10.5px] font-medium text-white hover:bg-blue-500"
-				>
-					<span className="icon-[lucide--plus] h-3 w-3" />
-					连接
-				</button>
-			</div>
-
 			{/* 树内容 */}
-			<div className="min-h-0 flex-1 overflow-y-auto px-1 py-1">
+			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto px-1 py-1">
 				{visibleConnectionNodes.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-10 text-center">
-						<span className="icon-[lucide--database] h-8 w-8 text-zinc-700" />
-						<p className="mt-3 text-[11px] text-zinc-500">
+						<span className="icon-[lucide--database] h-8 w-8 text-muted-foreground/60" />
+						<p className="mt-3 text-[11px] text-muted-foreground">
 							{query ? "无匹配" : "暂无连接"}
 						</p>
 						{!query && (
-							<p className="mt-1 text-[10px] text-zinc-600">
+							<p className="mt-1 text-[10px] text-muted-foreground/70">
 								点右侧面板添加
 							</p>
 						)}
@@ -118,7 +98,7 @@ export function ConnectionTree({ onAddConnection }: ConnectionTreeProps = {}): J
 			</div>
 
 			{/* 底部状态 */}
-			<div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1 text-[10px] text-zinc-600">
+			<div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1 text-[10px] text-muted-foreground/70">
 				{state.activeConnectionName ? (
 					<>
 						<span className="icon-[lucide--activity] h-2.5 w-2.5 text-emerald-500" />

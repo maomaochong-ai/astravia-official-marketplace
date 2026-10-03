@@ -40,7 +40,7 @@ export function WriteConfirmDialog({
 			>
 				<div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
 					<span className="icon-[lucide--shield-alert] h-4 w-4 text-amber-400" />
-					<h3 className="flex-1 text-[12.5px] font-semibold text-zinc-100">
+					<h3 className="flex-1 text-[12.5px] font-semibold text-foreground">
 						确认执行写操作
 					</h3>
 					<span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9.5px] font-medium text-amber-300">
@@ -64,7 +64,7 @@ export function WriteConfirmDialog({
 				</div>
 
 				<div className="max-h-[240px] overflow-auto bg-[#0b0d13] p-3">
-					<pre className="whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-zinc-300">
+					<pre className="whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-foreground/80">
 						{pending.sql}
 					</pre>
 				</div>
@@ -73,7 +73,7 @@ export function WriteConfirmDialog({
 					<button
 						type="button"
 						onClick={onCancel}
-						className="flex h-7 items-center rounded-md border border-border px-3 text-[11.5px] text-zinc-300 transition-colors hover:bg-accent"
+						className="flex h-7 items-center rounded-md border border-border px-3 text-[11.5px] text-foreground/80 transition-colors hover:bg-accent"
 					>
 						取消
 					</button>

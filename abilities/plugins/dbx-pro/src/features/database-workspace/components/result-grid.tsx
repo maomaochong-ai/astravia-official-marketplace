@@ -115,7 +115,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 
 	if (colList.length === 0) {
 		return (
-			<div className="flex h-full flex-col items-center justify-center gap-2 bg-background text-zinc-500">
+			<div className="flex h-full flex-col items-center justify-center gap-2 bg-background text-muted-foreground">
 				<span className="icon-[lucide--table] h-10 w-10 opacity-30" />
 				<p className="text-[12px]">执行查询后显示结果</p>
 			</div>
@@ -182,12 +182,12 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 */}
-			<div className="flex h-7 shrink-0 items-center gap-1 border-b border-border bg-[#111320]/50 px-2">
+			<div className="flex h-7 shrink-0 items-center gap-1 px-2" style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)" }}>
 				<button
 					type="button"
 					onClick={() => void copyAll()}
 					title="复制全部为 TSV"
-					className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+					className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 				>
 					<span className="icon-[lucide--clipboard-list] h-3 w-3" />
 					复制
@@ -196,7 +196,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 					type="button"
 					onClick={() => exportCsv()}
 					title="导出 CSV"
-					className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+					className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 				>
 					<span className="icon-[lucide--download] h-3 w-3" />
 					CSV
@@ -205,7 +205,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 					type="button"
 					onClick={() => setShowRowNumbers((v) => !v)}
 					title="行号"
-					className={`flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] ${showRowNumbers ? "text-blue-400" : "text-zinc-500 hover:text-zinc-200"}`}
+					className={`flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] ${showRowNumbers ? "text-blue-400" : "text-muted-foreground hover:text-foreground"}`}
 				>
 					<span className="icon-[lucide--list-ordered] h-3 w-3" />
 					#
@@ -221,7 +221,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 						分析结果
 					</button>
 				)}
-				<span className="ml-auto text-[10px] text-zinc-600">双击查看详情 · 右键更多操作</span>
+				<span className="ml-auto text-[10px] text-muted-foreground/70">双击查看详情 · 右键更多操作</span>
 			</div>
 
 			{/* 网格 */}
@@ -230,19 +230,19 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 					<thead>
 						<tr>
 							{showRowNumbers && (
-								<th className="sticky left-0 z-20 w-10 min-w-10 border-b border-r border-border bg-[#111320] px-1 py-2 text-center text-[10px] font-semibold text-zinc-500">
+								<th className="sticky left-0 z-20 w-10 min-w-10 border-b border-r border-border px-1 py-2 text-center text-[10px] font-semibold text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface-2)" }}>
 									#
 								</th>
 							)}
 							{colList.map((c, i) => (
 								<th
 									key={c}
-									className="relative border-b border-r border-border bg-[#111320] px-3 py-2 text-left font-semibold text-[10.5px] text-zinc-400"
-									style={{ width: defaultWidth(c), minWidth: defaultWidth(c) }}
+									className="relative border-b border-r border-border px-3 py-2 text-left font-semibold text-[10.5px] text-muted-foreground"
+									style={{ backgroundColor: "var(--dbx-surface-2)", width: defaultWidth(c), minWidth: defaultWidth(c) }}
 								>
 									<div className="flex items-center gap-1">
 									<span
-										className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-1 truncate hover:text-zinc-200"
+										className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-1 truncate hover:text-foreground"
 										title={`按 ${c} 排序`}
 										onClick={() => toggleSort(c)}
 									>
@@ -251,11 +251,11 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 											<span className={`h-2.5 w-2.5 shrink-0 text-blue-400 ${sort.dir === "asc" ? "icon-[lucide--arrow-up]" : "icon-[lucide--arrow-down]"}`} />
 										) : null}
 									</span>
-									<span className="shrink-0 text-[9px] text-zinc-600">{i + 1}</span>
+									<span className="shrink-0 text-[9px] text-muted-foreground/70">{i + 1}</span>
 								</div>
 									<span
 										onMouseDown={(e) => startResize(e, c)}
-										className="absolute right-[-2px] top-0 h-full w-1.5 cursor-col-resize hover:bg-blue-500/60"
+										className="absolute right-[-2px] top-0 h-full w-1.5 cursor-col-resize hover:bg-foreground/40"
 									/>
 								</th>
 							))}
@@ -266,7 +266,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 							<tr>
 								<td
 									colSpan={colList.length + (showRowNumbers ? 1 : 0)}
-									className="py-10 text-center text-[12px] text-zinc-500"
+									className="py-10 text-center text-[12px] text-muted-foreground"
 								>
 									该页无数据
 								</td>
@@ -275,16 +275,16 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 							pagedRows.map((row, rowIdx) => {
 								const globalIdx = safePage * PAGE_SIZE + rowIdx + 1;
 								return (
-									<tr key={rowIdx} className="hover:bg-zinc-800/40">
+									<tr key={rowIdx} className="hover:bg-[var(--dbx-hover)]">
 										{showRowNumbers && (
-											<td className="sticky left-0 z-10 w-10 min-w-10 border-r border-border bg-[#0f1218] px-1 py-1.5 text-center font-mono text-[10px] text-zinc-500">
+											<td className="sticky left-0 z-10 w-10 min-w-10 border-r border-border px-1 py-1.5 text-center font-mono text-[10px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)" }}>
 												{globalIdx}
 											</td>
 										)}
 										{colList.map((c) => (
 											<td
 												key={c}
-												className="max-w-0 truncate border-b border-r border-border/60 px-3 py-1.5 text-zinc-300"
+												className="max-w-0 truncate border-b border-r border-border/60 px-3 py-1.5 text-foreground/80"
 												style={{ maxWidth: defaultWidth(c) }}
 												title={cellText(row[c])}
 												onDoubleClick={() => setDetail({ column: c, value: row[c] })}
@@ -302,9 +302,9 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 			</div>
 
 			{/* 分页栏 */}
-			<div className="flex h-7 shrink-0 items-center gap-2 border-t border-border bg-background px-3 text-[11px] text-zinc-500">
+			<div className="flex h-7 shrink-0 items-center gap-2 border-t border-border bg-background px-3 text-[11px] text-muted-foreground">
 				<span>
-					共 <span className="font-medium text-zinc-300">{totalRows}</span> 行
+					共 <span className="font-medium text-foreground/80">{totalRows}</span> 行
 				</span>
 				{rows.length < totalRows && (
 					<span className="rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-400">
@@ -312,18 +312,18 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 					</span>
 				)}
 				<div className="ml-auto flex items-center gap-1">
-					<span className="text-zinc-600">
+					<span className="text-muted-foreground/70">
 						{pagedRows.length === 0 ? 0 : safePage * PAGE_SIZE + 1}–
 						{safePage * PAGE_SIZE + pagedRows.length}
 					</span>
-					<span className="text-zinc-700">/</span>
-					<span className="text-zinc-600">{totalRows}</span>
-					<div className="mx-2 h-3 w-px bg-zinc-800" />
+					<span className="text-muted-foreground/60">/</span>
+					<span className="text-muted-foreground/70">{totalRows}</span>
+					<div className="mx-2 h-3 w-px bg-[var(--dbx-surface-2)]" />
 					<button
 						type="button"
 						onClick={() => setPage(0)}
 						disabled={safePage === 0}
-						className="flex h-5 w-5 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
+						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
 						title="第一页"
 					>
 						<span className="icon-[lucide--chevrons-left] h-3 w-3" />
@@ -332,19 +332,19 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 						type="button"
 						onClick={() => setPage(Math.max(0, safePage - 1))}
 						disabled={safePage === 0}
-						className="flex h-5 w-5 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
+						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
 						title="上一页"
 					>
 						<span className="icon-[lucide--chevron-left] h-3 w-3" />
 					</button>
-					<span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">
+					<span className="rounded bg-[var(--dbx-surface-2)] px-1.5 py-0.5 text-[10px] text-foreground/80">
 						{safePage + 1} / {totalPages}
 					</span>
 					<button
 						type="button"
 						onClick={() => setPage(Math.min(totalPages - 1, safePage + 1))}
 						disabled={safePage >= totalPages - 1}
-						className="flex h-5 w-5 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
+						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
 						title="下一页"
 					>
 						<span className="icon-[lucide--chevron-right] h-3 w-3" />
@@ -353,7 +353,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 						type="button"
 						onClick={() => setPage(totalPages - 1)}
 						disabled={safePage >= totalPages - 1}
-						className="flex h-5 w-5 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 disabled:opacity-30"
+						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
 						title="最后一页"
 					>
 						<span className="icon-[lucide--chevrons-right] h-3 w-3" />
@@ -369,7 +369,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 
 function CellDisplay({ value }: { value: unknown }): JSX.Element {
 	if (value === null || value === undefined) {
-		return <span className="italic text-zinc-600">NULL</span>;
+		return <span className="italic text-muted-foreground/70">NULL</span>;
 	}
 	if (typeof value === "boolean") {
 		return <span className={value ? "text-emerald-400" : "text-red-400"}>{String(value)}</span>;
@@ -378,7 +378,7 @@ function CellDisplay({ value }: { value: unknown }): JSX.Element {
 		return <span className="font-mono text-amber-300">{String(value)}</span>;
 	}
 	if (typeof value === "object") {
-		return <span className="font-mono text-zinc-400">{JSON.stringify(value)}</span>;
+		return <span className="font-mono text-foreground/70">{JSON.stringify(value)}</span>;
 	}
 	const text = String(value);
 	if (/^https?:\/\//i.test(text)) {

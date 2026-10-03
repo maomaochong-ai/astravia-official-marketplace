@@ -83,7 +83,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 						className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
 							entry.danger
 								? "text-red-400 hover:bg-red-500/15"
-								: "text-zinc-200 hover:bg-accent hover:text-accent-foreground"
+								: "text-foreground hover:bg-accent hover:text-accent-foreground"
 						}`}
 						onClick={() => {
 							onClose();

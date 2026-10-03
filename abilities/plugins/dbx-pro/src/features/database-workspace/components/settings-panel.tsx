@@ -46,21 +46,23 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 	}, [onClose]);
 
 	return (
-		<div className="dbx-modal-backdrop" onClick={onClose}>
+		<>
+			<div className="dbx-sheet-backdrop" onClick={onClose} />
 			<div
-				className="flex w-[480px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-2xl shadow-black/50"
+				className="dbx-sheet w-[420px] max-w-[calc(100%-1rem)]"
 				onClick={(e) => e.stopPropagation()}
 				role="dialog"
 				aria-modal="true"
 			>
-				<div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
-					<span className="icon-[lucide--settings] h-4 w-4 text-zinc-400" />
+				<div className="flex shrink-0 items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>
+					<span className="icon-[lucide--settings] h-4 w-4 text-muted-foreground" />
 					<h3 className="flex-1 text-[12.5px] font-semibold text-foreground">工作台设置</h3>
 					<button
 						type="button"
 						onClick={onReset}
 						disabled={isDefaultSettings(settings)}
-						className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-40"
+						className="dbx-iconbtn"
+						style={{ height: 24 }}
 					>
 						恢复默认
 					</button>
@@ -68,13 +70,14 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 						type="button"
 						onClick={onClose}
 						title="关闭"
-						className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted"
+						className="dbx-iconbtn"
+						style={{ height: 24, minWidth: 24, padding: 0 }}
 					>
 						✕
 					</button>
 				</div>
 
-				<div className="space-y-4 overflow-y-auto p-4">
+				<div className="dbx-scroll space-y-4 overflow-y-auto p-4">
 					<div className="grid grid-cols-2 gap-3">
 						<Row label="查询超时（秒）" hint="超时后自动取消查询。">
 							<input
@@ -200,6 +203,6 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }

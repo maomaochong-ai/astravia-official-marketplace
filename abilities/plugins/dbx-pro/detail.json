@@ -4,32 +4,33 @@
     {
       "type": "hero",
       "eyebrow": "Database workbench",
-      "title": "dbx-pro — a database workbench inside Astravia",
-      "description": "Manage connections, browse schemas, write SQL and read editable result grids without leaving Astravia. SQLite works out of the box; the connection picker lists 85 database types with their current support tier clearly marked.",
-      "badges": ["SQLite ready", "SQL editor", "Write safety gate"]
+      "title": "dbx-pro — a full database workbench inside Astravia",
+      "description": "Manage connections, browse schemas, write and run SQL, inspect sortable result grids, and let AI call your database directly. Reads go through dbx-mcp for PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases; writes and DDL run through bundled drivers.",
+      "badges": ["100+ databases", "DDL writes", "Bidirectional AI", "Encrypted storage"]
     },
     {
       "type": "feature-grid",
       "items": [
-        { "title": "Connection manager", "description": "Keep local connection profiles with host, port, database and environment labels, and pick the type from an 85-entry catalog." },
-        { "title": "SQL editor + result grid", "description": "Multi-tab editing, one keyboard shortcut to run, and results in a sortable row grid with the row count and duration." },
-        { "title": "Table browser", "description": "Explore the schema tree, describe columns with types and keys, and preview sample rows." },
-        { "title": "Write safety gate", "description": "Connections marked as production keep writes and DDL behind an explicit release switch." },
-        { "title": "Support tiers, stated honestly", "description": "Every type shows whether it is directly queryable, experimental, or not reachable yet — no silent failures." }
+        { "title": "Connection manager", "description": "Store host, port, database and environment labels with read-only / production flags; passwords live in the host's encrypted credential vault, never as plaintext." },
+        { "title": "SQL editor", "description": "Multi-tab CodeMirror editor with per-dialect highlighting and autocomplete; run with ⌘/Ctrl+Enter, or execute just the selection." },
+        { "title": "Result grid", "description": "Sort by header, paginate, keep row numbers, copy TSV / export CSV and inspect cells, with row count and duration shown." },
+        { "title": "DDL and writes", "description": "Create and alter tables through bundled pg / mysql2 / mssql drivers; a full-SQL confirmation appears first and read-only connections are rejected outright." },
+        { "title": "Query history", "description": "Each query logs its SQL, status, row count and duration (no result rows stored), ready to reload and rerun in the editor." },
+        { "title": "Bidirectional AI", "description": "The plugin registers as an MCP tool so AI can list connections and run queries; you can also send tree or result context to AI in one click." }
       ]
     },
     {
       "type": "steps",
       "items": [
-        { "title": "Open the workbench", "description": "Install dbx-pro from the marketplace and open its activity tab. Nothing else to install." },
-        { "title": "Add a connection", "description": "Pick SQLite and choose a database file to query straight away; other types are saved as profiles you can revisit." },
-        { "title": "Run a query", "description": "Type SQL and press ⌘/Ctrl+Enter to execute." }
+        { "title": "Open the workbench", "description": "Install dbx-pro from the marketplace and open its activity tab. The engine comes up with the plugin — no separate CLI install." },
+        { "title": "Add a connection", "description": "Click \"Connect\" in the top right, pick a database type and fill it in; for SQLite just choose a file." },
+        { "title": "Run a query", "description": "Type SQL and press ⌘/Ctrl+Enter; confirm when the statement writes or changes schema." }
       ]
     },
     {
       "type": "callout",
-      "tone": "warning",
-      "content": "Only SQLite is directly queryable today. PostgreSQL, MySQL, ClickHouse and other listed types appear in the picker with their support tier, and are progressively connected through plugin drivers."
+      "tone": "info",
+      "content": "Reads use dbx-mcp while writes and DDL use the plugin's bundled drivers; the two paths are isolated. Every service listens on loopback only and is never exposed to the network."
     }
   ]
 }

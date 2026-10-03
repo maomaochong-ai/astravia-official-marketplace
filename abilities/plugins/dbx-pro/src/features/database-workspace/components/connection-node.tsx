@@ -186,14 +186,17 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	return (
 		<div>
 			<div
-				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-blue-500/60 ${
+				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-foreground/40 ${
 					active
-						? "bg-blue-500/15 text-blue-300"
+						? "text-foreground"
 						: selected
-							? "bg-blue-500/10 text-blue-200"
-							: "text-zinc-300 hover:bg-zinc-800/60"
+							? "text-foreground/90"
+							: "text-foreground/70 hover:bg-[var(--dbx-hover)]"
 				}`}
-				style={{ paddingLeft: 6 + depth * 14 }}
+				style={{
+					paddingLeft: 6 + depth * 14,
+					backgroundColor: active ? "var(--dbx-surface-2)" : selected ? "var(--dbx-surface)" : undefined,
+				}}
 				onClick={handleClick}
 				onDoubleClick={handleDoubleClick}
 				onContextMenu={handleContextMenu}
@@ -206,7 +209,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							void ensureChildren();
 							expand();
 						}}
-						className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center text-zinc-500 transition-transform hover:text-zinc-200 ${isExpanded ? "rotate-90" : ""}`}
+						className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted-foreground transition-transform hover:text-foreground ${isExpanded ? "rotate-90" : ""}`}
 					>
 						<span className="icon-[lucide--chevron-right] h-3 w-3" />
 					</span>
@@ -219,11 +222,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				)}
 				{node.kind === "column" && (
 					<span
-						className={`h-3 w-3 shrink-0 ${node.label.includes("(PK)") ? "icon-[lucide--key-round] text-amber-400" : "icon-[lucide--columns-3] text-zinc-500"}`}
+						className={`h-3 w-3 shrink-0 ${node.label.includes("(PK)") ? "icon-[lucide--key-round] text-amber-400" : "icon-[lucide--columns-3] text-muted-foreground"}`}
 					/>
 				)}
 				<span className="min-w-0 flex-1 truncate">{node.label}</span>
-				{isLoading && <span className="icon-[lucide--loader] h-3 w-3 shrink-0 animate-spin text-zinc-500" />}
+				{isLoading && <span className="icon-[lucide--loader] h-3 w-3 shrink-0 animate-spin text-muted-foreground" />}
 			</div>
 			{isExpanded && children.length > 0 && (
 				<div>
@@ -244,7 +247,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 }
 
 function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }): JSX.Element {
-	if (!dbType) return <span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0 text-zinc-400" />;
+	if (!dbType) return <span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
 	const visual = getDatabaseTypeVisual(dbType);
 	const dotCls =
 		status === "ok"
@@ -253,7 +256,7 @@ function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }
 				? "bg-red-500"
 				: status === "running"
 					? "animate-pulse bg-amber-400"
-					: "bg-zinc-500/40";
+					: "bg-[var(--dbx-surface-2)]";
 	return (
 		<span className="relative shrink-0">
 			<span

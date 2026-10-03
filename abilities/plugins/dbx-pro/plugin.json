@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -90,41 +90,14 @@
             "--port",
             "${ASTRAVIA_SERVICE_PORT}",
             "--data",
-            "${ASTRAVIA_SERVICE_DATA_DIR}"
+            "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "--auth-disabled"
           ]
         },
         "health": {
           "path": "/health",
           "timeoutMs": 30000
-        },
-        "credentials": [
-          {
-            "id": "engine-key",
-            "bytes": 32
-          }
-        ],
-        "templates": [
-          {
-            "source": "server/main.mjs",
-            "destination": "server/main.mjs",
-            "mode": "create"
-          },
-          {
-            "source": "server/bin/dbx-mcp-darwin-arm64",
-            "destination": "server/bin/dbx-mcp-darwin-arm64",
-            "mode": "create"
-          },
-          {
-            "source": "server/bin/dbx-mcp-darwin-x64",
-            "destination": "server/bin/dbx-mcp-darwin-x64",
-            "mode": "create"
-          },
-          {
-            "source": "server/bin/dbx-mcp-win-x64.exe",
-            "destination": "server/bin/dbx-mcp-win-x64.exe",
-            "mode": "create"
-          }
-        ]
+        }
       }
     ]
   },

@@ -29,22 +29,22 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 	const full = entries.length >= limit;
 	return (
 		<div className="flex h-full flex-col">
-			<div className="flex shrink-0 items-center gap-1 border-b px-3 py-2">
+			<div className="dbx-history-head flex shrink-0 items-center gap-1 px-3 py-2">
 				<span className="text-[11px] font-medium text-foreground">查询历史</span>
 				<span className="text-[10px] text-muted-foreground">
 					{entries.length}/{limit}
 				</span>
 				<span className="flex-1" />
 				{entries.length > 0 ? (
-					<button type="button" onClick={onClear} title="清空全部历史（不可撤销）" className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted/60 hover:text-destructive">
+					<button type="button" onClick={onClear} title="清空全部历史（不可撤销）" className="dbx-iconbtn" style={{ height: 22 }}>
 						清空
 					</button>
 				) : null}
 			</div>
 			{full ? (
-				<div className="shrink-0 bg-muted/30 px-3 py-1 text-[10px] text-muted-foreground">已到上限：新查询会挤掉最旧的一条</div>
+				<div className="shrink-0 px-3 py-1 text-[10px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)" }}>已到上限：新查询会挤掉最旧的一条</div>
 			) : null}
-			<div className="min-h-0 flex-1 overflow-y-auto p-1">
+			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-1">
 				{entries.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-8 text-center">
 						<span className="icon-[lucide--history] h-6 w-6 text-muted-foreground/30" />
