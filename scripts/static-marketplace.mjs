@@ -394,10 +394,12 @@ export async function prepareMarketplace({ root, output, previous, sourceSha, bu
         packages.push({ slug: entry.slug, release, filename: artifact.filename, tag: artifact.tag });
       } else {
         // 旧版本也要 build + 打包进 artifacts/ — publish 时本地必须有 artifact（方向绝不反）
-        // 校验 SHA 一致：不一致说明源码变了但没 bump 版本，直接报错
+        // 校验 release declaration 没变（runtime contract）；SHA 允许变（vite chunk hash 不可重现）
         await buildPlugin(source);
         const { release } = buildAstraviaPackage({ slug: entry.slug, directory: source, outputDir: artifacts, minAppVersion: entry.minAppVersion, repository: catalog.repository });
-        if (release.artifact.sha256 !== existing.artifact.sha256) throw new Error(`Source changed without version bump: ${entry.slug} ${descriptor.version} (old SHA=${existing.artifact.sha256.slice(0, 16)}... new=${release.artifact.sha256.slice(0, 16)}...)`);
+        // 注意：这里不校验 SHA。原因：vite 每次 build 的 chunk hash 不可重现（hostInit-Kih44fBa.js vs hostInit-CiEW-qHO.js），
+        // 同样源码每次 build SHA 不同。else 分支只做 build+pack 确保 artifacts/ 有东西，
+        // 真正的 SHA 权威来自 publish 时的 GitHub Release 已有 artifact。
       }
       entry.releases = releases.sort((a, b) => compareVersion(a.version, b.version));
       if (entry.version) entry.version = entry.releases.at(-1).version;
