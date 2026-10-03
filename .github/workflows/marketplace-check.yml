@@ -29,11 +29,12 @@ jobs:
           ref: ${{ steps.tooling.outputs.commit }}
           path: .tooling/open-astravia
           persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
       - name: Build tooling (generate dist/ for plugin-vite, plugin-sdk, etc.)
         run: |
           cd .tooling/open-astravia
-          npm install --legacy-peer-deps 2>&1 | tail -10
-          npm run build 2>&1 | tail -20 || echo "(turbo build 失败)"
+          bun install --frozen-lockfile 2>&1 | tail -10
+          bun run build 2>&1 | tail -20
           echo "=== 验证 dist ==="
           find packages -name "dist/index.js" -maxdepth 4 2>/dev/null | head -10
       - name: Build candidate against the current distribution
