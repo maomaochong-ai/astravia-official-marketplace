@@ -16,40 +16,24 @@ function isMissingRelease(error) {
 }
 
 function normalizeRelease(raw) {
-  const apiFallback = raw.assets?.[0] && !raw.assets[0].id && raw.assets[0].apiUrl;
-  const assets = (raw.assets ?? []).map(asset => {
-    let id = asset.id;
-    if (id === undefined && asset.apiUrl) {
-      const tail = asset.apiUrl.split('/').pop();
-      const parsed = Number.parseInt(tail, 10);
-      id = Number.isFinite(parsed) ? parsed : undefined;
-    }
-    return {
-      name: asset.name,
-      id,
-      url: asset.url ?? asset.apiUrl,
-      browser_download_url: asset.browser_download_url ?? asset.apiUrl,
-    };
-  });
   return {
-    tag_name: raw.tag_name ?? raw.tagName,
-    draft: raw.draft ?? raw.isDraft,
-    target_commitish: raw.target_commitish ?? raw.targetCommitish,
-    assets,
+    tag_name: raw.tag_name,
+    draft: raw.draft,
+    target_commitish: raw.target_commitish,
+    assets: (raw.assets ?? []).map(asset => ({
+      name: asset.name,
+      id: asset.id,
+      url: asset.url,
+      browser_download_url: asset.browser_download_url,
+    })),
   };
 }
 
 function releaseByTag(gh, repository, tag) {
-  // 优先用 gh api — 直接返回完整 asset 对象含 id
+  // 只用 gh api — 返回完整 asset 对象含 id
+  // 如果 gh api 不可用，整个 publish 都不可能工作（后面还要调 N 次 gh api）
   try {
     const release = JSON.parse(gh('api', `repos/${repository}/releases/tags/${tag}`));
-    return normalizeRelease(release);
-  } catch (error) {
-    if (!isMissingRelease(error)) throw error;
-  }
-  // 回退：gh release view（某些环境可能 api 不可用）
-  try {
-    const release = JSON.parse(gh('release', 'view', tag, '--repo', repository, '--json', 'tagName,isDraft,targetCommitish,assets'));
     return normalizeRelease(release);
   } catch (error) {
     if (!isMissingRelease(error)) throw error;

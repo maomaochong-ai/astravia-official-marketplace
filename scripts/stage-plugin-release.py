@@ -118,9 +118,6 @@ def build(slug: str, output_dir: Path, min_app_version: str) -> dict:
             "sha256": hashlib.sha256(data).hexdigest(),
         },
     }
-    (output_dir / f"{slug}-{plugin['version']}.json").write_text(
-        json.dumps(release, indent=2) + "\n", encoding="utf-8"
-    )
     return release
 
 

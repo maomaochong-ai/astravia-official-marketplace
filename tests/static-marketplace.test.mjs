@@ -139,19 +139,11 @@ for (const isPrivate of [false, true]) test(`interrupted ${isPrivate ? 'private'
   const gh = (...args) => {
     if (args[0] === 'api') {
       if (args[1] === 'repos/test/market') return JSON.stringify({ private: isPrivate });
-      if (!release || release.draft) { const error = new Error('HTTP 404'); error.stderr = '404'; throw error; }
+      // 真实 GitHub API 对 draft release 也能返回数据 —— 只在 release 不存在时返回 404
+      if (!release) { const error = new Error('HTTP 404'); error.stderr = '404'; throw error; }
       // GitHub API format: assets have id, name, url (API), browser_download_url (public)
       const apiRelease = { ...release, assets: release.assets.map(a => ({ id: a.id, name: a.name, url: a.url, browser_download_url: a.browser_download_url })) };
       return JSON.stringify(apiRelease);
-    }
-    if (args[1] === 'view') {
-      if (!release) { const error = new Error('release not found'); error.stderr = 'release not found'; throw error; }
-      return JSON.stringify({
-        tagName: release.tag_name,
-        isDraft: release.draft,
-        targetCommitish: release.target_commitish,
-        assets: release.assets.map(asset => ({ name: asset.name, apiUrl: asset.url })),
-      });
     }
     if (args[1] === 'create') {
       assert.equal(release, undefined);
