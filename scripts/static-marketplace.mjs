@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { deflateSync } from 'node:zlib';
 
 export const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
 export const writeJson = (path, value) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`); };
@@ -143,6 +143,221 @@ function nextVersion(current, date) {
   return `${match[1]}-${Number(match[2]) + 1}`;
 }
 
+// ─── Node.js 原生 .astraviapkg 打包（替代 stage-plugin-release.py）─────────
+// ZIP DEFLATED level 9，固定时间戳 1980-01-01 —— 与 Python zipfile 输出完全一致
+
+const RUNTIME_FILES = new Set(['plugin.json', 'package.json', 'README.md', 'LICENSE', 'runtime-lock.json', 'upstream.json']);
+const RUNTIME_DIRS = ['dist', 'locales', 'agent', 'assets', 'service'];
+const SKIP_DIRS = new Set(['node_modules', 'src', 'test', 'tests', 'release', '.git', '.vite']);
+const MAX_BYTES = 50 * 1024 * 1024;
+
+// CRC32 查表（open-astravia pack.ts 同款）
+const CRC_TABLE = new Uint32Array(256);
+{
+  for (let i = 0; i < 256; i += 1) {
+    let v = i;
+    for (let bit = 0; bit < 8; bit += 1) v = (v & 1) ? 0xedb88320 ^ (v >>> 1) : v >>> 1;
+    CRC_TABLE[i] = v >>> 0;
+  }
+}
+function crc32(buf) {
+  let v = 0xffffffff;
+  for (const byte of buf) v = CRC_TABLE[(v ^ byte) & 0xff] ^ (v >>> 8);
+  return (v ^ 0xffffffff) >>> 0;
+}
+
+function writeUInt16LE(buf, off, val) { buf.writeUInt16LE(val, off); return off + 2; }
+function writeUInt32LE(buf, off, val) { buf.writeUInt32LE(val >>> 0, off); return off + 4; }
+
+/** 遍历 plugin 目录，筛选运行时文件 —— 与 Python regular_files() 一致 */
+function regularFiles(directory) {
+  const result = [];
+  for (const name of [...RUNTIME_FILES].sort()) {
+    const p = join(directory, name);
+    if (existsSync(p)) result.push(p);
+  }
+  for (const name of RUNTIME_DIRS.sort()) {
+    const parent = join(directory, name);
+    if (!existsSync(parent)) continue;
+    if (lstatSync(parent).isSymbolicLink()) throw new Error(`Plugin contains a symlink: ${parent}`);
+    const walk = (current) => {
+      for (const dirname of readdirSync(current, { withFileTypes: true }).filter(e => e.isDirectory() && !SKIP_DIRS.has(e.name))) {
+        const child = join(current, dirname.name);
+        if (lstatSync(child).isSymbolicLink()) throw new Error(`Plugin contains a symlink: ${child}`);
+        walk(child);
+      }
+      for (const filename of readdirSync(current, { withFileTypes: true }).filter(e => e.isFile()).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
+        result.push(join(current, filename.name));
+      }
+    };
+    walk(parent);
+  }
+  for (const p of result) {
+    if (lstatSync(p).isSymbolicLink() || !lstatSync(p).isFile()) throw new Error(`Plugin contains a symlink or unsupported file: ${p}`);
+  }
+  return result.sort((a, b) => relative(directory, a).localeCompare(relative(directory, b), 'en'));
+}
+
+/** 特殊处理 dist/mf-stats.json（sorted buildOutput + sorted JSON）—— 与 Python packaged_bytes() 一致 */
+function packagedBytes(path, relativePosix) {
+  const data = readFileSync(path);
+  if (relativePosix !== 'dist/mf-stats.json') return data;
+  const stats = JSON.parse(data.toString('utf8'));
+  if (Array.isArray(stats.buildOutput)) {
+    stats.buildOutput.sort((a, b) => {
+      const af = typeof a === 'object' && a ? a.fileName ?? '' : '';
+      const at = typeof a === 'object' && a ? a.type ?? '' : '';
+      const bf = typeof b === 'object' && b ? b.fileName ?? '' : '';
+      const bt = typeof b === 'object' && b ? b.type ?? '' : '';
+      return af.localeCompare(bf) || at.localeCompare(bt);
+    });
+  }
+  return Buffer.from(JSON.stringify(stats, null, 2).replace(/\n/g, '').replace(/ /g, ''));
+}
+
+/**
+ * 打 ZIP 包 —— 与 Python zipfile.ZipFile 输出完全一致：
+ * DEFLATED level 9、固定时间戳 1980-01-01、create_system=3 (Unix)、external_attr=0o100644 << 16
+ */
+function createDeflatedZip(fileEntries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const entry of fileEntries) {
+    const name = Buffer.from(entry.name, 'utf8');
+    const raw = entry.data;
+    const compressed = deflateSync(raw, { level: 9 });
+    const crc = crc32(raw);
+
+    // Local File Header — 30 bytes + filename
+    const local = Buffer.alloc(30 + name.length);
+    let o = 0;
+    o = writeUInt32LE(local, o, 0x04034b50);       // signature
+    o = writeUInt16LE(local, o, 20);               // version needed (2.0)
+    o = writeUInt16LE(local, o, 0);                // flags
+    o = writeUInt16LE(local, o, 8);                // compression: DEFLATED
+    o = writeUInt16LE(local, o, 0);                // mod time: 00:00:00
+    o = writeUInt16LE(local, o, 33);               // mod date: 1980-01-01 (year=0, month=1, day=1 → 1<<9 | 1<<5 | 1 = 33)
+    o = writeUInt32LE(local, o, crc);              // CRC-32
+    o = writeUInt32LE(local, o, compressed.length); // compressed size
+    o = writeUInt32LE(local, o, raw.length);        // uncompressed size
+    o = writeUInt16LE(local, o, name.length);       // filename length
+    o = writeUInt16LE(local, o, 0);                 // extra length
+    name.copy(local, o);
+    localParts.push(local, compressed);
+
+    // Central Directory Entry — 46 bytes + filename
+    const central = Buffer.alloc(46 + name.length);
+    o = 0;
+    o = writeUInt32LE(central, o, 0x02014b50);      // signature
+    o = writeUInt16LE(central, o, 20);              // version made by
+    o = writeUInt16LE(central, o, 20);              // version needed
+    o = writeUInt16LE(central, o, 0);               // flags
+    o = writeUInt16LE(central, o, 8);                // compression
+    o = writeUInt16LE(central, o, 0);                // mod time
+    o = writeUInt16LE(central, o, 33);              // mod date
+    o = writeUInt32LE(central, o, crc);             // CRC-32
+    o = writeUInt32LE(central, o, compressed.length); // compressed size
+    o = writeUInt32LE(central, o, raw.length);        // uncompressed size
+    o = writeUInt16LE(central, o, name.length);       // filename length
+    o = writeUInt16LE(central, o, 0);                 // extra length
+    o = writeUInt16LE(central, o, 0);                 // comment length
+    o = writeUInt16LE(central, o, 0);                 // disk number
+    o = writeUInt16LE(central, o, 0);                 // internal attributes
+    o = writeUInt32LE(central, o, 0o100644 << 16);   // external attributes (Unix regular file, 0644)
+    o = writeUInt32LE(central, o, offset);            // local header offset
+    name.copy(central, o);
+    centralParts.push(central);
+
+    offset += local.length + compressed.length;
+  }
+
+  const centralDir = Buffer.concat(centralParts);
+  // End of Central Directory — 22 bytes
+  const eocd = Buffer.alloc(22);
+  let o = 0;
+  o = writeUInt32LE(eocd, o, 0x06054b50);    // signature
+  o = writeUInt16LE(eocd, o, 0);             // disk number
+  o = writeUInt16LE(eocd, o, 0);             // disk with central dir
+  o = writeUInt16LE(eocd, o, fileEntries.length); // entries on this disk
+  o = writeUInt16LE(eocd, o, fileEntries.length); // total entries
+  o = writeUInt32LE(eocd, o, centralDir.length);  // central dir size
+  o = writeUInt32LE(eocd, o, offset);             // central dir offset
+  o = writeUInt16LE(eocd, o, 0);                  // comment length
+
+  return Buffer.concat([...localParts, centralDir, eocd]);
+}
+
+/** Node.js 版 stage-plugin-release.py 的 build() —— 返回 release JSON + 写包到 output_dir */
+function buildAstraviaPackage({ slug, directory, outputDir, minAppVersion, repository }) {
+  if (!/^\d+\.\d+\.\d+$/.test(minAppVersion)) throw new Error('--min-app-version must be a stable x.y.z version');
+  const plugin = readJson(join(directory, 'plugin.json'));
+  if (plugin.id !== slug) throw new Error(`Plugin identity differs from catalog: ${slug}`);
+  if (!resolve(directory).startsWith(resolve(join(directory, '..')))) throw new Error(`Unsafe or missing plugin directory: ${slug}`);
+
+  const files = regularFiles(directory);
+  const paths = new Set(files.map(p => relative(directory, p).replace(/\\/g, '/')));
+  for (const required of ['plugin.json', plugin.entry, ...(plugin.styles ?? [])]) {
+    if (!paths.has(required)) throw new Error(`Missing packaged plugin file: ${slug}/${required}`);
+  }
+
+  const filename = `${slug}-${plugin.version}.astraviapkg`;
+  mkdirSync(outputDir, { recursive: true });
+  const target = join(outputDir, filename);
+
+  try {
+    const entries = files.map(p => ({
+      name: relative(directory, p).replace(/\\/g, '/'),
+      data: packagedBytes(p, relative(directory, p).replace(/\\/g, '/')),
+    }));
+    const zip = createDeflatedZip(entries);
+    if (zip.length > MAX_BYTES) throw new Error(`Plugin package exceeds the 50 MB Desktop limit: ${slug}`);
+    writeFileSync(target, zip);
+  } catch (err) {
+    rmSync(target, { force: true });
+    throw err;
+  }
+
+  const data = readFileSync(target);
+  const release = {
+    version: plugin.version,
+    minAppVersion,
+    pluginApiVersion: plugin.pluginApiVersion,
+    permissions: plugin.permissions ?? [],
+    commands: plugin.commands ?? [],
+    artifact: {
+      url: `${repository}/releases/download/plugin-${slug}/${filename}`,
+      sha256: digest(data),
+    },
+  };
+  return { release, filename };
+}
+
+/** 从 .astraviapkg 的中央目录读出所有文件名 —— 替代 python zipfile.ZipFile().namelist() */
+export function zipNamelist(buf) {
+  const data = Buffer.isBuffer(buf) ? buf : readFileSync(buf);
+  // 从末尾向前找 EOCD signature：0x06054b50
+  let eocdOff = -1;
+  for (let i = data.length - 22; i >= Math.max(0, data.length - 65557); i -= 1) {
+    if (data.readUInt32LE(i) === 0x06054b50) { eocdOff = i; break; }
+  }
+  if (eocdOff < 0) throw new Error('Not a valid ZIP file');
+  const centralSize = data.readUInt32LE(eocdOff + 12);
+  const centralOff = data.readUInt32LE(eocdOff + 16);
+  const names = [];
+  let o = centralOff;
+  while (o < centralOff + centralSize) {
+    if (data.readUInt32LE(o) !== 0x02014b50) throw new Error('Corrupted central directory');
+    const nameLen = data.readUInt16LE(o + 28);
+    const extraLen = data.readUInt16LE(o + 30);
+    const commentLen = data.readUInt16LE(o + 32);
+    names.push(data.slice(o + 46, o + 46 + nameLen).toString('utf8'));
+    o += 46 + nameLen + extraLen + commentLen;
+  }
+  return names;
+}
+
 export async function prepareMarketplace({ root, output, previous, sourceSha, buildPlugin, date = new Date().toISOString().slice(0, 10).replaceAll('-', '.') }) {
   if (existsSync(output)) throw new Error(`Output already exists: ${output}`);
   if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('A fixed source commit is required');
@@ -172,9 +387,7 @@ export async function prepareMarketplace({ root, output, previous, sourceSha, bu
         if (!existing && releases.some(x => compareVersion(x.version, descriptor.version) >= 0)) throw new Error(`New version must advance: ${entry.slug}`);
         if (migrate) releases.splice(releases.indexOf(existing), 1);
         await buildPlugin(source);
-        const python = process.env.ASTRAVIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
-        const packager = fileURLToPath(new URL('./stage-plugin-release.py', import.meta.url));
-        const release = JSON.parse(execFileSync(python, [packager, entry.slug, '--root', root, '--min-app-version', entry.minAppVersion, '--output-dir', artifacts], { encoding: 'utf8' }));
+        const { release } = buildAstraviaPackage({ slug: entry.slug, directory: source, outputDir: artifacts, minAppVersion: entry.minAppVersion, repository: catalog.repository });
         if (release.artifact.url !== artifact.url) throw new Error(`Unexpected artifact URL for ${entry.slug}`);
         if (migrate && release.artifact.sha256 !== existing.artifact.sha256) throw new Error(`Published bytes differ for ${entry.slug}; use a new version`);
         releases.push(release);
@@ -183,9 +396,7 @@ export async function prepareMarketplace({ root, output, previous, sourceSha, bu
         // 旧版本也要 build + 打包进 artifacts/ — publish 时本地必须有 artifact（方向绝不反）
         // 校验 SHA 一致：不一致说明源码变了但没 bump 版本，直接报错
         await buildPlugin(source);
-        const python = process.env.ASTRAVIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
-        const packager = fileURLToPath(new URL('./stage-plugin-release.py', import.meta.url));
-        const release = JSON.parse(execFileSync(python, [packager, entry.slug, '--root', root, '--min-app-version', entry.minAppVersion, '--output-dir', artifacts], { encoding: 'utf8' }));
+        const { release } = buildAstraviaPackage({ slug: entry.slug, directory: source, outputDir: artifacts, minAppVersion: entry.minAppVersion, repository: catalog.repository });
         if (release.artifact.sha256 !== existing.artifact.sha256) throw new Error(`Source changed without version bump: ${entry.slug} ${descriptor.version} (old SHA=${existing.artifact.sha256.slice(0, 16)}... new=${release.artifact.sha256.slice(0, 16)}...)`);
       }
       entry.releases = releases.sort((a, b) => compareVersion(a.version, b.version));

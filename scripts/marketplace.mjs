@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { prepareMarketplace, readJson, sourceCatalog, writeJson, digest, inside, entries, missingPackagedResources } from './static-marketplace.mjs';
+import { prepareMarketplace, readJson, sourceCatalog, writeJson, digest, inside, entries, missingPackagedResources, zipNamelist } from './static-marketplace.mjs';
 
 const root = process.cwd();
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -47,10 +47,9 @@ export async function verifyCandidate(directory, tooling) {
 
 async function verifyPackagedResources(result) {
   const sources = new Map(entries(sourceCatalog(root)).filter(entry => entry.type === 'plugin').map(entry => [entry.slug, inside(root, entry.source.path)]));
-  const python = process.env.ASTRAVIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
   for (const item of result.packages) {
     const archive = join(result.artifacts, item.filename);
-    const names = JSON.parse(execFileSync(python, ['-c', 'import json, sys, zipfile; print(json.dumps(zipfile.ZipFile(sys.argv[1]).namelist()))', archive], { encoding: 'utf8' }));
+    const names = zipNamelist(archive);
     const manifestModule = join(sources.get(item.slug), 'node_modules/@astravia-org/plugin-sdk/dist/manifest.js');
     const { listPluginManifestResources, parsePluginManifest } = await import(pathToFileURL(manifestModule).href);
     const manifest = parsePluginManifest(readJson(join(sources.get(item.slug), 'plugin.json')));

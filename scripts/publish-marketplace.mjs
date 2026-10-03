@@ -88,7 +88,7 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
   await verify(directory);
 
   // ========== Step 1: 处理 publication.packages ==========
-  // 这些 plugin 本地肯定有 artifact（prepareMarketplace 里 stage-plugin-release.py 打包的）
+  // 这些 plugin 本地肯定有 artifact（prepareMarketplace 里 buildAstraviaPackage 打包的）
   // 方向：本地 artifact → SHA → marketplace.json / GitHub Release
   for (const item of publication.packages) {
     if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(item.slug) || item.tag !== `plugin-${item.slug}` || item.filename !== `${item.slug}-${item.release.version}.astraviapkg`) throw new Error('Invalid publication package');
