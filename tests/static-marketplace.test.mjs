@@ -70,7 +70,7 @@ test('publish, browse distribution, edit source, publish next version and retain
   const same = await f.run('same', first.site);
   assert.equal(same.changed, false);
   assert.equal(same.packages.length, 0);
-  assert.equal(f.builds(), 2);
+  assert.equal(f.builds(), 3); // 旧版本 plugin 也会 build + 打包进 artifacts/
   f.catalog.abilities[0].version = '1.1.0';
   f.put('.astravia/marketplace.source.json', f.catalog);
   f.put('abilities/plugins/demo/plugin.json', { id: 'demo', name: 'Demo', version: '1.1.0', entry: 'dist/index.js', pluginApiVersion: '^2.0.0', permissions: [] });
@@ -81,7 +81,7 @@ test('publish, browse distribution, edit source, publish next version and retain
   assert.equal(next.packages[0].tag, 'plugin-demo');
   assert.ok(updated.abilities[0].releases.every(x => x.artifact.url.includes('/releases/download/plugin-demo/')));
   assert.notEqual(updated.marketplaceVersion, manifest.marketplaceVersion);
-  assert.equal(f.builds(), 3);
+  assert.equal(f.builds(), 4); // next: 只有新版本 1.1.0 被 build（旧版本 1.0.0 是历史记录不会单独 build）
 });
 
 test('migrates a current plugin package from a per-version release without changing its bytes', async (t) => {

@@ -179,6 +179,14 @@ export async function prepareMarketplace({ root, output, previous, sourceSha, bu
         if (migrate && release.artifact.sha256 !== existing.artifact.sha256) throw new Error(`Published bytes differ for ${entry.slug}; use a new version`);
         releases.push(release);
         packages.push({ slug: entry.slug, release, filename: artifact.filename, tag: artifact.tag });
+      } else {
+        // 旧版本也要 build + 打包进 artifacts/ — publish 时本地必须有 artifact（方向绝不反）
+        // 校验 SHA 一致：不一致说明源码变了但没 bump 版本，直接报错
+        await buildPlugin(source);
+        const python = process.env.ASTRAVIA_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+        const packager = fileURLToPath(new URL('./stage-plugin-release.py', import.meta.url));
+        const release = JSON.parse(execFileSync(python, [packager, entry.slug, '--root', root, '--min-app-version', entry.minAppVersion, '--output-dir', artifacts], { encoding: 'utf8' }));
+        if (release.artifact.sha256 !== existing.artifact.sha256) throw new Error(`Source changed without version bump: ${entry.slug} ${descriptor.version} (old SHA=${existing.artifact.sha256.slice(0, 16)}... new=${release.artifact.sha256.slice(0, 16)}...)`);
       }
       entry.releases = releases.sort((a, b) => compareVersion(a.version, b.version));
       if (entry.version) entry.version = entry.releases.at(-1).version;

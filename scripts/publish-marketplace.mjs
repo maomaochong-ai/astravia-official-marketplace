@@ -155,14 +155,15 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
       } finally { rmSync(verifyTmp, { recursive: true, force: true }); }
       if (release.draft) gh('release', 'edit', tag, '--repo', repository, '--draft=false', '--latest=false');
     } else {
-      // 本地没有 artifact → 从 GitHub download 算 SHA，覆写 marketplace.json（自动修复）
-      const verifyTmp = mkdtempSync(join(tmpdir(), 'astravia-prev-fix-'));
+      // 本地没有 artifact → 这是历史版本（当前 entry 版本 bump 后，旧版本成了 releases 数组里的历史记录，prepare 不会重新 build）
+      // 只读 verify：从 GitHub download 算 SHA 对比 marketplace.json
+      // 不改 marketplace.json — 方向绝不反
+      const verifyTmp = mkdtempSync(join(tmpdir(), 'astravia-history-verify-'));
       try {
         gh('release', 'download', tag, '--repo', repository, '--pattern', filename, '--dir', verifyTmp);
         const remoteSha = digest(readFileSync(join(verifyTmp, filename)));
         if (remoteSha !== record.artifact.sha256) {
-          console.error(`[auto-fix] ${owner}: 本地无 artifact，GitHub SHA=${remoteSha.slice(0, 16)}... 覆写 marketplace.json=${record.artifact.sha256.slice(0, 16)}...`);
-          record.artifact.sha256 = remoteSha;
+          throw new Error(`${owner}: GitHub artifact SHA mismatch (GitHub=${remoteSha.slice(0, 16)}... marketplace=${record.artifact.sha256.slice(0, 16)}...) — 本地无历史 artifact，无法自动修复`);
         }
       } finally { rmSync(verifyTmp, { recursive: true, force: true }); }
     }
