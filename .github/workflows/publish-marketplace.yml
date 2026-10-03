@@ -87,6 +87,12 @@ jobs:
           ref: ${{ needs.build.outputs.tooling }}
           path: .tooling/open-astravia
           persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+      - name: Build tooling packages (publish-marketplace needs tooling scripts)
+        run: |
+          cd .tooling/open-astravia
+          bun install --frozen-lockfile 2>&1 | tail -3
+          bun run build 2>&1 | tail -5
       - name: Publish immutable packages, then advance the generated index
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
