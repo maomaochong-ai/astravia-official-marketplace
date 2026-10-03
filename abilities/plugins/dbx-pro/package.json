@@ -1,28 +1,27 @@
 {
-	"name": "@astravia-marketplace/dbx-pro",
-	"version": "0.0.11",
-	"private": true,
-	"type": "module",
-	"scripts": {
-		"build": "vite build",
-		"test": "node --experimental-strip-types --test src/test/*.test.js",
-		"check": "tsc --noEmit"
-	},
-	"devDependencies": {
-		"@astravia-org/plugin-cli": "^0.1.7",
-		"@astravia-org/plugin-sdk": "^0.3.10",
-		"@astravia-org/plugin-vite": "^0.2.4",
-		"@iconify-json/lucide": "^1.2.138",
-		"@iconify-json/solar": "^1.2.13",
-		"@iconify/tailwind4": "^1.2.3",
-		"@tailwindcss/vite": "^4.1.12",
-		"@types/node": "^22.10.5",
-		"@types/react": "19.1.1",
-		"@types/react-dom": "19.1.1",
-		"react": "19.1.1",
-		"react-dom": "19.1.1",
-		"tailwindcss": "^4.1.12",
-		"typescript": "^5.9.2",
-		"vite": "^7.1.7"
-	}
+  "name": "@astravia-marketplace/dbx-pro",
+  "version": "0.0.11",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "test": "node --experimental-strip-types --test src/test/*.test.js",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@astravia-org/plugin-sdk": "file:/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia-official-marketplace/.tooling/open-astravia/packages/plugins/plugin-sdk",
+    "@astravia-org/plugin-vite": "file:/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia-official-marketplace/.tooling/open-astravia/packages/plugins/plugin-vite",
+    "@iconify-json/lucide": "^1.2.138",
+    "@iconify-json/solar": "^1.2.13",
+    "@iconify/tailwind4": "^1.2.3",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/node": "^22.10.5",
+    "@types/react": "19.1.1",
+    "@types/react-dom": "19.1.1",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
+  }
 }
