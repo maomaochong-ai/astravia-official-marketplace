@@ -1,0 +1,22 @@
+{
+  "plugin.name": "dbx Database",
+  "plugin.description": "dbx-mcp powered database workbench: connection tree on the left, multi-tab SQL editor + result grid in the middle, table details on the right. Full DDL/DML support.",
+  "tab.label": "Database",
+  "tab.tooltip": "dbx Database Workbench",
+  "connection.title": "Connections",
+  "connection.add": "Add Connection",
+  "connection.sync": "Sync DBX Connections",
+  "connection.empty": "No connections",
+  "connection.syncHint": "Sync from DBX Desktop or add manually",
+  "table.title": "Table Browser",
+  "table.empty": "Select a connection to view tables",
+  "sql.title": "SQL Editor",
+  "sql.run": "Run",
+  "sql.clear": "Clear",
+  "sql.empty": "Enter SQL query",
+  "sql.resultEmpty": "No results",
+  "safety.title": "Safety Gates",
+  "safety.writeProtect": "Write protection enabled",
+  "safety.writeProtectOff": "Write protection disabled",
+  "safety.noDatabase": "No database selected"
+}

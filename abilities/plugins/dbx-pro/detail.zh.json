@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "数据库工作台",
+      "title": "dbx-pro —— Astravia 里的数据库工作台",
+      "description": "在 Astravia 内管理连接、浏览表结构、编写 SQL、查看可编辑的结果表格。SQLite 开箱即用；连接类型选择器收录 85 种数据库，并如实标注各自当前的可用档位。",
+      "badges": ["SQLite 已可用", "SQL 编辑器", "写入安全闸"]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        { "title": "连接管理", "description": "本地保存连接配置（主机、端口、数据库、环境标签），类型从 85 项目录中选择。" },
+        { "title": "SQL 编辑器 + 结果表格", "description": "多标签编辑，一个快捷键执行，结果以可排序行网格呈现，并回车数与耗时。" },
+        { "title": "表浏览器", "description": "浏览 Schema 树，查看字段类型与主键，采样预览数据。" },
+        { "title": "写入安全闸", "description": "标记为生产环境的连接，写入与 DDL 默认被闸住，需显式放行。" },
+        { "title": "可用档位如实标注", "description": "每种类型都标明「可直接查询 / 实验性 / 暂不可达」，不做静默失败。" }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        { "title": "打开工作台", "description": "从能力市场安装 dbx-pro，打开它的能力标签页，无需额外安装任何工具。" },
+        { "title": "添加连接", "description": "选择 SQLite 并指定数据库文件即可直接查询；其它类型会保存为连接配置，待对应驱动接入后可用。" },
+        { "title": "执行查询", "description": "输入 SQL，按 ⌘/Ctrl+Enter 执行。" }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "当前只有 SQLite 可直接查询。PostgreSQL、MySQL、ClickHouse 等类型已在选择器中列出并标注档位，将随插件驱动逐步接通。"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "网页工具",
+      "title": "点选任意元素，生成结构化上下文",
+      "description": "在 Astravia 内置浏览器中打开任意网页，点选元素并生成结构化上下文——CSS 选择器、XPath、语义路径、React 组件链。一键复制或直接发送给 AI。",
+      "badges": ["点选", "结构化上下文", "发送到 AI"]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        { "title": "精确选择", "description": "单击选择、Shift 多选，或拖拽框选。" },
+        { "title": "键盘导航", "description": "方向键移动、撤销选择、暂停拾取。" },
+        { "title": "结构化上下文", "description": "CSS 选择器、XPath、语义路径、React 组件链与可见文字。" },
+        { "title": "复刻模式", "description": "输出完整 DOM + 生效样式 + 字体 + 动画报告。" },
+        { "title": "发送到 AI", "description": "一键把拾取到的上下文注入 AI 对话。" }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        { "title": "打开网页", "description": "在 Astravia 浏览器中加载任意 URL。" },
+        { "title": "点选元素", "description": "单击、Shift 多选或拖拽框选目标元素。" },
+        { "title": "复制或发送", "description": "复制生成的上下文，或直接发送给 AI 改代码。" }
+      ]
+    }
+  ]
+}

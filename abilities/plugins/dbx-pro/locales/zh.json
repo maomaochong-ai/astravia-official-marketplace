@@ -1,0 +1,22 @@
+{
+  "plugin.name": "dbx数据库",
+  "plugin.description": "基于 dbx-mcp 的数据库工作台：左侧连接树（数据库/表/列懒加载）、中间多 Tab SQL 编辑器 + 结果网格、右侧表详情，支持建表删表等完整 DDL/DML 操作。",
+  "tab.label": "数据库",
+  "tab.tooltip": "dbx数据库工作台",
+  "connection.title": "连接管理",
+  "connection.add": "添加连接",
+  "connection.sync": "同步 DBX 连接",
+  "connection.empty": "暂无连接",
+  "connection.syncHint": "从 DBX Desktop 同步或手动添加",
+  "table.title": "表浏览器",
+  "table.empty": "选择连接查看表",
+  "sql.title": "SQL 编辑器",
+  "sql.run": "执行",
+  "sql.clear": "清空",
+  "sql.empty": "输入 SQL 查询",
+  "sql.resultEmpty": "无结果",
+  "safety.title": "安全闸门",
+  "safety.writeProtect": "写保护已启用",
+  "safety.writeProtectOff": "写保护已关闭",
+  "safety.noDatabase": "未选择数据库"
+}

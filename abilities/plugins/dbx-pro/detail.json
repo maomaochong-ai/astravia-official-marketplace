@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Database workbench",
+      "title": "dbx-pro — a database workbench inside Astravia",
+      "description": "Manage connections, browse schemas, write SQL and read editable result grids without leaving Astravia. SQLite works out of the box; the connection picker lists 85 database types with their current support tier clearly marked.",
+      "badges": ["SQLite ready", "SQL editor", "Write safety gate"]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        { "title": "Connection manager", "description": "Keep local connection profiles with host, port, database and environment labels, and pick the type from an 85-entry catalog." },
+        { "title": "SQL editor + result grid", "description": "Multi-tab editing, one keyboard shortcut to run, and results in a sortable row grid with the row count and duration." },
+        { "title": "Table browser", "description": "Explore the schema tree, describe columns with types and keys, and preview sample rows." },
+        { "title": "Write safety gate", "description": "Connections marked as production keep writes and DDL behind an explicit release switch." },
+        { "title": "Support tiers, stated honestly", "description": "Every type shows whether it is directly queryable, experimental, or not reachable yet — no silent failures." }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        { "title": "Open the workbench", "description": "Install dbx-pro from the marketplace and open its activity tab. Nothing else to install." },
+        { "title": "Add a connection", "description": "Pick SQLite and choose a database file to query straight away; other types are saved as profiles you can revisit." },
+        { "title": "Run a query", "description": "Type SQL and press ⌘/Ctrl+Enter to execute." }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "Only SQLite is directly queryable today. PostgreSQL, MySQL, ClickHouse and other listed types appear in the picker with their support tier, and are progressively connected through plugin drivers."
+    }
+  ]
+}
