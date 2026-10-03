@@ -173,16 +173,20 @@ async function execSqlite({ dbType, database, sql, started }) {
 	const db = new DatabaseSync(database);
 	try {
 		const rows = []; let columns = [];
+		let rowCount = 0;
 		if (/\b(SELECT|PRAGMA|WITH)\b/i.test(sql)) {
 			const stmt = db.prepare(sql);
 			for (const row of stmt.all()) {
 				if (columns.length === 0) columns = Object.keys(row);
 				rows.push({ ...row });
 			}
+			rowCount = rows.length;
 		} else {
+			// DatabaseSync.exec() 返回 undefined（Node 24 不返回 changes），rowCount 保持 0
+			// 对 INSERT/UPDATE/DELETE，调用方可忽略 sqlite rowCount（SELECT 的 rowCount 准确）
 			db.exec(sql);
 		}
-		return { columns, rows, rowCount: rows.length, ...meta(started, dbType, undefined, undefined, database, sql) };
+		return { columns, rows, rowCount, ...meta(started, dbType, undefined, undefined, database, sql) };
 	} finally { db.close(); }
 }
 
