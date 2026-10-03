@@ -295,7 +295,94 @@ node scripts/marketplace.mjs build --previous "$TMPDIR/mp"
 
 ---
 
-## 12. 关键文件速查
+## 12. 改了插件源码但没 bump 版本 — GitHub Release 上 artifact 永远不更新
+
+### 现象
+
+改了插件源码（比如修了 locales 格式），push main 等 CI 跑完，open-astravia 安装后还是老问题。GitHub Release 上对应版本的 `.astraviapkg` 还是旧内容。
+
+### 根因
+
+prepareMarketplace 的判断逻辑：
+
+```js
+const existing = releases.find(x => x.version === descriptor.version);
+if (!existing || migrate) {
+  // 只有"新版本"或"migrate"才 build + pack + upload
+  await buildPlugin(source);
+  // ...
+}
+// 旧版本 → 跳过，releases 从 gh-pages 继承
+```
+
+**如果 version 没变**，不管你改了多少源码，CI 都认为这是旧版本 → 跳过 build + pack → GitHub Release 上的 artifact 永远是第一次 upload 的那个。
+
+### 解决
+
+**必须 bump 版本号**（x.y.z 单调递增）：
+
+```bash
+# 三个文件必须同步改
+abilities/plugins/<slug>/plugin.json       version: 0.0.12 → 0.0.13
+abilities/plugins/<slug>/ability.json      version: 0.0.12 → 0.0.13
+.astravia/marketplace.source.json           version: 0.0.12 → 0.0.13
+```
+
+### 为什么这是"追加"而不是"覆盖"
+
+publish-marketplace 是 **append-only** 设计：
+- 新版本 → 新 filename（`dbx-pro-0.0.13.astraviapkg`）→ upload 为新 asset
+- 旧版本 → GitHub 上不动（`dbx-pro-0.0.12.astraviapkg` 永远留在那）
+- gh-pages marketplace.json 的 releases[] 追加新版本，旧版本保留
+
+**好处**：任何已发布版本的 SHA 永远不变，不会再出现 SHA mismatch。
+**代价**：GitHub Release 上会积累多个版本的 artifact（正常且可接受）。
+
+### 反模式 ❌
+
+- 不要想"改了 locales 直接重新打包同名 upload 覆盖"——这会破坏 append-only 不变量，gh-pages 上的 SHA 和 GitHub 上的实际 SHA 会再次分叉。
+- 不要在 publish-marketplace 里加 delete-asset 覆盖上传逻辑——这正是我们之前 SHA mismatch 的根因之一。
+
+---
+
+## 13. buildPlugin file: refs 残留到 committed package.json
+
+### 现象
+
+`git show HEAD:abilities/plugins/<slug>/package.json` 里 `@astravia-org/plugin-sdk` 显示为 `file:/Users/.../open-astravia/packages/...`，而不是 `^0.3.2`。
+
+### 根因
+
+buildPlugin 有 backup/restore 逻辑：
+
+```js
+const backup = changed ? pkgPath + '.bak' : null;
+if (changed) { writeFileSync(backup, original); writeFileSync(pkgPath, rewritten); }
+try { execFileSync('npm', ['install', ...]); }
+finally { if (backup) { writeFileSync(pkgPath, original); execFileSync('rm', [backup]); } }
+```
+
+如果 `npm install` 抛异常但 finally 没执行到（进程被 kill、OOM、Ctrl+C），重写后的 file: refs 就留在 package.json 里。下一次 `git add` 就把它 commit 进去了。
+
+### 后果
+
+- 别人 clone 下来 `npm ci` 会因为 file: 路径不存在而失败
+- CI 第一次跑 buildPlugin 时，发现 `@astravia-org/plugin-sdk` 已经是 file: 开头的字符串（但不是正确的 file: 路径格式），可能导致路径拼接出错
+
+### 解决
+
+**手动恢复**（一次性）：
+
+```bash
+git checkout HEAD~1 -- abilities/plugins/<slug>/package.json
+# 或手动把 file: 路径改回 npm 版本号
+```
+
+**预防**：在 buildPlugin finally 块里加日志确认还原成功，或者在 CI 跑之前 `grep -r "file:.*open-astravia" abilities/plugins/*/package.json` 做预检。
+
+---
+
+## 14. 关键文件速查
 
 | 文件 | 作用 | 谁维护 |
 |------|------|--------|
@@ -307,3 +394,133 @@ node scripts/marketplace.mjs build --previous "$TMPDIR/mp"
 | `scripts/marketplace.mjs` | CLI 入口（check / build / verify） + buildPlugin 实现 | 对齐上游 + file: 重写 |
 | `scripts/publish-marketplace.mjs` | publish 主流程（Step1 GitHub Release → Step4 push gh-pages） | **完全对齐上游** |
 | `scripts/stage-plugin-release.py` | Python 打包脚本（DEFLATED ZIP + SHA-256） | **完全对齐上游** |
+
+---
+
+## 15. 完整发布流程实战演练（从 0→1）
+
+以下为 dbx-pro v0.0.11 → v0.0.12 → v0.0.13 全链路跑通的逐步记录，包含两次 bump 的不同原因和最终解决。
+
+### 第一次 bump：v0.0.11 → v0.0.12（正常发布）
+
+```bash
+# 1. 改三个文件
+edit abilities/plugins/dbx-pro/plugin.json          # version: "0.0.11" → "0.0.12"
+edit abilities/plugins/dbx-pro/ability.json         # version: "0.0.11" → "0.0.12"
+edit .astravia/marketplace.source.json              # version: "0.0.11" → "0.0.12"
+
+# 2. 本地检查
+node scripts/marketplace.mjs check                  # ✅
+git worktree add --detach $TMPDIR/mp origin/gh-pages
+node scripts/marketplace.mjs build --previous $TMPDIR/mp   # ✅ Prepared 1 new packages
+node --test tests/*.test.mjs                        # ✅ 57/57 pass
+
+# 3. commit + push
+git add -A && git commit -m "bump(dbx-pro): 0.0.11 → 0.0.12"
+git push origin main
+
+# 4. CI 自动跑
+# Build job → prepareMarketplace 遍历 8 个 plugin：
+#   feishu, cli-proxy-api, shimo-reader, xiaohongshu, astravia-tihu,
+#   build-apple-apps, web-element-picker → existing && !migrate → 跳过
+#   dbx-pro → !existing（新版本） → buildPlugin → stage-plugin-release.py → .astraviapkg
+# Publish job → Step1 upload GitHub Release plugin-dbx-pro → Step4 push gh-pages
+```
+
+### 第二次 bump：v0.0.12 → v0.0.13（locales 格式修复）
+
+**为什么必须再 bump 一次？**
+
+第一次 bump 后发现 dbx-pro 安装后详情页标题显示 `plugin.name`（locale 解析失败）。修复了源码里的 locales 格式后，**version 还是 0.0.12**，CI 跑 prepareMarketplace 时判断 `existing && !migrate` → 跳过 build + pack → GitHub Release 上 0.0.12 的 artifact 还是旧的嵌套对象格式。
+
+```bash
+# 1. 修 locales（嵌套对象 → 扁平点号 key）
+python3 -c "
+import json
+def flatten(obj, prefix=''):
+    r = {}
+    for k, v in obj.items():
+        key = f'{prefix}.{k}' if prefix else k
+        if isinstance(v, dict):
+            for sk, sv in v.items(): r[f'{key}.{sk}'] = sv
+        else: r[key] = v
+    return r
+for lc in ['zh', 'en']:
+    p = f'abilities/plugins/dbx-pro/locales/{lc}.json'
+    d = json.load(open(p))
+    json.dump(flatten(d), open(p, 'w'), ensure_ascii=False, indent=2)
+"
+
+# 2. 修 package.json（残留 file: refs → npm 版本号）
+edit abilities/plugins/dbx-pro/package.json
+  # "@astravia-org/plugin-sdk": "file:/Users/.../open-astravia/packages/plugins/plugin-sdk"
+  # → "@astravia-org/plugin-sdk": "^0.3.2"
+
+# 3. 删无用 fdir 降级
+# scripts/marketplace.mjs 里删掉 npm install fdir@6.0.1
+
+# 4. bump 版本（关键！让 CI 重新 build + pack）
+edit abilities/plugins/dbx-pro/plugin.json           # version: "0.0.12" → "0.0.13"
+edit abilities/plugins/dbx-pro/ability.json          # version: "0.0.12" → "0.0.13"
+edit .astravia/marketplace.source.json               # version: "0.0.12" → "0.0.13"
+
+# 5. 本地验证
+rm -rf .marketplace-build
+node scripts/marketplace.mjs build --previous $TMPDIR/mp  # ✅ Prepared 1 new packages
+node --test tests/*.test.mjs                               # ✅ 57/57 pass
+python3 -c "
+import zipfile, hashlib
+z = zipfile.ZipFile('.marketplace-build/artifacts/dbx-pro-0.0.13.astraviapkg')
+d = json.loads(z.read('locales/zh.json'))
+assert not any(isinstance(v, dict) for v in d.values()), 'locales 还是嵌套对象！'
+assert 'plugin.name' in d, '缺少 plugin.name key'
+print('✅ locales 格式正确')
+print('SHA:', hashlib.sha256(open('.marketplace-build/artifacts/dbx-pro-0.0.13.astraviapkg','rb').read()).hexdigest())
+"
+
+# 6. commit + push
+git add -A && git commit -m "bump(dbx-pro): 0.0.12 → 0.0.13 — locales 格式修复后重发"
+git push origin main
+
+# 7. CI 自动跑（或手动模拟）
+# Step 1: gh release upload plugin-dbx-pro dbx-pro-0.0.13.astraviapkg
+#         gh release download → 校验 SHA 和本地一致 ✅
+# Step 4: git write-tree → commit-tree → push gh-pages
+
+# 8. 最终验证
+gh release view plugin-dbx-pro --jq '[.assets[] | .name]'     # ✅ 有 dbx-pro-0.0.13.astraviapkg
+git show origin/gh-pages:.astravia/marketplace.json          # ✅ dbx-pro releases 含 v0.0.13
+gh release download plugin-dbx-pro --pattern dbx-pro-0.0.13.astraviapkg
+python3 -c "
+import zipfile, json
+z = zipfile.ZipFile('dbx-pro-0.0.13.astraviapkg')
+d = json.loads(z.read('locales/zh.json'))
+print('plugin.name =', repr(d.get('plugin.name', 'MISSING')))  # ✅ 'dbx-pro 数据库工作台'
+"
+```
+
+### 最终状态
+
+```
+GitHub Release plugin-dbx-pro assets:
+  dbx-pro-0.0.10.astraviapkg   (append-only，不动)
+  dbx-pro-0.0.11.astraviapkg   (append-only，不动)
+  dbx-pro-0.0.12.astraviapkg   (append-only，不动；locales 旧格式，不再被 gh-pages 引用)
+  dbx-pro-0.0.13.astraviapkg   ✅ locales 新格式，当前最新版
+  dbx-pro-0.1.0.astraviapkg   (append-only，不动)
+
+gh-pages marketplace.json dbx-pro releases:
+  v0.0.11  SHA=cffac654...  ← 继承自首次 publish，GitHub artifact 永远匹配
+  v0.0.13  SHA=34a6a2f7...  ← 最新，Python 算的 SHA = GitHub download 验证的 SHA
+
+open-astravia 拉 marketplace → 安装 dbx-pro → 详情页显示 "dbx-pro 数据库工作台" ✅
+```
+
+### 教训
+
+| 教训 | 说明 |
+|------|------|
+| **改源码不等于改发布** | 不 bump 版本 → CI 跳过 build + pack → GitHub 上旧 artifact 永远不变 |
+| **append-only 是强制的** | 同名 upload 覆盖 = 破坏 SHA 不变量 = 下次 open-astravia 拉取就 mismatch |
+| **三个版本号必须同步** | plugin.json / ability.json / marketplace.source.json 不同步会导致 prepareMarketplace check 阶段抛错 |
+| **locales 格式要对齐上游** | 用 `%plugin.name%` 占位符 → locales key 必须是 `"plugin.name"` 点号格式，不能是嵌套对象 |
