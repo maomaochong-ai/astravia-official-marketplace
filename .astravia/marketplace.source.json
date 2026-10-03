@@ -10,7 +10,7 @@
       "slug": "feishu",
       "name": "Feishu",
       "description": "Use the official lark-cli and its built-in skills for Feishu documents, messages, calendars, Base, tasks and more.",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia / Lark Suite",
@@ -397,7 +397,7 @@
       "slug": "xiaohongshu",
       "name": "Xiaohongshu Accounts",
       "description": "Manage multiple Xiaohongshu accounts and run built-in MCP tasks concurrently through the account selected for each task.",
-        "version": "1.1.27",
+      "version": "1.1.27",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / xpzouying",
@@ -639,7 +639,6 @@
     },
     {
       "type": "plugin",
-      
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, MongoDB, ClickHouse and 60+ databases via dbx CLI. Connection manager, SQL editor + result grid, table browser, built-in write protection and production safety gates.",
