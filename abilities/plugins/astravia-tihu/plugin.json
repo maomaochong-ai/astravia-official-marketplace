@@ -1,7 +1,7 @@
 {
   "id": "astravia-tihu",
   "name": "%name%",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {

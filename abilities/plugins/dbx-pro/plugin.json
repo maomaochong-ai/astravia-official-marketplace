@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -129,8 +129,8 @@
         "type": "service",
         "serviceId": "dbx-engine",
         "path": "/mcp",
-        "displayName": "dbx\u6570\u636e\u5e93",
-        "description": "100+ \u6570\u636e\u5e93\u8fde\u63a5\u4e0e\u67e5\u8be2\u80fd\u529b\uff0c\u652f\u6301\u5217\u51fa\u8fde\u63a5\u3001\u6267\u884c SQL\u3001\u67e5\u770b\u8868\u7ed3\u6784\u3001\u83b7\u53d6 schema \u4e0a\u4e0b\u6587\uff0c\u7528\u4e8e AI \u6570\u636e\u5206\u6790\u3001\u62a5\u8868\u751f\u6210\u3001\u8868\u7ed3\u6784\u67e5\u8be2\u7b49\u6570\u636e\u5e93\u76f8\u5173\u534f\u4f5c\u573a\u666f\u3002"
+        "displayName": "dbx数据库",
+        "description": "100+ 数据库连接与查询能力，支持列出连接、执行 SQL、查看表结构、获取 schema 上下文，用于 AI 数据分析、报表生成、表结构查询等数据库相关协作场景。"
       }
     }
   },

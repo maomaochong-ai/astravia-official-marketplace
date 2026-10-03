@@ -3,7 +3,7 @@
 The script prints the release record to copy into schema v3. It never edits the
 catalog or uploads a release asset. Run it after the plugin's build and tests.
 
-Note: This script is kept for source compatibility with upstream vetta-official-marketplace.
+Note: This script is kept for source compatibility with the upstream publish pipeline.
 The actual prepare flow uses the Node.js implementation in scripts/static-marketplace.mjs
 (buildAstraviaPackage) — same ZIP format, same DEFLATED level 9, same fixed timestamps.
 """

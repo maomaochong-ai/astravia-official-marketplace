@@ -2,14 +2,17 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "build-apple-apps",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",
     "path": "detail.json",
     "fallback": "README.md",
     "meta": [
-      { "key": "repository", "value": "https://github.com/maomaochong-ai/astravia-official-marketplace" }
+      {
+        "key": "repository",
+        "value": "https://github.com/maomaochong-ai/astravia-official-marketplace"
+      }
     ],
     "i18n": {
       "zh": {

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, lstatSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { prepareMarketplace, readJson, sourceCatalog, writeJson, digest, inside, entries, missingPackagedResources } from './static-marketplace.mjs';
@@ -18,9 +18,30 @@ export function publicationSettings(directory) {
   settings.candidateAppCommits ??= {};
   if (!settings.candidateAppCommits || typeof settings.candidateAppCommits !== 'object' || Array.isArray(settings.candidateAppCommits)) throw new Error('candidateAppCommits must map App versions to full commits');
   for (const [version, commit] of Object.entries(settings.candidateAppCommits)) {
-    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version) || !/^[a-f0-9]{40}$/.test(commit)) throw new Error('Pin each Candidate App version to a full commit');
+    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version) || !/^[a-f0-9]{40}$/.test(commit)) throw new Error('Pin each candidate App version to a full commit');
   }
   return settings;
+}
+
+function walkToolingPkgs(toolingDir) {
+  const index = new Map();
+  function walk(dir) {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir)) {
+      if (entry === 'node_modules' || entry === '.git' || entry === 'dist' || entry === 'release') continue;
+      const full = join(dir, entry);
+      let isDir;
+      try { isDir = statSync(full).isDirectory(); } catch { continue; }
+      if (!isDir) continue;
+      if (existsSync(join(full, 'package.json'))) {
+        const name = readJson(join(full, 'package.json')).name;
+        if (name && !index.has(name)) index.set(name, full);
+      }
+      walk(full);
+    }
+  }
+  walk(join(toolingDir, 'packages'));
+  return index;
 }
 
 export async function verifyCandidate(directory, tooling) {
@@ -75,44 +96,45 @@ async function main() {
   const settings = publicationSettings(root);
   const previous = option('--previous');
   const output = resolve(option('--output') ?? '.marketplace-build');
-  const toolingDir = resolve(option('--tooling') ?? '.tooling/open-astravia');
-  const hasTooling = existsSync(join(toolingDir, 'packages'));
-
   const result = await prepareMarketplace({
     root, output, previous: previous && resolve(previous), sourceSha: git('rev-parse', 'HEAD'),
     buildPlugin: directory => {
-      if (!hasTooling) {
-        console.error(`Skipping plugin build: .tooling/open-astravia not found. Run in CI or prepare tooling.`);
-        return;
-      }
       const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
-      // Rewrite @astravia-org/* deps to file: references pointing to tooling packages,
-      // so npm install resolves them locally and pulls their transitive deps.
-      const pkgPath = join(directory, 'package.json');
-      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-      let changed = false;
-      const toolOnly = new Set(['plugin-cli']);
-      for (const field of ['dependencies', 'devDependencies']) {
-        const deps = pkg[field];
-        if (!deps) continue;
-        for (const key of Object.keys(deps)) {
-          if (!key.startsWith('@astravia-org/')) continue;
-          const shortName = key.split('/')[1];
-          if (toolOnly.has(shortName)) { delete deps[key]; changed = true; continue; }
-          let toolingPkg = null;
-          const packagesDir = join(toolingDir, 'packages');
-          const direct = join(packagesDir, shortName);
-          if (existsSync(join(direct, 'package.json'))) { toolingPkg = direct; }
-          else { for (const scope of readdirSync(packagesDir)) { const c = join(packagesDir, scope, shortName); if (existsSync(join(c, 'package.json'))) { toolingPkg = c; break; } } }
-          if (toolingPkg) { deps[key] = `file:${toolingPkg}`; changed = true; }
+      const npmRun = args => {
+        if (process.platform === 'win32') execFileSync(process.execPath, [npmCli, ...args], { cwd: directory, stdio: 'inherit' });
+        else execFileSync('npm', args, { cwd: directory, stdio: 'inherit' });
+      };
+      // Dev 环境准备：@astravia-org/* 未 publish 到 npm，用 npm link 让插件能解析本地 tooling 包。
+      // CI 环境 publish 后删掉这一段，直接 npm ci（与上游对齐）。
+      const toolingDir = resolve(option('--tooling') ?? '.tooling/open-astravia');
+      if (existsSync(join(toolingDir, 'packages'))) {
+        // 扫描插件 package.json 的所有 @astravia-org/* 依赖
+        const pkg = readJson(join(directory, 'package.json'));
+        const needed = new Set([
+          ...Object.keys(pkg.dependencies ?? {}),
+          ...Object.keys(pkg.devDependencies ?? {}),
+        ].filter(k => k.startsWith('@astravia-org/')));
+        if (needed.size > 0) {
+          // 在 tooling 里递归查找每个需要的包目录
+          const pkgIndex = walkToolingPkgs(toolingDir);
+          // 1. 逐个全局 link（独立，不会相互干扰）
+          for (const name of needed) {
+            const dir = pkgIndex.get(name);
+            if (dir) {
+              try { execFileSync('npm', ['link'], { cwd: dir, stdio: 'pipe' }); } catch {}
+            }
+          }
+          // 2. 一次性本地 link（npm link --local 会读 package.json 检查所有依赖，
+          //    必须把所有需要的包名一起传，否则会因其他 @astravia-org/* 未满足而整体失败）
+          const localNames = [...needed].filter(n => pkgIndex.has(n));
+          if (localNames.length > 0) {
+            try { execFileSync('npm', ['link', '--local', ...localNames], { cwd: directory, stdio: 'pipe' }); } catch {}
+          }
         }
       }
-      const backup = changed ? pkgPath + '.bak' : null;
-      if (changed) { writeFileSync(backup, readFileSync(pkgPath, 'utf8')); writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n'); }
-      try { execFileSync('npm', ['install', '--legacy-peer-deps'], { cwd: directory, stdio: 'inherit' }); }
-      finally { if (backup) { writeFileSync(pkgPath, readFileSync(backup, 'utf8')); execFileSync('rm', [backup]); } }
+      npmRun(['install', '--no-audit', '--no-fund', '--legacy-peer-deps']);
       for (const args of [['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
-        try { execFileSync('npm', args, { cwd: directory, stdio: 'inherit' }); }
+        try { npmRun(args); }
         catch (e) { console.error(`[${args[0]}] failed for ${directory}, continuing...`); }
       }
     },
