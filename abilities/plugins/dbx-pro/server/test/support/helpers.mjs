@@ -6,6 +6,7 @@
  * 而不是失败或假通过。
  */
 
+import { randomBytes } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,3 +48,14 @@ export function engineBinaryAvailable() {
 
 export const engineSkipMessage =
 	`当前平台 ${process.platform}-${process.arch} 无 dbx-mcp 二进制，跳过引擎集成测试`;
+
+/**
+ * 测试用数据加密密钥（0.4.106 的 dbx-mcp headless 必须有 DBX_SECRET_KEY）。
+ * 每个集成测试配临时 dataDir，用固定测试密钥即可。
+ */
+export const testEngineKey = randomBytes(32).toString("base64url");
+
+/** 构造「带密钥的客户端参数」，供直接 new DbxMcpClient 的集成测试使用。 */
+export function secureClientOptions(dataDir) {
+	return { dataDir, extraEnv: { DBX_SECRET_KEY: testEngineKey } };
+}

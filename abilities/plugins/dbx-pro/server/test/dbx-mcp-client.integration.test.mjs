@@ -19,7 +19,7 @@ import {
 	disposeDbxMcpClient,
 	getDbxMcpClient,
 } from "../src/engine/dbx-mcp-client.mjs";
-import { engineBinaryAvailable, engineSkipMessage } from "./support/helpers.mjs";
+import { engineBinaryAvailable, engineSkipMessage, secureClientOptions } from "./support/helpers.mjs";
 
 describe("dbx-mcp-client 真实引擎", { skip: engineBinaryAvailable() ? false : engineSkipMessage }, () => {
 	let workDir;
@@ -32,7 +32,7 @@ describe("dbx-mcp-client 真实引擎", { skip: engineBinaryAvailable() ? false 
 
 	it("新客户端用临时 dataDir 完成握手", async () => {
 		workDir = mkdtempSync(join(tmpdir(), "dbx-mcp-client-"));
-		const client = new DbxMcpClient({ dataDir: workDir });
+		const client = new DbxMcpClient(secureClientOptions(workDir));
 		clients.push(client);
 		// ensureInitialized 成功即握手通过（失败会抛错）。
 		await assert.doesNotReject(() => client.ensureInitialized());
@@ -41,7 +41,7 @@ describe("dbx-mcp-client 真实引擎", { skip: engineBinaryAvailable() ? false 
 	});
 
 	it("dbx_add/list/remove_connection 全链路", async () => {
-		const client = new DbxMcpClient({ dataDir: workDir });
+		const client = new DbxMcpClient(secureClientOptions(workDir));
 		clients.push(client);
 		const name = `mcp-it-${Date.now().toString(36)}`;
 
@@ -67,7 +67,7 @@ describe("dbx-mcp-client 真实引擎", { skip: engineBinaryAvailable() ? false 
 	});
 
 	it("不存在的工具调用返回错误而不是崩溃", async () => {
-		const client = new DbxMcpClient({ dataDir: workDir });
+		const client = new DbxMcpClient(secureClientOptions(workDir));
 		clients.push(client);
 		// 对不存在的连接执行查询：错误以正常 MCP 响应返回。
 		const result = await client.callTool(
@@ -80,7 +80,7 @@ describe("dbx-mcp-client 真实引擎", { skip: engineBinaryAvailable() ? false 
 	});
 
 	it("dispose 幂等且可重复调用", async () => {
-		const client = new DbxMcpClient({ dataDir: workDir });
+		const client = new DbxMcpClient(secureClientOptions(workDir));
 		clients.push(client);
 		await client.ensureInitialized();
 		await client.dispose();

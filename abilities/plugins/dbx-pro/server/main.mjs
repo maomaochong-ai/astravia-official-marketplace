@@ -95918,10 +95918,10 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const maxRows = dbxMaxRows(rowLimit);
       let pageLimit = null;
       const toOutcome = (text, extra = {}) => {
-        const lim = pageLimit ?? rowLimit;
+        const lim = pageLimit ?? DBX_EFFECTIVE_ROW_CAP;
         const { columns, rows: allRows } = parseMarkdownTable(text);
         const rows = allRows.length > lim ? allRows.slice(0, lim) : allRows;
-        const truncated = allRows.length > lim;
+        const truncated = pageLimit === null && allRows.length >= DBX_EFFECTIVE_ROW_CAP;
         const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
         return {
           connection: connectionName,

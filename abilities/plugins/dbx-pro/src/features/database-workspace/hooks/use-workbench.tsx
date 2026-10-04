@@ -468,7 +468,13 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		tabId: string,
 		startedAt: number,
 		outcome: ReturnType<typeof toQueryResult>,
-		ctx: { pageIndex: number; pageSize: number; ranSql: string; keepTotal: boolean },
+		ctx: {
+			pageIndex: number;
+			pageSize: number;
+			isServerMode: boolean;
+			ranSql: string;
+			keepTotal: boolean;
+		},
 	) {
 		// 同一份 SQL 的翻页 / 重跑沿用既有总数；SQL 换了就不带，避免页数算错。
 		const prevTotal = stateRef.current.tabs.find((t) => t.id === tabId)?.result?.totalCount;
@@ -486,8 +492,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 					affectedRows: outcome.affected_rows ?? null,
 					elapsedMs: Date.now() - startedAt,
 					note: outcome.note,
-					paged: outcome.paged,
-					serverPage: ctx.pageIndex,
+					// server 模式：引擎已按页返回；client 模式：网格本地分页。
+					paged: ctx.isServerMode,
+					serverPage: ctx.isServerMode ? ctx.pageIndex : 0,
 					ranSql: ctx.ranSql,
 					...(ctx.keepTotal && prevTotal !== undefined ? { totalCount: prevTotal } : {}),
 				},
@@ -528,7 +535,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		tabId: string,
 		overrideSql?: string,
 		overrideConn?: string,
-		options?: { pageIndex?: number; pageSize?: number },
+		options?: { pageIndex?: number; pageSize?: number; mode?: "server" | "client" },
 	) {
 		const st = stateRef.current;
 		const tab = st.tabs.find((t) => t.id === tabId);
@@ -537,6 +544,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			dispatch({ type: "setError", message: tab ? "请选择一个连接后再执行" : "Tab 不存在" });
 			return;
 		}
+		// server = 表预览（引擎下推 LIMIT/OFFSET）；
+		// client = 用户手动执行（SQL 原样透传，客户端分页）。
+		const isServerMode = options?.mode === "server";
 		const isPageTurn = options?.pageIndex !== undefined;
 		if (tab.isRunning) {
 			// 上一页还在飞：丢弃这次翻页点击，不用错误横幅打断正在看的结果。
@@ -564,20 +574,22 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			const targetConn = stateRef.current.connections.find((c) => c.name === connectionName);
 			const rawOutcome = await engineExecuteByName(connectionName, sqlToRun, {
 				timeoutMs: current.queryTimeoutSecs * 1000,
-				// 单次取回上限固定为引擎硬上限：页大小只决定「一次看多少」，不再兼作结果行数上限。
-				rowLimit: ENGINE_ROW_CAP,
-				// 一律按页请求：服务端对可分页的 SELECT 追加 LIMIT/OFFSET，
-				// SELECT * 全表预览因此只取一页，不再把整表拉过 60s 超时。
-				dbType: targetConn?.db_type,
-				page: { offset: pageIndex * pageSize, limit: pageSize },
-			});
-			const outcome = toQueryResult(rawOutcome);
-			applySuccess(tabId, startedAt, outcome, {
-				pageIndex,
-				pageSize,
-				ranSql: sqlToRun,
-				keepTotal: knownTotal !== undefined,
-			});
+			rowLimit: ENGINE_ROW_CAP,
+			dbType: targetConn?.db_type,
+			// 仅服务端分页（表预览）下推 page；客户端模式（用户查询）SQL 原样透传、
+			// 不强制 LIMIT，最多取引擎硬上限行。
+			...(isServerMode
+				? { page: { offset: pageIndex * pageSize, limit: pageSize } }
+				: {}),
+		});
+		const outcome = toQueryResult(rawOutcome);
+		applySuccess(tabId, startedAt, outcome, {
+			pageIndex,
+			pageSize,
+			isServerMode,
+			ranSql: sqlToRun,
+			keepTotal: knownTotal !== undefined,
+		});
 			dispatch({ type: "setConnectionStatus", name: connectionName, status: "ok" });
 			dispatch({ type: "setError", message: null });
 			await recordHistory({
@@ -588,7 +600,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				durationMs: Date.now() - startedAt,
 			});
 			// 服务端分页生效且总数未知：补一趟 COUNT，页数才是真实值。
-			if (rawOutcome.paged && knownTotal === undefined) {
+		if (isServerMode && rawOutcome.paged && knownTotal === undefined) {
 				void fetchTotalCount(
 					tabId,
 					connectionName,
@@ -683,7 +695,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		const tab = stateRef.current.tabs.find((t) => t.id === tabId);
 		const sql = tab?.result?.ranSql ?? tab?.sql;
 		if (!tab || !sql) return;
-		await runTabSql(tabId, sql, undefined, { pageIndex, pageSize });
+		// 表预览翻页：保持服务端分页模式。
+		await runTabSql(tabId, sql, undefined, { pageIndex, pageSize, mode: "server" });
 	}
 
 	/** 停止当前 tab 的执行：视觉复位 + 记录取消历史。 */
@@ -740,11 +753,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				}),
 			);
 			applySuccess(pending.tabId, startedAt, outcome, {
-				pageIndex: 0,
-				pageSize: resolvePageSize(current.rowLimit),
-				ranSql: pending.sql,
-				keepTotal: false,
-			});
+			pageIndex: 0,
+			pageSize: resolvePageSize(current.rowLimit),
+			isServerMode: false,
+			ranSql: pending.sql,
+			keepTotal: false,
+		});
 			dispatch({ type: "setConnectionStatus", name: pending.connectionName, status: "ok" });
 			await recordHistory({
 				connName: pending.connectionName,
@@ -793,9 +807,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			isRunning: false,
 		};
 		dispatch({ type: "addTab", tab: newTab });
-		// 等 reducer 更新完再跑
-		setTimeout(() => { void runTabSql(id); }, 0);
-	}
+	// 表预览：服务端分页（系统生成 SELECT，需下推 LIMIT，避免全表慢查询）。
+	setTimeout(() => { void runTabSql(id, undefined, undefined, { mode: "server" }); }, 0);
+}
 
 	// ─── 设置 ─────────────────────────────────────────────
 	async function updateSettings(next: WorkbenchSettings) {

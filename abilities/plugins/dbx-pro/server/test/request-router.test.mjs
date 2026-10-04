@@ -7,16 +7,26 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, describe, it } from "node:test";
 import { createRouter } from "../src/engine/request-router.mjs";
-import { disposeDbxMcpClient } from "../src/engine/dbx-mcp-client.mjs";
-import { engineBinaryAvailable, engineSkipMessage } from "./support/helpers.mjs";
+import { disposeDbxMcpClient, getDbxMcpClient } from "../src/engine/dbx-mcp-client.mjs";
+import {
+	engineBinaryAvailable,
+	engineSkipMessage,
+	secureClientOptions,
+} from "./support/helpers.mjs";
 
 const stubAuth = Object.freeze({ enabled: false, verify() {} });
 
 after(async () => {
 	await disposeDbxMcpClient();
+	if (workDir) rmSync(workDir, { recursive: true, force: true });
 });
+
+let workDir = null;
 
 describe("createRouter 构造约束", () => {
 	it("缺少 auth 抛错", () => {
@@ -104,6 +114,9 @@ describe("路由解析（不依赖引擎）", () => {
 });
 
 describe("路由数据路径（真实 dbx-mcp）", { skip: engineBinaryAvailable() ? false : engineSkipMessage }, () => {
+	// 预热引擎客户端：临时 dataDir + 测试密钥（新二进制 headless 必须有 key）。
+	workDir = mkdtempSync(join(tmpdir(), "router-data-"));
+	getDbxMcpClient(secureClientOptions(workDir));
 	const router = createRouter({ auth: stubAuth });
 	const NAME = `server-router-test-${Date.now().toString(36)}`;
 	const names = [];

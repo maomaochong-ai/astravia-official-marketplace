@@ -238,20 +238,19 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       /**
        * 把 dbx_execute_query 的 Markdown 结果转成引擎响应体（读 / 写共用）。
        *
-       * 该 release 制品完全忽略 max_rows（实测 1 / 10 / 500 / 1000 都回 100 行），
-       * 所以用户设的小上限必须在这里自己夹：多余的行丢掉并标 truncated，
-       * 否则设置里写 10 实际给 100 行，UI 会显示一个假的“行数上限”。
+       * SQL 原样透传、不强制加 LIMIT。0.4.106 制品尊重 max_rows（实测
+       * 200/500/1000 均按值返回）：
+       * - 常规读最多取 DBX_EFFECTIVE_ROW_CAP 行，达到即标 truncated；
+       * - 服务端分页（表预览）本页行数由 pageLimit 决定。
        */
-      // 服务端分页时本页行数（页请求覆盖用户行上限）；null = 常规执行。
       let pageLimit = null;
 
       const toOutcome = (text, extra = {}) => {
-        const lim = pageLimit ?? rowLimit;
+        const lim = pageLimit ?? DBX_EFFECTIVE_ROW_CAP;
         const { columns, rows: allRows } = parseMarkdownTable(text);
         const rows = allRows.length > lim ? allRows.slice(0, lim) : allRows;
-        // 截断只按用户行上限判定：引擎制品固定上限已通过 /health row_cap 公开，
-        // 恰好等于上限的真实结果不该被误报（引擎不提供总数，无法区分）。
-        const truncated = allRows.length > lim;
+        // 常规读达到单次上限才标截断；分页只看本页，不标。
+        const truncated = pageLimit === null && allRows.length >= DBX_EFFECTIVE_ROW_CAP;
         const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
         return {
           connection: connectionName,

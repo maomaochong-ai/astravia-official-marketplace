@@ -125,6 +125,13 @@
 	background: transparent;
 	transition: background-color 0.12s;
 }
+
+/* 固定分页栏上分割线：对齐桌面壳分页栏 border-border/30，
+   直接用前景色 30% 叠在背景上，避免与 --dbx-line 二次混合。 */
+.dbx-pagination {
+	border-top: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+	background: var(--background);
+}
 .dbx-splitbar-h {
 	height: 3px;
 	border-top: 1px solid var(--dbx-line);

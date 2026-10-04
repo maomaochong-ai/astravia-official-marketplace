@@ -11,7 +11,7 @@
  *   两种模式底部均提供每页行数选择，默认来自工作台设置（设置 200 即 200）。
  */
 
-import { useEffect, useCallback, useMemo, useState, type JSX } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import {
 	ContextMenu,
 	type ContextMenuState,
@@ -93,6 +93,7 @@ export function ResultGrid({
 	const isServer = serverPaged === true;
 	const [localPage, setLocalPage] = useState(0);
 	const [localPageSize, setLocalPageSize] = useState(() => resolvePageSize(defaultPageSize));
+	const scrollRef = useRef<HTMLDivElement>(null);
 	const [colWidths, setColWidths] = useState<Record<string, number>>({});
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
 	const [detail, setDetail] = useState<CellDetail | null>(null);
@@ -157,6 +158,12 @@ export function ResultGrid({
 	const displayTotal = isServer
 		? serverTotalCount ?? safePage * pageSize + rows.length
 		: rows.length;
+
+	// 翻页 / 改每页行数：网格内部滚动回到顶部。
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (el) el.scrollTop = 0;
+	}, [safePage, pageSize]);
 	const hasNextPage = isServer
 		? totalPages === null
 			? rows.length >= pageSize
@@ -322,7 +329,7 @@ export function ResultGrid({
 			</div>
 
 			{/* 网格（内部滚动） */}
-			<div className="min-h-0 flex-1 overflow-auto">
+			<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
 				<table className="border-separate border-spacing-0 text-[12px] w-full" style={{ minWidth: "100%" }}>
 					<thead>
 						<tr>
@@ -398,8 +405,9 @@ export function ResultGrid({
 				</table>
 			</div>
 
-			{/* 分页栏（固定底部，不随网格滚动） */}
-			<div className="flex h-7 shrink-0 items-center gap-2 border-t border-border bg-background px-3 text-[11px] text-muted-foreground">
+			{/* 分页栏（固定底部，不随网格滚动）；上分割线用 .dbx-pagination，
+			    与侧边栏竖线及桌面壳分割线对齐。 */}
+			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 px-3 text-[11px] text-muted-foreground">
 				<span>
 					{totalKnown ? "共 " : "已取回 "}
 					<span className="font-medium text-foreground/80">{displayTotal}</span> 行
