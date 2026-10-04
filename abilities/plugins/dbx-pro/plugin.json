@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -15,6 +15,7 @@
   "permissions": [
     "agent.mcp.control",
     "ui.slot.activity-tab",
+    "ui.slot.input-action",
     "ui.slot.ability-detail",
     "agent.command.run",
     "agent.session.read",

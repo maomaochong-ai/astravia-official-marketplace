@@ -90,7 +90,7 @@ export default definePlugin({
 				</svg>
 			),
 			component: DatabaseWorkspace,
-			scope_use: ["conversation", "project"],
+			scope_use: ["conversation", "project", "cli"],
 			retention: "pinned",
 			initiallyVisible: true,
 		});
@@ -104,7 +104,7 @@ export default definePlugin({
 				<span className="icon-[lucide--database] h-4 w-4" />
 			),
 			component: DatabaseAtPicker,
-			scope_use: ["conversation", "project"],
+			scope_use: ["conversation", "project", "cli"],
 			retention: "active-only",
 			initiallyVisible: false,
 			order: 11,
@@ -116,7 +116,7 @@ export default definePlugin({
 			label: "数据库",
 			icon: <span className="icon-[lucide--database] h-3.5 w-3.5" />,
 			defaultActive: false,
-			scope_use: ["conversation", "project"],
+			scope_use: ["conversation", "project", "cli"],
 			onToggle(active) {
 				if (active) {
 					void ctx.ui.openActivityTab("dbx-at-picker");
