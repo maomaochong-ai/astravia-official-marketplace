@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, type JSX } from "react";
-import { useWorkbench, type EngineColumn } from "./workbench-context";
+import { useWorkbench, type EngineColumn } from "../hooks/use-workbench";
 import { engineDescribeByName } from "../../../shared/services/engine-client";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 

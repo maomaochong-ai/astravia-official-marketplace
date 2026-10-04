@@ -99,7 +99,10 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 								}
 							/>
 						</Row>
-						<Row label="结果行数上限" hint="超过后按行截断并标注，不改写 SQL。">
+						<Row
+							label="结果行数上限"
+							hint={`宿主 dbx-mcp 单次最多返回 ${b.rowLimit.max} 行（引擎制品硬上限）；超过后按行截断并标注，不改写 SQL。`}
+						>
 							<input
 								type="number"
 								className={inputCls}

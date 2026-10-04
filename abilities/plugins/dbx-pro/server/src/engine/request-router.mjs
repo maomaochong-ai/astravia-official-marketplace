@@ -10,11 +10,16 @@
  *   POST   /connections      新增连接（dbx_add_connection）
  *   DELETE /connections      删除连接（按 name）
  *   POST   /connections/test 测试连接（已存或草稿）
- *   POST   /tables           列出连接下全部表（dbx_list_tables）
+ *   POST   /tables           列出连接下全部表（dbx_list_tables，支持 schema/database scope）
  *   POST   /describe         查看表结构（dbx_describe_table）
  *   POST   /query            执行 SQL（dbx_execute_query，含写闸门）
  *   POST   /schema-context   获取连接 schema 上下文（dbx_get_schema_context）
+ *   POST   /schemas          列举 schema（information_schema，供连接树 schema 层）
  *
+ * 写 / DDL 的分路（安全模型）：
+ *   - 读 → 常驻 dbx-mcp 子进程，零提权；
+ *   - 写 / DDL → 自研写驱动（direct-write）。dbx-mcp 的写开关来自它自己的持久化
+ *     MCP settings，进程级 env 只能收紧不能放宽，所以引擎子进程在任何路径下都不提权。
  * dbx-mcp 连接自管（dbx.db），不需要 Node.js 连接池 —— 每次直接 spawn + callTool。
  */
 
@@ -43,12 +48,40 @@ import {
   dedupeConnections,
   classifyError,
   extractDuration,
+  isMissingCatalogView,
+  pick,
 } from "./markdown-parser.mjs";
+
+/**
+ * dbx_execute_query 的 max_rows 参数上限（crates/dbx-core/src/ai/agent_tools.rs
+ * 的 MAX_EXECUTE_QUERY_ROWS）。引擎对超限值做 clamp 而非报错，所以这里先夹一次，
+ * 避免 UI 以为拿到了 5000 行、实际只有 1000 行。
+ */
+const DBX_MAX_ROWS = 1000;
 
 function clampRowLimit(rowLimit) {
   const value = Number.isFinite(rowLimit) ? Math.trunc(rowLimit) : DEFAULT_ROW_LIMIT;
   return Math.min(Math.max(value, 1), MAX_ROW_LIMIT);
 }
+
+/**
+ * 已发布 dbx-mcp 二进制（dbx 0.4.61）的读结果硬上限。
+ *
+ * 实测：max_rows=500 / 1000、甚至 SQL 自带 LIMIT 300，`SELECT generate_series(1,500)`
+ * 都只返回 100 行 —— 源码里的 MAX_EXECUTE_QUERY_ROWS 尚未落到这个 release 制品上。
+ * 因此对外一律按这个真实上限夹紧并如实标记 truncated，避免 UI 让人以为拿到了 500 行。
+ * 换用支持 max_rows 的新版二进制后，把这个值提到 DBX_MAX_ROWS 即可。
+ */
+const DBX_EFFECTIVE_ROW_CAP = 100;
+
+/** 传给 dbx_execute_query 的行数上限（同时受引擎声明上限与制品实测上限约束）。 */
+function dbxMaxRows(rowLimit) {
+  return Math.min(Math.max(rowLimit, 1), DBX_MAX_ROWS, DBX_EFFECTIVE_ROW_CAP);
+}
+
+/** 列举 schema 的目录查询（ANSI information_schema，PG / MySQL / SQL Server 等通用）。 */
+const SCHEMA_QUERY =
+  "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name";
 
 function clampTimeout(timeoutMs) {
   const value = Number.isFinite(timeoutMs) ? Math.trunc(timeoutMs) : 30_000;
@@ -65,9 +98,22 @@ function extractText(result, toolName) {
   return text;
 }
 
+/**
+ * 把 UI 侧的产品别名归一为 dbx-mcp 接受的 db_type。
+ * dbx-mcp 未为这些协议兼容产品提供独立类型：Aurora PostgreSQL 走 postgres，
+ * MariaDB 走 mysql，UDS（PostgreSQL 兼容）走 postgres。
+ */
+function normalizeDbType(dbType) {
+  const value = String(dbType ?? "").toLowerCase();
+  if (value === "aurora-postgresql") return "postgres";
+  if (value === "mariadb") return "mysql";
+  if (value === "uds") return "postgres";
+  return value;
+}
+
 /** dbx_add_connection 参数名映射（UI 用 camelCase，dbx 期望 snake_case）。 */
 function toDbxAddParams(body) {
-  const args = { name: body.name, db_type: body.dbType, host: body.host };
+  const args = { name: body.name, db_type: normalizeDbType(body.dbType), host: body.host };
   if (body.port) args.port = body.port;
   if (body.username) args.username = body.username;
   if (body.password) args.password = body.password;
@@ -98,6 +144,10 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         status: "ok",
         version: ENGINE_VERSION,
         protocol: PROTOCOL_VERSION,
+        // 制品真实读上限。前端设置项用它当 max，避免 UI 允许设一个拿不到的值
+        // （src/domain/workbench-settings.ts 的 ENGINE_ROW_CAP 必须与这里一致，
+        //  由 src/test/engine-service.test.js 的断言守住）。
+        row_cap: DBX_EFFECTIVE_ROW_CAP,
         pid: process.pid,
         node: process.version,
         platform: `${process.platform}-${process.arch}`,
@@ -166,13 +216,96 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       const timeoutMs = clampTimeout(body?.timeoutMs);
       const rowLimit = clampRowLimit(body?.rowLimit);
       const started = now();
+      const maxRows = dbxMaxRows(rowLimit);
 
-      // --- 路径 1：dbx-mcp 优先（SELECT 等安全查询 + DDL/DML 首次尝试） ---
+      /**
+       * 把 dbx_execute_query 的 Markdown 结果转成引擎响应体（读 / 写共用）。
+       *
+       * 该 release 制品完全忽略 max_rows（实测 1 / 10 / 500 / 1000 都回 100 行），
+       * 所以用户设的小上限必须在这里自己夹：多余的行丢掉并标 truncated，
+       * 否则设置里写 10 实际给 100 行，UI 会显示一个假的“行数上限”。
+       */
+      const toOutcome = (text, extra = {}) => {
+        const { columns, rows: allRows } = parseMarkdownTable(text);
+        const rows = allRows.length > rowLimit ? allRows.slice(0, rowLimit) : allRows;
+        // 触顶有两种：引擎自己撞到制品上限，或我们按用户上限裁掉。
+        const truncated = allRows.length > rowLimit || allRows.length >= maxRows;
+        const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
+        return {
+          connection: connectionName,
+          kind: classified.kind,
+          statement_count: classified.statements.length,
+          columns,
+          rows,
+          row_count: rows.length,
+          truncated,
+          row_limit: rowLimit,
+          max_rows: maxRows,
+          /** 引擎实际返回的行数（可能多于 row_limit，已被裁剪）。 */
+          engine_row_count: allRows.length,
+          duration_ms: now() - started,
+          duration_hint: extractDuration(text),
+          raw_text: text,
+          affected_rows: affected ? parseInt(affected[1], 10) : null,
+          ...extra,
+        };
+      };
+
+      // --- 路径 1：写 / DDL → 自研写驱动 ---
+      // dbx-mcp 的写权限来自它自己的持久化 MCP settings，进程级 env 只能收紧不能放宽
+      // （见 dbx crates/dbx-mcp/src/backend.rs 的 effective_mcp_policy_with_legacy_allow_writes：
+      //  DBX_MCP_ALLOW_WRITES=1 不解锁，=0 才强制只读）。所以插件不能靠 env 打开写，
+      // 写操作统一由自研驱动执行 —— 常驻 / 一次性 dbx-mcp 子进程始终零提权。
+      if (classified.requiresConfirmation) {
+        if (body?.allowWrite !== true) {
+          // 未确认：交给 UI 弹写确认框（UI 拿到 SQL_BLOCKED 后带 allowWrite 重试）。
+          throw engineError("SQL_BLOCKED", "写 / DDL 需要显式确认");
+        }
+        if (body.confirmedWriteSql !== sql) {
+          throw engineError("CONFIRM_MISMATCH", "写确认文本与待执行 SQL 不一致");
+        }
+        const connSpec = body?.connection;
+        if (!connSpec?.host) {
+          throw engineError("BAD_REQUEST", "写操作需要连接配置（connection）");
+        }
+        if (connSpec.read_only === true) {
+          throw engineError("WRITE_BLOCKED", "连接已设为只读，写操作被拒绝");
+        }
+        let writeResult;
+        try {
+          writeResult = await executeWrite(
+            { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType },
+            sql,
+          );
+        } catch (e) {
+          if (e?.engineError) throw e;
+          throw engineError(e?.code ?? "WRITE_FAILED", `写操作执行失败: ${e?.message ?? String(e)}`);
+        }
+        return {
+          connection: connectionName,
+          kind: classified.kind,
+          statement_count: classified.statements.length,
+          columns: writeResult.columns,
+          rows: writeResult.rows,
+          row_count: writeResult.rows.length,
+          truncated: false,
+          row_limit: rowLimit,
+          max_rows: maxRows,
+          duration_ms: now() - started,
+          duration_hint: "self-write",
+          raw_text: null,
+          command: writeResult.command,
+          affected_rows: writeResult.affectedRows,
+          write_executed: true,
+        };
+      }
+
+      // --- 路径 2：读 → 常驻零提权子进程 ---
       let result;
       try {
         result = await mcpClient().callTool(
           "dbx_execute_query",
-          { connection_name: connectionName, sql },
+          { connection_name: connectionName, sql, max_rows: maxRows },
           timeoutMs,
         );
       } catch (e) {
@@ -181,75 +314,10 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         throw engineError("DBX_MCP_ERROR", `dbx-mcp 调用失败: ${msg}`);
       }
 
-      // dbx-mcp 成功（包括 DDL/DML）→ 正常 parse markdown 返回
-      if (!result.isError) {
-        const text = extractText(result, "dbx_execute_query");
-        const { columns, rows } = parseMarkdownTable(text);
-        const rowCount = rows.length;
-        const truncated = rowLimit > 0 && rowCount > rowLimit;
-        const visibleRows = truncated ? rows.slice(0, rowLimit) : rows;
+      if (!result.isError) return toOutcome(textOf(result));
 
-        return {
-          connection: connectionName,
-          kind: classified.kind,
-          statement_count: classified.statements.length,
-          columns,
-          rows: visibleRows,
-          row_count: rowCount,
-          truncated,
-          row_limit: rowLimit,
-          duration_ms: now() - started,
-          duration_hint: extractDuration(text),
-          raw_text: text,
-          affected_rows: (() => {
-            const m = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
-            return m ? parseInt(m[1], 10) : null;
-          })(),
-        };
-      }
-
-      // --- dbx-mcp 返回错误 ---
       const errorText = textOf(result);
       const err = classifyError(errorText);
-      const blocked = err.code === "SQL_BLOCKED" || errorText.includes("SQL_BLOCKED");
-
-      // dbx-mcp 只读、拒绝写操作：若调用方显式授权写且确认文本逐字节匹配，
-      // 走自研写驱动绕过（仅写/DDL；读不会到这里）。
-      const connSpec = body?.connection;
-      if (blocked && body?.allowWrite === true && connSpec) {
-        if (body.confirmedWriteSql !== sql) {
-          throw engineError("CONFIRM_MISMATCH", "写确认文本与待执行 SQL 不一致", errorText);
-        }
-        try {
-          const writeResult = await executeWrite(
-            { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType, name: connectionName },
-            sql,
-          );
-          return {
-            connection: connectionName,
-            kind: classified.kind,
-            statement_count: classified.statements.length,
-            columns: writeResult.columns,
-            rows: writeResult.rows,
-            row_count: writeResult.rows.length,
-            truncated: false,
-            row_limit: rowLimit,
-            duration_ms: now() - started,
-            duration_hint: "self-write",
-            raw_text: null,
-            affected_rows: writeResult.affectedRows,
-            write_executed: true,
-          };
-        } catch (writeErr) {
-          throw engineError(
-            writeErr.code ?? "WRITE_FAILED",
-            `自研写驱动执行失败: ${writeErr.message}`,
-            errorText,
-          );
-        }
-      }
-
-      // 未授权写 / 其他错误：原样透传
       throw engineError(err.code, `dbx_execute_query failed: ${err.detail}`, errorText);
     }],
 
@@ -283,6 +351,31 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       const result = await mcpClient().callTool("dbx_get_schema_context", { connection_name: connectionName });
       const text = extractText(result, "dbx_get_schema_context");
       return { connection: connectionName, schema: text };
+    }],
+
+    // === Schema 列举（连接树 schema 层节点的数据源）===
+    // dbx-mcp 没有独立的 list_schemas 工具，这里按方言走一条 information_schema 查询。
+    // 只有「这个库没有该目录视图」才回 supported=false 让前端退回扁平表树；
+    // 连接坏了 / 没权限这类真故障必须原样抛出，否则用户会看到一棵空树，
+    // 误以为库里没有表（比报错难排查得多）。
+    ["/schemas", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      if (!connectionName) throw engineError("BAD_REQUEST", "缺少 connectionName");
+      const result = await mcpClient().callTool("dbx_execute_query", {
+        connection_name: connectionName,
+        sql: SCHEMA_QUERY,
+        max_rows: DBX_EFFECTIVE_ROW_CAP,
+      });
+      if (result.isError) {
+        const err = classifyError(textOf(result));
+        if (!isMissingCatalogView(err)) throw engineError(err.code, err.detail, textOf(result));
+        return { connection: connectionName, schemas: [], supported: false };
+      }
+      const { rows } = parseMarkdownTable(textOf(result));
+      const schemas = rows
+        .map((row) => String(pick(row, ["schema_name", "SCHEMA_NAME", "Schema", "schema"])).trim())
+        .filter((name) => name.length > 0);
+      return { connection: connectionName, schemas, supported: true };
     }],
   ];
 

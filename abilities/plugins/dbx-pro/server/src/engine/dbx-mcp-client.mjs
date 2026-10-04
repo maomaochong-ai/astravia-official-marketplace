@@ -36,10 +36,24 @@ const BIN_PATH_BY_PLATFORM = {
   "win32-x64":    join(_serverDir, "bin", "dbx-mcp-win-x64.exe"),
 };
 
-/** DBX_DATA_DIR：与宿主 Open-astravia 隔离，使用服务数据目录或回退到 ~/.astravia-dbx-data */
+/**
+ * DBX_DATA_DIR：与宿主 Open-astravia 隔离，使用服务数据目录或回退到 ~/.astravia-dbx-data。
+ *
+ * 进程内缓存首次解析结果：dbx 的连接库（dbx.db）就在这个目录里，常驻子进程和
+ * 一次性提权子进程必须指向同一处，否则提权子进程会报 CONNECTION_NOT_FOUND。
+ */
+let resolvedDataDir = null;
+
 function resolveDataDir(explicitDir) {
-  const dir = explicitDir ?? join(homedir(), ".astravia-dbx-data");
+  if (explicitDir) {
+    mkdirSync(explicitDir, { recursive: true });
+    resolvedDataDir = explicitDir;
+    return explicitDir;
+  }
+  if (resolvedDataDir) return resolvedDataDir;
+  const dir = join(homedir(), ".astravia-dbx-data");
   mkdirSync(dir, { recursive: true });
+  resolvedDataDir = dir;
   return dir;
 }
 

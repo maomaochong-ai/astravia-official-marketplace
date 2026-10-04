@@ -89,20 +89,3 @@ export function classifyQuery(sql) {
   const requiresConfirmation = kind !== "read";
   return { kind, kinds, statements, requiresConfirmation };
 }
-
-export function maybeBlockWrite(opts) {
-  const { env = "dev", writeApproved = false, confirmedWrite = false, safetyMode = "strict", sql } = opts;
-  const classified = classifyQuery(sql);
-  if (classified.statements.length === 0) return null;
-  const hasApproval = writeApproved || confirmedWrite;
-  if (classified.kind === "ddl") {
-    if (env === "prod" && !writeApproved) return { code: "PROD_WRITE_BLOCKED", detail: "DDL on production connection requires explicit approval" };
-    if (safetyMode === "strict" && !hasApproval) return { code: "DDL_BLOCKED", detail: "DDL statements require confirmation before execution" };
-    return null;
-  }
-  if (classified.kind === "write") {
-    if (safetyMode === "strict" && !hasApproval) return { code: "WRITE_BLOCKED", detail: "Write statement requires confirmation in strict safety mode" };
-    if (env === "prod" && !writeApproved) return { code: "PROD_WRITE_BLOCKED", detail: "Write statement on production connection requires explicit approval" };
-  }
-  return null;
-}

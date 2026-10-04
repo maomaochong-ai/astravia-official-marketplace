@@ -6,7 +6,7 @@
  * 生产连接会额外显示红色强提示条。
  */
 
-import { useEffect, type JSX } from "react";
+import { useEffect } from "react";
 
 export interface PendingWrite {
 	sql: string;

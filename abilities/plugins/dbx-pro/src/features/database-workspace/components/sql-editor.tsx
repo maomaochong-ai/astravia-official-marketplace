@@ -28,7 +28,7 @@ import {
 import { tags } from "@lezer/highlight";
 import { autocompletion, closeBrackets, completionKeymap } from "@codemirror/autocomplete";
 import { MSSQL, MySQL, PostgreSQL, SQLite, sql } from "@codemirror/lang-sql";
-import { useWorkbench } from "./workbench-context";
+import { useWorkbench } from "../hooks/use-workbench";
 
 const MONO_FONT = "'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace";
 

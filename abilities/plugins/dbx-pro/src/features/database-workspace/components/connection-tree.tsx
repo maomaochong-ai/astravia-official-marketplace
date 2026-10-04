@@ -4,21 +4,22 @@
  * 职责：
  * - 顶部工具栏（刷新、搜索过滤）
  * - 渲染 connection → table → column 递归节点
- * - 触发懒加载（通过 workbench-context）
+ * - 触发懒加载（通过 use-workbench）
  */
 
 import { useState, type JSX } from "react";
-import { useWorkbench, type TreeNode } from "./workbench-context";
+import { useWorkbench } from "../hooks/use-workbench";
 import { ConnectionNode } from "./connection-node";
+import { connectionNodeKey, type TreeNode } from "../../../domain/tree-node-key";
 
 export function ConnectionTree(): JSX.Element {
-	const { state } = useWorkbench();
+	const { state, refreshConnections } = useWorkbench();
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
 
 	// 初始化：连接列表加载完后，给每个连接创建一个 tree connection 节点，并设置 dbType
 	const connectionNodes: TreeNode[] = state.connections.map((c) => ({
-		key: `conn:${c.name}`,
+		key: connectionNodeKey(c.name),
 		kind: "connection",
 		label: c.name,
 		dbType: c.db_type,
@@ -32,18 +33,28 @@ export function ConnectionTree(): JSX.Element {
 
 	return (
 		<div className="flex h-full flex-col bg-background">
-			{/* 标题栏 */}
-			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-				<span className="icon-[lucide--database] h-3 w-3" />
-				连接
-				{connectionNodes.length > 0 && (
-					<span
-						className="ml-auto rounded-full px-1.5 text-[10px] font-medium"
-						style={{ backgroundColor: "var(--dbx-surface-2)", color: "var(--muted-foreground)" }}
-					>
-						{connectionNodes.length}
-					</span>
-				)}
+			{/* 标题工具条（对齐 dbx 桌面壳：浅色底 + 紧凑高，右侧 20px ghost 图标） */}
+			<div
+				className="flex h-9 shrink-0 items-center gap-1 px-2 text-[11px] font-medium text-muted-foreground"
+				style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)" }}
+			>
+				<span className="flex items-center gap-1.5 pl-1">
+					<span className="icon-[lucide--database] h-3.5 w-3.5" />
+					连接
+					{connectionNodes.length > 0 && (
+						<span className="text-[10px] text-muted-foreground/70">{connectionNodes.length}</span>
+					)}
+				</span>
+				<span className="flex-1" />
+				<button
+					type="button"
+					onClick={() => { void refreshConnections(); }}
+					title="刷新连接"
+					className="dbx-iconbtn"
+					style={{ height: 22, minWidth: 22, padding: 0 }}
+				>
+					<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+				</button>
 			</div>
 
 			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}

@@ -7,7 +7,7 @@
  */
 
 import { useState, type JSX } from "react";
-import { useWorkbench } from "./workbench-context";
+import { useWorkbench } from "../hooks/use-workbench";
 
 export function TabBar(): JSX.Element {
 	const { state, dispatch } = useWorkbench();
@@ -52,7 +52,7 @@ export function TabBar(): JSX.Element {
 
 	return (
 		<div className="dbx-chrome flex h-8 shrink-0 items-center px-1">
-			<div className="dbx-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+			<div className="dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
 				{state.tabs.map((tab) => {
 					const active = tab.id === state.activeTabId;
 					const running = tab.isRunning;

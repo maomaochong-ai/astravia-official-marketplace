@@ -27,12 +27,17 @@ export function parseMarkdownTable(text) {
     .filter((l) => l.startsWith("|"));
   if (lines.length < 2) return { columns: [], rows: [] };
 
-  const split = (line) =>
-    line
+  const split = (line) => {
+    // dbx-mcp 会把单元格内的 | 转义成 \|（escape_markdown_cell）。
+    // 先用占位符保护转义管道，切分后再还原，否则含 | 的数据值会被切碎。
+    const PLACEHOLDER = "\u0000";
+    return line
       .replace(/^\|/, "")
       .replace(/\|$/, "")
+      .replace(/\\\|/g, PLACEHOLDER)
       .split("|")
-      .map((c) => c.trim());
+      .map((cell) => cell.trim().replaceAll(PLACEHOLDER, "\\|"));
+  };
 
   const columns = split(lines[0]);
   // 第二行是分隔线，跳过；之后每行是数据
@@ -48,7 +53,7 @@ export function parseMarkdownTable(text) {
 }
 
 /** 从行里按候选列名取第一个非空值。 */
-function pick(row, names) {
+export function pick(row, names) {
   for (const n of names) {
     const v = row[n];
     if (v !== undefined && v !== "") return v;
@@ -182,6 +187,26 @@ export function classifyError(raw) {
   if (/connection|failed|refused|ECONN|TABLE_LIST_ERROR|CONNECTION_LOAD_ERROR|CONNECTION_SAVE_ERROR/i.test(raw))
     return { code: "CONNECTION_FAILED", detail: raw };
   return { code: "UNKNOWN", detail: raw };
+}
+
+/**
+ * 判断一个查询错误是否表示「该库没有 ANSI 目录视图」（而不是连接坏了）。
+ *
+ * 只在这一种情况下允许调用方退回扁平表结构；权限不足、连接失败、超时都必须
+ * 当作真故障抛出去。判错的代价不对称：把真故障当「不支持」会让用户面对一棵
+ * 空树并误判库里没有表；反过来只是多出一层 schema 节点。
+ */
+export function isMissingCatalogView(raw) {
+  if (!raw) return false;
+  const text = String(raw);
+  // 明确提到 information_schema / schemata 本身不存在。
+  if (/information_schema|schemata/i.test(text) && /does not exist|no such|not found|unknown|not exist/i.test(text)) {
+    return true;
+  }
+  // 方言层信号：SQLite 的 no such table、ClickHouse 的 UNKNOWN_IDENTIFIER、语法不支持。
+  if (/no such table|SQLITE_ERROR|UNKNOWN_IDENTIFIER|UNKNOWN_TABLE/i.test(text)) return true;
+  if (/syntax error|not implemented|unsupported/i.test(text)) return true;
+  return false;
 }
 
 /** 从 dbx_execute_query 返回文本提取耗时（如 "1ms" 或 "0.5s"）。 */

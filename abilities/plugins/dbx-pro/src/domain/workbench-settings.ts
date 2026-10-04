@@ -21,17 +21,27 @@ export interface WorkbenchSettings {
 	historyLimit: number;
 }
 
+/**
+ * 宿主 dbx-mcp 制品（dbx 0.4.61）的真实读上限。
+ *
+ * 实测 max_rows=500 / 1000、甚至 SQL 自带 LIMIT 300，都只返回 100 行 ——
+ * 源码里的 MAX_EXECUTE_QUERY_ROWS 没落到这个 release 制品上。设置项不允许
+ * 超过它，否则 UI 会让人以为能取到 5000 行，实际只有 100 行。
+ * 换用支持 max_rows 的新版二进制后把这个数调大即可。
+ */
+export const ENGINE_ROW_CAP = 100;
+
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
 export const SETTINGS_BOUNDS = Object.freeze({
 	queryTimeoutSecs: { min: 1, max: 600 },
-	rowLimit: { min: 1, max: 100_000 },
+	rowLimit: { min: 1, max: ENGINE_ROW_CAP },
 	historyLimit: { min: HISTORY_LIMIT_MIN, max: HISTORY_LIMIT_MAX },
 });
 
 export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	schemaVersion: 1,
 	queryTimeoutSecs: 60,
-	rowLimit: 1000,
+	rowLimit: ENGINE_ROW_CAP,
 	historyEnabled: true,
 	historyLimit: HISTORY_LIMIT_DEFAULT,
 });

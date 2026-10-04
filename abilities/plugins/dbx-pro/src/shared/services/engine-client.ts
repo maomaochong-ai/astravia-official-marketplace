@@ -94,6 +94,10 @@ export interface EngineQueryOutcome {
 	statements: EngineStatementResult[];
 	truncated: boolean;
 	row_limit: number;
+	/** 引擎实际施加的行数上限（已按制品硬上限夹紧）。截断提示要引用它。 */
+	max_rows: number;
+	/** 引擎真实返回的行数，可能多于 max_rows / row_limit（已被引擎侧裁剪）。 */
+	engine_row_count?: number;
 	timeout_ms: number;
 	duration_ms: number;
 	columns: string[];
@@ -209,6 +213,13 @@ export interface EngineListTablesOutcome {
 	tables: { name: string; kind: string }[];
 }
 
+export interface EngineListSchemasOutcome {
+	connection: string;
+	schemas: string[];
+	/** 该库是否有 schema 概念（false 时前端渲染扁平表树）。 */
+	supported: boolean;
+}
+
 export interface EngineDescribeOutcome {
 	connection: string;
 	table: string;
@@ -254,6 +265,21 @@ export function engineListTables(
 	return engineRequest<EngineListTablesOutcome>("/tables", { connectionName, scope: scope ?? {} }, options);
 }
 
+/**
+ * 列出连接的 schema（POST /schemas）。
+ * 库不支持目录视图时引擎返回 supported=false + 空列表，调用方据此隐藏 schema 层。
+ */
+export function engineListSchemas(
+	connectionName: string,
+	options: CallOptions = {},
+): Promise<EngineListSchemasOutcome> {
+	return engineRequest<EngineListSchemasOutcome>(
+		"/schemas",
+		{ connectionName },
+		{ timeoutMs: options.timeoutMs ?? TEST_TIMEOUT_MS },
+	);
+}
+
 /** 查看表结构（POST /describe，用 connectionName）。 */
 export function engineDescribeByName(
 	connectionName: string,
@@ -290,13 +316,25 @@ export function engineExecuteByName(
  * 与 query-service.ts 的语义保持一致，便于 D2 面板无痛切换。
  */
 export function toQueryResult(outcome: EngineQueryOutcome): DbQueryResult {
+	const notes: string[] = [];
+	if (outcome.statement_count > 1) {
+		notes.push(`已执行 ${outcome.statement_count} 条语句，仅展示最后一个结果集`);
+	}
+	if (outcome.truncated) {
+		// 说清是谁截断的：用户自己设的上限，还是宿主导品的硬上限。
+		// 混为一谈会让用户调大设置却发现没用，白白反复试。
+		const engineRows = outcome.engine_row_count;
+		notes.push(
+			engineRows !== undefined && engineRows <= outcome.max_rows && outcome.row_limit > outcome.max_rows
+				? `结果已截断到 ${outcome.max_rows} 行（宿主 dbx-mcp 单次上限）`
+				: `结果已按设置的 ${outcome.row_limit} 行上限截断`,
+		);
+	}
 	return {
 		connection: outcome.connection ?? "",
 		columns: outcome.columns,
 		rows: outcome.rows,
 		row_count: outcome.row_count,
-		...(outcome.statement_count > 1
-			? { note: `已执行 ${outcome.statement_count} 条语句，仅展示最后一个结果集` }
-			: {}),
+		...(notes.length > 0 ? { note: notes.join("；") } : {}),
 	};
 }

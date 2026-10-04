@@ -11,11 +11,25 @@
 
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+
+/**
+ * 读出前端的行数上限常量。
+ *
+ * 不能直接 import：settings 模块用无扩展名的相对路径（`./query-history`），
+ * node --experimental-strip-types 不做扩展名解析，import 会 ERR_MODULE_NOT_FOUND。
+ * 这里只取一个数值字面量，解析失败要报错而不是静默跳过断言。
+ */
+function readEngineRowCap() {
+	const source = readFileSync(join(PLUGIN_ROOT, "src", "domain", "workbench-settings.ts"), "utf8");
+	const match = source.match(/ENGINE_ROW_CAP\s*=\s*(\d+)/);
+	if (!match) throw new Error("workbench-settings.ts 里找不到 ENGINE_ROW_CAP 定义");
+	return Number(match[1]);
+}
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const PLUGIN_ROOT = resolve(HERE, "..", "..");
@@ -110,7 +124,15 @@ describe("dbx-pro engine bridge (headless E2E)", () => {
 		assert.equal(health.status, 200);
 		assert.equal(health.ok, true);
 		assert.equal(health.data.auth, "enabled");
-		assert.equal(health.data.version, "0.0.16");
+		assert.equal(health.data.version, "0.0.18");
+		// 行数上限的前后端常量必须一致：设置项用 src/domain/workbench-settings.ts 的
+		// ENGINE_ROW_CAP 当 max，引擎用 /health 的 row_cap 回答实际值。漂了就说明
+		// UI 允许用户填一个拿不到的行数 —— 静默的假设置比报错更难发现。
+		assert.equal(
+			health.data.row_cap,
+			readEngineRowCap(),
+			`引擎 row_cap=${health.data.row_cap} 与前端 ENGINE_ROW_CAP 不一致`,
+		);
 		// bridge 唯一驱动位是 dbx-cli
 		assert.equal(health.data.drivers[0].id, "dbx-cli");
 		assert.equal(health.data.drivers[0].ready, true);

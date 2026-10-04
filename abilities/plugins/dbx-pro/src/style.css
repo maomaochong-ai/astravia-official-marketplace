@@ -102,6 +102,15 @@
 .dbx-scroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 30%, transparent); background-clip: content-box; }
 .dbx-scroll::-webkit-scrollbar-track { background: transparent; }
 
+/*
+ * 标签栏横向滚动：滚动条完全不占布局高度（overlay），避免多标签时底部多出一条
+ * 滚动条把内容向上挤压。Firefox 用 overlay 宽度；WebKit 把高度压到 0，仅在该容器
+ * 实际滚动时仍可用触控板/滚轮横向滚动。
+ */
+.dbx-tab-scroll { scrollbar-width: none; }
+.dbx-tab-scroll::-webkit-scrollbar { height: 0; width: 0; }
+.dbx-tab-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+
 /* ============================================================
  * 通用按钮 / 表单（连接管理侧滑表单复用）
  * ============================================================ */
@@ -232,16 +241,34 @@ textarea.dbx-form-input {
 }
 
 /* ============================================================
- * CodeMirror：行号竖线贯通到底、gutter 背景铺满、可正常输入
+ * CodeMirror：行号竖线贯通到面板底部、gutter 背景铺满、可正常输入。
+ *
+ * 难点：真实 .cm-gutters 高度跟随内容，内容短或滚动时其右边框到不了面板底部，
+ * 出现断开。改为在 .cm-editor（高度 100%）上用 ::before 画一整块贴左的 gutter
+ * 背景 + 右侧竖线，绝对定位贯穿整个可视高度；真实 gutters 背景透明、不画边框。
  * ============================================================ */
-.dbx-root .cm-scroller { display: flex; }
-.dbx-root .cm-content,
-.dbx-root .cm-gutters { align-self: stretch; }
-.dbx-root .cm-gutters {
+.dbx-root .cm-editor { position: relative; }
+.dbx-root .cm-editor::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	/* 宽度对齐真实 gutter（含行号 + 内边距），与 editorTheme 保持一致 */
+	width: 46px;
 	background: var(--dbx-surface);
-	border-right: 1px solid var(--dbx-line-soft);
+	border-right: 1px solid var(--dbx-line);
+	pointer-events: none;
+	z-index: 0;
 }
-.dbx-root .cm-content { caret-color: var(--foreground); }
+/* 真实 gutters 浮在伪元素之上：透明、不重复画边框 */
+.dbx-root .cm-gutters {
+	background: transparent !important;
+	border-right: none !important;
+	position: relative;
+	z-index: 1;
+}
+.dbx-root .cm-content { caret-color: var(--foreground); position: relative; z-index: 1; }
 
 /* 历史面板标题：柔和分隔，不出现刺眼白线 */
 .dbx-history-head { border-bottom: 1px solid var(--dbx-line-soft); }

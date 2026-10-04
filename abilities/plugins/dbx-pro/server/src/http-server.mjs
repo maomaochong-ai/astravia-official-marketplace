@@ -145,13 +145,28 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
             const name = params.name;
             const args = params.arguments ?? {};
             if (!name) return send(200, { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } });
-            const callResult = await client.callTool(name, args);
-            return send(200, { jsonrpc: "2.0", id, result: callResult });
+            // MCP 规定工具级失败用 result.isError 表达，而不是 JSON-RPC error：
+            // 宿主 Agent 需要读到「SQL_BLOCKED / 连接不存在」这类可读原因并据此改写 SQL，
+            // 变成协议错误后这些原因就丢了，Agent 只会看到一次调用失败。
+            try {
+              const callResult = await client.callTool(name, args);
+              return send(200, { jsonrpc: "2.0", id, result: callResult });
+            } catch (e) {
+              emit("mcp-error", { method: rpc.method, tool: name, message: e.message });
+              return send(200, {
+                jsonrpc: "2.0",
+                id,
+                result: { isError: true, content: [{ type: "text", text: e.message }] },
+              });
+            }
           }
           return send(200, { jsonrpc: "2.0", id, error: { code: -32601, message: `Unsupported MCP method: ${rpc.method}` } });
         } catch (e) {
           emit("mcp-error", { method: rpc.method, message: e.message });
-          return send(200, { jsonrpc: "2.0", id, result: { isError: true, content: [{ type: "text", text: e.message }] } });
+          // 协议层失败（initialize / tools/list 抛错）必须回 JSON-RPC error：
+          // 这些响应的 result 形状由协议规定，塞工具结果形状会让客户端校验失败。
+          // tools/call 的工具级失败由下方显式转成 isError 结果，不进这里。
+          return send(200, { jsonrpc: "2.0", id, error: { code: -32603, message: e.message } });
         }
       }
 

@@ -151,6 +151,9 @@ async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
 		if (status.phase === "ready") return;
 	}
 	if (!status.installed) {
+		// 旧版本插件留下的服务进程可能仍在运行；host install 要求先停进程，
+		// 否则直接报 "Stop the service before installing its runtime"。
+		await context.services.stop(SERVICE_ID);
 		const { tag } = await context.services.getPlatform();
 		const platformTag = tag as PlatformTag;
 		const assets = BINARY_ASSETS[platformTag];

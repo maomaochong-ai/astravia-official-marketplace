@@ -1,0 +1,179 @@
+/**
+ * 连接编辑流程 — 侧栏的异步状态机。
+ *
+ * 覆盖：加载连接列表、新建 / 编辑草稿、切换数据库类型时修正端点默认值、
+ * 保存、删除、测试连通性（真实跑一次 SELECT 1，不靠配置推断）。
+ * 组件只渲染这个 hook 暴露的状态与动作，不自己发请求。
+ */
+
+import { useEffect, useMemo, useState } from "react";
+import type { DbConnection } from "../../../domain/connection-config";
+import { DB_TYPE_MANIFEST } from "../../../domain/connection-config";
+import { deleteConfig, readAllConfigs, writeConfig } from "../../../domain/dbx-storage";
+import { engineExecuteByName } from "../../../shared/services/engine-client";
+import {
+	defaultHostPlaceholder,
+	defaultUsernameFor,
+	emptyConnection,
+	groupManifestByCategory,
+	isFileBasedDbType,
+} from "../services/connection-type-catalog";
+
+export interface ConnectionEditorState {
+	connections: DbConnection[];
+	/** 正在编辑的草稿；null 表示不在表单态。 */
+	editing: DbConnection | null;
+	/** 侧栏当前页：列表还是表单。 */
+	view: "list" | "form";
+	testing: boolean;
+	/** 测试结果文案；null 表示不显示。 */
+	testResult: string | null;
+	/** 替换当前草稿（字段表单的受控输入）。 */
+	setEditing: (conn: DbConnection) => void;
+	/** 切换数据库类型（修正默认端口 / host / 用户名）。 */
+	setDbType: (dbType: string) => void;
+	startNew: () => void;
+	startEdit: (conn: DbConnection) => void;
+	/** 从表单退回列表。 */
+	back: () => void;
+	save: () => Promise<void>;
+	remove: (conn: DbConnection) => Promise<void>;
+	test: (conn: DbConnection) => Promise<void>;
+	/** 按 category 分组后的类型清单，给下拉框用。 */
+	groupedManifest: ReturnType<typeof groupManifestByCategory>;
+}
+
+export interface UseConnectionEditorOptions {
+	/** 连接增 / 删 / 改完成后通知外层重载工作台。 */
+	onChange?: () => void;
+}
+
+export function useConnectionEditor(options: UseConnectionEditorOptions = {}): ConnectionEditorState {
+	const { onChange } = options;
+	const [connections, setConnections] = useState<DbConnection[]>([]);
+	const [editing, setEditing] = useState<DbConnection | null>(null);
+	const [view, setView] = useState<"list" | "form">("list");
+	const [testing, setTesting] = useState(false);
+	const [testResult, setTestResult] = useState<string | null>(null);
+
+	useEffect(() => {
+		void (async () => {
+			setConnections(await readAllConfigs().catch(() => [] as DbConnection[]));
+		})();
+	}, []);
+
+	async function refresh(): Promise<void> {
+		try {
+			setConnections(await readAllConfigs());
+		} catch {
+			setConnections([]);
+		}
+	}
+
+	function startNew(): void {
+		setEditing(emptyConnection());
+		setTestResult(null);
+		setView("form");
+	}
+
+	function startEdit(conn: DbConnection): void {
+		setEditing({ ...conn });
+		setTestResult(null);
+		setView("form");
+	}
+
+	function back(): void {
+		setEditing(null);
+		setTestResult(null);
+		setView("list");
+	}
+
+	/**
+	 * 换数据库类型时只修正「用户还没自定义过」的字段：
+	 * 已填的 host / 用户名一律保留，避免用户输入被悄悄改掉。
+	 */
+	function setDbType(dbType: string): void {
+		setEditing((prev) => {
+			if (!prev) return prev;
+			const entry = DB_TYPE_MANIFEST.find((e) => e.dbType === dbType);
+			const fileBased = isFileBasedDbType(dbType);
+			return {
+				...prev,
+				db_type: dbType,
+				port: entry?.defaultPort ?? prev.port,
+				host: prev.host
+					? fileBased
+						? prev.host === "localhost" ? defaultHostPlaceholder(dbType) : prev.host
+						: prev.host.startsWith("/") ? "localhost" : prev.host
+					: fileBased ? defaultHostPlaceholder(dbType) : "localhost",
+				username: prev.username ? prev.username : defaultUsernameFor(dbType),
+			};
+		});
+	}
+
+	async function save(): Promise<void> {
+		if (!editing) return;
+		if (!editing.name.trim()) {
+			alert("请填写连接名称");
+			return;
+		}
+		try {
+			await writeConfig(editing);
+			await refresh();
+			onChange?.();
+			back();
+		} catch (err) {
+			alert(`保存失败: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+
+	async function remove(conn: DbConnection): Promise<void> {
+		if (!confirm(`删除连接 "${conn.name}" ？此操作不可撤销。`)) return;
+		try {
+			await deleteConfig(conn.id);
+			await refresh();
+			onChange?.();
+		} catch (err) {
+			alert(`删除失败: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+
+	/**
+	 * 测试连通性：先落盘（dbx-mcp 只认已存连接），再真跑一次 SELECT 1。
+	 * 只校验配置字段是不行的 —— 凭据错误、库不存在都要执行阶段才暴露。
+	 */
+	async function test(conn: DbConnection): Promise<void> {
+		setTesting(true);
+		setTestResult(null);
+		try {
+			await writeConfig(conn);
+			await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
+			onChange?.();
+			setTestResult("✅ 连接成功 · 取数路径：引擎");
+		} catch (err) {
+			const code = (err as { code?: string } | null)?.code;
+			setTestResult(`❌ 连接失败${code ? ` [${code}]` : ""}: ${err instanceof Error ? err.message : String(err)}`);
+		} finally {
+			setTesting(false);
+		}
+	}
+
+	const groupedManifest = useMemo(() => groupManifestByCategory(), []);
+
+	return {
+		connections,
+		editing,
+		view,
+		testing,
+		testResult,
+		setEditing,
+		setDbType,
+		startNew,
+		startEdit,
+		back,
+		save,
+		remove,
+		test,
+		groupedManifest,
+	};
+}

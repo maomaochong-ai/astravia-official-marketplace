@@ -159,6 +159,11 @@ export interface DbConnection {
 	username: string;
 	password: string;
 	database?: string;
+	/**
+	 * 默认 schema。对象浏览的起始 scope：展开连接节点时优先用它，
+	 * 避免每次都落在库的默认 schema（如 PG 的 public）上。
+	 */
+	schema?: string;
 	note?: string;
 	color?: string;
 	ssl?: boolean;

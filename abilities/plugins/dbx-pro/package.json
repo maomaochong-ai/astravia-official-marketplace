@@ -1,10 +1,11 @@
 {
   "name": "@astravia-marketplace/dbx-pro",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:engine": "node scripts/build-engine.mjs --write",
     "test": "node --experimental-strip-types --test src/test/*.test.js",
     "check": "tsc --noEmit"
   },

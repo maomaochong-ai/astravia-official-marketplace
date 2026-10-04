@@ -94901,7 +94901,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 
 // server/src/engine/protocol.mjs
-var ENGINE_VERSION = "0.0.16";
+var ENGINE_VERSION = "0.0.18";
 var PROTOCOL_VERSION = 1;
 var MAX_BODY_BYTES = 8 * 1024 * 1024;
 var DEFAULT_ROW_LIMIT = 500;
@@ -94913,13 +94913,14 @@ var STATUS_BY_CODE = Object.freeze({
   NOT_FOUND: 404,
   METHOD_NOT_ALLOWED: 405,
   PAYLOAD_TOO_LARGE: 413,
+  // 写闸门：未确认 → SQL_BLOCKED（在 router 里抛，见 request-router /query）
   WRITE_BLOCKED: 403,
-  DDL_BLOCKED: 403,
   CONFIRM_MISMATCH: 403,
-  PROD_WRITE_BLOCKED: 403,
+  WRITE_UNSUPPORTED: 501,
   DRIVER_UNSUPPORTED: 501,
   DRIVER_ERROR: 502,
   CONNECTION_ERROR: 502,
+  DBX_MCP_ERROR: 502,
   TIMEOUT: 504,
   INTERNAL: 500
 });
@@ -94993,9 +94994,17 @@ var BIN_PATH_BY_PLATFORM = {
   "darwin-x64": join(_serverDir, "bin", "dbx-mcp-darwin-x64"),
   "win32-x64": join(_serverDir, "bin", "dbx-mcp-win-x64.exe")
 };
+var resolvedDataDir = null;
 function resolveDataDir(explicitDir) {
-  const dir = explicitDir ?? join(homedir(), ".astravia-dbx-data");
+  if (explicitDir) {
+    mkdirSync(explicitDir, { recursive: true });
+    resolvedDataDir = explicitDir;
+    return explicitDir;
+  }
+  if (resolvedDataDir) return resolvedDataDir;
+  const dir = join(homedir(), ".astravia-dbx-data");
   mkdirSync(dir, { recursive: true });
+  resolvedDataDir = dir;
   return dir;
 }
 var HANDSHAKE_TIMEOUT_MS = 15e3;
@@ -95368,57 +95377,86 @@ function connectionSpec(spec) {
     ssl: spec.ssl ? { rejectUnauthorized: false } : void 0
   };
 }
-async function runPg(spec, sql) {
+async function runPg(spec, sql, { transactional }) {
   const client2 = new esm_default.Client({
     ...connectionSpec(spec),
     connectionTimeoutMillis: 15e3
   });
   await client2.connect();
   try {
-    const result = await client2.query(sql);
-    return {
-      command: result.command,
-      columns: (result.fields ?? []).map((field) => field.name),
-      rows: result.rows ?? [],
-      affectedRows: typeof result.rowCount === "number" ? result.rowCount : null
-    };
+    if (transactional) await client2.query("BEGIN");
+    try {
+      const result = await client2.query(sql);
+      if (transactional) await client2.query("COMMIT");
+      return pickPgResult(result);
+    } catch (e) {
+      if (transactional) await client2.query("ROLLBACK").catch(() => {
+      });
+      throw e;
+    }
   } finally {
     await client2.end().catch(() => {
     });
   }
 }
-async function runMysql(spec, sql) {
+function pickPgResult(result) {
+  const candidates = Array.isArray(result) ? result : [result];
+  const withRows = candidates.filter((r) => Array.isArray(r?.rows) && r.rows.length > 0);
+  const picked = withRows[withRows.length - 1] ?? candidates[candidates.length - 1] ?? {};
+  const affected = candidates.reduce((sum, r) => {
+    if (r?.command === "SELECT") return sum;
+    return sum + (typeof r?.rowCount === "number" ? r.rowCount : 0);
+  }, 0);
+  return {
+    command: String(picked.command ?? "").toUpperCase(),
+    columns: (picked.fields ?? []).map((field) => field.name),
+    rows: picked.rows ?? [],
+    affectedRows: affected > 0 ? affected : null
+  };
+}
+async function runMysql(spec, sql, { transactional }) {
   const conn = await import_promise.default.createConnection({
     host: spec.host,
     port: spec.port ? Number(spec.port) : void 0,
     user: spec.username,
     password: spec.password,
     database: spec.database,
+    // 堆叠查询只在真的要多语句时打开：单语句写并不需要它，
+    // 而它是 SQL 注入里最常见的放大器，不该默认开着。
+    multipleStatements: transactional,
     ssl: spec.ssl ? { rejectUnauthorized: false } : void 0,
     connectTimeout: 15e3
   });
   try {
-    const [data, fields] = await conn.query(sql);
-    if (Array.isArray(data)) {
+    if (transactional) await conn.beginTransaction();
+    try {
+      const [data, fields] = await conn.query(sql);
+      if (transactional) await conn.commit();
+      if (Array.isArray(data)) {
+        return {
+          command: "SELECT",
+          columns: (fields ?? []).map((field) => field.name),
+          rows: data,
+          affectedRows: null
+        };
+      }
       return {
-        command: "SELECT",
-        columns: (fields ?? []).map((field) => field.name),
-        rows: data,
-        affectedRows: null
+        command: String(data.command ?? "").toUpperCase(),
+        columns: [],
+        rows: [],
+        affectedRows: data.affectedRows ?? null
       };
+    } catch (e) {
+      if (transactional) await conn.rollback().catch(() => {
+      });
+      throw e;
     }
-    return {
-      command: String(data.command ?? "").toUpperCase(),
-      columns: [],
-      rows: [],
-      affectedRows: data.affectedRows ?? null
-    };
   } finally {
     await conn.end().catch(() => {
     });
   }
 }
-async function runMssql(spec, sql) {
+async function runMssql(spec, sql, { transactional }) {
   const pool = await import_mssql.default.connect({
     server: spec.host,
     port: spec.port ? Number(spec.port) : void 0,
@@ -95429,7 +95467,8 @@ async function runMssql(spec, sql) {
     options: { encrypt: false, trustServerCertificate: true }
   });
   try {
-    const result = await pool.request().query(sql);
+    const request = pool.request();
+    const result = transactional ? await request.transaction((tx) => tx.query(sql)) : await request.query(sql);
     const rows = result.recordset ?? [];
     const affectedRows = Array.isArray(result.rowsAffected) ? result.rowsAffected.reduce((sum, n) => sum + Number(n), 0) : null;
     return {
@@ -95443,10 +95482,52 @@ async function runMssql(spec, sql) {
     });
   }
 }
+function looksMultiStatement(sql) {
+  let inSingle = false, inDouble = false, inLineComment = false, inBlockComment = false;
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i], next = sql[i + 1];
+    if (inLineComment) {
+      if (ch === "\n") inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      if (ch === "*" && next === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+    if (!inSingle && !inDouble && ch === "-" && next === "-") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+    if (!inSingle && !inDouble && ch === "/" && next === "*") {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle;
+      continue;
+    }
+    if (ch === '"' && !inSingle) {
+      inDouble = !inDouble;
+      continue;
+    }
+    if (ch === ";" && !inSingle && !inDouble) {
+      const rest = sql.slice(i + 1).replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, "").trim();
+      if (rest.length > 0) return true;
+    }
+  }
+  return false;
+}
 async function executeWrite(spec, sql) {
   const family = familyOf(spec.db_type);
   if (!family) {
-    const error = new Error(`dbx-pro \u5199\u9A71\u52A8\u6682\u4E0D\u652F\u6301\u6570\u636E\u5E93\u7C7B\u578B\uFF1A${spec.db_type}\uFF08\u53EA\u8BFB\u67E5\u8BE2\u4ECD\u53EF\u7528\uFF09`);
+    const error = new Error(
+      `\u6682\u4E0D\u652F\u6301 ${spec.db_type} \u7684\u5199\u64CD\u4F5C\uFF1A\u5199\u9A71\u52A8\u8986\u76D6 PostgreSQL / MySQL \u7CFB / SQL Server \u4E09\u5927\u5BB6\u65CF\uFF0C\u5176\u4F59\u7C7B\u578B\u8BF7\u5728 dbx \u684C\u9762\u7AEF\u6267\u884C`
+    );
     error.code = "WRITE_UNSUPPORTED";
     throw error;
   }
@@ -95455,9 +95536,10 @@ async function executeWrite(spec, sql) {
     error.code = "CONNECTION_READ_ONLY";
     throw error;
   }
-  if (family === "pg") return runPg(spec, sql);
-  if (family === "mysql") return runMysql(spec, sql);
-  return runMssql(spec, sql);
+  const options = { transactional: looksMultiStatement(sql) };
+  if (family === "pg") return runPg(spec, sql, options);
+  if (family === "mysql") return runMysql(spec, sql, options);
+  return runMssql(spec, sql, options);
 }
 
 // server/src/engine/markdown-parser.mjs
@@ -95580,16 +95662,32 @@ function classifyError(raw) {
     return { code: "CONNECTION_FAILED", detail: raw };
   return { code: "UNKNOWN", detail: raw };
 }
+function isMissingCatalogView(raw) {
+  if (!raw) return false;
+  const text = String(raw);
+  if (/information_schema|schemata/i.test(text) && /does not exist|no such|not found|unknown|not exist/i.test(text)) {
+    return true;
+  }
+  if (/no such table|SQLITE_ERROR|UNKNOWN_IDENTIFIER|UNKNOWN_TABLE/i.test(text)) return true;
+  if (/syntax error|not implemented|unsupported/i.test(text)) return true;
+  return false;
+}
 function extractDuration(text) {
   const m = text.match(/(\d+(?:\.\d+)?)\s*(ms|s)\b/i);
   return m ? m[0] : "";
 }
 
 // server/src/engine/request-router.mjs
+var DBX_MAX_ROWS = 1e3;
 function clampRowLimit(rowLimit) {
   const value = Number.isFinite(rowLimit) ? Math.trunc(rowLimit) : DEFAULT_ROW_LIMIT;
   return Math.min(Math.max(value, 1), MAX_ROW_LIMIT);
 }
+var DBX_EFFECTIVE_ROW_CAP = 100;
+function dbxMaxRows(rowLimit) {
+  return Math.min(Math.max(rowLimit, 1), DBX_MAX_ROWS, DBX_EFFECTIVE_ROW_CAP);
+}
+var SCHEMA_QUERY = "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name";
 function clampTimeout(timeoutMs) {
   const value = Number.isFinite(timeoutMs) ? Math.trunc(timeoutMs) : 3e4;
   return Math.min(Math.max(value, 1e3), MAX_TIMEOUT_MS);
@@ -95602,8 +95700,15 @@ function extractText(result, toolName) {
   }
   return text;
 }
+function normalizeDbType(dbType) {
+  const value = String(dbType ?? "").toLowerCase();
+  if (value === "aurora-postgresql") return "postgres";
+  if (value === "mariadb") return "mysql";
+  if (value === "uds") return "postgres";
+  return value;
+}
 function toDbxAddParams(body) {
-  const args = { name: body.name, db_type: body.dbType, host: body.host };
+  const args = { name: body.name, db_type: normalizeDbType(body.dbType), host: body.host };
   if (body.port) args.port = body.port;
   if (body.username) args.username = body.username;
   if (body.password) args.password = body.password;
@@ -95629,6 +95734,10 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
         status: "ok",
         version: ENGINE_VERSION,
         protocol: PROTOCOL_VERSION,
+        // 制品真实读上限。前端设置项用它当 max，避免 UI 允许设一个拿不到的值
+        // （src/domain/workbench-settings.ts 的 ENGINE_ROW_CAP 必须与这里一致，
+        //  由 src/test/engine-service.test.js 的断言守住）。
+        row_cap: DBX_EFFECTIVE_ROW_CAP,
         pid: process.pid,
         node: process.version,
         platform: `${process.platform}-${process.arch}`,
@@ -95695,77 +95804,87 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const timeoutMs = clampTimeout(body?.timeoutMs);
       const rowLimit = clampRowLimit(body?.rowLimit);
       const started = now();
+      const maxRows = dbxMaxRows(rowLimit);
+      const toOutcome = (text, extra = {}) => {
+        const { columns, rows: allRows } = parseMarkdownTable(text);
+        const rows = allRows.length > rowLimit ? allRows.slice(0, rowLimit) : allRows;
+        const truncated = allRows.length > rowLimit || allRows.length >= maxRows;
+        const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
+        return {
+          connection: connectionName,
+          kind: classified.kind,
+          statement_count: classified.statements.length,
+          columns,
+          rows,
+          row_count: rows.length,
+          truncated,
+          row_limit: rowLimit,
+          max_rows: maxRows,
+          /** 引擎实际返回的行数（可能多于 row_limit，已被裁剪）。 */
+          engine_row_count: allRows.length,
+          duration_ms: now() - started,
+          duration_hint: extractDuration(text),
+          raw_text: text,
+          affected_rows: affected ? parseInt(affected[1], 10) : null,
+          ...extra
+        };
+      };
+      if (classified.requiresConfirmation) {
+        if (body?.allowWrite !== true) {
+          throw engineError("SQL_BLOCKED", "\u5199 / DDL \u9700\u8981\u663E\u5F0F\u786E\u8BA4");
+        }
+        if (body.confirmedWriteSql !== sql) {
+          throw engineError("CONFIRM_MISMATCH", "\u5199\u786E\u8BA4\u6587\u672C\u4E0E\u5F85\u6267\u884C SQL \u4E0D\u4E00\u81F4");
+        }
+        const connSpec = body?.connection;
+        if (!connSpec?.host) {
+          throw engineError("BAD_REQUEST", "\u5199\u64CD\u4F5C\u9700\u8981\u8FDE\u63A5\u914D\u7F6E\uFF08connection\uFF09");
+        }
+        if (connSpec.read_only === true) {
+          throw engineError("WRITE_BLOCKED", "\u8FDE\u63A5\u5DF2\u8BBE\u4E3A\u53EA\u8BFB\uFF0C\u5199\u64CD\u4F5C\u88AB\u62D2\u7EDD");
+        }
+        let writeResult;
+        try {
+          writeResult = await executeWrite(
+            { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType },
+            sql
+          );
+        } catch (e) {
+          if (e?.engineError) throw e;
+          throw engineError(e?.code ?? "WRITE_FAILED", `\u5199\u64CD\u4F5C\u6267\u884C\u5931\u8D25: ${e?.message ?? String(e)}`);
+        }
+        return {
+          connection: connectionName,
+          kind: classified.kind,
+          statement_count: classified.statements.length,
+          columns: writeResult.columns,
+          rows: writeResult.rows,
+          row_count: writeResult.rows.length,
+          truncated: false,
+          row_limit: rowLimit,
+          max_rows: maxRows,
+          duration_ms: now() - started,
+          duration_hint: "self-write",
+          raw_text: null,
+          command: writeResult.command,
+          affected_rows: writeResult.affectedRows,
+          write_executed: true
+        };
+      }
       let result;
       try {
         result = await mcpClient().callTool(
           "dbx_execute_query",
-          { connection_name: connectionName, sql },
+          { connection_name: connectionName, sql, max_rows: maxRows },
           timeoutMs
         );
       } catch (e) {
         const msg = e?.message ?? String(e);
         throw engineError("DBX_MCP_ERROR", `dbx-mcp \u8C03\u7528\u5931\u8D25: ${msg}`);
       }
-      if (!result.isError) {
-        const text = extractText(result, "dbx_execute_query");
-        const { columns, rows } = parseMarkdownTable(text);
-        const rowCount = rows.length;
-        const truncated = rowLimit > 0 && rowCount > rowLimit;
-        const visibleRows = truncated ? rows.slice(0, rowLimit) : rows;
-        return {
-          connection: connectionName,
-          kind: classified.kind,
-          statement_count: classified.statements.length,
-          columns,
-          rows: visibleRows,
-          row_count: rowCount,
-          truncated,
-          row_limit: rowLimit,
-          duration_ms: now() - started,
-          duration_hint: extractDuration(text),
-          raw_text: text,
-          affected_rows: (() => {
-            const m = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
-            return m ? parseInt(m[1], 10) : null;
-          })()
-        };
-      }
+      if (!result.isError) return toOutcome(textOf(result));
       const errorText = textOf(result);
       const err = classifyError(errorText);
-      const blocked = err.code === "SQL_BLOCKED" || errorText.includes("SQL_BLOCKED");
-      const connSpec = body?.connection;
-      if (blocked && body?.allowWrite === true && connSpec) {
-        if (body.confirmedWriteSql !== sql) {
-          throw engineError("CONFIRM_MISMATCH", "\u5199\u786E\u8BA4\u6587\u672C\u4E0E\u5F85\u6267\u884C SQL \u4E0D\u4E00\u81F4", errorText);
-        }
-        try {
-          const writeResult = await executeWrite(
-            { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType, name: connectionName },
-            sql
-          );
-          return {
-            connection: connectionName,
-            kind: classified.kind,
-            statement_count: classified.statements.length,
-            columns: writeResult.columns,
-            rows: writeResult.rows,
-            row_count: writeResult.rows.length,
-            truncated: false,
-            row_limit: rowLimit,
-            duration_ms: now() - started,
-            duration_hint: "self-write",
-            raw_text: null,
-            affected_rows: writeResult.affectedRows,
-            write_executed: true
-          };
-        } catch (writeErr) {
-          throw engineError(
-            writeErr.code ?? "WRITE_FAILED",
-            `\u81EA\u7814\u5199\u9A71\u52A8\u6267\u884C\u5931\u8D25: ${writeErr.message}`,
-            errorText
-          );
-        }
-      }
       throw engineError(err.code, `dbx_execute_query failed: ${err.detail}`, errorText);
     }],
     // === 对象浏览 ===
@@ -95798,6 +95917,28 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const result = await mcpClient().callTool("dbx_get_schema_context", { connection_name: connectionName });
       const text = extractText(result, "dbx_get_schema_context");
       return { connection: connectionName, schema: text };
+    }],
+    // === Schema 列举（连接树 schema 层节点的数据源）===
+    // dbx-mcp 没有独立的 list_schemas 工具，这里按方言走一条 information_schema 查询。
+    // 只有「这个库没有该目录视图」才回 supported=false 让前端退回扁平表树；
+    // 连接坏了 / 没权限这类真故障必须原样抛出，否则用户会看到一棵空树，
+    // 误以为库里没有表（比报错难排查得多）。
+    ["/schemas", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      const result = await mcpClient().callTool("dbx_execute_query", {
+        connection_name: connectionName,
+        sql: SCHEMA_QUERY,
+        max_rows: DBX_EFFECTIVE_ROW_CAP
+      });
+      if (result.isError) {
+        const err = classifyError(textOf(result));
+        if (!isMissingCatalogView(err)) throw engineError(err.code, err.detail, textOf(result));
+        return { connection: connectionName, schemas: [], supported: false };
+      }
+      const { rows } = parseMarkdownTable(textOf(result));
+      const schemas = rows.map((row) => String(pick(row, ["schema_name", "SCHEMA_NAME", "Schema", "schema"])).trim()).filter((name) => name.length > 0);
+      return { connection: connectionName, schemas, supported: true };
     }]
   ];
   const routes = /* @__PURE__ */ new Map();
@@ -95943,13 +96084,22 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
             const name = params.name;
             const args = params.arguments ?? {};
             if (!name) return send(200, { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } });
-            const callResult = await client2.callTool(name, args);
-            return send(200, { jsonrpc: "2.0", id, result: callResult });
+            try {
+              const callResult = await client2.callTool(name, args);
+              return send(200, { jsonrpc: "2.0", id, result: callResult });
+            } catch (e) {
+              emit("mcp-error", { method: rpc.method, tool: name, message: e.message });
+              return send(200, {
+                jsonrpc: "2.0",
+                id,
+                result: { isError: true, content: [{ type: "text", text: e.message }] }
+              });
+            }
           }
           return send(200, { jsonrpc: "2.0", id, error: { code: -32601, message: `Unsupported MCP method: ${rpc.method}` } });
         } catch (e) {
           emit("mcp-error", { method: rpc.method, message: e.message });
-          return send(200, { jsonrpc: "2.0", id, result: { isError: true, content: [{ type: "text", text: e.message }] } });
+          return send(200, { jsonrpc: "2.0", id, error: { code: -32603, message: e.message } });
         }
       }
       const outcome = await router.handle({

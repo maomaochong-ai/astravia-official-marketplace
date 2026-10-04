@@ -1,8 +1,11 @@
 /**
- * WorkbenchContext — 三栏工作台的集中状态。
+ * WorkbenchContext — 三栏工作台的集中状态与异步流程。
  *
  * 涵盖：连接列表、活动连接、连接树展开/懒加载状态、编辑器 tab 集合、
- * 活动 tab、右栏选中表。Action 类型集中声明，reducer 纯函数处理。
+ * 活动 tab、右栏选中表、查询执行与写确认。Action 类型集中声明，reducer 纯函数处理。
+ *
+ * 放在 hooks/ 而不是 components/：这里是状态机和副作用（跑 SQL、拉连接树、
+ * 弹写确认），组件文件只负责可见状态和交互。
  */
 
 import { createContext, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
@@ -25,26 +28,25 @@ import { readSettings, resetSettings, writeSettings } from "../../../domain/work
 import { getSecrets } from "../../../runtime-contract";
 import {
 	engineListTables,
+	engineListSchemas,
 	engineDescribeByName,
 	engineExecuteByName,
 	EngineClientError,
 	toQueryResult,
 } from "../../../shared/services/engine-client";
-import { WriteConfirmDialog, type PendingWrite } from "./write-confirm-dialog";
+import { WriteConfirmDialog, type PendingWrite } from "../components/write-confirm-dialog";
+import {
+	connectionFromNodeKey,
+	connectionNodeKey,
+	parseTableNodeKey,
+	schemaNodeKey,
+	tableNodeKey,
+	columnNodeKey,
+	type TreeNode,
+	treeNodeKind,
+} from "../../../domain/tree-node-key";
 
 // ─── 类型 ─────────────────────────────────────────────────
-
-export interface TreeNode {
-	/** 唯一 key：`conn:${name}` / `schema:${conn}:${schema}` / `table:${conn}:${schema}:${table}` */
-	key: string;
-	kind: "connection" | "schema" | "table" | "column";
-	label: string;
-	/** 原始 db 类型（connection 节点才有） */
-	dbType?: string;
-	/** 表类型（table 节点才有） */
-	tableKind?: string;
-	hasChildren?: boolean;
-}
 
 export interface EditorTab {
 	id: string;
@@ -155,7 +157,7 @@ function reducer(state: WorkbenchState, action: WorkbenchAction): WorkbenchState
 			const nextActive = action.name;
 			// 切换连接时自动展开该连接节点
 			const newExpanded = new Set(state.expandedNodes);
-			if (nextActive) newExpanded.add(`conn:${nextActive}`);
+			if (nextActive) newExpanded.add(connectionNodeKey(nextActive));
 			return {
 				...state,
 				activeConnectionName: nextActive,
@@ -331,32 +333,56 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 	}
 
 	/**
-	 * 懒加载树节点子节点。
-	 * - `conn:${name}` → 加载该连接下的表（engineListTables 直接返回表列表，
-	 *   不再先列 schema/database 层级，dbx 引擎统一用扁平表清单）。
+	 * 懒加载树节点子节点，按 key 的种类分发：
+	 * - connection → 优先列 schema（库支持目录视图时多一层 schema 节点）；
+	 *   不支持时直接列表，行为与 dbx 桌面壳的扁平表树一致。
+	 * - schema → 列该 schema 下的表。
+	 * - table → 列该表的字段。
+	 *
+	 * schema scope 的优先级：节点自身带的 schema > 连接配置的默认 schema。
 	 */
 	async function loadNodeChildren(nodeKey: string, connectionName?: string, extra?: { schema?: string }) {
 		if (state.treeChildren.has(nodeKey)) return; // 已加载
 
 		dispatch({ type: "nodeLoading", key: nodeKey });
 		try {
-			if (nodeKey.startsWith("conn:")) {
-				const name = connectionName ?? nodeKey.slice(5);
-				const outcome = await engineListTables(name, extra?.schema ? {} : {});
-				const children: TreeNode[] = outcome.tables.map((t) => ({
-					key: `table:${name}::${t.name}`,
-					kind: "table",
-					label: t.name,
-					tableKind: t.kind,
-					hasChildren: false,
-				}));
+			const kind = treeNodeKind(nodeKey);
+			if (kind === "connection") {
+				const name = connectionName ?? connectionFromNodeKey(nodeKey) ?? "";
+				const defaultSchema = extra?.schema ?? stateRef.current.connections.find((c) => c.name === name)?.schema;
+
+				// 先试 schema 目录：不支持（SQLite / ClickHouse 等）时回退扁平表树。
+				let children: TreeNode[];
+				try {
+					const schemas = await engineListSchemas(name);
+					if (schemas.supported && schemas.schemas.length > 0) {
+						children = schemas.schemas.map((s) => ({
+							key: schemaNodeKey(name, s),
+							kind: "schema" as const,
+							label: s,
+							hasChildren: true,
+						}));
+					} else {
+						children = await listTableNodes(name, defaultSchema);
+					}
+				} catch {
+					// 目录探测失败不该让整棵树空掉，退回扁平表清单。
+					children = await listTableNodes(name, defaultSchema);
+				}
 				dispatch({ type: "nodeLoaded", key: nodeKey, children });
-			} else if (nodeKey.startsWith("table:")) {
-				// 表节点 — 懒加载列
-				const [, conn, , table] = nodeKey.split(":");
-				const outcome = await engineDescribeByName(conn, { schema: extra?.schema, table });
+			} else if (kind === "schema") {
+				// schema 名可能含冒号，由调用方通过 extra.schema 传入，不解析 key。
+				const children = await listTableNodes(connectionName ?? "", extra?.schema);
+				dispatch({ type: "nodeLoaded", key: nodeKey, children });
+			} else if (kind === "table") {
+				// 表节点 — 懒加载列。表名从 key 还原（连接名与 schema 优先用调用方带来的）。
+				const ref = parseTableNodeKey(nodeKey);
+				const conn = connectionName ?? ref?.connection ?? "";
+				const schemaName = extra?.schema ?? ref?.schema ?? undefined;
+				const table = ref?.table ?? nodeKey;
+				const outcome = await engineDescribeByName(conn, { schema: schemaName, table });
 				const cols: TreeNode[] = outcome.columns.map((c) => ({
-					key: `col:${conn}:${extra?.schema ?? ""}:${table}:${c.name}`,
+					key: columnNodeKey(conn, schemaName, table, c.name),
 					kind: "column",
 					label: c.name,
 					hasChildren: false,
@@ -381,6 +407,21 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			dispatch({ type: "nodeFailed", key: nodeKey });
 			dispatch({ type: "setError", message: `加载失败：${msg}` });
 		}
+	}
+
+	/** 列某个 schema（或默认 scope）下的表节点。 */
+	async function listTableNodes(connectionName: string, schema?: string): Promise<TreeNode[]> {
+		const outcome = await engineListTables(
+			connectionName,
+			schema ? { schema } : {},
+		);
+		return outcome.tables.map((t) => ({
+			key: tableNodeKey(connectionName, schema, t.name),
+			kind: "table",
+			label: t.name,
+			tableKind: t.kind,
+			hasChildren: false,
+		}));
 	}
 
 	const [pendingWrite, setPendingWrite] = useState<(PendingWrite & { tabId: string }) | null>(null);

@@ -60,6 +60,8 @@ function mergeWithLocalMirror(serverList: DbConnection[], localList: DbConnectio
 		return {
 			...serverConn,
 			username: local.username || serverConn.username,
+			// schema 只在本地镜像里：dbx-mcp 连接配置不带它，但对象浏览需要它当默认 scope。
+			schema: local.schema ?? serverConn.schema,
 			ssl: local.ssl ?? serverConn.ssl,
 			read_only: local.read_only ?? serverConn.read_only,
 			is_production: local.is_production ?? serverConn.is_production,

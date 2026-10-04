@@ -9,13 +9,14 @@
  */
 
 import { useState, type JSX } from "react";
-import { useWorkbench, type TreeNode as TreeNodeType } from "./workbench-context";
+import { useWorkbench } from "../hooks/use-workbench";
+import type { TreeNode } from "../../../domain/tree-node-key";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 import { sendConnectionToAi, sendTableToAi } from "../../../shared/ai/send-context";
 
 interface Props {
-	node: TreeNodeType;
+	node: TreeNode;
 	depth: number;
 	connectionName?: string;
 	schema?: string;
@@ -39,7 +40,10 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	const active = node.kind === "connection" && state.activeConnectionName === connectionName;
 
-	const qualifiedName = schema ? `${schema}.${node.label}` : node.label;
+	/** schema 节点本身的名字就是 schema，展开时用它当 scope。 */
+	const childScope = node.kind === "schema" ? node.label : schema;
+
+	const qualifiedName = childScope ? `${childScope}.${node.label}` : node.label;
 
 	function expand(): void {
 		dispatch({ type: "toggleNode", key: node.key });
@@ -47,7 +51,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	async function ensureChildren(): Promise<void> {
 		if (!hasLoadedChildren) {
-			await loadNodeChildren(node.key, connectionName ?? node.label, { schema });
+			await loadNodeChildren(node.key, connectionName ?? node.label, { schema: childScope });
 		}
 	}
 
@@ -73,13 +77,17 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			activateConnection();
 			void ensureChildren();
 			if (!isExpanded) expand();
+		} else if (node.kind === "schema") {
+			// schema 节点只做展开/折叠：它本身不是可查询对象。
+			void ensureChildren();
+			if (!isExpanded) expand();
 		} else if (node.kind === "table") {
 			if (!connectionName) return;
 			dispatch({
 				type: "selectRightTable",
-				selection: { connectionName, tableName: node.label, schema },
+				selection: { connectionName, tableName: node.label, schema: childScope },
 			});
-			void loadNodeChildren(node.key, connectionName, { schema });
+			void loadNodeChildren(node.key, connectionName, { schema: childScope });
 		}
 	}
 
@@ -103,9 +111,9 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (!connectionName) return;
 		dispatch({
 			type: "selectRightTable",
-			selection: { connectionName, tableName: node.label, schema },
+			selection: { connectionName, tableName: node.label, schema: childScope },
 		});
-		void loadNodeChildren(node.key, connectionName, { schema });
+		void loadNodeChildren(node.key, connectionName, { schema: childScope });
 	}
 
 	function countTable(): void {
@@ -149,6 +157,32 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			});
 			return;
 		}
+if (node.kind === "schema") {
+			setMenu({
+				x: e.clientX,
+				y: e.clientY,
+				items: [
+					{
+						type: "item",
+						label: isExpanded ? "折叠" : "展开表",
+						icon: isExpanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
+						onClick: () => {
+							void ensureChildren();
+							if (!isExpanded) expand();
+							else dispatch({ type: "toggleNode", key: node.key });
+						},
+					},
+					{ type: "separator" },
+					{
+						type: "item",
+						label: "复制 Schema 名",
+						icon: "icon-[lucide--copy]",
+						onClick: () => void navigator.clipboard.writeText(node.label).catch(() => {}),
+					},
+				],
+			});
+			return;
+		}
 		if (node.kind === "table" && connectionName) {
 			setMenu({
 				x: e.clientX,
@@ -162,7 +196,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						type: "item",
 						label: "发送到 AI 分析",
 						icon: "icon-[lucide--sparkles]",
-						onClick: () => sendTableToAi({ connectionName, schema, table: node.label }),
+						onClick: () => sendTableToAi({ connectionName, schema: childScope, table: node.label }),
 					},
 					{
 						type: "item",
@@ -202,7 +236,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				onContextMenu={handleContextMenu}
 				tabIndex={0}
 			>
-				{(node.kind === "connection" || node.kind === "table") && (
+				{(node.kind === "connection" || node.kind === "schema" || node.kind === "table") && (
 					<span
 						onClick={(e) => {
 							e.stopPropagation();
@@ -215,6 +249,9 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 					</span>
 				)}
 				{node.kind === "connection" && <ConnectionIcon dbType={node.dbType} status={statusDot} />}
+				{node.kind === "schema" && (
+					<span className="icon-[lucide--layers] h-3 w-3 shrink-0 text-sky-400/70" />
+				)}
 				{node.kind === "table" && (
 					<span
 						className={`h-3 w-3 shrink-0 ${node.tableKind === "VIEW" ? "icon-[lucide--eye-off] text-sky-400/70" : "icon-[lucide--table-2] text-emerald-400/70"}`}
@@ -236,7 +273,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							node={c}
 							depth={depth + 1}
 							connectionName={connectionName ?? (node.kind === "connection" ? node.label : undefined)}
-							schema={schema}
+							schema={childScope}
 						/>
 					))}
 				</div>

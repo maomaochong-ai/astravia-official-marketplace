@@ -9,7 +9,9 @@
 
 // 0.1.1：修复第三轮审计的 B1/B2/B3（字符串感知剥离、打开前头校验、密钥缺失拒绝启动）。
 // 产物字节变了就必须抬版本，否则宿主不会重装已有版本（见 scripts/build-engine.mjs）。
-export const ENGINE_VERSION = "0.0.16";
+// 0.0.18：dbx_execute_query 传 max_rows；写 / DDL 统一走自研驱动（dbx-mcp 子进程永久零提权）；
+// 新增 POST /schemas；dbx-mcp /mcp 端点的工具错误改回 JSON-RPC error。
+export const ENGINE_VERSION = "0.0.18";
 export const PROTOCOL_VERSION = 1;
 
 /** 请求体上限：与宿主 16MB 响应上限错开，留足序列化余量。 */
@@ -19,20 +21,24 @@ export const MAX_ROW_LIMIT = 5_000;
 /** 单请求执行预算上限（宿主 ctx.services.request 硬上限 5min）。 */
 export const MAX_TIMEOUT_MS = 300_000;
 
-/** 错误码 → HTTP 状态；未登记的码一律 500。 */
+/**
+ * 错误码 → HTTP 状态；未登记的码一律 500。
+ * 只登记真正会被抛出的码 —— 挂一个从不抛出的码会让人误以为该场景有保护。
+ */
 const STATUS_BY_CODE = Object.freeze({
   BAD_REQUEST: 400,
   UNAUTHORIZED: 401,
   NOT_FOUND: 404,
   METHOD_NOT_ALLOWED: 405,
   PAYLOAD_TOO_LARGE: 413,
+  // 写闸门：未确认 → SQL_BLOCKED（在 router 里抛，见 request-router /query）
   WRITE_BLOCKED: 403,
-  DDL_BLOCKED: 403,
   CONFIRM_MISMATCH: 403,
-  PROD_WRITE_BLOCKED: 403,
+  WRITE_UNSUPPORTED: 501,
   DRIVER_UNSUPPORTED: 501,
   DRIVER_ERROR: 502,
   CONNECTION_ERROR: 502,
+  DBX_MCP_ERROR: 502,
   TIMEOUT: 504,
   INTERNAL: 500,
 });
