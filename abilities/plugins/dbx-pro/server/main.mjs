@@ -95840,6 +95840,24 @@ function toDbxAddParams(body) {
 function createRouter({ auth, now = () => Date.now() } = {}) {
   if (!auth) throw new Error("createRouter \u9700\u8981 auth");
   const mcpClient = () => getDbxMcpClient();
+  async function resolveWriteConnSpec(connectionName, connSpec) {
+    const base = { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType };
+    let authoritative = null;
+    try {
+      const result = await mcpClient().callTool("dbx_list_connections", {});
+      authoritative = parseConnections(textOf(result)).find((c) => c.name === connectionName) ?? null;
+    } catch {
+      authoritative = null;
+    }
+    if (!authoritative) return base;
+    return {
+      ...base,
+      db_type: base.db_type || authoritative.type,
+      host: base.host || authoritative.host,
+      port: base.port || authoritative.port,
+      database: base.database || authoritative.database
+    };
+  }
   const routeDefs = [
     // === 健康检查 ===
     ["/health", "GET", false, async () => {
@@ -95981,10 +95999,8 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
         }
         let writeResult;
         try {
-          writeResult = await executeWrite(
-            { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType },
-            sql
-          );
+          const resolvedSpec = await resolveWriteConnSpec(connectionName, connSpec);
+          writeResult = await executeWrite(resolvedSpec, sql);
         } catch (e) {
           if (e?.engineError) throw e;
           throw engineError(e?.code ?? "WRITE_FAILED", `\u5199\u64CD\u4F5C\u6267\u884C\u5931\u8D25: ${e?.message ?? String(e)}`);

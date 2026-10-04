@@ -13,7 +13,11 @@ import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
-import { buildConnectionPrompt, buildTablePrompt } from "../../../shared/ai/send-context";
+import {
+	buildConnectionPrompt,
+	buildTablePrompt,
+	type SelectedNodeInfo,
+} from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 
 interface Props {
@@ -26,7 +30,16 @@ interface Props {
 let querySeq = 0;
 
 export function ConnectionNode({ node, depth, connectionName, schema }: Props): JSX.Element {
-	const { state, dispatch, loadNodeChildren, openPreviewTab, settings } = useWorkbench();
+	const {
+		state,
+		dispatch,
+		loadNodeChildren,
+		openPreviewTab,
+		settings,
+		selectionMode,
+		selectedNodes,
+		toggleNodeSelection,
+	} = useWorkbench();
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
 	const [aiDialogOpen, setAiDialogOpen] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState("");
@@ -47,6 +60,23 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	const childScope = node.kind === "schema" ? node.label : schema;
 
 	const qualifiedName = childScope ? `${childScope}.${node.label}` : node.label;
+
+	// ─── 多选 ─────────────────────────────────────────────
+	const isSelectable =
+		selectionMode &&
+		(node.kind === "connection" || node.kind === "schema" || node.kind === "table");
+	const isNodeSelected = selectedNodes.has(node.key);
+	/** 该节点在多选中的结构化信息。 */
+	const nodeInfo: SelectedNodeInfo = {
+		kind: node.kind as SelectedNodeInfo["kind"],
+		connectionName: connectionName ?? node.label,
+		// table 节点带上所属 schema；schema / connection 不需要。
+		schema: node.kind === "table" ? childScope : undefined,
+		label: node.label,
+	};
+	function toggleSelect(): void {
+		toggleNodeSelection(node.key, nodeInfo);
+	}
 
 	function expand(): void {
 		dispatch({ type: "toggleNode", key: node.key });
@@ -76,6 +106,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	}
 
 	function handleClick(): void {
+		// 多选模式：点行切换勾选，不执行预览 / 展开等原动作。
+		if (isSelectable) {
+			toggleSelect();
+			return;
+		}
 		if (node.kind === "connection") {
 			activateConnection();
 			void ensureChildren();
@@ -98,6 +133,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	}
 
 	function handleDoubleClick(): void {
+		// 多选模式：双击也只用于勾选，不触发新建 / 预览。
+		if (isSelectable) return;
 		if (node.kind === "connection") {
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
@@ -256,6 +293,23 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				onContextMenu={handleContextMenu}
 				tabIndex={0}
 			>
+					{isSelectable && (
+					<span
+						onClick={(e) => {
+							e.stopPropagation();
+							toggleSelect();
+						}}
+						className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border"
+						style={
+							isNodeSelected
+								? { backgroundColor: "var(--foreground)", borderColor: "var(--foreground)", color: "var(--background)" }
+								: { borderColor: "var(--dbx-line)", color: "transparent" }
+						}
+						aria-hidden="true"
+					>
+						<span className="icon-[lucide--check] h-2.5 w-2.5" />
+					</span>
+				)}
 				{(node.kind === "connection" || node.kind === "schema" || node.kind === "table") && (
 					<span
 						onClick={(e) => {

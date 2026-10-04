@@ -37,6 +37,7 @@ import {
 	toQueryResult,
 } from "../../../shared/services/engine-client";
 import { WriteConfirmDialog, type PendingWrite } from "../components/write-confirm-dialog";
+import type { SelectedNodeInfo } from "../../../shared/ai/send-context";
 import {
 	connectionFromNodeKey,
 	connectionNodeKey,
@@ -98,6 +99,10 @@ export interface WorkbenchState {
 	rightPanelTable: RightPanelSelection | null;
 	connectionStatuses: Record<string, "idle" | "ok" | "error" | "running">;
 	errorBanner: string | null;
+	/** 连接树多选模式（用于批量选库 / 表作为 AI 上下文）。 */
+	selectionMode: boolean;
+	/** 选中节点：key → 节点信息（连接 / schema / 表）。 */
+	selectedNodes: Map<string, SelectedNodeInfo>;
 }
 
 export interface EngineColumn {
@@ -130,7 +135,10 @@ export type WorkbenchAction =
 	| { type: "updateTab"; id: string; patch: Partial<EditorTab> }
 	| { type: "renameTab"; id: string; label: string }
 	| { type: "setError"; message: string | null }
-	| { type: "setConnectionStatus"; name: string; status: WorkbenchState["connectionStatuses"][string] };
+	| { type: "setConnectionStatus"; name: string; status: WorkbenchState["connectionStatuses"][string] }
+	| { type: "toggleSelectionMode"; enabled?: boolean }
+	| { type: "toggleNodeSelection"; key: string; info: SelectedNodeInfo }
+	| { type: "clearNodeSelection" };
 
 // ─── 初始状态 ─────────────────────────────────────────────
 
@@ -157,6 +165,8 @@ function createInitialState(): WorkbenchState {
 		rightPanelTable: null,
 		connectionStatuses: {},
 		errorBanner: null,
+		selectionMode: false,
+		selectedNodes: new Map(),
 	};
 }
 
@@ -269,6 +279,26 @@ function reducer(state: WorkbenchState, action: WorkbenchAction): WorkbenchState
 				connectionStatuses: { ...state.connectionStatuses, [action.name]: action.status },
 			};
 
+		case "toggleSelectionMode": {
+			const enabled = action.enabled ?? !state.selectionMode;
+			// 关闭多选时清空选中集合，避免下次开启残留。
+			return {
+				...state,
+				selectionMode: enabled,
+				selectedNodes: enabled ? state.selectedNodes : new Map(),
+			};
+		}
+
+		case "toggleNodeSelection": {
+			const selected = new Map(state.selectedNodes);
+			if (selected.has(action.key)) selected.delete(action.key);
+			else selected.set(action.key, action.info);
+			return { ...state, selectedNodes: selected };
+		}
+
+		case "clearNodeSelection":
+			return { ...state, selectedNodes: new Map() };
+
 		default:
 			return state;
 	}
@@ -313,6 +343,13 @@ interface WorkbenchContextValue {
 
 	/** 清除全部本地数据：连接（含引擎+密文）、历史、设置、密码 secret。 */
 	wipeAllData: () => Promise<void>;
+
+	// ─── 连接树多选 ───
+	selectionMode: boolean;
+	selectedNodes: Map<string, SelectedNodeInfo>;
+	toggleSelectionMode: (enabled?: boolean) => void;
+	toggleNodeSelection: (key: string, info: SelectedNodeInfo) => void;
+	clearNodeSelection: () => void;
 }
 
 const WorkbenchContext = createContext<WorkbenchContextValue | null>(null);
@@ -887,6 +924,13 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			rightView,
 			setRightView,
 			wipeAllData,
+			selectionMode: state.selectionMode,
+			selectedNodes: state.selectedNodes,
+			toggleSelectionMode: (enabled?: boolean) =>
+				dispatch({ type: "toggleSelectionMode", enabled }),
+			toggleNodeSelection: (key: string, info: SelectedNodeInfo) =>
+				dispatch({ type: "toggleNodeSelection", key, info }),
+			clearNodeSelection: () => dispatch({ type: "clearNodeSelection" }),
 		}),
 		[state, settings, history, rightView],
 	);

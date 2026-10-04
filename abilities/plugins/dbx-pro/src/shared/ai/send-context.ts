@@ -39,6 +39,45 @@ export function buildConnectionPrompt({ connectionName, dbType }: AiConnectionCo
 	].join("\n");
 }
 
+/** 多选对象的节点信息（由连接树在勾选时收集）。 */
+export interface SelectedNodeInfo {
+	kind: "connection" | "schema" | "table";
+	connectionName: string;
+	/** schema 名（table 节点所属 schema）。 */
+	schema?: string;
+	/** 节点显示名（连接名 / schema 名 / 表名）。 */
+	label: string;
+}
+
+/**
+ * 构造多选对象的上下文 prompt。
+ * 按连接分组列出选中的 schema / 表引用（精简版，让 AI 自行查看结构，
+ * 与单表 / 连接 prompt 的风格一致，避免一次塞入大量 DDL）。
+ */
+export function buildMultiSelectPrompt(nodes: SelectedNodeInfo[]): string {
+	const groups = new Map<string, SelectedNodeInfo[]>();
+	for (const node of nodes) {
+		if (!groups.has(node.connectionName)) groups.set(node.connectionName, []);
+		groups.get(node.connectionName)!.push(node);
+	}
+	const lines: string[] = ["我在数据库工作台选择了以下对象，请作为本次任务的上下文：", ""];
+	for (const [conn, items] of groups) {
+		lines.push(`连接 @\`${conn}\`：`);
+		for (const it of items) {
+			if (it.kind === "connection") {
+				lines.push("- 整个连接：请先列出它的 schema 与表");
+			} else if (it.kind === "schema") {
+				lines.push(`- 数据库/Schema @\`${it.label}\``);
+			} else {
+				const qualified = it.schema ? `${it.schema}.${it.label}` : it.label;
+				lines.push(`- 表 @\`${qualified}\``);
+			}
+		}
+	}
+	lines.push("", "请先查看上述对象的结构（列、类型、主键），再基于它们回答我后续的问题。");
+	return lines.join("\n");
+}
+
 /** 构造查询结果分析 prompt（精简版，只包含 SQL，不包含结果 JSON）。 */
 export function buildQueryPrompt(connectionName: string, sql: string, _sampleRows?: Record<string, unknown>[]): string {
 	return [

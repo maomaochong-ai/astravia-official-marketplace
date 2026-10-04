@@ -11,6 +11,8 @@ import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import { ConnectionNode } from "./connection-node";
 import { connectionNodeKey, type TreeNode } from "../../../domain/tree-node-key";
+import { buildMultiSelectPrompt } from "../../../shared/ai/send-context";
+import { SendToAiDialog } from "./send-to-ai-dialog";
 
 /** 带原生 tooltip 的小图标按钮（22px 正方形）。 */
 function TooltipButton({
@@ -36,8 +38,24 @@ function TooltipButton({
 }
 
 export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
-	const { state, refreshConnections, dispatch } = useWorkbench();
+	const {
+		state,
+		refreshConnections,
+		dispatch,
+		selectionMode,
+		selectedNodes,
+		toggleSelectionMode,
+		clearNodeSelection,
+	} = useWorkbench();
 	const [query, setQuery] = useState("");
+	const [aiDialogOpen, setAiDialogOpen] = useState(false);
+	const [aiPrompt, setAiPrompt] = useState("");
+
+	/** 把多选对象构建成上下文，打开 AI 对话框确认后发送。 */
+	function sendSelectionToAi(): void {
+		setAiPrompt(buildMultiSelectPrompt(Array.from(selectedNodes.values())));
+		setAiDialogOpen(true);
+	}
 	const needle = query.trim().toLowerCase();
 
 	function expandAll(): void {
@@ -91,6 +109,14 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 			</TooltipButton>
 			<TooltipButton onClick={() => { void refreshConnections(); }} title="刷新连接">
 				<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+			</TooltipButton>
+			<TooltipButton
+				onClick={() => toggleSelectionMode()}
+				title={selectionMode ? "退出多选" : "多选库 / 表（作为 AI 上下文）"}
+			>
+				<span
+					className={`h-3 w-3 icon-[lucide--list-checks] ${selectionMode ? "text-foreground" : ""}`}
+				/>
 			</TooltipButton>
 			{onCollapse && (
 				<TooltipButton onClick={onCollapse} title="收起连接树">
@@ -150,17 +176,56 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 				)}
 			</div>
 
-			{/* 底部状态 */}
-			<div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1 text-[10px] text-muted-foreground/70">
-				{state.activeConnectionName ? (
-					<>
-						<span className="icon-[lucide--activity] h-2.5 w-2.5 text-emerald-500" />
-						<span className="truncate">当前: {state.activeConnectionName}</span>
-					</>
-				) : (
-					<span>未选择连接</span>
-				)}
-			</div>
+			{/* 底部：多选操作条 / 常规状态 */}
+			{selectionMode ? (
+				<div
+					className="flex shrink-0 items-center gap-1 border-t border-border px-2 py-1.5 text-[10.5px]"
+					style={{ backgroundColor: "var(--dbx-surface)" }}
+				>
+					<span className="shrink-0 text-muted-foreground">
+						已选 <span className="font-semibold text-foreground">{selectedNodes.size}</span> 项
+					</span>
+					<span className="min-w-1 flex-1" />
+					<button
+						type="button"
+						onClick={() => clearNodeSelection()}
+						disabled={selectedNodes.size === 0}
+						className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
+					>
+						清空
+					</button>
+					<button
+						type="button"
+						onClick={sendSelectionToAi}
+						disabled={selectedNodes.size === 0}
+						className="flex items-center gap-1 rounded px-2 py-0.5 font-medium disabled:opacity-40"
+						style={{ backgroundColor: "var(--foreground)", color: "var(--background)" }}
+					>
+						<span className="icon-[lucide--send] h-2.5 w-2.5" />
+						发送到 AI
+					</button>
+					<button
+						type="button"
+						onClick={() => toggleSelectionMode(false)}
+						className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
+					>
+						退出
+					</button>
+				</div>
+			) : (
+				<div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1 text-[10px] text-muted-foreground/70">
+					{state.activeConnectionName ? (
+						<>
+							<span className="icon-[lucide--activity] h-2.5 w-2.5 text-emerald-500" />
+							<span className="truncate">当前: {state.activeConnectionName}</span>
+						</>
+					) : (
+						<span>未选择连接</span>
+					)}
+				</div>
+			)}
+
+			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 		</div>
 	);
 }

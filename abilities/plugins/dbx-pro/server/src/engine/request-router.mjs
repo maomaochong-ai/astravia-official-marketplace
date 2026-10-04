@@ -161,7 +161,35 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
 
   const mcpClient = () => getDbxMcpClient();
 
-  // === 路由表（两级 Map：pathname → method → route）===
+  /**
+   * 用引擎里持久化的权威连接元数据补全写配置（database/host/port/db_type）。
+   *
+   * 为什么必须补 database：PostgreSQL 启动协议在客户端不指定 database 时，
+   * 默认用 username 作为库名。前端传入的 connection 若因 state 同步问题缺 database，
+   * 写 DDL 会报 `database "<username>" does not exist`（实测：pgadmin）。
+   * 用户名 / 密码仍以前端（加密 vault）为准，dbx_list_connections 也不含这些敏感字段。
+   */
+  async function resolveWriteConnSpec(connectionName, connSpec) {
+    const base = { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType };
+    let authoritative = null;
+    try {
+      const result = await mcpClient().callTool("dbx_list_connections", {});
+      authoritative =
+        parseConnections(textOf(result)).find((c) => c.name === connectionName) ?? null;
+    } catch {
+      authoritative = null; // 清单不可用时仅用前端值
+    }
+    if (!authoritative) return base;
+    return {
+      ...base,
+      db_type: base.db_type || authoritative.type,
+      host: base.host || authoritative.host,
+      port: base.port || authoritative.port,
+      database: base.database || authoritative.database,
+    };
+  }
+
+  // === 路由表（两级 Map：pathname → method → handler）===
   const routeDefs = [
     // === 健康检查 ===
     ["/health", "GET", false, async () => {
@@ -327,10 +355,8 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         }
         let writeResult;
         try {
-          writeResult = await executeWrite(
-            { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType },
-            sql,
-          );
+          const resolvedSpec = await resolveWriteConnSpec(connectionName, connSpec);
+          writeResult = await executeWrite(resolvedSpec, sql);
         } catch (e) {
           if (e?.engineError) throw e;
           throw engineError(e?.code ?? "WRITE_FAILED", `写操作执行失败: ${e?.message ?? String(e)}`);
