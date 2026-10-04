@@ -25,13 +25,34 @@ export function stripSqlComments(sql) {
   let i = 0;
   let inLine = false;
   let inBlock = false;
+  // 字符串字面量跟踪：引号内的 -- / ; /* 都是数据。
+  let quote = null; // "'" | '"' | null
   while (i < sql.length) {
     const ch = sql[i];
     const next = sql[i + 1];
-    if (!inLine && !inBlock && ch === "-" && next === "-") { inLine = true; i += 2; continue; }
-    if (!inLine && !inBlock && ch === "/" && next === "*") { inBlock = true; i += 2; continue; }
-    if (inLine) { if (ch === "\n") inLine = false; else { i += 1; continue; } }
-    if (inBlock) { if (ch === "*" && next === "/") { inBlock = false; i += 2; continue; } i += 1; continue; }
+    if (inLine) {
+      if (ch === "\n") { inLine = false; out += ch; }
+      i += 1;
+      continue;
+    }
+    if (inBlock) {
+      if (ch === "*" && next === "/") { inBlock = false; i += 2; continue; }
+      i += 1;
+      continue;
+    }
+    if (quote) {
+      out += ch;
+      if (ch === quote) {
+        // SQL 标准：连续两个引号是字面引号，不算结束。
+        if (next === quote) { out += next; i += 2; continue; }
+        quote = null;
+      }
+      i += 1;
+      continue;
+    }
+    if (ch === "'" || ch === '"') { quote = ch; out += ch; i += 1; continue; }
+    if (ch === "-" && next === "-") { inLine = true; i += 2; continue; }
+    if (ch === "/" && next === "*") { inBlock = true; i += 2; continue; }
     out += ch; i += 1;
   }
   return out;

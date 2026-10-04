@@ -12,6 +12,7 @@
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
+import { pathToFileURL } from "node:url";
 import { createRouter } from "./engine/request-router.mjs";
 import { disposeDbxMcpClient, getDbxMcpClient } from "./engine/dbx-mcp-client.mjs";
 import {
@@ -258,4 +259,11 @@ async function main() {
   process.on("SIGINT", () => void shutdown("SIGINT"));
 }
 
-main();
+/**
+ * 入口保护：只有被宿主直接 spawn 时才启动服务；作为模块被 import（测试）不启动。
+ */
+function isDirectRun() {
+  return Boolean(process.argv[1]) && pathToFileURL(process.argv[1]).href === import.meta.url;
+}
+
+if (isDirectRun()) main();

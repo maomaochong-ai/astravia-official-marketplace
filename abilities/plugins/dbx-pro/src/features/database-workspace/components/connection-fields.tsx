@@ -23,8 +23,8 @@ export function ConnectionFields({ conn, onChange, onTypeChange, groupedManifest
 	const isFileBased = isFileBasedDbType(conn.db_type);
 	const [showPassword, setShowPassword] = useState(false);
 	const manifestEntry = useMemo(
-		() => DB_TYPE_MANIFEST.find((e) => e.dbType === conn.dbType),
-		[conn.dbType],
+		() => DB_TYPE_MANIFEST.find((e) => e.dbType === conn.db_type),
+		[conn.db_type],
 	);
 
 	return (

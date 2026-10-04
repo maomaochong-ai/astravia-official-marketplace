@@ -25,7 +25,7 @@ import pg from "pg";
 
 /** dbType → 驱动家族。 */
 export function familyOf(dbType) {
-	const type = String(dbType ?? "").toLowerCase();
+	const type = String(dbType ?? "").trim().toLowerCase();
 	if (/^(postgres|pg|redhift|greenplum|cockroach)/.test(type)) return "pg";
 	if (/^(mysql|maria|tidb|starrocks|doris|oceanbase$|gauss.*mysql)/.test(type)) return "mysql";
 	if (/^(mssql|sqlserver)/.test(type)) return "mssql";

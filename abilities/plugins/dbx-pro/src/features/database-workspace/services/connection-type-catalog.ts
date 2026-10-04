@@ -5,8 +5,8 @@
  * 供连接字段表单和连接编辑 hook 共同使用。
  */
 
-import { DB_TYPE_MANIFEST, type DbConnection, type DbType, type DbTypeManifestEntry } from "../../../domain/connection-config";
-import { genUuid } from "../../../domain/dbx-storage";
+import { DB_TYPE_MANIFEST, type DbConnection, type DbType, type DbTypeManifestEntry } from "../../../domain/connection-config.ts";
+import { genUuid } from "../../../domain/dbx-storage.ts";
 
 export interface DbCategory {
 	/** 显示名称 */

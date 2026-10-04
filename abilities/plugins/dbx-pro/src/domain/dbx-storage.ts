@@ -10,15 +10,15 @@
  */
 
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
-import type { DbConnection } from "./connection-config";
-import { getSecrets, getStorage } from "../runtime-contract";
+import type { DbConnection } from "./connection-config.ts";
+import { getSecrets, getStorage } from "../runtime-contract.ts";
 import {
 	engineListConnections,
 	engineAddConnection,
 	engineRemoveConnection,
 	EngineClientError,
 	EngineConnectionSummary,
-} from "../shared/services/engine-client";
+} from "../shared/services/engine-client.ts";
 
 const STORE_PATH = "connections.json";
 export const PASSWORD_PREFIX = "db-password:";

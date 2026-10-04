@@ -7,7 +7,7 @@
  * 所有字段都做「宽容解析 + 夹逼」，坏值不会让面板崩：读不到就用默认值。
  */
 
-import { clampInt, HISTORY_LIMIT_DEFAULT, HISTORY_LIMIT_MAX, HISTORY_LIMIT_MIN } from "./query-history";
+import { clampInt, HISTORY_LIMIT_DEFAULT, HISTORY_LIMIT_MAX, HISTORY_LIMIT_MIN } from "./query-history.ts";
 
 export interface WorkbenchSettings {
 	schemaVersion: 1;
