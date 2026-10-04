@@ -10,7 +10,7 @@ import { ResultGrid } from "./result-grid";
 import { useWorkbench } from "../hooks/use-workbench";
 
 export function ResultPanel(): JSX.Element {
-	const { state, cancelExecution } = useWorkbench();
+	const { state, cancelExecution, goToResultPage, settings } = useWorkbench();
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const result = activeTab?.result;
 	const [elapsed, setElapsed] = useState(0);
@@ -29,8 +29,9 @@ export function ResultPanel(): JSX.Element {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background overflow-hidden">
 			{/* 结果 / 加载 / 错误视图 */}
-			<div className="min-h-0 flex-1 overflow-hidden">
-				{activeTab?.isRunning ? (
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				{/* 翻页时保留网格：只把分页栏置为「取数中」，不整屏回加载环 */}
+				{activeTab?.isRunning && !result ? (
 					<div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
 						<span className="icon-[lucide--loader] h-8 w-8 animate-spin text-warning" />
 						<p className="text-[12px]">
@@ -53,7 +54,18 @@ export function ResultPanel(): JSX.Element {
 							rows={result.rows}
 							totalRows={result.rowCount}
 							connectionName={activeTab?.connectionName ?? undefined}
-							sql={activeTab?.sql}
+							sql={result.ranSql ?? activeTab?.sql}
+							serverPaged={result.pageable === true}
+							serverPage={result.serverPage}
+							serverPageSize={activeTab?.pageSize ?? settings.rowLimit}
+							serverTotalCount={result.totalCount}
+							pageLoading={activeTab?.isRunning === true}
+							onPageChange={(pageIndex) => {
+								if (activeTab) void goToResultPage(activeTab.id, pageIndex);
+							}}
+							onPageSizeChange={(pageSize) => {
+								if (activeTab) void goToResultPage(activeTab.id, 0, pageSize);
+							}}
 						/>
 					) : (
 						<div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">

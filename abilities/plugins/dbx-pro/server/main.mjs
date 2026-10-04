@@ -6061,11 +6061,11 @@ var require_log = __commonJS({
       log: () => log
     });
     module.exports = __toCommonJS2(log_exports);
-    var import_node_os3 = __require("node:os");
+    var import_node_os4 = __require("node:os");
     var import_node_util6 = __toESM2(__require("node:util"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function log(message, ...args) {
-      import_node_process8.default.stderr.write(`${import_node_util6.default.format(message, ...args)}${import_node_os3.EOL}`);
+      import_node_process8.default.stderr.write(`${import_node_util6.default.format(message, ...args)}${import_node_os4.EOL}`);
     }
   }
 });
@@ -24949,14 +24949,14 @@ var require_userAgentPlatform = __commonJS({
       setPlatformSpecificData: () => setPlatformSpecificData2
     });
     module.exports = __toCommonJS2(userAgentPlatform_exports);
-    var import_node_os3 = __toESM2(__require("node:os"));
+    var import_node_os4 = __toESM2(__require("node:os"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function getHeaderName() {
       return "User-Agent";
     }
     async function setPlatformSpecificData2(map) {
       if (import_node_process8.default && import_node_process8.default.versions) {
-        const osInfo = `${import_node_os3.default.type()} ${import_node_os3.default.release()}; ${import_node_os3.default.arch()}`;
+        const osInfo = `${import_node_os4.default.type()} ${import_node_os4.default.release()}; ${import_node_os4.default.arch()}`;
         if (import_node_process8.default.versions.bun) {
           map.set("Bun", `${import_node_process8.default.versions.bun} (${osInfo})`);
         } else if (import_node_process8.default.versions.deno) {
@@ -28660,14 +28660,14 @@ var require_userAgentPlatform2 = __commonJS({
       setPlatformSpecificData: () => setPlatformSpecificData2
     });
     module.exports = __toCommonJS2(userAgentPlatform_exports);
-    var import_node_os3 = __toESM2(__require("node:os"));
+    var import_node_os4 = __toESM2(__require("node:os"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function getHeaderName() {
       return "User-Agent";
     }
     async function setPlatformSpecificData2(map) {
       if (import_node_process8.default && import_node_process8.default.versions) {
-        const osInfo = `${import_node_os3.default.type()} ${import_node_os3.default.release()}; ${import_node_os3.default.arch()}`;
+        const osInfo = `${import_node_os4.default.type()} ${import_node_os4.default.release()}; ${import_node_os4.default.arch()}`;
         if (import_node_process8.default.versions.bun) {
           map.set("Bun", `${import_node_process8.default.versions.bun} (${osInfo})`);
         } else if (import_node_process8.default.versions.deno) {
@@ -34627,8 +34627,8 @@ var require_resolveExecutable = __commonJS({
       resolveWindowsCommandInterpreter: () => resolveWindowsCommandInterpreter
     });
     module.exports = __toCommonJS2(resolveExecutable_exports);
-    var import_node_fs5 = __require("node:fs");
-    var import_node_path3 = __toESM2(__require("node:path"));
+    var import_node_fs6 = __require("node:fs");
+    var import_node_path4 = __toESM2(__require("node:path"));
     var import_node_url4 = __require("node:url");
     var import_errors = require_errors3();
     var WINDOWS_NATIVE_EXTENSIONS = [".exe", ".com"];
@@ -34676,7 +34676,7 @@ var require_resolveExecutable = __commonJS({
     }
     function normalizeCwd(cwd) {
       const cwdPath = cwd instanceof URL ? (0, import_node_url4.fileURLToPath)(cwd) : cwd;
-      return import_node_path3.default.resolve(cwdPath ?? process.cwd());
+      return import_node_path4.default.resolve(cwdPath ?? process.cwd());
     }
     function createProcessContext(options = {}) {
       if (options.allowWindowsBatchFiles !== void 0 && typeof options.allowWindowsBatchFiles !== "boolean") {
@@ -34692,11 +34692,11 @@ var require_resolveExecutable = __commonJS({
     }
     function isExecutableFile(filePath) {
       try {
-        if (!(0, import_node_fs5.statSync)(filePath).isFile()) {
+        if (!(0, import_node_fs6.statSync)(filePath).isFile()) {
           return false;
         }
         if (process.platform !== "win32") {
-          (0, import_node_fs5.accessSync)(filePath, import_node_fs5.constants.X_OK);
+          (0, import_node_fs6.accessSync)(filePath, import_node_fs6.constants.X_OK);
         }
         return true;
       } catch {
@@ -34710,7 +34710,7 @@ var require_resolveExecutable = __commonJS({
       return WINDOWS_BATCH_EXTENSIONS.some((candidate) => candidate === extension);
     }
     function resolveWindowsCandidate(candidate, allowWindowsBatchFiles) {
-      const extension = import_node_path3.default.extname(candidate).toLowerCase();
+      const extension = import_node_path4.default.extname(candidate).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
@@ -34737,7 +34737,7 @@ var require_resolveExecutable = __commonJS({
       const pathValue = getEnvironmentValue(context.env, "PATH") ?? "";
       const paths = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const entry of pathValue.split(import_node_path3.default.delimiter)) {
+      for (const entry of pathValue.split(import_node_path4.default.delimiter)) {
         let candidate = entry;
         if (process.platform === "win32") {
           candidate = candidate.trim();
@@ -34745,10 +34745,10 @@ var require_resolveExecutable = __commonJS({
             candidate = candidate.slice(1, -1);
           }
         }
-        if (!candidate || !import_node_path3.default.isAbsolute(candidate)) {
+        if (!candidate || !import_node_path4.default.isAbsolute(candidate)) {
           continue;
         }
-        const normalized = import_node_path3.default.resolve(candidate);
+        const normalized = import_node_path4.default.resolve(candidate);
         const key = process.platform === "win32" ? normalized.toLowerCase() : normalized;
         if (!seen.has(key)) {
           seen.add(key);
@@ -34774,8 +34774,8 @@ var require_resolveExecutable = __commonJS({
     }
     function resolveExecutableWithContext(command, context) {
       validateCommand(command);
-      if (hasPathSeparator(command) || import_node_path3.default.isAbsolute(command)) {
-        const candidate = import_node_path3.default.resolve(context.cwd, command);
+      if (hasPathSeparator(command) || import_node_path4.default.isAbsolute(command)) {
+        const candidate = import_node_path4.default.resolve(context.cwd, command);
         if (process.platform === "win32") {
           return resolveWindowsCandidate(candidate, context.allowWindowsBatchFiles);
         }
@@ -34784,20 +34784,20 @@ var require_resolveExecutable = __commonJS({
       const searchPaths = getSearchPaths(context);
       if (process.platform !== "win32") {
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path3.default.join(searchPath, command);
+          const candidate = import_node_path4.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
         }
         return void 0;
       }
-      const extension = import_node_path3.default.extname(command).toLowerCase();
+      const extension = import_node_path4.default.extname(command).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(context.allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
         }
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path3.default.join(searchPath, command);
+          const candidate = import_node_path4.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34806,7 +34806,7 @@ var require_resolveExecutable = __commonJS({
       }
       for (const searchPath of searchPaths) {
         for (const nativeExtension of WINDOWS_NATIVE_EXTENSIONS) {
-          const candidate = import_node_path3.default.join(searchPath, command + nativeExtension);
+          const candidate = import_node_path4.default.join(searchPath, command + nativeExtension);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34815,7 +34815,7 @@ var require_resolveExecutable = __commonJS({
       if (context.allowWindowsBatchFiles) {
         for (const searchPath of searchPaths) {
           for (const batchExtension of WINDOWS_BATCH_EXTENSIONS) {
-            const candidate = import_node_path3.default.join(searchPath, command + batchExtension);
+            const candidate = import_node_path4.default.join(searchPath, command + batchExtension);
             if (isExecutableFile(candidate)) {
               return candidate;
             }
@@ -34829,9 +34829,9 @@ var require_resolveExecutable = __commonJS({
     }
     function canonicalizeWindowsPath(filePath) {
       try {
-        return import_node_fs5.realpathSync.native(filePath).toLowerCase();
+        return import_node_fs6.realpathSync.native(filePath).toLowerCase();
       } catch {
-        return import_node_path3.default.resolve(filePath).toLowerCase();
+        return import_node_path4.default.resolve(filePath).toLowerCase();
       }
     }
     function isWindowsDriveAbsolutePath(filePath) {
@@ -34845,7 +34845,7 @@ var require_resolveExecutable = __commonJS({
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
         });
       }
-      const executablePath = import_node_path3.default.join(systemRoot, "System32", "cmd.exe");
+      const executablePath = import_node_path4.default.join(systemRoot, "System32", "cmd.exe");
       if (!isExecutableFile(executablePath)) {
         throw new import_errors.ProcessError("The Windows command interpreter could not be found.", {
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
@@ -34911,7 +34911,7 @@ var require_normalizeCommand = __commonJS({
       normalizeCommand: () => normalizeCommand
     });
     module.exports = __toCommonJS2(normalizeCommand_exports);
-    var import_node_path3 = __toESM2(__require("node:path"));
+    var import_node_path4 = __toESM2(__require("node:path"));
     var import_errors = require_errors3();
     var import_resolveExecutable = require_resolveExecutable();
     var UNSAFE_BATCH_ARGUMENT = /[%!^&|<>()]/;
@@ -34975,7 +34975,7 @@ var require_normalizeCommand = __commonJS({
           windowsVerbatimArguments: false
         };
       }
-      const extension = import_node_path3.default.extname(resolvedPath).toLowerCase();
+      const extension = import_node_path4.default.extname(resolvedPath).toLowerCase();
       if (extension === ".exe" || extension === ".com") {
         return {
           executable: resolvedPath,
@@ -87038,7 +87038,7 @@ var require_named_placeholders = __commonJS({
         }
         return s;
       }
-      function join2(tree) {
+      function join3(tree) {
         if (tree.length === 1) {
           return tree;
         }
@@ -87064,7 +87064,7 @@ var require_named_placeholders = __commonJS({
         if (cache && (tree = cache.get(query))) {
           return toArrayParams(tree, paramsObj);
         }
-        tree = join2(parse(query));
+        tree = join3(parse(query));
         if (cache) {
           cache.set(query, tree);
         }
@@ -90756,7 +90756,7 @@ var require_utils8 = __commonJS({
     var nodeCrypto = __require("crypto");
     module.exports = {
       postgresMd5PasswordHash,
-      randomBytes,
+      randomBytes: randomBytes2,
       deriveKey,
       sha256,
       hashByName,
@@ -90766,7 +90766,7 @@ var require_utils8 = __commonJS({
     var webCrypto = nodeCrypto.webcrypto || globalThis.crypto;
     var subtleCrypto = webCrypto.subtle;
     var textEncoder = new TextEncoder();
-    function randomBytes(length) {
+    function randomBytes2(length) {
       return webCrypto.getRandomValues(Buffer.alloc(length));
     }
     async function md5(string) {
@@ -94897,12 +94897,15 @@ var require_lib7 = __commonJS({
 });
 
 // server/src/http-server.mjs
-import { createHash, timingSafeEqual } from "node:crypto";
+import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { chmodSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { join as join2 } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
 // server/src/engine/protocol.mjs
-var ENGINE_VERSION = "0.0.18";
+var ENGINE_VERSION = "0.0.19";
 var PROTOCOL_VERSION = 1;
 var MAX_BODY_BYTES = 8 * 1024 * 1024;
 var DEFAULT_ROW_LIMIT = 500;
@@ -95210,8 +95213,10 @@ var DbxMcpClient = class {
   }
 };
 var client = null;
+var lastOptions = null;
 function getDbxMcpClient(options) {
-  if (!client) client = new DbxMcpClient(options);
+  if (options) lastOptions = options;
+  if (!client) client = new DbxMcpClient(options ?? lastOptions ?? void 0);
   return client;
 }
 async function disposeDbxMcpClient() {
@@ -95363,6 +95368,70 @@ function classifyQuery(sql) {
   }
   const requiresConfirmation = kind !== "read";
   return { kind, kinds, statements, requiresConfirmation };
+}
+
+// server/src/engine/sql-pagination.mjs
+var PAGED_DIALECTS = /* @__PURE__ */ new Set([
+  // MySQL 系（含 MySQL 协议的国产/云库）
+  "mysql",
+  "mariadb",
+  "starrocks",
+  "doris",
+  "databend",
+  "oceanbase",
+  // PostgreSQL 系（含 fork）
+  "postgres",
+  "postgresql",
+  "pg",
+  "aurora-postgresql",
+  "redshift",
+  "kingbase",
+  "highgo",
+  "vastbase",
+  "gaussdb",
+  "opengauss",
+  // SQLite 系
+  "sqlite",
+  "cloudflare-d1",
+  "duckdb",
+  "rqlite",
+  "turso",
+  // 标准 LIMIT/OFFSET
+  "clickhouse",
+  "bigquery",
+  "snowflake",
+  "trino",
+  "prestosql",
+  // OFFSET/FETCH（见 buildPagedSql）
+  "mssql",
+  "sqlserver"
+]);
+function supportsPagination(dbType) {
+  return PAGED_DIALECTS.has(String(dbType ?? "").trim().toLowerCase());
+}
+function innerSql(sql) {
+  return sql.trim().replace(/;+\s*$/, "");
+}
+function canPaginate(sql) {
+  const statements = splitStatements(sql);
+  if (statements.length !== 1) return false;
+  const s = statements[0];
+  if (!/^(SELECT|WITH)\b/i.test(s)) return false;
+  if (/\b(?:LIMIT|OFFSET|FETCH)\b/i.test(s)) return false;
+  if (/\bTOP\s+\d+/i.test(s)) return false;
+  return true;
+}
+function buildPagedSql(sql, dbType, limit, offset) {
+  const inner = innerSql(sql);
+  const type = String(dbType ?? "").trim().toLowerCase();
+  if (type === "mssql" || type === "sqlserver") {
+    return `SELECT * FROM (${inner}) AS _dbx_page ORDER BY (SELECT NULL) OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
+  }
+  return `SELECT * FROM (${inner}) AS _dbx_page LIMIT ${limit} OFFSET ${offset}`;
+}
+function buildCountSql(sql) {
+  const inner = innerSql(sql);
+  return `SELECT COUNT(*) AS _dbx_total FROM (${inner}) AS _dbx_count`;
 }
 
 // server/src/write/direct-write.mjs
@@ -95711,7 +95780,7 @@ function clampRowLimit(rowLimit) {
   const value = Number.isFinite(rowLimit) ? Math.trunc(rowLimit) : DEFAULT_ROW_LIMIT;
   return Math.min(Math.max(value, 1), MAX_ROW_LIMIT);
 }
-var DBX_EFFECTIVE_ROW_CAP = 100;
+var DBX_EFFECTIVE_ROW_CAP = 1e3;
 function dbxMaxRows(rowLimit) {
   return Math.min(Math.max(rowLimit, 1), DBX_MAX_ROWS, DBX_EFFECTIVE_ROW_CAP);
 }
@@ -95787,8 +95856,22 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const dbxArgs = toDbxAddParams(body);
       const result = await mcpClient().callTool("dbx_add_connection", dbxArgs);
       const text = extractText(result, "dbx_add_connection");
+      const alreadyExists = /already exists/i.test(text);
+      if (alreadyExists) {
+        const existingList = await mcpClient().callTool("dbx_list_connections", {});
+        const existingText = textOf(existingList);
+        const existing = parseConnections(existingText).find(
+          (c) => c.name.toLowerCase() === body.name.toLowerCase()
+        );
+        return {
+          id: existing?.id ?? "",
+          name: body.name,
+          detail: text,
+          existing: true
+        };
+      }
       const idMatch = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-      return { id: idMatch?.[0] ?? "", name: body.name, detail: text };
+      return { id: idMatch?.[0] ?? "", name: body.name, detail: text, existing: false };
     }],
     ["/connections", "DELETE", true, async ({ body }) => {
       const name = body?.name;
@@ -95833,10 +95916,12 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const rowLimit = clampRowLimit(body?.rowLimit);
       const started = now();
       const maxRows = dbxMaxRows(rowLimit);
+      let pageLimit = null;
       const toOutcome = (text, extra = {}) => {
+        const lim = pageLimit ?? rowLimit;
         const { columns, rows: allRows } = parseMarkdownTable(text);
-        const rows = allRows.length > rowLimit ? allRows.slice(0, rowLimit) : allRows;
-        const truncated = allRows.length > rowLimit;
+        const rows = allRows.length > lim ? allRows.slice(0, lim) : allRows;
+        const truncated = allRows.length > lim;
         const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
         return {
           connection: connectionName,
@@ -95899,18 +95984,46 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
           write_executed: true
         };
       }
+      const dbType = body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType;
+      const countOnly = body?.countOnly === true;
+      const pageReq = body?.page;
+      let effectiveSql = sql;
+      const pageable = canPaginate(sql);
+      if (pageable && countOnly) {
+        if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "\u5F53\u524D\u6570\u636E\u5E93\u7C7B\u578B\u4E0D\u652F\u6301\u5206\u9875\u7EDF\u8BA1");
+        effectiveSql = buildCountSql(sql);
+      } else if (pageable && pageReq && Number.isFinite(pageReq.offset) && Number.isFinite(pageReq.limit)) {
+        if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "\u5F53\u524D\u6570\u636E\u5E93\u7C7B\u578B\u4E0D\u652F\u6301\u5206\u9875");
+        const limit = Math.min(Math.max(Math.trunc(pageReq.limit), 1), DBX_EFFECTIVE_ROW_CAP);
+        const offset = Math.max(Math.trunc(pageReq.offset), 0);
+        pageLimit = limit;
+        effectiveSql = buildPagedSql(sql, dbType, limit, offset);
+      }
       let result;
       try {
         result = await mcpClient().callTool(
           "dbx_execute_query",
-          { connection_name: connectionName, sql, max_rows: maxRows },
+          {
+            connection_name: connectionName,
+            sql: effectiveSql,
+            // 翻页时本页行数就是页大小：不能用用户设置的去夹，否则「每页 200 行」会被截成 50。
+            max_rows: pageLimit ?? maxRows
+          },
           timeoutMs
         );
       } catch (e) {
         const msg = e?.message ?? String(e);
         throw engineError("DBX_MCP_ERROR", `dbx-mcp \u8C03\u7528\u5931\u8D25: ${msg}`);
       }
-      if (!result.isError) return toOutcome(textOf(result));
+      if (!result.isError) {
+        const outcome = toOutcome(textOf(result));
+        if (countOnly) {
+          const total = Number.parseInt(String(outcome.rows[0]?._dbx_total ?? "0"), 10);
+          return { kind: "count", connection: connectionName, total_count: Number.isFinite(total) ? total : 0 };
+        }
+        if (pageLimit) return { ...outcome, paged: true, pageable: true };
+        return { ...outcome, pageable };
+      }
       const errorText = textOf(result);
       const err = classifyError(errorText);
       throw engineError(err.code, `dbx_execute_query failed: ${err.detail}`, errorText);
@@ -96069,9 +96182,48 @@ function readJsonBody(req) {
     });
   });
 }
+function ensureEngineKey(dataDir) {
+  const dir = dataDir ?? join2(homedir2(), ".astravia-dbx-data");
+  mkdirSync2(dir, { recursive: true });
+  try {
+    chmodSync(dir, 448);
+  } catch {
+  }
+  const secretPath = join2(dir, "service-secrets.json");
+  let doc = { schemaVersion: 1, values: {} };
+  if (existsSync2(secretPath)) {
+    try {
+      doc = JSON.parse(readFileSync(secretPath, "utf8"));
+    } catch {
+    }
+  }
+  let key = doc.values?.["engine-key"];
+  if (typeof key !== "string" || key.length === 0) {
+    key = randomBytes(32).toString("base64url");
+    const next = { ...doc, values: { ...doc.values ?? {}, "engine-key": key } };
+    writeFileSync(secretPath, JSON.stringify(next), { mode: 384 });
+    chmodSync(secretPath, 384);
+  }
+  return { key, dataDir: dir };
+}
+async function resetLegacyDatabaseIfNeeded(client2, dataDir) {
+  const result = await client2.callTool("dbx_list_connections", {});
+  const text = result.isError ? result.content.map((c) => c.text).join("") : "";
+  if (!/DATA_MIGRATION_REQUIRED/.test(text)) return false;
+  await client2.dispose();
+  const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
+  const dbPath = join2(dataDir, "dbx.db");
+  if (existsSync2(dbPath)) renameSync(dbPath, join2(dataDir, `dbx.db.legacy-${stamp}`));
+  return true;
+}
 function createEngineServer({ token, dataDir = null, authDisabled = false } = {}) {
   const auth = createAuth({ token, disabled: authDisabled });
-  getDbxMcpClient(dataDir ? { dataDir } : void 0);
+  const { key, dataDir: resolvedDataDir2 } = ensureEngineKey(dataDir);
+  const client2 = getDbxMcpClient({ dataDir: resolvedDataDir2, extraEnv: { DBX_SECRET_KEY: key } });
+  const ready = resetLegacyDatabaseIfNeeded(client2, resolvedDataDir2).then((reset) => {
+    if (reset) getDbxMcpClient();
+  }).catch(() => {
+  });
   const router = createRouter({ auth });
   const server = createServer(async (req, res) => {
     const send = (status, body) => {
@@ -96097,14 +96249,14 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
         auth.verify(req.headers);
         const rpc = body ?? {};
         const id = rpc.id ?? null;
-        const client2 = getDbxMcpClient();
+        const client3 = getDbxMcpClient();
         try {
           if (rpc.method === "initialize") {
-            await client2.ensureInitialized();
+            await client3.ensureInitialized();
             return send(200, { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "dbx-pro", version: ENGINE_VERSION } } });
           }
           if (rpc.method === "tools/list") {
-            const list = await client2.listTools();
+            const list = await client3.listTools();
             return send(200, { jsonrpc: "2.0", id, result: { tools: list } });
           }
           if (rpc.method === "tools/call") {
@@ -96113,7 +96265,7 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
             const args = params.arguments ?? {};
             if (!name) return send(200, { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } });
             try {
-              const callResult = await client2.callTool(name, args);
+              const callResult = await client3.callTool(name, args);
               return send(200, { jsonrpc: "2.0", id, result: callResult });
             } catch (e) {
               emit("mcp-error", { method: rpc.method, tool: name, message: e.message });
@@ -96148,7 +96300,7 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
     emit("request-error", { path: null, code: "CLIENT_ERROR", message: error.message });
     if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
   });
-  return { server, auth, router, dataDir };
+  return { server, auth, router, dataDir, ready };
 }
 async function main() {
   const args = parseArgs(process.argv.slice(2));

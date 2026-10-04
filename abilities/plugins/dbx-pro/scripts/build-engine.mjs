@@ -28,14 +28,14 @@ const SERVICE_ID = "dbx-engine";
 
 // === dbx-mcp 二进制来源（硬编码 fork release） ===
 const DBX_FORK_REPO = "maomaochong-ai/dbx";
-const DBX_RELEASE_TAG = "dbx-mcp-astravia-v0.4.61";
+const DBX_RELEASE_TAG = "dbx-mcp-astravia-v0.4.106";
 const DBX_RELEASE_BASE = `https://github.com/${DBX_FORK_REPO}/releases/download/${DBX_RELEASE_TAG}`;
 
 /** 平台 → fork release asset 名 + 本地目标名 + 本地权限（executable） */
 const DBX_BINARIES = [
-  { platform: "darwin-arm64", asset: "dbx-mcp-0.4.61-astravia-darwin-arm64",   dest: "dbx-mcp-darwin-arm64",   exec: true },
-  { platform: "darwin-x64",   asset: "dbx-mcp-0.4.61-astravia-darwin-x64",     dest: "dbx-mcp-darwin-x64",     exec: true },
-  { platform: "win32-x64",    asset: "dbx-mcp-0.4.61-astravia-win-x64.exe",    dest: "dbx-mcp-win-x64.exe",    exec: false },
+  { platform: "darwin-arm64", asset: "dbx-mcp-0.4.106-astravia-darwin-arm64",   dest: "dbx-mcp-darwin-arm64",   exec: true },
+  { platform: "darwin-x64",   asset: "dbx-mcp-0.4.106-astravia-darwin-x64",     dest: "dbx-mcp-darwin-x64",     exec: true },
+  { platform: "win32-x64",    asset: "dbx-mcp-0.4.106-astravia-win-x64.exe",    dest: "dbx-mcp-win-x64.exe",    exec: false },
 ];
 
 /** 当前支持的运行平台（Linux 暂不支持 dbx-mcp binary，宿主 install 时跳过） */
@@ -214,7 +214,9 @@ async function main() {
   if (platform) {
     const binEntry = DBX_BINARIES.find(b => b.platform === platform);
     const binPath = join(ROOT, "server", "bin", binEntry.dest);
-    const declared = findArtifact(firstPlatform.artifacts, `server/bin/${binEntry.dest}`)?.sha256;
+    // 用当前平台的 artifacts 查声明，不能用 firstPlatform：每个平台只声明自己的二进制，
+    // 拿 arm64 那份去查 darwin-x64 的产物永远是 undefined（假阳性的 SHA256_MISMATCH）。
+    const declared = findArtifact(svc.runtime.platforms[platform].artifacts, `server/bin/${binEntry.dest}`)?.sha256;
     if (!existsSync(binPath)) {
       summary.push({ destination: `server/bin/${binEntry.dest}`, status: "MISSING" });
       mismatch++;

@@ -1,23 +1,54 @@
 /**
  * SQL 服务端分页 — 子查询包裹 + 方言相关的 LIMIT/OFFSET。
- *
- * dbx-mcp 的 execute_query 只接受 max_rows、没有 offset 参数，且发布制品
- * 每个结果集硬上限 100 行。要翻到 100 行之后，只能在 SQL 层重写：
- * 把原查询包成派生表，再按方言加分页子句，每次仍只取一页（≤100 行），
- * 因此不触碰结果集上限。
+ * dbx-mcp 的 execute_query 只接受 max_rows、没有 offset 参数。要翻到一页之后，
+ * 只能在 SQL 层重写：把原查询包成派生表，再按方言加分页子句，每次仍只取一页
+ * （≤ ENGINE_ROW_CAP），因此不触碰宿主单次结果上限。
  *
  * 纯函数模块，不接触引擎 / 网络，便于单测。
  */
 
 import { splitStatements } from "./sql-safety.mjs";
 
-/** 支持子查询分页的 SQL 方言（SQL 均为 SELECT 透传）。 */
+/**
+ * 支持 `SELECT * FROM (…) AS _dbx_page LIMIT n OFFSET m` 的方言。
+ *
+ * 键名是插件实际发来的 db_type（见 domain/connection-config.ts 的 DB_TYPE_MANIFEST），
+ * 不是方言显示名 —— 例如 PostgreSQL 的 db_type 是 `postgres` 而非 `postgresql`。
+ * 宁可漏（就落回客户端分页，结果正确，只是翻页不省流量），不可错：把不支持的方言
+ * 当支持会直接生成非法 SQL，反而把原本能跑的查询弄挂。
+ */
 const PAGED_DIALECTS = new Set([
-	"postgresql",
-	"pg",
+	// MySQL 系（含 MySQL 协议的国产/云库）
 	"mysql",
 	"mariadb",
+	"starrocks",
+	"doris",
+	"databend",
+	"oceanbase",
+	// PostgreSQL 系（含 fork）
+	"postgres",
+	"postgresql",
+	"pg",
+	"aurora-postgresql",
+	"redshift",
+	"kingbase",
+	"highgo",
+	"vastbase",
+	"gaussdb",
+	"opengauss",
+	// SQLite 系
 	"sqlite",
+	"cloudflare-d1",
+	"duckdb",
+	"rqlite",
+	"turso",
+	// 标准 LIMIT/OFFSET
+	"clickhouse",
+	"bigquery",
+	"snowflake",
+	"trino",
+	"prestosql",
+	// OFFSET/FETCH（见 buildPagedSql）
 	"mssql",
 	"sqlserver",
 ]);

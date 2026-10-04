@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.35",
+  "version": "0.0.36",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -38,19 +38,19 @@
         "id": "dbx-engine",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.18",
+          "version": "0.0.19",
           "entry": "server/main.mjs",
           "platforms": {
             "darwin-arm64": {
               "executable": "server/bin/dbx-mcp-darwin-arm64",
               "artifacts": [
                 {
-                  "sha256": "def0f2432f401c3e79c99261e3a29b05370d4aa5b6193e637d6a51ed7f620ab1",
+                  "sha256": "b43231747c598d089b14fab77aee2786516b208413e48794308e07fdd827200c",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
                 {
-                  "sha256": "7ef5d8cd0affe51caf33ab78263da9e78fb33dfb97264897dba2defd67c3845d",
+                  "sha256": "69e69e6aa273a7de57618275baed87928c9b2668d813b06dc86465317b482fb3",
                   "archive": "file",
                   "destination": "server/bin/dbx-mcp-darwin-arm64"
                 }
@@ -60,12 +60,12 @@
               "executable": "server/bin/dbx-mcp-darwin-x64",
               "artifacts": [
                 {
-                  "sha256": "def0f2432f401c3e79c99261e3a29b05370d4aa5b6193e637d6a51ed7f620ab1",
+                  "sha256": "b43231747c598d089b14fab77aee2786516b208413e48794308e07fdd827200c",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
                 {
-                  "sha256": "b48f619a4b33c35c3cd90a495cd2b9fb45506ee420de590afa830f50866c3f36",
+                  "sha256": "e3198fd8a5348edf569aed2abedf2f30b9c0f512ae45976300b897f07a7536ce",
                   "archive": "file",
                   "destination": "server/bin/dbx-mcp-darwin-x64"
                 }
@@ -75,12 +75,12 @@
               "executable": "server/bin/dbx-mcp-win-x64.exe",
               "artifacts": [
                 {
-                  "sha256": "def0f2432f401c3e79c99261e3a29b05370d4aa5b6193e637d6a51ed7f620ab1",
+                  "sha256": "b43231747c598d089b14fab77aee2786516b208413e48794308e07fdd827200c",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
                 {
-                  "sha256": "25484f9b5af527dd0af7dde44d9f2a929ad92b2c4cfe654c9460ca7be51950a8",
+                  "sha256": "598980a9a357203e2f68f8b6401b385f9928bf9443b13cd83f9986cfd66034cd",
                   "archive": "file",
                   "destination": "server/bin/dbx-mcp-win-x64.exe"
                 }

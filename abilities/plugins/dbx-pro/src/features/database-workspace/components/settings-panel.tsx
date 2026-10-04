@@ -100,8 +100,8 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 							/>
 						</Row>
 						<Row
-							label="结果行数上限"
-							hint={`宿主 dbx-mcp 单次最多返回 ${b.rowLimit.max} 行（引擎制品硬上限）；超过后按行截断并标注，不改写 SQL。`}
+							label="默认每页行数"
+							hint={`可分页的查询按此值在数据库端分页，翻页不会一次拉全表；不可分页的 SQL 一次性取回，最多 ${b.rowLimit.max} 行（引擎硬上限）并标注截断。`}
 						>
 							<input
 								type="number"

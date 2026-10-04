@@ -70,14 +70,7 @@ function clampRowLimit(rowLimit) {
   return Math.min(Math.max(value, 1), MAX_ROW_LIMIT);
 }
 
-/**
- * 已发布 dbx-mcp 二进制（dbx 0.4.61）的读结果硬上限。
- *
- * 实测：max_rows=500 / 1000、甚至 SQL 自带 LIMIT 300，`SELECT generate_series(1,500)`
- * 都只返回 100 行 —— 源码里的 MAX_EXECUTE_QUERY_ROWS 尚未落到这个 release 制品上。
- * 因此对外一律按这个真实上限夹紧并如实标记 truncated，避免 UI 让人以为拿到了 500 行。
- * 换用支持 max_rows 的新版二进制后，把这个值提到 DBX_MAX_ROWS 即可。
- */
+/** 已随包二进制（dbx 0.4.106）实测的真实结果上限。 */
 const DBX_EFFECTIVE_ROW_CAP = 1000;
 
 /** 传给 dbx_execute_query 的行数上限（同时受引擎声明上限与制品实测上限约束）。 */
@@ -357,7 +350,8 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
           {
             connection_name: connectionName,
             sql: effectiveSql,
-            max_rows: pageLimit ? Math.min(maxRows, pageLimit) : maxRows,
+            // 翻页时本页行数就是页大小：不能用用户设置的去夹，否则「每页 200 行」会被截成 50。
+            max_rows: pageLimit ?? maxRows,
           },
           timeoutMs,
         );
@@ -374,7 +368,8 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
           const total = Number.parseInt(String(outcome.rows[0]?._dbx_total ?? "0"), 10);
           return { kind: "count", connection: connectionName, total_count: Number.isFinite(total) ? total : 0 };
         }
-        if (pageLimit) return { ...outcome, paged: true };
+        // 分页响应必须同时带 pageable：客户端一律首请求即分页，靠它判断本页是否真的由服务端切的。
+        if (pageLimit) return { ...outcome, paged: true, pageable: true };
         return { ...outcome, pageable };
       }
 

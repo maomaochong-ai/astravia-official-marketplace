@@ -22,6 +22,8 @@ import {
 } from "../../../domain/query-history-store";
 import {
 	DEFAULT_SETTINGS,
+	ENGINE_ROW_CAP,
+	resolvePageSize,
 	type WorkbenchSettings,
 } from "../../../domain/workbench-settings";
 import { readSettings, resetSettings, writeSettings } from "../../../domain/workbench-settings-store";
@@ -70,7 +72,11 @@ export interface EditorTab {
 		totalCount?: number;
 		/** 当前服务端页码（0-based）。 */
 		serverPage?: number;
+		/** 产生该结果的实际 SQL；选中执行时与 tab.sql 不同，翻页必须重跑它。 */
+		ranSql?: string;
 	};
+	/** 该 tab 的页大小；未设置时回落到设置里的默认每页行数。 */
+	pageSize?: number;
 	isRunning: boolean;
 }
 
@@ -118,6 +124,7 @@ export type WorkbenchAction =
 	| { type: "selectRightTable"; selection: RightPanelSelection | null }
 	| { type: "setTabColumns"; connectionName: string; tableName: string; columns: EngineColumn[] }
 	| { type: "addTab"; tab: EditorTab }
+	| { type: "setTabTotalCount"; id: string; totalCount: number; ranSql: string }
 	| { type: "closeTab"; id: string }
 	| { type: "setActiveTab"; id: string }
 	| { type: "updateTab"; id: string; patch: Partial<EditorTab> }
@@ -245,6 +252,17 @@ function reducer(state: WorkbenchState, action: WorkbenchAction): WorkbenchState
 		case "setError":
 			return { ...state, errorBanner: action.message };
 
+		case "setTabTotalCount":
+			// COUNT 是异步的第二趟请求：只在同一个结果集仍在展示时回填，避免竞态写脏。
+			return {
+				...state,
+				tabs: state.tabs.map((t) =>
+					t.id === action.id && t.result && t.result.ranSql === action.ranSql
+						? { ...t, result: { ...t.result, totalCount: action.totalCount } }
+						: t,
+				),
+			};
+
 		case "setConnectionStatus":
 			return {
 				...state,
@@ -265,7 +283,14 @@ interface WorkbenchContextValue {
 	/** 加载树节点子节点（懒加载入口） */
 	loadNodeChildren: (nodeKey: string, connectionName?: string, extra?: { schema?: string }) => Promise<void>;
 	/** 执行一个 tab 的 SQL；overrideSql 存在时只执行给定片段（选中执行）。 */
-	runTabSql: (tabId: string, overrideSql?: string) => Promise<void>;
+	runTabSql: (
+		tabId: string,
+		overrideSql?: string,
+		overrideConn?: string,
+		options?: { pageIndex?: number; pageSize?: number },
+	) => Promise<void>;
+	/** 翻到服务端分页的第 pageIndex 页（0-based）；pageSize 变化时回到第 0 页。 */
+	goToResultPage: (tabId: string, pageIndex: number, pageSize?: number) => Promise<void>;
 	/** 停止当前 tab 的执行（视觉复位）。 */
 	cancelExecution: (tabId: string) => void;
 	/** 打开一个新 tab 并执行（常用于预览） */
@@ -443,15 +468,16 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		tabId: string,
 		startedAt: number,
 		outcome: ReturnType<typeof toQueryResult>,
-		pageIndex?: number,
+		ctx: { pageIndex: number; pageSize: number; ranSql: string; keepTotal: boolean },
 	) {
-		// 翻页时保留既有总数，不被新结果对象覆盖
+		// 同一份 SQL 的翻页 / 重跑沿用既有总数；SQL 换了就不带，避免页数算错。
 		const prevTotal = stateRef.current.tabs.find((t) => t.id === tabId)?.result?.totalCount;
 		dispatch({
 			type: "updateTab",
 			id: tabId,
 			patch: {
 				isRunning: false,
+				pageSize: ctx.pageSize,
 				result: {
 					ok: true,
 					columns: outcome.columns,
@@ -461,8 +487,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 					elapsedMs: Date.now() - startedAt,
 					note: outcome.note,
 					pageable: outcome.pageable,
-					serverPage: pageIndex ?? 0,
-					...(prevTotal !== undefined ? { totalCount: prevTotal } : {}),
+					serverPage: ctx.pageIndex,
+					ranSql: ctx.ranSql,
+					...(ctx.keepTotal && prevTotal !== undefined ? { totalCount: prevTotal } : {}),
 				},
 			},
 		});
@@ -501,41 +528,56 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		tabId: string,
 		overrideSql?: string,
 		overrideConn?: string,
-		options?: { pageIndex?: number },
+		options?: { pageIndex?: number; pageSize?: number },
 	) {
 		const st = stateRef.current;
 		const tab = st.tabs.find((t) => t.id === tabId);
 		const connectionName = overrideConn ?? tab?.connectionName ?? null;
-		if (!tab || tab.isRunning || !connectionName) {
+		if (!tab || !connectionName) {
 			dispatch({ type: "setError", message: tab ? "请选择一个连接后再执行" : "Tab 不存在" });
 			return;
 		}
+		const isPageTurn = options?.pageIndex !== undefined;
+		if (tab.isRunning) {
+			// 上一页还在飞：丢弃这次翻页点击，不用错误横幅打断正在看的结果。
+			if (!isPageTurn) dispatch({ type: "setError", message: "查询正在执行，请稍候" });
+			return;
+		}
 		const sqlToRun = overrideSql && overrideSql.trim() ? overrideSql : tab.sql;
-		const pageIndex = options?.pageIndex;
+		const current = settingsRef.current;
+		const pageIndex = options?.pageIndex ?? 0;
+		const pageSize = resolvePageSize(options?.pageSize ?? tab.pageSize ?? current.rowLimit);
+		// 同一份 SQL 的旧结果已经带真实总数（翻页 / 重跑）：沿用，不重复统计。
+		const priorResult = tab.result;
+		const knownTotal =
+			priorResult?.ok && priorResult.ranSql === sqlToRun ? priorResult.totalCount : undefined;
 		// 翻页：保留旧结果（含总数），加载期间网格仍显示当前页，不整屏闪烁
-		if (pageIndex === undefined) {
-			dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true, result: undefined } });
-		} else {
+		if (isPageTurn) {
 			dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true } });
+		} else {
+			dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true, result: undefined } });
 		}
 		dispatch({ type: "setConnectionStatus", name: connectionName, status: "running" });
 		const startedAt = Date.now();
 		runningStartedAtRef.current[tabId] = startedAt;
 		try {
-			const current = settingsRef.current;
 			const targetConn = stateRef.current.connections.find((c) => c.name === connectionName);
 			const rawOutcome = await engineExecuteByName(connectionName, sqlToRun, {
 				timeoutMs: current.queryTimeoutSecs * 1000,
-				rowLimit: current.rowLimit,
-				...(pageIndex !== undefined
-					? {
-						dbType: targetConn?.db_type,
-						page: { offset: pageIndex * RESULT_PAGE_SIZE, limit: RESULT_PAGE_SIZE },
-					}
-					: {}),
+				// 单次取回上限固定为引擎硬上限：页大小只决定「一次看多少」，不再兼作结果行数上限。
+				rowLimit: ENGINE_ROW_CAP,
+				// 一律按页请求：服务端对可分页的 SELECT 追加 LIMIT/OFFSET，
+				// SELECT * 全表预览因此只取一页，不再把整表拉过 60s 超时。
+				dbType: targetConn?.db_type,
+				page: { offset: pageIndex * pageSize, limit: pageSize },
 			});
 			const outcome = toQueryResult(rawOutcome);
-			applySuccess(tabId, startedAt, outcome, pageIndex);
+			applySuccess(tabId, startedAt, outcome, {
+				pageIndex,
+				pageSize,
+				ranSql: sqlToRun,
+				keepTotal: knownTotal !== undefined,
+			});
 			dispatch({ type: "setConnectionStatus", name: connectionName, status: "ok" });
 			dispatch({ type: "setError", message: null });
 			await recordHistory({
@@ -545,9 +587,15 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				rowCount: outcome.row_count,
 				durationMs: Date.now() - startedAt,
 			});
-			// 首次执行且可分页：异步统计总行数，结果区随即显示真实页数
-			if (pageIndex === undefined && rawOutcome.pageable) {
-				void fetchTotalCount(tabId, connectionName, sqlToRun, targetConn?.db_type);
+			// 服务端分页生效且总数未知：补一趟 COUNT，页数才是真实值。
+			if (rawOutcome.paged && knownTotal === undefined) {
+				void fetchTotalCount(
+					tabId,
+					connectionName,
+					sqlToRun,
+					current.queryTimeoutSecs,
+					targetConn?.db_type,
+				);
 			}
 		} catch (e) {
 			const isBlocked = e instanceof EngineClientError && e.code === "SQL_BLOCKED";
@@ -602,6 +650,42 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		}
 	}
 
+	/**
+	 * 统计总行数：把原 SQL 包成 COUNT 派生表再走引擎（与服务端分页同一个改写器）。
+	 * 方言不支持 / 连接报错时静默放弃：宁可只显示已知行数，也不要报错盖住已经查到的那一页。
+	 */
+	async function fetchTotalCount(
+		tabId: string,
+		connectionName: string,
+		sql: string,
+		timeoutSecs: number,
+		dbType?: string,
+	): Promise<void> {
+		try {
+			const raw = await engineExecuteByName(connectionName, sql, {
+				countOnly: true,
+				timeoutMs: timeoutSecs * 1000,
+				dbType,
+			});
+			const total = Number((raw as { total_count?: unknown }).total_count);
+			if (!Number.isFinite(total) || total < 0) return;
+			dispatch({ type: "setTabTotalCount", id: tabId, totalCount: total, ranSql: sql });
+		} catch {
+			// 统计失败不影响已展示的这一页
+		}
+	}
+
+	/**
+	 * 翻到服务端分页的第 pageIndex 页（0-based）。
+	 * 重跑的是结果里记录的 SQL（选中执行时与 tab.sql 不同），页大小变化时回到第 0 页。
+	 */
+	async function goToResultPage(tabId: string, pageIndex: number, pageSize?: number): Promise<void> {
+		const tab = stateRef.current.tabs.find((t) => t.id === tabId);
+		const sql = tab?.result?.ranSql ?? tab?.sql;
+		if (!tab || !sql) return;
+		await runTabSql(tabId, sql, undefined, { pageIndex, pageSize });
+	}
+
 	/** 停止当前 tab 的执行：视觉复位 + 记录取消历史。 */
 	function cancelExecution(tabId: string): void {
 		const tab = stateRef.current.tabs.find((t) => t.id === tabId);
@@ -637,7 +721,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			const outcome = toQueryResult(
 				await engineExecuteByName(pending.connectionName, pending.sql, {
 					timeoutMs: current.queryTimeoutSecs * 1000,
-					rowLimit: current.rowLimit,
+					// 写结果一般很小；上限仍用引擎硬上限，避免被页大小意外截断。
+					rowLimit: ENGINE_ROW_CAP,
 					allowWrite: true,
 					confirmedWriteSql: pending.sql,
 					connection: conn
@@ -654,7 +739,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 						: undefined,
 				}),
 			);
-			applySuccess(pending.tabId, startedAt, outcome);
+			applySuccess(pending.tabId, startedAt, outcome, {
+				pageIndex: 0,
+				pageSize: resolvePageSize(current.rowLimit),
+				ranSql: pending.sql,
+				keepTotal: false,
+			});
 			dispatch({ type: "setConnectionStatus", name: pending.connectionName, status: "ok" });
 			await recordHistory({
 				connName: pending.connectionName,
@@ -769,6 +859,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			refreshConnections,
 			loadNodeChildren,
 			runTabSql,
+			goToResultPage,
 			cancelExecution,
 			openPreviewTab,
 			settings,

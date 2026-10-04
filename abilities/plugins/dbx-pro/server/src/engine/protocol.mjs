@@ -11,7 +11,9 @@
 // 产物字节变了就必须抬版本，否则宿主不会重装已有版本（见 scripts/build-engine.mjs）。
 // 0.0.18：dbx_execute_query 传 max_rows；写 / DDL 统一走自研驱动（dbx-mcp 子进程永久零提权）；
 // 新增 POST /schemas；dbx-mcp /mcp 端点的工具错误改回 JSON-RPC error。
-export const ENGINE_VERSION = "0.0.18";
+// 0.0.19：读路径真服务端分页（子查询包裹 + LIMIT/OFFSET，COUNT 单独取）；
+// max_rows 不再被页大小夹住 —— 大表 SELECT 一次拉全表导致的超时由此消除。
+export const ENGINE_VERSION = "0.0.19";
 export const PROTOCOL_VERSION = 1;
 
 /** 请求体上限：与宿主 16MB 响应上限错开，留足序列化余量。 */

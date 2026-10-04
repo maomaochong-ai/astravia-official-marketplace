@@ -124,7 +124,7 @@ describe("dbx-pro engine bridge (headless E2E)", () => {
 		assert.equal(health.status, 200);
 		assert.equal(health.ok, true);
 		assert.equal(health.data.auth, "enabled");
-		assert.equal(health.data.version, "0.0.18");
+		assert.equal(health.data.version, "0.0.19");
 		// 行数上限的前后端常量必须一致：设置项用 src/domain/workbench-settings.ts 的
 		// ENGINE_ROW_CAP 当 max，引擎用 /health 的 row_cap 回答实际值。漂了就说明
 		// UI 允许用户填一个拿不到的行数 —— 静默的假设置比报错更难发现。

@@ -336,13 +336,12 @@ export function toQueryResult(outcome: EngineQueryOutcome): DbQueryResult {
 		notes.push(`已执行 ${outcome.statement_count} 条语句，仅展示最后一个结果集`);
 	}
 	if (outcome.truncated) {
-		// 说清是谁截断的：用户自己设的上限，还是宿主导品的硬上限。
-		// 混为一谈会让用户调大设置却发现没用，白白反复试。
-		const engineRows = outcome.engine_row_count;
+		// 单次取回上限由插件硬上限决定，用户改的是「每页多少行」。
+		// 可分页时截断只是「本页装满了」，必须说清还能翻页，否则用户会以为数据就这么多。
 		notes.push(
-			engineRows !== undefined && engineRows <= outcome.max_rows && outcome.row_limit > outcome.max_rows
-				? `结果已截断到 ${outcome.max_rows} 行（宿主 dbx-mcp 单次上限）`
-				: `结果已按设置的 ${outcome.row_limit} 行上限截断`,
+			outcome.pageable || outcome.paged
+				? `本页已达 ${outcome.max_rows} 行，翻到下一页继续查看`
+				: `结果已截断到 ${outcome.max_rows} 行（单次取回上限）`,
 		);
 	}
 	return {

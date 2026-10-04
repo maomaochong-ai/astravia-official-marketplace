@@ -293,9 +293,12 @@ class DbxMcpClient {
 
 // 单例（每个 service 进程一个 dbx-mcp 子进程）
 let client = null;
+// 记住最近一次构造参数：dispose 后重建（如旧库重置）仍带数据目录与密钥。
+let lastOptions = null;
 
 export function getDbxMcpClient(options) {
-  if (!client) client = new DbxMcpClient(options);
+  if (options) lastOptions = options;
+  if (!client) client = new DbxMcpClient(options ?? lastOptions ?? undefined);
   return client;
 }
 

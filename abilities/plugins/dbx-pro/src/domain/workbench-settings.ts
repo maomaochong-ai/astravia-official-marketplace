@@ -13,7 +13,7 @@ export interface WorkbenchSettings {
 	schemaVersion: 1;
 	/** 查询超时（秒）。 */
 	queryTimeoutSecs: number;
-	/** 结果行数上限（按行截断，不会改写 SQL）。 */
+	/** 默认每页显示行数（网格分页页大小；服务端分页时即 page.limit）。 */
 	rowLimit: number;
 	/** 是否记录查询历史。 */
 	historyEnabled: boolean;
@@ -26,21 +26,28 @@ export interface WorkbenchSettings {
 }
 
 /**
- * 宿主 dbx-mcp 制品（dbx 0.4.61）的真实读上限。
- *
- * 实测 max_rows=500 / 1000、甚至 SQL 自带 LIMIT 300，都只返回 100 行 ——
- * 源码里的 MAX_EXECUTE_QUERY_ROWS 没落到这个 release 制品上。设置项不允许
- * 超过它，否则 UI 会让人以为能取到 5000 行，实际只有 100 行。
- * 换用支持 max_rows 的新版二进制后把这个数调大即可。
+ * dbx-mcp 制品（dbx 0.4.106）单次结果上限 MAX_EXECUTE_QUERY_ROWS = 1000。
+ * 已用包内二进制实测：max_rows=200/500/1000 均按值返回。
+ * 可分页的单条 SELECT 会被引擎包成派生表 + LIMIT/OFFSET（见 engine/sql-pagination.mjs），
+ * 每次只取一页；其余 SQL 原样透传，结果在 ENGINE_ROW_CAP 处截断并标注。
  */
 export const ENGINE_ROW_CAP = 1000;
 
-/** 服务端 / 客户端网格每页行数（引擎每结果集硬上限即一页）。 */
-export const RESULT_PAGE_SIZE = ENGINE_ROW_CAP;
+/** 网格可选的每页行数（底部下拉）。 */
+export const PAGE_SIZE_OPTIONS = [50, 100, 200, 500, 1000] as const;
+
+/**
+ * 页大小夹逼：设置项与网格下拉共用，保证 offset/limit 不会超过引擎单次结果上限。
+ * 这里是页大小而不是「结果行数上限」——行数上限已由 ENGINE_ROW_CAP 固定。
+ */
+export function resolvePageSize(value: unknown): number {
+	return clampInt(value, 1, ENGINE_ROW_CAP, DEFAULT_SETTINGS.rowLimit);
+}
 
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
 export const SETTINGS_BOUNDS = Object.freeze({
 	queryTimeoutSecs: { min: 1, max: 600 },
+	/** rowLimit：默认每页显示行数。 */
 	rowLimit: { min: 1, max: ENGINE_ROW_CAP },
 	historyLimit: { min: HISTORY_LIMIT_MIN, max: HISTORY_LIMIT_MAX },
 });

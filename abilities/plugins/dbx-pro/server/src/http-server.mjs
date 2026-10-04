@@ -10,7 +10,10 @@
  *   --auth-disabled  显式关闭鉴权（仅本机联调用）
  */
 
-import { createHash, timingSafeEqual } from "node:crypto";
+import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { createRouter } from "./engine/request-router.mjs";
@@ -97,10 +100,63 @@ function readJsonBody(req) {
   });
 }
 
+/**
+ * 供给 dbx-mcp 数据加密密钥。
+ *
+ * 0.4.106 的默认密钥策略是 OS keychain，headless 子进程读不到会抛
+ * SECRET_KEY_UNAVAILABLE；这里在服务数据目录维护 service-secrets.json
+ * （0600），首次启动生成 32 字节随机密钥，并经 DBX_SECRET_KEY 注入子进程。
+ * 已有部署沿用既有密钥，保证 dbx.db 可解密。
+ */
+function ensureEngineKey(dataDir) {
+  const dir = dataDir ?? join(homedir(), ".astravia-dbx-data");
+  mkdirSync(dir, { recursive: true });
+  try { chmodSync(dir, 0o700); } catch {}
+
+  const secretPath = join(dir, "service-secrets.json");
+  let doc = { schemaVersion: 1, values: {} };
+  if (existsSync(secretPath)) {
+    try { doc = JSON.parse(readFileSync(secretPath, "utf8")); } catch {}
+  }
+  let key = doc.values?.["engine-key"];
+  if (typeof key !== "string" || key.length === 0) {
+    key = randomBytes(32).toString("base64url");
+    const next = { ...doc, values: { ...(doc.values ?? {}), "engine-key": key } };
+    writeFileSync(secretPath, JSON.stringify(next), { mode: 0o600 });
+    chmodSync(secretPath, 0o600);
+  }
+  return { key, dataDir: dir };
+}
+
+/**
+ * 旧版 dbx.db（0.4.61 明文库）与新二进制不兼容，且新二进制要求由
+ * DBX Desktop 执行迁移。检测到 DATA_MIGRATION_REQUIRED 时把旧库备份为
+ * dbx.db.legacy-<时间戳> 并重建客户端：新库按新密钥加密，用户重新添加连接
+ * （密码仍保留在宿主加密凭据库，旧库文件不删除）。
+ */
+async function resetLegacyDatabaseIfNeeded(client, dataDir) {
+  const result = await client.callTool("dbx_list_connections", {});
+  const text = result.isError ? result.content.map((c) => c.text).join("") : "";
+  if (!/DATA_MIGRATION_REQUIRED/.test(text)) return false;
+
+  await client.dispose();
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const dbPath = join(dataDir, "dbx.db");
+  if (existsSync(dbPath)) renameSync(dbPath, join(dataDir, `dbx.db.legacy-${stamp}`));
+  return true;
+}
+
 export function createEngineServer({ token, dataDir = null, authDisabled = false } = {}) {
   const auth = createAuth({ token, disabled: authDisabled });
-  // 用宿主分配的数据目录预热引擎客户端；否则 --data 会被忽略、连接数据落到默认 home 目录。
-  getDbxMcpClient(dataDir ? { dataDir } : undefined);
+  const { key, dataDir: resolvedDataDir } = ensureEngineKey(dataDir);
+  // 预热引擎客户端：数据目录与加密密钥在此注入。
+  const client = getDbxMcpClient({ dataDir: resolvedDataDir, extraEnv: { DBX_SECRET_KEY: key } });
+  // 启动期完成旧库检测（可能备份旧 dbx.db 并重建客户端）。
+  const ready = resetLegacyDatabaseIfNeeded(client, resolvedDataDir)
+    .then((reset) => {
+      if (reset) getDbxMcpClient();
+    })
+    .catch(() => {});
   const router = createRouter({ auth });
 
   const server = createServer(async (req, res) => {
@@ -191,7 +247,7 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
     if (socket.writable) socket.end("HTTP/1.1 400 Bad Request\r\n\r\n");
   });
 
-  return { server, auth, router, dataDir };
+  return { server, auth, router, dataDir, ready };
 }
 
 async function main() {
@@ -218,11 +274,14 @@ async function main() {
     }
   }
 
-  const { server, auth } = createEngineServer({
+  const { server, auth, ready } = createEngineServer({
     token,
     dataDir: args.dataDir,
     authDisabled: args.authDisabled,
   });
+
+  // 等待旧库检测/重置完成再开始接流量。
+  await ready;
 
   if (!auth.enabled) emit("auth-disabled", { reason: args.authDisabled ? "flag" : "no-secret" });
 
