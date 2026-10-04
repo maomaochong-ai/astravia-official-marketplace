@@ -6,6 +6,10 @@
  */
 
 import { Window } from "happy-dom";
+import { register } from "node:module";
+
+// .tsx 组件加载支持（esbuild 转换），必须在测试模块导入前注册。
+register(new URL("./tsx-loader.mjs", import.meta.url));
 
 const window = new Window({ url: "http://localhost/" });
 

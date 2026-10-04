@@ -4,7 +4,7 @@
  * 交互（对标 dbx 桌面壳）：
  * - 单击 connection：设为活动连接并绑定当前 tab；单击 table：选中查看结构
  * - 双击 connection：新建查询 tab；双击 table：SELECT * 预览
- * - 右键：新建查询 / 预览 / 查看结构 / 复制名称 / COUNT
+ * - 右键：新建查询 / 预览 / 查看结构 / 复制名称 / COUNT / 发送到 AI
  * - 箭头：展开懒加载子节点
  */
 
@@ -13,7 +13,8 @@ import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
-import { sendConnectionToAi, sendTableToAi } from "../../../shared/ai/send-context";
+import { buildConnectionPrompt, buildTablePrompt } from "../../../shared/ai/send-context";
+import { SendToAiDialog } from "./send-to-ai-dialog";
 
 interface Props {
 	node: TreeNode;
@@ -27,6 +28,8 @@ let querySeq = 0;
 export function ConnectionNode({ node, depth, connectionName, schema }: Props): JSX.Element {
 	const { state, dispatch, loadNodeChildren, openPreviewTab, settings } = useWorkbench();
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
+	const [aiDialogOpen, setAiDialogOpen] = useState(false);
+	const [aiPrompt, setAiPrompt] = useState("");
 
 	const isExpanded = state.expandedNodes.has(node.key);
 	const isLoading = state.loadingNodes.has(node.key);
@@ -78,7 +81,6 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			void ensureChildren();
 			if (!isExpanded) expand();
 		} else if (node.kind === "schema") {
-			// schema 节点只做展开/折叠：它本身不是可查询对象。
 			void ensureChildren();
 			if (!isExpanded) expand();
 		} else if (node.kind === "table") {
@@ -133,6 +135,12 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		void openPreviewTab(connectionName, `SELECT COUNT(*) AS cnt FROM ${qualifiedName};`, "计数");
 	}
 
+	function openAiDialog(prompt: string): void {
+		setAiPrompt(prompt);
+		setAiDialogOpen(true);
+		setMenu(null);
+	}
+
 	function handleContextMenu(e: React.MouseEvent): void {
 		e.preventDefault();
 		e.stopPropagation();
@@ -157,7 +165,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						type: "item",
 						label: "发送到 AI 分析",
 						icon: "icon-[lucide--sparkles]",
-						onClick: () => sendConnectionToAi({ connectionName: node.label, dbType: node.dbType ?? "database" }),
+						onClick: () => openAiDialog(buildConnectionPrompt({ connectionName: node.label, dbType: node.dbType ?? "database" })),
 					},
 					{
 						type: "item",
@@ -169,7 +177,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			});
 			return;
 		}
-if (node.kind === "schema") {
+		if (node.kind === "schema") {
 			setMenu({
 				x: e.clientX,
 				y: e.clientY,
@@ -208,7 +216,7 @@ if (node.kind === "schema") {
 						type: "item",
 						label: "发送到 AI 分析",
 						icon: "icon-[lucide--sparkles]",
-						onClick: () => sendTableToAi({ connectionName, schema: childScope, table: node.label }),
+						onClick: () => openAiDialog(buildTablePrompt({ connectionName, schema: childScope, table: node.label })),
 					},
 					{
 						type: "item",
@@ -291,6 +299,7 @@ if (node.kind === "schema") {
 				</div>
 			)}
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 		</div>
 	);
 }

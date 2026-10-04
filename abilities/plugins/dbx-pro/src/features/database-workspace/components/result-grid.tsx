@@ -17,7 +17,8 @@ import {
 	CellDetailDialog,
 	type CellDetail,
 } from "./cell-detail-dialog";
-import { sendQueryToAi } from "../../../shared/ai/send-context";
+import { buildQueryPrompt } from "../../../shared/ai/send-context";
+import { SendToAiDialog } from "./send-to-ai-dialog";
 
 interface Props {
 	columns: string[];
@@ -59,6 +60,13 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 	const [detail, setDetail] = useState<CellDetail | null>(null);
 	const [showRowNumbers, setShowRowNumbers] = useState(true);
 	const [sort, setSort] = useState<{ col: string; dir: "asc" | "desc" } | null>(null);
+	const [aiDialogOpen, setAiDialogOpen] = useState(false);
+	const [aiPrompt, setAiPrompt] = useState("");
+
+	function openAiDialogForQuery(): void {
+		setAiPrompt(buildQueryPrompt(connectionName ?? "", sql ?? "", rows));
+		setAiDialogOpen(true);
+	}
 
 	// 客户端排序（仅对已取回的行；null/undefined 始终排最后）。
 	const orderedRows = useMemo(() => {
@@ -213,7 +221,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 				{connectionName && sql && (
 					<button
 						type="button"
-						onClick={() => sendQueryToAi(connectionName, sql, rows)}
+						onClick={openAiDialogForQuery}
 						title="把该 SQL 与结果发给 AI 分析"
 						className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-purple-300 hover:bg-purple-500/15"
 					>
@@ -363,6 +371,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
+			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 		</div>
 	);
 }

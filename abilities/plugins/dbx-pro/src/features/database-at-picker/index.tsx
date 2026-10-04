@@ -10,8 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type JSX } from "react";
 import { getConversation } from "../../runtime-contract.ts";
-import { engineListConnections, engineListSchemas, engineListTables, EngineClientError } from "../../shared/services/engine-client.ts";
-import { ensureEngineStarted } from "../../runtime.ts";
+import { engineListConnections, engineListSchemas, engineListTables } from "../../shared/services/engine-client.ts";
 
 // ─── 类型 ────────────────────────────────────────────────────────────
 
@@ -269,7 +268,7 @@ export function DatabaseAtPicker(): JSX.Element {
 
 			{/* 底部提示 */}
 			<div className="shrink-0 border-t border-border px-3 py-2 text-[10px] text-muted-foreground/70">
-				点击表名将 `` @`连接:表` `` 注入宿主输入框，发送后 agent 可查询该表
+				点击表名将 @`连接:表` 注入宿主输入框，发送后 agent 可查询该表
 			</div>
 		</div>
 	);
