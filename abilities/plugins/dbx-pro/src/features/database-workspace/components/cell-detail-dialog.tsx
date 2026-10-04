@@ -80,7 +80,7 @@ export function CellDetailDialog({ detail, onClose }: { detail: CellDetail; onCl
 						<span className="icon-[lucide--x] h-3.5 w-3.5" />
 					</button>
 				</div>
-				<div className="min-h-0 flex-1 overflow-auto bg-[#0b0d13] p-3">
+				<div className="min-h-0 flex-1 overflow-auto bg-[var(--dbx-surface)] p-3">
 					{parsed.kind === "null" ? (
 						<p className="text-center font-mono text-[12px] italic text-muted-foreground/70">NULL</p>
 					) : (

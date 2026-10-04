@@ -1,9 +1,9 @@
 /**
  * 宿主 AI 交互 — 把连接 / 表 / 查询上下文发送给宿主 AI 会话。
  *
- * 优先 sendPrompt（直接作为用户消息发入当前活跃会话）；失败时（无活跃会话、
- * 宿主拒绝等）降级 createSession 新建会话后重试，再退化为 insertText 填入输入框
- * 让用户确认后发送。不再静默失败。
+ * 优先 insertText（填入当前会话输入框，不自动发送）；不可用时（无活跃输入框、
+ * 宿主拒绝等）降级 sendPrompt 直接发为用户消息，再退化为 createSession 新建会话。
+ * 三级兜底，不静默失败。
  */
 
 import { getConversation } from "../../runtime-contract.ts";

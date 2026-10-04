@@ -64,7 +64,10 @@ export function ResultPanel(): JSX.Element {
 				{result?.ok && (
 					<>
 						<span className="shrink-0">
-							<span className="font-medium text-foreground">{result.rowCount}</span> 行
+							<span className="font-medium text-foreground">
+								{result.affectedRows ?? result.rowCount}
+							</span>{" "}
+							{result.affectedRows != null ? "行受影响" : "行"}
 						</span>
 						<span className="text-muted-foreground/40">·</span>
 						<span className="shrink-0">

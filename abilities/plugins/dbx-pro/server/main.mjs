@@ -34629,7 +34629,7 @@ var require_resolveExecutable = __commonJS({
     module.exports = __toCommonJS2(resolveExecutable_exports);
     var import_node_fs5 = __require("node:fs");
     var import_node_path3 = __toESM2(__require("node:path"));
-    var import_node_url3 = __require("node:url");
+    var import_node_url4 = __require("node:url");
     var import_errors = require_errors3();
     var WINDOWS_NATIVE_EXTENSIONS = [".exe", ".com"];
     var WINDOWS_BATCH_EXTENSIONS = [".cmd", ".bat"];
@@ -34675,7 +34675,7 @@ var require_resolveExecutable = __commonJS({
       return snapshot;
     }
     function normalizeCwd(cwd) {
-      const cwdPath = cwd instanceof URL ? (0, import_node_url3.fileURLToPath)(cwd) : cwd;
+      const cwdPath = cwd instanceof URL ? (0, import_node_url4.fileURLToPath)(cwd) : cwd;
       return import_node_path3.default.resolve(cwdPath ?? process.cwd());
     }
     function createProcessContext(options = {}) {
@@ -94899,6 +94899,7 @@ var require_lib7 = __commonJS({
 // server/src/http-server.mjs
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
+import { pathToFileURL } from "node:url";
 
 // server/src/engine/protocol.mjs
 var ENGINE_VERSION = "0.0.18";
@@ -94913,9 +94914,12 @@ var STATUS_BY_CODE = Object.freeze({
   NOT_FOUND: 404,
   METHOD_NOT_ALLOWED: 405,
   PAYLOAD_TOO_LARGE: 413,
-  // 写闸门：未确认 → SQL_BLOCKED（在 router 里抛，见 request-router /query）
+  // 写闸门：未确认 → SQL_BLOCKED（router 抛，见 /query）
+  SQL_BLOCKED: 403,
   WRITE_BLOCKED: 403,
   CONFIRM_MISMATCH: 403,
+  // 引擎侧连接不存在（classifyError 归类后在 /query 等路径抛）
+  CONNECTION_NOT_FOUND: 404,
   WRITE_UNSUPPORTED: 501,
   DRIVER_UNSUPPORTED: 501,
   DRIVER_ERROR: 502,
@@ -95257,25 +95261,17 @@ function stripSqlComments(sql) {
   let i = 0;
   let inLine = false;
   let inBlock = false;
+  let quote = null;
   while (i < sql.length) {
     const ch = sql[i];
     const next = sql[i + 1];
-    if (!inLine && !inBlock && ch === "-" && next === "-") {
-      inLine = true;
-      i += 2;
-      continue;
-    }
-    if (!inLine && !inBlock && ch === "/" && next === "*") {
-      inBlock = true;
-      i += 2;
-      continue;
-    }
     if (inLine) {
-      if (ch === "\n") inLine = false;
-      else {
-        i += 1;
-        continue;
+      if (ch === "\n") {
+        inLine = false;
+        out += ch;
       }
+      i += 1;
+      continue;
     }
     if (inBlock) {
       if (ch === "*" && next === "/") {
@@ -95284,6 +95280,35 @@ function stripSqlComments(sql) {
         continue;
       }
       i += 1;
+      continue;
+    }
+    if (quote) {
+      out += ch;
+      if (ch === quote) {
+        if (next === quote) {
+          out += next;
+          i += 2;
+          continue;
+        }
+        quote = null;
+      }
+      i += 1;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (ch === "-" && next === "-") {
+      inLine = true;
+      i += 2;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlock = true;
+      i += 2;
       continue;
     }
     out += ch;
@@ -95361,8 +95386,8 @@ var esm_default = import_lib.default;
 
 // server/src/write/direct-write.mjs
 function familyOf(dbType) {
-  const type = String(dbType ?? "").toLowerCase();
-  if (/^(postgres|pg|redhift|greenplum|cockroach)/.test(type)) return "pg";
+  const type = String(dbType ?? "").trim().toLowerCase();
+  if (/^(postgres|pg|redshift|greenplum|cockroach)/.test(type)) return "pg";
   if (/^(mysql|maria|tidb|starrocks|doris|oceanbase$|gauss.*mysql)/.test(type)) return "mysql";
   if (/^(mssql|sqlserver)/.test(type)) return "mssql";
   return null;
@@ -95457,7 +95482,7 @@ async function runMysql(spec, sql, { transactional }) {
   }
 }
 async function runMssql(spec, sql, { transactional }) {
-  const pool = await import_mssql.default.connect({
+  const pool = await new import_mssql.default.ConnectionPool({
     server: spec.host,
     port: spec.port ? Number(spec.port) : void 0,
     user: spec.username,
@@ -95465,7 +95490,7 @@ async function runMssql(spec, sql, { transactional }) {
     database: spec.database,
     connectionTimeout: 15e3,
     options: { encrypt: false, trustServerCertificate: true }
-  });
+  }).connect();
   try {
     const request = pool.request();
     const result = transactional ? await request.transaction((tx) => tx.query(sql)) : await request.query(sql);
@@ -95549,7 +95574,10 @@ function textOf(result) {
 function parseMarkdownTable(text) {
   const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("|"));
   if (lines.length < 2) return { columns: [], rows: [] };
-  const split = (line) => line.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+  const split = (line) => {
+    const PLACEHOLDER = "\0";
+    return line.replace(/^\|/, "").replace(/\|$/, "").replace(/\\\|/g, PLACEHOLDER).split("|").map((cell) => cell.trim().replaceAll(PLACEHOLDER, "\\|"));
+  };
   const columns = split(lines[0]);
   const rows = lines.slice(2).map((line) => {
     const cells = split(line);
@@ -95808,7 +95836,7 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const toOutcome = (text, extra = {}) => {
         const { columns, rows: allRows } = parseMarkdownTable(text);
         const rows = allRows.length > rowLimit ? allRows.slice(0, rowLimit) : allRows;
-        const truncated = allRows.length > rowLimit || allRows.length >= maxRows;
+        const truncated = allRows.length > rowLimit;
         const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
         return {
           connection: connectionName,
@@ -96183,7 +96211,10 @@ async function main() {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
 }
-main();
+function isDirectRun() {
+  return Boolean(process.argv[1]) && pathToFileURL(process.argv[1]).href === import.meta.url;
+}
+if (isDirectRun()) main();
 export {
   createAuth,
   createEngineServer

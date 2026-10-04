@@ -53,11 +53,12 @@ export function ConnectionList({
 					<div style={{ flex: 1, minWidth: 0 }}>
 						<div style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
 							{c.is_production && (
-								<span style={{
-									fontSize: 10, padding: "1px 6px", borderRadius: 10,
-									background: "rgba(220,38,38,0.1)", color: "#dc2626",
-								}}>PROD</span>
-							)}
+							<span style={{
+								fontSize: 10, padding: "1px 6px", borderRadius: 10,
+								background: "color-mix(in srgb, var(--destructive) 10%, transparent)",
+								color: "var(--destructive)",
+							}}>PROD</span>
+						)}
 							{c.name}
 						</div>
 						<div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
@@ -70,7 +71,7 @@ export function ConnectionList({
 					<button className="dbx-btn ghost" onClick={() => onTest(c)} disabled={testing}>
 						{testing ? "…" : "测试"}
 					</button>
-					<button className="dbx-btn ghost" onClick={() => onDelete(c)} style={{ color: "#dc2626" }}>删除</button>
+					<button className="dbx-btn ghost" onClick={() => onDelete(c)} style={{ color: "var(--destructive)" }}>删除</button>
 				</div>
 			))}
 

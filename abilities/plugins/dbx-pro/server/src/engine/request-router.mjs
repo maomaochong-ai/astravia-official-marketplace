@@ -228,8 +228,9 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       const toOutcome = (text, extra = {}) => {
         const { columns, rows: allRows } = parseMarkdownTable(text);
         const rows = allRows.length > rowLimit ? allRows.slice(0, rowLimit) : allRows;
-        // 触顶有两种：引擎自己撞到制品上限，或我们按用户上限裁掉。
-        const truncated = allRows.length > rowLimit || allRows.length >= maxRows;
+        // 截断只按用户行上限判定：引擎制品固定上限已通过 /health row_cap 公开，
+        // 恰好等于上限的真实结果不该被误报（引擎不提供总数，无法区分）。
+        const truncated = allRows.length > rowLimit;
         const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
         return {
           connection: connectionName,

@@ -63,7 +63,7 @@ export function WriteConfirmDialog({
 					</p>
 				</div>
 
-				<div className="max-h-[240px] overflow-auto bg-[#0b0d13] p-3">
+				<div className="max-h-[240px] overflow-auto bg-[var(--dbx-surface)] p-3">
 					<pre className="whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-foreground/80">
 						{pending.sql}
 					</pre>

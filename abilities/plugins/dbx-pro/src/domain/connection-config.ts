@@ -198,6 +198,8 @@ export interface DbQueryResult {
 	columns: string[];
 	rows: Record<string, unknown>[];
 	row_count: number;
+	/** 写 / DDL 的影响行数（自研写驱动返回）；SELECT 缺省为 null。 */
+	affected_rows?: number | null;
 	/** 执行失败时的原因；成功时缺省。带 error 的结果集 columns/rows 为空。 */
 	error?: string;
 	/** 成功但有需要告知用户的情况时给出（例如多语句只展示了最后一个结果集）。 */

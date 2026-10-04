@@ -3,7 +3,8 @@
  * 不用 JSX：node 原生不转换 JSX，统一用 createElement。
  */
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import RTL from "@testing-library/react";
+const { act, fireEvent, render, screen } = RTL;
 import { createElement, useState } from "react";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";

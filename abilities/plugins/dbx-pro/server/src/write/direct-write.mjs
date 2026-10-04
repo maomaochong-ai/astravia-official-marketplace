@@ -26,7 +26,7 @@ import pg from "pg";
 /** dbType → 驱动家族。 */
 export function familyOf(dbType) {
 	const type = String(dbType ?? "").trim().toLowerCase();
-	if (/^(postgres|pg|redhift|greenplum|cockroach)/.test(type)) return "pg";
+	if (/^(postgres|pg|redshift|greenplum|cockroach)/.test(type)) return "pg";
 	if (/^(mysql|maria|tidb|starrocks|doris|oceanbase$|gauss.*mysql)/.test(type)) return "mysql";
 	if (/^(mssql|sqlserver)/.test(type)) return "mssql";
 	return null;
@@ -131,7 +131,9 @@ async function runMysql(spec, sql, { transactional }) {
 }
 
 async function runMssql(spec, sql, { transactional }) {
-	const pool = await mssql.connect({
+	// 用独立 ConnectionPool 而非 mssql.connect()（后者使用全局单例池，
+	// 并发写第二个 SQL Server 会抛 "active pool already exists"）。
+	const pool = await new mssql.ConnectionPool({
 		server: spec.host,
 		port: spec.port ? Number(spec.port) : undefined,
 		user: spec.username,
@@ -139,7 +141,7 @@ async function runMssql(spec, sql, { transactional }) {
 		database: spec.database,
 		connectionTimeout: 15_000,
 		options: { encrypt: false, trustServerCertificate: true },
-	});
+	}).connect();
 	try {
 		const request = pool.request();
 		const result = transactional

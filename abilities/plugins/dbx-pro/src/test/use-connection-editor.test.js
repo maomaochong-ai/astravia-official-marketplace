@@ -9,7 +9,8 @@
  * - 切换数据库类型修正端口。
  */
 
-import { act, renderHook } from "@testing-library/react";
+import RTL from "@testing-library/react";
+const { act, renderHook } = RTL;
 import assert from "node:assert/strict";
 import { describe, it, mock } from "node:test";
 import { setRuntime } from "../runtime-contract.ts";

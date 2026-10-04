@@ -314,7 +314,7 @@ function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }
 			>
 				{visual.badge}
 			</span>
-			<span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-[#0f1218] ${dotCls}`} />
+			<span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-[var(--background)] ${dotCls}`} />
 		</span>
 	);
 }

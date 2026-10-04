@@ -81,7 +81,7 @@ const sqlHighlight = syntaxHighlighting(
 
 function dialectFor(dbType: string | undefined) {
 	const type = String(dbType ?? "").toLowerCase();
-	if (/postgres|(^|\b)pg|redhift/.test(type)) return PostgreSQL;
+	if (/postgres|(^|\b)pg|redshift/.test(type)) return PostgreSQL;
 	if (/mysql|maria|tidb|starrocks|doris/.test(type)) return MySQL;
 	if (/mssql|sqlserver/.test(type)) return MSSQL;
 	if (/sqlite/.test(type)) return SQLite;

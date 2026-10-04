@@ -31,9 +31,12 @@ const STATUS_BY_CODE = Object.freeze({
   NOT_FOUND: 404,
   METHOD_NOT_ALLOWED: 405,
   PAYLOAD_TOO_LARGE: 413,
-  // 写闸门：未确认 → SQL_BLOCKED（在 router 里抛，见 request-router /query）
+  // 写闸门：未确认 → SQL_BLOCKED（router 抛，见 /query）
+  SQL_BLOCKED: 403,
   WRITE_BLOCKED: 403,
   CONFIRM_MISMATCH: 403,
+  // 引擎侧连接不存在（classifyError 归类后在 /query 等路径抛）
+  CONNECTION_NOT_FOUND: 404,
   WRITE_UNSUPPORTED: 501,
   DRIVER_UNSUPPORTED: 501,
   DRIVER_ERROR: 502,

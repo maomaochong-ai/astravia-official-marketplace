@@ -12,7 +12,7 @@ import { describe, it } from "node:test";
 import { executeWrite, familyOf, looksMultiStatement } from "../src/write/direct-write.mjs";
 
 describe("familyOf", () => {
-	const pgTypes = ["postgres", "postgresql", "redhift", "greenplum", "cockroach", "pg"];
+	const pgTypes = ["postgres", "postgresql", "redshift", "greenplum", "cockroach", "pg"];
 	for (const type of pgTypes) {
 		it(`${type} → pg`, () => assert.equal(familyOf(type), "pg"));
 	}
