@@ -1,27 +1,50 @@
 /**
- * 结果区 + 状态栏 — 查询返回的表格、行数截断说明与执行统计。
+ * 结果区 — 查询返回的表格、加载状态与错误视图。
  *
- * 截断提示区分两层含义：用户自己设的行数上限 vs 宿主引擎制品的硬上限，
- * 后者不可调，必须如实告知，避免用户以为是 bug。
+ * 加载状态仅在此处展示（对标 dbx 桌面壳）：加载环 + 已耗时 + 停止执行按钮。
+ * 顶部状态栏 / 编辑器工具栏 / Tab 图标不再冗余展示「执行中」。
  */
 
-import type { JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 import { ResultGrid } from "./result-grid";
 import { useWorkbench } from "../hooks/use-workbench";
 
 export function ResultPanel(): JSX.Element {
-	const { state } = useWorkbench();
+	const { state, cancelExecution } = useWorkbench();
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const result = activeTab?.result;
+	const [elapsed, setElapsed] = useState(0);
+	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+	useEffect(() => {
+		if (activeTab?.isRunning) {
+			setElapsed(0);
+			timerRef.current = setInterval(() => setElapsed((e) => e + 100), 100);
+		} else {
+			if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+		}
+		return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+	}, [activeTab?.isRunning]);
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
-			{/* 结果 / 错误视图 */}
+			{/* 结果 / 加载 / 错误视图 */}
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{activeTab?.isRunning ? (
-					<div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
-						<span className="icon-[lucide--loader] h-6 w-6 animate-spin text-muted-foreground" />
-						<p className="text-[12px]">执行中…</p>
+					<div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+						<span className="icon-[lucide--loader] h-8 w-8 animate-spin text-warning" />
+						<p className="text-[12px]">
+							执行中 <span className="font-mono text-foreground/80">{elapsed} ms</span>
+						</p>
+						{activeTab && (
+							<button
+								type="button"
+								onClick={() => cancelExecution(activeTab.id)}
+								className="rounded-md bg-destructive/90 px-3 py-1 text-[11px] font-medium text-destructive-foreground hover:bg-destructive"
+							>
+								停止执行
+							</button>
+						)}
 					</div>
 				) : result ? (
 					result.ok ? (
@@ -49,55 +72,59 @@ export function ResultPanel(): JSX.Element {
 				)}
 			</div>
 
-			{/* 状态栏 */}
-			<div className="flex h-6 shrink-0 items-center gap-2 px-3 text-[10.5px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)", borderTop: "1px solid var(--dbx-line-soft)" }}>
-				{activeTab?.connectionName ? (
-					<span className="flex min-w-0 items-center gap-1">
-						<span className="icon-[lucide--database] h-3 w-3 shrink-0" />
-						<span className="truncate">{activeTab.connectionName}</span>
-					</span>
-				) : (
-					<span className="shrink-0">未绑定连接</span>
-				)}
-				<span className="text-muted-foreground/40">·</span>
-				{activeTab?.isRunning && <span className="shrink-0 text-warning">执行中…</span>}
-				{result?.ok && (
-					<>
-						<span className="shrink-0">
-							<span className="font-medium text-foreground">
-								{result.affectedRows ?? result.rowCount}
-							</span>{" "}
-							{result.affectedRows != null ? "行受影响" : "行"}
-						</span>
-						<span className="text-muted-foreground/40">·</span>
-						<span className="shrink-0">
-							<span className="font-medium text-foreground">{result.elapsedMs}</span> ms
-						</span>
-						{result.note && (
-							<>
-								<span className="text-muted-foreground/40">·</span>
-								<span className="truncate text-warning">{result.note}</span>
-							</>
-						)}
-					</>
-				)}
-				{result && !result.ok && <span className="shrink-0 text-destructive">错误</span>}
-
-				<span className="ml-auto flex min-w-0 items-center gap-2">
-					{state.rightPanelTable && (
+			{/* 精简状态栏：仅展示连接名 + 行数/耗时/错误 */}
+			{result && (
+				<div className="flex h-6 shrink-0 items-center gap-2 px-3 text-[10.5px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)", borderTop: "1px solid var(--dbx-line-soft)" }}>
+					{activeTab?.connectionName ? (
 						<span className="flex min-w-0 items-center gap-1">
-							<span className="icon-[lucide--table-2] h-2.5 w-2.5 shrink-0 text-success" />
-							<span className="truncate">{state.rightPanelTable.tableName}</span>
+							<span className="icon-[lucide--database] h-3 w-3 shrink-0" />
+							<span className="truncate">{activeTab.connectionName}</span>
+						</span>
+					) : (
+						<span className="shrink-0">未绑定连接</span>
+					)}
+					<span className="text-muted-foreground/40">·</span>
+					{result.ok && (
+						<>
+							<span className="shrink-0">
+								<span className="font-medium text-foreground">{result.rowCount}</span>{" "}
+								{result.affectedRows != null ? "行受影响" : "行"}
+							</span>
+							<span className="text-muted-foreground/40">·</span>
+							<span className="shrink-0">
+								<span className="font-medium text-foreground">{result.elapsedMs}</span> ms
+							</span>
+							{result.note && (
+								<>
+									<span className="text-muted-foreground/40">·</span>
+									<span className="truncate text-warning">{result.note}</span>
+								</>
+							)}
+						</>
+					)}
+					{!result.ok && (
+						<span className="shrink-0 text-destructive">
+							<span className="icon-[lucide--alert-circle] h-3 w-3" />{" "}
+							<span className="truncate">{result.error?.slice(0, 120)}</span>
 						</span>
 					)}
-					{state.errorBanner && (
-						<span className="flex min-w-0 items-center gap-1 text-destructive">
-							<span className="icon-[lucide--alert-circle] h-3 w-3 shrink-0" />
-							<span className="truncate">{state.errorBanner}</span>
-						</span>
-					)}
-				</span>
-			</div>
+
+					<span className="ml-auto flex min-w-0 items-center gap-2">
+						{state.rightPanelTable && (
+							<span className="flex min-w-0 items-center gap-1">
+								<span className="icon-[lucide--table-2] h-2.5 w-2.5 shrink-0 text-success" />
+								<span className="truncate">{state.rightPanelTable.tableName}</span>
+							</span>
+						)}
+						{state.errorBanner && (
+							<span className="flex min-w-0 items-center gap-1 text-destructive">
+								<span className="icon-[lucide--alert-circle] h-3 w-3 shrink-0" />
+								<span className="truncate">{state.errorBanner}</span>
+							</span>
+						)}
+					</span>
+				</div>
+			)}
 		</div>
 	);
 }

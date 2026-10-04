@@ -210,8 +210,8 @@ export function SqlEditor(): JSX.Element {
 					title="执行（⌘/Ctrl + Enter）"
 					className="flex h-6 items-center gap-1 rounded bg-emerald-600/90 px-2 text-[11px] font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[var(--dbx-surface-2)] disabled:text-muted-foreground"
 				>
-					{running ? <span className="icon-[lucide--loader] h-3 w-3 animate-spin" /> : <span className="icon-[lucide--play] h-3 w-3" />}
-					{running ? "执行中" : "执行"}
+					<span className="icon-[lucide--play] h-3 w-3" />
+					执行
 				</button>
 				<div className="mx-1 h-4 w-px bg-[var(--dbx-surface-2)]" />
 				<button
@@ -246,11 +246,6 @@ export function SqlEditor(): JSX.Element {
 					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground/70">
 						<span className="icon-[lucide--loader] mr-2 h-3 w-3 animate-spin" />
 						加载编辑器…
-					</div>
-				)}
-				{running && (
-					<div className="pointer-events-none absolute right-3 top-3 rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium text-black">
-						执行中…
 					</div>
 				)}
 			</div>

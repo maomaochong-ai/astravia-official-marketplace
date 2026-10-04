@@ -73,14 +73,13 @@ export function HorizontalSplit({ top, bottom }: { top: JSX.Element; bottom: JSX
 				{top}
 			</div>
 
-			{/* 水平分隔条：gutter 竖线在此收笔，形成清晰边界 */}
-			<div
-				onPointerDown={startDrag}
-				className="relative h-1 shrink-0 cursor-row-resize"
-				style={{ backgroundColor: dragging ? "var(--foreground)" : "var(--dbx-line)" }}
-			>
-				<div className="absolute inset-x-0 top-[-3px] bottom-[-3px]" />
-			</div>
+			{/* 水平分隔条：1px 发丝线，7px 隐形热区；gutter 竖线在此收笔 */}
+		<div
+			onPointerDown={startDrag}
+			className={`dbx-splitbar dbx-splitbar-h ${dragging ? "is-dragging" : ""}`}
+		>
+			<div className="dbx-split-hit" />
+		</div>
 
 			{/* 结果面板（剩余高度） */}
 			<div className="min-w-0 min-h-0 flex-1 overflow-hidden">{bottom}</div>

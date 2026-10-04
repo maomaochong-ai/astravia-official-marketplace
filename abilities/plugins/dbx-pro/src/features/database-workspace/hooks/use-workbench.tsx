@@ -260,6 +260,8 @@ interface WorkbenchContextValue {
 	loadNodeChildren: (nodeKey: string, connectionName?: string, extra?: { schema?: string }) => Promise<void>;
 	/** 执行一个 tab 的 SQL；overrideSql 存在时只执行给定片段（选中执行）。 */
 	runTabSql: (tabId: string, overrideSql?: string) => Promise<void>;
+	/** 停止当前 tab 的执行（视觉复位）。 */
+	cancelExecution: (tabId: string) => void;
 	/** 打开一个新 tab 并执行（常用于预览） */
 	openPreviewTab: (connectionName: string, sql: string, label?: string) => Promise<void>;
 
@@ -309,6 +311,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
 	const [history, setHistory] = useState<QueryHistoryEntry[]>([]);
 	const [rightView, setRightView] = useState<"inspector" | "history">("inspector");
+
+	const runningStartedAtRef = useRef<Record<string, number>>({});
 
 	// 初始加载：连接 + 设置 + 历史
 	useEffect(() => {
@@ -489,6 +493,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true, result: undefined } });
 		dispatch({ type: "setConnectionStatus", name: connectionName, status: "running" });
 		const startedAt = Date.now();
+		runningStartedAtRef.current[tabId] = startedAt;
 		try {
 			const current = settingsRef.current;
 			const outcome = toQueryResult(
@@ -556,6 +561,26 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				rowCount: 0,
 				durationMs: Date.now() - startedAt,
 				error: msg,
+			});
+		}
+	}
+
+	/** 停止当前 tab 的执行：视觉复位 + 记录取消历史。 */
+	function cancelExecution(tabId: string): void {
+		const tab = stateRef.current.tabs.find((t) => t.id === tabId);
+		if (!tab || !tab.isRunning) return;
+		const elapsedMs = Date.now() - (runningStartedAtRef.current[tabId] ?? Date.now());
+		delete runningStartedAtRef.current[tabId];
+		dispatch({ type: "updateTab", id: tabId, patch: { isRunning: false } });
+		if (tab.connectionName) {
+			dispatch({ type: "setConnectionStatus", name: tab.connectionName, status: "idle" });
+			void recordHistory({
+				connName: tab.connectionName,
+				sql: tab.sql,
+				status: "error",
+				rowCount: 0,
+				durationMs: elapsedMs,
+				error: "用户取消执行",
 			});
 		}
 	}
@@ -707,6 +732,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			refreshConnections,
 			loadNodeChildren,
 			runTabSql,
+			cancelExecution,
 			openPreviewTab,
 			settings,
 			updateSettings,
