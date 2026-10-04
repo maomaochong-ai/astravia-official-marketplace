@@ -68,10 +68,6 @@ const DatabaseWorkspace = lazyPanel(async () => ({
 	default: (await import("./features/database-workspace/components/database-workspace")).DatabaseWorkspace as unknown as ComponentType<Record<string, never>>,
 }));
 
-const DatabaseAtPicker = lazyPanel(async () => ({
-	default: (await import("./features/database-at-picker")).DatabaseAtPicker as unknown as ComponentType<Record<string, never>>,
-}));
-
 export default definePlugin({
 	async activate(ctx) {
 		setRuntime(ctx);
@@ -79,6 +75,8 @@ export default definePlugin({
 		// 宿主不提供 services 时绑定 null：engine-client 会报 ENGINE_NOT_READY。
 		bindEngineServices(((ctx as { services?: unknown }).services ?? null) as EngineServicesApi | null);
 
+		// 注册主工作台 Activity Tab。
+		// 包含 im-claw（宿主默认聊天界面）以确保在对话页可见。
 		const activityTab = ctx.ui.registerActivityTab({
 			id: "dbx-pro",
 			label: "dbx-pro",
@@ -95,36 +93,19 @@ export default definePlugin({
 			initiallyVisible: true,
 		});
 
-		// @ 数据库选择器（activity tab + 输入栏按钮）。宿主默认聊天界面是 im-claw
-		// 场景（im-gateway），scope_use 必须包含它，否则 fail-closed 会在主界面隐藏。
-		// 缺 ui.slot.input-action 授权时整块跳过：registerInputAction 内部 require 会
-		// 抛错并回滚整个激活，不能让可选按钮拖垮主工作台 tab。
-		let atPickerTab: Disposable | null = null;
+		// 输入栏按钮：点击后打开 dbx-pro 工作台，用户可在其中右键选择表注入 AI。
+		// 仅在有权限时注册，避免报错阻断插件激活。
 		let inputAction: Disposable | null = null;
 		if (ctx.permissions.has("ui.slot.input-action")) {
-			atPickerTab = ctx.ui.registerActivityTab({
-				id: "dbx-at-picker",
-				label: "数据库",
-				icon: (
-					<span className="icon-[lucide--database] h-4 w-4" />
-				),
-				component: DatabaseAtPicker,
-				scope_use: ["im-claw", "conversation", "project", "cli"],
-				retention: "active-only",
-				initiallyVisible: false,
-				order: 11,
-			});
-
-			// 输入栏按钮：点击后打开 @ 数据库选择器。
 			inputAction = ctx.ui.registerInputAction({
-				id: "dbx-at-picker-toggle",
+				id: "dbx-pro-toggle",
 				label: "数据库",
 				icon: <span className="icon-[lucide--database] h-3.5 w-3.5" />,
 				defaultActive: false,
 				scope_use: ["im-claw", "conversation", "project", "cli"],
 				onToggle(active) {
 					if (active) {
-						ctx.ui.openActivityTab("dbx-at-picker");
+						ctx.ui.openActivityTab("dbx-pro");
 					}
 				},
 			});
@@ -144,9 +125,7 @@ export default definePlugin({
 
 		return () => {
 			activityTab.dispose();
-			atPickerTab?.dispose();
 			inputAction?.dispose();
 		};
 	},
 });
-

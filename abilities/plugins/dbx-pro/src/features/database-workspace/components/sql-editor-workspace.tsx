@@ -10,7 +10,7 @@ import { TabBar } from "./tab-bar";
 
 export function SqlEditorWorkspace(): JSX.Element {
 	return (
-		<div className="flex h-full min-h-0 flex-col bg-background">
+		<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
 			<TabBar />
 			<HorizontalSplit top={<SqlEditor />} bottom={<ResultPanel />} />
 		</div>

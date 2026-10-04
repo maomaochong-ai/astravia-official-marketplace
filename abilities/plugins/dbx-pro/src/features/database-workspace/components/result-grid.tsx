@@ -233,8 +233,8 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 			</div>
 
 			{/* 网格（可滚动区域） */}
-			<div className="dbx-scroll min-h-0 flex-1 overflow-auto">
-				<table className="border-separate border-spacing-0 text-[12px]" style={{ minWidth: "100%" }}>
+			<div className="min-h-0 flex-1 overflow-auto">
+				<table className="border-separate border-spacing-0 text-[12px] w-full" style={{ minWidth: "100%" }}>
 					<thead>
 						<tr>
 							{showRowNumbers && (

@@ -27,7 +27,7 @@ export function ResultPanel(): JSX.Element {
 	}, [activeTab?.isRunning]);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col bg-background">
+		<div className="flex min-h-0 flex-1 flex-col bg-background overflow-hidden">
 			{/* 结果 / 加载 / 错误视图 */}
 			<div className="min-h-0 flex-1 overflow-hidden">
 				{activeTab?.isRunning ? (
