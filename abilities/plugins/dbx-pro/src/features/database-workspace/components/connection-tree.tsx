@@ -12,7 +12,7 @@ import { useWorkbench } from "../hooks/use-workbench";
 import { ConnectionNode } from "./connection-node";
 import { connectionNodeKey, type TreeNode } from "../../../domain/tree-node-key";
 
-export function ConnectionTree({ onCollapse, onNewQuery }: { onCollapse?: () => void; onNewQuery?: () => void }): JSX.Element {
+export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
 	const { state, refreshConnections, dispatch } = useWorkbench();
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
@@ -60,17 +60,6 @@ export function ConnectionTree({ onCollapse, onNewQuery }: { onCollapse?: () => 
 					)}
 				</span>
 			<span className="min-w-1 flex-1" />
-			{onNewQuery && (
-				<button
-					type="button"
-					onClick={onNewQuery}
-					title="新建查询"
-					className="dbx-iconbtn shrink-0"
-					style={{ height: 22, minWidth: 22, padding: 0 }}
-				>
-					<span className="icon-[lucide--file-plus-2] h-3 w-3" />
-				</button>
-			)}
 			<button
 				type="button"
 				onClick={expandAll}

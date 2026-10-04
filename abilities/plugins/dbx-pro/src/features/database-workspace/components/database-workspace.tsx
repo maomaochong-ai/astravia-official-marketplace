@@ -103,7 +103,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onToggleLeft={() => setLeftCollapsed((v) => !v)}
 			>
 				{[
-					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} onNewQuery={newQueryTab} />,
+					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} />,
 					<SqlEditorWorkspace key="mid" />,
 					<RightPanel key="right" />,
 				]}
