@@ -64,6 +64,12 @@ export interface EditorTab {
 		elapsedMs: number;
 		error?: string;
 		note?: string;
+		/** SQL 支持服务端分页。 */
+		pageable?: boolean;
+		/** COUNT 得到的真实总行数；未统计前为 undefined。 */
+		totalCount?: number;
+		/** 当前服务端页码（0-based）。 */
+		serverPage?: number;
 	};
 	isRunning: boolean;
 }
@@ -433,7 +439,14 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 	const [pendingWrite, setPendingWrite] = useState<(PendingWrite & { tabId: string }) | null>(null);
 
 	/** 写入成功/读取成功后的结果派发。 */
-	function applySuccess(tabId: string, startedAt: number, outcome: ReturnType<typeof toQueryResult>) {
+	function applySuccess(
+		tabId: string,
+		startedAt: number,
+		outcome: ReturnType<typeof toQueryResult>,
+		pageIndex?: number,
+	) {
+		// 翻页时保留既有总数，不被新结果对象覆盖
+		const prevTotal = stateRef.current.tabs.find((t) => t.id === tabId)?.result?.totalCount;
 		dispatch({
 			type: "updateTab",
 			id: tabId,
@@ -447,6 +460,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 					affectedRows: outcome.affected_rows ?? null,
 					elapsedMs: Date.now() - startedAt,
 					note: outcome.note,
+					pageable: outcome.pageable,
+					serverPage: pageIndex ?? 0,
+					...(prevTotal !== undefined ? { totalCount: prevTotal } : {}),
 				},
 			},
 		});
@@ -481,7 +497,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		} catch { /* 历史落盘失败不影响主流程 */ }
 	}
 
-	async function runTabSql(tabId: string, overrideSql?: string, overrideConn?: string) {
+	async function runTabSql(
+		tabId: string,
+		overrideSql?: string,
+		overrideConn?: string,
+		options?: { pageIndex?: number },
+	) {
 		const st = stateRef.current;
 		const tab = st.tabs.find((t) => t.id === tabId);
 		const connectionName = overrideConn ?? tab?.connectionName ?? null;
@@ -490,19 +511,31 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			return;
 		}
 		const sqlToRun = overrideSql && overrideSql.trim() ? overrideSql : tab.sql;
-		dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true, result: undefined } });
+		const pageIndex = options?.pageIndex;
+		// 翻页：保留旧结果（含总数），加载期间网格仍显示当前页，不整屏闪烁
+		if (pageIndex === undefined) {
+			dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true, result: undefined } });
+		} else {
+			dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true } });
+		}
 		dispatch({ type: "setConnectionStatus", name: connectionName, status: "running" });
 		const startedAt = Date.now();
 		runningStartedAtRef.current[tabId] = startedAt;
 		try {
 			const current = settingsRef.current;
-			const outcome = toQueryResult(
-				await engineExecuteByName(connectionName, sqlToRun, {
-					timeoutMs: current.queryTimeoutSecs * 1000,
-					rowLimit: current.rowLimit,
-				}),
-			);
-			applySuccess(tabId, startedAt, outcome);
+			const targetConn = stateRef.current.connections.find((c) => c.name === connectionName);
+			const rawOutcome = await engineExecuteByName(connectionName, sqlToRun, {
+				timeoutMs: current.queryTimeoutSecs * 1000,
+				rowLimit: current.rowLimit,
+				...(pageIndex !== undefined
+					? {
+						dbType: targetConn?.db_type,
+						page: { offset: pageIndex * RESULT_PAGE_SIZE, limit: RESULT_PAGE_SIZE },
+					}
+					: {}),
+			});
+			const outcome = toQueryResult(rawOutcome);
+			applySuccess(tabId, startedAt, outcome, pageIndex);
 			dispatch({ type: "setConnectionStatus", name: connectionName, status: "ok" });
 			dispatch({ type: "setError", message: null });
 			await recordHistory({
@@ -512,6 +545,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				rowCount: outcome.row_count,
 				durationMs: Date.now() - startedAt,
 			});
+			// 首次执行且可分页：异步统计总行数，结果区随即显示真实页数
+			if (pageIndex === undefined && rawOutcome.pageable) {
+				void fetchTotalCount(tabId, connectionName, sqlToRun, targetConn?.db_type);
+			}
 		} catch (e) {
 			const isBlocked = e instanceof EngineClientError && e.code === "SQL_BLOCKED";
 			if (isBlocked) {

@@ -33,7 +33,10 @@ export interface WorkbenchSettings {
  * 超过它，否则 UI 会让人以为能取到 5000 行，实际只有 100 行。
  * 换用支持 max_rows 的新版二进制后把这个数调大即可。
  */
-export const ENGINE_ROW_CAP = 100;
+export const ENGINE_ROW_CAP = 1000;
+
+/** 服务端 / 客户端网格每页行数（引擎每结果集硬上限即一页）。 */
+export const RESULT_PAGE_SIZE = ENGINE_ROW_CAP;
 
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
 export const SETTINGS_BOUNDS = Object.freeze({

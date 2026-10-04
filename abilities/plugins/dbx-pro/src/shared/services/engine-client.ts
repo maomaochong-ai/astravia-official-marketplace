@@ -93,6 +93,12 @@ export interface EngineQueryOutcome {
 	statement_count: number;
 	statements: EngineStatementResult[];
 	truncated: boolean;
+	/** SQL 支持服务端分页（单条 SELECT/WITH、无自带分页子句）。 */
+	pageable?: boolean;
+	/** 本次响应是服务端分页中的一页。 */
+	paged?: boolean;
+	/** countOnly 响应的真实总行数。 */
+	total_count?: number;
 	row_limit: number;
 	/** 引擎实际施加的行数上限（已按制品硬上限夹紧）。截断提示要引用它。 */
 	max_rows: number;
@@ -182,6 +188,12 @@ export interface EngineExecuteOptions extends CallOptions {
 	/** 危险语句必须回传与 SQL 逐字节一致的原文，否则引擎返回 CONFIRM_MISMATCH。 */
 	confirmedWriteSql?: string;
 	rowLimit?: number;
+	/** 服务端分页：请求该 offset/limit 对应的一页。 */
+	page?: { offset: number; limit: number };
+	/** 只取总数（包 COUNT 派生表），响应读 total_count。 */
+	countOnly?: boolean;
+	/** SQL 方言（分页重写需要）。 */
+	dbType?: string;
 	/** 写驱动所需的完整连接配置（db_type/host/port/凭据/库）。 */
 	connection?: {
 		db_type?: string;
@@ -303,6 +315,9 @@ export function engineExecuteByName(
 		rowLimit: options.rowLimit,
 		timeoutMs: clampTimeout(options.timeoutMs),
 	};
+	if (options.page) body.page = options.page;
+	if (options.countOnly) body.countOnly = true;
+	if (options.dbType) body.dbType = options.dbType;
 	if (options.connection) body.connection = options.connection;
 	return engineRequest<EngineQueryOutcome>(
 		"/query",
@@ -335,6 +350,7 @@ export function toQueryResult(outcome: EngineQueryOutcome): DbQueryResult {
 		columns: outcome.columns,
 		rows: outcome.rows,
 		row_count: outcome.row_count,
+		...(outcome.pageable ? { pageable: true } : {}),
 		...(notes.length > 0 ? { note: notes.join("；") } : {}),
 	};
 }

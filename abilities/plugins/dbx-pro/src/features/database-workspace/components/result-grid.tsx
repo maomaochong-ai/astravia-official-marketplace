@@ -29,7 +29,7 @@ interface Props {
 	sql?: string;
 }
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 1000;
 
 function cellText(value: unknown): string {
 	if (value === null || value === undefined) return "";

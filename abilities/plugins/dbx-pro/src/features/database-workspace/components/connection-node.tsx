@@ -86,7 +86,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		} else if (node.kind === "table") {
 			if (!connectionName) return;
 			if (settings.tableSingleClickAction === "preview") {
-				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
 			} else {
 				dispatch({
 					type: "selectRightTable",
@@ -102,7 +102,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
 			if (settings.tableDoubleClickAction === "preview") {
-				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
 			} else {
 				dispatch({
 					type: "selectRightTable",
@@ -118,7 +118,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	function previewTable(): void {
 		if (!connectionName) return;
-		void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+		void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
 	}
 
 	function showStructure(): void {

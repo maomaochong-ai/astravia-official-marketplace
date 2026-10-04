@@ -38,6 +38,12 @@ import {
 } from "./protocol.mjs";
 import { getDbxMcpClient } from "./dbx-mcp-client.mjs";
 import { classifyQuery } from "./sql-safety.mjs";
+import {
+  buildCountSql,
+  buildPagedSql,
+  canPaginate,
+  supportsPagination,
+} from "./sql-pagination.mjs";
 import { executeWrite } from "../write/direct-write.mjs";
 import {
   textOf,
@@ -72,7 +78,7 @@ function clampRowLimit(rowLimit) {
  * 因此对外一律按这个真实上限夹紧并如实标记 truncated，避免 UI 让人以为拿到了 500 行。
  * 换用支持 max_rows 的新版二进制后，把这个值提到 DBX_MAX_ROWS 即可。
  */
-const DBX_EFFECTIVE_ROW_CAP = 100;
+const DBX_EFFECTIVE_ROW_CAP = 1000;
 
 /** 传给 dbx_execute_query 的行数上限（同时受引擎声明上限与制品实测上限约束）。 */
 function dbxMaxRows(rowLimit) {
@@ -243,12 +249,16 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
        * 所以用户设的小上限必须在这里自己夹：多余的行丢掉并标 truncated，
        * 否则设置里写 10 实际给 100 行，UI 会显示一个假的“行数上限”。
        */
+      // 服务端分页时本页行数（页请求覆盖用户行上限）；null = 常规执行。
+      let pageLimit = null;
+
       const toOutcome = (text, extra = {}) => {
+        const lim = pageLimit ?? rowLimit;
         const { columns, rows: allRows } = parseMarkdownTable(text);
-        const rows = allRows.length > rowLimit ? allRows.slice(0, rowLimit) : allRows;
+        const rows = allRows.length > lim ? allRows.slice(0, lim) : allRows;
         // 截断只按用户行上限判定：引擎制品固定上限已通过 /health row_cap 公开，
         // 恰好等于上限的真实结果不该被误报（引擎不提供总数，无法区分）。
-        const truncated = allRows.length > rowLimit;
+        const truncated = allRows.length > lim;
         const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
         return {
           connection: connectionName,
@@ -319,12 +329,36 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         };
       }
 
+      // --- 读路径分页：countOnly / page 指定时把原 SQL 包成派生表 ---
+      // canPaginate 仅对单条 SELECT/WITH 且无自带分页子句成立，写路径不会进入。
+      const dbType = body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType;
+      const countOnly = body?.countOnly === true;
+      const pageReq = body?.page;
+      let effectiveSql = sql;
+      const pageable = canPaginate(sql);
+      if (pageable && countOnly) {
+        if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "当前数据库类型不支持分页统计");
+        effectiveSql = buildCountSql(sql);
+      } else if (
+        pageable && pageReq && Number.isFinite(pageReq.offset) && Number.isFinite(pageReq.limit)
+      ) {
+        if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "当前数据库类型不支持分页");
+        const limit = Math.min(Math.max(Math.trunc(pageReq.limit), 1), DBX_EFFECTIVE_ROW_CAP);
+        const offset = Math.max(Math.trunc(pageReq.offset), 0);
+        pageLimit = limit;
+        effectiveSql = buildPagedSql(sql, dbType, limit, offset);
+      }
+
       // --- 路径 2：读 → 常驻零提权子进程 ---
       let result;
       try {
         result = await mcpClient().callTool(
           "dbx_execute_query",
-          { connection_name: connectionName, sql, max_rows: maxRows },
+          {
+            connection_name: connectionName,
+            sql: effectiveSql,
+            max_rows: pageLimit ? Math.min(maxRows, pageLimit) : maxRows,
+          },
           timeoutMs,
         );
       } catch (e) {
@@ -333,7 +367,16 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         throw engineError("DBX_MCP_ERROR", `dbx-mcp 调用失败: ${msg}`);
       }
 
-      if (!result.isError) return toOutcome(textOf(result));
+      if (!result.isError) {
+        const outcome = toOutcome(textOf(result));
+        if (countOnly) {
+          // COUNT 包装：唯一列 _dbx_total，直接返回总数，不走结果网格
+          const total = Number.parseInt(String(outcome.rows[0]?._dbx_total ?? "0"), 10);
+          return { kind: "count", connection: connectionName, total_count: Number.isFinite(total) ? total : 0 };
+        }
+        if (pageLimit) return { ...outcome, paged: true };
+        return { ...outcome, pageable };
+      }
 
       const errorText = textOf(result);
       const err = classifyError(errorText);
