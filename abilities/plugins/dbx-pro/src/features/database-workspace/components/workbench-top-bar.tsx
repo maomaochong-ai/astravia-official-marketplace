@@ -1,5 +1,5 @@
 /**
- * 工作台顶栏 — 左：新建连接 / 新建查询；右：AI 面板 / 表详情 / 历史 / 刷新 / 设置 / 全屏。
+ * 工作台顶栏 — 左：新建连接 / 新建查询；右：表详情 / 历史 / 刷新 / 设置 / 全屏。
  *
  * 参考 dbx 桌面壳：不展示「dbx-pro + 当前连接」静态信息，中间交互靠图标。
  */
@@ -11,8 +11,6 @@ export interface WorkbenchTopBarProps {
 	onOpenConnectionEditor: () => void;
 	onOpenSettings: () => void;
 	onNewQuery: () => void;
-	onToggleAiPanel: () => void;
-	aiPanelActive: boolean;
 	rightPanelVisible: boolean;
 	onToggleRightPanel: () => void;
 	fullscreen: boolean;
@@ -23,8 +21,6 @@ export function WorkbenchTopBar({
 	onOpenConnectionEditor,
 	onOpenSettings,
 	onNewQuery,
-	onToggleAiPanel,
-	aiPanelActive,
 	rightPanelVisible,
 	onToggleRightPanel,
 	fullscreen,
@@ -58,15 +54,6 @@ export function WorkbenchTopBar({
 
 			{/* 右：工具按钮（统一中性图标按钮） */}
 			<div className="flex shrink-0 items-center gap-1">
-				<button
-					type="button"
-					onClick={onToggleAiPanel}
-					title="AI 助手面板"
-					aria-expanded={aiPanelActive}
-					className={`dbx-iconbtn ${aiPanelActive ? "is-active" : ""}`}
-				>
-					<span className="icon-[lucide--bot] h-3.5 w-3.5" />
-				</button>
 				<button
 					type="button"
 					onClick={onToggleRightPanel}

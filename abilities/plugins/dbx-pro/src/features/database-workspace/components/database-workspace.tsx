@@ -33,7 +33,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, dispatch, state, rightView, setRightView } = useWorkbench();
 
 	useEffect(() => {
-		if ((rightView === "ai" || rightView === "history") && !rightPanelVisible) {
+		if (rightView === "history" && !rightPanelVisible) {
 			setRightPanelVisible(true);
 		}
 	}, [rightView, rightPanelVisible]);
@@ -58,11 +58,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}
 				onOpenSettings={() => setSettingsOpen(true)}
 				onNewQuery={newQueryTab}
-				onToggleAiPanel={() => {
-					if (rightView === "ai") setRightView("inspector");
-					else { setRightView("ai"); setRightPanelVisible(true); }
-				}}
-				aiPanelActive={rightView === "ai"}
 				rightPanelVisible={rightPanelVisible}
 				onToggleRightPanel={() => setRightPanelVisible((v) => !v)}
 				fullscreen={fullscreen}

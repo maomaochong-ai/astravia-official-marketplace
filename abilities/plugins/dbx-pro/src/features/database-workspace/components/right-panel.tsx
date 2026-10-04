@@ -5,7 +5,6 @@
 import type { JSX } from "react";
 import { HistoryPanel } from "../../query-history/components/history-panel";
 import { TableInspector } from "./table-inspector";
-import { AiPanel } from "./ai-panel";
 import { useWorkbench } from "../hooks/use-workbench";
 
 export function RightPanel(): JSX.Element {
@@ -18,9 +17,6 @@ export function RightPanel(): JSX.Element {
 		removeHistory,
 		clearAllHistory,
 	} = useWorkbench();
-	if (rightView === "ai") {
-		return <AiPanel />;
-	}
 	if (rightView === "history") {
 		return (
 			<HistoryPanel

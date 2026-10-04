@@ -170,8 +170,26 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       const dbxArgs = toDbxAddParams(body);
       const result = await mcpClient().callTool("dbx_add_connection", dbxArgs);
       const text = extractText(result, "dbx_add_connection");
+
+      // 引擎对同名连接返回「成功文本」而非错误（server.rs：text，非 tool_error）。
+      // 保存必须幂等：识别该情况并取回已存连接的真实 id，绝不重复创建。
+      const alreadyExists = /already exists/i.test(text);
+      if (alreadyExists) {
+        const existingList = await mcpClient().callTool("dbx_list_connections", {});
+        const existingText = textOf(existingList);
+        const existing = parseConnections(existingText).find(
+          (c) => c.name.toLowerCase() === body.name.toLowerCase(),
+        );
+        return {
+          id: existing?.id ?? "",
+          name: body.name,
+          detail: text,
+          existing: true,
+        };
+      }
+
       const idMatch = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-      return { id: idMatch?.[0] ?? "", name: body.name, detail: text };
+      return { id: idMatch?.[0] ?? "", name: body.name, detail: text, existing: false };
     }],
     ["/connections", "DELETE", true, async ({ body }) => {
       const name = body?.name;

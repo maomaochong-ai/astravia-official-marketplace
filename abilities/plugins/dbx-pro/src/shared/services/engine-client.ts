@@ -231,12 +231,12 @@ export function engineListConnections(options: CallOptions = {}): Promise<{ conn
 	return engineRequest<{ connections: EngineConnectionSummary[] }>("/connections", undefined, options);
 }
 
-/** 新增连接（POST /connections）。 */
+/** 新增连接（POST /connections，引擎侧按名称幂等）。 */
 export function engineAddConnection(
 	spec: { name: string; dbType: string; host: string; port?: number; username?: string; password?: string; database?: string; ssl?: boolean },
 	options: CallOptions = {},
-): Promise<{ id: string; name: string; detail?: string }> {
-	return engineRequest<{ id: string; name: string; detail?: string }>("/connections", spec, options);
+): Promise<{ id: string; name: string; detail?: string; existing?: boolean }> {
+	return engineRequest<{ id: string; name: string; detail?: string; existing?: boolean }>("/connections", spec, options);
 }
 
 /** 删除连接（DELETE /connections）。 */
