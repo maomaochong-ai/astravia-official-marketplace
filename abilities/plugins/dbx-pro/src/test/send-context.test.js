@@ -14,15 +14,22 @@ import {
 
 let captured = "";
 let lastSendPromptText = "";
+let notified = [];
 
 function setup() {
 	captured = "";
 	lastSendPromptText = "";
+	notified = [];
 	setRuntime({
 		permissions: {
 			has(name) {
 				// 测试中认为所有权限已授予
 				return true;
+			},
+		},
+		ui: {
+			notify(opts) {
+				notified.push(opts);
 			},
 		},
 		conversation: {
@@ -68,7 +75,7 @@ describe("sendTableToAi", () => {
 		sendTableToAi({ connectionName: "c", table: "t" });
 		await new Promise((r) => setTimeout(r, 50));
 		const text = lastSendPromptText || captured;
-		assert.ok(text.includes("表 t。"));
+		assert.ok(text.includes("表 @`t`。"));
 		assert.ok(text.includes("SELECT * FROM t LIMIT 100"));
 	});
 });
