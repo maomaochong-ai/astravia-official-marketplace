@@ -11,13 +11,11 @@ src/
   domain/                    纯类型与纯逻辑，无 React、无 IO
     connection-config.ts       连接配置类型 + 数据库类型清单
     driver-tiers.ts            驱动成熟度分级与文案
-    db-env.ts                  宿主注入的环境探测
     dbx-storage.ts             连接配置的读写与本地镜像
     workbench-settings.ts      工作台设置类型、默认值、规范化
     workbench-settings-store.ts  设置持久化
     query-history.ts           历史条目类型与规范化
     query-history-store.ts     历史持久化
-    catalog.ts                 库表目录类型
     database-type-visual.ts    各数据库类型的展示元信息
   features/
     database-workspace/
