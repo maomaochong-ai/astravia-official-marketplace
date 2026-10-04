@@ -94982,7 +94982,7 @@ function stringifyJson(value) {
 
 // server/src/engine/dbx-mcp-client.mjs
 import { spawn as spawn2 } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -95003,18 +95003,25 @@ var CALL_TIMEOUT_MS = 6e4;
 var SHUTDOWN_GRACE_MS = 2e3;
 function detectPlatform() {
   const platform2 = process.platform;
-  const arch2 = process.arch;
-  if (platform2 === "darwin" && arch2 === "arm64") return "darwin-arm64";
-  if (platform2 === "darwin" && arch2 === "x64") return "darwin-x64";
-  if (platform2 === "win32" && arch2 === "x64") return "win32-x64";
+  if (platform2 === "darwin") {
+    return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+  }
+  if (platform2 === "win32" && process.arch === "x64") return "win32-x64";
   return null;
 }
 function resolveBinaryPath() {
-  const platform2 = detectPlatform();
-  if (!platform2) {
-    throw new Error(`dbx-mcp: \u4E0D\u652F\u6301\u7684\u5E73\u53F0 ${process.platform}-${process.arch}\uFF08\u9700\u8981 darwin-arm64 / darwin-x64 / win32-x64\uFF09`);
+  const preferred = detectPlatform();
+  if (preferred && existsSync(BIN_PATH_BY_PLATFORM[preferred])) {
+    return BIN_PATH_BY_PLATFORM[preferred];
   }
-  return BIN_PATH_BY_PLATFORM[platform2];
+  for (const tag of ["darwin-arm64", "darwin-x64", "win32-x64"]) {
+    if (tag !== preferred && existsSync(BIN_PATH_BY_PLATFORM[tag])) {
+      return BIN_PATH_BY_PLATFORM[tag];
+    }
+  }
+  throw new Error(
+    `dbx-mcp: \u627E\u4E0D\u5230\u53EF\u7528\u4E8C\u8FDB\u5236\uFF08\u5E73\u53F0 ${process.platform}-${process.arch}\uFF09\uFF0C\u671F\u671B darwin-arm64 / darwin-x64 / win32-x64`
+  );
 }
 var DbxMcpClient = class {
   constructor(options = {}) {

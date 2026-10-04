@@ -16,7 +16,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,22 +47,40 @@ const HANDSHAKE_TIMEOUT_MS = 15_000;
 const CALL_TIMEOUT_MS = 60_000;
 const SHUTDOWN_GRACE_MS = 2_000;
 
+/**
+ * 解析目标平台。
+ *
+ * 以运行本 service 的 node 进程架构为准：x64 node（含 Rosetta）必须配 x64 二进制，
+ * arm64 node 配 arm64。宿主 install/marker 也按同一平台校验，两者必须一致。
+ */
 function detectPlatform() {
   const platform = process.platform;
-  const arch = process.arch;
-  if (platform === "darwin" && arch === "arm64") return "darwin-arm64";
-  if (platform === "darwin" && arch === "x64") return "darwin-x64";
-  if (platform === "win32" && arch === "x64") return "win32-x64";
-  // Linux（用 darwin-arm64 同平台暂不可用 — fork release 没打 linux）
+  if (platform === "darwin") {
+    return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+  }
+  if (platform === "win32" && process.arch === "x64") return "win32-x64";
   return null;
 }
 
+/**
+ * 解析 dbx-mcp 二进制路径，并以「磁盘上实际存在」做兜底。
+ *
+ * 首选真实硬件平台；若该二进制缺失（例如裁剪安装），退回到任意存在的平台二进制，
+ * 避免 spawn ENOENT。
+ */
 function resolveBinaryPath() {
-  const platform = detectPlatform();
-  if (!platform) {
-    throw new Error(`dbx-mcp: 不支持的平台 ${process.platform}-${process.arch}（需要 darwin-arm64 / darwin-x64 / win32-x64）`);
+  const preferred = detectPlatform();
+  if (preferred && existsSync(BIN_PATH_BY_PLATFORM[preferred])) {
+    return BIN_PATH_BY_PLATFORM[preferred];
   }
-  return BIN_PATH_BY_PLATFORM[platform];
+  for (const tag of ["darwin-arm64", "darwin-x64", "win32-x64"]) {
+    if (tag !== preferred && existsSync(BIN_PATH_BY_PLATFORM[tag])) {
+      return BIN_PATH_BY_PLATFORM[tag];
+    }
+  }
+  throw new Error(
+    `dbx-mcp: 找不到可用二进制（平台 ${process.platform}-${process.arch}），期望 darwin-arm64 / darwin-x64 / win32-x64`,
+  );
 }
 
 class DbxMcpClient {

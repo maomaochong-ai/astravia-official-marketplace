@@ -20,10 +20,10 @@ import runtimeLock from "../runtime-lock.json";
 import arm64BinUrl from "../server/bin/dbx-mcp-darwin-arm64?url";
 import x64BinUrl from "../server/bin/dbx-mcp-darwin-x64?url";
 import winBinUrl from "../server/bin/dbx-mcp-win-x64.exe?url";
+import type { PlatformTag } from "./shared/platform";
 
 const SERVICE_ID = "dbx-engine";
 
-type PlatformTag = "darwin-arm64" | "darwin-x64" | "win32-x64";
 interface BinaryAsset {
 	destination: string;
 	url: string;
