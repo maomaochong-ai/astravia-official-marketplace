@@ -96324,11 +96324,12 @@ async function main() {
       process.exit(1);
     }
   }
-  const { server, auth } = createEngineServer({
+  const { server, auth, ready } = createEngineServer({
     token,
     dataDir: args.dataDir,
     authDisabled: args.authDisabled
   });
+  await ready;
   if (!auth.enabled) emit("auth-disabled", { reason: args.authDisabled ? "flag" : "no-secret" });
   await new Promise((resolve) => {
     server.on("error", (error) => {

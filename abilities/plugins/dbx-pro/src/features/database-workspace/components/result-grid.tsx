@@ -1,15 +1,17 @@
 /**
  * ResultGrid — 查询结果网格（对标 dbx DataGrid）。
  *
- * - 行号列（横向滚动时固定左侧）
- * - 列宽拖拽（th relative，边缘手柄）
+ * - 行号列（横向滚动时固定左侧）；列宽拖拽
  * - 双击单元格 → 详情弹窗；右键单元格 → 复制 / 导出菜单
- * - 工具栏：复制为 TSV、导出 CSV；分页（服务端 LIMIT/OFFSET 优先，不可分页时本地切片）
- * - 服务端分页：总行数未知时只提供「第 N 页 + 下一页」，不假装知道页数
- * - NULL / JSON / 数字 / 布尔类型着色
+ * - 工具栏：复制为 TSV、导出 CSV
+ * - 分页：
+ *   - 服务端分页（表预览 / 可分页 SELECT）：引擎按 LIMIT/OFFSET 取页，
+ *     翻页经 onPageChange 重跑；总数 COUNT 未回来时只按「本页是否装满」给下一页。
+ *   - 本地分页（其余 SQL）：对已取回的行切片。
+ *   两种模式底部均提供每页行数选择，默认来自工作台设置（设置 200 即 200）。
  */
 
-import { useCallback, useMemo, useState, type JSX } from "react";
+import { useEffect, useCallback, useMemo, useState, type JSX } from "react";
 import {
 	ContextMenu,
 	type ContextMenuState,
@@ -18,7 +20,10 @@ import {
 	CellDetailDialog,
 	type CellDetail,
 } from "./cell-detail-dialog";
-import { PAGE_SIZE_OPTIONS } from "../../../domain/workbench-settings";
+import {
+	PAGE_SIZE_OPTIONS,
+	resolvePageSize,
+} from "../../../domain/workbench-settings";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 
@@ -29,22 +34,23 @@ interface Props {
 	/** 产生该结果的连接 / SQL，用于「分析结果」回流给 AI。 */
 	connectionName?: string;
 	sql?: string;
-	/** 引擎已按 LIMIT/OFFSET 取页：组件不再本地切片，翻页交给 onPageChange。 */
+	/** 引擎已按 LIMIT/OFFSET 取页：组件不本地切片，翻页交给 onPageChange。 */
 	serverPaged?: boolean;
 	/** 当前服务端页码（0-based）。 */
 	serverPage?: number;
-	/** 每页行数（服务端分页时生效）。 */
+	/** 服务端分页实际页大小。 */
 	serverPageSize?: number;
-	/** 已知总行数；undefined 表示尚未统计出来，页数栏改为「第 N 页 + 下一页」。 */
+	/** 初始页大小（本地分页的默认值；取设置 rowLimit）。 */
+	defaultPageSize: number;
+	/** 服务端分页的总行数；undefined = 尚未统计。 */
 	serverTotalCount?: number;
-	/** 正在取下一页。 */
+	/** 正在取页。 */
 	pageLoading?: boolean;
+	/** 截断 / 多语句等需要告知的提示。 */
+	note?: string;
 	onPageChange?: (pageIndex: number) => void;
 	onPageSizeChange?: (pageSize: number) => void;
 }
-
-/** 不可分页时的本地切片页大小。 */
-const PAGE_SIZE = 1000;
 
 function cellText(value: unknown): string {
 	if (value === null || value === undefined) return "";
@@ -77,12 +83,16 @@ export function ResultGrid({
 	serverPaged,
 	serverPage,
 	serverPageSize,
+	defaultPageSize,
 	serverTotalCount,
 	pageLoading,
+	note,
 	onPageChange,
 	onPageSizeChange,
 }: Props): JSX.Element {
+	const isServer = serverPaged === true;
 	const [localPage, setLocalPage] = useState(0);
+	const [localPageSize, setLocalPageSize] = useState(() => resolvePageSize(defaultPageSize));
 	const [colWidths, setColWidths] = useState<Record<string, number>>({});
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
 	const [detail, setDetail] = useState<CellDetail | null>(null);
@@ -90,6 +100,12 @@ export function ResultGrid({
 	const [sort, setSort] = useState<{ col: string; dir: "asc" | "desc" } | null>(null);
 	const [aiDialogOpen, setAiDialogOpen] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState("");
+
+	// 设置的每页行数变化时跟随为本地默认页大小。
+	useEffect(() => {
+		setLocalPageSize(resolvePageSize(defaultPageSize));
+		setLocalPage(0);
+	}, [defaultPageSize]);
 
 	function openAiDialogForQuery(): void {
 		setAiPrompt(buildQueryPrompt(connectionName ?? "", sql ?? "", rows));
@@ -111,38 +127,56 @@ export function ResultGrid({
 		return [...rows].sort(compare);
 	}, [rows, sort]);
 
-	const isServerPaged = serverPaged === true && serverPage !== undefined;
-	const pageSize = isServerPaged ? Math.max(1, serverPageSize ?? PAGE_SIZE) : PAGE_SIZE;
-	/** 每页步长：服务端分页用真实页大小，本地切片固定 PAGE_SIZE。行号必须用同一值。 */
-	const pageStride = isServerPaged ? pageSize : PAGE_SIZE;
-	const totalPages = isServerPaged
-		? serverTotalCount !== undefined
-			? Math.max(1, Math.ceil(serverTotalCount / pageSize))
-			: (serverPage ?? 0) + 1
-		: Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
-	const safePage = isServerPaged ? (serverPage ?? 0) : Math.min(localPage, totalPages - 1);
+	const pageSize = isServer
+		? resolvePageSize(serverPageSize ?? defaultPageSize)
+		: localPageSize;
+
+	// 总页数：服务端总数未统计时为 null（不假装知道）。
+	const totalPages = useMemo(() => {
+		if (isServer) {
+			return serverTotalCount !== undefined
+				? Math.max(1, Math.ceil(serverTotalCount / pageSize))
+				: null;
+		}
+		return Math.max(1, Math.ceil(rows.length / pageSize));
+	}, [isServer, serverTotalCount, rows.length, pageSize]);
+
+	const safePage = isServer
+		? Math.max(0, serverPage ?? 0)
+		: Math.min(localPage, (totalPages ?? 1) - 1);
+
 	const pagedRows = useMemo(
 		() =>
-			isServerPaged
+			isServer
 				? orderedRows
-				: orderedRows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE),
-		[isServerPaged, orderedRows, safePage],
+				: orderedRows.slice(safePage * pageSize, (safePage + 1) * pageSize),
+		[isServer, orderedRows, safePage, pageSize],
 	);
-	/** 总数未知时按「本页是否装满」推断是否还有下一页，不假装知道总页数。 */
-	const totalKnown = !isServerPaged || serverTotalCount !== undefined;
-	const displayTotal = isServerPaged
-		? (serverTotalCount ?? safePage * pageSize + rows.length)
-		: totalRows;
-	const hasNextPage = isServerPaged
-		? serverTotalCount !== undefined
-			? safePage < totalPages - 1
-			: rows.length >= pageSize
-		: safePage < totalPages - 1;
 
-	/** 翻页：服务端分页交给上层重跑 SQL，否则本地切片。 */
+	const totalKnown = !isServer || serverTotalCount !== undefined;
+	const displayTotal = isServer
+		? serverTotalCount ?? safePage * pageSize + rows.length
+		: rows.length;
+	const hasNextPage = isServer
+		? totalPages === null
+			? rows.length >= pageSize
+			: safePage < totalPages - 1
+		: safePage < (totalPages ?? 1) - 1;
+
+	/** 翻页：服务端交给上层重跑 SQL；本地切片。 */
 	function goToPage(next: number): void {
-		if (isServerPaged) onPageChange?.(Math.max(0, next));
-		else setLocalPage(Math.max(0, Math.min(totalPages - 1, next)));
+		if (isServer) onPageChange?.(Math.max(0, next));
+		else setLocalPage(Math.max(0, Math.min((totalPages ?? 1) - 1, next)));
+	}
+
+	/** 页大小变化：服务端交上层并回第 0 页；本地重置。 */
+	function changePageSize(next: number): void {
+		const size = resolvePageSize(next);
+		if (isServer) onPageSizeChange?.(size);
+		else {
+			setLocalPageSize(size);
+			setLocalPage(0);
+		}
 	}
 
 	/** 点击表头：无→升序→降序→清除。 */
@@ -287,7 +321,7 @@ export function ResultGrid({
 				<span className="ml-auto text-[10px] text-muted-foreground/70">双击查看详情 · 右键更多操作</span>
 			</div>
 
-			{/* 网格（可滚动区域） */}
+			{/* 网格（内部滚动） */}
 			<div className="min-h-0 flex-1 overflow-auto">
 				<table className="border-separate border-spacing-0 text-[12px] w-full" style={{ minWidth: "100%" }}>
 					<thead>
@@ -336,9 +370,9 @@ export function ResultGrid({
 							</tr>
 						) : (
 							pagedRows.map((row, rowIdx) => {
-								const globalIdx = safePage * pageStride + rowIdx + 1;
+								const globalIdx = safePage * pageSize + rowIdx + 1;
 								return (
-									<tr key={rowIdx} className="hover:bg-[var(--dbx-hover)]">
+									<tr key={`${safePage}-${rowIdx}`} className="hover:bg-[var(--dbx-hover)]">
 										{showRowNumbers && (
 											<td className="sticky left-0 z-10 w-10 min-w-10 border-r border-border px-1 py-1.5 text-center font-mono text-[10px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)" }}>
 												{globalIdx}
@@ -370,34 +404,32 @@ export function ResultGrid({
 					{totalKnown ? "共 " : "已取回 "}
 					<span className="font-medium text-foreground/80">{displayTotal}</span> 行
 				</span>
-				{!isServerPaged && rows.length < totalRows && (
-					<span className="rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-400">
-						仅展示前 {rows.length} 行
+				{note ? (
+					<span className="rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-400" title={note}>
+						{note}
 					</span>
-				)}
-				{isServerPaged && !totalKnown && (
+				) : null}
+				{isServer && !totalKnown ? (
 					<span className="rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
 						总数统计中
 					</span>
-				)}
-				{pageLoading && <span className="text-[10px] text-blue-400">取数中…</span>}
+				) : null}
+				{pageLoading ? <span className="text-[10px] text-blue-400">取数中…</span> : null}
 				<div className="ml-auto flex items-center gap-1">
-					{isServerPaged && (
-						<label className="flex items-center gap-1">
-							<span className="text-muted-foreground/60">每页</span>
-							<select
-								value={pageSize}
-								onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
-								className="h-5 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
-							>
-								{PAGE_SIZE_OPTIONS.map((n) => (
-									<option key={n} value={n}>
-										{n}
-									</option>
-								))}
-							</select>
-						</label>
-					)}
+					<label className="flex items-center gap-1">
+						<span className="text-muted-foreground/60">每页</span>
+						<select
+							value={pageSize}
+							onChange={(e) => changePageSize(Number(e.target.value))}
+							className="h-5 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
+						>
+							{PAGE_SIZE_OPTIONS.map((n) => (
+								<option key={n} value={n}>
+									{n}
+								</option>
+							))}
+						</select>
+					</label>
 					<span className="text-muted-foreground/70">
 						{pagedRows.length === 0 ? 0 : safePage * pageSize + 1}–
 						{safePage * pageSize + pagedRows.length}
@@ -425,7 +457,7 @@ export function ResultGrid({
 					</button>
 					<span className="rounded bg-[var(--dbx-surface-2)] px-1.5 py-0.5 text-[10px] text-foreground/80">
 						{safePage + 1}
-						{totalKnown ? ` / ${totalPages}` : ""}
+						{totalKnown && totalPages !== null ? ` / ${totalPages}` : ""}
 					</span>
 					<button
 						type="button"
@@ -438,8 +470,8 @@ export function ResultGrid({
 					</button>
 					<button
 						type="button"
-						onClick={() => goToPage(totalPages - 1)}
-						disabled={!totalKnown || !hasNextPage || pageLoading === true}
+						onClick={() => totalPages !== null && goToPage(totalPages - 1)}
+						disabled={!totalKnown || totalPages === null || !hasNextPage || pageLoading === true}
 						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
 						title="最后一页"
 					>

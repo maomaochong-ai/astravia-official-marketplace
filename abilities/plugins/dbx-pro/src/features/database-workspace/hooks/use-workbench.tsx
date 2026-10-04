@@ -66,8 +66,8 @@ export interface EditorTab {
 		elapsedMs: number;
 		error?: string;
 		note?: string;
-		/** SQL 支持服务端分页。 */
-		pageable?: boolean;
+		/** 响应是服务端分页中的一页。 */
+		paged?: boolean;
 		/** COUNT 得到的真实总行数；未统计前为 undefined。 */
 		totalCount?: number;
 		/** 当前服务端页码（0-based）。 */
@@ -486,7 +486,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 					affectedRows: outcome.affected_rows ?? null,
 					elapsedMs: Date.now() - startedAt,
 					note: outcome.note,
-					pageable: outcome.pageable,
+					paged: outcome.paged,
 					serverPage: ctx.pageIndex,
 					ranSql: ctx.ranSql,
 					...(ctx.keepTotal && prevTotal !== undefined ? { totalCount: prevTotal } : {}),

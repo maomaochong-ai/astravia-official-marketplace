@@ -204,8 +204,8 @@ export interface DbQueryResult {
 	error?: string;
 	/** 成功但有需要告知用户的情况时给出（例如多语句只展示了最后一个结果集）。 */
 	note?: string;
-	/** SQL 支持服务端分页（单条 SELECT/WITH、无自带分页子句）。 */
-	pageable?: boolean;
+	/** 响应是服务端分页中的一页（网格走服务端翻页）。 */
+	paged?: boolean;
 }
 
 /** SQL 执行运行状态 */

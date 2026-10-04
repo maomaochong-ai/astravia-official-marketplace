@@ -55,11 +55,13 @@ export function ResultPanel(): JSX.Element {
 							totalRows={result.rowCount}
 							connectionName={activeTab?.connectionName ?? undefined}
 							sql={result.ranSql ?? activeTab?.sql}
-							serverPaged={result.pageable === true}
-							serverPage={result.serverPage}
-							serverPageSize={activeTab?.pageSize ?? settings.rowLimit}
-							serverTotalCount={result.totalCount}
-							pageLoading={activeTab?.isRunning === true}
+							serverPaged={result.paged === true}
+						serverPage={result.serverPage}
+						serverPageSize={activeTab?.pageSize ?? settings.rowLimit}
+						defaultPageSize={settings.rowLimit}
+						serverTotalCount={result.totalCount}
+						pageLoading={activeTab?.isRunning === true}
+						note={result.note}
 							onPageChange={(pageIndex) => {
 								if (activeTab) void goToResultPage(activeTab.id, pageIndex);
 							}}

@@ -335,21 +335,18 @@ export function toQueryResult(outcome: EngineQueryOutcome): DbQueryResult {
 	if (outcome.statement_count > 1) {
 		notes.push(`已执行 ${outcome.statement_count} 条语句，仅展示最后一个结果集`);
 	}
-	if (outcome.truncated) {
-		// 单次取回上限由插件硬上限决定，用户改的是「每页多少行」。
-		// 可分页时截断只是「本页装满了」，必须说清还能翻页，否则用户会以为数据就这么多。
-		notes.push(
-			outcome.pageable || outcome.paged
-				? `本页已达 ${outcome.max_rows} 行，翻到下一页继续查看`
-				: `结果已截断到 ${outcome.max_rows} 行（单次取回上限）`,
-		);
+	if (outcome.truncated && !outcome.paged) {
+		// 仅常规读（非分页页请求）达到单次上限才提示：SQL 未强制 LIMIT 时
+		// 结果在引擎硬上限处截断。分页页请求不在这里提示（导航本身即继续查看）。
+		notes.push(`结果达到单次取回上限 ${outcome.max_rows} 行，仅展示前 ${outcome.max_rows} 行；如需全部请在 SQL 中使用 LIMIT/OFFSET`);
 	}
 	return {
 		connection: outcome.connection ?? "",
 		columns: outcome.columns,
 		rows: outcome.rows,
 		row_count: outcome.row_count,
-		...(outcome.pageable ? { pageable: true } : {}),
+		// 服务端分页页响应：网格走服务端翻页模式。
+		...(outcome.paged ? { paged: true } : {}),
 		...(notes.length > 0 ? { note: notes.join("；") } : {}),
 	};
 }
