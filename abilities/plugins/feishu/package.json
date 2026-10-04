@@ -9,10 +9,10 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "@types/react": "^19.1.1",
-    "@astravia-org/plugin-cli": "file:../../../.tooling/open-astravia/packages/plugins/plugin-cli",
-    "@astravia-org/plugin-sdk": "file:../../../.tooling/open-astravia/packages/plugins/plugin-sdk",
-    "@astravia-org/plugin-vite": "file:../../../.tooling/open-astravia/packages/plugins/plugin-vite",
-    "@astravia-org/ui": "file:../../../.tooling/open-astravia/packages/ui",
+    "@astravia-org/plugin-cli": "^0.1.4",
+    "@astravia-org/plugin-sdk": "^0.3.2",
+    "@astravia-org/plugin-vite": "^0.2.1",
+    "@astravia-org/ui": "^0.1.0",
     "react": "^19.1.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.7"
