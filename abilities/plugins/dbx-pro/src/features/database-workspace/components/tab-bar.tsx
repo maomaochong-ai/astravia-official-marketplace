@@ -1,22 +1,27 @@
 /**
  * TabBar — SQL 编辑器多 tab 栏。
  *
- * 支持：新建、关闭、切换、重命名（双击）。
- * 标签多时：每个标签固定 92–170px、不被压缩，条带横向滚动（细滚动条），
- * 避免多标签被挤成一团、连接名文字叠压。
+ * 布局要点（对齐 dbx 桌面壳）：
+ * - 整行固定高 36px，滚动区与右侧操作按钮在同一交叉轴上 stretch / center，
+ *   横向滚动条出现时右侧图标仍垂直居中，不上下错位；
+ * - 标签只显示标题，不携带绑定数据库信息；
+ * - 右键菜单：执行、重命名、关闭、关闭其他、关闭右侧、关闭全部。
+ * - 标签溢出支持「单行横向滚动 / 多行换行」切换。
  */
 
 import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
-import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
+import {
+	ContextMenu,
+	type ContextMenuState,
+} from "../../../shared/components/context-menu";
 
 export function TabBar(): JSX.Element {
-	const { state, dispatch } = useWorkbench();
+	const { state, dispatch, runTabSql } = useWorkbench();
 	const [editingTabId, setEditingTabId] = useState<string | null>(null);
 	const [editValue, setEditValue] = useState("");
 	const [wrapTabs, setWrapTabs] = useState(false);
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
-	const [contextTabId, setContextTabId] = useState<string | null>(null);
 
 	function addTab() {
 		const id = `tab-${Date.now().toString(36)}`;
@@ -41,7 +46,29 @@ export function TabBar(): JSX.Element {
 		dispatch({ type: "closeTab", id });
 	}
 
+	function closeOthers(keepId: string) {
+		for (const t of state.tabs) {
+			if (t.id !== keepId) dispatch({ type: "closeTab", id: t.id });
+		}
+	}
+
+	function closeToRight(anchorId: string) {
+		const idx = state.tabs.findIndex((t) => t.id === anchorId);
+		if (idx < 0) return;
+		for (const t of state.tabs.slice(idx + 1)) {
+			dispatch({ type: "closeTab", id: t.id });
+		}
+	}
+
+	function closeAll() {
+		// 先新建一个空白 tab，再关掉其余；reducer 不允许 0 个 tab。
+		const oldIds = state.tabs.map((t) => t.id);
+		addTab();
+		for (const id of oldIds) dispatch({ type: "closeTab", id });
+	}
+
 	function startRename(id: string, currentLabel: string) {
+		setMenu(null);
 		setEditingTabId(id);
 		setEditValue(currentLabel);
 	}
@@ -54,11 +81,67 @@ export function TabBar(): JSX.Element {
 		setEditValue("");
 	}
 
+	function openMenu(e: React.MouseEvent, tab: (typeof state.tabs)[number]) {
+		e.preventDefault();
+		const idx = state.tabs.findIndex((t) => t.id === tab.id);
+		setMenu({
+			x: e.clientX,
+			y: e.clientY,
+			items: [
+				{
+					type: "item",
+					label: "执行",
+					icon: "icon-[lucide--play]",
+					disabled: tab.isRunning || !tab.connectionName,
+					onClick: () => void runTabSql(tab.id),
+				},
+				{
+					type: "item",
+					label: "重命名",
+					icon: "icon-[lucide--pencil]",
+					onClick: () => startRename(tab.id, tab.label),
+				},
+				{ type: "separator" },
+				{
+					type: "item",
+					label: "关闭",
+					icon: "icon-[lucide--x]",
+					disabled: state.tabs.length <= 1,
+					onClick: () => closeTab(tab.id),
+				},
+				{
+					type: "item",
+					label: "关闭其他",
+					icon: "icon-[lucide--square-x]",
+					disabled: state.tabs.length <= 1,
+					onClick: () => closeOthers(tab.id),
+				},
+				{
+					type: "item",
+					label: "关闭右侧标签",
+					icon: "icon-[lucide--panel-right-close]",
+					disabled: idx >= state.tabs.length - 1,
+					onClick: () => closeToRight(tab.id),
+				},
+				{
+					type: "item",
+					label: "关闭全部",
+					icon: "icon-[lucide--folder-x]",
+					disabled: state.tabs.length <= 1,
+					onClick: () => closeAll(),
+				},
+			],
+		});
+	}
+
 	return (
-		<>
-		<div className="dbx-chrome flex shrink-0 items-center px-1" style={{ minHeight: wrapTabs ? undefined : 32 }}>
+		<div className="dbx-chrome flex h-9 shrink-0 items-stretch px-1">
 			<div
-				className={wrapTabs ? "dbx-tab-wrap flex min-w-0 flex-1 items-center gap-0.5 flex-wrap" : "dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto"}
+				className={
+					wrapTabs
+						? "dbx-tab-wrap flex min-w-0 flex-1 flex-wrap content-center gap-0.5 py-1"
+						: "dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1"
+				}
 			>
 				{state.tabs.map((tab) => {
 					const active = tab.id === state.activeTabId;
@@ -66,12 +149,10 @@ export function TabBar(): JSX.Element {
 					return (
 						<div
 							key={tab.id}
-							onDoubleClick={() => startRename(tab.id, tab.label)}
+							onContextMenu={(e) => openMenu(e, tab)}
 							onClick={() => dispatch({ type: "setActiveTab", id: tab.id })}
-							className={`group relative flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1.5 rounded-t-md px-2 text-[11px] transition-colors ${
-								active
-									? "border-b-2 border-foreground text-foreground"
-									: "border-b-2 border-transparent text-muted-foreground hover:text-foreground"
+							className={`group flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 text-[11px] transition-colors ${
+								active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
 							}`}
 							style={{
 								["--tabw" as string]: "clamp(92px, 12vw, 170px)",
@@ -79,13 +160,15 @@ export function TabBar(): JSX.Element {
 							}}
 							title={tab.label}
 						>
-							<span className={`h-3 w-3 shrink-0 ${
-								running
-									? "icon-[lucide--loader] animate-spin text-warning"
-									: tab.result?.ok === false
-										? "icon-[lucide--alert-circle] text-destructive"
-										: "icon-[lucide--file-code]"
-							}`} />
+							<span
+								className={`h-3 w-3 shrink-0 ${
+									running
+										? "icon-[lucide--loader] animate-spin text-warning"
+										: tab.result?.ok === false
+											? "icon-[lucide--alert-circle] text-destructive"
+											: "icon-[lucide--file-code]"
+								}`}
+							/>
 							{editingTabId === tab.id ? (
 								<input
 									autoFocus
@@ -93,58 +176,35 @@ export function TabBar(): JSX.Element {
 									onChange={(e) => setEditValue(e.target.value)}
 									onBlur={commitRename}
 									onKeyDown={(e) => {
-										if (e.key === "Enter") { e.preventDefault(); commitRename(); }
-										if (e.key === "Escape") { setEditingTabId(null); setEditValue(""); }
+										if (e.key === "Enter") {
+											e.preventDefault();
+											commitRename();
+										}
+										if (e.key === "Escape") {
+											setEditingTabId(null);
+											setEditValue("");
+										}
 									}}
-									className="h-5 min-w-0 w-full rounded px-1 text-[11px] outline-none ring-1"
-									style={{ backgroundColor: "var(--background)", color: "var(--foreground)", boxShadow: "0 0 0 1px var(--foreground)" }}
+									className="h-5 min-w-0 w-full rounded px-1 text-[11px] outline-none"
+									style={{
+										backgroundColor: "var(--background)",
+										color: "var(--foreground)",
+										boxShadow: "0 0 0 1px var(--foreground)",
+									}}
 									onClick={(e) => e.stopPropagation()}
+									onContextMenu={(e) => e.stopPropagation()}
 								/>
 							) : (
-								<span
-									className="min-w-0 flex-1 truncate font-medium"
-									onContextMenu={(e) => {
-										e.preventDefault();
-										e.stopPropagation();
-										setContextTabId(tab.id);
-										const items = [
-											{ type: "item" as const, label: "重命名", icon: "icon-[lucide--pencil]", onClick: () => startRename(tab.id, tab.label) },
-											{ type: "item" as const, label: "复制名称", icon: "icon-[lucide--copy]", onClick: () => void navigator.clipboard.writeText(tab.label).catch(() => {}) },
-											{ type: "separator" as const },
-											{
-												type: "item" as const,
-												label: "关闭标签",
-												icon: "icon-[lucide--x]",
-												onClick: () => closeTab(tab.id),
-												disabled: state.tabs.length <= 1,
-											},
-											{
-												type: "item" as const,
-												label: "关闭其他",
-												icon: "icon-[lucide--x]",
-												onClick: () => state.tabs.filter((t) => t.id !== tab.id).forEach((t) => closeTab(t.id)),
-												disabled: state.tabs.length <= 1,
-											},
-											{
-												type: "item" as const,
-												label: "关闭全部",
-												icon: "icon-[lucide--x]",
-												danger: true,
-												onClick: () => state.tabs.filter((t) => t.id !== tab.id).forEach((t) => closeTab(t.id)),
-												disabled: state.tabs.length <= 1,
-											},
-										];
-										setMenu({ x: e.clientX, y: e.clientY, items });
-									}}
-								>
-									{tab.label}
-								</span>
+								<span className="min-w-0 flex-1 truncate font-medium">{tab.label}</span>
 							)}
-						{/* 不再展示绑定的数据库信息，与 dbx 桌面壳一致 */}
-						{state.tabs.length > 1 && (
+							{state.tabs.length > 1 && (
 								<button
 									type="button"
-									onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+									onClick={(e) => {
+										e.stopPropagation();
+										closeTab(tab.id);
+									}}
+									onContextMenu={(e) => e.stopPropagation()}
 									className="ml-0.5 shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
 									title="关闭 tab"
 								>
@@ -155,24 +215,23 @@ export function TabBar(): JSX.Element {
 					);
 				})}
 			</div>
-			<button
-				type="button"
-				onClick={addTab}
-				title="新建 tab"
-				className="dbx-iconbtn mx-1 shrink-0"
-			>
-				<span className="icon-[lucide--plus] h-3.5 w-3.5" />
-			</button>
-			<button
-				type="button"
-				onClick={() => setWrapTabs((v) => !v)}
-				title={wrapTabs ? "切换为单行滚动" : "切换为多行换行"}
-				className={`dbx-iconbtn shrink-0 ${wrapTabs ? "is-active" : ""}`}
-			>
-				<span className="icon-[lucide--wrap-text] h-3.5 w-3.5" />
-			</button>
+
+			{/* 右侧操作：self-center 保证滚动条出现时仍与标签垂直居中、不错位 */}
+			<div className="flex shrink-0 items-center self-center">
+				<button type="button" onClick={addTab} title="新建 tab" className="dbx-iconbtn">
+					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					onClick={() => setWrapTabs((v) => !v)}
+					title={wrapTabs ? "切换为单行滚动" : "切换为多行换行"}
+					className={`dbx-iconbtn ${wrapTabs ? "is-active" : ""}`}
+				>
+					<span className="icon-[lucide--wrap-text] h-3.5 w-3.5" />
+				</button>
+			</div>
+
+			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
 		</div>
-		{menu && <ContextMenu menu={menu} onClose={() => { setMenu(null); setContextTabId(null); }} />}
-		</>
 	);
 }

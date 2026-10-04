@@ -19,7 +19,7 @@ import {
 	disposeDbxMcpClient,
 	getDbxMcpClient,
 } from "../src/engine/dbx-mcp-client.mjs";
-import { engineBinaryAvailable, engineSkipMessage } from "./helpers.mjs";
+import { engineBinaryAvailable, engineSkipMessage } from "./support/helpers.mjs";
 
 describe("dbx-mcp-client 真实引擎", { skip: engineBinaryAvailable() ? false : engineSkipMessage }, () => {
 	let workDir;

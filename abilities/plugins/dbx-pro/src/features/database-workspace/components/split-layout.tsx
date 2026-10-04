@@ -131,14 +131,13 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 				)}
 			</div>
 
-			{/* 左分隔条 */}
+			{/* 左分隔条：与水平分隔条共用发丝线样式 */}
 			{!leftCollapsed && (
 				<div
 					onPointerDown={(e) => startDrag("left", e)}
-					className="group relative w-1 shrink-0 cursor-col-resize"
-					style={{ backgroundColor: dragging === "left" ? "var(--foreground)" : "var(--dbx-line)" }}
+					className={`dbx-splitbar dbx-splitbar-v ${dragging === "left" ? "is-dragging" : ""}`}
 				>
-					<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
+					<div className="dbx-split-hit" />
 				</div>
 			)}
 
@@ -151,10 +150,9 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 			{!rightCollapsed && (
 				<div
 					onPointerDown={(e) => startDrag("right", e)}
-					className="group relative w-1 shrink-0 cursor-col-resize"
-					style={{ backgroundColor: dragging === "right" ? "var(--foreground)" : "var(--dbx-line)" }}
+					className={`dbx-splitbar dbx-splitbar-v ${dragging === "right" ? "is-dragging" : ""}`}
 				>
-					<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
+					<div className="dbx-split-hit" />
 				</div>
 			)}
 

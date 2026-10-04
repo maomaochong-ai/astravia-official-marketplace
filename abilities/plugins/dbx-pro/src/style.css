@@ -115,6 +115,35 @@
 .dbx-tab-wrap::-webkit-scrollbar { height: 0; width: 0; }
 
 /* ============================================================
+ * 面板分隔条（对齐 dbx 桌面壳 splitpanes）：
+ * 3px 透明确热区 + 1px 发丝线，外延隐形热区到 7px；悬浮/拖拽时高亮。
+ * 横竖共用：-h 用于编辑器/结果之间，-v 用于三栏之间。
+ * ============================================================ */
+.dbx-splitbar {
+	position: relative;
+	flex-shrink: 0;
+	background: transparent;
+	transition: background-color 0.12s;
+}
+.dbx-splitbar-h {
+	height: 3px;
+	border-top: 1px solid var(--dbx-line);
+	cursor: row-resize;
+}
+.dbx-splitbar-v {
+	width: 3px;
+	border-left: 1px solid var(--dbx-line);
+	cursor: col-resize;
+}
+.dbx-split-hit { position: absolute; inset: 0; }
+.dbx-splitbar-h .dbx-split-hit { inset: -3px 0; }
+.dbx-splitbar-v .dbx-split-hit { inset: 0 -3px; }
+.dbx-splitbar:hover,
+.dbx-splitbar.is-dragging {
+	background: color-mix(in srgb, var(--foreground) 30%, transparent);
+}
+
+/* ============================================================
  * 通用按钮 / 表单（连接管理侧滑表单复用）
  * ============================================================ */
 .dbx-btn {

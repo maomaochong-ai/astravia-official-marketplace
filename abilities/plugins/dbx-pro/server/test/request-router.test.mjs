@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import { createRouter } from "../src/engine/request-router.mjs";
 import { disposeDbxMcpClient } from "../src/engine/dbx-mcp-client.mjs";
-import { engineBinaryAvailable, engineSkipMessage } from "./helpers.mjs";
+import { engineBinaryAvailable, engineSkipMessage } from "./support/helpers.mjs";
 
 const stubAuth = Object.freeze({ enabled: false, verify() {} });
 

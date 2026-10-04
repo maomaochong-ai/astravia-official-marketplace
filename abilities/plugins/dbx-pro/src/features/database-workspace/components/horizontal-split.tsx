@@ -68,10 +68,11 @@ export function HorizontalSplit({ top, bottom }: { top: JSX.Element; bottom: JSX
 
 	return (
 		<div ref={containerRef} className="relative flex min-h-0 flex-1 flex-col">
-			{/* 编辑器（固定当前高度） */}
-			<div className="min-h-0 overflow-hidden" style={{ height: effectiveTop, flexShrink: 0 }}>
-				{top}
-			</div>
+			{/* 编辑器（固定当前高度）。必须是 flex 容器：SqlEditor 根用 flex-1 撑高，
+		    block 容器会让编辑器高度坍缩为 0，导致点不到、输不进。 */}
+		<div className="flex min-h-0 flex-col overflow-hidden" style={{ height: effectiveTop, flexShrink: 0 }}>
+			{top}
+		</div>
 
 			{/* 水平分隔条：1px 发丝线，7px 隐形热区；gutter 竖线在此收笔 */}
 		<div

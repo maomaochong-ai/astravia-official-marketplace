@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build",
     "build:engine": "node scripts/build-engine.mjs --write",
-    "test": "node --import ./src/test/dom-setup.mjs --experimental-strip-types --test src/test/*.test.js server/test/*.test.mjs",
+    "test": "node --import ./src/test/support/dom-setup.mjs --experimental-strip-types --test src/test/*.test.js server/test/*.test.mjs",
     "check": "tsc --noEmit"
   },
   "devDependencies": {

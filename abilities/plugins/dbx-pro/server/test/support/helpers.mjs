@@ -11,7 +11,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-export const SERVER_ROOT = resolve(HERE, "..");
+// support/ → test/ → server/，需上溯两级。
+export const SERVER_ROOT = resolve(HERE, "..", "..");
 export const BIN_DIR = join(SERVER_ROOT, "bin");
 
 /** 与 dbx-mcp-client.detectPlatform 相同的平台标签推导。 */
