@@ -22,17 +22,16 @@ export interface AiConnectionContext {
 	dbType: string;
 }
 
-/** 构造表分析 prompt。 */
+/** 构造表分析 prompt（精简版，不包含抽样数据）。 */
 export function buildTablePrompt({ connectionName, schema, table }: AiTableContext): string {
 	const qualified = schema ? `${schema}.${table}` : table;
 	return [
 		`请帮我分析数据库连接 @\`${connectionName}\` 中的表 @\`${qualified}\`。`,
-		`请先查看表结构（列、类型、主键），然后抽样数据了解其内容与用途：`,
-		`SELECT * FROM ${qualified} LIMIT 100;`,
+		`请先查看表结构（列、类型、主键），了解其内容与用途。`,
 	].join("\n");
 }
 
-/** 构造连接分析 prompt。 */
+/** 构造连接分析 prompt（精简版，只分析连接本身）。 */
 export function buildConnectionPrompt({ connectionName, dbType }: AiConnectionContext): string {
 	return [
 		`请帮我了解 ${dbType} 数据库连接 @\`${connectionName}\`。`,
@@ -40,17 +39,12 @@ export function buildConnectionPrompt({ connectionName, dbType }: AiConnectionCo
 	].join("\n");
 }
 
-/** 构造查询结果分析 prompt。 */
-export function buildQueryPrompt(connectionName: string, sql: string, sampleRows?: Record<string, unknown>[]): string {
-	const parts = [
+/** 构造查询结果分析 prompt（精简版，只包含 SQL，不包含结果 JSON）。 */
+export function buildQueryPrompt(connectionName: string, sql: string, _sampleRows?: Record<string, unknown>[]): string {
+	return [
 		`我在连接 @\`${connectionName}\` 上执行了以下 SQL，请帮我分析结果：`,
 		"```sql",
 		sql,
 		"```",
-	];
-	if (sampleRows && sampleRows.length > 0) {
-		const preview = sampleRows.slice(0, 20);
-		parts.push("部分结果（JSON）：", "```json", JSON.stringify(preview, null, 2), "```");
-	}
-	return parts.join("\n");
+	].join("\n");
 }

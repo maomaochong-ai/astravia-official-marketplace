@@ -2,7 +2,7 @@
  * 结果区 — 查询返回的表格、加载状态与错误视图。
  *
  * 加载状态仅在此处展示（对标 dbx 桌面壳）：加载环 + 已耗时 + 停止执行按钮。
- * 顶部状态栏 / 编辑器工具栏 / Tab 图标不再冗余展示「执行中」。
+ * 结果网格自带工具栏（顶）与分页栏（底），此处不再重复展示状态条。
  */
 
 import { useEffect, useRef, useState, type JSX } from "react";
@@ -71,60 +71,6 @@ export function ResultPanel(): JSX.Element {
 					</div>
 				)}
 			</div>
-
-			{/* 精简状态栏：仅展示连接名 + 行数/耗时/错误 */}
-			{result && (
-				<div className="flex h-7 shrink-0 items-center gap-2 px-3 text-[10.5px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)", borderTop: "1px solid var(--dbx-line-soft)" }}>
-					{activeTab?.connectionName ? (
-						<span className="flex min-w-0 items-center gap-1">
-							<span className="icon-[lucide--database] h-3 w-3 shrink-0" />
-							<span className="truncate">{activeTab.connectionName}</span>
-						</span>
-					) : (
-						<span className="shrink-0">未绑定连接</span>
-					)}
-					<span className="text-muted-foreground/40">·</span>
-					{result.ok && (
-						<>
-							<span className="shrink-0">
-								<span className="font-medium text-foreground">{result.rowCount}</span>{" "}
-								{result.affectedRows != null ? "行受影响" : "行"}
-							</span>
-							<span className="text-muted-foreground/40">·</span>
-							<span className="shrink-0">
-								<span className="font-medium text-foreground">{result.elapsedMs}</span> ms
-							</span>
-							{result.note && (
-								<>
-									<span className="text-muted-foreground/40">·</span>
-									<span className="truncate text-warning">{result.note}</span>
-								</>
-							)}
-						</>
-					)}
-					{!result.ok && (
-						<span className="shrink-0 text-destructive">
-							<span className="icon-[lucide--alert-circle] h-3 w-3" />{" "}
-							<span className="truncate">{result.error?.slice(0, 120)}</span>
-						</span>
-					)}
-
-					<span className="ml-auto flex min-w-0 items-center gap-2">
-						{state.rightPanelTable && (
-							<span className="flex min-w-0 items-center gap-1">
-								<span className="icon-[lucide--table-2] h-2.5 w-2.5 shrink-0 text-success" />
-								<span className="truncate">{state.rightPanelTable.tableName}</span>
-							</span>
-						)}
-						{state.errorBanner && (
-							<span className="flex min-w-0 items-center gap-1 text-destructive">
-								<span className="icon-[lucide--alert-circle] h-3 w-3 shrink-0" />
-								<span className="truncate">{state.errorBanner}</span>
-							</span>
-						)}
-					</span>
-				</div>
-			)}
 		</div>
 	);
 }

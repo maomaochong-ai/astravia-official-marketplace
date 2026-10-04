@@ -12,18 +12,18 @@ import {
 } from "../shared/ai/send-context.ts";
 
 describe("buildTablePrompt", () => {
-	it("带 schema 时 prompt 含限定名与抽样 SQL", () => {
+	it("带 schema 时 prompt 含限定名", () => {
 		const text = buildTablePrompt({ connectionName: "prod", schema: "public", table: "users" });
 		assert.ok(text.includes("@`prod`"));
 		assert.ok(text.includes("@`public.users`"));
-		assert.ok(text.includes("SELECT * FROM public.users LIMIT 100"));
+		// 精简版不再包含抽样 SQL
+		assert.equal(text.includes("SELECT *"), false);
 	});
 
 	it("无 schema 时只用表名", () => {
 		const text = buildTablePrompt({ connectionName: "c", table: "t" });
 		assert.ok(text.includes("@`c`"));
 		assert.ok(text.includes("@`t`"));
-		assert.ok(text.includes("SELECT * FROM t LIMIT 100"));
 	});
 });
 
@@ -47,15 +47,14 @@ describe("buildQueryPrompt", () => {
 		assert.ok(text.includes("SELECT 1"));
 	});
 
-	it("样例行截断到 20 行并以 JSON 块附带", () => {
+	it("不附带结果 JSON（精简版）", () => {
 		const rows = Array.from({ length: 50 }, (_, i) => ({ id: i }));
 		const text = buildQueryPrompt("db", "SELECT * FROM t", rows);
-		assert.ok(text.includes("```json"));
-		assert.ok(text.includes('"id": 19'));
-		assert.equal(text.includes('"id": 20'), false);
+		// 精简版不再附带 JSON 样本
+		assert.equal(text.includes("```json"), false);
 	});
 
-	it("无样例行时不附 JSON 块", () => {
+	it("无样例行时也不附 JSON 块", () => {
 		const text = buildQueryPrompt("db", "SELECT 1", []);
 		assert.equal(text.includes("```json"), false);
 	});

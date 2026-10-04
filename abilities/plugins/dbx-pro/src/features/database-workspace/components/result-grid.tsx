@@ -232,7 +232,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 				<span className="ml-auto text-[10px] text-muted-foreground/70">双击查看详情 · 右键更多操作</span>
 			</div>
 
-			{/* 网格 */}
+			{/* 网格（可滚动区域） */}
 			<div className="dbx-scroll min-h-0 flex-1 overflow-auto">
 				<table className="border-separate border-spacing-0 text-[12px]" style={{ minWidth: "100%" }}>
 					<thead>
@@ -309,7 +309,7 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 				</table>
 			</div>
 
-			{/* 分页栏 */}
+			{/* 分页栏（固定底部，不随网格滚动） */}
 			<div className="flex h-7 shrink-0 items-center gap-2 border-t border-border bg-background px-3 text-[11px] text-muted-foreground">
 				<span>
 					共 <span className="font-medium text-foreground/80">{totalRows}</span> 行
