@@ -95784,7 +95784,30 @@ var DBX_EFFECTIVE_ROW_CAP = 1e3;
 function dbxMaxRows(rowLimit) {
   return Math.min(Math.max(rowLimit, 1), DBX_MAX_ROWS, DBX_EFFECTIVE_ROW_CAP);
 }
-var SCHEMA_QUERY = "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name";
+var SCHEMA_QUERIES = {
+  postgres: `SELECT n.nspname AS schema_name
+FROM pg_catalog.pg_namespace n
+WHERE n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+  AND n.nspname NOT LIKE 'pg_toast_temp_%'
+  AND n.nspname NOT LIKE 'pg_temp_%'
+ORDER BY n.nspname`,
+  sqlserver: `SELECT s.name AS schema_name
+FROM sys.schemas s
+WHERE s.name NOT IN (
+  'guest', 'INFORMATION_SCHEMA', 'sys',
+  'db_owner', 'db_accessadmin', 'db_securityadmin', 'db_ddladmin',
+  'db_backupoperator', 'db_datareader', 'db_datawriter',
+  'db_denydatareader', 'db_denydatawriter'
+)
+ORDER BY CASE WHEN s.name = 'dbo' THEN 0 ELSE 1 END, s.name`,
+  default: "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name"
+};
+function schemaQueryFor(dbType) {
+  const type = String(dbType ?? "").toLowerCase();
+  if (/postgres|redshift/.test(type)) return SCHEMA_QUERIES.postgres;
+  if (/mssql|sqlserver/.test(type)) return SCHEMA_QUERIES.sqlserver;
+  return SCHEMA_QUERIES.default;
+}
 function clampTimeout(timeoutMs) {
   const value = Number.isFinite(timeoutMs) ? Math.trunc(timeoutMs) : 3e4;
   return Math.min(Math.max(value, 1e3), MAX_TIMEOUT_MS);
@@ -96060,7 +96083,7 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       return { connection: connectionName, schema: text };
     }],
     // === Schema 列举（连接树 schema 层节点的数据源）===
-    // dbx-mcp 没有独立的 list_schemas 工具，这里按方言走一条 information_schema 查询。
+    // dbx-mcp 没有独立的 list_schemas 工具，这里按方言走目录/系统视图查询。
     // 只有「这个库没有该目录视图」才回 supported=false 让前端退回扁平表树；
     // 连接坏了 / 没权限这类真故障必须原样抛出，否则用户会看到一棵空树，
     // 误以为库里没有表（比报错难排查得多）。
@@ -96069,7 +96092,7 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
       const result = await mcpClient().callTool("dbx_execute_query", {
         connection_name: connectionName,
-        sql: SCHEMA_QUERY,
+        sql: schemaQueryFor(body?.dbType),
         max_rows: DBX_EFFECTIVE_ROW_CAP
       });
       if (result.isError) {

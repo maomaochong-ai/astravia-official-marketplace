@@ -391,7 +391,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				// 先试 schema 目录：不支持（SQLite / ClickHouse 等）时回退扁平表树。
 				let children: TreeNode[];
 				try {
-					const schemas = await engineListSchemas(name);
+					const dbType = stateRef.current.connections.find((c) => c.name === name)?.db_type;
+					const schemas = await engineListSchemas(name, dbType);
 					if (schemas.supported && schemas.schemas.length > 0) {
 						children = schemas.schemas.map((s) => ({
 							key: schemaNodeKey(name, s),

@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/dbx-pro",
-  "version": "0.0.38",
+  "version": "0.0.39",
   "private": true,
   "type": "module",
   "scripts": {
@@ -38,6 +38,7 @@
   "dependencies": {
     "mssql": "^12.7.2",
     "mysql2": "^3.24.5",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "sql-formatter": "^15.8.0"
   }
 }

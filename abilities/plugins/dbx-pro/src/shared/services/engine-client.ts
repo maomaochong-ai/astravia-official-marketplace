@@ -280,14 +280,16 @@ export function engineListTables(
 /**
  * 列出连接的 schema（POST /schemas）。
  * 库不支持目录视图时引擎返回 supported=false + 空列表，调用方据此隐藏 schema 层。
+ * dbType 用于选择方言对应的目录查询（PG 查 pg_namespace 等）。
  */
 export function engineListSchemas(
 	connectionName: string,
+	dbType?: string,
 	options: CallOptions = {},
 ): Promise<EngineListSchemasOutcome> {
 	return engineRequest<EngineListSchemasOutcome>(
 		"/schemas",
-		{ connectionName },
+		{ connectionName, dbType },
 		{ timeoutMs: options.timeoutMs ?? TEST_TIMEOUT_MS },
 	);
 }

@@ -154,6 +154,11 @@
  * 通用按钮 / 表单（连接管理侧滑表单复用）
  * ============================================================ */
 .dbx-btn {
+	/* inline-flex：图标与文字水平排列、垂直居中，内容在按钮内整体居中 */
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
 	padding: 6px 12px;
 	font-size: 12px;
 	line-height: 1.2;

@@ -33,11 +33,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, dispatch, state, rightView, setRightView } = useWorkbench();
 	const workspaceRef = useRef<HTMLDivElement>(null);
 
-	useEffect(() => {
-		if (rightView === "history" && !rightPanelVisible) {
-			setRightPanelVisible(true);
-		}
-	}, [rightView, rightPanelVisible]);
+	// 切换历史视图时由 WorkbenchTopBar 的 onSelectHistory 负责显示右栏；
+	// 不再用 effect 强制重显——那会让历史模式下的「隐藏面板」操作被立即弹回。
 
 	useEffect(() => {
 		function onFullscreenChange() {
@@ -59,6 +56,16 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			type: "addTab",
 			tab: { id, label: `查询 ${maxIdx + 1}`, connectionName: state.activeConnectionName, sql: "", isRunning: false },
 		});
+	}
+
+	/** 切到历史视图并确保右栏可见；再次点击回到结构视图。 */
+	function selectHistory(): void {
+		if (rightView === "history") {
+			setRightView("inspector");
+		} else {
+			setRightView("history");
+			setRightPanelVisible(true);
+		}
 	}
 
 	async function toggleFullscreen() {
@@ -92,6 +99,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}
 				onOpenSettings={() => setSettingsOpen(true)}
 				onNewQuery={newQueryTab}
+				onSelectHistory={selectHistory}
 				rightPanelVisible={rightPanelVisible}
 				onToggleRightPanel={() => setRightPanelVisible((v) => !v)}
 				fullscreen={fullscreen}

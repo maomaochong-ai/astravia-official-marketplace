@@ -29,6 +29,15 @@ import { tags } from "@lezer/highlight";
 import { autocompletion, closeBrackets, completionKeymap } from "@codemirror/autocomplete";
 import { MSSQL, MySQL, PostgreSQL, SQLite, sql } from "@codemirror/lang-sql";
 import { useWorkbench } from "../hooks/use-workbench";
+import {
+	formatDialect,
+	mysql,
+	postgresql,
+	sql as standardSql,
+	sqlite,
+	transactsql,
+	type DialectOptions,
+} from "sql-formatter";
 
 const MONO_FONT = "'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace";
 
@@ -83,10 +92,20 @@ const sqlHighlight = syntaxHighlighting(
 function dialectFor(dbType: string | undefined) {
 	const type = String(dbType ?? "").toLowerCase();
 	if (/postgres|(^|\b)pg|redshift/.test(type)) return PostgreSQL;
-	if (/mysql|maria|tidb|starrocks|doris/.test(type)) return MySQL;
+	if (/mysql|maria|tidy|starrocks|doris/.test(type)) return MySQL;
 	if (/mssql|sqlserver/.test(type)) return MSSQL;
 	if (/sqlite/.test(type)) return SQLite;
 	return undefined;
+}
+
+/** dbType → sql-formatter 方言对象（只引用所需方言，其余被 tree-shake）。 */
+function formatterDialect(dbType: string | undefined): DialectOptions {
+	const type = String(dbType ?? "").toLowerCase();
+	if (/postgres|(^|\b)pg|redshift/.test(type)) return postgresql;
+	if (/mysql|maria|tidb|starrocks|doris/.test(type)) return mysql;
+	if (/mssql|sqlserver/.test(type)) return transactsql;
+	if (/sqlite/.test(type)) return sqlite;
+	return standardSql;
 }
 
 export function SqlEditor(): JSX.Element {
@@ -183,12 +202,25 @@ export function SqlEditor(): JSX.Element {
 		// activeTab.id：切 tab 重建；sql 不进依赖（编辑器自持 doc，避免输入时重建）
 	}, [activeTab?.id, activeConn?.db_type, runCurrent]);
 
+	/** 整理：用 sql-formatter 格式化当前 SQL。 */
 	function tidy() {
-		if (!viewRef.current || !activeTab) return;
-		// 轻量整理：折叠 3+ 连续空行为 2 行
-		const next = viewRef.current.state.doc.toString().replace(/\n{3,}/g, "\n\n").trim();
-		viewRef.current.dispatch({
-			changes: { from: 0, to: viewRef.current.state.doc.length, insert: next },
+		const view = viewRef.current;
+		if (!view || !activeTab) return;
+		const source = view.state.doc.toString();
+		if (!source.trim()) return;
+		let formatted: string;
+		try {
+			formatted = formatDialect(source, {
+				dialect: formatterDialect(activeConn?.db_type),
+				keywordCase: "upper",
+				tabWidth: 2,
+			});
+		} catch {
+			// 方言解析失败（含专有语法 / 存储过程等）：退回轻量整理，不把原始内容弄丢。
+			formatted = source.replace(/\n{3,}/g, "\n\n").trim();
+		}
+		view.dispatch({
+			changes: { from: 0, to: view.state.doc.length, insert: formatted },
 		});
 	}
 

@@ -11,6 +11,8 @@ export interface WorkbenchTopBarProps {
 	onOpenConnectionEditor: () => void;
 	onOpenSettings: () => void;
 	onNewQuery: () => void;
+	/** 切换查询历史视图（由外层同时控制右栏可见性）。 */
+	onSelectHistory: () => void;
 	rightPanelVisible: boolean;
 	onToggleRightPanel: () => void;
 	fullscreen: boolean;
@@ -21,12 +23,13 @@ export function WorkbenchTopBar({
 	onOpenConnectionEditor,
 	onOpenSettings,
 	onNewQuery,
+	onSelectHistory,
 	rightPanelVisible,
 	onToggleRightPanel,
 	fullscreen,
 	onToggleFullscreen,
 }: WorkbenchTopBarProps): JSX.Element {
-	const { refreshConnections, history, rightView, setRightView } = useWorkbench();
+	const { refreshConnections, history, rightView } = useWorkbench();
 
 	return (
 		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
@@ -65,7 +68,7 @@ export function WorkbenchTopBar({
 				</button>
 				<button
 					type="button"
-					onClick={() => setRightView(rightView === "history" ? "inspector" : "history")}
+					onClick={onSelectHistory}
 					title="查询历史"
 					aria-expanded={rightView === "history"}
 					className={`dbx-iconbtn ${rightView === "history" ? "is-active" : ""}`}
