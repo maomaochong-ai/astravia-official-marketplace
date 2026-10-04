@@ -171,6 +171,8 @@ export function SqlEditor(): JSX.Element {
 			parent: hostRef.current,
 		});
 		viewRef.current = view;
+		// 新 tab 创建后自动聚焦，允许用户直接输入
+		view.focus();
 		setEditorReady(true);
 		return () => {
 			view.destroy();
@@ -241,7 +243,7 @@ export function SqlEditor(): JSX.Element {
 
 			{/* CodeMirror 挂载点：按 tab.id 重建 */}
 			<div className="relative min-h-0 flex-1">
-				<div key={activeTab?.id} ref={hostRef} className="absolute inset-0 overflow-hidden" />
+				<div key={activeTab?.id} ref={hostRef} className="absolute inset-0" />
 				{!editorReady && (
 					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground/70">
 						<span className="icon-[lucide--loader] mr-2 h-3 w-3 animate-spin" />

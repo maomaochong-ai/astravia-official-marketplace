@@ -1,7 +1,7 @@
 /**
  * 宿主 AI 交互 — 把连接 / 表 / 查询上下文发送给宿主 AI 会话。
  *
- * 优先 insertText（填入当前会话输入框，不自动发送）；不可用时（无活跃输入框、
+ * 优先 insertText（填入当前会话输入框，不自动发送）；不可用时（无活跃会话、
  * 宿主拒绝等）降级 sendPrompt 直接发为用户消息，再退化为 createSession 新建会话。
  * 三级兜底，不静默失败。
  */
@@ -20,18 +20,27 @@ export interface AiConnectionContext {
 }
 
 async function pushAiPrompt(prompt: string): Promise<void> {
-	const conv = getConversation();
+	let conv;
+	try {
+		conv = getConversation();
+	} catch {
+		console.warn("[dbx-pro] 宿主会话不可用：插件尚未激活或宿主版本不支持");
+		return;
+	}
+	// 第一级：insertText（填入输入框，不自动发送）
 	try {
 		conv.insertText(prompt);
 		return;
 	} catch {
 		// insertText 不可用（无活跃会话 / 宿主拒绝）时继续走 sendPrompt
 	}
+	// 第二级：sendPrompt（直接发送为用户消息）
 	try {
 		const result = await conv.sendPrompt(prompt);
 		if (result.status !== "failed") return;
 		throw new Error(result.error?.message ?? "sendPrompt failed");
 	} catch (err) {
+		// 第三级：createSession + sendPrompt（新建会话后发送）
 		try {
 			await conv.createSession(".", { navigate: true });
 			await conv.sendPrompt(prompt);

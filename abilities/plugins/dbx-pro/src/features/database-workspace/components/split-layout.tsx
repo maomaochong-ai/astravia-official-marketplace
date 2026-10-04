@@ -121,7 +121,7 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 						type="button"
 						onClick={() => onToggleLeft?.()}
 						title="展开连接树"
-						className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground"
+						className="flex h-full w-full flex-col items-center gap-1 pt-3 text-muted-foreground hover:text-foreground"
 					>
 						<span className="icon-[lucide--panel-left] h-4 w-4" />
 						<span className="icon-[lucide--database] h-4 w-4 opacity-60" />

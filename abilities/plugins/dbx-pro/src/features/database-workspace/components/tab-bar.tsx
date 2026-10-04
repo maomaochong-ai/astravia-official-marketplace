@@ -8,12 +8,15 @@
 
 import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
+import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 
 export function TabBar(): JSX.Element {
 	const { state, dispatch } = useWorkbench();
 	const [editingTabId, setEditingTabId] = useState<string | null>(null);
 	const [editValue, setEditValue] = useState("");
 	const [wrapTabs, setWrapTabs] = useState(false);
+	const [menu, setMenu] = useState<ContextMenuState | null>(null);
+	const [contextTabId, setContextTabId] = useState<string | null>(null);
 
 	function addTab() {
 		const id = `tab-${Date.now().toString(36)}`;
@@ -52,6 +55,7 @@ export function TabBar(): JSX.Element {
 	}
 
 	return (
+		<>
 		<div className="dbx-chrome flex shrink-0 items-center px-1" style={{ minHeight: wrapTabs ? undefined : 32 }}>
 			<div
 				className={wrapTabs ? "dbx-tab-wrap flex min-w-0 flex-1 items-center gap-0.5 flex-wrap" : "dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto"}
@@ -64,10 +68,10 @@ export function TabBar(): JSX.Element {
 							key={tab.id}
 							onDoubleClick={() => startRename(tab.id, tab.label)}
 							onClick={() => dispatch({ type: "setActiveTab", id: tab.id })}
-							className={`group flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 text-[11px] transition-colors ${
+							className={`group relative flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1.5 rounded-t-md px-2 text-[11px] transition-colors ${
 								active
-									? "text-foreground"
-									: "text-muted-foreground hover:text-foreground"
+									? "border-b-2 border-foreground text-foreground"
+									: "border-b-2 border-transparent text-muted-foreground hover:text-foreground"
 							}`}
 							style={{
 								["--tabw" as string]: "clamp(92px, 12vw, 170px)",
@@ -97,7 +101,44 @@ export function TabBar(): JSX.Element {
 									onClick={(e) => e.stopPropagation()}
 								/>
 							) : (
-								<span className="min-w-0 flex-1 truncate font-medium">{tab.label}</span>
+								<span
+									className="min-w-0 flex-1 truncate font-medium"
+									onContextMenu={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										setContextTabId(tab.id);
+										const items = [
+											{ type: "item" as const, label: "重命名", icon: "icon-[lucide--pencil]", onClick: () => startRename(tab.id, tab.label) },
+											{ type: "item" as const, label: "复制名称", icon: "icon-[lucide--copy]", onClick: () => void navigator.clipboard.writeText(tab.label).catch(() => {}) },
+											{ type: "separator" as const },
+											{
+												type: "item" as const,
+												label: "关闭标签",
+												icon: "icon-[lucide--x]",
+												onClick: () => closeTab(tab.id),
+												disabled: state.tabs.length <= 1,
+											},
+											{
+												type: "item" as const,
+												label: "关闭其他",
+												icon: "icon-[lucide--x]",
+												onClick: () => state.tabs.filter((t) => t.id !== tab.id).forEach((t) => closeTab(t.id)),
+												disabled: state.tabs.length <= 1,
+											},
+											{
+												type: "item" as const,
+												label: "关闭全部",
+												icon: "icon-[lucide--x]",
+												danger: true,
+												onClick: () => state.tabs.filter((t) => t.id !== tab.id).forEach((t) => closeTab(t.id)),
+												disabled: state.tabs.length <= 1,
+											},
+										];
+										setMenu({ x: e.clientX, y: e.clientY, items });
+									}}
+								>
+									{tab.label}
+								</span>
 							)}
 						{/* 不再展示绑定的数据库信息，与 dbx 桌面壳一致 */}
 						{state.tabs.length > 1 && (
@@ -131,5 +172,7 @@ export function TabBar(): JSX.Element {
 				<span className="icon-[lucide--wrap-text] h-3.5 w-3.5" />
 			</button>
 		</div>
+		{menu && <ContextMenu menu={menu} onClose={() => { setMenu(null); setContextTabId(null); }} />}
+		</>
 	);
 }

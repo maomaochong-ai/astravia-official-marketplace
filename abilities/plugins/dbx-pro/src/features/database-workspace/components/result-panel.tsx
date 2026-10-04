@@ -74,7 +74,7 @@ export function ResultPanel(): JSX.Element {
 
 			{/* 精简状态栏：仅展示连接名 + 行数/耗时/错误 */}
 			{result && (
-				<div className="flex h-6 shrink-0 items-center gap-2 px-3 text-[10.5px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)", borderTop: "1px solid var(--dbx-line-soft)" }}>
+				<div className="flex h-7 shrink-0 items-center gap-2 px-3 text-[10.5px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)", borderTop: "1px solid var(--dbx-line-soft)" }}>
 					{activeTab?.connectionName ? (
 						<span className="flex min-w-0 items-center gap-1">
 							<span className="icon-[lucide--database] h-3 w-3 shrink-0" />

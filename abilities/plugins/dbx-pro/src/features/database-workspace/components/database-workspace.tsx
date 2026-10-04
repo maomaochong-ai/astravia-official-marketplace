@@ -5,7 +5,7 @@
  * 所有交互状态都在 hooks/，所有面板组件都在 ./components/。
  */
 
-import { useState, useEffect, type JSX } from "react";
+import { useState, useEffect, useRef, type JSX } from "react";
 import { ConnectionTree } from "./connection-tree";
 import { ConnectionEditorSheet } from "./connection-editor-sheet";
 import { RightPanel } from "./right-panel";
@@ -31,12 +31,23 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [rightPanelVisible, setRightPanelVisible] = useState(true);
 	const [fullscreen, setFullscreen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, dispatch, state, rightView, setRightView } = useWorkbench();
+	const workspaceRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		if (rightView === "history" && !rightPanelVisible) {
 			setRightPanelVisible(true);
 		}
 	}, [rightView, rightPanelVisible]);
+
+	useEffect(() => {
+		function onFullscreenChange() {
+			if (!document.fullscreenElement && fullscreen) {
+				setFullscreen(false);
+			}
+		}
+		document.addEventListener("fullscreenchange", onFullscreenChange);
+		return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+	}, [fullscreen]);
 
 	function newQueryTab() {
 		const id = `tab-${Date.now().toString(36)}`;
@@ -50,9 +61,32 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		});
 	}
 
+	async function toggleFullscreen() {
+		if (fullscreen) {
+			if (document.fullscreenElement) {
+				await document.exitFullscreen();
+			}
+			setFullscreen(false);
+		} else {
+			const el = workspaceRef.current;
+			if (el?.requestFullscreen) {
+				try {
+					await el.requestFullscreen();
+					setFullscreen(true);
+				} catch {
+					// Fullscreen API 不可用（如插件沙箱），回退 CSS 方案
+					setFullscreen(true);
+				}
+			} else {
+				setFullscreen(true);
+			}
+		}
+	}
+
 	return (
 		<div
-			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen ? "fixed inset-0 z-50" : ""}`}
+			ref={workspaceRef}
+			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen ? "!fixed !inset-0 !z-[9999]" : ""}`}
 		>
 			<WorkbenchTopBar
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}
@@ -61,7 +95,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				rightPanelVisible={rightPanelVisible}
 				onToggleRightPanel={() => setRightPanelVisible((v) => !v)}
 				fullscreen={fullscreen}
-				onToggleFullscreen={() => setFullscreen((v) => !v)}
+				onToggleFullscreen={() => void toggleFullscreen()}
 			/>
 			<SplitLayout
 				leftCollapsed={leftCollapsed}

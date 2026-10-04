@@ -225,8 +225,8 @@ export function ResultGrid({ columns, rows, totalRows, connectionName, sql }: Pr
 			</div>
 
 			{/* 网格 */}
-			<div className="flex min-h-0 flex-1 overflow-auto">
-				<table className="border-separate border-spacing-0 text-[12px]">
+			<div className="dbx-scroll min-h-0 flex-1 overflow-auto">
+				<table className="border-separate border-spacing-0 text-[12px]" style={{ minWidth: "100%" }}>
 					<thead>
 						<tr>
 							{showRowNumbers && (
