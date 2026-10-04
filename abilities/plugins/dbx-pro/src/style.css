@@ -273,34 +273,12 @@ textarea.dbx-form-input {
 }
 
 /* ============================================================
- * CodeMirror：行号竖线贯通到面板底部、gutter 背景铺满、可正常输入。
- *
- * 难点：真实 .cm-gutters 高度跟随内容，内容短或滚动时其右边框到不了面板底部，
- * 出现断开。改为在 .cm-editor（高度 100%）上用 ::before 画一整块贴左的 gutter
- * 背景 + 右侧竖线，绝对定位贯穿整个可视高度；真实 gutters 背景透明、不画边框。
+ * CodeMirror：行号竖线贯通到面板底部、gutter 自带背景与分隔线。
+ * 编辑器容器加 overflow-hidden 防止光标/tooltip 溢出。
  * ============================================================ */
 .dbx-root .cm-editor { position: relative; }
-.dbx-root .cm-editor::before {
-	content: "";
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	/* 宽度对齐真实 gutter（含行号 + 内边距），与 editorTheme 保持一致 */
-	width: 46px;
-	background: var(--dbx-surface);
-	border-right: 1px solid var(--dbx-line);
-	pointer-events: none;
-	z-index: 0;
-}
-/* 真实 gutters 浮在伪元素之上：透明、不重复画边框 */
-.dbx-root .cm-gutters {
-	background: transparent !important;
-	border-right: none !important;
-	position: relative;
-	z-index: 1;
-}
-.dbx-root .cm-content { caret-color: var(--foreground); position: relative; z-index: 1; }
+.dbx-root .cm-scroller { overflow: hidden !important; }
+.dbx-root .cm-content { caret-color: var(--foreground); }
 
 /* 历史面板标题：柔和分隔，不出现刺眼白线 */
 .dbx-history-head { border-bottom: 1px solid var(--dbx-line-soft); }

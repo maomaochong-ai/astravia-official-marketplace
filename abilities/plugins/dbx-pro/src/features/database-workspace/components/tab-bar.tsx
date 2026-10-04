@@ -135,11 +135,11 @@ export function TabBar(): JSX.Element {
 	}
 
 	return (
-		<div className="dbx-chrome flex h-9 shrink-0 items-stretch px-1">
+		<div className="dbx-chrome flex shrink-0 items-stretch px-1" style={{ height: wrapTabs ? undefined : 36 }}>
 			<div
 				className={
 					wrapTabs
-						? "dbx-tab-wrap flex min-w-0 flex-1 flex-wrap content-center gap-0.5 py-1"
+						? "dbx-tab-wrap flex min-w-0 flex-1 flex-wrap content-start gap-0.5 py-1"
 						: "dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1"
 				}
 			>

@@ -39,17 +39,18 @@ const editorTheme = EditorView.theme({
 		fontFamily: MONO_FONT,
 		fontSize: "13px",
 		lineHeight: "1.6",
-		padding: "8px 0",
+		padding: "8px 12px 8px 8px",
 		caretColor: "#9ca3af",
 	},
 	".cm-scroller": { overflow: "auto", fontFamily: MONO_FONT },
 	".cm-gutters": {
-		backgroundColor: "transparent",
-		borderRight: "1px solid var(--border)",
+		backgroundColor: "var(--dbx-surface)",
+		borderRight: "1px solid var(--dbx-line)",
 		color: "#525866",
-		paddingLeft: "4px",
+		paddingLeft: "8px",
+		paddingRight: "8px",
 	},
-	".cm-line": { padding: "0 12px" },
+	".cm-line": { padding: "0 4px" },
 	"&.cm-focused": { outline: "none" },
 	".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.035)" },
 	".cm-activeLineGutter": { backgroundColor: "rgba(255,255,255,0.035)" },
@@ -241,8 +242,8 @@ export function SqlEditor(): JSX.Element {
 				</div>
 			</div>
 
-			{/* CodeMirror 挂载点：按 tab.id 重建 */}
-			<div className="relative min-h-0 flex-1">
+			{/* CodeMirror 挂载点：按 tab.id 重建，overflow-hidden 防止光标/tooltip 溢出 */}
+			<div className="relative min-h-0 flex-1 overflow-hidden">
 				<div key={activeTab?.id} ref={hostRef} className="absolute inset-0" />
 				{!editorReady && (
 					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground/70">
