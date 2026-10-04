@@ -785,7 +785,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
-      "version": "0.0.38",
+      "version": "0.0.39",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -1291,10 +1291,35 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.0.38.astraviapkg",
             "sha256": "6664649dcf1266bb527801841f7f5f8e120cff175dd1a5a5bfdb7b4fd8c5b266"
           }
+        },
+        {
+          "version": "0.0.39",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal",
+            "network.fetch"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.0.39.astraviapkg",
+            "sha256": "715c9809d87a81826bab557ea5953fba30ece2fbf3a1c0b15496063d01f01955"
+          }
         }
       ]
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.04-17"
+  "marketplaceVersion": "2026.10.04-18"
 }
