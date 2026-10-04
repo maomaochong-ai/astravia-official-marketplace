@@ -76,7 +76,7 @@ export function ConnectionList({
 			))}
 
 			{testResult && (
-				<div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 6, background: "rgba(0,0,0,0.03)", fontSize: 12 }}>
+				<div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 6, backgroundColor: "var(--dbx-surface)", fontSize: 12 }}>
 					{testResult}
 				</div>
 			)}

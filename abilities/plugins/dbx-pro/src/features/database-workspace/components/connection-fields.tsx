@@ -171,7 +171,7 @@ export function ConnectionFields({ conn, onChange, onTypeChange, groupedManifest
 									lineHeight: 1,
 								}}
 							>
-								{showPassword ? "🙈" : "👁"}
+								<span className={`h-3.5 w-3.5 ${showPassword ? "icon-[lucide--eye-off]" : "icon-[lucide--eye]"}`} />
 							</button>
 						</div>
 					</div>
@@ -205,7 +205,7 @@ export function ConnectionFields({ conn, onChange, onTypeChange, groupedManifest
 				</label>
 				<label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
 					<input type="checkbox" checked={!!conn.is_production} onChange={(e) => onChange({ ...conn, is_production: e.target.checked })} />
-					⚠️ 生产环境（默认阻断写入）
+					生产环境（默认阻断写入）
 				</label>
 				<label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
 					<input type="checkbox" checked={!!conn.read_only} onChange={(e) => onChange({ ...conn, read_only: e.target.checked })} />
@@ -227,7 +227,7 @@ export function ConnectionFields({ conn, onChange, onTypeChange, groupedManifest
 			{!isFileBased && (
 				<div style={{
 					marginTop: 12, padding: 12, borderRadius: 6,
-					background: "rgba(0,0,0,0.02)", fontSize: 12,
+					backgroundColor: "var(--dbx-surface)", fontSize: 12,
 				}}>
 					<div style={{ fontWeight: 600, marginBottom: 8 }}>高级</div>
 					<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

@@ -280,11 +280,11 @@ textarea.dbx-form-input {
 }
 
 /* ============================================================
- * CodeMirror：行号竖线贯通到面板底部、gutter 自带背景与分隔线。
- * 编辑器容器加 overflow-hidden 防止光标/tooltip 溢出。
+ * CodeMirror：编辑器容器定位 + 光标配色。
+ * 注意不要覆盖 .cm-scroller 的 overflow：CM 核心以 auto 自管滚动，
+ * 曾用 `overflow: hidden !important` 导致超出视区的 SQL 被裁切、无法滚动查看。
  * ============================================================ */
 .dbx-root .cm-editor { position: relative; }
-.dbx-root .cm-scroller { overflow: hidden !important; }
 .dbx-root .cm-content { caret-color: var(--foreground); }
 
 /* 历史面板标题：柔和分隔，不出现刺眼白线 */

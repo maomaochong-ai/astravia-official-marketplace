@@ -127,7 +127,7 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 			>
 				{/* 标题 */}
 				<div className="flex shrink-0 items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>
-					<span className="icon-[lucide--sparkles] h-4 w-4 text-purple-400" />
+					<span className="icon-[lucide--sparkles] h-4 w-4 text-muted-foreground" />
 					<h3 className="flex-1 text-[13px] font-semibold text-foreground">发送到 AI 分析</h3>
 					<button
 						type="button"

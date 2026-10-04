@@ -58,7 +58,7 @@ export function CellDetailDialog({ detail, onClose }: { detail: CellDetail; onCl
 				aria-modal="true"
 			>
 				<div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-					<span className="icon-[lucide--info] h-4 w-4 text-blue-400" />
+					<span className="icon-[lucide--info] h-4 w-4 text-muted-foreground" />
 					<h3 className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-foreground">{detail.column}</h3>
 					<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-foreground/70">
 						{parsed.kind}

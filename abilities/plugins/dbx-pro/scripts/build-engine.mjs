@@ -24,6 +24,7 @@ const SERVER_SRC = join(ROOT, "server", "src");
 const SERVER_OUT = join(ROOT, "server");
 const BIN_DIR = join(SERVER_OUT, "bin");
 const MANIFEST_PATH = join(ROOT, "plugin.json");
+const RUNTIME_LOCK_PATH = join(ROOT, "runtime-lock.json");
 const SERVICE_ID = "dbx-engine";
 
 // === dbx-mcp 二进制来源（硬编码 fork release） ===
@@ -163,6 +164,31 @@ async function main() {
     svc.runtime.version = protocol.ENGINE_VERSION;
 
     writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    // 4. 同步 runtime-lock.json（runtime.ts 的 bin 读取/网络兜底清单）。
+    // 必须与 plugin.json platforms.artifacts 同源：曾因两份清单版本漂移
+    // （plugin.json=0.4.106 / runtime-lock=0.4.61）导致包内 bin SHA 校验失败、
+    // 回退下载旧二进制，宿主 install 报 "Service runtime artifact SHA-256 mismatch"。
+    const mcpVersion = DBX_RELEASE_TAG.match(/v([\d.]+)$/)?.[1];
+    if (!mcpVersion) throw new Error(`无法从 release tag 解析引擎版本：${DBX_RELEASE_TAG}`);
+    const runtimeLock = existsSync(RUNTIME_LOCK_PATH)
+      ? JSON.parse(readFileSync(RUNTIME_LOCK_PATH, "utf8"))
+      : {};
+    runtimeLock.version = mcpVersion;
+    runtimeLock.platforms = Object.fromEntries(
+      DBX_BINARIES.map((b) => [
+        b.platform,
+        [
+          {
+            destination: `server/bin/${b.dest}`,
+            url: `${DBX_RELEASE_BASE}/${b.asset}`,
+            sha256: binaryShas[`server/bin/${b.dest}`],
+          },
+        ],
+      ]),
+    );
+    writeFileSync(RUNTIME_LOCK_PATH, `${JSON.stringify(runtimeLock, null, 2)}\n`);
+    console.log(`[build] runtime-lock.json 已同步（dbx-mcp ${mcpVersion}）`);
 
     const summary = [
       { destination: mainDest, sha256: mainSha.slice(0, 32) + "...", bytes: statSync(join(ROOT, mainDest)).size },

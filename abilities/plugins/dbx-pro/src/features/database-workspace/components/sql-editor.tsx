@@ -211,7 +211,8 @@ export function SqlEditor(): JSX.Element {
 					onClick={() => viewRef.current && runCurrent(viewRef.current)}
 					disabled={running || !hasConn}
 					title="执行（⌘/Ctrl + Enter）"
-					className="flex h-6 items-center gap-1 rounded bg-emerald-600/90 px-2 text-[11px] font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[var(--dbx-surface-2)] disabled:text-muted-foreground"
+					className="dbx-cta"
+					style={{ height: 24, padding: "0 8px" }}
 				>
 					<span className="icon-[lucide--play] h-3 w-3" />
 					执行
@@ -238,7 +239,7 @@ export function SqlEditor(): JSX.Element {
 				<div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
 					<span className="icon-[lucide--database] h-2.5 w-2.5" />
 					{activeTab?.connectionName ?? "未绑定"}
-					{!hasConn && <span className="ml-1 rounded bg-red-500/10 px-1 text-red-400">请先选中连接</span>}
+					{!hasConn && <span className="ml-1 rounded px-1" style={{ color: "var(--destructive)", backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)" }}>请先选中连接</span>}
 				</div>
 			</div>
 

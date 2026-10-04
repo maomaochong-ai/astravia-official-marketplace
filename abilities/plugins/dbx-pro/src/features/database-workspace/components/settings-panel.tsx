@@ -73,7 +73,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 						className="dbx-iconbtn"
 						style={{ height: 24, minWidth: 24, padding: 0 }}
 					>
-						✕
+						<span className="icon-[lucide--x] h-3.5 w-3.5" />
 					</button>
 				</div>
 

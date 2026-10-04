@@ -309,7 +309,7 @@ export function ResultGrid({
 					type="button"
 					onClick={() => setShowRowNumbers((v) => !v)}
 					title="行号"
-					className={`flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] ${showRowNumbers ? "text-blue-400" : "text-muted-foreground hover:text-foreground"}`}
+					className={`flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] ${showRowNumbers ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
 				>
 					<span className="icon-[lucide--list-ordered] h-3 w-3" />
 					#
@@ -319,7 +319,7 @@ export function ResultGrid({
 						type="button"
 						onClick={openAiDialogForQuery}
 						title="把该 SQL 与结果发给 AI 分析"
-						className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-purple-300 hover:bg-purple-500/15"
+						className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 					>
 						<span className="icon-[lucide--sparkles] h-3 w-3" />
 						分析结果
@@ -352,7 +352,7 @@ export function ResultGrid({
 									>
 										<span className="min-w-0 flex-1 truncate">{c}</span>
 										{sort?.col === c ? (
-											<span className={`h-2.5 w-2.5 shrink-0 text-blue-400 ${sort.dir === "asc" ? "icon-[lucide--arrow-up]" : "icon-[lucide--arrow-down]"}`} />
+											<span className={`h-2.5 w-2.5 shrink-0 text-foreground ${sort.dir === "asc" ? "icon-[lucide--arrow-up]" : "icon-[lucide--arrow-down]"}`} />
 										) : null}
 									</span>
 									<span className="shrink-0 text-[9px] text-muted-foreground/70">{i + 1}</span>
@@ -422,7 +422,7 @@ export function ResultGrid({
 						总数统计中
 					</span>
 				) : null}
-				{pageLoading ? <span className="text-[10px] text-blue-400">取数中…</span> : null}
+				{pageLoading ? <span className="text-[10px] text-muted-foreground">取数中…</span> : null}
 				<div className="ml-auto flex items-center gap-1">
 					<label className="flex items-center gap-1">
 						<span className="text-muted-foreground/60">每页</span>
@@ -500,10 +500,10 @@ function CellDisplay({ value }: { value: unknown }): JSX.Element {
 		return <span className="italic text-muted-foreground/70">NULL</span>;
 	}
 	if (typeof value === "boolean") {
-		return <span className={value ? "text-emerald-400" : "text-red-400"}>{String(value)}</span>;
+		return <span className="text-foreground/70">{String(value)}</span>;
 	}
 	if (typeof value === "number") {
-		return <span className="font-mono text-amber-300">{String(value)}</span>;
+		return <span className="font-mono text-foreground/80">{String(value)}</span>;
 	}
 	if (typeof value === "object") {
 		return <span className="font-mono text-foreground/70">{JSON.stringify(value)}</span>;
@@ -511,7 +511,7 @@ function CellDisplay({ value }: { value: unknown }): JSX.Element {
 	const text = String(value);
 	if (/^https?:\/\//i.test(text)) {
 		return (
-			<span className="text-blue-400 underline decoration-blue-400/40">{text}</span>
+			<span className="text-foreground/80 underline decoration-foreground/30">{text}</span>
 		);
 	}
 	return <span>{text}</span>;

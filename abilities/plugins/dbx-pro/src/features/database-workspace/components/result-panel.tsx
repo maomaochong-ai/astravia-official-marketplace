@@ -71,9 +71,15 @@ export function ResultPanel(): JSX.Element {
 						/>
 					) : (
 						<div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-							<span className="icon-[lucide--alert-octagon] h-8 w-8 text-red-400" />
-							<p className="text-[12px] font-medium text-red-400">执行失败</p>
-							<pre className="max-h-[200px] max-w-full overflow-auto rounded-md bg-red-900/20 px-3 py-2 font-mono text-[11px] text-red-300 whitespace-pre-wrap">
+							<span className="icon-[lucide--alert-octagon] h-8 w-8" style={{ color: "var(--destructive)" }} />
+							<p className="text-[12px] font-medium" style={{ color: "var(--destructive)" }}>执行失败</p>
+							<pre
+								className="max-h-[200px] max-w-full overflow-auto rounded-md px-3 py-2 font-mono text-[11px] whitespace-pre-wrap"
+								style={{
+									color: "var(--destructive)",
+									backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)",
+								}}
+							>
 								{result.error ?? "未知错误"}
 							</pre>
 						</div>
