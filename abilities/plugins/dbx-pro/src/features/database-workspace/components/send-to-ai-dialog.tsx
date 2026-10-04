@@ -1,17 +1,13 @@
 /**
  * 发送到 AI 对话框 — 右键连接/表/结果后弹出，让用户选择「直接发送」或「编辑后发送」。
  *
- * 交互：
- * - 点击右键菜单"发送到 AI 分析" → 弹此对话框，预填 prompt
- * - 用户可编辑 prompt 文本
- * - 点击「直接发送」→ 走 sendPrompt → createSession → insertText 降级链路
- * - 点击「仅填入输入框」→ 只走 insertText，不自动发送，用户可手动修改后发送
- * - 点击「取消」→ 关闭对话框，不发送
+ * 交互策略（稳定性优先）：
+ * 为了确保消息能正确挂载到宿主当前对话并实现持久化，所有发送动作最终都统一
+ * 降级为 insertText。这避免了 sendPrompt 可能导致的上下文丢失问题。
  */
 
 import { useEffect, useRef, useState, type JSX } from "react";
 import { getConversation, getPermissions, getUi } from "../../../runtime-contract.ts";
-import type { ConversationEvent } from "@astravia-org/plugin-sdk";
 
 export interface SendToAiDialogProps {
 	open: boolean;
@@ -19,93 +15,24 @@ export interface SendToAiDialogProps {
 	onClose: () => void;
 }
 
-/** 探测当前是否有活跃会话，最多等 3 秒。 */
-function hasActiveConversation(): Promise<boolean> {
-	return new Promise<boolean>((resolve) => {
-		let settled = false;
-		let sub: { dispose(): void } | null = null;
-		const finish = (value: boolean): void => {
-			if (settled) return;
-			settled = true;
-			clearTimeout(timer);
-			sub?.dispose();
-			resolve(value);
-		};
-		const timer = setTimeout(() => finish(false), 3000);
-		try {
-			sub = getConversation().on((event: ConversationEvent) => {
-				if (event.type === "conversation-changed") finish(event.conversation.id !== null);
-			});
-		} catch {
-			finish(false);
-		}
-	});
-}
-
-async function sendAiPrompt(prompt: string): Promise<void> {
+async function handleAiSend(prompt: string): Promise<void> {
 	const ui = getUi();
-	const notify = (message: string, error?: unknown) =>
-		ui?.notify?.({ message, variant: "warning", error });
+	const notify = (message: string, variant: "info" | "warning" | "error" | "success") =>
+		ui?.notify?.({ message, variant });
 
 	// 权限预检
 	const perms = getPermissions();
-	const needRead = perms.has("agent.session.read");
-	const needWrite = perms.has("agent.session.write");
-	if (!needRead || !needWrite) {
-		notify(
-			"AI 交互权限未授权",
-			new Error(
-				`需要 agent.session.read（${needRead ? "已授权" : "未授权"}）+ ` +
-				`agent.session.write（${needWrite ? "已授权" : "未授权"}）。请到插件设置页授权。`,
-			),
-		);
+	if (!perms.has("agent.session.read") || !perms.has("agent.session.write")) {
+		notify("AI 交互权限未授权，请在设置页授权", "warning");
+		// 即使未授权，仍尝试填入文本供用户手动发送
 	}
 
-	const conv = getConversation();
-
-	// 探测活跃会话
-	let hasSession = false;
-	try {
-		hasSession = await hasActiveConversation();
-	} catch {
-		hasSession = false;
-	}
-
-	// 有活跃会话 → 直接 sendPrompt
-	if (hasSession) {
-		try {
-			const result = await conv.sendPrompt(prompt);
-			if (result.status !== "failed") return;
-			throw new Error(result.error?.message ?? "sendPrompt failed");
-		} catch {
-			// 排队失败，继续走 createSession
-		}
-	}
-
-	// 无活跃会话 → createSession 后再 sendPrompt
-	try {
-		await conv.createSession(".", { navigate: true });
-		const result = await conv.sendPrompt(prompt);
-		if (result.status !== "failed") return;
-		throw new Error(result.error?.message ?? "sendPrompt after createSession failed");
-	} catch {
-		// 全部失败，走 insertText
-	}
-
-	// 最终降级
-	try {
-		conv.insertText(prompt);
-	} catch (err) {
-		notify("发送 AI 上下文失败（所有路径均已尝试）", err);
-	}
-}
-
-async function insertAiPrompt(prompt: string): Promise<void> {
 	try {
 		getConversation().insertText(prompt);
+		notify("上下文已填入输入框，请按 Enter 发送给 AI", "success");
 	} catch (err) {
-		const ui = getUi();
-		ui?.notify?.({ message: "填入 AI 输入框失败", variant: "warning", error: err });
+		notify("无法填入输入框，请重试", "error");
+		console.warn("[dbx-pro] insertText failed:", err);
 	}
 }
 
@@ -132,13 +59,13 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 
 	if (!open) return null;
 
-	function handleSend() {
-		void sendAiPrompt(prompt);
+	function handleDirectSend() {
+		void handleAiSend(prompt);
 		onClose();
 	}
 
 	function handleInsertOnly() {
-		void insertAiPrompt(prompt);
+		void handleAiSend(prompt);
 		onClose();
 	}
 
@@ -183,11 +110,11 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 					<button className="dbx-btn ghost" onClick={onClose}>
 						取消
 					</button>
-					<button className="dbx-btn" onClick={handleInsertOnly}>
+					<button className="dbx-btn" onClick={handleInsertOnly} title="填入输入框，手动发送">
 						<span className="icon-[lucide--arrow-right-to-line] mr-1 h-3 w-3" />
 						仅填入输入框
 					</button>
-					<button className="dbx-btn primary" onClick={handleSend}>
+					<button className="dbx-btn primary" onClick={handleDirectSend} title="填入输入框，提示用户发送">
 						<span className="icon-[lucide--send] mr-1 h-3 w-3" />
 						直接发送
 					</button>
