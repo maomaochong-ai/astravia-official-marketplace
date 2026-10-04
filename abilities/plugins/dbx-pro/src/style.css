@@ -102,14 +102,17 @@
 .dbx-scroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 30%, transparent); background-clip: content-box; }
 .dbx-scroll::-webkit-scrollbar-track { background: transparent; }
 
-/*
- * 标签栏横向滚动：滚动条完全不占布局高度（overlay），避免多标签时底部多出一条
+/* 标签栏单行横向滚动：滚动条完全不占布局高度（overlay），避免多标签时底部多出一条
  * 滚动条把内容向上挤压。Firefox 用 overlay 宽度；WebKit 把高度压到 0，仅在该容器
  * 实际滚动时仍可用触控板/滚轮横向滚动。
  */
 .dbx-tab-scroll { scrollbar-width: none; }
 .dbx-tab-scroll::-webkit-scrollbar { height: 0; width: 0; }
 .dbx-tab-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* 标签栏多行换行模式：便签自由折行，容器高度随内容增长 */
+.dbx-tab-wrap { scrollbar-width: none; -ms-overflow-style: none; }
+.dbx-tab-wrap::-webkit-scrollbar { height: 0; width: 0; }
 
 /* ============================================================
  * 通用按钮 / 表单（连接管理侧滑表单复用）

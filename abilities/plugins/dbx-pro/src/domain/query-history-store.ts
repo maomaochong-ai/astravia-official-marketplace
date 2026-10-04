@@ -3,7 +3,7 @@
  * 与 `dbx-storage.ts` 同一套路：storage 由宿主保证目录存在与原子提交。
  */
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
-import { getStorage } from "../runtime-contract";
+import { getStorage } from "../runtime-contract.ts";
 import {
 	HISTORY_LIMIT_DEFAULT,
 	appendHistory as appendToHistory,
@@ -11,7 +11,7 @@ import {
 	pruneHistory,
 	removeHistoryEntry as removeFromHistory,
 	type QueryHistoryEntry,
-} from "./query-history";
+} from "./query-history.ts";
 
 const STORE_PATH = "query-history.json";
 const STORE_SCHEMA_VERSION = 1;

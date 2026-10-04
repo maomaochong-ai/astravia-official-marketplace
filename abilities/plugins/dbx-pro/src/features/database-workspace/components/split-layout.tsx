@@ -19,7 +19,7 @@ interface DragState {
 	otherW: number;
 }
 
-export function SplitLayout({ children, onDragStart }: { children: [JSX.Element, JSX.Element, JSX.Element]; onDragStart?: (side: "left" | "right") => void }): JSX.Element {
+export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight }: { children: [JSX.Element, JSX.Element, JSX.Element]; onDragStart?: (side: "left" | "right") => void; leftCollapsed?: boolean; rightCollapsed?: boolean; onToggleLeft?: () => void; onToggleRight?: () => void }): JSX.Element {
 	// 三栏宽度（px）。0 表示首次按容器尺寸用默认比例初始化。
 	const [leftW, setLeftW] = useState(0);
 	const [rightW, setRightW] = useState(0);
@@ -111,22 +111,36 @@ export function SplitLayout({ children, onDragStart }: { children: [JSX.Element,
 
 	return (
 		<div ref={containerRef} className="relative flex min-h-0 flex-1">
-			{/* 左栏 */}
+			{/* 左栏（可收起为细条） */}
 			<div
 				className="min-h-0 overflow-hidden"
-				style={{ width: effectiveLeft, flexShrink: 0 }}
+				style={{ width: leftCollapsed ? 36 : effectiveLeft, flexShrink: 0 }}
 			>
-				{children[0]}
+				{leftCollapsed ? (
+					<button
+						type="button"
+						onClick={() => onToggleLeft?.()}
+						title="展开连接树"
+						className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground"
+					>
+						<span className="icon-[lucide--panel-left] h-4 w-4" />
+						<span className="icon-[lucide--database] h-4 w-4 opacity-60" />
+					</button>
+				) : (
+					children[0]
+				)}
 			</div>
 
 			{/* 左分隔条 */}
-			<div
-				onPointerDown={(e) => startDrag("left", e)}
-				className="group relative w-1 shrink-0 cursor-col-resize"
-				style={{ backgroundColor: dragging === "left" ? "var(--foreground)" : "var(--dbx-line)" }}
-			>
-				<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
-			</div>
+			{!leftCollapsed && (
+				<div
+					onPointerDown={(e) => startDrag("left", e)}
+					className="group relative w-1 shrink-0 cursor-col-resize"
+					style={{ backgroundColor: dragging === "left" ? "var(--foreground)" : "var(--dbx-line)" }}
+				>
+					<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
+				</div>
+			)}
 
 			{/* 中栏 */}
 			<div className="min-w-0 min-h-0 flex-1 overflow-hidden">
@@ -134,21 +148,25 @@ export function SplitLayout({ children, onDragStart }: { children: [JSX.Element,
 			</div>
 
 			{/* 右分隔条 */}
-			<div
-				onPointerDown={(e) => startDrag("right", e)}
-				className="group relative w-1 shrink-0 cursor-col-resize"
-				style={{ backgroundColor: dragging === "right" ? "var(--foreground)" : "var(--dbx-line)" }}
-			>
-				<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
-			</div>
+			{!rightCollapsed && (
+				<div
+					onPointerDown={(e) => startDrag("right", e)}
+					className="group relative w-1 shrink-0 cursor-col-resize"
+					style={{ backgroundColor: dragging === "right" ? "var(--foreground)" : "var(--dbx-line)" }}
+				>
+					<div className="absolute inset-y-0 left-[-3px] right-[-3px]" />
+				</div>
+			)}
 
-			{/* 右栏 */}
-			<div
-				className="min-h-0 overflow-hidden"
-				style={{ width: effectiveRight, flexShrink: 0 }}
-			>
-				{children[2]}
-			</div>
+			{/* 右栏（可通过顶栏按钮收起） */}
+			{!rightCollapsed && (
+				<div
+					className="min-h-0 overflow-hidden"
+					style={{ width: effectiveRight, flexShrink: 0 }}
+				>
+					{children[2]}
+				</div>
+			)}
 		</div>
 	);
 }

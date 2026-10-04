@@ -119,16 +119,44 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 						</Row>
 					</div>
 
-					<Row label="查询历史">
-						<label className="flex items-center gap-2 text-[11px] text-foreground">
-							<input
-								type="checkbox"
-								checked={settings.historyEnabled}
-								onChange={(e) => onChange({ ...settings, historyEnabled: e.target.checked })}
-							/>
-							记录查询历史（仅 SQL / 耗时 / 行数，不保存结果行）
-						</label>
+				<Row label="查询历史">
+					<label className="flex items-center gap-2 text-[11px] text-foreground">
+						<input
+							type="checkbox"
+							checked={settings.historyEnabled}
+							onChange={(e) => onChange({ ...settings, historyEnabled: e.target.checked })}
+						/>
+						记录查询历史（仅 SQL / 耗时 / 行数，不保存结果行）
+					</label>
+				</Row>
+
+				<div className="grid grid-cols-2 gap-3">
+					<Row label="单击表节点" hint="单左键点击连接树中的表。">
+						<select
+							className={inputCls}
+							value={settings.tableSingleClickAction}
+							onChange={(e) =>
+								onChange({ ...settings, tableSingleClickAction: e.target.value as "preview" | "structure" })
+							}
+						>
+							<option value="structure">查看表结构</option>
+							<option value="preview">SELECT * 预览</option>
+						</select>
 					</Row>
+					<Row label="双击表节点" hint="双击时触发的动作。">
+						<select
+							className={inputCls}
+							value={settings.tableDoubleClickAction}
+							onChange={(e) =>
+								onChange({ ...settings, tableDoubleClickAction: e.target.value as "preview" | "structure" })
+							}
+						>
+							<option value="preview">SELECT * 预览</option>
+							<option value="structure">查看表结构</option>
+						</select>
+					</Row>
+				</div>
+
 
 					<div className="grid grid-cols-2 items-end gap-3">
 						<Row label="历史条数上限">

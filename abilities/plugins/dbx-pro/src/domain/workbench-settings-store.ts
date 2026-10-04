@@ -2,8 +2,8 @@
  * G2 工作台设置的持久化包装 —— 只做「宿主 storage ↔ 纯逻辑」的搬运。
  */
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
-import { getStorage } from "../runtime-contract";
-import { DEFAULT_SETTINGS, normalizeSettings, type WorkbenchSettings } from "./workbench-settings";
+import { getStorage } from "../runtime-contract.ts";
+import { DEFAULT_SETTINGS, normalizeSettings, type WorkbenchSettings } from "./workbench-settings.ts";
 
 const STORE_PATH = "workbench-settings.json";
 

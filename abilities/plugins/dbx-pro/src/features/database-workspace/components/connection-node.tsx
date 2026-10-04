@@ -25,7 +25,7 @@ interface Props {
 let querySeq = 0;
 
 export function ConnectionNode({ node, depth, connectionName, schema }: Props): JSX.Element {
-	const { state, dispatch, loadNodeChildren, openPreviewTab } = useWorkbench();
+	const { state, dispatch, loadNodeChildren, openPreviewTab, settings } = useWorkbench();
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
 
 	const isExpanded = state.expandedNodes.has(node.key);
@@ -83,11 +83,15 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			if (!isExpanded) expand();
 		} else if (node.kind === "table") {
 			if (!connectionName) return;
-			dispatch({
-				type: "selectRightTable",
-				selection: { connectionName, tableName: node.label, schema: childScope },
-			});
-			void loadNodeChildren(node.key, connectionName, { schema: childScope });
+			if (settings.tableSingleClickAction === "preview") {
+				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+			} else {
+				dispatch({
+					type: "selectRightTable",
+					selection: { connectionName, tableName: node.label, schema: childScope },
+				});
+				void loadNodeChildren(node.key, connectionName, { schema: childScope });
+			}
 		}
 	}
 
@@ -95,7 +99,15 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (node.kind === "connection") {
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
-			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+			if (settings.tableDoubleClickAction === "preview") {
+				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 200;`, node.label);
+			} else {
+				dispatch({
+					type: "selectRightTable",
+					selection: { connectionName, tableName: node.label, schema: childScope },
+				});
+				void loadNodeChildren(node.key, connectionName, { schema: childScope });
+			}
 		} else {
 			void ensureChildren();
 			if (!isExpanded) expand();

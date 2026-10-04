@@ -12,10 +12,24 @@ import { useWorkbench } from "../hooks/use-workbench";
 import { ConnectionNode } from "./connection-node";
 import { connectionNodeKey, type TreeNode } from "../../../domain/tree-node-key";
 
-export function ConnectionTree(): JSX.Element {
-	const { state, refreshConnections } = useWorkbench();
+export function ConnectionTree({ onCollapse, onNewQuery }: { onCollapse?: () => void; onNewQuery?: () => void }): JSX.Element {
+	const { state, refreshConnections, dispatch } = useWorkbench();
 	const [query, setQuery] = useState("");
 	const needle = query.trim().toLowerCase();
+
+	function expandAll(): void {
+		for (const [key, children] of state.treeChildren) {
+			if (children.length > 0 && !state.expandedNodes.has(key)) {
+				dispatch({ type: "toggleNode", key });
+			}
+		}
+	}
+
+	function collapseAll(): void {
+		for (const key of [...state.expandedNodes]) {
+			dispatch({ type: "toggleNode", key });
+		}
+	}
 
 	// 初始化：连接列表加载完后，给每个连接创建一个 tree connection 节点，并设置 dbType
 	const connectionNodes: TreeNode[] = state.connections.map((c) => ({
@@ -45,17 +59,57 @@ export function ConnectionTree(): JSX.Element {
 						<span className="text-[10px] text-muted-foreground/70">{connectionNodes.length}</span>
 					)}
 				</span>
-				<span className="flex-1" />
+			<span className="flex-1" />
+			{onNewQuery && (
 				<button
 					type="button"
-					onClick={() => { void refreshConnections(); }}
-					title="刷新连接"
+					onClick={onNewQuery}
+					title="新建查询"
 					className="dbx-iconbtn"
 					style={{ height: 22, minWidth: 22, padding: 0 }}
 				>
-					<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+					<span className="icon-[lucide--file-plus-2] h-3 w-3" />
 				</button>
-			</div>
+			)}
+			<button
+				type="button"
+				onClick={expandAll}
+				title="展开已加载节点"
+				className="dbx-iconbtn"
+				style={{ height: 22, minWidth: 22, padding: 0 }}
+			>
+				<span className="icon-[lucide--chevrons-down-up] h-3 w-3" />
+			</button>
+			<button
+				type="button"
+				onClick={collapseAll}
+				title="收起全部"
+				className="dbx-iconbtn"
+				style={{ height: 22, minWidth: 22, padding: 0 }}
+			>
+				<span className="icon-[lucide--chevrons-up-down] h-3 w-3" />
+			</button>
+			<button
+				type="button"
+				onClick={() => { void refreshConnections(); }}
+				title="刷新连接"
+				className="dbx-iconbtn"
+				style={{ height: 22, minWidth: 22, padding: 0 }}
+			>
+				<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+			</button>
+			{onCollapse && (
+				<button
+					type="button"
+					onClick={onCollapse}
+					title="收起连接树"
+					className="dbx-iconbtn"
+					style={{ height: 22, minWidth: 22, padding: 0 }}
+				>
+					<span className="icon-[lucide--panel-left-close] h-3 w-3" />
+				</button>
+			)}
+		</div>
 
 			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}
 			<div className="shrink-0 px-2 py-1.5" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>

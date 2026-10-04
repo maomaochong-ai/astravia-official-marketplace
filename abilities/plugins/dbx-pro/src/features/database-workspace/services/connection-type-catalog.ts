@@ -48,10 +48,6 @@ export const CATEGORY_DEFS: DbCategory[] = [
 			"kwdb", "gbase", "goldendb", "yashandb", "sundb",
 		],
 	},
-	{
-		label: "其他",
-		dbTypes: ["mssql", "trino", "prestosql", "presto", "cassandra", "kylin"],
-	},
 ];
 
 /**
@@ -66,8 +62,7 @@ export function groupManifestByCategory(): Array<{ label: string; entries: DbTyp
 	const dbTypeToCat = new Map<string, string>();
 	for (const cat of CATEGORY_DEFS) {
 		for (const t of cat.dbTypes) {
-			// 若重复（例如 oceanbase-oracle 同时在 "关系型 SQL" 和 "国产"），
-			// 保留先出现的那个（此处 "国产" 在 "关系型 SQL" 之后，所以会被覆盖到 "国产"）
+			// 同一类型出现在多个分组时，后遍历到的分组胜出。
 			dbTypeToCat.set(t, cat.label);
 		}
 	}

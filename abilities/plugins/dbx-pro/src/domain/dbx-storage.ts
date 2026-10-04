@@ -17,8 +17,8 @@ import {
 	engineAddConnection,
 	engineRemoveConnection,
 	EngineClientError,
-	EngineConnectionSummary,
 } from "../shared/services/engine-client.ts";
+import type { EngineConnectionSummary } from "../shared/services/engine-client.ts";
 
 const STORE_PATH = "connections.json";
 export const PASSWORD_PREFIX = "db-password:";

@@ -21,8 +21,10 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 
 	return (
 		<>
-			<div className="dbx-sheet-backdrop" onClick={onCancel} />
-			<div className="dbx-sheet" style={{ width: "min(560px, calc(100% - 16px))" }}>
+			<div className="dbx-modal-backdrop" onClick={onCancel} style={{ zIndex: 100 }} />
+			<div
+				className="absolute left-1/2 top-1/2 z-[101] flex w-[min(560px,calc(100%-2rem))] max-h-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-2xl"
+			>
 				<div className="dbx-sheet-header">
 					<div style={{ fontWeight: 600, fontSize: 14 }}>
 						{view === "form" ? (editing?.name ? "编辑连接" : "新建连接") : "管理连接"}
@@ -32,7 +34,7 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 					</button>
 				</div>
 
-				<div className="dbx-sheet-body">
+				<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-4">
 					{view === "list" ? (
 						<ConnectionList
 							connections={editor.connections}

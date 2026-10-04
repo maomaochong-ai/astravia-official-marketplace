@@ -19,6 +19,10 @@ export interface WorkbenchSettings {
 	historyEnabled: boolean;
 	/** 历史条数上限。 */
 	historyLimit: number;
+	/** 单击表节点的行为。 */
+	tableSingleClickAction: "preview" | "structure";
+	/** 双击表节点的行为。 */
+	tableDoubleClickAction: "preview" | "structure";
 }
 
 /**
@@ -44,6 +48,8 @@ export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	rowLimit: ENGINE_ROW_CAP,
 	historyEnabled: true,
 	historyLimit: HISTORY_LIMIT_DEFAULT,
+	tableSingleClickAction: "structure",
+	tableDoubleClickAction: "preview",
 });
 
 /** 宽容解析设置：非对象 / 坏字段一律回落到默认值，数值夹逼到合法区间。 */
@@ -68,6 +74,14 @@ export function normalizeSettings(raw: unknown): WorkbenchSettings {
 			typeof source.historyEnabled === "boolean"
 				? source.historyEnabled
 				: DEFAULT_SETTINGS.historyEnabled,
+		tableSingleClickAction:
+			source.tableSingleClickAction === "preview" || source.tableSingleClickAction === "structure"
+				? source.tableSingleClickAction
+				: DEFAULT_SETTINGS.tableSingleClickAction,
+		tableDoubleClickAction:
+			source.tableDoubleClickAction === "preview" || source.tableDoubleClickAction === "structure"
+				? source.tableDoubleClickAction
+				: DEFAULT_SETTINGS.tableDoubleClickAction,
 		historyLimit: clampInt(
 			source.historyLimit,
 			SETTINGS_BOUNDS.historyLimit.min,
@@ -83,6 +97,8 @@ export function isDefaultSettings(settings: WorkbenchSettings): boolean {
 		settings.queryTimeoutSecs === DEFAULT_SETTINGS.queryTimeoutSecs &&
 		settings.rowLimit === DEFAULT_SETTINGS.rowLimit &&
 		settings.historyEnabled === DEFAULT_SETTINGS.historyEnabled &&
-		settings.historyLimit === DEFAULT_SETTINGS.historyLimit
+		settings.historyLimit === DEFAULT_SETTINGS.historyLimit &&
+		settings.tableSingleClickAction === DEFAULT_SETTINGS.tableSingleClickAction &&
+		settings.tableDoubleClickAction === DEFAULT_SETTINGS.tableDoubleClickAction
 	);
 }

@@ -1,7 +1,7 @@
 /**
- * 工作台顶栏 — 品牌 / 当前连接 / 工具按钮。
+ * 工作台顶栏 — 左：新建连接 / 新建查询；右：AI 面板 / 表详情 / 历史 / 刷新 / 设置 / 全屏。
  *
- * 右侧四个动作：查询历史、刷新连接、工作台设置、添加连接（唯一新增入口）。
+ * 参考 dbx 桌面壳：不展示「dbx-pro + 当前连接」静态信息，中间交互靠图标。
  */
 
 import type { JSX } from "react";
@@ -10,46 +10,72 @@ import { useWorkbench } from "../hooks/use-workbench";
 export interface WorkbenchTopBarProps {
 	onOpenConnectionEditor: () => void;
 	onOpenSettings: () => void;
+	onNewQuery: () => void;
+	onToggleAiPanel: () => void;
+	aiPanelActive: boolean;
+	rightPanelVisible: boolean;
+	onToggleRightPanel: () => void;
+	fullscreen: boolean;
+	onToggleFullscreen: () => void;
 }
 
-export function WorkbenchTopBar({ onOpenConnectionEditor, onOpenSettings }: WorkbenchTopBarProps): JSX.Element {
-	const { state, refreshConnections, history, rightView, setRightView } = useWorkbench();
-	const activeConn = state.activeConnectionName
-		? state.connections.find((c) => c.name === state.activeConnectionName)
-		: null;
+export function WorkbenchTopBar({
+	onOpenConnectionEditor,
+	onOpenSettings,
+	onNewQuery,
+	onToggleAiPanel,
+	aiPanelActive,
+	rightPanelVisible,
+	onToggleRightPanel,
+	fullscreen,
+	onToggleFullscreen,
+}: WorkbenchTopBarProps): JSX.Element {
+	const { refreshConnections, history, rightView, setRightView } = useWorkbench();
 
 	return (
 		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
-			{/* 左：Logo + 连接路径 */}
-			<div className="flex min-w-0 flex-1 items-center gap-2">
-				<span className="icon-[solar--database-bold] h-4 w-4 text-foreground opacity-80" />
-				<span className="text-[12px] font-semibold text-foreground">dbx-pro</span>
-				<span className="text-muted-foreground/50">/</span>
-				{activeConn ? (
-					<>
-						<span
-							className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold"
-							style={{ backgroundColor: "var(--dbx-surface-2)", color: "var(--foreground)" }}
-						>
-							{activeConn.db_type.slice(0, 2).toUpperCase()}
-						</span>
-						<span className="min-w-0 truncate text-[12px] text-foreground/80">{activeConn.name}</span>
-						<span
-							className="h-1.5 w-1.5 rounded-full"
-							style={{ backgroundColor:
-								(state.connectionStatuses[activeConn.name] ?? "idle") === "ok" ? "var(--success, #4ade80)"
-								: (state.connectionStatuses[activeConn.name] ?? "idle") === "error" ? "var(--destructive)"
-								: (state.connectionStatuses[activeConn.name] ?? "idle") === "running" ? "var(--warning, #fbbf24)"
-								: "var(--muted-foreground)" }}
-						/>
-					</>
-				) : (
-					<span className="text-[11px] text-muted-foreground">未选择连接</span>
-				)}
+			{/* 左：新建连接 / 新建查询（纯图标，跟其它工具保持统一） */}
+			<div className="flex items-center gap-1">
+				<button
+					type="button"
+					onClick={onOpenConnectionEditor}
+					title="新建连接"
+					className="dbx-iconbtn"
+				>
+					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					onClick={onNewQuery}
+					title="新建查询"
+					className="dbx-iconbtn"
+				>
+					<span className="icon-[lucide--file-plus-2] h-3.5 w-3.5" />
+				</button>
 			</div>
 
-			{/* 右：工具按钮（统一中性图标按钮，单一新增连接入口） */}
+			<span className="flex-1" />
+
+			{/* 右：工具按钮（统一中性图标按钮） */}
 			<div className="flex shrink-0 items-center gap-1">
+				<button
+					type="button"
+					onClick={onToggleAiPanel}
+					title="AI 助手面板"
+					aria-expanded={aiPanelActive}
+					className={`dbx-iconbtn ${aiPanelActive ? "is-active" : ""}`}
+				>
+					<span className="icon-[lucide--bot] h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					onClick={onToggleRightPanel}
+					title="表详情 / 右栏"
+					aria-expanded={rightPanelVisible}
+					className={`dbx-iconbtn ${rightPanelVisible && rightView === "inspector" ? "is-active" : ""}`}
+				>
+					<span className="icon-[lucide--panel-right] h-3.5 w-3.5" />
+				</button>
 				<button
 					type="button"
 					onClick={() => setRightView(rightView === "history" ? "inspector" : "history")}
@@ -78,12 +104,11 @@ export function WorkbenchTopBar({ onOpenConnectionEditor, onOpenSettings }: Work
 				</button>
 				<button
 					type="button"
-					onClick={() => onOpenConnectionEditor()}
-					title="添加连接"
-					className="dbx-cta"
+					onClick={onToggleFullscreen}
+					title={fullscreen ? "退出全屏" : "全屏"}
+					className="dbx-iconbtn"
 				>
-					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
-					连接
+					<span className={`h-3.5 w-3.5 ${fullscreen ? "icon-[lucide--minimize-2]" : "icon-[lucide--maximize-2]"}`} />
 				</button>
 			</div>
 		</header>

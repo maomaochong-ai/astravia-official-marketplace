@@ -7,17 +7,17 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { DbConnection } from "../../../domain/connection-config";
-import { DB_TYPE_MANIFEST } from "../../../domain/connection-config";
-import { deleteConfig, readAllConfigs, writeConfig } from "../../../domain/dbx-storage";
-import { engineExecuteByName } from "../../../shared/services/engine-client";
+import type { DbConnection } from "../../../domain/connection-config.ts";
+import { DB_TYPE_MANIFEST } from "../../../domain/connection-config.ts";
+import { deleteConfig, readAllConfigs, writeConfig } from "../../../domain/dbx-storage.ts";
+import { engineExecuteByName } from "../../../shared/services/engine-client.ts";
 import {
 	defaultHostPlaceholder,
 	defaultUsernameFor,
 	emptyConnection,
 	groupManifestByCategory,
 	isFileBasedDbType,
-} from "../services/connection-type-catalog";
+} from "../services/connection-type-catalog.ts";
 
 export interface ConnectionEditorState {
 	connections: DbConnection[];
@@ -79,6 +79,11 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	function startEdit(conn: DbConnection): void {
 		setEditing({ ...conn });
 		setTestResult(null);
+		setView("form");
+	}
+
+	function setViewForm(conn: DbConnection): void {
+		setEditing(conn);
 		setView("form");
 	}
 

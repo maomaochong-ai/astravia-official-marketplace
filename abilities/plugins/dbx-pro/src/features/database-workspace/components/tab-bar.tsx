@@ -13,6 +13,7 @@ export function TabBar(): JSX.Element {
 	const { state, dispatch } = useWorkbench();
 	const [editingTabId, setEditingTabId] = useState<string | null>(null);
 	const [editValue, setEditValue] = useState("");
+	const [wrapTabs, setWrapTabs] = useState(false);
 
 	function addTab() {
 		const id = `tab-${Date.now().toString(36)}`;
@@ -51,8 +52,10 @@ export function TabBar(): JSX.Element {
 	}
 
 	return (
-		<div className="dbx-chrome flex h-8 shrink-0 items-center px-1">
-			<div className="dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+		<div className="dbx-chrome flex shrink-0 items-center px-1" style={{ minHeight: wrapTabs ? undefined : 32 }}>
+			<div
+				className={wrapTabs ? "dbx-tab-wrap flex min-w-0 flex-1 items-center gap-0.5 flex-wrap" : "dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto"}
+			>
 				{state.tabs.map((tab) => {
 					const active = tab.id === state.activeTabId;
 					const running = tab.isRunning;
@@ -96,20 +99,8 @@ export function TabBar(): JSX.Element {
 							) : (
 								<span className="min-w-0 flex-1 truncate font-medium">{tab.label}</span>
 							)}
-							<span
-								className="shrink-0 rounded px-1 text-[9px]"
-								style={{
-									backgroundColor: "var(--dbx-surface-2)",
-									color: tab.connectionName ? "var(--muted-foreground)" : "var(--muted-foreground)",
-									maxWidth: 56,
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
-								}}
-							>
-								{tab.connectionName ? tab.connectionName : "未绑定"}
-							</span>
-							{state.tabs.length > 1 && (
+						{/* 不再展示绑定的数据库信息，与 dbx 桌面壳一致 */}
+						{state.tabs.length > 1 && (
 								<button
 									type="button"
 									onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
@@ -130,6 +121,14 @@ export function TabBar(): JSX.Element {
 				className="dbx-iconbtn mx-1 shrink-0"
 			>
 				<span className="icon-[lucide--plus] h-3.5 w-3.5" />
+			</button>
+			<button
+				type="button"
+				onClick={() => setWrapTabs((v) => !v)}
+				title={wrapTabs ? "切换为单行滚动" : "切换为多行换行"}
+				className={`dbx-iconbtn shrink-0 ${wrapTabs ? "is-active" : ""}`}
+			>
+				<span className="icon-[lucide--wrap-text] h-3.5 w-3.5" />
 			</button>
 		</div>
 	);

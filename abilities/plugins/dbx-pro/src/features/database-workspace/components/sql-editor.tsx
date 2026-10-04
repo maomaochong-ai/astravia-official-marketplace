@@ -101,25 +101,37 @@ export function SqlEditor(): JSX.Element {
 	const activeTabId = activeTab?.id;
 	const activeTabRunning = activeTab?.isRunning ?? false;
 
+	// 关键：runTabSql 由 provider 每次 render 都生成新闭包，一旦进入 deps 会导致
+	// EditorView 被反复销毁重建（无法输入）。用 ref 持最新引用，回调保持稳定身份。
+	const runTabSqlRef = useRef(runTabSql);
+	runTabSqlRef.current = runTabSql;
+	const activeTabIdRef = useRef(activeTabId);
+	activeTabIdRef.current = activeTabId;
+	const activeTabRunningRef = useRef(activeTabRunning);
+	activeTabRunningRef.current = activeTabRunning;
+
 	const setSql = useCallback(
 		(next: string) => {
 			if (activeTabId) dispatch({ type: "updateTab", id: activeTabId, patch: { sql: next } });
 		},
 		[activeTabId, dispatch],
 	);
+	const setSqlRef = useRef(setSql);
+	setSqlRef.current = setSql;
 
 	const runCurrent = useCallback(
 		(view: EditorView) => {
-			if (!activeTabId || activeTabRunning) return;
+			const tabId = activeTabIdRef.current;
+			if (!tabId || activeTabRunningRef.current) return;
 			const { from, to } = view.state.selection.main;
 			let selected: string | undefined;
 			if (to > from) {
 				const fragment = view.state.doc.sliceString(from, to);
 				if (fragment.trim()) selected = fragment;
 			}
-			void runTabSql(activeTabId, selected);
+			void runTabSqlRef.current(tabId, selected);
 		},
-		[activeTabId, activeTabRunning, runTabSql],
+		[],
 	);
 
 	// 按 activeTab 构建 EditorView。
@@ -147,9 +159,9 @@ export function SqlEditor(): JSX.Element {
 					highlightActiveLine(),
 					EditorView.lineWrapping,
 					EditorState.allowMultipleSelections.of(true),
-					EditorView.updateListener.of((update) => {
-						if (update.docChanged) setSql(update.state.doc.toString());
-					}),
+				EditorView.updateListener.of((update) => {
+					if (update.docChanged) setSqlRef.current(update.state.doc.toString());
+				}),
 					runKeymap,
 					keymap.of([...defaultKeymap, ...completionKeymap]),
 					editorTheme,
@@ -166,7 +178,7 @@ export function SqlEditor(): JSX.Element {
 			setEditorReady(false);
 		};
 		// activeTab.id：切 tab 重建；sql 不进依赖（编辑器自持 doc，避免输入时重建）
-	}, [activeTab?.id, activeConn?.db_type, runCurrent, setSql]);
+	}, [activeTab?.id, activeConn?.db_type, runCurrent]);
 
 	function tidy() {
 		if (!viewRef.current || !activeTab) return;

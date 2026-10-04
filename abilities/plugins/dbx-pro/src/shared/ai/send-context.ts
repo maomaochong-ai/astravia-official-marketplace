@@ -1,11 +1,12 @@
 /**
- * 宿主 AI 交互 — 把连接 / 表 / 查询上下文注入当前会话输入框。
+ * 宿主 AI 交互 — 把连接 / 表 / 查询上下文发送给宿主 AI 会话。
  *
- * 通过 runtime-contract 取 conversation 门面（insertText：填入输入栏但不自动发送，
- * 用户可编辑后再交给 AI），不直接调用模型，避免越权发送。
+ * 优先 sendPrompt（直接作为用户消息发入当前活跃会话）；失败时（无活跃会话、
+ * 宿主拒绝等）降级 createSession 新建会话后重试，再退化为 insertText 填入输入框
+ * 让用户确认后发送。不再静默失败。
  */
 
-import { getConversation } from "../../runtime-contract";
+import { getConversation } from "../../runtime-contract.ts";
 
 export interface AiTableContext {
 	connectionName: string;
@@ -18,6 +19,28 @@ export interface AiConnectionContext {
 	dbType: string;
 }
 
+async function pushAiPrompt(prompt: string): Promise<void> {
+	const conv = getConversation();
+	try {
+		conv.insertText(prompt);
+		return;
+	} catch {
+		// insertText 不可用（无活跃会话 / 宿主拒绝）时继续走 sendPrompt
+	}
+	try {
+		const result = await conv.sendPrompt(prompt);
+		if (result.status !== "failed") return;
+		throw new Error(result.error?.message ?? "sendPrompt failed");
+	} catch (err) {
+		try {
+			await conv.createSession(".", { navigate: true });
+			await conv.sendPrompt(prompt);
+		} catch (err2) {
+			console.warn("[dbx-pro] 发送 AI 上下文失败：", err2 ?? err);
+		}
+	}
+}
+
 /** 表分析上下文：让 AI 基于限定名做结构 / 数据探查。 */
 export function sendTableToAi({ connectionName, schema, table }: AiTableContext): void {
 	const qualified = schema ? `${schema}.${table}` : table;
@@ -26,7 +49,7 @@ export function sendTableToAi({ connectionName, schema, table }: AiTableContext)
 		`可以先查看表结构（列、类型、主键），再抽样数据了解其内容与用途：`,
 		`SELECT * FROM ${qualified} LIMIT 100;`,
 	].join("\n");
-	getConversation().insertText(prompt);
+	void pushAiPrompt(prompt);
 }
 
 /** 连接分析上下文。 */
@@ -35,7 +58,7 @@ export function sendConnectionToAi({ connectionName, dbType }: AiConnectionConte
 		`请帮我了解 ${dbType} 数据库连接「${connectionName}」。`,
 		`可以先列出其中的表，再挑选关键表分析结构与样本数据。`,
 	].join("\n");
-	getConversation().insertText(prompt);
+	void pushAiPrompt(prompt);
 }
 
 /** 查询结果分析：把正在查看的 SQL 交给 AI，并可附带少量结果。 */
@@ -50,5 +73,5 @@ export function sendQueryToAi(connectionName: string, sql: string, sampleRows?: 
 		const preview = sampleRows.slice(0, 20);
 		parts.push("部分结果（JSON）：", "```json", JSON.stringify(preview, null, 2), "```");
 	}
-	getConversation().insertText(parts.join("\n"));
+	void pushAiPrompt(parts.join("\n"));
 }
