@@ -68,6 +68,10 @@ const DatabaseWorkspace = lazyPanel(async () => ({
 	default: (await import("./features/database-workspace/components/database-workspace")).DatabaseWorkspace as unknown as ComponentType<Record<string, never>>,
 }));
 
+const DatabaseAtPicker = lazyPanel(async () => ({
+	default: (await import("./features/database-at-picker")).DatabaseAtPicker as unknown as ComponentType<Record<string, never>>,
+}));
+
 export default definePlugin({
 	async activate(ctx) {
 		setRuntime(ctx);
@@ -91,6 +95,35 @@ export default definePlugin({
 			initiallyVisible: true,
 		});
 
+		// @ 数据库选择器：独立 activity tab，用户通过顶栏按钮打开后浏览连接/表，
+		// 选中后通过 conversation.insertText() 注入 @`连接:表` 到宿主输入草稿。
+		const atPickerTab = ctx.ui.registerActivityTab({
+			id: "dbx-at-picker",
+			label: "数据库",
+			icon: (
+				<span className="icon-[lucide--database] h-4 w-4" />
+			),
+			component: DatabaseAtPicker,
+			scope_use: ["conversation", "project"],
+			retention: "active-only",
+			initiallyVisible: false,
+			order: 11,
+		});
+
+		// 输入栏按钮：点击后打开 @ 数据库选择器。
+		const inputAction = ctx.ui.registerInputAction({
+			id: "dbx-at-picker-toggle",
+			label: "数据库",
+			icon: <span className="icon-[lucide--database] h-3.5 w-3.5" />,
+			defaultActive: false,
+			scope_use: ["conversation", "project"],
+			onToggle(active) {
+				if (active) {
+					void ctx.ui.openActivityTab("dbx-at-picker");
+				}
+			},
+		});
+
 		// 安装并启动引擎 runtime（bridge 内联 + 平台二进制下载校验）。
 		// 失败必须上报，不能静默，否则保存连接时只会得到笼统的 not ready。
 		try {
@@ -105,6 +138,8 @@ export default definePlugin({
 
 		return () => {
 			activityTab.dispose();
+			atPickerTab.dispose();
+			inputAction.dispose();
 		};
 	},
 });
