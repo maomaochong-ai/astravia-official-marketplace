@@ -92,8 +92,8 @@ describe("createEngineServer 生命周期", () => {
 		const body = await response.json();
 		assert.equal(body.ok, true);
 		assert.equal(body.data.status, "ok");
-		// dbx 字段存在：二进制缺失时为 error，存在时为 connected，但不影响 HTTP 状态。
-		assert.ok(["connected", "error", "unknown"].includes(body.data.dbx.status));
+		// dbx 字段存在：connected / connecting / error / idle 都合法，但不影响 HTTP 状态。
+		assert.ok(["connected", "connecting", "error", "idle"].includes(body.data.dbx.status));
 		assert.equal(body.data.row_cap > 0, true);
 	});
 

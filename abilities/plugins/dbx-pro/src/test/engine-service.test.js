@@ -136,8 +136,8 @@ describe("dbx-pro engine bridge (headless E2E)", () => {
 		// bridge 唯一驱动位是 dbx-cli
 		assert.equal(health.data.drivers[0].id, "dbx-cli");
 		assert.equal(health.data.drivers[0].ready, true);
-		// 首次 health 会触发 dbx-mcp 握手
-		assert.equal(["connected", "unknown", "error"].includes(health.data.dbx.status), true);
+		// health 只读子进程 phase（后台连接，不在热路径触发握手）
+		assert.equal(["connected", "connecting", "idle", "error"].includes(health.data.dbx.status), true);
 	});
 
 	it("缺少令牌返回 401", async () => {

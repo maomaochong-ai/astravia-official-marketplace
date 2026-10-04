@@ -57,7 +57,9 @@ function resolveDataDir(explicitDir) {
   return dir;
 }
 
-const HANDSHAKE_TIMEOUT_MS = 15_000;
+// 60s（非 15s）：首次 spawn 时 Gatekeeper 签名评估 / Rosetta 翻译启动可能要
+// 数十秒，这是合法的慢；过短会误杀仍在启动的子进程并引发反复重 spawn。
+const HANDSHAKE_TIMEOUT_MS = 60_000;
 const CALL_TIMEOUT_MS = 60_000;
 const SHUTDOWN_GRACE_MS = 2_000;
 
@@ -108,18 +110,39 @@ class DbxMcpClient {
     this.nextId = 1;
     this.pending = new Map();
     this.initialized = null;
+    // 子进程连接阶段：idle（未尝试）| connecting | ready | error。
+    // /health 只读它，不在热路径触发握手，从而与子进程解耦。
+    this.phase = "idle";
+    this.lastError = null;
   }
 
-  ensureInitialized() {
-    if (!this.initialized) {
-      this.initialized = this.spawnAndHandshake().catch((err) => {
-        // 握手失败后复位，下次调用重试
+  /**
+   * 在后台发起一次子进程连接。成功后 phase=ready；失败复位 initialized，
+   * 让后续真正需要子进程的 callTool 可以重试。
+   * 返回的 promise 会 reject（供需要结果的调用方感知），但不影响状态查询。
+   */
+  connect() {
+    if (this.phase === "ready") return Promise.resolve();
+    if (this.initialized) return this.initialized;
+    this.phase = "connecting";
+    this.lastError = null;
+    this.initialized = this.spawnAndHandshake()
+      .then(() => { this.phase = "ready"; })
+      .catch((err) => {
+        this.phase = "error";
+        this.lastError = err;
         this.initialized = null;
         this.reapCurrentChild();
         throw err;
       });
-    }
     return this.initialized;
+  }
+
+  /** 需要子进程的调用方使用：已连接直接返回，连接中共享同一次，未连接则发起。 */
+  ensureInitialized() {
+    if (this.phase === "ready") return Promise.resolve();
+    if (this.initialized) return this.initialized;
+    return this.connect();
   }
 
   reapCurrentChild() {

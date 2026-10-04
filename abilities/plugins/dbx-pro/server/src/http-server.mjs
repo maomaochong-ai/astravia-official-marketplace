@@ -146,17 +146,37 @@ async function resetLegacyDatabaseIfNeeded(client, dataDir) {
   return true;
 }
 
+/** 给 promise 加超时：超时后以 fallback 解决（不抛错），用于不阻塞主流程的预检。 */
+function withTimeout(promise, ms, fallback) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    if (timer.unref) timer.unref();
+    Promise.resolve(promise).then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      () => { clearTimeout(timer); resolve(fallback); },
+    );
+  });
+}
+
 export function createEngineServer({ token, dataDir = null, authDisabled = false } = {}) {
   const auth = createAuth({ token, disabled: authDisabled });
   const { key, dataDir: resolvedDataDir } = ensureEngineKey(dataDir);
   // 预热引擎客户端：数据目录与加密密钥在此注入。
   const client = getDbxMcpClient({ dataDir: resolvedDataDir, extraEnv: { DBX_SECRET_KEY: key } });
-  // 启动期完成旧库检测（可能备份旧 dbx.db 并重建客户端）。
-  const ready = resetLegacyDatabaseIfNeeded(client, resolvedDataDir)
-    .then((reset) => {
+  // 立即在后台发起子进程连接（不等 listen、不阻塞任何东西）。
+  client.connect().catch(() => {});
+  // 旧库检测在后台完成（可能备份旧 dbx.db 并重建客户端）。
+  // 关键：不得让它阻塞端口监听 —— 该检测要 spawn dbx-mcp 子进程，机器高负载
+  // （多个插件同时激活）时子进程握手 / list_connections 会变慢；曾经在 listen 前
+  // await 它，导致 /health 长时间不响应、宿主 120s 判定「引擎启动超时」。
+  // 给预检加 8s 上限：超时也不影响 HTTP 接流量，首次查询按正常错误处理。
+  const ready = withTimeout(
+    resetLegacyDatabaseIfNeeded(client, resolvedDataDir).then((reset) => {
       if (reset) getDbxMcpClient();
-    })
-    .catch(() => {});
+    }),
+    8_000,
+    false,
+  ).catch(() => {});
   const router = createRouter({ auth });
 
   const server = createServer(async (req, res) => {
@@ -274,14 +294,12 @@ async function main() {
     }
   }
 
-  const { server, auth, ready } = createEngineServer({
+  const { server, auth } = createEngineServer({
     token,
     dataDir: args.dataDir,
     authDisabled: args.authDisabled,
   });
-
-  // 等待旧库检测/重置完成再开始接流量。
-  await ready;
+  // 不在 listen 前等待旧库检测：服务必须进程一起就响应 /health（预检已在后台跑）。
 
   if (!auth.enabled) emit("auth-disabled", { reason: args.authDisabled ? "flag" : "no-secret" });
 

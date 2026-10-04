@@ -95014,7 +95014,7 @@ function resolveDataDir(explicitDir) {
   resolvedDataDir = dir;
   return dir;
 }
-var HANDSHAKE_TIMEOUT_MS = 15e3;
+var HANDSHAKE_TIMEOUT_MS = 6e4;
 var CALL_TIMEOUT_MS = 6e4;
 var SHUTDOWN_GRACE_MS = 2e3;
 function detectPlatform() {
@@ -95050,16 +95050,35 @@ var DbxMcpClient = class {
     this.nextId = 1;
     this.pending = /* @__PURE__ */ new Map();
     this.initialized = null;
+    this.phase = "idle";
+    this.lastError = null;
   }
-  ensureInitialized() {
-    if (!this.initialized) {
-      this.initialized = this.spawnAndHandshake().catch((err) => {
-        this.initialized = null;
-        this.reapCurrentChild();
-        throw err;
-      });
-    }
+  /**
+   * 在后台发起一次子进程连接。成功后 phase=ready；失败复位 initialized，
+   * 让后续真正需要子进程的 callTool 可以重试。
+   * 返回的 promise 会 reject（供需要结果的调用方感知），但不影响状态查询。
+   */
+  connect() {
+    if (this.phase === "ready") return Promise.resolve();
+    if (this.initialized) return this.initialized;
+    this.phase = "connecting";
+    this.lastError = null;
+    this.initialized = this.spawnAndHandshake().then(() => {
+      this.phase = "ready";
+    }).catch((err) => {
+      this.phase = "error";
+      this.lastError = err;
+      this.initialized = null;
+      this.reapCurrentChild();
+      throw err;
+    });
     return this.initialized;
+  }
+  /** 需要子进程的调用方使用：已连接直接返回，连接中共享同一次，未连接则发起。 */
+  ensureInitialized() {
+    if (this.phase === "ready") return Promise.resolve();
+    if (this.initialized) return this.initialized;
+    return this.connect();
   }
   reapCurrentChild() {
     const child = this.child;
@@ -95860,14 +95879,15 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
   }
   const routeDefs = [
     // === 健康检查 ===
+    // 只读子进程当前 phase，绝不 await/触发握手：健康检查是宿主高频轮询点，
+    // 曾因在热路径等待子进程导致连锁超时（引擎启动超时）。
     ["/health", "GET", false, async () => {
-      let dbxInfo = { status: "unknown" };
-      try {
-        await mcpClient().ensureInitialized();
-        dbxInfo = { status: "connected" };
-      } catch (e) {
-        dbxInfo = { status: "error", message: e.message };
-      }
+      const c = mcpClient();
+      let dbxInfo;
+      if (c.phase === "ready") dbxInfo = { status: "connected" };
+      else if (c.phase === "connecting") dbxInfo = { status: "connecting" };
+      else if (c.phase === "error") dbxInfo = { status: "error", message: c.lastError?.message };
+      else dbxInfo = { status: "idle" };
       return {
         status: "ok",
         version: ENGINE_VERSION,
@@ -96255,13 +96275,35 @@ async function resetLegacyDatabaseIfNeeded(client2, dataDir) {
   if (existsSync2(dbPath)) renameSync(dbPath, join2(dataDir, `dbx.db.legacy-${stamp}`));
   return true;
 }
+function withTimeout(promise, ms, fallback) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms);
+    if (timer.unref) timer.unref();
+    Promise.resolve(promise).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      }
+    );
+  });
+}
 function createEngineServer({ token, dataDir = null, authDisabled = false } = {}) {
   const auth = createAuth({ token, disabled: authDisabled });
   const { key, dataDir: resolvedDataDir2 } = ensureEngineKey(dataDir);
   const client2 = getDbxMcpClient({ dataDir: resolvedDataDir2, extraEnv: { DBX_SECRET_KEY: key } });
-  const ready = resetLegacyDatabaseIfNeeded(client2, resolvedDataDir2).then((reset) => {
-    if (reset) getDbxMcpClient();
-  }).catch(() => {
+  client2.connect().catch(() => {
+  });
+  const ready = withTimeout(
+    resetLegacyDatabaseIfNeeded(client2, resolvedDataDir2).then((reset) => {
+      if (reset) getDbxMcpClient();
+    }),
+    8e3,
+    false
+  ).catch(() => {
   });
   const router = createRouter({ auth });
   const server = createServer(async (req, res) => {
@@ -96363,12 +96405,11 @@ async function main() {
       process.exit(1);
     }
   }
-  const { server, auth, ready } = createEngineServer({
+  const { server, auth } = createEngineServer({
     token,
     dataDir: args.dataDir,
     authDisabled: args.authDisabled
   });
-  await ready;
   if (!auth.enabled) emit("auth-disabled", { reason: args.authDisabled ? "flag" : "no-secret" });
   await new Promise((resolve) => {
     server.on("error", (error) => {

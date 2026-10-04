@@ -192,14 +192,15 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
   // === 路由表（两级 Map：pathname → method → handler）===
   const routeDefs = [
     // === 健康检查 ===
+    // 只读子进程当前 phase，绝不 await/触发握手：健康检查是宿主高频轮询点，
+    // 曾因在热路径等待子进程导致连锁超时（引擎启动超时）。
     ["/health", "GET", false, async () => {
-      let dbxInfo = { status: "unknown" };
-      try {
-        await mcpClient().ensureInitialized();
-        dbxInfo = { status: "connected" };
-      } catch (e) {
-        dbxInfo = { status: "error", message: e.message };
-      }
+      const c = mcpClient();
+      let dbxInfo;
+      if (c.phase === "ready") dbxInfo = { status: "connected" };
+      else if (c.phase === "connecting") dbxInfo = { status: "connecting" };
+      else if (c.phase === "error") dbxInfo = { status: "error", message: c.lastError?.message };
+      else dbxInfo = { status: "idle" };
       return {
         status: "ok",
         version: ENGINE_VERSION,
