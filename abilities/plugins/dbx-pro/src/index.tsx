@@ -90,7 +90,7 @@ export default definePlugin({
 				</svg>
 			),
 			component: DatabaseWorkspace,
-			scope_use: ["conversation", "project", "cli"],
+			scope_use: ["conversation", "project"],
 			retention: "pinned",
 			initiallyVisible: true,
 		});
@@ -104,7 +104,7 @@ export default definePlugin({
 				<span className="icon-[lucide--database] h-4 w-4" />
 			),
 			component: DatabaseAtPicker,
-			scope_use: ["conversation", "project", "cli"],
+			scope_use: ["conversation", "project"],
 			retention: "active-only",
 			initiallyVisible: false,
 			order: 11,
