@@ -28,6 +28,11 @@ export function getConversation() {
 	return requireCtx().conversation;
 }
 
+/** 权限检查（plugin.json#permissions 的已授权子集）。 */
+export function getPermissions(): { has(name: string): boolean } {
+	return requireCtx().permissions;
+}
+
 /** 插件私有持久化存储（storage.read / storage.write）。 */
 export function getStorage() {
 	return requireCtx().storage;

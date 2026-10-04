@@ -17,6 +17,8 @@
     "ui.slot.activity-tab",
     "ui.slot.ability-detail",
     "agent.command.run",
+    "agent.session.read",
+    "agent.session.write",
     "storage.read",
     "storage.write",
     "shell.openExternal",
