@@ -86,15 +86,84 @@ function insertOnly(text: string): void {
 	}
 }
 
+/**
+ * 简单 Markdown 渲染器 — 将 prompt 文本渲染为格式化的 HTML。
+ * 支持：
+ * - @`mention` 高亮为标签
+ * - ```code``` 代码块
+ * - 普通文本
+ */
+function renderPromptPreview(text: string): JSX.Element {
+	const lines = text.split("\n");
+	const elements: JSX.Element[] = [];
+	let inCodeBlock = false;
+	let codeContent: string[] = [];
+	let codeLang = "";
+
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+
+		// 代码块开始
+		if (line.startsWith("```") && !inCodeBlock) {
+			inCodeBlock = true;
+			codeLang = line.slice(3).trim();
+			codeContent = [];
+			continue;
+		}
+
+		// 代码块结束
+		if (line.startsWith("```") && inCodeBlock) {
+			inCodeBlock = false;
+			elements.push(
+				<div key={`code-${i}`} className="dbx-ai-code-block">
+					{codeLang && <div className="dbx-ai-code-lang">{codeLang}</div>}
+					<pre className="dbx-ai-code-pre"><code>{codeContent.join("\n")}</code></pre>
+				</div>
+			);
+			continue;
+		}
+
+		// 代码块内容
+		if (inCodeBlock) {
+			codeContent.push(line);
+			continue;
+		}
+
+		// 普通行 — 处理 @`mention` 高亮
+		if (line.trim() === "") {
+			elements.push(<div key={`empty-${i}`} className="h-2" />);
+			continue;
+		}
+
+		// 解析 @`mention` 模式
+		const parts = line.split(/(@`[^`]+`)/g);
+		elements.push(
+			<p key={`line-${i}`} className="dbx-ai-text-line">
+				{parts.map((part, j) => {
+					if (part.startsWith("@`") && part.endsWith("`")) {
+						const mention = part.slice(2, -1);
+						return <span key={j} className="dbx-ai-mention">{mention}</span>;
+					}
+					return <span key={j}>{part}</span>;
+				})}
+			</p>
+		);
+	}
+
+	return <div className="dbx-ai-preview">{elements}</div>;
+}
+
 export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToAiDialogProps): JSX.Element | null {
 	const [prompt, setPrompt] = useState(initialPrompt);
 	const [sending, setSending] = useState(false);
+	const [showRaw, setShowRaw] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	useEffect(() => {
 		if (open) {
 			setPrompt(initialPrompt);
 			setSending(false);
+			setShowRaw(false);
 			setTimeout(() => textareaRef.current?.focus(), 50);
 		}
 	}, [open, initialPrompt]);
@@ -123,40 +192,55 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 		<>
 			<div className="dbx-modal-backdrop" onClick={onClose} style={{ zIndex: 200 }} />
 			<div
-				className="absolute left-1/2 top-1/2 z-[201] flex w-[min(520px,calc(100%-2rem))] max-h-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-2xl"
+				className="dbx-ai-dialog"
 			>
 				{/* 标题 */}
-				<div className="flex shrink-0 items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>
+				<div className="dbx-ai-dialog-header">
 					<span className="icon-[lucide--sparkles] h-4 w-4 text-muted-foreground" />
-					<h3 className="flex-1 text-[13px] font-semibold text-foreground">发送到 AI 分析</h3>
-					<button
-						type="button"
-						onClick={onClose}
-						title="关闭"
-						className="dbx-iconbtn"
-						style={{ height: 24, minWidth: 24, padding: 0 }}
-					>
-						<span className="icon-[lucide--x] h-4 w-4" />
-					</button>
+					<h3 className="dbx-ai-dialog-title">发送到 AI 分析</h3>
+					<div className="dbx-ai-dialog-actions">
+						<button
+							type="button"
+							onClick={() => setShowRaw(!showRaw)}
+							className="dbx-iconbtn"
+							title={showRaw ? "显示预览" : "显示原始文本"}
+						>
+							<span className={`h-3.5 w-3.5 ${showRaw ? "icon-[lucide--eye]" : "icon-[lucide--eye-off]"}`} />
+						</button>
+						<button
+							type="button"
+							onClick={onClose}
+							title="关闭"
+							className="dbx-iconbtn"
+						>
+							<span className="icon-[lucide--x] h-4 w-4" />
+						</button>
+					</div>
 				</div>
 
-				{/* 可编辑的 prompt */}
-				<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-4">
-					<label className="mb-1 block text-[11px] font-medium text-muted-foreground">
+				{/* 内容区 */}
+				<div className="dbx-ai-dialog-body">
+					<label className="dbx-ai-dialog-label">
 						将要发送的内容（可编辑，请核对上下文）
 					</label>
-					<textarea
-						ref={textareaRef}
-						value={prompt}
-						onChange={(e) => setPrompt(e.target.value)}
-						rows={8}
-						className="dbx-form-input resize-none font-mono text-[12px]"
-						style={{ minHeight: 160 }}
-					/>
+					{showRaw ? (
+						<textarea
+							ref={textareaRef}
+							value={prompt}
+							onChange={(e) => setPrompt(e.target.value)}
+							rows={8}
+							className="dbx-form-input resize-none font-mono text-[12px]"
+							style={{ minHeight: 160 }}
+						/>
+					) : (
+						<div className="dbx-ai-preview-container">
+							{renderPromptPreview(prompt)}
+						</div>
+					)}
 				</div>
 
 				{/* 底部按钮 */}
-				<div className="flex shrink-0 items-center justify-end gap-2 px-4 py-3" style={{ borderTop: "1px solid var(--dbx-line-soft)" }}>
+				<div className="dbx-ai-dialog-footer">
 					<button className="dbx-btn ghost" onClick={onClose} disabled={sending}>
 						取消
 					</button>

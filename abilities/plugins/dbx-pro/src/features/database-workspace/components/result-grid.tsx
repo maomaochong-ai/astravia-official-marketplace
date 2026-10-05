@@ -26,7 +26,7 @@ import {
 } from "../../../domain/workbench-settings";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
-import { cellText, toTsv, toCsv } from "../services/result-export";
+import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml } from "../services/result-export";
 import { CellDisplay } from "./cell-display";
 
 interface Props {
@@ -185,17 +185,47 @@ export function ResultGrid({
 		await navigator.clipboard.writeText(toTsv(colList, rows)).catch(() => {});
 	}, [colList, rows]);
 
-	const exportCsv = useCallback(() => {
-		const blob = new Blob([toCsv(colList, rows)], { type: "text/csv;charset=utf-8" });
+	const copyAsJson = useCallback(async () => {
+		await navigator.clipboard.writeText(toJson(colList, rows)).catch(() => {});
+	}, [colList, rows]);
+
+	const copyAsMarkdown = useCallback(async () => {
+		await navigator.clipboard.writeText(toMarkdown(colList, rows)).catch(() => {});
+	}, [colList, rows]);
+
+	function downloadFile(content: string, filename: string, mimeType: string): void {
+		const blob = new Blob([content], { type: mimeType });
 		const url = URL.createObjectURL(blob);
 		const anchor = document.createElement("a");
 		anchor.href = url;
-		anchor.download = "query-result.csv";
+		anchor.download = filename;
 		document.body.appendChild(anchor);
 		anchor.click();
 		anchor.remove();
 		setTimeout(() => URL.revokeObjectURL(url), 1000);
+	}
+
+	const exportCsv = useCallback(() => {
+		downloadFile(toCsv(colList, rows), "query-result.csv", "text/csv;charset=utf-8");
 	}, [colList, rows]);
+
+	const exportJson = useCallback(() => {
+		downloadFile(toJson(colList, rows), "query-result.json", "application/json");
+	}, [colList, rows]);
+
+	const exportJsonLines = useCallback(() => {
+		downloadFile(toJsonLines(colList, rows), "query-result.jsonl", "application/x-ndjson");
+	}, [colList, rows]);
+
+	const exportMarkdown = useCallback(() => {
+		downloadFile(toMarkdown(colList, rows), "query-result.md", "text/markdown");
+	}, [colList, rows]);
+
+	const exportHtml = useCallback(() => {
+		downloadFile(toHtml(colList, rows), "query-result.html", "text/html");
+	}, [colList, rows]);
+
+	const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
 	if (colList.length === 0) {
 		return (
@@ -258,7 +288,14 @@ export function ResultGrid({
 				},
 				{ type: "separator" },
 				{ type: "item", label: "复制全部为 TSV", icon: "icon-[lucide--clipboard-list]", onClick: () => void copyAll() },
-				{ type: "item", label: "导出全部为 CSV", icon: "icon-[lucide--download]", onClick: () => exportCsv() },
+				{ type: "item", label: "复制全部为 JSON", icon: "icon-[lucide--braces]", onClick: () => void copyAsJson() },
+				{ type: "item", label: "复制全部为 Markdown", icon: "icon-[lucide--markdown]", onClick: () => void copyAsMarkdown() },
+				{ type: "separator" },
+				{ type: "item", label: "导出为 CSV", icon: "icon-[lucide--file-text]", onClick: () => exportCsv() },
+				{ type: "item", label: "导出为 JSON", icon: "icon-[lucide--file-json]", onClick: () => exportJson() },
+				{ type: "item", label: "导出为 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => exportJsonLines() },
+				{ type: "item", label: "导出为 Markdown", icon: "icon-[lucide--file-text]", onClick: () => exportMarkdown() },
+				{ type: "item", label: "导出为 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => exportHtml() },
 			],
 		});
 	}
@@ -266,46 +303,102 @@ export function ResultGrid({
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 */}
-			<div className="flex h-7 shrink-0 items-center gap-1 px-2" style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)" }}>
-				<button
-					type="button"
-					onClick={() => void copyAll()}
-					title="复制全部为 TSV"
-					className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
-				>
-					<span className="icon-[lucide--clipboard-list] h-3 w-3" />
-					复制
-				</button>
-				<button
-					type="button"
-					onClick={() => exportCsv()}
-					title="导出 CSV"
-					className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
-				>
-					<span className="icon-[lucide--download] h-3 w-3" />
-					CSV
-				</button>
-				<button
-					type="button"
-					onClick={() => setShowRowNumbers((v) => !v)}
-					title="行号"
-					className={`flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] ${showRowNumbers ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-				>
-					<span className="icon-[lucide--list-ordered] h-3 w-3" />
-					#
-				</button>
-				{connectionName && sql && (
+			<div className="dbx-result-toolbar">
+				{/* 左侧：复制和导出 */}
+				<div className="flex items-center gap-0.5">
 					<button
 						type="button"
-						onClick={openAiDialogForQuery}
-						title="把该 SQL 与结果发给 AI 分析"
-						className="flex h-5 items-center gap-1 rounded px-1.5 text-[10.5px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
+						onClick={() => void copyAll()}
+						title="复制全部为 TSV"
+						className="dbx-toolbar-btn"
 					>
-						<span className="icon-[lucide--sparkles] h-3 w-3" />
-						分析结果
+						<span className="icon-[lucide--clipboard-list] h-3 w-3" />
+						<span className="dbx-toolbar-btn-label">复制</span>
 					</button>
-				)}
-				<span className="ml-auto text-[10px] text-muted-foreground/70">双击查看详情 · 右键更多操作</span>
+					<div className="dbx-toolbar-btn-group">
+						<button
+							type="button"
+							onClick={() => exportCsv()}
+							title="导出 CSV"
+							className="dbx-toolbar-btn dbx-toolbar-btn-grouped"
+						>
+							<span className="icon-[lucide--download] h-3 w-3" />
+							<span className="dbx-toolbar-btn-label">导出</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => setExportMenuOpen(!exportMenuOpen)}
+							title="更多导出选项"
+							className="dbx-toolbar-btn dbx-toolbar-btn-grouped dbx-toolbar-btn-dropdown"
+						>
+							<span className="icon-[lucide--chevron-down] h-2.5 w-2.5" />
+						</button>
+					</div>
+					{exportMenuOpen && (
+						<div className="dbx-toolbar-dropdown-menu">
+							<button type="button" onClick={() => { exportCsv(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-text] h-3 w-3" />
+								CSV 文件
+							</button>
+							<button type="button" onClick={() => { exportJson(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-json] h-3 w-3" />
+								JSON 文件
+							</button>
+							<button type="button" onClick={() => { exportJsonLines(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-code] h-3 w-3" />
+								JSON Lines 文件
+							</button>
+							<button type="button" onClick={() => { exportMarkdown(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-text] h-3 w-3" />
+								Markdown 文件
+							</button>
+							<button type="button" onClick={() => { exportHtml(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-code-2] h-3 w-3" />
+								HTML 文件
+							</button>
+						</div>
+					)}
+				</div>
+
+				{/* 中间：视图选项 */}
+				<div className="flex items-center gap-0.5">
+					<button
+						type="button"
+						onClick={() => setShowRowNumbers((v) => !v)}
+						title="显示/隐藏行号"
+						className={`dbx-toolbar-btn ${showRowNumbers ? "dbx-toolbar-btn-active" : ""}`}
+					>
+						<span className="icon-[lucide--list-ordered] h-3 w-3" />
+						<span className="dbx-toolbar-btn-label">行号</span>
+					</button>
+					{sort && (
+						<button
+							type="button"
+							onClick={() => setSort(null)}
+							title="清除排序"
+							className="dbx-toolbar-btn"
+						>
+							<span className="icon-[lucide--arrow-up-down] h-3 w-3" />
+							<span className="dbx-toolbar-btn-label">排序: {sort.col} {sort.dir === "asc" ? "↑" : "↓"}</span>
+						</button>
+					)}
+				</div>
+
+				{/* 右侧：AI 分析 */}
+				<div className="flex items-center gap-0.5">
+					{connectionName && sql && (
+						<button
+							type="button"
+							onClick={openAiDialogForQuery}
+							title="把该 SQL 与结果发给 AI 分析"
+							className="dbx-toolbar-btn dbx-toolbar-btn-primary"
+						>
+							<span className="icon-[lucide--sparkles] h-3 w-3" />
+							<span className="dbx-toolbar-btn-label">分析结果</span>
+						</button>
+					)}
+					<span className="ml-2 text-[10px] text-muted-foreground/60">双击查看详情 · 右键更多操作</span>
+				</div>
 			</div>
 
 			{/* 网格（内部滚动） */}
@@ -467,6 +560,14 @@ export function ResultGrid({
 					</button>
 				</div>
 			</div>
+
+			{/* 点击外部关闭导出菜单 */}
+			{exportMenuOpen && (
+				<div
+					className="fixed inset-0 z-50"
+					onClick={() => setExportMenuOpen(false)}
+				/>
+			)}
 
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
