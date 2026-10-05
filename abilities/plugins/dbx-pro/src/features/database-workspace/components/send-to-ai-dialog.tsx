@@ -221,7 +221,7 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 							className="dbx-iconbtn"
 							title="选择提示词模板"
 						>
-							<span className="icon-[lucide--template] h-3.5 w-3.5" />
+							<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
 						</button>
 						<button
 							type="button"

@@ -1,5 +1,5 @@
 /**
- * SqlEditor — SQL 编辑器（CodeMirror 6，对标 dbx 桌面壳）。
+ * SqlEditor — SQL 编辑器（CodeMirror 6）。
  *
  * - 按连接类型选择 SQL dialect（PostgreSQL/MySQL/MSSQL/SQLite）
  * - 暗色语法高亮、行号、括号匹配 / 自动闭合、自动补全（关键字）

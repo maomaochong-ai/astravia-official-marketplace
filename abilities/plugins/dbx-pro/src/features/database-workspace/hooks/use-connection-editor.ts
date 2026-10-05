@@ -175,7 +175,7 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	}
 
 	/**
-	 * 测试连通性：先落盘（dbx-mcp 只认已存连接），再真跑一次 SELECT 1。
+	 * 测试连通性：先落盘（引擎只认已存连接），再真跑一次 SELECT 1。
 	 * 只校验配置字段是不行的 —— 凭据错误、库不存在都要执行阶段才暴露。
 	 */
 	async function test(conn: DbConnection): Promise<void> {
@@ -196,7 +196,7 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	}
 
 	/**
-	 * 拉取该库全部 schema 供多选：dbx-mcp 只认已存连接，先把草稿落盘再枚举。
+	 * 拉取该库全部 schema 供多选：引擎只认已存连接，先把草稿落盘再枚举。
 	 * 草稿凭据会一起保存，与「测试」走同一安全路径。
 	 */
 	async function loadSchemas(): Promise<void> {

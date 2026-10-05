@@ -5,7 +5,7 @@
  * 1. 内联编辑（单行文本）- 使用 input
  * 2. 大文本编辑（多行文本/JSON/长内容）- 使用 textarea
  * 
- * 对标 dbx 桌面壳的 TemporalCellEditor 和 EnumCellEditor
+ * 根据内容长度自动选择编辑器类型
  */
 
 import { useEffect, useRef, useState, type JSX } from "react";

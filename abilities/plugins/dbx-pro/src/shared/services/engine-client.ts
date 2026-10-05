@@ -201,7 +201,7 @@ export function engineHealth(options: CallOptions = {}): Promise<EngineHealth> {
 }
 
 export interface EngineExecuteOptions extends CallOptions {
-	/** 显式授权写操作；dbx-mcp 只读拦截后由自研写驱动执行。 */
+	/** 显式授权写操作；引擎只读拦截后由自研写驱动执行。 */
 	allowWrite?: boolean;
 	/** 危险语句必须回传与 SQL 逐字节一致的原文，否则引擎返回 CONFIRM_MISMATCH。 */
 	confirmedWriteSql?: string;
@@ -226,7 +226,7 @@ export interface EngineExecuteOptions extends CallOptions {
 	};
 }
 
-// ─── 新版 API：基于 connectionName（dbx-mcp 连接自管）──────────────
+// ─── 新版 API：基于 connectionName（引擎连接自管）──────────────
 
 export interface EngineConnectionSummary {
 	id: string;

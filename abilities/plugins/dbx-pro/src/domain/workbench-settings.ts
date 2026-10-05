@@ -2,7 +2,7 @@
  * 工作台设置 —— 纯逻辑层（不导入 SDK，可被 `node --test` 直接导入）。
  *
  * 存储副作用在 `workbench-settings-store.ts`。
- * 架构口径：读取走 dbx-mcp；写 / DDL 走自研驱动，并在【每次执行前】弹窗确认，
+ * 架构口径：读取走引擎服务；写 / DDL 走自研驱动，并在【每次执行前】弹窗确认，
  * 因此这里不再需要全局「写开关」或「CLI 回退路径」等历史概念。
  * 所有字段都做「宽容解析 + 夹逼」，坏值不会让面板崩：读不到就用默认值。
  */
@@ -26,7 +26,7 @@ export interface WorkbenchSettings {
 }
 
 /**
- * dbx-mcp 制品（dbx 0.4.106）单次结果上限 MAX_EXECUTE_QUERY_ROWS = 1000。
+ * 引擎制品单次结果上限 MAX_EXECUTE_QUERY_ROWS = 1000。
  * 已用包内二进制实测：max_rows=200/500/1000 均按值返回。
  * 可分页的单条 SELECT 会被引擎包成派生表 + LIMIT/OFFSET（见 engine/sql-pagination.mjs），
  * 每次只取一页；其余 SQL 原样透传，结果在 ENGINE_ROW_CAP 处截断并标注。

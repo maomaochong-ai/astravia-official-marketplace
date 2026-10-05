@@ -1,11 +1,12 @@
 /**
  * 连接树节点 — 递归渲染 connection / schema / table / column。
  *
- * 交互（对标 dbx 桌面壳）：
- * - 单击 connection：设为活动连接并绑定当前 tab；单击 table：选中查看结构
+ * 交互：
+ * - 单击 connection：设为活动连接并绑定当前 tab；单击 table：预览数据
  * - 双击 connection：新建查询 tab；双击 table：预览数据
- * - 右键：丰富的上下文菜单（新建查询/预览/查看结构/生成SQL/发送到AI/复制等）
+ * - 右键：丰富的上下文菜单（新建查询/预览/查看结构/生成SQL/添加到AI/复制等）
  * - 箭头：展开懒加载子节点
+ * - 拖拽：支持拖拽节点到宿主对话框
  */
 
 import { useState, type JSX } from "react";

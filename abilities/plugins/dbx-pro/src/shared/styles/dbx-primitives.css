@@ -3,7 +3,7 @@
  * 这些样式被多个 feature 复用，放在 shared/styles 下
  * ============================================================ */
 
-/* 三栏外层 gutter（对齐 dbx 桌面壳 app-panel-gutter） */
+/* 三栏外层 gutter */
 .dbx-gutter {
 	background: var(--dbx-gutter);
 }

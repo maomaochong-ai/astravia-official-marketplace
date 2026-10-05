@@ -1,12 +1,12 @@
 /**
- * 引擎 runtime provisioning — 插件侧负责 dbx-engine 的安装与启动。
+ * 引擎 runtime provisioning — 插件侧负责引擎的安装与启动。
  *
  * 宿主只提供 services 门面（download 字节校验 + 进程托管）；插件 activation
  * 必须自行提供与 plugin.json 声明一致的 artifacts，否则 service 永远不会就绪。
  *
  * 两类 artifact：
  * - server/main.mjs（bridge）：构建期以 `?raw` 内联进插件，运行时 base64 编码；
- * - server/bin/dbx-mcp-<platform>（大文件）：按平台从 dbx fork release 下载，
+ * - server/bin/dbx-mcp-<platform>（大文件）：按平台从官方 release 下载，
  *   SHA-256 校验（见 runtime-lock.json）。
  *
  * 幂等：getStatus 已 ready 直接返回；重复调用共享同一个 in-flight Promise。

@@ -5,7 +5,7 @@
  * 增删都通过 props 回调交给主面板（主面板再走 `query-history-store.ts` 落盘）。
  * 历史记录里**没有结果行**，所以这里只用一行摘要 + 时间/耗时/行数展示。
  * 
- * 对标 dbx 桌面壳：支持编辑、复用到 AI、删除等操作。
+ * 支持编辑、复用到 AI、删除等操作。
  */
 
 import { useState, type JSX } from "react";

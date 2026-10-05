@@ -4,7 +4,7 @@
  * 从查询网格顶部工具栏的"表属性"按钮触发，以右侧抽屉形式展开。
  * 支持多个 Tab：概览、列、索引、外键、触发器、约束、分区。
  *
- * 对标 dbx 桌面壳的 DataGridTableInfoPanels 组件。
+ * 参考主流数据库管理工具的表信息面板设计。
  */
 
 import { useEffect, useState, type JSX } from "react";
@@ -199,7 +199,7 @@ function PlaceholderTab({ feature }: { feature: string }): JSX.Element {
 			<span className="icon-[lucide--puzzle] h-8 w-8 opacity-30 mb-2" />
 			<span className="text-[11px] font-medium mb-1">{feature} 需要引擎支持</span>
 			<span className="text-[10px] text-muted-foreground/60 text-center px-4">
-				当前 dbx-mcp 版本暂不支持该功能，请升级引擎后重试
+				当前引擎版本暂不支持该功能，请升级后重试
 			</span>
 		</div>
 	);

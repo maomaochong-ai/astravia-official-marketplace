@@ -1,8 +1,7 @@
 /**
  * 数据库工作台设置面板
  * 
- * 对标 dbx 桌面壳的设置功能，提供 50+ 个配置项
- * 分为多个分类：编辑器、SQL 执行、数据网格、结果集、侧边栏等
+ * 提供 50+ 个配置项，分为多个分类：编辑器、SQL 执行、数据网格、结果集、侧边栏等
  */
 
 import { useState, useEffect, type JSX } from "react";
@@ -525,7 +524,7 @@ function AboutSection({ onClearHistory, onWipeData, confirmWipe, setConfirmWipe 
 			</div>
 
 			<div className="rounded-lg bg-muted/40 px-3 py-2 text-[10px] leading-relaxed text-muted-foreground">
-				密码保存在宿主加密凭据库；读取走 dbx-mcp，写 / DDL 走自研驱动，执行前会弹窗展示完整 SQL 由你确认。
+				密码保存在宿主加密凭据库；读取走引擎服务，写 / DDL 走自研驱动，执行前会弹窗展示完整 SQL 由你确认。
 			</div>
 		</div>
 	);

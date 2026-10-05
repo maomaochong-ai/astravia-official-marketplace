@@ -6,7 +6,7 @@
  * 三栏宽度、左右栏折叠态。结果数据体积大且会过期，不入库。
  *
  * 这是修复「重载插件后界面全部改变/重置」的关键：module federation 重新
- * 挂载时内存状态全部清空，会话必须从宿主存储恢复，行为对齐 dbx 桌面壳。
+ * 挂载时内存状态全部清空，会话必须从宿主存储恢复，行为对齐标准桌面应用。
  */
 
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";

@@ -1,12 +1,12 @@
 /**
- * 驱动档位表 — 由 dbx-mcp 统一覆盖，所有类型均 ready。
+ * 驱动档位表 — 由引擎统一覆盖，所有类型均 ready。
  *
- * dbx-mcp 上游已支持 100+ 数据库类型（Postgres / MySQL / SQLite / Oracle / SQL Server /
+ * 引擎上游已支持 100+ 数据库类型（Postgres / MySQL / SQLite / Oracle / SQL Server /
  * Redis / DuckDB / ClickHouse / BigQuery / Snowflake 等），插件自身不再维护独立驱动档位。
- * 仅当 dbx-mcp 上游明确不支持某个类型时，才在下方加 pending。
+ * 仅当引擎上游明确不支持某个类型时，才在下方加 pending。
  */
 
-const DBX_MCP_SUPPORTED = new Set([
+const ENGINE_SUPPORTED = new Set([
 	"postgres", "postgresql", "pg",
 	"mysql", "mariadb",
 	"sqlite", "sqlite3",
@@ -41,36 +41,36 @@ const DBX_MCP_SUPPORTED = new Set([
 	"pgvector",
 ]);
 
-/** dbx-mcp 目前不支持（保留位置，待上游支持后移除）。 */
+/** 引擎目前不支持（保留位置，待上游支持后移除）。 */
 const PENDING_DRIVERS = new Set<string>([]);
 
 function normalizeType(dbType: string): string {
 	return dbType.toLowerCase().replace(/[\s_-]+/g, "");
 }
 
-export type DriverTier = "dbx-mcp";
+export type DriverTier = "engine";
 
 export function tierFor(dbType: string): DriverTier {
 	const normalized = normalizeType(dbType);
-	if (PENDING_DRIVERS.has(normalized)) return "dbx-mcp"; // pending 但仍走 dbx-mcp 探一下
-	if (DBX_MCP_SUPPORTED.has(normalized)) return "dbx-mcp";
-	return "dbx-mcp"; // 未知类型也放行（dbx-mcp 上游可能已支持但我们的清单没更新）
+	if (PENDING_DRIVERS.has(normalized)) return "engine"; // pending 但仍走引擎探一下
+	if (ENGINE_SUPPORTED.has(normalized)) return "engine";
+	return "engine"; // 未知类型也放行（引擎上游可能已支持但我们的清单没更新）
 }
 
 export function tierLabel(_tier: DriverTier): string {
-	return "dbx-mcp";
+	return "engine";
 }
 
 export function tierReasonText(dbType: string): string {
 	const normalized = normalizeType(dbType);
 	if (PENDING_DRIVERS.has(normalized)) {
-		return "上游 dbx-mcp 暂未提供该驱动，若已安装驱动可自行尝试。";
+		return "上游引擎暂未提供该驱动，若已安装驱动可自行尝试。";
 	}
-	return "dbx-mcp 引擎已覆盖该类型，可直接查询。";
+	return "引擎已覆盖该类型，可直接查询。";
 }
 
 export function isReadyDbType(_dbType: string): boolean {
-	return true; // dbx-mcp 覆盖一切
+	return true; // 引擎覆盖一切
 }
 
 export function tierStats(): { total: number; ready: number; pending: number } {

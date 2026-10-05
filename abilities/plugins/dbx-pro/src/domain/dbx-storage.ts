@@ -1,12 +1,12 @@
 /**
- * 连接配置仓储 — 所有连接的真实权威来源是 dbx-mcp。
+ * 连接配置仓储 — 所有连接的真实权威来源是引擎服务。
  *
  * 敏感凭据（密码）不写入明文 JSON：
  * - 非密元数据（host/port/库/标记等）存宿主托管的 connections.json 镜像；
  * - 密码存宿主加密凭据库 secrets（`db-password:<连接名>`），执行时才取回；
  * - 读到历史镜像里遗留的明文密码时，自动迁入 secrets 并擦除镜像。
  *
- * 读/删操作统一走 dbx-mcp（dbx_list_connections / dbx_remove_connection）。
+ * 读/删操作统一走引擎服务（list_connections / remove_connection）。
  */
 
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
@@ -33,7 +33,7 @@ export function genUuid(): string {
 	return `conn-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-/** dbx-mcp EngineConnectionSummary → 面板组件期望的 DbConnection（不含密码）。 */
+/** 引擎服务 EngineConnectionSummary → 面板组件期望的 DbConnection（不含密码）。 */
 function toDbConnection(summary: EngineConnectionSummary): DbConnection {
 	return {
 		id: summary.id || genUuid(),
@@ -56,8 +56,8 @@ function normalizeSchemas(schemas: unknown, legacySchema?: string): string[] {
 }
 
 /**
- * 合并 dbx-mcp summary 与本地镜像的非密元数据。
- * dbx-mcp 提供最新 host/port/database；本地镜像补 username / ssl / 安全标记。
+ * 合并引擎服务 summary 与本地镜像的非密元数据。
+ * 引擎服务提供最新 host/port/database；本地镜像补 username / ssl / 安全标记。
  * 密码不在这里处理，统一由加密 vault 取回。
  */
 function mergeWithLocalMirror(serverList: DbConnection[], localList: DbConnection[]): DbConnection[] {
@@ -68,7 +68,7 @@ function mergeWithLocalMirror(serverList: DbConnection[], localList: DbConnectio
 		return {
 			...serverConn,
 			username: local.username || serverConn.username,
-			// schema 选择只在本地镜像（dbx-mcp 连接配置不带）。旧单 schema 一并迁移。
+			// schema 选择只在本地镜像（引擎服务连接配置不带）。旧单 schema 一并迁移。
 			schemas: normalizeSchemas(local.schemas ?? serverConn.schemas, local.schema ?? serverConn.schema),
 			schema: undefined,
 			ssl: local.ssl ?? serverConn.ssl,
@@ -110,7 +110,7 @@ async function migrateLegacyPlaintext(localList: DbConnection[]): Promise<void> 
 	} catch { /* ignore */ }
 }
 
-/** 读：优先 dbx-mcp，密码从加密 vault 补全；dbx-mcp 不可用时 fallback 镜像 + vault。 */
+/** 读：优先引擎服务，密码从加密 vault 补全；引擎服务不可用时 fallback 镜像 + vault。 */
 export async function readAllConfigs(): Promise<DbConnection[]> {
 	try {
 		const { connections } = await engineListConnections();
@@ -139,7 +139,7 @@ export async function readAllConfigs(): Promise<DbConnection[]> {
 	}
 }
 
-/** 写：dbx-mcp + 加密 vault 存密码；镜像只存非密元数据。 */
+/** 写：引擎服务 + 加密 vault 存密码；镜像只存非密元数据。 */
 export async function writeConfig(config: DbConnection): Promise<void> {
 	await engineAddConnection({
 		name: config.name,
@@ -165,7 +165,7 @@ export async function writeConfig(config: DbConnection): Promise<void> {
 	} catch { /* ignore */ }
 }
 
-/** 删：以 dbx-mcp 为权威来源，按引擎解析 id→name，不依赖本地镜像 id 一致。 */
+/** 删：以引擎服务为权威来源，按引擎解析 id→name，不依赖本地镜像 id 一致。 */
 export async function deleteConfig(id: string): Promise<void> {
 	// id 来自 readAllConfigs（引擎 UUID），可能与本地镜像创建时生成的 id 不同。
 	// 必须先从引擎按 id 取回真实连接名，否则镜像里找不到同 id 目标会跳过引擎删除。
