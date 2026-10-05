@@ -85,6 +85,9 @@ export function ResultGrid({
 	const [aiPrompt, setAiPrompt] = useState("");
 	const [tableInfoOpen, setTableInfoOpen] = useState(false);
 	const [tableInfoSelection, setTableInfoSelection] = useState<TableInfoSelection | null>(null);
+	const [splitToolbar, setSplitToolbar] = useState(false); // 双排工具栏开关
+	const [whereClause, setWhereClause] = useState(""); // WHERE 条件
+	const [orderByClause, setOrderByClause] = useState(""); // ORDER BY 条件
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
 	const { state } = useWorkbench();
@@ -436,114 +439,151 @@ export function ResultGrid({
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
-			{/* 工具栏 */}
-			<div className="dbx-result-toolbar">
-				{/* 左侧：复制和导出 */}
-				<div className="flex items-center gap-0.5">
-					<button
-						type="button"
-						onClick={() => void copyAll()}
-						title="复制全部为 TSV"
-						className="dbx-toolbar-btn"
-					>
-						<span className="icon-[lucide--clipboard-list] h-3 w-3" />
-						<span className="dbx-toolbar-btn-label">复制</span>
-					</button>
-					<div className="dbx-toolbar-btn-group">
+			{/* 工具栏 - 双排布局 */}
+			<div className={`dbx-result-toolbar ${splitToolbar ? "split-layout" : "single-layout"}`}>
+				{/* 上排：操作按钮 */}
+				<div className="dbx-toolbar-row-actions">
+					{/* 左侧：复制和导出 */}
+					<div className="flex items-center gap-0.5">
 						<button
 							type="button"
-							onClick={() => exportCsv()}
-							title="导出 CSV"
-							className="dbx-toolbar-btn dbx-toolbar-btn-grouped"
-						>
-							<span className="icon-[lucide--download] h-3 w-3" />
-							<span className="dbx-toolbar-btn-label">导出</span>
-						</button>
-						<button
-							type="button"
-							onClick={() => setExportMenuOpen(!exportMenuOpen)}
-							title="更多导出选项"
-							className="dbx-toolbar-btn dbx-toolbar-btn-grouped dbx-toolbar-btn-dropdown"
-						>
-							<span className="icon-[lucide--chevron-down] h-2.5 w-2.5" />
-						</button>
-					</div>
-					{exportMenuOpen && (
-						<div className="dbx-toolbar-dropdown-menu">
-							<button type="button" onClick={exportCsv} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-text] h-3 w-3" />
-								CSV 文件
-							</button>
-							<button type="button" onClick={exportJson} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-json] h-3 w-3" />
-								JSON 文件
-							</button>
-							<button type="button" onClick={exportJsonLines} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-code] h-3 w-3" />
-								JSON Lines 文件
-							</button>
-							<button type="button" onClick={exportMarkdown} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-text] h-3 w-3" />
-								Markdown 文件
-							</button>
-							<button type="button" onClick={exportHtml} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-code-2] h-3 w-3" />
-								HTML 文件
-							</button>
-						</div>
-					)}
-				</div>
-
-				{/* 中间：视图选项和表属性 */}
-				<div className="flex items-center gap-0.5">
-					<button
-						type="button"
-						onClick={() => setShowRowNumbers((v) => !v)}
-						title="显示/隐藏行号"
-						className={`dbx-toolbar-btn ${showRowNumbers ? "dbx-toolbar-btn-active" : ""}`}
-					>
-						<span className="icon-[lucide--list-ordered] h-3 w-3" />
-						<span className="dbx-toolbar-btn-label">行号</span>
-					</button>
-					{sort && (
-						<button
-							type="button"
-							onClick={() => setSort(null)}
-							title="清除排序"
+							onClick={() => void copyAll()}
+							title="复制全部为 TSV"
 							className="dbx-toolbar-btn"
 						>
-							<span className="icon-[lucide--arrow-up-down] h-3 w-3" />
-							<span className="dbx-toolbar-btn-label">排序: {sort.col} {sort.dir === "asc" ? "↑" : "↓"}</span>
+							<span className="icon-[lucide--clipboard-list] h-3.5 w-3.5" />
+							<span className="dbx-toolbar-btn-label">复制</span>
 						</button>
-					)}
-					{connectionName && parsedTableName && (
+						<div className="dbx-toolbar-btn-group">
+							<button
+								type="button"
+								onClick={() => exportCsv()}
+								title="导出 CSV"
+								className="dbx-toolbar-btn dbx-toolbar-btn-grouped"
+							>
+								<span className="icon-[lucide--download] h-3.5 w-3.5" />
+								<span className="dbx-toolbar-btn-label">导出</span>
+							</button>
+							<button
+								type="button"
+								onClick={() => setExportMenuOpen(!exportMenuOpen)}
+								title="更多导出选项"
+								className="dbx-toolbar-btn dbx-toolbar-btn-grouped dbx-toolbar-btn-dropdown"
+							>
+								<span className="icon-[lucide--chevron-down] h-3 w-3" />
+							</button>
+						</div>
+						{exportMenuOpen && (
+							<div className="dbx-toolbar-dropdown-menu">
+								<button type="button" onClick={() => { exportCsv(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+									<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
+									CSV 文件
+								</button>
+								<button type="button" onClick={() => { exportJson(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+									<span className="icon-[lucide--file-json] h-3.5 w-3.5" />
+									JSON 文件
+								</button>
+								<button type="button" onClick={() => { exportJsonLines(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+									<span className="icon-[lucide--file-code] h-3.5 w-3.5" />
+									JSON Lines 文件
+								</button>
+								<button type="button" onClick={() => { exportMarkdown(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+									<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
+									Markdown 文件
+								</button>
+								<button type="button" onClick={() => { exportHtml(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+									<span className="icon-[lucide--file-code-2] h-3.5 w-3.5" />
+									HTML 文件
+								</button>
+							</div>
+						)}
+					</div>
+
+					{/* 中间：视图选项 */}
+					<div className="flex items-center gap-0.5">
 						<button
 							type="button"
-							onClick={openTableInfo}
-							title="查看表属性（列、索引、外键等）"
-							className={`dbx-toolbar-btn ${tableInfoOpen ? "dbx-toolbar-btn-active" : ""}`}
+							onClick={() => setShowRowNumbers((v) => !v)}
+							title="显示/隐藏行号"
+							className={`dbx-toolbar-btn ${showRowNumbers ? "dbx-toolbar-btn-active" : ""}`}
 						>
-							<span className="icon-[lucide--table-properties] h-3 w-3" />
-							<span className="dbx-toolbar-btn-label">表属性</span>
+							<span className="icon-[lucide--list-ordered] h-3.5 w-3.5" />
+							<span className="dbx-toolbar-btn-label">行号</span>
 						</button>
-					)}
+						{sort && (
+							<button
+								type="button"
+								onClick={() => setSort(null)}
+								title="清除排序"
+								className="dbx-toolbar-btn"
+							>
+								<span className="icon-[lucide--arrow-up-down] h-3.5 w-3.5" />
+								<span className="dbx-toolbar-btn-label">排序: {sort.col} {sort.dir === "asc" ? "↑" : "↓"}</span>
+							</button>
+						)}
+						{connectionName && parsedTableName && (
+							<button
+								type="button"
+								onClick={openTableInfo}
+								title="查看表属性（列、索引、外键等）"
+								className={`dbx-toolbar-btn ${tableInfoOpen ? "dbx-toolbar-btn-active" : ""}`}
+							>
+								<span className="icon-[lucide--table-properties] h-3.5 w-3.5" />
+								<span className="dbx-toolbar-btn-label">表属性</span>
+							</button>
+						)}
+						<button
+							type="button"
+							onClick={() => setSplitToolbar((v) => !v)}
+							title={splitToolbar ? "切换为单排工具栏" : "切换为双排工具栏"}
+							className={`dbx-toolbar-btn ${splitToolbar ? "dbx-toolbar-btn-active" : ""}`}
+						>
+							<span className="icon-[lucide--rows-3] h-3.5 w-3.5" />
+							<span className="dbx-toolbar-btn-label">{splitToolbar ? "单排" : "双排"}</span>
+						</button>
+					</div>
+
+					{/* 右侧：AI 分析 */}
+					<div className="flex items-center gap-0.5 ml-auto">
+						{connectionName && sql && (
+							<button
+								type="button"
+								onClick={openAiDialogForQuery}
+								title="把该 SQL 与结果发给 AI 分析"
+								className="dbx-toolbar-btn dbx-toolbar-btn-primary"
+							>
+								<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
+								<span className="dbx-toolbar-btn-label">分析结果</span>
+							</button>
+						)}
+					</div>
 				</div>
 
-				{/* 右侧：AI 分析 */}
-				<div className="flex items-center gap-0.5">
-					{connectionName && sql && (
-						<button
-							type="button"
-							onClick={openAiDialogForQuery}
-							title="把该 SQL 与结果发给 AI 分析"
-							className="dbx-toolbar-btn dbx-toolbar-btn-primary"
-						>
-							<span className="icon-[lucide--sparkles] h-3 w-3" />
-							<span className="dbx-toolbar-btn-label">分析结果</span>
-						</button>
-					)}
-					<span className="ml-2 text-[10px] text-muted-foreground/60">双击查看详情 · 右键更多操作</span>
-				</div>
+				{/* 下排：过滤控件（仅双排模式显示） */}
+				{splitToolbar && (
+					<div className="dbx-toolbar-row-filters">
+						<div className="flex items-center gap-2 flex-1">
+							<span className="icon-[lucide--filter] h-3.5 w-3.5 text-muted-foreground" />
+							<input
+								type="text"
+								className="dbx-toolbar-filter-input"
+								placeholder="WHERE 条件（如：id > 100 AND name LIKE '%test%'）"
+								value={whereClause}
+								onChange={(e) => setWhereClause(e.target.value)}
+							/>
+						</div>
+						<div className="flex items-center gap-2 flex-1">
+							<span className="icon-[lucide--arrow-up-down] h-3.5 w-3.5 text-muted-foreground" />
+							<input
+								type="text"
+								className="dbx-toolbar-filter-input"
+								placeholder="ORDER BY（如：created_at DESC, id ASC）"
+								value={orderByClause}
+								onChange={(e) => setOrderByClause(e.target.value)}
+							/>
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* 网格（内部滚动） */}

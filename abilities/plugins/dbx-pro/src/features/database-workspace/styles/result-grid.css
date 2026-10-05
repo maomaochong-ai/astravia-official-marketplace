@@ -1,60 +1,112 @@
 /* ============================================================
- * 结果网格工具栏样式
+ * 结果网格工具栏样式（双排布局）
+ * 对标 dbx 桌面壳的 DataGridToolbar 设计
  * ============================================================ */
 
+/* 工具栏容器 - 支持单排/双排布局 */
 .dbx-result-toolbar {
 	display: flex;
-	align-items: center;
-	flex-wrap: nowrap;
-	gap: 8px;
-	height: 28px;
-	padding: 0 8px;
+	flex-direction: column;
 	flex-shrink: 0;
-	overflow: hidden;
 	background: var(--dbx-surface);
 	border-bottom: 1px solid var(--dbx-line-soft);
 }
-/* 三个按钮组：保持完整不被压扁，窄面板时由外层裁剪而非换行堆叠 */
+
+/* 双排布局模式 */
+.dbx-result-toolbar.split-layout {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	grid-template-rows: auto auto;
+	height: auto;
+	min-height: 64px;
+}
+
+/* 单排布局模式（默认） */
+.dbx-result-toolbar.single-layout {
+	flex-direction: row;
+	align-items: center;
+	height: 28px;
+	padding: 0 8px;
+	gap: 8px;
+	overflow: hidden;
+}
+
+/* 上排：操作按钮区 */
+.dbx-toolbar-row-actions {
+	grid-column: 1 / -1;
+	grid-row: 1;
+	display: flex;
+	align-items: center;
+	gap: 0.5px;
+	padding: 4px 8px;
+	border-bottom: 1px solid var(--dbx-line-soft);
+}
+
+/* 下排：过滤控件区 */
+.dbx-toolbar-row-filters {
+	grid-column: 1 / -1;
+	grid-row: 2;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 8px;
+	background: var(--background);
+}
+
+/* 按钮组 */
 .dbx-result-toolbar > div { flex-shrink: 0; min-width: 0; }
 .dbx-result-toolbar .dbx-toolbar-btn-label { overflow: hidden; text-overflow: ellipsis; }
 
+/* 工具栏按钮基础样式 */
 .dbx-toolbar-btn {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	height: 20px;
-	padding: 0 6px;
+	height: 22px;
+	padding: 0 8px;
 	border-radius: 4px;
-	font-size: 10.5px;
+	font-size: 11px;
 	color: var(--muted-foreground);
 	cursor: pointer;
 	transition: background 0.12s, color 0.12s;
 	white-space: nowrap;
+	border: 1px solid transparent;
+	background: transparent;
 }
 
-.dbx-toolbar-btn:hover {
+.dbx-toolbar-btn:hover:not(:disabled) {
 	background: var(--dbx-hover);
 	color: var(--foreground);
+	border-color: var(--dbx-line);
+}
+
+.dbx-toolbar-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
 }
 
 .dbx-toolbar-btn-active {
 	background: color-mix(in srgb, var(--foreground) 10%, transparent);
 	color: var(--foreground);
+	border-color: var(--dbx-line);
 }
 
 .dbx-toolbar-btn-primary {
 	background: color-mix(in srgb, var(--primary) 12%, transparent);
 	color: var(--primary);
+	border-color: color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
-.dbx-toolbar-btn-primary:hover {
+.dbx-toolbar-btn-primary:hover:not(:disabled) {
 	background: color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 .dbx-toolbar-btn-label {
-	font-size: 10.5px;
+	font-size: 11px;
+	line-height: 1;
 }
 
+/* 按钮组（带下拉） */
 .dbx-toolbar-btn-group {
 	display: flex;
 	align-items: stretch;
@@ -66,7 +118,7 @@
 .dbx-toolbar-btn-grouped {
 	border-radius: 0;
 	border: none;
-	height: 18px;
+	height: 20px;
 }
 
 .dbx-toolbar-btn-grouped + .dbx-toolbar-btn-grouped {
@@ -77,17 +129,19 @@
 	padding: 0 4px;
 }
 
+/* 下拉菜单 */
 .dbx-toolbar-dropdown-menu {
 	position: absolute;
 	top: 100%;
 	left: 0;
 	z-index: 100;
-	min-width: 140px;
+	min-width: 160px;
 	padding: 4px;
 	border: 1px solid var(--dbx-line);
 	border-radius: 6px;
 	background: var(--background);
 	box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+	margin-top: 2px;
 }
 
 .dbx-toolbar-dropdown-item {
@@ -101,8 +155,47 @@
 	color: var(--foreground);
 	cursor: pointer;
 	transition: background 0.12s;
+	border: none;
+	background: transparent;
+	text-align: left;
 }
 
 .dbx-toolbar-dropdown-item:hover {
 	background: var(--dbx-hover);
+}
+
+/* 过滤输入框 */
+.dbx-toolbar-filter-input {
+	flex: 1;
+	min-width: 0;
+	height: 24px;
+	padding: 0 8px;
+	font-size: 11px;
+	border: 1px solid var(--dbx-line);
+	border-radius: 4px;
+	background: var(--background);
+	color: var(--foreground);
+	outline: none;
+	transition: border-color 0.12s;
+}
+
+.dbx-toolbar-filter-input:focus {
+	border-color: var(--foreground);
+}
+
+.dbx-toolbar-filter-input::placeholder {
+	color: var(--muted-foreground);
+}
+
+/* 紧凑模式（宽度不足时） */
+@media (max-width: 768px) {
+	.dbx-toolbar-btn-label {
+		display: none;
+	}
+	
+	.dbx-toolbar-btn {
+		padding: 0 6px;
+		min-width: 28px;
+		justify-content: center;
+	}
 }
