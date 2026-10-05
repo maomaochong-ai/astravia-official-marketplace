@@ -1,5 +1,5 @@
 /**
- * driver-tiers 纯逻辑测试 — 一切类型走 dbx-mcp。
+ * driver-tiers 纯逻辑测试 — 一切类型走引擎。
  */
 
 import assert from "node:assert/strict";
@@ -18,18 +18,18 @@ describe("tierFor", () => {
 		"postgres", "postgresql", "mysql", "mariadb", "sqlite", "redis",
 		"clickhouse", "bigquery", "snowflake", "mongodb", "unknown-new-db",
 	]) {
-		it(`${type} → dbx-mcp`, () => assert.equal(tierFor(type), "dbx-mcp"));
+		it(`${type} → engine`, () => assert.equal(tierFor(type), "engine"));
 	}
 
-	it("大小写 / 空白 / 分隔符归一后仍返回 dbx-mcp", () => {
-		assert.equal(tierFor("PostgreSQL"), "dbx-mcp");
-		assert.equal(tierFor("  sql_server "), "dbx-mcp");
+	it("大小写 / 空白 / 分隔符归一后仍返回 engine", () => {
+		assert.equal(tierFor("PostgreSQL"), "engine");
+		assert.equal(tierFor("  sql_server "), "engine");
 	});
 });
 
 describe("档位展示文案", () => {
-	it("tierLabel 恒定 dbx-mcp", () => {
-		assert.equal(tierLabel("dbx-mcp"), "dbx-mcp");
+	it("tierLabel 恒定 engine", () => {
+		assert.equal(tierLabel("engine"), "engine");
 	});
 	it("tierReasonText 给出可查询说明", () => {
 		assert.match(tierReasonText("postgres"), /可直接查询/);

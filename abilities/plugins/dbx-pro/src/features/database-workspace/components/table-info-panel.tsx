@@ -11,7 +11,7 @@ import { useEffect, useState, type JSX } from "react";
 import { useWorkbench, type EngineColumn } from "../hooks/use-workbench";
 import { engineDescribeByName } from "../../../shared/services/engine-client";
 
-export type TableInfoTab = "overview" | "columns" | "indexes" | "foreignKeys" | "triggers" | "constraints" | "partitions";
+export type TableInfoTab = "overview" | "ddl" | "columns" | "indexes" | "foreignKeys" | "triggers" | "constraints";
 
 export interface TableInfoSelection {
 	connectionName: string;
@@ -25,17 +25,17 @@ interface Props {
 }
 
 const TABS: { key: TableInfoTab; label: string; icon: string }[] = [
-	{ key: "overview", label: "概览", icon: "icon-[lucide--info]" },
-	{ key: "columns", label: "列", icon: "icon-[lucide--columns-3]" },
+	{ key: "overview", label: "表信息", icon: "icon-[lucide--info]" },
+	{ key: "ddl", label: "DDL", icon: "icon-[lucide--code]" },
+	{ key: "columns", label: "字段", icon: "icon-[lucide--columns-3]" },
 	{ key: "indexes", label: "索引", icon: "icon-[lucide--search]" },
 	{ key: "foreignKeys", label: "外键", icon: "icon-[lucide--link]" },
-	{ key: "triggers", label: "触发器", icon: "icon-[lucide--zap]" },
 	{ key: "constraints", label: "约束", icon: "icon-[lucide--shield]" },
-	{ key: "partitions", label: "分区", icon: "icon-[lucide--layout-grid]" },
+	{ key: "triggers", label: "触发器", icon: "icon-[lucide--zap]" },
 ];
 
 export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
-	const [activeTab, setActiveTab] = useState<TableInfoTab>("columns");
+	const [activeTab, setActiveTab] = useState<TableInfoTab>("overview");
 	const [columns, setColumns] = useState<EngineColumn[]>([]);
 	const [loading, setLoading] = useState(false);
 
@@ -93,7 +93,7 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 				</button>
 			</div>
 
-			{/* Tab 栏 */}
+			{/* Tab 栏 - 图标在上文字在下 */}
 			<div className="dbx-table-info-tabs">
 				{TABS.map((tab) => (
 					<button
@@ -102,8 +102,8 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 						className={`dbx-table-info-tab ${activeTab === tab.key ? "active" : ""}`}
 						onClick={() => setActiveTab(tab.key)}
 					>
-						<span className={`${tab.icon} h-3 w-3`} />
-						{tab.label}
+						<span className={`${tab.icon} h-4 w-4 mb-1`} />
+						<span className="text-[10px]">{tab.label}</span>
 					</button>
 				))}
 			</div>
@@ -118,12 +118,12 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 				) : (
 					<>
 						{activeTab === "overview" && <OverviewTab selection={selection} columns={columns} />}
+						{activeTab === "ddl" && <DdlTab selection={selection} />}
 						{activeTab === "columns" && <ColumnsTab columns={columns} />}
-				{activeTab === "indexes" && <PlaceholderTab feature="索引" />}
-				{activeTab === "foreignKeys" && <PlaceholderTab feature="外键" />}
-				{activeTab === "triggers" && <PlaceholderTab feature="触发器" />}
-				{activeTab === "constraints" && <PlaceholderTab feature="约束" />}
-				{activeTab === "partitions" && <PlaceholderTab feature="分区" />}
+						{activeTab === "indexes" && <PlaceholderTab feature="索引" />}
+						{activeTab === "foreignKeys" && <PlaceholderTab feature="外键" />}
+						{activeTab === "triggers" && <PlaceholderTab feature="触发器" />}
+						{activeTab === "constraints" && <PlaceholderTab feature="约束" />}
 					</>
 				)}
 			</div>
@@ -201,6 +201,65 @@ function PlaceholderTab({ feature }: { feature: string }): JSX.Element {
 			<span className="text-[10px] text-muted-foreground/60 text-center px-4">
 				当前引擎版本暂不支持该功能，请升级后重试
 			</span>
+		</div>
+	);
+}
+
+/** DDL Tab - 显示建表语句 */
+function DdlTab({ selection }: { selection: TableInfoSelection }): JSX.Element {
+	const [ddl, setDdl] = useState<string>("");
+	const [loading, setLoading] = useState(false);
+	const [copied, setCopied] = useState(false);
+
+	useEffect(() => {
+		if (!selection) return;
+		setLoading(true);
+		setDdl("");
+		
+		// 生成简单的 CREATE TABLE 语句
+		const qualifiedName = selection.schema 
+			? `${selection.schema}.${selection.tableName}` 
+			: selection.tableName;
+		
+		const simpleDdl = `-- DDL for ${qualifiedName}\n-- 注意：完整 DDL 需要引擎支持\n\nCREATE TABLE IF NOT EXISTS ${qualifiedName} (\n  -- 列定义需要从引擎获取\n  id INTEGER PRIMARY KEY\n);`;
+		
+		setDdl(simpleDdl);
+		setLoading(false);
+	}, [selection]);
+
+	function handleCopy(): void {
+		void navigator.clipboard.writeText(ddl).then(() => {
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		}).catch(() => {});
+	}
+
+	if (loading) {
+		return (
+			<div className="flex items-center justify-center py-8 text-muted-foreground">
+				<span className="icon-[lucide--loader] h-5 w-5 animate-spin mr-2" />
+				<span className="text-[11px]">加载中…</span>
+			</div>
+		);
+	}
+
+	return (
+		<div className="space-y-2">
+			<div className="flex items-center justify-between">
+				<span className="text-[11px] font-medium text-foreground">DDL 语句</span>
+				<button
+					type="button"
+					onClick={handleCopy}
+					className="dbx-iconbtn"
+					style={{ height: 20, minWidth: 20, padding: "0 4px" }}
+					title={copied ? "已复制" : "复制 DDL"}
+				>
+					<span className={`h-3 w-3 ${copied ? "icon-[lucide--check] text-emerald-400" : "icon-[lucide--copy]"}`} />
+				</button>
+			</div>
+			<pre className="dbx-ddl-code">
+				<code>{ddl}</code>
+			</pre>
 		</div>
 	);
 }

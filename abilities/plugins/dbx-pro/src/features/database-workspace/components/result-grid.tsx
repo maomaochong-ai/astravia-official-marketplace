@@ -385,7 +385,24 @@ export function ResultGrid({
 	);
 
 	const copyAll = useCallback(async () => {
-		await navigator.clipboard.writeText(toTsv(colList, rows)).catch(() => {});
+		const text = toTsv(colList, rows);
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch {
+			// Fallback: 使用传统方法复制
+			const textarea = document.createElement("textarea");
+			textarea.value = text;
+			textarea.style.position = "fixed";
+			textarea.style.opacity = "0";
+			document.body.appendChild(textarea);
+			textarea.select();
+			try {
+				document.execCommand("copy");
+			} catch {
+				// 忽略错误
+			}
+			document.body.removeChild(textarea);
+		}
 	}, [colList, rows]);
 
 	const copyAsJson = useCallback(async () => {
@@ -462,6 +479,11 @@ export function ResultGrid({
 	}, [colList, rows]);
 
 	const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
+	function openExportMenu(e: React.MouseEvent): void {
+		e.preventDefault();
+		setExportMenuOpen(true);
+	}
 
 	if (colList.length === 0) {
 		return (
@@ -616,49 +638,53 @@ export function ResultGrid({
 							<span className="icon-[lucide--clipboard-list] h-3.5 w-3.5" />
 							<span className="dbx-toolbar-btn-label">复制</span>
 						</button>
-						<div className="dbx-toolbar-btn-group">
-							<button
-								type="button"
-								onClick={() => exportCsv()}
-								title="导出 CSV"
-								className="dbx-toolbar-btn dbx-toolbar-btn-grouped"
-							>
-								<span className="icon-[lucide--download] h-3.5 w-3.5" />
-								<span className="dbx-toolbar-btn-label">导出</span>
+					<div className="dbx-toolbar-btn-group">
+						<button
+							type="button"
+							onClick={() => exportCsv()}
+							title="导出 CSV"
+							className="dbx-toolbar-btn dbx-toolbar-btn-grouped"
+						>
+							<span className="icon-[lucide--download] h-3.5 w-3.5" />
+							<span className="dbx-toolbar-btn-label">导出</span>
+						</button>
+						<button
+							type="button"
+							onContextMenu={(e) => {
+								e.preventDefault();
+								openExportMenu(e);
+							}}
+							onClick={() => setExportMenuOpen(!exportMenuOpen)}
+							title="更多导出选项（右键查看）"
+							className="dbx-toolbar-btn dbx-toolbar-btn-grouped dbx-toolbar-btn-dropdown"
+						>
+							<span className="icon-[lucide--chevron-down] h-3 w-3" />
+						</button>
+					</div>
+					{exportMenuOpen && (
+						<div className="dbx-toolbar-dropdown-menu">
+							<button type="button" onClick={() => { exportCsv(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
+								CSV 文件
 							</button>
-							<button
-								type="button"
-								onClick={() => setExportMenuOpen(!exportMenuOpen)}
-								title="更多导出选项"
-								className="dbx-toolbar-btn dbx-toolbar-btn-grouped dbx-toolbar-btn-dropdown"
-							>
-								<span className="icon-[lucide--chevron-down] h-3 w-3" />
+							<button type="button" onClick={() => { exportJson(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-json] h-3.5 w-3.5" />
+								JSON 文件
+							</button>
+							<button type="button" onClick={() => { exportJsonLines(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-code] h-3.5 w-3.5" />
+								JSON Lines 文件
+							</button>
+							<button type="button" onClick={() => { exportMarkdown(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
+								Markdown 文件
+							</button>
+							<button type="button" onClick={() => { exportHtml(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+								<span className="icon-[lucide--file-code-2] h-3.5 w-3.5" />
+								HTML 文件
 							</button>
 						</div>
-						{exportMenuOpen && (
-							<div className="dbx-toolbar-dropdown-menu">
-								<button type="button" onClick={() => { exportCsv(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-									<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
-									CSV 文件
-								</button>
-								<button type="button" onClick={() => { exportJson(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-									<span className="icon-[lucide--file-json] h-3.5 w-3.5" />
-									JSON 文件
-								</button>
-								<button type="button" onClick={() => { exportJsonLines(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-									<span className="icon-[lucide--file-code] h-3.5 w-3.5" />
-									JSON Lines 文件
-								</button>
-								<button type="button" onClick={() => { exportMarkdown(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-									<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
-									Markdown 文件
-								</button>
-								<button type="button" onClick={() => { exportHtml(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-									<span className="icon-[lucide--file-code-2] h-3.5 w-3.5" />
-									HTML 文件
-								</button>
-							</div>
-						)}
+					)}
 					</div>
 
 					{/* 中间：视图选项 */}

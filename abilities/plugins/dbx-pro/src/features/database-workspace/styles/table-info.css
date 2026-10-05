@@ -105,3 +105,23 @@
 	font-family: var(--font-mono, ui-monospace, monospace);
 	word-break: break-all;
 }
+
+/* DDL 代码块 */
+.dbx-ddl-code {
+	margin: 0;
+	padding: 12px;
+	border-radius: 6px;
+	background: var(--dbx-surface);
+	border: 1px solid var(--dbx-line-soft);
+	overflow-x: auto;
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--foreground);
+	white-space: pre-wrap;
+	word-break: break-all;
+}
+
+.dbx-ddl-code code {
+	font-family: inherit;
+}

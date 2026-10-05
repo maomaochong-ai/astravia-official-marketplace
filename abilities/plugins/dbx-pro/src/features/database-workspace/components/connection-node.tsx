@@ -161,10 +161,15 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	/** 生成 SQL 语句 */
 	function generateSql(type: "select" | "insert" | "update" | "delete" | "create" | "alter" | "drop"): void {
 		console.log("[generateSql] 被调用，type:", type, "connectionName:", connectionName, "qualifiedName:", qualifiedName);
-		if (!connectionName) {
-			console.warn("[generateSql] connectionName 为空，无法生成 SQL");
+		
+		// 获取有效的连接名
+		const effectiveConnectionName = connectionName ?? (node.kind === "connection" ? node.label : undefined);
+		
+		if (!effectiveConnectionName) {
+			console.warn("[generateSql] 连接名为空，无法生成 SQL");
 			return;
 		}
+		
 		let sql = "";
 		const tableName = qualifiedName;
 		const bareName = node.label;
@@ -194,10 +199,10 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		}
 		
 		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
-		console.log("[generateSql] 准备 dispatch addTab，id:", id, "label:", `${bareName} ${type.toUpperCase()}`);
+		console.log("[generateSql] 准备 dispatch addTab，id:", id, "label:", `${bareName} ${type.toUpperCase()}`, "connectionName:", effectiveConnectionName);
 		dispatch({
 			type: "addTab",
-			tab: { id, label: `${bareName} ${type.toUpperCase()}`, connectionName, sql, isRunning: false },
+			tab: { id, label: `${bareName} ${type.toUpperCase()}`, connectionName: effectiveConnectionName, sql, isRunning: false },
 		});
 		console.log("[generateSql] dispatch 完成");
 	}
