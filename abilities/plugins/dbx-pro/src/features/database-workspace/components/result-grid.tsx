@@ -758,6 +758,12 @@ export function ResultGrid({
 								placeholder="WHERE 条件（如：id > 100 AND name LIKE '%test%'）"
 								value={whereClause}
 								onChange={(e) => setWhereClause(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										// TODO: 应用 WHERE 过滤
+										console.log("[ResultGrid] 应用 WHERE 条件:", whereClause);
+									}
+								}}
 							/>
 						</div>
 						<div className="flex items-center gap-2 flex-1">
@@ -768,8 +774,26 @@ export function ResultGrid({
 								placeholder="ORDER BY（如：created_at DESC, id ASC）"
 								value={orderByClause}
 								onChange={(e) => setOrderByClause(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										// TODO: 应用 ORDER BY 排序
+										console.log("[ResultGrid] 应用 ORDER BY:", orderByClause);
+									}
+								}}
 							/>
 						</div>
+						<button
+							type="button"
+							onClick={() => {
+								// TODO: 应用过滤和排序
+								console.log("[ResultGrid] 应用过滤:", whereClause, "排序:", orderByClause);
+							}}
+							className="dbx-toolbar-btn dbx-toolbar-btn-primary"
+							title="应用过滤和排序"
+						>
+							<span className="icon-[lucide--play] h-3.5 w-3.5" />
+							<span className="dbx-toolbar-btn-label">应用</span>
+						</button>
 					</div>
 				)}
 			</div>

@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.66",
+  "version": "0.0.67",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -14,6 +14,9 @@
   ],
   "permissions": [
     "agent.mcp.control",
+    "agent.skills.control",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
     "ui.slot.activity-tab",
     "ui.slot.workspace-view",
     "ui.slot.input-action",
@@ -109,6 +112,9 @@
     "dbx"
   ],
   "agent": {
+    "skillPaths": [
+      "agent/skills/dbx-pro"
+    ],
     "mcpServers": {
       "dbx-pro": {
         "type": "service",

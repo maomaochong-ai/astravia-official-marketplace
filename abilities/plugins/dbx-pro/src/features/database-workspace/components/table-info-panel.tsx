@@ -1,17 +1,23 @@
 /**
- * TableInfoPanel — 表属性面板（多 Tab 展示）。
+ * TableInfoPanel — 表属性面板容器。
  *
  * 从查询网格顶部工具栏的"表属性"按钮触发，以右侧抽屉形式展开。
- * 支持多个 Tab：概览、列、索引、外键、触发器、约束、分区。
+ * 页签与布局对齐 dbx 桌面壳（文本横排页签 + 列表格）：
+ * - 字段：sticky 表头的列信息表格（TableInfoColumns）
+ * - 表信息：label/value 概览行（TableInfoOverview）
+ * - DDL：按列结构生成的建表语句（TableInfoDdl）
  *
- * 参考主流数据库管理工具的表信息面板设计。
+ * 数据全部来自引擎 /describe；引擎无索引 / 外键 / 触发器独立端点，不提供空占位页签。
  */
 
 import { useEffect, useState, type JSX } from "react";
-import { useWorkbench, type EngineColumn } from "../hooks/use-workbench";
+import type { EngineColumn } from "../state/workbench-types";
 import { engineDescribeByName } from "../../../shared/services/engine-client";
+import { TableInfoColumns } from "./table-info-columns";
+import { TableInfoOverview } from "./table-info-overview";
+import { TableInfoDdl } from "./table-info-ddl";
 
-export type TableInfoTab = "overview" | "ddl" | "columns" | "indexes" | "foreignKeys" | "triggers" | "constraints";
+export type TableInfoTab = "columns" | "overview" | "ddl";
 
 export interface TableInfoSelection {
 	connectionName: string;
@@ -24,35 +30,36 @@ interface Props {
 	onClose: () => void;
 }
 
-const TABS: { key: TableInfoTab; label: string; icon: string }[] = [
-	{ key: "overview", label: "表信息", icon: "icon-[lucide--info]" },
-	{ key: "ddl", label: "DDL", icon: "icon-[lucide--code]" },
-	{ key: "columns", label: "字段", icon: "icon-[lucide--columns-3]" },
-	{ key: "indexes", label: "索引", icon: "icon-[lucide--search]" },
-	{ key: "foreignKeys", label: "外键", icon: "icon-[lucide--link]" },
-	{ key: "constraints", label: "约束", icon: "icon-[lucide--shield]" },
-	{ key: "triggers", label: "触发器", icon: "icon-[lucide--zap]" },
+const TABS: { key: TableInfoTab; label: string }[] = [
+	{ key: "columns", label: "字段" },
+	{ key: "overview", label: "表信息" },
+	{ key: "ddl", label: "DDL" },
 ];
 
 export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
-	const [activeTab, setActiveTab] = useState<TableInfoTab>("overview");
+	const [activeTab, setActiveTab] = useState<TableInfoTab>("columns");
 	const [columns, setColumns] = useState<EngineColumn[]>([]);
 	const [loading, setLoading] = useState(false);
 
-	const { state } = useWorkbench();
+	// 切换查看的表时回到默认页签，避免停留在另一张表的 DDL 上。
+	useEffect(() => {
+		setActiveTab("columns");
+	}, [selection?.connectionName, selection?.schema, selection?.tableName]);
 
 	// 加载表结构信息
 	useEffect(() => {
 		if (!selection) return;
+		let alive = true;
 		setLoading(true);
 		setColumns([]);
-		
-		engineDescribeByName(selection.connectionName, { 
-			schema: selection.schema, 
-			table: selection.tableName 
+
+		engineDescribeByName(selection.connectionName, {
+			schema: selection.schema,
+			table: selection.tableName,
 		})
 			.then((outcome) => {
-				const cols: EngineColumn[] = outcome.columns.map((c) => ({
+				if (!alive) return;
+				setColumns(outcome.columns.map((c) => ({
 					name: c.name,
 					type: c.type,
 					nullable: c.nullable,
@@ -60,17 +67,18 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 					defaultValue: c.defaultValue,
 					comment: c.comment,
 					isPrimaryKey: c.isPrimaryKey,
-				}));
-				setColumns(cols);
+				})));
 			})
-			.catch(() => setColumns([]))
-			.finally(() => setLoading(false));
+			.catch(() => { if (alive) setColumns([]); })
+			.finally(() => { if (alive) setLoading(false); });
+
+		return () => { alive = false; };
 	}, [selection?.connectionName, selection?.tableName, selection?.schema]);
 
 	if (!selection) return <></>;
 
-	const qualifiedName = selection.schema 
-		? `${selection.schema}.${selection.tableName}` 
+	const qualifiedName = selection.schema
+		? `${selection.schema}.${selection.tableName}`
 		: selection.tableName;
 
 	return (
@@ -93,7 +101,7 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 				</button>
 			</div>
 
-			{/* Tab 栏 - 图标在上文字在下 */}
+			{/* 页签栏：文本横排，激活态下划线（对齐 dbx） */}
 			<div className="dbx-table-info-tabs">
 				{TABS.map((tab) => (
 					<button
@@ -102,8 +110,7 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 						className={`dbx-table-info-tab ${activeTab === tab.key ? "active" : ""}`}
 						onClick={() => setActiveTab(tab.key)}
 					>
-						<span className={`${tab.icon} h-4 w-4 mb-1`} />
-						<span className="text-[10px]">{tab.label}</span>
+						{tab.label}
 					</button>
 				))}
 			</div>
@@ -111,165 +118,18 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 			{/* 内容区 */}
 			<div className="dbx-table-info-content">
 				{loading ? (
-					<div className="flex items-center justify-center py-8 text-muted-foreground">
-						<span className="icon-[lucide--loader] h-5 w-5 animate-spin mr-2" />
+					<div className="flex h-full items-center justify-center text-muted-foreground">
+						<span className="icon-[lucide--loader] mr-2 h-5 w-5 animate-spin" />
 						<span className="text-[11px]">加载中…</span>
 					</div>
+				) : activeTab === "columns" ? (
+					<TableInfoColumns columns={columns} />
+				) : activeTab === "overview" ? (
+					<TableInfoOverview selection={selection} columns={columns} />
 				) : (
-					<>
-						{activeTab === "overview" && <OverviewTab selection={selection} columns={columns} />}
-						{activeTab === "ddl" && <DdlTab selection={selection} />}
-						{activeTab === "columns" && <ColumnsTab columns={columns} />}
-						{activeTab === "indexes" && <PlaceholderTab feature="索引" />}
-						{activeTab === "foreignKeys" && <PlaceholderTab feature="外键" />}
-						{activeTab === "triggers" && <PlaceholderTab feature="触发器" />}
-						{activeTab === "constraints" && <PlaceholderTab feature="约束" />}
-					</>
+					<TableInfoDdl qualifiedName={qualifiedName} columns={columns} />
 				)}
 			</div>
-		</div>
-	);
-}
-
-/** 概览 Tab */
-function OverviewTab({ selection, columns }: { selection: TableInfoSelection; columns: EngineColumn[] }): JSX.Element {
-	const primaryKeyCount = columns.filter((c) => c.isPrimaryKey).length;
-	const nullableCount = columns.filter((c) => c.nullable).length;
-	const withDefaultCount = columns.filter((c) => c.hasDefault).length;
-
-	return (
-		<div className="space-y-4">
-			<div className="dbx-table-info-section">
-				<div className="dbx-table-info-section-title">基本信息</div>
-				<div className="dbx-table-info-grid">
-					<InfoItem label="表名" value={selection.tableName} />
-					<InfoItem label="Schema" value={selection.schema ?? "(默认)"} />
-					<InfoItem label="连接" value={selection.connectionName} />
-					<InfoItem label="列数" value={String(columns.length)} />
-				</div>
-			</div>
-
-			<div className="dbx-table-info-section">
-				<div className="dbx-table-info-section-title">统计</div>
-				<div className="dbx-table-info-grid">
-					<InfoItem label="主键列" value={String(primaryKeyCount)} />
-					<InfoItem label="可空列" value={String(nullableCount)} />
-					<InfoItem label="有默认值" value={String(withDefaultCount)} />
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/** 列信息 Tab */
-function ColumnsTab({ columns }: { columns: EngineColumn[] }): JSX.Element {
-	if (columns.length === 0) {
-		return (
-			<div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-				<span className="icon-[lucide--columns-3] h-8 w-8 opacity-30 mb-2" />
-				<span className="text-[11px]">无列信息</span>
-			</div>
-		);
-	}
-
-	return (
-		<div className="space-y-1">
-			{columns.map((col) => (
-				<div key={col.name} className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[var(--dbx-hover)]">
-					<span className={`shrink-0 ${col.isPrimaryKey ? "icon-[lucide--key-round] text-amber-400" : col.nullable ? "icon-[lucide--circle-dot] text-muted-foreground/70" : "icon-[lucide--dot] text-muted-foreground"} h-3 w-3`} />
-					<span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground" title={col.name}>{col.name}</span>
-					<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{col.type}</span>
-					{col.isPrimaryKey && <span className="shrink-0 rounded bg-amber-500/10 px-1 py-0.5 text-[9px] font-medium text-amber-400">PK</span>}
-					{!col.nullable && !col.isPrimaryKey && <span className="shrink-0 text-[9px] text-muted-foreground/70">NOT NULL</span>}
-					{col.hasDefault && col.defaultValue && (
-						<span className="shrink-0 text-[9px] font-mono text-muted-foreground" title={col.defaultValue}>
-							= {col.defaultValue.length > 12 ? col.defaultValue.slice(0, 11) + "…" : col.defaultValue}
-						</span>
-					)}
-				</div>
-			))}
-		</div>
-	);
-}
-
-/** 占位 Tab（引擎不支持的功能） */
-function PlaceholderTab({ feature }: { feature: string }): JSX.Element {
-	return (
-		<div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-			<span className="icon-[lucide--puzzle] h-8 w-8 opacity-30 mb-2" />
-			<span className="text-[11px] font-medium mb-1">{feature} 需要引擎支持</span>
-			<span className="text-[10px] text-muted-foreground/60 text-center px-4">
-				当前引擎版本暂不支持该功能，请升级后重试
-			</span>
-		</div>
-	);
-}
-
-/** DDL Tab - 显示建表语句 */
-function DdlTab({ selection }: { selection: TableInfoSelection }): JSX.Element {
-	const [ddl, setDdl] = useState<string>("");
-	const [loading, setLoading] = useState(false);
-	const [copied, setCopied] = useState(false);
-
-	useEffect(() => {
-		if (!selection) return;
-		setLoading(true);
-		setDdl("");
-		
-		// 生成简单的 CREATE TABLE 语句
-		const qualifiedName = selection.schema 
-			? `${selection.schema}.${selection.tableName}` 
-			: selection.tableName;
-		
-		const simpleDdl = `-- DDL for ${qualifiedName}\n-- 注意：完整 DDL 需要引擎支持\n\nCREATE TABLE IF NOT EXISTS ${qualifiedName} (\n  -- 列定义需要从引擎获取\n  id INTEGER PRIMARY KEY\n);`;
-		
-		setDdl(simpleDdl);
-		setLoading(false);
-	}, [selection]);
-
-	function handleCopy(): void {
-		void navigator.clipboard.writeText(ddl).then(() => {
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		}).catch(() => {});
-	}
-
-	if (loading) {
-		return (
-			<div className="flex items-center justify-center py-8 text-muted-foreground">
-				<span className="icon-[lucide--loader] h-5 w-5 animate-spin mr-2" />
-				<span className="text-[11px]">加载中…</span>
-			</div>
-		);
-	}
-
-	return (
-		<div className="space-y-2">
-			<div className="flex items-center justify-between">
-				<span className="text-[11px] font-medium text-foreground">DDL 语句</span>
-				<button
-					type="button"
-					onClick={handleCopy}
-					className="dbx-iconbtn"
-					style={{ height: 20, minWidth: 20, padding: "0 4px" }}
-					title={copied ? "已复制" : "复制 DDL"}
-				>
-					<span className={`h-3 w-3 ${copied ? "icon-[lucide--check] text-emerald-400" : "icon-[lucide--copy]"}`} />
-				</button>
-			</div>
-			<pre className="dbx-ddl-code">
-				<code>{ddl}</code>
-			</pre>
-		</div>
-	);
-}
-
-/** 信息项 */
-function InfoItem({ label, value }: { label: string; value: string }): JSX.Element {
-	return (
-		<div className="dbx-table-info-item">
-			<span className="dbx-table-info-label">{label}</span>
-			<span className="dbx-table-info-value" title={value}>{value}</span>
 		</div>
 	);
 }

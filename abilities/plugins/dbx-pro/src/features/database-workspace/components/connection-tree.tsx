@@ -2,7 +2,7 @@
  * ConnectionTree — 左栏连接树主容器。
  *
  * 职责：
- * - 顶部工具栏（刷新、搜索过滤）
+ * - 标题工具条（导入/导出、展开/收起、刷新、搜索过滤）见 ConnectionTreeToolbar
  * - 渲染 connection → table → column 递归节点
  * - 触发懒加载（通过 use-workbench）
  */
@@ -10,32 +10,10 @@
 import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import { ConnectionNode } from "./connection-node";
+import { ConnectionTreeToolbar } from "./connection-tree-toolbar";
 import { connectionNodeKey, type TreeNode } from "../../../domain/tree-node-key";
 import { buildMultiSelectPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
-
-/** 带原生 tooltip 的小图标按钮（22px 正方形）。 */
-function TooltipButton({
-	children,
-	title,
-	onClick,
-}: {
-	children: JSX.Element;
-	title: string;
-	onClick?: () => void;
-}): JSX.Element {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			title={title}
-			className="dbx-iconbtn shrink-0"
-			style={{ height: 22, minWidth: 22, padding: 0 }}
-		>
-			{children}
-		</button>
-	);
-}
 
 export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
 	const {
@@ -88,44 +66,16 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 
 	return (
 		<div className="flex h-full flex-col bg-background">
-			{/* 标题工具条：左侧标题可收缩，右侧按钮组固定不收缩 */}
-			<div
-				className="flex h-9 shrink-0 items-center gap-1 px-2 text-[11px] font-medium text-muted-foreground"
-				style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)" }}
-			>
-				<span className="flex min-w-0 flex-1 items-center gap-1 truncate">
-					<span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0" />
-					<span className="truncate">连接</span>
-					{connectionNodes.length > 0 && (
-						<span className="shrink-0 text-[10px] text-muted-foreground/70">{connectionNodes.length}</span>
-					)}
-				</span>
-				<div className="flex shrink-0 items-center gap-0.5">
-					<TooltipButton onClick={expandAll} title="展开已加载节点">
-						<span className="icon-[lucide--chevrons-down-up] h-3 w-3" />
-					</TooltipButton>
-					<TooltipButton onClick={collapseAll} title="收起全部">
-						<span className="icon-[lucide--chevrons-up-down] h-3 w-3" />
-					</TooltipButton>
-					<TooltipButton onClick={() => { void refreshConnections(); }} title="刷新连接">
-						<span className="icon-[lucide--refresh-cw] h-3 w-3" />
-					</TooltipButton>
-					<TooltipButton
-						onClick={() => toggleSelectionMode()}
-						title={selectionMode ? "退出多选" : "多选库 / 表（作为 AI 上下文）"}
-					>
-						<span
-							className={`h-3 w-3 icon-[lucide--list-checks] ${selectionMode ? "text-foreground" : ""}`}
-						/>
-					</TooltipButton>
-					{onCollapse && (
-						<TooltipButton onClick={onCollapse} title="收起连接树">
-							<span className="icon-[lucide--panel-left-close] h-3 w-3" />
-						</TooltipButton>
-					)}
-				</div>
-			</div>
-
+			<ConnectionTreeToolbar
+				connectionCount={connectionNodes.length}
+				selectionMode={selectionMode}
+				onExpandAll={expandAll}
+				onCollapseAll={collapseAll}
+				onRefresh={() => void refreshConnections()}
+				onToggleSelectionMode={() => toggleSelectionMode()}
+				onAfterTransfer={() => void refreshConnections()}
+				onCollapsePanel={onCollapse}
+			/>
 			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}
 			<div className="shrink-0 px-2 py-1.5" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>
 				<div

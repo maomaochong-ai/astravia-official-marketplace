@@ -32,6 +32,11 @@ export interface TableNodeRef {
 	table: string;
 }
 
+/** 列节点的身份：解析 key 得到连接 / schema / 表 / 列名。 */
+export interface ColumnNodeRef extends TableNodeRef {
+	column: string;
+}
+
 function encodeSegments(parts: readonly string[]): string {
 	return parts.map((p) => encodeURIComponent(p)).join(":");
 }
@@ -96,4 +101,13 @@ export function parseTableNodeKey(key: string): TableNodeRef | null {
 	if (segments.length !== 3) return null;
 	const [connection, schema, table] = segments.map(decodeSegment);
 	return { connection, schema, table };
+}
+
+/** 从列节点 key 还原连接 / schema / 表 / 列名。key 不是 col: 时返回 null。 */
+export function parseColumnNodeKey(key: string): ColumnNodeRef | null {
+	if (treeNodeKind(key) !== "column") return null;
+	const segments = key.split(":").slice(1);
+	if (segments.length !== 4) return null;
+	const [connection, schema, table, column] = segments.map(decodeSegment);
+	return { connection, schema, table, column };
 }

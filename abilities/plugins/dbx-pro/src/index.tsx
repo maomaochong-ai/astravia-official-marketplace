@@ -11,6 +11,7 @@ import { definePlugin, type Disposable } from "@astravia-org/plugin-sdk";
 import { setRuntime, clearRuntime, isRuntimeActive } from "./runtime-contract";
 import { ensureEngineStarted, cancelEngineStartup } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
+import { registerTools } from "./tools/register-tools";
 // 样式按功能域拆分，避免单文件过大
 import "./style.css";
 import "./shared/styles/dbx-primitives.css";
@@ -19,11 +20,12 @@ import "./shared/styles/dbx-loading.css";
 import "./features/database-workspace/styles/sheet-modal.css";
 import "./features/database-workspace/styles/connection-editor.css";
 import "./features/database-workspace/styles/result-grid.css";
+import "./features/database-workspace/styles/sql-editor.css";
 import "./features/database-workspace/styles/ai-dialog.css";
 import "./features/database-workspace/styles/table-info.css";
 
 /** 插件版本号，用于显示和调试 */
-export const PLUGIN_VERSION = "0.0.66";
+export const PLUGIN_VERSION = "0.0.67";
 
 /** 当前实例 ID，用于区分新旧实例的 DOM 元素 */
 let _instanceId = 0;
@@ -158,6 +160,9 @@ export default definePlugin({
 			});
 		}
 
+		// 注册 Agent 工具（数据库查询、表结构浏览、查询分析）
+		const toolDisposables = registerTools(ctx);
+
 		// 安装并启动引擎 runtime（安全处理异步操作）
 		const engineStartupPromise = ensureEngineStarted(ctx).catch((reason: unknown) => {
 			const isActivationError = reason instanceof Error && (
@@ -189,6 +194,7 @@ export default definePlugin({
 			try { activityTab.dispose(); } catch { /* ignore */ }
 			try { workspaceView.dispose(); } catch { /* ignore */ }
 			try { inputAction?.dispose(); } catch { /* ignore */ }
+			for (const d of toolDisposables) { try { d.dispose(); } catch { /* ignore */ } }
 
 			// 5. 只清理属于旧实例的 DOM 元素
 			const roots = document.querySelectorAll(`[data-astravia-plugin-root="dbx-pro"][data-plugin-instance]:not([data-plugin-instance="${instanceId}"])`);

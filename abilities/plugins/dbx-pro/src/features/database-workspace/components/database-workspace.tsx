@@ -34,6 +34,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	const [rightPanelVisible, setRightPanelVisible] = useState(true);
+	const [historyPanelVisible, setHistoryPanelVisible] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const workspaceRef = useRef<HTMLDivElement>(null);
@@ -86,6 +87,15 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		setRightPanelVisible((v) => !v);
 	}
 
+	/** 切换历史面板显示/隐藏 */
+	function toggleHistoryPanel(): void {
+		setHistoryPanelVisible((v) => !v);
+		if (!historyPanelVisible) {
+			// 显示历史面板时，确保右栏可见
+			setRightPanelVisible(true);
+		}
+	}
+
 	async function toggleFullscreen() {
 		if (fullscreen) {
 			if (document.fullscreenElement) {
@@ -119,8 +129,10 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onOpenSettings={() => setSettingsOpen(true)}
 				onOpenAiAssistant={() => setAiAssistantOpen(true)}
 				onNewQuery={newQueryTab}
+				onToggleHistory={toggleHistoryPanel}
 				onToggleRightPanel={toggleRightPanel}
 				rightPanelVisible={rightPanelVisible}
+				historyVisible={historyPanelVisible}
 				fullscreen={fullscreen}
 				onToggleFullscreen={() => void toggleFullscreen()}
 			/>
@@ -132,7 +144,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				{[
 					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} />,
 					<SqlEditorWorkspace key="mid" />,
-					<RightPanel key="right" />,
+					<RightPanel key="right" historyVisible={historyPanelVisible} />,
 				]}
 			</SplitLayout>
 

@@ -151,7 +151,7 @@ export function TabBar(): JSX.Element {
 							key={tab.id}
 							onContextMenu={(e) => openMenu(e, tab)}
 							onClick={() => dispatch({ type: "setActiveTab", id: tab.id })}
-							className={`group flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2 text-[11px] transition-colors ${
+							className={`group flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition-colors ${
 								active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
 							}`}
 							style={{
@@ -185,7 +185,7 @@ export function TabBar(): JSX.Element {
 											setEditValue("");
 										}
 									}}
-									className="h-5 min-w-0 w-full rounded px-1 text-[11px] outline-none"
+									className="h-5 min-w-0 flex-1 rounded px-1 text-[11px] outline-none"
 									style={{
 										backgroundColor: "var(--background)",
 										color: "var(--foreground)",
@@ -195,7 +195,7 @@ export function TabBar(): JSX.Element {
 									onContextMenu={(e) => e.stopPropagation()}
 								/>
 							) : (
-								<span className="min-w-0 flex-1 truncate font-medium">{tab.label}</span>
+								<span className="min-w-0 truncate font-medium">{tab.label}</span>
 							)}
 							{state.tabs.length > 1 && (
 								<button
@@ -205,7 +205,7 @@ export function TabBar(): JSX.Element {
 										closeTab(tab.id);
 									}}
 									onContextMenu={(e) => e.stopPropagation()}
-									className="ml-0.5 shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+									className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
 									title="关闭 tab"
 								>
 									<span className="icon-[lucide--x] h-3 w-3" />

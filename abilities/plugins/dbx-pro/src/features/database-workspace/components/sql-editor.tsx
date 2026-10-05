@@ -29,6 +29,7 @@ import { tags } from "@lezer/highlight";
 import { autocompletion, closeBrackets, completionKeymap } from "@codemirror/autocomplete";
 import { MSSQL, MySQL, PostgreSQL, SQLite, sql } from "@codemirror/lang-sql";
 import { useWorkbench } from "../hooks/use-workbench";
+import { insertTableDrop, isTableDragOver } from "../services/sql-drop";
 import {
 	formatDialect,
 	mysql,
@@ -235,6 +236,38 @@ export function SqlEditor(): JSX.Element {
 	const running = activeTab?.isRunning ?? false;
 	const hasConn = Boolean(activeTab?.connectionName);
 
+	// 拖放高亮：dragenter/leave 在子元素间会抖动，用计数器收敛成一个布尔态。
+	const dragDepthRef = useRef(0);
+	const [dropActive, setDropActive] = useState(false);
+
+	function handleDragOver(e: React.DragEvent<HTMLDivElement>): void {
+		if (!isTableDragOver(e)) return;
+		e.preventDefault();
+		e.dataTransfer.dropEffect = "copy";
+	}
+
+	function handleDragEnter(e: React.DragEvent<HTMLDivElement>): void {
+		if (!isTableDragOver(e)) return;
+		e.preventDefault();
+		dragDepthRef.current += 1;
+		setDropActive(true);
+	}
+
+	function handleDragLeave(): void {
+		dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+		if (dragDepthRef.current === 0) setDropActive(false);
+	}
+
+	function handleDrop(e: React.DragEvent<HTMLDivElement>): void {
+		const view = viewRef.current;
+		if (!view || !isTableDragOver(e)) return;
+		// 阻断浏览器对 text/plain 的默认插入，避免与下面的自定义插入重复。
+		e.preventDefault();
+		dragDepthRef.current = 0;
+		setDropActive(false);
+		insertTableDrop(view, e);
+	}
+
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 */}
@@ -277,8 +310,22 @@ export function SqlEditor(): JSX.Element {
 			</div>
 
 			{/* CodeMirror 挂载点：按 tab.id 重建，overflow-hidden 防止光标/tooltip 溢出 */}
-			<div className="relative min-h-0 flex-1 overflow-hidden">
+			<div
+				className={`relative min-h-0 flex-1 overflow-hidden ${dropActive ? "dbx-sql-drop-active" : ""}`}
+				onDragEnter={handleDragEnter}
+				onDragOver={handleDragOver}
+				onDragLeave={handleDragLeave}
+				onDrop={handleDrop}
+			>
 				<div key={activeTab?.id} ref={hostRef} className="absolute inset-0" />
+				{dropActive && (
+					<div className="dbx-sql-drop-hint pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+						<span className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[11px]">
+							<span className="icon-[lucide--mouse-pointer-2] h-3.5 w-3.5" />
+							松开以插入引用
+						</span>
+					</div>
+				)}
 				{!editorReady && (
 					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground/70">
 						<span className="icon-[lucide--loader] mr-2 h-3 w-3 animate-spin" />

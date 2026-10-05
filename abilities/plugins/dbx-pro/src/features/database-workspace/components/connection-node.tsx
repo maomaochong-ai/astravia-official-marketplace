@@ -6,12 +6,14 @@
  * - 双击 connection：新建查询 tab；双击 table：预览数据
  * - 右键：丰富的上下文菜单（新建查询/预览/查看结构/生成SQL/添加到AI/复制等）
  * - 箭头：展开懒加载子节点
- * - 拖拽：支持拖拽节点到宿主对话框
+ * - 拖拽：表 / 列 / schema / 连接可拖进 SQL 编辑器，在落点插入 SQL 引用文本
  */
 
 import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
+import { parseColumnNodeKey } from "../../../domain/tree-node-key";
+import { buildTableDragPayload, writeTableDragPayload } from "../../../domain/table-drag";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 import {
@@ -405,38 +407,45 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	const statusDot = node.kind === "connection" ? state.connectionStatuses[node.label] ?? "idle" : undefined;
 
-	// ── 拖拽功能 ─────────────────────────────────────────
+	// ── 拖拽：把表 / 列 / schema / 连接拖进 SQL 编辑器插入引用 ─────────────
 	function handleDragStart(e: React.DragEvent): void {
-		// 设置拖拽数据
-		const dragData = {
-			kind: node.kind,
-			connectionName: connectionName ?? node.label,
-			tableName: node.kind === "table" ? node.label : undefined,
-			schema: node.kind === "schema" ? node.label : childScope,
-			qualifiedName: qualifiedName,
-		};
-		e.dataTransfer.setData("application/x-dbx-node", JSON.stringify(dragData));
-		e.dataTransfer.effectAllowed = "copy";
-		
-		// 设置拖拽图标（可选）
+		const conn = connectionName ?? node.label;
+		if (node.kind === "column") {
+			// 列节点的父表信息只存在 key 里（col:conn:schema:table:column）。
+			const ref = parseColumnNodeKey(node.key);
+			writeTableDragPayload(e.dataTransfer, buildTableDragPayload("column", {
+				connectionName: conn,
+				schema: schema || ref?.schema || undefined,
+				tableName: ref?.table,
+				columnName: node.label,
+				label: node.label,
+			}));
+		} else if (node.kind === "table") {
+			writeTableDragPayload(e.dataTransfer, buildTableDragPayload("table", {
+				connectionName: conn,
+				schema: childScope || undefined,
+				tableName: node.label,
+				label: node.label,
+			}));
+		} else {
+			writeTableDragPayload(e.dataTransfer, buildTableDragPayload(node.kind, {
+				connectionName: conn,
+				schema: node.kind === "schema" ? node.label : childScope || undefined,
+				label: node.label,
+			}));
+		}
 		if (e.currentTarget instanceof HTMLElement) {
 			e.dataTransfer.setDragImage(e.currentTarget, 10, 10);
 		}
 	}
 
-	function handleDragEnd(e: React.DragEvent): void {
-		// 拖拽结束清理
-		e.dataTransfer.clearData();
-	}
-
-	const isDraggable = node.kind === "table" || node.kind === "schema" || node.kind === "connection";
+	const isDraggable = node.kind === "table" || node.kind === "schema" || node.kind === "connection" || node.kind === "column";
 
 	return (
 		<div>
 			<div
 				draggable={isDraggable}
 				onDragStart={handleDragStart}
-				onDragEnd={handleDragEnd}
 				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-foreground/40 ${
 					active
 						? "text-foreground"

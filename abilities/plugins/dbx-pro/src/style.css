@@ -18,13 +18,11 @@
 }
 
 /* ============================================================
- * dbx-pro 工作台设计系统（全部锚定 @scope 根，不污染宿主全局）
+ * dbx-pro 工作台设计系统（全部锚定 .dbx-root 根，不污染宿主全局）
  * 边框用半透明前景色，随明暗主题自适应；视觉靠色块层级而非粗实线。
- * 注意：插件 CSS 最终被 @scope 包裹，其内部相对选择器按「:scope + 后代」
- * 解析，普通类选择器匹配不到作用域根自身。因此 token 必须用 ':scope'
- * 直接定义在根元素上，否则 var(--dbx-*) 全部失效，界面会失去所有边框/底色。
+ * 注意：所有变量必须定义在 .dbx-root 下，不能使用 :scope（会泄漏到宿主根节点）。
  * ============================================================ */
-:scope {
+.dbx-root {
 	--dbx-line: color-mix(in srgb, var(--foreground) 16%, transparent);
 	--dbx-line-soft: color-mix(in srgb, var(--foreground) 7%, transparent);
 	--dbx-surface: color-mix(in srgb, var(--foreground) 3.5%, var(--background));

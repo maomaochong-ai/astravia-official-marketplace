@@ -1,5 +1,5 @@
 /**
- * 工作台顶栏 — 左：新建连接 / 新建查询 / AI 协助；右：右栏 / 刷新 / 设置 / 全屏。
+ * 工作台顶栏 — 左：新建连接 / 新建查询 / AI 协助；右：历史 / 右栏 / 设置 / 全屏。
  *
  * 不展示「当前连接」静态信息，中间交互靠图标。
  * 表详情功能已迁移到查询网格顶部工具栏的"表属性"按钮，此处不再重复。
@@ -13,9 +13,11 @@ export interface WorkbenchTopBarProps {
 	onOpenSettings: () => void;
 	onOpenAiAssistant: () => void;
 	onNewQuery: () => void;
+	onToggleHistory: () => void;
 	/** 切换右栏显示/隐藏 */
 	onToggleRightPanel: () => void;
 	rightPanelVisible: boolean;
+	historyVisible: boolean;
 	fullscreen: boolean;
 	onToggleFullscreen: () => void;
 }
@@ -25,12 +27,14 @@ export function WorkbenchTopBar({
 	onOpenSettings,
 	onOpenAiAssistant,
 	onNewQuery,
+	onToggleHistory,
 	onToggleRightPanel,
 	rightPanelVisible,
+	historyVisible,
 	fullscreen,
 	onToggleFullscreen,
 }: WorkbenchTopBarProps): JSX.Element {
-	const { refreshConnections } = useWorkbench();
+	const { history } = useWorkbench();
 
 	return (
 		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
@@ -68,20 +72,21 @@ export function WorkbenchTopBar({
 			<div className="flex shrink-0 items-center gap-1">
 				<button
 					type="button"
+					onClick={onToggleHistory}
+					title="查询历史"
+					className={`dbx-iconbtn ${historyVisible ? "is-active" : ""}`}
+				>
+					<span className="icon-[lucide--history] h-3.5 w-3.5" />
+					{history.length > 0 && <span className="text-[10px] ml-0.5">{history.length}</span>}
+				</button>
+				<button
+					type="button"
 					onClick={onToggleRightPanel}
 					title={rightPanelVisible ? "隐藏右栏" : "显示右栏"}
 					aria-expanded={rightPanelVisible}
 					className={`dbx-iconbtn ${rightPanelVisible ? "is-active" : ""}`}
 				>
 					<span className="icon-[lucide--panel-right] h-3.5 w-3.5" />
-				</button>
-				<button
-					type="button"
-					onClick={() => { void refreshConnections(); }}
-					title="刷新连接"
-					className="dbx-iconbtn"
-				>
-					<span className="icon-[lucide--refresh-cw] h-3.5 w-3.5" />
 				</button>
 				<button
 					type="button"

@@ -1,0 +1,23 @@
+/* ============================================================
+ * SQL 编辑器：连接树拖放高亮
+ * ============================================================ */
+
+/* 拖拽悬停时编辑器区域内圈描边（不挤占布局，不遮挡内容滚动条） */
+.dbx-sql-drop-active {
+	outline: 2px solid color-mix(in srgb, var(--foreground) 45%, transparent);
+	outline-offset: -2px;
+	border-radius: 6px;
+	background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+
+.dbx-sql-drop-active .cm-editor {
+	opacity: 0.75;
+}
+
+/* 落点提示胶囊 */
+.dbx-sql-drop-hint span {
+	background: var(--dbx-surface);
+	border-color: var(--dbx-line);
+	color: var(--foreground);
+	box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+}
