@@ -397,18 +397,48 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	const statusDot = node.kind === "connection" ? state.connectionStatuses[node.label] ?? "idle" : undefined;
 
+	// ── 拖拽功能 ─────────────────────────────────────────
+	function handleDragStart(e: React.DragEvent): void {
+		// 设置拖拽数据
+		const dragData = {
+			kind: node.kind,
+			connectionName: connectionName ?? node.label,
+			tableName: node.kind === "table" ? node.label : undefined,
+			schema: node.kind === "schema" ? node.label : childScope,
+			qualifiedName: qualifiedName,
+		};
+		e.dataTransfer.setData("application/x-dbx-node", JSON.stringify(dragData));
+		e.dataTransfer.effectAllowed = "copy";
+		
+		// 设置拖拽图标（可选）
+		if (e.currentTarget instanceof HTMLElement) {
+			e.dataTransfer.setDragImage(e.currentTarget, 10, 10);
+		}
+	}
+
+	function handleDragEnd(e: React.DragEvent): void {
+		// 拖拽结束清理
+		e.dataTransfer.clearData();
+	}
+
+	const isDraggable = node.kind === "table" || node.kind === "schema" || node.kind === "connection";
+
 	return (
 		<div>
 			<div
-			className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-foreground/40 ${
-				active
-					? "text-foreground"
-					: "text-foreground/70 hover:bg-[var(--dbx-hover)]"
-			}`}
-			style={{
-				paddingLeft: 6 + depth * 14,
-				backgroundColor: active ? "var(--dbx-surface-2)" : undefined,
-			}}
+				draggable={isDraggable}
+				onDragStart={handleDragStart}
+				onDragEnd={handleDragEnd}
+				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-foreground/40 ${
+					active
+						? "text-foreground"
+						: "text-foreground/70 hover:bg-[var(--dbx-hover)]"
+				}`}
+				style={{
+					paddingLeft: 6 + depth * 14,
+					backgroundColor: active ? "var(--dbx-surface-2)" : undefined,
+					cursor: isDraggable ? "grab" : "default",
+				}}
 				onClick={handleClick}
 				onDoubleClick={handleDoubleClick}
 				onContextMenu={handleContextMenu}
