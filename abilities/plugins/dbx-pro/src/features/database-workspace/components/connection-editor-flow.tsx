@@ -16,7 +16,7 @@ import { ConnectionFields } from "./connection-fields";
 import { ConnectionList } from "./connection-list";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 import { DB_TYPE_MANIFEST, type DbConnection, type DbType } from "../../../domain/connection-config";
-import { resolveDatabaseIcon } from "../../../domain/database-icons";
+import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 
 export interface ConnectionEditorFlowProps {
 	/** 连接增 / 删 / 改后通知外层重载工作台（回传受影响连接名）。 */
@@ -32,56 +32,6 @@ interface Category {
 	key: string;
 	label: string;
 	types: typeof DB_TYPE_MANIFEST;
-}
-
-/** 判定插件根当前是否深色（按背景亮度，兼容宿主强制主题）。 */
-function detectDark(): boolean {
-	const root = document.querySelector('[data-astravia-plugin-root="dbx-pro"]');
-	const bg = root ? getComputedStyle(root).backgroundColor : "";
-	const m = bg.match(/\d+(?:\.\d+)?/g);
-	if (!m || m.length < 3) return true;
-	const [r, g, b] = m.slice(0, 3).map(Number);
-	return 0.299 * r + 0.587 * g + 0.114 * b < 90;
-}
-
-/**
- * 数据库类型图标 — 使用本地打包的真实品牌图形。
- * 未收录品牌回退到通用数据库图标（不是彩色字母占位块）。
- */
-function DatabaseTypeIcon({ dbType, size = "medium" }: { dbType: string; size?: "small" | "medium" | "large" }): JSX.Element {
-	const [isDark] = useState(detectDark);
-	const sizeClasses = {
-		small: "h-5 w-5",
-		medium: "h-8 w-8",
-		large: "h-10 w-10",
-	};
-	const icon = resolveDatabaseIcon(dbType, isDark);
-
-	if (!icon) {
-		// 通用数据库图形：明确的中性兜底，不伪造品牌
-		return (
-			<span
-				className={`${sizeClasses[size]} flex items-center justify-center text-muted-foreground`}
-			>
-				<span className={`icon-[lucide--database] ${size === "small" ? "h-4 w-4" : "h-5 w-5"}`} />
-			</span>
-		);
-	}
-
-	return (
-		<span className={`${sizeClasses[size]} flex items-center justify-center overflow-hidden`}>
-			<img
-				src={icon.src}
-				alt=""
-				aria-hidden="true"
-				className="h-full w-full object-contain"
-				style={{
-					transform: `scale(${icon.scale ?? 1})`,
-					...(icon.darkFilter ? { filter: icon.darkFilter } : {}),
-				}}
-			/>
-		</span>
-	);
 }
 
 const RELATIONAL_TYPES = ["mysql", "postgres", "mariadb", "sqlite", "sqlserver", "oracle", "db2"];

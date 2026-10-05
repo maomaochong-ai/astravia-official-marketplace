@@ -40,6 +40,8 @@ export interface ConnectionEditorState {
 	startEdit: (conn: DbConnection) => void;
 	/** 从表单退回列表。 */
 	back: () => void;
+	/** 重新从存储加载连接列表。 */
+	refresh: () => Promise<void>;
 	/** 保存成功（已落盘并退回列表）返回 true；校验失败或出错返回 false。 */
 	save: () => Promise<boolean>;
 	remove: (conn: DbConnection) => Promise<void>;
@@ -236,6 +238,7 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		startNew,
 		startEdit,
 		back,
+		refresh,
 		save,
 		remove,
 		test,

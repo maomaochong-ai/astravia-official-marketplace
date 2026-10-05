@@ -3,20 +3,6 @@
 /* lucide / solar 图标按需生成（icon-[lucide--*] / icon-[solar--*]）。 */
 @plugin "@iconify/tailwind4";
 
-/* 映射宿主语义 token，组件统一用 bg-background / text-foreground 等。 */
-@theme inline {
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--color-border: var(--border);
-	--color-card: var(--card);
-	--color-popover: var(--popover);
-	--color-accent: var(--accent);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
-	--color-primary: var(--primary);
-	--color-destructive: var(--destructive);
-}
-
 /* ============================================================
  * dbx-pro 工作台设计系统（全部锚定 .dbx-root 根，不污染宿主全局）
  * 边框用半透明前景色，随明暗主题自适应；视觉靠色块层级而非粗实线。
@@ -32,8 +18,6 @@
 	--dbx-gutter: color-mix(in srgb, var(--background), #000 9%);
 	--dbx-primary: var(--foreground);
 	--dbx-primary-fg: var(--background);
-	/* 作用域内把 Tailwind border-border 统一指向柔线，一次柔化所有硬边框 */
-	--color-border: var(--dbx-line);
 }
 
 /* CodeMirror：编辑器容器定位 + 光标配色。

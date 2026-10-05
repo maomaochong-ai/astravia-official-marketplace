@@ -5,6 +5,7 @@ import {
 	columnNodeKey,
 	connectionFromNodeKey,
 	connectionNodeKey,
+	parseColumnNodeKey,
 	parseTableNodeKey,
 	schemaNodeKey,
 	tableNodeKey,
@@ -82,5 +83,19 @@ describe("tree node key", () => {
 	it("非表节点的 key 不按表解析", () => {
 		assert.equal(parseTableNodeKey(schemaNodeKey("c", "s")), null);
 		assert.equal(parseTableNodeKey("table:a"), null);
+	});
+
+	it("列节点 key 还原连接 / schema / 表 / 列", () => {
+		assert.deepEqual(parseColumnNodeKey(columnNodeKey("pgsql", "edw", "orders", "order:id")), {
+			connection: "pgsql",
+			schema: "edw",
+			table: "orders",
+			column: "order:id",
+		});
+	});
+
+	it("非列节点的 key 不按列解析", () => {
+		assert.equal(parseColumnNodeKey(tableNodeKey("c", "s", "t")), null);
+		assert.equal(parseColumnNodeKey("col:only-one"), null);
 	});
 });

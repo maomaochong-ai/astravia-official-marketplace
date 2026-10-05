@@ -9,50 +9,13 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
-import { ConnectionList } from "./connection-list";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 import { ConnectionEditorFlow } from "./connection-editor-flow";
+import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
-import { resolveDatabaseIcon } from "../../../domain/database-icons";
 import { DB_TYPE_MANIFEST, type DbConnection } from "../../../domain/connection-config";
 
 type ViewStep = "dashboard" | "editor";
-
-function detectDark(): boolean {
-	const root = document.querySelector('[data-astravia-plugin-root="dbx-pro"]');
-	const bg = root ? getComputedStyle(root).backgroundColor : "";
-	const m = bg.match(/\d+(?:\.\d+)?/g);
-	if (!m || m.length < 3) return true;
-	const [r, g, b] = m.slice(0, 3).map(Number);
-	return 0.299 * r + 0.587 * g + 0.114 * b < 90;
-}
-
-function DatabaseTypeIcon({ dbType, size = 28 }: { dbType: string; size?: number }): JSX.Element {
-	const [isDark] = useState(detectDark);
-	const icon = resolveDatabaseIcon(dbType, isDark);
-	if (!icon) {
-		const visual = getDatabaseTypeVisual(dbType);
-		return (
-			<span
-				className="flex items-center justify-center rounded-md font-bold text-white"
-				style={{ width: size, height: size, backgroundColor: visual.color, fontSize: size * 0.35 }}
-			>
-				{visual.badge}
-			</span>
-		);
-	}
-	return (
-		<span className="flex items-center justify-center overflow-hidden" style={{ width: size, height: size }}>
-			<img
-				src={icon.src}
-				alt=""
-				aria-hidden="true"
-				className="h-full w-full object-contain"
-				style={{ transform: `scale(${icon.scale ?? 1})`, ...(icon.darkFilter ? { filter: icon.darkFilter } : {}) }}
-			/>
-		</span>
-	);
-}
 
 export function ConnectionManagerView(): JSX.Element {
 	const { state, refreshConnections } = useWorkbench();
