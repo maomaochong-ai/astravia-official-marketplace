@@ -29,11 +29,13 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 	const [dragging, setDragging] = useState<"left" | "right" | null>(null);
 
 	// 各栏像素约束（中栏始终保留，分隔线无法拖到不合理的大小）
+	// MIN_MID 补偿 gutter 的 p-1（8px）+ 两条 4px 竖向拖拽条（8px），
+	// 约束按容器全宽换算时中栏实际可用宽度始终 ≥ 320。
 	const MIN_LEFT = 180;
 	const MAX_LEFT_RATIO = 0.4;
 	const MIN_RIGHT = 260;
 	const MAX_RIGHT_RATIO = 0.5;
-	const MIN_MID = 320;
+	const MIN_MID = 344;
 
 	const onPointerMove = useCallback((e: PointerEvent) => {
 		const drag = dragRef.current;
@@ -134,10 +136,10 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 	const effectiveRight = rightW || Math.round(baseWidth * 0.2);
 
 	return (
-		<div ref={containerRef} className="relative flex min-h-0 flex-1">
-			{/* 左栏（可收起为细条） */}
+		<div ref={containerRef} className="dbx-gutter relative flex min-h-0 flex-1 p-1">
+			{/* 左栏卡片（可收起为细条） */}
 			<div
-				className="min-h-0 overflow-hidden"
+				className="dbx-panel-card min-h-0"
 				style={{ width: leftCollapsed ? 36 : effectiveLeft, flexShrink: 0 }}
 			>
 				{leftCollapsed ? (
@@ -155,8 +157,10 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 				)}
 			</div>
 
-			{/* 左分隔条：与水平分隔条共用发丝线样式 */}
-			{!leftCollapsed && (
+			{/* 左分隔条：卡片缝隙中的透明拖拽条；左栏收起时保留同宽缝隙 */}
+			{leftCollapsed ? (
+				<div style={{ width: 4, flexShrink: 0 }} />
+			) : (
 				<div
 					onPointerDown={(e) => startDrag("left", e)}
 					className={`dbx-splitbar dbx-splitbar-v ${dragging === "left" ? "is-dragging" : ""}`}
@@ -165,8 +169,8 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 				</div>
 			)}
 
-			{/* 中栏 */}
-			<div className="min-w-0 min-h-0 flex-1 overflow-hidden">
+			{/* 中栏卡片 */}
+			<div className="dbx-panel-card min-w-0 min-h-0 flex-1">
 				{children[1]}
 			</div>
 
@@ -180,10 +184,10 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 				</div>
 			)}
 
-			{/* 右栏（可通过顶栏按钮收起） */}
+			{/* 右栏卡片（可通过顶栏按钮收起） */}
 			{!rightCollapsed && (
 				<div
-					className="min-h-0 overflow-hidden"
+					className="dbx-panel-card min-h-0"
 					style={{ width: effectiveRight, flexShrink: 0 }}
 				>
 					{children[2]}

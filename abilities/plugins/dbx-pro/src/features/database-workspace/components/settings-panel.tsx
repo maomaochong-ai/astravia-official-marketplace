@@ -54,27 +54,29 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 				role="dialog"
 				aria-modal="true"
 			>
-				<div className="flex shrink-0 items-center gap-2 px-4 py-3" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>
+				<div className="dbx-panel-header">
 					<span className="icon-[lucide--settings] h-4 w-4 text-muted-foreground" />
-					<h3 className="flex-1 text-[12.5px] font-semibold text-foreground">工作台设置</h3>
-					<button
-						type="button"
-						onClick={onReset}
-						disabled={isDefaultSettings(settings)}
-						className="dbx-iconbtn"
-						style={{ height: 24 }}
-					>
-						恢复默认
-					</button>
-					<button
-						type="button"
-						onClick={onClose}
-						title="关闭"
-						className="dbx-iconbtn"
-						style={{ height: 24, minWidth: 24, padding: 0 }}
-					>
-						<span className="icon-[lucide--x] h-3.5 w-3.5" />
-					</button>
+					<h3 className="dbx-panel-header-title">工作台设置</h3>
+					<div className="dbx-panel-header-actions">
+						<button
+							type="button"
+							onClick={onReset}
+							disabled={isDefaultSettings(settings)}
+							className="dbx-iconbtn"
+							style={{ height: 24 }}
+						>
+							恢复默认
+						</button>
+						<button
+							type="button"
+							onClick={onClose}
+							title="关闭"
+							className="dbx-iconbtn"
+							style={{ height: 24, minWidth: 24, padding: 0 }}
+						>
+							<span className="icon-[lucide--x] h-3.5 w-3.5" />
+						</button>
+					</div>
 				</div>
 
 				<div className="dbx-scroll space-y-4 overflow-y-auto p-4">

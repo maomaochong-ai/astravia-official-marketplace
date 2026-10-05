@@ -127,15 +127,14 @@ export default definePlugin({
 
 		// 安装并启动引擎 runtime（bridge 内联 + 平台二进制下载校验）。
 		// 失败必须上报，不能静默，否则保存连接时只会得到笼统的 not ready。
-		try {
-			await ensureEngineStarted(ctx);
-		} catch (reason: unknown) {
+		// 启动失败不阻断 UI 渲染：用户仍可查看界面，只是查询功能不可用。
+		ensureEngineStarted(ctx).catch((reason: unknown) => {
 			ctx.ui.notify({
-				message: "dbx-pro 引擎服务启动失败",
+				message: "dbx-pro 引擎服务启动失败，查询功能暂不可用",
 				error: reason,
 				variant: "error",
 			});
-		}
+		});
 
 		return () => {
 			activityTab.dispose();

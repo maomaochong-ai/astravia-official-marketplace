@@ -22,15 +22,30 @@
  * 边框用半透明前景色，随明暗主题自适应；视觉靠色块层级而非粗实线。
  * ============================================================ */
 .dbx-root {
-	--dbx-line: color-mix(in srgb, var(--foreground) 13%, transparent);
+	--dbx-line: color-mix(in srgb, var(--foreground) 16%, transparent);
 	--dbx-line-soft: color-mix(in srgb, var(--foreground) 7%, transparent);
 	--dbx-surface: color-mix(in srgb, var(--foreground) 3.5%, var(--background));
 	--dbx-surface-2: color-mix(in srgb, var(--foreground) 6%, var(--background));
 	--dbx-hover: color-mix(in srgb, var(--foreground) 9%, transparent);
+	/* 三栏 gutter：比面板底色略深，卡片之间的 4px 缝隙透出此色 */
+	--dbx-gutter: color-mix(in srgb, var(--background), #000 9%);
 	--dbx-primary: var(--foreground);
 	--dbx-primary-fg: var(--background);
 	/* 作用域内把 Tailwind border-border 统一指向柔线，一次柔化所有硬边框 */
 	--color-border: var(--dbx-line);
+}
+
+/* 三栏外层 gutter（对齐 dbx 桌面壳 app-panel-gutter） */
+.dbx-gutter {
+	background: var(--dbx-gutter);
+}
+
+/* 面板卡片：小圆角 + 柔边框，模块边界靠卡片而非发丝线 */
+.dbx-panel-card {
+	border: 1px solid var(--dbx-line);
+	border-radius: 6px;
+	background: var(--background);
+	overflow: hidden;
 }
 
 /* 横向工具条：统一底色 + 柔和下分隔线 */
@@ -116,8 +131,8 @@
 
 /* ============================================================
  * 面板分隔条（对齐 dbx 桌面壳 splitpanes）：
- * 3px 透明确热区 + 1px 发丝线，外延隐形热区到 7px；悬浮/拖拽时高亮。
- * 横竖共用：-h 用于编辑器/结果之间，-v 用于三栏之间。
+ * 竖向 = 卡片缝隙里的 4px 透明拖拽条（边界由卡片自身边框表达）；
+ * 横向 = 中卡片内 3px 条 + 1px 发丝线；均外延隐形热区，悬浮/拖拽时高亮。
  * ============================================================ */
 .dbx-splitbar {
 	position: relative;
@@ -138,8 +153,8 @@
 	cursor: row-resize;
 }
 .dbx-splitbar-v {
-	width: 3px;
-	border-left: 1px solid var(--dbx-line);
+	width: 4px;
+	/* 无边框：两侧卡片自带边框，缝隙透出 gutter 底色 */
 	cursor: col-resize;
 }
 .dbx-split-hit { position: absolute; inset: 0; }
@@ -295,3 +310,106 @@ textarea.dbx-form-input {
 /* 历史面板标题：柔和分隔，不出现刺眼白线 */
 .dbx-history-head { border-bottom: 1px solid var(--dbx-line-soft); }
 .dbx-history-head::after { content: none; }
+
+/* ============================================================
+ * 统一面板分隔样式（所有弹出式面板 / 卡片 / 栏目共用）
+ * ============================================================ */
+
+/* 面板内段落分隔：柔和下边线，统一间距 */
+.dbx-section-divider {
+	border-bottom: 1px solid var(--dbx-line-soft);
+	margin: 0;
+}
+
+/* 面板头部统一样式：图标 + 标题 + 右侧操作 */
+.dbx-panel-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+.dbx-panel-header-title {
+	flex: 1;
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--foreground);
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dbx-panel-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+/* 统一弹出面板卡片（居中模态）样式 */
+.dbx-modal-card {
+	position: relative;
+	z-index: 101;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border-radius: 8px;
+	border: 1px solid var(--dbx-line);
+	background: var(--background);
+	box-shadow: 0 8px 40px rgb(0 0 0 / 0.18), 0 2px 8px rgb(0 0 0 / 0.08);
+}
+
+/* 统一侧滑面板（sheet）样式增强 */
+.dbx-sheet {
+	border-left: 1px solid var(--dbx-line);
+}
+
+/* 面板底部操作栏统一 */
+.dbx-panel-footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	flex-shrink: 0;
+	border-top: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+
+/* 栏目间可见分隔：三栏内各面板之间的分隔线 */
+.dbx-column-sep {
+	width: 1px;
+	flex-shrink: 0;
+	background: var(--dbx-line);
+	align-self: stretch;
+}
+
+/* 查询网格与结果面板之间的分隔 */
+.dbx-result-sep {
+	height: 1px;
+	flex-shrink: 0;
+	background: var(--dbx-line-soft);
+}
+
+/* 统一面板内分组卡片 */
+.dbx-panel-group {
+	border: 1px solid var(--dbx-line-soft);
+	border-radius: 6px;
+	background: var(--background);
+	overflow: hidden;
+}
+.dbx-panel-group-header {
+	padding: 8px 12px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--muted-foreground);
+	border-bottom: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+.dbx-panel-group-body {
+	padding: 10px 12px;
+}

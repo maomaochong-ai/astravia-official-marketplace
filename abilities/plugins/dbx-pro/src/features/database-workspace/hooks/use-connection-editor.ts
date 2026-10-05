@@ -204,7 +204,17 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			const outcome = await engineListSchemas(editing.name, editing.db_type);
 			setAvailableSchemas(outcome.supported ? outcome.schemas : []);
 		} catch (err) {
-			alert(`拉取 Schema 失败: ${err instanceof Error ? err.message : String(err)}`);
+			const errMsg = err instanceof Error ? err.message : String(err);
+			const errCode = (err as { code?: string } | null)?.code;
+			if (errCode === "ENGINE_NOT_READY") {
+				alert("拉取 Schema 失败: 引擎服务尚未就绪，请稍等片刻后重试。");
+			} else if (errMsg.includes("no PostgreSQL user name") || errMsg.includes("28000")) {
+				alert("拉取 Schema 失败: 数据库连接缺少用户名，请检查连接配置。");
+			} else if (errMsg.includes("Service is not ready")) {
+				alert("拉取 Schema 失败: 引擎服务正在启动中，请稍等片刻后重试。");
+			} else {
+				alert(`拉取 Schema 失败: ${errMsg}`);
+			}
 		} finally {
 			setLoadingSchemas(false);
 		}

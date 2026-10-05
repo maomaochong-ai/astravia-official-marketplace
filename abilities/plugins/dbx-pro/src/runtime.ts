@@ -115,7 +115,7 @@ async function waitForStatus(
 	accept: (status: PluginServiceStatus) => boolean,
 	label: string,
 ): Promise<PluginServiceStatus> {
-	const deadline = Date.now() + 120_000;
+	const deadline = Date.now() + 60_000;
 	for (;;) {
 		const status = await context.services.getStatus(SERVICE_ID);
 		if (status.phase === "failed") throw new Error(status.message ?? `${label}失败`);

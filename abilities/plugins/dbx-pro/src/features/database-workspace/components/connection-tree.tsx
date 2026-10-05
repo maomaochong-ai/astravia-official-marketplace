@@ -91,16 +91,17 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 			{/* 标题工具条（对齐 dbx 桌面壳：浅色底 + 紧凑高，右侧图标带 tooltip） */}
 			<div
 				className="dbx-scroll flex h-9 shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-2 text-[11px] font-medium text-muted-foreground"
-				style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)", scrollbarWidth: "none" }}
+				style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)", scrollbarWidth: "none", minWidth: 0 }}
 			>
-				<span className="flex shrink-0 items-center gap-1.5 pl-1">
-					<span className="icon-[lucide--database] h-3.5 w-3.5" />
-					连接
+				<span className="flex shrink-0 items-center gap-1.5 pl-1 min-w-0">
+					<span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0" />
+					<span className="truncate">连接</span>
 					{connectionNodes.length > 0 && (
-						<span className="text-[10px] text-muted-foreground/70">{connectionNodes.length}</span>
+						<span className="shrink-0 text-[10px] text-muted-foreground/70">{connectionNodes.length}</span>
 					)}
 				</span>
 			<span className="min-w-1 flex-1" />
+			<div className="flex shrink-0 items-center gap-0.5">
 			<TooltipButton onClick={expandAll} title="展开已加载节点">
 				<span className="icon-[lucide--chevrons-down-up] h-3 w-3" />
 			</TooltipButton>
@@ -123,6 +124,7 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 					<span className="icon-[lucide--panel-left-close] h-3 w-3" />
 				</TooltipButton>
 			)}
+			</div>
 		</div>
 
 			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}

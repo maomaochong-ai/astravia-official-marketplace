@@ -163,6 +163,14 @@ async function engineRequest<T>(path: string, body: unknown, options: CallOption
 			timeoutMs: clampTimeout(options.timeoutMs),
 		});
 	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error);
+		if (msg.includes("Service is not ready") || msg.includes("not ready")) {
+			throw new EngineClientError(
+				ENGINE_NOT_READY,
+				"引擎服务正在启动中，请稍等片刻后重试",
+				{ detail: error },
+			);
+		}
 		throw toEngineClientError(error);
 	}
 	const envelope = response.body;
@@ -173,7 +181,15 @@ async function engineRequest<T>(path: string, body: unknown, options: CallOption
 		});
 	}
 	if (envelope.ok) return envelope.data;
-	throw new EngineClientError(envelope.error?.code ?? "ENGINE_ERROR", envelope.error?.message ?? "引擎调用失败", {
+	const errCode = envelope.error?.code ?? "ENGINE_ERROR";
+	const errMsg = envelope.error?.message ?? "引擎调用失败";
+	if (errMsg.includes("no PostgreSQL user name") || errMsg.includes("28000")) {
+		throw new EngineClientError(errCode, "数据库连接缺少用户名，请检查连接配置", {
+			status: response.status,
+			detail: envelope.error?.detail,
+		});
+	}
+	throw new EngineClientError(errCode, errMsg, {
 		status: response.status,
 		detail: envelope.error?.detail,
 	});
