@@ -119,11 +119,11 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 					<>
 						{activeTab === "overview" && <OverviewTab selection={selection} columns={columns} />}
 						{activeTab === "columns" && <ColumnsTab columns={columns} />}
-						{activeTab === "indexes" && <PlaceholderTab message="索引信息需要从引擎获取，暂未实现" />}
-						{activeTab === "foreignKeys" && <PlaceholderTab message="外键信息需要从引擎获取，暂未实现" />}
-						{activeTab === "triggers" && <PlaceholderTab message="触发器信息需要从引擎获取，暂未实现" />}
-						{activeTab === "constraints" && <PlaceholderTab message="约束信息需要从引擎获取，暂未实现" />}
-						{activeTab === "partitions" && <PlaceholderTab message="分区信息需要从引擎获取，暂未实现" />}
+				{activeTab === "indexes" && <PlaceholderTab feature="索引" />}
+				{activeTab === "foreignKeys" && <PlaceholderTab feature="外键" />}
+				{activeTab === "triggers" && <PlaceholderTab feature="触发器" />}
+				{activeTab === "constraints" && <PlaceholderTab feature="约束" />}
+				{activeTab === "partitions" && <PlaceholderTab feature="分区" />}
 					</>
 				)}
 			</div>
@@ -192,12 +192,15 @@ function ColumnsTab({ columns }: { columns: EngineColumn[] }): JSX.Element {
 	);
 }
 
-/** 占位 Tab（暂未实现的功能） */
-function PlaceholderTab({ message }: { message: string }): JSX.Element {
+/** 占位 Tab（引擎不支持的功能） */
+function PlaceholderTab({ feature }: { feature: string }): JSX.Element {
 	return (
 		<div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-			<span className="icon-[lucide--construction] h-8 w-8 opacity-30 mb-2" />
-			<span className="text-[11px]">{message}</span>
+			<span className="icon-[lucide--puzzle] h-8 w-8 opacity-30 mb-2" />
+			<span className="text-[11px] font-medium mb-1">{feature} 需要引擎支持</span>
+			<span className="text-[10px] text-muted-foreground/60 text-center px-4">
+				当前 dbx-mcp 版本暂不支持该功能，请升级引擎后重试
+			</span>
 		</div>
 	);
 }

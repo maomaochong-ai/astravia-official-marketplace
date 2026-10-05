@@ -163,15 +163,6 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
 	}
 
-	function showStructure(): void {
-		if (!connectionName) return;
-		dispatch({
-			type: "selectRightTable",
-			selection: { connectionName, tableName: node.label, schema: childScope },
-		});
-		void loadNodeChildren(node.key, connectionName, { schema: childScope });
-	}
-
 	function countTable(): void {
 		if (!connectionName) return;
 		void openPreviewTab(connectionName, `SELECT COUNT(*) AS cnt FROM ${qualifiedName};`, "计数");
@@ -351,8 +342,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						}
 					},
 					{ type: "separator" },
-					// 查看结构
-					{ type: "item", label: "查看表结构", icon: "icon-[lucide--columns-3]", onClick: showStructure },
+					// 统计
 					{ type: "item", label: "统计行数", icon: "icon-[lucide--hash]", onClick: countTable },
 					{ type: "separator" },
 					// 生成 SQL 子菜单

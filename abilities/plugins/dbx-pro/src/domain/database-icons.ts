@@ -150,7 +150,7 @@ const ASSET_ICONS: Record<string, string> = {
 };
 
 /** 深色主题特殊处理：个别 logo 在深色下需要换图或滤镜。 */
-function darkAdjustment(key: string): Pick<DatabaseIcon, "darkFilter" | "src"> | null {
+function darkAdjustment(key: string): { darkFilter?: string; src?: string } | null {
 	if (key === "easysearch") return { darkFilter: "brightness(0) invert(82%)" };
 	if (key === "transwarp" || key === "transwarp_inceptor") return { darkFilter: "brightness(1.6)" };
 	if (key === "uxdb") {
