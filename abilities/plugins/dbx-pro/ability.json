@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "dbx-pro",
-  "version": "0.0.49",
+  "version": "0.0.50",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",
