@@ -3,7 +3,7 @@
  *
  * - 行号列（横向滚动时固定左侧）；列宽拖拽
  * - 双击单元格 → 详情弹窗；右键单元格 → 复制 / 导出菜单
- * - 工具栏：复制为 TSV、导出 CSV
+ * - 工具栏：复制为 TSV、导出 CSV、表属性
  * - 分页：
  *   - 服务端分页（表预览 / 可分页 SELECT）：引擎按 LIMIT/OFFSET 取页，
  *     翻页经 onPageChange 重跑；总数 COUNT 未回来时只按「本页是否装满」给下一页。
@@ -28,6 +28,8 @@ import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml } from "../services/result-export";
 import { CellDisplay } from "./cell-display";
+import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
+import { useWorkbench } from "../hooks/use-workbench";
 
 interface Props {
 	columns: string[];
@@ -81,6 +83,25 @@ export function ResultGrid({
 	const [sort, setSort] = useState<{ col: string; dir: "asc" | "desc" } | null>(null);
 	const [aiDialogOpen, setAiDialogOpen] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState("");
+	const [tableInfoOpen, setTableInfoOpen] = useState(false);
+	const [tableInfoSelection, setTableInfoSelection] = useState<TableInfoSelection | null>(null);
+
+	// 尝试从 SQL 中解析表名（用于表属性按钮）
+	const { state } = useWorkbench();
+	const parsedTableName = useMemo(() => {
+		if (!sql) return null;
+		// 简单解析：SELECT ... FROM table_name 或 SELECT ... FROM schema.table_name
+		const match = sql.match(/FROM\s+["`]?(\w+(?:\.["`]?\w+)?)[\s;)]?/i);
+		if (match) {
+			const full = match[1];
+			const parts = full.split(".");
+			if (parts.length === 2) {
+				return { schema: parts[0].replace(/["`]/g, ""), tableName: parts[1].replace(/["`]/g, "") };
+			}
+			return { schema: undefined, tableName: full.replace(/["`]/g, "") };
+		}
+		return null;
+	}, [sql]);
 
 	// 设置的每页行数变化时跟随为本地默认页大小。
 	useEffect(() => {
@@ -91,6 +112,23 @@ export function ResultGrid({
 	function openAiDialogForQuery(): void {
 		setAiPrompt(buildQueryPrompt(connectionName ?? "", sql ?? "", rows));
 		setAiDialogOpen(true);
+	}
+
+	function openTableInfo(): void {
+		if (!connectionName) return;
+		// 优先使用解析出的表名，否则使用连接名作为表名（让用户手动选择）
+		if (parsedTableName) {
+			setTableInfoSelection({
+				connectionName,
+				tableName: parsedTableName.tableName,
+				schema: parsedTableName.schema,
+			});
+		} else {
+			// 如果没有解析出表名，显示提示
+			alert("无法从 SQL 中解析表名，请确保 SQL 包含 FROM 子句");
+			return;
+		}
+		setTableInfoOpen(true);
 	}
 
 	// 客户端排序（仅对已取回的行；null/undefined 始终排最后）。
@@ -360,7 +398,7 @@ export function ResultGrid({
 					)}
 				</div>
 
-				{/* 中间：视图选项 */}
+				{/* 中间：视图选项和表属性 */}
 				<div className="flex items-center gap-0.5">
 					<button
 						type="button"
@@ -380,6 +418,17 @@ export function ResultGrid({
 						>
 							<span className="icon-[lucide--arrow-up-down] h-3 w-3" />
 							<span className="dbx-toolbar-btn-label">排序: {sort.col} {sort.dir === "asc" ? "↑" : "↓"}</span>
+						</button>
+					)}
+					{connectionName && parsedTableName && (
+						<button
+							type="button"
+							onClick={openTableInfo}
+							title="查看表属性（列、索引、外键等）"
+							className={`dbx-toolbar-btn ${tableInfoOpen ? "dbx-toolbar-btn-active" : ""}`}
+						>
+							<span className="icon-[lucide--table-properties] h-3 w-3" />
+							<span className="dbx-toolbar-btn-label">表属性</span>
 						</button>
 					)}
 				</div>
@@ -572,6 +621,21 @@ export function ResultGrid({
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
 			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
+			
+			{/* 表属性面板 */}
+			{tableInfoOpen && tableInfoSelection && (
+				<div className="fixed inset-0 z-[200]" onClick={() => setTableInfoOpen(false)}>
+					<div 
+						className="absolute right-0 top-0 bottom-0 w-[400px] max-w-[50vw] bg-background border-l border-border shadow-2xl"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<TableInfoPanel 
+							selection={tableInfoSelection} 
+							onClose={() => setTableInfoOpen(false)} 
+						/>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
