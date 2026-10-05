@@ -93,6 +93,7 @@ export function ResultGrid({
 	const [editValue, setEditValue] = useState<unknown>(null); // 编辑中的值
 	const [editHistory, setEditHistory] = useState<Array<{ row: number; col: string; oldValue: unknown; newValue: unknown }>>([]); // 编辑历史（用于 Undo）
 	const [editHistoryIndex, setEditHistoryIndex] = useState(-1); // 当前历史索引（用于 Redo）
+	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
 	const { state } = useWorkbench();
@@ -111,35 +112,102 @@ export function ResultGrid({
 		return null;
 	}, [sql]);
 
-	// ── 快捷键支持 ─────────────────────────────────────────
+	// ── 快捷键支持 ────────────────────────────────────────
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent): void {
 			// 忽略在输入框中的按键
 			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 			
+			const isMod = e.metaKey || e.ctrlKey;
+			
 			// Undo: Mod+Z
-			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+			if (isMod && e.key.toLowerCase() === "z" && !e.shiftKey) {
 				e.preventDefault();
 				undoEdit();
 			}
 			// Redo: Shift+Mod+Z 或 Ctrl+Y
-			else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "z") {
+			else if (isMod && e.shiftKey && e.key.toLowerCase() === "z") {
 				e.preventDefault();
 				redoEdit();
 			} else if (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === "y") {
 				e.preventDefault();
 				redoEdit();
 			}
-			// Enter: 开始编辑当前选中的单元格（如果有）
-			else if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
-				// TODO: 如果有选中的单元格，开始编辑
+			// Enter: 开始编辑当前选中的单元格
+			else if (e.key === "Enter" && !isMod && selectedCell) {
+				e.preventDefault();
+				const { row, col } = selectedCell;
+				const value = rows[row]?.[col];
+				startCellEdit(row, col, value);
+			}
+			// 方向键导航
+			else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key) && selectedCell) {
+				e.preventDefault();
+				navigateCell(e.key);
+			}
+			// Mod+C: 复制选中单元格
+			else if (isMod && e.key.toLowerCase() === "c" && selectedCell) {
+				e.preventDefault();
+				copySelectedCell();
+			}
+			// Mod+A: 全选（暂不实现）
+			else if (isMod && e.key.toLowerCase() === "a") {
+				e.preventDefault();
+				// TODO: 实现全选
+			}
+			// Mod+X: 剪切（暂不实现，因为查询结果通常是只读的）
+			else if (isMod && e.key.toLowerCase() === "x") {
+				e.preventDefault();
+				// TODO: 实现剪切
+			}
+			// Mod+V: 粘贴（暂不实现）
+			else if (isMod && e.key.toLowerCase() === "v") {
+				e.preventDefault();
+				// TODO: 实现粘贴
 			}
 		}
 
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [editHistory, editHistoryIndex]);
+	}, [editHistory, editHistoryIndex, selectedCell, rows]);
+
+	/** 方向键导航单元格 */
+	function navigateCell(key: string): void {
+		if (!selectedCell) return;
+		const { row, col } = selectedCell;
+		const colIndex = colList.indexOf(col);
+		let newRow = row;
+		let newColIndex = colIndex;
+		
+		switch (key) {
+			case "ArrowUp":
+				newRow = Math.max(0, row - 1);
+				break;
+			case "ArrowDown":
+				newRow = Math.min(pagedRows.length - 1, row + 1);
+				break;
+			case "ArrowLeft":
+				newColIndex = Math.max(0, colIndex - 1);
+				break;
+			case "ArrowRight":
+				newColIndex = Math.min(colList.length - 1, colIndex + 1);
+				break;
+		}
+		
+		if (newRow !== row || newColIndex !== colIndex) {
+			setSelectedCell({ row: newRow, col: colList[newColIndex] });
+		}
+	}
+
+	/** 复制选中单元格 */
+	function copySelectedCell(): void {
+		if (!selectedCell) return;
+		const { row, col } = selectedCell;
+		const value = rows[row]?.[col];
+		const text = cellText(value);
+		void navigator.clipboard.writeText(text).catch(() => {});
+	}
 
 	// 设置的每页行数变化时跟随为本地默认页大小。
 	useEffect(() => {
@@ -739,12 +807,14 @@ export function ResultGrid({
 										)}
 										{colList.map((c) => {
 											const isEditing = editingCell?.row === rowIdx && editingCell?.col === c;
+											const isSelected = selectedCell?.row === rowIdx && selectedCell?.col === c;
 											return (
 												<td
 													key={c}
-													className={`max-w-0 border-b border-r border-border/60 px-3 py-1.5 text-foreground/80 ${isEditing ? "" : "truncate"}`}
+													className={`max-w-0 border-b border-r border-border/60 px-3 py-1.5 text-foreground/80 ${isEditing ? "" : "truncate"} ${isSelected ? "bg-[var(--dbx-hover)]" : ""}`}
 													style={{ maxWidth: defaultWidth(c) }}
 													title={!isEditing ? cellText(row[c]) : undefined}
+													onClick={() => setSelectedCell({ row: rowIdx, col: c })}
 													onDoubleClick={() => handleCellDoubleClick(rowIdx, c, row[c])}
 													onContextMenu={(e) => openCellMenu(e, c, row)}
 												>

@@ -6,6 +6,7 @@
 import type { JSX } from "react";
 import { HistoryPanel } from "../../query-history/components/history-panel";
 import { useWorkbench } from "../hooks/use-workbench";
+import { buildQueryPrompt } from "../../../shared/ai/send-context";
 
 export function RightPanel(): JSX.Element {
 	const {
@@ -17,6 +18,13 @@ export function RightPanel(): JSX.Element {
 		clearAllHistory,
 	} = useWorkbench();
 	
+	function handleSendToAi(entry: typeof history[0]): void {
+		// TODO: 打开 AI 对话框并填充历史条目的 SQL
+		const prompt = buildQueryPrompt(entry.connName, entry.sql);
+		// 需要通过某种方式传递给 AI 对话框
+		console.log("[RightPanel] 发送到 AI:", prompt);
+	}
+	
 	return (
 		<HistoryPanel
 			entries={history}
@@ -25,6 +33,7 @@ export function RightPanel(): JSX.Element {
 			onRerun={(entry) => void rerunHistoryEntry(entry)}
 			onDelete={(id) => void removeHistory(id)}
 			onClear={() => void clearAllHistory()}
+			onSendToAi={handleSendToAi}
 		/>
 	);
 }

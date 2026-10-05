@@ -4,9 +4,11 @@
  * 只渲染 `query-history.ts` 的纯数据（最新的在最前），不自己维护任何状态：
  * 增删都通过 props 回调交给主面板（主面板再走 `query-history-store.ts` 落盘）。
  * 历史记录里**没有结果行**，所以这里只用一行摘要 + 时间/耗时/行数展示。
+ * 
+ * 对标 dbx 桌面壳：支持编辑、复用到 AI、删除等操作。
  */
 
-import type { JSX } from "react";
+import { useState, type JSX } from "react";
 import { formatHistoryTime, summarizeSql, type QueryHistoryEntry } from "../../../domain/query-history";
 
 interface Props {
@@ -17,6 +19,8 @@ interface Props {
 	onRerun: (entry: QueryHistoryEntry) => void;
 	onDelete: (id: string) => void;
 	onClear: () => void;
+	/** 发送到 AI 分析 */
+	onSendToAi?: (entry: QueryHistoryEntry) => void;
 }
 
 function PathBadge({ path, fallback }: { path: string; fallback?: boolean }): JSX.Element {
@@ -25,8 +29,27 @@ function PathBadge({ path, fallback }: { path: string; fallback?: boolean }): JS
 	return <span className={`shrink-0 text-[10px] ${cls}`}>{label}</span>;
 }
 
-export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClear }: Props): JSX.Element {
+export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClear, onSendToAi }: Props): JSX.Element {
 	const full = entries.length >= limit;
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [editSql, setEditSql] = useState("");
+	
+	function startEdit(entry: QueryHistoryEntry): void {
+		setEditingId(entry.id);
+		setEditSql(entry.sql);
+	}
+	
+	function commitEdit(entry: QueryHistoryEntry): void {
+		// TODO: 调用 API 更新历史记录
+		setEditingId(null);
+		setEditSql("");
+	}
+	
+	function cancelEdit(): void {
+		setEditingId(null);
+		setEditSql("");
+	}
+	
 	return (
 		<div className="flex h-full flex-col">
 			<div className="dbx-history-head flex shrink-0 items-center gap-1 px-3 py-2">
@@ -53,28 +76,59 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 					</div>
 				) : entries.map((entry) => (
 					<div key={entry.id} className="group rounded-lg px-1.5 py-1.5 hover:bg-muted/40">
-						<div className="flex items-center gap-1">
-							{entry.status === "ok" ? (
-								<span className="icon-[lucide--check] h-3 w-3 shrink-0 text-emerald-500" />
-							) : (
-								<span className="icon-[lucide--x] h-3 w-3 shrink-0 text-destructive" />
-							)}
-							<span className="min-w-0 flex-1 truncate text-[11px] text-foreground/80" title={entry.sql}>{summarizeSql(entry.sql, 60)}</span>
-							<PathBadge path={entry.path} fallback={Boolean(entry.error && entry.path === "cli")} />
-						</div>
-						<div className="mt-0.5 flex items-center gap-2 pl-4 text-[10px] text-muted-foreground">
-							<span className="truncate">{entry.connName}</span>
-							<span>{formatHistoryTime(entry.createdAt)}</span>
-							{entry.status === "ok" ? <span>{entry.rowCount} 行 · {entry.durationMs} ms</span> : null}
-						</div>
-						{entry.status === "error" && entry.error ? (
-							<p className="mt-0.5 pl-4 text-[10px] text-destructive/90" title={entry.error}>{summarizeSql(entry.error, 60)}</p>
-						) : null}
-						<div className="mt-1 flex items-center gap-1 pl-4 opacity-0 transition-opacity group-hover:opacity-100">
-							<button type="button" onClick={() => onLoad(entry)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground">载入编辑器</button>
-							<button type="button" onClick={() => onRerun(entry)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground">重跑</button>
-							<button type="button" onClick={() => onDelete(entry.id)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-destructive">删除</button>
-						</div>
+						{editingId === entry.id ? (
+							// 编辑模式
+							<div className="space-y-2">
+								<textarea
+									value={editSql}
+									onChange={(e) => setEditSql(e.target.value)}
+									className="dbx-form-input resize-none font-mono text-[11px]"
+									rows={4}
+									autoFocus
+								/>
+								<div className="flex items-center gap-1">
+									<button type="button" onClick={() => commitEdit(entry)} className="dbx-btn primary" style={{ height: 22, fontSize: 10 }}>
+										保存
+									</button>
+									<button type="button" onClick={cancelEdit} className="dbx-btn ghost" style={{ height: 22, fontSize: 10 }}>
+										取消
+									</button>
+								</div>
+							</div>
+						) : (
+							// 查看模式
+							<>
+								<div className="flex items-center gap-1">
+									{entry.status === "ok" ? (
+										<span className="icon-[lucide--check] h-3 w-3 shrink-0 text-emerald-500" />
+									) : (
+										<span className="icon-[lucide--x] h-3 w-3 shrink-0 text-destructive" />
+									)}
+									<span className="min-w-0 flex-1 truncate text-[11px] text-foreground/80" title={entry.sql}>{summarizeSql(entry.sql, 60)}</span>
+									<PathBadge path={entry.path} fallback={Boolean(entry.error && entry.path === "cli")} />
+								</div>
+								<div className="mt-0.5 flex items-center gap-2 pl-4 text-[10px] text-muted-foreground">
+									<span className="truncate">{entry.connName}</span>
+									<span>{formatHistoryTime(entry.createdAt)}</span>
+									{entry.status === "ok" ? <span>{entry.rowCount} 行 · {entry.durationMs} ms</span> : null}
+								</div>
+								{entry.status === "error" && entry.error ? (
+									<p className="mt-0.5 pl-4 text-[10px] text-destructive/90" title={entry.error}>{summarizeSql(entry.error, 60)}</p>
+								) : null}
+								<div className="mt-1 flex items-center gap-1 pl-4 opacity-0 transition-opacity group-hover:opacity-100">
+									<button type="button" onClick={() => onLoad(entry)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground">载入编辑器</button>
+									<button type="button" onClick={() => onRerun(entry)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground">重跑</button>
+									{onSendToAi && (
+										<button type="button" onClick={() => onSendToAi(entry)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground">
+											<span className="icon-[lucide--sparkles] h-2.5 w-2.5 mr-0.5" />
+											发送到 AI
+										</button>
+									)}
+									<button type="button" onClick={() => startEdit(entry)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground">编辑</button>
+									<button type="button" onClick={() => onDelete(entry.id)} className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted hover:text-destructive">删除</button>
+								</div>
+							</>
+						)}
 					</div>
 				))}
 			</div>
