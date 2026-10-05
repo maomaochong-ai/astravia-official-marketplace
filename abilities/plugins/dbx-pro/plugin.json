@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {

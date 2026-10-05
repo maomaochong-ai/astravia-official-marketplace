@@ -18,10 +18,13 @@
 }
 
 /* ============================================================
- * dbx-pro 工作台设计系统（全部锚定 .dbx-root，不污染宿主全局）
+ * dbx-pro 工作台设计系统（全部锚定 @scope 根，不污染宿主全局）
  * 边框用半透明前景色，随明暗主题自适应；视觉靠色块层级而非粗实线。
+ * 注意：插件 CSS 最终被 @scope 包裹，其内部相对选择器按「:scope + 后代」
+ * 解析，普通类选择器匹配不到作用域根自身。因此 token 必须用 ':scope'
+ * 直接定义在根元素上，否则 var(--dbx-*) 全部失效，界面会失去所有边框/底色。
  * ============================================================ */
-.dbx-root {
+:scope {
 	--dbx-line: color-mix(in srgb, var(--foreground) 16%, transparent);
 	--dbx-line-soft: color-mix(in srgb, var(--foreground) 7%, transparent);
 	--dbx-surface: color-mix(in srgb, var(--foreground) 3.5%, var(--background));
@@ -673,13 +676,18 @@ textarea.dbx-form-input {
 .dbx-result-toolbar {
 	display: flex;
 	align-items: center;
+	flex-wrap: nowrap;
 	gap: 8px;
 	height: 28px;
 	padding: 0 8px;
 	flex-shrink: 0;
+	overflow: hidden;
 	background: var(--dbx-surface);
 	border-bottom: 1px solid var(--dbx-line-soft);
 }
+/* 三个按钮组：保持完整不被压扁，窄面板时由外层裁剪而非换行堆叠 */
+.dbx-result-toolbar > div { flex-shrink: 0; min-width: 0; }
+.dbx-result-toolbar .dbx-toolbar-btn-label { overflow: hidden; text-overflow: ellipsis; }
 
 .dbx-toolbar-btn {
 	display: inline-flex;
