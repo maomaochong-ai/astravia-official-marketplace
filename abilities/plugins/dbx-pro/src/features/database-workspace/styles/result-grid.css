@@ -1,0 +1,108 @@
+/* ============================================================
+ * 结果网格工具栏样式
+ * ============================================================ */
+
+.dbx-result-toolbar {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: 8px;
+	height: 28px;
+	padding: 0 8px;
+	flex-shrink: 0;
+	overflow: hidden;
+	background: var(--dbx-surface);
+	border-bottom: 1px solid var(--dbx-line-soft);
+}
+/* 三个按钮组：保持完整不被压扁，窄面板时由外层裁剪而非换行堆叠 */
+.dbx-result-toolbar > div { flex-shrink: 0; min-width: 0; }
+.dbx-result-toolbar .dbx-toolbar-btn-label { overflow: hidden; text-overflow: ellipsis; }
+
+.dbx-toolbar-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 20px;
+	padding: 0 6px;
+	border-radius: 4px;
+	font-size: 10.5px;
+	color: var(--muted-foreground);
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s;
+	white-space: nowrap;
+}
+
+.dbx-toolbar-btn:hover {
+	background: var(--dbx-hover);
+	color: var(--foreground);
+}
+
+.dbx-toolbar-btn-active {
+	background: color-mix(in srgb, var(--foreground) 10%, transparent);
+	color: var(--foreground);
+}
+
+.dbx-toolbar-btn-primary {
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+	color: var(--primary);
+}
+
+.dbx-toolbar-btn-primary:hover {
+	background: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.dbx-toolbar-btn-label {
+	font-size: 10.5px;
+}
+
+.dbx-toolbar-btn-group {
+	display: flex;
+	align-items: stretch;
+	border: 1px solid var(--dbx-line);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.dbx-toolbar-btn-grouped {
+	border-radius: 0;
+	border: none;
+	height: 18px;
+}
+
+.dbx-toolbar-btn-grouped + .dbx-toolbar-btn-grouped {
+	border-left: 1px solid var(--dbx-line);
+}
+
+.dbx-toolbar-btn-dropdown {
+	padding: 0 4px;
+}
+
+.dbx-toolbar-dropdown-menu {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 100;
+	min-width: 140px;
+	padding: 4px;
+	border: 1px solid var(--dbx-line);
+	border-radius: 6px;
+	background: var(--background);
+	box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+}
+
+.dbx-toolbar-dropdown-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 6px 10px;
+	border-radius: 4px;
+	font-size: 11px;
+	color: var(--foreground);
+	cursor: pointer;
+	transition: background 0.12s;
+}
+
+.dbx-toolbar-dropdown-item:hover {
+	background: var(--dbx-hover);
+}

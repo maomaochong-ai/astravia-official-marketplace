@@ -1,0 +1,41 @@
+/* ============================================================
+ * 加载屏幕样式
+ * ============================================================ */
+
+.dbx-loading-screen {
+	animation: dbx-fade-in 0.2s ease-out;
+}
+
+.dbx-loading-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+.dbx-loading-spinner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	background: var(--dbx-surface);
+}
+
+.dbx-loading-text {
+	font-weight: 500;
+}
+
+.dbx-loading-version {
+	font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+@keyframes dbx-fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}

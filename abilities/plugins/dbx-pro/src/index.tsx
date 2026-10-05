@@ -11,10 +11,19 @@ import { definePlugin, type Disposable } from "@astravia-org/plugin-sdk";
 import { setRuntime, clearRuntime, isRuntimeActive } from "./runtime-contract";
 import { ensureEngineStarted, cancelEngineStartup } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
+// 样式按功能域拆分，避免单文件过大
 import "./style.css";
+import "./shared/styles/dbx-primitives.css";
+import "./shared/styles/dbx-layout.css";
+import "./shared/styles/dbx-loading.css";
+import "./features/database-workspace/styles/sheet-modal.css";
+import "./features/database-workspace/styles/connection-editor.css";
+import "./features/database-workspace/styles/result-grid.css";
+import "./features/database-workspace/styles/ai-dialog.css";
+import "./features/database-workspace/styles/table-info.css";
 
 /** 插件版本号，用于显示和调试 */
-export const PLUGIN_VERSION = "0.0.57";
+export const PLUGIN_VERSION = "0.0.58";
 
 /** 当前实例 ID，用于区分新旧实例的 DOM 元素 */
 let _instanceId = 0;
@@ -120,7 +129,7 @@ export default definePlugin({
 			initiallyVisible: true,
 		});
 
-		// 侧边栏连接管理工作区视图
+		// 侧边栏 dbx-pro数据库工作区视图（与工作台内新建连接同一套三步流程）
 		const workspaceView = ctx.ui.registerWorkspaceView({
 			id: "dbx-connections",
 			label: "%connection.title%",

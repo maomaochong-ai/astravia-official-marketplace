@@ -123,8 +123,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onOpenSettings={() => setSettingsOpen(true)}
 				onNewQuery={newQueryTab}
 				onSelectHistory={selectHistory}
-				rightPanelVisible={rightPanelVisible}
-				onToggleRightPanel={() => setRightPanelVisible((v) => !v)}
 				fullscreen={fullscreen}
 				onToggleFullscreen={() => void toggleFullscreen()}
 			/>

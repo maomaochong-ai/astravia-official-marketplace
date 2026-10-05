@@ -3,7 +3,7 @@
   "plugin.description": "基于 dbx-mcp 的数据库工作台：左侧连接树（数据库/表/列懒加载）、中间多 Tab SQL 编辑器 + 结果网格、右侧表详情，支持建表删表等完整 DDL/DML 操作。",
   "tab.label": "数据库",
   "tab.tooltip": "dbx数据库工作台",
-  "connection.title": "连接管理",
+  "connection.title": "dbx-pro数据库",
   "connection.add": "添加连接",
   "connection.sync": "同步 DBX 连接",
   "connection.empty": "暂无连接",

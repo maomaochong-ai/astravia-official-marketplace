@@ -1,0 +1,120 @@
+/* ============================================================
+ * dbx-pro 布局组件样式
+ * 面板分隔条、面板头部/底部、分组卡片等布局相关样式
+ * ============================================================ */
+
+/* 面板分隔条（对齐 dbx 桌面壳 splitpanes）：
+ * 竖向 = 卡片缝隙里的 4px 透明拖拽条（边界由卡片自身边框表达）；
+ * 横向 = 中卡片内 3px 条 + 1px 发丝线；均外延隐形热区，悬浮/拖拽时高亮。
+ */
+.dbx-splitbar {
+	position: relative;
+	flex-shrink: 0;
+	background: transparent;
+	transition: background-color 0.12s;
+}
+
+/* 固定分页栏上分割线：对齐桌面壳分页栏 border-border/30，
+   直接用前景色 30% 叠在背景上，避免与 --dbx-line 二次混合。 */
+.dbx-pagination {
+	border-top: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+	background: var(--background);
+}
+.dbx-splitbar-h {
+	height: 3px;
+	border-top: 1px solid var(--dbx-line);
+	cursor: row-resize;
+}
+.dbx-splitbar-v {
+	width: 4px;
+	/* 无边框：两侧卡片自带边框，缝隙透出 gutter 底色 */
+	cursor: col-resize;
+}
+.dbx-split-hit { position: absolute; inset: 0; }
+.dbx-splitbar-h .dbx-split-hit { inset: -3px 0; }
+.dbx-splitbar-v .dbx-split-hit { inset: 0 -3px; }
+.dbx-splitbar:hover,
+.dbx-splitbar.is-dragging {
+	background: color-mix(in srgb, var(--foreground) 30%, transparent);
+}
+
+/* 面板头部统一样式：图标 + 标题 + 右侧操作 */
+.dbx-panel-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+.dbx-panel-header-title {
+	flex: 1;
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--foreground);
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dbx-panel-header-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+/* 面板底部操作栏统一 */
+.dbx-panel-footer {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	flex-shrink: 0;
+	border-top: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+
+/* 栏目间可见分隔：三栏内各面板之间的分隔线 */
+.dbx-column-sep {
+	width: 1px;
+	flex-shrink: 0;
+	background: var(--dbx-line);
+	align-self: stretch;
+}
+
+/* 查询网格与结果面板之间的分隔 */
+.dbx-result-sep {
+	height: 1px;
+	flex-shrink: 0;
+	background: var(--dbx-line-soft);
+}
+
+/* 统一面板内分组卡片 */
+.dbx-panel-group {
+	border: 1px solid var(--dbx-line-soft);
+	border-radius: 6px;
+	background: var(--background);
+	overflow: hidden;
+}
+.dbx-panel-group-header {
+	padding: 8px 12px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--muted-foreground);
+	border-bottom: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+.dbx-panel-group-body {
+	padding: 10px 12px;
+}
+
+/* 面板内段落分隔：柔和下边线，统一间距 */
+.dbx-section-divider {
+	border-bottom: 1px solid var(--dbx-line-soft);
+	margin: 0;
+}

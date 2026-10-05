@@ -1,0 +1,167 @@
+/* ============================================================
+ * dbx-pro 通用 UI 原子类
+ * 这些样式被多个 feature 复用，放在 shared/styles 下
+ * ============================================================ */
+
+/* 三栏外层 gutter（对齐 dbx 桌面壳 app-panel-gutter） */
+.dbx-gutter {
+	background: var(--dbx-gutter);
+}
+
+/* 面板卡片：小圆角 + 柔边框，模块边界靠卡片而非发丝线 */
+.dbx-panel-card {
+	border: 1px solid var(--dbx-line);
+	border-radius: 6px;
+	background: var(--background);
+	overflow: hidden;
+}
+
+/* 横向工具条：统一底色 + 柔和下分隔线 */
+.dbx-chrome {
+	background: var(--dbx-surface);
+	border-bottom: 1px solid var(--dbx-line-soft);
+}
+
+/* 中性图标按钮（28px，去除刺眼蓝，跟随整体灰阶） */
+.dbx-iconbtn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	height: 28px;
+	min-width: 28px;
+	padding: 0 7px;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted-foreground);
+	font-size: 11px;
+	line-height: 1;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.dbx-iconbtn:hover:not(:disabled) {
+	background: var(--dbx-hover);
+	color: var(--foreground);
+}
+.dbx-iconbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.dbx-iconbtn.is-active {
+	background: color-mix(in srgb, var(--foreground) 12%, transparent);
+	color: var(--foreground);
+}
+
+/* 主操作按钮：中性实心（前景底/背景字），不使用蓝色 */
+.dbx-cta {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	height: 28px;
+	padding: 0 12px;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: var(--dbx-primary);
+	color: var(--dbx-primary-fg);
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: opacity 0.12s, background 0.12s;
+}
+.dbx-cta:hover:not(:disabled) { opacity: 0.86; }
+.dbx-cta:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* 通用按钮 */
+.dbx-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 6px 12px;
+	font-size: 12px;
+	line-height: 1.2;
+	font-weight: 500;
+	border: 1px solid var(--dbx-line);
+	border-radius: 6px;
+	background: var(--background);
+	color: var(--foreground);
+	cursor: pointer;
+	transition: background 0.12s, border-color 0.12s;
+}
+.dbx-btn:hover:not(:disabled) { background: var(--dbx-hover); }
+.dbx-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.dbx-btn.primary {
+	background: var(--foreground);
+	color: var(--background);
+	border-color: var(--foreground);
+}
+.dbx-btn.primary:hover:not(:disabled) { opacity: 0.88; }
+.dbx-btn.ghost { background: transparent; border-color: transparent; }
+.dbx-btn.ghost:hover:not(:disabled) { background: var(--dbx-hover); border-color: var(--dbx-line); }
+
+/* 表单输入 */
+.dbx-form-input {
+	width: 100%;
+	padding: 6px 10px;
+	font-size: 13px;
+	border: 1px solid var(--dbx-line);
+	border-radius: 6px;
+	background: var(--background);
+	color: var(--foreground);
+	font-family: inherit;
+	outline: none;
+}
+.dbx-form-input:focus {
+	border-color: var(--foreground);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+select.dbx-form-input { cursor: pointer; }
+textarea.dbx-form-input {
+	resize: vertical;
+	min-height: 60px;
+	font-family: "SF Mono", Menlo, Consolas, monospace;
+}
+
+.dbx-form-label {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--muted-foreground);
+}
+.dbx-form-row { margin-bottom: 10px; }
+
+/* 空状态 */
+.dbx-empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--muted-foreground);
+	font-size: 13px;
+	padding: 16px;
+}
+
+/* 细滚动条（纵向/横向），不抢眼 */
+.dbx-scroll { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent) transparent; }
+.dbx-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.dbx-scroll::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--foreground) 18%, transparent);
+	border-radius: 8px;
+	border: 2px solid transparent;
+	background-clip: content-box;
+}
+.dbx-scroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 30%, transparent); background-clip: content-box; }
+.dbx-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* 标签栏单行横向滚动：滚动条完全不占布局高度（overlay） */
+.dbx-tab-scroll { scrollbar-width: none; }
+.dbx-tab-scroll::-webkit-scrollbar { height: 0; width: 0; }
+.dbx-tab-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* 标签栏多行换行模式 */
+.dbx-tab-wrap { scrollbar-width: none; -ms-overflow-style: none; }
+.dbx-tab-wrap::-webkit-scrollbar { height: 0; width: 0; }

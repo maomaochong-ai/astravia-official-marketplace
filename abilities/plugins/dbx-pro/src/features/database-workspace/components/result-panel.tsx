@@ -27,7 +27,7 @@ export function ResultPanel(): JSX.Element {
 	}, [activeTab?.isRunning]);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col bg-background overflow-hidden">
+		<div className="relative flex min-h-0 flex-1 flex-col bg-background overflow-hidden">
 			{/* 结果 / 加载 / 错误视图 */}
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				{/* 翻页时保留网格：只把分页栏置为「取数中」，不整屏回加载环 */}

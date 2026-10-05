@@ -625,7 +625,7 @@ export function ResultGrid({
 
 			{/* 分页栏（固定底部，不随网格滚动）；上分割线用 .dbx-pagination，
 			    与侧边栏竖线及桌面壳分割线对齐。 */}
-			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 px-3 text-[11px] text-muted-foreground">
+			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 px-3 text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
 				<span>
 					{totalKnown ? "共 " : "已取回 "}
 					<span className="font-medium text-foreground/80">{displayTotal}</span> 行
@@ -718,11 +718,14 @@ export function ResultGrid({
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
 			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 			
-			{/* 表属性面板 */}
+			{/* 表属性面板 - 相对于结果网格容器定位 */}
 			{tableInfoOpen && tableInfoSelection && (
-				<div className="fixed inset-0 z-[200]" onClick={() => setTableInfoOpen(false)}>
+				<div 
+					className="absolute inset-0 z-[200] flex"
+					onClick={() => setTableInfoOpen(false)}
+				>
 					<div 
-						className="absolute right-0 top-0 bottom-0 w-[400px] max-w-[50vw] bg-background border-l border-border shadow-2xl"
+						className="ml-auto h-full w-[400px] max-w-[50%] bg-background border-l border-border shadow-2xl"
 						onClick={(e) => e.stopPropagation()}
 					>
 						<TableInfoPanel 

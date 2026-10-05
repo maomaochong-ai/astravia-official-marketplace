@@ -40,7 +40,8 @@ export interface ConnectionEditorState {
 	startEdit: (conn: DbConnection) => void;
 	/** 从表单退回列表。 */
 	back: () => void;
-	save: () => Promise<void>;
+	/** 保存成功（已落盘并退回列表）返回 true；校验失败或出错返回 false。 */
+	save: () => Promise<boolean>;
 	remove: (conn: DbConnection) => Promise<void>;
 	test: (conn: DbConnection) => Promise<void>;
 	/** 可勾选的该库全部 schema（拉取后填充）。 */
@@ -143,11 +144,11 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		});
 	}
 
-	async function save(): Promise<void> {
-		if (!editing) return;
+	async function save(): Promise<boolean> {
+		if (!editing) return false;
 		if (!editing.name.trim()) {
 			alert("请填写连接名称");
-			return;
+			return false;
 		}
 		try {
 			savedRef.current = true;
@@ -155,8 +156,10 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			await refresh();
 			onChange?.(editing.name);
 			back();
+			return true;
 		} catch (err) {
 			alert(`保存失败: ${err instanceof Error ? err.message : String(err)}`);
+			return false;
 		}
 	}
 
