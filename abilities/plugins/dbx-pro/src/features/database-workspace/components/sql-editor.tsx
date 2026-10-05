@@ -60,6 +60,7 @@ const editorTheme = EditorView.theme({
 		backgroundColor: "transparent",
 		borderRight: "1px solid var(--dbx-cm-gutter-border)",
 		color: "var(--dbx-cm-gutter)",
+		fontFamily: MONO_FONT,
 		paddingLeft: "8px",
 		paddingRight: "8px",
 	},
@@ -76,6 +77,7 @@ const editorTheme = EditorView.theme({
 		backgroundColor: "var(--dbx-cm-tooltip-bg)",
 		borderRadius: "6px",
 		color: "var(--dbx-cm-text)",
+		fontFamily: MONO_FONT,
 	},
 	".cm-tooltip-autocomplete ul li[aria-selected]": {
 		backgroundColor: "var(--dbx-cm-tooltip-selected)",
@@ -83,19 +85,51 @@ const editorTheme = EditorView.theme({
 	},
 });
 
-/** SQL 语法高亮：颜色同样走变量，明 / 暗在 CSS 侧切换。 */
-const sqlHighlight = syntaxHighlighting(
-	HighlightStyle.define([
-		{ tag: [tags.keyword, tags.operatorKeyword], color: "var(--dbx-cm-keyword)" },
-		{ tag: [tags.string, tags.special(tags.string)], color: "var(--dbx-cm-string)" },
-		{ tag: tags.number, color: "var(--dbx-cm-number)" },
-		{ tag: tags.comment, color: "var(--dbx-cm-comment)", fontStyle: "italic" },
-		{ tag: tags.typeName, color: "var(--dbx-cm-type)" },
-		{ tag: tags.function(tags.variableName), color: "var(--dbx-cm-function)" },
-		{ tag: tags.operator, color: "var(--dbx-cm-operator)" },
-		{ tag: tags.punctuation, color: "var(--dbx-cm-punctuation)" },
-	]),
-);
+/** SQL 语法高亮配色 —— 明 / 暗两套具体颜色。
+ *  注意：CodeMirror 的 HighlightStyle 由 style-mod 注入全局样式表，
+ *  里面写 var() 在部分宿主挂载方式下取不到变量导致整屏无高亮，
+ *  因此 token 颜色用具体色值，按检测到的主题选择对应扩展；
+ *  编辑器外壳（背景/行号/选区）仍可用 CSS 变量。 */
+function sqlHighlightColors(p: {
+	keyword: string; string_: string; number: string; comment: string;
+	typeName: string; fn: string; operator: string; punctuation: string;
+}) {
+	return syntaxHighlighting(
+		HighlightStyle.define([
+			{ tag: [tags.keyword, tags.operatorKeyword], color: p.keyword },
+			{ tag: [tags.string, tags.special(tags.string)], color: p.string_ },
+			{ tag: tags.number, color: p.number },
+			{ tag: tags.comment, color: p.comment, fontStyle: "italic" },
+			{ tag: tags.typeName, color: p.typeName },
+			{ tag: tags.function(tags.variableName), color: p.fn },
+			{ tag: tags.operator, color: p.operator },
+			{ tag: tags.punctuation, color: p.punctuation },
+		]),
+	);
+}
+
+const sqlHighlightDark = sqlHighlightColors({
+	keyword: "#c792ea",
+	string_: "#c3e88d",
+	number: "#f78c6c",
+	comment: "#6b7280",
+	typeName: "#ffcb6b",
+	fn: "#82aaff",
+	operator: "#89ddff",
+	punctuation: "#9aa3b2",
+});
+
+const sqlHighlightLight = sqlHighlightColors({
+	// One Light 取向：白底上对比足够、饱和度克制
+	keyword: "#a626a4",
+	string_: "#50a14f",
+	number: "#b76b01",
+	comment: "#a0a1a7",
+	typeName: "#c18401",
+	fn: "#4078f2",
+	operator: "#383a42",
+	punctuation: "#5c6370",
+});
 
 function dialectFor(dbType: string | undefined) {
 	const type = String(dbType ?? "").toLowerCase();
@@ -128,6 +162,10 @@ export function SqlEditor(): JSX.Element {
 	// 更新 sql 都会产生新对象，进而让 EditorView effect 反复重建、无法连续输入。
 	const activeTabId = activeTab?.id;
 	const activeTabRunning = activeTab?.isRunning ?? false;
+
+	// 明 / 暗主题（检测插件根背景亮度）：决定高亮扩展与 data-dbx-theme。
+	const theme = useDetectedTheme();
+	const highlightExt = theme === "light" ? sqlHighlightLight : sqlHighlightDark;
 
 	// 关键：runTabSql 由 provider 每次 render 都生成新闭包，一旦进入 deps 会导致
 	// EditorView 被反复销毁重建（无法输入）。用 ref 持最新引用，回调保持稳定身份。
@@ -193,23 +231,24 @@ export function SqlEditor(): JSX.Element {
 					runKeymap,
 					keymap.of([...defaultKeymap, ...completionKeymap, ...historyKeymap]),
 					history(),
-					editorTheme,
-					sqlHighlight,
-				],
-			}),
-			parent: hostRef.current,
-		});
-		viewRef.current = view;
-		// 新 tab 创建后自动聚焦，允许用户直接输入
-		view.focus();
-		setEditorReady(true);
-		return () => {
-			view.destroy();
-			viewRef.current = null;
-			setEditorReady(false);
-		};
-		// activeTab.id：切 tab 重建；sql 不进依赖（编辑器自持 doc，避免输入时重建）
-	}, [activeTab?.id, activeConn?.db_type, runCurrent]);
+				editorTheme,
+				highlightExt,
+			],
+		}),
+		parent: hostRef.current,
+	});
+	viewRef.current = view;
+	// 新 tab 创建后自动聚焦，允许用户直接输入
+	view.focus();
+	setEditorReady(true);
+	return () => {
+		view.destroy();
+		viewRef.current = null;
+		setEditorReady(false);
+	};
+	// activeTab.id：切 tab 重建；sql 不进依赖（编辑器自持 doc，避免输入时重建）；
+	// theme：宿主切换明 / 暗主题时重建以更换高亮配色。
+}, [activeTab?.id, activeConn?.db_type, runCurrent, highlightExt]);
 
 	/** 整理：用 sql-formatter 格式化当前 SQL。 */
 	function tidy() {
@@ -242,7 +281,6 @@ export function SqlEditor(): JSX.Element {
 
 	const running = activeTab?.isRunning ?? false;
 	const hasConn = Boolean(activeTab?.connectionName);
-	const theme = useDetectedTheme();
 
 	return (
 		<div data-dbx-theme={theme} className="dbx-sql-theme flex min-h-0 flex-1 flex-col bg-background">

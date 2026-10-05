@@ -6,14 +6,14 @@
  * - 双击 connection：新建查询 tab；双击 table：预览数据
  * - 右键：丰富的上下文菜单（新建查询/预览/查看结构/生成SQL/添加到AI/复制等）
  * - 箭头：展开懒加载子节点
- * - 拖拽：表 / 列 / schema / 连接可拖进 SQL 编辑器，在落点插入 SQL 引用文本
+ * - 拖拽：把节点（或多选整组）以 @提及 token 拖进宿主 AI 输入框，由宿主渲染为对象标签
  */
 
 import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { parseColumnNodeKey } from "../../../domain/tree-node-key";
-import { writeNodeDragPayload } from "../../../domain/table-drag";
+import { writeAiNodeDrag, type AiNodeInfo } from "../../../domain/table-drag";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 import {
@@ -399,33 +399,53 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	const statusDot = node.kind === "connection" ? state.connectionStatuses[node.label] ?? "idle" : undefined;
 
-	// ── 拖拽：把引用文本拖进宿主 AI 对话框（text/plain 原生落点）─────────────
+	// ── 拖拽：把 @提及 token 拖进宿主 AI 输入框（多选时携带整组）────────────
 	function handleDragStart(e: React.DragEvent): void {
 		const conn = connectionName ?? node.label;
+
+		// 当前节点的单对象载荷
+		let single: AiNodeInfo;
 		if (node.kind === "column") {
-			// 列节点的父表信息只存在 key 里（col:conn:schema:table:column）。
 			const ref = parseColumnNodeKey(node.key);
-			writeNodeDragPayload(e.dataTransfer, "column", {
+			single = {
+				kind: "column",
 				connectionName: conn,
 				schema: schema || ref?.schema || undefined,
 				tableName: ref?.table,
 				columnName: node.label,
 				label: node.label,
-			});
+			};
 		} else if (node.kind === "table") {
-			writeNodeDragPayload(e.dataTransfer, "table", {
+			single = {
+				kind: "table",
 				connectionName: conn,
 				schema: childScope || undefined,
 				tableName: node.label,
 				label: node.label,
-			});
+			};
 		} else {
-			writeNodeDragPayload(e.dataTransfer, node.kind, {
+			single = {
+				kind: node.kind,
 				connectionName: conn,
 				schema: node.kind === "schema" ? node.label : childScope || undefined,
 				label: node.label,
-			});
+			};
 		}
+
+		// 多选模式且拖拽起点属于已选集合：携带全部已选连接 / schema / 表。
+		let payloads: AiNodeInfo[] = [single];
+		if (selectionMode && node.kind !== "column" && isNodeSelected) {
+			const multi: AiNodeInfo[] = [...selectedNodes.values()].map((n) => ({
+				kind: n.kind as AiNodeInfo["kind"],
+				connectionName: n.connectionName,
+				schema: n.kind === "table" ? n.schema : undefined,
+				tableName: n.kind === "table" ? n.label : undefined,
+				label: n.label,
+			}));
+			if (multi.length > 0) payloads = multi;
+		}
+
+		writeAiNodeDrag(e.dataTransfer, payloads);
 		if (e.currentTarget instanceof HTMLElement) {
 			e.dataTransfer.setDragImage(e.currentTarget, 10, 10);
 		}

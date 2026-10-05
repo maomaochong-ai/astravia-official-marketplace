@@ -1,7 +1,9 @@
 /* ============================================================
- * SQL 编辑器：CodeMirror 明 / 暗配色 + 执行按钮主题精修
- * 配色挂在 data-dbx-theme 上（由 JS 检测插件根背景亮度写入），
- * 宿主强制浅色或深色主题时都不会出现浅底浅字 / 深底黑按钮。
+ * SQL 编辑器：CodeMirror 外壳的明 / 暗配色 + 执行按钮主题精修
+ *
+ * token 语法高亮色在 sql-editor.tsx 中以明 / 暗两套 HighlightStyle
+ * 直接给具体色值（CodeMirror 注入的样式表中 var() 在部分宿主挂载
+ * 方式下取不到变量）；这里只管背景 / 行号 / 选区 / 补全弹层等外壳。
  * ============================================================ */
 
 /* ── 深色（默认）────────────────────────────────────────── */
@@ -12,14 +14,6 @@
 	--dbx-cm-gutter-border: color-mix(in srgb, var(--foreground) 12%, transparent);
 	--dbx-cm-active-line: rgb(255 255 255 / 0.035);
 	--dbx-cm-selection: rgb(96 165 250 / 0.22);
-	--dbx-cm-keyword: #c792ea;
-	--dbx-cm-string: #c3e88d;
-	--dbx-cm-number: #f78c6c;
-	--dbx-cm-comment: #6b7280;
-	--dbx-cm-type: #ffcb6b;
-	--dbx-cm-function: #82aaff;
-	--dbx-cm-operator: #89ddff;
-	--dbx-cm-punctuation: #9aa3b2;
 	--dbx-cm-tooltip-bg: #16181d;
 	--dbx-cm-tooltip-border: color-mix(in srgb, var(--foreground) 18%, transparent);
 	--dbx-cm-tooltip-selected: rgb(96 165 250 / 0.22);
@@ -38,15 +32,6 @@
 	--dbx-cm-gutter-border: rgb(20 30 50 / 0.1);
 	--dbx-cm-active-line: rgb(20 30 50 / 0.035);
 	--dbx-cm-selection: rgb(37 99 235 / 0.16);
-	/* One Light 取向：白底上对比足够、饱和度克制 */
-	--dbx-cm-keyword: #a626a4;
-	--dbx-cm-string: #50a14f;
-	--dbx-cm-number: #b76b01;
-	--dbx-cm-comment: #a0a1a7;
-	--dbx-cm-type: #c18401;
-	--dbx-cm-function: #4078f2;
-	--dbx-cm-operator: #383a42;
-	--dbx-cm-punctuation: #5c6370;
 	--dbx-cm-tooltip-bg: #ffffff;
 	--dbx-cm-tooltip-border: rgb(20 30 50 / 0.14);
 	--dbx-cm-tooltip-selected: rgb(37 99 235 / 0.14);
@@ -69,7 +54,7 @@
 	opacity: 1;
 }
 
-/* 匹配的括号 / 补全选中项在浅色下加深描边对比 */
+/* 补全选中项在浅色下加深文字对比 */
 .dbx-sql-theme[data-dbx-theme="light"] .cm-tooltip-autocomplete ul li[aria-selected] {
 	color: #1f2937;
 }
