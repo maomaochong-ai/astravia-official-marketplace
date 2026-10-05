@@ -68,6 +68,10 @@ const DatabaseWorkspace = lazyPanel(async () => ({
 	default: (await import("./features/database-workspace/components/database-workspace")).DatabaseWorkspace as unknown as ComponentType<Record<string, never>>,
 }));
 
+const ConnectionManagerPanel = lazyPanel(async () => ({
+	default: (await import("./features/database-workspace/components/connection-manager-view")).ConnectionManagerView as unknown as ComponentType<Record<string, never>>,
+}));
+
 export default definePlugin({
 	async activate(ctx) {
 		setRuntime(ctx);
@@ -91,6 +95,16 @@ export default definePlugin({
 			scope_use: ["im-claw", "conversation", "project", "cli"],
 			retention: "pinned",
 			initiallyVisible: true,
+		});
+
+		// 侧边栏连接管理工作区视图：像小红书账号管理那样可直接从侧边栏打开，
+		// 便于集中管理连接（新建/编辑/测试/删除），不必进入工作台弹窗。
+		const workspaceView = ctx.ui.registerWorkspaceView({
+			id: "dbx-connections",
+			label: "%connection.title%",
+			description: "管理 dbx-pro 数据库连接",
+			iconTint: false,
+			component: ConnectionManagerPanel,
 		});
 
 		// 输入栏按钮：点击后打开 dbx-pro 工作台，用户可在其中右键选择表注入 AI。
@@ -125,6 +139,7 @@ export default definePlugin({
 
 		return () => {
 			activityTab.dispose();
+			workspaceView.dispose();
 			inputAction?.dispose();
 		};
 	},

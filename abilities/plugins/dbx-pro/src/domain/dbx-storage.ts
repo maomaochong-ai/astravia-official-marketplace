@@ -156,16 +156,26 @@ export async function writeConfig(config: DbConnection): Promise<void> {
 	} catch { /* ignore */ }
 }
 
-/** 删：dbx-mcp + 加密密码 + 镜像。 */
+/** 删：以 dbx-mcp 为权威来源，按引擎解析 id→name，不依赖本地镜像 id 一致。 */
 export async function deleteConfig(id: string): Promise<void> {
-	const configs = await readLocalOnly();
-	const target = configs.find((c) => c.id === id);
-	if (target?.name) {
-		try { await engineRemoveConnection(target.name); } catch { /* ignore */ }
-		try { await getSecrets().delete(passwordKey(target.name)); } catch { /* ignore */ }
-	}
+	// id 来自 readAllConfigs（引擎 UUID），可能与本地镜像创建时生成的 id 不同。
+	// 必须先从引擎按 id 取回真实连接名，否则镜像里找不到同 id 目标会跳过引擎删除。
+	let name: string | undefined;
 	try {
-		await writeLocalOnly(configs.filter((c) => c.id !== id));
+		const { connections } = await engineListConnections();
+		name = connections.find((c) => c.id === id)?.name;
+	} catch { /* 引擎不可用时退回镜像查找 */ }
+
+	const configs = await readLocalOnly();
+	name ??= configs.find((c) => c.id === id)?.name;
+
+	if (name) {
+		try { await engineRemoveConnection(name); } catch { /* 尽力删除 */ }
+		try { await getSecrets().delete(passwordKey(name)); } catch { /* vault 不可用不阻断 */ }
+	}
+	// 同时按 id 和解析出的 name 清镜像，覆盖镜像 id 不一致的情况。
+	try {
+		await writeLocalOnly(configs.filter((c) => c.id !== id && c.name !== name));
 	} catch { /* ignore */ }
 }
 

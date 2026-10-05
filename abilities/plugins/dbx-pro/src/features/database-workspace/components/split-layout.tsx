@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
+import { readSession, writeSession } from "../../../domain/workbench-session";
 
 interface DragState {
 	/** "left" = 左栏/中栏之间；"right" = 中栏/右栏之间 */
@@ -106,6 +107,29 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 		return () => observer.disconnect();
 	}, []);
 	const baseWidth = measuredWidth || 1000;
+
+	// 恢复上次三栏宽度（仅在用户拖过时有效）。
+	useEffect(() => {
+		let alive = true;
+		void readSession().then((s) => {
+			if (!alive || !s) return;
+			if (Number.isFinite(s.leftW)) setLeftW(s.leftW as number);
+			if (Number.isFinite(s.rightW)) setRightW(s.rightW as number);
+		}).catch(() => { /* ignore */ });
+		return () => { alive = false; };
+	}, []);
+
+	// 拖拽结束（dragging 回 null）后把最终宽度并入会话，重载后保持同样布局。
+	useEffect(() => {
+		if (dragging || (!leftW && !rightW)) return;
+		void (async () => {
+			const cur = (await readSession().catch(() => null)) ?? {
+				activeConnectionName: null, activeTabId: null, tabs: [], expandedNodes: [],
+			};
+			await writeSession({ ...cur, leftW, rightW }).catch(() => { /* ignore */ });
+		})();
+	}, [dragging, leftW, rightW]);
+
 	const effectiveLeft = leftW || Math.round(baseWidth * 0.18);
 	const effectiveRight = rightW || Math.round(baseWidth * 0.2);
 

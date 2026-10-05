@@ -84,7 +84,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	async function ensureChildren(): Promise<void> {
 		if (!hasLoadedChildren) {
-			await loadNodeChildren(node.key, connectionName ?? node.label, { schema: childScope });
+			await loadNodeChildren(node.key, connectionName ?? node.label, {
+				schema: childScope,
+				// 显式带节点自身方言，避免 state.connections 尚未同步时错走默认查询。
+				dbType: node.kind === "connection" ? node.dbType : undefined,
+			});
 		}
 	}
 

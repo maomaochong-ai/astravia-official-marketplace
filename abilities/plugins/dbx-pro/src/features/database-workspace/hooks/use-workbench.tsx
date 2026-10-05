@@ -27,6 +27,7 @@ import {
 	type WorkbenchSettings,
 } from "../../../domain/workbench-settings";
 import { readSettings, resetSettings, writeSettings } from "../../../domain/workbench-settings-store";
+import { readSession, writeSession, type StoredSession } from "../../../domain/workbench-session";
 import { getSecrets } from "../../../runtime-contract";
 import {
 	engineListTables,
@@ -138,7 +139,8 @@ export type WorkbenchAction =
 	| { type: "setConnectionStatus"; name: string; status: WorkbenchState["connectionStatuses"][string] }
 	| { type: "toggleSelectionMode"; enabled?: boolean }
 	| { type: "toggleNodeSelection"; key: string; info: SelectedNodeInfo }
-	| { type: "clearNodeSelection" };
+	| { type: "clearNodeSelection" }
+	| { type: "restoreSession"; session: StoredSession };
 
 // ─── 初始状态 ─────────────────────────────────────────────
 
@@ -299,6 +301,23 @@ function reducer(state: WorkbenchState, action: WorkbenchAction): WorkbenchState
 		case "clearNodeSelection":
 			return { ...state, selectedNodes: new Map() };
 
+		case "restoreSession": {
+			const s = action.session;
+			// 只恢复可持久化字段：结果/运行态一律清空，避免展示过期结果。
+			const tabs = s.tabs.map((t) => ({
+				id: t.id, label: t.label, connectionName: t.connectionName, sql: t.sql, isRunning: false,
+			}));
+			const activeTabId =
+				tabs.some((t) => t.id === s.activeTabId) ? s.activeTabId : tabs[0]?.id ?? state.activeTabId;
+			return {
+				...state,
+				activeConnectionName: s.activeConnectionName ?? state.activeConnectionName,
+				tabs: tabs.length > 0 ? tabs : state.tabs,
+				activeTabId,
+				expandedNodes: new Set(s.expandedNodes),
+			};
+		}
+
 		default:
 			return state;
 	}
@@ -311,7 +330,7 @@ interface WorkbenchContextValue {
 	dispatch: React.Dispatch<WorkbenchAction>;
 	refreshConnections: () => Promise<void>;
 	/** 加载树节点子节点（懒加载入口） */
-	loadNodeChildren: (nodeKey: string, connectionName?: string, extra?: { schema?: string }) => Promise<void>;
+	loadNodeChildren: (nodeKey: string, connectionName?: string, extra?: { schema?: string; dbType?: string }) => Promise<void>;
 	/** 执行一个 tab 的 SQL；overrideSql 存在时只执行给定片段（选中执行）。 */
 	runTabSql: (
 		tabId: string,
@@ -382,19 +401,43 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
 	const runningStartedAtRef = useRef<Record<string, number>>({});
 
-	// 初始加载：连接 + 设置 + 历史
+	// 初始加载：连接 + 设置 + 历史 + 恢复上次会话
 	useEffect(() => {
 		async function bootstrap() {
 			await refreshConnections();
-			const [loadedSettings, loadedHistory] = await Promise.all([
+			const [loadedSettings, loadedHistory, storedSession] = await Promise.all([
 				readSettings().catch(() => DEFAULT_SETTINGS),
 				readHistory().catch(() => [] as QueryHistoryEntry[]),
+				readSession(),
 			]);
 			setSettings(loadedSettings);
 			setHistory(loadedHistory);
+			// 连接加载完后再恢复现场：活动连接、多 tab SQL、展开节点都从上次会话取回，
+			// 插件重载不再回到「单 tab / 未绑定」的空白界面。
+			if (storedSession) dispatch({ type: "restoreSession", session: storedSession });
 		}
 		void bootstrap();
 	}, []);
+
+	// 自动保存会话（防抖）：只存工作状态，不存结果。
+	const sessionSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(() => {
+		if (sessionSaveTimer.current) clearTimeout(sessionSaveTimer.current);
+		sessionSaveTimer.current = setTimeout(() => {
+			const session: StoredSession = {
+				activeConnectionName: state.activeConnectionName,
+				activeTabId: state.activeTabId,
+				tabs: state.tabs.map((t) => ({
+					id: t.id, label: t.label, connectionName: t.connectionName, sql: t.sql,
+				})),
+				expandedNodes: [...state.expandedNodes],
+			};
+			void writeSession(session).catch(() => { /* 持久化失败不影响使用 */ });
+		}, 400);
+		return () => {
+			if (sessionSaveTimer.current) clearTimeout(sessionSaveTimer.current);
+		};
+	}, [state.activeConnectionName, state.activeTabId, state.tabs, state.expandedNodes]);
 
 	async function refreshConnections() {
 		try {
@@ -415,7 +458,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 	 *
 	 * schema scope 的优先级：节点自身带的 schema > 连接配置的默认 schema。
 	 */
-	async function loadNodeChildren(nodeKey: string, connectionName?: string, extra?: { schema?: string }) {
+	async function loadNodeChildren(nodeKey: string, connectionName?: string, extra?: { schema?: string; dbType?: string }) {
 		if (state.treeChildren.has(nodeKey)) return; // 已加载
 
 		dispatch({ type: "nodeLoading", key: nodeKey });
@@ -428,7 +471,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				// 先试 schema 目录：不支持（SQLite / ClickHouse 等）时回退扁平表树。
 				let children: TreeNode[];
 				try {
-					const dbType = stateRef.current.connections.find((c) => c.name === name)?.db_type;
+					const dbType = extra?.dbType ?? stateRef.current.connections.find((c) => c.name === name)?.db_type;
 					const schemas = await engineListSchemas(name, dbType);
 					if (schemas.supported && schemas.schemas.length > 0) {
 						children = schemas.schemas.map((s) => ({

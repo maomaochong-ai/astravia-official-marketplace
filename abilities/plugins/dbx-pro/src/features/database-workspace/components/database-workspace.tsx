@@ -15,6 +15,7 @@ import { SqlEditorWorkspace } from "./sql-editor-workspace";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
+import { readSession, writeSession } from "../../../domain/workbench-session";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (
@@ -45,6 +46,27 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		document.addEventListener("fullscreenchange", onFullscreenChange);
 		return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
 	}, [fullscreen]);
+
+	// 恢复上次左右栏折叠态。
+	useEffect(() => {
+		let alive = true;
+		void readSession().then((s) => {
+			if (!alive || !s) return;
+			if (typeof s.leftCollapsed === "boolean") setLeftCollapsed(s.leftCollapsed);
+			if (typeof s.rightCollapsed === "boolean") setRightPanelVisible(!s.rightCollapsed);
+		}).catch(() => { /* ignore */ });
+		return () => { alive = false; };
+	}, []);
+
+	// 折叠态变化时并入会话。
+	useEffect(() => {
+		void (async () => {
+			const cur = (await readSession().catch(() => null)) ?? {
+				activeConnectionName: null, activeTabId: null, tabs: [], expandedNodes: [],
+			};
+			await writeSession({ ...cur, leftCollapsed, rightCollapsed: !rightPanelVisible }).catch(() => { /* ignore */ });
+		})();
+	}, [leftCollapsed, rightPanelVisible]);
 
 	function newQueryTab() {
 		const id = `tab-${Date.now().toString(36)}`;
