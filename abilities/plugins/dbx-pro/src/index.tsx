@@ -14,6 +14,32 @@ import { ensureEngineStarted } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
 import "./style.css";
 
+/**
+ * 清理旧的插件 DOM 和样式，避免更新后 UI 混乱。
+ * 插件更新时，旧的样式表和 DOM 元素可能仍然存在，导致样式冲突。
+ */
+function cleanupPreviousInstance(): void {
+	// 清理旧的插件根元素
+	const oldRoots = document.querySelectorAll('[data-astravia-plugin-root="dbx-pro"]');
+	oldRoots.forEach((root) => {
+		root.remove();
+	});
+
+	// 清理旧的样式表（通过查找包含 dbx-pro 的样式）
+	const styleSheets = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'));
+	styleSheets.forEach((sheet) => {
+		const href = sheet.getAttribute('href') || '';
+		const textContent = sheet.textContent || '';
+		// 清理包含 dbx-pro 相关内容的样式
+		if (href.includes('dbx-pro') || textContent.includes('dbx-root') || textContent.includes('dbx-')) {
+			// 保留当前实例的样式（通过 data-style-instance 标记）
+			if (!sheet.hasAttribute('data-style-instance')) {
+				sheet.remove();
+			}
+		}
+	});
+}
+
 /** 面板加载中：可见的轻量占位，避免点击后空白。 */
 function PanelLoading(): ReactElement {
 	return (
@@ -74,6 +100,9 @@ const ConnectionManagerPanel = lazyPanel(async () => ({
 
 export default definePlugin({
 	async activate(ctx) {
+		// 清理旧实例，避免更新后 UI 混乱
+		cleanupPreviousInstance();
+
 		setRuntime(ctx);
 		// 绑定宿主 service 能力（plugin.json#providers.services → dbx-engine）。
 		// 宿主不提供 services 时绑定 null：engine-client 会报 ENGINE_NOT_READY。
@@ -137,9 +166,14 @@ export default definePlugin({
 		});
 
 		return () => {
+			// 彻底清理所有资源
 			activityTab.dispose();
 			workspaceView.dispose();
 			inputAction?.dispose();
+			
+			// 清理 DOM 中的插件元素
+			const roots = document.querySelectorAll('[data-astravia-plugin-root="dbx-pro"]');
+			roots.forEach((root) => root.remove());
 		};
 	},
 });

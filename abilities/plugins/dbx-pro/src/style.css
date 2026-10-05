@@ -769,3 +769,87 @@ textarea.dbx-form-input {
 .dbx-toolbar-dropdown-item:hover {
 	background: var(--dbx-hover);
 }
+
+/* ============================================================
+ * 连接面板视图切换按钮
+ * ============================================================ */
+
+.dbx-view-toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	background: transparent;
+	color: var(--muted-foreground);
+	border: none;
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s;
+}
+
+.dbx-view-toggle-btn:hover {
+	background: var(--dbx-hover);
+	color: var(--foreground);
+}
+
+.dbx-view-toggle-btn.active {
+	background: color-mix(in srgb, var(--foreground) 10%, transparent);
+	color: var(--foreground);
+}
+
+/* ============================================================
+ * 分类导航项
+ * ============================================================ */
+
+.dbx-category-nav-item {
+	display: flex;
+	align-items: center;
+	padding: 6px 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--muted-foreground);
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s;
+	text-align: left;
+	width: 100%;
+}
+
+.dbx-category-nav-item:hover {
+	background: var(--dbx-hover);
+	color: var(--foreground);
+}
+
+.dbx-category-nav-item.active {
+	background: color-mix(in srgb, var(--foreground) 8%, transparent);
+	color: var(--foreground);
+	font-weight: 600;
+}
+
+/* ============================================================
+ * 数据库类型列表项
+ * ============================================================ */
+
+.dbx-db-type-list-item {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	border-radius: 6px;
+	border: 1px solid var(--dbx-line-soft);
+	background: var(--background);
+	cursor: pointer;
+	transition: all 0.12s ease;
+}
+
+.dbx-db-type-list-item:hover {
+	border-color: var(--dbx-line);
+	background: var(--dbx-surface);
+	box-shadow: 0 2px 6px rgb(0 0 0 / 0.06);
+}
+
+.dbx-db-type-list-item:active {
+	transform: scale(0.99);
+}

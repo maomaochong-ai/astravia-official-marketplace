@@ -194,7 +194,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 					{ type: "item", label: "新建查询", icon: "icon-[lucide--file-plus-2]", onClick: newQueryForConnection },
 					{
 						type: "item",
-						label: isExpanded ? "折叠" : "展开表",
+						label: isExpanded ? "折叠" : "展开",
 						icon: isExpanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
 						onClick: () => {
 							void ensureChildren();
@@ -205,15 +205,35 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 					{ type: "separator" },
 					{
 						type: "item",
+						label: "刷新",
+						icon: "icon-[lucide--refresh-cw]",
+						onClick: () => {
+							// 清除缓存并重新加载
+							dispatch({ type: "invalidateConnectionTree", name: node.label });
+							void ensureChildren();
+						},
+					},
+					{ type: "separator" },
+					{
+						type: "item",
 						label: "发送到 AI 分析",
 						icon: "icon-[lucide--sparkles]",
 						onClick: () => openAiDialog(buildConnectionPrompt({ connectionName: node.label, dbType: node.dbType ?? "database" })),
 					},
+					{ type: "separator" },
 					{
 						type: "item",
 						label: "复制连接名",
 						icon: "icon-[lucide--copy]",
 						onClick: () => void navigator.clipboard.writeText(node.label).catch(() => {}),
+					},
+					{
+						type: "item",
+						label: "编辑连接",
+						icon: "icon-[lucide--pencil]",
+						onClick: () => {
+							// TODO: 打开连接编辑面板
+						},
 					},
 				],
 			});
@@ -226,12 +246,32 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				items: [
 					{
 						type: "item",
-						label: isExpanded ? "折叠" : "展开表",
+						label: isExpanded ? "折叠" : "展开",
 						icon: isExpanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
 						onClick: () => {
 							void ensureChildren();
 							if (!isExpanded) expand();
 							else dispatch({ type: "toggleNode", key: node.key });
+						},
+					},
+					{
+						type: "item",
+						label: "在新标签页查询",
+						icon: "icon-[lucide--file-plus-2]",
+						onClick: () => {
+							if (!connectionName) return;
+							const sql = `SELECT * FROM ${node.label}. LIMIT 100;`;
+							void openPreviewTab(connectionName, sql, `${node.label} 查询`);
+						},
+					},
+					{ type: "separator" },
+					{
+						type: "item",
+						label: "发送到 AI 分析",
+						icon: "icon-[lucide--sparkles]",
+						onClick: () => {
+							const prompt = `请分析数据库 schema "${node.label}" 中的所有表结构和关系。`;
+							openAiDialog(prompt);
 						},
 					},
 					{ type: "separator" },
@@ -240,6 +280,15 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						label: "复制 Schema 名",
 						icon: "icon-[lucide--copy]",
 						onClick: () => void navigator.clipboard.writeText(node.label).catch(() => {}),
+					},
+					{
+						type: "item",
+						label: "复制为 SQL 引用",
+						icon: "icon-[lucide--braces]",
+						onClick: () => {
+							const ref = `"${node.label}"`;
+							void navigator.clipboard.writeText(ref).catch(() => {});
+						},
 					},
 				],
 			});
@@ -250,9 +299,30 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				x: e.clientX,
 				y: e.clientY,
 				items: [
-					{ type: "item", label: "SELECT * 预览", icon: "icon-[lucide--table-2]", onClick: previewTable },
+					{ type: "item", label: "预览数据", icon: "icon-[lucide--table-2]", onClick: previewTable },
 					{ type: "item", label: "查看表结构", icon: "icon-[lucide--columns-3]", onClick: showStructure },
 					{ type: "item", label: "统计行数", icon: "icon-[lucide--hash]", onClick: countTable },
+					{ type: "separator" },
+					{
+						type: "item",
+						label: "在新标签页打开",
+						icon: "icon-[lucide--external-link]",
+						onClick: () => {
+							if (!connectionName) return;
+							const sql = childScope ? `SELECT * FROM ${childScope}.${node.label} LIMIT 100;` : `SELECT * FROM ${node.label} LIMIT 100;`;
+							void openPreviewTab(connectionName, sql, node.label);
+						},
+					},
+					{
+						type: "item",
+						label: "生成 SELECT 语句",
+						icon: "icon-[lucide--code]",
+						onClick: () => {
+							if (!connectionName) return;
+							const sql = childScope ? `SELECT * FROM ${childScope}.${node.label} LIMIT 100;` : `SELECT * FROM ${node.label} LIMIT 100;`;
+							void openPreviewTab(connectionName, sql, `${node.label} 查询`);
+						},
+					},
 					{ type: "separator" },
 					{
 						type: "item",
@@ -260,6 +330,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						icon: "icon-[lucide--sparkles]",
 						onClick: () => openAiDialog(buildTablePrompt({ connectionName, schema: childScope, table: node.label })),
 					},
+					{ type: "separator" },
 					{
 						type: "item",
 						label: "复制表名",
@@ -271,6 +342,15 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						label: "复制限定名",
 						icon: "icon-[lucide--clipboard-copy]",
 						onClick: () => void navigator.clipboard.writeText(qualifiedName).catch(() => {}),
+					},
+					{
+						type: "item",
+						label: "复制为 SQL 引用",
+						icon: "icon-[lucide--braces]",
+						onClick: () => {
+							const ref = childScope ? `"${childScope}"."${node.label}"` : `"${node.label}"`;
+							void navigator.clipboard.writeText(ref).catch(() => {});
+						},
 					},
 				],
 			});
