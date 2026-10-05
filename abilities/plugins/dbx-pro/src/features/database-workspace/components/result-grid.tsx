@@ -600,7 +600,7 @@ export function ResultGrid({
 	}
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col bg-background">
+		<div className="relative flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 - 双排布局 */}
 			<div className={`dbx-result-toolbar ${splitToolbar ? "split-layout" : "single-layout"}`}>
 				{/* 上排：操作按钮 */}

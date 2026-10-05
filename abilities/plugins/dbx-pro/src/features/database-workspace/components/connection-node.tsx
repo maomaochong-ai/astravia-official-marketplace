@@ -121,7 +121,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		} else if (node.kind === "table") {
 			// 单击表节点：直接预览数据（不再显示右侧抽屉）
 			if (!connectionName) return;
-			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 100;`, node.label);
+			// 不带 LIMIT，让服务端分页处理
+			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
 		}
 	}
 
@@ -131,8 +132,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (node.kind === "connection") {
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
-			// 双击表节点：在新标签页打开预览
-			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 100;`, node.label);
+			// 双击表节点：在新标签页打开预览（不带 LIMIT，让服务端分页处理）
+			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
 		} else {
 			void ensureChildren();
 			if (!isExpanded) expand();
@@ -141,6 +142,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	function previewTable(): void {
 		if (!connectionName) return;
+		// 不带 LIMIT，让服务端分页处理
 		void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
 	}
 

@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef, type JSX } from "react";
 import { ConnectionTree } from "./connection-tree";
 import { ConnectionEditorSheet } from "./connection-editor-sheet";
+import { AiAssistantPanel } from "./ai-assistant-panel";
 import { RightPanel } from "./right-panel";
 import { SettingsPanel } from "./settings-panel";
 import { SplitLayout } from "./split-layout";
@@ -16,6 +17,8 @@ import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { readSession, writeSession } from "../../../domain/workbench-session";
+import { engineAddConnection } from "../../../shared/services/engine-client";
+import { writeConfig } from "../../../domain/dbx-storage";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (
@@ -27,6 +30,7 @@ export function DatabaseWorkspace(): JSX.Element {
 
 function DatabaseWorkspaceBody(): JSX.Element {
 	const [connectionEditorOpen, setConnectionEditorOpen] = useState(false);
+	const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	const [rightPanelVisible, setRightPanelVisible] = useState(true);
@@ -113,6 +117,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			<WorkbenchTopBar
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}
 				onOpenSettings={() => setSettingsOpen(true)}
+				onOpenAiAssistant={() => setAiAssistantOpen(true)}
 				onNewQuery={newQueryTab}
 				onToggleRightPanel={toggleRightPanel}
 				rightPanelVisible={rightPanelVisible}
@@ -138,6 +143,40 @@ function DatabaseWorkspaceBody(): JSX.Element {
 						if (name) invalidateConnection(name);
 					}}
 					onCancel={() => setConnectionEditorOpen(false)}
+				/>
+			)}
+
+			{aiAssistantOpen && (
+				<AiAssistantPanel
+					onClose={() => setAiAssistantOpen(false)}
+					onCreateConnection={async (config) => {
+						try {
+							await engineAddConnection({
+								name: config.name,
+								dbType: config.dbType,
+								host: config.host,
+								port: config.port,
+								username: config.username,
+								password: config.password,
+								database: config.database,
+							});
+							// 保存到本地存储
+							await writeConfig({
+								id: `conn-${Date.now()}`,
+								name: config.name,
+								db_type: config.dbType,
+								host: config.host,
+								port: config.port,
+								username: config.username,
+								password: config.password,
+								database: config.database,
+								schemas: [],
+							});
+							await refreshConnections();
+						} catch (err) {
+							console.error("[AI Assistant] 创建连接失败:", err);
+						}
+					}}
 				/>
 			)}
 

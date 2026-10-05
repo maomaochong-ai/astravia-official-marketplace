@@ -18,7 +18,7 @@ import {
 	highlightActiveLine,
 	highlightActiveLineGutter,
 } from "@codemirror/view";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
 import { HighlightStyle } from "@codemirror/language";
 import {
 	bracketMatching,
@@ -183,7 +183,8 @@ export function SqlEditor(): JSX.Element {
 					if (update.docChanged) setSqlRef.current(update.state.doc.toString());
 				}),
 					runKeymap,
-					keymap.of([...defaultKeymap, ...completionKeymap]),
+					keymap.of([...defaultKeymap, ...completionKeymap, ...historyKeymap]),
+					history(),
 					editorTheme,
 					sqlHighlight,
 				],

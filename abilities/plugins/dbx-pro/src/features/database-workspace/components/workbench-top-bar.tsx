@@ -1,5 +1,5 @@
 /**
- * 工作台顶栏 — 左：新建连接 / 新建查询；右：历史 / 刷新 / 设置 / 全屏。
+ * 工作台顶栏 — 左：新建连接 / 新建查询 / AI 协助；右：右栏 / 刷新 / 设置 / 全屏。
  *
  * 参考 dbx 桌面壳：不展示「dbx-pro + 当前连接」静态信息，中间交互靠图标。
  * 表详情功能已迁移到查询网格顶部工具栏的"表属性"按钮，此处不再重复。
@@ -11,6 +11,7 @@ import { useWorkbench } from "../hooks/use-workbench";
 export interface WorkbenchTopBarProps {
 	onOpenConnectionEditor: () => void;
 	onOpenSettings: () => void;
+	onOpenAiAssistant: () => void;
 	onNewQuery: () => void;
 	/** 切换右栏显示/隐藏 */
 	onToggleRightPanel: () => void;
@@ -22,17 +23,18 @@ export interface WorkbenchTopBarProps {
 export function WorkbenchTopBar({
 	onOpenConnectionEditor,
 	onOpenSettings,
+	onOpenAiAssistant,
 	onNewQuery,
 	onToggleRightPanel,
 	rightPanelVisible,
 	fullscreen,
 	onToggleFullscreen,
 }: WorkbenchTopBarProps): JSX.Element {
-	const { refreshConnections, history } = useWorkbench();
+	const { refreshConnections } = useWorkbench();
 
 	return (
 		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
-			{/* 左：新建连接 / 新建查询（纯图标，跟其它工具保持统一） */}
+			{/* 左：新建连接 / 新建查询 / AI 协助 */}
 			<div className="flex items-center gap-1">
 				<button
 					type="button"
@@ -49,6 +51,14 @@ export function WorkbenchTopBar({
 					className="dbx-iconbtn"
 				>
 					<span className="icon-[lucide--file-plus-2] h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					onClick={onOpenAiAssistant}
+					title="让 AI 协助连接数据库"
+					className="dbx-iconbtn"
+				>
+					<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
 				</button>
 			</div>
 
