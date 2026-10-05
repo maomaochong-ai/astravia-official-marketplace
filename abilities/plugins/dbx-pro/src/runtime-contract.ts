@@ -8,13 +8,34 @@
  */
 
 let _ctx: any = null;
+let _isActive = false;
 
 export function setRuntime(ctx: unknown) {
 	_ctx = ctx;
+	_isActive = true;
+}
+
+/**
+ * 清除运行时上下文（在 dispose 时调用）。
+ * 标记插件为失活状态，防止异步操作在失活后继续执行。
+ */
+export function clearRuntime() {
+	_isActive = false;
+	_ctx = null;
+}
+
+/**
+ * 检查运行时是否仍然活跃。
+ * 所有异步操作在执行前应该检查此状态，避免在插件失活后继续执行。
+ */
+export function isRuntimeActive(): boolean {
+	return _isActive && _ctx !== null;
 }
 
 function requireCtx(): any {
-	if (!_ctx) throw new Error("dbx-pro plugin not activated");
+	if (!_ctx || !_isActive) {
+		throw new Error("dbx-pro plugin not activated or has been deactivated");
+	}
 	return _ctx;
 }
 

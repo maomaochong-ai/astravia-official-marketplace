@@ -9,13 +9,13 @@
 
 import { Component, lazy, Suspense, type ComponentType, type ReactElement, type ReactNode } from "react";
 import { definePlugin, type Disposable } from "@astravia-org/plugin-sdk";
-import { setRuntime } from "./runtime-contract";
-import { ensureEngineStarted } from "./runtime";
+import { setRuntime, clearRuntime, isRuntimeActive } from "./runtime-contract";
+import { ensureEngineStarted, cancelEngineStartup } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
 import "./style.css";
 
 /** 插件版本号，用于显示和调试 */
-export const PLUGIN_VERSION = "0.0.52";
+export const PLUGIN_VERSION = "0.0.53";
 
 /**
  * 清理旧的插件 DOM 和样式，避免更新后 UI 混乱。
@@ -66,22 +66,32 @@ class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
 	}
 	render(): ReactNode {
 		if (this.state.failed) {
+			// 检查是否是插件失活导致的错误
+			const isActivationError = this.state.error?.message?.includes("no longer active") || 
+				this.state.error?.name === "AbortError";
+			
 			return (
 				<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-[12px] text-muted-foreground">
 					<span className="icon-[lucide--alert-circle] h-6 w-6 text-destructive" />
-					<span>工作台加载失败</span>
-					{this.state.error && (
+					<span>{isActivationError ? "插件正在更新中" : "工作台加载失败"}</span>
+					{this.state.error && !isActivationError && (
 						<span className="text-[10px] text-muted-foreground/60 max-w-[300px] text-center">
 							{this.state.error.message}
 						</span>
 					)}
-					<button
-						type="button"
-						className="dbx-cta"
-						onClick={() => this.setState({ failed: false, error: undefined })}
-					>
-						重试
-					</button>
+					{isActivationError ? (
+						<span className="text-[10px] text-muted-foreground/60">
+							请稍候，新版本正在加载...
+						</span>
+					) : (
+						<button
+							type="button"
+							className="dbx-cta"
+							onClick={() => this.setState({ failed: false, error: undefined })}
+						>
+							重试
+						</button>
+					)}
 					<span className="text-[10px] text-muted-foreground/40">v{PLUGIN_VERSION}</span>
 				</div>
 			);
@@ -118,7 +128,9 @@ export default definePlugin({
 		// 清理旧实例，避免更新后 UI 混乱
 		cleanupPreviousInstance();
 
+		// 设置运行时上下文
 		setRuntime(ctx);
+		
 		// 绑定宿主 service 能力（plugin.json#providers.services → dbx-engine）。
 		// 宿主不提供 services 时绑定 null：engine-client 会报 ENGINE_NOT_READY。
 		bindEngineServices(((ctx as { services?: unknown }).services ?? null) as EngineServicesApi | null);
@@ -162,31 +174,72 @@ export default definePlugin({
 				defaultActive: false,
 				scope_use: ["im-claw", "conversation", "project", "cli"],
 				onToggle(active) {
+					// 检查运行时是否仍然活跃
+					if (!isRuntimeActive()) return;
 					if (active) {
-						ctx.ui.openActivityTab("dbx-pro");
+						try {
+							ctx.ui.openActivityTab("dbx-pro");
+						} catch {
+							// 忽略失活后的错误
+						}
 					}
 				},
 			});
 		}
 
 		// 安装并启动引擎 runtime（bridge 内联 + 平台二进制下载校验）。
-		// 失败必须上报，不能静默，否则保存连接时只会得到笼统的 not ready。
-		// 启动失败不阻断 UI 渲染：用户仍可查看界面，只是查询功能不可用。
-		ensureEngineStarted(ctx).catch((reason: unknown) => {
-			ctx.ui.notify({
-				message: "dbx-pro 引擎服务启动失败，查询功能暂不可用",
-				error: reason,
-				variant: "error",
-			});
+		// 使用安全的方式处理异步操作，避免在插件失活后继续执行。
+		const engineStartupPromise = ensureEngineStarted(ctx).catch((reason: unknown) => {
+			// 检查是否是失活导致的错误
+			const isActivationError = reason instanceof Error && (
+				reason.message?.includes("no longer active") || 
+				reason.name === "AbortError"
+			);
+			
+			// 只有在插件仍然活跃时才显示通知
+			if (!isActivationError && isRuntimeActive()) {
+				try {
+					ctx.ui.notify({
+						message: "dbx-pro 引擎服务启动失败，查询功能暂不可用",
+						error: reason,
+						variant: "error",
+					});
+				} catch {
+					// 忽略通知失败
+				}
+			}
 		});
 
 		return () => {
-			// 彻底清理所有资源
-			activityTab.dispose();
-			workspaceView.dispose();
-			inputAction?.dispose();
+			// 1. 首先标记运行时为失活状态
+			clearRuntime();
 			
-			// 清理 DOM 中的插件元素
+			// 2. 取消正在进行的引擎启动
+			cancelEngineStartup();
+			
+			// 3. 等待引擎启动完成（或被取消），避免竞态
+			engineStartupPromise.catch(() => {
+				// 忽略取消导致的错误
+			});
+			
+			// 4. 清理 UI 资源
+			try {
+				activityTab.dispose();
+			} catch {
+				// 忽略失活后的错误
+			}
+			try {
+				workspaceView.dispose();
+			} catch {
+				// 忽略失活后的错误
+			}
+			try {
+				inputAction?.dispose();
+			} catch {
+				// 忽略失活后的错误
+			}
+			
+			// 5. 清理 DOM 中的插件元素
 			const roots = document.querySelectorAll('[data-astravia-plugin-root="dbx-pro"]');
 			roots.forEach((root) => root.remove());
 		};

@@ -21,6 +21,7 @@ import arm64BinUrl from "../server/bin/dbx-mcp-darwin-arm64?url";
 import x64BinUrl from "../server/bin/dbx-mcp-darwin-x64?url";
 import winBinUrl from "../server/bin/dbx-mcp-win-x64.exe?url";
 import type { PlatformTag } from "./shared/platform";
+import { isRuntimeActive } from "./runtime-contract";
 
 const SERVICE_ID = "dbx-engine";
 
@@ -110,6 +111,10 @@ async function downloadBinary(context: PluginContext, asset: BinaryAsset): Promi
 	return { destination: asset.destination, data: response.body };
 }
 
+/**
+ * 等待服务状态变化，带插件活跃状态检查。
+ * 如果插件在等待期间被停用，立即抛出 AbortError。
+ */
 async function waitForStatus(
 	context: PluginContext,
 	accept: (status: PluginServiceStatus) => boolean,
@@ -117,18 +122,53 @@ async function waitForStatus(
 ): Promise<PluginServiceStatus> {
 	const deadline = Date.now() + 60_000;
 	for (;;) {
+		// 检查插件是否仍然活跃
+		if (!isRuntimeActive()) {
+			const error = new Error(`${label}已取消：插件已失活`);
+			error.name = "AbortError";
+			throw error;
+		}
+		
 		const status = await context.services.getStatus(SERVICE_ID);
 		if (status.phase === "failed") throw new Error(status.message ?? `${label}失败`);
 		if (accept(status)) return status;
 		if (Date.now() > deadline) throw new Error(`${label}超时`);
-		await new Promise((resolve) => setTimeout(resolve, 250));
+		
+		// 使用可中断的 sleep
+		await new Promise<void>((resolve, reject) => {
+			const timer = setTimeout(resolve, 250);
+			// 如果在等待期间插件失活，立即 reject
+			const checkInterval = setInterval(() => {
+				if (!isRuntimeActive()) {
+					clearTimeout(timer);
+					clearInterval(checkInterval);
+					const error = new Error(`${label}已取消：插件已失活`);
+					error.name = "AbortError";
+					reject(error);
+				}
+			}, 50);
+			// 正常 resolve 时清除检查
+			setTimeout(() => clearInterval(checkInterval), 300);
+		});
 	}
 }
 
 let provisioning: Promise<void> | undefined;
+let cancelled = false;
+
+/**
+ * 取消正在进行的引擎启动。
+ * 在插件 dispose 时调用，防止异步操作在失活后继续执行。
+ */
+export function cancelEngineStartup(): void {
+	cancelled = true;
+}
 
 /** 确保引擎已安装并就绪；并发调用共享同一次安装。 */
 export function ensureEngineStarted(context: PluginContext): Promise<void> {
+	// 重置取消标志
+	cancelled = false;
+	
 	provisioning ??= ensureEngineStartedOnce(context).finally(() => {
 		provisioning = undefined;
 	});
@@ -136,8 +176,16 @@ export function ensureEngineStarted(context: PluginContext): Promise<void> {
 }
 
 async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
+	// 在开始前检查插件是否仍然活跃
+	if (!isRuntimeActive() || cancelled) {
+		const error = new Error("引擎启动已取消：插件已失活");
+		error.name = "AbortError";
+		throw error;
+	}
+	
 	let status = await context.services.getStatus(SERVICE_ID);
 	if (status.phase === "ready") return;
+	
 	if (status.phase === "starting") {
 		await waitForStatus(context, (next) => next.phase === "ready", "引擎启动");
 		return;
@@ -151,9 +199,24 @@ async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
 		if (status.phase === "ready") return;
 	}
 	if (!status.installed) {
+		// 检查插件是否仍然活跃
+		if (!isRuntimeActive() || cancelled) {
+			const error = new Error("引擎启动已取消：插件已失活");
+			error.name = "AbortError";
+			throw error;
+		}
+		
 		// 旧版本插件留下的服务进程可能仍在运行；host install 要求先停进程，
 		// 否则直接报 "Stop the service before installing its runtime"。
 		await context.services.stop(SERVICE_ID);
+		
+		// 再次检查插件是否仍然活跃
+		if (!isRuntimeActive() || cancelled) {
+			const error = new Error("引擎启动已取消：插件已失活");
+			error.name = "AbortError";
+			throw error;
+		}
+		
 		const { tag } = await context.services.getPlatform();
 		const platformTag = tag as PlatformTag;
 		const assets = BINARY_ASSETS[platformTag];
@@ -162,6 +225,13 @@ async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
 			{ destination: "server/main.mjs", data: utf8ToBase64(bridgeSource) },
 		];
 		for (const asset of assets) {
+			// 检查插件是否仍然活跃
+			if (!isRuntimeActive() || cancelled) {
+				const error = new Error("引擎启动已取消：插件已失活");
+				error.name = "AbortError";
+				throw error;
+			}
+			
 			// 优先用包内 vite 资源二进制；读不到（如裁剪安装）再从 release 网络下载。
 			payloads.push(
 				(await readBundledBinary(asset, BUNDLED_BINARY_URL[platformTag])) ??
@@ -171,6 +241,14 @@ async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
 		status = await context.services.install(SERVICE_ID, payloads);
 		if (!status.installed) throw new Error(status.message ?? "引擎 runtime 安装失败");
 	}
+	
+	// 检查插件是否仍然活跃
+	if (!isRuntimeActive() || cancelled) {
+		const error = new Error("引擎启动已取消：插件已失活");
+		error.name = "AbortError";
+		throw error;
+	}
+	
 	status = await context.services.start(SERVICE_ID);
 	if (status.phase !== "ready") {
 		await waitForStatus(context, (next) => next.phase === "ready", "引擎启动");
