@@ -352,7 +352,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 					// AI 分析
 					{
 						type: "item",
-						label: "发送到 AI 分析",
+						label: "添加到 AI",
 						icon: "icon-[lucide--sparkles]",
 						onClick: () => openAiDialog(buildTablePrompt({ connectionName, schema: childScope, table: node.label })),
 					},

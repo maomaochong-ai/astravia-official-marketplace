@@ -5,11 +5,16 @@
  *   由宿主持久化，AI 回复保存在会话中不丢失。失败自动降级为填入输入框手动发送。
  * - 仅填入输入框：insertText，不发送。
  * 文本框展示完整内容，发送前可核对上下文是否准确。
+ * 
+ * 新增功能：
+ * - 提示词模板选择：提供数据分析领域常用提示词模板
+ * - 模板快速填充：点击模板自动填充到编辑区
  */
 
 import { useEffect, useRef, useState, type JSX } from "react";
 import type { ConversationState } from "@astravia-org/plugin-sdk";
 import { getConversation, getUi } from "../../../runtime-contract.ts";
+import { DATA_ANALYSIS_TEMPLATES, type PromptTemplate } from "./ai-prompt-templates";
 
 export interface SendToAiDialogProps {
 	open: boolean;
@@ -157,6 +162,7 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 	const [prompt, setPrompt] = useState(initialPrompt);
 	const [sending, setSending] = useState(false);
 	const [showRaw, setShowRaw] = useState(false);
+	const [showTemplates, setShowTemplates] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	useEffect(() => {
@@ -164,6 +170,7 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 			setPrompt(initialPrompt);
 			setSending(false);
 			setShowRaw(false);
+			setShowTemplates(false);
 			setTimeout(() => textareaRef.current?.focus(), 50);
 		}
 	}, [open, initialPrompt]);
@@ -188,6 +195,15 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 		onClose();
 	}
 
+	function handleSelectTemplate(template: PromptTemplate): void {
+		// 将模板内容追加到当前 prompt
+		const newPrompt = prompt.trim() 
+			? `${prompt}\n\n---\n\n${template.template}`
+			: template.template;
+		setPrompt(newPrompt);
+		setShowTemplates(false);
+	}
+
 	return (
 		<>
 			<div className="dbx-modal-backdrop" onClick={onClose} style={{ zIndex: 200 }} />
@@ -197,8 +213,16 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 				{/* 标题 */}
 				<div className="dbx-ai-dialog-header">
 					<span className="icon-[lucide--sparkles] h-4 w-4 text-muted-foreground" />
-					<h3 className="dbx-ai-dialog-title">发送到 AI 分析</h3>
+					<h3 className="dbx-ai-dialog-title">添加到 AI</h3>
 					<div className="dbx-ai-dialog-actions">
+						<button
+							type="button"
+							onClick={() => setShowTemplates(!showTemplates)}
+							className="dbx-iconbtn"
+							title="选择提示词模板"
+						>
+							<span className="icon-[lucide--template] h-3.5 w-3.5" />
+						</button>
 						<button
 							type="button"
 							onClick={() => setShowRaw(!showRaw)}
@@ -217,6 +241,36 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 						</button>
 					</div>
 				</div>
+
+				{/* 提示词模板选择器 */}
+				{showTemplates && (
+					<div className="dbx-ai-templates-panel">
+						<div className="dbx-ai-templates-header">
+							<span className="text-[11px] font-medium text-foreground">选择提示词模板</span>
+							<button
+								type="button"
+								onClick={() => setShowTemplates(false)}
+								className="dbx-iconbtn"
+								style={{ height: 20, minWidth: 20 }}
+							>
+								<span className="icon-[lucide--x] h-3 w-3" />
+							</button>
+						</div>
+						<div className="dbx-ai-templates-list">
+							{DATA_ANALYSIS_TEMPLATES.map((template) => (
+								<button
+									key={template.id}
+									type="button"
+									className="dbx-ai-template-item"
+									onClick={() => handleSelectTemplate(template)}
+								>
+									<div className="dbx-ai-template-label">{template.label}</div>
+									<div className="dbx-ai-template-desc">{template.description}</div>
+								</button>
+							))}
+						</div>
+					</div>
+				)}
 
 				{/* 内容区 */}
 				<div className="dbx-ai-dialog-body">

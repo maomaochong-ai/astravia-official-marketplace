@@ -87,6 +87,58 @@
 	line-height: 1.6;
 }
 
+/* 提示词模板面板 */
+.dbx-ai-templates-panel {
+	border-bottom: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.dbx-ai-templates-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--dbx-line-soft);
+}
+
+.dbx-ai-templates-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 8px;
+}
+
+.dbx-ai-template-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 8px 10px;
+	border-radius: 4px;
+	border: 1px solid var(--dbx-line-soft);
+	background: var(--background);
+	cursor: pointer;
+	transition: all 0.12s;
+	text-align: left;
+}
+
+.dbx-ai-template-item:hover {
+	border-color: var(--dbx-line);
+	background: var(--dbx-hover);
+}
+
+.dbx-ai-template-label {
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--foreground);
+}
+
+.dbx-ai-template-desc {
+	font-size: 10px;
+	color: var(--muted-foreground);
+}
+
 .dbx-ai-preview {
 	color: var(--foreground);
 }
