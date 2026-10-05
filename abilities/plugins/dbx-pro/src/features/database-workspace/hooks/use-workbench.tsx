@@ -177,10 +177,12 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 	async function refreshConnections() {
 		try {
 			const cfgs = await readAllConfigs();
-			dispatch({ type: "connectionsLoaded", connections: cfgs });
+			// 刷新时清除树缓存：用户可能执行了 DDL（建表/删表），
+			// 不失效缓存会导致树仍显示旧结构。
+			dispatch({ type: "connectionsLoaded", connections: cfgs, invalidateTree: true });
 		} catch (e) {
 			dispatch({ type: "setError", message: e instanceof Error ? e.message : String(e) });
-			dispatch({ type: "connectionsLoaded", connections: [] });
+			dispatch({ type: "connectionsLoaded", connections: [], invalidateTree: true });
 		}
 	}
 

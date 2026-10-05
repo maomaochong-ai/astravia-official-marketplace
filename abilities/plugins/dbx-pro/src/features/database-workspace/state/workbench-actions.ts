@@ -16,8 +16,8 @@ import type {
 
 export type WorkbenchAction =
 	| { type: "setConnections"; connections: DbConnection[] }
-	| { type: "refreshConnections" }
-	| { type: "connectionsLoaded"; connections: DbConnection[] }
+	| { type: "refreshConnection" }
+	| { type: "connectionsLoaded"; connections: DbConnection[]; invalidateTree?: boolean }
 	| { type: "setActiveConnection"; name: string | null }
 	| { type: "toggleNode"; key: string }
 	| { type: "nodeLoading"; key: string }

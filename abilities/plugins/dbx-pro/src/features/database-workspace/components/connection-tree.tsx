@@ -88,44 +88,43 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 
 	return (
 		<div className="flex h-full flex-col bg-background">
-			{/* 标题工具条（对齐 dbx 桌面壳：浅色底 + 紧凑高，右侧图标带 tooltip） */}
+			{/* 标题工具条：左侧标题可收缩，右侧按钮组固定不收缩 */}
 			<div
-				className="dbx-scroll flex h-9 shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-2 text-[11px] font-medium text-muted-foreground"
-				style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)", scrollbarWidth: "none", minWidth: 0 }}
+				className="flex h-9 shrink-0 items-center gap-1 px-2 text-[11px] font-medium text-muted-foreground"
+				style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)" }}
 			>
-				<span className="flex shrink-0 items-center gap-1.5 pl-1 min-w-0">
+				<span className="flex min-w-0 flex-1 items-center gap-1 truncate">
 					<span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0" />
 					<span className="truncate">连接</span>
 					{connectionNodes.length > 0 && (
 						<span className="shrink-0 text-[10px] text-muted-foreground/70">{connectionNodes.length}</span>
 					)}
 				</span>
-			<span className="min-w-1 flex-1" />
-			<div className="flex shrink-0 items-center gap-0.5">
-			<TooltipButton onClick={expandAll} title="展开已加载节点">
-				<span className="icon-[lucide--chevrons-down-up] h-3 w-3" />
-			</TooltipButton>
-			<TooltipButton onClick={collapseAll} title="收起全部">
-				<span className="icon-[lucide--chevrons-up-down] h-3 w-3" />
-			</TooltipButton>
-			<TooltipButton onClick={() => { void refreshConnections(); }} title="刷新连接">
-				<span className="icon-[lucide--refresh-cw] h-3 w-3" />
-			</TooltipButton>
-			<TooltipButton
-				onClick={() => toggleSelectionMode()}
-				title={selectionMode ? "退出多选" : "多选库 / 表（作为 AI 上下文）"}
-			>
-				<span
-					className={`h-3 w-3 icon-[lucide--list-checks] ${selectionMode ? "text-foreground" : ""}`}
-				/>
-			</TooltipButton>
-			{onCollapse && (
-				<TooltipButton onClick={onCollapse} title="收起连接树">
-					<span className="icon-[lucide--panel-left-close] h-3 w-3" />
-				</TooltipButton>
-			)}
+				<div className="flex shrink-0 items-center gap-0.5">
+					<TooltipButton onClick={expandAll} title="展开已加载节点">
+						<span className="icon-[lucide--chevrons-down-up] h-3 w-3" />
+					</TooltipButton>
+					<TooltipButton onClick={collapseAll} title="收起全部">
+						<span className="icon-[lucide--chevrons-up-down] h-3 w-3" />
+					</TooltipButton>
+					<TooltipButton onClick={() => { void refreshConnections(); }} title="刷新连接">
+						<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+					</TooltipButton>
+					<TooltipButton
+						onClick={() => toggleSelectionMode()}
+						title={selectionMode ? "退出多选" : "多选库 / 表（作为 AI 上下文）"}
+					>
+						<span
+							className={`h-3 w-3 icon-[lucide--list-checks] ${selectionMode ? "text-foreground" : ""}`}
+						/>
+					</TooltipButton>
+					{onCollapse && (
+						<TooltipButton onClick={onCollapse} title="收起连接树">
+							<span className="icon-[lucide--panel-left-close] h-3 w-3" />
+						</TooltipButton>
+					)}
+				</div>
 			</div>
-		</div>
 
 			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}
 			<div className="shrink-0 px-2 py-1.5" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>

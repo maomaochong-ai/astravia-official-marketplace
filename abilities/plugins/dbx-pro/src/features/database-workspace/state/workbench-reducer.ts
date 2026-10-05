@@ -40,8 +40,22 @@ export function createInitialState(): WorkbenchState {
 export function reducer(state: WorkbenchState, action: WorkbenchAction): WorkbenchState {
 	switch (action.type) {
 		case "setConnections":
-		case "connectionsLoaded":
 			return { ...state, connections: action.connections };
+
+		case "connectionsLoaded": {
+			// invalidateTree=true 时清除整棵树缓存（刷新按钮触发），
+			// 否则只更新连接列表（初始加载）。
+			if (action.invalidateTree) {
+				return {
+					...state,
+					connections: action.connections,
+					treeChildren: new Map(),
+					expandedNodes: new Set(),
+					loadingNodes: new Set(),
+				};
+			}
+			return { ...state, connections: action.connections };
+		}
 
 		case "setActiveConnection": {
 			const nextActive = action.name;
