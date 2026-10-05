@@ -26,6 +26,8 @@ import {
 } from "../../../domain/workbench-settings";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
+import { cellText, toTsv, toCsv } from "../services/result-export";
+import { CellDisplay } from "./cell-display";
 
 interface Props {
 	columns: string[];
@@ -50,28 +52,6 @@ interface Props {
 	note?: string;
 	onPageChange?: (pageIndex: number) => void;
 	onPageSizeChange?: (pageSize: number) => void;
-}
-
-function cellText(value: unknown): string {
-	if (value === null || value === undefined) return "";
-	if (typeof value === "object") return JSON.stringify(value);
-	return String(value);
-}
-
-function toTsv(cols: string[], rows: Record<string, unknown>[]): string {
-	const lines = [cols.join("\t")];
-	for (const row of rows) lines.push(cols.map((c) => cellText(row[c]).replaceAll("\t", " ")).join("\t"));
-	return lines.join("\n");
-}
-
-function csvEscape(value: string): string {
-	return /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
-}
-
-function toCsv(cols: string[], rows: Record<string, unknown>[]): string {
-	const lines = [cols.map(csvEscape).join(",")];
-	for (const row of rows) lines.push(cols.map((c) => csvEscape(cellText(row[c]))).join(","));
-	return `﻿${lines.join("\r\n")}`;
 }
 
 export function ResultGrid({
@@ -493,26 +473,4 @@ export function ResultGrid({
 			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 		</div>
 	);
-}
-
-function CellDisplay({ value }: { value: unknown }): JSX.Element {
-	if (value === null || value === undefined) {
-		return <span className="italic text-muted-foreground/70">NULL</span>;
-	}
-	if (typeof value === "boolean") {
-		return <span className="text-foreground/70">{String(value)}</span>;
-	}
-	if (typeof value === "number") {
-		return <span className="font-mono text-foreground/80">{String(value)}</span>;
-	}
-	if (typeof value === "object") {
-		return <span className="font-mono text-foreground/70">{JSON.stringify(value)}</span>;
-	}
-	const text = String(value);
-	if (/^https?:\/\//i.test(text)) {
-		return (
-			<span className="text-foreground/80 underline decoration-foreground/30">{text}</span>
-		);
-	}
-	return <span>{text}</span>;
 }
