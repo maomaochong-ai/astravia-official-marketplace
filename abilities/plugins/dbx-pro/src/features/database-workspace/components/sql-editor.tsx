@@ -29,7 +29,7 @@ import { tags } from "@lezer/highlight";
 import { autocompletion, closeBrackets, completionKeymap } from "@codemirror/autocomplete";
 import { MSSQL, MySQL, PostgreSQL, SQLite, sql } from "@codemirror/lang-sql";
 import { useWorkbench } from "../hooks/use-workbench";
-import { insertTableDrop, isTableDragOver } from "../services/sql-drop";
+import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
 import {
 	formatDialect,
 	mysql,
@@ -42,51 +42,58 @@ import {
 
 const MONO_FONT = "'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace";
 
-/** 暗色编辑器外观。 */
+/**
+ * 编辑器外观：颜色全部走 --dbx-cm-* 变量，明 / 暗两套取值在 sql-editor.css
+ * 按插件根 data-dbx-theme 切换，宿主强制主题时不会出现浅底浅字。
+ */
 const editorTheme = EditorView.theme({
-	"&": { backgroundColor: "transparent", color: "#d6d9e0", height: "100%" },
+	"&": { backgroundColor: "transparent", color: "var(--dbx-cm-text)", height: "100%" },
 	".cm-content": {
 		fontFamily: MONO_FONT,
 		fontSize: "13px",
 		lineHeight: "1.6",
 		padding: "8px 12px 8px 8px",
-		caretColor: "#9ca3af",
+		caretColor: "var(--dbx-cm-caret)",
 	},
 	".cm-scroller": { overflow: "auto", fontFamily: MONO_FONT },
 	".cm-gutters": {
-		backgroundColor: "var(--dbx-surface)",
-		borderRight: "1px solid var(--dbx-line)",
-		color: "#525866",
+		backgroundColor: "transparent",
+		borderRight: "1px solid var(--dbx-cm-gutter-border)",
+		color: "var(--dbx-cm-gutter)",
 		paddingLeft: "8px",
 		paddingRight: "8px",
 	},
 	".cm-line": { padding: "0 4px" },
 	"&.cm-focused": { outline: "none" },
-	".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.035)" },
-	".cm-activeLineGutter": { backgroundColor: "rgba(255,255,255,0.035)" },
-	".cm-cursor, .cm-dropCursor": { borderLeftColor: "#9ca3af" },
+	".cm-activeLine": { backgroundColor: "var(--dbx-cm-active-line)" },
+	".cm-activeLineGutter": { backgroundColor: "var(--dbx-cm-active-line)" },
+	".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--dbx-cm-caret)" },
+	".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+		backgroundColor: "var(--dbx-cm-selection) !important",
+	},
 	".cm-tooltip": {
-		border: "1px solid var(--border)",
-		backgroundColor: "#16181d",
+		border: "1px solid var(--dbx-cm-tooltip-border)",
+		backgroundColor: "var(--dbx-cm-tooltip-bg)",
 		borderRadius: "6px",
+		color: "var(--dbx-cm-text)",
 	},
 	".cm-tooltip-autocomplete ul li[aria-selected]": {
-		backgroundColor: "rgba(96,165,250,0.2)",
-		color: "#e5e7eb",
+		backgroundColor: "var(--dbx-cm-tooltip-selected)",
+		color: "var(--dbx-cm-text)",
 	},
 });
 
-/** SQL 语法高亮配色。 */
+/** SQL 语法高亮：颜色同样走变量，明 / 暗在 CSS 侧切换。 */
 const sqlHighlight = syntaxHighlighting(
 	HighlightStyle.define([
-		{ tag: [tags.keyword, tags.operatorKeyword], color: "#c792ea" },
-		{ tag: [tags.string, tags.special(tags.string)], color: "#c3e88d" },
-		{ tag: tags.number, color: "#f78c6c" },
-		{ tag: tags.comment, color: "#5b6172", fontStyle: "italic" },
-		{ tag: tags.typeName, color: "#ffcb6b" },
-		{ tag: tags.function(tags.variableName), color: "#82aaff" },
-		{ tag: tags.operator, color: "#89ddff" },
-		{ tag: tags.punctuation, color: "#8b93a7" },
+		{ tag: [tags.keyword, tags.operatorKeyword], color: "var(--dbx-cm-keyword)" },
+		{ tag: [tags.string, tags.special(tags.string)], color: "var(--dbx-cm-string)" },
+		{ tag: tags.number, color: "var(--dbx-cm-number)" },
+		{ tag: tags.comment, color: "var(--dbx-cm-comment)", fontStyle: "italic" },
+		{ tag: tags.typeName, color: "var(--dbx-cm-type)" },
+		{ tag: tags.function(tags.variableName), color: "var(--dbx-cm-function)" },
+		{ tag: tags.operator, color: "var(--dbx-cm-operator)" },
+		{ tag: tags.punctuation, color: "var(--dbx-cm-punctuation)" },
 	]),
 );
 
@@ -235,38 +242,7 @@ export function SqlEditor(): JSX.Element {
 
 	const running = activeTab?.isRunning ?? false;
 	const hasConn = Boolean(activeTab?.connectionName);
-
-	// 拖放高亮：dragenter/leave 在子元素间会抖动，用计数器收敛成一个布尔态。
-	const dragDepthRef = useRef(0);
-	const [dropActive, setDropActive] = useState(false);
-
-	function handleDragOver(e: React.DragEvent<HTMLDivElement>): void {
-		if (!isTableDragOver(e)) return;
-		e.preventDefault();
-		e.dataTransfer.dropEffect = "copy";
-	}
-
-	function handleDragEnter(e: React.DragEvent<HTMLDivElement>): void {
-		if (!isTableDragOver(e)) return;
-		e.preventDefault();
-		dragDepthRef.current += 1;
-		setDropActive(true);
-	}
-
-	function handleDragLeave(): void {
-		dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-		if (dragDepthRef.current === 0) setDropActive(false);
-	}
-
-	function handleDrop(e: React.DragEvent<HTMLDivElement>): void {
-		const view = viewRef.current;
-		if (!view || !isTableDragOver(e)) return;
-		// 阻断浏览器对 text/plain 的默认插入，避免与下面的自定义插入重复。
-		e.preventDefault();
-		dragDepthRef.current = 0;
-		setDropActive(false);
-		insertTableDrop(view, e);
-	}
+	const theme = useDetectedTheme();
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -311,21 +287,10 @@ export function SqlEditor(): JSX.Element {
 
 			{/* CodeMirror 挂载点：按 tab.id 重建，overflow-hidden 防止光标/tooltip 溢出 */}
 			<div
-				className={`relative min-h-0 flex-1 overflow-hidden ${dropActive ? "dbx-sql-drop-active" : ""}`}
-				onDragEnter={handleDragEnter}
-				onDragOver={handleDragOver}
-				onDragLeave={handleDragLeave}
-				onDrop={handleDrop}
+				data-dbx-theme={theme}
+				className="dbx-sql-theme relative min-h-0 flex-1 overflow-hidden"
 			>
 				<div key={activeTab?.id} ref={hostRef} className="absolute inset-0" />
-				{dropActive && (
-					<div className="dbx-sql-drop-hint pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-						<span className="flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[11px]">
-							<span className="icon-[lucide--mouse-pointer-2] h-3.5 w-3.5" />
-							松开以插入引用
-						</span>
-					</div>
-				)}
 				{!editorReady && (
 					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground/70">
 						<span className="icon-[lucide--loader] mr-2 h-3 w-3 animate-spin" />

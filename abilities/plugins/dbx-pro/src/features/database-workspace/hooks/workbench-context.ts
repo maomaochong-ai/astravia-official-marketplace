@@ -21,12 +21,12 @@ export interface WorkbenchContextValue {
 	loadNodeChildren: (nodeKey: string, connectionName?: string, extra?: { schema?: string; dbType?: string }) => Promise<void>;
 	/** 清除某连接的树缓存（编辑 schema 选择后调用，使下次展开按新选择重算）。 */
 	invalidateConnection: (name: string) => void;
-	/** 执行一个 tab 的 SQL；overrideSql 存在时只执行给定片段（选中执行）。 */
+	/** 执行一个 tab 的 SQL；overrideSql 存在时只执行给定片段（选中执行 / 过滤包装）。 */
 	runTabSql: (
 		tabId: string,
 		overrideSql?: string,
 		overrideConn?: string,
-		options?: { pageIndex?: number; pageSize?: number },
+		options?: { pageIndex?: number; pageSize?: number; mode?: "server" | "client" },
 	) => Promise<void>;
 	/** 翻到服务端分页的第 pageIndex 页（0-based）；pageSize 变化时回到第 0 页。 */
 	goToResultPage: (tabId: string, pageIndex: number, pageSize?: number) => Promise<void>;

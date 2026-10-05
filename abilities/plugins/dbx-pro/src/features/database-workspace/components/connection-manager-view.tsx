@@ -208,7 +208,7 @@ export function ConnectionManagerView(): JSX.Element {
 							</p>
 						</div>
 						<div className="mt-3 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-							<span>v0.0.67</span>
+							<span>v0.0.68</span>
 						</div>
 					</div>
 				</div>

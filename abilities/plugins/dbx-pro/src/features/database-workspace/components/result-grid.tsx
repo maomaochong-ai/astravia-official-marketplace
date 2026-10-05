@@ -96,7 +96,8 @@ export function ResultGrid({
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
-	const { state } = useWorkbench();
+	const { state, runTabSql } = useWorkbench();
+	const activeTabId = state.activeTabId;
 	const parsedTableName = useMemo(() => {
 		if (!sql) return null;
 		// 简单解析：SELECT ... FROM table_name 或 SELECT ... FROM schema.table_name
@@ -112,25 +113,29 @@ export function ResultGrid({
 		return null;
 	}, [sql]);
 
-	// ── 快捷键支持 ────────────────────────────────────────
+	// ── 快捷键支持（仅在网格区域聚焦时生效）────────────────────────
+
+	const gridRootRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent): void {
-			// 忽略在输入框中的按键
-			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-			
+			// 1) 真实表单控件与 contenteditable（CodeMirror 是 contenteditable，
+			//    不是 textarea）一律放行，否则编辑器内粘贴 / 撤销 / 全选会被吞掉。
+			const target = e.target;
+			if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+			if (target instanceof HTMLElement && (target.isContentEditable || target.closest(".cm-editor"))) return;
+			// 2) 快捷键只作用于结果网格自身区域，不在树 / 编辑器 / 宿主输入区触发。
+			if (!(target instanceof HTMLElement) || !gridRootRef.current?.contains(target)) return;
+
 			const isMod = e.metaKey || e.ctrlKey;
-			
+
 			// Undo: Mod+Z
 			if (isMod && e.key.toLowerCase() === "z" && !e.shiftKey) {
 				e.preventDefault();
 				undoEdit();
 			}
 			// Redo: Shift+Mod+Z 或 Ctrl+Y
-			else if (isMod && e.shiftKey && e.key.toLowerCase() === "z") {
-				e.preventDefault();
-				redoEdit();
-			} else if (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === "y") {
+			else if ((isMod && e.shiftKey && e.key.toLowerCase() === "z") || (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === "y")) {
 				e.preventDefault();
 				redoEdit();
 			}
@@ -146,25 +151,10 @@ export function ResultGrid({
 				e.preventDefault();
 				navigateCell(e.key);
 			}
-			// Mod+C: 复制选中单元格
+			// Mod+C: 复制选中单元格（不拦截 Mod+V/A/X：网格只读，浏览器默认行为放行）
 			else if (isMod && e.key.toLowerCase() === "c" && selectedCell) {
 				e.preventDefault();
 				copySelectedCell();
-			}
-			// Mod+A: 全选（暂不实现）
-			else if (isMod && e.key.toLowerCase() === "a") {
-				e.preventDefault();
-				// TODO: 实现全选
-			}
-			// Mod+X: 剪切（暂不实现，因为查询结果通常是只读的）
-			else if (isMod && e.key.toLowerCase() === "x") {
-				e.preventDefault();
-				// TODO: 实现剪切
-			}
-			// Mod+V: 粘贴（暂不实现）
-			else if (isMod && e.key.toLowerCase() === "v") {
-				e.preventDefault();
-				// TODO: 实现粘贴
 			}
 		}
 
@@ -218,6 +208,29 @@ export function ResultGrid({
 	function openAiDialogForQuery(): void {
 		setAiPrompt(buildQueryPrompt(connectionName ?? "", sql ?? "", rows));
 		setAiDialogOpen(true);
+	}
+
+	/**
+	 * 应用第二排的 WHERE / ORDER BY：把子查询包装在派生表里重跑，
+	 * 这样无需解析用户 SQL 里是否已有 WHERE，也兼容服务端分页（分页改写作用于外层）。
+	 * 仅支持单条 SELECT / WITH。
+	 */
+	function applyFilterSort(): void {
+		const where = whereClause.trim();
+		const orderBy = orderByClause.trim();
+		if (!where && !orderBy) return;
+		const tabId = activeTabId;
+		const baseSql = (sql ?? "").trim().replace(/;+\s*$/, "");
+		if (!tabId || !baseSql) return;
+		if (!/^(select|with)\b/i.test(baseSql) || /;\s/.test(baseSql)) {
+			alert("过滤 / 排序仅支持单条 SELECT / WITH 查询");
+			return;
+		}
+		const clauses: string[] = [];
+		if (where) clauses.push(`WHERE ${where}`);
+		if (orderBy) clauses.push(`ORDER BY ${orderBy}`);
+		const wrapped = `SELECT * FROM (\n${baseSql}\n) AS dbx_filt\n${clauses.join("\n")}`;
+		void runTabSql(tabId, wrapped, undefined, { mode: "server" });
 	}
 
 	function openTableInfo(): void {
@@ -622,7 +635,7 @@ export function ResultGrid({
 	}
 
 	return (
-		<div className="relative flex min-h-0 flex-1 flex-col bg-background">
+		<div ref={gridRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 - 双排布局 */}
 			<div className={`dbx-result-toolbar ${splitToolbar ? "split-layout" : "single-layout"}`}>
 				{/* 上排：操作按钮 */}
@@ -755,14 +768,11 @@ export function ResultGrid({
 							<input
 								type="text"
 								className="dbx-toolbar-filter-input"
-								placeholder="WHERE 条件（如：id > 100 AND name LIKE '%test%'）"
+								placeholder="WHERE 条件（如：id > 10 AND name LIKE '%test%'）"
 								value={whereClause}
 								onChange={(e) => setWhereClause(e.target.value)}
 								onKeyDown={(e) => {
-									if (e.key === "Enter") {
-										// TODO: 应用 WHERE 过滤
-										console.log("[ResultGrid] 应用 WHERE 条件:", whereClause);
-									}
+									if (e.key === "Enter") applyFilterSort();
 								}}
 							/>
 						</div>
@@ -775,21 +785,15 @@ export function ResultGrid({
 								value={orderByClause}
 								onChange={(e) => setOrderByClause(e.target.value)}
 								onKeyDown={(e) => {
-									if (e.key === "Enter") {
-										// TODO: 应用 ORDER BY 排序
-										console.log("[ResultGrid] 应用 ORDER BY:", orderByClause);
-									}
+									if (e.key === "Enter") applyFilterSort();
 								}}
 							/>
 						</div>
 						<button
 							type="button"
-							onClick={() => {
-								// TODO: 应用过滤和排序
-								console.log("[ResultGrid] 应用过滤:", whereClause, "排序:", orderByClause);
-							}}
+							onClick={applyFilterSort}
 							className="dbx-toolbar-btn dbx-toolbar-btn-primary"
-							title="应用过滤和排序"
+							title="按以上条件重新查询"
 						>
 							<span className="icon-[lucide--play] h-3.5 w-3.5" />
 							<span className="dbx-toolbar-btn-label">应用</span>
