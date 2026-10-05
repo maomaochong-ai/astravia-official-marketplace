@@ -853,3 +853,153 @@ textarea.dbx-form-input {
 .dbx-db-type-list-item:active {
 	transform: scale(0.99);
 }
+
+/* ============================================================
+ * 加载屏幕样式
+ * ============================================================ */
+
+.dbx-loading-screen {
+	animation: dbx-fade-in 0.2s ease-out;
+}
+
+.dbx-loading-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 12px;
+}
+
+.dbx-loading-spinner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	border-radius: 50%;
+	background: var(--dbx-surface);
+}
+
+.dbx-loading-text {
+	font-weight: 500;
+}
+
+.dbx-loading-version {
+	font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+@keyframes dbx-fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+/* ============================================================
+ * 表详情面板样式（右侧抽屉）
+ * ============================================================ */
+
+.dbx-table-info-drawer {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background: var(--background);
+	border-left: 1px solid var(--dbx-line);
+}
+
+.dbx-table-info-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+
+.dbx-table-info-title {
+	flex: 1;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--foreground);
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dbx-table-info-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 8px 14px 0;
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--dbx-line-soft);
+	overflow-x: auto;
+}
+
+.dbx-table-info-tab {
+	padding: 6px 12px;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--muted-foreground);
+	background: transparent;
+	border: none;
+	border-bottom: 2px solid transparent;
+	cursor: pointer;
+	transition: color 0.12s, border-color 0.12s;
+	white-space: nowrap;
+}
+
+.dbx-table-info-tab:hover {
+	color: var(--foreground);
+}
+
+.dbx-table-info-tab.active {
+	color: var(--foreground);
+	border-bottom-color: var(--foreground);
+}
+
+.dbx-table-info-content {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 12px 14px;
+}
+
+.dbx-table-info-section {
+	margin-bottom: 16px;
+}
+
+.dbx-table-info-section-title {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--muted-foreground);
+	margin-bottom: 8px;
+}
+
+.dbx-table-info-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+.dbx-table-info-item {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.dbx-table-info-label {
+	font-size: 10px;
+	color: var(--muted-foreground);
+}
+
+.dbx-table-info-value {
+	font-size: 11px;
+	color: var(--foreground);
+	font-family: var(--font-mono, ui-monospace, monospace);
+	word-break: break-all;
+}

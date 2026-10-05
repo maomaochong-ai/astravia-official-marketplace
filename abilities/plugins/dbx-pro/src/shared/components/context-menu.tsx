@@ -22,10 +22,19 @@ export interface ContextMenuItem {
 	danger?: boolean;
 	onClick: () => void;
 }
+
+export interface ContextMenuSubmenu {
+	type: "submenu";
+	label: string;
+	icon?: string;
+	items: ContextMenuEntry[];
+}
+
 export interface ContextMenuSeparator {
 	type: "separator";
 }
-export type ContextMenuEntry = ContextMenuItem | ContextMenuSeparator;
+
+export type ContextMenuEntry = ContextMenuItem | ContextMenuSubmenu | ContextMenuSeparator;
 
 export interface ContextMenuState {
 	x: number;
@@ -42,6 +51,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const [panelRoot, setPanelRoot] = useState<Element | null>(null);
 	const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
+	const [submenuState, setSubmenuState] = useState<{ index: number; y: number } | null>(null);
 
 	useLayoutEffect(() => {
 		const root = anchorRef.current?.closest(".dbx-root") ?? null;
@@ -65,7 +75,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 	}, [menu.x, menu.y, panelRoot]);
 
 	useEffect(() => {
-		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (submenuState) setSubmenuState(null); else onClose(); } };
 		const onDown = (e: MouseEvent) => {
 			if (ref.current && !ref.current.contains(e.target as Node)) onClose();
 		};
@@ -81,7 +91,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 			document.removeEventListener("scroll", onScroll, true);
 			window.removeEventListener("blur", onClose);
 		};
-	}, [onClose]);
+	}, [onClose, submenuState]);
 
 	// 锚点始终占位；菜单内容在找到面板根后 portal 进去。
 	return (
@@ -96,10 +106,79 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 						style={{ left: pos.left, top: pos.top, width: MENU_WIDTH }}
 						onContextMenu={(e) => e.preventDefault()}
 					>
-						{menu.items.map((entry, index) =>
-							entry.type === "separator" ? (
-								<div key={`sep-${index}`} className="my-1 h-px bg-border" />
-							) : (
+						{menu.items.map((entry, index) => {
+							if (entry.type === "separator") {
+								return <div key={`sep-${index}`} className="my-1 h-px bg-border" />;
+							}
+							
+							if (entry.type === "submenu") {
+								return (
+									<div key={`submenu-${index}`} className="relative">
+										<button
+											type="button"
+											role="menuitem"
+											className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+											onMouseEnter={(e) => {
+												const rect = e.currentTarget.getBoundingClientRect();
+												setSubmenuState({ index, y: rect.top });
+											}}
+											onMouseLeave={() => {
+												// 延迟关闭，让用户有时间移动到子菜单
+												setTimeout(() => {
+													setSubmenuState((current) => current?.index === index ? null : current);
+												}, 100);
+											}}
+										>
+											{entry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${entry.icon}`} />}
+											<span className="min-w-0 flex-1 truncate">{entry.label}</span>
+											<span className="icon-[lucide--chevron-right] h-3 w-3 text-muted-foreground" />
+										</button>
+										
+										{/* 子菜单 */}
+										{submenuState?.index === index && (
+											<div
+												className="absolute left-full top-0 z-[301] min-w-[160px] overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+												style={{ marginLeft: 2 }}
+												onMouseEnter={() => setSubmenuState({ index, y: submenuState.y })}
+												onMouseLeave={() => setSubmenuState(null)}
+											>
+												{entry.items.map((subEntry, subIndex) => {
+													if (subEntry.type === "separator") {
+														return <div key={`sub-sep-${subIndex}`} className="my-1 h-px bg-border" />;
+													}
+													if (subEntry.type === "submenu") {
+														// 不支持嵌套子菜单，忽略
+														return null;
+													}
+													return (
+														<button
+															key={subEntry.label}
+															type="button"
+															role="menuitem"
+															disabled={subEntry.disabled}
+															className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+																subEntry.danger
+																	? "text-red-400 hover:bg-red-500/15"
+																	: "text-foreground hover:bg-accent hover:text-accent-foreground"
+															}`}
+															onClick={() => {
+																onClose();
+																subEntry.onClick();
+															}}
+														>
+															{subEntry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${subEntry.icon}`} />}
+															<span className="min-w-0 flex-1 truncate">{subEntry.label}</span>
+														</button>
+													);
+												})}
+											</div>
+										)}
+									</div>
+								);
+							}
+							
+							// 普通菜单项
+							return (
 								<button
 									key={entry.label}
 									type="button"
@@ -118,8 +197,8 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 									{entry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${entry.icon}`} />}
 									<span className="min-w-0 flex-1 truncate">{entry.label}</span>
 								</button>
-							),
-						)}
+							);
+						})}
 					</div>,
 					panelRoot,
 				)}

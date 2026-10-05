@@ -8,13 +8,12 @@
  * 也支持从列表页直接管理已有连接。
  */
 
-import { useState, useRef, useEffect, type JSX } from "react";
+import { useState, useRef, useEffect, useCallback, type JSX } from "react";
 import { ConnectionFields } from "./connection-fields";
 import { ConnectionList } from "./connection-list";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 import { DB_TYPE_MANIFEST, type DbType } from "../../../domain/connection-config";
-import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
-import { getDatabaseIconUrl } from "../../../domain/database-icons";
+import { getDatabaseIconInfo } from "../../../domain/database-icons";
 
 export interface ConnectionEditorSheetProps {
 	/** 连接增 / 删 / 改后通知外层重载工作台（回传受影响连接名）。 */
@@ -29,6 +28,41 @@ interface Category {
 	key: string;
 	label: string;
 	types: typeof DB_TYPE_MANIFEST;
+}
+
+/** 数据库类型图标组件 — 带 fallback 机制 */
+function DatabaseTypeIcon({ dbType, size = "medium" }: { dbType: string; size?: "small" | "medium" | "large" }): JSX.Element {
+	const [iconFailed, setIconFailed] = useState(false);
+	const iconInfo = getDatabaseIconInfo(dbType);
+	
+	const sizeClasses = {
+		small: { container: "h-5 w-5", icon: "h-5 w-5", badge: "text-[8px]" },
+		medium: { container: "h-8 w-8", icon: "h-8 w-8", badge: "text-[10px]" },
+		large: { container: "h-10 w-10", icon: "h-10 w-10", badge: "text-[11px]" },
+	};
+	
+	const sizeClass = sizeClasses[size];
+	
+	// 如果没有图标信息或加载失败，显示 fallback
+	if (!iconInfo || iconFailed) {
+		return (
+			<span
+				className={`flex ${sizeClass.container} items-center justify-center rounded font-bold ${sizeClass.badge}`}
+				style={{ backgroundColor: iconInfo?.color ?? "#6B7280", color: "#fff" }}
+			>
+				{iconInfo?.badge ?? dbType.slice(0, 2).toUpperCase()}
+			</span>
+		);
+	}
+	
+	return (
+		<img
+			src={iconInfo.url}
+			alt={dbType}
+			className={`${sizeClass.icon} object-contain`}
+			onError={() => setIconFailed(true)}
+		/>
+	);
 }
 
 export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSheetProps): JSX.Element {
@@ -73,13 +107,17 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 	}
 
 	// 切换分类（滚动到对应位置）
-	function handleCategoryClick(categoryKey: string): void {
+	const handleCategoryClick = useCallback((categoryKey: string) => {
 		setSelectedCategory(categoryKey);
 		const element = categoryRefs.current[categoryKey];
 		if (element && contentRef.current) {
-			element.scrollIntoView({ behavior: "smooth", block: "start" });
+			// 滚动到对应分类
+			const containerRect = contentRef.current.getBoundingClientRect();
+			const elementRect = element.getBoundingClientRect();
+			const scrollTop = elementRect.top - containerRect.top + contentRef.current.scrollTop - 8;
+			contentRef.current.scrollTo({ top: scrollTop, behavior: "smooth" });
 		}
-	}
+	}, []);
 
 	// 监听滚动，更新当前分类
 	useEffect(() => {
@@ -88,13 +126,15 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 		const handleScroll = () => {
 			if (!contentRef.current) return;
 			const scrollTop = contentRef.current.scrollTop;
+			const containerTop = contentRef.current.getBoundingClientRect().top;
 			
 			// 找到当前可见的分类
 			let currentCategory = "relational";
 			for (const [key, element] of Object.entries(categoryRefs.current)) {
 				if (element) {
-					const offsetTop = element.offsetTop - contentRef.current.offsetTop;
-					if (scrollTop >= offsetTop - 50) {
+					const elementTop = element.getBoundingClientRect().top;
+					const relativeTop = elementTop - containerTop;
+					if (relativeTop <= 50) {
 						currentCategory = key;
 					}
 				}
@@ -105,6 +145,8 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 		const contentElement = contentRef.current;
 		if (contentElement) {
 			contentElement.addEventListener("scroll", handleScroll);
+			// 初始触发一次
+			handleScroll();
 			return () => contentElement.removeEventListener("scroll", handleScroll);
 		}
 	}, [step]);
@@ -186,7 +228,7 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 							{/* 搜索栏和视图切换 */}
 							<div className="flex items-center gap-2">
 								<div className="relative flex-1">
-									<span className="icon-[lucide--search] absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+									<span className="icon-[lucide--search] absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none z-10" />
 									<input
 										type="text"
 										className="dbx-form-input pl-9 h-9 text-xs"
@@ -195,7 +237,7 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 										onChange={(e) => setSearchQuery(e.target.value)}
 									/>
 								</div>
-								<div className="flex items-center border border-border rounded-md overflow-hidden">
+								<div className="flex items-center border border-border rounded-md overflow-hidden shrink-0">
 									<button
 										type="button"
 										className={`dbx-view-toggle-btn ${viewMode === "grid" ? "active" : ""}`}
@@ -226,7 +268,7 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 											className={`dbx-category-nav-item ${selectedCategory === cat.key ? "active" : ""}`}
 											onClick={() => handleCategoryClick(cat.key)}
 										>
-											{cat.label}
+											<span>{cat.label}</span>
 											<span className="text-[9px] text-muted-foreground/60 ml-auto">
 												{cat.types.length}
 											</span>
@@ -245,7 +287,7 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 											ref={(el) => { categoryRefs.current[cat.key] = el; }}
 											className="mb-4"
 										>
-											<h3 className="text-[11px] font-semibold text-foreground mb-2 px-1 sticky top-0 bg-background py-1">
+											<h3 className="text-[11px] font-semibold text-foreground mb-2 px-1 sticky top-0 bg-background py-1 z-10">
 												{cat.label}
 												<span className="text-[10px] font-normal text-muted-foreground ml-2">
 													{cat.types.length} 种
@@ -253,89 +295,38 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 											</h3>
 											{viewMode === "grid" ? (
 												<div className="grid grid-cols-3 gap-2">
-													{cat.types.map((t) => {
-														const iconUrl = getDatabaseIconUrl(t.dbType);
-														const visual = getDatabaseTypeVisual(t.dbType);
-														return (
-															<button
-																key={t.dbType}
-																type="button"
-																className="dbx-db-type-card"
-																onClick={() => handleSelectDbType(t.dbType as DbType)}
-															>
-																{iconUrl ? (
-																	<img 
-																		src={iconUrl} 
-																		alt={t.label}
-																		className="h-8 w-8 object-contain"
-																		onError={(e) => {
-																			// 图标加载失败时显示 fallback
-																			const target = e.currentTarget;
-																			target.style.display = "none";
-																			const parent = target.parentElement;
-																			if (parent) {
-																				const fallback = parent.querySelector(".dbx-db-type-fallback");
-																				if (fallback) fallback.classList.remove("hidden");
-																			}
-																		}}
-																	/>
-																) : null}
-																<span
-																	className={`flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold ${iconUrl ? "hidden dbx-db-type-fallback" : ""}`}
-																	style={{ backgroundColor: visual.color, color: visual.badge === "DU" ? "#1e293b" : "#fff" }}
-																>
-																	{visual.badge.slice(0, 2)}
-																</span>
-																<span className="text-[11px] font-medium truncate text-center">
-																	{t.label}
-																</span>
-															</button>
-														);
-													})}
+													{cat.types.map((t) => (
+														<button
+															key={t.dbType}
+															type="button"
+															className="dbx-db-type-card"
+															onClick={() => handleSelectDbType(t.dbType as DbType)}
+														>
+															<DatabaseTypeIcon dbType={t.dbType} size="medium" />
+															<span className="text-[11px] font-medium truncate text-center">
+																{t.label}
+															</span>
+														</button>
+													))}
 												</div>
 											) : (
 												<div className="flex flex-col gap-1">
-													{cat.types.map((t) => {
-														const iconUrl = getDatabaseIconUrl(t.dbType);
-														const visual = getDatabaseTypeVisual(t.dbType);
-														return (
-															<button
-																key={t.dbType}
-																type="button"
-																className="dbx-db-type-list-item"
-																onClick={() => handleSelectDbType(t.dbType as DbType)}
-															>
-																{iconUrl ? (
-																	<img 
-																		src={iconUrl} 
-																		alt={t.label}
-																		className="h-5 w-5 object-contain"
-																		onError={(e) => {
-																			const target = e.currentTarget;
-																			target.style.display = "none";
-																			const parent = target.parentElement;
-																			if (parent) {
-																				const fallback = parent.querySelector(".dbx-db-type-fallback");
-																				if (fallback) fallback.classList.remove("hidden");
-																			}
-																		}}
-																	/>
-																) : null}
-																<span
-																	className={`flex h-5 w-5 items-center justify-center rounded text-[8px] font-bold ${iconUrl ? "hidden dbx-db-type-fallback" : ""}`}
-																	style={{ backgroundColor: visual.color, color: visual.badge === "DU" ? "#1e293b" : "#fff" }}
-																>
-																	{visual.badge.slice(0, 2)}
-																</span>
-																<span className="text-[12px] font-medium flex-1 text-left">
-																	{t.label}
-																</span>
-																<span className="text-[10px] text-muted-foreground">
-																	{t.dbType}
-																</span>
-															</button>
-														);
-													})}
+													{cat.types.map((t) => (
+														<button
+															key={t.dbType}
+															type="button"
+															className="dbx-db-type-list-item"
+															onClick={() => handleSelectDbType(t.dbType as DbType)}
+														>
+															<DatabaseTypeIcon dbType={t.dbType} size="small" />
+															<span className="text-[12px] font-medium flex-1 text-left">
+																{t.label}
+															</span>
+															<span className="text-[10px] text-muted-foreground">
+																{t.dbType}
+															</span>
+														</button>
+													))}
 												</div>
 											)}
 										</div>

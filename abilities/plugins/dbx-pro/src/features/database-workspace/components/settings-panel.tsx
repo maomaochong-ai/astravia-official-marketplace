@@ -12,6 +12,7 @@ import {
 	isDefaultSettings,
 	type WorkbenchSettings,
 } from "../../../domain/workbench-settings";
+import { PLUGIN_VERSION } from "../../../index";
 
 interface Props {
 	settings: WorkbenchSettings;
@@ -56,7 +57,10 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 			>
 				<div className="dbx-panel-header">
 					<span className="icon-[lucide--settings] h-4 w-4 text-muted-foreground" />
-					<h3 className="dbx-panel-header-title">工作台设置</h3>
+					<div className="flex flex-col min-w-0 flex-1">
+						<h3 className="dbx-panel-header-title">工作台设置</h3>
+						<span className="text-[10px] text-muted-foreground/60 font-mono">v{PLUGIN_VERSION}</span>
+					</div>
 					<div className="dbx-panel-header-actions">
 						<button
 							type="button"

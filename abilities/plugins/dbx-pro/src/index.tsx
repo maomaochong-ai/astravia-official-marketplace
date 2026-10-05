@@ -14,6 +14,9 @@ import { ensureEngineStarted } from "./runtime";
 import { bindEngineServices, type EngineServicesApi } from "./shared/services/engine-client";
 import "./style.css";
 
+/** 插件版本号，用于显示和调试 */
+export const PLUGIN_VERSION = "0.0.52";
+
 /**
  * 清理旧的插件 DOM 和样式，避免更新后 UI 混乱。
  * 插件更新时，旧的样式表和 DOM 元素可能仍然存在，导致样式冲突。
@@ -40,34 +43,46 @@ function cleanupPreviousInstance(): void {
 	});
 }
 
-/** 面板加载中：可见的轻量占位，避免点击后空白。 */
+/** 面板加载中：可见的轻量占位，避免点击后空白。显示版本号便于确认更新状态。 */
 function PanelLoading(): ReactElement {
 	return (
-		<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full items-center justify-center bg-background text-foreground">
-			<span className="icon-[lucide--loader] mr-2 h-3.5 w-3.5 animate-spin" />
-			<span className="text-[12px] text-muted-foreground">正在加载数据库工作台…</span>
+		<div data-astravia-plugin-root="dbx-pro" className="dbx-root dbx-loading-screen flex h-full w-full flex-col items-center justify-center bg-background text-foreground">
+			<div className="dbx-loading-content">
+				<div className="dbx-loading-spinner">
+					<span className="icon-[lucide--database] h-8 w-8 animate-pulse text-muted-foreground" />
+				</div>
+				<span className="dbx-loading-text text-[12px] text-muted-foreground">正在加载数据库工作台…</span>
+				<span className="dbx-loading-version text-[10px] text-muted-foreground/60">v{PLUGIN_VERSION}</span>
+			</div>
 		</div>
 	);
 }
 
 /** 面板 chunk 加载失败时给出可重试的提示，而不是整页空白。 */
-class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-	state = { failed: false };
-	static getDerivedStateFromError(): { failed: boolean } {
-		return { failed: true };
+class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean; error?: Error }> {
+	state = { failed: false, error: undefined as Error | undefined };
+	static getDerivedStateFromError(error: Error): { failed: boolean; error: Error } {
+		return { failed: true, error };
 	}
 	render(): ReactNode {
 		if (this.state.failed) {
 			return (
 				<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-[12px] text-muted-foreground">
+					<span className="icon-[lucide--alert-circle] h-6 w-6 text-destructive" />
 					<span>工作台加载失败</span>
+					{this.state.error && (
+						<span className="text-[10px] text-muted-foreground/60 max-w-[300px] text-center">
+							{this.state.error.message}
+						</span>
+					)}
 					<button
 						type="button"
 						className="dbx-cta"
-						onClick={() => this.setState({ failed: false })}
+						onClick={() => this.setState({ failed: false, error: undefined })}
 					>
 						重试
 					</button>
+					<span className="text-[10px] text-muted-foreground/40">v{PLUGIN_VERSION}</span>
 				</div>
 			);
 		}

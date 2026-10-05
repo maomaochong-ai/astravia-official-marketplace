@@ -1,10 +1,10 @@
 /**
- * 连接树节点 — 递归渲染 connection / table / column。
+ * 连接树节点 — 递归渲染 connection / schema / table / column。
  *
  * 交互（对标 dbx 桌面壳）：
  * - 单击 connection：设为活动连接并绑定当前 tab；单击 table：选中查看结构
- * - 双击 connection：新建查询 tab；双击 table：SELECT * 预览
- * - 右键：新建查询 / 预览 / 查看结构 / 复制名称 / COUNT / 发送到 AI
+ * - 双击 connection：新建查询 tab；双击 table：预览数据
+ * - 右键：丰富的上下文菜单（新建查询/预览/查看结构/生成SQL/发送到AI/复制等）
  * - 箭头：展开懒加载子节点
  */
 
@@ -183,9 +183,38 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		setMenu(null);
 	}
 
+	/** 生成 SQL 语句 */
+	function generateSql(type: "select" | "insert" | "update" | "delete"): void {
+		if (!connectionName) return;
+		let sql = "";
+		const tableName = qualifiedName;
+		
+		switch (type) {
+			case "select":
+				sql = `SELECT * FROM ${tableName} LIMIT 100;`;
+				break;
+			case "insert":
+				sql = `INSERT INTO ${tableName} (column1, column2)\nVALUES (value1, value2);`;
+				break;
+			case "update":
+				sql = `UPDATE ${tableName}\nSET column1 = value1\nWHERE condition;`;
+				break;
+			case "delete":
+				sql = `DELETE FROM ${tableName}\nWHERE condition;`;
+				break;
+		}
+		
+		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+		dispatch({
+			type: "addTab",
+			tab: { id, label: `${node.label} ${type.toUpperCase()}`, connectionName, sql, isRunning: false },
+		});
+	}
+
 	function handleContextMenu(e: React.MouseEvent): void {
 		e.preventDefault();
 		e.stopPropagation();
+		
 		if (node.kind === "connection") {
 			setMenu({
 				x: e.clientX,
@@ -208,7 +237,6 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						label: "刷新",
 						icon: "icon-[lucide--refresh-cw]",
 						onClick: () => {
-							// 清除缓存并重新加载
 							dispatch({ type: "invalidateConnectionTree", name: node.label });
 							void ensureChildren();
 						},
@@ -227,18 +255,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						icon: "icon-[lucide--copy]",
 						onClick: () => void navigator.clipboard.writeText(node.label).catch(() => {}),
 					},
-					{
-						type: "item",
-						label: "编辑连接",
-						icon: "icon-[lucide--pencil]",
-						onClick: () => {
-							// TODO: 打开连接编辑面板
-						},
-					},
 				],
 			});
 			return;
 		}
+		
 		if (node.kind === "schema") {
 			setMenu({
 				x: e.clientX,
@@ -256,12 +277,15 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 					},
 					{
 						type: "item",
-						label: "在新标签页查询",
+						label: "新建查询",
 						icon: "icon-[lucide--file-plus-2]",
 						onClick: () => {
 							if (!connectionName) return;
-							const sql = `SELECT * FROM ${node.label}. LIMIT 100;`;
-							void openPreviewTab(connectionName, sql, `${node.label} 查询`);
+							const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+							dispatch({
+								type: "addTab",
+								tab: { id, label: `${node.label} 查询`, connectionName, sql: `SELECT * FROM ${node.label}. LIMIT 100;`, isRunning: false },
+							});
 						},
 					},
 					{ type: "separator" },
@@ -294,36 +318,47 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			});
 			return;
 		}
+		
 		if (node.kind === "table" && connectionName) {
 			setMenu({
 				x: e.clientX,
 				y: e.clientY,
 				items: [
+					// 查看数据
 					{ type: "item", label: "预览数据", icon: "icon-[lucide--table-2]", onClick: previewTable },
+					{ 
+						type: "item", 
+						label: "在新标签页打开", 
+						icon: "icon-[lucide--external-link]", 
+						onClick: () => {
+							if (!connectionName) return;
+							const sql = `SELECT * FROM ${qualifiedName} LIMIT 100;`;
+							const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+							dispatch({
+								type: "addTab",
+								tab: { id, label: node.label, connectionName, sql, isRunning: false },
+							});
+						}
+					},
+					{ type: "separator" },
+					// 查看结构
 					{ type: "item", label: "查看表结构", icon: "icon-[lucide--columns-3]", onClick: showStructure },
 					{ type: "item", label: "统计行数", icon: "icon-[lucide--hash]", onClick: countTable },
 					{ type: "separator" },
+					// 生成 SQL 子菜单
 					{
-						type: "item",
-						label: "在新标签页打开",
-						icon: "icon-[lucide--external-link]",
-						onClick: () => {
-							if (!connectionName) return;
-							const sql = childScope ? `SELECT * FROM ${childScope}.${node.label} LIMIT 100;` : `SELECT * FROM ${node.label} LIMIT 100;`;
-							void openPreviewTab(connectionName, sql, node.label);
-						},
-					},
-					{
-						type: "item",
-						label: "生成 SELECT 语句",
+						type: "submenu",
+						label: "生成 SQL",
 						icon: "icon-[lucide--code]",
-						onClick: () => {
-							if (!connectionName) return;
-							const sql = childScope ? `SELECT * FROM ${childScope}.${node.label} LIMIT 100;` : `SELECT * FROM ${node.label} LIMIT 100;`;
-							void openPreviewTab(connectionName, sql, `${node.label} 查询`);
-						},
+						items: [
+							{ type: "item", label: "SELECT", onClick: () => generateSql("select") },
+							{ type: "item", label: "INSERT", onClick: () => generateSql("insert") },
+							{ type: "item", label: "UPDATE", onClick: () => generateSql("update") },
+							{ type: "item", label: "DELETE", onClick: () => generateSql("delete") },
+						],
 					},
 					{ type: "separator" },
+					// AI 分析
 					{
 						type: "item",
 						label: "发送到 AI 分析",
@@ -331,6 +366,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						onClick: () => openAiDialog(buildTablePrompt({ connectionName, schema: childScope, table: node.label })),
 					},
 					{ type: "separator" },
+					// 复制相关
 					{
 						type: "item",
 						label: "复制表名",
@@ -350,6 +386,17 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						onClick: () => {
 							const ref = childScope ? `"${childScope}"."${node.label}"` : `"${node.label}"`;
 							void navigator.clipboard.writeText(ref).catch(() => {});
+						},
+					},
+					{ type: "separator" },
+					// 刷新
+					{
+						type: "item",
+						label: "刷新",
+						icon: "icon-[lucide--refresh-cw]",
+						onClick: () => {
+							dispatch({ type: "invalidateConnectionTree", name: connectionName });
+							void ensureChildren();
 						},
 					},
 				],
