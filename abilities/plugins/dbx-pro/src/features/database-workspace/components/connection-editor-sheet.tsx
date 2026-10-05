@@ -13,7 +13,7 @@ import { ConnectionFields } from "./connection-fields";
 import { ConnectionList } from "./connection-list";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 import { DB_TYPE_MANIFEST, type DbType } from "../../../domain/connection-config";
-import { getDatabaseIconInfo } from "../../../domain/database-icons";
+import { resolveDatabaseIcon } from "../../../domain/database-icons";
 
 export interface ConnectionEditorSheetProps {
 	/** 连接增 / 删 / 改后通知外层重载工作台（回传受影响连接名）。 */
@@ -30,38 +30,53 @@ interface Category {
 	types: typeof DB_TYPE_MANIFEST;
 }
 
-/** 数据库类型图标组件 — 带 fallback 机制 */
+/** 判定插件根当前是否深色（按背景亮度，兼容宿主强制主题）。 */
+function detectDark(): boolean {
+	const root = document.querySelector('[data-astravia-plugin-root="dbx-pro"]');
+	const bg = root ? getComputedStyle(root).backgroundColor : "";
+	const m = bg.match(/\d+(?:\.\d+)?/g);
+	if (!m || m.length < 3) return true;
+	const [r, g, b] = m.slice(0, 3).map(Number);
+	return 0.299 * r + 0.587 * g + 0.114 * b < 90;
+}
+
+/**
+ * 数据库类型图标 — 使用本地打包的真实品牌图形。
+ * 未收录品牌回退到通用数据库图标（不是彩色字母占位块）。
+ */
 function DatabaseTypeIcon({ dbType, size = "medium" }: { dbType: string; size?: "small" | "medium" | "large" }): JSX.Element {
-	const [iconFailed, setIconFailed] = useState(false);
-	const iconInfo = getDatabaseIconInfo(dbType);
-	
+	const [isDark] = useState(detectDark);
 	const sizeClasses = {
-		small: { container: "h-5 w-5", icon: "h-5 w-5", badge: "text-[8px]" },
-		medium: { container: "h-8 w-8", icon: "h-8 w-8", badge: "text-[10px]" },
-		large: { container: "h-10 w-10", icon: "h-10 w-10", badge: "text-[11px]" },
+		small: "h-5 w-5",
+		medium: "h-8 w-8",
+		large: "h-10 w-10",
 	};
-	
-	const sizeClass = sizeClasses[size];
-	
-	// 如果没有图标信息或加载失败，显示 fallback
-	if (!iconInfo || iconFailed) {
+	const icon = resolveDatabaseIcon(dbType, isDark);
+
+	if (!icon) {
+		// 通用数据库图形：明确的中性兜底，不伪造品牌
 		return (
 			<span
-				className={`flex ${sizeClass.container} items-center justify-center rounded font-bold ${sizeClass.badge}`}
-				style={{ backgroundColor: iconInfo?.color ?? "#6B7280", color: "#fff" }}
+				className={`${sizeClasses[size]} flex items-center justify-center text-muted-foreground`}
 			>
-				{iconInfo?.badge ?? dbType.slice(0, 2).toUpperCase()}
+				<span className={`icon-[lucide--database] ${size === "small" ? "h-4 w-4" : "h-5 w-5"}`} />
 			</span>
 		);
 	}
-	
+
 	return (
-		<img
-			src={iconInfo.url}
-			alt={dbType}
-			className={`${sizeClass.icon} object-contain`}
-			onError={() => setIconFailed(true)}
-		/>
+		<span className={`${sizeClasses[size]} flex items-center justify-center overflow-hidden`}>
+			<img
+				src={icon.src}
+				alt=""
+				aria-hidden="true"
+				className="h-full w-full object-contain"
+				style={{
+					transform: `scale(${icon.scale ?? 1})`,
+					...(icon.darkFilter ? { filter: icon.darkFilter } : {}),
+				}}
+			/>
+		</span>
 	);
 }
 

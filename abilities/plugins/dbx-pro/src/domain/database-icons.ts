@@ -1,127 +1,193 @@
 /**
- * 数据库图标映射 — 提供真实数据库品牌图标。
- * 
- * 优先使用 simple-icons CDN，失败时回退到本地 SVG 或颜色方块。
+ * 数据库品牌图标 — 本地内置真实品牌图形，无网络依赖。
+ *
+ * 资产与映射对齐 dbx 桌面壳 public/icons/database：所有图标随插件打包，
+ * 离线 / 企业内网 / CDN 不可达时都能稳定显示，不会退化成彩色字母占位块。
  */
 
-export interface DatabaseIconInfo {
-	/** 图标 URL（CDN 或本地） */
-	url: string;
-	/** 主题色（用于 fallback 方块） */
-	color: string;
-	/** 简短标识（2-3 字符，用于最终 fallback） */
-	badge: string;
+// Vite 在构建时把这些图标发到 dist/assets 并返回最终 URL。
+const modules = import.meta.glob<string>(
+	"./database-icon-assets/*.{svg,png,webp}",
+	{ eager: true, query: "?url", import: "default" },
+);
+const urlByFile: Record<string, string> = {};
+for (const path of Object.keys(modules)) {
+	urlByFile[path.slice(path.lastIndexOf("/") + 1)] = modules[path];
+}
+
+export interface DatabaseIcon {
+	/** 本地打包后的图标 URL（始终可用） */
+	src: string;
+	/** 深色主题下的可选 CSS 滤镜（个别偏暗 logo 提亮/反色） */
+	darkFilter?: string;
+	/** 相对常规图标的缩放（撑满 viewBox 的 logo 收敛 / 留白多的放大） */
+	scale?: number;
 }
 
 /**
- * 数据库图标映射表。
- * 包含 50+ 种主流数据库的品牌图标和主题色。
+ * dbType（归一化：小写、空格/连字符 → 下划线）→ 资产文件名。
+ * 值不含扩展名时默认 .svg；需要 png/webp 的显式写出。
  */
-export const DATABASE_ICONS: Record<string, DatabaseIconInfo> = {
-	// 关系型数据库
-	mysql: { url: "https://cdn.simpleicons.org/mysql/4479A1", color: "#4479A1", badge: "MY" },
-	postgres: { url: "https://cdn.simpleicons.org/postgresql/4169E1", color: "#4169E1", badge: "PG" },
-	mariadb: { url: "https://cdn.simpleicons.org/mariadb/003545", color: "#003545", badge: "MA" },
-	sqlite: { url: "https://cdn.simpleicons.org/sqlite/003B57", color: "#003B57", badge: "SL" },
-	sqlserver: { url: "https://cdn.simpleicons.org/microsoftsqlserver/CC2927", color: "#CC2927", badge: "MS" },
-	oracle: { url: "https://cdn.simpleicons.org/oracle/F80000", color: "#F80000", badge: "OR" },
-	db2: { url: "https://cdn.simpleicons.org/ibm/052FAD", color: "#052FAD", badge: "DB" },
-	
-	// NoSQL 数据库
-	mongodb: { url: "https://cdn.simpleicons.org/mongodb/47A248", color: "#47A248", badge: "MG" },
-	redis: { url: "https://cdn.simpleicons.org/redis/DC382D", color: "#DC382D", badge: "RD" },
-	elasticsearch: { url: "https://cdn.simpleicons.org/elasticsearch/005571", color: "#005571", badge: "ES" },
-	cassandra: { url: "https://cdn.simpleicons.org/apachecassandra/1287B1", color: "#1287B1", badge: "CA" },
-	neo4j: { url: "https://cdn.simpleicons.org/neo4j/008CC1", color: "#008CC1", badge: "N4" },
-	
-	// 分析型数据库
-	clickhouse: { url: "https://cdn.simpleicons.org/clickhouse/FFCC00", color: "#FFCC00", badge: "CH" },
-	snowflake: { url: "https://cdn.simpleicons.org/snowflake/29B5E8", color: "#29B5E8", badge: "SF" },
-	bigquery: { url: "https://cdn.simpleicons.org/googlebigquery/669DF6", color: "#669DF6", badge: "BQ" },
-	doris: { url: "https://cdn.simpleicons.org/apachedoris/00B8A9", color: "#00B8A9", badge: "DO" },
-	starrocks: { url: "https://cdn.simpleicons.org/starrocks/FF6A00", color: "#FF6A00", badge: "SR" },
-	
-	// 其他数据库
-	duckdb: { url: "https://cdn.simpleicons.org/duckdb/FFC107", color: "#FFC107", badge: "DK" },
-	cockroachdb: { url: "https://cdn.simpleicons.org/cockroachlabs/6933FF", color: "#6933FF", badge: "CR" },
-	timescaledb: { url: "https://cdn.simpleicons.org/timescale/00407F", color: "#004040", badge: "TS" },
-	citus: { url: "https://cdn.simpleicons.org/postgresql/4169E1", color: "#4169E1", badge: "CT" },
-	greenplum: { url: "https://cdn.simpleicons.org/greenplum/00BFB3", color: "#00BFB3", badge: "GP" },
-	vertica: { url: "https://cdn.simpleicons.org/vertica/00ADEF", color: "#00ADEF", badge: "VT" },
-	databricks: { url: "https://cdn.simpleicons.org/databricks/FF3621", color: "#FF3621", badge: "DB" },
-	athena: { url: "https://cdn.simpleicons.org/amazonaws/FF9900", color: "#FF9900", badge: "AT" },
-	presto: { url: "https://cdn.simpleicons.org/presto/5F122A", color: "#5F122A", badge: "PR" },
-	trino: { url: "https://cdn.simpleicons.org/trino/1299B3", color: "#1299B3", badge: "TR" },
-	druid: { url: "https://cdn.simpleicons.org/apachedruid/2CE5F9", color: "#2CE5F9", badge: "DR" },
-	pinot: { url: "https://cdn.simpleicons.org/apachepinot/1299B3", color: "#1299B3", badge: "PN" },
-	
-	// 云数据库
-	aurora: { url: "https://cdn.simpleicons.org/amazonaws/FF9900", color: "#FF9900", badge: "AU" },
-	redshift: { url: "https://cdn.simpleicons.org/amazonredshift/8C4FFF", color: "#8C4FFF", badge: "RS" },
-	neptune: { url: "https://cdn.simpleicons.org/amazonaws/FF9900", color: "#FF9900", badge: "NP" },
-	documentdb: { url: "https://cdn.simpleicons.org/amazonaws/FF9900", color: "#FF9900", badge: "DD" },
-	keyspaces: { url: "https://cdn.simpleicons.org/amazonaws/FF9900", color: "#FF9900", badge: "KS" },
-	timestream: { url: "https://cdn.simpleicons.org/amazonaws/FF9900", color: "#FF9900", badge: "TM" },
-	
-	// 消息队列
-	kafka: { url: "https://cdn.simpleicons.org/apachekafka/231F20", color: "#231F20", badge: "KF" },
-	rabbitmq: { url: "https://cdn.simpleicons.org/rabbitmq/FF6600", color: "#FF6600", badge: "RM" },
-	pulsar: { url: "https://cdn.simpleicons.org/apachepulsar/188FFF", color: "#188FFF", badge: "PS" },
-	rocketmq: { url: "https://cdn.simpleicons.org/apacherocketmq/D77310", color: "#D77310", badge: "RK" },
-	
-	// 搜索引擎
-	solr: { url: "https://cdn.simpleicons.org/apachesolr/D9411E", color: "#D9411E", badge: "SO" },
-	meilisearch: { url: "https://cdn.simpleicons.org/meilisearch/FF5E94", color: "#FF5E94", badge: "MS" },
-	typesense: { url: "https://cdn.simpleicons.org/typesense/18B8E5", color: "#18B8E5", badge: "TY" },
-	
-	// 时序数据库
-	influxdb: { url: "https://cdn.simpleicons.org/influxdb/22ADF6", color: "#22ADF6", badge: "IF" },
-	questdb: { url: "https://cdn.simpleicons.org/questdb/1A1A1A", color: "#1A1A1A", badge: "QU" },
-	tdengine: { url: "https://cdn.simpleicons.org/tdengine/0076FF", color: "#0076FF", badge: "TD" },
-	
-	// 图数据库
-	arangodb: { url: "https://cdn.simpleicons.org/arangodb/3499B3", color: "#3499B3", badge: "AR" },
-	orientdb: { url: "https://cdn.simpleicons.org/orientdb/1A1A1A", color: "#1A1A1A", badge: "OR" },
-	
-	// 向量数据库
-	pinecone: { url: "https://cdn.simpleicons.org/pinecone/000000", color: "#000000", badge: "PC" },
-	weaviate: { url: "https://cdn.simpleicons.org/weaviate/DE6A00", color: "#DE6A00", badge: "WV" },
-	qdrant: { url: "https://cdn.simpleicons.org/qdrant/FF4A3D", color: "#FF4A3D", badge: "QR" },
-	milvus: { url: "https://cdn.simpleicons.org/milvus/000000", color: "#000000", badge: "MV" },
-	chroma: { url: "https://cdn.simpleicons.org/chroma/FF6B6B", color: "#FF6B6B", badge: "CR" },
+const ASSET_ICONS: Record<string, string> = {
+	mysql: "mysql",
+	postgres: "postgres",
+	postgresql: "postgres",
+	cloudberry: "cloudberry",
+	opentenbase: "opentenbase",
+	sqlite: "sqlite",
+	"sqlite-worker": "sqlite",
+	rqlite: "rqlite.png",
+	turso: "turso.png",
+	cloudflare_d1: "cloudflare-d1",
+	redis: "redis",
+	mongodb: "mongodb",
+	mongodb_legacy: "mongodb",
+	dynamodb: "dynamodb",
+	clickhouse: "clickhouse",
+	duckdb: "duckdb",
+	mariadb: "mariadb",
+	tidb: "tidb",
+	elasticsearch: "elasticsearch",
+	easysearch: "easysearch",
+	meilisearch: "meilisearch",
+	solr: "solr",
+	couchdb: "couchdb",
+	oracle: "oracle",
+	"oracle-10g": "oracle",
+	"oracle-legacy": "oracle",
+	oracle_10g: "oracle",
+	oracle_legacy: "oracle",
+	sqlserver: "sqlserver",
+	access: "access.png",
+	oceanbase: "oceanbase",
+	oceanbase_oracle: "oceanbase",
+	opengauss: "opengauss",
+	gaussdb: "gaussdb",
+	questdb: "questdb",
+	kwdb: "kwdb",
+	kingbase: "kingbase",
+	highgo: "highgo.png",
+	uxdb: "uxdb",
+	goldendb: "goldendb.png",
+	databend: "databend",
+	vastbase: "vastbase",
+	yashandb: "yashandb.png",
+	snowflake: "snowflake",
+	h2: "h2",
+	dm: "dm",
+	dameng: "dm",
+	presto: "presto",
+	prestosql: "presto",
+	hive: "hive",
+	argo: "hive",
+	transwarp: "transwarp-inceptor.png",
+	transwarp_inceptor: "transwarp-inceptor.png",
+	kyuubi: "kyuubi.png",
+	impala: "impala",
+	hbase: "hbase",
+	phoenix: "phoenix",
+	spark: "spark-logo.png",
+	apache_kylin: "apache_kylin",
+	apache_ignite: "apache_ignite",
+	sundb: "sundb",
+	trino: "trino",
+	kylin: "apache_kylin",
+	ignite: "apache_ignite",
+	ignite3: "apache_ignite",
+	cockroachdb: "cockroachdb",
+	db2: "db2",
+	dremio: "dremio",
+	bigquery: "bigquery",
+	spanner: "spanner",
+	cassandra: "cassandra",
+	doris: "doris",
+	manticoresearch: "manticoresearch.png",
+	selectdb: "selectdb",
+	tdengine: "tdengine",
+	starrocks: "starrocks",
+	redshift: "redshift",
+	neo4j: "neo4j",
+	nebula: "nebula.png",
+	informix: "informix",
+	databricks: "databricks",
+	saphana: "saphana",
+	teradata: "teradata",
+	vertica: "vertica.webp",
+	firebird: "firebird",
+	exasol: "exasol",
+	gbase: "gbase.png",
+	gbase8a: "gbase.png",
+	gbase8s: "gbase.png",
+	tdsql: "tdsql",
+	polardb: "polardb.webp",
+	greatsql: "greatsql.webp",
+	xugu: "xugu.png",
+	iotdb: "iotdb",
+	etcd: "etcd",
+	etcd2: "etcd",
+	qdrant: "qdrant",
+	milvus: "milvus.png",
+	weaviate: "weaviate",
+	chromadb: "chromadb",
+	mq: "pulsar",
+	pulsar: "pulsar",
+	kafka: "kafka",
+	rocketmq: "rocketmq",
+	rabbitmq: "rabbitmq",
+	nacos: "nacos.png",
+	consul: "consul",
+	iris: "iris",
+	cache: "iris",
+	influxdb: "influxdb",
+	influxdb3: "influxdb",
+	victoriametrics: "victoriametrics.png",
+	zookeeper: "zookeeper",
+	oscar: "oscar.png",
+	jdbcx: "jdbcx",
+	mqtt: "mqtt",
+	dolt: "dolt",
+	salesforce: "salesforce",
 };
 
-/**
- * 获取数据库图标信息。
- * 如果找不到对应的图标，返回 null（调用方需要处理 fallback）。
- */
-export function getDatabaseIconInfo(dbType: string): DatabaseIconInfo | null {
-	const normalized = dbType.toLowerCase().replace(/[^a-z0-9]/g, "");
-	return DATABASE_ICONS[normalized] ?? null;
+/** 深色主题特殊处理：个别 logo 在深色下需要换图或滤镜。 */
+function darkAdjustment(key: string): Pick<DatabaseIcon, "darkFilter" | "src"> | null {
+	if (key === "easysearch") return { darkFilter: "brightness(0) invert(82%)" };
+	if (key === "transwarp" || key === "transwarp_inceptor") return { darkFilter: "brightness(1.6)" };
+	if (key === "uxdb") {
+		const src = urlByFile["uxdb-dark.svg"];
+		if (src) return { src };
+	}
+	return null;
+}
+
+function normalizeType(dbType: string): string {
+	return dbType.toLowerCase().replace(/[\s-]+/g, "_");
 }
 
 /**
- * 获取数据库图标 URL。
- * 如果找不到对应的图标，返回 null。
+ * 解析数据库品牌图标。
+ * @param isDark 当前是否深色主题（用于个别 logo 的深色适配）
+ * @returns 本地图标；未收录品牌返回 null（调用方应回退到通用数据库图形）。
  */
-export function getDatabaseIconUrl(dbType: string): string | null {
-	return getDatabaseIconInfo(dbType)?.url ?? null;
-}
+export function resolveDatabaseIcon(dbType: string, isDark = false): DatabaseIcon | null {
+	const key = normalizeType(dbType);
+	const asset = ASSET_ICONS[key];
+	if (!asset) return null;
+	const file = asset.includes(".") ? asset : `${asset}.svg`;
+	const src = urlByFile[file];
+	if (!src) return null;
 
-/**
- * 获取数据库图标颜色。
- * 如果找不到对应的图标，返回默认灰色。
- */
-export function getDatabaseIconColor(dbType: string): string {
-	return getDatabaseIconInfo(dbType)?.color ?? "#6B7280";
-}
+	const icon: DatabaseIcon = { src };
+	if (key === "impala") icon.scale = 1.55;
+	else if (key === "solr") icon.scale = 1.02;
+	else icon.scale = 1.35;
 
-/**
- * 获取数据库图标 badge（2-3 字符标识）。
- * 如果找不到对应的图标，返回数据库类型的前两个字符。
- */
-export function getDatabaseIconBadge(dbType: string): string {
-	const info = getDatabaseIconInfo(dbType);
-	if (info) return info.badge;
-	return dbType.slice(0, 2).toUpperCase();
+	if (isDark) {
+		const dark = darkAdjustment(key);
+		if (dark) {
+			if (dark.src) icon.src = dark.src;
+			if (dark.darkFilter) icon.darkFilter = dark.darkFilter;
+		}
+	}
+	return icon;
 }

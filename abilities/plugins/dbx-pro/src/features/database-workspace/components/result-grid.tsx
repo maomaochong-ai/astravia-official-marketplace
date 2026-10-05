@@ -232,35 +232,68 @@ export function ResultGrid({
 	}, [colList, rows]);
 
 	function downloadFile(content: string, filename: string, mimeType: string): void {
-		const blob = new Blob([content], { type: mimeType });
-		const url = URL.createObjectURL(blob);
-		const anchor = document.createElement("a");
-		anchor.href = url;
-		anchor.download = filename;
-		document.body.appendChild(anchor);
-		anchor.click();
-		anchor.remove();
-		setTimeout(() => URL.revokeObjectURL(url), 1000);
+		try {
+			// 使用 Blob + URL.createObjectURL 方式下载
+			const blob = new Blob([content], { type: mimeType });
+			const url = URL.createObjectURL(blob);
+			
+			// 创建临时链接并触发下载
+			const anchor = document.createElement("a");
+			anchor.href = url;
+			anchor.download = filename;
+			anchor.style.display = "none";
+			
+			// 添加到 DOM 并触发点击
+			document.body.appendChild(anchor);
+			anchor.click();
+			
+			// 清理
+			setTimeout(() => {
+				document.body.removeChild(anchor);
+				URL.revokeObjectURL(url);
+			}, 100);
+		} catch (error) {
+			// 如果下载失败，尝试使用 data URL 方式
+			try {
+				const dataUrl = `data:${mimeType};base64,${btoa(unescape(encodeURIComponent(content)))}`;
+				const anchor = document.createElement("a");
+				anchor.href = dataUrl;
+				anchor.download = filename;
+				anchor.click();
+			} catch {
+				// 最后手段：复制到剪贴板
+				void navigator.clipboard.writeText(content).then(() => {
+					alert(`无法下载文件，已将内容复制到剪贴板。请手动保存为 ${filename}`);
+				}).catch(() => {
+					alert(`导出失败：${error instanceof Error ? error.message : String(error)}`);
+				});
+			}
+		}
 	}
 
 	const exportCsv = useCallback(() => {
 		downloadFile(toCsv(colList, rows), "query-result.csv", "text/csv;charset=utf-8");
+		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportJson = useCallback(() => {
 		downloadFile(toJson(colList, rows), "query-result.json", "application/json");
+		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportJsonLines = useCallback(() => {
 		downloadFile(toJsonLines(colList, rows), "query-result.jsonl", "application/x-ndjson");
+		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportMarkdown = useCallback(() => {
 		downloadFile(toMarkdown(colList, rows), "query-result.md", "text/markdown");
+		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportHtml = useCallback(() => {
 		downloadFile(toHtml(colList, rows), "query-result.html", "text/html");
+		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const [exportMenuOpen, setExportMenuOpen] = useState(false);
@@ -301,7 +334,18 @@ export function ResultGrid({
 
 	function openCellMenu(e: React.MouseEvent, col: string, row: Record<string, unknown>): void {
 		e.preventDefault();
+		e.stopPropagation();
 		const value = row[col];
+		const cellValue = cellText(value);
+		
+		// 复制列名
+		const copyColumnName = () => void navigator.clipboard.writeText(col).catch(() => {});
+		// 按此值筛选（简单实现：复制到剪贴板让用户粘贴到 WHERE 子句）
+		const filterByThisValue = () => void navigator.clipboard.writeText(`${col} = '${cellValue.replace(/'/g, "''")}'`).catch(() => {});
+		// 复制为不同格式
+		const copyAsJson = () => void navigator.clipboard.writeText(JSON.stringify(value, null, 2)).catch(() => {});
+		const copyAsSql = () => void navigator.clipboard.writeText(`'${cellValue.replace(/'/g, "''")}'`).catch(() => {});
+		
 		setMenu({
 			x: e.clientX,
 			y: e.clientY,
@@ -312,28 +356,80 @@ export function ResultGrid({
 					icon: "icon-[lucide--maximize-2]",
 					onClick: () => setDetail({ column: col, value }),
 				},
+				{ type: "separator" },
 				{
 					type: "item",
-					label: "复制单元格",
+					label: "复制单元格值",
 					icon: "icon-[lucide--copy]",
-					onClick: () => void navigator.clipboard.writeText(cellText(value)).catch(() => {}),
+					onClick: () => void navigator.clipboard.writeText(cellValue).catch(() => {}),
 				},
+				{
+					type: "item",
+					label: "复制列名",
+					icon: "icon-[lucide--heading]",
+					onClick: copyColumnName,
+				},
+				{
+					type: "item",
+					label: "复制为 JSON",
+					icon: "icon-[lucide--braces]",
+					onClick: copyAsJson,
+				},
+				{
+					type: "item",
+					label: "复制为 SQL 字面量",
+					icon: "icon-[lucide--quote]",
+					onClick: copyAsSql,
+				},
+				{ type: "separator" },
 				{
 					type: "item",
 					label: "复制整行为 TSV",
 					icon: "icon-[lucide--clipboard-copy]",
 					onClick: () => void navigator.clipboard.writeText(toTsv(colList, [row])).catch(() => {}),
 				},
+				{
+					type: "item",
+					label: "复制整行为 JSON",
+					icon: "icon-[lucide--braces]",
+					onClick: () => void navigator.clipboard.writeText(toJson(colList, [row])).catch(() => {}),
+				},
 				{ type: "separator" },
-				{ type: "item", label: "复制全部为 TSV", icon: "icon-[lucide--clipboard-list]", onClick: () => void copyAll() },
-				{ type: "item", label: "复制全部为 JSON", icon: "icon-[lucide--braces]", onClick: () => void copyAsJson() },
-				{ type: "item", label: "复制全部为 Markdown", icon: "icon-[lucide--markdown]", onClick: () => void copyAsMarkdown() },
+				{
+					type: "item",
+					label: "按此值筛选",
+					icon: "icon-[lucide--filter]",
+					onClick: filterByThisValue,
+				},
+				{
+					type: "item",
+					label: "复制筛选条件",
+					icon: "icon-[lucide--equal]",
+					onClick: () => void navigator.clipboard.writeText(`${col} = '${cellValue.replace(/'/g, "''")}'`).catch(() => {}),
+				},
 				{ type: "separator" },
-				{ type: "item", label: "导出为 CSV", icon: "icon-[lucide--file-text]", onClick: () => exportCsv() },
-				{ type: "item", label: "导出为 JSON", icon: "icon-[lucide--file-json]", onClick: () => exportJson() },
-				{ type: "item", label: "导出为 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => exportJsonLines() },
-				{ type: "item", label: "导出为 Markdown", icon: "icon-[lucide--file-text]", onClick: () => exportMarkdown() },
-				{ type: "item", label: "导出为 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => exportHtml() },
+				{
+					type: "submenu",
+					label: "导出全部",
+					icon: "icon-[lucide--download]",
+					items: [
+						{ type: "item", label: "导出为 CSV", icon: "icon-[lucide--file-text]", onClick: () => exportCsv() },
+						{ type: "item", label: "导出为 JSON", icon: "icon-[lucide--file-json]", onClick: () => exportJson() },
+						{ type: "item", label: "导出为 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => exportJsonLines() },
+						{ type: "item", label: "导出为 Markdown", icon: "icon-[lucide--file-text]", onClick: () => exportMarkdown() },
+						{ type: "item", label: "导出为 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => exportHtml() },
+					],
+				},
+				{
+					type: "submenu",
+					label: "复制全部",
+					icon: "icon-[lucide--clipboard-list]",
+					items: [
+						{ type: "item", label: "复制为 TSV", onClick: () => void copyAll() },
+						{ type: "item", label: "复制为 JSON", onClick: () => void copyAsJson() },
+						{ type: "item", label: "复制为 Markdown", onClick: () => void copyAsMarkdown() },
+					],
+				},
 			],
 		});
 	}
@@ -374,23 +470,23 @@ export function ResultGrid({
 					</div>
 					{exportMenuOpen && (
 						<div className="dbx-toolbar-dropdown-menu">
-							<button type="button" onClick={() => { exportCsv(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+							<button type="button" onClick={exportCsv} className="dbx-toolbar-dropdown-item">
 								<span className="icon-[lucide--file-text] h-3 w-3" />
 								CSV 文件
 							</button>
-							<button type="button" onClick={() => { exportJson(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+							<button type="button" onClick={exportJson} className="dbx-toolbar-dropdown-item">
 								<span className="icon-[lucide--file-json] h-3 w-3" />
 								JSON 文件
 							</button>
-							<button type="button" onClick={() => { exportJsonLines(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+							<button type="button" onClick={exportJsonLines} className="dbx-toolbar-dropdown-item">
 								<span className="icon-[lucide--file-code] h-3 w-3" />
 								JSON Lines 文件
 							</button>
-							<button type="button" onClick={() => { exportMarkdown(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+							<button type="button" onClick={exportMarkdown} className="dbx-toolbar-dropdown-item">
 								<span className="icon-[lucide--file-text] h-3 w-3" />
 								Markdown 文件
 							</button>
-							<button type="button" onClick={() => { exportHtml(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
+							<button type="button" onClick={exportHtml} className="dbx-toolbar-dropdown-item">
 								<span className="icon-[lucide--file-code-2] h-3 w-3" />
 								HTML 文件
 							</button>

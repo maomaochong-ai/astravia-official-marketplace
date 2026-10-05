@@ -184,10 +184,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	}
 
 	/** 生成 SQL 语句 */
-	function generateSql(type: "select" | "insert" | "update" | "delete"): void {
+	function generateSql(type: "select" | "insert" | "update" | "delete" | "create" | "alter" | "drop"): void {
 		if (!connectionName) return;
 		let sql = "";
 		const tableName = qualifiedName;
+		const bareName = node.label;
 		
 		switch (type) {
 			case "select":
@@ -202,12 +203,21 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			case "delete":
 				sql = `DELETE FROM ${tableName}\nWHERE condition;`;
 				break;
+			case "create":
+				sql = `CREATE TABLE ${tableName} (\n  id INTEGER PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`;
+				break;
+			case "alter":
+				sql = `ALTER TABLE ${tableName}\nADD COLUMN new_column VARCHAR(100);`;
+				break;
+			case "drop":
+				sql = `DROP TABLE IF EXISTS ${tableName};`;
+				break;
 		}
 		
 		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
 		dispatch({
 			type: "addTab",
-			tab: { id, label: `${node.label} ${type.toUpperCase()}`, connectionName, sql, isRunning: false },
+			tab: { id, label: `${bareName} ${type.toUpperCase()}`, connectionName, sql, isRunning: false },
 		});
 	}
 
@@ -355,6 +365,10 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							{ type: "item", label: "INSERT", onClick: () => generateSql("insert") },
 							{ type: "item", label: "UPDATE", onClick: () => generateSql("update") },
 							{ type: "item", label: "DELETE", onClick: () => generateSql("delete") },
+							{ type: "separator" },
+							{ type: "item", label: "CREATE TABLE", onClick: () => generateSql("create") },
+							{ type: "item", label: "ALTER TABLE", onClick: () => generateSql("alter") },
+							{ type: "item", label: "DROP TABLE", onClick: () => generateSql("drop") },
 						],
 					},
 					{ type: "separator" },
