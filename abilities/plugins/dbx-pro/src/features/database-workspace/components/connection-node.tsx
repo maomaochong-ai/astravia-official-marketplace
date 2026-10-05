@@ -112,9 +112,10 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			return;
 		}
 		if (node.kind === "connection") {
+			// activateConnection 经 reducer 已保证该连接展开，此处不再 toggle：
+			// 否则会用陈旧 isExpanded 二次 dispatch，把刚展开的节点又折叠回去。
 			activateConnection();
 			void ensureChildren();
-			if (!isExpanded) expand();
 		} else if (node.kind === "schema") {
 			void ensureChildren();
 			if (!isExpanded) expand();
