@@ -28,6 +28,7 @@ import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml } from "../services/result-export";
 import { CellDisplay } from "./cell-display";
+import { CellEditor } from "./cell-editor";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { useWorkbench } from "../hooks/use-workbench";
 
@@ -88,6 +89,10 @@ export function ResultGrid({
 	const [splitToolbar, setSplitToolbar] = useState(false); // 双排工具栏开关
 	const [whereClause, setWhereClause] = useState(""); // WHERE 条件
 	const [orderByClause, setOrderByClause] = useState(""); // ORDER BY 条件
+	const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null); // 当前编辑的单元格
+	const [editValue, setEditValue] = useState<unknown>(null); // 编辑中的值
+	const [editHistory, setEditHistory] = useState<Array<{ row: number; col: string; oldValue: unknown; newValue: unknown }>>([]); // 编辑历史（用于 Undo）
+	const [editHistoryIndex, setEditHistoryIndex] = useState(-1); // 当前历史索引（用于 Redo）
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
 	const { state } = useWorkbench();
@@ -105,6 +110,36 @@ export function ResultGrid({
 		}
 		return null;
 	}, [sql]);
+
+	// ── 快捷键支持 ─────────────────────────────────────────
+
+	useEffect(() => {
+		function handleKeyDown(e: KeyboardEvent): void {
+			// 忽略在输入框中的按键
+			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+			
+			// Undo: Mod+Z
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.shiftKey) {
+				e.preventDefault();
+				undoEdit();
+			}
+			// Redo: Shift+Mod+Z 或 Ctrl+Y
+			else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "z") {
+				e.preventDefault();
+				redoEdit();
+			} else if (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === "y") {
+				e.preventDefault();
+				redoEdit();
+			}
+			// Enter: 开始编辑当前选中的单元格（如果有）
+			else if (e.key === "Enter" && !e.metaKey && !e.ctrlKey) {
+				// TODO: 如果有选中的单元格，开始编辑
+			}
+		}
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [editHistory, editHistoryIndex]);
 
 	// 设置的每页行数变化时跟随为本地默认页大小。
 	useEffect(() => {
@@ -132,6 +167,65 @@ export function ResultGrid({
 			return;
 		}
 		setTableInfoOpen(true);
+	}
+
+	// ─── 单元格编辑 ─────────────────────────────────────────
+
+	/** 开始编辑单元格 */
+	function startCellEdit(rowIndex: number, col: string, value: unknown): void {
+		setEditingCell({ row: rowIndex, col });
+		setEditValue(value);
+	}
+
+	/** 提交单元格编辑 */
+	function commitCellEdit(newValue: unknown): void {
+		if (!editingCell) return;
+		const { row, col } = editingCell;
+		const oldValue = rows[row]?.[col];
+		
+		// 添加到编辑历史
+		const newHistory = editHistory.slice(0, editHistoryIndex + 1);
+		newHistory.push({ row, col, oldValue, newValue });
+		setEditHistory(newHistory);
+		setEditHistoryIndex(newHistory.length - 1);
+		
+		// 更新数据（注意：这里只是本地更新，实际应该调用引擎 API）
+		// TODO: 调用引擎 API 更新数据库
+		const newRows = [...rows];
+		newRows[row] = { ...newRows[row], [col]: newValue };
+		// 注意：这里不能直接修改 rows，因为 rows 是 props
+		// 实际应该通过回调通知父组件
+		
+		setEditingCell(null);
+		setEditValue(null);
+	}
+
+	/** 取消单元格编辑 */
+	function cancelCellEdit(): void {
+		setEditingCell(null);
+		setEditValue(null);
+	}
+
+	/** Undo 最后一次编辑 */
+	function undoEdit(): void {
+		if (editHistoryIndex < 0) return;
+		const edit = editHistory[editHistoryIndex];
+		// TODO: 恢复旧值
+		setEditHistoryIndex(editHistoryIndex - 1);
+	}
+
+	/** Redo 最后一次撤销的编辑 */
+	function redoEdit(): void {
+		if (editHistoryIndex >= editHistory.length - 1) return;
+		const edit = editHistory[editHistoryIndex + 1];
+		// TODO: 恢复新值
+		setEditHistoryIndex(editHistoryIndex + 1);
+	}
+
+	/** 处理单元格双击 */
+	function handleCellDoubleClick(rowIndex: number, col: string, value: unknown): void {
+		// TODO: 检查是否可编辑（根据列类型、权限等）
+		startCellEdit(rowIndex, col, value);
 	}
 
 	// 客户端排序（仅对已取回的行；null/undefined 始终排最后）。
@@ -643,18 +737,30 @@ export function ResultGrid({
 												{globalIdx}
 											</td>
 										)}
-										{colList.map((c) => (
-											<td
-												key={c}
-												className="max-w-0 truncate border-b border-r border-border/60 px-3 py-1.5 text-foreground/80"
-												style={{ maxWidth: defaultWidth(c) }}
-												title={cellText(row[c])}
-												onDoubleClick={() => setDetail({ column: c, value: row[c] })}
-												onContextMenu={(e) => openCellMenu(e, c, row)}
-											>
-												<CellDisplay value={row[c]} />
-											</td>
-										))}
+										{colList.map((c) => {
+											const isEditing = editingCell?.row === rowIdx && editingCell?.col === c;
+											return (
+												<td
+													key={c}
+													className={`max-w-0 border-b border-r border-border/60 px-3 py-1.5 text-foreground/80 ${isEditing ? "" : "truncate"}`}
+													style={{ maxWidth: defaultWidth(c) }}
+													title={!isEditing ? cellText(row[c]) : undefined}
+													onDoubleClick={() => handleCellDoubleClick(rowIdx, c, row[c])}
+													onContextMenu={(e) => openCellMenu(e, c, row)}
+												>
+													{isEditing ? (
+														<CellEditor
+															value={editValue}
+															column={c}
+															onCommit={commitCellEdit}
+															onCancel={cancelCellEdit}
+														/>
+													) : (
+														<CellDisplay value={row[c]} />
+													)}
+												</td>
+											);
+										})}
 									</tr>
 								);
 							})
