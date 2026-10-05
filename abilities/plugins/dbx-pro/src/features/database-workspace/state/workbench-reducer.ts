@@ -29,7 +29,6 @@ export function createInitialState(): WorkbenchState {
 		tabColumnsMap: new Map(),
 		tabs: INITIAL_TABS,
 		activeTabId: "tab-1",
-		rightPanelTable: null,
 		connectionStatuses: {},
 		errorBanner: null,
 		selectionMode: false,
@@ -96,9 +95,6 @@ export function reducer(state: WorkbenchState, action: WorkbenchAction): Workben
 			loading.delete(action.key);
 			return { ...state, loadingNodes: loading };
 		}
-
-		case "selectRightTable":
-			return { ...state, rightPanelTable: action.selection };
 
 		case "setTabColumns": {
 			const key = `${action.connectionName}::${action.tableName}`;

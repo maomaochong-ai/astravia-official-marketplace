@@ -49,11 +49,6 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	const children = state.treeChildren.get(node.key) ?? [];
 	const hasLoadedChildren = state.treeChildren.has(node.key);
 
-	const selected =
-		node.kind === "table" &&
-		state.rightPanelTable?.connectionName === connectionName &&
-		state.rightPanelTable?.tableName === node.label;
-
 	const active = node.kind === "connection" && state.activeConnectionName === connectionName;
 
 	/** schema 节点本身的名字就是 schema，展开时用它当 scope。 */
@@ -124,16 +119,9 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			void ensureChildren();
 			if (!isExpanded) expand();
 		} else if (node.kind === "table") {
+			// 单击表节点：直接预览数据（不再显示右侧抽屉）
 			if (!connectionName) return;
-			if (settings.tableSingleClickAction === "preview") {
-				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
-			} else {
-				dispatch({
-					type: "selectRightTable",
-					selection: { connectionName, tableName: node.label, schema: childScope },
-				});
-				void loadNodeChildren(node.key, connectionName, { schema: childScope });
-			}
+			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 100;`, node.label);
 		}
 	}
 
@@ -143,15 +131,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (node.kind === "connection") {
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
-			if (settings.tableDoubleClickAction === "preview") {
-				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
-			} else {
-				dispatch({
-					type: "selectRightTable",
-					selection: { connectionName, tableName: node.label, schema: childScope },
-				});
-				void loadNodeChildren(node.key, connectionName, { schema: childScope });
-			}
+			// 双击表节点：在新标签页打开预览
+			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName} LIMIT 100;`, node.label);
 		} else {
 			void ensureChildren();
 			if (!isExpanded) expand();
@@ -176,7 +157,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	/** 生成 SQL 语句 */
 	function generateSql(type: "select" | "insert" | "update" | "delete" | "create" | "alter" | "drop"): void {
-		if (!connectionName) return;
+		console.log("[generateSql] 被调用，type:", type, "connectionName:", connectionName, "qualifiedName:", qualifiedName);
+		if (!connectionName) {
+			console.warn("[generateSql] connectionName 为空，无法生成 SQL");
+			return;
+		}
 		let sql = "";
 		const tableName = qualifiedName;
 		const bareName = node.label;
@@ -206,10 +191,12 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		}
 		
 		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+		console.log("[generateSql] 准备 dispatch addTab，id:", id, "label:", `${bareName} ${type.toUpperCase()}`);
 		dispatch({
 			type: "addTab",
 			tab: { id, label: `${bareName} ${type.toUpperCase()}`, connectionName, sql, isRunning: false },
 		});
+		console.log("[generateSql] dispatch 完成");
 	}
 
 	function handleContextMenu(e: React.MouseEvent): void {
@@ -351,14 +338,14 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						label: "生成 SQL",
 						icon: "icon-[lucide--code]",
 						items: [
-							{ type: "item", label: "SELECT", onClick: () => generateSql("select") },
-							{ type: "item", label: "INSERT", onClick: () => generateSql("insert") },
-							{ type: "item", label: "UPDATE", onClick: () => generateSql("update") },
-							{ type: "item", label: "DELETE", onClick: () => generateSql("delete") },
+							{ type: "item", label: "SELECT", onClick: () => { console.log("[菜单] SELECT 点击"); generateSql("select"); } },
+							{ type: "item", label: "INSERT", onClick: () => { console.log("[菜单] INSERT 点击"); generateSql("insert"); } },
+							{ type: "item", label: "UPDATE", onClick: () => { console.log("[菜单] UPDATE 点击"); generateSql("update"); } },
+							{ type: "item", label: "DELETE", onClick: () => { console.log("[菜单] DELETE 点击"); generateSql("delete"); } },
 							{ type: "separator" },
-							{ type: "item", label: "CREATE TABLE", onClick: () => generateSql("create") },
-							{ type: "item", label: "ALTER TABLE", onClick: () => generateSql("alter") },
-							{ type: "item", label: "DROP TABLE", onClick: () => generateSql("drop") },
+							{ type: "item", label: "CREATE TABLE", onClick: () => { console.log("[菜单] CREATE TABLE 点击"); generateSql("create"); } },
+							{ type: "item", label: "ALTER TABLE", onClick: () => { console.log("[菜单] ALTER TABLE 点击"); generateSql("alter"); } },
+							{ type: "item", label: "DROP TABLE", onClick: () => { console.log("[菜单] DROP TABLE 点击"); generateSql("drop"); } },
 						],
 					},
 					{ type: "separator" },
@@ -413,17 +400,15 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	return (
 		<div>
 			<div
-				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-foreground/40 ${
-					active
-						? "text-foreground"
-						: selected
-							? "text-foreground/90"
-							: "text-foreground/70 hover:bg-[var(--dbx-hover)]"
-				}`}
-				style={{
-					paddingLeft: 6 + depth * 14,
-					backgroundColor: active ? "var(--dbx-surface-2)" : selected ? "var(--dbx-surface)" : undefined,
-				}}
+			className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-foreground/40 ${
+				active
+					? "text-foreground"
+					: "text-foreground/70 hover:bg-[var(--dbx-hover)]"
+			}`}
+			style={{
+				paddingLeft: 6 + depth * 14,
+				backgroundColor: active ? "var(--dbx-surface-2)" : undefined,
+			}}
 				onClick={handleClick}
 				onDoubleClick={handleDoubleClick}
 				onContextMenu={handleContextMenu}

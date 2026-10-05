@@ -46,10 +46,6 @@ export interface WorkbenchContextValue {
 	removeHistory: (id: string) => Promise<void>;
 	clearAllHistory: () => Promise<void>;
 
-	// ─── 右栏视图（结构 / 历史） ──
-	rightView: "inspector" | "history";
-	setRightView: (view: "inspector" | "history") => void;
-
 	/** 清除全部本地数据：连接（含引擎+密文）、历史、设置、密码 secret。 */
 	wipeAllData: () => Promise<void>;
 

@@ -162,8 +162,14 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 																	: "text-foreground hover:bg-accent hover:text-accent-foreground"
 															}`}
 															onClick={() => {
+																console.log("[ContextMenu] 子菜单项点击:", subEntry.label);
+																// 先执行 onClick，再关闭菜单，避免菜单卸载后 onClick 无法执行
+																try {
+																	subEntry.onClick();
+																} catch (err) {
+																	console.error("[ContextMenu] 子菜单项 onClick 执行失败:", err);
+																}
 																onClose();
-																subEntry.onClick();
 															}}
 														>
 															{subEntry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${subEntry.icon}`} />}

@@ -12,8 +12,9 @@ export interface WorkbenchTopBarProps {
 	onOpenConnectionEditor: () => void;
 	onOpenSettings: () => void;
 	onNewQuery: () => void;
-	/** 切换查询历史视图（由外层同时控制右栏可见性）。 */
-	onSelectHistory: () => void;
+	/** 切换右栏显示/隐藏 */
+	onToggleRightPanel: () => void;
+	rightPanelVisible: boolean;
 	fullscreen: boolean;
 	onToggleFullscreen: () => void;
 }
@@ -22,11 +23,12 @@ export function WorkbenchTopBar({
 	onOpenConnectionEditor,
 	onOpenSettings,
 	onNewQuery,
-	onSelectHistory,
+	onToggleRightPanel,
+	rightPanelVisible,
 	fullscreen,
 	onToggleFullscreen,
 }: WorkbenchTopBarProps): JSX.Element {
-	const { refreshConnections, history, rightView } = useWorkbench();
+	const { refreshConnections, history } = useWorkbench();
 
 	return (
 		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
@@ -56,13 +58,12 @@ export function WorkbenchTopBar({
 			<div className="flex shrink-0 items-center gap-1">
 				<button
 					type="button"
-					onClick={onSelectHistory}
-					title="查询历史"
-					aria-expanded={rightView === "history"}
-					className={`dbx-iconbtn ${rightView === "history" ? "is-active" : ""}`}
+					onClick={onToggleRightPanel}
+					title={rightPanelVisible ? "隐藏右栏" : "显示右栏"}
+					aria-expanded={rightPanelVisible}
+					className={`dbx-iconbtn ${rightPanelVisible ? "is-active" : ""}`}
 				>
-					<span className="icon-[lucide--history] h-3.5 w-3.5" />
-					{history.length > 0 && <span className="text-[10px]">{history.length}</span>}
+					<span className="icon-[lucide--panel-right] h-3.5 w-3.5" />
 				</button>
 				<button
 					type="button"

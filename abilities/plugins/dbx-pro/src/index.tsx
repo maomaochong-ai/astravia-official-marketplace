@@ -23,7 +23,7 @@ import "./features/database-workspace/styles/ai-dialog.css";
 import "./features/database-workspace/styles/table-info.css";
 
 /** 插件版本号，用于显示和调试 */
-export const PLUGIN_VERSION = "0.0.59";
+export const PLUGIN_VERSION = "0.0.60";
 
 /** 当前实例 ID，用于区分新旧实例的 DOM 元素 */
 let _instanceId = 0;

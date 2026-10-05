@@ -63,7 +63,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 	const settingsRef = useRef(settings);
 	settingsRef.current = settings;
 
-	const [rightView, setRightView] = useState<"inspector" | "history">("inspector");
 	const runningStartedAtRef = useRef<Record<string, number>>({});
 	const [pendingWrite, setPendingWrite] = useState<(PendingWrite & { tabId: string }) | null>(null);
 
@@ -171,8 +170,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			rerunHistoryEntry,
 			removeHistory,
 			clearAllHistory,
-			rightView,
-			setRightView,
 			wipeAllData,
 			selectionMode: state.selectionMode,
 			selectedNodes: state.selectedNodes,
@@ -182,7 +179,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				dispatch({ type: "toggleNodeSelection", key, info }),
 			clearNodeSelection: () => dispatch({ type: "clearNodeSelection" }),
 		}),
-		[state, settings, history, rightView],
+		[state, settings, history],
 	);
 
 	return (

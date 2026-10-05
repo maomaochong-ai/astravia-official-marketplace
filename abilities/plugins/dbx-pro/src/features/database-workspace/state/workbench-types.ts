@@ -17,12 +17,6 @@ export interface EngineColumn {
 	isPrimaryKey: boolean;
 }
 
-export interface RightPanelSelection {
-	connectionName: string;
-	tableName: string;
-	schema?: string;
-}
-
 /** 一个查询 tab：编辑中的 SQL 与执行结果/运行态。 */
 export interface EditorTab {
 	id: string;
@@ -63,7 +57,6 @@ export interface WorkbenchState {
 	tabColumnsMap: Map<string, EngineColumn[]>;
 	tabs: EditorTab[];
 	activeTabId: string | null;
-	rightPanelTable: RightPanelSelection | null;
 	connectionStatuses: Record<string, "idle" | "ok" | "error" | "running">;
 	errorBanner: string | null;
 	/** 连接树多选模式（用于批量选库 / 表作为 AI 上下文）。 */

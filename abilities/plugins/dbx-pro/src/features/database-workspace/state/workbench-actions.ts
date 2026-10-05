@@ -10,7 +10,6 @@ import type { SelectedNodeInfo } from "../../../shared/ai/send-context";
 import type {
 	EditorTab,
 	EngineColumn,
-	RightPanelSelection,
 	WorkbenchState,
 } from "./workbench-types";
 
@@ -23,7 +22,6 @@ export type WorkbenchAction =
 	| { type: "nodeLoading"; key: string }
 	| { type: "nodeLoaded"; key: string; children: TreeNode[]; keepExpanded?: Set<string> }
 	| { type: "nodeFailed"; key: string }
-	| { type: "selectRightTable"; selection: RightPanelSelection | null }
 	| { type: "setTabColumns"; connectionName: string; tableName: string; columns: EngineColumn[] }
 	| { type: "addTab"; tab: EditorTab }
 	| { type: "setTabTotalCount"; id: string; totalCount: number; ranSql: string }
