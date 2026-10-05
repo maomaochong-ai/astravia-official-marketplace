@@ -157,6 +157,7 @@ export function emptyConnection(): DbConnection {
 		port: first?.defaultPort ?? 5432,
 		username: fileBased ? "" : defaultUsernameFor(dbType),
 		password: "",
+		schemas: [],
 		ssl: false,
 		is_production: false,
 		read_only: false,

@@ -16,7 +16,7 @@ export function ConnectionManagerView(): JSX.Element {
 	const { editing, view } = editor;
 
 	return (
-		<div className="dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground">
+		<div data-astravia-plugin-root="dbx-pro" className="dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground">
 			<div
 				className="flex h-9 shrink-0 items-center justify-between px-3 text-[13px] font-semibold"
 				style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}
@@ -45,6 +45,9 @@ export function ConnectionManagerView(): JSX.Element {
 							onChange={(c) => editor.setEditing(c)}
 							onTypeChange={editor.setDbType}
 							groupedManifest={editor.groupedManifest}
+							availableSchemas={editor.availableSchemas}
+							loadingSchemas={editor.loadingSchemas}
+							onLoadSchemas={editor.loadSchemas}
 						/>
 					)
 				)}

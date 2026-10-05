@@ -64,7 +64,7 @@ export function ConnectionList({
 						<div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
 							{c.db_type} · {c.host}{c.port ? `:${c.port}` : ""}
 							{c.database ? ` · ${c.database}` : ""}
-							{c.schema ? ` · ${c.schema}` : ""}
+							{c.schemas && c.schemas.length > 0 ? ` · ${c.schemas.join(",")}` : ""}
 						</div>
 					</div>
 					<button className="dbx-btn ghost" onClick={() => onEdit(c)}>编辑</button>

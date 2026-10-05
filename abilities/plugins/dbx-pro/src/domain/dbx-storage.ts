@@ -44,7 +44,15 @@ function toDbConnection(summary: EngineConnectionSummary): DbConnection {
 		username: "",
 		password: "",
 		database: summary.database || undefined,
+		schemas: [],
 	};
+}
+
+/** 归一化 schema 选择：旧单 schema → 数组；去重去空。空数组 = 全部。 */
+function normalizeSchemas(schemas: unknown, legacySchema?: string): string[] {
+	const list = Array.isArray(schemas) ? schemas.map((s) => String(s).trim()) : [];
+	if (legacySchema && legacySchema.trim()) list.push(legacySchema.trim());
+	return [...new Set(list.filter((s) => s.length > 0))];
 }
 
 /**
@@ -60,8 +68,9 @@ function mergeWithLocalMirror(serverList: DbConnection[], localList: DbConnectio
 		return {
 			...serverConn,
 			username: local.username || serverConn.username,
-			// schema 只在本地镜像里：dbx-mcp 连接配置不带它，但对象浏览需要它当默认 scope。
-			schema: local.schema ?? serverConn.schema,
+			// schema 选择只在本地镜像（dbx-mcp 连接配置不带）。旧单 schema 一并迁移。
+			schemas: normalizeSchemas(local.schemas ?? serverConn.schemas, local.schema ?? serverConn.schema),
+			schema: undefined,
 			ssl: local.ssl ?? serverConn.ssl,
 			read_only: local.read_only ?? serverConn.read_only,
 			is_production: local.is_production ?? serverConn.is_production,
@@ -169,14 +178,18 @@ export async function deleteConfig(id: string): Promise<void> {
 	const configs = await readLocalOnly();
 	name ??= configs.find((c) => c.id === id)?.name;
 
+	// 引擎删除失败必须上抛（由 remove() 提示），否则「提示成功、刷新复活」成假成功。
+	let engineFailure: unknown = null;
 	if (name) {
-		try { await engineRemoveConnection(name); } catch { /* 尽力删除 */ }
+		try { await engineRemoveConnection(name); } catch (e) { engineFailure = e; }
 		try { await getSecrets().delete(passwordKey(name)); } catch { /* vault 不可用不阻断 */ }
 	}
-	// 同时按 id 和解析出的 name 清镜像，覆盖镜像 id 不一致的情况。
+	// 镜像清理始终尽力（即使引擎失败也清本地，避免脏镜像）。
 	try {
 		await writeLocalOnly(configs.filter((c) => c.id !== id && c.name !== name));
 	} catch { /* ignore */ }
+
+	if (engineFailure) throw engineFailure;
 }
 
 async function readLocalOnly(): Promise<DbConnection[]> {

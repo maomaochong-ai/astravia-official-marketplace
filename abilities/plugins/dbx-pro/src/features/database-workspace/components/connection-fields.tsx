@@ -17,11 +17,33 @@ export interface ConnectionFieldsProps {
 	/** 换类型要连带修正端口 / host / 用户名，所以单独一个入口。 */
 	onTypeChange: (dbType: string) => void;
 	groupedManifest: Array<{ label: string; entries: DbTypeManifestEntry[] }>;
+	/** 该库可勾选的全部 schema（拉取后填充）。 */
+	availableSchemas?: string[];
+	loadingSchemas?: boolean;
+	/** 落盘草稿并拉取全部 schema。 */
+	onLoadSchemas?: () => Promise<void>;
 }
 
-export function ConnectionFields({ conn, onChange, onTypeChange, groupedManifest }: ConnectionFieldsProps) {
+export function ConnectionFields({
+	conn,
+	onChange,
+	onTypeChange,
+	groupedManifest,
+	availableSchemas,
+	loadingSchemas,
+	onLoadSchemas,
+}: ConnectionFieldsProps) {
 	const isFileBased = isFileBasedDbType(conn.db_type);
 	const [showPassword, setShowPassword] = useState(false);
+	const selectedSchemas = conn.schemas ?? [];
+
+	/** 勾选/取消某个 schema；空选择 = 展示全部。 */
+	function toggleSchema(schema: string): void {
+		const next = selectedSchemas.includes(schema)
+			? selectedSchemas.filter((s) => s !== schema)
+			: [...selectedSchemas, schema];
+		onChange({ ...conn, schemas: next });
+	}
 	const manifestEntry = useMemo(
 		() => DB_TYPE_MANIFEST.find((e) => e.dbType === conn.db_type),
 		[conn.db_type],
@@ -188,15 +210,37 @@ export function ConnectionFields({ conn, onChange, onTypeChange, groupedManifest
 				/>
 			</div>
 
-			<div className="dbx-form-row">
-				<label className="dbx-form-label">默认 Schema（可选）</label>
-				<input
-					className="dbx-form-input"
-					value={conn.schema ?? ""}
-					onChange={(e) => onChange({ ...conn, schema: e.target.value })}
-					placeholder="留空用服务器默认（PG 通常是 public）"
-				/>
-			</div>
+			{manifestEntry?.schemaAware && (
+				<div className="dbx-form-row">
+					<div className="flex items-center justify-between">
+						<label className="dbx-form-label mb-0">Schema 范围</label>
+						{onLoadSchemas && (
+							<button
+								type="button"
+								className="dbx-btn ghost"
+								onClick={() => void onLoadSchemas()}
+								disabled={loadingSchemas}
+								style={{ height: 22, fontSize: 11, padding: "0 8px" }}
+							>
+								<span className={`h-3 w-3 ${loadingSchemas ? "icon-[lucide--loader] animate-spin" : "icon-[lucide--refresh-cw]"}`} />
+								拉取 Schema
+							</button>
+						)}
+					</div>
+					<p className="mt-1 text-[10px] text-muted-foreground/70">不勾选 = 展示该库全部 schema；勾选 = 仅展示所选</p>
+
+					{availableSchemas && availableSchemas.length > 0 && (
+						<div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+							{availableSchemas.map((s) => (
+								<label key={s} className="flex cursor-pointer items-center gap-1.5 text-[12px] text-foreground/85">
+									<input type="checkbox" checked={selectedSchemas.includes(s)} onChange={() => toggleSchema(s)} />
+									{s}
+								</label>
+							))}
+						</div>
+					)}
+				</div>
+			)}
 
 			<div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
 				<label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>

@@ -31,7 +31,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	const [rightPanelVisible, setRightPanelVisible] = useState(true);
 	const [fullscreen, setFullscreen] = useState(false);
-	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, dispatch, state, rightView, setRightView } = useWorkbench();
+	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state, rightView, setRightView } = useWorkbench();
 	const workspaceRef = useRef<HTMLDivElement>(null);
 
 	// 切换历史视图时由 WorkbenchTopBar 的 onSelectHistory 负责显示右栏；
@@ -115,6 +115,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	return (
 		<div
 			ref={workspaceRef}
+			data-astravia-plugin-root="dbx-pro"
 			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen ? "!fixed !inset-0 !z-[9999]" : ""}`}
 		>
 			<WorkbenchTopBar
@@ -141,7 +142,10 @@ function DatabaseWorkspaceBody(): JSX.Element {
 
 			{connectionEditorOpen && (
 				<ConnectionEditorSheet
-					onChange={() => { void refreshConnections(); }}
+					onChange={async (name) => {
+						await refreshConnections();
+						if (name) invalidateConnection(name);
+					}}
 					onCancel={() => setConnectionEditorOpen(false)}
 				/>
 			)}

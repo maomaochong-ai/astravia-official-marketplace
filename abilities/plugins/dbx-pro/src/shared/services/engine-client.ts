@@ -128,6 +128,8 @@ export interface EngineHealth {
 interface CallOptions {
 	/** 覆盖默认超时；会被夹在 1s ~ 5min 之间。 */
 	timeoutMs?: number;
+	/** 覆盖 HTTP 方法（删除连接必须用 DELETE，否则会误命中 POST 新增处理器）。 */
+	method?: "GET" | "POST" | "DELETE" | "PUT";
 }
 
 function clampTimeout(timeoutMs?: number): number {
@@ -156,7 +158,7 @@ async function engineRequest<T>(path: string, body: unknown, options: CallOption
 	try {
 		response = await api.request<EngineEnvelope<T>>(ENGINE_SERVICE_ID, {
 			path,
-			method: body === undefined ? "GET" : "POST",
+			method: options.method ?? (body === undefined ? "GET" : "POST"),
 			body,
 			timeoutMs: clampTimeout(options.timeoutMs),
 		});
@@ -253,7 +255,8 @@ export function engineAddConnection(
 
 /** 删除连接（DELETE /connections）。 */
 export function engineRemoveConnection(name: string, options: CallOptions = {}): Promise<{ deleted: string }> {
-	return engineRequest<{ deleted: string }>("/connections", { name }, options);
+	// 必须显式 DELETE：默认带 body 会发 POST，命中新增连接处理器导致删除无效。
+	return engineRequest<{ deleted: string }>("/connections", { name }, { ...options, method: "DELETE" });
 }
 
 /** 测试连接（已存或草稿，POST /connections/test）。 */

@@ -10,8 +10,8 @@ import { ConnectionList } from "./connection-list";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 
 export interface ConnectionEditorSheetProps {
-	/** 连接增 / 删 / 改后通知外层重载工作台。 */
-	onChange?: () => void;
+	/** 连接增 / 删 / 改后通知外层重载工作台（回传受影响连接名）。 */
+	onChange?: (name?: string) => void;
 	onCancel: () => void;
 }
 
@@ -52,6 +52,9 @@ export function ConnectionEditorSheet({ onChange, onCancel }: ConnectionEditorSh
 								onChange={(c) => editor.setEditing(c)}
 								onTypeChange={editor.setDbType}
 								groupedManifest={editor.groupedManifest}
+								availableSchemas={editor.availableSchemas}
+								loadingSchemas={editor.loadingSchemas}
+								onLoadSchemas={editor.loadSchemas}
 							/>
 						)
 					)}

@@ -140,7 +140,8 @@ export type WorkbenchAction =
 	| { type: "toggleSelectionMode"; enabled?: boolean }
 	| { type: "toggleNodeSelection"; key: string; info: SelectedNodeInfo }
 	| { type: "clearNodeSelection" }
-	| { type: "restoreSession"; session: StoredSession };
+		| { type: "restoreSession"; session: StoredSession }
+	| { type: "invalidateConnectionTree"; name: string };
 
 // ─── 初始状态 ─────────────────────────────────────────────
 
@@ -318,6 +319,21 @@ function reducer(state: WorkbenchState, action: WorkbenchAction): WorkbenchState
 			};
 		}
 
+		case "invalidateConnectionTree": {
+			// 清除该连接整棵子树缓存，下次展开按最新 schemas 选择重算。
+			const belongs = (k: string) => connectionFromNodeKey(k) === action.name;
+			const treeChildren = new Map(
+				[...state.treeChildren].filter(([k]) => k !== connectionNodeKey(action.name) && !belongs(k)),
+			);
+			const expandedNodes = new Set(
+				[...state.expandedNodes].filter((k) => k !== connectionNodeKey(action.name) && !belongs(k)),
+			);
+			const loadingNodes = new Set(
+				[...state.loadingNodes].filter((k) => k !== connectionNodeKey(action.name) && !belongs(k)),
+			);
+			return { ...state, treeChildren, expandedNodes, loadingNodes };
+		}
+
 		default:
 			return state;
 	}
@@ -331,6 +347,8 @@ interface WorkbenchContextValue {
 	refreshConnections: () => Promise<void>;
 	/** 加载树节点子节点（懒加载入口） */
 	loadNodeChildren: (nodeKey: string, connectionName?: string, extra?: { schema?: string; dbType?: string }) => Promise<void>;
+	/** 清除某连接的树缓存（编辑 schema 选择后调用，使下次展开按新选择重算）。 */
+	invalidateConnection: (name: string) => void;
 	/** 执行一个 tab 的 SQL；overrideSql 存在时只执行给定片段（选中执行）。 */
 	runTabSql: (
 		tabId: string,
@@ -466,26 +484,32 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			const kind = treeNodeKind(nodeKey);
 			if (kind === "connection") {
 				const name = connectionName ?? connectionFromNodeKey(nodeKey) ?? "";
-				const defaultSchema = extra?.schema ?? stateRef.current.connections.find((c) => c.name === name)?.schema;
+				const connConfig = stateRef.current.connections.find((c) => c.name === name);
+				const selectedSchemas = connConfig?.schemas ?? [];
 
 				// 先试 schema 目录：不支持（SQLite / ClickHouse 等）时回退扁平表树。
 				let children: TreeNode[];
 				try {
-					const dbType = extra?.dbType ?? stateRef.current.connections.find((c) => c.name === name)?.db_type;
+					const dbType = extra?.dbType ?? connConfig?.db_type;
 					const schemas = await engineListSchemas(name, dbType);
 					if (schemas.supported && schemas.schemas.length > 0) {
-						children = schemas.schemas.map((s) => ({
+						// 未选 schema → 全部展示；选了 → 仅展示选中（保持勾选顺序）。
+						let visible = schemas.schemas;
+						if (selectedSchemas.length > 0) {
+							visible = selectedSchemas.filter((s) => schemas.schemas.includes(s));
+						}
+						children = visible.map((s) => ({
 							key: schemaNodeKey(name, s),
 							kind: "schema" as const,
 							label: s,
 							hasChildren: true,
 						}));
 					} else {
-						children = await listTableNodes(name, defaultSchema);
+						children = await listTableNodes(name, selectedSchemas[0]);
 					}
 				} catch {
 					// 目录探测失败不该让整棵树空掉，退回扁平表清单。
-					children = await listTableNodes(name, defaultSchema);
+					children = await listTableNodes(name, selectedSchemas[0]);
 				}
 				dispatch({ type: "nodeLoaded", key: nodeKey, children });
 			} else if (kind === "schema") {
@@ -953,6 +977,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			dispatch,
 			refreshConnections,
 			loadNodeChildren,
+			invalidateConnection: (name: string) => dispatch({ type: "invalidateConnectionTree", name }),
 			runTabSql,
 			goToResultPage,
 			cancelExecution,

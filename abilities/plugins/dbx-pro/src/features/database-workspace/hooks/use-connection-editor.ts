@@ -6,11 +6,15 @@
  * 组件只渲染这个 hook 暴露的状态与动作，不自己发请求。
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DbConnection } from "../../../domain/connection-config.ts";
 import { DB_TYPE_MANIFEST } from "../../../domain/connection-config.ts";
 import { deleteConfig, readAllConfigs, writeConfig } from "../../../domain/dbx-storage.ts";
-import { engineExecuteByName } from "../../../shared/services/engine-client.ts";
+import {
+	engineExecuteByName,
+	engineListSchemas,
+	engineRemoveConnection,
+} from "../../../shared/services/engine-client.ts";
 import {
 	defaultHostPlaceholder,
 	defaultUsernameFor,
@@ -39,13 +43,18 @@ export interface ConnectionEditorState {
 	save: () => Promise<void>;
 	remove: (conn: DbConnection) => Promise<void>;
 	test: (conn: DbConnection) => Promise<void>;
+	/** 可勾选的该库全部 schema（拉取后填充）。 */
+	availableSchemas: string[];
+	loadingSchemas: boolean;
+	/** 先落盘草稿再枚举该库 schema，供多选。 */
+	loadSchemas: () => Promise<void>;
 	/** 按 category 分组后的类型清单，给下拉框用。 */
 	groupedManifest: ReturnType<typeof groupManifestByCategory>;
 }
 
 export interface UseConnectionEditorOptions {
-	/** 连接增 / 删 / 改完成后通知外层重载工作台。 */
-	onChange?: () => void;
+	/** 连接增 / 删 / 改完成后通知外层重载工作台（回传受影响连接名）。 */
+	onChange?: (name?: string) => void;
 }
 
 export function useConnectionEditor(options: UseConnectionEditorOptions = {}): ConnectionEditorState {
@@ -55,6 +64,11 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	const [view, setView] = useState<"list" | "form">("list");
 	const [testing, setTesting] = useState(false);
 	const [testResult, setTestResult] = useState<string | null>(null);
+	const [availableSchemas, setAvailableSchemas] = useState<string[]>([]);
+	const [loadingSchemas, setLoadingSchemas] = useState(false);
+	/** 当前草稿是否为「新建」（区别于编辑已有）；是否已显式保存。用于取消时回滚幽灵连接。 */
+	const isNewDraftRef = useRef(false);
+	const savedRef = useRef(false);
 
 	useEffect(() => {
 		void (async () => {
@@ -73,12 +87,18 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	function startNew(): void {
 		setEditing(emptyConnection());
 		setTestResult(null);
+		setAvailableSchemas([]);
+		isNewDraftRef.current = true;
+		savedRef.current = false;
 		setView("form");
 	}
 
 	function startEdit(conn: DbConnection): void {
 		setEditing({ ...conn });
 		setTestResult(null);
+		setAvailableSchemas([]);
+		isNewDraftRef.current = false;
+		savedRef.current = false;
 		setView("form");
 	}
 
@@ -88,9 +108,16 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	}
 
 	function back(): void {
+		const draftName = editing?.name?.trim() || "";
+		// 新建草稿若未显式保存，「拉取 Schema」可能已把它落盘；取消时回滚，避免幽灵连接。
+		const shouldRollback = isNewDraftRef.current && !savedRef.current && draftName.length > 0;
 		setEditing(null);
 		setTestResult(null);
+		setAvailableSchemas([]);
 		setView("list");
+		if (shouldRollback) {
+			void engineRemoveConnection(draftName).catch(() => { /* 可能本就未创建 */ });
+		}
 	}
 
 	/**
@@ -123,9 +150,10 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			return;
 		}
 		try {
+			savedRef.current = true;
 			await writeConfig(editing);
 			await refresh();
-			onChange?.();
+			onChange?.(editing.name);
 			back();
 		} catch (err) {
 			alert(`保存失败: ${err instanceof Error ? err.message : String(err)}`);
@@ -137,7 +165,7 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		try {
 			await deleteConfig(conn.id);
 			await refresh();
-			onChange?.();
+			onChange?.(conn.name);
 		} catch (err) {
 			alert(`删除失败: ${err instanceof Error ? err.message : String(err)}`);
 		}
@@ -153,6 +181,7 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		try {
 			await writeConfig(conn);
 			await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
+			// 测试未改 schema 选择：只刷新连接，不失效树（避免折叠已展开节点）。
 			onChange?.();
 			setTestResult("✅ 连接成功 · 取数路径：引擎");
 		} catch (err) {
@@ -160,6 +189,24 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			setTestResult(`❌ 连接失败${code ? ` [${code}]` : ""}: ${err instanceof Error ? err.message : String(err)}`);
 		} finally {
 			setTesting(false);
+		}
+	}
+
+	/**
+	 * 拉取该库全部 schema 供多选：dbx-mcp 只认已存连接，先把草稿落盘再枚举。
+	 * 草稿凭据会一起保存，与「测试」走同一安全路径。
+	 */
+	async function loadSchemas(): Promise<void> {
+		if (!editing || !editing.name.trim()) { alert("请先填写连接名称"); return; }
+		setLoadingSchemas(true);
+		try {
+			await writeConfig(editing);
+			const outcome = await engineListSchemas(editing.name, editing.db_type);
+			setAvailableSchemas(outcome.supported ? outcome.schemas : []);
+		} catch (err) {
+			alert(`拉取 Schema 失败: ${err instanceof Error ? err.message : String(err)}`);
+		} finally {
+			setLoadingSchemas(false);
 		}
 	}
 
@@ -179,6 +226,9 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		save,
 		remove,
 		test,
+		availableSchemas,
+		loadingSchemas,
+		loadSchemas,
 		groupedManifest,
 	};
 }

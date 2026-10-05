@@ -160,8 +160,13 @@ export interface DbConnection {
 	password: string;
 	database?: string;
 	/**
-	 * 默认 schema。对象浏览的起始 scope：展开连接节点时优先用它，
-	 * 避免每次都落在库的默认 schema（如 PG 的 public）上。
+	 * 选中的 schema 集合（多选）。对象浏览/连接树只展示这些 schema；
+	 * 留空（空数组）= 展示该库全部 schema。
+	 */
+	schemas?: string[];
+	/**
+	 * 旧版单 schema 字段（已废弃，读取时迁移进 schemas；新代码用 schemas）。
+	 * @deprecated
 	 */
 	schema?: string;
 	note?: string;

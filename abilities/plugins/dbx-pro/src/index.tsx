@@ -17,9 +17,9 @@ import "./style.css";
 /** 面板加载中：可见的轻量占位，避免点击后空白。 */
 function PanelLoading(): ReactElement {
 	return (
-		<div className="flex h-full w-full items-center justify-center text-[12px] text-muted-foreground">
+		<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full items-center justify-center bg-background text-foreground">
 			<span className="icon-[lucide--loader] mr-2 h-3.5 w-3.5 animate-spin" />
-			正在加载数据库工作台…
+			<span className="text-[12px] text-muted-foreground">正在加载数据库工作台…</span>
 		</div>
 	);
 }
@@ -33,7 +33,7 @@ class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
 	render(): ReactNode {
 		if (this.state.failed) {
 			return (
-				<div className="flex h-full w-full flex-col items-center justify-center gap-3 text-[12px] text-muted-foreground">
+				<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-[12px] text-muted-foreground">
 					<span>工作台加载失败</span>
 					<button
 						type="button"
