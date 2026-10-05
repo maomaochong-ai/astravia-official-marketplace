@@ -245,7 +245,7 @@ export function SqlEditor(): JSX.Element {
 	const theme = useDetectedTheme();
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col bg-background">
+		<div data-dbx-theme={theme} className="dbx-sql-theme flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 */}
 			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-1 px-2">
 				<button
@@ -286,10 +286,7 @@ export function SqlEditor(): JSX.Element {
 			</div>
 
 			{/* CodeMirror 挂载点：按 tab.id 重建，overflow-hidden 防止光标/tooltip 溢出 */}
-			<div
-				data-dbx-theme={theme}
-				className="dbx-sql-theme relative min-h-0 flex-1 overflow-hidden"
-			>
+			<div className="relative min-h-0 flex-1 overflow-hidden">
 				<div key={activeTab?.id} ref={hostRef} className="absolute inset-0" />
 				{!editorReady && (
 					<div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground/70">

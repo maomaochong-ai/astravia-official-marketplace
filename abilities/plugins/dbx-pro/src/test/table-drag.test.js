@@ -1,81 +1,79 @@
 /**
- * 连接树拖拽协议测试 — 载荷构造、插入文本与 dataTransfer 往返。
+ * 连接树拖拽协议测试 — 拖入宿主 AI 对话框的引用文本构造与 dataTransfer 写入。
  */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import {
-	buildTableDragPayload,
-	readTableDragPayload,
-	tableDragInsertText,
-	writeTableDragPayload,
-} from "../domain/table-drag.ts";
+import { buildNodeReferenceText, writeNodeDragPayload } from "../domain/table-drag.ts";
 
-describe("table drag payload", () => {
+describe("node drag reference text", () => {
 	it("表节点生成 schema.table 限定名", () => {
-		const payload = buildTableDragPayload("table", {
-			connectionName: "pgsql-dev",
-			schema: "edw",
-			tableName: "orders",
-			label: "orders",
-		});
-		assert.equal(payload.qualifiedName, "edw.orders");
-		assert.equal(tableDragInsertText(payload), "edw.orders");
+		assert.equal(
+			buildNodeReferenceText("table", {
+				connectionName: "pgsql-dev",
+				schema: "edw",
+				tableName: "orders",
+				label: "orders",
+			}),
+			"edw.orders",
+		);
 	});
 
 	it("无 schema 层的表节点只用表名", () => {
-		const payload = buildTableDragPayload("table", {
-			connectionName: "sqlite-main",
-			label: "users",
-		});
-		assert.equal(tableDragInsertText(payload), "users");
+		assert.equal(
+			buildNodeReferenceText("table", { connectionName: "sqlite-main", label: "users" }),
+			"users",
+		);
 	});
 
-	it("列节点插入原始列名而非限定名", () => {
-		const payload = buildTableDragPayload("column", {
-			connectionName: "pgsql-dev",
-			schema: "public",
-			tableName: "users",
-			columnName: "order:id",
-			label: "order:id",
-		});
-		assert.equal(tableDragInsertText(payload), "order:id");
+	it("列节点带出所属表：schema.table.column", () => {
+		assert.equal(
+			buildNodeReferenceText("column", {
+				connectionName: "pgsql-dev",
+				schema: "public",
+				tableName: "users",
+				columnName: "order:id",
+				label: "order:id",
+			}),
+			"public.users.order:id",
+		);
+	});
+
+	it("无 schema 时列引用为 table.column", () => {
+		assert.equal(
+			buildNodeReferenceText("column", {
+				connectionName: "sqlite-main",
+				tableName: "users",
+				columnName: "id",
+				label: "id",
+			}),
+			"users.id",
+		);
 	});
 
 	it("schema / 连接节点插入节点名本身", () => {
-		const schemaPayload = buildTableDragPayload("schema", {
-			connectionName: "c",
-			label: "edw",
-		});
-		assert.equal(tableDragInsertText(schemaPayload), "edw");
-
-		const connPayload = buildTableDragPayload("connection", {
-			connectionName: "pgsql-dev",
-			label: "pgsql-dev",
-		});
-		assert.equal(tableDragInsertText(connPayload), "pgsql-dev");
+		assert.equal(
+			buildNodeReferenceText("schema", { connectionName: "c", label: "edw" }),
+			"edw",
+		);
+		assert.equal(
+			buildNodeReferenceText("connection", { connectionName: "pgsql-dev", label: "pgsql-dev" }),
+			"pgsql-dev",
+		);
 	});
 
-	it("dataTransfer 写入后可结构化读回，且含 text/plain 兜底", () => {
-		if (typeof DataTransfer === "undefined") return; // 环境不支持时跳过往返
-		const payload = buildTableDragPayload("table", {
+	it("dataTransfer 写入 text/plain 兜底与来源标记", () => {
+		if (typeof DataTransfer === "undefined") return; // 环境不支持时跳过
+		const dt = new DataTransfer();
+		writeNodeDragPayload(dt, "table", {
 			connectionName: "c",
 			schema: "s",
 			tableName: "t",
 			label: "t",
 		});
-		const dt = new DataTransfer();
-		writeTableDragPayload(dt, payload);
-		assert.equal(readTableDragPayload(dt)?.tableName, "t");
 		assert.equal(dt.getData("text/plain"), "s.t");
+		assert.equal(dt.getData("application/x-dbx-node"), "table");
 		assert.equal(dt.effectAllowed, "copy");
-	});
-
-	it("非法 JSON 载荷返回 null，不抛异常", () => {
-		if (typeof DataTransfer === "undefined") return;
-		const dt = new DataTransfer();
-		dt.setData("application/x-dbx-node", "{not-json");
-		assert.equal(readTableDragPayload(dt), null);
 	});
 });

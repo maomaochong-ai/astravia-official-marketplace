@@ -105,11 +105,6 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		setView("form");
 	}
 
-	function setViewForm(conn: DbConnection): void {
-		setEditing(conn);
-		setView("form");
-	}
-
 	function back(): void {
 		const draftName = editing?.name?.trim() || "";
 		// 新建草稿若未显式保存，「拉取 Schema」可能已把它落盘；取消时回滚，避免幽灵连接。

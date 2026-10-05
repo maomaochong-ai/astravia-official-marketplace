@@ -1,83 +1,46 @@
 /**
- * 连接树 → SQL 编辑器的拖拽协议。
+ * 连接树拖拽协议 — 把树节点拖进宿主 AI 对话框。
  *
- * 对齐 dbx 桌面壳：把树里的表 / 列拖进 SQL 编辑器，在落点插入对应的 SQL 引用文本。
- * 自定义 MIME 承载结构化载荷（插入限定名 / 列名），同时写 text/plain 兜底，
- * 让树节点也能拖到插件外（系统文本输入框）得到纯文本。
+ * 落点是宿主的对话输入框（插件外 DOM），插件无法在其上挂自己的 drop 处理，
+ * 因此只用浏览器原生 text/plain 承载一段 AI 可读的引用文本：任何标准输入框 /
+ * contenteditable 在 drop 时都会把它插到光标处，用户可在此基础上继续提问再发送。
+ *
+ * 文本口径：
+ * - 表：schema.table（无 schema 层时 table）
+ * - 列：schema.table.column，让 AI 知道列属于哪张表
+ * - schema / 连接：节点名本身
  */
 
 import type { TreeNodeKind } from "./tree-node-key";
 
-export const TABLE_DRAG_MIME = "application/x-dbx-node";
-
-export interface TableDragPayload {
-	kind: TreeNodeKind;
-	/** 所属连接名。 */
+export interface NodeDragScope {
 	connectionName: string;
-	/** 表节点所属 schema（无 schema 层时为 undefined）。 */
 	schema?: string;
-	/** 表名（table / column 节点）。 */
 	tableName?: string;
-	/** 列名（column 节点，树标签就是原始列名）。 */
 	columnName?: string;
-	/** schema.table 或 table 限定名，直接作为 SQL 引用插入。 */
-	qualifiedName: string;
+	label: string;
 }
 
-/** 按当前节点身份构造拖拽载荷。 */
-export function buildTableDragPayload(
-	kind: TreeNodeKind,
-	scope: { connectionName: string; schema?: string; tableName?: string; columnName?: string; label: string },
-): TableDragPayload {
-	const qualifiedName = kind === "column"
-		? scope.columnName ?? scope.label
-		: scope.schema && kind === "table"
-			? `${scope.schema}.${scope.label}`
-			: scope.label;
-	return {
-		kind,
-		connectionName: scope.connectionName,
-		...(scope.schema ? { schema: scope.schema } : {}),
-		...(scope.tableName ? { tableName: scope.tableName } : {}),
-		...(scope.columnName ? { columnName: scope.columnName } : {}),
-		qualifiedName,
-	};
-}
-
-/** dataTransfer 写入：自定义 MIME + text/plain 兜底。 */
-export function writeTableDragPayload(dataTransfer: DataTransfer, payload: TableDragPayload): void {
-	dataTransfer.setData(TABLE_DRAG_MIME, JSON.stringify(payload));
-	dataTransfer.setData("text/plain", tableDragInsertText(payload));
-	dataTransfer.effectAllowed = "copy";
-}
-
-/** 从拖拽事件读取载荷：优先自定义 MIME，text/plain 不作为结构化回退（无法还原限定名）。 */
-export function readTableDragPayload(dataTransfer: DataTransfer): TableDragPayload | null {
-	const raw = dataTransfer.getData(TABLE_DRAG_MIME);
-	if (!raw) return null;
-	try {
-		const parsed = JSON.parse(raw) as Partial<TableDragPayload>;
-		if (
-			parsed &&
-			typeof parsed.kind === "string" &&
-			typeof parsed.connectionName === "string" &&
-			typeof parsed.qualifiedName === "string"
-		) {
-			return parsed as TableDragPayload;
-		}
-		return null;
-	} catch {
-		return null;
+/** 生成拖入 AI 输入框的引用文本。 */
+export function buildNodeReferenceText(kind: TreeNodeKind, scope: NodeDragScope): string {
+	if (kind === "column") {
+		const prefix = scope.schema ? `${scope.schema}.` : "";
+		return `${prefix}${scope.tableName ?? ""}.${scope.columnName ?? scope.label}`;
 	}
+	if (kind === "table") {
+		return scope.schema ? `${scope.schema}.${scope.label}` : scope.label;
+	}
+	return scope.label;
 }
 
 /**
- * 放置后插入编辑器的 SQL 文本：
- * - 列：原始列名（多列拖拽等扩展走同一出口）
- * - 表：schema.table 限定名（与树菜单 / 预览生成的 SQL 口径一致，不在此处做方言加引号）
- * - schema / 连接：节点名本身
+ * 拖拽起点写入 dataTransfer。
+ * text/plain 供宿主输入框原生落点插入；自定义 MIME 仅标识数据来源。
  */
-export function tableDragInsertText(payload: TableDragPayload): string {
-	if (payload.kind === "column") return payload.columnName ?? payload.qualifiedName;
-	return payload.qualifiedName;
+export function writeNodeDragPayload(dataTransfer: DataTransfer, kind: TreeNodeKind, scope: NodeDragScope): string {
+	const text = buildNodeReferenceText(kind, scope);
+	dataTransfer.setData("text/plain", text);
+	dataTransfer.setData("application/x-dbx-node", kind);
+	dataTransfer.effectAllowed = "copy";
+	return text;
 }

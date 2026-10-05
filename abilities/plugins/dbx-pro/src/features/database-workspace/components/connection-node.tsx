@@ -13,7 +13,7 @@ import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { parseColumnNodeKey } from "../../../domain/tree-node-key";
-import { buildTableDragPayload, writeTableDragPayload } from "../../../domain/table-drag";
+import { writeNodeDragPayload } from "../../../domain/table-drag";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 import {
@@ -160,22 +160,16 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		setMenu(null);
 	}
 
-	/** 生成 SQL 语句 */
+	/** 生成 SQL 模板并在新 tab 打开（模板语句，用户改完再执行）。 */
 	function generateSql(type: "select" | "insert" | "update" | "delete" | "create" | "alter" | "drop"): void {
-		console.log("[generateSql] 被调用，type:", type, "connectionName:", connectionName, "qualifiedName:", qualifiedName);
-		
 		// 获取有效的连接名
 		const effectiveConnectionName = connectionName ?? (node.kind === "connection" ? node.label : undefined);
-		
-		if (!effectiveConnectionName) {
-			console.warn("[generateSql] 连接名为空，无法生成 SQL");
-			return;
-		}
-		
+		if (!effectiveConnectionName) return;
+
 		let sql = "";
 		const tableName = qualifiedName;
 		const bareName = node.label;
-		
+
 		switch (type) {
 			case "select":
 				sql = `SELECT * FROM ${tableName} LIMIT 100;`;
@@ -199,14 +193,12 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				sql = `DROP TABLE IF EXISTS ${tableName};`;
 				break;
 		}
-		
+
 		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
-		console.log("[generateSql] 准备 dispatch addTab，id:", id, "label:", `${bareName} ${type.toUpperCase()}`, "connectionName:", effectiveConnectionName);
 		dispatch({
 			type: "addTab",
 			tab: { id, label: `${bareName} ${type.toUpperCase()}`, connectionName: effectiveConnectionName, sql, isRunning: false },
 		});
-		console.log("[generateSql] dispatch 完成");
 	}
 
 	function handleContextMenu(e: React.MouseEvent): void {
@@ -348,14 +340,14 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						label: "生成 SQL",
 						icon: "icon-[lucide--code]",
 						items: [
-							{ type: "item", label: "SELECT", onClick: () => { console.log("[菜单] SELECT 点击"); generateSql("select"); } },
-							{ type: "item", label: "INSERT", onClick: () => { console.log("[菜单] INSERT 点击"); generateSql("insert"); } },
-							{ type: "item", label: "UPDATE", onClick: () => { console.log("[菜单] UPDATE 点击"); generateSql("update"); } },
-							{ type: "item", label: "DELETE", onClick: () => { console.log("[菜单] DELETE 点击"); generateSql("delete"); } },
+							{ type: "item", label: "SELECT", onClick: () => generateSql("select") },
+							{ type: "item", label: "INSERT", onClick: () => generateSql("insert") },
+							{ type: "item", label: "UPDATE", onClick: () => generateSql("update") },
+							{ type: "item", label: "DELETE", onClick: () => generateSql("delete") },
 							{ type: "separator" },
-							{ type: "item", label: "CREATE TABLE", onClick: () => { console.log("[菜单] CREATE TABLE 点击"); generateSql("create"); } },
-							{ type: "item", label: "ALTER TABLE", onClick: () => { console.log("[菜单] ALTER TABLE 点击"); generateSql("alter"); } },
-							{ type: "item", label: "DROP TABLE", onClick: () => { console.log("[菜单] DROP TABLE 点击"); generateSql("drop"); } },
+							{ type: "item", label: "CREATE TABLE", onClick: () => generateSql("create") },
+							{ type: "item", label: "ALTER TABLE", onClick: () => generateSql("alter") },
+							{ type: "item", label: "DROP TABLE", onClick: () => generateSql("drop") },
 						],
 					},
 					{ type: "separator" },
@@ -407,32 +399,32 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 
 	const statusDot = node.kind === "connection" ? state.connectionStatuses[node.label] ?? "idle" : undefined;
 
-	// ── 拖拽：把表 / 列 / schema / 连接拖进 SQL 编辑器插入引用 ─────────────
+	// ── 拖拽：把引用文本拖进宿主 AI 对话框（text/plain 原生落点）─────────────
 	function handleDragStart(e: React.DragEvent): void {
 		const conn = connectionName ?? node.label;
 		if (node.kind === "column") {
 			// 列节点的父表信息只存在 key 里（col:conn:schema:table:column）。
 			const ref = parseColumnNodeKey(node.key);
-			writeTableDragPayload(e.dataTransfer, buildTableDragPayload("column", {
+			writeNodeDragPayload(e.dataTransfer, "column", {
 				connectionName: conn,
 				schema: schema || ref?.schema || undefined,
 				tableName: ref?.table,
 				columnName: node.label,
 				label: node.label,
-			}));
+			});
 		} else if (node.kind === "table") {
-			writeTableDragPayload(e.dataTransfer, buildTableDragPayload("table", {
+			writeNodeDragPayload(e.dataTransfer, "table", {
 				connectionName: conn,
 				schema: childScope || undefined,
 				tableName: node.label,
 				label: node.label,
-			}));
+			});
 		} else {
-			writeTableDragPayload(e.dataTransfer, buildTableDragPayload(node.kind, {
+			writeNodeDragPayload(e.dataTransfer, node.kind, {
 				connectionName: conn,
 				schema: node.kind === "schema" ? node.label : childScope || undefined,
 				label: node.label,
-			}));
+			});
 		}
 		if (e.currentTarget instanceof HTMLElement) {
 			e.dataTransfer.setDragImage(e.currentTarget, 10, 10);

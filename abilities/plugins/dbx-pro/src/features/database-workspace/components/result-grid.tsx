@@ -31,6 +31,7 @@ import { CellDisplay } from "./cell-display";
 import { CellEditor } from "./cell-editor";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { useWorkbench } from "../hooks/use-workbench";
+import { buildFilteredSql } from "../services/query-filter";
 
 interface Props {
 	columns: string[];
@@ -220,16 +221,13 @@ export function ResultGrid({
 		const orderBy = orderByClause.trim();
 		if (!where && !orderBy) return;
 		const tabId = activeTabId;
-		const baseSql = (sql ?? "").trim().replace(/;+\s*$/, "");
+		const baseSql = (sql ?? "").trim();
 		if (!tabId || !baseSql) return;
-		if (!/^(select|with)\b/i.test(baseSql) || /;\s/.test(baseSql)) {
+		const wrapped = buildFilteredSql(baseSql, where, orderBy);
+		if (!wrapped) {
 			alert("过滤 / 排序仅支持单条 SELECT / WITH 查询");
 			return;
 		}
-		const clauses: string[] = [];
-		if (where) clauses.push(`WHERE ${where}`);
-		if (orderBy) clauses.push(`ORDER BY ${orderBy}`);
-		const wrapped = `SELECT * FROM (\n${baseSql}\n) AS dbx_filt\n${clauses.join("\n")}`;
 		void runTabSql(tabId, wrapped, undefined, { mode: "server" });
 	}
 
@@ -540,8 +538,19 @@ export function ResultGrid({
 		
 		// 复制列名
 		const copyColumnName = () => void navigator.clipboard.writeText(col).catch(() => {});
-		// 按此值筛选（简单实现：复制到剪贴板让用户粘贴到 WHERE 子句）
-		const filterByThisValue = () => void navigator.clipboard.writeText(`${col} = '${cellValue.replace(/'/g, "''")}'`).catch(() => {});
+		// 按此值筛选：回填 WHERE 输入框、展开双排工具栏并立即重查
+		const filterByThisValue = () => {
+			const cond = `${col} = '${cellValue.replace(/'/g, "''")}'`;
+			setWhereClause(cond);
+			setSplitToolbar(true);
+			const tabId = activeTabId;
+			const base = (sql ?? "").trim();
+			if (tabId && base) {
+				const wrapped = buildFilteredSql(base, cond, orderByClause.trim());
+				if (wrapped) void runTabSql(tabId, wrapped, undefined, { mode: "server" });
+			}
+
+		};
 		// 复制为不同格式
 		const copyAsJson = () => void navigator.clipboard.writeText(JSON.stringify(value, null, 2)).catch(() => {});
 		const copyAsSql = () => void navigator.clipboard.writeText(`'${cellValue.replace(/'/g, "''")}'`).catch(() => {});

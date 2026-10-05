@@ -23,9 +23,9 @@ import "./features/database-workspace/styles/result-grid.css";
 import "./features/database-workspace/styles/sql-editor.css";
 import "./features/database-workspace/styles/ai-dialog.css";
 import "./features/database-workspace/styles/table-info.css";
+import { PLUGIN_VERSION } from "./domain/plugin-version";
 
-/** 插件版本号，用于显示和调试 */
-export const PLUGIN_VERSION = "0.0.68";
+export { PLUGIN_VERSION };
 
 /** 当前实例 ID，用于区分新旧实例的 DOM 元素 */
 let _instanceId = 0;

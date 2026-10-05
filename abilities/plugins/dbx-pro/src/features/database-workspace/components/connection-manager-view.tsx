@@ -14,6 +14,7 @@ import { ConnectionEditorFlow } from "./connection-editor-flow";
 import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { DB_TYPE_MANIFEST, type DbConnection } from "../../../domain/connection-config";
+import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 
 type ViewStep = "dashboard" | "editor";
 
@@ -208,7 +209,7 @@ export function ConnectionManagerView(): JSX.Element {
 							</p>
 						</div>
 						<div className="mt-3 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-							<span>v0.0.68</span>
+							<span>v{PLUGIN_VERSION}</span>
 						</div>
 					</div>
 				</div>

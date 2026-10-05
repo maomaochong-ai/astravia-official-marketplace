@@ -31,27 +31,36 @@
 	white-space: nowrap;
 }
 
-/* 文本横排页签，激活态用下划线（与 dbx 一致） */
+/* 文本 + 图标横排页签：inline-flex 保证图标与文字基线对齐、间距稳定 */
 .dbx-table-info-tabs {
 	display: flex;
 	gap: 2px;
-	padding: 0 10px;
+	padding: 0 8px;
 	flex-shrink: 0;
-	border-bottom: 1px solid var(--dbx-line-soft);
+	border-bottom: 1px solid var(--dbx-line);
 	overflow-x: auto;
 }
 
 .dbx-table-info-tab {
-	padding: 7px 10px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 8px 9px;
 	font-size: 11px;
 	font-weight: 500;
+	line-height: 1;
 	color: var(--muted-foreground);
 	background: transparent;
 	border: none;
 	border-bottom: 2px solid transparent;
 	cursor: pointer;
-	transition: color 0.12s, border-color 0.12s;
 	white-space: nowrap;
+	transition: color 0.12s, border-color 0.12s;
+}
+
+.dbx-table-info-tab .iconify,
+.dbx-table-info-tab svg {
+	display: block;
 }
 
 .dbx-table-info-tab:hover {
@@ -72,6 +81,19 @@
 	overflow: hidden;
 }
 
+/* 加载 / 错误 / 空 / 不支持统一居中态 */
+.dbx-meta-state {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 24px 16px;
+	text-align: center;
+}
+
 /* 字段筛选栏 */
 .dbx-table-info-filter {
 	display: flex;
@@ -84,7 +106,7 @@
 	background: var(--dbx-surface-2);
 }
 
-/* 字段表格（sticky 表头，贴边铺满，对齐 dbx DataGrid 表信息） */
+/* 字段 / 元数据表格（sticky 表头，发丝横线分隔，贴边铺满） */
 .dbx-columns-table {
 	border-collapse: collapse;
 }
@@ -99,18 +121,25 @@
 	color: var(--muted-foreground);
 	background: var(--dbx-surface-2);
 	border-bottom: 1px solid var(--dbx-line);
-	padding: 6px 10px;
+	padding: 6px 12px;
 	white-space: nowrap;
 }
 
 .dbx-columns-table tbody td {
 	border-bottom: 1px solid var(--dbx-line-soft);
-	padding: 6px 10px;
+	padding: 6px 12px;
 	vertical-align: top;
+	color: var(--foreground);
 }
 
 .dbx-columns-table tbody tr:hover {
 	background: var(--dbx-hover);
+}
+
+.dbx-columns-table td.dbx-meta-mono {
+	font-family: var(--font-mono, ui-monospace, monospace);
+	font-size: 11px;
+	color: var(--muted-foreground);
 }
 
 .dbx-table-info-scroller::-webkit-scrollbar {
@@ -129,16 +158,19 @@
 	border-radius: 999px;
 }
 
-/* 表信息：label/value 行（定宽标签，值整行可选中） */
+/* 表信息：label/value 行（发丝横线分隔，定宽标签，值整行可选中） */
 .dbx-info-rows {
-	padding: 4px 0;
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 2px 0;
 }
 
 .dbx-info-row {
 	display: flex;
 	align-items: baseline;
 	gap: 12px;
-	padding: 6px 14px;
+	padding: 7px 14px;
 	font-size: 11px;
 	border-bottom: 1px solid var(--dbx-line-soft);
 }
