@@ -6,7 +6,7 @@
  */
 
 import type { EngineColumn } from "../state/workbench-types";
-import { buildCreateTableSql } from "./table-ddl";
+import { buildCreateTableSql } from "./table-ddl.ts";
 
 export type TableSqlKind = "select" | "insert" | "update" | "delete" | "create" | "alter" | "drop";
 

@@ -99,7 +99,7 @@ interface ZipFile {
 }
 
 /** 多文件封成 STORE（无压缩）ZIP；标志位 0x0800 表示文件名按 UTF-8 解码。 */
-function buildZip(files: ZipFile[]): Uint8Array {
+function buildZip(files: ZipFile[]): Uint8Array<ArrayBuffer> {
 	const chunks: Uint8Array[] = [];
 	const central: Uint8Array[] = [];
 	let offset = 0;
@@ -164,9 +164,9 @@ function buildZip(files: ZipFile[]): Uint8Array {
 	return concatBytes([...chunks, ...central, new Uint8Array(eocd.buffer)]);
 }
 
-function concatBytes(parts: Uint8Array[]): Uint8Array {
+function concatBytes(parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
 	const total = parts.reduce((sum, p) => sum + p.length, 0);
-	const out = new Uint8Array(total);
+	const out = new Uint8Array(new ArrayBuffer(total));
 	let pos = 0;
 	for (const part of parts) {
 		out.set(part, pos);
@@ -201,7 +201,7 @@ export function toXlsx(
 	cols: string[],
 	rows: Record<string, unknown>[],
 	sheetName = "query_result",
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
 	const name = safeSheetName(sheetName);
 	const files: ZipFile[] = [
 		{ name: "[Content_Types].xml", data: encoder.encode(CONTENT_TYPES) },

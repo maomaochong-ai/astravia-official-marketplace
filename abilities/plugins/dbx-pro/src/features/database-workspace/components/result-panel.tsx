@@ -10,7 +10,7 @@ import { ResultGrid } from "./result-grid";
 import { useWorkbench } from "../hooks/use-workbench";
 
 export function ResultPanel(): JSX.Element {
-	const { state, cancelExecution, goToResultPage, settings } = useWorkbench();
+	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount } = useWorkbench();
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const result = activeTab?.result;
 	const [elapsed, setElapsed] = useState(0);
@@ -67,6 +67,15 @@ export function ResultPanel(): JSX.Element {
 							}}
 							onPageSizeChange={(pageSize) => {
 								if (activeTab) void goToResultPage(activeTab.id, 0, pageSize);
+							}}
+							onSetDefaultPageSize={(pageSize) => {
+								void updateSettings({ ...settings, rowLimit: pageSize });
+								if (activeTab) void goToResultPage(activeTab.id, 0, pageSize);
+							}}
+							onRefreshTotalCount={() => {
+								if (activeTab && result.ranSql) {
+									void refreshTotalCount(activeTab.id, activeTab.connectionName ?? "", result.ranSql);
+								}
 							}}
 						/>
 					) : (

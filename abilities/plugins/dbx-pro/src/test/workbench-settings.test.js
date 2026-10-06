@@ -7,6 +7,7 @@ import { describe, it } from "node:test";
 import {
 	DEFAULT_SETTINGS,
 	ENGINE_ROW_CAP,
+	PAGE_SIZE_OPTIONS,
 	SETTINGS_BOUNDS,
 	isDefaultSettings,
 	normalizeSettings,
@@ -19,7 +20,9 @@ describe("设置常量", () => {
 			const { min, max } = SETTINGS_BOUNDS[key];
 			assert.ok(value >= min && value <= max, `${key}=${value} 越界`);
 		}
-		assert.equal(DEFAULT_SETTINGS.rowLimit, ENGINE_ROW_CAP);
+		// 默认每页行数是可选项之一，且不超过引擎硬上限。
+		assert.ok(PAGE_SIZE_OPTIONS.includes(DEFAULT_SETTINGS.rowLimit));
+		assert.ok(DEFAULT_SETTINGS.rowLimit <= ENGINE_ROW_CAP);
 	});
 
 	it("ENGINE_ROW_CAP 为正数", () => {

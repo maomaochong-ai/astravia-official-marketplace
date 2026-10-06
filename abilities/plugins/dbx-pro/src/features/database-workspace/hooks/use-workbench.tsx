@@ -84,7 +84,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		loadInitialHistory,
 	} = useWorkbenchHistory({ stateRef, dispatch, settingsRef, runTabSqlRef });
 
-	const { runTabSql, goToResultPage, cancelExecution, applySuccess } = useWorkbenchExecution({
+	const { runTabSql, goToResultPage, cancelExecution, applySuccess, fetchTotalCount } = useWorkbenchExecution({
 		stateRef,
 		settingsRef,
 		runningStartedAtRef,
@@ -175,6 +175,10 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			openPreviewTab,
 			settings,
 			updateSettings,
+			refreshTotalCount: (tabId: string, connectionName: string, sql: string) => {
+				const conn = stateRef.current.connections.find((c) => c.name === connectionName);
+				return fetchTotalCount(tabId, connectionName, sql, settingsRef.current.queryTimeoutSecs, conn?.db_type);
+			},
 			history,
 			loadHistoryIntoEditor,
 			rerunHistoryEntry,

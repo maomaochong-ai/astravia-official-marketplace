@@ -23,6 +23,7 @@ import {
 import {
 	PAGE_SIZE_OPTIONS,
 	resolvePageSize,
+	ENGINE_ROW_CAP,
 } from "../../../domain/workbench-settings";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
@@ -57,6 +58,10 @@ interface Props {
 	note?: string;
 	onPageChange?: (pageIndex: number) => void;
 	onPageSizeChange?: (pageSize: number) => void;
+	/** 设为默认每页行数。 */
+	onSetDefaultPageSize?: (pageSize: number) => void;
+	/** 刷新总计行统计。 */
+	onRefreshTotalCount?: () => void;
 }
 
 export function ResultGrid({
@@ -74,6 +79,8 @@ export function ResultGrid({
 	note,
 	onPageChange,
 	onPageSizeChange,
+	onSetDefaultPageSize,
+	onRefreshTotalCount,
 }: Props): JSX.Element {
 	const isServer = serverPaged === true;
 	const [localPage, setLocalPage] = useState(0);
@@ -96,6 +103,8 @@ export function ResultGrid({
 	const [editHistory, setEditHistory] = useState<Array<{ row: number; col: string; oldValue: unknown; newValue: unknown }>>([]); // 编辑历史（用于 Undo）
 	const [editHistoryIndex, setEditHistoryIndex] = useState(-1); // 当前历史索引（用于 Redo）
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
+	const [customPageSize, setCustomPageSize] = useState<string>(""); // 自定义每页行数输入
+	const [showCustomSizeInput, setShowCustomSizeInput] = useState(false); // 是否显示自定义输入框
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
 	const { state, runTabSql } = useWorkbench();
@@ -379,6 +388,37 @@ export function ResultGrid({
 			setLocalPageSize(size);
 			setLocalPage(0);
 		}
+	}
+
+	/** 应用自定义行数（仅本次）。 */
+	function applyCustomPageSize(): void {
+		const val = Number.parseInt(customPageSize, 10);
+		if (!Number.isFinite(val) || val < 1) return;
+		const size = resolvePageSize(val);
+		if (isServer) onPageSizeChange?.(size);
+		else {
+			setLocalPageSize(size);
+			setLocalPage(0);
+		}
+		setShowCustomSizeInput(false);
+		setCustomPageSize("");
+	}
+
+	/** 设为默认行数：更新工作台设置。 */
+	function setAsDefaultPageSize(): void {
+		const val = Number.parseInt(customPageSize, 10);
+		if (!Number.isFinite(val) || val < 1) return;
+		const size = resolvePageSize(val);
+		// 通过回调通知上层更新设置
+		onSetDefaultPageSize?.(size);
+		setShowCustomSizeInput(false);
+		setCustomPageSize("");
+	}
+
+	/** 刷新总计行统计。 */
+	function refreshTotalCount(): void {
+		if (!isServer || !sql || !connectionName) return;
+		onRefreshTotalCount?.();
 	}
 
 	/** 点击表头：无→升序→降序→清除。 */
@@ -885,6 +925,17 @@ export function ResultGrid({
 						{totalKnown ? "共 " : "已取回 "}
 						<span className="font-medium text-foreground/80">{displayTotal}</span> 行
 					</span>
+					{isServer && totalKnown && (
+						<button
+							type="button"
+							onClick={refreshTotalCount}
+							disabled={pageLoading === true}
+							title="刷新总计行统计"
+							className="flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+						>
+							<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+						</button>
+					)}
 					{note ? (
 						<span
 							className="min-w-0 truncate rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-500"
@@ -904,8 +955,15 @@ export function ResultGrid({
 					<label className="flex items-center gap-1">
 						<span className="text-muted-foreground/60">每页</span>
 						<select
-							value={pageSize}
-							onChange={(e) => changePageSize(Number(e.target.value))}
+							value={PAGE_SIZE_OPTIONS.includes(pageSize as typeof PAGE_SIZE_OPTIONS[number]) ? pageSize : "custom"}
+							onChange={(e) => {
+								const val = e.target.value;
+								if (val === "custom") {
+									setShowCustomSizeInput(true);
+								} else {
+									changePageSize(Number(val));
+								}
+							}}
 							className="h-5 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
 						>
 							{PAGE_SIZE_OPTIONS.map((n) => (
@@ -913,8 +971,46 @@ export function ResultGrid({
 									{n}
 								</option>
 							))}
+							<option value="custom">自定义</option>
 						</select>
 					</label>
+					{showCustomSizeInput && (
+						<div className="flex items-center gap-1">
+							<input
+								type="number"
+								min="1"
+								max={ENGINE_ROW_CAP}
+								value={customPageSize}
+								onChange={(e) => setCustomPageSize(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") applyCustomPageSize();
+									else if (e.key === "Escape") {
+										setShowCustomSizeInput(false);
+										setCustomPageSize("");
+									}
+								}}
+								placeholder={`1-${ENGINE_ROW_CAP}`}
+								className="h-5 w-16 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
+								autoFocus
+							/>
+							<button
+								type="button"
+								onClick={applyCustomPageSize}
+								title="仅本次使用"
+								className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
+							>
+								应用
+							</button>
+							<button
+								type="button"
+								onClick={setAsDefaultPageSize}
+								title="设为默认每页行数"
+								className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
+							>
+								设为默认
+							</button>
+						</div>
+					)}
 					<span className="text-muted-foreground/70">
 						{pagedRows.length === 0 ? 0 : safePage * pageSize + 1}–
 						{safePage * pageSize + pagedRows.length}

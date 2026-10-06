@@ -38,6 +38,8 @@ export interface WorkbenchContextValue {
 	// ─── 设置 ──
 	settings: WorkbenchSettings;
 	updateSettings: (next: WorkbenchSettings) => Promise<void>;
+	/** 刷新总计行统计（异步执行 COUNT 查询）。 */
+	refreshTotalCount: (tabId: string, connectionName: string, sql: string) => Promise<void>;
 
 	// ─── 查询历史 ───
 	history: QueryHistoryEntry[];

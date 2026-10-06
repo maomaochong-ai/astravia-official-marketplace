@@ -55,7 +55,7 @@ export const SETTINGS_BOUNDS = Object.freeze({
 export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	schemaVersion: 1,
 	queryTimeoutSecs: 60,
-	rowLimit: 100,
+	rowLimit: ENGINE_ROW_CAP,
 	historyEnabled: true,
 	historyLimit: HISTORY_LIMIT_DEFAULT,
 	tableSingleClickAction: "structure",

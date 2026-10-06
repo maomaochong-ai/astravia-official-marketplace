@@ -86,6 +86,8 @@ export function toSqlInsert(
 			: /^[A-Za-z_][A-Za-z0-9_$]*$/.test(name)
 				? name
 				: `"${name.replaceAll('"', '""')}"`;
+	// 限定名（schema.table）按段分别加引号，不能把 "a.b" 整体当成一个标识符。
+	const qualifiedTable = tableName.split(".").map(quoteId).join(".");
 	const literal = (value: unknown): string => {
 		if (value === null || value === undefined) return "NULL";
 		if (typeof value === "number" && Number.isFinite(value)) return String(value);
@@ -93,7 +95,7 @@ export function toSqlInsert(
 		if (typeof value === "object") return `'${JSON.stringify(value).replaceAll("'", "''")}'`;
 		return `'${String(value).replaceAll("'", "''")}'`;
 	};
-	const head = `INSERT INTO ${quoteId(tableName)} (${cols.map(quoteId).join(", ")}) VALUES`;
+	const head = `INSERT INTO ${qualifiedTable} (${cols.map(quoteId).join(", ")}) VALUES`;
 	const tail = rows.map((row) => `  (${cols.map((c) => literal(row[c])).join(", ")});`);
 	return [head, ...tail].join("\n");
 }

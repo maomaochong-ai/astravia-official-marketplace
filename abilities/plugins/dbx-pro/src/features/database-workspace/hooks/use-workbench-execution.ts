@@ -254,5 +254,5 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 		[dispatch, stateRef, runningStartedAtRef, recordHistory],
 	);
 
-	return { runTabSql, goToResultPage, cancelExecution, applySuccess };
+	return { runTabSql, goToResultPage, cancelExecution, applySuccess, fetchTotalCount };
 }
