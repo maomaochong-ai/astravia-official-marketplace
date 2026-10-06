@@ -2,60 +2,14 @@
  * VisualizationTemplateDialog — 可视化模板选择对话框
  * 
  * 提供预设模板选择和自定义选项
+ * 预设模板从 presets 目录导入
  */
 
 import { useState, type JSX } from "react";
+import { DASHBOARD_PRESETS } from "../presets/dashboard/presets";
+import { SCREEN_PRESETS } from "../presets/screen/presets";
 
 export type VisualizationType = "dashboard" | "screen";
-
-export interface TemplateOption {
-	id: string;
-	label: string;
-	description: string;
-	icon: string;
-}
-
-export const DASHBOARD_TEMPLATES: TemplateOption[] = [
-	{
-		id: "kpi_overview",
-		label: "KPI 总览",
-		description: "核心指标卡片 + 趋势图 + 分布图，适合业务概览",
-		icon: "icon-[lucide--layout-dashboard]",
-	},
-	{
-		id: "trend_analysis",
-		label: "趋势分析",
-		description: "多维度时间序列 + 同比环比，适合业务趋势洞察",
-		icon: "icon-[lucide--trending-up]",
-	},
-	{
-		id: "data_profile",
-		label: "数据画像",
-		description: "统计摘要 + 分布分析 + 数据质量，适合数据探索",
-		icon: "icon-[lucide--bar-chart-3]",
-	},
-];
-
-export const SCREEN_TEMPLATES: TemplateOption[] = [
-	{
-		id: "data_command",
-		label: "数据指挥中心",
-		description: "核心指标 + 趋势 + 实时滚动，60 秒自动刷新",
-		icon: "icon-[lucide--monitor]",
-	},
-	{
-		id: "business_intel",
-		label: "商业智能大屏",
-		description: "多图表组合 + 排行榜 + 趋势对比，120 秒自动刷新",
-		icon: "icon-[lucide--briefcase]",
-	},
-	{
-		id: "monitoring",
-		label: "系统监控大屏",
-		description: "性能指标 + 告警统计 + 健康度仪表盘，30 秒自动刷新",
-		icon: "icon-[lucide--activity]",
-	},
-];
 
 interface Props {
 	type: VisualizationType;
@@ -77,7 +31,7 @@ export function VisualizationTemplateDialog({
 	onClose,
 }: Props): JSX.Element {
 	const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-	const templates = type === "dashboard" ? DASHBOARD_TEMPLATES : SCREEN_TEMPLATES;
+	const presets = type === "dashboard" ? DASHBOARD_PRESETS : SCREEN_PRESETS;
 
 	const qualifiedName = schema ? `${schema}.${tableName}` : tableName;
 
@@ -105,18 +59,18 @@ export function VisualizationTemplateDialog({
 
 					<div className="mb-3 text-sm font-medium text-foreground">选择预设模板</div>
 					<div className="grid gap-2" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
-						{templates.map((template) => (
+						{presets.map((preset) => (
 							<button
-								key={template.id}
+								key={preset.id}
 								type="button"
-								className={`template-card ${selectedTemplate === template.id ? "selected" : ""}`}
-								onClick={() => setSelectedTemplate(template.id)}
+								className={`template-card ${selectedTemplate === preset.id ? "selected" : ""}`}
+								onClick={() => setSelectedTemplate(preset.id)}
 							>
 								<div className="template-card-header">
-									<span className={`template-icon ${template.icon}`} />
-									<span className="template-label">{template.label}</span>
+									<span className={`template-icon ${preset.icon}`} />
+									<span className="template-label">{preset.label}</span>
 								</div>
-								<div className="template-desc">{template.description}</div>
+								<div className="template-desc">{preset.description}</div>
 							</button>
 						))}
 					</div>

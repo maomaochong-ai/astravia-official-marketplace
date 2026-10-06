@@ -1,13 +1,14 @@
 /**
  * dbx_dashboard — 企业级看板生成工具。
  * 
- * 内部执行 SQL 查询，返回结构化数据供组件渲染。
- * 通过 visualization-bridge 通知 UI 显示预览。
+ * 根据预设模板执行 SQL 查询，返回结构化数据供组件渲染。
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { engineExecuteByName, engineDescribeByName } from "../shared/services/engine-client";
 import { showVisualizationPreview, saveVisualizationToStore } from "../features/visualization/visualization-bridge";
+import { DASHBOARD_PRESETS } from "../features/visualization/presets/dashboard/presets";
+import type { DashboardPreset, ChartConfig } from "../features/visualization/presets/dashboard/presets";
 
 export type DashboardTemplate = "kpi_overview" | "trend_analysis" | "data_profile";
 
@@ -20,37 +21,14 @@ export interface DbxDashboardInput {
 	date_column?: string;
 }
 
-interface ChartQuery {
+interface ChartResult {
 	id: string;
-	type: "kpi_card" | "line" | "bar" | "table";
+	type: string;
 	title: string;
-	sql: string;
-}
-
-function buildQueries(template: DashboardTemplate, table: string, schema: string | undefined, dateCol: string): ChartQuery[] {
-	const qualified = schema ? `${schema}.${table}` : table;
-
-	switch (template) {
-		case "kpi_overview":
-			return [
-				{ id: "kpi_total", type: "kpi_card", title: "总记录数", sql: `SELECT COUNT(*) AS value FROM ${qualified}` },
-				{ id: "kpi_recent", type: "kpi_card", title: "近 7 天新增", sql: `SELECT COUNT(*) AS value FROM ${qualified} WHERE ${dateCol} >= CURRENT_DATE - INTERVAL '7 days'` },
-				{ id: "trend", type: "line", title: "近 30 天趋势", sql: `SELECT DATE(${dateCol}) AS date, COUNT(*) AS count FROM ${qualified} WHERE ${dateCol} >= CURRENT_DATE - INTERVAL '30 days' GROUP BY DATE(${dateCol}) ORDER BY date` },
-				{ id: "top", type: "bar", title: "TOP 10 分布", sql: `SELECT * FROM ${qualified} ORDER BY 1 DESC LIMIT 10` },
-				{ id: "recent", type: "table", title: "最新数据", sql: `SELECT * FROM ${qualified} ORDER BY ${dateCol} DESC LIMIT 20` },
-			];
-		case "trend_analysis":
-			return [
-				{ id: "daily", type: "line", title: "日趋势", sql: `SELECT DATE(${dateCol}) AS date, COUNT(*) AS count FROM ${qualified} GROUP BY DATE(${dateCol}) ORDER BY date` },
-				{ id: "weekly", type: "line", title: "周趋势", sql: `SELECT DATE_TRUNC('week', ${dateCol}) AS week, COUNT(*) AS count FROM ${qualified} GROUP BY DATE_TRUNC('week', ${dateCol}) ORDER BY week` },
-				{ id: "monthly", type: "bar", title: "月趋势", sql: `SELECT DATE_TRUNC('month', ${dateCol}) AS month, COUNT(*) AS count FROM ${qualified} GROUP BY DATE_TRUNC('month', ${dateCol}) ORDER BY month` },
-			];
-		case "data_profile":
-			return [
-				{ id: "count", type: "kpi_card", title: "总行数", sql: `SELECT COUNT(*) AS value FROM ${qualified}` },
-				{ id: "sample", type: "table", title: "样本数据", sql: `SELECT * FROM ${qualified} LIMIT 50` },
-			];
-	}
+	columns: string[];
+	rows: Array<Record<string, unknown>>;
+	config?: ChartConfig["config"];
+	layout: ChartConfig["layout"];
 }
 
 export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboardInput> {
@@ -59,9 +37,9 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 		name: "dbx_dashboard",
 		label: "企业看板",
 		description: [
-			"Generate enterprise dashboard from database tables with data.",
+			"Generate enterprise dashboard from database tables using preset templates.",
 			"Templates: kpi_overview (KPI cards + trends), trend_analysis (time series), data_profile (statistics).",
-			"Returns structured data for component rendering.",
+			"Returns structured data for component rendering with recharts.",
 			"Use when user wants to create a dashboard, visualize data, or analyze metrics from tables.",
 		].join("\n"),
 		parameters: {
@@ -72,7 +50,7 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 				template: { type: "string", enum: ["kpi_overview", "trend_analysis", "data_profile"], description: "Dashboard template." },
 				schema: { type: "string", description: "Schema name (optional)." },
 				db_type: { type: "string", description: "Database type (e.g., postgres, mysql)." },
-				date_column: { type: "string", description: "Date column name. Default: created_at." },
+				date_column: { type: "string", description: "Date column name. Auto-detected if omitted." },
 			},
 			required: ["connection_name", "tables", "template"],
 			additionalProperties: false,
@@ -85,41 +63,55 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 			if (!tables?.length) return { ok: false, error: "tables must be non-empty" };
 
 			const table = tables[0];
-			const dateCol = date_column ?? "created_at";
+			const preset = DASHBOARD_PRESETS.find((p) => p.id === template);
+			if (!preset) return { ok: false, error: `Unknown template: ${template}` };
 
 			try {
+				// 自动检测日期列
 				const desc = await engineDescribeByName(connection_name, { table, schema });
 				const columns = desc.columns.map((c) => c.name);
 				const hasDateCol = columns.some((c) => /date|time|created|updated/i.test(c));
-				const effectiveDateCol = hasDateCol ? columns.find((c) => /date|time|created|updated/i.test(c))! : dateCol;
+				const effectiveDateCol = date_column ?? (hasDateCol ? columns.find((c) => /date|time|created|updated/i.test(c))! : "created_at");
 
-				const queries = buildQueries(template as DashboardTemplate, table, schema, effectiveDateCol);
-				const charts = [];
+				const qualifiedTable = schema ? `${schema}.${table}` : table;
 
-				for (const q of queries) {
+				// 执行每个图表的 SQL
+				const charts: ChartResult[] = [];
+				for (const chartConfig of preset.charts) {
 					try {
-						const result = await engineExecuteByName(connection_name, q.sql, { rowLimit: 1000, timeoutMs: 30000, dbType: db_type });
+						const sql = chartConfig.sqlTemplate
+							.replace(/\{table\}/g, qualifiedTable)
+							.replace(/\{dateCol\}/g, effectiveDateCol);
+
+						const result = await engineExecuteByName(connection_name, sql, {
+							rowLimit: chartConfig.config?.maxRows ?? 1000,
+							timeoutMs: 30000,
+							dbType: db_type,
+						});
+
 						charts.push({
-							id: q.id,
-							type: q.type,
-							title: q.title,
+							id: chartConfig.id,
+							type: chartConfig.type,
+							title: chartConfig.title,
 							columns: result.columns,
 							rows: result.rows,
+							config: chartConfig.config,
+							layout: chartConfig.layout,
 						});
 					} catch {
 						charts.push({
-							id: q.id,
-							type: q.type,
-							title: q.title,
+							id: chartConfig.id,
+							type: chartConfig.type,
+							title: chartConfig.title,
 							columns: [],
 							rows: [],
+							config: chartConfig.config,
+							layout: chartConfig.layout,
 						});
 					}
 				}
 
-				const title = `${table} - ${template === "kpi_overview" ? "KPI 总览" : template === "trend_analysis" ? "趋势分析" : "数据画像"}`;
-				
-				// 生成 HTML 用于预览
+				const title = `${table} - ${preset.label}`;
 				const html = generatePreviewHtml(title, charts);
 
 				const viz = {
@@ -129,7 +121,8 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 					connection: connection_name,
 					table,
 					html,
-					charts, // 结构化数据
+					presetId: preset.id,
+					charts,
 				};
 
 				showVisualizationPreview(viz);
@@ -142,7 +135,7 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 					template,
 					title,
 					charts,
-					message: "看板已生成并在插件内显示预览。",
+					message: `看板「${title}」已生成。`,
 				};
 			} catch (error) {
 				return { ok: false, error: error instanceof Error ? error.message : String(error) };
@@ -151,19 +144,14 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 	};
 }
 
-function generatePreviewHtml(title: string, charts: Array<{ id: string; type: string; title: string; columns?: string[]; rows?: Array<Record<string, unknown>> }>): string {
+function generatePreviewHtml(title: string, charts: ChartResult[]): string {
 	const content = charts.map((chart) => {
 		if (chart.type === "kpi_card") {
-			const value = chart.rows?.[0]?.value ?? 0;
+			const value = chart.rows[0]?.value ?? 0;
 			return `<div class="kpi-card"><h3>${chart.title}</h3><div class="kpi-value">${value}</div></div>`;
 		}
-		if (chart.type === "line" || chart.type === "bar") {
-			const rows = (chart.rows ?? []).slice(0, 10).map((r) => `<tr>${Object.values(r).map((v) => `<td>${v ?? ""}</td>`).join("")}</tr>`).join("");
-			const cols = chart.columns ?? [];
-			return `<div class="chart-card"><h3>${chart.title}</h3><div class="table-wrapper"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
-		}
-		const rows = (chart.rows ?? []).slice(0, 20).map((r) => `<tr>${Object.values(r).map((v) => `<td>${v ?? ""}</td>`).join("")}</tr>`).join("");
-		const cols = chart.columns ?? [];
+		const rows = chart.rows.slice(0, 20).map((r) => `<tr>${Object.values(r).map((v) => `<td>${v ?? ""}</td>`).join("")}</tr>`).join("");
+		const cols = chart.columns;
 		return `<div class="table-card"><h3>${chart.title}</h3><div class="table-wrapper"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
 	}).join("\n");
 

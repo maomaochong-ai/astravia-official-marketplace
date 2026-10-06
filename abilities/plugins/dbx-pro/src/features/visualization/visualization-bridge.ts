@@ -10,22 +10,27 @@ export interface Visualization {
 	title: string;
 	type: "dashboard" | "screen";
 	template: string;
+	presetId?: string;
 	connection: string;
 	table: string;
 	html: string;
 	charts?: Array<{
 		id: string;
-		type: "kpi_card" | "line" | "bar" | "table";
+		type: string;
 		title: string;
 		columns?: string[];
 		rows?: Array<Record<string, unknown>>;
+		config?: Record<string, unknown>;
+		layout?: Record<string, number>;
 	}>;
 	widgets?: Array<{
 		id: string;
-		type: "number_stat" | "line_chart" | "bar_chart" | "scroll_table";
+		type: string;
 		title: string;
 		columns?: string[];
 		rows?: Array<Record<string, unknown>>;
+		config?: Record<string, unknown>;
+		layout?: Record<string, number>;
 	}>;
 	createdAt?: number;
 }

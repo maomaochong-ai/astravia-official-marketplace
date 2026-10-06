@@ -1,30 +1,42 @@
 /**
  * ScreenRenderer — 大屏渲染器组件
  * 
- * 根据工具返回的数据结构，渲染对应的大屏组件
+ * 根据预设模板和查询数据，使用 recharts 组件渲染大屏
  */
 
+import { useMemo } from "react";
 import type { JSX } from "react";
 import { KpiCard } from "./charts/KpiCard";
-import { LineChart } from "./charts/LineChart";
-import { BarChart } from "./charts/BarChart";
+import { RechartsLineChart } from "./charts/RechartsLineChart";
+import { RechartsBarChart } from "./charts/RechartsBarChart";
+import { RechartsPieChart } from "./charts/RechartsPieChart";
 import { DataTable } from "./charts/DataTable";
+import type { ScreenPreset, WidgetConfig } from "../presets/screen/presets";
 
-export interface WidgetData {
+export interface RenderedWidget {
 	id: string;
-	type: "number_stat" | "line_chart" | "bar_chart" | "scroll_table";
+	type: string;
 	title: string;
-	columns?: string[];
-	rows?: Array<Record<string, unknown>>;
+	data: Array<Record<string, unknown>>;
+	columns: string[];
+	config?: WidgetConfig["config"];
+	layout: WidgetConfig["layout"];
 }
 
 export interface ScreenRendererProps {
+	preset: ScreenPreset;
 	title: string;
 	subtitle?: string;
-	widgets: WidgetData[];
+	widgets: RenderedWidget[];
 }
 
-export function ScreenRenderer({ title, subtitle, widgets }: ScreenRendererProps): JSX.Element {
+export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRendererProps): JSX.Element {
+	const widgetMap = useMemo(() => {
+		const map = new Map<string, RenderedWidget>();
+		widgets.forEach((w) => map.set(w.id, w));
+		return map;
+	}, [widgets]);
+
 	return (
 		<div className="visualization-container screen-mode">
 			<div className="screen-header">
@@ -32,55 +44,73 @@ export function ScreenRenderer({ title, subtitle, widgets }: ScreenRendererProps
 				{subtitle && <p className="screen-subtitle">{subtitle}</p>}
 			</div>
 			<div className="screen-grid">
-				{widgets.map((widget) => {
-					switch (widget.type) {
+				{preset.widgets.map((widgetConfig) => {
+					const widget = widgetMap.get(widgetConfig.id);
+					if (!widget) return null;
+
+					switch (widgetConfig.type) {
 						case "number_stat": {
-							const value = widget.rows?.[0]?.value ?? 0;
+							const value = widget.data[0]?.value ?? 0;
 							return (
 								<KpiCard
 									key={widget.id}
 									title={widget.title}
 									value={String(value)}
-									color="#06b6d4"
+									color={widgetConfig.config?.color}
 								/>
 							);
 						}
-						case "line_chart": {
-							const data = (widget.rows ?? []).map((row) => ({
-								x: String(row[widget.columns?.[0] ?? "x"]),
-								y: Number(row[widget.columns?.[1] ?? "y"]) || 0,
-							}));
+						case "line_chart":
 							return (
-								<LineChart
+								<RechartsLineChart
 									key={widget.id}
 									title={widget.title}
-									data={data}
-									color="#06b6d4"
+									data={widget.data}
+									xAxisKey={widgetConfig.config?.xAxis ?? "x"}
+									yAxisKey={widgetConfig.config?.yAxis ?? "y"}
+									color={widgetConfig.config?.color}
 								/>
 							);
-						}
-						case "bar_chart": {
-							const data = (widget.rows ?? []).map((row) => ({
-								label: String(row[widget.columns?.[0] ?? "label"]),
-								value: Number(row[widget.columns?.[1] ?? "value"]) || 0,
-							}));
+						case "bar_chart":
 							return (
-								<BarChart
+								<RechartsBarChart
 									key={widget.id}
 									title={widget.title}
-									data={data}
-									color="#06b6d4"
+									data={widget.data}
+									xAxisKey={widgetConfig.config?.xAxis ?? "label"}
+									yAxisKey={widgetConfig.config?.yAxis ?? "value"}
+									color={widgetConfig.config?.color}
+								/>
+							);
+						case "pie_chart":
+							return (
+								<RechartsPieChart
+									key={widget.id}
+									title={widget.title}
+									data={widget.data}
+									nameKey={widgetConfig.config?.xAxis ?? "name"}
+									valueKey={widgetConfig.config?.yAxis ?? "value"}
+								/>
+							);
+						case "gauge": {
+							const value = widget.data[0]?.value ?? 0;
+							return (
+								<KpiCard
+									key={widget.id}
+									title={widget.title}
+									value={`${value}%`}
+									color={widgetConfig.config?.color}
 								/>
 							);
 						}
-						case "scroll_table":
+						case "table":
 							return (
 								<DataTable
 									key={widget.id}
 									title={widget.title}
-									columns={widget.columns ?? []}
-									rows={widget.rows ?? []}
-									maxRows={50}
+									columns={widget.columns}
+									rows={widget.data}
+									maxRows={widgetConfig.config?.maxRows}
 								/>
 							);
 						default:
