@@ -12,10 +12,11 @@
  *   3. 逐个 FrameWidget 渲染 chart（按 col/row/colSpan 定位）
  */
 
-import { useCallback, useEffect, useState, type JSX } from "react";
+import { useCallback, useEffect, useMemo, useState, type JSX } from "react";
 import type { LayoutSpec, VizIntent } from "./types";
 import { inferLayout } from "./infer-layout";
 import { FrameWidget } from "./FrameWidget";
+import { FilterBar } from "./FilterBar";
 
 export interface CanvasProps {
 	columns?: string[];
@@ -33,21 +34,43 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 	const hasMulti = dataSources && dataSources.length > 0;
 	const primaryCols = columns ?? dataSources?.[0]?.columns ?? [];
 	const primaryRows = rows ?? dataSources?.[0]?.rows ?? [];
-	const dataLookup = new Map<string, { columns: string[]; rows: Record<string, unknown>[] }>();
-	if (dataSources) {
-		for (const src of dataSources) dataLookup.set(src.id, { columns: src.columns, rows: src.rows });
-	}
 
 	const [currentIntent, setCurrentIntent] = useState<VizIntent>(() =>
 		initialIntent === "auto" ? inferDefaultIntent(primaryCols, primaryRows) : initialIntent,
 	);
 	const [spec, setSpec] = useState<LayoutSpec | null>(null);
 	const [loading, setLoading] = useState(true);
+	// v0.0.97: FilterBar 状态 — 列名 → 选中值集合（空集合 = 不过滤）
+	const [filters, setFilters] = useState<Record<string, Set<unknown>>>({});
+
+	// v0.0.97: 把 filters 应用到所有 dataSource 的 rows（列不存在的 source 跳过该 filter）
+	const filteredDataSources = useMemo(() => {
+		if (!dataSources || Object.keys(filters).length === 0) return dataSources;
+		return dataSources.map((src) => ({
+			...src,
+			rows: src.rows.filter((row) =>
+				Object.entries(filters).every(([col, selected]) => {
+					if (!src.columns.includes(col)) return true; // source 没这列 → 不过滤
+					const v = row[col];
+					return selected.size === 0 || selected.has(v);
+				}),
+			),
+		}));
+	}, [dataSources, filters]);
+
+	// dataLookup 用过滤后的 rows（FrameWidget 渲染时拿到已过滤的数据）
+	const dataLookup = useMemo(() => {
+		const m = new Map<string, { columns: string[]; rows: Record<string, unknown>[] }>();
+		const sourceList = filteredDataSources ?? dataSources;
+		if (sourceList) for (const src of sourceList) m.set(src.id, { columns: src.columns, rows: src.rows });
+		return m;
+	}, [filteredDataSources, dataSources]);
 
 	// 首次 / intent 切换时重新生成布局
 	const regenerate = useCallback(() => {
 		setLoading(true);
 		let cancelled = false;
+		const innerTimers: ReturnType<typeof setTimeout>[] = [];
 		const t = setTimeout(() => {
 			if (cancelled) return;
 			const layout = inferLayout(
@@ -63,11 +86,9 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 				setLoading(false);
 
 				// 逐个 dataSource：每 80ms 把对应 widget 从 skeleton 变 ready
-				const ready = new Set<string>();
 				dataSources.forEach((src, idx) => {
-					setTimeout(() => {
+					const id = setTimeout(() => {
 						if (cancelled) return;
-						ready.add(src.id);
 						setSpec((prev) => {
 							if (!prev) return prev;
 							return {
@@ -78,6 +99,7 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 							};
 						});
 					}, 80 * (idx + 1));
+					innerTimers.push(id);
 				});
 			} else {
 				// 单数据源路径：一次性 ready
@@ -88,6 +110,7 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 		return () => {
 			cancelled = true;
 			clearTimeout(t);
+			innerTimers.forEach((id) => clearTimeout(id));
 		};
 	}, [columns, rows, dataSources, currentIntent]);
 
@@ -109,6 +132,14 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 				widgetCount={spec?.widgets.length ?? 0}
 				loading={loading}
 			/>
+			{/* v0.0.97: FilterBar（仅多数据源 + 有 categorical 列时才显示） */}
+			{dataSources && dataSources.length > 1 && (
+				<FilterBar
+					dataSources={dataSources}
+					filters={filters}
+					onFiltersChange={setFilters}
+				/>
+			)}
 			<div className={classGrid}>
 				{spec?.widgets.map((w) => {
 					// v0.0.94: 多数据源路径下，每个 widget 从对应数据源取数据
