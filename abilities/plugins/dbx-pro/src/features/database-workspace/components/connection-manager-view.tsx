@@ -43,18 +43,8 @@ export function ConnectionManagerView(): JSX.Element {
 	if (step === "editor") {
 		return (
 			<div data-astravia-plugin-root="dbx-pro" className="dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground">
-				<div className="flex items-center gap-2 border-b border-border/50 px-4 py-3">
-					<button
-						type="button"
-						className="dbx-iconbtn"
-						onClick={() => setStep("dashboard")}
-						title="返回总览"
-					>
-						<span className="icon-[lucide--arrow-left] h-4 w-4" />
-					</button>
-					<span className="text-[13px] font-semibold text-foreground">管理连接</span>
-				</div>
-				<ConnectionEditorFlow />
+				{/* 头部由 ConnectionEditorFlow 统一渲染（含返回总览），避免重复标题 */}
+				<ConnectionEditorFlow onExit={() => setStep("dashboard")} />
 			</div>
 		);
 	}
@@ -82,9 +72,9 @@ export function ConnectionManagerView(): JSX.Element {
 								数据库工作台
 							</span>
 						</h1>
-						<p className="m-0 mt-1.5 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-							管理数据库连接、浏览表结构、执行 SQL 查询与分析
-						</p>
+						<p className="m-0 mt-1 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+						管理数据库连接配置
+					</p>
 					</div>
 					<div className="flex shrink-0 items-center gap-2.5">
 						<button
@@ -106,62 +96,51 @@ export function ConnectionManagerView(): JSX.Element {
 					</div>
 				</header>
 
-				{/* KPI Cards */}
+				{/* KPI Cards：统一结构，标题单行不换行，去掉装饰性英文碎标签 */}
 				<div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-					<div className="flex flex-col justify-between rounded-xl border border-border/60 bg-card/45 p-4 shadow-xs">
-						<div className="flex items-center justify-between text-xs text-muted-foreground">
-							<span>连接总数</span>
-							<span className="text-[10px] tracking-wide text-cyan-500/80">connections</span>
+					<div className="flex flex-col rounded-lg border border-border/60 bg-card/45 p-3 shadow-xs">
+						<div className="whitespace-nowrap text-[11px] text-muted-foreground">连接总数</div>
+						<div className="mt-2 flex items-baseline gap-1">
+							<span className="text-xl font-bold leading-none tracking-tight text-foreground">{connections.length}</span>
+							<span className="text-[11px] text-muted-foreground">个</span>
 						</div>
-						<div className="mt-3 flex items-baseline gap-1.5">
-							<span className="text-2xl font-bold tracking-tight text-foreground">{connections.length}</span>
-							<span className="text-xs text-muted-foreground">个</span>
-						</div>
-						<div className="mt-3 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-							{productionCount > 0 && (
-								<span className="inline-flex items-center gap-1 text-amber-500">
+						<div className="mt-2 truncate border-t border-border/40 pt-1.5 text-[10.5px] text-muted-foreground">
+							{productionCount > 0 ? (
+								<span className="inline-flex items-center gap-1 whitespace-nowrap text-amber-500">
 									<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
 									{productionCount} 个生产环境
 								</span>
+							) : (
+								"无生产环境标记"
 							)}
-							{productionCount === 0 && <span>无生产环境标记</span>}
 						</div>
 					</div>
 
-					<div className="flex flex-col justify-between rounded-xl border border-border/60 bg-card/45 p-4 shadow-xs">
-					<div className="flex items-center justify-between text-xs text-muted-foreground">
-						<span>使用方式</span>
-						<span className="text-[10px] tracking-wide text-emerald-500/80">workbench</span>
-					</div>
-					<div className="mt-3 flex items-center gap-3">
-						<span className="icon-[lucide--panel-left-open] h-7 w-7 text-muted-foreground/70" />
-						<div className="min-w-0 flex-1">
-							<p className="m-0 text-[12px] font-medium text-foreground/80">在工作台标签页使用</p>
-							<p className="m-0 mt-0.5 text-[10.5px] text-muted-foreground">连接、SQL 编辑与表树在 dbx-pro 工作台中操作</p>
+					<div className="flex flex-col rounded-lg border border-border/60 bg-card/45 p-3 shadow-xs">
+						<div className="whitespace-nowrap text-[11px] text-muted-foreground">使用方式</div>
+						<div className="mt-2 flex items-center gap-1.5">
+							<span className="icon-[lucide--panel-left-open] h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+							<span className="whitespace-nowrap text-[12px] font-medium text-foreground/80">工作台标签页</span>
+						</div>
+						<div className="mt-2 truncate border-t border-border/40 pt-1.5 text-[10.5px] text-muted-foreground">
+							在活动栏打开
 						</div>
 					</div>
-					<div className="mt-3 border-t border-border/40 pt-2 text-[11px] text-muted-foreground/70">
-						此页面仅用于管理连接配置
-					</div>
-				</div>
 
-					<div className="flex flex-col justify-between rounded-xl border border-border/60 bg-card/45 p-4 shadow-xs">
-						<div className="flex items-center justify-between text-xs text-muted-foreground">
-							<span>数据库类型</span>
-							<span className="text-[10px] tracking-wide text-violet-500/80">types</span>
+					<div className="flex flex-col rounded-lg border border-border/60 bg-card/45 p-3 shadow-xs">
+						<div className="whitespace-nowrap text-[11px] text-muted-foreground">数据库类型</div>
+						<div className="mt-2 flex items-baseline gap-1">
+							<span className="text-xl font-bold leading-none tracking-tight text-foreground">{uniqueDbTypes.size}</span>
+							<span className="text-[11px] text-muted-foreground">种</span>
 						</div>
-						<div className="mt-3 flex items-baseline gap-1.5">
-							<span className="text-2xl font-bold tracking-tight text-foreground">{uniqueDbTypes.size}</span>
-							<span className="text-xs text-muted-foreground">种</span>
-						</div>
-						<div className="mt-3 border-t border-border/40 pt-2">
-							<div className="flex flex-wrap gap-1">
+						<div className="mt-2 truncate border-t border-border/40 pt-1.5">
+							<div className="flex flex-nowrap gap-1">
 								{[...uniqueDbTypes].slice(0, 4).map((t) => {
 									const v = getDatabaseTypeVisual(t);
 									return (
 										<span
 											key={t}
-											className="inline-flex items-center rounded px-1 py-0.5 text-[9px] font-medium text-white"
+											className="inline-flex h-3.5 shrink-0 items-center rounded px-1 text-[9px] font-medium text-white"
 											style={{ backgroundColor: v.color }}
 										>
 											{v.badge}
@@ -169,28 +148,20 @@ export function ConnectionManagerView(): JSX.Element {
 									);
 								})}
 								{uniqueDbTypes.size > 4 && (
-									<span className="text-[9px] text-muted-foreground">+{uniqueDbTypes.size - 4}</span>
+									<span className="text-[9px] leading-3.5 text-muted-foreground">+{uniqueDbTypes.size - 4}</span>
 								)}
 							</div>
 						</div>
 					</div>
 
-					<div className="flex flex-col justify-between rounded-xl border border-border/60 bg-card/45 p-4 shadow-xs">
-						<div className="flex items-center justify-between text-xs text-muted-foreground">
-							<span>引擎状态</span>
-							<span className="text-[10px] tracking-wide text-blue-500/80">engine</span>
+					<div className="flex flex-col rounded-lg border border-border/60 bg-card/45 p-3 shadow-xs">
+						<div className="whitespace-nowrap text-[11px] text-muted-foreground">引擎状态</div>
+						<div className="mt-2 flex items-center gap-1.5">
+							<span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
+							<span className="whitespace-nowrap text-[12px] font-semibold text-foreground">运行中</span>
 						</div>
-						<div className="mt-3">
-							<div className="flex items-center gap-2">
-								<span className="h-2 w-2 rounded-full bg-emerald-400" />
-								<span className="text-sm font-semibold text-foreground">运行中</span>
-							</div>
-							<p className="m-0 mt-1 text-[11px] text-muted-foreground">
-								支持 {DB_TYPE_MANIFEST.length} 种数据库
-							</p>
-						</div>
-						<div className="mt-3 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
-							<span>v{PLUGIN_VERSION}</span>
+						<div className="mt-2 truncate border-t border-border/40 pt-1.5 text-[10.5px] text-muted-foreground">
+							v{PLUGIN_VERSION} · {DB_TYPE_MANIFEST.length} 种数据库
 						</div>
 					</div>
 				</div>

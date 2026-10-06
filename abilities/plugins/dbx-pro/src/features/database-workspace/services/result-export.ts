@@ -69,6 +69,36 @@ export function toMarkdown(cols: string[], rows: Record<string, unknown>[]): str
 }
 
 /**
+ * 导出为 SQL INSERT 语句（对齐 dbx 桌面壳的 SQL 导出）。
+ *
+ * 表名缺省用 query_result；null → NULL，数字 / 布尔裸写，其余按字符串字面量。
+ * 方言差异：MySQL 系用反引号 + 单引号转义，其余走标准双引号标识符 / 单引号字符串。
+ */
+export function toSqlInsert(
+	cols: string[],
+	rows: Record<string, unknown>[],
+	tableName = "query_result",
+	dialect: "mysql" | "standard" = "standard",
+): string {
+	const quoteId = (name: string): string =>
+		dialect === "mysql"
+			? `\`${name.replaceAll("`", "``")}\``
+			: /^[A-Za-z_][A-Za-z0-9_$]*$/.test(name)
+				? name
+				: `"${name.replaceAll('"', '""')}"`;
+	const literal = (value: unknown): string => {
+		if (value === null || value === undefined) return "NULL";
+		if (typeof value === "number" && Number.isFinite(value)) return String(value);
+		if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+		if (typeof value === "object") return `'${JSON.stringify(value).replaceAll("'", "''")}'`;
+		return `'${String(value).replaceAll("'", "''")}'`;
+	};
+	const head = `INSERT INTO ${quoteId(tableName)} (${cols.map(quoteId).join(", ")}) VALUES`;
+	const tail = rows.map((row) => `  (${cols.map((c) => literal(row[c])).join(", ")});`);
+	return [head, ...tail].join("\n");
+}
+
+/**
  * 导出为 HTML 表格格式。
  */
 export function toHtml(cols: string[], rows: Record<string, unknown>[]): string {

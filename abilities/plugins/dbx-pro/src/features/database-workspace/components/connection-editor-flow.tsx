@@ -23,6 +23,8 @@ export interface ConnectionEditorFlowProps {
 	onChange?: (name?: string) => void;
 	/** 传入时头部显示关闭按钮（模态场景）；侧边栏整页不传。 */
 	onClose?: () => void;
+	/** 侧边栏整页场景：列表步显示返回总览按钮（模态不显示）。 */
+	onExit?: () => void;
 }
 
 type DialogStep = "list" | "select" | "config";
@@ -38,7 +40,7 @@ const RELATIONAL_TYPES = ["mysql", "postgres", "mariadb", "sqlite", "sqlserver",
 const NOSQL_TYPES = ["mongodb", "redis", "elasticsearch", "cassandra", "neo4j"];
 const ANALYTICS_TYPES = ["clickhouse", "snowflake", "bigquery", "doris", "starrocks"];
 
-export function ConnectionEditorFlow({ onChange, onClose }: ConnectionEditorFlowProps): JSX.Element {
+export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEditorFlowProps): JSX.Element {
 	const editor = useConnectionEditor({ onChange });
 	const [step, setStep] = useState<DialogStep>("list");
 	const [selectedDbType, setSelectedDbType] = useState<DbType>("mysql");
@@ -163,6 +165,16 @@ export function ConnectionEditorFlow({ onChange, onClose }: ConnectionEditorFlow
 							className="dbx-iconbtn"
 							onClick={step === "config" ? handleBackToSelect : handleBackToList}
 							title="返回"
+						>
+							<span className="icon-[lucide--arrow-left] h-4 w-4" />
+						</button>
+					)}
+					{step === "list" && onExit && (
+						<button
+							type="button"
+							className="dbx-iconbtn"
+							onClick={onExit}
+							title="返回总览"
 						>
 							<span className="icon-[lucide--arrow-left] h-4 w-4" />
 						</button>

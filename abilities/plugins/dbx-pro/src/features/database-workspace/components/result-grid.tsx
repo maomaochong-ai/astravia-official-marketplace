@@ -26,7 +26,8 @@ import {
 } from "../../../domain/workbench-settings";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
-import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml } from "../services/result-export";
+import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml, toSqlInsert } from "../services/result-export";
+import { toXlsx } from "../services/xlsx-export";
 import { CellDisplay } from "./cell-display";
 import { CellEditor } from "./cell-editor";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
@@ -424,48 +425,46 @@ export function ResultGrid({
 		await navigator.clipboard.writeText(toMarkdown(colList, rows)).catch(() => {});
 	}, [colList, rows]);
 
-	function downloadFile(content: string, filename: string, mimeType: string): void {
+	function downloadBlob(blob: Blob, filename: string): void {
 		try {
-			// 使用 Blob + URL.createObjectURL 方式下载
-			const blob = new Blob([content], { type: mimeType });
 			const url = URL.createObjectURL(blob);
-			
-			// 创建临时链接并触发下载
 			const anchor = document.createElement("a");
 			anchor.href = url;
 			anchor.download = filename;
 			anchor.style.display = "none";
-			
-			// 添加到 DOM 并触发点击
 			document.body.appendChild(anchor);
 			anchor.click();
-			
-			// 清理
 			setTimeout(() => {
 				document.body.removeChild(anchor);
 				URL.revokeObjectURL(url);
 			}, 100);
 		} catch (error) {
-			// 如果下载失败，尝试使用 data URL 方式
-			try {
-				const dataUrl = `data:${mimeType};base64,${btoa(unescape(encodeURIComponent(content)))}`;
-				const anchor = document.createElement("a");
-				anchor.href = dataUrl;
-				anchor.download = filename;
-				anchor.click();
-			} catch {
-				// 最后手段：复制到剪贴板
-				void navigator.clipboard.writeText(content).then(() => {
-					alert(`无法下载文件，已将内容复制到剪贴板。请手动保存为 ${filename}`);
-				}).catch(() => {
-					alert(`导出失败：${error instanceof Error ? error.message : String(error)}`);
-				});
-			}
+			alert(`导出失败：${error instanceof Error ? error.message : String(error)}`);
 		}
+	}
+
+	function downloadFile(content: string, filename: string, mimeType: string): void {
+		downloadBlob(new Blob([content], { type: mimeType }), filename);
 	}
 
 	const exportCsv = useCallback(() => {
 		downloadFile(toCsv(colList, rows), "query-result.csv", "text/csv;charset=utf-8");
+	}, [colList, rows]);
+
+	const exportXlsx = useCallback(() => {
+		// 对齐 dbx：Excel 导出。零依赖最小 OOXML，工作表名取当前结果表名。
+		const target = tableInfoSelection?.tableName || "query_result";
+		downloadBlob(
+			new Blob([toXlsx(colList, rows, target)], {
+				type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			}),
+			"query-result.xlsx",
+		);
+	}, [colList, rows, tableInfoSelection?.tableName]);
+
+	const exportTxt = useCallback(() => {
+		// TXT：制表符分隔的纯文本，可直接粘贴进 Excel。
+		downloadFile(toTsv(colList, rows), "query-result.txt", "text/plain;charset=utf-8");
 	}, [colList, rows]);
 
 	const exportJson = useCallback(() => {
@@ -484,6 +483,15 @@ export function ResultGrid({
 		downloadFile(toHtml(colList, rows), "query-result.html", "text/html");
 	}, [colList, rows]);
 
+	const exportSql = useCallback(() => {
+		// 对齐 dbx：导出为 INSERT 语句。表名取当前结果对应的表（表属性打开来源），
+		// 取不到则用 query_result；方言按连接类型选 MySQL 反引号或标准标识符。
+		const dbType = (state.connections.find((c) => c.name === connectionName)?.db_type ?? "").toLowerCase();
+		const dialect = /mysql|maria|tidb|starrocks|doris|goldendb|databend/.test(dbType) ? "mysql" : "standard";
+		const target = tableInfoSelection?.tableName || "query_result";
+		downloadFile(toSqlInsert(colList, rows, target, dialect), "query-result.sql", "application/sql;charset=utf-8");
+	}, [colList, rows, state.connections, connectionName, tableInfoSelection?.tableName]);
+
 	const [exportMenu, setExportMenu] = useState<ContextMenuState | null>(null);
 
 	/** 导出格式菜单：左键 / 右键都在按钮上方展开（贴底栏，空间不足时菜单自动上翻）。 */
@@ -495,10 +503,13 @@ export function ResultGrid({
 			y: e.clientY,
 			items: [
 				{ type: "item", label: "导出 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: exportCsv },
+				{ type: "item", label: "导出 Excel（XLSX）", icon: "icon-[lucide--sheet]", onClick: exportXlsx },
 				{ type: "item", label: "导出 JSON", icon: "icon-[lucide--file-json]", onClick: exportJson },
 				{ type: "item", label: "导出 JSON Lines", icon: "icon-[lucide--file-code]", onClick: exportJsonLines },
 				{ type: "item", label: "导出 Markdown", icon: "icon-[lucide--file-text]", onClick: exportMarkdown },
 				{ type: "item", label: "导出 HTML", icon: "icon-[lucide--file-code-2]", onClick: exportHtml },
+				{ type: "item", label: "导出 SQL（INSERT）", icon: "icon-[lucide--file-terminal]", onClick: exportSql },
+				{ type: "item", label: "导出 TXT", icon: "icon-[lucide--file-text]", onClick: exportTxt },
 			],
 		});
 	}
@@ -629,11 +640,14 @@ export function ResultGrid({
 					label: "导出全部",
 					icon: "icon-[lucide--download]",
 					items: [
-						{ type: "item", label: "导出为 CSV", icon: "icon-[lucide--file-text]", onClick: () => exportCsv() },
+						{ type: "item", label: "导出为 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: () => exportCsv() },
+						{ type: "item", label: "导出为 Excel（XLSX）", icon: "icon-[lucide--sheet]", onClick: () => exportXlsx() },
 						{ type: "item", label: "导出为 JSON", icon: "icon-[lucide--file-json]", onClick: () => exportJson() },
 						{ type: "item", label: "导出为 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => exportJsonLines() },
 						{ type: "item", label: "导出为 Markdown", icon: "icon-[lucide--file-text]", onClick: () => exportMarkdown() },
 						{ type: "item", label: "导出为 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => exportHtml() },
+						{ type: "item", label: "导出为 SQL（INSERT）", icon: "icon-[lucide--file-terminal]", onClick: () => exportSql() },
+						{ type: "item", label: "导出为 TXT", icon: "icon-[lucide--file-text]", onClick: () => exportTxt() },
 					],
 				},
 				{
@@ -954,7 +968,7 @@ export function ResultGrid({
 						type="button"
 						onClick={openExportMenu}
 						onContextMenu={openExportMenu}
-						title="导出结果（CSV / JSON / JSON Lines / Markdown / HTML）"
+						title="导出结果（CSV / Excel / JSON / Markdown / HTML / SQL / TXT）"
 						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
 					>
 						<span className="icon-[lucide--download] h-3.5 w-3.5" />

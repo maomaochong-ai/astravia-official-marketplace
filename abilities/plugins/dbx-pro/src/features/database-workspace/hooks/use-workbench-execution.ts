@@ -31,10 +31,15 @@ interface ExecutionDeps {
 		durationMs: number;
 		error?: string;
 	}) => Promise<void>;
+	/**
+	 * 引擎识别为写 / DDL（SQL_BLOCKED）且连接非只读时回调；
+	 * 由 Provider 挂起执行并弹出写确认框，确认后带 allowWrite 重跑。
+	 */
+	requestWriteConfirm: (params: { tabId: string; connectionName: string; sql: string }) => void;
 }
 
 export function useWorkbenchExecution(deps: ExecutionDeps) {
-	const { stateRef, settingsRef, runningStartedAtRef, dispatch, recordHistory } = deps;
+	const { stateRef, settingsRef, runningStartedAtRef, dispatch, recordHistory, requestWriteConfirm } = deps;
 
 	/** 写入成功/读取成功后的结果派发。 */
 	const applySuccess = useCallback(
@@ -187,7 +192,8 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 					}
 					dispatch({ type: "updateTab", id: tabId, patch: { isRunning: false } });
 					dispatch({ type: "setConnectionStatus", name: connectionName, status: "idle" });
-					// 写确认由 Provider 层处理
+					// 挂起执行，交给 Provider 弹写确认框；确认后带 allowWrite 重跑同一条 SQL。
+					requestWriteConfirm({ tabId, connectionName, sql: sqlToRun });
 					return;
 				}
 				const msg = e instanceof EngineClientError ? e.message : e instanceof Error ? e.message : String(e);

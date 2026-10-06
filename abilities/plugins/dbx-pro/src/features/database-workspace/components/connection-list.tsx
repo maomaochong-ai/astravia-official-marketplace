@@ -1,11 +1,12 @@
 /**
  * 已保存连接的清单 — 侧栏的列表页。
  *
- * 每行给出连接名 / 类型 / 端点摘要与三个动作：编辑、测试、删除。
+ * 每行给出品牌图标 / 连接名 / 端点摘要与三个动作：编辑、测试、删除。
  * 测试进行中禁用该行按钮，避免并发跑多次连通性检查。
  */
 
 import type { DbConnection } from "../../../domain/connection-config";
+import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 
 export interface ConnectionListProps {
 	connections: DbConnection[];
@@ -30,8 +31,8 @@ export function ConnectionList({
 }: ConnectionListProps): React.JSX.Element {
 	return (
 		<div>
-			<div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-				<div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>共 {connections.length} 个连接</div>
+			<div className="mb-3 flex items-center justify-between">
+				<div className="text-[11px] text-muted-foreground">共 {connections.length} 个连接</div>
 				<button className="dbx-btn primary" onClick={onCreate}>+ 新建</button>
 			</div>
 
@@ -41,42 +42,64 @@ export function ConnectionList({
 				</div>
 			)}
 
-			{connections.map((c) => (
-				<div
-					key={c.id}
-					style={{
-						display: "flex", alignItems: "center", gap: 8,
-						padding: "10px 12px", borderRadius: 6, marginBottom: 6,
-						border: "1px solid var(--border)", fontSize: 13,
-					}}
-				>
-					<div style={{ flex: 1, minWidth: 0 }}>
-						<div style={{ fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}>
-							{c.is_production && (
-							<span style={{
-								fontSize: 10, padding: "1px 6px", borderRadius: 10,
-								background: "color-mix(in srgb, var(--destructive) 10%, transparent)",
-								color: "var(--destructive)",
-							}}>PROD</span>
-						)}
-							{c.name}
+			<div className="flex flex-col gap-1.5">
+				{connections.map((c) => (
+					<div
+						key={c.id}
+						className="group flex items-center gap-2.5 rounded-lg border border-border/50 bg-card/30 px-2.5 py-2 transition hover:border-border/80 hover:bg-card/60"
+					>
+						<DatabaseTypeIcon dbType={c.db_type} size="small" />
+						<div className="min-w-0 flex-1">
+							<div className="flex items-center gap-1.5">
+								{c.is_production && (
+									<span className="shrink-0 rounded bg-amber-500/10 px-1 py-px text-[9px] font-semibold text-amber-500">
+										PROD
+									</span>
+								)}
+								{c.read_only && (
+									<span className="shrink-0 rounded bg-blue-500/10 px-1 py-px text-[9px] font-semibold text-blue-500">
+										RO
+									</span>
+								)}
+								<span className="truncate text-[12px] font-medium text-foreground">{c.name}</span>
+							</div>
+							<div className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
+								{c.host}{c.port ? `:${c.port}` : ""}
+								{c.database ? ` · ${c.database}` : ""}
+								{c.schemas && c.schemas.length > 0 ? ` · ${c.schemas.join(",")}` : ""}
+							</div>
 						</div>
-						<div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>
-							{c.db_type} · {c.host}{c.port ? `:${c.port}` : ""}
-							{c.database ? ` · ${c.database}` : ""}
-							{c.schemas && c.schemas.length > 0 ? ` · ${c.schemas.join(",")}` : ""}
+						<div className="flex shrink-0 items-center gap-0.5">
+							<button
+								type="button"
+								className="rounded px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-[var(--dbx-hover)] hover:text-foreground"
+								onClick={() => onEdit(c)}
+							>
+								编辑
+							</button>
+							<button
+								type="button"
+								className="rounded px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
+								onClick={() => onTest(c)}
+								disabled={testing}
+							>
+								{testing ? "…" : "测试"}
+							</button>
+							<button
+								type="button"
+								className="rounded px-2 py-1 text-[11px] transition hover:bg-red-500/10 hover:text-red-500"
+								style={{ color: "var(--destructive)" }}
+								onClick={() => onDelete(c)}
+							>
+								删除
+							</button>
 						</div>
 					</div>
-					<button className="dbx-btn ghost" onClick={() => onEdit(c)}>编辑</button>
-					<button className="dbx-btn ghost" onClick={() => onTest(c)} disabled={testing}>
-						{testing ? "…" : "测试"}
-					</button>
-					<button className="dbx-btn ghost" onClick={() => onDelete(c)} style={{ color: "var(--destructive)" }}>删除</button>
-				</div>
-			))}
+				))}
+			</div>
 
 			{testResult && (
-				<div style={{ marginTop: 12, padding: "8px 12px", borderRadius: 6, backgroundColor: "var(--dbx-surface)", fontSize: 12 }}>
+				<div className="mt-3 rounded-lg bg-[var(--dbx-surface)] px-3 py-2 text-[11px] text-foreground/80">
 					{testResult}
 				</div>
 			)}

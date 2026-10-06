@@ -15,6 +15,9 @@ import type { TreeNode } from "../../../domain/tree-node-key";
 import { parseColumnNodeKey } from "../../../domain/tree-node-key";
 import { writeAiNodeDrag, setMentionDragImage, type AiNodeInfo } from "../../../domain/table-drag";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
+import { engineDescribeByName } from "../../../shared/services/engine-client";
+import { generateTableSql } from "../services/table-sql-template";
+import type { EngineColumn } from "../state/workbench-types";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 import {
 	buildConnectionPrompt,
@@ -38,6 +41,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		dispatch,
 		loadNodeChildren,
 		openPreviewTab,
+		runTabSql,
 		settings,
 		selectionMode,
 		selectedNodes,
@@ -160,50 +164,50 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		setMenu(null);
 	}
 
-	/** 生成 SQL 模板并在新 tab 打开（模板语句，用户改完再执行）。 */
-	function generateSql(type: "select" | "insert" | "update" | "delete" | "create" | "alter" | "drop"): void {
-		// 获取有效的连接名
+	/** 生成 SQL 模板并在新 tab 打开：按表真实列结构（/describe）生成，不写死 demo。 */
+	async function generateSql(type: "select" | "insert" | "update" | "delete" | "create" | "alter" | "drop"): Promise<void> {
 		const effectiveConnectionName = connectionName ?? (node.kind === "connection" ? node.label : undefined);
 		if (!effectiveConnectionName) return;
 
-		let sql = "";
-		const tableName = qualifiedName;
-		const bareName = node.label;
-
-		switch (type) {
-			case "select":
-				sql = `SELECT * FROM ${tableName} LIMIT 100;`;
-				break;
-			case "insert":
-				sql = `INSERT INTO ${tableName} (column1, column2)\nVALUES (value1, value2);`;
-				break;
-			case "update":
-				sql = `UPDATE ${tableName}\nSET column1 = value1\nWHERE condition;`;
-				break;
-			case "delete":
-				sql = `DELETE FROM ${tableName}\nWHERE condition;`;
-				break;
-			case "create":
-				sql = `CREATE TABLE ${tableName} (\n  id INTEGER PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);`;
-				break;
-			case "alter":
-				sql = `ALTER TABLE ${tableName}\nADD COLUMN new_column VARCHAR(100);`;
-				break;
-			case "drop":
-				sql = `DROP TABLE IF EXISTS ${tableName};`;
-				break;
+		let columns: EngineColumn[] = [];
+		// 所有模板都需要真实列结构（CREATE 也按列重建 DDL），统一走 describe；
+		// 失败时模板内部降级为通用占位，不阻断用户。
+		try {
+			const outcome = await engineDescribeByName(effectiveConnectionName, {
+				schema: childScope || undefined,
+				table: node.label,
+			});
+			columns = outcome.columns.map((c) => ({
+				name: c.name,
+				type: c.type,
+				nullable: c.nullable,
+				hasDefault: c.hasDefault,
+				defaultValue: c.defaultValue,
+				comment: c.comment,
+				isPrimaryKey: c.isPrimaryKey,
+			}));
+		} catch {
+			// describe 失败时降级为无列模板（SELECT * 等），不阻断用户。
 		}
+
+		const sql = generateTableSql(type, {
+			qualifiedName,
+			dbType: state.connections.find((c) => c.name === effectiveConnectionName)?.db_type,
+			columns,
+		});
 
 		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
 		dispatch({
 			type: "addTab",
-			tab: { id, label: `${bareName} ${type.toUpperCase()}`, connectionName: effectiveConnectionName, sql, isRunning: false },
+			tab: { id, label: `${node.label} ${type.toUpperCase()}`, connectionName: effectiveConnectionName, sql, isRunning: false },
 		});
 	}
 
 	/**
-	 * 危险操作（对齐 dbx 桌面壳「更多」）：二次确认后在新 tab 立即执行。
-	 * 写操作 / DDL 全透传引擎，不做 SQL 层闸门，确认是唯一保护。
+	 * 危险操作（对齐 dbx 桌面壳「更多」）：开新 tab 并立即执行。
+	 * 写 / DDL 会被引擎拦截（SQL_BLOCKED），由 Provider 的 WriteConfirmDialog
+	 * 二次确认；只读连接在执行器内直接拒绝。不在浏览器侧用 window.confirm
+	 * （宿主 webview 中是静默 no-op）。
 	 */
 	async function runDangerAction(params: {
 		kind: "vacuum" | "truncate" | "delete" | "drop";
@@ -214,32 +218,29 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		const dbType = (state.connections.find((c) => c.name === connName)?.db_type ?? "").toLowerCase();
 		const t = qualifiedName;
 		let sql = "";
-		let message = "";
 		if (params.kind === "vacuum") {
 			if (/postgres|pg|redshift|gaussdb|opengauss|kingbase|vastbase|highgo/.test(dbType)) {
 				sql = `VACUUM${params.cascade ? " FULL" : ""} ${t};`;
-				message = params.cascade
-					? `VACUUM FULL 会重写整表并持有排他锁，确定对「${t}」执行吗？`
-					: `确定对「${t}」执行 VACUUM 吗？大表可能耗时较久。`;
 			} else if (/mysql|maria|tidb|starrocks|doris/.test(dbType)) {
 				sql = `OPTIMIZE TABLE ${t};`;
-				message = `确定对「${t}」执行 OPTIMIZE TABLE 吗？`;
 			} else {
-				alert("当前数据库类型不支持表级 VACUUM / OPTIMIZE");
+				dispatch({ type: "setError", message: "当前数据库类型不支持表级 VACUUM / OPTIMIZE" });
 				return;
 			}
 		} else if (params.kind === "truncate") {
 			sql = `TRUNCATE TABLE ${t}${params.cascade ? " CASCADE" : ""};`;
-			message = `TRUNCATE 将清空「${t}」全部数据且不可回滚，确定执行吗？`;
 		} else if (params.kind === "delete") {
 			sql = `DELETE FROM ${t};`;
-			message = `DELETE FROM 将清空「${t}」全部数据（可回滚但产生大量 WAL），大表建议用 TRUNCATE。确定执行吗？`;
 		} else {
 			sql = `DROP TABLE IF EXISTS ${t}${params.cascade ? " CASCADE" : ""};`;
-			message = `DROP TABLE 将删除「${t}」表结构与数据${params.cascade ? "（CASCADE，连同依赖对象）" : ""}，不可恢复！确定执行吗？`;
 		}
-		if (!window.confirm(message)) return;
-		await openPreviewTab(connName, sql, `${node.label} ${params.kind.toUpperCase()}`);
+		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+		dispatch({
+			type: "addTab",
+			tab: { id, label: `${node.label} ${params.kind.toUpperCase()}`, connectionName: connName, sql, isRunning: false },
+		});
+		// 立即执行 → 触发写确认弹窗（非只读连接）或只读拒绝。写操作不分页。
+		await runTabSql(id, sql);
 	}
 
 	function handleContextMenu(e: React.MouseEvent): void {
@@ -313,9 +314,10 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						onClick: () => {
 							if (!connectionName) return;
 							const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+							// schema 下新建空查询并绑定连接，不预置无效的 schema. 片段。
 							dispatch({
 								type: "addTab",
-								tab: { id, label: `${node.label} 查询`, connectionName, sql: `SELECT * FROM ${node.label}. LIMIT 100;`, isRunning: false },
+								tab: { id, label: `${node.label} 查询`, connectionName, sql: "", isRunning: false },
 							});
 						},
 					},

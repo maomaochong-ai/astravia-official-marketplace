@@ -91,6 +91,9 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		dispatch,
 		// 必须传真实的落盘函数，否则查询历史不会持久化。
 		recordHistory: async (params) => { await recordHistory(params); },
+		// 写 / DDL 被引擎拦截时挂起并弹确认框（pendingWrite 驱动 WriteConfirmDialog）。
+		requestWriteConfirm: ({ tabId, connectionName, sql }) =>
+			setPendingWrite({ tabId, connectionName, sql }),
 	});
 	runTabSqlRef.current = (tabId, sql) => runTabSql(tabId, sql, undefined, {});
 
