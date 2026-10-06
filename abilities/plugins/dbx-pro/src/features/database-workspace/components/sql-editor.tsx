@@ -30,6 +30,7 @@ import { autocompletion, closeBrackets, completionKeymap } from "@codemirror/aut
 import { MSSQL, MySQL, PostgreSQL, SQLite, sql } from "@codemirror/lang-sql";
 import { useWorkbench } from "../hooks/use-workbench";
 import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
+import { getFs, getUi } from "../../../runtime-contract";
 import {
 	formatDialect,
 	mysql,
@@ -151,7 +152,7 @@ function formatterDialect(dbType: string | undefined): DialectOptions {
 }
 
 export function SqlEditor(): JSX.Element {
-	const { state, dispatch, runTabSql } = useWorkbench();
+	const { state, dispatch, runTabSql, cancelExecution } = useWorkbench();
 	const hostRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
 	const [editorReady, setEditorReady] = useState(false);
@@ -282,31 +283,91 @@ export function SqlEditor(): JSX.Element {
 	const running = activeTab?.isRunning ?? false;
 	const hasConn = Boolean(activeTab?.connectionName);
 
+	/** 停止执行：cancelExecution 把 tab.isRunning 置 false，引擎层后续自行复位。 */
+	function handleStop() {
+		if (!activeTabId) return;
+		cancelExecution(activeTabId);
+	}
+
+	/** Execute in current tab */
+	function handleExecute() {
+		if (!viewRef.current || !activeTabId) return;
+		if (running) { handleStop(); return; }
+		runCurrent(viewRef.current);
+	}
+
+	/** Execute selection/full SQL in a NEW result tab */
+	function handleExecuteInNew() {
+		if (!viewRef.current || !activeTab || running || !hasConn) return;
+		const { from, to } = viewRef.current.state.selection.main;
+		let override: string | undefined;
+		if (to > from) {
+			const fragment = viewRef.current.state.doc.sliceString(from, to);
+			if (fragment.trim()) override = fragment;
+		}
+		void runTabSql(activeTab.id, override, activeTab.connectionName ?? undefined, { mode: "server" });
+	}
+
+	/** Save SQL to file via宿主 fs API */
+	async function handleSave() {
+		if (!activeTab || !activeTab.sql.trim()) return;
+		const fs = getFs();
+		if (!fs) return;
+		try {
+			const path = await fs.saveAs(`${activeTab.label ?? "query"}.sql`, activeTab.sql, "utf8", {
+				title: "保存 SQL",
+				filters: [{ name: "SQL", extensions: ["sql"] }],
+			});
+			const ui = getUi();
+			if (path && ui?.showToast) {
+				await ui.showToast({ message: `SQL 已保存到 ${path}`, variant: "success" });
+			}
+		} catch {
+			// 保存失败静默处理
+		}
+	}
+
 	return (
 		<div data-dbx-theme={theme} className="dbx-sql-theme flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 */}
 			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-1 px-2">
+				{/* Execute / Stop toggle */}
 				<button
 					type="button"
-					onClick={() => viewRef.current && runCurrent(viewRef.current)}
-					disabled={running || !hasConn}
-					title="执行（⌘/Ctrl + Enter）"
+					onClick={handleExecute}
+					disabled={!running && !hasConn}
+					title={running ? "停止执行" : "执行（⌘/Ctrl + Enter）"}
 					className="dbx-cta"
-					style={{ height: 24, padding: "0 8px" }}
+					style={running ? { backgroundColor: "rgb(220 38 38)", borderColor: "rgb(220 38 38)" } : { height: 24, padding: "0 8px" }}
 				>
-					<span className="icon-[lucide--play] h-3 w-3" />
-					执行
+					<span className={running ? "icon-[lucide--square] h-3 w-3 fill-current" : "icon-[lucide--play] h-3 w-3"} />
+					{running ? "停止" : "执行"}
 				</button>
+				{/* Execute in new tab */}
+				<button
+					type="button"
+					onClick={handleExecuteInNew}
+					disabled={running || !hasConn}
+					title="在新结果标签页执行"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 disabled:opacity-30 dark:text-violet-300 dark:hover:text-violet-200"
+				>
+					<span className="icon-[lucide--square-play] h-3 w-3" />
+					新标签
+				</button>
+
 				<div className="mx-1 h-4 w-px bg-[var(--dbx-surface-2)]" />
+
+				{/* Format (tidy) */}
 				<button
 					type="button"
 					onClick={tidy}
-					title="整理 SQL"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
+					title="格式化 SQL"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
 				>
-					<span className="icon-[lucide--list-filter] h-3 w-3" />
+					<span className="icon-[lucide--align-left] h-3 w-3" />
 					整理
 				</button>
+				{/* Clear */}
 				<button
 					type="button"
 					onClick={clearEditor}
@@ -316,6 +377,17 @@ export function SqlEditor(): JSX.Element {
 					<span className="icon-[lucide--trash-2] h-3 w-3" />
 					清空
 				</button>
+				{/* Save SQL */}
+				<button
+					type="button"
+					onClick={handleSave}
+					title="保存 SQL 到文件"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+				>
+					<span className="icon-[lucide--save] h-3 w-3" />
+					保存
+				</button>
+
 				<div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
 					<span className="icon-[lucide--database] h-2.5 w-2.5" />
 					{activeTab?.connectionName ?? "未绑定"}
