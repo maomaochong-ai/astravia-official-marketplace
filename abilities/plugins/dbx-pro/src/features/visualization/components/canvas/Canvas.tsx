@@ -47,16 +47,48 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 	// 首次 / intent 切换时重新生成布局
 	const regenerate = useCallback(() => {
 		setLoading(true);
-		// 模拟 AI 流水线异步：100ms 后产出 spec，给 skeleton 展示机会
+		let cancelled = false;
 		const t = setTimeout(() => {
+			if (cancelled) return;
 			const layout = inferLayout(
 				hasMulti ? { dataSources } : { columns: primaryCols, rows: primaryRows },
 				{ intent: currentIntent },
 			);
-			setSpec(layout);
-			setLoading(false);
+
+			// v0.0.96 Stream Mode：多数据源路径下，先显示完整 skeleton，再逐个 source 变 ready
+			if (hasMulti && dataSources && dataSources.length > 1) {
+				// 所有 widget 初始 skeleton 状态
+				const skeleton = { ...layout, widgets: layout.widgets.map((w) => ({ ...w, status: "skeleton" as const })) };
+				setSpec(skeleton);
+				setLoading(false);
+
+				// 逐个 dataSource：每 80ms 把对应 widget 从 skeleton 变 ready
+				const ready = new Set<string>();
+				dataSources.forEach((src, idx) => {
+					setTimeout(() => {
+						if (cancelled) return;
+						ready.add(src.id);
+						setSpec((prev) => {
+							if (!prev) return prev;
+							return {
+								...prev,
+								widgets: prev.widgets.map((w) =>
+									w.dataSourceId === src.id ? { ...w, status: "ready" as const } : w,
+								),
+							};
+						});
+					}, 80 * (idx + 1));
+				});
+			} else {
+				// 单数据源路径：一次性 ready
+				setSpec(layout);
+				setLoading(false);
+			}
 		}, 100);
-		return () => clearTimeout(t);
+		return () => {
+			cancelled = true;
+			clearTimeout(t);
+		};
 	}, [columns, rows, dataSources, currentIntent]);
 
 	useEffect(() => {
