@@ -394,10 +394,9 @@ export function ResultGrid({
 	function applyCustomPageSize(): void {
 		const val = Number.parseInt(customPageSize, 10);
 		if (!Number.isFinite(val) || val < 1) return;
-		const size = resolvePageSize(val);
-		if (isServer) onPageSizeChange?.(size);
+		if (isServer) onPageSizeChange?.(val);
 		else {
-			setLocalPageSize(size);
+			setLocalPageSize(val);
 			setLocalPage(0);
 		}
 		setShowCustomSizeInput(false);
@@ -408,9 +407,8 @@ export function ResultGrid({
 	function setAsDefaultPageSize(): void {
 		const val = Number.parseInt(customPageSize, 10);
 		if (!Number.isFinite(val) || val < 1) return;
-		const size = resolvePageSize(val);
 		// 通过回调通知上层更新设置
-		onSetDefaultPageSize?.(size);
+		onSetDefaultPageSize?.(val);
 		setShowCustomSizeInput(false);
 		setCustomPageSize("");
 	}
@@ -975,42 +973,39 @@ export function ResultGrid({
 						</select>
 					</label>
 					{showCustomSizeInput && (
-						<div className="flex items-center gap-1">
-							<input
-								type="number"
-								min="1"
-								max={ENGINE_ROW_CAP}
-								value={customPageSize}
-								onChange={(e) => setCustomPageSize(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") applyCustomPageSize();
-									else if (e.key === "Escape") {
-										setShowCustomSizeInput(false);
-										setCustomPageSize("");
-									}
-								}}
-								placeholder={`1-${ENGINE_ROW_CAP}`}
-								className="h-5 w-16 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
-								autoFocus
-							/>
-							<button
-								type="button"
-								onClick={applyCustomPageSize}
-								title="仅本次使用"
-								className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
-							>
-								应用
-							</button>
-							<button
-								type="button"
-								onClick={setAsDefaultPageSize}
-								title="设为默认每页行数"
-								className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
-							>
-								设为默认
-							</button>
-						</div>
+						<input
+							type="number"
+							min="1"
+							value={customPageSize}
+							onChange={(e) => setCustomPageSize(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") applyCustomPageSize();
+								else if (e.key === "Escape") {
+									setShowCustomSizeInput(false);
+									setCustomPageSize("");
+								}
+							}}
+							placeholder="输入行数"
+							className="h-5 w-20 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
+							autoFocus
+						/>
 					)}
+					<button
+						type="button"
+						onClick={showCustomSizeInput ? applyCustomPageSize : () => changePageSize(pageSize)}
+						title="仅本次应用"
+						className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
+					>
+						应用
+					</button>
+					<button
+						type="button"
+						onClick={showCustomSizeInput ? setAsDefaultPageSize : () => onSetDefaultPageSize?.(pageSize)}
+						title="设为默认每页行数"
+						className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
+					>
+						设为默认
+					</button>
 					<span className="text-muted-foreground/70">
 						{pagedRows.length === 0 ? 0 : safePage * pageSize + 1}–
 						{safePage * pageSize + pagedRows.length}
