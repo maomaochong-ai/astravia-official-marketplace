@@ -10,11 +10,12 @@
  */
 
 import { useState, useRef, useEffect, type JSX } from "react";
-import type { Visualization } from "../visualization-bridge";
+import type { Visualization } from "../../../domain/visualization";
 import { DASHBOARD_PRESETS, type ChartConfig } from "../presets/dashboard/presets";
 import { SCREEN_PRESETS, type WidgetConfig } from "../presets/screen/presets";
 import { DashboardRenderer, type RenderedChart } from "./dashboard-renderer";
 import { ScreenRenderer, type RenderedWidget } from "./screen-renderer";
+import { Canvas } from "./canvas";
 
 interface Props {
 	// 预览态（工具刚生成、未入库，无 id）与已保存产物共用此组件；
@@ -77,6 +78,17 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 
 	// 渲染内容
 	const renderContent = (): JSX.Element | null => {
+		// Canvas 渲染模式优先（ADR-0005 §5）：从 SQL 结果集直接推断布局
+		if (viz.resultRows?.length && viz.resultColumns?.length) {
+			return (
+				<Canvas
+					columns={viz.resultColumns}
+					rows={viz.resultRows}
+					intent={viz.type === "screen" ? "bigscreen" : "dashboard"}
+				/>
+			);
+		}
+
 		if (renderMode === "iframe") {
 			return (
 				<iframe

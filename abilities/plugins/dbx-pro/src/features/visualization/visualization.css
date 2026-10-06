@@ -307,3 +307,138 @@
 	border-color: var(--viz-palette-1);
 	box-shadow: 0 0 0 1px var(--viz-palette-1);
 }
+
+/* ──────────────────────── Canvas 画布（ADR-0005 §5） ──────────────────────── */
+
+.dbx-root .viz-root.viz-theme-dashboard { padding: 20px; }
+.dbx-root .viz-root.viz-theme-bigscreen { padding: 32px; }
+
+/* Canvas Toolbar */
+.dbx-root .viz-canvas-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.dbx-root .viz-canvas-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: var(--viz-title);
+	letter-spacing: 0.3px;
+}
+
+.dbx-root .viz-canvas-actions {
+	display: flex;
+	gap: 8px;
+}
+
+.dbx-root .viz-btn {
+	font-size: 12px;
+	padding: 6px 14px;
+	border-radius: 8px;
+	border: 1px solid var(--viz-card-border);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	font-weight: 500;
+}
+
+.dbx-root .viz-btn--ghost {
+	background: transparent;
+	color: var(--viz-subtitle);
+}
+.dbx-root .viz-btn--ghost:hover {
+	background: color-mix(in srgb, var(--viz-palette-1) 8%, transparent);
+	color: var(--viz-title);
+}
+
+.dbx-root .viz-btn--primary {
+	background: var(--viz-palette-1);
+	color: #fff;
+	border-color: var(--viz-palette-1);
+}
+.dbx-root .viz-btn--primary:hover {
+	filter: brightness(1.08);
+}
+
+/* FrameWidget 定位 */
+.dbx-root .viz-frame-widget {
+	min-height: 80px;
+}
+
+/* Skeleton 骨架 */
+.dbx-root .viz-skeleton {
+	border-radius: var(--viz-card-radius);
+	padding: 16px;
+	background: var(--viz-card-bg);
+	border: 1px solid var(--viz-card-border);
+}
+.dbx-root .viz-skeleton--dashboard {
+	background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
+	background-size: 400% 100%;
+	animation: viz-shimmer-dashboard 1.4s ease infinite;
+}
+.dbx-root .viz-skeleton--bigscreen {
+	background: linear-gradient(90deg, rgba(6,182,212,.08) 25%, rgba(6,182,212,.15) 50%, rgba(6,182,212,.08) 75%);
+	background-size: 400% 100%;
+	animation: viz-shimmer-bigscreen 1.8s ease infinite;
+	border: 1px solid rgba(6,182,212,.2);
+}
+
+@keyframes viz-shimmer-dashboard {
+	0% { background-position: 100% 50%; }
+	100% { background-position: 0 50%; }
+}
+@keyframes viz-shimmer-bigscreen {
+	0% { background-position: 100% 0; }
+	100% { background-position: 0 0; }
+}
+
+.dbx-root .viz-skeleton__bar {
+	height: 12px;
+	width: 40%;
+	margin-bottom: 16px;
+	border-radius: 4px;
+	background: rgba(255,255,255,.25);
+}
+.dbx-root .viz-skeleton__body {
+	height: 100px;
+	border-radius: 8px;
+	background: rgba(255,255,255,.15);
+}
+
+/* Canvas loading hint */
+.dbx-root .viz-skeleton-hint {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	font-size: 13px;
+	padding: 40px;
+	border-radius: var(--viz-card-radius);
+	animation: viz-fade-in 0.3s ease;
+}
+.dbx-root .viz-skeleton-hint--dashboard {
+	background: #fff;
+	color: #64748b;
+	border: 1px dashed #cbd5e1;
+}
+.dbx-root .viz-skeleton-hint--bigscreen {
+	background: rgba(255,255,255,.03);
+	color: rgba(6,182,212,.7);
+	border: 1px dashed rgba(6,182,212,.3);
+}
+
+@keyframes viz-fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+.dbx-root .viz-spinner {
+	animation: viz-spin 1s linear infinite;
+}
+@keyframes viz-spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}

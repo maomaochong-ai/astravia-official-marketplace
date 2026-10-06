@@ -8,6 +8,8 @@
 import { useEffect, useRef, useState, type JSX } from "react";
 import { ResultGrid } from "./result-grid";
 import { useWorkbench } from "../hooks/use-workbench";
+import { showVisualizationPreview } from "../../visualization/visualization-bridge";
+import type { Visualization } from "../../../domain/visualization";
 
 export function ResultPanel(): JSX.Element {
 	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount, runTabSql } = useWorkbench();
@@ -16,10 +18,27 @@ export function ResultPanel(): JSX.Element {
 	const [elapsed, setElapsed] = useState(0);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+	/** Canvas 入口 — ADR-0005 §5.1：从当前 SQL 结果集生成看板/大屏 */
+	function openCanvas(intent: "dashboard" | "screen"): void {
+		if (!result?.ok || !activeTab?.connectionName) return;
+		const viz: Visualization = {
+			title: intent === "dashboard" ? "AI 看板" : "AI 大屏",
+			type: intent,
+			template: "canvas",
+			connection: activeTab.connectionName,
+			table: "",
+			html: "",
+			resultColumns: result.columns,
+			resultRows: result.rows,
+		};
+		showVisualizationPreview(viz);
+	}
+
 	useEffect(() => {
 		if (activeTab?.isRunning) {
 			setElapsed(0);
-			timerRef.current = setInterval(() => setElapsed((e) => e + 100), 100);
+			// 1s tick 足够展示耗时变化，避免 100ms 高频触发整块 ResultPanel re-render 导致卡顿
+			timerRef.current = setInterval(() => setElapsed((e) => e + 1000), 1000);
 		} else {
 			if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
 		}
@@ -49,6 +68,29 @@ export function ResultPanel(): JSX.Element {
 					</div>
 				) : result ? (
 					result.ok ? (
+						<>
+							{/* Canvas 入口 — ADR-0005 §5.1：从 SQL 结果集直接生成可视化 */}
+							{result.rows.length > 0 && activeTab?.connectionName && (
+								<div className="flex items-center gap-2 border-b border-[var(--dbx-surface-2)] bg-background/50 px-3 py-1.5">
+									<span className="text-[11px] text-muted-foreground/60">AI 可视化：</span>
+									<button
+										type="button"
+										onClick={() => openCanvas("dashboard")}
+										className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-violet-600 hover:bg-violet-500/10"
+										title="用 QuickBI 浅色调生成看板"
+									>
+										<span className="icon-[lucide--layout-dashboard] h-3 w-3" /> 看板
+									</button>
+									<button
+										type="button"
+										onClick={() => openCanvas("screen")}
+										className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-cyan-600 hover:bg-cyan-500/10 dark:text-cyan-400 dark:hover:bg-cyan-500/15"
+										title="用 DataV 深色调生成大屏"
+									>
+										<span className="icon-[lucide--monitor] h-3 w-3" /> 大屏
+									</button>
+								</div>
+							)}
 						<ResultGrid
 							columns={result.columns}
 							rows={result.rows}
@@ -112,6 +154,7 @@ export function ResultPanel(): JSX.Element {
 								}
 							}}
 						/>
+						</>
 					) : (
 						<div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
 							<span className="icon-[lucide--alert-octagon] h-8 w-8" style={{ color: "var(--destructive)" }} />

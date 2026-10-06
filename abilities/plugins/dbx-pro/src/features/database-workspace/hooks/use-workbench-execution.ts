@@ -198,7 +198,16 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 			const sqlToRun = overrideSql && overrideSql.trim() ? overrideSql : tab.sql;
 			const current = settingsRef.current;
 			const pageIndex = options?.pageIndex ?? 0;
-			const pageSize = resolvePageSize(options?.pageSize ?? tab.pageSize ?? current.rowLimit);
+			/**
+			 * 页大小优先级：
+			 *  - 显式传参（翻页 / 网格底栏 PageSizeMenu 选择） > 一切
+			 *  - 翻页（isPageTurn=true）沿用 tab 历史 pageSize，避免 settings 改动后翻页跳变
+			 *  - 新执行优先 settings.rowLimit（用户最新设置），fallback 到 tab.pageSize
+			 *    （修复：用户改了 settings rowLimit 后，新执行还拿着旧 tab.pageSize 的 bug）
+			 */
+			const pageSize = isPageTurn
+				? resolvePageSize(options?.pageSize ?? tab.pageSize ?? current.rowLimit)
+				: resolvePageSize(options?.pageSize ?? current.rowLimit ?? tab.pageSize);
 			const priorResult = tab.result;
 			const sameSql = priorResult?.ok === true && priorResult.ranSql === sqlToRun;
 			const knownTotal = sameSql ? priorResult.totalCount : undefined;

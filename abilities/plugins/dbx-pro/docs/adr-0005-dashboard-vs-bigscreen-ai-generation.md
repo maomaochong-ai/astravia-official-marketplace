@@ -1,9 +1,10 @@
 # ADR-0005: 看板与大屏 AI 生成的概念区分与架构设计
 
 ## 状态
-v0.0.89 进行中 — 主题分流 + BaseChart 抽取 + 顶栏导出
-v0.0.90 计划 — Canvas 画布 PoC + AI 布局推断
-v0.0.91 规划 — 流式渲染 + 筛选器联动
+v0.0.89 ✅ — 主题分流（QuickBI 浅 / DataV 深）+ recharts token 化
+v0.0.90 ✅ — 顶栏 Upload 导出按钮 + rowLimit 优先级修复 + elapsed 定时器降频
+v0.0.91 实施 — Canvas PoC（12列栅格 + 骨架流式 + 新标签自动画布）
+v0.0.92 规划 — AI LayoutSpec 生成流水线 + 筛选器 + 一键切换形态
 
 ---
 
@@ -183,21 +184,68 @@ AI 生成过程中 widget 逐个到达：
 
 ---
 
-## 4. Canvas 架构
+## 5. Canvas 架构与宿主集成
+
+### 5.1 入口：结果网格 → 新标签自动画布
+
+用户执行 SQL 后，result-grid 底栏 / 顶栏提供 **"生成可视化"** 按钮。点击后：
+
+1. 插件从当前 tab 取 `result.rows` + `result.columns` + `activeTab.sql` + `activeTab.connectionName`
+2. 新建一个 `tab.type = "viz"` 的标签页，**立即激活**（自动切过去）
+3. 新 tab 的内容区渲染 `Canvas` 组件：
+   - 顶部先渲染 **skeleton 占位**（dashboard 灰 shimmer / bigscreen 暗 glow shimmer）
+   - 同时异步触发 AI 布局推断（走 MCP 或本地规则引擎）
+   - 流式接收 widget，逐个替换 skeleton → 实图表
+
+```
+[SQL 执行结果] → 底栏"生成可视化"按钮
+     │
+     ▼
+[新建 viz tab] → 立即激活 → Canvas 组件挂载
+     │
+     ├─ 同步骨架：12 列栅格 + 全部 skeleton placeholder
+     │
+     └─ 异步触发 AI 流水线：
+          Schema 分析 → 图表推断 → 栅格打包 → 输出 LayoutSpec
+          │
+          ▼
+       Canvas 接收 LayoutSpec → skeleton → 实图表（不重排）
+```
+
+### 5.2 数据桥接：Tab → Canvas
+
+Canvas 需要的输入数据 = 当前 tab 的执行结果集：
+
+```ts
+interface VizTabData {
+  connectionName: string;
+  sql: string;
+  columns: string[];           // 列名 + 类型
+  rows: Record<string, unknown>[];  // 当前页行（可选：导出全部数据）
+  rowCount: number;
+  intent?: "dashboard" | "bigscreen" | "auto";
+}
+```
+
+**桥接方式**：`state.tabs[].visualization` 字段存储 VizSpec。`visualization-bridge.ts` 提供：
+- `setPreviewCallback(viz)` — result-grid 点生成时 push 到 hook
+- `setSaveCallback(viz)` — Canvas 内保存时写入 gallery
+
+### 5.3 Canvas 组件结构
 
 **参考** `astravia-ui-design/DesignCanvas` + Figma FrameView
 
 ```
 Canvas
+ ├─ CanvasToolbar   ← 导出 / 全屏 / 形态切换（看板↔大屏）
+ ├─ FilterBar       ← dashboard 独有，日期范围 + 多选下拉
  └─ FrameView (viewport)
      ├─ FrameWidget (KPI 卡)  ← col/row/colSpan/rowSpan
      ├─ FrameWidget (折线图)
      └─ ...
-FilterBar  ← dashboard 独有
-Toolbar    ← 导出 / 全屏 / 主题切换（形态感知）
 ```
 
-### 4.1 核心组件行为
+### 5.4 核心组件行为
 
 | 组件 | Dashboard | BigScreen |
 |------|-----------|-----------|
@@ -206,7 +254,7 @@ Toolbar    ← 导出 / 全屏 / 主题切换（形态感知）
 | `FilterBar` | **有**（日期/多选/枚举） | **无** |
 | `Toolbar` | 导出、全屏、主题切换 | 仅全屏、自动播放开关 |
 
-### 4.2 WidgetSpec 数据模型
+### 5.5 WidgetSpec 数据模型
 
 ```ts
 interface WidgetSpec {
@@ -217,21 +265,31 @@ interface WidgetSpec {
   colSpan: number;   // 1-12
   rowSpan: number;
   title: string;
-  dataRef: string;   // 查询结果引用
+  dataRef: string;   // 列名或聚合表达式
   options: Record<string, unknown>;
 }
 ```
 
-### 4.3 模式（未来扩展）
+### 5.6 宿主实时交互（v0.0.91 基础 + v0.0.92 增强）
 
-- **Inference Mode（当前）**：AI 一次性产出完整 `LayoutSpec`
+| 方向 | 数据 | 实现层 |
+|------|------|--------|
+| **宿主 → 插件** | SQL 执行结果集（rows/columns）、连接元数据 | `useWorkbench().activeTab.result` 直接消费 |
+| **插件 → 宿主** | AI LayoutSpec JSON（可选：由宿主侧 AI agent 生成） | `mcpClient.callTool("dbx_generate_layout", {...})` |
+| **插件流式渲染** | skeleton → 实图表替换 | Canvas 内部 `useEffect` + widget-by-widget 到达 |
+| **一键形态切换** | 看板 ↔ 大屏重跑布局推断 | Canvas 内部按钮 → re-trigger inferLayout() |
+
+### 5.7 模式（未来扩展）
+
+- **Inference Mode（v0.0.91）**：规则引擎一次性产出完整 LayoutSpec，Canvas 直接渲染
+- **AI Stream Mode（v0.0.92）**：宿主 AI agent 流式逐 chunk 输出 widget，Canvas 边收边渲染
 - **Design Mode（v0.1 规划）**：手动拖拽 resize，类似 astravia-ui-design 画布编辑
 
 ---
 
-## 5. 主题系统（形态化 token 体系）
+## 6. 主题系统（形态化 token 体系）
 
-### 5.1 Dashboard Tokens
+### 6.1 Dashboard Tokens
 
 | 层 | Token |
 |----|-------|
@@ -242,7 +300,7 @@ interface WidgetSpec {
 | accent | `#3b82f6 / #10b981 / #f59e0b / #ef4444 / #8b5cf6` |
 | filterBar | `bg:#fff`, `border:#e2e8f0`, `radius:8px` |
 
-### 5.2 BigScreen Tokens
+### 6.2 BigScreen Tokens
 
 | 层 | Token |
 |----|-------|
@@ -252,7 +310,7 @@ interface WidgetSpec {
 | kpi | `56px/700/#06b6d4`, `letterSpacing:-1px` |
 | accent | `#06b6d4 / #3b82f6 / #22d3ee / #60a5fa / #818cf8` |
 
-### 5.3 注入方式
+### 6.3 注入方式
 
 - `Canvas` 根用 `ThemeProvider` 注入对应形态 token
 - 子组件通过 `useTheme()` 消费，**不允许子组件自行判断形态**（避免漂移）
@@ -260,7 +318,7 @@ interface WidgetSpec {
 
 ---
 
-## 6. AI 协议
+## 7. AI 协议
 
 ### 输入 Context
 
@@ -297,7 +355,7 @@ interface WidgetSpec {
 
 ---
 
-## 7. 风险
+## 8. 风险
 
 | 风险 | 概率 | 影响 | 缓解 |
 |------|------|------|------|
@@ -310,7 +368,7 @@ interface WidgetSpec {
 
 ---
 
-## 8. 验收标准
+## 9. 验收标准
 
 - [ ] AI 根据 `intent` 参数产出**不同**的 `LayoutSpec`（至少图表类型、colSpan 分配不同）
 - [ ] Dashboard：浅灰背景、白底圆角 12px 卡片、顶栏筛选器占位
@@ -322,7 +380,7 @@ interface WidgetSpec {
 
 ---
 
-## 9. 参考
+## 10. 参考
 
 - **astravia-ui-design** — `DesignCanvas`、`arrange.ts`、`inferGrid`、`FrameView`
 - **QuickBI 仪表板** — 看板形态标杆

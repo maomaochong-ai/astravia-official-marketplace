@@ -15,6 +15,13 @@ export interface Visualization {
 	connection: string;
 	table: string;
 	html: string;
+	/**
+	 * Canvas 渲染模式的顶层数据（ADR-0005 §5）。
+	 * 从 SQL 执行结果集直接带入，无需 preset 模板——Canvas 用 inferLayout 规则引擎自动推断布局。
+	 * 同时存在 charts/widgets（preset 模式）和 resultRows（Canvas 模式）时，Canvas 优先。
+	 */
+	resultColumns?: string[];
+	resultRows?: Array<Record<string, unknown>>;
 	charts?: Array<{
 		id: string;
 		type: string;
