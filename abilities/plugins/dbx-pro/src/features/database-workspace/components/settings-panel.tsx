@@ -5,14 +5,18 @@
  * 查询结果 / 数据网格 / 结果标签 / 导出 / 侧边栏 / 历史 / 关于
  */
 
-import { useState, useEffect, type JSX } from "react";
+import { useState, useEffect, useRef, type JSX } from "react";
 import {
 	SETTINGS_BOUNDS,
 	isDefaultSettings,
+	parsePageSizeInput,
 	type WorkbenchSettings,
 } from "../../../domain/workbench-settings";
 import { engineHealth } from "../../../shared/services/engine-client";
-import { PLUGIN_VERSION } from "../../../index";
+import { pageSizeNotice } from "./page-size-notice";
+// 版本号直接取 domain 模块（plugin-version.ts 的注释即为此约定）：引 index 会把插件
+// 装配入口（含全部 CSS 与 SDK）拖进组件依赖，组件也无法脱离宿主单独测试。
+import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 
 interface Props {
 	settings: WorkbenchSettings;
@@ -140,27 +144,21 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 		<div className="space-y-4">
 			<h3 className="text-[13px] font-semibold text-foreground">查询结果</h3>
 
-			<SettingRow label="默认每页行数" hint={`查询结果分页页大小（1–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}）`}>
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={SETTINGS_BOUNDS.rowLimit.min}
-					max={SETTINGS_BOUNDS.rowLimit.max}
-					value={settings.rowLimit}
-					onChange={(e) => onChange("rowLimit", clampInt(e.target.value, SETTINGS_BOUNDS.rowLimit.min, SETTINGS_BOUNDS.rowLimit.max, settings.rowLimit))}
-				/>
-			</SettingRow>
+			<PageSizeField
+				label="默认每页行数"
+				hint={`查询结果分页页大小（${SETTINGS_BOUNDS.rowLimit.min}–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}）`}
+				value={settings.rowLimit}
+				bounds={SETTINGS_BOUNDS.rowLimit}
+				onChange={(next) => onChange("rowLimit", next)}
+			/>
 
-			<SettingRow label="表打开默认行数" hint={`点击树节点预览数据时的默认页大小（1–${SETTINGS_BOUNDS.tableOpenPageSize.max.toLocaleString()}）`}>
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={SETTINGS_BOUNDS.tableOpenPageSize.min}
-					max={SETTINGS_BOUNDS.tableOpenPageSize.max}
-					value={settings.tableOpenPageSize}
-					onChange={(e) => onChange("tableOpenPageSize", clampInt(e.target.value, SETTINGS_BOUNDS.tableOpenPageSize.min, SETTINGS_BOUNDS.tableOpenPageSize.max, settings.tableOpenPageSize))}
-				/>
-			</SettingRow>
+			<PageSizeField
+				label="表打开默认行数"
+				hint={`点击树节点预览数据时的默认页大小（${SETTINGS_BOUNDS.tableOpenPageSize.min}–${SETTINGS_BOUNDS.tableOpenPageSize.max.toLocaleString()}）`}
+				value={settings.tableOpenPageSize}
+				bounds={SETTINGS_BOUNDS.tableOpenPageSize}
+				onChange={(next) => onChange("tableOpenPageSize", next)}
+			/>
 
 			<SettingRow label="查询超时（秒）" hint="超时后自动取消查询">
 				<input
@@ -519,6 +517,75 @@ function AboutSection({ onWipeData, confirmWipe, setConfirmWipe }: { onWipeData:
 				密码保存在宿主加密凭据库；读取走引擎服务，写 / DDL 走自研驱动，执行前会弹窗展示完整 SQL 由你确认。
 			</div>
 		</div>
+	);
+}
+
+/**
+ * 每页行数输入框：编辑期间只改本地文本，失焦 / 回车才写回设置。
+ *
+ * 历史缺陷：每次按键都夹逼，且超上限时被静默改回上限值。用户输入 2000 时看不到自己
+ * 敲的字符，输入 20000 时数字自己变小又没有任何解释，只能以为自定义行数没生效。
+ * 这里把夹逼推迟到提交，并在越界时说明实际会取哪个值。
+ */
+function PageSizeField({ label, hint, value, bounds, onChange }: {
+	label: string;
+	hint: string;
+	value: number;
+	bounds: { min: number; max: number };
+	onChange: (next: number) => void;
+}): JSX.Element {
+	const [text, setText] = useState(String(value));
+	const [notice, setNotice] = useState<string | null>(null);
+	const editingRef = useRef(false);
+	// 自己提交出去的值：只有外部把设置改成别的（重置 / 底栏「设为默认」）才覆盖输入框。
+	const committedRef = useRef(value);
+
+	useEffect(() => {
+		if (editingRef.current || value === committedRef.current) return;
+		committedRef.current = value;
+		setText(String(value));
+		setNotice(null);
+	}, [value]);
+
+	function edit(next: string): void {
+		editingRef.current = true;
+		setText(next);
+		setNotice(pageSizeNotice(parsePageSizeInput(next, value)));
+	}
+
+	function commit(): void {
+		editingRef.current = false;
+		const parsed = parsePageSizeInput(text, value);
+		// 提示按用户原输入算：提交后继续说明「你敲的值被改成了上限」。
+		setText(String(parsed.value));
+		setNotice(pageSizeNotice(parsed));
+		if (parsed.value === value) return;
+		committedRef.current = parsed.value;
+		onChange(parsed.value);
+	}
+
+	return (
+		<SettingRow label={label} hint={hint}>
+			<input
+				type="number"
+				inputMode="numeric"
+				aria-label={label}
+				className="dbx-form-input"
+				min={bounds.min}
+				max={bounds.max}
+				value={text}
+				onFocus={() => { editingRef.current = true; }}
+				onChange={(e) => edit(e.target.value)}
+				onBlur={commit}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") {
+						e.preventDefault();
+						commit();
+					}
+				}}
+			/>
+			{notice ? <p className="text-[10px] leading-relaxed text-amber-500">{notice}</p> : null}
+		</SettingRow>
 	);
 }
 

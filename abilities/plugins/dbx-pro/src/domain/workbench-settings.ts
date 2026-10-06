@@ -124,6 +124,34 @@ export function resolvePageSize(value: unknown, fallback: number = DEFAULT_SETTI
 	return Math.min(Math.floor(num), MAX_RESULT_PAGE_SIZE);
 }
 
+/**
+ * 「每页行数」输入的解析结果：除最终取值外，回报是否被上下限改写过。
+ *
+ * 设置面板与网格底栏下拉都要「不静默改数」——用户输入超过上限时，除了按上限取值，
+ * 还要能说清为什么。夹逼规则仍走 resolvePageSize，避免出现第二份「上限是多少」的事实源。
+ */
+export interface PageSizeInputResult {
+	/** 最终应写回设置或立即生效的取值。 */
+	value: number;
+	/** 输入大于每页上限：value 即上限值。 */
+	exceededMax: boolean;
+	/** 输入小于最小行数（含 0 与负数）：value 回落 fallback，即保留原值。 */
+	belowMin: boolean;
+}
+
+/** 解析输入框里敲的每页行数：允许前后空白与小数，非法输入按 fallback（当前值）处理。 */
+export function parsePageSizeInput(raw: string, fallback: number): PageSizeInputResult {
+	const trimmed = raw.trim();
+	const num = Number(trimmed);
+	// resolvePageSize 把空值、坏值与越下限都归到 fallback，这里只额外判断命中了哪一侧边界。
+	const numeric = trimmed !== "" && Number.isFinite(num);
+	return {
+		value: resolvePageSize(trimmed, fallback),
+		exceededMax: numeric && Math.floor(num) > MAX_RESULT_PAGE_SIZE,
+		belowMin: numeric && num < MIN_RESULT_PAGE_SIZE,
+	};
+}
+
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
 export const SETTINGS_BOUNDS = Object.freeze({
 	queryTimeoutSecs: { min: 1, max: 600 },

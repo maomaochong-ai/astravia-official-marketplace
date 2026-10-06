@@ -12,9 +12,11 @@
 import { useLayoutEffect, useRef, useState, type JSX, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
-	MIN_RESULT_PAGE_SIZE,
 	MAX_RESULT_PAGE_SIZE,
+	MIN_RESULT_PAGE_SIZE,
+	parsePageSizeInput,
 } from "../../../domain/workbench-settings";
+import { pageSizeNotice } from "./page-size-notice";
 
 const MENU_WIDTH = 224;
 const VIEWPORT_MARGIN = 4;
@@ -34,13 +36,6 @@ interface Props {
 	onSetDefault: (pageSize: number) => void;
 }
 
-/** 夹出合法行数：非法值回退当前值，整体夹在 [1, MAX]。 */
-function clampPageSize(raw: string, fallback: number): number {
-	const num = Number(raw);
-	if (!Number.isFinite(num) || num < MIN_RESULT_PAGE_SIZE) return fallback;
-	return Math.min(Math.floor(num), MAX_RESULT_PAGE_SIZE);
-}
-
 export function PageSizeMenu({
 	pageSize,
 	options,
@@ -51,6 +46,9 @@ export function PageSizeMenu({
 }: Props): JSX.Element {
 	const [open, setOpen] = useState(false);
 	const [customInput, setCustomInput] = useState(String(pageSize));
+	// 自定义行数的解析结果：越界时不静默改数，而是照实说明会取哪个值。
+	const parsedCustom = parsePageSizeInput(customInput, pageSize);
+	const customNotice = pageSizeNotice(parsedCustom);
 	const triggerRef = useRef<HTMLButtonElement>(null);
 	const menuRef = useRef<HTMLDivElement>(null);
 	const anchorRef = useRef<HTMLSpanElement>(null);
@@ -107,14 +105,12 @@ export function PageSizeMenu({
 	}, [open]);
 
 	function applyCustom(): void {
-		const val = clampPageSize(customInput, pageSize);
-		onApply(val);
+		onApply(parsedCustom.value);
 		setOpen(false);
 	}
 
 	function applyCustomAsDefault(): void {
-		const val = clampPageSize(customInput, pageSize);
-		onSetDefault(val);
+		onSetDefault(parsedCustom.value);
 		setOpen(false);
 	}
 
@@ -194,6 +190,7 @@ export function PageSizeMenu({
 							<input
 								type="number"
 								inputMode="numeric"
+								aria-label="自定义每页行数"
 								min={MIN_RESULT_PAGE_SIZE}
 								max={MAX_RESULT_PAGE_SIZE}
 								value={customInput}
@@ -217,6 +214,9 @@ export function PageSizeMenu({
 								<span className="icon-[lucide--check] h-3.5 w-3.5" />
 							</button>
 						</div>
+						{customNotice ? (
+							<div className="px-2.5 pb-2 text-[10px] leading-relaxed text-amber-500">{customNotice}</div>
+						) : null}
 						<div className="flex gap-1.5 border-t border-border px-2.5 py-2">{footer}</div>
 					</div>,
 					panelRoot,

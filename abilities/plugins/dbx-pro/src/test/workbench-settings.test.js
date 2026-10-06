@@ -22,6 +22,7 @@ import {
 	SETTINGS_BOUNDS,
 	isDefaultSettings,
 	normalizeSettings,
+	parsePageSizeInput,
 	resolvePageSize,
 } from "../domain/workbench-settings.ts";
 
@@ -110,6 +111,54 @@ describe("resolvePageSize", () => {
 	});
 	it("小数截断", () => {
 		assert.equal(resolvePageSize(33.9), 33);
+	});
+});
+
+/**
+ * 用户输入「每页行数」时的解析结果。界面不再静默改数，所以除了最终取值，
+ * 还必须能区分「超上限」「低于下限」，才能给出对应的提示文案。
+ */
+describe("parsePageSizeInput", () => {
+	it("区间内原样保留，不报越界", () => {
+		for (const raw of ["50", "100", "2000", "5000", "10", "2000.7"]) {
+			const parsed = parsePageSizeInput(raw, DEFAULT_SETTINGS.rowLimit);
+			assert.equal(parsed.exceededMax, false, raw);
+			assert.equal(parsed.belowMin, false, raw);
+		}
+		// 往返：底栏下拉里敲 2000（曾被静默改回 1000）。
+		assert.equal(parsePageSizeInput("2000", 100).value, 2_000);
+		assert.equal(parsePageSizeInput("2000.7", 100).value, 2_000);
+	});
+
+	it("超上限：取上限并标记 exceededMax", () => {
+		const parsed = parsePageSizeInput("20000", 100);
+		assert.equal(parsed.value, MAX_RESULT_PAGE_SIZE);
+		assert.equal(parsed.exceededMax, true);
+		assert.equal(parsed.belowMin, false);
+	});
+
+	it("刚好等于上限不算越界", () => {
+		const parsed = parsePageSizeInput(String(MAX_RESULT_PAGE_SIZE), 100);
+		assert.equal(parsed.value, MAX_RESULT_PAGE_SIZE);
+		assert.equal(parsed.exceededMax, false);
+	});
+
+	it("低于下限：保留原值并标记 belowMin", () => {
+		for (const raw of ["0", "-5", "0.4"]) {
+			const parsed = parsePageSizeInput(raw, 500);
+			assert.equal(parsed.value, 500, raw);
+			assert.equal(parsed.belowMin, true, raw);
+			assert.equal(parsed.exceededMax, false, raw);
+		}
+	});
+
+	it("空值与坏值：按原值处理，不报越界", () => {
+		for (const raw of ["", "   ", "x", "1e", "-", "上"]) {
+			const parsed = parsePageSizeInput(raw, 300);
+			assert.equal(parsed.value, 300, JSON.stringify(raw));
+			assert.equal(parsed.exceededMax, false, JSON.stringify(raw));
+			assert.equal(parsed.belowMin, false, JSON.stringify(raw));
+		}
 	});
 });
 
