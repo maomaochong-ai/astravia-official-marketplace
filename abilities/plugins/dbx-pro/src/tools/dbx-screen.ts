@@ -1,7 +1,7 @@
 /**
  * dbx_screen — 数据大屏生成工具。
  * 
- * 内部执行 SQL 查询，生成可渲染的全屏 HTML 大屏页面。
+ * 内部执行 SQL 查询，返回结构化数据供组件渲染。
  * 通过 visualization-bridge 通知 UI 显示预览。
  */
 
@@ -56,17 +56,116 @@ function buildQueries(template: ScreenTemplate, table: string, schema: string | 
 	}
 }
 
-function renderHtml(title: string, subtitle: string, data: Record<string, { title: string; rows: unknown[] }>): string {
-	const widgets = Object.entries(data).map(([id, { title: widgetTitle, rows }]) => {
-		const isStat = id === "total" || id === "today" || id === "kpi" || id === "health" || id === "requests";
+export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInput> {
+	return {
+		id: "dbx_screen",
+		name: "dbx_screen",
+		label: "数据大屏",
+		description: [
+			"Generate data visualization large screen from database tables with data.",
+			"Templates: data_command (command center), business_intel (BI dashboard), monitoring (system health).",
+			"Returns structured data for component rendering.",
+			"Use when user wants to create a large screen, data wall, or monitoring dashboard.",
+		].join("\n"),
+		parameters: {
+			type: "object",
+			properties: {
+				connection_name: { type: "string", description: "Database connection name." },
+				tables: { type: "array", items: { type: "string" }, description: "Table names." },
+				template: { type: "string", enum: ["data_command", "business_intel", "monitoring"], description: "Screen template." },
+				schema: { type: "string", description: "Schema name (optional)." },
+				db_type: { type: "string", description: "Database type." },
+				title: { type: "string", description: "Custom title." },
+				date_column: { type: "string", description: "Date column name. Default: created_at." },
+			},
+			required: ["connection_name", "tables", "template"],
+			additionalProperties: false,
+		},
+		scope_use: ["conversation", "project"],
+		handler: async ({ trigger: { input } }) => {
+			const { connection_name, tables, template, schema, db_type, title: customTitle, date_column } = input;
+
+			if (!connection_name) return { ok: false, error: "connection_name is required" };
+			if (!tables?.length) return { ok: false, error: "tables must be non-empty" };
+
+			const table = tables[0];
+			const dateCol = date_column ?? "created_at";
+
+			try {
+				const desc = await engineDescribeByName(connection_name, { table, schema });
+				const columns = desc.columns.map((c) => c.name);
+				const hasDateCol = columns.some((c) => /date|time|created|updated/i.test(c));
+				const effectiveDateCol = hasDateCol ? columns.find((c) => /date|time|created|updated/i.test(c))! : dateCol;
+
+				const queries = buildQueries(template as ScreenTemplate, table, schema, effectiveDateCol);
+				const widgets = [];
+
+				for (const q of queries) {
+					try {
+						const result = await engineExecuteByName(connection_name, q.sql, { rowLimit: 1000, timeoutMs: 30000, dbType: db_type });
+						widgets.push({
+							id: q.id,
+							type: q.type,
+							title: q.title,
+							columns: result.columns,
+							rows: result.rows,
+						});
+					} catch {
+						widgets.push({
+							id: q.id,
+							type: q.type,
+							title: q.title,
+							columns: [],
+							rows: [],
+						});
+					}
+				}
+
+				const title = customTitle ?? `${table} - ${template === "data_command" ? "数据指挥中心" : template === "business_intel" ? "商业智能大屏" : "系统监控大屏"}`;
+				const subtitle = template === "data_command" ? "实时数据总览 · 核心指标追踪" : template === "business_intel" ? "多维度业务分析 · 趋势对比" : "系统健康度 · 性能指标";
+				
+				// 生成 HTML 用于预览
+				const html = generatePreviewHtml(title, subtitle, widgets);
+
+				const viz = {
+					title,
+					type: "screen" as const,
+					template,
+					connection: connection_name,
+					table,
+					html,
+					widgets, // 结构化数据
+				};
+
+				showVisualizationPreview(viz);
+				saveVisualizationToStore(viz);
+
+				return {
+					ok: true,
+					connection: connection_name,
+					table,
+					template,
+					title,
+					widgets,
+					message: "大屏已生成并在插件内显示预览。",
+				};
+			} catch (error) {
+				return { ok: false, error: error instanceof Error ? error.message : String(error) };
+			}
+		},
+	};
+}
+
+function generatePreviewHtml(title: string, subtitle: string, widgets: Array<{ id: string; type: string; title: string; columns?: string[]; rows?: Array<Record<string, unknown>> }>): string {
+	const content = widgets.map((widget) => {
+		const isStat = widget.type === "number_stat";
 		if (isStat) {
-			const value = (rows[0] as Record<string, unknown>)?.value ?? 0;
-			return `<div class="widget stat"><h3>${widgetTitle}</h3><div class="stat-value">${value}</div></div>`;
+			const value = widget.rows?.[0]?.value ?? 0;
+			return `<div class="widget stat"><h3>${widget.title}</h3><div class="stat-value">${value}</div></div>`;
 		}
-		const isChart = id === "trend" || id === "hourly" || id === "monthly";
-		const tableRows = rows.slice(0, 30).map((r) => `<tr>${Object.values(r as Record<string, unknown>).map((v) => `<td>${v ?? ""}</td>`).join("")}</tr>`).join("");
-		const cols = rows[0] ? Object.keys(rows[0] as object) : [];
-		return `<div class="widget ${isChart ? "chart" : "table"}"><h3>${widgetTitle}</h3><div class="${isChart ? "" : "table-scroll"}"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
+		const rows = (widget.rows ?? []).slice(0, 30).map((r) => `<tr>${Object.values(r).map((v) => `<td>${v ?? ""}</td>`).join("")}</tr>`).join("");
+		const cols = widget.columns ?? [];
+		return `<div class="widget table"><h3>${widget.title}</h3><div class="table-scroll"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div></div>`;
 	}).join("\n");
 
 	return `<!DOCTYPE html>
@@ -134,7 +233,7 @@ body {
 	background-clip: text;
 }
 .table-scroll { max-height: 300px; overflow-y: auto; }
-table { width: 100%; border-collapse: collapse; font-size: clamp(10px, 1.2vw, 13px); }
+table { width: 100%; border-collapse: collapse; font-size: clamp(10px, 1.2vw, 13px); min-width: 500px; }
 th { 
 	background: rgba(59, 130, 246, 0.15); 
 	padding: clamp(6px, 1vw, 10px) clamp(8px, 1.5vw, 14px); 
@@ -167,92 +266,7 @@ tr:hover td { background: rgba(59, 130, 246, 0.08); }
 <h1>${title}</h1>
 <p>${subtitle}</p>
 </div>
-<div class="screen">${widgets}</div>
+<div class="screen">${content}</div>
 </body>
 </html>`;
-}
-
-export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInput> {
-	return {
-		id: "dbx_screen",
-		name: "dbx_screen",
-		label: "数据大屏",
-		description: [
-			"Generate data visualization large screen from database tables with data.",
-			"Templates: data_command (command center), business_intel (BI dashboard), monitoring (system health).",
-			"Returns complete HTML screen with dark theme, animations, and embedded data.",
-			"Shows preview in plugin. User can download or open in new window.",
-			"Use when user wants to create a large screen, data wall, or monitoring dashboard.",
-		].join("\n"),
-		parameters: {
-			type: "object",
-			properties: {
-				connection_name: { type: "string", description: "Database connection name." },
-				tables: { type: "array", items: { type: "string" }, description: "Table names." },
-				template: { type: "string", enum: ["data_command", "business_intel", "monitoring"], description: "Screen template." },
-				schema: { type: "string", description: "Schema name (optional)." },
-				db_type: { type: "string", description: "Database type." },
-				title: { type: "string", description: "Custom title." },
-				date_column: { type: "string", description: "Date column name. Default: created_at." },
-			},
-			required: ["connection_name", "tables", "template"],
-			additionalProperties: false,
-		},
-		scope_use: ["conversation", "project"],
-		handler: async ({ trigger: { input } }) => {
-			const { connection_name, tables, template, schema, db_type, title: customTitle, date_column } = input;
-
-			if (!connection_name) return { ok: false, error: "connection_name is required" };
-			if (!tables?.length) return { ok: false, error: "tables must be non-empty" };
-
-			const table = tables[0];
-			const dateCol = date_column ?? "created_at";
-
-			try {
-				const desc = await engineDescribeByName(connection_name, { table, schema });
-				const columns = desc.columns.map((c) => c.name);
-				const hasDateCol = columns.some((c) => /date|time|created|updated/i.test(c));
-				const effectiveDateCol = hasDateCol ? columns.find((c) => /date|time|created|updated/i.test(c))! : dateCol;
-
-				const queries = buildQueries(template as ScreenTemplate, table, schema, effectiveDateCol);
-				const data: Record<string, { title: string; rows: unknown[] }> = {};
-
-				for (const q of queries) {
-					try {
-						const result = await engineExecuteByName(connection_name, q.sql, { rowLimit: 1000, timeoutMs: 30000, dbType: db_type });
-						data[q.id] = { title: q.title, rows: result.rows };
-					} catch {
-						data[q.id] = { title: q.title, rows: [] };
-					}
-				}
-
-				const title = customTitle ?? `${table} - ${template === "data_command" ? "数据指挥中心" : template === "business_intel" ? "商业智能大屏" : "系统监控大屏"}`;
-				const subtitle = template === "data_command" ? "实时数据总览 · 核心指标追踪" : template === "business_intel" ? "多维度业务分析 · 趋势对比" : "系统健康度 · 性能指标";
-				const html = renderHtml(title, subtitle, data);
-
-				const viz = {
-					title,
-					type: "screen" as const,
-					template,
-					connection: connection_name,
-					table,
-					html,
-				};
-
-				showVisualizationPreview(viz);
-				saveVisualizationToStore(viz);
-
-				return {
-					ok: true,
-					connection: connection_name,
-					table,
-					template,
-					title,
-					message: "大屏已生成并在插件内显示预览。你可以下载 HTML 文件或在新窗口打开全屏查看。",
-				};
-			} catch (error) {
-				return { ok: false, error: error instanceof Error ? error.message : String(error) };
-			}
-		},
-	};
 }

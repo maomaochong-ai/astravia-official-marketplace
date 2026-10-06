@@ -6,7 +6,7 @@
 
 import { useState, type JSX } from "react";
 import { VisualizationGallery } from "./components/visualization-gallery";
-import { VisualizationPreview } from "./components/visualization-preview";
+import { VisualizationTab } from "./components/VisualizationTab";
 import type { StoredVisualization } from "./visualization-store";
 import { buildDashboardPrompt, buildScreenPrompt, type SelectedNodeInfo } from "../../shared/ai/send-context";
 import { SendToAiDialog } from "../database-workspace/components/send-to-ai-dialog";
@@ -32,21 +32,16 @@ export function VisualizationGalleryView(): JSX.Element {
 		setAiDialogOpen(true);
 	};
 
+	if (previewViz) {
+		return <VisualizationTab viz={previewViz} />;
+	}
+
 	return (
 		<>
 			<VisualizationGallery
 				onPreview={setPreviewViz}
 				onEditWithAi={handleEditWithAi}
 			/>
-
-			{previewViz && (
-				<VisualizationPreview
-					html={previewViz.html}
-					title={previewViz.title}
-					type={previewViz.type}
-					onClose={() => setPreviewViz(null)}
-				/>
-			)}
 
 			<SendToAiDialog
 				open={aiDialogOpen}

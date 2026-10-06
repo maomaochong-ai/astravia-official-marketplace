@@ -13,7 +13,6 @@ import { RightPanel } from "./right-panel";
 import { SettingsPanel } from "./settings-panel";
 import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
-import { VisualizationPreview } from "../../visualization/components/visualization-preview";
 import { VisualizationGalleryView } from "../../visualization/visualization-gallery-view";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
@@ -40,7 +39,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
-	const [previewViz, setPreviewViz] = useState<Visualization | null>(null);
 	const [galleryOpen, setGalleryOpen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const { visualizations, addVisualization } = useVisualizationStore();
@@ -49,7 +47,19 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 注册可视化预览和保存回调
 	useEffect(() => {
 		setPreviewCallback((viz) => {
-			setPreviewViz(viz);
+			// 创建新标签页
+			const id = `viz-${Date.now().toString(36)}`;
+			dispatch({
+				type: "addTab",
+				tab: {
+					id,
+					label: viz.title,
+					connectionName: viz.connection,
+					sql: "",
+					isRunning: false,
+					visualization: viz,
+				},
+			});
 		});
 		setSaveCallback((viz) => {
 			addVisualization(viz);
@@ -58,7 +68,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			setPreviewCallback(null);
 			setSaveCallback(null);
 		};
-	}, [addVisualization]);
+	}, [addVisualization, dispatch]);
 
 	useEffect(() => {
 		function onFullscreenChange() {
@@ -214,15 +224,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 						setSettingsOpen(false);
 						void wipeAllData();
 					}}
-				/>
-			)}
-
-			{previewViz && (
-				<VisualizationPreview
-					html={previewViz.html}
-					title={previewViz.title}
-					type={previewViz.type}
-					onClose={() => setPreviewViz(null)}
 				/>
 			)}
 

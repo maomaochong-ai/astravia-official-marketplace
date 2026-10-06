@@ -46,6 +46,31 @@ export interface EditorTab {
 	/** 该 tab 的页大小；未设置时回落到设置里的默认每页行数。 */
 	pageSize?: number;
 	isRunning: boolean;
+	/** 可视化产物数据（如果是可视化标签页） */
+	visualization?: {
+		id?: string;
+		title: string;
+		type: "dashboard" | "screen";
+		template: string;
+		connection: string;
+		table: string;
+		html: string;
+		charts?: Array<{
+			id: string;
+			type: "kpi_card" | "line" | "bar" | "table";
+			title: string;
+			columns?: string[];
+			rows?: Array<Record<string, unknown>>;
+		}>;
+		widgets?: Array<{
+			id: string;
+			type: "number_stat" | "line_chart" | "bar_chart" | "scroll_table";
+			title: string;
+			columns?: string[];
+			rows?: Array<Record<string, unknown>>;
+		}>;
+		createdAt?: number;
+	};
 }
 
 export interface WorkbenchState {

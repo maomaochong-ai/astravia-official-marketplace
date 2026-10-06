@@ -1,0 +1,397 @@
+/**
+ * 可视化产物样式 — 限定在 .dbx-root 内，不污染宿主全局
+ */
+
+/* 可视化预览容器 */
+.dbx-root .visualization-preview {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	background: var(--background);
+}
+
+.dbx-root .visualization-preview.fullscreen {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+}
+
+/* 工具栏 */
+.dbx-root .visualization-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 16px;
+	border-bottom: 1px solid var(--dbx-line);
+	background: var(--dbx-surface);
+}
+
+.dbx-root .toolbar-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.dbx-root .toolbar-icon {
+	height: 16px;
+	width: 16px;
+	color: var(--foreground);
+}
+
+.dbx-root .toolbar-title {
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--foreground);
+	margin: 0;
+}
+
+.dbx-root .toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.dbx-root .toolbar-btn {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	border-radius: 6px;
+	background: var(--dbx-surface-2);
+	color: var(--foreground);
+	font-size: 12px;
+	border: none;
+	cursor: pointer;
+	transition: background 0.12s ease;
+}
+
+.dbx-root .toolbar-btn:hover {
+	background: var(--dbx-hover);
+}
+
+.dbx-root .toolbar-btn-close {
+	background: transparent;
+}
+
+.dbx-root .toolbar-btn-close:hover {
+	background: rgba(239, 68, 68, 0.12);
+	color: #ef4444;
+}
+
+/* 预览区域 */
+.dbx-root .visualization-content {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.dbx-root .visualization-iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+}
+
+/* 可视化标签页 */
+.dbx-root .visualization-tab {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	width: 100%;
+	background: var(--background);
+}
+
+.dbx-root .visualization-tab.fullscreen {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+}
+
+.dbx-root .visualization-tab-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 8px 16px;
+	border-bottom: 1px solid var(--dbx-line);
+	background: var(--dbx-surface);
+}
+
+.dbx-root .toolbar-badge {
+	padding: 2px 8px;
+	border-radius: 4px;
+	background: var(--dbx-surface-2);
+	color: var(--muted-foreground);
+	font-size: 10px;
+	font-weight: 500;
+}
+
+.dbx-root .visualization-tab-content {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.dbx-root .visualization-tab-iframe {
+	width: 100%;
+	height: 100%;
+	border: none;
+}
+
+/* 看板/大屏渲染器样式 */
+.dbx-root .visualization-container {
+	padding: clamp(16px, 3vw, 32px);
+	min-height: 100%;
+	background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+	color: #e2e8f0;
+}
+
+.dbx-root .visualization-container.screen-mode {
+	background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
+}
+
+.dbx-root .visualization-title {
+	text-align: center;
+	font-size: clamp(20px, 3vw, 32px);
+	margin-bottom: clamp(16px, 3vw, 32px);
+	background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.dbx-root .screen-header {
+	text-align: center;
+	margin-bottom: clamp(16px, 3vw, 32px);
+}
+
+.dbx-root .screen-subtitle {
+	font-size: clamp(12px, 1.5vw, 16px);
+	color: #64748b;
+	margin-top: 8px;
+}
+
+.dbx-root .dashboard-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+	gap: clamp(12px, 2vw, 24px);
+	max-width: 1600px;
+	margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+	.dbx-root .dashboard-grid .chart-card {
+		grid-column: span 2;
+	}
+}
+
+@media (min-width: 1200px) {
+	.dbx-root .dashboard-grid {
+		grid-template-columns: repeat(3, 1fr);
+	}
+	.dbx-root .dashboard-grid .chart-card {
+		grid-column: span 2;
+	}
+	.dbx-root .dashboard-grid .table-card {
+		grid-column: 1 / -1;
+	}
+}
+
+.dbx-root .screen-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+	grid-auto-rows: minmax(100px, auto);
+	gap: clamp(12px, 2vw, 20px);
+	max-width: 1800px;
+	margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+	.dbx-root .screen-grid {
+		grid-template-columns: repeat(4, 1fr);
+	}
+	.dbx-root .screen-grid .chart-card {
+		grid-column: span 2;
+	}
+	.dbx-root .screen-grid .table-card {
+		grid-column: span 4;
+	}
+}
+
+/* KPI 卡片 */
+.dbx-root .kpi-card {
+	background: rgba(30, 41, 59, 0.8);
+	border-radius: 12px;
+	padding: clamp(16px, 2vw, 24px);
+	border: 1px solid rgba(59, 130, 246, 0.3);
+	backdrop-filter: blur(8px);
+}
+
+.dbx-root .kpi-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.dbx-root .kpi-header h3 {
+	font-size: clamp(12px, 1.5vw, 14px);
+	color: #94a3b8;
+	margin: 0;
+}
+
+.dbx-root .kpi-icon {
+	height: 16px;
+	width: 16px;
+	color: #3b82f6;
+}
+
+.dbx-root .kpi-value {
+	font-size: clamp(24px, 4vw, 40px);
+	font-weight: 700;
+	color: #3b82f6;
+}
+
+/* 图表卡片 */
+.dbx-root .chart-card,
+.dbx-root .table-card {
+	background: rgba(30, 41, 59, 0.8);
+	border-radius: 12px;
+	padding: clamp(12px, 2vw, 20px);
+	border: 1px solid rgba(139, 92, 246, 0.3);
+	backdrop-filter: blur(8px);
+	overflow: hidden;
+}
+
+.dbx-root .chart-card h3,
+.dbx-root .table-card h3 {
+	font-size: clamp(14px, 1.5vw, 16px);
+	margin-bottom: 12px;
+	color: #a5b4fc;
+}
+
+/* 表格 */
+.dbx-root .table-wrapper,
+.dbx-root .table-scroll {
+	overflow-x: auto;
+	overflow-y: auto;
+	max-height: 400px;
+}
+
+.dbx-root .screen-grid .table-scroll {
+	max-height: 300px;
+}
+
+.dbx-root table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: clamp(11px, 1.2vw, 13px);
+	min-width: 600px;
+}
+
+.dbx-root th {
+	background: rgba(59, 130, 246, 0.2);
+	padding: clamp(6px, 1vw, 10px) clamp(8px, 1.5vw, 14px);
+	text-align: left;
+	font-weight: 600;
+	color: #93c5fd;
+	white-space: nowrap;
+	position: sticky;
+	top: 0;
+	z-index: 10;
+}
+
+.dbx-root td {
+	padding: clamp(4px, 0.8vw, 8px) clamp(8px, 1.5vw, 14px);
+	border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+	max-width: 150px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.dbx-root tr:hover td {
+	background: rgba(59, 130, 246, 0.1);
+}
+
+.dbx-root .table-footer {
+	margin-top: 8px;
+	font-size: 11px;
+	color: #94a3b8;
+	text-align: right;
+}
+
+/* 折线图 */
+.dbx-root .chart-container {
+	position: relative;
+	height: 200px;
+}
+
+.dbx-root .chart-svg {
+	width: 100%;
+	height: calc(100% - 30px);
+}
+
+.dbx-root .chart-labels {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 8px;
+	font-size: 10px;
+	color: #94a3b8;
+}
+
+.dbx-root .y-labels {
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	height: 100%;
+}
+
+.dbx-root .x-labels {
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+}
+
+/* 柱状图 */
+.dbx-root .bar-chart {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.dbx-root .bar-chart.horizontal {
+	flex-direction: row;
+}
+
+.dbx-root .bar-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.dbx-root .bar-label {
+	min-width: 80px;
+	font-size: 12px;
+	color: #94a3b8;
+}
+
+.dbx-root .bar-track {
+	flex: 1;
+	height: 20px;
+	background: rgba(59, 130, 246, 0.1);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.dbx-root .bar-fill {
+	height: 100%;
+	border-radius: 4px;
+	transition: width 0.3s ease;
+}
+
+.dbx-root .bar-value {
+	min-width: 50px;
+	font-size: 12px;
+	color: #94a3b8;
+	text-align: right;
+}

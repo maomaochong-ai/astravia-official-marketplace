@@ -1,7 +1,11 @@
+/* Tailwind CSS 基础样式 - 限定在 .dbx-root 内 */
 @import "tailwindcss";
 
 /* lucide / solar 图标按需生成（icon-[lucide--*] / icon-[solar--*]）。 */
 @plugin "@iconify/tailwind4";
+
+/* 可视化产物样式 */
+@import "./features/visualization/visualization.css";
 
 /* ============================================================
  * dbx-pro 工作台设计系统（全部锚定 .dbx-root 根，不污染宿主全局）

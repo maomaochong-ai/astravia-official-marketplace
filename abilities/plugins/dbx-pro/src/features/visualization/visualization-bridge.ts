@@ -13,6 +13,20 @@ export interface Visualization {
 	connection: string;
 	table: string;
 	html: string;
+	charts?: Array<{
+		id: string;
+		type: "kpi_card" | "line" | "bar" | "table";
+		title: string;
+		columns?: string[];
+		rows?: Array<Record<string, unknown>>;
+	}>;
+	widgets?: Array<{
+		id: string;
+		type: "number_stat" | "line_chart" | "bar_chart" | "scroll_table";
+		title: string;
+		columns?: string[];
+		rows?: Array<Record<string, unknown>>;
+	}>;
 	createdAt?: number;
 }
 

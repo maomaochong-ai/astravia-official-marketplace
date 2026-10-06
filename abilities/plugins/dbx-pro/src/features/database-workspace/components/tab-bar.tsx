@@ -166,7 +166,11 @@ export function TabBar(): JSX.Element {
 										? "icon-[lucide--loader] animate-spin text-warning"
 										: tab.result?.ok === false
 											? "icon-[lucide--alert-circle] text-destructive"
-											: "icon-[lucide--file-code]"
+											: tab.visualization
+												? tab.visualization.type === "dashboard"
+													? "icon-[lucide--layout-dashboard] text-primary"
+													: "icon-[lucide--monitor] text-primary"
+												: "icon-[lucide--file-code]"
 								}`}
 							/>
 							{editingTabId === tab.id ? (
