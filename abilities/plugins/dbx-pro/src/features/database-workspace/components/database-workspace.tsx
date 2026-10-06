@@ -13,12 +13,14 @@ import { RightPanel } from "./right-panel";
 import { SettingsPanel } from "./settings-panel";
 import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
+import { VisualizationPreview } from "./visualization-preview";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { readSession, writeSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
+import { setPreviewCallback, type Visualization } from "../../../shared/visualization-bridge";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (
@@ -36,8 +38,19 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
+	const [previewViz, setPreviewViz] = useState<Visualization | null>(null);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const workspaceRef = useRef<HTMLDivElement>(null);
+
+	// 注册可视化预览回调
+	useEffect(() => {
+		setPreviewCallback((viz) => {
+			setPreviewViz(viz);
+		});
+		return () => {
+			setPreviewCallback(null);
+		};
+	}, []);
 
 	useEffect(() => {
 		function onFullscreenChange() {
@@ -191,6 +204,15 @@ function DatabaseWorkspaceBody(): JSX.Element {
 						setSettingsOpen(false);
 						void wipeAllData();
 					}}
+				/>
+			)}
+
+			{previewViz && (
+				<VisualizationPreview
+					html={previewViz.html}
+					title={previewViz.title}
+					type={previewViz.type}
+					onClose={() => setPreviewViz(null)}
 				/>
 			)}
 		</div>

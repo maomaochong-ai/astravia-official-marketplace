@@ -1,17 +1,13 @@
 /**
  * dbx_screen — 数据大屏生成工具。
- *
- * 内部执行 SQL 查询，返回完整数据 + 可渲染的全屏 HTML 大屏页面。
- * AI 可直接将 HTML 写入文件并在浏览器打开。
- *
- * 预设模板：
- * - data_command: 数据指挥中心（核心指标 + 趋势 + 实时滚动）
- * - business_intel: 商业智能大屏（多图表 + 排行榜）
- * - monitoring: 系统监控大屏（健康度 + 性能 + 告警）
+ * 
+ * 内部执行 SQL 查询，生成可渲染的全屏 HTML 大屏页面。
+ * 通过 visualization-bridge 通知 UI 显示预览。
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { engineExecuteByName, engineDescribeByName } from "../shared/services/engine-client";
+import { showVisualizationPreview } from "../shared/visualization-bridge";
 
 export type ScreenTemplate = "data_command" | "business_intel" | "monitoring";
 
@@ -60,20 +56,17 @@ function buildQueries(template: ScreenTemplate, table: string, schema: string | 
 	}
 }
 
-function renderHtml(title: string, subtitle: string, data: Record<string, unknown[]>): string {
-	const widgets = Object.entries(data).map(([id, rows]) => {
-		if (id.startsWith("total") || id.startsWith("today") || id.startsWith("kpi") || id.startsWith("health") || id.startsWith("requests")) {
+function renderHtml(title: string, subtitle: string, data: Record<string, { title: string; rows: unknown[] }>): string {
+	const widgets = Object.entries(data).map(([id, { title: widgetTitle, rows }]) => {
+		const isStat = id === "total" || id === "today" || id === "kpi" || id === "health" || id === "requests";
+		if (isStat) {
 			const value = (rows[0] as Record<string, unknown>)?.value ?? 0;
-			return `<div class="widget stat"><h3>${id}</h3><div class="stat-value">${value}</div></div>`;
+			return `<div class="widget stat"><h3>${widgetTitle}</h3><div class="stat-value">${value}</div></div>`;
 		}
-		if (id.startsWith("trend") || id.startsWith("hourly") || id.startsWith("monthly")) {
-			const tableRows = rows.map((r) => `<tr>${Object.values(r).map((v) => `<td>${v}</td>`).join("")}</tr>`).join("");
-			const cols = rows[0] ? Object.keys(rows[0] as object) : [];
-			return `<div class="widget chart"><h3>${id}</h3><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></div>`;
-		}
-		const tableRows = rows.slice(0, 30).map((r) => `<tr>${Object.values(r).map((v) => `<td>${v}</td>`).join("")}</tr>`).join("");
+		const isChart = id === "trend" || id === "hourly" || id === "monthly";
+		const tableRows = rows.slice(0, 30).map((r) => `<tr>${Object.values(r as Record<string, unknown>).map((v) => `<td>${v ?? ""}</td>`).join("")}</tr>`).join("");
 		const cols = rows[0] ? Object.keys(rows[0] as object) : [];
-		return `<div class="widget table"><h3>${id}</h3><div class="table-scroll"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
+		return `<div class="widget ${isChart ? "chart" : "table"}"><h3>${widgetTitle}</h3><div class="${isChart ? "" : "table-scroll"}"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
 	}).join("\n");
 
 	return `<!DOCTYPE html>
@@ -84,25 +77,85 @@ function renderHtml(title: string, subtitle: string, data: Record<string, unknow
 <title>${title}</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%); color: #e2e8f0; min-height: 100vh; padding: 20px; }
-.header { text-align: center; margin-bottom: 24px; }
-.header h1 { font-size: 32px; background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
-.header p { font-size: 14px; color: #64748b; }
-.screen { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: minmax(120px, auto); gap: 16px; max-width: 1600px; margin: 0 auto; }
-.widget { background: rgba(30, 41, 59, 0.9); border-radius: 12px; padding: 20px; border: 1px solid rgba(59, 130, 246, 0.2); transition: transform 0.2s, box-shadow 0.2s; }
+body { 
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; 
+	background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%); 
+	color: #e2e8f0; 
+	min-height: 100vh; 
+	padding: clamp(12px, 2vw, 24px);
+	overflow-x: hidden;
+}
+.header { text-align: center; margin-bottom: clamp(16px, 3vw, 32px); }
+.header h1 { 
+	font-size: clamp(24px, 4vw, 40px); 
+	background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6); 
+	-webkit-background-clip: text; 
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	margin-bottom: 8px;
+}
+.header p { font-size: clamp(12px, 1.5vw, 16px); color: #64748b; }
+.screen { 
+	display: grid; 
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); 
+	grid-auto-rows: minmax(100px, auto);
+	gap: clamp(12px, 2vw, 20px); 
+	max-width: 1800px; 
+	margin: 0 auto; 
+}
+@media (min-width: 768px) {
+	.screen { grid-template-columns: repeat(4, 1fr); }
+	.chart { grid-column: span 2; }
+	.table { grid-column: span 4; }
+}
+.widget { 
+	background: rgba(30, 41, 59, 0.9); 
+	border-radius: 12px; 
+	padding: clamp(12px, 2vw, 24px); 
+	border: 1px solid rgba(59, 130, 246, 0.2);
+	backdrop-filter: blur(8px);
+	transition: transform 0.2s, box-shadow 0.2s;
+}
 .widget:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
-.widget h3 { font-size: 13px; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.widget h3 { 
+	font-size: clamp(11px, 1.2vw, 14px); 
+	color: #94a3b8; 
+	margin-bottom: 12px; 
+	text-transform: uppercase; 
+	letter-spacing: 0.5px;
+}
 .stat { display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.stat-value { font-size: 48px; font-weight: 800; background: linear-gradient(135deg, #06b6d4, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.chart { grid-column: span 2; }
-.table { grid-column: span 4; max-height: 400px; overflow: hidden; }
-.table-scroll { max-height: 320px; overflow-y: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-th { background: rgba(59, 130, 246, 0.15); padding: 8px 12px; text-align: left; font-weight: 600; color: #93c5fd; position: sticky; top: 0; }
-td { padding: 6px 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); }
+.stat-value { 
+	font-size: clamp(32px, 5vw, 56px); 
+	font-weight: 800; 
+	background: linear-gradient(135deg, #06b6d4, #3b82f6); 
+	-webkit-background-clip: text; 
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+.table-scroll { max-height: 300px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: clamp(10px, 1.2vw, 13px); }
+th { 
+	background: rgba(59, 130, 246, 0.15); 
+	padding: clamp(6px, 1vw, 10px) clamp(8px, 1.5vw, 14px); 
+	text-align: left; 
+	font-weight: 600; 
+	color: #93c5fd;
+	position: sticky;
+	top: 0;
+	white-space: nowrap;
+}
+td { 
+	padding: clamp(4px, 0.8vw, 8px) clamp(8px, 1.5vw, 14px); 
+	border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+	max-width: 150px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 tr:hover td { background: rgba(59, 130, 246, 0.08); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.widget { animation: fadeIn 0.5s ease-out forwards; }
+.widget { animation: fadeIn 0.5s ease-out forwards; opacity: 0; }
 .widget:nth-child(1) { animation-delay: 0.1s; }
 .widget:nth-child(2) { animation-delay: 0.2s; }
 .widget:nth-child(3) { animation-delay: 0.3s; }
@@ -128,7 +181,7 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 			"Generate data visualization large screen from database tables with data.",
 			"Templates: data_command (command center), business_intel (BI dashboard), monitoring (system health).",
 			"Returns complete HTML screen with dark theme, animations, and embedded data.",
-			"Save as .html file and open in browser for full-screen display.",
+			"Shows preview in plugin. User can download or open in new window.",
 			"Use when user wants to create a large screen, data wall, or monitoring dashboard.",
 		].join("\n"),
 		parameters: {
@@ -162,14 +215,14 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 				const effectiveDateCol = hasDateCol ? columns.find((c) => /date|time|created|updated/i.test(c))! : dateCol;
 
 				const queries = buildQueries(template as ScreenTemplate, table, schema, effectiveDateCol);
-				const data: Record<string, unknown[]> = {};
+				const data: Record<string, { title: string; rows: unknown[] }> = {};
 
 				for (const q of queries) {
 					try {
 						const result = await engineExecuteByName(connection_name, q.sql, { rowLimit: 1000, timeoutMs: 30000, dbType: db_type });
-						data[q.id] = result.rows;
+						data[q.id] = { title: q.title, rows: result.rows };
 					} catch {
-						data[q.id] = [];
+						data[q.id] = { title: q.title, rows: [] };
 					}
 				}
 
@@ -177,18 +230,24 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 				const subtitle = template === "data_command" ? "实时数据总览 · 核心指标追踪" : template === "business_intel" ? "多维度业务分析 · 趋势对比" : "系统健康度 · 性能指标";
 				const html = renderHtml(title, subtitle, data);
 
+				const viz = {
+					title,
+					type: "screen" as const,
+					template,
+					connection: connection_name,
+					table,
+					html,
+				};
+
+				showVisualizationPreview(viz);
+
 				return {
 					ok: true,
 					connection: connection_name,
 					table,
 					template,
 					title,
-					html,
-					instructions: [
-						"1. Save the HTML content to a file (e.g., screen.html)",
-						"2. Open the file in browser using shell.openExternal",
-						"3. The screen displays full-screen with dark theme and animations",
-					],
+					message: "大屏已生成并在插件内显示预览。你可以下载 HTML 文件或在新窗口打开全屏查看。",
 				};
 			} catch (error) {
 				return { ok: false, error: error instanceof Error ? error.message : String(error) };
