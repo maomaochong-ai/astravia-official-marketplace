@@ -1,7 +1,7 @@
 # ADR-0004: 查询结果网格工具栏功能完善
 
 ## 状态
-待实施
+实施中（v0.0.85）
 
 ## 背景
 
@@ -405,3 +405,110 @@ function openColumnMenu(e: React.MouseEvent, col: string): void {
 - dbx-pro 插件源码：`/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia-official-marketplace/abilities/plugins/dbx-pro/src/features/database-workspace/components/result-grid.tsx`
 - ADR-0002：查询网格导出参数与 dbx 桌面壳对齐分析
 - ADR-0003：5 项待评估决策实施 + 设置面板对齐 dbx 桌面壳
+
+---
+
+## 8. 样式/主题问题诊断（v0.0.85 补充）
+
+### 8.1 CSS @scope 隔离验证
+
+**宿主机制**：`@astravia-org/plugin-vite` 的 `scopePluginCss()` 在构建时将插件所有 CSS 规则包进：
+```css
+@scope ([data-astravia-plugin-root="dbx-pro"]) { ... }
+```
+同时将 `:root` 选择器替换为 `:scope`。
+
+**验证结论**（v0.0.85 构建 dist/style.css）：
+- ✅ Tailwind Preflight（`*,:before,:after`）被正确包进 `@scope`
+- ✅ 所有 `.dbx-*` 类规则被正确包进 `@scope`
+- ✅ 插件 CSS **未覆盖**宿主核心变量（`--background`、`--foreground`、`--muted-foreground`、`--primary`、`--border`）
+- ✅ 宿主 Electron 34（Chromium 132）原生支持 CSS `@scope`
+
+**结论**：浅色主题侧边栏变灰**不是 CSS scope 泄漏导致**。实际根因需在 dev 环境中用 DevTools 确认。
+
+### 8.2 CSS 变量定义位置
+
+**当前做法**（style.css:15）：
+```css
+.dbx-root {
+  --dbx-line: color-mix(...);
+  --dbx-surface: color-mix(...);
+  ...
+}
+```
+
+**问题**：style.css 第 13 行注释写「不能用 `:scope`（会泄漏到宿主根节点）」——这是**过时的错误认知**。宿主 `scopePluginCss()` 会自动把 `:root` 替换为 `:scope`，而 `:scope` 在 `@scope([data-astravia-plugin-root=dbx-pro])` 内精确匹配插件根元素，比 `.dbx-root` 更稳定（不依赖 JSX 类名正确性）。
+
+**决策**：保持 `.dbx-root` 不变（JSX 根元素同时有 `data-astravia-plugin-root="dbx-pro"` 和 `className="dbx-root"`，两者等价）；但修正 style.css 中的错误注释，避免误导后续维护者。
+
+### 8.3 重载后样式丢失
+
+**宿主机制**（plugin-loader.ts + plugin-style-loader.ts）：
+- `loadPluginStyles()` 为插件创建 `<style>` 标签，通过 `@import` 注入 CSS
+- deactivate 时 `dispose()` 删除插件创建的 `<style>` / `<link>` 标签
+- reactivate 时重新调用 `loadPluginStyles()` 注入
+
+**结论**：宿主有完整的 CSS 生命周期管理，重载样式丢失问题**不在宿主层面**。可能原因：
+1. JSX 根元素类名丢失（插件 re-render 时忘记渲染 `className="dbx-root"`）
+2. CodeMirror 等运行时动态样式注入绕过了宿主 scope
+
+**决策**：本轮先修功能，样式丢失作为验证项——在 dev 环境中实际测试插件重载。
+
+---
+
+## 9. ResultGrid Props 缺口修复（v0.0.85 补充）
+
+### 9.1 问题
+
+`EditorTab.result` 状态中已有 `elapsedMs: number` 和 `affectedRows?: number | null`（workbench-types.ts:34-35），但：
+1. `ResultGrid` Props 接口**未定义**这两个字段
+2. `result-panel.tsx` 调用 `<ResultGrid>` 时**未传递**这两个值
+
+导致 ADR-0004 §2.2.2 中「执行时间显示」和「影响行数显示」无法实施。
+
+### 9.2 修复
+
+**新增 Props**（result-grid.tsx Props 接口）：
+```typescript
+/** 查询执行耗时（ms）。来自 result.elapsedMs。 */
+elapsedMs?: number;
+/** 写 / DDL 的影响行数；SELECT 为 null。来自 result.affectedRows。 */
+affectedRows?: number | null;
+/** 刷新按钮回调：重新执行当前 SQL 并回到第一页。 */
+onRefresh?: () => void;
+/** 加载全部按钮回调：循环拉取所有页直到末页。 */
+onLoadAll?: () => void;
+```
+
+**调用处补齐**（result-panel.tsx）：
+```tsx
+<ResultGrid
+  ...
+  elapsedMs={result.elapsedMs}
+  affectedRows={result.affectedRows}
+  onRefresh={() => {
+    if (activeTab?.connectionName && sql) {
+      void runTabSql(activeTab.id, sql, undefined, { mode: "server", pageIndex: 0 });
+    }
+  }}
+  onLoadAll={() => { /* 循环 goToPage */ }}
+/>
+```
+
+---
+
+## 10. 实施变更清单（v0.0.85）
+
+### 10.1 修改文件
+
+| 文件 | 变更 |
+|------|------|
+| `result-grid.tsx` | 新增刷新按钮、列导航按钮、列头右键菜单、SQL预览区、执行时间、影响行数、加载全部按钮；新增 Props（elapsedMs、affectedRows、onRefresh、onLoadAll） |
+| `result-panel.tsx` | 传递新增 Props 给 ResultGrid |
+| `style.css` | 修正过时注释 |
+
+### 10.2 新增文件
+
+| 文件 | 用途 |
+|------|------|
+| `ColumnNavigator.tsx` | 列导航 Popover 组件（搜索 + 跳转） |

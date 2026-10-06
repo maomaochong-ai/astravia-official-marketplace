@@ -82,6 +82,14 @@ interface Props {
 	serverTotalStatus?: "pending" | "failed";
 	/** 正在取页。 */
 	pageLoading?: boolean;
+	/** 查询执行耗时（ms）。来自 result.elapsedMs。 */
+	elapsedMs?: number;
+	/** 写 / DDL 的影响行数；SELECT 为 null。来自 result.affectedRows。 */
+	affectedRows?: number | null;
+	/** 刷新按钮回调：重新执行当前 SQL 并回到第一页。 */
+	onRefresh?: () => void;
+	/** 加载全部按钮回调：循环拉取所有页直到末页。 */
+	onLoadAll?: () => void;
 	/** 截断 / 多语句等需要告知的提示。 */
 	note?: string;
 	onPageChange?: (pageIndex: number) => void;
@@ -117,6 +125,10 @@ export function ResultGrid({
 	serverTotalCount,
 	serverTotalStatus,
 	pageLoading,
+	elapsedMs,
+	affectedRows,
+	onRefresh,
+	onLoadAll,
 	note,
 	onPageChange,
 	onPageSizeChange,
@@ -148,6 +160,12 @@ export function ResultGrid({
 	const [editHistory, setEditHistory] = useState<Array<{ row: number; col: string; oldValue: unknown; newValue: unknown }>>([]); // 编辑历史（用于 Undo）
 	const [editHistoryIndex, setEditHistoryIndex] = useState(-1); // 当前历史索引（用于 Redo）
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
+	// 列导航 Popover：搜索过滤 + 点击列名横向滚动到该列
+	const [navOpen, setNavOpen] = useState(false);
+	const [navFilter, setNavFilter] = useState("");
+	// 加载全部状态（底栏按钮触发，循环拉取直到末页）
+	const [loadAllActive, setLoadAllActive] = useState(false);
+	const [columnMenu, setColumnMenu] = useState<ContextMenuState | null>(null);
 	// 当前在模态中展示的后台导出任务 id（最小化后置 null，任务仍在顶栏后台任务里）。
 	const [dialogTaskId, setDialogTaskId] = useState<string | null>(null);
 	const exportCancelTokensRef = useRef<Map<string, { cancelled: boolean }>>(new Map());
@@ -304,6 +322,164 @@ export function ResultGrid({
 			return;
 		}
 		setTableInfoOpen(true);
+	}
+
+	// ─── 刷新 / 加载全部 / 列导航 / 列头右键菜单 ────────────
+
+	/** 格式化执行耗时：ms → "123ms" 或 "1.2s"。 */
+	function formatDuration(ms: number): string {
+		if (ms < 1_000) return `${ms}ms`;
+		if (ms < 60_000) return `${(ms / 1_000).toFixed(ms < 10_000 ? 1 : 0)}s`;
+		return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1_000)}s`;
+	}
+
+	/** 刷新按钮 handler。 */
+	function handleRefresh(): void {
+		if (pageLoading) return;
+		onRefresh?.();
+	}
+
+	/** 列导航：点击列名后横向滚动到该列。 */
+	function scrollToColumn(col: string): void {
+		const headerCell = scrollRef.current?.querySelector(
+			`th[data-col="${CSS.escape(col)}"]`,
+		) as HTMLElement | null;
+		if (headerCell) {
+			headerCell.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+		}
+		setNavOpen(false);
+		setNavFilter("");
+	}
+
+	/** 加载全部：循环调用 onLoadAll。 */
+	function handleLoadAll(): void {
+		if (pageLoading || loadAllActive) return;
+		setLoadAllActive(true);
+		onLoadAll?.();
+		// 加载完成后由外部回调重置；此处先置位让按钮变 loading 态。
+	}
+
+	/** 列头右键菜单：复制列名、复制全部列名、数据库端/当前页排序、过滤子菜单。 */
+	function openColumnMenu(e: React.MouseEvent, col: string): void {
+		e.preventDefault();
+		e.stopPropagation();
+		const items: ContextMenuEntry[] = [
+			{
+				type: "item",
+				label: "复制列名",
+				icon: "icon-[lucide--copy]",
+				onClick: () => void navigator.clipboard.writeText(col).catch(() => {}),
+			},
+			{
+				type: "item",
+				label: "复制所有列名",
+				icon: "icon-[lucide--copy]",
+				onClick: () => void navigator.clipboard.writeText(colList.join(", ")).catch(() => {}),
+			},
+			{ type: "separator" },
+			{
+				type: "item",
+				label: "数据库端升序排序",
+				icon: "icon-[lucide--database]",
+				onClick: () => {
+					// 服务端排序：用 ORDER BY 重跑 SQL
+					const tabId = activeTabId;
+					const base = (sql ?? "").trim();
+					if (!tabId || !base) return;
+					const wrapped = buildFilteredSql(base, whereClause.trim(), `${col} ASC`);
+					if (wrapped) void runTabSql(tabId, wrapped, undefined, { mode: "server" });
+				},
+			},
+			{
+				type: "item",
+				label: "数据库端降序排序",
+				icon: "icon-[lucide--database]",
+				onClick: () => {
+					const tabId = activeTabId;
+					const base = (sql ?? "").trim();
+					if (!tabId || !base) return;
+					const wrapped = buildFilteredSql(base, whereClause.trim(), `${col} DESC`);
+					if (wrapped) void runTabSql(tabId, wrapped, undefined, { mode: "server" });
+				},
+			},
+			{ type: "separator" },
+			{
+				type: "item",
+				label: "当前页升序排序",
+				icon: "icon-[lucide--arrow-up]",
+				onClick: () => {
+					setLocalPage(0);
+					setSort({ col, dir: "asc" });
+				},
+			},
+			{
+				type: "item",
+				label: "当前页降序排序",
+				icon: "icon-[lucide--arrow-down]",
+				onClick: () => {
+					setLocalPage(0);
+					setSort({ col, dir: "desc" });
+				},
+			},
+			{
+				type: "item",
+				label: "清除排序",
+				icon: "icon-[lucide--eraser]",
+				disabled: !sort,
+				onClick: () => setSort(null),
+			},
+			{ type: "separator" },
+			{
+				type: "submenu",
+				label: "按此列过滤",
+				icon: "icon-[lucide--filter]",
+				items: [
+					{
+						type: "item",
+						label: `= ...`,
+						onClick: () => {
+							setWhereClause(`${col} = `);
+							setSplitToolbar(true);
+						},
+					},
+					{
+						type: "item",
+						label: `!= ...`,
+						onClick: () => {
+							setWhereClause(`${col} != `);
+							setSplitToolbar(true);
+						},
+					},
+					{
+						type: "item",
+						label: `包含 ...`,
+						onClick: () => {
+							setWhereClause(`${col} LIKE '%' || '' || '%'`);
+							setSplitToolbar(true);
+						},
+					},
+					{
+						type: "item",
+						label: `为空`,
+						onClick: () => {
+							setWhereClause(`${col} IS NULL`);
+							setSplitToolbar(true);
+							void applyFilterSort();
+						},
+					},
+					{
+						type: "item",
+						label: `不为空`,
+						onClick: () => {
+							setWhereClause(`${col} IS NOT NULL`);
+							setSplitToolbar(true);
+							void applyFilterSort();
+						},
+					},
+				],
+			},
+		];
+		setColumnMenu({ x: e.clientX, y: e.clientY, items });
 	}
 
 	// ─── 单元格编辑 ─────────────────────────────────────────
@@ -951,6 +1127,25 @@ export function ResultGrid({
 			<div className={`dbx-result-toolbar ${splitToolbar ? "split-layout" : "single-layout"}`}>
 				{/* 上排：操作按钮 */}
 				<div className="dbx-toolbar-row-actions">
+					{/* 左侧：刷新 */}
+					<div className="flex items-center gap-0.5">
+						<button
+							type="button"
+							onClick={handleRefresh}
+							disabled={pageLoading === true}
+							className="dbx-toolbar-btn"
+							title="刷新结果"
+						>
+							<span
+								className={
+									pageLoading
+										? "icon-[lucide--loader-2] h-3.5 w-3.5 animate-spin"
+										: "icon-[lucide--refresh-cw] h-3.5 w-3.5"
+								}
+							/>
+							<span className="dbx-toolbar-btn-label">刷新</span>
+						</button>
+					</div>
 					{/* 左侧：复制（导出已移至结果网格底栏） */}
 					<div className="flex items-center gap-0.5">
 						<button
@@ -975,6 +1170,52 @@ export function ResultGrid({
 							<span className="icon-[lucide--list-ordered] h-3.5 w-3.5" />
 							<span className="dbx-toolbar-btn-label">行号</span>
 						</button>
+						{/* 列导航：列数多时快速定位 */}
+						<div className="relative">
+							<button
+								type="button"
+								onClick={() => setNavOpen((v) => !v)}
+								onBlur={() => setTimeout(() => setNavOpen(false), 150)}
+								title={`列导航（${colList.length} 列）`}
+								className={`dbx-toolbar-btn ${navOpen ? "dbx-toolbar-btn-active" : ""}`}
+							>
+								<span className="icon-[lucide--columns-3] h-3.5 w-3.5" />
+								<span className="dbx-toolbar-btn-label">列</span>
+							</button>
+							{navOpen && colList.length > 0 && (
+								<div
+									className="absolute left-0 top-full z-40 mt-1 w-60 rounded-md border border-border bg-popover p-2 shadow-lg"
+									onMouseDown={(e) => e.preventDefault()}
+								>
+									<input
+										type="text"
+										value={navFilter}
+										onChange={(e) => setNavFilter(e.target.value)}
+										placeholder="搜索列名…"
+										autoFocus
+										className="mb-2 w-full rounded border border-[var(--dbx-surface-2)] bg-background px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary"
+									/>
+									<div className="max-h-48 overflow-auto">
+										{colList
+											.filter((c) => !navFilter || c.toLowerCase().includes(navFilter.toLowerCase()))
+											.map((c) => (
+												<button
+													key={c}
+													type="button"
+													onClick={() => scrollToColumn(c)}
+													className="block w-full truncate rounded px-2 py-1 text-left text-[11px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
+													title={c}
+												>
+													{c}
+												</button>
+											))}
+										{colList.filter((c) => !navFilter || c.toLowerCase().includes(navFilter.toLowerCase())).length === 0 && (
+											<p className="px-2 py-1 text-[11px] text-muted-foreground/60">无匹配列</p>
+										)}
+									</div>
+								</div>
+							)}
+						</div>
 						{sort && (
 							<button
 								type="button"
@@ -1102,6 +1343,8 @@ export function ResultGrid({
 							{colList.map((c, i) => (
 								<th
 									key={c}
+									data-col={c}
+									onContextMenu={(e) => openColumnMenu(e, c)}
 									className="relative border-b border-r border-border px-3 py-2 text-left font-semibold text-[10.5px] text-muted-foreground"
 									style={{ backgroundColor: "var(--dbx-surface-2)", width: defaultWidth(c), minWidth: defaultWidth(c) }}
 								>
@@ -1184,6 +1427,7 @@ export function ResultGrid({
 			    与侧边栏竖线及桌面壳分割线对齐。
 			    布局：左侧元信息 min-w-0 可截断，右侧操作区 shrink-0 永不被遮挡。 */}
 			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 px-3 text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
+				{/* 左侧：元信息（行数 + 执行时间 + 影响行数） */}
 				<div className="flex min-w-0 flex-1 items-center gap-2">
 					{isServer ? (
 						<>
@@ -1229,8 +1473,32 @@ export function ResultGrid({
 							共 <span className="font-medium text-foreground/80">{displayTotal.toLocaleString()}</span> 行
 						</span>
 					)}
-				{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
+					{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
+					{/* 执行耗时 */}
+					{elapsedMs !== undefined && elapsedMs >= 0 && !pageLoading && (
+						<span className="shrink-0 text-muted-foreground/70" title="本次查询执行耗时">
+							<span className="icon-[lucide--timer] h-3 w-3 align-middle" /> {formatDuration(elapsedMs)}
+						</span>
+					)}
+					{/* 影响行数（写 / DDL） */}
+					{affectedRows !== null && affectedRows !== undefined && affectedRows >= 0 && (
+						<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80" title="写操作影响的行数">
+							{affectedRows} rows affected
+						</span>
+					)}
 				</div>
+				{/* 中间：SQL 预览（截断 + 点击复制） */}
+				{sql && (
+					<div className="flex min-w-0 flex-1 items-center justify-center">
+						<span
+							className="truncate text-[10px] text-muted-foreground/50 cursor-pointer hover:text-muted-foreground/80"
+							title={sql}
+							onClick={() => void navigator.clipboard.writeText(sql).catch(() => {})}
+						>
+							{sql}
+						</span>
+					</div>
+				)}
 				<div className="ml-auto flex shrink-0 items-center gap-1">
 					<PageSizeMenu
 						pageSize={pageSize}
@@ -1294,14 +1562,32 @@ export function ResultGrid({
 						<span className="icon-[lucide--chevron-right] h-3 w-3" />
 					</button>
 				<button
-					type="button"
-					onClick={() => totalPages !== null && goToPage(totalPages - 1)}
-					disabled={totalPages === null || !hasNextPage || pageLoading === true}
-					className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
-					title={totalPages === null ? "总数未知（统计中或统计失败），暂不能跳末页" : "最后一页"}
-				>
-					<span className="icon-[lucide--chevrons-right] h-3 w-3" />
-				</button>
+						type="button"
+						onClick={() => totalPages !== null && goToPage(totalPages - 1)}
+						disabled={totalPages === null || !hasNextPage || pageLoading === true}
+						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+						title={totalPages === null ? "总数未知（统计中或统计失败），暂不能跳末页" : "最后一页"}
+					>
+						<span className="icon-[lucide--chevrons-right] h-3 w-3" />
+					</button>
+					{/* 加载全部：循环拉取直到末页（仅服务端分页） */}
+					{isServer && (
+						<button
+							type="button"
+							onClick={handleLoadAll}
+							disabled={pageLoading === true || loadAllActive || !hasNextPage}
+							className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+							title={loadAllActive ? "正在加载全部…" : "加载全部（循环拉取所有页）"}
+						>
+							<span
+								className={
+									loadAllActive
+										? "icon-[lucide--loader-2] h-3 w-3 animate-spin"
+										: "icon-[lucide--chevrons-down] h-3 w-3"
+								}
+							/>
+						</button>
+					)}
 					<div className="mx-2 h-3 w-px bg-[var(--dbx-surface-2)]" />
 					{/* 导出：左键 / 右键均弹格式菜单 */}
 					<button
@@ -1328,6 +1614,7 @@ export function ResultGrid({
 
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
 			{exportMenu && <ContextMenu menu={exportMenu} onClose={() => setExportMenu(null)} />}
+			{columnMenu && <ContextMenu menu={columnMenu} onClose={() => setColumnMenu(null)} />}
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
 			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 			{dialogTask && (

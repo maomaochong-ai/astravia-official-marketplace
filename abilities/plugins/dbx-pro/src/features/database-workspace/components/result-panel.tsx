@@ -10,7 +10,7 @@ import { ResultGrid } from "./result-grid";
 import { useWorkbench } from "../hooks/use-workbench";
 
 export function ResultPanel(): JSX.Element {
-	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount } = useWorkbench();
+	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount, runTabSql } = useWorkbench();
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const result = activeTab?.result;
 	const [elapsed, setElapsed] = useState(0);
@@ -62,6 +62,32 @@ export function ResultPanel(): JSX.Element {
 						serverTotalCount={result.totalCount}
 						serverTotalStatus={result.totalCountStatus}
 						pageLoading={activeTab?.isRunning === true}
+						elapsedMs={result.elapsedMs}
+						affectedRows={result.affectedRows}
+						onRefresh={() => {
+							const tabId = activeTab?.id;
+							const base = result.ranSql ?? activeTab?.sql;
+							if (tabId && base) void runTabSql(tabId, base, undefined, { mode: "server" });
+						}}
+						onLoadAll={async () => {
+							const tabId = activeTab?.id;
+							const tab = tabId ? state.tabs.find((t) => t.id === tabId) : null;
+							if (!tabId || !tab?.result?.paged) return;
+							try {
+								let pageIndex = (tab.result.serverPage ?? 0) + 1;
+								const pageSize = tab.pageSize ?? settings.rowLimit;
+								// 先取当前页的行数作为参考
+								let prevRows = tab.result.rows.length;
+								while (prevRows >= pageSize) {
+									await goToResultPage(tabId, pageIndex);
+									// 等 state 更新后再检查（微任务队列）
+									await new Promise((r) => setTimeout(r, 50));
+									const freshTab = state.tabs.find((t) => t.id === tabId);
+									prevRows = freshTab?.result?.rows.length ?? 0;
+									pageIndex += 1;
+								}
+							} catch { /* 用户停止或引擎错误 */ }
+						}}
 						note={result.note}
 						onCancelLoading={() => {
 							if (activeTab) cancelExecution(activeTab.id);

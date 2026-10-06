@@ -8,9 +8,13 @@
 @import "./features/visualization/visualization.css";
 
 /* ============================================================
- * dbx-pro 工作台设计系统（全部锚定 .dbx-root 根，不污染宿主全局）
+ * dbx-pro 工作台设计系统（不污染宿主全局）
  * 边框用半透明前景色，随明暗主题自适应；视觉靠色块层级而非粗实线。
- * 注意：所有变量必须定义在 .dbx-root 下，不能使用 :scope（会泄漏到宿主根节点）。
+ * 宿主 @astravia-org/plugin-vite 会自动把所有 CSS 包进
+ *   @scope ([data-astravia-plugin-root="dbx-pro"]) { ... }
+ * 并将 :root 替换为 :scope。.dbx-root 同时渲染在 JSX 根元素上，
+ * 两者等价，变量定义在 .dbx-root 下即可被 scope 内所有后代继承。
+ * 严禁覆盖宿主核心变量（--background / --foreground / --muted-foreground 等）。
  * ============================================================ */
 .dbx-root {
 	--dbx-line: color-mix(in srgb, var(--foreground) 16%, transparent);
