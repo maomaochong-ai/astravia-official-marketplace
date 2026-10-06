@@ -333,7 +333,7 @@ export function ResultGrid({
 	}, [rows, sort]);
 
 	const pageSize = isServer
-		? resolvePageSize(serverPageSize ?? defaultPageSize)
+		? (serverPageSize ?? defaultPageSize)
 		: localPageSize;
 
 	// 总页数：服务端总数未统计时为 null（不假装知道）。
@@ -382,10 +382,9 @@ export function ResultGrid({
 
 	/** 页大小变化：服务端交上层并回第 0 页；本地重置。 */
 	function changePageSize(next: number): void {
-		const size = resolvePageSize(next);
-		if (isServer) onPageSizeChange?.(size);
+		if (isServer) onPageSizeChange?.(next);
 		else {
-			setLocalPageSize(size);
+			setLocalPageSize(next);
 			setLocalPage(0);
 		}
 	}
