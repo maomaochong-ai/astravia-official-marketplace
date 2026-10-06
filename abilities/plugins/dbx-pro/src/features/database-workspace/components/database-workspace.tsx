@@ -33,8 +33,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
-	const [rightPanelVisible, setRightPanelVisible] = useState(true);
-	const [historyPanelVisible, setHistoryPanelVisible] = useState(false);
+	// 右栏只承载查询历史，默认收起。
+	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const workspaceRef = useRef<HTMLDivElement>(null);
@@ -49,26 +49,25 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
 	}, [fullscreen]);
 
-	// 恢复上次左右栏折叠态。
+	// 恢复上次左栏折叠态（右栏历史为瞬时开关，不持久化展开态）。
 	useEffect(() => {
 		let alive = true;
 		void readSession().then((s) => {
 			if (!alive || !s) return;
 			if (typeof s.leftCollapsed === "boolean") setLeftCollapsed(s.leftCollapsed);
-			if (typeof s.rightCollapsed === "boolean") setRightPanelVisible(!s.rightCollapsed);
 		}).catch(() => { /* ignore */ });
 		return () => { alive = false; };
 	}, []);
 
-	// 折叠态变化时并入会话。
+	// 左栏折叠态变化时并入会话。
 	useEffect(() => {
 		void (async () => {
 			const cur = (await readSession().catch(() => null)) ?? {
 				activeConnectionName: null, activeTabId: null, tabs: [], expandedNodes: [],
 			};
-			await writeSession({ ...cur, leftCollapsed, rightCollapsed: !rightPanelVisible }).catch(() => { /* ignore */ });
+			await writeSession({ ...cur, leftCollapsed }).catch(() => { /* ignore */ });
 		})();
-	}, [leftCollapsed, rightPanelVisible]);
+	}, [leftCollapsed]);
 
 	function newQueryTab() {
 		const id = `tab-${Date.now().toString(36)}`;
@@ -82,18 +81,9 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		});
 	}
 
-	/** 切换右栏显示/隐藏 */
-	function toggleRightPanel(): void {
-		setRightPanelVisible((v) => !v);
-	}
-
-	/** 切换历史面板显示/隐藏 */
+	/** 切换查询历史右栏 */
 	function toggleHistoryPanel(): void {
-		setHistoryPanelVisible((v) => !v);
-		if (!historyPanelVisible) {
-			// 显示历史面板时，确保右栏可见
-			setRightPanelVisible(true);
-		}
+		setHistoryOpen((v) => !v);
 	}
 
 	async function toggleFullscreen() {
@@ -130,21 +120,19 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onOpenAiAssistant={() => setAiAssistantOpen(true)}
 				onNewQuery={newQueryTab}
 				onToggleHistory={toggleHistoryPanel}
-				onToggleRightPanel={toggleRightPanel}
-				rightPanelVisible={rightPanelVisible}
-				historyVisible={historyPanelVisible}
+				historyOpen={historyOpen}
 				fullscreen={fullscreen}
 				onToggleFullscreen={() => void toggleFullscreen()}
 			/>
 			<SplitLayout
 				leftCollapsed={leftCollapsed}
-				rightCollapsed={!rightPanelVisible}
+				rightCollapsed={!historyOpen}
 				onToggleLeft={() => setLeftCollapsed((v) => !v)}
 			>
 				{[
 					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} />,
 					<SqlEditorWorkspace key="mid" />,
-					<RightPanel key="right" historyVisible={historyPanelVisible} />,
+					<RightPanel key="right" />,
 				]}
 			</SplitLayout>
 

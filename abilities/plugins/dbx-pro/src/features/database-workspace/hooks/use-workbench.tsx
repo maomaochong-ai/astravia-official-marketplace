@@ -68,15 +68,11 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 
 	// 拆分出的 hooks
 	const { loadNodeChildren } = useWorkbenchTree({ stateRef, dispatch });
-	const { runTabSql, goToResultPage, cancelExecution, applySuccess } = useWorkbenchExecution({
-		stateRef,
-		settingsRef,
-		runningStartedAtRef,
-		dispatch,
-		recordHistory: async (params) => {
-			// 由 history hook 处理
-		},
-	});
+
+	// 执行器回引：先建占位，待 useWorkbenchExecution 返回真实 runTabSql 后回填，
+	// 供历史「重跑」调用，避免两个 hook 之间出现初始化顺序循环。
+	const runTabSqlRef = useRef<((tabId: string, sql: string) => Promise<void>) | null>(null);
+
 	const {
 		history,
 		setHistory,
@@ -86,7 +82,18 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		removeHistory,
 		clearAllHistory,
 		loadInitialHistory,
-	} = useWorkbenchHistory({ stateRef, dispatch });
+	} = useWorkbenchHistory({ stateRef, dispatch, settingsRef, runTabSqlRef });
+
+	const { runTabSql, goToResultPage, cancelExecution, applySuccess } = useWorkbenchExecution({
+		stateRef,
+		settingsRef,
+		runningStartedAtRef,
+		dispatch,
+		// 必须传真实的落盘函数，否则查询历史不会持久化。
+		recordHistory: async (params) => { await recordHistory(params); },
+	});
+	runTabSqlRef.current = (tabId, sql) => runTabSql(tabId, sql, undefined, {});
+
 	const { restoreSession } = useWorkbenchSession({ state, dispatch });
 
 	// 初始加载：连接 + 设置 + 历史 + 恢复上次会话

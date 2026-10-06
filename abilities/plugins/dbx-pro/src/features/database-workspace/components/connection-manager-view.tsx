@@ -8,7 +8,6 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { useWorkbench } from "../hooks/use-workbench";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 import { ConnectionEditorFlow } from "./connection-editor-flow";
 import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
@@ -19,14 +18,13 @@ import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 type ViewStep = "dashboard" | "editor";
 
 export function ConnectionManagerView(): JSX.Element {
-	const { state, refreshConnections } = useWorkbench();
+	// 该视图挂在宿主侧边栏，运行在 WorkbenchProvider 之外，
+	// 只能使用连接编辑 hook（自带存储读写），不能调用 useWorkbench。
 	const editor = useConnectionEditor({});
 	const [step, setStep] = useState<ViewStep>("dashboard");
 	const disposedRef = useRef(false);
 
 	const connections = editor.connections;
-	const activeConnName = state.activeConnectionName;
-	const activeConn = connections.find((c) => c.name === activeConnName);
 
 	const uniqueDbTypes = new Set(connections.map((c) => c.db_type));
 	const productionCount = connections.filter((c) => c.is_production).length;
@@ -34,8 +32,7 @@ export function ConnectionManagerView(): JSX.Element {
 	const refresh = useCallback(async () => {
 		if (disposedRef.current) return;
 		await editor.refresh();
-		await refreshConnections();
-	}, [editor, refreshConnections]);
+	}, [editor]);
 
 	useEffect(() => {
 		disposedRef.current = false;
@@ -132,37 +129,21 @@ export function ConnectionManagerView(): JSX.Element {
 					</div>
 
 					<div className="flex flex-col justify-between rounded-xl border border-border/60 bg-card/45 p-4 shadow-xs">
-						<div className="flex items-center justify-between text-xs text-muted-foreground">
-							<span>当前活跃</span>
-							<span className="text-[10px] tracking-wide text-emerald-500/80">active</span>
-						</div>
-						<div className="mt-3 flex items-center gap-3">
-							{activeConn ? (
-								<>
-									<DatabaseTypeIcon dbType={activeConn.db_type} size={32} />
-									<div className="min-w-0 flex-1">
-										<p className="m-0 truncate text-sm font-semibold text-foreground">{activeConn.name}</p>
-										<p className="m-0 mt-0.5 text-[10px] text-muted-foreground">{activeConn.db_type}</p>
-									</div>
-								</>
-							) : (
-								<div className="text-xs text-muted-foreground">
-									<p className="m-0 font-medium text-foreground/60">未选择</p>
-									<p className="m-0 mt-0.5 text-[11px]">在左侧树中选择连接</p>
-								</div>
-							)}
-						</div>
-						<div className="mt-3 border-t border-border/40 pt-2 text-[11px]">
-							{activeConn ? (
-								<span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
-									<span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-									已连接
-								</span>
-							) : (
-								<span className="text-muted-foreground/60">点击连接树激活</span>
-							)}
+					<div className="flex items-center justify-between text-xs text-muted-foreground">
+						<span>使用方式</span>
+						<span className="text-[10px] tracking-wide text-emerald-500/80">workbench</span>
+					</div>
+					<div className="mt-3 flex items-center gap-3">
+						<span className="icon-[lucide--panel-left-open] h-7 w-7 text-muted-foreground/70" />
+						<div className="min-w-0 flex-1">
+							<p className="m-0 text-[12px] font-medium text-foreground/80">在工作台标签页使用</p>
+							<p className="m-0 mt-0.5 text-[10.5px] text-muted-foreground">连接、SQL 编辑与表树在 dbx-pro 工作台中操作</p>
 						</div>
 					</div>
+					<div className="mt-3 border-t border-border/40 pt-2 text-[11px] text-muted-foreground/70">
+						此页面仅用于管理连接配置
+					</div>
+				</div>
 
 					<div className="flex flex-col justify-between rounded-xl border border-border/60 bg-card/45 p-4 shadow-xs">
 						<div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -263,11 +244,10 @@ export function ConnectionManagerView(): JSX.Element {
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							{connections.map((conn) => (
 								<ConnectionCard
-									key={conn.id}
-									conn={conn}
-									active={activeConnName === conn.name}
-									onEdit={() => setStep("editor")}
-								/>
+								key={conn.id}
+								conn={conn}
+								onEdit={() => setStep("editor")}
+							/>
 							))}
 						</div>
 					)}
@@ -277,16 +257,10 @@ export function ConnectionManagerView(): JSX.Element {
 	);
 }
 
-function ConnectionCard({ conn, active, onEdit }: { conn: DbConnection; active: boolean; onEdit: () => void }): JSX.Element {
+function ConnectionCard({ conn, onEdit }: { conn: DbConnection; onEdit: () => void }): JSX.Element {
 	const visual = getDatabaseTypeVisual(conn.db_type);
 	return (
-		<div
-			className={`group relative flex items-center gap-3 rounded-xl border p-3.5 transition hover:shadow-md ${
-				active
-					? "border-cyan-500/40 bg-cyan-500/5 shadow-sm ring-1 ring-cyan-500/20"
-					: "border-border/60 bg-card/45 hover:border-border"
-			}`}
-		>
+		<div className="group relative flex items-center gap-3 rounded-xl border border-border/60 bg-card/45 p-3.5 transition hover:border-border hover:shadow-md">
 			<DatabaseTypeIcon dbType={conn.db_type} size={36} />
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-1.5">
@@ -310,12 +284,6 @@ function ConnectionCard({ conn, active, onEdit }: { conn: DbConnection; active: 
 						{visual.badge}
 					</span>
 					<span className="text-[10px] text-muted-foreground/70">{conn.db_type}</span>
-					{active && (
-						<span className="ml-auto inline-flex items-center gap-1 text-[10px] text-emerald-400">
-							<span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-							活跃
-						</span>
-					)}
 				</div>
 			</div>
 			<button

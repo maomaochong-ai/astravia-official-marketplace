@@ -102,44 +102,49 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 					<div
 						ref={ref}
 						role="menu"
-						className="dbx-context-menu absolute z-[300] min-w-0 overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+						className="dbx-context-menu absolute z-[300] min-w-0 rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
 						style={{ left: pos.left, top: pos.top, width: MENU_WIDTH }}
 						onContextMenu={(e) => e.preventDefault()}
 					>
 						{menu.items.map((entry, index) => {
 							if (entry.type === "separator") {
-								return <div key={`sep-${index}`} className="my-1 h-px bg-border" />;
+								return <div key={`sep-${index}`} className="mx-1 my-1 h-px bg-border" />;
 							}
-							
+
 							if (entry.type === "submenu") {
+								const subOpen = submenuState?.index === index;
 								return (
 									<div key={`submenu-${index}`} className="relative">
 										<button
 											type="button"
 											role="menuitem"
+											aria-haspopup="true"
+											aria-expanded={subOpen}
 											className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+											// hover 展开；点击也可展开 / 收起（触屏 / 子菜单被裁时的可靠入口）
+											onClick={() => setSubmenuState(subOpen ? null : { index, y: 0 })}
 											onMouseEnter={(e) => {
 												const rect = e.currentTarget.getBoundingClientRect();
 												setSubmenuState({ index, y: rect.top });
 											}}
 											onMouseLeave={() => {
-												// 延迟关闭，让用户有时间移动到子菜单
+												// 延迟关闭，让鼠标有时间移入右侧子菜单
 												setTimeout(() => {
 													setSubmenuState((current) => current?.index === index ? null : current);
-												}, 100);
+												}, 120);
 											}}
 										>
 											{entry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${entry.icon}`} />}
 											<span className="min-w-0 flex-1 truncate">{entry.label}</span>
 											<span className="icon-[lucide--chevron-right] h-3 w-3 text-muted-foreground" />
 										</button>
-										
-										{/* 子菜单 */}
-										{submenuState?.index === index && (
+
+										{/* 子菜单：主菜单容器不裁剪（overflow visible），故可溢出到右侧 */}
+										{subOpen && (
 											<div
-												className="absolute left-full top-0 z-[301] min-w-[160px] overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
-												style={{ marginLeft: 2 }}
-												onMouseEnter={() => setSubmenuState({ index, y: submenuState.y })}
+												role="menu"
+												className="absolute left-full top-0 z-[301] min-w-[160px] -ml-px overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+												onMouseEnter={() => submenuState && setSubmenuState({ index, y: submenuState.y })}
 												onMouseLeave={() => setSubmenuState(null)}
 											>
 												{entry.items.map((subEntry, subIndex) => {

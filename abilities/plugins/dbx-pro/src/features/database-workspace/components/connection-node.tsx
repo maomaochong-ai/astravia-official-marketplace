@@ -13,7 +13,7 @@ import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { parseColumnNodeKey } from "../../../domain/tree-node-key";
-import { writeAiNodeDrag, type AiNodeInfo } from "../../../domain/table-drag";
+import { writeAiNodeDrag, setMentionDragImage, type AiNodeInfo } from "../../../domain/table-drag";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 import {
@@ -446,9 +446,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		}
 
 		writeAiNodeDrag(e.dataTransfer, payloads);
-		if (e.currentTarget instanceof HTMLElement) {
-			e.dataTransfer.setDragImage(e.currentTarget, 10, 10);
-		}
+		// 艾规范提及标签风格的拖拽幽灵（多选显示整组 chip）。
+		setMentionDragImage(e, payloads);
 	}
 
 	const isDraggable = node.kind === "table" || node.kind === "schema" || node.kind === "connection" || node.kind === "column";

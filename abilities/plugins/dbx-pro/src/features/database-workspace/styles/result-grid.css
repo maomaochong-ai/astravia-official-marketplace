@@ -21,14 +21,14 @@
 	min-height: 64px;
 }
 
-/* 单排布局模式（默认） */
+/* 单排布局模式（默认）。不用 overflow:hidden：导出下拉是绝对定位，
+   需要能溢出到工具栏下方；固定高度 + 内容 flex 居中即可约束常态布局。 */
 .dbx-result-toolbar.single-layout {
 	flex-direction: row;
 	align-items: center;
 	height: 28px;
 	padding: 0 8px;
 	gap: 8px;
-	overflow: hidden;
 }
 
 /* 上排：操作按钮区 */
@@ -108,17 +108,30 @@
 
 /* 按钮组（带下拉） */
 .dbx-toolbar-btn-group {
+	position: relative;
 	display: flex;
 	align-items: stretch;
 	border: 1px solid var(--dbx-line);
 	border-radius: 4px;
-	overflow: hidden;
+	/* 不能用 overflow:hidden：导出下拉菜单是该容器的绝对定位后代，会被裁剪导致点不到。
+	   圆角改由两个子按钮各自裁切来维持。 */
 }
 
 .dbx-toolbar-btn-grouped {
 	border-radius: 0;
 	border: none;
 	height: 20px;
+}
+
+/* 左主按钮维持组的左圆角，右箭头按钮维持右圆角（组容器不再 overflow hidden） */
+.dbx-toolbar-btn-group > .dbx-toolbar-btn-grouped:first-child {
+	border-top-left-radius: 4px;
+	border-bottom-left-radius: 4px;
+}
+
+.dbx-toolbar-btn-group > .dbx-toolbar-btn-grouped:last-child {
+	border-top-right-radius: 4px;
+	border-bottom-right-radius: 4px;
 }
 
 .dbx-toolbar-btn-grouped + .dbx-toolbar-btn-grouped {
@@ -129,7 +142,7 @@
 	padding: 0 4px;
 }
 
-/* 下拉菜单 */
+/* 下拉菜单：层级必须高于点击外部关闭用的全屏遮罩（z-50） */
 .dbx-toolbar-dropdown-menu {
 	position: absolute;
 	top: 100%;
@@ -140,7 +153,7 @@
 	border: 1px solid var(--dbx-line);
 	border-radius: 6px;
 	background: var(--background);
-	box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+	box-shadow: 0 4px 12px rgb(0 0 0 / 0.18);
 	margin-top: 2px;
 }
 

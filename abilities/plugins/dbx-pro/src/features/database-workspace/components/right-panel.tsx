@@ -1,8 +1,7 @@
 /**
- * 右栏 — 查询历史面板。
+ * 右栏 — 查询历史面板（唯一用途）。
  *
- * 表属性面板由查询网格内的覆盖层承载（结果工具栏"表属性"按钮），
- * 这里不再重复挂载，避免两套状态。
+ * 由顶栏「查询历史」按钮控制开合；表属性在结果网格覆盖层中打开，不再占用右栏。
  */
 
 import type { JSX } from "react";
@@ -11,11 +10,7 @@ import { useWorkbench } from "../hooks/use-workbench";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { getConversation } from "../../../runtime-contract";
 
-interface RightPanelProps {
-	historyVisible?: boolean;
-}
-
-export function RightPanel({ historyVisible = false }: RightPanelProps): JSX.Element {
+export function RightPanel(): JSX.Element {
 	const {
 		settings,
 		history,
@@ -24,14 +19,6 @@ export function RightPanel({ historyVisible = false }: RightPanelProps): JSX.Ele
 		removeHistory,
 		clearAllHistory,
 	} = useWorkbench();
-
-	if (!historyVisible) {
-		return (
-			<div className="flex h-full items-center justify-center text-muted-foreground">
-				<span className="text-[11px]">选择表查看详情</span>
-			</div>
-		);
-	}
 
 	function handleSendToAi(entry: { connName: string; sql: string }): void {
 		// 填入宿主 AI 输入框，由用户确认后发送，避免误发。
