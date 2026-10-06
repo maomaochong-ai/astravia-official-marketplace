@@ -1183,7 +1183,7 @@ export function ResultGrid({
 							<span className="dbx-toolbar-btn-label">刷新</span>
 						</button>
 					</div>
-					{/* 左侧：复制（导出已移至结果网格底栏） */}
+					{/* 左侧：复制 + 导出 */}
 					<div className="flex items-center gap-0.5">
 						<button
 							type="button"
@@ -1193,6 +1193,16 @@ export function ResultGrid({
 						>
 							<span className="icon-[lucide--clipboard-list] h-3.5 w-3.5" />
 							<span className="dbx-toolbar-btn-label">复制</span>
+						</button>
+						{/* 顶栏导出 Upload — ADR-0004 §12 #7 决策项，与底栏 Download 格式同源 */}
+						<button
+							type="button"
+							onClick={openExportMenu}
+							title="导出数据（CSV/JSON/XLSX/Markdown/SQL 等）"
+							className="dbx-toolbar-btn"
+						>
+							<span className="icon-[lucide--upload] h-3.5 w-3.5" />
+							<span className="dbx-toolbar-btn-label">导出</span>
 						</button>
 					</div>
 
