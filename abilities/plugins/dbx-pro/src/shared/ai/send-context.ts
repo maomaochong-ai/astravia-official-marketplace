@@ -87,3 +87,58 @@ export function buildQueryPrompt(connectionName: string, sql: string, _sampleRow
 		"```",
 	].join("\n");
 }
+
+/** 构造看板生成 prompt（从选中的表生成企业看板）。 */
+export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
+	const tables = nodes.filter((n) => n.kind === "table");
+	if (tables.length === 0) return "请先选择要生成看板的表。";
+
+	const groups = new Map<string, SelectedNodeInfo[]>();
+	for (const node of tables) {
+		if (!groups.has(node.connectionName)) groups.set(node.connectionName, []);
+		groups.get(node.connectionName)!.push(node);
+	}
+
+	const lines: string[] = ["请帮我为以下数据库表生成企业看板：", ""];
+	for (const [conn, items] of groups) {
+		lines.push(`连接 @\`${conn}\`：`);
+		for (const it of items) {
+			const qualified = it.schema ? `${it.schema}.${it.label}` : it.label;
+			lines.push(`- 表 @\`${qualified}\``);
+		}
+	}
+	lines.push(
+		"",
+		"请先查看表结构，了解列名和数据类型，然后使用 dbx_dashboard 工具生成看板。",
+		"根据数据特征推荐合适的模板（kpi_overview / trend_analysis / data_profile）。",
+	);
+	return lines.join("\n");
+}
+
+/** 构造大屏生成 prompt（从选中的表生成数据大屏）。 */
+export function buildScreenPrompt(nodes: SelectedNodeInfo[]): string {
+	const tables = nodes.filter((n) => n.kind === "table");
+	if (tables.length === 0) return "请先选择要生成大屏的表。";
+
+	const groups = new Map<string, SelectedNodeInfo[]>();
+	for (const node of tables) {
+		if (!groups.has(node.connectionName)) groups.set(node.connectionName, []);
+		groups.get(node.connectionName)!.push(node);
+	}
+
+	const lines: string[] = ["请帮我为以下数据库表生成数据大屏：", ""];
+	for (const [conn, items] of groups) {
+		lines.push(`连接 @\`${conn}\`：`);
+		for (const it of items) {
+			const qualified = it.schema ? `${it.schema}.${it.label}` : it.label;
+			lines.push(`- 表 @\`${qualified}\``);
+		}
+	}
+	lines.push(
+		"",
+		"请先查看表结构，了解列名和数据类型，然后使用 dbx_screen 工具生成大屏。",
+		"根据数据特征推荐合适的模板（data_command / business_intel / monitoring）。",
+		"大屏使用深色主题，适合投屏展示。",
+	);
+	return lines.join("\n");
+}

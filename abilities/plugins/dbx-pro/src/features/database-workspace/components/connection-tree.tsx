@@ -12,7 +12,7 @@ import { useWorkbench } from "../hooks/use-workbench";
 import { ConnectionNode } from "./connection-node";
 import { ConnectionTreeToolbar } from "./connection-tree-toolbar";
 import { connectionNodeKey, type TreeNode } from "../../../domain/tree-node-key";
-import { buildMultiSelectPrompt } from "../../../shared/ai/send-context";
+import { buildMultiSelectPrompt, buildDashboardPrompt, buildScreenPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 
 export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
@@ -32,6 +32,18 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 	/** 把多选对象构建成上下文，打开 AI 对话框确认后发送。 */
 	function sendSelectionToAi(): void {
 		setAiPrompt(buildMultiSelectPrompt(Array.from(selectedNodes.values())));
+		setAiDialogOpen(true);
+	}
+
+	/** 多选生成看板。 */
+	function sendSelectionToDashboard(): void {
+		setAiPrompt(buildDashboardPrompt(Array.from(selectedNodes.values())));
+		setAiDialogOpen(true);
+	}
+
+	/** 多选生成大屏。 */
+	function sendSelectionToScreen(): void {
+		setAiPrompt(buildScreenPrompt(Array.from(selectedNodes.values())));
 		setAiDialogOpen(true);
 	}
 	const needle = query.trim().toLowerCase();
@@ -144,6 +156,26 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 						className="rounded px-1.5 py-0.5 text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
 					>
 						清空
+					</button>
+					<button
+						type="button"
+						onClick={sendSelectionToDashboard}
+						disabled={selectedNodes.size === 0}
+						className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
+						title="生成企业看板"
+					>
+						<span className="icon-[lucide--layout-dashboard] h-2.5 w-2.5" />
+						看板
+					</button>
+					<button
+						type="button"
+						onClick={sendSelectionToScreen}
+						disabled={selectedNodes.size === 0}
+						className="flex items-center gap-1 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
+						title="生成数据大屏"
+					>
+						<span className="icon-[lucide--monitor] h-2.5 w-2.5" />
+						大屏
 					</button>
 					<button
 						type="button"

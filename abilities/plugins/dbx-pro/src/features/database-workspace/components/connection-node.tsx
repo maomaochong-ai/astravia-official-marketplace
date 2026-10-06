@@ -22,6 +22,8 @@ import { ContextMenu, type ContextMenuState } from "../../../shared/components/c
 import {
 	buildConnectionPrompt,
 	buildTablePrompt,
+	buildDashboardPrompt,
+	buildScreenPrompt,
 	type SelectedNodeInfo,
 } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
@@ -391,6 +393,27 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							{ type: "item", label: "CREATE TABLE", onClick: () => generateSql("create") },
 							{ type: "item", label: "ALTER TABLE", onClick: () => generateSql("alter") },
 							{ type: "item", label: "DROP TABLE", onClick: () => generateSql("drop") },
+						],
+					},
+					{ type: "separator" },
+					// 可视化
+					{
+						type: "submenu",
+						label: "可视化",
+						icon: "icon-[lucide--bar-chart-3]",
+						items: [
+							{
+								type: "item",
+								label: "生成企业看板",
+								icon: "icon-[lucide--layout-dashboard]",
+								onClick: () => openAiDialog(buildDashboardPrompt([{ kind: "table", connectionName, schema: childScope, label: node.label }])),
+							},
+							{
+								type: "item",
+								label: "生成数据大屏",
+								icon: "icon-[lucide--monitor]",
+								onClick: () => openAiDialog(buildScreenPrompt([{ kind: "table", connectionName, schema: childScope, label: node.label }])),
+							},
 						],
 					},
 					{ type: "separator" },
