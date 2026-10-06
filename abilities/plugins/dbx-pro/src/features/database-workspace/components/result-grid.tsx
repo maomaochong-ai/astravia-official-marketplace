@@ -535,10 +535,10 @@ export function ResultGrid({
 
 	/**
 	 * 浏览器侧全量缓存的安全上限；超过即截断并如实告知。
-	 * 对齐 dbx 桌面壳的 MAX_RESULT_PAGE_SIZE = 1_000_000。
+	 * 对齐 dbx 桌面壳 DEFAULT_QUERY_RESULT_MAX_ROWS = 100_000。
 	 * 引擎单次硬上限为 ENGINE_ROW_CAP，这里按页循环拉取直到末页。
 	 */
-	const EXPORT_ALL_ROW_CAP = 1_000_000;
+	const EXPORT_ALL_ROW_CAP = 100_000;
 
 	/**
 	 * 分页循环拉取全部结果；不可分页查询只拿单次（可能被引擎截断）。

@@ -23,6 +23,14 @@ export interface WorkbenchSettings {
 	tableSingleClickAction: "preview" | "structure";
 	/** 双击表节点的行为。 */
 	tableDoubleClickAction: "preview" | "structure";
+	/**
+	 * 导出行数限制开关（对齐 dbx 桌面壳 exportRowLimitEnabled，默认关闭＝导出全部）。
+	 * 关闭时「导出全部数据」按页循环拉取到末页，不人为截断；
+	 * 开启后最多导出 exportRowLimit 行。
+	 */
+	exportLimitEnabled: boolean;
+	/** 导出行数上限（仅 exportLimitEnabled 开启时生效）。 */
+	exportRowLimit: number;
 }
 
 /**
@@ -33,8 +41,8 @@ export interface WorkbenchSettings {
  */
 export const ENGINE_ROW_CAP = 1000;
 
-/** 网格可选的每页行数（底部下拉）。 */
-export const PAGE_SIZE_OPTIONS = [50, 100, 200, 500, 1000] as const;
+/** 网格可选的每页行数（底部下拉）。对齐 dbx 桌面壳 4 档。 */
+export const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000] as const;
 
 /**
  * 每页行数允许的最大值（自定义与设为默认共用）。
@@ -46,14 +54,14 @@ export const MAX_RESULT_PAGE_SIZE = 10_000;
 export const MIN_RESULT_PAGE_SIZE = 1;
 
 /**
- * 页大小夹逼：设置项与网格下拉共用。
- * 这里是页大小而不是「结果行数上限」——引擎单次上限 ENGINE_ROW_CAP 固定，
- * 大于它的页由执行层分块拉取拼接。
+ * 页大小夹逼：设置项与网格下拉共用，保证 offset/limit 不会超过引擎单次结果上限。
+ * 这里是页大小而不是「结果行数上限」——行数上限已由 ENGINE_ROW_CAP 固定。
+ * 自定义行数上限对齐 dbx 桌面壳 MAX_RESULT_PAGE_SIZE = 1_000_000。
  */
 export function resolvePageSize(value: unknown): number {
 	const num = Number(value);
-	if (!Number.isFinite(num) || num < MIN_RESULT_PAGE_SIZE) return DEFAULT_SETTINGS.rowLimit;
-	return Math.min(Math.floor(num), MAX_RESULT_PAGE_SIZE);
+	if (!Number.isFinite(num) || num < 1) return DEFAULT_SETTINGS.rowLimit;
+	return Math.min(Math.floor(num), 1_000_000);
 }
 
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
