@@ -7,7 +7,7 @@
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { engineExecuteByName, engineDescribeByName } from "../shared/services/engine-client";
-import { showVisualizationPreview } from "../features/visualization/visualization-bridge";
+import { showVisualizationPreview, saveVisualizationToStore } from "../features/visualization/visualization-bridge";
 
 export type ScreenTemplate = "data_command" | "business_intel" | "monitoring";
 
@@ -240,6 +240,7 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 				};
 
 				showVisualizationPreview(viz);
+				saveVisualizationToStore(viz);
 
 				return {
 					ok: true,

@@ -16,6 +16,9 @@ export interface WorkbenchTopBarProps {
 	/** 切换查询历史右栏 */
 	onToggleHistory: () => void;
 	historyOpen: boolean;
+	/** 打开可视化产物管理 */
+	onOpenVisualizationGallery: () => void;
+	visualizationCount: number;
 	fullscreen: boolean;
 	onToggleFullscreen: () => void;
 }
@@ -27,6 +30,8 @@ export function WorkbenchTopBar({
 	onNewQuery,
 	onToggleHistory,
 	historyOpen,
+	onOpenVisualizationGallery,
+	visualizationCount,
 	fullscreen,
 	onToggleFullscreen,
 }: WorkbenchTopBarProps): JSX.Element {
@@ -64,7 +69,7 @@ export function WorkbenchTopBar({
 
 			<span className="flex-1" />
 
-			{/* 右：查询历史 / 设置 / 全屏 */}
+			{/* 右：查询历史 / 可视化产物 / 设置 / 全屏 */}
 			<div className="flex shrink-0 items-center gap-1">
 				<button
 					type="button"
@@ -75,6 +80,15 @@ export function WorkbenchTopBar({
 				>
 					<span className="icon-[lucide--history] h-3.5 w-3.5" />
 					{history.length > 0 && <span className="ml-0.5 text-[10px]">{history.length}</span>}
+				</button>
+				<button
+					type="button"
+					onClick={onOpenVisualizationGallery}
+					title="可视化产物（看板/大屏）"
+					className="dbx-iconbtn"
+				>
+					<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5" />
+					{visualizationCount > 0 && <span className="ml-0.5 text-[10px]">{visualizationCount}</span>}
 				</button>
 				<button
 					type="button"

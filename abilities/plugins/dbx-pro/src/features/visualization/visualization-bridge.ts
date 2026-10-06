@@ -17,14 +17,27 @@ export interface Visualization {
 }
 
 type PreviewCallback = (viz: Visualization) => void;
+type SaveCallback = (viz: Visualization) => void;
+
 let previewCallback: PreviewCallback | null = null;
+let saveCallback: SaveCallback | null = null;
 
 export function setPreviewCallback(callback: PreviewCallback | null): void {
 	previewCallback = callback;
 }
 
+export function setSaveCallback(callback: SaveCallback | null): void {
+	saveCallback = callback;
+}
+
 export function showVisualizationPreview(viz: Visualization): void {
 	if (previewCallback) {
 		previewCallback(viz);
+	}
+}
+
+export function saveVisualizationToStore(viz: Visualization): void {
+	if (saveCallback) {
+		saveCallback(viz);
 	}
 }

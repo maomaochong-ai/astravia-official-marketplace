@@ -7,7 +7,7 @@
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { engineExecuteByName, engineDescribeByName } from "../shared/services/engine-client";
-import { showVisualizationPreview } from "../features/visualization/visualization-bridge";
+import { showVisualizationPreview, saveVisualizationToStore } from "../features/visualization/visualization-bridge";
 
 export type DashboardTemplate = "kpi_overview" | "trend_analysis" | "data_profile";
 
@@ -214,6 +214,7 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 				};
 
 				showVisualizationPreview(viz);
+				saveVisualizationToStore(viz);
 
 				return {
 					ok: true,

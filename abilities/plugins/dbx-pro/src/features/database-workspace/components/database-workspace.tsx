@@ -14,13 +14,15 @@ import { SettingsPanel } from "./settings-panel";
 import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
 import { VisualizationPreview } from "../../visualization/components/visualization-preview";
+import { VisualizationGalleryView } from "../../visualization/visualization-gallery-view";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { readSession, writeSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
-import { setPreviewCallback, type Visualization } from "../../visualization/visualization-bridge";
+import { setPreviewCallback, setSaveCallback, type Visualization } from "../../visualization/visualization-bridge";
+import { useVisualizationStore } from "../../visualization/visualization-store";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (
@@ -39,18 +41,24 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
 	const [previewViz, setPreviewViz] = useState<Visualization | null>(null);
+	const [galleryOpen, setGalleryOpen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
+	const { visualizations, addVisualization } = useVisualizationStore();
 	const workspaceRef = useRef<HTMLDivElement>(null);
 
-	// 注册可视化预览回调
+	// 注册可视化预览和保存回调
 	useEffect(() => {
 		setPreviewCallback((viz) => {
 			setPreviewViz(viz);
 		});
+		setSaveCallback((viz) => {
+			addVisualization(viz);
+		});
 		return () => {
 			setPreviewCallback(null);
+			setSaveCallback(null);
 		};
-	}, []);
+	}, [addVisualization]);
 
 	useEffect(() => {
 		function onFullscreenChange() {
@@ -134,6 +142,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onNewQuery={newQueryTab}
 				onToggleHistory={toggleHistoryPanel}
 				historyOpen={historyOpen}
+				onOpenVisualizationGallery={() => setGalleryOpen(true)}
+				visualizationCount={visualizations.length}
 				fullscreen={fullscreen}
 				onToggleFullscreen={() => void toggleFullscreen()}
 			/>
@@ -214,6 +224,25 @@ function DatabaseWorkspaceBody(): JSX.Element {
 					type={previewViz.type}
 					onClose={() => setPreviewViz(null)}
 				/>
+			)}
+
+			{galleryOpen && (
+				<div className="fixed inset-0 z-[900] flex flex-col bg-background">
+					<div className="flex items-center justify-between border-b border-border px-4 py-2">
+						<h2 className="text-sm font-semibold text-foreground">可视化产物管理</h2>
+						<button
+							type="button"
+							onClick={() => setGalleryOpen(false)}
+							className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
+						>
+							<span className="icon-[lucide--x] h-3.5 w-3.5" />
+							关闭
+						</button>
+					</div>
+					<div className="flex-1 overflow-hidden">
+						<VisualizationGalleryView />
+					</div>
+				</div>
 			)}
 		</div>
 	);
