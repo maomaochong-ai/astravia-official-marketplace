@@ -56,7 +56,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const [panelRoot, setPanelRoot] = useState<Element | null>(null);
 	const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
-	const [submenuState, setSubmenuState] = useState<{ index: number; y: number } | null>(null);
+	const [submenuState, setSubmenuState] = useState<{ index: number; y: number; flipLeft: boolean } | null>(null);
 	// 父子项共享的关闭定时器：进入任一区域都能取消另一个区域排定的关闭。
 	const closeTimerRef = useRef<number | null>(null);
 
@@ -145,26 +145,36 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 													? "bg-accent text-accent-foreground"
 													: "text-foreground hover:bg-accent hover:text-accent-foreground"
 											}`}
-											// hover 展开；点击也可展开 / 收起（触屏可靠入口）
-											onClick={() => setSubmenuState(subOpen ? null : { index, y: 0 })}
-											onMouseEnter={(e) => {
-												cancelCloseTimer();
-												const rect = e.currentTarget.getBoundingClientRect();
-												setSubmenuState({ index, y: rect.top });
-											}}
+											onClick={(e) => {
+											const rect = e.currentTarget.getBoundingClientRect();
+											const rootRect = panelRoot?.getBoundingClientRect();
+											const submenuWidth = 172;
+											const wouldOverflow = rootRect && (rect.right + submenuWidth > rootRect.right - VIEWPORT_MARGIN);
+											setSubmenuState(submenuState?.index === index ? null : { index, y: rect.top, flipLeft: !!wouldOverflow });
+										}}
+										onMouseEnter={(e) => {
+											cancelCloseTimer();
+											const rect = e.currentTarget.getBoundingClientRect();
+											const rootRect = panelRoot?.getBoundingClientRect();
+											const submenuWidth = 172;
+											// Check if submenu would overflow on the right
+											const wouldOverflow = rootRect && (rect.right + submenuWidth > rootRect.right - VIEWPORT_MARGIN);
+											setSubmenuState({ index, y: rect.top, flipLeft: !!wouldOverflow });
+										}}
 											onMouseLeave={scheduleClose}
 										>
 											{entry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${entry.icon}`} />}
 											<span className="min-w-0 flex-1 truncate">{entry.label}</span>
-											<span className="icon-[lucide--chevron-right] h-3 w-3 text-muted-foreground" />
+											<span className={`h-3 w-3 text-muted-foreground ${submenuState?.flipLeft ? "icon-[lucide--chevron-left]" : "icon-[lucide--chevron-right]"}`} />
 										</button>
 
-										{/* 子菜单：-ml-px 与父项重叠 1px，鼠标平移无空隙；
-										    菜单容器不再裁剪，可溢出到右侧。 */}
+										{/* 子菜单：根据空间决定向左或向右展开 */}
 										{subOpen && (
 											<div
 												role="menu"
-												className="absolute left-full top-0 z-[301] -ml-px min-w-[172px] rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+												className={`absolute top-0 z-[301] min-w-[172px] rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40 ${
+													submenuState.flipLeft ? "right-full -mr-px" : "left-full -ml-px"
+												}`}
 												onMouseEnter={cancelCloseTimer}
 												onMouseLeave={scheduleClose}
 											>

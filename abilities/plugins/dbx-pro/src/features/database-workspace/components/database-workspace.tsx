@@ -13,14 +13,14 @@ import { RightPanel } from "./right-panel";
 import { SettingsPanel } from "./settings-panel";
 import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
-import { VisualizationPreview } from "./visualization-preview";
+import { VisualizationPreview } from "../../visualization/components/visualization-preview";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { readSession, writeSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
-import { setPreviewCallback, type Visualization } from "../../../shared/visualization-bridge";
+import { setPreviewCallback, type Visualization } from "../../visualization/visualization-bridge";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (

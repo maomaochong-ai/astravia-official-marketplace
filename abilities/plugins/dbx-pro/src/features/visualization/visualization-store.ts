@@ -9,7 +9,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import type { Visualization } from "../shared/visualization-bridge";
+import type { Visualization } from "./visualization-bridge";
 
 export type { Visualization };
 

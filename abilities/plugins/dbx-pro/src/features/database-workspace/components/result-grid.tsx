@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "rea
 import {
 	ContextMenu,
 	type ContextMenuState,
+	type ContextMenuEntry,
 } from "../../../shared/components/context-menu";
 import {
 	CellDetailDialog,
@@ -25,6 +26,10 @@ import {
 	resolvePageSize,
 	ENGINE_ROW_CAP,
 } from "../../../domain/workbench-settings";
+import {
+	engineExecuteByName,
+	type EngineQueryOutcome,
+} from "../../../shared/services/engine-client";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml, toSqlInsert } from "../services/result-export";
@@ -105,6 +110,7 @@ export function ResultGrid({
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
 	const [customPageSize, setCustomPageSize] = useState<string>(""); // 自定义每页行数输入
 	const [showCustomSizeInput, setShowCustomSizeInput] = useState(false); // 是否显示自定义输入框
+	const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false); // 页大小选项菜单
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
 	const { state, runTabSql } = useWorkbench();
@@ -172,6 +178,19 @@ export function ResultGrid({
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
 	}, [editHistory, editHistoryIndex, selectedCell, rows]);
+
+	// 点击外部关闭页大小菜单
+	useEffect(() => {
+		if (!pageSizeMenuOpen) return;
+		function handleClick(e: MouseEvent): void {
+			const target = e.target as HTMLElement;
+			if (!target.closest("[data-page-size-menu]")) {
+				setPageSizeMenuOpen(false);
+			}
+		}
+		document.addEventListener("mousedown", handleClick);
+		return () => document.removeEventListener("mousedown", handleClick);
+	}, [pageSizeMenuOpen]);
 
 	/** 方向键导航单元格 */
 	function navigateCell(key: string): void {
@@ -529,25 +548,111 @@ export function ResultGrid({
 		downloadFile(toSqlInsert(colList, rows, target, dialect), "query-result.sql", "application/sql;charset=utf-8");
 	}, [colList, rows, state.connections, connectionName, tableInfoSelection?.tableName]);
 
+	// ─── 导出全部数据（服务端分页时）───────────────────────────────
+	const [exportingAll, setExportingAll] = useState(false);
+
+	/** 获取全部数据（不分页）。服务端分页时调用，用于导出完整结果集。 */
+	async function fetchAllData(): Promise<{ columns: string[]; rows: Record<string, unknown>[] } | null> {
+		if (!sql || !connectionName) return null;
+		try {
+			const outcome: EngineQueryOutcome = await engineExecuteByName(connectionName, sql, {
+				rowLimit: 100000, // 导出时放宽限制
+				timeoutMs: 60000,
+			});
+			return { columns: outcome.columns, rows: outcome.rows };
+		} catch (error) {
+			alert(`导出全部数据失败：${error instanceof Error ? error.message : String(error)}`);
+			return null;
+		}
+	}
+
+	/** 导出全部数据为 CSV。 */
+	const exportAllCsv = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				downloadFile(toCsv(allData.columns, allData.rows), "query-result-all.csv", "text/csv;charset=utf-8");
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName]);
+
+	/** 导出全部数据为 Excel。 */
+	const exportAllXlsx = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				const target = tableInfoSelection?.tableName || "query_result";
+				downloadBlob(
+					new Blob([toXlsx(allData.columns, allData.rows, target)], {
+						type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					}),
+					"query-result-all.xlsx",
+				);
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName, tableInfoSelection?.tableName]);
+
+	/** 导出全部数据为 JSON。 */
+	const exportAllJson = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				downloadFile(toJson(allData.columns, allData.rows), "query-result-all.json", "application/json");
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName]);
+
+	/** 导出全部数据为 SQL INSERT。 */
+	const exportAllSql = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				const dbType = (state.connections.find((c) => c.name === connectionName)?.db_type ?? "").toLowerCase();
+				const dialect = /mysql|maria|tidb|starrocks|doris|goldendb|databend/.test(dbType) ? "mysql" : "standard";
+				const target = tableInfoSelection?.tableName || "query_result";
+				downloadFile(toSqlInsert(allData.columns, allData.rows, target, dialect), "query-result-all.sql", "application/sql;charset=utf-8");
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName, state.connections, tableInfoSelection?.tableName]);
+
 	const [exportMenu, setExportMenu] = useState<ContextMenuState | null>(null);
 
 	/** 导出格式菜单：左键 / 右键都在按钮上方展开（贴底栏，空间不足时菜单自动上翻）。 */
 	function openExportMenu(e: React.MouseEvent): void {
 		e.preventDefault();
 		e.stopPropagation();
+		const items: ContextMenuEntry[] = [
+			{ type: "item", label: "导出当前页 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: exportCsv },
+			{ type: "item", label: "导出当前页 Excel", icon: "icon-[lucide--sheet]", onClick: exportXlsx },
+			{ type: "item", label: "导出当前页 JSON", icon: "icon-[lucide--file-json]", onClick: exportJson },
+			{ type: "item", label: "导出当前页 SQL", icon: "icon-[lucide--file-terminal]", onClick: exportSql },
+		];
+		// 服务端分页时，增加"导出全部"选项
+		if (isServer) {
+			items.push(
+				{ type: "separator" },
+				{ type: "item", label: "导出全部 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: () => void exportAllCsv(), disabled: exportingAll },
+				{ type: "item", label: "导出全部 Excel", icon: "icon-[lucide--sheet]", onClick: () => void exportAllXlsx(), disabled: exportingAll },
+				{ type: "item", label: "导出全部 JSON", icon: "icon-[lucide--file-json]", onClick: () => void exportAllJson(), disabled: exportingAll },
+				{ type: "item", label: "导出全部 SQL", icon: "icon-[lucide--file-terminal]", onClick: () => void exportAllSql(), disabled: exportingAll },
+			);
+		}
 		setExportMenu({
 			x: e.clientX,
 			y: e.clientY,
-			items: [
-				{ type: "item", label: "导出 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: exportCsv },
-				{ type: "item", label: "导出 Excel（XLSX）", icon: "icon-[lucide--sheet]", onClick: exportXlsx },
-				{ type: "item", label: "导出 JSON", icon: "icon-[lucide--file-json]", onClick: exportJson },
-				{ type: "item", label: "导出 JSON Lines", icon: "icon-[lucide--file-code]", onClick: exportJsonLines },
-				{ type: "item", label: "导出 Markdown", icon: "icon-[lucide--file-text]", onClick: exportMarkdown },
-				{ type: "item", label: "导出 HTML", icon: "icon-[lucide--file-code-2]", onClick: exportHtml },
-				{ type: "item", label: "导出 SQL（INSERT）", icon: "icon-[lucide--file-terminal]", onClick: exportSql },
-				{ type: "item", label: "导出 TXT", icon: "icon-[lucide--file-text]", onClick: exportTxt },
-			],
+			items,
 		});
 	}
 
@@ -972,39 +1077,61 @@ export function ResultGrid({
 						</select>
 					</label>
 					{showCustomSizeInput && (
-						<input
-							type="number"
-							min="1"
-							value={customPageSize}
-							onChange={(e) => setCustomPageSize(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") applyCustomPageSize();
-								else if (e.key === "Escape") {
-									setShowCustomSizeInput(false);
-									setCustomPageSize("");
-								}
-							}}
-							placeholder="输入行数"
-							className="h-5 w-20 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
-							autoFocus
-						/>
+						<div className="flex items-center gap-1">
+							<input
+								type="number"
+								min="1"
+								value={customPageSize}
+								onChange={(e) => setCustomPageSize(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") applyCustomPageSize();
+									else if (e.key === "Escape") {
+										setShowCustomSizeInput(false);
+										setCustomPageSize("");
+									}
+								}}
+								placeholder="行数"
+								className="h-5 w-14 rounded border border-border bg-background px-1 text-[10px] text-foreground/80"
+								autoFocus
+							/>
+							<div className="relative" data-page-size-menu>
+								<button
+									type="button"
+									onClick={() => setPageSizeMenuOpen(!pageSizeMenuOpen)}
+									title="页大小选项"
+									className="flex h-5 w-5 items-center justify-center rounded bg-[var(--dbx-surface-2)] text-foreground/80 hover:bg-[var(--dbx-hover)]"
+								>
+									<span className="icon-[lucide--chevron-down] h-3 w-3" />
+								</button>
+								{pageSizeMenuOpen && (
+									<div className="absolute bottom-full right-0 z-50 mb-1 w-32 rounded-md border border-border bg-popover py-1 shadow-lg" data-page-size-menu>
+										<button
+											type="button"
+											onClick={() => {
+												applyCustomPageSize();
+												setPageSizeMenuOpen(false);
+											}}
+											className="flex w-full items-center gap-2 px-2 py-1 text-left text-[10px] text-foreground hover:bg-accent"
+										>
+											<span className="icon-[lucide--check] h-3 w-3" />
+											应用（本次）
+										</button>
+										<button
+											type="button"
+											onClick={() => {
+												setAsDefaultPageSize();
+												setPageSizeMenuOpen(false);
+											}}
+											className="flex w-full items-center gap-2 px-2 py-1 text-left text-[10px] text-foreground hover:bg-accent"
+										>
+											<span className="icon-[lucide--star] h-3 w-3" />
+											设为默认
+										</button>
+									</div>
+								)}
+							</div>
+						</div>
 					)}
-					<button
-						type="button"
-						onClick={showCustomSizeInput ? applyCustomPageSize : () => changePageSize(pageSize)}
-						title="仅本次应用"
-						className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
-					>
-						应用
-					</button>
-					<button
-						type="button"
-						onClick={showCustomSizeInput ? setAsDefaultPageSize : () => onSetDefaultPageSize?.(pageSize)}
-						title="设为默认每页行数"
-						className="h-5 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
-					>
-						设为默认
-					</button>
 					<span className="text-muted-foreground/70">
 						{pagedRows.length === 0 ? 0 : safePage * pageSize + 1}–
 						{safePage * pageSize + pagedRows.length}

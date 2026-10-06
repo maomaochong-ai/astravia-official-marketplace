@@ -7,7 +7,7 @@
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { engineExecuteByName, engineDescribeByName } from "../shared/services/engine-client";
-import { showVisualizationPreview } from "../shared/visualization-bridge";
+import { showVisualizationPreview } from "../features/visualization/visualization-bridge";
 
 export type ScreenTemplate = "data_command" | "business_intel" | "monitoring";
 
