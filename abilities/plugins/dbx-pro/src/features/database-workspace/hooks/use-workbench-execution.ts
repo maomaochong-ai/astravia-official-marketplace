@@ -14,9 +14,65 @@ import {
 	engineExecuteByName,
 	EngineClientError,
 	toQueryResult,
+	type EngineQueryOutcome,
 } from "../../../shared/services/engine-client";
 import type { EditorTab, WorkbenchState } from "../state/workbench-types";
 import type { WorkbenchAction } from "../state/workbench-actions";
+
+/**
+ * 服务端分页取一整页。
+ *
+ * 引擎单次结果硬上限为 ENGINE_ROW_CAP；用户页大小（如 2000 / 5000）大于它时，
+ * 按 cap 分块发起多次 LIMIT/OFFSET 请求并在前端拼接，保证网格一页真的有 N 行，
+ * 而不是静默只回 1000 行。不可分页 SQL（引擎忽略 page）只取一次。
+ */
+async function executeServerPage(
+	connectionName: string,
+	sql: string,
+	params: {
+		pageIndex: number;
+		pageSize: number;
+		timeoutMs: number;
+		dbType?: string;
+	},
+): Promise<EngineQueryOutcome> {
+	const { pageIndex, pageSize, timeoutMs, dbType } = params;
+	const baseOffset = pageIndex * pageSize;
+	const chunkCount = Math.max(1, Math.ceil(pageSize / ENGINE_ROW_CAP));
+
+	let first: EngineQueryOutcome | null = null;
+	const mergedRows: Record<string, unknown>[] = [];
+	let lastRows = 0;
+
+	for (let chunk = 0; chunk < chunkCount; chunk += 1) {
+		const raw = await engineExecuteByName(connectionName, sql, {
+			timeoutMs,
+			rowLimit: ENGINE_ROW_CAP,
+			dbType,
+			page: { offset: baseOffset + chunk * ENGINE_ROW_CAP, limit: ENGINE_ROW_CAP },
+		});
+		if (!first) first = raw;
+		mergedRows.push(...raw.rows);
+		lastRows = raw.rows.length;
+		// 非可分页 SQL：引擎忽略 page，多次请求只会重复同一结果集，取一次即止。
+		if (!raw.paged) break;
+		// 末页（不足一块）或已凑满本页，无需继续。
+		if (raw.rows.length < ENGINE_ROW_CAP) break;
+		if (mergedRows.length >= pageSize) break;
+	}
+
+	const head = first as EngineQueryOutcome;
+	return {
+		...head,
+		rows: mergedRows.slice(0, pageSize),
+		row_count: Math.min(mergedRows.length, pageSize),
+		// 非分页 SQL 保留引擎截断标记（toQueryResult 据此提示 1000 行上限）；
+		// 分页拼页不标截断：没取满是因为到底了，取满了下一页继续取。
+		truncated: head.paged === true ? false : head.truncated,
+		paged: head.paged === true ? true : undefined,
+		engine_row_count: head.paged === true ? mergedRows.length : lastRows,
+	};
+}
 
 interface ExecutionDeps {
 	stateRef: React.MutableRefObject<WorkbenchState>;
@@ -140,12 +196,19 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 
 			try {
 				const targetConn = stateRef.current.connections.find((c) => c.name === connectionName);
-				const rawOutcome = await engineExecuteByName(connectionName, sqlToRun, {
-					timeoutMs: current.queryTimeoutSecs * 1000,
-					rowLimit: isServerMode ? pageSize : ENGINE_ROW_CAP,
-					dbType: targetConn?.db_type,
-					...(isServerMode ? { page: { offset: pageIndex * pageSize, limit: pageSize } } : {}),
-				});
+				const rawOutcome = isServerMode
+					? // 页大小超过引擎单次上限时由 executeServerPage 分块拼页。
+						await executeServerPage(connectionName, sqlToRun, {
+							pageIndex,
+							pageSize,
+							timeoutMs: current.queryTimeoutSecs * 1000,
+							dbType: targetConn?.db_type,
+						})
+					: await engineExecuteByName(connectionName, sqlToRun, {
+							timeoutMs: current.queryTimeoutSecs * 1000,
+							rowLimit: ENGINE_ROW_CAP,
+							dbType: targetConn?.db_type,
+						});
 				const outcome = toQueryResult(rawOutcome);
 				applySuccess(tabId, startedAt, outcome, {
 					pageIndex,

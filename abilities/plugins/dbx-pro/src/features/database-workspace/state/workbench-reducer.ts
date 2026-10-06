@@ -8,6 +8,7 @@
 import { connectionFromNodeKey, connectionNodeKey } from "../../../domain/tree-node-key";
 import type { WorkbenchAction } from "./workbench-actions";
 import type { EditorTab, WorkbenchState } from "./workbench-types";
+import { GALLERY_TAB_ID } from "./tab-ids";
 
 const INITIAL_TABS: EditorTab[] = [
 	{
@@ -104,6 +105,16 @@ export function reducer(state: WorkbenchState, action: WorkbenchAction): Workben
 		}
 
 		case "addTab": {
+			// 单例 tab（画廊）用固定 id：重复派发只激活，不追加，防止同 tick 双击产生重复 key。
+			// 其余 tab 一律追加 —— id 由 nextTabId() 保证唯一，按 id 去重会在撞 id 时
+			// 静默吞掉新标签页（用户点了「新建查询」却没有反应）。
+			const isSingleton = action.tab.gallery === true || action.tab.id === GALLERY_TAB_ID;
+			if (isSingleton) {
+				const existing = state.tabs.find((t) => t.id === action.tab.id || t.gallery === true);
+				if (existing) {
+					return { ...state, activeTabId: existing.id };
+				}
+			}
 			const tabs = [...state.tabs, action.tab];
 			return { ...state, tabs, activeTabId: action.tab.id };
 		}

@@ -10,14 +10,16 @@
  */
 
 import { useState, useRef, useEffect, type JSX } from "react";
-import type { StoredVisualization } from "../visualization-store";
+import type { Visualization } from "../visualization-bridge";
 import { DASHBOARD_PRESETS } from "../presets/dashboard/presets";
 import { SCREEN_PRESETS } from "../presets/screen/presets";
 import { DashboardRenderer, type RenderedChart } from "./dashboard-renderer";
 import { ScreenRenderer, type RenderedWidget } from "./screen-renderer";
 
 interface Props {
-	viz: StoredVisualization;
+	// 预览态（工具刚生成、未入库，无 id）与已保存产物共用此组件；
+	// 组件本身不读 id/createdAt，故接受 Visualization 即可，StoredVisualization 是其子类型。
+	viz: Visualization;
 	onClose?: () => void;
 }
 
@@ -62,10 +64,16 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 		}
 	};
 
-	// 查找对应的预设模板
-	const preset = viz.type === "dashboard"
-		? DASHBOARD_PRESETS.find((p) => p.id === viz.presetId || p.id === viz.template)
-		: SCREEN_PRESETS.find((p) => p.id === viz.presetId || p.id === viz.template);
+	// 按类型分别查找预设，保持 DashboardPreset / ScreenPreset 类型收窄。
+	const dashboardPreset =
+		viz.type === "dashboard"
+			? DASHBOARD_PRESETS.find((p) => p.id === viz.presetId || p.id === viz.template)
+			: undefined;
+	const screenPreset =
+		viz.type === "screen"
+			? SCREEN_PRESETS.find((p) => p.id === viz.presetId || p.id === viz.template)
+			: undefined;
+	const preset = dashboardPreset ?? screenPreset;
 
 	// 渲染内容
 	const renderContent = (): JSX.Element | null => {
@@ -75,26 +83,27 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 					srcDoc={viz.html}
 					className="visualization-tab-iframe"
 					title={viz.title}
-					sandbox="allow-scripts allow-same-origin"
+					// 仅放行脚本；不授予 allow-same-origin，防止自包含 HTML 脱离沙箱访问宿主存储。
+					sandbox="allow-scripts"
 				/>
 			);
 		}
 
 		// 组件模式
-		if (viz.type === "dashboard" && preset && viz.charts) {
+		if (viz.type === "dashboard" && dashboardPreset && viz.charts) {
 			return (
 				<DashboardRenderer
-					preset={preset}
+					preset={dashboardPreset}
 					title={viz.title}
 					charts={viz.charts as RenderedChart[]}
 				/>
 			);
 		}
 
-		if (viz.type === "screen" && preset && viz.widgets) {
+		if (viz.type === "screen" && screenPreset && viz.widgets) {
 			return (
 				<ScreenRenderer
-					preset={preset}
+					preset={screenPreset}
 					title={viz.title}
 					widgets={viz.widgets as RenderedWidget[]}
 				/>
@@ -107,7 +116,7 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 				srcDoc={viz.html}
 				className="visualization-tab-iframe"
 				title={viz.title}
-				sandbox="allow-scripts allow-same-origin"
+				sandbox="allow-scripts"
 			/>
 		);
 	};

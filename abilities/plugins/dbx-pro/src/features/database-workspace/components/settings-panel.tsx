@@ -147,7 +147,7 @@ function EditorSettings({ settings, onChange }: { settings: WorkbenchSettings; o
 				/>
 			</SettingRow>
 
-			<SettingRow label="默认每页行数" hint="网格分页页大小">
+			<SettingRow label="默认每页行数" hint={`网格分页页大小（1–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}，大于引擎单次上限时自动分块拉取）`}>
 				<input
 					type="number"
 					className="dbx-form-input"

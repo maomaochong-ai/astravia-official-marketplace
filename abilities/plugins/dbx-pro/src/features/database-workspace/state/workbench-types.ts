@@ -6,6 +6,7 @@
 import type { DbConnection } from "../../../domain/connection-config";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import type { SelectedNodeInfo } from "../../../shared/ai/send-context";
+import type { Visualization } from "../../visualization/visualization-bridge";
 
 export interface EngineColumn {
 	name: string;
@@ -48,36 +49,8 @@ export interface EditorTab {
 	isRunning: boolean;
 	/** 可视化产物画廊 tab（单例，id 固定 tab-gallery；不持久化、不绑连接）。 */
 	gallery?: boolean;
-	/** 可视化产物数据（如果是可视化标签页） */
-	visualization?: {
-		id?: string;
-		title: string;
-		type: "dashboard" | "screen";
-		template: string;
-		presetId?: string;
-		connection: string;
-		table: string;
-		html: string;
-		charts?: Array<{
-			id: string;
-			type: string;
-			title: string;
-			columns?: string[];
-			rows?: Array<Record<string, unknown>>;
-			config?: Record<string, unknown>;
-			layout?: Record<string, number>;
-		}>;
-		widgets?: Array<{
-			id: string;
-			type: string;
-			title: string;
-			columns?: string[];
-			rows?: Array<Record<string, unknown>>;
-			config?: Record<string, unknown>;
-			layout?: Record<string, number>;
-		}>;
-		createdAt?: number;
-	};
+	/** 可视化预览标签页（工具刚生成、未入库；类型与 bridge 同源，禁止重复定义）。 */
+	visualization?: Visualization;
 }
 
 export interface WorkbenchState {

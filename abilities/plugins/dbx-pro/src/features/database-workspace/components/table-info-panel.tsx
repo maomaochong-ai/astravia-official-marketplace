@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState, type JSX } from "react";
 import type { EngineColumn } from "../state/workbench-types";
 import { engineDescribeByName } from "../../../shared/services/engine-client";
 import { useWorkbench } from "../hooks/use-workbench";
+import { nextTabId } from "../state/tab-ids";
 import { TableInfoColumns } from "./table-info-columns";
 import { TableInfoOverview } from "./table-info-overview";
 import { TableInfoDdl } from "./table-info-ddl";
@@ -102,7 +103,7 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 
 	/** 把 DDL（或任意 SQL）发送到新查询 tab，绑定当前连接并关闭抽屉。 */
 	function openInQuery(ddl: string): void {
-		const id = `tab-${Date.now().toString(36)}`;
+		const id = nextTabId();
 		dispatch({
 			type: "addTab",
 			tab: {

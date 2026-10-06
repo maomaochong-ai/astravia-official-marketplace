@@ -28,6 +28,7 @@ import {
 } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 import { VisualizationTemplateDialog } from "../../visualization/components/visualization-template-dialog";
+import { nextTabId } from "../state/tab-ids";
 
 interface Props {
 	node: TreeNode;
@@ -35,8 +36,6 @@ interface Props {
 	connectionName?: string;
 	schema?: string;
 }
-
-let querySeq = 0;
 
 export function ConnectionNode({ node, depth, connectionName, schema }: Props): JSX.Element {
 	const {
@@ -108,7 +107,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	/** connection 双击：新建查询 tab 并绑定。 */
 	function newQueryForConnection(): void {
 		dispatch({ type: "setActiveConnection", name: node.label });
-		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+		const id = nextTabId();
 		dispatch({
 			type: "addTab",
 			tab: { id, label: node.label, connectionName: node.label, sql: "", isRunning: false },
@@ -200,7 +199,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			columns,
 		});
 
-		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+		const id = nextTabId();
 		dispatch({
 			type: "addTab",
 			tab: { id, label: `${node.label} ${type.toUpperCase()}`, connectionName: effectiveConnectionName, sql, isRunning: false },
@@ -238,7 +237,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		} else {
 			sql = `DROP TABLE IF EXISTS ${t}${params.cascade ? " CASCADE" : ""};`;
 		}
-		const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+		const id = nextTabId();
 		dispatch({
 			type: "addTab",
 			tab: { id, label: `${node.label} ${params.kind.toUpperCase()}`, connectionName: connName, sql, isRunning: false },
@@ -321,7 +320,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						icon: "icon-[lucide--file-plus-2]",
 						onClick: () => {
 							if (!connectionName) return;
-							const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+							const id = nextTabId();
 							// schema 下新建空查询并绑定连接，不预置无效的 schema. 片段。
 							dispatch({
 								type: "addTab",
@@ -374,7 +373,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						onClick: () => {
 							if (!connectionName) return;
 							const sql = `SELECT * FROM ${qualifiedName} LIMIT 100;`;
-							const id = `tab-${Date.now().toString(36)}-${(querySeq++).toString(36)}`;
+							const id = nextTabId();
 							dispatch({
 								type: "addTab",
 								tab: { id, label: node.label, connectionName, sql, isRunning: false },

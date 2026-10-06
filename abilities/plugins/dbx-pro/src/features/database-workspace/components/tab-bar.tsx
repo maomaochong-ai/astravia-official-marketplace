@@ -11,6 +11,7 @@
 
 import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
+import { nextQueryLabel, nextTabId } from "../state/tab-ids";
 import {
 	ContextMenu,
 	type ContextMenuState,
@@ -24,16 +25,12 @@ export function TabBar(): JSX.Element {
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
 
 	function addTab() {
-		const id = `tab-${Date.now().toString(36)}`;
-		const maxIdx = state.tabs.reduce((max, t) => {
-			const m = t.label.match(/^查询 (\d+)/);
-			return m ? Math.max(max, Number(m[1])) : max;
-		}, 0);
+		const id = nextTabId();
 		dispatch({
 			type: "addTab",
 			tab: {
 				id,
-				label: `查询 ${maxIdx + 1}`,
+				label: nextQueryLabel(state.tabs),
 				connectionName: state.activeConnectionName,
 				sql: "",
 				isRunning: false,
@@ -166,6 +163,8 @@ export function TabBar(): JSX.Element {
 										? "icon-[lucide--loader] animate-spin text-warning"
 										: tab.result?.ok === false
 											? "icon-[lucide--alert-circle] text-destructive"
+											: tab.gallery
+											? "icon-[lucide--images] text-primary"
 											: tab.visualization
 												? tab.visualization.type === "dashboard"
 													? "icon-[lucide--layout-dashboard] text-primary"

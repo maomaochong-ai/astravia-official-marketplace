@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { readSession, writeSession } from "../../../domain/workbench-session";
+import { patchSession, readSession } from "../../../domain/workbench-session";
 
 interface DragState {
 	/** "left" = 左栏/中栏之间；"right" = 中栏/右栏之间 */
@@ -111,26 +111,28 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 	const baseWidth = measuredWidth || 1000;
 
 	// 恢复上次三栏宽度（仅在用户拖过时有效）。
+	// 恢复完成前 leftW/rightW 仍是初始值，直接写回会覆盖磁盘上用户拖过的宽度，
+	// 故用 hydration 门闩把「首次落盘」推迟到读取结束。
+	const [widthsHydrated, setWidthsHydrated] = useState(false);
 	useEffect(() => {
 		let alive = true;
 		void readSession().then((s) => {
-			if (!alive || !s) return;
-			if (Number.isFinite(s.leftW)) setLeftW(s.leftW as number);
-			if (Number.isFinite(s.rightW)) setRightW(s.rightW as number);
-		}).catch(() => { /* ignore */ });
+			if (!alive) return;
+			if (s && Number.isFinite(s.leftW)) setLeftW(s.leftW as number);
+			if (s && Number.isFinite(s.rightW)) setRightW(s.rightW as number);
+		}).catch(() => { /* ignore */ }).finally(() => {
+			if (alive) setWidthsHydrated(true);
+		});
 		return () => { alive = false; };
 	}, []);
 
 	// 拖拽结束（dragging 回 null）后把最终宽度并入会话，重载后保持同样布局。
+	// 只提交本写入方维护的字段：整份覆盖会抹掉会话里其它写入方（tab 自动保存、
+	// 左栏折叠态）刚写入的值。
 	useEffect(() => {
-		if (dragging || (!leftW && !rightW)) return;
-		void (async () => {
-			const cur = (await readSession().catch(() => null)) ?? {
-				activeConnectionName: null, activeTabId: null, tabs: [], expandedNodes: [],
-			};
-			await writeSession({ ...cur, leftW, rightW }).catch(() => { /* ignore */ });
-		})();
-	}, [dragging, leftW, rightW]);
+		if (!widthsHydrated || dragging || (!leftW && !rightW)) return;
+		void patchSession({ leftW, rightW }).catch(() => { /* ignore */ });
+	}, [widthsHydrated, dragging, leftW, rightW]);
 
 	const effectiveLeft = leftW || Math.round(baseWidth * 0.18);
 	const effectiveRight = rightW || Math.round(baseWidth * 0.2);

@@ -38,7 +38,7 @@ export function RechartsPieChart({
 							cy="50%"
 							outerRadius="80%"
 							fill="#8884d8"
-							label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+							label={({ name, percent }) => `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`}
 							labelLine={false}
 						>
 							{data.map((_, index) => (

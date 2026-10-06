@@ -115,6 +115,24 @@
 
 /* 面板内段落分隔：柔和下边线，统一间距 */
 .dbx-section-divider {
-	border-bottom: 1px solid var(--dbx-line-soft);
-	margin: 0;
+        border-bottom: 1px solid var(--dbx-line-soft);
+        margin: 0;
+}
+
+/* 导出进度：未知总行数时的滑动进度条（对标 dbx export-progress-slide） */
+.dbx-export-indeterminate {
+        width: 42%;
+        animation: dbx-export-slide 1.15s ease-in-out infinite;
+}
+
+@keyframes dbx-export-slide {
+        0% {
+                transform: translateX(-110%);
+        }
+        50% {
+                transform: translateX(70%);
+        }
+        100% {
+                transform: translateX(250%);
+        }
 }

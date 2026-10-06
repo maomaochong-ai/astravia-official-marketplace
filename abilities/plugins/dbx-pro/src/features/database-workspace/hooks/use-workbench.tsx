@@ -35,23 +35,15 @@ import { useWorkbenchTree } from "./use-workbench-tree";
 import { useWorkbenchExecution } from "./use-workbench-execution";
 import { useWorkbenchHistory } from "./use-workbench-history";
 import { useWorkbenchSession } from "./use-workbench-session";
+import { nextQueryLabel, nextTabId } from "../state/tab-ids";
 
 // 重新导出，保持向后兼容
 export { useWorkbench };
 export type { EngineColumn };
 
-let tabCounter = 2;
-function nextTabId(): string {
-	return `tab-${Date.now().toString(36)}-${(tabCounter++).toString(36)}`;
-}
-
 function nextTabLabel(tabs: EditorTab[], preferred?: string): string {
 	if (preferred) return preferred;
-	const maxIdx = tabs.reduce((max, t) => {
-		const m = t.label.match(/^查询 (\d+)/);
-		return m ? Math.max(max, Number(m[1])) : max;
-	}, 0);
-	return `查询 ${maxIdx + 1}`;
+	return nextQueryLabel(tabs);
 }
 
 export function WorkbenchProvider({ children }: { children: ReactNode }) {

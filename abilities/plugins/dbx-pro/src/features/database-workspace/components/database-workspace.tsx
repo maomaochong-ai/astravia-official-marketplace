@@ -16,11 +16,12 @@ import { SqlEditorWorkspace } from "./sql-editor-workspace";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
-import { readSession, writeSession } from "../../../domain/workbench-session";
+import { patchSession, readSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
 import { setPreviewCallback, setSaveCallback, type Visualization } from "../../visualization/visualization-bridge";
 import { useVisualizationStore } from "../../visualization/visualization-store";
+import { GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (
@@ -35,6 +36,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
+	/** 会话恢复完成前不写盘：初始值写回去会覆盖磁盘上的真实折叠态。 */
+	const [sessionHydrated, setSessionHydrated] = useState(false);
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
@@ -42,14 +45,11 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const { visualizations, addVisualization } = useVisualizationStore();
 	const workspaceRef = useRef<HTMLDivElement>(null);
 
-	/** 可视化产物画廊单例 tab 的固定 id。 */
-	const GALLERY_TAB_ID = "tab-gallery";
-
 	// 注册可视化预览和保存回调
 	useEffect(() => {
 		setPreviewCallback((viz) => {
 			// 创建新标签页
-			const id = `viz-${Date.now().toString(36)}`;
+			const id = nextTabId("viz");
 			dispatch({
 				type: "addTab",
 				tab: {
@@ -85,31 +85,26 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	useEffect(() => {
 		let alive = true;
 		void readSession().then((s) => {
-			if (!alive || !s) return;
-			if (typeof s.leftCollapsed === "boolean") setLeftCollapsed(s.leftCollapsed);
-		}).catch(() => { /* ignore */ });
+			if (!alive) return;
+			if (s && typeof s.leftCollapsed === "boolean") setLeftCollapsed(s.leftCollapsed);
+		}).catch(() => { /* ignore */ }).finally(() => {
+			if (alive) setSessionHydrated(true);
+		});
 		return () => { alive = false; };
 	}, []);
 
-	// 左栏折叠态变化时并入会话。
+	// 左栏折叠态变化时并入会话。只提交本写入方维护的字段：整份覆盖会抹掉
+	// tab 自动保存与三栏宽度写入的结果。
 	useEffect(() => {
-		void (async () => {
-			const cur = (await readSession().catch(() => null)) ?? {
-				activeConnectionName: null, activeTabId: null, tabs: [], expandedNodes: [],
-			};
-			await writeSession({ ...cur, leftCollapsed }).catch(() => { /* ignore */ });
-		})();
-	}, [leftCollapsed]);
+		if (!sessionHydrated) return;
+		void patchSession({ leftCollapsed }).catch(() => { /* ignore */ });
+	}, [sessionHydrated, leftCollapsed]);
 
 	function newQueryTab() {
-		const id = `tab-${Date.now().toString(36)}`;
-		const maxIdx = state.tabs.reduce((max, t) => {
-			const m = t.label.match(/^查询 (\d+)/);
-			return m ? Math.max(max, Number(m[1])) : max;
-		}, 0);
+		const id = nextTabId();
 		dispatch({
 			type: "addTab",
-			tab: { id, label: `查询 ${maxIdx + 1}`, connectionName: state.activeConnectionName, sql: "", isRunning: false },
+			tab: { id, label: nextQueryLabel(state.tabs), connectionName: state.activeConnectionName, sql: "", isRunning: false },
 		});
 	}
 

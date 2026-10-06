@@ -1,7 +1,8 @@
 /**
  * VisualizationGalleryView — 可视化产物管理工作区视图。
- * 
- * 作为侧边栏视图注册，展示所有生成的看板和大屏。
+ *
+ * 在数据库工作台中栏以内部标签页（tab-gallery）打开，展示所有生成的看板和大屏；
+ * 不使用遮罩层/独立窗口，避免遮挡宿主或与活动栏冲突。
  */
 
 import { useState, type JSX } from "react";

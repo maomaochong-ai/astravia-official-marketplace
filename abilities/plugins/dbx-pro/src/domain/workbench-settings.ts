@@ -37,21 +37,30 @@ export const ENGINE_ROW_CAP = 1000;
 export const PAGE_SIZE_OPTIONS = [50, 100, 200, 500, 1000] as const;
 
 /**
- * 页大小夹逼：设置项与网格下拉共用，保证 offset/limit 不会超过引擎单次结果上限。
- * 这里是页大小而不是「结果行数上限」——行数上限已由 ENGINE_ROW_CAP 固定。
- * 自定义行数不限制上限，由引擎自行处理截断。
+ * 每页行数允许的最大值（自定义与设为默认共用）。
+ * dbx 桌面壳为 1_000_000（其网格虚拟滚动）；本插件结果表为非虚拟化 DOM，
+ * 过大会让渲染卡顿，夹到 10_000；超过引擎单次硬上限的部分由执行层
+ * 按 ENGINE_ROW_CAP 分块循环拉取拼页，对用户仍是「一页 N 行」。
+ */
+export const MAX_RESULT_PAGE_SIZE = 10_000;
+export const MIN_RESULT_PAGE_SIZE = 1;
+
+/**
+ * 页大小夹逼：设置项与网格下拉共用。
+ * 这里是页大小而不是「结果行数上限」——引擎单次上限 ENGINE_ROW_CAP 固定，
+ * 大于它的页由执行层分块拉取拼接。
  */
 export function resolvePageSize(value: unknown): number {
 	const num = Number(value);
-	if (!Number.isFinite(num) || num < 1) return DEFAULT_SETTINGS.rowLimit;
-	return Math.floor(num);
+	if (!Number.isFinite(num) || num < MIN_RESULT_PAGE_SIZE) return DEFAULT_SETTINGS.rowLimit;
+	return Math.min(Math.floor(num), MAX_RESULT_PAGE_SIZE);
 }
 
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
 export const SETTINGS_BOUNDS = Object.freeze({
 	queryTimeoutSecs: { min: 1, max: 600 },
-	/** rowLimit：默认每页显示行数。 */
-	rowLimit: { min: 1, max: ENGINE_ROW_CAP },
+	/** rowLimit：默认每页显示行数（可超过引擎单次上限，执行层分块拼页）。 */
+	rowLimit: { min: MIN_RESULT_PAGE_SIZE, max: MAX_RESULT_PAGE_SIZE },
 	historyLimit: { min: HISTORY_LIMIT_MIN, max: HISTORY_LIMIT_MAX },
 });
 

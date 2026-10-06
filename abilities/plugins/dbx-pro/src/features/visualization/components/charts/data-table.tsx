@@ -31,8 +31,8 @@ export function DataTable({ title, columns, rows, maxRows = 20 }: DataTableProps
 							<tr key={i}>
 								{columns.map((col) => (
 									<td key={col} title={String(row[col] ?? "")}>
-										{row[col] ?? ""}
-									</td>
+									{String(row[col] ?? "")}
+								</td>
 								))}
 							</tr>
 						))}
