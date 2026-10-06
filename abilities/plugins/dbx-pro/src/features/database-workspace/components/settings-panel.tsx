@@ -118,7 +118,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 							<ExportSettings settings={settings} onChange={updateSetting} />
 						)}
 						{activeCategory === "sidebar" && (
-							<SidebarSettings settings={settings} onChange={updateSetting} />
+							<SidebarSettings />
 						)}
 						{activeCategory === "history" && (
 							<HistorySettings settings={settings} onChange={updateSetting} onClearHistory={onClearHistory} />
@@ -321,31 +321,19 @@ function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings
 }
 
 /** 侧边栏设置（对齐 dbx Navigation） */
-function SidebarSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
+function SidebarSettings(): JSX.Element {
 	return (
 		<div className="space-y-4">
-			<h3 className="text-[13px] font-semibold text-foreground">侧边栏</h3>
+			<h3 className="text-[13px] font-semibold text-foreground">树交互</h3>
 
-			<SettingRow label="单击表节点行为" hint="单击连接树中的表时">
-				<select
-					className="dbx-form-input"
-					value={settings.tableSingleClickAction}
-					onChange={(e) => onChange("tableSingleClickAction", e.target.value as "preview" | "structure")}
-				>
-					<option value="structure">查看表结构</option>
-					<option value="preview">预览数据</option>
-				</select>
-			</SettingRow>
-
-			<SettingRow label="双击表节点行为" hint="双击连接树中的表时">
-				<select
-					className="dbx-form-input"
-					value={settings.tableDoubleClickAction}
-					onChange={(e) => onChange("tableDoubleClickAction", e.target.value as "preview" | "structure")}
-				>
-					<option value="preview">预览数据</option>
-					<option value="structure">查看表结构</option>
-				</select>
+			<SettingRow label="连接树节点" hint="选中与打开查询的方式">
+				<span className="text-[11px] leading-relaxed text-foreground/70">
+					单击：连接展开、表节点只是选中，不会打开或执行查询。
+					<br />
+					双击：连接新建查询标签页，表节点预览数据（打开并执行 SELECT）。
+					<br />
+					右键：预览数据、查看表结构、生成 SQL、统计行数、可视化等。
+				</span>
 			</SettingRow>
 		</div>
 	);

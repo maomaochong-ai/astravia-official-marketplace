@@ -37,8 +37,8 @@ describe("设置常量", () => {
 		assert.ok(DEFAULT_SETTINGS.rowLimit <= ENGINE_ROW_CAP);
 	});
 
-	it("分页档位与 dbx 桌面壳一致：[50,100,500,1000] 共 4 档，无 10000", () => {
-		assert.deepEqual([...PAGE_SIZE_OPTIONS], [50, 100, 500, 1000]);
+	it("分页档位覆盖到 5000 行/页，用户自定义的 2000 / 5000 不再被静默改回 1000", () => {
+		assert.deepEqual([...PAGE_SIZE_OPTIONS], [50, 100, 500, 1000, 2000, 5000]);
 		assert.ok(!PAGE_SIZE_OPTIONS.includes(10_000));
 	});
 
@@ -46,10 +46,10 @@ describe("设置常量", () => {
 		assert.equal(DEFAULT_SETTINGS.rowLimit, 100);
 	});
 
-	it("页大小上限夹到引擎单次结果上限（分块串行取数 + 非虚拟化 DOM 整页渲染会卡死）", () => {
-		assert.equal(MAX_RESULT_PAGE_SIZE, ENGINE_ROW_CAP);
-		assert.equal(SETTINGS_BOUNDS.rowLimit.max, ENGINE_ROW_CAP);
-		assert.equal(SETTINGS_BOUNDS.tableOpenPageSize.max, ENGINE_ROW_CAP);
+	it("页大小上限 = 10 × 引擎单次上限（超出部分由网格分块拼页，不再夹回 1000）", () => {
+		assert.equal(MAX_RESULT_PAGE_SIZE, 10 * ENGINE_ROW_CAP);
+		assert.equal(SETTINGS_BOUNDS.rowLimit.max, MAX_RESULT_PAGE_SIZE);
+		assert.equal(SETTINGS_BOUNDS.tableOpenPageSize.max, MAX_RESULT_PAGE_SIZE);
 	});
 
 	it("导出限制默认关闭，上限默认 100_000，区间 100..2_147_483_647", () => {
@@ -72,8 +72,8 @@ describe("设置常量", () => {
 		assert.equal(EXPORT_BATCH_SIZE_MAX, 100_000);
 	});
 
-	it("查询结果总量限制默认开启，上限默认 100_000，区间 1..2_147_483_647", () => {
-		assert.equal(DEFAULT_SETTINGS.queryResultMaxRowsEnabled, true);
+	it("查询结果总量限制默认关闭（不再拿 100_000 充当总行数），上限默认 100_000，区间 1..2_147_483_647", () => {
+		assert.equal(DEFAULT_SETTINGS.queryResultMaxRowsEnabled, false);
 		assert.equal(DEFAULT_SETTINGS.queryResultMaxRows, QUERY_RESULT_MAX_ROWS_DEFAULT);
 		assert.equal(QUERY_RESULT_MAX_ROWS_DEFAULT, 100_000);
 		assert.equal(QUERY_RESULT_MAX_ROWS_MIN, 1);
@@ -89,9 +89,16 @@ describe("resolvePageSize", () => {
 	it("合法整数原样返回", () => {
 		assert.equal(resolvePageSize(200), 200);
 	});
-	it("超过 ENGINE_ROW_CAP 夹到引擎单次上限", () => {
-		assert.equal(resolvePageSize(2_000_000), ENGINE_ROW_CAP);
-		assert.equal(resolvePageSize(100_000), ENGINE_ROW_CAP);
+	it("超过页大小上限夹到 MAX_RESULT_PAGE_SIZE，档位内的 2000 / 5000 原样保留", () => {
+		assert.equal(resolvePageSize(2_000_000), MAX_RESULT_PAGE_SIZE);
+		assert.equal(resolvePageSize(100_000), MAX_RESULT_PAGE_SIZE);
+		// 回归：自定义页大小曾被夹到 ENGINE_ROW_CAP，用户选 2000 会静默变 1000。
+		assert.equal(resolvePageSize(2_000), 2_000);
+		assert.equal(resolvePageSize(5_000), 5_000);
+	});
+	it("自定义页大小经 normalizeSettings 后不被改写", () => {
+		assert.equal(normalizeSettings({ rowLimit: 2_000 }).rowLimit, 2_000);
+		assert.equal(normalizeSettings({ tableOpenPageSize: 5_000 }).tableOpenPageSize, 5_000);
 	});
 	it("坏值回落默认（默认页大小 100）", () => {
 		assert.equal(resolvePageSize(0), DEFAULT_SETTINGS.rowLimit);
@@ -193,7 +200,7 @@ describe("normalizeSettings", () => {
 		const missing = normalizeSettings({ rowLimit: 50 });
 		assert.equal(missing.tableOpenPageSize, DEFAULT_TABLE_OPEN_PAGE_SIZE);
 		assert.equal(missing.exportBatchSize, EXPORT_BATCH_SIZE_DEFAULT);
-		assert.equal(missing.queryResultMaxRowsEnabled, true);
+		assert.equal(missing.queryResultMaxRowsEnabled, false);
 		assert.equal(missing.queryResultMaxRows, QUERY_RESULT_MAX_ROWS_DEFAULT);
 	});
 
@@ -309,7 +316,7 @@ describe("isDefaultSettings", () => {
 			false,
 		);
 		assert.equal(
-			isDefaultSettings({ ...DEFAULT_SETTINGS, queryResultMaxRowsEnabled: false }),
+			isDefaultSettings({ ...DEFAULT_SETTINGS, queryResultMaxRowsEnabled: true }),
 			false,
 		);
 		assert.equal(

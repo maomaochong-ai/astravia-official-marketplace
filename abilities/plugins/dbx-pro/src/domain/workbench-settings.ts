@@ -19,10 +19,6 @@ export interface WorkbenchSettings {
 	historyEnabled: boolean;
 	/** 历史条数上限。 */
 	historyLimit: number;
-	/** 单击表节点的行为。 */
-	tableSingleClickAction: "preview" | "structure";
-	/** 双击表节点的行为。 */
-	tableDoubleClickAction: "preview" | "structure";
 	/**
 	 * 导出行数限制开关（对齐 dbx 桌面壳 exportRowLimitEnabled，默认关闭＝导出全部）。
 	 * 关闭时「导出全部数据」按页循环拉取到末页，不人为截断；
@@ -35,7 +31,10 @@ export interface WorkbenchSettings {
 	tableOpenPageSize: number;
 	/** 导出全部数据时每批取行数。对齐 dbx exportBatchSize。 */
 	exportBatchSize: number;
-	/** 查询结果总量上限开关。对齐 dbx queryResultMaxRowsEnabled。 */
+	/**
+	 * 查询结果总量上限开关（默认关闭）。对齐 dbx queryResultMaxRowsEnabled。
+	 * 只限制可翻看的最大行数，不影响「共 N 行」的总行数统计。
+	 */
 	queryResultMaxRowsEnabled: boolean;
 	/** 查询结果总量上限。对齐 dbx queryResultMaxRows。 */
 	queryResultMaxRows: number;
@@ -65,19 +64,19 @@ export interface WorkbenchSettings {
  */
 export const ENGINE_ROW_CAP = 1000;
 
-/** 网格可选的每页行数（底部下拉）。对齐 dbx 桌面壳 4 档。 */
-export const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000] as const;
+/** 网格可选的每页行数（底部下拉）。对齐 dbx 桌面壳 4 档，另加 2000/5000 便于大页浏览。 */
+export const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000, 2000, 5000] as const;
 
 /**
  * 每页行数允许的最大值（自定义与设为默认共用）。
  *
- * 刻意取引擎单次结果硬上限 ENGINE_ROW_CAP，而不是 dbx 桌面壳的 1_000_000：
- * dbx 结果表是虚拟滚动，超大页只渲染可视区；本插件结果表是非虚拟化 DOM，
- * 一页 N 行就真的挂 N 行节点。放行超过 cap 的页大小会同时触发两个问题：
- * 执行层按 cap 分块串行发 N/cap 次 LIMIT/OFFSET 请求（越翻越慢直到超时），
- * 且最终一次性渲染整页导致界面卡死。故取值上限与引擎单次上限对齐。
+ * 引擎单次结果硬上限是 ENGINE_ROW_CAP，超过它的页由执行层分块串行拼页
+ * （N/cap 次 LIMIT/OFFSET），再一次性渲染整页。dbx 桌面壳结果表是虚拟滚动，
+ * 上限取 1_000_000 无妨；本插件结果表是非虚拟化 DOM，一页 N 行就真的挂 N 行
+ * 节点，故上限取 10 倍 cap（5000 档位之上留出余量），兼顾「自定义每页行数不被
+ * 悄悄回退」与「整页渲染不至于卡死」。
  */
-export const MAX_RESULT_PAGE_SIZE = ENGINE_ROW_CAP;
+export const MAX_RESULT_PAGE_SIZE = 10 * ENGINE_ROW_CAP;
 export const MIN_RESULT_PAGE_SIZE = 1;
 
 /**
@@ -128,7 +127,7 @@ export function resolvePageSize(value: unknown, fallback: number = DEFAULT_SETTI
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
 export const SETTINGS_BOUNDS = Object.freeze({
 	queryTimeoutSecs: { min: 1, max: 600 },
-	/** rowLimit：默认每页显示行数，上限即引擎单次上限（不再分块拼页）。 */
+	/** rowLimit：默认每页显示行数，上限即 MAX_RESULT_PAGE_SIZE（超出引擎单次上限时分块拼页）。 */
 	rowLimit: { min: MIN_RESULT_PAGE_SIZE, max: MAX_RESULT_PAGE_SIZE },
 	historyLimit: { min: HISTORY_LIMIT_MIN, max: HISTORY_LIMIT_MAX },
 	exportRowLimit: { min: EXPORT_ROW_LIMIT_MIN, max: EXPORT_ROW_LIMIT_MAX },
@@ -143,13 +142,11 @@ export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	rowLimit: 100,
 	historyEnabled: true,
 	historyLimit: HISTORY_LIMIT_DEFAULT,
-	tableSingleClickAction: "preview",
-	tableDoubleClickAction: "preview",
 	exportLimitEnabled: false,
 	exportRowLimit: EXPORT_ROW_LIMIT_DEFAULT,
 	tableOpenPageSize: DEFAULT_TABLE_OPEN_PAGE_SIZE,
 	exportBatchSize: EXPORT_BATCH_SIZE_DEFAULT,
-	queryResultMaxRowsEnabled: true,
+	queryResultMaxRowsEnabled: false,
 	queryResultMaxRows: QUERY_RESULT_MAX_ROWS_DEFAULT,
 	infiniteScroll: false,
 	dataGridStripedRows: true,
@@ -183,14 +180,6 @@ export function normalizeSettings(raw: unknown): WorkbenchSettings {
 			typeof source.historyEnabled === "boolean"
 				? source.historyEnabled
 				: DEFAULT_SETTINGS.historyEnabled,
-		tableSingleClickAction:
-			source.tableSingleClickAction === "preview" || source.tableSingleClickAction === "structure"
-				? source.tableSingleClickAction
-				: DEFAULT_SETTINGS.tableSingleClickAction,
-		tableDoubleClickAction:
-			source.tableDoubleClickAction === "preview" || source.tableDoubleClickAction === "structure"
-				? source.tableDoubleClickAction
-				: DEFAULT_SETTINGS.tableDoubleClickAction,
 		historyLimit: clampInt(
 			source.historyLimit,
 			SETTINGS_BOUNDS.historyLimit.min,
@@ -271,8 +260,6 @@ export function isDefaultSettings(settings: WorkbenchSettings): boolean {
 		settings.rowLimit === DEFAULT_SETTINGS.rowLimit &&
 		settings.historyEnabled === DEFAULT_SETTINGS.historyEnabled &&
 		settings.historyLimit === DEFAULT_SETTINGS.historyLimit &&
-		settings.tableSingleClickAction === DEFAULT_SETTINGS.tableSingleClickAction &&
-		settings.tableDoubleClickAction === DEFAULT_SETTINGS.tableDoubleClickAction &&
 		settings.exportLimitEnabled === DEFAULT_SETTINGS.exportLimitEnabled &&
 		settings.exportRowLimit === DEFAULT_SETTINGS.exportRowLimit &&
 		settings.tableOpenPageSize === DEFAULT_SETTINGS.tableOpenPageSize &&

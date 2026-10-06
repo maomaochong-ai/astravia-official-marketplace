@@ -2,14 +2,14 @@
  * 连接树节点 — 递归渲染 connection / schema / table / column。
  *
  * 交互：
- * - 单击 connection：设为活动连接并绑定当前 tab；单击 table：预览数据
- * - 双击 connection：新建查询 tab；双击 table：预览数据
+ * - 单击 connection：设为活动连接并绑定当前 tab；单击 table：仅选中，不打开也不执行查询
+ * - 双击 connection：新建查询 tab；双击 table：预览数据（打开 tab 并立即执行 SELECT）
  * - 右键：丰富的上下文菜单（新建查询/预览/查看结构/生成SQL/添加到AI/复制等）
  * - 箭头：展开懒加载子节点
  * - 拖拽：把节点（或多选整组）以 @提及 token 拖进宿主 AI 输入框，由宿主渲染为对象标签
  */
 
-import { useRef, useState, type JSX } from "react";
+import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { parseColumnNodeKey } from "../../../domain/tree-node-key";
@@ -44,7 +44,6 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		loadNodeChildren,
 		openPreviewTab,
 		runTabSql,
-		settings,
 		selectionMode,
 		selectedNodes,
 		toggleNodeSelection,
@@ -53,7 +52,6 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	const [aiDialogOpen, setAiDialogOpen] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState("");
 	const [templateDialog, setTemplateDialog] = useState<{ type: "dashboard" | "screen" } | null>(null);
-	const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const isExpanded = state.expandedNodes.has(node.key);
 	const isLoading = state.loadingNodes.has(node.key);
@@ -129,27 +127,9 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		} else if (node.kind === "schema") {
 			void ensureChildren();
 			if (!isExpanded) expand();
-		} else if (node.kind === "table") {
-			if (!connectionName) return;
-			// 延迟执行单击动作，等待可能的双击
-			if (clickTimerRef.current) {
-				clearTimeout(clickTimerRef.current);
-				clickTimerRef.current = null;
-			}
-			clickTimerRef.current = setTimeout(() => {
-				clickTimerRef.current = null;
-				// 根据设置决定单击行为：预览数据 或 查看结构
-				if (settings.tableSingleClickAction === "structure") {
-					// 查看结构：打开 DESCRIBE 查询
-					const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;
-					const describeSql = buildDescribeSql(node.label, childScope, dbType);
-					void openPreviewTab(connectionName, describeSql, `${node.label} 结构`);
-				} else {
-					// 预览数据：不带 LIMIT，让服务端分页处理
-					void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
-				}
-			}, 250);
 		}
+		// table：单击只做选中（多选逻辑在外层处理），不再隐式打开或执行查询；
+		// 预览数据与查看结构分别在双击、右键菜单里，避免单击就误跑一条大表 SELECT。
 	}
 
 	function handleDoubleClick(): void {
@@ -158,19 +138,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (node.kind === "connection") {
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
-			// 取消单击的延迟执行
-			if (clickTimerRef.current) {
-				clearTimeout(clickTimerRef.current);
-				clickTimerRef.current = null;
-			}
-			// 根据设置决定双击行为：预览数据 或 查看结构
-			if (settings.tableDoubleClickAction === "structure") {
-				const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;
-				const describeSql = buildDescribeSql(node.label, childScope, dbType);
-				void openPreviewTab(connectionName, describeSql, `${node.label} 结构`);
-			} else {
-				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
-			}
+			previewTable();
 		} else {
 			void ensureChildren();
 			if (!isExpanded) expand();
@@ -181,6 +149,13 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (!connectionName) return;
 		// 不带 LIMIT，让服务端分页处理
 		void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
+	}
+
+	/** 查看表结构：走 DESCRIBE 等价 SQL，在新 tab 打开并执行。 */
+	function viewStructure(): void {
+		if (!connectionName) return;
+		const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;
+		void openPreviewTab(connectionName, buildDescribeSql(node.label, childScope, dbType), `${node.label} 结构`);
 	}
 
 	function countTable(): void {
@@ -393,9 +368,10 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				items: [
 					// 查看数据
 					{ type: "item", label: "预览数据", icon: "icon-[lucide--table-2]", onClick: previewTable },
+					{ type: "item", label: "查看表结构", icon: "icon-[lucide--columns-3]", onClick: viewStructure },
 					{ 
 						type: "item", 
-						label: "在新标签页打开", 
+						label: "在新标签页打开（不执行）",
 						icon: "icon-[lucide--external-link]", 
 						onClick: () => {
 							if (!connectionName) return;

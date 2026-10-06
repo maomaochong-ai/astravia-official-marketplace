@@ -38,10 +38,10 @@ import {
 	toMarkdown,
 	toHtml,
 	toSqlInsert,
-	createChunkedTextExport,
 	type ChunkedTextExport,
 	type TextExportKind,
 } from "../services/result-export";
+import { runExportAll } from "../services/export-all-runner";
 import { toXlsx } from "../services/xlsx-export";
 import { buildExportFileName } from "../services/export-file-name";
 import {
@@ -409,6 +409,8 @@ export function ResultGrid({
 	const displayTotal = isServer
 		? (serverTotalCount !== undefined && serverTotalCount >= 0 ? serverTotalCount : safePage * pageSize + rows.length)
 		: rows.length;
+	/** 已从数据库取回的行数：当前页末行的绝对行号，与「共 N 行」相互独立。 */
+	const takenRows = safePage * pageSize + rows.length;
 
 	// 翻页 / 改每页行数：网格内部滚动回到顶部；页码输入框与当前页保持同步。
 	useEffect(() => {
@@ -657,84 +659,42 @@ export function ResultGrid({
 			// 对齐 dbx 桌面壳：导出全部默认不限制，可以导出完整数据。
 			// queryResultMaxRows 仅用于查询结果展示，不影响导出。
 			const rowLimit = settings.exportLimitEnabled ? settings.exportRowLimit : Infinity;
-			// 每批取数行数：使用 exportBatchSize，但实际引擎调用受 ENGINE_ROW_CAP 限制。
-			// 当 exportBatchSize > ENGINE_ROW_CAP 时，会在循环中分多次请求拼凑。
+			// 每批取行数：使用 exportBatchSize，引擎单次上限由 runner 内部再分块。
 			const batchSize = settings.exportBatchSize;
 
-			let stream: ChunkedTextExport | null = null;
-			let allColumns: string[] = [];
-			const xlsxRows: Record<string, unknown>[] = [];
-			let total = 0;
-			let offset = 0;
-			let truncationNote: string | null = null;
-
-			for (;;) {
-				if (token.cancelled) {
-					updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now() });
-					return;
-				}
-				// 按 batchSize 分批取数，每批内部可能分多次引擎调用（受 ENGINE_ROW_CAP 限制）
-				let batchRows: Record<string, unknown>[] = [];
-				let batchOffset = offset;
-				const batchTarget = rowLimit === Infinity ? batchSize : Math.min(batchSize, Math.max(1, rowLimit - total));
-				let lastOutcome: { paged?: boolean; truncated?: boolean } | null = null;
-				
-				while (batchRows.length < batchTarget) {
-					const chunkLimit = Math.min(ENGINE_ROW_CAP, batchTarget - batchRows.length);
-					const chunkOutcome = await engineExecuteByName(connectionName, sql, {
+			const outcome = await runExportAll({
+				kind,
+				tableName: target,
+				dialect: sqlDialect(),
+				rowLimit,
+				batchSize,
+				knownTotal,
+				token,
+				onProgress: (rowsExported) => updateExportTask(task.id, { rowsExported }),
+				fetchPage: ({ offset, limit }) =>
+					engineExecuteByName(connectionName, sql, {
 						rowLimit: ENGINE_ROW_CAP,
 						timeoutMs: 60_000,
 						dbType,
-						page: { offset: batchOffset, limit: chunkLimit },
-					});
-					lastOutcome = chunkOutcome;
-					if (allColumns.length === 0) {
-						allColumns = chunkOutcome.columns;
-						if (kind !== "xlsx") {
-							stream = createChunkedTextExport(kind, allColumns, { tableName: target, dialect: sqlDialect() });
-						}
-					}
-					batchRows.push(...chunkOutcome.rows);
-					batchOffset += chunkOutcome.rows.length;
-					
-					// 不可分页查询：引擎忽略 page，单次结果最多 ENGINE_ROW_CAP 行
-					if (!chunkOutcome.paged) {
-						if (chunkOutcome.truncated === true) {
-							truncationNote =
-								`该 SQL 不支持服务端分页，仅导出引擎单次返回的前 ${total + batchRows.length.toLocaleString()} 行；` +
-								"如需完整数据，请在 SQL 中使用 LIMIT / OFFSET 分批导出";
-						}
-						break;
-					}
-					// 末页或已达到引擎单次上限
-					if (chunkOutcome.rows.length < chunkLimit) break;
-				}
-				
-				total += batchRows.length;
-				if (kind === "xlsx") xlsxRows.push(...batchRows);
-				else stream?.push(batchRows);
-				updateExportTask(task.id, { rowsExported: total });
-				offset = batchOffset;
-				
-				// 不可分页查询已处理
-				if (!lastOutcome?.paged) break;
-				// 本批取数不足 batchSize，说明已到末页
-				if (batchRows.length < batchTarget) break;
-				// 已达到用户设置的上限
-				if (rowLimit !== Infinity && total >= rowLimit) {
-					truncationNote = `已按设置的导出行数上限导出前 ${total.toLocaleString()} 行，可在设置中调整或关闭上限`;
-					break;
-				}
-			}
+						page: { offset, limit },
+					}),
+			});
 
-			if (token.cancelled) {
+			if (outcome.cancelled) {
 				updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now() });
 				return;
 			}
 
+			const { columns: allColumns, xlsxRows, stream, total, truncationNote } = outcome;
+
 			updateExportTask(task.id, { status: "writing" });
 			// 让出一帧，确保「正在写入文件…」状态先上屏（大结果集序列化可能耗时）。
 			await new Promise((resolve) => setTimeout(resolve, 0));
+			// 「正在写入」阶段仍可取消：直接落取消态，不产生文件。
+			if (token.cancelled) {
+				updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now() });
+				return;
+			}
 
 			const fsApi = getFs();
 			let filePath: string | null = null;
@@ -768,11 +728,16 @@ export function ResultGrid({
 			});
 			if (truncationNote) dispatch({ type: "setError", message: truncationNote });
 		} catch (error) {
-			updateExportTask(task.id, {
-				status: "error",
-				finishedAt: Date.now(),
-				errorMessage: `导出失败：${error instanceof Error ? error.message : String(error)}`,
-			});
+			// 取消期间的异常（例如请求被放弃）不算失败，落取消态即可。
+			if (token.cancelled) {
+				updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now() });
+			} else {
+				updateExportTask(task.id, {
+					status: "error",
+					finishedAt: Date.now(),
+					errorMessage: `导出失败：${error instanceof Error ? error.message : String(error)}`,
+				});
+			}
 		} finally {
 			unregisterCancel();
 			exportCancelTokensRef.current.delete(task.id);
@@ -799,6 +764,10 @@ export function ResultGrid({
 	function openExportMenu(e: React.MouseEvent): void {
 		e.preventDefault();
 		e.stopPropagation();
+		// 导出前先把本次生效的上限说清楚：历史上用户以为已经导出全部数据，实际只取到上限行。
+		const exportLimitLabel = settings.exportLimitEnabled
+			? `导出行数上限：${settings.exportRowLimit.toLocaleString()} 行`
+			: "导出行数上限：不限";
 		const items: ContextMenuEntry[] = [
 			...EXPORT_FORMATS.map((f) => ({
 				type: "item" as const,
@@ -807,6 +776,14 @@ export function ResultGrid({
 				onClick: () => void downloadAs(f.kind, colList, rows),
 			})),
 			{ type: "separator" as const },
+			{
+				type: "item" as const,
+				label: exportLimitLabel,
+				icon: "icon-[lucide--info]",
+				// 纯展示项：上限是设置里的结果，不在这里改。
+				disabled: true,
+				onClick: () => {},
+			},
 			...EXPORT_FORMATS.map((f) => ({
 				type: "item" as const,
 				label: `导出全部数据 ${f.label}`,
@@ -1208,48 +1185,50 @@ export function ResultGrid({
 			    布局：左侧元信息 min-w-0 可截断，右侧操作区 shrink-0 永不被遮挡。 */}
 			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 px-3 text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
 				<div className="flex min-w-0 flex-1 items-center gap-2">
-					<span className="shrink-0">
-						{totalKnown ? "共 " : "已取回 "}
-						<span className="font-medium text-foreground/80">{displayTotal}</span> 行
-					</span>
-					{isServer && (
-					<button
-						type="button"
-						onClick={refreshTotalCount}
-						disabled={pageLoading === true || totalCounting}
-						title={totalCounting ? "正在统计总行数…" : "刷新总计行统计"}
-						className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-60"
-					>
-						<span
-							className={
-								totalCounting
-									? "icon-[lucide--loader-2] h-3 w-3 animate-spin"
-									: "icon-[lucide--refresh-cw] h-3 w-3"
-							}
-						/>
-					</button>
-				)}
-				{note ? (
-					<span
-						className="min-w-0 truncate rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-500"
-						title={note}
-					>
-						{note}
-					</span>
-				) : null}
-				{totalCounting ? (
-					<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
-						总数统计中
-					</span>
-				) : null}
-				{isServer && serverTotalStatus === "failed" ? (
-					<span
-						className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80"
-						title="统计总行数失败（如 COUNT 超时），不影响翻页；点左侧刷新按钮可重试"
-					>
-						总数未知
-					</span>
-				) : null}
+					{isServer ? (
+						<>
+							{/* 「已取回」与「共 N 行」是两个独立事实：前者是本会话真正拉到的行数，
+							    后者是数据库侧的真实总数；总数未知时不再拿取回行数兜底。 */}
+							<span className="shrink-0" title="已从数据库取回的行数（含当前页）">
+								已取回 <span className="font-medium text-foreground/80">{takenRows.toLocaleString()}</span> 行
+							</span>
+							<button
+								type="button"
+								onClick={refreshTotalCount}
+								disabled={pageLoading === true || totalCounting}
+								title={totalCounting ? "正在统计总行数…" : "刷新总计行统计"}
+								className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-60"
+							>
+								<span
+									className={
+										totalCounting
+											? "icon-[lucide--loader-2] h-3 w-3 animate-spin"
+											: "icon-[lucide--refresh-cw] h-3 w-3"
+									}
+								/>
+							</button>
+							{totalKnown ? (
+								<span className="shrink-0" title="数据库统计得到的真实总行数">
+									共 <span className="font-medium text-foreground/80">{(serverTotalCount ?? 0).toLocaleString()}</span> 行
+								</span>
+							) : totalCounting ? (
+								<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
+									总数统计中
+								</span>
+							) : serverTotalStatus === "failed" ? (
+								<span
+									className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80"
+									title="统计总行数失败（如 COUNT 超时），不影响翻页；点左侧刷新按钮可重试"
+								>
+									总数未知
+								</span>
+							) : null}
+						</>
+					) : (
+						<span className="shrink-0">
+							共 <span className="font-medium text-foreground/80">{displayTotal.toLocaleString()}</span> 行
+						</span>
+					)}
 				{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
 				</div>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
@@ -1334,6 +1313,16 @@ export function ResultGrid({
 					>
 						<span className="icon-[lucide--download] h-3.5 w-3.5" />
 					</button>
+					{/* 生效中的导出行数上限：不开启时不占位；开启时常驻，避免用户以为已经导出了全部数据。 */}
+					{settings.exportLimitEnabled ? (
+						<span
+							className="flex shrink-0 items-center gap-1 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80"
+							title={`导出全部数据最多取回 ${settings.exportRowLimit.toLocaleString()} 行，可在「导出设置」中调整`}
+						>
+							<span className="icon-[lucide--alert-triangle] h-3 w-3" />
+							上限 {settings.exportRowLimit.toLocaleString()} 行
+						</span>
+					) : null}
 				</div>
 			</div>
 

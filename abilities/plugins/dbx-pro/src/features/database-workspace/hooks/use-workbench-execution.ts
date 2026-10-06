@@ -22,11 +22,10 @@ import type { WorkbenchAction } from "../state/workbench-actions";
 /**
  * 服务端分页取一整页。
  *
- * 引擎单次结果硬上限为 ENGINE_ROW_CAP，而用户页大小上限（MAX_RESULT_PAGE_SIZE）
- * 已被夹到同一个值，所以正常情况下这里只会请求一次、分块循环是防御性兜底
- * （非虚拟化表格整页渲染上千行已经很吃力，不再允许更大的页）。
- * 保持分块逻辑是为了：若将来引擎上限与页大小上限脱钩，网格一页仍能真的取满 N 行，
- * 而不是静默只回 cap 行。不可分页 SQL（引擎忽略 page）只取一次。
+ * 引擎单次结果硬上限为 ENGINE_ROW_CAP，而页大小上限（MAX_RESULT_PAGE_SIZE）是它的
+ * 10 倍，所以一页通常要分多次请求，分块循环是常规路径。
+ * 分块是为了让网格一页真的取满 N 行，而不是静默只回 cap 行；任一块失败即整体失败，
+ * 不返回不足的行数。不可分页 SQL（引擎忽略 page）只取一次。
  */
 async function executeServerPage(
 	connectionName: string,
@@ -143,7 +142,10 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 	);
 
 	/**
-	 * 统计总行数：把原 SQL 包成 COUNT 派生表再走引擎。开启 queryResultMaxRows 时夹逼总数。
+	 * 统计总行数：把原 SQL 包成 COUNT 派生表再走引擎。
+	 *
+	 * 这里必须报真实总数，不受 queryResultMaxRows 上限夹逼：上限只约束「能翻到第几页」，
+	 * 而「共 N 行」要如实反映表里有多少行，否则网格与导出进度会显示一个被截断的假总数。
 	 *
 	 * 统计是渲染完成后的第二趟请求，先标 pending 再回填，失败只标 failed、不写总数：
 	 * 总数未知时 totalPages 保持 null，翻页改用「本页是否取满」判断，
@@ -163,17 +165,13 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 					dispatch({ type: "tabTotalCountSettled", id: tabId, ranSql: sql, totalCount: null });
 					return;
 				}
-				const current = settingsRef.current;
-				const clamped = current.queryResultMaxRowsEnabled
-					? Math.min(total, current.queryResultMaxRows)
-					: total;
-				dispatch({ type: "tabTotalCountSettled", id: tabId, ranSql: sql, totalCount: clamped });
+				dispatch({ type: "tabTotalCountSettled", id: tabId, ranSql: sql, totalCount: total });
 			} catch {
 				// 超时 / 引擎报错：总数保持未知，分页栏显示「总数未知」并允许手动刷新重试。
 				dispatch({ type: "tabTotalCountSettled", id: tabId, ranSql: sql, totalCount: null });
 			}
 		},
-		[dispatch, settingsRef],
+		[dispatch],
 	);
 
 	/** 执行一个 tab 的 SQL。 */
