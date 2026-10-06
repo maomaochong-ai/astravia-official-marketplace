@@ -1,7 +1,8 @@
 /**
- * dbx_dashboard — 企业级看板生成工具。
- * 
- * 根据预设模板执行 SQL 查询，返回结构化数据供组件渲染。
+ * dbx_dashboard — 企业级看板生成工具（ADR-0007 统一流水线）。
+ *
+ * 执行预设模板 SQL → 合并结果集 → 走 Canvas 规则引擎自动推断布局。
+ * 不再直接组装 charts[] 数组交给 preset renderer；Canvas 是唯一渲染路径。
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
@@ -114,6 +115,12 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 				const title = `${table} - ${preset.label}`;
 				const html = generatePreviewHtml(title, charts);
 
+				// ADR-0007：统一走 Canvas 流水线
+				// 多查询结果集按列拼接成宽表，让 Canvas inferLayout 自动推断布局
+				const { columns: mergedCols, rows: mergedRows } = mergeResultSets(
+					charts.map((c) => ({ columns: c.columns, rows: c.rows })),
+				);
+
 				const viz = {
 					title,
 					type: "dashboard" as const,
@@ -122,11 +129,16 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 					table,
 					html,
 					presetId: preset.id,
+					// Canvas 优先：resultRows → inferLayout 自动布局
+					resultColumns: mergedCols,
+					resultRows: mergedRows,
+					// Legacy fallback：保留 charts[] 供旧产物兼容
 					charts,
 				};
 
-				showVisualizationPreview(viz);
+				// 始终持久化（callback 为 null 时产物也不会丢）
 				saveVisualizationToStore(viz);
+				showVisualizationPreview(viz);
 
 				return {
 					ok: true,
@@ -248,4 +260,22 @@ tr:hover td { background: rgba(59, 130, 246, 0.1); }
 <div class="dashboard">${content}</div>
 </body>
 </html>`;
+}
+
+/**
+ * mergeResultSets — ADR-0007：把多个预设查询结果合并成一个宽表，
+ * 让 Canvas inferLayout 统一走单数据源。缺失列填 null。
+ */
+function mergeResultSets(
+	results: Array<{ columns: string[]; rows: Array<Record<string, unknown>> }>,
+): { columns: string[]; rows: Array<Record<string, unknown>> } {
+	const allCols = [...new Set(results.flatMap((r) => r.columns))];
+	const rows = results.flatMap((r) =>
+		r.rows.map((row) => {
+			const merged: Record<string, unknown> = {};
+			for (const c of allCols) merged[c] = row[c] ?? null;
+			return merged;
+		}),
+	);
+	return { columns: allCols, rows };
 }

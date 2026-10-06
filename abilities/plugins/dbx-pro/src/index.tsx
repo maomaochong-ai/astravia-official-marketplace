@@ -30,10 +30,14 @@ export { PLUGIN_VERSION };
 /** 当前实例 ID，用于区分新旧实例的 DOM 元素 */
 let _instanceId = 0;
 
-/** 面板加载中：可见的轻量占位，避免点击后空白。显示版本号便于确认更新状态。 */
+/**
+ * 面板加载中：可见的轻量占位，避免点击后空白。显示版本号便于确认更新状态。
+ * contain: layout style paint 阻断宿主 CSS 泄漏到插件根（ADR-0007 §5 插件隔离）。
+ */
 function PanelLoading(): ReactElement {
 	return (
-		<div data-astravia-plugin-root="dbx-pro" className="dbx-root dbx-loading-screen flex h-full w-full flex-col items-center justify-center bg-background text-foreground">
+		<div data-astravia-plugin-root="dbx-pro" className="dbx-root dbx-loading-screen flex h-full w-full flex-col items-center justify-center bg-background text-foreground"
+			 style={{ contain: "layout style paint" }}>
 			<div className="dbx-loading-content">
 				<div className="dbx-loading-spinner">
 					<span className="icon-[lucide--database] h-8 w-8 animate-pulse text-muted-foreground" />
@@ -56,7 +60,8 @@ class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
 			const isActivationError = this.state.error?.message?.includes("no longer active") ||
 				this.state.error?.name === "AbortError";
 			return (
-				<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-[12px] text-muted-foreground">
+				<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-[12px] text-muted-foreground"
+						 style={{ contain: "layout style paint" }}>
 					<span className="icon-[lucide--alert-circle] h-6 w-6 text-destructive" />
 					<span>{isActivationError ? "插件正在更新中" : "工作台加载失败"}</span>
 					{this.state.error && !isActivationError && (

@@ -1,7 +1,7 @@
 /**
- * dbx_screen — 数据大屏生成工具。
- * 
- * 根据预设模板执行 SQL 查询，返回结构化数据供组件渲染。
+ * dbx_screen — 数据大屏生成工具（ADR-0007 统一流水线）。
+ *
+ * 执行预设模板 SQL → 合并结果集 → 走 Canvas 规则引擎自动推断布局。
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
@@ -117,6 +117,11 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 				const subtitle = preset.id === "data_command" ? "实时数据总览 · 核心指标追踪" : preset.id === "business_intel" ? "多维度业务分析 · 趋势对比" : "系统健康度 · 性能指标";
 				const html = generatePreviewHtml(title, subtitle, widgets);
 
+				// ADR-0007：统一走 Canvas 流水线
+				const { columns: mergedCols, rows: mergedRows } = mergeResultSets(
+					widgets.map((w) => ({ columns: w.columns, rows: w.rows })),
+				);
+
 				const viz = {
 					title,
 					type: "screen" as const,
@@ -125,11 +130,16 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 					table,
 					html,
 					presetId: preset.id,
+					// Canvas 优先：resultRows → inferLayout 自动布局（DataV 深色荧光）
+					resultColumns: mergedCols,
+					resultRows: mergedRows,
+					// Legacy fallback：保留 widgets[] 供旧产物兼容
 					widgets,
 				};
 
-				showVisualizationPreview(viz);
+				// 始终持久化（callback 为 null 时产物也不会丢）
 				saveVisualizationToStore(viz);
+				showVisualizationPreview(viz);
 
 				return {
 					ok: true,
@@ -261,4 +271,22 @@ tr:hover td { background: rgba(59, 130, 246, 0.08); }
 <div class="screen">${content}</div>
 </body>
 </html>`;
+}
+
+/**
+ * mergeResultSets — ADR-0007：把多个预设查询结果合并成一个宽表。
+ * 缺失列填 null。与 dbx-dashboard 的同名函数逻辑一致（可抽共享但当前两个文件各自内联以最小改动）。
+ */
+function mergeResultSets(
+	results: Array<{ columns: string[]; rows: Array<Record<string, unknown>> }>,
+): { columns: string[]; rows: Array<Record<string, unknown>> } {
+	const allCols = [...new Set(results.flatMap((r) => r.columns))];
+	const rows = results.flatMap((r) =>
+		r.rows.map((row) => {
+			const merged: Record<string, unknown> = {};
+			for (const c of allCols) merged[c] = row[c] ?? null;
+			return merged;
+		}),
+	);
+	return { columns: allCols, rows };
 }
