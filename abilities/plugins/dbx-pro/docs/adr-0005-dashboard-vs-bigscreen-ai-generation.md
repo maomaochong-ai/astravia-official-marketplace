@@ -1,9 +1,9 @@
 # ADR-0005: 看板与大屏 AI 生成的概念区分与架构设计
 
 ## 状态
-草案（Draft）
-v0.0.89 进行中 — 基础拆分与主题分流
-v0.0.90 计划 — AI 布局推断 + Canvas 渲染
+v0.0.89 进行中 — 主题分流 + BaseChart 抽取 + 顶栏导出
+v0.0.90 计划 — Canvas 画布 PoC + AI 布局推断
+v0.0.91 规划 — 流式渲染 + 筛选器联动
 
 ---
 
@@ -56,7 +56,88 @@ dbx-pro 插件已具备基础的数据可视化能力，但存在一个概念混
 
 ---
 
-## 3. AI 生成算法（四步流水线）
+## 3. 算法职责边界（v0.0.89 澄清）
+
+**核心原则**：算法与渲染器彻底分离。算法只负责"数据语义 → 空间布局"，渲染器负责"形态 token → 视觉呈现"。两者通过 JSON 契约解耦。
+
+### 3.1 算法的职责（What Algorithm Knows）
+
+| 层 | 算法做什么 | 算法不做什么 |
+|----|-----------|-------------|
+| 数据语义 | 每列打 tag：dimension / measure / time / categorical / id | ❌ 不知道颜色、字体、发光 |
+| 图表类型选择 | KPI / Line / Bar / Pie / Table / Gauge（基于规则引擎） | ❌ 不知道 dashboard 和 bigscreen 有不同的 chart 变体 |
+| 空间布局 | 栅格打包：col / row / colSpan / rowSpan | ❌ 不知道卡片 radius、shadow、背景色 |
+| 形态分流 | 收到 `intent: "dashboard" \| "bigscreen" \| "auto"` 决定布局密度 | ❌ 不知道 theme token |
+| 数据映射 | `dataRef: { column, agg }` 定义数据引用 | ❌ 不知道 recharts API |
+
+### 3.2 渲染器的职责（What Renderer Does）
+
+| 层 | 渲染器做什么 | 依赖 |
+|----|-------------|------|
+| ThemeProvider | 根据 `viz.type` 注入 CSS token 变量 | `viz.type === "dashboard" \| "screen"` |
+| BaseChart 工厂 | 根据 `kind` + `themeMode` 路由到具体图表组件 + 应用主题变体 | `themeMode` prop + recharts |
+| Widget 容器 | `.viz-card--dashboard`（白底 + 圆角 12 + 柔和阴影）vs `.viz-card--bigscreen`（玻璃态 + cyan 霓虹边） | CSS class 分流 |
+| Recharts 主题覆盖 | axis stroke、grid stroke、tooltip bg/border/color 全部从 token 派生 | recharts props + CSS variables |
+
+### 3.3 契约 JSON
+
+```json
+{
+  "intent": "dashboard",
+  "layout": { "cols": 12, "rowHeight": 48, "gap": 16 },
+  "widgets": [
+    {
+      "id": "kpi-1",
+      "kind": "kpi",
+      "col": 0, "row": 0, "colSpan": 3, "rowSpan": 1,
+      "title": "今日 GMV",
+      "dataRef": { "column": "gmv", "agg": "sum" }
+    }
+  ]
+}
+```
+
+**注意**：这个 JSON **完全不含视觉属性**（颜色、字号、圆角）。同一个 JSON 喂给 `themeMode="dashboard"` 和 `themeMode="bigscreen"` 会渲染出完全不同的视觉效果，但数据映射和布局位置一致。
+
+### 3.4 数据流
+
+```
+[SQL 结果集]
+     │
+     ▼
+[Step 1] Schema 分析 → dimension/measure/time tag
+     │
+     ▼
+[Step 2] Chart 类型推断 (规则引擎) → KPI/Line/Bar/Pie/Table
+     │
+     ▼
+[Step 3] 栅格打包 (arrange.ts inferGrid/layoutGrid 简化版) → col/row/colSpan
+     │
+     ▼
+LayoutSpec JSON ← 纯数据 + 空间，无视觉
+     │
+     ▼
+┌────┴────┐
+│         │
+intent=dashboard    intent=bigscreen
+│         │
+[ThemeProvider]    [ThemeProvider]
+  bg:#f8fafc         bg:#0c0c0c→#1a1a2e
+  card:#fff          card:rgba(255,255,255,.04)+cyan glow
+  kpi:#0f172a/28px   kpi:#06b6d4/56px+letterSpacing
+│         │
+└────┬────┘
+     │
+     ▼
+BaseChart(kind="line", themeMode="dashboard|bigscreen")
+     │
+     ▼
+[Recharts]  ← axis/grid/tooltip 全部走 token
+```
+
+---
+
+## 4. AI 生成算法（四步流水线）
 
 ### Step 1 — SQL Schema 分析
 

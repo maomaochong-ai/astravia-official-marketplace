@@ -1,5 +1,5 @@
 /**
- * RechartsPieChart — 使用 recharts 的饼图组件
+ * RechartsPieChart — 饼图/环形图（主题感知）
  */
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
@@ -12,22 +12,27 @@ export interface RechartsPieChartProps {
 	valueKey: string;
 	colors?: string[];
 	height?: number;
+	themeMode?: "dashboard" | "bigscreen";
 }
 
-const DEFAULT_COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
+const DASHBOARD_COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
+const BIGSCREEN_COLORS = ["#06b6d4", "#3b82f6", "#22d3ee", "#60a5fa", "#818cf8", "#34d399"];
 
 export function RechartsPieChart({
 	title,
 	data,
 	nameKey,
 	valueKey,
-	colors = DEFAULT_COLORS,
+	colors,
 	height = 250,
+	themeMode = "dashboard",
 }: RechartsPieChartProps): JSX.Element {
+	const palette = colors ?? (themeMode === "bigscreen" ? BIGSCREEN_COLORS : DASHBOARD_COLORS);
+
 	return (
-		<div className="chart-card">
+		<div className="viz-card viz-card--chart">
 			<h3>{title}</h3>
-			<div style={{ width: "100%", height }}>
+			<div className="viz-chart-inner" style={{ height }}>
 				<ResponsiveContainer>
 					<PieChart>
 						<Pie
@@ -42,21 +47,10 @@ export function RechartsPieChart({
 							labelLine={false}
 						>
 							{data.map((_, index) => (
-								<Cell
-									key={`cell-${index}`}
-									fill={colors[index % colors.length]}
-								/>
+								<Cell key={`cell-${index}`} fill={palette[index % palette.length]} />
 							))}
 						</Pie>
-						<Tooltip
-							contentStyle={{
-								backgroundColor: "rgba(30, 41, 59, 0.95)",
-								border: "1px solid rgba(59, 130, 246, 0.3)",
-								borderRadius: 8,
-								color: "#e2e8f0",
-								fontSize: 12,
-							}}
-						/>
+						<Tooltip />
 						<Legend />
 					</PieChart>
 				</ResponsiveContainer>

@@ -1,7 +1,9 @@
 /**
- * DashboardRenderer — 看板渲染器组件
- * 
- * 根据预设模板和查询数据，使用 recharts 组件渲染看板
+ * DashboardRenderer — QuickBI 风格仪表板渲染器
+ *
+ * themeMode="dashboard" → 浅色 QuickBI 风格
+ * - 12 列自适应栅格、白底圆角 12px 卡片、柔和投影
+ * - recharts axis/grid/tooltip 全部走 --viz-* token
  */
 
 import { useMemo } from "react";
@@ -38,9 +40,9 @@ export function DashboardRenderer({ preset, title, charts }: DashboardRendererPr
 	}, [charts]);
 
 	return (
-		<div className="visualization-container">
-			<h1 className="visualization-title">{title}</h1>
-			<div className="dashboard-grid">
+		<div className="viz-root viz-theme-dashboard">
+			<h1 className="viz-title">{title}</h1>
+			<div className="viz-grid-dashboard">
 				{preset.charts.map((chartConfig) => {
 					const chart = chartMap.get(chartConfig.id);
 					if (!chart) return null;
@@ -54,6 +56,7 @@ export function DashboardRenderer({ preset, title, charts }: DashboardRendererPr
 									title={chart.title}
 									value={String(value)}
 									color={chartConfig.config?.color}
+									themeMode="dashboard"
 								/>
 							);
 						}
@@ -66,6 +69,7 @@ export function DashboardRenderer({ preset, title, charts }: DashboardRendererPr
 									xAxisKey={chartConfig.config?.xAxis ?? "x"}
 									yAxisKey={chartConfig.config?.yAxis ?? "y"}
 									color={chartConfig.config?.color}
+									themeMode="dashboard"
 								/>
 							);
 						case "bar":
@@ -77,6 +81,7 @@ export function DashboardRenderer({ preset, title, charts }: DashboardRendererPr
 									xAxisKey={chartConfig.config?.xAxis ?? "label"}
 									yAxisKey={chartConfig.config?.yAxis ?? "value"}
 									color={chartConfig.config?.color}
+									themeMode="dashboard"
 								/>
 							);
 						case "pie":
@@ -87,6 +92,7 @@ export function DashboardRenderer({ preset, title, charts }: DashboardRendererPr
 									data={chart.data}
 									nameKey={chartConfig.config?.xAxis ?? "name"}
 									valueKey={chartConfig.config?.yAxis ?? "value"}
+									themeMode="dashboard"
 								/>
 							);
 						case "area":
@@ -98,6 +104,7 @@ export function DashboardRenderer({ preset, title, charts }: DashboardRendererPr
 									xAxisKey={chartConfig.config?.xAxis ?? "x"}
 									yAxisKey={chartConfig.config?.yAxis ?? "y"}
 									color={chartConfig.config?.color}
+									themeMode="dashboard"
 								/>
 							);
 						case "table":
@@ -108,6 +115,7 @@ export function DashboardRenderer({ preset, title, charts }: DashboardRendererPr
 									columns={chart.columns}
 									rows={chart.data}
 									maxRows={chartConfig.config?.maxRows}
+									themeMode="dashboard"
 								/>
 							);
 						default:

@@ -1,7 +1,10 @@
 /**
- * ScreenRenderer — 大屏渲染器组件
- * 
- * 根据预设模板和查询数据，使用 recharts 组件渲染大屏
+ * ScreenRenderer — DataV 风格大屏渲染器
+ *
+ * themeMode="bigscreen" → 深色荧光风格
+ * - 高密堆积栅格、霓虹 cyan 边框 + backdrop-blur 玻璃态
+ * - 超大 KPI 字号 56px、letter-spacing: -1px
+ * - recharts axis/grid/tooltip 全部走 --viz-* token
  */
 
 import { useMemo } from "react";
@@ -38,12 +41,12 @@ export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRende
 	}, [widgets]);
 
 	return (
-		<div className="visualization-container screen-mode">
-			<div className="screen-header">
-				<h1 className="visualization-title">{title}</h1>
-				{subtitle && <p className="screen-subtitle">{subtitle}</p>}
+		<div className="viz-root viz-theme-bigscreen">
+			<div className="viz-bigscreen-header">
+				<h1 className="viz-title">{title}</h1>
+				{subtitle && <p className="viz-bigscreen-subtitle">{subtitle}</p>}
 			</div>
-			<div className="screen-grid">
+			<div className="viz-grid-bigscreen">
 				{preset.widgets.map((widgetConfig) => {
 					const widget = widgetMap.get(widgetConfig.id);
 					if (!widget) return null;
@@ -57,6 +60,7 @@ export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRende
 									title={widget.title}
 									value={String(value)}
 									color={widgetConfig.config?.color}
+									themeMode="bigscreen"
 								/>
 							);
 						}
@@ -69,6 +73,8 @@ export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRende
 									xAxisKey={widgetConfig.config?.xAxis ?? "x"}
 									yAxisKey={widgetConfig.config?.yAxis ?? "y"}
 									color={widgetConfig.config?.color}
+									themeMode="bigscreen"
+									height={280}
 								/>
 							);
 						case "bar_chart":
@@ -80,6 +86,8 @@ export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRende
 									xAxisKey={widgetConfig.config?.xAxis ?? "label"}
 									yAxisKey={widgetConfig.config?.yAxis ?? "value"}
 									color={widgetConfig.config?.color}
+									themeMode="bigscreen"
+									height={280}
 								/>
 							);
 						case "pie_chart":
@@ -90,6 +98,7 @@ export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRende
 									data={widget.data}
 									nameKey={widgetConfig.config?.xAxis ?? "name"}
 									valueKey={widgetConfig.config?.yAxis ?? "value"}
+									themeMode="bigscreen"
 								/>
 							);
 						case "gauge": {
@@ -99,7 +108,8 @@ export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRende
 									key={widget.id}
 									title={widget.title}
 									value={`${value}%`}
-									color={widgetConfig.config?.color}
+									color={widgetConfig.config?.color ?? "#06b6d4"}
+									themeMode="bigscreen"
 								/>
 							);
 						}
@@ -111,6 +121,7 @@ export function ScreenRenderer({ preset, title, subtitle, widgets }: ScreenRende
 									columns={widget.columns}
 									rows={widget.data}
 									maxRows={widgetConfig.config?.maxRows}
+									themeMode="bigscreen"
 								/>
 							);
 						default:

@@ -1,5 +1,5 @@
 /**
- * RechartsAreaChart — 使用 recharts 的面积图组件
+ * RechartsAreaChart — 面积图（主题感知）
  */
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -12,6 +12,7 @@ export interface RechartsAreaChartProps {
 	yAxisKey: string;
 	color?: string;
 	height?: number;
+	themeMode?: "dashboard" | "bigscreen";
 }
 
 export function RechartsAreaChart({
@@ -23,9 +24,9 @@ export function RechartsAreaChart({
 	height = 250,
 }: RechartsAreaChartProps): JSX.Element {
 	return (
-		<div className="chart-card">
+		<div className="viz-card viz-card--chart">
 			<h3>{title}</h3>
-			<div style={{ width: "100%", height }}>
+			<div className="viz-chart-inner" style={{ height }}>
 				<ResponsiveContainer>
 					<AreaChart data={data}>
 						<defs>
@@ -34,32 +35,11 @@ export function RechartsAreaChart({
 								<stop offset="95%" stopColor={color} stopOpacity={0} />
 							</linearGradient>
 						</defs>
-						<CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
-						<XAxis
-							dataKey={xAxisKey}
-							stroke="#94a3b8"
-							style={{ fontSize: 11 }}
-						/>
-						<YAxis
-							stroke="#94a3b8"
-							style={{ fontSize: 11 }}
-						/>
-						<Tooltip
-							contentStyle={{
-								backgroundColor: "rgba(30, 41, 59, 0.95)",
-								border: "1px solid rgba(16, 185, 129, 0.3)",
-								borderRadius: 8,
-								color: "#e2e8f0",
-								fontSize: 12,
-							}}
-						/>
-						<Area
-							type="monotone"
-							dataKey={yAxisKey}
-							stroke={color}
-							fill={`url(#gradient-${title})`}
-							strokeWidth={2}
-						/>
+						<CartesianGrid strokeDasharray="3 3" stroke="var(--viz-grid)" />
+						<XAxis dataKey={xAxisKey} stroke="var(--viz-axis)" style={{ fontSize: 11 }} />
+						<YAxis stroke="var(--viz-axis)" style={{ fontSize: 11 }} />
+						<Tooltip />
+						<Area type="monotone" dataKey={yAxisKey} stroke={color} fill={`url(#gradient-${title})`} strokeWidth={2} />
 					</AreaChart>
 				</ResponsiveContainer>
 			</div>
