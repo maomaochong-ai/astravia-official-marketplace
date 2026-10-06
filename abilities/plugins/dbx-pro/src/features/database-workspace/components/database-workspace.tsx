@@ -13,7 +13,6 @@ import { RightPanel } from "./right-panel";
 import { SettingsPanel } from "./settings-panel";
 import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
-import { VisualizationGalleryView } from "../../visualization/visualization-gallery-view";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
@@ -39,10 +38,12 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
-	const [galleryOpen, setGalleryOpen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const { visualizations, addVisualization } = useVisualizationStore();
 	const workspaceRef = useRef<HTMLDivElement>(null);
+
+	/** 可视化产物画廊单例 tab 的固定 id。 */
+	const GALLERY_TAB_ID = "tab-gallery";
 
 	// 注册可视化预览和保存回调
 	useEffect(() => {
@@ -112,6 +113,29 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		});
 	}
 
+	/**
+	 * 打开可视化产物画廊：作为插件内部标签页（与「新建查询」同栏），
+	 * 已存在则激活，避免重复打开。绝不用 fixed/独立窗口遮挡宿主。
+	 */
+	function openGalleryTab(): void {
+		const existing = state.tabs.find((t) => t.gallery === true);
+		if (existing) {
+			dispatch({ type: "setActiveTab", id: existing.id });
+			return;
+		}
+		dispatch({
+			type: "addTab",
+			tab: {
+				id: GALLERY_TAB_ID,
+				label: "可视化产物",
+				connectionName: null,
+				sql: "",
+				isRunning: false,
+				gallery: true,
+			},
+		});
+	}
+
 	/** 切换查询历史右栏 */
 	function toggleHistoryPanel(): void {
 		setHistoryOpen((v) => !v);
@@ -152,7 +176,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onNewQuery={newQueryTab}
 				onToggleHistory={toggleHistoryPanel}
 				historyOpen={historyOpen}
-				onOpenVisualizationGallery={() => setGalleryOpen(true)}
+				onOpenVisualizationGallery={openGalleryTab}
 				visualizationCount={visualizations.length}
 				fullscreen={fullscreen}
 				onToggleFullscreen={() => void toggleFullscreen()}
@@ -225,25 +249,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 						void wipeAllData();
 					}}
 				/>
-			)}
-
-			{galleryOpen && (
-				<div className="fixed inset-0 z-[900] flex flex-col bg-background">
-					<div className="flex items-center justify-between border-b border-border px-4 py-2">
-						<h2 className="text-sm font-semibold text-foreground">可视化产物管理</h2>
-						<button
-							type="button"
-							onClick={() => setGalleryOpen(false)}
-							className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
-						>
-							<span className="icon-[lucide--x] h-3.5 w-3.5" />
-							关闭
-						</button>
-					</div>
-					<div className="flex-1 overflow-hidden">
-						<VisualizationGalleryView />
-					</div>
-				</div>
 			)}
 		</div>
 	);

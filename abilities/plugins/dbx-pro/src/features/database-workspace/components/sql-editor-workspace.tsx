@@ -10,12 +10,25 @@ import { SqlEditor } from "./sql-editor";
 import { TabBar } from "./tab-bar";
 import { useWorkbench } from "../hooks/use-workbench";
 import { VisualizationTab } from "../../visualization/components/visualization-tab";
+import { VisualizationGalleryView } from "../../visualization/visualization-gallery-view";
 
 export function SqlEditorWorkspace(): JSX.Element {
 	const { state } = useWorkbench();
 
 	// 查找当前激活的标签页
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+
+	// 可视化产物画廊：插件内部标签页，内容区铺满（不遮挡宿主、不另开窗口）。
+	if (activeTab?.gallery) {
+		return (
+			<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+				<TabBar />
+				<div className="min-h-0 flex-1 overflow-hidden">
+					<VisualizationGalleryView />
+				</div>
+			</div>
+		);
+	}
 
 	// 如果是可视化标签页，显示可视化内容
 	if (activeTab?.visualization) {

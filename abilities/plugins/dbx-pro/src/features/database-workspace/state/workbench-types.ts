@@ -46,6 +46,8 @@ export interface EditorTab {
 	/** 该 tab 的页大小；未设置时回落到设置里的默认每页行数。 */
 	pageSize?: number;
 	isRunning: boolean;
+	/** 可视化产物画廊 tab（单例，id 固定 tab-gallery；不持久化、不绑连接）。 */
+	gallery?: boolean;
 	/** 可视化产物数据（如果是可视化标签页） */
 	visualization?: {
 		id?: string;
