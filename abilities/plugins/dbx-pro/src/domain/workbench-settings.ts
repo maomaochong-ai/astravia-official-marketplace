@@ -39,9 +39,12 @@ export const PAGE_SIZE_OPTIONS = [50, 100, 200, 500, 1000] as const;
 /**
  * 页大小夹逼：设置项与网格下拉共用，保证 offset/limit 不会超过引擎单次结果上限。
  * 这里是页大小而不是「结果行数上限」——行数上限已由 ENGINE_ROW_CAP 固定。
+ * 自定义行数不限制上限，由引擎自行处理截断。
  */
 export function resolvePageSize(value: unknown): number {
-	return clampInt(value, 1, ENGINE_ROW_CAP, DEFAULT_SETTINGS.rowLimit);
+	const num = Number(value);
+	if (!Number.isFinite(num) || num < 1) return DEFAULT_SETTINGS.rowLimit;
+	return Math.floor(num);
 }
 
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */

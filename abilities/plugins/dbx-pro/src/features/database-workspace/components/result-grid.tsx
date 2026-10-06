@@ -627,6 +627,58 @@ export function ResultGrid({
 		}
 	}, [sql, connectionName, state.connections, tableInfoSelection?.tableName]);
 
+	/** 导出全部数据为 JSON Lines。 */
+	const exportAllJsonLines = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				downloadFile(toJsonLines(allData.columns, allData.rows), "query-result-all.jsonl", "application/x-ndjson");
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName]);
+
+	/** 导出全部数据为 Markdown。 */
+	const exportAllMarkdown = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				downloadFile(toMarkdown(allData.columns, allData.rows), "query-result-all.md", "text/markdown");
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName]);
+
+	/** 导出全部数据为 HTML。 */
+	const exportAllHtml = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				downloadFile(toHtml(allData.columns, allData.rows), "query-result-all.html", "text/html");
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName]);
+
+	/** 导出全部数据为 TXT。 */
+	const exportAllTxt = useCallback(async () => {
+		setExportingAll(true);
+		try {
+			const allData = await fetchAllData();
+			if (allData) {
+				downloadFile(toTsv(allData.columns, allData.rows), "query-result-all.txt", "text/plain;charset=utf-8");
+			}
+		} finally {
+			setExportingAll(false);
+		}
+	}, [sql, connectionName]);
+
 	const [exportMenu, setExportMenu] = useState<ContextMenuState | null>(null);
 
 	/** 导出格式菜单：左键 / 右键都在按钮上方展开（贴底栏，空间不足时菜单自动上翻）。 */
@@ -637,7 +689,11 @@ export function ResultGrid({
 			{ type: "item", label: "导出当前页 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: exportCsv },
 			{ type: "item", label: "导出当前页 Excel", icon: "icon-[lucide--sheet]", onClick: exportXlsx },
 			{ type: "item", label: "导出当前页 JSON", icon: "icon-[lucide--file-json]", onClick: exportJson },
+			{ type: "item", label: "导出当前页 JSON Lines", icon: "icon-[lucide--file-code]", onClick: exportJsonLines },
+			{ type: "item", label: "导出当前页 Markdown", icon: "icon-[lucide--file-text]", onClick: exportMarkdown },
+			{ type: "item", label: "导出当前页 HTML", icon: "icon-[lucide--file-code-2]", onClick: exportHtml },
 			{ type: "item", label: "导出当前页 SQL", icon: "icon-[lucide--file-terminal]", onClick: exportSql },
+			{ type: "item", label: "导出当前页 TXT", icon: "icon-[lucide--file-text]", onClick: exportTxt },
 		];
 		// 服务端分页时，增加"导出全部"选项
 		if (isServer) {
@@ -646,7 +702,11 @@ export function ResultGrid({
 				{ type: "item", label: "导出全部 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: () => void exportAllCsv(), disabled: exportingAll },
 				{ type: "item", label: "导出全部 Excel", icon: "icon-[lucide--sheet]", onClick: () => void exportAllXlsx(), disabled: exportingAll },
 				{ type: "item", label: "导出全部 JSON", icon: "icon-[lucide--file-json]", onClick: () => void exportAllJson(), disabled: exportingAll },
+				{ type: "item", label: "导出全部 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => void exportAllJsonLines(), disabled: exportingAll },
+				{ type: "item", label: "导出全部 Markdown", icon: "icon-[lucide--file-text]", onClick: () => void exportAllMarkdown(), disabled: exportingAll },
+				{ type: "item", label: "导出全部 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => void exportAllHtml(), disabled: exportingAll },
 				{ type: "item", label: "导出全部 SQL", icon: "icon-[lucide--file-terminal]", onClick: () => void exportAllSql(), disabled: exportingAll },
+				{ type: "item", label: "导出全部 TXT", icon: "icon-[lucide--file-text]", onClick: () => void exportAllTxt(), disabled: exportingAll },
 			);
 		}
 		setExportMenu({

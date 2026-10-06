@@ -186,8 +186,12 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 
 	async function handleDirectSend(): Promise<void> {
 		setSending(true);
-		await sendForReal(prompt);
-		onClose();
+		try {
+			await sendForReal(prompt);
+		} finally {
+			setSending(false);
+			onClose();
+		}
 	}
 
 	function handleInsertOnly(): void {

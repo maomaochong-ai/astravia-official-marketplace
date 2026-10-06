@@ -62,7 +62,7 @@ function renderHtml(title: string, data: Record<string, { title: string; rows: u
 		const tableRows = rows.slice(0, 20).map((r) => `<tr>${Object.values(r as Record<string, unknown>).map((v) => `<td>${v ?? ""}</td>`).join("")}</tr>`).join("");
 		const cols = rows[0] ? Object.keys(rows[0] as object) : [];
 		const isChart = id.startsWith("trend") || id.startsWith("daily") || id.startsWith("weekly") || id.startsWith("monthly");
-		return `<div class="${isChart ? "chart-card" : "table-card"}"><h3>${chartTitle}</h3><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></div>`;
+		return `<div class="${isChart ? "chart-card" : "table-card"}"><h3>${chartTitle}</h3><div class="table-wrapper"><table><thead><tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table></div></div>`;
 	}).join("\n");
 
 	return `<!DOCTYPE html>
@@ -91,9 +91,9 @@ h1 {
 }
 .dashboard { 
 	display: grid; 
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); 
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); 
 	gap: clamp(12px, 2vw, 24px); 
-	max-width: 1400px; 
+	max-width: 1600px; 
 	margin: 0 auto; 
 }
 .kpi-card { 
@@ -110,10 +110,15 @@ h1 {
 	border-radius: 12px; 
 	padding: clamp(12px, 2vw, 20px); 
 	border: 1px solid rgba(139, 92, 246, 0.3);
-	grid-column: span 1;
 	backdrop-filter: blur(8px);
+	overflow: hidden;
 }
+.chart-card { grid-column: span 1; }
 @media (min-width: 768px) {
+	.chart-card { grid-column: span 2; }
+}
+@media (min-width: 1200px) {
+	.dashboard { grid-template-columns: repeat(3, 1fr); }
 	.chart-card { grid-column: span 2; }
 	.table-card { grid-column: 1 / -1; }
 }
@@ -122,7 +127,12 @@ h1 {
 	margin-bottom: 12px; 
 	color: #a5b4fc; 
 }
-table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 1.2vw, 13px); }
+.table-wrapper {
+	overflow-x: auto;
+	overflow-y: auto;
+	max-height: 400px;
+}
+table { width: 100%; border-collapse: collapse; font-size: clamp(11px, 1.2vw, 13px); min-width: 600px; }
 th { 
 	background: rgba(59, 130, 246, 0.2); 
 	padding: clamp(6px, 1vw, 10px) clamp(8px, 1.5vw, 14px); 
@@ -130,11 +140,14 @@ th {
 	font-weight: 600; 
 	color: #93c5fd;
 	white-space: nowrap;
+	position: sticky;
+	top: 0;
+	z-index: 10;
 }
 td { 
 	padding: clamp(4px, 0.8vw, 8px) clamp(8px, 1.5vw, 14px); 
 	border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-	max-width: 200px;
+	max-width: 150px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
