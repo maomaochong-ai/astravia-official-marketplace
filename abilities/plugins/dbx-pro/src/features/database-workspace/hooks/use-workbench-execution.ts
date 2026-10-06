@@ -143,7 +143,7 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 			try {
 				const raw = await engineExecuteByName(connectionName, sql, {
 					countOnly: true,
-					timeoutMs: Math.min(timeoutSecs * 1000, 30_000),
+					timeoutMs: timeoutSecs * 1000,
 					dbType,
 				});
 				let total = Number((raw as { total_count?: unknown }).total_count);
@@ -240,9 +240,7 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 					durationMs: Date.now() - startedAt,
 				});
 				if (isServerMode && rawOutcome.paged && knownTotal === undefined) {
-					if (current.autoCalculateTotalRows) {
-						void fetchTotalCount(tabId, connectionName, sqlToRun, current.queryTimeoutSecs, targetConn?.db_type);
-					}
+					void fetchTotalCount(tabId, connectionName, sqlToRun, current.queryTimeoutSecs, targetConn?.db_type);
 				}
 			} catch (e) {
 				const isBlocked = e instanceof EngineClientError && e.code === "SQL_BLOCKED";

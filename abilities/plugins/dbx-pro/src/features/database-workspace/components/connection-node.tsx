@@ -9,7 +9,7 @@
  * - 拖拽：把节点（或多选整组）以 @提及 token 拖进宿主 AI 输入框，由宿主渲染为对象标签
  */
 
-import { useState, type JSX } from "react";
+import { useRef, useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { parseColumnNodeKey } from "../../../domain/tree-node-key";
@@ -53,6 +53,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	const [aiDialogOpen, setAiDialogOpen] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState("");
 	const [templateDialog, setTemplateDialog] = useState<{ type: "dashboard" | "screen" } | null>(null);
+	const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const isExpanded = state.expandedNodes.has(node.key);
 	const isLoading = state.loadingNodes.has(node.key);
@@ -130,16 +131,24 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			if (!isExpanded) expand();
 		} else if (node.kind === "table") {
 			if (!connectionName) return;
-			// 根据设置决定单击行为：预览数据 或 查看结构
-			if (settings.tableSingleClickAction === "structure") {
-				// 查看结构：打开 DESCRIBE 查询
-				const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;
-				const describeSql = buildDescribeSql(node.label, childScope, dbType);
-				void openPreviewTab(connectionName, describeSql, `${node.label} 结构`);
-			} else {
-				// 预览数据：不带 LIMIT，让服务端分页处理
-				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
+			// 延迟执行单击动作，等待可能的双击
+			if (clickTimerRef.current) {
+				clearTimeout(clickTimerRef.current);
+				clickTimerRef.current = null;
 			}
+			clickTimerRef.current = setTimeout(() => {
+				clickTimerRef.current = null;
+				// 根据设置决定单击行为：预览数据 或 查看结构
+				if (settings.tableSingleClickAction === "structure") {
+					// 查看结构：打开 DESCRIBE 查询
+					const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;
+					const describeSql = buildDescribeSql(node.label, childScope, dbType);
+					void openPreviewTab(connectionName, describeSql, `${node.label} 结构`);
+				} else {
+					// 预览数据：不带 LIMIT，让服务端分页处理
+					void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
+				}
+			}, 250);
 		}
 	}
 
@@ -149,6 +158,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (node.kind === "connection") {
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
+			// 取消单击的延迟执行
+			if (clickTimerRef.current) {
+				clearTimeout(clickTimerRef.current);
+				clickTimerRef.current = null;
+			}
 			// 根据设置决定双击行为：预览数据 或 查看结构
 			if (settings.tableDoubleClickAction === "structure") {
 				const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;

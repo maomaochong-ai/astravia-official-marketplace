@@ -30,7 +30,7 @@ const CATEGORIES: { key: SettingsCategory; label: string; icon: string }[] = [
 	{ key: "grid", label: "数据网格", icon: "icon-[lucide--table]" },
 	{ key: "resultTab", label: "结果标签", icon: "icon-[lucide--database]" },
 	{ key: "export", label: "导出", icon: "icon-[lucide--download]" },
-	{ key: "sidebar", label: "侧边栏", icon: "icon-[lucide--panel-left]" },
+	{ key: "sidebar", label: "树交互", icon: "icon-[lucide--panel-left]" },
 	{ key: "history", label: "历史", icon: "icon-[lucide--history]" },
 	{ key: "about", label: "关于", icon: "icon-[lucide--info]" },
 ];
