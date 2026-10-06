@@ -70,13 +70,15 @@ export const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000, 2000, 5000] as const;
 /**
  * 每页行数允许的最大值（自定义与设为默认共用）。
  *
- * 引擎单次结果硬上限是 ENGINE_ROW_CAP，超过它的页由执行层分块串行拼页
- * （N/cap 次 LIMIT/OFFSET），再一次性渲染整页。dbx 桌面壳结果表是虚拟滚动，
- * 上限取 1_000_000 无妨；本插件结果表是非虚拟化 DOM，一页 N 行就真的挂 N 行
- * 节点，故上限取 10 倍 cap（5000 档位之上留出余量），兼顾「自定义每页行数不被
- * 悄悄回退」与「整页渲染不至于卡死」。
+ * 对齐 dbx 桌面壳 MAX_RESULT_PAGE_SIZE = 1_000_000（apps/desktop/src/lib/dataGrid/paginationPageSize.ts）。
+ * 引擎单次结果硬上限是 ENGINE_ROW_CAP = 1000，超过它的页由执行层分块串行拼页
+ * （N/cap 次 LIMIT/OFFSET），再一次性渲染整页。
+ *
+ * 注：dbx 结果表是虚拟滚动；本插件是非虚拟化 DOM，一页 N 行就真挂 N 行节点。
+ * 上限与 dbx 对齐是为了「用户输入的每页行数不被悄悄回退」，但实际拉取大页时
+ * 仍受引擎单次上限和浏览器 DOM 渲染性能约束。大页警告由 UI 层按需触发。
  */
-export const MAX_RESULT_PAGE_SIZE = 10 * ENGINE_ROW_CAP;
+export const MAX_RESULT_PAGE_SIZE = 1_000_000;
 export const MIN_RESULT_PAGE_SIZE = 1;
 
 /**

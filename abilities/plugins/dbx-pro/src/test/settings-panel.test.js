@@ -70,13 +70,13 @@ describe("设置面板 · 每页行数输入", () => {
 		assert.equal(input.value, "2000");
 	});
 
-	it("输入 20000 时保留原文，并说明会按上限取值", () => {
+	it("输入 2000000 时保留原文，并说明会按上限取值", () => {
 		const changes = [];
 		openPanel({ onChange: (next) => changes.push(next) });
 		const input = screen.getByLabelText("默认每页行数");
 
-		type(input, "20000");
-		assert.equal(input.value, "20000");
+		type(input, "2000000");
+		assert.equal(input.value, "2000000");
 		assert.ok(
 			screen.getByText(`超出上限：单页最多 ${MAX_RESULT_PAGE_SIZE.toLocaleString()} 行，将按上限取值`),
 			"超上限时必须给出提示，而不是静默改数",
@@ -127,7 +127,7 @@ describe("设置面板 · 每页行数输入", () => {
 		assert.equal(changes[0].tableOpenPageSize, 5_000);
 		assert.equal(changes[0].rowLimit, DEFAULT_SETTINGS.rowLimit);
 
-		type(input, "999999");
+		type(input, "2000000");
 		fireEvent.blur(input);
 		assert.equal(changes.length, 2);
 		assert.equal(changes[1].tableOpenPageSize, MAX_RESULT_PAGE_SIZE);
@@ -137,7 +137,7 @@ describe("设置面板 · 每页行数输入", () => {
 		const view = openPanel();
 		const input = screen.getByLabelText("默认每页行数");
 
-		type(input, "20000");
+		type(input, "2000000");
 		fireEvent.blur(input);
 		assert.equal(input.value, String(MAX_RESULT_PAGE_SIZE));
 		assert.ok(screen.queryByText(/超出上限/) !== null);

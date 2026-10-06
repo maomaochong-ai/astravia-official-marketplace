@@ -70,12 +70,12 @@ describe("底栏每页行数下拉 · 自定义行数", () => {
 		assert.equal(screen.queryByRole("menu"), null, "应用后菜单应关闭");
 	});
 
-	it("输入 20000：说明按上限取值，本次查询按上限生效", () => {
+	it("输入 2000000：说明按上限取值，本次查询按上限生效", () => {
 		const applied = [];
 		const { input } = openMenu({ onApply: (value) => applied.push(value) });
 
-		fireEvent.change(input, { target: { value: "20000" } });
-		assert.equal(input.value, "20000");
+		fireEvent.change(input, { target: { value: "2000000" } });
+		assert.equal(input.value, "2000000");
 		assert.ok(screen.getByText(`超出上限：单页最多 ${MAX_RESULT_PAGE_SIZE.toLocaleString()} 行，将按上限取值`));
 
 		fireEvent.click(screen.getByText("本次查询"));
@@ -97,7 +97,7 @@ describe("底栏每页行数下拉 · 自定义行数", () => {
 		const defaults = [];
 		const { input } = openMenu({ onSetDefault: (value) => defaults.push(value) });
 
-		fireEvent.change(input, { target: { value: "20000" } });
+		fireEvent.change(input, { target: { value: "2000000" } });
 		fireEvent.click(screen.getByText("设为默认"));
 		assert.deepEqual(defaults, [MAX_RESULT_PAGE_SIZE]);
 	});

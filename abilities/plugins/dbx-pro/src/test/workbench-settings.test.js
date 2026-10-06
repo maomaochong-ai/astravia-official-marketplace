@@ -47,8 +47,8 @@ describe("设置常量", () => {
 		assert.equal(DEFAULT_SETTINGS.rowLimit, 100);
 	});
 
-	it("页大小上限 = 10 × 引擎单次上限（超出部分由网格分块拼页，不再夹回 1000）", () => {
-		assert.equal(MAX_RESULT_PAGE_SIZE, 10 * ENGINE_ROW_CAP);
+	it("页大小上限对齐 dbx 桌面壳 1_000_000（引擎单次硬上限 1000，超出部分分块拼页）", () => {
+		assert.equal(MAX_RESULT_PAGE_SIZE, 1_000_000);
 		assert.equal(SETTINGS_BOUNDS.rowLimit.max, MAX_RESULT_PAGE_SIZE);
 		assert.equal(SETTINGS_BOUNDS.tableOpenPageSize.max, MAX_RESULT_PAGE_SIZE);
 	});
@@ -90,12 +90,12 @@ describe("resolvePageSize", () => {
 	it("合法整数原样返回", () => {
 		assert.equal(resolvePageSize(200), 200);
 	});
-	it("超过页大小上限夹到 MAX_RESULT_PAGE_SIZE，档位内的 2000 / 5000 原样保留", () => {
+	it("超过页大小上限夹到 MAX_RESULT_PAGE_SIZE，档位内的 2000 / 5000 / 100000 原样保留", () => {
 		assert.equal(resolvePageSize(2_000_000), MAX_RESULT_PAGE_SIZE);
-		assert.equal(resolvePageSize(100_000), MAX_RESULT_PAGE_SIZE);
 		// 回归：自定义页大小曾被夹到 ENGINE_ROW_CAP，用户选 2000 会静默变 1000。
 		assert.equal(resolvePageSize(2_000), 2_000);
 		assert.equal(resolvePageSize(5_000), 5_000);
+		assert.equal(resolvePageSize(100_000), 100_000);
 	});
 	it("自定义页大小经 normalizeSettings 后不被改写", () => {
 		assert.equal(normalizeSettings({ rowLimit: 2_000 }).rowLimit, 2_000);
@@ -131,7 +131,7 @@ describe("parsePageSizeInput", () => {
 	});
 
 	it("超上限：取上限并标记 exceededMax", () => {
-		const parsed = parsePageSizeInput("20000", 100);
+		const parsed = parsePageSizeInput("2000000", 100);
 		assert.equal(parsed.value, MAX_RESULT_PAGE_SIZE);
 		assert.equal(parsed.exceededMax, true);
 		assert.equal(parsed.belowMin, false);

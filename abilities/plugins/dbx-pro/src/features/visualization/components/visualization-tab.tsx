@@ -11,8 +11,8 @@
 
 import { useState, useRef, useEffect, type JSX } from "react";
 import type { Visualization } from "../visualization-bridge";
-import { DASHBOARD_PRESETS } from "../presets/dashboard/presets";
-import { SCREEN_PRESETS } from "../presets/screen/presets";
+import { DASHBOARD_PRESETS, type ChartConfig } from "../presets/dashboard/presets";
+import { SCREEN_PRESETS, type WidgetConfig } from "../presets/screen/presets";
 import { DashboardRenderer, type RenderedChart } from "./dashboard-renderer";
 import { ScreenRenderer, type RenderedWidget } from "./screen-renderer";
 
@@ -90,22 +90,41 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 		}
 
 		// 组件模式
+		// domain/visualization.ts 里 Visualization 用 rows，RenderedChart/RenderedWidget 用 data —— 显式映射，杜绝 `as` 掩盖的字段漂移。
 		if (viz.type === "dashboard" && dashboardPreset && viz.charts) {
+			const renderedCharts: RenderedChart[] = viz.charts.map((c) => ({
+				id: c.id,
+				type: c.type,
+				title: c.title,
+				data: c.rows ?? [],
+				columns: c.columns ?? [],
+				config: c.config as ChartConfig["config"] | undefined,
+				layout: (c.layout ?? {}) as ChartConfig["layout"],
+			}));
 			return (
 				<DashboardRenderer
 					preset={dashboardPreset}
 					title={viz.title}
-					charts={viz.charts as RenderedChart[]}
+					charts={renderedCharts}
 				/>
 			);
 		}
 
 		if (viz.type === "screen" && screenPreset && viz.widgets) {
+			const renderedWidgets: RenderedWidget[] = viz.widgets.map((w) => ({
+				id: w.id,
+				type: w.type,
+				title: w.title,
+				data: w.rows ?? [],
+				columns: w.columns ?? [],
+				config: w.config as WidgetConfig["config"] | undefined,
+				layout: (w.layout ?? {}) as WidgetConfig["layout"],
+			}));
 			return (
 				<ScreenRenderer
 					preset={screenPreset}
 					title={viz.title}
-					widgets={viz.widgets as RenderedWidget[]}
+					widgets={renderedWidgets}
 				/>
 			);
 		}
