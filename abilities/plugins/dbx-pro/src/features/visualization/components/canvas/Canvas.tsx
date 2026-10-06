@@ -68,6 +68,16 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 
 	// 首次 / intent 切换时重新生成布局
 	const regenerate = useCallback(() => {
+		// v0.0.101: 提前短路 —— 数据源全空直接显示空提示，跳过 100ms skeleton
+		const totalRows = hasMulti
+			? (dataSources ?? []).reduce((s, src) => s + src.rows.length, 0)
+			: (rows?.length ?? 0);
+		if (totalRows === 0) {
+			setSpec(null);
+			setLoading(false);
+			return () => { /* 无 timer 要清理 */ };
+		}
+
 		setLoading(true);
 		let cancelled = false;
 		const innerTimers: ReturnType<typeof setTimeout>[] = [];
@@ -141,6 +151,14 @@ export function Canvas({ columns, rows, dataSources, intent: initialIntent = "au
 				/>
 			)}
 			<div className={classGrid}>
+				{/* v0.0.101: 空结果集友好提示 */}
+				{!loading && (!spec || spec.widgets.length === 0) && (
+					<div className="viz-empty-state">
+						<span className="viz-empty-state__icon icon-[lucide--inbox] h-10 w-10" />
+						<span className="viz-empty-state__title">暂无数据</span>
+						<span className="viz-empty-state__subtitle">SQL 未返回任何行，或没有找到可展示的指标列</span>
+					</div>
+				)}
 				{spec?.widgets.map((w) => {
 					// v0.0.94: 多数据源路径下，每个 widget 从对应数据源取数据
 					const ds = w.dataSourceId ? dataLookup.get(w.dataSourceId) : null;

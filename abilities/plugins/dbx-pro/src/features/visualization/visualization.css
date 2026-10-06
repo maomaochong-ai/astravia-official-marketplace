@@ -684,3 +684,44 @@
 .dbx-root .viz-theme-bigscreen .viz-gauge-pct {
 	font-size: 12px; color: rgba(6, 182, 212, 0.7); margin-left: 2px;
 }
+
+/* ──────────────────────── 空结果集提示 (v0.0.101) ──────────────────────── */
+
+.dbx-root .viz-empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	grid-column: 1 / -1;
+	padding: 60px 20px;
+	border-radius: 12px;
+	text-align: center;
+}
+.dbx-root .viz-theme-dashboard .viz-empty-state {
+	background: rgba(241, 245, 249, 0.4);
+	border: 1px dashed rgba(148, 163, 184, 0.4);
+}
+.dbx-root .viz-theme-bigscreen .viz-empty-state {
+	background: rgba(6, 182, 212, 0.04);
+	border: 1px dashed rgba(6, 182, 212, 0.25);
+}
+
+.dbx-root .viz-empty-state__icon {
+	opacity: 0.55;
+}
+.dbx-root .viz-theme-dashboard .viz-empty-state__icon { color: #94a3b8; }
+.dbx-root .viz-theme-bigscreen .viz-empty-state__icon { color: rgba(6, 182, 212, 0.55); }
+
+.dbx-root .viz-empty-state__title {
+	font-size: 14px; font-weight: 600;
+}
+.dbx-root .viz-theme-dashboard .viz-empty-state__title { color: #475569; }
+.dbx-root .viz-theme-bigscreen .viz-empty-state__title { color: rgba(226, 232, 240, 0.9); }
+
+.dbx-root .viz-empty-state__subtitle {
+	font-size: 11px; max-width: 360px;
+	line-height: 1.5;
+}
+.dbx-root .viz-theme-dashboard .viz-empty-state__subtitle { color: #94a3b8; }
+.dbx-root .viz-theme-bigscreen .viz-empty-state__subtitle { color: rgba(148, 163, 184, 0.65); }
