@@ -414,26 +414,31 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						],
 					},
 					{ type: "separator" },
-					// 可视化
-					{
-						type: "submenu",
-						label: "可视化",
-						icon: "icon-[lucide--bar-chart-3]",
-						items: [
-							{
-								type: "item",
-								label: "生成企业看板",
-								icon: "icon-[lucide--layout-dashboard]",
-								onClick: () => setTemplateDialog({ type: "dashboard" }),
+				// 可视化
+				{
+					type: "submenu",
+					label: "可视化",
+					icon: "icon-[lucide--bar-chart-3]",
+					items: [
+						{
+							type: "item",
+							label: "生成企业看板",
+							icon: "icon-[lucide--layout-dashboard]",
+							onClick: () => {
+								// 延迟到下一帧，避免 ContextMenu 关闭时干扰 Dialog 渲染
+								setTimeout(() => setTemplateDialog({ type: "dashboard" }), 0);
 							},
-							{
-								type: "item",
-								label: "生成数据大屏",
-								icon: "icon-[lucide--monitor]",
-								onClick: () => setTemplateDialog({ type: "screen" }),
+						},
+						{
+							type: "item",
+							label: "生成数据大屏",
+							icon: "icon-[lucide--monitor]",
+							onClick: () => {
+								setTimeout(() => setTemplateDialog({ type: "screen" }), 0);
 							},
-						],
-					},
+						},
+					],
+				},
 					{ type: "separator" },
 					// AI 分析
 					{

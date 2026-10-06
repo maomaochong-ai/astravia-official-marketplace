@@ -144,7 +144,7 @@ export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	rowLimit: 100,
 	historyEnabled: true,
 	historyLimit: HISTORY_LIMIT_DEFAULT,
-	tableSingleClickAction: "structure",
+	tableSingleClickAction: "preview",
 	tableDoubleClickAction: "preview",
 	exportLimitEnabled: false,
 	exportRowLimit: EXPORT_ROW_LIMIT_DEFAULT,

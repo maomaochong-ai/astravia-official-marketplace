@@ -401,9 +401,9 @@ export function ResultGrid({
 		[isServer, orderedRows, safePage, pageSize],
 	);
 
-	const totalKnown = !isServer || serverTotalCount !== undefined;
+	const totalKnown = !isServer || (serverTotalCount !== undefined && serverTotalCount >= 0);
 	const displayTotal = isServer
-		? serverTotalCount ?? safePage * pageSize + rows.length
+		? (serverTotalCount !== undefined && serverTotalCount >= 0 ? serverTotalCount : safePage * pageSize + rows.length)
 		: rows.length;
 
 	// 翻页 / 改每页行数：网格内部滚动回到顶部；页码输入框与当前页保持同步。
@@ -451,7 +451,7 @@ export function ResultGrid({
 	 * 手动刷新总计行统计。总数回填（serverTotalCount 变化）后停止转圈；
 	 * 统计失败时不会有回填，用 60s 超时兜底退出转圈，不影响已展示的数据。
 	 */
-	const totalCounting = isServer && (serverTotalCount === undefined || refreshingTotal);
+	const totalCounting = isServer && refreshingTotal;
 	useEffect(() => {
 		if (!refreshingTotal) return;
 		if (serverTotalCount !== undefined) {
@@ -683,27 +683,29 @@ export function ResultGrid({
 				let batchRows: Record<string, unknown>[] = [];
 				let batchOffset = offset;
 				const batchTarget = rowLimit === Infinity ? batchSize : Math.min(batchSize, Math.max(1, rowLimit - total));
+				let lastOutcome: { paged?: boolean; truncated?: boolean } | null = null;
 				
 				while (batchRows.length < batchTarget) {
 					const chunkLimit = Math.min(ENGINE_ROW_CAP, batchTarget - batchRows.length);
-					const outcome = await engineExecuteByName(connectionName, sql, {
+					const chunkOutcome = await engineExecuteByName(connectionName, sql, {
 						rowLimit: ENGINE_ROW_CAP,
 						timeoutMs: 60_000,
 						dbType,
 						page: { offset: batchOffset, limit: chunkLimit },
 					});
+					lastOutcome = chunkOutcome;
 					if (allColumns.length === 0) {
-						allColumns = outcome.columns;
+						allColumns = chunkOutcome.columns;
 						if (kind !== "xlsx") {
 							stream = createChunkedTextExport(kind, allColumns, { tableName: target, dialect: sqlDialect() });
 						}
 					}
-					batchRows.push(...outcome.rows);
-					batchOffset += outcome.rows.length;
+					batchRows.push(...chunkOutcome.rows);
+					batchOffset += chunkOutcome.rows.length;
 					
 					// 不可分页查询：引擎忽略 page，单次结果最多 ENGINE_ROW_CAP 行
-					if (!outcome.paged) {
-						if (outcome.truncated === true) {
+					if (!chunkOutcome.paged) {
+						if (chunkOutcome.truncated === true) {
 							truncationNote =
 								`该 SQL 不支持服务端分页，仅导出引擎单次返回的前 ${total + batchRows.length.toLocaleString()} 行；` +
 								"如需完整数据，请在 SQL 中使用 LIMIT / OFFSET 分批导出";
@@ -711,7 +713,7 @@ export function ResultGrid({
 						break;
 					}
 					// 末页或已达到引擎单次上限
-					if (outcome.rows.length < chunkLimit) break;
+					if (chunkOutcome.rows.length < chunkLimit) break;
 				}
 				
 				total += batchRows.length;
@@ -721,7 +723,7 @@ export function ResultGrid({
 				offset = batchOffset;
 				
 				// 不可分页查询已处理
-				if (!outcome?.paged) break;
+				if (!lastOutcome?.paged) break;
 				// 本批取数不足 batchSize，说明已到末页
 				if (batchRows.length < batchTarget) break;
 				// 已达到用户设置的上限
@@ -1094,7 +1096,15 @@ export function ResultGrid({
 			</div>
 
 			{/* 网格（内部滚动） */}
-			<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
+			<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto relative">
+				{pageLoading && (
+					<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+						<div className="flex items-center gap-2 rounded-md border border-border bg-popover px-3 py-2 shadow-md">
+							<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-muted-foreground" />
+							<span className="text-[11px] text-muted-foreground">加载中…</span>
+						</div>
+					</div>
+				)}
 				<table className="border-separate border-spacing-0 text-[12px] w-full" style={{ minWidth: "100%" }}>
 					<thead>
 						<tr>
@@ -1287,15 +1297,15 @@ export function ResultGrid({
 					>
 						<span className="icon-[lucide--chevron-right] h-3 w-3" />
 					</button>
-					<button
-						type="button"
-						onClick={() => totalPages !== null && goToPage(totalPages - 1)}
-						disabled={!totalKnown || totalPages === null || !hasNextPage || pageLoading === true}
-						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
-						title="最后一页"
-					>
-						<span className="icon-[lucide--chevrons-right] h-3 w-3" />
-					</button>
+				<button
+					type="button"
+					onClick={() => totalPages !== null && goToPage(totalPages - 1)}
+					disabled={totalPages === null || !hasNextPage || pageLoading === true}
+					className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+					title="最后一页"
+				>
+					<span className="icon-[lucide--chevrons-right] h-3 w-3" />
+				</button>
 					<div className="mx-2 h-3 w-px bg-[var(--dbx-surface-2)]" />
 					{/* 导出：左键 / 右键均弹格式菜单 */}
 					<button

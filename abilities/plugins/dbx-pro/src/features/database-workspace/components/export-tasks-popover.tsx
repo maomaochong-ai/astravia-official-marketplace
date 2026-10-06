@@ -83,7 +83,7 @@ export function ExportTasksPopover(): JSX.Element | null {
 	}, [activeCount]);
 
 	useLayoutEffect(() => {
-		setPanelRoot(triggerRef.current?.closest(".dbx-root") ?? null);
+		setPanelRoot(triggerRef.current?.closest(".dbx-root") ?? document.body);
 	}, []);
 
 	useLayoutEffect(() => {

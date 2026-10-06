@@ -143,7 +143,7 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 			try {
 				const raw = await engineExecuteByName(connectionName, sql, {
 					countOnly: true,
-					timeoutMs: timeoutSecs * 1000,
+					timeoutMs: Math.min(timeoutSecs * 1000, 30_000),
 					dbType,
 				});
 				let total = Number((raw as { total_count?: unknown }).total_count);
@@ -154,7 +154,8 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 				}
 				dispatch({ type: "setTabTotalCount", id: tabId, totalCount: total, ranSql: sql });
 			} catch {
-				// 统计失败不影响已展示的这一页
+				// 统计失败时清除总数未知状态，避免 UI 一直显示「统计中」
+				dispatch({ type: "setTabTotalCount", id: tabId, totalCount: -1, ranSql: sql });
 			}
 		},
 		[dispatch, settingsRef],
