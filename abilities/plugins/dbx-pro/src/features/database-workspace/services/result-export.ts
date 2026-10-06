@@ -96,8 +96,10 @@ export function toSqlInsert(
 		return `'${String(value).replaceAll("'", "''")}'`;
 	};
 	const head = `INSERT INTO ${qualifiedTable} (${cols.map(quoteId).join(", ")}) VALUES`;
-	const tail = rows.map((row) => `  (${cols.map((c) => literal(row[c])).join(", ")});`);
-	return [head, ...tail].join("\n");
+	if (rows.length === 0) return `-- ${tableName}: 0 行，无数据可导出\n${head};`;
+	// 多行 VALUES：一行一个元组，元组之间逗号分隔，语句末尾一个分号（否则第 2 行起是语法错误）。
+	const tuples = rows.map((row) => `  (${cols.map((c) => literal(row[c])).join(", ")})`);
+	return `${head}\n${tuples.join(",\n")};`;
 }
 
 /**

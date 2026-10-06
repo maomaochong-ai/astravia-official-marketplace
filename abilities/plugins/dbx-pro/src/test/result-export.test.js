@@ -59,13 +59,21 @@ describe("toMarkdown", () => {
 });
 
 describe("toSqlInsert", () => {
-	it("标准方言：双引号标识符仅用于非法名，单引号字符串转义", () => {
+	it("标准方言：双引号标识符仅用于非法名，单引号字符串转义；多行合法 VALUES", () => {
 		const out = toSqlInsert(cols, rows, "public.users", "standard");
 		const lines = out.split("\n");
 		assert.equal(lines[0], "INSERT INTO public.users (id, name) VALUES");
-		assert.match(lines[1], /\(1, 'Alice'\);/);
-		assert.match(lines[2], /\(2, 'O''Brie'\);/);
-		assert.match(lines[3], /\(3, NULL\);/);
+		assert.match(lines[1], /^\s*\(1, 'Alice'\),$/);
+		assert.match(lines[2], /\(2, 'O''Brie'\),$/);
+		assert.match(lines[3], /\(3, NULL\);$/);
+		// 只能有一个语句终结符
+		assert.equal((out.match(/;/g) || []).length, 1);
+	});
+
+	it("空结果集导出为注释，不产出非法 SQL", () => {
+		const out = toSqlInsert(["a"], [], "t");
+		assert.match(out, /^-- t: 0 行/);
+		assert.doesNotMatch(out, /VALUES\s*\n?\s*\(/);
 	});
 
 	it("MySQL 方言：反引号标识符", () => {

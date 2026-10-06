@@ -213,10 +213,10 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	 * 二次确认；只读连接在执行器内直接拒绝。不在浏览器侧用 window.confirm
 	 * （宿主 webview 中是静默 no-op）。
 	 */
-	async function runDangerAction(params: {
+	function runDangerAction(params: {
 		kind: "vacuum" | "truncate" | "delete" | "drop";
 		cascade?: boolean;
-	}): Promise<void> {
+	}): void {
 		const connName = connectionName ?? (node.kind === "connection" ? node.label : "");
 		if (!connName) return;
 		const dbType = (state.connections.find((c) => c.name === connName)?.db_type ?? "").toLowerCase();
@@ -244,7 +244,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			tab: { id, label: `${node.label} ${params.kind.toUpperCase()}`, connectionName: connName, sql, isRunning: false },
 		});
 		// 立即执行 → 触发写确认弹窗（非只读连接）或只读拒绝。写操作不分页。
-		await runTabSql(id, sql);
+		// 必须延迟到下一 tick：addTab 的 reducer 状态要等重渲染才同步进 stateRef，
+		// 同一 tick 内执行器查不到该 tab，会直接报「Tab 不存在」（与 openPreviewTab 同构）。
+		setTimeout(() => {
+			void runTabSql(id, sql);
+		}, 0);
 	}
 
 	function handleContextMenu(e: React.MouseEvent): void {
