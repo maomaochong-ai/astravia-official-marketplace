@@ -6,7 +6,7 @@
  */
 
 export type VizIntent = "dashboard" | "bigscreen";
-export type ChartKind = "kpi" | "line" | "bar" | "pie" | "area" | "table";
+export type ChartKind = "kpi" | "line" | "bar" | "pie" | "area" | "gauge" | "table";
 
 export interface WidgetSpec {
 	id: string;

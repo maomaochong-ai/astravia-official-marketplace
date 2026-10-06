@@ -27,7 +27,7 @@ export interface InferOptions {
 
 const TIME_PATTERNS = /(date|time|dt|day|month|year|created|updated|timestamp|_at$)/i;
 const ID_PATTERNS = /(_id$|^id$|pk$|uuid|guid)/i;
-const MEASURE_PATTERNS = /(count|sum|avg|total|amount|gmv|revenue|price|qty|quantity|amount|rate|ratio|pct|percentage|score|rank|level)/i;
+const MEASURE_PATTERNS = /(count|sum|avg|total|amount|gmv|revenue|price|qty|quantity|rate|ratio|pct|percentage|score|rank|level|accuracy|coverage|completion|percent|score)/i;
 
 function inferColumnRole(name: string, values: unknown[]): ColumnRole {
 	// 先看名字 hint
@@ -72,7 +72,7 @@ export interface ChartCandidate {
 	dataSourceId?: string;
 }
 
-function chartOptions(meta: ColumnMeta[], intent: VizIntent): ChartCandidate[] {
+function chartOptions(meta: ColumnMeta[], intent: VizIntent, rows: Record<string, unknown>[] = []): ChartCandidate[] {
 	const measures = meta.filter((m) => m.role === "measure");
 	const times = meta.filter((m) => m.role === "time");
 	const categoricals = meta.filter((m) => m.role === "categorical");
@@ -81,10 +81,29 @@ function chartOptions(meta: ColumnMeta[], intent: VizIntent): ChartCandidate[] {
 
 	const candidates: ChartCandidate[] = [];
 
-	// KPI 卡：每个 measure 独立一张
+	// v0.0.100: Gauge 启发式（仅限 BigScreen）
+	//   - 列名匹配 rate|ratio|percent|pct|completion|coverage|accuracy
+	//   - 或所有值都在 [0, 1.0] 范围
+	const isGaugeCandidate = (colName: string): boolean => {
+		if (intent !== "bigscreen") return false;
+		const nameMatch = /rate|ratio|percent|pct|completion|coverage|accuracy|score/i.test(colName);
+		if (nameMatch) return true;
+		// 值全在 [0, 1]
+		if (rows.length > 0) {
+			const allInRange = rows.every((r) => {
+				const v = Number(r[colName]);
+				return Number.isFinite(v) && v >= 0 && v <= 1;
+			});
+			if (allInRange) return true;
+		}
+		return false;
+	};
+
+	// KPI 卡 / Gauge：每个 measure 独立一张
 	measures.forEach((m) => {
+		const isGauge = isGaugeCandidate(m.name);
 		candidates.push({
-			kind: "kpi",
+			kind: isGauge ? "gauge" : "kpi",
 			dataRef: m.name,
 			title: humanize(m.name),
 			colSpan: intent === "dashboard" ? 3 : 2,
@@ -222,7 +241,7 @@ export function inferLayout(input: InferInput, options: InferOptions = {}): Layo
 function inferLayoutSingle(columns: string[], rows: Record<string, unknown>[], intentHint?: VizIntent): LayoutSpec {
 	const intent: VizIntent = intentHint ?? inferIntent(columns, rows);
 	const meta = inferSchema(columns, rows);
-	const candidates = chartOptions(meta, intent);
+	const candidates = chartOptions(meta, intent, rows);
 	const widgets = packGrid(candidates);
 
 	return {

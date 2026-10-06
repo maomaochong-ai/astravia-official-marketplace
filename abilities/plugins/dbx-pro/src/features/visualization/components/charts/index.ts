@@ -16,3 +16,6 @@ export type { RechartsPieChartProps } from "./recharts-pie-chart";
 
 export { RechartsAreaChart } from "./recharts-area-chart";
 export type { RechartsAreaChartProps } from "./recharts-area-chart";
+
+export { GaugeCard } from "./gauge-card";
+export type { GaugeCardProps } from "./gauge-card";

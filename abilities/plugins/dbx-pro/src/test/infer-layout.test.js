@@ -132,3 +132,57 @@ describe("inferSchema — 列角色推断", () => {
 		assert.equal(meta[0].role, "measure");
 	});
 });
+
+describe("inferLayout — v0.0.100 Gauge 启发式", () => {
+	it("bigscreen + 列名 completion_rate → gauge", () => {
+		const spec = inferLayout(
+			{ columns: ["completion_rate"], rows: [{ completion_rate: 0.85 }] },
+			{ intent: "bigscreen" },
+		);
+		const gauge = spec.widgets.find((w) => w.dataRef === "completion_rate");
+		assert.ok(gauge, "completion_rate 应有 widget");
+		assert.equal(gauge.kind, "gauge", `应为 gauge 但得到 ${gauge.kind}`);
+	});
+
+	it("dashboard + 列名 completion_rate → kpi（Gauge 仅 bigscreen）", () => {
+		const spec = inferLayout(
+			{ columns: ["completion_rate"], rows: [{ completion_rate: 0.85 }] },
+			{ intent: "dashboard" },
+		);
+		const gauge = spec.widgets.find((w) => w.dataRef === "completion_rate");
+		assert.ok(gauge);
+		assert.equal(gauge.kind, "kpi", "dashboard 不应生成 gauge，应 fallback kpi");
+	});
+
+	it("bigscreen + 值全在 0-1 范围（非 rate 列名）→ gauge", () => {
+		const spec = inferLayout(
+			{ columns: ["score"], rows: [{ score: 0.72 }, { score: 0.88 }] },
+			{ intent: "bigscreen" },
+		);
+		const w = spec.widgets.find((x) => x.dataRef === "score");
+		assert.ok(w);
+		assert.equal(w.kind, "gauge", "score 值全在 [0,1] 应触发 gauge");
+	});
+
+	it("bigscreen + 正常值（非 rate / 非 0-1 范围）→ kpi", () => {
+		const spec = inferLayout(
+			{ columns: ["total_amount"], rows: [{ total_amount: 9999 }] },
+			{ intent: "bigscreen" },
+		);
+		const w = spec.widgets.find((x) => x.dataRef === "total_amount");
+		assert.ok(w);
+		assert.equal(w.kind, "kpi", "9999 绝对值应走 kpi");
+	});
+
+	it("rate 列名 regex: coverage, accuracy, percent, pct, ratio, score, rate 都触发", () => {
+		const rateNames = ["coverage_rate", "accuracy", "completion_pct", "success_ratio", "percent_done"];
+		for (const name of rateNames) {
+			const spec = inferLayout(
+				{ columns: [name], rows: [{ [name]: 0.9 }] },
+				{ intent: "bigscreen" },
+			);
+			const w = spec.widgets.find((x) => x.dataRef === name);
+			assert.equal(w?.kind, "gauge", `${name} 应触发 gauge 但得到 ${w?.kind}`);
+		}
+	});
+});

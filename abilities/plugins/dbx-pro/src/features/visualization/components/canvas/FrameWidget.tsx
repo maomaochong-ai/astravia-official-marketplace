@@ -10,6 +10,7 @@
 import { type JSX } from "react";
 import type { VizIntent, WidgetSpec } from "./types";
 import { KpiCard } from "../charts/kpi-card";
+import { GaugeCard } from "../charts/gauge-card";
 import { RechartsLineChart } from "../charts/recharts-line-chart";
 import { RechartsBarChart } from "../charts/recharts-bar-chart";
 import { RechartsPieChart } from "../charts/recharts-pie-chart";
@@ -116,6 +117,18 @@ function renderChart(
 					{...common}
 				/>
 			);
+		case "gauge": {
+			const col = spec.dataRef.trim();
+			// Gauge 值：取第一行作为 ratio（0.0-1.0）；如果列有多行，取平均值
+			let raw: number;
+			if (data.length === 0) {
+				raw = 0;
+			} else {
+				const sum = data.reduce<number>((s, r) => s + (Number(r[col]) || 0), 0);
+				raw = sum / data.length;
+			}
+			return <GaugeCard title={spec.title} value={raw} themeMode={themeMode} />;
+		}
 		case "table":
 			return (
 				<DataTable

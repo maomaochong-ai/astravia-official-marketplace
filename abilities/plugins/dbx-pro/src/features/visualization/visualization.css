@@ -620,3 +620,67 @@
 	color: rgba(148, 163, 184, 0.6);
 }
 .dbx-root .viz-widget-empty__icon { opacity: 0.6; }
+
+/* ──────────────────────── GaugeCard (v0.0.100) ──────────────────────── */
+
+.dbx-root .viz-card--gauge {
+	position: relative;
+	padding: 4px 0 8px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+}
+.dbx-root .viz-gauge-title {
+	position: absolute;
+	top: 4px; left: 0; right: 0;
+	font-size: 10px; font-weight: 600; text-align: center;
+	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dbx-root .viz-theme-dashboard .viz-gauge-title { color: #64748b; }
+.dbx-root .viz-theme-bigscreen .viz-gauge-title { color: rgba(226, 232, 240, 0.85); }
+
+.dbx-root .viz-gauge-svg-wrap {
+	position: relative;
+	width: 100%;
+	max-width: 140px;
+	margin-top: 14px;
+}
+.dbx-root .viz-gauge-svg {
+	width: 100%;
+	display: block;
+}
+.dbx-root .viz-gauge-center-text {
+	position: absolute;
+	bottom: 8px;
+	left: 0; right: 0;
+	text-align: center;
+}
+
+.dbx-root .viz-theme-dashboard .viz-gauge-arc-bg {
+	stroke: #e2e8f0; stroke-width: 8; stroke-linecap: round;
+}
+.dbx-root .viz-theme-dashboard .viz-gauge-arc-value {
+	stroke: var(--viz-palette-1, #3b82f6); stroke-width: 8; stroke-linecap: round;
+}
+.dbx-root .viz-theme-dashboard .viz-gauge-percent {
+	font-size: 18px; font-weight: 700; color: #1e293b;
+}
+.dbx-root .viz-theme-dashboard .viz-gauge-pct {
+	font-size: 10px; color: #64748b; margin-left: 1px;
+}
+
+.dbx-root .viz-theme-bigscreen .viz-gauge-arc-bg {
+	stroke: rgba(6, 182, 212, 0.15); stroke-width: 6; stroke-linecap: round;
+}
+.dbx-root .viz-theme-bigscreen .viz-gauge-arc-value {
+	stroke: var(--viz-palette-1, #06b6d4); stroke-width: 6; stroke-linecap: round;
+	filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.6));
+}
+.dbx-root .viz-theme-bigscreen .viz-gauge-percent {
+	font-size: 24px; font-weight: 700; color: rgba(6, 182, 212, 1);
+	text-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
+}
+.dbx-root .viz-theme-bigscreen .viz-gauge-pct {
+	font-size: 12px; color: rgba(6, 182, 212, 0.7); margin-left: 2px;
+}
