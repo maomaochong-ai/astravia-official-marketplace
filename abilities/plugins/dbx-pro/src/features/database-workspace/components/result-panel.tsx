@@ -76,11 +76,15 @@ export function ResultPanel(): JSX.Element {
 							try {
 								let pageIndex = (tab.result.serverPage ?? 0) + 1;
 								const pageSize = tab.pageSize ?? settings.rowLimit;
-								// 先取当前页的行数作为参考
 								let prevRows = tab.result.rows.length;
 								while (prevRows >= pageSize) {
+									// 用户可能点击停止按钮：cancelExecution 会把 isRunning 置为 false
+									const still = state.tabs.find((t) => t.id === tabId);
+									if (!still?.isRunning) break;
 									await goToResultPage(tabId, pageIndex);
-									// 等 state 更新后再检查（微任务队列）
+									// await 后再检查一次（cancelExecution 可能在这期间被调用）
+									const still2 = state.tabs.find((t) => t.id === tabId);
+									if (!still2?.isRunning) break;
 									await new Promise((r) => setTimeout(r, 50));
 									const freshTab = state.tabs.find((t) => t.id === tabId);
 									prevRows = freshTab?.result?.rows.length ?? 0;

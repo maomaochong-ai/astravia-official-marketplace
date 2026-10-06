@@ -163,6 +163,7 @@ export function ResultGrid({
 	// 列导航 Popover：搜索过滤 + 点击列名横向滚动到该列
 	const [navOpen, setNavOpen] = useState(false);
 	const [navFilter, setNavFilter] = useState("");
+	const navPopoverRef = useRef<HTMLDivElement | null>(null);
 	// 加载全部状态（底栏按钮触发，循环拉取直到末页）
 	const [loadAllActive, setLoadAllActive] = useState(false);
 	const [columnMenu, setColumnMenu] = useState<ContextMenuState | null>(null);
@@ -281,6 +282,19 @@ export function ResultGrid({
 		setLocalPageSize(resolvePageSize(defaultPageSize));
 		setLocalPage(0);
 	}, [defaultPageSize]);
+
+	// 列导航 click-outside：点外部关闭，避免 onBlur 竞态
+	useEffect(() => {
+		if (!navOpen) return;
+		function handleClickOutside(e: MouseEvent): void {
+			const el = navPopoverRef.current;
+			if (el && !el.contains(e.target as Node)) {
+				setNavOpen(false);
+			}
+		}
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, [navOpen]);
 
 	function openAiDialogForQuery(): void {
 		setAiPrompt(buildQueryPrompt(connectionName ?? "", sql ?? "", rows));
@@ -1123,6 +1137,29 @@ export function ResultGrid({
 
 	return (
 		<div ref={gridRootRef} className="relative flex min-h-0 flex-1 flex-col bg-background">
+			{/* 取数状态：overlay 放在滚动容器外面，绝对定位跟随整个网格区域而非内部滚动。 */}
+			{pageLoading && (
+				<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-[1px] pointer-events-auto">
+					<div className="flex items-center gap-3 rounded-md border border-border bg-popover px-3 py-2 shadow-md">
+						<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-warning" />
+						<span className="text-[11px] text-foreground/80">
+							{isServer ? "取数中" : "加载中"}
+							<span className="ml-1 font-mono text-muted-foreground">
+								第 {safePage + 1} 页 · 每页 {pageSize} 行
+							</span>
+						</span>
+						{onCancelLoading ? (
+							<button
+								type="button"
+								onClick={onCancelLoading}
+								className="rounded bg-destructive/90 px-2 py-0.5 text-[10px] font-medium text-destructive-foreground hover:bg-destructive"
+							>
+								停止
+							</button>
+						) : null}
+					</div>
+				</div>
+			)}
 			{/* 工具栏 - 双排布局 */}
 			<div className={`dbx-result-toolbar ${splitToolbar ? "split-layout" : "single-layout"}`}>
 				{/* 上排：操作按钮 */}
@@ -1171,11 +1208,11 @@ export function ResultGrid({
 							<span className="dbx-toolbar-btn-label">行号</span>
 						</button>
 						{/* 列导航：列数多时快速定位 */}
-						<div className="relative">
+						<div className="relative" ref={navPopoverRef}>
 							<button
 								type="button"
+								onMouseDown={(e) => e.preventDefault()}
 								onClick={() => setNavOpen((v) => !v)}
-								onBlur={() => setTimeout(() => setNavOpen(false), 150)}
 								title={`列导航（${colList.length} 列）`}
 								className={`dbx-toolbar-btn ${navOpen ? "dbx-toolbar-btn-active" : ""}`}
 							>
@@ -1308,30 +1345,7 @@ export function ResultGrid({
 			</div>
 
 			{/* 网格（内部滚动） */}
-			<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto relative">
-				{/* 取数状态：翻页 / 改每页行数都走这里，给出进度、目标与中止入口。 */}
-				{pageLoading && (
-					<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
-						<div className="flex items-center gap-3 rounded-md border border-border bg-popover px-3 py-2 shadow-md">
-							<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-warning" />
-							<span className="text-[11px] text-foreground/80">
-								{isServer ? "取数中" : "加载中"}
-								<span className="ml-1 font-mono text-muted-foreground">
-									第 {safePage + 1} 页 · 每页 {pageSize} 行
-								</span>
-							</span>
-							{onCancelLoading ? (
-								<button
-									type="button"
-									onClick={onCancelLoading}
-									className="rounded bg-destructive/90 px-2 py-0.5 text-[10px] font-medium text-destructive-foreground hover:bg-destructive"
-								>
-									停止
-								</button>
-							) : null}
-						</div>
-					</div>
-				)}
+			<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
 				<table className="border-separate border-spacing-0 text-[12px] w-full" style={{ minWidth: "100%" }}>
 					<thead>
 						<tr>

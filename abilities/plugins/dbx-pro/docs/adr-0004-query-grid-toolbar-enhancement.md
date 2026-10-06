@@ -1,7 +1,9 @@
 # ADR-0004: 查询结果网格工具栏功能完善
 
 ## 状态
-实施中（v0.0.85）
+v0.0.85 已实施（刷新按钮、列导航、列头右键菜单、底栏增强）
+v0.0.86 已实施（可视化 rows→data 映射、分页上限对齐 dbx 1M）
+v0.0.87 进行中（loadAll 可停止、overlay 位置、列导航闪退修复）
 
 ## 背景
 
@@ -512,3 +514,99 @@ onLoadAll?: () => void;
 | 文件 | 用途 |
 |------|------|
 | `ColumnNavigator.tsx` | 列导航 Popover 组件（搜索 + 跳转） |
+
+---
+
+## 11. Bug 修复记录
+
+### 11.1 v0.0.86 — 大屏预览崩溃 + 分页上限对齐
+
+**大屏预览崩溃** "Cannot read properties of undefined (reading '0')":
+- 根因：`visualization-tab.tsx` 用 `as RenderedChart[]` 强制类型断言，
+  领域层 `Visualization.charts[].rows` 与渲染器 `RenderedChart.data` 字段名不匹配，
+  运行时 `chart.data` 为 undefined
+- 修复：显式做 `rows → data` 映射后传给 DashboardRenderer/ScreenRenderer，杜绝 `as` 掩盖的字段漂移
+
+**分页上限对齐 dbx**:
+- dbx 桌面壳：`MAX_RESULT_PAGE_SIZE = 1_000_000`
+- dbx-pro 旧：`MAX_RESULT_PAGE_SIZE = 10_000`（10 × ENGINE_ROW_CAP）
+- dbx-pro 新：`MAX_RESULT_PAGE_SIZE = 1_000_000`
+- 默认页大小不变（100），下拉选项保持 `[50, 100, 500, 1000, 2000, 5000]` 扩展档位
+- 引擎单次上限 ENGINE_ROW_CAP = 1000，超上限分块拼页逻辑不变
+- 说明：dbx 结果表是虚拟滚动，本插件是非虚拟化 DOM，上限对齐后大页仍可能渲染卡顿，警告由 UI 层触发
+
+### 11.2 v0.0.87 — loadAll 可停止 + overlay 位置 + 列导航闪退
+
+**加载全部无法停止**:
+- 根因：`result-panel.tsx` onLoadAll 循环没有检查 isRunning 状态；
+  cancelExecution 只设置 `isRunning = false`，但 while 循环不知道要停止
+- 修复：每次 `await goToResultPage` 前后各检查一次 `tab.isRunning`，
+  被取消后 break 退出循环；停止按钮复用已有的 cancelExecution（会把 tab.isRunning 置为 false）
+
+**取数中 overlay 不跟随视窗 + 停止不生效 + 白屏**:
+- 根因：overlay 在 `scrollRef` 内部且 `absolute inset-0`，
+  跟随内部滚动容器移动，遮罩层位置不正确
+- 修复：把 overlay 移到 gridRootRef（relative 外层容器）内，
+  用 `absolute inset-0` 覆盖整个网格区域（含工具栏 + 分页栏），
+  不再跟随内部表格滚动
+
+**列导航弹窗闪退**:
+- 根因：`onBlur={() => setTimeout(() => setNavOpen(false), 150)}`
+  竞态 — 点击按钮触发 blur 后虽然 setTimeout 延迟关闭，
+  但 Popover 内交互（input autoFocus）与按钮 blur 存在冲突
+- 修复：去掉 onBlur 方案，改用 click-outside 检测
+  （document mousedown + navPopoverRef.contains），
+  按钮添加 `onMouseDown={(e) => e.preventDefault()}` 阻止默认聚焦
+
+---
+
+## 12. dbx 完整工具栏按钮对比（DataGridToolbar.vue 深入分析）
+
+### 12.1 dbx 顶部工具栏按钮顺序
+
+```
+RefreshCcw → AutoRefreshClock → [navigation slot] → Copy + Chevron → AddRow + Chevron
+  → DeleteRow → Upload(Dropdown) → Rows3(转置) → TableProperties → Map(空间预览)
+  → Eye(预览) → Save(提交) → RotateCcw(回滚)
+```
+
+### 12.2 逐项对比
+
+| # | 功能 | dbx 图标 | dbx-pro | 状态 | 决策 |
+|---|------|---------|---------|------|------|
+| 1 | 刷新 | RefreshCcw + Loader2旋转 | ✅ RefreshCcw + Loader2 | OK | 已实施 v0.0.85 |
+| 2 | 自动刷新 | DataGridAutoRefreshClock（时钟+间隔下拉） | ❌ 无 | 缺失 | **暂缓** — 增加定时器管理复杂度，使用场景有限 |
+| 3 | 列导航 | navigation slot | ✅ Columns3 Popover | OK | 已实施 v0.0.85 |
+| 4 | 复制数据 | Copy + Chevron（多种格式下拉） | ✅ Copy 多种格式 | OK | 原有 |
+| 5 | 新增行 | Plus + Chevron（快速/批量下拉） | ❌ 无 | 缺失 | **暂缓** — 需要可编辑网格 |
+| 6 | 删除行 | Trash2 | ❌ 无 | 缺失 | **暂缓** — 需要可编辑网格 |
+| 7 | 导出数据 | Upload + DropdownMenu（顶栏） | ⚠️ 仅底栏有 Download | 缺失 | **对齐** — 顶栏也需要导出按钮（Upload 图标 + DropdownMenu），与底栏格式菜单同源 |
+| 8 | 行列转置 | Rows3（active 高亮） | ❌ 无 | 缺失 | **暂缓** — 使用场景有限，可通过 SQL 实现 |
+| 9 | 表属性 | TableProperties（active 高亮） | ✅ 有 | OK | 原有 |
+| 10 | 空间预览 | Map | ❌ 无 | 缺失 | **不适用** — 不支持 geometry 类型 |
+| 11 | 可视化预览 | Eye + Loader2（预览生成中） | ❌ 无 | 缺失 | **P3 后续** — 需要与 dbx-dashboard/dbx-screen 工具联动 |
+| 12 | 提交变更 | Save + 待提交计数 | ❌ 无 | 缺失 | **不适用** — 写操作走独立确认流程，无事务编辑 |
+| 13 | 回滚变更 | RotateCcw | ❌ 无 | 缺失 | **不适用** — 同上 |
+
+### 12.3 dbx BusyOverlay 与 dbx-pro overlay 对比
+
+| 维度 | dbx DataGridBusyOverlay | dbx-pro 取数中 overlay（v0.0.87） |
+|------|------------------------|-----------------------------------|
+| 位置 | 父容器 relative 外层 | ✅ 对齐：gridRootRef relative 外层 |
+| 样式 | 卡片（圆角 + border + 阴影）+ pill 两种模式 | ✅ 对齐：遮罩 + toast |
+| 进度条 | ✅ pageJumpProgress 时显示百分比进度条 | ❌ 缺失 — loadAll 循环时不知还剩多少页 |
+| 停止图标 | Square（实心方块） | ✅ 对齐 |
+| cancelling 状态 | ✅ 点击停止后按钮变 Loader2 旋转 + "stopping" 文案 | ❌ 缺失 — 只有"停止"按钮，点击中无反馈 |
+| cancelDisabled | ✅ 防止重复点击 | ✅ — 通过 tab.isRunning = false 实现 |
+
+**P3 后续**: 进度条 + cancelling 状态提升用户感知
+
+---
+
+## 13. 参考资料（新增）
+
+- dbx 顶部工具栏：`github-source-code/dbx/apps/desktop/src/components/grid/DataGridToolbar.vue`
+- dbx BusyOverlay：`github-source-code/dbx/apps/desktop/src/components/grid/DataGridBusyOverlay.vue`
+- dbx Toolbar 状态机：`github-source-code/dbx/apps/desktop/src/lib/dataGrid/dataGridToolbar.ts`
+- ADR-0002：查询网格导出参数与 dbx 桌面壳对齐分析
+- ADR-0003：5 项待评估决策实施 + 设置面板对齐 dbx 桌面壳
