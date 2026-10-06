@@ -113,7 +113,7 @@ export function ResultGrid({
 	const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false); // 页大小选项菜单
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
-	const { state, runTabSql } = useWorkbench();
+	const { state, dispatch, runTabSql } = useWorkbench();
 	const activeTabId = state.activeTabId;
 	const parsedTableName = useMemo(() => {
 		if (!sql) return null;
@@ -254,7 +254,7 @@ export function ResultGrid({
 		if (!tabId || !baseSql) return;
 		const wrapped = buildFilteredSql(baseSql, where, orderBy);
 		if (!wrapped) {
-			alert("过滤 / 排序仅支持单条 SELECT / WITH 查询");
+			dispatch({ type: "setError", message: "过滤 / 排序仅支持单条 SELECT / WITH 查询" });
 			return;
 		}
 		void runTabSql(tabId, wrapped, undefined, { mode: "server" });
@@ -270,8 +270,8 @@ export function ResultGrid({
 				schema: parsedTableName.schema,
 			});
 		} else {
-			// 如果没有解析出表名，显示提示
-			alert("无法从 SQL 中解析表名，请确保 SQL 包含 FROM 子句");
+			// 解析不出表名：提示用户，不做静默失败。
+			dispatch({ type: "setError", message: "无法从 SQL 中解析表名，请确保 SQL 包含 FROM 子句" });
 			return;
 		}
 		setTableInfoOpen(true);
@@ -495,7 +495,7 @@ export function ResultGrid({
 				URL.revokeObjectURL(url);
 			}, 100);
 		} catch (error) {
-			alert(`导出失败：${error instanceof Error ? error.message : String(error)}`);
+			dispatch({ type: "setError", message: `导出失败：${error instanceof Error ? error.message : String(error)}` });
 		}
 	}
 
@@ -503,181 +503,135 @@ export function ResultGrid({
 		downloadBlob(new Blob([content], { type: mimeType }), filename);
 	}
 
-	const exportCsv = useCallback(() => {
-		downloadFile(toCsv(colList, rows), "query-result.csv", "text/csv;charset=utf-8");
-	}, [colList, rows]);
+	// ─── 导出：格式表驱动（当前页 / 全部共用一套序列化）────────────
+	type ExportKind = "csv" | "xlsx" | "json" | "jsonl" | "md" | "html" | "sql" | "txt";
 
-	const exportXlsx = useCallback(() => {
-		// 对齐 dbx：Excel 导出。零依赖最小 OOXML，工作表名取当前结果表名。
-		const target = tableInfoSelection?.tableName || "query_result";
-		downloadBlob(
-			new Blob([toXlsx(colList, rows, target)], {
-				type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-			}),
-			"query-result.xlsx",
-		);
-	}, [colList, rows, tableInfoSelection?.tableName]);
+	const EXPORT_FORMATS: ReadonlyArray<{
+		kind: ExportKind;
+		label: string;
+		icon: string;
+	}> = [
+		{ kind: "csv", label: "CSV", icon: "icon-[lucide--file-spreadsheet]" },
+		{ kind: "xlsx", label: "Excel（XLSX）", icon: "icon-[lucide--sheet]" },
+		{ kind: "json", label: "JSON", icon: "icon-[lucide--file-json]" },
+		{ kind: "jsonl", label: "JSON Lines", icon: "icon-[lucide--file-code]" },
+		{ kind: "md", label: "Markdown", icon: "icon-[lucide--file-text]" },
+		{ kind: "html", label: "HTML", icon: "icon-[lucide--file-code-2]" },
+		{ kind: "sql", label: "SQL（INSERT）", icon: "icon-[lucide--file-terminal]" },
+		{ kind: "txt", label: "TXT", icon: "icon-[lucide--file-text]" },
+	];
 
-	const exportTxt = useCallback(() => {
-		// TXT：制表符分隔的纯文本，可直接粘贴进 Excel。
-		downloadFile(toTsv(colList, rows), "query-result.txt", "text/plain;charset=utf-8");
-	}, [colList, rows]);
-
-	const exportJson = useCallback(() => {
-		downloadFile(toJson(colList, rows), "query-result.json", "application/json");
-	}, [colList, rows]);
-
-	const exportJsonLines = useCallback(() => {
-		downloadFile(toJsonLines(colList, rows), "query-result.jsonl", "application/x-ndjson");
-	}, [colList, rows]);
-
-	const exportMarkdown = useCallback(() => {
-		downloadFile(toMarkdown(colList, rows), "query-result.md", "text/markdown");
-	}, [colList, rows]);
-
-	const exportHtml = useCallback(() => {
-		downloadFile(toHtml(colList, rows), "query-result.html", "text/html");
-	}, [colList, rows]);
-
-	const exportSql = useCallback(() => {
-		// 对齐 dbx：导出为 INSERT 语句。表名取当前结果对应的表（表属性打开来源），
-		// 取不到则用 query_result；方言按连接类型选 MySQL 反引号或标准标识符。
+	function sqlDialect(): "mysql" | "standard" {
 		const dbType = (state.connections.find((c) => c.name === connectionName)?.db_type ?? "").toLowerCase();
-		const dialect = /mysql|maria|tidb|starrocks|doris|goldendb|databend/.test(dbType) ? "mysql" : "standard";
+		return /mysql|maria|tidb|starrocks|doris|goldendb|databend/.test(dbType) ? "mysql" : "standard";
+	}
+
+	/** 按格式序列化并触发下载；当前页与「导出全部」唯一出口。 */
+	function downloadAs(
+		kind: ExportKind,
+		cols: string[],
+		dataRows: Record<string, unknown>[],
+		fileBase: string,
+	): void {
 		const target = tableInfoSelection?.tableName || "query_result";
-		downloadFile(toSqlInsert(colList, rows, target, dialect), "query-result.sql", "application/sql;charset=utf-8");
-	}, [colList, rows, state.connections, connectionName, tableInfoSelection?.tableName]);
-
-	// ─── 导出全部数据（服务端分页时）───────────────────────────────
-	const [exportingAll, setExportingAll] = useState(false);
-
-	/** 获取全部数据（不分页）。服务端分页时调用，用于导出完整结果集。 */
-	async function fetchAllData(): Promise<{ columns: string[]; rows: Record<string, unknown>[] } | null> {
-		if (!sql || !connectionName) return null;
-		try {
-			const outcome: EngineQueryOutcome = await engineExecuteByName(connectionName, sql, {
-				rowLimit: 100000, // 导出时放宽限制
-				timeoutMs: 60000,
-			});
-			return { columns: outcome.columns, rows: outcome.rows };
-		} catch (error) {
-			alert(`导出全部数据失败：${error instanceof Error ? error.message : String(error)}`);
-			return null;
+		switch (kind) {
+			case "csv":
+				downloadFile(toCsv(cols, dataRows), `${fileBase}.csv`, "text/csv;charset=utf-8");
+				break;
+			case "xlsx":
+				// 零依赖最小 OOXML，工作表名取当前结果表名。
+				downloadBlob(
+					new Blob([toXlsx(cols, dataRows, target)], {
+						type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					}),
+					`${fileBase}.xlsx`,
+				);
+				break;
+			case "json":
+				downloadFile(toJson(cols, dataRows), `${fileBase}.json`, "application/json");
+				break;
+			case "jsonl":
+				downloadFile(toJsonLines(cols, dataRows), `${fileBase}.jsonl`, "application/x-ndjson");
+				break;
+			case "md":
+				downloadFile(toMarkdown(cols, dataRows), `${fileBase}.md`, "text/markdown");
+				break;
+			case "html":
+				downloadFile(toHtml(cols, dataRows), `${fileBase}.html`, "text/html");
+				break;
+			case "sql":
+				downloadFile(toSqlInsert(cols, dataRows, target, sqlDialect()), `${fileBase}.sql`, "application/sql;charset=utf-8");
+				break;
+			case "txt":
+				// TSV 纯文本，可直接粘贴进 Excel。
+				downloadFile(toTsv(cols, dataRows), `${fileBase}.txt`, "text/plain;charset=utf-8");
+				break;
 		}
 	}
 
-	/** 导出全部数据为 CSV。 */
-	const exportAllCsv = useCallback(async () => {
-		setExportingAll(true);
-		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				downloadFile(toCsv(allData.columns, allData.rows), "query-result-all.csv", "text/csv;charset=utf-8");
-			}
-		} finally {
-			setExportingAll(false);
-		}
-	}, [sql, connectionName]);
+	const [exportingAll, setExportingAll] = useState(false);
 
-	/** 导出全部数据为 Excel。 */
-	const exportAllXlsx = useCallback(async () => {
-		setExportingAll(true);
-		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				const target = tableInfoSelection?.tableName || "query_result";
-				downloadBlob(
-					new Blob([toXlsx(allData.columns, allData.rows, target)], {
-						type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-					}),
-					"query-result-all.xlsx",
-				);
-			}
-		} finally {
-			setExportingAll(false);
-		}
-	}, [sql, connectionName, tableInfoSelection?.tableName]);
+	/**
+	 * 浏览器侧全量缓存的安全上限；超过即截断并如实告知。
+	 * 引擎单次硬上限为 ENGINE_ROW_CAP，这里按页循环拉取直到末页。
+	 */
+	const EXPORT_ALL_ROW_CAP = 100_000;
 
-	/** 导出全部数据为 JSON。 */
-	const exportAllJson = useCallback(async () => {
-		setExportingAll(true);
+	/** 分页循环拉取全部结果；不可分页查询只拿单次（可能被引擎截断）。 */
+	async function fetchAllData(): Promise<{ columns: string[]; dataRows: Record<string, unknown>[] } | null> {
+		if (!sql || !connectionName) return null;
+		const collected: Record<string, unknown>[] = [];
+		let allColumns: string[] = [];
+		let truncated = false;
 		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				downloadFile(toJson(allData.columns, allData.rows), "query-result-all.json", "application/json");
+			let offset = 0;
+			for (;;) {
+				const outcome = await engineExecuteByName(connectionName, sql, {
+					rowLimit: ENGINE_ROW_CAP,
+					timeoutMs: 60_000,
+					page: { offset, limit: ENGINE_ROW_CAP },
+				});
+				if (allColumns.length === 0) allColumns = outcome.columns;
+				collected.push(...outcome.rows);
+				// 不可分页查询：引擎忽略 page，单次结果在硬上限处截断。
+				if (!outcome.paged) {
+					truncated = outcome.truncated === true;
+					break;
+				}
+				if (outcome.rows.length < ENGINE_ROW_CAP) break; // 末页
+				if (collected.length >= EXPORT_ALL_ROW_CAP) {
+					truncated = true;
+					break;
+				}
+				offset += ENGINE_ROW_CAP;
 			}
-		} finally {
-			setExportingAll(false);
+		} catch (error) {
+			dispatch({
+				type: "setError",
+				message: `导出全部数据失败：${error instanceof Error ? error.message : String(error)}`,
+			});
+			return null;
 		}
-	}, [sql, connectionName]);
+		const dataRows = collected.slice(0, EXPORT_ALL_ROW_CAP);
+		if (truncated) {
+			dispatch({
+				type: "setError",
+				message: `结果过多，已导出前 ${dataRows.length.toLocaleString()} 行（上限 ${EXPORT_ALL_ROW_CAP.toLocaleString()} 行）；需要完整数据请在 SQL 中分批查询`,
+			});
+		}
+		return { columns: allColumns, dataRows };
+	}
 
-	/** 导出全部数据为 SQL INSERT。 */
-	const exportAllSql = useCallback(async () => {
+	/** 导出全部数据（分页拉取）。 */
+	async function exportAllAs(kind: ExportKind): Promise<void> {
 		setExportingAll(true);
 		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				const dbType = (state.connections.find((c) => c.name === connectionName)?.db_type ?? "").toLowerCase();
-				const dialect = /mysql|maria|tidb|starrocks|doris|goldendb|databend/.test(dbType) ? "mysql" : "standard";
-				const target = tableInfoSelection?.tableName || "query_result";
-				downloadFile(toSqlInsert(allData.columns, allData.rows, target, dialect), "query-result-all.sql", "application/sql;charset=utf-8");
-			}
+			const all = await fetchAllData();
+			if (all) downloadAs(kind, all.columns, all.dataRows, "query-result-all");
 		} finally {
 			setExportingAll(false);
 		}
-	}, [sql, connectionName, state.connections, tableInfoSelection?.tableName]);
-
-	/** 导出全部数据为 JSON Lines。 */
-	const exportAllJsonLines = useCallback(async () => {
-		setExportingAll(true);
-		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				downloadFile(toJsonLines(allData.columns, allData.rows), "query-result-all.jsonl", "application/x-ndjson");
-			}
-		} finally {
-			setExportingAll(false);
-		}
-	}, [sql, connectionName]);
-
-	/** 导出全部数据为 Markdown。 */
-	const exportAllMarkdown = useCallback(async () => {
-		setExportingAll(true);
-		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				downloadFile(toMarkdown(allData.columns, allData.rows), "query-result-all.md", "text/markdown");
-			}
-		} finally {
-			setExportingAll(false);
-		}
-	}, [sql, connectionName]);
-
-	/** 导出全部数据为 HTML。 */
-	const exportAllHtml = useCallback(async () => {
-		setExportingAll(true);
-		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				downloadFile(toHtml(allData.columns, allData.rows), "query-result-all.html", "text/html");
-			}
-		} finally {
-			setExportingAll(false);
-		}
-	}, [sql, connectionName]);
-
-	/** 导出全部数据为 TXT。 */
-	const exportAllTxt = useCallback(async () => {
-		setExportingAll(true);
-		try {
-			const allData = await fetchAllData();
-			if (allData) {
-				downloadFile(toTsv(allData.columns, allData.rows), "query-result-all.txt", "text/plain;charset=utf-8");
-			}
-		} finally {
-			setExportingAll(false);
-		}
-	}, [sql, connectionName]);
+	}
 
 	const [exportMenu, setExportMenu] = useState<ContextMenuState | null>(null);
 
@@ -686,23 +640,20 @@ export function ResultGrid({
 		e.preventDefault();
 		e.stopPropagation();
 		const items: ContextMenuEntry[] = [
-			{ type: "item", label: "导出当前页 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: exportCsv },
-			{ type: "item", label: "导出当前页 Excel", icon: "icon-[lucide--sheet]", onClick: exportXlsx },
-			{ type: "item", label: "导出当前页 JSON", icon: "icon-[lucide--file-json]", onClick: exportJson },
-			{ type: "item", label: "导出当前页 JSON Lines", icon: "icon-[lucide--file-code]", onClick: exportJsonLines },
-			{ type: "item", label: "导出当前页 Markdown", icon: "icon-[lucide--file-text]", onClick: exportMarkdown },
-			{ type: "item", label: "导出当前页 HTML", icon: "icon-[lucide--file-code-2]", onClick: exportHtml },
-			{ type: "item", label: "导出当前页 SQL", icon: "icon-[lucide--file-terminal]", onClick: exportSql },
-			{ type: "item", label: "导出当前页 TXT", icon: "icon-[lucide--file-text]", onClick: exportTxt },
-			{ type: "separator" },
-			{ type: "item", label: "导出全部数据 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: () => void exportAllCsv(), disabled: exportingAll },
-			{ type: "item", label: "导出全部数据 Excel", icon: "icon-[lucide--sheet]", onClick: () => void exportAllXlsx(), disabled: exportingAll },
-			{ type: "item", label: "导出全部数据 JSON", icon: "icon-[lucide--file-json]", onClick: () => void exportAllJson(), disabled: exportingAll },
-			{ type: "item", label: "导出全部数据 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => void exportAllJsonLines(), disabled: exportingAll },
-			{ type: "item", label: "导出全部数据 Markdown", icon: "icon-[lucide--file-text]", onClick: () => void exportAllMarkdown(), disabled: exportingAll },
-			{ type: "item", label: "导出全部数据 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => void exportAllHtml(), disabled: exportingAll },
-			{ type: "item", label: "导出全部数据 SQL", icon: "icon-[lucide--file-terminal]", onClick: () => void exportAllSql(), disabled: exportingAll },
-			{ type: "item", label: "导出全部数据 TXT", icon: "icon-[lucide--file-text]", onClick: () => void exportAllTxt(), disabled: exportingAll },
+			...EXPORT_FORMATS.map((f) => ({
+				type: "item" as const,
+				label: `导出当前页 ${f.label}`,
+				icon: f.icon,
+				onClick: () => downloadAs(f.kind, colList, rows, "query-result"),
+			})),
+			{ type: "separator" as const },
+			...EXPORT_FORMATS.map((f) => ({
+				type: "item" as const,
+				label: `导出全部数据 ${f.label}`,
+				icon: f.icon,
+				disabled: exportingAll,
+				onClick: () => void exportAllAs(f.kind),
+			})),
 		];
 		setExportMenu({
 			x: e.clientX,
@@ -836,16 +787,12 @@ export function ResultGrid({
 					type: "submenu",
 					label: "导出全部",
 					icon: "icon-[lucide--download]",
-					items: [
-						{ type: "item", label: "导出为 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: () => exportCsv() },
-						{ type: "item", label: "导出为 Excel（XLSX）", icon: "icon-[lucide--sheet]", onClick: () => exportXlsx() },
-						{ type: "item", label: "导出为 JSON", icon: "icon-[lucide--file-json]", onClick: () => exportJson() },
-						{ type: "item", label: "导出为 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => exportJsonLines() },
-						{ type: "item", label: "导出为 Markdown", icon: "icon-[lucide--file-text]", onClick: () => exportMarkdown() },
-						{ type: "item", label: "导出为 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => exportHtml() },
-						{ type: "item", label: "导出为 SQL（INSERT）", icon: "icon-[lucide--file-terminal]", onClick: () => exportSql() },
-						{ type: "item", label: "导出为 TXT", icon: "icon-[lucide--file-text]", onClick: () => exportTxt() },
-					],
+					items: EXPORT_FORMATS.map((f) => ({
+						type: "item" as const,
+						label: `导出为 ${f.label}`,
+						icon: f.icon,
+						onClick: () => void exportAllAs(f.kind),
+					})),
 				},
 				{
 					type: "submenu",

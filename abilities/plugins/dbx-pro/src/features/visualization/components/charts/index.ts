@@ -1,24 +1,18 @@
-export { KpiCard } from "./KpiCard";
-export type { KpiCardProps } from "./KpiCard";
+export { KpiCard } from "./kpi-card";
+export type { KpiCardProps } from "./kpi-card";
 
-export { LineChart } from "./LineChart";
-export type { LineChartProps } from "./LineChart";
-
-export { BarChart } from "./BarChart";
-export type { BarChartProps } from "./BarChart";
-
-export { DataTable } from "./DataTable";
-export type { DataTableProps } from "./DataTable";
+export { DataTable } from "./data-table";
+export type { DataTableProps } from "./data-table";
 
 // Recharts-based charts
-export { RechartsLineChart } from "./RechartsLineChart";
-export type { RechartsLineChartProps } from "./RechartsLineChart";
+export { RechartsLineChart } from "./recharts-line-chart";
+export type { RechartsLineChartProps } from "./recharts-line-chart";
 
-export { RechartsBarChart } from "./RechartsBarChart";
-export type { RechartsBarChartProps } from "./RechartsBarChart";
+export { RechartsBarChart } from "./recharts-bar-chart";
+export type { RechartsBarChartProps } from "./recharts-bar-chart";
 
-export { RechartsPieChart } from "./RechartsPieChart";
-export type { RechartsPieChartProps } from "./RechartsPieChart";
+export { RechartsPieChart } from "./recharts-pie-chart";
+export type { RechartsPieChartProps } from "./recharts-pie-chart";
 
-export { RechartsAreaChart } from "./RechartsAreaChart";
-export type { RechartsAreaChartProps } from "./RechartsAreaChart";
+export { RechartsAreaChart } from "./recharts-area-chart";
+export type { RechartsAreaChartProps } from "./recharts-area-chart";

@@ -13,8 +13,8 @@ import { useState, useRef, useEffect, type JSX } from "react";
 import type { StoredVisualization } from "../visualization-store";
 import { DASHBOARD_PRESETS } from "../presets/dashboard/presets";
 import { SCREEN_PRESETS } from "../presets/screen/presets";
-import { DashboardRenderer, type RenderedChart } from "./DashboardRenderer";
-import { ScreenRenderer, type RenderedWidget } from "./ScreenRenderer";
+import { DashboardRenderer, type RenderedChart } from "./dashboard-renderer";
+import { ScreenRenderer, type RenderedWidget } from "./screen-renderer";
 
 interface Props {
 	viz: StoredVisualization;

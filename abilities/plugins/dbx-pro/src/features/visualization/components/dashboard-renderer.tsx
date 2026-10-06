@@ -6,12 +6,12 @@
 
 import { useMemo } from "react";
 import type { JSX } from "react";
-import { KpiCard } from "./charts/KpiCard";
-import { RechartsLineChart } from "./charts/RechartsLineChart";
-import { RechartsBarChart } from "./charts/RechartsBarChart";
-import { RechartsPieChart } from "./charts/RechartsPieChart";
-import { RechartsAreaChart } from "./charts/RechartsAreaChart";
-import { DataTable } from "./charts/DataTable";
+import { KpiCard } from "./charts/kpi-card";
+import { RechartsLineChart } from "./charts/recharts-line-chart";
+import { RechartsBarChart } from "./charts/recharts-bar-chart";
+import { RechartsPieChart } from "./charts/recharts-pie-chart";
+import { RechartsAreaChart } from "./charts/recharts-area-chart";
+import { DataTable } from "./charts/data-table";
 import type { DashboardPreset, ChartConfig } from "../presets/dashboard/presets";
 
 export interface RenderedChart {

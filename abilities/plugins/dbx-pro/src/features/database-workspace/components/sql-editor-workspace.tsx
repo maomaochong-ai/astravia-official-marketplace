@@ -9,7 +9,7 @@ import { ResultPanel } from "./result-panel";
 import { SqlEditor } from "./sql-editor";
 import { TabBar } from "./tab-bar";
 import { useWorkbench } from "../hooks/use-workbench";
-import { VisualizationTab } from "../../visualization/components/VisualizationTab";
+import { VisualizationTab } from "../../visualization/components/visualization-tab";
 
 export function SqlEditorWorkspace(): JSX.Element {
 	const { state } = useWorkbench();

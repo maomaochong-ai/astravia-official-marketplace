@@ -27,7 +27,7 @@ import {
 	type SelectedNodeInfo,
 } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
-import { VisualizationTemplateDialog } from "../../visualization/components/VisualizationTemplateDialog";
+import { VisualizationTemplateDialog } from "../../visualization/components/visualization-template-dialog";
 
 interface Props {
 	node: TreeNode;

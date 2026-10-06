@@ -6,7 +6,7 @@
 
 import { useState, type JSX } from "react";
 import { VisualizationGallery } from "./components/visualization-gallery";
-import { VisualizationTab } from "./components/VisualizationTab";
+import { VisualizationTab } from "./components/visualization-tab";
 import type { StoredVisualization } from "./visualization-store";
 import { buildDashboardPrompt, buildScreenPrompt, type SelectedNodeInfo } from "../../shared/ai/send-context";
 import { SendToAiDialog } from "../database-workspace/components/send-to-ai-dialog";
