@@ -78,6 +78,15 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 
 	// 渲染内容
 	const renderContent = (): JSX.Element | null => {
+		// v0.0.94: 多数据源路径优先（语义不损坏），其次 legacy 合并宽表路径
+		if (viz.dataSources?.length) {
+			return (
+				<Canvas
+					dataSources={viz.dataSources}
+					intent={viz.type === "screen" ? "bigscreen" : "dashboard"}
+				/>
+			);
+		}
 		// Canvas 渲染模式优先（ADR-0005 §5）：从 SQL 结果集直接推断布局
 		if (viz.resultRows?.length && viz.resultColumns?.length) {
 			return (

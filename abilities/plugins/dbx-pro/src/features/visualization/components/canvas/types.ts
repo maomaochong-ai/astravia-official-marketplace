@@ -26,6 +26,8 @@ export interface WidgetSpec {
 	options?: Record<string, unknown>;
 	/** 渲染状态：skeleton=骨架中 | ready=数据已到 */
 	status?: "skeleton" | "ready";
+	/** v0.0.94: 该 widget 属于哪个 dataSource（Canvas 多数据源路径） */
+	dataSourceId?: string;
 }
 
 export interface LayoutSpec {

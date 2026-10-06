@@ -12,8 +12,10 @@
 import type { ColumnMeta, ColumnRole, LayoutSpec, VizIntent, WidgetSpec } from "./types";
 
 export interface InferInput {
-	columns: string[];
-	rows: Record<string, unknown>[];
+	columns?: string[];
+	rows?: Record<string, unknown>[];
+	/** v0.0.94: 多数据源路径（优先于此） */
+	dataSources?: Array<{ id: string; label: string; columns: string[]; rows: Record<string, unknown>[] }>;
 	intent?: VizIntent;
 }
 
@@ -66,6 +68,8 @@ export interface ChartCandidate {
 	title: string;
 	colSpan: number;
 	rowSpan: number;
+	/** v0.0.94: 该候选属于哪个数据源（可选，legacy 单数据源路径不带） */
+	dataSourceId?: string;
 }
 
 function chartOptions(meta: ColumnMeta[], intent: VizIntent): ChartCandidate[] {
@@ -195,6 +199,7 @@ function packGrid(candidates: ChartCandidate[]): WidgetSpec[] {
 			title: c.title,
 			dataRef: c.dataRef,
 			status: "ready",
+			dataSourceId: c.dataSourceId,
 		});
 	});
 
@@ -204,10 +209,50 @@ function packGrid(candidates: ChartCandidate[]): WidgetSpec[] {
 // ─── 入口 ─────────────────────────────────────────────────────
 
 export function inferLayout(input: InferInput, options: InferOptions = {}): LayoutSpec {
-	const intent: VizIntent = options.intent ?? inferIntent(input.columns, input.rows);
-	const meta = inferSchema(input.columns, input.rows);
+	// v0.0.94: 多数据源路径优先
+	if (input.dataSources && input.dataSources.length > 0) {
+		return inferLayoutFromDataSources(input.dataSources, options.intent);
+	}
+	const columns = input.columns ?? [];
+	const rows = input.rows ?? [];
+	return inferLayoutSingle(columns, rows, options.intent);
+}
+
+/** 传统单数据源路径（legacy 兼容） */
+function inferLayoutSingle(columns: string[], rows: Record<string, unknown>[], intentHint?: VizIntent): LayoutSpec {
+	const intent: VizIntent = intentHint ?? inferIntent(columns, rows);
+	const meta = inferSchema(columns, rows);
 	const candidates = chartOptions(meta, intent);
 	const widgets = packGrid(candidates);
+
+	return {
+		intent,
+		layout: { cols: COLS, rowHeight: intent === "dashboard" ? 140 : 120, gap: 16 },
+		widgets: widgets.map((w) => ({ ...w, dataSourceId: undefined })),
+	};
+}
+
+/** v0.0.94 多数据源路径：每个 source 独立推断图表候选，合并后统一栅格打包 */
+function inferLayoutFromDataSources(
+	dataSources: Array<{ id: string; label: string; columns: string[]; rows: Record<string, unknown>[] }>,
+	intentHint?: VizIntent,
+): LayoutSpec {
+	// 取行数最多的数据源来启发 intent
+	const largest = dataSources.reduce((a, b) => (b.rows.length > a.rows.length ? b : a));
+	const intent: VizIntent = intentHint ?? inferIntent(largest.columns, largest.rows);
+
+	const allCandidates: Array<ChartCandidate & { dataSourceId: string }> = [];
+	for (const src of dataSources) {
+		const meta = inferSchema(src.columns, src.rows);
+		const srcCandidates = chartOptions(meta, intent);
+		for (const c of srcCandidates) {
+			allCandidates.push({ ...c, dataSourceId: src.id });
+		}
+	}
+
+	// 统一栅格打包（所有数据源的候选 widget 竞争同一个 12 列画布）
+	// packGrid 已经把 ChartCandidate.dataSourceId 原样带到 WidgetSpec
+	const widgets = packGrid(allCandidates);
 
 	return {
 		intent,

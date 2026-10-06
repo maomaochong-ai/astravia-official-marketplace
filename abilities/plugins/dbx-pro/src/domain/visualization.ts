@@ -22,6 +22,17 @@ export interface Visualization {
 	 */
 	resultColumns?: string[];
 	resultRows?: Array<Record<string, unknown>>;
+	/**
+	 * v0.0.94 多数据源路径：当预设模板包含多个独立查询时（如 kpi_overview + 趋势 + 分布），
+	 * 每个查询保持各自的数据形状传给 Canvas，让 inferLayout 独立为每个数据源生成图表候选，
+	 * 再统一栅格打包。dataSources 存在时 Canvas 优先走这条路；resultColumns/resultRows 保留作 legacy fallback。
+	 */
+	dataSources?: Array<{
+		id: string;
+		label: string;
+		columns: string[];
+		rows: Array<Record<string, unknown>>;
+	}>;
 	charts?: Array<{
 		id: string;
 		type: string;

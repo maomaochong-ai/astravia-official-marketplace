@@ -117,9 +117,15 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 				const subtitle = preset.id === "data_command" ? "实时数据总览 · 核心指标追踪" : preset.id === "business_intel" ? "多维度业务分析 · 趋势对比" : "系统健康度 · 性能指标";
 				const html = generatePreviewHtml(title, subtitle, widgets);
 
-				// ADR-0007：统一走 Canvas 流水线
+				// ADR-0007 + v0.0.94：统一走 Canvas 流水线
+				const dataSources = widgets.map((w) => ({
+					id: w.id,
+					label: w.title,
+					columns: w.columns ?? [],
+					rows: w.rows ?? [],
+				}));
 				const { columns: mergedCols, rows: mergedRows } = mergeResultSets(
-					widgets.map((w) => ({ columns: w.columns, rows: w.rows })),
+					widgets.map((w) => ({ columns: w.columns ?? [], rows: w.rows ?? [] })),
 				);
 
 				const viz = {
@@ -130,10 +136,11 @@ export function createDbxScreenTool(): PluginAgentToolRegistration<DbxScreenInpu
 					table,
 					html,
 					presetId: preset.id,
-					// Canvas 优先：resultRows → inferLayout 自动布局（DataV 深色荧光）
+					// v0.0.94 多数据源路径优先
+					dataSources,
+					// Legacy fallback
 					resultColumns: mergedCols,
 					resultRows: mergedRows,
-					// Legacy fallback：保留 widgets[] 供旧产物兼容
 					widgets,
 				};
 

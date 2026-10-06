@@ -18,17 +18,28 @@ import { inferLayout } from "./infer-layout";
 import { FrameWidget } from "./FrameWidget";
 
 export interface CanvasProps {
-	columns: string[];
-	rows: Record<string, unknown>[];
+	columns?: string[];
+	rows?: Record<string, unknown>[];
+	/** v0.0.94: 多数据源路径（优先于 columns/rows） */
+	dataSources?: Array<{ id: string; label: string; columns: string[]; rows: Record<string, unknown>[] }>;
 	connectionName?: string;
 	sql?: string;
 	/** auto = 启发式判断 */
 	intent?: VizIntent | "auto";
 }
 
-export function Canvas({ columns, rows, intent: initialIntent = "auto" }: CanvasProps): JSX.Element {
+export function Canvas({ columns, rows, dataSources, intent: initialIntent = "auto" }: CanvasProps): JSX.Element {
+	// v0.0.94: 多数据源路径优先
+	const hasMulti = dataSources && dataSources.length > 0;
+	const primaryCols = columns ?? dataSources?.[0]?.columns ?? [];
+	const primaryRows = rows ?? dataSources?.[0]?.rows ?? [];
+	const dataLookup = new Map<string, { columns: string[]; rows: Record<string, unknown>[] }>();
+	if (dataSources) {
+		for (const src of dataSources) dataLookup.set(src.id, { columns: src.columns, rows: src.rows });
+	}
+
 	const [currentIntent, setCurrentIntent] = useState<VizIntent>(() =>
-		initialIntent === "auto" ? inferDefaultIntent(columns, rows) : initialIntent,
+		initialIntent === "auto" ? inferDefaultIntent(primaryCols, primaryRows) : initialIntent,
 	);
 	const [spec, setSpec] = useState<LayoutSpec | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -39,14 +50,14 @@ export function Canvas({ columns, rows, intent: initialIntent = "auto" }: Canvas
 		// 模拟 AI 流水线异步：100ms 后产出 spec，给 skeleton 展示机会
 		const t = setTimeout(() => {
 			const layout = inferLayout(
-				{ columns, rows },
+				hasMulti ? { dataSources } : { columns: primaryCols, rows: primaryRows },
 				{ intent: currentIntent },
 			);
 			setSpec(layout);
 			setLoading(false);
 		}, 100);
 		return () => clearTimeout(t);
-	}, [columns, rows, currentIntent]);
+	}, [columns, rows, dataSources, currentIntent]);
 
 	useEffect(() => {
 		void regenerate();
@@ -67,15 +78,21 @@ export function Canvas({ columns, rows, intent: initialIntent = "auto" }: Canvas
 				loading={loading}
 			/>
 			<div className={classGrid}>
-				{spec?.widgets.map((w) => (
-					<FrameWidget
-						key={w.id}
-						spec={w}
-						intent={currentIntent}
-						data={rows}
-						columns={columns}
-					/>
-				))}
+				{spec?.widgets.map((w) => {
+					// v0.0.94: 多数据源路径下，每个 widget 从对应数据源取数据
+					const ds = w.dataSourceId ? dataLookup.get(w.dataSourceId) : null;
+					const widgetData = ds?.rows ?? primaryRows;
+					const widgetCols = ds?.columns ?? primaryCols;
+					return (
+						<FrameWidget
+							key={w.id}
+							spec={w}
+							intent={currentIntent}
+							data={widgetData}
+							columns={widgetCols}
+						/>
+					);
+				})}
 				{loading && <SkeletonHint intent={currentIntent} />}
 			</div>
 		</div>

@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { EditorState, type Extension } from "@codemirror/state";
+import { EditorState, Compartment, type Extension } from "@codemirror/state";
 import {
 	EditorView,
 	keymap,
@@ -19,6 +19,7 @@ import {
 	highlightActiveLineGutter,
 } from "@codemirror/view";
 import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
+import { foldAll, unfoldAll } from "@codemirror/language";
 import { HighlightStyle } from "@codemirror/language";
 import {
 	bracketMatching,
@@ -155,7 +156,9 @@ export function SqlEditor(): JSX.Element {
 	const { state, dispatch, runTabSql, cancelExecution } = useWorkbench();
 	const hostRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
+	const wrapCompartmentRef = useRef(new Compartment());
 	const [editorReady, setEditorReady] = useState(false);
+	const [wordWrap, setWordWrap] = useState(true);
 
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const activeConn = state.connections.find((c) => c.name === activeTab?.connectionName);
@@ -224,7 +227,7 @@ export function SqlEditor(): JSX.Element {
 					closeBrackets(),
 					autocompletion(),
 					highlightActiveLine(),
-					EditorView.lineWrapping,
+					wrapCompartmentRef.current.of(EditorView.lineWrapping),
 					EditorState.allowMultipleSelections.of(true),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) setSqlRef.current(update.state.doc.toString());
@@ -327,6 +330,44 @@ export function SqlEditor(): JSX.Element {
 		}
 	}
 
+	/** EXPLAIN：用 EXPLAIN <sql> 包装然后执行。如果有选区则执行选区的 EXPLAIN。 */
+	function handleExplain() {
+		if (!viewRef.current || !activeTabId || running) return;
+		const { from, to } = viewRef.current.state.selection.main;
+		let snippet: string;
+		if (to > from) {
+			const fragment = viewRef.current.state.doc.sliceString(from, to).trim();
+			snippet = fragment || viewRef.current.state.doc.toString();
+		} else {
+			snippet = viewRef.current.state.doc.toString();
+		}
+		void runTabSql(activeTabId, `EXPLAIN ${snippet}`, activeTab.connectionName ?? undefined, { mode: "server" });
+	}
+
+	/** Fold all / Unfold all code blocks */
+	function handleFoldAll() {
+		const v = viewRef.current; if (!v) return;
+		foldAll(v);
+	}
+	function handleUnfoldAll() {
+		const v = viewRef.current; if (!v) return;
+		unfoldAll(v);
+	}
+
+	/** Word wrap toggle — 通过 Compartment 动态 reconfigure */
+	function toggleWordWrap() {
+		setWordWrap((prev) => !prev);
+	}
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view) return;
+		view.dispatch({
+			effects: wrapCompartmentRef.current.reconfigure(
+				wordWrap ? EditorView.lineWrapping : [],
+			),
+		});
+	}, [wordWrap]);
+
 	return (
 		<div data-dbx-theme={theme} className="dbx-sql-theme flex min-h-0 flex-1 flex-col bg-background">
 			{/* 工具栏 */}
@@ -353,6 +394,47 @@ export function SqlEditor(): JSX.Element {
 				>
 					<span className="icon-[lucide--square-play] h-3 w-3" />
 					新标签
+				</button>
+
+				<div className="mx-1 h-4 w-px bg-[var(--dbx-surface-2)]" />
+
+				{/* EXPLAIN */}
+				<button
+					type="button"
+					onClick={handleExplain}
+					disabled={running || !hasConn}
+					title="执行 EXPLAIN 计划"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-teal-600 hover:bg-teal-500/10 hover:text-teal-700 disabled:opacity-30 dark:text-teal-300 dark:hover:text-teal-200"
+				>
+					<span className="icon-[lucide--git-branch] h-3 w-3" />
+					计划
+				</button>
+				{/* Fold all */}
+				<button
+					type="button"
+					onClick={handleFoldAll}
+					title="折叠全部"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
+				>
+					<span className="icon-[lucide--fold-vertical] h-3 w-3" />
+				</button>
+				{/* Unfold all */}
+				<button
+					type="button"
+					onClick={handleUnfoldAll}
+					title="展开全部"
+					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
+				>
+					<span className="icon-[lucide--unfold-vertical] h-3 w-3" />
+				</button>
+				{/* Word wrap toggle */}
+				<button
+					type="button"
+					onClick={toggleWordWrap}
+					title={wordWrap ? "关闭自动换行" : "开启自动换行"}
+					className={`flex h-6 items-center gap-1 rounded px-1.5 text-[11px] ${wordWrap ? "text-green-600 dark:text-green-300" : "text-muted-foreground"} hover:bg-green-500/10 hover:text-green-700 dark:hover:text-green-200`}
+				>
+					<span className="icon-[lucide--wrap-text] h-3 w-3" />
 				</button>
 
 				<div className="mx-1 h-4 w-px bg-[var(--dbx-surface-2)]" />

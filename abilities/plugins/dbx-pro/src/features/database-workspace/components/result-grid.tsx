@@ -54,6 +54,8 @@ import {
 } from "../state/export-tasks-store";
 import { getFs, getUi } from "../../../runtime-contract";
 import { CellDisplay } from "./cell-display";
+import { ResultTable, type ResultTableSort, type ResultTableSelection } from "./result-table";
+import { ResultToolbar } from "./result-toolbar";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { PageSizeMenu } from "./page-size-menu";
 import { ExportProgressDialog } from "./export-progress-dialog";
@@ -1086,282 +1088,58 @@ export function ResultGrid({
 					</div>
 				</div>
 			)}
-			{/* 工具栏 - 双排布局 */}
-			<div className={`dbx-result-toolbar ${splitToolbar ? "split-layout" : "single-layout"}`}>
-				{/* 上排：操作按钮 */}
-				<div className="dbx-toolbar-row-actions">
-					{/* 左侧：刷新 */}
-					<div className="flex items-center gap-0.5">
-						<button
-							type="button"
-							onClick={handleRefresh}
-							disabled={pageLoading === true}
-							className="dbx-toolbar-btn"
-							title="刷新结果"
-						>
-							<span
-								className={
-									pageLoading
-										? "icon-[lucide--loader-2] h-3.5 w-3.5 animate-spin"
-										: "icon-[lucide--refresh-cw] h-3.5 w-3.5"
-								}
-							/>
-							<span className="dbx-toolbar-btn-label">刷新</span>
-						</button>
-					</div>
-					{/* 左侧：复制 + 导出 */}
-					<div className="flex items-center gap-0.5">
-						<button
-							type="button"
-							onClick={() => void copyAll()}
-							title="复制全部为 TSV"
-							className="dbx-toolbar-btn"
-						>
-							<span className="icon-[lucide--clipboard-list] h-3.5 w-3.5" />
-							<span className="dbx-toolbar-btn-label">复制</span>
-						</button>
-						{/* 顶栏导出 Upload — ADR-0004 §12 #7 决策项，与底栏 Download 格式同源 */}
-						<button
-							type="button"
-							onClick={openExportMenu}
-							title="导出数据（CSV/JSON/XLSX/Markdown/SQL 等）"
-							className="dbx-toolbar-btn"
-						>
-							<span className="icon-[lucide--upload] h-3.5 w-3.5" />
-							<span className="dbx-toolbar-btn-label">导出</span>
-						</button>
-					</div>
+			{/* 工具栏 — 已抽离到独立组件 ResultToolbar */}
+			<ResultToolbar
+				splitToolbar={splitToolbar}
+				onToggleSplit={() => setSplitToolbar((v) => !v)}
+				pageLoading={pageLoading ?? false}
+				onRefresh={handleRefresh}
+				onCopyAll={() => void copyAll()}
+				onOpenExportMenu={openExportMenu}
+				showRowNumbers={showRowNumbers}
+				onToggleRowNumbers={() => setShowRowNumbers((v) => !v)}
+				navPopoverRef={navPopoverRef}
+				navOpen={navOpen}
+				onToggleNav={() => setNavOpen((v) => !v)}
+				navFilter={navFilter}
+				onNavFilterChange={setNavFilter}
+				colList={colList}
+				onScrollToColumn={scrollToColumn}
+				sort={sort}
+				onClearSort={() => setSort(null)}
+				connectionName={connectionName}
+				parsedTableName={parsedTableName?.tableName}
+				tableInfoOpen={tableInfoOpen}
+				onOpenTableInfo={openTableInfo}
+				sql={sql}
+				onOpenAiDialog={openAiDialogForQuery}
+				whereClause={whereClause}
+				onWhereChange={setWhereClause}
+				orderByClause={orderByClause}
+				onOrderByChange={setOrderByClause}
+				onApplyFilterSort={applyFilterSort}
+			/>
 
-					{/* 中间：视图选项 */}
-					<div className="flex items-center gap-0.5">
-						<button
-							type="button"
-							onClick={() => setShowRowNumbers((v) => !v)}
-							title="显示/隐藏行号"
-							className={`dbx-toolbar-btn ${showRowNumbers ? "dbx-toolbar-btn-active" : ""}`}
-						>
-							<span className="icon-[lucide--list-ordered] h-3.5 w-3.5" />
-							<span className="dbx-toolbar-btn-label">行号</span>
-						</button>
-						{/* 列导航：列数多时快速定位 */}
-						<div className="relative" ref={navPopoverRef}>
-							<button
-								type="button"
-								onMouseDown={(e) => e.preventDefault()}
-								onClick={() => setNavOpen((v) => !v)}
-								title={`列导航（${colList.length} 列）`}
-								className={`dbx-toolbar-btn ${navOpen ? "dbx-toolbar-btn-active" : ""}`}
-							>
-								<span className="icon-[lucide--columns-3] h-3.5 w-3.5" />
-								<span className="dbx-toolbar-btn-label">列</span>
-							</button>
-							{navOpen && colList.length > 0 && (
-								<div
-									className="absolute left-0 top-full z-40 mt-1 w-60 rounded-md border border-border bg-popover p-2 shadow-lg"
-									onMouseDown={(e) => e.preventDefault()}
-								>
-									<input
-										type="text"
-										value={navFilter}
-										onChange={(e) => setNavFilter(e.target.value)}
-										placeholder="搜索列名…"
-										autoFocus
-										className="mb-2 w-full rounded border border-[var(--dbx-surface-2)] bg-background px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary"
-									/>
-									<div className="max-h-48 overflow-auto">
-										{colList
-											.filter((c) => !navFilter || c.toLowerCase().includes(navFilter.toLowerCase()))
-											.map((c) => (
-												<button
-													key={c}
-													type="button"
-													onClick={() => scrollToColumn(c)}
-													className="block w-full truncate rounded px-2 py-1 text-left text-[11px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
-													title={c}
-												>
-													{c}
-												</button>
-											))}
-										{colList.filter((c) => !navFilter || c.toLowerCase().includes(navFilter.toLowerCase())).length === 0 && (
-											<p className="px-2 py-1 text-[11px] text-muted-foreground/60">无匹配列</p>
-										)}
-									</div>
-								</div>
-							)}
-						</div>
-						{sort && (
-							<button
-								type="button"
-								onClick={() => setSort(null)}
-								title="清除排序"
-								className="dbx-toolbar-btn"
-							>
-								<span className="icon-[lucide--arrow-up-down] h-3.5 w-3.5" />
-								<span className="dbx-toolbar-btn-label">排序: {sort.col} {sort.dir === "asc" ? "↑" : "↓"}</span>
-							</button>
-						)}
-						{connectionName && parsedTableName && (
-							<button
-								type="button"
-								onClick={openTableInfo}
-								title="查看表属性（列、索引、外键等）"
-								className={`dbx-toolbar-btn ${tableInfoOpen ? "dbx-toolbar-btn-active" : ""}`}
-							>
-								<span className="icon-[lucide--table-properties] h-3.5 w-3.5" />
-								<span className="dbx-toolbar-btn-label">表属性</span>
-							</button>
-						)}
-						<button
-							type="button"
-							onClick={() => setSplitToolbar((v) => !v)}
-							title={splitToolbar ? "切换为单排工具栏" : "切换为双排工具栏"}
-							className={`dbx-toolbar-btn ${splitToolbar ? "dbx-toolbar-btn-active" : ""}`}
-						>
-							<span className="icon-[lucide--rows-3] h-3.5 w-3.5" />
-							<span className="dbx-toolbar-btn-label">{splitToolbar ? "单排" : "双排"}</span>
-						</button>
-					</div>
 
-					{/* 右侧：AI 分析 */}
-					<div className="flex items-center gap-0.5 ml-auto">
-						{connectionName && sql && (
-							<button
-								type="button"
-								onClick={openAiDialogForQuery}
-								title="把该 SQL 与结果发给 AI 分析"
-								className="dbx-toolbar-btn dbx-toolbar-btn-primary"
-							>
-								<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
-								<span className="dbx-toolbar-btn-label">分析结果</span>
-							</button>
-						)}
-					</div>
-				</div>
-
-				{/* 下排：过滤控件（仅双排模式显示） */}
-				{splitToolbar && (
-					<div className="dbx-toolbar-row-filters">
-						<div className="flex items-center gap-2 flex-1">
-							<span className="icon-[lucide--filter] h-3.5 w-3.5 text-muted-foreground" />
-							<input
-								type="text"
-								className="dbx-toolbar-filter-input"
-								placeholder="WHERE 条件（如：id > 10 AND name LIKE '%test%'）"
-								value={whereClause}
-								onChange={(e) => setWhereClause(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") applyFilterSort();
-								}}
-							/>
-						</div>
-						<div className="flex items-center gap-2 flex-1">
-							<span className="icon-[lucide--arrow-up-down] h-3.5 w-3.5 text-muted-foreground" />
-							<input
-								type="text"
-								className="dbx-toolbar-filter-input"
-								placeholder="ORDER BY（如：created_at DESC, id ASC）"
-								value={orderByClause}
-								onChange={(e) => setOrderByClause(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") applyFilterSort();
-								}}
-							/>
-						</div>
-						<button
-							type="button"
-							onClick={applyFilterSort}
-							className="dbx-toolbar-btn dbx-toolbar-btn-primary"
-							title="按以上条件重新查询"
-						>
-							<span className="icon-[lucide--play] h-3.5 w-3.5" />
-							<span className="dbx-toolbar-btn-label">应用</span>
-						</button>
-					</div>
-				)}
-			</div>
-
-			{/* 网格（内部滚动） */}
-			<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-				<table className="border-separate border-spacing-0 text-[12px] w-full" style={{ minWidth: "100%" }}>
-					<thead>
-						<tr>
-							{showRowNumbers && (
-								<th className="sticky left-0 z-20 w-10 min-w-10 border-b border-r border-border px-1 py-2 text-center text-[10px] font-semibold text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface-2)" }}>
-									#
-								</th>
-							)}
-							{colList.map((c, i) => (
-								<th
-									key={c}
-									data-col={c}
-									onContextMenu={(e) => openColumnMenu(e, c)}
-									className="relative border-b border-r border-border px-3 py-2 text-left font-semibold text-[10.5px] text-muted-foreground"
-									style={{ backgroundColor: "var(--dbx-surface-2)", width: defaultWidth(c), minWidth: defaultWidth(c) }}
-								>
-									<div className="flex items-center gap-1">
-									<span
-										className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-1 truncate hover:text-foreground"
-										title={`按 ${c} 排序`}
-										onClick={() => toggleSort(c)}
-									>
-										<span className="min-w-0 flex-1 truncate">{c}</span>
-										{sort?.col === c ? (
-											<span className={`h-2.5 w-2.5 shrink-0 text-foreground ${sort.dir === "asc" ? "icon-[lucide--arrow-up]" : "icon-[lucide--arrow-down]"}`} />
-										) : null}
-									</span>
-									<span className="shrink-0 text-[9px] text-muted-foreground/70">{i + 1}</span>
-								</div>
-									<span
-										onMouseDown={(e) => startResize(e, c)}
-										className="absolute right-[-2px] top-0 h-full w-1.5 cursor-col-resize hover:bg-foreground/40"
-									/>
-								</th>
-							))}
-						</tr>
-					</thead>
-					<tbody>
-						{pagedRows.length === 0 ? (
-							<tr>
-								<td
-									colSpan={colList.length + (showRowNumbers ? 1 : 0)}
-									className="py-10 text-center text-[12px] text-muted-foreground"
-								>
-									该页无数据
-								</td>
-							</tr>
-						) : (
-							pagedRows.map((row, rowIdx) => {
-								const globalIdx = safePage * pageSize + rowIdx + 1;
-								return (
-									<tr key={`${safePage}-${rowIdx}`} className={`hover:bg-[var(--dbx-hover)] ${settings.dataGridStripedRows && rowIdx % 2 === 1 ? "bg-[var(--dbx-surface)]" : ""}`}>
-										{showRowNumbers && (
-											<td className="sticky left-0 z-10 w-10 min-w-10 border-r border-border px-1 py-1.5 text-center font-mono text-[10px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)" }}>
-												{globalIdx}
-											</td>
-										)}
-										{colList.map((c) => {
-											const isSelected = selectedCell?.row === rowIdx && selectedCell?.col === c;
-											return (
-												<td
-													key={c}
-													className={`max-w-0 truncate border-b border-r border-border/60 px-3 py-1.5 text-foreground/80 ${isSelected ? "bg-[var(--dbx-hover)]" : ""}`}
-													style={{ maxWidth: defaultWidth(c) }}
-													title={cellText(row[c])}
-													onClick={() => setSelectedCell({ row: rowIdx, col: c })}
-													onDoubleClick={() => handleCellDoubleClick(rowIdx, c, row[c])}
-													onContextMenu={(e) => openCellMenu(e, c, row)}
-												>
-													<CellDisplay value={row[c]} />
-												</td>
-											);
-										})}
-									</tr>
-								);
-							})
-						)}
-					</tbody>
-				</table>
-			</div>
+			{/* 网格（内部滚动）— 已抽离到独立组件 ResultTable */}
+			<ResultTable
+				columns={colList}
+				rows={pagedRows}
+				sort={sort}
+				showRowNumbers={showRowNumbers}
+				stripedRows={settings.dataGridStripedRows}
+				selectedCell={selectedCell}
+				safePage={safePage}
+				pageSize={pageSize}
+				scrollRef={scrollRef}
+				defaultWidth={defaultWidth}
+				onToggleSort={toggleSort}
+				onOpenColumnMenu={openColumnMenu}
+				onStartResize={startResize}
+				onSelectCell={setSelectedCell}
+				onCellDoubleClick={handleCellDoubleClick}
+				onOpenCellMenu={openCellMenu}
+			/>
 
 			{/* 分页栏（固定底部，不随网格滚动）；上分割线用 .dbx-pagination，
 			    与侧边栏竖线及桌面壳分割线对齐。

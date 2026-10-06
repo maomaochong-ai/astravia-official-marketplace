@@ -115,10 +115,17 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 				const title = `${table} - ${preset.label}`;
 				const html = generatePreviewHtml(title, charts);
 
-				// ADR-0007：统一走 Canvas 流水线
-				// 多查询结果集按列拼接成宽表，让 Canvas inferLayout 自动推断布局
+				// ADR-0007 + v0.0.94：统一走 Canvas 流水线
+				// v0.0.94 多数据源路径：每个预设查询保持独立，让 inferLayout 按数据源独立生成图表候选
+				const dataSources = charts.map((c) => ({
+					id: c.id,
+					label: c.title,
+					columns: c.columns ?? [],
+					rows: c.rows ?? [],
+				}));
+				// Legacy fallback：mergeResultSets 拼成宽表（保留作兼容性兜底）
 				const { columns: mergedCols, rows: mergedRows } = mergeResultSets(
-					charts.map((c) => ({ columns: c.columns, rows: c.rows })),
+					charts.map((c) => ({ columns: c.columns ?? [], rows: c.rows ?? [] })),
 				);
 
 				const viz = {
@@ -129,10 +136,11 @@ export function createDbxDashboardTool(): PluginAgentToolRegistration<DbxDashboa
 					table,
 					html,
 					presetId: preset.id,
-					// Canvas 优先：resultRows → inferLayout 自动布局
+					// v0.0.94 多数据源路径优先
+					dataSources,
+					// Legacy fallback：保留 merged + charts[] 供旧产物兼容
 					resultColumns: mergedCols,
 					resultRows: mergedRows,
-					// Legacy fallback：保留 charts[] 供旧产物兼容
 					charts,
 				};
 

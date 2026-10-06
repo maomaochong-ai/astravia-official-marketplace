@@ -42,22 +42,43 @@ export function WorkbenchTopBar({
 	// 引擎健康：unknown=未查询 / ready=绿 / starting=黄 / error=红
 	const [engineState, setEngineState] = useState<"unknown" | "ready" | "starting" | "error">("unknown");
 
-	// 组件挂载时查询一次引擎健康；每 30s 刷新
+	// 组件挂载时查询一次引擎健康；失败指数退避（3次连续失败 → 停止轮询）
 	useEffect(() => {
 		let alive = true;
+		let consecutiveFail = 0;
+		let delay = 30_000; // 初始 30s
+		let timer: ReturnType<typeof setTimeout> | null = null;
+
 		const poll = async () => {
+			if (!alive) return;
 			try {
 				await engineHealth();
-				if (alive) setEngineState("ready");
+				if (!alive) return;
+				setEngineState("ready");
+				consecutiveFail = 0; // 成功重置退避
+				delay = 30_000;
 			} catch (e) {
 				if (!alive) return;
 				const code = (e as { code?: string })?.code;
-				setEngineState(code === ENGINE_NOT_READY ? "starting" : "error");
+				if (code === ENGINE_NOT_READY) {
+					setEngineState("starting");
+				} else {
+					setEngineState("error");
+					consecutiveFail++;
+					delay = Math.min(delay * 2, 5 * 60_000); // 指数退避：30s→60s→120s... 上限 5min
+					// 连续 3 次硬失败后停止轮询（引擎可能被关闭，别无限 hammer）
+					if (consecutiveFail >= 3) {
+						return;
+					}
+				}
 			}
+			timer = setTimeout(poll, delay);
 		};
 		void poll();
-		const t = setInterval(poll, 30_000);
-		return () => { alive = false; clearInterval(t); };
+		return () => {
+			alive = false;
+			if (timer) clearTimeout(timer);
+		};
 	}, []);
 
 	return (
