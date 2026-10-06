@@ -356,8 +356,8 @@ export function ResultGrid({
 
 	/** 处理单元格双击 */
 	function handleCellDoubleClick(rowIndex: number, col: string, value: unknown): void {
-		// TODO: 检查是否可编辑（根据列类型、权限等）
-		startCellEdit(rowIndex, col, value);
+		if (!settings.dataGridCellDetailButtonVisible) return;
+		setDetail({ column: col, value });
 	}
 
 	// 客户端排序（仅对已取回的行；null/undefined 始终排最后）。
@@ -1144,7 +1144,7 @@ export function ResultGrid({
 							pagedRows.map((row, rowIdx) => {
 								const globalIdx = safePage * pageSize + rowIdx + 1;
 								return (
-									<tr key={`${safePage}-${rowIdx}`} className="hover:bg-[var(--dbx-hover)]">
+									<tr key={`${safePage}-${rowIdx}`} className={`hover:bg-[var(--dbx-hover)] ${settings.dataGridStripedRows && rowIdx % 2 === 1 ? "bg-[var(--dbx-surface)]" : ""}`}>
 										{showRowNumbers && (
 											<td className="sticky left-0 z-10 w-10 min-w-10 border-r border-border px-1 py-1.5 text-center font-mono text-[10px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)" }}>
 												{globalIdx}

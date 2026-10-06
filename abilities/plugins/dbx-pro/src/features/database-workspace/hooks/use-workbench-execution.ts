@@ -239,7 +239,9 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 					durationMs: Date.now() - startedAt,
 				});
 				if (isServerMode && rawOutcome.paged && knownTotal === undefined) {
-					void fetchTotalCount(tabId, connectionName, sqlToRun, current.queryTimeoutSecs, targetConn?.db_type);
+					if (current.autoCalculateTotalRows) {
+						void fetchTotalCount(tabId, connectionName, sqlToRun, current.queryTimeoutSecs, targetConn?.db_type);
+					}
 				}
 			} catch (e) {
 				const isBlocked = e instanceof EngineClientError && e.code === "SQL_BLOCKED";

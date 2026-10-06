@@ -32,8 +32,8 @@ dbx-pro 插件（数据库工作台）的查询网格分页、导出、表预览
 | `exportRowLimit` 最大值 | 2,147,483,647 | 2,147,483,647 | ✅ 一致 | ✅ 已对齐 | `settingsStore.ts:2071` → `workbench-settings.ts:63` |
 | **`exportBatchSize`** | **2,000**（范围 100–100,000） | **2,000**（范围 100–100,000） | ✅ 一致 | ✅ 已对齐 | `settingsStore.ts:1388` → `workbench-settings.ts:EXPORT_BATCH_SIZE_DEFAULT` |
 | 导出全部硬上限 | 无硬上限（受 `exportRowLimit` 控制） | 无硬上限（受 `exportRowLimit` 控制） | ✅ 一致 | ✅ 已对齐 | 无硬编码 → `result-grid.tsx:exportAllAs()` |
-| `TABLE_DATA_EXPORT_PAGE_SIZE` | 10,000 | 无对应 | ❌ 缺失 | ⚠️ 待评估 | `tableDataExport.ts:4` |
-| `TABLE_DATA_EXPORT_MAX_ROWS` | 2,147,483,647 | 无对应 | ❌ 缺失 | ⚠️ 待评估 | `tableDataExport.ts:5` |
+| `TABLE_DATA_EXPORT_PAGE_SIZE` | 10,000 | 由 `exportBatchSize` 覆盖 | ✅ 已覆盖 | ✅ ADR-0003 §1.1 | `tableDataExport.ts:4` |
+| `TABLE_DATA_EXPORT_MAX_ROWS` | 2,147,483,647 | 由 `EXPORT_ROW_LIMIT_MAX` 覆盖 | ✅ 已覆盖 | ✅ ADR-0003 §1.2 | `tableDataExport.ts:5` |
 
 ### 1.3 MCP 与桌面壳查询限制
 
@@ -41,9 +41,9 @@ dbx-pro 插件（数据库工作台）的查询网格分页、导出、表预览
 |------|-------------------|------------------------|---------|---------|---------|
 | `MAX_EXECUTE_QUERY_ROWS` | 1,000 | 1,000（`DBX_MAX_ROWS`） | ✅ 一致 | ✅ 已对齐 | `agent_tools.rs:51` → `request-router.mjs:68` |
 | `EXECUTE_QUERY_LIMIT`（MCP 默认） | **50** | **50** | ✅ 一致 | ✅ 已对齐 | `agent_tools.rs:23` → `protocol.mjs:22` |
-| `MAX_ROW_LIMIT`（协议层上限） | N/A（Rust 直接 clamp 到 `MAX_EXECUTE_QUERY_ROWS`） | 5,000 | ❌ 不一致 | ⚠️ 待评估 | 无对应 → `protocol.mjs:23` |
+| `MAX_ROW_LIMIT`（协议层上限） | N/A（Rust 直接 clamp 到 `MAX_EXECUTE_QUERY_ROWS`） | 5,000 | — | ✅ ADR-0003 §1.4（保持不变） | 无对应 → `protocol.mjs:23` |
 | 驱动层 `MAX_ROWS` | 10,000 | N/A（经 MCP 二进制，不直接驱动） | — | — | `execution.rs:14` |
-| `LIST_TABLES_LIMIT` | 200 | 无独立限制（受 `DBX_EFFECTIVE_ROW_CAP`=1000 约束） | — | — | `agent_tools.rs:20` |
+| `LIST_TABLES_LIMIT` | 200 | 无独立限制（受 `DBX_EFFECTIVE_ROW_CAP`=1000 约束） | — | ✅ ADR-0003 §1.5（引擎统一约束） | `agent_tools.rs:20` |
 | `SAMPLE_DATA_LIMIT` | 20 | 无对应工具 | — | — | `agent_tools.rs:26` |
 
 ### 1.4 查询结果总行数限制
@@ -53,7 +53,7 @@ dbx-pro 插件（数据库工作台）的查询网格分页、导出、表预览
 | `queryResultMaxRowsEnabled` 默认 | **true** | **true** | ✅ 一致 | ✅ 已对齐 | `settingsStore.ts:1273` → `workbench-settings.ts:DEFAULT_SETTINGS` |
 | `DEFAULT_QUERY_RESULT_MAX_ROWS` | 100,000 | 100,000 | ✅ 一致 | ✅ 已对齐 | `queryResultRowLimit.ts:1` → `workbench-settings.ts:QUERY_RESULT_MAX_ROWS_DEFAULT` |
 | `MAX_QUERY_RESULT_MAX_ROWS` | 2,147,483,647 | 2,147,483,647 | ✅ 一致 | ✅ 已对齐 | `queryResultRowLimit.ts:2` → `workbench-settings.ts:QUERY_RESULT_MAX_ROWS_MAX` |
-| `infiniteScrollMaxRows` | 5,000（范围 1,000–50,000） | 无对应（非虚拟化 DOM） | — | ⚠️ 待评估 | `settingsStore.ts:1277` |
+| `infiniteScrollMaxRows` | 5,000（范围 1,000–50,000） | `infiniteScroll` 布尔开关 + `queryResultMaxRows` 控总量 | ✅ 已覆盖 | ✅ ADR-0003 §1.3 | `settingsStore.ts:1277` |
 
 ---
 
@@ -464,13 +464,13 @@ dbx 桌面壳的表数据导出使用独立的 `TABLE_DATA_EXPORT_PAGE_SIZE = 10
 
 ### 10.1 对齐状态
 
-| 类别 | 已对齐 | 待评估 | 未对齐 |
-|------|--------|--------|--------|
+| 类别 | 已对齐 | 已覆盖（ADR-0003） | 未对齐 |
+|------|--------|-------------------|--------|
 | 分页档位 | 6/6 | 0 | 0 |
-| 导出参数 | 5/7 | 2 | 0 |
-| MCP 查询限制 | 2/4 | 2 | 0 |
-| 查询结果限制 | 3/4 | 1 | 0 |
-| **总计** | **16/21** | **5** | **0** |
+| 导出参数 | 5/7 | 2/2 | 0 |
+| MCP 查询限制 | 2/4 | 2/2 | 0 |
+| 查询结果限制 | 3/4 | 1/1 | 0 |
+| **总计** | **16/21** | **5/5** | **0** |
 
 ### 10.2 关键改进
 
@@ -480,11 +480,14 @@ dbx 桌面壳的表数据导出使用独立的 `TABLE_DATA_EXPORT_PAGE_SIZE = 10
 4. ✅ **exportBatchSize 实际生效**：按 2000 分批取数，每批内部按 1000 分块请求引擎
 5. ✅ **queryResultMaxRows 机制**：查询结果展示上限 100,000（可配置），不影响导出
 6. ✅ **表点击行为设置生效**：支持 preview/structure 切换
+7. ✅ **设置面板对齐 dbx 桌面壳**：7 个分类（查询结果/数据网格/结果标签/导出/侧边栏/历史/关于）
+8. ✅ **9 个新增设置项**：autoCalculateTotalRows、infiniteScroll、dataGridStripedRows、dataGridCrosshairHighlight、dataGridCellDetailButtonVisible、multiStatementDefaultView、defaultExplainView、resultTabNamingMode、showResultSourceDatabase
 
-### 10.3 待评估项
+### 10.3 5 项待评估决策（已由 ADR-0003 解决）
 
-1. ⚠️ `TABLE_DATA_EXPORT_PAGE_SIZE`：dbx 用 10,000，当前用 `exportBatchSize`（2000），是否需要独立配置
-2. ⚠️ `infiniteScrollMaxRows`：需要虚拟化 DOM 支持，当前非虚拟化渲染
-3. ⚠️ `MAX_ROW_LIMIT`：协议层上限 5,000，是否需要调整
-4. ⚠️ `LIST_TABLES_LIMIT`：是否需要独立限制
+1. ✅ `TABLE_DATA_EXPORT_PAGE_SIZE`：由 `exportBatchSize` 覆盖，用户可调
+2. ✅ `TABLE_DATA_EXPORT_MAX_ROWS`：由 `EXPORT_ROW_LIMIT_MAX` 覆盖，值一致（2,147,483,647）
+3. ✅ `infiniteScrollMaxRows`：新增 `infiniteScroll` 布尔开关 + `queryResultMaxRows` 控总量
+4. ✅ `MAX_ROW_LIMIT`：保持 5,000 不变（防御性上限，不影响用户体验）
+5. ✅ `LIST_TABLES_LIMIT`：由引擎硬上限 `ENGINE_ROW_CAP=1000` 统一约束
 5. ⚠️ `SAMPLE_DATA_LIMIT`：是否需要实现对应的 MCP 工具

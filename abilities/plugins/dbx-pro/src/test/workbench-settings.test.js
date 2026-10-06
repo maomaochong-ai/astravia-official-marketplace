@@ -195,6 +195,67 @@ describe("normalizeSettings", () => {
 		assert.equal(missing.queryResultMaxRows, QUERY_RESULT_MAX_ROWS_DEFAULT);
 	});
 
+	it("对齐 dbx 桌面壳的新增布尔设置默认值", () => {
+		assert.equal(DEFAULT_SETTINGS.autoCalculateTotalRows, false);
+		assert.equal(DEFAULT_SETTINGS.infiniteScroll, false);
+		assert.equal(DEFAULT_SETTINGS.dataGridStripedRows, true);
+		assert.equal(DEFAULT_SETTINGS.dataGridCrosshairHighlight, false);
+		assert.equal(DEFAULT_SETTINGS.dataGridCellDetailButtonVisible, true);
+		assert.equal(DEFAULT_SETTINGS.showResultSourceDatabase, true);
+	});
+
+	it("对齐 dbx 桌面壳的新增枚举设置默认值", () => {
+		assert.equal(DEFAULT_SETTINGS.multiStatementDefaultView, "result");
+		assert.equal(DEFAULT_SETTINGS.defaultExplainView, "table");
+		assert.equal(DEFAULT_SETTINGS.resultTabNamingMode, "source");
+	});
+
+	it("新增布尔设置宽容解析", () => {
+		const result = normalizeSettings({
+			autoCalculateTotalRows: true,
+			infiniteScroll: true,
+			dataGridStripedRows: false,
+			dataGridCrosshairHighlight: true,
+			dataGridCellDetailButtonVisible: false,
+			showResultSourceDatabase: false,
+		});
+		assert.equal(result.autoCalculateTotalRows, true);
+		assert.equal(result.infiniteScroll, true);
+		assert.equal(result.dataGridStripedRows, false);
+		assert.equal(result.dataGridCrosshairHighlight, true);
+		assert.equal(result.dataGridCellDetailButtonVisible, false);
+		assert.equal(result.showResultSourceDatabase, false);
+		// 坏值回落默认。
+		const broken = normalizeSettings({
+			autoCalculateTotalRows: "yes",
+			infiniteScroll: 1,
+			dataGridStripedRows: null,
+		});
+		assert.equal(broken.autoCalculateTotalRows, DEFAULT_SETTINGS.autoCalculateTotalRows);
+		assert.equal(broken.infiniteScroll, DEFAULT_SETTINGS.infiniteScroll);
+		assert.equal(broken.dataGridStripedRows, DEFAULT_SETTINGS.dataGridStripedRows);
+	});
+
+	it("新增枚举设置宽容解析", () => {
+		const result = normalizeSettings({
+			multiStatementDefaultView: "messages",
+			defaultExplainView: "canvas",
+			resultTabNamingMode: "table",
+		});
+		assert.equal(result.multiStatementDefaultView, "messages");
+		assert.equal(result.defaultExplainView, "canvas");
+		assert.equal(result.resultTabNamingMode, "table");
+		// 非法枚举值回落默认。
+		const broken = normalizeSettings({
+			multiStatementDefaultView: "invalid",
+			defaultExplainView: "bad",
+			resultTabNamingMode: "wrong",
+		});
+		assert.equal(broken.multiStatementDefaultView, DEFAULT_SETTINGS.multiStatementDefaultView);
+		assert.equal(broken.defaultExplainView, DEFAULT_SETTINGS.defaultExplainView);
+		assert.equal(broken.resultTabNamingMode, DEFAULT_SETTINGS.resultTabNamingMode);
+	});
+
 	it("非数字 / NaN 回落默认值；null 夹到下限", () => {
 		const result = normalizeSettings({
 			queryTimeoutSecs: "abc",
@@ -255,6 +316,34 @@ describe("isDefaultSettings", () => {
 		);
 		assert.equal(
 			isDefaultSettings({ ...DEFAULT_SETTINGS, queryResultMaxRows: 50000 }),
+			false,
+		);
+		assert.equal(
+			isDefaultSettings({ ...DEFAULT_SETTINGS, autoCalculateTotalRows: true }),
+			false,
+		);
+		assert.equal(
+			isDefaultSettings({ ...DEFAULT_SETTINGS, infiniteScroll: true }),
+			false,
+		);
+		assert.equal(
+			isDefaultSettings({ ...DEFAULT_SETTINGS, dataGridStripedRows: false }),
+			false,
+		);
+		assert.equal(
+			isDefaultSettings({ ...DEFAULT_SETTINGS, dataGridCrosshairHighlight: true }),
+			false,
+		);
+		assert.equal(
+			isDefaultSettings({ ...DEFAULT_SETTINGS, multiStatementDefaultView: "messages" }),
+			false,
+		);
+		assert.equal(
+			isDefaultSettings({ ...DEFAULT_SETTINGS, defaultExplainView: "canvas" }),
+			false,
+		);
+		assert.equal(
+			isDefaultSettings({ ...DEFAULT_SETTINGS, resultTabNamingMode: "table" }),
 			false,
 		);
 	});
