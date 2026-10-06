@@ -320,6 +320,76 @@
 	text-align: right;
 }
 
+/* 模板选择对话框 */
+.dbx-root .template-card {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 12px;
+	border-radius: 8px;
+	border: 1px solid var(--dbx-line);
+	background: var(--dbx-surface);
+	cursor: pointer;
+	transition: all 0.12s ease;
+	text-align: left;
+}
+
+.dbx-root .template-card:hover {
+	border-color: var(--dbx-line);
+	background: var(--dbx-surface-2);
+}
+
+.dbx-root .template-card.selected {
+	border-color: var(--foreground);
+	background: var(--dbx-surface-2);
+	box-shadow: 0 0 0 1px var(--foreground);
+}
+
+.dbx-root .template-card-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.dbx-root .template-icon {
+	height: 16px;
+	width: 16px;
+	color: var(--foreground);
+}
+
+.dbx-root .template-label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--foreground);
+}
+
+.dbx-root .template-desc {
+	font-size: 11px;
+	color: var(--muted-foreground);
+	line-height: 1.4;
+}
+
+.dbx-root .custom-template-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	width: 100%;
+	padding: 12px;
+	border-radius: 8px;
+	border: 1px dashed var(--dbx-line);
+	background: transparent;
+	color: var(--foreground);
+	font-size: 13px;
+	cursor: pointer;
+	transition: all 0.12s ease;
+}
+
+.dbx-root .custom-template-btn:hover {
+	border-color: var(--foreground);
+	background: var(--dbx-surface);
+}
+
 /* 折线图 */
 .dbx-root .chart-container {
 	position: relative;

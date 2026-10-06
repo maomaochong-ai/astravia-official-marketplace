@@ -10,25 +10,27 @@ import { SqlEditor } from "./sql-editor";
 import { TabBar } from "./tab-bar";
 import { useWorkbench } from "../hooks/use-workbench";
 import { VisualizationTab } from "../../visualization/components/VisualizationTab";
-import { useVisualizationStore } from "../../visualization/visualization-store";
 
 export function SqlEditorWorkspace(): JSX.Element {
 	const { state } = useWorkbench();
-	const { visualizations } = useVisualizationStore();
 
-	// 查找当前激活的可视化标签页
-	const activeViz = state.activeTabId?.startsWith("viz-")
-		? visualizations.find((v) => `viz-${v.id}` === state.activeTabId)
-		: null;
+	// 查找当前激活的标签页
+	const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+
+	// 如果是可视化标签页，显示可视化内容
+	if (activeTab?.visualization) {
+		return (
+			<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+				<TabBar />
+				<VisualizationTab viz={activeTab.visualization} />
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
 			<TabBar />
-			{activeViz ? (
-				<VisualizationTab viz={activeViz} />
-			) : (
-				<HorizontalSplit top={<SqlEditor />} bottom={<ResultPanel />} />
-			)}
+			<HorizontalSplit top={<SqlEditor />} bottom={<ResultPanel />} />
 		</div>
 	);
 }

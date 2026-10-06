@@ -417,8 +417,8 @@ export function ResultGrid({
 			setLocalPageSize(val);
 			setLocalPage(0);
 		}
-		setShowCustomSizeInput(false);
-		setCustomPageSize("");
+		// 保留输入框中的值，不关闭输入框
+		setShowCustomSizeInput(true);
 	}
 
 	/** 设为默认行数：更新工作台设置。 */
@@ -694,21 +694,16 @@ export function ResultGrid({
 			{ type: "item", label: "导出当前页 HTML", icon: "icon-[lucide--file-code-2]", onClick: exportHtml },
 			{ type: "item", label: "导出当前页 SQL", icon: "icon-[lucide--file-terminal]", onClick: exportSql },
 			{ type: "item", label: "导出当前页 TXT", icon: "icon-[lucide--file-text]", onClick: exportTxt },
+			{ type: "separator" },
+			{ type: "item", label: "导出全部数据 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: () => void exportAllCsv(), disabled: exportingAll },
+			{ type: "item", label: "导出全部数据 Excel", icon: "icon-[lucide--sheet]", onClick: () => void exportAllXlsx(), disabled: exportingAll },
+			{ type: "item", label: "导出全部数据 JSON", icon: "icon-[lucide--file-json]", onClick: () => void exportAllJson(), disabled: exportingAll },
+			{ type: "item", label: "导出全部数据 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => void exportAllJsonLines(), disabled: exportingAll },
+			{ type: "item", label: "导出全部数据 Markdown", icon: "icon-[lucide--file-text]", onClick: () => void exportAllMarkdown(), disabled: exportingAll },
+			{ type: "item", label: "导出全部数据 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => void exportAllHtml(), disabled: exportingAll },
+			{ type: "item", label: "导出全部数据 SQL", icon: "icon-[lucide--file-terminal]", onClick: () => void exportAllSql(), disabled: exportingAll },
+			{ type: "item", label: "导出全部数据 TXT", icon: "icon-[lucide--file-text]", onClick: () => void exportAllTxt(), disabled: exportingAll },
 		];
-		// 服务端分页时，增加"导出全部"选项
-		if (isServer) {
-			items.push(
-				{ type: "separator" },
-				{ type: "item", label: "导出全部 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: () => void exportAllCsv(), disabled: exportingAll },
-				{ type: "item", label: "导出全部 Excel", icon: "icon-[lucide--sheet]", onClick: () => void exportAllXlsx(), disabled: exportingAll },
-				{ type: "item", label: "导出全部 JSON", icon: "icon-[lucide--file-json]", onClick: () => void exportAllJson(), disabled: exportingAll },
-				{ type: "item", label: "导出全部 JSON Lines", icon: "icon-[lucide--file-code]", onClick: () => void exportAllJsonLines(), disabled: exportingAll },
-				{ type: "item", label: "导出全部 Markdown", icon: "icon-[lucide--file-text]", onClick: () => void exportAllMarkdown(), disabled: exportingAll },
-				{ type: "item", label: "导出全部 HTML", icon: "icon-[lucide--file-code-2]", onClick: () => void exportAllHtml(), disabled: exportingAll },
-				{ type: "item", label: "导出全部 SQL", icon: "icon-[lucide--file-terminal]", onClick: () => void exportAllSql(), disabled: exportingAll },
-				{ type: "item", label: "导出全部 TXT", icon: "icon-[lucide--file-text]", onClick: () => void exportAllTxt(), disabled: exportingAll },
-			);
-		}
 		setExportMenu({
 			x: e.clientX,
 			y: e.clientY,
@@ -1121,6 +1116,7 @@ export function ResultGrid({
 							onChange={(e) => {
 								const val = e.target.value;
 								if (val === "custom") {
+									setCustomPageSize(String(pageSize));
 									setShowCustomSizeInput(true);
 								} else {
 									changePageSize(Number(val));
@@ -1141,7 +1137,7 @@ export function ResultGrid({
 							<input
 								type="number"
 								min="1"
-								value={customPageSize}
+								value={customPageSize || String(pageSize)}
 								onChange={(e) => setCustomPageSize(e.target.value)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") applyCustomPageSize();

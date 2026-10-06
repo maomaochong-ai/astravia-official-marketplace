@@ -142,7 +142,7 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 				const targetConn = stateRef.current.connections.find((c) => c.name === connectionName);
 				const rawOutcome = await engineExecuteByName(connectionName, sqlToRun, {
 					timeoutMs: current.queryTimeoutSecs * 1000,
-					rowLimit: ENGINE_ROW_CAP,
+					rowLimit: isServerMode ? pageSize : ENGINE_ROW_CAP,
 					dbType: targetConn?.db_type,
 					...(isServerMode ? { page: { offset: pageIndex * pageSize, limit: pageSize } } : {}),
 				});

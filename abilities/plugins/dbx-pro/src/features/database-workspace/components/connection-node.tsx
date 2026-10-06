@@ -27,6 +27,7 @@ import {
 	type SelectedNodeInfo,
 } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
+import { VisualizationTemplateDialog } from "../../visualization/components/VisualizationTemplateDialog";
 
 interface Props {
 	node: TreeNode;
@@ -52,6 +53,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
 	const [aiDialogOpen, setAiDialogOpen] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState("");
+	const [templateDialog, setTemplateDialog] = useState<{ type: "dashboard" | "screen" } | null>(null);
 
 	const isExpanded = state.expandedNodes.has(node.key);
 	const isLoading = state.loadingNodes.has(node.key);
@@ -406,13 +408,13 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 								type: "item",
 								label: "生成企业看板",
 								icon: "icon-[lucide--layout-dashboard]",
-								onClick: () => openAiDialog(buildDashboardPrompt([{ kind: "table", connectionName, schema: childScope, label: node.label }])),
+								onClick: () => setTemplateDialog({ type: "dashboard" }),
 							},
 							{
 								type: "item",
 								label: "生成数据大屏",
 								icon: "icon-[lucide--monitor]",
-								onClick: () => openAiDialog(buildScreenPrompt([{ kind: "table", connectionName, schema: childScope, label: node.label }])),
+								onClick: () => setTemplateDialog({ type: "screen" }),
 							},
 						],
 					},
@@ -649,6 +651,33 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			)}
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
 			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
+			{templateDialog && (
+				<VisualizationTemplateDialog
+					type={templateDialog.type}
+					connectionName={connectionName ?? ""}
+					tableName={node.label}
+					schema={childScope}
+					onSelect={(template) => {
+						const prompt = templateDialog.type === "dashboard"
+							? buildDashboardPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }])
+							: buildScreenPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }]);
+						const fullPrompt = `${prompt}\n\n请使用 ${template} 模板生成${templateDialog.type === "dashboard" ? "看板" : "大屏"}。`;
+						setAiPrompt(fullPrompt);
+						setAiDialogOpen(true);
+						setTemplateDialog(null);
+					}}
+					onCustom={() => {
+						const prompt = templateDialog.type === "dashboard"
+							? buildDashboardPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }])
+							: buildScreenPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }]);
+						const fullPrompt = `${prompt}\n\n请根据数据特征自动选择合适的${templateDialog.type === "dashboard" ? "看板" : "大屏"}模板并生成。`;
+						setAiPrompt(fullPrompt);
+						setAiDialogOpen(true);
+						setTemplateDialog(null);
+					}}
+					onClose={() => setTemplateDialog(null)}
+				/>
+			)}
 		</div>
 	);
 }
