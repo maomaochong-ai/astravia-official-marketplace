@@ -466,34 +466,41 @@ export function ResultGrid({
 
 	const exportCsv = useCallback(() => {
 		downloadFile(toCsv(colList, rows), "query-result.csv", "text/csv;charset=utf-8");
-		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportJson = useCallback(() => {
 		downloadFile(toJson(colList, rows), "query-result.json", "application/json");
-		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportJsonLines = useCallback(() => {
 		downloadFile(toJsonLines(colList, rows), "query-result.jsonl", "application/x-ndjson");
-		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportMarkdown = useCallback(() => {
 		downloadFile(toMarkdown(colList, rows), "query-result.md", "text/markdown");
-		setExportMenuOpen(false);
 	}, [colList, rows]);
 
 	const exportHtml = useCallback(() => {
 		downloadFile(toHtml(colList, rows), "query-result.html", "text/html");
-		setExportMenuOpen(false);
 	}, [colList, rows]);
 
-	const [exportMenuOpen, setExportMenuOpen] = useState(false);
+	const [exportMenu, setExportMenu] = useState<ContextMenuState | null>(null);
 
+	/** 导出格式菜单：左键 / 右键都在按钮上方展开（贴底栏，空间不足时菜单自动上翻）。 */
 	function openExportMenu(e: React.MouseEvent): void {
 		e.preventDefault();
-		setExportMenuOpen(true);
+		e.stopPropagation();
+		setExportMenu({
+			x: e.clientX,
+			y: e.clientY,
+			items: [
+				{ type: "item", label: "导出 CSV", icon: "icon-[lucide--file-spreadsheet]", onClick: exportCsv },
+				{ type: "item", label: "导出 JSON", icon: "icon-[lucide--file-json]", onClick: exportJson },
+				{ type: "item", label: "导出 JSON Lines", icon: "icon-[lucide--file-code]", onClick: exportJsonLines },
+				{ type: "item", label: "导出 Markdown", icon: "icon-[lucide--file-text]", onClick: exportMarkdown },
+				{ type: "item", label: "导出 HTML", icon: "icon-[lucide--file-code-2]", onClick: exportHtml },
+			],
+		});
 	}
 
 	if (colList.length === 0) {
@@ -649,7 +656,7 @@ export function ResultGrid({
 			<div className={`dbx-result-toolbar ${splitToolbar ? "split-layout" : "single-layout"}`}>
 				{/* 上排：操作按钮 */}
 				<div className="dbx-toolbar-row-actions">
-					{/* 左侧：复制和导出 */}
+					{/* 左侧：复制（导出已移至结果网格底栏） */}
 					<div className="flex items-center gap-0.5">
 						<button
 							type="button"
@@ -660,53 +667,6 @@ export function ResultGrid({
 							<span className="icon-[lucide--clipboard-list] h-3.5 w-3.5" />
 							<span className="dbx-toolbar-btn-label">复制</span>
 						</button>
-					<div className="dbx-toolbar-btn-group">
-						<button
-							type="button"
-							onClick={() => exportCsv()}
-							title="导出 CSV"
-							className="dbx-toolbar-btn dbx-toolbar-btn-grouped"
-						>
-							<span className="icon-[lucide--download] h-3.5 w-3.5" />
-							<span className="dbx-toolbar-btn-label">导出</span>
-						</button>
-						<button
-							type="button"
-							onContextMenu={(e) => {
-								e.preventDefault();
-								openExportMenu(e);
-							}}
-							onClick={() => setExportMenuOpen(!exportMenuOpen)}
-							title="更多导出选项（右键查看）"
-							className="dbx-toolbar-btn dbx-toolbar-btn-grouped dbx-toolbar-btn-dropdown"
-						>
-							<span className="icon-[lucide--chevron-down] h-3 w-3" />
-						</button>
-					</div>
-					{exportMenuOpen && (
-						<div className="dbx-toolbar-dropdown-menu">
-							<button type="button" onClick={() => { exportCsv(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
-								CSV 文件
-							</button>
-							<button type="button" onClick={() => { exportJson(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-json] h-3.5 w-3.5" />
-								JSON 文件
-							</button>
-							<button type="button" onClick={() => { exportJsonLines(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-code] h-3.5 w-3.5" />
-								JSON Lines 文件
-							</button>
-							<button type="button" onClick={() => { exportMarkdown(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-text] h-3.5 w-3.5" />
-								Markdown 文件
-							</button>
-							<button type="button" onClick={() => { exportHtml(); setExportMenuOpen(false); }} className="dbx-toolbar-dropdown-item">
-								<span className="icon-[lucide--file-code-2] h-3.5 w-3.5" />
-								HTML 文件
-							</button>
-						</div>
-					)}
 					</div>
 
 					{/* 中间：视图选项 */}
@@ -903,24 +863,30 @@ export function ResultGrid({
 			</div>
 
 			{/* 分页栏（固定底部，不随网格滚动）；上分割线用 .dbx-pagination，
-			    与侧边栏竖线及桌面壳分割线对齐。 */}
+			    与侧边栏竖线及桌面壳分割线对齐。
+			    布局：左侧元信息 min-w-0 可截断，右侧操作区 shrink-0 永不被遮挡。 */}
 			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 px-3 text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
-				<span>
-					{totalKnown ? "共 " : "已取回 "}
-					<span className="font-medium text-foreground/80">{displayTotal}</span> 行
-				</span>
-				{note ? (
-					<span className="rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-400" title={note}>
-						{note}
+				<div className="flex min-w-0 flex-1 items-center gap-2">
+					<span className="shrink-0">
+						{totalKnown ? "共 " : "已取回 "}
+						<span className="font-medium text-foreground/80">{displayTotal}</span> 行
 					</span>
-				) : null}
-				{isServer && !totalKnown ? (
-					<span className="rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
-						总数统计中
-					</span>
-				) : null}
-				{pageLoading ? <span className="text-[10px] text-muted-foreground">取数中…</span> : null}
-				<div className="ml-auto flex items-center gap-1">
+					{note ? (
+						<span
+							className="min-w-0 truncate rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-500"
+							title={note}
+						>
+							{note}
+						</span>
+					) : null}
+					{isServer && !totalKnown ? (
+						<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
+							总数统计中
+						</span>
+					) : null}
+					{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
+				</div>
+				<div className="ml-auto flex shrink-0 items-center gap-1">
 					<label className="flex items-center gap-1">
 						<span className="text-muted-foreground/60">每页</span>
 						<select
@@ -982,18 +948,22 @@ export function ResultGrid({
 					>
 						<span className="icon-[lucide--chevrons-right] h-3 w-3" />
 					</button>
+					<div className="mx-2 h-3 w-px bg-[var(--dbx-surface-2)]" />
+					{/* 导出：左键 / 右键均弹格式菜单 */}
+					<button
+						type="button"
+						onClick={openExportMenu}
+						onContextMenu={openExportMenu}
+						title="导出结果（CSV / JSON / JSON Lines / Markdown / HTML）"
+						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
+					>
+						<span className="icon-[lucide--download] h-3.5 w-3.5" />
+					</button>
 				</div>
 			</div>
 
-			{/* 点击外部关闭导出菜单 */}
-			{exportMenuOpen && (
-				<div
-					className="fixed inset-0 z-50"
-					onClick={() => setExportMenuOpen(false)}
-				/>
-			)}
-
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+			{exportMenu && <ContextMenu menu={exportMenu} onClose={() => setExportMenu(null)} />}
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
 			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 			

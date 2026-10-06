@@ -30,3 +30,56 @@
 /* 历史面板标题：柔和分隔，不出现刺眼白线 */
 .dbx-history-head { border-bottom: 1px solid var(--dbx-line-soft); }
 .dbx-history-head::after { content: none; }
+
+/* ── 查询历史圆角卡片 ───────────────────────────────────── */
+.dbx-history-card {
+	padding: 9px 10px 8px;
+	margin-bottom: 6px;
+	border-radius: 9px;
+	border: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+	transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.dbx-history-card:hover {
+	border-color: var(--dbx-line);
+	background: var(--dbx-surface-2);
+}
+
+.dbx-history-sql {
+	margin: 0;
+	font-size: 11px;
+	line-height: 1.45;
+	color: var(--foreground);
+	opacity: 0.88;
+}
+
+.dbx-history-card:hover .dbx-history-sql { opacity: 1; }
+
+/* 卡片行内纯图标操作：常驻显示（不再 hover 才出现），克制底色 */
+.dbx-history-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 22px;
+	width: 22px;
+	padding: 0;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted-foreground);
+	cursor: pointer;
+	opacity: 0.72;
+	transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.dbx-history-action:hover {
+	opacity: 1;
+	background: var(--dbx-hover);
+	color: var(--foreground);
+}
+
+.dbx-history-action-danger:hover {
+	background: rgb(239 68 68 / 0.12);
+	color: #ef4444;
+}

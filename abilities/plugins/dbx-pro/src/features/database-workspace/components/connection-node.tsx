@@ -201,6 +201,47 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		});
 	}
 
+	/**
+	 * 危险操作（对齐 dbx 桌面壳「更多」）：二次确认后在新 tab 立即执行。
+	 * 写操作 / DDL 全透传引擎，不做 SQL 层闸门，确认是唯一保护。
+	 */
+	async function runDangerAction(params: {
+		kind: "vacuum" | "truncate" | "delete" | "drop";
+		cascade?: boolean;
+	}): Promise<void> {
+		const connName = connectionName ?? (node.kind === "connection" ? node.label : "");
+		if (!connName) return;
+		const dbType = (state.connections.find((c) => c.name === connName)?.db_type ?? "").toLowerCase();
+		const t = qualifiedName;
+		let sql = "";
+		let message = "";
+		if (params.kind === "vacuum") {
+			if (/postgres|pg|redshift|gaussdb|opengauss|kingbase|vastbase|highgo/.test(dbType)) {
+				sql = `VACUUM${params.cascade ? " FULL" : ""} ${t};`;
+				message = params.cascade
+					? `VACUUM FULL 会重写整表并持有排他锁，确定对「${t}」执行吗？`
+					: `确定对「${t}」执行 VACUUM 吗？大表可能耗时较久。`;
+			} else if (/mysql|maria|tidb|starrocks|doris/.test(dbType)) {
+				sql = `OPTIMIZE TABLE ${t};`;
+				message = `确定对「${t}」执行 OPTIMIZE TABLE 吗？`;
+			} else {
+				alert("当前数据库类型不支持表级 VACUUM / OPTIMIZE");
+				return;
+			}
+		} else if (params.kind === "truncate") {
+			sql = `TRUNCATE TABLE ${t}${params.cascade ? " CASCADE" : ""};`;
+			message = `TRUNCATE 将清空「${t}」全部数据且不可回滚，确定执行吗？`;
+		} else if (params.kind === "delete") {
+			sql = `DELETE FROM ${t};`;
+			message = `DELETE FROM 将清空「${t}」全部数据（可回滚但产生大量 WAL），大表建议用 TRUNCATE。确定执行吗？`;
+		} else {
+			sql = `DROP TABLE IF EXISTS ${t}${params.cascade ? " CASCADE" : ""};`;
+			message = `DROP TABLE 将删除「${t}」表结构与数据${params.cascade ? "（CASCADE，连同依赖对象）" : ""}，不可恢复！确定执行吗？`;
+		}
+		if (!window.confirm(message)) return;
+		await openPreviewTab(connName, sql, `${node.label} ${params.kind.toUpperCase()}`);
+	}
+
 	function handleContextMenu(e: React.MouseEvent): void {
 		e.preventDefault();
 		e.stopPropagation();
@@ -382,16 +423,66 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						},
 					},
 					{ type: "separator" },
-					// 刷新
-					{
-						type: "item",
-						label: "刷新",
-						icon: "icon-[lucide--refresh-cw]",
-						onClick: () => {
-							dispatch({ type: "invalidateConnectionTree", name: connectionName });
-							void ensureChildren();
+				// 危险操作（对齐 dbx 桌面壳「更多」：红色展开项 + 二次确认）
+				{
+					type: "submenu",
+					label: "更多",
+					icon: "icon-[lucide--list-collapse]",
+					items: [
+						{
+							type: "item",
+							label: "执行 VACUUM",
+							icon: "icon-[lucide--activity]",
+							onClick: () => void runDangerAction({ kind: "vacuum" }),
 						},
+						{
+							type: "item",
+							label: "执行 VACUUM FULL",
+							icon: "icon-[lucide--gauge]",
+							onClick: () => void runDangerAction({ kind: "vacuum", cascade: true }),
+						},
+						{ type: "separator" },
+						{
+							type: "item",
+							label: "截断表",
+							icon: "icon-[lucide--scissors]",
+							danger: true,
+							onClick: () => void runDangerAction({ kind: "truncate" }),
+						},
+						{
+							type: "item",
+							label: "清空数据",
+							icon: "icon-[lucide--eraser]",
+							danger: true,
+							onClick: () => void runDangerAction({ kind: "delete" }),
+						},
+						{
+							type: "item",
+							label: "删除表",
+							icon: "icon-[lucide--trash-2]",
+							danger: true,
+							onClick: () => void runDangerAction({ kind: "drop" }),
+						},
+						{
+							type: "item",
+							label: "强制删除（CASCADE）",
+							icon: "icon-[lucide--unlink]",
+							danger: true,
+							onClick: () => void runDangerAction({ kind: "drop", cascade: true }),
+						},
+					],
+				},
+				{ type: "separator" },
+				// 刷新
+				{
+					type: "item",
+					label: "刷新",
+					icon: "icon-[lucide--refresh-cw]",
+					onClick: () => {
+						dispatch({ type: "invalidateConnectionTree", name: connectionName });
+						void ensureChildren();
 					},
+				},
 				],
 			});
 		}

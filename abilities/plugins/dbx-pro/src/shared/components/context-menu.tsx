@@ -9,6 +9,9 @@
  * - 不使用 fixed：面板类 UI 必须留在面板矩形内。
  * 做法：portal 到本面板根（.dbx-root，position: relative），
  * 用相对面板根的绝对坐标定位，边界翻转也按面板根矩形计算。
+ *
+ * 子菜单：与父项保持 1px 重叠（零间隙），并用共享定时器 ——
+ * 鼠标移入子菜单时取消父项的延迟关闭，杜绝"展开后移不过去"。
  */
 
 import { useEffect, useLayoutEffect, useRef, useState, type JSX } from "react";
@@ -44,14 +47,30 @@ export interface ContextMenuState {
 
 const MENU_WIDTH = 208;
 const VIEWPORT_MARGIN = 4;
+/** 父项 → 子菜单的延迟关闭时长（留出抖动余量）。 */
+const SUBMENU_CLOSE_DELAY = 140;
 
 export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose: () => void }): JSX.Element | null {
 	const ref = useRef<HTMLDivElement>(null);
-	// 隐藏锚点：它随组件渲染在插件树内，用来向上找到面板根作为 portal 目标。
+	// 隐藏锚点：随组件渲染在插件树内，用来向上找到面板根作为 portal 目标。
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const [panelRoot, setPanelRoot] = useState<Element | null>(null);
 	const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 });
 	const [submenuState, setSubmenuState] = useState<{ index: number; y: number } | null>(null);
+	// 父子项共享的关闭定时器：进入任一区域都能取消另一个区域排定的关闭。
+	const closeTimerRef = useRef<number | null>(null);
+
+	function cancelCloseTimer(): void {
+		if (closeTimerRef.current !== null) {
+			window.clearTimeout(closeTimerRef.current);
+			closeTimerRef.current = null;
+		}
+	}
+
+	function scheduleClose(): void {
+		cancelCloseTimer();
+		closeTimerRef.current = window.setTimeout(() => setSubmenuState(null), SUBMENU_CLOSE_DELAY);
+	}
 
 	useLayoutEffect(() => {
 		const root = anchorRef.current?.closest(".dbx-root") ?? null;
@@ -86,6 +105,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 		document.addEventListener("scroll", onScroll, true);
 		window.addEventListener("blur", onClose);
 		return () => {
+			cancelCloseTimer();
 			document.removeEventListener("keydown", onKey, true);
 			document.removeEventListener("mousedown", onDown, true);
 			document.removeEventListener("scroll", onScroll, true);
@@ -120,39 +140,40 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 											role="menuitem"
 											aria-haspopup="true"
 											aria-expanded={subOpen}
-											className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-											// hover 展开；点击也可展开 / 收起（触屏 / 子菜单被裁时的可靠入口）
+											className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
+												subOpen
+													? "bg-accent text-accent-foreground"
+													: "text-foreground hover:bg-accent hover:text-accent-foreground"
+											}`}
+											// hover 展开；点击也可展开 / 收起（触屏可靠入口）
 											onClick={() => setSubmenuState(subOpen ? null : { index, y: 0 })}
 											onMouseEnter={(e) => {
+												cancelCloseTimer();
 												const rect = e.currentTarget.getBoundingClientRect();
 												setSubmenuState({ index, y: rect.top });
 											}}
-											onMouseLeave={() => {
-												// 延迟关闭，让鼠标有时间移入右侧子菜单
-												setTimeout(() => {
-													setSubmenuState((current) => current?.index === index ? null : current);
-												}, 120);
-											}}
+											onMouseLeave={scheduleClose}
 										>
 											{entry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${entry.icon}`} />}
 											<span className="min-w-0 flex-1 truncate">{entry.label}</span>
 											<span className="icon-[lucide--chevron-right] h-3 w-3 text-muted-foreground" />
 										</button>
 
-										{/* 子菜单：主菜单容器不裁剪（overflow visible），故可溢出到右侧 */}
+										{/* 子菜单：-ml-px 与父项重叠 1px，鼠标平移无空隙；
+										    菜单容器不再裁剪，可溢出到右侧。 */}
 										{subOpen && (
 											<div
 												role="menu"
-												className="absolute left-full top-0 z-[301] min-w-[160px] -ml-px overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
-												onMouseEnter={() => submenuState && setSubmenuState({ index, y: submenuState.y })}
-												onMouseLeave={() => setSubmenuState(null)}
+												className="absolute left-full top-0 z-[301] -ml-px min-w-[172px] rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+												onMouseEnter={cancelCloseTimer}
+												onMouseLeave={scheduleClose}
 											>
 												{entry.items.map((subEntry, subIndex) => {
 													if (subEntry.type === "separator") {
-														return <div key={`sub-sep-${subIndex}`} className="my-1 h-px bg-border" />;
+														return <div key={`sub-sep-${subIndex}`} className="mx-1 my-1 h-px bg-border" />;
 													}
 													if (subEntry.type === "submenu") {
-														// 不支持嵌套子菜单，忽略
+														// 不支持三级嵌套，忽略
 														return null;
 													}
 													return (
@@ -163,18 +184,18 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 															disabled={subEntry.disabled}
 															className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
 																subEntry.danger
-																	? "text-red-400 hover:bg-red-500/15"
+																	? "text-red-500 hover:bg-red-500/15"
 																	: "text-foreground hover:bg-accent hover:text-accent-foreground"
 															}`}
 															onClick={() => {
-															// 先执行 onClick，再关闭菜单，避免菜单卸载后 onClick 无法执行
-															try {
-																subEntry.onClick();
-															} catch (err) {
-																console.error("[ContextMenu] 子菜单项 onClick 执行失败:", err);
-															}
-															onClose();
-														}}
+																// 先执行 onClick，再关闭菜单，避免菜单卸载后 onClick 无法执行
+																try {
+																	subEntry.onClick();
+																} catch (err) {
+																	console.error("[ContextMenu] 子菜单项 onClick 执行失败:", err);
+																}
+																onClose();
+															}}
 														>
 															{subEntry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${subEntry.icon}`} />}
 															<span className="min-w-0 flex-1 truncate">{subEntry.label}</span>
@@ -186,7 +207,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 									</div>
 								);
 							}
-							
+
 							// 普通菜单项
 							return (
 								<button
@@ -196,7 +217,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 									disabled={entry.disabled}
 									className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
 										entry.danger
-											? "text-red-400 hover:bg-red-500/15"
+											? "text-red-500 hover:bg-red-500/15"
 											: "text-foreground hover:bg-accent hover:text-accent-foreground"
 									}`}
 									onClick={() => {

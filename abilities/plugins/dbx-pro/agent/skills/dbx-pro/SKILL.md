@@ -2,7 +2,7 @@
 name: dbx-pro
 alias: 数据库工作台
 description: 连接并操作 84 种数据库 — 执行 SQL、浏览表结构、分析查询性能、生成 SQL、数据质量检查。通过 dbx-pro 数据库工作台与用户已配置的数据库连接交互。
-version: 0.0.70
+version: 0.0.71
 ---
 
 # 数据库工作台 — dbx-pro
