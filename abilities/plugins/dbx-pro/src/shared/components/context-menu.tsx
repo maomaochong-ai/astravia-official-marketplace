@@ -7,8 +7,11 @@
  * - 不 portal 到 document.body：会逃出插件 @scope，样式全部失效；
  *   全屏时 body 上的节点也不会被渲染。
  * - 不使用 fixed：面板类 UI 必须留在面板矩形内。
- * 做法：portal 到本面板根（.dbx-root，position: relative），
- * 用相对面板根的绝对坐标定位，边界翻转也按面板根矩形计算。
+ * 做法：portal 到本面板根（.dbx-root），按面板根矩形算屏幕坐标，再减去 rootRect 得到
+ * 面板内相对坐标。注意 `.dbx-root` 本身没有 position（style.css 只定义 --dbx-* 变量），
+ * 绝对定位实际以插件初始包含块为基准，两者原点一致才成立 —— `.dbx-root` 是
+ * h-full w-full 且位于文档左上角时成立。若将来在插件根外再包一层有偏移的容器，
+ * 需要给 `.dbx-root` 补 position: relative，否则菜单会整体跟着偏移。
  *
  * 子菜单：与父项保持 1px 重叠（零间隙），并用共享定时器 ——
  * 鼠标移入子菜单时取消父项的延迟关闭，杜绝"展开后移不过去"。

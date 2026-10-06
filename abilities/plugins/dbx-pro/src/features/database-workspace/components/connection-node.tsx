@@ -438,18 +438,16 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							type: "item",
 							label: "生成企业看板",
 							icon: "icon-[lucide--layout-dashboard]",
-							onClick: () => {
-								// 延迟到下一帧，避免 ContextMenu 关闭时干扰 Dialog 渲染
-								setTimeout(() => setTemplateDialog({ type: "dashboard" }), 0);
-							},
+							// 同步置位即可：ContextMenu 只在菜单外的 mousedown 上关闭，
+							// 同一批更新里「关菜单 + 开对话框」不会互相干扰（同菜单的「添加到 AI」就是这样）。
+							// 用 setTimeout 延迟会多一次宏任务，节点在这期间被回收就成了空点击。
+							onClick: () => setTemplateDialog({ type: "dashboard" }),
 						},
 						{
 							type: "item",
 							label: "生成数据大屏",
 							icon: "icon-[lucide--monitor]",
-							onClick: () => {
-								setTimeout(() => setTemplateDialog({ type: "screen" }), 0);
-							},
+							onClick: () => setTemplateDialog({ type: "screen" }),
 						},
 					],
 				},

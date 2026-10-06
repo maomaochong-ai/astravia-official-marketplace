@@ -60,8 +60,12 @@ export function ResultPanel(): JSX.Element {
 						serverPageSize={activeTab?.pageSize ?? settings.rowLimit}
 						defaultPageSize={settings.rowLimit}
 						serverTotalCount={result.totalCount}
+						serverTotalStatus={result.totalCountStatus}
 						pageLoading={activeTab?.isRunning === true}
 						note={result.note}
+						onCancelLoading={() => {
+							if (activeTab) cancelExecution(activeTab.id);
+						}}
 							onPageChange={(pageIndex) => {
 								if (activeTab) void goToResultPage(activeTab.id, pageIndex);
 							}}

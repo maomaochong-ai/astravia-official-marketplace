@@ -37,8 +37,10 @@ export interface EditorTab {
 		note?: string;
 		/** 响应是服务端分页中的一页。 */
 		paged?: boolean;
-		/** COUNT 得到的真实总行数；未统计前为 undefined。 */
+		/** COUNT 得到的真实总行数；未统计/统计失败时为 undefined。 */
 		totalCount?: number;
+		/** 总数统计状态：pending=统计进行中；failed=统计失败（总数仍未知）。总数已知时为空。 */
+		totalCountStatus?: "pending" | "failed";
 		/** 当前服务端页码（0-based）。 */
 		serverPage?: number;
 		/** 产生该结果的实际 SQL；选中执行时与 tab.sql 不同，翻页必须重跑它。 */

@@ -76,8 +76,10 @@ interface Props {
 	serverPageSize?: number;
 	/** 初始页大小（本地分页的默认值；取设置 rowLimit）。 */
 	defaultPageSize: number;
-	/** 服务端分页的总行数；undefined = 尚未统计。 */
+	/** 服务端分页的总行数；undefined = 尚未统计或统计失败。 */
 	serverTotalCount?: number;
+	/** 服务端总数统计状态：pending=统计中；failed=统计失败（总数仍未知）。 */
+	serverTotalStatus?: "pending" | "failed";
 	/** 正在取页。 */
 	pageLoading?: boolean;
 	/** 截断 / 多语句等需要告知的提示。 */
@@ -88,6 +90,8 @@ interface Props {
 	onSetDefaultPageSize?: (pageSize: number) => void;
 	/** 刷新总计行统计。 */
 	onRefreshTotalCount?: () => void;
+	/** 停止当前取数（翻页 / 改每页行数卡住时给出路）。 */
+	onCancelLoading?: () => void;
 }
 
 /** Uint8Array → base64（分块拼接，避免大 XLSX 时 String.fromCharCode 参数溢出栈）。 */
@@ -111,20 +115,21 @@ export function ResultGrid({
 	serverPageSize,
 	defaultPageSize,
 	serverTotalCount,
+	serverTotalStatus,
 	pageLoading,
 	note,
 	onPageChange,
 	onPageSizeChange,
 	onSetDefaultPageSize,
 	onRefreshTotalCount,
+	onCancelLoading,
 }: Props): JSX.Element {
 	const isServer = serverPaged === true;
 	const [localPage, setLocalPage] = useState(0);
 	const [localPageSize, setLocalPageSize] = useState(() => resolvePageSize(defaultPageSize));
 	// 页码跳转输入框（对齐 dbx DataGridPagination：直接输入页码，Enter/失焦跳转）。
 	const [pageInput, setPageInput] = useState("1");
-	// 手动刷新总计的转圈状态（首批自动统计期间由 totalCount===undefined 体现）。
-	const [refreshingTotal, setRefreshingTotal] = useState(false);
+
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [colWidths, setColWidths] = useState<Record<string, number>>({});
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
@@ -379,15 +384,15 @@ export function ResultGrid({
 		? (serverPageSize ?? defaultPageSize)
 		: localPageSize;
 
-	// 总页数：服务端总数未统计时为 null（不假装知道）。
+	// 总数已知才敢算总页数；未知（统计中/失败）时为 null，翻页改用「本页是否取满」判断。
+	const totalKnown = !isServer || (serverTotalCount !== undefined && serverTotalCount >= 0);
 	const totalPages = useMemo(() => {
 		if (isServer) {
-			return serverTotalCount !== undefined
-				? Math.max(1, Math.ceil(serverTotalCount / pageSize))
-				: null;
+			const total = serverTotalCount;
+			return totalKnown && total !== undefined ? Math.max(1, Math.ceil(total / pageSize)) : null;
 		}
 		return Math.max(1, Math.ceil(rows.length / pageSize));
-	}, [isServer, serverTotalCount, rows.length, pageSize]);
+	}, [isServer, totalKnown, serverTotalCount, rows.length, pageSize]);
 
 	const safePage = isServer
 		? Math.max(0, serverPage ?? 0)
@@ -401,7 +406,6 @@ export function ResultGrid({
 		[isServer, orderedRows, safePage, pageSize],
 	);
 
-	const totalKnown = !isServer || (serverTotalCount !== undefined && serverTotalCount >= 0);
 	const displayTotal = isServer
 		? (serverTotalCount !== undefined && serverTotalCount >= 0 ? serverTotalCount : safePage * pageSize + rows.length)
 		: rows.length;
@@ -448,23 +452,13 @@ export function ResultGrid({
 	}
 
 	/**
-	 * 手动刷新总计行统计。总数回填（serverTotalCount 变化）后停止转圈；
-	 * 统计失败时不会有回填，用 60s 超时兜底退出转圈，不影响已展示的数据。
+	 * 总数统计中（首批自动统计与手动刷新共用）：状态由 tab 携带，
+	 * 不依赖本地计时器，统计一旦落定就必然结束，不会出现永久转圈。
 	 */
-	const totalCounting = isServer && refreshingTotal;
-	useEffect(() => {
-		if (!refreshingTotal) return;
-		if (serverTotalCount !== undefined) {
-			setRefreshingTotal(false);
-			return;
-		}
-		const timer = setTimeout(() => setRefreshingTotal(false), 60_000);
-		return () => clearTimeout(timer);
-	}, [refreshingTotal, serverTotalCount]);
+	const totalCounting = isServer && serverTotalStatus === "pending";
 
 	function refreshTotalCount(): void {
 		if (!isServer || !sql || !connectionName || totalCounting) return;
-		setRefreshingTotal(true);
 		onRefreshTotalCount?.();
 	}
 
@@ -1097,11 +1091,26 @@ export function ResultGrid({
 
 			{/* 网格（内部滚动） */}
 			<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto relative">
+				{/* 取数状态：翻页 / 改每页行数都走这里，给出进度、目标与中止入口。 */}
 				{pageLoading && (
 					<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
-						<div className="flex items-center gap-2 rounded-md border border-border bg-popover px-3 py-2 shadow-md">
-							<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-muted-foreground" />
-							<span className="text-[11px] text-muted-foreground">加载中…</span>
+						<div className="flex items-center gap-3 rounded-md border border-border bg-popover px-3 py-2 shadow-md">
+							<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-warning" />
+							<span className="text-[11px] text-foreground/80">
+								{isServer ? "取数中" : "加载中"}
+								<span className="ml-1 font-mono text-muted-foreground">
+									第 {safePage + 1} 页 · 每页 {pageSize} 行
+								</span>
+							</span>
+							{onCancelLoading ? (
+								<button
+									type="button"
+									onClick={onCancelLoading}
+									className="rounded bg-destructive/90 px-2 py-0.5 text-[10px] font-medium text-destructive-foreground hover:bg-destructive"
+								>
+									停止
+								</button>
+							) : null}
 						</div>
 					</div>
 				)}
@@ -1233,6 +1242,14 @@ export function ResultGrid({
 						总数统计中
 					</span>
 				) : null}
+				{isServer && serverTotalStatus === "failed" ? (
+					<span
+						className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80"
+						title="统计总行数失败（如 COUNT 超时），不影响翻页；点左侧刷新按钮可重试"
+					>
+						总数未知
+					</span>
+				) : null}
 				{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
 				</div>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
@@ -1302,7 +1319,7 @@ export function ResultGrid({
 					onClick={() => totalPages !== null && goToPage(totalPages - 1)}
 					disabled={totalPages === null || !hasNextPage || pageLoading === true}
 					className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
-					title="最后一页"
+					title={totalPages === null ? "总数未知（统计中或统计失败），暂不能跳末页" : "最后一页"}
 				>
 					<span className="icon-[lucide--chevrons-right] h-3 w-3" />
 				</button>

@@ -39,8 +39,6 @@ export interface WorkbenchSettings {
 	queryResultMaxRowsEnabled: boolean;
 	/** 查询结果总量上限。对齐 dbx queryResultMaxRows。 */
 	queryResultMaxRows: number;
-	/** 查询后自动执行 COUNT(*) 统计总行数。对齐 dbx autoCalculateTotalRows。 */
-	autoCalculateTotalRows: boolean;
 	/** 滚到底部自动加载下一页。对齐 dbx infiniteScroll。 */
 	infiniteScroll: boolean;
 	/** 斑马纹行。对齐 dbx dataGridStripedRows。 */
@@ -72,13 +70,14 @@ export const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000] as const;
 
 /**
  * 每页行数允许的最大值（自定义与设为默认共用）。
- * 对齐 dbx 桌面壳 MAX_RESULT_PAGE_SIZE = 1_000_000
- * （apps/desktop/src/lib/dataGrid/paginationPageSize.ts）。
- * 注意：本插件结果表为非虚拟化 DOM，超大页渲染会卡顿，此处只做取值合法性夹逼，
- * 与 dbx 保持一致；超过引擎单次硬上限的部分由执行层按 ENGINE_ROW_CAP
- * 分块循环拉取拼页，对用户仍是「一页 N 行」。
+ *
+ * 刻意取引擎单次结果硬上限 ENGINE_ROW_CAP，而不是 dbx 桌面壳的 1_000_000：
+ * dbx 结果表是虚拟滚动，超大页只渲染可视区；本插件结果表是非虚拟化 DOM，
+ * 一页 N 行就真的挂 N 行节点。放行超过 cap 的页大小会同时触发两个问题：
+ * 执行层按 cap 分块串行发 N/cap 次 LIMIT/OFFSET 请求（越翻越慢直到超时），
+ * 且最终一次性渲染整页导致界面卡死。故取值上限与引擎单次上限对齐。
  */
-export const MAX_RESULT_PAGE_SIZE = 1_000_000;
+export const MAX_RESULT_PAGE_SIZE = ENGINE_ROW_CAP;
 export const MIN_RESULT_PAGE_SIZE = 1;
 
 /**
@@ -129,7 +128,7 @@ export function resolvePageSize(value: unknown, fallback: number = DEFAULT_SETTI
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
 export const SETTINGS_BOUNDS = Object.freeze({
 	queryTimeoutSecs: { min: 1, max: 600 },
-	/** rowLimit：默认每页显示行数（可超过引擎单次上限，执行层分块拼页）。 */
+	/** rowLimit：默认每页显示行数，上限即引擎单次上限（不再分块拼页）。 */
 	rowLimit: { min: MIN_RESULT_PAGE_SIZE, max: MAX_RESULT_PAGE_SIZE },
 	historyLimit: { min: HISTORY_LIMIT_MIN, max: HISTORY_LIMIT_MAX },
 	exportRowLimit: { min: EXPORT_ROW_LIMIT_MIN, max: EXPORT_ROW_LIMIT_MAX },
@@ -152,7 +151,6 @@ export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	exportBatchSize: EXPORT_BATCH_SIZE_DEFAULT,
 	queryResultMaxRowsEnabled: true,
 	queryResultMaxRows: QUERY_RESULT_MAX_ROWS_DEFAULT,
-	autoCalculateTotalRows: false,
 	infiniteScroll: false,
 	dataGridStripedRows: true,
 	dataGridCrosshairHighlight: false,
@@ -231,10 +229,6 @@ export function normalizeSettings(raw: unknown): WorkbenchSettings {
 			SETTINGS_BOUNDS.queryResultMaxRows.max,
 			DEFAULT_SETTINGS.queryResultMaxRows,
 		),
-		autoCalculateTotalRows:
-			typeof source.autoCalculateTotalRows === "boolean"
-				? source.autoCalculateTotalRows
-				: DEFAULT_SETTINGS.autoCalculateTotalRows,
 		infiniteScroll:
 			typeof source.infiniteScroll === "boolean"
 				? source.infiniteScroll
@@ -285,7 +279,6 @@ export function isDefaultSettings(settings: WorkbenchSettings): boolean {
 		settings.exportBatchSize === DEFAULT_SETTINGS.exportBatchSize &&
 		settings.queryResultMaxRowsEnabled === DEFAULT_SETTINGS.queryResultMaxRowsEnabled &&
 		settings.queryResultMaxRows === DEFAULT_SETTINGS.queryResultMaxRows &&
-		settings.autoCalculateTotalRows === DEFAULT_SETTINGS.autoCalculateTotalRows &&
 		settings.infiniteScroll === DEFAULT_SETTINGS.infiniteScroll &&
 		settings.dataGridStripedRows === DEFAULT_SETTINGS.dataGridStripedRows &&
 		settings.dataGridCrosshairHighlight === DEFAULT_SETTINGS.dataGridCrosshairHighlight &&

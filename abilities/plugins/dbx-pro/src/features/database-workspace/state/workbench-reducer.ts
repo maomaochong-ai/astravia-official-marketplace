@@ -148,15 +148,27 @@ export function reducer(state: WorkbenchState, action: WorkbenchAction): Workben
 		case "setError":
 			return { ...state, errorBanner: action.message };
 
-		case "setTabTotalCount":
-			// COUNT 是异步的第二趟请求：只在同一个结果集仍在展示时回填，避免竞态写脏。
+		case "tabTotalCountPending":
+			// COUNT 是异步的第二趟请求：只在同一个结果集仍在展示时标记，避免竞态写脏。
 			return {
 				...state,
 				tabs: state.tabs.map((t) =>
 					t.id === action.id && t.result && t.result.ranSql === action.ranSql
-						? { ...t, result: { ...t.result, totalCount: action.totalCount } }
+						? { ...t, result: { ...t.result, totalCount: undefined, totalCountStatus: "pending" } }
 						: t,
 				),
+			};
+
+		case "tabTotalCountSettled":
+			// 失败（totalCount: null）只标 failed、不写总数：总数未知时翻页按「本页是否取满」判断。
+			return {
+				...state,
+				tabs: state.tabs.map((t) => {
+					if (t.id !== action.id || !t.result || t.result.ranSql !== action.ranSql) return t;
+					return action.totalCount === null
+						? { ...t, result: { ...t.result, totalCount: undefined, totalCountStatus: "failed" } }
+						: { ...t, result: { ...t.result, totalCount: action.totalCount, totalCountStatus: undefined } };
+				}),
 			};
 
 		case "setConnectionStatus":

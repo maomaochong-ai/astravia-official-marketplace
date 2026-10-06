@@ -24,7 +24,8 @@ export type WorkbenchAction =
 	| { type: "nodeFailed"; key: string }
 	| { type: "setTabColumns"; connectionName: string; tableName: string; columns: EngineColumn[] }
 	| { type: "addTab"; tab: EditorTab }
-	| { type: "setTabTotalCount"; id: string; totalCount: number; ranSql: string }
+	| { type: "tabTotalCountPending"; id: string; ranSql: string }
+	| { type: "tabTotalCountSettled"; id: string; ranSql: string; totalCount: number | null }
 	| { type: "closeTab"; id: string }
 	| { type: "setActiveTab"; id: string }
 	| { type: "updateTab"; id: string; patch: Partial<EditorTab> }

@@ -46,9 +46,10 @@ describe("设置常量", () => {
 		assert.equal(DEFAULT_SETTINGS.rowLimit, 100);
 	});
 
-	it("页大小上限对齐 dbx = 1_000_000", () => {
-		assert.equal(MAX_RESULT_PAGE_SIZE, 1_000_000);
-		assert.equal(SETTINGS_BOUNDS.rowLimit.max, 1_000_000);
+	it("页大小上限夹到引擎单次结果上限（分块串行取数 + 非虚拟化 DOM 整页渲染会卡死）", () => {
+		assert.equal(MAX_RESULT_PAGE_SIZE, ENGINE_ROW_CAP);
+		assert.equal(SETTINGS_BOUNDS.rowLimit.max, ENGINE_ROW_CAP);
+		assert.equal(SETTINGS_BOUNDS.tableOpenPageSize.max, ENGINE_ROW_CAP);
 	});
 
 	it("导出限制默认关闭，上限默认 100_000，区间 100..2_147_483_647", () => {
@@ -88,8 +89,9 @@ describe("resolvePageSize", () => {
 	it("合法整数原样返回", () => {
 		assert.equal(resolvePageSize(200), 200);
 	});
-	it("超过 1_000_000 夹到上限", () => {
-		assert.equal(resolvePageSize(2_000_000), 1_000_000);
+	it("超过 ENGINE_ROW_CAP 夹到引擎单次上限", () => {
+		assert.equal(resolvePageSize(2_000_000), ENGINE_ROW_CAP);
+		assert.equal(resolvePageSize(100_000), ENGINE_ROW_CAP);
 	});
 	it("坏值回落默认（默认页大小 100）", () => {
 		assert.equal(resolvePageSize(0), DEFAULT_SETTINGS.rowLimit);
@@ -196,7 +198,6 @@ describe("normalizeSettings", () => {
 	});
 
 	it("对齐 dbx 桌面壳的新增布尔设置默认值", () => {
-		assert.equal(DEFAULT_SETTINGS.autoCalculateTotalRows, false);
 		assert.equal(DEFAULT_SETTINGS.infiniteScroll, false);
 		assert.equal(DEFAULT_SETTINGS.dataGridStripedRows, true);
 		assert.equal(DEFAULT_SETTINGS.dataGridCrosshairHighlight, false);
@@ -212,14 +213,12 @@ describe("normalizeSettings", () => {
 
 	it("新增布尔设置宽容解析", () => {
 		const result = normalizeSettings({
-			autoCalculateTotalRows: true,
 			infiniteScroll: true,
 			dataGridStripedRows: false,
 			dataGridCrosshairHighlight: true,
 			dataGridCellDetailButtonVisible: false,
 			showResultSourceDatabase: false,
 		});
-		assert.equal(result.autoCalculateTotalRows, true);
 		assert.equal(result.infiniteScroll, true);
 		assert.equal(result.dataGridStripedRows, false);
 		assert.equal(result.dataGridCrosshairHighlight, true);
@@ -227,7 +226,6 @@ describe("normalizeSettings", () => {
 		assert.equal(result.showResultSourceDatabase, false);
 		// 坏值回落默认。
 		const broken = normalizeSettings({
-			autoCalculateTotalRows: "yes",
 			infiniteScroll: 1,
 			dataGridStripedRows: null,
 		});
@@ -319,7 +317,7 @@ describe("isDefaultSettings", () => {
 			false,
 		);
 		assert.equal(
-			isDefaultSettings({ ...DEFAULT_SETTINGS, autoCalculateTotalRows: true }),
+			isDefaultSettings({ ...DEFAULT_SETTINGS, infiniteScroll: true }),
 			false,
 		);
 		assert.equal(

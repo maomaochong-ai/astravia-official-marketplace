@@ -22,9 +22,11 @@ import type { WorkbenchAction } from "../state/workbench-actions";
 /**
  * 服务端分页取一整页。
  *
- * 引擎单次结果硬上限为 ENGINE_ROW_CAP；用户页大小（如 2000 / 5000）大于它时，
- * 按 cap 分块发起多次 LIMIT/OFFSET 请求并在前端拼接，保证网格一页真的有 N 行，
- * 而不是静默只回 1000 行。不可分页 SQL（引擎忽略 page）只取一次。
+ * 引擎单次结果硬上限为 ENGINE_ROW_CAP，而用户页大小上限（MAX_RESULT_PAGE_SIZE）
+ * 已被夹到同一个值，所以正常情况下这里只会请求一次、分块循环是防御性兜底
+ * （非虚拟化表格整页渲染上千行已经很吃力，不再允许更大的页）。
+ * 保持分块逻辑是为了：若将来引擎上限与页大小上限脱钩，网格一页仍能真的取满 N 行，
+ * 而不是静默只回 cap 行。不可分页 SQL（引擎忽略 page）只取一次。
  */
 async function executeServerPage(
 	connectionName: string,
@@ -111,7 +113,8 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 				keepTotal: boolean;
 			},
 		) => {
-			const prevTotal = stateRef.current.tabs.find((t) => t.id === tabId)?.result?.totalCount;
+			// 同一结果集内翻页 / 改页大小时保留已统计的总数，避免总数在分页栏上闪回未知。
+			const prevResult = stateRef.current.tabs.find((t) => t.id === tabId)?.result;
 			dispatch({
 				type: "updateTab",
 				id: tabId,
@@ -129,7 +132,9 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 						paged: ctx.isServerMode,
 						serverPage: ctx.isServerMode ? ctx.pageIndex : 0,
 						ranSql: ctx.ranSql,
-						...(ctx.keepTotal && prevTotal !== undefined ? { totalCount: prevTotal } : {}),
+						...(ctx.keepTotal
+							? { totalCount: prevResult?.totalCount, totalCountStatus: prevResult?.totalCountStatus }
+							: {}),
 					},
 				},
 			});
@@ -137,25 +142,35 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 		[dispatch, stateRef],
 	);
 
-	/** 统计总行数：把原 SQL 包成 COUNT 派生表再走引擎。开启 queryResultMaxRows 时夹逼总数。 */
+	/**
+	 * 统计总行数：把原 SQL 包成 COUNT 派生表再走引擎。开启 queryResultMaxRows 时夹逼总数。
+	 *
+	 * 统计是渲染完成后的第二趟请求，先标 pending 再回填，失败只标 failed、不写总数：
+	 * 总数未知时 totalPages 保持 null，翻页改用「本页是否取满」判断，
+	 * 不能把失败写成 0 或 -1，否则分页按钮会集体置灰。
+	 */
 	const fetchTotalCount = useCallback(
 		async (tabId: string, connectionName: string, sql: string, timeoutSecs: number, dbType?: string) => {
+			dispatch({ type: "tabTotalCountPending", id: tabId, ranSql: sql });
 			try {
 				const raw = await engineExecuteByName(connectionName, sql, {
 					countOnly: true,
 					timeoutMs: timeoutSecs * 1000,
 					dbType,
 				});
-				let total = Number((raw as { total_count?: unknown }).total_count);
-				if (!Number.isFinite(total) || total < 0) return;
-				const current = settingsRef.current;
-				if (current.queryResultMaxRowsEnabled) {
-					total = Math.min(total, current.queryResultMaxRows);
+				const total = Number((raw as { total_count?: unknown }).total_count);
+				if (!Number.isFinite(total) || total < 0) {
+					dispatch({ type: "tabTotalCountSettled", id: tabId, ranSql: sql, totalCount: null });
+					return;
 				}
-				dispatch({ type: "setTabTotalCount", id: tabId, totalCount: total, ranSql: sql });
+				const current = settingsRef.current;
+				const clamped = current.queryResultMaxRowsEnabled
+					? Math.min(total, current.queryResultMaxRows)
+					: total;
+				dispatch({ type: "tabTotalCountSettled", id: tabId, ranSql: sql, totalCount: clamped });
 			} catch {
-				// 统计失败时清除总数未知状态，避免 UI 一直显示「统计中」
-				dispatch({ type: "setTabTotalCount", id: tabId, totalCount: -1, ranSql: sql });
+				// 超时 / 引擎报错：总数保持未知，分页栏显示「总数未知」并允许手动刷新重试。
+				dispatch({ type: "tabTotalCountSettled", id: tabId, ranSql: sql, totalCount: null });
 			}
 		},
 		[dispatch, settingsRef],
@@ -187,8 +202,11 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 			const pageIndex = options?.pageIndex ?? 0;
 			const pageSize = resolvePageSize(options?.pageSize ?? tab.pageSize ?? current.rowLimit);
 			const priorResult = tab.result;
-			const knownTotal =
-				priorResult?.ok && priorResult.ranSql === sqlToRun ? priorResult.totalCount : undefined;
+			const sameSql = priorResult?.ok === true && priorResult.ranSql === sqlToRun;
+			const knownTotal = sameSql ? priorResult.totalCount : undefined;
+			/** 本 SQL 已经统计过（成功或失败/统计中）：不重复自动统计，失败由分页栏刷新按钮重试。 */
+			const totalAlreadyAttempted =
+				sameSql && (knownTotal !== undefined || priorResult.totalCountStatus !== undefined);
 
 			if (isPageTurn) {
 				dispatch({ type: "updateTab", id: tabId, patch: { isRunning: true } });
@@ -228,7 +246,7 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 					pageSize,
 					isServerMode,
 					ranSql: sqlToRun,
-					keepTotal: knownTotal !== undefined,
+					keepTotal: sameSql,
 				});
 				dispatch({ type: "setConnectionStatus", name: connectionName, status: "ok" });
 				dispatch({ type: "setError", message: null });
@@ -239,7 +257,8 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 					rowCount: outcome.row_count,
 					durationMs: Date.now() - startedAt,
 				});
-				if (isServerMode && rawOutcome.paged && knownTotal === undefined) {
+				// 服务端分页结果必定自动统计总数：总数决定总页数与「共 N 行」展示，不能作为可选项。
+				if (isServerMode && rawOutcome.paged && !totalAlreadyAttempted) {
 					void fetchTotalCount(tabId, connectionName, sqlToRun, current.queryTimeoutSecs, targetConn?.db_type);
 				}
 			} catch (e) {

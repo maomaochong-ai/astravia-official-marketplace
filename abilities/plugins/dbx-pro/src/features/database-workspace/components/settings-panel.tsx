@@ -35,6 +35,9 @@ const CATEGORIES: { key: SettingsCategory; label: string; icon: string }[] = [
 	{ key: "about", label: "关于", icon: "icon-[lucide--info]" },
 ];
 
+/** 设置项变更：key 与 value 类型绑定，避免用 unknown 抹掉类型安全。 */
+type SettingChange = <K extends keyof WorkbenchSettings>(key: K, value: WorkbenchSettings[K]) => void;
+
 export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onClose, onWipeData }: Props): JSX.Element {
 	const [activeCategory, setActiveCategory] = useState<SettingsCategory>("query");
 	const [confirmWipe, setConfirmWipe] = useState(false);
@@ -131,7 +134,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 }
 
 /** 查询结果设置（对齐 dbx Data > Query Results） */
-function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	const maxRowsBounds = SETTINGS_BOUNDS.queryResultMaxRows;
 	return (
 		<div className="space-y-4">
@@ -202,16 +205,10 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 				</SettingRow>
 			)}
 
-			<SettingRow label="自动计算总行数" hint="查询后自动执行 COUNT(*) 统计总行数（对齐 dbx autoCalculateTotalRows）">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input
-						type="checkbox"
-						checked={settings.autoCalculateTotalRows}
-						onChange={(e) => onChange("autoCalculateTotalRows", e.target.checked)}
-					/>
-					自动统计
-				</label>
-			</SettingRow>
+			<SettingRow
+				label="总行数统计"
+				hint="服务端分页结果总是自动统计总行数；失败时分页栏显示「总数未知」，可点分页栏的刷新按钮重试"
+			/>
 
 			<SettingRow label="无限滚动" hint="滚到底部时自动加载下一页数据（对齐 dbx infiniteScroll）">
 				<label className="flex items-center gap-2 text-[11px] text-foreground">
@@ -250,7 +247,7 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 }
 
 /** 数据网格显示设置（对齐 dbx Data > Data Grid Display） */
-function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	return (
 		<div className="space-y-4">
 			<h3 className="text-[13px] font-semibold text-foreground">数据网格显示</h3>
@@ -292,7 +289,7 @@ function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings;
 }
 
 /** 结果标签设置（对齐 dbx Data > Result tab settings） */
-function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	return (
 		<div className="space-y-4">
 			<h3 className="text-[13px] font-semibold text-foreground">结果标签</h3>
@@ -324,7 +321,7 @@ function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings
 }
 
 /** 侧边栏设置（对齐 dbx Navigation） */
-function SidebarSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+function SidebarSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	return (
 		<div className="space-y-4">
 			<h3 className="text-[13px] font-semibold text-foreground">侧边栏</h3>
@@ -355,7 +352,7 @@ function SidebarSettings({ settings, onChange }: { settings: WorkbenchSettings; 
 }
 
 /** 历史设置（对齐 dbx Data > History Retention） */
-function HistorySettings({ settings, onChange, onClearHistory }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void; onClearHistory: () => void }): JSX.Element {
+function HistorySettings({ settings, onChange, onClearHistory }: { settings: WorkbenchSettings; onChange: SettingChange; onClearHistory: () => void }): JSX.Element {
 	return (
 		<div className="space-y-4">
 			<h3 className="text-[13px] font-semibold text-foreground">历史保留</h3>
@@ -397,7 +394,7 @@ function HistorySettings({ settings, onChange, onClearHistory }: { settings: Wor
 }
 
 /** 导出设置（对齐 dbx Data > Export） */
-function ExportSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+function ExportSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	const bounds = SETTINGS_BOUNDS.exportRowLimit;
 	const batchBounds = SETTINGS_BOUNDS.exportBatchSize;
 	return (
@@ -538,7 +535,8 @@ function AboutSection({ onWipeData, confirmWipe, setConfirmWipe }: { onWipeData:
 }
 
 /** 设置行组件 */
-function SettingRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }): JSX.Element {
+// children 可缺省：用于只有 label + hint 的说明行（例如「总行数统计」）。
+function SettingRow({ label, hint, children }: { label: string; hint?: string; children?: React.ReactNode }): JSX.Element {
 	return (
 		<div className="space-y-1">
 			<div className="text-[11px] font-medium text-foreground">{label}</div>

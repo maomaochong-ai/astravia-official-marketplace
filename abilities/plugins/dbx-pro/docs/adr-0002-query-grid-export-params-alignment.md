@@ -19,7 +19,7 @@ dbx-pro 插件（数据库工作台）的查询网格分页、导出、表预览
 | 预设档位 | `[50, 100, 500, 1000]` | `[50, 100, 500, 1000]` | ✅ 一致 | ✅ 已对齐 | `paginationPageSize.ts:1` → `workbench-settings.ts:45` |
 | **默认每页行数** | **100** | **100** | ✅ 一致 | ✅ 已对齐 | `paginationPageSize.ts:2` → `workbench-settings.ts:89` |
 | 最小每页行数 | 1 | 1 | ✅ 一致 | ✅ 已对齐 | `paginationPageSize.ts:3` → `workbench-settings.ts:56` |
-| 最大每页行数 | 1,000,000 | 1,000,000 | ✅ 一致 | ✅ 已对齐 | `paginationPageSize.ts:4` → `workbench-settings.ts:55` |
+| 最大每页行数 | 1,000,000 | **1,000**（夹到引擎单次结果上限） | ⚠️ 刻意收紧 | ✅ 已收紧（v0.0.83） | `paginationPageSize.ts:4` → `workbench-settings.ts:MAX_RESULT_PAGE_SIZE` |
 | **表打开页大小** | **100** | **100** | ✅ 一致 | ✅ 已对齐 | `tableOpenPageLimit.ts:3` → `workbench-settings.ts:DEFAULT_TABLE_OPEN_PAGE_SIZE` |
 | `tableOpenPageSize` 设置项 | 有（默认 100） | 有（默认 100） | ✅ 一致 | ✅ 已对齐 | `settingsStore.ts:1269` → `workbench-settings.ts:DEFAULT_TABLE_OPEN_PAGE_SIZE` |
 
@@ -329,7 +329,7 @@ dbx 桌面壳的表数据导出使用独立的 `TABLE_DATA_EXPORT_PAGE_SIZE = 10
 | `RESULT_PAGE_SIZE_OPTIONS` | `[50, 100, 500, 1000]` | 已对齐 |
 | `DEFAULT_RESULT_PAGE_SIZE` | `100` | `paginationPageSize.ts:2` |
 | `MIN_RESULT_PAGE_SIZE` | `1` | 已对齐 |
-| `MAX_RESULT_PAGE_SIZE` | `1,000,000` | 已对齐 |
+| `MAX_RESULT_PAGE_SIZE` | `1,000`（= `ENGINE_ROW_CAP`） | 刻意收紧，见 §11 |
 | `DEFAULT_TABLE_OPEN_PAGE_LIMIT` | `100` | `tableOpenPageLimit.ts:3` |
 | `exportBatchSize` | `2,000`（范围 100–100,000） | `settingsStore.ts:1388` |
 | `exportRowLimitEnabled` | `false` | 已对齐 |
@@ -408,7 +408,7 @@ dbx 桌面壳的表数据导出使用独立的 `TABLE_DATA_EXPORT_PAGE_SIZE = 10
 **功能验证**：
 - ✅ 点击按钮：弹出下拉菜单，显示预设档位 `[50, 100, 500, 1000]` + 当前自定义值
 - ✅ 选择预设：点击后应用到本次查询
-- ✅ 自定义输入：输入框支持 1-1,000,000 范围
+- ✅ 自定义输入：输入框支持 1-1,000 范围（超出会被夹到 `MAX_RESULT_PAGE_SIZE`，见 §11）
 - ✅ 本次查询按钮：应用自定义值到当前查询
 - ✅ 设为默认按钮：写入工作台设置，后续查询默认使用
 - ✅ Portal 渲染：菜单通过 `createPortal` 渲染到 `.dbx-root`，避免被底栏 `overflow:hidden` 裁剪
@@ -481,7 +481,7 @@ dbx 桌面壳的表数据导出使用独立的 `TABLE_DATA_EXPORT_PAGE_SIZE = 10
 5. ✅ **queryResultMaxRows 机制**：查询结果展示上限 100,000（可配置），不影响导出
 6. ✅ **表点击行为设置生效**：支持 preview/structure 切换
 7. ✅ **设置面板对齐 dbx 桌面壳**：7 个分类（查询结果/数据网格/结果标签/导出/侧边栏/历史/关于）
-8. ✅ **9 个新增设置项**：autoCalculateTotalRows、infiniteScroll、dataGridStripedRows、dataGridCrosshairHighlight、dataGridCellDetailButtonVisible、multiStatementDefaultView、defaultExplainView、resultTabNamingMode、showResultSourceDatabase
+8. ✅ **新增设置项**：infiniteScroll、dataGridStripedRows、dataGridCrosshairHighlight、dataGridCellDetailButtonVisible、multiStatementDefaultView、defaultExplainView、resultTabNamingMode、showResultSourceDatabase（原列的 `autoCalculateTotalRows` 已在 v0.0.83 移除，见 §11）
 
 ### 10.3 5 项待评估决策（已由 ADR-0003 解决）
 
@@ -491,3 +491,28 @@ dbx 桌面壳的表数据导出使用独立的 `TABLE_DATA_EXPORT_PAGE_SIZE = 10
 4. ✅ `MAX_ROW_LIMIT`：保持 5,000 不变（防御性上限，不影响用户体验）
 5. ✅ `LIST_TABLES_LIMIT`：由引擎硬上限 `ENGINE_ROW_CAP=1000` 统一约束
 5. ⚠️ `SAMPLE_DATA_LIMIT`：是否需要实现对应的 MCP 工具
+
+---
+
+## 11. 后续修订（v0.0.83）
+
+对齐实施后暴露了三个用户可感知的回归，本节记录对 §1.1 / §1.4 / §10.2 的修正。
+
+### 11.1 每页行数上限：1,000,000 → 1,000
+
+- 背景：桌面壳的分页网格是虚拟化渲染，1,000,000 行只渲染可视区；插件的 `<table>` 是**非虚拟化整页 DOM**。
+- 后果：页大小超过引擎单次上限 `ENGINE_ROW_CAP=1000` 时，`executeServerPage` 会按 1000 分块串行发起多次 LIMIT/OFFSET（深 OFFSET 越来越慢），再把所有行一次性塞进 DOM，表现为「改大页大小后卡死、数据迟迟不出来」。
+- 决策：`MAX_RESULT_PAGE_SIZE = ENGINE_ROW_CAP`（同时保留 `resolvePageSize` 夹逼，让已持久化的旧大值自愈）；`executeServerPage` 的分块循环保留为防御性兜底，正常情况下只会执行一次。这里不再追求与桌面壳数值一致，因为两边渲染模型不同。
+
+### 11.2 总行数统计：移除 `autoCalculateTotalRows` 开关，改为必定统计
+
+- 背景：该开关默认 `false`，而分页栏的「共 N 行」「总页数」「尾页」全部依赖总数。结果是默认配置下总数永不统计，分页栏一直显示「总数统计中」。
+- 决策：删除该设置项（连默认值、校验、设置面板入口、测试一并删除），服务端分页结果必定自动统计总数；统计是渲染后的 fire-and-forget，不阻塞结果展示。
+- 状态机：`totalCount?: number` + `totalCountStatus?: "pending" | "failed"`。**失败不写 0 / -1**，只标 `failed`，此时 `totalPages = null`（分页栏显示「总数未知」），`下一页` 退化为 `rows.length >= pageSize` 判断，`尾页` 禁用；用户可通过分页栏的刷新按钮手动重试。同一结果集内翻页 / 改页大小时通过 `keepTotal` 保留已统计的总数，避免闪回。
+- 原因：写哨兵值（`-1`）会被 `totalPages = max(1, ceil(-1/pageSize)) = 1` 吃成「只有一页」，进而把所有翻页按钮变成灰色。
+
+### 11.3 可视化模板对话框不可见
+
+- 背景：`VisualizationTemplateDialog` 一度以「背景遮罩 + 并列的 `.dbx-modal` 卡片」结构渲染，但 `.dbx-modal` 无任何 CSS 规则，卡片是普通流内块级元素（`z-index` 在静态定位下不生效），会绘制在 `z-index: 200` 的绝对定位遮罩**之下**，用户只能看到一层模糊遮罩。
+- 决策：卡片改为嵌套在 `.dbx-modal-backdrop`（flex 居中）内部；右键菜单项直接 `setTemplateDialog(...)` 置位，不再用 `setTimeout` 延迟（延迟会把状态更新交给下一个宏任务，节点在这期间被回收就成了空点击；同一菜单的「添加到 AI」本来就是同步置位）。
+
