@@ -17,7 +17,7 @@ import {
 	removeExportTask,
 	clearFinishedExportTasks,
 	type ExportTask,
-} from "../export-tasks-store";
+} from "../state/export-tasks-store";
 import { engineRevealInFolder } from "../../../shared/services/engine-client";
 import { getUi } from "../../../runtime-contract";
 import { formatElapsed } from "./export-progress-dialog";

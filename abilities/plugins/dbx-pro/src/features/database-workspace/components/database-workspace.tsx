@@ -22,6 +22,8 @@ import { writeConfig } from "../../../domain/dbx-storage";
 import { setPreviewCallback, setSaveCallback, type Visualization } from "../../visualization/visualization-bridge";
 import { useVisualizationStore } from "../../visualization/visualization-store";
 import { GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
+import { getUi } from "../../../runtime-contract";
+import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (
@@ -44,6 +46,16 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const { visualizations, addVisualization } = useVisualizationStore();
 	const workspaceRef = useRef<HTMLDivElement>(null);
+
+	// 首屏加载完成 → 向宿主发送友好的成功通知（重载后确认 UI 渲染成功的第一手信号）
+	useEffect(() => {
+		try {
+			getUi()?.notify({
+				message: `dbx-pro v${PLUGIN_VERSION} 已就绪`,
+				variant: "success",
+			});
+		} catch { /* 宿主不支持 notify 或运行时未就绪时静默忽略 */ }
+	}, []);
 
 	// 注册可视化预览和保存回调
 	useEffect(() => {

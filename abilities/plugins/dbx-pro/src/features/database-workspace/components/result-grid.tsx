@@ -51,10 +51,9 @@ import {
 	requestCancelExportTask,
 	useExportTasks,
 	type ExportTask,
-} from "../export-tasks-store";
+} from "../state/export-tasks-store";
 import { getFs, getUi } from "../../../runtime-contract";
 import { CellDisplay } from "./cell-display";
-import { CellEditor } from "./cell-editor";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { PageSizeMenu } from "./page-size-menu";
 import { ExportProgressDialog } from "./export-progress-dialog";
@@ -155,10 +154,6 @@ export function ResultGrid({
 	const [splitToolbar, setSplitToolbar] = useState(false); // 双排工具栏开关
 	const [whereClause, setWhereClause] = useState(""); // WHERE 条件
 	const [orderByClause, setOrderByClause] = useState(""); // ORDER BY 条件
-	const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null); // 当前编辑的单元格
-	const [editValue, setEditValue] = useState<unknown>(null); // 编辑中的值
-	const [editHistory, setEditHistory] = useState<Array<{ row: number; col: string; oldValue: unknown; newValue: unknown }>>([]); // 编辑历史（用于 Undo）
-	const [editHistoryIndex, setEditHistoryIndex] = useState(-1); // 当前历史索引（用于 Redo）
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
 	// 列导航 Popover：搜索过滤 + 点击列名横向滚动到该列
 	const [navOpen, setNavOpen] = useState(false);
@@ -207,25 +202,8 @@ export function ResultGrid({
 
 			const isMod = e.metaKey || e.ctrlKey;
 
-			// Undo: Mod+Z
-			if (isMod && e.key.toLowerCase() === "z" && !e.shiftKey) {
-				e.preventDefault();
-				undoEdit();
-			}
-			// Redo: Shift+Mod+Z 或 Ctrl+Y
-			else if ((isMod && e.shiftKey && e.key.toLowerCase() === "z") || (e.ctrlKey && !e.metaKey && e.key.toLowerCase() === "y")) {
-				e.preventDefault();
-				redoEdit();
-			}
-			// Enter: 开始编辑当前选中的单元格
-			else if (e.key === "Enter" && !isMod && selectedCell) {
-				e.preventDefault();
-				const { row, col } = selectedCell;
-				const value = rows[row]?.[col];
-				startCellEdit(row, col, value);
-			}
 			// 方向键导航
-			else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key) && selectedCell) {
+			if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key) && selectedCell) {
 				e.preventDefault();
 				navigateCell(e.key);
 			}
@@ -238,7 +216,7 @@ export function ResultGrid({
 
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [editHistory, editHistoryIndex, selectedCell, rows]);
+	}, [selectedCell, rows]);
 
 	/** 方向键导航单元格 */
 	function navigateCell(key: string): void {
@@ -496,60 +474,8 @@ export function ResultGrid({
 		setColumnMenu({ x: e.clientX, y: e.clientY, items });
 	}
 
-	// ─── 单元格编辑 ─────────────────────────────────────────
-
-	/** 开始编辑单元格 */
-	function startCellEdit(rowIndex: number, col: string, value: unknown): void {
-		setEditingCell({ row: rowIndex, col });
-		setEditValue(value);
-	}
-
-	/** 提交单元格编辑 */
-	function commitCellEdit(newValue: unknown): void {
-		if (!editingCell) return;
-		const { row, col } = editingCell;
-		const oldValue = rows[row]?.[col];
-		
-		// 添加到编辑历史
-		const newHistory = editHistory.slice(0, editHistoryIndex + 1);
-		newHistory.push({ row, col, oldValue, newValue });
-		setEditHistory(newHistory);
-		setEditHistoryIndex(newHistory.length - 1);
-		
-		// 更新数据（注意：这里只是本地更新，实际应该调用引擎 API）
-		// TODO: 调用引擎 API 更新数据库
-		const newRows = [...rows];
-		newRows[row] = { ...newRows[row], [col]: newValue };
-		// 注意：这里不能直接修改 rows，因为 rows 是 props
-		// 实际应该通过回调通知父组件
-		
-		setEditingCell(null);
-		setEditValue(null);
-	}
-
-	/** 取消单元格编辑 */
-	function cancelCellEdit(): void {
-		setEditingCell(null);
-		setEditValue(null);
-	}
-
-	/** Undo 最后一次编辑 */
-	function undoEdit(): void {
-		if (editHistoryIndex < 0) return;
-		const edit = editHistory[editHistoryIndex];
-		// TODO: 恢复旧值
-		setEditHistoryIndex(editHistoryIndex - 1);
-	}
-
-	/** Redo 最后一次撤销的编辑 */
-	function redoEdit(): void {
-		if (editHistoryIndex >= editHistory.length - 1) return;
-		const edit = editHistory[editHistoryIndex + 1];
-		// TODO: 恢复新值
-		setEditHistoryIndex(editHistoryIndex + 1);
-	}
-
-	/** 处理单元格双击 */
+	/** 处理单元格双击 → 弹出单元格详情对话框（长文本/JSON 查看）。
+	 * 可编辑网格暂不支持：插件当前为 read-only SQL 查询模式，无 writable grid 架构。 */
 	function handleCellDoubleClick(rowIndex: number, col: string, value: unknown): void {
 		if (!settings.dataGridCellDetailButtonVisible) return;
 		setDetail({ column: col, value });
@@ -1414,28 +1340,18 @@ export function ResultGrid({
 											</td>
 										)}
 										{colList.map((c) => {
-											const isEditing = editingCell?.row === rowIdx && editingCell?.col === c;
 											const isSelected = selectedCell?.row === rowIdx && selectedCell?.col === c;
 											return (
 												<td
 													key={c}
-													className={`max-w-0 border-b border-r border-border/60 px-3 py-1.5 text-foreground/80 ${isEditing ? "" : "truncate"} ${isSelected ? "bg-[var(--dbx-hover)]" : ""}`}
+													className={`max-w-0 truncate border-b border-r border-border/60 px-3 py-1.5 text-foreground/80 ${isSelected ? "bg-[var(--dbx-hover)]" : ""}`}
 													style={{ maxWidth: defaultWidth(c) }}
-													title={!isEditing ? cellText(row[c]) : undefined}
+													title={cellText(row[c])}
 													onClick={() => setSelectedCell({ row: rowIdx, col: c })}
 													onDoubleClick={() => handleCellDoubleClick(rowIdx, c, row[c])}
 													onContextMenu={(e) => openCellMenu(e, c, row)}
 												>
-													{isEditing ? (
-														<CellEditor
-															value={editValue}
-															column={c}
-															onCommit={commitCellEdit}
-															onCancel={cancelCellEdit}
-														/>
-													) : (
-														<CellDisplay value={row[c]} />
-													)}
+													<CellDisplay value={row[c]} />
 												</td>
 											);
 										})}

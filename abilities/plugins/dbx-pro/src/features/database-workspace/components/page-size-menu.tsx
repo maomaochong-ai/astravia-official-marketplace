@@ -16,7 +16,7 @@ import {
 	MIN_RESULT_PAGE_SIZE,
 	parsePageSizeInput,
 } from "../../../domain/workbench-settings";
-import { pageSizeNotice } from "./page-size-notice";
+import { pageSizeNotice } from "../services/page-size-notice";
 
 const MENU_WIDTH = 224;
 const VIEWPORT_MARGIN = 4;

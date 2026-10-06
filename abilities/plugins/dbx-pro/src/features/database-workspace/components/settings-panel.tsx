@@ -13,7 +13,7 @@ import {
 	type WorkbenchSettings,
 } from "../../../domain/workbench-settings";
 import { engineHealth } from "../../../shared/services/engine-client";
-import { pageSizeNotice } from "./page-size-notice";
+import { pageSizeNotice } from "../services/page-size-notice";
 // 版本号直接取 domain 模块（plugin-version.ts 的注释即为此约定）：引 index 会把插件
 // 装配入口（含全部 CSS 与 SDK）拖进组件依赖，组件也无法脱离宿主单独测试。
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";

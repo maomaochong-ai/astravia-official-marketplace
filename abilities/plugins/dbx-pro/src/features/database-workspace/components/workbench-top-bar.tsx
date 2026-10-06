@@ -5,9 +5,11 @@
  * 表详情由查询网格工具栏的"表属性"按钮在结果区覆盖层中打开，不占独立栏位。
  */
 
-import type { JSX } from "react";
+import { useEffect, useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import { ExportTasksPopover } from "./export-tasks-popover";
+import { PLUGIN_VERSION } from "../../../domain/plugin-version";
+import { engineHealth, ENGINE_NOT_READY } from "../../../shared/services/engine-client";
 
 export interface WorkbenchTopBarProps {
 	onOpenConnectionEditor: () => void;
@@ -37,6 +39,26 @@ export function WorkbenchTopBar({
 	onToggleFullscreen,
 }: WorkbenchTopBarProps): JSX.Element {
 	const { history } = useWorkbench();
+	// 引擎健康：unknown=未查询 / ready=绿 / starting=黄 / error=红
+	const [engineState, setEngineState] = useState<"unknown" | "ready" | "starting" | "error">("unknown");
+
+	// 组件挂载时查询一次引擎健康；每 30s 刷新
+	useEffect(() => {
+		let alive = true;
+		const poll = async () => {
+			try {
+				await engineHealth();
+				if (alive) setEngineState("ready");
+			} catch (e) {
+				if (!alive) return;
+				const code = (e as { code?: string })?.code;
+				setEngineState(code === ENGINE_NOT_READY ? "starting" : "error");
+			}
+		};
+		void poll();
+		const t = setInterval(poll, 30_000);
+		return () => { alive = false; clearInterval(t); };
+	}, []);
 
 	return (
 		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
@@ -69,6 +91,25 @@ export function WorkbenchTopBar({
 			</div>
 
 			<span className="flex-1" />
+
+			{/* 版本号 + 引擎健康指示 —— 插件重载/引擎启动的第一手反馈 */}
+			<div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground">
+				<span
+					className={`inline-block h-1.5 w-1.5 rounded-full ${
+						engineState === "ready" ? "bg-emerald-500" :
+						engineState === "starting" ? "bg-amber-500 animate-pulse" :
+						engineState === "error" ? "bg-red-500" :
+						"bg-slate-400"
+					}`}
+					title={
+						engineState === "ready" ? "引擎就绪" :
+						engineState === "starting" ? "引擎启动中…" :
+						engineState === "error" ? "引擎异常" :
+						"检测引擎中…"
+					}
+				/>
+				<span className="font-mono tracking-tight">v{PLUGIN_VERSION}</span>
+			</div>
 
 			{/* 右：后台任务 / 查询历史 / 可视化产物 / 设置 / 全屏 */}
 			<div className="flex shrink-0 items-center gap-1">

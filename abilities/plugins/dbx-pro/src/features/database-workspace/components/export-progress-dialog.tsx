@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState, type JSX } from "react";
-import type { ExportTask } from "../export-tasks-store";
+import type { ExportTask } from "../state/export-tasks-store";
 
 /** 107000ms → "1分47秒"；47000ms → "47秒"。 */
 export function formatElapsed(ms: number): string {

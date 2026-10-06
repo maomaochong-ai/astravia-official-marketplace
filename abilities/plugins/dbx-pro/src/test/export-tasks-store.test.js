@@ -14,7 +14,7 @@ import {
 	requestCancelExportTask,
 	subscribeExportTasks,
 	updateExportTask,
-} from "../features/database-workspace/export-tasks-store.ts";
+} from "../features/database-workspace/state/export-tasks-store.ts";
 
 /** 每个用例前清空模块级 Map（store 没暴露 clearAll，逐个移除即可）。 */
 beforeEach(() => {
