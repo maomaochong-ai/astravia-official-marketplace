@@ -35,6 +35,7 @@ export function useWorkbenchSession(deps: SessionDeps) {
 				activeTabId: state.activeTabId,
 				tabs: state.tabs.map((t) => ({
 					id: t.id, label: t.label, connectionName: t.connectionName, sql: t.sql,
+					...(t.visualization ? { visualization: t.visualization } : {}),
 				})),
 				expandedNodes: [...state.expandedNodes],
 			};

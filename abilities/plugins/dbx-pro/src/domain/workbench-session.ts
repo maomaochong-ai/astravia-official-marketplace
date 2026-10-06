@@ -20,6 +20,36 @@ export interface StoredTab {
 	label: string;
 	connectionName: string | null;
 	sql: string;
+	/** 可视化产物数据（如果是可视化标签页） */
+	visualization?: {
+		id?: string;
+		title: string;
+		type: "dashboard" | "screen";
+		template: string;
+		presetId?: string;
+		connection: string;
+		table: string;
+		html: string;
+		charts?: Array<{
+			id: string;
+			type: string;
+			title: string;
+			columns?: string[];
+			rows?: Array<Record<string, unknown>>;
+			config?: Record<string, unknown>;
+			layout?: Record<string, number>;
+		}>;
+		widgets?: Array<{
+			id: string;
+			type: string;
+			title: string;
+			columns?: string[];
+			rows?: Array<Record<string, unknown>>;
+			config?: Record<string, unknown>;
+			layout?: Record<string, number>;
+		}>;
+		createdAt?: number;
+	};
 }
 
 export interface StoredSession {

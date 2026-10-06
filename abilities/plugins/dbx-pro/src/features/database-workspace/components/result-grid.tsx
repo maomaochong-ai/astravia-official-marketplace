@@ -26,10 +26,7 @@ import {
 	resolvePageSize,
 	ENGINE_ROW_CAP,
 } from "../../../domain/workbench-settings";
-import {
-	engineExecuteByName,
-	type EngineQueryOutcome,
-} from "../../../shared/services/engine-client";
+import { engineExecuteByName } from "../../../shared/services/engine-client";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml, toSqlInsert } from "../services/result-export";
@@ -580,6 +577,9 @@ export function ResultGrid({
 	/** 分页循环拉取全部结果；不可分页查询只拿单次（可能被引擎截断）。 */
 	async function fetchAllData(): Promise<{ columns: string[]; dataRows: Record<string, unknown>[] } | null> {
 		if (!sql || !connectionName) return null;
+		// 分页重写依赖方言判定（与执行器 runTabSql 同口径，不能漏传 dbType）。
+		const foundConn = state.connections.find((c) => c.name === connectionName);
+		const dbType = typeof foundConn?.db_type === "string" ? foundConn.db_type : undefined;
 		const collected: Record<string, unknown>[] = [];
 		let allColumns: string[] = [];
 		let truncated = false;
@@ -589,6 +589,7 @@ export function ResultGrid({
 				const outcome = await engineExecuteByName(connectionName, sql, {
 					rowLimit: ENGINE_ROW_CAP,
 					timeoutMs: 60_000,
+					dbType,
 					page: { offset, limit: ENGINE_ROW_CAP },
 				});
 				if (allColumns.length === 0) allColumns = outcome.columns;

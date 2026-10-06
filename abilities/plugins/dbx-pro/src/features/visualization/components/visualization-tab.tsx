@@ -18,9 +18,10 @@ import { ScreenRenderer, type RenderedWidget } from "./screen-renderer";
 
 interface Props {
 	viz: StoredVisualization;
+	onClose?: () => void;
 }
 
-export function VisualizationTab({ viz }: Props): JSX.Element {
+export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const [renderMode, setRenderMode] = useState<"iframe" | "component">("component");
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +123,17 @@ export function VisualizationTab({ viz }: Props): JSX.Element {
 					{preset && <span className="toolbar-badge">{preset.label}</span>}
 				</div>
 				<div className="toolbar-right">
+					{onClose && (
+						<button
+							type="button"
+							onClick={onClose}
+							className="toolbar-btn"
+							title="返回产物列表"
+						>
+							<span className="icon-[lucide--arrow-left] h-3.5 w-3.5" />
+							<span>返回</span>
+						</button>
+					)}
 					<button
 						type="button"
 						onClick={() => setRenderMode(renderMode === "iframe" ? "component" : "iframe")}

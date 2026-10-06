@@ -33,7 +33,7 @@ export function VisualizationGalleryView(): JSX.Element {
 	};
 
 	if (previewViz) {
-		return <VisualizationTab viz={previewViz} />;
+		return <VisualizationTab viz={previewViz} onClose={() => setPreviewViz(null)} />;
 	}
 
 	return (

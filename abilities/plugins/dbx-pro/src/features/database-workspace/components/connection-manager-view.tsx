@@ -14,8 +14,10 @@ import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon"
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { DB_TYPE_MANIFEST, type DbConnection } from "../../../domain/connection-config";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
+import { engineHealth } from "../../../shared/services/engine-client";
 
 type ViewStep = "dashboard" | "editor";
+type EngineState = "checking" | "running" | "unavailable";
 
 export function ConnectionManagerView(): JSX.Element {
 	// 该视图挂在宿主侧边栏，运行在 WorkbenchProvider 之外，
@@ -23,6 +25,8 @@ export function ConnectionManagerView(): JSX.Element {
 	const editor = useConnectionEditor({});
 	const [step, setStep] = useState<ViewStep>("dashboard");
 	const disposedRef = useRef(false);
+	const [engineState, setEngineState] = useState<EngineState>("checking");
+	const [engineVersion, setEngineVersion] = useState<string | null>(null);
 
 	const connections = editor.connections;
 
@@ -39,6 +43,22 @@ export function ConnectionManagerView(): JSX.Element {
 		void refresh();
 		return () => { disposedRef.current = true; };
 	}, [refresh]);
+
+	// 引擎健康状态实时探测，不硬编码「运行中」。
+	useEffect(() => {
+		let alive = true;
+		setEngineState("checking");
+		engineHealth()
+			.then((health) => {
+				if (!alive) return;
+				setEngineState("running");
+				setEngineVersion(health.version || null);
+			})
+			.catch(() => {
+				if (alive) setEngineState("unavailable");
+			});
+		return () => { alive = false; };
+	}, []);
 
 	if (step === "editor") {
 		return (
@@ -157,11 +177,22 @@ export function ConnectionManagerView(): JSX.Element {
 					<div className="flex flex-col rounded-lg border border-border/60 bg-card/45 p-3 shadow-xs">
 						<div className="whitespace-nowrap text-[11px] text-muted-foreground">引擎状态</div>
 						<div className="mt-2 flex items-center gap-1.5">
-							<span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
-							<span className="whitespace-nowrap text-[12px] font-semibold text-foreground">运行中</span>
+							<span
+								className={`h-2 w-2 shrink-0 rounded-full ${
+									engineState === "running"
+										? "bg-emerald-400"
+										: engineState === "checking"
+											? "animate-pulse bg-amber-400"
+											: "bg-red-500"
+								}`}
+							/>
+							<span className="whitespace-nowrap text-[12px] font-semibold text-foreground">
+								{engineState === "running" ? "运行中" : engineState === "checking" ? "检测中" : "不可用"}
+							</span>
 						</div>
 						<div className="mt-2 truncate border-t border-border/40 pt-1.5 text-[10.5px] text-muted-foreground">
-							v{PLUGIN_VERSION} · {DB_TYPE_MANIFEST.length} 种数据库
+							v{PLUGIN_VERSION}
+							{engineVersion ? ` · 引擎 ${engineVersion}` : ` · ${DB_TYPE_MANIFEST.length} 种数据库`}
 						</div>
 					</div>
 				</div>

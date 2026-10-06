@@ -642,7 +642,7 @@
       "slug": "dbx-pro",
   "name": "dbx-pro Database Workbench",
   "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
-  "version": "0.0.75",
+  "version": "0.0.76",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",

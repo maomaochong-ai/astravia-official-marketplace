@@ -177,8 +177,10 @@ export function reducer(state: WorkbenchState, action: WorkbenchAction): Workben
 		case "restoreSession": {
 			const s = action.session;
 			// 只恢复可持久化字段：结果/运行态一律清空，避免展示过期结果。
+			// 可视化标签页保留 visualization 数据（HTML 是静态的，可安全持久化）。
 			const tabs = s.tabs.map((t) => ({
 				id: t.id, label: t.label, connectionName: t.connectionName, sql: t.sql, isRunning: false,
+				...(t.visualization ? { visualization: t.visualization } : {}),
 			}));
 			const activeTabId =
 				tabs.some((t) => t.id === s.activeTabId) ? s.activeTabId : tabs[0]?.id ?? state.activeTabId;

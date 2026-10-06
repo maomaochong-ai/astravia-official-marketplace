@@ -9,7 +9,7 @@
  * - 交给 AI 修改
  */
 
-import { useState, useMemo, type JSX } from "react";
+import { useState, useMemo, useRef, type JSX } from "react";
 import { useVisualizationStore, type StoredVisualization } from "../visualization-store";
 
 interface Props {
@@ -21,6 +21,21 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 	const { visualizations, removeVisualization, clearAll } = useVisualizationStore();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filterType, setFilterType] = useState<"all" | "dashboard" | "screen">("all");
+	// 清空为不可逆操作：宿主 webview 中 confirm() 是静默 no-op，改用两次点击内联确认。
+	const [confirmClear, setConfirmClear] = useState(false);
+	const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	function handleClearClick(): void {
+		if (!confirmClear) {
+			setConfirmClear(true);
+			if (confirmTimer.current) clearTimeout(confirmTimer.current);
+			confirmTimer.current = setTimeout(() => setConfirmClear(false), 3000);
+			return;
+		}
+		if (confirmTimer.current) clearTimeout(confirmTimer.current);
+		setConfirmClear(false);
+		clearAll();
+	}
 
 	const filteredVisualizations = useMemo(() => {
 		return visualizations.filter((viz) => {
@@ -63,19 +78,19 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 				</div>
 				<div className="flex items-center gap-2">
 					<button
-						type="button"
-						onClick={() => {
-							if (confirm("确定要清空所有可视化产物吗？")) {
-								clearAll();
-							}
-						}}
-						disabled={visualizations.length === 0}
-						className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
-						title="清空所有"
-					>
-						<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
-						清空
-					</button>
+					type="button"
+					onClick={handleClearClick}
+					disabled={visualizations.length === 0}
+					className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors disabled:opacity-40 ${
+						confirmClear
+							? "bg-red-500/15 text-red-500"
+							: "text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
+					}`}
+					title={confirmClear ? "再次点击确认清空" : "清空所有"}
+				>
+					<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
+					{confirmClear ? "确认清空？" : "清空"}
+				</button>
 				</div>
 			</div>
 
