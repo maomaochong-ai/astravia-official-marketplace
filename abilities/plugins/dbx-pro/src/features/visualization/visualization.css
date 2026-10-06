@@ -599,3 +599,24 @@
 .dbx-root .viz-filter__val {
 	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* ──────────────────────── FrameWidget 空状态 (v0.0.97) ──────────────────────── */
+
+.dbx-root .viz-widget-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 100%;
+	width: 100%;
+	font-size: 11px;
+	font-weight: 500;
+}
+.dbx-root .viz-theme-dashboard .viz-widget-empty {
+	color: #94a3b8;
+}
+.dbx-root .viz-theme-bigscreen .viz-widget-empty {
+	color: rgba(148, 163, 184, 0.6);
+}
+.dbx-root .viz-widget-empty__icon { opacity: 0.6; }

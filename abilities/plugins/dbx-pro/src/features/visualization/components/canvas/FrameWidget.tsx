@@ -58,6 +58,16 @@ function renderChart(
 	data: Array<Record<string, unknown>>,
 	columns: string[],
 ): JSX.Element {
+	// v0.0.97: 空数据占位符（FilterBar 过滤可能把 rows 全筛光）
+	if (data.length === 0) {
+		return (
+			<div className="viz-widget-empty">
+				<span className="viz-widget-empty__icon icon-[lucide--filter-x] h-4 w-4" />
+				<span>筛选无匹配数据</span>
+			</div>
+		);
+	}
+
 	const common = { themeMode };
 
 	switch (spec.kind) {
