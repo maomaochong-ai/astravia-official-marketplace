@@ -137,7 +137,7 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 		[dispatch, stateRef],
 	);
 
-	/** 统计总行数：把原 SQL 包成 COUNT 派生表再走引擎。 */
+	/** 统计总行数：把原 SQL 包成 COUNT 派生表再走引擎。开启 queryResultMaxRows 时夹逼总数。 */
 	const fetchTotalCount = useCallback(
 		async (tabId: string, connectionName: string, sql: string, timeoutSecs: number, dbType?: string) => {
 			try {
@@ -146,14 +146,18 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 					timeoutMs: timeoutSecs * 1000,
 					dbType,
 				});
-				const total = Number((raw as { total_count?: unknown }).total_count);
+				let total = Number((raw as { total_count?: unknown }).total_count);
 				if (!Number.isFinite(total) || total < 0) return;
+				const current = settingsRef.current;
+				if (current.queryResultMaxRowsEnabled) {
+					total = Math.min(total, current.queryResultMaxRows);
+				}
 				dispatch({ type: "setTabTotalCount", id: tabId, totalCount: total, ranSql: sql });
 			} catch {
 				// 统计失败不影响已展示的这一页
 			}
 		},
-		[dispatch],
+		[dispatch, settingsRef],
 	);
 
 	/** 执行一个 tab 的 SQL。 */
@@ -210,6 +214,14 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 							dbType: targetConn?.db_type,
 						});
 				const outcome = toQueryResult(rawOutcome);
+				// 开启 queryResultMaxRows 时，检查是否已达到上限并追加提示。
+				if (current.queryResultMaxRowsEnabled && isServerMode) {
+					const offset = pageIndex * pageSize;
+					if (offset + outcome.row_count >= current.queryResultMaxRows) {
+						const maxNote = `结果已达到查询总量上限 ${current.queryResultMaxRows.toLocaleString()} 行，可在设置中调整或关闭上限`;
+						outcome.note = outcome.note ? `${outcome.note}；${maxNote}` : maxNote;
+					}
+				}
 				applySuccess(tabId, startedAt, outcome, {
 					pageIndex,
 					pageSize,
@@ -283,15 +295,27 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 		[dispatch, stateRef, settingsRef, runningStartedAtRef, applySuccess, fetchTotalCount, recordHistory],
 	);
 
-	/** 翻到服务端分页的第 pageIndex 页。 */
+	/** 翻到服务端分页的第 pageIndex 页。开启 queryResultMaxRows 时禁止翻越上限。 */
 	const goToResultPage = useCallback(
 		async (tabId: string, pageIndex: number, pageSize?: number) => {
 			const tab = stateRef.current.tabs.find((t) => t.id === tabId);
 			const sql = tab?.result?.ranSql ?? tab?.sql;
 			if (!tab || !sql) return;
+			const current = settingsRef.current;
+			if (current.queryResultMaxRowsEnabled) {
+				const effectivePageSize = resolvePageSize(pageSize ?? tab.pageSize ?? current.rowLimit);
+				const maxPage = Math.floor(current.queryResultMaxRows / effectivePageSize);
+				if (pageIndex > maxPage) {
+					dispatch({
+						type: "setError",
+						message: `已达到查询结果总量上限（${current.queryResultMaxRows.toLocaleString()} 行），无法翻到更后的页`,
+					});
+					return;
+				}
+			}
 			await runTabSql(tabId, sql, undefined, { pageIndex, pageSize, mode: "server" });
 		},
-		[stateRef, runTabSql],
+		[stateRef, settingsRef, runTabSql, dispatch],
 	);
 
 	/** 停止当前 tab 的执行。 */

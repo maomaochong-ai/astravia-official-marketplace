@@ -87,7 +87,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		requestWriteConfirm: ({ tabId, connectionName, sql }) =>
 			setPendingWrite({ tabId, connectionName, sql }),
 	});
-	runTabSqlRef.current = (tabId, sql) => runTabSql(tabId, sql, undefined, {});
+	runTabSqlRef.current = (tabId, sql) => runTabSql(tabId, sql, undefined, { mode: "server" });
 
 	const { restoreSession } = useWorkbenchSession({ state, dispatch });
 
@@ -127,7 +127,7 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 			isRunning: false,
 		};
 		dispatch({ type: "addTab", tab: newTab });
-		setTimeout(() => { void runTabSql(id, undefined, undefined, { mode: "server" }); }, 0);
+		setTimeout(() => { void runTabSql(id, undefined, undefined, { mode: "server", pageSize: settingsRef.current.tableOpenPageSize }); }, 0);
 	}
 
 	async function updateSettings(next: WorkbenchSettings) {

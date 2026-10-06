@@ -2256,7 +2256,7 @@ var require_table = __commonJS({
       let cursor = -1;
       let buffer = "";
       let escaped = false;
-      const path2 = [];
+      const path3 = [];
       while (++cursor < length) {
         const char = name.charAt(cursor);
         if (char === "[") {
@@ -2275,7 +2275,7 @@ var require_table = __commonJS({
           if (escaped) {
             buffer += char;
           } else {
-            path2.push(buffer);
+            path3.push(buffer);
             buffer = "";
           }
         } else {
@@ -2283,26 +2283,26 @@ var require_table = __commonJS({
         }
       }
       if (buffer) {
-        path2.push(buffer);
+        path3.push(buffer);
       }
-      switch (path2.length) {
+      switch (path3.length) {
         case 1:
           return {
-            name: path2[0],
+            name: path3[0],
             schema: null,
             database: null
           };
         case 2:
           return {
-            name: path2[1],
-            schema: path2[0],
+            name: path3[1],
+            schema: path3[0],
             database: null
           };
         case 3:
           return {
-            name: path2[2],
-            schema: path2[1],
-            database: path2[0]
+            name: path3[2],
+            schema: path3[1],
+            database: path3[0]
           };
         default:
           throw new Error("Invalid table name.");
@@ -5760,8 +5760,8 @@ var require_msalPlugins = __commonJS({
       }
     };
     var msalNodeFlowVSCodeCredentialControl = {
-      setVSCodeAuthRecordPath(path2) {
-        vsCodeAuthRecordPath = path2;
+      setVSCodeAuthRecordPath(path3) {
+        vsCodeAuthRecordPath = path3;
       },
       setVSCodeBroker(broker) {
         vsCodeBrokerInfo = {
@@ -10799,7 +10799,7 @@ var require_msal_node = __commonJS({
     var jwt = require_jsonwebtoken();
     var http = __require("http");
     var fs6 = __require("fs");
-    var path2 = __require("path");
+    var path3 = __require("path");
     var Serializer = class {
       /**
        * serialize the JSON blob
@@ -20682,7 +20682,7 @@ ${serverError}`, correlationId);
             throw createManagedIdentityError(platformNotSupported, "");
           }
           const expectedSecretFilePath = SUPPORTED_AZURE_ARC_PLATFORMS[process.platform];
-          const fileName = path2.basename(secretFilePath);
+          const fileName = path3.basename(secretFilePath);
           if (!fileName.endsWith(".key")) {
             throw createManagedIdentityError(invalidFileExtension, "");
           }
@@ -22912,13 +22912,13 @@ function __disposeResources(env) {
   }
   return next();
 }
-function __rewriteRelativeImportExtension(path2, preserveJsx) {
-  if (typeof path2 === "string" && /^\.\.?\//.test(path2)) {
-    return path2.replace(/\.(tsx)$|((?:\.d)?)((?:\.[^./]+?)?)\.([cm]?)ts$/i, function(m, tsx, d, ext, cm) {
+function __rewriteRelativeImportExtension(path3, preserveJsx) {
+  if (typeof path3 === "string" && /^\.\.?\//.test(path3)) {
+    return path3.replace(/\.(tsx)$|((?:\.d)?)((?:\.[^./]+?)?)\.([cm]?)ts$/i, function(m, tsx, d, ext, cm) {
       return tsx ? preserveJsx ? ".jsx" : ".js" : d && (!ext || !cm) ? m : d + ext + "." + cm.toLowerCase() + "js";
     });
   }
-  return path2;
+  return path3;
 }
 var extendStatics, __assign, __createBinding, __setModuleDefault, ownKeys, _SuppressedError, tslib_es6_default;
 var init_tslib_es6 = __esm({
@@ -27992,8 +27992,8 @@ var require_getClient = __commonJS({
       const noDefaultAcceptHeader = clientOptions.internal?.noDefaultAcceptHeader ?? false;
       const { allowInsecureConnection, httpClient } = clientOptions;
       const endpointUrl = clientOptions.endpoint ?? endpoint;
-      const client2 = (path2, ...args) => {
-        const getUrl = (requestOptions) => (0, import_urlHelpers.buildRequestUrl)(endpointUrl, path2, args, { allowInsecureConnection, ...requestOptions });
+      const client2 = (path3, ...args) => {
+        const getUrl = (requestOptions) => (0, import_urlHelpers.buildRequestUrl)(endpointUrl, path3, args, { allowInsecureConnection, ...requestOptions });
         return {
           get: (requestOptions = {}) => {
             return buildOperation(
@@ -30949,15 +30949,15 @@ var require_urlHelpers2 = __commonJS({
       let isAbsolutePath = false;
       let requestUrl = replaceAll(baseUri, urlReplacements);
       if (operationSpec.path) {
-        let path2 = replaceAll(operationSpec.path, urlReplacements);
-        if (operationSpec.path === "/{nextLink}" && path2.startsWith("/")) {
-          path2 = path2.substring(1);
+        let path3 = replaceAll(operationSpec.path, urlReplacements);
+        if (operationSpec.path === "/{nextLink}" && path3.startsWith("/")) {
+          path3 = path3.substring(1);
         }
-        if (isAbsoluteUrl(path2)) {
-          requestUrl = path2;
+        if (isAbsoluteUrl(path3)) {
+          requestUrl = path3;
           isAbsolutePath = true;
         } else {
-          requestUrl = appendPath(requestUrl, path2);
+          requestUrl = appendPath(requestUrl, path3);
         }
       }
       const { queryParams, sequenceParams } = calculateQueryParameters(operationSpec, operationArguments, fallbackObject);
@@ -31003,9 +31003,9 @@ var require_urlHelpers2 = __commonJS({
       }
       const searchStart = pathToAppend.indexOf("?");
       if (searchStart !== -1) {
-        const path2 = pathToAppend.substring(0, searchStart);
+        const path3 = pathToAppend.substring(0, searchStart);
         const search = pathToAppend.substring(searchStart + 1);
-        newPath = newPath + path2;
+        newPath = newPath + path3;
         if (search) {
           parsedUrl.search = parsedUrl.search ? `${parsedUrl.search}&${search}` : search;
         }
@@ -34628,7 +34628,7 @@ var require_resolveExecutable = __commonJS({
     });
     module.exports = __toCommonJS2(resolveExecutable_exports);
     var import_node_fs6 = __require("node:fs");
-    var import_node_path4 = __toESM2(__require("node:path"));
+    var import_node_path5 = __toESM2(__require("node:path"));
     var import_node_url4 = __require("node:url");
     var import_errors = require_errors3();
     var WINDOWS_NATIVE_EXTENSIONS = [".exe", ".com"];
@@ -34676,7 +34676,7 @@ var require_resolveExecutable = __commonJS({
     }
     function normalizeCwd(cwd) {
       const cwdPath = cwd instanceof URL ? (0, import_node_url4.fileURLToPath)(cwd) : cwd;
-      return import_node_path4.default.resolve(cwdPath ?? process.cwd());
+      return import_node_path5.default.resolve(cwdPath ?? process.cwd());
     }
     function createProcessContext(options = {}) {
       if (options.allowWindowsBatchFiles !== void 0 && typeof options.allowWindowsBatchFiles !== "boolean") {
@@ -34710,7 +34710,7 @@ var require_resolveExecutable = __commonJS({
       return WINDOWS_BATCH_EXTENSIONS.some((candidate) => candidate === extension);
     }
     function resolveWindowsCandidate(candidate, allowWindowsBatchFiles) {
-      const extension = import_node_path4.default.extname(candidate).toLowerCase();
+      const extension = import_node_path5.default.extname(candidate).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
@@ -34737,7 +34737,7 @@ var require_resolveExecutable = __commonJS({
       const pathValue = getEnvironmentValue(context.env, "PATH") ?? "";
       const paths = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const entry of pathValue.split(import_node_path4.default.delimiter)) {
+      for (const entry of pathValue.split(import_node_path5.default.delimiter)) {
         let candidate = entry;
         if (process.platform === "win32") {
           candidate = candidate.trim();
@@ -34745,10 +34745,10 @@ var require_resolveExecutable = __commonJS({
             candidate = candidate.slice(1, -1);
           }
         }
-        if (!candidate || !import_node_path4.default.isAbsolute(candidate)) {
+        if (!candidate || !import_node_path5.default.isAbsolute(candidate)) {
           continue;
         }
-        const normalized = import_node_path4.default.resolve(candidate);
+        const normalized = import_node_path5.default.resolve(candidate);
         const key = process.platform === "win32" ? normalized.toLowerCase() : normalized;
         if (!seen.has(key)) {
           seen.add(key);
@@ -34774,8 +34774,8 @@ var require_resolveExecutable = __commonJS({
     }
     function resolveExecutableWithContext(command, context) {
       validateCommand(command);
-      if (hasPathSeparator(command) || import_node_path4.default.isAbsolute(command)) {
-        const candidate = import_node_path4.default.resolve(context.cwd, command);
+      if (hasPathSeparator(command) || import_node_path5.default.isAbsolute(command)) {
+        const candidate = import_node_path5.default.resolve(context.cwd, command);
         if (process.platform === "win32") {
           return resolveWindowsCandidate(candidate, context.allowWindowsBatchFiles);
         }
@@ -34784,20 +34784,20 @@ var require_resolveExecutable = __commonJS({
       const searchPaths = getSearchPaths(context);
       if (process.platform !== "win32") {
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path4.default.join(searchPath, command);
+          const candidate = import_node_path5.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
         }
         return void 0;
       }
-      const extension = import_node_path4.default.extname(command).toLowerCase();
+      const extension = import_node_path5.default.extname(command).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(context.allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
         }
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path4.default.join(searchPath, command);
+          const candidate = import_node_path5.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34806,7 +34806,7 @@ var require_resolveExecutable = __commonJS({
       }
       for (const searchPath of searchPaths) {
         for (const nativeExtension of WINDOWS_NATIVE_EXTENSIONS) {
-          const candidate = import_node_path4.default.join(searchPath, command + nativeExtension);
+          const candidate = import_node_path5.default.join(searchPath, command + nativeExtension);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34815,7 +34815,7 @@ var require_resolveExecutable = __commonJS({
       if (context.allowWindowsBatchFiles) {
         for (const searchPath of searchPaths) {
           for (const batchExtension of WINDOWS_BATCH_EXTENSIONS) {
-            const candidate = import_node_path4.default.join(searchPath, command + batchExtension);
+            const candidate = import_node_path5.default.join(searchPath, command + batchExtension);
             if (isExecutableFile(candidate)) {
               return candidate;
             }
@@ -34831,7 +34831,7 @@ var require_resolveExecutable = __commonJS({
       try {
         return import_node_fs6.realpathSync.native(filePath).toLowerCase();
       } catch {
-        return import_node_path4.default.resolve(filePath).toLowerCase();
+        return import_node_path5.default.resolve(filePath).toLowerCase();
       }
     }
     function isWindowsDriveAbsolutePath(filePath) {
@@ -34845,7 +34845,7 @@ var require_resolveExecutable = __commonJS({
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
         });
       }
-      const executablePath = import_node_path4.default.join(systemRoot, "System32", "cmd.exe");
+      const executablePath = import_node_path5.default.join(systemRoot, "System32", "cmd.exe");
       if (!isExecutableFile(executablePath)) {
         throw new import_errors.ProcessError("The Windows command interpreter could not be found.", {
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
@@ -34911,7 +34911,7 @@ var require_normalizeCommand = __commonJS({
       normalizeCommand: () => normalizeCommand
     });
     module.exports = __toCommonJS2(normalizeCommand_exports);
-    var import_node_path4 = __toESM2(__require("node:path"));
+    var import_node_path5 = __toESM2(__require("node:path"));
     var import_errors = require_errors3();
     var import_resolveExecutable = require_resolveExecutable();
     var UNSAFE_BATCH_ARGUMENT = /[%!^&|<>()]/;
@@ -34975,7 +34975,7 @@ var require_normalizeCommand = __commonJS({
           windowsVerbatimArguments: false
         };
       }
-      const extension = import_node_path4.default.extname(resolvedPath).toLowerCase();
+      const extension = import_node_path5.default.extname(resolvedPath).toLowerCase();
       if (extension === ".exe" || extension === ".com") {
         return {
           executable: resolvedPath,
@@ -35050,7 +35050,7 @@ var require_process = __commonJS({
     var process_exports = {};
     __export2(process_exports, {
       execFile: () => execFile7,
-      spawn: () => spawn3,
+      spawn: () => spawn4,
       spawnSync: () => spawnSync2
     });
     module.exports = __toCommonJS2(process_exports);
@@ -35134,7 +35134,7 @@ var require_process = __commonJS({
       }
       return { command, nodeOptions };
     }
-    function spawn3(command, args = [], options = {}) {
+    function spawn4(command, args = [], options = {}) {
       const prepared = prepareProcess(command, args, options, spawnOptionNames);
       const child = callWithSanitizedChildProcessErrors(
         () => childProcess2.spawn(prepared.command.executable, prepared.command.args, {
@@ -85505,12 +85505,12 @@ var require_query2 = __commonJS({
         this._fields.push(this._currentFields);
         return this.readField;
       }
-      _streamLocalInfile(connection, path2) {
+      _streamLocalInfile(connection, path3) {
         if (this._streamFactory) {
-          this._localStream = this._streamFactory(path2);
+          this._localStream = this._streamFactory(path3);
         } else {
           this._localStreamError = new Error(
-            `As a result of LOCAL INFILE command server wants to read ${path2} file, but as of v2.0 you must provide streamFactory option returning ReadStream.`
+            `As a result of LOCAL INFILE command server wants to read ${path3} file, but as of v2.0 you must provide streamFactory option returning ReadStream.`
           );
           connection.writePacket(EmptyPacket);
           return this.infileOk;
@@ -93030,7 +93030,7 @@ var require_split2 = __commonJS({
 var require_helper = __commonJS({
   "node_modules/pgpass/lib/helper.js"(exports, module) {
     "use strict";
-    var path2 = __require("path");
+    var path3 = __require("path");
     var Stream = __require("stream").Stream;
     var split = require_split2();
     var util = __require("util");
@@ -93069,7 +93069,7 @@ var require_helper = __commonJS({
     };
     module.exports.getFileName = function(rawEnv) {
       var env = rawEnv || process.env;
-      var file = env.PGPASSFILE || (isWin ? path2.join(env.APPDATA || "./", "postgresql", "pgpass.conf") : path2.join(env.HOME || "./", ".pgpass"));
+      var file = env.PGPASSFILE || (isWin ? path3.join(env.APPDATA || "./", "postgresql", "pgpass.conf") : path3.join(env.HOME || "./", ".pgpass"));
       return file;
     };
     module.exports.usePgPass = function(stats, fname) {
@@ -93201,7 +93201,7 @@ var require_helper = __commonJS({
 var require_lib6 = __commonJS({
   "node_modules/pgpass/lib/index.js"(exports, module) {
     "use strict";
-    var path2 = __require("path");
+    var path3 = __require("path");
     var fs6 = __require("fs");
     var helper = require_helper();
     module.exports = function(connInfo, cb) {
@@ -94905,7 +94905,7 @@ import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
 // server/src/engine/protocol.mjs
-var ENGINE_VERSION = "0.0.19";
+var ENGINE_VERSION = "0.0.20";
 var PROTOCOL_VERSION = 1;
 var MAX_BODY_BYTES = 8 * 1024 * 1024;
 var DEFAULT_ROW_LIMIT = 500;
@@ -95793,6 +95793,69 @@ function extractDuration(text) {
   return m ? m[0] : "";
 }
 
+// server/src/engine/reveal-item.mjs
+import path2 from "node:path";
+import { spawn as spawn3 } from "node:child_process";
+var REVEAL_PATH_MAX_LENGTH = 4096;
+var REVEAL_TIMEOUT_MS = 5e3;
+function validateRevealPath(fsPath) {
+  if (typeof fsPath !== "string" || fsPath.trim().length === 0) {
+    throw new Error("path \u5FC5\u987B\u662F\u975E\u7A7A\u5B57\u7B26\u4E32");
+  }
+  const target = fsPath.trim();
+  if (target.length > REVEAL_PATH_MAX_LENGTH) {
+    throw new Error(`path \u8FC7\u957F\uFF08\u4E0A\u9650 ${REVEAL_PATH_MAX_LENGTH} \u5B57\u7B26\uFF09`);
+  }
+  if (target.includes("\0")) {
+    throw new Error("path \u5305\u542B\u975E\u6CD5\u7A7A\u5B57\u8282");
+  }
+  if (!path2.isAbsolute(target)) {
+    throw new Error("path \u5FC5\u987B\u662F\u7EDD\u5BF9\u8DEF\u5F84");
+  }
+  return target;
+}
+function selectRevealCommand(platform2, fsPath) {
+  const target = validateRevealPath(fsPath);
+  switch (platform2) {
+    case "darwin":
+      return { command: "open", args: ["-R", target] };
+    case "win32":
+      return { command: "explorer.exe", args: [`/select,${target}`], ignoreExitCode: true };
+    default:
+      return { command: "xdg-open", args: [path2.dirname(target)] };
+  }
+}
+function runRevealCommand(spec, timeoutMs = REVEAL_TIMEOUT_MS) {
+  return new Promise((resolve, reject) => {
+    let child;
+    try {
+      child = spawn3(spec.command, spec.args, { stdio: "ignore", windowsHide: true });
+    } catch (e) {
+      reject(new Error(`\u65E0\u6CD5\u542F\u52A8\u6587\u4EF6\u7BA1\u7406\u5668\uFF1A${e?.message ?? String(e)}`));
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        child.kill();
+      } catch {
+      }
+      resolve();
+    }, timeoutMs);
+    child.on("error", (e) => {
+      clearTimeout(timer);
+      reject(new Error(`\u65E0\u6CD5\u542F\u52A8\u6587\u4EF6\u7BA1\u7406\u5668\uFF1A${e?.message ?? String(e)}`));
+    });
+    child.on("exit", (code) => {
+      clearTimeout(timer);
+      if (spec.ignoreExitCode || code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`\u6587\u4EF6\u7BA1\u7406\u5668\u547D\u4EE4\u9000\u51FA\u7801 ${code}`));
+      }
+    });
+  });
+}
+
 // server/src/engine/request-router.mjs
 var DBX_MAX_ROWS = 1e3;
 function clampRowLimit(rowLimit) {
@@ -96139,6 +96202,19 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const { rows } = parseMarkdownTable(textOf(result));
       const schemas = rows.map((row) => String(pick(row, ["schema_name", "SCHEMA_NAME", "Schema", "schema"])).trim()).filter((name) => name.length > 0);
       return { connection: connectionName, schemas, supported: true };
+    }],
+    // === 打开所在文件夹（导出完成态的真实入口）===
+    // community 插件拿不到宿主 official shell 能力，由本服务（本地回环 + token 鉴权）
+    // 以 spawn 参数数组方式执行平台原生命令；路径限定为绝对路径、无空字节。
+    ["/reveal", "POST", true, async ({ body }) => {
+      let spec;
+      try {
+        spec = selectRevealCommand(process.platform, body?.path);
+      } catch (e) {
+        throw engineError("BAD_REQUEST", e?.message ?? String(e));
+      }
+      await runRevealCommand(spec);
+      return { revealed: true, platform: process.platform };
     }]
   ];
   const routes = /* @__PURE__ */ new Map();

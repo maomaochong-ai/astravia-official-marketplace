@@ -103,6 +103,151 @@ export function toSqlInsert(
 }
 
 /**
+ * 分块文本导出器 —— 「导出全部」按引擎页（每块最多 1000 行）拉取，
+ * 边拉边序列化，避免 rows 全量数组与整份文本同时在内存里翻倍。
+ * XLSX 是二进制 ZIP 结构无法流式，走全量 toXlsx。
+ */
+export type TextExportKind = "csv" | "json" | "jsonl" | "md" | "html" | "sql" | "txt";
+
+export interface ChunkedTextExport {
+	/** 追加一块数据行（列在构造时已固定，与各块同源）。 */
+	push(rows: Record<string, unknown>[]): void;
+	/** 最终文本（仅在所有块 push 完后调用一次）。 */
+	content(): string;
+}
+
+export function createChunkedTextExport(
+	kind: TextExportKind,
+	cols: string[],
+	options: { tableName?: string; dialect?: "mysql" | "standard" } = {},
+): ChunkedTextExport {
+	const parts: string[] = [];
+	let pushed = 0;
+
+	switch (kind) {
+		case "csv": {
+			parts.push(`\uFEFF${cols.map(csvEscape).join(",")}`);
+			return {
+				push(rows) {
+					for (const row of rows) parts.push(cols.map((c) => csvEscape(cellText(row[c]))).join(","));
+					pushed += rows.length;
+				},
+				content: () => parts.join("\r\n"),
+			};
+		}
+		case "txt": {
+			parts.push(cols.join("\t"));
+			return {
+				push(rows) {
+					for (const row of rows) {
+						parts.push(cols.map((c) => cellText(row[c]).replaceAll("\t", " ")).join("\t"));
+					}
+					pushed += rows.length;
+				},
+				content: () => parts.join("\n"),
+			};
+		}
+		case "jsonl": {
+			return {
+				push(rows) {
+					for (const row of rows) {
+						const obj: Record<string, unknown> = {};
+						for (const col of cols) obj[col] = row[col];
+						parts.push(JSON.stringify(obj));
+					}
+					pushed += rows.length;
+				},
+				content: () => parts.join("\n"),
+			};
+		}
+		case "json": {
+			// 与 toJson 保持一致的 2 空格缩进：每个对象整体缩进一级，对象间逗号分隔。
+			return {
+				push(rows) {
+					for (const row of rows) {
+						const obj: Record<string, unknown> = {};
+						for (const col of cols) obj[col] = row[col];
+						parts.push(`  ${JSON.stringify(obj, null, 2).replaceAll("\n", "\n  ")}`);
+					}
+					pushed += rows.length;
+				},
+				content: () => `[\n${parts.join(",\n")}\n]`,
+			};
+		}
+		case "md": {
+			parts.push(`| ${cols.join(" | ")} |`);
+			parts.push(`| ${cols.map(() => "---").join(" | ")} |`);
+			return {
+				push(rows) {
+					for (const row of rows) {
+						parts.push(`| ${cols.map((c) => cellText(row[c]).replaceAll("|", "\\|")).join(" | ")} |`);
+					}
+					pushed += rows.length;
+				},
+				content: () => parts.join("\n"),
+			};
+		}
+		case "html": {
+			const escapeHtml = (s: string) =>
+				s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+			parts.push("<table>", "  <thead>", "    <tr>");
+			for (const col of cols) parts.push(`      <th>${escapeHtml(col)}</th>`);
+			parts.push("    </tr>", "  </thead>", "  <tbody>");
+			return {
+				push(rows) {
+					for (const row of rows) {
+						parts.push("    <tr>");
+						for (const col of cols) {
+							parts.push(`      <td>${escapeHtml(cellText(row[col]))}</td>`);
+						}
+						parts.push("    </tr>");
+					}
+					pushed += rows.length;
+				},
+				content: () => {
+					parts.push("  </tbody>", "</table>");
+					return parts.join("\n");
+				},
+			};
+		}
+		case "sql": {
+			const tableName = options.tableName || "query_result";
+			const dialect = options.dialect ?? "standard";
+			const quoteId = (name: string): string =>
+				dialect === "mysql"
+					? `\`${name.replaceAll("`", "``")}\``
+					: /^[A-Za-z_][A-Za-z0-9_$]*$/.test(name)
+						? name
+						: `"${name.replaceAll('"', '""')}"`;
+			const qualifiedTable = tableName.split(".").map(quoteId).join(".");
+			const literal = (value: unknown): string => {
+				if (value === null || value === undefined) return "NULL";
+				if (typeof value === "number" && Number.isFinite(value)) return String(value);
+				if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+				if (typeof value === "object") return `'${JSON.stringify(value).replaceAll("'", "''")}'`;
+				return `'${String(value).replaceAll("'", "''")}'`;
+			};
+			parts.push(`INSERT INTO ${qualifiedTable} (${cols.map(quoteId).join(", ")}) VALUES`);
+			return {
+				push(rows) {
+					for (const row of rows) {
+						parts.push(`  (${cols.map((c) => literal(row[c])).join(", ")})`);
+					}
+					pushed += rows.length;
+				},
+				content: () =>
+					pushed === 0
+						? `-- ${tableName}: 0 行，无数据可导出\n${parts[0]};`
+						: `${parts[0]}\n${parts.slice(1).join(",\n")};`,
+			};
+		}
+	}
+	// 穷尽性检查：新增文本格式时这里会编译报错，提醒补分支。
+	const exhaustive: never = kind;
+	throw new Error(`不支持的文本导出格式：${String(exhaustive)}`);
+}
+
+/**
  * 导出为 HTML 表格格式。
  */
 export function toHtml(cols: string[], rows: Record<string, unknown>[]): string {

@@ -195,7 +195,7 @@ export function SqlEditor(): JSX.Element {
 				const fragment = view.state.doc.sliceString(from, to);
 				if (fragment.trim()) selected = fragment;
 			}
-			void runTabSqlRef.current(tabId, selected);
+			void runTabSqlRef.current(tabId, selected, undefined, { mode: "server" });
 		},
 		[],
 	);

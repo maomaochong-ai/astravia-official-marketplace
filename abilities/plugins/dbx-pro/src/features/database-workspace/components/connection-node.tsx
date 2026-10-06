@@ -129,10 +129,17 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			void ensureChildren();
 			if (!isExpanded) expand();
 		} else if (node.kind === "table") {
-			// 单击表节点：直接预览数据（不再显示右侧抽屉）
 			if (!connectionName) return;
-			// 不带 LIMIT，让服务端分页处理
-			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
+			// 根据设置决定单击行为：预览数据 或 查看结构
+			if (settings.tableSingleClickAction === "structure") {
+				// 查看结构：打开 DESCRIBE 查询
+				const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;
+				const describeSql = buildDescribeSql(node.label, childScope, dbType);
+				void openPreviewTab(connectionName, describeSql, `${node.label} 结构`);
+			} else {
+				// 预览数据：不带 LIMIT，让服务端分页处理
+				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
+			}
 		}
 	}
 
@@ -142,8 +149,14 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		if (node.kind === "connection") {
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
-			// 双击表节点：在新标签页打开预览（不带 LIMIT，让服务端分页处理）
-			void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
+			// 根据设置决定双击行为：预览数据 或 查看结构
+			if (settings.tableDoubleClickAction === "structure") {
+				const dbType = state.connections.find((c) => c.name === connectionName)?.db_type;
+				const describeSql = buildDescribeSql(node.label, childScope, dbType);
+				void openPreviewTab(connectionName, describeSql, `${node.label} 结构`);
+			} else {
+				void openPreviewTab(connectionName, `SELECT * FROM ${qualifiedName};`, node.label);
+			}
 		} else {
 			void ensureChildren();
 			if (!isExpanded) expand();
@@ -707,4 +720,39 @@ function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }
 			<span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-[var(--background)] ${dotCls}`} />
 		</span>
 	);
+}
+
+/**
+ * 根据数据库类型生成查看表结构的 SQL。
+ * 对齐 dbx 桌面壳的表结构查看行为。
+ */
+function buildDescribeSql(tableName: string, schema: string | undefined, dbType: string | undefined): string {
+	const type = (dbType ?? "").toLowerCase();
+	const qualifiedName = schema ? `${schema}.${tableName}` : tableName;
+	// PostgreSQL 系：使用 information_schema
+	if (/postgres|pg|redshift|gaussdb|opengauss|kingbase|vastbase|highgo/.test(type)) {
+		const schemaFilter = schema ? `AND table_schema = '${schema.replace(/'/g, "''")}'` : "AND table_schema = current_schema()";
+		return `SELECT column_name, data_type, character_maximum_length, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = '${tableName.replace(/'/g, "''")}' ${schemaFilter}
+ORDER BY ordinal_position;`;
+	}
+	// MySQL 系：使用 DESCRIBE
+	if (/mysql|maria|tidb|starrocks|doris|oceanbase/.test(type)) {
+		return `DESCRIBE ${qualifiedName};`;
+	}
+	// SQL Server：使用 INFORMATION_SCHEMA.COLUMNS
+	if (/mssql|sqlserver/.test(type)) {
+		const schemaFilter = schema ? `AND TABLE_SCHEMA = '${schema.replace(/'/g, "''")}'` : "";
+		return `SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE, COLUMN_DEFAULT
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = '${tableName.replace(/'/g, "''")}' ${schemaFilter}
+ORDER BY ORDINAL_POSITION;`;
+	}
+	// SQLite：使用 PRAGMA
+	if (/sqlite|duckdb|cloudflare-d1|turso/.test(type)) {
+		return `PRAGMA table_info('${tableName.replace(/'/g, "''")}');`;
+	}
+	// 默认：使用通用的 DESCRIBE 或 information_schema
+	return `DESCRIBE ${qualifiedName};`;
 }

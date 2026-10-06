@@ -7,6 +7,7 @@
 
 import type { JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
+import { ExportTasksPopover } from "./export-tasks-popover";
 
 export interface WorkbenchTopBarProps {
 	onOpenConnectionEditor: () => void;
@@ -69,8 +70,9 @@ export function WorkbenchTopBar({
 
 			<span className="flex-1" />
 
-			{/* 右：查询历史 / 可视化产物 / 设置 / 全屏 */}
+			{/* 右：后台任务 / 查询历史 / 可视化产物 / 设置 / 全屏 */}
 			<div className="flex shrink-0 items-center gap-1">
+				<ExportTasksPopover />
 				<button
 					type="button"
 					onClick={onToggleHistory}

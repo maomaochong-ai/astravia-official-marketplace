@@ -26,16 +26,38 @@ import {
 	resolvePageSize,
 	ENGINE_ROW_CAP,
 } from "../../../domain/workbench-settings";
-import { engineExecuteByName } from "../../../shared/services/engine-client";
+import { engineExecuteByName, engineRevealInFolder } from "../../../shared/services/engine-client";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
-import { cellText, toTsv, toCsv, toJson, toJsonLines, toMarkdown, toHtml, toSqlInsert } from "../services/result-export";
+import {
+	cellText,
+	toTsv,
+	toCsv,
+	toJson,
+	toJsonLines,
+	toMarkdown,
+	toHtml,
+	toSqlInsert,
+	createChunkedTextExport,
+	type ChunkedTextExport,
+	type TextExportKind,
+} from "../services/result-export";
 import { toXlsx } from "../services/xlsx-export";
+import { buildExportFileName } from "../services/export-file-name";
+import {
+	addExportTask,
+	updateExportTask,
+	registerExportCancelHandler,
+	requestCancelExportTask,
+	useExportTasks,
+	type ExportTask,
+} from "../export-tasks-store";
+import { getFs, getUi } from "../../../runtime-contract";
 import { CellDisplay } from "./cell-display";
 import { CellEditor } from "./cell-editor";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { PageSizeMenu } from "./page-size-menu";
-import { ExportProgressDialog, type ExportProgressState } from "./export-progress-dialog";
+import { ExportProgressDialog } from "./export-progress-dialog";
 import { useWorkbench } from "../hooks/use-workbench";
 import { buildFilteredSql } from "../services/query-filter";
 
@@ -68,6 +90,16 @@ interface Props {
 	onRefreshTotalCount?: () => void;
 }
 
+/** Uint8Array → base64（分块拼接，避免大 XLSX 时 String.fromCharCode 参数溢出栈）。 */
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+	const chunkSize = 0x8000;
+	let binary = "";
+	for (let i = 0; i < bytes.length; i += chunkSize) {
+		binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+	}
+	return btoa(binary);
+}
+
 export function ResultGrid({
 	columns,
 	rows,
@@ -89,6 +121,10 @@ export function ResultGrid({
 	const isServer = serverPaged === true;
 	const [localPage, setLocalPage] = useState(0);
 	const [localPageSize, setLocalPageSize] = useState(() => resolvePageSize(defaultPageSize));
+	// 页码跳转输入框（对齐 dbx DataGridPagination：直接输入页码，Enter/失焦跳转）。
+	const [pageInput, setPageInput] = useState("1");
+	// 手动刷新总计的转圈状态（首批自动统计期间由 totalCount===undefined 体现）。
+	const [refreshingTotal, setRefreshingTotal] = useState(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [colWidths, setColWidths] = useState<Record<string, number>>({});
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
@@ -107,12 +143,14 @@ export function ResultGrid({
 	const [editHistory, setEditHistory] = useState<Array<{ row: number; col: string; oldValue: unknown; newValue: unknown }>>([]); // 编辑历史（用于 Undo）
 	const [editHistoryIndex, setEditHistoryIndex] = useState(-1); // 当前历史索引（用于 Redo）
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
-	const [exportProgress, setExportProgress] = useState<ExportProgressState | null>(null); // 导出全部进度弹窗
-	const exportCancelRef = useRef(false);
-	const exportUrlRef = useRef<string | null>(null);
+	// 当前在模态中展示的后台导出任务 id（最小化后置 null，任务仍在顶栏后台任务里）。
+	const [dialogTaskId, setDialogTaskId] = useState<string | null>(null);
+	const exportCancelTokensRef = useRef<Map<string, { cancelled: boolean }>>(new Map());
+	const exportTasks = useExportTasks();
+	const dialogTask = dialogTaskId ? (exportTasks.find((t) => t.id === dialogTaskId) ?? null) : null;
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
-	const { state, dispatch, runTabSql } = useWorkbench();
+	const { state, dispatch, runTabSql, settings } = useWorkbench();
 	const activeTabId = state.activeTabId;
 	const parsedTableName = useMemo(() => {
 		if (!sql) return null;
@@ -368,10 +406,11 @@ export function ResultGrid({
 		? serverTotalCount ?? safePage * pageSize + rows.length
 		: rows.length;
 
-	// 翻页 / 改每页行数：网格内部滚动回到顶部。
+	// 翻页 / 改每页行数：网格内部滚动回到顶部；页码输入框与当前页保持同步。
 	useEffect(() => {
 		const el = scrollRef.current;
 		if (el) el.scrollTop = 0;
+		setPageInput(String(safePage + 1));
 	}, [safePage, pageSize]);
 	const hasNextPage = isServer
 		? totalPages === null
@@ -385,6 +424,20 @@ export function ResultGrid({
 		else setLocalPage(Math.max(0, Math.min((totalPages ?? 1) - 1, next)));
 	}
 
+	/**
+	 * 提交页码跳转：正整数，夹到 [1, totalPages]；总数未知时只夹下界，
+	 * 超出数据范围的页由引擎返回空结果。Enter 与失焦共用。
+	 */
+	function commitPageInput(): void {
+		const parsed = Number(pageInput);
+		if (Number.isFinite(parsed) && parsed >= 1) {
+			const target = Math.floor(parsed);
+			const clamped = totalPages !== null ? Math.min(target, totalPages) : target;
+			if (clamped - 1 !== safePage) goToPage(clamped - 1);
+		}
+		setPageInput(String(safePage + 1));
+	}
+
 	/** 页大小变化：服务端交上层并回第 0 页；本地重置。 */
 	function changePageSize(next: number): void {
 		if (isServer) onPageSizeChange?.(next);
@@ -394,9 +447,24 @@ export function ResultGrid({
 		}
 	}
 
-	/** 刷新总计行统计。 */
+	/**
+	 * 手动刷新总计行统计。总数回填（serverTotalCount 变化）后停止转圈；
+	 * 统计失败时不会有回填，用 60s 超时兜底退出转圈，不影响已展示的数据。
+	 */
+	const totalCounting = isServer && (serverTotalCount === undefined || refreshingTotal);
+	useEffect(() => {
+		if (!refreshingTotal) return;
+		if (serverTotalCount !== undefined) {
+			setRefreshingTotal(false);
+			return;
+		}
+		const timer = setTimeout(() => setRefreshingTotal(false), 60_000);
+		return () => clearTimeout(timer);
+	}, [refreshingTotal, serverTotalCount]);
+
 	function refreshTotalCount(): void {
-		if (!isServer || !sql || !connectionName) return;
+		if (!isServer || !sql || !connectionName || totalCounting) return;
+		setRefreshingTotal(true);
 		onRefreshTotalCount?.();
 	}
 
@@ -445,7 +513,7 @@ export function ResultGrid({
 	}, [colList, rows]);
 
 	// ─── 导出：格式表驱动（当前页 / 全部共用一套序列化）────────────
-	type ExportKind = "csv" | "xlsx" | "json" | "jsonl" | "md" | "html" | "sql" | "txt";
+	type ExportKind = TextExportKind | "xlsx";
 
 	const EXPORT_FORMATS: ReadonlyArray<{
 		kind: ExportKind;
@@ -462,66 +530,6 @@ export function ResultGrid({
 		{ kind: "txt", label: "TXT", icon: "icon-[lucide--file-text]" },
 	];
 
-	function sqlDialect(): "mysql" | "standard" {
-		const dbType = (state.connections.find((c) => c.name === connectionName)?.db_type ?? "").toLowerCase();
-		return /mysql|maria|tidb|starrocks|doris|goldendb|databend/.test(dbType) ? "mysql" : "standard";
-	}
-
-	/** 按格式序列化为 Blob（当前页即时下载与「导出全部」进度弹窗共用）。 */
-	function buildExportBlob(kind: ExportKind, cols: string[], dataRows: Record<string, unknown>[]): Blob {
-		const target = tableInfoSelection?.tableName || "query_result";
-		switch (kind) {
-			case "csv":
-				return new Blob([toCsv(cols, dataRows)], { type: "text/csv;charset=utf-8" });
-			case "xlsx":
-				// 零依赖最小 OOXML，工作表名取当前结果表名。
-				return new Blob([toXlsx(cols, dataRows, target)], {
-					type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-				});
-			case "json":
-				return new Blob([toJson(cols, dataRows)], { type: "application/json" });
-			case "jsonl":
-				return new Blob([toJsonLines(cols, dataRows)], { type: "application/x-ndjson" });
-			case "md":
-				return new Blob([toMarkdown(cols, dataRows)], { type: "text/markdown" });
-			case "html":
-				return new Blob([toHtml(cols, dataRows)], { type: "text/html" });
-			case "sql":
-				return new Blob([toSqlInsert(cols, dataRows, target, sqlDialect())], { type: "application/sql;charset=utf-8" });
-			case "txt":
-				// TSV 纯文本，可直接粘贴进 Excel。
-				return new Blob([toTsv(cols, dataRows)], { type: "text/plain;charset=utf-8" });
-		}
-	}
-
-	/** 触发浏览器下载；弹窗场景把 ObjectURL 交给调用方持有以便「重新下载」。 */
-	function triggerUrlDownload(url: string, filename: string): void {
-		const anchor = document.createElement("a");
-		anchor.href = url;
-		anchor.download = filename;
-		anchor.style.display = "none";
-		document.body.appendChild(anchor);
-		anchor.click();
-		document.body.removeChild(anchor);
-	}
-
-	/** 按格式序列化并触发即时下载（当前页导出，数据已在内存无需进度弹窗）。 */
-	function downloadAs(
-		kind: ExportKind,
-		cols: string[],
-		dataRows: Record<string, unknown>[],
-		fileBase: string,
-	): void {
-		try {
-			const blob = buildExportBlob(kind, cols, dataRows);
-			const url = URL.createObjectURL(blob);
-			triggerUrlDownload(url, `${fileBase}.${EXPORT_EXT[kind]}`);
-			setTimeout(() => URL.revokeObjectURL(url), 100);
-		} catch (error) {
-			dispatch({ type: "setError", message: `导出失败：${error instanceof Error ? error.message : String(error)}` });
-		}
-	}
-
 	const EXPORT_EXT: Record<ExportKind, string> = {
 		csv: "csv",
 		xlsx: "xlsx",
@@ -533,142 +541,260 @@ export function ResultGrid({
 		txt: "txt",
 	};
 
-	/**
-	 * 浏览器侧全量缓存的安全上限；超过即截断并如实告知。
-	 * 对齐 dbx 桌面壳 DEFAULT_QUERY_RESULT_MAX_ROWS = 100_000。
-	 * 引擎单次硬上限为 ENGINE_ROW_CAP，这里按页循环拉取直到末页。
-	 */
-	const EXPORT_ALL_ROW_CAP = 100_000;
+	const EXPORT_MIME: Record<ExportKind, string> = {
+		csv: "text/csv;charset=utf-8",
+		xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		json: "application/json",
+		jsonl: "application/x-ndjson",
+		md: "text/markdown",
+		html: "text/html",
+		sql: "application/sql;charset=utf-8",
+		txt: "text/plain;charset=utf-8",
+	};
 
-	/**
-	 * 分页循环拉取全部结果；不可分页查询只拿单次（可能被引擎截断）。
-	 * onProgress 每拉回一块回调累计行数；取消信号在块间生效。
-	 */
-	async function fetchAllData(
-		onProgress?: (rowsCollected: number) => void,
-	): Promise<{ columns: string[]; dataRows: Record<string, unknown>[]; truncated: boolean } | { cancelled: true } | null> {
-		if (!sql || !connectionName) return null;
-		// 分页重写依赖方言判定（与执行器 runTabSql 同口径，不能漏传 dbType）。
-		const foundConn = state.connections.find((c) => c.name === connectionName);
-		const dbType = typeof foundConn?.db_type === "string" ? foundConn.db_type : undefined;
-		const collected: Record<string, unknown>[] = [];
-		let allColumns: string[] = [];
-		let truncated = false;
-		let offset = 0;
-		for (;;) {
-			if (exportCancelRef.current) return { cancelled: true };
-			let outcome;
-			try {
-				outcome = await engineExecuteByName(connectionName, sql, {
-					rowLimit: ENGINE_ROW_CAP,
-					timeoutMs: 60_000,
-					dbType,
-					page: { offset, limit: ENGINE_ROW_CAP },
-				});
-			} catch (error) {
-				throw error instanceof Error ? error : new Error(String(error));
-			}
-			if (allColumns.length === 0) allColumns = outcome.columns;
-			collected.push(...outcome.rows);
-			onProgress?.(collected.length);
-			// 不可分页查询：引擎忽略 page，单次结果在硬上限处截断。
-			if (!outcome.paged) {
-				truncated = outcome.truncated === true;
-				break;
-			}
-			if (outcome.rows.length < ENGINE_ROW_CAP) break; // 末页
-			if (collected.length >= EXPORT_ALL_ROW_CAP) {
-				truncated = true;
-				break;
-			}
-			offset += ENGINE_ROW_CAP;
-		}
-		return { columns: allColumns, dataRows: collected.slice(0, EXPORT_ALL_ROW_CAP), truncated };
+	function sqlDialect(): "mysql" | "standard" {
+		const dbType = (state.connections.find((c) => c.name === connectionName)?.db_type ?? "").toLowerCase();
+		return /mysql|maria|tidb|starrocks|doris|goldendb|databend/.test(dbType) ? "mysql" : "standard";
 	}
 
-	/** 关闭导出弹窗并释放下载地址。 */
-	function closeExportProgress(): void {
-		if (exportUrlRef.current) {
-			URL.revokeObjectURL(exportUrlRef.current);
-			exportUrlRef.current = null;
-		}
-		setExportProgress(null);
+	/** 导出文件名各段：库名（连接 database）+ 表名（表信息选择 / SQL 解析），缺失自动降级。 */
+	function exportNameParts(): { database: string | null; tableName: string | null } {
+		const database = state.connections.find((c) => c.name === connectionName)?.database ?? null;
+		const tableName = tableInfoSelection?.tableName || parsedTableName?.tableName || null;
+		return { database: database || null, tableName };
 	}
 
-	// 卸载时兜底释放 ObjectURL。
-	useEffect(() => () => {
-		if (exportUrlRef.current) URL.revokeObjectURL(exportUrlRef.current);
-	}, []);
+	/** 文本格式整量序列化（当前页 saveAs 与旧宿主降级 Blob 共用）。 */
+	function serializeText(kind: TextExportKind, cols: string[], dataRows: Record<string, unknown>[], target: string): string {
+		switch (kind) {
+			case "csv":
+				return toCsv(cols, dataRows);
+			case "json":
+				return toJson(cols, dataRows);
+			case "jsonl":
+				return toJsonLines(cols, dataRows);
+			case "md":
+				return toMarkdown(cols, dataRows);
+			case "html":
+				return toHtml(cols, dataRows);
+			case "sql":
+				return toSqlInsert(cols, dataRows, target, sqlDialect());
+			case "txt":
+				// TSV 纯文本，可直接粘贴进 Excel。
+				return toTsv(cols, dataRows);
+		}
+	}
 
-	/** 导出全部数据：弹进度窗 → 分页拉取 → 序列化下载 → 完成态。 */
+	/** 按格式序列化为 Blob（仅用于旧宿主无 fs.saveAs 时的浏览器下载降级）。 */
+	function buildExportBlob(kind: ExportKind, cols: string[], dataRows: Record<string, unknown>[]): Blob {
+		const target = exportNameParts().tableName || "query_result";
+		if (kind === "xlsx") {
+			// 零依赖最小 OOXML，工作表名取当前结果表名。
+			return new Blob([toXlsx(cols, dataRows, target)], { type: EXPORT_MIME.xlsx });
+		}
+		return new Blob([serializeText(kind, cols, dataRows, target)], { type: EXPORT_MIME[kind] });
+	}
+
+	/** 触发浏览器下载（降级路径）；ObjectURL 延时回收，避免大文件下载尚未开始就被撤销。 */
+	function triggerUrlDownload(url: string, filename: string): void {
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = filename;
+		anchor.style.display = "none";
+		document.body.appendChild(anchor);
+		anchor.click();
+		document.body.removeChild(anchor);
+		setTimeout(() => URL.revokeObjectURL(url), 60_000);
+	}
+
+	/** 导出当前页（数据已在内存）：优先宿主原生保存框拿真实路径，旧宿主降级浏览器下载。 */
+	async function downloadAs(kind: ExportKind, cols: string[], dataRows: Record<string, unknown>[]): Promise<void> {
+		const parts = exportNameParts();
+		const target = parts.tableName || "query_result";
+		const fileName = buildExportFileName(parts, EXPORT_EXT[kind]);
+		try {
+			const fsApi = getFs();
+			if (fsApi) {
+				// saveAs 返回 null = 用户在系统保存框点了取消，不算错误。
+				const saved =
+					kind === "xlsx"
+						? await fsApi.saveAs(fileName, uint8ArrayToBase64(toXlsx(cols, dataRows, target)), "base64")
+						: await fsApi.saveAs(fileName, serializeText(kind, cols, dataRows, target), "utf8");
+				if (saved === null) return;
+				return;
+			}
+			const blob = buildExportBlob(kind, cols, dataRows);
+			triggerUrlDownload(URL.createObjectURL(blob), fileName);
+		} catch (error) {
+			dispatch({ type: "setError", message: `导出失败：${error instanceof Error ? error.message : String(error)}` });
+		}
+	}
+
+	/**
+	 * 导出全部数据（对齐 dbx 桌面壳「导出全部」）：
+	 * - 默认不限制行数（dbx exportRowLimitEnabled 默认 false），按 ENGINE_ROW_CAP 分页循环；
+	 *   用户在设置中开启上限后按 exportRowLimit 提前停止并如实标注。
+	 * - 文本格式走分块序列化器，边拉边拼，不在浏览器侧堆积全部行；
+	 *   XLSX 受文件格式所限必须收集全部行，超大结果集有内存风险。
+	 * - 落盘走宿主 ctx.fs.saveAs（原生保存框，返回真实路径，完成态可「打开所在文件夹」）；
+	 *   旧宿主没有该 API 时降级浏览器下载。
+	 * - 任务全程登记到后台任务 store，可最小化到顶栏、可块间取消。
+	 */
 	async function exportAllAs(kind: ExportKind): Promise<void> {
 		if (!sql || !connectionName) return;
-		exportCancelRef.current = false;
-		const startedAt = Date.now();
-		const fileName = `query-result-all.${EXPORT_EXT[kind]}`;
-		// 服务端总数已知时给确定百分比；否则走滑动条。
+		const parts = exportNameParts();
+		const target = parts.tableName || "query_result";
+		const fileName = buildExportFileName(parts, EXPORT_EXT[kind]);
+		// 服务端总数已知时给确定百分比；未知走滑动动画。
 		const knownTotal = isServer && serverTotalCount !== undefined ? serverTotalCount : null;
-		setExportProgress({
-			status: "running",
-			fileName,
-			rowsExported: 0,
-			totalRows: knownTotal,
-			startedAt,
+		const task = addExportTask({ fileName, format: kind, database: parts.database, tableName: parts.tableName, totalRows: knownTotal });
+		setDialogTaskId(task.id);
+
+		const token = { cancelled: false };
+		exportCancelTokensRef.current.set(task.id, token);
+		const unregisterCancel = registerExportCancelHandler(task.id, () => {
+			token.cancelled = true;
 		});
+
 		try {
-			const all = await fetchAllData((n) => {
-				setExportProgress((p) => (p ? { ...p, rowsExported: n } : p));
+			const foundConn = state.connections.find((c) => c.name === connectionName);
+			const dbType = typeof foundConn?.db_type === "string" ? foundConn.db_type : undefined;
+			// 导出行数上限：仅由 exportRowLimit 控制（当 exportLimitEnabled 开启时）。
+			// 对齐 dbx 桌面壳：导出全部默认不限制，可以导出完整数据。
+			// queryResultMaxRows 仅用于查询结果展示，不影响导出。
+			const rowLimit = settings.exportLimitEnabled ? settings.exportRowLimit : Infinity;
+			// 每批取数行数：使用 exportBatchSize，但实际引擎调用受 ENGINE_ROW_CAP 限制。
+			// 当 exportBatchSize > ENGINE_ROW_CAP 时，会在循环中分多次请求拼凑。
+			const batchSize = settings.exportBatchSize;
+
+			let stream: ChunkedTextExport | null = null;
+			let allColumns: string[] = [];
+			const xlsxRows: Record<string, unknown>[] = [];
+			let total = 0;
+			let offset = 0;
+			let truncationNote: string | null = null;
+
+			for (;;) {
+				if (token.cancelled) {
+					updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now() });
+					return;
+				}
+				// 按 batchSize 分批取数，每批内部可能分多次引擎调用（受 ENGINE_ROW_CAP 限制）
+				let batchRows: Record<string, unknown>[] = [];
+				let batchOffset = offset;
+				const batchTarget = rowLimit === Infinity ? batchSize : Math.min(batchSize, Math.max(1, rowLimit - total));
+				
+				while (batchRows.length < batchTarget) {
+					const chunkLimit = Math.min(ENGINE_ROW_CAP, batchTarget - batchRows.length);
+					const outcome = await engineExecuteByName(connectionName, sql, {
+						rowLimit: ENGINE_ROW_CAP,
+						timeoutMs: 60_000,
+						dbType,
+						page: { offset: batchOffset, limit: chunkLimit },
+					});
+					if (allColumns.length === 0) {
+						allColumns = outcome.columns;
+						if (kind !== "xlsx") {
+							stream = createChunkedTextExport(kind, allColumns, { tableName: target, dialect: sqlDialect() });
+						}
+					}
+					batchRows.push(...outcome.rows);
+					batchOffset += outcome.rows.length;
+					
+					// 不可分页查询：引擎忽略 page，单次结果最多 ENGINE_ROW_CAP 行
+					if (!outcome.paged) {
+						if (outcome.truncated === true) {
+							truncationNote =
+								`该 SQL 不支持服务端分页，仅导出引擎单次返回的前 ${total + batchRows.length.toLocaleString()} 行；` +
+								"如需完整数据，请在 SQL 中使用 LIMIT / OFFSET 分批导出";
+						}
+						break;
+					}
+					// 末页或已达到引擎单次上限
+					if (outcome.rows.length < chunkLimit) break;
+				}
+				
+				total += batchRows.length;
+				if (kind === "xlsx") xlsxRows.push(...batchRows);
+				else stream?.push(batchRows);
+				updateExportTask(task.id, { rowsExported: total });
+				offset = batchOffset;
+				
+				// 不可分页查询已处理
+				if (!outcome?.paged) break;
+				// 本批取数不足 batchSize，说明已到末页
+				if (batchRows.length < batchTarget) break;
+				// 已达到用户设置的上限
+				if (rowLimit !== Infinity && total >= rowLimit) {
+					truncationNote = `已按设置的导出行数上限导出前 ${total.toLocaleString()} 行，可在设置中调整或关闭上限`;
+					break;
+				}
+			}
+
+			if (token.cancelled) {
+				updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now() });
+				return;
+			}
+
+			updateExportTask(task.id, { status: "writing" });
+			// 让出一帧，确保「正在写入文件…」状态先上屏（大结果集序列化可能耗时）。
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			const fsApi = getFs();
+			let filePath: string | null = null;
+			if (fsApi) {
+				const saved =
+					kind === "xlsx"
+						? await fsApi.saveAs(fileName, uint8ArrayToBase64(toXlsx(allColumns, xlsxRows, target)), "base64")
+						: await fsApi.saveAs(fileName, (stream as ChunkedTextExport).content(), "utf8");
+				if (saved === null) {
+					// 用户在系统保存框点了取消：不落错误，记为已取消并说明原因。
+					updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now(), note: "未选择保存位置，已取消导出" });
+					return;
+				}
+				filePath = saved;
+			} else {
+				// 旧宿主降级：浏览器下载，无法提供真实落盘路径（完成态不显示「打开所在文件夹」）。
+				const blob =
+					kind === "xlsx"
+						? new Blob([toXlsx(allColumns, xlsxRows, target)], { type: EXPORT_MIME.xlsx })
+						: new Blob([(stream as ChunkedTextExport).content()], { type: EXPORT_MIME[kind] });
+				triggerUrlDownload(URL.createObjectURL(blob), fileName);
+			}
+
+			updateExportTask(task.id, {
+				status: "done",
+				rowsExported: total,
+				filePath,
+				totalRows: truncationNote ? total : knownTotal ?? total,
+				note: truncationNote,
+				finishedAt: Date.now(),
 			});
-			if (!all) {
-				setExportProgress((p) =>
-					p ? { ...p, status: "error", finishedAt: Date.now(), errorMessage: "无法导出：缺少连接或查询语句" } : p,
-				);
-				return;
-			}
-			if ("cancelled" in all) {
-				setExportProgress((p) => (p ? { ...p, status: "cancelled", finishedAt: Date.now() } : p));
-				return;
-			}
-			const blob = buildExportBlob(kind, all.columns, all.dataRows);
-			const url = URL.createObjectURL(blob);
-			if (exportUrlRef.current) URL.revokeObjectURL(exportUrlRef.current);
-			exportUrlRef.current = url;
-			triggerUrlDownload(url, fileName);
-			setExportProgress((p) =>
-				p
-					? {
-							...p,
-							status: "done",
-							rowsExported: all.dataRows.length,
-							totalRows: knownTotal && !all.truncated ? knownTotal : all.dataRows.length,
-							finishedAt: Date.now(),
-							downloadUrl: url,
-						}
-					: p,
-			);
-			if (all.truncated) {
-				dispatch({
-					type: "setError",
-					message: `结果过多，已导出前 ${all.dataRows.length.toLocaleString()} 行（上限 ${EXPORT_ALL_ROW_CAP.toLocaleString()} 行）；需要完整数据请在 SQL 中分批查询`,
-				});
-			}
+			if (truncationNote) dispatch({ type: "setError", message: truncationNote });
 		} catch (error) {
-			setExportProgress((p) =>
-				p
-					? {
-							...p,
-							status: "error",
-							finishedAt: Date.now(),
-							errorMessage: `导出全部数据失败：${error instanceof Error ? error.message : String(error)}`,
-						}
-					: p,
-			);
+			updateExportTask(task.id, {
+				status: "error",
+				finishedAt: Date.now(),
+				errorMessage: `导出失败：${error instanceof Error ? error.message : String(error)}`,
+			});
+		} finally {
+			unregisterCancel();
+			exportCancelTokensRef.current.delete(task.id);
 		}
 	}
 
-	/** 取消正在进行的导出（块间生效）。 */
-	function cancelExportAll(): void {
-		exportCancelRef.current = true;
+	/** 在系统文件管理器中定位导出的文件（经插件自有 host-node 服务，不依赖宿主 shell API）。 */
+	async function revealExportFile(path: string): Promise<void> {
+		try {
+			await engineRevealInFolder(path);
+		} catch (error) {
+			const message = `打开所在文件夹失败：${error instanceof Error ? error.message : String(error)}`;
+			try {
+				getUi()?.notify({ message, variant: "error" });
+			} catch {
+				dispatch({ type: "setError", message });
+			}
+		}
 	}
 
 	const [exportMenu, setExportMenu] = useState<ContextMenuState | null>(null);
@@ -682,14 +808,14 @@ export function ResultGrid({
 				type: "item" as const,
 				label: `导出当前页 ${f.label}`,
 				icon: f.icon,
-				onClick: () => downloadAs(f.kind, colList, rows, "query-result"),
+				onClick: () => void downloadAs(f.kind, colList, rows),
 			})),
 			{ type: "separator" as const },
 			...EXPORT_FORMATS.map((f) => ({
 				type: "item" as const,
 				label: `导出全部数据 ${f.label}`,
 				icon: f.icon,
-				disabled: exportProgress?.status === "running",
+				// 多个导出可并行（与 dbx 后台任务一致），各自独立进度与取消。
 				onClick: () => void exportAllAs(f.kind),
 			})),
 		];
@@ -1067,31 +1193,37 @@ export function ResultGrid({
 						{totalKnown ? "共 " : "已取回 "}
 						<span className="font-medium text-foreground/80">{displayTotal}</span> 行
 					</span>
-					{isServer && totalKnown && (
-						<button
-							type="button"
-							onClick={refreshTotalCount}
-							disabled={pageLoading === true}
-							title="刷新总计行统计"
-							className="flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
-						>
-							<span className="icon-[lucide--refresh-cw] h-3 w-3" />
-						</button>
-					)}
-					{note ? (
+					{isServer && (
+					<button
+						type="button"
+						onClick={refreshTotalCount}
+						disabled={pageLoading === true || totalCounting}
+						title={totalCounting ? "正在统计总行数…" : "刷新总计行统计"}
+						className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-60"
+					>
 						<span
-							className="min-w-0 truncate rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-500"
-							title={note}
-						>
-							{note}
-						</span>
-					) : null}
-					{isServer && !totalKnown ? (
-						<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
-							总数统计中
-						</span>
-					) : null}
-					{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
+							className={
+								totalCounting
+									? "icon-[lucide--loader-2] h-3 w-3 animate-spin"
+									: "icon-[lucide--refresh-cw] h-3 w-3"
+							}
+						/>
+					</button>
+				)}
+				{note ? (
+					<span
+						className="min-w-0 truncate rounded bg-amber-500/10 px-1.5 text-[10px] text-amber-500"
+						title={note}
+					>
+						{note}
+					</span>
+				) : null}
+				{totalCounting ? (
+					<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
+						总数统计中
+					</span>
+				) : null}
+				{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
 				</div>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
 					<PageSizeMenu
@@ -1127,10 +1259,25 @@ export function ResultGrid({
 					>
 						<span className="icon-[lucide--chevron-left] h-3 w-3" />
 					</button>
-					<span className="rounded bg-[var(--dbx-surface-2)] px-1.5 py-0.5 text-[10px] text-foreground/80">
-						{safePage + 1}
-						{totalKnown && totalPages !== null ? ` / ${totalPages}` : ""}
-					</span>
+					{/* 页码跳转：对齐 dbx，输入正整数后 Enter / 失焦跳转到该页。 */}
+					<input
+						value={pageInput}
+						onChange={(e) => setPageInput(e.target.value.replace(/[^\d]/gu, "").slice(0, 9))}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								commitPageInput();
+								e.currentTarget.blur();
+							}
+						}}
+						onBlur={commitPageInput}
+						inputMode="numeric"
+						aria-label="跳转页码"
+						disabled={pageLoading === true}
+						className="h-5 w-10 rounded border border-[var(--dbx-surface-2)] bg-transparent px-1 text-center text-[10px] text-foreground/80 outline-none focus:border-primary disabled:opacity-30"
+					/>
+					{totalKnown && totalPages !== null ? (
+						<span className="text-muted-foreground/70">/ {totalPages}</span>
+					) : null}
 					<button
 						type="button"
 						onClick={() => goToPage(safePage + 1)}
@@ -1167,14 +1314,16 @@ export function ResultGrid({
 			{exportMenu && <ContextMenu menu={exportMenu} onClose={() => setExportMenu(null)} />}
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
 			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
-			{exportProgress && (
+			{dialogTask && (
 				<ExportProgressDialog
-					state={exportProgress}
-					onClose={closeExportProgress}
-					onCancel={cancelExportAll}
+					task={dialogTask}
+					onMinimize={() => setDialogTaskId(null)}
+					onClose={() => setDialogTaskId(null)}
+					onCancel={() => requestCancelExportTask(dialogTask.id)}
+					onReveal={(filePath) => void revealExportFile(filePath)}
 				/>
 			)}
-			
+
 			{/* 表属性面板 - 相对于结果网格容器定位 */}
 			{tableInfoOpen && tableInfoSelection && (
 				<div 

@@ -90,7 +90,7 @@ export function TabBar(): JSX.Element {
 					label: "执行",
 					icon: "icon-[lucide--play]",
 					disabled: tab.isRunning || !tab.connectionName,
-					onClick: () => void runTabSql(tab.id),
+					onClick: () => void runTabSql(tab.id, undefined, undefined, { mode: "server" }),
 				},
 				{
 					type: "item",

@@ -13,7 +13,7 @@ export interface WorkbenchSettings {
 	schemaVersion: 1;
 	/** 查询超时（秒）。 */
 	queryTimeoutSecs: number;
-	/** 默认每页显示行数（网格分页页大小；服务端分页时即 page.limit）。 */
+	/** 默认每页显示行数（网格分页页大小；服务端分页时即 page.limit）。对齐 dbx pageSize。 */
 	rowLimit: number;
 	/** 是否记录查询历史。 */
 	historyEnabled: boolean;
@@ -31,6 +31,32 @@ export interface WorkbenchSettings {
 	exportLimitEnabled: boolean;
 	/** 导出行数上限（仅 exportLimitEnabled 开启时生效）。 */
 	exportRowLimit: number;
+	/** 表打开（树节点预览）的默认页大小。对齐 dbx tableOpenPageSize。 */
+	tableOpenPageSize: number;
+	/** 导出全部数据时每批取行数。对齐 dbx exportBatchSize。 */
+	exportBatchSize: number;
+	/** 查询结果总量上限开关。对齐 dbx queryResultMaxRowsEnabled。 */
+	queryResultMaxRowsEnabled: boolean;
+	/** 查询结果总量上限。对齐 dbx queryResultMaxRows。 */
+	queryResultMaxRows: number;
+	/** 查询后自动执行 COUNT(*) 统计总行数。对齐 dbx autoCalculateTotalRows。 */
+	autoCalculateTotalRows: boolean;
+	/** 滚到底部自动加载下一页。对齐 dbx infiniteScroll。 */
+	infiniteScroll: boolean;
+	/** 斑马纹行。对齐 dbx dataGridStripedRows。 */
+	dataGridStripedRows: boolean;
+	/** 十字准线高亮。对齐 dbx dataGridCrosshairHighlight。 */
+	dataGridCrosshairHighlight: boolean;
+	/** 双击单元格查看详情按钮可见。对齐 dbx dataGridCellDetailButtonVisible。 */
+	dataGridCellDetailButtonVisible: boolean;
+	/** 多语句默认视图。对齐 dbx multiStatementDefaultView。 */
+	multiStatementDefaultView: "result" | "messages";
+	/** 执行计划默认视图。对齐 dbx defaultExplainView。 */
+	defaultExplainView: "table" | "canvas";
+	/** 结果标签命名方式。对齐 dbx resultTabNamingMode。 */
+	resultTabNamingMode: "source" | "table" | "sequential";
+	/** 结果标签显示来源数据库。对齐 dbx showResultSourceDatabase。 */
+	showResultSourceDatabase: boolean;
 }
 
 /**
@@ -46,22 +72,58 @@ export const PAGE_SIZE_OPTIONS = [50, 100, 500, 1000] as const;
 
 /**
  * 每页行数允许的最大值（自定义与设为默认共用）。
- * dbx 桌面壳为 1_000_000（其网格虚拟滚动）；本插件结果表为非虚拟化 DOM，
- * 过大会让渲染卡顿，夹到 10_000；超过引擎单次硬上限的部分由执行层
- * 按 ENGINE_ROW_CAP 分块循环拉取拼页，对用户仍是「一页 N 行」。
+ * 对齐 dbx 桌面壳 MAX_RESULT_PAGE_SIZE = 1_000_000
+ * （apps/desktop/src/lib/dataGrid/paginationPageSize.ts）。
+ * 注意：本插件结果表为非虚拟化 DOM，超大页渲染会卡顿，此处只做取值合法性夹逼，
+ * 与 dbx 保持一致；超过引擎单次硬上限的部分由执行层按 ENGINE_ROW_CAP
+ * 分块循环拉取拼页，对用户仍是「一页 N 行」。
  */
-export const MAX_RESULT_PAGE_SIZE = 10_000;
+export const MAX_RESULT_PAGE_SIZE = 1_000_000;
 export const MIN_RESULT_PAGE_SIZE = 1;
 
 /**
- * 页大小夹逼：设置项与网格下拉共用，保证 offset/limit 不会超过引擎单次结果上限。
- * 这里是页大小而不是「结果行数上限」——行数上限已由 ENGINE_ROW_CAP 固定。
- * 自定义行数上限对齐 dbx 桌面壳 MAX_RESULT_PAGE_SIZE = 1_000_000。
+ * 「导出全部数据」行数上限的合法区间（仅在 exportLimitEnabled 开启时生效）。
+ * 对齐 dbx 桌面壳 normalizeExportRowLimit：100..2_147_483_647，默认 100_000。
  */
-export function resolvePageSize(value: unknown): number {
+export const EXPORT_ROW_LIMIT_MIN = 100;
+export const EXPORT_ROW_LIMIT_MAX = 2_147_483_647;
+export const EXPORT_ROW_LIMIT_DEFAULT = 100_000;
+
+/**
+ * 表打开（树节点预览）的默认页大小。
+ * 对齐 dbx 桌面壳 DEFAULT_TABLE_OPEN_PAGE_LIMIT = DEFAULT_RESULT_PAGE_SIZE = 100
+ * （apps/desktop/src/lib/table/tableOpenPageLimit.ts）。
+ */
+export const DEFAULT_TABLE_OPEN_PAGE_SIZE = 100;
+
+/**
+ * 导出全部数据时每批取行数。
+ * 对齐 dbx 桌面壳 exportBatchSize = 2000，范围 [100, 100_000]
+ * （apps/desktop/src/stores/settingsStore.ts:1388）。
+ */
+export const EXPORT_BATCH_SIZE_MIN = 100;
+export const EXPORT_BATCH_SIZE_MAX = 100_000;
+export const EXPORT_BATCH_SIZE_DEFAULT = 2_000;
+
+/**
+ * 查询结果总量上限。
+ * 对齐 dbx 桌面壳 DEFAULT_QUERY_RESULT_MAX_ROWS = 100_000，
+ * MAX_QUERY_RESULT_MAX_ROWS = 2_147_483_647
+ * （apps/desktop/src/lib/dataGrid/queryResultRowLimit.ts）。
+ */
+export const QUERY_RESULT_MAX_ROWS_MIN = 1;
+export const QUERY_RESULT_MAX_ROWS_MAX = 2_147_483_647;
+export const QUERY_RESULT_MAX_ROWS_DEFAULT = 100_000;
+
+/**
+ * 页大小夹逼：设置项与网格下拉共用。
+ * 对齐 dbx normalizeResultPageSize：合法整数夹到 [1, MAX_RESULT_PAGE_SIZE]，
+ * 坏值回落到 fallback（默认 100）。
+ */
+export function resolvePageSize(value: unknown, fallback: number = DEFAULT_SETTINGS.rowLimit): number {
 	const num = Number(value);
-	if (!Number.isFinite(num) || num < 1) return DEFAULT_SETTINGS.rowLimit;
-	return Math.min(Math.floor(num), 1_000_000);
+	if (!Number.isFinite(num) || num < MIN_RESULT_PAGE_SIZE) return fallback;
+	return Math.min(Math.floor(num), MAX_RESULT_PAGE_SIZE);
 }
 
 /** 数值字段的边界（UI 的 min/max 必须取自这里，避免两处写死）。 */
@@ -70,16 +132,35 @@ export const SETTINGS_BOUNDS = Object.freeze({
 	/** rowLimit：默认每页显示行数（可超过引擎单次上限，执行层分块拼页）。 */
 	rowLimit: { min: MIN_RESULT_PAGE_SIZE, max: MAX_RESULT_PAGE_SIZE },
 	historyLimit: { min: HISTORY_LIMIT_MIN, max: HISTORY_LIMIT_MAX },
+	exportRowLimit: { min: EXPORT_ROW_LIMIT_MIN, max: EXPORT_ROW_LIMIT_MAX },
+	tableOpenPageSize: { min: MIN_RESULT_PAGE_SIZE, max: MAX_RESULT_PAGE_SIZE },
+	exportBatchSize: { min: EXPORT_BATCH_SIZE_MIN, max: EXPORT_BATCH_SIZE_MAX },
+	queryResultMaxRows: { min: QUERY_RESULT_MAX_ROWS_MIN, max: QUERY_RESULT_MAX_ROWS_MAX },
 });
 
 export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	schemaVersion: 1,
 	queryTimeoutSecs: 60,
-	rowLimit: ENGINE_ROW_CAP,
+	rowLimit: 100,
 	historyEnabled: true,
 	historyLimit: HISTORY_LIMIT_DEFAULT,
 	tableSingleClickAction: "structure",
 	tableDoubleClickAction: "preview",
+	exportLimitEnabled: false,
+	exportRowLimit: EXPORT_ROW_LIMIT_DEFAULT,
+	tableOpenPageSize: DEFAULT_TABLE_OPEN_PAGE_SIZE,
+	exportBatchSize: EXPORT_BATCH_SIZE_DEFAULT,
+	queryResultMaxRowsEnabled: true,
+	queryResultMaxRows: QUERY_RESULT_MAX_ROWS_DEFAULT,
+	autoCalculateTotalRows: false,
+	infiniteScroll: false,
+	dataGridStripedRows: true,
+	dataGridCrosshairHighlight: false,
+	dataGridCellDetailButtonVisible: true,
+	multiStatementDefaultView: "result",
+	defaultExplainView: "table",
+	resultTabNamingMode: "source",
+	showResultSourceDatabase: true,
 });
 
 /** 宽容解析设置：非对象 / 坏字段一律回落到默认值，数值夹逼到合法区间。 */
@@ -118,6 +199,74 @@ export function normalizeSettings(raw: unknown): WorkbenchSettings {
 			SETTINGS_BOUNDS.historyLimit.max,
 			DEFAULT_SETTINGS.historyLimit,
 		),
+		exportLimitEnabled:
+			typeof source.exportLimitEnabled === "boolean"
+				? source.exportLimitEnabled
+				: DEFAULT_SETTINGS.exportLimitEnabled,
+		exportRowLimit: clampInt(
+			source.exportRowLimit,
+			SETTINGS_BOUNDS.exportRowLimit.min,
+			SETTINGS_BOUNDS.exportRowLimit.max,
+			DEFAULT_SETTINGS.exportRowLimit,
+		),
+		tableOpenPageSize: clampInt(
+			source.tableOpenPageSize,
+			SETTINGS_BOUNDS.tableOpenPageSize.min,
+			SETTINGS_BOUNDS.tableOpenPageSize.max,
+			DEFAULT_SETTINGS.tableOpenPageSize,
+		),
+		exportBatchSize: clampInt(
+			source.exportBatchSize,
+			SETTINGS_BOUNDS.exportBatchSize.min,
+			SETTINGS_BOUNDS.exportBatchSize.max,
+			DEFAULT_SETTINGS.exportBatchSize,
+		),
+		queryResultMaxRowsEnabled:
+			typeof source.queryResultMaxRowsEnabled === "boolean"
+				? source.queryResultMaxRowsEnabled
+				: DEFAULT_SETTINGS.queryResultMaxRowsEnabled,
+		queryResultMaxRows: clampInt(
+			source.queryResultMaxRows,
+			SETTINGS_BOUNDS.queryResultMaxRows.min,
+			SETTINGS_BOUNDS.queryResultMaxRows.max,
+			DEFAULT_SETTINGS.queryResultMaxRows,
+		),
+		autoCalculateTotalRows:
+			typeof source.autoCalculateTotalRows === "boolean"
+				? source.autoCalculateTotalRows
+				: DEFAULT_SETTINGS.autoCalculateTotalRows,
+		infiniteScroll:
+			typeof source.infiniteScroll === "boolean"
+				? source.infiniteScroll
+				: DEFAULT_SETTINGS.infiniteScroll,
+		dataGridStripedRows:
+			typeof source.dataGridStripedRows === "boolean"
+				? source.dataGridStripedRows
+				: DEFAULT_SETTINGS.dataGridStripedRows,
+		dataGridCrosshairHighlight:
+			typeof source.dataGridCrosshairHighlight === "boolean"
+				? source.dataGridCrosshairHighlight
+				: DEFAULT_SETTINGS.dataGridCrosshairHighlight,
+		dataGridCellDetailButtonVisible:
+			typeof source.dataGridCellDetailButtonVisible === "boolean"
+				? source.dataGridCellDetailButtonVisible
+				: DEFAULT_SETTINGS.dataGridCellDetailButtonVisible,
+		multiStatementDefaultView:
+			source.multiStatementDefaultView === "result" || source.multiStatementDefaultView === "messages"
+				? source.multiStatementDefaultView
+				: DEFAULT_SETTINGS.multiStatementDefaultView,
+		defaultExplainView:
+			source.defaultExplainView === "table" || source.defaultExplainView === "canvas"
+				? source.defaultExplainView
+				: DEFAULT_SETTINGS.defaultExplainView,
+		resultTabNamingMode:
+			source.resultTabNamingMode === "source" || source.resultTabNamingMode === "table" || source.resultTabNamingMode === "sequential"
+				? source.resultTabNamingMode
+				: DEFAULT_SETTINGS.resultTabNamingMode,
+		showResultSourceDatabase:
+			typeof source.showResultSourceDatabase === "boolean"
+				? source.showResultSourceDatabase
+				: DEFAULT_SETTINGS.showResultSourceDatabase,
 	};
 }
 
@@ -129,6 +278,21 @@ export function isDefaultSettings(settings: WorkbenchSettings): boolean {
 		settings.historyEnabled === DEFAULT_SETTINGS.historyEnabled &&
 		settings.historyLimit === DEFAULT_SETTINGS.historyLimit &&
 		settings.tableSingleClickAction === DEFAULT_SETTINGS.tableSingleClickAction &&
-		settings.tableDoubleClickAction === DEFAULT_SETTINGS.tableDoubleClickAction
+		settings.tableDoubleClickAction === DEFAULT_SETTINGS.tableDoubleClickAction &&
+		settings.exportLimitEnabled === DEFAULT_SETTINGS.exportLimitEnabled &&
+		settings.exportRowLimit === DEFAULT_SETTINGS.exportRowLimit &&
+		settings.tableOpenPageSize === DEFAULT_SETTINGS.tableOpenPageSize &&
+		settings.exportBatchSize === DEFAULT_SETTINGS.exportBatchSize &&
+		settings.queryResultMaxRowsEnabled === DEFAULT_SETTINGS.queryResultMaxRowsEnabled &&
+		settings.queryResultMaxRows === DEFAULT_SETTINGS.queryResultMaxRows &&
+		settings.autoCalculateTotalRows === DEFAULT_SETTINGS.autoCalculateTotalRows &&
+		settings.infiniteScroll === DEFAULT_SETTINGS.infiniteScroll &&
+		settings.dataGridStripedRows === DEFAULT_SETTINGS.dataGridStripedRows &&
+		settings.dataGridCrosshairHighlight === DEFAULT_SETTINGS.dataGridCrosshairHighlight &&
+		settings.dataGridCellDetailButtonVisible === DEFAULT_SETTINGS.dataGridCellDetailButtonVisible &&
+		settings.multiStatementDefaultView === DEFAULT_SETTINGS.multiStatementDefaultView &&
+		settings.defaultExplainView === DEFAULT_SETTINGS.defaultExplainView &&
+		settings.resultTabNamingMode === DEFAULT_SETTINGS.resultTabNamingMode &&
+		settings.showResultSourceDatabase === DEFAULT_SETTINGS.showResultSourceDatabase
 	);
 }

@@ -1,7 +1,8 @@
 /**
  * 数据库工作台设置面板
- * 
- * 提供 50+ 个配置项，分为多个分类：编辑器、SQL 执行、数据网格、结果集、侧边栏等
+ *
+ * 分类结构对齐 dbx 桌面壳 Data 标签：
+ * 查询结果 / 数据网格 / 结果标签 / 导出 / 侧边栏 / 历史 / 关于
  */
 
 import { useState, useEffect, type JSX } from "react";
@@ -10,6 +11,7 @@ import {
 	isDefaultSettings,
 	type WorkbenchSettings,
 } from "../../../domain/workbench-settings";
+import { engineHealth } from "../../../shared/services/engine-client";
 import { PLUGIN_VERSION } from "../../../index";
 
 interface Props {
@@ -21,20 +23,20 @@ interface Props {
 	onWipeData: () => void;
 }
 
-type SettingsCategory = "editor" | "sql" | "grid" | "result" | "sidebar" | "export" | "about";
+type SettingsCategory = "query" | "grid" | "resultTab" | "export" | "sidebar" | "history" | "about";
 
 const CATEGORIES: { key: SettingsCategory; label: string; icon: string }[] = [
-	{ key: "editor", label: "编辑器", icon: "icon-[lucide--code]" },
-	{ key: "sql", label: "SQL 执行", icon: "icon-[lucide--play]" },
+	{ key: "query", label: "查询结果", icon: "icon-[lucide--play]" },
 	{ key: "grid", label: "数据网格", icon: "icon-[lucide--table]" },
-	{ key: "result", label: "结果集", icon: "icon-[lucide--database]" },
-	{ key: "sidebar", label: "侧边栏", icon: "icon-[lucide--panel-left]" },
+	{ key: "resultTab", label: "结果标签", icon: "icon-[lucide--database]" },
 	{ key: "export", label: "导出", icon: "icon-[lucide--download]" },
+	{ key: "sidebar", label: "侧边栏", icon: "icon-[lucide--panel-left]" },
+	{ key: "history", label: "历史", icon: "icon-[lucide--history]" },
 	{ key: "about", label: "关于", icon: "icon-[lucide--info]" },
 ];
 
 export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onClose, onWipeData }: Props): JSX.Element {
-	const [activeCategory, setActiveCategory] = useState<SettingsCategory>("editor");
+	const [activeCategory, setActiveCategory] = useState<SettingsCategory>("query");
 	const [confirmWipe, setConfirmWipe] = useState(false);
 
 	useEffect(() => {
@@ -85,7 +87,6 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 				</div>
 
 				<div className="flex min-h-0 flex-1">
-					{/* 左侧分类导航 */}
 					<nav className="w-32 shrink-0 border-r border-border/50 bg-[var(--dbx-surface)] p-2">
 						{CATEGORIES.map((cat) => (
 							<button
@@ -100,28 +101,27 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 						))}
 					</nav>
 
-					{/* 右侧设置内容 */}
 					<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-4">
-						{activeCategory === "editor" && (
-							<EditorSettings settings={settings} onChange={updateSetting} />
-						)}
-						{activeCategory === "sql" && (
-							<SqlSettings settings={settings} onChange={updateSetting} />
+						{activeCategory === "query" && (
+							<QueryResultSettings settings={settings} onChange={updateSetting} />
 						)}
 						{activeCategory === "grid" && (
-							<GridSettings settings={settings} onChange={updateSetting} />
+							<DataGridSettings settings={settings} onChange={updateSetting} />
 						)}
-						{activeCategory === "result" && (
-							<ResultSettings settings={settings} onChange={updateSetting} />
-						)}
-						{activeCategory === "sidebar" && (
-							<SidebarSettings settings={settings} onChange={updateSetting} />
+						{activeCategory === "resultTab" && (
+							<ResultTabSettings settings={settings} onChange={updateSetting} />
 						)}
 						{activeCategory === "export" && (
 							<ExportSettings settings={settings} onChange={updateSetting} />
 						)}
+						{activeCategory === "sidebar" && (
+							<SidebarSettings settings={settings} onChange={updateSetting} />
+						)}
+						{activeCategory === "history" && (
+							<HistorySettings settings={settings} onChange={updateSetting} onClearHistory={onClearHistory} />
+						)}
 						{activeCategory === "about" && (
-							<AboutSection onClearHistory={onClearHistory} onWipeData={onWipeData} confirmWipe={confirmWipe} setConfirmWipe={setConfirmWipe} />
+							<AboutSection onWipeData={onWipeData} confirmWipe={confirmWipe} setConfirmWipe={setConfirmWipe} />
 						)}
 					</div>
 				</div>
@@ -130,12 +130,35 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 	);
 }
 
-/** 编辑器设置 */
-function EditorSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: any) => void }): JSX.Element {
+/** 查询结果设置（对齐 dbx Data > Query Results） */
+function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+	const maxRowsBounds = SETTINGS_BOUNDS.queryResultMaxRows;
 	return (
 		<div className="space-y-4">
-			<h3 className="text-[13px] font-semibold text-foreground">编辑器基础设置</h3>
-			
+			<h3 className="text-[13px] font-semibold text-foreground">查询结果</h3>
+
+			<SettingRow label="默认每页行数" hint={`查询结果分页页大小（1–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}）`}>
+				<input
+					type="number"
+					className="dbx-form-input"
+					min={SETTINGS_BOUNDS.rowLimit.min}
+					max={SETTINGS_BOUNDS.rowLimit.max}
+					value={settings.rowLimit}
+					onChange={(e) => onChange("rowLimit", clampInt(e.target.value, SETTINGS_BOUNDS.rowLimit.min, SETTINGS_BOUNDS.rowLimit.max, settings.rowLimit))}
+				/>
+			</SettingRow>
+
+			<SettingRow label="表打开默认行数" hint={`点击树节点预览数据时的默认页大小（1–${SETTINGS_BOUNDS.tableOpenPageSize.max.toLocaleString()}）`}>
+				<input
+					type="number"
+					className="dbx-form-input"
+					min={SETTINGS_BOUNDS.tableOpenPageSize.min}
+					max={SETTINGS_BOUNDS.tableOpenPageSize.max}
+					value={settings.tableOpenPageSize}
+					onChange={(e) => onChange("tableOpenPageSize", clampInt(e.target.value, SETTINGS_BOUNDS.tableOpenPageSize.min, SETTINGS_BOUNDS.tableOpenPageSize.max, settings.tableOpenPageSize))}
+				/>
+			</SettingRow>
+
 			<SettingRow label="查询超时（秒）" hint="超时后自动取消查询">
 				<input
 					type="number"
@@ -147,16 +170,164 @@ function EditorSettings({ settings, onChange }: { settings: WorkbenchSettings; o
 				/>
 			</SettingRow>
 
-			<SettingRow label="默认每页行数" hint={`网格分页页大小（1–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}，大于引擎单次上限时自动分块拉取）`}>
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={SETTINGS_BOUNDS.rowLimit.min}
-					max={SETTINGS_BOUNDS.rowLimit.max}
-					value={settings.rowLimit}
-					onChange={(e) => onChange("rowLimit", clampInt(e.target.value, SETTINGS_BOUNDS.rowLimit.min, SETTINGS_BOUNDS.rowLimit.max, settings.rowLimit))}
-				/>
+			<SettingRow label="限制查询结果总量" hint="开启后最多取回下方设定的行数（循环分页取数）；关闭后取到引擎单次上限（1000 行）即止。">
+				<label className="flex items-center gap-2 text-[11px] text-foreground">
+					<input
+						type="checkbox"
+						checked={settings.queryResultMaxRowsEnabled}
+						onChange={(e) => onChange("queryResultMaxRowsEnabled", e.target.checked)}
+					/>
+					启用总量限制
+				</label>
 			</SettingRow>
+
+			{settings.queryResultMaxRowsEnabled && (
+				<SettingRow
+					label="查询结果最大行数"
+					hint={`${maxRowsBounds.min.toLocaleString()}–${maxRowsBounds.max.toLocaleString()}`}
+				>
+					<input
+						type="number"
+						className="dbx-form-input"
+						min={maxRowsBounds.min}
+						max={maxRowsBounds.max}
+						value={settings.queryResultMaxRows}
+						onChange={(e) =>
+							onChange(
+								"queryResultMaxRows",
+								clampInt(e.target.value, maxRowsBounds.min, maxRowsBounds.max, settings.queryResultMaxRows),
+							)
+						}
+					/>
+				</SettingRow>
+			)}
+
+			<SettingRow label="自动计算总行数" hint="查询后自动执行 COUNT(*) 统计总行数（对齐 dbx autoCalculateTotalRows）">
+				<label className="flex items-center gap-2 text-[11px] text-foreground">
+					<input
+						type="checkbox"
+						checked={settings.autoCalculateTotalRows}
+						onChange={(e) => onChange("autoCalculateTotalRows", e.target.checked)}
+					/>
+					自动统计
+				</label>
+			</SettingRow>
+
+			<SettingRow label="无限滚动" hint="滚到底部时自动加载下一页数据（对齐 dbx infiniteScroll）">
+				<label className="flex items-center gap-2 text-[11px] text-foreground">
+					<input
+						type="checkbox"
+						checked={settings.infiniteScroll}
+						onChange={(e) => onChange("infiniteScroll", e.target.checked)}
+					/>
+					启用无限滚动
+				</label>
+			</SettingRow>
+
+			<SettingRow label="多语句默认视图" hint="执行多语句后的默认视图">
+				<select
+					className="dbx-form-input"
+					value={settings.multiStatementDefaultView}
+					onChange={(e) => onChange("multiStatementDefaultView", e.target.value as "result" | "messages")}
+				>
+					<option value="result">结果视图</option>
+					<option value="messages">消息视图</option>
+				</select>
+			</SettingRow>
+
+			<SettingRow label="执行计划默认视图" hint="EXPLAIN 的默认视图">
+				<select
+					className="dbx-form-input"
+					value={settings.defaultExplainView}
+					onChange={(e) => onChange("defaultExplainView", e.target.value as "table" | "canvas")}
+				>
+					<option value="table">表格视图</option>
+					<option value="canvas">图形视图</option>
+				</select>
+			</SettingRow>
+		</div>
+	);
+}
+
+/** 数据网格显示设置（对齐 dbx Data > Data Grid Display） */
+function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+	return (
+		<div className="space-y-4">
+			<h3 className="text-[13px] font-semibold text-foreground">数据网格显示</h3>
+
+			<SettingRow label="斑马纹行" hint="交替行背景色（对齐 dbx dataGridStripedRows）">
+				<label className="flex items-center gap-2 text-[11px] text-foreground">
+					<input
+						type="checkbox"
+						checked={settings.dataGridStripedRows}
+						onChange={(e) => onChange("dataGridStripedRows", e.target.checked)}
+					/>
+					启用斑马纹
+				</label>
+			</SettingRow>
+
+			<SettingRow label="十字准线高亮" hint="高亮当前单元格所在的行和列（对齐 dbx dataGridCrosshairHighlight）">
+				<label className="flex items-center gap-2 text-[11px] text-foreground">
+					<input
+						type="checkbox"
+						checked={settings.dataGridCrosshairHighlight}
+						onChange={(e) => onChange("dataGridCrosshairHighlight", e.target.checked)}
+					/>
+					启用十字准线
+				</label>
+			</SettingRow>
+
+			<SettingRow label="单元格详情按钮" hint="双击单元格弹出详情弹窗（对齐 dbx dataGridCellDetailButtonVisible）">
+				<label className="flex items-center gap-2 text-[11px] text-foreground">
+					<input
+						type="checkbox"
+						checked={settings.dataGridCellDetailButtonVisible}
+						onChange={(e) => onChange("dataGridCellDetailButtonVisible", e.target.checked)}
+					/>
+					启用详情按钮
+				</label>
+			</SettingRow>
+		</div>
+	);
+}
+
+/** 结果标签设置（对齐 dbx Data > Result tab settings） */
+function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+	return (
+		<div className="space-y-4">
+			<h3 className="text-[13px] font-semibold text-foreground">结果标签</h3>
+
+			<SettingRow label="命名方式" hint="新结果标签的命名方式（对齐 dbx resultTabNamingMode）">
+				<select
+					className="dbx-form-input"
+					value={settings.resultTabNamingMode}
+					onChange={(e) => onChange("resultTabNamingMode", e.target.value as "source" | "table" | "sequential")}
+				>
+					<option value="source">按来源命名</option>
+					<option value="table">按表名命名</option>
+					<option value="sequential">按序号命名</option>
+				</select>
+			</SettingRow>
+
+			<SettingRow label="显示来源数据库" hint="在结果标签中显示数据库名（对齐 dbx showResultSourceDatabase）">
+				<label className="flex items-center gap-2 text-[11px] text-foreground">
+					<input
+						type="checkbox"
+						checked={settings.showResultSourceDatabase}
+						onChange={(e) => onChange("showResultSourceDatabase", e.target.checked)}
+					/>
+					显示来源数据库
+				</label>
+			</SettingRow>
+		</div>
+	);
+}
+
+/** 侧边栏设置（对齐 dbx Navigation） */
+function SidebarSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+	return (
+		<div className="space-y-4">
+			<h3 className="text-[13px] font-semibold text-foreground">侧边栏</h3>
 
 			<SettingRow label="单击表节点行为" hint="单击连接树中的表时">
 				<select
@@ -179,6 +350,15 @@ function EditorSettings({ settings, onChange }: { settings: WorkbenchSettings; o
 					<option value="structure">查看表结构</option>
 				</select>
 			</SettingRow>
+		</div>
+	);
+}
+
+/** 历史设置（对齐 dbx Data > History Retention） */
+function HistorySettings({ settings, onChange, onClearHistory }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void; onClearHistory: () => void }): JSX.Element {
+	return (
+		<div className="space-y-4">
+			<h3 className="text-[13px] font-semibold text-foreground">历史保留</h3>
 
 			<SettingRow label="记录查询历史" hint="记录 SQL、耗时与行数">
 				<label className="flex items-center gap-2 text-[11px] text-foreground">
@@ -203,265 +383,101 @@ function EditorSettings({ settings, onChange }: { settings: WorkbenchSettings; o
 					/>
 				</SettingRow>
 			)}
+
+			<button
+				type="button"
+				onClick={onClearHistory}
+				className="dbx-btn ghost w-full text-left"
+			>
+				<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
+				清空查询历史
+			</button>
 		</div>
 	);
 }
 
-/** SQL 执行设置 */
-function SqlSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: any) => void }): JSX.Element {
+/** 导出设置（对齐 dbx Data > Export） */
+function ExportSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: unknown) => void }): JSX.Element {
+	const bounds = SETTINGS_BOUNDS.exportRowLimit;
+	const batchBounds = SETTINGS_BOUNDS.exportBatchSize;
 	return (
 		<div className="space-y-4">
-			<h3 className="text-[13px] font-semibold text-foreground">SQL 执行设置</h3>
-			
-			<SettingRow label="执行模式" hint="选择执行当前语句还是全部语句">
-				<select className="dbx-form-input" defaultValue="current">
-					<option value="current">当前语句</option>
-					<option value="all">全部语句</option>
-				</select>
-			</SettingRow>
+			<h3 className="text-[13px] font-semibold text-foreground">导出</h3>
 
-			<SettingRow label="事务模式" hint="默认事务模式">
-				<select className="dbx-form-input" defaultValue="auto">
-					<option value="auto">自动提交</option>
-					<option value="manual">手动提交</option>
-				</select>
-			</SettingRow>
-
-			<SettingRow label="危险 SQL 确认" hint="执行 DDL/DML 前弹窗确认">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					启用确认弹窗
-				</label>
-			</SettingRow>
-
-			<SettingRow label="批量执行遇错继续" hint="批量执行时遇到错误是否继续">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={false} />
-					继续执行后续语句
-				</label>
-			</SettingRow>
-		</div>
-	);
-}
-
-/** 数据网格设置 */
-function GridSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: any) => void }): JSX.Element {
-	return (
-		<div className="space-y-4">
-			<h3 className="text-[13px] font-semibold text-foreground">数据网格设置</h3>
-			
-			<SettingRow label="显示行号" hint="在网格左侧显示行号">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					显示行号
-				</label>
-			</SettingRow>
-
-			<SettingRow label="斑马纹行" hint="交替行背景色">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					启用斑马纹
-				</label>
-			</SettingRow>
-
-			<SettingRow label="十字准线高亮" hint="高亮当前单元格所在的行和列">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={false} />
-					启用十字准线
-				</label>
-			</SettingRow>
-
-			<SettingRow label="单元格类型着色" hint="根据数据类型显示不同颜色">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={false} />
-					启用类型着色
-				</label>
-			</SettingRow>
-
-			<SettingRow label="数字列右对齐" hint="数字类型列右对齐显示">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					右对齐数字列
-				</label>
-			</SettingRow>
-
-			<SettingRow label="表头显示列注释" hint="在列标题中显示注释">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					显示列注释
-				</label>
-			</SettingRow>
-
-			<SettingRow label="表头显示列类型" hint="在列标题中显示数据类型">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					显示列类型
-				</label>
-			</SettingRow>
-
-			<SettingRow label="渲染模式" hint="DOM 或 Canvas 渲染">
-				<select className="dbx-form-input" defaultValue="dom">
-					<option value="dom">DOM 渲染</option>
-					<option value="canvas">Canvas 渲染</option>
-				</select>
-			</SettingRow>
-		</div>
-	);
-}
-
-/** 结果集设置 */
-function ResultSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: any) => void }): JSX.Element {
-	return (
-		<div className="space-y-4">
-			<h3 className="text-[13px] font-semibold text-foreground">结果集设置</h3>
-			
-			<SettingRow label="结果标签命名" hint="新结果标签的命名方式">
-				<select className="dbx-form-input" defaultValue="source">
-					<option value="source">按来源命名</option>
-					<option value="table">按表名命名</option>
-					<option value="sequential">按序号命名</option>
-				</select>
-			</SettingRow>
-
-			<SettingRow label="显示结果来源数据库" hint="在结果标签中显示数据库名">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					显示来源数据库
-				</label>
-			</SettingRow>
-
-			<SettingRow label="多语句默认视图" hint="执行多语句后的默认视图">
-				<select className="dbx-form-input" defaultValue="result">
-					<option value="result">结果视图</option>
-					<option value="messages">消息视图</option>
-				</select>
-			</SettingRow>
-
-			<SettingRow label="执行计划默认视图" hint="EXPLAIN 的默认视图">
-				<select className="dbx-form-input" defaultValue="table">
-					<option value="table">表格视图</option>
-					<option value="canvas">图形视图</option>
-				</select>
-			</SettingRow>
-		</div>
-	);
-}
-
-/** 侧边栏设置 */
-function SidebarSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: any) => void }): JSX.Element {
-	return (
-		<div className="space-y-4">
-			<h3 className="text-[13px] font-semibold text-foreground">侧边栏设置</h3>
-			
-			<SettingRow label="对象显示方式" hint="连接树中对象的显示方式">
-				<select className="dbx-form-input" defaultValue="grouped">
-					<option value="grouped">分组显示</option>
-					<option value="flat">平铺显示</option>
-				</select>
-			</SettingRow>
-
-			<SettingRow label="启用表搜索" hint="在连接树中搜索表">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={false} />
-					启用表搜索
-				</label>
-			</SettingRow>
-
-			<SettingRow label="自动选中活动节点" hint="自动选中当前查询的表">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={false} />
-					自动选中
-				</label>
-			</SettingRow>
-
-			<SettingRow label="显示工具提示" hint="鼠标悬停时显示完整名称">
-				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={true} />
-					显示工具提示
-				</label>
-			</SettingRow>
-
-			<SettingRow label="缩进大小" hint="树节点缩进像素">
+			<SettingRow
+				label="每批取行数"
+				hint={`导出全部数据时每批从引擎取回的行数（${batchBounds.min.toLocaleString()}–${batchBounds.max.toLocaleString()}）`}
+			>
 				<input
 					type="number"
 					className="dbx-form-input"
-					min={8}
-					max={32}
-					defaultValue={14}
+					min={batchBounds.min}
+					max={batchBounds.max}
+					value={settings.exportBatchSize}
+					onChange={(e) =>
+						onChange(
+							"exportBatchSize",
+							clampInt(e.target.value, batchBounds.min, batchBounds.max, settings.exportBatchSize),
+						)
+					}
 				/>
 			</SettingRow>
 
-			<SettingRow label="字体大小" hint="树节点字体大小">
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={10}
-					max={20}
-					defaultValue={12}
-				/>
-			</SettingRow>
-		</div>
-	);
-}
-
-/** 导出设置 */
-function ExportSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: (key: keyof WorkbenchSettings, value: any) => void }): JSX.Element {
-	return (
-		<div className="space-y-4">
-			<h3 className="text-[13px] font-semibold text-foreground">导出设置</h3>
-			
-			<SettingRow label="导出批大小" hint="每次导出的行数">
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={100}
-					max={10000}
-					defaultValue={2000}
-				/>
-			</SettingRow>
-
-			<SettingRow label="启用导出行数限制" hint="限制最大导出行数">
+			<SettingRow label="限制导出行数" hint="默认关闭：「导出全部数据」循环拉取到末页；开启后最多导出下方设定的行数。">
 				<label className="flex items-center gap-2 text-[11px] text-foreground">
-					<input type="checkbox" defaultChecked={false} />
-					启用限制
+					<input
+						type="checkbox"
+						checked={settings.exportLimitEnabled}
+						onChange={(e) => onChange("exportLimitEnabled", e.target.checked)}
+					/>
+					启用行数限制
 				</label>
 			</SettingRow>
 
-			<SettingRow label="最大导出行数" hint="超过此行数将截断">
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={1000}
-					max={1000000}
-					defaultValue={100000}
-				/>
-			</SettingRow>
-
-			<SettingRow label="CSV 引号模式" hint="字段值的引号处理">
-				<select className="dbx-form-input" defaultValue="auto">
-					<option value="auto">自动</option>
-					<option value="always">始终引号</option>
-					<option value="never">不引号</option>
-				</select>
-			</SettingRow>
-
-			<SettingRow label="CSV NULL 处理" hint="NULL 值的导出方式">
-				<select className="dbx-form-input" defaultValue="empty">
-					<option value="empty">空字符串</option>
-					<option value="null">NULL</option>
-					<option value="custom">自定义</option>
-				</select>
-			</SettingRow>
+			{settings.exportLimitEnabled && (
+				<SettingRow
+					label="最大导出行数"
+					hint={`${bounds.min.toLocaleString()}–${bounds.max.toLocaleString()}`}
+				>
+					<input
+						type="number"
+						className="dbx-form-input"
+						min={bounds.min}
+						max={bounds.max}
+						value={settings.exportRowLimit}
+						onChange={(e) =>
+							onChange(
+								"exportRowLimit",
+								clampInt(e.target.value, bounds.min, bounds.max, settings.exportRowLimit),
+							)
+						}
+					/>
+				</SettingRow>
+			)}
 		</div>
 	);
 }
 
 /** 关于部分 */
-function AboutSection({ onClearHistory, onWipeData, confirmWipe, setConfirmWipe }: { onClearHistory: () => void; onWipeData: () => void; confirmWipe: boolean; setConfirmWipe: (v: boolean) => void }): JSX.Element {
+function AboutSection({ onWipeData, confirmWipe, setConfirmWipe }: { onWipeData: () => void; confirmWipe: boolean; setConfirmWipe: (v: boolean) => void }): JSX.Element {
+	const [engineVersion, setEngineVersion] = useState<string | null>(null);
+	useEffect(() => {
+		let cancelled = false;
+		engineHealth()
+			.then((health) => {
+				if (!cancelled) setEngineVersion(health.version || null);
+			})
+			.catch(() => {
+				if (!cancelled) setEngineVersion(null);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 	return (
 		<div className="space-y-4">
 			<h3 className="text-[13px] font-semibold text-foreground">关于 dbx-pro</h3>
-			
+
 			<div className="dbx-panel-group">
 				<div className="dbx-panel-group-body space-y-2">
 					<div className="flex items-center justify-between">
@@ -470,7 +486,7 @@ function AboutSection({ onClearHistory, onWipeData, confirmWipe, setConfirmWipe 
 					</div>
 					<div className="flex items-center justify-between">
 						<span className="text-[11px] text-muted-foreground">引擎版本</span>
-						<span className="text-[11px] font-mono text-foreground">0.0.19</span>
+						<span className="text-[11px] font-mono text-foreground">{engineVersion ?? "—"}</span>
 					</div>
 					<div className="flex items-center justify-between">
 						<span className="text-[11px] text-muted-foreground">协议版本</span>
@@ -482,15 +498,6 @@ function AboutSection({ onClearHistory, onWipeData, confirmWipe, setConfirmWipe 
 			<div className="dbx-panel-group">
 				<div className="dbx-panel-group-header">数据管理</div>
 				<div className="dbx-panel-group-body space-y-2">
-					<button
-						type="button"
-						onClick={onClearHistory}
-						className="dbx-btn ghost w-full text-left"
-					>
-						<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
-						清空查询历史
-					</button>
-					
 					{confirmWipe ? (
 						<div className="flex items-center gap-2 pt-2">
 							<span className="text-[10px] font-medium text-destructive">确认清除全部本地数据？</span>

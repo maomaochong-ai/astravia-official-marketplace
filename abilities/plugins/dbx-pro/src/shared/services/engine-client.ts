@@ -348,6 +348,22 @@ export function engineExecuteByName(
 }
 
 /**
+ * 在系统文件管理器中定位并选中文件（POST /reveal）。
+ * 导出完成态「打开所在文件夹」的真实入口：由 host-node 引擎服务执行
+ * open -R / explorer /select / xdg-open，10s 预算。
+ */
+export function engineRevealInFolder(
+	fsPath: string,
+	options: CallOptions = {},
+): Promise<{ revealed: boolean; platform: string }> {
+	return engineRequest<{ revealed: boolean; platform: string }>(
+		"/reveal",
+		{ path: fsPath },
+		{ timeoutMs: options.timeoutMs ?? 10_000 },
+	);
+}
+
+/**
  * 引擎结果 → 旧 UI 期望的 DbQueryResult（只展示最后一个结果集，多语句时附 note）。
  * 与 query-service.ts 的语义保持一致，便于 D2 面板无痛切换。
  */

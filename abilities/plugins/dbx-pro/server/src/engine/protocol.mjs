@@ -13,12 +13,14 @@
 // 新增 POST /schemas；dbx-mcp /mcp 端点的工具错误改回 JSON-RPC error。
 // 0.0.19：读路径真服务端分页（子查询包裹 + LIMIT/OFFSET，COUNT 单独取）；
 // max_rows 不再被页大小夹住 —— 大表 SELECT 一次拉全表导致的超时由此消除。
-export const ENGINE_VERSION = "0.0.19";
+// 0.0.20：新增 POST /reveal（系统文件管理器定位导出文件，供「打开所在文件夹」）。
+export const ENGINE_VERSION = "0.0.20";
 export const PROTOCOL_VERSION = 1;
 
 /** 请求体上限：与宿主 16MB 响应上限错开，留足序列化余量。 */
 export const MAX_BODY_BYTES = 8 * 1024 * 1024;
-export const DEFAULT_ROW_LIMIT = 500;
+/** 对齐 dbx EXECUTE_QUERY_LIMIT = 50（MCP 工具默认行数）。 */
+export const DEFAULT_ROW_LIMIT = 50;
 export const MAX_ROW_LIMIT = 5_000;
 /** 单请求执行预算上限（宿主 ctx.services.request 硬上限 5min）。 */
 export const MAX_TIMEOUT_MS = 300_000;

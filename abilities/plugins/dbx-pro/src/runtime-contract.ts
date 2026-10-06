@@ -78,3 +78,20 @@ export function getServices(): any | null {
 	const ctx = requireCtx();
 	return (ctx as { services?: unknown }).services ?? null;
 }
+
+/**
+ * 宿主文件保存能力（fs.saveAs：原生保存框，返回用户选择的真实绝对路径）。
+ * 需要 plugin.json 声明 fs.write 权限；旧宿主 / 未授权时返回 null，
+ * 调用方据此降级为浏览器 ObjectURL 下载（此时不提供「打开所在文件夹」）。
+ */
+export function getFs(): {
+	saveAs: (
+		defaultFileName: string,
+		content: string,
+		encoding?: "utf8" | "base64",
+		options?: { title?: string; filters?: unknown },
+	) => Promise<string | null>;
+} | null {
+	const ctx = requireCtx();
+	return (ctx as { fs?: { saveAs?: unknown } }).fs?.saveAs ? (ctx.fs as never) : null;
+}

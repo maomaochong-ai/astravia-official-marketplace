@@ -15,6 +15,7 @@
  *   POST   /query            执行 SQL（dbx_execute_query，含写闸门）
  *   POST   /schema-context   获取连接 schema 上下文（dbx_get_schema_context）
  *   POST   /schemas          列举 schema（information_schema，供连接树 schema 层）
+ *   POST   /reveal           在系统文件管理器中定位导出文件（open -R / explorer /select）
  *
  * 写 / DDL 的分路（安全模型）：
  *   - 读 → 常驻 dbx-mcp 子进程，零提权；
@@ -57,6 +58,7 @@ import {
   isMissingCatalogView,
   pick,
 } from "./markdown-parser.mjs";
+import { selectRevealCommand, runRevealCommand } from "./reveal-item.mjs";
 
 /**
  * dbx_execute_query 的 max_rows 参数上限（crates/dbx-core/src/ai/agent_tools.rs
@@ -492,6 +494,21 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         .map((row) => String(pick(row, ["schema_name", "SCHEMA_NAME", "Schema", "schema"])).trim())
         .filter((name) => name.length > 0);
       return { connection: connectionName, schemas, supported: true };
+    }],
+
+    // === 打开所在文件夹（导出完成态的真实入口）===
+    // community 插件拿不到宿主 official shell 能力，由本服务（本地回环 + token 鉴权）
+    // 以 spawn 参数数组方式执行平台原生命令；路径限定为绝对路径、无空字节。
+    ["/reveal", "POST", true, async ({ body }) => {
+      let spec;
+      try {
+        spec = selectRevealCommand(process.platform, body?.path);
+      } catch (e) {
+        // 路径非法属于请求问题（400），不能落成 500。
+        throw engineError("BAD_REQUEST", e?.message ?? String(e));
+      }
+      await runRevealCommand(spec);
+      return { revealed: true, platform: process.platform };
     }],
   ];
 

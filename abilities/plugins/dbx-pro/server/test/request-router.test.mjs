@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
 import { createRouter } from "../src/engine/request-router.mjs";
+import { engineError } from "../src/engine/protocol.mjs";
 import { disposeDbxMcpClient, getDbxMcpClient } from "../src/engine/dbx-mcp-client.mjs";
 import {
 	engineBinaryAvailable,
@@ -110,6 +111,45 @@ describe("路由解析（不依赖引擎）", () => {
 			body: {},
 		});
 		assert.equal(result.status, 400);
+	});
+
+	it("POST /reveal 注册为需鉴权路由", () => {
+		assert.ok(router.routes.get("/reveal")?.has("POST"));
+	});
+
+	it("POST /reveal 相对路径 → 400（不启动任何进程）", async () => {
+		const result = await router.handle({
+			method: "POST",
+			pathname: "/reveal",
+			body: { path: "relative/a.csv" },
+		});
+		assert.equal(result.status, 400);
+		assert.equal(result.body.error.code, "BAD_REQUEST");
+	});
+
+	it("POST /reveal 空路径 / 空字节 → 400", async () => {
+		for (const path of ["", "   ", "/tmp/a\0.csv"]) {
+			const result = await router.handle({
+				method: "POST",
+				pathname: "/reveal",
+				body: { path },
+			});
+			assert.equal(result.status, 400);
+			assert.equal(result.body.error.code, "BAD_REQUEST");
+		}
+	});
+
+	it("POST /reveal 鉴权失败 → 401（先于路径处理）", async () => {
+		const protectedRouter = createRouter({
+			auth: { enabled: true, verify() { throw engineError("UNAUTHORIZED", "bad token"); } },
+		});
+		const result = await protectedRouter.handle({
+			method: "POST",
+			pathname: "/reveal",
+			headers: {},
+			body: { path: "/tmp/a.csv" },
+		});
+		assert.equal(result.status, 401);
 	});
 });
 

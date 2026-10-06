@@ -10,6 +10,9 @@ import {
 	toSqlInsert,
 	toMarkdown,
 	toTsv,
+	toJson,
+	toHtml,
+	createChunkedTextExport,
 } from "../features/database-workspace/services/result-export.ts";
 
 const cols = ["id", "name"];
@@ -96,5 +99,56 @@ describe("toSqlInsert", () => {
 		assert.match(out, /INSERT INTO public\.users/);
 		const quoted = toSqlInsert(["a"], [{ a: 1 }], "my schema.users");
 		assert.match(quoted, /INSERT INTO "my schema"\.users/);
+	});
+});
+
+describe("createChunkedTextExport", () => {
+	const manyRows = Array.from({ length: 25 }, (_, i) => ({
+		id: i + 1,
+		name: i % 3 === 0 ? "x,y" : `n${i}`,
+	}));
+	// 模拟导出循环：切成 [0,10) / [10,20) / [20,25) 三块，首块也可能为空。
+	function chunked(kind, opts) {
+		const stream = createChunkedTextExport(kind, cols, opts);
+		stream.push(manyRows.slice(0, 10));
+		stream.push(manyRows.slice(10, 20));
+		stream.push(manyRows.slice(20));
+		return stream.content();
+	}
+
+	it("CSV 分块拼接与整量 toCsv 完全一致（BOM/CRLF/引号）", () => {
+		assert.equal(chunked("csv"), toCsv(cols, manyRows));
+	});
+	it("TXT 分块与 toTsv 一致", () => {
+		assert.equal(chunked("txt"), toTsv(cols, manyRows));
+	});
+	it("JSONL 分块与 toJsonLines 一致", () => {
+		assert.equal(chunked("jsonl"), toJsonLines(cols, manyRows));
+	});
+	it("JSON 分块与 toJson 一致且可解析", () => {
+		const out = chunked("json");
+		assert.equal(out, toJson(cols, manyRows));
+		assert.equal(JSON.parse(out).length, 25);
+	});
+	it("Markdown 分块与 toMarkdown 一致", () => {
+		assert.equal(chunked("md"), toMarkdown(cols, manyRows));
+	});
+	it("HTML 分块与 toHtml 一致", () => {
+		assert.equal(chunked("html"), toHtml(cols, manyRows));
+	});
+	it("SQL 分块与 toSqlInsert 一致（标准方言）", () => {
+		assert.equal(chunked("sql", { tableName: "t" }), toSqlInsert(cols, manyRows, "t", "standard"));
+	});
+	it("SQL 分块（MySQL 方言）与整量一致", () => {
+		assert.equal(
+			chunked("sql", { tableName: "t", dialect: "mysql" }),
+			toSqlInsert(cols, manyRows, "t", "mysql"),
+		);
+	});
+	it("空数据：SQL 给出 0 行注释，其余格式只有表头/外壳", () => {
+		const empty = createChunkedTextExport("sql", cols, { tableName: "t" });
+		assert.match(empty.content(), /^-- t: 0 行/);
+		const csvEmpty = createChunkedTextExport("csv", cols);
+		assert.equal(csvEmpty.content(), "\uFEFFid,name");
 	});
 });
