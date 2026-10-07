@@ -39,31 +39,32 @@ function resolveGridCols(
 	return "grid-template-columns: repeat(4, 1fr);";
 }
 
-/** 拼装单图表的 HTML 片段 + Chart.js 初始化一行。 */
-function buildChartBlocks(charts: ChartItem[], isScreen: boolean) {
-	return charts.map((chart, i) => {
+/** 拼装图表区域 HTML 片段 + Chart.js 初始化代码，一次遍历返回两个字符串。 */
+function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string; js: string } {
+	const htmlParts: string[] = [];
+	const jsParts: string[] = [];
+	charts.forEach((chart, i) => {
 		const id = `chart-${i}`;
 		const height = chart.height ?? (isScreen ? 280 : 250);
-		const html = `<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`;
-		const js = `new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`;
-		return { html, js };
+		htmlParts.push(`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`);
+		jsParts.push(`new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`);
 	});
+	return { html: htmlParts.join(""), js: jsParts.join("\n") };
 }
 
 export function generateHtml(input: DbxChartCollectionInput): string {
-	const charts = input.charts.slice(0, 12);
+	const charts = input.charts.slice(0, 12); // 这里负责上限——handler 不再 trim
 	const isScreen = (input.type ?? "dashboard") === "screen";
 	const title = input.title || "数据看板";
-	const gridCols = resolveGridCols(input.layout, charts.length);
-	const blocks = buildChartBlocks(charts, isScreen);
-	const chartDefaults = buildChartDefaultsScript(isScreen);
+	const chartArea = buildChartArea(charts, isScreen);
 	const head = buildHtmlHead({ title, chartJsCdn: CHARTJS_CDN, isScreen });
 
+	// 模板字符串里只保留真正需要插值的部分，不再嵌套 blocks.map
 	return `${head}
-<div class="grid" style="${gridCols}">${blocks.map((b) => b.html).join("")}</div>
+<div class="grid" style="${resolveGridCols(input.layout, charts.length)}">${chartArea.html}</div>
 <script>
-${chartDefaults}
-${blocks.map((b) => b.js).join("\n")}
+${buildChartDefaultsScript(isScreen)}
+${chartArea.js}
 </script>
 </body>
 </html>`;
@@ -101,8 +102,6 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 				},
 				type: { type: "string", enum: ["dashboard", "screen"], description: "Page theme. dashboard=light QuickBI, screen=dark DataV." },
 				title: { type: "string", description: "Page title." },
-				connection_name: { type: "string", description: "Source connection name (for tracking)." },
-				table: { type: "string", description: "Source table name (for tracking)." },
 				layout: { type: "string", enum: ["auto", "grid-2", "grid-3", "grid-4"], description: "Grid columns. auto=responsive." },
 			},
 			required: ["charts", "title"],
@@ -110,17 +109,24 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 		},
 		scope_use: ["conversation", "project"],
 		handler: async ({ trigger: { input } }) => {
-			const { charts, type = "dashboard", title, connection_name = "", table = "" } = input;
-			if (!charts?.length) return { ok: false, error: "charts[] must be non-empty" };
-			if (!title) return { ok: false, error: "title is required" };
+			if (!input.charts?.length) return { ok: false, error: "charts[] must be non-empty" };
+			if (!input.title) return { ok: false, error: "title is required" };
 
 			try {
-				const trimmed = charts.slice(0, 12);
-				const html = generateHtml(input);
-				const viz = { title, type, connection: connection_name, table, html, chartItems: trimmed };
+				const html = generateHtml(input); // 内部已 slice(0, 12)，handler 不再 trim
+				const trimmedCount = Math.min(input.charts.length, 12);
+				const viz = {
+					title: input.title,
+					type: input.type ?? "dashboard",
+					// connection_name / table 是内部追踪字段，Agent schema 不暴露
+					connection: (input as unknown as Record<string, unknown>).connection_name as string ?? "",
+					table: (input as unknown as Record<string, unknown>).table as string ?? "",
+					html,
+					chartItems: input.charts.slice(0, 12),
+				};
 				saveVisualizationToStore(viz);
 				showVisualizationPreview(viz);
-				return { ok: true, title, type, chartCount: trimmed.length, message: `${type === "screen" ? "大屏" : "看板"}「${title}」已生成（${trimmed.length} 个图表）。` };
+				return { ok: true, title: input.title, type: viz.type, chartCount: trimmedCount, message: `${viz.type === "screen" ? "大屏" : "看板"}「${input.title}」已生成（${trimmedCount} 个图表）。` };
 			} catch (error) {
 				return { ok: false, error: error instanceof Error ? error.message : String(error) };
 			}
