@@ -7,9 +7,9 @@
 
 import { useEffect, useRef, useState, type JSX } from "react";
 import { ResultGrid } from "./result-grid";
+import { SendToAiDialog } from "./send-to-ai-dialog";
 import { useWorkbench } from "../hooks/use-workbench";
-import { showVisualizationPreview } from "../../visualization/visualization-bridge";
-import type { Visualization } from "../../../domain/chart-contract";
+import { buildResultVizPrompt } from "../../../shared/ai/send-context";
 
 export function ResultPanel(): JSX.Element {
 	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount, runTabSql } = useWorkbench();
@@ -17,19 +17,20 @@ export function ResultPanel(): JSX.Element {
 	const result = activeTab?.result;
 	const [elapsed, setElapsed] = useState(0);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const [vizDialog, setVizDialog] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: "" });
 
-	/** Canvas 入口 — ADR-0005 §5.1：从当前 SQL 结果集生成看板/大屏 */
-	function openCanvas(intent: "dashboard" | "screen"): void {
+	/** "AI 可视化：看板/大屏" —— 构造 prompt 调宿主 AI，让它用 dbx_query_full → render_chart → dbx_chart_collection 生成 */
+	function openVizDialog(intent: "dashboard" | "screen"): void {
 		if (!result?.ok || !activeTab?.connectionName) return;
-		const viz: Visualization = {
-			title: intent === "dashboard" ? "AI 看板" : "AI 大屏",
-			type: intent,
-			connection: activeTab.connectionName,
-			table: "",
-			html: `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${intent === "dashboard" ? "AI 看板" : "AI 大屏"}</title></head><body style="display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#64748b;height:100vh"><div style="text-align:center"><p>请使用 AI 生成完整 ${intent === "dashboard" ? "看板" : "大屏"}</p><p style="font-size:12px;color:#94a3b8;margin-top:8px">数据查询已就绪，选中表/视图后点击"生成看板"即可</p></div></body></html>`,
-			chartItems: [],
-		};
-		showVisualizationPreview(viz);
+		const columns = result.columns; // string[] — DbQueryResult.columns 已经是列名数组
+		const prompt = buildResultVizPrompt(
+			activeTab.connectionName,
+			activeTab.sql ?? "",
+			intent,
+			columns,
+			result.rows.length,
+		);
+		setVizDialog({ open: true, prompt });
 	}
 
 	useEffect(() => {
@@ -73,7 +74,7 @@ export function ResultPanel(): JSX.Element {
 									<span className="text-[11px] text-muted-foreground/60">AI 可视化：</span>
 									<button
 										type="button"
-										onClick={() => openCanvas("dashboard")}
+										onClick={() => openVizDialog("dashboard")}
 										className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-violet-600 hover:bg-violet-500/10"
 										title="用 QuickBI 浅色调生成看板"
 									>
@@ -81,7 +82,7 @@ export function ResultPanel(): JSX.Element {
 									</button>
 									<button
 										type="button"
-										onClick={() => openCanvas("screen")}
+										onClick={() => openVizDialog("screen")}
 										className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-cyan-600 hover:bg-cyan-500/10 dark:text-cyan-400 dark:hover:bg-cyan-500/15"
 										title="用 DataV 深色调生成大屏"
 									>
@@ -175,6 +176,12 @@ export function ResultPanel(): JSX.Element {
 					</div>
 				)}
 			</div>
+			{/* "AI 可视化" prompt 发送对话框 */}
+			<SendToAiDialog
+				open={vizDialog.open}
+				prompt={vizDialog.prompt}
+				onClose={() => setVizDialog((v) => ({ ...v, open: false }))}
+			/>
 		</div>
 	);
 }

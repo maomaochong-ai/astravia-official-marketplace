@@ -11,6 +11,31 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* 宿主 CSS variables → Tailwind theme token 映射。
+   插件 CSS 被 plugin-vite 包进 @scope ([data-astravia-plugin-root="dbx-pro"])，
+   Tailwind 的 :root dark: 变体都穿不过这个边界——只有 host 的 CSS variables 能继承进来。
+   把它们映射成语义色 token（bg-background / text-foreground / border-border …），
+   让 Tailwind 工具类和 .dbx-root 自定义样式统一读同一组变量。
+   （与宿主内置插件 astravia-ui-design / browser / comfyui 保持一致） */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-border: var(--border);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-warning: var(--warning);
+}
+
 /* lucide / solar 图标按需生成（icon-[lucide--*] / icon-[solar--*]）。 */
 @plugin "@iconify/tailwind4";
 

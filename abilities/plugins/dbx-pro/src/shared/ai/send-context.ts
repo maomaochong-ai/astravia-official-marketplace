@@ -88,6 +88,48 @@ export function buildQueryPrompt(connectionName: string, sql: string, _sampleRow
 	].join("\n");
 }
 
+/** 从查询结果生成看板/大屏 prompt —— 结果面板"AI 可视化"按钮用。 */
+export function buildResultVizPrompt(
+	connectionName: string,
+	sql: string,
+	intent: "dashboard" | "screen",
+	columns: string[],
+	rowCount: number,
+): string {
+	const themeName = intent === "dashboard" ? "看板" : "大屏";
+	const intentWork = intent === "dashboard"
+		? "浅色调企业看板"
+		: "深色调数据大屏（6-12 个图表形成高密度数据墙）";
+	return [
+		`我在连接 @\`${connectionName}\` 上执行了一条 SQL，结果有 ${rowCount} 行 ${columns.length} 列。`,
+		"",
+		"SQL：",
+		"```sql",
+		sql,
+		"```",
+		"",
+		`请基于这条 SQL 为我生成${themeName}（${intentWork}）。`,
+		"",
+		"工作流：",
+		"1. 先检查 SQL —— 如果返回的是明细行（大量原始行），请写聚合 SQL（GROUP BY + SUM/COUNT/AVG）再查",
+		"2. 用 dbx_query_full 工具执行 SQL 拿完整聚合数据（自动分页拼页，绕过 1000 行截断）",
+		"   - 不要用 dbx MCP execute_query——它单次最多 1000 行，会截断",
+		"   - dbx_query_full 默认 maxRows=2000，如果聚合维度超过 2000 行，可按需增大",
+		"3. 用 render_chart 工具生成 Chart.js 图表（把 dbx_query_full 返回的 rows 转成 Chart.js data）",
+		"   - 每次 render_chart 最多 4 图，可分多批次调用",
+		`4. 最后用 dbx_chart_collection 打包成${themeName}（type=${intent}）`,
+		"",
+		"图表选择原则（根据数据特点决定，不要套固定模板）：",
+		"  - 时间维度 → line（折线）或 bar（柱状按时间）",
+		"  - 排名/对比 → bar（横向条形图）",
+		"  - 占比/份额 → pie 或 doughnut（分类 ≤ 8 时效果好）",
+		"  - 多维对比 → radar",
+		"  - 两变量相关性 → scatter",
+		"  - 大屏核心指标 → bar 配合单值聚合 + 大字号标题",
+		"  - 分类太多（> 8）→ horizontal bar + LIMIT 20",
+	].join("\n");
+}
+
 /** 构造看板生成 prompt（dbx_query_full 完整查询 + 数据驱动图表）。 */
 export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 	const tables = nodes.filter((n) => n.kind === "table");
