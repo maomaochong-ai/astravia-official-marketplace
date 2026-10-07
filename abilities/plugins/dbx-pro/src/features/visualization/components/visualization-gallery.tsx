@@ -11,6 +11,7 @@
 
 import { useState, useMemo, useRef, type JSX } from "react";
 import { useVisualizationStore, type StoredVisualization } from "../visualization-store";
+import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
 
 /** Chart.js type → lucide icon。用于卡片网格占位（轻量缩略图，不加载 iframe）。 */
 const CHART_ICON_MAP: Record<string, string> = {
@@ -60,20 +61,8 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 		});
 	}, [visualizations, searchQuery, filterType]);
 
-	const handleDownload = (viz: StoredVisualization): void => {
-		const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(viz.html);
-		const a = document.createElement("a");
-		a.href = dataUrl;
-		a.download = `${viz.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_")}.html`;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-	};
-
-	const handleOpenInNewTab = (viz: StoredVisualization): void => {
-		const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(viz.html);
-		window.open(dataUrl, "_blank", "noopener,noreferrer");
-	};
+	const handleDownload = (viz: StoredVisualization): void => { downloadHtml(viz.html, viz.title); };
+	const handleOpenInNewTab = (viz: StoredVisualization): void => { openHtmlInNewTab(viz.html); };
 
 	return (
 		<div className="flex h-full flex-col bg-background">

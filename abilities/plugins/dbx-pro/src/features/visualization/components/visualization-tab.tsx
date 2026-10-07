@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect, type JSX } from "react";
 import type { Visualization } from "../../../domain/chart-contract";
+import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
 
 interface Props {
 	// 预览态（工具刚生成、未入库，无 id）与已保存产物共用此组件；
@@ -27,23 +28,8 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 		return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
 	}, []);
 
-	const handleDownload = (): void => {
-		const blob = new Blob([viz.html], { type: "text/html;charset=utf-8" });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement("a");
-		a.href = url;
-		a.download = `${viz.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_")}.html`;
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
-	};
-
-	const handleOpenExternal = (): void => {
-		// 把 HTML 转成 Data URL（不依赖 Blob URL 生命周期，window.open 能立即用）
-		const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(viz.html);
-		window.open(dataUrl, "_blank", "noopener,noreferrer");
-	};
+	const handleDownload = (): void => { downloadHtml(viz.html, viz.title); };
+	const handleOpenExternal = (): void => { openHtmlInNewTab(viz.html); };
 
 	const handleFullscreen = async (): Promise<void> => {
 		if (containerRef.current) {
