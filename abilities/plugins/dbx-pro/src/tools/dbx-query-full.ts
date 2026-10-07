@@ -4,17 +4,9 @@
  * 复用工作台 executeServerPage 的分块循环逻辑，自动分页拼页拿完整数据。
  * 引擎单次结果硬上限 ENGINE_ROW_CAP（默认 1000 行），分块循环让 Agent 能拿完整聚合结果。
  *
- * 与宿主 dbx MCP execute_query 的区别：
- *   - dbx MCP：单次查询，1000 行硬截断
- *   - dbx_query_full：完整查询，自动分页拼页
- *
- * 返回契约：
- *   - ok: true, columns, rows, rowCount       → OK 正常返回
- *   - totalRows: number | undefined           → 引擎报告的真实总行数（仅分页 SQL 可用）
- *   - isTruncated: boolean                    → 是否被截断
- *   - completeness: "complete" | "unknown" | "truncated" → 明确告诉 Agent 数据完整性
- *   - note: string | undefined                → 人类可读提示
- *   - pagination: "supported" | "unsupported" → 引擎是否支持分页
+ * Token 优化：rows 默认做采样（前 50 + 后 10），避免几千行 JSON 塞满 LLM context。
+ * Agent 通过 rowCount / totalRows / completeness 判断数据全不全。
+ * 极少数明细图场景（scatter/bubble）Agent 可设 fullRows=true 拿完整数据。
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
@@ -29,6 +21,25 @@ export interface DbxQueryFullInput {
 	maxRows?: number;
 	/** 查询超时（毫秒） */
 	timeoutMs?: number;
+	/** true 返回完整 rows（默认 false，返回前 50 + 后 10 采样） */
+	fullRows?: boolean;
+}
+
+/** 对 rows 做前 N + 后 M 采样。rows ≤ N+M 时原样返回。 */
+function sampleRows(
+	rows: Record<string, unknown>[],
+	head = 50,
+	tail = 10,
+): { rows: Record<string, unknown>[]; isSampled: boolean; sampleInfo?: string } {
+	if (rows.length <= head + tail) {
+		return { rows, isSampled: false };
+	}
+	const sampled = rows.slice(0, head).concat(rows.slice(-tail));
+	return {
+		rows: sampled,
+		isSampled: true,
+		sampleInfo: `Sampled: ${head} head + ${tail} tail from ${rows.length} total rows`,
+	};
 }
 
 export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFullInput> {
@@ -37,20 +48,21 @@ export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFu
 		name: "dbx_query_full",
 		label: "完整查询",
 		description: [
-			"Execute a SQL query and return COMPLETE results (auto-paginates in chunks of 1000 rows).",
-			"Unlike dbx MCP execute_query which truncates at 1000 rows, this tool loops engine pagination.",
-			"Use when you need full aggregation results for chart rendering.",
-			"Recommended: write GROUP BY aggregation SQL, not SELECT * raw rows.",
-			"Default maxRows=2000. Increase if aggregation dimensions exceed 2000 rows.",
-			"Always inspect pagination and completeness fields — they tell you if the data is complete.",
+			"Execute a SQL query with auto-pagination (chunks of 1000 rows each).",
+			"Unlike dbx MCP execute_query which truncates at 1000 rows, this tool loops pagination.",
+			"IMPORTANT: rows is sampled (first 50 + last 10) to save context tokens.",
+			"Check rowCount, totalRows, completeness for full data picture.",
+			"Set fullRows=true ONLY for scatter/bubble detail charts that need every row.",
+			"Recommended: GROUP BY aggregation SQL.",
 		].join("\n"),
 		parameters: {
 			type: "object",
 			properties: {
-				connectionName: { type: "string", description: "Configured connection name (from workbench connections list)." },
-				sql: { type: "string", description: "SQL query. Prefer GROUP BY aggregation for chart data." },
-				maxRows: { type: "number", description: "Max rows to return. Default 2000. Increase for large dimensions." },
-				timeoutMs: { type: "number", description: "Query timeout in ms. Default 30000." },
+				connectionName: { type: "string", description: "Configured connection name." },
+				sql: { type: "string", description: "SQL query. Prefer GROUP BY aggregation." },
+				maxRows: { type: "number", description: "Max rows to fetch. Default 2000." },
+				timeoutMs: { type: "number", description: "Query timeout ms. Default 30000." },
+				fullRows: { type: "boolean", description: "Return ALL rows (default false, sampled). Use only for scatter/bubble." },
 			},
 			required: ["connectionName", "sql"],
 			additionalProperties: false,
@@ -60,13 +72,13 @@ export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFu
 			const { connectionName, sql } = input;
 			const maxRows = input.maxRows ?? 2000;
 			const timeoutMs = input.timeoutMs ?? 30000;
+			const wantFullRows = input.fullRows === true;
 
 			if (!connectionName?.trim()) return { ok: false, error: "connectionName is required" };
 			if (!sql?.trim()) return { ok: false, error: "sql is required" };
-			// 安全闸：禁止写操作
 			const normalizedSql = sql.trim().toUpperCase();
 			if (/^(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|REPLACE)\b/.test(normalizedSql)) {
-				return { ok: false, error: "dbx_query_full is SELECT-only. Use connection write tools for mutations." };
+				return { ok: false, error: "dbx_query_full is SELECT-only." };
 			}
 
 			try {
@@ -76,20 +88,17 @@ export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFu
 					timeoutMs,
 				});
 
-				const rowCount = outcome.rows.length;
+				const fetchedRows = outcome.rows;
+				const rowCount = fetchedRows.length;
 				const paginationSupported = outcome.paged === true;
 
-				// 三种完整性：
-				//   "complete"   — 引擎支持分页，totalRows 已知且 rows 已覆盖全部
-				//   "truncated"  — 引擎支持分页但还有数据没拉完，或分页但引擎硬截断
-				//   "unknown"    — 引擎不支持分页，只取了第一页的 1000 行，不知道总行数
+				// 完整性判断
 				let completeness: "complete" | "truncated" | "unknown";
 				let isTruncated: boolean;
 				let totalRows: number | undefined;
 				let note: string | undefined;
 
 				if (paginationSupported) {
-					// 分页 SQL：total_count / engine_row_count 是引擎报告的真实总数
 					totalRows = outcome.total_count ?? outcome.engine_row_count;
 					if (totalRows !== undefined && rowCount >= totalRows) {
 						completeness = "complete";
@@ -99,30 +108,35 @@ export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFu
 						isTruncated = true;
 						note = `Result truncated: ${rowCount.toLocaleString()}/${totalRows.toLocaleString()} rows. Re-run with higher maxRows.`;
 					} else {
-						// 分页但没报总数（edge case）
 						completeness = "unknown";
 						isTruncated = rowCount >= maxRows;
 						note = isTruncated ? `Result may be truncated — hit maxRows=${maxRows}.` : undefined;
 					}
 				} else {
-					// 非分页 SQL：引擎只返回了一页（1000 行），不知道总行数
-					totalRows = outcome.truncated ? undefined : undefined; // 非分页时引擎不报告总数
+					totalRows = undefined;
 					completeness = "unknown";
 					isTruncated = outcome.truncated === true || rowCount >= 1000;
 					note = outcome.truncated === true
-						? `Engine truncated at 1000 rows (non-pageable SQL/DB type). Data may be incomplete.`
-						: `Pagination not supported by this DB/SQL — got ${rowCount} rows, unknown total.`;
+						? `Engine truncated at 1000 rows (non-pageable SQL/DB).`
+						: `Pagination not supported — got ${rowCount} rows, unknown total.`;
 				}
+
+				// Token 优化：采样 rows（除非 Agent 显式要完整）
+				const sampled = wantFullRows
+					? { rows: fetchedRows, isSampled: false }
+					: sampleRows(fetchedRows);
 
 				return {
 					ok: true,
 					columns: outcome.columns,
-					rows: outcome.rows,
+					rows: sampled.rows,
 					rowCount,
 					totalRows,
 					isTruncated,
 					completeness,
 					pagination: paginationSupported ? "supported" : "unsupported",
+					isSampled: sampled.isSampled,
+					...(sampled.sampleInfo ? { sampleInfo: sampled.sampleInfo } : {}),
 					...(note ? { note } : {}),
 				};
 			} catch (error) {

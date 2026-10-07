@@ -1,5 +1,15 @@
-/* Tailwind CSS 基础样式 - 限定在 .dbx-root 内 */
-@import "tailwindcss";
+/*
+ * Tailwind CSS — 限定在 .dbx-root 内。
+ *
+ * 故意只导 theme + utilities，**不导 preflight（reset）**。
+ * preflight 里有全局 box-sizing / margin / font-family 重置，如果漏到 .dbx-root
+ * 外面会污染宿主 UI（比如 chart-renderer 的 ChartCard 边框/布局）。
+ *
+ * 与宿主 chart-renderer/src/style.css 保持完全一致的导入策略。
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
 /* lucide / solar 图标按需生成（icon-[lucide--*] / icon-[solar--*]）。 */
 @plugin "@iconify/tailwind4";
