@@ -138,18 +138,14 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 			properties: {
 				charts: {
 					type: "array",
-					description: "Array of Chart.js chart items (type, data, title, options, height). Max 12.",
+					description: "Array of Chart.js chart items. Each item accepts any Chart.js field (data, options, plugins, etc.). Only type is required.",
 					items: {
 						type: "object",
 						properties: {
 							type: { type: "string", enum: ["line", "bar", "pie", "doughnut", "polarArea", "radar", "scatter", "bubble"] },
-							data: { type: "object" },
-							title: { type: "string" },
-							description: { type: "string" },
-							height: { type: "number" },
-							options: { type: "object" },
 						},
-						required: ["type", "data"],
+						required: ["type"],
+						additionalProperties: true,
 					},
 					minItems: 1,
 					maxItems: 12,
@@ -161,7 +157,7 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 				layout: { type: "string", enum: ["auto", "grid-2", "grid-3", "grid-4"], description: "Grid columns. auto=responsive." },
 			},
 			required: ["charts", "title"],
-			additionalProperties: false,
+			additionalProperties: true,
 		},
 		scope_use: ["conversation", "project"],
 		handler: async ({ trigger: { input } }) => {

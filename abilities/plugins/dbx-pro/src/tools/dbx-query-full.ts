@@ -1,18 +1,20 @@
 /**
  * dbx_query_full — 完整数据查询 Agent 工具。
  *
- * 解决的问题：宿主 dbx MCP execute_query 单次返回上限 1000 行（ENGINE_ROW_CAP），
- * 超了就截断。本工具复制工作台 executeServerPage 的分块循环逻辑（每次 1000 行，
- * 循环拼页直到 maxRows 或到底），让 Agent 能拿到完整聚合结果。
+ * 复用工作台 executeServerPage 的分块循环逻辑，自动分页拼页拿完整数据。
+ * 引擎单次结果硬上限 ENGINE_ROW_CAP（默认 1000 行），分块循环让 Agent 能拿完整聚合结果。
  *
- * 与工作台的关系：
- *   - 复用 engineExecuteByName（engine-client.ts）
- *   - 复制 executeServerPage 的分块循环（use-workbench-execution.ts:L30-76）
- *   - 非 React 上下文可直接调用（engineExecuteByName 是纯 HTTP 客户端）
+ * 与宿主 dbx MCP execute_query 的区别：
+ *   - dbx MCP：单次查询，1000 行硬截断
+ *   - dbx_query_full：完整查询，自动分页拼页
  *
- * 与宿主 dbx MCP execute_query 的关系：
- *   - dbx MCP：单次查询，1000 行截断，适合快速试探
- *   - dbx_query_full：完整查询，自动分页拼页，适合完整聚合数据
+ * 返回契约：
+ *   - ok: true, columns, rows, rowCount       → OK 正常返回
+ *   - totalRows: number | undefined           → 引擎报告的真实总行数（仅分页 SQL 可用）
+ *   - isTruncated: boolean                    → 是否被截断
+ *   - completeness: "complete" | "unknown" | "truncated" → 明确告诉 Agent 数据完整性
+ *   - note: string | undefined                → 人类可读提示
+ *   - pagination: "supported" | "unsupported" → 引擎是否支持分页
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
@@ -40,6 +42,7 @@ export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFu
 			"Use when you need full aggregation results for chart rendering.",
 			"Recommended: write GROUP BY aggregation SQL, not SELECT * raw rows.",
 			"Default maxRows=2000. Increase if aggregation dimensions exceed 2000 rows.",
+			"Always inspect pagination and completeness fields — they tell you if the data is complete.",
 		].join("\n"),
 		parameters: {
 			type: "object",
@@ -73,19 +76,42 @@ export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFu
 					timeoutMs,
 				});
 
-				const total = outcome.total_count ?? outcome.engine_row_count;
 				const rowCount = outcome.rows.length;
-				const truncated = outcome.paged === true
-					? total !== undefined && total > rowCount
-					: outcome.truncated === true;
+				const paginationSupported = outcome.paged === true;
 
+				// 三种完整性：
+				//   "complete"   — 引擎支持分页，totalRows 已知且 rows 已覆盖全部
+				//   "truncated"  — 引擎支持分页但还有数据没拉完，或分页但引擎硬截断
+				//   "unknown"    — 引擎不支持分页，只取了第一页的 1000 行，不知道总行数
+				let completeness: "complete" | "truncated" | "unknown";
+				let isTruncated: boolean;
+				let totalRows: number | undefined;
 				let note: string | undefined;
-				if (truncated) {
-					if (total !== undefined) {
-						note = `Result truncated: ${rowCount.toLocaleString()}/${total.toLocaleString()} rows shown. Re-run with higher maxRows if needed.`;
+
+				if (paginationSupported) {
+					// 分页 SQL：total_count / engine_row_count 是引擎报告的真实总数
+					totalRows = outcome.total_count ?? outcome.engine_row_count;
+					if (totalRows !== undefined && rowCount >= totalRows) {
+						completeness = "complete";
+						isTruncated = false;
+					} else if (totalRows !== undefined && rowCount < totalRows) {
+						completeness = "truncated";
+						isTruncated = true;
+						note = `Result truncated: ${rowCount.toLocaleString()}/${totalRows.toLocaleString()} rows. Re-run with higher maxRows.`;
 					} else {
-						note = `Result truncated at ENGINE_ROW_CAP (non-pageable SQL).`;
+						// 分页但没报总数（edge case）
+						completeness = "unknown";
+						isTruncated = rowCount >= maxRows;
+						note = isTruncated ? `Result may be truncated — hit maxRows=${maxRows}.` : undefined;
 					}
+				} else {
+					// 非分页 SQL：引擎只返回了一页（1000 行），不知道总行数
+					totalRows = outcome.truncated ? undefined : undefined; // 非分页时引擎不报告总数
+					completeness = "unknown";
+					isTruncated = outcome.truncated === true || rowCount >= 1000;
+					note = outcome.truncated === true
+						? `Engine truncated at 1000 rows (non-pageable SQL/DB type). Data may be incomplete.`
+						: `Pagination not supported by this DB/SQL — got ${rowCount} rows, unknown total.`;
 				}
 
 				return {
@@ -93,6 +119,10 @@ export function createDbxQueryFullTool(): PluginAgentToolRegistration<DbxQueryFu
 					columns: outcome.columns,
 					rows: outcome.rows,
 					rowCount,
+					totalRows,
+					isTruncated,
+					completeness,
+					pagination: paginationSupported ? "supported" : "unsupported",
 					...(note ? { note } : {}),
 				};
 			} catch (error) {

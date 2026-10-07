@@ -2,12 +2,22 @@
 name: dbx-pro
 alias: 数据库工作台
 description: 企业级数据库工作台 — 连接 PostgreSQL/MySQL/SQLite/ClickHouse 等 60+ 数据库，SQL 编辑器 + 结果网格 + AI 可视化（看板/大屏）。
-version: 0.0.110
+version: 0.0.112
 ---
 
 # 数据库工作台 — dbx-pro
 
 企业级数据库连接管理 + SQL 编辑器 + AI 驱动的可视化生成。
+
+## references/ — 深度主题必读
+
+**以下文件是特定主题的详细参考，遇到对应场景时 Read 对应文件：**
+
+| 文件 | 什么时候读 |
+|------|-----------|
+| `references/data-completeness.md` | **每次调 dbx_query_full 之后都要读** — 怎么判断返回数据全不全 |
+| `references/chart-input-format.md` | 调 dbx_chart_collection 之前 — ChartItem 格式和常见报错 |
+| `references/sql-patterns.md` | 写聚合 SQL 之前 — 不同图表类型对应的 SQL 模式 |
 
 ## 核心能力
 
@@ -30,10 +40,12 @@ dbx_query_full vs dbx MCP execute_query：
 
 | 维度 | dbx MCP execute_query | dbx_query_full |
 |------|----------------------|----------------|
-| 行数上限 | 单次硬截断 1000 行 | 自动分页拼页直到 maxRows（默认 2000，可按需增大） |
+| 行数上限 | 单次硬截断 1000 行 | 自动分页拼页直到 maxRows（默认 2000） |
 | 实现 | 引擎单次请求 | 复用工作台 executeServerPage 分块循环 |
-| 返回截断提示 | truncated: true | note: "Result truncated: N/M rows shown" |
-| 适合场景 | 快速试探、查看少量数据 | 完整聚合数据（图表渲染前） |
+| 返回截断提示 | truncated: true | `isTruncated: true` + `completeness` 字段 |
+| 返回总行数 | 无 | `totalRows` 字段（引擎报告的真实总数） |
+| 返回分页支持 | 无 | `pagination: "supported" | "unsupported"` |
+| 适合场景 | 快速试探、少量数据 | 完整聚合数据（图表渲染前） |
 
 ### 3. 可视化生成（插件工具 + 宿主 chart-renderer）
 
@@ -49,7 +61,8 @@ dbx_query_full vs dbx MCP execute_query：
 #### 阶段 2：打包成页（插件 dbx_chart_collection）
 
 dbx-pro 插件工具 `dbx_chart_collection`：
-- 输入：`charts: ChartItem[]`（最多 12 个）+ `title` + `type: "dashboard"|"screen"` + 可选 `layout`
+- 输入：`charts: ChartItem[]`（最多 12 个）+ `title` + `type: "dashboard"|"screen"`
+- **ChartItem 极简：只有 `type` 必填，其他所有 Chart.js 字段都接受**
 - 输出：完整 HTML 页面（Chart.js CDN + 自动 Grid 布局 + 主题）
   - `type=dashboard` → 浅色 QuickBI 风格
   - `type=screen` → 深色 DataV 风格 + 入场动画
@@ -83,13 +96,20 @@ Agent 工作流：
          GROUP BY month, channel
          ORDER BY month",
     maxRows=2000)
-   → 返回完整聚合数据 ✅（自动分页拼页，绕过 1000 行截断）
-   → 如果返回 note 说 truncated，增大 maxRows 重跑
-3. render_chart({ type: "line", data: {labels: [...], datasets: [...]}, title: "月度销售趋势" })
-   → ChartCard 出现在对话气泡 ✅
-4. render_chart({ type: "bar", data: {...}, title: "渠道分布" })
-   → 又一个 ChartCard ✅
-5. （可多次调 render_chart，每次最多 4 图）
+   → 返回：
+     { ok: true,
+       rowCount: 1832,
+       totalRows: 5231,
+       isTruncated: true,                 ← ⚠️ 被截断了
+       completeness: "truncated",         ← 明确告诉不完整
+       pagination: "supported",
+       note: "Result truncated: 1832/5231 rows..."
+     }
+3. 发现截断 → 增大 maxRows 重跑：
+   dbx_query_full(connection="prod", sql=..., maxRows=6000)
+   → { completeness: "complete", rowCount: 5231, totalRows: 5231 }  ✅
+4. render_chart({ type: "line", data: {labels: [...], datasets: [...]}, title: "月度销售趋势" })
+5. （多次调 render_chart，每次最多 4 图）
 6. dbx_chart_collection({
      charts: [chart1, chart2, chart3, chart4],
      type: "dashboard",
@@ -123,12 +143,12 @@ Agent 工作流：
 | 图表渲染 | 插件 Canvas 规则引擎 | **宿主 Chart.js（chart-renderer）+ 插件打包 HTML** |
 | 模板 | 6 套预设模板 | **无模板 — 全由 Agent 自行编排** |
 | 持久化 | 插件 store | **插件 store（不变）** |
-| 二次编辑 | Canvas 规则引擎 | **chartItems 暴露给 Agent 重跑** |
 | 完整数据 | ❌ 旧架构无此能力 | **✅ dbx_query_full 复用工作台分页拼页** |
 
 ## 安全准则
 
 - **只读优先** — dbx_query_full 和看板/大屏生成都是 SELECT-only，不产生写操作
 - **聚合查询** — 写 GROUP BY 聚合而非 SELECT * 明细
-- **自适应行数** — dbx_query_full 返回 note 提示截断时，Agent 应增大 maxRows 重跑
+- **永远检查 completeness** — 不要在没看 dbx_query_full 返回的 `completeness` / `isTruncated` / `totalRows` 的情况下直接做图表
+- **自适应截断** — `completeness: "truncated"` 时增大 maxRows 重跑；`completeness: "unknown"` 时加 SQL 侧 LIMIT 或 COUNT 子查询
 - **敏感信息** — SQL 中不暴露密码、连接字符串
