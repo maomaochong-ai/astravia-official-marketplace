@@ -1,6 +1,10 @@
 /**
  * FilterBar — 前端 categorical 列筛选器（v0.0.103 从 canvas/ 移到独立位置）
  *
+ * ⚠️ 当前为孤儿组件：Canvas.tsx（唯一消费者）已在 v0.0.103 删除。
+ * 保留理由：它是"二次编辑编辑器"的核心组件——未来将接进 dbx_chart_collection 输出的 HTML 页面，
+ * 让用户在 iframe 里直接筛选数据（row.filter）。
+ *
  * 仅处理 categorical 列（通过 inferSchema 检测 role === "categorical"）。
  * 每列一个 multi-select dropdown，返回过滤后的 rows。
  * 不做 date-range / SQL 重跑（那需要引擎层）。

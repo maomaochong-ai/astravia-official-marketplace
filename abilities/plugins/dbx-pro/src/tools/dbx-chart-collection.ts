@@ -32,20 +32,8 @@ export interface DbxChartCollectionInput {
 	layout?: "auto" | "grid-2" | "grid-3" | "grid-4";
 }
 
-/** Chart.js CDN（UMD 自注册，无需额外 register） */
+/** Chart.js CDN（UMD 暴露全局 Chart，自动注册所有内置类型） */
 const CHARTJS_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
-
-/** 图表类型 → Chart.js 原生类名映射 */
-const CHART_TYPE_MAP: Record<ChartType, string> = {
-	line: "Line",
-	bar: "Bar",
-	pie: "Pie",
-	doughnut: "Doughnut",
-	polarArea: "PolarArea",
-	radar: "Radar",
-	scatter: "Scatter",
-	bubble: "Bubble",
-};
 
 function generateHtml(input: DbxChartCollectionInput): string {
 	const charts = input.charts.slice(0, 12); // 安全上限：12 个图
@@ -87,11 +75,10 @@ function generateHtml(input: DbxChartCollectionInput): string {
 	// 生成每个图表的 HTML + JS（单一来源，避免重复）
 	const chartJsBlocks = charts.map((chart, i) => {
 		const id = `chart-${i}`;
-		const chartClass = CHART_TYPE_MAP[chart.type] ?? "Bar";
 		const height = chart.height ?? (isScreen ? 280 : 250);
 		return {
 			html: `<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`,
-			js: `new ChartJS.${chartClass}(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:${JSON.stringify({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"bottom"},tooltip:{enabled:true}},...chart.options})}});`,
+			js: `new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:${JSON.stringify({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"bottom"},tooltip:{enabled:true}},...chart.options})}});`,
 		};
 	});
 
