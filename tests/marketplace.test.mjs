@@ -17,6 +17,34 @@ function assertTrackedPresentationResource(path) {
   assert.ok(trackedFiles.has(repositoryPath), `Presentation resource is not tracked: ${repositoryPath}`);
 }
 
+// Mirrors the desktop detail schema: an unsupported block type, or an asset the host
+// cannot resolve, rejects the whole marketplace source instead of just one ability.
+const detailBlockTypes = new Set(["hero", "feature-grid", "steps", "showcase", "image", "gallery", "stats", "comparison", "callout", "markdown", "links"]);
+const presentationAssetKeys = new Set(["icon", "image", "src", "brand_icon_url"]);
+
+function assertDetailBlocks(directory, blocks, path) {
+  for (const block of blocks) {
+    assert.ok(detailBlockTypes.has(block.type), `Unsupported detail block type: ${block.type} (${relative(root, path)})`);
+  }
+  assertPresentationAssets(directory, blocks);
+}
+
+function assertPresentationAssets(directory, value) {
+  if (Array.isArray(value)) {
+    for (const item of value) assertPresentationAssets(directory, item);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  for (const [key, item] of Object.entries(value)) {
+    if (!presentationAssetKeys.has(key) || typeof item !== "string") {
+      assertPresentationAssets(directory, item);
+      continue;
+    }
+    if (/^https:\/\//.test(item) || (key === "icon" && item.startsWith("solar:"))) continue;
+    assertTrackedPresentationResource(packageFile(directory, item));
+  }
+}
+
 // Inspect only explicitly referenced packages; an unrelated directory is not a catalog entry.
 for (const bundle of catalog.abilities.filter((ability) => ability.type === "bundle")) {
   for (const member of bundle.config.members) {
@@ -111,6 +139,7 @@ for (const ability of bySlug.values()) {
         const document = readJson(path);
         assert.equal(document.schemaVersion, 1);
         assert.ok(document.blocks.length > 0);
+        assertDetailBlocks(directory, document.blocks, path);
       } else {
         assert.ok(readFileSync(path, "utf8").trim());
       }
