@@ -39,6 +39,30 @@ function resolveGridCols(
 	return "grid-template-columns: repeat(4, 1fr);";
 }
 
+/** 图表数据守卫 — Chart.js 默默接受错格式（rows 替代 datasets、空数组、datasets=0），
+ *  不会 throw，只会创建一个 datasets=0 的空 Chart 实例 → canvas 白屏。
+ *  本函数校验 chart.data，格式不对时注入可见错误提示 HTML 而不是静默空白。
+ *
+ *  常见 AI 错：
+ *    chart.data = [100,200,300]                       → 数组不是对象
+ *    chart.data = { rows: [{x,y}, ...] }              → rows 没转 datasets
+ *    chart.data = { labels: [...], datasets: [] }     → 空 datasets
+ *    chart.data = null / undefined                    → 缺失
+ */
+export function validateChartData(data: unknown): { ok: boolean; reason?: string } {
+	if (data === null || data === undefined) return { ok: false, reason: "缺少 data" };
+	if (Array.isArray(data)) return { ok: false, reason: "data 是数组，应该是 { datasets: [...] }" };
+	if (typeof data !== "object") return { ok: false, reason: `data 类型异常: ${typeof data}` };
+	const o = data as Record<string, unknown>;
+	if (!Array.isArray(o.datasets) || o.datasets.length === 0) {
+		if (Array.isArray((o as Record<string, unknown>).rows)) {
+			return { ok: false, reason: "data.rows 存在但没转成 datasets[]" };
+		}
+		return { ok: false, reason: "data.datasets 缺失或为空" };
+	}
+	return { ok: true };
+}
+
 /** 拼装图表区域 HTML 片段 + Chart.js 初始化代码，一次遍历返回两个字符串。 */
 function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string; js: string } {
 	const htmlParts: string[] = [];
@@ -46,6 +70,23 @@ function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string;
 	charts.forEach((chart, i) => {
 		const id = `chart-${i}`;
 		const height = chart.height ?? (isScreen ? 280 : 250);
+		const valid = validateChartData(chart.data);
+
+		if (!valid.ok) {
+			// 数据格式异常 → 渲染可见错误卡片，而不是静默空白 canvas
+			htmlParts.push(
+				`<div class="chart-card chart-error">` +
+				`<h3>${chart.title ?? `图表 ${i + 1}`}</h3>` +
+				`<div style="height:${height}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#ef4444;background:#fef2f2;border:1px dashed #fecaca;border-radius:8px;margin:12px 0;padding:16px;box-sizing:border-box;">` +
+				`<span style="font-weight:600;font-size:13px;">⚠️ 图表数据格式错误</span>` +
+				`<span style="font-size:11px;color:#7f1d1d;">${valid.reason}</span>` +
+				`<span style="font-size:10px;color:#b91c1c;">AI 未正确将查询结果转为 Chart.js { datasets: [...] } 格式</span>` +
+				`</div></div>`
+			);
+			jsParts.push(`/* chart-${i} skipped: ${valid.reason} */`);
+			return;
+		}
+
 		htmlParts.push(`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`);
 		jsParts.push(`new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`);
 	});

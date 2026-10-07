@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { generateHtml } from "../tools/dbx-chart-collection.ts";
+import { generateHtml, validateChartData } from "../tools/dbx-chart-collection.ts";
 
 // ─── Fixtures ────────────────────────────────────────────
 
@@ -166,4 +166,53 @@ describe("generateHtml — 8 种 ChartType", () => {
 			assert.ok(html.includes('<canvas id="chart-0">'));
 		});
 	}
+});
+
+// ─── validateChartData 守卫（防 AI 传错 data 格式导致白屏）───
+
+describe("validateChartData — 防白屏守卫", () => {
+	it("标准格式 → ok", () => {
+		const r = validateChartData({ labels: ["A"], datasets: [{ data: [1] }] });
+		assert.ok(r.ok);
+	});
+	it("null → fail: 缺少 data", () => {
+		const r = validateChartData(null);
+		assert.ok(!r.ok && r.reason?.includes("缺少 data"));
+	});
+	it("数组（AI 把 rows 塞进来）→ fail", () => {
+		const r = validateChartData([1, 2, 3]);
+		assert.ok(!r.ok && r.reason?.includes("是数组"));
+	});
+	it("rows 对象（AI 没转 datasets）→ fail", () => {
+		const r = validateChartData({ rows: [{ x: 1, y: 2 }] });
+		assert.ok(!r.ok && r.reason?.includes("rows") && r.reason?.includes("没转"));
+	});
+	it("空 datasets → fail", () => {
+		const r = validateChartData({ labels: ["A"], datasets: [] });
+		assert.ok(!r.ok && r.reason?.includes("空"));
+	});
+});
+
+// ─── generateHtml — 坏 data 格式渲染错误卡片而非白屏 ─────
+
+describe("generateHtml — 坏 data 格式 → 错误卡片（非白屏）", () => {
+	it("data 是 rows 对象 → 渲染可见错误提示", () => {
+		const html = generateHtml({
+			charts: [{ type: "bar", title: "测试", data: { rows: [{ x: 1, y: 2 }] } }],
+			title: "测试",
+		});
+		assert.ok(html.includes("⚠️ 图表数据格式错误"));
+		assert.ok(html.includes("没转成 datasets"));
+		// 不应该有 canvas
+		assert.ok(!html.includes('<canvas id="chart-0"'));
+	});
+
+	it("data 是数组 → 渲染错误提示 + 不跑 new Chart", () => {
+		const html = generateHtml({
+			charts: [{ type: "bar", title: "测试", data: [1, 2, 3] }],
+			title: "测试",
+		});
+		assert.ok(html.includes("⚠️ 图表数据格式错误"));
+		assert.ok(!html.includes("new Chart(document.getElementById('chart-0')"));
+	});
 });
