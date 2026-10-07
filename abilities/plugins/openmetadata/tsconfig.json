@@ -11,7 +11,15 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "vite": ["./node_modules/vite/dist/node/index.d.ts"],
+      "rollup": ["./node_modules/rollup/dist/rollup.d.ts"],
+      "@astravia-org/plugin-sdk": ["./node_modules/@astravia-org/plugin-sdk/dist/index.d.ts"],
+      "@astravia-org/plugin-vite": ["./node_modules/@astravia-org/plugin-vite/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
 }

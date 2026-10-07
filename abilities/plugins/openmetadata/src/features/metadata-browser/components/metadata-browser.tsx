@@ -53,7 +53,7 @@ export function MetadataBrowser(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<SearchHit | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [detail, setDetail] = useState<unknown>(null);
+  const [detail, setDetail] = useState<Record<string, unknown> | { error: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const searchAbortRef = useRef<{ abort: () => void } | null>(null);
 
@@ -127,7 +127,7 @@ export function MetadataBrowser(): JSX.Element {
       const fqn = hit.fullyQualifiedName ?? hit.name ?? "";
       if (!fqn) return;
       const include = ["context"]; // context 给出 PK/FK/频繁 join — Agent 写 SQL 前有用
-      const raw = await omRequest<unknown>(
+      const raw = await omRequest<Record<string, unknown>>(
         `/${hit.entityType}/${encodeURIComponent(fqn)}?include=${include.join(",")}`,
       );
       setDetail(raw);

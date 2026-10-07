@@ -12,7 +12,7 @@
  * - 连接测试直接 fetch OM /v1/users/current（不走代理，因为代理还没配好）
  */
 
-import { useCallback, useEffect, useState, type JSX } from "react";
+import React, { useCallback, useEffect, useState, type JSX } from "react";
 import { getConnectionStore, type OmConnection } from "../../../domain/connection-store";
 
 export function ConnectionConfigPanel(): JSX.Element {
@@ -230,7 +230,7 @@ export function ConnectionConfigPanel(): JSX.Element {
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: JSX.Element }) {
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-foreground">
