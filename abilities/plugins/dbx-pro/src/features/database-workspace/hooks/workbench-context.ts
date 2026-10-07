@@ -6,11 +6,10 @@
  */
 
 import { createContext, useContext } from "react";
-import type { DbConnection } from "../../../domain/connection-config";
 import type { QueryHistoryEntry } from "../../../domain/query-history";
 import type { WorkbenchSettings } from "../../../domain/workbench-settings";
 import type { SelectedNodeInfo } from "../../../shared/ai/send-context";
-import type { EditorTab, WorkbenchState } from "../state/workbench-types";
+import type { WorkbenchState } from "../state/workbench-types";
 import type { WorkbenchAction } from "../state/workbench-actions";
 
 export interface WorkbenchContextValue {

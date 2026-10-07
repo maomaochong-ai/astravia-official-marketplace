@@ -4,7 +4,7 @@
  * 从 use-workbench.tsx 拆分出来，专注查询执行相关的异步逻辑。
  */
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import {
 	ENGINE_ROW_CAP,
 	resolvePageSize,
@@ -16,7 +16,7 @@ import {
 	toQueryResult,
 } from "../../../shared/services/engine-client";
 import { executeServerPage } from "../../../shared/services/execute-server-page";
-import type { EditorTab, WorkbenchState } from "../state/workbench-types";
+import type { WorkbenchState } from "../state/workbench-types";
 import type { WorkbenchAction } from "../state/workbench-actions";
 
 interface ExecutionDeps {

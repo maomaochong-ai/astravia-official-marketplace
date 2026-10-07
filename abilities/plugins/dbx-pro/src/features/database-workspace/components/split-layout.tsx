@@ -20,7 +20,7 @@ interface DragState {
 	otherW: number;
 }
 
-export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight }: { children: [JSX.Element, JSX.Element, JSX.Element]; onDragStart?: (side: "left" | "right") => void; leftCollapsed?: boolean; rightCollapsed?: boolean; onToggleLeft?: () => void; onToggleRight?: () => void }): JSX.Element {
+export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight: _onToggleRight }: { children: [JSX.Element, JSX.Element, JSX.Element]; onDragStart?: (side: "left" | "right") => void; leftCollapsed?: boolean; rightCollapsed?: boolean; onToggleLeft?: () => void; onToggleRight?: () => void }): JSX.Element {
 	// 三栏宽度（px）。0 表示首次按容器尺寸用默认比例初始化。
 	const [leftW, setLeftW] = useState(0);
 	const [rightW, setRightW] = useState(0);

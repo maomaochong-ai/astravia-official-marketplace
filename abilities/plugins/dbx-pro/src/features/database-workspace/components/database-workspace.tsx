@@ -19,7 +19,7 @@ import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { patchSession, readSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
-import { setPreviewCallback, setSaveCallback, type Visualization } from "../../visualization/visualization-bridge";
+import { setPreviewCallback, setSaveCallback } from "../../visualization/visualization-bridge";
 import { useVisualizationStore } from "../../visualization/visualization-store";
 import { GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
 import { getUi } from "../../../runtime-contract";

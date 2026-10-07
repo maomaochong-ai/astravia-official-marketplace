@@ -13,7 +13,7 @@
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { showVisualizationPreview, saveVisualizationToStore } from "../features/visualization/visualization-bridge";
-import type { ChartItem } from "../domain/visualization";
+import type { ChartItem } from "../domain/chart-contract";
 
 export type ChartType = ChartItem["type"];
 

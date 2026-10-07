@@ -28,7 +28,6 @@ import {
 import { WriteConfirmDialog, type PendingWrite } from "../components/write-confirm-dialog";
 import type { SelectedNodeInfo } from "../../../shared/ai/send-context";
 import type { EditorTab, EngineColumn } from "../state/workbench-types";
-import type { WorkbenchAction } from "../state/workbench-actions";
 import { createInitialState, reducer } from "../state/workbench-reducer";
 import { WorkbenchContext, type WorkbenchContextValue, useWorkbench } from "./workbench-context";
 import { useWorkbenchTree } from "./use-workbench-tree";
@@ -73,7 +72,6 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 		rerunHistoryEntry,
 		removeHistory,
 		clearAllHistory,
-		loadInitialHistory,
 	} = useWorkbenchHistory({ stateRef, dispatch, settingsRef, runTabSqlRef });
 
 	const { runTabSql, goToResultPage, cancelExecution, applySuccess, fetchTotalCount } = useWorkbenchExecution({

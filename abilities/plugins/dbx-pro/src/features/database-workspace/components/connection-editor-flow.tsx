@@ -43,7 +43,7 @@ const ANALYTICS_TYPES = ["clickhouse", "snowflake", "bigquery", "doris", "starro
 export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEditorFlowProps): JSX.Element {
 	const editor = useConnectionEditor({ onChange });
 	const [step, setStep] = useState<DialogStep>("list");
-	const [selectedDbType, setSelectedDbType] = useState<DbType>("mysql");
+	const [_selectedDbType, setSelectedDbType] = useState<DbType>("mysql");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 	const [selectedCategory, setSelectedCategory] = useState<string>("relational");
@@ -106,7 +106,6 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 
 		const handleScroll = () => {
 			if (!contentRef.current) return;
-			const scrollTop = contentRef.current.scrollTop;
 			const containerTop = contentRef.current.getBoundingClientRect().top;
 
 			// 找到当前可见的分类

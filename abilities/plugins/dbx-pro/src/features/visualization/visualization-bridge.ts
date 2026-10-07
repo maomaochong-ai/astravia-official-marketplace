@@ -7,7 +7,7 @@
  * 数据形状定义在 domain/visualization；此处再导出，工具与 UI 的引用路径保持不变。
  */
 
-import type { Visualization } from "../../domain/visualization";
+import type { Visualization } from "../../domain/chart-contract";
 
 export type { Visualization };
 

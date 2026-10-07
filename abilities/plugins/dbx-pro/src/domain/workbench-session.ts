@@ -19,7 +19,7 @@
 
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import { getStorage } from "../runtime-contract.ts";
-import type { Visualization } from "./visualization";
+import type { Visualization } from "./chart-contract";
 
 const SESSION_PATH = "workbench-session.json";
 

@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect, type JSX } from "react";
-import type { Visualization } from "../../../domain/visualization";
+import type { Visualization } from "../../../domain/chart-contract";
 
 interface Props {
 	// 预览态（工具刚生成、未入库，无 id）与已保存产物共用此组件；

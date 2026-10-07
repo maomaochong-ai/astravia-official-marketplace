@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type JSX } from "react";
 import { ResultGrid } from "./result-grid";
 import { useWorkbench } from "../hooks/use-workbench";
 import { showVisualizationPreview } from "../../visualization/visualization-bridge";
-import type { Visualization } from "../../../domain/visualization";
+import type { Visualization } from "../../../domain/chart-contract";
 
 export function ResultPanel(): JSX.Element {
 	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount, runTabSql } = useWorkbench();

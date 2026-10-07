@@ -50,11 +50,9 @@ import {
 	registerExportCancelHandler,
 	requestCancelExportTask,
 	useExportTasks,
-	type ExportTask,
 } from "../state/export-tasks-store";
 import { getFs, getUi } from "../../../runtime-contract";
-import { CellDisplay } from "./cell-display";
-import { ResultTable, type ResultTableSort, type ResultTableSelection } from "./result-table";
+import { ResultTable } from "./result-table";
 import { ResultToolbar } from "./result-toolbar";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { PageSizeMenu } from "./page-size-menu";
@@ -116,7 +114,7 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 export function ResultGrid({
 	columns,
 	rows,
-	totalRows,
+	totalRows: _totalRows,
 	connectionName,
 	sql,
 	serverPaged,
@@ -130,7 +128,7 @@ export function ResultGrid({
 	affectedRows,
 	onRefresh,
 	onLoadAll,
-	note,
+	note: _note,
 	onPageChange,
 	onPageSizeChange,
 	onSetDefaultPageSize,
@@ -478,7 +476,7 @@ export function ResultGrid({
 
 	/** 处理单元格双击 → 弹出单元格详情对话框（长文本/JSON 查看）。
 	 * 可编辑网格暂不支持：插件当前为 read-only SQL 查询模式，无 writable grid 架构。 */
-	function handleCellDoubleClick(rowIndex: number, col: string, value: unknown): void {
+	function handleCellDoubleClick(_rowIndex: number, col: string, value: unknown): void {
 		if (!settings.dataGridCellDetailButtonVisible) return;
 		setDetail({ column: col, value });
 	}
@@ -616,10 +614,6 @@ export function ResultGrid({
 			}
 			document.body.removeChild(textarea);
 		}
-	}, [colList, rows]);
-
-	const copyAsJson = useCallback(async () => {
-		await navigator.clipboard.writeText(toJson(colList, rows)).catch(() => {});
 	}, [colList, rows]);
 
 	const copyAsMarkdown = useCallback(async () => {

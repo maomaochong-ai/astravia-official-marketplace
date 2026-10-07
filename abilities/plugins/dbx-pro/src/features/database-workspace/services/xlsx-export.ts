@@ -67,7 +67,7 @@ function sheetRow(rowIndex: number, values: string[]): string {
 	return `<row r="${rowIndex}">${values.join("")}</row>`;
 }
 
-function buildSheetXml(cols: string[], rows: Record<string, unknown>[], sheetName: string): string {
+function buildSheetXml(cols: string[], rows: Record<string, unknown>[], _sheetName: string): string {
 	const headerCells = cols.map(
 		(col, i) =>
 			`<c r="${columnLetter(i)}1" t="inlineStr"><is><t xml:space="preserve">${escapeXml(col)}</t></is></c>`,

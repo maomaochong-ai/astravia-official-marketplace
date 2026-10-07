@@ -1,9 +1,18 @@
 /**
  * dbx_query_full — 完整数据查询 Agent 工具。
  *
- * 宿主 dbx MCP execute_query 单次返回上限 1000 行（ENGINE_ROW_CAP），超了就截断。
- * 本工具复用工作台 executeServerPage 的分块循环逻辑（每次 1000 行，循环拼页直到
- * maxRows 或到底），让 Agent 能拿到完整聚合结果。
+ * 解决的问题：宿主 dbx MCP execute_query 单次返回上限 1000 行（ENGINE_ROW_CAP），
+ * 超了就截断。本工具复制工作台 executeServerPage 的分块循环逻辑（每次 1000 行，
+ * 循环拼页直到 maxRows 或到底），让 Agent 能拿到完整聚合结果。
+ *
+ * 与工作台的关系：
+ *   - 复用 engineExecuteByName（engine-client.ts）
+ *   - 复制 executeServerPage 的分块循环（use-workbench-execution.ts:L30-76）
+ *   - 非 React 上下文可直接调用（engineExecuteByName 是纯 HTTP 客户端）
+ *
+ * 与宿主 dbx MCP execute_query 的关系：
+ *   - dbx MCP：单次查询，1000 行截断，适合快速试探
+ *   - dbx_query_full：完整查询，自动分页拼页，适合完整聚合数据
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
