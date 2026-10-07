@@ -1,7 +1,7 @@
 {
   "id": "openmetadata",
   "name": "openmetadata",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -39,20 +39,70 @@
           "version": "0.1.0",
           "entry": "server/main.mjs",
           "platforms": {
-            "darwin-arm64": { "executable": "server/main.mjs", "artifacts": [{ "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5", "archive": "file", "destination": "server/main.mjs" }] },
-            "darwin-x64":   { "executable": "server/main.mjs", "artifacts": [{ "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5", "archive": "file", "destination": "server/main.mjs" }] },
-            "linux-x64":    { "executable": "server/main.mjs", "artifacts": [{ "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5", "archive": "file", "destination": "server/main.mjs" }] },
-            "linux-arm64":  { "executable": "server/main.mjs", "artifacts": [{ "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5", "archive": "file", "destination": "server/main.mjs" }] },
-            "win32-x64":    { "executable": "server/main.mjs", "artifacts": [{ "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5", "archive": "file", "destination": "server/main.mjs" }] }
+            "darwin-arm64": {
+              "executable": "server/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5",
+                  "archive": "file",
+                  "destination": "server/main.mjs"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5",
+                  "archive": "file",
+                  "destination": "server/main.mjs"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5",
+                  "archive": "file",
+                  "destination": "server/main.mjs"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5",
+                  "archive": "file",
+                  "destination": "server/main.mjs"
+                }
+              ]
+            },
+            "win32-x64": {
+              "executable": "server/main.mjs",
+              "artifacts": [
+                {
+                  "sha256": "8425922fb514e6c0c6e50a030d215316dc604244e1315bfeaf3e3a4bdfd95fd5",
+                  "archive": "file",
+                  "destination": "server/main.mjs"
+                }
+              ]
+            }
           }
         },
         "process": {
           "args": [
-            "--port", "${ASTRAVIA_SERVICE_PORT}",
-            "--connections-dir", "${ASTRAVIA_SERVICE_DATA_DIR}/connections"
+            "--port",
+            "${ASTRAVIA_SERVICE_PORT}",
+            "--connections-dir",
+            "${ASTRAVIA_SERVICE_DATA_DIR}/connections"
           ]
         },
-        "health": { "path": "/health", "timeoutMs": 30000 }
+        "health": {
+          "path": "/health",
+          "timeoutMs": 30000
+        }
       }
     ]
   },
