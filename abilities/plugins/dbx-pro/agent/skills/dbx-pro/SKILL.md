@@ -1,124 +1,111 @@
 ---
 name: dbx-pro
 alias: 数据库工作台
-description: 企业级数据可视化 — 从数据库表生成看板和大屏。支持 3 套看板模板（KPI 总览/趋势分析/数据画像）和 3 套大屏模板（指挥中心/商业智能/系统监控）。工具内部执行 SQL 并返回完整 HTML 页面，可直接保存并在浏览器打开。基础数据库操作由 dbx MCP 提供。
-version: 0.0.84
+description: 企业级数据库工作台 — 连接 PostgreSQL/MySQL/SQLite/ClickHouse 等 60+ 数据库，SQL 编辑器 + 结果网格 + AI 可视化（看板/大屏）。
+version: 0.0.107
 ---
 
 # 数据库工作台 — dbx-pro
 
-通过 dbx-pro 数据库工作台实现企业级数据可视化。基础数据库操作由 dbx MCP 提供，本技能专注高阶可视化能力。
+企业级数据库连接管理 + SQL 编辑器 + AI 驱动的可视化生成。
 
 ## 核心能力
 
-### 1. 企业看板（dbx_dashboard）
+### 1. 数据库操作（dbx MCP 提供）
 
-根据数据库表生成企业级看板，预设 3 套模板：
+| 工具 | 说明 |
+|------|------|
+| `dbx_execute_query` | 执行 SQL 查询 |
+| `dbx_describe_table` | 查看表结构（列/类型/主键） |
+| `dbx_list_tables` | 列出连接下的表 |
+| `dbx_list_connections` | 列出已配置的连接 |
 
-**kpi_overview — KPI 总览**
-- 核心指标卡片（总数/近7天新增）
-- 趋势图（近30天）
-- TOP 10 分布
-- 最新数据表
+### 2. 可视化生成（dbx-pro 插件工具 + 宿主 chart-renderer）
 
-**trend_analysis — 趋势分析**
-- 日趋势/周趋势/月趋势
-- 多维度时间序列
+看板/大屏生成采用**两阶段工作流**：
 
-**data_profile — 数据画像**
-- 总行数统计
-- 样本数据预览
+#### 阶段 1：试草图（宿主 render_chart）
 
-### 2. 数据大屏（dbx_screen）
+宿主 chart-renderer 工具 `render_chart`：
+- 输入：Chart.js 格式 `{ type, data: {labels, datasets}, options?, title?, height? }`
+- 输出：对话气泡里 inline 显示 ChartCard（最多 4 图/次）
+- 用途：Agent 快速试错，迭代图表类型和数据格式
 
-根据数据库表生成全屏可视化大屏，预设 3 套模板：
+#### 阶段 2：打包成页（插件 dbx_chart_collection）
 
-**data_command — 数据指挥中心**
-- 深色主题，适合投屏/会议室
-- 核心指标 + 趋势 + 实时滚动
+dbx-pro 插件工具 `dbx_chart_collection`：
+- 输入：`charts: ChartItem[]`（最多 12 个）+ `title` + `type: "dashboard"|"screen"` + 可选 `layout`
+- 输出：完整 HTML 页面（Chart.js CDN + 自动 Grid 布局 + 主题）
+  - `type=dashboard` → 浅色 QuickBI 风格
+  - `type=screen` → 深色 DataV 风格 + 入场动画
+- 自动持久化到插件 store + 打开 iframe 预览 tab
 
-**business_intel — 商业智能大屏**
-- 多维度业务分析
-- 月度对比 + TOP 10 + 趋势
+### 3. 聚合 SQL 最佳实践
 
-**monitoring — 系统监控大屏**
-- 系统健康度
-- 小时分布 + 最近事件
+引擎单次查询硬上限 1000 行，**明细查询会被截断**。必须写聚合 SQL：
 
-## 工具输出
+```sql
+✅ 正确（聚合查询，天然少行不截断）：
+SELECT category, SUM(amount) AS total FROM orders GROUP BY category;
+SELECT DATE_TRUNC('month', created_at) AS month, COUNT(*) AS cnt FROM orders GROUP BY month;
+SELECT status, COUNT(*) AS cnt FROM orders GROUP BY status;
 
-工具内部执行 SQL 查询，返回完整 HTML 页面（包含数据和样式）。AI 需要：
-
-1. 调用 `dbx_dashboard` 或 `dbx_screen` 获取 HTML 内容
-2. 将 HTML 保存到临时文件（如 `/tmp/dashboard.html`）
-3. 使用 `shell.openExternal` 在浏览器中打开
-
-## 工作流程
-
-### 从连接树生成可视化
-
-1. **用户在连接树选择表** — 单选或多选
-2. **发送到 AI 对话框** — 右键 → "可视化" → "生成企业看板/数据大屏"
-3. **AI 调用工具** — 使用 `dbx_dashboard` 或 `dbx_screen`
-4. **工具执行查询** — 内部通过引擎执行 SQL 获取数据
-5. **返回 HTML** — 工具返回完整的 HTML 页面
-6. **保存并打开** — AI 保存 HTML 文件并在浏览器打开
-
-### 自然语言生成可视化
-
-当用户说"帮我生成一个销售数据看板"时：
-
-1. **确认数据源** — 询问使用哪个连接和表
-2. **调用工具** — `dbx_dashboard(connection_name="mydb", tables=["sales"], template="kpi_overview")`
-3. **保存 HTML** — 将返回的 html 字段写入文件
-4. **打开浏览器** — 使用 `shell.openExternal` 打开文件
-
-## 工具调用示例
-
-### 生成 KPI 看板
-
-```
-用户：帮我看看 orders 表的核心指标
-AI：
-1. 调用 dbx_dashboard(connection_name="mydb", tables=["orders"], template="kpi_overview", date_column="order_date")
-2. 将返回的 html 保存到 /tmp/dashboard.html
-3. 使用 shell.openExternal 打开文件
+❌ 错误（明细查询，只返回前 1000 行）：
+SELECT * FROM orders;
+SELECT * FROM orders LIMIT 1000;
 ```
 
-### 生成数据大屏
+### 4. 完整工作流示例
+
+用户："帮我看看各渠道月度销售趋势，生成一个看板"
 
 ```
-用户：把 sales 表做成大屏展示
-AI：
-1. 调用 dbx_screen(connection_name="mydb", tables=["sales"], template="data_command", date_column="sale_date")
-2. 将返回的 html 保存到 /tmp/screen.html
-3. 使用 shell.openExternal 打开文件
+Agent 工作流：
+1. dbx_describe_table(connection="prod", table="orders")  → 了解列结构
+2. dbx_execute_query("SELECT DATE_TRUNC('month', created_at) AS month, channel, SUM(amount) AS total FROM orders WHERE created_at BETWEEN '2025-01-01' AND '2025-12-31' GROUP BY month, channel ORDER BY month")
+3. render_chart({ type: "line", data: {labels: [...], datasets: [...]}, title: "月度销售趋势" })
+   → ChartCard 出现在对话气泡 ✅
+4. render_chart({ type: "bar", data: {...}, title: "渠道分布" })
+   → 又一个 ChartCard ✅
+5. （可多次调 render_chart，每次最多 4 图）
+6. dbx_chart_collection({
+     charts: [chart1, chart2, chart3, chart4],
+     type: "dashboard",
+     title: "2025 销售看板"
+   })
+   → 插件自动生成 HTML → 持久化 → iframe 预览 tab 打开 ✅
 ```
 
-## 与 dbx MCP 的协作
+## Chart.js 图表类型
 
-本技能依赖 dbx MCP 提供的基础能力：
+宿主 render_chart 和 dbx_chart_collection 均支持 8 种 Chart.js 类型：
 
-| 能力 | 工具 | 说明 |
-|------|------|------|
-| 执行 SQL | `dbx_execute_query` | 基础查询（工具内部已使用） |
-| 列出表 | `dbx_list_tables` | 获取连接下的表列表 |
-| 查看结构 | `dbx_describe_table` | 获取表的列定义（工具内部已使用） |
+| type | 用途 | 典型场景 |
+|------|------|----------|
+| `line` | 折线图 | 趋势、时间序列 |
+| `bar` | 柱状图 | 分类分布、排名 |
+| `pie` | 饼图 | 占比、份额 |
+| `doughnut` | 环形图 | 占比（带中心文字） |
+| `polarArea` | 极区图 | 多维度雷达 |
+| `radar` | 雷达图 | 多指标对比 |
+| `scatter` | 散点图 | 两变量相关性 |
+| `bubble` | 气泡图 | 三变量（x/y/radius）|
 
-本技能提供的高阶能力：
+## 与 v0.0.102 的架构区别（重要）
 
-| 能力 | 工具 | 说明 |
-|------|------|------|
-| 企业看板 | `dbx_dashboard` | 内部执行 SQL，返回完整 HTML 看板 |
-| 数据大屏 | `dbx_screen` | 内部执行 SQL，返回完整 HTML 大屏 |
+**本技能已重构**，不再使用旧的模板系统（dbx_dashboard / dbx_screen 工具 + 内联 SQL 模板 + Canvas 规则引擎）。新架构：
+
+| 维度 | 旧架构（已删） | 新架构（当前） |
+|------|---------------|---------------|
+| SQL 执行 | 插件内部执行 | **宿主 Agent 自己写 + dbx MCP** |
+| 图表渲染 | 插件 Canvas + recharts | **宿主 Chart.js（chart-renderer）+ 插件打包 HTML** |
+| 模板 | 6 套预设模板 | **无模板 — 全由 Agent 自行编排** |
+| 持久化 | 插件 store | **插件 store（不变）** |
+| 二次编辑 | Canvas 规则引擎 | **chartItems 暴露给 Agent 重跑** |
 
 ## 安全准则
 
-- **只读优先** — 看板/大屏只生成 SELECT 查询
-- **结果限制** — 每个查询默认限制 1000 行
-- **敏感信息** — 不在可视化中暴露密码、连接字符串等
-
-## 输出格式
-
-- **看板** — 响应式网格布局，KPI 卡片 + 图表 + 表格，浅色/深色主题
-- **大屏** — 全屏深色主题，数字统计 + 动态图表 + 滚动表格，带动画效果
+- **只读优先** — 看板/大屏生成只读，不产生写操作
+- **聚合查询** — 必须 GROUP BY，避免明细行截断
+- **结果上限** — 单次查询 1000 行上限，聚合查询通常远小于此
+- **敏感信息** — SQL 中不暴露密码、连接字符串
