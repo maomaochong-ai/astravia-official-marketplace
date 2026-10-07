@@ -370,8 +370,8 @@ export function SqlEditor(): JSX.Element {
 
 	return (
 		<div data-dbx-theme={theme} className="dbx-sql-theme flex min-h-0 flex-1 flex-col bg-background">
-			{/* 工具栏 */}
-			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-1 px-2">
+			{/* 工具栏 —— flex-nowrap + overflow-x-auto：宽度不够时横向滚动，不挤压按钮 */}
+			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-1 overflow-x-auto whitespace-nowrap px-2">
 				{/* Execute / Stop toggle */}
 				<button
 					type="button"

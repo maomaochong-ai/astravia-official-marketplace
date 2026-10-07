@@ -1138,7 +1138,7 @@ export function ResultGrid({
 			{/* 分页栏（固定底部，不随网格滚动）；上分割线用 .dbx-pagination，
 			    与侧边栏竖线及桌面壳分割线对齐。
 			    布局：左侧元信息 min-w-0 可截断，右侧操作区 shrink-0 永不被遮挡。 */}
-			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 px-3 text-[11px] text-muted-foreground whitespace-nowrap overflow-hidden">
+			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap px-3 text-[11px] text-muted-foreground">
 				{/* 左侧：元信息（行数 + 执行时间 + 影响行数） */}
 				<div className="flex min-w-0 flex-1 items-center gap-2">
 					{isServer ? (

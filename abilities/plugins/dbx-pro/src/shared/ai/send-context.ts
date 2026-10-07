@@ -131,6 +131,39 @@ export function buildResultVizPrompt(
 		"  - 两变量相关性 → scatter",
 		"  - 大屏核心指标 → bar 配合单值聚合 + 大字号标题",
 		"  - 分类太多（> 8）→ horizontal bar + LIMIT 20",
+		"",
+		`⚠️ 数据范围：当前预览只展示分页的当前页，但 SQL 完整结果有 ${rowCount} 行。`,
+		"请用 dbx_query_full 工具执行原始 SQL 拿完整数据集——它自动分页拼页，绕过 1000 行截断。",
+		"不要用当前预览的少量行直接生成图表——数据量不够，统计会失真。",
+	].join("\n");
+}
+
+/** 通用 AI 分析 prompt —— "AI 分析结果" dropdown 菜单的分析项用。 */
+export function buildResultAnalysisPrompt(
+	connectionName: string,
+	sql: string,
+	columns: string[],
+	fullRowCount: number,
+	previewRowCount: number,
+): string {
+	return [
+		`我在连接 @\`${connectionName}\` 上执行了一条 SQL，完整结果有 ${fullRowCount} 行 ${columns.length} 列。`,
+		`当前预览只展示分页的前 ${previewRowCount} 行，但请基于完整数据集分析。`,
+		"",
+		"SQL：",
+		"```sql",
+		sql,
+		"```",
+		"",
+		"请帮我分析这个数据集。你可以：",
+		"1. 描述数据特征（分布、异常值、趋势）",
+		"2. 发现业务洞察（Top N 排名、季节性、相关性）",
+		"3. 建议进一步的聚合维度和可视化方式",
+		"4. 回答我后续的追问",
+		"",
+		"⚠️ 数据范围：请先用 dbx_query_full 工具执行这条 SQL 拿完整数据集（自动分页拼页，绕过 1000 行截断），",
+		"不要只看当前预览的少量行。",
+		"⚠️ 如果 SQL 返回的是明细行（大量原始记录），请写聚合 SQL（GROUP BY + SUM/COUNT/AVG）再分析。",
 	].join("\n");
 }
 

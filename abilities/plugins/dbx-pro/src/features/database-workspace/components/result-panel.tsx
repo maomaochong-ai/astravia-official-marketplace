@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, type JSX } from "react";
 import { ResultGrid } from "./result-grid";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 import { useWorkbench } from "../hooks/use-workbench";
-import { buildResultVizPrompt } from "../../../shared/ai/send-context";
+import { buildResultVizPrompt, buildResultAnalysisPrompt } from "../../../shared/ai/send-context";
 
 export function ResultPanel(): JSX.Element {
 	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount, runTabSql } = useWorkbench();
@@ -18,19 +18,42 @@ export function ResultPanel(): JSX.Element {
 	const [elapsed, setElapsed] = useState(0);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const [vizDialog, setVizDialog] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: "" });
+	const [analysisDialog, setAnalysisDialog] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: "" });
+	const [aiMenuOpen, setAiMenuOpen] = useState(false);
 
-	/** "AI 可视化：看板/大屏" —— 构造 prompt 调宿主 AI，让它用 dbx_query_full → render_chart → dbx_chart_collection 生成 */
+	/** 完整结果行数：优先 rowCount（完整查询返回），次选 totalCount（数据库统计），最后退回当前页行数。
+	 *  —— 不要传 result.rows.length（只是分页当前页，默认 50 行）。 */
+	const fullRowCount = result?.rowCount
+		?? (result?.totalCount ?? 0)
+		?? result?.rows.length
+		?? 0;
+
+	/** "AI 可视化：看板/大屏" —— 构造 prompt 调宿主 AI。 */
 	function openVizDialog(intent: "dashboard" | "screen"): void {
 		if (!result?.ok || !activeTab?.connectionName) return;
-		const columns = result.columns; // string[] — DbQueryResult.columns 已经是列名数组
 		const prompt = buildResultVizPrompt(
 			activeTab.connectionName,
 			activeTab.sql ?? "",
 			intent,
-			columns,
-			result.rows.length,
+			result.columns,
+			fullRowCount,
 		);
 		setVizDialog({ open: true, prompt });
+		setAiMenuOpen(false);
+	}
+
+	/** "AI 分析结果" —— 通用数据分析 prompt。 */
+	function openAnalysisDialog(): void {
+		if (!result?.ok || !activeTab?.connectionName) return;
+		const prompt = buildResultAnalysisPrompt(
+			activeTab.connectionName,
+			activeTab.sql ?? "",
+			result.columns,
+			fullRowCount,
+			result.rows.length,
+		);
+		setAnalysisDialog({ open: true, prompt });
+		setAiMenuOpen(false);
 	}
 
 	useEffect(() => {
@@ -68,26 +91,57 @@ export function ResultPanel(): JSX.Element {
 				) : result ? (
 					result.ok ? (
 						<>
-							{/* Canvas 入口 — ADR-0005 §5.1：从 SQL 结果集直接生成可视化 */}
+							{/* AI 分析 dropdown —— 收敛看板/大屏/通用分析到一个菜单 */}
 							{result.rows.length > 0 && activeTab?.connectionName && (
-								<div className="flex items-center gap-2 border-b border-[var(--dbx-surface-2)] bg-background/50 px-3 py-1.5">
-									<span className="text-[11px] text-muted-foreground/60">AI 可视化：</span>
+								<div className="relative border-b border-[var(--dbx-surface-2)] bg-background/50 px-3 py-1.5">
 									<button
 										type="button"
-										onClick={() => openVizDialog("dashboard")}
+										onClick={() => setAiMenuOpen((v) => !v)}
 										className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-violet-600 hover:bg-violet-500/10"
-										title="用 QuickBI 浅色调生成看板"
+										title="AI 分析当前 SQL 结果集"
 									>
-										<span className="icon-[lucide--layout-dashboard] h-3 w-3" /> 看板
+										<span className="icon-[lucide--sparkles] h-3 w-3" />
+										AI 分析
+										<span className={`icon-[lucide--chevron-down] h-3 w-3 transition-transform ${aiMenuOpen ? "rotate-180" : ""}`} />
 									</button>
-									<button
-										type="button"
-										onClick={() => openVizDialog("screen")}
-										className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-cyan-600 hover:bg-cyan-500/10 dark:text-cyan-400 dark:hover:bg-cyan-500/15"
-										title="用 DataV 深色调生成大屏"
-									>
-										<span className="icon-[lucide--monitor] h-3 w-3" /> 大屏
-									</button>
+									{aiMenuOpen && (
+										<>
+											{/* 点击外部关闭 */}
+											<div className="fixed inset-0 z-40" onClick={() => setAiMenuOpen(false)} />
+											<div
+												className="absolute left-3 top-full z-50 mt-1 w-48 rounded-md border border-border bg-popover p-1 shadow-lg"
+											>
+											<button
+												type="button"
+												onClick={openAnalysisDialog}
+												className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] hover:bg-violet-500/10"
+											>
+												<span className="icon-[lucide--sparkles] h-3.5 w-3.5 text-violet-500" />
+												<span className="flex-1">通用分析</span>
+												<span className="text-[9px] text-muted-foreground">{fullRowCount.toLocaleString()} 行</span>
+											</button>
+											<div className="my-1 h-px bg-border/60" />
+											<button
+												type="button"
+												onClick={() => openVizDialog("dashboard")}
+												className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] hover:bg-violet-500/10"
+											>
+												<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5 text-violet-500" />
+												<span className="flex-1">生成看板</span>
+												<span className="text-[9px] text-muted-foreground">浅色 QuickBI</span>
+											</button>
+											<button
+												type="button"
+												onClick={() => openVizDialog("screen")}
+												className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] hover:bg-cyan-500/10"
+											>
+												<span className="icon-[lucide--monitor] h-3.5 w-3.5 text-cyan-500" />
+												<span className="flex-1">生成大屏</span>
+												<span className="text-[9px] text-muted-foreground">深色 DataV</span>
+											</button>
+											</div>
+										</>
+									)}
 								</div>
 							)}
 						<ResultGrid
@@ -181,6 +235,12 @@ export function ResultPanel(): JSX.Element {
 				open={vizDialog.open}
 				prompt={vizDialog.prompt}
 				onClose={() => setVizDialog((v) => ({ ...v, open: false }))}
+			/>
+			{/* "AI 分析结果" prompt 发送对话框 */}
+			<SendToAiDialog
+				open={analysisDialog.open}
+				prompt={analysisDialog.prompt}
+				onClose={() => setAnalysisDialog((v) => ({ ...v, open: false }))}
 			/>
 		</div>
 	);
