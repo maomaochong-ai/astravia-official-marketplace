@@ -3573,7 +3573,7 @@
       "slug": "openmetadata",
       "name": "OpenMetadata Data Catalog",
       "description": "Connect to any OpenMetadata data catalog instance. Browse tables, dashboards, pipelines and glossary terms; explore column-level lineage graphs; view data quality test case status and recent run results. Exposes 14 MCP tools (search, semantic search, entity details, lineage, user context, test cases, governance entities) for the AI agent to consume.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -3653,10 +3653,32 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-openmetadata/openmetadata-0.1.1.astraviapkg",
             "sha256": "af1baf41c358775264e370e2aa5e9aed63c7f2643bcc238f2da033743d6b7853"
           }
+        },
+        {
+          "version": "0.1.2",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "storage.read",
+            "storage.write",
+            "network.fetch",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-openmetadata/openmetadata-0.1.2.astraviapkg",
+            "sha256": "c0349c4ce03084d09ccac6837dccd1bb132be4ebc539dbc6372555a13417c47e"
+          }
         }
       ]
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.07-23"
+  "marketplaceVersion": "2026.10.07-24"
 }
