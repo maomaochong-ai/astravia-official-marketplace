@@ -1,4 +1,5 @@
 // Chart.js defaults —— 看板浅 QuickBI 风（注入 iframe <script>）
+// Chart.js v4 正确 API：Chart.defaults.scale（没有 s），不是 Chart.defaults.scales.linear（有 s，是具体类型）
 (function(){
   // ── 元素默认值 ──
   Chart.defaults.elements.bar.borderWidth = 0;
@@ -13,25 +14,25 @@
   Chart.defaults.elements.point.hoverRadius = 4;
   Chart.defaults.elements.point.borderWidth = 0;
 
-  // ── scales 默认值（覆盖所有 scale 类型）──
+  // ── 全局 scale 默认值（Chart.js v4：scale 没有 s）──
+  // linear / category / logarithmic 等类型默认没有挂 grid/border/ticks，
+  // 它们都从 Chart.defaults.scale（全局）继承。radialLinear 自己有完整配置（除了 border），单独设。
   var gridColor = 'rgba(156,163,175,0.25)';
   var tickColor = '#6b7280';
-  Chart.defaults.scales.linear.grid.color = gridColor;
-  Chart.defaults.scales.linear.border.display = false;
-  Chart.defaults.scales.linear.ticks.color = tickColor;
-  Chart.defaults.scales.linear.ticks.padding = 4;
-  Chart.defaults.scales.category.grid.color = gridColor;
-  Chart.defaults.scales.category.border.display = false;
-  Chart.defaults.scales.category.ticks.color = tickColor;
-  Chart.defaults.scales.category.ticks.padding = 4;
-  Chart.defaults.scales.logarithmic.grid.color = gridColor;
-  Chart.defaults.scales.logarithmic.border.display = false;
-  Chart.defaults.scales.logarithmic.ticks.color = tickColor;
-  Chart.defaults.scales.radialLinear.grid.color = gridColor;
-  Chart.defaults.scales.radialLinear.border.display = false;
-  Chart.defaults.scales.radialLinear.ticks.color = tickColor;
-  Chart.defaults.scales.radialLinear.angleLines.color = gridColor;
-  Chart.defaults.scales.radialLinear.pointLabels.color = tickColor;
+  Chart.defaults.scale.grid.color = gridColor;
+  if (Chart.defaults.scale.border) Chart.defaults.scale.border.display = false;
+  Chart.defaults.scale.ticks.color = tickColor;
+  Chart.defaults.scale.ticks.padding = 4;
+
+  // radialLinear（雷达/极坐标）自己有完整配置，不走全局 scale 继承
+  if (Chart.defaults.scales && Chart.defaults.scales.radialLinear) {
+    var rl = Chart.defaults.scales.radialLinear;
+    if (rl.grid) rl.grid.color = gridColor;
+    if (rl.border) rl.border.display = false;
+    if (rl.ticks) rl.ticks.color = tickColor;
+    if (rl.angleLines) rl.angleLines.color = gridColor;
+    if (rl.pointLabels) rl.pointLabels.color = tickColor;
+  }
 
   // ── 全局默认 plugins（深度 merge 由 __dbxMergeOpts 做）──
   window.__dbxDefaultChartOptions = {
