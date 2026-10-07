@@ -1,0 +1,15 @@
+{
+  "plugin.title": "OpenMetadata",
+  "plugin.description": "Data Catalog & Metadata Platform Integration",
+  "connection.config": "Connection Settings",
+  "connection.test": "Test Connection",
+  "connection.url": "Server URL",
+  "connection.token": "API Token",
+  "connection.name": "Connection Name",
+  "metadata.search": "Search Metadata",
+  "metadata.keyword": "Keyword Search",
+  "metadata.semantic": "Semantic Search",
+  "lineage.view": "Lineage Graph",
+  "quality.overview": "Data Quality Overview",
+  "agent.atTag": "@om Metadata Reference"
+}

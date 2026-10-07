@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* 宿主主题变量映射 — 让 Tailwind 工具类正确读取宿主 CSS 变量 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-accent: var(--accent);
+}
+
+/* 插件根容器隔离 — contain 属性阻断宿主 CSS 泄漏 */
+.om-root {
+  contain: layout style paint;
+}
