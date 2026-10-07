@@ -12,6 +12,18 @@
 import { useState, useMemo, useRef, type JSX } from "react";
 import { useVisualizationStore, type StoredVisualization } from "../visualization-store";
 
+/** Chart.js type → lucide icon。用于卡片网格占位（轻量缩略图，不加载 iframe）。 */
+const CHART_ICON_MAP: Record<string, string> = {
+	line: "chart-line",
+	bar: "bar-chart-3",
+	pie: "pie-chart",
+	doughnut: "donut",
+	polarArea: "radar",
+	radar: "radar",
+	scatter: "scatter-chart",
+	bubble: "circle",
+};
+
 interface Props {
 	onPreview: (viz: StoredVisualization) => void;
 	onEditWithAi: (viz: StoredVisualization) => void;
@@ -49,21 +61,18 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 	}, [visualizations, searchQuery, filterType]);
 
 	const handleDownload = (viz: StoredVisualization): void => {
-		const blob = new Blob([viz.html], { type: "text/html;charset=utf-8" });
-		const url = URL.createObjectURL(blob);
+		const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(viz.html);
 		const a = document.createElement("a");
-		a.href = url;
+		a.href = dataUrl;
 		a.download = `${viz.title.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, "_")}.html`;
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
-		URL.revokeObjectURL(url);
 	};
 
 	const handleOpenInNewTab = (viz: StoredVisualization): void => {
-		const blob = new Blob([viz.html], { type: "text/html;charset=utf-8" });
-		const url = URL.createObjectURL(blob);
-		window.open(url, "_blank");
+		const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(viz.html);
+		window.open(dataUrl, "_blank", "noopener,noreferrer");
 	};
 
 	return (
@@ -71,7 +80,10 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 			{/* 顶部工具栏 */}
 			<div className="flex items-center justify-between border-b border-border px-4 py-3">
 				<div className="flex items-center gap-3">
-					<h2 className="text-sm font-semibold text-foreground">可视化产物</h2>
+					<h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+						<span className="icon-[lucide--chart-bar] h-4 w-4 text-violet-500" />
+						BI 数据资产
+					</h2>
 					<span className="text-xs text-muted-foreground">
 						共 {visualizations.length} 个
 					</span>
@@ -192,26 +204,56 @@ function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditW
 	const typeIcon = viz.type === "dashboard" ? "icon-[lucide--layout-dashboard]" : "icon-[lucide--monitor]";
 	const typeLabel = viz.type === "dashboard" ? "看板" : "大屏";
 	const timeAgo = getTimeAgo(viz.createdAt);
+	const chartCount = viz.chartItems?.length ?? 0;
 
 	return (
 		<div className="group relative overflow-hidden rounded-lg border border-border bg-[var(--dbx-surface)] transition-all hover:border-primary/50 hover:shadow-md">
-			{/* 预览区域 */}
+			{/* 预览区域：图表类型网格占位 —— 轻量（无 iframe） */}
 			<button
 				type="button"
 				onClick={onPreview}
-				className="relative block aspect-video w-full overflow-hidden bg-[var(--dbx-surface-2)]"
+				className={`relative block aspect-video w-full overflow-hidden transition-colors ${
+					viz.type === "screen"
+						? "bg-gradient-to-br from-cyan-500/10 via-slate-900/20 to-slate-900/40 hover:from-cyan-500/20 hover:via-slate-900/30 hover:to-slate-900/50"
+						: "bg-gradient-to-br from-primary/10 via-violet-500/5 to-transparent hover:from-primary/20 hover:via-violet-500/10"
+				}`}
 			>
-				<iframe
-					srcDoc={viz.html}
-					className="h-full w-full border-0 pointer-events-none"
-					title={viz.title}
-					sandbox="allow-scripts"
-				/>
-				<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-				<div className="absolute bottom-2 left-2 right-2 flex items-center justify-between opacity-0 transition-opacity group-hover:opacity-100">
-					<span className="rounded bg-black/60 px-2 py-1 text-xs text-white backdrop-blur-sm">
-						点击预览
+				{chartCount > 0 ? (
+					<div
+						className="absolute inset-0 grid gap-1.5 p-3"
+						style={{
+							gridTemplateColumns: chartCount <= 2 ? "1fr" : chartCount <= 4 ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
+						}}
+					>
+						{viz.chartItems!.slice(0, Math.min(chartCount, 9)).map((chart, i) => {
+							const icon = CHART_ICON_MAP[chart.type] ?? "chart-line";
+							return (
+								<div
+									key={i}
+									className="flex flex-col items-center justify-center gap-0.5 rounded border border-border/50 bg-background/70 text-muted-foreground backdrop-blur-sm"
+								>
+									<span className={`icon-[lucide--${icon}] h-4 w-4 ${viz.type === "screen" ? "text-cyan-400" : "text-violet-500"}`} />
+									<span className="text-[9px] leading-none text-muted-foreground/80">{chart.type}</span>
+								</div>
+							);
+						})}
+					</div>
+				) : (
+					<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground/60">
+						<span className={`${typeIcon} h-10 w-10 ${viz.type === "screen" ? "text-cyan-500" : "text-violet-500"}`} />
+						<span className="text-xs">{typeLabel}</span>
+					</div>
+				)}
+				{/* hover 操作蒙层 */}
+				<div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+					<span className="ml-auto mr-2 mt-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
+						{chartCount} 图
 					</span>
+					<div className="flex items-center justify-between p-2">
+						<span className="rounded bg-black/60 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
+							点击查看 →
+						</span>
+					</div>
 				</div>
 			</button>
 

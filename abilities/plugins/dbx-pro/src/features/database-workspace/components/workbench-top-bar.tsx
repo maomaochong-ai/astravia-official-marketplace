@@ -148,10 +148,10 @@ export function WorkbenchTopBar({
 				<button
 					type="button"
 					onClick={onOpenVisualizationGallery}
-					title="可视化产物（看板/大屏）"
+					title="BI 数据资产（看板/大屏）"
 					className="dbx-iconbtn"
 				>
-					<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5" />
+					<span className="icon-[lucide--chart-bar] h-3.5 w-3.5" />
 					{visualizationCount > 0 && <span className="ml-0.5 text-[10px]">{visualizationCount}</span>}
 				</button>
 				<button
