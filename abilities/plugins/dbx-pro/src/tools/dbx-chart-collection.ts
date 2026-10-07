@@ -32,19 +32,10 @@ export interface DbxChartCollectionInput {
 	layout?: "auto" | "grid-2" | "grid-3" | "grid-4";
 }
 
-/** Chart.js CDN 注册码（inline 在 HTML 里，避免外链依赖） */
-const CHARTJS_REGISTRATION = `
-ChartJS.register(
-  ChartjsArcElement, ChartjsBarElement, ChartjsCategoryScale, ChartjsFiller,
-  ChartjsLegend, ChartjsLinearScale, ChartjsLineElement, ChartjsPointElement,
-  ChartjsRadialLinearScale, ChartjsTooltip
-);`;
+/** Chart.js CDN（UMD 自注册，无需额外 register） */
+const CHARTJS_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
 
-const CHARTJS_IMPORTS = [
-	"https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
-];
-
-/** 图表类型 → 渲染组件映射（Chart.js 原生类名） */
+/** 图表类型 → Chart.js 原生类名映射 */
 const CHART_TYPE_MAP: Record<ChartType, string> = {
 	line: "Line",
 	bar: "Bar",
@@ -93,33 +84,7 @@ function generateHtml(input: DbxChartCollectionInput): string {
 	const textFg = isScreen ? "#e2e8f0" : "#1e293b";
 	const textMuted = isScreen ? "#94a3b8" : "#64748b";
 
-	// 生成每个图表的 HTML + JS
-	const chartItems = charts.map((chart, i) => {
-		const id = `chart-${i}`;
-		const chartClass = CHART_TYPE_MAP[chart.type] ?? "Bar";
-		const height = chart.height ?? (isScreen ? 280 : 250);
-
-		return {
-			html: `
-<div class="chart-card">
-  <h3>${chart.title ?? `图表 ${i + 1}`}</h3>
-  ${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}
-  <div style="height: ${height}px;"><canvas id="${id}"></canvas></div>
-</div>`,
-			js: `
-new ChartJS.${chartClass}(document.getElementById('${id}'), {
-  type: '${chart.type}',
-  data: ${JSON.stringify(chart.data)},
-  options: ${JSON.stringify({
-	responsive: true,
-	maintainAspectRatio: false,
-	plugins: { legend: { display: true, position: "bottom" }, tooltip: { enabled: true } },
-	...chart.options,
-  })}
-});`,
-		};
-	}).join("\n");
-
+	// 生成每个图表的 HTML + JS（单一来源，避免重复）
 	const chartJsBlocks = charts.map((chart, i) => {
 		const id = `chart-${i}`;
 		const chartClass = CHART_TYPE_MAP[chart.type] ?? "Bar";
@@ -136,7 +101,7 @@ new ChartJS.${chartClass}(document.getElementById('${id}'), {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title}</title>
-<script src="${CHARTJS_IMPORTS[0]}"></script>
+<script src="${CHARTJS_CDN}"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;${bgGradient}color:${textFg};min-height:100vh;padding:clamp(16px,3vw,32px);}

@@ -88,7 +88,7 @@ export function buildQueryPrompt(connectionName: string, sql: string, _sampleRow
 	].join("\n");
 }
 
-/** 构造看板生成 prompt（从选中的表生成企业看板）。 */
+/** 构造看板生成 prompt（v0.0.103：引导宿主 Agent 自己编排图表 → dbx_chart_collection）。 */
 export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 	const tables = nodes.filter((n) => n.kind === "table");
 	if (tables.length === 0) return "请先选择要生成看板的表。";
@@ -109,13 +109,24 @@ export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 	}
 	lines.push(
 		"",
-		"请先查看表结构，了解列名和数据类型，然后使用 dbx_dashboard 工具生成看板。",
-		"根据数据特征推荐合适的模板（kpi_overview / trend_analysis / data_profile）。",
+		"工作流：",
+		"1. 先查看表结构，了解列名和数据类型",
+		"2. 自己写 SQL 查询，把数据整理成适合可视化的格式",
+		"3. 用 render_chart 工具生成多个 Chart.js 图表（每个图表包含 type + data: {labels, datasets}）",
+		"4. 最后用 dbx_chart_collection 工具把这些图表打包成完整看板页面（type=dashboard）",
+		"",
+		"dbx_chart_collection 输入格式：",
+		"  - charts: 数组，每个元素 { type: 'line'|'bar'|'pie'|..., data: {labels, datasets}, title? }",
+		"  - title: 页面标题",
+		"  - type: 'dashboard'（浅色 QuickBI 风格）",
+		"  - 最多 12 个图表，自动 Grid 布局",
+		"",
+		"建议搭配 KPI 指标卡 + 1-2 个趋势图 + 1 个分布图，形成均衡的看板布局。",
 	);
 	return lines.join("\n");
 }
 
-/** 构造大屏生成 prompt（从选中的表生成数据大屏）。 */
+/** 构造大屏生成 prompt（v0.0.103：引导宿主 Agent 自己编排图表 → dbx_chart_collection）。 */
 export function buildScreenPrompt(nodes: SelectedNodeInfo[]): string {
 	const tables = nodes.filter((n) => n.kind === "table");
 	if (tables.length === 0) return "请先选择要生成大屏的表。";
@@ -136,9 +147,14 @@ export function buildScreenPrompt(nodes: SelectedNodeInfo[]): string {
 	}
 	lines.push(
 		"",
-		"请先查看表结构，了解列名和数据类型，然后使用 dbx_screen 工具生成大屏。",
-		"根据数据特征推荐合适的模板（data_command / business_intel / monitoring）。",
-		"大屏使用深色主题，适合投屏展示。",
+		"工作流：",
+		"1. 先查看表结构，了解列名和数据类型",
+		"2. 自己写 SQL 查询，把数据整理成适合大屏展示的格式",
+		"3. 用 render_chart 工具生成多个 Chart.js 图表",
+		"4. 最后用 dbx_chart_collection 工具把这些图表打包成完整大屏页面（type=screen）",
+		"",
+		"dbx_chart_collection 输入格式同上，只需把 type 改为 'screen'（深色 DataV 风格 + 入场动画）。",
+		"大屏建议 6-12 个图表，混合 KPI 数字 + 趋势折线 + 分布图 + 占比饼图，形成高密度数据墙。",
 	);
 	return lines.join("\n");
 }
