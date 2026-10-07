@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "openmetadata",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "icon": "solar:database-bold-duotone",
   "detail": {
     "format": "blocks",

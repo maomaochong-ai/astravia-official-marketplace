@@ -785,7 +785,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
-      "version": "0.1.8",
+      "version": "0.1.10",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -3535,6 +3535,36 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.1.8.astraviapkg",
             "sha256": "9aac0aaade31998c65146c052bc095d8bd43ec631b0f178b0b790a4576ad5321"
           }
+        },
+        {
+          "version": "0.1.10",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.skills.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.1.10.astraviapkg",
+            "sha256": "273e7db48322d4016085db4b71bff93c33dbb52eb4c57473a8e60cd3c59f5cb4"
+          }
         }
       ]
     },
@@ -3543,7 +3573,7 @@
       "slug": "openmetadata",
       "name": "OpenMetadata Data Catalog",
       "description": "Connect to any OpenMetadata data catalog instance. Browse tables, dashboards, pipelines and glossary terms; explore column-level lineage graphs; view data quality test case status and recent run results. Exposes 14 MCP tools (search, semantic search, entity details, lineage, user context, test cases, governance entities) for the AI agent to consume.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -3601,10 +3631,32 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-openmetadata/openmetadata-0.1.0.astraviapkg",
             "sha256": "86f229c74e7d1621ebe141da79e1c44968f28c5f2c5e28c758f230274b239735"
           }
+        },
+        {
+          "version": "0.1.1",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "storage.read",
+            "storage.write",
+            "network.fetch",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-openmetadata/openmetadata-0.1.1.astraviapkg",
+            "sha256": "af1baf41c358775264e370e2aa5e9aed63c7f2643bcc238f2da033743d6b7853"
+          }
         }
       ]
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.07-22"
+  "marketplaceVersion": "2026.10.07-23"
 }
