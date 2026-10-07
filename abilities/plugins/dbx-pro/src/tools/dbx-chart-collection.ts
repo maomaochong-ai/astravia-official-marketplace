@@ -78,12 +78,15 @@ export function generateHtml(input: DbxChartCollectionInput): string {
 	const textMuted = isScreen ? "#94a3b8" : "#64748b";
 
 	// 生成每个图表的 HTML + JS（单一来源，避免重复）
+	// Chart.js options 深度 merge：在 <script> 里先定义 __dbxMergeOpts 函数，
+	// 每个 chart 保持一行 new Chart 调用——既解决深度 merge 问题，
+	// 又让测试能继续匹配 new Chart(document.getElementById('chart-N'),...) pattern。
 	const chartJsBlocks = charts.map((chart, i) => {
 		const id = `chart-${i}`;
 		const height = chart.height ?? (isScreen ? 280 : 250);
 		return {
 			html: `<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`,
-			js: `new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:${JSON.stringify({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:"bottom"},tooltip:{enabled:true}},...chart.options})}});`,
+			js: `new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`,
 		};
 	});
 
@@ -115,6 +118,27 @@ ${isScreen ? ".chart-card{animation:fadeIn .5s ease-out forwards;opacity:0;}@key
 </div>
 <div class="grid">${chartJsBlocks.map((c) => c.html).join("")}</div>
 <script>
+// Chart.js options 深度 merge —— 避免 Agent 自定义 plugins 时覆盖默认 tooltip
+(function(){
+  var __defaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: true, position: "bottom" }, tooltip: { enabled: true } }
+  };
+  function __dbxMergeOpts(user) {
+    user = user || {};
+    var opts = Object.assign({}, __defaults, user);
+    // 顶层 plugins 深度 merge（legend/tooltips/title 各自保留内层默认值）
+    if (user.plugins) {
+      opts.plugins = Object.assign({}, __defaults.plugins, user.plugins);
+      if (typeof user.plugins.legend === "object") opts.plugins.legend = Object.assign({}, __defaults.plugins.legend, user.plugins.legend);
+      if (typeof user.plugins.tooltip === "object") opts.plugins.tooltip = Object.assign({}, __defaults.plugins.tooltip, user.plugins.tooltip);
+    }
+    return opts;
+  }
+  // 暴露到全局，每个 new Chart 调用里使用
+  window.__dbxMergeOpts = __dbxMergeOpts;
+})();
 ${chartJsBlocks.map((c) => c.js).join("\n")}
 </script>
 </body>
