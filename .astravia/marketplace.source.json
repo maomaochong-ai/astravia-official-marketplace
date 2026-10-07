@@ -640,9 +640,9 @@
     {
       "type": "plugin",
       "slug": "dbx-pro",
-  "name": "dbx-pro Database Workbench",
-  "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
-  "version": "0.1.8",
+      "name": "dbx-pro Database Workbench",
+      "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
+      "version": "0.1.8",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -677,6 +677,49 @@
       },
       "source": {
         "path": "abilities/plugins/dbx-pro"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "openmetadata",
+      "name": "OpenMetadata Data Catalog",
+      "description": "Connect to any OpenMetadata data catalog instance. Browse tables, dashboards, pipelines and glossary terms; explore column-level lineage graphs; view data quality test case status and recent run results. Exposes 14 MCP tools (search, semantic search, entity details, lineage, user context, test cases, governance entities) for the AI agent to consume.",
+      "version": "0.1.0",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia",
+      "category": "Data & Analytics",
+      "categoryI18n": {
+        "zh": "数据与分析",
+        "en": "Data & Analytics"
+      },
+      "tags": [
+        "openmetadata",
+        "data-catalog",
+        "metadata",
+        "lineage",
+        "data-quality",
+        "mcp"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "OpenMetadata 数据目录",
+            "description": "连接任意 OpenMetadata 数据目录实例。浏览表、仪表板、管线和 glossary 术语；探索列级血缘图谱；查看数据质量测试用例状态和最近运行结果。暴露 14 个 MCP 工具供 AI Agent 消费（搜索、语义搜索、实体详情、血缘、用户上下文、测试用例、治理实体）。",
+            "tags": [
+              "OpenMetadata",
+              "数据目录",
+              "元数据",
+              "血缘",
+              "数据质量",
+              "MCP"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/openmetadata"
       },
       "minAppVersion": "0.5.59"
     }
