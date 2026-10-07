@@ -2,7 +2,12 @@
  * dbx_chart_collection — 轻量看板/大屏生成工具。
  *
  * 接受 Chart.js charts[] 数组（与宿主 chart-renderer 的 ChartItem 格式兼容），
- * 自动 Grid 布局 + 主题样式（dashboard 浅 / screen 深 DataV），输出完整 HTML 页面。
+ * 自动 Grid 布局 + 主题样式（dashboard 浅 QuickBI / screen 深 DataV），输出完整 HTML 页面。
+ *
+ * 视觉规范对标宿主 ChartCard.tsx（open-astravia chart-renderer）：
+ *   - 宿主卡片：rounded-xl, border border-[color-mix(var(--border)_75%)], bg-[var(--background)], p-3, shadow-sm
+ *   - iframe 看板：用 Chart.js defaults 消除默认深色边框（borderWidth=0）
+ *   - iframe 独立 document 无法继承宿主的 ChartJS.defaults，必须在 <script> 里显式设置
  *
  * 与旧 dbx_dashboard / dbx_screen 的区别：
  *   - 不再执行 SQL（宿主 Agent 自己查数据）
@@ -56,7 +61,8 @@ export function generateHtml(input: DbxChartCollectionInput): string {
 	: charts.length <= 9 ? "grid-template-columns: repeat(3, 1fr);"
 	: "grid-template-columns: repeat(4, 1fr);";
 
-	// 主题样式
+	// 主题样式 —— 看板（dashboard）用浅 QuickBI 风，大屏（screen）用深 DataV 风
+	// 注意：iframe 无法继承宿主 CSS variables，所以看板/大屏用各自独立的内联 CSS 值
 	const bgGradient = isScreen
 		? "background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);"
 		: "background: #f8fafc;";
@@ -64,23 +70,22 @@ export function generateHtml(input: DbxChartCollectionInput): string {
 		? "background: rgba(255,255,255,0.04); backdrop-filter: blur(12px);"
 		: "background: #ffffff;";
 	const cardBorder = isScreen
-		? "border: 1px solid rgba(6,182,212,0.3);"
-		: "border: 1px solid #e2e8f0;";
+		? "border: 1px solid rgba(6,182,212,0.25);"
+		: "border: 1px solid #e5e7eb;";
 	const cardShadow = isScreen
-		? "box-shadow: 0 0 24px rgba(6,182,212,0.15);"
-		: "box-shadow: 0 1px 3px rgba(0,0,0,0.06);";
-	const titleColor = isScreen ? "#a5f3fc" : "#1e293b";
-	const subtitleColor = isScreen ? "#64748b" : "#64748b";
+		? "box-shadow: 0 0 24px rgba(6,182,212,0.12);"
+		: "box-shadow: 0 1px 3px rgba(0,0,0,0.04);";
+	const titleColor = isScreen ? "#a5f3fc" : "#111827";
+	const subtitleColor = isScreen ? "#64748b" : "#6b7280";
 	const accentGradient = isScreen
 		? "background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6);"
 		: "background: linear-gradient(90deg, #3b82f6, #8b5cf6);";
-	const textFg = isScreen ? "#e2e8f0" : "#1e293b";
-	const textMuted = isScreen ? "#94a3b8" : "#64748b";
+	const textFg = isScreen ? "#e2e8f0" : "#111827";
+	const textMuted = isScreen ? "#94a3b8" : "#6b7280";
+	const cardRadius = isScreen ? "4px" : "12px"; // dashboard 圆角对标宿主 ChartCard rounded-xl
 
-	// 生成每个图表的 HTML + JS（单一来源，避免重复）
-	// Chart.js options 深度 merge：在 <script> 里先定义 __dbxMergeOpts 函数，
-	// 每个 chart 保持一行 new Chart 调用——既解决深度 merge 问题，
-	// 又让测试能继续匹配 new Chart(document.getElementById('chart-N'),...) pattern。
+	// 生成每个图表的 HTML + JS
+	// Chart.js options 深度 merge：在 <script> 里先定义 __dbxMergeOpts 函数
 	const chartJsBlocks = charts.map((chart, i) => {
 		const id = `chart-${i}`;
 		const height = chart.height ?? (isScreen ? 280 : 250);
@@ -105,7 +110,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Micr
 .header p{font-size:clamp(12px,1.5vw,14px);color:${subtitleColor};}
 .grid{display:grid;${colClass}gap:clamp(12px,2vw,20px);max-width:${isScreen ? "1800px" : "1600px"};margin:0 auto;}
 @media(max-width:768px){.grid{grid-template-columns:1fr;}}
-.chart-card{${cardBg}${cardBorder}${cardShadow}border-radius:${isScreen ? "4px" : "12px"};padding:clamp(12px,2vw,20px);overflow:hidden;transition:transform .2s,box-shadow .2s;}
+.chart-card{${cardBg}${cardBorder}${cardShadow}border-radius:${cardRadius};padding:clamp(12px,2vw,20px);overflow:hidden;transition:transform .2s,box-shadow .2s;}
+.chart-card:hover{box-shadow:${isScreen ? "0 0 32px rgba(6,182,212,0.2)" : "0 4px 12px rgba(0,0,0,0.08)"};}
 ${isScreen ? ".chart-card{animation:fadeIn .5s ease-out forwards;opacity:0;}@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}.chart-card:nth-child(1){animation-delay:.1s}.chart-card:nth-child(2){animation-delay:.2s}.chart-card:nth-child(3){animation-delay:.3s}.chart-card:nth-child(4){animation-delay:.4s}.chart-card:nth-child(5){animation-delay:.5s}.chart-card:nth-child(6){animation-delay:.6s}" : ""}
 .chart-card h3{font-size:clamp(12px,1.5vw,14px);margin-bottom:8px;color:${isScreen ? "#a5f3fc" : titleColor};font-weight:600;letter-spacing:.3px;}
 .chart-desc{font-size:11px;color:${textMuted};margin-bottom:6px;}
@@ -118,26 +124,43 @@ ${isScreen ? ".chart-card{animation:fadeIn .5s ease-out forwards;opacity:0;}@key
 </div>
 <div class="grid">${chartJsBlocks.map((c) => c.html).join("")}</div>
 <script>
-// Chart.js options 深度 merge —— 避免 Agent 自定义 plugins 时覆盖默认 tooltip
+// Chart.js 全局默认值 —— iframe 独立 document，无法继承宿主 ChartJS.defaults
+// 对标宿主 render_chart：无深色边框、浅色网格、更柔和的配色
 (function(){
+  // 全局：消除柱图/饼图默认深色边框
+  Chart.defaults.elements.bar.borderWidth = 0;
+  Chart.defaults.elements.bar.borderSkipped = false;
+  Chart.defaults.elements.arc.borderWidth = 0;
+  Chart.defaults.elements.line.borderWidth = 2;
+  Chart.defaults.elements.line.tension = 0.35;
+  Chart.defaults.elements.point.radius = 2;
+  Chart.defaults.elements.point.hoverRadius = 4;
+
+  // 坐标轴网格线：浅色背景下用极淡灰色
+  const gridColor = ${isScreen ? "'rgba(148,163,184,0.15)'" : "'rgba(156,163,175,0.25)'"};
+  Chart.defaults.scales.linear.grid.color = gridColor;
+  Chart.defaults.scales.category.grid.color = gridColor;
+  Chart.defaults.scales.linear.border.display = false;
+  Chart.defaults.scales.category.border.display = false;
+  Chart.defaults.scales.linear.ticks.color = '${isScreen ? "#94a3b8" : "#6b7280"}';
+  Chart.defaults.scales.category.ticks.color = '${isScreen ? "#94a3b8" : "#6b7280"}';
+
+  // Chart.js options 深度 merge —— 避免 Agent 自定义 plugins 时覆盖默认 tooltip
   var __defaults = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: { legend: { display: true, position: "bottom" }, tooltip: { enabled: true } }
   };
-  function __dbxMergeOpts(user) {
+  window.__dbxMergeOpts = function(user) {
     user = user || {};
     var opts = Object.assign({}, __defaults, user);
-    // 顶层 plugins 深度 merge（legend/tooltips/title 各自保留内层默认值）
     if (user.plugins) {
       opts.plugins = Object.assign({}, __defaults.plugins, user.plugins);
       if (typeof user.plugins.legend === "object") opts.plugins.legend = Object.assign({}, __defaults.plugins.legend, user.plugins.legend);
       if (typeof user.plugins.tooltip === "object") opts.plugins.tooltip = Object.assign({}, __defaults.plugins.tooltip, user.plugins.tooltip);
     }
     return opts;
-  }
-  // 暴露到全局，每个 new Chart 调用里使用
-  window.__dbxMergeOpts = __dbxMergeOpts;
+  };
 })();
 ${chartJsBlocks.map((c) => c.js).join("\n")}
 </script>
@@ -152,8 +175,9 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 		label: "看板/大屏",
 		description: [
 			"Generate a full-page dashboard or big-screen by combining multiple Chart.js charts.",
-			"Input: charts[] array (Chart.js { type, data: {labels, datasets}, options }).",
+			"Input: charts[] array (Chart.js { type, data, options }).",
 			"Output: HTML page with auto Grid layout + theme (dashboard=light, screen=dark).",
+			"Chart.js defaults already set: no dark borders, soft grid lines, responsive cards.",
 			"Use when you have multiple charts and want to package them into a shareable page.",
 			"Max 12 charts. Compatible with render_chart tool's ChartItem format.",
 		].join("\n"),
