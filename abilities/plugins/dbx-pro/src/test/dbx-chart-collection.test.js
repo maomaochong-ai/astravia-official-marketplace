@@ -6,7 +6,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { generateHtml, validateChartData } from "../tools/dbx-chart-collection.ts";
+import { generateHtml, validateChartData, normalizeChartData } from "../tools/dbx-chart-collection.ts";
 
 // ─── Fixtures ────────────────────────────────────────────
 
@@ -193,26 +193,67 @@ describe("validateChartData — 防白屏守卫", () => {
 	});
 });
 
-// ─── generateHtml — 坏 data 格式渲染错误卡片而非白屏 ─────
+// ─── normalizeChartData — AI 常见错格式自动修正 ─────────────
 
-describe("generateHtml — 坏 data 格式 → 错误卡片（非白屏）", () => {
-	it("data 是 rows 对象 → 渲染可见错误提示", () => {
-		const html = generateHtml({
-			charts: [{ type: "bar", title: "测试", data: { rows: [{ x: 1, y: 2 }] } }],
-			title: "测试",
+describe("normalizeChartData — AI 错格式自动修正", () => {
+	it("裸数组 [1,2,3] → { labels: [1,2,3], datasets: [{ data: [...] }] }", () => {
+		const r = normalizeChartData([100, 200, 300]);
+		assert.deepStrictEqual(r, {
+			labels: ["1", "2", "3"],
+			datasets: [{ data: [100, 200, 300] }],
 		});
-		assert.ok(html.includes("⚠️ 图表数据格式错误"));
-		assert.ok(html.includes("没转成 datasets"));
-		// 不应该有 canvas
-		assert.ok(!html.includes('<canvas id="chart-0"'));
 	});
 
-	it("data 是数组 → 渲染错误提示 + 不跑 new Chart", () => {
+	it("{ rows: [...] } → 从第一行列名推 labels + 数值列变 datasets", () => {
+		const r = normalizeChartData({
+			rows: [
+				{ month: "1月", gmv: 100 },
+				{ month: "2月", gmv: 200 },
+				{ month: "3月", gmv: 300 },
+			],
+		});
+		assert.ok(typeof r === "object" && r !== null);
+		const o = r;
+		assert.deepStrictEqual(o.labels, ["1月", "2月", "3月"]);
+		assert.ok(Array.isArray(o.datasets) && o.datasets.length === 1);
+		assert.deepStrictEqual(o.datasets[0].data, [100, 200, 300]);
+		assert.strictEqual(o.datasets[0].label, "gmv");
+	});
+
+	it("datasets 有值但缺 labels → 补索引标签", () => {
+		const r = normalizeChartData({ datasets: [{ data: [10, 20, 30] }] });
+		assert.deepStrictEqual(r.labels, ["1", "2", "3"]);
+	});
+
+	it("标准格式 → 原样返回", () => {
+		const std = { labels: ["A"], datasets: [{ data: [1] }] };
+		assert.strictEqual(normalizeChartData(std), std);
+	});
+
+	it("无法修正的（null / 非对象）→ 原样返回，让 validateChartData 拒绝", () => {
+		assert.strictEqual(normalizeChartData(null), null);
+		assert.strictEqual(normalizeChartData("oops"), "oops");
+	});
+});
+
+// ─── generateHtml — 坏 data 格式：normalize 能修好的直接渲染，修不好才报错 ──
+
+describe("generateHtml — normalize 自动修正 → 正常渲染", () => {
+	it("data 是 rows 对象 → normalize 修成标准格式 → 渲染 canvas", () => {
+		const html = generateHtml({
+			charts: [{ type: "bar", title: "测试", data: { rows: [{ month: "1月", gmv: 100 }, { month: "2月", gmv: 200 }] } }],
+			title: "测试",
+		});
+		assert.ok(html.includes('<canvas id="chart-0"'));
+		assert.ok(html.includes("new Chart(document.getElementById('chart-0')"));
+	});
+
+	it("data 是裸数组 → normalize 修成标准格式 → 渲染 canvas", () => {
 		const html = generateHtml({
 			charts: [{ type: "bar", title: "测试", data: [1, 2, 3] }],
 			title: "测试",
 		});
-		assert.ok(html.includes("⚠️ 图表数据格式错误"));
-		assert.ok(!html.includes("new Chart(document.getElementById('chart-0')"));
+		assert.ok(html.includes('<canvas id="chart-0"'));
+		assert.ok(html.includes("new Chart(document.getElementById('chart-0')"));
 	});
 });

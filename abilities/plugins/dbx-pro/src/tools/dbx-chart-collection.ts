@@ -39,15 +39,78 @@ function resolveGridCols(
 	return "grid-template-columns: repeat(4, 1fr);";
 }
 
+/** AI 常见错格式 → Chart.js 标准格式自动修正。
+ *
+ *  AI 最常犯：
+ *    - 把 dbx_query_full 返回的 rows 直接塞 data（{ rows: [...] }）
+ *    - data 是裸数组 [100, 200, 300]
+ *    - datasets 有值但 labels 缺失
+ *  normalize 尽力修正，修不回来才让 validateChartData 拒绝。
+ */
+export function normalizeChartData(
+	data: unknown,
+	_chartType: string = "bar",
+): unknown {
+	if (data === null || data === undefined) return data;
+
+	// 1. 裸数组 → { labels: [0,1,2,...], datasets: [{ data: array }] }
+	if (Array.isArray(data)) {
+		if (data.length === 0) return data;
+		const allPrimitives = data.every((v) => v == null || ["number", "string", "boolean"].includes(typeof v));
+		if (allPrimitives) {
+			const labels = data.map((_, i) => String(i + 1));
+			return { labels, datasets: [{ data }] };
+		}
+		// 对象数组（scatter/bubble 的 { x, y }）—— 原样交给 Chart.js
+		return data;
+	}
+
+	if (typeof data !== "object") return data;
+	const o = data as Record<string, unknown>;
+
+	// 2. data.rows 存在但没 datasets → 从 rows 第一行列名推 labels + 数值列变 datasets
+	const rows = o.rows as unknown[];
+	if (Array.isArray(rows) && rows.length > 0 && !Array.isArray(o.datasets)) {
+		const firstRow = rows[0] as Record<string, unknown>;
+		if (firstRow && typeof firstRow === "object") {
+			const colNames = Object.keys(firstRow);
+			if (colNames.length >= 2) {
+				const labelCol = colNames[0];
+				const labels = rows.map((r) => String((r as Record<string, unknown>)[labelCol] ?? ""));
+				const valueCols = colNames.slice(1);
+				const colors = ["#6366f1", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
+				const datasets = valueCols.map((colName, idx) => ({
+					label: colName,
+					data: rows.map((r: unknown) => {
+						const v = (r as Record<string, unknown>)[colName];
+						const n = Number(v);
+						return Number.isFinite(n) ? n : v;
+					}),
+					backgroundColor: colors[idx % colors.length],
+					borderColor: colors[idx % colors.length],
+					borderWidth: 1,
+				}));
+				return { labels, datasets };
+			}
+		}
+		return data;
+	}
+
+	// 3. datasets 有值但 labels 缺失 → 生成索引标签
+	if (Array.isArray(o.datasets) && o.datasets.length > 0 && !Array.isArray(o.labels)) {
+		const firstDs = o.datasets[0] as { data?: unknown[] };
+		const len = Array.isArray(firstDs?.data) ? firstDs.data.length : 0;
+		if (len > 0) {
+			return { ...o, labels: Array.from({ length: len }, (_, i) => String(i + 1)) };
+		}
+	}
+
+	return data;
+}
+
 /** 图表数据守卫 — Chart.js 默默接受错格式（rows 替代 datasets、空数组、datasets=0），
  *  不会 throw，只会创建一个 datasets=0 的空 Chart 实例 → canvas 白屏。
- *  本函数校验 chart.data，格式不对时注入可见错误提示 HTML 而不是静默空白。
- *
- *  常见 AI 错：
- *    chart.data = [100,200,300]                       → 数组不是对象
- *    chart.data = { rows: [{x,y}, ...] }              → rows 没转 datasets
- *    chart.data = { labels: [...], datasets: [] }     → 空 datasets
- *    chart.data = null / undefined                    → 缺失
+ *  normalizeChartData 修不回来的，这里拒绝并返回原因。
  */
 export function validateChartData(data: unknown): { ok: boolean; reason?: string } {
 	if (data === null || data === undefined) return { ok: false, reason: "缺少 data" };
@@ -70,7 +133,10 @@ function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string;
 	charts.forEach((chart, i) => {
 		const id = `chart-${i}`;
 		const height = chart.height ?? (isScreen ? 280 : 250);
-		const valid = validateChartData(chart.data);
+
+		// 先 normalize：AI 传的错格式自动修正（rows→datasets、裸数组→包装、缺 labels→补索引）
+		const normalizedData = normalizeChartData(chart.data, chart.type);
+		const valid = validateChartData(normalizedData);
 
 		if (!valid.ok) {
 			// 数据格式异常 → 渲染可见错误卡片，而不是静默空白 canvas
@@ -88,7 +154,7 @@ function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string;
 		}
 
 		htmlParts.push(`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`);
-		jsParts.push(`new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(chart.data)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`);
+		jsParts.push(`new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(normalizedData)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`);
 	});
 	return { html: htmlParts.join(""), js: jsParts.join("\n") };
 }
