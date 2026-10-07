@@ -1,5 +1,5 @@
 /**
- * Agent 工具注册（v0.0.109：新增 dbx_query_full 完整查询工具）。
+ * Agent 工具注册。
  *
  * 1. dbx_query_full — 完整查询（自动分页拼页，绕过 1000 行上限）
  *    工作台的 executeServerPage 分块循环直接暴露给 Agent。

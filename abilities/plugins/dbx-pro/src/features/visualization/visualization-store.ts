@@ -60,7 +60,7 @@ function normalize(value: unknown): StoredVisualization[] {
 		if (typeof entry !== "object" || entry === null) return false;
 		const candidate = entry as Partial<StoredVisualization>;
 		if (typeof candidate.id !== "string" || candidate.id.length === 0) return false;
-		// v0.0.103: legacy 迁移 —— 旧存储没有 chartItems（只有 html），自动补空数组，避免 gallery 里 undefined
+		// legacy 迁移 —— 旧存储没有 chartItems（只有 html），自动补空数组，避免 gallery 里 undefined
 		if (!Array.isArray(candidate.chartItems)) {
 			candidate.chartItems = [];
 		}

@@ -88,7 +88,7 @@ export function buildQueryPrompt(connectionName: string, sql: string, _sampleRow
 	].join("\n");
 }
 
-/** 构造看板生成 prompt（v0.0.109：dbx_query_full 完整查询 + 数据驱动图表）。 */
+/** 构造看板生成 prompt（dbx_query_full 完整查询 + 数据驱动图表）。 */
 export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 	const tables = nodes.filter((n) => n.kind === "table");
 	if (tables.length === 0) return "请先选择要生成看板的表。";
@@ -114,7 +114,8 @@ export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 		"2. 写聚合 SQL（GROUP BY + SUM/COUNT/AVG/MAX/MIN）",
 		"3. 用 dbx_query_full 工具执行 SQL 拿完整聚合数据（自动分页拼页，绕过 1000 行截断）",
 		"   - 不要用 dbx MCP execute_query——它单次最多 1000 行，会截断",
-		"   - dbx_query_full 默认最多 2000 行，可设 maxRows 最高 5000",
+		"   - dbx_query_full 默认 maxRows=2000，如果聚合维度超过 2000 行，可按需增大",
+		"   - 如果返回 note 说 Result truncated，说明还有数据没拉完——增大 maxRows 重跑",
 		"4. 用 render_chart 工具生成 Chart.js 图表（把 dbx_query_full 返回的 rows 转成 Chart.js data）",
 		"   - 每次 render_chart 最多 4 图，可分多批次调用",
 		"5. 最后用 dbx_chart_collection 打包成完整看板页面（type=dashboard）",
@@ -133,7 +134,7 @@ export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 	return lines.join("\n");
 }
 
-/** 构造大屏生成 prompt（v0.0.109：dbx_query_full 完整查询 + 数据驱动图表）。 */
+/** 构造大屏生成 prompt（dbx_query_full 完整查询 + 数据驱动图表）。 */
 export function buildScreenPrompt(nodes: SelectedNodeInfo[]): string {
 	const tables = nodes.filter((n) => n.kind === "table");
 	if (tables.length === 0) return "请先选择要生成大屏的表。";
@@ -159,7 +160,8 @@ export function buildScreenPrompt(nodes: SelectedNodeInfo[]): string {
 		"2. 写聚合 SQL（GROUP BY + SUM/COUNT/AVG/MAX/MIN）",
 		"3. 用 dbx_query_full 工具执行 SQL 拿完整聚合数据（自动分页拼页，绕过 1000 行截断）",
 		"   - 不要用 dbx MCP execute_query——它单次最多 1000 行，会截断",
-		"   - dbx_query_full 默认最多 2000 行，可设 maxRows 最高 5000",
+		"   - dbx_query_full 默认 maxRows=2000，如果聚合维度超过 2000 行，可按需增大",
+		"   - 如果返回 note 说 Result truncated，说明还有数据没拉完——增大 maxRows 重跑",
 		"4. 用 render_chart 工具生成 Chart.js 图表（把 dbx_query_full 返回的 rows 转成 Chart.js data）",
 		"   - 每次 render_chart 最多 4 图，可分多批次调用",
 		"5. 最后用 dbx_chart_collection 打包成完整大屏页面（type=screen）",

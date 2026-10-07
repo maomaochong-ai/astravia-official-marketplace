@@ -1,5 +1,5 @@
 /**
- * 可视化产物契约 — v0.0.103 简化版
+ * 可视化产物契约。
  *
  * 工具生成（dbx_chart_collection）和 UI 预览共用。
  * 旧 Canvas 规则引擎 / preset 模板 / inferLayout 已移除，

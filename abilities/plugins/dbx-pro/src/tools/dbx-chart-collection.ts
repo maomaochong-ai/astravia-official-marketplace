@@ -1,5 +1,5 @@
 /**
- * dbx_chart_collection — 轻量看板/大屏生成工具（v0.0.103 新增）
+ * dbx_chart_collection — 轻量看板/大屏生成工具。
  *
  * 接受 Chart.js charts[] 数组（与宿主 chart-renderer 的 ChartItem 格式兼容），
  * 自动 Grid 布局 + 主题样式（dashboard 浅 / screen 深 DataV），输出完整 HTML 页面。

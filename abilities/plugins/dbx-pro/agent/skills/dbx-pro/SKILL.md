@@ -2,7 +2,7 @@
 name: dbx-pro
 alias: 数据库工作台
 description: 企业级数据库工作台 — 连接 PostgreSQL/MySQL/SQLite/ClickHouse 等 60+ 数据库，SQL 编辑器 + 结果网格 + AI 可视化（看板/大屏）。
-version: 0.0.107
+version: 0.0.110
 ---
 
 # 数据库工作台 — dbx-pro
@@ -15,14 +15,29 @@ version: 0.0.107
 
 | 工具 | 说明 |
 |------|------|
-| `dbx_execute_query` | 执行 SQL 查询 |
+| `dbx_execute_query` | 执行 SQL 查询（单次最多 1000 行，适合快速试探） |
 | `dbx_describe_table` | 查看表结构（列/类型/主键） |
 | `dbx_list_tables` | 列出连接下的表 |
 | `dbx_list_connections` | 列出已配置的连接 |
 
-### 2. 可视化生成（dbx-pro 插件工具 + 宿主 chart-renderer）
+### 2. 完整查询（dbx-pro 插件工具 — 复用工作台分页能力）
 
-看板/大屏生成采用**两阶段工作流**：
+| 工具 | 说明 |
+|------|------|
+| `dbx_query_full` | 完整查询（自动分页拼页，绕过 1000 行截断） |
+
+dbx_query_full vs dbx MCP execute_query：
+
+| 维度 | dbx MCP execute_query | dbx_query_full |
+|------|----------------------|----------------|
+| 行数上限 | 单次硬截断 1000 行 | 自动分页拼页直到 maxRows（默认 2000，可按需增大） |
+| 实现 | 引擎单次请求 | 复用工作台 executeServerPage 分块循环 |
+| 返回截断提示 | truncated: true | note: "Result truncated: N/M rows shown" |
+| 适合场景 | 快速试探、查看少量数据 | 完整聚合数据（图表渲染前） |
+
+### 3. 可视化生成（插件工具 + 宿主 chart-renderer）
+
+看板/大屏生成采用两阶段工作流：
 
 #### 阶段 1：试草图（宿主 render_chart）
 
@@ -40,29 +55,36 @@ dbx-pro 插件工具 `dbx_chart_collection`：
   - `type=screen` → 深色 DataV 风格 + 入场动画
 - 自动持久化到插件 store + 打开 iframe 预览 tab
 
-### 3. 聚合 SQL 最佳实践
+### 4. 聚合 SQL + 完整查询最佳实践
 
-引擎单次查询硬上限 1000 行，**明细查询会被截断**。必须写聚合 SQL：
+引擎单次查询硬上限 1000 行，但 dbx_query_full 能自动分页拼页拿完整数据。
 
 ```sql
 ✅ 正确（聚合查询，天然少行不截断）：
 SELECT category, SUM(amount) AS total FROM orders GROUP BY category;
 SELECT DATE_TRUNC('month', created_at) AS month, COUNT(*) AS cnt FROM orders GROUP BY month;
-SELECT status, COUNT(*) AS cnt FROM orders GROUP BY status;
 
-❌ 错误（明细查询，只返回前 1000 行）：
+❌ 错误（明细查询，即使 dbx_query_full 也会拉大量行）：
 SELECT * FROM orders;
-SELECT * FROM orders LIMIT 1000;
 ```
 
-### 4. 完整工作流示例
+### 5. 完整工作流示例
 
 用户："帮我看看各渠道月度销售趋势，生成一个看板"
 
 ```
 Agent 工作流：
 1. dbx_describe_table(connection="prod", table="orders")  → 了解列结构
-2. dbx_execute_query("SELECT DATE_TRUNC('month', created_at) AS month, channel, SUM(amount) AS total FROM orders WHERE created_at BETWEEN '2025-01-01' AND '2025-12-31' GROUP BY month, channel ORDER BY month")
+2. dbx_query_full(connectionName="prod",
+    sql="SELECT DATE_TRUNC('month', created_at) AS month,
+              channel, SUM(amount) AS total
+         FROM orders
+         WHERE created_at BETWEEN '2025-01-01' AND '2025-12-31'
+         GROUP BY month, channel
+         ORDER BY month",
+    maxRows=2000)
+   → 返回完整聚合数据 ✅（自动分页拼页，绕过 1000 行截断）
+   → 如果返回 note 说 truncated，增大 maxRows 重跑
 3. render_chart({ type: "line", data: {labels: [...], datasets: [...]}, title: "月度销售趋势" })
    → ChartCard 出现在对话气泡 ✅
 4. render_chart({ type: "bar", data: {...}, title: "渠道分布" })
@@ -91,21 +113,22 @@ Agent 工作流：
 | `scatter` | 散点图 | 两变量相关性 |
 | `bubble` | 气泡图 | 三变量（x/y/radius）|
 
-## 与 v0.0.102 的架构区别（重要）
+## 架构说明
 
-**本技能已重构**，不再使用旧的模板系统（dbx_dashboard / dbx_screen 工具 + 内联 SQL 模板 + Canvas 规则引擎）。新架构：
+本技能已从旧模板系统重构。新架构：
 
 | 维度 | 旧架构（已删） | 新架构（当前） |
 |------|---------------|---------------|
-| SQL 执行 | 插件内部执行 | **宿主 Agent 自己写 + dbx MCP** |
-| 图表渲染 | 插件 Canvas + recharts | **宿主 Chart.js（chart-renderer）+ 插件打包 HTML** |
+| SQL 执行 | 插件内部执行 + 内联模板 | **宿主 Agent 自己写 + dbx_query_full 完整查询** |
+| 图表渲染 | 插件 Canvas 规则引擎 | **宿主 Chart.js（chart-renderer）+ 插件打包 HTML** |
 | 模板 | 6 套预设模板 | **无模板 — 全由 Agent 自行编排** |
 | 持久化 | 插件 store | **插件 store（不变）** |
 | 二次编辑 | Canvas 规则引擎 | **chartItems 暴露给 Agent 重跑** |
+| 完整数据 | ❌ 旧架构无此能力 | **✅ dbx_query_full 复用工作台分页拼页** |
 
 ## 安全准则
 
-- **只读优先** — 看板/大屏生成只读，不产生写操作
-- **聚合查询** — 必须 GROUP BY，避免明细行截断
-- **结果上限** — 单次查询 1000 行上限，聚合查询通常远小于此
+- **只读优先** — dbx_query_full 和看板/大屏生成都是 SELECT-only，不产生写操作
+- **聚合查询** — 写 GROUP BY 聚合而非 SELECT * 明细
+- **自适应行数** — dbx_query_full 返回 note 提示截断时，Agent 应增大 maxRows 重跑
 - **敏感信息** — SQL 中不暴露密码、连接字符串

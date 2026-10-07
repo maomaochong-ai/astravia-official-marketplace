@@ -1,5 +1,5 @@
 /**
- * infer-schema — 列角色推断（v0.0.103 从 infer-layout.ts 抽离）
+ * infer-schema — 列角色推断。
  *
  * 轻量 schema 分析，仅服务于 FilterBar 等前端编辑场景。
  * 完整的 Canvas 规则引擎（inferLayout / packGrid）已删除。
