@@ -35,7 +35,12 @@ export interface DbxChartCollectionInput {
 /** Chart.js CDN（UMD 暴露全局 Chart，自动注册所有内置类型） */
 const CHARTJS_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
 
-function generateHtml(input: DbxChartCollectionInput): string {
+/**
+ * 生成看板/大屏 HTML 页面（纯函数，导出以便测试）。
+ * 输入: DbxChartCollectionInput（Chart.js charts[] + 主题 + 标题）
+ * 输出: 完整 HTML 字符串（可直接 iframe srcDoc）
+ */
+export function generateHtml(input: DbxChartCollectionInput): string {
 	const charts = input.charts.slice(0, 12); // 安全上限：12 个图
 	const intent = input.type ?? "dashboard";
 	const isScreen = intent === "screen";
