@@ -27,7 +27,6 @@ import {
 	type SelectedNodeInfo,
 } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
-import { VisualizationTemplateDialog } from "../../visualization/components/visualization-template-dialog";
 import { nextTabId } from "../state/tab-ids";
 
 interface Props {
@@ -51,7 +50,6 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
 	const [aiDialogOpen, setAiDialogOpen] = useState(false);
 	const [aiPrompt, setAiPrompt] = useState("");
-	const [templateDialog, setTemplateDialog] = useState<{ type: "dashboard" | "screen" } | null>(null);
 
 	const isExpanded = state.expandedNodes.has(node.key);
 	const isLoading = state.loadingNodes.has(node.key);
@@ -417,13 +415,19 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							// 同步置位即可：ContextMenu 只在菜单外的 mousedown 上关闭，
 							// 同一批更新里「关菜单 + 开对话框」不会互相干扰（同菜单的「添加到 AI」就是这样）。
 							// 用 setTimeout 延迟会多一次宏任务，节点在这期间被回收就成了空点击。
-							onClick: () => setTemplateDialog({ type: "dashboard" }),
+							onClick: () => {
+							setAiPrompt(buildDashboardPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }]));
+							setAiDialogOpen(true);
+						},
 						},
 						{
 							type: "item",
 							label: "生成数据大屏",
 							icon: "icon-[lucide--monitor]",
-							onClick: () => setTemplateDialog({ type: "screen" }),
+							onClick: () => {
+								setAiPrompt(buildScreenPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }]));
+								setAiDialogOpen(true);
+							},
 						},
 					],
 				},
@@ -659,35 +663,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				</div>
 			)}
 			{menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
-			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
-			{templateDialog && (
-				<VisualizationTemplateDialog
-					type={templateDialog.type}
-					connectionName={connectionName ?? ""}
-					tableName={node.label}
-					schema={childScope}
-					onSelect={(template) => {
-						const prompt = templateDialog.type === "dashboard"
-							? buildDashboardPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }])
-							: buildScreenPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }]);
-						const fullPrompt = `${prompt}\n\n请使用 ${template} 模板生成${templateDialog.type === "dashboard" ? "看板" : "大屏"}。`;
-						setAiPrompt(fullPrompt);
-						setAiDialogOpen(true);
-						setTemplateDialog(null);
-					}}
-					onCustom={() => {
-						const prompt = templateDialog.type === "dashboard"
-							? buildDashboardPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }])
-							: buildScreenPrompt([{ kind: "table", connectionName: connectionName ?? "", schema: childScope, label: node.label }]);
-						const fullPrompt = `${prompt}\n\n请根据数据特征自动选择合适的${templateDialog.type === "dashboard" ? "看板" : "大屏"}模板并生成。`;
-						setAiPrompt(fullPrompt);
-						setAiDialogOpen(true);
-						setTemplateDialog(null);
-					}}
-					onClose={() => setTemplateDialog(null)}
-				/>
-			)}
-		</div>
+		<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
+	</div>
 	);
 }
 

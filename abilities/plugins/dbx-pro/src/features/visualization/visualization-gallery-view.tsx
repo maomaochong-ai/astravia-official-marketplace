@@ -26,8 +26,8 @@ export function VisualizationGalleryView(): JSX.Element {
 		}];
 		
 		const prompt = viz.type === "dashboard"
-			? buildDashboardPrompt(nodes) + `\n\n请基于当前看板配置进行修改：\n${viz.title}\n模板：${viz.template}`
-			: buildScreenPrompt(nodes) + `\n\n请基于当前大屏配置进行修改：\n${viz.title}\n模板：${viz.template}`;
+			? buildDashboardPrompt(nodes) + `\n\n请基于当前看板进行修改：\n${viz.title}\n共 ${viz.chartItems?.length ?? 0} 个图表。`
+			: buildScreenPrompt(nodes) + `\n\n请基于当前大屏进行修改：\n${viz.title}\n共 ${viz.chartItems?.length ?? 0} 个图表。`;
 		
 		setAiPrompt(prompt);
 		setAiDialogOpen(true);

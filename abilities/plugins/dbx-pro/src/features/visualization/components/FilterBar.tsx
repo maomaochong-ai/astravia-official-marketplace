@@ -1,15 +1,13 @@
 /**
- * FilterBar — Canvas 看板筛选器（v0.0.97）
+ * FilterBar — 前端 categorical 列筛选器（v0.0.103 从 canvas/ 移到独立位置）
  *
  * 仅处理 categorical 列（通过 inferSchema 检测 role === "categorical"）。
- * 每列一个 multi-select dropdown，用户选值后 Canvas 对所有 dataSource 的 rows 做 row.filter()。
- * 不做 date-range / SQL 重跑（那需要引擎层，超出客户端范围）。
- *
- * 视觉 style 走 Canvas 的两套主题 token（dashboard 浅 / bigscreen 深），全 scope 到 .viz-root。
+ * 每列一个 multi-select dropdown，返回过滤后的 rows。
+ * 不做 date-range / SQL 重跑（那需要引擎层）。
  */
 
 import { useMemo, useState, type JSX } from "react";
-import { inferSchema } from "./infer-layout";
+import { inferSchema } from "../../../shared/services/infer-schema";
 
 export interface CategoricalCol {
 	name: string;

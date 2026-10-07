@@ -24,12 +24,10 @@ export function ResultPanel(): JSX.Element {
 		const viz: Visualization = {
 			title: intent === "dashboard" ? "AI 看板" : "AI 大屏",
 			type: intent,
-			template: "canvas",
 			connection: activeTab.connectionName,
 			table: "",
-			html: "",
-			resultColumns: result.columns,
-			resultRows: result.rows,
+			html: `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${intent === "dashboard" ? "AI 看板" : "AI 大屏"}</title></head><body style="display:flex;align-items:center;justify-content:center;font-family:-apple-system,sans-serif;color:#64748b;height:100vh"><div style="text-align:center"><p>请使用 AI 生成完整 ${intent === "dashboard" ? "看板" : "大屏"}</p><p style="font-size:12px;color:#94a3b8;margin-top:8px">数据查询已就绪，选中表/视图后点击"生成看板"即可</p></div></body></html>`,
+			chartItems: [],
 		};
 		showVisualizationPreview(viz);
 	}
