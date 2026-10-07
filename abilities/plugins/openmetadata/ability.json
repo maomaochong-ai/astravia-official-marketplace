@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "openmetadata",
+  "version": "0.1.0",
+  "icon": "solar:database-bold-duotone",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json"
+      }
+    },
+    "meta": [
+      {
+        "key": "license",
+        "value": "Apache-2.0"
+      }
+    ]
+  }
+}
