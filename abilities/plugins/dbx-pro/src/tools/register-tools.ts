@@ -1,16 +1,21 @@
 /**
- * Agent 工具注册（v0.0.103 简化版）。
+ * Agent 工具注册（v0.0.109：新增 dbx_query_full 完整查询工具）。
  *
- * 只注册一个高阶可视化工具：dbx_chart_collection。
- * 旧的 dbx_dashboard / dbx_screen（内联 SQL 模板 + Canvas 规则引擎）已移除。
+ * 1. dbx_query_full — 完整查询（自动分页拼页，绕过 1000 行上限）
+ *    工作台的 executeServerPage 分块循环直接暴露给 Agent。
+ *    Agent 用这个拿完整聚合数据，不要再用 dbx MCP execute_query（截断）。
  *
- * 宿主 Agent 自己查数据、编排多个 Chart.js charts[] 数组，
- * 然后调用本工具打包成完整页面看板/大屏。
+ * 2. dbx_chart_collection — 打包看板/大屏（只负责 Chart.js charts[] → HTML 页面）
+ *    数据获取由 dbx_query_full / 宿主 render_chart 负责。
  */
 
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import { createDbxQueryFullTool } from "./dbx-query-full";
 import { createDbxChartCollectionTool } from "./dbx-chart-collection";
 
 export function registerTools(ctx: PluginContext): Disposable[] {
-	return [ctx.agent.registerTool(createDbxChartCollectionTool())];
+	return [
+		ctx.agent.registerTool(createDbxQueryFullTool()),
+		ctx.agent.registerTool(createDbxChartCollectionTool()),
+	];
 }
