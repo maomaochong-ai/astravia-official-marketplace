@@ -180,7 +180,6 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 							title="返回产物列表"
 						>
 							<span className="icon-[lucide--arrow-left] h-3.5 w-3.5" />
-							<span>返回</span>
 						</button>
 					)}
 					<button
@@ -190,7 +189,6 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 						title={renderMode === "iframe" ? "切换到组件渲染" : "切换到 iframe 渲染"}
 					>
 						<span className={`h-3.5 w-3.5 ${renderMode === "iframe" ? "icon-[lucide--code]" : "icon-[lucide--layout-grid]"}`} />
-						<span>{renderMode === "iframe" ? "组件" : "iframe"}</span>
 					</button>
 					<button
 						type="button"
@@ -199,7 +197,6 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 						title="下载 HTML 文件"
 					>
 						<span className="icon-[lucide--download] h-3.5 w-3.5" />
-						<span>下载</span>
 					</button>
 					<button
 						type="button"
@@ -208,7 +205,6 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 						title="在外部浏览器打开"
 					>
 						<span className="icon-[lucide--external-link] h-3.5 w-3.5" />
-						<span>新窗口</span>
 					</button>
 					<button
 						type="button"
@@ -217,7 +213,6 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 						title={isFullscreen ? "退出全屏" : "全屏"}
 					>
 						<span className={`h-3.5 w-3.5 ${isFullscreen ? "icon-[lucide--minimize-2]" : "icon-[lucide--maximize-2]"}`} />
-						<span>{isFullscreen ? "退出" : "全屏"}</span>
 					</button>
 				</div>
 			</div>

@@ -23,23 +23,24 @@ export interface ConnectionTreeToolbarProps {
 	onCollapsePanel?: () => void;
 }
 
-/** 带原生 tooltip 的小图标按钮（22px 正方形）。 */
+/** 带原生 tooltip 的紧凑图标按钮（24px 正方形，v0.0.102 统一到 shared dbx-icon-btn）。 */
 function TooltipButton({
 	children,
 	title,
 	onClick,
+	active,
 }: {
 	children: JSX.Element;
 	title: string;
 	onClick?: () => void;
+	active?: boolean;
 }): JSX.Element {
 	return (
 		<button
 			type="button"
 			onClick={onClick}
 			title={title}
-			className="dbx-iconbtn shrink-0"
-			style={{ height: 22, minWidth: 22, padding: 0 }}
+			className={`dbx-icon-btn ${active ? "dbx-icon-btn--active" : ""}`}
 		>
 			{children}
 		</button>
@@ -124,10 +125,9 @@ export function ConnectionTreeToolbar({
 				<TooltipButton
 					onClick={onToggleSelectionMode}
 					title={selectionMode ? "退出多选" : "多选库 / 表（作为 AI 上下文）"}
+					active={selectionMode}
 				>
-					<span
-						className={`h-3 w-3 icon-[lucide--list-checks] ${selectionMode ? "text-foreground" : ""}`}
-					/>
+					<span className="icon-[lucide--list-checks] h-3 w-3" />
 				</TooltipButton>
 				{onCollapsePanel && (
 					<TooltipButton onClick={onCollapsePanel} title="收起连接树">

@@ -725,3 +725,110 @@
 }
 .dbx-root .viz-theme-dashboard .viz-empty-state__subtitle { color: #94a3b8; }
 .dbx-root .viz-theme-bigscreen .viz-empty-state__subtitle { color: rgba(148, 163, 184, 0.65); }
+
+/* ──────────────────────── VisualizationTab 全屏预览 (v0.0.102) ──────────────────────── */
+
+.dbx-root .visualization-tab {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+}
+.dbx-root .visualization-tab.fullscreen {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+}
+
+/* Toolbar */
+.dbx-root .visualization-tab-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-shrink: 0;
+	height: 40px;
+	padding: 0 10px;
+	background: var(--dbx-surface);
+	border-bottom: 1px solid var(--dbx-line-soft);
+}
+
+.dbx-root .toolbar-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	flex: 1;
+}
+.dbx-root .toolbar-icon {
+	flex-shrink: 0;
+	font-size: 14px;
+	color: var(--dbx-primary);
+}
+.dbx-root .toolbar-title {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--foreground);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.dbx-root .toolbar-badge {
+	flex-shrink: 0;
+	padding: 1px 6px;
+	border-radius: 10px;
+	font-size: 10px;
+	font-weight: 500;
+	line-height: 16px;
+	background: color-mix(in srgb, var(--foreground) 8%, transparent);
+	color: var(--muted-foreground);
+}
+
+.dbx-root .toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+/* 按钮：纯图标，用 .dbx-icon-btn 但覆盖为 28px + 适配 toolbar */
+.dbx-root .toolbar-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted-foreground);
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s, transform 0.06s;
+}
+.dbx-root .toolbar-btn:hover:not(:disabled) {
+	background: var(--dbx-hover);
+	color: var(--foreground);
+}
+.dbx-root .toolbar-btn:active:not(:disabled) {
+	transform: scale(0.94);
+}
+.dbx-root .toolbar-btn:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+}
+
+/* Content area */
+.dbx-root .visualization-tab-content {
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+}
+.dbx-root .visualization-tab-iframe {
+	width: 100%;
+	height: 100%;
+	min-height: 400px;
+	border: none;
+}

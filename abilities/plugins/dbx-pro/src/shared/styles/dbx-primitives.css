@@ -165,3 +165,118 @@ textarea.dbx-form-input {
 /* 标签栏多行换行模式 */
 .dbx-tab-wrap { scrollbar-width: none; -ms-overflow-style: none; }
 .dbx-tab-wrap::-webkit-scrollbar { height: 0; width: 0; }
+
+/* ============================================================
+ * 紧凑图标按钮（v0.0.102）：用于底栏等窄空间
+ * 24px 方形，纯图标，支持 primary / active 变体
+ * ============================================================ */
+.dbx-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--muted-foreground);
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.06s;
+}
+.dbx-icon-btn:hover:not(:disabled) {
+	background: var(--dbx-hover);
+	color: var(--foreground);
+}
+.dbx-icon-btn:active:not(:disabled) {
+	transform: scale(0.94);
+}
+.dbx-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.dbx-icon-btn.dbx-icon-btn--primary {
+	background: var(--dbx-primary);
+	color: var(--dbx-primary-fg);
+}
+.dbx-icon-btn.dbx-icon-btn--primary:hover:not(:disabled) {
+	opacity: 0.86;
+	color: var(--dbx-primary-fg);
+}
+.dbx-icon-btn.dbx-icon-btn--active {
+	background: var(--dbx-hover);
+	color: var(--foreground);
+	border-color: var(--dbx-line);
+}
+
+/* ============================================================
+ * 连接树底部多选操作条（v0.0.102）
+ * - 纯图标按钮
+ * - 看板/大屏 合并为一个 sparkles 下拉
+ * - 响应式：树窄时隐藏文字，只留数字
+ * ============================================================ */
+.dbx-tree-bottom-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border-top: 1px solid var(--dbx-line);
+	min-height: 36px;
+}
+.dbx-tree-bottom-bar__count {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	color: var(--muted-foreground);
+	font-size: 11px;
+	flex-shrink: 0;
+}
+.dbx-tree-bottom-bar__actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+/* 下拉菜单：sparkles → 看板 / 大屏 */
+.dbx-tree-bottom-bar__viz-menu {
+	position: absolute;
+	bottom: calc(100% + 4px);
+	right: 0;
+	z-index: 50;
+	min-width: 140px;
+	padding: 4px;
+	border: 1px solid var(--dbx-line);
+	border-radius: 6px;
+	background: var(--background);
+	box-shadow: 0 6px 20px -6px color-mix(in srgb, black 30%, transparent);
+}
+.dbx-tree-bottom-bar__viz-item {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	width: 100%;
+	padding: 6px 8px;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--foreground);
+	font-size: 12px;
+	cursor: pointer;
+	text-align: left;
+	white-space: nowrap;
+}
+.dbx-tree-bottom-bar__viz-item:hover {
+	background: var(--dbx-hover);
+}
+
+/* ============================================================
+ * 响应式：树窄时隐藏 "已选 N 项" 的文字
+ * 触发条件：树容器 <= 220px
+ * ============================================================ */
+@media (max-width: 220px) {
+	.dbx-tree-bottom-bar__count-text { display: none; }
+	.dbx-tree-bottom-bar__count { gap: 0; }
+}
+@media (max-width: 180px) {
+	.dbx-tree-bottom-bar__viz-menu { min-width: 120px; }
+	.dbx-tree-bottom-bar__viz-item { font-size: 11px; padding: 5px 6px; }
+}
