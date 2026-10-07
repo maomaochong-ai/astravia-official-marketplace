@@ -8,7 +8,7 @@
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { showVisualizationPreview, saveVisualizationToStore } from "../features/visualization/visualization-bridge";
-import { buildChartDefaultsScript } from "../features/visualization/chart-defaults";
+import { getChartDefaultsScript } from "../features/visualization/chart-defaults";
 import { buildHtmlHead } from "../features/visualization/chart-shell";
 import type { ChartItem } from "../domain/chart-contract";
 
@@ -63,7 +63,7 @@ export function generateHtml(input: DbxChartCollectionInput): string {
 	return `${head}
 <div class="grid" style="${resolveGridCols(input.layout, charts.length)}">${chartArea.html}</div>
 <script>
-${buildChartDefaultsScript(isScreen)}
+${getChartDefaultsScript(isScreen)}
 ${chartArea.js}
 </script>
 </body>

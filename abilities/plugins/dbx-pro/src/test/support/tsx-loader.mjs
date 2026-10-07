@@ -19,7 +19,9 @@ const TS_CANDIDATES = [".ts", ".tsx", "/index.ts", "/index.tsx"];
 
 export async function resolve(specifier, context, nextResolve) {
 	const isRelative = specifier.startsWith("./") || specifier.startsWith("../");
-	if (isRelative && context.parentURL && !/\.[cm]?[jt]sx?$/.test(specifier)) {
+	// 跳过带 query 的路径（?raw/?url 由 raw-loader 处理）
+	const hasQuery = /\?/.test(specifier);
+	if (isRelative && !hasQuery && context.parentURL && !/\.[cm]?[jt]sx?$/.test(specifier)) {
 		for (const ext of TS_CANDIDATES) {
 			const candidate = new URL(specifier + ext, context.parentURL);
 			if (existsSync(fileURLToPath(candidate))) return nextResolve(specifier + ext, context);
