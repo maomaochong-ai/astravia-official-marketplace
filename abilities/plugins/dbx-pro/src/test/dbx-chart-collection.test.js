@@ -56,15 +56,20 @@ describe("generateHtml — 基础结构", () => {
 
 	it("默认主题 dashboard", () => {
 		const html = generateHtml({ charts: [lineChart], title: "看板" });
-		assert.ok(html.includes("background: #f8fafc;"));
-		assert.ok(html.includes("企业看板"));
+		// 看板浅 QuickBI 风：浅背景 + 12px 圆角 + 柔和边框
+		assert.ok(html.includes("#f8fafc"), "dashboard 浅背景");
+		assert.ok(html.includes("border-radius:12px"), "dashboard 圆角");
+		assert.ok(html.includes("企业看板"), "副标题");
+		assert.ok(html.includes("Chart.defaults.elements.bar.borderWidth = 0"), "Chart.js defaults 注入");
 	});
 
 	it("screen 深主题", () => {
 		const html = generateHtml({ charts: [lineChart], title: "大屏", type: "screen" });
-		assert.ok(html.includes("linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%)"));
-		assert.ok(html.includes("数据大屏"));
-		assert.ok(html.includes("animation:fadeIn"));
+		// 大屏深 DataV 风：渐变黑 + 青蓝边框 + 入场动画
+		assert.ok(html.includes("#0c0c0c"), "screen 渐变起点");
+		assert.ok(html.includes("#a5f3fc"), "screen 标题色");
+		assert.ok(html.includes("数据大屏"), "副标题");
+		assert.ok(html.includes("animation:fadeIn"), "入场动画");
 	});
 
 	it("Chart.js UMD CDN 正确", () => {
