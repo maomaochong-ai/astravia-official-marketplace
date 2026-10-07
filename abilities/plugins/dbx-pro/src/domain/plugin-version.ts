@@ -5,4 +5,4 @@
  * 直接引 index 会把插件装配入口拖进懒加载 chunk 并形成循环依赖。
  * 发版时与 plugin.json / ability.json / package.json 同步递增。
  */
-export const PLUGIN_VERSION = "0.1.0";
+export const PLUGIN_VERSION = "0.1.1";

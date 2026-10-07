@@ -9,7 +9,7 @@ import { useState, type JSX } from "react";
 import { VisualizationGallery } from "./components/visualization-gallery";
 import { VisualizationTab } from "./components/visualization-tab";
 import type { StoredVisualization } from "./visualization-store";
-import { buildDashboardPrompt, buildScreenPrompt, type SelectedNodeInfo } from "../../shared/ai/send-context";
+import { buildResultVizPrompt } from "../../shared/ai/send-context";
 import { SendToAiDialog } from "../database-workspace/components/send-to-ai-dialog";
 
 export function VisualizationGalleryView(): JSX.Element {
@@ -18,17 +18,23 @@ export function VisualizationGalleryView(): JSX.Element {
 	const [aiPrompt, setAiPrompt] = useState("");
 
 	const handleEditWithAi = (viz: StoredVisualization): void => {
-		// 构建 AI 修改提示词
-		const nodes: SelectedNodeInfo[] = [{
-			kind: "table",
-			connectionName: viz.connection,
-			label: viz.table,
-		}];
-		
-		const prompt = viz.type === "dashboard"
-			? buildDashboardPrompt(nodes) + `\n\n请基于当前看板进行修改：\n${viz.title}\n共 ${viz.chartItems?.length ?? 0} 个图表。`
-			: buildScreenPrompt(nodes) + `\n\n请基于当前大屏进行修改：\n${viz.title}\n共 ${viz.chartItems?.length ?? 0} 个图表。`;
-		
+		// AI 修改 prompt：给出当前看板的完整上下文（connection + sql + chartItems）
+		const themeName = viz.type === "dashboard" ? "看板" : "大屏";
+		const chartSummaries = (viz.chartItems ?? [])
+			.map((c, i) => `  ${i + 1}. [${c.type}] ${c.title ?? "(无标题)"}`)
+			.join("\n");
+
+		let prompt = `请帮我修改已生成的${themeName}「${viz.title}」。\n\n`;
+		prompt += `连接：@\`${viz.connection}\`\n`;
+		if (viz.table) prompt += `关联表：@\`${viz.table}\`\n`;
+		if (viz.sql) {
+			prompt += `\n源 SQL：\n\`\`\`sql\n${viz.sql}\n\`\`\`\n`;
+		}
+		prompt += `\n当前有 ${viz.chartItems?.length ?? 0} 个图表：\n${chartSummaries || "（空）"}\n`;
+		prompt += `\n请用 dbx_query_full 重新查询（或基于现有 SQL 调整聚合维度），`;
+		prompt += `然后用 render_chart 生成新图表，最后用 dbx_chart_collection 打包（type=${viz.type}）。\n`;
+		prompt += `可以自由调整图表类型、增加/删除图表、修改聚合维度——根据数据特点决定。`;
+
 		setAiPrompt(prompt);
 		setAiDialogOpen(true);
 	};

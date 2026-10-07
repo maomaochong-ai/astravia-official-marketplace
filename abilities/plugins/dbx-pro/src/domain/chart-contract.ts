@@ -29,5 +29,7 @@ export interface Visualization {
 	html: string;
 	/** Chart.js 图表数组（宿主 chart-renderer 兼容格式，可二次编辑） */
 	chartItems: ChartItem[];
+	/** 产生此看板的源 SQL（可选，AI 修改时需要知道数据源） */
+	sql?: string;
 	createdAt?: number;
 }

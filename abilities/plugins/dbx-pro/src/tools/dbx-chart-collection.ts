@@ -115,12 +115,14 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 			try {
 				const html = generateHtml(input); // 内部已 slice(0, 12)，handler 不再 trim
 				const trimmedCount = Math.min(input.charts.length, 12);
+				const raw = input as unknown as Record<string, unknown>;
 				const viz = {
 					title: input.title,
 					type: input.type ?? "dashboard",
-					// connection_name / table 是内部追踪字段，Agent schema 不暴露
-					connection: (input as unknown as Record<string, unknown>).connection_name as string ?? "",
-					table: (input as unknown as Record<string, unknown>).table as string ?? "",
+					// connection_name / table / sql 是内部追踪字段，Agent schema 不暴露
+					connection: (raw.connection_name as string) ?? "",
+					table: (raw.table as string) ?? "",
+					sql: (raw.sql as string) ?? undefined,
 					html,
 					chartItems: input.charts.slice(0, 12),
 				};

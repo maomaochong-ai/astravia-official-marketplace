@@ -40,9 +40,9 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 	};
 
 	const handleOpenExternal = (): void => {
-		const blob = new Blob([viz.html], { type: "text/html;charset=utf-8" });
-		const url = URL.createObjectURL(blob);
-		window.open(url, "_blank");
+		// 把 HTML 转成 Data URL（不依赖 Blob URL 生命周期，window.open 能立即用）
+		const dataUrl = "data:text/html;charset=utf-8," + encodeURIComponent(viz.html);
+		window.open(dataUrl, "_blank", "noopener,noreferrer");
 	};
 
 	const handleFullscreen = async (): Promise<void> => {
