@@ -88,7 +88,7 @@ export function buildQueryPrompt(connectionName: string, sql: string, _sampleRow
 	].join("\n");
 }
 
-/** 构造看板生成 prompt（v0.0.107：聚合 SQL + 批次渲染指导）。 */
+/** 构造看板生成 prompt（v0.0.107：聚合 SQL + 批次渲染 + 数据驱动图表选择）。 */
 export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 	const tables = nodes.filter((n) => n.kind === "table");
 	if (tables.length === 0) return "请先选择要生成看板的表。";
@@ -111,26 +111,38 @@ export function buildDashboardPrompt(nodes: SelectedNodeInfo[]): string {
 		"",
 		"工作流：",
 		"1. 先查看表结构，了解列名和数据类型",
-		"2. 写聚合 SQL（必须 GROUP BY + SUM/COUNT/AVG/MAX/MIN），不要 SELECT * 明细行",
-		"   - 单次查询返回超过 1000 行会被引擎截断，聚合查询天然少行不会截断",
-		"   - SQL 示例：SELECT category, SUM(amount) AS total FROM orders GROUP BY category",
-		"   - SQL 示例：SELECT DATE_TRUNC('month', created_at) AS month, COUNT(*) AS cnt FROM orders GROUP BY month",
-		"3. 用 render_chart 工具生成多个 Chart.js 图表（每个图表包含 type + data: {labels, datasets}）",
+		"2. 写聚合 SQL（必须 GROUP BY + SUM/COUNT/AVG/MAX/MIN）",
+		"   注意：单次查询超过 1000 行会被截断。聚合 SQL 行数控制策略：",
+		"   - TOP N 限制：GROUP BY ... ORDER BY metric DESC LIMIT 20（排名/占比图表只关心前 N）",
+		"   - 提升聚合粒度：按月而非按日、按地区而非按城市（降低维度基数）",
+		"   - 分页查询：第一次 LIMIT 1000 OFFSET 0，第二次 LIMIT 1000 OFFSET 1000，分别查",
+		"   - 如数据确实超 1000 行，加 caption 注明'仅显示 TOP 20'等提示",
+		"3. 用 render_chart 工具生成多个 Chart.js 图表",
 		"   - 每次 render_chart 最多 4 图，可分多批次调用，最终收集所有 ChartItem",
 		"4. 最后用 dbx_chart_collection 工具把全部图表打包成完整看板页面（type=dashboard）",
 		"",
+		"图表选择原则（根据数据特点决定，不要套固定模板）：",
+		"  - 时间维度 → line（折线）或 bar（柱状按时间）",
+		"  - 排名/对比 → bar（横向条形图更适合长标签）",
+		"  - 占比/份额 → pie 或 doughnut（分类 ≤ 6 时效果好）",
+		"  - 多维对比 → radar（多指标雷达图）",
+		"  - 两变量相关性 → scatter（散点图）",
+		"  - 三变量（x/y/量）→ bubble（气泡图）",
+		"  - 核心指标数字 → 用 bar 配合单值聚合，或 scatter 单点点强调",
+		"  - 分类太多（> 8）→ 用 horizontal bar + LIMIT 20",
+		"",
 		"dbx_chart_collection 输入格式：",
-		"  - charts: 数组，每个元素 { type: 'line'|'bar'|'pie'|..., data: {labels, datasets}, title? }",
+		"  - charts: 数组，每个元素 { type, data: {labels, datasets}, title?, options? }",
 		"  - title: 页面标题",
 		"  - type: 'dashboard'（浅色 QuickBI 风格）",
-		"  - 最多 12 个图表，自动 Grid 布局（2/3/4 列自适应）",
+		"  - 最多 12 个图表，自动 Grid 布局",
 		"",
-		"建议搭配 KPI 数字卡 + 1-2 个趋势折线 + 1 个分布柱状 + 1 个占比饼图，形成均衡看板布局。",
+		"让数据说话——根据查到的数据分布和业务含义，自己决定用什么图表、多少个、怎么组合。",
 	);
 	return lines.join("\n");
 }
 
-/** 构造大屏生成 prompt（v0.0.107：聚合 SQL + 批次渲染指导）。 */
+/** 构造大屏生成 prompt（v0.0.107：聚合 SQL + 批次渲染 + 数据驱动图表选择）。 */
 export function buildScreenPrompt(nodes: SelectedNodeInfo[]): string {
 	const tables = nodes.filter((n) => n.kind === "table");
 	if (tables.length === 0) return "请先选择要生成大屏的表。";
@@ -153,16 +165,28 @@ export function buildScreenPrompt(nodes: SelectedNodeInfo[]): string {
 		"",
 		"工作流：",
 		"1. 先查看表结构，了解列名和数据类型",
-		"2. 写聚合 SQL（必须 GROUP BY + SUM/COUNT/AVG/MAX/MIN），不要 SELECT * 明细行",
-		"   - 单次查询超过 1000 行会被截断，聚合查询天然少行不会截断",
-		"   - SQL 示例：SELECT status, COUNT(*) AS cnt FROM orders GROUP BY status",
-		"   - SQL 示例：SELECT product_id, SUM(amount) AS rev FROM orders GROUP BY product_id ORDER BY rev DESC LIMIT 20",
+		"2. 写聚合 SQL（必须 GROUP BY + SUM/COUNT/AVG/MAX/MIN）",
+		"   注意：单次查询超过 1000 行会被截断。行数控制策略：",
+		"   - TOP N 限制：GROUP BY ... ORDER BY metric DESC LIMIT 20",
+		"   - 提升聚合粒度：按月而非按日、按地区而非按城市",
+		"   - 分页查询：LIMIT 1000 OFFSET 0 + LIMIT 1000 OFFSET 1000，分别查",
+		"   - 如数据确实超 1000 行，加 caption 注明'仅显示 TOP N'",
 		"3. 用 render_chart 工具生成多个 Chart.js 图表",
 		"   - 每次 render_chart 最多 4 图，可分多批次调用，最终收集所有 ChartItem",
 		"4. 最后用 dbx_chart_collection 工具把全部图表打包成完整大屏页面（type=screen）",
 		"",
-		"dbx_chart_collection 输入格式同上，只需把 type 改为 'screen'（深色 DataV 风格 + 入场动画）。",
-		"大屏建议 6-12 个图表，混合 KPI 数字 + 趋势折线 + 分布柱状 + 占比饼图 + 排名条形图，形成高密度数据墙。",
+		"图表选择原则（根据数据特点决定，不要套固定模板）：",
+		"  - 时间维度 → line（折线）或 bar（柱状按时间）",
+		"  - 排名/对比 → bar（横向条形图更适合长标签）",
+		"  - 占比/份额 → pie 或 doughnut（分类 ≤ 6 时效果好）",
+		"  - 多维对比 → radar（多指标雷达图）",
+		"  - 两变量相关性 → scatter（散点图）",
+		"  - 三变量（x/y/量）→ bubble（气泡图）",
+		"  - 大屏核心指标 → 用 bar 配合单值聚合 + 大字号标题强调",
+		"  - 分类太多（> 8）→ 用 horizontal bar + LIMIT 20",
+		"",
+		"dbx_chart_collection 输入格式同上，只需 type='screen'（深色 DataV + 入场动画）。",
+		"大屏建议 6-12 个图表，让数据说话——根据查到的数据分布和业务含义，自己决定组合。",
 	);
 	return lines.join("\n");
 }
