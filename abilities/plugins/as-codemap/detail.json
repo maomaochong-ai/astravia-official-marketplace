@@ -1,0 +1,31 @@
+{
+  "version": "0.1.0",
+  "slug": "as-codemap",
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Code Map",
+      "subtitle": "Zero-dependency TypeScript symbol-reference graph — navigate structure instead of grepping"
+    },
+    {
+      "type": "features",
+      "items": [
+        {
+          "icon": "graph",
+          "title": "Symbol graph",
+          "body": "Zero-dep lexical extraction of function/class/method/const/interface plus cross-file references, with size caps to keep scans safe."
+        },
+        {
+          "icon": "cursor-default-click",
+          "title": "Side panel",
+          "body": "Workspace-view slot: browse symbols and file:line per workspace, same cross-project entry as kanban."
+        },
+        {
+          "icon": "bot",
+          "title": "Agent tool",
+          "body": "code_graph_query: models find symbols and callers by name instead of grepping the tree; lexical limits stated in the description."
+        }
+      ]
+    }
+  ]
+}

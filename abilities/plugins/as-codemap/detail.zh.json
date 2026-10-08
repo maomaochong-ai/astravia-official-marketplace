@@ -1,0 +1,31 @@
+{
+  "version": "0.1.0",
+  "slug": "as-codemap",
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "代码图谱",
+      "subtitle": "零依赖 TypeScript 符号-引用图——导航代码结构，不再全树 grep"
+    },
+    {
+      "type": "features",
+      "items": [
+        {
+          "icon": "graph",
+          "title": "符号-引用图",
+          "body": "零依赖词法提取 function/class/method/const/interface 与跨文件引用关系，上限保护防超大文件拖垮扫描。"
+        },
+        {
+          "icon": "cursor-default-click",
+          "title": "右侧面板",
+          "body": "workspace-view 插槽，按工作区浏览符号列表与 file:line 定位，与 kanban 同款跨项目入口。"
+        },
+        {
+          "icon": "bot",
+          "title": "Agent 工具",
+          "body": "code_graph_query：模型按名称查符号与调用关系，免去 grep 全树；词法匹配的局限已在工具描述里明示。"
+        }
+      ]
+    }
+  ]
+}
