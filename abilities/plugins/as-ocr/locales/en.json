@@ -1,0 +1,9 @@
+{
+	"plugin": {
+		"name": "Code Review (as-ocr)",
+		"description": "AI code review bridging alibaba/open-code-review (44k★). Line-precise findings grouped by severity; agents can invoke reviews and discuss fixes. Built-in rules: NPE, thread-safety, XSS, SQL injection."
+	},
+	"tab": {
+		"reviews": "Reviews"
+	}
+}

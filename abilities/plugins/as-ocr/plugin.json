@@ -1,0 +1,30 @@
+{
+	"id": "as-ocr",
+	"name": "%plugin.name%",
+	"icon": "icon.png",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^2.0.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "as_ocr",
+		"expose": "./plugin"
+	},
+	"styles": [
+		"dist/style.css"
+	],
+	"minAppVersion": "0.5.60",
+	"permissions": [
+		"ui.slot.activity-tab",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.session.read",
+		"storage.read",
+		"storage.write",
+		"terminal.run",
+		"fs.read",
+		"shell.openExternal"
+	],
+	"description": "%plugin.description%",
+	"author": "zhangqingkun976"
+}
