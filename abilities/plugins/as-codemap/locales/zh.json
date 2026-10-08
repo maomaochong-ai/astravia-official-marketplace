@@ -1,0 +1,12 @@
+{
+  "plugin": {
+    "name": "代码图谱 (as-codemap)",
+    "description": "零依赖 TypeScript 符号-引用图：右侧面板浏览符号与调用关系，agent 用 code_graph_query 精确定位，免去全树 grep。"
+  },
+  "view": {
+    "map": "代码图谱"
+  },
+  "nav": {
+    "badge": "码谱"
+  }
+}

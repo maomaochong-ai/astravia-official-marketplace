@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "代码导航",
+      "title": "符号定义在哪、被谁调用，一问就知道",
+      "description": "as-codemap 把工作区扫描成「符号—引用」图谱，让 AI 基于你真实的代码回答导航问题，而不是靠猜。",
+      "badges": ["按工作区隔离", "无需配置"]
+    },
+    {
+      "type": "feature-grid",
+      "title": "它带来什么",
+      "items": [
+        {
+          "title": "符号索引",
+          "description": "函数、类、方法、接口与常量，附所属文件与行号。",
+          "icon": "solar:code-bold"
+        },
+        {
+          "title": "引用计数",
+          "description": "每个符号被使用多少次，跨文件聚合。",
+          "icon": "solar:graph-bold"
+        },
+        {
+          "title": "两个 Agent 工具",
+          "description": "code_graph_build 重新扫描工作区；code_graph_query 按名称与类型检索。",
+          "icon": "solar:bot-bold"
+        },
+        {
+          "title": "代码图谱视图",
+          "description": "工作区视图列出已扫描的文件与符号，便于快速定位。",
+          "icon": "solar:layers-bold"
+        }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "code",
+        "user_prompt": "构建码谱，然后告诉我 buildSummary 在哪里被调用。",
+        "assistant_reply": "已为 ~/projects/app 构建码谱：128 个文件，913 个符号。\n\nbuildSummary —— 函数，位于 src/summary.ts:14，被引用 3 次：src/summary.ts:22、src/compact.ts:41、src/index.ts:9。"
+      }
+    },
+    {
+      "type": "steps",
+      "title": "开始使用",
+      "items": [
+        {
+          "title": "从市场安装",
+          "description": "不需要任何配置。"
+        },
+        {
+          "title": "在对话里让 AI 构建码谱",
+          "description": "说「构建码谱」即可，扫描范围是当前会话的工作区。"
+        },
+        {
+          "title": "打开代码图谱视图",
+          "description": "已扫描的文件与符号会出现在面板里，接着在同一会话里追问。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "解析基于词法而非类型系统：同名局部变量可能被过度匹配，超过 512 KB 或 5000 行的大文件会被跳过。"
+    }
+  ]
+}

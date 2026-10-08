@@ -785,7 +785,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -3655,10 +3655,165 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.1.13.astraviapkg",
             "sha256": "7f817dea8c8fa39417deacd05ccd5235528fc6c317ec0aeb916114362fca9b21"
           }
+        },
+        {
+          "version": "0.1.14",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.skills.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.1.14.astraviapkg",
+            "sha256": "e4c182763ffec21575cb8914c465dbe3c334c36a43f19a5f1fe464bd3098d771"
+          }
+        }
+      ]
+    },
+    {
+      "type": "plugin",
+      "slug": "as-codemap",
+      "name": "Code Map",
+      "description": "Scan the workspace into a symbol-and-reference map, then let the AI answer where a symbol is defined and who calls it.",
+      "version": "0.1.1",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia / zhangqingkun976",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "codebase",
+        "symbols",
+        "references",
+        "navigation",
+        "code-map"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "代码图谱",
+            "description": "把工作区扫描成符号与引用图谱，AI 可以据此回答某个符号定义在哪、被谁调用。",
+            "tags": [
+              "代码库",
+              "符号",
+              "引用",
+              "代码导航",
+              "代码图谱"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/as-codemap"
+      },
+      "releases": [
+        {
+          "version": "0.1.1",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "fs.read",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.1.astraviapkg",
+            "sha256": "913700a99cc9968cc31f1fe21371db2a430e9c78349ed91a128d6131e802bdb1"
+          }
+        }
+      ]
+    },
+    {
+      "type": "plugin",
+      "slug": "as-ocr",
+      "name": "Code Review",
+      "description": "Run alibaba/open-code-review from the conversation and list its findings by severity, so bugs and risky patterns surface before they ship.",
+      "version": "0.1.1",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia / zhangqingkun976",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "code-review",
+        "static-analysis",
+        "quality",
+        "npe",
+        "security"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "代码审查",
+            "description": "在对话里调用 alibaba/open-code-review，把空指针、线程安全、XSS、SQL 注入等发现按严重级别整理出来。",
+            "tags": [
+              "代码审查",
+              "静态分析",
+              "代码质量",
+              "空指针",
+              "安全"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/as-ocr"
+      },
+      "releases": [
+        {
+          "version": "0.1.1",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "storage.read",
+            "storage.write",
+            "agent.command.run",
+            "fs.read",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.1.astraviapkg",
+            "sha256": "d9b264c58e297eb61bd2dd245aadacae22711b5bb424f191f172c9d9cb119de8"
+          }
         }
       ]
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.08-1"
+  "marketplaceVersion": "2026.10.08-2"
 }

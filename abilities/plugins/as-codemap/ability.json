@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "type": "plugin",
-  "slug": "dbx-pro",
-  "version": "0.1.14",
-  "icon": "assets/icon.png",
+  "slug": "as-codemap",
+  "version": "0.1.1",
+  "icon": "solar:graph-bold",
+  "minAppVersion": "0.5.60",
   "detail": {
     "format": "blocks",
     "path": "detail.json",
