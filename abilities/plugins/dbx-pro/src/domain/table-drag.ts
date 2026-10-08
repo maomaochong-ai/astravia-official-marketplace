@@ -16,6 +16,14 @@ import type { DragEvent } from "react";
 
 export type AiNodeKind = "connection" | "schema" | "table" | "column";
 
+/**
+ * 可作为 @提及 对象的节点种类。连接树里多了例程 / 例程分组这类节点后，
+ * 拖拽与多选载荷都要先过这一关 —— 宿主提及语法只认识连接 / schema / 表 / 列。
+ */
+export function isMentionableKind(kind: string): kind is AiNodeKind {
+	return kind === "connection" || kind === "schema" || kind === "table" || kind === "column";
+}
+
 export interface AiNodeInfo {
 	kind: AiNodeKind;
 	/** 所属连接名。 */

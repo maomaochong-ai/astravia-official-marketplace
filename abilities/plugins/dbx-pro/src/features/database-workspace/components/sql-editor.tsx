@@ -41,6 +41,7 @@ import {
 	transactsql,
 	type DialectOptions,
 } from "sql-formatter";
+import { resolveExecutableSql } from "../services/executable-sql";
 
 const MONO_FONT = "'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace";
 
@@ -159,6 +160,8 @@ export function SqlEditor(): JSX.Element {
 	const wrapCompartmentRef = useRef(new Compartment());
 	const [editorReady, setEditorReady] = useState(false);
 	const [wordWrap, setWordWrap] = useState(true);
+	/** 选区字符数：> 0 时执行 / 计划只跑选中的那段（工具栏就地提示，不用猜）。 */
+	const [selectionLength, setSelectionLength] = useState(0);
 
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const activeConn = state.connections.find((c) => c.name === activeTab?.connectionName);
@@ -189,20 +192,13 @@ export function SqlEditor(): JSX.Element {
 	const setSqlRef = useRef(setSql);
 	setSqlRef.current = setSql;
 
-	const runCurrent = useCallback(
-		(view: EditorView) => {
-			const tabId = activeTabIdRef.current;
-			if (!tabId || activeTabRunningRef.current) return;
-			const { from, to } = view.state.selection.main;
-			let selected: string | undefined;
-			if (to > from) {
-				const fragment = view.state.doc.sliceString(from, to);
-				if (fragment.trim()) selected = fragment;
-			}
-			void runTabSqlRef.current(tabId, selected, undefined, { mode: "server" });
-		},
-		[],
-	);
+	const runCurrent = useCallback((view: EditorView) => {
+		const tabId = activeTabIdRef.current;
+		if (!tabId || activeTabRunningRef.current) return;
+		// 有选区只执行选区：片段就地取，不回写 tab.sql（不污染用户原文）。
+		const selected = resolveExecutableSql(view.state.doc, view.state.selection.main);
+		void runTabSqlRef.current(tabId, selected, undefined, { mode: "server" });
+	}, []);
 
 	// 按 activeTab 构建 EditorView。
 	useEffect(() => {
@@ -231,6 +227,7 @@ export function SqlEditor(): JSX.Element {
 					EditorState.allowMultipleSelections.of(true),
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) setSqlRef.current(update.state.doc.toString());
+					if (update.selectionSet || update.docChanged) setSelectionLength(update.state.selection.main.to - update.state.selection.main.from);
 				}),
 					runKeymap,
 					keymap.of([...defaultKeymap, ...completionKeymap, ...historyKeymap]),
@@ -302,12 +299,7 @@ export function SqlEditor(): JSX.Element {
 	/** Execute selection/full SQL in a NEW result tab */
 	function handleExecuteInNew() {
 		if (!viewRef.current || !activeTab || running || !hasConn) return;
-		const { from, to } = viewRef.current.state.selection.main;
-		let override: string | undefined;
-		if (to > from) {
-			const fragment = viewRef.current.state.doc.sliceString(from, to);
-			if (fragment.trim()) override = fragment;
-		}
+		const override = resolveExecutableSql(viewRef.current.state.doc, viewRef.current.state.selection.main);
 		void runTabSql(activeTab.id, override, activeTab.connectionName ?? undefined, { mode: "server" });
 	}
 
@@ -333,14 +325,9 @@ export function SqlEditor(): JSX.Element {
 	/** EXPLAIN：用 EXPLAIN <sql> 包装然后执行。如果有选区则执行选区的 EXPLAIN。 */
 	function handleExplain() {
 		if (!viewRef.current || !activeTabId || running) return;
-		const { from, to } = viewRef.current.state.selection.main;
-		let snippet: string;
-		if (to > from) {
-			const fragment = viewRef.current.state.doc.sliceString(from, to).trim();
-			snippet = fragment || viewRef.current.state.doc.toString();
-		} else {
-			snippet = viewRef.current.state.doc.toString();
-		}
+		const selected = resolveExecutableSql(viewRef.current.state.doc, viewRef.current.state.selection.main);
+		const snippet = (selected ?? viewRef.current.state.doc.toString()).trim();
+		if (!snippet) return;
 		void runTabSql(activeTabId, `EXPLAIN ${snippet}`, activeTab.connectionName ?? undefined, { mode: "server" });
 	}
 
@@ -377,7 +364,7 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={handleExecute}
 					disabled={!running && !hasConn}
-					title={running ? "停止执行" : "执行（⌘/Ctrl + Enter）"}
+					title={running ? "停止执行" : selectionLength > 0 ? "执行选中片段（⌘/Ctrl + Enter）" : "执行（⌘/Ctrl + Enter）"}
 					className="dbx-cta"
 					style={running ? { backgroundColor: "rgb(220 38 38)", borderColor: "rgb(220 38 38)" } : { height: 24, padding: "0 8px" }}
 				>
@@ -389,7 +376,7 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={handleExecuteInNew}
 					disabled={running || !hasConn}
-					title="在新结果标签页执行"
+					title={selectionLength > 0 ? "在新结果标签页执行选中片段" : "在新结果标签页执行"}
 					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 disabled:opacity-30 dark:text-violet-300 dark:hover:text-violet-200"
 				>
 					<span className="icon-[lucide--square-play] h-3 w-3" />
@@ -471,6 +458,11 @@ export function SqlEditor(): JSX.Element {
 				</button>
 
 				<div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
+					{selectionLength > 0 && (
+						<span className="rounded bg-emerald-500/10 px-1 text-emerald-600 dark:text-emerald-300">
+							已选中 {selectionLength} 字符 · 执行将只运行选区
+						</span>
+					)}
 					<span className="icon-[lucide--database] h-2.5 w-2.5" />
 					{activeTab?.connectionName ?? "未绑定"}
 					{!hasConn && <span className="ml-1 rounded px-1" style={{ color: "var(--destructive)", backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)" }}>请先选中连接</span>}

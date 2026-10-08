@@ -75,6 +75,19 @@ export async function runExportAll(options: ExportAllOptions): Promise<ExportAll
 	let offset = 0;
 	let truncationNote: string | null = null;
 
+	/**
+	 * 进度上报：按**每一次引擎请求**前进，而不是等整批取完才跳一格。
+	 * batchSize 默认 2000 = 2 个引擎页，按批上报时进度条会「涨一下、停半天」，
+	 * 顶栏进度看起来与真实取数不同步 —— 用户报的就是这个。
+	 * 去重：等值回调不重发，避免 UI 收到同一进度白渲染。
+	 */
+	let lastReported = -1;
+	function reportProgress(rows: number): void {
+		if (!onProgress || rows <= lastReported) return;
+		lastReported = rows;
+		onProgress(rows);
+	}
+
 	/** 取消 / 结束时返回快照：本批未 push 的行不计入 total。 */
 	function snapshot(cancelled: boolean): ExportAllResult {
 		return { cancelled, total, columns: allColumns, stream, xlsxRows, truncationNote };
@@ -106,6 +119,8 @@ export async function runExportAll(options: ExportAllOptions): Promise<ExportAll
 				}
 			}
 			batchRows.push(...page.rows);
+			// 每次引擎请求后立即上报（total 尚未计入本批，用 total + 本批已取行数）。
+			reportProgress(total + batchRows.length);
 			batchOffset += page.rows.length;
 
 			// 不可分页查询：引擎忽略 page，单次结果最多 ENGINE_ROW_CAP 行
@@ -127,7 +142,7 @@ export async function runExportAll(options: ExportAllOptions): Promise<ExportAll
 		total += batchRows.length;
 		if (kind === "xlsx") xlsxRows.push(...batchRows);
 		else stream?.push(batchRows);
-		onProgress?.(total);
+		reportProgress(total);
 		offset = batchOffset;
 
 		// 不可分页查询已处理

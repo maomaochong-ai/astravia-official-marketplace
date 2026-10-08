@@ -9,7 +9,7 @@
  *   运行中可取消，完成可打开所在文件夹 / 移除，底部一键清除已完成。
  */
 
-import { useLayoutEffect, useRef, useState, type JSX } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type JSX } from "react";
 import { createPortal } from "react-dom";
 import {
 	useExportTasks,
@@ -75,6 +75,26 @@ export function ExportTasksPopover(): JSX.Element | null {
 	const hasError = tasks.some((t) => t.status === "error");
 	const finishedCount = tasks.filter((t) => !isTaskActive(t)).length;
 
+	/**
+	 * 顶栏按钮的进度环：不打开面板也能看到取数在推进（部分用户报的「顶部导出按钮
+	 * 的进度条不跟随进度」就是按钮上只有角标、没有进度）。
+	 * 只统计**已知总数**的活动任务：未知总数时下不出百分比，宁可不出环也不假报。
+	 * 未结束前最高 99%，避免「环满了但还在写文件」。
+	 */
+	const activeTasks = tasks.filter(isTaskActive);
+	const knownActiveTasks = activeTasks.filter((t) => t.totalRows !== null && t.totalRows > 0);
+	const aggregatePercent =
+		knownActiveTasks.length > 0
+			? Math.min(
+					99,
+					Math.round(
+						(knownActiveTasks.reduce((sum, t) => sum + t.rowsExported / (t.totalRows as number), 0) /
+							knownActiveTasks.length) *
+							100,
+					),
+				)
+			: null;
+
 	// 活动任务期间每 0.5s 刷新耗时显示。
 	useLayoutEffect(() => {
 		if (activeCount === 0) return;
@@ -129,12 +149,19 @@ export function ExportTasksPopover(): JSX.Element | null {
 				ref={triggerRef}
 				type="button"
 				onClick={() => setOpen((v) => !v)}
-				title="后台导出任务"
+				title={aggregatePercent === null ? "后台导出任务" : `后台导出任务 · 导出中 ${aggregatePercent}%`}
 				aria-haspopup="dialog"
 				aria-expanded={open}
 				className="relative flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
 			>
 				<span className="icon-[lucide--download] h-3.5 w-3.5" />
+				{aggregatePercent !== null && (
+					<span
+						aria-hidden="true"
+						className="dbx-export-ring pointer-events-none absolute inset-0 rounded-full"
+						style={{ "--dbx-export-progress": `${aggregatePercent}%` } as CSSProperties}
+					/>
+				)}
 				{activeCount > 0 && (
 					<span className="absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-green-500 px-1 text-[9px] font-semibold leading-none text-white">
 						{activeCount > 9 ? "9+" : activeCount}

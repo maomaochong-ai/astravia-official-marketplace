@@ -105,7 +105,7 @@ describe("runExportAll 分块取数", () => {
 		assert.equal(result.cancelled, false);
 	});
 
-	it("每取完一批回调一次累计行数", async () => {
+	it("每次引擎请求后回调累计行数，且严格递增", async () => {
 		const progress = [];
 		const scripted = scriptedFetch([ENGINE_ROW_CAP, ENGINE_ROW_CAP, 400]);
 
@@ -113,7 +113,9 @@ describe("runExportAll 分块取数", () => {
 			options({ fetchPage: scripted.fetchPage, onProgress: (n) => progress.push(n) }),
 		);
 
-		assert.deepEqual(progress, [2_000, 2_400]);
+		// 每页都要上报（batchSize 2000 = 2 个引擎页），否则进度条会「涨一下停半天」；
+		// 批末的重复值被去重，序列严格递增。
+		assert.deepEqual(progress, [1_000, 2_000, 2_400]);
 	});
 
 	it("csv 走增量文本，xlsx 收集全部行", async () => {

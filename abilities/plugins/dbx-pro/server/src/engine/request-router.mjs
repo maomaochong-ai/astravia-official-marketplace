@@ -58,6 +58,13 @@ import {
   isMissingCatalogView,
   pick,
 } from "./markdown-parser.mjs";
+import {
+  buildSqlErrorHint,
+  describeQueryContext,
+  matchMissingObject,
+  parseTableLocations,
+  tableLocationQuery,
+} from "./error-hints.mjs";
 import { selectRevealCommand, runRevealCommand } from "./reveal-item.mjs";
 
 /**
@@ -188,7 +195,68 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       host: base.host || authoritative.host,
       port: base.port || authoritative.port,
       database: base.database || authoritative.database,
-    };
+  }
+
+  /**
+   * 失败上下文：出错时用户最需要知道的是「引擎实际连了哪、跑了哪条语句」。
+   * 只在错误路径上取，所以多打一次 dbx_list_connections 是划算的；
+   * 取不到连接元信息就退化成只有连接名与 SQL。
+   */
+  async function resolveQueryContext(connectionName, sql, effectiveSql) {
+    const context = { connection: connectionName, sql, effectiveSql };
+    try {
+      const result = await mcpClient().callTool("dbx_list_connections", {});
+      const found = parseConnections(textOf(result)).find((c) => c.name === connectionName);
+      if (found) {
+        context.dbType = found.type;
+        context.host = found.host;
+        context.port = found.port;
+        context.database = found.database;
+      }
+    } catch {
+      // 连接清单不可用（引擎刚起 / 连接刚被删）：上下文只留连接名与 SQL
+    }
+    return context;
+  }
+
+  /**
+   * 「这个表名到底在哪个 schema」——查过就把结果写进上下文（查过没找到 = null，
+   * 没查 = undefined），提示才能直接给出限定名，而不是让用户自己去猜 search_path。
+   * 目录查询本身失败时保持未查状态：宁可不说，也不能说成「全库没有」。
+   */
+  async function attachTableLocation(connectionName, dbType, rawName, context) {
+    const lookup = tableLocationQuery(dbType, rawName);
+    if (!lookup) return context;
+    try {
+      const result = await mcpClient().callTool(
+        "dbx_execute_query",
+        { connection_name: connectionName, sql: lookup, max_rows: 5 },
+        15_000,
+      );
+      if (!result?.isError) context.tableLocation = parseTableLocations(textOf(result));
+    } catch {
+      // 目录查询失败与「查了没有」语义不同，保持 undefined
+    }
+    return context;
+  }
+
+  /**
+   * 失败诊断（最佳努力）：返回以换行开头的追加文本；任何异常都吞掉 ——
+   * 诊断自己失败，绝不能把真实错误盖掉或放大成另一种错。
+   */
+  async function describeFailure(connectionName, sql, effectiveSql, rawText) {
+    try {
+      const context = await resolveQueryContext(connectionName, sql, effectiveSql);
+      const missing = matchMissingObject(rawText);
+      if (missing) await attachTableLocation(connectionName, context.dbType, missing.name, context);
+      const text = [describeQueryContext(context), buildSqlErrorHint(rawText, context)]
+        .filter(Boolean)
+        .join("\n");
+      return text ? `\n${text}` : "";
+    } catch {
+      return "";
+    }
+  }
   }
 
   // === 路由表（两级 Map：pathname → method → handler）===
@@ -362,7 +430,9 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
           writeResult = await executeWrite(resolvedSpec, sql);
         } catch (e) {
           if (e?.engineError) throw e;
-          throw engineError(e?.code ?? "WRITE_FAILED", `写操作执行失败: ${e?.message ?? String(e)}`);
+          const writeError = e?.message ?? String(e);
+          const hint = await describeFailure(connectionName, sql, sql, writeError);
+          throw engineError(e?.code ?? "WRITE_FAILED", `写操作执行失败: ${writeError}${hint}`, writeError);
         }
         return {
           connection: connectionName,
@@ -436,7 +506,8 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
 
       const errorText = textOf(result);
       const err = classifyError(errorText);
-      throw engineError(err.code, `dbx_execute_query failed: ${err.detail}`, errorText);
+      const hint = await describeFailure(connectionName, sql, effectiveSql, errorText);
+      throw engineError(err.code, `dbx_execute_query failed: ${err.detail}${hint}`, errorText);
     }],
 
     // === 对象浏览 ===

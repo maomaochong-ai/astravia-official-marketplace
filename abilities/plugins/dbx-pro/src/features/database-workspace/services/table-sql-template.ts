@@ -38,6 +38,19 @@ export interface GenerateContext {
 	columns: EngineColumn[];
 }
 
+/**
+ * 新建表模板：连接 / schema 节点的「新建表」入口用它预置一个新 tab。
+ *
+ * schema 一律写进限定名：未限定的 `CREATE TABLE t` 会落到**连接会话**的
+ * search_path（PG 默认 `"$user", public`），与树里看到的 schema 可能不是同一个 ——
+ * 结果是建完表在树里能看到、按裸表名查询却报 `relation "t" does not exist`。
+ * 从 schema 节点进入时带上 schema，是这里唯一能替用户消掉那个坑的地方。
+ */
+export function buildNewTableTemplate(opts: { schema?: string; table?: string } = {}): string {
+	const parts = [opts.schema, opts.table ?? "new_table"].filter((p): p is string => Boolean(p && p.trim()));
+	return `CREATE TABLE ${parts.map(quoteIdent).join(".")} (\n  id INTEGER PRIMARY KEY\n);`;
+}
+
 export function generateTableSql(kind: TableSqlKind, ctx: GenerateContext): string {
 	const { qualifiedName: table, columns, dbType } = ctx;
 	const cols = columns;

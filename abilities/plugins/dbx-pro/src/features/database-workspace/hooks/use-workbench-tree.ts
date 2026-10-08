@@ -12,15 +12,37 @@ import {
 } from "../../../shared/services/engine-client";
 import {
 	connectionFromNodeKey,
+	parseRoutinesFolderKey,
 	parseTableNodeKey,
+	routineNodeKey,
+	routinesFolderNodeKey,
 	schemaNodeKey,
 	tableNodeKey,
 	columnNodeKey,
 	type TreeNode,
 	treeNodeKind,
 } from "../../../domain/tree-node-key";
+import {
+	loadRoutines,
+	routineKeyName,
+	routineLabel,
+	routinesCatalogSql,
+} from "../services/routines-catalog";
 import type { EngineColumn, WorkbenchState } from "../state/workbench-types";
 import type { WorkbenchAction } from "../state/workbench-actions";
+
+/**
+ * 例程分组节点。方言不支持时返回 null —— 宁可不显示，也不要一个点开就报错的分组。
+ */
+function routinesFolderNode(connectionName: string, schema: string, dbType?: string): TreeNode | null {
+	if (!connectionName || !routinesCatalogSql(dbType, schema)) return null;
+	return {
+		key: routinesFolderNodeKey(connectionName, schema),
+		kind: "routine-folder",
+		label: "存储过程 / 函数",
+		hasChildren: true,
+	};
+}
 
 interface TreeDeps {
 	stateRef: React.MutableRefObject<WorkbenchState>;
@@ -57,12 +79,14 @@ export function useWorkbenchTree(deps: TreeDeps) {
 					const name = connectionName ?? connectionFromNodeKey(nodeKey) ?? "";
 					const connConfig = stateRef.current.connections.find((c) => c.name === name);
 					const selectedSchemas = connConfig?.schemas ?? [];
+					const dbType = extra?.dbType ?? connConfig?.db_type;
 
 					let children: TreeNode[];
+					let schemaLayer = false;
 					try {
-						const dbType = extra?.dbType ?? connConfig?.db_type;
 						const schemas = await engineListSchemas(name, dbType);
 						if (schemas.supported && schemas.schemas.length > 0) {
+							schemaLayer = true;
 							let visible = schemas.schemas;
 							if (selectedSchemas.length > 0) {
 								visible = selectedSchemas.filter((s) => schemas.schemas.includes(s));
@@ -79,10 +103,35 @@ export function useWorkbenchTree(deps: TreeDeps) {
 					} catch {
 						children = await listTableNodes(name, selectedSchemas[0]);
 					}
+					// 无 schema 层的库（SQLite 等）没有 schema 节点可挂，例程分组直接挂在连接下。
+					if (!schemaLayer) {
+						const folder = routinesFolderNode(name, "", dbType);
+						if (folder) children = [...children, folder];
+					}
 					dispatch({ type: "nodeLoaded", key: nodeKey, children });
 				} else if (kind === "schema") {
-					const children = await listTableNodes(connectionName ?? "", extra?.schema);
-					dispatch({ type: "nodeLoaded", key: nodeKey, children });
+					const name = connectionName ?? connectionFromNodeKey(nodeKey) ?? "";
+					const schemaName = extra?.schema;
+					const dbType = extra?.dbType ?? stateRef.current.connections.find((c) => c.name === name)?.db_type;
+					const children = await listTableNodes(name, schemaName);
+					const folder = routinesFolderNode(name, schemaName ?? "", dbType);
+					dispatch({ type: "nodeLoaded", key: nodeKey, children: folder ? [...children, folder] : children });
+				} else if (kind === "routine-folder") {
+					const ref = parseRoutinesFolderKey(nodeKey);
+					const name = connectionName ?? ref?.connection ?? "";
+					const schemaName = extra?.schema ?? ref?.schema ?? "";
+					const dbType = extra?.dbType ?? stateRef.current.connections.find((c) => c.name === name)?.db_type;
+					const result = await loadRoutines(name, schemaName, dbType);
+					const routines: TreeNode[] = result.routines.map((r) => ({
+						key: routineNodeKey(name, schemaName, routineKeyName(r)),
+						kind: "routine" as const,
+						label: routineLabel(r),
+						routineName: r.name,
+						routineKind: r.kind,
+						routineArgs: r.args,
+						hasChildren: false,
+					}));
+					dispatch({ type: "nodeLoaded", key: nodeKey, children: routines });
 				} else if (kind === "table") {
 					const ref = parseTableNodeKey(nodeKey);
 					const conn = connectionName ?? ref?.connection ?? "";

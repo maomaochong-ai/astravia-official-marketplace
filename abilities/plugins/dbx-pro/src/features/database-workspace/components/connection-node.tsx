@@ -13,10 +13,11 @@ import { useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import type { TreeNode } from "../../../domain/tree-node-key";
 import { parseColumnNodeKey } from "../../../domain/tree-node-key";
-import { writeAiNodeDrag, setMentionDragImage, type AiNodeInfo } from "../../../domain/table-drag";
+import { isMentionableKind, writeAiNodeDrag, setMentionDragImage, type AiNodeInfo } from "../../../domain/table-drag";
 import { getDatabaseTypeVisual } from "../../../domain/database-type-visual";
 import { engineDescribeByName } from "../../../shared/services/engine-client";
-import { generateTableSql } from "../services/table-sql-template";
+import { buildNewTableTemplate, generateTableSql } from "../services/table-sql-template";
+import { buildRoutineCallTemplate } from "../services/routines-catalog";
 import type { EngineColumn } from "../state/workbench-types";
 import { ContextMenu, type ContextMenuState } from "../../../shared/components/context-menu";
 import {
@@ -122,7 +123,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			// 否则会用陈旧 isExpanded 二次 dispatch，把刚展开的节点又折叠回去。
 			activateConnection();
 			void ensureChildren();
-		} else if (node.kind === "schema") {
+		} else if (node.kind === "schema" || node.kind === "routine-folder") {
 			void ensureChildren();
 			if (!isExpanded) expand();
 		}
@@ -137,6 +138,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			newQueryForConnection();
 		} else if (node.kind === "table" && connectionName) {
 			previewTable();
+		} else if (node.kind === "routine" && connectionName) {
+			openRoutineCall();
 		} else {
 			void ensureChildren();
 			if (!isExpanded) expand();
@@ -159,6 +162,49 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 	function countTable(): void {
 		if (!connectionName) return;
 		void openPreviewTab(connectionName, `SELECT COUNT(*) AS cnt FROM ${qualifiedName};`, "计数");
+	}
+
+	/**
+	 * 新建表：打开一个带 schema 限定名的 CREATE TABLE 模板。
+	 * 必须写限定名 —— 不带 schema 的 CREATE TABLE 落在连接会话的 search_path 上，
+	 * 未必是树里显示、用户以为的那个 schema；建完就会出现「树里能看到、SQL 里查不到」。
+	 */
+	function openNewTable(connName: string, targetSchema?: string): void {
+		if (!connName) return;
+		const id = nextTabId();
+		dispatch({
+			type: "addTab",
+			tab: {
+				id,
+				label: targetSchema ? `${targetSchema} 新建表` : "新建表",
+				connectionName: connName,
+				sql: buildNewTableTemplate({ schema: targetSchema }),
+				isRunning: false,
+			},
+		});
+	}
+
+	/**
+	 * 例程：打开调用模板 tab。**不自动执行** —— 模板里的参数要用户自己填，
+	 * 直接跑 `CALL f()` 只会报参数错误，或者更糟：在真有默认参数的库上误触发副作用。
+	 */
+	function openRoutineCall(): void {
+		if (!connectionName || !node.routineName) return;
+		dispatch({
+			type: "addTab",
+			tab: {
+				id: nextTabId(),
+				label: node.routineName,
+				connectionName,
+				sql: buildRoutineCallTemplate({
+					schema: childScope ?? "",
+					name: node.routineName,
+					kind: node.routineKind ?? "",
+					args: node.routineArgs ?? "",
+				}),
+				isRunning: false,
+			},
+		});
 	}
 
 	function openAiDialog(prompt: string): void {
@@ -280,6 +326,12 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							void ensureChildren();
 						},
 					},
+					{
+						type: "item",
+						label: "新建表",
+						icon: "icon-[lucide--table-2]",
+						onClick: () => openNewTable(node.label),
+					},
 					{ type: "separator" },
 					{
 						type: "item",
@@ -328,6 +380,12 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							});
 						},
 					},
+					{
+						type: "item",
+						label: "新建表",
+						icon: "icon-[lucide--table-2]",
+						onClick: () => openNewTable(connectionName ?? "", node.label),
+					},
 					{ type: "separator" },
 					{
 						type: "item",
@@ -359,6 +417,52 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			return;
 		}
 		
+		if (node.kind === "routine") {
+			const routineName = node.routineName ?? node.label;
+			const routineQualified = childScope ? `${childScope}.${routineName}` : routineName;
+			setMenu({
+				x: e.clientX,
+				y: e.clientY,
+				items: [
+					{ type: "item", label: "生成调用模板", icon: "icon-[lucide--square-terminal]", onClick: openRoutineCall },
+					{ type: "separator" },
+					{
+						type: "item",
+						label: "复制例程名",
+						icon: "icon-[lucide--copy]",
+						onClick: () => void navigator.clipboard.writeText(routineName).catch(() => {}),
+					},
+					{
+						type: "item",
+						label: "复制限定名",
+						icon: "icon-[lucide--clipboard-copy]",
+						onClick: () => void navigator.clipboard.writeText(routineQualified).catch(() => {}),
+					},
+				],
+			});
+			return;
+		}
+
+		if (node.kind === "routine-folder") {
+			setMenu({
+				x: e.clientX,
+				y: e.clientY,
+				items: [
+					{
+						type: "item",
+						label: isExpanded ? "折叠" : "展开",
+						icon: isExpanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]",
+						onClick: () => {
+							void ensureChildren();
+							if (!isExpanded) expand();
+							else dispatch({ type: "toggleNode", key: node.key });
+						},
+					},
+				],
+			});
+			return;
+		}
+
 		if (node.kind === "table" && connectionName) {
 			setMenu({
 				x: e.clientX,
@@ -554,25 +658,30 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				tableName: node.label,
 				label: node.label,
 			};
-		} else {
+		} else if (node.kind === "schema") {
 			single = {
-				kind: node.kind,
+				kind: "schema",
 				connectionName: conn,
-				schema: node.kind === "schema" ? node.label : childScope || undefined,
+				schema: node.label,
 				label: node.label,
 			};
+		} else {
+			// 例程 / 例程分组不参与 @提及 拖拽：宿主提及语法里没有它们的形态。
+			return;
 		}
 
 		// 多选模式且拖拽起点属于已选集合：携带全部已选连接 / schema / 表。
 		let payloads: AiNodeInfo[] = [single];
 		if (selectionMode && node.kind !== "column" && isNodeSelected) {
-			const multi: AiNodeInfo[] = [...selectedNodes.values()].map((n) => ({
-				kind: n.kind as AiNodeInfo["kind"],
-				connectionName: n.connectionName,
-				schema: n.kind === "table" ? n.schema : undefined,
-				tableName: n.kind === "table" ? n.label : undefined,
-				label: n.label,
-			}));
+			const multi: AiNodeInfo[] = [...selectedNodes.values()]
+				.filter((n) => isMentionableKind(n.kind))
+				.map((n) => ({
+					kind: n.kind as AiNodeInfo["kind"],
+					connectionName: n.connectionName,
+					schema: n.kind === "table" ? n.schema : undefined,
+					tableName: n.kind === "table" ? n.label : undefined,
+					label: n.label,
+				}));
 			if (multi.length > 0) payloads = multi;
 		}
 
@@ -581,7 +690,8 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 		setMentionDragImage(e, payloads);
 	}
 
-	const isDraggable = node.kind === "table" || node.kind === "schema" || node.kind === "connection" || node.kind === "column";
+	// 例程与例程分组不可拖拽：宿主 AI 提及语法里没有它们的形态，拖了只会产生无效标签。
+	const isDraggable = isMentionableKind(node.kind);
 
 	return (
 		<div>
@@ -620,7 +730,7 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 						<span className="icon-[lucide--check] h-2.5 w-2.5" />
 					</span>
 				)}
-				{(node.kind === "connection" || node.kind === "schema" || node.kind === "table") && (
+				{(node.kind === "connection" || node.kind === "schema" || node.kind === "table" || node.kind === "routine-folder") && (
 					<span
 						onClick={(e) => {
 							e.stopPropagation();
@@ -644,6 +754,14 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 				{node.kind === "column" && (
 					<span
 						className={`h-3 w-3 shrink-0 ${node.label.includes("(PK)") ? "icon-[lucide--key-round] text-amber-400" : "icon-[lucide--columns-3] text-muted-foreground"}`}
+					/>
+				)}
+				{node.kind === "routine-folder" && (
+					<span className="icon-[lucide--braces] h-3 w-3 shrink-0 text-violet-400/70" />
+				)}
+				{node.kind === "routine" && (
+					<span
+						className={`h-3 w-3 shrink-0 ${node.routineKind === "PROCEDURE" ? "icon-[lucide--square-terminal] text-amber-400/80" : "icon-[lucide--sigma] text-violet-400/80"}`}
 					/>
 				)}
 				<span className="min-w-0 flex-1 truncate">{node.label}</span>

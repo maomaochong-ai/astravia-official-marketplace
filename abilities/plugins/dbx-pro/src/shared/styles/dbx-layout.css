@@ -125,6 +125,21 @@
         animation: dbx-export-slide 1.15s ease-in-out infinite;
 }
 
+/*
+ * 顶栏后台任务按钮的进度环。
+ * 按钮只有一个下载图标 + 角标，取数在跑时看不出进展；用 conic-gradient 画一圈
+ * 已完成的弧（底部轨道用同色低透明度），不需要额外 SVG / 元素。
+ * 变量 --dbx-export-progress 由组件按百分比注入。
+ */
+.dbx-export-ring {
+        background: conic-gradient(
+                #22c55e 0 var(--dbx-export-progress, 0%),
+                color-mix(in srgb, #22c55e 20%, transparent) var(--dbx-export-progress, 0%) 100%
+        );
+        -webkit-mask: radial-gradient(circle, transparent 62%, #000 66%);
+        mask: radial-gradient(circle, transparent 62%, #000 66%);
+}
+
 @keyframes dbx-export-slide {
         0% {
                 transform: translateX(-110%);

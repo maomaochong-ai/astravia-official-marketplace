@@ -11,7 +11,7 @@
  * 于是分段唯一、可逆，解析不需要任何启发式。
  */
 
-export type TreeNodeKind = "connection" | "schema" | "table" | "column";
+export type TreeNodeKind = "connection" | "schema" | "table" | "column" | "routine-folder" | "routine";
 
 export interface TreeNode {
 	key: string;
@@ -21,6 +21,12 @@ export interface TreeNode {
 	dbType?: string;
 	/** 表类型（table 节点才有）。 */
 	tableKind?: string;
+	/** 例程名（不含签名；routine 节点才有）。 */
+	routineName?: string;
+	/** 例程类型（routine 节点才有）：FUNCTION / PROCEDURE。 */
+	routineKind?: string;
+	/** 例程实参签名（routine 节点才有；仅 PG 目录能拿到，其他方言为空）。 */
+	routineArgs?: string;
 	hasChildren?: boolean;
 }
 
@@ -35,6 +41,14 @@ export interface TableNodeRef {
 /** 列节点的身份：解析 key 得到连接 / schema / 表 / 列名。 */
 export interface ColumnNodeRef extends TableNodeRef {
 	column: string;
+}
+
+/** 例程节点的身份：解析 key 得到连接 / schema / 例程名。 */
+export interface RoutineNodeRef {
+	connection: string;
+	/** 无 schema 层（SQLite 等）时为空串。 */
+	schema: string;
+	routine: string;
 }
 
 function encodeSegments(parts: readonly string[]): string {
@@ -71,6 +85,18 @@ export function columnNodeKey(
 	return `col:${encodeSegments([connection, schema ?? "", table, column])}`;
 }
 
+/**
+ * schema 下的「存储过程 / 函数」分组节点。
+ * 它不对应后端对象，只是把例程从表里分出来 —— 否则展开一个 schema，几百个例程会把表淹掉。
+ */
+export function routinesFolderNodeKey(connection: string, schema: string): string {
+	return `routines:${encodeSegments([connection, schema])}`;
+}
+
+export function routineNodeKey(connection: string, schema: string | undefined, routine: string): string {
+	return `routine:${encodeSegments([connection, schema ?? "", routine])}`;
+}
+
 /** key 的种类；不属于树节点时返回 null。 */
 export function treeNodeKind(key: string): TreeNodeKind | null {
 	const kind = key.slice(0, key.indexOf(":"));
@@ -82,12 +108,16 @@ export function treeNodeKind(key: string): TreeNodeKind | null {
 			return kind;
 		case "col":
 			return "column";
+		case "routines":
+			return "routine-folder";
+		case "routine":
+			return "routine";
 		default:
 			return null;
 	}
 }
 
-/** 从 key 取连接名。三种带连接名的 key 都在第 1 段。 */
+/** 从 key 取连接名：所有带连接名的 key 都把连接名放在第 1 段。 */
 export function connectionFromNodeKey(key: string): string | null {
 	const segments = key.split(":").slice(1);
 	const first = segments[0];
@@ -110,4 +140,22 @@ export function parseColumnNodeKey(key: string): ColumnNodeRef | null {
 	if (segments.length !== 4) return null;
 	const [connection, schema, table, column] = segments.map(decodeSegment);
 	return { connection, schema, table, column };
+}
+
+/** 从例程分组 key 还原连接 / schema。key 不是 routines: 时返回 null。 */
+export function parseRoutinesFolderKey(key: string): { connection: string; schema: string } | null {
+	if (treeNodeKind(key) !== "routine-folder") return null;
+	const segments = key.split(":").slice(1);
+	if (segments.length !== 2) return null;
+	const [connection, schema] = segments.map(decodeSegment);
+	return { connection, schema };
+}
+
+/** 从例程节点 key 还原连接 / schema / 例程名。key 不是 routine: 时返回 null。 */
+export function parseRoutineNodeKey(key: string): RoutineNodeRef | null {
+	if (treeNodeKind(key) !== "routine") return null;
+	const segments = key.split(":").slice(1);
+	if (segments.length !== 3) return null;
+	const [connection, schema, routine] = segments.map(decodeSegment);
+	return { connection, schema, routine };
 }

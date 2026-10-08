@@ -7,18 +7,23 @@
  * - 触发懒加载（通过 use-workbench）
  */
 
-import { useRef, useState, type JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import { ConnectionNode } from "./connection-node";
 import { ConnectionTreeToolbar } from "./connection-tree-toolbar";
 import { connectionNodeKey, type TreeNode } from "../../../domain/tree-node-key";
 import { buildMultiSelectPrompt, buildDashboardPrompt, buildScreenPrompt } from "../../../shared/ai/send-context";
 import { SendToAiDialog } from "./send-to-ai-dialog";
+import { searchTables, type TableSearchHit } from "../services/table-search";
+
+/** 搜表防抖：每个字符都打一轮 list_tables 会把引擎打满（引擎侧读路径是共享子进程）。 */
+const SEARCH_DEBOUNCE_MS = 300;
 
 export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
 	const {
 		state,
 		refreshConnections,
+		openPreviewTab,
 		dispatch,
 		selectionMode,
 		selectedNodes,
@@ -50,6 +55,53 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 		setAiDialogOpen(true);
 	}
 	const needle = query.trim().toLowerCase();
+
+	const [hits, setHits] = useState<TableSearchHit[]>([]);
+	const [searching, setSearching] = useState(false);
+	const [failedConnections, setFailedConnections] = useState<string[]>([]);
+	/** 连接名清单：连接增删才需要重搜，避免每次 refresh 产生的新数组引用把请求打飞。 */
+	const connectionKey = state.connections.map((c) => c.name).join("|");
+
+	// 搜表要问引擎：树是懒加载的，只在已加载节点上做子串过滤永远搜不到没展开的表
+	//（刚建的新表正好就是没展开的那类）。输入必须防抖，否则每个字符打一轮 list_tables。
+	useEffect(() => {
+		if (!needle) {
+			setHits([]);
+			setFailedConnections([]);
+			setSearching(false);
+			return;
+		}
+		let cancelled = false;
+		setSearching(true);
+		const timer = setTimeout(() => {
+			void searchTables(
+				state.connections.map((c) => ({ name: c.name, dbType: c.db_type, schemas: c.schemas })),
+				needle,
+			)
+				.then((result) => {
+					if (cancelled) return;
+					setHits(result.hits);
+					setFailedConnections(result.failedConnections);
+				})
+				.catch(() => {
+					if (cancelled) return;
+					setHits([]);
+				})
+				.finally(() => {
+					if (!cancelled) setSearching(false);
+				});
+		}, SEARCH_DEBOUNCE_MS);
+		return () => {
+			cancelled = true;
+			clearTimeout(timer);
+		};
+	}, [needle, connectionKey]);
+
+	/** 点击命中项：按限定名预览，避免再出现「树里看得到、SQL 里查不到」。 */
+	function openHit(hit: TableSearchHit): void {
+		const qualified = hit.schema ? `${hit.schema}.${hit.name}` : hit.name;
+		void openPreviewTab(hit.connection, `SELECT * FROM ${qualified} LIMIT 100;`, hit.name);
+	}
 
 	function expandAll(): void {
 		for (const [key, children] of state.treeChildren) {
@@ -118,7 +170,44 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 
 			{/* 树内容 */}
 			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto px-1 py-1">
-				{visibleConnectionNodes.length === 0 ? (
+				{needle && (
+					<div className="mb-1">
+						<div className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground">
+							<span className="icon-[lucide--table-2] h-2.5 w-2.5" />
+							<span>
+								表命中 <span className="font-semibold">{hits.length}</span>
+							</span>
+							{searching && <span className="ml-1 animate-pulse">搜索中…</span>}
+						</div>
+						{hits.map((hit) => (
+							<button
+								key={`${hit.connection}|${hit.schema ?? ""}|${hit.name}`}
+								type="button"
+								onClick={() => openHit(hit)}
+								title={`${hit.connection} · ${hit.schema ? `${hit.schema}.` : ""}${hit.name}\n点击预览前 100 行`}
+								className="flex w-full items-center gap-1 rounded px-1.5 py-1 text-left text-[11px] hover:bg-muted"
+							>
+								<span className={`h-3 w-3 shrink-0 ${hit.kind?.toUpperCase() === "VIEW" ? "icon-[lucide--eye]" : "icon-[lucide--table]"} text-muted-foreground`} />
+								<span className="min-w-0 flex-1 truncate">
+									{hit.schema ? <span className="text-muted-foreground">{hit.schema}.</span> : null}
+									{hit.name}
+								</span>
+								<span className="shrink-0 text-[10px] text-muted-foreground/70">{hit.connection}</span>
+							</button>
+						))}
+						{!searching && hits.length === 0 && (
+							<p className="px-1 py-1 text-[10px] text-muted-foreground/70">没有匹配的表</p>
+						)}
+						{failedConnections.length > 0 && (
+							<p className="px-1 py-1 text-[10px] text-amber-600 dark:text-amber-400">
+								{failedConnections.join("、")} 读取失败，结果可能不完整
+							</p>
+						)}
+						<div className="my-1 border-t" style={{ borderColor: "var(--dbx-line-soft)" }} />
+						<div className="px-1 py-0.5 text-[10px] text-muted-foreground">连接</div>
+					</div>
+				)}
+				{!needle && visibleConnectionNodes.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-10 text-center">
 						<span className="icon-[lucide--database] h-8 w-8 text-muted-foreground/60" />
 						<p className="mt-3 text-[11px] text-muted-foreground">

@@ -165,8 +165,32 @@ export function ResultGrid({
 	// 当前在模态中展示的后台导出任务 id（最小化后置 null，任务仍在顶栏后台任务里）。
 	const [dialogTaskId, setDialogTaskId] = useState<string | null>(null);
 	const exportCancelTokensRef = useRef<Map<string, { cancelled: boolean }>>(new Map());
+	/** 导出任务 → 发起时所在结果集的 SQL：用于判断服务端总数是否属于同一次查询。 */
+	const exportSqlRef = useRef<Map<string, string>>(new Map());
+	/** 最近一次渲染看到的服务端总数：导出收尾时优先用它，避免用开始时的过期快照。 */
+	const latestKnownTotalRef = useRef<number | null>(null);
+	latestKnownTotalRef.current = isServer && serverTotalCount !== undefined ? serverTotalCount : null;
 	const exportTasks = useExportTasks();
 	const dialogTask = dialogTaskId ? (exportTasks.find((t) => t.id === dialogTaskId) ?? null) : null;
+
+	/**
+	 * 服务端总数是**执行完之后**第二趟统计的，导出往往赶在它回来之前就开始：
+	 * 任务以「总数未知」起步，进度条只能走滑动动画、永远不给百分比 ——
+	 * 用户看到的「进度条不跟随进度」多半就是这个。
+	 * 总数落定后回填任务；只回填仍在跑、且 SQL 未被换掉的任务，
+	 * 避免把另一个查询的总数灌进正在运行的导出。
+	 */
+	useEffect(() => {
+		if (!dialogTaskId) return;
+		// 统计失败（totalCountStatus=failed）时总数就是未知，不能假装有总数。
+		if (serverTotalStatus !== undefined) return;
+		if (typeof serverTotalCount !== "number" || serverTotalCount <= 0) return;
+		if (exportSqlRef.current.get(dialogTaskId) !== sql) return;
+		const task = exportTasks.find((t) => t.id === dialogTaskId);
+		if (!task || task.totalRows === serverTotalCount) return;
+		if (task.status !== "running" && task.status !== "writing") return;
+		updateExportTask(dialogTaskId, { totalRows: serverTotalCount });
+	}, [dialogTaskId, serverTotalCount, serverTotalStatus, sql, exportTasks]);
 
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
 	const { state, dispatch, runTabSql, settings } = useWorkbench();
@@ -757,6 +781,7 @@ export function ResultGrid({
 		const knownTotal = isServer && serverTotalCount !== undefined ? serverTotalCount : null;
 		const task = addExportTask({ fileName, format: kind, database: parts.database, tableName: parts.tableName, totalRows: knownTotal });
 		setDialogTaskId(task.id);
+		exportSqlRef.current.set(task.id, sql);
 
 		const token = { cancelled: false };
 		exportCancelTokensRef.current.set(task.id, token);
@@ -834,7 +859,7 @@ export function ResultGrid({
 				status: "done",
 				rowsExported: total,
 				filePath,
-				totalRows: truncationNote ? total : knownTotal ?? total,
+				totalRows: truncationNote ? total : knownTotal ?? latestKnownTotalRef.current ?? total,
 				note: truncationNote,
 				finishedAt: Date.now(),
 			});
@@ -853,6 +878,7 @@ export function ResultGrid({
 		} finally {
 			unregisterCancel();
 			exportCancelTokensRef.current.delete(task.id);
+			exportSqlRef.current.delete(task.id);
 		}
 	}
 
