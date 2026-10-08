@@ -3,8 +3,9 @@
  * Tailwind className（宿主规范：禁手写业务 CSS）。
  */
 
-import type { ReviewFinding, ReviewStore } from "../review/store";
+import type { JSX } from "react";
 import { useEffect, useState } from "react";
+import type { ReviewFinding, ReviewRun, ReviewStore } from "../review/store";
 
 const SEVERITY_ORDER: readonly ReviewFinding["severity"][] = ["critical", "major", "minor", "info"];
 
@@ -53,7 +54,7 @@ function EmptyHint(): JSX.Element {
 	);
 }
 
-function RunCard({ run }: { run: import("../review/store").ReviewRun }): JSX.Element {
+function RunCard({ run }: { run: ReviewRun }): JSX.Element {
 	const grouped = new Map<string, ReviewFinding[]>();
 	for (const f of run.findings) {
 		const list = grouped.get(f.severity) ?? [];

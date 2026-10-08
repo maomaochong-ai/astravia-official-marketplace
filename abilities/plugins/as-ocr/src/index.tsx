@@ -24,12 +24,14 @@ export default definePlugin({
 
 		registerReviewTool(ctx, store);
 
+		const activeStore = store;
+		if (!activeStore) throw new Error("ReviewStore 未初始化");
 		ctx.ui.registerActivityTab({
 			id: "as-ocr.reviews",
 			label: ctx.i18n.t("tab.reviews"),
 			order: 22,
 			scope_use: ["conversation", "project"],
-			component: () => <ReviewPanel store={store} />,
+			component: () => <ReviewPanel store={activeStore} />,
 		});
 	},
 	deactivate() {

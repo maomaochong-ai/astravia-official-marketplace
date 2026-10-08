@@ -25,6 +25,12 @@ interface OcrRawFinding {
 
 const SEVERITIES = new Set(["critical", "major", "minor", "info"]);
 
+function normalizeSeverity(value: unknown): ReviewFinding["severity"] {
+	return typeof value === "string" && SEVERITIES.has(value)
+		? (value as ReviewFinding["severity"])
+		: "info";
+}
+
 export function normalizeFindings(raw: unknown): ReviewFinding[] {
 	if (!Array.isArray(raw)) return [];
 	const out: ReviewFinding[] = [];
@@ -35,8 +41,7 @@ export function normalizeFindings(raw: unknown): ReviewFinding[] {
 		out.push({
 			file: f.file,
 			line: typeof f.line === "number" ? f.line : 0,
-			severity:
-				typeof f.severity === "string" && SEVERITIES.has(f.severity) ? f.severity : "info",
+			severity: normalizeSeverity(f.severity),
 			message: f.message,
 			...(typeof f.rule === "string" ? { rule: f.rule } : {}),
 		});
@@ -78,9 +83,10 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 		},
 		scope_use: ["conversation", "project"],
 		timeoutMs: 600_000,
-		async handler({ input, sessionId }) {
+		async handler({ trigger, session }) {
 			const startedAt = Date.now();
-			const parsed = (input ?? {}) as CodeReviewInput;
+			const parsed = (trigger.input ?? {}) as CodeReviewInput;
+			const sessionId = session.id ?? "run";
 			const scope = parsed.from ? `${parsed.from}…HEAD` : "workspace";
 			const tmp = `/tmp/as-ocr-${sessionId ?? "run"}-${startedAt}.json`;
 
@@ -100,7 +106,8 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 			let findings: ReviewFinding[] = [];
 			if (outcome.exitCode === 0) {
 				try {
-					const raw = await ctx.fs.read(tmp);
+					const fileResult = await ctx.fs.readFile(tmp);
+					const raw = fileResult.content;
 					const parsedJson: unknown = JSON.parse(raw);
 					findings = normalizeFindings(
 						Array.isArray(parsedJson)

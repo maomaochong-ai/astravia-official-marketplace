@@ -39,12 +39,7 @@ export class ReviewStore {
 	private disposables: Array<() => void> = [];
 
 	constructor(private readonly ctx: PluginContext) {
-		try {
-			const saved = this.ctx.storage.get<ReviewRun[]>(STORAGE_KEY);
-			if (Array.isArray(saved)) this.runs = saved.slice(-20);
-		} catch {
-			/* 首次运行无存储 */
-		}
+		void this.loadPersisted();
 	}
 
 	subscribe(listener: () => void): () => void {
@@ -82,12 +77,23 @@ export class ReviewStore {
 		return `最近审查（${run.scope}）：${run.findings.length} 个发现（${counts}）。\n${top}${run.findings.length > 8 ? `\n…另有 ${run.findings.length - 8} 个，详见审查面板。` : ""}`;
 	}
 
-	private persist(): void {
+	private async loadPersisted(): Promise<void> {
 		try {
-			this.ctx.storage.set(STORAGE_KEY, this.runs);
+			const raw = await this.ctx.storage.readFile(STORAGE_KEY, "utf8");
+			if (!raw) return;
+			const saved: unknown = JSON.parse(raw);
+			if (Array.isArray(saved)) this.runs = (saved as ReviewRun[]).slice(-20);
 		} catch {
-			/* 存储失败不阻塞 */
+			/* 首次运行或存储损坏：从空开始 */
 		}
+	}
+
+	private persist(): void {
+		void this.ctx.storage
+			.writeFile(STORAGE_KEY, JSON.stringify(this.runs), "utf8")
+			.catch(() => {
+				/* 存储失败不阻塞 */
+			});
 	}
 
 	private emit(): void {
