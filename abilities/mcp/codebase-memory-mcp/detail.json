@@ -1,0 +1,36 @@
+{
+  "version": "0.11.0",
+  "slug": "codebase-memory-mcp",
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Codebase Memory",
+      "subtitle": "Tree-sitter AST across 162 languages → persistent knowledge graph. Millisecond indexing, sub-millisecond structural queries."
+    },
+    {
+      "type": "features",
+      "items": [
+        {
+          "icon": "zap",
+          "title": "Extreme indexing",
+          "body": "Average repo in milliseconds; the Linux kernel (28M LOC, 75K files) in 3 minutes. RAM-first pipeline, LZ4, in-memory SQLite."
+        },
+        {
+          "icon": "graph",
+          "title": "Persistent graph",
+          "body": "Functions, classes, call chains, HTTP routes, cross-service links — enhanced with Hybrid LSP semantic resolution for 10 languages."
+        },
+        {
+          "icon": "coins",
+          "title": "120× fewer tokens",
+          "body": "~3,400 tokens for 5 structural queries vs ~412,000 file-by-file (arXiv 2603.27277). One graph query replaces dozens of grep/read cycles."
+        },
+        {
+          "icon": "shield",
+          "title": "100% local",
+          "body": "Pure C single binary, no runtime, no API key, code never leaves your machine. VirusTotal + SLSA 3 + SBOM per release."
+        }
+      ]
+    }
+  ]
+}

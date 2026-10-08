@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "type": "mcp",
+  "slug": "codebase-memory-mcp",
+  "version": "0.11.0",
+  "icon": "https://raw.githubusercontent.com/DeusData/codebase-memory-mcp/main/docs/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "fallback": "README.md",
+    "meta": [
+      {
+        "key": "license",
+        "value": "MIT"
+      },
+      {
+        "key": "repository",
+        "value": "https://github.com/DeusData/codebase-memory-mcp"
+      },
+      {
+        "key": "homepage",
+        "value": "https://github.com/DeusData/codebase-memory-mcp"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json"
+      }
+    }
+  }
+}
