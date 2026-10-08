@@ -1,0 +1,36 @@
+{
+  "version": "0.11.0",
+  "slug": "codebase-memory-mcp",
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "代码记忆图谱",
+      "subtitle": "162 语言树状语法解析 + 持久知识图谱——毫秒级索引，亚毫秒级结构查询"
+    },
+    {
+      "type": "features",
+      "items": [
+        {
+          "icon": "zap",
+          "title": "极致索引速度",
+          "body": "平均仓库毫秒级全量索引；Linux 内核（2800 万行、7.5 万文件）3 分钟。RAM-first 管线 + LZ4 压缩 + 内存 SQLite。"
+        },
+        {
+          "icon": "graph",
+          "title": "持久知识图谱",
+          "body": "函数/类/调用链/HTTP 路由/跨服务链接全量入图；10 种语言的 Hybrid LSP 语义类型解析增强。"
+        },
+        {
+          "icon": "coins",
+          "title": "120 倍省 token",
+          "body": "5 个结构查询约 3400 token vs 逐文件搜索约 41.2 万；一次图查询替代几十轮 grep/read（arXiv 论文实测）。"
+        },
+        {
+          "icon": "shield",
+          "title": "100% 本地",
+          "body": "纯 C 单二进制、无语言运行时、无 API key、代码不出机器；每 release 过 VirusTotal + SLSA 3 + SBOM。"
+        }
+      ]
+    }
+  ]
+}
