@@ -40,7 +40,7 @@
 				"template": "chat-over-canvas",
 				"canvas": "code",
 				"user_prompt": "Review my changes.",
-				"assistant_reply": "ocr reviewed the working tree: 2 critical, 3 major.\n\ncritical · src/parser/reader.ts:88 — possible NPE, value may be null before it is dereferenced.\nmajor · src/net/client.ts:41 — SQL built by string concatenation; use parameters instead."
+				"assistant_reply": "Review finished: 2 critical, 3 major. critical · src/parser/reader.ts:88 — possible NPE."
 			}
 		},
 		{

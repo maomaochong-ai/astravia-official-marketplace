@@ -2,7 +2,7 @@
 	"id": "as-ocr",
 	"name": "%plugin.name%",
 	"icon": "solar:clipboard-check-bold",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",

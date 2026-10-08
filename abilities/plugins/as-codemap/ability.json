@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "as-codemap",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "icon": "solar:graph-bold",
   "minAppVersion": "0.5.60",
   "detail": {

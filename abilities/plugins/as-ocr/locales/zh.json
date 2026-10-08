@@ -1,9 +1,5 @@
 {
-	"plugin": {
-		"name": "代码审查 (as-ocr)",
-		"description": "AI 代码审查：桥接 alibaba/open-code-review（44k★），行级发现按严重度分组，agent 可直接调用审查并讨论修复。内置 NPE、线程安全、XSS、SQL 注入等规则。"
-	},
-	"tab": {
-		"reviews": "审查"
-	}
+	"plugin.name": "代码审查",
+	"plugin.description": "AI 代码审查：桥接 alibaba/open-code-review，行级发现按严重级别分组，让空指针、线程安全、XSS、SQL 注入等问题在提交前暴露。",
+	"tab.reviews": "审查"
 }

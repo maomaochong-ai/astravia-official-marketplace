@@ -40,7 +40,7 @@
         "template": "chat-over-canvas",
         "canvas": "code",
         "user_prompt": "构建码谱，然后告诉我 buildSummary 在哪里被调用。",
-        "assistant_reply": "已为 ~/projects/app 构建码谱：128 个文件，913 个符号。\n\nbuildSummary —— 函数，位于 src/summary.ts:14，被引用 3 次：src/summary.ts:22、src/compact.ts:41、src/index.ts:9。"
+        "assistant_reply": "已建好码谱：128 个文件、913 个符号。buildSummary 在 src/summary.ts:14，被调用 3 次。"
       }
     },
     {

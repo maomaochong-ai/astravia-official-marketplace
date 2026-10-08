@@ -40,7 +40,7 @@
         "template": "chat-over-canvas",
         "canvas": "code",
         "user_prompt": "Build the code map, then tell me where buildSummary is called.",
-        "assistant_reply": "Code map built for ~/projects/app: 128 files, 913 symbols.\n\nbuildSummary — function at src/summary.ts:14, 3 references: src/summary.ts:22, src/compact.ts:41, src/index.ts:9."
+        "assistant_reply": "Code map built: 128 files, 913 symbols. buildSummary — src/summary.ts:14, 3 references."
       }
     },
     {
