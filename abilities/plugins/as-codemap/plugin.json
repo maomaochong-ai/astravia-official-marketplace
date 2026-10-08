@@ -1,8 +1,8 @@
 {
   "id": "as-codemap",
   "name": "%plugin.name%",
-  "icon": "icon.png",
-  "version": "0.1.0",
+  "icon": "solar:graph-bold",
+  "version": "0.1.1",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
@@ -18,6 +18,7 @@
     "ui.slot.workspace-view",
     "agent.tools.register",
     "agent.toolHandler.execute",
+    "agent.session.read",
     "fs.read",
     "storage.read",
     "storage.write",

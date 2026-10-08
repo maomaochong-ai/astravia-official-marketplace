@@ -11,7 +11,9 @@
  */
 
 import { definePlugin } from "@astravia-org/plugin-sdk";
+import "./style.css";
 import { CodeMapPanel } from "./panel/CodeMapPanel";
+import { registerCodeMapBuildTool } from "./store/codemap-build-tool";
 import { CodeMapStore } from "./store/codemap-store";
 import { registerCodeMapTool } from "./store/codemap-tool";
 
@@ -22,10 +24,12 @@ export default definePlugin({
 		store?.dispose();
 		store = new CodeMapStore(ctx);
 
-		registerCodeMapTool(ctx, store);
-
 		const activeStore = store;
 		if (!activeStore) throw new Error("CodeMapStore 未初始化");
+
+		registerCodeMapTool(ctx, activeStore);
+		registerCodeMapBuildTool(ctx, activeStore);
+
 		ctx.ui.registerWorkspaceView({
 			id: "as-codemap.map",
 			label: ctx.i18n.t("view.map"),

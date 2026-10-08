@@ -1,31 +1,70 @@
 {
-  "version": "0.1.0",
-  "slug": "as-codemap",
+  "schemaVersion": 1,
   "blocks": [
     {
       "type": "hero",
-      "title": "Code Map",
-      "subtitle": "Zero-dependency TypeScript symbol-reference graph — navigate structure instead of grepping"
+      "eyebrow": "Code navigation",
+      "title": "Know where a symbol lives — and who calls it",
+      "description": "as-codemap scans the workspace into a symbol-and-reference map, so the AI can answer navigation questions about your own codebase instead of guessing.",
+      "badges": ["Workspace-scoped", "No configuration"]
     },
     {
-      "type": "features",
+      "type": "feature-grid",
+      "title": "What it adds",
       "items": [
         {
-          "icon": "graph",
-          "title": "Symbol graph",
-          "body": "Zero-dep lexical extraction of function/class/method/const/interface plus cross-file references, with size caps to keep scans safe."
+          "title": "Symbol index",
+          "description": "Functions, classes, methods, interfaces and constants, each with its file and line.",
+          "icon": "solar:code-bold"
         },
         {
-          "icon": "cursor-default-click",
-          "title": "Side panel",
-          "body": "Workspace-view slot: browse symbols and file:line per workspace, same cross-project entry as kanban."
+          "title": "Reference counts",
+          "description": "How often each symbol is used, aggregated across files.",
+          "icon": "solar:graph-bold"
         },
         {
-          "icon": "bot",
-          "title": "Agent tool",
-          "body": "code_graph_query: models find symbols and callers by name instead of grepping the tree; lexical limits stated in the description."
+          "title": "Two agent tools",
+          "description": "code_graph_build rescans the workspace; code_graph_query searches by name and kind.",
+          "icon": "solar:bot-bold"
+        },
+        {
+          "title": "Code Map view",
+          "description": "A workspace view lists the scanned files and symbols for one-click lookup.",
+          "icon": "solar:layers-bold"
         }
       ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "code",
+        "user_prompt": "Build the code map, then tell me where buildSummary is called.",
+        "assistant_reply": "Code map built for ~/projects/app: 128 files, 913 symbols.\n\nbuildSummary — function at src/summary.ts:14, 3 references: src/summary.ts:22, src/compact.ts:41, src/index.ts:9."
+      }
+    },
+    {
+      "type": "steps",
+      "title": "Getting started",
+      "items": [
+        {
+          "title": "Install from the marketplace",
+          "description": "Nothing to configure."
+        },
+        {
+          "title": "Ask the AI to build the code map",
+          "description": "Say “build the code map”; the scan covers the workspace of the current session."
+        },
+        {
+          "title": "Open the Code Map view",
+          "description": "Scanned files and symbols appear in the panel; ask follow-up questions in the same conversation."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The parser is lexical rather than type-aware: identically named locals can be over-matched, and very large files (over 512 KB or 5000 lines) are skipped."
     }
   ]
 }

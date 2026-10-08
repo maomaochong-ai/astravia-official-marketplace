@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { generateTableSql } from "../features/database-workspace/services/table-sql-template.ts";
+import { buildNewTableTemplate, generateTableSql } from "../features/database-workspace/services/table-sql-template.ts";
 
 const cols = [
 	{ name: "id", type: "integer", nullable: false, hasDefault: true, defaultValue: "nextval('seq')", comment: "", isPrimaryKey: true },
@@ -78,5 +78,26 @@ describe("generateTableSql — 按真实列生成", () => {
 		const weird = [{ name: "order col", type: "int", nullable: true, hasDefault: false, defaultValue: "", comment: "", isPrimaryKey: false }];
 		const sql = generateTableSql("select", { qualifiedName: "t", columns: weird });
 		assert.match(sql, /SELECT "order col"/);
+	});
+});
+
+describe("buildNewTableTemplate — 新建表模板", () => {
+	it("默认表名 new_table，括号内给主键骨架", () => {
+		assert.equal(buildNewTableTemplate(), "CREATE TABLE new_table (\n  id INTEGER PRIMARY KEY\n);");
+	});
+
+	it("给 schema 时生成限定名", () => {
+		assert.equal(
+			buildNewTableTemplate({ schema: "ods" }),
+			"CREATE TABLE ods.new_table (\n  id INTEGER PRIMARY KEY\n);",
+		);
+	});
+
+	it("空 schema 不拼出前导点", () => {
+		assert.match(buildNewTableTemplate({ schema: "  ", table: "t1" }), /^CREATE TABLE t1 \(/);
+	});
+
+	it("含非法字符的标识符加双引号", () => {
+		assert.match(buildNewTableTemplate({ schema: "my schema", table: "t1" }), /^CREATE TABLE "my schema".t1 \(/);
 	});
 });

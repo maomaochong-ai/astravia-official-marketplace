@@ -42,7 +42,7 @@ export function ReviewPanel({ store }: { store: ReviewStore }): JSX.Element {
 function EmptyHint(): JSX.Element {
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-			<span className="icon-[mdi--clipboard-check-search-outline] h-8 w-8 opacity-50" />
+			<span className="icon-[mdi--clipboard-check-outline] h-8 w-8 opacity-50" />
 			<p className="text-sm">还没有审查记录</p>
 			<p className="max-w-64 text-xs leading-5">
 				在对话里让 agent「审查一下改动」，或直接说 code review——结果会出现在这里。

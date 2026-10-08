@@ -11,6 +11,7 @@
  */
 
 import { definePlugin } from "@astravia-org/plugin-sdk";
+import "./style.css";
 import { ReviewPanel } from "./panel/ReviewPanel";
 import { ReviewStore } from "./review/store";
 import { registerReviewTool } from "./review/tool";

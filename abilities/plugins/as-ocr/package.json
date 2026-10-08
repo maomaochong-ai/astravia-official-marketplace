@@ -1,18 +1,22 @@
 {
-	"name": "@astravia/plugin-as-ocr",
-	"version": "0.1.0",
+	"name": "@astravia-marketplace/as-ocr",
+	"version": "0.1.1",
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"build": "bunx vite build",
-		"check": "bunx tsc --noEmit"
+		"build": "vite build",
+		"check": "tsc --noEmit",
+		"test": "node --experimental-strip-types --test test/*.test.ts"
 	},
 	"devDependencies": {
+		"@astravia-org/plugin-sdk": "^0.3.2",
+		"@astravia-org/plugin-vite": "^0.2.1",
+		"@iconify-json/mdi": "^1.2.3",
+		"@iconify/tailwind4": "^1.2.3",
 		"@tailwindcss/vite": "^4.1.12",
-		"@types/react": "^19.1.1",
-		"@types/react-dom": "^19.1.1",
-		"@astravia-org/plugin-sdk": "workspace:*",
-		"@astravia-org/plugin-vite": "workspace:*",
+		"@types/node": "^22.10.5",
+		"@types/react": "19.1.1",
+		"@types/react-dom": "19.1.1",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"tailwindcss": "^4.1.12",

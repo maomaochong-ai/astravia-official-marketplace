@@ -1,11 +1,12 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import {
 	buildCodeGraph,
 	extractReferences,
 	extractSymbols,
 	isReservedWord,
 	searchSymbols,
-} from "../src/parser/symbol-graph";
+} from "../src/parser/symbol-graph.ts";
 
 /** as-codemap 解析层（零依赖词法提取）的回归测试。 */
 
@@ -38,23 +39,30 @@ describe("extractSymbols", () => {
 	it("识别 function/class/method/interface/const 五种声明", () => {
 		const symbols = extractSymbols("a.ts", TS_SAMPLE);
 		const names = symbols.map((s) => `${s.kind}:${s.name}`).sort();
-		expect(names).toContain("function:buildSummary");
-		expect(names).toContain("function:compact");
-		expect(names).toContain("class:CompactionService");
-		expect(names).toContain("method:estimate");
-		expect(names).toContain("interface:Settings");
-		expect(names).toContain("const:DEFAULT_SETTINGS");
+		for (const expected of [
+			"function:buildSummary",
+			"function:compact",
+			"class:CompactionService",
+			"method:estimate",
+			"interface:Settings",
+			"const:DEFAULT_SETTINGS",
+		]) {
+			assert.ok(names.includes(expected), `${expected} 缺失：${names.join(", ")}`);
+		}
 	});
 
 	it("行号 = 声明所在行（1-based）", () => {
 		const symbols = extractSymbols("a.ts", TS_SAMPLE);
 		const build = symbols.find((s) => s.name === "buildSummary");
-		expect(build?.line).toBe(2);
+		assert.equal(build?.line, 2);
 	});
 
 	it("注释行不计为声明", () => {
 		const symbols = extractSymbols("c.ts", "// function fake() {}\nconst real = 1;");
-		expect(symbols.map((s) => s.name)).toEqual(["real"]);
+		assert.deepEqual(
+			symbols.map((s) => s.name),
+			["real"],
+		);
 	});
 });
 
@@ -63,11 +71,11 @@ describe("extractReferences", () => {
 		const symbols = extractSymbols("b.ts", "function helper() {}\nhelper(); helper();");
 		const refs = extractReferences("b.ts", "function helper() {}\nhelper(); helper();", symbols);
 		const helper = refs.find((r) => r.toSymbol === "helper");
-		expect(helper?.count).toBe(2);
+		assert.equal(helper?.count, 2);
 	});
 
 	it("空符号集返回空", () => {
-		expect(extractReferences("b.ts", "x();", [])).toHaveLength(0);
+		assert.equal(extractReferences("b.ts", "x();", []).length, 0);
 	});
 });
 
@@ -81,12 +89,15 @@ describe("buildCodeGraph", () => {
 		]);
 		const graph = buildCodeGraph(files);
 		const utilSymbols = graph.symbols.filter((s) => s.name === "util");
-		expect(utilSymbols).toHaveLength(1);
+		assert.equal(utilSymbols.length, 1);
 		const aRefs = graph.references.filter((r) => r.fromFile === "a.ts" && r.toSymbol === "util");
-		expect(aRefs[0]?.count).toBe(3);
+		assert.equal(aRefs[0]?.count, 3);
 		const bRefs = graph.references.filter((r) => r.fromFile === "b.ts");
-		expect(bRefs[0]?.count).toBe(1);
-		expect(graph.references.some((r) => r.fromFile === "skip.md")).toBe(false);
+		assert.equal(bRefs[0]?.count, 1);
+		assert.equal(
+			graph.references.some((r) => r.fromFile === "skip.md"),
+			false,
+		);
 	});
 });
 
@@ -97,16 +108,19 @@ describe("searchSymbols（agent 查询面）", () => {
 	const graph = buildCodeGraph(files);
 
 	it("子串匹配 + kind 过滤 + 排序稳定", () => {
-		expect(searchSymbols(graph, "build").length).toBe(2);
-		expect(searchSymbols(graph, "build", "function").map((s) => s.name)).toEqual(["buildSummary"]);
-		expect(searchSymbols(graph, "")).toHaveLength(0);
-		expect(searchSymbols(graph, "nope")).toHaveLength(0);
+		assert.equal(searchSymbols(graph, "build").length, 2);
+		assert.deepEqual(
+			searchSymbols(graph, "build", "function").map((s) => s.name),
+			["buildSummary"],
+		);
+		assert.equal(searchSymbols(graph, "").length, 0);
+		assert.equal(searchSymbols(graph, "nope").length, 0);
 	});
 });
 
 describe("isReservedWord（引用去噪）", () => {
 	it("关键字与常用字面量识别", () => {
-		expect(isReservedWord("function")).toBe(true);
-		expect(isReservedWord("buildSummary")).toBe(false);
+		assert.equal(isReservedWord("function"), true);
+		assert.equal(isReservedWord("buildSummary"), false);
 	});
 });

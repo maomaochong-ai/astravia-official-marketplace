@@ -7,6 +7,7 @@
 - **解析层**（`src/parser/symbol-graph.ts`，纯函数、零依赖）：从 ts/tsx/js/jsx/mjs/cjs 提取 function/class/method/const/interface 声明与跨文件引用计数；单文件 512KB / 5000 行 / 总数 5000 封顶，跳过 dot 目录与 node_modules/dist/out。
 - **右侧面板**（workspace-view 插槽）：按工作区展示符号列表 + file:line；图谱按 workspace root 分片存 storage。
 - **agent 工具 `code_graph_query`**：名称子串 + kind 过滤查询符号，附带引用计数；工具描述明示「拓扑导航用，重构级精度请读原文件」。
+- **agent 工具 `code_graph_build`**：扫描当前会话工作区并重建图谱；面板只读 store，构建只能由 agent 侧触发。
 
 ## 精度取舍（诚实声明）
 
@@ -14,7 +15,7 @@
 
 ## 权限
 
-`ui.slot.workspace-view` · `agent.tools.register` · `agent.toolHandler.execute` · `fs.read` · `storage.read` · `storage.write` · `shell.openExternal`
+`ui.slot.workspace-view` · `agent.tools.register` · `agent.toolHandler.execute` · `agent.session.read` · `fs.read` · `storage.read` · `storage.write` · `shell.openExternal`
 
 ## 许可
 

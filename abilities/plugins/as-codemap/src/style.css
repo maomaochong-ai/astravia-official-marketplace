@@ -1,0 +1,39 @@
+/*
+ * Tailwind CSS — 限定在插件 @scope 内。
+ *
+ * 故意只导 theme + utilities，**不导 preflight（reset）**。
+ * preflight 里有全局 box-sizing / margin / font-family 重置，如果漏到插件根节点
+ * 外面会污染宿主 UI。
+ *
+ * 与 dbx-pro/src/style.css 保持一致的导入策略。
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 宿主 CSS variables → Tailwind theme token 映射。
+   插件 CSS 被 plugin-vite 包进 @scope ([data-astravia-plugin-root="as-codemap"])，
+   Tailwind 的 :root dark: 变体都穿不过这个边界——只有 host 的 CSS variables 能继承进来。
+   把它们映射成语义色 token（bg-muted / text-muted-foreground / border-border …），
+   让面板里的 Tailwind 工具类读到宿主主题。 */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-border: var(--border);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-warning: var(--warning);
+}
+
+/* mdi 图标按需生成（icon-[mdi--*]）。 */
+@plugin "@iconify/tailwind4";

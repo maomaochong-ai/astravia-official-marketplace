@@ -642,7 +642,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -679,6 +679,88 @@
         "path": "abilities/plugins/dbx-pro"
       },
       "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "as-codemap",
+      "name": "Code Map",
+      "description": "Scan the workspace into a symbol-and-reference map, then let the AI answer where a symbol is defined and who calls it.",
+      "version": "0.1.1",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia / zhangqingkun976",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "codebase",
+        "symbols",
+        "references",
+        "navigation",
+        "code-map"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "代码图谱",
+            "description": "把工作区扫描成符号与引用图谱，AI 可以据此回答某个符号定义在哪、被谁调用。",
+            "tags": [
+              "代码库",
+              "符号",
+              "引用",
+              "代码导航",
+              "代码图谱"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/as-codemap"
+      },
+      "minAppVersion": "0.5.60"
+    },
+    {
+      "type": "plugin",
+      "slug": "as-ocr",
+      "name": "Code Review",
+      "description": "Run alibaba/open-code-review from the conversation and list its findings by severity, so bugs and risky patterns surface before they ship.",
+      "version": "0.1.1",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia / zhangqingkun976",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "code-review",
+        "static-analysis",
+        "quality",
+        "npe",
+        "security"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "代码审查",
+            "description": "在对话里调用 alibaba/open-code-review，把空指针、线程安全、XSS、SQL 注入等发现按严重级别整理出来。",
+            "tags": [
+              "代码审查",
+              "静态分析",
+              "代码质量",
+              "空指针",
+              "安全"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/as-ocr"
+      },
+      "minAppVersion": "0.5.60"
     }
   ],
   "version": "0.0.11"

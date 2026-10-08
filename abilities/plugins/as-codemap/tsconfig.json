@@ -12,6 +12,7 @@
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
 		"isolatedModules": true,
 		"jsx": "react-jsx",
 		"jsxImportSource": "react",

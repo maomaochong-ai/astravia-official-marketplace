@@ -1,40 +1,70 @@
 {
-	"version": "0.1.0",
-	"slug": "as-ocr",
+	"schemaVersion": 1,
 	"blocks": [
 		{
 			"type": "hero",
-			"title": "AI 代码审查",
-			"subtitle": "确定性管线 × Agent 混合——行级精确发现，不是泛泛而谈"
+			"eyebrow": "代码审查",
+			"title": "用现成的规则审你的改动",
+			"description": "as-ocr 在对话里调用 alibaba/open-code-review，把结果按严重级别列出来——空指针、线程安全、XSS、SQL 注入等风险在提交前就能看到。",
+			"badges": ["本地运行", "按级别排序"]
 		},
 		{
-			"type": "features",
+			"type": "feature-grid",
+			"title": "它带来什么",
 			"items": [
 				{
-					"icon": "shield-check",
-					"title": "内置缺陷规则",
-					"body": "NPE、线程安全、XSS、SQL 注入等阿里大规模验证过的规则集，逐行精确定位。"
+					"title": "规则化发现",
+					"description": "直接复用上游引擎的规则——空指针、线程安全、XSS、SQL 注入等——并归一成一份清单。",
+					"icon": "solar:shield-check-bold"
 				},
 				{
-					"icon": "bot",
-					"title": "Agent 工具",
-					"body": "对话里说「审查一下改动」即可：code_review 工具跑审查，发现直接进对话流，模型接着讨论修复方案。"
+					"title": "按严重级别排序",
+					"description": "critical / major / minor / info 分组展示，阻断项排在最前面。",
+					"icon": "solar:list-check-bold"
 				},
 				{
-					"icon": "list-checks",
-					"title": "严重度分组",
-					"body": "critical / major / minor / info 分组展示，历史 20 次运行留存对照。"
+					"title": "一句话触发审查",
+					"description": "让 AI 去跑；它会用正确的参数调用 ocr CLI，并解析返回的 JSON 报告。",
+					"icon": "solar:bot-bold"
+				},
+				{
+					"title": "审查标签页",
+					"description": "活动面板里保留每次运行的范围、耗时与 file:line 级发现。",
+					"icon": "solar:clipboard-check-bold"
 				}
 			]
 		},
 		{
+			"type": "showcase",
+			"showcase": {
+				"template": "chat-over-canvas",
+				"canvas": "code",
+				"user_prompt": "审查一下我的改动。",
+				"assistant_reply": "ocr 已审查工作区改动：2 个 critical，3 个 major。\n\ncritical · src/parser/reader.ts:88 —— 可能出现空指针，取值前未判空。\nmajor · src/net/client.ts:41 —— 用字符串拼接 SQL，建议改用参数绑定。"
+			}
+		},
+		{
 			"type": "steps",
-			"title": "上手三步",
+			"title": "开始使用",
 			"items": [
-				{ "title": "安装 ocr CLI", "body": "brew install open-code-review（或 go install github.com/alibaba/open-code-review/cmd/ocr@latest）" },
-				{ "title": "配置模型端点", "body": "ocr 需要一个 OpenAI 兼容端点做叙述审查——配置见 ocr 文档；delegate 模式可复用当前 agent。" },
-				{ "title": "在对话里触发", "body": "「审查一下改动」或「review my changes」——结果同时落在活动面板的审查标签。" }
+				{
+					"title": "先安装 ocr CLI",
+					"description": "macOS：brew install open-code-review；或：go install github.com/alibaba/open-code-review/cmd/ocr@latest。本能力不会替你安装它。"
+				},
+				{
+					"title": "从市场安装本能力",
+					"description": "它会直接使用 PATH 上已有的 ocr 可执行文件。"
+				},
+				{
+					"title": "让 AI 开始审查",
+					"description": "说「审查一下改动」，也可以指定分支区间；结果显示在审查标签页。"
+				}
 			]
+		},
+		{
+			"type": "callout",
+			"tone": "warning",
+			"content": "实际的审查由外部 ocr 可执行文件完成。如果它不存在，本能力只会返回安装命令，而不会给出审查结果。"
 		}
 	]
 }
