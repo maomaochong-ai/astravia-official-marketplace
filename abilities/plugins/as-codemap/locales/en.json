@@ -1,12 +1,5 @@
 {
-  "plugin": {
-    "name": "Code Map (as-codemap)",
-    "description": "Zero-dependency TypeScript symbol-reference graph: browse symbols and callers in a side panel; agents query with code_graph_query instead of grepping."
-  },
-  "view": {
-    "map": "Code Map"
-  },
-  "nav": {
-    "badge": "Map"
-  }
+  "plugin.name": "Code Map",
+  "plugin.description": "Zero-dependency TypeScript symbol and reference map: browse symbols and callers in a side panel, and let agents locate code instead of grepping the whole tree.",
+  "view.map": "Code Map"
 }

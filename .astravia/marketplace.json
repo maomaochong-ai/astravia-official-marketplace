@@ -3693,7 +3693,7 @@
       "slug": "as-codemap",
       "name": "Code Map",
       "description": "Scan the workspace into a symbol-and-reference map, then let the AI answer where a symbol is defined and who calls it.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -3747,6 +3747,26 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.1.astraviapkg",
             "sha256": "913700a99cc9968cc31f1fe21371db2a430e9c78349ed91a128d6131e802bdb1"
           }
+        },
+        {
+          "version": "0.1.2",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "fs.read",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.2.astraviapkg",
+            "sha256": "4f95e9e7b2f1f77767df7058eb2faee7385de34d642114a3b706e4de6c32559b"
+          }
         }
       ]
     },
@@ -3755,7 +3775,7 @@
       "slug": "as-ocr",
       "name": "Code Review",
       "description": "Run alibaba/open-code-review from the conversation and list its findings by severity, so bugs and risky patterns surface before they ship.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -3810,10 +3830,31 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.1.astraviapkg",
             "sha256": "d9b264c58e297eb61bd2dd245aadacae22711b5bb424f191f172c9d9cb119de8"
           }
+        },
+        {
+          "version": "0.1.2",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "storage.read",
+            "storage.write",
+            "agent.command.run",
+            "fs.read",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.2.astraviapkg",
+            "sha256": "96f36b37d2163c4bbb3194dc76cea0e9ce2f45c9a28ba6b3f5698a05c847078f"
+          }
         }
       ]
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.08-2"
+  "marketplaceVersion": "2026.10.08-3"
 }

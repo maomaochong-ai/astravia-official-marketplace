@@ -40,7 +40,7 @@
 				"template": "chat-over-canvas",
 				"canvas": "code",
 				"user_prompt": "审查一下我的改动。",
-				"assistant_reply": "ocr 已审查工作区改动：2 个 critical，3 个 major。\n\ncritical · src/parser/reader.ts:88 —— 可能出现空指针，取值前未判空。\nmajor · src/net/client.ts:41 —— 用字符串拼接 SQL，建议改用参数绑定。"
+				"assistant_reply": "审查完成：2 个 critical、3 个 major。critical · src/parser/reader.ts:88 —— 取值前未判空。"
 			}
 		},
 		{

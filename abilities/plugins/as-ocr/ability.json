@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "as-ocr",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"icon": "solar:clipboard-check-bold",
 	"minAppVersion": "0.5.60",
 	"detail": {
