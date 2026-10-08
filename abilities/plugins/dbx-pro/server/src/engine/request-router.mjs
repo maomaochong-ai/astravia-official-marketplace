@@ -195,6 +195,7 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       host: base.host || authoritative.host,
       port: base.port || authoritative.port,
       database: base.database || authoritative.database,
+    };
   }
 
   /**
@@ -256,7 +257,6 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
     } catch {
       return "";
     }
-  }
   }
 
   // === 路由表（两级 Map：pathname → method → handler）===
