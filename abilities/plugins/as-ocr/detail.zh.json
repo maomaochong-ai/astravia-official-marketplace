@@ -1,0 +1,40 @@
+{
+	"version": "0.1.0",
+	"slug": "as-ocr",
+	"blocks": [
+		{
+			"type": "hero",
+			"title": "AI 代码审查",
+			"subtitle": "确定性管线 × Agent 混合——行级精确发现，不是泛泛而谈"
+		},
+		{
+			"type": "features",
+			"items": [
+				{
+					"icon": "shield-check",
+					"title": "内置缺陷规则",
+					"body": "NPE、线程安全、XSS、SQL 注入等阿里大规模验证过的规则集，逐行精确定位。"
+				},
+				{
+					"icon": "bot",
+					"title": "Agent 工具",
+					"body": "对话里说「审查一下改动」即可：code_review 工具跑审查，发现直接进对话流，模型接着讨论修复方案。"
+				},
+				{
+					"icon": "list-checks",
+					"title": "严重度分组",
+					"body": "critical / major / minor / info 分组展示，历史 20 次运行留存对照。"
+				}
+			]
+		},
+		{
+			"type": "steps",
+			"title": "上手三步",
+			"items": [
+				{ "title": "安装 ocr CLI", "body": "brew install open-code-review（或 go install github.com/alibaba/open-code-review/cmd/ocr@latest）" },
+				{ "title": "配置模型端点", "body": "ocr 需要一个 OpenAI 兼容端点做叙述审查——配置见 ocr 文档；delegate 模式可复用当前 agent。" },
+				{ "title": "在对话里触发", "body": "「审查一下改动」或「review my changes」——结果同时落在活动面板的审查标签。" }
+			]
+		}
+	]
+}

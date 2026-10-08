@@ -1,0 +1,40 @@
+{
+	"version": "0.1.0",
+	"slug": "as-ocr",
+	"blocks": [
+		{
+			"type": "hero",
+			"title": "AI Code Review",
+			"subtitle": "Deterministic pipelines × Agent hybrid — line-precise findings, not vague comments"
+		},
+		{
+			"type": "features",
+			"items": [
+				{
+					"icon": "shield-check",
+					"title": "Built-in defect rules",
+					"body": "NPE, thread-safety, XSS, SQL injection ruleset battle-tested at Alibaba's scale, with line-level precision."
+				},
+				{
+					"icon": "bot",
+					"title": "Agent tool",
+					"body": "Say \"review my changes\" in chat: the code_review tool runs ocr, findings land in the conversation, the model discusses fixes next."
+				},
+				{
+					"icon": "list-checks",
+					"title": "Severity grouped",
+					"body": "critical / major / minor / info groups, last 20 runs kept for comparison."
+				}
+			]
+		},
+		{
+			"type": "steps",
+			"title": "Quick start",
+			"items": [
+				{ "title": "Install ocr CLI", "body": "brew install open-code-review (or go install github.com/alibaba/open-code-review/cmd/ocr@latest)" },
+				{ "title": "Configure a model endpoint", "body": "ocr needs an OpenAI-compatible endpoint for narrative review — see ocr docs; delegate mode can reuse your current agent." },
+				{ "title": "Trigger in chat", "body": "\"Review my changes\" — results also land in the Reviews activity tab." }
+			]
+		}
+	]
+}
