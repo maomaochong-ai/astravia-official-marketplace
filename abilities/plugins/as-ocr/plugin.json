@@ -1,8 +1,8 @@
 {
 	"id": "as-ocr",
 	"name": "%plugin.name%",
-	"icon": "solar:clipboard-check-bold",
-	"version": "0.1.2",
+	"icon": "assets/icon.svg",
+	"version": "0.1.3",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
@@ -24,6 +24,9 @@
 		"agent.command.run",
 		"fs.read",
 		"shell.openExternal"
+	],
+	"commands": [
+		"ocr"
 	],
 	"description": "%plugin.description%",
 	"author": "zhangqingkun976"

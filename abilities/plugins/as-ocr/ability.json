@@ -2,8 +2,8 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "as-ocr",
-	"version": "0.1.2",
-	"icon": "solar:clipboard-check-bold",
+	"version": "0.1.3",
+	"icon": "assets/icon.svg",
 	"minAppVersion": "0.5.60",
 	"detail": {
 		"format": "blocks",
