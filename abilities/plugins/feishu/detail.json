@@ -25,17 +25,17 @@
       "type": "feature-grid",
       "items": [
         {
-          "icon": "solar:command-bold",
+          "icon": "assets/icons/command-bold.svg",
           "title": "Direct CLI access",
           "description": "The agent uses lark-cli through its existing shell. There is no extra Astravia Action, MCP server or custom agent tool."
         },
         {
-          "icon": "solar:book-2-bold",
+          "icon": "assets/icons/book-2-bold.svg",
           "title": "Upstream skills stay current",
           "description": "A thin Astravia skill tells the agent to discover and read the skills embedded in the installed official CLI instead of copying them into this plugin."
         },
         {
-          "icon": "solar:qr-code-bold",
+          "icon": "assets/icons/qr-code-bold.svg",
           "title": "Guided app setup",
           "description": "Installation stages and the exact opaque setup URL are surfaced on this page, including a scannable QR code and browser fallback."
         }

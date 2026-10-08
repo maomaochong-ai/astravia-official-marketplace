@@ -8,22 +8,22 @@
         {
           "title": "Find workspace knowledge",
           "description": "Search pages and databases, then bring the relevant context into your conversation.",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         },
         {
           "title": "Read and organize pages",
           "description": "Summarize existing material, update content and keep project notes organized.",
-          "icon": "solar:notes-bold"
+          "icon": "assets/icons/notes-bold.svg"
         },
         {
           "title": "Create new content",
           "description": "Turn a conversation into pages, action items or structured workspace content.",
-          "icon": "solar:document-add-bold"
+          "icon": "assets/icons/document-add-bold.svg"
         },
         {
           "title": "Browser authorization",
           "description": "Connect your own Notion workspace by signing in and approving access—no developer token or integration setup is required.",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         }
       ]
     },

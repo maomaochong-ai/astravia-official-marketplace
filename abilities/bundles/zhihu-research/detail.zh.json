@@ -28,17 +28,17 @@
         {
           "title": "了解口碑与体验",
           "description": "围绕产品或使用场景，比较不同人的体验，整理值得关注的优点和问题。",
-          "icon": "solar:chat-round-dots-linear"
+          "icon": "assets/icons/chat-round-dots-linear.svg"
         },
         {
           "title": "跟进当前讨论",
           "description": "查看知乎正在讨论的话题，再聚焦与你的兴趣或工作相关的内容。",
-          "icon": "solar:chart-linear"
+          "icon": "assets/icons/chart-linear.svg"
         },
         {
           "title": "保留核查线索",
           "description": "让总结附上来源链接；对其中一个观点感兴趣时，可以继续追问。",
-          "icon": "solar:link-linear"
+          "icon": "assets/icons/link-linear.svg"
         }
       ]
     },

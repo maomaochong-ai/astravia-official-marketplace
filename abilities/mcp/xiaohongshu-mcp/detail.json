@@ -8,22 +8,22 @@
         {
           "title": "Search and read notes",
           "description": "Search Xiaohongshu, read note details and inspect profiles through MCP tools.",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         },
         {
           "title": "Publish and interact",
           "description": "Publish content and perform supported comment, like, collect and notification actions.",
-          "icon": "solar:chat-round-like-bold"
+          "icon": "assets/icons/chat-round-like-bold.svg"
         },
         {
           "title": "Built-in QR login",
           "description": "Astravia obtains a QR code from the upstream login API and trusts only the upstream status API for sign-in state.",
-          "icon": "solar:qr-code-bold"
+          "icon": "assets/icons/qr-code-bold.svg"
         },
         {
           "title": "Managed local runtime",
           "description": "Astravia downloads and verifies the official release binary for your platform; no Go or manual MCP configuration is required.",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         }
       ]
     },

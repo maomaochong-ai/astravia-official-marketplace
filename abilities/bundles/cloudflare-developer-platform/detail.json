@@ -24,17 +24,17 @@
         {
           "title": "Design with platform context",
           "description": "Cover Workers, Pages, storage, AI, networking and security with retrieval-first official guidance.",
-          "icon": "solar:cloud-linear"
+          "icon": "assets/icons/cloud-linear.svg"
         },
         {
           "title": "Develop and review projects",
           "description": "Use project-local Wrangler conventions and review Workers code for production risks before deployment.",
-          "icon": "solar:code-square-linear"
+          "icon": "assets/icons/code-square-linear.svg"
         },
         {
           "title": "Look up or operate live services",
           "description": "Search public documentation without signing in, or separately authorize account operations when needed.",
-          "icon": "solar:server-square-cloud-linear"
+          "icon": "assets/icons/server-square-cloud-linear.svg"
         }
       ]
     },

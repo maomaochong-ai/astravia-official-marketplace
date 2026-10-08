@@ -21,9 +21,9 @@
       "type": "feature-grid",
       "title": "Use live reference where freshness matters",
       "items": [
-        { "title": "Verify changing contracts", "description": "Look up current configuration fields, APIs, compatibility guidance and product limits.", "icon": "solar:document-text-linear" },
-        { "title": "Support implementation", "description": "Bring relevant Cloudflare reference into architecture, coding, review and troubleshooting work.", "icon": "solar:code-square-linear" },
-        { "title": "Keep sources visible", "description": "Ask for documentation links so important conclusions can be checked against the official source.", "icon": "solar:link-linear" }
+        { "title": "Verify changing contracts", "description": "Look up current configuration fields, APIs, compatibility guidance and product limits.", "icon": "assets/icons/document-text-linear.svg" },
+        { "title": "Support implementation", "description": "Bring relevant Cloudflare reference into architecture, coding, review and troubleshooting work.", "icon": "assets/icons/code-square-linear.svg" },
+        { "title": "Keep sources visible", "description": "Ask for documentation links so important conclusions can be checked against the official source.", "icon": "assets/icons/link-linear.svg" }
       ]
     },
     {

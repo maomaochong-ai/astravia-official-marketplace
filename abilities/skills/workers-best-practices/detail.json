@@ -21,9 +21,9 @@
       "type": "feature-grid",
       "title": "Review what is unique to Workers",
       "items": [
-        { "title": "Request lifecycle", "description": "Check streaming, background work and response handling against the Workers execution model.", "icon": "solar:bolt-linear" },
-        { "title": "State and bindings", "description": "Identify unsafe global state and validate bindings, generated types and runtime configuration.", "icon": "solar:database-linear" },
-        { "title": "Operations and security", "description": "Review secret handling, logging, error paths and useful observability before release.", "icon": "solar:shield-check-linear" }
+        { "title": "Request lifecycle", "description": "Check streaming, background work and response handling against the Workers execution model.", "icon": "assets/icons/bolt-linear.svg" },
+        { "title": "State and bindings", "description": "Identify unsafe global state and validate bindings, generated types and runtime configuration.", "icon": "assets/icons/database-linear.svg" },
+        { "title": "Operations and security", "description": "Review secret handling, logging, error paths and useful observability before release.", "icon": "assets/icons/shield-check-linear.svg" }
       ]
     },
     {

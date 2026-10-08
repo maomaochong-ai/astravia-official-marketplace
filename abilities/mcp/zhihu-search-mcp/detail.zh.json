@@ -28,17 +28,17 @@
         {
           "title": "寻找相关讨论",
           "description": "用自己的话描述问题或主题，让 Astravia 帮你搜索知乎内容。",
-          "icon": "solar:magnifer-linear"
+          "icon": "assets/icons/magnifer-linear.svg"
         },
         {
           "title": "围绕问题追问",
           "description": "提出具体问题，或针对查到的内容继续询问和理解。",
-          "icon": "solar:chat-round-dots-linear"
+          "icon": "assets/icons/chat-round-dots-linear.svg"
         },
         {
           "title": "看看大家在聊什么",
           "description": "查看当前热榜，再筛选与你关心的领域相关的话题。",
-          "icon": "solar:chart-linear"
+          "icon": "assets/icons/chart-linear.svg"
         }
       ]
     },

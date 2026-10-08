@@ -21,9 +21,9 @@
       "type": "feature-grid",
       "title": "Project-aware command guidance",
       "items": [
-        { "title": "Respect the project", "description": "Use the repository's package manager and project-local Wrangler version instead of forcing a global installation.", "icon": "solar:folder-with-files-linear" },
-        { "title": "Manage Cloudflare resources", "description": "Work with Workers, KV, R2, D1, Queues, Workflows and other supported developer services.", "icon": "solar:server-square-cloud-linear" },
-        { "title": "Keep secrets out of chat", "description": "Use Wrangler's protected secret flows and avoid logging or hardcoding credentials.", "icon": "solar:shield-keyhole-linear" }
+        { "title": "Respect the project", "description": "Use the repository's package manager and project-local Wrangler version instead of forcing a global installation.", "icon": "assets/icons/folder-with-files-linear.svg" },
+        { "title": "Manage Cloudflare resources", "description": "Work with Workers, KV, R2, D1, Queues, Workflows and other supported developer services.", "icon": "assets/icons/server-square-cloud-linear.svg" },
+        { "title": "Keep secrets out of chat", "description": "Use Wrangler's protected secret flows and avoid logging or hardcoding credentials.", "icon": "assets/icons/shield-keyhole-linear.svg" }
       ]
     },
     {

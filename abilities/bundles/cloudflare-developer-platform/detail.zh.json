@@ -24,17 +24,17 @@
         {
           "title": "带着平台全貌做设计",
           "description": "依据官方资料处理 Workers、Pages、存储、AI、网络与安全场景，优先检索而不是依赖旧知识。",
-          "icon": "solar:cloud-linear"
+          "icon": "assets/icons/cloud-linear.svg"
         },
         {
           "title": "开发并审查项目",
           "description": "遵循项目本地的 Wrangler 约定，在部署前检查 Workers 代码中的生产风险。",
-          "icon": "solar:code-square-linear"
+          "icon": "assets/icons/code-square-linear.svg"
         },
         {
           "title": "查文档或操作线上服务",
           "description": "无需登录即可搜索公开文档；确有需要时，再单独授权账号操作。",
-          "icon": "solar:server-square-cloud-linear"
+          "icon": "assets/icons/server-square-cloud-linear.svg"
         }
       ]
     },

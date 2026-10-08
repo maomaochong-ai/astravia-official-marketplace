@@ -8,22 +8,22 @@
         {
           "title": "Animation and timing",
           "description": "Animates with interpolate and spring over useCurrentFrame(), and sequences shots and transitions with Sequence.",
-          "icon": "solar:clock-circle-bold"
+          "icon": "assets/icons/clock-circle-bold.svg"
         },
         {
           "title": "Captions and audio",
           "description": "Covers transcription-driven captions, text animation, audio handling and text measurement.",
-          "icon": "solar:microphone-bold"
+          "icon": "assets/icons/microphone-bold.svg"
         },
         {
           "title": "Assets and effects",
           "description": "How to wire up GIFs, Lottie, 3D, charts and light-leak style visual effects.",
-          "icon": "solar:magic-stick-3-bold"
+          "icon": "assets/icons/magic-stick-3-bold.svg"
         },
         {
           "title": "Duration and rendering",
           "description": "Computes duration dynamically via calculateMetadata and renders to MP4 the right way.",
-          "icon": "solar:play-circle-bold"
+          "icon": "assets/icons/play-circle-bold.svg"
         }
       ]
     },

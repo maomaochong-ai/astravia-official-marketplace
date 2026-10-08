@@ -15,22 +15,22 @@
 				{
 					"title": "Rule-based findings",
 					"description": "The upstream engine's rules — NPE, thread safety, XSS, SQL injection and more — normalised into one list.",
-					"icon": "solar:shield-check-bold"
+					"icon": "assets/icons/shield-check-bold.svg"
 				},
 				{
 					"title": "Severity sorting",
 					"description": "critical / major / minor / info, grouped so blocking items come first.",
-					"icon": "solar:list-check-bold"
+					"icon": "assets/icons/list-check-bold.svg"
 				},
 				{
 					"title": "One command to run a review",
 					"description": "Ask for a review; the AI calls the ocr CLI with the right arguments and parses its JSON report.",
-					"icon": "solar:bot-bold"
+					"icon": "assets/icons/bot-bold.svg"
 				},
 				{
 					"title": "Reviews tab",
 					"description": "An activity panel tab keeps every run with its scope, duration and file:line findings.",
-					"icon": "solar:clipboard-check-bold"
+					"icon": "assets/icons/clipboard-check-bold.svg"
 				}
 			]
 		},

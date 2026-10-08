@@ -8,22 +8,22 @@
         {
           "title": "搜索与阅读笔记",
           "description": "通过 MCP 工具搜索小红书、读取笔记详情并查看用户主页。",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         },
         {
           "title": "发布与互动",
           "description": "支持发布内容，以及评论、点赞、收藏和通知等已实现的互动操作。",
-          "icon": "solar:chat-round-like-bold"
+          "icon": "assets/icons/chat-round-like-bold.svg"
         },
         {
           "title": "内置扫码登录",
           "description": "Astravia 通过上游登录接口生成二维码，并以上游状态接口的结果判断是否登录。",
-          "icon": "solar:qr-code-bold"
+          "icon": "assets/icons/qr-code-bold.svg"
         },
         {
           "title": "受管本地运行时",
           "description": "Astravia 自动下载并校验官方 Release 二进制，不需要安装 Go 或手工编辑 MCP 配置。",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         }
       ]
     },

@@ -24,17 +24,17 @@
         {
           "title": "Choose the architecture",
           "description": "Compare Workers, Durable Objects, KV, D1, R2 and networking products using current platform constraints.",
-          "icon": "solar:diagram-up-linear"
+          "icon": "assets/icons/diagram-up-linear.svg"
         },
         {
           "title": "Keep configuration coherent",
           "description": "Connect bindings, secrets, compatibility settings and deployment environments without duplicating sources of truth.",
-          "icon": "solar:settings-linear"
+          "icon": "assets/icons/settings-linear.svg"
         },
         {
           "title": "Retrieve before relying",
           "description": "Check live Cloudflare documentation for APIs, limits and pricing that can change over time.",
-          "icon": "solar:book-2-linear"
+          "icon": "assets/icons/book-2-linear.svg"
         }
       ]
     },

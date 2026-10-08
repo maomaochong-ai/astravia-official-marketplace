@@ -28,17 +28,17 @@
         {
           "title": "Find relevant discussions",
           "description": "Describe a question or a topic in your own words and ask Astravia to search Zhihu.",
-          "icon": "solar:magnifer-linear"
+          "icon": "assets/icons/magnifer-linear.svg"
         },
         {
           "title": "Get an explanation",
           "description": "Ask a focused question or follow up on something you found.",
-          "icon": "solar:chat-round-dots-linear"
+          "icon": "assets/icons/chat-round-dots-linear.svg"
         },
         {
           "title": "Explore what is current",
           "description": "View trending topics and narrow them to an area you care about.",
-          "icon": "solar:chart-linear"
+          "icon": "assets/icons/chart-linear.svg"
         }
       ]
     },

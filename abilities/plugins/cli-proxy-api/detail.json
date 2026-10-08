@@ -21,27 +21,27 @@
       "type": "feature-grid",
       "items": [
         {
-          "icon": "solar:shield-check-bold",
+          "icon": "assets/icons/shield-check-bold.svg",
           "title": "Upgradeable without a fork",
           "description": "The marketplace pins CLIProxyAPI 7.2.147 and Gemini provider 1.0.5 by release URL and SHA-256. A plugin patch can move both locks after review, without a Desktop code change."
         },
         {
-          "icon": "solar:login-3-bold",
+          "icon": "assets/icons/login-3-bold.svg",
           "title": "Six OAuth account routes",
           "description": "Browser OAuth: Gemini CLI, Codex, Claude Code and Antigravity. Device-code OAuth: Kimi and xAI. Gemini CLI comes from the separately pinned native provider plugin."
         },
         {
-          "icon": "solar:server-minimalistic-bold",
+          "icon": "assets/icons/server-minimalistic-bold.svg",
           "title": "One model list per supplier",
           "description": "Accounts from the same supplier form one routing pool. Each model and protocol route appears once, while every enabled account remains available for balancing and failover."
         },
         {
-          "icon": "solar:gallery-add-bold",
+          "icon": "assets/icons/gallery-add-bold.svg",
           "title": "OpenAI and Google image models",
           "description": "Image-capable OpenAI, Google and Antigravity routes appear as individual image models. Requests use the matching Images or generateContent adapter for text-to-image and supported image-to-image work."
         },
         {
-          "icon": "solar:chart-square-bold",
+          "icon": "assets/icons/chart-square-bold.svg",
           "title": "Health at a glance",
           "description": "Each credential card carries its own request history, so a failing account is visible before it becomes a failing conversation. Its model list opens on demand rather than crowding the page."
         }

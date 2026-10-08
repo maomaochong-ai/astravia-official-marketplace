@@ -20,17 +20,17 @@
       "type": "feature-grid",
       "items": [
         {
-          "icon": "solar:bicycling-bold",
+          "icon": "assets/icons/bicycling-bold.svg",
           "title": "Speed levels",
           "description": "Ride from a full stop to level 10. Ask for faster or slower and the AI adjusts from the current level."
         },
         {
-          "icon": "solar:bell-bold",
+          "icon": "assets/icons/bell-bold.svg",
           "title": "Jumps and bell",
           "description": "Combine up to five jumps and five bell rings in a single request."
         },
         {
-          "icon": "solar:cloud-rain-bold",
+          "icon": "assets/icons/cloud-rain-bold.svg",
           "title": "Four scenes",
           "description": "Switch between day, dusk, night and rain with a smooth transition."
         }

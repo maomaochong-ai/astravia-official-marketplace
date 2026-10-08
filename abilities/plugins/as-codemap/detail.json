@@ -15,22 +15,22 @@
         {
           "title": "Symbol index",
           "description": "Functions, classes, methods, interfaces and constants, each with its file and line.",
-          "icon": "solar:code-bold"
+          "icon": "assets/icons/code-bold.svg"
         },
         {
           "title": "Reference counts",
           "description": "How often each symbol is used, aggregated across files.",
-          "icon": "solar:graph-bold"
+          "icon": "assets/icons/graph-bold.svg"
         },
         {
           "title": "Two agent tools",
           "description": "code_graph_build rescans the workspace; code_graph_query searches by name and kind.",
-          "icon": "solar:bot-bold"
+          "icon": "assets/icons/bot-bold.svg"
         },
         {
           "title": "Code Map view",
           "description": "A workspace view lists the scanned files and symbols for one-click lookup.",
-          "icon": "solar:layers-bold"
+          "icon": "assets/icons/layers-bold.svg"
         }
       ]
     },

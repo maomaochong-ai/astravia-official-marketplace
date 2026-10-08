@@ -8,22 +8,22 @@
         {
           "title": "搜索帖子与用户",
           "description": "搜索 X 全量归档，查询用户、帖子、时间线和提及内容。",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         },
         {
           "title": "查看趋势与新闻",
           "description": "通过官方托管的 X MCP 服务获取新闻和指定地点的趋势。",
-          "icon": "solar:chart-bold"
+          "icon": "assets/icons/chart-bold.svg"
         },
         {
           "title": "只读 App-only 访问",
           "description": "使用 X App-only Bearer Token 直接通过 HTTPS 连接，不需要本地运行时或 Bridge。",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         },
         {
           "title": "Astravia 安全收集密钥",
           "description": "Token 通过 secret 参数收集，并写入 MCP 请求头配置。",
-          "icon": "solar:key-bold"
+          "icon": "assets/icons/key-bold.svg"
         }
       ]
     },

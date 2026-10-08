@@ -21,27 +21,27 @@
       "type": "feature-grid",
       "items": [
         {
-          "icon": "solar:shield-check-bold",
+          "icon": "assets/icons/shield-check-bold.svg",
           "title": "不 Fork 也能持续升级",
           "description": "市场按 Release URL 和 SHA-256 锁定 CLIProxyAPI 7.2.147 与 Gemini Provider 1.0.5。组合验证后只发布插件补丁即可推进版本，无需修改 Desktop。"
         },
         {
-          "icon": "solar:login-3-bold",
+          "icon": "assets/icons/login-3-bold.svg",
           "title": "六条 OAuth 账号通道",
           "description": "浏览器 OAuth：Gemini CLI、Codex、Claude Code、Antigravity；设备码 OAuth：Kimi、xAI。Gemini CLI 来自单独锁定的原生 Provider 插件。"
         },
         {
-          "icon": "solar:server-minimalistic-bold",
+          "icon": "assets/icons/server-minimalistic-bold.svg",
           "title": "每个供应商只展示一份模型",
           "description": "同供应商账号组成一个路由池；每个模型与协议路由只展示一次，所有已启用账号仍可参与负载均衡和故障切换。"
         },
         {
-          "icon": "solar:gallery-add-bold",
+          "icon": "assets/icons/gallery-add-bold.svg",
           "title": "OpenAI 与 Google 图片模型",
           "description": "支持图片的 OpenAI、Google 与 Antigravity 路由会分别显示为图片模型，并按模型使用 Images 或 generateContent 适配器处理文生图及受支持的图生图。"
         },
         {
-          "icon": "solar:chart-square-bold",
+          "icon": "assets/icons/chart-square-bold.svg",
           "title": "健康状况一目了然",
           "description": "每张凭据卡片自带请求历史，账号出问题时能在影响对话之前就被看见。模型清单按需弹出查看，不占据页面。"
         }

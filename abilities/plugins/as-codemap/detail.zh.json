@@ -15,22 +15,22 @@
         {
           "title": "符号索引",
           "description": "函数、类、方法、接口与常量，附所属文件与行号。",
-          "icon": "solar:code-bold"
+          "icon": "assets/icons/code-bold.svg"
         },
         {
           "title": "引用计数",
           "description": "每个符号被使用多少次，跨文件聚合。",
-          "icon": "solar:graph-bold"
+          "icon": "assets/icons/graph-bold.svg"
         },
         {
           "title": "两个 Agent 工具",
           "description": "code_graph_build 重新扫描工作区；code_graph_query 按名称与类型检索。",
-          "icon": "solar:bot-bold"
+          "icon": "assets/icons/bot-bold.svg"
         },
         {
           "title": "代码图谱视图",
           "description": "工作区视图列出已扫描的文件与符号，便于快速定位。",
-          "icon": "solar:layers-bold"
+          "icon": "assets/icons/layers-bold.svg"
         }
       ]
     },

@@ -8,22 +8,22 @@
         {
           "title": "零格式丢失",
           "description": "编辑已有工作簿时保留透视表、VBA 宏、图表、迷你图、条件格式与命名区域。",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         },
         {
           "title": "中文优先",
           "description": "处理中文表名与表头、GB18030/GBK 编码、全角字符，以及 ¥、万/亿、年月日等中文数字与日期约定。",
-          "icon": "solar:global-bold"
+          "icon": "assets/icons/global-bold.svg"
         },
         {
           "title": "创建与分析",
           "description": "从零构建工作簿，或读取分析既有文件；支持公式重算与校验。",
-          "icon": "solar:chart-square-bold"
+          "icon": "assets/icons/chart-square-bold.svg"
         },
         {
           "title": "结果自检",
           "description": "输出后先渲染检查再交付，避免公式错误与排版问题流到用户手里。",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         }
       ]
     },

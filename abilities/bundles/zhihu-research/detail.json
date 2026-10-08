@@ -28,17 +28,17 @@
         {
           "title": "Understand real experiences",
           "description": "Ask about a product or a way of working, and compare what different people report.",
-          "icon": "solar:chat-round-dots-linear"
+          "icon": "assets/icons/chat-round-dots-linear.svg"
         },
         {
           "title": "Follow current discussions",
           "description": "Find topics people are discussing on Zhihu and focus on those relevant to your interests.",
-          "icon": "solar:chart-linear"
+          "icon": "assets/icons/chart-linear.svg"
         },
         {
           "title": "Keep the evidence",
           "description": "Request source links alongside the summary, then follow up on a particular point.",
-          "icon": "solar:link-linear"
+          "icon": "assets/icons/link-linear.svg"
         }
       ]
     },
