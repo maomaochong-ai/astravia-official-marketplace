@@ -8,17 +8,17 @@
         {
           "title": "以渲染结果为准",
           "description": "把页面渲染成图片来做视觉检查，而不是只看抽取出的文本流。",
-          "icon": "solar:eye-bold"
+          "icon": "assets/icons/eye-bold.svg"
         },
         {
           "title": "程序化生成",
           "description": "用 reportlab 生成排版可控的 PDF。",
-          "icon": "solar:pen-new-square-bold"
+          "icon": "assets/icons/pen-new-square-bold.svg"
         },
         {
           "title": "文本与结构抽取",
           "description": "用 pdfplumber / pypdf 做内容抽取与快速检查。",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         }
       ]
     },

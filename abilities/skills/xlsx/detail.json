@@ -8,22 +8,22 @@
         {
           "title": "Zero format loss",
           "description": "Editing an existing workbook preserves pivot tables, VBA macros, charts, sparklines, conditional formatting and named ranges.",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         },
         {
           "title": "CJK first-class",
           "description": "Handles Chinese sheet names and headers, GB18030/GBK encodings, full-width characters, and Chinese number and date conventions.",
-          "icon": "solar:global-bold"
+          "icon": "assets/icons/global-bold.svg"
         },
         {
           "title": "Create and analyze",
           "description": "Builds workbooks from scratch or reads and analyzes existing files, including formula recalculation and validation.",
-          "icon": "solar:chart-square-bold"
+          "icon": "assets/icons/chart-square-bold.svg"
         },
         {
           "title": "Verified output",
           "description": "Renders and checks the result before delivering, so formula and layout errors do not reach you.",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         }
       ]
     },

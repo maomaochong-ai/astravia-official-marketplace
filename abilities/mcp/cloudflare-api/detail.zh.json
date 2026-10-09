@@ -21,9 +21,9 @@
       "type": "feature-grid",
       "title": "以精简工具覆盖广泛 API",
       "items": [
-        { "title": "找到合适 API", "description": "搜索 Cloudflare 的广泛 API，而不是把数千个 Endpoint 定义全部塞进对话。", "icon": "solar:magnifer-linear" },
-        { "title": "读取账号状态", "description": "在授权范围内检查 Zones、DNS、Workers、存储、安全和其他资源。", "icon": "solar:eye-linear" },
-        { "title": "执行明确变更", "description": "仅在请求时创建或更新资源，并由 Cloudflare 授权范围和 Astravia 确认共同约束。", "icon": "solar:pen-new-square-linear" }
+        { "title": "找到合适 API", "description": "搜索 Cloudflare 的广泛 API，而不是把数千个 Endpoint 定义全部塞进对话。", "icon": "assets/icons/magnifer-linear.svg" },
+        { "title": "读取账号状态", "description": "在授权范围内检查 Zones、DNS、Workers、存储、安全和其他资源。", "icon": "assets/icons/eye-linear.svg" },
+        { "title": "执行明确变更", "description": "仅在请求时创建或更新资源，并由 Cloudflare 授权范围和 Astravia 确认共同约束。", "icon": "assets/icons/pen-new-square-linear.svg" }
       ]
     },
     {

@@ -4,7 +4,7 @@
   "slug": "cloudflare-api",
   "name": "Cloudflare API",
   "description": "Authorize selected Cloudflare permissions, then inspect and manage account resources across the Cloudflare API from Astravia.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "configVersion": 1,
   "license": "Apache-2.0",
   "author": "Cloudflare",

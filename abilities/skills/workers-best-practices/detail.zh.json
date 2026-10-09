@@ -21,9 +21,9 @@
       "type": "feature-grid",
       "title": "审查 Workers 特有约束",
       "items": [
-        { "title": "请求生命周期", "description": "依据 Workers 执行模型检查流式响应、后台工作和响应处理。", "icon": "solar:bolt-linear" },
-        { "title": "状态与 Bindings", "description": "识别不安全的全局状态，并校验 Bindings、生成类型和运行时配置。", "icon": "solar:database-linear" },
-        { "title": "运维与安全", "description": "发布前检查 Secret、日志、错误路径和可观测性。", "icon": "solar:shield-check-linear" }
+        { "title": "请求生命周期", "description": "依据 Workers 执行模型检查流式响应、后台工作和响应处理。", "icon": "assets/icons/bolt-linear.svg" },
+        { "title": "状态与 Bindings", "description": "识别不安全的全局状态，并校验 Bindings、生成类型和运行时配置。", "icon": "assets/icons/database-linear.svg" },
+        { "title": "运维与安全", "description": "发布前检查 Secret、日志、错误路径和可观测性。", "icon": "assets/icons/shield-check-linear.svg" }
       ]
     },
     {

@@ -1,6 +1,6 @@
 ---
 name: docx
-version: 2.0.0
+version: 2.0.1
 description: "Create, edit, fill, reformat and convert Microsoft Word (.docx) documents with zero format loss, via a self-contained Python toolchain (lxml + python-docx + LibreOffice). Unpack -> edit XML in place -> repack preserves styles, headers/footers, sections, numbering, track-changes and images exactly. First-class support for Chinese / CJK documents and GB/T 9704 公文 layout."
 license: MIT
 category: document-processing

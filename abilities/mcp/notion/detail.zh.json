@@ -8,22 +8,22 @@
         {
           "title": "查找工作区知识",
           "description": "搜索页面和数据库，把相关内容直接带入当前对话。",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         },
         {
           "title": "阅读与整理页面",
           "description": "总结已有资料、更新页面内容，并持续整理项目笔记。",
-          "icon": "solar:notes-bold"
+          "icon": "assets/icons/notes-bold.svg"
         },
         {
           "title": "创建新内容",
           "description": "把对话整理成页面、行动项或结构化的工作区内容。",
-          "icon": "solar:document-add-bold"
+          "icon": "assets/icons/document-add-bold.svg"
         },
         {
           "title": "浏览器授权",
           "description": "登录并授权你自己的 Notion 工作区，无需开发者 Token，也无需创建 Integration。",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         }
       ]
     },

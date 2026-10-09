@@ -4,7 +4,7 @@
   "slug": "wrangler",
   "name": "Wrangler",
   "description": "Develop, configure, deploy and operate Cloudflare projects with the official project-local command line workflow.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "configVersion": 1,
   "license": "Apache-2.0",
   "author": "Cloudflare",

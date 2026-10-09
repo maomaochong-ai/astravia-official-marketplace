@@ -28,17 +28,17 @@
         {
           "title": "Choose a focused approach",
           "description": "Match the question to source research, an explanation or current discussions.",
-          "icon": "solar:magnifer-linear"
+          "icon": "assets/icons/magnifer-linear.svg"
         },
         {
           "title": "Organize the answer",
           "description": "Group relevant findings, keep sources close to claims and make uncertainty visible.",
-          "icon": "solar:document-text-linear"
+          "icon": "assets/icons/document-text-linear.svg"
         },
         {
           "title": "Stay on topic",
           "description": "Use external research when the task needs it, without adding unrelated searches to local work.",
-          "icon": "solar:target-linear"
+          "icon": "assets/icons/target-linear.svg"
         }
       ]
     },

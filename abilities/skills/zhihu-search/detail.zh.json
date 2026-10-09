@@ -28,17 +28,17 @@
         {
           "title": "选对检索方式",
           "description": "根据问题选择查找来源、了解解释或查看当前讨论，减少无关结果。",
-          "icon": "solar:magnifer-linear"
+          "icon": "assets/icons/magnifer-linear.svg"
         },
         {
           "title": "把资料整理清楚",
           "description": "围绕问题归纳内容，让结论与来源对应，资料不足时明确说明。",
-          "icon": "solar:document-text-linear"
+          "icon": "assets/icons/document-text-linear.svg"
         },
         {
           "title": "保持任务聚焦",
           "description": "需要外部资料时再查询，不给本地任务额外增加无关搜索。",
-          "icon": "solar:target-linear"
+          "icon": "assets/icons/target-linear.svg"
         }
       ]
     },

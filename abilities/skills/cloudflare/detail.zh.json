@@ -24,17 +24,17 @@
         {
           "title": "选择架构",
           "description": "结合当前平台约束，比较 Workers、Durable Objects、KV、D1、R2 和网络产品。",
-          "icon": "solar:diagram-up-linear"
+          "icon": "assets/icons/diagram-up-linear.svg"
         },
         {
           "title": "保持配置一致",
           "description": "统一处理 Bindings、Secrets、兼容性设置和部署环境，避免重复事实源。",
-          "icon": "solar:settings-linear"
+          "icon": "assets/icons/settings-linear.svg"
         },
         {
           "title": "先检索再判断",
           "description": "对可能变化的 API、限制和价格，优先核对 Cloudflare 实时文档。",
-          "icon": "solar:book-2-linear"
+          "icon": "assets/icons/book-2-linear.svg"
         }
       ]
     },

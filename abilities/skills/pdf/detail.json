@@ -8,17 +8,17 @@
         {
           "title": "Judge by the rendering",
           "description": "Pages are rendered to images for visual review instead of trusting the extracted text layer.",
-          "icon": "solar:eye-bold"
+          "icon": "assets/icons/eye-bold.svg"
         },
         {
           "title": "Programmatic generation",
           "description": "Uses reportlab to produce PDFs with predictable layout.",
-          "icon": "solar:pen-new-square-bold"
+          "icon": "assets/icons/pen-new-square-bold.svg"
         },
         {
           "title": "Extraction and checks",
           "description": "Uses pdfplumber and pypdf for content extraction and quick structural checks.",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         }
       ]
     },

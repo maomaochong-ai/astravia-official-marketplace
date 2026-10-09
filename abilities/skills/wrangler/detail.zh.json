@@ -21,9 +21,9 @@
       "type": "feature-grid",
       "title": "理解项目上下文的命令指导",
       "items": [
-        { "title": "遵循项目约定", "description": "使用仓库已有的包管理器和项目本地 Wrangler 版本，不强制全局安装。", "icon": "solar:folder-with-files-linear" },
-        { "title": "管理开发资源", "description": "处理 Workers、KV、R2、D1、Queues、Workflows 等开发者服务。", "icon": "solar:server-square-cloud-linear" },
-        { "title": "不在对话中暴露密钥", "description": "使用 Wrangler 的受保护 Secret 流程，避免记录或硬编码凭据。", "icon": "solar:shield-keyhole-linear" }
+        { "title": "遵循项目约定", "description": "使用仓库已有的包管理器和项目本地 Wrangler 版本，不强制全局安装。", "icon": "assets/icons/folder-with-files-linear.svg" },
+        { "title": "管理开发资源", "description": "处理 Workers、KV、R2、D1、Queues、Workflows 等开发者服务。", "icon": "assets/icons/server-square-cloud-linear.svg" },
+        { "title": "不在对话中暴露密钥", "description": "使用 Wrangler 的受保护 Secret 流程，避免记录或硬编码凭据。", "icon": "assets/icons/shield-keyhole-linear.svg" }
       ]
     },
     {

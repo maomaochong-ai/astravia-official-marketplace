@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "slug": "notion",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "server": {
     "type": "http",
     "url": "https://mcp.notion.com/mcp"

@@ -8,22 +8,22 @@
         {
           "title": "动画与时间轴",
           "description": "基于 useCurrentFrame() 用 interpolate / spring 做动画，按 Sequence 编排镜头与转场。",
-          "icon": "solar:clock-circle-bold"
+          "icon": "assets/icons/clock-circle-bold.svg"
         },
         {
           "title": "字幕与音频",
           "description": "涵盖字幕转写、文本动画、音频处理与文本测量。",
-          "icon": "solar:microphone-bold"
+          "icon": "assets/icons/microphone-bold.svg"
         },
         {
           "title": "素材与特效",
           "description": "GIF、Lottie、3D、图表、光效等常见素材与视觉效果的接法。",
-          "icon": "solar:magic-stick-3-bold"
+          "icon": "assets/icons/magic-stick-3-bold.svg"
         },
         {
           "title": "渲染与时长",
           "description": "通过 calculateMetadata 动态计算时长，并给出渲染到 MP4 的正确姿势。",
-          "icon": "solar:play-circle-bold"
+          "icon": "assets/icons/play-circle-bold.svg"
         }
       ]
     },

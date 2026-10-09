@@ -20,17 +20,17 @@
       "type": "feature-grid",
       "items": [
         {
-          "icon": "solar:bicycling-bold",
+          "icon": "assets/icons/bicycling-bold.svg",
           "title": "速度档位",
           "description": "从停下到 10 档随意调节。说「快一点」「慢一点」时，AI 会在当前档位上加减。"
         },
         {
-          "icon": "solar:bell-bold",
+          "icon": "assets/icons/bell-bold.svg",
           "title": "跳跃与铃铛",
           "description": "一句话里最多可以组合五次跳跃和五次按铃。"
         },
         {
-          "icon": "solar:cloud-rain-bold",
+          "icon": "assets/icons/cloud-rain-bold.svg",
           "title": "四种场景",
           "description": "在白天、黄昏、天黑和下雨之间平滑切换。"
         }

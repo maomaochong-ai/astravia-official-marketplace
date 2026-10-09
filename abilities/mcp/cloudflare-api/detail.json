@@ -21,9 +21,9 @@
       "type": "feature-grid",
       "title": "Broad API coverage with a small tool surface",
       "items": [
-        { "title": "Find the right API", "description": "Search Cloudflare's broad API surface instead of loading thousands of endpoint definitions into the conversation.", "icon": "solar:magnifer-linear" },
-        { "title": "Read account state", "description": "Inspect zones, DNS, Workers, storage, security and other resources covered by the permissions you grant.", "icon": "solar:eye-linear" },
-        { "title": "Make explicit changes", "description": "Create or update resources when requested, while keeping the granted Cloudflare scope and Astravia confirmations in control.", "icon": "solar:pen-new-square-linear" }
+        { "title": "Find the right API", "description": "Search Cloudflare's broad API surface instead of loading thousands of endpoint definitions into the conversation.", "icon": "assets/icons/magnifer-linear.svg" },
+        { "title": "Read account state", "description": "Inspect zones, DNS, Workers, storage, security and other resources covered by the permissions you grant.", "icon": "assets/icons/eye-linear.svg" },
+        { "title": "Make explicit changes", "description": "Create or update resources when requested, while keeping the granted Cloudflare scope and Astravia confirmations in control.", "icon": "assets/icons/pen-new-square-linear.svg" }
       ]
     },
     {

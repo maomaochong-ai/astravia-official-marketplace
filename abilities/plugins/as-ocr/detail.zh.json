@@ -15,22 +15,22 @@
 				{
 					"title": "规则化发现",
 					"description": "直接复用上游引擎的规则——空指针、线程安全、XSS、SQL 注入等——并归一成一份清单。",
-					"icon": "solar:shield-check-bold"
+					"icon": "assets/icons/shield-check-bold.svg"
 				},
 				{
 					"title": "按严重级别排序",
 					"description": "critical / major / minor / info 分组展示，阻断项排在最前面。",
-					"icon": "solar:list-check-bold"
+					"icon": "assets/icons/list-check-bold.svg"
 				},
 				{
 					"title": "一句话触发审查",
 					"description": "让 AI 去跑；它会用正确的参数调用 ocr CLI，并解析返回的 JSON 报告。",
-					"icon": "solar:bot-bold"
+					"icon": "assets/icons/bot-bold.svg"
 				},
 				{
 					"title": "审查标签页",
 					"description": "活动面板里保留每次运行的范围、耗时与 file:line 级发现。",
-					"icon": "solar:clipboard-check-bold"
+					"icon": "assets/icons/clipboard-check-bold.svg"
 				}
 			]
 		},

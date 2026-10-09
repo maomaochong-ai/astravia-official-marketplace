@@ -8,22 +8,22 @@
         {
           "title": "解包改 XML 再回包",
           "description": "在 OpenXML 层原地修改，样式、页眉页脚、分节、编号、修订与图片原样保留。",
-          "icon": "solar:box-bold"
+          "icon": "assets/icons/box-bold.svg"
         },
         {
           "title": "中文公文排版",
           "description": "一等支持中文/CJK 文档与 GB/T 9704 公文版式。",
-          "icon": "solar:document-text-bold"
+          "icon": "assets/icons/document-text-bold.svg"
         },
         {
           "title": "套模板与填充",
           "description": "按模板批量填充占位符，适合合同、报告、论文等重复性文档。",
-          "icon": "solar:copy-bold"
+          "icon": "assets/icons/copy-bold.svg"
         },
         {
           "title": "渲染校验",
           "description": "内置校验与渲染脚本，交付前确认版式没有跑偏。",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         }
       ]
     },

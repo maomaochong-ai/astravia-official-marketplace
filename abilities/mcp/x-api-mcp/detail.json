@@ -8,22 +8,22 @@
         {
           "title": "Search posts and users",
           "description": "Search the X archive and look up users, posts, timelines and mentions.",
-          "icon": "solar:magnifer-bold"
+          "icon": "assets/icons/magnifer-bold.svg"
         },
         {
           "title": "Explore trends and news",
           "description": "Fetch news stories and trends for a location using the hosted X MCP server.",
-          "icon": "solar:chart-bold"
+          "icon": "assets/icons/chart-bold.svg"
         },
         {
           "title": "Read-only app-only access",
           "description": "Connect directly over HTTPS with an X App-only Bearer Token; no local runtime or bridge is required.",
-          "icon": "solar:shield-check-bold"
+          "icon": "assets/icons/shield-check-bold.svg"
         },
         {
           "title": "Astravia-managed secret input",
           "description": "The token is collected as a secret parameter and stored in the MCP header configuration.",
-          "icon": "solar:key-bold"
+          "icon": "assets/icons/key-bold.svg"
         }
       ]
     },

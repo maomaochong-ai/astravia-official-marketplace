@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "astravia-tihu",
-  "version": "0.3.2",
-  "icon": "solar:bicycling-bold",
+  "version": "0.3.3",
+  "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",
     "path": "detail.json",

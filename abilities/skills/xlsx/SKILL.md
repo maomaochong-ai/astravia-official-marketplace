@@ -1,7 +1,7 @@
 ---
 name: xlsx
 description: "Open, create, read, analyze, edit, repair, or validate spreadsheet files (.xlsx, .xlsm, .xltx, .csv, .tsv) with zero format loss, with first-class support for Chinese / CJK content. Use whenever the user asks to create, build, modify, fill, analyze, read, repair, validate, or format any spreadsheet, workbook, report, dashboard, budget, financial model, pivot table, or tabular data file. Handles Chinese text, encodings (UTF-8 / GB18030 / GBK), full-width characters, CJK fonts in rendering, and Chinese number/date conventions (¥, 万/亿, 年/月/日). Covers: creating new workbooks from scratch, reading and analyzing existing files, editing existing workbooks while preserving pivot tables / VBA macros / charts / sparklines / conditional formatting / named ranges, formula recalculation and validation, visual review of results, and applying professional formatting. Triggers on 'spreadsheet', 'Excel', 'workbook', '表格', '工作簿', '.xlsx', '.xlsm', '.csv', 'pivot table', '透视表', 'macro', '宏', 'chart', '图表', 'financial model', '财务模型', 'formula', '公式', or any request to produce tabular data."
-version: 2.0.0
+version: 2.0.1
 license: MIT
 metadata:
   version: "2.0"

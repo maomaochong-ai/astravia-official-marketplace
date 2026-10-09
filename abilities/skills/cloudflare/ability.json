@@ -4,7 +4,7 @@
   "slug": "cloudflare",
   "name": "Cloudflare Platform",
   "description": "Choose, configure and connect Cloudflare services with retrieval-first guidance across Workers, storage, AI, networking and security.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "configVersion": 1,
   "license": "Apache-2.0",
   "author": "Cloudflare",
