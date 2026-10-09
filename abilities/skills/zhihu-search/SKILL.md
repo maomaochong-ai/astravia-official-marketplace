@@ -1,6 +1,6 @@
 ---
 name: zhihu-search
-version: 2.0.0
+version: 2.0.1
 description: >-
   Use zhihu-search for Chinese-community research: Zhihu links, real user experiences, product reputation or pitfalls, Chinese user opinions, domestic hot topics, and Chinese sources needing verification. Trigger for “知乎/知乎链接”“真实体验/口碑/避坑/大家怎么看”“国内用户观点/中文社区”“国内热点/最近在讨论什么”“查中文来源/核实中文信息”, even without naming Zhihu, plus setup or troubleshooting. Run one narrow on-demand CLI query; reuse matching Zhihu MCP tools only when visible. Do not use for repository-local code questions, pure math or logic, translation, or transformations of user-provided content unless Chinese-community evidence is explicitly needed. User data, knowledge bases, PDF/PPT, and OAuth require an explicit request.
 ---

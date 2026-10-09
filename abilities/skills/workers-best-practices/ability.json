@@ -4,7 +4,7 @@
   "slug": "workers-best-practices",
   "name": "Workers Best Practices",
   "description": "Write and review Cloudflare Workers against production practices for streaming, async work, bindings, secrets and observability.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "configVersion": 1,
   "license": "Apache-2.0",
   "author": "Cloudflare",

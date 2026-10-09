@@ -450,7 +450,7 @@ test("Cloudflare is one listed bundle with five independently installable member
   for (const member of bundle.config.members) {
     assert.equal(listed.has(member.slug), false, member.slug);
     const ability = bySlug.get(member.slug);
-    assert.equal(ability.version, "1.0.0");
+    assert.equal(ability.version, "1.0.1");
     assert.equal(ability.configVersion, 1);
     assert.deepEqual(ability.categoryI18n, { zh: "开发", en: "Development" });
   }
@@ -607,7 +607,7 @@ test("only the Zhihu bundle is independently listed; both members retain bilingu
   for (const slug of ["zhihu-search", "zhihu-search-mcp"]) {
     assert.equal(listed.has(slug), false);
     const member = bySlug.get(slug);
-    assert.equal(member.version, "2.0.0");
+    assert.equal(member.version, "2.0.1");
     assert.equal(member.configVersion, 1);
     assert.ok(member.name.trim());
     assert.ok(member.detail.i18n.zh.name.trim());

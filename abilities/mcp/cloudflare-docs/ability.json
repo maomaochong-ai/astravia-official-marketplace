@@ -4,7 +4,7 @@
   "slug": "cloudflare-docs",
   "name": "Cloudflare Documentation",
   "description": "Search current Cloudflare documentation and reference material directly from Astravia when APIs, limits or configuration may have changed.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "configVersion": 1,
   "license": "Apache-2.0",
   "author": "Cloudflare",
