@@ -2,7 +2,7 @@
 	"id": "as-ocr",
 	"name": "%plugin.name%",
 	"icon": "assets/icon.svg",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
@@ -21,13 +21,32 @@
 		"agent.session.read",
 		"storage.read",
 		"storage.write",
-		"agent.command.run",
 		"fs.read",
 		"shell.openExternal"
 	],
-	"commands": [
-		"ocr"
-	],
+	"providers": {
+		"cli": [
+			{
+				"id": "ocr",
+				"command": "ocr",
+				"probe": {
+					"args": [
+						"--version"
+					],
+					"timeoutMs": 10000
+				},
+				"install": {
+					"command": "npm",
+					"args": [
+						"install",
+						"-g",
+						"@alibaba-group/open-code-review@latest"
+					],
+					"timeoutMs": 900000
+				}
+			}
+		]
+	},
 	"description": "%plugin.description%",
 	"author": "zhangqingkun976"
 }

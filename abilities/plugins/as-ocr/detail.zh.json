@@ -48,12 +48,12 @@
 			"title": "开始使用",
 			"items": [
 				{
-					"title": "先安装 ocr CLI",
-					"description": "macOS：brew install open-code-review；或：go install github.com/alibaba/open-code-review/cmd/ocr@latest。本能力不会替你安装它。"
+					"title": "安装并启用本能力",
+					"description": "从市场安装并启用；宿主会自动装好 ocr CLI（npm 全局包，约 53 MB），进度显示在「审查」标签页顶部。"
 				},
 				{
-					"title": "从市场安装本能力",
-					"description": "它会直接使用 PATH 上已有的 ocr 可执行文件。"
+					"title": "等 ocr 自动装好",
+					"description": "状态条会走完「检测 → 安装 → 校验 → 就绪」，通常一分钟内完成；失败可点「重试安装」，也可手动 npm i -g @alibaba-group/open-code-review@latest。"
 				},
 				{
 					"title": "让 AI 开始审查",
@@ -64,7 +64,7 @@
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "实际的审查由外部 ocr 可执行文件完成。如果它不存在，本能力只会返回安装命令，而不会给出审查结果。"
+			"content": "首次启用需要下载约 53 MB 的 ocr 二进制（npm 全局包）。若安装因网络或代理失败，本能力会给出失败原因和重试入口，而不是直接开始审查。"
 		}
 	]
 }

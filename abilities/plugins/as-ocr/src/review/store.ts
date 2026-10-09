@@ -2,7 +2,7 @@
  * 审查结果的数据与执行层。
  *
  * store：审查运行与结果（活动面板消费）+ 最新一次结果的会话注入；
- * tool：agent 工具 `code_review` 的执行体（terminal.run 起子进程，JSON 输出落盘后解析）。
+ * tool：agent 工具 `code_review` 的执行体（ctx.cliProviders.run 跑宿主托管的 ocr，JSON 输出落盘后解析）。
  *
  * ocr CLI 契约（alibaba/open-code-review）：
  *   ocr review --format json --output <file>   # 工作区变更审查（staged+unstaged+untracked）
