@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "as-ocr",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"icon": "assets/icon.svg",
 	"minAppVersion": "0.5.60",
 	"detail": {

@@ -48,12 +48,12 @@
 			"title": "Getting started",
 			"items": [
 				{
-					"title": "Install the ocr CLI",
-					"description": "macOS: brew install open-code-review — or: go install github.com/alibaba/open-code-review/cmd/ocr@latest. The ability does not install it for you."
+					"title": "Install this ability and enable it",
+					"description": "The host then installs the ocr CLI for you (global npm package, ~53 MB) and shows the progress at the top of the Reviews tab."
 				},
 				{
-					"title": "Install this ability from the marketplace",
-					"description": "It uses the ocr binary that is already on your PATH."
+					"title": "Wait for ocr to be ready",
+					"description": "The status bar walks through checking → installing → verifying → ready, usually within a minute. On failure, use Retry install — or run npm i -g @alibaba-group/open-code-review@latest yourself."
 				},
 				{
 					"title": "Ask for a review",
@@ -64,7 +64,7 @@
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "The review itself is performed by the external ocr binary. If it is missing, the ability reports the install commands instead of reviewing."
+			"content": "The first enable downloads a ~53 MB ocr binary (global npm package). If that install fails because of a network or proxy problem, the ability reports the reason and a retry action instead of reviewing."
 		}
 	]
 }

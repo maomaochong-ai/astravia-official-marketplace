@@ -3911,7 +3911,7 @@
       "slug": "as-ocr",
       "name": "Code Review",
       "description": "Run alibaba/open-code-review from the conversation and list its findings by severity, so bugs and risky patterns surface before they ship.",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -4033,10 +4033,30 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.4.astraviapkg",
             "sha256": "6faa33960d7143a83a6fc5b5198f4a410a55d85048b73dd621d01a5008cce696"
           }
+        },
+        {
+          "version": "0.1.5",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.5.astraviapkg",
+            "sha256": "374009c45bf33586ea0406b48dbb077bc69b824b2cd8d37586cc14bd14e7939d"
+          }
         }
       ]
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.09-1"
+  "marketplaceVersion": "2026.10.09-2"
 }
