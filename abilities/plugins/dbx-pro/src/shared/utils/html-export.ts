@@ -5,7 +5,12 @@
  *   Blob URL 生命周期依赖 document；window.open("_blank") 是异步的，
  *   浏览器 popup blocker 可能拦截 + Blob 被父页面卸载时回收 → 白屏。
  *   Data URL 自包含（base64 + inline data），不依赖 Blob 生命周期，可靠。
+ *
+ * 产出的是发给用户的独立文件：这里统一内联 Chart.js 运行时（chart-runtime），
+ * 避免离线 / CDN 不可达时图表全部空白。
  */
+
+import { withEmbeddedChartJs } from "./chart-runtime";
 
 /** 文件名安全化（替换非字母/数字/中文为下划线）。 */
 function safeFilename(raw: string): string {
@@ -20,7 +25,7 @@ export function htmlToDataUrl(html: string): string {
 /** 触发浏览器下载 HTML 为 .html 文件。 */
 export function downloadHtml(html: string, title: string): void {
 	const a = document.createElement("a");
-	a.href = htmlToDataUrl(html);
+	a.href = htmlToDataUrl(withEmbeddedChartJs(html));
 	a.download = `${safeFilename(title)}.html`;
 	document.body.appendChild(a);
 	a.click();
@@ -29,5 +34,5 @@ export function downloadHtml(html: string, title: string): void {
 
 /** 在新浏览器 tab 打开 HTML（不依赖 Blob 生命周期）。 */
 export function openHtmlInNewTab(html: string): void {
-	window.open(htmlToDataUrl(html), "_blank", "noopener,noreferrer");
+	window.open(htmlToDataUrl(withEmbeddedChartJs(html)), "_blank", "noopener,noreferrer");
 }

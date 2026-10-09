@@ -27,8 +27,6 @@ import {
 	ENGINE_ROW_CAP,
 } from "../../../domain/workbench-settings";
 import { engineExecuteByName, engineRevealInFolder } from "../../../shared/services/engine-client";
-import { buildQueryPrompt } from "../../../shared/ai/send-context";
-import { SendToAiDialog } from "./send-to-ai-dialog";
 import {
 	cellText,
 	toTsv,
@@ -45,6 +43,8 @@ import { runExportAll } from "../services/export-all-runner";
 import { toXlsx } from "../services/xlsx-export";
 import { buildExportFileName } from "../services/export-file-name";
 import {
+	releaseExportPayload,
+	stageExportPayload,
 	addExportTask,
 	updateExportTask,
 	registerExportCancelHandler,
@@ -57,6 +57,7 @@ import { ResultToolbar } from "./result-toolbar";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { PageSizeMenu } from "./page-size-menu";
 import { ExportProgressDialog } from "./export-progress-dialog";
+import { CONTENT_KEPT_NOTE, discardStagedExport, saveStagedExport } from "../services/export-save";
 import { useWorkbench } from "../hooks/use-workbench";
 import { buildFilteredSql } from "../services/query-filter";
 
@@ -64,7 +65,7 @@ interface Props {
 	columns: string[];
 	rows: Record<string, unknown>[];
 	totalRows: number;
-	/** 产生该结果的连接 / SQL，用于「分析结果」回流给 AI。 */
+	/** 产生该结果的连接 / SQL：「导出全部数据」重跑查询与筛选 SQL 都基于它。 */
 	connectionName?: string;
 	sql?: string;
 	/** 引擎已按 LIMIT/OFFSET 取页：组件不本地切片，翻页交给 onPageChange。 */
@@ -147,8 +148,6 @@ export function ResultGrid({
 	const [detail, setDetail] = useState<CellDetail | null>(null);
 	const [showRowNumbers, setShowRowNumbers] = useState(true);
 	const [sort, setSort] = useState<{ col: string; dir: "asc" | "desc" } | null>(null);
-	const [aiDialogOpen, setAiDialogOpen] = useState(false);
-	const [aiPrompt, setAiPrompt] = useState("");
 	const [tableInfoOpen, setTableInfoOpen] = useState(false);
 	const [tableInfoSelection, setTableInfoSelection] = useState<TableInfoSelection | null>(null);
 	const [splitToolbar, setSplitToolbar] = useState(false); // 双排工具栏开关
@@ -298,10 +297,6 @@ export function ResultGrid({
 		return () => document.removeEventListener("mousedown", handleClickOutside);
 	}, [navOpen]);
 
-	function openAiDialogForQuery(): void {
-		setAiPrompt(buildQueryPrompt(connectionName ?? "", sql ?? "", rows));
-		setAiDialogOpen(true);
-	}
 
 	/**
 	 * 应用第二排的 WHERE / ORDER BY：把子查询包装在派生表里重跑，
@@ -768,8 +763,10 @@ export function ResultGrid({
 	 *   用户在设置中开启上限后按 exportRowLimit 提前停止并如实标注。
 	 * - 文本格式走分块序列化器，边拉边拼，不在浏览器侧堆积全部行；
 	 *   XLSX 受文件格式所限必须收集全部行，超大结果集有内存风险。
-	 * - 落盘走宿主 ctx.fs.saveAs（原生保存框，返回真实路径，完成态可「打开所在文件夹」）；
-	 *   旧宿主没有该 API 时降级浏览器下载。
+	 * - 内容组好后先进导出暂存，再交给宿主 ctx.fs.saveAs（原生保存框，返回真实路径，
+	 *   完成态可「打开所在文件夹」）：用户取消保存时内容仍在，任务落到「未保存」，
+	 *   可在弹窗或顶栏重新保存 / 明确放弃，不会出现「导出完了但找不到文件」；
+	 *   旧宿主没有该 API 时降级浏览器下载，数据不丢。
 	 * - 任务全程登记到后台任务 store，可最小化到顶栏、可块间取消。
 	 */
 	async function exportAllAs(kind: ExportKind): Promise<void> {
@@ -835,24 +832,43 @@ export function ResultGrid({
 
 			const fsApi = getFs();
 			let filePath: string | null = null;
+			// 组包只做一次：降级下载复用同一份内容，不必在 base64 与字节数组之间来回转。
+			const xlsxBytes = kind === "xlsx" ? toXlsx(allColumns, xlsxRows, target) : null;
+			const textContent = kind === "xlsx" ? null : (stream as ChunkedTextExport).content();
+			const downloadFallback = (): void => {
+				const blob = xlsxBytes
+					? new Blob([xlsxBytes], { type: EXPORT_MIME.xlsx })
+					: new Blob([textContent as string], { type: EXPORT_MIME[kind] });
+				triggerUrlDownload(URL.createObjectURL(blob), fileName);
+			};
 			if (fsApi) {
-				const saved =
-					kind === "xlsx"
-						? await fsApi.saveAs(fileName, uint8ArrayToBase64(toXlsx(allColumns, xlsxRows, target)), "base64")
-						: await fsApi.saveAs(fileName, (stream as ChunkedTextExport).content(), "utf8");
-				if (saved === null) {
-					// 用户在系统保存框点了取消：不落错误，记为已取消并说明原因。
-					updateExportTask(task.id, { status: "cancelled", finishedAt: Date.now(), note: "未选择保存位置，已取消导出" });
+				// 内容先入暂存：保存框被取消也不丢数据，任务落到 unsaved，可重开保存框。
+				stageExportPayload(task.id, {
+					fileName,
+					encoding: kind === "xlsx" ? "base64" : "utf8",
+					content: xlsxBytes ? uint8ArrayToBase64(xlsxBytes) : (textContent as string),
+				});
+				const saveResult = await saveStagedExport(task.id);
+				if (saveResult.outcome === "unsaved" || saveResult.outcome === "error") {
+					// 内容已取全、只是没落盘：行数、总数与截断提示也要落账，这条记录才算完整。
+					updateExportTask(task.id, {
+						rowsExported: total,
+						totalRows: truncationNote ? total : knownTotal ?? latestKnownTotalRef.current ?? total,
+						note: truncationNote ? CONTENT_KEPT_NOTE + "；" + truncationNote : CONTENT_KEPT_NOTE,
+					});
+					if (truncationNote) dispatch({ type: "setError", message: truncationNote });
 					return;
 				}
-				filePath = saved;
+				if (saveResult.outcome === "saved") {
+					filePath = saveResult.filePath;
+				} else {
+					// 宿主能力在落盘前丢失：退回浏览器下载，数据不丢。
+					releaseExportPayload(task.id);
+					downloadFallback();
+				}
 			} else {
 				// 旧宿主降级：浏览器下载，无法提供真实落盘路径（完成态不显示「打开所在文件夹」）。
-				const blob =
-					kind === "xlsx"
-						? new Blob([toXlsx(allColumns, xlsxRows, target)], { type: EXPORT_MIME.xlsx })
-						: new Blob([(stream as ChunkedTextExport).content()], { type: EXPORT_MIME[kind] });
-				triggerUrlDownload(URL.createObjectURL(blob), fileName);
+				downloadFallback();
 			}
 
 			updateExportTask(task.id, {
@@ -1131,8 +1147,6 @@ export function ResultGrid({
 				parsedTableName={parsedTableName?.tableName}
 				tableInfoOpen={tableInfoOpen}
 				onOpenTableInfo={openTableInfo}
-				sql={sql}
-				onOpenAiDialog={openAiDialogForQuery}
 				whereClause={whereClause}
 				onWhereChange={setWhereClause}
 				orderByClause={orderByClause}
@@ -1354,7 +1368,6 @@ export function ResultGrid({
 			{exportMenu && <ContextMenu menu={exportMenu} onClose={() => setExportMenu(null)} />}
 			{columnMenu && <ContextMenu menu={columnMenu} onClose={() => setColumnMenu(null)} />}
 			{detail && <CellDetailDialog detail={detail} onClose={() => setDetail(null)} />}
-			<SendToAiDialog open={aiDialogOpen} prompt={aiPrompt} onClose={() => setAiDialogOpen(false)} />
 			{dialogTask && (
 				<ExportProgressDialog
 					task={dialogTask}
@@ -1362,6 +1375,8 @@ export function ResultGrid({
 					onClose={() => setDialogTaskId(null)}
 					onCancel={() => requestCancelExportTask(dialogTask.id)}
 					onReveal={(filePath) => void revealExportFile(filePath)}
+					onSave={() => void saveStagedExport(dialogTask.id)}
+					onDiscard={() => discardStagedExport(dialogTask.id)}
 				/>
 			)}
 

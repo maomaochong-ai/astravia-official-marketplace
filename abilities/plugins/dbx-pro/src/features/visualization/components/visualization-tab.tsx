@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect, type JSX } from "react";
 import type { Visualization } from "../../../domain/chart-contract";
 import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
+import { withEmbeddedChartJs } from "../../../shared/utils/chart-runtime";
 
 interface Props {
 	// 预览态（工具刚生成、未入库，无 id）与已保存产物共用此组件；
@@ -88,10 +89,10 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 				</div>
 			</div>
 
-			{/* 预览区域：统一 iframe srcDoc */}
+			{/* 预览区域：统一 iframe srcDoc；srcDoc 内联 Chart.js 运行时，预览不依赖网络 */}
 			<div className="visualization-tab-content">
 				<iframe
-					srcDoc={viz.html}
+					srcDoc={withEmbeddedChartJs(viz.html)}
 					className="visualization-tab-iframe"
 					title={viz.title}
 					sandbox="allow-scripts"

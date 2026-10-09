@@ -8,7 +8,20 @@
 
 import { useSyncExternalStore } from "react";
 
-export type ExportTaskStatus = "running" | "writing" | "cancelling" | "done" | "error" | "cancelled";
+/**
+ * 导出任务的生命周期：running（取数）→ writing（组包）→ awaiting-save（落盘已开始）
+ * → done；用户取消保存则落到 unsaved（内容仍留在内存，可重新选保存位置）；
+ * cancelling / cancelled 为取数阶段取消，error 为失败。
+ */
+export type ExportTaskStatus =
+	| "running"
+	| "writing"
+	| "awaiting-save"
+	| "unsaved"
+	| "cancelling"
+	| "done"
+	| "error"
+	| "cancelled";
 
 export interface ExportTask {
 	id: string;
@@ -33,11 +46,26 @@ export interface ExportTask {
 export type NewExportTask = Pick<ExportTask, "fileName" | "format"> &
 	Partial<Pick<ExportTask, "database" | "tableName" | "totalRows">>;
 
+/**
+ * 已经取回、等待落盘的内容。
+ * 导出走的是先取数后保存：用户在系统对话框里取消时，这份内容不能白白丢掉，
+ * 因此暂存在 store 里，允许用户重新选择保存位置。
+ */
+export interface ExportSavePayload {
+	fileName: string;
+	content: string;
+	encoding: "utf8" | "base64";
+}
+
 const taskMap = new Map<string, ExportTask>();
 const cancelHandlers = new Map<string, () => void>();
 const listeners = new Set<() => void>();
 let cachedSnapshot: ExportTask[] = [];
 let taskSeq = 0;
+const savePayloads = new Map<string, ExportSavePayload>();
+
+/** 未保存的内容最多同时保留几份：大结果集的字符串很占内存，超出则淘汰最早的。 */
+export const MAX_UNSAVED_EXPORTS = 3;
 
 function emit(): void {
 	cachedSnapshot = [...taskMap.values()];
@@ -89,6 +117,7 @@ export function updateExportTask(id: string, patch: Partial<Omit<ExportTask, "id
 export function removeExportTask(id: string): void {
 	cancelHandlers.delete(id);
 	taskMap.delete(id);
+	savePayloads.delete(id);
 	emit();
 }
 
@@ -98,6 +127,7 @@ export function clearFinishedExportTasks(): void {
 		if (task.status === "done" || task.status === "error" || task.status === "cancelled") {
 			cancelHandlers.delete(id);
 			taskMap.delete(id);
+			savePayloads.delete(id);
 		}
 	}
 	emit();
@@ -127,6 +157,54 @@ export function requestCancelExportTask(id: string): void {
 
 export function isExportTaskActive(task: Pick<ExportTask, "status">): boolean {
 	return task.status === "running" || task.status === "writing" || task.status === "cancelling";
+}
+
+/** 终态之外都算「未完成」：等待保存与保存失败待重试也要计入顶栏待处理数。 */
+export function isExportTaskPending(task: Pick<ExportTask, "status">): boolean {
+	return isExportTaskActive(task) || task.status === "awaiting-save" || task.status === "unsaved";
+}
+
+export function hasExportPayload(id: string): boolean {
+	return savePayloads.has(id);
+}
+
+export function getExportPayload(id: string): ExportSavePayload | null {
+	return savePayloads.get(id) ?? null;
+}
+
+/** 暂存等待落盘的内容（同 id 重复暂存以最后一次为准）。 */
+export function stageExportPayload(id: string, payload: ExportSavePayload): void {
+	savePayloads.delete(id);
+	savePayloads.set(id, payload);
+	evictOldestUnsavedPayloads();
+}
+
+/** 释放暂存内容：落盘成功、用户放弃或任务被移除后调用。 */
+export function releaseExportPayload(id: string): void {
+	savePayloads.delete(id);
+}
+
+/**
+ * 超出上限时释放最早的「未保存」内容，并把对应任务落成已取消记录，
+ * 否则暂存区会随着用户一次次的导出把内存堆起来。
+ * 只淘汰 unsaved 的任务：awaiting-save 的原生对话框还开着，内容不能被动。
+ */
+function evictOldestUnsavedPayloads(): void {
+	while (savePayloads.size > MAX_UNSAVED_EXPORTS) {
+		const victim = [...savePayloads.keys()].find((id) => taskMap.get(id)?.status === "unsaved");
+		if (!victim) return;
+		savePayloads.delete(victim);
+		const task = taskMap.get(victim);
+		if (task) {
+			taskMap.set(victim, {
+				...task,
+				status: "cancelled",
+				finishedAt: Date.now(),
+				note: "导出内容已释放（未保存的导出过多），请重新导出",
+			});
+		}
+		emit();
+	}
 }
 
 /** React 订阅钩子：顶栏按钮 / popover / 进度弹窗共用同一快照。 */

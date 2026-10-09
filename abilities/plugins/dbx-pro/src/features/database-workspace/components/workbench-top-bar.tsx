@@ -8,7 +8,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import { ExportTasksPopover } from "./export-tasks-popover";
-import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 import { engineHealth, ENGINE_NOT_READY } from "../../../shared/services/engine-client";
 
 export interface WorkbenchTopBarProps {
@@ -113,7 +112,7 @@ export function WorkbenchTopBar({
 
 			<span className="flex-1" />
 
-			{/* 版本号 + 引擎健康指示 —— 插件重载/引擎启动的第一手反馈 */}
+			{/* 引擎健康指示 —— 插件重载/引擎启动的第一手反馈；版本号在「设置 → 关于」查看 */}
 			<div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground">
 				<span
 					className={`inline-block h-1.5 w-1.5 rounded-full ${
@@ -129,7 +128,7 @@ export function WorkbenchTopBar({
 						"检测引擎中…"
 					}
 				/>
-				<span className="font-mono tracking-tight">v{PLUGIN_VERSION}</span>
+				<span>引擎</span>
 			</div>
 
 			{/* 右：后台任务 / 查询历史 / 可视化产物 / 设置 / 全屏 */}

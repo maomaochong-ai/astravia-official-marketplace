@@ -38,9 +38,6 @@ interface ResultToolbarProps {
 	parsedTableName: string | undefined;
 	tableInfoOpen: boolean;
 	onOpenTableInfo: () => void;
-	/** AI 分析 */
-	sql: string | undefined;
-	onOpenAiDialog: () => void;
 	/** 过滤条件（仅双排显示） */
 	whereClause: string;
 	onWhereChange: (v: string) => void;
@@ -58,7 +55,6 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 		navPopoverRef, navOpen, onToggleNav, navFilter, onNavFilterChange, colList, onScrollToColumn,
 		sort, onClearSort,
 		connectionName, parsedTableName, tableInfoOpen, onOpenTableInfo,
-		sql, onOpenAiDialog,
 		whereClause, onWhereChange, orderByClause, onOrderByChange, onApplyFilterSort,
 	} = props;
 
@@ -199,20 +195,7 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 					</button>
 				</div>
 
-				{/* 右侧：AI 分析 */}
-				<div className="flex items-center gap-0.5 ml-auto">
-					{connectionName && sql && (
-						<button
-							type="button"
-							onClick={onOpenAiDialog}
-							title="把该 SQL 与结果发给 AI 分析"
-							className="dbx-toolbar-btn dbx-toolbar-btn-primary"
-						>
-							<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
-							<span className="dbx-toolbar-btn-label">分析结果</span>
-						</button>
-					)}
-				</div>
+				{/* AI 分析入口统一收敛到结果面板的「AI 分析 → 通用分析」，此处不再重复 */}
 			</div>
 
 			{/* 下排：过滤控件（仅双排模式显示） */}

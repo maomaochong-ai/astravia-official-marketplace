@@ -4,7 +4,7 @@
  * 布局要点：
  * - 整行固定高 36px，滚动区与右侧操作按钮在同一交叉轴上 stretch / center，
  *   横向滚动条出现时右侧图标仍垂直居中，不上下错位；
- * - 标签只显示标题，不携带绑定数据库信息；
+ * - 标签只显示标题，不携带绑定数据库信息；标题用 flex-1 吃掉剩余宽度，关闭按钮贴紧右边缘；
  * - 右键菜单：执行、重命名、关闭、关闭其他、关闭右侧、关闭全部。
  * - 标签溢出支持「单行横向滚动 / 多行换行」切换。
  */
@@ -148,7 +148,7 @@ export function TabBar(): JSX.Element {
 							key={tab.id}
 							onContextMenu={(e) => openMenu(e, tab)}
 							onClick={() => dispatch({ type: "setActiveTab", id: tab.id })}
-							className={`group flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition-colors ${
+							className={`group flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1 rounded-md pl-2 pr-1 text-[11px] transition-colors ${
 								active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
 							}`}
 							style={{
@@ -198,7 +198,7 @@ export function TabBar(): JSX.Element {
 									onContextMenu={(e) => e.stopPropagation()}
 								/>
 							) : (
-								<span className="min-w-0 truncate font-medium">{tab.label}</span>
+								<span className="min-w-0 flex-1 truncate font-medium">{tab.label}</span>
 							)}
 							{state.tabs.length > 1 && (
 								<button

@@ -9,11 +9,18 @@ import {
 	clearFinishedExportTasks,
 	getExportTask,
 	getExportTasks,
+	getExportPayload,
+	hasExportPayload,
+	isExportTaskActive,
+	isExportTaskPending,
+	MAX_UNSAVED_EXPORTS,
 	registerExportCancelHandler,
+	releaseExportPayload,
 	removeExportTask,
 	requestCancelExportTask,
 	subscribeExportTasks,
 	updateExportTask,
+	stageExportPayload,
 } from "../features/database-workspace/state/export-tasks-store.ts";
 
 /** 每个用例前清空模块级 Map（store 没暴露 clearAll，逐个移除即可）。 */
@@ -154,3 +161,113 @@ describe("clearFinishedExportTasks", () => {
 		assert.equal(getExportTask(cancelled.id), null);
 	});
 });
+
+	describe("clearFinishedExportTasks / 未保存记录", () => {
+		it("保留 unsaved（及其暂存内容），只清 done / error / cancelled", () => {
+			const unsaved = addExportTask({ fileName: "u.csv", format: "csv" });
+			updateExportTask(unsaved.id, { status: "unsaved", finishedAt: 1 });
+			stageExportPayload(unsaved.id, { fileName: "u.csv", content: "a,b\n1,2\n", encoding: "utf8" });
+			const done = addExportTask({ fileName: "d.csv", format: "csv" });
+			updateExportTask(done.id, { status: "done", finishedAt: 1 });
+
+			clearFinishedExportTasks();
+
+			assert.equal(getExportTask(unsaved.id).status, "unsaved");
+			assert.equal(hasExportPayload(unsaved.id), true);
+			assert.equal(getExportTask(done.id), null);
+		});
+	});
+
+	describe("导出暂存区", () => {
+		it("stage / get / release 往返", () => {
+			const task = addExportTask({ fileName: "a.csv", format: "csv" });
+			assert.equal(hasExportPayload(task.id), false);
+			assert.equal(getExportPayload(task.id), null);
+
+			stageExportPayload(task.id, { fileName: "a.csv", content: "x", encoding: "base64" });
+			assert.equal(hasExportPayload(task.id), true);
+			assert.deepEqual(getExportPayload(task.id), { fileName: "a.csv", content: "x", encoding: "base64" });
+
+			releaseExportPayload(task.id);
+			assert.equal(hasExportPayload(task.id), false);
+		});
+
+		it("同 id 重复暂存以最后一次为准", () => {
+			const task = addExportTask({ fileName: "a.csv", format: "csv" });
+			stageExportPayload(task.id, { fileName: "a.csv", content: "old", encoding: "utf8" });
+			stageExportPayload(task.id, { fileName: "a.csv", content: "new", encoding: "utf8" });
+			assert.equal(getExportPayload(task.id).content, "new");
+			assert.equal(MAX_UNSAVED_EXPORTS, 3);
+		});
+
+		it("移除任务时一并释放暂存内容", () => {
+			const task = addExportTask({ fileName: "a.csv", format: "csv" });
+			stageExportPayload(task.id, { fileName: "a.csv", content: "x", encoding: "utf8" });
+			removeExportTask(task.id);
+			assert.equal(hasExportPayload(task.id), false);
+		});
+
+		it("超出上限淘汰最早的未保存内容，对应任务落成已取消并留痕", () => {
+			const tasks = ["a", "b", "c", "d"].map((name) => {
+				const task = addExportTask({ fileName: `${name}.csv`, format: "csv" });
+				updateExportTask(task.id, { status: "unsaved", finishedAt: 1 });
+				return task;
+			});
+			for (const task of tasks.slice(0, MAX_UNSAVED_EXPORTS)) {
+				stageExportPayload(task.id, { fileName: task.fileName, content: "x", encoding: "utf8" });
+			}
+			// 第 4 份触发淘汰：最早的一份被释放，用户能从上一条记录里看到原因。
+			stageExportPayload(tasks[3].id, { fileName: "d.csv", content: "y", encoding: "utf8" });
+
+			assert.equal(hasExportPayload(tasks[0].id), false);
+			assert.equal(getExportTask(tasks[0].id).status, "cancelled");
+			assert.match(getExportTask(tasks[0].id).note, /导出内容已释放/);
+			for (const task of tasks.slice(1)) assert.equal(hasExportPayload(task.id), true);
+		});
+
+		it("等待保存的内容不会被淘汰（原生保存框还开着）", () => {
+			const tasks = ["a", "b", "c", "d"].map((name) => {
+				const task = addExportTask({ fileName: `${name}.csv`, format: "csv" });
+				updateExportTask(task.id, { status: "awaiting-save" });
+				return task;
+			});
+			for (const task of tasks) stageExportPayload(task.id, { fileName: task.fileName, content: "x", encoding: "utf8" });
+
+			for (const task of tasks) {
+				assert.equal(hasExportPayload(task.id), true);
+				assert.equal(getExportTask(task.id).status, "awaiting-save");
+			}
+		});
+	});
+
+	describe("isExportTaskActive / isExportTaskPending", () => {
+		it("活动 = running / writing / cancelling", () => {
+			assert.equal(isExportTaskActive({ status: "running" }), true);
+			assert.equal(isExportTaskActive({ status: "writing" }), true);
+			assert.equal(isExportTaskActive({ status: "cancelling" }), true);
+			for (const status of ["awaiting-save", "unsaved", "done", "error", "cancelled"]) {
+				assert.equal(isExportTaskActive({ status }), false);
+			}
+		});
+
+		it("未完成 = 活动 + 等待保存 + 未保存", () => {
+			for (const status of ["running", "writing", "cancelling", "awaiting-save", "unsaved"]) {
+				assert.equal(isExportTaskPending({ status }), true);
+			}
+			for (const status of ["done", "error", "cancelled"]) {
+				assert.equal(isExportTaskPending({ status }), false);
+			}
+		});
+
+		it("等待保存 / 未保存不再可取消（取消就是保存框的事）", () => {
+			const waiting = addExportTask({ fileName: "w.csv", format: "csv" });
+			updateExportTask(waiting.id, { status: "awaiting-save" });
+			requestCancelExportTask(waiting.id);
+			assert.equal(getExportTask(waiting.id).status, "awaiting-save");
+
+			const unsaved = addExportTask({ fileName: "u.csv", format: "csv" });
+			updateExportTask(unsaved.id, { status: "unsaved" });
+			requestCancelExportTask(unsaved.id);
+			assert.equal(getExportTask(unsaved.id).status, "unsaved");
+		});
+	});
