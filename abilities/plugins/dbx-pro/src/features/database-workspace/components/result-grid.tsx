@@ -1178,7 +1178,7 @@ export function ResultGrid({
 			{/* 分页栏（固定底部，不随网格滚动）；上分割线用 .dbx-pagination，
 			    与侧边栏竖线及桌面壳分割线对齐。
 			    布局：左侧元信息 min-w-0 可截断，右侧操作区 shrink-0 永不被遮挡。 */}
-			<div className="dbx-pagination flex h-7 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap px-3 text-[11px] text-muted-foreground">
+			<div className="dbx-pagination flex h-9 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap px-3 text-[12px] text-muted">
 				{/* 左侧：元信息（行数 + 执行时间 + 影响行数） */}
 				<div className="flex min-w-0 flex-1 items-center gap-2">
 					{isServer ? (
@@ -1186,14 +1186,14 @@ export function ResultGrid({
 							{/* 「已取回」与「共 N 行」是两个独立事实：前者是本会话真正拉到的行数，
 							    后者是数据库侧的真实总数；总数未知时不再拿取回行数兜底。 */}
 							<span className="shrink-0" title="已从数据库取回的行数（含当前页）">
-								已取回 <span className="font-medium text-foreground/80">{takenRows.toLocaleString()}</span> 行
+								已取回 <span className="font-mono tabular-nums text-surface-foreground">{takenRows.toLocaleString()}</span> 行
 							</span>
 							<button
 								type="button"
 								onClick={refreshTotalCount}
 								disabled={pageLoading === true || totalCounting}
 								title={totalCounting ? "正在统计总行数…" : "刷新总计行统计"}
-								className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-60"
+								className="flex h-5 w-5 shrink-0 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-50"
 							>
 								<span
 									className={
@@ -1205,15 +1205,15 @@ export function ResultGrid({
 							</button>
 							{totalKnown ? (
 								<span className="shrink-0" title="数据库统计得到的真实总行数">
-									共 <span className="font-medium text-foreground/80">{(serverTotalCount ?? 0).toLocaleString()}</span> 行
+									共 <span className="font-mono tabular-nums text-surface-foreground">{(serverTotalCount ?? 0).toLocaleString()}</span> 行
 								</span>
 							) : totalCounting ? (
-								<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80">
+								<span className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] text-muted">
 									总数统计中
 								</span>
 							) : serverTotalStatus === "failed" ? (
 								<span
-									className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80"
+									className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] text-muted"
 									title="统计总行数失败（如 COUNT 超时），不影响翻页；点左侧刷新按钮可重试"
 								>
 									总数未知
@@ -1222,19 +1222,19 @@ export function ResultGrid({
 						</>
 					) : (
 						<span className="shrink-0">
-							共 <span className="font-medium text-foreground/80">{displayTotal.toLocaleString()}</span> 行
+							共 <span className="font-mono tabular-nums text-surface-foreground">{displayTotal.toLocaleString()}</span> 行
 						</span>
 					)}
-					{pageLoading ? <span className="shrink-0 text-[10px] text-muted-foreground">取数中…</span> : null}
+					{pageLoading ? <span className="shrink-0 text-[12px] text-muted">取数中…</span> : null}
 					{/* 执行耗时 */}
 					{elapsedMs !== undefined && elapsedMs >= 0 && !pageLoading && (
-						<span className="shrink-0 text-muted-foreground/70" title="本次查询执行耗时">
+						<span className="shrink-0 text-muted" title="本次查询执行耗时">
 							<span className="icon-[lucide--timer] h-3 w-3 align-middle" /> {formatDuration(elapsedMs)}
 						</span>
 					)}
 					{/* 影响行数（写 / DDL） */}
 					{affectedRows !== null && affectedRows !== undefined && affectedRows >= 0 && (
-						<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80" title="写操作影响的行数">
+						<span className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] text-muted" title="写操作影响的行数">
 							{affectedRows} rows affected
 						</span>
 					)}
@@ -1243,7 +1243,7 @@ export function ResultGrid({
 				{sql && (
 					<div className="flex min-w-0 flex-1 items-center justify-center">
 						<span
-							className="truncate text-[10px] text-muted-foreground/50 cursor-pointer hover:text-muted-foreground/80"
+							className="truncate text-[12px] text-faint cursor-pointer hover:text-muted"
 							title={sql}
 							onClick={() => void navigator.clipboard.writeText(sql).catch(() => {})}
 						>
@@ -1260,18 +1260,18 @@ export function ResultGrid({
 						onApply={changePageSize}
 						onSetDefault={(n) => onSetDefaultPageSize?.(n)}
 					/>
-					<span className="text-muted-foreground/70">
+					<span className="font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
 						{pagedRows.length === 0 ? 0 : safePage * pageSize + 1}–
 						{safePage * pageSize + pagedRows.length}
 					</span>
-					<span className="text-muted-foreground/60">/</span>
-					<span className="text-muted-foreground/70">{totalKnown ? displayTotal : "?"}</span>
-					<div className="mx-2 h-3 w-px bg-[var(--dbx-surface-2)]" />
+					<span className="text-faint">/</span>
+					<span className="font-mono text-[12px] tabular-nums text-muted">{totalKnown ? displayTotal : "?"}</span>
+					<div className="mx-1 h-4 w-px shrink-0 bg-border" />
 					<button
 						type="button"
 						onClick={() => goToPage(0)}
 						disabled={safePage === 0 || pageLoading === true}
-						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 						title="第一页"
 					>
 						<span className="icon-[lucide--chevrons-left] h-3 w-3" />
@@ -1280,7 +1280,7 @@ export function ResultGrid({
 						type="button"
 						onClick={() => goToPage(safePage - 1)}
 						disabled={safePage === 0 || pageLoading === true}
-						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 						title="上一页"
 					>
 						<span className="icon-[lucide--chevron-left] h-3 w-3" />
@@ -1299,16 +1299,16 @@ export function ResultGrid({
 						inputMode="numeric"
 						aria-label="跳转页码"
 						disabled={pageLoading === true}
-						className="h-5 w-10 rounded border border-[var(--dbx-surface-2)] bg-transparent px-1 text-center text-[10px] text-foreground/80 outline-none focus:border-primary disabled:opacity-30"
+						className="h-6 w-10 rounded-control border border-border bg-surface px-1 text-center font-mono text-[12px] tabular-nums text-surface-foreground outline-none focus:border-primary disabled:opacity-30"
 					/>
 					{totalKnown && totalPages !== null ? (
-						<span className="text-muted-foreground/70">/ {totalPages}</span>
+						<span className="font-mono text-[12px] tabular-nums text-muted">/ {totalPages}</span>
 					) : null}
 					<button
 						type="button"
 						onClick={() => goToPage(safePage + 1)}
 						disabled={!hasNextPage || pageLoading === true}
-						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 						title="下一页"
 					>
 						<span className="icon-[lucide--chevron-right] h-3 w-3" />
@@ -1317,7 +1317,7 @@ export function ResultGrid({
 						type="button"
 						onClick={() => totalPages !== null && goToPage(totalPages - 1)}
 						disabled={totalPages === null || !hasNextPage || pageLoading === true}
-						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 						title={totalPages === null ? "总数未知（统计中或统计失败），暂不能跳末页" : "最后一页"}
 					>
 						<span className="icon-[lucide--chevrons-right] h-3 w-3" />
@@ -1328,7 +1328,7 @@ export function ResultGrid({
 							type="button"
 							onClick={handleLoadAll}
 							disabled={pageLoading === true || loadAllActive || !hasNextPage}
-							className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-30"
+							className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 							title={loadAllActive ? "正在加载全部…" : "加载全部（循环拉取所有页）"}
 						>
 							<span
@@ -1340,21 +1340,21 @@ export function ResultGrid({
 							/>
 						</button>
 					)}
-					<div className="mx-2 h-3 w-px bg-[var(--dbx-surface-2)]" />
+					<div className="mx-1 h-4 w-px shrink-0 bg-border" />
 					{/* 导出：左键 / 右键均弹格式菜单 */}
 					<button
 						type="button"
 						onClick={openExportMenu}
 						onContextMenu={openExportMenu}
 						title="导出结果（CSV / Excel / JSON / Markdown / HTML / SQL / TXT）"
-						className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
+						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground"
 					>
 						<span className="icon-[lucide--download] h-3.5 w-3.5" />
 					</button>
 					{/* 生效中的导出行数上限：不开启时不占位；开启时常驻，避免用户以为已经导出了全部数据。 */}
 					{settings.exportLimitEnabled ? (
 						<span
-							className="flex shrink-0 items-center gap-1 rounded bg-[var(--dbx-surface-2)] px-1.5 text-[10px] text-muted-foreground/80"
+							className="flex shrink-0 items-center gap-1 rounded-chip border border-warning/40 bg-warning-soft px-1.5 py-0.5 text-[12px] text-warning"
 							title={`导出全部数据最多取回 ${settings.exportRowLimit.toLocaleString()} 行，可在「导出设置」中调整`}
 						>
 							<span className="icon-[lucide--alert-triangle] h-3 w-3" />

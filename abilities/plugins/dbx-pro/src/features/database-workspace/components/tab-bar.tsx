@@ -145,12 +145,17 @@ export function TabBar(): JSX.Element {
 	}
 
 	return (
-		<div className="dbx-chrome flex shrink-0 items-stretch px-1" style={{ height: wrapTabs ? undefined : 36 }}>
+		<div
+			className={
+				"flex shrink-0 items-stretch border-b border-border bg-surface-raised " +
+				(wrapTabs ? "h-auto" : "h-9")
+			}
+		>
 			<div
 				className={
 					wrapTabs
 						? "dbx-tab-wrap flex min-w-0 flex-1 flex-wrap content-start gap-0.5 py-1"
-						: "dbx-tab-scroll flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto"
+						: "dbx-tab-scroll flex min-w-0 flex-1 items-stretch overflow-x-auto"
 				}
 			>
 				{state.tabs.map((tab) => {
@@ -162,7 +167,6 @@ export function TabBar(): JSX.Element {
 							onClick={() => dispatch({ type: "setActiveTab", id: tab.id })}
 							className="dbx-tab group"
 							data-active={active}
-							style={{ ["--tabw" as string]: "clamp(132px, 14vw, 170px)" }}
 							title={tab.label}
 						>
 							<span className={"h-3.5 w-3.5 shrink-0 " + tabIconClass(tab)} />
@@ -192,7 +196,7 @@ export function TabBar(): JSX.Element {
 									onContextMenu={(e) => e.stopPropagation()}
 								/>
 							) : (
-								<span className="min-w-0 flex-1 truncate font-medium">{tab.label}</span>
+								<span className="min-w-0 flex-1 truncate text-[12px]">{tab.label}</span>
 							)}
 							{state.tabs.length > 1 && (
 								<button
@@ -214,7 +218,7 @@ export function TabBar(): JSX.Element {
 			</div>
 
 			{/* 右侧操作：self-center 保证滚动条出现时仍与标签垂直居中、不错位 */}
-			<div className="flex shrink-0 items-center self-center">
+			<div className="flex shrink-0 items-center gap-0.5 self-center pr-1 pl-1">
 				<button type="button" onClick={addTab} title="新建 tab" className="dbx-icon-btn">
 					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
 				</button>

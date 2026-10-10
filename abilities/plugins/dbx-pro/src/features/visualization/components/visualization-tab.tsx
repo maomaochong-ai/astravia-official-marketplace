@@ -9,6 +9,10 @@ import { useState, useRef, useEffect, type JSX } from "react";
 import type { Visualization } from "../../../domain/chart-contract";
 import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
 import { withEmbeddedChartJs } from "../../../shared/utils/chart-runtime";
+import { getUi } from "../../../runtime-contract.ts";
+import { resolveChartItems } from "../../../domain/chart-source";
+import { resolveVisualizationHtml } from "../visualization-html";
+import { ChartGrid } from "./chart-grid";
 
 interface Props {
 	// 预览态（工具刚生成、未入库，无 id）与已保存产物共用此组件；
@@ -20,6 +24,10 @@ interface Props {
 export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 	const [isFullscreen, setIsFullscreen] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const legacyHtml = viz.html;
+	// 带数据集的产物只落库数据，图表项要在渲染 / 导出前按初始筛选解析出真实数据
+	const items = resolveChartItems(viz.chartItems ?? [], viz.datasets ?? [], viz.filters ?? []);
+	const isScreen = viz.type === "screen";
 
 	useEffect(() => {
 		const handleFullscreenChange = () => {
@@ -29,8 +37,29 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 		return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
 	}, []);
 
-	const handleDownload = (): void => { downloadHtml(viz.html, viz.title); };
-	const handleOpenExternal = (): void => { openHtmlInNewTab(viz.html); };
+	const notifyError = (message: string): void => {
+		try {
+			getUi()?.notify?.({ message, variant: "error" });
+		} catch {
+			/* 宿主不支持 notify 或运行时未就绪时静默忽略 */
+		}
+	};
+
+	const handleDownload = (): void => {
+		try {
+			downloadHtml(resolveVisualizationHtml(viz, items), viz.title);
+		} catch (error) {
+			notifyError(error instanceof Error ? error.message : String(error));
+		}
+	};
+
+	const handleOpenExternal = (): void => {
+		try {
+			openHtmlInNewTab(resolveVisualizationHtml(viz, items));
+		} catch (error) {
+			notifyError(error instanceof Error ? error.message : String(error));
+		}
+	};
 
 	const handleFullscreen = async (): Promise<void> => {
 		if (containerRef.current) {
@@ -43,7 +72,10 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 	};
 
 	return (
-		<div ref={containerRef} className={`visualization-tab ${isFullscreen ? "fullscreen" : ""}`}>
+		<div
+			ref={containerRef}
+			className={`visualization-tab ${isScreen ? "viz-theme-screen" : "viz-theme-dashboard"} ${isFullscreen ? "fullscreen" : ""}`}
+		>
 			{/* 工具栏 */}
 			<div className="visualization-tab-toolbar">
 				<div className="toolbar-left">
@@ -89,15 +121,25 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 				</div>
 			</div>
 
-			{/* 预览区域：统一 iframe srcDoc；srcDoc 内联 Chart.js 运行时，预览不依赖网络 */}
-			<div className="visualization-tab-content">
-				<iframe
-					srcDoc={withEmbeddedChartJs(viz.html)}
-					className="visualization-tab-iframe"
-					title={viz.title}
-					sandbox="allow-scripts"
-				/>
-			</div>
+			{/* 内容区：老产物走 iframe（内容与当初所见一致）；带 chartItems 的产物在 UI 内直接渲染 Chart.js */}
+			{legacyHtml ? (
+				<div className="visualization-tab-content">
+					<iframe
+						srcDoc={withEmbeddedChartJs(legacyHtml)}
+						className="visualization-tab-iframe"
+						title={viz.title}
+						sandbox="allow-scripts"
+					/>
+				</div>
+			) : items.length > 0 ? (
+				<div className="visualization-tab-content viz-embed">
+					<ChartGrid items={items} isScreen={isScreen} showUnboundHint={(viz.datasets?.length ?? 0) > 0} />
+				</div>
+			) : (
+				<div className="visualization-tab-content viz-embed">
+					<p className="viz-banner viz-banner-error">该产物既没有 HTML，也没有可用的图表项。</p>
+				</div>
+			)}
 		</div>
 	);
 }

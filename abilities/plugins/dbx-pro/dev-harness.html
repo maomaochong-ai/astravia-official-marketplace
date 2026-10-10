@@ -4,7 +4,30 @@
 		<meta charset="utf-8" />
 		<style>
 			html, body, #root { height: 100%; margin: 0; }
-			body { background: #f7f6f3; --background: #f7f6f3; --foreground: #1a1c24; --border: rgba(0,0,0,0.12); --card:#fff; --popover:#fff; --accent:#eee; --muted:#eee; --muted-foreground:#6b6f76; --primary:#1a1c24; --destructive:#b42318; }
+			/*
+			 * 故意用一套「一眼能认出来」的宿主调色板（紫调深色）：
+			 * 插件里任何漏映射到设计令牌的元素，都会露出这些值，一眼可辨。
+			 */
+			body {
+				background: #2b213a;
+				color: #f0e6d2;
+				--background: #2b213a;
+				--foreground: #f0e6d2;
+				--border: #554b6a;
+				--card: #3a2f4d;
+				--card-foreground: #f0e6d2;
+				--popover: #3a2f4d;
+				--popover-foreground: #f0e6d2;
+				--accent: #4b3f63;
+				--accent-foreground: #f0e6d2;
+				--muted: #4b3f63;
+				--muted-foreground: #b9a9d0;
+				--primary: #7c3aed;
+				--primary-foreground: #ffffff;
+				--destructive: #ef4444;
+				--warning: #d97706;
+			}
+			#root { color-scheme: dark; }
 		</style>
 	</head>
 	<body>

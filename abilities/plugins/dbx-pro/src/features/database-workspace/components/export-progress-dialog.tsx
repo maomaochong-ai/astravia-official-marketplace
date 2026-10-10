@@ -114,7 +114,7 @@ export function ExportProgressDialog({
 					</div>
 
 					{/* 进度条 */}
-					<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+					<div className="h-2 w-full overflow-hidden rounded-full bg-neutral-muted">
 						{task.status === "done" ? (
 							<div className="h-full w-full rounded-full bg-success" />
 						) : task.status === "awaiting-save" ? (
@@ -266,7 +266,7 @@ export function ExportProgressDialog({
 								<button
 									type="button"
 									onClick={() => onReveal(task.filePath as string)}
-									className="inline-flex h-8 items-center gap-1.5 rounded-md bg-muted px-3.5 text-[12px] font-medium text-foreground hover:opacity-90"
+									className="inline-flex h-8 items-center gap-1.5 rounded-control bg-neutral-muted px-3.5 text-[12px] font-medium text-foreground hover:opacity-90"
 								>
 									<span className="icon-[lucide--folder-open] h-3.5 w-3.5" />
 									打开所在文件夹

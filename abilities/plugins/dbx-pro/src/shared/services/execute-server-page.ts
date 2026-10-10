@@ -12,7 +12,7 @@
  */
 
 import { ENGINE_ROW_CAP } from "../../domain/workbench-settings";
-import { engineExecuteByName, type EngineQueryOutcome } from "./engine-client";
+import { engineExecuteByName, engineListConnections, type EngineQueryOutcome } from "./engine-client";
 
 export interface ExecuteServerPageParams {
 	/** 起始 offset（工作台是 pageIndex * pageSize；dbx_query_full 是 0）。 */
@@ -21,7 +21,23 @@ export interface ExecuteServerPageParams {
 	pageSize: number;
 	/** 查询超时（毫秒）。 */
 	timeoutMs: number;
+	/** 方言名，用于引擎侧改写分页 SQL。缺省时按连接名回查引擎连接表。 */
 	dbType?: string;
+}
+
+/**
+ * 引擎分页必须先知道方言：方言不认识时它宁可报错（BAD_REQUEST）也不生成可能非法的 SQL。
+ * 调用方不一定拿得到 db_type —— 数据集里只存了连接名，所以缺省时按连接名回查引擎连接表。
+ * 字段口径与 dbx-storage 一致：db_type 取 summary.type。回查失败不额外报错，
+ * 让请求照常发出，由引擎给出它自己的真实错误。
+ */
+async function resolveDbType(connectionName: string): Promise<string | undefined> {
+	try {
+		const { connections } = await engineListConnections();
+		return connections.find((connection) => connection.name === connectionName)?.type;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -34,7 +50,8 @@ export async function executeServerPage(
 	sql: string,
 	params: ExecuteServerPageParams,
 ): Promise<EngineQueryOutcome> {
-	const { baseOffset, pageSize, timeoutMs, dbType } = params;
+	const { baseOffset, pageSize, timeoutMs } = params;
+	const dbType = params.dbType ?? (await resolveDbType(connectionName));
 	const chunkCount = Math.max(1, Math.ceil(pageSize / ENGINE_ROW_CAP));
 
 	let first: EngineQueryOutcome | null = null;

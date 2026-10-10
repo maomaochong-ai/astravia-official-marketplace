@@ -116,3 +116,346 @@
 	min-height: 400px;
 	border: none;
 }
+
+/* ──────────── BI 数据资产：详情抽屉 / 筛选面板 / UI 内图表 ──────────── */
+
+/* 每个图表卡片的外观镜像 themes/dashboard.css、themes/screen.css 里的 .chart-card ——
+   UI 内渲染与导出产物必须是同一个东西（ADR-0009 §10 验收 ⑤）。
+   只改一侧会造成两侧视觉漂移，src/test/chart-theme-parity.test.js 会拦住。 */
+.dbx-root .viz-theme-dashboard {
+	--viz-card-bg: #ffffff;
+	--viz-card-border: 1px solid #e5e7eb;
+	--viz-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+	--viz-card-radius: 12px;
+	--viz-title: #111827;
+	--viz-desc: #6b7280;
+}
+.dbx-root .viz-theme-screen {
+	--viz-card-bg: rgba(255, 255, 255, 0.04);
+	--viz-card-border: 1px solid rgba(6, 182, 212, 0.25);
+	--viz-card-shadow: 0 0 24px rgba(6, 182, 212, 0.12);
+	--viz-card-radius: 4px;
+	--viz-title: #a5f3fc;
+	--viz-desc: #94a3b8;
+}
+
+.dbx-root .viz-drawer-mask {
+	position: fixed;
+	inset: 0;
+	z-index: 400;
+	display: flex;
+	justify-content: flex-end;
+	background: color-mix(in srgb, #000 40%, transparent);
+}
+.dbx-root .viz-drawer {
+	display: flex;
+	flex-direction: column;
+	width: min(880px, 100%);
+	height: 100%;
+	background: var(--background);
+	border-left: 1px solid var(--dbx-line-soft);
+	box-shadow: -8px 0 32px rgba(0, 0, 0, 0.2);
+}
+.dbx-root .viz-drawer-body {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding: 14px 16px 20px;
+}
+.dbx-root .viz-drawer-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+}
+
+.dbx-root .viz-section {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 10px 12px;
+	border: 1px solid var(--dbx-line-soft);
+	border-radius: 10px;
+	background: var(--dbx-surface);
+}
+.dbx-root .viz-section-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+.dbx-root .viz-section-title {
+	margin: 0;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--foreground);
+}
+.dbx-root .viz-section-note {
+	margin: 0;
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--muted-foreground);
+}
+
+.dbx-root .viz-dataset {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--dbx-surface-2);
+}
+.dbx-root .viz-dataset-meta {
+	font-size: 11px;
+	color: var(--muted-foreground);
+}
+.dbx-root .viz-sql {
+	margin: 2px 0 0;
+	padding: 8px 10px;
+	max-height: 180px;
+	overflow: auto;
+	border-radius: 8px;
+	background: var(--dbx-gutter);
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: var(--foreground);
+}
+
+.dbx-root .viz-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+.dbx-root .viz-field-label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--foreground);
+}
+.dbx-root .viz-field-role {
+	padding: 0 5px;
+	border-radius: 8px;
+	font-size: 10px;
+	font-weight: 400;
+	background: var(--dbx-hover);
+	color: var(--muted-foreground);
+}
+.dbx-root .viz-field-values {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	max-height: 92px;
+	overflow: auto;
+}
+.dbx-root .viz-check {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 7px 2px 5px;
+	border: 1px solid var(--dbx-line-soft);
+	border-radius: 999px;
+	font-size: 11px;
+	color: var(--foreground);
+	cursor: pointer;
+	background: var(--background);
+}
+.dbx-root .viz-check:hover {
+	border-color: var(--dbx-line);
+}
+.dbx-root .viz-check input {
+	margin: 0;
+	accent-color: var(--dbx-primary);
+}
+.dbx-root .viz-range {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.dbx-root .viz-input {
+	width: 132px;
+	padding: 3px 7px;
+	border: 1px solid var(--dbx-line-soft);
+	border-radius: 6px;
+	background: var(--background);
+	color: var(--foreground);
+	font-size: 11px;
+}
+.dbx-root .viz-input:focus {
+	outline: none;
+	border-color: var(--dbx-line);
+}
+
+.dbx-root .viz-grid {
+	display: grid;
+	gap: clamp(12px, 2vw, 20px);
+}
+.dbx-root .viz-canvas-card {
+	padding: clamp(12px, 2vw, 20px);
+	overflow: hidden;
+	border-radius: var(--viz-card-radius, 12px);
+	background: var(--viz-card-bg, var(--background));
+	border: var(--viz-card-border, 1px solid var(--dbx-line-soft));
+	box-shadow: var(--viz-card-shadow, none);
+}
+.dbx-root .viz-canvas-title {
+	margin: 0 0 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--viz-title, var(--foreground));
+}
+.dbx-root .viz-canvas-desc {
+	margin: 0 0 6px;
+	font-size: 11px;
+	color: var(--viz-desc, var(--muted-foreground));
+}
+.dbx-root .viz-canvas-note {
+	margin: 0 0 6px;
+	font-size: 11px;
+	color: var(--muted-foreground);
+}
+.dbx-root .viz-canvas {
+	position: relative;
+	width: 100%;
+}
+/* figure 类型（funnel / boxplot / metric）的片段自带全部样式，这里只约束宽度。 */
+.dbx-root .viz-figure {
+	width: 100%;
+}
+.dbx-root .viz-canvas-error {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	height: 100%;
+	padding: 16px;
+	border: 1px dashed #fecaca;
+	border-radius: 8px;
+	background: #fef2f2;
+	color: #ef4444;
+	font-size: 11px;
+	text-align: center;
+}
+.dbx-root .viz-canvas-error strong {
+	font-size: 13px;
+}
+.dbx-root .viz-canvas-error span {
+	color: #7f1d1d;
+}
+
+.dbx-root .viz-action-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: 26px;
+	padding: 0 9px;
+	border: 1px solid var(--dbx-line-soft);
+	border-radius: 7px;
+	background: var(--dbx-surface);
+	color: var(--foreground);
+	font-size: 11px;
+	cursor: pointer;
+	transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+}
+.dbx-root .viz-action-btn:hover:not(:disabled) {
+	background: var(--dbx-hover);
+	border-color: var(--dbx-line);
+}
+.dbx-root .viz-action-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+.dbx-root .viz-banner {
+	margin: 0;
+	padding: 7px 10px;
+	border-radius: 8px;
+	font-size: 11px;
+	line-height: 1.5;
+}
+.dbx-root .viz-banner-error {
+	background: rgb(239 68 68 / 0.1);
+	color: #ef4444;
+}
+.dbx-root .viz-banner-ok {
+	background: rgb(34 197 94 / 0.1);
+	color: #16a34a;
+}
+.dbx-root .viz-banner-info {
+	background: var(--dbx-surface-2);
+	color: var(--muted-foreground);
+}
+
+/* UI 内渲染图表时的内容区内边距：iframe 路径自带页面内边距，这里补上同等留白。 */
+.dbx-root .viz-embed {
+	padding: clamp(12px, 2vw, 20px);
+}
+
+/* 血缘：本产物的来源与反查（ADR-0009 §9 M3）。表按 (连接, 表名) 成对展示。 */
+.dbx-root .viz-lineage-time {
+	font-size: 11px;
+	color: var(--muted-foreground);
+}
+.dbx-root .viz-lineage-source {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--dbx-surface-2);
+}
+.dbx-root .viz-lineage-source-title {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--foreground);
+}
+.dbx-root .viz-lineage-origin {
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--foreground);
+	word-break: break-word;
+}
+.dbx-root .viz-lineage-rows {
+	font-size: 11px;
+	color: var(--muted-foreground);
+}
+.dbx-root .viz-lineage-group {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding-top: 8px;
+	border-top: 1px solid var(--dbx-line-soft);
+}
+.dbx-root .viz-lineage-group-head {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--foreground);
+	word-break: break-word;
+}
+.dbx-root .viz-lineage-group-note {
+	font-size: 11px;
+	color: var(--muted-foreground);
+}
+.dbx-root .viz-lineage-entries {
+	margin: 0;
+	padding-left: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	font-size: 11px;
+	color: var(--muted-foreground);
+}
+.dbx-root .viz-lineage-entry {
+	line-height: 1.5;
+	color: var(--foreground);
+}
+.dbx-root .viz-lineage-entry-meta {
+	color: var(--muted-foreground);
+}

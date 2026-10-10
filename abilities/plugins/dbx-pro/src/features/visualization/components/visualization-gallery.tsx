@@ -12,6 +12,10 @@
 import { useState, useMemo, useRef, type JSX } from "react";
 import { useVisualizationStore, type StoredVisualization } from "../visualization-store";
 import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
+import { resolveChartItems } from "../../../domain/chart-source";
+import { getUi } from "../../../runtime-contract.ts";
+import { resolveVisualizationHtml } from "../visualization-html";
+import { VisualizationDetailDrawer } from "./visualization-detail-drawer";
 
 /** Chart.js type → lucide icon。用于卡片网格占位（轻量缩略图，不加载 iframe）。 */
 const CHART_ICON_MAP: Record<string, string> = {
@@ -37,6 +41,8 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 	// 清空为不可逆操作：宿主 webview 中 confirm() 是静默 no-op，改用两次点击内联确认。
 	const [confirmClear, setConfirmClear] = useState(false);
 	const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// 详情抽屉只存 id，对象从 store 现取：重新取数 / 改筛选会替换 store 里的对象，存快照会让抽屉看着「没反应」
+	const [detailId, setDetailId] = useState<string | null>(null);
 
 	function handleClearClick(): void {
 		if (!confirmClear) {
@@ -50,6 +56,14 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 		clearAll();
 	}
 
+	function notifyError(error: unknown): void {
+		try {
+			getUi()?.notify?.({ message: error instanceof Error ? error.message : String(error), variant: "error" });
+		} catch {
+			/* 宿主不支持 notify 或运行时未就绪时静默忽略 */
+		}
+	}
+
 	const filteredVisualizations = useMemo(() => {
 		return visualizations.filter((viz) => {
 			const matchesSearch = !searchQuery || 
@@ -61,8 +75,25 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 		});
 	}, [visualizations, searchQuery, filterType]);
 
-	const handleDownload = (viz: StoredVisualization): void => { downloadHtml(viz.html, viz.title); };
-	const handleOpenInNewTab = (viz: StoredVisualization): void => { openHtmlInNewTab(viz.html); };
+	/** 卡片上的下载 / 新标签打开：带数据集的产物按初始筛选把图表项解析成真实数据后再导出。 */
+	const exportableItems = (viz: StoredVisualization) => resolveChartItems(viz.chartItems ?? [], viz.datasets ?? [], viz.filters ?? []);
+
+	const detailViz = detailId ? (visualizations.find((viz) => viz.id === detailId) ?? null) : null;
+
+	const handleDownload = (viz: StoredVisualization): void => {
+		try {
+			downloadHtml(resolveVisualizationHtml(viz, exportableItems(viz)), viz.title);
+		} catch (error) {
+			notifyError(error);
+		}
+	};
+	const handleOpenInNewTab = (viz: StoredVisualization): void => {
+		try {
+			openHtmlInNewTab(resolveVisualizationHtml(viz, exportableItems(viz)));
+		} catch (error) {
+			notifyError(error);
+		}
+	};
 
 	return (
 		<div className="flex h-full flex-col bg-background">
@@ -165,6 +196,7 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 								key={viz.id}
 								viz={viz}
 								onPreview={() => onPreview(viz)}
+								onOpenDetail={() => setDetailId(viz.id)}
 								onDownload={() => handleDownload(viz)}
 								onOpenInNewTab={() => handleOpenInNewTab(viz)}
 								onEditWithAi={() => onEditWithAi(viz)}
@@ -174,6 +206,18 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 					</div>
 				)}
 			</div>
+
+			{detailViz ? (
+				<VisualizationDetailDrawer
+					key={detailViz.id}
+					viz={detailViz}
+					onClose={() => setDetailId(null)}
+					onPreview={() => {
+						setDetailId(null);
+						onPreview(detailViz);
+					}}
+				/>
+			) : null}
 		</div>
 	);
 }
@@ -181,13 +225,14 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 interface CardProps {
 	viz: StoredVisualization;
 	onPreview: () => void;
+	onOpenDetail: () => void;
 	onDownload: () => void;
 	onOpenInNewTab: () => void;
 	onEditWithAi: () => void;
 	onDelete: () => void;
 }
 
-function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditWithAi, onDelete }: CardProps): JSX.Element {
+function VisualizationCard({ viz, onPreview, onOpenDetail, onDownload, onOpenInNewTab, onEditWithAi, onDelete }: CardProps): JSX.Element {
 	const [showMenu, setShowMenu] = useState(false);
 
 	const typeIcon = viz.type === "dashboard" ? "icon-[lucide--layout-dashboard]" : "icon-[lucide--monitor]";
@@ -200,7 +245,7 @@ function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditW
 			{/* 预览区域：图表类型网格占位 —— 轻量（无 iframe） */}
 			<button
 				type="button"
-				onClick={onPreview}
+				onClick={onOpenDetail}
 				className={`relative block aspect-video w-full overflow-hidden transition-colors ${
 					viz.type === "screen"
 						? "bg-gradient-to-br from-cyan-500/10 via-slate-900/20 to-slate-900/40 hover:from-cyan-500/20 hover:via-slate-900/30 hover:to-slate-900/50"
@@ -240,7 +285,7 @@ function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditW
 					</span>
 					<div className="flex items-center justify-between p-2">
 						<span className="rounded bg-black/60 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
-							点击查看 →
+						点击打开详情 →
 						</span>
 					</div>
 				</div>
@@ -260,6 +305,12 @@ function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditW
 							<span>{viz.table}</span>
 							<span>·</span>
 							<span>{timeAgo}</span>
+							{viz.datasets && viz.datasets.length > 0 ? (
+								<>
+									<span>·</span>
+									<span>{viz.datasets.length} 数据集</span>
+								</>
+							) : null}
 						</div>
 					</div>
 					<div className="relative">
@@ -277,7 +328,7 @@ function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditW
 									<button
 										type="button"
 										onClick={() => { onOpenInNewTab(); setShowMenu(false); }}
-										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-accent"
+										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-foreground hover:bg-neutral-muted"
 									>
 										<span className="icon-[lucide--external-link] h-3.5 w-3.5" />
 										新窗口打开
@@ -285,7 +336,7 @@ function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditW
 									<button
 										type="button"
 										onClick={() => { onDownload(); setShowMenu(false); }}
-										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-accent"
+										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-foreground hover:bg-neutral-muted"
 									>
 										<span className="icon-[lucide--download] h-3.5 w-3.5" />
 										下载 HTML
@@ -293,7 +344,7 @@ function VisualizationCard({ viz, onPreview, onDownload, onOpenInNewTab, onEditW
 									<button
 										type="button"
 										onClick={() => { onEditWithAi(); setShowMenu(false); }}
-										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-foreground hover:bg-accent"
+										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-foreground hover:bg-neutral-muted"
 									>
 										<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
 										交给 AI 修改

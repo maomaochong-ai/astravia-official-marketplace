@@ -9,7 +9,19 @@ import {
 	type EngineServicesApi,
 } from "../src/shared/services/engine-client";
 import { DatabaseWorkspace } from "../src/features/database-workspace/components/database-workspace";
+import { ConnectionManagerView } from "../src/features/database-workspace/components/connection-manager-view";
+// 与 src/index.tsx 的样式导入顺序保持一致；缺一份夹具就会量出假几何。
+import "./harness-shell.css";
 import "../src/style.css";
+import "../src/shared/styles/dbx-primitives.css";
+import "../src/shared/styles/dbx-layout.css";
+import "../src/shared/styles/dbx-loading.css";
+import "../src/features/database-workspace/styles/sheet-modal.css";
+import "../src/features/database-workspace/styles/connection-editor.css";
+import "../src/features/database-workspace/styles/result-grid.css";
+import "../src/features/database-workspace/styles/sql-editor.css";
+import "../src/features/database-workspace/styles/ai-dialog.css";
+import "../src/features/database-workspace/styles/table-info.css";
 
 // ── mock 宿主存储 / 凭据库（夹具本地） ──────────────────
 const files = new Map<string, string>();
@@ -101,9 +113,10 @@ function renderLog(): void {
 }
 
 function Harness(): JSX.Element {
+	const only = new URLSearchParams(location.search).get("view");
 	return (
 		<div style={{ position: "fixed", inset: 0 }}>
-			<DatabaseWorkspace />
+			{only === "conn" ? <ConnectionManagerView /> : <DatabaseWorkspace />}
 			<pre
 				id="harness-log"
 				style={{

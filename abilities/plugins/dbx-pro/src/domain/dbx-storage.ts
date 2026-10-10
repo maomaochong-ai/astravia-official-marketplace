@@ -44,6 +44,7 @@ function toDbConnection(summary: EngineConnectionSummary): DbConnection {
 		username: "",
 		password: "",
 		database: summary.database || undefined,
+		...(summary.api ? { api: summary.api } : {}),
 		schemas: [],
 	};
 }

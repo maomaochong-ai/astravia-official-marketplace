@@ -21,8 +21,8 @@
 	z-index: 201;
 	display: flex;
 	flex-direction: column;
-	width: min(1040px, calc(100% - 2rem));
-	height: min(700px, calc(100% - 2rem));
+	width: min(920px, calc(100% - 2rem));
+	height: min(660px, calc(100% - 2rem));
 	border-radius: var(--dbx-radius-sheet);
 	border: 1px solid var(--dbx-border);
 	background: var(--dbx-panel);
@@ -51,20 +51,23 @@
 	min-width: 0;
 }
 
-/* 头部 */
+/* 头部：设计稿 Sheet 头 = h-12 抬升底 + 一根 border */
 .dbx-connection-header {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 10px 16px;
+	height: 48px;
+	min-height: 48px;
+	padding: 0 16px;
 	flex-shrink: 0;
 	border-bottom: 1px solid var(--dbx-border);
 	background: var(--dbx-surface);
 }
 
 .dbx-connection-title {
-	font-size: 14px;
+	font-size: 16px;
 	font-weight: 600;
+	letter-spacing: -0.01em;
 	color: var(--dbx-surface-foreground);
 	min-width: 0;
 	overflow: hidden;
@@ -80,12 +83,22 @@
 	padding: 16px;
 }
 
-/* 底部操作栏 */
+/* 列表步：设计稿的搜索行 / 连接行 / 页脚都是齐边的，不应叠内容区 padding */
+.dbx-connection-body.is-flush {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	overflow: hidden;
+}
+
+/* 底部操作栏：设计稿 h-14 */
 .dbx-connection-footer {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 10px 16px;
+	height: 56px;
+	min-height: 56px;
+	padding: 0 16px;
 	flex-shrink: 0;
 	border-top: 1px solid var(--dbx-border);
 }

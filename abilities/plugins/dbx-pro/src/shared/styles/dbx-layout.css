@@ -1,14 +1,11 @@
 /* ============================================================
  * dbx-pro 布局组件样式 —— 对齐 dbx-pro.astravia-design
  *
- * 所有分隔线统一走 --dbx-border（设计稿 border-border），
- * 抬升面走 --dbx-surface（surface-raised），画布走 --dbx-panel（surface）。
+ * 设计稿里没有「缝隙」：三栏齐平，边界就是 1px 发丝线（border-border）。
+ * 竖向分隔条自己就是那条线；横向是中栏内的 3px 接缝（上下发丝线 + 最深一档底色）。
+ * 两者都外延隐形热区，悬浮 / 拖拽时提亮到 border-strong。
  * ============================================================ */
 
-/* 面板分隔条：
- * 竖向 = 卡片缝隙里的 4px 透明拖拽条（边界由卡片自身边框表达）；
- * 横向 = 中卡片内 3px 条 + 1px 发丝线；均外延隐形热区，悬浮/拖拽时高亮。
- */
 .dbx-splitbar {
 	position: relative;
 	flex-shrink: 0;
@@ -16,27 +13,38 @@
 	transition: background-color 0.12s;
 }
 
-/* 固定分页栏上分割线 */
+/* 固定分页栅上分割线（设计稿页脚无底色，跟着面板走） */
 .dbx-pagination {
 	border-top: 1px solid var(--dbx-border);
-	background: var(--dbx-surface);
+	background: var(--dbx-panel);
 }
+
 .dbx-splitbar-h {
 	height: 3px;
 	border-top: 1px solid var(--dbx-border);
+	border-bottom: 1px solid var(--dbx-border);
+	background: var(--dbx-canvas);
 	cursor: row-resize;
 }
+
 .dbx-splitbar-v {
-	width: 4px;
-	/* 无边框：两侧卡片自带边框，缝隙透出 gutter 底色 */
+	width: 1px;
+	background: var(--dbx-border);
 	cursor: col-resize;
 }
+
 .dbx-split-hit { position: absolute; inset: 0; }
 .dbx-splitbar-h .dbx-split-hit { inset: -3px 0; }
-.dbx-splitbar-v .dbx-split-hit { inset: 0 -3px; }
-.dbx-splitbar:hover,
-.dbx-splitbar.is-dragging {
+.dbx-splitbar-v .dbx-split-hit { inset: 0 -4px; }
+
+.dbx-splitbar-v:hover,
+.dbx-splitbar-v.is-dragging {
 	background: var(--dbx-border-strong);
+}
+
+.dbx-splitbar-h:hover,
+.dbx-splitbar-h.is-dragging {
+	background: color-mix(in srgb, var(--dbx-canvas) 55%, var(--dbx-border-strong));
 }
 
 /* 统一面板内分组卡片 */

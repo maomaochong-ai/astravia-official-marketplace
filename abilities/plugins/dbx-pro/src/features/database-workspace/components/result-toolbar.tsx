@@ -107,6 +107,8 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 					</button>
 				</div>
 
+				{/* 竖分隔线（设计稿 mx-1 h-4 w-px bg-border） */}
+				<span className="mx-1 h-4 w-px shrink-0 bg-border" />
 				{/* 中间：视图选项 */}
 				<div className="flex items-center gap-0.5">
 					<button
@@ -184,6 +186,7 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 							<span className="dbx-toolbar-btn-label">表属性</span>
 						</button>
 					)}
+				<span className="mx-1 h-4 w-px shrink-0 bg-border" />
 					<button
 						type="button"
 						onClick={onToggleSplit}

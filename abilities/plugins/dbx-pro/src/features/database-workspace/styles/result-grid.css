@@ -8,7 +8,8 @@
 	display: flex;
 	flex-direction: column;
 	flex-shrink: 0;
-	background: var(--dbx-surface);
+	/* 设计稿工具条无底色，直接坐在面板（bg-surface）上 */
+	background: var(--dbx-panel);
 	border-bottom: 1px solid var(--dbx-border);
 }
 
@@ -26,30 +27,40 @@
 .dbx-result-toolbar.single-layout {
 	flex-direction: row;
 	align-items: center;
-	height: 28px;
+	height: 32px;
 	padding: 0 8px;
-	gap: 8px;
+	gap: 4px;
 }
 
-/* 上排：操作按钮区 */
+/* 上排：操作按钮区（设计稿 h-8 工具条，图标按钮 24px，靠 title 提示语义） */
 .dbx-toolbar-row-actions {
 	grid-column: 1 / -1;
 	grid-row: 1;
 	display: flex;
 	align-items: center;
-	gap: 2px;
-	padding: 4px 8px;
+	height: 32px;
+	gap: 4px;
+	padding: 0 8px;
 	border-bottom: 1px solid var(--dbx-border);
 }
 
-/* 下排：过滤控件区 */
+/* 操作排只留图标：与设计稿的 IconButton 一致（下排过滤条保留文字） */
+.dbx-toolbar-row-actions .dbx-toolbar-btn-label { display: none; }
+.dbx-toolbar-row-actions .dbx-toolbar-btn {
+	width: 24px;
+	padding: 0;
+	justify-content: center;
+}
+
+/* 下排：过滤控件区（设计稿 h-8） */
 .dbx-toolbar-row-filters {
 	grid-column: 1 / -1;
 	grid-row: 2;
 	display: flex;
 	align-items: center;
+	height: 32px;
 	gap: 8px;
-	padding: 4px 8px;
+	padding: 0 8px;
 	background: var(--dbx-panel);
 }
 

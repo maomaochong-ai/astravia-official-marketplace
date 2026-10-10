@@ -15,6 +15,36 @@ export interface DbCategory {
 	dbTypes: DbType[];
 }
 
+// ─── 「API 接入」虚拟类型 ─────────────────────────────────
+
+/**
+ * 「API 接入」在表单里伪装成一个数据库类型，但**不进入 DB_TYPE_MANIFEST**：
+ * 引擎不认识它，新建/连接都走插件自己的 /api-sources 通道。
+ */
+export const API_DB_TYPE = "api";
+
+export function isApiConnectionType(dbType: DbType): boolean {
+	return String(dbType ?? "").trim().toLowerCase() === API_DB_TYPE;
+}
+
+/** 「接口」分组在类型下拉里始终排在第一位。 */
+export const API_CATEGORY_DEF: DbCategory = { label: "接口", dbTypes: [API_DB_TYPE] };
+
+export const API_CATALOG_ENTRY: DbTypeManifestEntry = {
+	dbType: API_DB_TYPE,
+	label: "API 接入",
+	dialect: "HTTP / JSON",
+	defaultPort: 0,
+	runtimeMode: "native",
+	mcpMode: "direct",
+	schemaAware: false,
+	treeSchema: false,
+	tableDataEdit: false,
+	sqlExplain: false,
+	family: "flat",
+	order: 0,
+};
+
 /** 预定义的 dbType → category 映射；不在任何预定义组里的归入 "其他" */
 export const CATEGORY_DEFS: DbCategory[] = [
 	{
@@ -53,6 +83,8 @@ export const CATEGORY_DEFS: DbCategory[] = [
 /**
  * 把 DB_TYPE_MANIFEST 按 CATEGORY_DEFS 分组。每个 entry 至多属于一个预定义组；
  * 未命中任何预定义组的集中归入 "其他"，同时保留 manifest 原生 order。
+ *
+ * 「接口」组不是数据库，不入 CATEGORY_DEFS，但始终排在第一位。
  */
 export function groupManifestByCategory(): Array<{ label: string; entries: DbTypeManifestEntry[] }> {
 	const bucket = new Map<string, DbTypeManifestEntry[]>();
@@ -72,7 +104,9 @@ export function groupManifestByCategory(): Array<{ label: string; entries: DbTyp
 		bucket.get(cat)!.push(entry);
 	}
 
-	const out: Array<{ label: string; entries: DbTypeManifestEntry[] }> = [];
+	const out: Array<{ label: string; entries: DbTypeManifestEntry[] }> = [
+		{ label: API_CATEGORY_DEF.label, entries: [API_CATALOG_ENTRY] },
+	];
 	for (const cat of CATEGORY_DEFS) {
 		const entries = bucket.get(cat.label)!;
 		if (entries.length > 0) out.push({ label: cat.label, entries });
@@ -161,5 +195,28 @@ export function emptyConnection(): DbConnection {
 		ssl: false,
 		is_production: false,
 		read_only: false,
+	};
+}
+
+/**
+ * 「API 接入」的初始草稿。
+ *
+ * 不是从 DB_TYPE_MANIFEST 取的：这台机器上不存在 ip/端口/用户名可填，所以外壳字段
+ * 统一给空值，真正的配置放在 api 子对象里（见 ApiConnectionSpec）。
+ */
+export function emptyApiConnection(): DbConnection {
+	return {
+		id: genUuid(),
+		name: "",
+		db_type: API_DB_TYPE,
+		host: "",
+		port: 0,
+		username: "",
+		password: "",
+		schemas: [],
+		ssl: false,
+		is_production: false,
+		read_only: true,
+		api: { url: "", method: "GET", auth: { kind: "none" }, dataPath: "", rowLimit: 1000 },
 	};
 }

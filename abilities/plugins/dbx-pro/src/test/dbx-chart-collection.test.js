@@ -5,8 +5,12 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
-import { generateHtml, validateChartData, normalizeChartData } from "../tools/dbx-chart-collection.ts";
+import { afterEach, beforeEach, describe, it } from "node:test";
+import { createDbxChartCollectionTool, generateHtml, validateChartData, normalizeChartData } from "../tools/dbx-chart-collection.ts";
+import { resolveChartItems } from "../domain/chart-source.ts";
+import { resolveVisualizationHtml } from "../features/visualization/visualization-html.ts";
+import { setPreviewCallback, setSaveCallback } from "../features/visualization/visualization-bridge.ts";
+import { withEmbeddedChartJs } from "../shared/utils/chart-runtime.ts";
 
 // ─── Fixtures ────────────────────────────────────────────
 
@@ -255,5 +259,187 @@ describe("generateHtml — normalize 自动修正 → 正常渲染", () => {
 		});
 		assert.ok(html.includes('<canvas id="chart-0"'));
 		assert.ok(html.includes("new Chart(document.getElementById('chart-0')"));
+	});
+});
+
+// ─── M1：datasets 与惰性 html（工具契约） ─────────────────
+
+/** 带 source 的图：data 故意留空，验证渲染数据只能来自数据集。 */
+const CHART_WITH_SOURCE = {
+	type: "bar",
+	title: "分区域 GMV",
+	data: { labels: [], datasets: [] },
+	source: { datasetId: "ds-1", labelColumn: "region", valueColumns: ["gmv"] },
+};
+
+const DS_1 = {
+	id: "ds-1",
+	title: "分区域 GMV",
+	connection: "pg",
+	table: "public.orders",
+	sql: "select region, sum(gmv) as gmv from orders group by region",
+	columns: ["region", "gmv"],
+	rows: [
+		{ region: "华东", gmv: 100 },
+		{ region: "华南", gmv: 200 },
+	],
+	rowCount: 2,
+};
+
+describe("dbx_chart_collection — datasets 与惰性 html", () => {
+	const tool = createDbxChartCollectionTool();
+	let saved = null;
+	let previewed = null;
+
+	const run = (input) => tool.handler({ trigger: { input } });
+
+	beforeEach(() => {
+		saved = null;
+		previewed = null;
+		setSaveCallback((viz) => {
+			saved = viz;
+		});
+		setPreviewCallback((viz) => {
+			previewed = viz;
+		});
+	});
+
+	afterEach(() => {
+		setSaveCallback(null);
+		setPreviewCallback(null);
+	});
+
+	it("不带 datasets 的旧调用：html 照旧落库，产物结构不变", async () => {
+		const result = await run({ charts: [lineChart], title: "旧调用看板", connection_name: "pg", table: "public.orders" });
+
+		assert.equal(result.ok, true);
+		assert.equal(result.datasetCount, 0);
+		assert.equal(saved.datasets, undefined, "没有数据集时不应凭空多出 datasets 字段");
+		assert.equal(saved.chartItems.length, 1);
+		assert.equal(saved.chartItems[0].source, undefined, "不该凭空多出 source");
+		assert.equal(saved.connection, "pg");
+		assert.equal(saved.table, "public.orders");
+		assert.ok(typeof saved.html === "string" && saved.html.includes('<canvas id="chart-0"'), "旧路径仍然落库 html");
+		assert.equal(previewed, saved, "预览拿到的就是入库的那份产物");
+		assert.ok(!result.message.includes("筛选与重新取数"), "旧调用不该出现筛选提示");
+	});
+
+	it("带 datasets：html 不落库，只存数据与初始筛选", async () => {
+		const result = await run({
+			charts: [CHART_WITH_SOURCE],
+			title: "销售看板",
+			type: "dashboard",
+			connection_name: "pg",
+			table: "public.orders",
+			datasets: [DS_1],
+			filters: [{ column: "region", values: ["华东"] }],
+		});
+
+		assert.equal(result.ok, true);
+		assert.equal(result.datasetCount, 1);
+		assert.equal(saved.html, undefined, "有数据集时 html 是派生物，不该落库");
+		assert.equal(saved.datasets.length, 1);
+		assert.equal(saved.datasets[0].sql, DS_1.sql, "SQL 原样保存，重新取数直接重跑它");
+		assert.equal(saved.datasets[0].rowCount, 2, "rowCount 保存 SQL 的完整行数");
+		assert.equal(saved.filters.length, 1, "初始筛选随产物落库");
+		assert.equal(saved.chartItems[0].source.datasetId, "ds-1");
+		assert.deepEqual(saved.chartItems[0].source.valueColumns, ["gmv"]);
+		assert.ok(result.message.includes("筛选与重新取数"), "返回值里要告诉用户新增了筛选能力");
+	});
+
+	it("导出时才生成 html：数据来自数据集，筛选变化直接反映在导出结果里", async () => {
+		await run({ charts: [CHART_WITH_SOURCE], title: "导出看板", datasets: [DS_1] });
+		assert.equal(saved.html, undefined);
+
+		const full = resolveVisualizationHtml(saved, resolveChartItems(saved.chartItems, saved.datasets));
+		assert.ok(full.includes("new Chart(document.getElementById('chart-0')"), "导出时才拼出渲染调用");
+		for (const token of ["华东", "华南", "100", "200"]) {
+			assert.ok(full.includes(token), `导出结果缺少数据集里的 ${token}`);
+		}
+
+		await run({ charts: [CHART_WITH_SOURCE], title: "导出看板", datasets: [DS_1], filters: [{ column: "region", values: ["华东"] }] });
+		const filtered = resolveVisualizationHtml(saved, resolveChartItems(saved.chartItems, saved.datasets, saved.filters));
+		assert.ok(filtered.includes("华东"));
+		assert.ok(!filtered.includes("华南"), "导出的是当前筛选后的数据，不是全量快照");
+
+		const offline = withEmbeddedChartJs(full);
+		assert.ok(offline.includes("Chart.js v4.4.1"), "内联的是随插件打包的同一份运行时");
+		assert.ok(!offline.includes("cdn.jsdelivr.net"), "离线打开不应再依赖 CDN");
+	});
+});
+
+// ─── figure 类型（不走 Chart.js 的自有渲染）────────────────
+
+const FUNNEL_CHART = {
+	type: "funnel",
+	title: "转化漏斗",
+	data: { labels: ["访问", "加购", "下单"], datasets: [{ label: "人数", data: [1000, 400, 120] }] },
+};
+const METRIC_CHART = {
+	type: "metric",
+	title: "核心指标",
+	data: { labels: ["GMV"], datasets: [{ data: [1200] }] },
+};
+const BOXPLOT_CHART = {
+	type: "boxplot",
+	title: "分布",
+	data: { labels: ["A"], datasets: [{ data: [[1, 2, 3, 4, 5]] }] },
+};
+
+describe("generateHtml — figure 类型不走 Chart.js", () => {
+	it("type 枚举在原有 8 种之后追加 3 种（只增不改）", () => {
+		const enumValues = createDbxChartCollectionTool().parameters.properties.charts.items.properties.type.enum;
+		assert.deepEqual(enumValues.slice(0, 8), ["line", "bar", "pie", "doughnut", "polarArea", "radar", "scatter", "bubble"]);
+		assert.deepEqual(enumValues.slice(8), ["funnel", "boxplot", "metric"]);
+	});
+
+	it("工具描述里写清三种 figure 的数据契约与 options.figure", () => {
+		const { description } = createDbxChartCollectionTool();
+		for (const token of ["funnel", "metric", "boxplot", "options.figure"]) {
+			assert.ok(description.includes(token), `描述缺少 ${token}`);
+		}
+	});
+
+	for (const [name, chart, marker] of [
+		["funnel", FUNNEL_CHART, "dbx-figure-funnel"],
+		["metric", METRIC_CHART, "dbx-figure-metric"],
+		["boxplot", BOXPLOT_CHART, "dbx-figure-boxplot"],
+	]) {
+		it(`${name} 片段自包含：不生成 canvas，也不调用 new Chart`, () => {
+			const html = generateHtml({ charts: [chart], title: name });
+			assert.ok(html.includes(marker));
+			assert.ok(html.includes(chart.title));
+			assert.ok(!html.includes("<canvas"), "figure 不产生 canvas");
+			assert.ok(!html.includes("new Chart("), "figure 不产生 Chart.js 调用");
+			assert.ok(html.includes(`(${name}) rendered without Chart.js`));
+		});
+	}
+
+	it("混合页面：原生类型照旧画 canvas，figure 类型只注入片段", () => {
+		const html = generateHtml({ charts: [barChart, FUNNEL_CHART], title: "混合" });
+		assert.ok(html.includes('<canvas id="chart-0">'));
+		assert.ok(html.includes("new Chart(document.getElementById('chart-0')"));
+		assert.equal(html.split("<canvas").length - 1, 1, "只有原生类型出 canvas");
+		assert.ok(html.includes("dbx-figure-funnel"));
+		assert.ok(!html.includes("getElementById('chart-1')"), "figure 不注册 Chart 实例");
+	});
+
+	it("大屏主题用 screen 调色板", () => {
+		const html = generateHtml({ charts: [METRIC_CHART], title: "大屏", type: "screen" });
+		assert.ok(html.includes("rgba(6,182,212,0.25)"));
+	});
+
+	it("figure 的数据格式错误仍然先出错误卡，不落到渲染器", () => {
+		const html = generateHtml({ charts: [{ type: "funnel", data: {} }], title: "坏数据" });
+		assert.ok(html.includes("chart-error"));
+		assert.ok(html.includes("skipped"));
+		assert.ok(!html.includes("dbx-figure"));
+	});
+
+	it("离线导出仍能看到 figure —— 片段是服务端拼好的 HTML", () => {
+		const offline = withEmbeddedChartJs(generateHtml({ charts: [FUNNEL_CHART], title: "离线" }));
+		assert.ok(offline.includes("dbx-figure-funnel"));
+		assert.ok(offline.includes("Chart.js v4.4.1"));
+		assert.ok(!offline.includes("cdn.jsdelivr.net"));
 	});
 });

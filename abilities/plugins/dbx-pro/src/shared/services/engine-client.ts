@@ -14,7 +14,7 @@
  * 否则连接池/慢查询会正好压在默认边界上。
  */
 
-import type { DbQueryResult } from "../../domain/connection-config";
+import type { ApiAuthSpec, ApiConnectionSpec, DbQueryResult } from "../../domain/connection-config";
 
 export const ENGINE_SERVICE_ID = "dbx-engine";
 export const ENGINE_NOT_READY = "ENGINE_NOT_READY";
@@ -236,6 +236,8 @@ export interface EngineConnectionSummary {
 	host: string;
 	port: number;
 	database: string;
+	/** 「API 接入」连接才有：接口地址与认证配置（**不含凭据**） */
+	api?: ApiConnectionSpec;
 }
 
 export interface EngineListTablesOutcome {
@@ -322,6 +324,65 @@ export function engineDescribeByName(
 	return engineRequest<EngineDescribeOutcome>("/describe", { connectionName, target }, options);
 }
 
+// ─── 「API 接入」自有数据源（/api-sources）──────────────────
+// 这组路由不是引擎的能力：`api` 不是引擎内置 dbType，取数与 SQL 重写都由插件服务端完成。
+
+export interface EngineApiSourceSaveSpec {
+	name: string;
+	url: string;
+	method?: "GET";
+	/** 缺省 = 沿用服务端已存值（与 token 同一套合并约定）；显式传空对象才是清空。 */
+	headers?: Record<string, string>;
+	auth?: ApiAuthSpec;
+	dataPath?: string;
+	rowLimit?: number;
+	/** 明文凭据；空串/不传 = 沿用服务端已存的那份（凭据从不回传客户端）。 */
+	token?: string;
+}
+
+/** POST /api-sources/test 的返回（字段名与服务端一致，不做重命名）。 */
+export interface EngineApiSourceTestOutcome {
+	name: string;
+	url: string;
+	status: number;
+	columns: string[];
+	sample: Record<string, unknown>[];
+	row_count: number;
+	total_records: number;
+	truncated: boolean;
+	duration_ms: number;
+	fetched_at: string;
+}
+
+/** 新增 / 覆盖一个 API 接入（POST /api-sources，按名称幂等）。 */
+export function engineSaveApiSource(
+	spec: EngineApiSourceSaveSpec,
+	options: CallOptions = {},
+): Promise<EngineConnectionSummary> {
+	return engineRequest<EngineConnectionSummary>("/api-sources", spec, options);
+}
+
+/** 删除 API 接入（DELETE /api-sources）。 */
+export function engineDeleteApiSource(name: string, options: CallOptions = {}): Promise<{ deleted: string }> {
+	return engineRequest<{ deleted: string }>("/api-sources", { name }, { ...options, method: "DELETE" });
+}
+
+/**
+ * 取一次接口数据（POST /api-sources/test）。
+ *
+ * 传 `draft` 是表单保存前的验证；只传 `name` 是按需给已存连接取列（连接树展开时用）。
+ */
+export function engineTestApiSource(
+	input: { name: string; draft?: EngineApiSourceSaveSpec; token?: string },
+	options: CallOptions = {},
+): Promise<EngineApiSourceTestOutcome> {
+	const body: Record<string, unknown> = { name: input.name };
+	if (input.draft) body.draft = input.draft;
+	if (input.token) body.token = input.token;
+	return engineRequest<EngineApiSourceTestOutcome>("/api-sources/test", body, {
+		timeoutMs: options.timeoutMs ?? TEST_TIMEOUT_MS,
+	});
+}
 /** 执行 SQL（POST /query）——直接用 connectionName，不走 connection spec。 */
 export function engineExecuteByName(
 	connectionName: string,

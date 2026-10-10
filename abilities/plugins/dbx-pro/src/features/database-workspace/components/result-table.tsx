@@ -61,16 +61,16 @@ export function ResultTable({
 		<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
 			<table className="w-full border-separate border-spacing-0 font-sans text-[12px]" style={{ minWidth: "100%" }}>
 				<thead>
-					<tr>
+					<tr className="h-10">
 						{showRowNumbers && (
-							<th className="sticky left-0 z-20 w-12 min-w-12 border-b border-border bg-surface-sunken px-2 py-1.5 text-right font-normal text-[12px] text-faint" />
+							<th className="sticky left-0 z-20 w-12 min-w-12 border-b border-border bg-surface-sunken px-2 py-1 text-right font-mono text-[12px] tabular-nums text-faint select-none" />
 						)}
 						{columns.map((c, i) => (
 							<th
 								key={c}
 								data-col={c}
 								onContextMenu={(e) => onOpenColumnMenu(e, c)}
-								className="relative border-b border-border px-3 py-1.5 text-left font-normal text-[12px] text-surface-foreground"
+								className="relative border-b border-border px-3 py-1 text-left align-middle font-normal text-[12px] text-surface-foreground"
 								style={{ backgroundColor: "var(--dbx-panel-sunken)", width: defaultWidth(c), minWidth: defaultWidth(c) }}
 							>
 								<div className="flex items-center gap-1">
@@ -84,7 +84,7 @@ export function ResultTable({
 											<span className={`h-2.5 w-2.5 shrink-0 text-foreground ${sort.dir === "asc" ? "icon-[lucide--arrow-up]" : "icon-[lucide--arrow-down]"}`} />
 										) : null}
 									</span>
-									<span className="shrink-0 text-[10px] text-faint">{i + 1}</span>
+									<span className="shrink-0 font-mono text-[12px] text-faint">{i + 1}</span>
 								</div>
 								<span
 									onMouseDown={(e) => onStartResize(e, c)}

@@ -144,9 +144,9 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 				onCollapsePanel={onCollapse}
 			/>
 			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}
-			<div className="shrink-0 border-b border-border px-2 py-1.5">
+			<div className="flex h-7 shrink-0 items-center border-b border-border px-2">
 				<div
-					className="flex items-center gap-1 rounded-control border border-border bg-surface px-2 py-1"
+					className="flex h-6 w-full items-center gap-1 rounded-control border border-border bg-surface px-2"
 				>
 					<span className="icon-[lucide--search] size-3 shrink-0 text-muted" />
 					<input
@@ -233,16 +233,16 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 			{/* 底部：多选操作条（v0.0.102 重构：纯图标 + 合并看板/大屏下拉 + 响应式） */}
 			{selectionMode ? (
 				<div
-					className="dbx-tree-bottom-bar"
+					className="flex h-9 shrink-0 items-center gap-2 border-t border-border bg-surface px-3"
 				>
 					{/* 左侧：已选 N 项（窄屏自动隐藏文字） */}
-					<span className="dbx-tree-bottom-bar__count">
-						<span className="icon-[lucide--check-square] h-2.5 w-2.5 shrink-0" />
-						<span className="dbx-tree-bottom-bar__count-text">已选 <span className="font-semibold">{selectedNodes.size}</span> 项</span>
+					<span className="flex min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap">
+						<span className="icon-[lucide--square-check-big] size-3.5 shrink-0 text-accent" />
+						<span className="truncate text-[12px] text-muted">已选 <span className="font-semibold text-surface-foreground">{selectedNodes.size}</span> 项</span>
 					</span>
 					<span className="min-w-1 flex-1" />
 					{/* 右侧：纯图标按钮组 */}
-					<div className="dbx-tree-bottom-bar__actions">
+					<div className="flex shrink-0 items-center gap-0.5">
 						{/* 清空 */}
 						<button
 							type="button"
@@ -293,10 +293,11 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 							type="button"
 							onClick={sendSelectionToAi}
 							disabled={selectedNodes.size === 0}
-							className="dbx-icon-btn dbx-icon-btn--primary"
-							title="发送到 AI"
+							className="ml-1 shrink-0 appearance-none rounded-control border border-ai/40 bg-ai-soft px-2 py-0.5 text-[12px] font-medium whitespace-nowrap text-ai transition disabled:cursor-not-allowed disabled:opacity-40"
+							title="把选中的表交给 AI"
 						>
-							<span className="icon-[lucide--send] h-3 w-3" />
+							<span className="icon-[lucide--send] mr-1 inline-block size-3 align-[-1px]" />
+							交给 AI
 						</button>
 						{/* 退出 */}
 						<button
@@ -310,10 +311,10 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 					</div>
 				</div>
 			) : (
-				<div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1 text-[11px] text-faint">
+				<div className="flex h-9 shrink-0 items-center gap-1.5 border-t border-border bg-surface px-3 text-[12px] text-muted">
 					{state.activeConnectionName ? (
 						<>
-							<span className="icon-[lucide--activity] h-2.5 w-2.5 text-success" />
+							<span className="icon-[lucide--activity] size-3.5 text-success" />
 							<span className="truncate">当前: {state.activeConnectionName}</span>
 						</>
 					) : (

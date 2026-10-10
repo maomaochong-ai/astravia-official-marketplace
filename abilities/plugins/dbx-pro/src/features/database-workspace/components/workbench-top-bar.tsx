@@ -82,10 +82,10 @@ export function WorkbenchTopBar({
 
 	// 引擎健康文案与指示点：对齐设计稿「状态点 + 12px 说明文字」
 	const ENGINE_STATUS: Record<typeof engineState, { text: string; dot: string }> = {
-		ready: { text: "引擎就绪", dot: "dbx-status-dot--ok" },
-		starting: { text: "引擎启动中…", dot: "dbx-status-dot--warn animate-pulse" },
-		error: { text: "引擎异常", dot: "dbx-status-dot--danger" },
-		unknown: { text: "检测引擎中…", dot: "" },
+		ready: { text: "引擎就绪", dot: "bg-success" },
+		starting: { text: "引擎启动中…", dot: "bg-warning animate-pulse" },
+		error: { text: "引擎异常", dot: "bg-danger" },
+		unknown: { text: "检测引擎中…", dot: "bg-neutral-muted" },
 	};
 	const engine = ENGINE_STATUS[engineState];
 
@@ -109,7 +109,7 @@ export function WorkbenchTopBar({
 
 			{/* 引擎健康指示 —— 插件重载/引擎启动的第一手反馈；版本号在「设置 → 关于」查看 */}
 			<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-				<span className={"dbx-status-dot " + engine.dot} title={engine.text} />
+				<span className={"size-1.5 shrink-0 rounded-full " + engine.dot} title={engine.text} />
 				<span className="text-[12px] whitespace-nowrap text-muted">{engine.text}</span>
 			</span>
 
@@ -117,6 +117,7 @@ export function WorkbenchTopBar({
 			 * 设计稿的「工作台」导航项在本插件里没有对应目标（工作台就是本界面），故不再放一个空按钮。 */}
 			<div className="ml-auto flex shrink-0 items-center gap-0.5">
 				<ExportTasksPopover />
+				<span className="mx-1.5 h-4 w-px shrink-0 bg-border" />
 				<button
 					type="button"
 					onClick={onToggleHistory}

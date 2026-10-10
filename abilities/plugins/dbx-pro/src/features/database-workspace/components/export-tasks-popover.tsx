@@ -273,7 +273,7 @@ export function ExportTasksPopover(): JSX.Element | null {
 											</div>
 										</div>
 
-										<div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
+										<div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-muted">
 											{task.status === "done" ? (
 												<div className="h-full w-full rounded-full bg-success" />
 											) : task.status === "awaiting-save" ? (

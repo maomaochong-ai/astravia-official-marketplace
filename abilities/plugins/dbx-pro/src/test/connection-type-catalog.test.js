@@ -28,11 +28,11 @@ describe("CATEGORY_DEFS", () => {
 });
 
 describe("groupManifestByCategory", () => {
-	it("分组结果覆盖全部 manifest 条目（每条恰好出现一次）", () => {
+	it("结果 = manifest 全部条目 + 「接口」虚拟类型，每条恰好出现一次", () => {
 		const groups = groupManifestByCategory();
 		let count = 0;
 		for (const group of groups) count += group.entries.length;
-		assert.equal(count, DB_TYPE_MANIFEST.length);
+		assert.equal(count, DB_TYPE_MANIFEST.length + 1);
 	});
 
 	it("每个组带 label 且非空", () => {
@@ -40,6 +40,12 @@ describe("groupManifestByCategory", () => {
 			assert.ok(group.label.length > 0);
 			assert.ok(group.entries.length > 0);
 		}
+	});
+
+	it("「接口」排在第一组，且只放 api 一个虚拟类型", () => {
+		const groups = groupManifestByCategory();
+		assert.equal(groups[0].label, "接口");
+		assert.deepEqual(groups[0].entries.map((e) => e.dbType), ["api"]);
 	});
 
 	it("组内按 order 升序", () => {

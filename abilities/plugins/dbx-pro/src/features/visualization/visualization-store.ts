@@ -1,8 +1,8 @@
 /**
  * visualization-store — 可视化（看板 / 大屏）产物存储。
  *
- * 存的是工具（dbx-dashboard / dbx-screen）生成的 HTML 产物：
- * 新增、列出、删除、清空，持久化到宿主存储。
+ * 存的是工具（dbx_chart_collection）生成的产物：新增、列出、删除、清空，持久化到宿主存储。
+ * 文档格式与 v1 → v2 迁移规则在 domain/visualization-doc；这里只管状态与落盘。
  *
  * 写入模型：**模块级单例 + 外部状态**。此前每个 useVisualizationStore() 各自
  * 持有一份数组快照，并在自己那份快照上整份写回；工作台与画廊同时打开时，
@@ -12,19 +12,19 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
-import { getStorage } from "../../runtime-contract.ts";
+import { getStorage, getUi } from "../../runtime-contract.ts";
 import type { Visualization } from "./visualization-bridge";
+import {
+	readVisualizationDoc,
+	toVisualizationDoc,
+	type StoredVisualization,
+} from "../../domain/visualization-doc.ts";
 
-export type { Visualization };
-
-export interface StoredVisualization extends Visualization {
-	id: string;
-	createdAt: number;
-}
+export type { Visualization, StoredVisualization };
 
 const STORE_PATH = "visualizations.json";
-const STORE_SCHEMA_VERSION = 1;
-const MAX_VISUALIZATIONS = 20;
+/** 单文件容量上限。超限时丢弃**最旧**的条目，并明确告知用户（见 notifyTruncated）。 */
+const MAX_VISUALIZATIONS = 100;
 
 /** 唯一状态源；只有 emit() 会替换它，保证 useSyncExternalStore 快照引用稳定。 */
 let items: StoredVisualization[] = [];
@@ -53,19 +53,20 @@ function getSnapshot(): StoredVisualization[] {
 	return items;
 }
 
-/** 只接受结构可信的条目：非对象或缺 id 的一律丢弃，避免半截数据污染列表。 */
-function normalize(value: unknown): StoredVisualization[] {
-	if (!Array.isArray(value)) return [];
-	return value.filter((entry): entry is StoredVisualization => {
-		if (typeof entry !== "object" || entry === null) return false;
-		const candidate = entry as Partial<StoredVisualization>;
-		if (typeof candidate.id !== "string" || candidate.id.length === 0) return false;
-		// legacy 迁移 —— 旧存储没有 chartItems（只有 html），自动补空数组，避免 gallery 里 undefined
-		if (!Array.isArray(candidate.chartItems)) {
-			candidate.chartItems = [];
-		}
-		return true;
-	});
+/**
+ * 超出上限时丢弃的是最旧条目 —— 必须让用户看到。
+ * 静默丢数据是缺陷：用户会以为产物已保存，直到某天发现它不见了。
+ */
+function notifyTruncated(dropped: number): void {
+	if (dropped <= 0) return;
+	try {
+		getUi()?.notify?.({
+			message: `BI 数据资产已达上限 ${MAX_VISUALIZATIONS} 条，最早的 ${dropped} 条未能保存`,
+			variant: "warning",
+		});
+	} catch {
+		/* 宿主不支持 notify 或运行时未就绪时静默忽略 */
+	}
 }
 
 /** 落盘串行化：整份写入必须按调用顺序落地，否则后写的旧快照会盖掉新状态。 */
@@ -73,8 +74,8 @@ let writeChain: Promise<unknown> = Promise.resolve();
 
 function persist(): Promise<void> {
 	const flush = writeChain.then(
-		() => writeJsonFile(getStorage(), STORE_PATH, { schemaVersion: STORE_SCHEMA_VERSION, items }),
-		() => writeJsonFile(getStorage(), STORE_PATH, { schemaVersion: STORE_SCHEMA_VERSION, items }),
+		() => writeJsonFile(getStorage(), STORE_PATH, toVisualizationDoc(items)),
+		() => writeJsonFile(getStorage(), STORE_PATH, toVisualizationDoc(items)),
 	);
 	// 落盘失败不能打断主操作，但必须留痕，否则用户以为产物已保存。
 	writeChain = flush.catch((error) => {
@@ -86,13 +87,13 @@ function persist(): Promise<void> {
 async function hydrate(): Promise<void> {
 	try {
 		const doc = await readJsonFile<unknown>(getStorage(), STORE_PATH);
-		const raw = Array.isArray(doc)
-			? doc
-			: (doc as { items?: unknown } | null)?.items;
-		const restored = normalize(raw).slice(0, MAX_VISUALIZATIONS);
+		const restored = readVisualizationDoc(doc);
 		if (mutatedBeforeHydrate || restored.length === 0) return;
 		const known = new Set(items.map((v) => v.id));
-		emit([...items, ...restored.filter((v) => !known.has(v.id))].slice(0, MAX_VISUALIZATIONS));
+		const merged = [...items, ...restored.filter((v) => !known.has(v.id))];
+		const kept = merged.slice(0, MAX_VISUALIZATIONS);
+		emit(kept);
+		notifyTruncated(merged.length - kept.length);
 	} catch (error) {
 		console.warn("[dbx-pro] 可视化产物读取失败", error);
 	}
@@ -119,7 +120,10 @@ export function useVisualizationStore() {
 			createdAt: Date.now(),
 		};
 		mutatedBeforeHydrate = true;
-		emit([newViz, ...items].slice(0, MAX_VISUALIZATIONS));
+		const merged = [newViz, ...items];
+		const kept = merged.slice(0, MAX_VISUALIZATIONS);
+		emit(kept);
+		notifyTruncated(merged.length - kept.length);
 		void persist();
 		return newViz;
 	}, []);
@@ -136,9 +140,27 @@ export function useVisualizationStore() {
 		void persist();
 	}, []);
 
+	/**
+	 * 局部更新一条产物：筛选变化、重新取数后的行 / 行数刷新都走这里。
+	 * id 与 createdAt 是身份字段，不接受 patch 覆盖，避免调用方无意改掉引用关系。
+	 */
+	const updateVisualization = useCallback((id: string, patch: Partial<Visualization>): void => {
+		mutatedBeforeHydrate = true;
+		let matched = false;
+		const next = items.map((viz) => {
+			if (viz.id !== id) return viz;
+			matched = true;
+			return { ...viz, ...patch, id: viz.id, createdAt: viz.createdAt };
+		});
+		if (!matched) return;
+		emit(next);
+		void persist();
+	}, []);
+
 	return {
 		visualizations,
 		addVisualization,
+		updateVisualization,
 		removeVisualization,
 		clearAll,
 	};

@@ -146,6 +146,56 @@ export function runtimeModeFor(dbType: DbType): "native" | "bridge" | string {
 	return findDbType(dbType)?.runtimeMode ?? "native";
 }
 
+// ─── 「API 接入」连接 ─────────────────────────────────────────
+
+// 认证方式。与插件服务端 api-source.mjs 的 API_AUTH_KINDS 一一对应。
+export type ApiAuthKind = "none" | "bearer" | "api-key" | "basic";
+
+export interface ApiAuthSpec {
+	kind: ApiAuthKind;
+	/** api-key 时放凭据的请求头名，默认 X-API-Key */
+	headerName?: string;
+	/** 值前缀，例如 `Bearer `；不填则原样放 token */
+	prefix?: string;
+	/** basic 的用户名 */
+	username?: string;
+}
+
+/**
+ * 「API 接入」连接。
+ *
+ * 与普通数据库连接共用 DbConnection 外壳（id/name/note/...），但取数不走引擎连接，
+ * 而是由插件自己抓取接口并在本地物化后交给引擎查询；因此只需 url 与认证。
+ */
+export interface ApiConnectionSpec {
+	url: string;
+	/** 目前只支持 GET */
+	method: "GET";
+	/**
+	 * 静态自定义请求头（认证头由 auth 生成）。
+	 * 与 token 同一套约定：只在保存/测试时送到服务端，**不回传客户端**
+	 * （值里可能被人拿来放凭据）；编辑已有连接时留空 = 沿用服务端已存的那份。
+	 */
+	headers?: Record<string, string>;
+	auth?: ApiAuthSpec;
+	/** 从响应里抽行的点路径，如 data.items；留空 = 响应本身就是数组 */
+	dataPath?: string;
+	/** 单次拉取行数上限 */
+	rowLimit?: number;
+	/**
+	 * 凭据明文。只在保存/测试时从表单送到服务端，**永远不会从服务端回传**；
+	 * 编辑已有连接时留空 = 沿用服务端已存的凭据。
+	 */
+	token?: string;
+	/**
+	 * 服务端派生：是否已存有凭据。用于在表单里显示「已保存」占位，
+	 * 客户端永远不会收到凭据明文。
+	 */
+	hasSecret?: boolean;
+	/** 服务端派生：是否已存有自定义请求头。同样只告知「有没有」，不回传内容。 */
+	hasHeaders?: boolean;
+}
+
 /**
  * 数据库连接配置 — 与 dbx 引擎 ConnectionConfig 对齐的扁平结构。
  * 所有字段按可选处理，序列化时按 camelCase 输出。
@@ -178,6 +228,8 @@ export interface DbConnection {
 	query_timeout_secs?: number;
 	url_params?: string;
 	connection_string?: string;
+	/** 「API 接入」专用配置；db_type === "api" 时才是这套字段 */
+	api?: ApiConnectionSpec;
 	[key: string]: unknown;
 }
 

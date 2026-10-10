@@ -3,6 +3,8 @@
  *
  * 加载状态仅在此处展示：加载环 + 已耗时 + 停止执行按钮。
  * 结果网格自带工具栏（顶）与分页栏（底），此处不再重复展示状态条。
+ *
+ * 版式对齐设计稿：面板头是常驻的 PaneHeader（h-9），下方才是网格 / 空态 / 错误态。
  */
 
 import { useEffect, useRef, useState, type JSX } from "react";
@@ -27,6 +29,8 @@ export function ResultPanel(): JSX.Element {
 		?? (result?.totalCount ?? 0)
 		?? result?.rows.length
 		?? 0;
+
+	const hasResult = result?.ok === true;
 
 	/** "AI 可视化：看板/大屏" —— 构造 prompt 调宿主 AI。 */
 	function openVizDialog(intent: "dashboard" | "screen"): void {
@@ -68,21 +72,86 @@ export function ResultPanel(): JSX.Element {
 	}, [activeTab?.isRunning]);
 
 	return (
-		<div className="relative flex min-h-0 flex-1 flex-col bg-background overflow-hidden">
+		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-surface">
+			{/* 面板头 —— 设计稿 PaneHeader：h-9 + 发丝下缘 + surface-raised。
+			    常驻渲染：加载中 / 空态 / 错误态下同样保留，右栏 AI 入口无结果时置灰。 */}
+			<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-surface-raised px-3">
+				<span className="shrink-0 font-sans text-[14px] font-semibold tracking-tight whitespace-nowrap text-surface-foreground">
+					结果
+				</span>
+				{result && result.ok ? (
+					<span className="font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
+						{result.rows.length.toLocaleString()} 行
+					</span>
+				) : null}
+				<span className="min-w-0 truncate font-mono text-[12px] whitespace-nowrap text-muted">
+					{activeTab?.connectionName ?? ""}
+				</span>
+				<div className="relative ml-auto flex shrink-0 items-center gap-0.5">
+					<button
+						type="button"
+						onClick={() => setAiMenuOpen((v) => !v)}
+						disabled={!hasResult || !activeTab?.connectionName}
+						className="flex h-6 items-center gap-1 rounded-control px-2 text-[12px] text-ai transition-colors hover:bg-ai-soft disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+						title={hasResult ? "AI 分析当前 SQL 结果集" : "执行查询后可做 AI 分析"}
+					>
+						<span className="icon-[lucide--sparkles] h-3 w-3" />
+						AI 分析
+						<span className={`icon-[lucide--chevron-down] h-3 w-3 transition-transform ${aiMenuOpen ? "rotate-180" : ""}`} />
+					</button>
+					{aiMenuOpen && (
+						<>
+							{/* 点击外部关闭 */}
+							<div className="fixed inset-0 z-40" onClick={() => setAiMenuOpen(false)} />
+							<div className="absolute top-full right-0 z-50 mt-1 w-48 rounded-control border border-border bg-popover p-1 shadow-popover">
+								<button
+									type="button"
+									onClick={openAnalysisDialog}
+									className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
+								>
+									<span className="icon-[lucide--sparkles] h-3.5 w-3.5 text-ai" />
+									<span className="flex-1">通用分析</span>
+									<span className="text-[12px] text-muted">{fullRowCount.toLocaleString()} 行</span>
+								</button>
+								<div className="my-1 h-px bg-border/60" />
+								<button
+									type="button"
+									onClick={() => openVizDialog("dashboard")}
+									className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
+								>
+									<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5 text-ai" />
+									<span className="flex-1">生成看板</span>
+									<span className="text-[12px] text-muted">浅色 QuickBI</span>
+								</button>
+								<button
+									type="button"
+									onClick={() => openVizDialog("screen")}
+									className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-link-soft"
+								>
+									<span className="icon-[lucide--monitor] h-3.5 w-3.5 text-link" />
+									<span className="flex-1">生成大屏</span>
+									<span className="text-[12px] text-muted">深色 DataV</span>
+								</button>
+							</div>
+						</>
+					)}
+				</div>
+			</div>
+
 			{/* 结果 / 加载 / 错误视图 */}
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				{/* 翻页时保留网格：只把分页栏置为「取数中」，不整屏回加载环 */}
 				{activeTab?.isRunning && !result ? (
-					<div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+					<div className="flex h-full flex-col items-center justify-center gap-3 text-muted">
 						<span className="icon-[lucide--loader] h-8 w-8 animate-spin text-warning" />
 						<p className="text-[12px]">
-							执行中 <span className="font-mono text-foreground/80">{elapsed} ms</span>
+							执行中 <span className="font-mono tabular-nums text-surface-foreground">{elapsed} ms</span>
 						</p>
 						{activeTab && (
 							<button
 								type="button"
 								onClick={() => cancelExecution(activeTab.id)}
-								className="rounded-md bg-destructive/90 px-3 py-1 text-[11px] font-medium text-destructive-foreground hover:bg-destructive"
+								className="h-7 rounded-control border border-danger/40 bg-danger-soft px-2.5 text-[12px] font-medium text-danger transition-colors hover:border-danger"
 							>
 								停止执行
 							</button>
@@ -90,60 +159,6 @@ export function ResultPanel(): JSX.Element {
 					</div>
 				) : result ? (
 					result.ok ? (
-						<>
-							{/* AI 分析 dropdown —— 收敛看板/大屏/通用分析到一个菜单 */}
-							{result.rows.length > 0 && activeTab?.connectionName && (
-								<div className="relative border-b border-[var(--dbx-surface-2)] bg-background/50 px-3 py-1.5">
-									<button
-										type="button"
-										onClick={() => setAiMenuOpen((v) => !v)}
-										className="flex items-center gap-1 rounded-control px-2 py-0.5 text-[12px] text-ai hover:bg-ai-soft"
-										title="AI 分析当前 SQL 结果集"
-									>
-										<span className="icon-[lucide--sparkles] h-3 w-3" />
-										AI 分析
-										<span className={`icon-[lucide--chevron-down] h-3 w-3 transition-transform ${aiMenuOpen ? "rotate-180" : ""}`} />
-									</button>
-									{aiMenuOpen && (
-										<>
-											{/* 点击外部关闭 */}
-											<div className="fixed inset-0 z-40" onClick={() => setAiMenuOpen(false)} />
-											<div
-												className="absolute left-3 top-full z-50 mt-1 w-48 rounded-control border border-border bg-popover p-1 shadow-[var(--dbx-shadow-popover)]"
-											>
-											<button
-												type="button"
-												onClick={openAnalysisDialog}
-												className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
-											>
-												<span className="icon-[lucide--sparkles] h-3.5 w-3.5 text-ai" />
-												<span className="flex-1">通用分析</span>
-												<span className="text-[9px] text-muted-foreground">{fullRowCount.toLocaleString()} 行</span>
-											</button>
-											<div className="my-1 h-px bg-border/60" />
-											<button
-												type="button"
-												onClick={() => openVizDialog("dashboard")}
-												className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
-											>
-												<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5 text-ai" />
-												<span className="flex-1">生成看板</span>
-												<span className="text-[9px] text-muted-foreground">浅色 QuickBI</span>
-											</button>
-											<button
-												type="button"
-												onClick={() => openVizDialog("screen")}
-												className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-link-soft"
-											>
-												<span className="icon-[lucide--monitor] h-3.5 w-3.5 text-link" />
-												<span className="flex-1">生成大屏</span>
-												<span className="text-[9px] text-muted-foreground">深色 DataV</span>
-											</button>
-											</div>
-										</>
-									)}
-								</div>
-							)}
 						<ResultGrid
 							columns={result.columns}
 							rows={result.rows}
@@ -151,46 +166,46 @@ export function ResultPanel(): JSX.Element {
 							connectionName={activeTab?.connectionName ?? undefined}
 							sql={result.ranSql ?? activeTab?.sql}
 							serverPaged={result.paged === true}
-						serverPage={result.serverPage}
-						serverPageSize={activeTab?.pageSize ?? settings.rowLimit}
-						defaultPageSize={settings.rowLimit}
-						serverTotalCount={result.totalCount}
-						serverTotalStatus={result.totalCountStatus}
-						pageLoading={activeTab?.isRunning === true}
-						elapsedMs={result.elapsedMs}
-						affectedRows={result.affectedRows}
-						onRefresh={() => {
-							const tabId = activeTab?.id;
-							const base = result.ranSql ?? activeTab?.sql;
-							if (tabId && base) void runTabSql(tabId, base, undefined, { mode: "server" });
-						}}
-						onLoadAll={async () => {
-							const tabId = activeTab?.id;
-							const tab = tabId ? state.tabs.find((t) => t.id === tabId) : null;
-							if (!tabId || !tab?.result?.paged) return;
-							try {
-								let pageIndex = (tab.result.serverPage ?? 0) + 1;
-								const pageSize = tab.pageSize ?? settings.rowLimit;
-								let prevRows = tab.result.rows.length;
-								while (prevRows >= pageSize) {
-									// 用户可能点击停止按钮：cancelExecution 会把 isRunning 置为 false
-									const still = state.tabs.find((t) => t.id === tabId);
-									if (!still?.isRunning) break;
-									await goToResultPage(tabId, pageIndex);
-									// await 后再检查一次（cancelExecution 可能在这期间被调用）
-									const still2 = state.tabs.find((t) => t.id === tabId);
-									if (!still2?.isRunning) break;
-									await new Promise((r) => setTimeout(r, 50));
-									const freshTab = state.tabs.find((t) => t.id === tabId);
-									prevRows = freshTab?.result?.rows.length ?? 0;
-									pageIndex += 1;
-								}
-							} catch { /* 用户停止或引擎错误 */ }
-						}}
-						note={result.note}
-						onCancelLoading={() => {
-							if (activeTab) cancelExecution(activeTab.id);
-						}}
+							serverPage={result.serverPage}
+							serverPageSize={activeTab?.pageSize ?? settings.rowLimit}
+							defaultPageSize={settings.rowLimit}
+							serverTotalCount={result.totalCount}
+							serverTotalStatus={result.totalCountStatus}
+							pageLoading={activeTab?.isRunning === true}
+							elapsedMs={result.elapsedMs}
+							affectedRows={result.affectedRows}
+							onRefresh={() => {
+								const tabId = activeTab?.id;
+								const base = result.ranSql ?? activeTab?.sql;
+								if (tabId && base) void runTabSql(tabId, base, undefined, { mode: "server" });
+							}}
+							onLoadAll={async () => {
+								const tabId = activeTab?.id;
+								const tab = tabId ? state.tabs.find((t) => t.id === tabId) : null;
+								if (!tabId || !tab?.result?.paged) return;
+								try {
+									let pageIndex = (tab.result.serverPage ?? 0) + 1;
+									const pageSize = tab.pageSize ?? settings.rowLimit;
+									let prevRows = tab.result.rows.length;
+									while (prevRows >= pageSize) {
+										// 用户可能点击停止按钮：cancelExecution 会把 isRunning 置为 false
+										const still = state.tabs.find((t) => t.id === tabId);
+										if (!still?.isRunning) break;
+										await goToResultPage(tabId, pageIndex);
+										// await 后再检查一次（cancelExecution 可能在这期间被调用）
+										const still2 = state.tabs.find((t) => t.id === tabId);
+										if (!still2?.isRunning) break;
+										await new Promise((r) => setTimeout(r, 50));
+										const freshTab = state.tabs.find((t) => t.id === tabId);
+										prevRows = freshTab?.result?.rows.length ?? 0;
+										pageIndex += 1;
+									}
+								} catch { /* 用户停止或引擎错误 */ }
+							}}
+							note={result.note}
+							onCancelLoading={() => {
+								if (activeTab) cancelExecution(activeTab.id);
+							}}
 							onPageChange={(pageIndex) => {
 								if (activeTab) void goToResultPage(activeTab.id, pageIndex);
 							}}
@@ -207,29 +222,23 @@ export function ResultPanel(): JSX.Element {
 								}
 							}}
 						/>
-						</>
 					) : (
 						<div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-							<span className="icon-[lucide--alert-octagon] h-8 w-8" style={{ color: "var(--destructive)" }} />
-							<p className="text-[12px] font-medium" style={{ color: "var(--destructive)" }}>执行失败</p>
-							<pre
-								className="max-h-[200px] max-w-full overflow-auto rounded-md px-3 py-2 font-mono text-[11px] whitespace-pre-wrap"
-								style={{
-									color: "var(--destructive)",
-									backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)",
-								}}
-							>
+							<span className="icon-[lucide--alert-octagon] h-8 w-8 text-danger" />
+							<p className="text-[12px] font-medium text-danger">执行失败</p>
+							<pre className="max-h-[200px] max-w-full overflow-auto rounded-control border border-danger/40 bg-danger-soft px-3 py-2 font-mono text-[12px] leading-4 whitespace-pre-wrap text-danger">
 								{result.error ?? "未知错误"}
 							</pre>
 						</div>
 					)
 				) : (
-					<div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground/70">
-						<span className="icon-[lucide--table] h-8 w-8 opacity-30" />
+					<div className="flex h-full flex-col items-center justify-center gap-2 text-faint">
+						<span className="icon-[lucide--table] h-8 w-8 opacity-60" />
 						<p className="text-[12px]">执行查询后显示结果</p>
 					</div>
 				)}
 			</div>
+
 			{/* "AI 可视化" prompt 发送对话框 */}
 			<SendToAiDialog
 				open={vizDialog.open}

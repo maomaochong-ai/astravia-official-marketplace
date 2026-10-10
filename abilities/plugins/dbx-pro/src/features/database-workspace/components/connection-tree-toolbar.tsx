@@ -94,25 +94,24 @@ export function ConnectionTreeToolbar({
 
 	return (
 		<div
-			className="flex h-9 shrink-0 items-center gap-1 px-2 text-[12px] font-medium text-muted"
-			style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-border)" }}
+			className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-surface-raised px-3"
 		>
-			{/* 左：导入 / 导出（对齐 dbx 桌面壳，替换原数据库图标）+ 标题 */}
-			<TooltipButton onClick={() => void handleExport()} title="导出连接（不含密码）">
-				<span className="icon-[lucide--upload] h-3 w-3" />
-			</TooltipButton>
-			<TooltipButton onClick={triggerImport} title="导入连接">
-				<span className="icon-[lucide--download] h-3 w-3" />
-			</TooltipButton>
-			<span className="flex min-w-0 flex-1 items-center gap-1 truncate">
-				<span className="truncate">连接</span>
+			{/* 左：标题 + 连接数 */}
+			<span className="flex min-w-0 items-center gap-2 truncate">
+				<span className="font-sans text-[14px] font-semibold tracking-tight whitespace-nowrap text-surface-foreground">连接</span>
 				{connectionCount > 0 && (
-					<span className="shrink-0 text-[12px] text-faint">{connectionCount}</span>
+					<span className="shrink-0 font-mono text-[12px] tabular-nums text-muted">{connectionCount}</span>
 				)}
 			</span>
 
 			{/* 右：树操作 */}
-			<div className="flex shrink-0 items-center gap-0.5">
+			<div className="ml-auto flex shrink-0 items-center gap-0.5">
+				<TooltipButton onClick={triggerImport} title="导入连接">
+					<span className="icon-[lucide--folder-input] h-3 w-3" />
+				</TooltipButton>
+				<TooltipButton onClick={() => void handleExport()} title="导出连接（不含密码）">
+					<span className="icon-[lucide--folder-output] h-3 w-3" />
+				</TooltipButton>
 				<TooltipButton onClick={onExpandAll} title="展开已加载节点">
 					<span className="icon-[lucide--chevrons-down-up] h-3 w-3" />
 				</TooltipButton>

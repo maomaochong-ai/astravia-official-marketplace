@@ -14,6 +14,8 @@ import { after, describe, it } from "node:test";
 import { createRouter } from "../src/engine/request-router.mjs";
 import { engineError } from "../src/engine/protocol.mjs";
 import { disposeDbxMcpClient, getDbxMcpClient } from "../src/engine/dbx-mcp-client.mjs";
+import { createServer } from "node:http";
+import { upsertApiSource } from "../src/api-source/api-store.mjs";
 import {
 	engineBinaryAvailable,
 	engineSkipMessage,
@@ -115,6 +117,33 @@ describe("路由解析（不依赖引擎）", () => {
 
 	it("POST /reveal 注册为需鉴权路由", () => {
 		assert.ok(router.routes.get("/reveal")?.has("POST"));
+	});
+
+	it("POST /api-sources 缺名称 → 400", async () => {
+		const apiRouter = createRouter({ auth: stubAuth, dataDir: tmpdir() });
+		const result = await apiRouter.handle({ method: "POST", pathname: "/api-sources", body: {} });
+		assert.equal(result.status, 400);
+		assert.equal(result.body.error.code, "BAD_REQUEST");
+	});
+
+	it("DELETE /api-sources 缺名称 → 400", async () => {
+		const apiRouter = createRouter({ auth: stubAuth, dataDir: tmpdir() });
+		const result = await apiRouter.handle({ method: "DELETE", pathname: "/api-sources", body: {} });
+		assert.equal(result.status, 400);
+		assert.equal(result.body.error.code, "BAD_REQUEST");
+	});
+
+	it("POST /api-sources/test 缺名称 → 400", async () => {
+		const apiRouter = createRouter({ auth: stubAuth, dataDir: tmpdir() });
+		const result = await apiRouter.handle({ method: "POST", pathname: "/api-sources/test", body: {} });
+		assert.equal(result.status, 400);
+		assert.equal(result.body.error.code, "BAD_REQUEST");
+	});
+
+	it("未注入 dataDir 时 API 接入路由报 API_ENGINE_UNAVAILABLE（501）", async () => {
+		const result = await router.handle({ method: "POST", pathname: "/api-sources", body: { name: "p" } });
+		assert.equal(result.status, 501);
+		assert.equal(result.body.error.code, "API_ENGINE_UNAVAILABLE");
 	});
 
 	it("POST /reveal 相对路径 → 400（不启动任何进程）", async () => {
@@ -221,5 +250,126 @@ describe("路由数据路径（真实 dbx-mcp）", { skip: engineBinaryAvailable
 		const remaining = (await handle("GET", "/connections")).body.data.connections
 			.filter((c) => names.includes(c.name));
 		assert.deepEqual(remaining, []);
+	});
+});
+
+/**
+ * 「API 接入」的连接树分支。
+ *
+ * 用本地 mock 接口 + 直接写入存储的方式验证，**不经过引擎**：
+ * 这三个分支存在的意义就是让一棵树不用引擎也能展开。
+ */
+describe("API 接入的连接树分支（本地 mock 接口，不依赖引擎）", () => {
+	let dir = null;
+	let server = null;
+	let close = null;
+	let port = 0;
+	/** 每次请求收到的头，用来断言真正发出的自定义头。 */
+	const seen = [];
+	const SOURCE = "订单 同步";
+
+	it("起本地接口并登记数据源", async () => {
+		dir = mkdtempSync(join(tmpdir(), "router-api-"));
+		server = createServer((req, res) => {
+			seen.push(req.headers);
+			res.writeHead(200, { "content-type": "application/json" });
+			res.end(
+				JSON.stringify({
+					data: {
+						items: [
+							{ id: 1, title: "A", amount: 12.5, ok: true, author: { name: "x" } },
+							{ id: 2, title: "B", amount: 30, ok: false, author: { name: "y" } },
+						],
+					},
+				}),
+			);
+		});
+		await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+		close = () => new Promise((resolve) => server.close(resolve));
+		port = server.address().port;
+		upsertApiSource(
+			dir,
+			{
+				name: SOURCE,
+				url: `http://127.0.0.1:${port}/api/v1/posts`,
+				headers: { "X-Env": "prod" },
+				auth: { kind: "none" },
+				dataPath: "data.items",
+			},
+			"",
+		);
+		assert.ok(dir);
+	});
+
+	it("/tables 把连接本身当成唯一的虚拟表", async () => {
+		const router = createRouter({ auth: stubAuth, dataDir: dir });
+		const result = await router.handle({ method: "POST", pathname: "/tables", body: { connectionName: SOURCE } });
+		assert.equal(result.status, 200);
+		assert.deepEqual(result.body.data.tables, [{ name: SOURCE, kind: "table" }]);
+	});
+
+	it("/schemas 回 supported=false，前端退回扁平表树", async () => {
+		const router = createRouter({ auth: stubAuth, dataDir: dir });
+		const result = await router.handle({ method: "POST", pathname: "/schemas", body: { connectionName: SOURCE } });
+		assert.equal(result.status, 200);
+		assert.deepEqual(result.body.data, { connection: SOURCE, schemas: [], supported: false });
+	});
+
+	it("/describe 的列与类型由接口样本推导", async () => {
+		const router = createRouter({ auth: stubAuth, dataDir: dir });
+		const result = await router.handle({
+			method: "POST",
+			pathname: "/describe",
+			body: { connectionName: SOURCE, target: { table: SOURCE } },
+		});
+		assert.equal(result.status, 200);
+		const types = Object.fromEntries(result.body.data.columns.map((c) => [c.name, c.type]));
+		assert.deepEqual(types, { id: "bigint", title: "varchar", amount: "double", ok: "boolean", author: "json" });
+	});
+
+	it("/api-sources/test：草稿未带 headers 时沿用已存请求头", async () => {
+		const router = createRouter({ auth: stubAuth, dataDir: dir });
+		seen.length = 0;
+		const result = await router.handle({
+			method: "POST",
+			pathname: "/api-sources/test",
+			body: {
+				name: SOURCE,
+				draft: {
+					name: SOURCE,
+					url: `http://127.0.0.1:${port}/api/v1/posts`,
+					auth: { kind: "none" },
+					dataPath: "data.items",
+				},
+			},
+		});
+		assert.equal(result.status, 200);
+		assert.equal(seen.at(-1)["x-env"], "prod");
+	});
+
+	it("/api-sources/test：草稿带 headers 时以草稿为准", async () => {
+		const router = createRouter({ auth: stubAuth, dataDir: dir });
+		seen.length = 0;
+		const result = await router.handle({
+			method: "POST",
+			pathname: "/api-sources/test",
+			body: {
+				name: SOURCE,
+				draft: {
+					name: SOURCE,
+					url: `http://127.0.0.1:${port}/api/v1/posts`,
+					headers: { "X-Env": "dev" },
+					auth: { kind: "none" },
+					dataPath: "data.items",
+				},
+			},
+		});
+		assert.equal(result.status, 200);
+		assert.equal(seen.at(-1)["x-env"], "dev");
+	});
+
+	it("清理本地接口与临时目录", async () => {
+		if (close) await close();
+		if (dir) rmSync(dir, { recursive: true, force: true });
 	});
 });

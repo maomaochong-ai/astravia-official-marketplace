@@ -14,14 +14,20 @@ import {
 	engineExecuteByName,
 	engineListSchemas,
 	engineRemoveConnection,
+	engineSaveApiSource,
+	engineTestApiSource,
+	type EngineApiSourceSaveSpec,
 } from "../../../shared/services/engine-client.ts";
 import {
 	defaultHostPlaceholder,
 	defaultUsernameFor,
+	emptyApiConnection,
 	emptyConnection,
 	groupManifestByCategory,
+	isApiConnectionType,
 	isFileBasedDbType,
 } from "../services/connection-type-catalog.ts";
+import { apiSpecOf } from "../services/api-connection-form.ts";
 
 export interface ConnectionEditorState {
 	connections: DbConnection[];
@@ -125,9 +131,19 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	function setDbType(dbType: string): void {
 		setEditing((prev) => {
 			if (!prev) return prev;
+			// 「API 接入」没有端点概念：换成它时丢掉 host / 端口 / 凭据，换成别的时丢掉 api 配置。
+			if (isApiConnectionType(dbType)) {
+				return {
+					...emptyApiConnection(),
+					id: prev.id,
+					name: prev.name,
+					note: prev.note,
+					is_production: prev.is_production,
+				};
+			}
 			const entry = DB_TYPE_MANIFEST.find((e) => e.dbType === dbType);
 			const fileBased = isFileBasedDbType(dbType);
-			return {
+			const next: DbConnection = {
 				...prev,
 				db_type: dbType,
 				port: entry?.defaultPort ?? prev.port,
@@ -138,7 +154,27 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 					: fileBased ? defaultHostPlaceholder(dbType) : "localhost",
 				username: prev.username ? prev.username : defaultUsernameFor(dbType),
 			};
+			if (isApiConnectionType(prev.db_type)) delete next.api;
+			return next;
 		});
+	}
+
+	/** API 接入的落盘 / 测试载荷：引擎连接那套 host / port 字段对它无意义。 */
+	function apiSourcePayload(conn: DbConnection): EngineApiSourceSaveSpec {
+		const spec = apiSpecOf(conn);
+		const payload: EngineApiSourceSaveSpec = {
+			name: conn.name.trim(),
+			url: spec.url,
+			method: "GET",
+			auth: spec.auth ?? { kind: "none" },
+			dataPath: spec.dataPath ?? "",
+			rowLimit: spec.rowLimit ?? 1000,
+		};
+		// 缺省（没这个键）= 沿用服务端已存值；表单里那个框没被动过就是这种情况。
+		// 只要有过输入就会带上键（甚至空对象）——「显式清空」得真能清掉。
+		if (spec.headers !== undefined) payload.headers = spec.headers;
+		if (spec.token) payload.token = spec.token;
+		return payload;
 	}
 
 	async function save(): Promise<boolean> {
@@ -147,9 +183,15 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			alert("请填写连接名称");
 			return false;
 		}
+		const isApi = isApiConnectionType(editing.db_type);
+		if (isApi && !apiSpecOf(editing).url.trim()) {
+			alert("请填写接口地址");
+			return false;
+		}
 		try {
 			savedRef.current = true;
-			await writeConfig(editing);
+			if (isApi) await engineSaveApiSource(apiSourcePayload(editing));
+			else await writeConfig(editing);
 			await refresh();
 			onChange?.(editing.name);
 			back();
@@ -172,13 +214,28 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	}
 
 	/**
-	 * 测试连通性：先落盘（引擎只认已存连接），再真跑一次 SELECT 1。
-	 * 只校验配置字段是不行的 —— 凭据错误、库不存在都要执行阶段才暴露。
+	 * 测试连通性。
+	 *
+	 * 数据库：先落盘（引擎只认已存连接），再真跑一次 SELECT 1 —— 只校验配置字段
+	 * 是不行的，凭据错误、库不存在都要执行阶段才暴露。
+	 * API 接入：不落盘，把草稿直接交给服务端抓一次，避免为了试错而存配置。
 	 */
 	async function test(conn: DbConnection): Promise<void> {
 		setTesting(true);
 		setTestResult(null);
 		try {
+			if (isApiConnectionType(conn.db_type)) {
+				if (!conn.name.trim()) { setTestResult("❌ 请先填写连接名称"); return; }
+				if (!apiSpecOf(conn).url.trim()) { setTestResult("❌ 请先填写接口地址"); return; }
+				const outcome = await engineTestApiSource({
+					name: conn.name.trim(),
+					draft: apiSourcePayload(conn),
+				});
+				setTestResult(
+					`✅ 接口可达 · HTTP ${outcome.status} · 取到 ${outcome.row_count} 行 / ${outcome.columns.length} 列 · ${outcome.duration_ms}ms · 取数路径：插件直连`,
+				);
+				return;
+			}
 			await writeConfig(conn);
 			await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
 			// 测试未改 schema 选择：只刷新连接，不失效树（避免折叠已展开节点）。

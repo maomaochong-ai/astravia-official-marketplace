@@ -356,116 +356,88 @@ export function SqlEditor(): JSX.Element {
 	}, [wordWrap]);
 
 	return (
-		<div data-dbx-theme={theme} className="dbx-sql-theme flex min-h-0 flex-1 flex-col bg-background">
+		<div data-dbx-theme={theme} className="dbx-sql-theme flex min-h-0 flex-1 flex-col bg-surface">
 			{/* 工具栏 —— flex-nowrap + overflow-x-auto：宽度不够时横向滚动，不挤压按钮 */}
-			<div className="dbx-chrome flex h-8 shrink-0 items-center gap-1 overflow-x-auto whitespace-nowrap px-2">
-				{/* Execute / Stop toggle */}
+			<div className="flex h-8 shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-2 whitespace-nowrap">
+				{/* 执行 / 停止：设计稿 Btn size="sm" variant="primary"；运行中改用危险色表达“可中断” */}
 				<button
 					type="button"
 					onClick={handleExecute}
 					disabled={!running && !hasConn}
 					title={running ? "停止执行" : selectionLength > 0 ? "执行选中片段（⌘/Ctrl + Enter）" : "执行（⌘/Ctrl + Enter）"}
-					className="dbx-cta"
-					style={running ? { backgroundColor: "rgb(220 38 38)", borderColor: "rgb(220 38 38)" } : { height: 24, padding: "0 8px" }}
+					className="dbx-btn primary"
+					style={running ? { backgroundColor: "rgb(220 38 38)", borderColor: "rgb(220 38 38)" } : undefined}
 				>
-					<span className={running ? "icon-[lucide--square] h-3 w-3 fill-current" : "icon-[lucide--play] h-3 w-3"} />
+					<span className={running ? "icon-[lucide--square] h-3.5 w-3.5 fill-current" : "icon-[lucide--play] h-3.5 w-3.5"} />
 					{running ? "停止" : "执行"}
 				</button>
-				{/* Execute in new tab */}
+				<span
+					title="快捷键 ⌘/Ctrl + Enter"
+					className="mr-1 shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 font-mono text-[12px] whitespace-nowrap text-muted"
+				>
+					⌘↵
+				</span>
+				{/* 在新结果标签页执行 */}
 				<button
 					type="button"
 					onClick={handleExecuteInNew}
 					disabled={running || !hasConn}
 					title={selectionLength > 0 ? "在新结果标签页执行选中片段" : "在新结果标签页执行"}
-					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-ai hover:bg-ai-soft disabled:opacity-30"
+					className="dbx-icon-btn"
 				>
-					<span className="icon-[lucide--square-play] h-3 w-3" />
-					新标签
+					<span className="icon-[lucide--panel-top-open] h-3.5 w-3.5" />
 				</button>
-
-				<div className="mx-1 h-4 w-px bg-[var(--dbx-surface-2)]" />
-
 				{/* EXPLAIN */}
 				<button
 					type="button"
 					onClick={handleExplain}
 					disabled={running || !hasConn}
 					title="执行 EXPLAIN 计划"
-					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-link hover:bg-link-soft disabled:opacity-30"
+					className="dbx-icon-btn"
 				>
-					<span className="icon-[lucide--git-branch] h-3 w-3" />
-					计划
+					<span className="icon-[lucide--list-tree] h-3.5 w-3.5" />
 				</button>
-				{/* Fold all */}
-				<button
-					type="button"
-					onClick={handleFoldAll}
-					title="折叠全部"
-					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-warning hover:bg-warning/10"
-				>
-					<span className="icon-[lucide--fold-vertical] h-3 w-3" />
+
+				<span className="mx-1 h-4 w-px shrink-0 bg-border" />
+
+				{/* 格式化 SQL */}
+				<button type="button" onClick={tidy} title="格式化 SQL" className="dbx-icon-btn">
+					<span className="icon-[lucide--wand-sparkles] h-3.5 w-3.5" />
 				</button>
-				{/* Unfold all */}
-				<button
-					type="button"
-					onClick={handleUnfoldAll}
-					title="展开全部"
-					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-warning hover:bg-warning/10"
-				>
-					<span className="icon-[lucide--unfold-vertical] h-3 w-3" />
-				</button>
-				{/* Word wrap toggle */}
+				{/* 自动换行 */}
 				<button
 					type="button"
 					onClick={toggleWordWrap}
 					title={wordWrap ? "关闭自动换行" : "开启自动换行"}
-					className={`flex h-6 items-center gap-1 rounded px-1.5 text-[11px] ${wordWrap ? "text-success" : "text-muted-foreground"} hover:bg-success/10`}
+					className={"dbx-icon-btn" + (wordWrap ? " dbx-icon-btn--active" : "")}
 				>
-					<span className="icon-[lucide--wrap-text] h-3 w-3" />
+					<span className="icon-[lucide--wrap-text] h-3.5 w-3.5" />
+				</button>
+				{/* 折叠 / 展开全部 */}
+				<button type="button" onClick={handleFoldAll} title="折叠全部" className="dbx-icon-btn">
+					<span className="icon-[lucide--chevrons-up-down] h-3.5 w-3.5" />
+				</button>
+				<button type="button" onClick={handleUnfoldAll} title="展开全部" className="dbx-icon-btn">
+					<span className="icon-[lucide--chevrons-down-up] h-3.5 w-3.5" />
 				</button>
 
-				<div className="mx-1 h-4 w-px bg-[var(--dbx-surface-2)]" />
-
-				{/* Format (tidy) */}
-				<button
-					type="button"
-					onClick={tidy}
-					title="格式化 SQL"
-					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-warning hover:bg-warning/10"
-				>
-					<span className="icon-[lucide--align-left] h-3 w-3" />
-					整理
-				</button>
-				{/* Clear */}
-				<button
-					type="button"
-					onClick={clearEditor}
-					title="清空"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
-				>
-					<span className="icon-[lucide--trash-2] h-3 w-3" />
-					清空
-				</button>
-				{/* Save SQL */}
-				<button
-					type="button"
-					onClick={handleSave}
-					title="保存 SQL 到文件"
-					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-link hover:bg-link-soft"
-				>
-					<span className="icon-[lucide--save] h-3 w-3" />
-					保存
-				</button>
-
-				<div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
+				<div className="ml-auto flex shrink-0 items-center gap-0.5">
 					{selectionLength > 0 && (
-						<span className="rounded-control bg-success/15 px-1 text-success">
-							已选中 {selectionLength} 字符 · 执行将只运行选区
+						<span className="mr-1 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] tabular-nums whitespace-nowrap text-accent">
+							已选 {selectionLength} 字符
 						</span>
 					)}
-					<span className="icon-[lucide--database] h-2.5 w-2.5" />
-					{activeTab?.connectionName ?? "未绑定"}
-					{!hasConn && <span className="ml-1 rounded px-1" style={{ color: "var(--destructive)", backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)" }}>请先选中连接</span>}
+					<span className="mr-1 text-[12px] tabular-nums whitespace-nowrap text-faint">
+						{activeTab?.connectionName ?? "未绑定连接"}
+					</span>
+					{/* 清空编辑器 */}
+					<button type="button" onClick={clearEditor} title="清空编辑器" className="dbx-icon-btn">
+						<span className="icon-[lucide--eraser] h-3.5 w-3.5" />
+					</button>
+					{/* 保存 SQL 到文件 */}
+					<button type="button" onClick={handleSave} title="保存 SQL 到文件" className="dbx-icon-btn">
+						<span className="icon-[lucide--save] h-3.5 w-3.5" />
+					</button>
 				</div>
 			</div>
 

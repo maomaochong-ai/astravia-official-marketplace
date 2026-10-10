@@ -53,7 +53,7 @@ export function HorizontalSplit({ top, bottom }: { top: JSX.Element; bottom: JSX
 		const el = containerRef.current;
 		if (!el) return;
 		const total = el.getBoundingClientRect().height;
-		const curTop = topH || Math.round(total * 0.46);
+		const curTop = topH || defaultTop(total);
 		if (!topH) setTopH(curTop);
 		dragRef.current = { startY: e.clientY, startH: curTop };
 		setDragging(true);
@@ -63,8 +63,16 @@ export function HorizontalSplit({ top, bottom }: { top: JSX.Element; bottom: JSX
 		window.addEventListener("pointerup", onPointerUp);
 	}
 
-	const baseHeight = measuredHeight || 800;
-	const effectiveTop = topH || Math.round(baseHeight * 0.46);
+/** 设计稿把 SQL 编辑器固定为 300px 高（frames/index.tsx）。容器太矮时按比例回退，
+ *  以免结果面板被挤到屏外。 */
+const DESIGN_TOP = 300;
+
+function defaultTop(total: number): number {
+	return total >= 480 ? DESIGN_TOP : Math.round(total * 0.46);
+}
+
+const baseHeight = measuredHeight || 800;
+const effectiveTop = topH || defaultTop(baseHeight);
 
 	return (
 		<div ref={containerRef} className="relative flex min-h-0 flex-1 flex-col">

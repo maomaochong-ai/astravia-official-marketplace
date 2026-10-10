@@ -177,7 +177,8 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
     8_000,
     false,
   ).catch(() => {});
-  const router = createRouter({ auth });
+  // dataDir 传给 router：API 接入的连接配置与取数快照存在插件本地，不经引擎注册表。
+  const router = createRouter({ auth, dataDir: resolvedDataDir });
 
   const server = createServer(async (req, res) => {
     const send = (status, body) => {

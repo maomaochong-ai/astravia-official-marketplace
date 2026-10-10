@@ -4,13 +4,22 @@
  * 只负责编排：接收 Chart.js charts[] → 拼装 HTML shell + Chart.js init → 返回 iframe srcDoc。
  * 模板/CSS 在 chart-shell.ts，Chart.js defaults 在 chart-defaults.ts，
  * 本文件不硬编码任何样式或 JS 配置。
+ *
+ * M1 起接收可选的 `datasets[]`：传了数据集就**不再落库 html**（html 退化为导出产物），
+ * 产物改由 datasets + chartItems 驱动，可在「BI 数据资产」里筛选与重新取数。
+ * 模板/CSS 在 chart-shell.ts，Chart.js defaults 在 chart-defaults.ts，
+ * 本文件不硬编码任何样式或 JS 配置。
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { showVisualizationPreview, saveVisualizationToStore } from "../features/visualization/visualization-bridge";
 import { getChartDefaultsScript } from "../features/visualization/chart-defaults";
 import { buildHtmlHead } from "../features/visualization/chart-shell";
-import type { ChartItem } from "../domain/chart-contract";
+import type { ChartItem, ChartFilter } from "../domain/chart-contract";
+import { pruneUnboundSources } from "../domain/chart-source";
+import { prepareDatasets, type DatasetSpecInput } from "../domain/dataset-spec";
+import { SERIES_COLORS } from "../features/visualization/figures/figure-palette";
+import { isFigureType, renderFigure } from "../features/visualization/figures/figure-registry";
 
 export type ChartType = ChartItem["type"];
 
@@ -21,22 +30,30 @@ export interface DbxChartCollectionInput {
 	connection_name?: string;
 	table?: string;
 	layout?: "auto" | "grid-2" | "grid-3" | "grid-4";
+	/** 可选：数据来源。给了就由筛选 / 重新取数驱动，html 只在导出时生成 */
+	datasets?: DatasetSpecInput[];
+	/** 可选：随产物一起保存的初始筛选 */
+	filters?: ChartFilter[];
 }
 
 const CHARTJS_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
 
-/** 根据图表数量和 layout 返回 grid-template-columns 值。 */
-function resolveGridCols(
+/** 图表数量 / layout → 列数。UI 内渲染与导出共用同一份，避免两处网格对不上。 */
+export function resolveGridColumnCount(
 	layout: DbxChartCollectionInput["layout"],
 	chartCount: number,
-): string {
-	if (layout === "grid-2") return "grid-template-columns: repeat(2, 1fr);";
-	if (layout === "grid-3") return "grid-template-columns: repeat(3, 1fr);";
-	if (layout === "grid-4") return "grid-template-columns: repeat(4, 1fr);";
-	if (chartCount <= 2) return "grid-template-columns: repeat(2, 1fr);";
-	if (chartCount <= 4) return "grid-template-columns: repeat(2, 1fr);";
-	if (chartCount <= 9) return "grid-template-columns: repeat(3, 1fr);";
-	return "grid-template-columns: repeat(4, 1fr);";
+): number {
+	if (layout === "grid-2") return 2;
+	if (layout === "grid-3") return 3;
+	if (layout === "grid-4") return 4;
+	if (chartCount <= 4) return 2;
+	if (chartCount <= 9) return 3;
+	return 4;
+}
+
+/** 根据图表数量和 layout 返回 grid-template-columns 值。 */
+function resolveGridCols(layout: DbxChartCollectionInput["layout"], chartCount: number): string {
+	return `grid-template-columns: repeat(${resolveGridColumnCount(layout, chartCount)}, 1fr);`;
 }
 
 /** AI 常见错格式 → Chart.js 标准格式自动修正。
@@ -78,7 +95,7 @@ export function normalizeChartData(
 				const labelCol = colNames[0];
 				const labels = rows.map((r) => String((r as Record<string, unknown>)[labelCol] ?? ""));
 				const valueCols = colNames.slice(1);
-				const colors = ["#6366f1", "#06b6d4", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
+				const colors = SERIES_COLORS;
 				const datasets = valueCols.map((colName, idx) => ({
 					label: colName,
 					data: rows.map((r: unknown) => {
@@ -153,6 +170,16 @@ function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string;
 			return;
 		}
 
+		// 自有渲染类型（funnel / boxplot / metric）：片段自包含，与 UI 抽屉用的是同一段字符
+		// （ADR-0009 §10 ⑤），所以这里不生成 `new Chart(...)`，也不往页面上放 canvas。
+		if (isFigureType(chart.type)) {
+			htmlParts.push(
+				`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}${renderFigure({ ...chart, data: normalizedData as Record<string, unknown> }, { isScreen })}</div>`,
+			);
+			jsParts.push(`/* chart-${i} (${chart.type}) rendered without Chart.js */`);
+			return;
+		}
+
 		htmlParts.push(`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`);
 		jsParts.push(`new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(normalizedData)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`);
 	});
@@ -189,6 +216,11 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 			"Chart.js defaults already set: no dark borders, soft grid lines, responsive cards.",
 			"Use when you have multiple charts and want to package them into a shareable page.",
 			"Max 12 charts. Compatible with render_chart tool's ChartItem format.",
+			"Optional datasets[]: pass one entry per SQL query you used, then set charts[].source to bind a chart to a dataset.",
+			"With datasets, the artifact is stored as data (no html) so the user can filter and refetch without re-running the conversation.",
+			"datasets[].rows only needs the rows you actually received; put the SQL's full row count in rowCount.",
+			"Figure types render without Chart.js: funnel = { labels, datasets: [{ label, data }] } (single series; bar width shows decay, order is the stage order); metric = one card per label, datasets[0].data is the big number and datasets[1..] are secondary rows whose first entry drives the delta; boxplot = datasets: [{ data: [[min,q1,median,q3,max], ...] }] five-number summaries.",
+			"Figure presentation options go in options.figure: { unit, digits, showDelta, showPercent, min, max }.",
 		].join("\n"),
 		parameters: {
 			type: "object",
@@ -199,7 +231,18 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 					items: {
 						type: "object",
 						properties: {
-							type: { type: "string", enum: ["line", "bar", "pie", "doughnut", "polarArea", "radar", "scatter", "bubble"] },
+							type: { type: "string", enum: ["line", "bar", "pie", "doughnut", "polarArea", "radar", "scatter", "bubble", "funnel", "boxplot", "metric"] },
+							source: {
+								type: "object",
+								description: "Bind this chart to a dataset so it re-reads rows when the user changes filters. Omit for a static chart.",
+								properties: {
+									datasetId: { type: "string", description: "Must equal datasets[].id." },
+									labelColumn: { type: "string", description: "Column used as Chart.js labels / categories." },
+									valueColumns: { type: "array", items: { type: "string" }, description: "Columns used as chart datasets (series). pie/doughnut/polarArea use only the first." },
+								},
+								required: ["datasetId", "labelColumn", "valueColumns"],
+								additionalProperties: true,
+							},
 						},
 						required: ["type"],
 						additionalProperties: true,
@@ -210,6 +253,41 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 				type: { type: "string", enum: ["dashboard", "screen"], description: "Page theme. dashboard=light QuickBI, screen=dark DataV." },
 				title: { type: "string", description: "Page title." },
 				layout: { type: "string", enum: ["auto", "grid-2", "grid-3", "grid-4"], description: "Grid columns. auto=responsive." },
+				datasets: {
+					type: "array",
+					description: "Optional data sources. Each entry is one aggregate query. When present, html is not stored; the page is generated at export time.",
+					items: {
+						type: "object",
+						properties: {
+							id: { type: "string", description: "Stable id; charts[].source.datasetId must match it." },
+							title: { type: "string", description: "Human-readable name, e.g. the metric being shown." },
+							connection: { type: "string" },
+							table: { type: "string" },
+							sql: { type: "string", description: "The aggregate SQL that produced these rows; refetch re-runs it as-is." },
+							columns: { type: "array", items: { type: "string" } },
+							rows: { type: "array", items: { type: "object", additionalProperties: true } },
+							rowCount: { type: "number", description: "Full row count of the SQL result, even when rows is only a sample." },
+						},
+						required: ["id", "sql"],
+						additionalProperties: true,
+					},
+				},
+				filters: {
+					type: "array",
+					description: "Optional initial filters to store with the artifact. The user can change them later in the UI.",
+					items: {
+						type: "object",
+						properties: {
+							column: { type: "string", description: "Must be one of datasets[].columns." },
+							datasetId: { type: "string", description: "Omit to apply to every dataset." },
+							values: { type: "array", items: { type: "string" }, description: "Equality set; numbers may be given as strings." },
+							min: { description: "Inclusive lower bound (number or ISO date string)." },
+							max: { description: "Inclusive upper bound (number or ISO date string)." },
+						},
+						required: ["column"],
+						additionalProperties: true,
+					},
+				},
 			},
 			required: ["charts", "title"],
 			additionalProperties: true,
@@ -220,9 +298,12 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 			if (!input.title) return { ok: false, error: "title is required" };
 
 			try {
-				const html = generateHtml(input); // 内部已 slice(0, 12)，handler 不再 trim
-				const trimmedCount = Math.min(input.charts.length, 12);
 				const raw = input as unknown as Record<string, unknown>;
+				const chartItems = input.charts.slice(0, 12);
+				const prepared = prepareDatasets(input.datasets ?? [], chartItems);
+				const bound = pruneUnboundSources(chartItems, prepared.datasets);
+				const hasDatasets = prepared.datasets.length > 0;
+
 				const viz = {
 					title: input.title,
 					type: input.type ?? "dashboard",
@@ -230,12 +311,37 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 					connection: (raw.connection_name as string) ?? "",
 					table: (raw.table as string) ?? "",
 					sql: (raw.sql as string) ?? undefined,
-					html,
-					chartItems: input.charts.slice(0, 12),
+					chartItems: bound.items,
+					// 有数据集时 html 不落库：它是导出时的派生产物，存下来只会与数据集不一致
+					...(hasDatasets
+						? { datasets: prepared.datasets, filters: input.filters ?? [] }
+						: { html: generateHtml(input) }),
 				};
 				saveVisualizationToStore(viz);
 				showVisualizationPreview(viz);
-				return { ok: true, title: input.title, type: viz.type, chartCount: trimmedCount, message: `${viz.type === "screen" ? "大屏" : "看板"}「${input.title}」已生成（${trimmedCount} 个图表）。` };
+
+				const kind = viz.type === "screen" ? "大屏" : "看板";
+				const notes: string[] = [];
+				if (bound.unboundCount > 0) {
+					notes.push(`${bound.unboundCount} 张图引用的数据集不在 datasets[] 里，已按静态图处理`);
+				}
+				for (const item of prepared.degraded) {
+					notes.push(
+						item.reason === "sql-only"
+							? `数据集「${item.title}」太大，只保留了 SQL，需要在详情里重新取数`
+							: `数据集「${item.title}」已裁剪未被图表引用的列`,
+					);
+				}
+				const tail = hasDatasets ? "，可在「BI 数据资产」里筛选与重新取数" : "";
+				const warn = notes.length > 0 ? ` 注意：${notes.join("；")}。` : "";
+				return {
+					ok: true,
+					title: input.title,
+					type: viz.type,
+					chartCount: bound.items.length,
+					datasetCount: prepared.datasets.length,
+					message: `${kind}「${input.title}」已生成（${bound.items.length} 个图表${tail}）。${warn}`,
+				};
 			} catch (error) {
 				return { ok: false, error: error instanceof Error ? error.message : String(error) };
 			}

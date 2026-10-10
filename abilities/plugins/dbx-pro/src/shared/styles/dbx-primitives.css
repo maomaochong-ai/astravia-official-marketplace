@@ -7,18 +7,8 @@
  * 类名保持不变，供既有各 feature 复用。
  * ============================================================ */
 
-/* 三栏外层 gutter */
-.dbx-gutter {
-	background: var(--dbx-gutter);
-}
-
-/* 面板卡片：小圆角 + 发丝边框，模块边界靠卡片而非底色差 */
-.dbx-panel-card {
-	border: 1px solid var(--dbx-border);
-	border-radius: var(--dbx-radius-card);
-	background: var(--dbx-panel);
-	overflow: hidden;
-}
+/* 面板不再用卡片（gutter + 发丝边框）包裹，改为三栏齐平 + 发丝分隔线，
+ * 见 dbx-layout.css 与 split-layout.tsx。 */
 
 /* 横向工具条：抬升底色 + 下分隔线 */
 .dbx-chrome {
@@ -135,9 +125,9 @@
 	justify-content: center;
 	appearance: none;
 	gap: 6px;
-	height: 28px;
-	min-width: 28px;
-	padding: 0 8px;
+	height: 24px;
+	min-width: 24px;
+	padding: 0;
 	border: 1px solid transparent;
 	border-radius: var(--dbx-radius-control);
 	background: transparent;
@@ -211,24 +201,35 @@
  * 宽 var(--tabw)，选中 = 画布底 + 2px accent 下划线；关闭按钮仅悬停/选中可见
  * ------------------------------------------------------------------ */
 .dbx-tab {
+	position: relative;
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 	flex-shrink: 0;
 	height: 36px;
 	width: var(--tabw, 170px);
 	padding: 0 6px 0 12px;
-	border-bottom: 2px solid transparent;
 	color: var(--dbx-muted);
 	font-size: 12px;
 	cursor: pointer;
 	transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.dbx-tab:hover { color: var(--dbx-surface-foreground); }
+.dbx-tab:hover {
+	background: var(--dbx-neutral-muted);
+	color: var(--dbx-surface-foreground);
+}
 .dbx-tab[data-active="true"] {
 	background: var(--dbx-panel);
-	border-bottom-color: var(--dbx-accent);
 	color: var(--dbx-surface-foreground);
+	font-weight: 600;
+}
+/* 选中标签唯一的标记：2px accent 下划线（设计稿 TabBar.tsx 的绝对定位小条）。 */
+.dbx-tab[data-active="true"]::after {
+	content: "";
+	position: absolute;
+	inset: auto 0 0 0;
+	height: 2px;
+	background: var(--dbx-accent);
 }
 .dbx-tab__close {
 	display: inline-grid;

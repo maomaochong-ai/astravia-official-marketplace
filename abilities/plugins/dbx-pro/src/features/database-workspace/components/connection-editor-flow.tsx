@@ -196,10 +196,15 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 					</button>
 				)}
 			</div>
+			{/* 步骤条：设计稿 h-11 行 */}
+			<div className="flex h-11 shrink-0 items-center gap-3 border-b border-border px-4">
+				<Stepper current={step === "list" ? 0 : step === "select" ? 1 : 2} />
+			</div>
 
 			{/* 内容区 */}
-			<div className="dbx-connection-body">
+			<div className={`dbx-connection-body${step === "list" ? " is-flush" : ""}`}>
 				{step === "list" && (
+					<>
 					<ConnectionList
 						connections={editor.connections}
 						testing={editor.testing}
@@ -209,6 +214,14 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 						onDelete={(c) => void editor.remove(c)}
 						onCreate={handleCreateNew}
 					/>
+					<div className="dbx-connection-footer">
+						<button type="button" className="dbx-btn primary" onClick={handleCreateNew}>
+							<span className="icon-[lucide--plus] h-3.5 w-3.5" />
+							新建连接
+						</button>
+						<span className="ml-1 text-[12px] whitespace-nowrap text-muted">连接配置只保存在本机</span>
+					</div>
+					</>
 				)}
 
 				{step === "select" && (
@@ -362,5 +375,42 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 				</div>
 			)}
 		</div>
+	);
+}
+
+/** 连接编辑三步：与设计稿 Stepper 同构。 */
+const CONNECTION_STEPS = ["连接列表", "数据库类型", "连接配置"];
+
+function Stepper({ current }: { current: number }): JSX.Element {
+	return (
+		<ol className="m-0 flex list-none items-center gap-2.5 p-0">
+			{CONNECTION_STEPS.map((label, i) => {
+				const done = i < current;
+				const active = i === current;
+				return (
+					<li key={label} className="flex items-center gap-2.5">
+						{i > 0 ? <span className="h-px w-5 bg-border-strong" /> : null}
+						<span className="flex items-center gap-1.5 whitespace-nowrap">
+							<span
+								className={`grid size-5 place-items-center rounded-full font-mono text-[12px] tabular-nums ${
+									done
+										? "bg-primary text-primary-foreground"
+										: active
+											? "bg-accent text-accent-foreground"
+											: "bg-neutral-muted text-muted"
+								}`}
+							>
+								{done ? <span className="icon-[lucide--check] size-3" /> : i + 1}
+							</span>
+							<span
+								className={`text-[12px] ${active ? "font-semibold text-surface-foreground" : "text-muted"}`}
+							>
+								{label}
+							</span>
+						</span>
+					</li>
+				);
+			})}
+		</ol>
 	);
 }

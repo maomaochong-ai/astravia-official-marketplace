@@ -1,0 +1,13 @@
+/*
+ * 临时：浏览器验证夹具的「宿主外壳」样式（验证后删除）。
+ *
+ * 真实宿主里，Astravia 自己的样式表提供了 Tailwind preflight（box-sizing /
+ * 默认边框 / 表单元素归零）以及 :root 主题变量。插件刻意不导入 preflight
+ * （避免在真实宿主里重复定义），所以夹具必须自己补上这一层，
+ * 否则测出来的几何（36px 的 h-9 变成 37px、按钮带浏览器默认边框）全是假的。
+ *
+ * preflight 必须放进 base 层：夹具里它是「宿主」样式，
+ * 不能反过来盖过插件 utilities 层里的 bg-* / h-* 工具类。
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/preflight.css" layer(base);

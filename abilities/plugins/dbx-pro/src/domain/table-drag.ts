@@ -2,7 +2,7 @@
  * 连接树 → 宿主 AI 对话框的拖拽协议（艾规范）。
  *
  * 宿主输入框把 `` @`...` `` 提及语法渲染成标签（chip），解析规则见
- * docs/adr-0001-ai-interaction.md：
+ * docs/adr/adr-0001-ai-interaction.md：
  *   - 连接：`` @`连接名` ``
  *   - 表：  `` @`连接名:schema.表名` ``（无 schema 层时 `` @`连接名:表名` ``）
  * 拖拽时把这些 token 写进 text/plain，宿主富文本输入框在原生 drop 后按同一

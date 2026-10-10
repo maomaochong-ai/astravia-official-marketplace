@@ -26,10 +26,13 @@
 	--color-popover: var(--popover);
 	--color-popover-foreground: var(--popover-foreground);
 	--color-border: var(--border);
-	/* --color-muted 是洗色底（bg-muted）；默色文字请用 text-muted-foreground（→ 设计稿 --dbx-muted） */
-	--color-muted: var(--muted);
+	/* 设计稿词表（theme.css）：text-muted = #8b949e、text-accent = #58a6ff。
+	   半透明洗色底一律走 bg-neutral-muted，不要再拿 --color-muted / --color-accent 当填充色。 */
+	--color-muted: var(--dbx-muted);
 	--color-muted-foreground: var(--muted-foreground);
-	--color-accent: var(--accent);
+	--color-accent: var(--dbx-accent);
+	--color-accent-soft: var(--dbx-accent-soft);
+	--color-accent-emphasis: var(--dbx-accent-emphasis);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-primary: var(--primary);
 	--color-primary-foreground: var(--primary-foreground);
@@ -40,6 +43,7 @@
 
 	/* 设计稿语义令牌（GitHub 系统） */
 	--color-surface: var(--dbx-panel);
+	--color-canvas: var(--dbx-canvas);
 	--color-surface-raised: var(--dbx-surface);
 	--color-surface-sunken: var(--dbx-panel-sunken);
 	--color-surface-foreground: var(--dbx-surface-foreground);
@@ -100,7 +104,11 @@
  *    「严禁覆盖宿主核心变量」约定的有意放宽：@scope 把作用域限制在
  *    插件根节点及其后代，宿主 UI 读不到这些值。这样约 70 处
  *    var(--foreground)、33 处 var(--background) 以及全部
- *    bg-*/text-*/border-* 工具类无需改名即可整体换肤。
+ *    bg-* / text-* / border-* 工具类无需改名即可整体换肤。
+ *
+ * ⚠️ 注释里不要出现「星号紧跟斜杠」的写法（例如 bg-* 后面直接跟 /）：
+ *    那会被 CSS 解析器当成注释结束符，把注释提前切断，
+ *    紧随其后的整条规则会被当成非法选择器丢弃（曾导致半径/色板整块失效）。
  *
  * 主题信号：宿主把明暗写在 <html data-mode="dark|light">，但 @scope 内的
  * 祖先选择器无法匹配 scope 根之外的 html 元素（会被解读成 :scope html…）。
@@ -263,9 +271,31 @@
 	--dbx-shadow-sheet: 0 24px 64px rgb(31 35 40 / 0.28);
 }
 
+/* 窗口 chrome 最底层：设计稿 --color-background = #010409，比 surface 再深一档。
+   插件把它挂在 --dbx-canvas 上（bg-canvas），不覆盖宿主的 --background。 */
+.dbx-root {
+	--dbx-canvas: #f6f8fa;
+}
+
+@media (prefers-color-scheme: dark) {
+	.dbx-root {
+		--dbx-canvas: #010409;
+	}
+}
+
+:scope[data-dbx-theme="light"],
+.dbx-root[data-dbx-theme="light"] {
+	--dbx-canvas: #f6f8fa;
+}
+
+:scope[data-dbx-theme="dark"],
+.dbx-root[data-dbx-theme="dark"] {
+	--dbx-canvas: #010409;
+}
+
 /* 宿主核心变量 → 设计稿令牌（仅作用于插件作用域内）
    这是「旧 markup 不改名也能换肤」的关键：既有 70 处 var(--foreground)、
-   33 处 var(--background) 与全体 bg-*/text-*/border-* 工具类都会读到新值。 */
+   33 处 var(--background) 与全体 bg-* / text-* / border-* 工具类都会读到新值。 */
 .dbx-root {
 	--background: var(--dbx-panel);
 	--foreground: var(--dbx-surface-foreground);

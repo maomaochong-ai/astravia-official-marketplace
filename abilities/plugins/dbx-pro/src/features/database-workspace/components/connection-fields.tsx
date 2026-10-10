@@ -9,7 +9,8 @@
 import { useMemo, useState } from "react";
 import { DB_TYPE_MANIFEST, type DbConnection, type DbTypeManifestEntry } from "../../../domain/connection-config";
 import { isReadyDbType, tierFor, tierLabel, tierReasonText, tierStats } from "../../../domain/driver-tiers";
-import { defaultHostPlaceholder, defaultUsernameFor, isFileBasedDbType } from "../services/connection-type-catalog";
+import { defaultHostPlaceholder, defaultUsernameFor, isApiConnectionType, isFileBasedDbType } from "../services/connection-type-catalog";
+import { ApiConnectionFields } from "./api-connection-fields";
 
 export interface ConnectionFieldsProps {
 	conn: DbConnection;
@@ -34,6 +35,7 @@ export function ConnectionFields({
 	onLoadSchemas,
 }: ConnectionFieldsProps) {
 	const isFileBased = isFileBasedDbType(conn.db_type);
+	const isApi = isApiConnectionType(conn.db_type);
 	const [showPassword, setShowPassword] = useState(false);
 	const selectedSchemas = conn.schemas ?? [];
 
@@ -84,7 +86,13 @@ export function ConnectionFields({
 						</optgroup>
 					))}
 				</select>
-				<div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.5 }}>
+				{isApi ? (
+					<div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.5 }}>
+						接口直连取数：插件直接请求该 HTTP 接口，把返回结果落成本地临时表，再用 SQL 查询；不走数据库驱动。
+					</div>
+				) : (
+					<>
+						<div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 4, lineHeight: 1.5 }}>
 					档位只表示当前实现状态：<b>可直接查询</b>（引擎已实现）/ <b>试验性</b>（引擎已登记未实现，连接会如实返回 DRIVER_UNSUPPORTED）/ <b>范围外</b>（仅保留配置形态）。
 				</div>
 				<div
@@ -102,8 +110,15 @@ export function ConnectionFields({
 						</span>
 					)}
 				</div>
+					</>
+				)}
 			</div>
 
+			{isApi ? (
+				<ApiConnectionFields key={conn.id} conn={conn} onChange={onChange} />
+			) : (
+				<>
+					{/* 说明：API 接入没有 host/端口/密码/Schema 概念，整块走 ApiConnectionFields。 */}
 			{conn.db_type === "mongodb" && (
 				<div className="dbx-form-row">
 					<label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
@@ -256,7 +271,8 @@ export function ConnectionFields({
 					只读
 				</label>
 			</div>
-
+				</>
+			)}
 			<div className="dbx-form-row" style={{ marginTop: 12 }}>
 				<label className="dbx-form-label">备注</label>
 				<textarea
@@ -268,7 +284,7 @@ export function ConnectionFields({
 				/>
 			</div>
 
-			{!isFileBased && (
+			{!isFileBased && !isApi && (
 				<div style={{
 					marginTop: 12, padding: 12, borderRadius: 6,
 					backgroundColor: "var(--dbx-surface)", fontSize: 12,

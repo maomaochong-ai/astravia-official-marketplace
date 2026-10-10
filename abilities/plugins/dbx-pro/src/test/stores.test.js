@@ -6,6 +6,8 @@
 import assert from "node:assert/strict";
 import { after, describe, it } from "node:test";
 import { setRuntime } from "../runtime-contract.ts";
+import RTL from "@testing-library/react";
+import { useVisualizationStore } from "../features/visualization/visualization-store.ts";
 import {
 	DEFAULT_SETTINGS,
 	isDefaultSettings,
@@ -23,6 +25,8 @@ import {
 	writeHistory,
 } from "../domain/query-history-store.ts";
 import { newHistoryId } from "../domain/query-history.ts";
+
+const { act, cleanup, renderHook, waitFor } = RTL;
 
 /** 内存 storage：只实现 store 模块实际使用的 readFile/writeFile。 */
 function createMemoryStorage() {
@@ -141,5 +145,91 @@ describe("query-history-store", () => {
 			Array.from({ length: 30 }, (_, i) => makeEntry({ sql: `SELECT ${i}` })),
 		);
 		assert.equal((await readHistory(20)).length, 20);
+	});
+});
+
+/**
+ * BI 数据资产产物存储 —— 它比工作台设置 / 查询历史多两条自己的规则（ADR-0009 §5.1）：
+ *   1. v1 裸数组文档在**读取**时按 v2 语义升级，条目打 readonlySnapshot，且不写回文件；
+ *   2. 单文件 100 条上限，超出时丢弃最旧的条目，并明确告知用户。
+ * 模块级单例在一个进程里只 hydrate 一次，所以 v1 用例必须排在任何写入之前。
+ */
+describe("visualization-store", () => {
+	after(() => {
+		cleanup();
+	});
+
+	it("v1 裸数组文档读成只读快照，只读不删", async () => {
+		const storage = setupRuntime();
+		const legacy = [
+			{
+				id: "viz-legacy-1",
+				title: "旧看板",
+				type: "dashboard",
+				connection: "pg",
+				table: "orders",
+				html: "<html><body>旧产物</body></html>",
+				createdAt: 1_700_000_000_000,
+			},
+		];
+		storage.files.set("visualizations.json", JSON.stringify(legacy));
+
+		let hook;
+		await act(async () => {
+			hook = renderHook(() => useVisualizationStore());
+		});
+		await waitFor(() => {
+			assert.equal(hook.result.current.visualizations.length, 1, "v1 文档没有被读出来");
+		});
+
+		const restored = hook.result.current.visualizations[0];
+		assert.equal(restored.id, "viz-legacy-1");
+		assert.equal(restored.readonlySnapshot, true, "v1 条目必须标成只读快照");
+		assert.equal(restored.html, legacy[0].html, "只读快照要原样保留 html");
+		assert.deepEqual(restored.chartItems, [], "缺 chartItems 的旧条目要补空数组");
+		assert.equal(
+			storage.files.get("visualizations.json"),
+			JSON.stringify(legacy),
+			"读取路径不得写回文件",
+		);
+	});
+
+	it("到达 100 条上限时丢掉最旧条目并提示用户", async () => {
+		const notifyCalls = [];
+		const storage = createMemoryStorage();
+		setRuntime({
+			storage,
+			ui: { notify: (payload) => notifyCalls.push(payload) },
+		});
+
+		let hook;
+		await act(async () => {
+			hook = renderHook(() => useVisualizationStore());
+		});
+		const store = hook.result.current;
+		await act(async () => {
+			store.clearAll();
+		});
+		assert.equal(hook.result.current.visualizations.length, 0);
+
+		await act(async () => {
+			for (let index = 1; index <= 101; index += 1) {
+				store.addVisualization({
+					title: `产物 ${index}`,
+					type: "dashboard",
+					connection: "pg",
+					table: "orders",
+					chartItems: [],
+				});
+			}
+		});
+
+		const list = hook.result.current.visualizations;
+		assert.equal(list.length, 100, "列表必须停在 100 条");
+		assert.equal(list[0].title, "产物 101", "新产物排在最前");
+		assert.equal(list[99].title, "产物 2", "被丢弃的是最旧的那条");
+		assert.deepEqual(notifyCalls, [
+			{ message: "BI 数据资产已达上限 100 条，最早的 1 条未能保存", variant: "warning" },
+		]);
 	});
 });

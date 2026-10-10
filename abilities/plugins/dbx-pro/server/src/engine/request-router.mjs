@@ -46,6 +46,21 @@ import {
   supportsPagination,
 } from "./sql-pagination.mjs";
 import { executeWrite } from "../write/direct-write.mjs";
+import { inferColumnTypes, isApiDbType, normalizeApiSource } from "../api-source/api-source.mjs";
+import { fetchApiSource } from "../api-source/api-fetch.mjs";
+import {
+  API_ENGINE_CONNECTION,
+  API_ENGINE_DATABASE,
+  apiEngineDatabasePath,
+  apiSourceToConnection,
+  apiSourceToPublic,
+  findApiSource,
+  isApiSourceName,
+  listApiSources,
+  removeApiSource,
+  upsertApiSource,
+} from "../api-source/api-store.mjs";
+import { previewApiSource, runApiQuery } from "../api-source/api-query.mjs";
 import {
   textOf,
   parseMarkdownTable,
@@ -165,10 +180,48 @@ function toDbxAddParams(body) {
   return args;
 }
 
-export function createRouter({ auth, now = () => Date.now() } = {}) {
+export function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
   if (!auth) throw new Error("createRouter 需要 auth");
 
   const mcpClient = () => getDbxMcpClient();
+
+  /**
+   * 「API 接入」的查询引擎通道。
+   *
+   * 引擎的内置类型清单是编译进去的，`api` 加不进去，所以插件把接口数据归一成
+   * 本地 NDJSON 快照，再用一个插件自己的 DuckDB 连接做 SQL 查询。
+   * 连接名带 `__` 前缀：不会与用户连接撞名，也不会出现在连接树里。
+   * dbx_add_connection 对已存在的同名连接返回成功文本，所以每次调用都是幂等的。
+   */
+  async function ensureApiEngineConnection() {
+    if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "服务端没有数据目录，无法查询 API 接入数据源");
+    try {
+      const result = await mcpClient().callTool("dbx_add_connection", {
+        name: API_ENGINE_CONNECTION,
+        db_type: "duckdb",
+        host: apiEngineDatabasePath(dataDir),
+        database: API_ENGINE_DATABASE,
+      });
+      extractText(result, "dbx_add_connection");
+    } catch (e) {
+      if (e?.engineError) {
+        throw engineError(
+          "API_ENGINE_UNAVAILABLE",
+          `本机查询通道不可用（需要 DuckDB 驱动）：${e.message}`,
+          e.detail,
+        );
+      }
+      throw e;
+    }
+  }
+
+  /**
+   * 引擎在**查询时**才报「驱动没装」——登记连接这一步是通的。
+   * 不单独识别的话它会被 classifyError 归成 UNKNOWN（500），用户只会看到一句英文原文。
+   */
+  function isDriverUnavailable(rawText) {
+    return /driver is not installed|DBX_DUCKDB_DRIVER_PATH/i.test(String(rawText ?? ""));
+  }
 
   /**
    * 用引擎里持久化的权威连接元数据补全写配置（database/host/port/db_type）。
@@ -294,7 +347,12 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       const result = await mcpClient().callTool("dbx_list_connections", {});
       const text = extractText(result, "dbx_list_connections");
       const raw = parseConnections(text);
-      return { connections: dedupeConnections(raw) };
+      // 内部快照连接（__dbx_pro_api__）是实现细节，不进连接树。
+      const engineConnections = dedupeConnections(raw).filter((c) => c.name !== API_ENGINE_CONNECTION);
+      // API 接入的连接存在插件本地（引擎不认识 `api` 类型），在这里合并成同一个列表，
+      // 客户端因此不需要维护第二份副本。
+      const apiConnections = dataDir ? listApiSources(dataDir).map(apiSourceToConnection) : [];
+      return { connections: [...apiConnections, ...engineConnections] };
     }],
     ["/connections", "POST", true, async ({ body }) => {
       if (!body?.name || !body?.dbType) throw engineError("BAD_REQUEST", "缺少 name / dbType");
@@ -325,6 +383,11 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
     ["/connections", "DELETE", true, async ({ body }) => {
       const name = body?.name;
       if (!name) throw engineError("BAD_REQUEST", "缺少 connection name");
+      // 连接树读的是一个合并列表，删除必须对称：API 接入不在引擎里，交给插件本地删。
+      if (dataDir && isApiSourceName(dataDir, name)) {
+        removeApiSource(dataDir, name);
+        return { deleted: name };
+      }
       const result = await mcpClient().callTool("dbx_remove_connection", { connection_name: name });
       extractText(result, "dbx_remove_connection");
       return { deleted: name };
@@ -352,7 +415,62 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       }
     }],
 
+    // === API 接入（插件自有数据源，见 src/api-source/）===
+    // 为什么不注册进引擎：引擎的内置 dbType 清单是编译进去的，塞一个 `api` 进去
+    // 只会得到一个必然报错的入口（对照 M1.5 的 `jdbc` 结论）。取数与 SQL 重写都由插件做。
+    ["/api-sources", "POST", true, async ({ body }) => {
+      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "服务端没有数据目录，无法保存 API 接入");
+      const name = String(body?.name ?? "").trim();
+      if (!name) throw engineError("BAD_REQUEST", "缺少连接名称");
+      // 连接名同时是 SQL 里的表名：与引擎连接重名会让查询无法判断该走哪条路。
+      const listResult = await mcpClient().callTool("dbx_list_connections", {});
+      const clash = parseConnections(extractText(listResult, "dbx_list_connections")).some(
+        (c) => c.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (clash) throw engineError("BAD_REQUEST", `已存在同名数据库连接「${name}」，请换一个名称`);
+      const saved = upsertApiSource(dataDir, body, body?.token ?? body?.secret ?? "");
+      return apiSourceToPublic(saved);
+    }],
+    ["/api-sources", "DELETE", true, async ({ body }) => {
+      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "服务端没有数据目录");
+      const name = body?.name;
+      if (!name) throw engineError("BAD_REQUEST", "缺少 API 接入名称");
+      removeApiSource(dataDir, name);
+      return { deleted: name };
+    }],
+    // 两种用途：表单保存前验证（传 draft），连接树展开时按需取列（只传 name）。
+    ["/api-sources/test", "POST", true, async ({ body }) => {
+      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "服务端没有数据目录");
+      const draft = body?.draft ?? null;
+      const name = String((draft ?? body)?.name ?? "").trim();
+      if (!name) throw engineError("BAD_REQUEST", "缺少连接名称");
+      // 编辑已存连接时不必重输凭据：缺省沿用已保存的那份（凭据永不回传客户端）。
+      const stored = findApiSource(dataDir, name);
+      const secret = body?.token ?? body?.secret ?? stored?.secret ?? "";
+      // headers 同样不回传客户端，所以表单里那个框平时是空的：
+      // 草稿没带 headers 键 = 沿用已存值，否则「测一下」会用一个和真实查询不同的请求。
+      const merged =
+        draft && draft.headers === undefined ? { ...draft, headers: stored?.headers ?? {} } : draft;
+      // normalizeApiSource 的产物**不含** secret（凭据单独存），发请求前必须再挂上。
+      const fetched = merged
+        ? await fetchApiSource({ ...normalizeApiSource({ ...merged, secret }), secret }, {})
+        : await previewApiSource(dataDir, name);
+      return {
+        name,
+        url: fetched.url,
+        status: fetched.status,
+        columns: fetched.table.columns,
+        sample: fetched.table.rows.slice(0, 20),
+        row_count: fetched.table.rows.length,
+        total_records: fetched.table.totalRecords,
+        truncated: fetched.table.truncated,
+        duration_ms: fetched.durationMs,
+        fetched_at: fetched.fetchedAt,
+      };
+    }],
+
     // === 查询执行 ===
+
     ["/query", "POST", true, async ({ body }) => {
       const connectionName = body?.connectionName ?? body?.connection?.name;
       if (!connectionName) throw engineError("BAD_REQUEST", "缺少 connectionName");
@@ -361,6 +479,18 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
 
       // classifyQuery 标记 DDL/DML/kind，用于 UI 展示和分流决策
       const classified = classifyQuery(sql);
+
+      // 连接名命中插件本地的 API 接入时，也走路径 0（客户端可以不传 dbType）。
+      const isApiQuery =
+        dataDir !== null &&
+        (isApiDbType(body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType) ||
+          isApiSourceName(dataDir, connectionName));
+
+      // API 接入是只读数据源：写 / DDL 在这里就拒绝，
+      // 否则会落到写驱动并报成「缺连接配置」，把用户指向错误的修法。
+      if (isApiQuery && classified.requiresConfirmation) {
+        throw engineError("WRITE_BLOCKED", "API 接入是只读数据源，不支持写 / DDL");
+      }
 
       const timeoutMs = clampTimeout(body?.timeoutMs);
       const rowLimit = clampRowLimit(body?.rowLimit);
@@ -459,7 +589,8 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       const countOnly = body?.countOnly === true;
       const pageReq = body?.page;
       let effectiveSql = sql;
-      const pageable = canPaginate(sql);
+      // API 接入的结果是本地快照（≤ 1000 行），不需要服务端分页包装。
+      const pageable = !isApiQuery && canPaginate(sql);
       if (pageable && countOnly) {
         if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "当前数据库类型不支持分页统计");
         effectiveSql = buildCountSql(sql);
@@ -473,8 +604,70 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
         effectiveSql = buildPagedSql(sql, dbType, limit, offset);
       }
 
-      // --- 路径 2：读 → 常驻零提权子进程 ---
+      // --- 路径 0：API 接入 → 插件自有取数 + 本机 DuckDB ---
+      // 接口数据先归一成本地 NDJSON 快照，再把 SQL 里的数据源名重写成 read_json_auto(...)，
+      // 最后交给插件自己的 DuckDB 连接执行；整个过程不经引擎的连接注册表。
+
+      if (isApiQuery) {
+        let run;
+        try {
+          run = await runApiQuery({
+            dataDir,
+            sql,
+            maxRows,
+            engine: {
+              ensureConnection: ensureApiEngineConnection,
+              execute: async (engineSql, limit) => {
+                const engineResult = await mcpClient().callTool(
+                  "dbx_execute_query",
+                  {
+                    connection_name: API_ENGINE_CONNECTION,
+                    sql: engineSql,
+                    max_rows: limit ?? maxRows,
+                  },
+                  timeoutMs,
+                );
+                // 驱动缺失只在**查询时**暴露：dbx_add_connection 登记 duckdb 连接会成功。
+                if (engineResult.isError) {
+                  const engineText = textOf(engineResult);
+                  if (isDriverUnavailable(engineText)) {
+                    throw engineError(
+                      "API_ENGINE_UNAVAILABLE",
+                      "本机查询通道不可用：DuckDB 驱动未安装。请在「驱动管理」里安装 DuckDB，" +
+                        "或设置 DBX_DUCKDB_DRIVER_PATH 后重试（接口数据已取到，只是没地方跑 SQL）。",
+                      engineText,
+                    );
+                  }
+                  const err = classifyError(engineText);
+                  throw engineError(err.code, `快照查询失败: ${err.detail}`, engineText);
+                }
+                return textOf(engineResult);
+              },
+            },
+          });
+        } catch (e) {
+          if (e?.engineError) throw e;
+          throw engineError(e?.code ?? "API_QUERY_FAILED", e?.message ?? String(e));
+        }
+        return toOutcome(run.engineText, {
+          api: {
+            engine_sql: run.engineSql,
+            // 每个数据源实际取了哪些行、从哪个地址取的 —— 取数不透明是最难排查的一类问题。
+            sources: run.sources.map((s) => ({
+              name: s.name,
+              url: s.url,
+              row_count: s.rowCount,
+              total_records: s.totalRecords,
+              truncated: s.truncated,
+              status: s.status,
+              fetched_at: s.fetchedAt,
+              duration_ms: s.durationMs,
+            })),
+          },
+        });
+      }
       let result;
+      // --- 路径 2：读 → 常驻零提权子进程 ---
       try {
         result = await mcpClient().callTool(
           "dbx_execute_query",
@@ -514,6 +707,10 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
     ["/tables", "POST", true, async ({ body }) => {
       const connectionName = body?.connectionName ?? body?.connection?.name;
       if (!connectionName) throw engineError("BAD_REQUEST", "缺少 connectionName");
+      // API 接入在树里只有一个虚拟表：表名 = 数据源名（也就是 SQL 里引用的名字）。
+      if (dataDir && isApiSourceName(dataDir, connectionName)) {
+        return { connection: connectionName, tables: [{ name: connectionName, kind: "table" }] };
+      }
       const scope = body?.scope ?? {};
       const args = { connection_name: connectionName };
       if (scope.schema) args.schema = scope.schema;
@@ -527,6 +724,24 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
       const target = body?.target ?? { schema: body?.schema, table: body?.table };
       if (!connectionName) throw engineError("BAD_REQUEST", "缺少 connectionName");
       if (!target?.table) throw engineError("BAD_REQUEST", "缺少 table");
+      // API 接入没有真实表结构：列与类型由接口样本推导（引擎侧同样靠 read_json_auto 推断）。
+      if (dataDir && isApiSourceName(dataDir, connectionName)) {
+        const preview = await previewApiSource(dataDir, connectionName);
+        const types = inferColumnTypes(preview.records, preview.table.columns);
+        return {
+          connection: connectionName,
+          table: target.table,
+          columns: preview.table.columns.map((name) => ({
+            name,
+            type: types[name] ?? "varchar",
+            nullable: true,
+            hasDefault: false,
+            defaultValue: "",
+            comment: "API 接入：类型由本次样本值推导",
+            isPrimaryKey: false,
+          })),
+        };
+      }
       const args = { connection_name: connectionName, table: target.table };
       if (target.schema) args.schema = target.schema;
       const result = await mcpClient().callTool("dbx_describe_table", args);
@@ -550,6 +765,10 @@ export function createRouter({ auth, now = () => Date.now() } = {}) {
     ["/schemas", "POST", true, async ({ body }) => {
       const connectionName = body?.connectionName ?? body?.connection?.name;
       if (!connectionName) throw engineError("BAD_REQUEST", "缺少 connectionName");
+      // API 接入没有 schema 层：回 supported=false，前端退回扁平表树。
+      if (dataDir && isApiSourceName(dataDir, connectionName)) {
+        return { connection: connectionName, schemas: [], supported: false };
+      }
       const result = await mcpClient().callTool("dbx_execute_query", {
         connection_name: connectionName,
         sql: schemaQueryFor(body?.dbType),

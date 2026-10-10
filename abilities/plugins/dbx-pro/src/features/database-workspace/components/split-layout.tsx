@@ -1,10 +1,13 @@
 /**
  * 三栏可拖拽布局 — 连接树 / 编辑器 / 右栏。
  *
- * 自己实现拖拽（不引外部依赖）：pointerdown 记录起点与两侧当前像素宽，
+ * 对齐设计稿 frames/index.tsx：三栏**齐平**，没有缝隙与卡片边框，
+ * 区域边界只由 1px 发丝分隔线表达（左栏 248px / 右栏 300px）。
+ *
+ * 拖拽自己实现（不引外部依赖）：pointerdown 记录起点与两侧当前像素宽，
  * pointermove 按像素夹逼，保证中栏始终留有可用宽度。
- * 首次挂载按容器实测宽度算默认比例（18% / 20%），用户拖过之后改用像素值，
- * 容器尺寸变化不再强制缩放，保留用户的设定。
+ * 首次挂载按容器实测宽度给设计稿默认宽；宿主面板过窄时退回比例分配。
+ * 用户拖过之后改用像素值，容器尺寸变化不再强制缩放，保留用户的设定。
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
@@ -20,6 +23,19 @@ interface DragState {
 	otherW: number;
 }
 
+/** 设计稿画框的固定栏宽（frames/index.tsx：左树 248px、右历史栏 300px）。 */
+const DESIGN_LEFT = 248;
+const DESIGN_RIGHT = 300;
+/** 宿主面板窄于此宽度时改用比例分配，避免中栏被挤没。 */
+const NARROW_BREAKPOINT = 900;
+
+function defaultWidths(total: number): { left: number; right: number } {
+	if (total > 0 && total < NARROW_BREAKPOINT) {
+		return { left: Math.round(total * 0.26), right: Math.round(total * 0.28) };
+	}
+	return { left: DESIGN_LEFT, right: DESIGN_RIGHT };
+}
+
 export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight: _onToggleRight }: { children: [JSX.Element, JSX.Element, JSX.Element]; onDragStart?: (side: "left" | "right") => void; leftCollapsed?: boolean; rightCollapsed?: boolean; onToggleLeft?: () => void; onToggleRight?: () => void }): JSX.Element {
 	// 三栏宽度（px）。0 表示首次按容器尺寸用默认比例初始化。
 	const [leftW, setLeftW] = useState(0);
@@ -29,8 +45,6 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 	const [dragging, setDragging] = useState<"left" | "right" | null>(null);
 
 	// 各栏像素约束（中栏始终保留，分隔线无法拖到不合理的大小）
-	// MIN_MID 补偿 gutter 的 p-1（8px）+ 两条 4px 竖向拖拽条（8px），
-	// 约束按容器全宽换算时中栏实际可用宽度始终 ≥ 320。
 	const MIN_LEFT = 180;
 	const MAX_LEFT_RATIO = 0.4;
 	const MIN_RIGHT = 260;
@@ -77,9 +91,9 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 		const el = containerRef.current;
 		if (!el) return;
 		const total = el.getBoundingClientRect().width;
-		// 首次拖动（初始为 0）前，按当前默认比例换算成像素起点。
-		const curLeft = leftW || Math.round(total * 0.18);
-		const curRight = rightW || Math.round(total * 0.2);
+		const { left: defLeft, right: defRight } = defaultWidths(total);
+		const curLeft = leftW || defLeft;
+		const curRight = rightW || defRight;
 		if (!leftW) setLeftW(curLeft);
 		if (!rightW) setRightW(curRight);
 		dragRef.current = {
@@ -96,8 +110,8 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 		onDragStart?.(side);
 	}
 
-	// 首次渲染：左 18%、右 20%，中栏剩余。挂载后按容器真实宽度测量一次；
-	// 用户拖动后改用像素值，容器尺寸变化时不再强制缩放（保留用户设定）。
+	// 首次渲染按设计稿固定栏宽（左 248 / 右 300）；宿主面板过窄时退回比例分配。
+	// 挂载后按容器真实宽度测量一次；用户拖动后改用像素值，容器尺寸变化时不再强制缩放。
 	const [measuredWidth, setMeasuredWidth] = useState(0);
 	useEffect(() => {
 		const el = containerRef.current;
@@ -134,66 +148,70 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 		void patchSession({ leftW, rightW }).catch(() => { /* ignore */ });
 	}, [widthsHydrated, dragging, leftW, rightW]);
 
-	const effectiveLeft = leftW || Math.round(baseWidth * 0.18);
-	const effectiveRight = rightW || Math.round(baseWidth * 0.2);
+	const defaults = defaultWidths(baseWidth);
+	const effectiveLeft = leftW || defaults.left;
+	const effectiveRight = rightW || defaults.right;
 
 	return (
-		<div ref={containerRef} className="dbx-gutter relative flex min-h-0 flex-1 p-1">
-			{/* 左栏卡片（可收起为细条） */}
-			<div
-				className="dbx-panel-card min-h-0"
-				style={{ width: leftCollapsed ? 36 : effectiveLeft, flexShrink: 0 }}
-			>
+		<div ref={containerRef} className="relative flex min-h-0 flex-1 overflow-hidden bg-surface">
+			{/* 左栏：连接树。收起时退化为 36px 图标列（设计稿 ConnectionTree 的收起态）。 */}
+			<div className="flex min-h-0 shrink-0 flex-col" style={{ width: leftCollapsed ? 36 : effectiveLeft }}>
 				{leftCollapsed ? (
-					<button
-						type="button"
-						onClick={() => onToggleLeft?.()}
-						title="展开连接树"
-						className="flex h-full w-full flex-col items-center gap-1 pt-3 text-muted-foreground hover:text-foreground"
-					>
-						<span className="icon-[lucide--panel-left] h-4 w-4" />
-						<span className="icon-[lucide--database] h-4 w-4 opacity-60" />
-					</button>
+					<div className="flex h-full w-full flex-col items-center gap-1 bg-surface-raised py-1.5">
+						<button
+							type="button"
+							onClick={() => onToggleLeft?.()}
+							title="展开连接树"
+							className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-neutral-muted hover:text-surface-foreground"
+						>
+							<span className="icon-[lucide--panel-left-open] size-3.5" />
+						</button>
+						<span className="my-1 h-px w-5 shrink-0 bg-border" />
+						<span
+							title="连接"
+							className="flex size-7 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent"
+						>
+							<span className="icon-[lucide--database] size-3.5" />
+						</span>
+						<span title="表" className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted">
+							<span className="icon-[lucide--table-2] size-3.5" />
+						</span>
+						<span title="选择" className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted">
+							<span className="icon-[lucide--square-check-big] size-3.5" />
+						</span>
+						<span title="导入" className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted">
+							<span className="icon-[lucide--folder-input] size-3.5" />
+						</span>
+					</div>
 				) : (
 					children[0]
 				)}
 			</div>
 
-			{/* 左分隔条：卡片缝隙中的透明拖拽条；左栏收起时保留同宽缝隙 */}
-			{leftCollapsed ? (
-				<div style={{ width: 4, flexShrink: 0 }} />
-			) : (
-				<div
-					onPointerDown={(e) => startDrag("left", e)}
-					className={`dbx-splitbar dbx-splitbar-v ${dragging === "left" ? "is-dragging" : ""}`}
-				>
-					<div className="dbx-split-hit" />
-				</div>
-			)}
-
-			{/* 中栏卡片 */}
-			<div className="dbx-panel-card min-w-0 min-h-0 flex-1">
-				{children[1]}
+			{/* 左分隔线：1px 发丝线本身即拖拽区（隐形热区外延 4px） */}
+			<div
+				onPointerDown={(e) => startDrag("left", e)}
+				className={`dbx-splitbar dbx-splitbar-v ${dragging === "left" ? "is-dragging" : ""}`}
+			>
+				<div className="dbx-split-hit" />
 			</div>
 
-			{/* 右分隔条 */}
-			{!rightCollapsed && (
-				<div
-					onPointerDown={(e) => startDrag("right", e)}
-					className={`dbx-splitbar dbx-splitbar-v ${dragging === "right" ? "is-dragging" : ""}`}
-				>
-					<div className="dbx-split-hit" />
-				</div>
-			)}
+			{/* 中栏：SQL 编辑器 + 结果面板（自身负责底色与纵向接缝） */}
+			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children[1]}</div>
 
-			{/* 右栏卡片（可通过顶栏按钮收起） */}
+			{/* 右栏：查询历史 / 详情。可通过顶栏按钮收起。 */}
 			{!rightCollapsed && (
-				<div
-					className="dbx-panel-card min-h-0"
-					style={{ width: effectiveRight, flexShrink: 0 }}
-				>
-					{children[2]}
-				</div>
+				<>
+					<div
+						onPointerDown={(e) => startDrag("right", e)}
+						className={`dbx-splitbar dbx-splitbar-v ${dragging === "right" ? "is-dragging" : ""}`}
+					>
+						<div className="dbx-split-hit" />
+					</div>
+					<div className="flex min-h-0 shrink-0 flex-col bg-surface-raised" style={{ width: effectiveRight }}>
+						{children[2]}
+					</div>
+				</>
 			)}
 		</div>
 	);

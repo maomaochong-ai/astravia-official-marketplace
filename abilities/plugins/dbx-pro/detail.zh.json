@@ -4,33 +4,52 @@
     {
       "type": "hero",
       "eyebrow": "数据库工作台",
-      "title": "dbx-pro —— Astravia 里的完整数据库工作台",
-      "description": "管理连接、浏览 Schema、编写并运行 SQL、查看可排序结果表格，还能让 AI 直接调用数据库能力。读路径经 dbx-mcp 支持 PostgreSQL、MySQL、SQLite、ClickHouse 等 100+ 种数据库；写 / DDL 经内置驱动执行。",
-      "badges": ["100+ 数据库", "DDL 写入", "AI 双向联动", "加密存储"]
+      "title": "dbx-pro —— Astravia 里的数据库工作台与看板",
+      "description": "管理连接、浏览 Schema、编写并运行 SQL、查看可排序的结果表格，再把任意查询结果做成可筛选的看板或大屏。读路径经 dbx-mcp 支持 PostgreSQL、MySQL、SQLite、ClickHouse 等 100+ 种数据库；写与 DDL 经插件内置驱动执行。",
+      "badges": ["100+ 种数据库", "看板与大屏", "11 种图表", "筛选与重新取数", "DDL 写入", "AI 双向联动"]
     },
     {
       "type": "feature-grid",
       "items": [
-        { "title": "连接管理", "description": "保存主机、端口、数据库与环境标签，支持只读 / 生产标记；密码保存在宿主加密凭据库，不以明文落盘。" },
-        { "title": "SQL 编辑器", "description": "多标签 CodeMirror 编辑器，按数据库方言高亮与补全，⌘/Ctrl+Enter 执行，支持只运行选中片段。" },
-        { "title": "结果表格", "description": "行网格支持点击表头排序、分页、行号、复制 TSV / 导出 CSV 与单元格详情，显示行数与耗时。" },
-        { "title": "DDL 与写入", "description": "建表、改表等写操作经内置 pg / mysql2 / mssql 驱动执行；执行前弹出完整 SQL 确认，只读连接直接拦截。" },
-        { "title": "查询历史", "description": "自动记录每条查询的 SQL、状态、行数与耗时（不保存结果行），可一键载入编辑器重新执行。" },
-        { "title": "AI 双向联动", "description": "插件作为 MCP 工具注册给 AI，AI 可列连接、执行查询；在树和结果上也能把上下文一键发送给 AI。" }
+        {
+          "title": "连接管理",
+          "description": "保存主机、端口、库名与环境标签，并标记只读与生产；密码存放在宿主加密凭据库里，从不以明文落盘。"
+        },
+        {
+          "title": "SQL 编辑器与结果表格",
+          "description": "多标签编辑器，按方言高亮与补全：⌘/Ctrl+Enter 运行整段，也可以只执行选中的部分。结果可排序、翻页、复制为 TSV、导出为 CSV。"
+        },
+        {
+          "title": "看板、大屏与 11 种图表",
+          "description": "让 AI 把查询结果画成图，产物就落在「BI 数据资产」里：看板适合阅读，大屏适合挂墙展示。折线、柱状、饼图、环形、极区、雷达、散点、气泡来自 Chart.js，漏斗、箱线图与指标卡由插件自己渲染。"
+        },
+        {
+          "title": "数据集筛选、重新取数与血缘",
+          "description": "按列取值筛选，图表立刻重算，不产生新的数据库查询；点「重新取数」才按存下来的 SQL 重新拉数。每份产物还会列出它读了哪些表、SQL 与行数，以及还有哪些产物读了同一张表。"
+        },
+        {
+          "title": "写入、DDL 与查询历史",
+          "description": "建表改表经内置驱动执行，执行前先给出完整语句确认；只读连接会被直接拒绝。每次查询都记录 SQL、状态、行数与耗时，可随时载回编辑器重跑。"
+        },
+        {
+          "title": "AI 双向联动",
+          "description": "插件注册为 MCP 工具，AI 能列出连接并发起查询；反过来，你也可以把表树或结果集一键交给 AI。"
+        }
       ]
     },
     {
       "type": "steps",
       "items": [
-        { "title": "打开工作台", "description": "从能力市场安装 dbx-pro，打开其活动标签页，引擎随插件自动就绪，无需另装命令行。" },
-        { "title": "添加连接", "description": "点右上角「连接」，选择数据库类型并填写信息；SQLite 选定文件即可查询。" },
-        { "title": "运行查询", "description": "在编辑器输入 SQL，按 ⌘/Ctrl+Enter；涉及写入或 DDL 时确认后执行。" }
+        { "title": "打开工作台", "description": "从能力市场安装 dbx-pro，打开它活动栏里的页签。引擎随插件启动，不需要另外装 CLI。" },
+        { "title": "添加一个连接", "description": "点右上角「连接」，选数据库类型并填写信息；SQLite 只需选一个文件。" },
+        { "title": "跑一条查询", "description": "输入 SQL 后按 ⌘/Ctrl+Enter。如果语句要写入或改结构，会先弹出对话框让你确认。" },
+        { "title": "做成看板", "description": "让 AI 把结果画成图，产物会出现在「BI 数据资产」里，在那里可以筛选、重新取数、看血缘，或导出成一个断网可用的 HTML 文件。" }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "读取统一走 dbx-mcp，写入与 DDL 走插件内置驱动；两条通道隔离。所有服务仅监听本机回环地址，不对外暴露。"
+      "content": "读取统一走 dbx-mcp，写入与 DDL 走插件内置驱动，两条通道相互隔离；所有服务仅监听本机回环地址，不对外暴露。BI 产物由插件自己保存，导出的 HTML 文件完全离线 —— Chart.js 已内联，不会向任何 CDN 取资源。"
     }
   ]
 }
