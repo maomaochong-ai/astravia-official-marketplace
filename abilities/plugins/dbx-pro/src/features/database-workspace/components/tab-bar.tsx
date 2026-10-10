@@ -131,47 +131,41 @@ export function TabBar(): JSX.Element {
 		});
 	}
 
+	/** 标签左侧状态图标：运行中 / 失败 / 产物类型，取设计稿图标语义与语义色。 */
+	function tabIconClass(tab: (typeof state.tabs)[number]): string {
+		if (tab.isRunning) return "icon-[lucide--loader] animate-spin text-warning";
+		if (tab.result?.ok === false) return "icon-[lucide--alert-circle] text-danger";
+		if (tab.gallery) return "icon-[lucide--images] text-link";
+		if (tab.visualization) {
+			return tab.visualization.type === "dashboard"
+				? "icon-[lucide--layout-dashboard] text-link"
+				: "icon-[lucide--monitor] text-link";
+		}
+		return "icon-[lucide--file-code] text-faint";
+	}
+
 	return (
 		<div className="dbx-chrome flex shrink-0 items-stretch px-1" style={{ height: wrapTabs ? undefined : 36 }}>
 			<div
 				className={
 					wrapTabs
 						? "dbx-tab-wrap flex min-w-0 flex-1 flex-wrap content-start gap-0.5 py-1"
-						: "dbx-tab-scroll flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1"
+						: "dbx-tab-scroll flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto"
 				}
 			>
 				{state.tabs.map((tab) => {
 					const active = tab.id === state.activeTabId;
-					const running = tab.isRunning;
 					return (
 						<div
 							key={tab.id}
 							onContextMenu={(e) => openMenu(e, tab)}
 							onClick={() => dispatch({ type: "setActiveTab", id: tab.id })}
-							className={`group flex h-7 w-[var(--tabw)] shrink-0 cursor-pointer items-center gap-1 rounded-md pl-2 pr-1 text-[11px] transition-colors ${
-								active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-							}`}
-							style={{
-								["--tabw" as string]: "clamp(92px, 12vw, 170px)",
-								backgroundColor: active ? "var(--dbx-surface-2)" : "transparent",
-							}}
+							className="dbx-tab group"
+							data-active={active}
+							style={{ ["--tabw" as string]: "clamp(132px, 14vw, 170px)" }}
 							title={tab.label}
 						>
-							<span
-								className={`h-3 w-3 shrink-0 ${
-									running
-										? "icon-[lucide--loader] animate-spin text-warning"
-										: tab.result?.ok === false
-											? "icon-[lucide--alert-circle] text-destructive"
-											: tab.gallery
-											? "icon-[lucide--images] text-primary"
-											: tab.visualization
-												? tab.visualization.type === "dashboard"
-													? "icon-[lucide--layout-dashboard] text-primary"
-													: "icon-[lucide--monitor] text-primary"
-												: "icon-[lucide--file-code]"
-								}`}
-							/>
+							<span className={"h-3.5 w-3.5 shrink-0 " + tabIconClass(tab)} />
 							{editingTabId === tab.id ? (
 								<input
 									autoFocus
@@ -188,11 +182,11 @@ export function TabBar(): JSX.Element {
 											setEditValue("");
 										}
 									}}
-									className="h-5 min-w-0 flex-1 rounded px-1 text-[11px] outline-none"
+									className="h-5 min-w-0 flex-1 rounded-md px-1 text-[12px] outline-none"
 									style={{
-										backgroundColor: "var(--background)",
-										color: "var(--foreground)",
-										boxShadow: "0 0 0 1px var(--foreground)",
+										backgroundColor: "var(--dbx-panel)",
+										color: "var(--dbx-surface-foreground)",
+										boxShadow: "0 0 0 1px var(--dbx-accent)",
 									}}
 									onClick={(e) => e.stopPropagation()}
 									onContextMenu={(e) => e.stopPropagation()}
@@ -208,10 +202,10 @@ export function TabBar(): JSX.Element {
 										closeTab(tab.id);
 									}}
 									onContextMenu={(e) => e.stopPropagation()}
-									className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+									className="dbx-tab__close"
 									title="关闭 tab"
 								>
-									<span className="icon-[lucide--x] h-3 w-3" />
+									<span className="icon-[lucide--x] h-3.5 w-3.5" />
 								</button>
 							)}
 						</div>
@@ -221,14 +215,14 @@ export function TabBar(): JSX.Element {
 
 			{/* 右侧操作：self-center 保证滚动条出现时仍与标签垂直居中、不错位 */}
 			<div className="flex shrink-0 items-center self-center">
-				<button type="button" onClick={addTab} title="新建 tab" className="dbx-iconbtn">
+				<button type="button" onClick={addTab} title="新建 tab" className="dbx-icon-btn">
 					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
 				</button>
 				<button
 					type="button"
 					onClick={() => setWrapTabs((v) => !v)}
 					title={wrapTabs ? "切换为单行滚动" : "切换为多行换行"}
-					className={`dbx-iconbtn ${wrapTabs ? "is-active" : ""}`}
+					className={"dbx-icon-btn " + (wrapTabs ? "dbx-icon-btn--active" : "")}
 				>
 					<span className="icon-[lucide--wrap-text] h-3.5 w-3.5" />
 				</button>

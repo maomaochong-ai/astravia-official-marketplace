@@ -24,6 +24,7 @@ import { useVisualizationStore } from "../../visualization/visualization-store";
 import { GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
 import { getUi } from "../../../runtime-contract";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
+import { applyPluginTheme } from "../../../shared/theme/plugin-theme";
 
 export function DatabaseWorkspace(): JSX.Element {
 	return (
@@ -55,6 +56,12 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				variant: "success",
 			});
 		} catch { /* 宿主不支持 notify 或运行时未就绪时静默忽略 */ }
+	}, []);
+
+	// 把主题写到插件根属性上（本元素就是插件根之一）。宿主切主题由
+	// initPluginTheme 的 observer 同步；这里补的是面板后挂载的情况。
+	useEffect(() => {
+		applyPluginTheme();
 	}, []);
 
 	// 注册可视化预览和保存回调

@@ -1,5 +1,6 @@
 /* ============================================================
- * 居中模态（写确认 / 单元格详情 / 通用）
+ * 居中模态（写确认 / 单元格详情 / 通用）与右侧滑层
+ * 对齐设计稿：卡片 = panel 底 + 一根 border + sheet 阴影；遮罩统一用 scrim
  * ============================================================ */
 .dbx-modal-backdrop {
 	position: absolute;
@@ -9,73 +10,41 @@
 	align-items: center;
 	justify-content: center;
 	padding: 20px;
-	background: color-mix(in srgb, var(--background) 55%, transparent);
+	background: var(--dbx-scrim);
 	backdrop-filter: blur(2px);
 }
 
-/* 统一弹出面板卡片（居中模态）样式 */
-.dbx-modal-card {
-	position: relative;
-	z-index: 101;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	border-radius: 8px;
-	border: 1px solid var(--dbx-line);
-	background: var(--background);
-	box-shadow: 0 8px 40px rgb(0 0 0 / 0.18), 0 2px 8px rgb(0 0 0 / 0.08);
-}
-
 /* ============================================================
- * 右侧滑层（连接表单 / 设置）
+ * 居中模态侧层（连接表单 / 设置）
+ * 对齐设计稿 Sheet：居中卡片 + 标题条 + 底部操作条
  * ============================================================ */
 .dbx-sheet-backdrop {
 	position: absolute;
 	inset: 0;
-	background: color-mix(in srgb, var(--background) 55%, transparent);
+	background: var(--dbx-scrim);
 	z-index: 100;
 	backdrop-filter: blur(2px);
 }
 .dbx-sheet {
 	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
+	inset: 0;
+	z-index: 101;
+	margin: auto;
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background: var(--background);
-	border-left: 1px solid var(--dbx-line);
-	box-shadow: -12px 0 40px rgb(0 0 0 / 0.22);
-	z-index: 101;
+	height: min(640px, calc(100% - 3rem));
+	background: var(--dbx-panel);
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-sheet);
+	box-shadow: var(--dbx-shadow-sheet);
 	animation: dbx-sheet-in 0.16s ease-out;
 }
 @keyframes dbx-sheet-in {
-	from { transform: translateX(12px); opacity: 0.6; }
-	to { transform: translateX(0); opacity: 1; }
+	from { transform: scale(0.98) translateY(4px); opacity: 0; }
+	to { transform: scale(1) translateY(0); opacity: 1; }
 }
-.dbx-sheet-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	flex-shrink: 0;
-	padding: 13px 18px;
-	border-bottom: 1px solid var(--dbx-line-soft);
-}
-.dbx-sheet-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
-.dbx-sheet-footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: 8px;
-	flex-shrink: 0;
-	padding: 12px 18px;
-	border-top: 1px solid var(--dbx-line-soft);
-}
-
-/* 统一侧滑面板（sheet）样式增强 */
-.dbx-root .dbx-sheet {
-	border-left: 1px solid var(--dbx-line);
-}
+/* 居中模态卡片自带完整描边，无需额外的左侧边 */
 
 /* ============================================================
  * 可视化模板对话框 — 预设卡片样式
@@ -85,46 +54,45 @@
 	flex-direction: column;
 	gap: 6px;
 	padding: 12px 14px;
-	border-radius: 10px;
-	border: 1px solid var(--dbx-line, rgba(148,163,184,.25));
-	background: hsl(var(--dbx-surface, 0 0% 100%));
+	border-radius: var(--dbx-radius-card);
+	border: 1px solid var(--dbx-border);
+	background: var(--dbx-surface);
 	cursor: pointer;
 	text-align: left;
 	transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 .dbx-root .template-card:hover {
-	border-color: var(--dbx-accent, #3b82f6);
-	box-shadow: 0 2px 8px color-mix(in srgb, var(--dbx-accent, #3b82f6) 18%, transparent);
-	transform: translateY(-1px);
+	border-color: var(--dbx-border-strong);
+	box-shadow: var(--dbx-shadow-popover);
 }
 .dbx-root .template-card.selected {
-	border-color: var(--dbx-accent, #3b82f6);
-	background: color-mix(in srgb, var(--dbx-accent, #3b82f6) 8%, hsl(var(--dbx-surface, 0 0% 100%)));
-	box-shadow: 0 0 0 1px var(--dbx-accent, #3b82f6);
+	border-color: var(--dbx-accent);
+	background: var(--dbx-accent-soft);
+	box-shadow: 0 0 0 1px var(--dbx-accent);
 }
 .dbx-root .template-card-header {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	font-weight: 600;
-	font-size: 12.5px;
-	color: hsl(var(--dbx-foreground, 0 0% 15%));
+	font-size: 13px;
+	color: var(--dbx-surface-foreground);
 }
 .dbx-root .template-icon {
 	display: inline-block;
-	width: 18px;
-	height: 18px;
+	width: 16px;
+	height: 16px;
 	flex-shrink: 0;
-	color: var(--dbx-accent, #3b82f6);
+	color: var(--dbx-accent);
 }
 .dbx-root .template-label {
 	flex: 1;
 	line-height: 1.2;
 }
 .dbx-root .template-desc {
-	font-size: 11px;
+	font-size: 12px;
 	line-height: 1.5;
-	color: hsl(var(--dbx-muted, 0 0% 45%));
+	color: var(--dbx-muted);
 }
 .dbx-root .custom-template-btn {
 	width: 100%;
@@ -133,17 +101,58 @@
 	justify-content: center;
 	gap: 8px;
 	padding: 10px 14px;
-	border-radius: 10px;
-	border: 1px dashed var(--dbx-line, rgba(148,163,184,.4));
+	border-radius: var(--dbx-radius-card);
+	border: 1px dashed var(--dbx-border-strong);
 	background: transparent;
-	font-size: 12.5px;
+	font-size: 13px;
 	font-weight: 500;
-	color: hsl(var(--dbx-muted, 0 0% 40%));
+	color: var(--dbx-muted);
 	cursor: pointer;
 	transition: all 0.15s ease;
 }
 .dbx-root .custom-template-btn:hover {
-	border-color: var(--dbx-accent, #3b82f6);
-	color: var(--dbx-accent, #3b82f6);
-	background: color-mix(in srgb, var(--dbx-accent, #3b82f6) 6%, transparent);
+	border-color: var(--dbx-accent);
+	color: var(--dbx-accent);
+	background: var(--dbx-accent-soft);
+}
+
+/* 设置面板内的开关：原生 checkbox 按设计稿 Switch 呈现（28×16 轨道 + 12px 旋钮） */
+.dbx-settings-body input[type="checkbox"] {
+	appearance: none;
+	-webkit-appearance: none;
+	position: relative;
+	flex-shrink: 0;
+	width: 28px;
+	height: 16px;
+	margin: 0;
+	border: none;
+	border-radius: 999px;
+	background: var(--dbx-border-strong);
+	cursor: pointer;
+	transition: background 0.15s ease;
+}
+.dbx-settings-body input[type="checkbox"]::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 12px;
+	height: 12px;
+	border-radius: 999px;
+	background: var(--dbx-surface-foreground);
+	transition: transform 0.15s ease;
+}
+.dbx-settings-body input[type="checkbox"]:checked {
+	background: var(--dbx-primary);
+}
+.dbx-settings-body input[type="checkbox"]:checked::after {
+	transform: translateX(12px);
+}
+.dbx-settings-body input[type="checkbox"]:focus-visible {
+	outline: 2px solid var(--dbx-accent);
+	outline-offset: 2px;
+}
+.dbx-settings-body input[type="checkbox"]:disabled {
+	opacity: 0.4;
+	cursor: default;
 }

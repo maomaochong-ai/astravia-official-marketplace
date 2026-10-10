@@ -178,7 +178,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 							<span className="icon-[lucide--arrow-left] h-4 w-4" />
 						</button>
 					)}
-					<span className="icon-[lucide--database] h-4 w-4 text-muted-foreground shrink-0" />
+					<span className="icon-[lucide--database] h-4 w-4 shrink-0 text-muted" />
 					<h2 className="dbx-connection-title">
 						{step === "list" && "管理连接"}
 						{step === "select" && "选择数据库类型"}
@@ -212,20 +212,20 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 				)}
 
 				{step === "select" && (
-					<div className="flex flex-col h-full gap-3">
+					<div className="flex min-h-0 flex-1 flex-col gap-3">
 						{/* 搜索栏和视图切换 */}
-						<div className="flex items-center gap-2">
+						<div className="flex h-8 shrink-0 items-center gap-2">
 							<div className="relative flex-1">
-								<span className="icon-[lucide--search] absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none z-10" />
+								<span className="icon-[lucide--search] pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
 								<input
 									type="text"
-									className="dbx-form-input pl-9 h-9 text-xs"
+									className="dbx-form-input h-8 pl-8 text-[12px]"
 									placeholder="搜索数据库类型..."
 									value={searchQuery}
 									onChange={(e) => setSearchQuery(e.target.value)}
 								/>
 							</div>
-							<div className="flex items-center border border-border rounded-md overflow-hidden shrink-0">
+							<div className="flex shrink-0 items-center overflow-hidden rounded-control border border-border bg-surface p-0.5">
 								<button
 									type="button"
 									className={`dbx-view-toggle-btn ${viewMode === "grid" ? "active" : ""}`}
@@ -248,7 +248,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 						{/* 分类导航 + 类型列表 */}
 						<div className="flex min-h-0 flex-1 gap-3">
 							{/* 分类导航 */}
-							<nav className="flex shrink-0 flex-col gap-1 w-20 border-r border-border/50 pr-2 overflow-y-auto">
+							<nav className="flex w-24 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface-raised py-2">
 								{categories.map((cat) => (
 									<button
 										key={cat.key}
@@ -257,7 +257,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 										onClick={() => handleCategoryClick(cat.key)}
 									>
 										<span>{cat.label}</span>
-										<span className="text-[9px] text-muted-foreground/60 ml-auto">
+										<span className="ml-auto font-mono text-[12px] text-faint">
 											{cat.types.length}
 										</span>
 									</button>
@@ -275,14 +275,14 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 										ref={(el) => { categoryRefs.current[cat.key] = el; }}
 										className="mb-4"
 									>
-										<h3 className="text-[11px] font-semibold text-foreground mb-2 px-1 sticky top-0 bg-background py-1 z-10">
+										<h3 className="sticky top-0 z-10 mb-2 bg-surface px-1 py-1 text-[12px] font-semibold tracking-[0.06em] text-muted">
 											{cat.label}
-											<span className="text-[10px] font-normal text-muted-foreground ml-2">
+											<span className="ml-2 text-[12px] font-normal text-faint">
 												{cat.types.length} 种
 											</span>
 										</h3>
 										{viewMode === "grid" ? (
-											<div className="grid grid-cols-3 gap-2">
+											<div className="grid grid-cols-3 gap-2.5">
 												{cat.types.map((t) => (
 													<button
 														key={t.dbType}
@@ -291,7 +291,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 														onClick={() => handleSelectDbType(t.dbType as DbType)}
 													>
 														<DatabaseTypeIcon dbType={t.dbType} size="medium" />
-														<span className="text-[11px] font-medium truncate text-center">
+												<span className="w-full truncate text-left text-[13px] font-semibold text-surface-foreground">
 															{t.label}
 														</span>
 													</button>
@@ -310,7 +310,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 														<span className="text-[12px] font-medium flex-1 text-left">
 															{t.label}
 														</span>
-														<span className="text-[10px] text-muted-foreground">
+											<span className="font-mono text-[12px] text-faint">
 															{t.dbType}
 														</span>
 													</button>
@@ -320,9 +320,9 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 									</div>
 								))}
 								{filteredTypes.length === 0 && (
-									<div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+									<div className="flex flex-col items-center justify-center py-8 text-muted">
 										<span className="icon-[lucide--search-x] h-6 w-6 mb-2 opacity-50" />
-										<span className="text-xs">无匹配结果</span>
+										<span className="text-[12px]">无匹配结果</span>
 									</div>
 								)}
 							</div>

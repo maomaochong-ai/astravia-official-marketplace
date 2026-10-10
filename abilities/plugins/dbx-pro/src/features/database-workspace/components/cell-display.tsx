@@ -7,21 +7,21 @@ import type { JSX } from "react";
 
 export function CellDisplay({ value }: { value: unknown }): JSX.Element {
 	if (value === null || value === undefined) {
-		return <span className="italic text-muted-foreground/70">NULL</span>;
+		return <span className="italic text-faint">NULL</span>;
 	}
 	if (typeof value === "boolean") {
-		return <span className="text-foreground/70">{String(value)}</span>;
+		return <span>{String(value)}</span>;
 	}
 	if (typeof value === "number") {
-		return <span className="font-mono text-foreground/80">{String(value)}</span>;
+		return <span className="font-mono">{String(value)}</span>;
 	}
 	if (typeof value === "object") {
-		return <span className="font-mono text-foreground/70">{JSON.stringify(value)}</span>;
+		return <span className="font-mono text-muted">{JSON.stringify(value)}</span>;
 	}
 	const text = String(value);
 	if (/^https?:\/\//i.test(text)) {
 		return (
-			<span className="text-foreground/80 underline decoration-foreground/30">{text}</span>
+			<span className="text-link underline">{text}</span>
 		);
 	}
 	return <span>{text}</span>;

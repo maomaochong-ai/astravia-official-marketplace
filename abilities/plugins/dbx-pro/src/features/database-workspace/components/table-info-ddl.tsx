@@ -35,7 +35,7 @@ export function TableInfoDdl({
 				<span className="truncate text-[10px] text-muted-foreground">根据列结构生成（不含索引 / 表选项）</span>
 				<span className="flex shrink-0 items-center gap-1">
 					<button type="button" onClick={handleCopy} className="dbx-iconbtn" style={{ height: 22, padding: "0 6px" }} title="复制 DDL">
-						<span className={`h-3 w-3 ${copied ? "icon-[lucide--check] text-emerald-500" : "icon-[lucide--copy]"}`} />
+						<span className={`h-3 w-3 ${copied ? "icon-[lucide--check] text-success" : "icon-[lucide--copy]"}`} />
 						<span className="text-[10.5px]">{copied ? "已复制" : "复制"}</span>
 					</button>
 					<button

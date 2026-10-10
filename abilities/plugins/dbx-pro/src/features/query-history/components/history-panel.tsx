@@ -24,8 +24,8 @@ interface Props {
 
 function PathBadge({ path, fallback }: { path: string; fallback?: boolean }): JSX.Element {
 	const label = path === "engine" ? "引擎" : fallback ? "CLI·降级" : "CLI";
-	const cls = path === "engine" ? "text-primary" : fallback ? "text-amber-600 dark:text-amber-500" : "text-muted-foreground";
-	return <span className={`shrink-0 rounded px-1 py-px text-[9.5px] font-medium ${cls}`}>{label}</span>;
+	const cls = path === "engine" ? "dbx-chip--accent" : fallback ? "dbx-chip--warn" : "";
+	return <span className={"dbx-chip " + cls}>{label}</span>;
 }
 
 function ActionButton({
@@ -45,7 +45,7 @@ function ActionButton({
 			title={title}
 			aria-label={title}
 			onClick={onClick}
-			className={`dbx-history-action ${danger ? "dbx-history-action-danger" : ""}`}
+			className={"dbx-icon-btn" + (danger ? " dbx-icon-btn--danger" : "")}
 		>
 			{children}
 		</button>
@@ -59,8 +59,8 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 		<div className="flex h-full min-h-0 flex-col">
 			{/* 头部 */}
 			<div className="flex shrink-0 items-center gap-1.5 px-3 py-2.5">
-				<span className="text-[11.5px] font-semibold text-foreground">查询历史</span>
-				<span className="rounded-full bg-[var(--dbx-surface-2)] px-1.5 py-px text-[10px] tabular-nums text-muted-foreground">
+				<span className="text-[12px] font-semibold text-foreground">查询历史</span>
+				<span className="dbx-chip tabular-nums">
 					{entries.length}/{limit}
 				</span>
 				<span className="flex-1" />
@@ -69,7 +69,7 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 						type="button"
 						onClick={onClear}
 						title="清空全部历史（不可撤销）"
-						className="dbx-history-action dbx-history-action-danger"
+						className="dbx-icon-btn dbx-icon-btn--danger"
 						aria-label="清空全部历史"
 					>
 						<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
@@ -78,7 +78,7 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 			</div>
 
 			{full && (
-				<div className="shrink-0 px-3 py-1 text-[10px] text-amber-600 dark:text-amber-500">
+				<div className="shrink-0 px-3 py-1 text-[10px] text-warning">
 					已到上限：新查询会挤掉最旧的一条
 				</div>
 			)}
@@ -98,19 +98,18 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 						<article key={entry.id} className="dbx-history-card">
 							{/* 主行：状态 + SQL 摘要 + 路径徽标 */}
 							<div className="flex items-center gap-1.5">
-								{entry.status === "ok" ? (
-									<span className="icon-[lucide--check-circle-2] h-3.5 w-3.5 shrink-0 text-emerald-500" />
-								) : (
-									<span className="icon-[lucide--x-circle] h-3.5 w-3.5 shrink-0 text-red-500" />
-								)}
-								<p className="dbx-history-sql min-w-0 flex-1 truncate font-mono" title={entry.sql}>
+								<span className={"dbx-status-dot " + (entry.status === "ok" ? "dbx-status-dot--ok" : "dbx-status-dot--danger")} />
+								<p className="dbx-history-sql line-clamp-2 min-w-0 flex-1" title={entry.sql}>
 									{summarizeSql(entry.sql, 80)}
 								</p>
 								<PathBadge path={entry.path} fallback={Boolean(entry.error && entry.path === "cli")} />
 							</div>
 
 							{/* 元信息行 */}
-							<div className="mt-1 flex items-center gap-1.5 pl-5 text-[10px] text-muted-foreground">
+							<div className="mt-1 flex items-center gap-1.5 pl-3.5 text-[11px] text-muted-foreground">
+								<span className={"dbx-chip " + (entry.status === "ok" ? "dbx-chip--ok" : "dbx-chip--danger")}>
+									{entry.status === "ok" ? "成功" : "失败"}
+								</span>
 								<span className="min-w-0 truncate font-medium" title={entry.connName}>{entry.connName}</span>
 								<span className="shrink-0 tabular-nums">{formatHistoryTime(entry.createdAt)}</span>
 								{entry.status === "ok" ? (
@@ -121,13 +120,13 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 							</div>
 
 							{entry.status === "error" && entry.error ? (
-								<p className="mt-1 truncate pl-5 text-[10px] leading-relaxed text-red-500/90" title={entry.error}>
+								<p className="mt-1 truncate pl-3.5 text-[11px] leading-relaxed text-danger" title={entry.error}>
 									{summarizeSql(entry.error, 80)}
 								</p>
 							) : null}
 
 							{/* 操作行：纯图标常驻，hover 出提示 */}
-							<div className="mt-1.5 flex items-center justify-end gap-0.5 pl-5">
+							<div className="mt-1.5 flex items-center justify-end gap-0.5 border-t border-border pt-1.5">
 								<ActionButton title="载入编辑器" onClick={() => onLoad(entry)}>
 									<span className="icon-[lucide--corner-down-left] h-3.5 w-3.5" />
 								</ActionButton>

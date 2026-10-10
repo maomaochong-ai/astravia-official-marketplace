@@ -132,7 +132,7 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 						</button>
 						{navOpen && colList.length > 0 && (
 							<div
-								className="absolute left-0 top-full z-40 mt-1 w-60 rounded-md border border-border bg-popover p-2 shadow-lg"
+								className="absolute left-0 top-full z-40 mt-1 w-60 rounded-control border border-border bg-popover p-2 shadow-[var(--dbx-shadow-popover)]"
 								onMouseDown={(e) => e.preventDefault()}
 							>
 								<input
@@ -141,7 +141,7 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 									onChange={(e) => onNavFilterChange(e.target.value)}
 									placeholder="搜索列名…"
 									autoFocus
-									className="mb-2 w-full rounded border border-[var(--dbx-surface-2)] bg-background px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary"
+									className="mb-2 w-full rounded-control border border-border bg-background px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary"
 								/>
 								<div className="max-h-48 overflow-auto">
 									{filteredCols.map((c) => (
@@ -149,14 +149,14 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 											key={c}
 											type="button"
 											onClick={() => onScrollToColumn(c)}
-											className="block w-full truncate rounded px-2 py-1 text-left text-[11px] text-foreground/80 hover:bg-[var(--dbx-hover)]"
+										className="block w-full truncate rounded-control px-2 py-1 text-left text-[12px] text-muted-foreground hover:bg-neutral-muted hover:text-foreground"
 											title={c}
 										>
 											{c}
 										</button>
 									))}
 									{filteredCols.length === 0 && (
-										<p className="px-2 py-1 text-[11px] text-muted-foreground/60">无匹配列</p>
+										<p className="px-2 py-1 text-[12px] text-muted-foreground">无匹配列</p>
 									)}
 								</div>
 							</div>

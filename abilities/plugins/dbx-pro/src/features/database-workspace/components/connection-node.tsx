@@ -698,14 +698,13 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 			<div
 				draggable={isDraggable}
 				onDragStart={handleDragStart}
-				className={`group flex cursor-pointer items-center gap-1 rounded px-1.5 py-[3px] text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-foreground/40 ${
-					active
-						? "text-foreground"
-						: "text-foreground/70 hover:bg-[var(--dbx-hover)]"
+				className={`group flex h-6 cursor-pointer items-center gap-1.5 whitespace-nowrap pr-2 text-[12px] outline-none transition-colors focus-visible:ring-1 focus-visible:ring-link/40 ${
+					isNodeSelected || active
+						? "bg-link-soft font-medium text-surface-foreground"
+						: "text-muted hover:bg-neutral-muted"
 				}`}
 				style={{
-					paddingLeft: 6 + depth * 14,
-					backgroundColor: active ? "var(--dbx-surface-2)" : undefined,
+					paddingLeft: 8 + depth * 12,
 					cursor: isDraggable ? "grab" : "default",
 				}}
 				onClick={handleClick}
@@ -719,11 +718,11 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							e.stopPropagation();
 							toggleSelect();
 						}}
-						className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border"
+						className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border border-border-strong"
 						style={
 							isNodeSelected
-								? { backgroundColor: "var(--foreground)", borderColor: "var(--foreground)", color: "var(--background)" }
-								: { borderColor: "var(--dbx-line)", color: "transparent" }
+								? { backgroundColor: "var(--dbx-accent)", borderColor: "var(--dbx-accent)", color: "#fff" }
+								: { color: "transparent" }
 						}
 						aria-hidden="true"
 					>
@@ -737,35 +736,35 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 							void ensureChildren();
 							expand();
 						}}
-						className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted-foreground transition-transform hover:text-foreground ${isExpanded ? "rotate-90" : ""}`}
+						className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted transition-transform hover:text-surface-foreground ${isExpanded ? "rotate-90" : ""}`}
 					>
 						<span className="icon-[lucide--chevron-right] h-3 w-3" />
 					</span>
 				)}
 				{node.kind === "connection" && <ConnectionIcon dbType={node.dbType} status={statusDot} />}
 				{node.kind === "schema" && (
-					<span className="icon-[lucide--layers] h-3 w-3 shrink-0 text-sky-400/70" />
+					<span className="icon-[lucide--layers] h-3 w-3 shrink-0 text-link/70" />
 				)}
 				{node.kind === "table" && (
 					<span
-						className={`h-3 w-3 shrink-0 ${node.tableKind === "VIEW" ? "icon-[lucide--eye-off] text-sky-400/70" : "icon-[lucide--table-2] text-emerald-400/70"}`}
+						className={`h-3 w-3 shrink-0 ${node.tableKind === "VIEW" ? "icon-[lucide--eye-off] text-link/70" : "icon-[lucide--table-2] text-success/70"}`}
 					/>
 				)}
 				{node.kind === "column" && (
 					<span
-						className={`h-3 w-3 shrink-0 ${node.label.includes("(PK)") ? "icon-[lucide--key-round] text-amber-400" : "icon-[lucide--columns-3] text-muted-foreground"}`}
+						className={`h-3 w-3 shrink-0 ${node.label.includes("(PK)") ? "icon-[lucide--key-round] text-warning" : "icon-[lucide--columns-3] text-muted-foreground"}`}
 					/>
 				)}
 				{node.kind === "routine-folder" && (
-					<span className="icon-[lucide--braces] h-3 w-3 shrink-0 text-violet-400/70" />
+					<span className="icon-[lucide--braces] h-3 w-3 shrink-0 text-warning/70" />
 				)}
 				{node.kind === "routine" && (
 					<span
-						className={`h-3 w-3 shrink-0 ${node.routineKind === "PROCEDURE" ? "icon-[lucide--square-terminal] text-amber-400/80" : "icon-[lucide--sigma] text-violet-400/80"}`}
+						className={`h-3 w-3 shrink-0 ${node.routineKind === "PROCEDURE" ? "icon-[lucide--square-terminal] text-warning/80" : "icon-[lucide--sigma] text-link/80"}`}
 					/>
 				)}
-				<span className="min-w-0 flex-1 truncate">{node.label}</span>
-				{isLoading && <span className="icon-[lucide--loader] h-3 w-3 shrink-0 animate-spin text-muted-foreground" />}
+				<span className={`min-w-0 flex-1 truncate ${node.kind === "schema" || node.kind === "table" || node.kind === "column" || node.kind === "routine" ? "font-mono" : "text-[13px]"}`}>{node.label}</span>
+				{isLoading && <span className="icon-[lucide--loader] size-3 shrink-0 animate-spin text-muted" />}
 			</div>
 			{isExpanded && children.length > 0 && (
 				<div>
@@ -787,16 +786,16 @@ export function ConnectionNode({ node, depth, connectionName, schema }: Props): 
 }
 
 function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }): JSX.Element {
-	if (!dbType) return <span className="icon-[lucide--database] h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
+	if (!dbType) return <span className="icon-[lucide--database] size-3.5 shrink-0 text-muted" />;
 	const visual = getDatabaseTypeVisual(dbType);
 	const dotCls =
 		status === "ok"
-			? "bg-emerald-500"
+			? "bg-success"
 			: status === "error"
-				? "bg-red-500"
+				? "bg-danger"
 				: status === "running"
-					? "animate-pulse bg-amber-400"
-					: "bg-[var(--dbx-surface-2)]";
+					? "animate-pulse bg-warning"
+					: "bg-border-strong";
 	return (
 		<span className="relative shrink-0">
 			<span
@@ -805,7 +804,7 @@ function ConnectionIcon({ dbType, status }: { dbType?: string; status?: string }
 			>
 				{visual.badge}
 			</span>
-			<span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-[var(--background)] ${dotCls}`} />
+			<span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-2 ring-[var(--dbx-surface)] ${dotCls}`} />
 		</span>
 	);
 }

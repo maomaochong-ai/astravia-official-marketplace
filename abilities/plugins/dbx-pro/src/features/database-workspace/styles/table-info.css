@@ -1,13 +1,13 @@
 /* ============================================================
- * 表属性面板（右侧抽屉，对齐 dbx 桌面壳）
+ * 表属性面板（右侧抽屉，对齐设计稿 PaneHeader / 表格）
  * ============================================================ */
 
 .dbx-table-info-drawer {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-	background: var(--background);
-	border-left: 1px solid var(--dbx-line);
+	background: var(--dbx-panel);
+	border-left: 1px solid var(--dbx-border);
 }
 
 .dbx-table-info-header {
@@ -16,15 +16,15 @@
 	gap: 8px;
 	padding: 10px 14px;
 	flex-shrink: 0;
-	border-bottom: 1px solid var(--dbx-line-soft);
+	border-bottom: 1px solid var(--dbx-border);
 	background: var(--dbx-surface);
 }
 
 .dbx-table-info-title {
 	flex: 1;
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 600;
-	color: var(--foreground);
+	color: var(--dbx-surface-foreground);
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -37,7 +37,7 @@
 	gap: 2px;
 	padding: 0 8px;
 	flex-shrink: 0;
-	border-bottom: 1px solid var(--dbx-line);
+	border-bottom: 1px solid var(--dbx-border);
 	overflow-x: auto;
 }
 
@@ -46,10 +46,10 @@
 	align-items: center;
 	gap: 4px;
 	padding: 8px 9px;
-	font-size: 11px;
+	font-size: 12px;
 	font-weight: 500;
 	line-height: 1;
-	color: var(--muted-foreground);
+	color: var(--dbx-muted);
 	background: transparent;
 	border: none;
 	border-bottom: 2px solid transparent;
@@ -64,12 +64,12 @@
 }
 
 .dbx-table-info-tab:hover {
-	color: var(--foreground);
+	color: var(--dbx-surface-foreground);
 }
 
 .dbx-table-info-tab.active {
-	color: var(--foreground);
-	border-bottom-color: var(--foreground);
+	color: var(--dbx-surface-foreground);
+	border-bottom-color: var(--dbx-accent);
 }
 
 /* 各页签自管滚动，sticky 表头才能固定 */
@@ -101,9 +101,9 @@
 	gap: 6px;
 	margin: 8px 12px;
 	padding: 4px 8px;
-	border-radius: 6px;
-	border: 1px solid var(--dbx-line-soft);
-	background: var(--dbx-surface-2);
+	border-radius: var(--dbx-radius-control);
+	border: 1px solid var(--dbx-border);
+	background: var(--dbx-surface);
 }
 
 /* 字段 / 元数据表格（sticky 表头，发丝横线分隔，贴边铺满） */
@@ -116,20 +116,20 @@
 	top: 0;
 	z-index: 1;
 	text-align: left;
-	font-size: 10.5px;
+	font-size: 12px;
 	font-weight: 600;
-	color: var(--muted-foreground);
-	background: var(--dbx-surface-2);
-	border-bottom: 1px solid var(--dbx-line);
+	color: var(--dbx-muted);
+	background: var(--dbx-surface);
+	border-bottom: 1px solid var(--dbx-border);
 	padding: 6px 12px;
 	white-space: nowrap;
 }
 
 .dbx-columns-table tbody td {
-	border-bottom: 1px solid var(--dbx-line-soft);
+	border-bottom: 1px solid var(--dbx-border);
 	padding: 6px 12px;
 	vertical-align: top;
-	color: var(--foreground);
+	color: var(--dbx-surface-foreground);
 }
 
 .dbx-columns-table tbody tr:hover {
@@ -137,9 +137,9 @@
 }
 
 .dbx-columns-table td.dbx-meta-mono {
-	font-family: var(--font-mono, ui-monospace, monospace);
-	font-size: 11px;
-	color: var(--muted-foreground);
+	font-family: var(--dbx-font-mono);
+	font-size: 12px;
+	color: var(--dbx-muted);
 }
 
 .dbx-table-info-scroller::-webkit-scrollbar {
@@ -152,7 +152,7 @@
 }
 
 .dbx-table-info-scroller::-webkit-scrollbar-thumb {
-	background: color-mix(in oklab, var(--foreground) 30%, transparent);
+	background: var(--dbx-border-strong);
 	background-clip: padding-box;
 	border: 3px solid transparent;
 	border-radius: 999px;
@@ -171,21 +171,21 @@
 	align-items: baseline;
 	gap: 12px;
 	padding: 7px 14px;
-	font-size: 11px;
-	border-bottom: 1px solid var(--dbx-line-soft);
+	font-size: 12px;
+	border-bottom: 1px solid var(--dbx-border);
 }
 
 .dbx-info-label {
 	width: 64px;
 	flex-shrink: 0;
-	color: var(--muted-foreground);
+	color: var(--dbx-muted);
 }
 
 .dbx-info-value {
 	min-width: 0;
 	flex: 1;
-	color: var(--foreground);
-	font-family: var(--font-mono, ui-monospace, monospace);
+	color: var(--dbx-surface-foreground);
+	font-family: var(--dbx-font-mono);
 	word-break: break-all;
 	user-select: text;
 }
@@ -194,13 +194,13 @@
 .dbx-ddl-code {
 	margin: 0 12px 12px;
 	padding: 12px;
-	border-radius: 6px;
-	background: var(--dbx-surface);
-	border: 1px solid var(--dbx-line-soft);
-	font-family: var(--font-mono, ui-monospace, monospace);
-	font-size: 11px;
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-panel-sunken);
+	border: 1px solid var(--dbx-border);
+	font-family: var(--dbx-font-mono);
+	font-size: 12px;
 	line-height: 1.5;
-	color: var(--foreground);
+	color: var(--dbx-surface-foreground);
 	white-space: pre;
 }
 

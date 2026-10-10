@@ -1,60 +1,47 @@
 /* ============================================================
- * SQL 编辑器：CodeMirror 外壳的明 / 暗配色 + 执行按钮主题精修
+ * SQL 编辑器：CodeMirror 外壳的明 / 暗配色
  *
  * token 语法高亮色在 sql-editor.tsx 中以明 / 暗两套 HighlightStyle
  * 直接给具体色值（CodeMirror 注入的样式表中 var() 在部分宿主挂载
  * 方式下取不到变量）；这里只管背景 / 行号 / 选区 / 补全弹层等外壳。
+ *
+ * data-dbx-theme 由 sql-editor.tsx 写在编辑器容器上（取值来自
+ * shared/theme/plugin-theme.ts），所以这里可以直接按属性分支。
+ * 颜色取设计稿 ground / surface 与推导的浅色板，与 style.css 一致。
  * ============================================================ */
 
-/* ── 深色（默认）────────────────────────────────────────── */
+/* ── 深色（照设计稿）────────────────────────────────────── */
 .dbx-sql-theme[data-dbx-theme="dark"] {
-	--dbx-cm-text: #d6d9e0;
-	--dbx-cm-caret: #9ca3af;
-	--dbx-cm-gutter: #6b7280;
-	--dbx-cm-gutter-border: color-mix(in srgb, var(--foreground) 12%, transparent);
-	--dbx-cm-active-line: rgb(255 255 255 / 0.035);
-	--dbx-cm-selection: rgb(96 165 250 / 0.22);
-	--dbx-cm-tooltip-bg: #16181d;
-	--dbx-cm-tooltip-border: color-mix(in srgb, var(--foreground) 18%, transparent);
-	--dbx-cm-tooltip-selected: rgb(96 165 250 / 0.22);
-
-	/* 执行按钮：深色主题用近白实心，克制不刺眼 */
-	--dbx-cta-bg: color-mix(in srgb, var(--foreground) 92%, transparent);
-	--dbx-cta-fg: #14161b;
-	--dbx-cta-hover: color-mix(in srgb, var(--foreground) 80%, transparent);
+	--dbx-cm-text: #e6edf3;
+	--dbx-cm-caret: #e6edf3;
+	--dbx-cm-gutter: #6e7681;
+	--dbx-cm-gutter-border: var(--dbx-border);
+	--dbx-cm-active-line: rgb(56 139 253 / 0.08);
+	--dbx-cm-selection: rgb(56 139 253 / 0.28);
+	--dbx-cm-tooltip-bg: #161b22;
+	--dbx-cm-tooltip-border: var(--dbx-border);
+	--dbx-cm-tooltip-selected: rgb(56 139 253 / 0.28);
 }
 
-/* ── 浅色 ───────────────────────────────────────────────── */
+/* ── 浅色（推导色板）────────────────────────────────────── */
 .dbx-sql-theme[data-dbx-theme="light"] {
-	--dbx-cm-text: #242936;
-	--dbx-cm-caret: #242936;
-	--dbx-cm-gutter: #9aa1ad;
-	--dbx-cm-gutter-border: rgb(20 30 50 / 0.1);
-	--dbx-cm-active-line: rgb(20 30 50 / 0.035);
-	--dbx-cm-selection: rgb(37 99 235 / 0.16);
+	--dbx-cm-text: #1f2328;
+	--dbx-cm-caret: #1f2328;
+	--dbx-cm-gutter: #8c959f;
+	--dbx-cm-gutter-border: var(--dbx-border);
+	--dbx-cm-active-line: rgb(9 105 218 / 0.06);
+	--dbx-cm-selection: rgb(9 105 218 / 0.16);
 	--dbx-cm-tooltip-bg: #ffffff;
-	--dbx-cm-tooltip-border: rgb(20 30 50 / 0.14);
-	--dbx-cm-tooltip-selected: rgb(37 99 235 / 0.14);
-
-	/* 执行按钮：浅主题用柔和墨色（非纯黑、不发灰），配极淡投影 */
-	--dbx-cta-bg: #23272f;
-	--dbx-cta-fg: #f7f8fa;
-	--dbx-cta-hover: #343a46;
+	--dbx-cm-tooltip-border: var(--dbx-border);
+	--dbx-cm-tooltip-selected: rgb(9 105 218 / 0.14);
 }
 
-/* 执行按钮取用主题变量（默认回退中性前景底，兼容未标主题的场景） */
+/* 执行按钮：取设计稿主色（.dbx-cta 本身已是 primary 变体），这里只补投影 */
 .dbx-sql-theme .dbx-cta {
-	background: var(--dbx-cta-bg, var(--dbx-primary));
-	color: var(--dbx-cta-fg, var(--dbx-primary-fg));
-	box-shadow: 0 1px 2px rgb(16 24 40 / 0.14);
-}
-
-.dbx-sql-theme .dbx-cta:hover:not(:disabled) {
-	background: var(--dbx-cta-hover, var(--dbx-primary));
-	opacity: 1;
+	box-shadow: 0 1px 2px rgb(1 4 9 / 0.24);
 }
 
 /* 补全选中项在浅色下加深文字对比 */
 .dbx-sql-theme[data-dbx-theme="light"] .cm-tooltip-autocomplete ul li[aria-selected] {
-	color: #1f2937;
+	color: #1f2328;
 }

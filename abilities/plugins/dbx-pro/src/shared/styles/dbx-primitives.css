@@ -1,6 +1,10 @@
 /* ============================================================
- * dbx-pro 通用 UI 原子类
- * 这些样式被多个 feature 复用，放在 shared/styles 下
+ * dbx-pro 通用 UI 原子类 —— 对齐 dbx-pro.astravia-design
+ *
+ * 语义色板与明暗切换定义在 src/style.css（--dbx-* 令牌）；
+ * 本文件只负责尺寸、圆角、边框与交互态，值取自设计稿原语：
+ *   Btn / IconButton / Field / PaneHeader / Switch / StatusDot / Sheet
+ * 类名保持不变，供既有各 feature 复用。
  * ============================================================ */
 
 /* 三栏外层 gutter */
@@ -8,153 +12,451 @@
 	background: var(--dbx-gutter);
 }
 
-/* 面板卡片：小圆角 + 柔边框，模块边界靠卡片而非发丝线 */
+/* 面板卡片：小圆角 + 发丝边框，模块边界靠卡片而非底色差 */
 .dbx-panel-card {
-	border: 1px solid var(--dbx-line);
-	border-radius: 6px;
-	background: var(--background);
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-card);
+	background: var(--dbx-panel);
 	overflow: hidden;
 }
 
-/* 横向工具条：统一底色 + 柔和下分隔线 */
+/* 横向工具条：抬升底色 + 下分隔线 */
 .dbx-chrome {
 	background: var(--dbx-surface);
-	border-bottom: 1px solid var(--dbx-line-soft);
+	border-bottom: 1px solid var(--dbx-border);
 }
 
-/* 中性图标按钮（28px，去除刺眼蓝，跟随整体灰阶） */
+
+/* ------------------------------------------------------------------
+ * 按钮：Btn variant=default / sm 尺寸（h-7 28px）
+ * ------------------------------------------------------------------ */
+.dbx-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	appearance: none;
+	user-select: none;
+	gap: 6px;
+	min-height: 28px;
+	padding: 5px 10px;
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.2;
+	font-family: var(--dbx-font-sans);
+	white-space: nowrap;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-surface);
+	color: var(--dbx-surface-foreground);
+	cursor: pointer;
+	transition: background 0.12s, border-color 0.12s, color 0.12s, opacity 0.12s;
+}
+.dbx-btn:hover:not(:disabled) {
+	border-color: var(--dbx-border-strong);
+	background: var(--dbx-panel-sunken);
+}
+.dbx-btn:disabled {
+	opacity: 0.45;
+	color: var(--dbx-faint);
+	cursor: not-allowed;
+}
+.dbx-btn.primary {
+	background: var(--dbx-primary);
+	border-color: var(--dbx-primary);
+	color: var(--dbx-primary-fg);
+}
+.dbx-btn.primary:hover:not(:disabled) {
+	background: var(--dbx-primary);
+	border-color: var(--dbx-primary);
+	opacity: 0.9;
+}
+.dbx-btn.ghost {
+	background: transparent;
+	border-color: transparent;
+	color: var(--dbx-muted);
+}
+.dbx-btn.ghost:hover:not(:disabled) {
+	background: var(--dbx-surface);
+	border-color: transparent;
+	color: var(--dbx-surface-foreground);
+}
+.dbx-btn.quiet {
+	background: transparent;
+	border-color: transparent;
+	color: var(--dbx-muted);
+}
+.dbx-btn.quiet:hover:not(:disabled) {
+	background: transparent;
+	border-color: transparent;
+	color: var(--dbx-surface-foreground);
+}
+.dbx-btn.ai {
+	background: var(--dbx-ai-soft);
+	border-color: color-mix(in srgb, var(--dbx-ai) 40%, transparent);
+	color: var(--dbx-ai);
+}
+.dbx-btn.ai:hover:not(:disabled) { opacity: 0.9; }
+.dbx-btn.danger {
+	background: var(--dbx-danger-soft);
+	border-color: color-mix(in srgb, var(--dbx-danger) 40%, transparent);
+	color: var(--dbx-danger);
+}
+.dbx-btn.danger:hover:not(:disabled) { opacity: 0.9; }
+
+/* 主操作按钮（历史遗留别名，语义同 primary） */
+.dbx-cta {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	appearance: none;
+	gap: 6px;
+	min-height: 28px;
+	padding: 5px 10px;
+	border: 1px solid var(--dbx-primary);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-primary);
+	color: var(--dbx-primary-fg);
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.2;
+	cursor: pointer;
+	white-space: nowrap;
+	transition: opacity 0.12s;
+}
+.dbx-cta:hover:not(:disabled) { opacity: 0.9; }
+.dbx-cta:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ------------------------------------------------------------------
+ * 带文字的图标按钮（顶栏等）：IconButton 尺寸 + 12px 标签
+ * ------------------------------------------------------------------ */
 .dbx-iconbtn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 4px;
+	appearance: none;
+	gap: 6px;
 	height: 28px;
 	min-width: 28px;
-	padding: 0 7px;
+	padding: 0 8px;
 	border: 1px solid transparent;
-	border-radius: 6px;
+	border-radius: var(--dbx-radius-control);
 	background: transparent;
-	color: var(--muted-foreground);
-	font-size: 11px;
+	color: var(--dbx-muted);
+	font-size: 12px;
+	font-weight: 500;
 	line-height: 1;
 	cursor: pointer;
 	white-space: nowrap;
 	transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
 .dbx-iconbtn:hover:not(:disabled) {
-	background: var(--dbx-hover);
-	color: var(--foreground);
+	background: var(--dbx-surface);
+	color: var(--dbx-surface-foreground);
 }
 .dbx-iconbtn:disabled { opacity: 0.4; cursor: not-allowed; }
 .dbx-iconbtn.is-active {
-	background: color-mix(in srgb, var(--foreground) 12%, transparent);
-	color: var(--foreground);
+	background: var(--dbx-neutral-muted);
+	color: var(--dbx-surface-foreground);
 }
 
-/* 主操作按钮：中性实心（前景底/背景字），不使用蓝色 */
-.dbx-cta {
+/* ------------------------------------------------------------------
+ * 顶栏导航项：对齐设计稿 NavLink（h-6，选中=抬升底 + 半粗）
+ * ------------------------------------------------------------------ */
+.dbx-nav-item {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	gap: 5px;
-	height: 28px;
-	padding: 0 12px;
+	appearance: none;
+	flex-shrink: 0;
+	gap: 6px;
+	height: 24px;
+	padding: 0 8px;
 	border: 1px solid transparent;
-	border-radius: 6px;
-	background: var(--dbx-primary);
-	color: var(--dbx-primary-fg);
+	border-radius: var(--dbx-radius-control);
+	background: transparent;
+	color: var(--dbx-muted);
 	font-size: 12px;
 	font-weight: 500;
 	line-height: 1;
-	cursor: pointer;
 	white-space: nowrap;
-	transition: opacity 0.12s, background 0.12s;
-}
-.dbx-cta:hover:not(:disabled) { opacity: 0.86; }
-.dbx-cta:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* 通用按钮 */
-.dbx-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	gap: 5px;
-	padding: 6px 12px;
-	font-size: 12px;
-	line-height: 1.2;
-	font-weight: 500;
-	border: 1px solid var(--dbx-line);
-	border-radius: 6px;
-	background: var(--background);
-	color: var(--foreground);
 	cursor: pointer;
-	transition: background 0.12s, border-color 0.12s;
+	transition: background 0.12s, color 0.12s;
 }
-.dbx-btn:hover:not(:disabled) { background: var(--dbx-hover); }
-.dbx-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.dbx-btn.primary {
-	background: var(--foreground);
-	color: var(--background);
-	border-color: var(--foreground);
+.dbx-nav-item:hover:not(:disabled) {
+	background: var(--dbx-neutral-muted);
+	color: var(--dbx-surface-foreground);
 }
-.dbx-btn.primary:hover:not(:disabled) { opacity: 0.88; }
-.dbx-btn.ghost { background: transparent; border-color: transparent; }
-.dbx-btn.ghost:hover:not(:disabled) { background: var(--dbx-hover); border-color: var(--dbx-line); }
+.dbx-nav-item.is-active {
+	background: var(--dbx-surface);
+	color: var(--dbx-surface-foreground);
+	font-weight: 600;
+}
+.dbx-nav-item:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* 表单输入 */
+/* 计数角标：导航项/按钮右侧的小胶囊 */
+.dbx-count-badge {
+	margin-left: 4px;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: var(--dbx-neutral-muted);
+	color: var(--dbx-surface-foreground);
+	font-family: var(--dbx-font-mono);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	line-height: 16px;
+}
+
+/* ------------------------------------------------------------------
+ * SQL 标签：对齐设计稿 TabBar
+ * 宽 var(--tabw)，选中 = 画布底 + 2px accent 下划线；关闭按钮仅悬停/选中可见
+ * ------------------------------------------------------------------ */
+.dbx-tab {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+	height: 36px;
+	width: var(--tabw, 170px);
+	padding: 0 6px 0 12px;
+	border-bottom: 2px solid transparent;
+	color: var(--dbx-muted);
+	font-size: 12px;
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.dbx-tab:hover { color: var(--dbx-surface-foreground); }
+.dbx-tab[data-active="true"] {
+	background: var(--dbx-panel);
+	border-bottom-color: var(--dbx-accent);
+	color: var(--dbx-surface-foreground);
+}
+.dbx-tab__close {
+	display: inline-grid;
+	place-items: center;
+	flex-shrink: 0;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	border: none;
+	border-radius: var(--dbx-radius-control);
+	background: transparent;
+	color: var(--dbx-muted);
+	opacity: 0;
+	cursor: pointer;
+	transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.dbx-tab:hover .dbx-tab__close,
+.dbx-tab[data-active="true"] .dbx-tab__close { opacity: 1; }
+.dbx-tab__close:hover {
+	background: var(--dbx-neutral-muted);
+	color: var(--dbx-surface-foreground);
+}
+
+/* ------------------------------------------------------------------
+ * 紧凑图标按钮：IconButton（24px 方形，纯图标）
+ * tone: 默认中性 / danger / ai；active = accent-soft + accent
+ * ------------------------------------------------------------------ */
+.dbx-icon-btn {
+	display: inline-grid;
+	place-items: center;
+	appearance: none;
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: var(--dbx-radius-control);
+	background: transparent;
+	color: var(--dbx-muted);
+	cursor: pointer;
+	transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.06s;
+}
+.dbx-icon-btn:hover:not(:disabled) {
+	background: var(--dbx-neutral-muted);
+	color: var(--dbx-surface-foreground);
+}
+.dbx-icon-btn:active:not(:disabled) {
+	transform: scale(0.94);
+}
+.dbx-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.dbx-icon-btn.dbx-icon-btn--primary {
+	background: var(--dbx-primary);
+	border-color: var(--dbx-primary);
+	color: var(--dbx-primary-fg);
+}
+.dbx-icon-btn.dbx-icon-btn--primary:hover:not(:disabled) {
+	opacity: 0.9;
+	color: var(--dbx-primary-fg);
+}
+.dbx-icon-btn.dbx-icon-btn--active {
+	background: var(--dbx-accent-soft);
+	border-color: transparent;
+	color: var(--dbx-accent);
+}
+.dbx-icon-btn.dbx-icon-btn--active:hover:not(:disabled) {
+	background: var(--dbx-accent-soft);
+	color: var(--dbx-accent);
+}
+.dbx-icon-btn.dbx-icon-btn--danger:hover:not(:disabled) {
+	background: var(--dbx-danger-soft);
+	color: var(--dbx-danger);
+}
+
+/* ------------------------------------------------------------------
+ * 表单：Field 标签 12px 常规体、输入 h-8、聚焦描边用 accent
+ * ------------------------------------------------------------------ */
 .dbx-form-input {
 	width: 100%;
-	padding: 6px 10px;
-	font-size: 13px;
-	border: 1px solid var(--dbx-line);
-	border-radius: 6px;
-	background: var(--background);
-	color: var(--foreground);
-	font-family: inherit;
+	min-height: 32px;
+	padding: 5px 10px;
+	font-size: 14px;
+	line-height: 1.35;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-panel);
+	color: var(--dbx-surface-foreground);
+	font-family: var(--dbx-font-sans);
 	outline: none;
+	transition: border-color 0.12s, box-shadow 0.12s;
 }
+.dbx-form-input::placeholder { color: var(--dbx-faint); }
 .dbx-form-input:focus {
-	border-color: var(--foreground);
-	box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 12%, transparent);
+	border-color: var(--dbx-accent);
+	box-shadow: 0 0 0 2px var(--dbx-accent-soft);
 }
-select.dbx-form-input { cursor: pointer; }
+select.dbx-form-input { cursor: pointer; padding-right: 8px; }
 textarea.dbx-form-input {
 	resize: vertical;
-	min-height: 60px;
-	font-family: "SF Mono", Menlo, Consolas, monospace;
+	min-height: 64px;
+	padding: 8px 10px;
+	font-family: var(--dbx-font-mono);
+	font-size: 13px;
 }
 
 .dbx-form-label {
 	display: block;
-	margin-bottom: 4px;
-	font-size: 11px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: var(--muted-foreground);
+	margin-bottom: 6px;
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--dbx-muted);
 }
-.dbx-form-row { margin-bottom: 10px; }
+.dbx-form-row { margin-bottom: 12px; }
 
-/* 空状态 */
+/* ------------------------------------------------------------------
+ * 状态点与徽标
+ * ------------------------------------------------------------------ */
+.dbx-status-dot {
+	display: inline-block;
+	flex-shrink: 0;
+	width: 6px;
+	height: 6px;
+	border-radius: 999px;
+	background: var(--dbx-muted);
+}
+.dbx-status-dot--ok { background: var(--dbx-success); }
+.dbx-status-dot--warn { background: var(--dbx-warning); }
+.dbx-status-dot--danger { background: var(--dbx-danger); }
+
+/* 徽标/胶囊（设计稿 rounded-full + px-2 py-px text-[12px]） */
+.dbx-chip {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	gap: 4px;
+	padding: 1px 8px;
+	border: 1px solid var(--dbx-border);
+	border-radius: 999px;
+	font-size: 12px;
+	line-height: 1.5;
+	white-space: nowrap;
+	color: var(--dbx-muted);
+	background: transparent;
+}
+.dbx-chip--ok {
+	border-color: color-mix(in srgb, var(--dbx-success) 40%, transparent);
+	background: var(--dbx-success-soft);
+	color: var(--dbx-success);
+}
+.dbx-chip--danger {
+	border-color: color-mix(in srgb, var(--dbx-danger) 40%, transparent);
+	background: var(--dbx-danger-soft);
+	color: var(--dbx-danger);
+}
+.dbx-chip--warn {
+	border-color: color-mix(in srgb, var(--dbx-warning) 40%, transparent);
+	background: var(--dbx-warning-soft);
+	color: var(--dbx-warning);
+}
+.dbx-chip--accent {
+	border-color: color-mix(in srgb, var(--dbx-accent) 40%, transparent);
+	background: var(--dbx-accent-soft);
+	color: var(--dbx-accent);
+}
+
+/* ------------------------------------------------------------------
+ * 浮层：通用菜单（设计稿 shadow-popover）
+ * ------------------------------------------------------------------ */
+.dbx-menu {
+	min-width: 176px;
+	padding: 4px;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-surface);
+	box-shadow: var(--dbx-shadow-popover);
+}
+.dbx-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	height: 24px;
+	padding: 0 8px;
+	border: none;
+	border-radius: var(--dbx-radius-chip);
+	background: transparent;
+	color: var(--dbx-surface-foreground);
+	font-size: 13px;
+	line-height: 16px;
+	text-align: left;
+	white-space: nowrap;
+	cursor: pointer;
+}
+.dbx-menu-item:hover { background: var(--dbx-accent-soft); color: var(--dbx-accent); }
+.dbx-menu-item:disabled { color: var(--dbx-faint); cursor: not-allowed; }
+.dbx-menu-item:disabled:hover { background: transparent; color: var(--dbx-faint); }
+.dbx-menu-item--open { background: var(--dbx-accent-soft); color: var(--dbx-accent); }
+.dbx-menu-item--danger { color: var(--dbx-danger); }
+.dbx-menu-item--danger:hover { background: var(--dbx-danger-soft); color: var(--dbx-danger); }
+.dbx-menu-sep {
+	height: 1px;
+	margin: 4px 0;
+	background: color-mix(in srgb, var(--dbx-border) 70%, transparent);
+}
+
+/* ------------------------------------------------------------------
+ * 空状态 / 分隔 / 滚动条
+ * ------------------------------------------------------------------ */
 .dbx-empty {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	color: var(--muted-foreground);
-	font-size: 13px;
+	color: var(--dbx-muted);
+	font-size: 12px;
 	padding: 16px;
 }
 
-/* 细滚动条（纵向/横向），不抢眼 */
-.dbx-scroll { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--foreground) 22%, transparent) transparent; }
+.dbx-scroll { scrollbar-width: thin; scrollbar-color: var(--dbx-neutral-muted) transparent; }
 .dbx-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
 .dbx-scroll::-webkit-scrollbar-thumb {
-	background: color-mix(in srgb, var(--foreground) 18%, transparent);
+	background: var(--dbx-neutral-muted);
 	border-radius: 8px;
 	border: 2px solid transparent;
 	background-clip: content-box;
 }
-.dbx-scroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 30%, transparent); background-clip: content-box; }
+.dbx-scroll::-webkit-scrollbar-thumb:hover {
+	background: color-mix(in srgb, var(--dbx-muted) 60%, transparent);
+	background-clip: content-box;
+}
 .dbx-scroll::-webkit-scrollbar-track { background: transparent; }
 
 /* 标签栏单行横向滚动：滚动条完全不占布局高度（overlay） */
@@ -167,48 +469,7 @@ textarea.dbx-form-input {
 .dbx-tab-wrap::-webkit-scrollbar { height: 0; width: 0; }
 
 /* ============================================================
- * 紧凑图标按钮（v0.0.102）：用于底栏等窄空间
- * 24px 方形，纯图标，支持 primary / active 变体
- * ============================================================ */
-.dbx-icon-btn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	width: 24px;
-	height: 24px;
-	padding: 0;
-	border: 1px solid transparent;
-	border-radius: 5px;
-	background: transparent;
-	color: var(--muted-foreground);
-	cursor: pointer;
-	transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.06s;
-}
-.dbx-icon-btn:hover:not(:disabled) {
-	background: var(--dbx-hover);
-	color: var(--foreground);
-}
-.dbx-icon-btn:active:not(:disabled) {
-	transform: scale(0.94);
-}
-.dbx-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.dbx-icon-btn.dbx-icon-btn--primary {
-	background: var(--dbx-primary);
-	color: var(--dbx-primary-fg);
-}
-.dbx-icon-btn.dbx-icon-btn--primary:hover:not(:disabled) {
-	opacity: 0.86;
-	color: var(--dbx-primary-fg);
-}
-.dbx-icon-btn.dbx-icon-btn--active {
-	background: var(--dbx-hover);
-	color: var(--foreground);
-	border-color: var(--dbx-line);
-}
-
-/* ============================================================
- * 连接树底部多选操作条（v0.0.102）
+ * 连接树底部多选操作条
  * - 纯图标按钮
  * - 看板/大屏 合并为一个 sparkles 下拉
  * - 响应式：树窄时隐藏文字，只留数字
@@ -216,17 +477,18 @@ textarea.dbx-form-input {
 .dbx-tree-bottom-bar {
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 10px;
-	border-top: 1px solid var(--dbx-line);
+	gap: 8px;
+	padding: 6px 12px;
+	background: var(--dbx-panel);
+	border-top: 1px solid var(--dbx-border);
 	min-height: 36px;
 }
 .dbx-tree-bottom-bar__count {
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
-	color: var(--muted-foreground);
-	font-size: 11px;
+	color: var(--dbx-muted);
+	font-size: 12px;
 	flex-shrink: 0;
 }
 .dbx-tree-bottom-bar__actions {
@@ -242,35 +504,34 @@ textarea.dbx-form-input {
 	bottom: calc(100% + 4px);
 	right: 0;
 	z-index: 50;
-	min-width: 140px;
+	min-width: 132px;
 	padding: 4px;
-	border: 1px solid var(--dbx-line);
-	border-radius: 6px;
-	background: var(--background);
-	box-shadow: 0 6px 20px -6px color-mix(in srgb, black 30%, transparent);
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-panel);
+	box-shadow: var(--dbx-shadow-popover);
 }
 .dbx-tree-bottom-bar__viz-item {
 	display: flex;
 	align-items: center;
-	gap: 7px;
+	gap: 8px;
 	width: 100%;
 	padding: 6px 8px;
 	border: none;
-	border-radius: 4px;
+	border-radius: var(--dbx-radius-control);
 	background: transparent;
-	color: var(--foreground);
+	color: var(--dbx-surface-foreground);
 	font-size: 12px;
 	cursor: pointer;
 	text-align: left;
 	white-space: nowrap;
 }
 .dbx-tree-bottom-bar__viz-item:hover {
-	background: var(--dbx-hover);
+	background: var(--dbx-neutral-muted);
 }
 
 /* ============================================================
  * 响应式：树窄时隐藏 "已选 N 项" 的文字
- * 触发条件：树容器 <= 220px
  * ============================================================ */
 @media (max-width: 220px) {
 	.dbx-tree-bottom-bar__count-text { display: none; }
@@ -278,5 +539,5 @@ textarea.dbx-form-input {
 }
 @media (max-width: 180px) {
 	.dbx-tree-bottom-bar__viz-menu { min-width: 120px; }
-	.dbx-tree-bottom-bar__viz-item { font-size: 11px; padding: 5px 6px; }
+	.dbx-tree-bottom-bar__viz-item { font-size: 12px; padding: 5px 6px; }
 }

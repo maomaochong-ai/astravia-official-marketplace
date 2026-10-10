@@ -94,8 +94,8 @@ export function ConnectionTreeToolbar({
 
 	return (
 		<div
-			className="flex h-9 shrink-0 items-center gap-1 px-2 text-[11px] font-medium text-muted-foreground"
-			style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-line-soft)" }}
+			className="flex h-9 shrink-0 items-center gap-1 px-2 text-[12px] font-medium text-muted"
+			style={{ backgroundColor: "var(--dbx-surface)", borderBottom: "1px solid var(--dbx-border)" }}
 		>
 			{/* 左：导入 / 导出（对齐 dbx 桌面壳，替换原数据库图标）+ 标题 */}
 			<TooltipButton onClick={() => void handleExport()} title="导出连接（不含密码）">
@@ -107,7 +107,7 @@ export function ConnectionTreeToolbar({
 			<span className="flex min-w-0 flex-1 items-center gap-1 truncate">
 				<span className="truncate">连接</span>
 				{connectionCount > 0 && (
-					<span className="shrink-0 text-[10px] text-muted-foreground/70">{connectionCount}</span>
+					<span className="shrink-0 text-[12px] text-faint">{connectionCount}</span>
 				)}
 			</span>
 

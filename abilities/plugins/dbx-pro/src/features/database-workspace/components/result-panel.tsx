@@ -97,7 +97,7 @@ export function ResultPanel(): JSX.Element {
 									<button
 										type="button"
 										onClick={() => setAiMenuOpen((v) => !v)}
-										className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-violet-600 hover:bg-violet-500/10"
+										className="flex items-center gap-1 rounded-control px-2 py-0.5 text-[12px] text-ai hover:bg-ai-soft"
 										title="AI 分析当前 SQL 结果集"
 									>
 										<span className="icon-[lucide--sparkles] h-3 w-3" />
@@ -109,14 +109,14 @@ export function ResultPanel(): JSX.Element {
 											{/* 点击外部关闭 */}
 											<div className="fixed inset-0 z-40" onClick={() => setAiMenuOpen(false)} />
 											<div
-												className="absolute left-3 top-full z-50 mt-1 w-48 rounded-md border border-border bg-popover p-1 shadow-lg"
+												className="absolute left-3 top-full z-50 mt-1 w-48 rounded-control border border-border bg-popover p-1 shadow-[var(--dbx-shadow-popover)]"
 											>
 											<button
 												type="button"
 												onClick={openAnalysisDialog}
-												className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] hover:bg-violet-500/10"
+												className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
 											>
-												<span className="icon-[lucide--sparkles] h-3.5 w-3.5 text-violet-500" />
+												<span className="icon-[lucide--sparkles] h-3.5 w-3.5 text-ai" />
 												<span className="flex-1">通用分析</span>
 												<span className="text-[9px] text-muted-foreground">{fullRowCount.toLocaleString()} 行</span>
 											</button>
@@ -124,18 +124,18 @@ export function ResultPanel(): JSX.Element {
 											<button
 												type="button"
 												onClick={() => openVizDialog("dashboard")}
-												className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] hover:bg-violet-500/10"
+												className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
 											>
-												<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5 text-violet-500" />
+												<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5 text-ai" />
 												<span className="flex-1">生成看板</span>
 												<span className="text-[9px] text-muted-foreground">浅色 QuickBI</span>
 											</button>
 											<button
 												type="button"
 												onClick={() => openVizDialog("screen")}
-												className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] hover:bg-cyan-500/10"
+												className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-link-soft"
 											>
-												<span className="icon-[lucide--monitor] h-3.5 w-3.5 text-cyan-500" />
+												<span className="icon-[lucide--monitor] h-3.5 w-3.5 text-link" />
 												<span className="flex-1">生成大屏</span>
 												<span className="text-[9px] text-muted-foreground">深色 DataV</span>
 											</button>

@@ -80,94 +80,80 @@ export function WorkbenchTopBar({
 		};
 	}, []);
 
-	return (
-		<header className="dbx-chrome flex h-9 shrink-0 items-center gap-2 px-3">
-			{/* 左：新建连接 / 新建查询 / AI 协助 */}
-			<div className="flex items-center gap-1">
-				<button
-					type="button"
-					onClick={onOpenConnectionEditor}
-					title="新建连接"
-					className="dbx-iconbtn"
-				>
-					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
-				</button>
-				<button
-					type="button"
-					onClick={onNewQuery}
-					title="新建查询"
-					className="dbx-iconbtn"
-				>
-					<span className="icon-[lucide--file-plus-2] h-3.5 w-3.5" />
-				</button>
-				<button
-					type="button"
-					onClick={onOpenAiAssistant}
-					title="让 AI 协助连接数据库"
-					className="dbx-iconbtn"
-				>
-					<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
-				</button>
-			</div>
+	// 引擎健康文案与指示点：对齐设计稿「状态点 + 12px 说明文字」
+	const ENGINE_STATUS: Record<typeof engineState, { text: string; dot: string }> = {
+		ready: { text: "引擎就绪", dot: "dbx-status-dot--ok" },
+		starting: { text: "引擎启动中…", dot: "dbx-status-dot--warn animate-pulse" },
+		error: { text: "引擎异常", dot: "dbx-status-dot--danger" },
+		unknown: { text: "检测引擎中…", dot: "" },
+	};
+	const engine = ENGINE_STATUS[engineState];
 
-			<span className="flex-1" />
+	return (
+		<header className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-surface-raised px-2">
+			{/* 左：新建连接 / 新建查询 / AI 协助（对齐设计稿的标签化按钮） */}
+			<button type="button" onClick={onOpenConnectionEditor} className="dbx-btn" title="新建连接">
+				<span className="icon-[lucide--plus] h-3.5 w-3.5" />
+				新建连接
+			</button>
+			<button type="button" onClick={onNewQuery} className="dbx-btn ghost" title="新建查询">
+				<span className="icon-[lucide--square-pen] h-3.5 w-3.5" />
+				新建查询
+			</button>
+			<button type="button" onClick={onOpenAiAssistant} className="dbx-btn ai" title="让 AI 协助连接数据库">
+				<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
+				AI 协助
+			</button>
+
+			<span className="mx-2 h-4 w-px shrink-0 bg-border" />
 
 			{/* 引擎健康指示 —— 插件重载/引擎启动的第一手反馈；版本号在「设置 → 关于」查看 */}
-			<div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] text-muted-foreground">
-				<span
-					className={`inline-block h-1.5 w-1.5 rounded-full ${
-						engineState === "ready" ? "bg-emerald-500" :
-						engineState === "starting" ? "bg-amber-500 animate-pulse" :
-						engineState === "error" ? "bg-red-500" :
-						"bg-slate-400"
-					}`}
-					title={
-						engineState === "ready" ? "引擎就绪" :
-						engineState === "starting" ? "引擎启动中…" :
-						engineState === "error" ? "引擎异常" :
-						"检测引擎中…"
-					}
-				/>
-				<span>引擎</span>
-			</div>
+			<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+				<span className={"dbx-status-dot " + engine.dot} title={engine.text} />
+				<span className="text-[12px] whitespace-nowrap text-muted">{engine.text}</span>
+			</span>
 
-			{/* 右：后台任务 / 查询历史 / 可视化产物 / 设置 / 全屏 */}
-			<div className="flex shrink-0 items-center gap-1">
+			{/* 右：后台任务 / 查询历史 / BI 数据资产 / 设置 / 全屏。
+			 * 设计稿的「工作台」导航项在本插件里没有对应目标（工作台就是本界面），故不再放一个空按钮。 */}
+			<div className="ml-auto flex shrink-0 items-center gap-0.5">
 				<ExportTasksPopover />
 				<button
 					type="button"
 					onClick={onToggleHistory}
 					title="查询历史（在右栏查看）"
 					aria-expanded={historyOpen}
-					className={`dbx-iconbtn ${historyOpen ? "is-active" : ""}`}
+					className={"dbx-nav-item" + (historyOpen ? " is-active" : "")}
 				>
 					<span className="icon-[lucide--history] h-3.5 w-3.5" />
-					{history.length > 0 && <span className="ml-0.5 text-[10px]">{history.length}</span>}
+					查询历史
+					{history.length > 0 && <span className="dbx-count-badge">{history.length}</span>}
 				</button>
 				<button
 					type="button"
 					onClick={onOpenVisualizationGallery}
 					title="BI 数据资产（看板/大屏）"
-					className="dbx-iconbtn"
+					className="dbx-nav-item"
 				>
-					<span className="icon-[lucide--chart-bar] h-3.5 w-3.5" />
-					{visualizationCount > 0 && <span className="ml-0.5 text-[10px]">{visualizationCount}</span>}
+					<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5" />
+					BI 数据资产
+					{visualizationCount > 0 && <span className="dbx-count-badge">{visualizationCount}</span>}
 				</button>
 				<button
 					type="button"
 					onClick={() => onOpenSettings()}
 					title="工作台设置"
-					className="dbx-iconbtn"
+					className="dbx-nav-item"
 				>
-					<span className="icon-[lucide--settings] h-3.5 w-3.5" />
+					<span className="icon-[lucide--settings-2] h-3.5 w-3.5" />
+					设置
 				</button>
 				<button
 					type="button"
 					onClick={onToggleFullscreen}
 					title={fullscreen ? "退出全屏" : "全屏"}
-					className="dbx-iconbtn"
+					className="dbx-icon-btn ml-0.5"
 				>
-					<span className={`h-3.5 w-3.5 ${fullscreen ? "icon-[lucide--minimize-2]" : "icon-[lucide--maximize-2]"}`} />
+					<span className={"h-3.5 w-3.5 " + (fullscreen ? "icon-[lucide--minimize-2]" : "icon-[lucide--maximize-2]")} />
 				</button>
 			</div>
 		</header>

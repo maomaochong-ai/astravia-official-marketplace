@@ -59,21 +59,19 @@ export function ResultTable({
 }: ResultTableProps): JSX.Element {
 	return (
 		<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-			<table className="border-separate border-spacing-0 text-[12px] w-full" style={{ minWidth: "100%" }}>
+			<table className="w-full border-separate border-spacing-0 font-sans text-[12px]" style={{ minWidth: "100%" }}>
 				<thead>
 					<tr>
 						{showRowNumbers && (
-							<th className="sticky left-0 z-20 w-10 min-w-10 border-b border-r border-border px-1 py-2 text-center text-[10px] font-semibold text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface-2)" }}>
-								#
-							</th>
+							<th className="sticky left-0 z-20 w-12 min-w-12 border-b border-border bg-surface-sunken px-2 py-1.5 text-right font-normal text-[12px] text-faint" />
 						)}
 						{columns.map((c, i) => (
 							<th
 								key={c}
 								data-col={c}
 								onContextMenu={(e) => onOpenColumnMenu(e, c)}
-								className="relative border-b border-r border-border px-3 py-2 text-left font-semibold text-[10.5px] text-muted-foreground"
-								style={{ backgroundColor: "var(--dbx-surface-2)", width: defaultWidth(c), minWidth: defaultWidth(c) }}
+								className="relative border-b border-border px-3 py-1.5 text-left font-normal text-[12px] text-surface-foreground"
+								style={{ backgroundColor: "var(--dbx-panel-sunken)", width: defaultWidth(c), minWidth: defaultWidth(c) }}
 							>
 								<div className="flex items-center gap-1">
 									<span
@@ -86,7 +84,7 @@ export function ResultTable({
 											<span className={`h-2.5 w-2.5 shrink-0 text-foreground ${sort.dir === "asc" ? "icon-[lucide--arrow-up]" : "icon-[lucide--arrow-down]"}`} />
 										) : null}
 									</span>
-									<span className="shrink-0 text-[9px] text-muted-foreground/70">{i + 1}</span>
+									<span className="shrink-0 text-[10px] text-faint">{i + 1}</span>
 								</div>
 								<span
 									onMouseDown={(e) => onStartResize(e, c)}
@@ -101,7 +99,7 @@ export function ResultTable({
 						<tr>
 							<td
 								colSpan={columns.length + (showRowNumbers ? 1 : 0)}
-								className="py-10 text-center text-[12px] text-muted-foreground"
+								className="py-10 text-center text-[12px] text-faint"
 							>
 								该页无数据
 							</td>
@@ -109,10 +107,11 @@ export function ResultTable({
 					) : (
 						rows.map((row, rowIdx) => {
 							const globalIdx = safePage * pageSize + rowIdx + 1;
+							const rowBg = stripedRows && rowIdx % 2 === 1 ? "bg-surface-raised" : "bg-background";
 							return (
-								<tr key={`${safePage}-${rowIdx}`} className={`hover:bg-[var(--dbx-hover)] ${stripedRows && rowIdx % 2 === 1 ? "bg-[var(--dbx-surface)]" : ""}`}>
+								<tr key={`${safePage}-${rowIdx}`} className={`group h-[30px] ${rowBg} hover:bg-[var(--dbx-hover)]`}>
 									{showRowNumbers && (
-										<td className="sticky left-0 z-10 w-10 min-w-10 border-r border-border px-1 py-1.5 text-center font-mono text-[10px] text-muted-foreground" style={{ backgroundColor: "var(--dbx-surface)" }}>
+										<td className={`sticky left-0 z-10 w-12 min-w-12 border-b border-border px-2 py-1.5 text-right font-mono text-[12px] tabular-nums text-faint select-none group-hover:bg-[var(--dbx-hover)] ${rowBg}`}>
 											{globalIdx}
 										</td>
 									)}
@@ -121,7 +120,7 @@ export function ResultTable({
 										return (
 											<td
 												key={c}
-												className={`max-w-0 truncate border-b border-r border-border/60 px-3 py-1.5 text-foreground/80 ${isSelected ? "bg-[var(--dbx-hover)]" : ""}`}
+												className={`max-w-0 truncate border-b border-border px-3 py-1.5 font-mono text-[13px] text-surface-foreground whitespace-nowrap ${isSelected ? "bg-link-soft" : ""}`}
 												style={{ maxWidth: defaultWidth(c) }}
 												title={cellText(row[c])}
 												onClick={() => onSelectCell({ row: rowIdx, col: c })}

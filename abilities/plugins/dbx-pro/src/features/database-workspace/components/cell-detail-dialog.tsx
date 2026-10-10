@@ -69,7 +69,7 @@ export function CellDetailDialog({ detail, onClose }: { detail: CellDetail; onCl
 						title="复制"
 						className="flex h-6 w-6 items-center justify-center rounded text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
 					>
-						<span className={`h-3.5 w-3.5 ${copied ? "icon-[lucide--check] text-emerald-400" : "icon-[lucide--copy]"}`} />
+						<span className={`h-3.5 w-3.5 ${copied ? "icon-[lucide--check] text-success" : "icon-[lucide--copy]"}`} />
 					</button>
 					<button
 						type="button"

@@ -377,7 +377,7 @@ export function SqlEditor(): JSX.Element {
 					onClick={handleExecuteInNew}
 					disabled={running || !hasConn}
 					title={selectionLength > 0 ? "在新结果标签页执行选中片段" : "在新结果标签页执行"}
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 disabled:opacity-30 dark:text-violet-300 dark:hover:text-violet-200"
+					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-ai hover:bg-ai-soft disabled:opacity-30"
 				>
 					<span className="icon-[lucide--square-play] h-3 w-3" />
 					新标签
@@ -391,7 +391,7 @@ export function SqlEditor(): JSX.Element {
 					onClick={handleExplain}
 					disabled={running || !hasConn}
 					title="执行 EXPLAIN 计划"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-teal-600 hover:bg-teal-500/10 hover:text-teal-700 disabled:opacity-30 dark:text-teal-300 dark:hover:text-teal-200"
+					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-link hover:bg-link-soft disabled:opacity-30"
 				>
 					<span className="icon-[lucide--git-branch] h-3 w-3" />
 					计划
@@ -401,7 +401,7 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={handleFoldAll}
 					title="折叠全部"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
+					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-warning hover:bg-warning/10"
 				>
 					<span className="icon-[lucide--fold-vertical] h-3 w-3" />
 				</button>
@@ -410,7 +410,7 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={handleUnfoldAll}
 					title="展开全部"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-orange-600 hover:bg-orange-500/10 hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
+					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-warning hover:bg-warning/10"
 				>
 					<span className="icon-[lucide--unfold-vertical] h-3 w-3" />
 				</button>
@@ -419,7 +419,7 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={toggleWordWrap}
 					title={wordWrap ? "关闭自动换行" : "开启自动换行"}
-					className={`flex h-6 items-center gap-1 rounded px-1.5 text-[11px] ${wordWrap ? "text-green-600 dark:text-green-300" : "text-muted-foreground"} hover:bg-green-500/10 hover:text-green-700 dark:hover:text-green-200`}
+					className={`flex h-6 items-center gap-1 rounded px-1.5 text-[11px] ${wordWrap ? "text-success" : "text-muted-foreground"} hover:bg-success/10`}
 				>
 					<span className="icon-[lucide--wrap-text] h-3 w-3" />
 				</button>
@@ -431,7 +431,7 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={tidy}
 					title="格式化 SQL"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-300 dark:hover:text-amber-200"
+					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-warning hover:bg-warning/10"
 				>
 					<span className="icon-[lucide--align-left] h-3 w-3" />
 					整理
@@ -451,7 +451,7 @@ export function SqlEditor(): JSX.Element {
 					type="button"
 					onClick={handleSave}
 					title="保存 SQL 到文件"
-					className="flex h-6 items-center gap-1 rounded px-1.5 text-[11px] text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-200"
+					className="flex h-6 items-center gap-1 rounded-control px-1.5 text-[11px] text-link hover:bg-link-soft"
 				>
 					<span className="icon-[lucide--save] h-3 w-3" />
 					保存
@@ -459,7 +459,7 @@ export function SqlEditor(): JSX.Element {
 
 				<div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
 					{selectionLength > 0 && (
-						<span className="rounded bg-emerald-500/10 px-1 text-emerald-600 dark:text-emerald-300">
+						<span className="rounded-control bg-success/15 px-1 text-success">
 							已选中 {selectionLength} 字符 · 执行将只运行选区
 						</span>
 					)}

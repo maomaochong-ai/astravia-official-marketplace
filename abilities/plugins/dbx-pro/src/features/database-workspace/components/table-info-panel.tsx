@@ -122,7 +122,7 @@ export function TableInfoPanel({ selection, onClose }: Props): JSX.Element {
 		<div className="dbx-table-info-drawer">
 			{/* 头部：图标与文字垂直居中对齐 */}
 			<div className="dbx-table-info-header">
-				<span className="icon-[lucide--table-2] h-4 w-4 shrink-0 text-emerald-500/80" />
+				<span className="icon-[lucide--table-2] h-4 w-4 shrink-0 text-success/80" />
 				<div className="min-w-0 flex-1">
 					<h3 className="dbx-table-info-title">{qualifiedName}</h3>
 					<p className="text-[10px] text-muted-foreground/70">连接: {selection.connectionName}</p>

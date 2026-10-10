@@ -32,12 +32,12 @@ export function ConnectionList({
 	return (
 		<div>
 			<div className="mb-3 flex items-center justify-between">
-				<div className="text-[11px] text-muted-foreground">共 {connections.length} 个连接</div>
+				<div className="text-[12px] text-muted">共 {connections.length} 个连接</div>
 				<button className="dbx-btn primary" onClick={onCreate}>+ 新建</button>
 			</div>
 
 			{connections.length === 0 && (
-				<div className="dbx-empty" style={{ padding: 24, borderRadius: 8 }}>
+				<div className="dbx-empty">
 					暂无连接 · 点右上「新建」
 				</div>
 			)}
@@ -46,24 +46,24 @@ export function ConnectionList({
 				{connections.map((c) => (
 					<div
 						key={c.id}
-						className="group flex items-center gap-2.5 rounded-lg border border-border/50 bg-card/30 px-2.5 py-2 transition hover:border-border/80 hover:bg-card/60"
+						className="group flex items-center gap-2.5 rounded-control border border-border bg-surface-raised px-2.5 py-2 transition hover:border-border-strong hover:bg-neutral-muted"
 					>
 						<DatabaseTypeIcon dbType={c.db_type} size="small" />
 						<div className="min-w-0 flex-1">
 							<div className="flex items-center gap-1.5">
 								{c.is_production && (
-									<span className="shrink-0 rounded bg-amber-500/10 px-1 py-px text-[9px] font-semibold text-amber-500">
+									<span className="shrink-0 rounded-chip bg-warning/10 px-1 py-px text-[10px] font-semibold text-warning">
 										PROD
 									</span>
 								)}
 								{c.read_only && (
-									<span className="shrink-0 rounded bg-blue-500/10 px-1 py-px text-[9px] font-semibold text-blue-500">
+									<span className="shrink-0 rounded-chip bg-link-soft px-1 py-px text-[10px] font-semibold text-link">
 										RO
 									</span>
 								)}
-								<span className="truncate text-[12px] font-medium text-foreground">{c.name}</span>
+								<span className="truncate text-[12px] font-medium text-surface-foreground">{c.name}</span>
 							</div>
-							<div className="mt-0.5 truncate text-[10.5px] text-muted-foreground">
+							<div className="mt-0.5 truncate text-[11px] text-muted">
 								{c.host}{c.port ? `:${c.port}` : ""}
 								{c.database ? ` · ${c.database}` : ""}
 								{c.schemas && c.schemas.length > 0 ? ` · ${c.schemas.join(",")}` : ""}
@@ -72,14 +72,14 @@ export function ConnectionList({
 						<div className="flex shrink-0 items-center gap-0.5">
 							<button
 								type="button"
-								className="rounded px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-[var(--dbx-hover)] hover:text-foreground"
+								className="rounded-control px-2 py-1 text-[11px] text-muted transition hover:bg-[var(--dbx-hover)] hover:text-surface-foreground"
 								onClick={() => onEdit(c)}
 							>
 								编辑
 							</button>
 							<button
 								type="button"
-								className="rounded px-2 py-1 text-[11px] text-muted-foreground transition hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
+								className="rounded-control px-2 py-1 text-[11px] text-muted transition hover:bg-[var(--dbx-hover)] hover:text-surface-foreground disabled:opacity-40"
 								onClick={() => onTest(c)}
 								disabled={testing}
 							>
@@ -87,8 +87,7 @@ export function ConnectionList({
 							</button>
 							<button
 								type="button"
-								className="rounded px-2 py-1 text-[11px] transition hover:bg-red-500/10 hover:text-red-500"
-								style={{ color: "var(--destructive)" }}
+								className="rounded-control px-2 py-1 text-[11px] text-danger transition hover:bg-danger/10"
 								onClick={() => onDelete(c)}
 							>
 								删除
@@ -99,7 +98,7 @@ export function ConnectionList({
 			</div>
 
 			{testResult && (
-				<div className="mt-3 rounded-lg bg-[var(--dbx-surface)] px-3 py-2 text-[11px] text-foreground/80">
+				<div className="mt-3 rounded-control bg-surface-raised px-3 py-2 text-[11px] text-surface-foreground">
 					{testResult}
 				</div>
 			)}

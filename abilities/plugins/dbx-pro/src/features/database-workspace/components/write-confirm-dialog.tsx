@@ -33,38 +33,38 @@ export function WriteConfirmDialog({
 	return (
 		<div className="dbx-modal-backdrop" onClick={onCancel}>
 			<div
-				className="flex w-[560px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-lg border border-red-500/40 bg-popover shadow-2xl shadow-black/50"
+				className="flex w-[560px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-sheet border border-danger/40 bg-surface shadow-[var(--dbx-shadow-sheet)]"
 				onClick={(e) => e.stopPropagation()}
 				role="alertdialog"
 				aria-modal="true"
 			>
 				<div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
-					<span className="icon-[lucide--shield-alert] h-4 w-4 text-amber-400" />
-					<h3 className="flex-1 text-[12.5px] font-semibold text-foreground">
+					<span className="icon-[lucide--shield-alert] h-4 w-4 text-warning" />
+					<h3 className="flex-1 text-[12px] font-semibold text-surface-foreground">
 						确认执行写操作
 					</h3>
-					<span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9.5px] font-medium text-amber-300">
+					<span className="rounded bg-warning-soft px-1.5 py-0.5 text-[9.5px] font-medium text-warning">
 						{pending.connectionName}
 					</span>
 				</div>
 
 				{isProduction && (
-					<div className="border-b border-red-500/40 bg-red-500/15 px-3 py-2">
-						<p className="flex items-center gap-1.5 text-[11px] font-semibold leading-relaxed text-red-300">
+					<div className="border-b border-danger/40 bg-danger-soft px-3 py-2">
+						<p className="flex items-center gap-1.5 text-[11px] font-semibold leading-relaxed text-danger">
 							<span className="icon-[lucide--alert-octagon] h-3.5 w-3.5" />
 							生产环境：该写操作会直接修改生产数据库，请格外谨慎。
 						</p>
 					</div>
 				)}
 
-				<div className="border-b border-border bg-red-500/10 px-3 py-2">
-					<p className="text-[11px] leading-relaxed text-red-300/90">
+				<div className="border-b border-border bg-danger-soft px-3 py-2">
+					<p className="text-[11px] leading-relaxed text-danger">
 						该语句将修改数据库（DDL/DML），请确认 SQL 无误。此操作会直接作用于目标库，执行后不可由本工具撤销。
 					</p>
 				</div>
 
 				<div className="max-h-[240px] overflow-auto bg-[var(--dbx-surface)] p-3">
-					<pre className="whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed text-foreground/80">
+					<pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-muted">
 						{pending.sql}
 					</pre>
 				</div>
@@ -73,7 +73,7 @@ export function WriteConfirmDialog({
 					<button
 						type="button"
 						onClick={onCancel}
-						className="flex h-7 items-center rounded-md border border-border px-3 text-[11.5px] text-foreground/80 transition-colors hover:bg-accent"
+						className="flex h-7 items-center rounded-control border border-border px-3 text-[12px] text-muted transition-colors hover:bg-neutral-muted hover:text-surface-foreground"
 					>
 						取消
 					</button>
@@ -81,7 +81,7 @@ export function WriteConfirmDialog({
 						type="button"
 						onClick={onConfirm}
 						autoFocus
-						className="flex h-7 items-center gap-1.5 rounded-md bg-red-600 px-3 text-[11.5px] font-medium text-white transition-colors hover:bg-red-500"
+						className="flex h-7 items-center gap-1.5 rounded-control bg-danger px-3 text-[12px] font-medium text-primary-fg transition-colors hover:bg-danger/90"
 					>
 						<span className="icon-[lucide--play] h-3 w-3" />
 						执行

@@ -132,7 +132,7 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 		: connectionNodes;
 
 	return (
-		<div className="flex h-full flex-col bg-background">
+		<div className="flex h-full flex-col bg-surface-raised">
 			<ConnectionTreeToolbar
 				connectionCount={connectionNodes.length}
 				selectionMode={selectionMode}
@@ -144,23 +144,22 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 				onCollapsePanel={onCollapse}
 			/>
 			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}
-			<div className="shrink-0 px-2 py-1.5" style={{ borderBottom: "1px solid var(--dbx-line-soft)" }}>
+			<div className="shrink-0 border-b border-border px-2 py-1.5">
 				<div
-					className="flex items-center gap-1 rounded-md px-2 py-1"
-					style={{ backgroundColor: "var(--dbx-surface-2)" }}
+					className="flex items-center gap-1 rounded-control border border-border bg-surface px-2 py-1"
 				>
-					<span className="icon-[lucide--search] h-3 w-3 shrink-0 text-muted-foreground" />
+					<span className="icon-[lucide--search] size-3 shrink-0 text-muted" />
 					<input
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 						placeholder="过滤连接/表..."
-						className="min-w-0 flex-1 bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground/70"
+						className="min-w-0 flex-1 bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-faint"
 					/>
 					{query && (
 						<button
 							type="button"
 							onClick={() => setQuery("")}
-							className="shrink-0 text-muted-foreground hover:text-foreground"
+							className="shrink-0 text-muted hover:text-surface-foreground"
 						>
 							<span className="icon-[lucide--x] h-3 w-3" />
 						</button>
@@ -169,10 +168,10 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 			</div>
 
 			{/* 树内容 */}
-			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto px-1 py-1">
+			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto py-1">
 				{needle && (
 					<div className="mb-1">
-						<div className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-muted-foreground">
+						<div className="flex items-center gap-1 px-1 py-0.5 text-[11px] text-muted">
 							<span className="icon-[lucide--table-2] h-2.5 w-2.5" />
 							<span>
 								表命中 <span className="font-semibold">{hits.length}</span>
@@ -185,36 +184,36 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 								type="button"
 								onClick={() => openHit(hit)}
 								title={`${hit.connection} · ${hit.schema ? `${hit.schema}.` : ""}${hit.name}\n点击预览前 100 行`}
-								className="flex w-full items-center gap-1 rounded px-1.5 py-1 text-left text-[11px] hover:bg-muted"
+								className="flex w-full items-center gap-1 rounded-control px-1.5 py-1 text-left text-[12px] hover:bg-neutral-muted"
 							>
-								<span className={`h-3 w-3 shrink-0 ${hit.kind?.toUpperCase() === "VIEW" ? "icon-[lucide--eye]" : "icon-[lucide--table]"} text-muted-foreground`} />
+								<span className={`h-3 w-3 shrink-0 ${hit.kind?.toUpperCase() === "VIEW" ? "icon-[lucide--eye]" : "icon-[lucide--table]"} text-muted`} />
 								<span className="min-w-0 flex-1 truncate">
-									{hit.schema ? <span className="text-muted-foreground">{hit.schema}.</span> : null}
+									{hit.schema ? <span className="text-muted">{hit.schema}.</span> : null}
 									{hit.name}
 								</span>
-								<span className="shrink-0 text-[10px] text-muted-foreground/70">{hit.connection}</span>
+								<span className="shrink-0 text-[11px] text-faint">{hit.connection}</span>
 							</button>
 						))}
 						{!searching && hits.length === 0 && (
-							<p className="px-1 py-1 text-[10px] text-muted-foreground/70">没有匹配的表</p>
+							<p className="px-1 py-1 text-[11px] text-faint">没有匹配的表</p>
 						)}
 						{failedConnections.length > 0 && (
-							<p className="px-1 py-1 text-[10px] text-amber-600 dark:text-amber-400">
+							<p className="px-1 py-1 text-[10px] text-warning">
 								{failedConnections.join("、")} 读取失败，结果可能不完整
 							</p>
 						)}
-						<div className="my-1 border-t" style={{ borderColor: "var(--dbx-line-soft)" }} />
-						<div className="px-1 py-0.5 text-[10px] text-muted-foreground">连接</div>
+						<div className="my-1 border-t border-border" />
+						<div className="px-1 py-0.5 text-[11px] text-muted">连接</div>
 					</div>
 				)}
 				{!needle && visibleConnectionNodes.length === 0 ? (
 					<div className="flex flex-col items-center justify-center py-10 text-center">
-						<span className="icon-[lucide--database] h-8 w-8 text-muted-foreground/60" />
-						<p className="mt-3 text-[11px] text-muted-foreground">
+						<span className="icon-[lucide--database] size-8 text-faint" />
+						<p className="mt-3 text-[12px] text-muted">
 							{query ? "无匹配" : "暂无连接"}
 						</p>
 						{!query && (
-							<p className="mt-1 text-[10px] text-muted-foreground/70">
+							<p className="mt-1 text-[11px] text-faint">
 								点右侧面板添加
 							</p>
 						)}
@@ -235,7 +234,6 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 			{selectionMode ? (
 				<div
 					className="dbx-tree-bottom-bar"
-					style={{ backgroundColor: "var(--dbx-surface)" }}
 				>
 					{/* 左侧：已选 N 项（窄屏自动隐藏文字） */}
 					<span className="dbx-tree-bottom-bar__count">
@@ -312,10 +310,10 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 					</div>
 				</div>
 			) : (
-				<div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1 text-[10px] text-muted-foreground/70">
+				<div className="flex shrink-0 items-center gap-1 border-t border-border px-3 py-1 text-[11px] text-faint">
 					{state.activeConnectionName ? (
 						<>
-							<span className="icon-[lucide--activity] h-2.5 w-2.5 text-emerald-500" />
+							<span className="icon-[lucide--activity] h-2.5 w-2.5 text-success" />
 							<span className="truncate">当前: {state.activeConnectionName}</span>
 						</>
 					) : (

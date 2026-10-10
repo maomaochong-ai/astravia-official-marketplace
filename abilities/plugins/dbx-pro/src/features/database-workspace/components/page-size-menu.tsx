@@ -119,14 +119,14 @@ export function PageSizeMenu({
 			<button
 				type="button"
 				onClick={applyCustom}
-				className="flex-1 whitespace-nowrap rounded-md border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+				className="flex-1 whitespace-nowrap rounded-control border border-border px-2 py-1.5 text-[12px] text-muted-foreground hover:bg-neutral-muted hover:text-foreground"
 			>
 				本次查询
 			</button>
 			<button
 				type="button"
 				onClick={applyCustomAsDefault}
-				className="flex-1 whitespace-nowrap rounded-md bg-foreground px-2 py-1.5 text-[11px] text-background hover:opacity-90"
+				className="flex-1 whitespace-nowrap rounded-control bg-primary px-2 py-1.5 text-[12px] text-primary-fg hover:opacity-90"
 			>
 				设为默认
 			</button>
@@ -144,7 +144,7 @@ export function PageSizeMenu({
 				aria-haspopup="menu"
 				aria-expanded={open}
 				title="每页显示行数"
-				className="inline-flex h-5 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-md px-1.5 text-[10.5px] text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground disabled:opacity-40"
+				className="inline-flex h-6 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-control px-1.5 text-[12px] text-muted-foreground hover:bg-neutral-muted hover:text-foreground disabled:opacity-40"
 			>
 				<span className="tabular-nums">{pageSize}</span>
 				<span>行/页</span>
@@ -156,7 +156,7 @@ export function PageSizeMenu({
 					<div
 						ref={menuRef}
 						role="menu"
-						className="absolute z-[300] rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+						className="dbx-menu absolute z-[300]"
 						style={{ left: pos.left, top: pos.top, width: MENU_WIDTH }}
 					>
 						{options.map((n) => {
@@ -170,18 +170,18 @@ export function PageSizeMenu({
 										onApply(n);
 										setOpen(false);
 									}}
-									className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] text-foreground hover:bg-accent hover:text-accent-foreground"
+									className="dbx-menu-item"
 								>
 									<span
-										className={`h-3.5 w-3.5 shrink-0 ${active ? "icon-[lucide--check]" : ""}`}
+									className={"size-3.5 shrink-0 " + (active ? "icon-[lucide--check] text-accent" : "")}
 									/>
 									<span className="tabular-nums">{n.toLocaleString()}</span>
-									<span className="text-muted-foreground">行/页</span>
+									<span className="text-faint">行/页</span>
 								</button>
 							);
 						})}
 
-						<div className="mx-1 my-1 h-px bg-border" />
+						<div className="dbx-menu-sep" />
 						<div className="px-2.5 pt-1 text-[11px] font-medium text-foreground">自定义每页行数</div>
 						<div className="px-2.5 pb-1.5 pt-0.5 text-[10px] text-muted-foreground tabular-nums">
 							当前 {pageSize.toLocaleString()} · 默认 {defaultPageSize.toLocaleString()}（≤ {MAX_RESULT_PAGE_SIZE.toLocaleString()}）
@@ -209,13 +209,13 @@ export function PageSizeMenu({
 								type="button"
 								onClick={applyCustom}
 								title="应用于本次查询"
-								className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-border text-foreground hover:bg-accent"
+								className="flex h-6 w-6 shrink-0 items-center justify-center rounded-control border border-border text-foreground hover:bg-neutral-muted"
 							>
 								<span className="icon-[lucide--check] h-3.5 w-3.5" />
 							</button>
 						</div>
 						{customNotice ? (
-							<div className="px-2.5 pb-2 text-[10px] leading-relaxed text-amber-500">{customNotice}</div>
+							<div className="px-2.5 pb-2 text-[11px] leading-relaxed text-warning">{customNotice}</div>
 						) : null}
 						<div className="flex gap-1.5 border-t border-border px-2.5 py-2">{footer}</div>
 					</div>,

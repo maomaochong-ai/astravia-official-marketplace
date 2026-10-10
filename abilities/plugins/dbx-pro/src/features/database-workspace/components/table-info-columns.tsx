@@ -29,7 +29,7 @@ export function TableInfoColumns({ columns }: { columns: EngineColumn[] }): JSX.
 					value={query}
 					onChange={(e) => setQuery(e.target.value)}
 					placeholder="筛选字段..."
-					className="min-w-0 flex-1 bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground/70"
+					className="min-w-0 flex-1 bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-faint"
 				/>
 				{query && (
 					<button
@@ -71,7 +71,7 @@ export function TableInfoColumns({ columns }: { columns: EngineColumn[] }): JSX.
 									<td className="text-muted-foreground">{index + 1}</td>
 									<td className="font-medium">
 										<span className="inline-flex items-center gap-1.5">
-											{col.isPrimaryKey && <span className="icon-[lucide--key-round] h-3 w-3 shrink-0 text-amber-500" />}
+											{col.isPrimaryKey && <span className="icon-[lucide--key-round] h-3 w-3 shrink-0 text-warning" />}
 											<span className="truncate">{col.name}</span>
 										</span>
 										{col.comment && (

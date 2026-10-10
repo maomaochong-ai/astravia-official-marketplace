@@ -191,7 +191,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 					<div
 						ref={ref}
 						role="menu"
-						className="dbx-context-menu absolute z-[300] min-w-0 overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+						className="dbx-menu absolute z-[300] overflow-y-auto"
 						style={{
 							left: pos?.left ?? 0,
 							top: pos?.top ?? 0,
@@ -207,23 +207,19 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 					>
 						{menu.items.map((entry, index) => {
 							if (entry.type === "separator") {
-								return <div key={`sep-${index}`} className="mx-1 my-1 h-px bg-border" />;
+								return <div key={"sep-" + index} className="dbx-menu-sep" />;
 							}
 
 							if (entry.type === "submenu") {
 								const subOpen = submenu?.index === index;
 								return (
-									<div key={`submenu-${index}`} className="relative">
+									<div key={"submenu-" + index} className="relative">
 										<button
 											type="button"
 											role="menuitem"
 											aria-haspopup="true"
 											aria-expanded={subOpen}
-											className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors ${
-												subOpen
-													? "bg-accent text-accent-foreground"
-													: "text-foreground hover:bg-accent hover:text-accent-foreground"
-											}`}
+											className={"dbx-menu-item" + (subOpen ? " dbx-menu-item--open" : "")}
 											onClick={(e) => {
 												// 已展开则收起；否则按实测尺寸重新摆位。
 												if (subOpen) setSubmenu(null);
@@ -236,10 +232,15 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 											}}
 											onMouseLeave={scheduleClose}
 										>
-											{entry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${entry.icon}`} />}
+											{entry.icon && <span className={"size-4 shrink-0 text-muted " + entry.icon} />}
 											<span className="min-w-0 flex-1 truncate">{entry.label}</span>
 											{/* 箭头只反映当前展开项的实际方向；未展开的一律朝右，避免给出错误的展开预期 */}
-											<span className={`h-3 w-3 text-muted-foreground ${subOpen && submenuBox?.flipLeft ? "icon-[lucide--chevron-left]" : "icon-[lucide--chevron-right]"}`} />
+											<span
+												className={
+													"size-4 shrink-0 text-faint " +
+													(subOpen && submenuBox?.flipLeft ? "icon-[lucide--chevron-left]" : "icon-[lucide--chevron-right]")
+												}
+											/>
 										</button>
 									</div>
 								);
@@ -252,17 +253,15 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 									type="button"
 									role="menuitem"
 									disabled={entry.disabled}
-									className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-										entry.danger
-											? "text-red-500 hover:bg-red-500/15"
-											: "text-foreground hover:bg-accent hover:text-accent-foreground"
-									}`}
+									className={"dbx-menu-item" + (entry.danger ? " dbx-menu-item--danger" : "")}
 									onClick={() => {
 										onClose();
 										entry.onClick();
 									}}
 								>
-									{entry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${entry.icon}`} />}
+									{entry.icon && (
+										<span className={"size-4 shrink-0 " + (entry.danger ? "text-danger" : "text-muted") + " " + entry.icon} />
+									)}
 									<span className="min-w-0 flex-1 truncate">{entry.label}</span>
 								</button>
 							);
@@ -278,7 +277,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 					<div
 						ref={submenuRef}
 						role="menu"
-						className="dbx-context-menu absolute z-[301] overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-xl shadow-black/40"
+						className="dbx-menu absolute z-[301] overflow-y-auto"
 						style={{
 							left: submenuBox?.left ?? 0,
 							top: submenuBox?.top ?? 0,
@@ -293,7 +292,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 					>
 						{submenu.items.map((subEntry, subIndex) => {
 							if (subEntry.type === "separator") {
-								return <div key={`sub-sep-${subIndex}`} className="mx-1 my-1 h-px bg-border" />;
+								return <div key={"sub-sep-" + subIndex} className="dbx-menu-sep" />;
 							}
 							if (subEntry.type === "submenu") {
 								// 不支持三级嵌套，忽略
@@ -305,11 +304,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 									type="button"
 									role="menuitem"
 									disabled={subEntry.disabled}
-									className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[11.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-										subEntry.danger
-											? "text-red-500 hover:bg-red-500/15"
-											: "text-foreground hover:bg-accent hover:text-accent-foreground"
-									}`}
+									className={"dbx-menu-item" + (subEntry.danger ? " dbx-menu-item--danger" : "")}
 									onClick={() => {
 										// 先执行 onClick，再关闭菜单，避免菜单卸载后 onClick 无法执行
 										try {
@@ -320,7 +315,9 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 										onClose();
 									}}
 								>
-									{subEntry.icon && <span className={`h-3.5 w-3.5 shrink-0 ${subEntry.icon}`} />}
+									{subEntry.icon && (
+										<span className={"size-4 shrink-0 " + (subEntry.danger ? "text-danger" : "text-muted") + " " + subEntry.icon} />
+									)}
 									<span className="min-w-0 flex-1 truncate">{subEntry.label}</span>
 								</button>
 							);

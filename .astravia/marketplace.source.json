@@ -641,8 +641,8 @@
       "type": "plugin",
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
-      "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Connection manager with encrypted passwords, multi-tab SQL editor, sortable result grid, DDL/write drivers with safety confirmation, query history and bidirectional AI (MCP).",
-      "version": "0.1.15",
+      "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
+      "version": "0.4.0",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -657,20 +657,24 @@
         "query",
         "dbx",
         "postgres",
-        "mysql"
+        "mysql",
+        "dashboard",
+        "chart"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "dbx-pro 数据库工作台",
-            "description": "通过 dbx CLI 直连 PostgreSQL、MySQL、MongoDB、ClickHouse 等 60+ 种数据库。连接管理、SQL 编辑器+结果表格、表浏览器、内置写保护和生产安全闸。",
+            "description": "直连 PostgreSQL、MySQL、SQLite、ClickHouse 等 100+ 种数据库。连接管理（密码加密）、多标签 SQL 编辑器、可排序结果表格、写操作安全确认与查询历史；把查询结果做成可筛选的看板与大屏，11 种图表、导出为断网可用的单文件 HTML，并让 AI 通过 MCP 直接读取数据库。",
             "tags": [
               "数据库",
               "SQL",
               "查询",
               "dbx",
               "Postgres",
-              "MySQL"
+              "MySQL",
+              "看板",
+              "图表"
             ]
           }
         }

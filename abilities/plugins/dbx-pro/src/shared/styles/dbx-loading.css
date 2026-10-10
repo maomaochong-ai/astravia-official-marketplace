@@ -28,7 +28,7 @@
 }
 
 .dbx-loading-version {
-	font-family: var(--font-mono, ui-monospace, monospace);
+	font-family: var(--dbx-font-mono);
 }
 
 @keyframes dbx-fade-in {

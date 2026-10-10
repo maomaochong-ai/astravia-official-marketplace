@@ -116,27 +116,27 @@ export function ExportProgressDialog({
 					{/* 进度条 */}
 					<div className="h-2 w-full overflow-hidden rounded-full bg-muted">
 						{task.status === "done" ? (
-							<div className="h-full w-full rounded-full bg-green-500" />
+							<div className="h-full w-full rounded-full bg-success" />
 						) : task.status === "awaiting-save" ? (
-							<div className="h-full w-full rounded-full bg-amber-500/60" />
+							<div className="h-full w-full rounded-full bg-warning/60" />
 						) : task.status === "unsaved" ? (
 							<div
-								className="h-full rounded-full bg-amber-500"
+								className="h-full rounded-full bg-warning"
 								style={{ width: `${hasKnownTotal ? percent : 100}%` }}
 							/>
 						) : active ? (
 							hasKnownTotal ? (
 								<div
-									className="h-full rounded-full bg-green-500 transition-[width] duration-300"
+									className="h-full rounded-full bg-success transition-[width] duration-300"
 									style={{ width: `${percent}%` }}
 								/>
 							) : (
 								<div className="h-full w-full overflow-hidden rounded-full">
-									<div className="dbx-export-indeterminate h-full rounded-full bg-green-500" />
+									<div className="dbx-export-indeterminate h-full rounded-full bg-success" />
 								</div>
 							)
 						) : hasKnownTotal ? (
-							<div className="h-full rounded-full bg-green-500/50" style={{ width: `${percent}%` }} />
+							<div className="h-full rounded-full bg-success/50" style={{ width: `${percent}%` }} />
 						) : null}
 					</div>
 
@@ -144,38 +144,38 @@ export function ExportProgressDialog({
 					<div className="flex items-center gap-2 text-[13px]">
 						{task.status === "running" && (
 							<>
-								<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-green-500" />
+								<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-success" />
 								<span className="text-foreground">正在导出数据…</span>
 							</>
 						)}
 						{task.status === "writing" && (
 							<>
-								<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-green-500" />
+								<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-success" />
 								<span className="text-foreground">正在写入文件…</span>
 							</>
 						)}
 						{task.status === "cancelling" && (
 							<>
-								<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-yellow-500" />
-								<span className="text-yellow-600 dark:text-yellow-400">正在取消…</span>
+								<span className="icon-[lucide--loader-2] h-4 w-4 animate-spin text-warning" />
+								<span className="text-warning">正在取消…</span>
 							</>
 						)}
 						{task.status === "awaiting-save" && (
 							<>
-								<span className="icon-[lucide--save] h-4 w-4 text-yellow-500" />
-								<span className="text-yellow-600 dark:text-yellow-400">等待选择保存位置…</span>
+								<span className="icon-[lucide--save] h-4 w-4 text-warning" />
+								<span className="text-warning">等待选择保存位置…</span>
 							</>
 						)}
 						{task.status === "unsaved" && (
 							<>
-								<span className="icon-[lucide--save-off] h-4 w-4 text-yellow-500" />
-								<span className="font-medium text-yellow-600 dark:text-yellow-400">未保存（已取消保存）</span>
+								<span className="icon-[lucide--save-off] h-4 w-4 text-warning" />
+								<span className="font-medium text-warning">未保存（已取消保存）</span>
 							</>
 						)}
 						{task.status === "done" && (
 							<>
-								<span className="icon-[lucide--circle-check] h-4 w-4 text-green-500" />
-								<span className="font-medium text-green-600 dark:text-green-400">导出完成</span>
+								<span className="icon-[lucide--circle-check] h-4 w-4 text-success" />
+								<span className="font-medium text-success">导出完成</span>
 							</>
 						)}
 						{task.status === "error" && (
@@ -188,8 +188,8 @@ export function ExportProgressDialog({
 						)}
 						{task.status === "cancelled" && (
 							<>
-								<span className="icon-[lucide--circle-alert] h-4 w-4 text-yellow-500" />
-								<span className="text-yellow-600 dark:text-yellow-400">已取消导出</span>
+								<span className="icon-[lucide--circle-alert] h-4 w-4 text-warning" />
+								<span className="text-warning">已取消导出</span>
 							</>
 						)}
 					</div>
@@ -205,7 +205,7 @@ export function ExportProgressDialog({
 						</div>
 					)}
 					{task.note && (
-						<div className="flex items-start gap-1.5 rounded-md bg-yellow-500/10 px-2.5 py-1.5 text-[11.5px] text-yellow-700 dark:text-yellow-400">
+						<div className="flex items-start gap-1.5 rounded-control bg-warning/10 px-2.5 py-1.5 text-[11.5px] text-warning">
 							<span className="icon-[lucide--triangle-alert] mt-px h-3.5 w-3.5 shrink-0" />
 							<span>{task.note}</span>
 						</div>

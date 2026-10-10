@@ -22,7 +22,7 @@ import {
 	clearFinishedExportTasks,
 	type ExportTask,
 } from "../state/export-tasks-store";
-import { discardStagedExport, saveStagedExport } from "../services/export-save";
+import { saveStagedExport } from "../services/export-save";
 import { engineRevealInFolder } from "../../../shared/services/engine-client";
 import { getUi } from "../../../runtime-contract";
 import { formatElapsed } from "./export-progress-dialog";
@@ -35,19 +35,19 @@ function TaskStatusIcon({ task }: { task: ExportTask }): JSX.Element {
 	switch (task.status) {
 		case "running":
 		case "writing":
-			return <span className="icon-[lucide--loader-2] h-4 w-4 shrink-0 animate-spin text-green-500" />;
+			return <span className="icon-[lucide--loader-2] h-4 w-4 shrink-0 animate-spin text-success" />;
 		case "cancelling":
-			return <span className="icon-[lucide--loader-2] h-4 w-4 shrink-0 animate-spin text-yellow-500" />;
+			return <span className="icon-[lucide--loader-2] h-4 w-4 shrink-0 animate-spin text-warning" />;
 		case "done":
-			return <span className="icon-[lucide--circle-check] h-4 w-4 shrink-0 text-green-500" />;
+			return <span className="icon-[lucide--circle-check] h-4 w-4 shrink-0 text-success" />;
 		case "error":
-			return <span className="icon-[lucide--circle-x] h-4 w-4 shrink-0 text-destructive" />;
+			return <span className="icon-[lucide--circle-x] h-4 w-4 shrink-0 text-danger" />;
 		case "awaiting-save":
-			return <span className="icon-[lucide--save] h-4 w-4 shrink-0 text-yellow-500" />;
+			return <span className="icon-[lucide--save] h-4 w-4 shrink-0 text-warning" />;
 		case "unsaved":
-			return <span className="icon-[lucide--circle-alert] h-4 w-4 shrink-0 text-yellow-500" />;
+			return <span className="icon-[lucide--circle-alert] h-4 w-4 shrink-0 text-warning" />;
 		case "cancelled":
-			return <span className="icon-[lucide--circle-alert] h-4 w-4 shrink-0 text-yellow-500" />;
+			return <span className="icon-[lucide--circle-alert] h-4 w-4 shrink-0 text-warning" />;
 	}
 }
 
@@ -166,7 +166,7 @@ export function ExportTasksPopover(): JSX.Element | null {
 				}
 				aria-haspopup="dialog"
 				aria-expanded={open}
-				className="relative flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
+				className="relative flex h-5 w-5 items-center justify-center rounded-control text-muted-foreground hover:bg-neutral-muted hover:text-foreground"
 			>
 				<span className="icon-[lucide--download] h-3.5 w-3.5" />
 				{aggregatePercent !== null && (
@@ -180,7 +180,7 @@ export function ExportTasksPopover(): JSX.Element | null {
 					<span
 						className={
 							"absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold leading-none text-white " +
-							(activeCount > 0 ? "bg-green-500" : "bg-amber-500")
+							(activeCount > 0 ? "bg-success" : "bg-warning")
 						}
 					>
 						{pendingCount > 9 ? "9+" : pendingCount}
@@ -203,7 +203,7 @@ export function ExportTasksPopover(): JSX.Element | null {
 					>
 						<div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
 							<span className="text-[12px] font-semibold text-foreground">后台任务</span>
-							<span className="text-[10.5px] tabular-nums text-muted-foreground">{tasks.length} 项</span>
+							<span className="text-[11px] tabular-nums text-muted">{tasks.length} 项</span>
 						</div>
 
 						<div className="max-h-[19rem] overflow-y-auto py-1">
@@ -275,31 +275,31 @@ export function ExportTasksPopover(): JSX.Element | null {
 
 										<div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
 											{task.status === "done" ? (
-												<div className="h-full w-full rounded-full bg-green-500" />
+												<div className="h-full w-full rounded-full bg-success" />
 											) : task.status === "awaiting-save" ? (
-												<div className="h-full w-full rounded-full bg-amber-500/60" />
+												<div className="h-full w-full rounded-full bg-warning/60" />
 											) : task.status === "unsaved" ? (
 												<div
-													className="h-full rounded-full bg-amber-500"
+													className="h-full rounded-full bg-warning"
 													style={{ width: `${known ? percent : 100}%` }}
 												/>
 											) : active ? (
 												known ? (
 													<div
-														className="h-full rounded-full bg-green-500 transition-[width] duration-300"
+													className="h-full rounded-full bg-success transition-[width] duration-300"
 														style={{ width: `${percent}%` }}
 													/>
 												) : (
 													<div className="h-full w-full overflow-hidden rounded-full">
-														<div className="dbx-export-indeterminate h-full rounded-full bg-green-500" />
+												<div className="dbx-export-indeterminate h-full rounded-full bg-success" />
 													</div>
 												)
 											) : known ? (
-												<div className="h-full rounded-full bg-green-500/50" style={{ width: `${percent}%` }} />
+												<div className="h-full rounded-full bg-success/50" style={{ width: `${percent}%` }} />
 											) : null}
 										</div>
 
-										<div className="mt-1 flex items-center justify-between gap-2 text-[10.5px] tabular-nums text-muted-foreground">
+										<div className="mt-1 flex items-center justify-between gap-2 text-[11px] tabular-nums text-muted">
 											<span className="min-w-0 truncate">
 												{task.status === "error"
 													? task.errorMessage || "导出失败"

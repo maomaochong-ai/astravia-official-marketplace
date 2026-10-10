@@ -227,12 +227,12 @@ export function ConnectionFields({
 							</button>
 						)}
 					</div>
-					<p className="mt-1 text-[10px] text-muted-foreground/70">不勾选 = 展示该库全部 schema；勾选 = 仅展示所选</p>
+					<p className="mt-1 text-[11px] leading-relaxed text-faint">不勾选 = 展示该库全部 schema；勾选 = 仅展示所选</p>
 
 					{availableSchemas && availableSchemas.length > 0 && (
 						<div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
 							{availableSchemas.map((s) => (
-								<label key={s} className="flex cursor-pointer items-center gap-1.5 text-[12px] text-foreground/85">
+								<label key={s} className="flex cursor-pointer items-center gap-1.5 text-[12px] text-surface-foreground">
 									<input type="checkbox" checked={selectedSchemas.includes(s)} onChange={() => toggleSchema(s)} />
 									{s}
 								</label>
