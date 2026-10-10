@@ -4,33 +4,52 @@
     {
       "type": "hero",
       "eyebrow": "Database workbench",
-      "title": "dbx-pro — a full database workbench inside Astravia",
-      "description": "Manage connections, browse schemas, write and run SQL, inspect sortable result grids, and let AI call your database directly. Reads go through dbx-mcp for PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases; writes and DDL run through bundled drivers.",
-      "badges": ["100+ databases", "DDL writes", "Bidirectional AI", "Encrypted storage"]
+      "title": "dbx-pro — a database workbench and BI workspace inside Astravia",
+      "description": "Manage connections, browse schemas, write and run SQL, read sortable result grids — then turn any query result into a filterable dashboard or big screen. Reads go through dbx-mcp for PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases; writes and DDL run through the bundled drivers.",
+      "badges": ["100+ databases", "Dashboards & big screens", "11 chart types", "Filters & refetch", "DDL writes", "Bidirectional AI"]
     },
     {
       "type": "feature-grid",
       "items": [
-        { "title": "Connection manager", "description": "Store host, port, database and environment labels with read-only / production flags; passwords live in the host's encrypted credential vault, never as plaintext." },
-        { "title": "SQL editor", "description": "Multi-tab CodeMirror editor with per-dialect highlighting and autocomplete; run with ⌘/Ctrl+Enter, or execute just the selection." },
-        { "title": "Result grid", "description": "Sort by header, paginate, keep row numbers, copy TSV / export CSV and inspect cells, with row count and duration shown." },
-        { "title": "DDL and writes", "description": "Create and alter tables through bundled pg / mysql2 / mssql drivers; a full-SQL confirmation appears first and read-only connections are rejected outright." },
-        { "title": "Query history", "description": "Each query logs its SQL, status, row count and duration (no result rows stored), ready to reload and rerun in the editor." },
-        { "title": "Bidirectional AI", "description": "The plugin registers as an MCP tool so AI can list connections and run queries; you can also send tree or result context to AI in one click." }
+        {
+          "title": "Connection manager",
+          "description": "Keep host, port, database and environment labels with read-only and production flags; passwords live in the host's encrypted credential vault, never as plaintext."
+        },
+        {
+          "title": "SQL editor and result grid",
+          "description": "Multi-tab editor with per-dialect highlighting and completion: run the whole statement with ⌘/Ctrl+Enter, or execute just the selected part. Results sort, paginate, copy as TSV and export as CSV."
+        },
+        {
+          "title": "Dashboards, big screens and 11 chart types",
+          "description": "Ask AI to chart a query result and the artifact lands under \"BI data assets\": dashboards for reading, big screens for wall display. Line, bar, pie, doughnut, polar area, radar, scatter and bubble from Chart.js, plus funnel, boxplot and metric cards."
+        },
+        {
+          "title": "Dataset filters, refetch and lineage",
+          "description": "Filter by column values and the charts recompute instantly, with no database round trip; press refetch to re-run the stored SQL against fresh data. Every artifact also shows the tables it reads, its SQL and row counts, and which other artifacts read the same table."
+        },
+        {
+          "title": "Writes, DDL and query history",
+          "description": "Create and alter tables through the bundled drivers, behind a full-statement confirmation; read-only connections are rejected outright. Each query records its SQL, status, row count and duration, ready to reload into the editor."
+        },
+        {
+          "title": "Bidirectional AI",
+          "description": "The plugin registers an MCP tool so AI can list your connections and run queries, and you can send a table tree or a result set to AI in one click."
+        }
       ]
     },
     {
       "type": "steps",
       "items": [
-        { "title": "Open the workbench", "description": "Install dbx-pro from the marketplace and open its activity tab. The engine comes up with the plugin — no separate CLI install." },
-        { "title": "Add a connection", "description": "Click \"Connect\" in the top right, pick a database type and fill it in; for SQLite just choose a file." },
-        { "title": "Run a query", "description": "Type SQL and press ⌘/Ctrl+Enter; confirm when the statement writes or changes schema." }
+        { "title": "Open the workbench", "description": "Install dbx-pro from the marketplace and open its activity tab. The engine starts with the plugin, so there is no separate CLI to install." },
+        { "title": "Add a connection", "description": "Click \"Connect\" in the top right, pick a database type and fill in the fields; for SQLite just choose a file." },
+        { "title": "Run a query", "description": "Type SQL and press ⌘/Ctrl+Enter. If the statement writes or changes schema, confirm it in the dialog that appears." },
+        { "title": "Turn it into a dashboard", "description": "Ask AI to chart the result. The artifact appears under BI data assets, where you can filter it, refetch it, check its lineage, or export one offline HTML file." }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "Reads use dbx-mcp while writes and DDL use the plugin's bundled drivers; the two paths are isolated. Every service listens on loopback only and is never exposed to the network."
+      "content": "Reads use dbx-mcp while writes and DDL use the plugin's bundled drivers; the two paths are isolated. Every service listens on loopback only and is never exposed to the network. BI artifacts are stored by the plugin itself, and an exported HTML file is fully offline — Chart.js is inlined, nothing is fetched from a CDN."
     }
   ]
 }
