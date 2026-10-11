@@ -384,7 +384,19 @@
 	background: var(--dbx-surface);
 }
 
+/* 分组标题与条目左对齐（同为 8px 起始），字号与色阶按设计稿 px-2 pt-1 pb-1.5 / 12px muted。 */
 .dbx-settings-nav__group {
+	padding: 4px 8px 6px;
+	font-size: 12px;
+	letter-spacing: 0.06em;
+	white-space: nowrap;
+	color: var(--dbx-muted);
+}
+
+/* 设计稿的导航条目撑满 nav 内容宽（px-2 之内），共用类在连接编辑器里另有 margin。 */
+.dbx-settings-nav .dbx-category-nav-item {
+	margin: 0;
+}
 	padding: 8px 8px 4px;
 	font-size: 11px;
 	letter-spacing: 0.06em;
@@ -392,6 +404,7 @@
 	color: var(--dbx-faint);
 }
 
+/* 标题 / 副标题 / 条目数的字号与色阶写在 JSX（title 14px semibold、subtitle 12px muted、count tabular-nums faint）。 */
 .dbx-settings-content-header {
 	display: flex;
 	align-items: center;
@@ -401,9 +414,6 @@
 	padding: 0 16px;
 	border-bottom: 1px solid var(--dbx-border);
 	background: var(--dbx-surface);
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--dbx-surface-foreground);
 }
 
 .dbx-setting-list {
@@ -416,7 +426,7 @@
 	align-items: center;
 	gap: 16px;
 	min-height: 44px;
-	padding: 8px 0;
+	padding: 4px 0;
 }
 
 .dbx-setting-list .dbx-setting-row + .dbx-setting-row {
@@ -429,7 +439,8 @@
 }
 
 .dbx-setting-row__label {
-	font-size: 13px;
+	font-size: 14px;
+	line-height: 18px;
 	color: var(--dbx-surface-foreground);
 }
 

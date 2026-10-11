@@ -2,7 +2,7 @@
   "w": 300,
   "h": 300,
   "dataType": 1,
-  "url": "http://api.jeecg.com/mock/26/gauge",
+  "url": """",
   "timeOut": 0,
   "turnConfig": {
     "url": "",

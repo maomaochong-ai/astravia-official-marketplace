@@ -2,7 +2,7 @@
   "w": 450,
   "h": 300,
   "dataType": 1,
-  "url": "https://api.jeecg.com/mock/26/history",
+  "url": """",
   "timeOut": 0,
   "turnConfig": {
     "url": "",

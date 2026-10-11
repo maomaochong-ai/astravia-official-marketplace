@@ -2,7 +2,7 @@
   "w": 700,
   "h": 490,
   "dataType": 1,
-  "url": "http://api.jeecg.com/mock/33/radar",
+  "url": """",
   "timeOut": 0,
   "background": "#FFFFFF00",
   "dataMapping": [

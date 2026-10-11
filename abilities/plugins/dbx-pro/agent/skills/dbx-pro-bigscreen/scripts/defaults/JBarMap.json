@@ -3,7 +3,7 @@
   "h": 300,
   "dataType": 1,
   "background": "#FFFFFF00",
-  "url": "http://api.jeecg.com/mock/33/radar",
+  "url": """",
   "timeOut": 0,
   "dataMapping": [
     {

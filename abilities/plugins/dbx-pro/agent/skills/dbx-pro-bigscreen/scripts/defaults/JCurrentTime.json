@@ -2,7 +2,7 @@
   "w": 290,
   "h": 33,
   "dataType": 1,
-  "url": "http://api.jeecg.com/mock/42/nav",
+  "url": """",
   "timeOut": 0,
   "background": "#FFFFFF00",
   "chartData": "",

@@ -2,7 +2,7 @@
   "w": 600,
   "h": 300,
   "dataType": 1,
-  "url": "http://api.jeecg.com/mock/42/carousel",
+  "url": """",
   "timeOut": 0,
   "linkageConfig": [],
   "dataMapping": [
@@ -18,13 +18,13 @@
   },
   "chartData": [
     {
-      "src": "https://jeecgos.oss-cn-beijing.aliyuncs.com/files/site/drag/0.png"
+      "src": """"
     },
     {
-      "src": "https://jeecgos.oss-cn-beijing.aliyuncs.com/files/site/drag/1.png"
+      "src": """"
     },
     {
-      "src": "https://jeecgos.oss-cn-beijing.aliyuncs.com/files/site/drag/2.png"
+      "src": """"
     }
   ]
 }

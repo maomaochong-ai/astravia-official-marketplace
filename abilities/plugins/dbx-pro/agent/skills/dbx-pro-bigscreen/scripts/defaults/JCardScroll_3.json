@@ -208,7 +208,7 @@
     "cardStyle": {
       "backgroundColor": "#0648786E",
       "borderColor": "#1890FF",
-      "backgroundImage": "https://static.jeecg.com/jimureport/images/组-1121_05_1757733370432.png",
+      "backgroundImage": """",
       "paddingRight": 5,
       "borderEnabled": false,
       "paddingBottom": 5,
@@ -216,7 +216,7 @@
       "borderWidth": 1,
       "width": 122,
       "paddingTop": 5,
-      "bgHighlightImage": "https://static.jeecg.com/jimureport/images/组-1121_03_1757735281389.png",
+      "bgHighlightImage": """",
       "borderStyle": "dashed",
       "paddingLeft": 5,
       "height": 300

@@ -2,7 +2,7 @@
   "w": 450,
   "h": 175,
   "dataType": 1,
-  "url": "http://api.jeecg.com/mock/42/nav",
+  "url": """",
   "timeOut": 0,
   "background": "#FFFFFF00",
   "linkageConfig": [],

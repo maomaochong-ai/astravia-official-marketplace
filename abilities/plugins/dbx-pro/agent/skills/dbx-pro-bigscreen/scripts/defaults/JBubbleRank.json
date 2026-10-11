@@ -2,7 +2,7 @@
   "w": 550,
   "h": 400,
   "dataType": 1,
-  "url": "http://api.jeecg.com/mock/33/chart",
+  "url": """",
   "timeOut": 0,
   "turnConfig": {
     "url": "",

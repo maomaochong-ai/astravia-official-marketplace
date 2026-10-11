@@ -2,7 +2,7 @@
   "w": 450,
   "h": 230,
   "dataType": 1,
-  "url": "http://api.jeecg.com/mock/42/list",
+  "url": """",
   "turnConfig": {
     "url": "",
     "type": "_blank"

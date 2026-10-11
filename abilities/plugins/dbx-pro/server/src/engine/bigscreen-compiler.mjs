@@ -604,39 +604,89 @@ export function compileBigscreen(spec) {
 
 // ============ 以下为调试/预览用工具（不是主流程）============
 
-/** JimuBI 组件 JSON → 调试 HTML（仅用于本地预览组件配置是否正确）。 */
+/** JimuBI 组件 JSON → 调试 HTML（1920×1080 canvas + 绝对定位，与 JimuBI bigscreen 布局一致）。 */
 export function generateBigscreenHtml(spec) {
 	const { page, components, palette } = compileBigscreen(spec);
 	const isScreen = (page.theme ?? "dark") === "dark";
-	const css = isScreen
-		? `body{background:#0a1929;color:#d4e8ff;font-family:system-ui,sans-serif;margin:0;padding:24px}.header{text-align:center;padding:24px 0;border-bottom:1px solid #1a3a5a;margin-bottom:24px}.header h1{color:#f0c040;margin:0 0 8px}.header p{color:#8ab8d0;margin:0}.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}.chart-card{background:rgba(11,30,58,0.3);border:1px solid #1a3a5a;border-radius:12px;padding:16px}.chart-card h3{margin:0 0 8px;color:#00d4ff;font-size:13px}`
-		: `body{background:#f9fafb;color:#1f2937;font-family:system-ui,sans-serif;margin:0;padding:24px}.header{text-align:center;padding:24px 0;border-bottom:1px solid #e5e7eb;margin-bottom:24px}.header h1{color:#1f2937;margin:0 0 8px}.header p{color:#6b7280;margin:0}.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}.chart-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}.chart-card h3{margin:0 0 8px;color:#374151;font-size:13px}`;
+	const canvasW = page.width ?? 1920;
+	const canvasH = page.height ?? 1080;
 
-	const head = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>${page.name}</title><script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script><style>${css}</style></head><body><div class="header"><h1>${page.name}</h1><p>${palette.name} · ${page.width}×${page.height}</p></div>`;
+	const bgCss = isScreen
+		? `html,body{margin:0;padding:0;background:#051020;color:#d4e8ff;font-family:system-ui,sans-serif;}.canvas{position:relative;width:${canvasW}px;height:${canvasH}px;margin:0 auto;background:linear-gradient(180deg,#0a1929 0%,#051020 100%);overflow:hidden;border:1px solid #1a3a5a;} .comp{position:absolute;overflow:hidden;border:1px solid #1a3a5a55;border-radius:4px;background:rgba(11,30,58,0.15);}`
+		: `html,body{margin:0;padding:0;background:#f3f4f6;color:#1f2937;font-family:system-ui,sans-serif;}.canvas{position:relative;width:${canvasW}px;height:${canvasH}px;margin:0 auto;background:#f9fafb;overflow:hidden;border:1px solid #e5e7eb;}.comp{position:absolute;overflow:hidden;border:1px solid #e5e7eb;border-radius:4px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);}`;
+
+	const head = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=1">
+<title>${page.name}</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<style>${bgCss}</style>
+</head><body>
+<div class="canvas" style="background-image:url('${page.backgroundImage ?? ""}');">`;
 
 	const bodyHtml = components.map((c, i) => {
-		if (c.error) return `<div class="chart-card"><h3>❌ ${c.type}</h3><pre style="color:#ef4444;font-size:12px;">${c.error}</pre></div>`;
+		if (c.error) return `<div class="comp" style="left:0;top:0;width:400px;height:100px;color:#ef4444;font-size:12px;padding:8px;">❌ ${c.type}: ${c.error}</div>`;
 		const cfg = c.cfg;
 		if (!cfg) return "";
+		const x = cfg.x ?? 0, y = cfg.y ?? 0, w = cfg.w ?? 400, h = cfg.h ?? 300;
 		const kind = inferKind(c.type);
 		if (kind === "echarts" && cfg.option) {
-			return `<div class="chart-card"><h3>${c.title || c.type}</h3><div id="chart-${i}" style="width:100%;height:280px;"></div></div>`;
+			return `<div class="comp" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;" title="${c.title || c.type}"><div id="chart-${i}" style="width:100%;height:100%;"></div></div>`;
 		}
-		return `<div class="chart-card"><h3>${c.title || c.type}</h3><pre style="font-size:11px;color:#999;white-space:pre-wrap;max-height:280px;overflow:auto;">${JSON.stringify(cfg, null, 2)}</pre></div>`;
+		// HTML/text/decoration 组件：直接渲染内容
+		if (kind === "html") {
+			const html = renderHtmlComponent(c, cfg, palette);
+			return `<div class="comp" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border:none;background:transparent;">${html}</div>`;
+		}
+		return `<div class="comp" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;padding:8px;"><pre style="font-size:10px;color:#999;margin:0;overflow:hidden;">${c.type}</pre></div>`;
 	}).join("");
 
-	const js = `echarts.registerMap('china', null);(function(){${components.map((c, i) => {
+	const js = `<script>
+(function(){${components.map((c, i) => {
 		if (c.error) return "";
-		const cfg = c.cfg;
-		if (!cfg) return "";
-		if (cfg.option && typeof cfg.option.series === "object") {
+		const cfg = c.cfg; if (!cfg) return "";
+		if (cfg.option && typeof cfg.option.series === "object" && inferKind(c.type) === "echarts") {
 			const opt = cfg.option;
 			return `(function(){var d=document.getElementById('chart-${i}');if(d){var e=echarts.init(d,'${isScreen?"dark":"light"}');e.setOption(${JSON.stringify(opt)});window.addEventListener('resize',function(){e.resize();});}})();`;
 		}
 		return "";
-	}).join("\n")}})();`;
+	}).join("\n")}
+})();
+</script>`;
 
-	return `${head}<div class="grid">${bodyHtml}</div><script>${js}</script></body></html>`;
+	return `${head}${bodyHtml}${js}</body></html>`;
+}
+
+function renderHtmlComponent(c, cfg, p) {
+	const opt = cfg.option ?? {};
+	switch (c.type) {
+		case "JText": {
+			const body = opt.body ?? {};
+			return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${body.color ?? p.label};font-size:${body.fontSize ?? 14}px;font-weight:${body.fontWeight ?? "normal"};text-align:${body.textAlign ?? "center"};letter-spacing:${body.letterSpacing ?? 0}px;">${body.text ?? cfg.chartData?.value ?? ""}</div>`;
+		}
+		case "JDragDecoration": {
+			// 装饰条：简单 CSS 渐变代替（JeecgBoot 用 SVG，这里简化）
+			const col = opt.mainColor ?? p.subtitle;
+			const sub = opt.subColor ?? col;
+			return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,${col}33,${sub}33);border-top:2px solid ${col};border-bottom:2px solid ${sub};"><span style="color:${col};font-size:12px;">▸ ${opt.title ?? opt.type ?? ""}</span></div>`;
+		}
+		case "JCountTo": case "JNumber": {
+			const body = opt.body ?? opt;
+			const val = typeof cfg.chartData === "string" ? JSON.parse(cfg.chartData).value : cfg.chartData?.value ?? 0;
+			return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${body.color ?? p.title};font-size:${body.fontSize ?? 32}px;font-weight:${body.fontWeight ?? "bold"};font-variant-numeric:tabular-nums;">${opt.prefix ?? body.prefix ?? ""}${val}${opt.suffix ?? body.suffix ?? ""}</div>`;
+		}
+		case "JStatsSummary": {
+			// 简化统计卡
+			let items = [];
+			try { items = JSON.parse(cfg.chartData ?? "[]"); } catch { items = []; }
+			if (!Array.isArray(items)) items = [];
+			const itemHtml = items.slice(0, 4).map(it => `<div style="flex:1;text-align:center;padding:8px;border-right:1px solid ${p.axisLine};"><div style="font-size:20px;font-weight:700;color:${p.title};">${it.value ?? 0}${it.suffix ?? ""}</div><div style="font-size:11px;color:${p.label};opacity:0.8;margin-top:4px;">${it.name ?? it.label ?? ""}</div></div>`).join("");
+			return `<div style="width:100%;height:100%;display:flex;">${itemHtml}</div>`;
+		}
+		case "JScrollBoard": case "JScrollTable": {
+			return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.label};font-size:12px;padding:8px;overflow:hidden;"><pre style="margin:0;white-space:pre-wrap;">${c.type}</pre></div>`;
+		}
+		default:
+			return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.label};font-size:11px;padding:4px;">${c.type}</div>`;
+	}
 }
 
 function inferKind(compType) {
