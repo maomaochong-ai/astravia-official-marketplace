@@ -1,68 +1,69 @@
 /**
  * driver.mjs — 驱动管理路由。
  *
- * 三个路由：
+ * 路由（无 /api 前缀，与 server/main.mjs 注册的其他路由对齐）：
  *   POST /driver/status   列出所有托管驱动的安装状态
  *   POST /driver/install   下载安装指定驱动
- *   POST /driver/set-path  手动指定驱动路径
+ *   POST /driver/set-path  手动指定驱动路径（复制到标准驱动目录）
  *
- * 重要说明（2025-01-15 注）：
- *   dbx-mcp 需要的 `duckdb_worker` 是 dbx 自研 Rust 二进制（agents/drivers/duckdb），
- *   不是 DuckDB 官方 CLI。maomaochong-ai/dbx releases 只发 dbx-mcp，不发 driver。
- *   所以自动下载暂时回落到 **用户手动指定本地 binary 路径**。
+ * DuckDB 驱动背景：
+ *   dbx-mcp 执行 API 数据源查询时需要 `duckdb_worker`——这其实是
+ *   dbx Desktop 从 agents-release CI 产出的 `dbx-duckdb-driver`
+ *   Rust binary（crates/dbx-drivers/src/db/duckdb_worker_process.rs 第 685-694 行
+ *   通过 DBX_DUCKDB_DRIVER_PATH 环境变量查找）。产物命名：
+ *     dbx-agent-duckdb-macos-aarch64
+ *     dbx-agent-duckdb-macos-x64
+ *     ...
+ *   下载 URL：github.com/t8y2/dbx/releases/download/agents-latest/<name>
+ *
+ *   本地驱动存储目录：~/.astravia-dbx-data/drivers/<key>/<platform>/<binary>
+ *   与 dbx-mcp-client.collectDriverEnv() 扫描路径一致。
  */
 
-import { existsSync, mkdirSync, chmodSync, statSync } from "node:fs";
-import { join, dirname } from "node:path";
+import {
+	existsSync,
+	mkdirSync,
+	chmodSync,
+	statSync,
+	writeFileSync,
+	copyFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import { homedir } from "node:os";
-import { fileURLToPath } from "node:url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const DRIVERS_ROOT = join(homedir(), ".astravia-dbx-data", "drivers");
+const DBX_AGENTS_LATEST = "https://github.com/t8y2/dbx/releases/download/agents-latest";
 
-// ─── 平台映射（dbx Desktop 用的标签，不是 Node 的 process.platform） ───
+// ─── 平台映射（两个不同用途的标签） ───
 
-/** Node platform → dbx 驱动下载平台标签 */
-function detectPlatform() {
-	const plat = process.platform;
-	const arch = process.arch;
-	if (plat === "darwin") {
-		return arch === "arm64" ? "macos-aarch64" : "macos-x64";
-	}
-	if (plat === "win32") {
-		return arch === "arm64" ? "windows-aarch64" : "windows-x64";
-	}
-	if (plat === "linux") {
-		return arch === "arm64" ? "linux-aarch64" : "linux-x64";
-	}
-	return null;
+/** 本地驱动存储目录用的平台 key，与 dbx-mcp-client.detectPlatform() 对齐 */
+function platformKey() {
+	const { platform, arch } = process;
+	if (platform === "darwin") return arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+	if (platform === "win32") return arch === "arm64" ? "win32-arm64" : "win32-x64";
+	if (platform === "linux") return arch === "arm64" ? "linux-arm64" : "linux-x64";
+	return "unknown";
 }
 
-/** Node platform key（用于本地驱动存储目录） */
-function platformKey() {
-	const plat = process.platform;
-	const arch = process.arch;
-	if (plat === "darwin") return arch === "arm64" ? "darwin-arm64" : "darwin-x64";
-	if (plat === "win32") return arch === "arm64" ? "win32-arm64" : "win32-x64";
-	if (plat === "linux") return arch === "arm64" ? "linux-arm64" : "linux-x64";
-	return "unknown";
+/** dbx agents release CI 用的平台标签 */
+function releasePlatformTag() {
+	const { platform, arch } = process;
+	if (platform === "darwin") return arch === "arm64" ? "macos-aarch64" : "macos-x64";
+	if (platform === "win32") return arch === "arm64" ? "windows-aarch64" : "windows-x64";
+	if (platform === "linux") return arch === "arm64" ? "linux-aarch64" : "linux-x64";
+	return null;
 }
 
 // ─── 驱动清单 ───
 
-/**
- * dbx-mcp 会检查这些环境变量；驱动安装后，collectDriverEnv() 会扫描 drivers 目录注入。
- *
- * 注意：duckdb 需要的是 dbx 自研的 duckdb_worker（agents/drivers/duckdb 编译产物），
- * 不是 DuckDB 官方 CLI。官方 CLI 协议不兼容，会导致 dbx-mcp worker 启动失败。
- */
 const DRIVERS = [
 	{
 		key: "duckdb",
-		label: "DuckDB Worker（API 数据源本机查询通道）",
-		description: "dbx API 数据源的本地 SQL 执行引擎，用于执行 SELECT 等查询。",
+		label: "DuckDB Native Driver（API 数据源本机查询通道）",
+		description: "dbx API 数据源的本地 SQL 执行引擎。执行 SELECT 等查询时由 dbx-mcp spawn 为 sidecar 进程。",
 		envVar: "DBX_DUCKDB_DRIVER_PATH",
-		binaryName: "duckdb_worker",
+		binaryName: "duckdb_worker", // 本地存储时用的名字（方便 collectDriverEnv 扫描）
+		releaseArtifact: (platTag) => `dbx-agent-duckdb-${platTag}${process.platform === "win32" ? ".exe" : ""}`,
 	},
 ];
 
@@ -73,7 +74,12 @@ function driverDir(key) {
 }
 
 function driverBinary(key) {
-	return join(driverDir(key), DRIVERS.find((d) => d.key === key).binaryName);
+	const d = DRIVERS.find((d) => d.key === key);
+	return join(driverDir(key), d.binaryName);
+}
+
+function findDriver(key) {
+	return DRIVERS.find((d) => d.key === key);
 }
 
 function ensureDir(path) {
@@ -83,7 +89,7 @@ function ensureDir(path) {
 // ─── 路由处理器 ───
 
 /** POST /driver/status */
-export function handleDriverStatus(req, res) {
+export function handleDriverStatus(_req, res) {
 	const out = DRIVERS.map((d) => {
 		const binary = driverBinary(d.key);
 		const installed = existsSync(binary);
@@ -91,7 +97,8 @@ export function handleDriverStatus(req, res) {
 		if (installed) {
 			try { sizeBytes = statSync(binary).size; } catch { /* ignore */ }
 		}
-		const expectedPath = binary;
+		const platTag = releasePlatformTag();
+		const installUrl = platTag ? `${DBX_AGENTS_LATEST}/${d.releaseArtifact(platTag)}` : null;
 		return {
 			key: d.key,
 			label: d.label,
@@ -100,56 +107,61 @@ export function handleDriverStatus(req, res) {
 			sizeBytes,
 			envVar: d.envVar,
 			description: d.description,
-			expectedPath,
-			reason: installed ? undefined : "未检测到驱动可执行文件",
+			expectedPath: binary,
+			reason: installed ? undefined : "未检测到驱动可执行文件，点击「安装」从 dbx agents release 下载",
+			downloadUrl: installUrl,
 		};
 	});
 	res.json({ drivers: out });
 }
 
-/** POST /driver/install — 目前只支持手动 set-path；自动下载等 duckdb_worker 有公开 release 源再恢复 */
+/** POST /driver/install — 从 dbx agents release 下载 */
 export async function handleDriverInstall(req, res) {
 	const { driverKey, url } = req.body || {};
-	const driver = DRIVERS.find((d) => d.key === driverKey);
+	const driver = findDriver(driverKey);
 	if (!driver) {
 		res.status(400).json({ ok: false, error: `未知驱动: ${driverKey}` });
 		return;
 	}
 
-	// 检查本地是否已安装
 	const binary = driverBinary(driverKey);
+
+	// 已安装直接返回
 	if (existsSync(binary)) {
 		res.json({ ok: true, driverKey, installedPath: binary, note: "已存在" });
 		return;
 	}
 
-	// 目前无可用自动下载源（duckdb_worker 未公开）
-	// 如果用户给了自定义 URL，尝试下载
-	if (url) {
-		try {
-			ensureDir(driverDir(driverKey));
-			await downloadFile(url, binary);
-			chmodSync(binary, 0o755);
-			res.json({ ok: true, driverKey, installedPath: binary, note: "从用户指定 URL 下载" });
-		} catch (e) {
-			res.status(502).json({ ok: false, driverKey, error: `下载失败: ${e.message}` });
+	// 确定下载 URL：用户指定优先，否则用 dbx agents release
+	let downloadUrl = url;
+	if (!downloadUrl) {
+		const platTag = releasePlatformTag();
+		if (!platTag) {
+			res.status(400).json({ ok: false, driverKey, error: `不支持的平台: ${process.platform}-${process.arch}` });
+			return;
 		}
-		return;
+		downloadUrl = `${DBX_AGENTS_LATEST}/${driver.releaseArtifact(platTag)}`;
 	}
 
-	res.status(501).json({
-		ok: false,
-		driverKey,
-		error:
-			"自动下载暂不可用：duckdb_worker 是 dbx 自研 Rust 二进制，目前无公开 release。" +
-			"请通过「驱动管理 → 指定路径」手动指向已编译的 binary，或设置 " + driver.envVar + " 环境变量。",
-	});
+	try {
+		ensureDir(driverDir(driverKey));
+		await downloadFile(downloadUrl, binary);
+		chmodSync(binary, 0o755);
+		res.json({
+			ok: true,
+			driverKey,
+			installedPath: binary,
+			note: `从 ${downloadUrl} 下载成功`,
+		});
+	} catch (e) {
+		res.status(502).json({ ok: false, driverKey, error: `下载失败: ${e.message}`, url: downloadUrl });
+	}
 }
 
-/** POST /driver/set-path */
+/** POST /driver/set-path — 复制外部 binary 到标准驱动目录 */
 export async function handleDriverSetPath(req, res) {
 	const { driverKey, path } = req.body || {};
-	const driver = DRIVERS.find((d) => d.key === driverKey);
+	const driver = findDriver(driverKey);
 	if (!driver) {
 		res.status(400).json({ ok: false, error: `未知驱动: ${driverKey}` });
 		return;
@@ -163,15 +175,12 @@ export async function handleDriverSetPath(req, res) {
 		return;
 	}
 
-	// 复制到标准驱动目录（方便 collectDriverEnv 扫描）
 	ensureDir(driverDir(driverKey));
 	const dest = driverBinary(driverKey);
 	try {
-		// 用 cp 而不是 rename，因为源可能在只读位置
-		await copyFile(path, dest);
+		copyFileSync(path, dest);
 		chmodSync(dest, 0o755);
 	} catch (e) {
-		// 如果 cp 也失败（权限），至少返回原始路径让用户手动设置 env
 		res.status(500).json({
 			ok: false,
 			driverKey,
@@ -186,19 +195,15 @@ export async function handleDriverSetPath(req, res) {
 // ─── 辅助函数 ───
 
 async function downloadFile(url, destPath) {
-	const res = await fetch(url);
-	if (!res.ok) throw new Error(`HTTP ${res.status}`);
+	const res = await fetch(url, { redirect: "follow" });
+	if (!res.ok) {
+		throw new Error(`HTTP ${res.status} ${res.statusText}`);
+	}
 	const buf = Buffer.from(await res.arrayBuffer());
-	const { writeFileSync } = await import("node:fs");
 	writeFileSync(destPath, buf);
 }
 
-async function copyFile(src, dest) {
-	const { copyFileSync } = await import("node:fs");
-	copyFileSync(src, dest);
-}
-
-// ─── 导出路由 ───
+// ─── 注册 ───
 
 export function registerDriverRoutes(app) {
 	app.post("/driver/status", handleDriverStatus);
