@@ -7,38 +7,74 @@
  *   └───────────┴────────────────────────────┴─────────────────────┘
  *
  * 数据策略：
- *   · NAV / START / 产物链接 / RUNS → mock（后端还没对应端点）
- *   · BOARDS 清单 → 真实 /drag/page/list 数据
- *   · Preview 缩略图 → chart.tsx 的 AreaChart / Bars / Donut
+ *   · BOARDS / RUNS / 数据源 / 产物链接 / 发布状态 → 真实后端
+ *     Phase B 新增端点：/drag/datasource/list /drag/runlog/list /drag/sharelink/* /drag/worktree/*
+ *   · START（三条入口）/ PREVIEW chart 值 → 静态（暂无后端）
+ *   · Preview 缩略图 → charts.tsx 的 AreaChart / Bars / Donut
  */
 
-import { useState, type JSX } from "react";
+import { useCallback, useEffect, useState, type JSX } from "react";
 import { useBigscreenPages, type BigscreenPage } from "./hooks/use-bigscreen-pages";
 import { BigscreenEditor } from "./bigscreen-editor";
 import { getUi } from "../../runtime-contract";
+import { engineRequest } from "../../shared/services/engine-client";
 import { Icon } from "./components/ui/icon";
 import { Chip } from "./components/ui/chip";
 import { IconButton } from "./components/ui/icon-button";
 import { Btn } from "./components/ui/btn";
 import { AreaChart, Bars, Donut, SERIES } from "./components/charts";
 
-// ── 设计稿常量（未接后端的 mock） ──
-const NAV = [
-	{ icon: "icon-[lucide--layout-dashboard]", label: "我的看板", count: "6", on: true },
-	{ icon: "icon-[lucide--monitor]", label: "数据大屏", count: "3", on: false },
-	{ icon: "icon-[lucide--table-2]", label: "数据集", count: "12", on: false },
-	{ icon: "icon-[lucide--folder-tree]", label: "工作树", count: "2", on: false },
-	{ icon: "icon-[lucide--share-2]", label: "分享给我", count: "", on: false },
-	{ icon: "icon-[lucide--trash-2]", label: "回收站", count: "", on: false },
-];
+// ── 后端类型（Phase B 新增端点返回值） ──
+interface DataSource { id: string; name: string; type: string; status: string; }
+interface RunLog { id: string; pageId?: string; pageName: string; detail: string; cost: string; state: string; createTime: string; }
+interface ShareLink { id: string; pageId?: string; path: string; type: "permanent" | "timed"; expiresAt: string | null; password: string | null; createTime: string; }
+interface WorktreeStatus { pages: { id: string; name: string; style: string; updateCount: number; publishedCount: number; publishedAt: string | null; dirty: boolean; }[]; dirtyCount: number; }
 
-const RUNS = [
-	{ time: "22:24", name: "渠道经营看板", detail: "6 节点 · 3 产物页面", cost: "1.2s", state: "成功" },
-	{ time: "21:58", name: "渠道经营大屏", detail: "8 节点 · 1 页", cost: "2.4s", state: "成功" },
-	{ time: "18:40", name: "城市分布看板", detail: "5 节点 · 2 产物页面", cost: "0.9s", state: "成功" },
-	{ time: "10-09", name: "投放效果看板", detail: "8 节点 · 3 产物页面", cost: "—", state: "1 个节点失败" },
-];
+// ── 真实数据 hooks ──
+function useDatasources(): { items: DataSource[]; refresh: () => void } {
+	const [items, setItems] = useState<DataSource[]>([]);
+	const refresh = useCallback(() => {
+		engineRequest<DataSource[]>("/drag/datasource/list", undefined, { method: "GET" })
+			.then((r) => setItems(r ?? []))
+			.catch(() => { /* 后端没跑时静默 */ });
+	}, []);
+	useEffect(() => { refresh(); }, [refresh]);
+	return { items, refresh };
+}
+function useRunlogs(): { items: RunLog[] } {
+	const [items, setItems] = useState<RunLog[]>([]);
+	useEffect(() => {
+		engineRequest<{ records: RunLog[] }>("/drag/runlog/list?limit=4", undefined, { method: "GET" })
+			.then((r) => setItems(r?.records ?? []))
+			.catch(() => { /* 后端没跑时静默 */ });
+	}, []);
+	return { items };
+}
+function useSharelinks(): { items: ShareLink[] } {
+	const [items, setItems] = useState<ShareLink[]>([]);
+	useEffect(() => {
+		engineRequest<ShareLink[]>("/drag/sharelink/list", undefined, { method: "GET" })
+			.then((r) => setItems(r ?? []))
+			.catch(() => { /* 后端没跑时静默 */ });
+	}, []);
+	return { items };
+}
+function useWorktreeStatus(): { status: WorktreeStatus | null; publish: (pageIds: string[]) => Promise<void> } {
+	const [status, setStatus] = useState<WorktreeStatus | null>(null);
+	const load = useCallback(() => {
+		engineRequest<WorktreeStatus>("/drag/worktree/status", undefined, { method: "GET" })
+			.then((r) => setStatus(r))
+			.catch(() => { /* 静默 */ });
+	}, []);
+	const publish = useCallback(async (pageIds: string[]) => {
+		await engineRequest<{ published: number }>("/drag/worktree/publish", { pageIds });
+		load();
+	}, [load]);
+	useEffect(() => { load(); }, [load]);
+	return { status, publish };
+}
 
+// ── 设计稿常量（静态，暂无后端） ──
 const START = [
 	{ icon: "icon-[lucide--table-2]", title: "从数据集新建", note: "选一张表，勾字段，直接出图" },
 	{ icon: "icon-[lucide--wand-sparkles]", title: "让 AI 生成", note: "说一句要什么，它去拼节点" },
@@ -75,6 +111,29 @@ function formatDate(iso?: string): string {
 		return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 	} catch {
 		return "";
+	}
+}
+
+function formatRunTime(iso?: string): string {
+	if (!iso) return "—";
+	try {
+		const d = new Date(iso);
+		return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+	} catch {
+		return "—";
+	}
+}
+
+function formatShareExpires(iso: string | null): string {
+	if (!iso) return "不过期";
+	try {
+		const now = Date.now();
+		const exp = new Date(iso).getTime();
+		const days = Math.ceil((exp - now) / (24 * 3600 * 1000));
+		if (days <= 0) return "已过期";
+		return `剩 ${days} 天`;
+	} catch {
+		return "—";
 	}
 }
 
@@ -142,6 +201,22 @@ export function BigscreenWorkspace(): JSX.Element {
 	const { pages, loading, error, refresh, create, remove, copy } = useBigscreenPages();
 	const [editorPageId, setEditorPageId] = useState<string | null>(null);
 	const [creating, setCreating] = useState(false);
+
+	// ── Phase B 真实数据 ──
+	const { items: datasources } = useDatasources();
+	const { items: runlogs } = useRunlogs();
+	const { items: sharelinks } = useSharelinks();
+	const { status: worktree, publish } = useWorktreeStatus();
+
+	// NAV 静态骨架（计数从真实 pages.length 来）
+	const NAV_ITEMS = [
+		{ icon: "icon-[lucide--layout-dashboard]", label: "我的看板", on: true },
+		{ icon: "icon-[lucide--monitor]", label: "数据大屏", on: false },
+		{ icon: "icon-[lucide--table-2]", label: "数据集", on: false },
+		{ icon: "icon-[lucide--folder-tree]", label: "工作树", on: false },
+		{ icon: "icon-[lucide--share-2]", label: "分享给我", on: false },
+		{ icon: "icon-[lucide--trash-2]", label: "回收站", on: false },
+	];
 
 	const notify = (msg: string, variant: "success" | "error" | "info" = "info") => {
 		try { getUi()?.notify?.({ message: msg, variant }); } catch { /* ignore */ }
@@ -216,11 +291,11 @@ export function BigscreenWorkspace(): JSX.Element {
 				{/* 左栏：资产导航 */}
 				<aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface-raised px-2 py-3">
 					<div className="flex flex-col gap-0.5">
-						{NAV.map((n) => {
-							// 真实计数（mock 的 count 覆盖）
+						{NAV_ITEMS.map((n) => {
+							// 真实计数从 pages 算
 							const realCount = n.label === "我的看板" ? String(boardPages.length) :
 							                  n.label === "数据大屏" ? String(screenPages.length) :
-							                  n.count;
+							                  "";
 							return (
 								<div key={n.label} className={`flex h-8 cursor-pointer items-center gap-2 rounded-control px-2 ${n.on ? "bg-accent-soft" : "hover:bg-surface"}`}>
 									<Icon name={n.icon} className={`size-3.5 shrink-0 ${n.on ? "text-accent" : "text-muted"}`} />
@@ -233,16 +308,15 @@ export function BigscreenWorkspace(): JSX.Element {
 
 					<div className="mt-auto flex flex-col gap-2 border-t border-border pt-3">
 						<span className="px-2 text-[10px] text-faint">数据源</span>
-						<div className="flex h-7 items-center gap-2 px-2">
-							<Icon name="icon-[lucide--database]" className="size-3.5 shrink-0 text-muted" />
-							<span className="text-[11px] text-surface-foreground">生产库 MySQL</span>
-							<span className="ml-auto size-1.5 shrink-0 rounded-full bg-success" />
-						</div>
-						<div className="flex h-7 items-center gap-2 px-2">
-							<Icon name="icon-[lucide--upload]" className="size-3.5 shrink-0 text-muted" />
-							<span className="text-[11px] text-surface-foreground">本地文件</span>
-							<span className="ml-auto font-mono text-[10px] text-faint">3</span>
-						</div>
+						{datasources.length === 0 ? (
+							<div className="px-2 text-[10px] text-faint">（暂无）</div>
+						) : datasources.map((ds) => (
+							<div key={ds.id} className="flex h-7 items-center gap-2 px-2">
+								<Icon name="icon-[lucide--database]" className="size-3.5 shrink-0 text-muted" />
+								<span className="truncate text-[11px] text-surface-foreground">{ds.name}</span>
+								<span className={`ml-auto size-1.5 shrink-0 rounded-full ${ds.status === "connected" ? "bg-success" : "bg-warning"}`} />
+							</div>
+						))}
 						<Btn size="xs" variant="ghost" icon="icon-[lucide--settings]" className="self-start">管理数据源</Btn>
 					</div>
 				</aside>
@@ -302,10 +376,12 @@ export function BigscreenWorkspace(): JSX.Element {
 							<span className="ml-auto text-[10px] text-faint">看板与大屏共用同一本账</span>
 						</div>
 						<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-1.5 py-1.5">
-							{RUNS.map((r) => (
-								<div key={r.time + r.name} className="flex h-8 items-center gap-3 rounded-[4px] px-2 hover:bg-surface">
-									<span className="w-10 shrink-0 font-mono text-[10px] tabular-nums text-faint">{r.time}</span>
-									<span className="w-40 shrink-0 truncate text-[11px] text-surface-foreground">{r.name}</span>
+							{runlogs.length === 0 ? (
+								<div className="flex h-full items-center justify-center text-[11px] text-faint">暂无运行记录</div>
+							) : runlogs.map((r) => (
+								<div key={r.id} className="flex h-8 items-center gap-3 rounded-[4px] px-2 hover:bg-surface">
+									<span className="w-10 shrink-0 font-mono text-[10px] tabular-nums text-faint">{formatRunTime(r.createTime)}</span>
+									<span className="w-40 shrink-0 truncate text-[11px] text-surface-foreground">{r.pageName}</span>
 									<span className="min-w-0 flex-1 truncate text-[10px] text-faint">{r.detail}</span>
 									<span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted">{r.cost}</span>
 									<span className={`flex h-[18px] shrink-0 items-center rounded-chip px-1.5 text-[10px] ${
@@ -335,37 +411,48 @@ export function BigscreenWorkspace(): JSX.Element {
 
 					<div className="flex flex-col gap-2 border-t border-border pt-3">
 						<span className="text-[11px] font-medium text-surface-foreground">产物链接</span>
-						<div className="flex flex-col gap-1 rounded-card border border-border bg-surface px-2.5 py-2">
-							<div className="flex items-center gap-2">
-								<Icon name="icon-[lucide--link-2]" className="size-3.5 shrink-0 text-muted" />
-								<span className="text-[11px] text-surface-foreground">永久链接</span>
-								<span className="ml-auto font-mono text-[10px] text-faint">不过期</span>
+						{sharelinks.length === 0 ? (
+							<div className="rounded-card border border-dashed border-border px-3 py-2 text-center text-[10px] text-faint">暂无分享链接</div>
+						) : sharelinks.map((l) => (
+							<div key={l.id} className="flex flex-col gap-1 rounded-card border border-border bg-surface px-2.5 py-2">
+								<div className="flex items-center gap-2">
+									<Icon name={l.type === "permanent" ? "icon-[lucide--link-2]" : "icon-[lucide--calendar-clock]"} className="size-3.5 shrink-0 text-muted" />
+									<span className="text-[11px] text-surface-foreground">{l.type === "permanent" ? "永久链接" : "限期分享"}</span>
+									<span className={`ml-auto font-mono text-[10px] ${l.type === "permanent" ? "text-faint" : "text-warning"}`}>
+										{l.type === "permanent" ? "不过期" : formatShareExpires(l.expiresAt)}
+									</span>
+								</div>
+								<div className="flex items-center gap-1.5">
+									<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted">{l.path}</span>
+									{l.password ? <Icon name="icon-[lucide--lock]" className="size-3 shrink-0 text-faint" /> : null}
+									<IconButton size="xs" icon="icon-[lucide--copy]" title="复制链接" onClick={() => {
+										navigator?.clipboard?.writeText(`https://${l.path}`);
+										notify("已复制链接", "success");
+									}} />
+								</div>
 							</div>
-							<div className="flex items-center gap-1.5">
-								<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted">bi.local/d/chan-ops-6f2a</span>
-								<IconButton size="xs" icon="icon-[lucide--copy]" title="复制永久链接" />
-							</div>
-						</div>
-						<div className="flex flex-col gap-1 rounded-card border border-border bg-surface px-2.5 py-2">
-							<div className="flex items-center gap-2">
-								<Icon name="icon-[lucide--calendar-clock]" className="size-3.5 shrink-0 text-muted" />
-								<span className="text-[11px] text-surface-foreground">限期分享</span>
-								<span className="ml-auto font-mono text-[10px] text-warning">剩 6 天</span>
-							</div>
-							<div className="flex items-center gap-1.5">
-								<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted">bi.local/s/9k3p-7d</span>
-								<Icon name="icon-[lucide--lock]" className="size-3 shrink-0 text-faint" />
-								<IconButton size="xs" icon="icon-[lucide--copy]" title="复制分享链接" />
-							</div>
-						</div>
+						))}
 					</div>
 
 					<div className="mt-auto flex flex-col gap-2 rounded-card border border-border bg-surface px-3 py-2.5">
 						<div className="flex items-center gap-2">
-							<Icon name="icon-[lucide--folder-tree]" className="size-3.5 shrink-0 text-warning" />
-							<span className="text-[11px] text-surface-foreground">工作树有 2 个变更待发布</span>
+							<Icon name="icon-[lucide--folder-tree]" className={`size-3.5 shrink-0 ${worktree?.dirtyCount ? "text-warning" : "text-success"}`} />
+							<span className="text-[11px] text-surface-foreground">
+								工作树 {worktree?.dirtyCount ?? 0} 个变更待发布
+							</span>
 						</div>
-						<Btn size="sm" variant="primary" icon="icon-[lucide--upload]">发布并复制链接</Btn>
+						<Btn
+							size="sm"
+							variant="primary"
+							icon="icon-[lucide--upload]"
+							disabled={!worktree?.dirtyCount}
+							onClick={async () => {
+								if (!worktree) return;
+								const dirtyIds = worktree.pages.filter((p) => p.dirty).map((p) => p.id);
+								await publish(dirtyIds);
+								notify(`已发布 ${dirtyIds.length} 个页面`, "success");
+							}}
+						>发布并复制链接</Btn>
 					</div>
 				</aside>
 			</div>
