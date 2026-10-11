@@ -1,28 +1,32 @@
 /**
- * 引擎构建脚本：bundle server/main.mjs + 拉取 dbx-mcp 二进制 + 回填 plugin.json sha256。
+ * 引擎构建脚本（Python runtime 版）：stage server/*.py 源码 + 拉取 dbx-mcp 二进制 + 回填 plugin.json sha256。
  *
  *   node scripts/build-engine.mjs            # 校验：磁盘产物 ↔ plugin.json 声明
- *   node scripts/build-engine.mjs --write    # 构建 + 下载二进制 + 回填 sha256 / runtime.version
+ *   node scripts/build-engine.mjs --write    # 下载二进制 + 回填 sha256 / runtime.version / artifacts
  *
- * 产物布局：
- *   server/main.mjs                              ← server/src/http-server.mjs (ES bundle)
- *   server/bin/dbx-mcp-darwin-arm64              ← fork release 预编译
- *   server/bin/dbx-mcp-darwin-x64                ← fork release 预编译
- *   server/bin/dbx-mcp-win-x64.exe               ← fork release 预编译
+ * 产物布局（运行时）：
+ *   server/main.py                    ← 入口（executable）
+ *   server/engine/*.py                ← 内部包
+ *   server/pyproject.toml             ← 依赖声明（Phase 1 零依赖占位）
+ *   server/bin/dbx-mcp-darwin-arm64   ← Rust 预编译
+ *   server/bin/dbx-mcp-darwin-x64
+ *   server/bin/dbx-mcp-win-x64.exe
  *
- * dbx-mcp 二进制从 fork repo https://github.com/maomaochong-ai/dbx release 下载，
- * 硬编码 tag + asset 名，不走 npm / 不依赖旧项目路径。
+ * 与旧 Node 版差异：
+ *   - 不再 esbuild bundle：Python 是解释型，直接 stage 源码
+ *   - artifacts 数组不再单一 main.mjs，而是 server/*.py + engine/*.py + pyproject.toml + bin/*
+ *   - 从 server/engine/protocol.py 正则提 ENGINE_VERSION（不 import，避免 node→python 依赖链）
  */
 
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, mkdirSync, statSync, writeFileSync, chmodSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, mkdirSync, statSync, writeFileSync, chmodSync, existsSync, statSync as _stat } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
-const SERVER_SRC = join(ROOT, "server", "src");
-const SERVER_OUT = join(ROOT, "server");
-const BIN_DIR = join(SERVER_OUT, "bin");
+const SERVER_DIR = join(ROOT, "server");
+const PY_ENGINE_DIR = join(SERVER_DIR, "engine");
+const BIN_DIR = join(SERVER_DIR, "bin");
 const MANIFEST_PATH = join(ROOT, "plugin.json");
 const RUNTIME_LOCK_PATH = join(ROOT, "runtime-lock.json");
 const SERVICE_ID = "dbx-engine";
@@ -39,7 +43,6 @@ const DBX_BINARIES = [
   { platform: "win32-x64",    asset: "dbx-mcp-0.4.106-astravia-win-x64.exe",    dest: "dbx-mcp-win-x64.exe",    exec: false },
 ];
 
-/** 当前支持的运行平台（Linux 暂不支持 dbx-mcp binary，宿主 install 时跳过） */
 const PLATFORMS = ["darwin-arm64", "darwin-x64", "win32-x64"];
 
 const write = process.argv.includes("--write");
@@ -48,23 +51,45 @@ function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
 }
 
-/**
- * 确保 dbx-mcp 二进制存在于 server/bin/。
- * 已存在 + 大小 > 1MB → 直接跳过（网络 fetch 可能不可用）。
- * 不存在才从 fork release 下载（fetch 失败则报错）。
- */
+/** 递归收集 server/ 下所有 .py + .mjs + pyproject.toml（不含 bin/ 和 __pycache__/） */
+function collectServerArtifacts() {
+  const out = [];
+  function walk(dir, rel) {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      const relPath = rel ? join(rel, name) : name;
+      if (name === "__pycache__") continue;
+      if (name === "bin") continue;
+      const st = statSync(full);
+      if (st.isDirectory()) walk(full, relPath);
+      else if (
+        name.endsWith(".py") ||
+        name.endsWith(".mjs") ||
+        name === "pyproject.toml"
+      ) out.push(relPath);
+    }
+  }
+  walk(SERVER_DIR, "server");
+  return out.sort();
+}
+
+/** 从 protocol.py 提 ENGINE_VERSION（正则，不 import） */
+function readEngineVersion() {
+  const path = join(PY_ENGINE_DIR, "protocol.py");
+  const content = readFileSync(path, "utf8");
+  const m = content.match(/ENGINE_VERSION\s*=\s*"([^"]+)"/);
+  if (!m) throw new Error(`无法从 ${path} 提 ENGINE_VERSION`);
+  return m[1];
+}
+
 async function ensureDbxBinary(platform, asset, dest, exec) {
   const destPath = join(BIN_DIR, dest);
   mkdirSync(BIN_DIR, { recursive: true });
-
-  // 已存在 + 大小合理 → 直接跳过
   if (existsSync(destPath) && statSync(destPath).size > 1_000_000) {
     const sizeMB = (statSync(destPath).size / 1_048_576).toFixed(1);
-    console.log(`  [local] ${platform} ${dest} (${sizeMB}MB, sha256=${sha256(readFileSync(destPath)).slice(0,16)}...)`);
+    console.log(`  [local] ${platform} ${dest} (${sizeMB}MB, sha256=${sha256(readFileSync(destPath)).slice(0, 16)}...)`);
     return destPath;
   }
-
-  // 不存在才下载
   const url = `${DBX_RELEASE_BASE}/${asset}`;
   console.log(`  [fetch] ${platform} ${asset} ← ${url}`);
   const resp = await fetch(url);
@@ -73,34 +98,8 @@ async function ensureDbxBinary(platform, asset, dest, exec) {
   writeFileSync(destPath, buf);
   if (exec) chmodSync(destPath, 0o755);
   const sizeMB = (buf.length / 1_048_576).toFixed(1);
-  console.log(`  [ok] ${platform} ${dest} (${sizeMB}MB, sha256=${sha256(buf).slice(0,16)}...)`);
+  console.log(`  [ok] ${platform} ${dest} (${sizeMB}MB, sha256=${sha256(buf).slice(0, 16)}...)`);
   return destPath;
-}
-
-/** bundle main.mjs（自包含：pg/mysql2/mssql 写驱动一并打包，node 内置模块外置）。 */
-async function buildMainBundle(esbuild) {
-  // 说明：这是【生成产物】，由 scripts/build-engine.mjs 从 server/src 打包；不要手改。
-  // banner 用纯 ASCII，避免破折号在某些编辑器里被误判为乱码。
-  const banner = "// dbx-pro engine bundle - generated by scripts/build-engine.mjs; DO NOT EDIT.\nimport { createRequire } from 'node:module';\nconst require = createRequire(import.meta.url);\n";
-  const result = await esbuild.build({
-    entryPoints: [join(SERVER_SRC, "http-server.mjs")],
-    outfile: join(SERVER_OUT, "main.mjs"),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node22",
-    // pg/mysql2/mssql 必须打进 bridge：宿主 runtime 目录只 stage 本产物与 dbx-mcp 二进制。
-    // 仅外置无法/无需打包的项：pg 的可选原生绑定。
-    external: ["pg-native"],
-    sourcemap: false,
-    // 不压缩：产物保持可读、可排查（这是用户明确要求），代价是体积约 4MB。
-    minify: false,
-    legalComments: "none",
-    banner: { js: banner },
-    logLevel: "warning",
-  });
-  if (result.errors.length > 0) throw new Error(`main bundle failed: ${JSON.stringify(result.errors)}`);
-  return "server/main.mjs";
 }
 
 function readManifest() {
@@ -114,61 +113,63 @@ function serviceOf(manifest) {
   return service;
 }
 
-/** 平台 → artifacts 查找（destination 精确匹配）。 */
-function findArtifact(platformArtifacts, destination) {
-  return platformArtifacts.find((a) => a.destination === destination);
-}
-
 async function main() {
-  const { createRequire } = await import("node:module");
-  const require = createRequire(import.meta.url);
-  let esbuild;
-  try { esbuild = require("esbuild"); }
-  catch { throw new Error("缺少 esbuild：请在插件目录安装 devDependency 后重试"); }
-
   if (write) {
-    // 1. bundle main.mjs
-    const outputs = [];
-    const mainDest = await buildMainBundle(esbuild);
-    outputs.push(mainDest);
-    console.log(`[build] main bundle → ${mainDest}`);
+    // 1. 确保 Python 源码存在（不再 bundle）
+    const pyArtifacts = collectServerArtifacts();
+    if (pyArtifacts.length === 0) throw new Error("server/ 下找不到 .py 文件，Phase 1 未完成？");
+    console.log(`[build] ${pyArtifacts.length} 个 Python 源文件将被 stage`);
 
-    // 2. download dbx-mcp binaries（并行）
+    // 2. 下载 dbx-mcp binaries
     console.log(`[download] fetching dbx-mcp binaries from fork release ${DBX_RELEASE_TAG}...`);
     await Promise.all(DBX_BINARIES.map(b => ensureDbxBinary(b.platform, b.asset, b.dest, b.exec)));
-    for (const b of DBX_BINARIES) outputs.push(`server/bin/${b.dest}`);
 
-    // 3. 回填 plugin.json
-    const manifest = readManifest();
-    const svc = serviceOf(manifest);
-    const mainSha = sha256(readFileSync(join(ROOT, mainDest)));
-    const binaryShas = Object.fromEntries(
-      DBX_BINARIES.map(b => [`server/bin/${b.dest}`, sha256(readFileSync(join(ROOT, "server", "bin", b.dest)))])
-    );
-
-    // 所有平台共享 main.mjs 的 sha256（JS bundle 跨平台相同）
-    for (const [platformKey, platformCfg] of Object.entries(svc.runtime.platforms || {})) {
-      const mainArtifact = findArtifact(platformCfg.artifacts, "server/main.mjs");
-      if (mainArtifact) mainArtifact.sha256 = mainSha;
-      // 该平台的 dbx-mcp 二进制
-      const binEntry = DBX_BINARIES.find(b => b.platform === platformKey);
-      if (binEntry) {
-        const binArtifact = findArtifact(platformCfg.artifacts, `server/bin/${binEntry.dest}`);
-        if (binArtifact) binArtifact.sha256 = binaryShas[`server/bin/${binEntry.dest}`];
-      }
+    // 3. 计算所有产物 sha256
+    const allArtifacts = [
+      ...pyArtifacts,
+      ...DBX_BINARIES.map(b => `server/bin/${b.dest}`),
+    ];
+    const shaMap = {};
+    for (const a of allArtifacts) {
+      const buf = readFileSync(join(ROOT, a));
+      shaMap[a] = sha256(buf);
     }
 
-    // runtime.version bump（如果 main 内容有变化）
-    const protocol = await import(new URL(`file://${join(SERVER_SRC, "engine", "protocol.mjs")}`).href);
+    // 4. 重写 plugin.json artifacts（所有平台共享同样的 Python 源码 artifact 列表）
+    const manifest = readManifest();
+    const svc = serviceOf(manifest);
+
+    // 构建通用 Python 源码 artifact 列表（跨平台共享）
+    const pyArtifactList = pyArtifacts.map((p) => ({
+      sha256: shaMap[p],
+      archive: "file",
+      destination: p,
+    }));
+
+    for (const [platformKey, platformCfg] of Object.entries(svc.runtime.platforms || {})) {
+      // 先放 Python 源码 artifacts
+      const artifacts = [...pyArtifactList];
+      // 再放该平台专属的 dbx-mcp 二进制
+      const binEntry = DBX_BINARIES.find(b => b.platform === platformKey);
+      if (binEntry) {
+        const binDest = `server/bin/${binEntry.dest}`;
+        artifacts.push({
+          sha256: shaMap[binDest],
+          archive: "file",
+          destination: binDest,
+        });
+      }
+      platformCfg.artifacts = artifacts;
+    }
+
+    // 5. runtime.version 从 Python protocol.py 读
+    const engineVersion = readEngineVersion();
     const prevVersion = svc.runtime.version;
-    svc.runtime.version = protocol.ENGINE_VERSION;
+    svc.runtime.version = engineVersion;
 
     writeFileSync(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`);
 
-    // 4. 同步 runtime-lock.json（runtime.ts 的 bin 读取/网络兜底清单）。
-    // 必须与 plugin.json platforms.artifacts 同源：曾因两份清单版本漂移
-    // （plugin.json=0.4.106 / runtime-lock=0.4.61）导致包内 bin SHA 校验失败、
-    // 回退下载旧二进制，宿主 install 报 "Service runtime artifact SHA-256 mismatch"。
+    // 6. 同步 runtime-lock.json
     const mcpVersion = DBX_RELEASE_TAG.match(/v([\d.]+)$/)?.[1];
     if (!mcpVersion) throw new Error(`无法从 release tag 解析引擎版本：${DBX_RELEASE_TAG}`);
     const runtimeLock = existsSync(RUNTIME_LOCK_PATH)
@@ -176,62 +177,52 @@ async function main() {
       : {};
     runtimeLock.version = mcpVersion;
     runtimeLock.platforms = Object.fromEntries(
-      DBX_BINARIES.map((b) => [
-        b.platform,
-        [
-          {
-            destination: `server/bin/${b.dest}`,
-            url: `${DBX_RELEASE_BASE}/${b.asset}`,
-            sha256: binaryShas[`server/bin/${b.dest}`],
-          },
-        ],
-      ]),
+      DBX_BINARIES.map((b) => {
+        const dest = `server/bin/${b.dest}`;
+        return [b.platform, [{ destination: dest, url: `${DBX_RELEASE_BASE}/${b.asset}`, sha256: shaMap[dest] }]];
+      }),
     );
     writeFileSync(RUNTIME_LOCK_PATH, `${JSON.stringify(runtimeLock, null, 2)}\n`);
     console.log(`[build] runtime-lock.json 已同步（dbx-mcp ${mcpVersion}）`);
 
-    const summary = [
-      { destination: mainDest, sha256: mainSha.slice(0, 32) + "...", bytes: statSync(join(ROOT, mainDest)).size },
-      ...DBX_BINARIES.map(b => {
-        const p = join(ROOT, "server", "bin", b.dest);
-        return { destination: `server/bin/${b.dest}`, sha256: binaryShas[`server/bin/${b.dest}`].slice(0, 32) + "...", bytes: statSync(p).size };
-      }),
-    ];
-    console.log(JSON.stringify({ mode: "write", runtimeVersion: `${prevVersion} → ${protocol.ENGINE_VERSION}`, outputs: summary }, null, 2));
+    const summary = allArtifacts.map((p) => ({
+      destination: p,
+      sha256: shaMap[p].slice(0, 32) + "...",
+      bytes: statSync(join(ROOT, p)).size,
+    }));
+    console.log(JSON.stringify({ mode: "write", runtimeVersion: `${prevVersion} → ${engineVersion}`, artifacts: pyArtifacts.length + " server src + " + DBX_BINARIES.length + " bin", outputs: summary }, null, 2));
     return;
   }
 
-  // === 校验模式：检查 plugin.json 声明的产物是否存在 + sha256 一致 ===
+  // === 校验模式 ===
   const manifest = readManifest();
   const svc = serviceOf(manifest);
-  // 选一个平台检查 artifacts（main.mjs 跨平台同）
   const firstPlatform = Object.values(svc.runtime.platforms || {})[0];
   if (!firstPlatform) throw new Error("plugin.json 缺少 runtime.platforms");
 
   const summary = [];
   let mismatch = 0;
 
-  // 1. main.mjs
-  const mainPath = join(ROOT, "server", "main.mjs");
-  if (!existsSync(mainPath)) {
-    summary.push({ destination: "server/main.mjs", status: "MISSING" });
-    mismatch++;
-  } else {
-    const actual = sha256(readFileSync(mainPath));
-    const declared = findArtifact(firstPlatform.artifacts, "server/main.mjs")?.sha256;
+  // Python 源码 artifacts（所有平台共享同一份声明）
+  for (const pyRel of collectServerArtifacts()) {
+    const full = join(ROOT, pyRel);
+    const declared = firstPlatform.artifacts?.find((a) => a.destination === pyRel)?.sha256;
+    if (!existsSync(full)) {
+      summary.push({ destination: pyRel, status: "MISSING" }); mismatch++; continue;
+    }
+    const actual = sha256(readFileSync(full));
     summary.push({
-      destination: "server/main.mjs",
-      bytes: statSync(mainPath).size,
+      destination: pyRel,
+      bytes: statSync(full).size,
       sha256: actual.slice(0, 32) + "...",
       status: actual === declared ? "ok" : "SHA256_MISMATCH",
     });
     if (actual !== declared) mismatch++;
   }
 
-  // 2. dbx-mcp 二进制（只检查当前平台对应的那份）
+  // dbx-mcp 二进制（只检查当前平台）
   const platform = PLATFORMS.find(p => {
-    const pf = process.platform;
-    const arch = process.arch;
+    const pf = process.platform; const arch = process.arch;
     if (pf === "darwin" && arch === "arm64") return p === "darwin-arm64";
     if (pf === "darwin" && arch === "x64") return p === "darwin-x64";
     if (pf === "win32" && arch === "x64") return p === "win32-x64";
@@ -239,21 +230,14 @@ async function main() {
   });
   if (platform) {
     const binEntry = DBX_BINARIES.find(b => b.platform === platform);
-    const binPath = join(ROOT, "server", "bin", binEntry.dest);
-    // 用当前平台的 artifacts 查声明，不能用 firstPlatform：每个平台只声明自己的二进制，
-    // 拿 arm64 那份去查 darwin-x64 的产物永远是 undefined（假阳性的 SHA256_MISMATCH）。
-    const declared = findArtifact(svc.runtime.platforms[platform].artifacts, `server/bin/${binEntry.dest}`)?.sha256;
-    if (!existsSync(binPath)) {
-      summary.push({ destination: `server/bin/${binEntry.dest}`, status: "MISSING" });
-      mismatch++;
+    const dest = `server/bin/${binEntry.dest}`;
+    const full = join(ROOT, dest);
+    const declared = svc.runtime.platforms[platform].artifacts?.find((a) => a.destination === dest)?.sha256;
+    if (!existsSync(full)) {
+      summary.push({ destination: dest, status: "MISSING" }); mismatch++;
     } else {
-      const actual = sha256(readFileSync(binPath));
-      summary.push({
-        destination: `server/bin/${binEntry.dest}`,
-        bytes: statSync(binPath).size,
-        sha256: actual.slice(0, 32) + "...",
-        status: actual === declared ? "ok" : "SHA256_MISMATCH",
-      });
+      const actual = sha256(readFileSync(full));
+      summary.push({ destination: dest, bytes: statSync(full).size, sha256: actual.slice(0, 32) + "...", status: actual === declared ? "ok" : "SHA256_MISMATCH" });
       if (actual !== declared) mismatch++;
     }
   }

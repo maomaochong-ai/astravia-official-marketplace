@@ -26,9 +26,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-# 让 python main.py 直接可跑（server-py/ 作为包）
-_SERVER_PY_DIR = Path(__file__).resolve().parent      # .../dbx-pro/server-py/
-_SERVER_DIR = _SERVER_PY_DIR.parent / "server"        # .../dbx-pro/server/  ← binary 在这
+# 让 python main.py 直接可跑（server/ 即引擎根）
+_SERVER_DIR = Path(__file__).resolve().parent   # .../dbx-pro/server/  ← binary 也在这的 bin/
+_SERVER_PY_DIR = _SERVER_DIR
 sys.path.insert(0, str(_SERVER_PY_DIR))
 
 from engine.protocol import (  # noqa: E402 — sys.path 调整后 import

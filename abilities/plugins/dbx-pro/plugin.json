@@ -50,9 +50,29 @@
               "executable": "server/bin/dbx-mcp-darwin-arm64",
               "artifacts": [
                 {
-                  "sha256": "5ce1e4121db58ed12e4e4598560ef0bcd4c91030213f0c10f38b0aba3347917d",
+                  "sha256": "7414d1358937d714ebeb11eba73892284bc4633e3cc94c6bc96fa606f48254ca",
+                  "archive": "file",
+                  "destination": "server/engine/dbx_mcp_client.py"
+                },
+                {
+                  "sha256": "b0624a5bb6a51d0a5d661f8e0b802ce3bc099a31971854b00cdddfae3a6c9e7b",
+                  "archive": "file",
+                  "destination": "server/engine/protocol.py"
+                },
+                {
+                  "sha256": "f4a670097bf1e81f1befad043c75cbfc444864a151be9690eef6eb31249dbee3",
                   "archive": "file",
                   "destination": "server/main.mjs"
+                },
+                {
+                  "sha256": "a591703c3314f210d1006ba6d8f8eaee4e6b5d6762069c64f2129f5edd230117",
+                  "archive": "file",
+                  "destination": "server/main.py"
+                },
+                {
+                  "sha256": "e37d068071a5b07bea1c03024a2c688fbfe0ed3e0bc6d98ececd73af5ef9d466",
+                  "archive": "file",
+                  "destination": "server/pyproject.toml"
                 },
                 {
                   "sha256": "69e69e6aa273a7de57618275baed87928c9b2668d813b06dc86465317b482fb3",
@@ -65,9 +85,29 @@
               "executable": "server/bin/dbx-mcp-darwin-x64",
               "artifacts": [
                 {
-                  "sha256": "5ce1e4121db58ed12e4e4598560ef0bcd4c91030213f0c10f38b0aba3347917d",
+                  "sha256": "7414d1358937d714ebeb11eba73892284bc4633e3cc94c6bc96fa606f48254ca",
+                  "archive": "file",
+                  "destination": "server/engine/dbx_mcp_client.py"
+                },
+                {
+                  "sha256": "b0624a5bb6a51d0a5d661f8e0b802ce3bc099a31971854b00cdddfae3a6c9e7b",
+                  "archive": "file",
+                  "destination": "server/engine/protocol.py"
+                },
+                {
+                  "sha256": "f4a670097bf1e81f1befad043c75cbfc444864a151be9690eef6eb31249dbee3",
                   "archive": "file",
                   "destination": "server/main.mjs"
+                },
+                {
+                  "sha256": "a591703c3314f210d1006ba6d8f8eaee4e6b5d6762069c64f2129f5edd230117",
+                  "archive": "file",
+                  "destination": "server/main.py"
+                },
+                {
+                  "sha256": "e37d068071a5b07bea1c03024a2c688fbfe0ed3e0bc6d98ececd73af5ef9d466",
+                  "archive": "file",
+                  "destination": "server/pyproject.toml"
                 },
                 {
                   "sha256": "e3198fd8a5348edf569aed2abedf2f30b9c0f512ae45976300b897f07a7536ce",
@@ -80,9 +120,29 @@
               "executable": "server/bin/dbx-mcp-win-x64.exe",
               "artifacts": [
                 {
-                  "sha256": "5ce1e4121db58ed12e4e4598560ef0bcd4c91030213f0c10f38b0aba3347917d",
+                  "sha256": "7414d1358937d714ebeb11eba73892284bc4633e3cc94c6bc96fa606f48254ca",
+                  "archive": "file",
+                  "destination": "server/engine/dbx_mcp_client.py"
+                },
+                {
+                  "sha256": "b0624a5bb6a51d0a5d661f8e0b802ce3bc099a31971854b00cdddfae3a6c9e7b",
+                  "archive": "file",
+                  "destination": "server/engine/protocol.py"
+                },
+                {
+                  "sha256": "f4a670097bf1e81f1befad043c75cbfc444864a151be9690eef6eb31249dbee3",
                   "archive": "file",
                   "destination": "server/main.mjs"
+                },
+                {
+                  "sha256": "a591703c3314f210d1006ba6d8f8eaee4e6b5d6762069c64f2129f5edd230117",
+                  "archive": "file",
+                  "destination": "server/main.py"
+                },
+                {
+                  "sha256": "e37d068071a5b07bea1c03024a2c688fbfe0ed3e0bc6d98ececd73af5ef9d466",
+                  "archive": "file",
+                  "destination": "server/pyproject.toml"
                 },
                 {
                   "sha256": "598980a9a357203e2f68f8b6401b385f9928bf9443b13cd83f9986cfd66034cd",
