@@ -198,6 +198,10 @@ export function ConnectionFields({
 									<div className="dbx-field">
 										<label className="dbx-field__label" htmlFor="dbx-conn-password">
 											密码
+											<span className="ml-1 inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted">
+												<span className="icon-[lucide--key-round] h-2.5 w-2.5" />
+												系统凭据库
+											</span>
 										</label>
 										<div className="dbx-field-control">
 											<input
@@ -222,21 +226,30 @@ export function ConnectionFields({
 												/>
 											</button>
 										</div>
-										<p className="dbx-field__hint">仅保存在本机连接配置中</p>
+										<p className="dbx-field__hint">密码交给系统凭据库管理，不写进明文连接配置</p>
 									</div>
 									<div className="dbx-field">
-										<div className="dbx-field__label">SSL / TLS</div>
-										<label className="dbx-switch-row" style={{ height: 32 }}>
-											<input
-												type="checkbox"
-												className="dbx-switch"
-												checked={!!conn.ssl}
-												onChange={(e) => onChange({ ...conn, ssl: e.target.checked })}
-											/>
-											<span className="dbx-field__hint" style={{ lineHeight: "32px" }}>
-												{conn.ssl ? "已启用加密连接" : "未启用"}
-											</span>
-										</label>
+										<label className="dbx-field__label" htmlFor="dbx-conn-ssl-mode">SSL 模式</label>
+										<select
+											id="dbx-conn-ssl-mode"
+											className="dbx-form-input"
+											value={conn.ssl_mode ?? (conn.ssl ? "require" : "disable")}
+											onChange={(e) => {
+												const mode = e.target.value as NonNullable<DbConnection["ssl_mode"]>;
+												onChange({
+													...conn,
+													ssl_mode: mode,
+													ssl: mode !== "disable" && mode !== "prefer" ? true : conn.ssl,
+												});
+											}}
+										>
+											<option value="disable">不启用（disable）</option>
+											<option value="prefer">优先（prefer）</option>
+											<option value="require">强制（require）</option>
+											<option value="verify-ca">校验 CA（verify-ca）</option>
+											<option value="verify-full">校验完整证书链（verify-full）</option>
+										</select>
+										<p className="dbx-field__hint">verify-full 会校验服务器证书链；MySQL / PostgreSQL 会自动拼进连接参数</p>
 									</div>
 								</>
 							)}
@@ -379,6 +392,21 @@ export function ConnectionFields({
 											onChange({ ...conn, query_timeout_secs: Number(e.target.value) })
 										}
 									/>
+								</div>
+								<div className="dbx-field">
+									<label className="dbx-field__label" htmlFor="dbx-conn-default-row-limit">
+										默认查询上限（行）
+									</label>
+									<input
+										id="dbx-conn-default-row-limit"
+										className="dbx-form-input"
+										type="number"
+										value={conn.default_row_limit ?? 1000}
+										onChange={(e) =>
+											onChange({ ...conn, default_row_limit: Math.max(1, Number(e.target.value) || 1000) })
+										}
+									/>
+									<p className="dbx-field__hint">工作台新建查询未显式写 LIMIT 时用此值兜底</p>
 								</div>
 								<div className="dbx-field dbx-field--full">
 									<label className="dbx-field__label" htmlFor="dbx-conn-url-params">

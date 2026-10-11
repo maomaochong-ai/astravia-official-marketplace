@@ -13,7 +13,7 @@
 
 import { useState, useMemo, useRef, type JSX } from "react";
 import { useVisualizationStore, type StoredVisualization } from "../visualization-store";
-import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
+import { downloadHtml, openHtmlInNewTab } from "../services/html-export";
 import { resolveChartItems } from "../../../domain/chart-source";
 import { getUi } from "../../../runtime-contract.ts";
 import { resolveVisualizationHtml } from "../visualization-html";

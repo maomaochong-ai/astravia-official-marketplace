@@ -7,8 +7,8 @@
 
 import { useState, useRef, useEffect, type JSX } from "react";
 import type { Visualization } from "../../../domain/chart-contract";
-import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
-import { withEmbeddedChartJs } from "../../../shared/utils/chart-runtime";
+import { downloadHtml, openHtmlInNewTab } from "../services/html-export";
+import { withEmbeddedChartJs } from "../services/chart-runtime";
 import { getUi } from "../../../runtime-contract.ts";
 import { resolveChartItems } from "../../../domain/chart-source";
 import { resolveVisualizationHtml } from "../visualization-html";

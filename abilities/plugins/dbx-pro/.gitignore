@@ -4,3 +4,9 @@ release/
 *.log
 .DS_Store
 bun.lock
+
+# 一次性 E2E 验收脚手架（不进 Git / 不进制品，按需本地跑）
+scripts/e2e/
+
+# 浏览器开发夹具（清理后不再需要）
+dev-harness.html

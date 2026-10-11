@@ -1137,8 +1137,6 @@ export function ResultGrid({
 				orderByClause={orderByClause}
 				onOrderByChange={setOrderByClause}
 				onApplyFilterSort={applyFilterSort}
-				rowCount={isServer ? (totalKnown ? (serverTotalCount ?? 0) : takenRows) : displayTotal}
-				rowCountKnown={!isServer || totalKnown}
 				elapsedLabel={elapsedMs !== undefined && elapsedMs >= 0 ? formatDuration(elapsedMs) : undefined}
 				totalCountStatus={isServer ? serverTotalStatus : undefined}
 				onRefreshTotalCount={isServer ? refreshTotalCount : undefined}

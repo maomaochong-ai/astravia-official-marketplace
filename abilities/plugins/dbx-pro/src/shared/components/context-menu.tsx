@@ -30,7 +30,7 @@ import {
 	type MenuBox,
 	type PlacementRect,
 	type SubmenuBox,
-} from "../utils/menu-placement";
+} from "./menu-placement";
 
 export interface ContextMenuItem {
 	type: "item";

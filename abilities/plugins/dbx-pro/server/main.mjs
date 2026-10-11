@@ -6061,11 +6061,11 @@ var require_log = __commonJS({
       log: () => log
     });
     module.exports = __toCommonJS2(log_exports);
-    var import_node_os4 = __require("node:os");
+    var import_node_os5 = __require("node:os");
     var import_node_util6 = __toESM2(__require("node:util"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function log(message, ...args) {
-      import_node_process8.default.stderr.write(`${import_node_util6.default.format(message, ...args)}${import_node_os4.EOL}`);
+      import_node_process8.default.stderr.write(`${import_node_util6.default.format(message, ...args)}${import_node_os5.EOL}`);
     }
   }
 });
@@ -21543,13 +21543,13 @@ var require_sha256 = __commonJS({
       computeSha256Hmac: () => computeSha256Hmac2
     });
     module.exports = __toCommonJS2(sha256_exports);
-    var import_node_crypto2 = __require("node:crypto");
+    var import_node_crypto3 = __require("node:crypto");
     async function computeSha256Hmac2(key, stringToSign, encoding) {
       const decodedKey = Buffer.from(key, "base64");
-      return (0, import_node_crypto2.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
+      return (0, import_node_crypto3.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
     }
     async function computeSha256Hash2(content, encoding) {
-      return (0, import_node_crypto2.createHash)("sha256").update(content).digest(encoding);
+      return (0, import_node_crypto3.createHash)("sha256").update(content).digest(encoding);
     }
   }
 });
@@ -24949,14 +24949,14 @@ var require_userAgentPlatform = __commonJS({
       setPlatformSpecificData: () => setPlatformSpecificData2
     });
     module.exports = __toCommonJS2(userAgentPlatform_exports);
-    var import_node_os4 = __toESM2(__require("node:os"));
+    var import_node_os5 = __toESM2(__require("node:os"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function getHeaderName() {
       return "User-Agent";
     }
     async function setPlatformSpecificData2(map) {
       if (import_node_process8.default && import_node_process8.default.versions) {
-        const osInfo = `${import_node_os4.default.type()} ${import_node_os4.default.release()}; ${import_node_os4.default.arch()}`;
+        const osInfo = `${import_node_os5.default.type()} ${import_node_os5.default.release()}; ${import_node_os5.default.arch()}`;
         if (import_node_process8.default.versions.bun) {
           map.set("Bun", `${import_node_process8.default.versions.bun} (${osInfo})`);
         } else if (import_node_process8.default.versions.deno) {
@@ -28660,14 +28660,14 @@ var require_userAgentPlatform2 = __commonJS({
       setPlatformSpecificData: () => setPlatformSpecificData2
     });
     module.exports = __toCommonJS2(userAgentPlatform_exports);
-    var import_node_os4 = __toESM2(__require("node:os"));
+    var import_node_os5 = __toESM2(__require("node:os"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function getHeaderName() {
       return "User-Agent";
     }
     async function setPlatformSpecificData2(map) {
       if (import_node_process8.default && import_node_process8.default.versions) {
-        const osInfo = `${import_node_os4.default.type()} ${import_node_os4.default.release()}; ${import_node_os4.default.arch()}`;
+        const osInfo = `${import_node_os5.default.type()} ${import_node_os5.default.release()}; ${import_node_os5.default.arch()}`;
         if (import_node_process8.default.versions.bun) {
           map.set("Bun", `${import_node_process8.default.versions.bun} (${osInfo})`);
         } else if (import_node_process8.default.versions.deno) {
@@ -33203,7 +33203,7 @@ var require_clientCertificateCredential = __commonJS({
     });
     module.exports = __toCommonJS2(clientCertificateCredential_exports);
     var import_msalClient = require_msalClient();
-    var import_node_crypto2 = __require("node:crypto");
+    var import_node_crypto3 = __require("node:crypto");
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_logging = require_logging();
     var import_promises3 = __require("node:fs/promises");
@@ -33276,7 +33276,7 @@ var require_clientCertificateCredential = __commonJS({
         );
         let privateKey;
         if (this.certificateConfiguration.certificatePassword !== void 0) {
-          privateKey = (0, import_node_crypto2.createPrivateKey)({
+          privateKey = (0, import_node_crypto3.createPrivateKey)({
             key: parts.certificateContents,
             passphrase: this.certificateConfiguration.certificatePassword,
             format: "pem"
@@ -33312,8 +33312,8 @@ var require_clientCertificateCredential = __commonJS({
       if (publicKeys.length === 0) {
         throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
       }
-      const thumbprint = (0, import_node_crypto2.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-      const thumbprintSha256 = (0, import_node_crypto2.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprint = (0, import_node_crypto3.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprintSha256 = (0, import_node_crypto3.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
       return {
         certificateContents,
         thumbprintSha256,
@@ -34627,8 +34627,8 @@ var require_resolveExecutable = __commonJS({
       resolveWindowsCommandInterpreter: () => resolveWindowsCommandInterpreter
     });
     module.exports = __toCommonJS2(resolveExecutable_exports);
-    var import_node_fs6 = __require("node:fs");
-    var import_node_path5 = __toESM2(__require("node:path"));
+    var import_node_fs8 = __require("node:fs");
+    var import_node_path6 = __toESM2(__require("node:path"));
     var import_node_url4 = __require("node:url");
     var import_errors = require_errors3();
     var WINDOWS_NATIVE_EXTENSIONS = [".exe", ".com"];
@@ -34676,7 +34676,7 @@ var require_resolveExecutable = __commonJS({
     }
     function normalizeCwd(cwd) {
       const cwdPath = cwd instanceof URL ? (0, import_node_url4.fileURLToPath)(cwd) : cwd;
-      return import_node_path5.default.resolve(cwdPath ?? process.cwd());
+      return import_node_path6.default.resolve(cwdPath ?? process.cwd());
     }
     function createProcessContext(options = {}) {
       if (options.allowWindowsBatchFiles !== void 0 && typeof options.allowWindowsBatchFiles !== "boolean") {
@@ -34692,11 +34692,11 @@ var require_resolveExecutable = __commonJS({
     }
     function isExecutableFile(filePath) {
       try {
-        if (!(0, import_node_fs6.statSync)(filePath).isFile()) {
+        if (!(0, import_node_fs8.statSync)(filePath).isFile()) {
           return false;
         }
         if (process.platform !== "win32") {
-          (0, import_node_fs6.accessSync)(filePath, import_node_fs6.constants.X_OK);
+          (0, import_node_fs8.accessSync)(filePath, import_node_fs8.constants.X_OK);
         }
         return true;
       } catch {
@@ -34710,7 +34710,7 @@ var require_resolveExecutable = __commonJS({
       return WINDOWS_BATCH_EXTENSIONS.some((candidate) => candidate === extension);
     }
     function resolveWindowsCandidate(candidate, allowWindowsBatchFiles) {
-      const extension = import_node_path5.default.extname(candidate).toLowerCase();
+      const extension = import_node_path6.default.extname(candidate).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
@@ -34737,7 +34737,7 @@ var require_resolveExecutable = __commonJS({
       const pathValue = getEnvironmentValue(context.env, "PATH") ?? "";
       const paths = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const entry of pathValue.split(import_node_path5.default.delimiter)) {
+      for (const entry of pathValue.split(import_node_path6.default.delimiter)) {
         let candidate = entry;
         if (process.platform === "win32") {
           candidate = candidate.trim();
@@ -34745,10 +34745,10 @@ var require_resolveExecutable = __commonJS({
             candidate = candidate.slice(1, -1);
           }
         }
-        if (!candidate || !import_node_path5.default.isAbsolute(candidate)) {
+        if (!candidate || !import_node_path6.default.isAbsolute(candidate)) {
           continue;
         }
-        const normalized = import_node_path5.default.resolve(candidate);
+        const normalized = import_node_path6.default.resolve(candidate);
         const key = process.platform === "win32" ? normalized.toLowerCase() : normalized;
         if (!seen.has(key)) {
           seen.add(key);
@@ -34774,8 +34774,8 @@ var require_resolveExecutable = __commonJS({
     }
     function resolveExecutableWithContext(command, context) {
       validateCommand(command);
-      if (hasPathSeparator(command) || import_node_path5.default.isAbsolute(command)) {
-        const candidate = import_node_path5.default.resolve(context.cwd, command);
+      if (hasPathSeparator(command) || import_node_path6.default.isAbsolute(command)) {
+        const candidate = import_node_path6.default.resolve(context.cwd, command);
         if (process.platform === "win32") {
           return resolveWindowsCandidate(candidate, context.allowWindowsBatchFiles);
         }
@@ -34784,20 +34784,20 @@ var require_resolveExecutable = __commonJS({
       const searchPaths = getSearchPaths(context);
       if (process.platform !== "win32") {
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path5.default.join(searchPath, command);
+          const candidate = import_node_path6.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
         }
         return void 0;
       }
-      const extension = import_node_path5.default.extname(command).toLowerCase();
+      const extension = import_node_path6.default.extname(command).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(context.allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
         }
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path5.default.join(searchPath, command);
+          const candidate = import_node_path6.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34806,7 +34806,7 @@ var require_resolveExecutable = __commonJS({
       }
       for (const searchPath of searchPaths) {
         for (const nativeExtension of WINDOWS_NATIVE_EXTENSIONS) {
-          const candidate = import_node_path5.default.join(searchPath, command + nativeExtension);
+          const candidate = import_node_path6.default.join(searchPath, command + nativeExtension);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34815,7 +34815,7 @@ var require_resolveExecutable = __commonJS({
       if (context.allowWindowsBatchFiles) {
         for (const searchPath of searchPaths) {
           for (const batchExtension of WINDOWS_BATCH_EXTENSIONS) {
-            const candidate = import_node_path5.default.join(searchPath, command + batchExtension);
+            const candidate = import_node_path6.default.join(searchPath, command + batchExtension);
             if (isExecutableFile(candidate)) {
               return candidate;
             }
@@ -34829,9 +34829,9 @@ var require_resolveExecutable = __commonJS({
     }
     function canonicalizeWindowsPath(filePath) {
       try {
-        return import_node_fs6.realpathSync.native(filePath).toLowerCase();
+        return import_node_fs8.realpathSync.native(filePath).toLowerCase();
       } catch {
-        return import_node_path5.default.resolve(filePath).toLowerCase();
+        return import_node_path6.default.resolve(filePath).toLowerCase();
       }
     }
     function isWindowsDriveAbsolutePath(filePath) {
@@ -34845,7 +34845,7 @@ var require_resolveExecutable = __commonJS({
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
         });
       }
-      const executablePath = import_node_path5.default.join(systemRoot, "System32", "cmd.exe");
+      const executablePath = import_node_path6.default.join(systemRoot, "System32", "cmd.exe");
       if (!isExecutableFile(executablePath)) {
         throw new import_errors.ProcessError("The Windows command interpreter could not be found.", {
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
@@ -34911,7 +34911,7 @@ var require_normalizeCommand = __commonJS({
       normalizeCommand: () => normalizeCommand
     });
     module.exports = __toCommonJS2(normalizeCommand_exports);
-    var import_node_path5 = __toESM2(__require("node:path"));
+    var import_node_path6 = __toESM2(__require("node:path"));
     var import_errors = require_errors3();
     var import_resolveExecutable = require_resolveExecutable();
     var UNSAFE_BATCH_ARGUMENT = /[%!^&|<>()]/;
@@ -34975,7 +34975,7 @@ var require_normalizeCommand = __commonJS({
           windowsVerbatimArguments: false
         };
       }
-      const extension = import_node_path5.default.extname(resolvedPath).toLowerCase();
+      const extension = import_node_path6.default.extname(resolvedPath).toLowerCase();
       if (extension === ".exe" || extension === ".com") {
         return {
           executable: resolvedPath,
@@ -37191,7 +37191,7 @@ var require_onBehalfOfCredential = __commonJS({
     var import_logging = require_logging();
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_errors = require_errors2();
-    var import_node_crypto2 = __require("node:crypto");
+    var import_node_crypto3 = __require("node:crypto");
     var import_scopeUtils = require_scopeUtils();
     var import_promises3 = __require("node:fs/promises");
     var import_tracing = require_tracing();
@@ -37326,8 +37326,8 @@ var require_onBehalfOfCredential = __commonJS({
         if (publicKeys.length === 0) {
           throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
         }
-        const thumbprint = (0, import_node_crypto2.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-        const thumbprintSha256 = (0, import_node_crypto2.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprint = (0, import_node_crypto3.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprintSha256 = (0, import_node_crypto3.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
         return {
           certificateContents,
           thumbprintSha256,
@@ -87038,7 +87038,7 @@ var require_named_placeholders = __commonJS({
         }
         return s;
       }
-      function join3(tree) {
+      function join4(tree) {
         if (tree.length === 1) {
           return tree;
         }
@@ -87064,7 +87064,7 @@ var require_named_placeholders = __commonJS({
         if (cache && (tree = cache.get(query))) {
           return toArrayParams(tree, paramsObj);
         }
-        tree = join3(parse(query));
+        tree = join4(parse(query));
         if (cache) {
           cache.set(query, tree);
         }
@@ -94897,10 +94897,10 @@ var require_lib7 = __commonJS({
 });
 
 // server/src/http-server.mjs
-import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
-import { chmodSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { homedir as homedir2 } from "node:os";
-import { join as join2 } from "node:path";
+import { randomBytes, createHash as createHash2, timingSafeEqual } from "node:crypto";
+import { chmodSync as chmodSync2, existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { homedir as homedir3 } from "node:os";
+import { join as join3 } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
@@ -94908,7 +94908,7 @@ import { pathToFileURL } from "node:url";
 var ENGINE_VERSION = "0.0.20";
 var PROTOCOL_VERSION = 1;
 var MAX_BODY_BYTES = 8 * 1024 * 1024;
-var DEFAULT_ROW_LIMIT = 500;
+var DEFAULT_ROW_LIMIT = 50;
 var MAX_ROW_LIMIT = 5e3;
 var MAX_TIMEOUT_MS = 3e5;
 var STATUS_BY_CODE = Object.freeze({
@@ -94928,6 +94928,18 @@ var STATUS_BY_CODE = Object.freeze({
   DRIVER_ERROR: 502,
   CONNECTION_ERROR: 502,
   DBX_MCP_ERROR: 502,
+  // 「API 接入」（插件自有数据源路径，见 src/api-source/）——
+  // 上游接口的问题一律 5xx（用户改不了），配置/入参问题一律 4xx。
+  API_HTTP_ERROR: 502,
+  API_INVALID_JSON: 502,
+  API_UNAVAILABLE: 502,
+  CONNECTION_FAILED: 502,
+  API_RATE_LIMITED: 503,
+  API_ENGINE_UNAVAILABLE: 501,
+  API_PATH_NOT_FOUND: 400,
+  API_SOURCE_NOT_REFERENCED: 400,
+  AUTH_MISSING: 400,
+  AUTH_FAILED: 401,
   TIMEOUT: 504,
   INTERNAL: 500
 });
@@ -95655,6 +95667,785 @@ async function executeWrite(spec, sql) {
   return runMssql(spec, sql, options);
 }
 
+// server/src/api-source/api-source.mjs
+import { createHash } from "node:crypto";
+var API_DB_TYPE = "api";
+var API_AUTH_KINDS = ["none", "bearer", "api-key", "basic"];
+var API_METHODS = ["GET"];
+var API_MAX_ROWS = 1e3;
+var API_DEFAULT_ROWS = 1e3;
+var ApiSourceError = class extends EngineError {
+  constructor(code, message, detail) {
+    super(code, message, detail);
+    this.name = "ApiSourceError";
+  }
+};
+function isApiDbType(dbType) {
+  return String(dbType ?? "").trim().toLowerCase() === API_DB_TYPE;
+}
+function asText(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+function normalizeUrl(raw) {
+  const text = asText(raw);
+  if (!text) throw new ApiSourceError("BAD_REQUEST", "\u63A5\u53E3\u5730\u5740\u4E0D\u80FD\u4E3A\u7A7A");
+  let parsed;
+  try {
+    parsed = new URL(text);
+  } catch {
+    throw new ApiSourceError("BAD_REQUEST", `\u63A5\u53E3\u5730\u5740\u4E0D\u662F\u5408\u6CD5 URL: ${text}`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new ApiSourceError("BAD_REQUEST", `\u63A5\u53E3\u5730\u5740\u53EA\u652F\u6301 http / https\uFF0C\u6536\u5230 ${parsed.protocol}`);
+  }
+  return parsed.toString();
+}
+function normalizeDataPath(raw) {
+  const text = asText(raw).replace(/^\./, "");
+  if (!text) return "";
+  if (!/^[A-Za-z0-9_$]+(\[\d+\])?(\.[A-Za-z0-9_$]+(\[\d+\])?)*$/.test(text)) {
+    throw new ApiSourceError("BAD_REQUEST", `\u6570\u636E\u8DEF\u5F84\u683C\u5F0F\u4E0D\u5408\u6CD5: ${text}`);
+  }
+  return text;
+}
+function parseDataPath(dataPath) {
+  const text = normalizeDataPath(dataPath);
+  if (!text) return [];
+  return text.split(".").flatMap((segment) => {
+    const match = segment.match(/^([A-Za-z0-9_$]+)(?:\[(\d+)\])?$/);
+    if (!match) throw new ApiSourceError("BAD_REQUEST", `\u6570\u636E\u8DEF\u5F84\u683C\u5F0F\u4E0D\u5408\u6CD5: ${text}`);
+    return match[2] === void 0 ? [match[1]] : [match[1], Number(match[2])];
+  });
+}
+function normalizeHeaders(raw) {
+  const headers = {};
+  const lines = [];
+  if (typeof raw === "string") lines.push(...raw.split(/\r?\n/));
+  else if (Array.isArray(raw)) lines.push(...raw.map((v) => String(v)));
+  else if (raw && typeof raw === "object") {
+    for (const [key, value] of Object.entries(raw)) {
+      if (asText(key)) headers[asText(key)] = String(value ?? "").trim();
+    }
+    return headers;
+  } else return headers;
+  for (const line of lines) {
+    const text = line.trim();
+    if (!text || text.startsWith("#")) continue;
+    const at = text.indexOf(":");
+    if (at <= 0) throw new ApiSourceError("BAD_REQUEST", `\u8BF7\u6C42\u5934\u7F3A\u5C11\u5192\u53F7: ${text}`);
+    const key = text.slice(0, at).trim();
+    const value = text.slice(at + 1).trim();
+    if (!key) throw new ApiSourceError("BAD_REQUEST", `\u8BF7\u6C42\u5934\u540D\u4E0D\u80FD\u4E3A\u7A7A: ${text}`);
+    headers[key] = value;
+  }
+  return headers;
+}
+function normalizeAuth(raw) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  const kind = asText(input.kind) || "none";
+  if (!API_AUTH_KINDS.includes(kind)) {
+    throw new ApiSourceError("BAD_REQUEST", `\u4E0D\u652F\u6301\u7684\u8BA4\u8BC1\u65B9\u5F0F: ${kind}`);
+  }
+  const auth = { kind };
+  if (kind === "bearer") return auth;
+  if (kind === "api-key") {
+    const headerName = asText(input.headerName) || "X-API-Key";
+    if (!/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(headerName)) {
+      throw new ApiSourceError("BAD_REQUEST", `\u81EA\u5B9A\u4E49\u8BA4\u8BC1\u5934\u540D\u4E0D\u5408\u6CD5: ${headerName}`);
+    }
+    auth.headerName = headerName;
+    if (asText(input.prefix)) auth.prefix = asText(input.prefix);
+    return auth;
+  }
+  if (kind === "basic") {
+    if (!asText(input.username)) throw new ApiSourceError("BAD_REQUEST", "\u57FA\u672C\u8BA4\u8BC1\u9700\u8981\u7528\u6237\u540D");
+    auth.username = asText(input.username);
+    return auth;
+  }
+  return auth;
+}
+function normalizeApiSource(raw) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  const name = asText(input.name);
+  if (!name) throw new ApiSourceError("BAD_REQUEST", "\u8FDE\u63A5\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A");
+  if (name.length > 120) throw new ApiSourceError("BAD_REQUEST", "\u8FDE\u63A5\u540D\u79F0\u8FC7\u957F");
+  const method = (asText(input.method) || "GET").toUpperCase();
+  if (!API_METHODS.includes(method)) {
+    throw new ApiSourceError("BAD_REQUEST", `\u7B2C\u4E00\u7248\u53EA\u652F\u6301 GET\uFF0C\u6536\u5230 ${method}`);
+  }
+  const rawRows = input.rowLimit ?? input.row_limit ?? API_DEFAULT_ROWS;
+  const rowLimit = Number.isFinite(Number(rawRows)) ? Math.trunc(Number(rawRows)) : API_DEFAULT_ROWS;
+  if (rowLimit < 1 || rowLimit > API_MAX_ROWS) {
+    throw new ApiSourceError("BAD_REQUEST", `\u884C\u6570\u4E0A\u9650\u9700\u5728 1\u2013${API_MAX_ROWS} \u4E4B\u95F4`);
+  }
+  return {
+    name,
+    url: normalizeUrl(input.url),
+    method,
+    headers: normalizeHeaders(input.headers),
+    auth: normalizeAuth(input.auth),
+    dataPath: normalizeDataPath(input.dataPath ?? input.data_path),
+    rowLimit
+  };
+}
+function buildAuthHeaders(auth, secret) {
+  const kind = asText(auth?.kind) || "none";
+  const value = typeof secret === "string" ? secret : "";
+  if (kind === "none") return {};
+  if (kind === "bearer") {
+    if (!value) throw new ApiSourceError("AUTH_MISSING", "\u8BA4\u8BC1\u65B9\u5F0F\u4E3A Bearer Token\uFF0C\u4F46\u672A\u63D0\u4F9B Token");
+    return { Authorization: `Bearer ${value}` };
+  }
+  if (kind === "api-key") {
+    if (!value) throw new ApiSourceError("AUTH_MISSING", "\u8BA4\u8BC1\u65B9\u5F0F\u4E3A API Key\uFF0C\u4F46\u672A\u63D0\u4F9B Key");
+    const headerName = asText(auth?.headerName) || "X-API-Key";
+    const prefix = asText(auth?.prefix);
+    return { [headerName]: prefix ? `${prefix} ${value}` : value };
+  }
+  if (kind === "basic") {
+    if (!value) throw new ApiSourceError("AUTH_MISSING", "\u8BA4\u8BC1\u65B9\u5F0F\u4E3A\u57FA\u672C\u8BA4\u8BC1\uFF0C\u4F46\u672A\u63D0\u4F9B\u5BC6\u7801");
+    const username = asText(auth?.username);
+    return { Authorization: `Basic ${Buffer.from(`${username}:${value}`, "utf8").toString("base64")}` };
+  }
+  throw new ApiSourceError("BAD_REQUEST", `\u4E0D\u652F\u6301\u7684\u8BA4\u8BC1\u65B9\u5F0F: ${kind}`);
+}
+function buildRequestHeaders(config, secret) {
+  return {
+    Accept: "application/json",
+    ...config?.headers ?? {},
+    ...buildAuthHeaders(config?.auth, secret)
+  };
+}
+function extractRecords(payload, dataPath) {
+  const segments = parseDataPath(dataPath);
+  let current = payload;
+  let walked = "";
+  for (const segment of segments) {
+    walked = walked ? `${walked}.${segment}` : String(segment);
+    if (current === null || typeof current !== "object") {
+      throw new ApiSourceError("API_PATH_NOT_FOUND", `\u6570\u636E\u8DEF\u5F84 ${dataPath} \u5728 ${walked} \u5904\u65AD\u6389\uFF08\u54CD\u5E94\u91CC\u6CA1\u6709\u8BE5\u5C42\u7EA7\uFF09`);
+    }
+    if (typeof segment === "number") {
+      if (!Array.isArray(current)) {
+        throw new ApiSourceError("API_PATH_NOT_FOUND", `\u6570\u636E\u8DEF\u5F84 ${dataPath} \u671F\u671B ${walked} \u662F\u6570\u7EC4`);
+      }
+    } else if (Array.isArray(current) || !(segment in current)) {
+      throw new ApiSourceError(
+        "API_PATH_NOT_FOUND",
+        `\u6570\u636E\u8DEF\u5F84 ${dataPath} \u627E\u4E0D\u5230 ${walked}\uFF1B\u54CD\u5E94\u9876\u5C42\u952E\uFF1A${topLevelKeys(payload)}`
+      );
+    }
+    current = current[segment];
+  }
+  if (current === null || current === void 0) {
+    throw new ApiSourceError("API_PATH_NOT_FOUND", `\u6570\u636E\u8DEF\u5F84 ${dataPath || "(\u6839)"} \u662F\u7A7A\u503C\uFF1B\u9876\u5C42\u952E\uFF1A${topLevelKeys(payload)}`);
+  }
+  if (!Array.isArray(current)) {
+    throw new ApiSourceError(
+      "API_PATH_NOT_FOUND",
+      `\u6570\u636E\u8DEF\u5F84 ${dataPath || "(\u6839)"} \u6307\u5411\u7684\u4E0D\u662F\u6570\u7EC4\uFF0C\u800C\u662F ${Array.isArray(current) ? "\u6570\u7EC4" : typeof current}\uFF1B\u9876\u5C42\u952E\uFF1A${topLevelKeys(payload)}`
+    );
+  }
+  return current;
+}
+function topLevelKeys(payload) {
+  if (Array.isArray(payload)) return `(\u54CD\u5E94\u672C\u8EAB\u5C31\u662F\u6570\u7EC4\uFF0C\u957F\u5EA6 ${payload.length})`;
+  if (payload && typeof payload === "object") {
+    const keys = Object.keys(payload);
+    return keys.length ? keys.slice(0, 12).join(", ") : "(\u7A7A\u5BF9\u8C61)";
+  }
+  return `(\u54CD\u5E94\u662F ${payload === null ? "null" : typeof payload})`;
+}
+function tableFromRecords(records, { rowLimit = API_MAX_ROWS, dataPath = "" } = {}) {
+  if (!Array.isArray(records)) {
+    throw new ApiSourceError("BAD_REQUEST", "records \u4E0D\u662F\u6570\u7EC4");
+  }
+  const truncatedRecords = records.length > rowLimit;
+  const limited = truncatedRecords ? records.slice(0, rowLimit) : records;
+  const columns = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const record of limited) {
+    if (!record || typeof record !== "object" || Array.isArray(record)) continue;
+    for (const key of Object.keys(record)) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      columns.push(key);
+    }
+  }
+  if (columns.length === 0 && limited.length > 0) {
+    const rows2 = limited.map((value) => ({ value: cellValue(value) }));
+    return { columns: ["value"], rows: rows2, truncated: truncatedRecords, totalRecords: records.length, dataPath };
+  }
+  const rows = limited.map((record) => {
+    const row = {};
+    for (const column of columns) {
+      const value = record && typeof record === "object" ? record[column] : void 0;
+      row[column] = cellValue(value);
+    }
+    return row;
+  });
+  return { columns, rows, truncated: truncatedRecords, totalRecords: records.length, dataPath };
+}
+function inferColumnTypes(records, columns) {
+  const list = Array.isArray(records) ? records : [];
+  const result = {};
+  for (const column of columns ?? []) {
+    const seen = /* @__PURE__ */ new Set();
+    for (const record of list) {
+      if (!record || typeof record !== "object") continue;
+      const value = record[column];
+      if (value === null || value === void 0) continue;
+      if (typeof value === "number") seen.add(Number.isInteger(value) ? "bigint" : "double");
+      else if (typeof value === "boolean") seen.add("boolean");
+      else if (typeof value === "object") seen.add("json");
+      else seen.add("varchar");
+    }
+    const allNumeric = seen.size > 0 && [...seen].every((t) => t === "bigint" || t === "double");
+    if (seen.size === 1) result[column] = [...seen][0];
+    else if (allNumeric) result[column] = "double";
+    else result[column] = "varchar";
+  }
+  return result;
+}
+function cellValue(value) {
+  if (value === void 0) return null;
+  if (value === null) return null;
+  if (typeof value === "object") return stringifyJson(value);
+  return value;
+}
+function toNdjson(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return "";
+  return `${rows.map((row) => stringifyJson(row)).join("\n")}
+`;
+}
+function snapshotFileName(name) {
+  const text = String(name ?? "").trim();
+  if (!text) throw new ApiSourceError("BAD_REQUEST", "\u8FDE\u63A5\u540D\u79F0\u4E0D\u80FD\u4E3A\u7A7A");
+  const slug = text.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^[._-]+|[._-]+$/g, "").slice(0, 80);
+  if (slug) return `${slug}.ndjson`;
+  const digest2 = createHash("sha1").update(text, "utf8").digest("hex").slice(0, 12);
+  return `src-${digest2}.ndjson`;
+}
+
+// server/src/api-source/api-fetch.mjs
+var API_DEFAULT_TIMEOUT_MS = 15e3;
+var API_MAX_TIMEOUT_MS = 12e4;
+function clampApiTimeout(value) {
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms <= 0) return API_DEFAULT_TIMEOUT_MS;
+  return Math.min(Math.trunc(ms), API_MAX_TIMEOUT_MS);
+}
+function httpErrorCode(status) {
+  if (status === 401 || status === 403 || status === 407) return "AUTH_FAILED";
+  if (status === 404) return "API_HTTP_ERROR";
+  if (status === 429) return "API_RATE_LIMITED";
+  return "API_HTTP_ERROR";
+}
+async function fetchApiSource(config, options = {}) {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  if (typeof fetchImpl !== "function") {
+    throw new ApiSourceError("API_UNAVAILABLE", "\u5F53\u524D\u8FD0\u884C\u73AF\u5883\u6CA1\u6709\u5168\u5C40 fetch");
+  }
+  const secret = typeof config?.secret === "string" ? config.secret : "";
+  const headers = buildRequestHeaders(config, secret);
+  const timeoutMs = clampApiTimeout(options.timeoutMs);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const startedAt = Date.now();
+  let response;
+  try {
+    response = await fetchImpl(config.url, {
+      method: config.method ?? "GET",
+      headers,
+      redirect: "follow",
+      signal: controller.signal
+    });
+  } catch (error) {
+    const aborted = error?.name === "AbortError" || controller.signal.aborted;
+    if (aborted) {
+      throw new ApiSourceError("TIMEOUT", `\u63A5\u53E3\u5728 ${timeoutMs} ms \u5185\u6CA1\u6709\u54CD\u5E94: ${config.url}`);
+    }
+    throw new ApiSourceError("CONNECTION_FAILED", `\u8BF7\u6C42\u5931\u8D25: ${error?.message ?? String(error)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+  const body = await response.text();
+  const bytes = Buffer.byteLength(body, "utf8");
+  if (!response.ok) {
+    const snippet = body.trim().slice(0, 200);
+    throw new ApiSourceError(
+      httpErrorCode(response.status),
+      `\u63A5\u53E3\u8FD4\u56DE HTTP ${response.status}${snippet ? `\uFF1A${snippet}` : ""}`
+    );
+  }
+  let payload;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    const snippet = body.trim().slice(0, 200);
+    throw new ApiSourceError(
+      "API_INVALID_JSON",
+      `\u54CD\u5E94\u4E0D\u662F\u5408\u6CD5 JSON\uFF08\u7B2C\u4E00\u7248\u53EA\u652F\u6301 JSON \u63A5\u53E3\uFF09${snippet ? `\uFF0C\u6B63\u6587\u5F00\u5934\uFF1A${snippet}` : ""}`
+    );
+  }
+  const records = extractRecords(payload, config.dataPath ?? "");
+  const table = tableFromRecords(records, {
+    rowLimit: config.rowLimit ?? 1e3,
+    dataPath: config.dataPath ?? ""
+  });
+  return {
+    records,
+    table,
+    status: response.status,
+    url: config.url,
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    durationMs: Date.now() - startedAt,
+    bytes
+  };
+}
+
+// server/src/api-source/api-store.mjs
+import { chmodSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { homedir as homedir2 } from "node:os";
+import { dirname, join as join2 } from "node:path";
+var STORE_FILE = "api-connections.json";
+var CACHE_DIR = "api-cache";
+var SCHEMA_VERSION = 1;
+function resolveDataDir2(dataDir) {
+  return dataDir ?? join2(homedir2(), ".astravia-dbx-data");
+}
+function apiStorePath(dataDir) {
+  return join2(resolveDataDir2(dataDir), STORE_FILE);
+}
+function apiCacheDir(dataDir) {
+  return join2(resolveDataDir2(dataDir), CACHE_DIR);
+}
+function apiSnapshotPath(dataDir, name) {
+  return join2(apiCacheDir(dataDir), snapshotFileName(name));
+}
+var API_ENGINE_CONNECTION = "__dbx_pro_api__";
+var API_ENGINE_DATABASE_FILE = "local.duckdb";
+var API_ENGINE_DATABASE = API_ENGINE_DATABASE_FILE.replace(/\.duckdb$/, "");
+function apiEngineDatabasePath(dataDir) {
+  return join2(apiCacheDir(dataDir), API_ENGINE_DATABASE_FILE);
+}
+function emptyStore() {
+  return { schemaVersion: SCHEMA_VERSION, sources: [] };
+}
+function readApiStore(dataDir) {
+  const path3 = apiStorePath(dataDir);
+  if (!existsSync2(path3)) return emptyStore();
+  try {
+    const parsed = JSON.parse(readFileSync(path3, "utf8"));
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.sources)) return emptyStore();
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      sources: parsed.sources.filter((s) => s && typeof s === "object" && typeof s.name === "string")
+    };
+  } catch {
+    return emptyStore();
+  }
+}
+function writeApiStore(dataDir, store) {
+  const path3 = apiStorePath(dataDir);
+  mkdirSync2(dirname(path3), { recursive: true });
+  const tmp = `${path3}.tmp-${process.pid}`;
+  writeFileSync(tmp, `${JSON.stringify({ schemaVersion: SCHEMA_VERSION, sources: store.sources }, null, 2)}
+`, {
+    mode: 384
+  });
+  chmodSync(tmp, 384);
+  renameSync(tmp, path3);
+}
+function listApiSources(dataDir) {
+  return readApiStore(dataDir).sources.map((source) => ({ ...source }));
+}
+function findApiSource(dataDir, name) {
+  const wanted = String(name ?? "").trim().toLowerCase();
+  if (!wanted) return null;
+  return listApiSources(dataDir).find((s) => s.name.toLowerCase() === wanted) ?? null;
+}
+function isApiSourceName(dataDir, name) {
+  return findApiSource(dataDir, name) !== null;
+}
+function apiSourceNames(dataDir) {
+  return listApiSources(dataDir).map((s) => s.name);
+}
+function upsertApiSource(dataDir, rawConfig, secret) {
+  const config = normalizeApiSource(rawConfig);
+  const store = readApiStore(dataDir);
+  const index = store.sources.findIndex((s) => s.name.toLowerCase() === config.name.toLowerCase());
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const previous = index >= 0 ? store.sources[index] : null;
+  const hasSecret = typeof secret === "string" && secret.length > 0;
+  const nextSecret = hasSecret ? secret : previous?.secret ?? "";
+  const rawHeaders = rawConfig && typeof rawConfig === "object" ? rawConfig.headers : void 0;
+  const nextHeaders = rawHeaders === void 0 ? previous?.headers ?? {} : config.headers;
+  if (requiresSecret(config.auth) && !nextSecret) {
+    throw new ApiSourceError("AUTH_MISSING", "\u6240\u9009\u8BA4\u8BC1\u65B9\u5F0F\u9700\u8981\u51ED\u636E\uFF0C\u8BF7\u586B\u5199 Token / Key / \u5BC6\u7801");
+  }
+  const record = {
+    ...config,
+    headers: nextHeaders,
+    secret: nextSecret,
+    createdAt: previous?.createdAt ?? now,
+    updatedAt: now
+  };
+  if (index >= 0) store.sources[index] = record;
+  else store.sources.push(record);
+  writeApiStore(dataDir, store);
+  return record;
+}
+function requiresSecret(auth) {
+  const kind = String(auth?.kind ?? "none").toLowerCase();
+  return kind === "bearer" || kind === "api-key" || kind === "basic";
+}
+function removeApiSource(dataDir, name) {
+  const store = readApiStore(dataDir);
+  const wanted = String(name ?? "").trim().toLowerCase();
+  const removed = store.sources.find((s) => s.name.toLowerCase() === wanted);
+  if (!removed) {
+    throw new ApiSourceError("CONNECTION_NOT_FOUND", `\u6CA1\u6709\u540D\u4E3A ${name} \u7684 API \u63A5\u5165`);
+  }
+  writeApiStore(dataDir, { sources: store.sources.filter((s) => s !== removed) });
+  try {
+    unlinkSync(apiSnapshotPath(dataDir, removed.name));
+  } catch {
+  }
+  return { deleted: name };
+}
+function apiSourceToConnection(source) {
+  let host = "";
+  try {
+    host = new URL(source.url).host;
+  } catch {
+    host = source.url;
+  }
+  return {
+    id: source.id ?? `api:${source.name}`,
+    name: source.name,
+    groupPath: "",
+    type: "api",
+    host,
+    port: 0,
+    database: source.dataPath || "",
+    // 加法式字段：老客户端忽略，新客户端用它渲染表单与只读标记。
+    api: {
+      url: source.url,
+      method: source.method ?? "GET",
+      auth: source.auth ?? { kind: "none" },
+      dataPath: source.dataPath ?? "",
+      rowLimit: source.rowLimit ?? 1e3,
+      hasSecret: Boolean(source.secret),
+      // 请求头值也可能被用户用来放凭据，同样只回传「有没有」，不回传内容。
+      hasHeaders: Object.keys(source.headers ?? {}).length > 0
+    },
+    read_only: true
+  };
+}
+function apiSourceToPublic(source) {
+  return { ...apiSourceToConnection(source) };
+}
+
+// server/src/api-source/api-query.mjs
+import { mkdirSync as mkdirSync3, writeFileSync as writeFileSync2 } from "node:fs";
+
+// server/src/api-source/sql-rewrite.mjs
+var TABLE_MODIFIERS = /* @__PURE__ */ new Set(["LATERAL", "ONLY"]);
+var CLAUSE_KEYWORDS = /* @__PURE__ */ new Set([
+  "WHERE",
+  "JOIN",
+  "INNER",
+  "LEFT",
+  "RIGHT",
+  "FULL",
+  "OUTER",
+  "CROSS",
+  "NATURAL",
+  "ON",
+  "USING",
+  "GROUP",
+  "ORDER",
+  "HAVING",
+  "LIMIT",
+  "OFFSET",
+  "QUALIFY",
+  "WINDOW",
+  "SAMPLE",
+  "UNION",
+  "EXCEPT",
+  "INTERSECT",
+  "RETURNING",
+  "VALUES",
+  "TABLESAMPLE",
+  "FROM"
+]);
+function tokenize(sql) {
+  const text = String(sql ?? "");
+  const tokens = [];
+  const n = text.length;
+  let i = 0;
+  while (i < n) {
+    const ch = text[i];
+    if (ch === "-" && text[i + 1] === "-") {
+      const stop = text.indexOf("\n", i);
+      const end = stop === -1 ? n : stop;
+      tokens.push({ kind: "opaque", text: text.slice(i, end) });
+      i = end;
+      continue;
+    }
+    if (ch === "/" && text[i + 1] === "*") {
+      const stop = text.indexOf("*/", i + 2);
+      const end = stop === -1 ? n : stop + 2;
+      tokens.push({ kind: "opaque", text: text.slice(i, end) });
+      i = end;
+      continue;
+    }
+    if (ch === "'") {
+      let j = i + 1;
+      while (j < n) {
+        if (text[j] === "'") {
+          if (text[j + 1] === "'") {
+            j += 2;
+            continue;
+          }
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      tokens.push({ kind: "opaque", text: text.slice(i, j) });
+      i = j;
+      continue;
+    }
+    if (ch === '"' || ch === "`") {
+      const quote = ch;
+      let j = i + 1;
+      while (j < n) {
+        if (text[j] === quote) {
+          if (text[j + 1] === quote) {
+            j += 2;
+            continue;
+          }
+          j += 1;
+          break;
+        }
+        j += 1;
+      }
+      const raw = text.slice(i, j);
+      const inner = raw.slice(1, -1).split(quote + quote).join(quote);
+      tokens.push({ kind: "quoted", text: raw, name: inner });
+      i = j;
+      continue;
+    }
+    if (ch === "$") {
+      const match = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(text.slice(i));
+      if (match) {
+        const tag = match[0];
+        const stop = text.indexOf(tag, i + tag.length);
+        const end = stop === -1 ? n : stop + tag.length;
+        tokens.push({ kind: "opaque", text: text.slice(i, end) });
+        i = end;
+        continue;
+      }
+    }
+    if (/[A-Za-z_\u0080-\uFFFF]/.test(ch)) {
+      let j = i;
+      while (j < n && /[A-Za-z0-9_$\u0080-\uFFFF]/.test(text[j])) j += 1;
+      tokens.push({ kind: "ident", text: text.slice(i, j) });
+      i = j;
+      continue;
+    }
+    if (/[0-9]/.test(ch)) {
+      let j = i;
+      while (j < n && /[0-9a-fA-FxX.]/.test(text[j])) j += 1;
+      tokens.push({ kind: "opaque", text: text.slice(i, j) });
+      i = j;
+      continue;
+    }
+    if (/\s/.test(ch)) {
+      let j = i;
+      while (j < n && /\s/.test(text[j])) j += 1;
+      tokens.push({ kind: "opaque", text: text.slice(i, j) });
+      i = j;
+      continue;
+    }
+    tokens.push({ kind: "punct", text: ch });
+    i += 1;
+  }
+  return tokens;
+}
+function identName(token) {
+  if (!token) return null;
+  if (token.kind === "ident") return token.text;
+  if (token.kind === "quoted") return token.name;
+  return null;
+}
+function nextSignificant(tokens, from) {
+  for (let k = from; k < tokens.length; k += 1) {
+    if (tokens[k].kind !== "opaque") return k;
+  }
+  return -1;
+}
+function findTableRefs(tokens) {
+  const refs = [];
+  let expectTable = false;
+  let fromList = false;
+  let fromBaseDepth = 0;
+  let depth = 0;
+  for (let k = 0; k < tokens.length; k += 1) {
+    const token = tokens[k];
+    if (token.kind === "opaque") continue;
+    if (token.kind === "punct") {
+      if (token.text === "(") {
+        depth += 1;
+        if (expectTable) expectTable = false;
+        continue;
+      }
+      if (token.text === ")") {
+        depth -= 1;
+        if (fromList && depth < fromBaseDepth) fromList = false;
+        expectTable = false;
+        continue;
+      }
+      if (token.text === ",") {
+        if (fromList && depth === fromBaseDepth) expectTable = true;
+        continue;
+      }
+      if (token.text === ".") expectTable = false;
+      continue;
+    }
+    if (token.kind === "quoted") {
+      if (expectTable) {
+        refs.push({ index: k, hasAlias: aliasFollows(tokens, k) });
+        expectTable = false;
+      }
+      continue;
+    }
+    const name = token.text;
+    const upper = name.toUpperCase();
+    if (upper === "FROM" || upper === "JOIN") {
+      expectTable = true;
+      fromList = true;
+      fromBaseDepth = depth;
+      continue;
+    }
+    if (expectTable) {
+      if (TABLE_MODIFIERS.has(upper)) continue;
+      refs.push({ index: k, hasAlias: aliasFollows(tokens, k) });
+      expectTable = false;
+      continue;
+    }
+    if (CLAUSE_KEYWORDS.has(upper)) {
+      fromList = false;
+      expectTable = false;
+    }
+  }
+  return refs;
+}
+function aliasFollows(tokens, index) {
+  const next = nextSignificant(tokens, index + 1);
+  if (next === -1) return false;
+  const token = tokens[next];
+  if (token.kind === "punct") return false;
+  const name = identName(token);
+  if (name === null) return false;
+  return !CLAUSE_KEYWORDS.has(name.toUpperCase());
+}
+function escapePath(path3) {
+  return String(path3).split("'").join("''");
+}
+function rewriteApiTableRefs(sql, snapshotPaths, options = {}) {
+  const paths = snapshotPaths instanceof Map ? snapshotPaths : new Map(Object.entries(snapshotPaths ?? {}));
+  const tokens = tokenize(sql);
+  const refs = findTableRefs(tokens);
+  const replaced = /* @__PURE__ */ new Set();
+  for (const ref of refs) {
+    const token = tokens[ref.index];
+    const name = identName(token);
+    if (name === null) continue;
+    const path3 = paths.get(name.toLowerCase());
+    if (!path3) continue;
+    const alias = ref.hasAlias ? "" : ` AS "${name.split('"').join('""')}"`;
+    token.rewrite = `read_json_auto('${escapePath(path3)}')${alias}`;
+    replaced.add(name.toLowerCase());
+  }
+  const rewritten = tokens.map((token) => token.rewrite ?? token.text).join("");
+  return {
+    sql: rewritten,
+    replaced: [...replaced],
+    referenced: options.names ? options.names.filter((n) => referencedIn(tokens, n)) : [...replaced],
+    changed: replaced.size > 0
+  };
+}
+function referencedIn(tokens, name) {
+  const wanted = String(name ?? "").toLowerCase();
+  if (!wanted) return false;
+  return tokens.some((token) => {
+    const tokenName = identName(token);
+    return tokenName !== null && tokenName.toLowerCase() === wanted;
+  });
+}
+
+// server/src/api-source/api-query.mjs
+async function materializeApiSource(dataDir, name, options = {}) {
+  const source = findApiSource(dataDir, name);
+  if (!source) {
+    throw new ApiSourceError("CONNECTION_NOT_FOUND", `\u6CA1\u6709\u540D\u4E3A ${name} \u7684 API \u63A5\u5165`);
+  }
+  const result = await fetchApiSource(source, options);
+  const dir = apiCacheDir(dataDir);
+  mkdirSync3(dir, { recursive: true });
+  const path3 = apiSnapshotPath(dataDir, source.name);
+  writeFileSync2(path3, toNdjson(result.table.rows), { encoding: "utf8", mode: 384 });
+  return {
+    name: source.name,
+    url: result.url,
+    path: path3,
+    columns: result.table.columns,
+    rowCount: result.table.rows.length,
+    totalRecords: result.table.totalRecords,
+    truncated: result.table.truncated,
+    status: result.status,
+    fetchedAt: result.fetchedAt,
+    durationMs: result.durationMs,
+    bytes: result.bytes
+  };
+}
+async function runApiQuery({ dataDir, sql, maxRows, engine, fetchImpl, timeoutMs } = {}) {
+  if (!engine || typeof engine.execute !== "function") {
+    throw new ApiSourceError("API_ENGINE_UNAVAILABLE", "\u7F3A\u5C11\u672C\u5730\u67E5\u8BE2\u5F15\u64CE\u901A\u9053");
+  }
+  const text = String(sql ?? "");
+  if (!text.trim()) throw new ApiSourceError("BAD_REQUEST", "SQL \u4E0D\u80FD\u4E3A\u7A7A");
+  const names = apiSourceNames(dataDir);
+  if (names.length === 0) {
+    throw new ApiSourceError("CONNECTION_NOT_FOUND", "\u8FD8\u6CA1\u6709\u914D\u7F6E\u4EFB\u4F55 API \u63A5\u5165\u8FDE\u63A5");
+  }
+  const probe = rewriteApiTableRefs(text, /* @__PURE__ */ new Map(), { names });
+  const referenced = probe.referenced;
+  if (referenced.length === 0) {
+    throw new ApiSourceError(
+      "API_SOURCE_NOT_REFERENCED",
+      `\u8FD9\u6761\u67E5\u8BE2\u6CA1\u6709\u5F15\u7528\u4EFB\u4F55 API \u6570\u636E\u6E90\uFF08\u53EF\u7528\uFF1A${names.join(", ")}\uFF09\u3002API \u63A5\u5165\u7684\u67E5\u8BE2\u9700\u8981 FROM <\u8FDE\u63A5\u540D>\uFF0C\u4F8B\u5982 select * from <\u8FDE\u63A5\u540D> limit 10`
+    );
+  }
+  const sources = [];
+  for (const name of referenced) {
+    sources.push(await materializeApiSource(dataDir, name, { fetchImpl, timeoutMs }));
+  }
+  const paths = new Map(sources.map((s) => [s.name.toLowerCase(), s.path]));
+  const { sql: engineSql } = rewriteApiTableRefs(text, paths);
+  await engine.ensureConnection();
+  const engineText = await engine.execute(engineSql, maxRows);
+  return { engineSql, engineText, sources, maxRows };
+}
+async function previewApiSource(dataDir, name, options = {}) {
+  const source = findApiSource(dataDir, name);
+  if (!source) throw new ApiSourceError("CONNECTION_NOT_FOUND", `\u6CA1\u6709\u540D\u4E3A ${name} \u7684 API \u63A5\u5165`);
+  return fetchApiSource(source, options);
+}
+
 // server/src/engine/markdown-parser.mjs
 function textOf(result) {
   return result?.content?.map((c) => c.text ?? "").join("\n") ?? "";
@@ -95793,6 +96584,117 @@ function extractDuration(text) {
   return m ? m[0] : "";
 }
 
+// server/src/engine/error-hints.mjs
+var SQL_PREVIEW_LIMIT = 400;
+var MISSING_OBJECT_PATTERNS = [
+  /(?:relation|table|view|materialized view)\s+"([^"]+)"\s+does not exist/i,
+  // PostgreSQL / Redshift
+  /Table\s+'([^']+)'\s+doesn't exist/i,
+  // MySQL / MariaDB
+  /Invalid object name\s+'([^']+)'/i,
+  // SQL Server
+  /no such table:\s*(\S+)/i,
+  // SQLite
+  /Unknown table\s+'([^']+)'/i
+  // ClickHouse
+];
+function matchMissingObject(rawText) {
+  const text = typeof rawText === "string" ? rawText : "";
+  for (const pattern of MISSING_OBJECT_PATTERNS) {
+    const match = text.match(pattern);
+    if (match) {
+      const name = match[1].trim();
+      return { name, qualified: name.includes(".") };
+    }
+  }
+  return null;
+}
+function matchMissingRole(rawText) {
+  const match = String(rawText ?? "").match(/role\s+"([^"]+)"\s+does not exist/i);
+  return match ? match[1].trim() : null;
+}
+function matchMissingDatabase(rawText) {
+  const match = String(rawText ?? "").match(/database\s+"([^"]+)"\s+does not exist/i);
+  return match ? match[1].trim() : null;
+}
+function tableLocationQuery(dbType, rawName) {
+  const dialect = String(dbType ?? "").toLowerCase();
+  if (dialect !== "postgres" && dialect !== "postgresql" && dialect !== "redshift") return null;
+  const name = String(rawName ?? "").split(".").pop().trim();
+  if (!name) return null;
+  const literal = name.replaceAll("'", "''");
+  return `SELECT n.nspname AS schema_name FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = '${literal}' AND c.relkind IN ('r','p','v','m','f') AND n.nspname NOT IN ('information_schema','pg_catalog','pg_toast') AND n.nspname NOT LIKE 'pg_temp%' AND n.nspname NOT LIKE 'pg_toast_temp%' ORDER BY n.nspname LIMIT 5`;
+}
+function parseTableLocations(text) {
+  const { rows } = parseMarkdownTable(String(text ?? ""));
+  return rows.map((row) => pick(row, ["schema_name", "schema", "nspname"]).trim()).filter(Boolean);
+}
+function describeTarget(context = {}) {
+  const parts = [];
+  if (context.database) parts.push(`\u5E93 ${context.database}`);
+  if (context.host) parts.push(`${context.host}${context.port ? `:${context.port}` : ""}`);
+  return parts.length > 0 ? parts.join(" \xB7 ") : "\u8FDE\u63A5\u914D\u7F6E";
+}
+function describeQueryContext(context = {}) {
+  const target = [];
+  if (context.connection) target.push(`\u8FDE\u63A5 ${context.connection}`);
+  if (context.dbType) target.push(context.dbType);
+  if (context.host) target.push(`${context.host}${context.port ? `:${context.port}` : ""}`);
+  if (context.database) target.push(`\u5E93 ${context.database}`);
+  const lines = [];
+  if (target.length > 0) lines.push(`\u672C\u6B21\u67E5\u8BE2\u4E0A\u4E0B\u6587\uFF1A${target.join(" \xB7 ")}`);
+  if (context.sql) lines.push(`\u5B9E\u9645\u6267\u884C\u7684 SQL\uFF1A
+${preview(context.sql)}`);
+  if (context.effectiveSql && context.effectiveSql !== context.sql) {
+    lines.push(`\u5F15\u64CE\u5206\u9875\u6539\u5199\u540E\u4E0B\u53D1\uFF1A
+${preview(context.effectiveSql)}`);
+  }
+  return lines.join("\n");
+}
+function preview(text) {
+  const sql = String(text);
+  return sql.length > SQL_PREVIEW_LIMIT ? `${sql.slice(0, SQL_PREVIEW_LIMIT)}\u2026\uFF08\u5DF2\u622A\u65AD\uFF0C\u539F\u957F ${sql.length} \u5B57\uFF09` : sql;
+}
+function buildSqlErrorHint(rawText, context = {}) {
+  const text = typeof rawText === "string" ? rawText : String(rawText ?? "");
+  const lines = [];
+  const missing = matchMissingObject(text);
+  if (missing) {
+    if (!missing.qualified) {
+      lines.push(
+        `\u8868\u300C${missing.name}\u300D\u662F\u4E0D\u5E26 schema \u7684\u88F8\u540D\uFF1A\u5F15\u64CE\u6309\u5F53\u524D\u4F1A\u8BDD\u7684 search_path \u89E3\u6790\u5B83\uFF0C\u800C search_path \u672A\u5FC5\u5305\u542B\u8FD9\u5F20\u8868\u6240\u5728\u7684 schema \u2014\u2014 \u7528\u9650\u5B9A\u540D\u91CD\u8BD5\uFF08\u8FDE\u63A5\u6811\u91CC\u53F3\u952E\u8868\u53EF\u300C\u590D\u5236\u9650\u5B9A\u540D\u300D\uFF0C\u4F8B\u5982 ods.${missing.name}\uFF09\uFF0C\u6216\u628A\u8BE5 schema \u52A0\u8FDB\u8FDE\u63A5\u914D\u7F6E\u3002`
+      );
+    } else {
+      lines.push(
+        `\u8868\u300C${missing.name}\u300D\u5E26\u4E86\u9650\u5B9A\u540D\u5374\u4E0D\u5B58\u5728\uFF1A\u786E\u8BA4 schema \u540D\u6CA1\u5199\u9519\uFF0C\u5E76\u786E\u8BA4\u8FD9\u4E2A\u8FDE\u63A5\uFF08${describeTarget(context)}\uFF09\u5C31\u662F\u5EFA\u8868\u65F6\u90A3\u4E00\u4E2A \u2014\u2014 \u8FDE\u63A5\u6811\u91CC\u80FD\u770B\u5230\u7684\uFF0C\u624D\u662F\u5F53\u524D\u8FDE\u63A5\u53EF\u89C1\u7684\u3002`
+      );
+    }
+    if (Array.isArray(context.tableLocation) && context.tableLocation.length > 0) {
+      lines.push(
+        `\u76EE\u5F55\u91CC\u67E5\u5230\u8FD9\u4E2A\u8868\u540D\u5B58\u5728\u4E8E schema\uFF1A${context.tableLocation.join("\u3001")} \u2014\u2014 \u6539\u7528\u9650\u5B9A\u540D\u5373\u53EF\uFF0C\u4F8B\u5982 ${context.tableLocation[0]}.${missing.name.split(".").pop()}\u3002`
+      );
+    } else if (context.tableLocation === null) {
+      lines.push(
+        "\u5F53\u524D\u8FDE\u63A5\u4E0B\u6CA1\u67E5\u5230\u540C\u540D\u8868\uFF08\u4E5F\u53EF\u80FD\u53EA\u662F\u8FD9\u4E2A\u8D26\u53F7\u770B\u4E0D\u5230\uFF09\uFF1A\u4F18\u5148\u6000\u7591\u8FD9\u4E2A\u8FDE\u63A5\u6307\u5411\u7684\u6570\u636E\u5E93\u4E0D\u662F\u5EFA\u8868\u65F6\u90A3\u4E2A\u3002"
+      );
+    }
+  }
+  const role = matchMissingRole(text);
+  if (role) {
+    lines.push(
+      `\u89D2\u8272\u300C${role}\u300D\u5728\u76EE\u6807\u5E93\u91CC\u4E0D\u5B58\u5728\uFF0C\u8FD9\u4E0D\u662F SQL \u8BED\u6CD5\u95EE\u9898\u3002\u67E5\u4E24\u5904\uFF1A\u2460 \u8FDE\u63A5\u914D\u7F6E\u91CC\u7684\u767B\u5F55\u7528\u6237\u540D \u2014\u2014 \u5F15\u64CE\u7528\u8BE5\u8D26\u53F7\u8FDE\u63A5\uFF08${describeTarget(context)}\uFF09\uFF1B\u2461 SQL / \u811A\u672C\u91CC\u5BF9\u89D2\u8272\u540D\u7684\u5F15\u7528\uFF08SET ROLE\u3001SET SESSION AUTHORIZATION\u3001OWNER TO\u3001GRANT \u2026 TO\uFF09\uFF0C\u4ECE\u522B\u5904\u5BFC\u51FA\u7684\u811A\u672C\u6700\u5BB9\u6613\u5E26\u4E0A\u539F\u73AF\u5883\u7684\u89D2\u8272\u540D\u3002`
+    );
+  }
+  const database = matchMissingDatabase(text);
+  if (database) {
+    lines.push(`\u6570\u636E\u5E93\u300C${database}\u300D\u4E0D\u5B58\u5728\uFF1A\u68C0\u67E5\u8FDE\u63A5\u914D\u7F6E\u91CC\u7684\u5E93\u540D\uFF0C\u4EE5\u53CA SQL \u91CC\u7684 USE / \u5168\u9650\u5B9A\u5E93\u540D\u3002`);
+  }
+  if (/permission denied/i.test(text)) {
+    lines.push("\u6743\u9650\u4E0D\u8DB3\uFF1A\u5F53\u524D\u8FDE\u63A5\u8D26\u53F7\u5BF9\u8BE5\u5BF9\u8C61\u6CA1\u6709\u6240\u9700\u6743\u9650\uFF0C\u9700\u8981 DBA \u6388\u6743\uFF0C\u6216\u6362\u4E00\u4E2A\u6743\u9650\u8DB3\u591F\u7684\u8FDE\u63A5\u8D26\u53F7\u3002");
+  }
+  return lines.join("\n");
+}
+
 // server/src/engine/reveal-item.mjs
 import path2 from "node:path";
 import { spawn as spawn3 } from "node:child_process";
@@ -95919,9 +96821,33 @@ function toDbxAddParams(body) {
   if (!args.host && body.file) args.host = body.file;
   return args;
 }
-function createRouter({ auth, now = () => Date.now() } = {}) {
+function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
   if (!auth) throw new Error("createRouter \u9700\u8981 auth");
   const mcpClient = () => getDbxMcpClient();
+  async function ensureApiEngineConnection() {
+    if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55\uFF0C\u65E0\u6CD5\u67E5\u8BE2 API \u63A5\u5165\u6570\u636E\u6E90");
+    try {
+      const result = await mcpClient().callTool("dbx_add_connection", {
+        name: API_ENGINE_CONNECTION,
+        db_type: "duckdb",
+        host: apiEngineDatabasePath(dataDir),
+        database: API_ENGINE_DATABASE
+      });
+      extractText(result, "dbx_add_connection");
+    } catch (e) {
+      if (e?.engineError) {
+        throw engineError(
+          "API_ENGINE_UNAVAILABLE",
+          `\u672C\u673A\u67E5\u8BE2\u901A\u9053\u4E0D\u53EF\u7528\uFF08\u9700\u8981 DuckDB \u9A71\u52A8\uFF09\uFF1A${e.message}`,
+          e.detail
+        );
+      }
+      throw e;
+    }
+  }
+  function isDriverUnavailable(rawText) {
+    return /driver is not installed|DBX_DUCKDB_DRIVER_PATH/i.test(String(rawText ?? ""));
+  }
   async function resolveWriteConnSpec(connectionName, connSpec) {
     const base = { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType };
     let authoritative = null;
@@ -95939,6 +96865,47 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       port: base.port || authoritative.port,
       database: base.database || authoritative.database
     };
+  }
+  async function resolveQueryContext(connectionName, sql, effectiveSql) {
+    const context = { connection: connectionName, sql, effectiveSql };
+    try {
+      const result = await mcpClient().callTool("dbx_list_connections", {});
+      const found = parseConnections(textOf(result)).find((c) => c.name === connectionName);
+      if (found) {
+        context.dbType = found.type;
+        context.host = found.host;
+        context.port = found.port;
+        context.database = found.database;
+      }
+    } catch {
+    }
+    return context;
+  }
+  async function attachTableLocation(connectionName, dbType, rawName, context) {
+    const lookup = tableLocationQuery(dbType, rawName);
+    if (!lookup) return context;
+    try {
+      const result = await mcpClient().callTool(
+        "dbx_execute_query",
+        { connection_name: connectionName, sql: lookup, max_rows: 5 },
+        15e3
+      );
+      if (!result?.isError) context.tableLocation = parseTableLocations(textOf(result));
+    } catch {
+    }
+    return context;
+  }
+  async function describeFailure(connectionName, sql, effectiveSql, rawText) {
+    try {
+      const context = await resolveQueryContext(connectionName, sql, effectiveSql);
+      const missing = matchMissingObject(rawText);
+      if (missing) await attachTableLocation(connectionName, context.dbType, missing.name, context);
+      const text = [describeQueryContext(context), buildSqlErrorHint(rawText, context)].filter(Boolean).join("\n");
+      return text ? `
+${text}` : "";
+    } catch {
+      return "";
+    }
   }
   const routeDefs = [
     // === 健康检查 ===
@@ -95973,7 +96940,9 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const result = await mcpClient().callTool("dbx_list_connections", {});
       const text = extractText(result, "dbx_list_connections");
       const raw = parseConnections(text);
-      return { connections: dedupeConnections(raw) };
+      const engineConnections = dedupeConnections(raw).filter((c) => c.name !== API_ENGINE_CONNECTION);
+      const apiConnections = dataDir ? listApiSources(dataDir).map(apiSourceToConnection) : [];
+      return { connections: [...apiConnections, ...engineConnections] };
     }],
     ["/connections", "POST", true, async ({ body }) => {
       if (!body?.name || !body?.dbType) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 name / dbType");
@@ -96000,6 +96969,10 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
     ["/connections", "DELETE", true, async ({ body }) => {
       const name = body?.name;
       if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connection name");
+      if (dataDir && isApiSourceName(dataDir, name)) {
+        removeApiSource(dataDir, name);
+        return { deleted: name };
+      }
       const result = await mcpClient().callTool("dbx_remove_connection", { connection_name: name });
       extractText(result, "dbx_remove_connection");
       return { deleted: name };
@@ -96029,6 +97002,51 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
         }
       }
     }],
+    // === API 接入（插件自有数据源，见 src/api-source/）===
+    // 为什么不注册进引擎：引擎的内置 dbType 清单是编译进去的，塞一个 `api` 进去
+    // 只会得到一个必然报错的入口（对照 M1.5 的 `jdbc` 结论）。取数与 SQL 重写都由插件做。
+    ["/api-sources", "POST", true, async ({ body }) => {
+      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55\uFF0C\u65E0\u6CD5\u4FDD\u5B58 API \u63A5\u5165");
+      const name = String(body?.name ?? "").trim();
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u540D\u79F0");
+      const listResult = await mcpClient().callTool("dbx_list_connections", {});
+      const clash = parseConnections(extractText(listResult, "dbx_list_connections")).some(
+        (c) => c.name.toLowerCase() === name.toLowerCase()
+      );
+      if (clash) throw engineError("BAD_REQUEST", `\u5DF2\u5B58\u5728\u540C\u540D\u6570\u636E\u5E93\u8FDE\u63A5\u300C${name}\u300D\uFF0C\u8BF7\u6362\u4E00\u4E2A\u540D\u79F0`);
+      const saved = upsertApiSource(dataDir, body, body?.token ?? body?.secret ?? "");
+      return apiSourceToPublic(saved);
+    }],
+    ["/api-sources", "DELETE", true, async ({ body }) => {
+      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55");
+      const name = body?.name;
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 API \u63A5\u5165\u540D\u79F0");
+      removeApiSource(dataDir, name);
+      return { deleted: name };
+    }],
+    // 两种用途：表单保存前验证（传 draft），连接树展开时按需取列（只传 name）。
+    ["/api-sources/test", "POST", true, async ({ body }) => {
+      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55");
+      const draft = body?.draft ?? null;
+      const name = String((draft ?? body)?.name ?? "").trim();
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u540D\u79F0");
+      const stored = findApiSource(dataDir, name);
+      const secret = body?.token ?? body?.secret ?? stored?.secret ?? "";
+      const merged = draft && draft.headers === void 0 ? { ...draft, headers: stored?.headers ?? {} } : draft;
+      const fetched = merged ? await fetchApiSource({ ...normalizeApiSource({ ...merged, secret }), secret }, {}) : await previewApiSource(dataDir, name);
+      return {
+        name,
+        url: fetched.url,
+        status: fetched.status,
+        columns: fetched.table.columns,
+        sample: fetched.table.rows.slice(0, 20),
+        row_count: fetched.table.rows.length,
+        total_records: fetched.table.totalRecords,
+        truncated: fetched.table.truncated,
+        duration_ms: fetched.durationMs,
+        fetched_at: fetched.fetchedAt
+      };
+    }],
     // === 查询执行 ===
     ["/query", "POST", true, async ({ body }) => {
       const connectionName = body?.connectionName ?? body?.connection?.name;
@@ -96036,6 +97054,10 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const sql = body?.sql;
       if (typeof sql !== "string" || sql.trim().length === 0) throw engineError("BAD_REQUEST", "SQL \u4E0D\u80FD\u4E3A\u7A7A");
       const classified = classifyQuery(sql);
+      const isApiQuery = dataDir !== null && (isApiDbType(body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType) || isApiSourceName(dataDir, connectionName));
+      if (isApiQuery && classified.requiresConfirmation) {
+        throw engineError("WRITE_BLOCKED", "API \u63A5\u5165\u662F\u53EA\u8BFB\u6570\u636E\u6E90\uFF0C\u4E0D\u652F\u6301\u5199 / DDL");
+      }
       const timeoutMs = clampTimeout(body?.timeoutMs);
       const rowLimit = clampRowLimit(body?.rowLimit);
       const started = now();
@@ -96086,7 +97108,9 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
           writeResult = await executeWrite(resolvedSpec, sql);
         } catch (e) {
           if (e?.engineError) throw e;
-          throw engineError(e?.code ?? "WRITE_FAILED", `\u5199\u64CD\u4F5C\u6267\u884C\u5931\u8D25: ${e?.message ?? String(e)}`);
+          const writeError = e?.message ?? String(e);
+          const hint2 = await describeFailure(connectionName, sql, sql, writeError);
+          throw engineError(e?.code ?? "WRITE_FAILED", `\u5199\u64CD\u4F5C\u6267\u884C\u5931\u8D25: ${writeError}${hint2}`, writeError);
         }
         return {
           connection: connectionName,
@@ -96110,7 +97134,7 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const countOnly = body?.countOnly === true;
       const pageReq = body?.page;
       let effectiveSql = sql;
-      const pageable = canPaginate(sql);
+      const pageable = !isApiQuery && canPaginate(sql);
       if (pageable && countOnly) {
         if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "\u5F53\u524D\u6570\u636E\u5E93\u7C7B\u578B\u4E0D\u652F\u6301\u5206\u9875\u7EDF\u8BA1");
         effectiveSql = buildCountSql(sql);
@@ -96120,6 +97144,62 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
         const offset = Math.max(Math.trunc(pageReq.offset), 0);
         pageLimit = limit;
         effectiveSql = buildPagedSql(sql, dbType, limit, offset);
+      }
+      if (isApiQuery) {
+        let run;
+        try {
+          run = await runApiQuery({
+            dataDir,
+            sql,
+            maxRows,
+            engine: {
+              ensureConnection: ensureApiEngineConnection,
+              execute: async (engineSql, limit) => {
+                const engineResult = await mcpClient().callTool(
+                  "dbx_execute_query",
+                  {
+                    connection_name: API_ENGINE_CONNECTION,
+                    sql: engineSql,
+                    max_rows: limit ?? maxRows
+                  },
+                  timeoutMs
+                );
+                if (engineResult.isError) {
+                  const engineText = textOf(engineResult);
+                  if (isDriverUnavailable(engineText)) {
+                    throw engineError(
+                      "API_ENGINE_UNAVAILABLE",
+                      "\u672C\u673A\u67E5\u8BE2\u901A\u9053\u4E0D\u53EF\u7528\uFF1ADuckDB \u9A71\u52A8\u672A\u5B89\u88C5\u3002\u8BF7\u5728\u300C\u9A71\u52A8\u7BA1\u7406\u300D\u91CC\u5B89\u88C5 DuckDB\uFF0C\u6216\u8BBE\u7F6E DBX_DUCKDB_DRIVER_PATH \u540E\u91CD\u8BD5\uFF08\u63A5\u53E3\u6570\u636E\u5DF2\u53D6\u5230\uFF0C\u53EA\u662F\u6CA1\u5730\u65B9\u8DD1 SQL\uFF09\u3002",
+                      engineText
+                    );
+                  }
+                  const err2 = classifyError(engineText);
+                  throw engineError(err2.code, `\u5FEB\u7167\u67E5\u8BE2\u5931\u8D25: ${err2.detail}`, engineText);
+                }
+                return textOf(engineResult);
+              }
+            }
+          });
+        } catch (e) {
+          if (e?.engineError) throw e;
+          throw engineError(e?.code ?? "API_QUERY_FAILED", e?.message ?? String(e));
+        }
+        return toOutcome(run.engineText, {
+          api: {
+            engine_sql: run.engineSql,
+            // 每个数据源实际取了哪些行、从哪个地址取的 —— 取数不透明是最难排查的一类问题。
+            sources: run.sources.map((s) => ({
+              name: s.name,
+              url: s.url,
+              row_count: s.rowCount,
+              total_records: s.totalRecords,
+              truncated: s.truncated,
+              status: s.status,
+              fetched_at: s.fetchedAt,
+              duration_ms: s.durationMs
+            }))
+          }
+        });
       }
       let result;
       try {
@@ -96148,12 +97228,16 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       }
       const errorText = textOf(result);
       const err = classifyError(errorText);
-      throw engineError(err.code, `dbx_execute_query failed: ${err.detail}`, errorText);
+      const hint = await describeFailure(connectionName, sql, effectiveSql, errorText);
+      throw engineError(err.code, `dbx_execute_query failed: ${err.detail}${hint}`, errorText);
     }],
     // === 对象浏览 ===
     ["/tables", "POST", true, async ({ body }) => {
       const connectionName = body?.connectionName ?? body?.connection?.name;
       if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      if (dataDir && isApiSourceName(dataDir, connectionName)) {
+        return { connection: connectionName, tables: [{ name: connectionName, kind: "table" }] };
+      }
       const scope = body?.scope ?? {};
       const args = { connection_name: connectionName };
       if (scope.schema) args.schema = scope.schema;
@@ -96167,6 +97251,23 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
       const target = body?.target ?? { schema: body?.schema, table: body?.table };
       if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
       if (!target?.table) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 table");
+      if (dataDir && isApiSourceName(dataDir, connectionName)) {
+        const preview2 = await previewApiSource(dataDir, connectionName);
+        const types2 = inferColumnTypes(preview2.records, preview2.table.columns);
+        return {
+          connection: connectionName,
+          table: target.table,
+          columns: preview2.table.columns.map((name) => ({
+            name,
+            type: types2[name] ?? "varchar",
+            nullable: true,
+            hasDefault: false,
+            defaultValue: "",
+            comment: "API \u63A5\u5165\uFF1A\u7C7B\u578B\u7531\u672C\u6B21\u6837\u672C\u503C\u63A8\u5BFC",
+            isPrimaryKey: false
+          }))
+        };
+      }
       const args = { connection_name: connectionName, table: target.table };
       if (target.schema) args.schema = target.schema;
       const result = await mcpClient().callTool("dbx_describe_table", args);
@@ -96189,6 +97290,9 @@ function createRouter({ auth, now = () => Date.now() } = {}) {
     ["/schemas", "POST", true, async ({ body }) => {
       const connectionName = body?.connectionName ?? body?.connection?.name;
       if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      if (dataDir && isApiSourceName(dataDir, connectionName)) {
+        return { connection: connectionName, schemas: [], supported: false };
+      }
       const result = await mcpClient().callTool("dbx_execute_query", {
         connection_name: connectionName,
         sql: schemaQueryFor(body?.dbType),
@@ -96268,7 +97372,7 @@ function parseArgs(argv) {
   return args;
 }
 function digest(value) {
-  return createHash("sha256").update(value).digest();
+  return createHash2("sha256").update(value).digest();
 }
 function createAuth({ token, disabled = false } = {}) {
   const enabled = !disabled && typeof token === "string" && token.length > 0;
@@ -96318,17 +97422,17 @@ function readJsonBody(req) {
   });
 }
 function ensureEngineKey(dataDir) {
-  const dir = dataDir ?? join2(homedir2(), ".astravia-dbx-data");
-  mkdirSync2(dir, { recursive: true });
+  const dir = dataDir ?? join3(homedir3(), ".astravia-dbx-data");
+  mkdirSync4(dir, { recursive: true });
   try {
-    chmodSync(dir, 448);
+    chmodSync2(dir, 448);
   } catch {
   }
-  const secretPath = join2(dir, "service-secrets.json");
+  const secretPath = join3(dir, "service-secrets.json");
   let doc = { schemaVersion: 1, values: {} };
-  if (existsSync2(secretPath)) {
+  if (existsSync3(secretPath)) {
     try {
-      doc = JSON.parse(readFileSync(secretPath, "utf8"));
+      doc = JSON.parse(readFileSync2(secretPath, "utf8"));
     } catch {
     }
   }
@@ -96336,8 +97440,8 @@ function ensureEngineKey(dataDir) {
   if (typeof key !== "string" || key.length === 0) {
     key = randomBytes(32).toString("base64url");
     const next = { ...doc, values: { ...doc.values ?? {}, "engine-key": key } };
-    writeFileSync(secretPath, JSON.stringify(next), { mode: 384 });
-    chmodSync(secretPath, 384);
+    writeFileSync3(secretPath, JSON.stringify(next), { mode: 384 });
+    chmodSync2(secretPath, 384);
   }
   return { key, dataDir: dir };
 }
@@ -96347,8 +97451,8 @@ async function resetLegacyDatabaseIfNeeded(client2, dataDir) {
   if (!/DATA_MIGRATION_REQUIRED/.test(text)) return false;
   await client2.dispose();
   const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-  const dbPath = join2(dataDir, "dbx.db");
-  if (existsSync2(dbPath)) renameSync(dbPath, join2(dataDir, `dbx.db.legacy-${stamp}`));
+  const dbPath = join3(dataDir, "dbx.db");
+  if (existsSync3(dbPath)) renameSync2(dbPath, join3(dataDir, `dbx.db.legacy-${stamp}`));
   return true;
 }
 function withTimeout(promise, ms, fallback) {
@@ -96381,7 +97485,7 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
     false
   ).catch(() => {
   });
-  const router = createRouter({ auth });
+  const router = createRouter({ auth, dataDir: resolvedDataDir2 });
   const server = createServer(async (req, res) => {
     const send = (status, body) => {
       if (res.writableEnded) return;

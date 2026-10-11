@@ -49,9 +49,7 @@ interface ResultToolbarProps {
 	orderByClause: string;
 	onOrderByChange: (v: string) => void;
 	onApplyFilterSort: () => void;
-	/** 右侧元信息：行数 + 耗时 */
-	rowCount: number;
-	rowCountKnown: boolean;
+	/** 右侧元信息：耗时（行数由底部分页栏展示，避免顶底重复） */
 	elapsedLabel?: string;
 	/** 服务端分页的 COUNT 状态（pending 时刷新按钮转圈） */
 	totalCountStatus?: "pending" | "failed";
@@ -70,7 +68,7 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 		sort, onClearSort,
 		connectionName, parsedTableName, tableInfoOpen, onOpenTableInfo,
 		whereClause, onWhereChange, orderByClause, onOrderByChange, onApplyFilterSort,
-		rowCount, rowCountKnown, elapsedLabel, totalCountStatus, onRefreshTotalCount, exportLimitRows,
+		elapsedLabel, totalCountStatus, onRefreshTotalCount, exportLimitRows,
 	} = props;
 
 	const filteredCols = colList.filter(
@@ -202,7 +200,7 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 					<span className="icon-[lucide--rows-3] h-3.5 w-3.5" />
 				</button>
 
-				{/* 元信息：行数 · 耗时（对齐设计稿 1,284 行 · 42 ms） */}
+				{/* 元信息：耗时 · 导出行数上限提示（完整总行数由底部分页栏的范围 / 总数承担，避免顶底重复） */}
 				<div className="dbx-toolbar-meta">
 					{exportLimitRows !== undefined ? (
 						<span
@@ -213,17 +211,13 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 							上限 {exportLimitRows.toLocaleString()} 行
 						</span>
 					) : null}
-					<span
-						className="shrink-0"
-						title={rowCountKnown ? "数据库统计得到的真实总行数" : "已从数据库取回的行数（总数统计中或统计失败）"}
-					>
-						<span className="font-mono text-surface-foreground">{rowCount.toLocaleString()}</span> 行
-					</span>
 					{elapsedLabel ? (
-						<>
-							<span className="text-faint">·</span>
-							<span className="shrink-0 font-mono" title="本次查询执行耗时">{elapsedLabel}</span>
-						</>
+						<span
+							className="shrink-0 font-mono text-surface-foreground"
+							title="本次查询执行耗时"
+						>
+							{elapsedLabel}
+						</span>
 					) : null}
 					{onRefreshTotalCount ? (
 						<button

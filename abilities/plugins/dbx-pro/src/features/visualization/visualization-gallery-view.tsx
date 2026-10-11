@@ -9,7 +9,6 @@ import { useState, type JSX } from "react";
 import { VisualizationGallery } from "./components/visualization-gallery";
 import { VisualizationTab } from "./components/visualization-tab";
 import type { StoredVisualization } from "./visualization-store";
-import { buildResultVizPrompt } from "../../shared/ai/send-context";
 import { SendToAiDialog } from "../database-workspace/components/send-to-ai-dialog";
 
 export function VisualizationGalleryView(): JSX.Element {

@@ -6,7 +6,7 @@
  * 测试进行中禁用该行按钮，避免并发跑多次连通性检查。
  */
 
-import { useMemo, useState, type JSX } from "react";
+import { useEffect, useMemo, useState, type JSX } from "react";
 import { findDbType, type DbConnection } from "../../../domain/connection-config";
 import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 
@@ -19,6 +19,7 @@ export interface ConnectionListProps {
 	onEdit: (conn: DbConnection) => void;
 	onTest: (conn: DbConnection) => void;
 	onDelete: (conn: DbConnection) => void;
+	onDuplicate: (conn: DbConnection) => void;
 	onCreate: () => void;
 }
 
@@ -39,10 +40,18 @@ export function ConnectionList({
 	onEdit,
 	onTest,
 	onDelete,
+	onDuplicate,
 	onCreate,
 }: ConnectionListProps): JSX.Element {
 	const [query, setQuery] = useState("");
 	const [filter, setFilter] = useState<AccessFilter>("all");
+	/** 行内二次确认删除：删除按钮第一次点击进入 pending，2s 内再点才真删。 */
+	const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+	useEffect(() => {
+		if (!pendingDeleteId) return;
+		const t = setTimeout(() => setPendingDeleteId(null), 2000);
+		return () => clearTimeout(t);
+	}, [pendingDeleteId]);
 
 	const readOnlyCount = connections.filter((c) => c.read_only).length;
 	const writableCount = connections.length - readOnlyCount;
@@ -69,7 +78,7 @@ export function ConnectionList({
 						type="search"
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
-						placeholder="搜索连接名称、主机…"
+						placeholder="搜索数据源名称、主机…"
 						className="h-full min-w-0 flex-1 appearance-none border-none bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-muted"
 					/>
 				</div>
@@ -112,19 +121,20 @@ export function ConnectionList({
 			<div className="min-h-0 flex-1 overflow-y-auto pt-1">
 				{connections.length === 0 ? (
 					<div className="px-4 py-10 text-center">
-						<p className="m-0 text-[12px] text-muted">还没有保存的连接</p>
+						<p className="m-0 text-[12px] text-muted">还没有保存的数据源</p>
 						<button type="button" className="dbx-btn primary mt-3" onClick={onCreate}>
 							<span className="icon-[lucide--plus] size-3.5" />
-							新建连接
+							新建数据源
 						</button>
 					</div>
 				) : visible.length === 0 ? (
-					<div className="px-4 py-10 text-center text-[12px] text-muted">没有匹配的连接</div>
+					<div className="px-4 py-10 text-center text-[12px] text-muted">没有匹配的数据源</div>
 				) : (
-					visible.map((conn) => (
+						visible.map((conn) => (
 						<div
 							key={conn.id}
-							className="group flex h-[58px] items-center gap-3 border-t border-border px-4 hover:bg-neutral-muted"
+							className="group flex h-[58px] cursor-pointer items-center gap-3 border-t border-border px-4 hover:bg-neutral-muted"
+							onDoubleClick={() => onEdit(conn)}
 						>
 							<span className={`size-1.5 shrink-0 rounded-full ${conn.read_only ? "bg-accent" : "bg-warning"}`} />
 
@@ -153,18 +163,33 @@ export function ConnectionList({
 							</span>
 
 							<span className="flex w-[86px] shrink-0 justify-end">
-								<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-									<span className="size-1.5 shrink-0 rounded-full bg-border-strong" />
-									<span className="text-[12px] text-muted">已配置</span>
-								</span>
+								{conn.last_test_at == null ? (
+									<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+										<span className="size-1.5 shrink-0 rounded-full bg-border-strong" />
+										<span className="text-[12px] text-muted">未测试</span>
+									</span>
+								) : conn.last_test_ok ? (
+									<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+										<span className="size-1.5 shrink-0 rounded-full bg-success" />
+										<span className="text-[12px] text-success">已连接</span>
+									</span>
+								) : (
+									<span
+										className="inline-flex items-center gap-1.5 whitespace-nowrap"
+										title={conn.last_test_error ?? "连接失败"}
+									>
+										<span className="size-1.5 shrink-0 rounded-full bg-danger" />
+										<span className="text-[12px] text-danger">连接失败</span>
+									</span>
+								)}
 							</span>
 
-							<div className="flex w-[172px] shrink-0 items-center justify-end gap-1">
+							<div className="flex w-[200px] shrink-0 items-center justify-end gap-1">
 								<button
 									type="button"
 									onClick={() => onTest(conn)}
 									disabled={testing}
-									title="测试连接"
+									title="测试数据源"
 									className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground disabled:opacity-40"
 								>
 									<span className={`size-3.5 ${testing ? "icon-[lucide--loader-circle] animate-spin" : "icon-[lucide--plug]"}`} />
@@ -172,18 +197,37 @@ export function ConnectionList({
 								<button
 									type="button"
 									onClick={() => onEdit(conn)}
-									title="编辑连接"
+									title="编辑数据源"
 									className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground"
 								>
 									<span className="icon-[lucide--pencil] size-3.5" />
 								</button>
 								<button
 									type="button"
-									onClick={() => onDelete(conn)}
-									title="删除连接"
-									className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-danger-soft hover:text-danger"
+									onClick={() => onDuplicate(conn)}
+									title="复制为新数据源"
+									className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground"
 								>
-									<span className="icon-[lucide--trash-2] size-3.5" />
+									<span className="icon-[lucide--copy-plus] size-3.5" />
+								</button>
+								<button
+									type="button"
+									onClick={() => {
+										if (pendingDeleteId === conn.id) {
+											setPendingDeleteId(null);
+											void onDelete(conn);
+										} else {
+											setPendingDeleteId(conn.id);
+										}
+									}}
+									title={pendingDeleteId === conn.id ? "再点一次确认删除" : "删除数据源"}
+									className={`flex size-6 items-center justify-center rounded-control transition ${
+										pendingDeleteId === conn.id
+											? "bg-danger text-surface"
+											: "text-muted hover:bg-danger-soft hover:text-danger"
+									}`}
+								>
+									<span className={`size-3.5 ${pendingDeleteId === conn.id ? "icon-[lucide--check]" : "icon-[lucide--trash-2]"}`} />
 								</button>
 							</div>
 						</div>

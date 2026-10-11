@@ -5,11 +5,8 @@
  * 导入使用隐藏的 file input（webview 内无 Tauri 保存对话框，导出走 Blob 下载）。
  */
 
-import { useRef, type JSX } from "react";
-import {
-	exportConnectionsFile,
-	importConnectionsFromText,
-} from "../services/connection-transfer";
+import type { JSX } from "react";
+import { useConnectionTransfer } from "../hooks/use-connection-transfer";
 
 export interface ConnectionTreeToolbarProps {
 	connectionCount: number;
@@ -65,40 +62,10 @@ export function ConnectionTreeToolbar({
 	onAfterTransfer,
 	onCollapsePanel,
 }: ConnectionTreeToolbarProps): JSX.Element {
-	const fileInputRef = useRef<HTMLInputElement>(null);
-
-	async function handleExport(): Promise<void> {
-		try {
-			const count = await exportConnectionsFile();
-			if (count === 0) alert("暂无连接可导出");
-		} catch (err) {
-			alert(`导出失败: ${err instanceof Error ? err.message : String(err)}`);
-		}
-	}
-
-	function triggerImport(): void {
-		fileInputRef.current?.click();
-	}
-
-	async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
-		const file = e.target.files?.[0];
-		// 允许重复选择同一个文件：清空 value，下次 change 仍会触发。
-		e.target.value = "";
-		if (!file) return;
-		try {
-			const text = await file.text();
-			const result = await importConnectionsFromText(text);
-			if (result.total === 0) {
-				alert("文件中没有可导入的连接（每条连接至少需要 name / db_type / host）");
-				return;
-			}
-			onAfterTransfer();
-			const summary = `导入完成：新增 ${result.imported} 个，更新 ${result.updated} 个，失败 ${result.failed} 个`;
-			alert(result.failed > 0 ? `${summary}\n${result.errors.join("\n")}` : summary);
-		} catch (err) {
-			alert(`导入失败: ${err instanceof Error ? err.message : String(err)}`);
-		}
-	}
+	const { fileInputRef, triggerImport, handleImportFile, handleExport } = useConnectionTransfer({
+		onImported: onAfterTransfer,
+		showErrorDetails: true,
+	});
 
 	return (
 		<>

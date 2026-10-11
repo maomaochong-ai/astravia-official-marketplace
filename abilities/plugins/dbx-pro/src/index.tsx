@@ -23,7 +23,6 @@ import "./features/database-workspace/styles/result-grid.css";
 import "./features/database-workspace/styles/sql-editor.css";
 import "./features/database-workspace/styles/ai-dialog.css";
 import "./features/database-workspace/styles/table-info.css";
-import "./features/database-workspace/styles/connection-tree.css";
 import "./features/database-workspace/styles/panels.css";
 import { initPluginTheme } from "./shared/theme/plugin-theme";
 import { PLUGIN_VERSION } from "./domain/plugin-version";

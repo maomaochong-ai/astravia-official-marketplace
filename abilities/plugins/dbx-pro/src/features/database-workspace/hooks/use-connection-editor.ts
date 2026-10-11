@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DbConnection } from "../../../domain/connection-config.ts";
 import { DB_TYPE_MANIFEST } from "../../../domain/connection-config.ts";
 import { deleteConfig, readAllConfigs, writeConfig } from "../../../domain/dbx-storage.ts";
+import { getUi } from "../../../runtime-contract.ts";
 import {
 	engineExecuteByName,
 	engineListSchemas,
@@ -57,6 +58,13 @@ export interface ConnectionEditorState {
 	loadingSchemas: boolean;
 	/** 先落盘草稿再枚举该库 schema，供多选。 */
 	loadSchemas: () => Promise<void>;
+	/** 批量诊断：对所有已保存连接逐个跑连通性测试。返回汇总结果。 */
+	diagnoseAll: () => Promise<{
+		ok: number;
+		fail: number;
+		total: number;
+		results: Record<string, { ok: boolean; error?: string; ms: number }>;
+	}>;
 	/** 按 category 分组后的类型清单，给下拉框用。 */
 	groupedManifest: ReturnType<typeof groupManifestByCategory>;
 }
@@ -180,36 +188,55 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	async function save(): Promise<boolean> {
 		if (!editing) return false;
 		if (!editing.name.trim()) {
-			alert("请填写连接名称");
+			getUi()?.notify?.({ message: "请填写连接名称", variant: "info" });
 			return false;
 		}
 		const isApi = isApiConnectionType(editing.db_type);
 		if (isApi && !apiSpecOf(editing).url.trim()) {
-			alert("请填写接口地址");
+			getUi()?.notify?.({ message: "请填写接口地址", variant: "info" });
 			return false;
 		}
 		try {
 			savedRef.current = true;
-			if (isApi) await engineSaveApiSource(apiSourcePayload(editing));
-			else await writeConfig(editing);
+			// 非 API：把 ssl_mode 自动拼进 url_params（引擎层不认识 ssl_mode，只认 URL 参数）。
+			// MySQL / MariaDB 用 ssl-mode=，Postgres / Redshift / Dameng 用 sslmode=。
+			let payload: DbConnection = editing;
+			if (!isApi && editing.ssl_mode && editing.ssl_mode !== "disable") {
+				const dbType = editing.db_type;
+				const isMysqlFamily = dbType === "mysql" || dbType === "mariadb" || dbType === "sqlserver";
+				const paramKey = isMysqlFamily ? "ssl-mode" : "sslmode";
+				const base = editing.url_params?.trim()
+					? editing.url_params.replace(/[?&]$/, "")
+					: "";
+				// 剔除旧值（同 key 不同写法也一起清），避免反复保存时堆叠
+				const filtered = base
+					.split("&")
+					.filter((kv) => kv && !/^(sslmode|ssl-mode|ssl)\s*=/.test(kv.trimStart()))
+					.join("&");
+				const merged = filtered
+					? `${filtered}&${paramKey}=${editing.ssl_mode}`
+					: `${paramKey}=${editing.ssl_mode}`;
+				payload = { ...editing, url_params: merged };
+			}
+			if (isApi) await engineSaveApiSource(apiSourcePayload(payload));
+			else await writeConfig(payload);
 			await refresh();
 			onChange?.(editing.name);
 			back();
 			return true;
 		} catch (err) {
-			alert(`保存失败: ${err instanceof Error ? err.message : String(err)}`);
+			getUi()?.notify?.({ message: `保存失败: ${err instanceof Error ? err.message : String(err)}`, variant: "error" });
 			return false;
 		}
 	}
 
 	async function remove(conn: DbConnection): Promise<void> {
-		if (!confirm(`删除连接 "${conn.name}" ？此操作不可撤销。`)) return;
 		try {
 			await deleteConfig(conn.id);
 			await refresh();
 			onChange?.(conn.name);
 		} catch (err) {
-			alert(`删除失败: ${err instanceof Error ? err.message : String(err)}`);
+			getUi()?.notify?.({ message: `删除失败: ${err instanceof Error ? err.message : String(err)}`, variant: "error" });
 		}
 	}
 
@@ -219,10 +246,16 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	 * 数据库：先落盘（引擎只认已存连接），再真跑一次 SELECT 1 —— 只校验配置字段
 	 * 是不行的，凭据错误、库不存在都要执行阶段才暴露。
 	 * API 接入：不落盘，把草稿直接交给服务端抓一次，避免为了试错而存配置。
+	 *
+	 * 测试结果写入 last_test_at / last_test_ok / last_test_error 并持久化到存储，
+	 * 这样连接列表右侧行能显示最新状态 chip 而不是硬编码「已配置」。
 	 */
 	async function test(conn: DbConnection): Promise<void> {
 		setTesting(true);
 		setTestResult(null);
+		const started = performance.now();
+		let ok = false;
+		let errorMsg: string | undefined;
 		try {
 			if (isApiConnectionType(conn.db_type)) {
 				if (!conn.name.trim()) { setTestResult("❌ 请先填写连接名称"); return; }
@@ -231,22 +264,91 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 					name: conn.name.trim(),
 					draft: apiSourcePayload(conn),
 				});
+				ok = true;
 				setTestResult(
 					`✅ 接口可达 · HTTP ${outcome.status} · 取到 ${outcome.row_count} 行 / ${outcome.columns.length} 列 · ${outcome.duration_ms}ms · 取数路径：插件直连`,
 				);
-				return;
+			} else {
+				await writeConfig(conn);
+				await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
+				const elapsed = Math.round(performance.now() - started);
+				ok = true;
+				// 测试未改 schema 选择：只刷新连接，不失效树（避免折叠已展开节点）。
+				onChange?.();
+				setTestResult(`✅ 连接成功 · ${elapsed} ms · 取数路径：引擎`);
 			}
-			await writeConfig(conn);
-			await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
-			// 测试未改 schema 选择：只刷新连接，不失效树（避免折叠已展开节点）。
-			onChange?.();
-			setTestResult("✅ 连接成功 · 取数路径：引擎");
 		} catch (err) {
+			const elapsed = Math.round(performance.now() - started);
 			const code = (err as { code?: string } | null)?.code;
-			setTestResult(`❌ 连接失败${code ? ` [${code}]` : ""}: ${err instanceof Error ? err.message : String(err)}`);
+			errorMsg = code ? `[${code}] ${err instanceof Error ? err.message : String(err)}` : (err instanceof Error ? err.message : String(err));
+			setTestResult(`❌ 连接失败${code ? ` [${code}]` : ""}（${elapsed} ms）: ${errorMsg}`);
 		} finally {
 			setTesting(false);
+			// 持久化测试状态到存储 —— 连接列表和批量诊断都要读
+			try {
+				const patched: DbConnection = {
+					...conn,
+					last_test_at: Date.now(),
+					last_test_ok: ok,
+					last_test_error: ok ? undefined : errorMsg,
+				};
+				if (isApiConnectionType(conn.db_type)) {
+					// API 接入也把状态存本地（引擎的 /api-sources/save 不认识 last_test_*，走本地 writeConfig 存）
+					await writeConfig(patched);
+				} else {
+					await writeConfig(patched);
+				}
+				await refresh();
+				onChange?.();
+			} catch { /* 持久化失败不阻断测试结果 */ }
 		}
+	}
+
+	/**
+	 * 连接诊断（自研批量测试）：对所有已保存连接逐个跑 test()，
+	 * 不阻塞 UI（每个连接独立计时 + 独立状态）。返回汇总结果供 UI 渲染。
+	 */
+	async function diagnoseAll(): Promise<{
+		ok: number;
+		fail: number;
+		total: number;
+		results: Record<string, { ok: boolean; error?: string; ms: number }>;
+	}> {
+		const results: Record<string, { ok: boolean; error?: string; ms: number }> = {};
+		for (const conn of connections) {
+			const started = performance.now();
+			try {
+				if (isApiConnectionType(conn.db_type)) {
+					await engineTestApiSource({ name: conn.name, draft: apiSourcePayload(conn) });
+				} else {
+					await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
+				}
+				const ms = Math.round(performance.now() - started);
+				results[conn.id] = { ok: true, ms };
+			} catch (err) {
+				const ms = Math.round(performance.now() - started);
+				const msg = err instanceof Error ? err.message : String(err);
+				results[conn.id] = { ok: false, error: msg, ms };
+			}
+		}
+		// 诊断结束后持久化每个连接的状态
+		for (const conn of connections) {
+			const r = results[conn.id];
+			if (!r) continue;
+			try {
+				await writeConfig({
+					...conn,
+					last_test_at: Date.now(),
+					last_test_ok: r.ok,
+					last_test_error: r.ok ? undefined : r.error,
+				});
+			} catch { /* 忽略 */ }
+		}
+		await refresh();
+		onChange?.();
+		const entries = Object.values(results);
+		const ok = entries.filter((r) => r.ok).length;
+		return { ok, fail: entries.length - ok, total: entries.length, results };
 	}
 
 	/**
@@ -254,7 +356,7 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	 * 草稿凭据会一起保存，与「测试」走同一安全路径。
 	 */
 	async function loadSchemas(): Promise<void> {
-		if (!editing || !editing.name.trim()) { alert("请先填写连接名称"); return; }
+		if (!editing || !editing.name.trim()) { getUi()?.notify?.({ message: "请先填写连接名称", variant: "info" }); return; }
 		setLoadingSchemas(true);
 		try {
 			await writeConfig(editing);
@@ -264,13 +366,13 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			const errMsg = err instanceof Error ? err.message : String(err);
 			const errCode = (err as { code?: string } | null)?.code;
 			if (errCode === "ENGINE_NOT_READY") {
-				alert("拉取 Schema 失败: 引擎服务尚未就绪，请稍等片刻后重试。");
+				getUi()?.notify?.({ message: "拉取 Schema 失败: 引擎服务尚未就绪，请稍等片刻后重试。", variant: "error" });
 			} else if (errMsg.includes("no PostgreSQL user name") || errMsg.includes("28000")) {
-				alert("拉取 Schema 失败: 数据库连接缺少用户名，请检查连接配置。");
+				getUi()?.notify?.({ message: "拉取 Schema 失败: 数据库连接缺少用户名，请检查连接配置。", variant: "error" });
 			} else if (errMsg.includes("Service is not ready")) {
-				alert("拉取 Schema 失败: 引擎服务正在启动中，请稍等片刻后重试。");
+				getUi()?.notify?.({ message: "拉取 Schema 失败: 引擎服务正在启动中，请稍等片刻后重试。", variant: "error" });
 			} else {
-				alert(`拉取 Schema 失败: ${errMsg}`);
+				getUi()?.notify?.({ message: `拉取 Schema 失败: ${errMsg}`, variant: "error" });
 			}
 		} finally {
 			setLoadingSchemas(false);
@@ -297,6 +399,7 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		availableSchemas,
 		loadingSchemas,
 		loadSchemas,
+		diagnoseAll,
 		groupedManifest,
 	};
 }

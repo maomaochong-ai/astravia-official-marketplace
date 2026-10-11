@@ -146,16 +146,19 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 			const sqlToRun = overrideSql && overrideSql.trim() ? overrideSql : tab.sql;
 			const current = settingsRef.current;
 			const pageIndex = options?.pageIndex ?? 0;
+			/** 当前 tab 绑定的连接配置（提前拿，pageSize 要读其 default_row_limit） */
+			const targetConn = stateRef.current.connections.find((c) => c.name === connectionName);
 			/**
-			 * 页大小优先级：
-			 *  - 显式传参（翻页 / 网格底栏 PageSizeMenu 选择） > 一切
-			 *  - 翻页（isPageTurn=true）沿用 tab 历史 pageSize，避免 settings 改动后翻页跳变
-			 *  - 新执行优先 settings.rowLimit（用户最新设置），fallback 到 tab.pageSize
-			 *    （修复：用户改了 settings rowLimit 后，新执行还拿着旧 tab.pageSize 的 bug）
+			 * 页大小优先级（从高到低）：
+			 *  1. 显式传参（翻页 / 网格底栏 PageSizeMenu 选择） > 一切
+			 *  2. 连接级 default_row_limit（连接编辑器高级段，每个连接可独立设）
+			 *  3. 全局 settings.rowLimit（用户最新设置，所有连接共享）
+			 *  4. tab 历史 pageSize（翻页路径保持稳定，避免 settings 改动后翻页跳变）
 			 */
+			const connectionDefaultLimit = targetConn?.default_row_limit;
 			const pageSize = isPageTurn
-				? resolvePageSize(options?.pageSize ?? tab.pageSize ?? current.rowLimit)
-				: resolvePageSize(options?.pageSize ?? current.rowLimit ?? tab.pageSize);
+				? resolvePageSize(options?.pageSize ?? tab.pageSize ?? connectionDefaultLimit ?? current.rowLimit)
+				: resolvePageSize(options?.pageSize ?? connectionDefaultLimit ?? current.rowLimit ?? tab.pageSize);
 			const priorResult = tab.result;
 			const sameSql = priorResult?.ok === true && priorResult.ranSql === sqlToRun;
 			const knownTotal = sameSql ? priorResult.totalCount : undefined;
@@ -173,7 +176,6 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 			runningStartedAtRef.current[tabId] = startedAt;
 
 			try {
-				const targetConn = stateRef.current.connections.find((c) => c.name === connectionName);
 				const rawOutcome = isServerMode
 					? // 页大小超过引擎单次上限时由 executeServerPage 分块拼页。
 						await executeServerPage(connectionName, sqlToRun, {
@@ -184,7 +186,7 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 						})
 					: await engineExecuteByName(connectionName, sqlToRun, {
 							timeoutMs: current.queryTimeoutSecs * 1000,
-							rowLimit: ENGINE_ROW_CAP,
+							rowLimit: connectionDefaultLimit ?? ENGINE_ROW_CAP,
 							dbType: targetConn?.db_type,
 						});
 				const outcome = toQueryResult(rawOutcome);

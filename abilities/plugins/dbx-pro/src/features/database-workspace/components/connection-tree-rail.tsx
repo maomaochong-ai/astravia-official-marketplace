@@ -9,13 +9,15 @@
  * （用户实测反馈），故删除；收起态本来就不显示树，分区语义由展开后的连接树承担。
  *
  * 展开 / 多选 / 导入 三个动作全部接在真实路径上：多选走 WorkbenchProvider 的
- * toggleSelectionMode，导入复用 services/connection-transfer 的
- * importConnectionsFromText（与工具栏同一个导入实现，导入后刷新连接列表）。
+ * toggleSelectionMode，导入用 hooks/use-connection-transfer（与工具栏同一份实现，
+ * 导入成功后刷新连接列表）。
+ *
+ * 这里是纯展示组件：异步流程与提示都在上面那个 hook 里。
  */
 
-import { useRef, useState, type ChangeEvent, type JSX } from "react";
+import type { JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
-import { importConnectionsFromText } from "../services/connection-transfer";
+import { useConnectionTransfer } from "../hooks/use-connection-transfer";
 
 /** 收起态图标按钮的公共几何（24/28px 区间取 28px，与设计稿 IconButton 默认一致）。 */
 const RAIL_ITEM = "flex size-7 shrink-0 items-center justify-center rounded-control transition-colors";
@@ -23,30 +25,9 @@ const RAIL_ITEM_IDLE = "text-muted hover:bg-neutral-muted hover:text-surface-for
 
 export function ConnectionTreeRail({ onExpand }: { onExpand?: () => void }): JSX.Element {
 	const { selectionMode, toggleSelectionMode, refreshConnections } = useWorkbench();
-	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [importing, setImporting] = useState(false);
-
-	async function handleImportFile(e: ChangeEvent<HTMLInputElement>): Promise<void> {
-		const file = e.target.files?.[0];
-		// 清空 value：否则第二次选同一个文件不会再触发 change。
-		e.target.value = "";
-		if (!file) return;
-		setImporting(true);
-		try {
-			const text = await file.text();
-			const result = await importConnectionsFromText(text);
-			if (result.total === 0) {
-				alert("文件中没有可导入的连接（每条连接至少需要 name / db_type / host）");
-			} else {
-				alert(`导入完成：新增 ${result.imported} 个，更新 ${result.updated} 个，失败 ${result.failed} 个`);
-			}
-			await refreshConnections();
-		} catch (err) {
-			alert(`导入失败: ${err instanceof Error ? err.message : String(err)}`);
-		} finally {
-			setImporting(false);
-		}
-	}
+	const { importing, fileInputRef, triggerImport, handleImportFile } = useConnectionTransfer({
+		onImported: () => refreshConnections(),
+	});
 
 	return (
 		<div className="flex h-full w-full flex-col items-center gap-1 bg-surface-raised py-1.5">
@@ -65,7 +46,7 @@ export function ConnectionTreeRail({ onExpand }: { onExpand?: () => void }): JSX
 			</button>
 			<button
 				type="button"
-				onClick={() => fileInputRef.current?.click()}
+				onClick={triggerImport}
 				disabled={importing}
 				title="导入连接"
 				className={`${RAIL_ITEM} ${RAIL_ITEM_IDLE} disabled:opacity-40`}

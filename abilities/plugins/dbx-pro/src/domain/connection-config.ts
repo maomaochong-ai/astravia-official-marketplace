@@ -222,12 +222,22 @@ export interface DbConnection {
 	note?: string;
 	color?: string;
 	ssl?: boolean;
+	/** SSL 连接模式：disable / prefer / require / verify-ca / verify-full。引擎层走 boolean，插件侧用此字段驱动表单 UI 和保存时拼进 url_params。 */
+	ssl_mode?: "disable" | "prefer" | "require" | "verify-ca" | "verify-full";
 	is_production?: boolean;
 	read_only?: boolean;
 	connect_timeout_secs?: number;
 	query_timeout_secs?: number;
+	/** 默认查询上限（行）——工作台新建查询时如果用户没显式指定 LIMIT，用这个值兜底。 */
+	default_row_limit?: number;
 	url_params?: string;
 	connection_string?: string;
+	/** 上次连通性测试时间戳（ms）。test 时写入，列表行展示用。 */
+	last_test_at?: number;
+	/** 上次连通性测试是否成功。 */
+	last_test_ok?: boolean;
+	/** 上次连通性测试的错误摘要（成功时空）。 */
+	last_test_error?: string;
 	/** 「API 接入」专用配置；db_type === "api" 时才是这套字段 */
 	api?: ApiConnectionSpec;
 	[key: string]: unknown;

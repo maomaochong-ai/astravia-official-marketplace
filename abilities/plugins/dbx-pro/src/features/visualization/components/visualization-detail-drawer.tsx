@@ -21,7 +21,7 @@ import { resolveChartItems } from "../../../domain/chart-source";
 import type { StoredVisualization } from "../../../domain/visualization-doc";
 import { collectLineageSources, collectLineageTables, findArtifactsByTable } from "../../../domain/visualization-lineage";
 import { getUi } from "../../../runtime-contract.ts";
-import { downloadHtml, openHtmlInNewTab } from "../../../shared/utils/html-export";
+import { downloadHtml, openHtmlInNewTab } from "../services/html-export";
 import { resolveVisualizationHtml } from "../visualization-html";
 import { useVisualizationStore } from "../visualization-store";
 import { useDatasetRefetch } from "../hooks/use-dataset-refetch";

@@ -12,12 +12,14 @@
  */
 
 import { useState, useRef, useEffect, useCallback, type JSX } from "react";
+import { getUi } from "../../../runtime-contract.ts";
 import { ConnectionFields } from "./connection-fields";
 import { ConnectionList } from "./connection-list";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 import { DB_TYPE_MANIFEST, type DbConnection, type DbType } from "../../../domain/connection-config";
 import { isReadyDbType, tierReasonText } from "../../../domain/driver-tiers";
 import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
+import { API_CATALOG_ENTRY } from "../services/connection-type-catalog";
 
 export interface ConnectionEditorFlowProps {
 	/** 连接增 / 删 / 改后通知外层重载工作台（回传受影响连接名）。 */
@@ -48,6 +50,9 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 	const [searchQuery, setSearchQuery] = useState("");
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 	const [selectedCategory, setSelectedCategory] = useState<string>("relational");
+	/** 批量诊断运行中；false 时 result 里保留上次结果供展示。 */
+	const [diagnoseRunning, setDiagnoseRunning] = useState(false);
+	const [diagnoseResult, setDiagnoseResult] = useState<{ ok: number; fail: number; total: number } | null>(null);
 	const contentRef = useRef<HTMLDivElement>(null);
 	const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 	// 点击左侧分类走的是平滑滚动：滚动期间的 scroll 事件不参与反算，
@@ -64,6 +69,20 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 	// 从列表页进入编辑流程
 	function handleEdit(conn: DbConnection): void {
 		editor.startEdit({ ...conn });
+		setChosenDbType(conn.db_type);
+		setStep("config");
+	}
+
+	// 复制为新数据源：生成新 id + 名字加「副本」+ 清空密码，走新建流程
+	function handleDuplicate(conn: DbConnection): void {
+		const copied: DbConnection = {
+			...conn,
+			id: `${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`,
+			name: `${conn.name} 副本`,
+			password: "",
+		};
+		editor.startNew();
+		editor.setEditing(copied);
 		setChosenDbType(conn.db_type);
 		setStep("config");
 	}
@@ -90,6 +109,25 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 	async function handleSave(): Promise<void> {
 		const ok = await editor.save();
 		if (ok) setStep("list");
+	}
+
+	// 批量诊断：对所有已保存连接逐个跑连通性测试，汇总展示
+	async function handleDiagnoseAll(): Promise<void> {
+		if (diagnoseRunning) return;
+		if (editor.connections.length === 0) {
+			getUi()?.notify?.({ message: "还没有已保存的数据源，无法诊断。", variant: "info" });
+			return;
+		}
+		setDiagnoseRunning(true);
+		setDiagnoseResult(null);
+		try {
+			const summary = await editor.diagnoseAll();
+			setDiagnoseResult({ ok: summary.ok, fail: summary.fail, total: summary.total });
+		} catch (err) {
+			getUi()?.notify?.({ message: `诊断失败: ${err instanceof Error ? err.message : String(err)}`, variant: "error" });
+		} finally {
+			setDiagnoseRunning(false);
+		}
 	}
 
 	// 切换分类（滚动到对应位置）
@@ -155,16 +193,18 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 		}
 	}, [step]);
 
-	// 过滤数据库类型
+	// 过滤数据库类型（含 API 接入）
+	const allTypeEntries = [API_CATALOG_ENTRY, ...DB_TYPE_MANIFEST];
 	const filteredTypes = searchQuery.trim()
-		? DB_TYPE_MANIFEST.filter((t) =>
+		? allTypeEntries.filter((t) =>
 			t.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			t.dbType.toLowerCase().includes(searchQuery.toLowerCase()),
 		)
-		: DB_TYPE_MANIFEST;
+		: allTypeEntries;
 
-	// 按类别分组
+	// 按类别分组 — 「接口」始终排第一，然后是关系型 / NoSQL / 分析型 / 其他
 	const categories: Category[] = [
+		{ key: "api", label: "接口", types: filteredTypes.filter((t) => t.dbType === API_CATALOG_ENTRY.dbType) },
 		{ key: "relational", label: "关系型", types: filteredTypes.filter((t) => RELATIONAL_TYPES.includes(t.dbType)) },
 		{ key: "nosql", label: "NoSQL", types: filteredTypes.filter((t) => NOSQL_TYPES.includes(t.dbType)) },
 		{ key: "analytics", label: "分析型", types: filteredTypes.filter((t) => ANALYTICS_TYPES.includes(t.dbType)) },
@@ -172,13 +212,14 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 			key: "other",
 			label: "其他",
 			types: filteredTypes.filter((t) =>
+				t.dbType !== API_CATALOG_ENTRY.dbType &&
 				![...RELATIONAL_TYPES, ...NOSQL_TYPES, ...ANALYTICS_TYPES].includes(t.dbType),
 			),
 		},
 	].filter((c) => c.types.length > 0);
 
 	// 当前选中类型（用于「已选」chip 与卡片选中态）；未选择时不显示
-	const chosenEntry = chosenDbType ? DB_TYPE_MANIFEST.find((t) => t.dbType === chosenDbType) : undefined;
+	const chosenEntry = chosenDbType ? allTypeEntries.find((t) => t.dbType === chosenDbType) : undefined;
 	// 可直接查询的类型数：直接读 driver-tiers 的真实判定，不写死数字
 	const readyTypeCount = DB_TYPE_MANIFEST.filter((t) => isReadyDbType(t.dbType)).length;
 	const editingTypeLabel = editor.editing
@@ -202,19 +243,19 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 					)}
 					<span className="icon-[lucide--database] h-4 w-4 shrink-0 text-muted" />
 					<h2 className="dbx-connection-title">
-						{step === "list" && "管理连接"}
-						{step === "select" && "选择数据库类型"}
-						{step === "config" && (editor.editing?.name ? "编辑连接" : "新建连接")}
+						{step === "list" && "管理数据源"}
+						{step === "select" && "选择数据源类型"}
+						{step === "config" && (editor.editing?.name ? "编辑数据源" : "新建数据源")}
 					</h2>
 				</div>
 				{step === "select" && (
 					<span className="ml-auto shrink-0 font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
-						{DB_TYPE_MANIFEST.length} 种
+						{allTypeEntries.length} 种
 					</span>
 				)}
 				{step === "config" && (
 					<span className="ml-auto shrink-0 text-[12px] whitespace-nowrap text-muted">
-						连接信息只保存在本机
+						数据源信息只保存在本机，密码交给系统凭据库
 					</span>
 				)}
 				{onClose && (
@@ -233,7 +274,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 				<Stepper current={step === "list" ? 0 : step === "select" ? 1 : 2} />
 				{step === "select" && (
 					<span className="ml-auto text-[12px] tabular-nums whitespace-nowrap text-faint">
-						共 {DB_TYPE_MANIFEST.length} 种 · {readyTypeCount} 种可直接查询
+						共 {allTypeEntries.length} 种 · {readyTypeCount} 种可直接查询
 					</span>
 				)}
 				{step === "config" && editor.editing && (
@@ -261,14 +302,36 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 						onEdit={(conn) => handleEdit(conn)}
 						onTest={(c) => void editor.test(c)}
 						onDelete={(c) => void editor.remove(c)}
+						onDuplicate={(c) => handleDuplicate(c)}
 						onCreate={handleCreateNew}
 					/>
 					<div className="dbx-connection-footer">
 						<button type="button" className="dbx-btn primary" onClick={handleCreateNew}>
 							<span className="icon-[lucide--plus] h-3.5 w-3.5" />
-							新建连接
+							新建数据源
 						</button>
-						<span className="ml-1 text-[12px] whitespace-nowrap text-muted">连接配置只保存在本机</span>
+						<span className="ml-1 text-[12px] whitespace-nowrap text-muted">双击一行可直接编辑 · 数据源配置只保存在本机</span>
+						{diagnoseResult && (
+							<span className="ml-2 flex shrink-0 items-center gap-1 rounded-chip border border-border px-2 py-1 text-[12px]">
+								<span className="text-success">通过 {diagnoseResult.ok}</span>
+								<span className="text-muted">/</span>
+								<span className={diagnoseResult.fail > 0 ? "text-danger" : "text-muted"}>失败 {diagnoseResult.fail}</span>
+								<span className="text-muted">/</span>
+								<span className="text-muted">共 {diagnoseResult.total}</span>
+							</span>
+						)}
+						<div className="ml-auto flex items-center gap-1">
+							<button
+								type="button"
+								className="dbx-btn ghost text-[12px]"
+								title="诊断所有数据源连通性"
+								onClick={() => void handleDiagnoseAll()}
+								disabled={diagnoseRunning || editor.connections.length === 0}
+							>
+								<span className={`size-3.5 ${diagnoseRunning ? "icon-[lucide--loader] animate-spin" : "icon-[lucide--stethoscope]"}`} />
+								{diagnoseRunning ? "诊断中…" : "数据源诊断"}
+							</button>
+						</div>
 					</div>
 					</>
 				)}
@@ -281,7 +344,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 								<span className="icon-[lucide--search] size-3.5 shrink-0 text-muted" />
 								<input
 									type="text"
-									placeholder="搜索数据库类型..."
+									placeholder="搜索数据源类型..."
 									value={searchQuery}
 									onChange={(e) => setSearchQuery(e.target.value)}
 								/>
@@ -428,7 +491,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 								disabled={!chosenDbType}
 								onClick={() => { if (chosenDbType) handleSelectDbType(chosenDbType); }}
 							>
-								下一步 · 连接配置
+								下一步 · 数据源配置
 								<span className="icon-[lucide--chevron-right] size-3" />
 							</button>
 						</div>
@@ -483,7 +546,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 						</button>
 						<button type="button" className="dbx-btn primary" onClick={() => void handleSave()}>
 							<span className="icon-[lucide--plug-zap] size-3.5" />
-							保存并连接
+							保存数据源
 						</button>
 					</div>
 				</div>
@@ -493,7 +556,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 }
 
 /** 连接编辑三步：与设计稿 Stepper 同构。 */
-const CONNECTION_STEPS = ["连接列表", "数据库类型", "连接配置"];
+const CONNECTION_STEPS = ["数据源列表", "数据源类型", "数据源配置"];
 
 function Stepper({ current }: { current: number }): JSX.Element {
 	return (
@@ -531,9 +594,11 @@ function Stepper({ current }: { current: number }): JSX.Element {
 
 /** 档位文案：引擎覆盖即「可直接查询」（domain/driver-tiers 对已支持类型统一返回 ready）。 */
 function tierText(dbType: string): string {
+	if (dbType === API_CATALOG_ENTRY.dbType) return "可直接查询";
 	return isReadyDbType(dbType) ? "可直接查询" : "试验性";
 }
 
 function tierToneClass(dbType: string): string {
+	if (dbType === API_CATALOG_ENTRY.dbType) return "text-success";
 	return isReadyDbType(dbType) ? "text-success" : "text-warning";
 }
