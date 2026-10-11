@@ -15,6 +15,8 @@ import { AiNodePanel } from "./ai-node-panel";
 export interface NodePos {
 	x: number; y: number; w: number; h: number;
 	tone: string; selected?: boolean;
+	/** 节点类型 key，对应 NODE_TEMPLATES 条目（source-sql / chart-bar / ...） */
+	kind?: string;
 }
 export type NodeId = string;
 export interface Link {
@@ -101,26 +103,27 @@ export interface NodeGraphProps {
 	setLinks: Dispatch<SetStateAction<Link[]>>;
 }
 
-/** 节点模板注册表——DnD 创建新节点时按模板生成默认属性。 */
+/** 节点模板注册表——DnD 创建新节点时按模板生成默认属性。
+ *  key 即 kind，kind 存入 NodePos.kind 后 PropertyInspector 按此渲染表单。 */
 export const NODE_TEMPLATES: Record<string, Omit<NodePos, "x" | "y">> = {
-	"source-sql":   { w: 180, h: 118, tone: TONE.table },
-	"source-table": { w: 180, h: 96,  tone: TONE.table },
-	"source-api":   { w: 180, h: 96,  tone: TONE.table },
-	"chart-bar":    { w: 216, h: 190, tone: TONE.chart, selected: true },
-	"chart-line":   { w: 216, h: 222, tone: TONE.chart, selected: true },
-	"chart-pie":    { w: 216, h: 206, tone: TONE.chart },
-	"chart-scatter":{ w: 216, h: 190, tone: TONE.chart },
-	"chart-map":    { w: 240, h: 240, tone: TONE.chart },
-	"chart-radar":  { w: 216, h: 190, tone: TONE.chart },
-	"metric-big":   { w: 180, h: 110, tone: TONE.result },
-	"metric-trend": { w: 180, h: 110, tone: TONE.result },
-	"metric-gauge": { w: 180, h: 130, tone: TONE.result },
-	"filter-select":{ w: 180, h: 88,  tone: TONE.control },
-	"filter-date":  { w: 180, h: 88,  tone: TONE.control },
-	"filter-input": { w: 180, h: 88,  tone: TONE.control },
-	"output-table": { w: 220, h: 180, tone: TONE.chart },
-	"output-text":  { w: 200, h: 120, tone: TONE.chart },
-	"output-image": { w: 220, h: 160, tone: TONE.chart },
+	"source-sql":   { w: 180, h: 118, tone: TONE.table, kind: "source-sql" },
+	"source-table": { w: 180, h: 96,  tone: TONE.table, kind: "source-table" },
+	"source-api":   { w: 180, h: 96,  tone: TONE.table, kind: "source-api" },
+	"chart-bar":    { w: 216, h: 190, tone: TONE.chart, kind: "chart-bar", selected: true },
+	"chart-line":   { w: 216, h: 222, tone: TONE.chart, kind: "chart-line", selected: true },
+	"chart-pie":    { w: 216, h: 206, tone: TONE.chart, kind: "chart-pie" },
+	"chart-scatter":{ w: 216, h: 190, tone: TONE.chart, kind: "chart-scatter" },
+	"chart-map":    { w: 240, h: 240, tone: TONE.chart, kind: "chart-map" },
+	"chart-radar":  { w: 216, h: 190, tone: TONE.chart, kind: "chart-radar" },
+	"metric-big":   { w: 180, h: 110, tone: TONE.result, kind: "metric-big" },
+	"metric-trend": { w: 180, h: 110, tone: TONE.result, kind: "metric-trend" },
+	"metric-gauge": { w: 180, h: 130, tone: TONE.result, kind: "metric-gauge" },
+	"filter-select":{ w: 180, h: 88,  tone: TONE.control, kind: "filter-select" },
+	"filter-date":  { w: 180, h: 88,  tone: TONE.control, kind: "filter-date" },
+	"filter-input": { w: 180, h: 88,  tone: TONE.control, kind: "filter-input" },
+	"output-table": { w: 220, h: 180, tone: TONE.chart, kind: "output-table" },
+	"output-text":  { w: 200, h: 120, tone: TONE.chart, kind: "output-text" },
+	"output-image": { w: 220, h: 160, tone: TONE.chart, kind: "output-image" },
 };
 
 export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps): JSX.Element {
@@ -152,15 +155,16 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 			const tpl = NODE_TEMPLATES[type] ?? { w: 180, h: 110, tone: TONE.chart };
 			NODE_SEQ++;
 			const newId = `n${NODE_SEQ}`;
-			setNodes((prev) => ({
-				...prev,
-				[newId]: {
-					...tpl,
-					x: Math.max(8, x),
-					y: Math.max(8, y),
-				},
-			}));
-			// 存储后续节点到同一 payload（预留）
+			// 找当前选中节点作为自动连线 source（UX：拖入新节点自动串到最近选中的节点后面）
+			const selectedId = (Object.keys(nodes) as NodeId[]).find((k) => nodes[k].selected);
+			const newNode: NodePos = { ...tpl, x: Math.max(8, x), y: Math.max(8, y) };
+			setNodes((prev) => ({ ...prev, [newId]: newNode }));
+			if (selectedId && selectedId !== newId) {
+				setLinks((prev) => {
+					const tone = nodes[selectedId].tone;
+					return [...prev, { id: nextLinkId(), from: selectedId, fromRow: 0, to: newId, toRow: 0, tone }];
+				});
+			}
 			void NODE_SEQ_KEY;
 		} catch { /* ignore bad data */ }
 	}

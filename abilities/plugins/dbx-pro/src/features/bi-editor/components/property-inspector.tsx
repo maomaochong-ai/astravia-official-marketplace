@@ -1,115 +1,217 @@
 /**
- * property-inspector.tsx — 右栏属性面板（按设计稿 PropertyInspector 简化）。
+ * property-inspector.tsx — 右栏属性面板。
  *
- * Phase C1：只显示页面级设置（主题/背景/尺寸）。
- * Phase C2：选中节点后切换到节点属性表单。
+ * 双模式：
+ *   · 无节点选中 → 页面级设置（主题/画布尺寸/统计）
+ *   · 有节点选中 → 按 kind 渲染节点属性表单
+ *
+ * 节点属性 schema 在 node-schema.ts 定义，PropertyInspector 读 kind 查字段。
  */
 
 import { type JSX } from "react";
 import type { BigscreenPage } from "../hooks/use-bigscreen-pages";
+import type { NodePos } from "./node-graph";
+import { NODE_SCHEMA } from "./node-schema";
+
+export interface SelectedNodeInfo {
+	id: string;
+	node: NodePos;
+}
 
 export function PropertyInspector({
 	page,
 	theme,
 	onThemeChange,
+	selectedNode,
+	onNodeUpdate,
 }: {
 	page: BigscreenPage;
 	theme: "dark" | "default";
 	onThemeChange: (t: "dark" | "default") => void;
+	selectedNode?: SelectedNodeInfo | null;
+	onNodeUpdate?: (id: string, patch: Partial<NodePos>) => void;
 }): JSX.Element {
 	const isScreen = page.style === "bigScreen";
 
 	return (
 		<div className="flex w-72 shrink-0 flex-col border-l border-border bg-surface-raised">
-			<div className="flex h-9 shrink-0 items-center border-b border-border px-3 text-[12px] font-medium text-muted">
-				属性 · <span className="text-surface-foreground">页面</span>
+			<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3 text-[12px] font-medium">
+				<span className="text-muted">属性</span>
+				<span className="text-surface-foreground">·</span>
+				<span className="text-accent">
+					{selectedNode ? `节点 · ${selectedNode.node.kind ?? selectedNode.id.slice(0, 8)}` : "页面"}
+				</span>
 			</div>
 
 			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-3 space-y-4">
-				{/* 基本信息 */}
-				<section>
-					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">基本信息</h3>
-					<div className="space-y-1.5">
-						<Row label="名称">
-							<span className="truncate text-[12px] text-surface-foreground">{page.name}</span>
-						</Row>
-						<Row label="类型">
-							<span className="text-[12px] text-surface-foreground">{isScreen ? "大屏" : "看板"}</span>
-						</Row>
-						<Row label="ID">
-							<span className="font-mono truncate text-[11px] text-faint">{page.id}</span>
-						</Row>
-					</div>
-				</section>
+				{selectedNode && onNodeUpdate ? (
+					<NodePropertyForm
+						id={selectedNode.id}
+						node={selectedNode.node}
+						onUpdate={onNodeUpdate}
+					/>
+				) : (
+					<>
+						{/* 基本信息 */}
+						<section>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">基本信息</h3>
+							<div className="space-y-1.5">
+								<Row label="名称">
+									<span className="truncate text-[12px] text-surface-foreground">{page.name}</span>
+								</Row>
+								<Row label="类型">
+									<span className="text-[12px] text-surface-foreground">{isScreen ? "大屏" : "看板"}</span>
+								</Row>
+								<Row label="ID">
+									<span className="font-mono truncate text-[11px] text-faint">{page.id}</span>
+								</Row>
+							</div>
+						</section>
 
-				{/* 主题设置 */}
-				<section>
-					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">主题</h3>
-					<div className="grid grid-cols-2 gap-1.5">
-						<ThemeSwatch
-							active={theme === "default"}
-							label="明亮"
-							onClick={() => onThemeChange("default")}
-							colors={["#f8fafc", "#e2e8f0", "#3b82f6"]}
-						/>
-						<ThemeSwatch
-							active={theme === "dark"}
-							label="深色"
-							onClick={() => onThemeChange("dark")}
-							colors={["#0b1424", "#1e293b", "#3b82f6"]}
-						/>
-					</div>
-				</section>
+						{/* 主题设置 */}
+						<section>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">主题</h3>
+							<div className="grid grid-cols-2 gap-1.5">
+								<ThemeSwatch active={theme === "default"} label="明亮" onClick={() => onThemeChange("default")} colors={["#f8fafc", "#e2e8f0", "#3b82f6"]} />
+								<ThemeSwatch active={theme === "dark"} label="深色" onClick={() => onThemeChange("dark")} colors={["#0b1424", "#1e293b", "#3b82f6"]} />
+							</div>
+						</section>
 
-				{/* 画布尺寸 */}
-				<section>
-					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">画布尺寸</h3>
-					<div className="grid grid-cols-2 gap-1.5">
-						<SizeBtn active={isScreen} label="1920 × 1080 (16:9)" hint="大屏" />
-						<SizeBtn active={!isScreen} label="自适应" hint="看板" />
-					</div>
-				</section>
+						{/* 画布尺寸 */}
+						<section>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">画布尺寸</h3>
+							<div className="grid grid-cols-2 gap-1.5">
+								<SizeBtn active={isScreen} label="1920 × 1080 (16:9)" hint="大屏" />
+								<SizeBtn active={!isScreen} label="自适应" hint="看板" />
+							</div>
+						</section>
 
-				{/* 统计 */}
-				<section>
-					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">统计</h3>
-					<div className="grid grid-cols-2 gap-1.5">
-						<Stat label="保存次数" value={page.updateCount} />
-						<Stat label="访问量" value={page.visits} />
-					</div>
-				</section>
+						{/* 统计 */}
+						<section>
+							<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">统计</h3>
+							<div className="grid grid-cols-2 gap-1.5">
+								<Stat label="保存次数" value={page.updateCount} />
+								<Stat label="访问量" value={page.visits} />
+							</div>
+						</section>
 
-				{/* 选中节点提示 */}
-				<div className="rounded-card border border-dashed border-border p-3 text-center text-[11px] text-muted">
-					<span className="font-mono text-faint">◈</span>
-					<p className="mt-1">未选中任何节点</p>
-					<p className="mt-0.5 text-faint">画布中点击组件以编辑其属性</p>
-				</div>
+						{/* 选中节点提示 */}
+						<div className="rounded-card border border-dashed border-border p-3 text-center text-[11px] text-muted">
+							<span className="font-mono text-faint">◈</span>
+							<p className="mt-1">未选中任何节点</p>
+							<p className="mt-0.5 text-faint">画布中点击组件以编辑其属性</p>
+						</div>
+					</>
+				)}
 			</div>
 		</div>
+	);
+}
+
+function NodePropertyForm({
+	id, node, onUpdate,
+}: { id: string; node: NodePos; onUpdate: (id: string, patch: Partial<NodePos>) => void }) {
+	const kind = node.kind ?? "";
+	const schema = NODE_SCHEMA[kind] ?? NODE_SCHEMA._default;
+	return (
+		<>
+			<section>
+				<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">节点信息</h3>
+				<div className="space-y-1.5">
+					<Row label="Kind">
+						<span className="font-mono text-[11px] text-surface-foreground">{kind || "(未指定)"}</span>
+					</Row>
+					<Row label="ID">
+						<span className="font-mono text-[11px] text-faint">{id}</span>
+					</Row>
+					<Row label="尺寸">
+						<span className="font-mono text-[11px] text-muted">{Math.round(node.w)} × {Math.round(node.h)}</span>
+					</Row>
+					<Row label="位置">
+						<span className="font-mono text-[11px] text-muted">({Math.round(node.x)}, {Math.round(node.y)})</span>
+					</Row>
+				</div>
+			</section>
+
+			<section>
+				<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">属性 · {schema.label}</h3>
+				<div className="space-y-2">
+					{schema.fields.map((f) => (
+						<Field key={f.key} field={f} node={node} onUpdate={(patch) => onUpdate(id, patch)} />
+					))}
+				</div>
+			</section>
+
+			<section>
+				<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">外观</h3>
+				<div className="space-y-1.5">
+					<Row label="Tone">
+						<div className="flex gap-1">
+							{["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4"].map((c) => (
+								<button
+									type="button"
+									key={c}
+									onClick={() => onUpdate(id, { tone: c })}
+									className={`size-5 rounded-[3px] border-2 ${node.tone === c ? "border-surface-foreground" : "border-border"}`}
+									style={{ background: c }}
+								/>
+							))}
+						</div>
+					</Row>
+					<Row label="宽">
+						<input
+							type="number"
+							value={Math.round(node.w)}
+							onChange={(e) => onUpdate(id, { w: Number(e.target.value) })}
+							className="h-7 w-full rounded-control border border-border bg-surface px-2 font-mono text-[11px] text-surface-foreground"
+						/>
+					</Row>
+					<Row label="高">
+						<input
+							type="number"
+							value={Math.round(node.h)}
+							onChange={(e) => onUpdate(id, { h: Number(e.target.value) })}
+							className="h-7 w-full rounded-control border border-border bg-surface px-2 font-mono text-[11px] text-surface-foreground"
+						/>
+					</Row>
+				</div>
+			</section>
+		</>
+	);
+}
+
+function Field({
+	field, node, onUpdate,
+}: { field: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: string[] }; node: NodePos; onUpdate: (patch: Partial<NodePos>) => void }) {
+	// 目前 NodePos 上还没有 per-field 的 value 存储（后续扩 NodeVal schema）。
+	// 这里先渲染占位输入框 —— 展示真实表单结构，onChange 已经连好等 NodeVal schema 落地后立即生效。
+	return (
+		<Row label={field.label}>
+			{field.type === "select" && field.options ? (
+				<select className="h-7 w-full rounded-control border border-border bg-surface px-1 text-[11px] text-surface-foreground">
+					{field.options.map((o) => <option key={o} value={o}>{o}</option>)}
+				</select>
+			) : field.type === "textarea" ? (
+				<textarea rows={2} className="w-full rounded-control border border-border bg-surface px-2 py-1 font-mono text-[11px] text-muted" placeholder={`// ${field.key}`} />
+			) : field.type === "number" ? (
+				<input type="number" className="h-7 w-full rounded-control border border-border bg-surface px-2 font-mono text-[11px] text-muted" placeholder="0" />
+			) : (
+				<input type="text" className="h-7 w-full rounded-control border border-border bg-surface px-2 text-[11px] text-muted" placeholder={field.key} />
+			)}
+		</Row>
 	);
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
-		<div className="flex items-center gap-2">
-			<span className="w-14 shrink-0 text-[11px] text-muted">{label}</span>
+		<div className="flex items-start gap-2">
+			<span className="w-14 shrink-0 pt-1 text-[11px] text-muted">{label}</span>
 			<div className="min-w-0 flex-1">{children}</div>
 		</div>
 	);
 }
 
-function ThemeSwatch({
-	active,
-	label,
-	colors,
-	onClick,
-}: {
-	active: boolean;
-	label: string;
-	colors: string[];
-	onClick: () => void;
-}) {
+function ThemeSwatch({ active, label, colors, onClick }: { active: boolean; label: string; colors: string[]; onClick: () => void }) {
 	return (
 		<button
 			type="button"
@@ -117,9 +219,7 @@ function ThemeSwatch({
 			className={`flex flex-col gap-1 rounded-control border p-1.5 transition ${active ? "border-accent ring-1 ring-accent/30" : "border-border hover:border-border-strong"}`}
 		>
 			<div className="flex gap-0.5">
-				{colors.map((c, i) => (
-					<div key={i} className="h-4 flex-1 rounded-control" style={{ background: c }} />
-				))}
+				{colors.map((c, i) => <div key={i} className="h-4 flex-1 rounded-control" style={{ background: c }} />)}
 			</div>
 			<span className="text-[10px] text-muted">{label}</span>
 		</button>

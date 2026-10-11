@@ -20,7 +20,7 @@ import type { BigscreenPage } from "./hooks/use-bigscreen-pages";
 import { BigscreenToolbar } from "./components/editor-toolbar";
 import { NodeLibrary } from "./components/node-library";
 import { CanvasPage } from "./components/canvas-page";
-import { PropertyInspector } from "./components/property-inspector";
+import { PropertyInspector, type SelectedNodeInfo } from "./components/property-inspector";
 import { EditorStatusBar } from "./components/editor-status-bar";
 import { INITIAL_LINKS, INITIAL_NODES, type Link, type NodePos } from "./components/node-graph";
 
@@ -72,6 +72,22 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 
 	// 任何画布变动都标记 dirty
 	useEffect(() => { setDirty(true); }, [nodes, links]);
+
+	// ── 当前选中节点（供 PropertyInspector 消费） ──
+	const selectedNodeInfo: SelectedNodeInfo | null = (() => {
+		for (const [id, n] of Object.entries(nodes)) {
+			if (n.selected) return { id, node: n };
+		}
+		return null;
+	})();
+
+	function handleNodeUpdate(id: string, patch: Partial<NodePos>) {
+		setNodes((prev) => {
+			const n = prev[id];
+			if (!n) return prev;
+			return { ...prev, [id]: { ...n, ...patch } };
+		});
+	}
 
 	async function handleSave() {
 		if (!page) return;
@@ -129,11 +145,17 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				</div>
 
 				{/* 右栏：属性面板 */}
-				<PropertyInspector page={page} theme={activeTheme} onThemeChange={setActiveTheme} />
+				<PropertyInspector
+					page={page}
+					theme={activeTheme}
+					onThemeChange={setActiveTheme}
+					selectedNode={selectedNodeInfo}
+					onNodeUpdate={handleNodeUpdate}
+				/>
 			</div>
 
 			{/* 底栏状态栏（最外层）*/}
-			<EditorStatusBar dirty={dirty} nodeCount={6} linkCount={5} />
+			<EditorStatusBar dirty={dirty} nodeCount={Object.keys(nodes).length} linkCount={links.length} />
 		</div>
 	);
 }
