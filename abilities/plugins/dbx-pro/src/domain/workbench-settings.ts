@@ -11,6 +11,9 @@ import { clampInt, HISTORY_LIMIT_DEFAULT, HISTORY_LIMIT_MAX, HISTORY_LIMIT_MIN }
 
 export interface WorkbenchSettings {
 	schemaVersion: 1;
+	/** SQL 安全策略：strict=严格只读 / writeAllowed=允许写需每次确认 / permissive=放行所有自动确认。
+	 *  影响插件内 SQL 执行路径（走自研直连驱动，不经过 dbx-mcp 的内置 SQL_BLOCKED 闸门）。 */
+	sqlSafetyMode: "strict" | "writeAllowed" | "permissive";
 	/** 查询超时（秒）。 */
 	queryTimeoutSecs: number;
 	/** 默认每页显示行数（网格分页页大小；服务端分页时即 page.limit）。对齐 dbx pageSize。 */
@@ -168,6 +171,7 @@ export const SETTINGS_BOUNDS = Object.freeze({
 
 export const DEFAULT_SETTINGS: WorkbenchSettings = Object.freeze({
 	schemaVersion: 1,
+	sqlSafetyMode: "writeAllowed",
 	queryTimeoutSecs: 60,
 	rowLimit: 100,
 	historyEnabled: true,
@@ -194,6 +198,10 @@ export function normalizeSettings(raw: unknown): WorkbenchSettings {
 	const source = raw as Record<string, unknown>;
 	return {
 		schemaVersion: 1,
+		sqlSafetyMode:
+			source.sqlSafetyMode === "strict" || source.sqlSafetyMode === "writeAllowed" || source.sqlSafetyMode === "permissive"
+				? source.sqlSafetyMode
+				: DEFAULT_SETTINGS.sqlSafetyMode,
 		queryTimeoutSecs: clampInt(
 			source.queryTimeoutSecs,
 			SETTINGS_BOUNDS.queryTimeoutSecs.min,
@@ -286,6 +294,7 @@ export function normalizeSettings(raw: unknown): WorkbenchSettings {
 /** 判断是否仍为出厂设置（设置页用来展示「恢复默认」是否有效）。 */
 export function isDefaultSettings(settings: WorkbenchSettings): boolean {
 	return (
+		settings.sqlSafetyMode === DEFAULT_SETTINGS.sqlSafetyMode &&
 		settings.queryTimeoutSecs === DEFAULT_SETTINGS.queryTimeoutSecs &&
 		settings.rowLimit === DEFAULT_SETTINGS.rowLimit &&
 		settings.historyEnabled === DEFAULT_SETTINGS.historyEnabled &&

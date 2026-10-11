@@ -187,6 +187,21 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 	const maxRowsBounds = SETTINGS_BOUNDS.queryResultMaxRows;
 	return (
 		<div className="dbx-setting-list">
+			<SettingRow
+				label="SQL 安全策略"
+				hint="控制插件内 SQL 执行的写权限：strict=只读、writeAllowed=写/DDL 每次确认、permissive=放行所有自动确认。走自研直连驱动（不经过 dbx-mcp 的 SQL_BLOCKED 闸门）。"
+			>
+				<select
+					className="dbx-select"
+					value={settings.sqlSafetyMode}
+					onChange={(e) => onChange("sqlSafetyMode", e.target.value as WorkbenchSettings["sqlSafetyMode"])}
+				>
+					<option value="strict">🔒 严格只读（默认）</option>
+					<option value="writeAllowed">✏️ 允许写（每次确认）</option>
+					<option value="permissive">⚠️ 全量放行（自动确认）</option>
+				</select>
+			</SettingRow>
+
 			<PageSizeField
 				label="默认每页行数"
 				hint={`查询结果分页页大小（${SETTINGS_BOUNDS.rowLimit.min}–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}）`}
