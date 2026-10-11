@@ -1,7 +1,7 @@
 /**
  * use-runlogs — 最近运行日志列表，接 /drag/runlog/list。
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { engineRequest } from "../../../shared/services/engine-client";
 
 export interface RunLogItem {
@@ -21,16 +21,16 @@ export function useRunlogs(opts: { limit?: number } = {}): {
 	const [runlogs, setRunlogs] = useState<RunLogItem[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	async function load() {
+	const load = useCallback(async () => {
 		setLoading(true);
 		try {
 			const data = await engineRequest<RunLogItem[]>(`/drag/runlog/list?limit=${opts.limit ?? 4}`, undefined, { method: "GET" });
 			setRunlogs(Array.isArray(data) ? data : []);
 		} catch { setRunlogs([]); }
 		finally { setLoading(false); }
-	}
+	}, [opts.limit]);
 
-	useEffect(() => { void load(); /* eslint-disable-next-line */ }, []);
+	useEffect(() => { void load(); }, [load]);
 
 	return { runlogs, loading, refresh: load };
 }

@@ -9,7 +9,7 @@
  * 所有图标统一 @iconify-json/lucide 的 icon-[lucide--xxx] 语法。
  */
 
-import { type JSX, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type JSX } from "react";
 import { Icon } from "./ui/icon";
 
 export function BigscreenToolbar({
@@ -47,6 +47,16 @@ export function BigscreenToolbar({
 
 	useEffect(() => { setNameDraft(pageName); }, [pageName]);
 
+	const handleBackClick = useCallback(() => {
+		if (saving) return; // 保存中忽略
+		if (dirty) {
+			onSave?.();
+			onBack();
+		} else {
+			onBack();
+		}
+	}, [saving, dirty, onSave, onBack]);
+
 	// ── 快捷键 ──
 	useEffect(() => {
 		function handler(e: KeyboardEvent) {
@@ -65,19 +75,7 @@ export function BigscreenToolbar({
 		}
 		window.addEventListener("keydown", handler);
 		return () => window.removeEventListener("keydown", handler);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [dirty, saving, onSave, onRunAll]);
-
-	function handleBackClick() {
-		if (saving) return; // 保存中忽略
-		if (dirty) {
-			// 简化：先保存再离开；需要对话框的话改这里
-			onSave?.();
-			onBack();
-		} else {
-			onBack();
-		}
-	}
+	}, [saving, onSave, onRunAll, handleBackClick]);
 
 	function commitName() {
 		const trimmed = nameDraft.trim();

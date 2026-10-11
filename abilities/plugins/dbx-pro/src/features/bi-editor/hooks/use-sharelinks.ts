@@ -1,7 +1,7 @@
 /**
  * use-sharelinks — 产物分享链接列表，接 /drag/sharelink/list。
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { engineRequest } from "../../../shared/services/engine-client";
 
 export interface SharelinkItem {
@@ -21,16 +21,16 @@ export function useSharelinks(): {
 	const [sharelinks, setSharelinks] = useState<SharelinkItem[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	async function load() {
+	const load = useCallback(async () => {
 		setLoading(true);
 		try {
 			const data = await engineRequest<SharelinkItem[]>(`/drag/sharelink/list`, undefined, { method: "GET" });
 			setSharelinks(Array.isArray(data) ? data : []);
 		} catch { setSharelinks([]); }
 		finally { setLoading(false); }
-	}
+	}, []);
 
-	useEffect(() => { void load(); /* eslint-disable-next-line */ }, []);
+	useEffect(() => { void load(); }, [load]);
 
 	return { sharelinks, loading, refresh: load };
 }

@@ -30,7 +30,7 @@ export function useWorktreeStatus(): {
 		} catch { /* ignore */ }
 	}, [refresh]);
 
-	useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, []);
+	useEffect(() => { void refresh(); }, [refresh]);
 
 	return { dirty, updateCount, publishedCount, publish, refresh };
 }
