@@ -108,85 +108,51 @@ function pageErr(message, code = "BAD_REQUEST") {
 // Phase B — BI 工作台端点组
 // ══════════════════════════════════════════════════════════════════════════
 
-// ─── 数据源辅助 ───
-function datasourcesFile(ctx) {
-	const base = ctx.dataDir || process.env.DBX_DATA_DIR || join(process.cwd(), ".dbx-data");
-	const dir = join(base, "bi");
+// ─── 统一 data base 推导 ───
+function dataBase(ctx) {
+	return ctx.dataDir || process.env.DBX_DATA_DIR || join(process.cwd(), ".dbx-data");
+}
+function biDir(ctx) {
+	const dir = join(dataBase(ctx), "bi");
 	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-	return join(dir, "datasources.json");
-}
-function readDatasources(ctx) {
-	const f = datasourcesFile(ctx);
-	if (!existsSync(f)) return [];
-	try { return JSON.parse(readFileSync(f, "utf8")); } catch { return []; }
-}
-function writeDatasources(ctx, list) {
-	writeFileSync(datasourcesFile(ctx), JSON.stringify(list, null, 2));
+	return dir;
 }
 
-// ─── Run 日志辅助 ───
-function runlogsFile(ctx) {
-	const base = ctx.dataDir || process.env.DBX_DATA_DIR || join(process.cwd(), ".dbx-data");
-	const dir = join(base, "bi");
-	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-	return join(dir, "runlogs.json");
-}
-function readRunlogs(ctx) {
-	const f = runlogsFile(ctx);
-	if (!existsSync(f)) return [];
-	try { return JSON.parse(readFileSync(f, "utf8")); } catch { return []; }
-}
-function writeRunlogs(ctx, list) {
-	writeFileSync(runlogsFile(ctx), JSON.stringify(list, null, 2));
+// ─── 工厂：生成 bi/<name>.json 的 read / write 辅助 ───
+// publishes 特例：defaultEmpty 是对象 { pages: {} }，其余都是数组
+function makeBiListStore(filename, defaultEmpty = []) {
+	const file = (ctx) => join(biDir(ctx), filename);
+	const read = (ctx) => {
+		const f = file(ctx);
+		if (!existsSync(f)) return defaultEmpty;
+		try { return JSON.parse(readFileSync(f, "utf8")); } catch { return defaultEmpty; }
+	};
+	const write = (ctx, list) => { writeFileSync(file(ctx), JSON.stringify(list, null, 2)); };
+	return { file, read, write };
 }
 
-// ─── 分享链接辅助 ───
-function sharelinksFile(ctx) {
-	const base = ctx.dataDir || process.env.DBX_DATA_DIR || join(process.cwd(), ".dbx-data");
-	const dir = join(base, "bi");
-	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-	return join(dir, "sharelinks.json");
-}
-function readSharelinks(ctx) {
-	const f = sharelinksFile(ctx);
-	if (!existsSync(f)) return [];
-	try { return JSON.parse(readFileSync(f, "utf8")); } catch { return []; }
-}
-function writeSharelinks(ctx, list) {
-	writeFileSync(sharelinksFile(ctx), JSON.stringify(list, null, 2));
-}
+const datasourcesStore = makeBiListStore("datasources.json");
+const runlogsStore = makeBiListStore("runlogs.json");
+const sharelinksStore = makeBiListStore("sharelinks.json");
+const publishesStore = makeBiListStore("publishes.json", { pages: {} });
+const templatesStore = makeBiListStore("templates.json");
 
-// ─── 发布快照辅助 ───
-function publishFile(ctx) {
-	const base = ctx.dataDir || process.env.DBX_DATA_DIR || join(process.cwd(), ".dbx-data");
-	const dir = join(base, "bi");
-	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-	return join(dir, "publishes.json");
-}
-function readPublishes(ctx) {
-	const f = publishFile(ctx);
-	if (!existsSync(f)) return { pages: {} };
-	try { return JSON.parse(readFileSync(f, "utf8")); } catch { return { pages: {} }; }
-}
-function writePublishes(ctx, obj) {
-	writeFileSync(publishFile(ctx), JSON.stringify(obj, null, 2));
-}
-
-// ─── 模板辅助 ───
-function templatesFile(ctx) {
-	const base = ctx.dataDir || process.env.DBX_DATA_DIR || join(process.cwd(), ".dbx-data");
-	const dir = join(base, "bi");
-	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-	return join(dir, "templates.json");
-}
-function readTemplates(ctx) {
-	const f = templatesFile(ctx);
-	if (!existsSync(f)) return [];
-	try { return JSON.parse(readFileSync(f, "utf8")); } catch { return []; }
-}
-function writeTemplates(ctx, list) {
-	writeFileSync(templatesFile(ctx), JSON.stringify(list, null, 2));
-}
+// 兼容旧调用名
+const datasourcesFile = datasourcesStore.file;
+const readDatasources = datasourcesStore.read;
+const writeDatasources = datasourcesStore.write;
+const runlogsFile = runlogsStore.file;
+const readRunlogs = runlogsStore.read;
+const writeRunlogs = runlogsStore.write;
+const sharelinksFile = sharelinksStore.file;
+const readSharelinks = sharelinksStore.read;
+const writeSharelinks = sharelinksStore.write;
+const publishFile = publishesStore.file;
+const readPublishes = publishesStore.read;
+const writePublishes = publishesStore.write;
+const templatesFile = templatesStore.file;
+const readTemplates = templatesStore.read;
+const writeTemplates = templatesStore.write;
 
 function shortCode(len = 6) {
 	const chars = "abcdefghijklmnopqrstuvwxyz0123456789";

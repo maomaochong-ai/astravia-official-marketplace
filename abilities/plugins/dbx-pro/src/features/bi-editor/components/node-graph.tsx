@@ -134,8 +134,7 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 	const [dragOver, setDragOver] = useState(false);
 
 	// ── DnD：从 NodeLibrary 拖入新节点 ──
-	let NODE_SEQ = 100; // 独立序号，与 LINK_SEQ 不冲突
-	const NODE_SEQ_KEY = "_nodeSeq" as const;
+	const nodeSeqRef = useRef(100); // 独立序号，与 LINK_SEQ 不冲突。ref 防止 render 重置
 
 	function onCanvasDragOver(e: DragEvent) {
 		e.preventDefault();
@@ -175,8 +174,8 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 			const x = e.clientX - rect.left - 90; // 居中偏移
 			const y = e.clientY - rect.top - 40;
 			const tpl = NODE_TEMPLATES[type] ?? { w: 180, h: 110, tone: TONE.chart };
-			NODE_SEQ++;
-			const newId = `n${NODE_SEQ}`;
+			nodeSeqRef.current++;
+			const newId = `n${nodeSeqRef.current}`;
 			// 找当前选中节点作为自动连线 source（UX：拖入新节点自动串到最近选中的节点后面）
 			const selectedId = (Object.keys(nodes) as NodeId[]).find((k) => nodes[k].selected);
 			const newNode: NodePos = { ...tpl, x: Math.max(8, x), y: Math.max(8, y) };
@@ -187,7 +186,6 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 					return [...prev, { id: nextLinkId(), from: selectedId, fromRow: 0, to: newId, toRow: 0, tone }];
 				});
 			}
-			void NODE_SEQ_KEY;
 		} catch { /* ignore bad data */ }
 	}
 

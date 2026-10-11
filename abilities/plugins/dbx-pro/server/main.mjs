@@ -98975,96 +98975,50 @@ function pageResp(result) {
 function pageErr(message, code = "BAD_REQUEST") {
   return { success: false, message, code };
 }
-function datasourcesFile(ctx) {
-  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
-  const dir = join5(base, "bi");
+function dataBase(ctx) {
+  return ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
+}
+function biDir(ctx) {
+  const dir = join5(dataBase(ctx), "bi");
   if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
-  return join5(dir, "datasources.json");
+  return dir;
 }
-function readDatasources(ctx) {
-  const f = datasourcesFile(ctx);
-  if (!existsSync4(f)) return [];
-  try {
-    return JSON.parse(readFileSync3(f, "utf8"));
-  } catch {
-    return [];
-  }
+function makeBiListStore(filename, defaultEmpty = []) {
+  const file = (ctx) => join5(biDir(ctx), filename);
+  const read = (ctx) => {
+    const f = file(ctx);
+    if (!existsSync4(f)) return defaultEmpty;
+    try {
+      return JSON.parse(readFileSync3(f, "utf8"));
+    } catch {
+      return defaultEmpty;
+    }
+  };
+  const write = (ctx, list2) => {
+    writeFileSync3(file(ctx), JSON.stringify(list2, null, 2));
+  };
+  return { file, read, write };
 }
-function writeDatasources(ctx, list2) {
-  writeFileSync3(datasourcesFile(ctx), JSON.stringify(list2, null, 2));
-}
-function runlogsFile(ctx) {
-  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
-  const dir = join5(base, "bi");
-  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
-  return join5(dir, "runlogs.json");
-}
-function readRunlogs(ctx) {
-  const f = runlogsFile(ctx);
-  if (!existsSync4(f)) return [];
-  try {
-    return JSON.parse(readFileSync3(f, "utf8"));
-  } catch {
-    return [];
-  }
-}
-function writeRunlogs(ctx, list2) {
-  writeFileSync3(runlogsFile(ctx), JSON.stringify(list2, null, 2));
-}
-function sharelinksFile(ctx) {
-  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
-  const dir = join5(base, "bi");
-  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
-  return join5(dir, "sharelinks.json");
-}
-function readSharelinks(ctx) {
-  const f = sharelinksFile(ctx);
-  if (!existsSync4(f)) return [];
-  try {
-    return JSON.parse(readFileSync3(f, "utf8"));
-  } catch {
-    return [];
-  }
-}
-function writeSharelinks(ctx, list2) {
-  writeFileSync3(sharelinksFile(ctx), JSON.stringify(list2, null, 2));
-}
-function publishFile(ctx) {
-  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
-  const dir = join5(base, "bi");
-  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
-  return join5(dir, "publishes.json");
-}
-function readPublishes(ctx) {
-  const f = publishFile(ctx);
-  if (!existsSync4(f)) return { pages: {} };
-  try {
-    return JSON.parse(readFileSync3(f, "utf8"));
-  } catch {
-    return { pages: {} };
-  }
-}
-function writePublishes(ctx, obj) {
-  writeFileSync3(publishFile(ctx), JSON.stringify(obj, null, 2));
-}
-function templatesFile(ctx) {
-  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
-  const dir = join5(base, "bi");
-  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
-  return join5(dir, "templates.json");
-}
-function readTemplates(ctx) {
-  const f = templatesFile(ctx);
-  if (!existsSync4(f)) return [];
-  try {
-    return JSON.parse(readFileSync3(f, "utf8"));
-  } catch {
-    return [];
-  }
-}
-function writeTemplates(ctx, list2) {
-  writeFileSync3(templatesFile(ctx), JSON.stringify(list2, null, 2));
-}
+var datasourcesStore = makeBiListStore("datasources.json");
+var runlogsStore = makeBiListStore("runlogs.json");
+var sharelinksStore = makeBiListStore("sharelinks.json");
+var publishesStore = makeBiListStore("publishes.json", { pages: {} });
+var templatesStore = makeBiListStore("templates.json");
+var datasourcesFile = datasourcesStore.file;
+var readDatasources = datasourcesStore.read;
+var writeDatasources = datasourcesStore.write;
+var runlogsFile = runlogsStore.file;
+var readRunlogs = runlogsStore.read;
+var writeRunlogs = runlogsStore.write;
+var sharelinksFile = sharelinksStore.file;
+var readSharelinks = sharelinksStore.read;
+var writeSharelinks = sharelinksStore.write;
+var publishFile = publishesStore.file;
+var readPublishes = publishesStore.read;
+var writePublishes = publishesStore.write;
+var templatesFile = templatesStore.file;
+var readTemplates = templatesStore.read;
+var writeTemplates = templatesStore.write;
 function shortCode(len = 6) {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
   let s = "";
