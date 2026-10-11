@@ -81,8 +81,60 @@ import {
   tableLocationQuery,
 } from "./error-hints.mjs";
 import { selectRevealCommand, runRevealCommand } from "./reveal-item.mjs";
+import { readdir, readFile } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { compileBigscreen, generateBigscreenHtml } from "./bigscreen-compiler.mjs";
 import { execReport, inferHeaderTree } from "./report-executor.mjs";
+
+/** 当前模块所在目录（ESM 环境无 __dirname）。 */
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * 动态加载 templates/*.json —— 扫描 engine/templates/ 目录，返回模板元数据数组。
+ * 每个 JSON 文件的顶层 id/name/industry/layout 字段构成清单；spec 字段是完整 spec（可选）。
+ * 硬编码列表已删除，新增模板只需放一个 JSON 文件。
+ */
+let _templateCache = null;
+async function loadBigscreenTemplates() {
+	if (_templateCache) return _templateCache;
+	const templatesDir = join(__dirname, "templates");
+	try {
+		const files = await readdir(templatesDir);
+		const jsonFiles = files.filter((f) => f.endsWith(".json"));
+		const templates = await Promise.all(
+			jsonFiles.map(async (file) => {
+				const raw = await readFile(join(templatesDir, file), "utf-8");
+				const t = JSON.parse(raw);
+				return {
+					id: t.id ?? file.replace(/\.json$/, ""),
+					name: t.name ?? t.id ?? file.replace(/\.json$/, ""),
+					industry: t.industry ?? "通用",
+					layout: t.layout ?? "grid",
+					palette: t.palette,
+					hasSpec: !!t.spec,
+				};
+			}),
+		);
+		_templateCache = templates.sort((a, b) => a.id.localeCompare(b.id));
+		return _templateCache;
+	} catch {
+		return [];
+	}
+}
+
+/** 动态加载 chart-registry.json（图表类型注册表）。 */
+let _chartRegistryCache = null;
+async function loadChartRegistry() {
+	if (_chartRegistryCache) return _chartRegistryCache;
+	try {
+		const raw = await readFile(join(__dirname, "chart-registry.json"), "utf-8");
+		_chartRegistryCache = JSON.parse(raw);
+		return _chartRegistryCache;
+	} catch {
+		return { graphTypes: [] };
+	}
+}
 
 /**
  * dbx_execute_query 的 max_rows 参数上限（crates/dbx-core/src/ai/agent_tools.rs
@@ -822,15 +874,9 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
       return { html: generateBigscreenHtml(spec) };
     }],
     ["/api/bigscreen/templates", "GET", false, async () => {
-      // 模板清单硬编码（server/engine/templates/ 目录下的 JSON 文件名）
-      return { templates: [
-        { id: "xiangshan", name: "香山公园客流大数据", industry: "旅游", layout: "左中右" },
-        { id: "group-data", name: "集团综合数据大屏", industry: "集团", layout: "顶KPI+网格" },
-        { id: "police-monitor", name: "警务监控系统", industry: "警务", layout: "顶KPI+网格" },
-        { id: "medical-monitor", name: "医院实时数据监控", industry: "医疗", layout: "顶KPI+网格" },
-        { id: "finance-service", name: "乡村振兴普惠金融", industry: "金融", layout: "网格" },
-        { id: "environment-emit", name: "北京市污水排放监控", industry: "环保", layout: "网格" },
-      ]};
+      // 动态扫描 engine/templates/*.json —— 新增模板放文件即可，无需改代码
+      const templates = await loadBigscreenTemplates();
+      return { templates };
     }],
 
     // --- Report（jimureport 对等）---
@@ -855,22 +901,10 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
       return { headers: tree };
     }],
 
-    // --- Chart / GraphType registry ---
+    // --- Chart / GraphType registry（从 chart-registry.json 加载）---
     ["/api/chart/graphTypes", "GET", false, async () => {
-      return { graphTypes: [
-        { id: "bar", label: "柱图", group: "柱状图" },
-        { id: "line", label: "折线图", group: "折线图" },
-        { id: "pie", label: "饼图", group: "饼图" },
-        { id: "scatter", label: "散点图", group: "分布图" },
-        { id: "radar", label: "雷达图", group: "雷达" },
-        { id: "gauge", label: "仪表盘", group: "仪表盘" },
-        { id: "funnel", label: "漏斗图", group: "漏斗" },
-        { id: "area", label: "面积图", group: "折线图" },
-        { id: "stacked-bar", label: "堆叠柱图", group: "柱状图" },
-        { id: "horizontal-bar", label: "横向柱图", group: "柱状图" },
-        { id: "heatmap", label: "热力图", group: "分布图" },
-        { id: "boxplot", label: "箱线图", group: "分布图" },
-      ]};
+      const registry = await loadChartRegistry();
+      return { graphTypes: registry.graphTypes ?? [] };
     }],
   ];
 

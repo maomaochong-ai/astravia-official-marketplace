@@ -5,7 +5,7 @@
  * 查询结果 / 数据网格 / 结果标签 / 导出 / 侧边栏 / 历史 / 关于
  */
 
-import { useState, useEffect, useRef, type JSX } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, type JSX } from "react";
 import {
 	SETTINGS_BOUNDS,
 	isDefaultSettings,
@@ -31,14 +31,14 @@ type SettingsCategory = "query" | "grid" | "resultTab" | "export" | "sidebar" | 
 
 const CATEGORY_GROUPS = ["数据管理", "其他"] as const;
 
-const CATEGORIES: { key: SettingsCategory; label: string; icon: string; group: (typeof CATEGORY_GROUPS)[number] }[] = [
-	{ key: "query", label: "查询结果", icon: "icon-[lucide--play]", group: "数据管理" },
-	{ key: "grid", label: "数据网格", icon: "icon-[lucide--table]", group: "数据管理" },
-	{ key: "resultTab", label: "结果标签", icon: "icon-[lucide--database]", group: "数据管理" },
-	{ key: "export", label: "导出", icon: "icon-[lucide--download]", group: "数据管理" },
-	{ key: "sidebar", label: "树交互", icon: "icon-[lucide--panel-left]", group: "数据管理" },
-	{ key: "history", label: "历史", icon: "icon-[lucide--history]", group: "数据管理" },
-	{ key: "about", label: "关于", icon: "icon-[lucide--info]", group: "其他" },
+const CATEGORIES: { key: SettingsCategory; label: string; subtitle: string; group: (typeof CATEGORY_GROUPS)[number] }[] = [
+	{ key: "query", label: "查询结果", subtitle: "默认分页、超时与结果总量", group: "数据管理" },
+	{ key: "grid", label: "数据网格", subtitle: "结果网格的显示与交互行为", group: "数据管理" },
+	{ key: "resultTab", label: "结果标签", subtitle: "结果标签的命名与来源显示", group: "数据管理" },
+	{ key: "export", label: "导出", subtitle: "导出全部数据时的取数与行数上限", group: "数据管理" },
+	{ key: "sidebar", label: "树交互", subtitle: "连接树节点的选中与打开方式", group: "数据管理" },
+	{ key: "history", label: "历史", subtitle: "查询历史的记录与保留条数", group: "数据管理" },
+	{ key: "about", label: "关于", subtitle: "版本信息与本地数据管理", group: "其他" },
 ];
 
 /** 设置项变更：key 与 value 类型绑定，避免用 unknown 抹掉类型安全。 */
@@ -48,18 +48,26 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 	const [activeCategory, setActiveCategory] = useState<SettingsCategory>("query");
 	const [confirmWipe, setConfirmWipe] = useState(false);
 	const [search, setSearch] = useState("");
+	const [rowCount, setRowCount] = useState(0);
+	const bodyRef = useRef<HTMLDivElement | null>(null);
 	const keyword = search.trim();
 	const filteredCategories = keyword ? CATEGORIES.filter((cat) => cat.label.includes(keyword)) : CATEGORIES;
 	const effectiveCategory = filteredCategories.some((cat) => cat.key === activeCategory)
 		? activeCategory
 		: (filteredCategories[0]?.key ?? activeCategory);
-	const activeLabel = CATEGORIES.find((cat) => cat.key === effectiveCategory)?.label ?? "";
+	const activeMeta = CATEGORIES.find((cat) => cat.key === effectiveCategory);
 
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
 		document.addEventListener("keydown", onKey);
 		return () => document.removeEventListener("keydown", onKey);
 	}, [onClose]);
+
+	// 内容头的「N 项」按当前真正渲染出的设置行统计：条件行（如「历史条数上限」「最大导出行数」）
+	// 跟着开关出现或消失，写死一份分类计数迟早会和实际渲染漂移。
+	useLayoutEffect(() => {
+		setRowCount(bodyRef.current?.querySelectorAll("[data-settings-row]").length ?? 0);
+	}, [effectiveCategory, settings]);
 
 	function updateSetting<K extends keyof WorkbenchSettings>(key: K, value: WorkbenchSettings[K]): void {
 		onChange({ ...settings, [key]: value });
@@ -75,10 +83,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 				aria-modal="true"
 			>
 				<div className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-surface-raised px-4">
-					<span className="icon-[lucide--settings] size-4 shrink-0 text-muted" />
-					<h3 className="font-sans text-[16px] font-semibold tracking-tight text-surface-foreground">工作台设置</h3>
-					<span className="font-mono text-[12px] text-faint">v{PLUGIN_VERSION}</span>
-					<label className="dbx-settings-search ml-4">
+					<label className="dbx-settings-search">
 						<span className="icon-[lucide--search] h-3.5 w-3.5 shrink-0 text-faint" />
 						<input
 							type="search"
@@ -94,7 +99,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 							onClick={onClose}
 							title="关闭"
 							className="dbx-iconbtn"
-							style={{ height: 24, minWidth: 24, padding: 0 }}
+							style={{ height: 28, minWidth: 28 }}
 						>
 							<span className="icon-[lucide--x] h-3.5 w-3.5" />
 						</button>
@@ -108,7 +113,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 							if (items.length === 0) return null;
 							return (
 								<div key={group} className="contents">
-									<div className={"dbx-settings-nav__group" + (groupIdx > 0 ? " mt-2" : "")}>{group}</div>
+									<div className={"dbx-settings-nav__group" + (groupIdx > 0 ? " mt-3" : "")}>{group}</div>
 									{items.map((cat) => (
 										<button
 											key={cat.key}
@@ -116,8 +121,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 											className={"dbx-category-nav-item" + (effectiveCategory === cat.key ? " active" : "")}
 											onClick={() => setActiveCategory(cat.key)}
 										>
-											<span className={cat.icon + " size-3.5"} />
-											<span>{cat.label}</span>
+											{cat.label}
 										</button>
 									))}
 								</div>
@@ -126,8 +130,12 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 					</nav>
 
 					<div className="flex min-w-0 flex-1 flex-col">
-						<div className="dbx-settings-content-header">{activeLabel}</div>
-						<div className="dbx-settings-body dbx-scroll min-h-0 flex-1 overflow-y-auto bg-surface px-4 pb-4">
+						<div className="dbx-settings-content-header">
+							<h3 className="shrink-0 text-[14px] font-semibold text-surface-foreground">{activeMeta?.label ?? ""}</h3>
+							<span className="truncate text-[12px] text-muted">{activeMeta?.subtitle ?? ""}</span>
+							<span className="ml-auto shrink-0 text-[12px] tabular-nums text-faint">{rowCount} 项</span>
+						</div>
+						<div ref={bodyRef} className="dbx-settings-body dbx-scroll min-h-0 flex-1 overflow-y-auto bg-surface px-4 pb-4">
 						{effectiveCategory === "query" && (
 							<QueryResultSettings settings={settings} onChange={updateSetting} />
 						)}
@@ -161,7 +169,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 							<span className="icon-[lucide--rotate-ccw] h-3.5 w-3.5" />
 							恢复默认设置
 						</button>
-						<span className="dbx-settings-footer__note">设置已保存在本机</span>
+						<span className="dbx-settings-footer__note">已保存到本地 · 偏好随插件数据目录，不写入连接配置</span>
 						<button type="button" onClick={onClose} className="dbx-btn primary">
 							完成
 						</button>
@@ -177,8 +185,6 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 	const maxRowsBounds = SETTINGS_BOUNDS.queryResultMaxRows;
 	return (
 		<div className="dbx-setting-list">
-			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">查询结果</h3>
-
 			<PageSizeField
 				label="默认每页行数"
 				hint={`查询结果分页页大小（${SETTINGS_BOUNDS.rowLimit.min}–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}）`}
@@ -209,13 +215,13 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 			</SettingRow>
 
 			<SettingRow label="限制查询结果总量" hint="开启后最多取回下方设定的行数（循环分页取数）；关闭后取到引擎单次上限（1000 行）即止。">
-				<label className="flex items-center gap-1.5 text-[12px] text-surface-foreground">
+				<label className="flex items-center">
 					<input
 						type="checkbox"
+						aria-label="限制查询结果总量"
 						checked={settings.queryResultMaxRowsEnabled}
 						onChange={(e) => onChange("queryResultMaxRowsEnabled", e.target.checked)}
 					/>
-					启用总量限制
 				</label>
 			</SettingRow>
 
@@ -248,13 +254,13 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 			/>
 
 			<SettingRow label="无限滚动" hint="滚到底部时自动加载下一页数据（对齐 dbx infiniteScroll）">
-				<label className="flex items-center gap-1.5 text-[12px] text-surface-foreground">
+				<label className="flex items-center">
 					<input
 						type="checkbox"
+						aria-label="无限滚动"
 						checked={settings.infiniteScroll}
 						onChange={(e) => onChange("infiniteScroll", e.target.checked)}
 					/>
-					启用无限滚动
 				</label>
 			</SettingRow>
 
@@ -303,38 +309,36 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	return (
 		<div className="dbx-setting-list">
-			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">数据网格显示</h3>
-
 			<SettingRow label="斑马纹行" hint="交替行背景色（对齐 dbx dataGridStripedRows）">
-				<label className="flex items-center gap-1.5 text-[12px] text-surface-foreground">
+				<label className="flex items-center">
 					<input
 						type="checkbox"
+						aria-label="斑马纹行"
 						checked={settings.dataGridStripedRows}
 						onChange={(e) => onChange("dataGridStripedRows", e.target.checked)}
 					/>
-					启用斑马纹
 				</label>
 			</SettingRow>
 
 			<SettingRow label="十字准线高亮" hint="高亮当前单元格所在的行和列（对齐 dbx dataGridCrosshairHighlight）">
-				<label className="flex items-center gap-1.5 text-[12px] text-surface-foreground">
+				<label className="flex items-center">
 					<input
 						type="checkbox"
+						aria-label="十字准线高亮"
 						checked={settings.dataGridCrosshairHighlight}
 						onChange={(e) => onChange("dataGridCrosshairHighlight", e.target.checked)}
 					/>
-					启用十字准线
 				</label>
 			</SettingRow>
 
 			<SettingRow label="单元格详情按钮" hint="双击单元格弹出详情弹窗（对齐 dbx dataGridCellDetailButtonVisible）">
-				<label className="flex items-center gap-1.5 text-[12px] text-surface-foreground">
+				<label className="flex items-center">
 					<input
 						type="checkbox"
+						aria-label="单元格详情按钮"
 						checked={settings.dataGridCellDetailButtonVisible}
 						onChange={(e) => onChange("dataGridCellDetailButtonVisible", e.target.checked)}
 					/>
-					启用详情按钮
 				</label>
 			</SettingRow>
 		</div>
@@ -345,28 +349,34 @@ function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings;
 function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	return (
 		<div className="dbx-setting-list">
-			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">结果标签</h3>
-
 			<SettingRow label="命名方式" hint="新结果标签的命名方式（对齐 dbx resultTabNamingMode）">
-				<select
-					className="dbx-form-input"
-					value={settings.resultTabNamingMode}
-					onChange={(e) => onChange("resultTabNamingMode", e.target.value as "source" | "table" | "sequential")}
-				>
-					<option value="source">按来源命名</option>
-					<option value="table">按表名命名</option>
-					<option value="sequential">按序号命名</option>
-				</select>
+				<div className="dbx-segmented" role="group" aria-label="命名方式">
+					{([
+						["source", "按来源命名"],
+						["table", "按表名命名"],
+						["sequential", "按序号命名"],
+					] as const).map(([value, label]) => (
+						<button
+							key={value}
+							type="button"
+							aria-pressed={settings.resultTabNamingMode === value}
+							onClick={() => onChange("resultTabNamingMode", value)}
+							className="dbx-segmented__item"
+						>
+							{label}
+						</button>
+					))}
+				</div>
 			</SettingRow>
 
 			<SettingRow label="显示来源数据库" hint="在结果标签中显示数据库名（对齐 dbx showResultSourceDatabase）">
-				<label className="flex items-center gap-1.5 text-[12px] text-surface-foreground">
+				<label className="flex items-center">
 					<input
 						type="checkbox"
+						aria-label="显示来源数据库"
 						checked={settings.showResultSourceDatabase}
 						onChange={(e) => onChange("showResultSourceDatabase", e.target.checked)}
 					/>
-					显示来源数据库
 				</label>
 			</SettingRow>
 		</div>
@@ -377,8 +387,6 @@ function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings
 function SidebarSettings(): JSX.Element {
 	return (
 		<div className="dbx-setting-list">
-			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">树交互</h3>
-
 			<SettingRow label="连接树节点" hint="选中与打开查询的方式">
 				<span className="max-w-[360px] text-[12px] leading-relaxed text-muted">
 					单击：连接展开、表节点只是选中，不会打开或执行查询。
@@ -396,16 +404,14 @@ function SidebarSettings(): JSX.Element {
 function HistorySettings({ settings, onChange, onClearHistory }: { settings: WorkbenchSettings; onChange: SettingChange; onClearHistory: () => void }): JSX.Element {
 	return (
 		<div className="dbx-setting-list">
-			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">历史保留</h3>
-
 			<SettingRow label="记录查询历史" hint="记录 SQL、耗时与行数">
-				<label className="flex items-center gap-1.5 text-[12px] text-surface-foreground">
+				<label className="flex items-center">
 					<input
 						type="checkbox"
+						aria-label="记录查询历史"
 						checked={settings.historyEnabled}
 						onChange={(e) => onChange("historyEnabled", e.target.checked)}
 					/>
-					启用历史记录
 				</label>
 			</SettingRow>
 
@@ -442,8 +448,6 @@ function ExportSettings({ settings, onChange }: { settings: WorkbenchSettings; o
 	const batchBounds = SETTINGS_BOUNDS.exportBatchSize;
 	return (
 		<div className="dbx-setting-list">
-			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">导出</h3>
-
 			<SettingRow
 				label="每批取行数"
 				hint={`导出全部数据时每批从引擎取回的行数（${batchBounds.min.toLocaleString()}–${batchBounds.max.toLocaleString()}）`}
@@ -520,8 +524,6 @@ function AboutSection({ onWipeData, confirmWipe, setConfirmWipe }: { onWipeData:
 	}, []);
 	return (
 		<div className="space-y-4">
-			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">关于 dbx-pro</h3>
-
 			<div className="dbx-panel-group">
 				<div className="dbx-panel-group-body space-y-2">
 					<div className="flex items-center justify-between">
@@ -657,8 +659,9 @@ function PageSizeField({ label, hint, value, bounds, onChange }: {
 /** 设置行组件 */
 // children 可缺省：用于只有 label + hint 的说明行（例如「总行数统计」）。
 function SettingRow({ label, hint, children }: { label: string; hint?: string; children?: React.ReactNode }): JSX.Element {
+	// data-settings-row 供内容头统计「N 项」，见 SettingsPanel 里的 useLayoutEffect。
 	return (
-		<div className="dbx-setting-row">
+		<div className="dbx-setting-row" data-settings-row="">
 			<div className="dbx-setting-row__text">
 				<div className="dbx-setting-row__label">{label}</div>
 				{hint ? <p className="dbx-setting-row__hint">{hint}</p> : null}
