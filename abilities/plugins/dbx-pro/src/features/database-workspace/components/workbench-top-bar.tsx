@@ -7,7 +7,7 @@
 
 import { useEffect, useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
-import { ExportTasksPopover } from "./export-tasks-popover";
+import { ExportTasksTrigger } from "./export-tasks-trigger";
 import { engineHealth, ENGINE_NOT_READY } from "../../../shared/services/engine-client";
 
 export interface WorkbenchTopBarProps {
@@ -23,6 +23,10 @@ export interface WorkbenchTopBarProps {
 	visualizationCount: number;
 	fullscreen: boolean;
 	onToggleFullscreen: () => void;
+	/** 底部「下载后台」货架是否展开 */
+	downloadsOpen: boolean;
+	/** 展开 / 收起底部「下载后台」货架 */
+	onToggleDownloads: () => void;
 }
 
 export function WorkbenchTopBar({
@@ -36,6 +40,8 @@ export function WorkbenchTopBar({
 	visualizationCount,
 	fullscreen,
 	onToggleFullscreen,
+	downloadsOpen,
+	onToggleDownloads,
 }: WorkbenchTopBarProps): JSX.Element {
 	const { history, state } = useWorkbench();
 	// 引擎健康：unknown=未查询 / ready=绿 / starting=黄 / error=红
@@ -122,7 +128,7 @@ export function WorkbenchTopBar({
 			{/* 右：后台任务 / 查询历史 / BI / 设置 / 全屏。
 			 * 设计稿的「工作台」导航项在本插件里没有对应目标（工作台就是本界面），故不再放一个空按钮。 */}
 			<div className="flex shrink-0 items-center gap-0.5">
-				<ExportTasksPopover />
+				<ExportTasksTrigger open={downloadsOpen} onToggle={onToggleDownloads} />
 				<span className="mx-1.5 h-4 w-px shrink-0 bg-border" />
 				<button
 					type="button"

@@ -65,8 +65,8 @@ export function ExportTasksShelf({ onCollapse }: ExportTasksShelfProps): JSX.Ele
 
 	/** 未结束的排在最前，其余按开始时间倒序（货架是队列：在跑的永远在最上面）。 */
 	const ordered = [...tasks].sort((a, b) => {
-		const rank = Number(isExportTaskPending(a)) - Number(isExportTaskPending(b));
-		return rank !== 0 ? -rank : b.startedAt - a.startedAt;
+		const rank = Number(isExportTaskPending(b)) - Number(isExportTaskPending(a));
+		return rank !== 0 ? rank : b.startedAt - a.startedAt;
 	});
 
 	// 活动任务期间每 0.5s 刷新耗时显示。

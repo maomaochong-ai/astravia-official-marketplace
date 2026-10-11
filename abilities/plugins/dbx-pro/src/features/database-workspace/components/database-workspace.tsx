@@ -45,6 +45,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
+	const [downloadsOpen, setDownloadsOpen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const { visualizations, addVisualization } = useVisualizationStore();
 	const workspaceRef = useRef<HTMLDivElement>(null);
@@ -197,6 +198,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				visualizationCount={visualizations.length}
 				fullscreen={fullscreen}
 				onToggleFullscreen={() => void toggleFullscreen()}
+				downloadsOpen={downloadsOpen}
+				onToggleDownloads={() => setDownloadsOpen((v) => !v)}
 			/>
 			<SplitLayout
 				leftCollapsed={leftCollapsed}
