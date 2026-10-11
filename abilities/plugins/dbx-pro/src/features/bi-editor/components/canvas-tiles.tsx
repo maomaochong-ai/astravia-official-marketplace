@@ -74,13 +74,28 @@ const FILTERS = [
 	{ label: "品类", value: "全部" },
 ];
 
-const ORDER_ROWS = [
-	{ id: "SO-20481", city: "杭州", cat: "数码配件", amt: "¥2,480", at: "10-10 18:42" },
-	{ id: "SO-20476", city: "上海", cat: "家用电器", amt: "¥1,960", at: "10-10 17:05" },
-	{ id: "SO-20468", city: "北京", cat: "户外运动", amt: "¥1,348", at: "10-10 15:31" },
-	{ id: "SO-20461", city: "成都", cat: "美妆个护", amt: "¥899", at: "10-10 14:12" },
-	{ id: "SO-20455", city: "广州", cat: "食品生鲜", amt: "¥612", at: "10-10 11:48" },
-];
+/** 订单明细行 — 用 hash 生成，不抄设计稿 mock 数据。 */
+const CITIES_POOL = ["杭州", "上海", "北京", "成都", "广州", "深圳", "南京", "武汉"];
+const CATS_POOL = ["数码配件", "家用电器", "户外运动", "美妆个护", "食品生鲜", "母婴用品", "服装鞋包"];
+function hashString(seed: string): string {
+	let h = 2166136261 >>> 0;
+	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+	return h.toString(16).toUpperCase().slice(-5);
+}
+const ORDER_ROWS = Array.from({ length: 5 }, (_, i) => {
+	const cityIdx = hashValues(`canvas-order-city-${i}`, 1, 0, CITIES_POOL.length)[0];
+	const catIdx = hashValues(`canvas-order-cat-${i}`, 1, 0, CATS_POOL.length)[0];
+	const amt = hashValues(`canvas-order-amt-${i}`, 1, 200, 3000)[0];
+	const hour = hashValues(`canvas-order-hour-${i}`, 1, 9, 21)[0];
+	const min = hashValues(`canvas-order-min-${i}`, 1, 0, 59)[0];
+	return {
+		id: `SO-${hashString(`canvas-order-id-${i}`)}`,
+		city: CITIES_POOL[cityIdx],
+		cat: CATS_POOL[catIdx],
+		amt: `¥${amt.toLocaleString("zh-CN")}`,
+		at: `10-1${i} ${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`,
+	};
+});
 
 function Tile({ children, selected = false, label, className = "" }: {
 	children: ReactNode; selected?: boolean; label?: string; className?: string;
