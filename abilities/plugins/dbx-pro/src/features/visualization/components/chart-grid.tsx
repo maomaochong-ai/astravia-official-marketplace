@@ -1,13 +1,14 @@
 /**
- * ChartGrid — 在宿主 UI 里铺开一组 ChartItem 的网格。
+ * ChartGrid — 在宿主 UI 里铺开一组图表的网格。
  *
- * 与 dbx_chart_collection 生成的 HTML 是同一个布局模型（列数取自
- * resolveGridColumnCount，卡片样式取自 themes/*.css 的 .chart-card），
- * 差别只有两点，都是为了在抽屉这种窄容器里不出横向溢出：
- *   - 列宽用 minmax(0, 1fr) 而不是 1fr（Chart.js 会写死 canvas 宽度，1fr 会被撑破）
+ * 支持两种 ChartItem 格式：
+ *   ① 旧 Chart.js 格式  → normalize + validate → 渲染
+ *   ② 新 JimuBI 组件 JSON 格式（item.cfg?.option 存在）→ 跳过 normalize/validate，直接渲染
+ *
+ * 布局模型：
+ *   - 列数：resolveGridColumnCount (与 dbx-chart-collection 导出的 HTML 一致)
+ *   - 列宽：minmax(0, 1fr) 避免 iframe 撑破抽屉窄容器
  *   - 不套 iframe，直接就地渲染 canvas
- *
- * 数据格式错误的图不静默成白板：走与导出产物一致的错误卡片。
  */
 
 import type { JSX } from "react";
@@ -20,9 +21,14 @@ import { FigureItemRenderer } from "./figure-item-renderer";
 interface Props {
 	items: ChartItem[];
 	isScreen: boolean;
-	/** 产物带 datasets 时，没绑定 source 的图要说明它不随筛选变化。 */
 	showUnboundHint?: boolean;
 	layout?: "auto" | "grid-2" | "grid-3" | "grid-4";
+}
+
+/** 检测 JimuBI 组件 JSON 格式 — item 带 cfg.option（compileBigscreen 输出）。 */
+function isJimuBIItem(item: ChartItem): boolean {
+	const cfg = (item as { cfg?: unknown }).cfg;
+	return !!cfg && typeof cfg === "object" && "option" in (cfg as Record<string, unknown>);
 }
 
 export function ChartGrid({ items, isScreen, showUnboundHint = false, layout = "auto" }: Props): JSX.Element {
@@ -31,12 +37,25 @@ export function ChartGrid({ items, isScreen, showUnboundHint = false, layout = "
 	return (
 		<div className="viz-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
 			{items.map((item, index) => {
-				const normalized = normalizeChartData(item.data, item.type);
-				const valid = validateChartData(normalized);
-				const height = item.height ?? (isScreen ? 280 : 250);
+				const jimuFormat = isJimuBIItem(item);
+				// JimuBI 格式跳过 normalize/validate — 数据已在 cfg.option.series.data 里
+				const normalized = jimuFormat ? item.data : normalizeChartData(item.data, item.type);
+				const valid = jimuFormat ? { ok: true, reason: "" } : validateChartData(normalized);
+
+				// JimuBI 格式优先用 cfg.h 高度
+				let height = item.height ?? (isScreen ? 280 : 250);
+				if (jimuFormat) {
+					const cfgH = (item as { cfg?: { h?: number } }).cfg?.h;
+					if (cfgH && cfgH > 0) height = cfgH;
+				}
+
+				const title = jimuFormat
+					? (item.title ?? (item as { title?: string }).title ?? `组件 ${index + 1}`)
+					: (item.title ?? `图表 ${index + 1}`);
+
 				return (
-					<div className="viz-canvas-card" key={item.title ?? `chart-${index}`}>
-						<h3 className="viz-canvas-title">{item.title ?? `图表 ${index + 1}`}</h3>
+					<div className="viz-canvas-card" key={`${title}-${index}`}>
+						<h3 className="viz-canvas-title">{title}</h3>
 						{item.description ? <p className="viz-canvas-desc">{item.description}</p> : null}
 						{showUnboundHint && !item.source ? (
 							<p className="viz-canvas-note">该图表未绑定数据集，不随筛选变化</p>
@@ -48,7 +67,7 @@ export function ChartGrid({ items, isScreen, showUnboundHint = false, layout = "
 								<span>AI 未正确将查询结果转为 Chart.js {"{ datasets: [...] }"} 格式</span>
 							</div>
 						) : isFigureType(item.type) ? (
-							<FigureItemRenderer item={{ ...item, data: normalized as Record<string, unknown> }} isScreen={isScreen} />
+							<FigureItemRenderer item={{ ...item, data: (normalized ?? item.data) as Record<string, unknown> }} isScreen={isScreen} />
 						) : (
 							<ChartItemRenderer item={{ ...item, data: normalized as Record<string, unknown> }} isScreen={isScreen} />
 						)}

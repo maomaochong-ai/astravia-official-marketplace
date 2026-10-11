@@ -4,7 +4,7 @@ description: >-
   dbx-pro 插件主入口 skill —— 路由到 13 个功能子 skill。
   触发：用户提 BI/大屏/报表/图表/表单/代码生成/工作流/AI 编排等需求时，
   先判断属于哪个子域，再 delegate 到对应 dbx-pro-* skill。
-version: 0.4.7
+version: 0.4.8
 ---
 
 # dbx-pro —— 路由层（Router）
