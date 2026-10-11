@@ -5,7 +5,7 @@
  * 纯展示——Phase C2 接入拖曳。
  */
 
-import { type JSX } from "react";
+import { type JSX, type DragEvent } from "react";
 
 type Group = { label: string; items: { key: string; icon: string; label: string }[] };
 
@@ -72,7 +72,14 @@ export function NodeLibrary(): JSX.Element {
 								<button
 									key={it.key}
 									type="button"
-									className="group flex h-10 flex-col items-center justify-center gap-0.5 rounded-control border border-transparent bg-surface px-1 text-center transition hover:border-border-strong hover:text-surface-foreground"
+									draggable
+									onDragStart={(e: DragEvent<HTMLButtonElement>) => {
+										e.dataTransfer.effectAllowed = "copy";
+										e.dataTransfer.setData("application/json", JSON.stringify({
+											nodeType: it.key, label: it.label, icon: it.icon,
+										}));
+									}}
+									className="group flex h-10 cursor-grab flex-col items-center justify-center gap-0.5 rounded-control border border-transparent bg-surface px-1 text-center transition hover:border-border-strong hover:text-surface-foreground active:cursor-grabbing"
 									title={it.label}
 								>
 									<span className="text-[16px] text-muted group-hover:text-accent">{it.icon}</span>

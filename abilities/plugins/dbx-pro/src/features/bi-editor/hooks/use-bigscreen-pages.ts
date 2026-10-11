@@ -19,6 +19,7 @@ export type BigscreenPage = {
 	updateTime: string;
 	createTime: string;
 	visits: number;
+	template?: string;
 };
 
 export type BigscreenPagesList = {

@@ -1,19 +1,20 @@
 /**
- * canvas-page.tsx — 画布容器（设计稿 CanvasStrip + NodeGraph 组合）。
- *
- * 中间栏顶栏：CanvasStrip（调色板 / 网格 / 缩放）
- * 中间栏主体：NodeGraph（数据流节点画布）
+ * canvas-page.tsx — 画布容器（CanvasStrip + NodeGraph）。
  */
 
 import type { JSX } from "react";
 import { CanvasStrip } from "./canvas-strip";
-import { NodeGraph } from "./node-graph";
+import { NodeGraph, type NodeGraphProps } from "./node-graph";
 
-export function CanvasPage({ theme }: { theme: "dark" | "default" }): JSX.Element {
+type Props = {
+	theme: "dark" | "default";
+} & NodeGraphProps;
+
+export function CanvasPage({ theme: _theme, ...graphProps }: Props): JSX.Element {
 	return (
 		<div className="flex min-w-0 flex-1 flex-col bg-surface">
 			<CanvasStrip />
-			<NodeGraph />
+			<NodeGraph {...graphProps} />
 		</div>
 	);
 }

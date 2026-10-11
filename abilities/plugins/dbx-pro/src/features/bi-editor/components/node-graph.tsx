@@ -5,7 +5,7 @@
  * nodes 驱动坐标 + rowDy() 算插槽位置 → 连线端点永远落在插槽上。
  */
 
-import { useEffect, useRef, useState, type JSX, type PointerEvent as RPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as RPointerEvent, type DragEvent, type Dispatch, type SetStateAction } from "react";
 import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE } from "./node-card";
 import { AreaChart, Donut, SERIES } from "./charts";
 import { Chip } from "./ui/chip";
@@ -16,7 +16,7 @@ export interface NodePos {
 	x: number; y: number; w: number; h: number;
 	tone: string; selected?: boolean;
 }
-export type NodeId = "ds1" | "sql" | "line" | "ds2" | "donut" | "out";
+export type NodeId = string;
 export interface Link {
 	id: string;
 	from: NodeId; fromRow: number; to: NodeId; toRow: number; tone: string;
@@ -26,7 +26,7 @@ let LINK_SEQ = 0;
 function nextLinkId(): string { LINK_SEQ++; return `l${LINK_SEQ}`; }
 
 // ── 初始状态（后续 useState 注入） ──
-const INITIAL_NODES: Record<NodeId, NodePos> = {
+export const INITIAL_NODES: Record<NodeId, NodePos> = {
 	ds1:   { x: 16,   y: 56,  w: 180, h: 118, tone: TONE.table },
 	sql:   { x: 220,  y: 56,  w: 192, h: 164, tone: TONE.result },
 	line:  { x: 436,  y: 40,  w: 216, h: 222, tone: TONE.chart, selected: true },
@@ -35,7 +35,7 @@ const INITIAL_NODES: Record<NodeId, NodePos> = {
 	out:   { x: 700,  y: 300, w: 164, h: 194, tone: TONE.chart },
 };
 
-const INITIAL_LINKS: Link[] = [
+export const INITIAL_LINKS: Link[] = [
 	{ id: nextLinkId(), from: "ds1",   fromRow: 0, to: "sql",   toRow: 0, tone: TONE.table },
 	{ id: nextLinkId(), from: "sql",   fromRow: 1, to: "line",  toRow: 0, tone: TONE.result },
 	{ id: nextLinkId(), from: "ds2",   fromRow: 0, to: "donut", toRow: 0, tone: TONE.table },
@@ -94,10 +94,76 @@ const CHANNELS = [
 	{ value: 10, color: SERIES[3] },
 ];
 
-export function NodeGraph(): JSX.Element {
-	const [nodes, setNodes] = useState<Record<NodeId, NodePos>>(INITIAL_NODES);
-	const [links, setLinks] = useState<Link[]>(INITIAL_LINKS);
+export interface NodeGraphProps {
+	nodes: Record<NodeId, NodePos>;
+	setNodes: Dispatch<SetStateAction<Record<NodeId, NodePos>>>;
+	links: Link[];
+	setLinks: Dispatch<SetStateAction<Link[]>>;
+}
+
+/** 节点模板注册表——DnD 创建新节点时按模板生成默认属性。 */
+export const NODE_TEMPLATES: Record<string, Omit<NodePos, "x" | "y">> = {
+	"source-sql":   { w: 180, h: 118, tone: TONE.table },
+	"source-table": { w: 180, h: 96,  tone: TONE.table },
+	"source-api":   { w: 180, h: 96,  tone: TONE.table },
+	"chart-bar":    { w: 216, h: 190, tone: TONE.chart, selected: true },
+	"chart-line":   { w: 216, h: 222, tone: TONE.chart, selected: true },
+	"chart-pie":    { w: 216, h: 206, tone: TONE.chart },
+	"chart-scatter":{ w: 216, h: 190, tone: TONE.chart },
+	"chart-map":    { w: 240, h: 240, tone: TONE.chart },
+	"chart-radar":  { w: 216, h: 190, tone: TONE.chart },
+	"metric-big":   { w: 180, h: 110, tone: TONE.result },
+	"metric-trend": { w: 180, h: 110, tone: TONE.result },
+	"metric-gauge": { w: 180, h: 130, tone: TONE.result },
+	"filter-select":{ w: 180, h: 88,  tone: TONE.control },
+	"filter-date":  { w: 180, h: 88,  tone: TONE.control },
+	"filter-input": { w: 180, h: 88,  tone: TONE.control },
+	"output-table": { w: 220, h: 180, tone: TONE.chart },
+	"output-text":  { w: 200, h: 120, tone: TONE.chart },
+	"output-image": { w: 220, h: 160, tone: TONE.chart },
+};
+
+export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps): JSX.Element {
 	const canvasRef = useRef<HTMLDivElement>(null);
+	const [dragOver, setDragOver] = useState(false);
+
+	// ── DnD：从 NodeLibrary 拖入新节点 ──
+	let NODE_SEQ = 100; // 独立序号，与 LINK_SEQ 不冲突
+	const NODE_SEQ_KEY = "_nodeSeq" as const;
+
+	function onCanvasDragOver(e: DragEvent) {
+		e.preventDefault();
+		if (!dragOver) setDragOver(true);
+	}
+	function onCanvasDragLeave() { setDragOver(false); }
+	function onCanvasDrop(e: DragEvent) {
+		e.preventDefault();
+		setDragOver(false);
+		const data = e.dataTransfer?.getData("application/json");
+		if (!data) return;
+		try {
+			const payload = JSON.parse(data) as { nodeType?: string; label?: string; icon?: string };
+			const type = payload.nodeType;
+			if (!type) return;
+			const rect = canvasRef.current?.getBoundingClientRect();
+			if (!rect) return;
+			const x = e.clientX - rect.left - 90; // 居中偏移
+			const y = e.clientY - rect.top - 40;
+			const tpl = NODE_TEMPLATES[type] ?? { w: 180, h: 110, tone: TONE.chart };
+			NODE_SEQ++;
+			const newId = `n${NODE_SEQ}`;
+			setNodes((prev) => ({
+				...prev,
+				[newId]: {
+					...tpl,
+					x: Math.max(8, x),
+					y: Math.max(8, y),
+				},
+			}));
+			// 存储后续节点到同一 payload（预留）
+			void NODE_SEQ_KEY;
+		} catch { /* ignore bad data */ }
+	}
 
 	// ── 节点拖拽 ──
 	const dragRef = useRef<{ id: NodeId; ox: number; oy: number } | null>(null);
@@ -213,7 +279,11 @@ export function NodeGraph(): JSX.Element {
 		<div
 			ref={canvasRef}
 			onPointerDown={onCanvasPointerDown}
-			className="relative min-h-0 flex-1 overflow-hidden bg-background"
+			onDragOver={onCanvasDragOver}
+			onDragLeave={onCanvasDragLeave}
+			onDrop={onCanvasDrop}
+			data-drag-over={dragOver ? "true" : undefined}
+			className={`relative min-h-0 flex-1 overflow-hidden bg-background ${dragOver ? "ring-2 ring-accent/40 ring-inset" : ""}`}
 			style={{
 				backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
 				backgroundSize: "16px 16px",

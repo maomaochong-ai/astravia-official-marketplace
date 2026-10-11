@@ -22,12 +22,37 @@ import { NodeLibrary } from "./components/node-library";
 import { CanvasPage } from "./components/canvas-page";
 import { PropertyInspector } from "./components/property-inspector";
 import { EditorStatusBar } from "./components/editor-status-bar";
+import { INITIAL_LINKS, INITIAL_NODES, type Link, type NodePos } from "./components/node-graph";
+
+/** template JSON schema（持久化）。 */
+interface CanvasTemplate {
+	nodes: Record<string, NodePos>;
+	links: Link[];
+}
+
+function parseTemplate(raw: string | null | undefined): CanvasTemplate {
+	if (!raw) return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
+	try {
+		const obj = JSON.parse(raw);
+		if (obj && typeof obj === "object" && "nodes" in obj) {
+			return obj as CanvasTemplate;
+		}
+		// 兼容旧格式（数组）——忽略
+		return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
+	} catch {
+		return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
+	}
+}
 
 export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: () => void }): JSX.Element {
 	const [page, setPage] = useState<BigscreenPage | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [dirty, setDirty] = useState(false);
 	const [activeTheme, setActiveTheme] = useState<"dark" | "default">("dark");
+
+	// ── 画布状态（从 template 反序列化 / 持久化目标） ──
+	const [nodes, setNodes] = useState<Record<string, NodePos>>(() => INITIAL_NODES as Record<string, NodePos>);
+	const [links, setLinks] = useState<Link[]>(() => INITIAL_LINKS);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -36,15 +61,21 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				if (cancelled) return;
 				setPage(p);
 				setActiveTheme((p?.theme as "dark" | "default") ?? "dark");
+				const tpl = parseTemplate(p?.template ?? "");
+				setNodes(tpl.nodes);
+				setLinks(tpl.links);
 			})
 			.catch((e) => { console.error("加载页面失败", e); })
 			.finally(() => { if (!cancelled) setLoading(false); });
 		return () => { cancelled = true; };
 	}, [pageId]);
 
+	// 任何画布变动都标记 dirty
+	useEffect(() => { setDirty(true); }, [nodes, links]);
+
 	async function handleSave() {
 		if (!page) return;
-		// Phase C1: 只保存名字/主题等 meta，template 空
+		const templateJson: CanvasTemplate = { nodes, links };
 		await engineRequest<{ updateCount: number }>("/drag/page/edit", {
 			id: page.id,
 			name: page.name,
@@ -54,7 +85,7 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 			backgroundImage: page.backgroundImage,
 			designType: page.designType,
 			protectionCode: "",
-			template: JSON.stringify([]), // Phase C2 填充真实组件数组
+			template: JSON.stringify(templateJson),
 			updateCount: page.updateCount,
 		});
 		setDirty(false);
@@ -88,7 +119,13 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 
 				{/* 中栏：画布 */}
 				<div className="flex min-w-0 flex-1 flex-col">
-					<CanvasPage theme={activeTheme} />
+					<CanvasPage
+						theme={activeTheme}
+						nodes={nodes}
+						setNodes={setNodes}
+						links={links}
+						setLinks={setLinks}
+					/>
 				</div>
 
 				{/* 右栏：属性面板 */}
