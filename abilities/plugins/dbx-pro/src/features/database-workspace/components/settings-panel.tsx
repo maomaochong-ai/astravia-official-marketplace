@@ -204,15 +204,18 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 
 			<PageSizeField
 				label="默认每页行数"
-				hint={`查询结果分页页大小（${SETTINGS_BOUNDS.rowLimit.min}–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}）`}
+				hint={`查询结果分页页大小（${SETTINGS_BOUNDS.rowLimit.min}–${SETTINGS_BOUNDS.rowLimit.max.toLocaleString()}）。修改时自动同步预览默认行数。`}
 				value={settings.rowLimit}
 				bounds={SETTINGS_BOUNDS.rowLimit}
-				onChange={(next) => onChange("rowLimit", next)}
+				onChange={(next) => {
+					onChange("rowLimit", next);
+					onChange("tableOpenPageSize", next);
+				}}
 			/>
 
 			<PageSizeField
 				label="表打开默认行数"
-				hint={`点击树节点预览数据时的默认页大小（${SETTINGS_BOUNDS.tableOpenPageSize.min}–${SETTINGS_BOUNDS.tableOpenPageSize.max.toLocaleString()}）`}
+				hint={`点击树节点预览数据时的默认页大小（${SETTINGS_BOUNDS.tableOpenPageSize.min}–${SETTINGS_BOUNDS.tableOpenPageSize.max.toLocaleString()}）。单独修改此处可覆盖上方的联动。`}
 				value={settings.tableOpenPageSize}
 				bounds={SETTINGS_BOUNDS.tableOpenPageSize}
 				onChange={(next) => onChange("tableOpenPageSize", next)}
