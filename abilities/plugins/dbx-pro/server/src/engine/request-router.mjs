@@ -33,6 +33,11 @@ import { revealRoutes } from "../api/reveal.mjs";
 import { bigscreenRoutes } from "../api/bigscreen.mjs";
 import { reportRoutes } from "../api/report.mjs";
 import { chartRoutes } from "../api/chart.mjs";
+import { formRoutes } from "../api/form.mjs";
+import { portalRoutes } from "../api/portal.mjs";
+import { bpmnRoutes } from "../api/bpmn.mjs";
+import { codegenRoutes } from "../api/codegen.mjs";
+import { systemRoutes } from "../api/system.mjs";
 
 export function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
 	if (!auth) throw new Error("createRouter 需要 auth");
@@ -51,6 +56,11 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
 		...bigscreenRoutes(),
 		...reportRoutes(ctx),
 		...chartRoutes(),
+		...formRoutes(ctx),
+		...portalRoutes(ctx),
+		...bpmnRoutes(ctx),
+		...codegenRoutes(ctx),
+		...systemRoutes(ctx),
 	];
 
 	// 构建两级 Map：pathname → method → { auth, handler }

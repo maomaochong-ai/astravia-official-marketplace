@@ -1,0 +1,19 @@
+not ok 1 - 勾选筛选后图表数据源跟着变，清除后回到全量
+not ok 102 - dbx-pro engine bridge (headless E2E)
+not ok 123 - ChartGrid 类型分派
+not ok 13 - API 接入缺接口地址时拦截保存
+not ok 14 - API 接入测试：走 /api-sources/test，不落盘，回报行数与列数
+not ok 14 - src/test/bi-live-postgres.test.js
+not ok 15 - src/test/chart-runtime.test.js
+not ok 175 - useConnectionEditor
+not ok 176 - visualization-detail-wiring
+not ok 2 - 度量列的区间筛选也接到图表上（不是只改标注）
+not ok 24 - src/test/dbx-chart-collection.test.js
+not ok 3 - 原生 8 种类型仍然走 Chart.js（新增类型不影响旧值语义）
+not ok 3 - 没有 source 的静态图不随筛选变化，并说明原因
+not ok 35 - src/test/menu-placement.test.js
+not ok 4 - 名称为空时拦截保存并 alert，不发请求
+not ok 4 - 旧产物（只有 html、无 datasets）只读：说明原因、不给筛选面板、禁用重新取数、导出仍用落库 html
+not ok 5 - 引擎拒绝时保存失败：alert 报错、不触发 onChange
+not ok 5 - 数据集被体积降级清空时：如实说明，且图表保留原快照而不是被清空
+not ok 7 - SELECT 返回列与行（markdown 解析，值为字符串）
