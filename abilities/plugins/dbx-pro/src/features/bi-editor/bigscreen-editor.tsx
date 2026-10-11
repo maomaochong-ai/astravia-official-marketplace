@@ -50,6 +50,9 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 	const [dirty, setDirty] = useState(false);
 	const [activeTheme, setActiveTheme] = useState<"dark" | "default">("dark");
 	const [templates, setTemplates] = useState<{ id: string; name: string; template: string; createTime: string }[]>([]);
+	/** 三栏折叠状态 */
+	const [leftCollapsed, setLeftCollapsed] = useState(false);
+	const [rightCollapsed, setRightCollapsed] = useState(false);
 
 	// ── 画布状态（从 template 反序列化 / 持久化目标） ──
 	const [nodes, setNodes] = useState<Record<string, NodePos>>(() => INITIAL_NODES as Record<string, NodePos>);
@@ -153,8 +156,13 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 
 			{/* 主体三栏 */}
 			<div className="flex min-h-0 flex-1">
-				{/* 左栏：节点库 + 我的模板 */}
-				<NodeLibrary templates={templates} onDeleteTemplate={deleteTemplate} />
+				{/* 左栏：节点库 + 我的模板（可折叠到 40px 窄条） */}
+				<NodeLibrary
+					collapsed={leftCollapsed}
+					onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
+					templates={templates}
+					onDeleteTemplate={deleteTemplate}
+				/>
 
 				{/* 中栏：画布 */}
 				<div className="flex min-w-0 flex-1 flex-col">
@@ -167,13 +175,15 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 					/>
 				</div>
 
-				{/* 右栏：属性面板 */}
+				{/* 右栏：属性面板（可折叠到 40px 窄条） */}
 				<PropertyInspector
 					page={page}
 					theme={activeTheme}
 					onThemeChange={setActiveTheme}
 					selectedNode={selectedNodeInfo}
 					onNodeUpdate={handleNodeUpdate}
+					collapsed={rightCollapsed}
+					onToggleCollapsed={() => setRightCollapsed((v) => !v)}
 				/>
 			</div>
 

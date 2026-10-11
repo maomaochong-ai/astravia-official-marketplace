@@ -12,6 +12,7 @@ import { type JSX } from "react";
 import type { BigscreenPage } from "../hooks/use-bigscreen-pages";
 import type { NodePos } from "./node-graph";
 import { NODE_SCHEMA } from "./node-schema";
+import { Icon } from "./ui/icon";
 
 export interface SelectedNodeInfo {
 	id: string;
@@ -24,14 +25,29 @@ export function PropertyInspector({
 	onThemeChange,
 	selectedNode,
 	onNodeUpdate,
+	collapsed = false,
+	onToggleCollapsed,
 }: {
 	page: BigscreenPage;
 	theme: "dark" | "default";
 	onThemeChange: (t: "dark" | "default") => void;
 	selectedNode?: SelectedNodeInfo | null;
 	onNodeUpdate?: (id: string, patch: Partial<NodePos>) => void;
+	collapsed?: boolean;
+	onToggleCollapsed?: () => void;
 }): JSX.Element {
 	const isScreen = page.style === "bigScreen";
+
+	if (collapsed) {
+		return (
+			<div className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-border bg-surface-raised py-2">
+				<button type="button" onClick={onToggleCollapsed}
+					className="grid size-7 place-items-center rounded-control text-faint hover:bg-accent-soft hover:text-accent" title="展开属性面板">
+					<Icon name="icon-[lucide--panel-right-open]" className="size-3.5" />
+				</button>
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex w-72 shrink-0 flex-col border-l border-border bg-surface-raised">
@@ -41,6 +57,10 @@ export function PropertyInspector({
 				<span className="text-accent">
 					{selectedNode ? `节点 · ${selectedNode.node.kind ?? selectedNode.id.slice(0, 8)}` : "页面"}
 				</span>
+				<button type="button" onClick={onToggleCollapsed}
+					className="ml-auto grid size-6 place-items-center rounded-control text-faint hover:bg-accent-soft hover:text-accent" title="收起属性面板">
+					<Icon name="icon-[lucide--panel-right-close]" className="size-3.5" />
+				</button>
 			</div>
 
 			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-3 space-y-4">
