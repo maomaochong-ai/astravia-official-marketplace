@@ -81,6 +81,8 @@ import {
   tableLocationQuery,
 } from "./error-hints.mjs";
 import { selectRevealCommand, runRevealCommand } from "./reveal-item.mjs";
+import { compileBigscreen, generateBigscreenHtml } from "./bigscreen-compiler.mjs";
+import { execReport, inferHeaderTree } from "./report-executor.mjs";
 
 /**
  * dbx_execute_query 的 max_rows 参数上限（crates/dbx-core/src/ai/agent_tools.rs
@@ -799,6 +801,75 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
       }
       await runRevealCommand(spec);
       return { revealed: true, platform: process.platform };
+    }],
+
+    // === dbx-pro BI Skills HTTP API（agent/skills/dbx-pro-* 通过 fetch 调这些端点）===
+    // 与 jeecgboot-skills 的 Python scripts 调 /jmreport/* API 同构，dbx-pro 品牌化后
+    // 是 mjs scripts 调 /api/bigscreen/* /api/report/* 等。
+
+    // --- Bigscreen / Dashboard ---
+    ["/api/bigscreen/generate", "POST", false, async ({ body }) => {
+      const spec = body?.spec;
+      if (!spec) throw engineError("BAD_REQUEST", "spec is required");
+      const { components, palette } = compileBigscreen(spec);
+      const html = generateBigscreenHtml(spec, { engine: body?.engine ?? "echarts" });
+      return { html, components, palette, templateId: body?.templateId ?? null };
+    }],
+    ["/api/bigscreen/compile", "POST", false, async ({ body }) => {
+      const spec = body?.spec;
+      if (!spec) throw engineError("BAD_REQUEST", "spec is required");
+      return compileBigscreen(spec);
+    }],
+    ["/api/bigscreen/templates", "GET", false, async () => {
+      // 模板清单硬编码（server/engine/templates/ 目录下的 JSON 文件名）
+      return { templates: [
+        { id: "xiangshan", name: "香山公园客流大数据", industry: "旅游", layout: "左中右" },
+        { id: "group-data", name: "集团综合数据大屏", industry: "集团", layout: "顶KPI+网格" },
+        { id: "police-monitor", name: "警务监控系统", industry: "警务", layout: "顶KPI+网格" },
+        { id: "medical-monitor", name: "医院实时数据监控", industry: "医疗", layout: "顶KPI+网格" },
+        { id: "finance-service", name: "乡村振兴普惠金融", industry: "金融", layout: "网格" },
+        { id: "environment-emit", name: "北京市污水排放监控", industry: "环保", layout: "网格" },
+      ]};
+    }],
+
+    // --- Report（jimureport 对等）---
+    ["/api/report/exec", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName;
+      const sql = body?.sql;
+      if (!connectionName || !sql) throw engineError("BAD_REQUEST", "connectionName + sql 均为必填");
+      const result = await mcpClient().callTool("dbx_execute_query", {
+        connection_name: connectionName, sql, max_rows: body?.maxRows ?? 1000,
+      });
+      if (result.isError) throw engineError("REPORT_EXEC_FAILED", textOf(result));
+      const { columns, rows } = parseMarkdownTable(textOf(result));
+      // 调用 report-executor 做分组聚合 / 多级表头推断（execReport 是纯函数）
+      const aggregated = execReport({ columns, rows, options: body?.options ?? {} });
+      return { columns: aggregated.columns, rows: aggregated.rows, groups: aggregated.groups, rowCount: aggregated.rows.length };
+    }],
+    ["/api/report/headers", "POST", false, async ({ body }) => {
+      // 多级表头推断：传入扁平 columns + groupBy 字段，返回层级 header 树
+      const columns = body?.columns ?? [];
+      const groupBy = body?.groupBy ?? [];
+      const tree = inferHeaderTree(columns, groupBy);
+      return { headers: tree };
+    }],
+
+    // --- Chart / GraphType registry ---
+    ["/api/chart/graphTypes", "GET", false, async () => {
+      return { graphTypes: [
+        { id: "bar", label: "柱图", group: "柱状图" },
+        { id: "line", label: "折线图", group: "折线图" },
+        { id: "pie", label: "饼图", group: "饼图" },
+        { id: "scatter", label: "散点图", group: "分布图" },
+        { id: "radar", label: "雷达图", group: "雷达" },
+        { id: "gauge", label: "仪表盘", group: "仪表盘" },
+        { id: "funnel", label: "漏斗图", group: "漏斗" },
+        { id: "area", label: "面积图", group: "折线图" },
+        { id: "stacked-bar", label: "堆叠柱图", group: "柱状图" },
+        { id: "horizontal-bar", label: "横向柱图", group: "柱状图" },
+        { id: "heatmap", label: "热力图", group: "分布图" },
+        { id: "boxplot", label: "箱线图", group: "分布图" },
+      ]};
     }],
   ];
 

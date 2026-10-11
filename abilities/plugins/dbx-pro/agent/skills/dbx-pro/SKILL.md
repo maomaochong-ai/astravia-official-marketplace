@@ -1,258 +1,110 @@
 ---
 name: dbx-pro
-version: 0.0.113
 description: >-
-  dbx-pro 数据库工作台与 BI 可视化插件。连接 PostgreSQL/MySQL/SQLite/ClickHouse 等 60+ 数据库，
-  AI 写 SQL 执行查询，生成 ECharts 看板、大屏、报表，支持 28 种 ECharts 组件 + 12 种 HTML 组件，
-  内置 10 个行业模板（旅游/政务/医疗/金融/环保/警务/集团/科技），
-  提供 5 套命名色板（科技/政务/商务/复古/医疗）自动应用深色主题。
-  触发：用户说"看板/大屏/图表/报表/可视化/仪表盘"或描述数据展示需求。
+  dbx-pro 插件主入口 skill —— 路由到 13 个功能子 skill。
+  触发：用户提 BI/大屏/报表/图表/表单/代码生成/工作流/AI 编排等需求时，
+  先判断属于哪个子域，再 delegate 到对应 dbx-pro-* skill。
+version: 0.4.6
 ---
 
-# dbx-pro —— 数据库工作台 + BI 可视化
+# dbx-pro —— 路由层（Router）
+
+> **你正在读的是总入口。每个功能域有独立 skill，见下方路由表。**
+> 本文件只做触发条件 + 子 skill 路由指引 + 工具清单 + 安全准则。
+> 详细的组件列表 / API 签名 / pitfall 清单 / 行业模板等，请到对应子 skill 目录读它自己的 SKILL.md。
 
 ## 触发条件
 
-用户提到数据库操作、SQL 查询、看板/大屏/图表/报表/仪表盘/可视化/BI 展示时。
+凡是 dbx-pro 插件能做的事：大屏、报表、图表、仪表盘、数据列表、表单、代码生成、工作流、AI 编排、门户、字典查询、插件开发。
 
-## 工具清单
+## 子 Skill 路由表
 
-| 工具 | 说明 |
+| 用户说 | → 子 Skill |
 |---|---|
-| `dbx_execute_query` | 执行 SQL 查询（直连 dbx MCP 连接池） |
-| `dbx_describe_table` | 获取表结构（列名/类型/注释）|
-| `dbx_list_tables` | 列出数据库所有表 |
-| `dbx_query_full` | 完整查询：自动 describe + 安全检查 + 分页执行 + 返回 Chart.js 格式数据 |
-| `dbx_chart_collection` | 生成多图表看板/大屏 HTML（ECharts 引擎，Grid 布局）|
-| `dbx_bigscreen_builder` | **新增**：JimuBI 紧凑 spec → ECharts option + HTML 编译链 |
-| `dbx_report_builder` | **新增**：jimureport 对等实现（SQL + 参数化 + 多级表头 → HTML 报表）|
+| "大屏/数据大屏/展厅/监控大屏" | **dbx-pro-bigscreen** |
+| "仪表盘/dashboard/工作台/看板" | **dbx-pro-dashboard** |
+| "报表/导出/打印/多级表头" | **dbx-pro-report** |
+| "图表/支持什么图/graphType" | **dbx-pro-chart** |
+| "数据列表/明细/筛选条件" | **dbx-pro-datalist** |
+| "表单/录入/控件/主从表" | **dbx-pro-form**（知识层）|
+| "建表/生成 DDL/SQL 脚手架" | **dbx-pro-codegen**（知识层）|
+| "流程/工作流/BPMN/审批" | **dbx-pro-bpmn**（知识层）|
+| "AI 流程/编排/节点" | **dbx-pro-aiflow**（知识层）|
+| "字典/角色/权限/系统配置" | **dbx-pro-system**（知识层）|
+| "门户/首页布局" | **dbx-pro-portal** |
+| "dbx-pro 开发/插件开发" | **dbx-pro-dev** |
 
-## §1 看板/大屏生成（dbx_bigscreen_builder）
+## HTTP API 清单（server/src/api/ + request-router.mjs）
 
-### 紧凑 spec 格式（AI 只写最少字段）
+所有 API 端点都走 `POST /api/...` 或 `GET /api/...`，dbx-pro server 运行在 localhost。
 
-```json
-{
-  "page": { "name": "标题", "theme": "dark" },
-  "palette": "tech",
-  "components": [
-    { "type": "JText", "text": "数据更新时间", "style": "subtitle" },
-    { "type": "JStatsSummary", "title": "核心指标", "variant": "2", "items": [...] },
-    { "type": "JBar", "title": "柱状图", "data": [{ "name": "A", "value": 100 }] },
-    { "type": "JPie", "title": "饼图", "data": [{ "name": "X", "value": 35 }] },
-    { "type": "JGauge", "title": "仪表盘", "value": 78, "max": 100 },
-    { "type": "JScrollRankingBoard", "title": "排行", "rowNum": 5, "data": [{ "name": "A", "value": 100 }] }
-  ]
-}
-```
-
-### 已支持的组件类型（40 种）
-
-| 分类 | JimuBI 类型 | 渲染方式 |
+| 端点 | 功能 | 鉴权 |
 |---|---|---|
-| **柱图族** | JBar / JStackBar / JMultipleBar / JNegativeBar / JPercentBar | ECharts bar |
-| **折线族** | JLine / JSmoothLine / JStepLine / JArea / JMultipleLine | ECharts line |
-| **饼图族** | JPie / JRing / JRose / JRotatePie / JBreakRing / JActiveRing | ECharts pie |
-| **雷达** | JRadar / JCircleRadar | ECharts radar |
-| **散点** | JScatter / JBubble | ECharts scatter |
-| **漏斗** | JFunnel / JPyramidFunnel | ECharts funnel |
-| **仪表盘** | JGauge / JSemiGauge / JColorGauge | ECharts gauge |
-| **排行榜** | JScrollRankingBoard | ECharts bar（自动排序 TOP N）|
-| **文本** | JText / JDragDecoration | HTML div |
-| **统计卡** | JStatsSummary / JCountTo / JNumber | HTML 卡片 |
-| **滚动表** | JScrollBoard / JScrollTable / JScrollList | HTML 表格 |
+| POST /api/bigscreen/generate | spec → 完整 HTML 大屏 | ❌ 否 |
+| POST /api/bigscreen/compile | spec → ECharts option（不生成 HTML）| ❌ 否 |
+| GET /api/bigscreen/templates | 列出 6 个行业模板 | ❌ 否 |
+| POST /api/report/exec | SQL → 行列表 + 分组合计 | ✅ 是 |
+| POST /api/report/headers | columns + groupBy → 多级表头树 | ❌ 否 |
+| GET /api/chart/graphTypes | 列出 12+ ECharts graphType | ❌ 否 |
 
-**不支持**（需 GeoJSON 地图数据）：JFlyLineMap / JAreaMap / JBubbleMap / JBarMap → 建议换 JBar / JScatter 组合。
+## 工具清单（Astravia Agent 注册）
 
-### 命名色板（palette 字段）
-
-| 名称 | 配色 | 适用场景 |
+| 工具名 | 内部实现 | 用途 |
 |---|---|---|
-| `tech` | 科技深色（#00d4ff 青 + #f0c040 金）| 通用大屏 |
-| `gov` | 政务深空蓝 + 金 | 政务监控 |
-| `biz` | 商务深空蓝 + 青 | 企业看板 |
-| `retro` | 复古暗红 + 金 | 数据博物馆 |
-| `medical` | 医疗深绿 + 白 | 医疗监控 |
-| `financial` | 金融深蓝 + 金 | 金融大屏 |
+| `dbx_query_full` | dbx MCP | 执行 SQL 查询（零提权）|
+| `dbx_chart_collection` | src/tools/dbx-chart-collection.ts | chartItem → ECharts option |
+| `dbx_bigscreen_builder` | → server /api/bigscreen/generate | spec → HTML 大屏 |
+| `dbx_report_builder` | → server /api/report/exec | SQL → 报表 |
 
-### 防踩坑清单（pitfall 自动修正）
+## 安全准则（所有子 skill 通用）
 
-| 问题 | 自动修正 |
-|---|---|
-| `label` 字段错写成 `name` | 自动补全 |
-| 颜色缩写 `#abc` → `#aabbcc` | 展开 |
-| 饼图添加了 xAxis/yAxis | 警告忽略 |
-| grid.width/height 用百分比字符串 | 移除（用 containLabel）|
-| 饼图高度 < 220px | 警告图例可能重叠 |
-| 仪表盘高度 < 180px | 警告显示不全 |
+1. **先确认数据源**：用户未指定时必须先问（mock / 数据库 / SQL），禁止编造虚假数据
+2. **SQL 安全**：执行 SQL 必须走 dbx MCP + sql-safety.mjs 检查
+3. **执行前 show tables**：确认表名正确，禁止幻觉表名
+4. **写操作显式确认**：DDL / DML 需要用户显式确认（`allowWrite=true`）
+5. **敏感数据脱敏**：返回给前端的 SQL 结果中若含 password / token / secret 列，必须标记
 
-### 10 个行业模板（演示数据一键套用）
-
-| 模板 | 行业 | 布局 |
-|---|---|---|
-| 香山公园客流大数据 | 旅游 | 左中右 |
-| 集团综合数据大屏 | 集团 | 顶 KPI + 网格 |
-| 警务监控系统 | 警务 | 顶 KPI + 网格 |
-| 医院实时数据监控 | 医疗 | 顶 KPI + 网格 |
-| 乡村振兴普惠金融 | 金融 | 网格 |
-| 北京市污水排放监控 | 环保 | 网格 |
-
-AI 可以直接说"用 [模板名] 模板生成大屏" → builder 自动加载 spec + 生成 mock 数据 → 编译 → 输出 HTML。
-
----
-
-## §2 SQL 查询（dbx_query_full）
-
-Agent 写 SQL 时的安全模式：
-1. **先 describe** → `dbx_describe_table` 确认表名 + 列名
-2. **写 SELECT** → 禁止 DDL/DML（CREATE/DELETE/UPDATE/DROP）
-3. **参数化** → 用 `?` 占位符，server 端 report-executor 替换
-4. **row_limit 截断** → 结果超过 default_row_limit 自动截断 + 提示
-
-### SQL 模式库（jeecg-codegen + jeecg-aiflow 知识层吸收）
-
-| 模式 | 适用场景 | 示例 |
-|---|---|---|
-| **时间聚合** | 大屏折线图趋势 | `SELECT DATE_TRUNC('hour', ts) AS t, COUNT(*) FROM logs GROUP BY t` |
-| **分组 TOP N** | 排行榜 | `SELECT name, value FROM t ORDER BY value DESC LIMIT 10` |
-| **窗口函数** | 累计/环比 | `SELECT dept, date, SUM(amt) OVER(PARTITION BY dept ORDER BY date) AS cum_amt FROM sales` |
-| **分组合计** | 报表汇总 | `SELECT dept, category, SUM(amt), COUNT(*) FROM t GROUP BY ROLLUP(dept, category)` |
-
----
-
-## §3 报表生成（dbx_report_builder）
-
-jimureport + jeecg-onlreport 对等实现。
-
-### spec 格式
-
-```json
-{
-  "title": "销售月度报表",
-  "sql": "SELECT dept, SUM(amt) AS total, COUNT(*) AS cnt FROM orders WHERE month = ? GROUP BY dept",
-  "parameters": [{ "name": "month", "type": "string", "default": "2026-10" }],
-  "groups": ["dept"],
-  "headers": [
-    { "label": "部门", "column": "dept", "children": [...] }
-  ],
-  "charts": [
-    { "title": "部门销售分布", "type": "pie", "xColumn": "dept", "yColumn": "total" }
-  ]
-}
-```
-
-### 能力
-
-- **参数化 SQL**：? 占位符 + server 端安全替换
-- **多级表头**：headers.children 嵌套
-- **分组合计**：groups 定义 → 自动小计/总计行
-- **内嵌图表**：charts 数组 → ECharts 联动（同一 SQL 结果数据）
-- **筛选器 UI**：前端 filter-panel 从 DISTINCT 自动生成下拉选项
-
----
-
-## §4 数据建模（jeecg-codegen + jeecg-onlform + jeecg-system 知识层吸收）
-
-### 实体-字典-角色 三表模式
-
-```sql
--- 业务实体表
-CREATE TABLE employee (
-  id BIGSERIAL PRIMARY KEY,
-  name VARCHAR(50) NOT NULL,
-  dept_id INT REFERENCES sys_depart(id),      -- 外键到部门字典
-  status VARCHAR(20) REFERENCES sys_dict_item(code='emp_status'), -- 字典值
-  salary NUMERIC(12,2),
-  hire_date DATE,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- 字典表
-CREATE TABLE sys_dict_type (id SERIAL PK, code VARCHAR(50) UNIQUE, name VARCHAR(100));
-CREATE TABLE sys_dict_item (id SERIAL PK, type_code VARCHAR(50), value VARCHAR(100), label VARCHAR(200));
-INSERT INTO sys_dict_type VALUES (1, 'emp_status', '员工状态');
-INSERT INTO sys_dict_item VALUES (1, 'emp_status', 'active', '在职');
-INSERT INTO sys_dict_item VALUES (2, 'emp_status', 'resigned', '离职');
-
--- 主数据表（部门/角色/权限）
-CREATE TABLE sys_depart (id SERIAL PK, name VARCHAR(100), parent_id INT);
-CREATE TABLE sys_role (id SERIAL PK, name VARCHAR(50));
-CREATE TABLE sys_user_role (user_id BIGINT, role_id INT);
-```
-
-### 主子表 SQL
-
-```sql
--- 主表：订单
-CREATE TABLE orders (id SERIAL PK, customer VARCHAR(100), total NUMERIC(12,2), status VARCHAR(20));
--- 子表：订单明细（通过 order_id 外键关联）
-CREATE TABLE order_items (id SERIAL PK, order_id INT REFERENCES orders(id), product VARCHAR(100), qty INT, price NUMERIC(10,2));
--- 联查
-SELECT o.*, STRING_AGG(oi.product || ' ×' || oi.qty, ', ') AS items FROM orders o LEFT JOIN order_items oi ON oi.order_id = o.id GROUP BY o.id;
-```
-
----
-
-## §5 AI 编排（jeecg-aiflow 知识层吸收）
-
-dbx-pro 不自己实现 AI 编排运行时（宿主 Astravia Agent 负责），但 Agent 可以按以下模式组织多步工作流：
-
-### 17 种编排节点类型
-
-| 节点类型 | dbx-pro 执行方式 |
-|---|---|
-| start / end | Agent 自己管理 |
-| llm | 宿主 Astravia Agent |
-| sql | **dbx_execute_query** |
-| report | **dbx_report_builder** → **dbx_execute_query** → **dbx_chart_collection** |
-| bigscreen | **dbx_bigscreen_builder** → **dbx_chart_collection** |
-| http | 宿主 network.fetch 权限 |
-| var | Agent 内存变量 |
-| switch | Agent if/else 逻辑 |
-| loop | Agent 循环 |
-
-### 编排模式示例
+## 架构层次
 
 ```
-start
-  → llm: "分析用户需求是看销售趋势还是排行？"
-  → switch:
-    trend → sql: SELECT DATE_TRUNC('day', ts), SUM(amt) FROM sales GROUP BY 1
-           → bigscreen: { JLine: 折线图, JPie: 产品分布 }
-           → end
-    ranking → sql: SELECT product, SUM(amt) FROM sales GROUP BY 1 ORDER BY 2 DESC LIMIT 10
-           → bigscreen: { JScrollRankingBoard: TOP10 }
-           → end
+Agent 调用 dbx-pro skill
+  ↓ (路由到子 skill)
+agent/skills/dbx-pro-*/scripts/*.mjs  ← Agent 侧 CLI（纯 Node.js + fetch）
+  ↓ HTTP fetch
+server/src/api/*.mjs                  ← HTTP API 路由
+  ↓ import
+server/src/engine/*.mjs               ← 核心业务逻辑（spec 编译 / SQL 执行 / mock 生成）
+  ↓ dbx MCP stdio
+dbx CLI 子进程                         ← 直连 60+ 种数据库
 ```
 
----
+## 目录结构
 
-## §6 安全准则（必须遵守）
+```
+agent/skills/
+├── dbx-pro/                      ← 你正在读的入口（只做路由）
+├── dbx-pro-bigscreen/            ← 大屏生成（完整执行层）
+├── dbx-pro-dashboard/            ← 仪表盘（共享 bigscreen 编译链，亮色）
+├── dbx-pro-report/               ← 报表（执行层：SQL + 分组）
+├── dbx-pro-chart/                ← 图表类型注册表（轻量）
+├── dbx-pro-datalist/             ← 数据列表（复用 report-executor）
+├── dbx-pro-form/                 ← 表单设计（知识层）
+├── dbx-pro-codegen/              ← SQL 脚手架（知识层）
+├── dbx-pro-bpmn/                 ← 工作流（知识层）
+├── dbx-pro-aiflow/               ← AI 编排（知识层）
+├── dbx-pro-system/               ← 字典/角色（知识层）
+├── dbx-pro-portal/               ← 门户布局（执行层，bigscreen 子集）
+└── dbx-pro-dev/                  ← 插件开发工具（面向内部）
 
-1. **先 describe 再写 SQL** — 确认表名/列名，禁止幻觉
-2. **SQL 只读** — 禁止 DDL/DML，只 SELECT
-3. **row_limit 截断** — 超过 default_row_limit 自动提示
-4. **参数化** — 禁止字符串拼接 SQL（server 端参数替换已实现）
-5. **执行前安全检查** — sql-safety.mjs 自动扫描
-
----
-
-## references/ 索引
-
-| 文件 | 内容 |
-|---|---|
-| references/spec-format.md | 紧凑 spec 格式完整说明 + 每个字段详解 |
-| references/chart-mapping.md | JimuBI 组件类型 → ECharts 完整映射表 + 不可用组件替代方案 |
-| references/pitfalls.md | 15+ AI 易错点 + 自动修正规则 |
-| references/layout-rules.md | 组件高度估算公式 + 3 种布局形态（左中右/顶KPI+网格/四角落） |
-| references/palettes.md | 6 套命名色板完整字段（含 hex 值）|
-| references/sql-patterns.md | 时间聚合 / 窗口函数 / 分组合计 / 排名 TOP N |
-
----
-
-## 版本
-
-- **dbx-pro 插件版本**：0.4.3 → 0.4.5（本次整合）
-- **dbx-pro SKILL 版本**：0.0.112 → 0.0.113
-- **ECharts 版本**：5.6.0
-- **图表引擎**：Chart.js → ECharts 替换（ADR-0010b）
+server/src/
+├── engine/
+│   ├── bigscreen-compiler.mjs    ← 28 handler + 6 palettes + 15 pitfall
+│   ├── report-executor.mjs       ← 分组聚合 + 多级表头推断
+│   ├── mock-data-generator.mjs   ← 6 种 mock 数据生成器
+│   ├── dbx-mcp-client.mjs        ← dbx CLI 子进程管理
+│   ├── sql-safety.mjs            ← SQL 安全检查
+│   ├── templates/*.json          ← 6 个行业大屏模板
+│   └── request-router.mjs        ← 统一路由（含 /api/bigscreen/* /api/report/*）
+└── api/
+    └── bigscreen-api.mjs         ← 独立 API 模块（可选，与 request-router 互补）
+```
