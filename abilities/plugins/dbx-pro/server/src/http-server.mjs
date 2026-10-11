@@ -17,6 +17,7 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { createRouter } from "./engine/request-router.mjs";
+import { dragRoutes } from "./api/drag.mjs";
 import { disposeDbxMcpClient, getDbxMcpClient } from "./engine/dbx-mcp-client.mjs";
 import {
   ENGINE_VERSION,
@@ -246,6 +247,26 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
           // tools/call 的工具级失败由下方显式转成 isError 结果，不进这里。
           return send(200, { jsonrpc: "2.0", id, error: { code: -32603, message: e.message } });
         }
+      }
+
+      // ── drag page API（自研 JimuBI 兼容层，直接返回原生格式不套 ok(data)）──
+      if (url.pathname.startsWith("/drag/")) {
+        const jimuCtx = { dataDir };
+        const dragTable = dragRoutes(jimuCtx);
+        const query = Object.fromEntries(url.searchParams.entries());
+        const match = dragTable.find(([p, m]) => p === url.pathname && (m === req.method || m === "*"));
+        if (match) {
+          try {
+            if (match[2]) auth.verify(req.headers);
+            const jimuResp = await match[3]({ body, query, headers: req.headers });
+            return send(200, jimuResp); // { success:true, result:... } 或 { success:false, message:... }
+          } catch (err) {
+            const code = err?.code ?? "INTERNAL";
+            const status = code === "BAD_REQUEST" ? 400 : code === "NOT_FOUND" ? 404 : 500;
+            return send(status, { success: false, message: err?.message ?? String(err), code });
+          }
+        }
+        return send(404, { success: false, message: `未知路径：${url.pathname}` });
       }
 
       // 双路径尝试：部分 domain（bigscreen/report/chart 等）注册带 "/api" 前缀，
