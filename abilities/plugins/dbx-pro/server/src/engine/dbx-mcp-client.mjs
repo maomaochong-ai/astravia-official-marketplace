@@ -16,7 +16,7 @@
  */
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -70,12 +70,57 @@ const SHUTDOWN_GRACE_MS = 2_000;
  * arm64 node 配 arm64。宿主 install/marker 也按同一平台校验，两者必须一致。
  */
 function detectPlatform() {
-  const platform = process.platform;
-  if (platform === "darwin") {
-    return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
-  }
-  if (platform === "win32" && process.arch === "x64") return "win32-x64";
-  return null;
+	const platform = process.platform;
+	if (platform === "darwin") {
+		return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+	}
+	if (platform === "win32" && process.arch === "x64") return "win32-x64";
+	return null;
+}
+
+/**
+ * 扫描 ~/.astravia-dbx-data/drivers/ 目录，收集已安装的 managed driver 路径。
+ * 约定目录结构：drivers/<db_type>/<platform>/<binary> 或 drivers/<db_type>/<platform>/.path 配置文件。
+ * 返回形如 { DBX_DUCKDB_DRIVER_PATH: "/path/to/duckdb_worker" } 的环境变量字典。
+ */
+function collectDriverEnv(dataDir) {
+	const driverEnv = {};
+	const driversRoot = join(dataDir, "drivers");
+	if (!existsSync(driversRoot)) return driverEnv;
+
+	const platform = detectPlatform();
+	if (!platform) return driverEnv;
+
+	// 支持的驱动映射：<db_type> → <env_var>, <binary_name>
+	const DRIVER_MAP = {
+		duckdb: { envVar: "DBX_DUCKDB_DRIVER_PATH", binary: process.platform === "win32" ? "duckdb_worker.exe" : "duckdb_worker" },
+		redis: { envVar: "DBX_REDIS_DRIVER_PATH", binary: null }, // Redis 纯协议，不需要原生驱动
+	};
+
+	for (const [dbType, cfg] of Object.entries(DRIVER_MAP)) {
+		const driverDir = join(driversRoot, dbType, platform);
+		if (!existsSync(driverDir)) continue;
+
+		// 优先读取 .path 配置（手动指定的路径）
+		const pathFile = join(driverDir, ".path");
+		if (existsSync(pathFile)) {
+			const manualPath = readFileSync(pathFile, "utf-8").trim();
+			if (manualPath && existsSync(manualPath)) {
+				driverEnv[cfg.envVar] = manualPath;
+				continue;
+			}
+		}
+
+		// 其次检查解压后的驱动二进制
+		if (cfg.binary) {
+			const binaryPath = join(driverDir, cfg.binary);
+			if (existsSync(binaryPath)) {
+				driverEnv[cfg.envVar] = binaryPath;
+			}
+		}
+	}
+
+	return driverEnv;
 }
 
 /**
@@ -187,12 +232,15 @@ class DbxMcpClient {
   spawnAndHandshake() {
     const bin = resolveBinaryPath();
     const dbxDataDir = resolveDataDir(this.dataDir);
+    // 扫描已安装的 managed driver 路径并注入环境变量
+    const driverEnv = collectDriverEnv(dbxDataDir);
     const child = spawn(bin, [], {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
         DBX_DATA_DIR: dbxDataDir,
         ...this.extraEnv,
+        ...driverEnv,  // 驱动安装后的环境变量（DBX_DUCKDB_DRIVER_PATH 等）
       },
     });
     this.child = child;

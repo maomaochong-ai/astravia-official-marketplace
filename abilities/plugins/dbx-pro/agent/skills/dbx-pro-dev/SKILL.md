@@ -106,8 +106,10 @@ handlers['JNewComponent'] = (spec, palette) => {
 |---|---|---|
 | `/api/report/exec` | POST | 执行参数化 SQL + 分页 + 分组 |
 | `/api/report/headers` | POST | 多级表头推断（纯函数）|
-| `/api/bigscreen/generate` | POST | spec → ECharts HTML 编译 |
-| `/api/bigscreen/templates` | GET | 列出所有行业模板 |
+| `/api/bigscreen/compile` | POST | spec → JimuBI 组件 JSON（零 HTML）|
+| `/api/bigscreen/render` | POST | spec → 完整 HTML 大屏 |
+| `/api/bigscreen/templates` | GET | 列出所有内联模板（含完整 spec）|
+| `/api/bigscreen/templates/:id` | GET | 按 id 查单模板 |
 | MCP: dbx_execute_query | tool | 执行 SQL 查询 |
 | MCP: dbx_describe_table | tool | 获取表结构 |
 | MCP: dbx_list_tables | tool | 列出所有表 |

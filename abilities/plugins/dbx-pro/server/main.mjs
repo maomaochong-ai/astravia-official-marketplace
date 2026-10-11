@@ -53,7 +53,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 
 // server/src/engine/dbx-mcp-client.mjs
 import { spawn as spawn2 } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -76,6 +76,37 @@ function detectPlatform() {
   }
   if (platform2 === "win32" && process.arch === "x64") return "win32-x64";
   return null;
+}
+function collectDriverEnv(dataDir) {
+  const driverEnv = {};
+  const driversRoot = join(dataDir, "drivers");
+  if (!existsSync(driversRoot)) return driverEnv;
+  const platform2 = detectPlatform();
+  if (!platform2) return driverEnv;
+  const DRIVER_MAP = {
+    duckdb: { envVar: "DBX_DUCKDB_DRIVER_PATH", binary: process.platform === "win32" ? "duckdb_worker.exe" : "duckdb_worker" },
+    redis: { envVar: "DBX_REDIS_DRIVER_PATH", binary: null }
+    // Redis 纯协议，不需要原生驱动
+  };
+  for (const [dbType, cfg] of Object.entries(DRIVER_MAP)) {
+    const driverDir = join(driversRoot, dbType, platform2);
+    if (!existsSync(driverDir)) continue;
+    const pathFile = join(driverDir, ".path");
+    if (existsSync(pathFile)) {
+      const manualPath = readFileSync(pathFile, "utf-8").trim();
+      if (manualPath && existsSync(manualPath)) {
+        driverEnv[cfg.envVar] = manualPath;
+        continue;
+      }
+    }
+    if (cfg.binary) {
+      const binaryPath = join(driverDir, cfg.binary);
+      if (existsSync(binaryPath)) {
+        driverEnv[cfg.envVar] = binaryPath;
+      }
+    }
+  }
+  return driverEnv;
 }
 function resolveBinaryPath() {
   const preferred = detectPlatform();
@@ -197,12 +228,15 @@ var init_dbx_mcp_client = __esm({
       spawnAndHandshake() {
         const bin = resolveBinaryPath();
         const dbxDataDir = resolveDataDir(this.dataDir);
+        const driverEnv = collectDriverEnv(dbxDataDir);
         const child = spawn2(bin, [], {
           stdio: ["pipe", "pipe", "pipe"],
           env: {
             ...process.env,
             DBX_DATA_DIR: dbxDataDir,
-            ...this.extraEnv
+            ...this.extraEnv,
+            ...driverEnv
+            // 驱动安装后的环境变量（DBX_DUCKDB_DRIVER_PATH 等）
           }
         });
         this.child = child;
@@ -6474,11 +6508,11 @@ var require_log = __commonJS({
       log: () => log
     });
     module.exports = __toCommonJS2(log_exports);
-    var import_node_os5 = __require("node:os");
+    var import_node_os6 = __require("node:os");
     var import_node_util6 = __toESM2(__require("node:util"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function log(message, ...args) {
-      import_node_process8.default.stderr.write(`${import_node_util6.default.format(message, ...args)}${import_node_os5.EOL}`);
+      import_node_process8.default.stderr.write(`${import_node_util6.default.format(message, ...args)}${import_node_os6.EOL}`);
     }
   }
 });
@@ -25362,14 +25396,14 @@ var require_userAgentPlatform = __commonJS({
       setPlatformSpecificData: () => setPlatformSpecificData2
     });
     module.exports = __toCommonJS2(userAgentPlatform_exports);
-    var import_node_os5 = __toESM2(__require("node:os"));
+    var import_node_os6 = __toESM2(__require("node:os"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function getHeaderName() {
       return "User-Agent";
     }
     async function setPlatformSpecificData2(map) {
       if (import_node_process8.default && import_node_process8.default.versions) {
-        const osInfo = `${import_node_os5.default.type()} ${import_node_os5.default.release()}; ${import_node_os5.default.arch()}`;
+        const osInfo = `${import_node_os6.default.type()} ${import_node_os6.default.release()}; ${import_node_os6.default.arch()}`;
         if (import_node_process8.default.versions.bun) {
           map.set("Bun", `${import_node_process8.default.versions.bun} (${osInfo})`);
         } else if (import_node_process8.default.versions.deno) {
@@ -29073,14 +29107,14 @@ var require_userAgentPlatform2 = __commonJS({
       setPlatformSpecificData: () => setPlatformSpecificData2
     });
     module.exports = __toCommonJS2(userAgentPlatform_exports);
-    var import_node_os5 = __toESM2(__require("node:os"));
+    var import_node_os6 = __toESM2(__require("node:os"));
     var import_node_process8 = __toESM2(__require("node:process"));
     function getHeaderName() {
       return "User-Agent";
     }
     async function setPlatformSpecificData2(map) {
       if (import_node_process8.default && import_node_process8.default.versions) {
-        const osInfo = `${import_node_os5.default.type()} ${import_node_os5.default.release()}; ${import_node_os5.default.arch()}`;
+        const osInfo = `${import_node_os6.default.type()} ${import_node_os6.default.release()}; ${import_node_os6.default.arch()}`;
         if (import_node_process8.default.versions.bun) {
           map.set("Bun", `${import_node_process8.default.versions.bun} (${osInfo})`);
         } else if (import_node_process8.default.versions.deno) {
@@ -35040,8 +35074,8 @@ var require_resolveExecutable = __commonJS({
       resolveWindowsCommandInterpreter: () => resolveWindowsCommandInterpreter
     });
     module.exports = __toCommonJS2(resolveExecutable_exports);
-    var import_node_fs9 = __require("node:fs");
-    var import_node_path8 = __toESM2(__require("node:path"));
+    var import_node_fs10 = __require("node:fs");
+    var import_node_path9 = __toESM2(__require("node:path"));
     var import_node_url5 = __require("node:url");
     var import_errors = require_errors3();
     var WINDOWS_NATIVE_EXTENSIONS = [".exe", ".com"];
@@ -35089,7 +35123,7 @@ var require_resolveExecutable = __commonJS({
     }
     function normalizeCwd(cwd) {
       const cwdPath = cwd instanceof URL ? (0, import_node_url5.fileURLToPath)(cwd) : cwd;
-      return import_node_path8.default.resolve(cwdPath ?? process.cwd());
+      return import_node_path9.default.resolve(cwdPath ?? process.cwd());
     }
     function createProcessContext(options = {}) {
       if (options.allowWindowsBatchFiles !== void 0 && typeof options.allowWindowsBatchFiles !== "boolean") {
@@ -35105,11 +35139,11 @@ var require_resolveExecutable = __commonJS({
     }
     function isExecutableFile(filePath) {
       try {
-        if (!(0, import_node_fs9.statSync)(filePath).isFile()) {
+        if (!(0, import_node_fs10.statSync)(filePath).isFile()) {
           return false;
         }
         if (process.platform !== "win32") {
-          (0, import_node_fs9.accessSync)(filePath, import_node_fs9.constants.X_OK);
+          (0, import_node_fs10.accessSync)(filePath, import_node_fs10.constants.X_OK);
         }
         return true;
       } catch {
@@ -35123,7 +35157,7 @@ var require_resolveExecutable = __commonJS({
       return WINDOWS_BATCH_EXTENSIONS.some((candidate) => candidate === extension);
     }
     function resolveWindowsCandidate(candidate, allowWindowsBatchFiles) {
-      const extension = import_node_path8.default.extname(candidate).toLowerCase();
+      const extension = import_node_path9.default.extname(candidate).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
@@ -35150,7 +35184,7 @@ var require_resolveExecutable = __commonJS({
       const pathValue = getEnvironmentValue(context.env, "PATH") ?? "";
       const paths = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const entry of pathValue.split(import_node_path8.default.delimiter)) {
+      for (const entry of pathValue.split(import_node_path9.default.delimiter)) {
         let candidate = entry;
         if (process.platform === "win32") {
           candidate = candidate.trim();
@@ -35158,10 +35192,10 @@ var require_resolveExecutable = __commonJS({
             candidate = candidate.slice(1, -1);
           }
         }
-        if (!candidate || !import_node_path8.default.isAbsolute(candidate)) {
+        if (!candidate || !import_node_path9.default.isAbsolute(candidate)) {
           continue;
         }
-        const normalized = import_node_path8.default.resolve(candidate);
+        const normalized = import_node_path9.default.resolve(candidate);
         const key = process.platform === "win32" ? normalized.toLowerCase() : normalized;
         if (!seen.has(key)) {
           seen.add(key);
@@ -35187,8 +35221,8 @@ var require_resolveExecutable = __commonJS({
     }
     function resolveExecutableWithContext(command, context) {
       validateCommand(command);
-      if (hasPathSeparator(command) || import_node_path8.default.isAbsolute(command)) {
-        const candidate = import_node_path8.default.resolve(context.cwd, command);
+      if (hasPathSeparator(command) || import_node_path9.default.isAbsolute(command)) {
+        const candidate = import_node_path9.default.resolve(context.cwd, command);
         if (process.platform === "win32") {
           return resolveWindowsCandidate(candidate, context.allowWindowsBatchFiles);
         }
@@ -35197,20 +35231,20 @@ var require_resolveExecutable = __commonJS({
       const searchPaths = getSearchPaths(context);
       if (process.platform !== "win32") {
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path8.default.join(searchPath, command);
+          const candidate = import_node_path9.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
         }
         return void 0;
       }
-      const extension = import_node_path8.default.extname(command).toLowerCase();
+      const extension = import_node_path9.default.extname(command).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(context.allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
         }
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path8.default.join(searchPath, command);
+          const candidate = import_node_path9.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -35219,7 +35253,7 @@ var require_resolveExecutable = __commonJS({
       }
       for (const searchPath of searchPaths) {
         for (const nativeExtension of WINDOWS_NATIVE_EXTENSIONS) {
-          const candidate = import_node_path8.default.join(searchPath, command + nativeExtension);
+          const candidate = import_node_path9.default.join(searchPath, command + nativeExtension);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -35228,7 +35262,7 @@ var require_resolveExecutable = __commonJS({
       if (context.allowWindowsBatchFiles) {
         for (const searchPath of searchPaths) {
           for (const batchExtension of WINDOWS_BATCH_EXTENSIONS) {
-            const candidate = import_node_path8.default.join(searchPath, command + batchExtension);
+            const candidate = import_node_path9.default.join(searchPath, command + batchExtension);
             if (isExecutableFile(candidate)) {
               return candidate;
             }
@@ -35242,9 +35276,9 @@ var require_resolveExecutable = __commonJS({
     }
     function canonicalizeWindowsPath(filePath) {
       try {
-        return import_node_fs9.realpathSync.native(filePath).toLowerCase();
+        return import_node_fs10.realpathSync.native(filePath).toLowerCase();
       } catch {
-        return import_node_path8.default.resolve(filePath).toLowerCase();
+        return import_node_path9.default.resolve(filePath).toLowerCase();
       }
     }
     function isWindowsDriveAbsolutePath(filePath) {
@@ -35258,7 +35292,7 @@ var require_resolveExecutable = __commonJS({
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
         });
       }
-      const executablePath = import_node_path8.default.join(systemRoot, "System32", "cmd.exe");
+      const executablePath = import_node_path9.default.join(systemRoot, "System32", "cmd.exe");
       if (!isExecutableFile(executablePath)) {
         throw new import_errors.ProcessError("The Windows command interpreter could not be found.", {
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
@@ -35324,7 +35358,7 @@ var require_normalizeCommand = __commonJS({
       normalizeCommand: () => normalizeCommand
     });
     module.exports = __toCommonJS2(normalizeCommand_exports);
-    var import_node_path8 = __toESM2(__require("node:path"));
+    var import_node_path9 = __toESM2(__require("node:path"));
     var import_errors = require_errors3();
     var import_resolveExecutable = require_resolveExecutable();
     var UNSAFE_BATCH_ARGUMENT = /[%!^&|<>()]/;
@@ -35388,7 +35422,7 @@ var require_normalizeCommand = __commonJS({
           windowsVerbatimArguments: false
         };
       }
-      const extension = import_node_path8.default.extname(resolvedPath).toLowerCase();
+      const extension = import_node_path9.default.extname(resolvedPath).toLowerCase();
       if (extension === ".exe" || extension === ".com") {
         return {
           executable: resolvedPath,
@@ -87451,7 +87485,7 @@ var require_named_placeholders = __commonJS({
         }
         return s;
       }
-      function join5(tree) {
+      function join6(tree) {
         if (tree.length === 1) {
           return tree;
         }
@@ -87477,7 +87511,7 @@ var require_named_placeholders = __commonJS({
         if (cache && (tree = cache.get(query))) {
           return toArrayParams(tree, paramsObj);
         }
-        tree = join5(parse(query));
+        tree = join6(parse(query));
         if (cache) {
           cache.set(query, tree);
         }
@@ -95454,9 +95488,9 @@ var init_markdown_parser = __esm({
 
 // server/src/http-server.mjs
 import { randomBytes, createHash as createHash2, timingSafeEqual } from "node:crypto";
-import { chmodSync as chmodSync2, existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync as writeFileSync3 } from "node:fs";
-import { homedir as homedir3 } from "node:os";
-import { join as join4 } from "node:path";
+import { chmodSync as chmodSync2, existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, renameSync as renameSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import { homedir as homedir4 } from "node:os";
+import { join as join5 } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
@@ -96165,7 +96199,7 @@ async function fetchApiSource(config, options = {}) {
 }
 
 // server/src/api-source/api-store.mjs
-import { chmodSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
 import { dirname, join as join2 } from "node:path";
 var STORE_FILE = "api-connections.json";
@@ -96196,7 +96230,7 @@ function readApiStore(dataDir) {
   const path4 = apiStorePath(dataDir);
   if (!existsSync2(path4)) return emptyStore();
   try {
-    const parsed = JSON.parse(readFileSync(path4, "utf8"));
+    const parsed = JSON.parse(readFileSync2(path4, "utf8"));
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.sources)) return emptyStore();
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -96897,6 +96931,8 @@ ${text}` : "";
     dataDir,
     now,
     mcpClient,
+    disposeDbxMcpClient,
+    // 重启 dbx-mcp 子进程（驱动安装/手动指定路径后需要）
     ensureApiEngineConnection,
     resolveWriteConnSpec,
     resolveQueryContext,
@@ -98635,6 +98671,197 @@ function systemRoutes(ctx) {
   ];
 }
 
+// server/src/api/driver.mjs
+import { existsSync as existsSync3, mkdirSync as mkdirSync4, statSync, writeFileSync as writeFileSync3, createWriteStream } from "node:fs";
+import { join as join4 } from "node:path";
+import { homedir as homedir3 } from "node:os";
+function resolveDriversDir(dataDir = null) {
+  const baseDir = dataDir ?? join4(homedir3(), ".astravia-dbx-data");
+  return join4(baseDir, "drivers");
+}
+function detectPlatformTag() {
+  if (process.platform === "darwin") {
+    return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+  }
+  if (process.platform === "win32" && process.arch === "x64") return "win32-x64";
+  return null;
+}
+var MANAGED_DRIVERS = [
+  {
+    key: "duckdb",
+    label: "DuckDB",
+    description: "\u672C\u5730 OLAP \u5206\u6790\u5F15\u64CE\uFF08API \u63A5\u5165\u6570\u636E\u6E90\u67E5\u8BE2\u7684\u5E95\u5C42\u5F15\u64CE\uFF09",
+    envVar: "DBX_DUCKDB_DRIVER_PATH",
+    // 原生驱动可执行文件名（解压后的实际文件）
+    binaryName: process.platform === "win32" ? "duckdb_worker.exe" : "duckdb_worker",
+    // dbx 官方 release 命名格式：dbx-agent-duckdb-{platform}.tar.zst
+    // 实际下载时可让用户覆盖 URL（不同版本可能有变化）
+    artifactPattern: (platform2) => `dbx-agent-duckdb-${platform2}.tar.zst`,
+    defaultUrls: [
+      // dbx 官方 CDN（优先）
+      (platform2) => `https://dl.dbxio.com/cn/drivers/dbx-agent-duckdb-${platform2}.tar.zst`,
+      // dbx GitHub Releases（回退）
+      (platform2) => `https://github.com/dbxio/dbx/releases/latest/download/dbx-agent-duckdb-${platform2}.tar.zst`
+    ]
+  }
+];
+function checkDriverInstalled(driverKey, dataDir = null) {
+  const platform2 = detectPlatformTag();
+  if (!platform2) {
+    return { key: driverKey, installed: false, reason: `\u4E0D\u652F\u6301\u7684\u5E73\u53F0 ${process.platform}-${process.arch}` };
+  }
+  const driver = MANAGED_DRIVERS.find((d) => d.key === driverKey);
+  if (!driver) return { key: driverKey, installed: false, reason: `\u672A\u77E5\u9A71\u52A8 ${driverKey}` };
+  const driverDir = join4(resolveDriversDir(dataDir), driver.key, platform2);
+  const driverBinary = join4(driverDir, driver.binaryName);
+  if (!existsSync3(driverBinary)) {
+    return {
+      key: driverKey,
+      label: driver.label,
+      installed: false,
+      reason: "\u9A71\u52A8\u6587\u4EF6\u4E0D\u5B58\u5728",
+      expectedPath: driverBinary,
+      envVar: driver.envVar,
+      description: driver.description
+    };
+  }
+  try {
+    const st = statSync(driverBinary);
+    return {
+      key: driverKey,
+      label: driver.label,
+      installed: true,
+      path: driverBinary,
+      sizeBytes: st.size,
+      modifiedAt: st.mtimeMs,
+      envVar: driver.envVar,
+      description: driver.description
+    };
+  } catch (e) {
+    return { key: driverKey, installed: false, reason: `\u65E0\u6CD5\u8BBF\u95EE\u9A71\u52A8: ${e.message}` };
+  }
+}
+async function downloadAndExtract(url, targetDir) {
+  mkdirSync4(targetDir, { recursive: true });
+  const https = await import("node:https").then((m) => m.default);
+  const http = await import("node:http").then((m) => m.default);
+  const { spawnSync: spawnSync2 } = await import("node:child_process");
+  return new Promise((resolve, reject) => {
+    const tmpFile = join4(targetDir, "_download_tmp.tar.zst");
+    const stream = createWriteStream(tmpFile);
+    const download = (currentUrl, redirectCount = 0) => {
+      if (redirectCount > 5) return reject(new Error("\u4E0B\u8F7D\u91CD\u5B9A\u5411\u8FC7\u591A"));
+      const mod = currentUrl.startsWith("https") ? https : http;
+      mod.get(currentUrl, (res) => {
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          return download(res.headers.location, redirectCount + 1);
+        }
+        if (res.statusCode !== 200) {
+          return reject(new Error(`\u4E0B\u8F7D\u5931\u8D25: HTTP ${res.statusCode}`));
+        }
+        res.pipe(stream);
+        stream.on("finish", () => {
+          stream.close();
+          const { status, stderr } = spawnSync2("tar", ["--zstd", "-xf", tmpFile, "-C", targetDir]);
+          if (status !== 0) {
+            const zstdResult = spawnSync2("zstd", ["-d", "-f", tmpFile, "-o", join4(targetDir, "_download_tmp.tar")]);
+            if (zstdResult.status === 0) {
+              const tarResult = spawnSync2("tar", ["-xf", join4(targetDir, "_download_tmp.tar"), "-C", targetDir]);
+              if (tarResult.status !== 0) {
+                return reject(new Error(`\u89E3\u538B\u5931\u8D25: ${tarResult.stderr.toString()}`));
+              }
+            } else {
+              return reject(new Error(`\u89E3\u538B\u5931\u8D25\uFF0C\u8BF7\u5B89\u88C5 zstd: ${stderr?.toString() ?? ""}`));
+            }
+          }
+          resolve(targetDir);
+        });
+      }).on("error", reject);
+    };
+    download(url);
+  });
+}
+function driverRoutes(ctx) {
+  return [
+    /** POST /driver/status —— 列出所有 managed driver 的安装状态 */
+    ["/driver/status", "POST", false, async ({ body }) => {
+      const requestedKey = body?.driverKey;
+      const dataDir = ctx.dataDir ?? null;
+      if (requestedKey) {
+        return { drivers: [checkDriverInstalled(requestedKey, dataDir)] };
+      }
+      const drivers = MANAGED_DRIVERS.map((d) => checkDriverInstalled(d.key, dataDir));
+      return { drivers };
+    }],
+    /** POST /driver/install —— 下载安装指定驱动 */
+    ["/driver/install", "POST", false, async ({ body }) => {
+      const driverKey = body?.driverKey ?? body?.key;
+      if (!driverKey) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 driverKey");
+      const driver = MANAGED_DRIVERS.find((d) => d.key === driverKey);
+      if (!driver) throw engineError("BAD_REQUEST", `\u672A\u77E5\u9A71\u52A8 ${driverKey}`);
+      const platform2 = detectPlatformTag();
+      if (!platform2) throw engineError("BAD_REQUEST", `\u4E0D\u652F\u6301\u7684\u5E73\u53F0 ${process.platform}-${process.arch}`);
+      const dataDir = ctx.dataDir ?? null;
+      const targetDir = join4(resolveDriversDir(dataDir), driver.key, platform2);
+      const userUrl = body?.url;
+      const urlsToTry = userUrl ? [userUrl] : driver.defaultUrls.map((fn) => fn(platform2));
+      let lastError = null;
+      for (const url of urlsToTry) {
+        try {
+          await downloadAndExtract(url, targetDir);
+          const result = checkDriverInstalled(driverKey, dataDir);
+          if (!result.installed) {
+            throw new Error(`\u9A71\u52A8\u89E3\u538B\u540E\u672A\u627E\u5230 ${driver.binaryName}\uFF08\u671F\u671B\u8DEF\u5F84 ${result.expectedPath}\uFF09`);
+          }
+          try {
+            await ctx.disposeDbxMcpClient?.();
+          } catch {
+          }
+          return { ok: true, driverKey, installedPath: result.path };
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      throw engineError("DRIVER_INSTALL_FAILED", `\u9A71\u52A8\u5B89\u88C5\u5931\u8D25: ${lastError?.message ?? "\u672A\u77E5\u9519\u8BEF"}`, String(lastError));
+    }],
+    /** POST /driver/set-path —— 手动指定驱动路径 */
+    ["/driver/set-path", "POST", false, async ({ body }) => {
+      const driverKey = body?.driverKey;
+      const path4 = body?.path;
+      if (!driverKey || !path4) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 driverKey \u6216 path");
+      const driver = MANAGED_DRIVERS.find((d) => d.key === driverKey);
+      if (!driver) throw engineError("BAD_REQUEST", `\u672A\u77E5\u9A71\u52A8 ${driverKey}`);
+      if (!existsSync3(path4)) throw engineError("BAD_REQUEST", `\u8DEF\u5F84\u4E0D\u5B58\u5728: ${path4}`);
+      const platform2 = detectPlatformTag();
+      const dataDir = ctx.dataDir ?? null;
+      const driverDir = join4(resolveDriversDir(dataDir), driver.key, platform2);
+      mkdirSync4(driverDir, { recursive: true });
+      const destBinary = join4(driverDir, driver.binaryName);
+      writeFileSync3(join4(driverDir, ".path"), path4, "utf-8");
+      try {
+        const { symlinkSync, chmodSync: chmodSync3 } = await import("node:fs");
+        if (existsSync3(destBinary)) {
+          try {
+            __require("node:fs").unlinkSync(destBinary);
+          } catch {
+          }
+        }
+        symlinkSync(path4, destBinary);
+        try {
+          chmodSync3(destBinary, 493);
+        } catch {
+        }
+      } catch {
+      }
+      try {
+        await ctx.disposeDbxMcpClient?.();
+      } catch {
+      }
+      return { ok: true, driverKey, path: path4 };
+    }]
+  ];
+}
+
 // server/src/engine/request-router.mjs
 function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
   if (!auth) throw new Error("createRouter \u9700\u8981 auth");
@@ -98653,7 +98880,8 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
     ...portalRoutes(ctx),
     ...bpmnRoutes(ctx),
     ...codegenRoutes(ctx),
-    ...systemRoutes(ctx)
+    ...systemRoutes(ctx),
+    ...driverRoutes(ctx)
   ];
   const routes = /* @__PURE__ */ new Map();
   for (const [pathname, method, authRequired, handler] of allRoutes) {
@@ -98757,17 +98985,17 @@ function readJsonBody(req) {
   });
 }
 function ensureEngineKey(dataDir) {
-  const dir = dataDir ?? join4(homedir3(), ".astravia-dbx-data");
-  mkdirSync4(dir, { recursive: true });
+  const dir = dataDir ?? join5(homedir4(), ".astravia-dbx-data");
+  mkdirSync5(dir, { recursive: true });
   try {
     chmodSync2(dir, 448);
   } catch {
   }
-  const secretPath = join4(dir, "service-secrets.json");
+  const secretPath = join5(dir, "service-secrets.json");
   let doc = { schemaVersion: 1, values: {} };
-  if (existsSync3(secretPath)) {
+  if (existsSync4(secretPath)) {
     try {
-      doc = JSON.parse(readFileSync2(secretPath, "utf8"));
+      doc = JSON.parse(readFileSync3(secretPath, "utf8"));
     } catch {
     }
   }
@@ -98775,7 +99003,7 @@ function ensureEngineKey(dataDir) {
   if (typeof key !== "string" || key.length === 0) {
     key = randomBytes(32).toString("base64url");
     const next = { ...doc, values: { ...doc.values ?? {}, "engine-key": key } };
-    writeFileSync3(secretPath, JSON.stringify(next), { mode: 384 });
+    writeFileSync4(secretPath, JSON.stringify(next), { mode: 384 });
     chmodSync2(secretPath, 384);
   }
   return { key, dataDir: dir };
@@ -98786,8 +99014,8 @@ async function resetLegacyDatabaseIfNeeded(client2, dataDir) {
   if (!/DATA_MIGRATION_REQUIRED/.test(text)) return false;
   await client2.dispose();
   const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-  const dbPath = join4(dataDir, "dbx.db");
-  if (existsSync3(dbPath)) renameSync2(dbPath, join4(dataDir, `dbx.db.legacy-${stamp}`));
+  const dbPath = join5(dataDir, "dbx.db");
+  if (existsSync4(dbPath)) renameSync2(dbPath, join5(dataDir, `dbx.db.legacy-${stamp}`));
   return true;
 }
 function withTimeout(promise, ms, fallback) {

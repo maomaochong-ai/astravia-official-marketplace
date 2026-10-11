@@ -2,7 +2,7 @@
 
 ## 状态
 
-已接受。M0（`0.1.16`）、M1（`0.2.0`）、M2（`0.3.0`）与 M3（`0.4.0`，轻量血缘）已交付；M4 的三项远期评估本轮已给出结论（不做，理由见 §9 M4），仍维持非本次交付。
+已接受。M0（`0.1.16`）、M1（`0.2.0`）、M2（`0.3.0`）与 M3（`0.4.0`，轻量血缘）已交付；M4 的三项远期评估本轮已给出结论（不做，理由见 §9 M4），仍维持非本次交付。**M5（`0.5.0`，交互式仪表板编辑器）在 2026-10-11 本轮中确立为新的主线目标**——理由见 §0.5。
 
 截至 `0.4.0` 的验收状态：**用自动化证据能勾的都已勾完**。M1 原先唯一未闭环的「重新取数」真实连接验收项，已由新增的**真库门控集成测试** `src/test/bi-live-postgres.test.js` 在本机真实 PostgreSQL 上跑通（3/3 通过，不是跳过）。但实施方案 §4 那份**界面级**手动清单仍未手动跑过一遍（本机只有 PostgreSQL、没有 MySQL 实例），逐个条目的覆盖状态与缺口记在实施方案 §4 与其下的结论里 —— 两处不能互相顶替。
 
@@ -26,6 +26,57 @@
 | 8 | Quick BI 有完整权限体系（组织 3 角色 + 空间 4 角色，映射固化）、开放平台（AccessKey + ticket 免登嵌入）、健康巡检、血缘分析、审计日志。 | 前四项**属于非目标**：本地单用户插件没有账号主体、没有发布面、没有托管域名。但「血缘」的轻量版（产物 → 源连接/表/SQL）在本地成立且有价值，已作为 M3（`0.4.0`）交付。 |
 | 9 | Quick BI 的产物生命周期是「保存 → 保存并发布 → 下线 → 删除」+ 协同授权抢锁（作者断网或 3 小时无编辑未保存时他人可无锁接管）。 | 单用户场景下发布/抢锁不成立。但「产物自身的 schema 版本」这件事必须做 —— 当前 `visualizations.json` 连版本迁移都没有，且有 `MAX_VISUALIZATIONS = 20` 的静默截断。M0 处理。 |
 | 10 | Quick BI 的「智能小Q / AIPro」已把自然语言问数做成第一方能力；dbx-pro 的 AI 链路（对话 → SQL → 图表 → 产物）方向一致。 | **不让 BI 模块自建 AI 通道**，继续复用 `ctx.agent` + `dbx_query_full` + `dbx_chart_collection`。编辑与筛选是 UI 行为，不回灌 AI。 |
+
+### §0.5 本轮（2026-10-11）M5 决策背景
+
+0.4.0 交付后，用户反馈 BI 入口界面"比较低级"——本质原因是 **M0→M3 全部走的是方案 B 的减法版：AI 生成 → 卡片墙 → 只读详情抽屉**，没有交互式编辑器。本轮重新对齐 Quick BI 对象模型，得到以下新发现：
+
+| # | 发现 | 对决策的影响 |
+|---|------|-------------|
+| 11 | **dbx-pro server 侧能力完整，但前端完全没消费。** `/api/bigscreen/compile`（spec→JimuBI JSON）、`/api/bigscreen/render`（spec→HTML）、`/api/bigscreen/templates`（6 内联模板）+ 125 个 JimuBI 组件 defaults bundle + 28 个 compiler handler —— 这些全部在 M3 后已经就绪，但前端只有卡片墙 + 详情抽屉在读它们。**server 侧零新增。** | M5 的主战场是**前端交互式编辑器**，不改 server 架构。 |
+| 12 | Quick BI 的仪表板是**磁贴式自由画布**（拖拽 / 缩放 / 对齐 / 图层 / 多页面）+ **左侧组件面板**（近 40 种图表 + 控件）+ **右侧属性检查器**（选中组件后编辑 title/data/options/style）+ **顶部工具栏**（保存 / 预览 / 撤销重做 / 快捷键）。dbx-pro 一个都没有。 | M5 需要补齐这五块——画布、组件面板、属性检查器、工具栏、快捷键。 |
+| 13 | dbx-pro **数据库工作台已有**：连接管理 / SQL 编辑器 / 结果网格 / 导出 / 数据源 CRUD —— 这些是 Quick BI 对象模型里「数据源 + 数据集」的前半段，M0→M3 已经做对了。**无需重复对齐。** | M5 只关注 **「数据源之后」** 的分析层：仪表板编辑器、组件绑定数据、筛选控件。数据库侧维持现状。 |
+| 14 | dbx-pro 有 **两条能力路径**：AI 生成路径（skills Python 脚本 → `/api/bigscreen/compile\|render` → 产物）和 UI 交互路径（目前只有卡片墙 + 详情抽屉）。两者现在是**完全分离**的，没有闭环。 | M5 要让它们**打通**：AI 生成初版 → 用户在编辑器里微调 → 保存回 spec → 重新 compile 预览。spec 是两条路径的共同事实源。 |
+| 15 | 125 个 JimuBI 组件里，约 20–30 种是**通用图表类**（JBar / JLine / JPie / JArea / JScatter / JRadar / JFunnel / JGauge / JStatsSummary / JCardScroll 等），其余是**行业专用 / 装饰 / 地图**组件。dbx-pro 自研的 11 种 Chart.js figure（8 原生 + funnel/boxplot/metric）覆盖了通用图表的核心几何表达，但无法替代 JimuBI 组件的**丰富属性系统**（每个组件 20–80 个可配置项）。 | M5 的组件面板**不从 125 里选**——那是给大屏模板用的重组件。仪表板编辑器走**轻量路线**：自研 Chart.js figure + 精选 JimuBI 组件的简化接口。两者共存，按 `component.engine` 字段分派渲染。 |
+| 16 | **推翻重来：M0→M3 的卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移全部废弃。** 不做任何向后兼容层。旧 `Visualization` / `DatasetSpec` / `ChartFilter` 数据模型直接替换为 `DashboardSpec`。781 个测试里 ~200+ 个与旧模型绑定的测试一并删除，不做迁移。 | M5 的数据模型从零设计，不受旧模型约束。这避免了"新编辑器同时兼容旧卡片墙"的双轨维护成本。 |
+
+#### 核心差距对照表
+
+| Quick BI 对象 | dbx-pro 已有（M0→M3） | M5 需自研 | 否决不做 | 无需对齐（已有或不适用） |
+|---|---|---|---|---|
+| **数据源**（连接管理） | ✅ database-workbench 连接管理 | — | — | — |
+| **数据集**（SQL 取数 + 结果） | ✅ DatasetSpec（但 M5 重设计） | DashboardSpec.datasets（复用数据结构） | — | — |
+| **数据集编辑器**（建模/计算字段/组合） | ❌ 不做（ADR §7 非目标） | — | ❌ | — |
+| **仪表板编辑器**（画布 + 拖拽 + 对齐） | ❌ 只有卡片墙（**M5 废弃**） | ✅ 主目标 | — | — |
+| **组件面板**（图表/控件列表） | ❌ 无 | ✅ 从 11 figure + ~10 JimuBI 精选派生 | — | — |
+| **属性检查器**（选中组件编辑） | ❌ 无 | ✅ 主目标 | — | — |
+| **筛选控件**（仪表板级） | ✅ DatasetFilterPanel（**M5 废弃**） | ✅ 简化版：字段级等值/范围筛选 | — | — |
+| **条件级联筛选** | ❌ | — | ❌ **明确否决** | — |
+| **查询条件组**（同组只有一个生效） | ❌ | — | ❌ **明确否决** | — |
+| **跨数据集关联筛选** | ❌ | — | ❌ **明确否决** | — |
+| **数据绑定**（组件→数据集） | ❌ AI 生成时一次绑定 | ✅ 手动选择数据集/字段 | — | — |
+| **布局系统**（Grid/自由） | ✅ server 侧 12 列 Grid | ✅ 前端画布拖拽布局 | — | — |
+| **多页面管理**（标签页） | ❌ 无 | ✅ 主目标 | — | — |
+| **撤销/重做** | ❌ 无 | ✅ 快捷键 Cmd+Z | — | — |
+| **主题/样式编辑** | ❌ 固定 palette | ✅ 主目标 | — | — |
+| **工具栏**（保存/预览/导出） | ✅ gallery 溢出菜单（**M5 废弃**） | ✅ 编辑器顶部工具栏 | — | — |
+| **预览/发布** | ✅ visualization-tab iframe | ✅ 编辑器内预览模式 | — | — |
+| **权限/协作/发布审批** | ❌ 单用户不适用 | — | — | ❌ 维持不做 |
+| **组织/工作空间** | ❌ 单用户不适用 | — | — | ❌ 维持不做 |
+| **地图类图表** | ❌ 不做（离线冲突） | — | — | ❌ 维持不做 |
+| **电子表格/数据门户/填报** | ❌ 不做 | — | — | ❌ 维持不做 |
+| **血缘分析** | ✅ visualization-lineage-panel（**M5 废弃**） | — | — | —（M5 不做，单用户无价值） |
+| **重新取数** | ✅ use-dataset-refetch（**M5 重设计**） | — | — | —（保留核心能力） |
+
+#### M5 的边界（明确不做）
+
+- ❌ 不改 server 侧 `/api/bigscreen/*` 路由与 compile/render 引擎 —— 它们已就绪
+- ❌ **推翻 M0→M3 的卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移** —— 零向后兼容
+- ❌ **否决** Quick BI 的**条件级联筛选** / **查询条件组** / **跨数据集关联** —— 本地单用户场景无此复杂度，维护成本与收益严重倒挂
+- ❌ 不做 Quick BI 的**自由像素画布**（大屏专属）—— 仪表板维持 Grid 布局
+- ❌ 不做 Quick BI 的**组件级数据建模**（计算字段 / 分组维度）—— 数据集层已够用
+- ❌ 不做 Quick BI 的**45 种图表目录**的完整映射 —— 自研 Chart.js figure 覆盖核心 + JimuBI 精选补充
+- ❌ 不改 ADR §7 已锁定的非目标（组织 / 权限 / 发布 / 协作 / 地图 / 数据集编辑器 / 电子表格 / 数据门户 / 填报）
 
 ---
 
@@ -228,11 +279,106 @@ DatasetSpec {
 
 > **登记为远期可选，不进本次范围**（M4 只做评估，不交付）。
 
+### 方案 F：交互式仪表板编辑器（**M5 主线**）
+
+在现有卡片墙 + 详情抽屉基础上，引入完整的**仪表板编辑器 UI**：
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 顶部工具栏：保存 │ 预览 │ 撤销/重做 │ 主题切换 │ 快捷键提示    │
+├──────────┬──────────────────────────────────┬──────────────────┤
+│ 左侧组件  │                                  │ 右侧属性检查器   │
+│ 面板     │         拖拽画布                  │                  │
+│          │  (Grid 布局 / 自由拖拽 / 对齐)    │ 选中组件 →       │
+│ 图表类   │                                  │ title / data /  │
+│ 指标类   │                                  │ options / style │
+│ 筛选控件 │                                  │                  │
+├──────────┴──────────────────────────────────┴──────────────────┤
+│ 底部：数据集列表 │ 多页面标签 │ 图层顺序                         │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+组件面板走**轻量路线**：
+- 自研 Chart.js figure（11 种：line/bar/pie/doughnut/polarArea/radar/scatter/bubble/funnel/boxplot/metric）—— 默认选项
+- 精选 JimuBI 组件（~10 种：JStatsSummary / JCardScroll / JText / JTab 等）—— 高级选项，按 `component.engine = "jimubi"` 分派到 `/api/bigscreen/compile`
+
+数据模型演进：
+```ts
+// 从 AI 生成的一次性 spec → 可增量编辑的 component[] + layout spec
+interface DashboardSpec {
+  id: string;
+  title: string;
+  pages: DashboardPage[];  // 多页面支持
+}
+
+interface DashboardPage {
+  id: string;
+  name: string;
+  palette: string;         // tech / gov / biz
+  theme: "dark" | "light";
+  gridCols: number;        // 12 或 24
+  components: EditableComponent[];
+}
+
+interface EditableComponent {
+  id: string;
+  engine: "chartjs" | "jimubi";
+  type: string;            // ChartItem.type 或 JimuBI 组件名
+  x: number; y: number;   // Grid 坐标
+  w: number; h: number;    // Grid 尺寸
+  title?: string;
+  datasetId?: string;      // 绑定哪个 DatasetSpec
+  figure?: Record<string, unknown>;  // 自研 figure 的 options
+  jimubi?: Record<string, unknown>; // JimuBI 组件的 options
+}
+```
+
+**优点**：
+- server 侧零新增能力，完全消费已有的 compile/render + defaults bundle
+- AI 生成路径与 UI 交互路径打通（AI 生成 spec → 用户微调 → 保存）
+- 渐进式：画布/组件面板/属性检查器可以分阶段交付，每个阶段都可用
+- 多页面 / 图层 / 撤销重做是独立模块，可以按需启用
+
+**缺点**：
+- 前端工作量大（拖拽画布 + 属性检查器 + 撤销重做），需要引入轻量拖拽库
+- 125 个 JimuBI 组件的属性系统复杂，精选 10 种的简化接口仍需要逐个梳理
+- 撤销重做需要完整的操作历史记录（命令模式）
+
+### 方案 G：直接消费 JimuBI 引擎（125 组件全量）
+
+跳过自研 figure 路线，全部组件走 JimuBI spec → `/api/bigscreen/compile` → JimuBI JSON → 渲染。
+
+**优点**：组件种类极丰富，每个组件都有完整属性系统。
+**缺点**：JimuBI 组件是为大屏（像素级自由画布）设计的，属性普遍 20–80 项，仪表板编辑器的 Grid 布局很难容纳这些重组件；125 个组件在属性检查器里要做类型感知的表单生成器，工作量爆炸；与自研 figure 路线重复。
+
+> **不采纳。** JimuBI 组件适合大屏模板（spec 预写好的），不适合交互式仪表板编辑器（用户要拖拽、改属性、改布局）。
+
 ---
 
-## 4. 决策
+## 决策
 
 > **M0 修数据模型的下限（schema 迁移 + 上限 + 清理孤儿测试）；M1 走方案 B 的减法版（`DatasetSpec` 作为产物的数据来源，`html` 降级为导出产物）并补上筛选；M2 扩图表表现力；M3 做轻量血缘。方案 C / D / E 明确不做。四条已全部交付（`0.1.16` → `0.4.0`）。**
+>
+> **M5（`0.5.0`）走方案 F：引入交互式仪表板编辑器。核心是把「卡片墙 + 详情抽屉」升级为「拖拽画布 + 组件面板 + 属性检查器 + 工具栏」。server 侧零新增，完全消费已有的 `/api/bigscreen/compile` + `/api/bigscreen/render` + 125 JimuBI defaults bundle。方案 G（直接消费 125 JimuBI 组件全量）明确不做，理由见 §0.5 和方案 G 本身。**
+>
+> **M5 推翻 M0→M3 的旧前端全部模块（卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移逻辑），不做任何向后兼容。** 旧 `Visualization` / `DatasetSpec` / `ChartFilter` 数据模型直接替换为 `DashboardSpec`。781 个测试里 ~200+ 个与旧模型绑定的测试一并删除。0.5.0 发布时用户的 `visualizations.json` 数据**不会被自动迁移**，需要手动删除或重新生成。
+
+M5 走方案 F 的理由：
+
+1. **server 侧能力已经完整，只差一个消费它们的 UI。** 这是最关键的事实——`/api/bigscreen/compile`、`/api/bigscreen/render`、6 个内联模板、125 个组件 defaults bundle、28 个 compiler handler 全部在 M3 后就绪。M5 不做 server 改动，只做前端。
+2. **AI 生成路径和 UI 交互路径必须打通。** 两条路径现在是完全分离的（AI 生成 → 卡片墙存起来 / 用户手动编辑 → 不存在）。M5 让 spec 成为共同事实源：AI 生成 spec → 用户在编辑器里微调 → 保存回 spec → 重新 compile 预览。
+3. **Quick BI 的仪表板核心是编辑器，不是图表类型。** 45 种图表里 dbx-pro 已有 11 种自研 figure 覆盖核心几何表达，剩余的是地图/表格/指标卡类。真正的差距是：没有画布、没有组件面板、没有属性检查器——用户无法手动构建看板，只能等 AI 生成。
+4. **数据库工作台已经覆盖 Quick BI 对象模型的前半段。** 连接管理 / SQL 编辑器 / 结果网格 / 数据源 CRUD 都在，M5 只关注数据源之后的分析层。
+5. **渐进式交付可行。** 画布、组件面板、属性检查器、撤销重做是独立模块，可以分阶段交付。每个阶段完成后编辑器都可用。
+6. **方案 G 不采纳。** JimuBI 125 组件是为大屏模板设计的（spec 预写好的、自由像素画布），属性普遍 20–80 项，仪表板编辑器的 Grid 布局难以承载。属性检查器要做类型感知的表单生成器，工作量爆炸。
+
+M5 维持不做（与 §0.5 和 §7 一致）：
+- ❌ 不改 server 侧 `/api/bigscreen/*` 路由与 compile/render 引擎
+- ❌ **推翻** M0→M3 的卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移 —— 零向后兼容
+- ❌ **明确否决** Quick BI 的**条件级联筛选** / **查询条件组** / **跨数据集关联** —— 本地单用户场景无此复杂度，维护成本与收益严重倒挂
+- ❌ 不做 Quick BI 的自由像素画布（大屏专属）、组件级数据建模
+- ❌ 不做 Quick BI 的 45 种图表目录的完整映射
+- ❌ 不改 ADR §7 已锁定的非目标（组织/权限/发布/协作/地图/数据集编辑器/电子表格/数据门户/填报）
 
 理由：
 
@@ -465,6 +611,168 @@ export interface Visualization {
 > - 方案 E（外部 BI 引擎）：与「产物自包含、数据不出本机、取数走本机引擎」的成本模型冲突；只有当需要**服务端共享**看板时才成立，本轮没有这个场景。
 > - PDF / 图片导出：需要先定下分页 / 打印样式与「断网单文件 HTML」这个唯一交付形态的关系，属于新增一种交付物，不是本轮补充。
 > - 产物快照对比：前提是持久化**多份历史快照**（现在只存最后一份 `datasets`），这是存储模型变更，必须单独一轮并配迁移方案。
+
+### M5 —— 交互式仪表板编辑器（`0.4.15` → `0.5.0`）
+
+> 核心目标：**推翻 M0→M3 的旧前端全部模块**（卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移），从零构建 Quick BI 级别交互式仪表板编辑器。**零向后兼容**，server 侧零新增。
+
+#### 数据模型（从零设计，不兼容旧模型）
+
+`src/domain/dashboard-spec.ts`（全新文件，不 import 任何旧类型）：
+
+```ts
+// 全新数据模型，与旧 Visualization/DatasetSpec/ChartFilter 无任何兼容层
+export interface DashboardSpec {
+  id: string;
+  title: string;
+  description?: string;
+  pages: DashboardPage[];
+  datasets: DashboardDataset[];  // 结构类似旧 DatasetSpec，但独立定义
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface DashboardDataset {
+  id: string;
+  title: string;
+  connection: string;
+  sql: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  fetchedAt: number;
+}
+
+export interface DashboardPage {
+  id: string;
+  name: string;
+  palette: string;          // "tech" | "gov" | "biz" | "custom"
+  theme: "dark" | "light";
+  gridCols: number;         // 12 或 24
+  components: EditableComponent[];
+}
+
+export interface EditableComponent {
+  id: string;
+  engine: "chartjs" | "jimubi";
+  type: string;
+  // Grid 布局
+  x: number; y: number; w: number; h: number;
+  // 内容
+  title?: string;
+  datasetId?: string;
+  filters?: FieldFilter[];    // 简化版筛选：只有字段级等值/范围
+  // engine-specific options
+  figure?: Record<string, unknown>;
+  jimubi?: Record<string, unknown>;
+  chartjs?: Record<string, unknown>;
+}
+
+export interface FieldFilter {
+  column: string;
+  values?: (string | number | boolean)[];  // 等值筛选
+  min?: number | string;                    // 范围筛选（数值/日期）
+  max?: number | string;
+}
+```
+
+#### 旧模块废弃清单（M5 全部删除）
+
+| 旧文件 | 行数 | 状态 | 说明 |
+|---|---|---|---|
+| `visualization-gallery.tsx` | 360 | 🗑️ 废弃 | 卡片墙被编辑器"打开已有看板"入口替代 |
+| `visualization-detail-drawer.tsx` | — | 🗑️ 废弃 | 功能被编辑器画布完全替代 |
+| `visualization-lineage-panel.tsx` | — | 🗑️ 废弃 | M5 不做血缘，单用户无价值 |
+| `dataset-filter-panel.tsx` | — | 🗑️ 废弃 | 重写为编辑器内筛选 UI |
+| `visualization-doc.ts` | — | 🗑️ 废弃 | v1→v2 迁移，不需要了 |
+| `chart-source.ts` | — | 🗑️ 废弃 | 重写为编辑器专用的 source 解析 |
+| `figure-registry.ts` + 8 个 figure 文件 | — | 🗑️ 废弃 | 重写（figure 核心思路保留，但文件结构全部重建） |
+| `visualization-store.ts` | — | 🗑️ 废弃 | 重写为 dashboard-store.ts（Zustand） |
+| `visualizations.json` | — | 🗑️ 废弃 | 换为 `dashboards.json` |
+| `src/test/visualization-*.test.js` + `dataset-*.test.js` + `figure-*.test.js` | ~200+ 项 | 🗑️ 废弃 | 全部删除，新模型新测试 |
+
+> 注：`figure-registry` 的**核心思路**（自研渲染器 + 登记表）会在 M5 的新组件面板里保留，但文件结构、类型定义、测试全部重建。旧 figure 文件里已验证的渲染逻辑（`escapeHtml`、调色板映射等）会被**抄**到新文件里，不是"迁移"。
+
+#### 任务拆分（分 4 批交付）
+
+**第一批：数据模型 + 空编辑器骨架（2–3 天）**
+- [ ] `src/domain/dashboard-spec.ts` — DashboardSpec / DashboardPage / EditableComponent / DashboardDataset / FieldFilter 类型定义 + `normalizeDashboardSpec()`（补 id / 补 defaults / 列裁剪 / 体积估算）—— **不 import 任何旧类型，不做迁移**
+- [ ] `src/features/visualization/dashboard-editor/` 目录结构 + `DashboardEditor.tsx` 根组件（三栏布局：左组件面板 / 中画布 / 右属性检查器）
+- [ ] `dashboard-store.ts` — Zustand store（当前编辑页面、选中组件、历史栈、dirty 标记）
+- [ ] `dashboard-actions.ts` — 纯函数命令（addComponent / removeComponent / moveComponent / resizeComponent / updateProperty）
+
+**第二批：画布 + 拖拽布局（3–4 天）**
+- [ ] `editor-canvas.tsx` — Grid 画布（12/24 列可切换）、拖拽、缩放、对齐辅助线
+- [ ] `grid-dropzone.tsx` — 从组件面板拖拽到画布
+- [ ] `grid-component.tsx` — 画布上的组件卡片（选中高亮、拖拽手柄、缩放手柄、删除按钮）
+- [ ] 引入轻量拖拽库（`@dnd-kit/core` + `@dnd-kit/sortable`，总 ~8KB gzipped；不引入全量 react-grid-layout —— 太重）
+
+**第三批：组件面板 + 属性检查器（4–5 天）**
+- [ ] `component-palette.tsx` — 左侧组件面板：分类浏览（图表类 / 指标类 / 布局类）、拖拽到画布
+- [ ] `component-registry.ts` — 从 11 种 figure + 精选 JimuBI 组件（~10 种）派生可用组件列表
+- [ ] `property-inspector.tsx` — 右侧属性检查器：选中组件 → 属性表单（title / dataset / filters / figure.options / jimubi.options）
+- [ ] `property-forms/` — 类型感知的表单生成器（不同 engine/type 渲染不同表单）
+- [ ] `data-binding-picker.tsx` — 选择数据集 / 字段的弹窗（从 DatasetSpec.columns 派生）
+
+**第四批：工具栏 + 撤销重做 + 多页面（2–3 天）**
+- [ ] `editor-toolbar.tsx` — 顶部工具栏（保存 / 预览 / 撤销 / 重做 / 主题切换 / 快捷键提示）
+- [ ] 撤销重做 — 命令模式（历史栈 + undo()/redo() + Cmd+Z / Cmd+Shift+Z 快捷键）
+- [ ] `page-tabs.tsx` — 多页面标签管理（新增 / 重命名 / 删除 / 切换）
+- [ ] `preview-mode.tsx` — 编辑器内预览模式（隐藏面板、只看画布效果）
+- [ ] 保存/导出闭环 — DashboardSpec → `fetch('/api/bigscreen/compile')` → `fetch('/api/bigscreen/render')` → HTML
+
+#### AI 生成路径打通
+
+- [ ] AI 生成的看板自动升级为 DashboardSpec（不再只能存 Visualization）
+- [ ] `send-context.ts` 的 AI 工作流补齐「spec → DashboardSpec」的映射说明
+- [ ] skills Python 脚本（spec_builder.py / dashboard_builder.py）产物直接能被编辑器打开
+
+#### JimuBI 组件精选（~10 种，待梳理最终清单）
+
+| 组件 | 用途 | engine |
+|---|---|---|
+| JStatsSummary | 指标汇总卡 | chartjs（自研 figure 已覆盖） |
+| JCardScroll | 滚动列表卡 | jimubi |
+| JText | 富文本说明 | jimubi |
+| JTab | 标签页容器 | jimubi |
+| JFilter | 查询控件 | jimubi |
+| JDatePicker | 日期选择器 | jimubi |
+| JProgress | 进度条 | chartjs（figure 已覆盖） |
+| JGauge | 仪表盘 | chartjs（figure 已覆盖） |
+| JFunnel | 漏斗 | chartjs（figure 已覆盖） |
+| JTable | 数据表 | jimubi |
+
+> 注：图表类（JBar/JLine/JPie/JArea 等）全部用自研 Chart.js figure，不走 JimuBI——JimuBI 组件的属性系统 20–80 项，属性检查器难以承载。只有**装饰/布局/控件类**组件用 JimuBI（因为自研不值得）。
+
+#### 测试策略
+
+- 纯函数层：`dashboard-spec.test.js`（规范化 / 迁移 / 序列化）、`dashboard-actions.test.js`（命令纯函数）
+- 组件层：`editor-canvas.test.js`（拖拽 / 缩放 / 对齐）、`property-inspector.test.js`（选中组件 → 属性表单渲染）
+- 历史栈：`history.test.js`（undo / redo / 跨页撤销）
+- 端到端：`dashboard-editor-e2e.test.js`（新建看板 → 添加组件 → 拖拽 → 改属性 → 保存 → compile → render）
+
+#### 验收标准
+
+- [ ] 用户可以手动新建空白看板（不依赖 AI）
+- [ ] 用户可以从组件面板拖拽组件到画布
+- [ ] 用户可以拖拽组件改变位置和大小
+- [ ] 选中组件后属性检查器显示可编辑表单
+- [ ] 保存后产物持久化、重新打开编辑器状态一致
+- [ ] 撤销/重做（Cmd+Z / Cmd+Shift+Z）正常工作
+- [ ] AI 生成的看板可以直接在编辑器里打开并微调
+- [ ] 编辑器产物可以编译为 HTML 并导出（走 `/api/bigscreen/compile` + `/render`）
+- [ ] **推翻旧前端**：卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移 / figure 旧文件 / 旧测试全部删除（~200+ 测试项），新模型新文件新测试，零向后兼容
+- [ ] 数据库工作台已有能力零回归（连接管理 / SQL / 结果网格 / 导出）
+- [ ] `npm run check` + `npm test` 全绿（M5 交付时测试数量从 ~780 降到 ~580，再逐步回升）
+- [ ] 零新增 npm 依赖（除了轻量拖拽库 `@dnd-kit`）
+
+#### 不做
+
+- ❌ 不改 server 侧 `/api/bigscreen/*` 路由与 compile/render 引擎
+- ❌ 不改数据库工作台任何代码（连接/SQL/结果网格已是 Quick BI 对象模型前半段的对应物）
+- ❌ 不改 ADR §7 已锁定的非目标
+- ❌ 不做 Quick BI 的条件级联筛选、查询条件组、跨数据集关联
+- ❌ 不做 Quick BI 的 45 种图表目录完整映射（自研 figure 覆盖核心 + JimuBI 精选补充已够）
 
 ---
 

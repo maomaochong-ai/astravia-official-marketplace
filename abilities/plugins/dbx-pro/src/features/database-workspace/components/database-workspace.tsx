@@ -15,6 +15,7 @@ import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
+import { DriverManagementDialog } from "./driver-management-dialog";
 import { ExportTasksShelf } from "./export-tasks-shelf";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { patchSession, readSession } from "../../../domain/workbench-session";
@@ -40,6 +41,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [connectionEditorOpen, setConnectionEditorOpen] = useState(false);
 	const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [driverManagerOpen, setDriverManagerOpen] = useState(false);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	/** 会话恢复完成前不写盘：初始值写回去会覆盖磁盘上的真实折叠态。 */
 	const [sessionHydrated, setSessionHydrated] = useState(false);
@@ -193,6 +195,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}
 				onOpenSettings={() => setSettingsOpen(true)}
 				onOpenAiAssistant={() => setAiAssistantOpen(true)}
+				onOpenDriverManager={() => setDriverManagerOpen(true)}
 				onNewQuery={newQueryTab}
 				onToggleHistory={toggleHistoryPanel}
 				historyOpen={historyOpen}
@@ -275,6 +278,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 					}}
 				/>
 			)}
+
+			<DriverManagementDialog open={driverManagerOpen} onClose={() => setDriverManagerOpen(false)} />
 		</div>
 	);
 }

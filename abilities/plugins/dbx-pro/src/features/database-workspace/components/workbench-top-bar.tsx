@@ -27,6 +27,8 @@ export interface WorkbenchTopBarProps {
 	downloadsOpen: boolean;
 	/** 展开 / 收起底部「下载后台」货架 */
 	onToggleDownloads: () => void;
+	/** 打开驱动管理 dialog */
+	onOpenDriverManager: () => void;
 }
 
 export function WorkbenchTopBar({
@@ -42,6 +44,7 @@ export function WorkbenchTopBar({
 	onToggleFullscreen,
 	downloadsOpen,
 	onToggleDownloads,
+	onOpenDriverManager,
 }: WorkbenchTopBarProps): JSX.Element {
 	const { history, state } = useWorkbench();
 	// 引擎健康：unknown=未查询 / ready=绿 / starting=黄 / error=红
@@ -159,6 +162,15 @@ export function WorkbenchTopBar({
 				>
 					<span className="icon-[lucide--settings-2] h-3.5 w-3.5" />
 					设置
+				</button>
+				<button
+					type="button"
+					onClick={onOpenDriverManager}
+					title="驱动管理（DuckDB / Redis 等 managed drivers）"
+					className="dbx-nav-item shrink-0 whitespace-nowrap"
+				>
+					<span className="icon-[lucide--hard-drive-download] h-3.5 w-3.5" />
+					驱动
 				</button>
 				<button
 					type="button"

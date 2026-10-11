@@ -16,7 +16,7 @@ import {
 	MAX_TIMEOUT_MS,
 	engineError,
 } from "../engine/protocol.mjs";
-import { getDbxMcpClient } from "../engine/dbx-mcp-client.mjs";
+import { getDbxMcpClient, disposeDbxMcpClient } from "../engine/dbx-mcp-client.mjs";
 import { classifyQuery } from "../engine/sql-safety.mjs";
 import {
 	buildCountSql,
@@ -260,6 +260,7 @@ export function createRouterContext({ auth, dataDir = null, now = () => Date.now
 		dataDir,
 		now,
 		mcpClient,
+		disposeDbxMcpClient,  // 重启 dbx-mcp 子进程（驱动安装/手动指定路径后需要）
 		ensureApiEngineConnection,
 		resolveWriteConnSpec,
 		resolveQueryContext,

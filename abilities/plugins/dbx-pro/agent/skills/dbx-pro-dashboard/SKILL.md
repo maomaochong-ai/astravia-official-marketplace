@@ -14,7 +14,10 @@ description: 数据仪表盘生成器 —— 与 dbx-pro-bigscreen 共享 spec_b
 ## 核心流程
 
 ```
-用户描述 → 确认数据源 → 确认布局（自由栅格）→ 写 spec → POST /api/bigscreen/generate（palette=biz-light 或自定义亮色）→ 返回 HTML
+用户描述 → 确认数据源 → 确认布局（自由栅格）→ 写 spec
+  → POST /api/bigscreen/compile（spec.palette=biz / theme=light）
+  → 拿到 JimuBI 组件 JSON
+  → POST /api/bigscreen/render（可选，直接要 HTML）
 ```
 
 ## 与 bigscreen 的差异
@@ -26,33 +29,36 @@ description: 数据仪表盘生成器 —— 与 dbx-pro-bigscreen 共享 spec_b
 | 组件高度 | 280px+ | 220px（紧凑）|
 | 色板默认 | tech / gov | biz / 自定义亮色 |
 | 典型场景 | 展厅大屏 / 监控中心 | 工作台首页 / 运营看板 |
+| API 完全共享 | ✅ 同 /api/bigscreen/compile + render | ✅ 同 |
 
 ## HTTP API
 
-### POST /api/bigscreen/generate（同 bigscreen，只是 palette 不同）
+### POST /api/bigscreen/compile（先编译拿组件 JSON，可选后续 render）
 
 ```json
 {
-  "spec": {
-    "page": { "name": "运营仪表盘", "theme": "light" },
-    "palette": "biz",
-    "components": [
-      { "type": "JStatsSummary", "title": "今日指标", "variant": "2", ... },
-      { "type": "JLine", "title": "趋势", ... },
-      { "type": "JPie", "title": "占比", ... }
-    ]
-  }
+  "page": { "name": "运营仪表盘", "theme": "light" },
+  "palette": "biz",
+  "components": [
+    { "type": "JStatsSummary", "title": "今日指标", "variant": "2", ... },
+    { "type": "JLine", "title": "趋势", ... },
+    { "type": "JPie", "title": "占比", ... }
+  ]
 }
 ```
 
+### POST /api/bigscreen/render（直接要完整 HTML）
+
+同 spec，返回 `{ html: "<!DOCTYPE html>..." }`。
+
 ## 服务端代码
 
-- 复用 `server/src/engine/bigscreen-compiler.mjs` + `server/src/api/bigscreen-api.mjs`
-- 无独立 engine 模块
+- 复用 `server/src/engine/bigscreen-compiler.mjs` + `server/src/api/bigscreen.mjs`
+- 无独立 engine 模块，API 端点与 bigscreen 完全相同（compile/render/templates）
 
 ## scripts/
 
-- `scripts/dashboard-builder.mjs` —— Agent 侧 CLI（通过 fetch 调 `/api/bigscreen/generate`）
+- `scripts/dashboard_builder.py` —— Agent 侧 CLI（调 `/api/bigscreen/compile` 或 `--render` 调 `/api/bigscreen/render`）
 
 ## references/
 

@@ -38,6 +38,7 @@ import { portalRoutes } from "../api/portal.mjs";
 import { bpmnRoutes } from "../api/bpmn.mjs";
 import { codegenRoutes } from "../api/codegen.mjs";
 import { systemRoutes } from "../api/system.mjs";
+import { driverRoutes } from "../api/driver.mjs";
 
 export function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
 	if (!auth) throw new Error("createRouter 需要 auth");
@@ -61,6 +62,7 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
 		...bpmnRoutes(ctx),
 		...codegenRoutes(ctx),
 		...systemRoutes(ctx),
+		...driverRoutes(ctx),
 	];
 
 	// 构建两级 Map：pathname → method → { auth, handler }

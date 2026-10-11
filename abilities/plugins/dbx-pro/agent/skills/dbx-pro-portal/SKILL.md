@@ -24,9 +24,11 @@ description: >-
   ↓
 ② 确定卡片类型（8 种门户专用卡片）
   ↓
-③ 写 spec → POST /api/bigscreen/generate（palette=biz，theme=light）
+③ 写 spec → POST /api/bigscreen/compile（palette=biz，theme=light）
   ↓
-④ 返回门户 HTML
+④ 可选：POST /api/bigscreen/render 直接拿 HTML
+  ↓
+⑤ 返回门户组件 JSON（或 HTML）
 ```
 
 ## 门户专用卡片类型（8 种）
@@ -89,13 +91,17 @@ description: >-
 
 ## HTTP API
 
-### POST /api/bigscreen/generate（复用 bigscreen 编译链）
+### POST /api/bigscreen/compile（复用 bigscreen 编译链，返回组件 JSON）
 
 ```bash
-curl -X POST http://localhost:PORT/api/bigscreen/generate \
+curl -X POST http://localhost:PORT/api/bigscreen/compile \
   -H "Content-Type: application/json" \
-  -d '{"spec": {...}, "engine": "echarts", "layout": "portal"}'
+  -d '{"page":{"name":"企业门户","theme":"light"},"palette":"biz","components":[...]}'
 ```
+
+### POST /api/bigscreen/render（直接拿完整 HTML）
+
+同 spec 结构，返回 `{ html: "<!DOCTYPE html>..." }`。
 
 ## 服务端代码
 

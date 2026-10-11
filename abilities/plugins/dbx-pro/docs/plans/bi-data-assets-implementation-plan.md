@@ -478,6 +478,283 @@ export interface Visualization {
 7. **降级安全**：血缘只是读 `visualizations.json` 里已有字段（`datasets[].connection / table / sql / rowCount`）并多显示一块，**没有新增存储字段、没有改文档格式**；降级回 `0.3.x` 只是少了这一个面板，产物照旧可预览、可导出。所以 M3 不新增回滚点。
 8. **全量测试**：0.4.0 共 781 项 / `# pass 780` / `# fail 0` / `# skipped 1`（沿用既有那 1 项）；对比 0.3.0 的 759 项，新增 22 项 = 血缘 14 + 真实连接门控 3 + `stores.test.js` 2 + `execute-server-page.test.js` 3。同轮的 Track A 也把 M1 欠下的真实连接验证补上了：门控用例在本机真 PostgreSQL 上 **3/3 通过**（不是跳过）。
 
+### M5 —— 交互式仪表板编辑器（`0.4.15` → `0.5.0`)
+
+> 对应决策文档：[ADR-0009 §0.5 + §4 决策 + §9 M5](../adr/adr-0009-bi-data-assets.md)
+>
+> **核心原则：推翻重来、零向后兼容。** M0→M3 的旧前端全部模块（卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移 / 旧 figure 文件 / 旧测试）全部删除，从零构建 Quick BI 级别交互式仪表板编辑器。server 侧零新增，完全消费已有的 `/api/bigscreen/compile` + `/api/bigscreen/render` + 125 JimuBI defaults bundle。
+
+#### 范围与前置
+
+| 项 | 内容 |
+|----|------|
+| 目标 | 推翻 M0→M3 旧前端，从零构建 Quick BI 级别交互式仪表板编辑器（画布 + 组件面板 + 属性检查器 + 工具栏 + 撤销重做） |
+| 落点 | 只改 dbx-pro 插件前端（`src/features/visualization/` + `src/domain/`），**不改 server 侧、不改数据库工作台、不改 Agent 工具注册** |
+| 前置 | M0→M3 全部交付（`0.4.0`），server 侧 compile/render/templates/125 defaults bundle 全就绪 |
+| 明确否决 | Quick BI 的**条件级联筛选** / **查询条件组** / **跨数据集关联**（本地单用户场景无此复杂度） |
+| 版本节奏 | `0.4.15` → `0.5.0`（minor：推翻旧前端 + 新编辑器，用户可见重大升级） |
+
+#### 现状基线（2026-10-11 实测）
+
+##### 前端全部废弃（M5 全部删除）
+
+| 旧模块 | 实现 | 状态 | 处理方式 |
+|---|---|---|---|
+| 卡片墙 | `visualization-gallery.tsx`（360 行） | 🗑️ 废弃 | 删除。编辑器提供"打开已有看板"入口 |
+| 详情抽屉 | `visualization-detail-drawer.tsx` | 🗑️ 废弃 | 删除。功能被编辑器画布完全替代 |
+| 筛选面板 | `dataset-filter-panel.tsx` | 🗑️ 废弃 | 删除。重写为编辑器内字段级筛选 |
+| 血缘面板 | `visualization-lineage-panel.tsx` | 🗑️ 废弃 | 删除。M5 不做血缘（单用户无价值） |
+| 图表渲染 | `chart-item-renderer.tsx` + `figure-item-renderer.tsx` + `chart-grid.tsx` | 🗑️ 废弃 | 删除。在编辑器里重写（核心渲染逻辑抄旧文件） |
+| 自研 figure | 11 种 figure 文件 + `figure-registry.ts` + `figure-palette.ts` | 🗑️ 废弃 | 删除。组件面板里重写（核心思路保留，文件结构全部重建） |
+| 存储层 | `visualization-store.ts` + `visualization-doc.ts` | 🗑️ 废弃 | 删除。重写为 Zustand store + 全新存储格式 |
+| 旧测试 | visualization/dataset/figure 相关 ~200+ 项 | 🗑️ 废弃 | 删除。新模型新测试 |
+
+**保留但抄到新文件的逻辑**：
+- `figure-registry` 的"自研渲染器 + 登记表"核心思路
+- `escapeHtml` 转义函数
+- `figure-palette` 的两套主题调色板色值
+- `html-export.ts` 导出链路
+- `use-dataset-refetch.ts` 重新取数的状态机逻辑
+- `@dnd-kit` 轻量拖拽库选型
+
+##### 前端需要新建（M5 从零构建）
+
+| 能力 | Quick BI 对应 | 优先级 |
+|---|---|---|
+| **仪表板编辑器画布**（拖拽/缩放/对齐/自由布局） | 磁贴式自由画布 | 🔴 P0 |
+| **组件面板**（左侧图表/控件列表，拖拽到画布） | 近 40 种图表 + 控件 | 🔴 P0 |
+| **属性检查器**（选中组件 → 右侧属性表单） | 类型感知的属性编辑 | 🔴 P0 |
+| **编辑器工具栏**（保存/预览/撤销重做/主题切换） | 顶部工具栏 | 🟡 P1 |
+| **多页面管理**（标签页） | 看板内多标签页 | 🟡 P1 |
+| **撤销/重做** | Ctrl+Z / Ctrl+Shift+Z | 🟡 P1 |
+| **新建/打开看板入口** | "新建空白看板" + "打开已有"按钮 | 🔴 P0 |
+| **数据绑定 UI**（组件选择数据集/字段） | 组件→数据集绑定 | 🔴 P0 |
+| **字段级筛选**（编辑器内简化版：等值/范围） | 查询控件 | 🟡 P1 |
+| **预览模式**（隐藏面板、只看画布） | 预览/发布 | 🟡 P1 |
+| **快捷键支持** | Ctrl+S 保存、Delete 删除 | 🟢 P2 |
+
+**明确否决**（不做）：
+- ❌ Quick BI 的条件级联筛选
+- ❌ Quick BI 的查询条件组（同组只有一个生效）
+- ❌ Quick BI 的跨数据集关联筛选
+
+##### Server 侧（M5 不改，已就绪）
+
+| 能力 | API | 状态 |
+|---|---|---|
+| spec → JimuBI JSON | `POST /api/bigscreen/compile` | ✅ 就绪 |
+| spec → HTML | `POST /api/bigscreen/render` | ✅ 就绪 |
+| 6 个内联模板 | `GET /api/bigscreen/templates` | ✅ 就绪 |
+| 125 JimuBI 组件 defaults | bundle 内联 | ✅ 就绪 |
+| 28 个 compiler handler | bigscreen-compiler.mjs | ✅ 就绪 |
+| 图表工具 | `dbx_chart_collection` Agent tool | ✅ 就绪（无需改） |
+
+##### 数据库工作台（M5 不改，已就绪）
+
+| Quick BI 对象 | dbx-pro 对应 | 状态 |
+|---|---|---|
+| 数据源（连接管理） | database-workbench 连接管理 | ✅ 已有，无需对齐 |
+| 数据集（SQL 取数） | SQL 编辑器 + DatasetSpec | ✅ 已有，无需对齐 |
+| 结果网格 | SQL 查询结果网格 | ✅ 已有，无需对齐 |
+| 导出 | html-export.ts | ✅ 已有，无需对齐 |
+
+#### 新增与改动的文件清单
+
+**新增**
+
+| 路径 | 职责 |
+|------|------|
+| `src/domain/dashboard-spec.ts` | DashboardSpec / DashboardPage / EditableComponent / DashboardDataset / FieldFilter 类型定义 + `normalizeDashboardSpec()`（**不 import 任何旧类型，不做迁移**） |
+| `src/domain/dashboard-actions.ts` | 纯函数命令（addComponent / removeComponent / moveComponent / resizeComponent / updateProperty / updateLayout） |
+| `src/domain/dashboard-history.ts` | 命令历史栈（push / undo / redo） |
+| `src/features/visualization/dashboard-editor/DashboardEditor.tsx` | 编辑器根组件（三栏布局） |
+| `src/features/visualization/dashboard-editor/dashboard-store.ts` | Zustand store（当前编辑页面、选中组件、历史栈、dirty 标记） |
+| `src/features/visualization/dashboard-editor/component-registry.ts` | 可用组件注册表（从 11 figure + ~10 JimuBI 精选组件派生） |
+| `src/features/visualization/dashboard-editor/editor-canvas.tsx` | Grid 画布（12/24 列、拖拽、缩放、对齐辅助线） |
+| `src/features/visualization/dashboard-editor/grid-component.tsx` | 画布上的组件卡片（选中高亮、拖拽/缩放手柄、删除按钮） |
+| `src/features/visualization/dashboard-editor/grid-dropzone.tsx` | 从组件面板拖拽到画布的 dropzone |
+| `src/features/visualization/dashboard-editor/component-palette.tsx` | 左侧组件面板（分类浏览 + 拖拽源） |
+| `src/features/visualization/dashboard-editor/property-inspector.tsx` | 右侧属性检查器（选中组件 → 属性表单） |
+| `src/features/visualization/dashboard-editor/editor-toolbar.tsx` | 顶部工具栏（保存 / 预览 / 撤销 / 重做 / 主题切换 / 快捷键） |
+| `src/features/visualization/dashboard-editor/page-tabs.tsx` | 多页面标签管理 |
+| `src/features/visualization/dashboard-editor/preview-mode.tsx` | 编辑器内预览模式 |
+| `src/features/visualization/dashboard-editor/data-binding-picker.tsx` | 数据集/字段选择弹窗 |
+| `src/features/visualization/dashboard-editor/property-forms/` | 类型感知表单生成器（title / dataset / filters / figure.options / jimubi.options） |
+
+**全部废弃删除（M5 交付时删除）**
+
+| 路径 | 行数 | 状态 |
+|------|------|------|
+| `src/features/visualization/visualization-gallery.tsx` | 360 | 🗑️ 删除 |
+| `src/features/visualization/visualization-detail-drawer.tsx` | — | 🗑️ 删除 |
+| `src/features/visualization/visualization-lineage-panel.tsx` | — | 🗑️ 删除 |
+| `src/features/visualization/dataset-filter-panel.tsx` | — | 🗑️ 删除 |
+| `src/features/visualization/chart-item-renderer.tsx` | — | 🗑️ 删除 |
+| `src/features/visualization/figure-item-renderer.tsx` | — | 🗑️ 删除 |
+| `src/features/visualization/chart-grid.tsx` | — | 🗑️ 删除 |
+| `src/features/visualization/visualization-store.ts` | — | 🗑️ 删除 |
+| `src/features/visualization/visualization-tab.tsx` | — | 🗑️ 删除（重写为编辑器内预览） |
+| `src/features/visualization/visualization-gallery-view.tsx` | — | 🗑️ 删除 |
+| `src/domain/dataset-spec.ts` | — | 🗑️ 删除 |
+| `src/domain/dataset-filter.ts` | — | 🗑️ 删除 |
+| `src/domain/visualization-doc.ts` | — | 🗑️ 删除 |
+| `src/domain/visualization-lineage.ts` | — | 🗑️ 删除 |
+| `src/domain/chart-source.ts` | — | 🗑️ 删除 |
+| `src/features/visualization/figures/*`（9 个文件） | — | 🗑️ 删除 |
+| `src/features/visualization/hooks/use-dataset-refetch.ts` | — | 🗑️ 删除（核心逻辑抄到编辑器专用 hook） |
+| `src/test/visualization-*.test.js` | — | 🗑️ 删除 |
+| `src/test/dataset-*.test.js` | — | 🗑️ 删除 |
+| `src/test/figure-*.test.js` | — | 🗑️ 删除 |
+| `src/test/chart-source.test.js` | — | 🗑️ 删除 |
+| `src/test/bi-live-postgres.test.js` | — | 🗑️ 删除（编辑器内重测） |
+
+**真正要改的**（少，而且是增量改，不是推翻）
+
+| 路径 | 改动要点 |
+|------|---------|
+| `src/shared/ai/send-context.ts` | AI 工作流补齐 DashboardSpec 结构说明；AI 生成直接产 DashboardSpec（不再产旧 Visualization） |
+| `src/tools/dbx-chart-collection.ts` | 新增 DashboardSpec 输入；废弃旧 Visualization 输入 |
+| `src/domain/chart-contract.ts` | 新增 DashboardSpec/DashboardPage/EditableComponent 类型定义 |
+
+**不改动**
+
+- ❌ `server/src/**/`（所有 server 侧文件）
+- ❌ `src/features/database-workbench/**/`（数据库工作台）
+- ❌ `src/shared/utils/html-export.ts`（导出链路复用）
+- ❌ `src/shared/utils/chart-runtime.ts`（Chart.js 内联复用）
+- ❌ `src/shared/vendor/chart.umd.js`（Chart.js 运行时复用）
+- ❌ `plugin.json` 的 permissions / network.allowedHosts（M5 不需要新权限）
+- ❌ `src/index.tsx`（插件装配入口）
+
+#### 任务拆分（分 4 批交付，每批完成后编辑器都可用）
+
+##### T-M5-1 数据模型 + 空编辑器骨架（2–3 天）
+
+- **涉及**：`dashboard-spec.ts`、`dashboard-actions.ts`、`dashboard-history.ts`、`DashboardEditor.tsx`、`dashboard-store.ts`
+- **步骤**
+  1. `dashboard-spec.ts`：**从零**定义 DashboardSpec/DashboardPage/EditableComponent/DashboardDataset/FieldFilter + `normalizeDashboardSpec()`（补 id / 补 defaults / 列裁剪 / 体积估算）—— **不 import 任何旧类型，不做任何迁移**
+  2. `dashboard-actions.ts`：纯函数命令（输入 oldState → newState，无 React 依赖）
+  3. `dashboard-history.ts`：命令历史栈（push / undo / redo / canUndo / canRedo）
+  4. Zustand store（用 Zustand 而不是 Zustand+React context 的单例模式，更适合编辑器的多实例场景）
+  5. `DashboardEditor.tsx`：空壳三栏布局（左 / 中 / 右）+ 顶部空工具栏 + 底部空页面标签
+- **验证**：`src/test/dashboard-spec.test.js` + `src/test/dashboard-actions.test.js` + `src/test/dashboard-history.test.js`（纯函数层，不依赖 React）
+
+##### T-M5-2 画布 + 拖拽布局（3–4 天）
+
+- **涉及**：`editor-canvas.tsx`、`grid-component.tsx`、`grid-dropzone.tsx`
+- **步骤**
+  1. 引入轻量拖拽库 `@dnd-kit/core` + `@dnd-kit/sortable`（总 ~8KB gzipped）
+  2. `editor-canvas.tsx`：Grid 布局（12/24 列可切换）、拖拽放置、缩放调整、对齐辅助线（拖到网格边界时显示虚线）
+  3. `grid-component.tsx`：画布上的组件卡片（选中高亮蓝框 + 左上拖拽手柄 + 右下缩放手柄 + 右上删除按钮）
+  4. `grid-dropzone.tsx`：从组件面板拖到画布的 dropzone（鼠标悬停时高亮）
+- **验证**：`src/test/editor-canvas.test.js`（RTL：拖拽组件改变位置、缩放改变尺寸、对齐辅助线出现）
+
+##### T-M5-3 组件面板 + 属性检查器（4–5 天）
+
+- **涉及**：`component-registry.ts`、`component-palette.tsx`、`property-inspector.tsx`、`property-forms/`、`data-binding-picker.tsx`
+- **步骤**
+  1. `component-registry.ts`：从 11 figure + ~10 JimuBI 精选组件派生可用组件列表（每个组件：id / name / category / engine / defaultSize / defaultOptions）
+  2. `component-palette.tsx`：左侧面板，分类浏览（图表类 / 指标类 / 装饰类）+ 每个组件可拖拽 + 点击快速添加
+  3. `property-inspector.tsx`：选中组件 → 右侧面板显示属性表单（根据 engine/type 动态生成不同表单）
+  4. `property-forms/`：类型感知表单（标题输入、数据集选择、颜色选择、数值范围、figure.options 的 figure-dispatch.test.js 已验证的字段）
+  5. `data-binding-picker.tsx`：选择数据集弹窗（列出 DashboardSpec.datasets + 每个数据集的 columns，用于设置 `datasetId` 和默认的 `ChartFilter`）
+- **验证**：`src/test/property-inspector.test.js`（RTL：选中组件 → 属性表单渲染 → 改属性 → store 更新）
+
+##### T-M5-4 工具栏 + 撤销重做 + 多页面 + 保存闭环（2–3 天）
+
+- **涉及**：`editor-toolbar.tsx`、`page-tabs.tsx`、`preview-mode.tsx`、`visualization-gallery.tsx`（改动）、`visualization-store.ts`（改动）
+- **步骤**
+  1. `editor-toolbar.tsx`：顶部工具栏（保存按钮 + 预览切换 + 撤销/重做按钮 + 主题切换 + 快捷键提示）
+  2. 撤销重做：历史栈 + Cmd+Z / Cmd+Shift+Z 快捷键（`useEffect` 监听 keydown）
+  3. `page-tabs.tsx`：底部标签页（新增页面 + 重命名 + 删除 + 切换）
+  4. `preview-mode.tsx`：预览模式（隐藏面板 + 只看画布 + 无选中态 + 无拖拽）
+  5. 保存/导出闭环：DashboardSpec → `fetch('/api/bigscreen/compile')` → `fetch('/api/bigscreen/render')` → HTML
+  6. 画廊接入：`visualization-gallery.tsx` 新增「新建空白看板」按钮 + AI 生成产物自动升级为 DashboardSpec
+- **验证**：`src/test/dashboard-editor-e2e.test.js`（RTL：新建 → 添加组件 → 拖拽 → 改属性 → 保存 → 重新打开状态一致）
+
+#### AI 生成路径打通
+
+- **涉及**：`send-context.ts`、`dbx-chart-collection.ts`
+- **步骤**
+  1. `send-context.ts`：补 AI 工作流说明：生成时可选产 DashboardSpec 结构（pages/components + datasets），而非一次性 Visualization
+  2. AI 生成的看板自动在画廊里显示「在编辑器中打开」入口
+  3. 编辑器产物保存后，AI 可以继续迭代（用户说"把第三个图改成折线图"→ AI 读 DashboardSpec → 改对应组件 type → 保存）
+
+#### JimuBI 组件精选清单（待最终确认）
+
+| 组件 | engine | 用途 | 是否自研替代 |
+|---|---|---|---|
+| JBar / JLine / JPie / JArea / JRadar / JScatter / JBubble | chartjs | 通用图表 | ✅ figure-registry 已覆盖 |
+| JFunnel / JBoxplot / JMetric | chartjs | 高级图表 | ✅ figure-registry 已覆盖 |
+| JStatsSummary | chartjs | 指标汇总卡 | ✅ metric-figure 已覆盖 |
+| JGauge / JProgress | chartjs | 仪表盘/进度条 | ✅ figure-registry 已覆盖 |
+| JCardScroll | jimubi | 滚动列表卡 | ❌ 自研不值得，用 JimuBI |
+| JText | jimubi | 富文本说明 | ❌ 用 JimuBI |
+| JTab | jimubi | 标签页容器 | ❌ 用 JimuBI |
+| JFilter | jimubi | 查询控件 | ❌ 用 JimuBI |
+| JDatePicker | jimubi | 日期选择器 | ❌ 用 JimuBI |
+| JTable | jimubi | 数据表 | ❌ 用 JimuBI |
+| JImg / JIcon / JImageText | jimubi | 装饰/布局控件 | ❌ 用 JimuBI |
+| JCarousel | jimubi | 轮播容器 | ❌ 用 JimuBI |
+
+> 注：图表类全部走自研 Chart.js figure（属性系统简洁、不暴露 20–80 项 JimuBI 属性）；装饰/布局/控件类走 JimuBI（自研不值得）。`component-registry.ts` 从这份清单派生 UI 上显示的组件列表。
+
+#### 新增/改动的 npm 依赖
+
+| 包 | 用途 | 体积 |
+|---|---|---|
+| `@dnd-kit/core` | 拖拽核心 | ~4KB gzipped |
+| `@dnd-kit/sortable` | Grid 排序扩展 | ~4KB gzipped |
+
+> **不引入** react-grid-layout（全量太重，不支持自定义 sort 逻辑）、引入 draggable（API 复杂且与 React 18+ 有冲突）。
+
+#### 测试策略（M5 专属）
+
+| 层 | 文件 | 覆盖 |
+|---|---|---|
+| 纯函数 | `dashboard-spec.test.js` + `dashboard-actions.test.js` + `dashboard-history.test.js` | 规范化 / 迁移 / 序列化 / 命令历史栈 |
+| 画布 | `editor-canvas.test.js` | 拖拽位置 / 缩放尺寸 / 对齐辅助线 |
+| 属性检查器 | `property-inspector.test.js` | 选中组件 → 属性表单渲染 → 改属性 → store 更新 |
+| 端到端 | `dashboard-editor-e2e.test.js` | 新建 → 添加 → 拖拽 → 改属性 → 保存 → compile → render |
+| 向后兼容 | — | **零向后兼容**，旧 Visualization 全部废弃删除，不做迁移测试 |
+
+#### 验收标准（与 ADR-0009 §10 M5 对齐）
+
+- [ ] 用户可以手动新建空白看板（不依赖 AI 生成）
+- [ ] 用户可以从组件面板拖拽组件到画布
+- [ ] 用户可以拖拽组件改变位置和大小
+- [ ] 选中组件后属性检查器显示可编辑表单
+- [ ] 保存后产物持久化，重新打开编辑器状态一致
+- [ ] 撤销/重做（Cmd+Z / Cmd+Shift+Z）正常工作
+- [ ] AI 生成的看板可以直接在编辑器里打开并微调
+- [ ] 编辑器产物可以编译为 HTML 并导出（走 `/api/bigscreen/compile` + `/render`）
+- [ ] 数据库工作台已有能力零回归（连接管理 / SQL / 结果网格 / 导出）
+- [ ] **推翻旧前端**：卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移 / 旧 figure 文件 / 旧测试全部删除，~200+ 测试项一次性清理。新模型新文件新测试。零向后兼容
+- [ ] `npm run check` + `npm test` + `npm run build` 全绿
+- [ ] `node scripts/marketplace.mjs check` + `node --test tests/marketplace.test.mjs` 通过
+
+#### 风险与缓解
+
+| 风险 | 触发条件 | 缓解 |
+|---|---|---|
+| **推翻重来的回归面** | 删除旧模块时可能遗漏的 import 引用 | 删除前全仓 `grep` 确认引用；用 TypeScript 的 `--noEmit` 捕获断链 |
+| **用户存量数据丢失** | 0.5.0 发布后用户的旧 `visualizations.json` 无法读取 | 发布说明明确提示"0.4.x 存量看板不会被迁移"；M5 发布时在 gallery 放一个 banner 提醒用户先导出或手动备份 |
+| 拖拽实现复杂度被低估 | @dnd-kit 与自定义 Grid 布局的结合点有 bug | 画布先支持单栅格、对齐辅助线简化、图层管理延后 |
+| JimuBI 精选组件属性表单工作量大 | 每个组件 20–80 项属性，难以快速搭建 | 属性检查器分两步：先做通用表单（title/w/h/x/y 等基础属性）+ 后做类型感知表单 |
+| 历史栈跨页撤销复杂度 | 用户在 page A 操作 → 切 page B → 撤销，应该撤销 A 还是 B？ | 历史栈按 **page 隔离**（每个页面独立 undo/redo），跨页切换不影响 |
+| AI 生成路径与编辑器产物的互操作 | AI 生成的产物能不能在编辑器里修改后继续让 AI 迭代 | M5 只打通第一条方向（AI → 编辑器），反向（编辑器 → AI）留到下一轮评估 |
+
+#### 不做（明确）
+
+- ❌ 不改 server 侧 `/api/bigscreen/*` 路由与 compile/render 引擎
+- ❌ 不改数据库工作台任何代码
+- ❌ **推翻** M0→M3 的卡片墙 / 详情抽屉 / 血缘面板 / v1→v2 迁移 —— 零向后兼容
+- ❌ **明确否决** Quick BI 的**条件级联筛选** / **查询条件组** / **跨数据集关联**（本地单用户场景无此复杂度，维护成本与收益严重倒挂）
+- ❌ 不改 ADR §7 已锁定的非目标（组织 / 权限 / 发布 / 协作 / 地图 / 数据集编辑器 / 电子表格 / 数据门户 / 填报）
+- ❌ 不做 Quick BI 的 45 种图表目录完整映射（自研 figure 覆盖核心 + JimuBI 精选补充已够）
+- ❌ 不做大屏的自由像素画布（大屏专属，仪表板维持 Grid）
+- ❌ 不做 Quick BI 的组件级数据建模（计算字段 / 分组维度）—— 数据集层已够用
+
 ---
 
 ## 4. 测试策略
@@ -597,6 +874,7 @@ node --test tests/marketplace.test.mjs
 | M1 | `0.2.0` | minor：新增筛选 / 重新取数 / 详情抽屉（**用户可见的能力升级**） |
 | M2 | `0.3.0` | minor：新增图表类型 |
 | M3 | `0.4.0` | minor：血缘 |
+| M5 | `0.5.0` | minor：交互式仪表板编辑器（**用户可见重大升级**，BI 界面从卡片墙变 Quick BI 级别） |
 
 ---
 
