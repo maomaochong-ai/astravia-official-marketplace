@@ -204,6 +204,38 @@ export function engineHealth(options: CallOptions = {}): Promise<EngineHealth> {
 	return engineRequest<EngineHealth>("/health", undefined, { timeoutMs: options.timeoutMs ?? TEST_TIMEOUT_MS });
 }
 
+// ─── 驱动管理 ───
+
+export interface DriverStatus {
+	key: string;
+	label: string;
+	installed: boolean;
+	reason?: string;
+	path?: string;
+	sizeBytes?: number;
+	envVar?: string;
+	description?: string;
+	expectedPath?: string;
+}
+
+export interface DriverInstallResult {
+	ok: boolean;
+	driverKey: string;
+	installedPath?: string;
+}
+
+export function engineDriverStatus(options: CallOptions = {}): Promise<{ drivers: DriverStatus[] }> {
+	return engineRequest<{ drivers: DriverStatus[] }>("/driver/status", {}, options);
+}
+
+export function engineDriverInstall(driverKey: string, customUrl?: string, options: CallOptions = {}): Promise<DriverInstallResult> {
+	return engineRequest<DriverInstallResult>("/driver/install", { driverKey, ...(customUrl ? { url: customUrl } : {}) }, { timeoutMs: options.timeoutMs ?? 120_000, ...options });
+}
+
+export function engineDriverSetPath(driverKey: string, path: string, options: CallOptions = {}): Promise<{ ok: boolean; driverKey: string; path: string }> {
+	return engineRequest("/driver/set-path", { driverKey, path }, options);
+}
+
 export interface EngineExecuteOptions extends CallOptions {
 	/** 显式授权写操作；引擎只读拦截后由自研写驱动执行。 */
 	allowWrite?: boolean;

@@ -57,6 +57,8 @@ export interface EditorTab {
 	isRunning: boolean;
 	/** 可视化产物画廊 tab（单例，id 固定 tab-gallery；不持久化、不绑连接）。 */
 	gallery?: boolean;
+	/** 驱动管理 tab（单例，id 固定 tab-driver；不持久化、不绑连接）。 */
+	driver?: boolean;
 	/** 可视化预览标签页（工具刚生成、未入库；类型与 bridge 同源，禁止重复定义）。 */
 	visualization?: Visualization;
 }

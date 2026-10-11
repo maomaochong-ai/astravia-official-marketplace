@@ -15,7 +15,7 @@ import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
-import { DriverManagementDialog } from "./driver-management-dialog";
+import { DriverManagerPage } from "./driver-manager-page";
 import { ExportTasksShelf } from "./export-tasks-shelf";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { patchSession, readSession } from "../../../domain/workbench-session";
@@ -23,7 +23,7 @@ import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
 import { setPreviewCallback, setSaveCallback } from "../../visualization/visualization-bridge";
 import { useVisualizationStore } from "../../visualization/visualization-store";
-import { GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
+import { DRIVER_TAB_ID, GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
 import { getUi } from "../../../runtime-contract";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
@@ -41,7 +41,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [connectionEditorOpen, setConnectionEditorOpen] = useState(false);
 	const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
 	const [settingsOpen, setSettingsOpen] = useState(false);
-	const [driverManagerOpen, setDriverManagerOpen] = useState(false);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	/** 会话恢复完成前不写盘：初始值写回去会覆盖磁盘上的真实折叠态。 */
 	const [sessionHydrated, setSessionHydrated] = useState(false);
@@ -157,6 +156,25 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		});
 	}
 
+	function openDriverTab(): void {
+		const existing = state.tabs.find((t) => t.driver === true);
+		if (existing) {
+			dispatch({ type: "setActiveTab", id: existing.id });
+			return;
+		}
+		dispatch({
+			type: "addTab",
+			tab: {
+				id: DRIVER_TAB_ID,
+				label: "驱动管理",
+				connectionName: null,
+				sql: "",
+				isRunning: false,
+				driver: true,
+			},
+		});
+	}
+
 	/** 切换查询历史右栏 */
 	function toggleHistoryPanel(): void {
 		setHistoryOpen((v) => !v);
@@ -195,7 +213,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}
 				onOpenSettings={() => setSettingsOpen(true)}
 				onOpenAiAssistant={() => setAiAssistantOpen(true)}
-				onOpenDriverManager={() => setDriverManagerOpen(true)}
+				onOpenDriverManager={openDriverTab}
 				onNewQuery={newQueryTab}
 				onToggleHistory={toggleHistoryPanel}
 				historyOpen={historyOpen}
@@ -279,7 +297,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				/>
 			)}
 
-			<DriverManagementDialog open={driverManagerOpen} onClose={() => setDriverManagerOpen(false)} />
 		</div>
 	);
 }

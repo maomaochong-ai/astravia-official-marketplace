@@ -11,6 +11,7 @@ import { TabBar } from "./tab-bar";
 import { useWorkbench } from "../hooks/use-workbench";
 import { VisualizationTab } from "../../visualization/components/visualization-tab";
 import { VisualizationGalleryView } from "../../visualization/visualization-gallery-view";
+import { DriverManagerPage } from "./driver-manager-page";
 
 export function SqlEditorWorkspace(): JSX.Element {
 	const { state } = useWorkbench();
@@ -27,6 +28,18 @@ export function SqlEditorWorkspace(): JSX.Element {
 				<TabBar />
 				<div className="min-h-0 flex-1 overflow-hidden">
 					<VisualizationGalleryView />
+				</div>
+			</div>
+		);
+	}
+
+	// 驱动管理：插件内部标签页。
+	if (activeTab?.driver) {
+		return (
+			<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+				<TabBar />
+				<div className="min-h-0 flex-1 overflow-hidden">
+					<DriverManagerPage />
 				</div>
 			</div>
 		);

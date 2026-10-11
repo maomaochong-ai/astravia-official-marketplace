@@ -12,6 +12,9 @@
 /** 可视化产物画廊 tab 的固定 id（单例：重复打开只激活，不追加）。 */
 export const GALLERY_TAB_ID = "tab-gallery";
 
+/** 驱动管理 tab 的固定 id（单例：重复打开只激活，不追加）。 */
+export const DRIVER_TAB_ID = "tab-driver";
+
 let tabSeq = 0;
 
 /** 生成唯一 tab id；prefix 用于区分 tab 类别（如 "viz"、"hist"）。 */
