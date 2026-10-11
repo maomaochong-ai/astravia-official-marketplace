@@ -15,12 +15,12 @@
  */
 
 // ============ Defaults 内联（单一 bundle JSON）============
-// 所有 agent/skills/dbx-pro-bigscreen/scripts/defaults/*.json 由构建前脚本
-// bundle-defaults.mjs 打包为 _defaults-bundle.json（Python 三引号/4引号修复）。
-// esbuild 默认 JSON loader 内联为 default export → 运行时零文件 I/O。
+// agent/skills/dbx-pro-bigscreen/scripts/defaults/*.json 由 bundle-defaults.mjs 先修复
+// （JimuBI Python 导出含 4 引号/三引号/None 等非标准 JSON）打包成
+// references/defaults/_defaults-bundle.json，再 esbuild JSON loader 内联进 bundle。
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — ESM JSON import
-import _DEFAULTS_BUNDLE from "./_defaults-bundle.json";
+import _DEFAULTS_BUNDLE from "../../../agent/skills/dbx-pro-bigscreen/references/defaults/_defaults-bundle.json";
 
 const DEFAULTS_MAP = _DEFAULTS_BUNDLE;
 

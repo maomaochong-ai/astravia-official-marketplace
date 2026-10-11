@@ -6,28 +6,27 @@
  *   POST /api/bigscreen/render   → 紧凑 spec → 完整 HTML 字符串
  *   GET  /api/bigscreen/templates → 内置模板清单（id/name/industry/palette/spec）
  *
- * 模板来源：server/src/engine/templates/*.json 通过 esbuild JSON loader
- * 默认内联进 bundle（零运行时文件 I/O，bundle 体积 +~10KB）。
- * skill references/templates/bigScreen/ 是上游 JimuBI 导出的完整大屏
- * （有 template 字段），仅供 Python 脚本使用，与本引擎无关。
+ * 模板位置：agent/skills/dbx-pro-bigscreen/references/templates/spec-templates/*.json
+ * （skill 目录统一管理所有大屏资源）。esbuild JSON loader 默认内联进 bundle，
+ * 零运行时文件 I/O。
  */
 import { engineError } from "../engine/protocol.mjs";
 import { compileBigscreen, generateBigscreenHtml } from "../engine/bigscreen-compiler.mjs";
 
-// esbuild 默认 JSON loader → 内联为 default export（无需 --experimental-import-attributes）
+// esbuild 默认 JSON loader → 内联为 default export
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — ESM JSON import
-import _xiangshan from "../engine/templates/bigscreen-xiangshan-park.json";
+import _xiangshan from "../../../agent/skills/dbx-pro-bigscreen/references/templates/spec-templates/bigscreen-xiangshan-park.json";
 // @ts-ignore
-import _finance from "../engine/templates/bigscreen-finance-service.json";
+import _finance from "../../../agent/skills/dbx-pro-bigscreen/references/templates/spec-templates/bigscreen-finance-service.json";
 // @ts-ignore
-import _medical from "../engine/templates/bigscreen-medical-monitor.json";
+import _medical from "../../../agent/skills/dbx-pro-bigscreen/references/templates/spec-templates/bigscreen-medical-monitor.json";
 // @ts-ignore
-import _police from "../engine/templates/bigscreen-police-monitor.json";
+import _police from "../../../agent/skills/dbx-pro-bigscreen/references/templates/spec-templates/bigscreen-police-monitor.json";
 // @ts-ignore
-import _environment from "../engine/templates/bigscreen-environment-emit.json";
+import _environment from "../../../agent/skills/dbx-pro-bigscreen/references/templates/spec-templates/bigscreen-environment-emit.json";
 // @ts-ignore
-import _group from "../engine/templates/bigscreen-group-data.json";
+import _group from "../../../agent/skills/dbx-pro-bigscreen/references/templates/spec-templates/bigscreen-group-data.json";
 
 const TEMPLATES = [_xiangshan, _finance, _medical, _police, _environment, _group]
 	.filter(Boolean)
