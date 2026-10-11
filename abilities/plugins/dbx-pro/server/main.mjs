@@ -98920,6 +98920,102 @@ function pageResp(result) {
 function pageErr(message, code = "BAD_REQUEST") {
   return { success: false, message, code };
 }
+function datasourcesFile(ctx) {
+  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
+  const dir = join5(base, "bi");
+  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
+  return join5(dir, "datasources.json");
+}
+function readDatasources(ctx) {
+  const f = datasourcesFile(ctx);
+  if (!existsSync4(f)) return [];
+  try {
+    return JSON.parse(readFileSync3(f, "utf8"));
+  } catch {
+    return [];
+  }
+}
+function writeDatasources(ctx, list2) {
+  writeFileSync4(datasourcesFile(ctx), JSON.stringify(list2, null, 2));
+}
+function runlogsFile(ctx) {
+  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
+  const dir = join5(base, "bi");
+  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
+  return join5(dir, "runlogs.json");
+}
+function readRunlogs(ctx) {
+  const f = runlogsFile(ctx);
+  if (!existsSync4(f)) return [];
+  try {
+    return JSON.parse(readFileSync3(f, "utf8"));
+  } catch {
+    return [];
+  }
+}
+function writeRunlogs(ctx, list2) {
+  writeFileSync4(runlogsFile(ctx), JSON.stringify(list2, null, 2));
+}
+function sharelinksFile(ctx) {
+  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
+  const dir = join5(base, "bi");
+  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
+  return join5(dir, "sharelinks.json");
+}
+function readSharelinks(ctx) {
+  const f = sharelinksFile(ctx);
+  if (!existsSync4(f)) return [];
+  try {
+    return JSON.parse(readFileSync3(f, "utf8"));
+  } catch {
+    return [];
+  }
+}
+function writeSharelinks(ctx, list2) {
+  writeFileSync4(sharelinksFile(ctx), JSON.stringify(list2, null, 2));
+}
+function publishFile(ctx) {
+  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
+  const dir = join5(base, "bi");
+  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
+  return join5(dir, "publishes.json");
+}
+function readPublishes(ctx) {
+  const f = publishFile(ctx);
+  if (!existsSync4(f)) return { pages: {} };
+  try {
+    return JSON.parse(readFileSync3(f, "utf8"));
+  } catch {
+    return { pages: {} };
+  }
+}
+function writePublishes(ctx, obj) {
+  writeFileSync4(publishFile(ctx), JSON.stringify(obj, null, 2));
+}
+function templatesFile(ctx) {
+  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
+  const dir = join5(base, "bi");
+  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
+  return join5(dir, "templates.json");
+}
+function readTemplates(ctx) {
+  const f = templatesFile(ctx);
+  if (!existsSync4(f)) return [];
+  try {
+    return JSON.parse(readFileSync3(f, "utf8"));
+  } catch {
+    return [];
+  }
+}
+function writeTemplates(ctx, list2) {
+  writeFileSync4(templatesFile(ctx), JSON.stringify(list2, null, 2));
+}
+function shortCode(len = 6) {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let s = "";
+  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
 function dragRoutes(ctx) {
   return [
     // ── 创建空白页面 ──
@@ -98929,12 +99025,7 @@ function dragRoutes(ctx) {
       const id = genId2();
       const page = emptyPage(id, body);
       writePage(ctx, page);
-      return pageResp({
-        id,
-        updateCount: page.updateCount,
-        path: page.path,
-        name: page.name
-      });
+      return pageResp({ id, updateCount: page.updateCount, path: page.path, name: page.name });
     }],
     // ── 查询页面详情 ──
     ["/drag/page/queryById", "GET", true, async ({ query }) => {
@@ -98944,7 +99035,7 @@ function dragRoutes(ctx) {
       if (!page) return pageErr(`\u9875\u9762\u4E0D\u5B58\u5728: ${id}`, "NOT_FOUND");
       return pageResp(page);
     }],
-    // ── 保存页面（整页覆盖写 template）──
+    // ── 保存页面 ──
     ["/drag/page/edit", "POST", true, async ({ body }) => {
       const id = body?.id;
       if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
@@ -98958,11 +99049,7 @@ function dragRoutes(ctx) {
       if (body.desJson !== void 0) page.desJson = body.desJson;
       if (body.template !== void 0) page.template = body.template;
       const clientCount = Number(body.updateCount ?? 0);
-      if (clientCount >= page.updateCount) {
-        page.updateCount = clientCount + 1;
-      } else {
-        page.updateCount += 1;
-      }
+      page.updateCount = Math.max(page.updateCount + 1, clientCount + 1);
       page.updateTime = (/* @__PURE__ */ new Date()).toISOString();
       writePage(ctx, page);
       return pageResp({ updateCount: page.updateCount });
@@ -98996,13 +99083,7 @@ function dragRoutes(ctx) {
         createTime: p.createTime,
         visits: p.visits ?? 0
       }));
-      return pageResp({
-        records: slice,
-        total,
-        size: pageSize,
-        pages: Math.ceil(total / pageSize) || 1,
-        current: pageNo
-      });
+      return pageResp({ records: slice, total, size: pageSize, pages: Math.ceil(total / pageSize) || 1, current: pageNo });
     }],
     // ── 复制页面 ──
     ["/drag/page/copyPage", "GET", true, async ({ query }) => {
@@ -99031,7 +99112,6 @@ function dragRoutes(ctx) {
       if (existsSync4(file)) unlinkSync2(file);
       return pageResp(true);
     }],
-    // ── 软删除（本地 = 物理删除）──
     ["/drag/page/delete", "DELETE", true, async ({ query }) => {
       const id = query?.id;
       if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
@@ -99039,9 +99119,7 @@ function dragRoutes(ctx) {
       if (existsSync4(file)) unlinkSync2(file);
       return pageResp(true);
     }],
-    // ── 恢复（no-op）──
     ["/drag/page/recoveryDelete", "POST", true, async () => pageResp(true)],
-    // ── 访问计数（no-op）──
     ["/drag/page/addVisitsNumber", "POST", true, async ({ body }) => {
       const id = body?.id;
       if (!id) return pageResp(true);
@@ -99052,14 +99130,162 @@ function dragRoutes(ctx) {
       }
       return pageResp(true);
     }],
-    // ── 数据集 stub（让 script_builder.py 等不报错）──
+    // ── 数据集 stub ──
     ["/drag/onlDragDatasetHead/list", "GET", true, async () => pageResp({ records: [], total: 0 })],
     ["/drag/onlDragDatasetHead/add", "POST", true, async () => pageResp({ id: genId2() })],
     ["/drag/onlDragDatasetHead/edit", "POST", true, async () => pageResp(true)],
     ["/drag/onlDragDatasetHead/delete", "DELETE", true, async () => pageResp(true)],
     ["/drag/onlDragDatasetHead/queryFieldBySql", "GET", true, async () => pageResp([])],
     ["/drag/onlDragDataSource/getOptions", "GET", true, async () => pageResp([])],
-    ["/drag/jimuDragMap/list", "GET", true, async () => pageResp({ records: [], total: 0 })]
+    ["/drag/jimuDragMap/list", "GET", true, async () => pageResp({ records: [], total: 0 })],
+    // ════════════════════════════════════════════════════════════════════
+    // Phase B-1 · 数据源 CRUD（bi-editor 左栏数据源列表）
+    // ════════════════════════════════════════════════════════════════════
+    ["/drag/datasource/list", "GET", true, async () => pageResp(readDatasources(ctx))],
+    ["/drag/datasource/add", "POST", true, async ({ body }) => {
+      const list2 = readDatasources(ctx);
+      const ds = {
+        id: genId2(),
+        name: body?.name ?? "\u672A\u547D\u540D",
+        type: body?.type ?? "mysql",
+        host: body?.host ?? "",
+        port: body?.port ?? 3306,
+        database: body?.database ?? "",
+        status: "connected",
+        createTime: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      list2.push(ds);
+      writeDatasources(ctx, list2);
+      return pageResp(ds);
+    }],
+    ["/drag/datasource/edit", "POST", true, async ({ body }) => {
+      const list2 = readDatasources(ctx);
+      const i = list2.findIndex((d) => d.id === body?.id);
+      if (i < 0) return pageErr("\u6570\u636E\u6E90\u4E0D\u5B58\u5728", "NOT_FOUND");
+      list2[i] = { ...list2[i], ...body };
+      writeDatasources(ctx, list2);
+      return pageResp(list2[i]);
+    }],
+    ["/drag/datasource/delete", "DELETE", true, async ({ query }) => {
+      const id = query?.id;
+      const list2 = readDatasources(ctx).filter((d) => d.id !== id);
+      writeDatasources(ctx, list2);
+      return pageResp(true);
+    }],
+    // ════════════════════════════════════════════════════════════════════
+    // Phase B-2 · Run 日志（append-only，workbench 右侧"最近运行"）
+    // ════════════════════════════════════════════════════════════════════
+    ["/drag/runlog/list", "GET", true, async ({ query }) => {
+      const limit = Number(query?.limit ?? 20);
+      const all = readRunlogs(ctx);
+      const recent = all.slice(-limit).reverse();
+      return pageResp({ records: recent, total: all.length });
+    }],
+    ["/drag/runlog/add", "POST", true, async ({ body }) => {
+      const list2 = readRunlogs(ctx);
+      const log = {
+        id: genId2(),
+        pageId: body?.pageId,
+        pageName: body?.pageName ?? "\u672A\u547D\u540D",
+        detail: body?.detail ?? "",
+        cost: body?.cost ?? "\u2014",
+        state: body?.state ?? "\u6210\u529F",
+        createTime: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      list2.push(log);
+      writeRunlogs(ctx, list2);
+      return pageResp(log);
+    }],
+    // ════════════════════════════════════════════════════════════════════
+    // Phase B-3 · 分享链接（permanent + timed）
+    // ════════════════════════════════════════════════════════════════════
+    ["/drag/sharelink/list", "GET", true, async ({ query }) => {
+      const pageId = query?.pageId;
+      const all = readSharelinks(ctx);
+      const filtered = pageId ? all.filter((s) => s.pageId === pageId) : all;
+      return pageResp(filtered);
+    }],
+    ["/drag/sharelink/create", "POST", true, async ({ body }) => {
+      const list2 = readSharelinks(ctx);
+      const type = body?.type ?? "permanent";
+      const link = {
+        id: genId2(),
+        pageId: body?.pageId,
+        path: body?.path ?? `bi.local/${type === "permanent" ? "d" : "s"}/${shortCode()}`,
+        type,
+        expiresAt: type === "timed" ? body?.expiresAt ?? new Date(Date.now() + 7 * 24 * 3600 * 1e3).toISOString() : null,
+        password: body?.password ?? null,
+        createTime: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      list2.push(link);
+      writeSharelinks(ctx, list2);
+      return pageResp(link);
+    }],
+    ["/drag/sharelink/revoke", "POST", true, async ({ body }) => {
+      const list2 = readSharelinks(ctx).filter((s) => s.id !== body?.id);
+      writeSharelinks(ctx, list2);
+      return pageResp(true);
+    }],
+    // ════════════════════════════════════════════════════════════════════
+    // Phase B-4 · 工作树发布状态
+    // ════════════════════════════════════════════════════════════════════
+    ["/drag/worktree/status", "GET", true, async () => {
+      const pagesDir_ = pagesDir(ctx);
+      const files = existsSync4(pagesDir_) ? readdirSync2(pagesDir_).filter((f) => f.endsWith(".json")) : [];
+      const publish = readPublishes(ctx);
+      const pages = [];
+      let dirty = 0;
+      for (const f of files) {
+        const p = readPage(ctx, f.replace(/\.json$/, ""));
+        if (!p) continue;
+        const pub = publish.pages[p.id];
+        const isDirty = !pub || pub.updateCount < p.updateCount;
+        if (isDirty) dirty++;
+        pages.push({
+          id: p.id,
+          name: p.name,
+          style: p.style,
+          updateCount: p.updateCount,
+          publishedCount: pub?.updateCount ?? 0,
+          publishedAt: pub?.publishTime ?? null,
+          dirty: isDirty
+        });
+      }
+      return pageResp({ pages, dirtyCount: dirty });
+    }],
+    ["/drag/worktree/publish", "POST", true, async ({ body }) => {
+      const ids = body?.pageIds ?? [];
+      const publish = readPublishes(ctx);
+      for (const id of ids) {
+        const p = readPage(ctx, id);
+        if (p) {
+          publish.pages[id] = { updateCount: p.updateCount, publishTime: (/* @__PURE__ */ new Date()).toISOString() };
+        }
+      }
+      writePublishes(ctx, publish);
+      return pageResp({ published: ids.length });
+    }],
+    // ════════════════════════════════════════════════════════════════════
+    // Phase C2-模板系统
+    // ════════════════════════════════════════════════════════════════════
+    ["/drag/template/list", "GET", true, async () => pageResp(readTemplates(ctx))],
+    ["/drag/template/save", "POST", true, async ({ body }) => {
+      const list2 = readTemplates(ctx);
+      const tpl = {
+        id: genId2(),
+        name: body?.name ?? "\u672A\u547D\u540D\u6A21\u677F",
+        template: body?.template ?? JSON.stringify({ nodes: {}, links: [] }),
+        createTime: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      list2.push(tpl);
+      writeTemplates(ctx, list2);
+      return pageResp(tpl);
+    }],
+    ["/drag/template/delete", "DELETE", true, async ({ query }) => {
+      const list2 = readTemplates(ctx).filter((t) => t.id !== query?.id);
+      writeTemplates(ctx, list2);
+      return pageResp(true);
+    }]
   ];
 }
 

@@ -10,6 +10,7 @@ import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE } from "
 import { AreaChart, Donut, SERIES } from "./charts";
 import { Chip } from "./ui/chip";
 import { AiNodePanel } from "./ai-node-panel";
+import { engineRequest } from "../../../shared/services/engine-client";
 
 // ── 类型 ──
 export interface NodePos {
@@ -145,7 +146,26 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 		const data = e.dataTransfer?.getData("application/json");
 		if (!data) return;
 		try {
-			const payload = JSON.parse(data) as { nodeType?: string; label?: string; icon?: string };
+			const payload = JSON.parse(data) as { kind?: string; nodeType?: string; templateId?: string };
+
+			// ── 模板拖入 → 整个画布替换 ──
+			if (payload.kind === "template" && payload.templateId) {
+				engineRequest<{ id: string; name: string; template: string }[]>(`/drag/template/list`, undefined, { method: "GET" })
+					.then((list) => {
+						const tpl = list?.find((t) => t.id === payload.templateId);
+						if (!tpl) return;
+						try {
+							const obj = JSON.parse(tpl.template) as { nodes: Record<string, NodePos>; links: Link[] };
+							if (obj && typeof obj === "object" && "nodes" in obj) {
+								setNodes(obj.nodes);
+								setLinks(obj.links ?? []);
+							}
+						} catch { /* ignore bad template JSON */ }
+					});
+				return;
+			}
+
+			// ── 单节点拖入 ──
 			const type = payload.nodeType;
 			if (!type) return;
 			const rect = canvasRef.current?.getBoundingClientRect();

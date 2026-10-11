@@ -49,10 +49,32 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 	const [loading, setLoading] = useState(true);
 	const [dirty, setDirty] = useState(false);
 	const [activeTheme, setActiveTheme] = useState<"dark" | "default">("dark");
+	const [templates, setTemplates] = useState<{ id: string; name: string; template: string; createTime: string }[]>([]);
 
 	// ── 画布状态（从 template 反序列化 / 持久化目标） ──
 	const [nodes, setNodes] = useState<Record<string, NodePos>>(() => INITIAL_NODES as Record<string, NodePos>);
 	const [links, setLinks] = useState<Link[]>(() => INITIAL_LINKS);
+
+	// ── 加载模板库 ──
+	function loadTemplates() {
+		engineRequest<{ id: string; name: string; template: string; createTime: string }[]>("/drag/template/list", undefined, { method: "GET" })
+			.then((list) => setTemplates(list ?? []))
+			.catch(() => { /* 静默 */ });
+	}
+	function saveCurrentAsTemplate() {
+		const name = prompt("模板名称？", `${page?.name ?? "未命名"} 模板`);
+		if (!name) return;
+		const tpl = JSON.stringify({ nodes, links });
+		engineRequest<{ id: string }>("/drag/template/save", { name, template: tpl })
+			.then(() => { loadTemplates(); })
+			.catch((e) => { console.error("保存模板失败", e); });
+	}
+	function deleteTemplate(id: string) {
+		engineRequest<boolean>(`/drag/template/delete?id=${encodeURIComponent(id)}`, undefined, { method: "DELETE" })
+			.then(() => { loadTemplates(); })
+			.catch(() => { /* 静默 */ });
+	}
+	useEffect(() => { loadTemplates(); }, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -126,12 +148,13 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				onThemeChange={setActiveTheme}
 				onSave={handleSave}
 				onRename={(n: string) => { setPage({ ...page, name: n }); setDirty(true); }}
+				onSaveTemplate={saveCurrentAsTemplate}
 			/>
 
 			{/* 主体三栏 */}
 			<div className="flex min-h-0 flex-1">
-				{/* 左栏：节点库 */}
-				<NodeLibrary />
+				{/* 左栏：节点库 + 我的模板 */}
+				<NodeLibrary templates={templates} onDeleteTemplate={deleteTemplate} />
 
 				{/* 中栏：画布 */}
 				<div className="flex min-w-0 flex-1 flex-col">

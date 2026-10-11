@@ -16,6 +16,7 @@ export function BigscreenToolbar({
 	onThemeChange,
 	onSave,
 	onRename,
+	onSaveTemplate,
 }: {
 	pageName: string;
 	theme: "dark" | "default";
@@ -24,6 +25,7 @@ export function BigscreenToolbar({
 	onThemeChange: (t: "dark" | "default") => void;
 	onSave: () => void;
 	onRename: (n: string) => void;
+	onSaveTemplate?: () => void;
 }): JSX.Element {
 	const [editingName, setEditingName] = useState(false);
 	const [nameDraft, setNameDraft] = useState(pageName);
@@ -97,6 +99,16 @@ export function BigscreenToolbar({
 				>
 					⚡ AI 生成节点
 				</button>
+				{onSaveTemplate ? (
+					<button
+						type="button"
+						className="flex h-7 items-center gap-1.5 rounded-control border border-border bg-surface px-2.5 text-[12px] text-muted hover:border-border-strong hover:text-surface-foreground"
+						onClick={onSaveTemplate}
+						title="把当前画布保存为模板（NodeLibrary 底部可见）"
+					>
+						📐 保存为模板
+					</button>
+				) : null}
 			</div>
 
 			{/* 右：主题切换 */}
