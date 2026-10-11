@@ -21,7 +21,7 @@
         },
         {
           "title": "Dashboards, big screens and 11 chart types",
-          "description": "Ask AI to chart a query result and the artifact lands under \"BI data assets\": dashboards for reading, big screens for wall display. Line, bar, pie, doughnut, polar area, radar, scatter and bubble from Chart.js, plus funnel, boxplot and metric cards."
+          "description": "Ask AI to chart a query result and the artifact lands under \"BI\": dashboards for reading, big screens for wall display. Line, bar, pie, doughnut, polar area, radar, scatter and bubble from Chart.js, plus funnel, boxplot and metric cards."
         },
         {
           "title": "Dataset filters, refetch and lineage",
@@ -43,7 +43,7 @@
         { "title": "Open the workbench", "description": "Install dbx-pro from the marketplace and open its activity tab. The engine starts with the plugin, so there is no separate CLI to install." },
         { "title": "Add a connection", "description": "Click \"Connect\" in the top right, pick a database type and fill in the fields; for SQLite just choose a file." },
         { "title": "Run a query", "description": "Type SQL and press ⌘/Ctrl+Enter. If the statement writes or changes schema, confirm it in the dialog that appears." },
-        { "title": "Turn it into a dashboard", "description": "Ask AI to chart the result. The artifact appears under BI data assets, where you can filter it, refetch it, check its lineage, or export one offline HTML file." }
+        { "title": "Turn it into a dashboard", "description": "Ask AI to chart the result. The artifact appears under the BI tab, where you can filter it, refetch it, check its lineage, or export one offline HTML file." }
       ]
     },
     {
