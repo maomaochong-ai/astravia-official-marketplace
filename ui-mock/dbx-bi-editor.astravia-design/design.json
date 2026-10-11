@@ -2,43 +2,99 @@
 	"version": 1,
 	"type": "astravia-design",
 	"canvas": {
-		"zoom": 0.5402533314349318,
-		"x": 131.17022153720336,
-		"y": 210.26659474995824
+		"x": -391.9241920707864,
+		"y": -3057.334948423157,
+		"zoom": 0.05
 	},
 	"frames": [
 		{
+			"id": "agent",
+			"file": "frames/agent.tsx",
+			"x": 18280,
+			"y": 0,
+			"width": 1440,
+			"height": 1000,
+			"title": "BI · 智能体对话生成看板与大屏",
+			"meta": {
+				"width": 1440,
+				"height": 1000,
+				"title": "BI · 智能体对话生成看板与大屏"
+			}
+		},
+		{
+			"id": "ai-node",
+			"file": "frames/ai-node.tsx",
+			"x": 19800,
+			"y": 0,
+			"width": 1440,
+			"height": 1000,
+			"title": "BI · 节点参数与 AI 填参",
+			"meta": {
+				"width": 1440,
+				"height": 1000,
+				"title": "BI · 节点参数与 AI 填参"
+			}
+		},
+		{
 			"id": "back-button",
 			"file": "frames/back-button.tsx",
-			"x": 1472,
+			"x": 21320,
 			"y": 0,
-			"width": 1488,
+			"width": 1440,
 			"height": 1000,
 			"title": "BI · 顶栏返回按钮",
 			"meta": {
 				"width": 1440,
-				"height": 820,
+				"height": 1000,
 				"title": "BI · 顶栏返回按钮"
+			}
+		},
+		{
+			"id": "bigscreen",
+			"file": "frames/bigscreen.tsx",
+			"x": 22840,
+			"y": 0,
+			"width": 1440,
+			"height": 1000,
+			"title": "BI · 数据大屏（大屏节点）",
+			"meta": {
+				"width": 1440,
+				"height": 1000,
+				"title": "BI · 数据大屏（大屏节点）"
 			}
 		},
 		{
 			"id": "dashboard",
 			"file": "frames/dashboard.tsx",
-			"x": 3040,
+			"x": 24360,
 			"y": 0,
-			"width": 1480,
+			"width": 1440,
 			"height": 1000,
 			"title": "BI · 看板产物（运行结果）",
 			"meta": {
 				"width": 1440,
-				"height": 900,
+				"height": 1000,
 				"title": "BI · 看板产物（运行结果）"
+			}
+		},
+		{
+			"id": "data",
+			"file": "frames/data.tsx",
+			"x": 25880,
+			"y": 0,
+			"width": 1440,
+			"height": 1000,
+			"title": "BI · 数据源节点（三种来源）",
+			"meta": {
+				"width": 1440,
+				"height": 1000,
+				"title": "BI · 数据源节点（三种来源）"
 			}
 		},
 		{
 			"id": "editor",
 			"file": "frames/editor.tsx",
-			"x": 0,
+			"x": 27400,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -50,73 +106,73 @@
 			}
 		},
 		{
-			"id": "ta",
-			"file": "frames/ta.tsx",
-			"x": 4600,
+			"id": "menu",
+			"file": "frames/menu.tsx",
+			"x": 28920,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
-			"title": "T · 节点库",
+			"title": "BI · 画布右键添加节点",
 			"meta": {
 				"width": 1440,
 				"height": 1000,
-				"title": "T · 节点库"
+				"title": "BI · 画布右键添加节点"
 			}
 		},
 		{
-			"id": "tb",
-			"file": "frames/tb.tsx",
-			"x": 6120,
+			"id": "nodes",
+			"file": "frames/nodes.tsx",
+			"x": 30440,
 			"y": 0,
-			"width": 891,
+			"width": 1440,
 			"height": 1000,
-			"title": "T · 节点画布",
+			"title": "BI · 节点总览（全部节点类型）",
 			"meta": {
-				"width": 880,
-				"height": 900,
-				"title": "T · 节点画布"
-			}
-		},
-		{
-			"id": "tc",
-			"file": "frames/tc.tsx",
-			"x": 7080,
-			"y": 0,
-			"width": 360,
-			"height": 1000,
-			"title": "T · 节点参数",
-			"meta": {
-				"width": 360,
+				"width": 1440,
 				"height": 1000,
-				"title": "T · 节点参数"
+				"title": "BI · 节点总览（全部节点类型）"
 			}
 		},
 		{
-			"id": "td",
-			"file": "frames/td.tsx",
-			"x": 7520,
+			"id": "run",
+			"file": "frames/run.tsx",
+			"x": 31960,
 			"y": 0,
 			"width": 1440,
-			"height": 200,
-			"title": "T · 画布头与状态栏",
+			"height": 1000,
+			"title": "BI · 单节点与全部运行",
 			"meta": {
 				"width": 1440,
-				"height": 200,
-				"title": "T · 画布头与状态栏"
+				"height": 1000,
+				"title": "BI · 单节点与全部运行"
 			}
 		},
 		{
-			"id": "te",
-			"file": "frames/te.tsx",
-			"x": 9040,
+			"id": "share",
+			"file": "frames/share.tsx",
+			"x": 33480,
 			"y": 0,
 			"width": 1440,
-			"height": 900,
-			"title": "T · 磁贴",
+			"height": 1000,
+			"title": "BI · 发布到工作树与分享",
 			"meta": {
 				"width": 1440,
-				"height": 900,
-				"title": "T · 磁贴"
+				"height": 1000,
+				"title": "BI · 发布到工作树与分享"
+			}
+		},
+		{
+			"id": "workbench",
+			"file": "frames/workbench.tsx",
+			"x": 16760,
+			"y": 0,
+			"width": 1440,
+			"height": 1000,
+			"title": "BI · 工作台入口（点 BI 按钮之后）",
+			"meta": {
+				"width": 1440,
+				"height": 1000,
+				"title": "BI · 工作台入口（点 BI 按钮之后）"
 			}
 		}
 	],

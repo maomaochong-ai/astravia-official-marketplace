@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "meta": {
+    "input": "/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia-official-marketplace/ui-mock/dbx-bi-editor.astravia-design/.tmpcheck/editor2.png",
+    "totalPages": 1,
+    "processedPages": 1,
+    "textLayerPages": 0,
+    "ocrPages": 1,
+    "engine": "ocr-web@0.2.1+ppocrv5",
+    "durationMs": 9465,
+    "startedAt": "2026-10-11T15:53:47.462Z"
+  },
+  "pages": [
+    {
+      "page": 1,
+      "text": "渠道经营看板\n看板\n● 未保存的更改\n6 节点·3 页·上次保存10:24\n5\nC\n品 自动布局\n深色\n浅色\n% AI生成节点\n四\n 预览产物\n 运行画布\n同保存\n乏节点库\n18 个\n 概览\n第1/ 3页\n6 节点·5连接\n调色板\n·科技\n网格\n16\n8\n关\n适配视图\n100%\n+\n指\n节点参数\n1个节点已选中\nQ 搜索节点\n折线图·GMV趋势\n图表与产物 3\n石\nchartjs ·line·node_7f2a\n白\n数据源2\n但SQL查询1\n从数据集生成\nGMV趋势\nchartjs ·\nline\n插件工作台已连接的库·直接起图\n曰\norders_daily\ndataset\ngmv_14d\nsa\n参数\n样式\n数据\n输出\n结果集\ngmv_14d\n数据源\n表\npublic.orders\n·表\norders_daily\n输入\n上游节点提供\n维度\nd·日期\n曰数据集\n连接\n插件工作台·MySQL\n结果集\n14×2\nAI生成\n数值\ngmv·求和\n目\ngmv_14d\n规模\n1,284行·日粒度\nSQL\n查询\n·14行×2列\n.10:24\nC\n×\n但 SQL查询\n+\nselect d,\nsum(gmv) as gmv\nfrom public.orders\n图形\n折线\n面积\n三 筛选器\nwhere \ncurrent_date -\n输出去向\n看板·概览\n输出\n渲染到看板\n9\n看板·概览\n图表\n品\n自动布局\n第2行\n·1 个产物\n~\n折线图\n参数\n改完立即重绘\n山\n柱状图\n后弓D…\n维度\nd\n日期\nc\n环形图\n看板产物\noutpu\"\n数值\ngmv\n求和\n漏斗图\n⚫ 折线图\nGMV趋势\n…\n散点图\n图形\n面积\n折线/面积/阶梯\n 环形图\n渠道构成\n.\n指标卡\n+添加参数\n控件\n结果预览\n上游结果集前3 行\n查询控件\nd\ngmv\norders\nＴ文本\n 运行画布\n渠道构成\ndoughnut\n10-08\n72.4 万\n412\n囧日期范围\n曰\nchannel_sh.\ndataset\n10-09\n69.1 万\n398\n 结果集\nchannel_share\n10-10\n83.2万\n446\n输出\n表\npublic.channel_d.\n维度\nchannel\n品看板产物\n+\n连接\n插件工作台·MySQL\n数值\nshare·占比\n节点筛选\n前端过滤·不重跑 SQL\n品多页看板\n规模\n6行·渠道\n输出去向\n看板·概览\nchannel\n等值多选 3 ／ 6\n高级组件\ntotal_am….\n≥100\nAI生成节点\n写 SQL\n8\n统计摘要\n+添加筛选\n品页签容器\n自 插件工作台·MySQL\norders_daily v\n布局\n田明细表格\n近 14 天 GMV 折线图，渠道用环形图\n画布坐标\n×436 ·y 40 ·216×222\n囧 日期选择\n1\nselect d, sum(gmv) as gmv\n吸附到网格\nfrom public.orders\nwhere d >= current _date\n- 14\n锁定宽高比\n•\n浓生成节点\n+\n插入画布\n 拖到画布添加节点·双击插入\n 改动即时重绘·不回数据库\n●已运行·10:24·1.2s\n⚫1个变更未运行\n节点6·连接5·产物 3 页\n产物页面\n概览·×\n渠道明细\n城市分布\n+\n自动保存已开启·10:24\n1",
+      "width": 2880,
+      "height": 2000,
+      "source": "ocr",
+      "ocrDurationMs": 7425,
+      "confidence": 72
+    }
+  ]
+}

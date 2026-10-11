@@ -1,4 +1,4 @@
-export const frame = { width: 1440, height: 820, title: "BI · 顶栏返回按钮" };
+export const frame = { width: 1440, height: 1000, title: "BI · 顶栏返回按钮" };
 
 import Icon from "../components/Icon";
 import EditorToolbar from "../components/editor/EditorToolbar";
@@ -51,6 +51,12 @@ const BEHAVIORS = [
 	["键盘", "⌘[ 与点击等效；⌘S 只保存、不离开"],
 	["回到哪里", "列表保留上次的搜索、筛选与页码"],
 	["无障碍", "title 即 aria-label「返回 BI 数据资产」"],
+];
+
+const EXITS = [
+	["保存中", "按钮转 faint 且忽略点击 —— 半保存状态下离开会丢改动"],
+	["有未保存", "先三选一：保存并离开 / 不保存离开 / 取消，默认聚焦第一项"],
+	["从产物进来", "同一颗按钮回到产物列表，不回 BI 资产 —— 来处即去处"],
 ];
 
 const TICKS = [0, 12, 40, 48];
@@ -208,6 +214,18 @@ export default function BackButton() {
 								<span className="font-mono text-[10px] leading-relaxed text-faint">
 									{s.note}
 								</span>
+							</div>
+						))}
+					</div>
+				</section>
+
+				<section className="flex shrink-0 flex-col gap-2">
+					<SectionTitle title="出口的边界" note="它不修改看板，只负责离开" />
+					<div className="grid grid-cols-3 gap-3">
+						{EXITS.map(([k, v]) => (
+							<div key={k} className="flex flex-col gap-1.5 rounded-card border border-border bg-surface p-3">
+								<span className="text-[12px] font-medium">{k}</span>
+								<span className="text-[11px] leading-relaxed text-muted">{v}</span>
 							</div>
 						))}
 					</div>

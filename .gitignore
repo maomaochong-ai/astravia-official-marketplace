@@ -14,3 +14,4 @@ __pycache__/
 # Test outputs (build engine / script artifacts)
 output/
 .pycache__/
+ui-mock-dbx-bi-editor.astravia-design/history

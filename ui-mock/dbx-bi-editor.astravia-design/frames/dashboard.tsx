@@ -1,4 +1,4 @@
-export const frame = { width: 1440, height: 900, title: "BI · 看板产物（运行结果）" };
+export const frame = { width: 1440, height: 1000, title: "BI · 看板产物（运行结果）" };
 
 import Chip from "../components/Chip";
 import IconButton from "../components/IconButton";

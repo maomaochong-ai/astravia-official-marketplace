@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "meta": {
+    "input": "/Users/zhugeyue/Desktop/project/bigdate/source-code/astravia-official-marketplace/ui-mock/dbx-bi-editor.astravia-design/.tmpcheck/workbench.png",
+    "totalPages": 1,
+    "processedPages": 1,
+    "textLayerPages": 0,
+    "ocrPages": 1,
+    "engine": "ocr-web@0.2.1+ppocrv5",
+    "durationMs": 7892,
+    "startedAt": "2026-10-11T15:15:56.799Z"
+  },
+  "pages": [
+    {
+      "page": 1,
+      "text": "渠道经营看板\n看板\n● 未保存的更改\n6 节点·3页·上次保存10:24\n5\nC\n品自动布局\n深色浅色\n% AI生成节点\n西\n品 预览产物\n 运行画布\n同保存\n白\n智能体会话\n宿主模型\n工作树·只读\n吕 画布·草稿区\nAI已插入3 个节点\n4 个待确认\n100%\n上一季度的渠道经营做一个大屏，重点看华东和抖\nline_gmv_14d\n折线图\n音，深色底，数字要大。\n目\nods_orders\n数据源\n但\nds_orders\n数据集\n●×轴\ndate\n 先把计划列出来，每一步都落在画布上真实存在的节点上：\n连接\nprod-mysql\n·字段\n8列\nY轴\ngmv\n模式\n直连·不落库\n来源\nAI写的 SQL\n 接上数据源ods_orders\n已完成\n对比\n去年同期\n 写 SQL汇总出 ds_orders\n已完成\n 生成 3 个图表节点\n已完成\nC donut_channel\n环图\n兴 搭大屏骨架（标题 +4 指标卡+排行榜)\n进行中\n维度\nchannel\n 绑定筛选器与日期区间\n待办\n高亮\n抖音·华东\n 发布到工作树并给出链接\n待办\n调色板\n科技\n需要你确认\n大屏放8 个节点：标题条+ 4 张指标卡+ 折线+ 漏斗+排行榜。\nAI待插入·大屏4个节点 4\n主色沿用科技色，阈值：GMV低于60万标黄。\n 大屏标题\nC\n大屏指标卡×2\n①\n三大屏排行榜\n①\n田 插入画布并运行\n先看草稿\n不写库\n还可以说：把华东换成西南，指标卡留两张.\nEnter发送·Enter换行\n发送\n8\n会话不直接改工作树；AI生成的节点先落在草稿区，确认后才接进主链路\n本次会话 #7f2a",
+      "width": 2880,
+      "height": 2000,
+      "source": "ocr",
+      "ocrDurationMs": 6161,
+      "confidence": 73
+    }
+  ]
+}
