@@ -15,3 +15,6 @@ dev-harness.html
 docs/research/
 
 agent/skills/jeecgboot-ref/
+
+__pycache__/
+*.pyc
