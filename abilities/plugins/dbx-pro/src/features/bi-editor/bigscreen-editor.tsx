@@ -21,6 +21,7 @@ import { BigscreenToolbar } from "./components/editor-toolbar";
 import { NodeLibrary } from "./components/node-library";
 import { CanvasPage } from "./components/canvas-page";
 import { PropertyInspector } from "./components/property-inspector";
+import { EditorStatusBar } from "./components/editor-status-bar";
 
 export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: () => void }): JSX.Element {
 	const [page, setPage] = useState<BigscreenPage | null>(null);
@@ -85,23 +86,17 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				{/* 左栏：节点库 */}
 				<NodeLibrary />
 
-				{/* 中栏：画布 + 状态栏 */}
+				{/* 中栏：画布 */}
 				<div className="flex min-w-0 flex-1 flex-col">
 					<CanvasPage theme={activeTheme} />
-					{/* 底栏状态栏 */}
-					<div className="flex h-7 shrink-0 items-center gap-3 border-t border-border bg-surface-raised px-3 text-[11px] text-muted">
-						<span className="font-mono text-faint">{page.id.slice(0, 8)}</span>
-						<span>·</span>
-						<span>{page.style === "bigScreen" ? "大屏" : "看板"}</span>
-						<span className="ml-auto font-mono tabular-nums text-faint">
-							{dirty ? "● 未保存" : "✓ 已同步"}
-						</span>
-					</div>
 				</div>
 
 				{/* 右栏：属性面板 */}
 				<PropertyInspector page={page} theme={activeTheme} onThemeChange={setActiveTheme} />
 			</div>
+
+			{/* 底栏状态栏（最外层）*/}
+			<EditorStatusBar dirty={dirty} nodeCount={6} linkCount={5} />
 		</div>
 	);
 }
