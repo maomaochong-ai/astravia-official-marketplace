@@ -1,0 +1,112 @@
+{
+  "title": "外呼中心运营看板",
+  "type": "dashboard",
+  "layout": "grid-3",
+  "connection_name": "pgsql-dev",
+  "table": "new_schema.new_table",
+  "charts": [
+    {
+      "type": "metric",
+      "title": "核心指标",
+      "description": "取数窗口 2026-10-08 09:00–14:25 · 全部 10 条外呼记录",
+      "data": {
+        "labels": ["外呼总量(通)", "接通通话(通)", "接通率(%)", "平均通话时长(秒)"],
+        "datasets": [{ "label": "", "data": [10, 6, 60, 99.6] }]
+      },
+      "options": { "figure": { "showDelta": false } }
+    },
+    {
+      "type": "funnel",
+      "title": "外呼转化漏斗",
+      "description": "外呼总量 → 接通 → 承诺还款",
+      "data": {
+        "labels": ["外呼总量", "接通通话", "承诺还款"],
+        "datasets": [{ "label": "通话量", "data": [10, 6, 3] }]
+      },
+      "options": { "figure": { "unit": "通" } }
+    },
+    {
+      "type": "doughnut",
+      "title": "接通状态分布",
+      "description": "已接通 6 通 / 未接通 4 通",
+      "data": {
+        "datasets": [
+          {
+            "label": "通话数",
+            "data": [
+              { "name": "已接通", "value": 6 },
+              { "name": "未接通", "value": 4 }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "bar",
+      "title": "各时段外呼量(通)",
+      "data": {
+        "labels": ["09时", "10时", "11时", "14时"],
+        "datasets": [{ "label": "外呼量", "data": [3, 3, 2, 2] }]
+      }
+    },
+    {
+      "type": "line",
+      "title": "各时段接通率(%)",
+      "data": {
+        "labels": ["09时", "10时", "11时", "14时"],
+        "datasets": [{ "label": "接通率", "data": [66.7, 66.7, 50, 50] }]
+      }
+    },
+    {
+      "type": "line",
+      "title": "各时段通话总时长(秒)",
+      "data": {
+        "labels": ["09时", "10时", "11时", "14时"],
+        "datasets": [{ "label": "通话总时长", "data": [335, 410, 96, 155] }]
+      }
+    },
+    {
+      "type": "doughnut",
+      "title": "通话结果分布",
+      "description": "10 通外呼的通话结果",
+      "data": {
+        "datasets": [
+          {
+            "label": "通话数",
+            "data": [
+              { "name": "承诺还款", "value": 3 },
+              { "name": "号码为空号", "value": 2 },
+              { "name": "需再次跟进", "value": 2 },
+              { "name": "无人接听", "value": 2 },
+              { "name": "拒绝还款", "value": 1 }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "bar",
+      "title": "通话时长分布(通)",
+      "data": {
+        "labels": ["不足1分钟", "1-2分钟", "2-3分钟", "3分钟以上"],
+        "datasets": [{ "label": "通话数", "data": [4, 2, 2, 2] }]
+      }
+    },
+    {
+      "type": "bar",
+      "title": "各部门通话量(通)",
+      "data": {
+        "labels": ["D001", "D002", "D003", "D004"],
+        "datasets": [{ "label": "外呼量", "data": [2, 3, 3, 2] }]
+      }
+    },
+    {
+      "type": "bar",
+      "title": "各部门通话时长(秒)",
+      "data": {
+        "labels": ["D001", "D002", "D003", "D004"],
+        "datasets": [{ "label": "通话总时长", "data": [125, 278, 438, 155] }]
+      }
+    }
+  ]
+}

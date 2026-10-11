@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "dbx-pro",
   "icon": "assets/icon.png",
-  "version": "0.4.13",
+  "version": "0.4.14",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -50,7 +50,7 @@
               "executable": "server/bin/dbx-mcp-darwin-arm64",
               "artifacts": [
                 {
-                  "sha256": "e0e1a769484db5159859cc42bfcbec617726473515301cc25feed0a9070270bf",
+                  "sha256": "449ae3b8bec6af9a1bcde63ff928d7eb042877c9ca01e333af36f6cb12d76dc5",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
@@ -65,7 +65,7 @@
               "executable": "server/bin/dbx-mcp-darwin-x64",
               "artifacts": [
                 {
-                  "sha256": "e0e1a769484db5159859cc42bfcbec617726473515301cc25feed0a9070270bf",
+                  "sha256": "449ae3b8bec6af9a1bcde63ff928d7eb042877c9ca01e333af36f6cb12d76dc5",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
@@ -80,7 +80,7 @@
               "executable": "server/bin/dbx-mcp-win-x64.exe",
               "artifacts": [
                 {
-                  "sha256": "e0e1a769484db5159859cc42bfcbec617726473515301cc25feed0a9070270bf",
+                  "sha256": "449ae3b8bec6af9a1bcde63ff928d7eb042877c9ca01e333af36f6cb12d76dc5",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },

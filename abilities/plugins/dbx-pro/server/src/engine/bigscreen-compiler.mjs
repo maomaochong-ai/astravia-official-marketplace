@@ -14,27 +14,29 @@
  * generateBigscreenHtml() 保留作调试/预览工具（不是主流程）。
  */
 
-import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+// ============ Defaults 内联（单一 bundle JSON）============
+// 所有 agent/skills/dbx-pro-bigscreen/scripts/defaults/*.json 由构建前脚本
+// bundle-defaults.mjs 打包为 _defaults-bundle.json（Python 三引号/4引号修复）。
+// esbuild 默认 JSON loader 内联为 default export → 运行时零文件 I/O。
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — ESM JSON import
+import _DEFAULTS_BUNDLE from "./_defaults-bundle.json";
 
-// ============ 路径与缓存 ============
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DEFAULTS_DIR = join(__dirname, "..", "..", "agent", "skills", "dbx-pro-bigscreen", "scripts", "defaults");
+const DEFAULTS_MAP = _DEFAULTS_BUNDLE;
 
-/** defaults/*.json 首次读盘后常驻深拷贝缓存（与 JeecgBoot 同策略）。 */
+/** defaults 深拷贝缓存（JeecgBoot 同策略）。 */
 const DEFAULTS_CACHE = new Map();
 
 function loadDef(compKey) {
 	let cached = DEFAULTS_CACHE.get(compKey);
 	if (cached === undefined) {
-		const path = join(DEFAULTS_DIR, `${compKey}.json`);
-		if (!existsSync(path)) { cached = null; DEFAULTS_CACHE.set(compKey, null); return null; }
-		cached = JSON.parse(readFileSync(path, "utf-8"));
+		const raw = DEFAULTS_MAP[compKey];
+		if (!raw) { cached = null; DEFAULTS_CACHE.set(compKey, null); return null; }
+		cached = raw;
 		DEFAULTS_CACHE.set(compKey, cached);
 	}
 	if (!cached) return null;
-	return JSON.parse(JSON.stringify(cached)); // deep copy
+	return JSON.parse(JSON.stringify(cached)); // 深拷贝防污染
 }
 
 // ============ Palettes（扩展到 6 套，JeecgBoot 只有 1 套 bg4）============
@@ -453,11 +455,10 @@ function handleGaugeLike(c, p, type) {
 // ============ 主分发器：compile_component ============
 
 function inferCompKey(type) {
-	// 变体支持：spec 里写 variant 时优先加载 <type>_<variant>.json
 	const variant = String(this.get?.("variant") ?? "").trim();
 	if (variant) {
 		const cand = `${type}_${variant}`;
-		if (DEFAULTS_CACHE.has(cand) || existsSync(join(DEFAULTS_DIR, `${cand}.json`))) return cand;
+		if (DEFAULTS_MAP[cand]) return cand;
 	}
 	return type;
 }
@@ -481,7 +482,7 @@ export function compileComponent(c, p) {
 	const variant = String(c.variant ?? "").trim();
 	if (variant) {
 		const cand = `${t}_${variant}`;
-		if (existsSync(join(DEFAULTS_DIR, `${cand}.json`))) compKey = cand;
+		if (DEFAULTS_MAP[cand]) compKey = cand;
 	}
 
 	let cfg;
