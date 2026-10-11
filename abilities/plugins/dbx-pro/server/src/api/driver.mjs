@@ -3,14 +3,15 @@
  *
  * 路由（无 /api 前缀，由 request-router 统一聚合）：
  *   POST /driver/status   列出所有托管驱动的安装状态
- *   POST /driver/install   下载安装指定驱动
+ *   POST /driver/install   下载安装指定驱动（异步，前端轮询进度）
  *   POST /driver/set-path  手动指定驱动路径（复制到标准驱动目录）
+ *   GET  /driver/install-status   查询单驱动安装状态（轮询专用）
+ *   POST /driver/reset-status     清除安装状态
  *
  * DuckDB 驱动背景：
  *   dbx-mcp 执行 API 数据源查询时需要 `duckdb_worker`——这其实是
  *   dbx Desktop 从 agents-release CI 产出的 `dbx-duckdb-driver`
- *   Rust binary（crates/dbx-drivers/src/db/duckdb_worker_process.rs 第 685-694 行
- *   通过 DBX_DUCKDB_DRIVER_PATH 环境变量查找）。产物命名：
+ *   Rust binary。产物命名：
  *     dbx-agent-duckdb-macos-aarch64
  *     dbx-agent-duckdb-macos-x64
  *     ...
@@ -26,6 +27,8 @@ import {
 	chmodSync,
 	statSync,
 	createWriteStream,
+	readFileSync,
+	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -64,12 +67,42 @@ const DRIVERS = [
 	},
 ];
 
-// ─── 进度状态（内存 Map，单进程生命周期足够） ───
+// ─── 进度状态（持久化到磁盘！避免进程重启丢失） ───
+// 之前用内存 Map，进程重启（插件热重载 / IDE 重启）状态就丢了，前端看到的就是
+// "运行中" → "又回到安装态"。修复：用状态文件 + 内存 Map 双写。
 
-const INSTALL_STATUS = new Map(); // key → { status, downloaded, total, error? }
+const STATUS_FILE = join(DRIVERS_ROOT, ".install-status.json");
+
+function ensureDriversRoot() {
+	if (!existsSync(DRIVERS_ROOT)) mkdirSync(DRIVERS_ROOT, { recursive: true });
+}
+
+function loadStatuses() {
+	try {
+		if (!existsSync(STATUS_FILE)) return new Map();
+		const raw = readFileSync(STATUS_FILE, "utf-8");
+		const obj = JSON.parse(raw);
+		const m = new Map();
+		for (const [k, v] of Object.entries(obj)) m.set(k, v);
+		return m;
+	} catch { return new Map(); }
+}
+
+function saveStatuses(map) {
+	try {
+		ensureDriversRoot();
+		const obj = Object.fromEntries(map);
+		writeFileSync(STATUS_FILE, JSON.stringify(obj, null, 2));
+	} catch { /* 磁盘写不进去就算了 */ }
+}
+
+const INSTALL_STATUS = loadStatuses();
 
 function getInstallStatus(key) { return INSTALL_STATUS.get(key) ?? { status: "idle", downloaded: 0, total: 0 }; }
-function setInstallStatus(key, val) { INSTALL_STATUS.set(key, val); }
+function setInstallStatus(key, val) {
+	INSTALL_STATUS.set(key, val);
+	saveStatuses(INSTALL_STATUS);
+}
 
 // ─── 工具 ───
 
@@ -95,6 +128,21 @@ export function driverRoutes() {
 				if (installed) { try { sizeBytes = statSync(binary).size; } catch { /* ignore */ } }
 				const platTag = releasePlatformTag();
 				const installUrl = platTag ? `${DBX_AGENTS_LATEST}/${d.releaseArtifact(platTag)}` : null;
+				const st = getInstallStatus(d.key);
+				// 进程重启后修复：磁盘上有二进制 + status 还是 downloading/installing → 修正为 done
+				if (installed && (st.status === "downloading" || st.status === "installing")) {
+					const finalSt = { status: "done", downloaded: sizeBytes ?? 0, total: sizeBytes ?? 0 };
+					setInstallStatus(d.key, finalSt);
+					return {
+						key: d.key, label: d.label, installed, installedPath: binary,
+						sizeBytes, envVar: d.envVar, description: d.description, expectedPath: binary,
+						reason: undefined, downloadUrl: installUrl, installStatus: finalSt,
+					};
+				}
+				// 进程重启后清理：磁盘没二进制 + status 不是 idle 超过 10 分钟 → 重置
+				if (!installed && st.status !== "idle" && st.startedAt && Date.now() - st.startedAt > 10 * 60 * 1000) {
+					setInstallStatus(d.key, { status: "idle", downloaded: 0, total: 0 });
+				}
 				return {
 					key: d.key, label: d.label, installed, installedPath: installed ? binary : undefined,
 					sizeBytes, envVar: d.envVar, description: d.description, expectedPath: binary,
@@ -112,8 +160,8 @@ export function driverRoutes() {
 
 			const binary = driverBinary(driverKey);
 			if (existsSync(binary)) {
-				// 已安装 — 只返回现状，不重新下载
-				return { ok: true, driverKey, installedPath: binary, note: "已存在" };
+				setInstallStatus(driverKey, { status: "done", downloaded: statSync(binary).size, total: statSync(binary).size });
+				return { ok: true, driverKey, installedPath: binary, note: "已存在", installStatus: getInstallStatus(driverKey) };
 			}
 
 			let downloadUrl = url;
@@ -123,16 +171,17 @@ export function driverRoutes() {
 				downloadUrl = `${DBX_AGENTS_LATEST}/${driver.releaseArtifact(platTag)}`;
 			}
 
-			// 检查是否已有正在进行的安装（同 key）
+			// 检查是否已有正在进行的安装
 			const existing = getInstallStatus(driverKey);
 			if (existing.status === "downloading" || existing.status === "installing") {
 				return { ok: true, driverKey, note: "已在安装中", installStatus: existing };
 			}
 
-			// 立即标记 downloading — 前端立即能看到状态
-			setInstallStatus(driverKey, { status: "downloading", downloaded: 0, total: 0 });
+			// 立即标记 downloading + 持久化 + 记录 startedAt
+			setInstallStatus(driverKey, { status: "downloading", downloaded: 0, total: 0, startedAt: Date.now() });
+			const startedAt = Date.now();
 
-			// **异步执行** — 不阻塞 HTTP 响应，前端可轮询 /driver/status
+			// 异步执行 — 不阻塞 HTTP 响应
 			(async () => {
 				try {
 					ensureDir(driverDir(driverKey));
@@ -142,13 +191,30 @@ export function driverRoutes() {
 							downloaded,
 							total,
 							percent: total > 0 ? Math.round((downloaded / total) * 100) : undefined,
+							startedAt,
 						});
 					});
-					setInstallStatus(driverKey, { status: "installing", downloaded: statSync(binary).size, total: statSync(binary).size });
+					setInstallStatus(driverKey, {
+						status: "installing",
+						downloaded: statSync(binary).size,
+						total: statSync(binary).size,
+						startedAt,
+					});
 					chmodSync(binary, 0o755);
-					setInstallStatus(driverKey, { status: "done", downloaded: statSync(binary).size, total: statSync(binary).size });
+					setInstallStatus(driverKey, {
+						status: "done",
+						downloaded: statSync(binary).size,
+						total: statSync(binary).size,
+						startedAt,
+					});
 				} catch (e) {
-					setInstallStatus(driverKey, { status: "error", downloaded: 0, total: 0, error: e.message });
+					setInstallStatus(driverKey, {
+						status: "error",
+						downloaded: INSTALL_STATUS.get(driverKey)?.downloaded ?? 0,
+						total: INSTALL_STATUS.get(driverKey)?.total ?? 0,
+						error: e.message,
+						startedAt,
+					});
 				}
 			})();
 
@@ -156,7 +222,7 @@ export function driverRoutes() {
 				ok: true,
 				driverKey,
 				note: "下载已开始，轮询 /driver/status 查看进度",
-				installStatus: { status: "downloading", downloaded: 0, total: 0 },
+				installStatus: getInstallStatus(driverKey),
 			};
 		}],
 
@@ -169,7 +235,7 @@ export function driverRoutes() {
 		["/driver/set-path", "POST", true, async ({ body }) => {
 			const { driverKey, path } = body || {};
 			const driver = findDriver(driverKey);
-			if (!driver) return { ok: false, error: `未知驱动: ${driverKey}` };
+			if (!driver) return { ok: false, driverKey, error: `未知驱动: ${driverKey}` };
 			if (!path) return { ok: false, error: "缺少 path 参数" };
 			if (!existsSync(path)) return { ok: false, error: `文件不存在: ${path}` };
 			ensureDir(driverDir(driverKey));
@@ -189,22 +255,18 @@ export function driverRoutes() {
 			const key = body?.driverKey;
 			if (key) INSTALL_STATUS.delete(key);
 			else INSTALL_STATUS.clear();
+			saveStatuses(INSTALL_STATUS);
 			return { ok: true };
 		}],
 	];
 }
 
-// ─── 流式下载（ReadableStream + progress callback + 60s timeout） ───
+// ─── 流式下载（ReadableStream + progress callback + 无硬超时） ───
+// 之前 60s AbortController 对 GitHub release 跨洋下载根本不够，
+// 直接移除硬超时，让下载自然结束。进程重启时状态持久化不丢。
 
 async function downloadFileStreaming(url, destPath, onProgress) {
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), 60_000);
-	let resp;
-	try {
-		resp = await fetch(url, { redirect: "follow", signal: controller.signal });
-	} finally {
-		clearTimeout(timeout);
-	}
+	const resp = await fetch(url, { redirect: "follow" });
 	if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
 	const total = Number(resp.headers.get("content-length") ?? 0);
 	onProgress(0, total);

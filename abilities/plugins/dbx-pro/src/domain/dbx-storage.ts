@@ -126,6 +126,7 @@ async function migrateLegacyPlaintext(localList: DbConnection[]): Promise<void> 
 
 /** 读：优先引擎服务，密码从加密 vault 补全；引擎服务不可用时 fallback 镜像 + vault。 */
 export async function readAllConfigs(): Promise<DbConnection[]> {
+	let candidates: DbConnection[] = [];
 	try {
 		const { connections } = await engineListConnections();
 		const serverList = connections
@@ -135,22 +136,29 @@ export async function readAllConfigs(): Promise<DbConnection[]> {
 		let localList: DbConnection[] = [];
 		try { localList = await readLocalOnly(); } catch { /* ignore */ }
 
-		const merged = dedupByName(mergeWithLocalMirror(serverList, localList)).sort((a, b) => a.name.localeCompare(b.name));
+		// 先各自去重，再合并 —— 防止 serverList 或 localList 内部自己有重复
+		const dedupedServer = dedupByName(serverList);
+		const dedupedLocal = dedupByName(localList);
+		const merged = dedupByName(mergeWithLocalMirror(dedupedServer, dedupedLocal))
+			.sort((a, b) => a.name.localeCompare(b.name));
 		await migrateLegacyPlaintext(localList);
-		return Promise.all(merged.map((c) => attachPassword(c)));
+		candidates = merged;
 	} catch (e) {
 		if (!(e instanceof EngineClientError)) throw e;
+		try {
+			const doc = await readJsonFile<{ connections?: DbConnection[] }>(getStorage(), STORE_PATH);
+			const list = Array.isArray(doc?.connections) ? doc!.connections : [];
+			const filtered = dedupByName(list)
+				.filter((c): c is DbConnection => Boolean(c && typeof c.id === "string" && typeof c.name === "string"))
+				.sort((a, b) => a.name.localeCompare(b.name));
+			candidates = filtered;
+		} catch {
+			candidates = [];
+		}
 	}
-	try {
-		const doc = await readJsonFile<{ connections?: DbConnection[] }>(getStorage(), STORE_PATH);
-		const list = Array.isArray(doc?.connections) ? doc!.connections : [];
-		const filtered = dedupByName(list)
-			.filter((c): c is DbConnection => Boolean(c && typeof c.id === "string" && typeof c.name === "string"))
-			.sort((a, b) => a.name.localeCompare(b.name));
-		return Promise.all(filtered.map((c) => attachPassword(c)));
-	} catch {
-		return [];
-	}
+	// 最终兜底 dedup —— 无论上面哪条路径漏了，出去时绝对干净
+	const final = dedupByName(candidates);
+	return Promise.all(final.map((c) => attachPassword(c)));
 }
 
 /** 写：引擎服务 + 加密 vault 存密码；镜像只存非密元数据。 */

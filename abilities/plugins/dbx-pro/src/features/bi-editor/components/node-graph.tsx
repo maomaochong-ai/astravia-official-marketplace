@@ -10,6 +10,7 @@ import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE } from "
 import { AreaChart, Donut, SERIES } from "./charts";
 import { Chip } from "./ui/chip";
 import { AiNodePanel } from "./ai-node-panel";
+import { AddNodeMenu } from "./add-node-menu";
 import { engineRequest } from "../../../shared/services/engine-client";
 
 // ── 类型 ──
@@ -132,6 +133,7 @@ export const NODE_TEMPLATES: Record<string, Omit<NodePos, "x" | "y">> = {
 export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps): JSX.Element {
 	const canvasRef = useRef<HTMLDivElement>(null);
 	const [dragOver, setDragOver] = useState(false);
+	const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
 	// ── DnD：从 NodeLibrary 拖入新节点 ──
 	const nodeSeqRef = useRef(100); // 独立序号，与 LINK_SEQ 不冲突。ref 防止 render 重置
@@ -306,6 +308,12 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 			onDragOver={onCanvasDragOver}
 			onDragLeave={onCanvasDragLeave}
 			onDrop={onCanvasDrop}
+			onContextMenu={(e) => {
+				e.preventDefault();
+				const rect = canvasRef.current?.getBoundingClientRect();
+				if (!rect) return;
+				setContextMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+			}}
 			data-drag-over={dragOver ? "true" : undefined}
 			className={`relative min-h-0 flex-1 overflow-hidden bg-background ${dragOver ? "ring-2 ring-accent/40 ring-inset" : ""}`}
 			style={{
@@ -525,6 +533,27 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 					})}
 				</div>
 			</div>
+
+			{/* 右键添加节点遮罩 + 菜单 —— 设计稿 menu.tsx 对齐：半透明让画布退到后面 */}
+			{contextMenu ? (
+				<>
+					<div className="absolute inset-0 z-20 bg-background/55" onClick={() => setContextMenu(null)} />
+					<AddNodeMenu
+						x={contextMenu.x}
+						y={contextMenu.y}
+						onClose={() => setContextMenu(null)}
+						onPick={(kind) => {
+							// 在右键位置插入一个新节点
+							const tpl = NODE_TEMPLATES[kind] ?? { w: 180, h: 110, tone: TONE.chart, kind };
+							nodeSeqRef.current++;
+							const newId = `n${nodeSeqRef.current}`;
+							const newNode: NodePos = { ...tpl, x: contextMenu.x - 60, y: contextMenu.y - 30, kind };
+							setNodes((prev) => ({ ...prev, [newId]: newNode }));
+							setContextMenu(null);
+						}}
+					/>
+				</>
+			) : null}
 		</div>
 	);
 }

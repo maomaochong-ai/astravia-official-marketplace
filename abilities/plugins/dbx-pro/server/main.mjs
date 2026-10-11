@@ -95488,7 +95488,7 @@ var init_markdown_parser = __esm({
 
 // server/src/http-server.mjs
 import { randomBytes, createHash as createHash3, timingSafeEqual } from "node:crypto";
-import { chmodSync as chmodSync3, existsSync as existsSync5, mkdirSync as mkdirSync6, readFileSync as readFileSync4, renameSync as renameSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import { chmodSync as chmodSync3, existsSync as existsSync5, mkdirSync as mkdirSync6, readFileSync as readFileSync5, renameSync as renameSync2, writeFileSync as writeFileSync5 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
 import { join as join6 } from "node:path";
 import { createServer } from "node:http";
@@ -98677,7 +98677,9 @@ import {
   mkdirSync as mkdirSync4,
   chmodSync as chmodSync2,
   statSync,
-  createWriteStream
+  createWriteStream,
+  readFileSync as readFileSync3,
+  writeFileSync as writeFileSync3
 } from "node:fs";
 import { join as join4 } from "node:path";
 import { homedir as homedir3 } from "node:os";
@@ -98707,12 +98709,37 @@ var DRIVERS = [
     releaseArtifact: (platTag) => `dbx-agent-duckdb-${platTag}${process.platform === "win32" ? ".exe" : ""}`
   }
 ];
-var INSTALL_STATUS = /* @__PURE__ */ new Map();
+var STATUS_FILE = join4(DRIVERS_ROOT, ".install-status.json");
+function ensureDriversRoot() {
+  if (!existsSync3(DRIVERS_ROOT)) mkdirSync4(DRIVERS_ROOT, { recursive: true });
+}
+function loadStatuses() {
+  try {
+    if (!existsSync3(STATUS_FILE)) return /* @__PURE__ */ new Map();
+    const raw = readFileSync3(STATUS_FILE, "utf-8");
+    const obj = JSON.parse(raw);
+    const m = /* @__PURE__ */ new Map();
+    for (const [k, v] of Object.entries(obj)) m.set(k, v);
+    return m;
+  } catch {
+    return /* @__PURE__ */ new Map();
+  }
+}
+function saveStatuses(map) {
+  try {
+    ensureDriversRoot();
+    const obj = Object.fromEntries(map);
+    writeFileSync3(STATUS_FILE, JSON.stringify(obj, null, 2));
+  } catch {
+  }
+}
+var INSTALL_STATUS = loadStatuses();
 function getInstallStatus(key) {
   return INSTALL_STATUS.get(key) ?? { status: "idle", downloaded: 0, total: 0 };
 }
 function setInstallStatus(key, val) {
   INSTALL_STATUS.set(key, val);
+  saveStatuses(INSTALL_STATUS);
 }
 function driverDir(key) {
   return join4(DRIVERS_ROOT, key, platformKey());
@@ -98742,6 +98769,27 @@ function driverRoutes() {
         }
         const platTag = releasePlatformTag();
         const installUrl = platTag ? `${DBX_AGENTS_LATEST}/${d.releaseArtifact(platTag)}` : null;
+        const st = getInstallStatus(d.key);
+        if (installed && (st.status === "downloading" || st.status === "installing")) {
+          const finalSt = { status: "done", downloaded: sizeBytes ?? 0, total: sizeBytes ?? 0 };
+          setInstallStatus(d.key, finalSt);
+          return {
+            key: d.key,
+            label: d.label,
+            installed,
+            installedPath: binary,
+            sizeBytes,
+            envVar: d.envVar,
+            description: d.description,
+            expectedPath: binary,
+            reason: void 0,
+            downloadUrl: installUrl,
+            installStatus: finalSt
+          };
+        }
+        if (!installed && st.status !== "idle" && st.startedAt && Date.now() - st.startedAt > 10 * 60 * 1e3) {
+          setInstallStatus(d.key, { status: "idle", downloaded: 0, total: 0 });
+        }
         return {
           key: d.key,
           label: d.label,
@@ -98764,7 +98812,8 @@ function driverRoutes() {
       if (!driver) return { ok: false, error: `\u672A\u77E5\u9A71\u52A8: ${driverKey}` };
       const binary = driverBinary(driverKey);
       if (existsSync3(binary)) {
-        return { ok: true, driverKey, installedPath: binary, note: "\u5DF2\u5B58\u5728" };
+        setInstallStatus(driverKey, { status: "done", downloaded: statSync(binary).size, total: statSync(binary).size });
+        return { ok: true, driverKey, installedPath: binary, note: "\u5DF2\u5B58\u5728", installStatus: getInstallStatus(driverKey) };
       }
       let downloadUrl = url;
       if (!downloadUrl) {
@@ -98776,7 +98825,8 @@ function driverRoutes() {
       if (existing.status === "downloading" || existing.status === "installing") {
         return { ok: true, driverKey, note: "\u5DF2\u5728\u5B89\u88C5\u4E2D", installStatus: existing };
       }
-      setInstallStatus(driverKey, { status: "downloading", downloaded: 0, total: 0 });
+      setInstallStatus(driverKey, { status: "downloading", downloaded: 0, total: 0, startedAt: Date.now() });
+      const startedAt = Date.now();
       (async () => {
         try {
           ensureDir2(driverDir(driverKey));
@@ -98785,21 +98835,38 @@ function driverRoutes() {
               status: "downloading",
               downloaded,
               total,
-              percent: total > 0 ? Math.round(downloaded / total * 100) : void 0
+              percent: total > 0 ? Math.round(downloaded / total * 100) : void 0,
+              startedAt
             });
           });
-          setInstallStatus(driverKey, { status: "installing", downloaded: statSync(binary).size, total: statSync(binary).size });
+          setInstallStatus(driverKey, {
+            status: "installing",
+            downloaded: statSync(binary).size,
+            total: statSync(binary).size,
+            startedAt
+          });
           chmodSync2(binary, 493);
-          setInstallStatus(driverKey, { status: "done", downloaded: statSync(binary).size, total: statSync(binary).size });
+          setInstallStatus(driverKey, {
+            status: "done",
+            downloaded: statSync(binary).size,
+            total: statSync(binary).size,
+            startedAt
+          });
         } catch (e) {
-          setInstallStatus(driverKey, { status: "error", downloaded: 0, total: 0, error: e.message });
+          setInstallStatus(driverKey, {
+            status: "error",
+            downloaded: INSTALL_STATUS.get(driverKey)?.downloaded ?? 0,
+            total: INSTALL_STATUS.get(driverKey)?.total ?? 0,
+            error: e.message,
+            startedAt
+          });
         }
       })();
       return {
         ok: true,
         driverKey,
         note: "\u4E0B\u8F7D\u5DF2\u5F00\u59CB\uFF0C\u8F6E\u8BE2 /driver/status \u67E5\u770B\u8FDB\u5EA6",
-        installStatus: { status: "downloading", downloaded: 0, total: 0 }
+        installStatus: getInstallStatus(driverKey)
       };
     }],
     ["/driver/install-status", "GET", true, async ({ query }) => {
@@ -98810,7 +98877,7 @@ function driverRoutes() {
     ["/driver/set-path", "POST", true, async ({ body }) => {
       const { driverKey, path: path4 } = body || {};
       const driver = findDriver(driverKey);
-      if (!driver) return { ok: false, error: `\u672A\u77E5\u9A71\u52A8: ${driverKey}` };
+      if (!driver) return { ok: false, driverKey, error: `\u672A\u77E5\u9A71\u52A8: ${driverKey}` };
       if (!path4) return { ok: false, error: "\u7F3A\u5C11 path \u53C2\u6570" };
       if (!existsSync3(path4)) return { ok: false, error: `\u6587\u4EF6\u4E0D\u5B58\u5728: ${path4}` };
       ensureDir2(driverDir(driverKey));
@@ -98829,19 +98896,13 @@ function driverRoutes() {
       const key = body?.driverKey;
       if (key) INSTALL_STATUS.delete(key);
       else INSTALL_STATUS.clear();
+      saveStatuses(INSTALL_STATUS);
       return { ok: true };
     }]
   ];
 }
 async function downloadFileStreaming(url, destPath, onProgress) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6e4);
-  let resp;
-  try {
-    resp = await fetch(url, { redirect: "follow", signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
+  const resp = await fetch(url, { redirect: "follow" });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
   const total = Number(resp.headers.get("content-length") ?? 0);
   onProgress(0, total);
@@ -98921,7 +98982,7 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
 
 // server/src/api/drag.mjs
 import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, writeFileSync as writeFileSync3, readdirSync as readdirSync2, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, writeFileSync as writeFileSync4, readdirSync as readdirSync2, unlinkSync as unlinkSync2 } from "node:fs";
 import { join as join5 } from "node:path";
 function pagesDir(ctx) {
   const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
@@ -98940,14 +99001,14 @@ function readPage(ctx, id) {
   const file = pageFile(ctx, id);
   if (!existsSync4(file)) return null;
   try {
-    return JSON.parse(readFileSync3(file, "utf-8"));
+    return JSON.parse(readFileSync4(file, "utf-8"));
   } catch {
     return null;
   }
 }
 function writePage(ctx, page) {
   const file = pageFile(ctx, page.id);
-  writeFileSync3(file, JSON.stringify(page, null, 2), "utf-8");
+  writeFileSync4(file, JSON.stringify(page, null, 2), "utf-8");
 }
 function emptyPage(id, fields) {
   return {
@@ -98989,13 +99050,13 @@ function makeBiListStore(filename, defaultEmpty = []) {
     const f = file(ctx);
     if (!existsSync4(f)) return defaultEmpty;
     try {
-      return JSON.parse(readFileSync3(f, "utf8"));
+      return JSON.parse(readFileSync4(f, "utf8"));
     } catch {
       return defaultEmpty;
     }
   };
   const write = (ctx, list2) => {
-    writeFileSync3(file(ctx), JSON.stringify(list2, null, 2));
+    writeFileSync4(file(ctx), JSON.stringify(list2, null, 2));
   };
   return { file, read, write };
 }
@@ -99380,7 +99441,7 @@ function ensureEngineKey(dataDir) {
   let doc = { schemaVersion: 1, values: {} };
   if (existsSync5(secretPath)) {
     try {
-      doc = JSON.parse(readFileSync4(secretPath, "utf8"));
+      doc = JSON.parse(readFileSync5(secretPath, "utf8"));
     } catch {
     }
   }
@@ -99388,7 +99449,7 @@ function ensureEngineKey(dataDir) {
   if (typeof key !== "string" || key.length === 0) {
     key = randomBytes(32).toString("base64url");
     const next = { ...doc, values: { ...doc.values ?? {}, "engine-key": key } };
-    writeFileSync4(secretPath, JSON.stringify(next), { mode: 384 });
+    writeFileSync5(secretPath, JSON.stringify(next), { mode: 384 });
     chmodSync3(secretPath, 384);
   }
   return { key, dataDir: dir };
