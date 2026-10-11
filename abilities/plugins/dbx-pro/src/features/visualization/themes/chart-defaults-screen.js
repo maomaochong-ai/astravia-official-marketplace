@@ -15,8 +15,8 @@
   Chart.defaults.elements.point.borderWidth = 0;
 
   // ── 全局 scale 默认值（Chart.js v4：scale 没有 s）──
-  var gridColor = 'rgba(148,163,184,0.15)';
-  var tickColor = '#94a3b8';
+  var gridColor = '#30363d';   // 设计 --color-screen-line，与 figure-palette 的 grid 一致
+  var tickColor = '#8b949e';   // 设计 --color-screen-muted，与 figure-palette 的 axis 一致
   Chart.defaults.scale.grid.color = gridColor;
   if (Chart.defaults.scale.border) Chart.defaults.scale.border.display = false;
   Chart.defaults.scale.ticks.color = tickColor;

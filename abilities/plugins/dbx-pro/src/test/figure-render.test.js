@@ -146,7 +146,7 @@ describe("metric", () => {
 
 	it("每个 label 一张卡，主数值取 datasets[0]", () => {
 		const html = metric(["GMV", "订单数"], [{ label: "本期", data: [1200, 88] }]);
-		assert.equal(html.split("border-radius:8px;background:").length - 1, 2);
+		assert.equal(html.split("border-radius:6px;background:").length - 1, 2);
 		assert.ok(html.includes("GMV"));
 		assert.ok(html.includes("1,200"));
 		assert.ok(html.includes("订单数"));
@@ -163,7 +163,7 @@ describe("metric", () => {
 		assert.ok(html.includes("上期 1,000"));
 		assert.ok(html.includes("▲ 20.0%"));
 		assert.ok(html.includes("较 上期"));
-		assert.ok(html.includes("#16a34a"), "上涨用 up 色");
+		assert.ok(html.includes("#1a7f37"), "上涨用 up 色");
 	});
 
 	it("下跌用 ▼ 与 down 色", () => {
@@ -172,7 +172,7 @@ describe("metric", () => {
 			{ label: "上期", data: [1000] },
 		]);
 		assert.ok(html.includes("▼ 20.0%"));
-		assert.ok(html.includes("#dc2626"));
+		assert.ok(html.includes("#cf222e"));
 	});
 
 	it("showDelta=false 时不显示环比；没有第二条 series 也不算", () => {
@@ -206,15 +206,15 @@ describe("metric", () => {
 
 	it("label 多于数值时多出来的卡显示占位符", () => {
 		const html = metric(["A", "B", "C"], [{ data: [1] }]);
-		assert.equal(html.split("border-radius:8px;background:").length - 1, 3);
+		assert.equal(html.split("border-radius:6px;background:").length - 1, 3);
 		assert.ok(html.includes(">—<"));
 	});
 
 	it("大屏用更大的字号与深色底板", () => {
 		const screen = renderFigure({ type: "metric", data: { labels: ["A"], datasets: [{ data: [1] }] } }, SCREEN);
-		assert.ok(screen.includes("font-size:30px"));
-		assert.ok(screen.includes("rgba(255,255,255,0.03)"));
-		assert.ok(screen.includes("rgba(6,182,212,0.25)"));
+		assert.ok(screen.includes("font-size:34px"));
+		assert.ok(screen.includes("#161b22"));
+		assert.ok(screen.includes("#30363d"));
 	});
 
 	it("没有数据时给出可读提示", () => {
@@ -241,11 +241,11 @@ describe("boxplot", () => {
 	it("数组形式的五数概括画出须线 / 箱体 / 中位线", () => {
 		const html = boxplot(["A", "B"], FIVE);
 		assert.ok(html.includes("flex:0 0 56px"), "左侧刻度栏");
-		assert.ok(html.includes("width:1px;background:#9ca3af"), "须线");
+		assert.ok(html.includes("width:1px;background:#656d76"), "须线");
 		assert.ok(html.includes("width:30%;max-width:12px;height:1px"), "须帽");
 		assert.ok(html.includes("width:70%;max-width:28px;box-sizing:border-box;background:rgba(99,102,241,0.22)"), "箱体");
 		assert.ok(html.includes("width:70%;max-width:28px;height:2px;background:#6366f1"), "中位线");
-		assert.ok(html.includes("border-top:1px solid rgba(156,163,175,0.25)"), "网格线");
+		assert.ok(html.includes("border-top:1px solid #d0d7de"), "网格线");
 		assert.ok(!html.includes("已跳过"));
 		assertSelfContained(html);
 	});

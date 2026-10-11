@@ -1,11 +1,16 @@
 /**
  * AI 协助连接数据库面板
- * 
- * 用户可以通过自然语言描述数据库连接信息，AI 帮助生成连接配置
- * 参考主流数据库管理工具的 AI 辅助配置功能
+ *
+ * 用户用自然语言描述连接信息，面板提供两条都真实生效的路径：
+ *   - 交给 AI 助手：把描述作为正式消息发给宿主 AI，由它调用插件的
+ *     dbx_add_connection 工具真正建连（不再是本地假装的「AI 解析」）。
+ *   - 本地解析：按关键词提取主机/端口/账号等，填进下面的表单供用户核对，
+ *     确认后仍走引擎的建连接口。
  */
 
 import { useState, type JSX } from "react";
+import { buildNewConnectionPrompt } from "../../../shared/ai/send-context";
+import { sendToHostAi } from "./send-to-ai-dialog";
 
 interface Props {
 	onClose: () => void;
@@ -36,7 +41,7 @@ const SUPPORTED_DB_TYPES = [
 
 export function AiAssistantPanel({ onClose, onCreateConnection }: Props): JSX.Element {
 	const [description, setDescription] = useState("");
-	const [isProcessing, setIsProcessing] = useState(false);
+	const [isSending, setIsSending] = useState(false);
 	const [extractedConfig, setExtractedConfig] = useState<{
 		name: string;
 		dbType: string;
@@ -47,19 +52,22 @@ export function AiAssistantPanel({ onClose, onCreateConnection }: Props): JSX.El
 		database?: string;
 	} | null>(null);
 
-	/**
-	 * 模拟 AI 解析连接描述
-	 * 实际应该调用 AI API 来解析自然语言
-	 */
-	async function handleAnalyze(): Promise<void> {
+	/** 交给宿主 AI：真正建连的是 AI 调用的 dbx_add_connection 工具。 */
+	async function handleAskAi(): Promise<void> {
+		if (!description.trim() || isSending) return;
+		setIsSending(true);
+		try {
+			await sendToHostAi(buildNewConnectionPrompt(description));
+		} finally {
+			setIsSending(false);
+			onClose();
+		}
+	}
+
+	/** 本地关键词解析：结果只作为草稿，需用户核对后再创建。 */
+	function handleParse(): void {
 		if (!description.trim()) return;
-		
-		setIsProcessing(true);
-		
-		// 模拟 AI 处理延迟
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-		
-		// 简单的关键词提取（实际应该用 AI）
+
 		const lowerDesc = description.toLowerCase();
 		let dbType = "postgres";
 		let host = "localhost";
@@ -68,8 +76,7 @@ export function AiAssistantPanel({ onClose, onCreateConnection }: Props): JSX.El
 		let password = "";
 		let database = "";
 		let name = "新连接";
-		
-		// 识别数据库类型
+
 		for (const db of SUPPORTED_DB_TYPES) {
 			if (lowerDesc.includes(db.value) || lowerDesc.includes(db.label.toLowerCase())) {
 				dbType = db.value;
@@ -77,33 +84,26 @@ export function AiAssistantPanel({ onClose, onCreateConnection }: Props): JSX.El
 				break;
 			}
 		}
-		
-		// 识别主机地址
+
 		const hostMatch = description.match(/(?:host|主机|地址|服务器)[：:\s]*([^\s,，]+)/i);
 		if (hostMatch) host = hostMatch[1];
-		
-		// 识别端口
+
 		const portMatch = description.match(/(?:port|端口)[：:\s]*(\d+)/i);
 		if (portMatch) port = parseInt(portMatch[1], 10);
-		
-		// 识别用户名
+
 		const userMatch = description.match(/(?:user|username|用户名|账号)[：:\s]*([^\s,，]+)/i);
 		if (userMatch) username = userMatch[1];
-		
-		// 识别密码
+
 		const passMatch = description.match(/(?:password|pass|密码)[：:\s]*([^\s,，]+)/i);
 		if (passMatch) password = passMatch[1];
-		
-		// 识别数据库名
+
 		const dbMatch = description.match(/(?:database|db|数据库|库名)[：:\s]*([^\s,，]+)/i);
 		if (dbMatch) database = dbMatch[1];
-		
-		// 识别连接名称
+
 		const nameMatch = description.match(/(?:name|名称|连接名)[：:\s]*([^\s,，]+)/i);
 		if (nameMatch) name = nameMatch[1];
-		
+
 		setExtractedConfig({ name, dbType, host, port, username, password, database });
-		setIsProcessing(false);
 	}
 
 	function handleCreate(): void {
@@ -123,7 +123,8 @@ export function AiAssistantPanel({ onClose, onCreateConnection }: Props): JSX.El
 					type="button"
 					onClick={onClose}
 					title="关闭"
-					className="dbx-iconbtn"
+					aria-label="关闭"
+					className="dbx-icon-btn ml-auto"
 				>
 					<span className="icon-[lucide--x] h-4 w-4" />
 				</button>
@@ -143,33 +144,47 @@ export function AiAssistantPanel({ onClose, onCreateConnection }: Props): JSX.El
 							style={{ minHeight: 80 }}
 						/>
 						<p className="mt-1 text-[10px] text-muted-foreground">
-							用自然语言描述数据库连接信息，AI 会自动提取配置
+							交给 AI 助手由它调用建连工具；或本地按关键词解析后核对表单。
 						</p>
 					</div>
 
-					<button
-						type="button"
-						onClick={handleAnalyze}
-						disabled={isProcessing || !description.trim()}
-						className="dbx-btn primary w-full"
-						style={{ height: 32 }}
-					>
-						{isProcessing ? (
-							<>
-								<span className="icon-[lucide--loader] h-3.5 w-3.5 animate-spin" />
-								AI 分析中...
-							</>
-						) : (
-							<>
-								<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
-								分析连接信息
-							</>
-						)}
-					</button>
+					<div className="flex items-center gap-2">
+						<button
+							type="button"
+							onClick={handleAskAi}
+							disabled={isSending || !description.trim()}
+							className="dbx-btn primary flex-1"
+							style={{ height: 32 }}
+							title="作为正式消息发给 AI 助手，由它创建连接"
+						>
+							{isSending ? (
+								<>
+									<span className="icon-[lucide--loader] h-3.5 w-3.5 animate-spin" />
+									发送中…
+								</>
+							) : (
+								<>
+									<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
+									交给 AI 助手
+								</>
+							)}
+						</button>
+						<button
+							type="button"
+							onClick={handleParse}
+							disabled={!description.trim()}
+							className="dbx-btn ghost"
+							style={{ height: 32 }}
+							title="在本地按关键词解析，不联网"
+						>
+							<span className="icon-[lucide--scan-text] h-3.5 w-3.5" />
+							本地解析
+						</button>
+					</div>
 
 					{extractedConfig && (
 						<div className="dbx-panel-group">
-							<div className="dbx-panel-group-header">提取的连接配置</div>
+							<div className="dbx-panel-group-header">解析出的连接配置（核对后创建）</div>
 							<div className="dbx-panel-group-body space-y-2">
 								<div className="grid grid-cols-2 gap-2">
 									<div>
@@ -255,11 +270,11 @@ export function AiAssistantPanel({ onClose, onCreateConnection }: Props): JSX.El
 			{/* 底部操作栏 */}
 			{extractedConfig && (
 				<div className="dbx-connection-footer">
-					<button className="dbx-btn ghost" onClick={onClose}>
+					<button type="button" className="dbx-btn ghost" onClick={onClose}>
 						取消
 					</button>
 					<div className="flex-1" />
-					<button className="dbx-btn primary" onClick={handleCreate}>
+					<button type="button" className="dbx-btn primary" onClick={handleCreate}>
 						创建连接
 					</button>
 				</div>

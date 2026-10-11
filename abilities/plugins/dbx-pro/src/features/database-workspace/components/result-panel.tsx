@@ -12,8 +12,11 @@ import { ResultGrid } from "./result-grid";
 import { SendToAiDialog } from "./send-to-ai-dialog";
 import { useWorkbench } from "../hooks/use-workbench";
 import { buildResultVizPrompt, buildResultAnalysisPrompt } from "../../../shared/ai/send-context";
+import { formatTableRef, parseTableRef } from "../services/sql-table-ref";
+import { WriteResultView } from "./write-result-view";
 
-export function ResultPanel(): JSX.Element {
+/** onCollapse：面板头的「收起结果面板」按钮；不传则不渲染该按钮。 */
+export function ResultPanel({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
 	const { state, cancelExecution, goToResultPage, settings, updateSettings, refreshTotalCount, runTabSql } = useWorkbench();
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId) ?? state.tabs[0];
 	const result = activeTab?.result;
@@ -23,6 +26,12 @@ export function ResultPanel(): JSX.Element {
 	const [analysisDialog, setAnalysisDialog] = useState<{ open: boolean; prompt: string }>({ open: false, prompt: "" });
 	const [aiMenuOpen, setAiMenuOpen] = useState(false);
 
+	/** 结果来源表：从 SQL 的 FROM 子句浅解析，解析不出则回落到连接名。 */
+	const sourceLabel = formatTableRef(parseTableRef(activeTab?.sql)) || (activeTab?.connectionName ?? "");
+	/** 只读连接：面板头显示「只读连接」标记（连接配置的 read_only）。 */
+	const readOnlyConnection =
+		state.connections.find((c) => c.name === activeTab?.connectionName)?.read_only === true;
+
 	/** 完整结果行数：优先 rowCount（完整查询返回），次选 totalCount（数据库统计），最后退回当前页行数。
 	 *  —— 不要传 result.rows.length（只是分页当前页，默认 50 行）。 */
 	const fullRowCount = result?.rowCount
@@ -31,6 +40,14 @@ export function ResultPanel(): JSX.Element {
 		?? 0;
 
 	const hasResult = result?.ok === true;
+	/** 写 / DDL 结果：引擎返回 ok 但没有结果集（columns/rows 恒为空），必须单独渲染成功态。 */
+	const writeResult =
+		hasResult &&
+		result.columns.length === 0 &&
+		result.rows.length === 0 &&
+		(result.writeExecuted === true || result.kind === "write" || result.kind === "ddl");
+	/** 有可分析的结果集（写 / DDL 没有列，AI 分析入口对它置灰）。 */
+	const hasResultSet = hasResult && !writeResult;
 
 	/** "AI 可视化：看板/大屏" —— 构造 prompt 调宿主 AI。 */
 	function openVizDialog(intent: "dashboard" | "screen"): void {
@@ -79,59 +96,95 @@ export function ResultPanel(): JSX.Element {
 				<span className="shrink-0 font-sans text-[14px] font-semibold tracking-tight whitespace-nowrap text-surface-foreground">
 					结果
 				</span>
-				{result && result.ok ? (
-					<span className="font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
-						{result.rows.length.toLocaleString()} 行
+				{sourceLabel ? (
+					<span className="min-w-0 truncate font-mono text-[12px] whitespace-nowrap text-muted" title="结果来源">
+						{sourceLabel}
 					</span>
 				) : null}
-				<span className="min-w-0 truncate font-mono text-[12px] whitespace-nowrap text-muted">
-					{activeTab?.connectionName ?? ""}
-				</span>
+				{readOnlyConnection ? (
+					<span
+						className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] whitespace-nowrap text-muted"
+						title="连接已标记为只读，不会执行写操作"
+					>
+						只读连接
+					</span>
+				) : null}
 				<div className="relative ml-auto flex shrink-0 items-center gap-0.5">
 					<button
 						type="button"
 						onClick={() => setAiMenuOpen((v) => !v)}
-						disabled={!hasResult || !activeTab?.connectionName}
+						disabled={!hasResultSet || !activeTab?.connectionName}
 						className="flex h-6 items-center gap-1 rounded-control px-2 text-[12px] text-ai transition-colors hover:bg-ai-soft disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-						title={hasResult ? "AI 分析当前 SQL 结果集" : "执行查询后可做 AI 分析"}
+						title={hasResultSet ? "AI 分析当前 SQL 结果集" : "执行查询后可做 AI 分析"}
 					>
 						<span className="icon-[lucide--sparkles] h-3 w-3" />
 						AI 分析
 						<span className={`icon-[lucide--chevron-down] h-3 w-3 transition-transform ${aiMenuOpen ? "rotate-180" : ""}`} />
 					</button>
+					{onCollapse ? (
+						<button
+							type="button"
+							onClick={onCollapse}
+							title="收起结果面板"
+							aria-label="收起结果面板"
+							className="dbx-icon-btn"
+						>
+							<span className="icon-[lucide--panel-bottom-close] h-3.5 w-3.5" />
+						</button>
+					) : null}
 					{aiMenuOpen && (
 						<>
 							{/* 点击外部关闭 */}
 							<div className="fixed inset-0 z-40" onClick={() => setAiMenuOpen(false)} />
-							<div className="absolute top-full right-0 z-50 mt-1 w-48 rounded-control border border-border bg-popover p-1 shadow-popover">
+							<div className="absolute top-full right-0 z-50 mt-1 w-64 rounded-card border border-border bg-popover p-1.5 shadow-popover">
 								<button
 									type="button"
 									onClick={openAnalysisDialog}
-									className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
+									className="flex w-full items-start gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-ai-soft"
 								>
-									<span className="icon-[lucide--sparkles] h-3.5 w-3.5 text-ai" />
-									<span className="flex-1">通用分析</span>
-									<span className="text-[12px] text-muted">{fullRowCount.toLocaleString()} 行</span>
+									<span className="icon-[lucide--sparkles] mt-0.5 h-3.5 w-3.5 shrink-0 text-ai" />
+									<span className="min-w-0 flex-1">
+										<span className="flex items-center gap-1.5">
+											<span className="whitespace-nowrap text-[12px] font-medium text-surface-foreground">通用分析</span>
+											<span className="rounded-chip border border-border bg-neutral-muted px-1 py-px font-mono text-[11px] tabular-nums whitespace-nowrap text-muted">
+												{fullRowCount.toLocaleString()} 行
+											</span>
+										</span>
+										<span className="mt-0.5 block text-[11px] leading-snug text-muted">总结趋势与异常，给出结论与下一步建议</span>
+									</span>
 								</button>
 								<div className="my-1 h-px bg-border/60" />
 								<button
 									type="button"
 									onClick={() => openVizDialog("dashboard")}
-									className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-ai-soft"
+									className="flex w-full items-start gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-ai-soft"
 								>
-									<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5 text-ai" />
-									<span className="flex-1">生成看板</span>
-									<span className="text-[12px] text-muted">浅色 QuickBI</span>
+									<span className="icon-[lucide--layout-dashboard] mt-0.5 h-3.5 w-3.5 shrink-0 text-ai" />
+									<span className="min-w-0 flex-1">
+										<span className="flex items-center gap-1.5">
+											<span className="whitespace-nowrap text-[12px] font-medium text-surface-foreground">生成看板</span>
+											<span className="rounded-chip border border-border bg-neutral-muted px-1 py-px text-[11px] whitespace-nowrap text-muted">浅色</span>
+										</span>
+										<span className="mt-0.5 block text-[11px] leading-snug text-muted">QuickBI 布局，适合汇报与日常监控</span>
+									</span>
 								</button>
 								<button
 									type="button"
 									onClick={() => openVizDialog("screen")}
-									className="flex w-full items-center gap-2 rounded-control px-2 py-1.5 text-left text-[12px] hover:bg-link-soft"
+									className="flex w-full items-start gap-2 rounded-control px-2 py-1.5 text-left transition-colors hover:bg-link-soft"
 								>
-									<span className="icon-[lucide--monitor] h-3.5 w-3.5 text-link" />
-									<span className="flex-1">生成大屏</span>
-									<span className="text-[12px] text-muted">深色 DataV</span>
+									<span className="icon-[lucide--monitor] mt-0.5 h-3.5 w-3.5 shrink-0 text-link" />
+									<span className="min-w-0 flex-1">
+										<span className="flex items-center gap-1.5">
+											<span className="whitespace-nowrap text-[12px] font-medium text-surface-foreground">生成大屏</span>
+											<span className="rounded-chip border border-border bg-neutral-muted px-1 py-px text-[11px] whitespace-nowrap text-muted">深色</span>
+										</span>
+										<span className="mt-0.5 block text-[11px] leading-snug text-muted">DataV 风格深色大屏，适合投屏展示</span>
+									</span>
 								</button>
+								<div className="mt-1 border-t border-border/60 px-2 pt-1.5 pb-0.5 text-[11px] leading-snug text-faint">
+									将把这条 SQL 与结果规模（行数 / 列数）发送给 AI 助手，不含数据行
+								</div>
 							</div>
 						</>
 					)}
@@ -159,7 +212,17 @@ export function ResultPanel(): JSX.Element {
 					</div>
 				) : result ? (
 					result.ok ? (
-						<ResultGrid
+						writeResult ? (
+							<WriteResultView
+								kind={result.kind}
+								command={result.command}
+								affectedRows={result.affectedRows}
+								elapsedMs={result.elapsedMs}
+								connectionName={activeTab?.connectionName ?? undefined}
+								note={result.note}
+							/>
+						) : (
+							<ResultGrid
 							columns={result.columns}
 							rows={result.rows}
 							totalRows={result.rowCount}
@@ -221,7 +284,8 @@ export function ResultPanel(): JSX.Element {
 									void refreshTotalCount(activeTab.id, activeTab.connectionName ?? "", result.ranSql);
 								}
 							}}
-						/>
+							/>
+						)
 					) : (
 						<div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
 							<span className="icon-[lucide--alert-octagon] h-8 w-8 text-danger" />

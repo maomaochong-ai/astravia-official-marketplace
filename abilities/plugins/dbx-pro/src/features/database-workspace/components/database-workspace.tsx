@@ -203,7 +203,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				{[
 					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} />,
 					<SqlEditorWorkspace key="mid" />,
-					<RightPanel key="right" />,
+					<RightPanel key="right" onCollapse={() => setHistoryOpen(false)} />,
 				]}
 			</SplitLayout>
 

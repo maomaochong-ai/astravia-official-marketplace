@@ -1,5 +1,5 @@
 /**
- * VisualizationDetailDrawer — 「BI 数据资产」详情抽屉。
+ * VisualizationDetailDrawer — 「BI」右栏详情列。
  *
  * 一个产物的全部事实都在这里：数据来源（SQL / 列 / 行数）、筛选、图表。
  * 三条不能含糊的语义：
@@ -9,6 +9,9 @@
  *   3. 旧产物（只有 html 的只读快照）没有数据集信息，禁用筛选并说明原因，而不是给个空面板。
  *
  * 导出用的是**当前筛选后**的图表项：导出的应该是用户此刻看到的那张图（ADR-0009 §10 验收 ⑤）。
+ *
+ * 形态：设计帧 bi-assets.tsx 的右栏是 392px 的固定列（不是遮罩抽屉），所以这里输出的是
+ * 内联列 .viz-detail-column，由 VisualizationGallery 的三栏布局直接摆放。
  */
 
 import { useEffect, useState, type JSX } from "react";
@@ -95,83 +98,84 @@ export function VisualizationDetailDrawer({ viz, onClose, onPreview }: Props): J
 	}
 
 	return (
-		<div className="viz-drawer-mask" onClick={onClose}>
-			<div
-				className={`viz-drawer viz-theme-${isScreen ? "screen" : "dashboard"}`}
-				onClick={(event) => event.stopPropagation()}
-			>
-				<div className="visualization-tab-toolbar">
-					<div className="toolbar-left">
-						<h3 className="toolbar-title">{viz.title}</h3>
-						<span className="toolbar-badge">{isScreen ? "大屏" : "看板"}</span>
-						{hasDatasets ? (
-							<span className="toolbar-badge">
-								筛选后 {afterFilter} 行 / 已载入 {loaded} 行
-							</span>
-						) : null}
-					</div>
-					<div className="viz-drawer-actions">
-						<button
-							type="button"
-							className="viz-action-btn"
-							onClick={refetch.refetch}
-							disabled={refetch.status === "running" || !hasDatasets}
-							title="按数据集记录的 SQL 重新取数"
-						>
-							{refetch.status === "running" ? "取数中…" : "重新取数"}
-						</button>
-						<button type="button" className="viz-action-btn" onClick={handleExport}>
-							导出 HTML
-						</button>
-						<button type="button" className="viz-action-btn" onClick={handleOpenExternal}>
-							新标签打开
-						</button>
-						<button type="button" className="viz-action-btn" onClick={onPreview}>
-							全屏预览
-						</button>
-						<button type="button" className="viz-action-btn" onClick={onClose}>
-							关闭
-						</button>
-					</div>
+		<div className={`viz-detail-column viz-theme-${isScreen ? "screen" : "dashboard"}`}>
+			{/* 标题行：对齐设计帧右栏的 h-9 头部（标题 + 类型徽标 + 外链 / 关闭） */}
+			<div className="viz-detail-head">
+				<div className="toolbar-left">
+					<h3 className="toolbar-title">{viz.title}</h3>
+					<span className="toolbar-badge">{isScreen ? "大屏" : "看板"}</span>
+					{hasDatasets ? (
+						<span className="toolbar-badge">
+							筛选后 {afterFilter} 行 / 已载入 {loaded} 行
+						</span>
+					) : null}
 				</div>
-
-				<div className="viz-drawer-body">
-					{refetch.status !== "idle" && refetch.message ? (
-						<p className={`viz-banner ${refetch.status === "error" ? "viz-banner-error" : "viz-banner-ok"}`}>
-							{refetch.message}
-						</p>
-					) : null}
-
-					{!hasDatasets ? (
-						<p className="viz-banner viz-banner-info">
-							该产物没有数据集信息（旧格式快照），仅可查看与导出，无法筛选或重新取数。
-						</p>
-					) : null}
-
-					{hasDatasets && !filterable ? (
-						<p className="viz-banner viz-banner-info">数据已被裁剪（体积超限），点「重新取数」载入数据后才能筛选。</p>
-					) : null}
-
-					{hasDatasets && filterable && sqlTotal > loaded ? (
-						<p className="viz-banner viz-banner-info">
-							SQL 共 {sqlTotal} 行，单条产物只载入前 {loaded} 行，点「重新取数」刷新。
-						</p>
-					) : null}
-
-					{hasDatasets ? <DatasetSummaryList datasets={datasets} /> : null}
-
-					<VisualizationLineagePanel
-						sources={lineageSources}
-						createdAt={viz.createdAt}
-						references={lineageReferences}
-					/>
-
-					{filterable ? (
-						<DatasetFilterPanel datasets={datasets} filters={filters} onChange={handleFilters} />
-					) : null}
-
-					<ChartGrid items={items} isScreen={isScreen} showUnboundHint={hasDatasets} />
+				<div className="viz-detail-head-actions">
+					<button type="button" className="viz-icon-btn" onClick={handleOpenExternal} title="在新标签打开">
+						<span className="icon-[lucide--external-link]" />
+					</button>
+					<button type="button" className="viz-icon-btn" onClick={onClose} title="关闭详情（Esc）" aria-label="关闭详情">
+						<span className="icon-[lucide--x]" />
+					</button>
 				</div>
+			</div>
+
+			<div className="viz-drawer-body">
+				{refetch.status !== "idle" && refetch.message ? (
+					<p className={`viz-banner ${refetch.status === "error" ? "viz-banner-error" : "viz-banner-ok"}`}>
+						{refetch.message}
+					</p>
+				) : null}
+
+				{!hasDatasets ? (
+					<p className="viz-banner viz-banner-info">
+						该产物没有数据集信息（旧格式快照），仅可查看与导出，无法筛选或重新取数。
+					</p>
+				) : null}
+
+				{hasDatasets && !filterable ? (
+					<p className="viz-banner viz-banner-info">数据已被裁剪（体积超限），点「重新取数」载入数据后才能筛选。</p>
+				) : null}
+
+				{hasDatasets && filterable && sqlTotal > loaded ? (
+					<p className="viz-banner viz-banner-info">
+						SQL 共 {sqlTotal} 行，单条产物只载入前 {loaded} 行，点「重新取数」刷新。
+					</p>
+				) : null}
+
+				{hasDatasets ? <DatasetSummaryList datasets={datasets} /> : null}
+
+				<VisualizationLineagePanel
+					sources={lineageSources}
+					createdAt={viz.createdAt}
+					references={lineageReferences}
+				/>
+
+				{filterable ? (
+					<DatasetFilterPanel datasets={datasets} filters={filters} onChange={handleFilters} />
+				) : null}
+
+				<ChartGrid items={items} isScreen={isScreen} showUnboundHint={hasDatasets} />
+			</div>
+
+			{/* 底部动作条：对齐设计帧右栏的 h-12 页脚 */}
+			<div className="viz-drawer-actions">
+				<button
+					type="button"
+					className="viz-action-btn"
+					onClick={refetch.refetch}
+					disabled={refetch.status === "running" || !hasDatasets}
+					title="按数据集记录的 SQL 重新取数"
+				>
+					{refetch.status === "running" ? "取数中…" : "重新取数"}
+				</button>
+				<button type="button" className="viz-action-btn is-primary" onClick={handleExport}>
+					导出 HTML
+				</button>
+				<button type="button" className="viz-action-btn" onClick={onPreview}>
+					全屏预览
+				</button>
+				<span className="viz-detail-foot-note">导出即当前筛选后的图表</span>
 			</div>
 		</div>
 	);

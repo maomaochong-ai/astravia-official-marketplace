@@ -30,8 +30,14 @@ export interface EditorTab {
 		columns: string[];
 		rows: Record<string, unknown>[];
 		rowCount: number;
-		/** 写 / DDL 的影响行数（direct-write 返回）；SELECT 为 null。 */
+		/** 写 / DDL 的影响行数（direct-write 返回）；SELECT 与 DDL 为 null。 */
 		affectedRows?: number | null;
+		/** 引擎判定的语句类别：read / write / ddl。 */
+		kind?: string;
+		/** 写 / DDL 的命令名（CREATE / DROP / INSERT…）。 */
+		command?: string | null;
+		/** 引擎确认本次由自研写驱动执行了写 / DDL（读路径为 false）。 */
+		writeExecuted?: boolean;
 		elapsedMs: number;
 		error?: string;
 		note?: string;

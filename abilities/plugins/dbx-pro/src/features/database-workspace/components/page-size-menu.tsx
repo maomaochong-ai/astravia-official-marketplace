@@ -4,8 +4,8 @@
  * 对标 dbx 桌面壳 DataGridPagination 的 LightDropdown：
  * 触发按钮显示「N 行/页」，弹层内含预设值 + 自定义输入（本次查询 / 设为默认）。
  *
- * 定位约束与 ContextMenu 相同：底栏是 h-7 + overflow:hidden，绝对定位的弹层
- * 会被直接裁掉，因此 portal 到面板根（.dbx-root），按触发器矩形向上展开、
+ * 定位约束与 ContextMenu 相同：底栏只有 36px（h-9）高，就地绝对定位的弹层会被
+ * 面板/网格的 overflow 裁掉，因此 portal 到面板根（.dbx-root），按触发器矩形向上展开、
  * 右对齐；上方空间不足时翻向下展开。
  */
 
@@ -144,11 +144,10 @@ export function PageSizeMenu({
 				aria-haspopup="menu"
 				aria-expanded={open}
 				title="每页显示行数"
-				className="inline-flex h-6 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-control px-1.5 text-[12px] text-muted-foreground hover:bg-neutral-muted hover:text-foreground disabled:opacity-40"
+				className="inline-flex h-6 w-14 shrink-0 items-center justify-between rounded-control border border-border bg-surface px-2 text-[12px] tabular-nums text-surface-foreground outline-none hover:border-border-strong disabled:opacity-30"
 			>
-				<span className="tabular-nums">{pageSize}</span>
-				<span>行/页</span>
-				<span className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""} icon-[lucide--chevron-down]`} />
+				<span className="font-mono">{pageSize}</span>
+				<span className={`h-3 w-3 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""} icon-[lucide--chevron-down]`} />
 			</button>
 			{open &&
 				panelRoot &&

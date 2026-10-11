@@ -1,0 +1,8 @@
+/* ============================================================
+ * 连接树 / 连接管理视图专属样式
+ *
+ * 归属：连接树与连接管理（connection-tree / connection-node /
+ * connection-list / connection-manager-view）改造时新增的规则。
+ * 通用原子类（.dbx-btn / .dbx-icon-btn / .dbx-scroll / .dbx-menu …）
+ * 一律留在 shared/styles/dbx-primitives.css，本文件只放该功能域私有规则。
+ * ============================================================ */

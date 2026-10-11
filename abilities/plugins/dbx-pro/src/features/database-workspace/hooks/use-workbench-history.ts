@@ -15,8 +15,9 @@ import {
 	readHistory,
 } from "../../../domain/query-history-store";
 import type { WorkbenchSettings } from "../../../domain/workbench-settings";
-import type { WorkbenchState } from "../state/workbench-types";
+import type { EditorTab, WorkbenchState } from "../state/workbench-types";
 import type { WorkbenchAction } from "../state/workbench-actions";
+import { nextQueryLabel, nextTabId } from "../state/tab-ids";
 
 interface HistoryDeps {
 	stateRef: MutableRefObject<WorkbenchState>;
@@ -60,24 +61,35 @@ export function useWorkbenchHistory(deps: HistoryDeps) {
 		[settingsRef],
 	);
 
+	/**
+	 * 历史条目 → 工作台：新建一个标签页放这条 SQL，不覆盖当前编辑内容
+	 * （设计稿：「载入会在工作台新建标签页，不覆盖当前查询」）。
+	 */
 	const loadHistoryIntoEditor = useCallback(
 		(entry: QueryHistoryEntry) => {
-			const tabId = stateRef.current.activeTabId;
-			if (!tabId) return;
 			const connName = entry.connName === "(未命名连接)" ? null : entry.connName;
 			if (connName) dispatch({ type: "setActiveConnection", name: connName });
-			dispatch({ type: "updateTab", id: tabId, patch: { connectionName: connName, sql: entry.sql } });
-			return tabId;
+			const tab: EditorTab = {
+				id: nextTabId(),
+				label: nextQueryLabel(stateRef.current.tabs),
+				connectionName: connName,
+				sql: entry.sql,
+				isRunning: false,
+			};
+			dispatch({ type: "addTab", tab });
+			return tab.id;
 		},
 		[dispatch, stateRef],
 	);
 
-	/** 载入历史 SQL 并立即重跑。 */
+	/** 载入历史 SQL 并立即重跑（新标签页）。 */
 	const rerunHistoryEntry = useCallback(
 		async (entry: QueryHistoryEntry) => {
 			const tabId = loadHistoryIntoEditor(entry);
-			if (!tabId) return;
-			await runTabSqlRef.current?.(tabId, entry.sql);
+			// addTab 的状态要等下一次重渲染才同步进 stateRef，立即执行会跑到旧 state 上。
+			setTimeout(() => {
+				void runTabSqlRef.current?.(tabId, entry.sql);
+			}, 0);
 		},
 		[loadHistoryIntoEditor, runTabSqlRef],
 	);

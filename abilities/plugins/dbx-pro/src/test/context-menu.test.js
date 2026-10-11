@@ -5,7 +5,8 @@
  * 在面板下缘展开时整体落到面板外，后几项被裁掉（真实浏览器里溢出 130px）。
  *
  * happy-dom 不做布局，这里用一套简化布局模型代替浏览器：
- * - 菜单高度由子项数量决定（行高 / 分隔线固定），宽度取 inline width / minWidth / maxWidth；
+ * - 菜单高度由子项数量决定（行高 / 分隔线固定），宽度取 inline width / minWidth / maxWidth，
+ *   两者都没给时回落到 `.dbx-menu` 的 CSS `min-width`（组件不再写死宽度，按内容自适应）；
  * - 菜单位置取 inline left/top（面板铺满视口时，面板坐标 = 视口坐标）；
  * - 父项在菜单中的纵向位置由它在菜单里的序号累加得出。
  * 断言的是「组件算出的 inline 定位 + 实测尺寸」是否仍落在面板矩形内 ——
@@ -25,6 +26,8 @@ const { cleanup, fireEvent, render } = RTL;
 const VIEWPORT = { left: 0, top: 0, right: 1200, bottom: 700, width: 1200, height: 700 };
 const ROW_HEIGHT = 26;
 const SEPARATOR_HEIGHT = 9;
+/** `.dbx-menu` 的 CSS `min-width`：组件不写 inline 宽度，实际宽度由这条兜底。 */
+const MENU_MIN_WIDTH = 176;
 const MENU_PADDING = 8;
 const MENU_BORDER = 2;
 const EMPTY = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
@@ -37,7 +40,7 @@ function num(value) {
 }
 
 function menuWidth(el) {
-	const natural = el.style.width !== "" ? num(el.style.width) : num(el.style.minWidth);
+	const natural = num(el.style.width) || num(el.style.minWidth) || MENU_MIN_WIDTH;
 	const max = el.style.maxWidth !== "" ? num(el.style.maxWidth) : Number.POSITIVE_INFINITY;
 	return Math.min(natural, max);
 }

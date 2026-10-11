@@ -20,6 +20,8 @@ interface Props {
 	onRerun: (entry: QueryHistoryEntry) => void;
 	onDelete: (id: string) => void;
 	onClear: () => void;
+	/** 收起右栏（与顶栏「查询历史」按钮共用同一个开合状态）。 */
+	onCollapse?: () => void;
 	/** 发送到 AI 分析 */
 	onSendToAi?: (entry: QueryHistoryEntry) => void;
 }
@@ -67,17 +69,41 @@ function dayKey(iso: string): "今天" | "昨天" | "更早" {
 	return "更早";
 }
 
-export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClear, onSendToAi }: Props): JSX.Element {
+export function HistoryPanel({
+	entries,
+	limit,
+	onLoad,
+	onRerun,
+	onDelete,
+	onClear,
+	onSendToAi,
+	onCollapse,
+}: Props): JSX.Element {
 	const [filter, setFilter] = useState<StatusFilter>("all");
+	const [searchOpen, setSearchOpen] = useState(false);
+	const [query, setQuery] = useState("");
+
+	/** 搜索开关：关闭时清掉关键词，避免下一轮打开时还在静默过滤。 */
+	const toggleSearch = (): void => {
+		if (searchOpen) setQuery("");
+		setSearchOpen(!searchOpen);
+	};
 	const full = entries.length >= limit;
 
 	const okCount = entries.filter((e) => e.status === "ok").length;
 	const errorCount = entries.length - okCount;
 
-	const visible = useMemo(
-		() => (filter === "all" ? entries : entries.filter((e) => e.status === filter)),
-		[entries, filter],
-	);
+	const visible = useMemo(() => {
+		const byStatus = filter === "all" ? entries : entries.filter((e) => e.status === filter);
+		const needle = query.trim().toLowerCase();
+		if (!needle) return byStatus;
+		return byStatus.filter(
+			(e) =>
+				e.sql.toLowerCase().includes(needle) ||
+				e.connName.toLowerCase().includes(needle) ||
+				(e.error ?? "").toLowerCase().includes(needle),
+		);
+	}, [entries, filter, query]);
 
 	const groups = useMemo(() => {
 		const buckets: { label: string; items: QueryHistoryEntry[] }[] = [];
@@ -95,8 +121,10 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 			type="button"
 			onClick={() => setFilter(key)}
 			className={
-				"h-6 shrink-0 rounded-chip px-2 text-[12px] whitespace-nowrap transition-colors " +
-				(filter === key ? "bg-neutral-muted text-surface-foreground" : "text-muted hover:bg-neutral-muted")
+				"h-6 shrink-0 rounded-chip border px-2 text-[12px] whitespace-nowrap transition-colors " +
+				(filter === key
+					? "border-border bg-neutral-muted text-surface-foreground"
+					: "border-transparent text-muted hover:bg-neutral-muted")
 			}
 		>
 			{label}
@@ -113,6 +141,16 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 				</span>
 				<span className="font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">{entries.length}</span>
 				<div className="ml-auto flex items-center gap-0.5">
+					<button
+						type="button"
+						onClick={toggleSearch}
+						title="搜索历史"
+						aria-label="搜索历史"
+						aria-expanded={searchOpen}
+						className={"dbx-icon-btn" + (searchOpen ? " text-accent" : "")}
+					>
+						<span className="icon-[lucide--search] h-3.5 w-3.5" />
+					</button>
 					{entries.length > 0 && (
 						<button
 							type="button"
@@ -124,6 +162,17 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 							<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
 						</button>
 					)}
+					{onCollapse ? (
+						<button
+							type="button"
+							onClick={onCollapse}
+							title="收起历史"
+							aria-label="收起历史"
+							className="dbx-icon-btn"
+						>
+							<span className="icon-[lucide--panel-right-close] h-3.5 w-3.5" />
+						</button>
+					) : null}
 				</div>
 			</div>
 
@@ -135,6 +184,31 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 				{full && <span className="ml-auto shrink-0 text-[12px] text-warning">已到上限</span>}
 				{!full && <span className="ml-auto shrink-0 text-[12px] text-faint">上限 {limit}</span>}
 			</div>
+
+			{/* 搜索行：开关打开时才渲染，输入即时过滤下面的卡片 */}
+			{searchOpen && (
+				<div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-border bg-background px-2.5">
+					<span className="icon-[lucide--search] h-3.5 w-3.5 shrink-0 text-muted" />
+					<input
+						autoFocus
+						value={query}
+						onChange={(event) => setQuery(event.target.value)}
+						placeholder="搜索 SQL 片段、表名、连接…"
+						className="min-w-0 flex-1 bg-transparent text-[12px] text-surface-foreground placeholder:text-faint focus:outline-none"
+					/>
+					{query !== "" && (
+						<button
+							type="button"
+							onClick={() => setQuery("")}
+							title="清除搜索"
+							aria-label="清除搜索"
+							className="dbx-icon-btn"
+						>
+							<span className="icon-[lucide--x] h-3.5 w-3.5" />
+						</button>
+					)}
+				</div>
+			)}
 
 			{/* 卡片列表 */}
 			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto px-2.5 pb-2">
@@ -207,9 +281,9 @@ export function HistoryPanel({ entries, limit, onLoad, onRerun, onDelete, onClea
 											) : null}
 
 											<div className="mt-1.5 flex items-center gap-0.5 border-t border-border pt-1.5">
-												<ActionButton title="载入编辑器" onClick={() => onLoad(entry)}>
-													<span className="icon-[lucide--corner-down-left] h-3.5 w-3.5" />
-												</ActionButton>
+													<ActionButton title="载入到工作台（新建标签页）" onClick={() => onLoad(entry)}>
+														<span className="icon-[lucide--square-pen] h-3.5 w-3.5" />
+													</ActionButton>
 												<ActionButton title="重新执行" onClick={() => onRerun(entry)}>
 													<span className="icon-[lucide--play] h-3.5 w-3.5" />
 												</ActionButton>

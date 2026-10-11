@@ -1,7 +1,7 @@
 /**
  * ExportTasksPopover — 顶栏后台任务按钮（对标 dbx 桌面壳 ExportProgressPopover）。
  *
- * - 仅当存在导出任务时渲染 FileDown 图标；
+ * - 按钮常驻（设计稿的下载入口无条件渲染）；无数据时不画进度环与角标，
  * - 待处理数角标 1-9 / 9+：还在取数时绿色，只剩「等待保存 / 未保存」时琥珀色；
  * - 点击展开任务列表面板（portal 到 .dbx-root，禁止挂 document.body，
  *   否则 @scope 下的 token 样式失效）；
@@ -147,7 +147,8 @@ export function ExportTasksPopover(): JSX.Element | null {
 		};
 	}, [open]);
 
-	if (tasks.length === 0) return null;
+	// 按钮常驻：设计稿 WorkbenchTopBar 的下载入口始终可见。无任务时只收掉进度环与计数，
+	// 面板内给空态，避免「没任务就整块消失」或点开一片空白两种死法。
 
 	const visible = expanded ? tasks : tasks.slice(0, MAX_VISIBLE);
 
@@ -166,7 +167,7 @@ export function ExportTasksPopover(): JSX.Element | null {
 				}
 				aria-haspopup="dialog"
 				aria-expanded={open}
-				className="relative flex h-5 w-5 items-center justify-center rounded-control text-muted-foreground hover:bg-neutral-muted hover:text-foreground"
+				className="dbx-nav-item relative"
 			>
 				<span className="icon-[lucide--download] h-3.5 w-3.5" />
 				{aggregatePercent !== null && (
@@ -179,8 +180,7 @@ export function ExportTasksPopover(): JSX.Element | null {
 				{pendingCount > 0 && (
 					<span
 						className={
-							"absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-semibold leading-none text-white " +
-							(activeCount > 0 ? "bg-success" : "bg-warning")
+							"dbx-count-badge" + (activeCount > 0 ? "" : " dbx-export-count--attention")
 						}
 					>
 						{pendingCount > 9 ? "9+" : pendingCount}
@@ -198,15 +198,25 @@ export function ExportTasksPopover(): JSX.Element | null {
 						ref={panelRef}
 						role="dialog"
 						aria-label="后台导出任务"
-						className="absolute z-[400] flex flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-xl shadow-black/40"
+						className="dbx-popover"
 						style={{ left: pos.left, top: pos.top, width: `min(92vw, ${PANEL_WIDTH}rem)` }}
 					>
-						<div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
-							<span className="text-[12px] font-semibold text-foreground">后台任务</span>
-							<span className="text-[11px] tabular-nums text-muted">{tasks.length} 项</span>
+						<div className="dbx-popover-head">
+							<span className="icon-[lucide--download] h-3.5 w-3.5 text-muted-foreground" />
+							<span>后台任务</span>
+							<span className="dbx-popover-head__meta">
+								{tasks.length} 项{activeCount > 0 ? ` · ${activeCount} 个进行中` : ""}
+							</span>
 						</div>
 
-						<div className="max-h-[19rem] overflow-y-auto py-1">
+						<div className="dbx-popover-body max-h-[19rem]">
+							{tasks.length === 0 && (
+								<div className="dbx-popover-empty">
+									<span className="icon-[lucide--inbox] h-5 w-5" aria-hidden="true" />
+									<span className="dbx-popover-empty__title">暂无后台导出任务</span>
+									<span className="dbx-popover-empty__hint">在结果网格导出数据后，任务会显示在这里</span>
+								</div>
+							)}
 							{visible.map((task) => {
 								const active = isExportTaskActive(task);
 								/** 取数结果还在暂存里：可以直接重选保存位置，不必重跑一遍查询。 */
@@ -216,131 +226,143 @@ export function ExportTasksPopover(): JSX.Element | null {
 									? Math.min(100, Math.round((task.rowsExported / (task.totalRows as number)) * 100))
 									: 0;
 								const elapsedMs = (task.finishedAt ?? now) - task.startedAt;
+								const statusText =
+									task.status === "error"
+										? task.errorMessage || "导出失败"
+										: task.status === "cancelling"
+											? "正在取消…"
+											: task.status === "awaiting-save"
+												? "等待选择保存位置…"
+												: task.note
+													? task.note
+													: known
+														? `${task.rowsExported.toLocaleString()} / ${(task.totalRows as number).toLocaleString()} 行`
+														: `${task.rowsExported.toLocaleString()} 行`;
 								return (
-									<div key={task.id} className="group px-3 py-2 hover:bg-[var(--dbx-hover)]">
-										<div className="flex items-center gap-2">
-											<TaskStatusIcon task={task} />
-											<span className="min-w-0 flex-1 truncate text-[11.5px] text-foreground" title={task.fileName}>
+								<div key={task.id} className="dbx-download-row group">
+									<div className="flex min-w-0 items-center gap-2">
+										<TaskStatusIcon task={task} />
+										<div className="min-w-0 flex-1">
+											<div className="dbx-download-name" title={task.fileName}>
 												{task.fileName}
-											</span>
-											<div className="flex shrink-0 items-center gap-0.5">
-												{active ? (
-													<button
-														type="button"
-														title={task.status === "cancelling" ? "正在取消…" : "取消任务"}
-														disabled={task.status === "cancelling"}
-														onClick={() => requestCancelExportTask(task.id)}
-														className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-destructive disabled:opacity-50"
-													>
-														{task.status === "cancelling" ? (
-															<span className="icon-[lucide--loader-2] h-3 w-3 animate-spin" />
-														) : (
-															<span className="icon-[lucide--x] h-3 w-3" />
-														)}
-													</button>
-												) : task.status === "awaiting-save" ? null : (
-													<>
-														{canRetrySave && (
-															<button
-																type="button"
-																title={task.status === "unsaved" ? "重新选择保存位置" : "重试保存"}
-																onClick={() => void saveStagedExport(task.id)}
-																className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground"
-															>
-																<span className="icon-[lucide--save] h-3 w-3" />
-															</button>
-														)}
-														{task.status === "done" && task.filePath && (
-															<button
-																type="button"
-																title="打开所在文件夹"
-																onClick={() => void revealTaskFile(task)}
-																className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground"
-															>
-																<span className="icon-[lucide--folder-open] h-3 w-3" />
-															</button>
-														)}
-														<button
-															type="button"
-															title={task.status === "unsaved" ? "放弃并释放导出内容" : "移除记录"}
-															onClick={() => removeExportTask(task.id)}
-															className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-background hover:text-foreground"
-														>
-															<span className="icon-[lucide--x] h-3 w-3" />
-														</button>
-													</>
-												)}
+											</div>
+											<div className="dbx-download-cell" title={statusText}>
+												{statusText} · {formatElapsed(elapsedMs)}
 											</div>
 										</div>
+									</div>
 
-										<div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-neutral-muted">
+									<div className="dbx-download-progress">
+										<div className="dbx-download-bar">
 											{task.status === "done" ? (
-												<div className="h-full w-full rounded-full bg-success" />
+												<div className="dbx-download-bar__fill is-done" style={{ width: "100%" }} />
 											) : task.status === "awaiting-save" ? (
-												<div className="h-full w-full rounded-full bg-warning/60" />
+												<div className="dbx-download-bar__fill is-warning" style={{ width: "100%", opacity: 0.6 }} />
 											) : task.status === "unsaved" ? (
 												<div
-													className="h-full rounded-full bg-warning"
+													className="dbx-download-bar__fill is-warning"
 													style={{ width: `${known ? percent : 100}%` }}
 												/>
 											) : active ? (
 												known ? (
 													<div
-													className="h-full rounded-full bg-success transition-[width] duration-300"
+														className="dbx-download-bar__fill"
 														style={{ width: `${percent}%` }}
 													/>
 												) : (
-													<div className="h-full w-full overflow-hidden rounded-full">
-												<div className="dbx-export-indeterminate h-full rounded-full bg-success" />
-													</div>
+													<div className="dbx-download-bar__fill dbx-export-indeterminate" style={{ width: "100%" }} />
 												)
 											) : known ? (
-												<div className="h-full rounded-full bg-success/50" style={{ width: `${percent}%` }} />
+												<div className="dbx-download-bar__fill is-done" style={{ width: `${percent}%`, opacity: 0.5 }} />
 											) : null}
 										</div>
-
-										<div className="mt-1 flex items-center justify-between gap-2 text-[11px] tabular-nums text-muted">
-											<span className="min-w-0 truncate">
-												{task.status === "error"
-													? task.errorMessage || "导出失败"
-													: task.status === "cancelling"
-														? "正在取消…"
-														: task.status === "awaiting-save"
-															? "等待选择保存位置…"
-															: task.note
-																? task.note
-																: known
-																	? `${task.rowsExported.toLocaleString()} / ${(task.totalRows as number).toLocaleString()} 行`
-																	: `${task.rowsExported.toLocaleString()} 行`}
-											</span>
-											<span className="shrink-0">{formatElapsed(elapsedMs)}</span>
-										</div>
+										<span className="dbx-download-pct">{known ? `${percent}%` : "—"}</span>
 									</div>
+
+									<div className="dbx-download-actions">
+										{active ? (
+											<button
+												type="button"
+												title={task.status === "cancelling" ? "正在取消…" : "取消任务"}
+												disabled={task.status === "cancelling"}
+												onClick={() => requestCancelExportTask(task.id)}
+												className="dbx-iconbtn text-muted-foreground hover:text-danger disabled:opacity-50"
+											>
+												{task.status === "cancelling" ? (
+													<span className="icon-[lucide--loader-2] h-3 w-3 animate-spin" />
+												) : (
+													<span className="icon-[lucide--x] h-3 w-3" />
+												)}
+											</button>
+										) : task.status === "awaiting-save" ? null : (
+											<>
+												{canRetrySave && (
+													<button
+														type="button"
+														title={task.status === "unsaved" ? "重新选择保存位置" : "重试保存"}
+														onClick={() => void saveStagedExport(task.id)}
+														className="dbx-iconbtn text-muted-foreground hover:text-foreground"
+													>
+														<span className="icon-[lucide--save] h-3 w-3" />
+													</button>
+												)}
+												{task.status === "done" && task.filePath && (
+													<button
+														type="button"
+														title="打开所在文件夹"
+														onClick={() => void revealTaskFile(task)}
+														className="dbx-iconbtn text-muted-foreground hover:text-foreground"
+													>
+														<span className="icon-[lucide--folder-open] h-3 w-3" />
+													</button>
+												)}
+												<button
+													type="button"
+													title={task.status === "unsaved" ? "放弃并释放导出内容" : "移除记录"}
+													onClick={() => removeExportTask(task.id)}
+													className="dbx-iconbtn text-muted-foreground hover:text-foreground"
+												>
+													<span className="icon-[lucide--x] h-3 w-3" />
+												</button>
+											</>
+										)}
+									</div>
+								</div>
 								);
 							})}
 						</div>
 
-						{tasks.length > MAX_VISIBLE && (
-							<button
-								type="button"
-								onClick={() => setExpanded((v) => !v)}
-								className="shrink-0 border-t border-border px-3 py-1.5 text-center text-[11px] text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
-							>
-								{expanded ? "收起" : `展开其余 ${tasks.length - MAX_VISIBLE} 项`}
-							</button>
-						)}
-
-						{finishedCount > 0 && (
-							<button
-								type="button"
-								onClick={() => {
-									clearFinishedExportTasks();
-									setExpanded(false);
-								}}
-								className="shrink-0 border-t border-border px-3 py-1.5 text-center text-[11px] text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
-							>
-								清除已完成（{finishedCount}）
-							</button>
+						{tasks.length > 0 && (
+							<div className="dbx-popover-foot">
+								<span className="tabular-nums">
+									{tasks.length > visible.length
+										? `另有 ${tasks.length - visible.length} 项未展开`
+										: `已完成 ${finishedCount} 项`}
+								</span>
+								<div className="flex items-center gap-1">
+									{tasks.length > MAX_VISIBLE && (
+										<button
+											type="button"
+											onClick={() => setExpanded((v) => !v)}
+											className="dbx-popover-row"
+										>
+											{expanded ? "收起" : `展开其余 ${tasks.length - MAX_VISIBLE} 项`}
+										</button>
+									)}
+									{finishedCount > 0 && (
+										<button
+											type="button"
+											onClick={() => {
+												clearFinishedExportTasks();
+												setExpanded(false);
+											}}
+											className="dbx-popover-row"
+										>
+											清除已完成（{finishedCount}）
+										</button>
+									)}
+								</div>
+							</div>
 						)}
 					</div>,
 					panelRoot,

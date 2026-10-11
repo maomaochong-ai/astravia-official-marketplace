@@ -37,7 +37,7 @@ export function WorkbenchTopBar({
 	fullscreen,
 	onToggleFullscreen,
 }: WorkbenchTopBarProps): JSX.Element {
-	const { history } = useWorkbench();
+	const { history, state } = useWorkbench();
 	// 引擎健康：unknown=未查询 / ready=绿 / starting=黄 / error=红
 	const [engineState, setEngineState] = useState<"unknown" | "ready" | "starting" | "error">("unknown");
 
@@ -110,10 +110,13 @@ export function WorkbenchTopBar({
 			{/* 引擎健康指示 —— 插件重载/引擎启动的第一手反馈；版本号在「设置 → 关于」查看 */}
 			<span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
 				<span className={"size-1.5 shrink-0 rounded-full " + engine.dot} title={engine.text} />
-				<span className="text-[12px] whitespace-nowrap text-muted">{engine.text}</span>
+				<span className="text-[12px] whitespace-nowrap text-muted">
+					{engine.text}
+					{engineState === "ready" && state.connections.length > 0 ? ` · ${state.connections.length} 个连接` : ""}
+				</span>
 			</span>
 
-			{/* 右：后台任务 / 查询历史 / BI 数据资产 / 设置 / 全屏。
+			{/* 右：后台任务 / 查询历史 / BI / 设置 / 全屏。
 			 * 设计稿的「工作台」导航项在本插件里没有对应目标（工作台就是本界面），故不再放一个空按钮。 */}
 			<div className="ml-auto flex shrink-0 items-center gap-0.5">
 				<ExportTasksPopover />
@@ -132,11 +135,11 @@ export function WorkbenchTopBar({
 				<button
 					type="button"
 					onClick={onOpenVisualizationGallery}
-					title="BI 数据资产（看板/大屏）"
+					title="BI（看板/大屏）"
 					className="dbx-nav-item"
 				>
 					<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5" />
-					BI 数据资产
+					BI
 					{visualizationCount > 0 && <span className="dbx-count-badge">{visualizationCount}</span>}
 				</button>
 				<button

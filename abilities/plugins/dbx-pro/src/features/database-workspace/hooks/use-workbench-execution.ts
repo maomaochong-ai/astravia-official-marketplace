@@ -70,6 +70,10 @@ export function useWorkbenchExecution(deps: ExecutionDeps) {
 						rows: outcome.rows,
 						rowCount: outcome.row_count,
 						affectedRows: outcome.affected_rows ?? null,
+						// 写 / DDL 的 columns/rows 恒为空：不带出这三个字段，结果区就只剩一个空态。
+						kind: outcome.kind,
+						command: outcome.command ?? null,
+						writeExecuted: outcome.write_executed === true,
 						elapsedMs: Date.now() - startedAt,
 						note: outcome.note,
 						paged: ctx.isServerMode,

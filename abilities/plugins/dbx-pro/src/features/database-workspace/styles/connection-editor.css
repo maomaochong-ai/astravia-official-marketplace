@@ -3,13 +3,12 @@
  * 对齐设计稿：卡片 = panel 底 + 一根 border + sheet 阴影，遮罩统一用 scrim
  * ============================================================ */
 
-/* 遮罩层 */
+/* 遮罩层：设计稿 Sheet 只压一层 bg-scrim，不做模糊 */
 .dbx-connection-backdrop {
 	position: absolute;
 	inset: 0;
 	z-index: 200;
 	background: var(--dbx-scrim);
-	backdrop-filter: blur(4px);
 }
 
 /* 主面板容器 */
@@ -21,8 +20,8 @@
 	z-index: 201;
 	display: flex;
 	flex-direction: column;
-	width: min(920px, calc(100% - 2rem));
-	height: min(660px, calc(100% - 2rem));
+	width: min(var(--dbx-conn-dialog-w, 920px), calc(100% - 2rem));
+	height: min(700px, calc(100% - 2rem));
 	border-radius: var(--dbx-radius-sheet);
 	border: 1px solid var(--dbx-border);
 	background: var(--dbx-panel);
@@ -55,7 +54,7 @@
 .dbx-connection-header {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 12px;
 	height: 48px;
 	min-height: 48px;
 	padding: 0 16px;
@@ -188,7 +187,7 @@
 	padding: 0 8px;
 	border-radius: var(--dbx-radius-control);
 	margin: 0 6px;
-	font-size: 13px;
+	font-size: 14px;
 	font-weight: 500;
 	color: var(--dbx-muted);
 	background: transparent;
@@ -209,4 +208,492 @@
 	background: var(--dbx-neutral-muted);
 	color: var(--dbx-surface-foreground);
 	font-weight: 600;
+}
+
+/* ------------------------------------------------------------------
+ * 数据库类型选择步（设计稿 components/SpecNewConnection.tsx）
+ * 外壳：h-11 搜索行（搜索框 320px + 已选 chip + 视图切换）
+ *       + 176px 分类导航（分类标题 / 计数 / 底部说明）+ 三列卡片网格
+ * ------------------------------------------------------------------ */
+.dbx-conn-search {
+	display: flex;
+	height: 28px;
+	width: 320px;
+	shrink: 0;
+	align-items: center;
+	gap: 6px;
+	padding: 0 10px;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-panel);
+}
+
+.dbx-conn-search:focus-within { border-color: var(--dbx-accent); }
+
+.dbx-conn-search input {
+	min-width: 0;
+	flex: 1;
+	appearance: none;
+	border: 0;
+	background: transparent;
+	font-family: var(--dbx-font-sans);
+	font-size: 12px;
+	color: var(--dbx-surface-foreground);
+	outline: none;
+}
+
+.dbx-conn-search input::placeholder { color: var(--dbx-faint); }
+
+.dbx-conn-summary {
+	margin-left: auto;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+
+.dbx-conn-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 8px;
+	border: 1px solid color-mix(in srgb, var(--dbx-accent) 40%, transparent);
+	border-radius: var(--dbx-radius-chip);
+	background: var(--dbx-accent-soft);
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+	color: var(--dbx-accent);
+}
+
+.dbx-conn-toggle {
+	display: flex;
+	shrink: 0;
+	align-items: center;
+	gap: 2px;
+	padding: 2px;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-panel);
+}
+
+.dbx-conn-nav {
+	display: flex;
+	width: 176px;
+	shrink: 0;
+	flex-direction: column;
+	gap: 4px;
+	overflow-y: auto;
+	padding: 8px 0 12px;
+	border-right: 1px solid var(--dbx-border);
+	background: var(--dbx-surface);
+}
+
+.dbx-conn-nav__head {
+	padding: 4px 16px 6px;
+	font-size: 12px;
+	letter-spacing: 0.06em;
+	white-space: nowrap;
+	color: var(--dbx-muted);
+}
+
+.dbx-conn-nav__note {
+	margin-top: auto;
+	padding: 0 16px;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--dbx-muted);
+}
+
+.dbx-db-type-grid {
+	display: grid;
+	min-height: 0;
+	flex: 1;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	align-content: start;
+	gap: 12px;
+	overflow-y: auto;
+	padding: 16px;
+}
+
+.dbx-db-type-grid__head {
+	grid-column: 1 / -1;
+	position: sticky;
+	top: -16px;
+	z-index: 10;
+	margin: -4px 0 0;
+	padding: 4px 0;
+	background: var(--dbx-panel);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	color: var(--dbx-muted);
+}
+
+/* 卡片：设计稿 Card = 上下两端对齐、12px 内边距、104px 高 */
+.dbx-db-type-card {
+	position: relative;
+	display: flex;
+	height: 104px;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: 0;
+	padding: 12px;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-card);
+	background: var(--dbx-panel);
+	cursor: pointer;
+	text-align: left;
+	transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.dbx-db-type-card__head {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 10px;
+}
+
+.dbx-db-type-card__badge {
+	display: grid;
+	width: 32px;
+	height: 32px;
+	flex-shrink: 0;
+	place-items: center;
+	border-radius: var(--dbx-radius-chip);
+	background: var(--dbx-surface);
+	font-family: var(--dbx-font-sans);
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--dbx-muted);
+}
+
+.dbx-db-type-card.is-selected .dbx-db-type-card__badge { background: var(--dbx-panel); }
+
+/* 品牌图标（is-brand）：图标自带配色，去掉字母方牌的底色，选中态也不重复上色 */
+.dbx-db-type-card__badge.is-brand,
+.dbx-db-type-card.is-selected .dbx-db-type-card__badge.is-brand,
+.dbx-conn-typechip__badge.is-brand {
+	background: transparent;
+}
+
+.dbx-db-type-card__body {
+	min-width: 0;
+	padding-right: 20px;
+}
+
+.dbx-db-type-card__name {
+	font-size: 14px;
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--dbx-surface-foreground);
+}
+
+.dbx-db-type-card__meta {
+	font-family: var(--dbx-font-mono);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--dbx-muted);
+}
+
+.dbx-db-type-card__desc {
+	font-size: 12px;
+	line-height: 16px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	color: var(--dbx-muted);
+}
+
+.dbx-db-type-card__check {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	width: 14px;
+	height: 14px;
+	shrink: 0;
+	color: var(--dbx-accent);
+}
+
+/* 连接配置步：工具栏右侧类型 chip */
+.dbx-conn-typechip {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-chip);
+	background: var(--dbx-surface);
+	font-size: 12px;
+	white-space: nowrap;
+	color: var(--dbx-surface-foreground);
+}
+
+.dbx-conn-typechip__badge {
+	display: grid;
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	place-items: center;
+	border-radius: var(--dbx-radius-chip);
+	background: var(--dbx-panel);
+	font-family: var(--dbx-font-sans);
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--dbx-muted);
+}
+
+/* 测试连接结果条：成功 / 失败两种色调 */
+.dbx-conn-test {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 10px;
+	border: 1px solid color-mix(in srgb, var(--dbx-success) 40%, transparent);
+	border-radius: var(--dbx-radius-control);
+	background: var(--dbx-success-soft);
+	font-size: 12px;
+	white-space: nowrap;
+	color: var(--dbx-success);
+}
+
+.dbx-conn-test__text {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.dbx-conn-test.is-error {
+	border-color: color-mix(in srgb, var(--dbx-danger) 40%, transparent);
+	background: var(--dbx-danger-soft);
+	color: var(--dbx-danger);
+}
+
+/* 连接配置表单：设计稿 Field 仅靠 border 变色提示焦点，不加外发光环 */
+.dbx-connection-flow .dbx-form-input:focus { box-shadow: none; }
+
+/* ------------------------------------------------------------------
+ * 连接配置步表单（设计稿 frames/connection-config.tsx）
+ * 基础 / 高级两段；字段控件统一 32px，双列 grid gap 16
+ * ------------------------------------------------------------------ */
+.dbx-field-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.dbx-field-section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.dbx-field-section + .dbx-field-section {
+	padding-top: 16px;
+	border-top: 1px solid var(--dbx-border);
+}
+
+.dbx-field-section__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	color: var(--dbx-muted);
+}
+
+.dbx-field-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+}
+
+/* 主机 + 端口这类主次列宽不等的行 */
+.dbx-field-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 140px;
+	gap: 16px;
+	grid-column: 1 / -1;
+}
+
+.dbx-field {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.dbx-field--full {
+	grid-column: 1 / -1;
+}
+
+.dbx-field__label {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--dbx-muted);
+}
+
+.dbx-field__req {
+	color: var(--dbx-danger);
+}
+
+.dbx-field__hint {
+	font-size: 11px;
+	line-height: 16px;
+	color: var(--dbx-faint);
+}
+
+.dbx-field__hint.is-warning {
+	color: var(--dbx-warning);
+}
+
+/* 字段控件 32px；textarea 不受影响 */
+.dbx-field > input.dbx-form-input,
+.dbx-field > select.dbx-form-input {
+	height: 32px;
+}
+
+.dbx-field-control {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.dbx-field-control > .dbx-form-input {
+	width: 100%;
+}
+
+.dbx-field-suffix {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-left: auto;
+	font-size: 11px;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+
+.dbx-field-tools {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-left: auto;
+}
+
+/* 开关行：设计稿 Switch（20px 轨道 + 14px 滑块） */
+.dbx-switch-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: 32px;
+	font-size: 13px;
+	color: var(--dbx-surface-foreground);
+	cursor: pointer;
+}
+
+.dbx-switch-row__label {
+	display: flex;
+	min-width: 0;
+	flex-direction: column;
+	gap: 2px;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--dbx-muted);
+}
+
+.dbx-switch-row__hint {
+	font-size: 11px;
+	line-height: 16px;
+	color: var(--dbx-faint);
+}
+
+.dbx-switch {
+	position: relative;
+	display: inline-flex;
+	width: 36px;
+	height: 20px;
+	flex-shrink: 0;
+	appearance: none;
+	margin: 0;
+	padding: 0;
+	border: 1px solid var(--dbx-border);
+	border-radius: 999px;
+	background: var(--dbx-neutral-muted);
+	cursor: pointer;
+	transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.dbx-switch::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 14px;
+	height: 14px;
+	border-radius: 999px;
+	background: var(--dbx-panel);
+	transition: transform 0.12s ease;
+}
+
+.dbx-switch:checked {
+	background: var(--dbx-primary);
+	border-color: var(--dbx-primary);
+}
+
+.dbx-switch:checked::after {
+	transform: translateX(16px);
+}
+
+.dbx-switch:focus-visible {
+	outline: 2px solid var(--dbx-accent);
+	outline-offset: 2px;
+}
+
+/* 默认 Schema 可选 chip */
+.dbx-schema-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.dbx-schema-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 28px;
+	padding: 0 10px;
+	border: 1px solid var(--dbx-border);
+	border-radius: 999px;
+	background: var(--dbx-panel);
+	font-family: var(--dbx-font-mono);
+	font-size: 12px;
+	color: var(--dbx-surface-foreground);
+	cursor: pointer;
+	transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.dbx-schema-chip:hover {
+	border-color: var(--dbx-border-strong);
+}
+
+.dbx-schema-chip.active {
+	border-color: color-mix(in srgb, var(--dbx-accent) 40%, transparent);
+	background: var(--dbx-accent-soft);
+	font-weight: 600;
+	color: var(--dbx-accent);
+}
+
+.dbx-field-advanced {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
 }

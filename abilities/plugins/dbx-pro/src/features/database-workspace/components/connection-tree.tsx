@@ -135,6 +135,9 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 		<div className="flex h-full flex-col bg-surface-raised">
 			<ConnectionTreeToolbar
 				connectionCount={connectionNodes.length}
+				selectedCount={selectedNodes.size}
+				query={query}
+				onQueryChange={setQuery}
 				selectionMode={selectionMode}
 				onExpandAll={expandAll}
 				onCollapseAll={collapseAll}
@@ -143,29 +146,6 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 				onAfterTransfer={() => void refreshConnections()}
 				onCollapsePanel={onCollapse}
 			/>
-			{/* 搜索（新增/刷新统一走顶栏，此处不重复） */}
-			<div className="flex h-7 shrink-0 items-center border-b border-border px-2">
-				<div
-					className="flex h-6 w-full items-center gap-1 rounded-control border border-border bg-surface px-2"
-				>
-					<span className="icon-[lucide--search] size-3 shrink-0 text-muted" />
-					<input
-						value={query}
-						onChange={(e) => setQuery(e.target.value)}
-						placeholder="过滤连接/表..."
-						className="min-w-0 flex-1 bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-faint"
-					/>
-					{query && (
-						<button
-							type="button"
-							onClick={() => setQuery("")}
-							className="shrink-0 text-muted hover:text-surface-foreground"
-						>
-							<span className="icon-[lucide--x] h-3 w-3" />
-						</button>
-					)}
-				</div>
-			</div>
 
 			{/* 树内容 */}
 			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto py-1">

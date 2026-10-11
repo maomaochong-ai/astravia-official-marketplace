@@ -24,7 +24,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
 import {
-	CONTEXT_MENU_WIDTH,
 	SUBMENU_MIN_WIDTH,
 	placeContextMenu,
 	placeSubmenu,
@@ -123,7 +122,7 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 				root: toRect(rootRect),
 				x: menu.x,
 				y: menu.y,
-				// 用实测宽度而不是常量：边框/滚动条会让实际占位略大于 CONTEXT_MENU_WIDTH。
+				// 用实测宽度而不是常量：宽度按内容自适应（CSS min-width 兜底），边框/滚动条会让实测值略大。
 				size: { width: menuRect.width, height: menuRect.height },
 				width: menuRect.width,
 			}),
@@ -193,9 +192,9 @@ export function ContextMenu({ menu, onClose }: { menu: ContextMenuState; onClose
 						role="menu"
 						className="dbx-menu absolute z-[300] overflow-y-auto"
 						style={{
+							// 不写固定 width：设计稿是 min-w-[176px] 按内容自适应（绝对定位下 width:auto 即 shrink-to-fit）。
 							left: pos?.left ?? 0,
 							top: pos?.top ?? 0,
-							width: CONTEXT_MENU_WIDTH,
 							maxWidth: pos?.maxWidth ?? undefined,
 							maxHeight: pos?.maxHeight ?? undefined,
 							// 面板内不导 Tailwind preflight（见 style.css），box-sizing 由宿主决定；

@@ -3,7 +3,7 @@
  * 支持 SQL 查询标签页和可视化产物标签页。
  */
 
-import type { JSX } from "react";
+import { useState, type JSX } from "react";
 import { HorizontalSplit } from "./horizontal-split";
 import { ResultPanel } from "./result-panel";
 import { SqlEditor } from "./sql-editor";
@@ -14,6 +14,8 @@ import { VisualizationGalleryView } from "../../visualization/visualization-gall
 
 export function SqlEditorWorkspace(): JSX.Element {
 	const { state } = useWorkbench();
+	// 结果面板收起：面板头的「收起结果面板」按钮触发，收起后底部的恢复条可再展开。
+	const [resultCollapsed, setResultCollapsed] = useState(false);
 
 	// 查找当前激活的标签页
 	const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
@@ -43,7 +45,12 @@ export function SqlEditorWorkspace(): JSX.Element {
 	return (
 		<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
 			<TabBar />
-			<HorizontalSplit top={<SqlEditor />} bottom={<ResultPanel />} />
+			<HorizontalSplit
+				top={<SqlEditor />}
+				bottom={<ResultPanel onCollapse={() => setResultCollapsed(true)} />}
+				bottomCollapsed={resultCollapsed}
+				onToggleBottom={() => setResultCollapsed((v) => !v)}
+			/>
 		</div>
 	);
 }

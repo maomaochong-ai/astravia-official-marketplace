@@ -17,8 +17,8 @@
   // ── 全局 scale 默认值（Chart.js v4：scale 没有 s）──
   // linear / category / logarithmic 等类型默认没有挂 grid/border/ticks，
   // 它们都从 Chart.defaults.scale（全局）继承。radialLinear 自己有完整配置（除了 border），单独设。
-  var gridColor = 'rgba(156,163,175,0.25)';
-  var tickColor = '#6b7280';
+  var gridColor = '#d0d7de';   // 设计 --color-border 的浅色对应值，与 figure-palette 的 grid 一致
+  var tickColor = '#656d76';   // 设计 --color-muted 的浅色对应值，与 figure-palette 的 axis 一致
   Chart.defaults.scale.grid.color = gridColor;
   if (Chart.defaults.scale.border) Chart.defaults.scale.border.display = false;
   Chart.defaults.scale.ticks.color = tickColor;

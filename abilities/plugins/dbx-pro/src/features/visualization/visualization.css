@@ -61,7 +61,7 @@
 .dbx-root .toolbar-badge {
 	flex-shrink: 0;
 	padding: 1px 6px;
-	border-radius: 10px;
+	border-radius: var(--dbx-radius-chip, 6px);
 	font-size: 10px;
 	font-weight: 500;
 	line-height: 16px;
@@ -117,7 +117,7 @@
 	border: none;
 }
 
-/* ──────────── BI 数据资产：详情抽屉 / 筛选面板 / UI 内图表 ──────────── */
+/* ──────────── BI：详情抽屉 / 筛选面板 / UI 内图表 ──────────── */
 
 /* 每个图表卡片的外观镜像 themes/dashboard.css、themes/screen.css 里的 .chart-card ——
    UI 内渲染与导出产物必须是同一个东西（ADR-0009 §10 验收 ⑤）。
@@ -139,22 +139,55 @@
 	--viz-desc: #94a3b8;
 }
 
-.dbx-root .viz-drawer-mask {
-	position: fixed;
-	inset: 0;
-	z-index: 400;
-	display: flex;
-	justify-content: flex-end;
-	background: color-mix(in srgb, #000 40%, transparent);
-}
-.dbx-root .viz-drawer {
+/* 详情列：设计帧 bi-assets.tsx 的右栏是 392px 固定列，不是遮罩抽屉。 */
+.dbx-root .viz-detail-column {
 	display: flex;
 	flex-direction: column;
-	width: min(880px, 100%);
-	height: 100%;
-	background: var(--background);
+	flex-shrink: 0;
+	width: 392px;
+	min-height: 0;
+	background: var(--dbx-surface);
 	border-left: 1px solid var(--dbx-line-soft);
-	box-shadow: -8px 0 32px rgba(0, 0, 0, 0.2);
+}
+.dbx-root .viz-detail-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+	height: 36px;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--dbx-line-soft);
+}
+.dbx-root .viz-detail-head .toolbar-title {
+	font-size: 12px;
+}
+.dbx-root .viz-detail-head-actions {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	flex-shrink: 0;
+	margin-left: auto;
+}
+/* 纯图标按钮：24px，适配 36px 标题行 */
+.dbx-root .viz-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: none;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--muted-foreground);
+	cursor: pointer;
+	font-size: 13px;
+	transition: background 0.12s, color 0.12s;
+}
+.dbx-root .viz-icon-btn:hover {
+	background: var(--dbx-hover);
+	color: var(--foreground);
 }
 .dbx-root .viz-drawer-body {
 	display: flex;
@@ -163,23 +196,33 @@
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
-	padding: 14px 16px 20px;
+	padding: 14px;
 }
 .dbx-root .viz-drawer-actions {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	flex-shrink: 0;
+	height: 48px;
+	padding: 0 14px;
+	border-top: 1px solid var(--dbx-line-soft);
+	background: var(--dbx-surface);
+}
+.dbx-root .viz-detail-foot-note {
+	margin-left: auto;
+	font-size: 10px;
+	white-space: nowrap;
+	color: var(--muted-foreground);
 }
 
+/* 详情列的分区：设计帧里各段只有标题行，没有卡片边框；内容自己成块。 */
 .dbx-root .viz-section {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-	padding: 10px 12px;
-	border: 1px solid var(--dbx-line-soft);
-	border-radius: 10px;
-	background: var(--dbx-surface);
+	padding: 0;
+	border: none;
+	background: transparent;
 }
 .dbx-root .viz-section-head {
 	display: flex;
@@ -189,7 +232,7 @@
 }
 .dbx-root .viz-section-title {
 	margin: 0;
-	font-size: 12px;
+	font-size: 11px;
 	font-weight: 600;
 	color: var(--foreground);
 }
@@ -205,7 +248,7 @@
 	flex-direction: column;
 	gap: 4px;
 	padding: 8px 10px;
-	border-radius: 8px;
+	border-radius: var(--dbx-radius-control, 6px);
 	background: var(--dbx-surface-2);
 }
 .dbx-root .viz-dataset-meta {
@@ -217,7 +260,7 @@
 	padding: 8px 10px;
 	max-height: 180px;
 	overflow: auto;
-	border-radius: 8px;
+	border-radius: var(--dbx-radius-control, 6px);
 	background: var(--dbx-gutter);
 	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	font-size: 11px;
@@ -240,9 +283,13 @@
 	font-weight: 600;
 	color: var(--foreground);
 }
+.dbx-root .viz-field-label code,
+.dbx-root .viz-field-label .viz-mono {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 .dbx-root .viz-field-role {
 	padding: 0 5px;
-	border-radius: 8px;
+	border-radius: var(--dbx-radius-chip, 6px);
 	font-size: 10px;
 	font-weight: 400;
 	background: var(--dbx-hover);
@@ -255,24 +302,31 @@
 	max-height: 92px;
 	overflow: auto;
 }
+/* 枚举项：设计帧的命中态是 accent 15% 底 + accent 字（标签本身不能改动文字内容）。 */
 .dbx-root .viz-check {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	padding: 2px 7px 2px 5px;
-	border: 1px solid var(--dbx-line-soft);
-	border-radius: 999px;
+	height: 24px;
+	padding: 0 8px 0 6px;
+	border: 1px solid var(--dbx-line);
+	border-radius: var(--dbx-radius-chip, 6px);
 	font-size: 11px;
 	color: var(--foreground);
 	cursor: pointer;
-	background: var(--background);
+	background: var(--dbx-surface);
 }
 .dbx-root .viz-check:hover {
-	border-color: var(--dbx-line);
+	border-color: var(--dbx-border-strong);
+}
+.dbx-root .viz-check:has(input:checked) {
+	border-color: color-mix(in srgb, var(--dbx-accent) 40%, transparent);
+	background: color-mix(in srgb, var(--dbx-accent) 15%, transparent);
+	color: var(--dbx-accent);
 }
 .dbx-root .viz-check input {
 	margin: 0;
-	accent-color: var(--dbx-primary);
+	accent-color: var(--dbx-accent);
 }
 .dbx-root .viz-range {
 	display: flex;
@@ -280,41 +334,48 @@
 	gap: 6px;
 }
 .dbx-root .viz-input {
-	width: 132px;
-	padding: 3px 7px;
-	border: 1px solid var(--dbx-line-soft);
-	border-radius: 6px;
-	background: var(--background);
+	width: 120px;
+	height: 32px;
+	padding: 0 10px;
+	border: 1px solid var(--dbx-line);
+	border-radius: var(--dbx-radius-control, 6px);
+	background: var(--dbx-surface);
 	color: var(--foreground);
-	font-size: 11px;
+	font-size: 12px;
 }
 .dbx-root .viz-input:focus {
 	outline: none;
-	border-color: var(--dbx-line);
+	border-color: var(--dbx-accent);
 }
 
 .dbx-root .viz-grid {
 	display: grid;
-	gap: clamp(12px, 2vw, 20px);
+	gap: 12px;
 }
 .dbx-root .viz-canvas-card {
-	padding: clamp(12px, 2vw, 20px);
+	padding: 10px;
 	overflow: hidden;
 	border-radius: var(--viz-card-radius, 12px);
 	background: var(--viz-card-bg, var(--background));
 	border: var(--viz-card-border, 1px solid var(--dbx-line-soft));
 	box-shadow: var(--viz-card-shadow, none);
 }
+/* 标题占满卡片整行（负边距抵消 10px padding），下沿一条分隔线，对齐设计帧的卡片头行。 */
 .dbx-root .viz-canvas-title {
-	margin: 0 0 8px;
-	font-size: 13px;
+	display: flex;
+	align-items: center;
+	height: 32px;
+	margin: -10px -10px 10px;
+	padding: 0 10px;
+	border-bottom: 1px solid var(--viz-card-border, var(--dbx-line-soft));
+	font-size: 12px;
 	font-weight: 600;
 	color: var(--viz-title, var(--foreground));
 }
 .dbx-root .viz-canvas-desc {
 	margin: 0 0 6px;
-	font-size: 11px;
-	color: var(--viz-desc, var(--muted-foreground));
+	font-size: 10px;
+	color: var(--viz-desc, var(--dbx-faint));
 }
 .dbx-root .viz-canvas-note {
 	margin: 0 0 6px;
@@ -337,10 +398,10 @@
 	gap: 6px;
 	height: 100%;
 	padding: 16px;
-	border: 1px dashed #fecaca;
-	border-radius: 8px;
-	background: #fef2f2;
-	color: #ef4444;
+	border: 1px dashed color-mix(in srgb, var(--dbx-danger) 45%, transparent);
+	border-radius: 6px;
+	background: color-mix(in srgb, var(--dbx-danger) 8%, transparent);
+	color: var(--dbx-danger);
 	font-size: 11px;
 	text-align: center;
 }
@@ -348,26 +409,35 @@
 	font-size: 13px;
 }
 .dbx-root .viz-canvas-error span {
-	color: #7f1d1d;
+	color: var(--muted-foreground);
 }
 
 .dbx-root .viz-action-btn {
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	height: 26px;
-	padding: 0 9px;
-	border: 1px solid var(--dbx-line-soft);
-	border-radius: 7px;
+	height: 28px;
+	padding: 0 10px;
+	border: 1px solid var(--dbx-line);
+	border-radius: var(--dbx-radius-control, 6px);
 	background: var(--dbx-surface);
 	color: var(--foreground);
-	font-size: 11px;
+	font-size: 12px;
 	cursor: pointer;
 	transition: background 0.12s, border-color 0.12s, opacity 0.12s;
 }
 .dbx-root .viz-action-btn:hover:not(:disabled) {
 	background: var(--dbx-hover);
-	border-color: var(--dbx-line);
+	border-color: var(--dbx-border-strong);
+}
+.dbx-root .viz-action-btn.is-primary {
+	border-color: var(--dbx-primary);
+	background: var(--dbx-primary);
+	color: var(--dbx-primary-fg);
+}
+.dbx-root .viz-action-btn.is-primary:hover:not(:disabled) {
+	border-color: var(--dbx-primary);
+	background: color-mix(in srgb, var(--dbx-primary) 88%, #000);
 }
 .dbx-root .viz-action-btn:disabled {
 	opacity: 0.4;
@@ -376,17 +446,17 @@
 .dbx-root .viz-banner {
 	margin: 0;
 	padding: 7px 10px;
-	border-radius: 8px;
+	border-radius: var(--dbx-radius-control, 6px);
 	font-size: 11px;
 	line-height: 1.5;
 }
 .dbx-root .viz-banner-error {
-	background: rgb(239 68 68 / 0.1);
-	color: #ef4444;
+	background: color-mix(in srgb, var(--dbx-danger) 10%, transparent);
+	color: var(--dbx-danger);
 }
 .dbx-root .viz-banner-ok {
-	background: rgb(34 197 94 / 0.1);
-	color: #16a34a;
+	background: color-mix(in srgb, var(--dbx-success) 10%, transparent);
+	color: var(--dbx-success);
 }
 .dbx-root .viz-banner-info {
 	background: var(--dbx-surface-2);
@@ -401,14 +471,14 @@
 /* 血缘：本产物的来源与反查（ADR-0009 §9 M3）。表按 (连接, 表名) 成对展示。 */
 .dbx-root .viz-lineage-time {
 	font-size: 11px;
-	color: var(--muted-foreground);
+	color: var(--dbx-faint);
 }
 .dbx-root .viz-lineage-source {
 	display: flex;
 	flex-direction: column;
 	gap: 4px;
 	padding: 8px 10px;
-	border-radius: 8px;
+	border-radius: var(--dbx-radius-control, 6px);
 	background: var(--dbx-surface-2);
 }
 .dbx-root .viz-lineage-source-title {
@@ -459,3 +529,576 @@
 .dbx-root .viz-lineage-entry-meta {
 	color: var(--muted-foreground);
 }
+
+/* ──────────── BI：三栏工作台（对齐设计帧 bi-assets.tsx） ────────────
+   本段不参与 @layer，会盖过 Tailwind 原子类；因此图库 markup 只用下面这些自定义类，
+   颜色/尺寸/间距一律走 --dbx-* 令牌，不写死色值。 */
+
+.dbx-root .viz-assets {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	background: var(--dbx-canvas);
+	color: var(--foreground);
+}
+
+/* 头部：h-14 / px-8 */
+.dbx-root .viz-assets-head {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-shrink: 0;
+	height: 56px;
+	padding: 0 32px;
+	border-bottom: 1px solid var(--dbx-line);
+}
+.dbx-root .viz-assets-title {
+	margin: 0;
+	font-size: 20px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+	color: var(--dbx-surface-foreground);
+}
+.dbx-root .viz-assets-count {
+	flex-shrink: 0;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	color: var(--dbx-muted);
+}
+.dbx-root .viz-assets-head-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+/* 搜索框：h-7 / w-240 */
+.dbx-root .viz-assets-search {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+	width: 240px;
+	height: 28px;
+	padding: 0 10px;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control, 6px);
+	background: var(--dbx-surface);
+}
+.dbx-root .viz-assets-search-icon {
+	flex-shrink: 0;
+	font-size: 14px;
+	color: var(--dbx-muted);
+}
+.dbx-root .viz-assets-search input {
+	flex: 1;
+	min-width: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	font-family: inherit;
+	font-size: 12px;
+	color: var(--dbx-surface-foreground);
+}
+.dbx-root .viz-assets-search input::placeholder {
+	color: var(--dbx-muted);
+}
+.dbx-root .viz-assets-search:focus-within {
+	border-color: var(--dbx-accent);
+}
+
+/* 类型 chip：全部 / 看板 / 大屏（带数量） */
+.dbx-root .viz-assets-chip {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	height: 24px;
+	padding: 0 8px;
+	border: 1px solid transparent;
+	border-radius: var(--dbx-radius-chip, 6px);
+	background: transparent;
+	font-family: inherit;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	color: var(--dbx-muted);
+	cursor: pointer;
+}
+.dbx-root .viz-assets-chip:hover {
+	background: var(--dbx-hover);
+}
+.dbx-root .viz-assets-chip.is-active {
+	background: var(--dbx-neutral-muted);
+	font-weight: 600;
+	color: var(--dbx-surface-foreground);
+}
+
+.dbx-root .viz-assets-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	flex-shrink: 0;
+	height: 28px;
+	padding: 0 10px;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control, 6px);
+	background: var(--dbx-surface);
+	font-family: inherit;
+	font-size: 12px;
+	white-space: nowrap;
+	color: var(--dbx-surface-foreground);
+	cursor: pointer;
+}
+.dbx-root .viz-assets-btn:hover:not(:disabled) {
+	border-color: var(--dbx-border-strong);
+	background: var(--dbx-hover);
+}
+.dbx-root .viz-assets-btn.is-danger {
+	border-color: color-mix(in srgb, var(--dbx-danger) 45%, transparent);
+	background: color-mix(in srgb, var(--dbx-danger) 15%, transparent);
+	color: var(--dbx-danger);
+}
+.dbx-root .viz-assets-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.dbx-root .viz-assets-body {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* 左欄：数据集（w-272） */
+.dbx-root .viz-assets-rail {
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	width: 272px;
+	border-right: 1px solid var(--dbx-line);
+}
+.dbx-root .viz-assets-rail-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+	height: 36px;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--dbx-line);
+}
+.dbx-root .viz-assets-rail-icon {
+	font-size: 14px;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-assets-rail-title {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--dbx-surface-foreground);
+}
+.dbx-root .viz-assets-rail-count {
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-assets-rail-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding: 6px;
+}
+.dbx-root .viz-assets-rail-empty {
+	margin: 8px;
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--dbx-muted);
+}
+.dbx-root .viz-rail-row {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	width: 100%;
+	padding: 6px 10px;
+	border: 1px solid transparent;
+	border-radius: var(--dbx-radius-control, 6px);
+	background: transparent;
+	font-family: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+.dbx-root .viz-rail-row:hover {
+	background: var(--dbx-hover);
+}
+.dbx-root .viz-rail-row.is-active {
+	background: color-mix(in srgb, var(--dbx-accent) 15%, transparent);
+}
+.dbx-root .viz-rail-row-top {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+.dbx-root .viz-rail-row-icon {
+	flex-shrink: 0;
+	font-size: 13px;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-rail-row-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+	color: var(--dbx-surface-foreground);
+}
+.dbx-root .viz-rail-row.is-active .viz-rail-row-icon,
+.dbx-root .viz-rail-row.is-active .viz-rail-row-name {
+	color: var(--dbx-accent);
+}
+.dbx-root .viz-rail-row-meta {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	overflow: hidden;
+	font-size: 11px;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-rail-row-table {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.dbx-root .viz-rail-sep {
+	color: var(--dbx-border-strong);
+}
+.dbx-root .viz-rail-num {
+	font-variant-numeric: tabular-nums;
+}
+.dbx-root .viz-assets-rail-foot {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+	padding: 8px 12px;
+	border-top: 1px solid var(--dbx-line);
+	font-size: 11px;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+
+/* 中欄：卡片网格（grid-cols-3 / gap-3 / p-4） */
+.dbx-root .viz-assets-center {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+.dbx-root .viz-assets-center-head {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-shrink: 0;
+	height: 36px;
+	padding: 0 16px;
+	border-bottom: 1px solid var(--dbx-line);
+	font-size: 11px;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-assets-center-hint {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: auto;
+}
+.dbx-root .viz-assets-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	align-content: start;
+	gap: 12px;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding: 16px;
+}
+.dbx-root .viz-assets-center-foot {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-shrink: 0;
+	height: 36px;
+	padding: 0 16px;
+	border-top: 1px solid var(--dbx-line);
+	font-size: 11px;
+	white-space: nowrap;
+	color: var(--dbx-muted);
+}
+.dbx-root .viz-assets-foot-icon {
+	flex-shrink: 0;
+	font-size: 14px;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-assets-foot-stat {
+	margin-left: auto;
+}
+
+/* 空态 */
+.dbx-root .viz-assets-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	grid-column: 1 / -1;
+	padding: 48px 16px;
+	text-align: center;
+}
+.dbx-root .viz-assets-empty-icon {
+	font-size: 40px;
+	color: color-mix(in srgb, var(--dbx-muted) 45%, transparent);
+}
+.dbx-root .viz-assets-empty-title {
+	margin: 0;
+	font-size: 13px;
+	color: var(--foreground);
+}
+.dbx-root .viz-assets-empty-hint {
+	margin: 0;
+	font-size: 11px;
+	color: var(--dbx-muted);
+}
+
+/* 卡片：刻意不设 overflow:hidden，否则绝对定位的更多菜单会被剪掉。 */
+.dbx-root .viz-asset-card {
+	display: flex;
+	flex-direction: column;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-card, 6px);
+	background: var(--dbx-surface);
+}
+.dbx-root .viz-asset-card.is-open {
+	border-color: color-mix(in srgb, var(--dbx-accent) 50%, transparent);
+}
+.dbx-root .viz-asset-thumb {
+	position: relative;
+	display: block;
+	width: 100%;
+	height: 104px;
+	flex-shrink: 0;
+	overflow: hidden;
+	padding: 0;
+	border: none;
+	border-bottom: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-card, 6px) var(--dbx-radius-card, 6px) 0 0;
+	background: var(--dbx-panel-sunken);
+	cursor: pointer;
+}
+.dbx-root .viz-asset-thumb.is-screen {
+	background: var(--dbx-screen);
+}
+.dbx-root .viz-asset-thumb-badge {
+	position: absolute;
+	right: 8px;
+	bottom: 8px;
+	padding: 1px 6px;
+	border-radius: var(--dbx-radius-chip, 6px);
+	background: color-mix(in srgb, var(--dbx-canvas) 80%, transparent);
+	font-size: 10px;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-asset-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px 0;
+}
+.dbx-root .viz-asset-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--dbx-surface-foreground);
+}
+.dbx-root .viz-asset-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px 8px;
+	font-size: 11px;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+.dbx-root .viz-asset-meta-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.dbx-root .viz-asset-time {
+	margin-left: auto;
+}
+.dbx-root .viz-asset-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 0 10px 10px;
+}
+
+/* chip：类型 / 只读快照 */
+.dbx-root .viz-chip {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	padding: 1px 6px;
+	border-radius: var(--dbx-radius-chip, 6px);
+	background: var(--dbx-neutral-muted);
+	font-size: 11px;
+	white-space: nowrap;
+	color: var(--dbx-muted);
+}
+.dbx-root .viz-chip.is-screen {
+	background: var(--dbx-screen);
+	color: var(--dbx-screen-foreground);
+}
+.dbx-root .viz-chip.is-warning {
+	background: var(--dbx-warning-soft);
+	color: var(--dbx-warning);
+}
+
+/* 卡片菜单 */
+.dbx-root .viz-menu-anchor {
+	position: relative;
+	flex-shrink: 0;
+}
+.dbx-root .viz-menu-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 10;
+}
+.dbx-root .viz-menu {
+	position: absolute;
+	right: 0;
+	top: calc(100% + 4px);
+	z-index: 20;
+	width: 144px;
+	padding: 4px 0;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-control, 6px);
+	background: var(--dbx-surface);
+	box-shadow: var(--dbx-shadow-popover);
+}
+.dbx-root .viz-menu-item {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 6px 12px;
+	border: none;
+	background: transparent;
+	font-family: inherit;
+	font-size: 12px;
+	text-align: left;
+	color: var(--foreground);
+	cursor: pointer;
+}
+.dbx-root .viz-menu-item:hover {
+	background: var(--dbx-hover);
+}
+.dbx-root .viz-menu-item.is-danger {
+	color: var(--dbx-danger);
+}
+.dbx-root .viz-menu-item.is-danger:hover {
+	background: var(--dbx-danger-soft);
+}
+
+/* 卡片快捷操作行（设计帧没有，保留既有预览/下载/AI 入口） */
+.dbx-root .viz-ghost-btn {
+	display: inline-flex;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	height: 26px;
+	border: 1px solid transparent;
+	border-radius: var(--dbx-radius-control, 6px);
+	background: var(--dbx-surface-2);
+	font-family: inherit;
+	font-size: 11px;
+	font-weight: 500;
+	white-space: nowrap;
+	color: var(--foreground);
+	cursor: pointer;
+}
+.dbx-root .viz-ghost-btn:hover {
+	background: var(--dbx-hover);
+}
+.dbx-root .viz-ghost-btn.is-primary {
+	background: color-mix(in srgb, var(--dbx-primary) 12%, transparent);
+	color: var(--dbx-primary);
+}
+.dbx-root .viz-ghost-btn.is-primary:hover {
+	background: color-mix(in srgb, var(--dbx-primary) 20%, transparent);
+}
+
+/* 缩略图几何：div / 内联 SVG，不用图标字体 */
+.dbx-root .viz-thumb-svg {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	bottom: 14px;
+	left: 12px;
+	width: auto;
+	height: auto;
+}
+.dbx-root .viz-thumb-area {
+	fill: var(--dbx-series-1);
+	opacity: 0.12;
+}
+.dbx-root .viz-thumb-line {
+	fill: none;
+	stroke: var(--dbx-series-1);
+	stroke-width: 1.5;
+	vector-effect: non-scaling-stroke;
+}
+.dbx-root .viz-thumb-donut {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 68px;
+	height: 68px;
+	transform: translate(-50%, -50%);
+}
+.dbx-root .viz-thumb-seg-1 { stroke: var(--dbx-series-1); }
+.dbx-root .viz-thumb-seg-2 { stroke: var(--dbx-series-2); }
+.dbx-root .viz-thumb-seg-3 { stroke: var(--dbx-series-3); }
+.dbx-root .viz-thumb-seg-4 { stroke: var(--dbx-series-4); }
+.dbx-root .viz-thumb-bars {
+	display: flex;
+	align-items: flex-end;
+	gap: 4px;
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	bottom: 14px;
+	left: 12px;
+}
+.dbx-root .viz-thumb-bar {
+	flex: 1;
+	border-radius: 2px 2px 0 0;
+}
+.dbx-root .viz-thumb-bar-1 { background: var(--dbx-series-1); }
+.dbx-root .viz-thumb-bar-2 { background: var(--dbx-series-2); }
+.dbx-root .viz-thumb-bar-3 { background: var(--dbx-series-3); }
+.dbx-root .viz-thumb-bar-4 { background: var(--dbx-series-4); }
+

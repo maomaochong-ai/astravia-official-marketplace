@@ -1,5 +1,5 @@
 /**
- * visualization-doc — 「BI 数据资产」存储文档的读写与版本迁移。
+ * visualization-doc — 「BI」存储文档的读写与版本迁移。
  *
  * 文档形态：
  *   v1  裸数组 [...items]                    历史格式，无版本号

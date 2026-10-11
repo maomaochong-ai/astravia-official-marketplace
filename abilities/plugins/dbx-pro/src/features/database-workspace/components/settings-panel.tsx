@@ -47,6 +47,13 @@ type SettingChange = <K extends keyof WorkbenchSettings>(key: K, value: Workbenc
 export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onClose, onWipeData }: Props): JSX.Element {
 	const [activeCategory, setActiveCategory] = useState<SettingsCategory>("query");
 	const [confirmWipe, setConfirmWipe] = useState(false);
+	const [search, setSearch] = useState("");
+	const keyword = search.trim();
+	const filteredCategories = keyword ? CATEGORIES.filter((cat) => cat.label.includes(keyword)) : CATEGORIES;
+	const effectiveCategory = filteredCategories.some((cat) => cat.key === activeCategory)
+		? activeCategory
+		: (filteredCategories[0]?.key ?? activeCategory);
+	const activeLabel = CATEGORIES.find((cat) => cat.key === effectiveCategory)?.label ?? "";
 
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -71,16 +78,17 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 					<span className="icon-[lucide--settings] size-4 shrink-0 text-muted" />
 					<h3 className="font-sans text-[16px] font-semibold tracking-tight text-surface-foreground">工作台设置</h3>
 					<span className="font-mono text-[12px] text-faint">v{PLUGIN_VERSION}</span>
+					<label className="dbx-settings-search ml-4">
+						<span className="icon-[lucide--search] h-3.5 w-3.5 shrink-0 text-faint" />
+						<input
+							type="search"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							placeholder="搜索设置项"
+							aria-label="搜索设置项"
+						/>
+					</label>
 					<div className="ml-auto flex shrink-0 items-center gap-1">
-						<button
-							type="button"
-							onClick={onReset}
-							disabled={isDefaultSettings(settings)}
-							className="dbx-iconbtn"
-							style={{ height: 24 }}
-						>
-							恢复默认
-						</button>
 						<button
 							type="button"
 							onClick={onClose}
@@ -94,55 +102,69 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 				</div>
 
 				<div className="flex min-h-0 flex-1">
-					<nav className="flex w-40 shrink-0 flex-col border-r border-border bg-surface-raised px-2 py-3">
-						{CATEGORY_GROUPS.map((group, groupIdx) => (
-							<div key={group} className="contents">
-								<div
-									className={
-										groupIdx === 0
-											? "px-2 pt-1 pb-1.5 text-[12px] tracking-[0.06em] text-muted"
-											: "mt-3 px-2 pt-1 pb-1.5 text-[12px] tracking-[0.06em] text-muted"
-									}
-								>
-									{group}
+					<nav className="dbx-settings-nav">
+						{CATEGORY_GROUPS.map((group, groupIdx) => {
+							const items = filteredCategories.filter((cat) => cat.group === group);
+							if (items.length === 0) return null;
+							return (
+								<div key={group} className="contents">
+									<div className={"dbx-settings-nav__group" + (groupIdx > 0 ? " mt-2" : "")}>{group}</div>
+									{items.map((cat) => (
+										<button
+											key={cat.key}
+											type="button"
+											className={"dbx-category-nav-item" + (effectiveCategory === cat.key ? " active" : "")}
+											onClick={() => setActiveCategory(cat.key)}
+										>
+											<span className={cat.icon + " size-3.5"} />
+											<span>{cat.label}</span>
+										</button>
+									))}
 								</div>
-								{CATEGORIES.filter((cat) => cat.group === group).map((cat) => (
-									<button
-										key={cat.key}
-										type="button"
-										className={"dbx-category-nav-item" + (activeCategory === cat.key ? " active" : "")}
-										onClick={() => setActiveCategory(cat.key)}
-									>
-										<span className={cat.icon + " size-3.5"} />
-										<span>{cat.label}</span>
-									</button>
-								))}
-							</div>
-						))}
+							);
+						})}
 					</nav>
 
-					<div className="dbx-settings-body dbx-scroll min-h-0 flex-1 overflow-y-auto bg-surface p-4">
-						{activeCategory === "query" && (
+					<div className="flex min-w-0 flex-1 flex-col">
+						<div className="dbx-settings-content-header">{activeLabel}</div>
+						<div className="dbx-settings-body dbx-scroll min-h-0 flex-1 overflow-y-auto bg-surface px-4 pb-4">
+						{effectiveCategory === "query" && (
 							<QueryResultSettings settings={settings} onChange={updateSetting} />
 						)}
-						{activeCategory === "grid" && (
+						{effectiveCategory === "grid" && (
 							<DataGridSettings settings={settings} onChange={updateSetting} />
 						)}
-						{activeCategory === "resultTab" && (
+						{effectiveCategory === "resultTab" && (
 							<ResultTabSettings settings={settings} onChange={updateSetting} />
 						)}
-						{activeCategory === "export" && (
+						{effectiveCategory === "export" && (
 							<ExportSettings settings={settings} onChange={updateSetting} />
 						)}
-						{activeCategory === "sidebar" && (
+						{effectiveCategory === "sidebar" && (
 							<SidebarSettings />
 						)}
-						{activeCategory === "history" && (
+						{effectiveCategory === "history" && (
 							<HistorySettings settings={settings} onChange={updateSetting} onClearHistory={onClearHistory} />
 						)}
-						{activeCategory === "about" && (
+						{effectiveCategory === "about" && (
 							<AboutSection onWipeData={onWipeData} confirmWipe={confirmWipe} setConfirmWipe={setConfirmWipe} />
 						)}
+						</div>
+					</div>
+					<div className="dbx-settings-footer">
+						<button
+							type="button"
+							onClick={onReset}
+							disabled={isDefaultSettings(settings)}
+							className="dbx-btn ghost disabled:opacity-50"
+						>
+							<span className="icon-[lucide--rotate-ccw] h-3.5 w-3.5" />
+							恢复默认设置
+						</button>
+						<span className="dbx-settings-footer__note">设置已保存在本机</span>
+						<button type="button" onClick={onClose} className="dbx-btn primary">
+							完成
+						</button>
 					</div>
 				</div>
 			</div>
@@ -154,7 +176,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	const maxRowsBounds = SETTINGS_BOUNDS.queryResultMaxRows;
 	return (
-		<div className="flex flex-col">
+		<div className="dbx-setting-list">
 			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">查询结果</h3>
 
 			<PageSizeField
@@ -174,14 +196,16 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 			/>
 
 			<SettingRow label="查询超时（秒）" hint="超时后自动取消查询">
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={SETTINGS_BOUNDS.queryTimeoutSecs.min}
-					max={SETTINGS_BOUNDS.queryTimeoutSecs.max}
-					value={settings.queryTimeoutSecs}
-					onChange={(e) => onChange("queryTimeoutSecs", clampInt(e.target.value, SETTINGS_BOUNDS.queryTimeoutSecs.min, SETTINGS_BOUNDS.queryTimeoutSecs.max, settings.queryTimeoutSecs))}
-				/>
+				<div className="dbx-number-control">
+					<input
+						type="number"
+						min={SETTINGS_BOUNDS.queryTimeoutSecs.min}
+						max={SETTINGS_BOUNDS.queryTimeoutSecs.max}
+						value={settings.queryTimeoutSecs}
+						onChange={(e) => onChange("queryTimeoutSecs", clampInt(e.target.value, SETTINGS_BOUNDS.queryTimeoutSecs.min, SETTINGS_BOUNDS.queryTimeoutSecs.max, settings.queryTimeoutSecs))}
+					/>
+					<span className="dbx-number-control__unit">秒</span>
+				</div>
 			</SettingRow>
 
 			<SettingRow label="限制查询结果总量" hint="开启后最多取回下方设定的行数（循环分页取数）；关闭后取到引擎单次上限（1000 行）即止。">
@@ -200,19 +224,21 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 					label="查询结果最大行数"
 					hint={`${maxRowsBounds.min.toLocaleString()}–${maxRowsBounds.max.toLocaleString()}`}
 				>
-					<input
-						type="number"
-						className="dbx-form-input"
-						min={maxRowsBounds.min}
-						max={maxRowsBounds.max}
-						value={settings.queryResultMaxRows}
-						onChange={(e) =>
-							onChange(
-								"queryResultMaxRows",
-								clampInt(e.target.value, maxRowsBounds.min, maxRowsBounds.max, settings.queryResultMaxRows),
-							)
-						}
-					/>
+					<div className="dbx-number-control">
+						<input
+							type="number"
+							min={maxRowsBounds.min}
+							max={maxRowsBounds.max}
+							value={settings.queryResultMaxRows}
+							onChange={(e) =>
+								onChange(
+									"queryResultMaxRows",
+									clampInt(e.target.value, maxRowsBounds.min, maxRowsBounds.max, settings.queryResultMaxRows),
+								)
+							}
+						/>
+						<span className="dbx-number-control__unit">行</span>
+					</div>
 				</SettingRow>
 			)}
 
@@ -233,25 +259,41 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 			</SettingRow>
 
 			<SettingRow label="多语句默认视图" hint="执行多语句后的默认视图">
-				<select
-					className="dbx-form-input"
-					value={settings.multiStatementDefaultView}
-					onChange={(e) => onChange("multiStatementDefaultView", e.target.value as "result" | "messages")}
-				>
-					<option value="result">结果视图</option>
-					<option value="messages">消息视图</option>
-				</select>
+				<div className="dbx-segmented" role="group" aria-label="多语句默认视图">
+					{([
+						["result", "结果视图"],
+						["messages", "消息视图"],
+					] as const).map(([value, label]) => (
+						<button
+							key={value}
+							type="button"
+							aria-pressed={settings.multiStatementDefaultView === value}
+							onClick={() => onChange("multiStatementDefaultView", value)}
+							className="dbx-segmented__item"
+						>
+							{label}
+						</button>
+					))}
+				</div>
 			</SettingRow>
 
 			<SettingRow label="执行计划默认视图" hint="EXPLAIN 的默认视图">
-				<select
-					className="dbx-form-input"
-					value={settings.defaultExplainView}
-					onChange={(e) => onChange("defaultExplainView", e.target.value as "table" | "canvas")}
-				>
-					<option value="table">表格视图</option>
-					<option value="canvas">图形视图</option>
-				</select>
+				<div className="dbx-segmented" role="group" aria-label="执行计划默认视图">
+					{([
+						["table", "表格视图"],
+						["canvas", "图形视图"],
+					] as const).map(([value, label]) => (
+						<button
+							key={value}
+							type="button"
+							aria-pressed={settings.defaultExplainView === value}
+							onClick={() => onChange("defaultExplainView", value)}
+							className="dbx-segmented__item"
+						>
+							{label}
+						</button>
+					))}
+				</div>
 			</SettingRow>
 		</div>
 	);
@@ -260,7 +302,7 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 /** 数据网格显示设置（对齐 dbx Data > Data Grid Display） */
 function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	return (
-		<div className="flex flex-col">
+		<div className="dbx-setting-list">
 			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">数据网格显示</h3>
 
 			<SettingRow label="斑马纹行" hint="交替行背景色（对齐 dbx dataGridStripedRows）">
@@ -302,7 +344,7 @@ function DataGridSettings({ settings, onChange }: { settings: WorkbenchSettings;
 /** 结果标签设置（对齐 dbx Data > Result tab settings） */
 function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings; onChange: SettingChange }): JSX.Element {
 	return (
-		<div className="flex flex-col">
+		<div className="dbx-setting-list">
 			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">结果标签</h3>
 
 			<SettingRow label="命名方式" hint="新结果标签的命名方式（对齐 dbx resultTabNamingMode）">
@@ -334,7 +376,7 @@ function ResultTabSettings({ settings, onChange }: { settings: WorkbenchSettings
 /** 侧边栏设置（对齐 dbx Navigation） */
 function SidebarSettings(): JSX.Element {
 	return (
-		<div className="flex flex-col">
+		<div className="dbx-setting-list">
 			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">树交互</h3>
 
 			<SettingRow label="连接树节点" hint="选中与打开查询的方式">
@@ -353,7 +395,7 @@ function SidebarSettings(): JSX.Element {
 /** 历史设置（对齐 dbx Data > History Retention） */
 function HistorySettings({ settings, onChange, onClearHistory }: { settings: WorkbenchSettings; onChange: SettingChange; onClearHistory: () => void }): JSX.Element {
 	return (
-		<div className="flex flex-col">
+		<div className="dbx-setting-list">
 			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">历史保留</h3>
 
 			<SettingRow label="记录查询历史" hint="记录 SQL、耗时与行数">
@@ -369,14 +411,16 @@ function HistorySettings({ settings, onChange, onClearHistory }: { settings: Wor
 
 			{settings.historyEnabled && (
 				<SettingRow label="历史条数上限" hint="超出后自动清理最旧的记录">
-					<input
-						type="number"
-						className="dbx-form-input"
-						min={SETTINGS_BOUNDS.historyLimit.min}
-						max={SETTINGS_BOUNDS.historyLimit.max}
-						value={settings.historyLimit}
-						onChange={(e) => onChange("historyLimit", clampInt(e.target.value, SETTINGS_BOUNDS.historyLimit.min, SETTINGS_BOUNDS.historyLimit.max, settings.historyLimit))}
-					/>
+					<div className="dbx-number-control">
+						<input
+							type="number"
+							min={SETTINGS_BOUNDS.historyLimit.min}
+							max={SETTINGS_BOUNDS.historyLimit.max}
+							value={settings.historyLimit}
+							onChange={(e) => onChange("historyLimit", clampInt(e.target.value, SETTINGS_BOUNDS.historyLimit.min, SETTINGS_BOUNDS.historyLimit.max, settings.historyLimit))}
+						/>
+						<span className="dbx-number-control__unit">条</span>
+					</div>
 				</SettingRow>
 			)}
 
@@ -397,26 +441,28 @@ function ExportSettings({ settings, onChange }: { settings: WorkbenchSettings; o
 	const bounds = SETTINGS_BOUNDS.exportRowLimit;
 	const batchBounds = SETTINGS_BOUNDS.exportBatchSize;
 	return (
-		<div className="flex flex-col">
+		<div className="dbx-setting-list">
 			<h3 className="mb-1.5 text-[13px] font-semibold text-surface-foreground">导出</h3>
 
 			<SettingRow
 				label="每批取行数"
 				hint={`导出全部数据时每批从引擎取回的行数（${batchBounds.min.toLocaleString()}–${batchBounds.max.toLocaleString()}）`}
 			>
-				<input
-					type="number"
-					className="dbx-form-input"
-					min={batchBounds.min}
-					max={batchBounds.max}
-					value={settings.exportBatchSize}
-					onChange={(e) =>
-						onChange(
-							"exportBatchSize",
-							clampInt(e.target.value, batchBounds.min, batchBounds.max, settings.exportBatchSize),
-						)
-					}
-				/>
+				<div className="dbx-number-control">
+					<input
+						type="number"
+						min={batchBounds.min}
+						max={batchBounds.max}
+						value={settings.exportBatchSize}
+						onChange={(e) =>
+							onChange(
+								"exportBatchSize",
+								clampInt(e.target.value, batchBounds.min, batchBounds.max, settings.exportBatchSize),
+							)
+						}
+					/>
+					<span className="dbx-number-control__unit">行</span>
+				</div>
 			</SettingRow>
 
 			<SettingRow label="限制导出行数" hint="默认关闭：「导出全部数据」循环拉取到末页；开启后最多导出下方设定的行数。">
@@ -435,19 +481,21 @@ function ExportSettings({ settings, onChange }: { settings: WorkbenchSettings; o
 					label="最大导出行数"
 					hint={`${bounds.min.toLocaleString()}–${bounds.max.toLocaleString()}`}
 				>
-					<input
-						type="number"
-						className="dbx-form-input"
-						min={bounds.min}
-						max={bounds.max}
-						value={settings.exportRowLimit}
-						onChange={(e) =>
-							onChange(
-								"exportRowLimit",
-								clampInt(e.target.value, bounds.min, bounds.max, settings.exportRowLimit),
-							)
-						}
-					/>
+					<div className="dbx-number-control">
+						<input
+							type="number"
+							min={bounds.min}
+							max={bounds.max}
+							value={settings.exportRowLimit}
+							onChange={(e) =>
+								onChange(
+									"exportRowLimit",
+									clampInt(e.target.value, bounds.min, bounds.max, settings.exportRowLimit),
+								)
+							}
+						/>
+						<span className="dbx-number-control__unit">行</span>
+					</div>
 				</SettingRow>
 			)}
 		</div>
@@ -580,24 +628,26 @@ function PageSizeField({ label, hint, value, bounds, onChange }: {
 	return (
 		<SettingRow label={label} hint={hint}>
 			<div className="flex flex-col items-end gap-1">
-			<input
-				type="number"
-				inputMode="numeric"
-				aria-label={label}
-					className="dbx-form-input h-7 w-24 bg-surface text-right font-mono text-[12px] tabular-nums"
-				min={bounds.min}
-				max={bounds.max}
-				value={text}
-				onFocus={() => { editingRef.current = true; }}
-				onChange={(e) => edit(e.target.value)}
-				onBlur={commit}
-				onKeyDown={(e) => {
-					if (e.key === "Enter") {
-						e.preventDefault();
-						commit();
-					}
-				}}
-			/>
+			<div className="dbx-number-control">
+				<input
+					type="number"
+					inputMode="numeric"
+					aria-label={label}
+					min={bounds.min}
+					max={bounds.max}
+					value={text}
+					onFocus={() => { editingRef.current = true; }}
+					onChange={(e) => edit(e.target.value)}
+					onBlur={commit}
+					onKeyDown={(e) => {
+						if (e.key === "Enter") {
+							e.preventDefault();
+							commit();
+						}
+					}}
+				/>
+				<span className="dbx-number-control__unit">行</span>
+			</div>
 				{notice ? <p className="text-[11px] leading-relaxed text-warning">{notice}</p> : null}
 			</div>
 		</SettingRow>
@@ -608,12 +658,12 @@ function PageSizeField({ label, hint, value, bounds, onChange }: {
 // children 可缺省：用于只有 label + hint 的说明行（例如「总行数统计」）。
 function SettingRow({ label, hint, children }: { label: string; hint?: string; children?: React.ReactNode }): JSX.Element {
 	return (
-		<div className="flex items-center gap-4 border-t border-border py-2.5">
-			<div className="min-w-0">
-				<div className="text-[13px] text-surface-foreground">{label}</div>
-				{hint ? <p className="mt-0.5 text-[12px] leading-relaxed text-muted">{hint}</p> : null}
+		<div className="dbx-setting-row">
+			<div className="dbx-setting-row__text">
+				<div className="dbx-setting-row__label">{label}</div>
+				{hint ? <p className="dbx-setting-row__hint">{hint}</p> : null}
 			</div>
-			<div className="ml-auto flex shrink-0 items-center gap-2">{children}</div>
+			<div className="dbx-setting-row__control">{children}</div>
 		</div>
 	);
 }

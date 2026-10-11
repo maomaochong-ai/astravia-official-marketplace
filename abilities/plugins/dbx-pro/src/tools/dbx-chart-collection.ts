@@ -6,7 +6,7 @@
  * 本文件不硬编码任何样式或 JS 配置。
  *
  * M1 起接收可选的 `datasets[]`：传了数据集就**不再落库 html**（html 退化为导出产物），
- * 产物改由 datasets + chartItems 驱动，可在「BI 数据资产」里筛选与重新取数。
+ * 产物改由 datasets + chartItems 驱动，可在「BI」里筛选与重新取数。
  * 模板/CSS 在 chart-shell.ts，Chart.js defaults 在 chart-defaults.ts，
  * 本文件不硬编码任何样式或 JS 配置。
  */
@@ -332,7 +332,7 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 							: `数据集「${item.title}」已裁剪未被图表引用的列`,
 					);
 				}
-				const tail = hasDatasets ? "，可在「BI 数据资产」里筛选与重新取数" : "";
+				const tail = hasDatasets ? "，可在「BI」里筛选与重新取数" : "";
 				const warn = notes.length > 0 ? ` 注意：${notes.join("；")}。` : "";
 				return {
 					ok: true,

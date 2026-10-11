@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useState, type JSX } from "react";
-import type { DbConnection } from "../../../domain/connection-config";
+import { findDbType, type DbConnection } from "../../../domain/connection-config";
 import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 
 export interface ConnectionListProps {
@@ -132,7 +132,10 @@ export function ConnectionList({
 								<DatabaseTypeIcon dbType={conn.db_type} size="small" />
 								<div className="min-w-0">
 									<div className="truncate text-[14px] font-semibold text-surface-foreground">{conn.name}</div>
-									<div className="truncate font-mono text-[12px] text-muted">{conn.db_type}</div>
+									{/* 设计稿副标题是显示名（如 PostgreSQL 16.2），不是内部 db_type；版本号引擎未回报，故只到显示名。 */}
+									<div className="truncate font-mono text-[12px] text-muted">
+										{findDbType(conn.db_type)?.label ?? conn.db_type}
+									</div>
 								</div>
 							</div>
 

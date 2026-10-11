@@ -1,9 +1,10 @@
 /**
- * 结果网格两个可观察行为的回归：底栏的「已取回 / 共 N 行」语义，以及生效中的导出行数上限提示。
+ * 结果网格两个可观察行为的回归：底栏的「本页区间 / 总行数」语义，以及生效中的导出行数上限提示。
  *
  *
- * 底栏要同时说清两件独立的事：本次会话真正从数据库取回了多少行（已取回 = 当前页
- * 末行的绝对行号），以及这张结果集总共有多少行（共 N 行，需要引擎统计）。
+ * 底栏左端用设计稿（frames/results.tsx 的「1–100 / 1,284」）的区间记法同时说清两件独立的事：
+ * 破折号两侧是当前页从数据库真实取回的行区间，斜杠后是这张结果集的总行数（需要引擎统计，
+ * 未成功时写 `?`）。
  * 历史缺陷是「查询结果总量限制」默认开启并把统计夹到 100_000，底栏于是常驻
  * 「共 100000 行」，与真实总数无关；总数未知时又拿取回行数兜底，两个数字互相污染。
  *
@@ -64,23 +65,21 @@ function renderGrid({ settings, ...props } = {}) {
 	);
 }
 
-describe("结果网格底栏：已取回与总行数相互独立", () => {
+describe("结果网格底栏：本页区间与总行数相互独立", () => {
 	it("总数未知时不拿取回行数冒充总数", () => {
 		const { container } = renderGrid({ serverTotalStatus: "pending" });
 
 		const text = container.textContent ?? "";
-		assert.ok(text.includes(`已取回 ${PAGE_SIZE.toLocaleString()} 行`));
+		// 破折号在源码里是 U+2013，用 \D 匹配避免测试文件里写死这个字符。
+		assert.match(text, /1\D{1,2}1,000 \/ \?/);
 		assert.ok(text.includes("总数统计中"));
-		// 历史缺陷：这里会显示「共 100000 行」或「共 1000 行」。
-		assert.ok(!text.includes(`共 ${PAGE_SIZE.toLocaleString()} 行`));
 	});
 
-	it("统计成功后「共 N 行」与「已取回」同时显示", () => {
+	it("统计成功后区间与总数同时显示", () => {
 		const { container } = renderGrid({ serverTotalCount: 4_321 });
 
 		const text = container.textContent ?? "";
-		assert.ok(text.includes(`已取回 ${PAGE_SIZE.toLocaleString()} 行`));
-		assert.ok(text.includes(`共 ${(4_321).toLocaleString()} 行`));
+		assert.match(text, /1\D{1,2}1,000 \/ 4,321/);
 	});
 
 	it("统计失败时只说总数未知，不伪造数字", () => {
@@ -88,15 +87,14 @@ describe("结果网格底栏：已取回与总行数相互独立", () => {
 
 		const text = container.textContent ?? "";
 		assert.ok(text.includes("总数未知"));
-		assert.ok(!text.includes("共 "));
+		assert.match(text, /1\D{1,2}1,000 \/ \?/);
 	});
 
-	it("本地分页只显示共 N 行", () => {
+	it("本地分页只显示本页区间与总行数", () => {
 		const { container } = renderGrid({ serverPaged: false, rows: [{ id: 1 }, { id: 2 }] });
 
 		const text = container.textContent ?? "";
-		assert.ok(text.includes(`共 ${(2).toLocaleString()} 行`));
-		assert.ok(!text.includes("已取回"));
+		assert.match(text, /1\D{1,2}2 \/ 2/);
 	});
 });
 

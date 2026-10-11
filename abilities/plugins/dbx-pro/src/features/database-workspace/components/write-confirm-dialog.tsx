@@ -33,17 +33,15 @@ export function WriteConfirmDialog({
 	return (
 		<div className="dbx-modal-backdrop" onClick={onCancel}>
 			<div
-				className="flex w-[560px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-sheet border border-danger/40 bg-surface shadow-[var(--dbx-shadow-sheet)]"
+				className="dbx-dialog border-danger/40"
 				onClick={(e) => e.stopPropagation()}
 				role="alertdialog"
 				aria-modal="true"
 			>
-				<div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+				<div className="dbx-dialog__head">
 					<span className="icon-[lucide--shield-alert] h-4 w-4 text-warning" />
-					<h3 className="flex-1 text-[12px] font-semibold text-surface-foreground">
-						确认执行写操作
-					</h3>
-					<span className="rounded bg-warning-soft px-1.5 py-0.5 text-[9.5px] font-medium text-warning">
+					<h3 className="dbx-dialog__title text-[12px]">确认执行写操作</h3>
+					<span className="shrink-0 rounded bg-warning-soft px-1.5 py-0.5 text-[9.5px] font-medium text-warning">
 						{pending.connectionName}
 					</span>
 				</div>
@@ -63,17 +61,17 @@ export function WriteConfirmDialog({
 					</p>
 				</div>
 
-				<div className="max-h-[240px] overflow-auto bg-[var(--dbx-surface)] p-3">
-					<pre className="whitespace-pre-wrap break-words font-mono text-[12px] leading-relaxed text-muted">
+				<div className="dbx-dialog__body dbx-dialog__body--flush bg-surface-sunken" style={{ maxHeight: 240 }}>
+					<pre className="whitespace-pre-wrap break-words p-3 font-mono text-[12px] leading-relaxed text-muted-foreground">
 						{pending.sql}
 					</pre>
 				</div>
 
-				<div className="flex shrink-0 items-center justify-end gap-2 px-3 py-2.5">
+				<div className="dbx-dialog__foot justify-end">
 					<button
 						type="button"
 						onClick={onCancel}
-						className="flex h-7 items-center rounded-control border border-border px-3 text-[12px] text-muted transition-colors hover:bg-neutral-muted hover:text-surface-foreground"
+						className="dbx-btn ghost"
 					>
 						取消
 					</button>
@@ -81,7 +79,7 @@ export function WriteConfirmDialog({
 						type="button"
 						onClick={onConfirm}
 						autoFocus
-						className="flex h-7 items-center gap-1.5 rounded-control bg-danger px-3 text-[12px] font-medium text-primary-fg transition-colors hover:bg-danger/90"
+						className="flex h-8 items-center gap-1.5 rounded-control bg-danger px-3 text-[12px] font-medium text-primary-fg transition-colors hover:bg-danger/90"
 					>
 						<span className="icon-[lucide--play] h-3 w-3" />
 						执行

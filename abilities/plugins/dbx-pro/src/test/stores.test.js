@@ -149,7 +149,7 @@ describe("query-history-store", () => {
 });
 
 /**
- * BI 数据资产产物存储 —— 它比工作台设置 / 查询历史多两条自己的规则（ADR-0009 §5.1）：
+ * BI 产物存储 —— 它比工作台设置 / 查询历史多两条自己的规则（ADR-0009 §5.1）：
  *   1. v1 裸数组文档在**读取**时按 v2 语义升级，条目打 readonlySnapshot，且不写回文件；
  *   2. 单文件 100 条上限，超出时丢弃最旧的条目，并明确告知用户。
  * 模块级单例在一个进程里只 hydrate 一次，所以 v1 用例必须排在任何写入之前。
@@ -229,7 +229,7 @@ describe("visualization-store", () => {
 		assert.equal(list[0].title, "产物 101", "新产物排在最前");
 		assert.equal(list[99].title, "产物 2", "被丢弃的是最旧的那条");
 		assert.deepEqual(notifyCalls, [
-			{ message: "BI 数据资产已达上限 100 条，最早的 1 条未能保存", variant: "warning" },
+			{ message: "BI 已达上限 100 条，最早的 1 条未能保存", variant: "warning" },
 		]);
 	});
 });

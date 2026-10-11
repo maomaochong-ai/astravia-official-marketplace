@@ -88,27 +88,28 @@ export function ExportProgressDialog({
 			role="presentation"
 		>
 			<div
-				className="flex w-[440px] max-w-full flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-2xl shadow-black/50"
+				className="dbx-dialog"
 				onClick={(e) => e.stopPropagation()}
 				role="dialog"
 				aria-modal="true"
 				aria-label="导出表数据"
 			>
 				{/* 头部 */}
-				<div className="flex shrink-0 items-center px-5 pt-4">
-					<h3 className="flex-1 text-[15px] font-semibold text-foreground">导出表数据</h3>
+				<div className="dbx-dialog__head">
+					<h3 className="dbx-dialog__title text-[15px]">导出表数据</h3>
 					<button
 						type="button"
 						onClick={inFlight ? onMinimize : onClose}
 						title={inFlight ? "最小化到后台任务" : "关闭"}
-						className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
+						aria-label={inFlight ? "最小化到后台任务" : "关闭"}
+						className="dbx-iconbtn"
 					>
 						<span className="icon-[lucide--x] h-4 w-4" />
 					</button>
 				</div>
 
 				{/* 主体 */}
-				<div className="space-y-4 px-5 py-4">
+				<div className="dbx-dialog__body space-y-4">
 					<div className="truncate text-[12.5px] text-muted-foreground" title={task.fileName}>
 						{task.fileName}
 					</div>
@@ -213,7 +214,7 @@ export function ExportProgressDialog({
 				</div>
 
 				{/* 底部操作 */}
-				<div className="flex shrink-0 justify-end gap-2.5 border-t border-border px-5 py-3.5">
+				<div className="dbx-dialog__foot justify-end gap-2.5">
 					{inFlight ? (
 						<>
 							<button

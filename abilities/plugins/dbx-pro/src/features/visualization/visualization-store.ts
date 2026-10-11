@@ -61,7 +61,7 @@ function notifyTruncated(dropped: number): void {
 	if (dropped <= 0) return;
 	try {
 		getUi()?.notify?.({
-			message: `BI 数据资产已达上限 ${MAX_VISUALIZATIONS} 条，最早的 ${dropped} 条未能保存`,
+			message: `BI 已达上限 ${MAX_VISUALIZATIONS} 条，最早的 ${dropped} 条未能保存`,
 			variant: "warning",
 		});
 	} catch {

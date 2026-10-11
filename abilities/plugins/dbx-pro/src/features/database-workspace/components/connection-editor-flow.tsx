@@ -16,6 +16,7 @@ import { ConnectionFields } from "./connection-fields";
 import { ConnectionList } from "./connection-list";
 import { useConnectionEditor } from "../hooks/use-connection-editor";
 import { DB_TYPE_MANIFEST, type DbConnection, type DbType } from "../../../domain/connection-config";
+import { isReadyDbType, tierReasonText } from "../../../domain/driver-tiers";
 import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 
 export interface ConnectionEditorFlowProps {
@@ -43,12 +44,16 @@ const ANALYTICS_TYPES = ["clickhouse", "snowflake", "bigquery", "doris", "starro
 export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEditorFlowProps): JSX.Element {
 	const editor = useConnectionEditor({ onChange });
 	const [step, setStep] = useState<DialogStep>("list");
-	const [_selectedDbType, setSelectedDbType] = useState<DbType>("mysql");
+	const [chosenDbType, setChosenDbType] = useState<DbType | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 	const [selectedCategory, setSelectedCategory] = useState<string>("relational");
 	const contentRef = useRef<HTMLDivElement>(null);
 	const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+	// 点击左侧分类走的是平滑滚动：滚动期间的 scroll 事件不参与反算，
+	// 否则滚不到顶部的末尾分类会被 scroll-spy 立刻改回上一项（左右不同步的主因）。
+	const suppressSpyRef = useRef(false);
+	const spySettleTimerRef = useRef<number | null>(null);
 
 	// 从列表页进入新建流程
 	function handleCreateNew(): void {
@@ -59,13 +64,13 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 	// 从列表页进入编辑流程
 	function handleEdit(conn: DbConnection): void {
 		editor.startEdit({ ...conn });
-		setSelectedDbType(conn.db_type as DbType);
+		setChosenDbType(conn.db_type);
 		setStep("config");
 	}
 
 	// 从类型选择进入配置
 	function handleSelectDbType(dbType: DbType): void {
-		setSelectedDbType(dbType);
+		setChosenDbType(dbType);
 		editor.setDbType(dbType);
 		setStep("config");
 	}
@@ -90,6 +95,13 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 	// 切换分类（滚动到对应位置）
 	const handleCategoryClick = useCallback((categoryKey: string) => {
 		setSelectedCategory(categoryKey);
+		// 锁住反向同步：平滑滚动结束前不让 scroll-spy 覆盖刚点选的分类
+		suppressSpyRef.current = true;
+		if (spySettleTimerRef.current !== null) window.clearTimeout(spySettleTimerRef.current);
+		spySettleTimerRef.current = window.setTimeout(() => {
+			suppressSpyRef.current = false;
+			spySettleTimerRef.current = null;
+		}, 480);
 		const element = categoryRefs.current[categoryKey];
 		if (element && contentRef.current) {
 			// 滚动到对应分类
@@ -105,11 +117,14 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 		if (step !== "select") return;
 
 		const handleScroll = () => {
-			if (!contentRef.current) return;
-			const containerTop = contentRef.current.getBoundingClientRect().top;
+			const content = contentRef.current;
+			if (!content) return;
+			// 程序化滚动（点击左侧分类）期间跳过反算，避免刚选中的分类被改回去
+			if (suppressSpyRef.current) return;
+			const containerTop = content.getBoundingClientRect().top;
 
 			// 找到当前可见的分类
-			let currentCategory = "relational";
+			let currentCategory = "";
 			for (const [key, element] of Object.entries(categoryRefs.current)) {
 				if (element) {
 					const elementTop = element.getBoundingClientRect().top;
@@ -119,7 +134,13 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 					}
 				}
 			}
-			setSelectedCategory(currentCategory);
+			// 滚到底部时最后一段可能永远够不到阈值线，此时按「最后一段」判定
+			if (content.scrollTop + content.clientHeight >= content.scrollHeight - 4) {
+				const keys = Object.keys(categoryRefs.current).filter((k) => categoryRefs.current[k]);
+				const lastKey = keys[keys.length - 1];
+				if (lastKey) currentCategory = lastKey;
+			}
+			setSelectedCategory(currentCategory || "relational");
 		};
 
 		const contentElement = contentRef.current;
@@ -127,7 +148,10 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 			contentElement.addEventListener("scroll", handleScroll);
 			// 初始触发一次
 			handleScroll();
-			return () => contentElement.removeEventListener("scroll", handleScroll);
+			return () => {
+				contentElement.removeEventListener("scroll", handleScroll);
+				if (spySettleTimerRef.current !== null) window.clearTimeout(spySettleTimerRef.current);
+			};
 		}
 	}, [step]);
 
@@ -153,21 +177,19 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 		},
 	].filter((c) => c.types.length > 0);
 
+	// 当前选中类型（用于「已选」chip 与卡片选中态）；未选择时不显示
+	const chosenEntry = chosenDbType ? DB_TYPE_MANIFEST.find((t) => t.dbType === chosenDbType) : undefined;
+	// 可直接查询的类型数：直接读 driver-tiers 的真实判定，不写死数字
+	const readyTypeCount = DB_TYPE_MANIFEST.filter((t) => isReadyDbType(t.dbType)).length;
+	const editingTypeLabel = editor.editing
+		? (DB_TYPE_MANIFEST.find((t) => t.dbType === editor.editing?.db_type)?.label ?? editor.editing.db_type)
+		: "";
+
 	return (
 		<div className="dbx-connection-flow">
 			{/* 头部 */}
 			<div className="dbx-connection-header">
 				<div className="flex items-center gap-2 min-w-0 flex-1">
-					{step !== "list" && (
-						<button
-							type="button"
-							className="dbx-iconbtn"
-							onClick={step === "config" ? handleBackToSelect : handleBackToList}
-							title="返回"
-						>
-							<span className="icon-[lucide--arrow-left] h-4 w-4" />
-						</button>
-					)}
 					{step === "list" && onExit && (
 						<button
 							type="button"
@@ -185,6 +207,16 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 						{step === "config" && (editor.editing?.name ? "编辑连接" : "新建连接")}
 					</h2>
 				</div>
+				{step === "select" && (
+					<span className="ml-auto shrink-0 font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
+						{DB_TYPE_MANIFEST.length} 种
+					</span>
+				)}
+				{step === "config" && (
+					<span className="ml-auto shrink-0 text-[12px] whitespace-nowrap text-muted">
+						连接信息只保存在本机
+					</span>
+				)}
 				{onClose && (
 					<button
 						type="button"
@@ -199,10 +231,27 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 			{/* 步骤条：设计稿 h-11 行 */}
 			<div className="flex h-11 shrink-0 items-center gap-3 border-b border-border px-4">
 				<Stepper current={step === "list" ? 0 : step === "select" ? 1 : 2} />
+				{step === "select" && (
+					<span className="ml-auto text-[12px] tabular-nums whitespace-nowrap text-faint">
+						共 {DB_TYPE_MANIFEST.length} 种 · {readyTypeCount} 种可直接查询
+					</span>
+				)}
+				{step === "config" && editor.editing && (
+					<div className="ml-auto flex shrink-0 items-center gap-2">
+						<div className="dbx-conn-typechip">
+							<span className="dbx-conn-typechip__badge is-brand"><DatabaseTypeIcon dbType={editor.editing.db_type} size="small" /></span>
+							{editingTypeLabel}
+						</div>
+						<button type="button" className="dbx-btn ghost" onClick={handleBackToSelect}>
+							<span className="icon-[lucide--chevron-left] size-3.5" />
+							更改
+						</button>
+					</div>
+				)}
 			</div>
 
 			{/* 内容区 */}
-			<div className={`dbx-connection-body${step === "list" ? " is-flush" : ""}`}>
+			<div className={`dbx-connection-body${step === "list" || step === "select" ? " is-flush" : ""}`}>
 				{step === "list" && (
 					<>
 					<ConnectionList
@@ -225,27 +274,32 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 				)}
 
 				{step === "select" && (
-					<div className="flex min-h-0 flex-1 flex-col gap-3">
-						{/* 搜索栏和视图切换 */}
-						<div className="flex h-8 shrink-0 items-center gap-2">
-							<div className="relative flex-1">
-								<span className="icon-[lucide--search] pointer-events-none absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+					<>
+						{/* 第 2 行：搜索 / 已选 / 视图切换（设计稿 h-11） */}
+						<div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4">
+							<div className="dbx-conn-search">
+								<span className="icon-[lucide--search] size-3.5 shrink-0 text-muted" />
 								<input
 									type="text"
-									className="dbx-form-input h-8 pl-8 text-[12px]"
 									placeholder="搜索数据库类型..."
 									value={searchQuery}
 									onChange={(e) => setSearchQuery(e.target.value)}
 								/>
 							</div>
-							<div className="flex shrink-0 items-center overflow-hidden rounded-control border border-border bg-surface p-0.5">
+							{chosenEntry && (
+								<>
+									<span className="text-[12px] whitespace-nowrap text-muted">已选</span>
+									<span className="dbx-conn-chip">{chosenEntry.label}</span>
+								</>
+							)}
+							<div className="dbx-conn-toggle ml-auto">
 								<button
 									type="button"
 									className={`dbx-view-toggle-btn ${viewMode === "grid" ? "active" : ""}`}
 									onClick={() => setViewMode("grid")}
-									title="宫格视图"
+									title="卡片视图"
 								>
-									<span className="icon-[lucide--grid-3x3] h-3.5 w-3.5" />
+									<span className="icon-[lucide--layout-grid] size-3.5" />
 								</button>
 								<button
 									type="button"
@@ -253,15 +307,15 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 									onClick={() => setViewMode("list")}
 									title="列表视图"
 								>
-									<span className="icon-[lucide--list] h-3.5 w-3.5" />
+									<span className="icon-[lucide--list] size-3.5" />
 								</button>
 							</div>
 						</div>
 
-						{/* 分类导航 + 类型列表 */}
-						<div className="flex min-h-0 flex-1 gap-3">
-							{/* 分类导航 */}
-							<nav className="flex w-24 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-border bg-surface-raised py-2">
+						{/* 分类导航（176px）+ 类型卡片（三列） */}
+						<div className="flex min-h-0 flex-1">
+							<nav className="dbx-conn-nav">
+								<div className="dbx-conn-nav__head">分类</div>
 								{categories.map((cat) => (
 									<button
 										key={cat.key}
@@ -269,76 +323,114 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 										className={`dbx-category-nav-item ${selectedCategory === cat.key ? "active" : ""}`}
 										onClick={() => handleCategoryClick(cat.key)}
 									>
-										<span>{cat.label}</span>
-										<span className="ml-auto font-mono text-[12px] text-faint">
+										<span className="truncate">{cat.label}</span>
+										<span className="ml-auto font-mono text-[12px] tabular-nums text-faint">
 											{cat.types.length}
 										</span>
 									</button>
 								))}
+								<div className="dbx-conn-nav__note">
+									范围外的类型可以保存连接，但不能直接在插件里查询。
+								</div>
 							</nav>
 
-							{/* 类型列表 */}
-							<div
-								ref={contentRef}
-								className="flex-1 overflow-y-auto dbx-scroll"
-							>
+							<div ref={contentRef} className="dbx-db-type-grid dbx-scroll">
 								{categories.map((cat) => (
 									<div
 										key={cat.key}
 										ref={(el) => { categoryRefs.current[cat.key] = el; }}
-										className="mb-4"
+										className={
+											viewMode === "grid"
+												? "col-span-3 grid grid-cols-3 content-start gap-3"
+												: "col-span-3 flex flex-col gap-1"
+										}
 									>
-										<h3 className="sticky top-0 z-10 mb-2 bg-surface px-1 py-1 text-[12px] font-semibold tracking-[0.06em] text-muted">
+										<h3 className="dbx-db-type-grid__head">
 											{cat.label}
-											<span className="ml-2 text-[12px] font-normal text-faint">
-												{cat.types.length} 种
-											</span>
+											<span className="ml-2 font-normal text-faint">{cat.types.length} 种</span>
 										</h3>
-										{viewMode === "grid" ? (
-											<div className="grid grid-cols-3 gap-2.5">
-												{cat.types.map((t) => (
+										{viewMode === "grid"
+											? cat.types.map((t) => (
 													<button
 														key={t.dbType}
 														type="button"
-														className="dbx-db-type-card"
+														className={`dbx-db-type-card ${chosenDbType === t.dbType ? "is-selected" : ""}`}
 														onClick={() => handleSelectDbType(t.dbType as DbType)}
 													>
-														<DatabaseTypeIcon dbType={t.dbType} size="medium" />
-												<span className="w-full truncate text-left text-[13px] font-semibold text-surface-foreground">
-															{t.label}
+														{chosenDbType === t.dbType && (
+															<span className="dbx-db-type-card__check icon-[lucide--check]" />
+														)}
+														<span className="dbx-db-type-card__head">
+															<span className="dbx-db-type-card__badge is-brand">
+																<DatabaseTypeIcon dbType={t.dbType} size="medium" />
+															</span>
+															<span className="dbx-db-type-card__body">
+																<span className="dbx-db-type-card__name">{t.label}</span>
+																<span className="dbx-db-type-card__meta">
+																	{t.defaultPort > 0 ? `${t.defaultPort} ·` : "文件 ·"}
+																	<span className={tierToneClass(t.dbType)}>
+																		{" "}
+																		{tierText(t.dbType)}
+																	</span>
+																</span>
+															</span>
+														</span>
+														<span className="dbx-db-type-card__desc">
+															{tierReasonText(t.dbType)}
 														</span>
 													</button>
-												))}
-											</div>
-										) : (
-											<div className="flex flex-col gap-1">
-												{cat.types.map((t) => (
+											))
+											: cat.types.map((t) => (
 													<button
 														key={t.dbType}
 														type="button"
-														className="dbx-db-type-list-item"
+														className={`dbx-db-type-list-item ${chosenDbType === t.dbType ? "is-selected" : ""}`}
 														onClick={() => handleSelectDbType(t.dbType as DbType)}
 													>
-														<DatabaseTypeIcon dbType={t.dbType} size="small" />
-														<span className="text-[12px] font-medium flex-1 text-left">
+														<span className="dbx-conn-typechip__badge is-brand">
+															<DatabaseTypeIcon dbType={t.dbType} size="small" />
+														</span>
+														<span className="flex-1 truncate text-left text-[13px] font-semibold text-surface-foreground">
 															{t.label}
 														</span>
-											<span className="font-mono text-[12px] text-faint">
-															{t.dbType}
+														<span className="font-mono text-[12px] tabular-nums text-faint">
+															{t.defaultPort > 0 ? t.defaultPort : "文件"}
 														</span>
 													</button>
-												))}
-											</div>
-										)}
+											))}
 									</div>
 								))}
 								{filteredTypes.length === 0 && (
-									<div className="flex flex-col items-center justify-center py-8 text-muted">
-										<span className="icon-[lucide--search-x] h-6 w-6 mb-2 opacity-50" />
+									<div className="col-span-3 flex flex-col items-center justify-center py-8 text-muted">
+										<span className="icon-[lucide--search-x] mb-2 size-6 opacity-50" />
 										<span className="text-[12px]">无匹配结果</span>
 									</div>
 								)}
 							</div>
+						</div>
+					</>
+				)}
+
+				{/* 选择步底部：上一步 / 取消 / 下一步（设计稿 h-14） */}
+				{step === "select" && (
+					<div className="dbx-connection-footer">
+						<button type="button" className="dbx-btn ghost" onClick={handleBackToList}>
+							<span className="icon-[lucide--chevron-left] size-3.5" />
+							上一步
+						</button>
+						<div className="ml-auto flex shrink-0 items-center gap-2">
+							<button type="button" className="dbx-btn" onClick={handleBackToList}>
+								取消
+							</button>
+							<button
+								type="button"
+								className="dbx-btn primary"
+								disabled={!chosenDbType}
+								onClick={() => { if (chosenDbType) handleSelectDbType(chosenDbType); }}
+							>
+								下一步 · 连接配置
+								<span className="icon-[lucide--chevron-right] size-3" />
+							</button>
 						</div>
 					</div>
 				)}
@@ -349,7 +441,7 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 						onChange={(c) => editor.setEditing(c)}
 						onTypeChange={(dbType) => {
 							editor.setDbType(dbType);
-							setSelectedDbType(dbType as DbType);
+							setChosenDbType(dbType as DbType);
 						}}
 						groupedManifest={editor.groupedManifest}
 						availableSchemas={editor.availableSchemas}
@@ -362,16 +454,38 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 			{/* 底部操作栏 */}
 			{step === "config" && editor.editing && (
 				<div className="dbx-connection-footer">
-					<button type="button" className="dbx-btn ghost" onClick={handleBackToSelect}>
-						上一步
+					<button
+						type="button"
+						className="dbx-btn"
+						disabled={editor.testing}
+						onClick={() => { if (editor.editing) void editor.test(editor.editing); }}
+					>
+						<span className="icon-[lucide--plug] size-3.5" />
+						{editor.testing ? "测试中…" : "测试连接"}
 					</button>
-					<div className="flex-1" />
-					<button type="button" className="dbx-btn ghost" onClick={handleBackToList}>
-						取消
-					</button>
-					<button type="button" className="dbx-btn primary" onClick={() => void handleSave()}>
-						保存
-					</button>
+					{editor.testResult && (
+						<div className={`dbx-conn-test${editor.testResult.startsWith("❌") ? " is-error" : ""}`}>
+							<span
+								className={
+									editor.testResult.startsWith("❌")
+										? "icon-[lucide--circle-x] size-3.5 shrink-0"
+										: "icon-[lucide--circle-check] size-3.5 shrink-0"
+								}
+							/>
+							<span className="dbx-conn-test__text">
+								{editor.testResult.replace(/^[✅❌]\s*/, "")}
+							</span>
+						</div>
+					)}
+					<div className="ml-auto flex shrink-0 items-center gap-2">
+						<button type="button" className="dbx-btn ghost" onClick={handleBackToList}>
+							取消
+						</button>
+						<button type="button" className="dbx-btn primary" onClick={() => void handleSave()}>
+							<span className="icon-[lucide--plug-zap] size-3.5" />
+							保存并连接
+						</button>
+					</div>
 				</div>
 			)}
 		</div>
@@ -413,4 +527,13 @@ function Stepper({ current }: { current: number }): JSX.Element {
 			})}
 		</ol>
 	);
+}
+
+/** 档位文案：引擎覆盖即「可直接查询」（domain/driver-tiers 对已支持类型统一返回 ready）。 */
+function tierText(dbType: string): string {
+	return isReadyDbType(dbType) ? "可直接查询" : "试验性";
+}
+
+function tierToneClass(dbType: string): string {
+	return isReadyDbType(dbType) ? "text-success" : "text-warning";
 }

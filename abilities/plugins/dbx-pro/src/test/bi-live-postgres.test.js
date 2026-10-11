@@ -1,5 +1,5 @@
 /**
- * bi-live-postgres — 「BI 数据资产」的真实 PostgreSQL 门控集成测试。
+ * bi-live-postgres — 「BI」的真实 PostgreSQL 门控集成测试。
  *
  * 为什么要有这个文件：M1 的三条验收里，有几条只能真连接上才能回答 ——
  *   ① 真库生成 dashboard / screen 产物，且离线单文件仍能渲染（M1 验收 ③）
@@ -198,7 +198,7 @@ function clickChoice(container, text) {
 	fireEvent.click(target.querySelector("input"));
 }
 
-describe("BI 数据资产 · 真实 PostgreSQL（门控）", { skip: LIVE ? false : "本机连不上 PostgreSQL（psql -d postgres 失败），跳过真实连接集成用例" }, () => {
+describe("BI · 真实 PostgreSQL（门控）", { skip: LIVE ? false : "本机连不上 PostgreSQL（psql -d postgres 失败），跳过真实连接集成用例" }, () => {
 	let engine = null;
 	let dataDir = "";
 	const engineCalls = [];
@@ -330,7 +330,7 @@ describe("BI 数据资产 · 真实 PostgreSQL（门控）", { skip: LIVE ? fals
 			assert.equal(result.ok, true, `产物生成失败：${result.error}`);
 			assert.equal(result.chartCount, 1);
 			assert.equal(result.datasetCount, 1);
-			assert.match(result.message, /可在「BI 数据资产」里筛选与重新取数/);
+			assert.match(result.message, /可在「BI」里筛选与重新取数/);
 			assert.equal(savedVizs.length, 1, "工具没有把产物交给 UI（saveVisualizationToStore 未触发）");
 
 			const viz = savedVizs[0];

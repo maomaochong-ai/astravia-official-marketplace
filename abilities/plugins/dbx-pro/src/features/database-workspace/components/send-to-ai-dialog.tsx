@@ -44,8 +44,10 @@ function readConversation(): Promise<ConversationState | null> {
 /**
  * 作为正式消息发送：有活跃会话直接 sendPrompt；否则先 createSession。
  * queued（流式中排队）视为成功。任何失败降级为填入输入框。
+ *
+ * 供「添加到 AI」对话框与「AI 协助连接数据库」面板共用。
  */
-async function sendForReal(text: string): Promise<boolean> {
+export async function sendToHostAi(text: string): Promise<boolean> {
 	const ui = getUi();
 	const conv = getConversation();
 	const notify = (message: string, variant: "success" | "warning") =>
@@ -187,7 +189,7 @@ export function SendToAiDialog({ open, prompt: initialPrompt, onClose }: SendToA
 	async function handleDirectSend(): Promise<void> {
 		setSending(true);
 		try {
-			await sendForReal(prompt);
+			await sendToHostAi(prompt);
 		} finally {
 			setSending(false);
 			onClose();

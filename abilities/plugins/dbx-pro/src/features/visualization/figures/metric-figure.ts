@@ -9,8 +9,8 @@
  *  - `datasets[0].data[i]` 是主数值（大字号）
  *  - `datasets[1..]` 是次要口径，逐行列出；第一条同时用来算环比
  *
- * 字号固定（26 / 大屏 30）而不是 clamp()/vw：卡片宽度取决于 Grid 列数和
- * 抽屉宽度，vw 会让 UI 里的字号跟导出页对不上。
+ * 字号固定（看板 20 / 大屏 34，同设计帧的 KPI：assets.tsx 的 text-[20px]、viz-screen.tsx 的 text-[34px]）
+ * 而不是 clamp()/vw：卡片宽度取决于 Grid 列数和抽屉宽度，vw 会让 UI 里的字号跟导出页对不上。
  */
 
 import type { ChartItem } from "../../../domain/chart-contract";
@@ -36,7 +36,7 @@ export function renderMetricFigure(item: ChartItem, context: FigureContext): str
 		});
 	}
 
-	const valueSize = isScreen ? 30 : 26;
+	const valueSize = isScreen ? 34 : 20;
 
 	const cards = labels.map((label, i) => {
 		const primary = series[0].values[i] ?? null;
@@ -53,7 +53,7 @@ export function renderMetricFigure(item: ChartItem, context: FigureContext): str
 		const deltaHtml =
 			delta === null
 				? ""
-				: `<div style="margin-top:6px;font-size:11px;color:${delta >= 0 ? palette.up : palette.down}">` +
+				: `<div style="margin-top:6px;font-size:10px;color:${delta >= 0 ? palette.up : palette.down}">` +
 					`<span style="font-weight:600">${delta >= 0 ? "▲" : "▼"} ${(Math.abs(delta) * 100).toFixed(1)}%</span>` +
 					`<span style="color:${palette.muted}"> 较 ${escapeHtml(base.label)}</span>` +
 					`</div>`;
@@ -72,9 +72,9 @@ export function renderMetricFigure(item: ChartItem, context: FigureContext): str
 					`</div>`;
 
 		return (
-			`<div style="padding:14px 16px;box-sizing:border-box;min-width:0;border-radius:8px;background:${palette.surface};border:1px solid ${palette.surfaceBorder}">` +
-			`<div title="${escapeHtml(label)}" style="font-size:11px;letter-spacing:.4px;color:${palette.muted};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(label)}</div>` +
-			`<div title="${escapeHtml(formatValue(primary, palette, options.digits, options.unit))}" style="margin-top:4px;font-size:${valueSize}px;font-weight:700;line-height:1.2;color:${palette.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">` +
+			`<div style="padding:12px;box-sizing:border-box;min-width:0;border-radius:6px;background:${palette.surface};border:1px solid ${palette.surfaceBorder}">` +
+			`<div title="${escapeHtml(label)}" style="font-size:11px;color:${palette.muted};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(label)}</div>` +
+			`<div title="${escapeHtml(formatValue(primary, palette, options.digits, options.unit))}" style="margin-top:4px;font-size:${valueSize}px;font-weight:600;line-height:1.2;color:${palette.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">` +
 			`${escapeHtml(formatValue(primary, palette, options.digits, options.unit))}</div>` +
 			deltaHtml +
 			secondaryHtml +

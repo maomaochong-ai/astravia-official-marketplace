@@ -14,6 +14,11 @@ import {
 export interface ConnectionTreeToolbarProps {
 	connectionCount: number;
 	selectionMode: boolean;
+	/** 当前多选勾选数：落在设计稿第 2 行「已选 N」的位置。 */
+	selectedCount: number;
+	/** 搜索词（受控）：搜索框嵌进设计稿第 2 行，避免插件多占一行。 */
+	query: string;
+	onQueryChange: (value: string) => void;
 	onExpandAll: () => void;
 	onCollapseAll: () => void;
 	onRefresh: () => void;
@@ -50,6 +55,9 @@ function TooltipButton({
 export function ConnectionTreeToolbar({
 	connectionCount,
 	selectionMode,
+	selectedCount,
+	query,
+	onQueryChange,
 	onExpandAll,
 	onCollapseAll,
 	onRefresh,
@@ -93,45 +101,72 @@ export function ConnectionTreeToolbar({
 	}
 
 	return (
-		<div
-			className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-surface-raised px-3"
-		>
-			{/* 左：标题 + 连接数 */}
-			<span className="flex min-w-0 items-center gap-2 truncate">
-				<span className="font-sans text-[14px] font-semibold tracking-tight whitespace-nowrap text-surface-foreground">连接</span>
-				{connectionCount > 0 && (
-					<span className="shrink-0 font-mono text-[12px] tabular-nums text-muted">{connectionCount}</span>
-				)}
-			</span>
+		<>
+			{/* 第 1 行：设计稿 ConnectionTree 头部（h-9）—— 标题 + 连接数 + 右侧图标组 */}
+			<div
+				className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-surface-raised px-3"
+			>
+				<span className="flex min-w-0 items-center gap-2 truncate">
+					<span className="font-sans text-[14px] font-semibold tracking-tight whitespace-nowrap text-surface-foreground">连接</span>
+					{connectionCount > 0 && (
+						<span className="shrink-0 font-mono text-[12px] tabular-nums text-muted">{connectionCount}</span>
+					)}
+				</span>
 
-			{/* 右：树操作 */}
-			<div className="ml-auto flex shrink-0 items-center gap-0.5">
-				<TooltipButton onClick={triggerImport} title="导入连接">
-					<span className="icon-[lucide--folder-input] h-3 w-3" />
-				</TooltipButton>
-				<TooltipButton onClick={() => void handleExport()} title="导出连接（不含密码）">
-					<span className="icon-[lucide--folder-output] h-3 w-3" />
-				</TooltipButton>
+				<div className="ml-auto flex shrink-0 items-center gap-0.5">
+					<TooltipButton onClick={triggerImport} title="导入连接">
+						<span className="icon-[lucide--folder-input] h-3 w-3" />
+					</TooltipButton>
+					<TooltipButton onClick={() => void handleExport()} title="导出连接（不含密码）">
+						<span className="icon-[lucide--folder-output] h-3 w-3" />
+					</TooltipButton>
+					<TooltipButton onClick={onRefresh} title="刷新连接">
+						<span className="icon-[lucide--refresh-cw] h-3 w-3" />
+					</TooltipButton>
+					{onCollapsePanel && (
+						<TooltipButton onClick={onCollapsePanel} title="收起连接树">
+							<span className="icon-[lucide--panel-left-close] h-3 w-3" />
+						</TooltipButton>
+					)}
+				</div>
+			</div>
+
+			{/* 第 2 行：设计稿工具行（h-7）—— 展开/收起、多选；插件的搜索嵌进这一行，不再单独占行 */}
+			<div className="flex h-7 shrink-0 items-center gap-0.5 border-b border-border px-2">
 				<TooltipButton onClick={onExpandAll} title="展开已加载节点">
 					<span className="icon-[lucide--chevrons-down-up] h-3 w-3" />
 				</TooltipButton>
 				<TooltipButton onClick={onCollapseAll} title="收起全部">
 					<span className="icon-[lucide--chevrons-up-down] h-3 w-3" />
 				</TooltipButton>
-				<TooltipButton onClick={onRefresh} title="刷新连接">
-					<span className="icon-[lucide--refresh-cw] h-3 w-3" />
-				</TooltipButton>
 				<TooltipButton
 					onClick={onToggleSelectionMode}
 					title={selectionMode ? "退出多选" : "多选库 / 表（作为 AI 上下文）"}
 					active={selectionMode}
 				>
-					<span className="icon-[lucide--list-checks] h-3 w-3" />
+					<span className="icon-[lucide--square-check-big] h-3 w-3" />
 				</TooltipButton>
-				{onCollapsePanel && (
-					<TooltipButton onClick={onCollapsePanel} title="收起连接树">
-						<span className="icon-[lucide--panel-left-close] h-3 w-3" />
-					</TooltipButton>
+				<div className="mx-1 flex h-5 min-w-0 flex-1 items-center gap-1 rounded-control border border-border bg-surface px-1.5">
+					<span className="icon-[lucide--search] size-3 shrink-0 text-muted" />
+					<input
+						value={query}
+						onChange={(e) => onQueryChange(e.target.value)}
+						placeholder="过滤连接/表..."
+						className="min-w-0 flex-1 bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-faint"
+					/>
+					{query && (
+						<button
+							type="button"
+							onClick={() => onQueryChange("")}
+							title="清空搜索"
+							className="shrink-0 text-muted hover:text-surface-foreground"
+						>
+							<span className="icon-[lucide--x] size-3" />
+						</button>
+					)}
+				</div>
+				{(selectionMode || selectedCount > 0) && (
+					<span className="shrink-0 font-mono text-[12px] tabular-nums text-faint">已选 {selectedCount}</span>
 				)}
 			</div>
 
@@ -142,6 +177,6 @@ export function ConnectionTreeToolbar({
 				className="hidden"
 				onChange={(e) => void handleImportFile(e)}
 			/>
-		</div>
+		</>
 	);
 }

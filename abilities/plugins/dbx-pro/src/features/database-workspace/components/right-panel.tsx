@@ -10,7 +10,7 @@ import { useWorkbench } from "../hooks/use-workbench";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { getConversation } from "../../../runtime-contract";
 
-export function RightPanel(): JSX.Element {
+export function RightPanel({ onCollapse }: { onCollapse?: () => void }): JSX.Element {
 	const {
 		settings,
 		history,
@@ -36,6 +36,7 @@ export function RightPanel(): JSX.Element {
 			onDelete={(id) => void removeHistory(id)}
 			onClear={() => void clearAllHistory()}
 			onSendToAi={handleSendToAi}
+			onCollapse={onCollapse}
 		/>
 	);
 }

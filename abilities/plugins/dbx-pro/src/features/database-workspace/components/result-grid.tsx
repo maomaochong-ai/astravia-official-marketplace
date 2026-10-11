@@ -53,6 +53,7 @@ import {
 } from "../state/export-tasks-store";
 import { getFs, getUi } from "../../../runtime-contract";
 import { ResultTable } from "./result-table";
+import { GridHScroll } from "./grid-hscroll";
 import { ResultToolbar } from "./result-toolbar";
 import { TableInfoPanel, type TableInfoSelection } from "./table-info-panel";
 import { PageSizeMenu } from "./page-size-menu";
@@ -60,6 +61,7 @@ import { ExportProgressDialog } from "./export-progress-dialog";
 import { CONTENT_KEPT_NOTE, discardStagedExport, saveStagedExport } from "../services/export-save";
 import { useWorkbench } from "../hooks/use-workbench";
 import { buildFilteredSql } from "../services/query-filter";
+import { parseTableRef } from "../services/sql-table-ref";
 
 interface Props {
 	columns: string[];
@@ -141,6 +143,8 @@ export function ResultGrid({
 	const [localPageSize, setLocalPageSize] = useState(() => resolvePageSize(defaultPageSize));
 	// 页码跳转输入框（对齐 dbx DataGridPagination：直接输入页码，Enter/失焦跳转）。
 	const [pageInput, setPageInput] = useState("1");
+	// 页码指示器是否处于“可输入跳转”状态（设计稿底栏没有独立页码框，点指示器就地输入）
+	const [pageJumpOpen, setPageJumpOpen] = useState(false);
 
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [colWidths, setColWidths] = useState<Record<string, number>>({});
@@ -150,7 +154,7 @@ export function ResultGrid({
 	const [sort, setSort] = useState<{ col: string; dir: "asc" | "desc" } | null>(null);
 	const [tableInfoOpen, setTableInfoOpen] = useState(false);
 	const [tableInfoSelection, setTableInfoSelection] = useState<TableInfoSelection | null>(null);
-	const [splitToolbar, setSplitToolbar] = useState(false); // 双排工具栏开关
+	const [doubleRow, setDoubleRow] = useState(false); // rows-3：单排行高 / 双排行高（设计稿「单排 / 双排显示」）
 	const [whereClause, setWhereClause] = useState(""); // WHERE 条件
 	const [orderByClause, setOrderByClause] = useState(""); // ORDER BY 条件
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
@@ -194,20 +198,7 @@ export function ResultGrid({
 	// 尝试从 SQL 中解析表名（用于表属性按钮）
 	const { state, dispatch, runTabSql, settings } = useWorkbench();
 	const activeTabId = state.activeTabId;
-	const parsedTableName = useMemo(() => {
-		if (!sql) return null;
-		// 简单解析：SELECT ... FROM table_name 或 SELECT ... FROM schema.table_name
-		const match = sql.match(/FROM\s+["`]?(\w+(?:\.["`]?\w+)?)[\s;)]?/i);
-		if (match) {
-			const full = match[1];
-			const parts = full.split(".");
-			if (parts.length === 2) {
-				return { schema: parts[0].replace(/["`]/g, ""), tableName: parts[1].replace(/["`]/g, "") };
-			}
-			return { schema: undefined, tableName: full.replace(/["`]/g, "") };
-		}
-		return null;
-	}, [sql]);
+	const parsedTableName = useMemo(() => parseTableRef(sql), [sql]);
 
 	// ── 快捷键支持（仅在网格区域聚焦时生效）────────────────────────
 
@@ -450,7 +441,6 @@ export function ResultGrid({
 						label: `= ...`,
 						onClick: () => {
 							setWhereClause(`${col} = `);
-							setSplitToolbar(true);
 						},
 					},
 					{
@@ -458,7 +448,6 @@ export function ResultGrid({
 						label: `!= ...`,
 						onClick: () => {
 							setWhereClause(`${col} != `);
-							setSplitToolbar(true);
 						},
 					},
 					{
@@ -466,7 +455,6 @@ export function ResultGrid({
 						label: `包含 ...`,
 						onClick: () => {
 							setWhereClause(`${col} LIKE '%' || '' || '%'`);
-							setSplitToolbar(true);
 						},
 					},
 					{
@@ -474,7 +462,6 @@ export function ResultGrid({
 						label: `为空`,
 						onClick: () => {
 							setWhereClause(`${col} IS NULL`);
-							setSplitToolbar(true);
 							void applyFilterSort();
 						},
 					},
@@ -483,7 +470,6 @@ export function ResultGrid({
 						label: `不为空`,
 						onClick: () => {
 							setWhereClause(`${col} IS NOT NULL`);
-							setSplitToolbar(true);
 							void applyFilterSort();
 						},
 					},
@@ -999,7 +985,6 @@ export function ResultGrid({
 		const filterByThisValue = () => {
 			const cond = `${col} = '${cellValue.replace(/'/g, "''")}'`;
 			setWhereClause(cond);
-			setSplitToolbar(true);
 			const tabId = activeTabId;
 			const base = (sql ?? "").trim();
 			if (tabId && base) {
@@ -1126,14 +1111,14 @@ export function ResultGrid({
 			)}
 			{/* 工具栏 — 已抽离到独立组件 ResultToolbar */}
 			<ResultToolbar
-				splitToolbar={splitToolbar}
-				onToggleSplit={() => setSplitToolbar((v) => !v)}
 				pageLoading={pageLoading ?? false}
 				onRefresh={handleRefresh}
 				onCopyAll={() => void copyAll()}
 				onOpenExportMenu={openExportMenu}
 				showRowNumbers={showRowNumbers}
 				onToggleRowNumbers={() => setShowRowNumbers((v) => !v)}
+				doubleRow={doubleRow}
+				onToggleRowHeight={() => setDoubleRow((v) => !v)}
 				navPopoverRef={navPopoverRef}
 				navOpen={navOpen}
 				onToggleNav={() => setNavOpen((v) => !v)}
@@ -1152,8 +1137,17 @@ export function ResultGrid({
 				orderByClause={orderByClause}
 				onOrderByChange={setOrderByClause}
 				onApplyFilterSort={applyFilterSort}
+				rowCount={isServer ? (totalKnown ? (serverTotalCount ?? 0) : takenRows) : displayTotal}
+				rowCountKnown={!isServer || totalKnown}
+				elapsedLabel={elapsedMs !== undefined && elapsedMs >= 0 ? formatDuration(elapsedMs) : undefined}
+				totalCountStatus={isServer ? serverTotalStatus : undefined}
+				onRefreshTotalCount={isServer ? refreshTotalCount : undefined}
+				exportLimitRows={settings.exportLimitEnabled ? settings.exportRowLimit : undefined}
 			/>
 
+
+			{/* 顶部水平滚动条：与底部原生条共用同一 scrollLeft（设计稿 frames/scrollbars.tsx） */}
+			<GridHScroll scrollRef={scrollRef} columns={colList} colWidth={defaultWidth} gutterWidth={showRowNumbers ? 48 : 0} />
 
 			{/* 网格（内部滚动）— 已抽离到独立组件 ResultTable */}
 			<ResultTable
@@ -1165,6 +1159,7 @@ export function ResultGrid({
 				selectedCell={selectedCell}
 				safePage={safePage}
 				pageSize={pageSize}
+				rowDensity={doubleRow ? "double" : "single"}
 				scrollRef={scrollRef}
 				defaultWidth={defaultWidth}
 				onToggleSort={toggleSort}
@@ -1176,190 +1171,147 @@ export function ResultGrid({
 			/>
 
 			{/* 分页栏（固定底部，不随网格滚动）；上分割线用 .dbx-pagination，
-			    与侧边栏竖线及桌面壳分割线对齐。
-			    布局：左侧元信息 min-w-0 可截断，右侧操作区 shrink-0 永不被遮挡。 */}
-			<div className="dbx-pagination flex h-9 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap px-3 text-[12px] text-muted">
-				{/* 左侧：元信息（行数 + 执行时间 + 影响行数） */}
-				<div className="flex min-w-0 flex-1 items-center gap-2">
-					{isServer ? (
-						<>
-							{/* 「已取回」与「共 N 行」是两个独立事实：前者是本会话真正拉到的行数，
-							    后者是数据库侧的真实总数；总数未知时不再拿取回行数兜底。 */}
-							<span className="shrink-0" title="已从数据库取回的行数（含当前页）">
-								已取回 <span className="font-mono tabular-nums text-surface-foreground">{takenRows.toLocaleString()}</span> 行
-							</span>
-							<button
-								type="button"
-								onClick={refreshTotalCount}
-								disabled={pageLoading === true || totalCounting}
-								title={totalCounting ? "正在统计总行数…" : "刷新总计行统计"}
-								className="flex h-5 w-5 shrink-0 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-50"
-							>
-								<span
-									className={
-										totalCounting
-											? "icon-[lucide--loader-2] h-3 w-3 animate-spin"
-											: "icon-[lucide--refresh-cw] h-3 w-3"
-									}
-								/>
-							</button>
-							{totalKnown ? (
-								<span className="shrink-0" title="数据库统计得到的真实总行数">
-									共 <span className="font-mono tabular-nums text-surface-foreground">{(serverTotalCount ?? 0).toLocaleString()}</span> 行
-								</span>
-							) : totalCounting ? (
-								<span className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] text-muted">
-									总数统计中
-								</span>
-							) : serverTotalStatus === "failed" ? (
-								<span
-									className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] text-muted"
-									title="统计总行数失败（如 COUNT 超时），不影响翻页；点左侧刷新按钮可重试"
-								>
-									总数未知
-								</span>
-							) : null}
-						</>
-					) : (
-						<span className="shrink-0">
-							共 <span className="font-mono tabular-nums text-surface-foreground">{displayTotal.toLocaleString()}</span> 行
-						</span>
-					)}
-					{pageLoading ? <span className="shrink-0 text-[12px] text-muted">取数中…</span> : null}
-					{/* 执行耗时 */}
-					{elapsedMs !== undefined && elapsedMs >= 0 && !pageLoading && (
-						<span className="shrink-0 text-muted" title="本次查询执行耗时">
-							<span className="icon-[lucide--timer] h-3 w-3 align-middle" /> {formatDuration(elapsedMs)}
-						</span>
-					)}
-					{/* 影响行数（写 / DDL） */}
-					{affectedRows !== null && affectedRows !== undefined && affectedRows >= 0 && (
-						<span className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 text-[12px] text-muted" title="写操作影响的行数">
-							{affectedRows} rows affected
-						</span>
-					)}
-				</div>
+			    与侧边栏竖线及桌面壳分割线对齐。宽度不足时右侧操作区收缩，不出现横向滚动条。
+			    布局：左侧元信息 shrink-0，中间 SQL 预览可截断，右侧操作区 shrink-0 永不被遮挡。 */}
+			<div className="dbx-pagination flex h-9 shrink-0 items-center gap-2 px-3 text-[12px] text-muted">
+				{/* 左侧：范围 + 状态（设计稿 1–100 / 1,284） */}
+				<span className="shrink-0 font-mono tabular-nums" title="当前页行区间 / 总行数">
+					{(pagedRows.length === 0 ? 0 : safePage * pageSize + 1).toLocaleString()}–{(safePage * pageSize + pagedRows.length).toLocaleString()} / {
+						totalKnown ? displayTotal.toLocaleString() : "?"
+					}
+				</span>
+				{isServer ? (
+					<span
+						className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5"
+						title="分页在数据库侧完成，每次只取回当前页"
+					>
+						后端分页
+					</span>
+				) : null}
+				{totalCounting ? (
+					<span className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5">
+						总数统计中
+					</span>
+				) : null}
+				{isServer && !totalCounting && serverTotalStatus === "failed" ? (
+					<span
+						className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5"
+						title="统计总行数失败（如 COUNT 超时）；不影响翻页，可用工具栏的刷新按钮重试"
+					>
+						总数未知
+					</span>
+				) : null}
+				{pageLoading ? <span className="shrink-0">取数中…</span> : null}
+				{typeof affectedRows === "number" && affectedRows >= 0 ? (
+					<span
+						className="shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5"
+						title="写操作影响的行数"
+					>
+						{affectedRows} rows affected
+					</span>
+				) : null}
+
 				{/* 中间：SQL 预览（截断 + 点击复制） */}
-				{sql && (
+				{sql ? (
 					<div className="flex min-w-0 flex-1 items-center justify-center">
 						<span
-							className="truncate text-[12px] text-faint cursor-pointer hover:text-muted"
-							title={sql}
-							onClick={() => void navigator.clipboard.writeText(sql).catch(() => {})}
+							className="min-w-0 cursor-pointer truncate text-faint hover:text-muted"
+							title="点击复制 SQL"
+							onClick={() => {
+								void navigator.clipboard?.writeText(sql).catch(() => {});
+							}}
 						>
 							{sql}
 						</span>
 					</div>
-				)}
+				) : null}
+
+				{/* 右侧：每页 → 上一页 → 页码（可点击输入跳转）→ 下一页 → 加载全部 */}
 				<div className="ml-auto flex shrink-0 items-center gap-1">
+					<span className="mr-1 shrink-0 whitespace-nowrap text-[12px]">每页</span>
 					<PageSizeMenu
 						pageSize={pageSize}
-						options={[...new Set<number>([...PAGE_SIZE_OPTIONS, pageSize])].sort((a, b) => a - b)}
-						defaultPageSize={defaultPageSize}
+						options={[...new Set([...PAGE_SIZE_OPTIONS, pageSize])].sort((a, b) => a - b)}
+						defaultPageSize={settings.rowLimit}
 						disabled={pageLoading === true}
 						onApply={changePageSize}
 						onSetDefault={(n) => onSetDefaultPageSize?.(n)}
 					/>
-					<span className="font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
-						{pagedRows.length === 0 ? 0 : safePage * pageSize + 1}–
-						{safePage * pageSize + pagedRows.length}
-					</span>
-					<span className="text-faint">/</span>
-					<span className="font-mono text-[12px] tabular-nums text-muted">{totalKnown ? displayTotal : "?"}</span>
-					<div className="mx-1 h-4 w-px shrink-0 bg-border" />
-					<button
-						type="button"
-						onClick={() => goToPage(0)}
-						disabled={safePage === 0 || pageLoading === true}
-						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
-						title="第一页"
-					>
-						<span className="icon-[lucide--chevrons-left] h-3 w-3" />
-					</button>
 					<button
 						type="button"
 						onClick={() => goToPage(safePage - 1)}
 						disabled={safePage === 0 || pageLoading === true}
-						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 						title="上一页"
+						className="dbx-icon-btn"
 					>
-						<span className="icon-[lucide--chevron-left] h-3 w-3" />
+						<span className="icon-[lucide--chevron-left] h-3.5 w-3.5" />
 					</button>
-					{/* 页码跳转：对齐 dbx，输入正整数后 Enter / 失焦跳转到该页。 */}
-					<input
-						value={pageInput}
-						onChange={(e) => setPageInput(e.target.value.replace(/[^\d]/gu, "").slice(0, 9))}
-						onKeyDown={(e) => {
-							if (e.key === "Enter") {
-								commitPageInput();
-								e.currentTarget.blur();
-							}
-						}}
-						onBlur={commitPageInput}
-						inputMode="numeric"
-						aria-label="跳转页码"
-						disabled={pageLoading === true}
-						className="h-6 w-10 rounded-control border border-border bg-surface px-1 text-center font-mono text-[12px] tabular-nums text-surface-foreground outline-none focus:border-primary disabled:opacity-30"
-					/>
-					{totalKnown && totalPages !== null ? (
-						<span className="font-mono text-[12px] tabular-nums text-muted">/ {totalPages}</span>
-					) : null}
+					<span className="whitespace-nowrap px-1 font-mono text-[12px] tabular-nums">
+						{pageJumpOpen ? (
+							<input
+								type="text"
+								autoFocus
+								value={pageInput}
+								onChange={(e) => setPageInput(e.target.value)}
+								onBlur={() => {
+									commitPageInput();
+									setPageJumpOpen(false);
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										commitPageInput();
+										setPageJumpOpen(false);
+									} else if (e.key === "Escape") {
+										setPageInput(String(safePage + 1));
+										setPageJumpOpen(false);
+									}
+								}}
+								inputMode="numeric"
+								aria-label="跳转页码"
+								disabled={pageLoading === true}
+								className="h-5 w-12 rounded-control border border-border bg-surface px-1 text-center font-mono text-[12px] tabular-nums text-surface-foreground outline-none focus:border-primary disabled:opacity-30"
+							/>
+						) : (
+							<button
+								type="button"
+								onClick={() => {
+									setPageInput(String(safePage + 1));
+									setPageJumpOpen(true);
+								}}
+								disabled={pageLoading === true}
+								title="当前页 / 总页数（点击输入页码跳转）"
+								className="cursor-pointer hover:text-surface-foreground disabled:cursor-not-allowed"
+							>
+								{safePage + 1} / {totalPages !== null ? totalPages : "?"}
+							</button>
+						)}
+					</span>
 					<button
 						type="button"
 						onClick={() => goToPage(safePage + 1)}
 						disabled={!hasNextPage || pageLoading === true}
-						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 						title="下一页"
+						className="dbx-icon-btn"
 					>
-						<span className="icon-[lucide--chevron-right] h-3 w-3" />
+						<span className="icon-[lucide--chevron-right] h-3.5 w-3.5" />
 					</button>
-				<button
-						type="button"
-						onClick={() => totalPages !== null && goToPage(totalPages - 1)}
-						disabled={totalPages === null || !hasNextPage || pageLoading === true}
-						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
-						title={totalPages === null ? "总数未知（统计中或统计失败），暂不能跳末页" : "最后一页"}
-					>
-						<span className="icon-[lucide--chevrons-right] h-3 w-3" />
-					</button>
-					{/* 加载全部：循环拉取直到末页（仅服务端分页） */}
-					{isServer && (
+					{isServer ? (
 						<button
 							type="button"
+							className="dbx-btn ml-1"
 							onClick={handleLoadAll}
 							disabled={pageLoading === true || loadAllActive || !hasNextPage}
-							className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground disabled:opacity-30"
 							title={loadAllActive ? "正在加载全部…" : "加载全部（循环拉取所有页）"}
 						>
 							<span
 								className={
 									loadAllActive
-										? "icon-[lucide--loader-2] h-3 w-3 animate-spin"
-										: "icon-[lucide--chevrons-down] h-3 w-3"
+										? "icon-[lucide--loader-2] h-3.5 w-3.5 animate-spin"
+										: "icon-[lucide--chevrons-down] h-3.5 w-3.5"
 								}
 							/>
+							加载全部
 						</button>
-					)}
-					<div className="mx-1 h-4 w-px shrink-0 bg-border" />
-					{/* 导出：左键 / 右键均弹格式菜单 */}
-					<button
-						type="button"
-						onClick={openExportMenu}
-						onContextMenu={openExportMenu}
-						title="导出结果（CSV / Excel / JSON / Markdown / HTML / SQL / TXT）"
-						className="flex h-6 w-6 items-center justify-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground"
-					>
-						<span className="icon-[lucide--download] h-3.5 w-3.5" />
-					</button>
-					{/* 生效中的导出行数上限：不开启时不占位；开启时常驻，避免用户以为已经导出了全部数据。 */}
-					{settings.exportLimitEnabled ? (
-						<span
-							className="flex shrink-0 items-center gap-1 rounded-chip border border-warning/40 bg-warning-soft px-1.5 py-0.5 text-[12px] text-warning"
-							title={`导出全部数据最多取回 ${settings.exportRowLimit.toLocaleString()} 行，可在「导出设置」中调整`}
-						>
-							<span className="icon-[lucide--alert-triangle] h-3 w-3" />
-							上限 {settings.exportRowLimit.toLocaleString()} 行
-						</span>
 					) : null}
 				</div>
 			</div>

@@ -29,6 +29,8 @@ interface ResultTableProps {
 	selectedCell: ResultTableSelection | null;
 	safePage: number;
 	pageSize: number;
+	/** 行高密度：single 单排（默认）/ double 双排（rows-3 开关） */
+	rowDensity: "single" | "double";
 	scrollRef: RefObject<HTMLDivElement | null>;
 	defaultWidth: (col: string) => number;
 	onToggleSort: (col: string) => void;
@@ -48,6 +50,7 @@ export function ResultTable({
 	selectedCell,
 	safePage,
 	pageSize,
+	rowDensity,
 	scrollRef,
 	defaultWidth,
 	onToggleSort,
@@ -58,7 +61,7 @@ export function ResultTable({
 	onOpenCellMenu,
 }: ResultTableProps): JSX.Element {
 	return (
-		<div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
+		<div ref={scrollRef} className="dbx-scroll min-h-0 flex-1 overflow-auto">
 			<table className="w-full border-separate border-spacing-0 font-sans text-[12px]" style={{ minWidth: "100%" }}>
 				<thead>
 					<tr className="h-10">
@@ -109,7 +112,7 @@ export function ResultTable({
 							const globalIdx = safePage * pageSize + rowIdx + 1;
 							const rowBg = stripedRows && rowIdx % 2 === 1 ? "bg-surface-raised" : "bg-background";
 							return (
-								<tr key={`${safePage}-${rowIdx}`} className={`group h-[30px] ${rowBg} hover:bg-[var(--dbx-hover)]`}>
+								<tr key={`${safePage}-${rowIdx}`} className={`group ${rowDensity === "double" ? "dbx-dense-double h-[46px]" : "h-[30px]"} ${rowBg} hover:bg-[var(--dbx-hover)]`}>
 									{showRowNumbers && (
 										<td className={`sticky left-0 z-10 w-12 min-w-12 border-b border-border px-2 py-1.5 text-right font-mono text-[12px] tabular-nums text-faint select-none group-hover:bg-[var(--dbx-hover)] ${rowBg}`}>
 											{globalIdx}

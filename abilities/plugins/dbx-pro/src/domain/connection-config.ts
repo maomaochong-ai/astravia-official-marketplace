@@ -255,8 +255,14 @@ export interface DbQueryResult {
 	columns: string[];
 	rows: Record<string, unknown>[];
 	row_count: number;
-	/** 写 / DDL 的影响行数（自研写驱动返回）；SELECT 缺省为 null。 */
+	/** 写 / DDL 的影响行数（自研写驱动返回）；SELECT 缺省为 null。DDL 无行数概念，也是 null。 */
 	affected_rows?: number | null;
+	/** 引擎判定的语句类别：read / write / ddl。写路径用它区分「改了行」与「改了结构」。 */
+	kind?: string;
+	/** 写 / DDL 的命令名（pg: CREATE / DROP / INSERT…）；读路径缺省。 */
+	command?: string | null;
+	/** 引擎确认本次由自研写驱动实际执行了写 / DDL。读路径不返回该字段。 */
+	write_executed?: boolean;
 	/** 执行失败时的原因；成功时缺省。带 error 的结果集 columns/rows 为空。 */
 	error?: string;
 	/** 成功但有需要告知用户的情况时给出（例如多语句只展示了最后一个结果集）。 */

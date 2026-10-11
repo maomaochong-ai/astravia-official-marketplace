@@ -10,6 +10,13 @@
 
 import { engineExecuteByName } from "../../../shared/services/engine-client";
 
+/** MySQL 系（SHOW CREATE 才有过程体，information_schema.routines 只有元数据）。 */
+const MYSQL_FAMILY = /mysql|mariadb|tidb|oceanbase|polardb/;
+/** SQL Server：过程体只能用 OBJECT_DEFINITION 取。 */
+const SQLSERVER_FAMILY = /sqlserver|mssql/;
+/** Oracle：定义正文在 all_source 里逐行存放。 */
+const ORACLE_FAMILY = /oracle/;
+
 export interface RoutineInfo {
 	schema: string;
 	name: string;
@@ -119,6 +126,80 @@ export function buildRoutineCallTemplate(routine: Pick<RoutineInfo, "schema" | "
 	const kindLabel = routine.kind === "PROCEDURE" ? "存储过程" : routine.kind === "FUNCTION" ? "函数" : "例程";
 	const head = `-- ${kindLabel} ${target}${routine.args ? `(${routine.args})` : "()"}`;
 	return routine.kind === "PROCEDURE" ? `${head}\nCALL ${target}();` : `${head}\nSELECT * FROM ${target}();`;
+}
+
+
+export interface RoutineDefinitionSql {
+	/** 可直接执行的「查看定义」SQL。 */
+	sql: string;
+	/** 当前方言是否有原生定义入口；false 时 sql 是降级说明 + 调用模板。 */
+	supported: boolean;
+}
+
+/** 例程限定名（有 schema 时加前缀），用于定义 SQL 的目标。 */
+function routineTarget(routine: Pick<RoutineInfo, "schema" | "name">): string {
+	return routine.schema ? `${routine.schema}.${routine.name}` : routine.name;
+}
+
+/**
+ * 「查看例程定义」SQL —— 点击存储过程 / 函数时展示服务端原生定义，而不是调用模板。
+ *
+ * 引擎没有例程定义路由（与 table-ddl.ts 同一约束：只暴露 /query 与 /describe），
+ * 所以按方言查各自的目录视图，全部走既有只读 /query：
+ *   PG 家族    pg_get_functiondef（PG11+ 存储过程同一入口；按 proname + nspname 取，同名重载返回多行）
+ *   MySQL 系   SHOW CREATE PROCEDURE / FUNCTION
+ *   SQL Server OBJECT_DEFINITION(OBJECT_ID(...))
+ *   Oracle     all_source 逐行正文
+ * 方言没有原生入口时返回 supported:false，并把调用模板作为降级内容 —— 不假装能拿到定义。
+ */
+export function buildRoutineDefinitionSql(
+	routine: Pick<RoutineInfo, "schema" | "name" | "kind" | "args">,
+	dbType: string | undefined,
+): RoutineDefinitionSql {
+	const dialect = String(dbType ?? "").toLowerCase();
+	const target = routineTarget(routine);
+	const schema = routine.schema?.trim() ?? "";
+	const name = routine.name;
+
+	if (POSTGRES_FAMILY.test(dialect)) {
+		const scope = schema ? `\n  AND n.nspname = '${escapeLiteral(schema)}'` : "";
+		const sql = [
+			`-- 定义 ${target}`,
+			"SELECT pg_get_functiondef(p.oid) AS definition",
+			"FROM pg_catalog.pg_proc p",
+			"JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace",
+			`WHERE p.proname = '${escapeLiteral(name)}'` + scope + ";",
+		].join("\n");
+		return { sql, supported: true };
+	}
+
+	if (SQLSERVER_FAMILY.test(dialect)) {
+		// 有 schema 时用限定名，否则交给默认解析；过程与函数同一入口。
+		return { sql: `-- 定义 ${target}\nSELECT OBJECT_DEFINITION(OBJECT_ID('${escapeLiteral(target)}')) AS definition;`, supported: true };
+	}
+
+	if (MYSQL_FAMILY.test(dialect) || ANSI_ROUTINES.test(dialect)) {
+		const kind = routine.kind.toUpperCase() === "FUNCTION" ? "FUNCTION" : "PROCEDURE";
+		// MySQL 的 SHOW CREATE 不接受参数签名，同名重载由 schema.name 唯一确定。
+		const qualified = schema ? `\`${schema}\`.\`${name}\`` : `\`${name}\``;
+		return { sql: `-- 定义 ${target}\nSHOW CREATE ${kind} ${qualified};`, supported: true };
+	}
+
+
+	if (ORACLE_FAMILY.test(dialect)) {
+		const owner = schema ? `\n  AND owner = '${escapeLiteral(schema.toUpperCase())}'` : "";
+		const sql = [
+			`-- 定义 ${target}`,
+			`SELECT text FROM all_source WHERE name = '${escapeLiteral(name.toUpperCase())}'` + owner,
+			"ORDER BY type, line;",
+		].join("\n");
+		return { sql, supported: true };
+	}
+
+	return {
+		sql: `-- 当前方言没有可直接执行的例程定义入口，下面给出调用模板\n${buildRoutineCallTemplate(routine)}`,
+		supported: false,
+	};
 }
 
 export async function loadRoutines(

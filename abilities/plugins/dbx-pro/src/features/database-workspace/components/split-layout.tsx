@@ -1,7 +1,7 @@
 /**
  * 三栏可拖拽布局 — 连接树 / 编辑器 / 右栏。
  *
- * 对齐设计稿 frames/index.tsx：三栏**齐平**，没有缝隙与卡片边框，
+ * 对齐设计稿的工作台骨架（components/WorkbenchGhost.tsx）：三栏**齐平**，没有缝隙与卡片边框，
  * 区域边界只由 1px 发丝分隔线表达（左栏 248px / 右栏 300px）。
  *
  * 拖拽自己实现（不引外部依赖）：pointerdown 记录起点与两侧当前像素宽，
@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { patchSession, readSession } from "../../../domain/workbench-session";
+import { ConnectionTreeRail } from "./connection-tree-rail";
 
 interface DragState {
 	/** "left" = 左栏/中栏之间；"right" = 中栏/右栏之间 */
@@ -23,7 +24,7 @@ interface DragState {
 	otherW: number;
 }
 
-/** 设计稿画框的固定栏宽（frames/index.tsx：左树 248px、右历史栏 300px）。 */
+/** 设计稿的固定栏宽（WorkbenchGhost.tsx：左树 248px、右历史栏 300px）。 */
 const DESIGN_LEFT = 248;
 const DESIGN_RIGHT = 300;
 /** 宿主面板窄于此宽度时改用比例分配，避免中栏被挤没。 */
@@ -157,32 +158,7 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 			{/* 左栏：连接树。收起时退化为 36px 图标列（设计稿 ConnectionTree 的收起态）。 */}
 			<div className="flex min-h-0 shrink-0 flex-col" style={{ width: leftCollapsed ? 36 : effectiveLeft }}>
 				{leftCollapsed ? (
-					<div className="flex h-full w-full flex-col items-center gap-1 bg-surface-raised py-1.5">
-						<button
-							type="button"
-							onClick={() => onToggleLeft?.()}
-							title="展开连接树"
-							className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-neutral-muted hover:text-surface-foreground"
-						>
-							<span className="icon-[lucide--panel-left-open] size-3.5" />
-						</button>
-						<span className="my-1 h-px w-5 shrink-0 bg-border" />
-						<span
-							title="连接"
-							className="flex size-7 shrink-0 items-center justify-center rounded-control bg-accent-soft text-accent"
-						>
-							<span className="icon-[lucide--database] size-3.5" />
-						</span>
-						<span title="表" className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted">
-							<span className="icon-[lucide--table-2] size-3.5" />
-						</span>
-						<span title="选择" className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted">
-							<span className="icon-[lucide--square-check-big] size-3.5" />
-						</span>
-						<span title="导入" className="flex size-7 shrink-0 items-center justify-center rounded-control text-muted">
-							<span className="icon-[lucide--folder-input] size-3.5" />
-						</span>
-					</div>
+					<ConnectionTreeRail onExpand={() => onToggleLeft?.()} />
 				) : (
 					children[0]
 				)}

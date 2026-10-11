@@ -365,18 +365,21 @@ export function SqlEditor(): JSX.Element {
 					onClick={handleExecute}
 					disabled={!running && !hasConn}
 					title={running ? "停止执行" : selectionLength > 0 ? "执行选中片段（⌘/Ctrl + Enter）" : "执行（⌘/Ctrl + Enter）"}
-					className="dbx-btn primary"
-					style={running ? { backgroundColor: "rgb(220 38 38)", borderColor: "rgb(220 38 38)" } : undefined}
+					className={"dbx-btn " + (running ? "danger" : "primary")}
 				>
 					<span className={running ? "icon-[lucide--square] h-3.5 w-3.5 fill-current" : "icon-[lucide--play] h-3.5 w-3.5"} />
 					{running ? "停止" : "执行"}
 				</button>
-				<span
-					title="快捷键 ⌘/Ctrl + Enter"
-					className="mr-1 shrink-0 rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 font-mono text-[12px] whitespace-nowrap text-muted"
+				{/* 快捷键提示 —— 设计稿的 chip 只是装饰，但用户会去点它：改成真按钮，点击即执行（同 Mod-Enter） */}
+				<button
+					type="button"
+					onClick={handleExecute}
+					disabled={!running && !hasConn}
+					title="执行（⌘/Ctrl + Enter）"
+					className={"mr-1 shrink-0 cursor-pointer appearance-none rounded-chip border border-border bg-neutral-muted px-1.5 py-0.5 font-mono text-[12px] whitespace-nowrap text-muted disabled:cursor-not-allowed disabled:opacity-50"}
 				>
 					⌘↵
-				</span>
+				</button>
 				{/* 在新结果标签页执行 */}
 				<button
 					type="button"

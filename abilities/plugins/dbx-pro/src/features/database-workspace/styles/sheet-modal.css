@@ -11,7 +11,6 @@
 	justify-content: center;
 	padding: 20px;
 	background: var(--dbx-scrim);
-	backdrop-filter: blur(2px);
 }
 
 /* ============================================================
@@ -23,7 +22,6 @@
 	inset: 0;
 	background: var(--dbx-scrim);
 	z-index: 100;
-	backdrop-filter: blur(2px);
 }
 .dbx-sheet {
 	position: absolute;
@@ -155,4 +153,78 @@
 .dbx-settings-body input[type="checkbox"]:disabled {
 	opacity: 0.4;
 	cursor: default;
+}
+
+/* ------------------------------------------------------------------
+ * 居中对话框外壳（设计稿 frames/dialogs.tsx）
+ * 520px 宽 / rounded-sheet / 标题条 44px / 页脚 56px / 控件 32px
+ * 用于单元格详情、写确认、导出进度等短任务弹层
+ * ------------------------------------------------------------------ */
+.dbx-dialog {
+	display: flex;
+	flex-direction: column;
+	width: min(520px, calc(100% - 2rem));
+	max-height: calc(100% - 2rem);
+	overflow: hidden;
+	border: 1px solid var(--dbx-border);
+	border-radius: var(--dbx-radius-sheet);
+	background: var(--dbx-panel);
+	box-shadow: var(--dbx-shadow-sheet);
+	animation: dbx-sheet-in 0.16s ease-out;
+}
+
+.dbx-dialog--wide {
+	width: min(640px, calc(100% - 2rem));
+}
+
+.dbx-dialog__head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 44px;
+	min-height: 44px;
+	flex-shrink: 0;
+	padding: 0 12px;
+	border-bottom: 1px solid var(--dbx-border);
+	background: var(--dbx-surface);
+}
+
+.dbx-dialog__title {
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--dbx-surface-foreground);
+}
+
+.dbx-dialog__body {
+	min-height: 0;
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px;
+}
+
+.dbx-dialog__body--flush {
+	padding: 0;
+}
+
+.dbx-dialog__foot {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: 56px;
+	min-height: 56px;
+	flex-shrink: 0;
+	padding: 0 12px;
+	border-top: 1px solid var(--dbx-border);
+	background: var(--dbx-panel);
+}
+
+/* 页脚内按钮按设计稿统一 32px 高 */
+.dbx-dialog__foot .dbx-btn,
+.dbx-dialog__foot > button {
+	min-height: 32px;
 }

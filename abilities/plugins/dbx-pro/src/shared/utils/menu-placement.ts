@@ -37,10 +37,8 @@ export interface SubmenuBox extends MenuBox {
 	flipLeft: boolean;
 }
 
-/** 主菜单固定宽度（与 ContextMenu 的 style.width 一致）。 */
-export const CONTEXT_MENU_WIDTH = 208;
-/** 子菜单最小宽度：内容更窄时按此收口，避免一行两个字。 */
-export const SUBMENU_MIN_WIDTH = 172;
+/** 子菜单最小宽度：设计稿主菜单与子菜单同为 min-w-[176px]，定位计算要与 CSS 保持一致。 */
+export const SUBMENU_MIN_WIDTH = 176;
 /** 菜单与面板边缘的最小间隙。 */
 export const VIEWPORT_MARGIN = 4;
 

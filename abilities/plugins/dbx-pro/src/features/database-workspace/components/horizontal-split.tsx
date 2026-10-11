@@ -7,7 +7,15 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 
-export function HorizontalSplit({ top, bottom }: { top: JSX.Element; bottom: JSX.Element }): JSX.Element {
+/** bottomCollapsed：底栏收起（结果面板折叠）；此时只渲染顶栏与一条「展开结果面板」恢复条。 */
+interface HorizontalSplitProps {
+	top: JSX.Element;
+	bottom: JSX.Element;
+	bottomCollapsed?: boolean;
+	onToggleBottom?: () => void;
+}
+
+export function HorizontalSplit({ top, bottom, bottomCollapsed, onToggleBottom }: HorizontalSplitProps): JSX.Element {
 	const [topH, setTopH] = useState(0);
 	const [dragging, setDragging] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -63,8 +71,8 @@ export function HorizontalSplit({ top, bottom }: { top: JSX.Element; bottom: JSX
 		window.addEventListener("pointerup", onPointerUp);
 	}
 
-/** 设计稿把 SQL 编辑器固定为 300px 高（frames/index.tsx）。容器太矮时按比例回退，
- *  以免结果面板被挤到屏外。 */
+/** 默认编辑器高度：矮容器按比例回退，以免结果面板被挤到屏外。
+ *  设计稿的工作台骨架（components/WorkbenchGhost.tsx）把编辑器区定为中栏的 44%。 */
 const DESIGN_TOP = 300;
 
 function defaultTop(total: number): number {
@@ -73,6 +81,25 @@ function defaultTop(total: number): number {
 
 const baseHeight = measuredHeight || 800;
 const effectiveTop = topH || defaultTop(baseHeight);
+
+	// 结果面板收起态：顶栏铺满，底部保留一条可点的恢复条（避免收起后无法找回）。
+	if (bottomCollapsed) {
+		return (
+			<div ref={containerRef} className="relative flex min-h-0 flex-1 flex-col">
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden">{top}</div>
+				{onToggleBottom ? (
+					<button
+						type="button"
+						onClick={onToggleBottom}
+						className="dbx-pagination flex h-8 shrink-0 items-center gap-1.5 px-3 text-[12px] text-muted transition-colors hover:text-surface-foreground"
+					>
+						<span className="icon-[lucide--panel-bottom-open] h-3.5 w-3.5" />
+						展开结果面板
+					</button>
+				) : null}
+			</div>
+		);
+	}
 
 	return (
 		<div ref={containerRef} className="relative flex min-h-0 flex-1 flex-col">

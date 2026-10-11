@@ -9,7 +9,7 @@
  * - 标签溢出支持「单行横向滚动 / 多行换行」切换。
  */
 
-import { useState, type JSX } from "react";
+import { useRef, useState, type JSX } from "react";
 import { useWorkbench } from "../hooks/use-workbench";
 import { nextQueryLabel, nextTabId } from "../state/tab-ids";
 import {
@@ -23,6 +23,8 @@ export function TabBar(): JSX.Element {
 	const [editValue, setEditValue] = useState("");
 	const [wrapTabs, setWrapTabs] = useState(false);
 	const [menu, setMenu] = useState<ContextMenuState | null>(null);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const activeIndex = state.tabs.findIndex((t) => t.id === state.activeTabId);
 
 	function addTab() {
 		const id = nextTabId();
@@ -63,6 +65,34 @@ export function TabBar(): JSX.Element {
 		addTab();
 		for (const id of oldIds) dispatch({ type: "closeTab", id });
 	}
+
+	/**
+	 * 单行滚动模式下把第 index 个标签滚进可视区。
+	 * 换行模式不需要滚动，直接返回。
+	 */
+	function revealTab(index: number): void {
+		if (wrapTabs) return;
+		const container = scrollRef.current;
+		const el = container?.children[index] as HTMLElement | undefined;
+		if (!container || !el) return;
+		const left = el.offsetLeft;
+		const right = left + el.offsetWidth;
+		if (left < container.scrollLeft) {
+			container.scrollTo({ left: Math.max(0, left - 8), behavior: "smooth" });
+		} else if (right > container.scrollLeft + container.clientWidth) {
+			container.scrollTo({ left: right - container.clientWidth + 8, behavior: "smooth" });
+		}
+	}
+
+	/** 上一个 / 下一个标签：不在两端时切为活动标签，并把它滚进可视区。 */
+	function activateRelative(step: number): void {
+		if (activeIndex < 0) return;
+		const next = activeIndex + step;
+		if (next < 0 || next >= state.tabs.length) return;
+		dispatch({ type: "setActiveTab", id: state.tabs[next].id });
+		revealTab(next);
+	}
+
 
 	function startRename(id: string, currentLabel: string) {
 		setMenu(null);
@@ -157,6 +187,7 @@ export function TabBar(): JSX.Element {
 						? "dbx-tab-wrap flex min-w-0 flex-1 flex-wrap content-start gap-0.5 py-1"
 						: "dbx-tab-scroll flex min-w-0 flex-1 items-stretch overflow-x-auto"
 				}
+				ref={scrollRef}
 			>
 				{state.tabs.map((tab) => {
 					const active = tab.id === state.activeTabId;
@@ -219,6 +250,25 @@ export function TabBar(): JSX.Element {
 
 			{/* 右侧操作：self-center 保证滚动条出现时仍与标签垂直居中、不错位 */}
 			<div className="flex shrink-0 items-center gap-0.5 self-center pr-1 pl-1">
+				{/* 标签导航：单行溢出时横向滚动条已被 .dbx-tab-scroll 隐藏，这里给可见的前后入口 */}
+				<button
+					type="button"
+					onClick={() => activateRelative(-1)}
+					disabled={activeIndex <= 0}
+					title="上一个标签"
+					className="dbx-icon-btn"
+				>
+					<span className="icon-[lucide--chevron-left] h-3.5 w-3.5" />
+				</button>
+				<button
+					type="button"
+					onClick={() => activateRelative(1)}
+					disabled={activeIndex < 0 || activeIndex >= state.tabs.length - 1}
+					title="下一个标签"
+					className="dbx-icon-btn"
+				>
+					<span className="icon-[lucide--chevron-right] h-3.5 w-3.5" />
+				</button>
 				<button type="button" onClick={addTab} title="新建 tab" className="dbx-icon-btn">
 					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
 				</button>

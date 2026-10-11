@@ -52,35 +52,29 @@ export function CellDetailDialog({ detail, onClose }: { detail: CellDetail; onCl
 	return (
 		<div className="dbx-modal-backdrop" onClick={onClose}>
 			<div
-				className="flex max-h-[70vh] w-[560px] flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-2xl shadow-black/50"
+				className="dbx-dialog"
 				onClick={(e) => e.stopPropagation()}
 				role="dialog"
 				aria-modal="true"
+				style={{ maxHeight: "70vh" }}
 			>
-				<div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+				<div className="dbx-dialog__head">
 					<span className="icon-[lucide--info] h-4 w-4 text-muted-foreground" />
-					<h3 className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-foreground">{detail.column}</h3>
-					<span className="shrink-0 rounded bg-[var(--dbx-surface-2)] px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-foreground/70">
+					<h3 className="dbx-dialog__title">{detail.column}</h3>
+					<span className="shrink-0 rounded bg-neutral-muted px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide text-muted-foreground">
 						{parsed.kind}
 					</span>
 					<button
 						type="button"
-						onClick={copy}
-						title="复制"
-						className="flex h-6 w-6 items-center justify-center rounded text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
-					>
-						<span className={`h-3.5 w-3.5 ${copied ? "icon-[lucide--check] text-success" : "icon-[lucide--copy]"}`} />
-					</button>
-					<button
-						type="button"
 						onClick={onClose}
 						title="关闭"
-						className="flex h-6 w-6 items-center justify-center rounded text-foreground/70 hover:bg-[var(--dbx-hover)] hover:text-foreground"
+						aria-label="关闭"
+						className="dbx-iconbtn"
 					>
 						<span className="icon-[lucide--x] h-3.5 w-3.5" />
 					</button>
 				</div>
-				<div className="min-h-0 flex-1 overflow-auto bg-[var(--dbx-surface)] p-3">
+				<div className="dbx-dialog__body bg-surface-sunken">
 					{parsed.kind === "null" ? (
 						<p className="text-center font-mono text-[12px] italic text-muted-foreground/70">NULL</p>
 					) : (
@@ -88,6 +82,16 @@ export function CellDetailDialog({ detail, onClose }: { detail: CellDetail; onCl
 							{parsed.text}
 						</pre>
 					)}
+				</div>
+				<div className="dbx-dialog__foot">
+					<button type="button" className="dbx-btn ghost" onClick={copy}>
+						<span className={`h-3.5 w-3.5 ${copied ? "icon-[lucide--check] text-success" : "icon-[lucide--copy]"}`} />
+						{copied ? "已复制" : "复制"}
+					</button>
+					<div className="ml-auto" />
+					<button type="button" className="dbx-btn primary" onClick={onClose}>
+						关闭
+					</button>
 				</div>
 			</div>
 		</div>

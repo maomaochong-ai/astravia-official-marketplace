@@ -110,6 +110,10 @@ export interface EngineQueryOutcome {
 	rows: Record<string, unknown>[];
 	row_count: number;
 	affected_rows: number;
+	/** 写 / DDL 的命令名（pg: CREATE / DROP / INSERT…）；读路径不返回。 */
+	command?: string | null;
+	/** 引擎确认本次由自研写驱动执行了写 / DDL；读路径不返回。 */
+	write_executed?: boolean;
 }
 
 export interface EngineHealth {
@@ -443,6 +447,12 @@ export function toQueryResult(outcome: EngineQueryOutcome): DbQueryResult {
 		columns: outcome.columns,
 		rows: outcome.rows,
 		row_count: outcome.row_count,
+		// 写 / DDL 成功时 columns/rows 恒为空，成败与命令只能靠这几个字段判断：
+		// 丢了它们，结果区就只能画出一个「执行查询后显示结果」的空态，看起来像没执行。
+		kind: outcome.kind,
+		affected_rows: outcome.affected_rows ?? null,
+		command: outcome.command ?? null,
+		write_executed: outcome.write_executed === true,
 		// 服务端分页页响应：网格走服务端翻页模式。
 		...(outcome.paged ? { paged: true } : {}),
 		...(notes.length > 0 ? { note: notes.join("；") } : {}),

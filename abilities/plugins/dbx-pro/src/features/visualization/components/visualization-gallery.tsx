@@ -1,12 +1,14 @@
 /**
- * VisualizationGallery — 可视化产物管理视图。
- * 
- * 展示所有生成的看板和大屏，支持：
- * - 预览（iframe）
- * - 下载 HTML
- * - 全屏查看
- * - 删除
- * - 交给 AI 修改
+ * VisualizationGallery — 可视化产物管理视图（对齐设计帧 bi-assets.tsx 的三栏工作台）。
+ *
+ * 结构（自上而下、自左向右）：
+ * - 头部：标题 + 计数 + 搜索 + 类型 chip + 清空
+ * - 左栏：产物引用的数据集一览（只读聚合，数据全部来自产物自身的快照）
+ * - 中栏：产物卡片网格（缩略图是**图表类型占位**，刻意不加载 iframe）
+ * - 右栏：详情列（VisualizationDetailDrawer 现在是内联列，不再是遮罩抽屉）
+ *
+ * 样式一律使用 visualization.css 里的 .viz-assets-* 自定义类：该文件不参与 @layer，
+ * 会盖过 Tailwind 的原子类（border-color 之类的覆盖会失效），所以这里刻意不混用原子类。
  */
 
 import { useState, useMemo, useRef, type JSX } from "react";
@@ -17,31 +19,39 @@ import { getUi } from "../../../runtime-contract.ts";
 import { resolveVisualizationHtml } from "../visualization-html";
 import { VisualizationDetailDrawer } from "./visualization-detail-drawer";
 
-/** Chart.js type → lucide icon。用于卡片网格占位（轻量缩略图，不加载 iframe）。 */
-const CHART_ICON_MAP: Record<string, string> = {
-	line: "chart-line",
-	bar: "bar-chart-3",
-	pie: "pie-chart",
-	doughnut: "donut",
-	polarArea: "radar",
-	radar: "radar",
-	scatter: "scatter-chart",
-	bubble: "circle",
-};
+type TypeFilter = "all" | "dashboard" | "screen";
+
+const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
+	{ key: "all", label: "全部" },
+	{ key: "dashboard", label: "看板" },
+	{ key: "screen", label: "大屏" },
+];
 
 interface Props {
 	onPreview: (viz: StoredVisualization) => void;
 	onEditWithAi: (viz: StoredVisualization) => void;
 }
 
+/** 左栏一行：一个数据集（同名同来源的产物快照合并成一行）。 */
+interface RailDataset {
+	key: string;
+	title: string;
+	table: string;
+	loaded: number;
+	total: number;
+	fetchedAt: number;
+	vizId: string;
+	vizCount: number;
+}
+
 export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.Element {
 	const { visualizations, removeVisualization, clearAll } = useVisualizationStore();
 	const [searchQuery, setSearchQuery] = useState("");
-	const [filterType, setFilterType] = useState<"all" | "dashboard" | "screen">("all");
+	const [filterType, setFilterType] = useState<TypeFilter>("all");
 	// 清空为不可逆操作：宿主 webview 中 confirm() 是静默 no-op，改用两次点击内联确认。
 	const [confirmClear, setConfirmClear] = useState(false);
 	const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-	// 详情抽屉只存 id，对象从 store 现取：重新取数 / 改筛选会替换 store 里的对象，存快照会让抽屉看着「没反应」
+	// 详情只存 id，对象从 store 现取：重新取数 / 改筛选会替换 store 里的对象，存快照会让详情看着「没反应」
 	const [detailId, setDetailId] = useState<string | null>(null);
 
 	function handleClearClick(): void {
@@ -64,9 +74,47 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 		}
 	}
 
+	const countByType = useMemo(() => {
+		const counts = { all: visualizations.length, dashboard: 0, screen: 0 };
+		for (const viz of visualizations) {
+			if (viz.type === "screen") counts.screen += 1;
+			else counts.dashboard += 1;
+		}
+		return counts;
+	}, [visualizations]);
+
+	/** 左栏数据：把各产物快照里的数据集按「id / 标题」合并，只读展示，不新增任何取数路径。 */
+	const railDatasets = useMemo<RailDataset[]>(() => {
+		const byKey = new Map<string, RailDataset>();
+		for (const viz of visualizations) {
+			for (const dataset of viz.datasets ?? []) {
+				const key = dataset.id || dataset.title;
+				const existing = byKey.get(key);
+				if (existing) {
+					existing.loaded = Math.max(existing.loaded, dataset.rows.length);
+					existing.total = Math.max(existing.total, dataset.rowCount);
+					if (dataset.fetchedAt > existing.fetchedAt) existing.fetchedAt = dataset.fetchedAt;
+					existing.vizCount += 1;
+					continue;
+				}
+				byKey.set(key, {
+					key,
+					title: dataset.title,
+					table: dataset.table,
+					loaded: dataset.rows.length,
+					total: dataset.rowCount,
+					fetchedAt: dataset.fetchedAt,
+					vizId: viz.id,
+					vizCount: 1,
+				});
+			}
+		}
+		return [...byKey.values()].sort((a, b) => b.loaded - a.loaded || a.title.localeCompare(b.title));
+	}, [visualizations]);
+
 	const filteredVisualizations = useMemo(() => {
 		return visualizations.filter((viz) => {
-			const matchesSearch = !searchQuery || 
+			const matchesSearch = !searchQuery ||
 				viz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				viz.table.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				viz.connection.toLowerCase().includes(searchQuery.toLowerCase());
@@ -79,6 +127,7 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 	const exportableItems = (viz: StoredVisualization) => resolveChartItems(viz.chartItems ?? [], viz.datasets ?? [], viz.filters ?? []);
 
 	const detailViz = detailId ? (visualizations.find((viz) => viz.id === detailId) ?? null) : null;
+	const chartTotal = visualizations.reduce((sum, viz) => sum + (viz.chartItems?.length ?? 0), 0);
 
 	const handleDownload = (viz: StoredVisualization): void => {
 		try {
@@ -96,134 +145,153 @@ export function VisualizationGallery({ onPreview, onEditWithAi }: Props): JSX.El
 	};
 
 	return (
-		<div className="flex h-full flex-col bg-background">
-			{/* 顶部工具栏 */}
-			<div className="flex items-center justify-between border-b border-border px-4 py-3">
-				<div className="flex items-center gap-3">
-					<h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-						<span className="icon-[lucide--chart-bar] h-4 w-4 text-violet-500" />
-						BI 数据资产
-					</h2>
-					<span className="text-xs text-muted-foreground">
-						共 {visualizations.length} 个
-					</span>
-				</div>
-				<div className="flex items-center gap-2">
+		<div className="viz-assets">
+			<header className="viz-assets-head">
+				<h1 className="viz-assets-title">BI</h1>
+				<span className="viz-assets-count">共 {visualizations.length} 个产物</span>
+				<div className="viz-assets-head-right">
+					<label className="viz-assets-search">
+						<span className="icon-[lucide--search] viz-assets-search-icon" />
+						<input
+							type="text"
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							placeholder="搜索标题、表名、连接…"
+							aria-label="搜索产物"
+						/>
+					</label>
+					{TYPE_FILTERS.map((tab) => (
+						<button
+							key={tab.key}
+							type="button"
+							onClick={() => setFilterType(tab.key)}
+							className={`viz-assets-chip${filterType === tab.key ? " is-active" : ""}`}
+						>
+							{tab.label} {countByType[tab.key]}
+						</button>
+					))}
 					<button
-					type="button"
-					onClick={handleClearClick}
-					disabled={visualizations.length === 0}
-					className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors disabled:opacity-40 ${
-						confirmClear
-							? "bg-red-500/15 text-red-500"
-							: "text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
-					}`}
-					title={confirmClear ? "再次点击确认清空" : "清空所有"}
-				>
-					<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
-					{confirmClear ? "确认清空？" : "清空"}
-				</button>
+						type="button"
+						onClick={handleClearClick}
+						disabled={visualizations.length === 0}
+						className={`viz-assets-btn${confirmClear ? " is-danger" : ""}`}
+						title={confirmClear ? "再次点击确认清空" : "清空所有"}
+					>
+						<span className="icon-[lucide--trash-2]" />
+						{confirmClear ? "确认清空？" : "清空"}
+					</button>
 				</div>
-			</div>
+			</header>
 
-			{/* 搜索和过滤 */}
-			<div className="flex items-center gap-2 border-b border-border px-4 py-2">
-				<div className="relative flex-1">
-					<span className="icon-[lucide--search] absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-					<input
-						type="text"
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="搜索标题、表名、连接..."
-						className="h-7 w-full rounded-md border border-border bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none"
+			<div className="viz-assets-body">
+				<aside className="viz-assets-rail">
+					<div className="viz-assets-rail-head">
+						<span className="icon-[lucide--layers] viz-assets-rail-icon" />
+						<span className="viz-assets-rail-title">数据集</span>
+						<span className="viz-assets-rail-count">{railDatasets.length}</span>
+					</div>
+					<div className="viz-assets-rail-list">
+						{railDatasets.length === 0 ? (
+							<p className="viz-assets-rail-empty">产物还没有数据集快照</p>
+						) : (
+							railDatasets.map((dataset) => (
+								<button
+									key={dataset.key}
+									type="button"
+									onClick={() => setDetailId(dataset.vizId)}
+									className={`viz-rail-row${dataset.vizId === detailId ? " is-active" : ""}`}
+									title={`打开引用「${dataset.title}」的产物`}
+								>
+									<span className="viz-rail-row-top">
+										<span className="icon-[lucide--table-2] viz-rail-row-icon" />
+										<span className="viz-rail-row-name">{dataset.title}</span>
+										{dataset.loaded === 0 && dataset.total > 0 ? (
+											<span className="viz-chip is-warning">只读快照</span>
+										) : null}
+									</span>
+									<span className="viz-rail-row-meta">
+										<span className="viz-rail-row-table">{dataset.table}</span>
+										<span className="viz-rail-sep">·</span>
+										<span className="viz-rail-num">
+											{dataset.total > dataset.loaded ? `${dataset.loaded} / ${dataset.total} 行` : `${dataset.loaded} 行`}
+										</span>
+										<span className="viz-rail-sep">·</span>
+										<span className="viz-rail-num">取数 {formatClock(dataset.fetchedAt)}</span>
+									</span>
+								</button>
+							))
+						)}
+					</div>
+					<div className="viz-assets-rail-foot">
+						<span className="icon-[lucide--info]" />
+						数据集来自产物快照 · 重新取数在右栏详情里
+					</div>
+				</aside>
+
+				<section className="viz-assets-center">
+					<div className="viz-assets-center-head">
+						<span>按最近修改排序</span>
+						<span className="viz-rail-num">
+							{filteredVisualizations.length} / {visualizations.length}
+						</span>
+						<span className="viz-assets-center-hint">
+							<span className="icon-[lucide--database]" />
+							{railDatasets.length} 个数据集
+						</span>
+					</div>
+
+					<div className="viz-assets-grid">
+						{filteredVisualizations.length === 0 ? (
+							<div className="viz-assets-empty">
+								<span className="icon-[lucide--layout-dashboard] viz-assets-empty-icon" />
+								<p className="viz-assets-empty-title">
+									{visualizations.length === 0 ? "还没有生成可视化产物" : "没有匹配的产物"}
+								</p>
+								<p className="viz-assets-empty-hint">在连接树右键表 → 可视化 → 生成看板/大屏</p>
+							</div>
+						) : (
+							filteredVisualizations.map((viz) => (
+								<VisualizationCard
+									key={viz.id}
+									viz={viz}
+									open={viz.id === detailId}
+									onPreview={() => onPreview(viz)}
+									onOpenDetail={() => setDetailId(viz.id)}
+									onDownload={() => handleDownload(viz)}
+									onOpenInNewTab={() => handleOpenInNewTab(viz)}
+									onEditWithAi={() => onEditWithAi(viz)}
+									onDelete={() => removeVisualization(viz.id)}
+								/>
+							))
+						)}
+					</div>
+
+					<div className="viz-assets-center-foot">
+						<span className="icon-[lucide--hard-drive] viz-assets-foot-icon" />
+						<span>产物以单文件 HTML 保存在本机 · html 只在导出时生成，不再是事实源</span>
+						<span className="viz-assets-foot-stat viz-rail-num">图表 {chartTotal} 个</span>
+					</div>
+				</section>
+
+				{detailViz ? (
+					<VisualizationDetailDrawer
+						key={detailViz.id}
+						viz={detailViz}
+						onClose={() => setDetailId(null)}
+						onPreview={() => {
+							setDetailId(null);
+							onPreview(detailViz);
+						}}
 					/>
-				</div>
-				<div className="flex items-center gap-1 rounded-md border border-border bg-background p-0.5">
-					<button
-						type="button"
-						onClick={() => setFilterType("all")}
-						className={`rounded px-2 py-1 text-xs transition-colors ${
-							filterType === "all"
-								? "bg-primary text-primary-foreground"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-					>
-						全部
-					</button>
-					<button
-						type="button"
-						onClick={() => setFilterType("dashboard")}
-						className={`rounded px-2 py-1 text-xs transition-colors ${
-							filterType === "dashboard"
-								? "bg-primary text-primary-foreground"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-					>
-						看板
-					</button>
-					<button
-						type="button"
-						onClick={() => setFilterType("screen")}
-						className={`rounded px-2 py-1 text-xs transition-colors ${
-							filterType === "screen"
-								? "bg-primary text-primary-foreground"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-					>
-						大屏
-					</button>
-				</div>
+				) : null}
 			</div>
-
-			{/* 产物列表 */}
-			<div className="flex-1 overflow-y-auto p-4">
-				{filteredVisualizations.length === 0 ? (
-					<div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-						<span className="icon-[lucide--layout-dashboard] h-12 w-12 text-muted-foreground/40" />
-						<div className="space-y-1">
-							<p className="text-sm text-muted-foreground">
-								{visualizations.length === 0 ? "还没有生成可视化产物" : "没有匹配的产物"}
-							</p>
-							<p className="text-xs text-muted-foreground/60">
-								在连接树右键表 → 可视化 → 生成看板/大屏
-							</p>
-						</div>
-					</div>
-				) : (
-					<div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-						{filteredVisualizations.map((viz) => (
-							<VisualizationCard
-								key={viz.id}
-								viz={viz}
-								onPreview={() => onPreview(viz)}
-								onOpenDetail={() => setDetailId(viz.id)}
-								onDownload={() => handleDownload(viz)}
-								onOpenInNewTab={() => handleOpenInNewTab(viz)}
-								onEditWithAi={() => onEditWithAi(viz)}
-								onDelete={() => removeVisualization(viz.id)}
-							/>
-						))}
-					</div>
-				)}
-			</div>
-
-			{detailViz ? (
-				<VisualizationDetailDrawer
-					key={detailViz.id}
-					viz={detailViz}
-					onClose={() => setDetailId(null)}
-					onPreview={() => {
-						setDetailId(null);
-						onPreview(detailViz);
-					}}
-				/>
-			) : null}
 		</div>
 	);
 }
 
 interface CardProps {
 	viz: StoredVisualization;
+	open: boolean;
 	onPreview: () => void;
 	onOpenDetail: () => void;
 	onDownload: () => void;
@@ -232,168 +300,196 @@ interface CardProps {
 	onDelete: () => void;
 }
 
-function VisualizationCard({ viz, onPreview, onOpenDetail, onDownload, onOpenInNewTab, onEditWithAi, onDelete }: CardProps): JSX.Element {
+function VisualizationCard({ viz, open, onPreview, onOpenDetail, onDownload, onOpenInNewTab, onEditWithAi, onDelete }: CardProps): JSX.Element {
 	const [showMenu, setShowMenu] = useState(false);
 
-	const typeIcon = viz.type === "dashboard" ? "icon-[lucide--layout-dashboard]" : "icon-[lucide--monitor]";
-	const typeLabel = viz.type === "dashboard" ? "看板" : "大屏";
+	const isScreen = viz.type === "screen";
+	const typeLabel = isScreen ? "大屏" : "看板";
 	const timeAgo = getTimeAgo(viz.createdAt);
-	const chartCount = viz.chartItems?.length ?? 0;
+	const datasetCount = viz.datasets?.length ?? 0;
+	const filterCount = viz.filters?.length ?? 0;
+
+	const menuItems: { key: string; icon: string; label: string; run: () => void; danger?: boolean }[] = [
+		{ key: "new-tab", icon: "external-link", label: "新窗口打开", run: onOpenInNewTab },
+		{ key: "download", icon: "download", label: "下载 HTML", run: onDownload },
+		{ key: "ai", icon: "sparkles", label: "交给 AI 修改", run: onEditWithAi },
+		{ key: "delete", icon: "trash-2", label: "删除", run: onDelete, danger: true },
+	];
 
 	return (
-		<div className="group relative overflow-hidden rounded-lg border border-border bg-[var(--dbx-surface)] transition-all hover:border-primary/50 hover:shadow-md">
-			{/* 预览区域：图表类型网格占位 —— 轻量（无 iframe） */}
+		<article className={`viz-asset-card${open ? " is-open" : ""}`}>
+			{/* 缩略图：图表类型占位（div / 内联 SVG 几何），刻意不加载 iframe */}
 			<button
 				type="button"
 				onClick={onOpenDetail}
-				className={`relative block aspect-video w-full overflow-hidden transition-colors ${
-					viz.type === "screen"
-						? "bg-gradient-to-br from-cyan-500/10 via-slate-900/20 to-slate-900/40 hover:from-cyan-500/20 hover:via-slate-900/30 hover:to-slate-900/50"
-						: "bg-gradient-to-br from-primary/10 via-violet-500/5 to-transparent hover:from-primary/20 hover:via-violet-500/10"
-				}`}
+				className={`viz-asset-thumb${isScreen ? " is-screen" : ""}`}
+				title="打开详情"
 			>
-				{chartCount > 0 ? (
-					<div
-						className="absolute inset-0 grid gap-1.5 p-3"
-						style={{
-							gridTemplateColumns: chartCount <= 2 ? "1fr" : chartCount <= 4 ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
-						}}
-					>
-						{viz.chartItems!.slice(0, Math.min(chartCount, 9)).map((chart, i) => {
-							const icon = CHART_ICON_MAP[chart.type] ?? "chart-line";
-							return (
-								<div
-									key={i}
-									className="flex flex-col items-center justify-center gap-0.5 rounded border border-border/50 bg-background/70 text-muted-foreground backdrop-blur-sm"
-								>
-									<span className={`icon-[lucide--${icon}] h-4 w-4 ${viz.type === "screen" ? "text-cyan-400" : "text-violet-500"}`} />
-									<span className="text-[9px] leading-none text-muted-foreground/80">{chart.type}</span>
-								</div>
-							);
-						})}
-					</div>
-				) : (
-					<div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground/60">
-						<span className={`${typeIcon} h-10 w-10 ${viz.type === "screen" ? "text-cyan-500" : "text-violet-500"}`} />
-						<span className="text-xs">{typeLabel}</span>
-					</div>
-				)}
-				{/* hover 操作蒙层 */}
-				<div className="absolute inset-0 flex flex-col justify-between bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100">
-					<span className="ml-auto mr-2 mt-2 rounded-full bg-black/50 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
-						{chartCount} 图
-					</span>
-					<div className="flex items-center justify-between p-2">
-						<span className="rounded bg-black/60 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
-						点击打开详情 →
-						</span>
-					</div>
-				</div>
+				<AssetThumb viz={viz} />
+				<span className="viz-asset-thumb-badge">占位 · 不加载 iframe</span>
 			</button>
 
-			{/* 信息区域 */}
-			<div className="p-3">
-				<div className="mb-2 flex items-start justify-between gap-2">
-					<div className="min-w-0 flex-1">
-						<h3 className="truncate text-sm font-medium text-foreground" title={viz.title}>
-							{viz.title}
-						</h3>
-						<div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-							<span className={`flex items-center gap-1 ${typeIcon}`} />
-							<span>{typeLabel}</span>
-							<span>·</span>
-							<span>{viz.table}</span>
-							<span>·</span>
-							<span>{timeAgo}</span>
-							{viz.datasets && viz.datasets.length > 0 ? (
-								<>
-									<span>·</span>
-									<span>{viz.datasets.length} 数据集</span>
-								</>
-							) : null}
-						</div>
-					</div>
-					<div className="relative">
-						<button
-							type="button"
-							onClick={() => setShowMenu(!showMenu)}
-							className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-[var(--dbx-hover)] hover:text-foreground"
-						>
-							<span className="icon-[lucide--more-vertical] h-3.5 w-3.5" />
-						</button>
-						{showMenu && (
-							<>
-								<div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-								<div className="absolute right-0 top-full z-20 mt-1 w-36 rounded-md border border-border bg-popover py-1 shadow-lg">
-									<button
-										type="button"
-										onClick={() => { onOpenInNewTab(); setShowMenu(false); }}
-										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-foreground hover:bg-neutral-muted"
-									>
-										<span className="icon-[lucide--external-link] h-3.5 w-3.5" />
-										新窗口打开
-									</button>
-									<button
-										type="button"
-										onClick={() => { onDownload(); setShowMenu(false); }}
-										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-foreground hover:bg-neutral-muted"
-									>
-										<span className="icon-[lucide--download] h-3.5 w-3.5" />
-										下载 HTML
-									</button>
-									<button
-										type="button"
-										onClick={() => { onEditWithAi(); setShowMenu(false); }}
-										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12px] text-foreground hover:bg-neutral-muted"
-									>
-										<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
-										交给 AI 修改
-									</button>
-									<div className="my-1 h-px bg-border" />
-									<button
-										type="button"
-										onClick={() => { onDelete(); setShowMenu(false); }}
-										className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-500 hover:bg-red-500/10"
-									>
-										<span className="icon-[lucide--trash-2] h-3.5 w-3.5" />
-										删除
-									</button>
-								</div>
-							</>
-						)}
-					</div>
-				</div>
-
-				{/* 快捷操作 */}
-				<div className="flex items-center gap-1">
+			<div className="viz-asset-head">
+				<span className="viz-asset-name" title={viz.title}>
+					{viz.title}
+				</span>
+				<span className={`viz-chip${isScreen ? " is-screen" : ""}`}>{typeLabel}</span>
+				<div className="viz-menu-anchor">
 					<button
 						type="button"
-						onClick={onPreview}
-						className="flex flex-1 items-center justify-center gap-1 rounded-md bg-primary/10 px-2 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+						onClick={() => setShowMenu(!showMenu)}
+						className={`viz-icon-btn${showMenu ? " is-active" : ""}`}
+						title="更多操作"
+						aria-label="更多操作"
 					>
-						<span className="icon-[lucide--eye] h-3 w-3" />
-						预览
+						<span className="icon-[lucide--more-vertical]" />
 					</button>
-					<button
-						type="button"
-						onClick={onDownload}
-						className="flex flex-1 items-center justify-center gap-1 rounded-md bg-[var(--dbx-surface-2)] px-2 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--dbx-hover)]"
-					>
-						<span className="icon-[lucide--download] h-3 w-3" />
-						下载
-					</button>
-					<button
-						type="button"
-						onClick={onEditWithAi}
-						className="flex flex-1 items-center justify-center gap-1 rounded-md bg-[var(--dbx-surface-2)] px-2 py-1.5 text-xs font-medium text-foreground hover:bg-[var(--dbx-hover)]"
-					>
-						<span className="icon-[lucide--sparkles] h-3 w-3" />
-						AI 修改
-					</button>
+					{showMenu ? (
+						<>
+							<div className="viz-menu-backdrop" onClick={() => setShowMenu(false)} />
+							<div className="viz-menu">
+								{menuItems.map((item) => (
+									<button
+										key={item.key}
+										type="button"
+										onClick={() => { item.run(); setShowMenu(false); }}
+										className={`viz-menu-item${item.danger ? " is-danger" : ""}`}
+									>
+										<span className={`icon-[lucide--${item.icon}]`} />
+										{item.label}
+									</button>
+								))}
+							</div>
+						</>
+					) : null}
 				</div>
 			</div>
+
+			<div className="viz-asset-meta">
+				<span className="viz-asset-meta-item">
+					<span className="icon-[lucide--database]" />
+					数据集 {datasetCount}
+				</span>
+				<span className="viz-asset-meta-item">
+					<span className="icon-[lucide--sliders-horizontal]" />
+					筛选 {filterCount}
+				</span>
+				<span className="viz-asset-time viz-rail-num">{timeAgo}</span>
+			</div>
+
+			{/* 快捷操作：设计帧的卡片没有这一行，但它承载既有的预览 / 下载 / AI 入口，不删功能 */}
+			<div className="viz-asset-actions">
+				<button type="button" onClick={onPreview} className="viz-ghost-btn is-primary">
+					<span className="icon-[lucide--eye]" />
+					预览
+				</button>
+				<button type="button" onClick={onDownload} className="viz-ghost-btn">
+					<span className="icon-[lucide--download]" />
+					下载
+				</button>
+				<button type="button" onClick={onEditWithAi} className="viz-ghost-btn">
+					<span className="icon-[lucide--sparkles]" />
+					AI 修改
+				</button>
+			</div>
+		</article>
+	);
+}
+
+/** 缩略图变体：由产物类型与首个图表类型决定（对齐设计帧的 Thumb 取舍）。 */
+type ThumbVariant = "line" | "donut" | "bars";
+
+function thumbVariant(viz: StoredVisualization): ThumbVariant {
+	if (viz.type === "screen") return "line";
+	const first = viz.chartItems?.[0]?.type;
+	if (first === "pie" || first === "doughnut" || first === "polarArea") return "donut";
+	if (first === "line") return "line";
+	return "bars";
+}
+
+/**
+ * 缩略图几何：只画图表形状，不用图标字体（设计约定：Charts 一律由 div / 内联 SVG 几何构成）。
+ * 颜色全部走 --dbx-series-* 令牌，不写死色值。
+ */
+const THUMB_LINE = [42, 48, 45, 56, 52, 61, 58, 66, 63, 71, 68, 76];
+const THUMB_BARS = [38, 52, 44, 61, 57, 72, 66, 81];
+const THUMB_DONUT = [
+	{ value: 46, series: 1 },
+	{ value: 27, series: 2 },
+	{ value: 17, series: 3 },
+	{ value: 10, series: 4 },
+];
+
+function AssetThumb({ viz }: { viz: StoredVisualization }): JSX.Element {
+	const variant = thumbVariant(viz);
+	if (variant === "donut") return <ThumbDonut />;
+	if (variant === "bars") return <ThumbBars />;
+	return <ThumbLine />;
+}
+
+function ThumbLine(): JSX.Element {
+	const max = Math.max(...THUMB_LINE);
+	const min = Math.min(...THUMB_LINE);
+	const span = max - min || 1;
+	const step = 100 / (THUMB_LINE.length - 1);
+	const points = THUMB_LINE.map((value, index) => `${(index * step).toFixed(2)},${(100 - ((value - min) / span) * 100).toFixed(2)}`);
+	const line = points.join(" ");
+	return (
+		<svg className="viz-thumb-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+			<polygon className="viz-thumb-area" points={`0,100 ${line} 100,100`} />
+			<polyline className="viz-thumb-line" points={line} />
+		</svg>
+	);
+}
+
+function ThumbDonut(): JSX.Element {
+	const radius = 30;
+	const circumference = 2 * Math.PI * radius;
+	const gap = 3;
+	let offset = 0;
+	return (
+		<svg className="viz-thumb-donut" viewBox="0 0 80 80" aria-hidden="true">
+			{THUMB_DONUT.map((segment) => {
+				const length = (segment.value / 100) * circumference;
+				const circle = (
+					<circle
+						key={segment.series}
+						cx="40"
+						cy="40"
+						r={radius}
+						fill="none"
+						className={`viz-thumb-seg-${segment.series}`}
+						strokeWidth="11"
+						strokeDasharray={`${Math.max(length - gap, 0.5).toFixed(2)} ${(circumference - Math.max(length - gap, 0.5)).toFixed(2)}`}
+						strokeDashoffset={(-offset).toFixed(2)}
+						transform="rotate(-90 40 40)"
+					/>
+				);
+				offset += length;
+				return circle;
+			})}
+		</svg>
+	);
+}
+
+function ThumbBars(): JSX.Element {
+	const max = Math.max(...THUMB_BARS);
+	return (
+		<div className="viz-thumb-bars" aria-hidden="true">
+			{THUMB_BARS.map((value, index) => (
+				<span
+					key={index}
+					className={`viz-thumb-bar viz-thumb-bar-${(index % 4) + 1}`}
+					style={{ height: `${Math.round((value / max) * 100)}%` }}
+				/>
+			))}
 		</div>
 	);
+}
+
+function formatClock(timestamp: number): string {
+	const date = new Date(timestamp);
+	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
 function getTimeAgo(timestamp: number): string {

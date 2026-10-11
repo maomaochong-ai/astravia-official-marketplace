@@ -1,5 +1,5 @@
 /**
- * visualization-doc — 「BI 数据资产」存储文档的读写与 v1 → v2 迁移。
+ * visualization-doc — 「BI」存储文档的读写与 v1 → v2 迁移。
  *
  * 覆盖四类输入：v1 裸数组、v2 文档、无法识别的输入、混合可信度条目。
  * 迁移的硬约束是**只读不删**：v1 条目必须原样保留 html + chartItems，

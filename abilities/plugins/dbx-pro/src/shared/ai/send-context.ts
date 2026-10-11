@@ -39,6 +39,23 @@ export function buildConnectionPrompt({ connectionName, dbType }: AiConnectionCo
 	].join("\n");
 }
 
+/**
+ * 构造「用自然语言描述建连」的 prompt：交给宿主 AI，由它调用插件的
+ * dbx_add_connection 工具真正建连。工具名与参数名写成普通文字，
+ * 用户能在发送前逐句核对。
+ */
+export function buildNewConnectionPrompt(description: string): string {
+	return [
+		"请帮我创建这个数据库连接，我的描述是：",
+		"",
+		description.trim(),
+		"",
+		"请调用 dbx_add_connection 工具创建它，参数用 name、db_type、host、port、username、password、database。",
+		"如果描述里缺少端口、密码等必填信息，先问我，不要猜。",
+		"创建完成后告诉我连接名，我会在左侧连接树里刷新查看。",
+	].join("\n");
+}
+
 /** 多选对象的节点信息（由连接树在勾选时收集）。 */
 export interface SelectedNodeInfo {
 	kind: "connection" | "schema" | "table";
@@ -119,13 +136,12 @@ export function buildResultVizPrompt(
 		"   { type: 'line'|'bar'|'pie'|..., data: { labels: [...], datasets: [...] }, title: '...' }",
 		"4. 宿主 render_chart（对话 UI 原生卡片）—— 先挑 1-4 个核心图表调宿主的 render_chart 工具，",
 		"   让用户在当前对话中看到原生风格的图表预览（和宿主聊天窗口里的图表视觉一致）",
-		"5. dbx_chart_collection（BI 数据资产）—— 把所有图表打包成完整的 HTML 页面存进数据库工作台的",
-		`   BI 数据资产（type=${intent}，title 取一个有意义的名称，connection_name="${connectionName}",`,
-		`   sql="${sql.replace(/"/g, '\\"')}"），用户点击顶部栏的「BI」按钮就能在新标签页查看和二次编辑`,
+		"5. dbx_chart_collection（BI）—— 把所有图表打包成完整的 HTML 页面存进数据库工作台的",
+		`   BI（type=${intent}，title 取一个有意义的名称，connection_name="${connectionName}", sql="${sql.replace(/"/g, '\\"')}"），用户点击顶部栏的「BI」按钮就能在新标签页查看和二次编辑`,
 		"   - 同时传 datasets[] 把数据一起存下来：每个数据集一条 { id, title, sql, columns, rows, rowCount }，",
 		"     columns 是列名、rows 是查到的行、rowCount 是这条 SQL 的完整行数",
 		"   - 再给 charts[] 里的图表加 source: { datasetId: '数据集 id', labelColumn: '分类列', valueColumns: ['度量列'] }",
-		"     绑定后用户在「BI 数据资产」里能直接改筛选、重新取数，不必回到对话里重跑；没绑 source 的图表保持静态快照",
+		"     绑定后用户在「BI」里能直接改筛选、重新取数，不必回到对话里重跑；没绑 source 的图表保持静态快照",
 		"",
 		"图表选择原则（根据数据特点决定，不要套固定模板）：",
 		"  - 时间维度 → line（折线）或 bar（柱状按时间）",
