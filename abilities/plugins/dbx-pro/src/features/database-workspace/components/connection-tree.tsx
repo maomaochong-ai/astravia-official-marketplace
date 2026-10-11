@@ -141,7 +141,13 @@ export function ConnectionTree({ onCollapse }: { onCollapse?: () => void }): JSX
 				selectionMode={selectionMode}
 				onExpandAll={expandAll}
 				onCollapseAll={collapseAll}
-				onRefresh={() => void refreshConnections()}
+				onRefresh={() => {
+					// 清所有连接的树缓存（schema/table 列表在缓存里，DDL 后旧数据不会自动刷新）
+					for (const conn of state.connections) {
+						dispatch({ type: "invalidateConnectionTree", name: conn.name });
+					}
+					void refreshConnections();
+				}}
 				onToggleSelectionMode={() => toggleSelectionMode()}
 				onAfterTransfer={() => void refreshConnections()}
 				onCollapsePanel={onCollapse}

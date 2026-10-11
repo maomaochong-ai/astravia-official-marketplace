@@ -251,6 +251,8 @@ export function WorkbenchProvider({ children }: { children: ReactNode }) {
 				ranSql: pending.sql,
 				keepTotal: false,
 			});
+			// DDL/DML 执行成功后清连接树缓存 — 否则 CREATE/DROP TABLE 后用户刷新看不到变化
+			dispatch({ type: "invalidateConnectionTree", name: pending.connectionName });
 			dispatch({ type: "setConnectionStatus", name: pending.connectionName, status: "ok" });
 			await recordHistory({
 				connName: pending.connectionName,

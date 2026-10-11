@@ -17,10 +17,12 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { createDbxQueryFullTool } from "./dbx-query-full";
 import { createDbxChartCollectionTool } from "./dbx-chart-collection";
+import { createDbxExecuteWriteTool } from "./dbx-execute-write";
 
 export function registerTools(ctx: PluginContext): Disposable[] {
 	return [
 		ctx.agent.registerTool(createDbxQueryFullTool()),
+		ctx.agent.registerTool(createDbxExecuteWriteTool()),
 		ctx.agent.registerTool(createDbxChartCollectionTool()),
 	];
 }
