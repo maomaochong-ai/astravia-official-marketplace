@@ -95488,7 +95488,7 @@ var init_markdown_parser = __esm({
 
 // server/src/http-server.mjs
 import { randomBytes, createHash as createHash3, timingSafeEqual } from "node:crypto";
-import { chmodSync as chmodSync3, existsSync as existsSync5, mkdirSync as mkdirSync6, readFileSync as readFileSync4, renameSync as renameSync2, writeFileSync as writeFileSync5 } from "node:fs";
+import { chmodSync as chmodSync3, existsSync as existsSync5, mkdirSync as mkdirSync6, readFileSync as readFileSync4, renameSync as renameSync2, writeFileSync as writeFileSync4 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
 import { join as join6 } from "node:path";
 import { createServer } from "node:http";
@@ -98677,8 +98677,7 @@ import {
   mkdirSync as mkdirSync4,
   chmodSync as chmodSync2,
   statSync,
-  writeFileSync as writeFileSync3,
-  copyFileSync
+  createWriteStream
 } from "node:fs";
 import { join as join4 } from "node:path";
 import { homedir as homedir3 } from "node:os";
@@ -98705,10 +98704,16 @@ var DRIVERS = [
     description: "dbx API \u6570\u636E\u6E90\u7684\u672C\u5730 SQL \u6267\u884C\u5F15\u64CE\u3002\u6267\u884C SELECT \u7B49\u67E5\u8BE2\u65F6\u7531 dbx-mcp spawn \u4E3A sidecar \u8FDB\u7A0B\u3002",
     envVar: "DBX_DUCKDB_DRIVER_PATH",
     binaryName: "duckdb_worker",
-    // 本地存储时用的名字（方便 collectDriverEnv 扫描）
     releaseArtifact: (platTag) => `dbx-agent-duckdb-${platTag}${process.platform === "win32" ? ".exe" : ""}`
   }
 ];
+var INSTALL_STATUS = /* @__PURE__ */ new Map();
+function getInstallStatus(key) {
+  return INSTALL_STATUS.get(key) ?? { status: "idle", downloaded: 0, total: 0 };
+}
+function setInstallStatus(key, val) {
+  INSTALL_STATUS.set(key, val);
+}
 function driverDir(key) {
   return join4(DRIVERS_ROOT, key, platformKey());
 }
@@ -98719,8 +98724,8 @@ function driverBinary(key) {
 function findDriver(key) {
   return DRIVERS.find((d) => d.key === key);
 }
-function ensureDir2(path4) {
-  if (!existsSync3(path4)) mkdirSync4(path4, { recursive: true });
+function ensureDir2(p) {
+  if (!existsSync3(p)) mkdirSync4(p, { recursive: true });
 }
 function driverRoutes() {
   return [
@@ -98747,7 +98752,8 @@ function driverRoutes() {
           description: d.description,
           expectedPath: binary,
           reason: installed ? void 0 : "\u672A\u68C0\u6D4B\u5230\u9A71\u52A8\u53EF\u6267\u884C\u6587\u4EF6\uFF0C\u70B9\u51FB\u300C\u5B89\u88C5\u300D\u4ECE dbx agents release \u4E0B\u8F7D",
-          downloadUrl: installUrl
+          downloadUrl: installUrl,
+          installStatus: getInstallStatus(d.key)
         };
       });
       return { drivers: out };
@@ -98763,24 +98769,43 @@ function driverRoutes() {
       let downloadUrl = url;
       if (!downloadUrl) {
         const platTag = releasePlatformTag();
-        if (!platTag) {
-          return { ok: false, driverKey, error: `\u4E0D\u652F\u6301\u7684\u5E73\u53F0: ${process.platform}-${process.arch}` };
-        }
+        if (!platTag) return { ok: false, driverKey, error: `\u4E0D\u652F\u6301\u7684\u5E73\u53F0: ${process.platform}-${process.arch}` };
         downloadUrl = `${DBX_AGENTS_LATEST}/${driver.releaseArtifact(platTag)}`;
       }
-      try {
-        ensureDir2(driverDir(driverKey));
-        await downloadFile(downloadUrl, binary);
-        chmodSync2(binary, 493);
-        return {
-          ok: true,
-          driverKey,
-          installedPath: binary,
-          note: `\u4ECE ${downloadUrl} \u4E0B\u8F7D\u6210\u529F`
-        };
-      } catch (e) {
-        return { ok: false, driverKey, error: `\u4E0B\u8F7D\u5931\u8D25: ${e.message}`, url: downloadUrl };
+      const existing = getInstallStatus(driverKey);
+      if (existing.status === "downloading" || existing.status === "installing") {
+        return { ok: true, driverKey, note: "\u5DF2\u5728\u5B89\u88C5\u4E2D", installStatus: existing };
       }
+      setInstallStatus(driverKey, { status: "downloading", downloaded: 0, total: 0 });
+      (async () => {
+        try {
+          ensureDir2(driverDir(driverKey));
+          await downloadFileStreaming(downloadUrl, binary, (downloaded, total) => {
+            setInstallStatus(driverKey, {
+              status: "downloading",
+              downloaded,
+              total,
+              percent: total > 0 ? Math.round(downloaded / total * 100) : void 0
+            });
+          });
+          setInstallStatus(driverKey, { status: "installing", downloaded: statSync(binary).size, total: statSync(binary).size });
+          chmodSync2(binary, 493);
+          setInstallStatus(driverKey, { status: "done", downloaded: statSync(binary).size, total: statSync(binary).size });
+        } catch (e) {
+          setInstallStatus(driverKey, { status: "error", downloaded: 0, total: 0, error: e.message });
+        }
+      })();
+      return {
+        ok: true,
+        driverKey,
+        note: "\u4E0B\u8F7D\u5DF2\u5F00\u59CB\uFF0C\u8F6E\u8BE2 /driver/status \u67E5\u770B\u8FDB\u5EA6",
+        installStatus: { status: "downloading", downloaded: 0, total: 0 }
+      };
+    }],
+    ["/driver/install-status", "GET", true, async ({ query }) => {
+      const key = query?.driverKey;
+      if (!key) return { ok: false, error: "\u7F3A\u5C11 driverKey" };
+      return { ok: true, driverKey: key, status: getInstallStatus(key) };
     }],
     ["/driver/set-path", "POST", true, async ({ body }) => {
       const { driverKey, path: path4 } = body || {};
@@ -98791,26 +98816,56 @@ function driverRoutes() {
       ensureDir2(driverDir(driverKey));
       const dest = driverBinary(driverKey);
       try {
+        const { copyFileSync } = await import("node:fs");
         copyFileSync(path4, dest);
         chmodSync2(dest, 493);
+        setInstallStatus(driverKey, { status: "done", downloaded: statSync(dest).size, total: statSync(dest).size });
       } catch (e) {
-        return {
-          ok: false,
-          driverKey,
-          error: `\u590D\u5236\u5931\u8D25: ${e.message}\u3002\u53EF\u624B\u52A8\u8BBE\u7F6E\u73AF\u5883\u53D8\u91CF ${driver.envVar}=${path4}`
-        };
+        return { ok: false, driverKey, error: `\u590D\u5236\u5931\u8D25: ${e.message}\u3002\u53EF\u624B\u52A8\u8BBE\u7F6E\u73AF\u5883\u53D8\u91CF ${driver.envVar}=${path4}` };
       }
       return { ok: true, driverKey, path: dest };
+    }],
+    ["/driver/reset-status", "POST", true, async ({ body }) => {
+      const key = body?.driverKey;
+      if (key) INSTALL_STATUS.delete(key);
+      else INSTALL_STATUS.clear();
+      return { ok: true };
     }]
   ];
 }
-async function downloadFile(url, destPath) {
-  const resp = await fetch(url, { redirect: "follow" });
-  if (!resp.ok) {
-    throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+async function downloadFileStreaming(url, destPath, onProgress) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6e4);
+  let resp;
+  try {
+    resp = await fetch(url, { redirect: "follow", signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
   }
-  const buf = Buffer.from(await resp.arrayBuffer());
-  writeFileSync3(destPath, buf);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+  const total = Number(resp.headers.get("content-length") ?? 0);
+  onProgress(0, total);
+  if (!resp.body) throw new Error("\u54CD\u5E94\u65E0 body");
+  const writer = createWriteStream(destPath);
+  const reader = resp.body.getReader();
+  let downloaded = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      writer.write(value);
+      downloaded += value.byteLength;
+      onProgress(downloaded, total || downloaded);
+    }
+    writer.end();
+    await new Promise((res, rej) => writer.on("finish", res).on("error", rej));
+  } catch (e) {
+    try {
+      writer.end();
+    } catch {
+    }
+    throw e;
+  }
 }
 
 // server/src/engine/request-router.mjs
@@ -98866,7 +98921,7 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
 
 // server/src/api/drag.mjs
 import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, writeFileSync as writeFileSync4, readdirSync as readdirSync2, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, writeFileSync as writeFileSync3, readdirSync as readdirSync2, unlinkSync as unlinkSync2 } from "node:fs";
 import { join as join5 } from "node:path";
 function pagesDir(ctx) {
   const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
@@ -98892,7 +98947,7 @@ function readPage(ctx, id) {
 }
 function writePage(ctx, page) {
   const file = pageFile(ctx, page.id);
-  writeFileSync4(file, JSON.stringify(page, null, 2), "utf-8");
+  writeFileSync3(file, JSON.stringify(page, null, 2), "utf-8");
 }
 function emptyPage(id, fields) {
   return {
@@ -98936,7 +98991,7 @@ function readDatasources(ctx) {
   }
 }
 function writeDatasources(ctx, list2) {
-  writeFileSync4(datasourcesFile(ctx), JSON.stringify(list2, null, 2));
+  writeFileSync3(datasourcesFile(ctx), JSON.stringify(list2, null, 2));
 }
 function runlogsFile(ctx) {
   const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
@@ -98954,7 +99009,7 @@ function readRunlogs(ctx) {
   }
 }
 function writeRunlogs(ctx, list2) {
-  writeFileSync4(runlogsFile(ctx), JSON.stringify(list2, null, 2));
+  writeFileSync3(runlogsFile(ctx), JSON.stringify(list2, null, 2));
 }
 function sharelinksFile(ctx) {
   const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
@@ -98972,7 +99027,7 @@ function readSharelinks(ctx) {
   }
 }
 function writeSharelinks(ctx, list2) {
-  writeFileSync4(sharelinksFile(ctx), JSON.stringify(list2, null, 2));
+  writeFileSync3(sharelinksFile(ctx), JSON.stringify(list2, null, 2));
 }
 function publishFile(ctx) {
   const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
@@ -98990,7 +99045,7 @@ function readPublishes(ctx) {
   }
 }
 function writePublishes(ctx, obj) {
-  writeFileSync4(publishFile(ctx), JSON.stringify(obj, null, 2));
+  writeFileSync3(publishFile(ctx), JSON.stringify(obj, null, 2));
 }
 function templatesFile(ctx) {
   const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
@@ -99008,7 +99063,7 @@ function readTemplates(ctx) {
   }
 }
 function writeTemplates(ctx, list2) {
-  writeFileSync4(templatesFile(ctx), JSON.stringify(list2, null, 2));
+  writeFileSync3(templatesFile(ctx), JSON.stringify(list2, null, 2));
 }
 function shortCode(len = 6) {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -99379,7 +99434,7 @@ function ensureEngineKey(dataDir) {
   if (typeof key !== "string" || key.length === 0) {
     key = randomBytes(32).toString("base64url");
     const next = { ...doc, values: { ...doc.values ?? {}, "engine-key": key } };
-    writeFileSync5(secretPath, JSON.stringify(next), { mode: 384 });
+    writeFileSync4(secretPath, JSON.stringify(next), { mode: 384 });
     chmodSync3(secretPath, 384);
   }
   return { key, dataDir: dir };
