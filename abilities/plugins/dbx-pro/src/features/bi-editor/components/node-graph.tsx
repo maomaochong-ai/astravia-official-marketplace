@@ -7,6 +7,8 @@
 
 import type { JSX } from "react";
 import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE } from "./node-card";
+import { AreaChart, Donut, SERIES } from "./charts";
+import { Chip } from "./ui/chip";
 
 const LAYOUT = {
 	ds1: { x: 16, y: 56, w: 180, h: 118, tone: TONE.table },
@@ -52,50 +54,16 @@ const TOOLBOX = [
 	{ icon: "icon-[lucide--ellipsis]", title: "更多" },
 ];
 
-/** 迷你折线图（ECharts 未内嵌，纯 SVG 画一条线占位）。 */
-function MiniLineChart() {
-	const pts = [42, 48, 45, 55, 51, 61, 58, 66, 63, 72, 69, 78, 74, 83];
-	const max = Math.max(...pts);
-	const min = Math.min(...pts);
-	const W = 180, H = 120, PAD = 8;
-	const coords = pts.map((v, i) => {
-		const x = PAD + (i / (pts.length - 1)) * (W - 2 * PAD);
-		const y = H - PAD - ((v - min) / (max - min)) * (H - 2 * PAD);
-		return `${x.toFixed(1)},${y.toFixed(1)}`;
-	}).join(" ");
-	return (
-		<svg viewBox={`0 0 ${W} ${H}`} className="h-full w-full overflow-visible">
-			<polyline points={coords} fill="none" stroke={TONE.chart} strokeWidth={2} />
-			<path
-				d={`M ${coords.split(" ").join(" L ")} L ${W - PAD},${H - PAD} L ${PAD},${H - PAD} Z`}
-				fill={TONE.chart}
-				opacity={0.15}
-			/>
-		</svg>
-	);
-}
+/** GMV 14 天数据（模拟）。 */
+const GMV = [42, 48, 45, 55, 51, 61, 58, 66, 63, 72, 69, 78, 74, 83];
 
-/** 迷你环形图占位。 */
-function MiniDonut() {
-	const R = 24, IR = 15, CX = 32, CY = 32;
-	const segs = [46, 27, 17, 10];
-	const total = segs.reduce((a, b) => a + b, 0);
-	let angle = -Math.PI / 2;
-	const paths = segs.map((v, i) => {
-		const a2 = angle + (v / total) * Math.PI * 2;
-		const x1 = CX + R * Math.cos(angle), y1 = CY + R * Math.sin(angle);
-		const x2 = CX + R * Math.cos(a2), y2 = CY + R * Math.sin(a2);
-		const xi1 = CX + IR * Math.cos(a2), yi1 = CY + IR * Math.sin(a2);
-		const xi2 = CX + IR * Math.cos(angle), yi2 = CY + IR * Math.sin(angle);
-		const large = (a2 - angle) > Math.PI ? 1 : 0;
-		const d = `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${xi1} ${yi1} A ${IR} ${IR} 0 ${large} 0 ${xi2} ${yi2} Z`;
-		angle = a2;
-		return <path key={i} d={d} fill={[TONE.chart, "#f0c040", "#f97316", "#9ca3af"][i]} />;
-	});
-	return (
-		<svg viewBox="0 0 64 64" className="h-full w-full">{paths}</svg>
-	);
-}
+/** 渠道构成占比。 */
+const CHANNELS = [
+	{ value: 46, color: SERIES[0] },
+	{ value: 27, color: SERIES[1] },
+	{ value: 17, color: SERIES[2] },
+	{ value: 10, color: SERIES[3] },
+];
 
 export function NodeGraph(): JSX.Element {
 	return (
@@ -163,7 +131,7 @@ export function NodeGraph(): JSX.Element {
 				<NodeRow label="表"><NodeSelect>orders_daily</NodeSelect></NodeRow>
 				<NodeRow label="结果集">
 					<NodeValue mono>14 × 2</NodeValue>
-					<span className="ml-auto rounded-control border border-accent/40 bg-accent-soft px-1.5 text-[9px] font-medium text-accent">AI</span>
+					<Chip tone="ai" className="ml-auto">AI 生成</Chip>
 				</NodeRow>
 				<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface px-1.5 py-1 font-mono text-[9.5px] leading-[13px] text-muted">
 					<div><span className="text-accent">select</span> d, sum(gmv) gmv</div>
@@ -182,8 +150,8 @@ export function NodeGraph(): JSX.Element {
 				<NodeRow label="数值"><NodeSelect>gmv · 求和</NodeSelect></NodeRow>
 				<NodeRow label="图形"><NodeSeg options={["折线", "面积"]} active="面积" /></NodeRow>
 				<NodeRow label="输出去向"><NodeValue>看板 · 概览</NodeValue></NodeRow>
-				<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface p-1">
-					<MiniLineChart />
+				<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
+					<AreaChart values={GMV} stroke={SERIES[1]} />
 				</div>
 			</NodeCard>
 
@@ -196,7 +164,7 @@ export function NodeGraph(): JSX.Element {
 				<NodeRow label="数值"><NodeSelect>share · 占比</NodeSelect></NodeRow>
 				<NodeRow label="输出去向"><NodeValue>看板 · 概览</NodeValue></NodeRow>
 				<div className="mt-1 flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[4px] border border-border bg-surface">
-					<MiniDonut />
+					<Donut segments={CHANNELS} size={64} thickness={10} holeFill="var(--color-surface)" />
 				</div>
 			</NodeCard>
 
