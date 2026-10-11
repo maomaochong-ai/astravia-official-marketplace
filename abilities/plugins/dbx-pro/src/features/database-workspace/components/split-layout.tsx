@@ -13,6 +13,18 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { patchSession, readSession } from "../../../domain/workbench-session";
 import { ConnectionTreeRail } from "./connection-tree-rail";
+import {
+	DESIGN_LEFT,
+	DESIGN_RIGHT,
+	LEFT_COLLAPSED,
+	MAX_LEFT_RATIO,
+	MAX_RIGHT_RATIO,
+	MIN_LEFT,
+	MIN_MID,
+	MIN_RIGHT,
+	defaultWidths,
+	fitWidths,
+} from "../services/split-widths";
 
 interface DragState {
 	/** "left" = 左栏/中栏之间；"right" = 中栏/右栏之间 */
@@ -22,52 +34,6 @@ interface DragState {
 	startW: number;
 	/** 另一侧（不被拖动）栏的当前宽度（px） */
 	otherW: number;
-}
-
-/** 设计稿的固定栏宽（WorkbenchGhost.tsx：左树 248px、右历史栏 300px）。 */
-const DESIGN_LEFT = 248;
-const DESIGN_RIGHT = 300;
-/** 宿主面板窄于此宽度时改用比例分配，避免中栏被挤没。 */
-const NARROW_BREAKPOINT = 900;
-/** 左栏收起后退化成的图标列宽度（设计稿 ConnectionTree 的收起态）。 */
-const LEFT_COLLAPSED = 36;
-/** 两条 1px 发丝分隔线占用的宽度。 */
-const SPLITBAR_TOTAL = 2;
-
-/** 各栏像素约束（中栏始终保留，分隔线无法拖到不合理的大小） */
-const MIN_LEFT = 180;
-const MAX_LEFT_RATIO = 0.4;
-const MIN_RIGHT = 260;
-const MAX_RIGHT_RATIO = 0.5;
-const MIN_MID = 344;
-
-/**
- * 把左右两栏收进「容器宽 − 中栏最小宽」。
- *
- * 拖拽只夹住了被拖的一侧，另一侧仍是会话里存下的旧宽度，两者相加就可能撑破容器
- * （三栏之和大于容器宽，根节点的 overflow-hidden 会把右栏整块切掉）。这里在渲染期统一收口：
- * 先按各自可让出的余量等比例退让；容器连两条最小宽度都装不下时整体等比压缩，中栏优先。
- */
-function fitWidths(total: number, left: number, right: number, stub = 0): { left: number; right: number } {
-	const available = total - stub - SPLITBAR_TOTAL - MIN_MID;
-	if (left + right <= 0 || left + right <= available) return { left, right };
-	const leftRoom = Math.max(0, left - MIN_LEFT);
-	const rightRoom = Math.max(0, right - MIN_RIGHT);
-	const room = leftRoom + rightRoom;
-	const over = left + right - available;
-	if (room > 0 && over <= room) {
-		const cut = Math.round((over * leftRoom) / room);
-		return { left: left - cut, right: right - (over - cut) };
-	}
-	const scale = Math.max(0, available) / (left + right);
-	return { left: Math.round(left * scale), right: Math.round(right * scale) };
-}
-
-function defaultWidths(total: number): { left: number; right: number } {
-	if (total > 0 && total < NARROW_BREAKPOINT) {
-		return { left: Math.round(total * 0.26), right: Math.round(total * 0.28) };
-	}
-	return { left: DESIGN_LEFT, right: DESIGN_RIGHT };
 }
 
 export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight: _onToggleRight }: { children: [JSX.Element, JSX.Element, JSX.Element]; onDragStart?: (side: "left" | "right") => void; leftCollapsed?: boolean; rightCollapsed?: boolean; onToggleLeft?: () => void; onToggleRight?: () => void }): JSX.Element {

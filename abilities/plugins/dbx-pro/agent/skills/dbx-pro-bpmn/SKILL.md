@@ -124,6 +124,25 @@ CREATE INDEX idx_task_execution ON act_ru_task(execution_id);
 
 | 文件 | 内容 |
 |---|---|
-| references/node-types.md | 10 种审批节点类型完整详解 + BPMN XML 片段 |
-| references/workflow-sql-patterns.md | act_re_procdef / act_ru_execution / act_ru_task 三表完整 DDL + 索引 |
-| references/bpmn-xml-templates.md | 5 个常用流程模板（审批/会签/抄送/并行/子流程）|
+| references/bpmn-advanced.md | 条件表达式系统、抄送、按钮、服务任务详解 |
+| references/bpmn-api-task-autocreate.md | apiTask 自动创建后端 Controller 接口（用户未提供 apiUrl 时）|
+| references/bpmn-assignee-types.md | 7 种审批人配置方式详解 + XML 属性组合 |
+| references/bpmn-call-activity.md | 外部调用子流程 / 会签子流程 / 嵌套子流程三种模式 |
+| references/bpmn-countersign.md | 会签（多实例任务）配置详解：完成比例、完成条件、加签减签 |
+| references/bpmn-custom-form-frontend.md | 代码生成模块关联审批流程时的前端代码变更指南 |
+| references/bpmn-db-config.md | ext_act_process 系列 4 张流程配置表结构与使用 |
+| references/bpmn-deploy-authorize.md | 流程发布、授权与编辑完整操作（含 Python 实现代码）|
+| references/bpmn-examples.md | 完整请假审批流程示例 + Python 脚本 + 流程模式 |
+| references/bpmn-field-permissions.md | 节点字段权限配置（严重坑：saveOrUpdateBatch 必须在 deploy 之后）|
+| references/bpmn-layout.md | 三条强制布局规范 + 节点 ID 命名规则 |
+| references/bpmn-manual-branch.md | 手工分支（意见分支）配置：与条件分支的区别与 XML |
+| references/bpmn-oa-approval-comments.md | OA 审批意见字段与 DesForm 流程节点联动配置 |
+| references/bpmn-oa-templates.md | OA 表单字段类型清单（input / textarea / select 等）|
+| references/bpmn-process-config.md | 流程高级配置与报表打印（Python 实现）|
+| references/bpmn-save-process-api.md | saveProcess API 规范 + 临时脚本指南 |
+| references/bpmn-service-task-autocreate.md | serviceTask 自动创建 Java 类（用户未提供 className 时）|
+| references/bpmn-signal-message-events.md | 信号事件 / 消息事件 6 种类型配置说明 |
+| references/bpmn-subprocess-gateway.md | 网关类型一览 + 子流程与网关类型详解 |
+| references/bpmn-task-extend.md | taskExtendJson 字段速查 + 监听器配置 |
+| references/bpmn-templates.md | BPMN 模板参考文档索引（已拆分为多文件）|
+| references/bpmn-xml-skeleton.md | BPMN XML 骨架模板 + 基本节点 XML 模板 |

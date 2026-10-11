@@ -112,7 +112,8 @@ CREATE INDEX idx_employee_status ON employee(status);
 
 | 文件 | 内容 |
 |---|---|
-| references/create-table-template.sql | 通用实体表模板（含注释占位符）|
-| references/dict-table-template.sql | sys_dict_type / sys_dict_item 定义 + 初始化示例 |
-| references/audit-fields.sql | 审计字段完整定义 + updated_at 触发器 |
-| references/enum-table-patterns.sql | 多对多关联表模板 |
+| references/context-schema.md | ctx.json Schema（codegen.py 输入，粗体字段必选）|
+| references/dict-matching.md | 字典自动匹配规则（查 sys_dict → 补 dictTable / dictText / classType）|
+| references/field-mapping.md | 字段语义 → Freemarker fieldDbType / fieldType / classType 映射表 |
+| references/post-edit-recipes.md | 模板未覆盖的特殊需求：改产物清单（永远改产物不改 templates/）|
+| references/template-diff.md | templates/ 与后端 code-template-online/ 源目录差异对比记录 |

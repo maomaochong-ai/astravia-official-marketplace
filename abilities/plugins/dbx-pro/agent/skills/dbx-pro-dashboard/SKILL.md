@@ -53,3 +53,23 @@ description: 数据仪表盘生成器 —— 与 dbx-pro-bigscreen 共享 spec_b
 ## scripts/
 
 - `scripts/dashboard-builder.mjs` —— Agent 侧 CLI（通过 fetch 调 `/api/bigscreen/generate`）
+
+## references/
+
+| 文件 | 内容 |
+|---|---|
+| references/api-dataset-examples.md | 92 条 API mock 接口参考库（GET，无需鉴权）|
+| references/bi-comp-option-config.md | 仪表盘组件配置选项路径参考（来源 config.ts getOptionConfig）|
+| references/bi-component-types.md | 仪表盘实际可用组件类型完整参考（menuData 激活项）|
+| references/dataset-guide.md | 数据集管理（动态数据源：SQL / API / JSON / WebSocket）|
+| references/datasource-dataset-chart-guide.md | 从零创建数据源 → SQL 数据集 → 图表组件完整操作流程 |
+| references/dict-guide.md | 大屏字典表 jimu_dict / jimu_dict_item 管理（非 sys_dict）|
+| references/linkage-drill-guide.md | 组件联动（linkageConfig）与钻取配置 |
+| references/map-guide.md | 地图组件 GeoJSON 数据管理（AreaMap / FlyLineMap / BubbleMap 等）|
+| references/map-static-data.md | 省份 GDP / 城市散点 / 飞线等静态演示数据（禁止自行设计简陋数据）|
+| references/online-design-form-chart-guide.md | Online 表单 / 设计器表单生成图表技术指南 |
+| references/page-config-guide.md | 页面级配置（背景色 / 水印 / 背景图 / 宽高 / 名称）|
+| references/pitfalls.md | API 踩坑记录（组件类型匹配等常见问题）|
+| references/qqy-guide.md | 敲敲云（QQY）仪表盘专用配置与 qqyMenuData 组件列表 |
+| references/signing-datasource-guide.md | @SignatureValidation 接口签名机制与数据源管理 |
+| references/template-copy-guide.md | 模板复制创建大屏（备选方案，视觉布局精确还原时用）|

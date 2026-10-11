@@ -79,4 +79,4 @@ description: >-
 
 | 文件 | 内容 |
 |---|---|
-| references/sql-patterns.md | 时间聚合 / 窗口函数 / 分组合计（与 dbx-pro 主 skill 共享）|
+| references/api_schema.md | Online 报表 API 参考（报表管理 / 列表查询 / 分页参数）|

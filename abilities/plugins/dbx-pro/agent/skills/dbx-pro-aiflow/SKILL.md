@@ -106,6 +106,6 @@ AI 流程 / 编排 / 节点 / 工作流编排 / agent workflow / 多步 agent / 
 
 | 文件 | 内容 |
 |---|---|
-| references/node-reference.md | 28 种节点完整参数定义 + 输入输出 schema |
-| references/orchestration-patterns.md | 10 个常用编排模式（报表生成 / 大屏生成 / RAG pipeline / ETL 等）|
-| references/error-handling.md | retry / fallback / circuit-breaker 策略 |
+| references/aiflow-operations.md | 除创建流程外的所有操作指南 |
+| references/node-reference.md | 每种节点的完整配置（options、inputParams/outputParams、校验规则、特殊行为与使用要点）|
+| references/sync-guide.md | 同步节点配置 / 更新节点 / 同步前后端变更指南（按需阅读）|

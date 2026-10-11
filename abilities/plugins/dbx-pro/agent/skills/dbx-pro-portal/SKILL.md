@@ -106,5 +106,6 @@ curl -X POST http://localhost:PORT/api/bigscreen/generate \
 
 | 文件 | 内容 |
 |---|---|
-| references/portal-cards.md | 8 种门户卡片完整 spec + 数据源定义 |
-| references/portal-layouts.md | 3 种门户布局模板（经典左中右 / 全宽卡栅 / 顶导航三栏）|
+| references/api-reference.md | 门户 API 补充参考（修改默认首页等较少使用的 API）|
+| references/component-configs.md | 全部 14 个门户组件的详细配置项 |
+| references/full-portal-template.md | 全组件门户标准模板（14 组件 + 动态数据源查询 + build_portal.py）|

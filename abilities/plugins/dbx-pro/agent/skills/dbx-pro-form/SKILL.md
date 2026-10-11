@@ -102,5 +102,15 @@ CREATE TABLE order_items (
 
 | 文件 | 内容 |
 |---|---|
-| references/控件类型映射表.md | 26 种控件类型完整定义 + SQL DDL 模板 |
-| references/master-detail-sql.md | 主子表关联 SQL 模式 + 联查示例 |
+| references/desform-api-notes.md | DesForm API 踩坑记录与错误处理 |
+| references/desform-data-utils.md | desform_data_utils.py 数据操作工具（CRUD / 批量 / 复制 / 回收站）|
+| references/desform-design-json-schema.md | desformDesignJson Schema 参考（顶层结构 / layout / components）|
+| references/desform-examples.md | 常见表单模式示例（推荐用 desform_creator.py + JSON 配置）|
+| references/desform-formula-function.md | 公式控件（formula）预定义函数与自定义 JavaScript 函数 |
+| references/desform-layout.md | 四种布局模式（单列表单 / 两列 / 三列 / tab 分组）|
+| references/desform-validation-rules.md | 校验规则参考（rules / required / pattern / trigger）|
+| references/desform-widget-types.md | 控件类型映射规则（用户关键词 → 控件 type）|
+| references/onlform-api-reference.md | Online 表单完整 API 参考（addAll / save / 数据操作请求模板）|
+| references/onlform-data-crud.md | Online 表单数据 CRUD 参考 |
+| references/onlform-field-types.md | Online 表单智能字段推导（自然语言 → 字段配置）|
+| references/onlform-widget-types.md | Online 表单 26 种控件类型完整清单（单表/主表/子表控件）|

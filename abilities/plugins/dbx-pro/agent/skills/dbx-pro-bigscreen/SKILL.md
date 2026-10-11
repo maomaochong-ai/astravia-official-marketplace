@@ -172,8 +172,42 @@ curl -X POST http://localhost:PORT/api/bigscreen/generate \
 
 | 文件 | 内容 |
 |---|---|
-| references/spec-format.md | 紧凑 spec 每个字段详解 + 完整示例 |
-| references/chart-mapping.md | JimuBI 类型 → ECharts 完整映射表 |
-| references/pitfalls.md | 15+ AI 易错点 + 自动修正规则 |
-| references/layout-rules.md | 组件高度估算 + 3 种布局形态 |
-| references/palettes.md | 6 套命名色板完整 hex 值 |
+| references/api-dataset-examples.md | 92 条 API mock 接口参考库（GET，无需鉴权）|
+| references/bi-comp-option-config.md | 大屏组件配置修改参考（含专文索引）|
+| references/bi-component-types.md | 大屏实际可用组件类型列表（menuData 激活项）|
+| references/bi-mode-online.md | BI 模式（dataType=4）直连 Online 表的差异点 |
+| references/border-style-guide.md | JDragBorder 13 种边框样式速查 |
+| references/break-ring-option-config.md | JBreakRing（多色环形图）配置路径 |
+| references/card-scroll-option-config.md | JCardScroll 三个变体配置路径（横向 / 竖向+序号 / 高亮+联动）|
+| references/comp-group-charts.md | 图表类组件速查（柱形 / 折线 / 饼环 / 散点漏斗雷达 / 象形 3D 字符云）|
+| references/comp-group-maps.md | 地图类组件速查（AreaMap / BubbleMap / FlyLineMap / BarMap / HeatMap / GaoDeMap）|
+| references/comp-group-special.md | 仪表盘 / 进度 / 视频 / 天气 / 日历 / 交互类组件速查 |
+| references/comp-group-stats.md | 统计 / 数字 / 轮播类组件速查（StatsSummary / CountTo / CardScroll / CardCarousel）|
+| references/comp-group-tables.md | 表格 / 列表 / 排行类组件速查（ScrollBoard / ScrollTable / ScrollRankingBoard / ScrollList）|
+| references/connect-line-guide.md | 组件连线（linesConfig.connectLine）配置指南 |
+| references/data-binding-mapping.md | 数据集绑定到组件的唯一映射机制文档 |
+| references/dataset-guide.md | 数据集管理（SQL / API / JSON / WebSocket 四种动态数据源）|
+| references/datasource-dataset-chart-guide.md | 从零创建数据源 → SQL 数据集 → 图表组件完整操作流程 |
+| references/dict-guide.md | 大屏字典表 jimu_dict / jimu_dict_item 管理（非 sys_dict）|
+| references/gaode-map-option-config.md | JGaoDeMap（高德地图）配置路径 |
+| references/group-guide.md | JGroup 组件组合：将多组件合并为整体拖动缩放 |
+| references/linkage-drill-guide.md | 组件联动（linkageConfig）与钻取配置 |
+| references/list-progress-option-config.md | JListProgress（列表进度图）配置路径 |
+| references/map-guide.md | 地图组件 GeoJSON 数据管理（AreaMap / FlyLineMap / BubbleMap 等）|
+| references/map-static-data.md | 省份 GDP / 城市散点 / 飞线等静态演示数据（禁止自行设计简陋数据）|
+| references/online-design-form-chart-guide.md | Online 表单 / 设计器表单生成图表技术指南 |
+| references/orbit-ring-option-config.md | JOrbitRing（轨道环形文字）配置路径 |
+| references/page-config-guide.md | 页面级配置（背景色 / 水印 / 背景图 / 宽高 / 名称）|
+| references/permanent-calendar-option-config.md | JPermanentCalendar（日历）配置路径 |
+| references/pitfalls.md | API 踩坑记录（多组件并行绑数据集等）|
+| references/popup-guide.md | 大屏弹窗（Popup Modal）实现指南 |
+| references/rightclick-actions-guide.md | 组件右键操作 / 图层排序 / z-index 数组操作 |
+| references/scroll-list-option-config.md | JScrollList 三个变体配置路径（注意 compType 均为 JScrollList）|
+| references/select-radio-guide.md | JSelectRadio 选项卡：点击显示隐藏关联组件 + compShowConfig |
+| references/semi-gauge-option-config.md | JSemiGauge（半圆仪表盘）配置路径 |
+| references/signing-datasource-guide.md | @SignatureValidation 接口签名机制与数据源管理 |
+| references/spec-builder.md | spec_builder.py 一站式速查（精简速查，80% 常用场景）|
+| references/stats-summary-option-config.md | JStatsSummary 三个变体配置（卡片 / 背景 / 高亮）|
+| references/tab-toggle-option-config.md | JTabToggle（导航切换）配置：点击/轮播控制其他组件显隐 |
+| references/template-copy-guide.md | 模板复制创建大屏（备选方案，视觉布局精确还原时用）|
+| references/weather-forecast-guide.md | JWeatherForecast 天气预报组件（dataType 必须为 1）|

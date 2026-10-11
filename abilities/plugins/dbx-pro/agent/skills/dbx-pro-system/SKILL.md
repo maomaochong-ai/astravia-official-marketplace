@@ -117,6 +117,4 @@ WHERE d.deleted = FALSE AND (
 
 | 文件 | 内容 |
 |---|---|
-| references/dict-pattern.md | 字典查询 / 联查 / 下拉面板生成 SQL |
-| references/role-permission-sql.md | 角色权限 / 菜单 / 数据权限范围 SQL 模板 |
-| references/dept-tree-sql.md | 部门树递归查询 / 子部门范围 SQL |
+| references/api-reference.md | JeecgBoot 系统管理模块完整 API 参考（用户 / 角色 / 权限 / 部门 / 字典 / 日志等）|
