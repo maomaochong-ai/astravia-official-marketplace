@@ -18,8 +18,8 @@ import { Chip } from "./components/ui/chip";
 import { IconButton } from "./components/ui/icon-button";
 import { AreaChart, Bars, Donut } from "./components/charts";
 import { useBigscreenPages } from "./hooks/use-bigscreen-pages";
-import { useRunlogs, type RunLogItem } from "./hooks/use-runlogs";
-import { useSharelinks, type SharelinkItem } from "./hooks/use-sharelinks";
+import { useRunlogs } from "./hooks/use-runlogs";
+import { useSharelinks } from "./hooks/use-sharelinks";
 import { useWorktreeStatus } from "./hooks/use-worktree-status";
 
 interface NavItem {

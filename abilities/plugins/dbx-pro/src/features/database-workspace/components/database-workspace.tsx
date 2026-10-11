@@ -285,7 +285,14 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			>
 				{[
 					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} />,
-					<SqlEditorWorkspace key="mid" />,
+					// 中间面板按 activeTab 类型切换：driver → DriverManagerPage，其余 → SqlEditorWorkspace
+					(() => {
+						const activeTab = state.tabs.find((t) => t.id === state.activeTabId);
+						if (activeTab?.driver) {
+							return <DriverManagerPage key="mid" />;
+						}
+						return <SqlEditorWorkspace key="mid" />;
+					})(),
 					<RightPanel
 						key="right"
 						view={rightPanelView}
