@@ -30,7 +30,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { engineError } from "../engine/protocol.mjs";
 
@@ -89,18 +89,18 @@ function emptyPage(id, fields) {
 	};
 }
 
-function jimuResp(result) {
+function pageResp(result) {
 	return { success: true, result };
 }
 
-function jimuErr(message, code = "BAD_REQUEST") {
+function pageErr(message, code = "BAD_REQUEST") {
 	return { success: false, message, code };
 }
 
 // ─── 路由导出（由 http-server.mjs 直接消费，绕过 request-router） ───
 
 // 本 domain 有特殊调用路径：http-server.mjs 在路径分发阶段直接拦截 /drag/*，
-// 用 dragRoutes(jimuCtx) 返回的元组表做 path+method 匹配，不走 request-router 的
+// 用 dragRoutes(pageCtx) 返回的元组表做 path+method 匹配，不走 request-router 的
 // 统一 ok() 包装。因此 handler 返回值必须是 AI skill 期望的原生格式 { success, result }，
 // 不能是 { ok, data }。ctx 也只传 { dataDir }，不依赖 createRouterContext 的 dbx-mcp 依赖。
 
@@ -113,7 +113,7 @@ export function dragRoutes(ctx) {
 			const id = genId();
 			const page = emptyPage(id, body);
 			writePage(ctx, page);
-			return jimuResp({
+			return pageResp({
 				id,
 				updateCount: page.updateCount,
 				path: page.path,
@@ -123,11 +123,11 @@ export function dragRoutes(ctx) {
 
 		// ── 查询页面详情 ──
 		["/drag/page/queryById", "GET", true, async ({ query }) => {
-			const id = query?.id ?? query;
-			if (!id) throw engineError("BAD_REQUEST", "缺少 id");
+			const id = query?.id;
+			if (!id) throw engineError("BAD_REQUEST", "缺少 id 参数");
 			const page = readPage(ctx, id);
-			if (!page) return jimuErr(`页面不存在: ${id}`, "NOT_FOUND");
-			return jimuResp(page);
+			if (!page) return pageErr(`页面不存在: ${id}`, "NOT_FOUND");
+			return pageResp(page);
 		}],
 
 		// ── 保存页面（整页覆盖写 template）──
@@ -155,7 +155,7 @@ export function dragRoutes(ctx) {
 			page.updateTime = new Date().toISOString();
 
 			writePage(ctx, page);
-			return jimuResp({ updateCount: page.updateCount });
+			return pageResp({ updateCount: page.updateCount });
 		}],
 
 		// ── 分页列表 ──
@@ -190,7 +190,7 @@ export function dragRoutes(ctx) {
 				visits: p.visits ?? 0,
 			}));
 
-			return jimuResp({
+			return pageResp({
 				records: slice,
 				total,
 				size: pageSize,
@@ -204,7 +204,7 @@ export function dragRoutes(ctx) {
 			const id = query?.id;
 			if (!id) throw engineError("BAD_REQUEST", "缺少 id");
 			const src = readPage(ctx, id);
-			if (!src) return jimuErr(`源页面不存在: ${id}`, "NOT_FOUND");
+			if (!src) return pageErr(`源页面不存在: ${id}`, "NOT_FOUND");
 			const newId = genId();
 			const copy = {
 				...src,
@@ -216,7 +216,7 @@ export function dragRoutes(ctx) {
 				path: `/drag/page/edit?id=${newId}`,
 			};
 			writePage(ctx, copy);
-			return jimuResp({ id: newId, name: copy.name, path: copy.path });
+			return pageResp({ id: newId, name: copy.name, path: copy.path });
 		}],
 
 		// ── 物理删除 ──
@@ -225,7 +225,7 @@ export function dragRoutes(ctx) {
 			if (!id) throw engineError("BAD_REQUEST", "缺少 id");
 			const file = pageFile(ctx, id);
 			if (existsSync(file)) unlinkSync(file);
-			return jimuResp(true);
+			return pageResp(true);
 		}],
 
 		// ── 软删除（本地 = 物理删除）──
@@ -234,31 +234,31 @@ export function dragRoutes(ctx) {
 			if (!id) throw engineError("BAD_REQUEST", "缺少 id");
 			const file = pageFile(ctx, id);
 			if (existsSync(file)) unlinkSync(file);
-			return jimuResp(true);
+			return pageResp(true);
 		}],
 
 		// ── 恢复（no-op）──
-		["/drag/page/recoveryDelete", "POST", true, async () => jimuResp(true)],
+		["/drag/page/recoveryDelete", "POST", true, async () => pageResp(true)],
 
 		// ── 访问计数（no-op）──
 		["/drag/page/addVisitsNumber", "POST", true, async ({ body }) => {
 			const id = body?.id;
-			if (!id) return jimuResp(true);
+			if (!id) return pageResp(true);
 			const p = readPage(ctx, id);
 			if (p) {
 				p.visits = (p.visits ?? 0) + 1;
 				writePage(ctx, p);
 			}
-			return jimuResp(true);
+			return pageResp(true);
 		}],
 
 		// ── 数据集 stub（让 script_builder.py 等不报错）──
-		["/drag/onlDragDatasetHead/list", "GET", true, async () => jimuResp({ records: [], total: 0 })],
-		["/drag/onlDragDatasetHead/add", "POST", true, async () => jimuResp({ id: genId() })],
-		["/drag/onlDragDatasetHead/edit", "POST", true, async () => jimuResp(true)],
-		["/drag/onlDragDatasetHead/delete", "DELETE", true, async () => jimuResp(true)],
-		["/drag/onlDragDatasetHead/queryFieldBySql", "GET", true, async () => jimuResp([])],
-		["/drag/onlDragDataSource/getOptions", "GET", true, async () => jimuResp([])],
-		["/drag/jimuDragMap/list", "GET", true, async () => jimuResp({ records: [], total: 0 })],
+		["/drag/onlDragDatasetHead/list", "GET", true, async () => pageResp({ records: [], total: 0 })],
+		["/drag/onlDragDatasetHead/add", "POST", true, async () => pageResp({ id: genId() })],
+		["/drag/onlDragDatasetHead/edit", "POST", true, async () => pageResp(true)],
+		["/drag/onlDragDatasetHead/delete", "DELETE", true, async () => pageResp(true)],
+		["/drag/onlDragDatasetHead/queryFieldBySql", "GET", true, async () => pageResp([])],
+		["/drag/onlDragDataSource/getOptions", "GET", true, async () => pageResp([])],
+		["/drag/jimuDragMap/list", "GET", true, async () => pageResp({ records: [], total: 0 })],
 	];
 }

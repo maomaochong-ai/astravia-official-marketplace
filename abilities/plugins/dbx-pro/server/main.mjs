@@ -98866,7 +98866,7 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
 
 // server/src/api/drag.mjs
 import { createHash as createHash2 } from "node:crypto";
-import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, writeFileSync as writeFileSync4, readdirSync as readdirSync2, statSync as statSync2, unlinkSync as unlinkSync2 } from "node:fs";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, writeFileSync as writeFileSync4, readdirSync as readdirSync2, unlinkSync as unlinkSync2 } from "node:fs";
 import { join as join5 } from "node:path";
 function pagesDir(ctx) {
   const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
@@ -98914,10 +98914,10 @@ function emptyPage(id, fields) {
     izPrivate: false
   };
 }
-function jimuResp(result) {
+function pageResp(result) {
   return { success: true, result };
 }
-function jimuErr(message, code = "BAD_REQUEST") {
+function pageErr(message, code = "BAD_REQUEST") {
   return { success: false, message, code };
 }
 function dragRoutes(ctx) {
@@ -98929,7 +98929,7 @@ function dragRoutes(ctx) {
       const id = genId2();
       const page = emptyPage(id, body);
       writePage(ctx, page);
-      return jimuResp({
+      return pageResp({
         id,
         updateCount: page.updateCount,
         path: page.path,
@@ -98938,11 +98938,11 @@ function dragRoutes(ctx) {
     }],
     // ── 查询页面详情 ──
     ["/drag/page/queryById", "GET", true, async ({ query }) => {
-      const id = query?.id ?? query;
-      if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
+      const id = query?.id;
+      if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id \u53C2\u6570");
       const page = readPage(ctx, id);
-      if (!page) return jimuErr(`\u9875\u9762\u4E0D\u5B58\u5728: ${id}`, "NOT_FOUND");
-      return jimuResp(page);
+      if (!page) return pageErr(`\u9875\u9762\u4E0D\u5B58\u5728: ${id}`, "NOT_FOUND");
+      return pageResp(page);
     }],
     // ── 保存页面（整页覆盖写 template）──
     ["/drag/page/edit", "POST", true, async ({ body }) => {
@@ -98965,7 +98965,7 @@ function dragRoutes(ctx) {
       }
       page.updateTime = (/* @__PURE__ */ new Date()).toISOString();
       writePage(ctx, page);
-      return jimuResp({ updateCount: page.updateCount });
+      return pageResp({ updateCount: page.updateCount });
     }],
     // ── 分页列表 ──
     ["/drag/page/list", "GET", true, async ({ query }) => {
@@ -98996,7 +98996,7 @@ function dragRoutes(ctx) {
         createTime: p.createTime,
         visits: p.visits ?? 0
       }));
-      return jimuResp({
+      return pageResp({
         records: slice,
         total,
         size: pageSize,
@@ -99009,7 +99009,7 @@ function dragRoutes(ctx) {
       const id = query?.id;
       if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
       const src = readPage(ctx, id);
-      if (!src) return jimuErr(`\u6E90\u9875\u9762\u4E0D\u5B58\u5728: ${id}`, "NOT_FOUND");
+      if (!src) return pageErr(`\u6E90\u9875\u9762\u4E0D\u5B58\u5728: ${id}`, "NOT_FOUND");
       const newId = genId2();
       const copy = {
         ...src,
@@ -99021,7 +99021,7 @@ function dragRoutes(ctx) {
         path: `/drag/page/edit?id=${newId}`
       };
       writePage(ctx, copy);
-      return jimuResp({ id: newId, name: copy.name, path: copy.path });
+      return pageResp({ id: newId, name: copy.name, path: copy.path });
     }],
     // ── 物理删除 ──
     ["/drag/page/physicalDelete", "DELETE", true, async ({ query }) => {
@@ -99029,7 +99029,7 @@ function dragRoutes(ctx) {
       if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
       const file = pageFile(ctx, id);
       if (existsSync4(file)) unlinkSync2(file);
-      return jimuResp(true);
+      return pageResp(true);
     }],
     // ── 软删除（本地 = 物理删除）──
     ["/drag/page/delete", "DELETE", true, async ({ query }) => {
@@ -99037,29 +99037,29 @@ function dragRoutes(ctx) {
       if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
       const file = pageFile(ctx, id);
       if (existsSync4(file)) unlinkSync2(file);
-      return jimuResp(true);
+      return pageResp(true);
     }],
     // ── 恢复（no-op）──
-    ["/drag/page/recoveryDelete", "POST", true, async () => jimuResp(true)],
+    ["/drag/page/recoveryDelete", "POST", true, async () => pageResp(true)],
     // ── 访问计数（no-op）──
     ["/drag/page/addVisitsNumber", "POST", true, async ({ body }) => {
       const id = body?.id;
-      if (!id) return jimuResp(true);
+      if (!id) return pageResp(true);
       const p = readPage(ctx, id);
       if (p) {
         p.visits = (p.visits ?? 0) + 1;
         writePage(ctx, p);
       }
-      return jimuResp(true);
+      return pageResp(true);
     }],
     // ── 数据集 stub（让 script_builder.py 等不报错）──
-    ["/drag/onlDragDatasetHead/list", "GET", true, async () => jimuResp({ records: [], total: 0 })],
-    ["/drag/onlDragDatasetHead/add", "POST", true, async () => jimuResp({ id: genId2() })],
-    ["/drag/onlDragDatasetHead/edit", "POST", true, async () => jimuResp(true)],
-    ["/drag/onlDragDatasetHead/delete", "DELETE", true, async () => jimuResp(true)],
-    ["/drag/onlDragDatasetHead/queryFieldBySql", "GET", true, async () => jimuResp([])],
-    ["/drag/onlDragDataSource/getOptions", "GET", true, async () => jimuResp([])],
-    ["/drag/jimuDragMap/list", "GET", true, async () => jimuResp({ records: [], total: 0 })]
+    ["/drag/onlDragDatasetHead/list", "GET", true, async () => pageResp({ records: [], total: 0 })],
+    ["/drag/onlDragDatasetHead/add", "POST", true, async () => pageResp({ id: genId2() })],
+    ["/drag/onlDragDatasetHead/edit", "POST", true, async () => pageResp(true)],
+    ["/drag/onlDragDatasetHead/delete", "DELETE", true, async () => pageResp(true)],
+    ["/drag/onlDragDatasetHead/queryFieldBySql", "GET", true, async () => pageResp([])],
+    ["/drag/onlDragDataSource/getOptions", "GET", true, async () => pageResp([])],
+    ["/drag/jimuDragMap/list", "GET", true, async () => pageResp({ records: [], total: 0 })]
   ];
 }
 
@@ -99257,8 +99257,8 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
         }
       }
       if (url.pathname.startsWith("/drag/")) {
-        const jimuCtx = { dataDir };
-        const dragTable = dragRoutes(jimuCtx);
+        const pageCtx = { dataDir };
+        const dragTable = dragRoutes(pageCtx);
         const query = Object.fromEntries(url.searchParams.entries());
         const match = dragTable.find(([p, m]) => p === url.pathname && (m === req.method || m === "*"));
         if (match) {

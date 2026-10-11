@@ -1,5 +1,5 @@
 /**
- * HTML 导出 / 外部打开工具 —— 共享自 visualization-tab.tsx 和 visualization-gallery.tsx。
+ * HTML 导出 / 外部打开工具 —— 被 visualization-tab.tsx 和 BI 工作台调用。
  *
  * 为什么用 Data URL 而非 Blob URL？
  *   Blob URL 生命周期依赖 document；window.open("_blank") 是异步的，

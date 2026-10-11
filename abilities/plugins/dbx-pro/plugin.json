@@ -50,7 +50,7 @@
               "executable": "server/bin/dbx-mcp-darwin-arm64",
               "artifacts": [
                 {
-                  "sha256": "3b7d9ab6ea889b43901467c22b16257b721a6a1cd3bf9476b39b3900948b6da0",
+                  "sha256": "f9788270f465df5bcde01a05893561ab63aaa7ea2d06da294cdf5c04d84d514f",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
@@ -65,7 +65,7 @@
               "executable": "server/bin/dbx-mcp-darwin-x64",
               "artifacts": [
                 {
-                  "sha256": "3b7d9ab6ea889b43901467c22b16257b721a6a1cd3bf9476b39b3900948b6da0",
+                  "sha256": "f9788270f465df5bcde01a05893561ab63aaa7ea2d06da294cdf5c04d84d514f",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
@@ -80,7 +80,7 @@
               "executable": "server/bin/dbx-mcp-win-x64.exe",
               "artifacts": [
                 {
-                  "sha256": "3b7d9ab6ea889b43901467c22b16257b721a6a1cd3bf9476b39b3900948b6da0",
+                  "sha256": "f9788270f465df5bcde01a05893561ab63aaa7ea2d06da294cdf5c04d84d514f",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },

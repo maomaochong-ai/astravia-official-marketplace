@@ -253,8 +253,8 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
       // 套统一 {ok, data} envelope 让 engine-client 的 engineRequest 能消费
       // （前端走 engineRequest → 宿主 service 代理 → engine）
       if (url.pathname.startsWith("/drag/")) {
-        const jimuCtx = { dataDir };
-        const dragTable = dragRoutes(jimuCtx);
+        const pageCtx = { dataDir };
+        const dragTable = dragRoutes(pageCtx);
         const query = Object.fromEntries(url.searchParams.entries());
         const match = dragTable.find(([p, m]) => p === url.pathname && (m === req.method || m === "*"));
         if (match) {
