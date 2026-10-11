@@ -24,6 +24,7 @@ import { useVisualizationStore } from "../../visualization/visualization-store";
 import { GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
 import { getUi } from "../../../runtime-contract";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
+import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
 import { applyPluginTheme } from "../../../shared/theme/plugin-theme";
 
 export function DatabaseWorkspace(): JSX.Element {
@@ -47,6 +48,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const { visualizations, addVisualization } = useVisualizationStore();
 	const workspaceRef = useRef<HTMLDivElement>(null);
+	const theme = useDetectedTheme();
 
 	// 首屏加载完成 → 向宿主发送友好的成功通知（重载后确认 UI 渲染成功的第一手信号）
 	useEffect(() => {
@@ -181,6 +183,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		<div
 			ref={workspaceRef}
 			data-astravia-plugin-root="dbx-pro"
+			data-dbx-theme={theme}
 			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen ? "!fixed !inset-0 !z-[9999]" : ""}`}
 		>
 			<WorkbenchTopBar

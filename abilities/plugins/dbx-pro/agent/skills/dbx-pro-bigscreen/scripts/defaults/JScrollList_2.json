@@ -1,0 +1,227 @@
+{
+  "w": 515,
+  "h": 220,
+  "dataType": 1,
+  "timeOut": 0,
+  "chartData": [
+    {
+      "id": 1,
+      "plateNumber": "粤B12345",
+      "violationCount": 3,
+      "brand": "丰田"
+    },
+    {
+      "id": 2,
+      "plateNumber": "粤A67890",
+      "violationCount": 1,
+      "brand": "本田"
+    },
+    {
+      "id": 3,
+      "plateNumber": "粤C54321",
+      "violationCount": 2,
+      "brand": "大众"
+    },
+    {
+      "id": 4,
+      "plateNumber": "粤D98765",
+      "violationCount": 0,
+      "brand": "比亚迪"
+    },
+    {
+      "id": 5,
+      "plateNumber": "粤E11223",
+      "violationCount": 5,
+      "brand": "特斯拉"
+    },
+    {
+      "id": 6,
+      "plateNumber": "粤F33445",
+      "violationCount": 4,
+      "brand": "福特"
+    },
+    {
+      "id": 7,
+      "plateNumber": "粤G55667",
+      "violationCount": 2,
+      "brand": "雪佛兰"
+    },
+    {
+      "id": 8,
+      "plateNumber": "粤H77889",
+      "violationCount": 6,
+      "brand": "宝马"
+    },
+    {
+      "id": 9,
+      "plateNumber": "粤J99001",
+      "violationCount": 1,
+      "brand": "奔驰"
+    },
+    {
+      "id": 10,
+      "plateNumber": "粤K11223",
+      "violationCount": 0,
+      "brand": "奥迪"
+    },
+    {
+      "id": 11,
+      "plateNumber": "粤L44556",
+      "violationCount": 3,
+      "brand": "起亚"
+    },
+    {
+      "id": 12,
+      "plateNumber": "粤M77889",
+      "violationCount": 2,
+      "brand": "现代"
+    },
+    {
+      "id": 13,
+      "plateNumber": "粤N99002",
+      "violationCount": 5,
+      "brand": "路虎"
+    },
+    {
+      "id": 14,
+      "plateNumber": "粤P22334",
+      "violationCount": 1,
+      "brand": "沃尔沃"
+    },
+    {
+      "id": 15,
+      "plateNumber": "粤Q55667",
+      "violationCount": 4,
+      "brand": "马自达"
+    }
+  ],
+  "option": {
+    "showIndex": true,
+    "backgroundColor": "#FFFFFF00",
+    "fieldMapping": [
+      {
+        "__system": true,
+        "textAlign": "center",
+        "name": "序号",
+        "width": 60,
+        "textStyle": {
+          "fontSize": 20,
+          "fontGradient": {
+            "endColor": "#FF4500",
+            "type": "linear",
+            "enabled": true,
+            "startColor": "#FFD700",
+            "direction": "to bottom"
+          },
+          "fontStyle": "italic",
+          "fontColor": "#FFFFFF",
+          "fontWeight": "bold"
+        },
+        "key": "__index__"
+      },
+      {
+        "marginRight": 18,
+        "compose": {
+          "contentStyle": {
+            "fontSize": 18,
+            "fontGradient": {
+              "endColor": "#FFFFFF",
+              "enabled": false,
+              "startColor": "#000000"
+            },
+            "fontStyle": "italic",
+            "fontColor": "#D1D1D1"
+          },
+          "prefix": "",
+          "prefixStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "enabled": true
+        },
+        "name": "车牌号",
+        "width": 90,
+        "textStyle": {
+          "fontSize": 16,
+          "fontWeight": "bold",
+          "fontColor": "#FFFFFF"
+        },
+        "key": "plateNumber",
+        "marginLeft": 0
+      },
+      {
+        "compose": {
+          "contentStyle": {
+            "marginRight": 3,
+            "fontSize": 23,
+            "fontGradient": {
+              "endColor": "#0066CC",
+              "type": "linear",
+              "enabled": true,
+              "startColor": "#00D4FF",
+              "direction": "to bottom"
+            },
+            "fontStyle": "italic",
+            "fontColor": "#FFFFFF",
+            "fontWeight": "bold",
+            "marginLeft": 4
+          },
+          "suffixStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "prefix": "本月",
+          "prefixStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffix": "次",
+          "enabled": true
+        },
+        "name": "违规次数",
+        "width": 100,
+        "textStyle": {
+          "fontColor": "#FFFFFF"
+        },
+        "key": "violationCount"
+      }
+    ],
+    "itemsPerRow": 2,
+    "borderRadius": 8,
+    "autoScrollEnabled": true,
+    "showHeader": false,
+    "indexFieldStyle": {
+      "width": 28,
+      "textStyle": {
+        "fontSize": 21,
+        "fontGradient": {
+          "endColor": "#F54100",
+          "type": "linear",
+          "enabled": true,
+          "startColor": "#D4BA28",
+          "direction": "to bottom"
+        },
+        "fontStyle": "italic",
+        "fontColor": "#FFFFFF"
+      },
+      "marginLeft": 15
+    },
+    "header": {
+      "padding": "8px 0",
+      "backgroundColor": "#1890FF",
+      "textAlign": "center",
+      "fontSize": 16,
+      "fontColor": "#FFFFFF",
+      "fontWeight": "bold"
+    },
+    "row": {
+      "backgroundColor": "#FFFFFF",
+      "backgroundImg": "",
+      "alternateBackgroundColor": "#F8F9FA",
+      "backgroundSize": "100% 100%",
+      "marginBottom": 10,
+      "backgroundRepeat": "no-repeat",
+      "backgroundType": "image",
+      "height": 44
+    }
+  }
+}

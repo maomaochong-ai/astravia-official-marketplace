@@ -1,0 +1,128 @@
+{
+  "w": 480,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "markLineConfig": {
+    "show": false,
+    "markLine": []
+  },
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "苹果",
+      "value": 12345,
+      "type": "手机品牌"
+    },
+    {
+      "name": "三星",
+      "value": 100,
+      "type": "手机品牌"
+    },
+    {
+      "name": "小米",
+      "value": 8000,
+      "type": "手机品牌"
+    },
+    {
+      "name": "oppo",
+      "value": 5000,
+      "type": "手机品牌"
+    },
+    {
+      "name": "vivo",
+      "value": 10000,
+      "type": "手机品牌"
+    }
+  ],
+  "option": {
+    "grid": {
+      "show": false,
+      "top": 30,
+      "bottom": 18,
+      "right": 40,
+      "left": 0,
+      "containLabel": true
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "fontWeight": "normal"
+      }
+    },
+    "tooltip": {
+      "trigger": "axis",
+      "axisPointer": {
+        "type": "shadow",
+        "label": {
+          "show": true,
+          "backgroundColor": "#333"
+        }
+      }
+    },
+    "xAxis": {
+      "type": "value",
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "splitLine": {
+        "show": false,
+        "lineStyle": {
+          "color": "#8F8D8D"
+        }
+      }
+    },
+    "yAxis": {
+      "yUnit": "",
+      "type": "category",
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "splitLine": {
+        "show": false,
+        "interval": 2,
+        "lineStyle": {
+          "color": "#8F8D8D"
+        }
+      },
+      "lineStyle": {
+        "color": "#EEF1FA"
+      }
+    },
+    "series": [
+      {
+        "data": [],
+        "type": "bar",
+        "barWidth": 20,
+        "itemStyle": {
+          "color": "#64b5f6",
+          "borderRadius": 0
+        }
+      }
+    ]
+  }
+}

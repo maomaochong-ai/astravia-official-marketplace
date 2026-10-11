@@ -1,0 +1,256 @@
+{
+  "w": 1000,
+  "h": 230,
+  "dataType": 1,
+  "timeOut": 0,
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "title": "销售物料汇总数据",
+      "orderNum": 1247,
+      "orderAmount": 28475000.0,
+      "deliveryNum": 1189,
+      "signNum": 1156,
+      "outAmount": 26789000.0
+    },
+    {
+      "title": "采购物料汇总数据",
+      "orderNum": 892,
+      "orderAmount": 15680000.0,
+      "deliveryNum": 856,
+      "signNum": 823,
+      "outAmount": 14875000.0
+    },
+    {
+      "title": "库存物料汇总数据",
+      "orderNum": 2156,
+      "orderAmount": 3440,
+      "deliveryNum": 2340,
+      "signNum": 2340,
+      "outAmount": 7100000.0
+    },
+    {
+      "title": "质量物料汇总数据",
+      "orderNum": 110,
+      "orderAmount": 33330000.0,
+      "deliveryNum": 1100,
+      "signNum": 110,
+      "outAmount": 111110000.0
+    }
+  ],
+  "option": {
+    "titleFieldMapping": {
+      "offset": {
+        "x": 22,
+        "y": 0
+      },
+      "show": true,
+      "position": "left",
+      "textStyle": {
+        "letterSpacing": 0,
+        "fontSize": 18,
+        "fontGradient": {
+          "endColor": "#0066CC",
+          "type": "linear",
+          "enabled": true,
+          "direction": "to bottom",
+          "startColor": "#FFFFFF"
+        },
+        "fontStyle": "normal",
+        "fontColor": "#FFFFFF",
+        "fontWeight": "bold"
+      },
+      "key": "title",
+      "direction": "vertical"
+    },
+    "autoScrollEnabled": true,
+    "autoScrollDirection": "to-left",
+    "contentLineHeight": 37,
+    "contentFieldMapping": [
+      {
+        "marginRight": 0,
+        "valueStyle": {
+          "fontSize": 18,
+          "fontColor": "#FFFFFF"
+        },
+        "valueCompose": {
+          "contentStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffixStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffix": "个",
+          "enabled": true
+        },
+        "nameStyle": {
+          "letterSpacing": 0,
+          "fontSize": 16,
+          "fontStyle": "normal",
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal"
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "name": "订单数量",
+        "width": 120,
+        "key": "orderNum",
+        "marginLeft": 0
+      },
+      {
+        "marginRight": 0,
+        "valueStyle": {
+          "fontColor": "#FFFFFF"
+        },
+        "valueCompose": {
+          "contentStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffixStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffix": "元",
+          "enabled": true
+        },
+        "nameStyle": {
+          "letterSpacing": 0,
+          "fontSize": 16,
+          "fontStyle": "normal",
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal"
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "name": "订单金额",
+        "width": 150,
+        "key": "orderAmount",
+        "marginLeft": 0
+      },
+      {
+        "marginRight": 0,
+        "valueStyle": {
+          "fontColor": "#FFFFFF"
+        },
+        "valueCompose": {
+          "contentStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffixStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffix": "个",
+          "enabled": true
+        },
+        "nameStyle": {
+          "letterSpacing": 0,
+          "fontSize": 16,
+          "fontStyle": "normal",
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal"
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "name": "发货数量",
+        "width": 120,
+        "key": "deliveryNum",
+        "marginLeft": 0
+      },
+      {
+        "marginRight": 0,
+        "valueStyle": {
+          "fontColor": "#FFFFFF"
+        },
+        "valueCompose": {
+          "contentStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffixStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffix": "个",
+          "enabled": true
+        },
+        "nameStyle": {
+          "letterSpacing": 0,
+          "fontSize": 16,
+          "fontStyle": "normal",
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal"
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "name": "签收数量",
+        "width": 120,
+        "key": "signNum",
+        "marginLeft": 0
+      },
+      {
+        "marginRight": 0,
+        "valueStyle": {
+          "fontColor": "#FFFFFF"
+        },
+        "valueCompose": {
+          "contentStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffixStyle": {
+            "fontSize": 18,
+            "fontColor": "#FFFFFF"
+          },
+          "suffix": "元",
+          "enabled": true
+        },
+        "nameStyle": {
+          "letterSpacing": 0,
+          "fontSize": 16,
+          "fontStyle": "normal",
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal"
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "name": "出库金额",
+        "width": 150,
+        "key": "outAmount",
+        "marginLeft": 0
+      }
+    ],
+    "contentCurrent": 0,
+    "autoScrollSpeed": 100,
+    "contentLineAlign": "start",
+    "contentLineTextGap": 10,
+    "cardStyle": {
+      "backgroundColor": "#1890FF1A",
+      "borderColor": "#1890FF",
+      "backgroundImagePosition": "center",
+      "backgroundImage": "",
+      "paddingRight": 16,
+      "minWidth": 300,
+      "backgroundImageRepeat": "no-repeat",
+      "backgroundImageSize": "100% 100%",
+      "marginRight": 25,
+      "borderEnabled": true,
+      "paddingBottom": 16,
+      "borderRadius": 2,
+      "borderWidth": 1,
+      "paddingTop": 16,
+      "borderStyle": "dashed",
+      "paddingLeft": 60
+    },
+    "currentValue": 0
+  }
+}

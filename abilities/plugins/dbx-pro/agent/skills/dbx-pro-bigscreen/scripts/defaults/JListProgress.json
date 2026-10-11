@@ -1,0 +1,303 @@
+{
+  "w": 530,
+  "h": 310,
+  "dataType": 1,
+  "timeOut": 0,
+  "chartData": [
+    {
+      "title": "2025年度战略合作框架协议",
+      "total": 1200000,
+      "date": "2025-12-31",
+      "endLabel": "2025-06-15",
+      "value": 800000
+    },
+    {
+      "title": "智能制造设备采购合同",
+      "total": 850000,
+      "date": "2025-11-20",
+      "endLabel": "2025-05-30",
+      "value": 500000
+    },
+    {
+      "title": "信息化系统集成服务合同",
+      "total": 2000000,
+      "date": "2026-01-15",
+      "endLabel": "2025-07-01",
+      "value": 1500000
+    },
+    {
+      "title": "2025年技术支持与维护协议",
+      "total": 600000,
+      "date": "2025-10-10",
+      "endLabel": "2025-04-28",
+      "value": 300000
+    },
+    {
+      "title": "大数据平台建设合同",
+      "total": 1750000,
+      "date": "2025-09-25",
+      "endLabel": "2025-05-10",
+      "value": 1200000
+    },
+    {
+      "title": "云服务采购框架协议",
+      "total": 950000,
+      "date": "2025-08-31",
+      "endLabel": "2025-06-01",
+      "value": 700000
+    }
+  ],
+  "option": {
+    "beginFields": [
+      {
+        "compose": {
+          "contentStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "prefix": "",
+          "prefixStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "enabled": false
+        },
+        "name": "合同名称",
+        "style": {
+          "letterSpacing": 0,
+          "fontSize": 14,
+          "fontGradient": {
+            "endColor": "#00FFFF",
+            "type": "linear",
+            "enabled": false,
+            "direction": "to right",
+            "startColor": "#A0D8FF"
+          },
+          "fontStyle": "normal",
+          "fontColor": "#FFFFFF",
+          "fontWeight": "normal"
+        },
+        "key": "title"
+      },
+      {
+        "compose": {
+          "contentStyle": {
+            "marginRight": 1,
+            "fontSize": 12,
+            "fontGradient": {
+              "endColor": "#78F7FA",
+              "type": "linear",
+              "enabled": false,
+              "startColor": "#FFFFFF",
+              "direction": "to bottom"
+            },
+            "fontStyle": "italic",
+            "fontColor": "#78F7FA",
+            "fontWeight": "bold",
+            "marginLeft": 0
+          },
+          "suffixStyle": {
+            "fontSize": 14,
+            "fontGradient": {
+              "endColor": "#78F7FA",
+              "enabled": false,
+              "startColor": "#FFFFFF",
+              "direction": "to bottom"
+            },
+            "fontStyle": "italic",
+            "fontColor": "#78F7FA",
+            "fontWeight": "bold"
+          },
+          "prefix": "",
+          "prefixStyle": {
+            "fontSize": 14,
+            "fontColor": "#666666"
+          },
+          "suffix": "万元",
+          "enabled": true
+        },
+        "name": "总额",
+        "width": 100,
+        "style": {
+          "fontSize": 21,
+          "fontGradient": {
+            "endColor": "#FF4500",
+            "type": "linear",
+            "enabled": true,
+            "startColor": "#FFD700",
+            "direction": "to bottom"
+          },
+          "fontColor": "#FFFFFF"
+        },
+        "key": "total"
+      }
+    ],
+    "endCurrent": 0,
+    "endInfo": {
+      "width": 85
+    },
+    "scroll": {
+      "count": 1,
+      "interval": 3000,
+      "enabled": true,
+      "direction": "down"
+    },
+    "centerTopFields": [
+      {
+        "marginRight": 0,
+        "name": "最近日期",
+        "style": {
+          "letterSpacing": 0,
+          "fontSize": 12,
+          "fontGradient": {
+            "endColor": "#00FFFF",
+            "type": "linear",
+            "enabled": false,
+            "direction": "to right",
+            "startColor": "#A0D8FF"
+          },
+          "fontStyle": "italic",
+          "fontColor": "#888888",
+          "fontWeight": "normal"
+        },
+        "key": "endLabel",
+        "marginLeft": 0
+      },
+      {
+        "marginRight": 0,
+        "isUseExceedFillColor": true,
+        "compose": {
+          "contentStyle": {
+            "marginRight": 0,
+            "fontColor": "#6EEDF3",
+            "marginLeft": 0
+          },
+          "suffixStyle": {
+            "fontGradient": {
+              "endColor": "#FFFFFF",
+              "enabled": false,
+              "startColor": "#000000"
+            },
+            "fontColor": "#6EEDF3"
+          },
+          "prefix": "",
+          "prefixStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "suffix": "",
+          "enabled": true
+        },
+        "showPercentage": true,
+        "name": "进度值",
+        "width": 100,
+        "style": {
+          "fontSize": 12,
+          "fontGradient": {
+            "endColor": "#0066CC",
+            "type": "linear",
+            "enabled": false,
+            "startColor": "#00D4FF",
+            "direction": "to bottom"
+          },
+          "fontColor": "#6EEDF3"
+        },
+        "key": "value",
+        "marginLeft": 0
+      }
+    ],
+    "body": {
+      "gradient": {
+        "type": "linear"
+      }
+    },
+    "endFields": [
+      {
+        "name": "到期日期",
+        "style": {
+          "letterSpacing": 0,
+          "fontSize": 14,
+          "fontGradient": {
+            "endColor": "#00FFFF",
+            "type": "linear",
+            "enabled": false,
+            "direction": "to right",
+            "startColor": "#A0D8FF"
+          },
+          "fontStyle": "normal",
+          "fontColor": "#FFFFFF",
+          "fontWeight": "normal"
+        },
+        "key": "date"
+      }
+    ],
+    "beginCurrent": 1,
+    "progressSection": {
+      "marginRight": 10,
+      "marginLeft": 2
+    },
+    "bar": {
+      "border": {
+        "padding": 8,
+        "color": "#4ECBFC21",
+        "width": 2,
+        "enabled": true
+      },
+      "total": {
+        "field": "total",
+        "type": "field",
+        "value": 0
+      },
+      "borderRadius": 9,
+      "background": {
+        "color": "#5A97FC4F",
+        "gradient": {
+          "endColor": "#0066CC",
+          "enabled": false,
+          "direction": "to bottom",
+          "startColor": "#FFFFFF"
+        }
+      },
+      "indicatorColor": "#02F7FFA3",
+      "exceed": {
+        "indicatorColor": "#FEF8C9A1",
+        "fill": {
+          "color": "#FFB347",
+          "gradient": {
+            "endColor": "#FEAF24",
+            "enabled": true,
+            "startColor": "#FEF6C8",
+            "direction": "to right"
+          }
+        },
+        "percent": 70,
+        "enabled": true
+      },
+      "indicatorSize": 9,
+      "fill": {
+        "color": "#33C9FF",
+        "gradient": {
+          "endColor": "#24E5F1",
+          "enabled": true,
+          "direction": "to right",
+          "startColor": "#C5FDFE"
+        }
+      },
+      "valueField": "value",
+      "height": 4
+    },
+    "centerTopInfo": {
+      "layout": "horizontal"
+    },
+    "centerTopCurrent": 1,
+    "row": {
+      "marginRight": 0,
+      "padding": "0 0",
+      "marginBottom": 0,
+      "marginTop": 12,
+      "height": 50,
+      "marginLeft": 9
+    },
+    "beginInfo": {
+      "layout": "vertical",
+      "width": 183
+    }
+  }
+}

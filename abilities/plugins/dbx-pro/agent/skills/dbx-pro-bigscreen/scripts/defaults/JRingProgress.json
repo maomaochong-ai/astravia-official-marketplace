@@ -1,0 +1,42 @@
+{
+  "w": 300,
+  "h": 200,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "Java",
+      "value": 70
+    }
+  ],
+  "option": {
+    "color": "#1E90FF",
+    "bgColor": "#E8EDF3",
+    "radius": 0.9,
+    "innerRadius": 0.9,
+    "lineHeight": 0,
+    "fontColor": "#ffffff",
+    "fontSize": 16,
+    "fontWeight": "normal",
+    "valueFontSize": 16,
+    "valueFontColor": "#ffffff",
+    "valueFontWeight": "normal"
+  }
+}

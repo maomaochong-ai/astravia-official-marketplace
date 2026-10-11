@@ -1,0 +1,159 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "分组",
+      "mapping": ""
+    },
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "type": "Asia",
+      "name": "1750",
+      "value": 502
+    },
+    {
+      "type": "Asia",
+      "name": "1800",
+      "value": 635
+    },
+    {
+      "type": "Asia",
+      "name": "1850",
+      "value": 809
+    },
+    {
+      "type": "Asia",
+      "name": "1900",
+      "value": 947
+    },
+    {
+      "type": "Asia",
+      "name": "1950",
+      "value": 1402
+    },
+    {
+      "type": "Asia",
+      "name": "1999",
+      "value": 3634
+    },
+    {
+      "type": "Asia",
+      "name": "2050",
+      "value": 5268
+    },
+    {
+      "type": "Africa",
+      "name": "1750",
+      "value": 106
+    },
+    {
+      "type": "Africa",
+      "name": "1800",
+      "value": 107
+    },
+    {
+      "type": "Africa",
+      "name": "1850",
+      "value": 111
+    },
+    {
+      "type": "Africa",
+      "name": "1900",
+      "value": 133
+    },
+    {
+      "type": "Africa",
+      "name": "1950",
+      "value": 221
+    },
+    {
+      "type": "Africa",
+      "name": "1999",
+      "value": 767
+    },
+    {
+      "type": "Africa",
+      "name": "2050",
+      "value": 1766
+    },
+    {
+      "type": "Europe",
+      "name": "1750",
+      "value": 163
+    },
+    {
+      "type": "Europe",
+      "name": "1800",
+      "value": 203
+    },
+    {
+      "type": "Europe",
+      "name": "1850",
+      "value": 276
+    },
+    {
+      "type": "Europe",
+      "name": "1900",
+      "value": 408
+    },
+    {
+      "type": "Europe",
+      "name": "1950",
+      "value": 547
+    },
+    {
+      "type": "Europe",
+      "name": "1999",
+      "value": 729
+    },
+    {
+      "type": "Europe",
+      "name": "2050",
+      "value": 628
+    }
+  ],
+  "option": {
+    "yNameFontColor": "#fff",
+    "yNameFontSize": 12,
+    "xNameFontColor": "#fff",
+    "xNameFontSize": 12,
+    "legendLayout": "horizontal",
+    "legendPosition": "bottom",
+    "legendFontColor": "#fff",
+    "legendFontSize": 16,
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

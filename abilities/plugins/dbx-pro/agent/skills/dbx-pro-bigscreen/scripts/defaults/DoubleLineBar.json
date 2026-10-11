@@ -1,0 +1,252 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/26/stackedBar",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "markLineConfig": {
+    "show": false,
+    "markLine": []
+  },
+  "dataMapping": [
+    {
+      "filed": "分组",
+      "mapping": ""
+    },
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "seriesType": [
+    {
+      "series": "降水量",
+      "type": "bar",
+      "yIndex": "0"
+    },
+    {
+      "series": "温度",
+      "type": "line",
+      "yIndex": "1"
+    }
+  ],
+  "chartData": [
+    {
+      "name": "1991",
+      "value": 110,
+      "type": "降水量"
+    },
+    {
+      "name": "1992",
+      "value": 130,
+      "type": "降水量"
+    },
+    {
+      "name": "1993",
+      "value": 113.5,
+      "type": "降水量"
+    },
+    {
+      "name": "1994",
+      "value": 150,
+      "type": "降水量"
+    },
+    {
+      "name": "1995",
+      "value": 240.9,
+      "type": "降水量"
+    },
+    {
+      "name": "1996",
+      "value": 160,
+      "type": "降水量"
+    },
+    {
+      "name": "1997",
+      "value": 97,
+      "type": "降水量"
+    },
+    {
+      "name": "1998",
+      "value": 290,
+      "type": "降水量"
+    },
+    {
+      "name": "1999",
+      "value": 230,
+      "type": "降水量"
+    },
+    {
+      "name": "1991",
+      "value": 33,
+      "type": "温度"
+    },
+    {
+      "name": "1992",
+      "value": 35,
+      "type": "温度"
+    },
+    {
+      "name": "1993",
+      "value": 37,
+      "type": "温度"
+    },
+    {
+      "name": "1994",
+      "value": 35,
+      "type": "温度"
+    },
+    {
+      "name": "1995",
+      "value": 34.9,
+      "type": "温度"
+    },
+    {
+      "name": "1996",
+      "value": 36,
+      "type": "温度"
+    },
+    {
+      "name": "1997",
+      "value": 37,
+      "type": "温度"
+    },
+    {
+      "name": "1998",
+      "value": 39,
+      "type": "温度"
+    },
+    {
+      "name": "1999",
+      "value": 33,
+      "type": "温度"
+    }
+  ],
+  "option": {
+    "barWidth": 15,
+    "borderRadius": 0,
+    "symbol": "emptyCircle",
+    "symbolSize": 4,
+    "lineWidth": 1,
+    "lineType": "line",
+    "areaStyleOpacity": 0,
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "fontWeight": "normal",
+        "fontSize": "14"
+      }
+    },
+    "legend": {
+      "t": 0
+    },
+    "grid": {
+      "top": 30,
+      "bottom": 18,
+      "right": 40,
+      "left": 0,
+      "containLabel": true
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "tooltip": {
+      "trigger": "axis",
+      "axisPointer": {
+        "type": "shadow",
+        "label": {
+          "show": true,
+          "backgroundColor": "#333"
+        }
+      }
+    },
+    "xAxis": {
+      "axisLabel": {
+        "color": "#EEF1FA"
+      }
+    },
+    "yAxis": [
+      {
+        "type": "value",
+        "yUnit": "",
+        "axisLabel": {
+          "color": "#EEF1FA"
+        },
+        "splitLine": {
+          "show": false,
+          "interval": 2,
+          "lineStyle": {
+            "color": "#8F8D8D"
+          }
+        }
+      },
+      {
+        "type": "value",
+        "yUnit": "",
+        "axisLabel": {
+          "color": "#EEF1FA"
+        },
+        "splitLine": {
+          "interval": 2,
+          "lineStyle": {
+            "color": "#8F8D8D"
+          }
+        }
+      }
+    ],
+    "series": [],
+    "customColor": [
+      {
+        "color1": "#1e90ff",
+        "color": "#1e90ff"
+      },
+      {
+        "color1": "#90ee90",
+        "color": "#90ee90"
+      },
+      {
+        "color1": "#00ced1",
+        "color": "#00ced1"
+      },
+      {
+        "color1": "#e2bd84",
+        "color": "#e2bd84"
+      },
+      {
+        "color1": "#7a90e0",
+        "color": "#7a90e0"
+      },
+      {
+        "color1": "#3ba272",
+        "color": "#3ba272"
+      },
+      {
+        "color1": "#2be7ff",
+        "color": "#2be7ff"
+      },
+      {
+        "color1": "#0a8ada",
+        "color": "#0a8ada"
+      },
+      {
+        "color1": "#ffd700",
+        "color": "#ffd700"
+      }
+    ]
+  }
+}

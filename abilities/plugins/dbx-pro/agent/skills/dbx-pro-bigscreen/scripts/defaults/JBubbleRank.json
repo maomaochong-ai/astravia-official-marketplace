@@ -1,0 +1,59 @@
+{
+  "w": 550,
+  "h": 400,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "标题",
+      "mapping": ""
+    },
+    {
+      "filed": "描述",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "title": "Java",
+      "desc": "事项数：369"
+    },
+    {
+      "title": "Nodejs",
+      "desc": "事项数：258"
+    },
+    {
+      "title": "Vuejs",
+      "desc": "417"
+    },
+    {
+      "title": "CSS3",
+      "desc": "事项数：314"
+    },
+    {
+      "title": "jQuery",
+      "desc": "事项数：216"
+    }
+  ],
+  "option": {
+    "zoom": 1,
+    "showTip": true,
+    "tipWidth": 100,
+    "tipColor": "#0E4C73",
+    "tipFontSize": 12,
+    "tipFontColor": "#fff",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    }
+  }
+}

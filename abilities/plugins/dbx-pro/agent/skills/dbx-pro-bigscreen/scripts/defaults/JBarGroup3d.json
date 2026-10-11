@@ -1,0 +1,199 @@
+{
+  "w": 490,
+  "h": 332,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "分组",
+      "mapping": ""
+    },
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "1991销量",
+      "value": 13000,
+      "type": "小米"
+    },
+    {
+      "name": "1992销量",
+      "value": 12000,
+      "type": "小米"
+    },
+    {
+      "name": "1993销量",
+      "value": 18000,
+      "type": "小米"
+    },
+    {
+      "name": "1991销量",
+      "value": 10000,
+      "type": "苹果"
+    },
+    {
+      "name": "1992销量",
+      "value": 11000,
+      "type": "苹果"
+    },
+    {
+      "name": "1993销量",
+      "value": 23000,
+      "type": "苹果"
+    },
+    {
+      "name": "1991销量",
+      "value": 3300,
+      "type": "三星"
+    },
+    {
+      "name": "1992销量",
+      "value": 33000,
+      "type": "三星"
+    },
+    {
+      "name": "1993销量",
+      "value": 18000,
+      "type": "三星"
+    },
+    {
+      "name": "1991销量",
+      "value": 3500,
+      "type": "华为"
+    },
+    {
+      "name": "1992销量",
+      "value": 35000,
+      "type": "华为"
+    },
+    {
+      "name": "1993销量",
+      "value": 45000,
+      "type": "华为"
+    }
+  ],
+  "option": {
+    "graphic": {
+      "children": [
+        {
+          "style": {
+            "fill": "#3f4867"
+          }
+        }
+      ]
+    },
+    "grid": {
+      "top": 20,
+      "left": 0,
+      "right": "1",
+      "bottom": "36",
+      "containLabel": true
+    },
+    "tooltip": {
+      "show": true
+    },
+    "xAxis": {
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "axisLine": {
+        "lineStyle": {
+          "color": "#EEF1FA00"
+        }
+      }
+    },
+    "yAxis": {
+      "yUnit": "",
+      "show": true,
+      "axisLabel": {
+        "show": true,
+        "color": "#EEF1FA"
+      },
+      "axisLine": {
+        "lineStyle": {
+          "color": "#EEF1FA"
+        }
+      },
+      "splitLine": {
+        "show": false
+      }
+    },
+    "series": [],
+    "seriesCustom": {
+      "barTopColor": [
+        "#0e4481",
+        "#1e637b",
+        "#5D7092",
+        "#F6BD16",
+        "#6F5EF9",
+        "#6DC8EC",
+        "#945FB9",
+        "#FF9845",
+        "#1E9493",
+        "#FF99C3"
+      ],
+      "barBottomColor": [
+        "#0998d9",
+        "#2ec6ad",
+        "#6F5EF9",
+        "#6DC8EC",
+        "#945FB9",
+        "#FF9845",
+        "#1E9493",
+        "#FF99C3",
+        "#5B8FF9",
+        "#61DDAA"
+      ],
+      "barColor": [
+        "#1370a7",
+        "#4ebebe",
+        "#3864ab",
+        "#9c9c46",
+        "#a6404b",
+        "#ac582c",
+        "#719c33",
+        "#945FB9",
+        "#FF9845",
+        "#1E9493"
+      ],
+      "shadowColor": [
+        "#082442",
+        "#0e2e3c",
+        "#082442",
+        "#0e2e3c",
+        "#082442",
+        "#0e2e3c",
+        "#082442",
+        "#0e2e3c",
+        "#082442",
+        "#0e2e3c"
+      ],
+      "shadowTopColor": [
+        "#0e4481",
+        "#1e637b",
+        "#5D7092",
+        "#F6BD16",
+        "#6F5EF9",
+        "#6DC8EC",
+        "#945FB9",
+        "#FF9845",
+        "#1E9493",
+        "#FF99C3"
+      ]
+    }
+  }
+}

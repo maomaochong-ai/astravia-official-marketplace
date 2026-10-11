@@ -1,0 +1,51 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "value": 25
+    }
+  ],
+  "option": {
+    "liquidType": "circle",
+    "color": "#1E90FF",
+    "borderWidth": 2,
+    "distance": 1,
+    "borderColor": "#1E90FF",
+    "strokeOpacity": 0,
+    "count": 4,
+    "length": 128,
+    "textColor": "#ffffff",
+    "textFontSize": 30,
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

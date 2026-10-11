@@ -1,0 +1,20 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "linkageConfig": [],
+  "chartData": "http://www.jeecg.com",
+  "option": {
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "body": {
+      "url": "https://help.jeecg.com"
+    }
+  }
+}

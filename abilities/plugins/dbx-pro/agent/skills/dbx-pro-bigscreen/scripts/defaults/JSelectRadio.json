@@ -1,0 +1,53 @@
+{
+  "w": 400,
+  "h": 80,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "compShowConfig": [],
+  "dataMapping": [
+    {
+      "filed": "文本",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "label": "选项一",
+      "value": "1"
+    },
+    {
+      "label": "选项二",
+      "value": "2"
+    },
+    {
+      "label": "选项三",
+      "value": "3"
+    }
+  ],
+  "option": {
+    "fontSize": 16,
+    "color": "#fff",
+    "type": "radio",
+    "padding": 0,
+    "backgroundColor": "#39414d",
+    "backgroundImage": "",
+    "borderColor": "",
+    "borderWidth": 0,
+    "activeColor": "#fff",
+    "activeBackgroundColor": "#0a73ff",
+    "activeBackgroundImage": "",
+    "activeBorderColor": "",
+    "activeBorderWidth": 0
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "苹果",
+      "value": 1000879,
+      "type": "手机品牌"
+    },
+    {
+      "name": "三星",
+      "value": 3400879,
+      "type": "手机品牌"
+    },
+    {
+      "name": "小米",
+      "value": 2300879,
+      "type": "手机品牌"
+    },
+    {
+      "name": "oppo",
+      "value": 5400879,
+      "type": "手机品牌"
+    },
+    {
+      "name": "vivo",
+      "value": 3400879,
+      "type": "手机品牌"
+    }
+  ],
+  "option": {
+    "showValue": false,
+    "unit": "",
+    "customColor": [
+      {
+        "color1": "#1e90ff",
+        "color": "#1e90ff"
+      },
+      {
+        "color1": "#90ee90",
+        "color": "#90ee90"
+      },
+      {
+        "color1": "#00ced1",
+        "color": "#00ced1"
+      },
+      {
+        "color1": "#e2bd84",
+        "color": "#e2bd84"
+      },
+      {
+        "color1": "#7a90e0",
+        "color": "#7a90e0"
+      },
+      {
+        "color1": "#3ba272",
+        "color": "#3ba272"
+      },
+      {
+        "color1": "#2be7ff",
+        "color": "#2be7ff"
+      },
+      {
+        "color1": "#0a8ada",
+        "color": "#0a8ada"
+      },
+      {
+        "color1": "#ffd700",
+        "color": "#ffd700"
+      }
+    ],
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

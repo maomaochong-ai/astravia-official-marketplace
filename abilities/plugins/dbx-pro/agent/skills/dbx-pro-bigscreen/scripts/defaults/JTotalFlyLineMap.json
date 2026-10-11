@@ -1,0 +1,236 @@
+{
+  "w": 700,
+  "h": 490,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/radar",
+  "timeOut": 0,
+  "background": "#FFFFFF00",
+  "dataMapping": [
+    {
+      "filed": "起点名称",
+      "mapping": ""
+    },
+    {
+      "filed": "起点经度",
+      "mapping": ""
+    },
+    {
+      "filed": "起点纬度",
+      "mapping": ""
+    },
+    {
+      "filed": "终点名称",
+      "mapping": ""
+    },
+    {
+      "filed": "终点经度",
+      "mapping": ""
+    },
+    {
+      "filed": "终点纬度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    },
+    {
+      "filed": "分组",
+      "mapping": ""
+    }
+  ],
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "fromName": "江苏",
+      "toName": "贵州",
+      "fromLng": 118.8062,
+      "fromLat": 31.9208,
+      "toLng": 106.6992,
+      "toLat": 26.7682,
+      "value": 100,
+      "group": 2017
+    },
+    {
+      "fromName": "河南",
+      "toName": "云南",
+      "fromLng": 113.4668,
+      "fromLat": 34.6234,
+      "toLng": 102.9199,
+      "toLat": 25.4663,
+      "value": 100,
+      "group": 2017
+    },
+    {
+      "fromName": "江苏",
+      "toName": "甘肃",
+      "fromLng": 118.8062,
+      "fromLat": 31.9208,
+      "toLng": 103.5901,
+      "toLat": 36.3043,
+      "value": 100,
+      "group": 2018
+    },
+    {
+      "fromName": "江苏",
+      "toName": "广东",
+      "fromLng": 118.8062,
+      "fromLat": 31.9208,
+      "toLng": 113.12244,
+      "toLat": 31.9208,
+      "value": 147,
+      "group": 2018
+    },
+    {
+      "fromName": "江苏",
+      "toName": "北京",
+      "fromLng": 118.8062,
+      "fromLat": 31.9208,
+      "toLng": 116.4551,
+      "toLat": 40.2539,
+      "value": 100,
+      "group": 2019
+    }
+  ],
+  "commonOption": {
+    "barSize": 10,
+    "barColor": "#D6F263",
+    "barColor2": "#A3DB6B",
+    "gradientColor": false,
+    "areaColor": {
+      "color1": "#0A0909",
+      "color2": "#3B373700"
+    },
+    "inRange": {
+      "color": [
+        "#04387b",
+        "#467bc0"
+      ]
+    },
+    "breadcrumb": {
+      "drillDown": false,
+      "textColor": "#ffffff"
+    }
+  },
+  "option": {
+    "area": {
+      "markerCount": 5,
+      "shadowBlur": 10,
+      "markerOpacity": 1,
+      "markerColor": "#DDE330",
+      "shadowColor": "#DDE330",
+      "scatterLabelShow": false,
+      "markerType": "effectScatter",
+      "value": [
+        "china"
+      ],
+      "name": [
+        "中国"
+      ]
+    },
+    "graphic": [],
+    "grid": {
+      "show": false,
+      "bottom": 115
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "left": 10,
+      "textStyle": {
+        "fontWeight": "normal",
+        "color": "#70DB93",
+        "fontSize": 22
+      },
+      "subtextStyle": {
+        "color": "#ffffff",
+        "fontSize": 12
+      }
+    },
+    "geo": {
+      "top": 50,
+      "left": 100,
+      "label": {
+        "normal": {
+          "show": false
+        },
+        "emphasis": {
+          "show": false,
+          "color": "#fff"
+        }
+      },
+      "roam": false,
+      "zoom": 0.9,
+      "itemStyle": {
+        "normal": {
+          "borderColor": "#0692A4",
+          "borderWidth": 1,
+          "areaColor": "",
+          "shadowColor": "#80d9f8",
+          "shadowOffsetX": 0,
+          "shadowOffsetY": 0,
+          "shadowBlur": 0
+        },
+        "emphasis": {
+          "areaColor": "#EEDD78",
+          "borderWidth": 0
+        }
+      }
+    },
+    "timeline": {
+      "show": true,
+      "axisType": "category",
+      "autoPlay": false,
+      "playInterval": 2000,
+      "left": "10%",
+      "right": "5%",
+      "bottom": 10,
+      "padding": 5,
+      "width": "80%",
+      "label": {
+        "normal": {
+          "textStyle": {
+            "color": "#ffffff"
+          }
+        },
+        "emphasis": {
+          "textStyle": {
+            "color": "#000000"
+          }
+        }
+      },
+      "symbolSize": 10,
+      "lineStyle": {
+        "color": "#555555"
+      },
+      "checkpointStyle": {
+        "borderColor": "#777777",
+        "borderWidth": 2
+      },
+      "controlStyle": {
+        "showNextBtn": true,
+        "showPrevBtn": true,
+        "normal": {
+          "color": "#666666",
+          "borderColor": "#666666"
+        },
+        "emphasis": {
+          "color": "#aaaaaa",
+          "borderColor": "#aaaaaa"
+        }
+      }
+    }
+  }
+}

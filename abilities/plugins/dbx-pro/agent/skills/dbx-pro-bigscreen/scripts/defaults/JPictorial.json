@@ -1,0 +1,91 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/26/pictogram",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "驯鹿",
+      "value": 123
+    },
+    {
+      "name": "飞机",
+      "value": 60
+    },
+    {
+      "name": "火箭",
+      "value": 25
+    },
+    {
+      "name": "高铁",
+      "value": 18
+    },
+    {
+      "name": "轮船",
+      "value": 12
+    },
+    {
+      "name": "汽车",
+      "value": 9
+    },
+    {
+      "name": "跑步",
+      "value": 2
+    },
+    {
+      "name": "步行",
+      "value": 1
+    }
+  ],
+  "option": {
+    "symbolSize": 30,
+    "symbolMargin": 0,
+    "symbol": "/img/bg/source/source1.svg",
+    "title": {
+      "show": true,
+      "textAlign": "left",
+      "text": ""
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "grid": {
+      "top": 12,
+      "bottom": 18,
+      "right": 50,
+      "left": 0,
+      "containLabel": true
+    },
+    "tooltip": {
+      "trigger": "axis",
+      "axisPointer": {
+        "type": "shadow",
+        "label": {
+          "show": true,
+          "backgroundColor": "#333"
+        }
+      }
+    },
+    "series": []
+  }
+}

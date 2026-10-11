@@ -1,0 +1,175 @@
+{
+  "w": 600,
+  "h": 400,
+  "dataType": 1,
+  "background": "#FFFFFF00",
+  "url": "http://api.jeecg.com/mock/33/radar",
+  "timeOut": 0,
+  "dataMapping": [
+    {
+      "filed": "起点名称",
+      "mapping": ""
+    },
+    {
+      "filed": "起点经度",
+      "mapping": ""
+    },
+    {
+      "filed": "起点纬度",
+      "mapping": ""
+    },
+    {
+      "filed": "终点名称",
+      "mapping": ""
+    },
+    {
+      "filed": "终点经度",
+      "mapping": ""
+    },
+    {
+      "filed": "终点纬度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "fromName": "江苏",
+      "toName": "贵州",
+      "fromLng": 118.8062,
+      "fromLat": 31.9208,
+      "toLng": 106.6992,
+      "toLat": 26.7682,
+      "value": 100
+    },
+    {
+      "fromName": "江苏",
+      "toName": "北京",
+      "fromLng": 118.8062,
+      "fromLat": 31.9208,
+      "toLng": 116.46,
+      "toLat": 39.92,
+      "value": 100
+    },
+    {
+      "fromName": "新疆",
+      "toName": "北京",
+      "fromLng": 87.68,
+      "fromLat": 43.67,
+      "toLng": 116.46,
+      "toLat": 39.92,
+      "value": 100
+    }
+  ],
+  "commonOption": {
+    "barSize": 10,
+    "barColor": "#D6F263",
+    "barColor2": "#A3DB6B",
+    "gradientColor": false,
+    "areaColor": {
+      "color1": "#132937"
+    },
+    "inRange": {
+      "color": [
+        "#04387b",
+        "#467bc0"
+      ]
+    },
+    "effect": {
+      "show": true,
+      "trailLength": 0,
+      "period": 6,
+      "symbolSize": 15
+    },
+    "breadcrumb": {
+      "drillDown": false,
+      "textColor": "#ffffff"
+    }
+  },
+  "option": {
+    "area": {
+      "markerCount": 5,
+      "shadowBlur": 10,
+      "markerOpacity": 1,
+      "markerColor": "#DDE330",
+      "shadowColor": "#DDE330",
+      "scatterLabelShow": false,
+      "markerType": "effectScatter",
+      "value": [
+        "china"
+      ],
+      "name": [
+        "中国"
+      ]
+    },
+    "graphic": [],
+    "grid": {
+      "show": false,
+      "bottom": 115
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "padding": [
+        5,
+        0,
+        0,
+        15
+      ],
+      "show": true
+    },
+    "visualMap": {
+      "show": false,
+      "min": 0,
+      "type": "continuous",
+      "max": 200,
+      "left": "5%",
+      "top": "bottom",
+      "calculable": true,
+      "seriesIndex": [
+        2
+      ]
+    },
+    "geo": {
+      "top": 30,
+      "label": {
+        "emphasis": {
+          "show": false,
+          "color": "#fff"
+        }
+      },
+      "roam": true,
+      "zoom": 1,
+      "itemStyle": {
+        "normal": {
+          "borderColor": "#0692A4",
+          "borderWidth": 1,
+          "areaColor": "#323c48",
+          "shadowColor": "",
+          "shadowOffsetX": 0,
+          "shadowOffsetY": 0,
+          "shadowBlur": 0
+        },
+        "emphasis": {
+          "areaColor": "#EEDD78",
+          "borderWidth": 0
+        }
+      }
+    }
+  }
+}

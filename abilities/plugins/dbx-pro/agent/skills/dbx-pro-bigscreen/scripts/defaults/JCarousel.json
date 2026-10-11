@@ -1,0 +1,30 @@
+{
+  "w": 600,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/carousel",
+  "timeOut": 0,
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "路径",
+      "mapping": ""
+    }
+  ],
+  "option": {
+    "autoplay": true,
+    "dots": true,
+    "dotPosition": "bottom"
+  },
+  "chartData": [
+    {
+      "src": "https://jeecgos.oss-cn-beijing.aliyuncs.com/files/site/drag/0.png"
+    },
+    {
+      "src": "https://jeecgos.oss-cn-beijing.aliyuncs.com/files/site/drag/1.png"
+    },
+    {
+      "src": "https://jeecgos.oss-cn-beijing.aliyuncs.com/files/site/drag/2.png"
+    }
+  ]
+}

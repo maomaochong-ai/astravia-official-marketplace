@@ -1,0 +1,84 @@
+{
+  "w": 540,
+  "h": 150,
+  "dataType": 1,
+  "url": "",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "background": "#14141400",
+  "dataMapping": [
+    {
+      "filed": "标题",
+      "mapping": ""
+    },
+    {
+      "filed": "跳转",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "title": "按钮一",
+      "value": 0,
+      "href": "",
+      "data": {}
+    },
+    {
+      "title": "按钮二",
+      "value": 1,
+      "href": "",
+      "data": {}
+    },
+    {
+      "title": "按钮三",
+      "value": 2,
+      "href": "",
+      "data": {}
+    },
+    {
+      "title": "按钮四",
+      "value": 3,
+      "href": "",
+      "data": {}
+    },
+    {
+      "title": "按钮五",
+      "value": 4,
+      "href": "",
+      "data": {}
+    }
+  ],
+  "option": {
+    "title": "按钮",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "body": {
+      "size": "small",
+      "spaceSize": 20,
+      "shape": "circle"
+    },
+    "customColor": [
+      {
+        "color": "#1A7DED"
+      },
+      {
+        "color": "#F8E71C"
+      },
+      {
+        "color": "#B8E986"
+      },
+      {
+        "color": "#50E3C2"
+      }
+    ]
+  }
+}

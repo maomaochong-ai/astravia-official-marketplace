@@ -1,0 +1,14 @@
+{
+  "w": 150,
+  "h": 150,
+  "dataType": 1,
+  "option": {
+    "type": "12",
+    "title": "装饰",
+    "mainColor": "#00CED1",
+    "subColor": "#FAD400",
+    "reverse": false,
+    "dur": 3,
+    "fontSize": 15
+  }
+}

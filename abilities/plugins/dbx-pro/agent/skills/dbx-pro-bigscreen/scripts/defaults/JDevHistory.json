@@ -1,0 +1,132 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "https://api.jeecg.com/mock/26/history",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "年份",
+      "mapping": ""
+    },
+    {
+      "filed": "标题",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "year": "2012",
+      "title": "开源项目JEECG被\"CSDN专家访谈\""
+    },
+    {
+      "year": "2012",
+      "title": "开源项目JEECG被\"ITeye专家访谈"
+    },
+    {
+      "year": "2012",
+      "title": "JEECG在Google Code上开源"
+    },
+    {
+      "year": "2012",
+      "title": "推出开源项目\"MiniDao(持久层解决方案）\"超越了Mybatis和 Hibernate"
+    },
+    {
+      "year": "2013",
+      "title": "应邀参加了\"SDCC 2013中国软件开发者大会\" （大会由CSDN和《程 序员》杂志倾力打造）"
+    },
+    {
+      "year": "2012",
+      "title": "JEECG参加“云计算成就创业梦想”第二届阿里云开发者大赛\"园"
+    },
+    {
+      "year": "2013",
+      "title": "2017.07，开发GBI区块链资讯信息平台"
+    },
+    {
+      "year": "2013",
+      "title": "成立JEECG开源团队，创立JEECG开源社区"
+    },
+    {
+      "year": "2013",
+      "title": "中国优秀开源项目评选-公开投票,“JEECG以887票位居第九"
+    },
+    {
+      "year": "2013",
+      "title": "2013年应邀参加\"开源群英会2013”的开源英雄"
+    },
+    {
+      "year": "2014",
+      "title": "12月份捷微jeewx与联通集团达成战略合作，负责联通集团微信公众 账号集团化运营"
+    },
+    {
+      "year": "2014",
+      "title": "8月份捷微jeewx2.0与百度达成战略合作，集成百度地图，增加地图 功能，附近商家团购等信息搜索"
+    },
+    {
+      "year": "2014",
+      "title": "推出当前最火的开源项目“JeeWx(捷微:敏捷微信开发平台）”，并 获得CSDN举办的“2014年开发者大会”公开投票第一名"
+    },
+    {
+      "year": "2014",
+      "title": "5月应邀参加中国科学院大学创新创业年度论坛，探讨“创业企业发 展、创新创业孵化”的主题"
+    },
+    {
+      "year": "2015",
+      "title": "推出微信H5活动营销平台，专业解决客户对H5互动活动需求（H5huo dong.com）"
+    },
+    {
+      "year": "2015",
+      "title": "开源中国最热开源项目TOP20，社区开源项目独占4份，前五名两位（ jeewx、jeecg）"
+    },
+    {
+      "year": "2015",
+      "title": "12月独创，微信插件开发机制（java）,推出H5活动平台（www.h5h uodong.com），致力于互动微信H5活动开发"
+    },
+    {
+      "year": "2015",
+      "title": "6月份捷微jeewx推出集企业号版本，与中国移动打成战略合作，推出 企业号营销新模式"
+    },
+    {
+      "year": "2015",
+      "title": "3月份捷微jeewx推出集团化微信运营版本，专注微信应用一体化，企 业系统集成，实现公众账号上下级，类似组织机构权限模式"
+    },
+    {
+      "year": "2016",
+      "title": "jeecg推出插件开发机制 jeecg-p3，主推通过jeecg解决未来SAAS项 目需求方案"
+    },
+    {
+      "year": "2016",
+      "title": "jeecg推出重大更新，提升移动开发能力（移动表单配置、移动报表配 置、移动OA，无需编码，通过配置实现移动PC互用）"
+    }
+  ],
+  "option": {
+    "zoom": 1,
+    "typeBackColor": "#FF4500",
+    "typeFontColor": "#FFFFFF",
+    "titleFontSize": 20,
+    "titleColor": "#1E90FF",
+    "waitTime": 4000,
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

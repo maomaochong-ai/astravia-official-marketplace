@@ -1,0 +1,42 @@
+{
+  "w": 1000,
+  "h": 90,
+  "dataType": 1,
+  "timeOut": 0,
+  "showBtn": true,
+  "linkType": "comp",
+  "linkageConfig": [],
+  "option": {
+    "fields": [
+      {
+        "fieldName": "name",
+        "dictCode": "",
+        "dateFormat": "",
+        "fieldTxt": "名称",
+        "defaultValue": "",
+        "searchMode": "single",
+        "orderNum": "",
+        "action": "",
+        "id": "rowfb1d97b6-d9f0-41d9-a282-4bab1607dd72",
+        "izSearch": "1",
+        "widgetType": "input"
+      },
+      {
+        "fieldName": "sex",
+        "dictCode": "sex",
+        "dateFormat": "",
+        "fieldTxt": "性别",
+        "defaultValue": "",
+        "searchMode": "single",
+        "orderNum": "",
+        "action": "",
+        "id": "row1e5d23c0-15d0-499f-85c0-062d1a210317",
+        "izSearch": "1",
+        "widgetType": "input"
+      }
+    ],
+    "showSubmitBtn": true,
+    "showResetBtn": true,
+    "mode": "dark"
+  }
+}

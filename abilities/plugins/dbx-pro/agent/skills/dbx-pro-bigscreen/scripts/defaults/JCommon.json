@@ -1,0 +1,40 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "background": "#ffffff00",
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": ""
+  },
+  "linkageConfig": [],
+  "dataMapping": [],
+  "customOption": "option = {xAxis: {type: 'category',data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']},yAxis: {type: 'value'},series: [{data: [150, 230, 224, 218, 135, 147, 260],type: 'line'}]};return option;",
+  "chartData": [
+    {
+      "value": 0,
+      "name": ""
+    }
+  ],
+  "option": {
+    "grid": {
+      "top": 12,
+      "bottom": 18,
+      "right": 50,
+      "left": 0,
+      "containLabel": true
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true
+    }
+  }
+}

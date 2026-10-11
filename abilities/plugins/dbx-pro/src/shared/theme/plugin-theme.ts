@@ -18,7 +18,10 @@
 
 export type PluginTheme = "light" | "dark";
 
+/** 主题结论写在插件根的这个属性上，由 src/style.css 消费。 */
 const PLUGIN_THEME_ATTR = "data-dbx-theme";
+/** 主题探测临时元素的标记：观察器忽略它自身造成的 DOM 变更，避免自激循环。 */
+const PROBE_ATTR = "data-dbx-theme-probe";
 const PLUGIN_ROOT_SELECTOR = '[data-astravia-plugin-root="dbx-pro"]';
 
 /**
@@ -48,6 +51,7 @@ function parseColorChannels(value: string): [number, number, number] | null {
 	// oklch / hsl / 具名色等：浏览器能吃掉的合法颜色都会被计算样式归一化为 rgb。
 	try {
 		const probe = document.createElement("div");
+		probe.setAttribute(PROBE_ATTR, "");
 		probe.style.display = "none";
 		probe.style.color = v;
 		document.body.appendChild(probe);
@@ -170,6 +174,20 @@ export function getPluginTheme(): PluginTheme {
 }
 
 /**
+ * 该次节点新增是否带进了插件根（或插件根所在的子树）。
+ * 主题探测用的临时元素自身造成的变更忽略，避免观察器自激。
+ */
+function addsPluginRoot(record: MutationRecord): boolean {
+	for (const node of Array.from(record.addedNodes)) {
+		if (node.nodeType !== 1) continue;
+		const el = node as Element;
+		if (el.hasAttribute(PROBE_ATTR) || el.closest(`[${PROBE_ATTR}]`)) continue;
+		if (el.matches(PLUGIN_ROOT_SELECTOR) || el.querySelector(PLUGIN_ROOT_SELECTOR)) return true;
+	}
+	return false;
+}
+
+/**
  * 启动主题监听：立即应用一次，并在宿主切换主题（<html data-mode> 变化）
  * 或系统外观变化时同步。
  *
@@ -186,18 +204,17 @@ export function initPluginTheme(): () => void {
 
 	const sync = () => applyPluginTheme();
 
-	// 只监听 <html> 上的主题信号。后挂载的插件根由 React 侧覆盖
-	// （工作台挂载时调用 applyPluginTheme），避免密集渲染期间反复查询 DOM。
+	// <html> 上的主题信号（data-mode / class / style）变化即重同步；body 里新增了
+	// 插件根（宿主每开一个面板都会新建一层 [data-astravia-plugin-root] 容器，
+	// 插入时机不受插件控制）时也要立刻补属性，否则那一屏会落到默认或系统色板。
+	// 其余渲染噪声直接跳过，避免密集渲染期间反复全量查询 DOM。
 	const observer =
-		typeof MutationObserver === "function" ? new MutationObserver(() => sync()) : null;
-	observer?.observe(document.documentElement, {
-		attributes: true,
-		attributeFilter: ["data-mode", "class", "style"],
-	});
 		typeof MutationObserver === "function"
-			? new MutationObserver(() => {
-					// 新挂载的插件根还没带属性，重新同步全部根元素
-					sync();
+			? new MutationObserver((records) => {
+					for (const record of records) {
+						if (record.type !== "childList") return sync();
+						if (addsPluginRoot(record)) return sync();
+					}
 				})
 			: null;
 	observer?.observe(document.documentElement, {

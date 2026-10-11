@@ -1,0 +1,64 @@
+{
+  "w": 300,
+  "h": 300,
+  "dataType": 1,
+  "timeOut": 0,
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "占比",
+      "value": 78
+    }
+  ],
+  "option": {
+    "outerCircle": {
+      "borderColor": "#5269EE",
+      "radius": 96
+    },
+    "polar": {
+      "outerRadius": 78,
+      "innerRadius": 88
+    },
+    "innerCircle": {
+      "borderColor": "#5269EE",
+      "borderWidth": 2,
+      "radius": 68
+    },
+    "subTitleStyle": {
+      "fontFamily": "DIGITALDREAMFAT",
+      "top": 56,
+      "fontSize": 26,
+      "fontGradient": {
+        "endColor": "#FF4500",
+        "type": "linear",
+        "enabled": true,
+        "startColor": "#FFD700",
+        "direction": "to bottom"
+      },
+      "fontColor": "#FFFFFF"
+    },
+    "backgroundStyle": {
+      "color": "#4242424D"
+    },
+    "titleStyle": {
+      "top": 43,
+      "letterSpacing": 2,
+      "fontSize": 24,
+      "fontGradient": {
+        "endColor": "#FFFFFF",
+        "enabled": false,
+        "startColor": "#000000"
+      },
+      "fontColor": "#BFBFBF"
+    }
+  }
+}

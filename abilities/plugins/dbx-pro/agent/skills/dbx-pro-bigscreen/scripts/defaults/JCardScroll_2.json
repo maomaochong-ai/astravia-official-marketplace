@@ -1,0 +1,252 @@
+{
+  "w": 430,
+  "h": 530,
+  "dataType": 1,
+  "timeOut": 0,
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "rank": 1,
+      "customerName": "北京华信科技有限公司",
+      "contractAmount": 8000
+    },
+    {
+      "rank": 2,
+      "customerName": "上海(中国)智远信息技术股份有限公司",
+      "contractAmount": 7800
+    },
+    {
+      "rank": 3,
+      "customerName": "深圳市鼎盛软件有限公司",
+      "contractAmount": 6880
+    },
+    {
+      "rank": 4,
+      "customerName": "广州恒信数据服务有限公司",
+      "contractAmount": 5600
+    },
+    {
+      "rank": 5,
+      "customerName": "杭州云帆科技发展有限公司",
+      "contractAmount": 4900
+    },
+    {
+      "rank": 6,
+      "customerName": "成都睿智科技有限公司",
+      "contractAmount": 4700
+    },
+    {
+      "rank": 7,
+      "customerName": "南京博思信息技术有限公司",
+      "contractAmount": 4500
+    },
+    {
+      "rank": 8,
+      "customerName": "苏州新创软件有限公司",
+      "contractAmount": 4200
+    },
+    {
+      "rank": 9,
+      "customerName": "重庆智联科技有限公司",
+      "contractAmount": 3900
+    },
+    {
+      "rank": 10,
+      "customerName": "武汉华腾信息技术有限公司",
+      "contractAmount": 3600
+    }
+  ],
+  "option": {
+    "showIndex": true,
+    "autoScrollEnabled": true,
+    "columnGap": 16,
+    "rowGap": 16,
+    "indexFieldStyle": {},
+    "contentFieldMapping": [
+      {
+        "valueStyle": {
+          "fontColor": "#FFFFFF",
+          "marginBottom": -3
+        },
+        "__system": true,
+        "nameStyle": {
+          "fontColor": "#FFFFFF",
+          "marginLeft": -5,
+          "marginRight": 18,
+          "fontGradient": {
+            "enabled": false,
+            "startColor": "#000000",
+            "endColor": "#FFFFFF"
+          }
+        },
+        "name": "序号",
+        "key": "__index__",
+        "itemConfig": {
+          "justifyContent": "center",
+          "width": 0,
+          "marginLeft": 6,
+          "marginRight": 0,
+          "marginBottom": 17,
+          "marginTop": 19,
+          "height": 72
+        },
+        "showLabel": false,
+        "valueCompose": {
+          "enabled": true,
+          "contentStyle": {
+            "fontColor": "#FFFFFF",
+            "fontSize": 16,
+            "marginRight": 9
+          },
+          "prefix": "入场序号：",
+          "prefixStyle": {
+            "fontColor": "#FFFFFF",
+            "fontGradient": {
+              "enabled": false,
+              "startColor": "#000000",
+              "endColor": "#FFFFFF"
+            },
+            "fontSize": 16
+          },
+          "suffix": "号",
+          "suffixStyle": {
+            "fontColor": "#FFFFFF",
+            "fontSize": 16
+          }
+        }
+      },
+      {
+        "itemConfig": {
+          "marginRight": 0,
+          "alignItems": "flex-start",
+          "width": 0,
+          "marginBottom": 4,
+          "layoutDirection": "row",
+          "justifyContent": "center",
+          "marginTop": 0,
+          "height": 73,
+          "marginLeft": 0
+        },
+        "valueStyle": {
+          "fontSize": 16,
+          "marginBottom": 4,
+          "fontColor": "#FFFFFF",
+          "fontWeight": "normal",
+          "height": 0,
+          "fontGradient": {
+            "enabled": true,
+            "startColor": "#FF6B6B",
+            "endColor": "#4ECDC4",
+            "type": "linear",
+            "direction": "to bottom"
+          }
+        },
+        "showValue": true,
+        "valueCompose": {
+          "contentStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "enabled": false
+        },
+        "nameStyle": {
+          "fontSize": 14,
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal"
+        },
+        "omitConfig": {
+          "show": true,
+          "lines": 3
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "name": "客户名称",
+        "thousandSeparatorConfig": {
+          "show": false
+        },
+        "key": "customerName",
+        "showLabel": false
+      },
+      {
+        "itemConfig": {
+          "marginRight": 0,
+          "alignItems": "center",
+          "width": 0,
+          "marginBottom": 0,
+          "layoutDirection": "column",
+          "justifyContent": "flex-start",
+          "marginTop": 0,
+          "height": 100,
+          "marginLeft": 0
+        },
+        "valueStyle": {
+          "fontSize": 20,
+          "marginBottom": 2,
+          "fontColor": "#40A9FF",
+          "fontWeight": "bold",
+          "fontGradient": {
+            "enabled": true,
+            "startColor": "#FFD700",
+            "endColor": "#FF4500",
+            "type": "linear",
+            "direction": "to bottom"
+          }
+        },
+        "showValue": true,
+        "valueCompose": {
+          "contentStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "suffixStyle": {
+            "fontSize": 14,
+            "fontColor": "#40A9FF"
+          },
+          "suffix": "万元",
+          "enabled": false
+        },
+        "nameStyle": {
+          "fontSize": 14,
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal",
+          "height": 0,
+          "marginBottom": 3
+        },
+        "omitConfig": {
+          "show": false,
+          "lines": 1
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "name": "市值(万元)",
+        "thousandSeparatorConfig": {
+          "show": true
+        },
+        "key": "contractAmount",
+        "showLabel": true
+      }
+    ],
+    "contentCurrent": 1,
+    "autoScrollSpeed": 100,
+    "animationDuration": 800,
+    "scrollDirection": "up",
+    "cardStyle": {
+      "backgroundColor": "#0648786E",
+      "borderColor": "#1890FF",
+      "backgroundImage": "",
+      "bgHighlightImage": "",
+      "paddingRight": 5,
+      "borderEnabled": true,
+      "paddingBottom": 5,
+      "borderRadius": 8,
+      "borderWidth": 1,
+      "width": 98,
+      "paddingTop": 5,
+      "borderStyle": "dashed",
+      "paddingLeft": 5,
+      "height": 250
+    },
+    "currentValue": 0,
+    "direction": "vertical"
+  }
+}

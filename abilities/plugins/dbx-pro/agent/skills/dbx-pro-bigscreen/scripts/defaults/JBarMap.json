@@ -1,0 +1,174 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "background": "#FFFFFF00",
+  "url": "http://api.jeecg.com/mock/33/radar",
+  "timeOut": 0,
+  "dataMapping": [
+    {
+      "filed": "区域",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "name": "北京",
+      "value": 900
+    },
+    {
+      "name": "山西",
+      "value": 1681
+    },
+    {
+      "name": "内蒙古",
+      "value": 47
+    },
+    {
+      "name": "辽宁",
+      "value": 1667
+    },
+    {
+      "name": "福建",
+      "value": 516
+    },
+    {
+      "name": "江西",
+      "value": 591
+    },
+    {
+      "name": "山东",
+      "value": 419
+    },
+    {
+      "name": "河南",
+      "value": 137
+    },
+    {
+      "name": "云南",
+      "value": 983
+    },
+    {
+      "name": "西藏",
+      "value": 9
+    },
+    {
+      "name": "陕西",
+      "value": 580
+    },
+    {
+      "name": "甘肃",
+      "value": 556
+    },
+    {
+      "name": "海南",
+      "value": 14
+    }
+  ],
+  "commonOption": {
+    "barSize": 12,
+    "barColor": "#D6F263",
+    "barColor2": "#A3DB6B",
+    "gradientColor": false,
+    "areaColor": {
+      "color1": "#132937"
+    },
+    "inRange": {
+      "color": [
+        "#04387b",
+        "#467bc0"
+      ]
+    },
+    "breadcrumb": {
+      "drillDown": false,
+      "textColor": "#ffffff"
+    }
+  },
+  "option": {
+    "drillDown": false,
+    "tooltip": {
+      "trigger": "item",
+      "show": false,
+      "enterable": true,
+      "textStyle": {
+        "fontSize": 20,
+        "color": "#fff"
+      },
+      "backgroundColor": "#000259CC",
+      "fieldMapping": []
+    },
+    "area": {
+      "markerCount": 5,
+      "shadowBlur": 10,
+      "markerOpacity": 1,
+      "markerColor": "#DDE330",
+      "shadowColor": "#DDE330",
+      "scatterLabelShow": false,
+      "markerType": "effectScatter",
+      "value": [
+        "china"
+      ],
+      "name": [
+        "中国"
+      ]
+    },
+    "graphic": [],
+    "grid": {
+      "show": false,
+      "bottom": 115
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "textStyle": {
+        "fontWeight": "normal"
+      },
+      "left": 10,
+      "show": true
+    },
+    "visualMap": {
+      "show": false,
+      "max": 200,
+      "seriesIndex": [
+        0
+      ]
+    },
+    "geo": {
+      "top": 30,
+      "roam": true,
+      "aspectScale": 0.96,
+      "zoom": 1,
+      "itemStyle": {
+        "normal": {
+          "borderColor": "#0692A4",
+          "borderWidth": 1,
+          "areaColor": "#37805B",
+          "shadowColor": "#80d9f8",
+          "shadowOffsetX": 0,
+          "shadowOffsetY": 0,
+          "shadowBlur": 0
+        },
+        "emphasis": {
+          "areaColor": "#fff59c"
+        }
+      }
+    },
+    "series ": []
+  }
+}

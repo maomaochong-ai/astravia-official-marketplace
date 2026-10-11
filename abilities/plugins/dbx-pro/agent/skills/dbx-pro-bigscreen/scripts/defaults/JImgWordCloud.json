@@ -1,0 +1,765 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "value": 9,
+      "name": "AntV"
+    },
+    {
+      "value": 8,
+      "name": "F2"
+    },
+    {
+      "value": 8,
+      "name": "G2"
+    },
+    {
+      "value": 8,
+      "name": "G6"
+    },
+    {
+      "value": 8,
+      "name": "DataSet"
+    },
+    {
+      "value": 8,
+      "name": "墨者学院"
+    },
+    {
+      "value": 6,
+      "name": "Analysis"
+    },
+    {
+      "value": 6,
+      "name": "Data Mining"
+    },
+    {
+      "value": 6,
+      "name": "Data Vis"
+    },
+    {
+      "value": 6,
+      "name": "Design"
+    },
+    {
+      "value": 6,
+      "name": "Grammar"
+    },
+    {
+      "value": 6,
+      "name": "Graphics"
+    },
+    {
+      "value": 6,
+      "name": "Graph"
+    },
+    {
+      "value": 6,
+      "name": "Hierarchy"
+    },
+    {
+      "value": 6,
+      "name": "Labeling"
+    },
+    {
+      "value": 6,
+      "name": "Layout"
+    },
+    {
+      "value": 6,
+      "name": "Quantitative"
+    },
+    {
+      "value": 6,
+      "name": "Relation"
+    },
+    {
+      "value": 6,
+      "name": "Statistics"
+    },
+    {
+      "value": 6,
+      "name": "可视化"
+    },
+    {
+      "value": 6,
+      "name": "数据"
+    },
+    {
+      "value": 6,
+      "name": "数据可视化"
+    },
+    {
+      "value": 4,
+      "name": "Arc Diagram"
+    },
+    {
+      "value": 4,
+      "name": "Bar Chart"
+    },
+    {
+      "value": 4,
+      "name": "Canvas"
+    },
+    {
+      "value": 4,
+      "name": "Chart"
+    },
+    {
+      "value": 4,
+      "name": "DAG"
+    },
+    {
+      "value": 4,
+      "name": "DG"
+    },
+    {
+      "value": 4,
+      "name": "Facet"
+    },
+    {
+      "value": 4,
+      "name": "Geo"
+    },
+    {
+      "value": 4,
+      "name": "Line"
+    },
+    {
+      "value": 4,
+      "name": "MindMap"
+    },
+    {
+      "value": 4,
+      "name": "Pie"
+    },
+    {
+      "value": 4,
+      "name": "Pizza Chart"
+    },
+    {
+      "value": 4,
+      "name": "Punch Card"
+    },
+    {
+      "value": 4,
+      "name": "SVG"
+    },
+    {
+      "value": 4,
+      "name": "Sunburst"
+    },
+    {
+      "value": 4,
+      "name": "Tree"
+    },
+    {
+      "value": 4,
+      "name": "UML"
+    },
+    {
+      "value": 3,
+      "name": "Chart"
+    },
+    {
+      "value": 3,
+      "name": "View"
+    },
+    {
+      "value": 3,
+      "name": "Geom"
+    },
+    {
+      "value": 3,
+      "name": "Shape"
+    },
+    {
+      "value": 3,
+      "name": "Scale"
+    },
+    {
+      "value": 3,
+      "name": "Animate"
+    },
+    {
+      "value": 3,
+      "name": "Global"
+    },
+    {
+      "value": 3,
+      "name": "Slider"
+    },
+    {
+      "value": 3,
+      "name": "Connector"
+    },
+    {
+      "value": 3,
+      "name": "Transform"
+    },
+    {
+      "value": 3,
+      "name": "Util"
+    },
+    {
+      "value": 3,
+      "name": "DomUtil"
+    },
+    {
+      "value": 3,
+      "name": "MatrixUtil"
+    },
+    {
+      "value": 3,
+      "name": "PathUtil"
+    },
+    {
+      "value": 3,
+      "name": "G"
+    },
+    {
+      "value": 3,
+      "name": "2D"
+    },
+    {
+      "value": 3,
+      "name": "3D"
+    },
+    {
+      "value": 3,
+      "name": "Line"
+    },
+    {
+      "value": 3,
+      "name": "Area"
+    },
+    {
+      "value": 3,
+      "name": "Interval"
+    },
+    {
+      "value": 3,
+      "name": "Schema"
+    },
+    {
+      "value": 3,
+      "name": "Edge"
+    },
+    {
+      "value": 3,
+      "name": "Polygon"
+    },
+    {
+      "value": 3,
+      "name": "Heatmap"
+    },
+    {
+      "value": 3,
+      "name": "Render"
+    },
+    {
+      "value": 3,
+      "name": "Tooltip"
+    },
+    {
+      "value": 3,
+      "name": "Axis"
+    },
+    {
+      "value": 3,
+      "name": "Guide"
+    },
+    {
+      "value": 3,
+      "name": "Coord"
+    },
+    {
+      "value": 3,
+      "name": "Legend"
+    },
+    {
+      "value": 3,
+      "name": "Path"
+    },
+    {
+      "value": 3,
+      "name": "Helix"
+    },
+    {
+      "value": 3,
+      "name": "Theta"
+    },
+    {
+      "value": 3,
+      "name": "Rect"
+    },
+    {
+      "value": 3,
+      "name": "Polar"
+    },
+    {
+      "value": 3,
+      "name": "Dsv"
+    },
+    {
+      "value": 3,
+      "name": "Csv"
+    },
+    {
+      "value": 3,
+      "name": "Tsv"
+    },
+    {
+      "value": 3,
+      "name": "GeoJSON"
+    },
+    {
+      "value": 3,
+      "name": "TopoJSON"
+    },
+    {
+      "value": 3,
+      "name": "Filter"
+    },
+    {
+      "value": 3,
+      "name": "Map"
+    },
+    {
+      "value": 3,
+      "name": "Pick"
+    },
+    {
+      "value": 3,
+      "name": "Rename"
+    },
+    {
+      "value": 3,
+      "name": "Filter"
+    },
+    {
+      "value": 3,
+      "name": "Map"
+    },
+    {
+      "value": 3,
+      "name": "Pick"
+    },
+    {
+      "value": 3,
+      "name": "Rename"
+    },
+    {
+      "value": 3,
+      "name": "Reverse"
+    },
+    {
+      "value": 3,
+      "name": "sort"
+    },
+    {
+      "value": 3,
+      "name": "Subset"
+    },
+    {
+      "value": 3,
+      "name": "Partition"
+    },
+    {
+      "value": 3,
+      "name": "Imputation"
+    },
+    {
+      "value": 3,
+      "name": "Fold"
+    },
+    {
+      "value": 3,
+      "name": "Aggregate"
+    },
+    {
+      "value": 3,
+      "name": "Proportion"
+    },
+    {
+      "value": 3,
+      "name": "Histogram"
+    },
+    {
+      "value": 3,
+      "name": "Quantile"
+    },
+    {
+      "value": 3,
+      "name": "Treemap"
+    },
+    {
+      "value": 3,
+      "name": "Hexagon"
+    },
+    {
+      "value": 3,
+      "name": "Binning"
+    },
+    {
+      "value": 3,
+      "name": "kernel"
+    },
+    {
+      "value": 3,
+      "name": "Regression"
+    },
+    {
+      "value": 3,
+      "name": "Density"
+    },
+    {
+      "value": 3,
+      "name": "Sankey"
+    },
+    {
+      "value": 3,
+      "name": "Voronoi"
+    },
+    {
+      "value": 3,
+      "name": "Projection"
+    },
+    {
+      "value": 3,
+      "name": "Centroid"
+    },
+    {
+      "value": 3,
+      "name": "H5"
+    },
+    {
+      "value": 3,
+      "name": "Mobile"
+    },
+    {
+      "value": 3,
+      "name": "K线图"
+    },
+    {
+      "value": 3,
+      "name": "关系图"
+    },
+    {
+      "value": 3,
+      "name": "烛形图"
+    },
+    {
+      "value": 3,
+      "name": "股票图"
+    },
+    {
+      "value": 3,
+      "name": "直方图"
+    },
+    {
+      "value": 3,
+      "name": "金字塔图"
+    },
+    {
+      "value": 3,
+      "name": "分面"
+    },
+    {
+      "value": 3,
+      "name": "南丁格尔玫瑰图"
+    },
+    {
+      "value": 3,
+      "name": "饼图"
+    },
+    {
+      "value": 3,
+      "name": "线图"
+    },
+    {
+      "value": 3,
+      "name": "点图"
+    },
+    {
+      "value": 3,
+      "name": "散点图"
+    },
+    {
+      "value": 3,
+      "name": "子弹图"
+    },
+    {
+      "value": 3,
+      "name": "柱状图"
+    },
+    {
+      "value": 3,
+      "name": "仪表盘"
+    },
+    {
+      "value": 3,
+      "name": "气泡图"
+    },
+    {
+      "value": 3,
+      "name": "漏斗图"
+    },
+    {
+      "value": 3,
+      "name": "热力图"
+    },
+    {
+      "value": 3,
+      "name": "玉玦图"
+    },
+    {
+      "value": 3,
+      "name": "直方图"
+    },
+    {
+      "value": 3,
+      "name": "矩形树图"
+    },
+    {
+      "value": 3,
+      "name": "箱形图"
+    },
+    {
+      "value": 3,
+      "name": "色块图"
+    },
+    {
+      "value": 3,
+      "name": "螺旋图"
+    },
+    {
+      "value": 3,
+      "name": "词云"
+    },
+    {
+      "value": 3,
+      "name": "词云图"
+    },
+    {
+      "value": 3,
+      "name": "雷达图"
+    },
+    {
+      "value": 3,
+      "name": "面积图"
+    },
+    {
+      "value": 3,
+      "name": "马赛克图"
+    },
+    {
+      "value": 3,
+      "name": "盒须图"
+    },
+    {
+      "value": 3,
+      "name": "坐标轴"
+    },
+    {
+      "value": 3,
+      "name": ""
+    },
+    {
+      "value": 3,
+      "name": "Jacques Bertin"
+    },
+    {
+      "value": 3,
+      "name": "Leland Wilkinson"
+    },
+    {
+      "value": 3,
+      "name": "William Playfair"
+    },
+    {
+      "value": 3,
+      "name": "关联"
+    },
+    {
+      "value": 3,
+      "name": "分布"
+    },
+    {
+      "value": 3,
+      "name": "区间"
+    },
+    {
+      "value": 3,
+      "name": "占比"
+    },
+    {
+      "value": 3,
+      "name": "地图"
+    },
+    {
+      "value": 3,
+      "name": "时间"
+    },
+    {
+      "value": 3,
+      "name": "比较"
+    },
+    {
+      "value": 3,
+      "name": "流程"
+    },
+    {
+      "value": 3,
+      "name": "趋势"
+    },
+    {
+      "value": 2,
+      "name": "亦叶"
+    },
+    {
+      "value": 2,
+      "name": "再飞"
+    },
+    {
+      "value": 2,
+      "name": "完白"
+    },
+    {
+      "value": 2,
+      "name": "巴思"
+    },
+    {
+      "value": 2,
+      "name": "张初尘"
+    },
+    {
+      "value": 2,
+      "name": "御术"
+    },
+    {
+      "value": 2,
+      "name": "有田"
+    },
+    {
+      "value": 2,
+      "name": "沉鱼"
+    },
+    {
+      "value": 2,
+      "name": "玉伯"
+    },
+    {
+      "value": 2,
+      "name": "画康"
+    },
+    {
+      "value": 2,
+      "name": "祯逸"
+    },
+    {
+      "value": 2,
+      "name": "绝云"
+    },
+    {
+      "value": 2,
+      "name": "罗宪"
+    },
+    {
+      "value": 2,
+      "name": "萧庆"
+    },
+    {
+      "value": 2,
+      "name": "董珊珊"
+    },
+    {
+      "value": 2,
+      "name": "陆沉"
+    },
+    {
+      "value": 2,
+      "name": "顾倾"
+    },
+    {
+      "value": 2,
+      "name": "Domo"
+    },
+    {
+      "value": 2,
+      "name": "GPL"
+    },
+    {
+      "value": 2,
+      "name": "PAI"
+    },
+    {
+      "value": 2,
+      "name": "SPSS"
+    },
+    {
+      "value": 2,
+      "name": "SYSTAT"
+    },
+    {
+      "value": 2,
+      "name": "Tableau"
+    },
+    {
+      "value": 2,
+      "name": "D3"
+    },
+    {
+      "value": 2,
+      "name": "Vega"
+    },
+    {
+      "value": 2,
+      "name": "统计图表"
+    }
+  ],
+  "option": {
+    "fontFamily": "SimSun",
+    "color": "#FFE472",
+    "minFontSize": 8,
+    "maxFontSize": 32,
+    "padding": 1,
+    "rotation": 0,
+    "imageMask": "data:image/png;base64,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",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

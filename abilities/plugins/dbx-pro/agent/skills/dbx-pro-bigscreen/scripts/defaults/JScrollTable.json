@@ -1,0 +1,118 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "syncColumn": false,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "name": "张三",
+      "age": 18,
+      "gender": "男"
+    },
+    {
+      "name": "李四",
+      "age": 20,
+      "gender": "女"
+    },
+    {
+      "name": "王五",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "赵六",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "王思聪",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "王健林",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "马云",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "马化腾",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "马1",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "马2",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "马3",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "马4",
+      "age": 22,
+      "gender": "男"
+    },
+    {
+      "name": "马5",
+      "age": 22,
+      "gender": "男"
+    }
+  ],
+  "option": {
+    "ranking": false,
+    "rankingTitle": "#",
+    "textPosition": "center",
+    "lineHeight": 50,
+    "fontSize": 24,
+    "bodyFontSize": 24,
+    "scrollTime": 50,
+    "scroll": false,
+    "showBorder": false,
+    "borderWidth": 1,
+    "borderColor": "#fff",
+    "borderStyle": "solid",
+    "showHead": true,
+    "bodyFontColor": "#fff",
+    "oddColor": "#0a2732",
+    "evenColor": "#003b51",
+    "headerBgColor": "#0a73ff",
+    "headerFontColor": "#ffffff",
+    "fieldMapping": [
+      {
+        "name": "名称",
+        "key": "name",
+        "width": 0
+      },
+      {
+        "name": "年龄",
+        "key": "age",
+        "width": 0
+      },
+      {
+        "name": "性别",
+        "key": "gender",
+        "width": 0
+      }
+    ]
+  }
+}

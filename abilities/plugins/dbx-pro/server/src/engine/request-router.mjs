@@ -807,18 +807,19 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
     // 与 jeecgboot-skills 的 Python scripts 调 /jmreport/* API 同构，dbx-pro 品牌化后
     // 是 mjs scripts 调 /api/bigscreen/* /api/report/* 等。
 
-    // --- Bigscreen / Dashboard ---
-    ["/api/bigscreen/generate", "POST", false, async ({ body }) => {
-      const spec = body?.spec;
-      if (!spec) throw engineError("BAD_REQUEST", "spec is required");
-      const { components, palette } = compileBigscreen(spec);
-      const html = generateBigscreenHtml(spec, { engine: body?.engine ?? "echarts" });
-      return { html, components, palette, templateId: body?.templateId ?? null };
-    }],
+    // --- Bigscreen / Dashboard（JimuBI 同构 API：返回组件 JSON，不是 HTML）---
     ["/api/bigscreen/compile", "POST", false, async ({ body }) => {
       const spec = body?.spec;
       if (!spec) throw engineError("BAD_REQUEST", "spec is required");
-      return compileBigscreen(spec);
+      const result = compileBigscreen(spec);
+      // 前端/Agent 拿到 components[*].cfg 就是 JimuBI 标准组件 JSON（w/h/dataType/chartData/option/chart/...）
+      return result;
+    }],
+    ["/api/bigscreen/render", "POST", false, async ({ body }) => {
+      // 调试/预览用：返回 HTML（不是主流程！主流程走 compile 拿组件 JSON）
+      const spec = body?.spec;
+      if (!spec) throw engineError("BAD_REQUEST", "spec is required");
+      return { html: generateBigscreenHtml(spec) };
     }],
     ["/api/bigscreen/templates", "GET", false, async () => {
       // 模板清单硬编码（server/engine/templates/ 目录下的 JSON 文件名）

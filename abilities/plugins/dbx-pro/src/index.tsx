@@ -24,13 +24,15 @@ import "./features/database-workspace/styles/sql-editor.css";
 import "./features/database-workspace/styles/ai-dialog.css";
 import "./features/database-workspace/styles/table-info.css";
 import "./features/database-workspace/styles/panels.css";
+import { PluginRoot } from "./shared/components/plugin-root";
 import { initPluginTheme } from "./shared/theme/plugin-theme";
 import { PLUGIN_VERSION } from "./domain/plugin-version";
 
 export { PLUGIN_VERSION };
 
 // 主题信号：把 data-dbx-theme 写到插件根元素上，CSS 令牌层据此切换明暗。
-// 必须早于 React 挂载，否则首帧会按默认色板渲染一次。
+// 这里在 React 挂载前先写一次；各插件根再由 PluginRoot 在渲染时同步该属性——
+// 加载态 / 错误态没有挂载副作用可用，只靠副作用补会让首帧落到默认色板。
 initPluginTheme();
 
 /** 当前实例 ID，用于区分新旧实例的 DOM 元素 */
@@ -42,8 +44,10 @@ let _instanceId = 0;
  */
 function PanelLoading(): ReactElement {
 	return (
-		<div data-astravia-plugin-root="dbx-pro" className="dbx-root dbx-loading-screen flex h-full w-full flex-col items-center justify-center bg-background text-foreground"
-			 style={{ contain: "layout style paint" }}>
+		<PluginRoot
+			className="dbx-root dbx-loading-screen flex h-full w-full flex-col items-center justify-center bg-background text-foreground"
+			style={{ contain: "layout style paint" }}
+		>
 			<div className="dbx-loading-content">
 				<div className="dbx-loading-spinner">
 					<span className="icon-[lucide--database] h-8 w-8 animate-pulse text-muted-foreground" />
@@ -51,7 +55,7 @@ function PanelLoading(): ReactElement {
 				<span className="dbx-loading-text text-[12px] text-muted-foreground">正在加载数据库工作台…</span>
 				<span className="dbx-loading-version text-[10px] text-muted-foreground/60">v{PLUGIN_VERSION}</span>
 			</div>
-		</div>
+		</PluginRoot>
 	);
 }
 
@@ -66,8 +70,10 @@ class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
 			const isActivationError = this.state.error?.message?.includes("no longer active") ||
 				this.state.error?.name === "AbortError";
 			return (
-				<div data-astravia-plugin-root="dbx-pro" className="dbx-root flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-[12px] text-muted-foreground"
-						 style={{ contain: "layout style paint" }}>
+				<PluginRoot
+					className="dbx-root flex h-full w-full flex-col items-center justify-center gap-3 bg-background text-[12px] text-muted-foreground"
+					style={{ contain: "layout style paint" }}
+				>
 					<span className="icon-[lucide--alert-circle] h-6 w-6 text-destructive" />
 					<span>{isActivationError ? "插件正在更新中" : "工作台加载失败"}</span>
 					{this.state.error && !isActivationError && (
@@ -87,7 +93,7 @@ class PanelErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
 						</button>
 					)}
 					<span className="text-[10px] text-muted-foreground/40">v{PLUGIN_VERSION}</span>
-				</div>
+				</PluginRoot>
 			);
 		}
 		return this.props.children;

@@ -10,6 +10,7 @@
  */
 
 import { useEffect, useState, type JSX } from "react";
+import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
 import { engineHealth } from "../../../shared/services/engine-client";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 import { ConnectionEditorFlow } from "./connection-editor-flow";
@@ -17,6 +18,7 @@ import { ConnectionEditorFlow } from "./connection-editor-flow";
 type EngineState = "checking" | "running" | "unavailable";
 
 export function ConnectionManagerView(): JSX.Element {
+	const theme = useDetectedTheme();
 	const [engineState, setEngineState] = useState<EngineState>("checking");
 	const [engineVersion, setEngineVersion] = useState<string | null>(null);
 
@@ -46,6 +48,7 @@ export function ConnectionManagerView(): JSX.Element {
 	return (
 		<div
 			data-astravia-plugin-root="dbx-pro"
+			data-dbx-theme={theme}
 			className="dbx-root flex h-full min-h-0 flex-col bg-surface text-surface-foreground"
 		>
 			{/* 工作台状态位：与设计稿顶栏的引擎指示同一语义 */}

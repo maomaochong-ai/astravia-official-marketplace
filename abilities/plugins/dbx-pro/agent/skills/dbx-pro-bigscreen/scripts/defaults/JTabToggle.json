@@ -1,0 +1,119 @@
+{
+  "w": 680,
+  "h": 70,
+  "dataType": 1,
+  "containDataType": [
+    1
+  ],
+  "timeOut": 0,
+  "dataMapping": [
+    {
+      "filed": "文本",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "label": "总览图",
+      "value": "1"
+    },
+    {
+      "label": "产城业务板块",
+      "value": "2"
+    },
+    {
+      "label": "产融业务板块",
+      "value": "3"
+    },
+    {
+      "label": "环投业务板块",
+      "value": "4"
+    },
+    {
+      "label": "建设业务板块",
+      "value": "5"
+    }
+  ],
+  "option": {
+    "personalizedMode": false,
+    "currentValue": null,
+    "normal": {
+      "fontSize": 20,
+      "color": "#d8d8d8",
+      "backgroundColor": "#3a414d",
+      "borderColor": "#0692A4",
+      "borderWidth": 0,
+      "imgUrl": "",
+      "backgroundSize": "contain",
+      "backgroundRepeat": "no-repeat",
+      "backgroundPosition": "center center",
+      "gradient": {
+        "enabled": true,
+        "type": "linear",
+        "direction": "to bottom",
+        "startColor": "#00d4ff",
+        "endColor": "#0066cc"
+      }
+    },
+    "active": {
+      "fontSize": 24,
+      "color": "#ffffff",
+      "backgroundColor": "#0a73ff",
+      "borderColor": "#0692A4",
+      "borderWidth": 0,
+      "imgUrl": "",
+      "backgroundSize": "contain",
+      "backgroundRepeat": "no-repeat",
+      "backgroundPosition": "center center",
+      "gradient": {
+        "enabled": true,
+        "type": "linear",
+        "direction": "to bottom",
+        "startColor": "#ffcc00",
+        "endColor": "#ff6600"
+      }
+    },
+    "items": [
+      {
+        "value": "1",
+        "label": "总览图",
+        "normalImgUrl": "",
+        "activeImgUrl": "",
+        "width": 98,
+        "compVals": []
+      },
+      {
+        "value": "2",
+        "label": "产城业务板块",
+        "normalImgUrl": "",
+        "activeImgUrl": "",
+        "compVals": []
+      },
+      {
+        "value": "3",
+        "label": "产融业务板块",
+        "normalImgUrl": "",
+        "activeImgUrl": "",
+        "compVals": []
+      },
+      {
+        "value": "4",
+        "label": "环投业务板块",
+        "normalImgUrl": "",
+        "activeImgUrl": "",
+        "compVals": []
+      },
+      {
+        "value": "5",
+        "label": "建设业务板块",
+        "normalImgUrl": "",
+        "activeImgUrl": "",
+        "compVals": []
+      }
+    ]
+  }
+}

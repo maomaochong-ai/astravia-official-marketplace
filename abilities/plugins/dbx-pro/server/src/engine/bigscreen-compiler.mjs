@@ -1,260 +1,647 @@
 /**
- * bigscreen-compiler —— Jimubi 紧凑 spec → ECharts option + HTML
+ * bigscreen-compiler —— Jimubi 紧凑 spec → **JimuBI 兼容组件 JSON**
  *
- * 从 src/tools/dbx-bigscreen-builder.ts 核心逻辑移植过来（mjs 格式）。
- * server 端 HTTP API 层和 Astravia Agent 工具注册层都 import 这份。
+ * 与 JeecgBoot jimubi-bigscreen 的 Python spec_builder.py 同构：
+ *   AI 输出紧凑 JSON spec → compile_component 分发 → SPECIAL_HANDLERS / 通用路径
+ *   → load defaults/*.json → 合并 chartData → 应用 ECharts theme → 返回完整组件 JSON
  *
- * 职责：接收 compact spec → defaults 展开 → handler 路由 → palette 应用 → pitfall 防呆 → 输出 BuiltComponent[] + 完整 HTML。
+ * 组件 JSON 结构严格对齐 JimuBI defaults/*.json（大屏模式）：
+ *   { w, h, dataType, chartData, option, chart: { subclass, category },
+ *     url, timeOut, turnConfig, linkType, linkageConfig, markLineConfig, dataMapping,
+ *     background, borderColor }
+ *
+ * 为什么不返回 HTML：JimuBI 流程是"组件 JSON → 存储 → 前端渲染"，dbx-pro 必须同构。
+ * generateBigscreenHtml() 保留作调试/预览工具（不是主流程）。
  */
 
-// ============ Palettes ============
+import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ============ 路径与缓存 ============
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DEFAULTS_DIR = join(__dirname, "..", "..", "agent", "skills", "dbx-pro-bigscreen", "scripts", "defaults");
+
+/** defaults/*.json 首次读盘后常驻深拷贝缓存（与 JeecgBoot 同策略）。 */
+const DEFAULTS_CACHE = new Map();
+
+function loadDef(compKey) {
+	let cached = DEFAULTS_CACHE.get(compKey);
+	if (cached === undefined) {
+		const path = join(DEFAULTS_DIR, `${compKey}.json`);
+		if (!existsSync(path)) { cached = null; DEFAULTS_CACHE.set(compKey, null); return null; }
+		cached = JSON.parse(readFileSync(path, "utf-8"));
+		DEFAULTS_CACHE.set(compKey, cached);
+	}
+	if (!cached) return null;
+	return JSON.parse(JSON.stringify(cached)); // deep copy
+}
+
+// ============ Palettes（扩展到 6 套，JeecgBoot 只有 1 套 bg4）============
 const PALETTES = {
-	tech: { title: "#f0c040", subtitle: "#00d4ff", label: "#ffffff", value: "#d4e8ff", axis: "#8ab8d0", axisLine: "#1a3a5a", gridline: "#1a3a5a55", tooltipBg: "#0b1e3acc", tooltipTxt: "#e0f0ff", colors: ["#00d4ff", "#f0c040", "#ff6b6b", "#7ee8a2", "#ffa726", "#8ab8d0", "#00ffc8", "#d4a6ff"] },
-	"tech-blue": { title: "#00d4ff", subtitle: "#0099cc", label: "#ffffff", value: "#e0f7ff", axis: "#80c8ff", axisLine: "#003355", gridline: "#00446644", tooltipBg: "#002244cc", tooltipTxt: "#c0e8ff", colors: ["#00d4ff", "#0099cc", "#006699", "#00ccff", "#00ffff", "#80d4ff", "#c0e8ff", "#ffffff"] },
-	gov: { title: "#ffd700", subtitle: "#00d4ff", label: "#ffffff", value: "#d4e8ff", axis: "#5a7a9a", axisLine: "#0a1a2a", gridline: "#1a3a5a44", tooltipBg: "#0a1a2acc", tooltipTxt: "#e0f0ff", colors: ["#ffd700", "#00d4ff", "#1e90ff", "#4169e1", "#6495ed", "#87ceeb", "#b0c4de", "#dda0dd"] },
-	biz: { title: "#00bcd4", subtitle: "#26c6da", label: "#e0f7fa", value: "#b2ebf2", axis: "#4dd0e1", axisLine: "#006064", gridline: "#00838f44", tooltipBg: "#004d4dcc", tooltipTxt: "#e0f7fa", colors: ["#00bcd4", "#26c6da", "#4dd0e1", "#00acc1", "#0097a7", "#00838f", "#80deea", "#b2ebf2"] },
-	retro: { title: "#ffd700", subtitle: "#ff8c00", label: "#2d1810", value: "#4a2c1e", axis: "#8b6914", axisLine: "#3d2914", gridline: "#5a3a2a44", tooltipBg: "#2d1810cc", tooltipTxt: "#ffe0b2", colors: ["#8b0000", "#ff4500", "#ff8c00", "#ffd700", "#b8860b", "#cd853f", "#deb887", "#daa520"] },
-	medical: { title: "#4caf50", subtitle: "#8bc34a", label: "#ffffff", value: "#e8f5e9", axis: "#81c784", axisLine: "#1b5e20", gridline: "#2e7d3244", tooltipBg: "#1b5e20cc", tooltipTxt: "#e8f5e9", colors: ["#4caf50", "#8bc34a", "#cddc39", "#00bcd4", "#ffffff", "#81c784", "#a5d6a7", "#c8e6c9"] },
-	financial: { title: "#ffc107", subtitle: "#ff9800", label: "#ffffff", value: "#e3f2fd", axis: "#64b5f6", axisLine: "#0d47a1", gridline: "#1565c044", tooltipBg: "#0d47a1cc", tooltipTxt: "#bbdefb", colors: ["#ffc107", "#ff9800", "#ff5722", "#0d47a1", "#1976d2", "#2196f3", "#64b5f6", "#90caf9"] },
+	tech:     { title: "#f0c040", subtitle: "#00d4ff", label: "#ffffff", value: "#d4e8ff", axis: "#8ab8d0", axisLine: "#1a3a5a", gridline: "#1a3a5a55", tooltipBg: "#0b1e3acc", tooltipTxt: "#e0f0ff", colors: ["#00d4ff","#f0c040","#ff6b6b","#7ee8a2","#ffa726","#8ab8d0","#00ffc8","#d4a6ff"] },
+	gov:      { title: "#ffd700", subtitle: "#00d4ff", label: "#ffffff", value: "#d4e8ff", axis: "#5a7a9a", axisLine: "#0a1a2a", gridline: "#1a3a5a44", tooltipBg: "#0a1a2acc", tooltipTxt: "#e0f0ff", colors: ["#ffd700","#00d4ff","#1e90ff","#4169e1","#6495ed","#87ceeb","#b0c4de","#dda0dd"] },
+	biz:      { title: "#00bcd4", subtitle: "#26c6da", label: "#e0f7fa", value: "#b2ebf2", axis: "#4dd0e1", axisLine: "#006064", gridline: "#00838f44", tooltipBg: "#004d4dcc", tooltipTxt: "#e0f7fa", colors: ["#00bcd4","#26c6da","#4dd0e1","#00acc1","#0097a7","#00838f","#80deea","#b2ebf2"] },
+	retro:    { title: "#ffd700", subtitle: "#ff8c00", label: "#2d1810", value: "#4a2c1e", axis: "#8b6914", axisLine: "#3d2914", gridline: "#5a3a2a44", tooltipBg: "#2d1810cc", tooltipTxt: "#ffe0b2", colors: ["#8b0000","#ff4500","#ff8c00","#ffd700","#b8860b","#cd853f","#deb887","#daa520"] },
+	medical:  { title: "#4caf50", subtitle: "#8bc34a", label: "#ffffff", value: "#e8f5e9", axis: "#81c784", axisLine: "#1b5e20", gridline: "#2e7d3244", tooltipBg: "#1b5e20cc", tooltipTxt: "#e8f5e9", colors: ["#4caf50","#8bc34a","#cddc39","#00bcd4","#ffffff","#81c784","#a5d6a7","#c8e6c9"] },
+	financial:{ title: "#ffc107", subtitle: "#ff9800", label: "#ffffff", value: "#e3f2fd", axis: "#64b5f6", axisLine: "#0d47a1", gridline: "#1565c044", tooltipBg: "#0d47a1cc", tooltipTxt: "#bbdefb", colors: ["#ffc107","#ff9800","#ff5722","#0d47a1","#1976d2","#2196f3","#64b5f6","#90caf9"] },
+};
+PALETTES.dark = PALETTES.tech;  // 别名
+PALETTES.bg4  = PALETTES.tech;  // 兼容 JeecgBoot 的 bg4
+PALETTES.light = { ...PALETTES.biz };
+
+// ============ 组件分类（完整对标 bi-component-types.md）============
+// 轴类图表（ECharts cartesian，需 xAxis/yAxis 主题注入）
+const ECHARTS_CARTESIAN = new Set([
+	"JBar","JStackBar","JHorizontalBar","JBackgroundBar","JDynamicBar",
+	"JMultipleBar","JNegativeBar","JPercentBar","JMixLineBar",
+	"JLine","JSmoothLine","JStepLine","JArea","JMultipleLine","DoubleLineBar",
+	"JScatter","JQuadrant","JBubble",
+]);
+// 极坐标图表（无 xAxis/yAxis）
+const ECHARTS_POLAR = new Set([
+	"JPie","JRose","JRotatePie","JRing","JBreakRing","JActiveRing",
+	"JRadialBar","JRadar","JCircleRadar","JFunnel","JPyramidFunnel",
+]);
+// 仪表盘
+const ECHARTS_GAUGE = new Set(["JGauge","JColorGauge","JAntvGauge","JSemiGauge"]);
+// 地图（需 GeoJSON → dbx-pro 用 ECharts map 系列 + registerMap）
+const ECHARTS_MAP = new Set(["JBubbleMap","JFlyLineMap","JBarMap","JTotalFlyLineMap","JTotalBarMap","JHeatMap","JAreaMap","JGaoDeMap"]);
+// 3D
+const ECHARTS_3D = new Set(["JBar3d","JBarGroup3d","JPyramid3D"]);
+// 进度图
+const PROGRESS_COMPS = new Set(["JCustomProgress","JProgress","JListProgress","JRoundProgress","JLiquid","JCapsuleChart","JRingProgress"]);
+// 表格
+const TABLE_COMPS = new Set(["JScrollBoard","JScrollTable","JScrollList","JScrollRankingBoard","JFlashList","JBubbleRank","JDevHistory","JCommonTable","JList"]);
+// 文字/装饰
+const TEXT_COMPS = new Set(["JText","JCountTo","JNumber","JColorBlock","JCurrentTime","JOrbitRing","JWordCloud","JImgWordCloud","JFlashCloud","JPermanentCalendar","JGender","JRectangle"]);
+// 装饰 wrapper
+const DECOR_COMPS = new Set(["JDragDecoration","JDragBorder","JImg","JCarousel","JCustomIcon","JCardScroll","JCardCarousel","JCardScroll_1","JCardScroll_2","JCardScroll_3","JStatsSummary","JStatsSummary_1","JStatsSummary_2","JStatsSummary_3"]);
+// 交互/表单/视频/其他
+const OTHER_COMPS = new Set(["JSelectRadio","JTabToggle","JForm","JIframe","JRadioButton","JDragEditor","JCommon","JCustomEchart","JVideoPlay","JVideoJs","JWeatherForecast","JWeatherForecast_带背景","JWeatherForecast_好123版","JWeatherForecast_横线版","JWeatherForecast_列表文字版","JWeatherForecast_温度计版","JPictorialBar","JPictorial","JCustomProgress"]);
+
+// 大屏不支持的组件（同 JeecgBoot DISABLED_COMPONENTS）
+const DISABLED_COMPONENTS = new Set(["JRankingList","JTotalProgress","JPivotTable","JFly3dMap"]);
+
+// ============ 城市坐标（JFlyLineMap 用）============
+const CITY_COORDS = {
+	"北京":[116.4074,39.9042],"上海":[121.4737,31.2304],"深圳":[114.0579,22.5431],
+	"广州":[113.2644,23.1291],"杭州":[120.1551,30.2741],"成都":[104.0657,30.6586],
+	"武汉":[114.2734,30.5801],"西安":[108.9541,34.2658],"重庆":[106.5049,29.5331],
+	"天津":[117.1901,39.0851],"南京":[118.7969,32.0603],"苏州":[120.5853,31.2990],
+	"青岛":[120.3826,36.0671],"大连":[121.6147,38.9140],"厦门":[118.0894,24.4798],
+	"长沙":[112.9388,28.2278],"郑州":[113.6253,34.7466],"济南":[117.1201,36.6512],
+	"沈阳":[123.4315,41.8057],"哈尔滨":[126.5349,45.8038],"昆明":[102.8329,24.8801],
+	"贵阳":[106.6302,26.6477],"南昌":[115.8921,28.6765],"合肥":[117.2830,31.8612],
+	"石家庄":[114.5149,38.0428],"太原":[112.5489,37.8706],"长春":[125.3245,43.8868],
+	"福州":[119.2965,26.0745],"兰州":[103.8343,36.0611],"银川":[106.2309,38.4872],
+	"乌鲁木齐":[87.6177,43.7928],"香港":[114.1694,22.3193],"澳门":[113.5439,22.1987],
+	"台北":[121.5654,25.0330],
 };
 
-// ============ 组件类型分类 ============
-const ECHARTS_CARTESIAN = new Set(["JBar", "JStackBar", "JMultipleBar", "JNegativeBar", "JPercentBar", "JLine", "JSmoothLine", "JStepLine", "JArea", "JMultipleLine", "JScatter", "JBubble", "JQuadrant"]);
-const ECHARTS_POLAR = new Set(["JPie", "JRose", "JRotatePie", "JRing", "JBreakRing", "JActiveRing", "JRadar", "JCircleRadar", "JFunnel", "JPyramidFunnel"]);
-const ECHARTS_GAUGE = new Set(["JGauge", "JSemiGauge", "JColorGauge", "JAntvGauge"]);
-const ECHARTS_MAP = new Set(["JFlyLineMap", "JAreaMap", "JBubbleMap", "JBarMap"]);
-const HTML_COMPONENTS = new Set(["JText", "JDragDecoration", "JDragBorder", "JCountTo", "JNumber", "JStatsSummary", "JScrollBoard", "JScrollTable", "JScrollList", "JCapsuleChart", "JListProgress"]);
+// ============ 工具函数 ============
+function deepUpdate(target, source) {
+	if (!target || !source) return;
+	for (const k of Object.keys(source)) {
+		const sv = source[k];
+		if (sv && typeof sv === "object" && !Array.isArray(sv)) {
+			if (!target[k] || typeof target[k] !== "object") target[k] = {};
+			deepUpdate(target[k], sv);
+		} else {
+			target[k] = sv;
+		}
+	}
+}
+function gradient(direction, c1, c2) {
+	const dir = direction === "h" || direction === "horizontal" ? { x:0,y:0,x2:1,y2:0 } : { x:0,y:0,x2:0,y2:1 };
+	return { type:"linear", ...dir, colorStops:[{offset:0,color:c1},{offset:1,color:c2}] };
+}
 
-const JIMUBI_TO_ECHARTS_TYPE = { JBar: "bar", JStackBar: "bar", JMultipleBar: "bar", JNegativeBar: "bar", JPercentBar: "bar", JLine: "line", JSmoothLine: "line", JStepLine: "line", JArea: "line", JMultipleLine: "line", JScatter: "scatter", JBubble: "scatter", JPie: "pie", JRing: "pie", JRose: "pie", JRotatePie: "pie", JRadar: "radar", JCircleRadar: "radar", JFunnel: "funnel", JPyramidFunnel: "funnel", JGauge: "gauge", JSemiGauge: "gauge", JColorGauge: "gauge" };
-
-// ============ Pitfall 防呆 ============
-function pitfallFix(comp) {
-	const warnings = [];
-	const c = { ...comp };
-	if (c.label !== undefined && c.type && ECHARTS_CARTESIAN.has(c.type) && c.name === undefined) {
-		c.name = c.label;
-		warnings.push("字段 label 自动修正为 name");
+/** 应用 ECharts 主题色到 option（抄 JeecgBoot _apply_echarts_theme）。 */
+function applyEchartsTheme(opt, p, { hasAxes=true, titleText=null } = {}) {
+	if (titleText) {
+		const t = opt.title ?? {};
+		t.show = true; t.text = titleText;
+		t.textStyle = t.textStyle ?? {}; t.textStyle.color = p.subtitle; t.textStyle.fontSize = 13;
+		opt.title = t;
 	}
-	if (typeof c.color === "string" && /^#[0-9a-fA-F]{3}$/.test(c.color)) {
-		c.color = "#" + c.color.slice(1).split("").map(x => x + x).join("");
-		warnings.push(`颜色缩写展开: ${comp.color} → ${c.color}`);
-	}
-	if (c.type && ECHARTS_POLAR.has(c.type) && (c.xAxis || c.yAxis)) {
-		warnings.push(`${c.type} 不需要 xAxis/yAxis，已忽略`);
-	}
-	const opt = c.options;
-	if (opt && opt.grid) {
-		for (const k of ["width", "height"]) {
-			const v = opt.grid[k];
-			if (typeof v === "string" && v.endsWith("%")) {
-				warnings.push(`grid.${k}: "${v}" 百分比字符串无效，已移除`);
-				delete opt.grid[k];
+	if (hasAxes) {
+		for (const ak of ["xAxis","yAxis"]) {
+			let existing = opt[ak];
+			if (typeof existing === "string") opt[ak] = existing = { type: existing };
+			else if (!existing) opt[ak] = existing = {};
+			const axes = Array.isArray(existing) ? existing : [existing];
+			for (const a of axes) {
+				if (!a || typeof a !== "object") continue;
+				a.axisLabel = a.axisLabel ?? {}; a.axisLabel.color = p.axis;
+				a.axisLine = a.axisLine ?? {}; a.axisLine.lineStyle = a.axisLine.lineStyle ?? {};
+				a.axisLine.lineStyle.color = p.axisLine;
+				if (ak === "yAxis") {
+					a.splitLine = a.splitLine ?? {}; a.splitLine.lineStyle = a.splitLine.lineStyle ?? {};
+					a.splitLine.lineStyle.color = p.gridline;
+				}
 			}
 		}
+		const g = opt.grid ?? {};
+		if (g.bottom === undefined) g.bottom = 30;
+		if (g.left   === undefined) g.left = 55;
+		if (g.right  === undefined) g.right = 20;
+		g.top = Math.max(g.top ?? 0, 30);
+		opt.grid = g;
 	}
-	return { comp: c, warnings };
+	const tt = opt.tooltip ?? {};
+	tt.backgroundColor = p.tooltipBg; tt.textStyle = tt.textStyle ?? {}; tt.textStyle.color = p.tooltipTxt;
+	opt.tooltip = tt;
+	const leg = opt.legend ?? {}; leg.textStyle = leg.textStyle ?? {}; leg.textStyle.color = p.axis;
+	opt.legend = leg;
 }
 
-function layoutAdvisor(comp) {
+// ============ 特殊组件 HANDLERS（22 种，抄 JeecgBoot + 改写 JS）============
+
+function handleJText(c, p) {
+	const text = c.text ?? c.title ?? "";
+	const style = c.style ?? "label";
+	const sizeMap = { title: 40, subtitle: 22, label: 14, value: 28 };
+	const colorMap = { title: p.title, subtitle: p.subtitle, label: p.label, value: p.value };
+	const body = {
+		text,
+		color: c.color ?? colorMap[style] ?? p.label,
+		fontSize: c.fontSize ?? sizeMap[style] ?? 14,
+		fontWeight: c.fontWeight ?? (style === "title" || style === "value" ? "bold" : "normal"),
+		textAlign: c.align ?? "center",
+	};
+	if (c.letterSpacing) body.letterSpacing = c.letterSpacing;
+	if (c.fontStyle) body.fontStyle = c.fontStyle;
+	if (c.fontFamily) body.fontFamily = c.fontFamily;
+	return { compKey: "JText", cfg: { chartData: { value: text }, option: { body } } };
+}
+
+function handleJDragDecoration(c, p) {
+	return { compKey: "JDragDecoration", cfg: { option: {
+		type: String(c.variant ?? "1"),
+		mainColor: c.color ?? p.subtitle,
+		subColor: c.subColor ?? c.color ?? p.subtitle,
+		dur: c.dur ?? 3,
+	}}};
+}
+
+function handleJDragBorder(c, p) {
+	const d = loadDef("JDragBorder") ?? { option: {} };
+	d.option.type = String(c.variant ?? "1");
+	if (c.color) { d.option.mainColor = c.color; d.option.subColor = c.subColor ?? c.color; }
+	else if (c.mainColor) d.option.mainColor = c.mainColor;
+	if (c.option) deepUpdate(d.option, c.option);
+	return { compKey: "JDragBorder", cfg: d };
+}
+
+function handleJStatsSummary(c, p) {
+	const d = loadDef("JStatsSummary_2") ?? loadDef("JStatsSummary") ?? {};
+	if (c.data) d.chartData = JSON.stringify(c.data.filter(it => it.value !== undefined && it.value !== null));
+	d.option = d.option ?? {};
+	d.option.color = c.color ?? p.title;
+	d.option.bgColor = c.bgColor ?? "transparent";
+	return { compKey: "JStatsSummary", cfg: d };
+}
+
+function handleJScrollBoard(c, p) {
+	const d = loadDef("JScrollBoard") ?? {};
+	if (c.headers) d.option = d.option ?? {}; d.option.headerName = c.headers;
+	if (c.rows) d.chartData = JSON.stringify(c.rows);
+	d.option = d.option ?? {}; d.option.backgroundColor = c.bgColor ?? "transparent";
+	return { compKey: "JScrollBoard", cfg: d };
+}
+
+function handleJScrollRankingBoard(c, p) {
+	const d = loadDef("JScrollRankingBoard") ?? {};
+	const data = c.data ?? c.rows ?? [];
+	const topN = c.topN ?? data.length;
+	const sorted = [...data].sort((a,b) => (b.value ?? 0) - (a.value ?? 0)).slice(0, topN);
+	d.chartData = JSON.stringify(sorted);
+	d.option = d.option ?? {}; d.option.color = c.color ?? p.title;
+	return { compKey: "JScrollRankingBoard", cfg: d };
+}
+
+function handleJCountTo(c, p) {
+	const d = loadDef("JCountTo") ?? {};
+	d.chartData = { value: c.value ?? 0 };
+	d.option = d.option ?? {};
+	Object.assign(d.option, {
+		whole: c.whole ?? true,
+		fontSize: c.fontSize ?? 48,
+		color: c.color ?? p.title,
+		fontWeight: c.fontWeight ?? "bold",
+		textAlign: c.align ?? "center",
+	});
+	if (c.prefix) d.option.prefix = c.prefix;
+	if (c.suffix) d.option.suffix = c.suffix;
+	return { compKey: "JCountTo", cfg: d };
+}
+
+function handleJNumber(c, p) {
+	const d = loadDef("JNumber") ?? {};
+	d.chartData = { value: c.value ?? 0 };
+	d.option = d.option ?? {}; d.option.body = d.option.body ?? {};
+	Object.assign(d.option.body, {
+		color: c.color ?? p.value,
+		fontSize: c.fontSize ?? 28,
+		fontWeight: c.fontWeight ?? "bold",
+		textAlign: c.align ?? "center",
+	});
+	if (c.prefix) d.option.body.prefix = c.prefix;
+	if (c.suffix) d.option.body.suffix = c.suffix;
+	return { compKey: "JNumber", cfg: d };
+}
+
+function handleJCapsuleChart(c, p) {
+	const d = loadDef("JCapsuleChart") ?? {};
+	d.chartData = JSON.stringify(c.data ?? []);
+	d.option = d.option ?? {};
+	d.option.showValue = c.showValue ?? true;
+	d.option.unit = c.unit ?? "";
+	if (c.colors) d.option.customColor = c.colors.map(col => ({ color1: col, color: col }));
+	return { compKey: "JCapsuleChart", cfg: d };
+}
+
+function handleJListProgress(c, p) {
+	const d = loadDef("JListProgress") ?? {};
+	const rows = (c.data ?? []).map(it => ({
+		title: it.title ?? "",
+		value: it.current ?? it.value ?? 0,
+		total: it.target ?? it.total ?? 100,
+		endLabel: it.label ?? it.endLabel ?? "",
+		date: it.date ?? "",
+	}));
+	d.chartData = JSON.stringify(rows);
+	d.option = d.option ?? {}; d.option.body = d.option.body ?? {}; d.option.bar = d.option.bar ?? {}; d.option.beginInfo = d.option.beginInfo ?? {};
+	d.option.body.color = c.textColor ?? p.value; d.option.body.fontSize = c.fontSize ?? 16;
+	d.option.bar.background = "#1a3a5a"; d.option.bar.color = c.color ?? p.subtitle;
+	if (c.option) deepUpdate(d.option, c.option);
+	return { compKey: "JListProgress", cfg: d };
+}
+
+function handleJFlyLineMap(c, p) {
+	const d = loadDef("JFlyLineMap") ?? {};
+	const rows = [];
+	for (const it of c.data ?? []) {
+		if (it.from && it.to) {
+			const fc = CITY_COORDS[it.from]; const tc = CITY_COORDS[it.to];
+			if (!fc || !tc) throw new Error(`JFlyLineMap 未知城市: ${JSON.stringify(it)}`);
+			rows.push({ fromName: it.from, toName: it.to, fromLng: fc[0], fromLat: fc[1], toLng: tc[0], toLat: tc[1], value: it.value ?? 1 });
+		} else rows.push(it);
+	}
+	d.chartData = JSON.stringify(rows);
+	d.option = d.option ?? {};
+	const area = d.option.area ?? {};
+	const raw = area.value ?? [];
+	if (Array.isArray(raw) && raw.some(v => String(v).toLowerCase() === "china")) area.value = ["100000"];
+	else if (!area.value || area.value.length === 0) area.value = ["100000"];
+	d.option.area = area;
+	if (c.title) { d.option.title = d.option.title ?? {}; d.option.title.show = true; d.option.title.text = c.title; d.option.title.textStyle = { color: p.subtitle, fontSize: 13 }; }
+	d.commonOption = d.commonOption ?? {}; d.commonOption.effect = d.commonOption.effect ?? {};
+	Object.assign(d.commonOption.effect, { trailLength: c.trailLength ?? 0.2, symbolSize: c.symbolSize ?? 6, color: c.effectColor ?? p.title });
+	if (c.option) deepUpdate(d.option, c.option);
+	return { compKey: "JFlyLineMap", cfg: d };
+}
+
+function handleJMapSimple(compType, c, p) {
+	const d = loadDef(compType) ?? {};
+	if (c.data) d.chartData = JSON.stringify(c.data);
+	d.option = d.option ?? {};
+	if (c.title) { d.option.title = d.option.title ?? {}; d.option.title.show = true; d.option.title.text = c.title; d.option.title.textStyle = { color: p.subtitle, fontSize: 13 }; }
+	if (c.option) deepUpdate(d.option, c.option);
+	d.commonOption = d.commonOption ?? {};
+	if (c.commonOption) deepUpdate(d.commonOption, c.commonOption);
+	return { compKey: compType, cfg: d };
+}
+const handleJAreaMap   = (c, p) => handleJMapSimple("JAreaMap",   c, p);
+const handleJBubbleMap = (c, p) => handleJMapSimple("JBubbleMap", c, p);
+const handleJBarMap    = (c, p) => handleJMapSimple("JBarMap",    c, p);
+
+function handleGauge(compType, c, p) {
+	const d = loadDef(compType) ?? {};
+	d.option = d.option ?? {};
+	d.option.series = d.option.series ?? [{ type: "gauge" }];
+	const ser = d.option.series[0];
+	ser.data = [{ value: c.value ?? 0, name: c.title ?? "" }];
+	if (c.title) ser.name = c.title;
+	if (c.min !== undefined) ser.min = c.min;
+	if (c.max !== undefined) ser.max = c.max;
+	if (c.radius) ser.radius = c.radius;
+	return { compKey: compType, cfg: d };
+}
+const handleJGauge      = (c, p) => handleGauge("JGauge",      c, p);
+const handleJColorGauge = (c, p) => handleGauge("JColorGauge", c, p);
+const handleJSemiGauge  = (c, p) => handleGauge("JSemiGauge",  c, p);
+const handleJAntvGauge  = (c, p) => handleGauge("JAntvGauge",  c, p);
+
+function handleJScrollList(c, p) {
+	const d = loadDef("JScrollList_2") ?? loadDef("JScrollList") ?? {};
+	d.chartData = JSON.stringify(c.data ?? []);
+	d.option = d.option ?? {}; d.option.colors = p.colors;
+	return { compKey: "JScrollList", cfg: d };
+}
+
+function handleJScrollTable(c, p) {
+	const d = loadDef("JScrollTable") ?? {};
+	if (c.headers) d.option = d.option ?? {}; d.option.headerName = c.headers;
+	if (c.rows) d.chartData = JSON.stringify(c.rows);
+	return { compKey: "JScrollTable", cfg: d };
+}
+
+function handleJLiquid(c, p) {
+	const d = loadDef("JLiquid") ?? {};
+	d.chartData = JSON.stringify({ value: c.value ?? 0.5 });
+	d.option = d.option ?? {}; d.option.color = c.color ?? p.subtitle;
+	return { compKey: "JLiquid", cfg: d };
+}
+
+function handleJRingProgress(c, p) {
+	const d = loadDef("JRingProgress") ?? {};
+	d.chartData = JSON.stringify([{ value: c.value ?? 0, title: c.title ?? "" }]);
+	d.option = d.option ?? {}; d.option.color = c.color ?? p.subtitle;
+	return { compKey: "JRingProgress", cfg: d };
+}
+
+const SPECIAL_HANDLERS = {
+	JText:               handleJText,
+	JDragDecoration:     handleJDragDecoration,
+	JDragBorder:         handleJDragBorder,
+	JStatsSummary:       handleJStatsSummary,
+	JScrollBoard:        handleJScrollBoard,
+	JScrollRankingBoard: handleJScrollRankingBoard,
+	JCountTo:            handleJCountTo,
+	JNumber:             handleJNumber,
+	JCapsuleChart:       handleJCapsuleChart,
+	JListProgress:       handleJListProgress,
+	JFlyLineMap:         handleJFlyLineMap,
+	JAreaMap:            handleJAreaMap,
+	JBubbleMap:          handleJBubbleMap,
+	JBarMap:             handleJBarMap,
+	JGauge:              handleJGauge,
+	JColorGauge:         handleJColorGauge,
+	JAntvGauge:          handleJAntvGauge,
+	JSemiGauge:          handleJSemiGauge,
+	JLiquid:             handleJLiquid,
+	JScrollList:         handleJScrollList,
+	JScrollTable:        handleJScrollTable,
+	JRingProgress:       handleJRingProgress,
+};
+
+// ============ 通用 CHART HANDLERS ============
+
+/** 轴类图表（JBar/JLine 等）通用 handler。 */
+function handleCartesian(c, p, type) {
+	const d = loadDef(type) ?? {};
+	d.option = d.option ?? {};
+	if (c.gradient) {
+		const [dir, c1, c2] = c.gradient;
+		d.option.color = gradient(dir, c1, c2);
+	} else if (c.color) {
+		d.option.color = c.color;
+	} else if (!d.option.color) {
+		d.option.color = p.colors;
+	}
+	if (c.colors) d.option.color = c.colors;
+	// 注入数据
+	if (c.data && c.data.length > 0) {
+		const labels = c.data.map(d => String(d.name ?? d.label ?? ""));
+		const seriesData = c.data.map(d => d.value ?? 0);
+		d.chartData = JSON.stringify(c.data);
+		// 更新 series
+		d.option.series = d.option.series ?? [{ type: type === "JStackBar" ? "bar" : "bar", data: seriesData }];
+		d.option.series[0].data = seriesData;
+		if (c.title) d.option.series[0].name = c.title;
+		// 更新 axis data（避免与 chartData 不同步）
+		if (d.option.xAxis && typeof d.option.xAxis === "object") d.option.xAxis.data = labels;
+	}
+	applyEchartsTheme(d.option, p, { hasAxes: true, titleText: c.title ?? null });
+	if (c.option) deepUpdate(d.option, c.option);
+	return { compKey: type, cfg: d };
+}
+
+/** 极坐标图表（JPie/JRadar 等）通用 handler。 */
+function handlePolar(c, p, type) {
+	const d = loadDef(type) ?? {};
+	d.option = d.option ?? {};
+	d.option.color = c.colors ?? d.option.color ?? p.colors;
+	if (c.data && c.data.length > 0) {
+		d.chartData = JSON.stringify(c.data);
+		d.option.series = d.option.series ?? [{ type: "pie", data: c.data }];
+		d.option.series[0].data = c.data;
+		if (c.title) { d.option.title = d.option.title ?? {}; d.option.title.show = true; d.option.title.text = c.title; }
+	}
+	applyEchartsTheme(d.option, p, { hasAxes: false });
+	if (c.option) deepUpdate(d.option, c.option);
+	return { compKey: type, cfg: d };
+}
+
+/** Map 系列图表通用 handler（JBubbleMap 等 8 种）。 */
+function handleMap(c, p, type) {
+	const d = loadDef(type) ?? {};
+	d.option = d.option ?? {};
+	if (c.data) d.chartData = JSON.stringify(c.data);
+	if (c.title) { d.option.title = d.option.title ?? {}; d.option.title.show = true; d.option.title.text = c.title; d.option.title.textStyle = { color: p.subtitle, fontSize: 13 }; }
+	if (c.option) deepUpdate(d.option, c.option);
+	return { compKey: type, cfg: d };
+}
+
+/** 进度/仪表类通用。 */
+function handleGaugeLike(c, p, type) {
+	return SPECIAL_HANDLERS[type] ? SPECIAL_HANDLERS[type](c, p) : handleGauge(type, c, p);
+}
+
+// ============ 主分发器：compile_component ============
+
+function inferCompKey(type) {
+	// 变体支持：spec 里写 variant 时优先加载 <type>_<variant>.json
+	const variant = String(this.get?.("variant") ?? "").trim();
+	if (variant) {
+		const cand = `${type}_${variant}`;
+		if (DEFAULTS_CACHE.has(cand) || existsSync(join(DEFAULTS_DIR, `${cand}.json`))) return cand;
+	}
+	return type;
+}
+
+/**
+ * 编译单个紧凑 spec component → JimuBI 组件 JSON。
+ * @param {object} c   紧凑 spec（{ type, pos: [x,y,w,h], title, data, ... }）
+ * @param {object} p   palette（6 套命名色板之一）
+ * @returns {{ compKey: string, cfg: object, warnings: string[] }}
+ */
+export function compileComponent(c, p) {
 	const warnings = [];
-	const h = comp.pos?.[3];
-	if (h && h < 220 && ECHARTS_POLAR.has(comp.type)) warnings.push(`⚠️ ${comp.type} 高度 ${h} < 220px，图例可能重叠`);
-	if (h && h < 180 && ECHARTS_GAUGE.has(comp.type)) warnings.push(`⚠️ ${comp.type} 高度 ${h} < 180px，显示不全`);
-	return warnings;
-}
+	const t = c.type;
 
-// ============ 数据推断 ============
-function inferEChartsData(data) {
-	if (!data || data.length === 0) return { labels: [], seriesData: [] };
-	if (typeof data[0] === "object" && (data[0].name !== undefined || data[0].value !== undefined)) {
-		return { labels: data.map(x => String(x.name ?? x.label ?? "未知")), seriesData: data.map(x => x.value ?? 0) };
-	}
-	if (typeof data[0] === "number") return { labels: data.map((_, i) => String(i + 1)), seriesData: data };
-	return { labels: [], seriesData: data };
-}
-
-// ============ Handlers ============
-function handleCartesian(comp, palette) {
-	const type = JIMUBI_TO_ECHARTS_TYPE[comp.type] ?? "bar";
-	const { labels, seriesData } = inferEChartsData(comp.data);
-	const colors = comp.colors ?? palette.colors;
-	const opt = {
-		tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-		grid: { left: 50, right: 20, top: 40, bottom: 30, containLabel: true },
-		legend: { top: 8, right: 10, textStyle: { color: palette.label } },
-		xAxis: { type: "category", data: labels, axisLine: { lineStyle: { color: palette.axisLine } }, axisLabel: { color: palette.axis }, splitLine: { show: false } },
-		yAxis: { type: "value", axisLine: { show: false }, axisLabel: { color: palette.axis }, splitLine: { lineStyle: { color: palette.gridline } } },
-		series: [{ type, name: comp.title ?? "数据", data: seriesData, itemStyle: { color: colors[0] ?? palette.colors[0] }, barMaxWidth: 40 }],
-	};
-	if (comp.type === "JStackBar") opt.series[0].stack = "total";
-	if (comp.type === "JHorizontalBar") { opt.xAxis = { type: "value" }; opt.yAxis = { type: "category", data: labels }; }
-	if (comp.type === "JLine" || comp.type === "JSmoothLine") opt.series[0].smooth = true;
-	if (comp.type === "JArea") { opt.series[0].areaStyle = {}; opt.series[0].smooth = true; }
-	return opt;
-}
-
-function handlePolar(comp, palette) {
-	const { labels, seriesData } = inferEChartsData(comp.data);
-	const colors = comp.colors ?? palette.colors;
-	const type = JIMUBI_TO_ECHARTS_TYPE[comp.type] ?? "pie";
-	const opt = {
-		tooltip: { trigger: "item", backgroundColor: palette.tooltipBg, textStyle: { color: palette.tooltipTxt } },
-		legend: { top: 8, right: 10, textStyle: { color: palette.label } },
-		color: colors,
-		series: [{ type, name: comp.title ?? "数据", data: labels.map((name, i) => ({ name, value: seriesData[i] })) }],
-	};
-	if (comp.type === "JRing" || comp.type === "JBreakRing") opt.series[0].radius = ["40%", "70%"];
-	if (comp.type === "JRose") opt.series[0].roseType = "area";
-	if (comp.type === "JRadar") {
-		opt.radar = { indicator: labels.map(name => ({ name, max: 100 })) };
-		opt.series[0].data = [{ value: seriesData, name: comp.title ?? "" }];
-	}
-	return opt;
-}
-
-function handleGauge(comp, palette) {
-	const value = comp.value ?? 0;
-	const max = comp.max ?? 100;
-	const isSemi = comp.type === "JSemiGauge";
-	return {
-		series: [{
-			type: "gauge", startAngle: isSemi ? 200 : 220, endAngle: isSemi ? -20 : -40,
-			min: 0, max, progress: { show: true, width: 12, itemStyle: { color: palette.colors[0] } },
-			axisLine: { lineStyle: { width: 12, color: [[1, palette.axisLine]] } },
-			axisTick: { show: false }, splitLine: { show: true, length: 8, lineStyle: { color: palette.axis } },
-			axisLabel: { color: palette.label, fontSize: 10, distance: 20 },
-			pointer: { show: true, width: 4, itemStyle: { color: palette.colors[0] } },
-			title: { show: true, offsetCenter: [0, "70%"], color: palette.label, fontSize: 13 },
-			detail: { offsetCenter: [0, "45%"], color: palette.title, fontSize: 28, fontWeight: "bold" },
-			data: [{ value, name: comp.title ?? "" }],
-		}],
-	};
-}
-
-function handleScrollRanking(comp, palette) {
-	const raw = comp.data ?? [];
-	const rowNum = comp.rowNum ?? raw.length;
-	const sorted = [...raw].sort((a, b) => b.value - a.value).slice(0, rowNum);
-	return handleCartesian({ ...comp, data: sorted }, palette);
-}
-
-function handleJText(comp, palette) {
-	const text = comp.text ?? comp.title ?? "";
-	const style = comp.style ?? "normal";
-	const color = comp.color ?? (style === "title" ? palette.title : palette.label);
-	const fontSize = style === "title" ? 20 : style === "subtitle" ? 16 : 14;
-	return `<div style="color:${color};font-size:${fontSize}px;font-weight:${style === "title" || style === "subtitle" ? 600 : 400};line-height:1.4;">${text}</div>`;
-}
-
-function handleJCountTo(comp, palette) {
-	const value = comp.value ?? 0;
-	const title = comp.title ?? "";
-	const suffix = comp.suffix ?? "";
-	const color = comp.color ?? palette.title;
-	return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px;"><span style="font-size:36px;font-weight:700;color:${color};font-variant-numeric:tabular-nums;">${value.toLocaleString()}${suffix}</span>${title ? `<span style="font-size:13px;color:${palette.label};opacity:0.85;">${title}</span>` : ""}</div>`;
-}
-
-function handleJStatsSummary(comp, palette) {
-	const variant = comp.variant ?? "1";
-	const items = comp.items ?? comp.data ?? [];
-	if (variant === "2") {
-		const html = items.map(it => `<div style="flex:1;text-align:center;padding:12px 8px;border-right:1px solid ${palette.axisLine};"><div style="font-size:24px;font-weight:700;color:${palette.title};">${it.value}${it.suffix ?? ""}</div><div style="font-size:12px;color:${palette.label};opacity:0.8;">${it.label}</div>${it.trend ? `<div style="font-size:11px;color:${it.trend.startsWith("+") ? "#7ee8a2" : "#ff6b6b"};">${it.trend}</div>` : ""}</div>`).join("");
-		return `<div style="display:flex;width:100%;border:1px solid ${palette.axisLine};border-radius:8px;background:rgba(0,0,0,0.02);">${html}</div>`;
-	}
-	const html = items.map(it => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid ${palette.axisLine};"><span style="font-size:13px;color:${palette.label};">${it.label}</span><span style="font-size:16px;font-weight:600;color:${palette.value};font-variant-numeric:tabular-nums;">${it.value}${it.suffix ?? ""}</span></div>`).join("");
-	return `<div style="width:100%;border:1px solid ${palette.axisLine};border-radius:8px;overflow:hidden;background:rgba(0,0,0,0.02);">${html}</div>`;
-}
-
-function handleJScrollBoard(comp, palette) {
-	const title = comp.title ?? "";
-	const headers = comp.headers ?? (comp.data && comp.data.columns) ?? [];
-	const rows = comp.rows ?? comp.data ?? [];
-	const headHtml = headers.map(h => `<th style="padding:8px 12px;font-size:12px;color:${palette.label};font-weight:600;text-align:left;background:${palette.axisLine};">${h}</th>`).join("");
-	const rowHtml = rows.slice(0, 10).map(r => {
-		const td = r.map(c => `<td style="padding:6px 12px;font-size:12px;color:${palette.value};border-top:1px solid ${palette.axisLine};">${c}</td>`).join("");
-		return `<tr>${td}</tr>`;
-	}).join("");
-	return `<div style="width:100%;border:1px solid ${palette.axisLine};border-radius:8px;overflow:hidden;">${title ? `<div style="padding:8px 12px;background:${palette.axisLine};color:${palette.title};font-size:13px;font-weight:600;">${title}</div>` : ""}<table style="width:100%;border-collapse:collapse;"><thead><tr>${headHtml}</tr></thead><tbody>${rowHtml}</tbody></table></div>`;
-}
-
-// ============ 主编译入口 ============
-export function compileComponent(comp, palette) {
-	const warnings = [];
-	const { comp: fixedComp, warnings: fixWarns } = pitfallFix(comp);
-	warnings.push(...fixWarns);
-	warnings.push(...layoutAdvisor(fixedComp));
-
-	const result = { kind: "echarts", type: fixedComp.type, title: fixedComp.title, warnings };
-
-	if (HTML_COMPONENTS.has(fixedComp.type)) {
-		result.kind = "html";
-		if (fixedComp.type === "JText" || fixedComp.type === "JDragDecoration") result.html = handleJText(fixedComp, palette);
-		else if (fixedComp.type === "JCountTo" || fixedComp.type === "JNumber") result.html = handleJCountTo(fixedComp, palette);
-		else if (fixedComp.type === "JStatsSummary") result.html = handleJStatsSummary(fixedComp, palette);
-		else if (fixedComp.type === "JScrollBoard" || fixedComp.type === "JScrollTable") result.html = handleJScrollBoard(fixedComp, palette);
-		else result.html = `<div style="padding:12px;border:1px dashed ${palette.axisLine};border-radius:6px;color:${palette.label};">${fixedComp.type}</div>`;
-		return result;
+	if (DISABLED_COMPONENTS.has(t)) {
+		throw new Error(`组件 ${t} 在大屏（bigScreen）中不受支持。替代建议：JRankingList→JScrollRankingBoard；JTotalProgress→JListProgress/JCapsuleChart；JPivotTable→JScrollBoard/JCommonTable；JFly3dMap→JFlyLineMap/JTotalFlyLineMap`);
 	}
 
-	if (ECHARTS_MAP.has(fixedComp.type)) {
-		result.kind = "error";
-		warnings.push(`⚠️ ${fixedComp.type} 需要中国 GeoJSON 地图数据，暂不支持。建议换 JBar/JScatter 组合`);
-		return result;
+	// 变体支持：spec 里写 variant 时优先加载 <type>_<variant>.json
+	let compKey = t;
+	const variant = String(c.variant ?? "").trim();
+	if (variant) {
+		const cand = `${t}_${variant}`;
+		if (existsSync(join(DEFAULTS_DIR, `${cand}.json`))) compKey = cand;
 	}
 
-	if (ECHARTS_CARTESIAN.has(fixedComp.type)) { result.echartsOption = handleCartesian(fixedComp, palette); }
-	else if (ECHARTS_POLAR.has(fixedComp.type)) { result.echartsOption = handlePolar(fixedComp, palette); }
-	else if (ECHARTS_GAUGE.has(fixedComp.type)) { result.echartsOption = handleGauge(fixedComp, palette); }
-	else if (fixedComp.type === "JScrollRankingBoard") { result.echartsOption = handleScrollRanking(fixedComp, palette); }
-	else {
-		result.kind = "error";
-		warnings.push(`⚠️ ${fixedComp.type} 未实现对等 handler`);
-		return result;
+	let cfg;
+	if (SPECIAL_HANDLERS[compKey]) {
+		const r = SPECIAL_HANDLERS[compKey](c, p);
+		compKey = r.compKey; cfg = r.cfg;
+	} else if (ECHARTS_CARTESIAN.has(t)) {
+		const r = handleCartesian(c, p, t);
+		compKey = r.compKey; cfg = r.cfg;
+	} else if (ECHARTS_POLAR.has(t)) {
+		const r = handlePolar(c, p, t);
+		compKey = r.compKey; cfg = r.cfg;
+	} else if (ECHARTS_MAP.has(t)) {
+		const r = handleMap(c, p, t);
+		compKey = r.compKey; cfg = r.cfg;
+	} else if (ECHARTS_GAUGE.has(t)) {
+		const r = handleGaugeLike(c, p, t);
+		compKey = r.compKey; cfg = r.cfg;
+	} else {
+		// Passthrough fallback：加载 defaults → 合并 data/option/commonOption
+		cfg = loadDef(compKey) ?? {};
+		if (c.data) {
+			cfg.chartData = JSON.stringify(c.data);
+		}
+		if (c.title && !cfg.title) cfg.title = c.title;
+		cfg.option = cfg.option ?? {};
+		if (c.option) deepUpdate(cfg.option, c.option);
+		cfg.commonOption = cfg.commonOption ?? {};
+		if (c.commonOption) deepUpdate(cfg.commonOption, c.commonOption);
 	}
 
-	return result;
+	// 通用后处理：pos → w/h；chartData list → string；透明背景
+	const pos = c.pos ?? [0, 0, 0, 0];
+	if (Array.isArray(pos) && pos.length >= 4) {
+		cfg.x = pos[0]; cfg.y = pos[1]; cfg.w = cfg.w ?? pos[2]; cfg.h = cfg.h ?? pos[3];
+	} else {
+		cfg.w = cfg.w ?? 400; cfg.h = cfg.h ?? 300;
+	}
+	if (!cfg.dataType) cfg.dataType = 1;
+	if (cfg.chartData !== undefined && Array.isArray(cfg.chartData)) {
+		cfg.chartData = JSON.stringify(cfg.chartData);
+	}
+	cfg.background = cfg.background ?? "#FFFFFF00";
+	cfg.borderColor = cfg.borderColor ?? "#FFFFFF00";
+	// chart.category / chart.subclass（JimuBI 用这些字段识别组件类型）
+	cfg.chart = cfg.chart ?? { subclass: t, category: inferCategory(t) };
+
+	// 布局预警
+	if (ECHARTS_POLAR.has(t) && (cfg.h ?? 0) < 220) {
+		warnings.push(`⚠️ ${t} h=${cfg.h}<220，饼/环图 legend 易重叠`);
+	}
+	if (t === "JStatsSummary" && (cfg.h ?? 0) < 150) {
+		warnings.push(`⚠️ JStatsSummary h=${cfg.h}<150，内容可能被截断`);
+	}
+
+	return { compKey, cfg, warnings };
 }
 
+function inferCategory(compType) {
+	if (ECHARTS_CARTESIAN.has(compType)) return "Bar";
+	if (ECHARTS_POLAR.has(compType)) return "Pie";
+	if (ECHARTS_GAUGE.has(compType)) return "Gauge";
+	if (ECHARTS_MAP.has(compType)) return "Map";
+	if (PROGRESS_COMPS.has(compType)) return "Progress";
+	if (TABLE_COMPS.has(compType)) return "Table";
+	if (TEXT_COMPS.has(compType)) return "Text";
+	if (DECOR_COMPS.has(compType)) return "Decoration";
+	return "Custom";
+}
+
+// ============ 主入口：compileBigscreen ============
+
+/**
+ * 编译完整大屏。
+ * @param {object} spec 紧凑 spec { page:{name,theme,bg}, palette, components:[{type,pos,...}] }
+ * @returns {{ page: object, components: JimubiComponentJSON[], palette: object, warnings: string[] }}
+ */
 export function compileBigscreen(spec) {
-	const paletteName = spec.palette ?? spec.page?.bg ?? "tech";
+	const page = spec.page ?? {};
+	const paletteName = spec.palette ?? page.bg ?? "tech";
 	const palette = PALETTES[paletteName] ?? PALETTES.tech;
+	const theme = page.theme ?? "dark";
+	const bgImage = page.bgImage ?? `/img/bg/${page.bg ?? "bg4"}.png`;
+
+	const components = [];
+	const allWarnings = [];
+	for (const c of spec.components ?? []) {
+		try {
+			const { compKey, cfg, warnings } = compileComponent(c, palette);
+			allWarnings.push(...warnings.map(w => `[${compKey}] ${w}`));
+			components.push({
+				type: compKey,
+				title: c.title ?? c.name ?? c.text ?? "",
+				cfg,
+			});
+		} catch (e) {
+			allWarnings.push(`[${c.type ?? "unknown"}] ❌ ${e.message}`);
+			components.push({
+				type: c.type,
+				title: c.title ?? "",
+				error: e.message,
+			});
+		}
+	}
+
 	return {
-		components: (spec.components ?? []).map(c => compileComponent(c, palette)),
-		palette,
+		page: {
+			name: page.name ?? "untitled",
+			style: page.style ?? "bigScreen",
+			theme,
+			width: page.width ?? 1920,
+			height: page.height ?? 1080,
+			backgroundImage: bgImage,
+		},
+		components,
+		palette: { ...palette, name: paletteName },
+		warnings: allWarnings,
 	};
 }
 
-/** 直接生成完整 HTML 大屏（iframe 预览用）。 */
-export function generateBigscreenHtml(spec, { engine = "echarts" } = {}) {
-	const { components, palette } = compileBigscreen(spec);
-	const paletteName = spec.palette ?? "tech";
-	const isScreen = (spec.page?.theme ?? "dark") === "dark";
-	const css = isScreen
-		? `body{background:#0a1929;color:#d4e8ff;font-family:system-ui,sans-serif;margin:0;padding:24px}.header{text-align:center;padding:24px 0;border-bottom:1px solid #1a3a5a;margin-bottom:24px}.header h1{color:#f0c040;margin:0 0 8px}.header p{color:#8ab8d0;margin:0}.grid{display:grid;gap:16px}.chart-card{background:rgba(11,30,58,0.3);border:1px solid #1a3a5a;border-radius:12px;padding:16px}.chart-card h3{margin:0 0 8px;color:${palette.subtitle};font-size:14px;font-weight:600}.chart-error{border-color:#ef4444;background:rgba(239,68,68,0.1)}`
-		: `body{background:#f9fafb;color:#1f2937;font-family:system-ui,sans-serif;margin:0;padding:24px}.header{text-align:center;padding:24px 0;border-bottom:1px solid #e5e7eb;margin-bottom:24px}.header h1{color:#1f2937;margin:0 0 8px}.header p{color:#6b7280;margin:0}.grid{display:grid;gap:16px}.chart-card{background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,0.05)}.chart-card h3{margin:0 0 8px;color:#374151;font-size:14px;font-weight:600}.chart-error{border-color:#ef4444;background:#fef2f2}`;
+// ============ 以下为调试/预览用工具（不是主流程）============
 
-	const head = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${spec.page?.name ?? "数据大屏"}</title><script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script><style>${css}</style></head><body><div class="header"><h1>${spec.page?.name ?? "数据大屏"}</h1><p>${paletteName} · ${engine.toUpperCase()} 引擎</p></div>`;
+/** JimuBI 组件 JSON → 调试 HTML（仅用于本地预览组件配置是否正确）。 */
+export function generateBigscreenHtml(spec) {
+	const { page, components, palette } = compileBigscreen(spec);
+	const isScreen = (page.theme ?? "dark") === "dark";
+	const css = isScreen
+		? `body{background:#0a1929;color:#d4e8ff;font-family:system-ui,sans-serif;margin:0;padding:24px}.header{text-align:center;padding:24px 0;border-bottom:1px solid #1a3a5a;margin-bottom:24px}.header h1{color:#f0c040;margin:0 0 8px}.header p{color:#8ab8d0;margin:0}.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}.chart-card{background:rgba(11,30,58,0.3);border:1px solid #1a3a5a;border-radius:12px;padding:16px}.chart-card h3{margin:0 0 8px;color:#00d4ff;font-size:13px}`
+		: `body{background:#f9fafb;color:#1f2937;font-family:system-ui,sans-serif;margin:0;padding:24px}.header{text-align:center;padding:24px 0;border-bottom:1px solid #e5e7eb;margin-bottom:24px}.header h1{color:#1f2937;margin:0 0 8px}.header p{color:#6b7280;margin:0}.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}.chart-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}.chart-card h3{margin:0 0 8px;color:#374151;font-size:13px}`;
+
+	const head = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><title>${page.name}</title><script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script><style>${css}</style></head><body><div class="header"><h1>${page.name}</h1><p>${palette.name} · ${page.width}×${page.height}</p></div>`;
 
 	const bodyHtml = components.map((c, i) => {
-		const h = 280;
-		if (c.kind === "html") return `<div class="chart-card"><h3>${c.title ?? `组件 ${i + 1}`}</h3><div style="height:${h}px;">${c.html}</div></div>`;
-		if (c.kind === "error") return `<div class="chart-card chart-error"><h3>${c.title ?? `组件 ${i + 1}`}</h3><div style="height:${h}px;padding:16px;color:#ef4444;">⚠️ ${c.warnings?.join("; ")}</div></div>`;
-		if (c.kind === "echarts" && c.echartsOption) {
-			return `<div class="chart-card"><h3>${c.title ?? `组件 ${i + 1}`}</h3><div id="chart-${i}" style="width:100%;height:${h}px;"></div></div>`;
+		if (c.error) return `<div class="chart-card"><h3>❌ ${c.type}</h3><pre style="color:#ef4444;font-size:12px;">${c.error}</pre></div>`;
+		const cfg = c.cfg;
+		if (!cfg) return "";
+		const kind = inferKind(c.type);
+		if (kind === "echarts" && cfg.option) {
+			return `<div class="chart-card"><h3>${c.title || c.type}</h3><div id="chart-${i}" style="width:100%;height:280px;"></div></div>`;
 		}
-		return "";
+		return `<div class="chart-card"><h3>${c.title || c.type}</h3><pre style="font-size:11px;color:#999;white-space:pre-wrap;max-height:280px;overflow:auto;">${JSON.stringify(cfg, null, 2)}</pre></div>`;
 	}).join("");
 
-	const gridCols = Math.min(components.filter(c => c.kind === "echarts" || c.kind === "html").length, 4);
-	const gridStyle = `grid-template-columns:repeat(${Math.max(1, gridCols)}, 1fr);`;
+	const js = `echarts.registerMap('china', null);(function(){${components.map((c, i) => {
+		if (c.error) return "";
+		const cfg = c.cfg;
+		if (!cfg) return "";
+		if (cfg.option && typeof cfg.option.series === "object") {
+			const opt = cfg.option;
+			return `(function(){var d=document.getElementById('chart-${i}');if(d){var e=echarts.init(d,'${isScreen?"dark":"light"}');e.setOption(${JSON.stringify(opt)});window.addEventListener('resize',function(){e.resize();});}})();`;
+		}
+		return "";
+	}).join("\n")}})();`;
 
-	const js = `
-echarts.registerTheme('dbx-dark', {backgroundColor:'transparent',textStyle:{color:'#d4e8ff'},color:['#00d4ff','#f0c040','#ff6b6b','#7ee8a2','#ffa726','#8ab8d0','#00ffc8','#d4a6ff'],tooltip:{backgroundColor:'rgba(11,30,58,0.85)',borderColor:'#1a3a5a',textStyle:{color:'#e0f0ff'}},legend:{textStyle:{color:'#8ab8d0'}},categoryAxis:{axisLine:{lineStyle:{color:'#1a3a5a'}},axisLabel:{color:'#8ab8d0'},splitLine:{lineStyle:{color:'rgba(26,58,90,0.33)'}}},valueAxis:{axisLine:{lineStyle:{color:'#1a3a5a'}},axisLabel:{color:'#8ab8d0'},splitLine:{lineStyle:{color:'rgba(26,58,90,0.33)'}}}});
-echarts.registerTheme('dbx-light', {backgroundColor:'transparent',textStyle:{color:'#374151'},color:['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16'],tooltip:{backgroundColor:'rgba(255,255,255,0.95)',borderColor:'#e5e7eb',textStyle:{color:'#1f2937'}},legend:{textStyle:{color:'#4b5563'}},categoryAxis:{axisLine:{lineStyle:{color:'#d1d5db'}},axisLabel:{color:'#6b7280'},splitLine:{lineStyle:{color:'#f3f4f6'}}},valueAxis:{axisLine:{lineStyle:{color:'#d1d5db'}},axisLabel:{color:'#6b7280'},splitLine:{lineStyle:{color:'#f3f4f6'}}}});
-(function(){
-${components.map((c, i) => c.echartsOption ? `(function(){var d=document.getElementById('chart-${i}');if(d){var e=echarts.init(d,'${isScreen ? "dbx-dark" : "dbx-light"}');e.setOption(${JSON.stringify(c.echartsOption)});window.addEventListener('resize',function(){e.resize();});}})();` : `/* chart-${i}: ${c.kind} */`).join("\n")}
-})();
-`;
+	return `${head}<div class="grid">${bodyHtml}</div><script>${js}</script></body></html>`;
+}
 
-	return `${head}<div class="grid" style="${gridStyle}">${bodyHtml}</div><script>${js}</script></body></html>`;
+function inferKind(compType) {
+	if (ECHARTS_CARTESIAN.has(compType) || ECHARTS_POLAR.has(compType) || ECHARTS_GAUGE.has(compType)) return "echarts";
+	if (ECHARTS_MAP.has(compType)) return "echarts";
+	if (TEXT_COMPS.has(compType) || DECOR_COMPS.has(compType)) return "html";
+	return "html";
 }

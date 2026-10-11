@@ -1,0 +1,23 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "background": "#4A90E2",
+  "dataMapping": [
+    {
+      "filed": "路径",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "src": "http://vjs.zencdn.net/v/oceans.mp4"
+    }
+  ],
+  "option": {
+    "autoPlay": false,
+    "loop": true
+  }
+}

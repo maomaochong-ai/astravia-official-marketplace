@@ -1,0 +1,60 @@
+{
+  "w": 450,
+  "h": 230,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/list",
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "标题",
+      "mapping": ""
+    },
+    {
+      "filed": "描述",
+      "mapping": ""
+    },
+    {
+      "filed": "时间",
+      "mapping": ""
+    },
+    {
+      "filed": "封面",
+      "mapping": ""
+    }
+  ],
+  "timeOut": 0,
+  "option": {
+    "showTitlePrefix": true,
+    "showTimePrefix": true,
+    "titleFontSize": 18,
+    "layout": "horizontal",
+    "isEnableAnimation": true
+  },
+  "chartData": [
+    {
+      "title": "通知一",
+      "date": "2022-3-9 14:20:21"
+    },
+    {
+      "title": "通知二",
+      "date": "2022-3-8 14:20:21"
+    },
+    {
+      "title": "通知三",
+      "date": "2022-3-7 14:20:21"
+    },
+    {
+      "title": "通知四",
+      "date": "2022-3-6 14:20:21"
+    },
+    {
+      "title": "通知五",
+      "date": "2022-3-5 14:00:00"
+    }
+  ]
+}

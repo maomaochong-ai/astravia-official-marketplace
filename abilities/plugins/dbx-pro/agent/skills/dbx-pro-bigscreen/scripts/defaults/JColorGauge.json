@@ -1,0 +1,98 @@
+{
+  "w": 300,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/26/gauge",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "名称",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "使用率",
+      "value": 4
+    }
+  ],
+  "option": {
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "textStyle": {
+        "fontWeight": "normal"
+      }
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "tooltip": {
+      "formatter": "{a} <br/>{b} : {c}%"
+    },
+    "series": [
+      {
+        "anchor": {
+          "itemStyle": {
+            "color": "#FAC858"
+          }
+        },
+        "pointer": {
+          "width": 8
+        },
+        "axisLabel": {
+          "show": true,
+          "fontSize": 12
+        },
+        "axisLine": {
+          "lineStyle": {
+            "width": 10,
+            "color": [
+              [
+                0.25,
+                "#FF6E76"
+              ],
+              [
+                0.5,
+                "#FDDD60"
+              ],
+              [
+                1,
+                "#58D9F9"
+              ]
+            ]
+          }
+        },
+        "splitLine": {
+          "length": 15,
+          "lineStyle": {
+            "color": "#eee",
+            "width": 4
+          }
+        },
+        "axisTick": {
+          "show": true,
+          "lineStyle": {
+            "color": "#eee"
+          }
+        },
+        "title": {
+          "fontSize": 14
+        }
+      }
+    ]
+  }
+}

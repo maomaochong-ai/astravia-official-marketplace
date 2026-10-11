@@ -1,0 +1,152 @@
+{
+  "w": 550,
+  "h": 400,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "value": 1048,
+      "name": "oppo"
+    },
+    {
+      "value": 735,
+      "name": "vivo"
+    },
+    {
+      "value": 580,
+      "name": "苹果"
+    },
+    {
+      "value": 484,
+      "name": "小米"
+    },
+    {
+      "value": 300,
+      "name": "三星"
+    }
+  ],
+  "option": {
+    "customColor": [
+      {
+        "color1": "#fae800",
+        "color": "#FAE800"
+      },
+      {
+        "color1": "#00c039",
+        "color": "#00C039"
+      },
+      {
+        "color1": "#0482dc",
+        "color": "#0482DC"
+      },
+      {
+        "color1": "#bb9581",
+        "color": "#BB9581"
+      },
+      {
+        "color1": "#ff7701",
+        "color": "#FF7701"
+      },
+      {
+        "color1": "#9c5ec3",
+        "color": "#9C5EC3"
+      },
+      {
+        "color1": "#00ccdf",
+        "color": "#00CCDF"
+      },
+      {
+        "color1": "#00c039",
+        "color": "#00C039"
+      },
+      {
+        "color1": "#ff7701",
+        "color": "#FF7701"
+      }
+    ],
+    "grid": {
+      "top": 50,
+      "left": 50,
+      "show": false
+    },
+    "series": [
+      {
+        "data": [],
+        "name": "Access From",
+        "avoidLabelOverlap": false,
+        "emphasis": {
+          "label": {
+            "show": true,
+            "fontSize": 14,
+            "fontWeight": "bold"
+          }
+        },
+        "itemStyle": {
+          "shadowBlur": 20,
+          "borderWidth": 5
+        },
+        "label": {
+          "color": "#EEF1FA",
+          "show": true,
+          "fontSize": 16,
+          "position": "center"
+        },
+        "labelLine": {
+          "length2": 38,
+          "show": false
+        },
+        "type": "pie",
+        "radius": [
+          "40%",
+          "70%"
+        ]
+      }
+    ],
+    "tooltip": {
+      "trigger": "item"
+    },
+    "outRadius": 90,
+    "title": {
+      "subtext": "{total}部",
+      "top": 41,
+      "textAlign": "",
+      "left": "center",
+      "show": true,
+      "customTop": true,
+      "text": "总数",
+      "textStyle": {
+        "color": "#EEF1FA",
+        "fontSize": 22,
+        "fontWeight": "normal"
+      },
+      "subtextStyle": {
+        "color": "#EEF1FA",
+        "fontSize": 24
+      }
+    },
+    "innerRadius": 80,
+    "card": {
+      "rightHref": "",
+      "size": "default",
+      "extra": "",
+      "title": ""
+    }
+  }
+}

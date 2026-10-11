@@ -1,0 +1,115 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": 200,
+      "value": 300
+    },
+    {
+      "name": 400,
+      "value": 500
+    },
+    {
+      "name": 150,
+      "value": 320
+    },
+    {
+      "name": 320,
+      "value": 320
+    },
+    {
+      "name": 170,
+      "value": 300
+    }
+  ],
+  "option": {
+    "customColor": [],
+    "grid": {
+      "show": false,
+      "top": 12,
+      "bottom": 18,
+      "right": 50,
+      "left": 0,
+      "containLabel": true
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "fontWeight": "normal"
+      }
+    },
+    "tooltip": {
+      "trigger": "item",
+      "formatter": "x:{b}<br/>y:{c}",
+      "axisPointer": {
+        "type": "shadow",
+        "label": {
+          "show": true,
+          "backgroundColor": "#333"
+        }
+      }
+    },
+    "xAxis": {
+      "axisLabel": {
+        "color": "#EEF1FA"
+      }
+    },
+    "yAxis": {
+      "yUnit": "",
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "axisLine": {
+        "show": false
+      },
+      "splitLine": {
+        "show": false,
+        "interval": 2,
+        "lineStyle": {
+          "color": "#8F8D8D"
+        }
+      },
+      "lineStyle": {
+        "color": "#EEF1FA"
+      }
+    },
+    "series": [
+      {
+        "data": [],
+        "type": "scatter",
+        "symbolSize": 20,
+        "itemStyle": {
+          "color": "#64b5f6"
+        }
+      }
+    ]
+  }
+}

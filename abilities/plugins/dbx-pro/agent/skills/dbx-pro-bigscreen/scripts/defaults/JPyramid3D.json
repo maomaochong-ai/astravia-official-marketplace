@@ -1,0 +1,53 @@
+{
+  "w": 750,
+  "h": 540,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    },
+    {
+      "filed": "颜色",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "Java",
+      "value": 800,
+      "color": "#45fed4"
+    },
+    {
+      "name": "PHP",
+      "value": 100,
+      "color": "#84a9ef"
+    },
+    {
+      "name": "C#",
+      "value": 50,
+      "color": "#f1e04f"
+    },
+    {
+      "name": "Python",
+      "value": 66,
+      "color": "#dbfe73"
+    }
+  ],
+  "option": {
+    "zoom": 1,
+    "size": "small"
+  }
+}

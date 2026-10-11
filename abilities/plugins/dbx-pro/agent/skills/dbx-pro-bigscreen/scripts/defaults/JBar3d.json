@@ -1,0 +1,115 @@
+{
+  "w": 490,
+  "h": 332,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "苹果",
+      "value": 1000
+    },
+    {
+      "name": "三星",
+      "value": 5400
+    },
+    {
+      "name": "小米",
+      "value": 8000
+    },
+    {
+      "name": "oppo",
+      "value": 4000
+    },
+    {
+      "name": "vivo",
+      "type": "手机品牌",
+      "value": 10000
+    }
+  ],
+  "option": {
+    "graphic": {
+      "children": [
+        {
+          "style": {
+            "fill": "#3f4867"
+          }
+        }
+      ]
+    },
+    "grid": {
+      "top": 20,
+      "left": 0,
+      "right": "1",
+      "bottom": "36",
+      "containLabel": true
+    },
+    "tooltip": {
+      "show": true
+    },
+    "xAxis": {
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "axisLine": {
+        "lineStyle": {
+          "color": "#EEF1FA00"
+        }
+      }
+    },
+    "yAxis": {
+      "yUnit": "",
+      "show": true,
+      "axisLabel": {
+        "show": true,
+        "color": "#EEF1FA"
+      },
+      "axisLine": {
+        "lineStyle": {
+          "color": "#EEF1FA"
+        }
+      },
+      "splitLine": {
+        "show": false
+      }
+    },
+    "series": [
+      {
+        "id": "barTopColor",
+        "color": "#2DB1EF"
+      },
+      {
+        "id": "barBottomColor",
+        "color": "#187dcb"
+      },
+      {
+        "id": "barColor",
+        "color": "#115ba6"
+      },
+      {
+        "id": "shadowColor",
+        "color": "#041133"
+      },
+      {
+        "id": "shadowTopColor",
+        "color": "#142f5a"
+      }
+    ]
+  }
+}

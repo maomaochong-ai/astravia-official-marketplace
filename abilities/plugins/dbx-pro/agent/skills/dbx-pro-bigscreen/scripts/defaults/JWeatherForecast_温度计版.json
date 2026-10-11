@@ -1,0 +1,14 @@
+{
+  "w": 400,
+  "h": 266,
+  "dataType": 1,
+  "option": {
+    "city": "",
+    "template": 27,
+    "num": 2,
+    "fontSize": 16,
+    "fontColor": "#fff",
+    "bgColor": "#ffffff",
+    "url": ""
+  }
+}

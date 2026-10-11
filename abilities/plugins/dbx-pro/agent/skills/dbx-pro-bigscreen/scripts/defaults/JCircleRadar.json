@@ -1,0 +1,135 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/radar",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": ""
+  },
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "分组",
+      "mapping": ""
+    },
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "value": 75,
+      "name": "得分",
+      "type": "NBA",
+      "max": 100
+    },
+    {
+      "value": 65,
+      "name": "篮板",
+      "type": "NBA",
+      "max": 100
+    },
+    {
+      "value": 55,
+      "name": "防守",
+      "type": "NBA",
+      "max": 100
+    },
+    {
+      "value": 74,
+      "name": "失误",
+      "type": "NBA",
+      "max": 100
+    },
+    {
+      "value": 38,
+      "name": "盖帽",
+      "type": "NBA",
+      "max": 100
+    },
+    {
+      "value": 88,
+      "name": "三分",
+      "type": "NBA",
+      "max": 100
+    }
+  ],
+  "option": {
+    "grid": {
+      "show": false,
+      "bottom": 115
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "textStyle": {
+        "fontWeight": "normal"
+      },
+      "show": true
+    },
+    "legend": {
+      "data": []
+    },
+    "radar": [
+      {
+        "indicator": []
+      }
+    ],
+    "series": [
+      {
+        "type": "radar",
+        "data": []
+      }
+    ],
+    "customColor": [
+      {
+        "color1": "#1e90ff",
+        "color": "#1e90ff"
+      },
+      {
+        "color1": "#90ee90",
+        "color": "#90ee90"
+      },
+      {
+        "color1": "#00ced1",
+        "color": "#00ced1"
+      },
+      {
+        "color1": "#e2bd84",
+        "color": "#e2bd84"
+      },
+      {
+        "color1": "#7a90e0",
+        "color": "#7a90e0"
+      },
+      {
+        "color1": "#3ba272",
+        "color": "#3ba272"
+      },
+      {
+        "color1": "#2be7ff",
+        "color": "#2be7ff"
+      },
+      {
+        "color1": "#0a8ada",
+        "color": "#0a8ada"
+      },
+      {
+        "color1": "#ffd700",
+        "color": "#ffd700"
+      }
+    ]
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "w": 450,
+  "h": 175,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "background": "#FFFFFF00",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "前缀",
+      "mapping": ""
+    },
+    {
+      "filed": "后缀",
+      "mapping": ""
+    },
+    {
+      "filed": "背景色",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "chartData": [
+    {
+      "backgroundColor": "#67C23A",
+      "prefix": "朝阳总销售额",
+      "value": "12345",
+      "suffix": "亿"
+    },
+    {
+      "backgroundColor": "#409EFF",
+      "prefix": "昌平总销售额",
+      "value": "12345",
+      "suffix": "亿"
+    },
+    {
+      "backgroundColor": "#E6A23C",
+      "prefix": "海淀总销售额",
+      "value": "12345",
+      "suffix": "亿"
+    },
+    {
+      "backgroundColor": "#F56C6C",
+      "prefix": "西城总销售额",
+      "value": "12345",
+      "suffix": "亿"
+    }
+  ],
+  "option": {
+    "whole": false,
+    "width": 50,
+    "height": 50,
+    "lineNum": 2,
+    "borderSplitx": 20,
+    "borderSplity": 20,
+    "decimals": 0,
+    "fontSize": 16,
+    "color": "#fff",
+    "fontWeight": "normal",
+    "textAlign": "center",
+    "padding": 5,
+    "prefixFontSize": 16,
+    "prefixColor": "#fff",
+    "prefixFontWeight": "normal",
+    "prefixSplitx": 0,
+    "prefixSplity": 0,
+    "suffix": "",
+    "suffixSplitx": 40,
+    "suffixFontSize": 16,
+    "suffixColor": "#fff",
+    "suffixFontWeight": "normal",
+    "prefix": "",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "body": {
+      "text": "",
+      "color": "#FFFFFF",
+      "fontWeight": "bold",
+      "marginLeft": 0,
+      "marginTop": 0
+    }
+  }
+}

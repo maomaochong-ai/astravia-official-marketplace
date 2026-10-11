@@ -1,0 +1,44 @@
+{
+  "w": 600,
+  "h": 400,
+  "dataType": 1,
+  "timeOut": 0,
+  "linkageConfig": [],
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "option": {
+    "headerColor": "#fff",
+    "headerBgColor": "#FFFFFF00",
+    "bodyColor": "#FFFFFF",
+    "bodyBgColor": "#FFFFFF00"
+  },
+  "chartData": [
+    {
+      "name": "4月",
+      "value": 50
+    },
+    {
+      "name": "2月",
+      "value": 200
+    },
+    {
+      "name": "3月",
+      "value": 300
+    },
+    {
+      "name": "4月",
+      "value": 400
+    },
+    {
+      "name": "5月",
+      "value": 50
+    },
+    {
+      "name": "6月",
+      "value": 120
+    }
+  ]
+}

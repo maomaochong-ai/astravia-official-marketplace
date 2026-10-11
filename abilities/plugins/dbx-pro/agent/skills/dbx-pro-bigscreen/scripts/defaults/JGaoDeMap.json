@@ -1,0 +1,66 @@
+{
+  "w": 900,
+  "h": 600,
+  "background": "#FFFFFF00",
+  "dataType": 1,
+  "timeOut": 0,
+  "option": {
+    "center_longitude": 116.397428,
+    "center_latitude": 39.90923,
+    "mapStyle": "darkblue",
+    "zoom": 12,
+    "minZoom": 4,
+    "maxZoom": 20,
+    "viewMode": "3D",
+    "pitch": 20,
+    "rotation": 0,
+    "features": ["bg", "road", "building", "point"],
+    "marker": {
+      "imgUrl": "",
+      "showImgField": true,
+      "imgField": "imgUrl",
+      "width": 40,
+      "height": 50,
+      "offsetX": -20,
+      "offsetY": -50
+    },
+    "infoWindow": {
+      "show": true,
+      "event": "hover",
+      "width": 220,
+      "height": 130,
+      "padding": 10,
+      "bgImgUrl": "",
+      "bgColor": "#0a1a2e",
+      "offsetX": 0,
+      "offsetY": -10,
+      "showTitle": true,
+      "titleField": "title",
+      "titleFontSize": 15,
+      "titleLineHeight": 30,
+      "titleColor": "#ffffff",
+      "titleLetterSpacing": 1,
+      "titleFontWeight": "bold",
+      "titleTextAlign": "center",
+      "showContent": true,
+      "contentColor": "#a0c8f0",
+      "contentFontSize": 12,
+      "contentLineHeight": 20,
+      "contentPaddingTop": 5,
+      "contentPaddingLeft": 10,
+      "contentFieldMapping": []
+    }
+  },
+  "chartData": [
+    {
+      "longitude": 116.46,
+      "latitude": 39.92,
+      "title": "京A.12345",
+      "imgUrl": "drag/lib/img/gaoDeMap/car-normal.png",
+      "company": "示例公司",
+      "carType": "轿车",
+      "status": "正常",
+      "time": "2025-01-01 10:00:00"
+    }
+  ]
+}

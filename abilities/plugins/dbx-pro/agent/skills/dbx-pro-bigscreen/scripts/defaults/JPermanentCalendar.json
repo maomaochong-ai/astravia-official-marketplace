@@ -1,0 +1,184 @@
+{
+  "w": 1000,
+  "h": 480,
+  "dataType": 1,
+  "timeOut": 0,
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "date": "2026-03-05",
+      "value": 620000
+    },
+    {
+      "date": "2026-03-08",
+      "value": 265000
+    },
+    {
+      "date": "2026-03-10",
+      "value": 564000
+    },
+    {
+      "date": "2026-03-14",
+      "value": 120000
+    },
+    {
+      "date": "2026-03-15",
+      "value": 565000
+    },
+    {
+      "date": "2026-03-20",
+      "value": 120000
+    },
+    {
+      "date": "2026-03-24",
+      "value": 102000
+    },
+    {
+      "date": "2026-03-25",
+      "value": 120
+    },
+    {
+      "date": "2026-03-28",
+      "value": 103
+    }
+  ],
+  "option": {
+    "container": {
+      "border": {
+        "color": "#2B6CB0",
+        "width": 0,
+        "style": "solid",
+        "enabled": true
+      },
+      "padding": {
+        "top": 8,
+        "left": 10,
+        "bottom": 8,
+        "right": 10
+      },
+      "margin": {
+        "bottom": 0
+      },
+      "background": {
+        "color": "#00000000",
+        "gradient": {
+          "endColor": "#0A1E3A",
+          "type": "linear",
+          "enabled": true,
+          "direction": "to bottom",
+          "startColor": "#0B2B58"
+        }
+      }
+    },
+    "dataVal": {
+      "offsetX": -2,
+      "offsetY": -15,
+      "color": {
+        "gradient": {
+          "endColor": "#FFFFFF",
+          "enabled": false,
+          "startColor": "#000000"
+        },
+        "value": "#D0021B"
+      },
+      "fontSize": 17,
+      "position": "top"
+    },
+    "week": {
+      "color": {
+        "gradient": {
+          "endColor": "#0066CC",
+          "type": "linear",
+          "enabled": true,
+          "startColor": "#FFFFFF",
+          "direction": "to bottom"
+        },
+        "value": "#FFFFFF"
+      },
+      "prefix": "周",
+      "start": "sun",
+      "fontSize": 21,
+      "marginBottom": 21,
+      "showEn": false,
+      "fontWeight": "bold",
+      "height": 22
+    },
+    "month": {
+      "offsetTop": -15,
+      "color": {
+        "gradient": {
+          "endColor": "#ffffff",
+          "type": "linear",
+          "enabled": false,
+          "direction": "to bottom",
+          "startColor": "#ffffff"
+        },
+        "value": "#ffffff"
+      },
+      "show": true,
+      "en": {
+        "color": {
+          "value": "#FFFFFF"
+        },
+        "fontSize": 29,
+        "opacity": 1
+      },
+      "cn": {
+        "color": {
+          "gradient": {
+            "endColor": "#FFFFFF",
+            "enabled": false,
+            "startColor": "#000000"
+          },
+          "value": "#FFFFFF"
+        },
+        "fontSize": 70,
+        "opacity": 0.11,
+        "fontStyle": "italic"
+      },
+      "position": "center",
+      "showEn": false
+    },
+    "field": {
+      "unit": "万",
+      "appendUnit": true,
+      "dateField": "date",
+      "valueField": "value"
+    },
+    "title": {
+      "color": {
+        "gradient": {
+          "endColor": "#3bc6ff",
+          "type": "linear",
+          "enabled": false,
+          "direction": "to right",
+          "startColor": "#9fe5ff"
+        },
+        "value": "#9fe5ff"
+      },
+      "show": true
+    },
+    "cell": {
+      "width": 120,
+      "day": {
+        "color": {
+          "value": "#FFFFFF"
+        },
+        "fontSize": 16
+      },
+      "height": 76
+    },
+    "circle": {
+      "dashed": false,
+      "strokeWidth": 4,
+      "glowStrength": 1,
+      "fillOpacity": 0.14,
+      "size": 37,
+      "minIntensity": 0.55,
+      "pulse": true,
+      "doubleRing": true,
+      "glowEnabled": true,
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "chartData": [
+    [
+      "行1列1",
+      "行1列2",
+      "行1列3"
+    ],
+    [
+      "行2列1",
+      "行2列2",
+      "行2列3"
+    ],
+    [
+      "行3列1",
+      "行3列2",
+      "行3列3"
+    ],
+    [
+      "行4列1",
+      "行4列2",
+      "行4列3"
+    ],
+    [
+      "行5列1",
+      "行5列2",
+      "行5列3"
+    ]
+  ],
+  "option": {
+    "index": true,
+    "headShow": true,
+    "header": [
+      {
+        "label": "列1",
+        "key": "",
+        "width": 100
+      },
+      {
+        "label": "列2",
+        "key": "",
+        "width": 100
+      },
+      {
+        "label": "列3",
+        "key": "",
+        "width": 100
+      }
+    ],
+    "headerBGC": "#00BAFF",
+    "headerHeight": 35,
+    "waitTime": 2000,
+    "rowNum": 5,
+    "carousel": "single",
+    "hoverPause": true,
+    "indexWidth": 80,
+    "oddRowBGC": "#003B51",
+    "evenRowBGC": "#0A2732",
+    "headFontSize": 14,
+    "bodyFontSize": 12,
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

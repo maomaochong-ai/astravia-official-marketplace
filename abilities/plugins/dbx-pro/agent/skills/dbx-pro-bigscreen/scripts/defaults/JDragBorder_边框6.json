@@ -1,0 +1,15 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "option": {
+    "type": "6",
+    "title": "边框",
+    "titleWidth": 250,
+    "mainColor": "#83bff6",
+    "subColor": "#00CED1",
+    "backgroundColor": "#ffffff00",
+    "reverse": false,
+    "dur": 3
+  }
+}

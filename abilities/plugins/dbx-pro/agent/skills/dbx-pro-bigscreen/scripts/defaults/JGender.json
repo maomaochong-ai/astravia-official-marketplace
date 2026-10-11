@@ -1,0 +1,44 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/26/pictogram",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "男",
+      "mapping": ""
+    },
+    {
+      "filed": "女",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "man": 50,
+      "woman": 35
+    }
+  ],
+  "option": {
+    "title": {
+      "show": true,
+      "textAlign": "left",
+      "text": ""
+    },
+    "legend": {
+      "t": 0,
+      "r": 35
+    },
+    "grid": {
+      "bottom": 115
+    },
+    "series": []
+  }
+}

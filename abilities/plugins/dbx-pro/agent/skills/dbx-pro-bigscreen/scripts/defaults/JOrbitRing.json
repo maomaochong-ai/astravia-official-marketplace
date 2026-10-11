@@ -1,0 +1,115 @@
+{
+  "w": 750,
+  "h": 540,
+  "dataType": 1,
+  "timeOut": 0,
+  "dataMapping": [
+    {
+      "filed": "标题",
+      "mapping": "name"
+    },
+    {
+      "filed": "id(唯一标识)",
+      "mapping": "value"
+    },
+    {
+      "filed": "图片地址",
+      "mapping": "imgSrc"
+    }
+  ],
+  "chartData": [
+    {
+      "name": "经营发展",
+      "value": 1
+    },
+    {
+      "name": "全口径化债",
+      "value": 2
+    },
+    {
+      "name": "土地成本决算",
+      "value": 3
+    },
+    {
+      "name": "创新赋能",
+      "value": 4
+    },
+    {
+      "name": "重点项目",
+      "value": 5
+    },
+    {
+      "name": "培育增量",
+      "value": 6
+    }
+  ],
+  "option": {
+    "imgTextMode": true,
+    "showOrbit": true,
+    "orbitRadius": 290,
+    "tilt": 0.55,
+    "sharedSpeed": 1,
+    "planetWidth": 80,
+    "planetHeight": 80,
+    "sharedDepth": 10,
+    "direction": 1,
+    "fontSize": 14,
+    "color": "#ffffff",
+    "fontWeight": "normal",
+    "fontStyle": "normal",
+    "letterSpacing": 0,
+    "fontGradient": {
+      "enabled": false,
+      "type": "linear",
+      "direction": "to right",
+      "startColor": "#ffffff",
+      "endColor": "#0066cc"
+    },
+    "sun": {
+      "bgImg": "",
+      "width": 300,
+      "height": 300,
+      "repeat": "no-repeat",
+      "position": "center"
+    },
+    "showType": "1",
+    "items": [
+      {
+        "name": "经营发展",
+        "value": 1,
+        "bgColor": "#31aefd",
+        "bgImg": ""
+      },
+      {
+        "name": "全口径化债",
+        "value": 2,
+        "bgColor": "#409EFF",
+        "bgImg": ""
+      },
+      {
+        "name": "土地成本决算",
+        "value": 3,
+        "bgColor": "#E6A23C",
+        "bgImg": ""
+      },
+      {
+        "name": "创新赋能",
+        "value": 4,
+        "bgColor": "#F56C6C",
+        "bgImg": ""
+      },
+      {
+        "name": "重点项目",
+        "value": 5,
+        "bgColor": "#67C23A",
+        "bgImg": ""
+      },
+      {
+        "name": "培育增量",
+        "value": 6,
+        "bgColor": "#909399",
+        "bgImg": ""
+      }
+    ]
+  }
+}

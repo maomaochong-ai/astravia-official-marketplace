@@ -1,0 +1,80 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "A",
+      "value": 297
+    },
+    {
+      "name": "B",
+      "value": 506
+    },
+    {
+      "name": "C",
+      "value": 805
+    },
+    {
+      "name": "D",
+      "value": 1478
+    },
+    {
+      "name": "E",
+      "value": 2029
+    },
+    {
+      "name": "F",
+      "value": 7100
+    },
+    {
+      "name": "G",
+      "value": 7346
+    },
+    {
+      "name": "H",
+      "value": 10178
+    }
+  ],
+  "option": {
+    "type": "bar",
+    "radius": 0.8,
+    "innerRadius": 0.2,
+    "maxAngle": 240,
+    "radiuShow": false,
+    "bgShow": false,
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

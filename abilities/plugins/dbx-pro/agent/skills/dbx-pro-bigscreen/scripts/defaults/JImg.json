@@ -1,0 +1,27 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "linesConfig": {
+    "connectLine": []
+  },
+  "option": {
+    "izRotate": false,
+    "rotateTime": 1000,
+    "opacity": 1,
+    "borderRadius": 0,
+    "backgroundColor": "#FFFFFF00",
+    "padding": 0,
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "body": {
+      "url": "https://static.jeecg.com/upload/test/df_1616583016208.png"
+    }
+  }
+}

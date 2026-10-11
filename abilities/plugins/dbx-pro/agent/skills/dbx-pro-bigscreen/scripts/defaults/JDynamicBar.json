@@ -1,0 +1,128 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/26/stackedBar",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "markLineConfig": {
+    "show": false,
+    "markLine": []
+  },
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "1991",
+      "value": 131
+    },
+    {
+      "name": "1992",
+      "value": 141
+    },
+    {
+      "name": "1993",
+      "value": 31.5
+    },
+    {
+      "name": "1994",
+      "value": 53
+    },
+    {
+      "name": "1995",
+      "value": 41.9
+    },
+    {
+      "name": "1996",
+      "value": 61
+    },
+    {
+      "name": "1997",
+      "value": 17
+    },
+    {
+      "name": "1998",
+      "value": 19
+    },
+    {
+      "name": "1999",
+      "value": 113
+    }
+  ],
+  "option": {
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "textStyle": {
+        "fontWeight": "normal"
+      }
+    },
+    "xAxis": {
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "splitLine": {
+        "show": false,
+        "lineStyle": {
+          "color": "#8F8D8D"
+        }
+      }
+    },
+    "yAxis": {
+      "yUnit": "",
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "axisLine": {
+        "show": true,
+        "lineStyle": {
+          "color": "#EEF1FA"
+        }
+      },
+      "splitLine": {
+        "show": false,
+        "interval": 2,
+        "lineStyle": {
+          "color": "#8F8D8D"
+        }
+      }
+    },
+    "grid": {
+      "top": 30,
+      "bottom": 18,
+      "right": 30,
+      "left": 0,
+      "containLabel": true
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "tooltip": {
+      "trigger": "axis",
+      "axisPointer": {
+        "type": "shadow",
+        "label": {
+          "show": true,
+          "backgroundColor": "#333"
+        }
+      }
+    },
+    "series": []
+  }
+}

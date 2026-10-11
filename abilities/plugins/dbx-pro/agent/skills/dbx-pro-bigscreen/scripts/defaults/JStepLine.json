@@ -1,0 +1,139 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "markLineConfig": {
+    "show": false,
+    "markLine": []
+  },
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "value": 1000,
+      "name": "联想"
+    },
+    {
+      "value": 7350,
+      "name": "小米"
+    },
+    {
+      "value": 5800,
+      "name": "华为"
+    },
+    {
+      "value": 6000,
+      "name": "苹果"
+    },
+    {
+      "value": 3000,
+      "name": "戴尔"
+    }
+  ],
+  "option": {
+    "grid": {
+      "show": false,
+      "top": 30,
+      "bottom": 18,
+      "right": 40,
+      "left": 0,
+      "containLabel": true
+    },
+    "xAxis": {
+      "axisLabel": {
+        "color": "#EEF1FA"
+      }
+    },
+    "yAxis": {
+      "yUnit": "",
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "splitLine": {
+        "show": false,
+        "interval": 2,
+        "lineStyle": {
+          "color": "#8F8D8D"
+        }
+      }
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "subtext": "",
+      "textStyle": {
+        "fontWeight": "normal"
+      }
+    },
+    "series": [
+      {
+        "data": [],
+        "step": "middle",
+        "type": "line",
+        "label": {
+          "position": "top"
+        }
+      }
+    ],
+    "customColor": [
+      {
+        "color1": "#1e90ff",
+        "color": "#1e90ff"
+      },
+      {
+        "color1": "#90ee90",
+        "color": "#90ee90"
+      },
+      {
+        "color1": "#00ced1",
+        "color": "#00ced1"
+      },
+      {
+        "color1": "#e2bd84",
+        "color": "#e2bd84"
+      },
+      {
+        "color1": "#7a90e0",
+        "color": "#7a90e0"
+      },
+      {
+        "color1": "#3ba272",
+        "color": "#3ba272"
+      },
+      {
+        "color1": "#2be7ff",
+        "color": "#2be7ff"
+      },
+      {
+        "color1": "#0a8ada",
+        "color": "#0a8ada"
+      },
+      {
+        "color1": "#ffd700",
+        "color": "#ffd700"
+      }
+    ]
+  }
+}

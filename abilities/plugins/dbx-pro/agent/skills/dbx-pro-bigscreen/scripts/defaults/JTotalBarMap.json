@@ -1,0 +1,273 @@
+{
+  "w": 900,
+  "h": 600,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/radar",
+  "timeOut": 0,
+  "background": "#FFFFFF00",
+  "dataMapping": [
+    {
+      "filed": "区域",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    },
+    {
+      "filed": "分组",
+      "mapping": ""
+    },
+    {
+      "filed": "经度",
+      "mapping": ""
+    },
+    {
+      "filed": "纬度",
+      "mapping": ""
+    }
+  ],
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "name": "江苏",
+      "lng": 118.8062,
+      "lat": 31.9208,
+      "value": 500,
+      "group": 2017
+    },
+    {
+      "name": "贵州",
+      "lng": 106.6992,
+      "lat": 26.7682,
+      "value": 100,
+      "group": 2017
+    },
+    {
+      "name": "河南",
+      "lng": 113.4668,
+      "lat": 34.6234,
+      "value": 100,
+      "group": 2017
+    },
+    {
+      "name": "云南",
+      "lng": 102.9199,
+      "lat": 25.4663,
+      "value": 300,
+      "group": 2017
+    },
+    {
+      "name": "江苏",
+      "lng": 118.8062,
+      "lat": 31.9208,
+      "value": 478,
+      "group": 2018
+    },
+    {
+      "name": "贵州",
+      "lng": 106.6992,
+      "lat": 26.7682,
+      "value": 269,
+      "group": 2018
+    },
+    {
+      "name": "河南",
+      "lng": 113.4668,
+      "lat": 34.6234,
+      "value": 128,
+      "group": 2018
+    },
+    {
+      "name": "云南",
+      "lng": 102.9199,
+      "lat": 25.4663,
+      "value": 100,
+      "group": 2018
+    },
+    {
+      "name": "江苏",
+      "lng": 118.8062,
+      "lat": 31.9208,
+      "value": 236,
+      "group": 2019
+    },
+    {
+      "name": "贵州",
+      "lng": 106.6992,
+      "lat": 26.7682,
+      "value": 569,
+      "group": 2019
+    },
+    {
+      "name": "河南",
+      "lng": 113.4668,
+      "lat": 34.6234,
+      "value": 479,
+      "group": 2019
+    },
+    {
+      "name": "云南",
+      "lng": 102.9199,
+      "lat": 25.4663,
+      "value": 259,
+      "group": 2019
+    }
+  ],
+  "commonOption": {
+    "barSize": 10,
+    "barColor": "#D6F263",
+    "barColor2": "#A3DB6B",
+    "gradientColor": false,
+    "mapTitle": "",
+    "dataTitle": "数据统计情况",
+    "dataTitleSize": 20,
+    "dataTitleColor": "#ffffff",
+    "dataNameColor": "#dddddd",
+    "dataValueColor": "#dddddd",
+    "areaColor": {
+      "color1": "#0A0909",
+      "color2": "#3B373700"
+    },
+    "grid": {
+      "bottom": 50,
+      "left": 75,
+      "top": 20
+    },
+    "inRange": {
+      "color": [
+        "#04387b",
+        "#467bc0"
+      ]
+    },
+    "breadcrumb": {
+      "drillDown": false,
+      "textColor": "#ffffff"
+    }
+  },
+  "option": {
+    "area": {
+      "markerCount": 5,
+      "shadowBlur": 10,
+      "markerOpacity": 1,
+      "markerColor": "#DDE330",
+      "shadowColor": "#DDE330",
+      "scatterLabelShow": false,
+      "markerType": "effectScatter",
+      "value": [
+        "china"
+      ],
+      "name": [
+        "中国"
+      ]
+    },
+    "graphic": [],
+    "grid": {
+      "show": false,
+      "bottom": 115
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "left": 10,
+      "textStyle": {
+        "color": "#ffffff",
+        "fontSize": "22px"
+      },
+      "subtextStyle": {
+        "color": "#ffffff",
+        "fontSize": "12px"
+      }
+    },
+    "legend": {
+      "data": []
+    },
+    "radar": [
+      {
+        "indicator": []
+      }
+    ],
+    "timeline": {
+      "show": true,
+      "axisType": "category",
+      "autoPlay": true,
+      "playInterval": 2000,
+      "left": "10%",
+      "right": "5%",
+      "bottom": 5,
+      "padding": 5,
+      "width": "80%",
+      "label": {
+        "normal": {
+          "textStyle": {
+            "color": "#ffffff"
+          }
+        },
+        "emphasis": {
+          "textStyle": {
+            "color": "#000000"
+          }
+        }
+      },
+      "symbolSize": 10,
+      "lineStyle": {
+        "color": "#555555"
+      },
+      "checkpointStyle": {
+        "borderColor": "#777777",
+        "borderWidth": 2
+      },
+      "controlStyle": {
+        "showNextBtn": true,
+        "showPrevBtn": true,
+        "normal": {
+          "color": "#666666",
+          "borderColor": "#666666"
+        },
+        "emphasis": {
+          "color": "#aaaaaa",
+          "borderColor": "#aaaaaa"
+        }
+      }
+    },
+    "geo": {
+      "top": 80,
+      "left": "3%",
+      "show": true,
+      "roam": false,
+      "zoom": 0.9,
+      "label": {
+        "emphasis": {
+          "show": false
+        }
+      },
+      "itemStyle": {
+        "normal": {
+          "borderColor": "#0692A4",
+          "borderWidth": 1,
+          "areaColor": "#F8E71C",
+          "shadowColor": "#80d9f8",
+          "shadowOffsetX": 0,
+          "shadowOffsetY": 0,
+          "shadowBlur": 0
+        },
+        "emphasis": {
+          "areaColor": "#EEDD78",
+          "borderWidth": 0
+        }
+      }
+    }
+  }
+}

@@ -62,7 +62,8 @@ async function main() {
   if (!args.spec) { console.error("需要 --spec <path>"); process.exit(1); }
 
   const spec = await readSpec(args.spec);
-  const endpoint = args.dry ? "/api/bigscreen/compile" : "/api/bigscreen/generate";
+  // 主流程：compile（返回 JimuBI 组件 JSON）；--render 返回 HTML（调试预览）
+  const endpoint = args.render ? "/api/bigscreen/render" : "/api/bigscreen/compile";
   const base = `http://127.0.0.1:${args.port}`;
 
   try {
@@ -70,23 +71,39 @@ async function main() {
     if (!resp.ok) { console.error("API error:", resp.error); process.exit(2); }
     const data = resp.data;
 
-    if (args.dry) {
-      console.log(JSON.stringify(data, null, 2));
-    } else {
+    if (args.render) {
+      // render 端点直接返回 { html: string }
       const html = data.html;
       if (args.output) {
         const fs = await import("node:fs");
         await fs.promises.writeFile(args.output, html, "utf-8");
-        console.log(`✅ HTML 已写入 ${args.output}（${html.length.toLocaleString()} 字节）`);
+        console.log(`✅ HTML 预览已写入 ${args.output}（${html.length.toLocaleString()} 字节）`);
       } else {
         process.stdout.write(html);
       }
-      // 打印编译摘要
-      const warnCount = (data.components ?? []).reduce((s, c) => s + (c.warnings?.length ?? 0), 0);
-      const errCount = (data.components ?? []).filter(c => c.kind === "error").length;
-      console.error(`\n📊 编译摘要: ${(data.components ?? []).length} 组件 | ${errCount} 错误 | ${warnCount} 警告`);
-      if (errCount > 0) {
-        data.components.filter(c => c.kind === "error").forEach(c => console.error(`  ⚠️  ${c.title ?? c.type}: ${c.warnings?.join("; ")}`));
+      return;
+    }
+
+    if (args.dry) {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      // compile 端点返回完整编译结果：{ page, components, palette, warnings }
+      console.log(`📊 大屏: ${data.page?.name ?? "untitled"} (${data.page?.width}×${data.page?.height}, ${data.palette?.name})`);
+      console.log(`📦 组件数: ${data.components?.length ?? 0}`);
+      for (const c of data.components ?? []) {
+        if (c.error) console.log(`  ❌ ${c.type}: ${c.error}`);
+        else console.log(`  ✅ ${c.type.padEnd(22)} w=${c.cfg?.w} h=${c.cfg?.h} dataType=${c.cfg?.dataType}`);
+      }
+      if (data.warnings?.length) {
+        console.log(`\n⚠️  警告 ${data.warnings.length} 条:`);
+        for (const w of data.warnings) console.log(`  ${w}`);
+      }
+      // 组件 JSON 数组输出到文件（dbx-pro storage 主流程）
+      if (args.output) {
+        const fs = await import("node:fs");
+        const json = JSON.stringify(data.components?.map(c => ({ type: c.type, title: c.title, cfg: c.cfg })), null, 2);
+        await fs.promises.writeFile(args.output, json, "utf-8");
+        console.log(`\n✅ 组件 JSON 已写入 ${args.output}`);
       }
     }
   } catch (e) {

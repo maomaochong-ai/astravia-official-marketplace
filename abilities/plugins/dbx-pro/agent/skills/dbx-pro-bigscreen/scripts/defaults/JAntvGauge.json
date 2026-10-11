@@ -1,0 +1,62 @@
+{
+  "w": 300,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/26/gauge",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "名称",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "label": "使用率",
+      "value": 4
+    }
+  ],
+  "option": {
+    "gaugeType": "",
+    "gaugeWidth": 15,
+    "axisTickShow": true,
+    "lineColor": "#eee",
+    "axisLabelShow": true,
+    "axisLabelColor": "#fff",
+    "axisLabelFontSize": 15,
+    "valueFontSize": 30,
+    "valueColor": "#fff",
+    "indicatorColor": "#D0D0D0",
+    "indicatorLength": 8,
+    "colorType": "4",
+    "colors": [
+      {
+        "color1": "#67e0e3",
+        "color2": ""
+      }
+    ],
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "textStyle": {
+        "fontWeight": "normal"
+      }
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    }
+  }
+}

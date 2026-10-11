@@ -1,0 +1,9 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "timeOut": 0,
+  "option": {
+    "url": "http://vjs.zencdn.net/v/oceans.mp4"
+  }
+}

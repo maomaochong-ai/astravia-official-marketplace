@@ -1,0 +1,52 @@
+{
+  "w": 170,
+  "h": 60,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "background": "#FFFFFF00",
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": {
+    "value": "我是展示文本"
+  },
+  "option": {
+    "isLink": false,
+    "openType": "_blank",
+    "openUrl": "",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "body": {
+      "text": "",
+      "color": "#FFFFFF",
+      "fontWeight": "normal",
+      "marginLeft": 0,
+      "marginTop": 0,
+      "letterSpacing": 0
+    },
+    "modal": {
+      "title": "标题",
+      "backgroundImage": "",
+      "backgroundSize": "100% 100%",
+      "backgroundRepeat": "no-repeat",
+      "backgroundPosition": "center center",
+      "sizeMode": "full",
+      "backgroundColor": "#363636",
+      "titleBgColor": "#1F1F1F"
+    }
+  }
+}

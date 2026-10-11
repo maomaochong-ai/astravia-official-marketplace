@@ -3,10 +3,11 @@
  *
  * 走本地内置品牌图形（resolveDatabaseIcon，零网络依赖）；找不到品牌 logo 时
  * 回退到中性的通用数据库图标，不伪造彩色字母块。
- * 纯展示组件：只接收 props，不读服务 / 持久化状态。
+ * 纯展示组件：只接收 props 与已解析的主题，不读服务 / 持久化状态。
  */
 
-import { useState, type JSX } from "react";
+import type { JSX } from "react";
+import { useDetectedTheme } from "../hooks/use-detected-theme";
 import { resolveDatabaseIcon } from "../../domain/database-icons";
 
 export type DatabaseTypeIconSize = "small" | "medium" | "large";
@@ -17,16 +18,6 @@ const CLASS_BY_SIZE: Record<DatabaseTypeIconSize, string> = {
 	large: "h-10 w-10",
 };
 
-/** 按插件根背景亮度判断当前是否深色主题（兼容宿主强制主题）。 */
-function detectDark(): boolean {
-	const root = document.querySelector('[data-astravia-plugin-root="dbx-pro"]');
-	const bg = root ? getComputedStyle(root).backgroundColor : "";
-	const m = bg.match(/\d+(?:\.\d+)?/g);
-	if (!m || m.length < 3) return true;
-	const [r, g, b] = m.slice(0, 3).map(Number);
-	return 0.299 * r + 0.587 * g + 0.114 * b < 90;
-}
-
 export function DatabaseTypeIcon({
 	dbType,
 	size = "medium",
@@ -34,7 +25,9 @@ export function DatabaseTypeIcon({
 	dbType: string;
 	size?: DatabaseTypeIconSize | number;
 }): JSX.Element {
-	const [isDark] = useState(detectDark);
+	// 明暗取插件根上的主题属性（宿主 data-mode → plugin-theme），不再按元素背景亮度猜：
+	// 宿主在插件根外面包的那层容器是 display:contents，计算背景透明，会被一律判成深色。
+	const isDark = useDetectedTheme() === "dark";
 	const icon = resolveDatabaseIcon(dbType, isDark);
 
 	if (!icon) {

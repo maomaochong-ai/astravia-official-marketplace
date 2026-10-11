@@ -1,0 +1,65 @@
+{
+  "w": 350,
+  "h": 390,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "小米手机",
+      "value": 12550
+    },
+    {
+      "name": "天猫",
+      "value": 1234
+    },
+    {
+      "name": "iPhone X",
+      "value": 19651
+    },
+    {
+      "name": "华为P20",
+      "value": 17319
+    },
+    {
+      "name": "Mac Pro",
+      "value": 18341
+    }
+  ],
+  "option": {
+    "zoom": 1,
+    "textColor": "#fff",
+    "textSize": 14,
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "color": "#464646",
+        "fontWeight": "normal"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "w": 290,
+  "h": 33,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "background": "#FFFFFF00",
+  "chartData": "",
+  "option": {
+    "showWeek": "show",
+    "hourlySystem": "12",
+    "format": "YYYY-MM-DD hh:mm:ss",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "body": {
+      "text": "",
+      "color": "#FFFFFF",
+      "fontWeight": "normal",
+      "marginLeft": 0,
+      "marginTop": 0,
+      "letterSpacing": 0
+    }
+  }
+}

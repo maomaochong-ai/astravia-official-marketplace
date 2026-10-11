@@ -1,0 +1,240 @@
+{
+  "w": 556,
+  "h": 255,
+  "dataType": 1,
+  "timeOut": 0,
+  "linkageConfig": [],
+  "chartData": [
+    {
+      "rank": 1,
+      "customerName": "北京华信科技有限公司",
+      "contractAmount": 8000
+    },
+    {
+      "rank": 2,
+      "customerName": "上海(中国)智远信息技术股份有限公司",
+      "contractAmount": 7800
+    },
+    {
+      "rank": 3,
+      "customerName": "深圳市鼎盛软件有限公司",
+      "contractAmount": 6880
+    },
+    {
+      "rank": 4,
+      "customerName": "广州恒信数据服务有限公司",
+      "contractAmount": 5600
+    },
+    {
+      "rank": 5,
+      "customerName": "杭州云帆科技发展有限公司",
+      "contractAmount": 4900
+    },
+    {
+      "rank": 6,
+      "customerName": "成都睿智科技有限公司",
+      "contractAmount": 4700
+    },
+    {
+      "rank": 7,
+      "customerName": "南京博思信息技术有限公司",
+      "contractAmount": 4500
+    },
+    {
+      "rank": 8,
+      "customerName": "苏州新创软件有限公司",
+      "contractAmount": 4200
+    },
+    {
+      "rank": 9,
+      "customerName": "重庆智联科技有限公司",
+      "contractAmount": 3900
+    },
+    {
+      "rank": 10,
+      "customerName": "武汉华腾信息技术有限公司",
+      "contractAmount": 3600
+    }
+  ],
+  "option": {
+    "showIndex": false,
+    "autoScrollEnabled": true,
+    "columnGap": 16,
+    "rowGap": 16,
+    "indexFieldStyle": {},
+    "contentFieldMapping": [
+      {
+        "itemConfig": {
+          "marginRight": 0,
+          "alignItems": "flex-start",
+          "width": 0,
+          "marginBottom": 4,
+          "layoutDirection": "row",
+          "justifyContent": "center",
+          "marginTop": 0,
+          "height": 73,
+          "marginLeft": 0
+        },
+        "valueStyle": {
+          "fontSize": 14,
+          "marginBottom": 4,
+          "fontColor": "#A6D8FF",
+          "fontWeight": "normal",
+          "height": 0
+        },
+        "showValue": true,
+        "valueCompose": {
+          "contentStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "enabled": false
+        },
+        "nameStyle": {
+          "fontSize": 14,
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal"
+        },
+        "omitConfig": {
+          "show": true,
+          "lines": 3
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "valueType": "non-array",
+        "name": "客户名称",
+        "thousandSeparatorConfig": {
+          "show": false
+        },
+        "key": "customerName",
+        "showLabel": false
+      },
+      {
+        "itemConfig": {
+          "marginRight": 0,
+          "alignItems": "center",
+          "width": 0,
+          "marginBottom": 3,
+          "layoutDirection": "row",
+          "justifyContent": "center",
+          "marginTop": 0,
+          "height": 68,
+          "marginLeft": 0
+        },
+        "valueStyle": {
+          "fontSize": 24,
+          "marginBottom": 0,
+          "fontColor": "#FEAF26",
+          "fontWeight": "bold",
+          "height": 0,
+          "marginLeft": 0
+        },
+        "showValue": true,
+        "valueCompose": {
+          "enabled": false
+        },
+        "nameStyle": {
+          "marginRight": 0,
+          "width": 225,
+          "fontSize": 14,
+          "fontColor": "#CCCCCC",
+          "fontWeight": "normal",
+          "marginLeft": 0
+        },
+        "omitConfig": {
+          "show": false,
+          "lines": 1
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "valueType": "non-array",
+        "name": "排名",
+        "thousandSeparatorConfig": {
+          "show": false
+        },
+        "key": "rank",
+        "showLabel": false
+      },
+      {
+        "itemConfig": {
+          "marginRight": 0,
+          "alignItems": "center",
+          "width": 0,
+          "marginBottom": 0,
+          "layoutDirection": "column-reverse",
+          "justifyContent": "center",
+          "marginTop": 0,
+          "height": 100,
+          "marginLeft": 0
+        },
+        "valueStyle": {
+          "fontSize": 18,
+          "marginBottom": 2,
+          "fontGradient": {
+            "endColor": "#49ABFF",
+            "type": "linear",
+            "enabled": true,
+            "startColor": "#96F5F8",
+            "direction": "to bottom"
+          },
+          "fontColor": "#40A9FF",
+          "fontWeight": "bold"
+        },
+        "showValue": true,
+        "valueCompose": {
+          "contentStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "suffixStyle": {
+            "fontSize": 14,
+            "fontColor": "#40A9FF"
+          },
+          "suffix": "万元",
+          "enabled": false
+        },
+        "nameStyle": {
+          "fontSize": 12,
+          "fontColor": "#B0B0B0",
+          "fontWeight": "normal",
+          "height": 0
+        },
+        "omitConfig": {
+          "show": false,
+          "lines": 1
+        },
+        "nameCompose": {
+          "enabled": false
+        },
+        "valueType": "non-array",
+        "name": "合同额(万元)",
+        "thousandSeparatorConfig": {
+          "show": true
+        },
+        "key": "contractAmount",
+        "showLabel": true
+      }
+    ],
+    "contentCurrent": 2,
+    "autoScrollSpeed": 100,
+    "scrollDirection": "left",
+    "cardStyle": {
+      "backgroundColor": "#1890FF1A",
+      "borderColor": "#1890FF",
+      "backgroundImage": "drag/lib/img/cardScroll-bg-01.png",
+      "paddingRight": 5,
+      "borderEnabled": true,
+      "paddingBottom": 5,
+      "borderRadius": 8,
+      "borderWidth": 0,
+      "width": 98,
+      "bgHighlightImage": "",
+      "paddingTop": 5,
+      "borderStyle": "dashed",
+      "paddingLeft": 5,
+      "height": 250
+    },
+    "currentValue": 0,
+    "direction": "horizontal"
+  }
+}

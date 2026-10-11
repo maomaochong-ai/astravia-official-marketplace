@@ -1,0 +1,14 @@
+{
+  "w": 107,
+  "h": 50,
+  "dataType": 1,
+  "option": {
+    "type": "7",
+    "title": "装饰7",
+    "mainColor": "#00CED1",
+    "subColor": "#FAD400",
+    "reverse": false,
+    "dur": 3,
+    "fontSize": 15
+  }
+}

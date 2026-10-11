@@ -1,0 +1,244 @@
+{
+  "w": 713,
+  "h": 106,
+  "dataType": 1,
+  "timeOut": 0,
+  "chartData": [
+    {
+      "id": "1",
+      "name": "成本已支付金额",
+      "value": 96790,
+      "suffix": "万元",
+      "compareLabel": "环比",
+      "compareValue": "120%",
+      "compareState": "1"
+    },
+    {
+      "id": "2",
+      "name": "成本未付款金额",
+      "value": 96.79,
+      "suffix": "%",
+      "compareLabel": "同比",
+      "compareValue": "120%",
+      "compareState": "1"
+    },
+    {
+      "id": "3",
+      "name": "租赁应收未回金额",
+      "value": 10790,
+      "suffix": "元",
+      "compareLabel": "同比",
+      "compareValue": "120%",
+      "compareState": "1"
+    },
+    {
+      "id": "4",
+      "name": "租赁项目欠款金额",
+      "value": 86790,
+      "suffix": "元",
+      "compareLabel": "同比",
+      "compareValue": "120%",
+      "compareState": "0"
+    }
+  ],
+  "option": {
+    "layout": {
+      "padding": {
+        "top": 5,
+        "left": 20,
+        "bottom": 0,
+        "right": 20
+      },
+      "borderColor": "#0f66ff59",
+      "borderRadius": 0,
+      "shadow": "none",
+      "justify": "space-between",
+      "borderWidth": 0,
+      "gap": 16,
+      "fill": {
+        "image": {
+          "size": "100% 100%",
+          "repeat": "no-repeat",
+          "position": "center",
+          "url": ""
+        },
+        "color": "#0b2b63",
+        "gradient": {
+          "endColor": "#0bb2ff",
+          "angle": 135,
+          "type": "linear",
+          "enabled": false,
+          "direction": "to bottom right",
+          "startColor": "#05336a"
+        },
+        "type": "image"
+      }
+    },
+    "fieldMap": {
+      "compareValue": "compareValue",
+      "unit": "suffix",
+      "negativeValue": "0",
+      "compareState": "compareState",
+      "label": "name",
+      "value": "value",
+      "positiveValue": "1",
+      "compareLabel": "compareLabel"
+    },
+    "card": {
+      "padding": {
+        "horizontal": 3,
+        "vertical": 15
+      },
+      "borderColor": "#0F66FF59",
+      "borderRadius": 0,
+      "shadow": "none",
+      "borderWidth": 0,
+      "blur": 24,
+      "minWidth": 100,
+      "fill": {
+        "image": {
+          "size": "100% 100%",
+          "repeat": "no-repeat",
+          "position": "center",
+          "url": ""
+        },
+        "color": "#0B2B6300",
+        "gradient": {
+          "endColor": "#0bb2ff",
+          "angle": 135,
+          "type": "linear",
+          "enabled": false,
+          "direction": "to bottom right",
+          "startColor": "#05336a"
+        },
+        "type": "none"
+      }
+    },
+    "sections": {
+      "middle": {
+        "compare": {
+          "valueStyle": {
+            "positiveGradient": {
+              "endColor": "#15f0c5",
+              "type": "linear",
+              "enabled": false,
+              "direction": "135deg",
+              "startColor": "#15f0c5"
+            },
+            "positiveColor": "#15F0C5",
+            "fontSize": 14,
+            "negativeColor": "#D0021B",
+            "fontGradient": {
+              "endColor": "#cfeaff",
+              "type": "linear",
+              "enabled": false,
+              "direction": "135deg",
+              "startColor": "#9ed3ff"
+            },
+            "negativeGradient": {
+              "endColor": "#D0021B",
+              "type": "linear",
+              "enabled": false,
+              "direction": "135deg",
+              "startColor": "#D0021B"
+            },
+            "fontColor": "#FFFFFF"
+          },
+          "alignItems": "center",
+          "labelStyle": {
+            "fontSize": 14,
+            "fontGradient": {
+              "endColor": "#cfeaff",
+              "type": "linear",
+              "enabled": false,
+              "direction": "135deg",
+              "startColor": "#9ed3ff"
+            },
+            "fontColor": "#9ED3FF"
+          },
+          "label": "同比"
+        },
+        "paddingBottom": 10,
+        "show": false,
+        "type": "compare",
+        "align": "center"
+      },
+      "top": {
+        "minHeight": 40,
+        "paddingBottom": 10,
+        "show": true,
+        "paddingTop": 5,
+        "type": "value",
+        "align": "center",
+        "value": {
+          "unit": {
+            "fontSize": 18,
+            "fontGradient": {
+              "endColor": "#cfeaff",
+              "type": "linear",
+              "enabled": false,
+              "direction": "135deg",
+              "startColor": "#9ed3ff"
+            },
+            "fontWeight": 500,
+            "fontColor": "#9ED3FF"
+          },
+          "unitGap": 6,
+          "fontSize": 20,
+          "fontGradient": {
+            "endColor": "#D8F1FF",
+            "type": "linear",
+            "enabled": true,
+            "direction": "135deg",
+            "startColor": "#73E0FF"
+          },
+          "fontWeight": 600,
+          "fontColor": "#D8F1FF"
+        }
+      },
+      "bottom": {
+        "paddingBottom": 10,
+        "show": true,
+        "label": {
+          "fontSize": 16,
+          "fontColor": "#CFEAFF"
+        },
+        "type": "label",
+        "align": "center"
+      }
+    },
+    "highlight": [
+      {
+        "index": 2,
+        "value": {
+          "fontColor": "#FFFFFF",
+          "unit": {
+            "fontColor": "#FFFFFF",
+            "fontGradient": {
+              "enabled": true,
+              "startColor": "#D0021B",
+              "endColor": "#FF4500",
+              "direction": "to top"
+            }
+          },
+          "fontGradient": {
+            "enabled": true,
+            "startColor": "#D0021B",
+            "endColor": "#FF4500",
+            "type": "linear",
+            "direction": "to top"
+          }
+        },
+        "label": {
+          "fontColor": "#FFFFFF",
+          "fontGradient": {
+            "enabled": true,
+            "startColor": "#D0021B",
+            "endColor": "#FF4500",
+            "direction": "to top"
+          }
+        }
+      }
+    ]
+  }
+}

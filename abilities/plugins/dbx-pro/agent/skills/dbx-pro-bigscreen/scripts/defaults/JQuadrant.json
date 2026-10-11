@@ -1,0 +1,132 @@
+{
+  "w": 450,
+  "h": 300,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "分组",
+      "mapping": ""
+    },
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "nameFields": [
+    {
+      "fieldTxt": "影响力"
+    }
+  ],
+  "valueFields": [
+    {
+      "fieldTxt": "竞争力"
+    }
+  ],
+  "chartData": [
+    {
+      "name": 95,
+      "value": 95,
+      "type": "北京"
+    },
+    {
+      "name": 90,
+      "value": 90,
+      "type": "上海"
+    },
+    {
+      "name": 80,
+      "value": 70,
+      "type": "深圳"
+    },
+    {
+      "name": 60,
+      "value": 50,
+      "type": "重庆"
+    },
+    {
+      "name": 80,
+      "value": 60,
+      "type": "天津"
+    }
+  ],
+  "option": {
+    "customColor": [],
+    "grid": {
+      "show": false,
+      "top": 45,
+      "bottom": 18,
+      "right": 20,
+      "left": 0,
+      "containLabel": true
+    },
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": true,
+      "textStyle": {
+        "fontWeight": "normal"
+      }
+    },
+    "tooltip": {
+      "trigger": "item",
+      "formatter": "x:{b}<br/>y:{c}",
+      "axisPointer": {
+        "type": "shadow",
+        "label": {
+          "show": true,
+          "backgroundColor": "#333"
+        }
+      }
+    },
+    "xAxis": {
+      "splitLine": {
+        "show": false
+      },
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "axisLine": {
+        "lineStyle": {
+          "color": "#EEF1FA"
+        }
+      }
+    },
+    "yAxis": {
+      "yUnit": "",
+      "axisLabel": {
+        "color": "#EEF1FA"
+      },
+      "splitLine": {
+        "show": false,
+        "interval": 2,
+        "lineStyle": {
+          "color": "#8F8D8D"
+        }
+      },
+      "axisLine": {
+        "lineStyle": {
+          "color": "#EEF1FA"
+        }
+      }
+    },
+    "series": []
+  }
+}

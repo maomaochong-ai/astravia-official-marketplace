@@ -1,0 +1,107 @@
+{
+  "w": 450,
+  "h": 100,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "满意度",
+      "value": 50
+    }
+  ],
+  "option": {
+    "valueXOffset": 0,
+    "valueYOffset": 0,
+    "grid": {
+      "show": false,
+      "top": 0,
+      "left": 0,
+      "right": 55,
+      "bottom": 0,
+      "containLabel": true
+    },
+    "yAxis": {
+      "yUnit": "",
+      "axisLabel": {
+        "show": true
+      }
+    },
+    "title": {
+      "text": "",
+      "textAlign": "left",
+      "show": false,
+      "textStyle": {}
+    },
+    "tooltip": {
+      "confine": true,
+      "trigger": "axis",
+      "axisPointer": {
+        "type": "none",
+        "label": {
+          "show": true,
+          "backgroundColor": "#333"
+        }
+      }
+    },
+    "series": [
+      {
+        "barWidth": 19,
+        "realtimeSort": true,
+        "label": {
+          "show": false,
+          "position": "left",
+          "formatter": "{c}%",
+          "color": "black",
+          "fontSize": 24
+        },
+        "itemStyle": {
+          "normal": {
+            "barBorderRadius": 10
+          }
+        },
+        "color": "#FF9D00",
+        "zlevel": 1
+      },
+      {
+        "type": "bar",
+        "barGap": "-100%",
+        "color": "#9C9CA1",
+        "barWidth": 19,
+        "label": {
+          "show": true,
+          "valueAnimation": true,
+          "position": "right",
+          "color": "#ffffff",
+          "fontSize": 18,
+          "formatter": "{c}",
+          "offset": [
+            0,
+            0
+          ]
+        },
+        "itemStyle": {
+          "normal": {
+            "barBorderRadius": 10
+          }
+        }
+      }
+    ]
+  }
+}

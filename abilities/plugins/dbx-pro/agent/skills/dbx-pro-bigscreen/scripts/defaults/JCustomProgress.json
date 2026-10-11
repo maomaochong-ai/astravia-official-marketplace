@@ -1,0 +1,43 @@
+{
+  "w": 450,
+  "h": 100,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/33/chart",
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "维度",
+      "mapping": ""
+    },
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": [
+    {
+      "name": "满意度",
+      "value": 50
+    }
+  ],
+  "option": {
+    "barWidth": 19,
+    "padding": 12,
+    "progressColor": "#76c7c0",
+    "backgroundColor": "#ffffff",
+    "titleColor": "#fff",
+    "titleFontSize": 16,
+    "titlePosition": "top",
+    "valueColor": "#fff",
+    "valueFontSize": 16,
+    "valuePosition": "middle",
+    "valueXOffset": 0,
+    "valueYOffset": 0
+  }
+}

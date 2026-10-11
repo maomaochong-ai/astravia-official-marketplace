@@ -1,0 +1,186 @@
+{
+  "w": 515,
+  "h": 220,
+  "dataType": 1,
+  "timeOut": 0,
+  "chartData": [
+    {
+      "id": 1,
+      "projectName": "项目A",
+      "officeFee": 1200,
+      "travelFee": 5600,
+      "arrearsAmount": 3000
+    },
+    {
+      "id": 2,
+      "projectName": "项目B",
+      "officeFee": 800,
+      "travelFee": 4200,
+      "arrearsAmount": 0
+    },
+    {
+      "id": 3,
+      "projectName": "项目C",
+      "officeFee": 1500,
+      "travelFee": 1800,
+      "arrearsAmount": 1200
+    },
+    {
+      "id": 4,
+      "projectName": "项目D",
+      "officeFee": 600,
+      "travelFee": 2300,
+      "arrearsAmount": 900
+    },
+    {
+      "id": 5,
+      "projectName": "项目E",
+      "officeFee": 950,
+      "travelFee": 3000,
+      "arrearsAmount": 150
+    }
+  ],
+  "option": {
+    "backgroundColor": "#FFFFFF00",
+    "fieldMapping": [
+      {
+        "marginRight": 15,
+        "name": "项目名称",
+        "width": 116,
+        "textStyle": {
+          "fontSize": 16,
+          "fontWeight": "bold",
+          "fontColor": "#FFFFFF"
+        },
+        "key": "projectName",
+        "marginLeft": 10
+      },
+      {
+        "marginRight": 1,
+        "textAlign": "left",
+        "compose": {
+          "contentStyle": {
+            "marginRight": 4,
+            "fontSize": 15,
+            "fontGradient": {
+              "endColor": "#038F8A",
+              "type": "linear",
+              "enabled": true,
+              "startColor": "#06CFC8",
+              "direction": "to bottom"
+            },
+            "fontStyle": "italic",
+            "fontColor": "#FFFFFF",
+            "marginLeft": 3
+          },
+          "suffixStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "prefix": "办公费",
+          "prefixStyle": {
+            "fontColor": "#DEDEDE"
+          },
+          "suffix": "元",
+          "enabled": true
+        },
+        "name": "办公费",
+        "width": 108,
+        "textStyle": {
+          "fontColor": "#FFFFFF"
+        },
+        "key": "officeFee"
+      },
+      {
+        "marginRight": 13,
+        "textAlign": "left",
+        "compose": {
+          "contentStyle": {
+            "marginRight": 1,
+            "fontGradient": {
+              "endColor": "#038F8A",
+              "enabled": true,
+              "startColor": "#06CFC8",
+              "direction": "to bottom"
+            },
+            "fontStyle": "italic",
+            "fontColor": "#FFFFFF",
+            "marginLeft": 1
+          },
+          "suffixStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "prefix": "差旅费",
+          "prefixStyle": {
+            "fontColor": "#DEDEDE"
+          },
+          "suffix": "元",
+          "enabled": true
+        },
+        "name": "差旅费",
+        "width": 111,
+        "textStyle": {
+          "fontColor": "#FFFFFF"
+        },
+        "key": "travelFee"
+      },
+      {
+        "textAlign": "left",
+        "compose": {
+          "contentStyle": {
+            "marginRight": 2,
+            "fontSize": 16,
+            "fontGradient": {
+              "endColor": "#0DA183",
+              "type": "linear",
+              "enabled": true,
+              "startColor": "#12E3B9",
+              "direction": "to bottom"
+            },
+            "fontStyle": "italic",
+            "fontColor": "#FFFFFF",
+            "fontWeight": "bold",
+            "marginLeft": 3
+          },
+          "suffixStyle": {
+            "fontColor": "#FFFFFF"
+          },
+          "prefix": "欠款金额",
+          "prefixStyle": {
+            "fontColor": "#FFFFFF",
+            "fontWeight": "bold"
+          },
+          "suffix": "元",
+          "enabled": true
+        },
+        "name": "欠款金额",
+        "width": 122,
+        "textStyle": {
+          "fontColor": "#DC3545"
+        },
+        "key": "arrearsAmount"
+      }
+    ],
+    "itemsPerRow": 1,
+    "borderRadius": 8,
+    "autoScrollEnabled": true,
+    "showHeader": false,
+    "header": {
+      "padding": "8px 0",
+      "backgroundColor": "#1890FF",
+      "textAlign": "center",
+      "fontSize": 16,
+      "fontColor": "#FFFFFF",
+      "fontWeight": "bold"
+    },
+    "row": {
+      "backgroundColor": "#FFFFFF",
+      "backgroundImg": "",
+      "alternateBackgroundColor": "#F8F9FA",
+      "backgroundSize": "100% 100%",
+      "marginBottom": 10,
+      "backgroundRepeat": "no-repeat",
+      "backgroundType": "image",
+      "height": 44
+    }
+  }
+}

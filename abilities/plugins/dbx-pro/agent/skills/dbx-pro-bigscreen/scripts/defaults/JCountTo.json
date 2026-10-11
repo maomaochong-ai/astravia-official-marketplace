@@ -1,0 +1,63 @@
+{
+  "w": 300,
+  "h": 80,
+  "dataType": 1,
+  "url": "http://api.jeecg.com/mock/42/nav",
+  "timeOut": 0,
+  "background": "#FFFFFF00",
+  "linkageConfig": [],
+  "dataMapping": [
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "chartData": {
+    "value": 10000
+  },
+  "option": {
+    "whole": false,
+    "boxWidth": 50,
+    "boxHeight": 50,
+    "fontSize": 16,
+    "color": "#fff",
+    "fontWeight": "normal",
+    "textAlign": "center",
+    "prefixFontSize": 16,
+    "prefixColor": "#fff",
+    "prefixFontWeight": "normal",
+    "prefixTextAlign": "left",
+    "prefixGridX": 0,
+    "prefixGridY": 0,
+    "suffix": "",
+    "suffixGridX": 0,
+    "suffixGridY": 0,
+    "suffixFontSize": 16,
+    "suffixColor": "#fff",
+    "suffixFontWeight": "normal",
+    "suffixTextAlign": "left",
+    "prefix": "",
+    "type": "border",
+    "borderColor": "#31aefd",
+    "backgroundImg": "",
+    "borderImg": "",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "default"
+    },
+    "body": {
+      "text": "",
+      "color": "#FFFFFF",
+      "fontWeight": "bold",
+      "marginLeft": 0,
+      "marginTop": 0
+    }
+  }
+}

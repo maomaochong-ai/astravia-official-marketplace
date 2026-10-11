@@ -1,0 +1,47 @@
+{
+  "w": 100,
+  "h": 33,
+  "dataType": 1,
+  "timeOut": 0,
+  "turnConfig": {
+    "url": "",
+    "type": "_blank"
+  },
+  "linkType": "url",
+  "dataMapping": [
+    {
+      "filed": "数值",
+      "mapping": ""
+    }
+  ],
+  "chartData": {
+    "value": 1024
+  },
+  "analysis": {
+    "isCompare": false,
+    "compareType": "",
+    "trendType": "1"
+  },
+  "option": {
+    "isCompare": false,
+    "trendType": "1",
+    "card": {
+      "title": "",
+      "extra": "",
+      "rightHref": "",
+      "size": "small",
+      "textStyle": {
+        "fontSize": 18,
+        "fontWeight": "bold",
+        "color": "#464646"
+      }
+    },
+    "body": {
+      "text": "",
+      "color": "#FFFFFF",
+      "fontWeight": "normal",
+      "marginLeft": 0,
+      "marginTop": 0
+    }
+  }
+}
