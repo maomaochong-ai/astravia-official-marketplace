@@ -154,7 +154,7 @@ export function ResultGrid({
 	const [sort, setSort] = useState<{ col: string; dir: "asc" | "desc" } | null>(null);
 	const [tableInfoOpen, setTableInfoOpen] = useState(false);
 	const [tableInfoSelection, setTableInfoSelection] = useState<TableInfoSelection | null>(null);
-	const [doubleRow, setDoubleRow] = useState(false); // rows-3：单排行高 / 双排行高（设计稿「单排 / 双排显示」）
+	const [denseToolbar, setDenseToolbar] = useState(true); // 工具栏密度：dense=双排展开过滤排；compact=单排收起过滤排
 	const [whereClause, setWhereClause] = useState(""); // WHERE 条件
 	const [orderByClause, setOrderByClause] = useState(""); // ORDER BY 条件
 	const [selectedCell, setSelectedCell] = useState<{ row: number; col: string } | null>(null); // 当前选中的单元格（用于导航）
@@ -1128,8 +1128,8 @@ export function ResultGrid({
 				onOpenExportMenu={openExportMenu}
 				showRowNumbers={showRowNumbers}
 				onToggleRowNumbers={() => setShowRowNumbers((v) => !v)}
-				doubleRow={doubleRow}
-				onToggleRowHeight={() => setDoubleRow((v) => !v)}
+				denseToolbar={denseToolbar}
+				onToggleToolbarDensity={() => setDenseToolbar((v) => !v)}
 				navPopoverRef={navPopoverRef}
 				navOpen={navOpen}
 				onToggleNav={() => setNavOpen((v) => !v)}
@@ -1168,7 +1168,7 @@ export function ResultGrid({
 				selectedCell={selectedCell}
 				safePage={safePage}
 				pageSize={pageSize}
-				rowDensity={doubleRow ? "double" : "single"}
+				rowDensity="single"
 				scrollRef={scrollRef}
 				defaultWidth={defaultWidth}
 				onToggleSort={toggleSort}

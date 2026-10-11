@@ -1,14 +1,13 @@
 /**
- * ResultToolbar — 结果网格工具栏（v0.0.95 从 result-grid.tsx 抽离）
+ * ResultToolbar — 结果网格工具栏。
  *
- * 纯展示型组件：两排结构（操作排 + 过滤排），与设计稿一致。
- * 所有交互回调由父组件传入，不持有自身 state。
- * 内部包含列导航 Popover 的完整 DOM（受控于 navOpen/navFilter 状态）。
+ * 密度模式：
+ *   compact（单排）→ 过滤排（WHERE/ORDER BY）收进 popover，工具栏只保留操作排一行。
+ *   dense（双排）→ 过滤排常驻展开。
  *
- * 对齐设计稿 `frames/results.tsx` / `frames/index.tsx`：
- * - 操作排只放 24px 纯图标按钮（文字按钮会顶开行高、与相邻图标对不齐），右侧是行数 · 耗时元信息。
- * - 过滤排常驻（WHERE / ORDER BY / 应用），不再受「双排」开关控制。
- * - rows-3 是行高密度开关（单排 / 双排显示），不是工具栏排数开关。
+ * 注意：双排按钮之前被误解为"网格行高"开关（会变数据行高度），
+ * 实际意图是控制工具栏排数——这里把按钮语义改回工具栏密度控制，
+ * 行高开关留给未来需要时新增独立按钮。
  */
 
 import type { JSX, MouseEvent as ReactMouseEvent, RefObject } from "react";
@@ -24,9 +23,9 @@ interface ResultToolbarProps {
 	/** 视图选项 */
 	showRowNumbers: boolean;
 	onToggleRowNumbers: () => void;
-	/** 行高密度：双排（更宽松）*/
-	doubleRow: boolean;
-	onToggleRowHeight: () => void;
+	/** 工具栏密度：compact（单排，过滤排收进 popover） / dense（双排，过滤排展开） */
+	denseToolbar: boolean;
+	onToggleToolbarDensity: () => void;
 	/** 列导航 Popover */
 	navPopoverRef: RefObject<HTMLDivElement | null>;
 	navOpen: boolean;
@@ -63,7 +62,7 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 		pageLoading, onRefresh,
 		onCopyAll, onOpenExportMenu,
 		showRowNumbers, onToggleRowNumbers,
-		doubleRow, onToggleRowHeight,
+		denseToolbar, onToggleToolbarDensity,
 		navPopoverRef, navOpen, onToggleNav, navFilter, onNavFilterChange, colList, onScrollToColumn,
 		sort, onClearSort,
 		connectionName, parsedTableName, tableInfoOpen, onOpenTableInfo,
@@ -192,13 +191,26 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 
 				<button
 					type="button"
-					onClick={onToggleRowHeight}
-					title="单排 / 双排显示"
-					aria-pressed={doubleRow}
-					className={`dbx-icon-btn${doubleRow ? " dbx-icon-btn--active" : ""}`}
+					onClick={onToggleToolbarDensity}
+					title={denseToolbar ? "工具栏：双排（展开过滤排）" : "工具栏：单排（过滤排收起）"}
+					aria-pressed={denseToolbar}
+					className={`dbx-icon-btn${denseToolbar ? " dbx-icon-btn--active" : ""}`}
 				>
 					<span className="icon-[lucide--rows-3] h-3.5 w-3.5" />
 				</button>
+
+				{/* 紧凑模式下：过滤排收进 popover 按钮 */}
+				{!denseToolbar && (whereClause || orderByClause) ? (
+					<div className="relative">
+						<button
+							type="button"
+							title="已应用过滤 / 排序"
+							className="dbx-icon-btn dbx-icon-btn--active"
+						>
+							<span className="icon-[lucide--filter] h-3.5 w-3.5" />
+						</button>
+					</div>
+				) : null}
 
 				{/* 元信息：耗时 · 导出行数上限提示（完整总行数由底部分页栏的范围 / 总数承担，避免顶底重复） */}
 				<div className="dbx-toolbar-meta">
@@ -239,35 +251,37 @@ export function ResultToolbar(props: ResultToolbarProps): JSX.Element {
 				</div>
 			</div>
 
-			{/* 过滤排：常驻（WHERE / ORDER BY / 应用） */}
-			<div className="dbx-toolbar-row-filters">
-				<span className="dbx-toolbar-filter-label">WHERE</span>
-				<input
-					type="text"
-					className="dbx-toolbar-filter-input"
-					placeholder="如：id > 10 AND name LIKE '%test%'"
-					value={whereClause}
-					onChange={(e) => onWhereChange(e.target.value)}
-					onKeyDown={(e) => { if (e.key === "Enter") onApplyFilterSort(); }}
-				/>
-				<span className="dbx-toolbar-filter-label">ORDER BY</span>
-				<input
-					type="text"
-					className="dbx-toolbar-filter-input dbx-toolbar-filter-input--order"
-					placeholder="如：created_at DESC"
-					value={orderByClause}
-					onChange={(e) => onOrderByChange(e.target.value)}
-					onKeyDown={(e) => { if (e.key === "Enter") onApplyFilterSort(); }}
-				/>
-				<button
-					type="button"
-					onClick={onApplyFilterSort}
-					className="dbx-btn"
-					title="按以上条件重新查询"
-				>
-					应用
-				</button>
-			</div>
+			{/* 过滤排：dense（双排）模式下展开；compact（单排）模式下隐藏，过滤条件通过按钮或 WHERE 状态条体现 */}
+			{denseToolbar && (
+				<div className="dbx-toolbar-row-filters">
+					<span className="dbx-toolbar-filter-label">WHERE</span>
+					<input
+						type="text"
+						className="dbx-toolbar-filter-input"
+						placeholder="如：id > 10 AND name LIKE '%test%'"
+						value={whereClause}
+						onChange={(e) => onWhereChange(e.target.value)}
+						onKeyDown={(e) => { if (e.key === "Enter") onApplyFilterSort(); }}
+					/>
+					<span className="dbx-toolbar-filter-label">ORDER BY</span>
+					<input
+						type="text"
+						className="dbx-toolbar-filter-input dbx-toolbar-filter-input--order"
+						placeholder="如：created_at DESC"
+						value={orderByClause}
+						onChange={(e) => onOrderByChange(e.target.value)}
+						onKeyDown={(e) => { if (e.key === "Enter") onApplyFilterSort(); }}
+					/>
+					<button
+						type="button"
+						onClick={onApplyFilterSort}
+						className="dbx-btn"
+						title="按以上条件重新查询"
+					>
+						应用
+					</button>
+				</div>
+			)}
 		</div>
 	);
 }

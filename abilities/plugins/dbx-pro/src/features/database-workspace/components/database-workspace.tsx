@@ -40,6 +40,7 @@ export function DatabaseWorkspace(): JSX.Element {
 function DatabaseWorkspaceBody(): JSX.Element {
 	const [connectionEditorOpen, setConnectionEditorOpen] = useState(false);
 	const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
+	const [rightPanelView, setRightPanelView] = useState<"history" | "ai">("history");
 	const [settingsOpen, setSettingsOpen] = useState(false);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	/** 会话恢复完成前不写盘：初始值写回去会覆盖磁盘上的真实折叠态。 */
@@ -175,9 +176,57 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		});
 	}
 
-	/** 切换查询历史右栏 */
+	/** 切换查询历史右栏（打开并切到 history 视图） */
 	function toggleHistoryPanel(): void {
-		setHistoryOpen((v) => !v);
+		const open = !historyOpen && !aiAssistantOpen ? true : (historyOpen ? false : true);
+		setHistoryOpen(open);
+		setAiAssistantOpen(false);
+		if (open) setRightPanelView("history");
+	}
+
+	/** 打开 AI 助手右栏（与历史面板共享同一容器） */
+	function openAiAssistantPanel(): void {
+		setRightPanelView("ai");
+		setAiAssistantOpen(true);
+		setHistoryOpen(true); // 让 SplitLayout 右栏保持展开
+	}
+
+	/** 右栏整体关闭（history 或 ai 任一打开时都收） */
+	function collapseRightPanel(): void {
+		setHistoryOpen(false);
+		setAiAssistantOpen(false);
+	}
+
+	/** AI 助手创建连接回调 — 原 dialog 内联逻辑提升到顶层供 RightPanel 复用 */
+	async function handleCreateAiConnection(config: {
+		name: string; dbType: string; host: string; port: number;
+		username: string; password: string; database?: string;
+	}): Promise<void> {
+		try {
+			await engineAddConnection({
+				name: config.name,
+				dbType: config.dbType,
+				host: config.host,
+				port: config.port,
+				username: config.username,
+				password: config.password,
+				database: config.database,
+			});
+			await writeConfig({
+				id: `conn-${Date.now()}`,
+				name: config.name,
+				db_type: config.dbType,
+				host: config.host,
+				port: config.port,
+				username: config.username,
+				password: config.password,
+				database: config.database,
+				schemas: [],
+			});
+			await refreshConnections();
+		} catch (err) {
+			console.error("[AI Assistant] 创建连接失败:", err);
+		}
 	}
 
 	async function toggleFullscreen() {
@@ -212,11 +261,11 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			<WorkbenchTopBar
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}
 				onOpenSettings={() => setSettingsOpen(true)}
-				onOpenAiAssistant={() => setAiAssistantOpen(true)}
+				onOpenAiAssistant={openAiAssistantPanel}
 				onOpenDriverManager={openDriverTab}
 				onNewQuery={newQueryTab}
 				onToggleHistory={toggleHistoryPanel}
-				historyOpen={historyOpen}
+				historyOpen={historyOpen || aiAssistantOpen}
 				onOpenVisualizationGallery={openGalleryTab}
 				visualizationCount={visualizations.length}
 				fullscreen={fullscreen}
@@ -226,13 +275,19 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			/>
 			<SplitLayout
 				leftCollapsed={leftCollapsed}
-				rightCollapsed={!historyOpen}
+				rightCollapsed={!(historyOpen || aiAssistantOpen)}
 				onToggleLeft={() => setLeftCollapsed((v) => !v)}
 			>
 				{[
 					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} />,
 					<SqlEditorWorkspace key="mid" />,
-					<RightPanel key="right" onCollapse={() => setHistoryOpen(false)} />,
+					<RightPanel
+						key="right"
+						view={rightPanelView}
+						onSwitchView={(v) => { setRightPanelView(v); setHistoryOpen(true); setAiAssistantOpen(true); }}
+						onCollapse={collapseRightPanel}
+						onCreateConnection={handleCreateAiConnection}
+					/>,
 				]}
 			</SplitLayout>
 
@@ -246,40 +301,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 						if (name) invalidateConnection(name);
 					}}
 					onCancel={() => setConnectionEditorOpen(false)}
-				/>
-			)}
-
-			{aiAssistantOpen && (
-				<AiAssistantPanel
-					onClose={() => setAiAssistantOpen(false)}
-					onCreateConnection={async (config) => {
-						try {
-							await engineAddConnection({
-								name: config.name,
-								dbType: config.dbType,
-								host: config.host,
-								port: config.port,
-								username: config.username,
-								password: config.password,
-								database: config.database,
-							});
-							// 保存到本地存储
-							await writeConfig({
-								id: `conn-${Date.now()}`,
-								name: config.name,
-								db_type: config.dbType,
-								host: config.host,
-								port: config.port,
-								username: config.username,
-								password: config.password,
-								database: config.database,
-								schemas: [],
-							});
-							await refreshConnections();
-						} catch (err) {
-							console.error("[AI Assistant] 创建连接失败:", err);
-						}
-					}}
 				/>
 			)}
 
