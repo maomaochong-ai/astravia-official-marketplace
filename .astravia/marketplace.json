@@ -881,7 +881,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.26",
+      "version": "0.4.27",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -4295,6 +4295,36 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.26.astraviapkg",
             "sha256": "3386c877f190ae93024ccb680146805b842dbe4f3fe90f9529f6c6b98fc451fd"
           }
+        },
+        {
+          "version": "0.4.27",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.skills.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.27.astraviapkg",
+            "sha256": "b9bb5d366de9553baf8301aeb6f525f1fb6ed662f4b45708074415369d17e41e"
+          }
         }
       ]
     },
@@ -4572,5 +4602,5 @@
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.11-14"
+  "marketplaceVersion": "2026.10.11-15"
 }
