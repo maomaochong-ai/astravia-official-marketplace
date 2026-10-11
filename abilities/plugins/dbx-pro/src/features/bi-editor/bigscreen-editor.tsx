@@ -1,28 +1,29 @@
 /**
- * bigscreen-editor.tsx — BI 编辑器骨架（按设计稿 Editor.tsx 布局）。
+ * bigscreen-editor.tsx — BI 编辑器主容器。
  *
  * 布局：
- *   ┌─ Toolbar（返回/页面名/保存/运行/主题）
+ *   ┌─ Toolbar（返回/页面名/保存/运行/AI 生成/主题）
  *   ├─────────┬─────────────────┬─────────────┤
- *   │NodeLib. │  CanvasPage    │  Property   │
- *   │          │  (画布 mock)   │  Inspector  │
+ *   │NodeLib. │  NodeGraph      │  Property   │
+ *   │ (折叠)  │  + CanvasStrip  │  Inspector  │
  *   ├─────────┴─────────────────┴─────────────┤
  *   │           StatusBar                       │
  *   └───────────────────────────────────────────┘
  *
- * Phase C1 交付骨架 + mock 画布。
- * Phase C2 接入 NodeGraph（真拖曳）+ ComponentPalette（真节点渲染）。
+ * 运行浮层（RunPanel / NodePreviewCard）叠加在 NodeGraph 之上，
+ * 由 Toolbar 的「运行」按钮或快捷键 ⌘R 触发。
  */
 
-import { useEffect, useState, type JSX } from "react";
+import { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { engineRequest } from "../../shared/services/engine-client";
 import type { BigscreenPage } from "./hooks/use-bigscreen-pages";
 import { BigscreenToolbar } from "./components/editor-toolbar";
 import { NodeLibrary } from "./components/node-library";
-import { CanvasPage } from "./components/canvas-page";
+import { CanvasStrip } from "./components/canvas-strip";
+import { NodeGraph, INITIAL_LINKS, INITIAL_NODES, type Link, type NodePos } from "./components/node-graph";
 import { PropertyInspector, type SelectedNodeInfo } from "./components/property-inspector";
 import { EditorStatusBar } from "./components/editor-status-bar";
-import { INITIAL_LINKS, INITIAL_NODES, type Link, type NodePos } from "./components/node-graph";
+import { RunPanel, NodePreviewCard, type RunNode } from "./components/run-overlay";
 
 /** template JSON schema（持久化）。 */
 interface CanvasTemplate {
@@ -37,7 +38,6 @@ function parseTemplate(raw: string | null | undefined): CanvasTemplate {
 		if (obj && typeof obj === "object" && "nodes" in obj) {
 			return obj as CanvasTemplate;
 		}
-		// 兼容旧格式（数组）——忽略
 		return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
 	} catch {
 		return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
@@ -48,17 +48,24 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 	const [page, setPage] = useState<BigscreenPage | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [dirty, setDirty] = useState(false);
+	const [saving, setSaving] = useState(false);
 	const [activeTheme, setActiveTheme] = useState<"dark" | "default">("dark");
 	const [templates, setTemplates] = useState<{ id: string; name: string; template: string; createTime: string }[]>([]);
-	/** 三栏折叠状态 */
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	const [rightCollapsed, setRightCollapsed] = useState(false);
 
-	// ── 画布状态（从 template 反序列化 / 持久化目标） ──
+	// 画布状态
 	const [nodes, setNodes] = useState<Record<string, NodePos>>(() => INITIAL_NODES as Record<string, NodePos>);
 	const [links, setLinks] = useState<Link[]>(() => INITIAL_LINKS);
 
-	// ── 加载模板库 ──
+	// ── 运行状态 ──
+	const [runNodes, setRunNodes] = useState<RunNode[]>([]);
+	const [running, setRunning] = useState(false);
+	const [showRunPanel, setShowRunPanel] = useState(false);
+	const [showPreview, setShowPreview] = useState(false);
+	const runTimerRef = useRef<number | null>(null);
+
+	// ── 模板库 ──
 	function loadTemplates() {
 		engineRequest<{ id: string; name: string; template: string; createTime: string }[]>("/drag/template/list", undefined, { method: "GET" })
 			.then((list) => setTemplates(list ?? []))
@@ -79,6 +86,7 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 	}
 	useEffect(() => { loadTemplates(); }, []);
 
+	// ── 加载页面 ──
 	useEffect(() => {
 		let cancelled = false;
 		engineRequest<BigscreenPage>(`/drag/page/queryById?id=${encodeURIComponent(pageId)}`, undefined, { method: "GET" })
@@ -95,10 +103,8 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 		return () => { cancelled = true; };
 	}, [pageId]);
 
-	// 任何画布变动都标记 dirty
 	useEffect(() => { setDirty(true); }, [nodes, links]);
 
-	// ── 当前选中节点（供 PropertyInspector 消费） ──
 	const selectedNodeInfo: SelectedNodeInfo | null = (() => {
 		for (const [id, n] of Object.entries(nodes)) {
 			if (n.selected) return { id, node: n };
@@ -114,23 +120,95 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 		});
 	}
 
+	// ── 保存 ──
 	async function handleSave() {
-		if (!page) return;
-		const templateJson: CanvasTemplate = { nodes, links };
-		await engineRequest<{ updateCount: number }>("/drag/page/edit", {
-			id: page.id,
-			name: page.name,
-			type: "0",
-			theme: activeTheme,
-			style: page.style,
-			backgroundImage: page.backgroundImage,
-			designType: page.designType,
-			protectionCode: "",
-			template: JSON.stringify(templateJson),
-			updateCount: page.updateCount,
-		});
-		setDirty(false);
+		if (!page || saving) return;
+		setSaving(true);
+		try {
+			const templateJson: CanvasTemplate = { nodes, links };
+			await engineRequest<{ updateCount: number }>("/drag/page/edit", {
+				id: page.id,
+				name: page.name,
+				type: "0",
+				theme: activeTheme,
+				style: page.style,
+				backgroundImage: page.backgroundImage,
+				designType: page.designType,
+				protectionCode: "",
+				template: JSON.stringify(templateJson),
+				updateCount: page.updateCount,
+			});
+			setDirty(false);
+		} catch (e) {
+			console.error("保存失败", e);
+		} finally {
+			setSaving(false);
+		}
 	}
+
+	// ── 运行全部节点（模拟后端运行账，前端逐节点标记状态） ──
+	const handleRunAll = useCallback(() => {
+		if (running) return;
+		const entries = Object.entries(nodes);
+		if (entries.length === 0) return;
+
+		const initial: RunNode[] = entries.map(([id, n]) => ({
+			id,
+			label: n.values?.title as string ?? n.kind ?? id,
+			icon: n.kind?.startsWith("chart") ? "icon-[lucide--chart-bar]" :
+				n.kind?.startsWith("source") ? "icon-[lucide--database]" :
+				"icon-[lucide--circle]",
+			status: "wait",
+		}));
+		setRunNodes(initial);
+		setRunning(true);
+		setShowRunPanel(true);
+		setShowPreview(true);
+
+		// 逐节点模拟运行
+		let idx = 0;
+		const tick = () => {
+			if (idx >= initial.length) {
+				setRunning(false);
+				runTimerRef.current = null;
+				return;
+			}
+			const dur = 120 + Math.floor(Math.random() * 340);
+			setRunNodes((prev) => prev.map((rn, i) => i === idx ? { ...rn, status: "running", duration: dur } : rn));
+			runTimerRef.current = window.setTimeout(() => {
+				setRunNodes((prev) => prev.map((rn, i) => i === idx ? { ...rn, status: "done", duration: dur, note: `${(dur / 1000).toFixed(1)}s` } : rn));
+				idx++;
+				runTimerRef.current = window.setTimeout(tick, 60);
+			}, dur);
+		};
+		runTimerRef.current = window.setTimeout(tick, 180);
+	}, [nodes, running]);
+
+	const handleRunSelected = useCallback(() => {
+		if (!selectedNodeInfo) return;
+		// 先只运行选中节点 → 复用 handleRunAll 逻辑但只传选中节点
+		const sel = selectedNodeInfo;
+		const n = nodes[sel.id];
+		const initial: RunNode[] = [{
+			id: sel.id,
+			label: (n.values?.title as string) ?? n.kind ?? sel.id,
+			status: "wait",
+			icon: "icon-[lucide--play]",
+		}];
+		setRunNodes(initial);
+		setRunning(true);
+		setShowRunPanel(true);
+		setShowPreview(true);
+		const dur = 200 + Math.floor(Math.random() * 300);
+		setTimeout(() => {
+			setRunNodes((p) => p.map((r) => ({ ...r, status: "done", duration: dur, note: `${(dur / 1000).toFixed(1)}s` })));
+			setRunning(false);
+		}, dur);
+	}, [selectedNodeInfo, nodes]);
+
+	useEffect(() => () => {
+		if (runTimerRef.current) window.clearTimeout(runTimerRef.current);
+	}, []);
 
 	if (loading || !page) {
 		return (
@@ -147,16 +225,19 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				pageName={page.name}
 				theme={activeTheme}
 				dirty={dirty}
+				saving={saving}
 				onBack={onClose}
 				onThemeChange={setActiveTheme}
 				onSave={handleSave}
 				onRename={(n: string) => { setPage({ ...page, name: n }); setDirty(true); }}
 				onSaveTemplate={saveCurrentAsTemplate}
+				onRunAll={handleRunAll}
+				onRunSelected={handleRunSelected}
 			/>
 
 			{/* 主体三栏 */}
 			<div className="flex min-h-0 flex-1">
-				{/* 左栏：节点库 + 我的模板（可折叠到 40px 窄条） */}
+				{/* 左栏：节点库 */}
 				<NodeLibrary
 					collapsed={leftCollapsed}
 					onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
@@ -164,18 +245,40 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 					onDeleteTemplate={deleteTemplate}
 				/>
 
-				{/* 中栏：画布 */}
-				<div className="flex min-w-0 flex-1 flex-col">
-					<CanvasPage
-						theme={activeTheme}
+				{/* 中栏：CanvasStrip + NodeGraph + 运行浮层 */}
+				<div className="relative flex min-w-0 flex-1 flex-col">
+					<CanvasStrip />
+					<NodeGraph
 						nodes={nodes}
 						setNodes={setNodes}
 						links={links}
 						setLinks={setLinks}
 					/>
+
+					{/* 运行浮层（设计稿 frames/run.tsx 的 RunPanel + NodePreviewCard） */}
+					{showRunPanel && runNodes.length > 0 ? (
+						<RunPanel
+							nodes={runNodes}
+							running={running}
+							x={560}
+							y={420}
+							onRunAll={handleRunAll}
+							onRunSelected={handleRunSelected}
+						/>
+					) : null}
+
+					{showPreview && selectedNodeInfo ? (
+						<NodePreviewCard
+							nodeLabel={(nodes[selectedNodeInfo.id]?.values?.title as string) ?? selectedNodeInfo.id}
+							x={selectedNodeInfo.node.x}
+							y={selectedNodeInfo.node.y + selectedNodeInfo.node.h + 12}
+							onCopy={() => { /* TODO: 导出为图片 */ }}
+							onLocate={() => { setShowRunPanel(false); setShowPreview(false); }}
+						/>
+					) : null}
 				</div>
 
-				{/* 右栏：属性面板（可折叠到 40px 窄条） */}
+				{/* 右栏：属性面板 */}
 				<PropertyInspector
 					page={page}
 					theme={activeTheme}
@@ -187,7 +290,7 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				/>
 			</div>
 
-			{/* 底栏状态栏（最外层）*/}
+			{/* 底栏状态栏 */}
 			<EditorStatusBar dirty={dirty} nodeCount={Object.keys(nodes).length} linkCount={links.length} />
 		</div>
 	);

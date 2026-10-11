@@ -12,7 +12,7 @@ import { Icon } from "./ui/icon";
 import { Chip } from "./ui/chip";
 import { AreaChart } from "./charts";
 
-interface RunNode {
+export interface RunNode {
 	id: string; label: string; icon?: string;
 	status: "wait" | "running" | "done" | "error";
 	duration?: number; note?: string;
