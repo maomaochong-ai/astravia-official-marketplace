@@ -260,9 +260,12 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			if (isApiConnectionType(conn.db_type)) {
 				if (!conn.name.trim()) { setTestResult("❌ 请先填写连接名称"); return; }
 				if (!apiSpecOf(conn).url.trim()) { setTestResult("❌ 请先填写接口地址"); return; }
+				const payload = apiSourcePayload(conn);
 				const outcome = await engineTestApiSource({
 					name: conn.name.trim(),
-					draft: apiSourcePayload(conn),
+					draft: payload,
+					// secret 必须提至顶层 —— 后端 /api-sources/test 只认 body.token，不认 draft.token
+					token: payload.token,
 				});
 				ok = true;
 				setTestResult(
@@ -319,7 +322,8 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 			const started = performance.now();
 			try {
 				if (isApiConnectionType(conn.db_type)) {
-					await engineTestApiSource({ name: conn.name, draft: apiSourcePayload(conn) });
+					const p = apiSourcePayload(conn);
+					await engineTestApiSource({ name: conn.name, draft: p, token: p.token });
 				} else {
 					await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
 				}
