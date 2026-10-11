@@ -1,0 +1,3273 @@
+{
+  "id": "1022392593179791360",
+  "name": "北京市污水排放总量",
+  "path": "/drag/page/view/1022392593179791360",
+  "desJson": "{\"width\":1920,\"height\":1080,\"waterMark\":{\"show\":false,\"content\":\"\",\"fontSize\":12,\"color\":\"#ffffff\",\"angle\":45},\"sysDefColor\":[{\"color\":\"#1e90ff\"},{\"color\":\"#90ee90\"},{\"color\":\"#00ced1\"},{\"color\":\"#e2bd84\"},{\"color\":\"#7a90e0\"},{\"color\":\"#3ba272\"},{\"color\":\"#2be7ff\"},{\"color\":\"#0a8ada\"},{\"color\":\"#ffd700\"}]}",
+  "template": [
+    {
+      "component": "JPie",
+      "visible": true,
+      "w": 450,
+      "x": 1368,
+      "h": 300,
+      "i": "bd19503f-878e-45d5-a434-9ebb3afc0544",
+      "y": 692,
+      "orderNum": 0,
+      "componentName": "饼图",
+      "pageCompId": "1029996927577018368",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": -1,
+        "chartData": "[\n    {\n        \"name\": \"新能源部\",\n        \"value\": 2000000,\n        \"url\": \"http://www.baidu.com\"\n    },\n    {\n        \"name\": \"工业生产\",\n        \"value\": 500000,\n        \"url\": \"http://www.baidu.com\"\n    },\n    {\n        \"name\": \"废物部\",\n        \"value\": 350000,\n        \"url\": \"http://www.baidu.com\"\n    },\n    {\n        \"name\": \"农林业\",\n        \"value\": 780000,\n        \"url\": \"http://www.baidu.com\"\n    },\n    {\n        \"name\": \"农业\",\n        \"value\": 910000,\n        \"url\": \"http://www.baidu.com\"\n    },\n    {\n        \"name\": \"土地林业\",\n        \"value\": 560000,\n        \"url\": \"http://www.baidu.com\"\n    },\n    {\n        \"name\": \"温室气体总排放\",\n        \"value\": 1000000,\n        \"url\": \"http://www.baidu.com\"\n    }\n]",
+        "size": {
+          "height": 300
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "customColor": [
+            {
+              "color": "#493EB8"
+            },
+            {
+              "color": "#0030C1"
+            },
+            {
+              "color": "#0048FF"
+            },
+            {
+              "color": "#0071E0"
+            },
+            {
+              "color": "#0071E0"
+            },
+            {
+              "color": "#00BBFF"
+            },
+            {
+              "color": "#00CCFF"
+            },
+            {
+              "color": "#00BBFF"
+            },
+            {
+              "color": "#ffd700"
+            }
+          ],
+          "grid": {
+            "top": 53,
+            "left": 43,
+            "show": false
+          },
+          "legend": {
+            "r": 69,
+            "orient": "vertical",
+            "t": 28
+          },
+          "series": [
+            {
+              "data": [],
+              "name": "",
+              "emphasis": {
+                "itemStyle": {
+                  "shadowOffsetX": 0,
+                  "shadowBlur": 10,
+                  "shadowColor": "rgba(0, 0, 0, 0.5)"
+                }
+              },
+              "label": {
+                "show": false
+              },
+              "type": "pie",
+              "radius": "50%"
+            }
+          ],
+          "isRadius": true,
+          "tooltip": {
+            "trigger": "item",
+            "textStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "outRadius": 1,
+          "title": {
+            "subtext": "",
+            "left": "left",
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "innerRadius": 1,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "component": "JAreaMap",
+      "visible": true,
+      "w": 1074,
+      "x": 461,
+      "h": 638,
+      "i": "3de67c05-a7dd-41e7-8235-970314969472",
+      "y": 71,
+      "orderNum": 0,
+      "componentName": "区域地图",
+      "pageCompId": "1029996927614767104",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "commonOption": {
+          "barSize": 10,
+          "gradientColor": false,
+          "breadcrumb": {
+            "drillDown": false,
+            "textColor": "#FFFFFF"
+          },
+          "areaColor": {
+            "color1": "#132937",
+            "color2": "#fcc02e"
+          },
+          "barColor": "#fff176",
+          "barColor2": "#fcc02e",
+          "inRange": {
+            "color": [
+              "#04387b",
+              "#467bc0"
+            ]
+          }
+        },
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "区域"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "jsConfig": "",
+        "dataType": 1,
+        "h": 300,
+        "activeKey": 1,
+        "url": "http://api.jeecg.com/mock/33/radar",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"北京\",\"value\":199},{\"name\":\"天津\",\"value\":42},{\"name\":\"河北\",\"value\":102},{\"name\":\"山西\",\"value\":81},{\"name\":\"内蒙古\",\"value\":47},{\"name\":\"辽宁\",\"value\":67},{\"name\":\"吉林\",\"value\":82},{\"name\":\"黑龙江\",\"value\":123},{\"name\":\"上海\",\"value\":24},{\"name\":\"江苏\",\"value\":92},{\"name\":\"浙江\",\"value\":114},{\"name\":\"安徽\",\"value\":109},{\"name\":\"福建\",\"value\":116},{\"name\":\"江西\",\"value\":91},{\"name\":\"山东\",\"value\":119},{\"name\":\"河南\",\"value\":137},{\"name\":\"湖北\",\"value\":116},{\"name\":\"湖南\",\"value\":114},{\"name\":\"重庆\",\"value\":91},{\"name\":\"四川\",\"value\":125},{\"name\":\"贵州\",\"value\":62},{\"name\":\"云南\",\"value\":83},{\"name\":\"西藏\",\"value\":9},{\"name\":\"陕西\",\"value\":80},{\"name\":\"甘肃\",\"value\":56},{\"name\":\"青海\",\"value\":10},{\"name\":\"宁夏\",\"value\":18},{\"name\":\"新疆\",\"value\":180},{\"name\":\"广东\",\"value\":123},{\"name\":\"广西\",\"value\":59},{\"name\":\"海南\",\"value\":14}]",
+        "size": {
+          "width": 1074.2086330935251,
+          "height": 638.5323741007194
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "drillDown": false,
+          "area": {
+            "markerColor": "#DDE330",
+            "shadowBlur": 10,
+            "markerCount": 5,
+            "markerOpacity": 1,
+            "name": [
+              "北京市"
+            ],
+            "scatterLabelShow": false,
+            "shadowColor": "#DDE330",
+            "value": [
+              "11"
+            ],
+            "markerType": "effectScatter"
+          },
+          "geo": {
+            "top": 30,
+            "itemStyle": {
+              "normal": {
+                "shadowOffsetX": 0,
+                "borderColor": "#0692A4",
+                "shadowOffsetY": 0,
+                "areaColor": "",
+                "shadowBlur": 0,
+                "borderWidth": 1,
+                "shadowColor": "#80d9f8"
+              },
+              "emphasis": {
+                "areaColor": "#fff59c",
+                "borderWidth": 0
+              }
+            },
+            "zoom": 1,
+            "label": {
+              "normal": {
+                "color": "#EEF1FA",
+                "show": true
+              },
+              "emphasis": {
+                "color": "#fff",
+                "show": false
+              }
+            },
+            "roam": false
+          },
+          "grid": {
+            "bottom": 115,
+            "show": false
+          },
+          "legend": {
+            "data": []
+          },
+          "title": {
+            "left": 10,
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "graphic": [],
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "visualMap": {
+            "min": 0,
+            "top": "bottom",
+            "max": 200,
+            "left": "5%",
+            "calculable": true,
+            "show": false,
+            "type": "continuous",
+            "seriesIndex": [
+              0
+            ]
+          }
+        }
+      }
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 535,
+      "x": 1362,
+      "h": 303,
+      "i": "es-drager-1732870589993-19",
+      "y": 692,
+      "orderNum": 0,
+      "componentName": "边框4",
+      "pageCompId": "1029996927631544320",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 535,
+          "height": 303.568345323741
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "4",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "fae13a87-2fb6-4ff6-9fce-0c52f1dafd04"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 459,
+      "x": 31,
+      "h": 349,
+      "i": "5b7466a4-6788-42d3-957b-615df921a392",
+      "y": 97,
+      "orderNum": 0,
+      "componentName": "边框4",
+      "pageCompId": "1029996927652515840",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 459,
+          "height": 349.863309352518
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83bff6",
+          "titleWidth": 250,
+          "type": "4",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "df069639-b019-487a-995b-5df1ebbb4627"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 681,
+      "x": 1402,
+      "h": 117,
+      "i": "es-drager-1732869812329-12",
+      "y": -40,
+      "orderNum": 0,
+      "componentName": "装饰11",
+      "pageCompId": "1029996927669293056",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 681.9640287769785,
+          "height": 117
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#7B7B7B",
+          "fontSize": 15,
+          "type": "11",
+          "title": "",
+          "subColor": "#1E90FF",
+          "reverse": false
+        }
+      },
+      "key": "8bb51195-c32a-4e2e-bda2-8ce516f57942"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 582,
+      "x": -76,
+      "h": 129,
+      "i": "fef5f856-5021-4239-8f7a-b9cabb28c72b",
+      "y": -33,
+      "orderNum": 0,
+      "componentName": "装饰11",
+      "pageCompId": "1029996927690264576",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 582,
+          "height": 129
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#7B7B7B",
+          "fontSize": 15,
+          "type": "11",
+          "title": "",
+          "subColor": "#1E90FF",
+          "reverse": false
+        }
+      },
+      "key": "d596bd26-1743-41a2-999c-ff11f4614c6f"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 592,
+      "x": 703,
+      "h": 62,
+      "i": "es-drager-1732869694123-6",
+      "y": 6,
+      "orderNum": 0,
+      "componentName": "边框12",
+      "pageCompId": "1029996927715430400",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 592.4604316546763,
+          "height": 62.38129496402881
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#7B7B7B",
+          "titleWidth": 250,
+          "type": "12",
+          "title": "边框",
+          "subColor": "#1E90FF",
+          "reverse": false
+        }
+      },
+      "key": "fbd4c539-bdf2-4c10-91f8-a478ca33b02e"
+    },
+    {
+      "h": 61.99999648718526,
+      "i": "es-drager-1732869740328-7",
+      "props": {
+        "elements": [
+          {
+            "component": "JDragBorder",
+            "visible": true,
+            "w": 351,
+            "x": 6.000014051258972,
+            "h": 62,
+            "i": "562e684d-0042-4c66-81f2-3e17f438a193",
+            "y": -3.5128147430896206e-06,
+            "orderNum": 0,
+            "groupStyle": {
+              "transform": "rotate(0deg)",
+              "top": "-0.0000056658305518060505%",
+              "left": "1.6806764032850297%",
+              "width": "98.31933934042439%",
+              "position": "absolute",
+              "config": {},
+              "height": "100.00000566583056%"
+            },
+            "componentName": "边框12",
+            "config": {
+              "borderColor": "#FFFFFF00",
+              "size": {
+                "width": 351.51798561151077,
+                "height": 62
+              },
+              "actionConfig": {
+                "operateType": "modal",
+                "modalName": "",
+                "url": ""
+              },
+              "background": "#FFFFFF00",
+              "w": 450,
+              "dataType": 1,
+              "h": 300,
+              "option": {
+                "dur": 3,
+                "backgroundColor": "#ffffff00",
+                "mainColor": "#007071",
+                "titleWidth": 250,
+                "type": "12",
+                "title": "边框",
+                "subColor": "#1E90FF",
+                "reverse": false
+              }
+            },
+            "key": "4863bbae-a0b7-467f-8971-c68788840045"
+          },
+          {
+            "component": "JText",
+            "visible": true,
+            "w": 170,
+            "x": 1.4051258972358482e-05,
+            "h": 42,
+            "i": "f055ea93-79c2-4395-8e1a-dc9e2c2334f5",
+            "y": 3.999996487185257,
+            "orderNum": 0,
+            "groupStyle": {
+              "transform": "rotate(0deg)",
+              "top": "6.45160760293271%",
+              "left": "0.000003935927347759249%",
+              "width": "47.61905324180099%",
+              "position": "absolute",
+              "config": {},
+              "height": "67.74193932201425%"
+            },
+            "componentName": "文本",
+            "config": {
+              "borderColor": "#FFFFFF00",
+              "dataMapping": [
+                {
+                  "mapping": "",
+                  "filed": "数值"
+                }
+              ],
+              "dataType": 1,
+              "h": 60,
+              "url": "http://api.jeecg.com/mock/42/nav",
+              "timeOut": 0,
+              "chartData": "{  \"value\": \"距离达峰还剩\"}",
+              "size": {
+                "width": 170,
+                "height": 42.0431654676259
+              },
+              "actionConfig": {
+                "operateType": "modal",
+                "modalName": "",
+                "url": ""
+              },
+              "background": "#FFFFFF00",
+              "w": 170,
+              "turnConfig": {
+                "type": "_blank",
+                "url": ""
+              },
+              "linkType": "url",
+              "linkageConfig": [],
+              "option": {
+                "openUrl": "",
+                "isLink": false,
+                "body": {
+                  "color": "#FFFFFF",
+                  "text": "",
+                  "fontWeight": "normal",
+                  "marginTop": 0,
+                  "marginLeft": 0
+                },
+                "card": {
+                  "rightHref": "",
+                  "size": "default",
+                  "extra": "",
+                  "title": ""
+                },
+                "openType": "_blank"
+              }
+            },
+            "key": "5e531dae-68dc-49d2-9ab6-890e39981ddc"
+          },
+          {
+            "component": "JText",
+            "visible": true,
+            "w": 170,
+            "x": 99.00001405125897,
+            "h": 42,
+            "i": "es-drager-1732869292753-1",
+            "y": 4.999996487185257,
+            "orderNum": 0,
+            "groupStyle": {
+              "transform": "rotate(0deg)",
+              "top": "8.064510920123524%",
+              "left": "27.7310996473291%",
+              "width": "47.61905324180099%",
+              "position": "absolute",
+              "config": {},
+              "height": "67.74193932201425%"
+            },
+            "componentName": "文本",
+            "config": {
+              "borderColor": "#FFFFFF00",
+              "dataMapping": [
+                {
+                  "mapping": "",
+                  "filed": "数值"
+                }
+              ],
+              "dataType": 1,
+              "h": 60,
+              "url": "http://api.jeecg.com/mock/42/nav",
+              "timeOut": 0,
+              "chartData": "{  \"value\": \"1000\"}",
+              "size": {
+                "width": 170,
+                "height": 42.0431654676259
+              },
+              "actionConfig": {
+                "operateType": "modal",
+                "modalName": "",
+                "url": ""
+              },
+              "background": "#FFFFFF00",
+              "w": 170,
+              "turnConfig": {
+                "type": "_blank",
+                "url": ""
+              },
+              "linkType": "url",
+              "linkageConfig": [],
+              "option": {
+                "openUrl": "",
+                "isLink": false,
+                "body": {
+                  "color": "#1E90FF",
+                  "fontSize": 26,
+                  "text": "",
+                  "fontWeight": "normal",
+                  "marginTop": 0,
+                  "marginLeft": 0
+                },
+                "card": {
+                  "rightHref": "",
+                  "size": "default",
+                  "extra": "",
+                  "title": ""
+                },
+                "openType": "_blank"
+              }
+            },
+            "key": "b4f48f47-8da1-46df-8c89-b6b1fd8bb618"
+          }
+        ]
+      },
+      "component": "JGroup",
+      "w": 356.99995784622297,
+      "x": 55.99998594874103,
+      "y": 4.000003512814743,
+      "componentName": "组合",
+      "pageCompId": "1029996927732207616",
+      "equalProportion": false,
+      "config": {
+        "size": {},
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        }
+      },
+      "key": "a14f2045-aa25-40b7-80f8-9af4fc1b7e10",
+      "group": true
+    },
+    {
+      "visible": true,
+      "h": 46,
+      "i": "es-drager-1732869805022-9",
+      "orderNum": 0,
+      "component": "JDragBorder",
+      "w": 304,
+      "x": 1460,
+      "y": 13,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "边框12",
+      "pageCompId": "1029996927748984832",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 304.0359712230216,
+          "height": 46
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#007071",
+          "titleWidth": 250,
+          "type": "12",
+          "title": "边框",
+          "subColor": "#1E90FF",
+          "reverse": false
+        }
+      },
+      "key": "a2c52f3a-af12-4c6f-9986-4f52cb2ad4cc"
+    },
+    {
+      "visible": true,
+      "h": 42,
+      "i": "es-drager-1732869805022-10",
+      "orderNum": 0,
+      "component": "JText",
+      "w": 170,
+      "x": 1457.757756294964,
+      "y": 16.57812148718525,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "文本",
+      "pageCompId": "1029996927765762048",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"距离中和还剩\"}",
+        "size": {
+          "width": 170,
+          "height": 42.0431654676259
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#FFFFFF",
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "556c3947-dee2-430b-8320-33e4e37b3d73"
+    },
+    {
+      "visible": true,
+      "h": 42,
+      "i": "es-drager-1732869805022-11",
+      "orderNum": 0,
+      "component": "JText",
+      "w": 170,
+      "x": 1542,
+      "y": 14,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "文本",
+      "pageCompId": "1029996927786733568",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"125\"}",
+        "size": {
+          "width": 170,
+          "height": 42.0431654676259
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 26,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "e9927573-1382-4006-8865-80962b948125"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 305,
+      "x": 805,
+      "h": 60,
+      "i": "b113ff64-7741-43d4-87e2-02f2542f61c3",
+      "y": 6,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996927807705088",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"污水处理智慧平台\"}",
+        "size": {
+          "width": 305.36690647482015,
+          "height": 60
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "letterSpacing": 10,
+            "fontSize": 26,
+            "text": "",
+            "fontWeight": "bold",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "685d7c85-3034-41fc-85a3-2c89d9feb8d9"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 325,
+      "x": 570,
+      "h": 48,
+      "i": "ac4c8c59-7cff-42e1-89f1-f731f18f3622",
+      "y": 73,
+      "orderNum": 0,
+      "componentName": "装饰8",
+      "pageCompId": "1029996927820288000",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 325.52517985611513,
+          "height": 48
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#004E9A",
+          "fontSize": 15,
+          "type": "8",
+          "title": "装饰8",
+          "subColor": "#00696A",
+          "reverse": false
+        }
+      },
+      "key": "0355d9a7-6c9d-42b0-8912-ab5e664dbeae"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 325,
+      "x": 1011,
+      "h": 48,
+      "i": "es-drager-1732870123593-13",
+      "y": 76,
+      "orderNum": 0,
+      "componentName": "装饰8",
+      "pageCompId": "1029996927837065216",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 325.52517985611513,
+          "height": 48
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#004E9A",
+          "fontSize": 15,
+          "type": "8",
+          "title": "装饰8",
+          "subColor": "#00696A",
+          "reverse": true
+        }
+      },
+      "key": "4c86064f-757a-41f5-8847-2a47ba3fa623"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 268,
+      "x": 818,
+      "h": 48,
+      "i": "7b5fcdd4-af62-4286-8fca-ad36fe363326",
+      "y": 54,
+      "orderNum": 300,
+      "componentName": "文本",
+      "pageCompId": "1029996927853842432",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"北京市污水排放总量\"}",
+        "size": {
+          "width": 268,
+          "height": 48.94964028776978
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#DADADA",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "bold",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "57adcb33-9549-4a43-b14a-11b571743e72"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 300,
+      "x": 107,
+      "h": 57,
+      "i": "dc62cab3-04d9-4a13-8d46-4eab174207d3",
+      "y": 123,
+      "orderNum": 0,
+      "componentName": "装饰11",
+      "pageCompId": "1029996927874813952",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 300,
+          "height": 57.17985611510792
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#1E90FF",
+          "fontSize": 15,
+          "type": "11",
+          "title": "排放总量",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "3de861ac-4418-431d-8baf-51e7da4e448f"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 300,
+      "x": 70,
+      "h": 43,
+      "i": "es-drager-1732870306742-14",
+      "y": 452,
+      "orderNum": 0,
+      "componentName": "装饰11",
+      "pageCompId": "1029996927891591168",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 300,
+          "height": 43.18705035971223
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#1E90FF",
+          "fontSize": 15,
+          "type": "11",
+          "title": "排放构成",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "4b9af690-a90e-4d98-b7f7-92331ad58e28"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 300,
+      "x": 1434,
+      "h": 47,
+      "i": "es-drager-1732870320677-15",
+      "y": 78,
+      "orderNum": 0,
+      "componentName": "装饰11",
+      "pageCompId": "1029996927904174080",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 300,
+          "height": 47.330935251798564
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#1E90FF",
+          "fontSize": 15,
+          "type": "11",
+          "title": "各部门氧化亚氮排放量",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "8d3f3a47-e842-477b-8d62-19175d0f607e"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 291,
+      "x": 1470,
+      "h": 50,
+      "i": "es-drager-1732870326823-16",
+      "y": 722,
+      "orderNum": 0,
+      "componentName": "装饰11",
+      "pageCompId": "1029996927920951296",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 291.71223021582733,
+          "height": 50.093525179856115
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#1E90FF",
+          "fontSize": 15,
+          "type": "11",
+          "title": "排放总量",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "1214f492-0ab6-45b4-91a8-775b0559f572"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 300,
+      "x": 785,
+      "h": 45,
+      "i": "es-drager-1732870336988-17",
+      "y": 633,
+      "orderNum": 0,
+      "componentName": "装饰11",
+      "pageCompId": "1029996927937728512",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 300,
+          "height": 45.94964028776978
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#1E90FF",
+          "fontSize": 15,
+          "type": "11",
+          "title": "行业污水排放量",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "8f9d3f16-4dd4-4b19-a0bc-98d1f616fd43"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 454,
+      "x": 1459,
+      "h": 338,
+      "i": "es-drager-1732870562960-18",
+      "y": 71,
+      "orderNum": 0,
+      "componentName": "边框4",
+      "pageCompId": "1029996927958700032",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 454,
+          "height": 338.1007194244604
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "4",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": true
+        }
+      },
+      "key": "2aa61134-9980-4719-8827-84c2d7a48ebb"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 519,
+      "x": 53,
+      "h": 293,
+      "i": "es-drager-1732870597085-20",
+      "y": 705,
+      "orderNum": 0,
+      "componentName": "边框4",
+      "pageCompId": "1029996927975477248",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 519.7338129496403,
+          "height": 293
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "4",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": true
+        }
+      },
+      "key": "c71537bd-fb11-478f-87db-be235e43ba3c"
+    },
+    {
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 510,
+      "x": 729,
+      "h": 487,
+      "i": "81ed6c50-be2f-450b-8e1e-044175023eab",
+      "y": 124,
+      "orderNum": 0,
+      "componentName": "装饰9",
+      "pageCompId": "1029996927992254464",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 510.68345323741005,
+          "height": 487.9856115107914
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 9,
+          "mainColor": "#006C6D",
+          "fontSize": 15,
+          "type": "9",
+          "title": "",
+          "subColor": "#00407E",
+          "reverse": false
+        }
+      },
+      "key": "c27de89c-9d81-46fc-87f8-e0ce1d980e60"
+    },
+    {
+      "component": "JRotatePie",
+      "visible": true,
+      "w": 450,
+      "x": 3,
+      "h": 300,
+      "i": "63ce4f54-51ab-4310-8c9e-eac792a5a4d6",
+      "y": 153,
+      "orderNum": 0,
+      "componentName": "旋转饼图",
+      "pageCompId": "1029996928009031680",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": -1,
+        "chartData": "[    {        \"name\": \"新工业生产\",        \"value\": 1369.33,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"新农业\",        \"value\": 1257.69,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"耕地利用变化\",        \"value\": -628.79,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"新能源部\",        \"value\": 2505.16,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"工业废弃物\",        \"value\": 182.48,        \"url\": \"http://www.baidu.com\"    }]",
+        "size": {
+          "height": 300
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "customColor": [
+            {
+              "color": "#1E90FF"
+            },
+            {
+              "color": "#1E90FF"
+            },
+            {
+              "color": "#1E90FF"
+            },
+            {
+              "color": "#1E90FF"
+            },
+            {
+              "color": "#1E90FF"
+            }
+          ],
+          "grid": {
+            "bottom": 115,
+            "show": false
+          },
+          "legend": {
+            "orient": "vertical",
+            "show": false
+          },
+          "series": [
+            {
+              "data": [],
+              "name": "",
+              "emphasis": {
+                "itemStyle": {
+                  "shadowOffsetX": 0,
+                  "shadowBlur": 10,
+                  "shadowColor": "rgba(0, 0, 0, 0.5)"
+                }
+              },
+              "label": {
+                "color": "#EEF1FA",
+                "show": true
+              },
+              "type": "pie"
+            }
+          ],
+          "tooltip": {
+            "trigger": "item"
+          },
+          "title": {
+            "subtext": "",
+            "left": "left",
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "a935ee73-a36c-414f-8b86-8f9dcfca3846"
+    },
+    {
+      "component": "JMixLineBar",
+      "visible": true,
+      "w": 477,
+      "x": 24,
+      "h": 264,
+      "i": "204bffb2-ad61-47c5-ab6e-02bfcf1451df",
+      "y": 443,
+      "orderNum": 0,
+      "componentName": "折柱图",
+      "pageCompId": "1029996928030003200",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "分组"
+          },
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/26/stackedBar",
+        "timeOut": 0,
+        "chartData": "[  {    \"name\": \"CO2\",    \"value\": 1515.185,    \"type\": \"二氧化碳当量\"  },  {    \"name\": \"CH4\",    \"value\": 559.25,    \"type\": \"二氧化碳当量\"  },  {    \"name\": \"N2O\",    \"value\": 610.64,    \"type\": \"二氧化碳当量\"  },  {    \"name\": \"PDCs\",    \"value\": 0,    \"type\": \"二氧化碳当量\"  },  {    \"name\": \"SF6\",    \"value\": 900.201,    \"type\": \"二氧化碳当量\"  },  {    \"name\": \"NF3\",    \"value\": 0,    \"type\": \"二氧化碳当量\"  },  {    \"name\": \"CO2\",    \"value\": 84.27,    \"type\": \"比例\"  },  {    \"name\": \"CH4\",    \"value\": 18.581,    \"type\": \"比例\"  },  {    \"name\": \"N2O\",    \"value\": 67.132,    \"type\": \"比例\"  },  {    \"name\": \"PDCs\",    \"value\": 100.98,    \"type\": \"比例\"  },  {    \"name\": \"SF6\",    \"value\": 780.89,    \"type\": \"比例\"  },  {    \"name\": \"NF3\",    \"value\": 600,    \"type\": \"比例\"  }]",
+        "size": {
+          "width": 477.53237410071944,
+          "height": 264
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "seriesType": [
+          {
+            "series": "二氧化碳当量",
+            "type": "bar"
+          },
+          {
+            "series": "比例",
+            "type": "line"
+          }
+        ],
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "yAxis": {
+            "axisLabel": {
+              "color": "#EEF1FA"
+            },
+            "splitLine": {
+              "lineStyle": {
+                "color": "#EEF1FA"
+              },
+              "show": false,
+              "interval": 2
+            },
+            "nameTextStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "xAxis": {
+            "axisLabel": {
+              "color": "#EEF1FA"
+            },
+            "axisLine": {
+              "lineStyle": {
+                "color": "#EEF1FA"
+              }
+            },
+            "nameTextStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "grid": {
+            "top": 30,
+            "left": 0,
+            "bottom": 18,
+            "right": 40,
+            "containLabel": true
+          },
+          "series": [
+            {
+              "label": {
+                "color": "#EEF1FA"
+              }
+            }
+          ],
+          "legend": {
+            "r": 1,
+            "t": 21
+          },
+          "tooltip": {
+            "axisPointer": {
+              "label": {
+                "backgroundColor": "#333",
+                "show": true
+              },
+              "type": "shadow"
+            },
+            "trigger": "axis",
+            "textStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#EEF1FA",
+              "fontWeight": "normal"
+            },
+            "subtextStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "a3dc7bbc-a198-4261-82ad-a2fab4ddf860"
+    },
+    {
+      "component": "JScrollRankingBoard",
+      "visible": true,
+      "w": 473,
+      "x": 63,
+      "h": 258,
+      "i": "82c25aa0-611c-40df-be63-8390ec6e7ad1",
+      "y": 726,
+      "orderNum": 0,
+      "componentName": "排行榜",
+      "pageCompId": "1029996928050974720",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[    {        \"name\": \"新能源部\",        \"value\": 10.043    },    {        \"name\": \"畜牧养殖企业\",        \"value\": 12.912    },    {        \"name\": \"煤炭燃烧\",        \"value\": 20.145    },    {        \"name\": \"矿业开采\",        \"value\": 31.321    },    {        \"name\": \"石油和天然气\",        \"value\": 450.18    },    {        \"name\": \"工业生产\",        \"value\": 3340.81    },    {        \"name\": \"合金生产\",        \"value\": 450.64    },    {        \"name\": \"废弃物料\",        \"value\": 3760.71    },    {        \"name\": \"农林业\",        \"value\": 51482.66    },    {        \"name\": \"总计\",        \"value\": 137904.7    }]",
+        "size": {
+          "width": 473.9208633093525,
+          "height": 258
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "rowNum": 5,
+          "sort": true,
+          "carousel": "single",
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "waitTime": 2000,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "e9c3cbd6-5d1a-4077-874a-1fafac617504"
+    },
+    {
+      "component": "JPie",
+      "visible": true,
+      "w": 450,
+      "x": 1440,
+      "h": 309,
+      "i": "5fbc7b66-a739-4dc2-8128-ae988dfdfe36",
+      "y": 84,
+      "orderNum": 0,
+      "componentName": "饼图",
+      "pageCompId": "1029996928067751936",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": -1,
+        "chartData": "[    {        \"name\": \"新能源部\",        \"value\": 1227.75,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"工业废弃物\",        \"value\": 5562.27,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"农业林业及土地利用\",        \"value\": 9764.46,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"新农业\",        \"value\": 1138.98,        \"url\": \"http://www.baidu.com\"    },    {        \"name\": \"土地利用变化和林业领域\",        \"value\": 1236.48,        \"url\": \"http://www.baidu.com\"    }]",
+        "size": {
+          "width": 450,
+          "height": 309.66906474820144
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "isRose": true,
+          "customColor": [
+            {
+              "color": "#0030C1"
+            },
+            {
+              "color": "#0048FF"
+            },
+            {
+              "color": "#0071E0"
+            },
+            {
+              "color": "#1A7DED"
+            },
+            {
+              "color": "#00BBFF"
+            },
+            {
+              "color": "#00CCFF"
+            }
+          ],
+          "grid": {
+            "top": 53,
+            "left": 43,
+            "show": false
+          },
+          "legend": {
+            "orient": "vertical",
+            "t": 1
+          },
+          "series": [
+            {
+              "data": [],
+              "name": "",
+              "emphasis": {
+                "itemStyle": {
+                  "shadowOffsetX": 0,
+                  "shadowBlur": 10,
+                  "shadowColor": "rgba(0, 0, 0, 0.5)"
+                }
+              },
+              "label": {
+                "show": true
+              },
+              "type": "pie",
+              "radius": "50%"
+            }
+          ],
+          "isRadius": true,
+          "tooltip": {
+            "trigger": "item",
+            "textStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "outRadius": 87,
+          "title": {
+            "subtext": "",
+            "left": "left",
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#EEF1FA",
+              "fontWeight": "normal"
+            }
+          },
+          "innerRadius": 56,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "91e83623-de01-464c-b1fc-5d6ba66ac2fb"
+    },
+    {
+      "component": "JScrollRankingBoard",
+      "visible": true,
+      "w": 408,
+      "x": 1444,
+      "h": 255,
+      "i": "2038e4d8-163f-46eb-915b-38aeb335cf89",
+      "y": 417,
+      "orderNum": 0,
+      "componentName": "排行榜",
+      "pageCompId": "1029996928084529152",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[    {        \"name\": \"新能源部\",        \"value\": 2512.88    },    {        \"name\": \"畜牧养殖企业\",        \"value\": 1202.88    },    {        \"name\": \"秸秆燃烧\",        \"value\": 5365.94    },    {        \"name\": \"新工业生产\",        \"value\": 1855.12    },    {        \"name\": \"硝酸生产过程\",        \"value\": 1036.0055    },    {        \"name\": \"废弃物部门\",        \"value\": 2604.27    },    {        \"name\": \"固体废弃物处理\",        \"value\": 1456.27    },    {        \"name\": \"农业领域\",        \"value\": 6363.65    },    {        \"name\": \"农耕用地\",        \"value\": 2541.84    },    {        \"name\": \"粪便管理\",        \"value\": 1229.8    },    {        \"name\": \"总计\",        \"value\": 24754.24    }]",
+        "size": {
+          "width": 408.5611510791367,
+          "height": 255
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "rowNum": 5,
+          "sort": false,
+          "carousel": "single",
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "waitTime": 2000,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "bfe57cf6-0373-4f3b-b44a-1892eafdb20a"
+    },
+    {
+      "component": "JActiveRing",
+      "visible": true,
+      "w": 311,
+      "x": 1471,
+      "h": 264,
+      "i": "d740a9e0-78df-4111-8c04-b8ca38f24700",
+      "y": 745,
+      "orderNum": 0,
+      "componentName": "动态环形图",
+      "pageCompId": "1029996928101306368",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[  {    \"name\": \"新能源部\",    \"value\": 4502.12  },  {    \"name\": \"工业生产\",    \"value\": 665.51  },  {    \"name\": \"废物部\",    \"value\": 29850.45  },  {    \"name\": \"农林业\",    \"value\": 139882.66  },  {    \"name\": \"农业\",    \"value\": 96786.95  },  {    \"name\": \"土地利用\",    \"value\": 40675.71  },  {    \"name\": \"温室气体排放\",    \"value\": 296739.4  }]",
+        "size": {
+          "width": 311.6546762589928,
+          "height": 264.0863309352518
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "customColor": [
+            {
+              "color": "#493EB8"
+            },
+            {
+              "color": "#0030C1"
+            },
+            {
+              "color": "#0048FF"
+            },
+            {
+              "color": "#0071E0"
+            },
+            {
+              "color": "#1E90FF"
+            },
+            {
+              "color": "#00BBFF"
+            },
+            {
+              "color": "#00CCFF"
+            },
+            {
+              "color": "#9DEDF2"
+            }
+          ],
+          "showOriginValue": true,
+          "activeRadius": 88,
+          "radius": 79,
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "lineWidth": 21,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "bdeac5cf-2b74-4a4e-8f85-2f0458f309ab"
+    },
+    {
+      "component": "JScrollBoard",
+      "visible": true,
+      "w": 740,
+      "x": 606,
+      "h": 306,
+      "i": "701dca3c-6a4f-476a-804c-f3547c8520f2",
+      "y": 695,
+      "orderNum": 0,
+      "componentName": "轮播表",
+      "pageCompId": "1029996928126472192",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[    [        \"新能源\",        \"2,908.81\",        \"123.00\",        \"2,875.81\",        \"71.611\"    ],    [        \"新型电力\",        \"1,901.29\",        \"1012.25\",        \"1,343.53\",        \"15.902\"    ],    [        \"热力生产\",        \"47.726\",        \"-\",        \"47.726 \",        \"11.514\"    ],    [        \"燃料\",        \"129.75\",        \"45.76\",        \"31.51\",        \"0.12\"    ],    [        \"建筑业\",        \"7,674.40\",        \"521.92\",        \"8,875.33\",        \"56.28\"    ],    [        \"钢铁\",        \"4,111.10\",        \"252.22\",        \"4,983.32\",        \"135.2\"    ],    [        \"有色金属工业\",        \"1,647.19\",        \"281.39\",        \"1,928.57\",        \"6.221165\"    ],    [        \"化学工业\",        \"1,551.97\",        \"12.23\",        \"1,290.20\",        \"13.79\"    ],    [        \"建筑材料生产工业\",        \"268.33\",        \"5.76\",        \"248.09\",        \"0.788\"    ],    [        \"食品/烟草/饮料\",        \"6.98\",        \"2.25\",        \"9.22\",        \"0.05\"    ],    [        \"造纸印刷\",        \"46.79\",        \"11.01\",        \"65.80\",        \"0.871\"    ],    [        \"机械工业\",        \"20.38\",        \"30.68\",        \"41.06\",        \"0.035\"    ],    [        \"纺织业\",        \"1.87\",        \"1.11\",        \"1.99\",        \"1.0194\"    ],    [        \"其他工业\",        \"3.76\",        \"3.12\",        \"4.88\",        \"0.42\"    ],    [        \"建筑业\",        \"86.03\",        \"1.16\",        \"56.19\",        \"0.243\"    ],    [        \"交通领域\",        \"327.66\",        \"11.34\",        \"256.00\",        \"0.94\"    ],    [        \"铁路\",        \"56.93\",        \"21.34\",        \"58.27\",        \"0.151\"    ]]",
+        "size": {
+          "width": 740.0287769784172,
+          "height": 306
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "oddRowBGC": "#003B51",
+          "headShow": true,
+          "hoverPause": true,
+          "indexWidth": 80,
+          "index": true,
+          "carousel": "single",
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "evenRowBGC": "#0A2732",
+          "header": [
+            {
+              "width": 150,
+              "label": "部门"
+            },
+            {
+              "width": 150,
+              "label": "直接排放/万吨"
+            },
+            {
+              "width": 150,
+              "label": "间接排放/万吨"
+            },
+            {
+              "width": 150,
+              "label": "总计/万吨",
+              "key": ""
+            },
+            {
+              "width": 150,
+              "label": "比例/%",
+              "key": ""
+            }
+          ],
+          "headerBGC": "#0A447D",
+          "headerHeight": 50,
+          "waitTime": 2000,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "42d63394-8db0-4c2f-8440-ae8db061048e"
+    },
+    {
+      "visible": true,
+      "h": 244,
+      "i": "es-drager-1733204486319-3",
+      "orderNum": 0,
+      "component": "JDragBorder",
+      "w": 45,
+      "x": 1857,
+      "y": 404,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "边框6",
+      "pageCompId": "1029996928143249408",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 45,
+          "height": 244.28776978417267
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "6",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "37d98d69-bdc2-41aa-96f2-1bcaec327dec"
+    },
+    {
+      "visible": true,
+      "h": 230,
+      "i": "es-drager-1733204486319-4",
+      "orderNum": 0,
+      "component": "JText",
+      "w": 30,
+      "x": 1865,
+      "y": 423,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "文本",
+      "pageCompId": "1029996928155832320",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"排放汇总表\"}",
+        "size": {
+          "width": 30.27777777777778,
+          "height": 230
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#DADADA",
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "dbb54e11-d7ca-4720-8d83-1d3317552ebb"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 43,
+      "x": 1864,
+      "h": 37,
+      "i": "0bbaa72d-9987-423c-9614-6778982a6e95",
+      "y": 642,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928172609536",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"排放量（吨）\"}",
+        "size": {
+          "width": 43.46762589928058,
+          "height": 37
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#FFFFFF",
+            "fontSize": 12,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "f280e148-5b1c-46be-bf52-0a7bdda2a1d9"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 99,
+      "x": 1791,
+      "h": 37,
+      "i": "es-drager-1733204955467-5",
+      "y": 955,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928185192448",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"单位：吨 CH4\"}",
+        "size": {
+          "width": 99.33812949640287,
+          "height": 37
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#FFFFFF",
+            "fontSize": 12,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "5ad334f4-341e-4a56-8976-235f9ea8d7b9"
+    },
+    {
+      "component": "JPie",
+      "visible": false,
+      "w": 450,
+      "x": 1288,
+      "h": 300,
+      "i": "e36edbaa-6db9-4758-b733-6534bf1c4280",
+      "y": 672,
+      "orderNum": 0,
+      "componentName": "饼图",
+      "pageCompId": "1029996928218746880",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": -1,
+        "chartData": "[  {    \"name\": \"新能源部\",    \"value\": 4502.12  },  {    \"name\": \"工业生产\",    \"value\": 665.51  },  {    \"name\": \"废物部\",    \"value\": 29850.45  },  {    \"name\": \"农林业\",    \"value\": 139882.66  },  {    \"name\": \"农业\",    \"value\": 96786.95  },  {    \"name\": \"土地利用\",    \"value\": 40675.71  },  {    \"name\": \"温室气体排放\",    \"value\": 296739.4  }]",
+        "size": {
+          "height": 300
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "customColor": [
+            {
+              "color": "#493EB8"
+            },
+            {
+              "color": "#0030C1"
+            },
+            {
+              "color": "#1A7DED"
+            }
+          ],
+          "grid": {
+            "top": 53,
+            "left": 43,
+            "show": false
+          },
+          "legend": {
+            "r": 67,
+            "orient": "vertical",
+            "t": 5,
+            "show": true
+          },
+          "series": [
+            {
+              "data": [],
+              "name": "",
+              "emphasis": {
+                "itemStyle": {
+                  "shadowOffsetX": 0,
+                  "shadowBlur": 10,
+                  "shadowColor": "rgba(0, 0, 0, 0.5)"
+                }
+              },
+              "label": {
+                "show": false
+              },
+              "type": "pie",
+              "radius": "50%"
+            }
+          ],
+          "isRadius": true,
+          "tooltip": {
+            "trigger": "item",
+            "textStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "outRadius": 0,
+          "title": {
+            "subtext": "",
+            "left": "left",
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "innerRadius": 0,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "920e9c48-529f-4508-a7f8-c9bda1c762b4"
+    },
+    {
+      "visible": true,
+      "h": 289,
+      "i": "668a126c-aa8b-41df-88f9-b86ad4559894",
+      "orderNum": 0,
+      "component": "JDragBorder",
+      "w": 46,
+      "x": 11,
+      "y": 698,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "边框6",
+      "pageCompId": "1029996928239718400",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 46,
+          "height": 289.568345323741
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "6",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "a24ddba9-563b-448f-9e56-da2a807cbb23"
+    },
+    {
+      "visible": true,
+      "h": 259,
+      "i": "50482900-496c-43c1-8bf6-cc1a965b3c9f",
+      "orderNum": 0,
+      "component": "JText",
+      "w": 32,
+      "x": 19,
+      "y": 707,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "文本",
+      "pageCompId": "1029996928260689920",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"氯苯排放汇总表\"}",
+        "size": {
+          "width": 32.666666666666664,
+          "height": 259
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#DADADA",
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "a4bf307e-1875-4a43-8f07-6a41557c73e9"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 112,
+      "x": 383,
+      "h": 37,
+      "i": "es-drager-1733205924174-6",
+      "y": 396,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928285855744",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"单位：万吨CO2e\"}",
+        "size": {
+          "width": 112.81294964028777,
+          "height": 37
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#FFFFFF",
+            "fontSize": 12,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "26625332-882d-4c02-8c8b-49220d50701b"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 155,
+      "x": 29,
+      "h": 48,
+      "i": "6448633b-136f-4af3-9b94-cebd775bbae1",
+      "y": 1017,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928306827264",
+      "config": {
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"污水排放总量\"}",
+        "size": {
+          "width": 155.76258992805757,
+          "height": 48
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#DADADA",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "42f06771-9ee9-4717-a5b3-7fcb4290198c"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 165,
+      "x": 26,
+      "h": 61,
+      "i": "0a4061eb-9054-4c9a-8cbb-23290142cea9",
+      "y": 1011,
+      "orderNum": 0,
+      "componentName": "边框10",
+      "pageCompId": "1029996928319410176",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 165.89928057553956,
+          "height": 61
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "10",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "e4bfd14f-ef9c-43c6-84f3-dec1c6d0829e"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 123,
+      "x": 245,
+      "h": 51,
+      "i": "8cd0242a-d56e-4baa-8609-39f07b34ff60",
+      "y": 1012,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928340381696",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"排放强度\"}",
+        "size": {
+          "width": 123,
+          "height": 51.71223021582734
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "bf3adb3f-4e55-4f46-95b1-8d75e25e9bc3"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 123,
+      "x": 433,
+      "h": 51,
+      "i": "es-drager-1733206158226-7",
+      "y": 1017,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928361353216",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"生产力水平\"}",
+        "size": {
+          "width": 123,
+          "height": 51.71223021582734
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "5854a31d-ba9e-4bd6-85ba-e26c5e2e386a"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 149,
+      "x": 609,
+      "h": 51,
+      "i": "es-drager-1733206178228-8",
+      "y": 1014,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928378130432",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"能源消费总量\"}",
+        "size": {
+          "width": 149.24460431654677,
+          "height": 51
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "79f0192b-6654-434d-8f84-6d982f9c10a8"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 171,
+      "x": 803,
+      "h": 51,
+      "i": "es-drager-1733206195204-9",
+      "y": 1018,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928394907648",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"能源消费强度\"}",
+        "size": {
+          "width": 171.34532374100718,
+          "height": 51
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "399f31f5-e7cb-4a5a-9f32-3add0f0b7caf"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 175,
+      "x": 1024,
+      "h": 51,
+      "i": "es-drager-1733206217506-10",
+      "y": 1016,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928415879168",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"排放趋势分析\"}",
+        "size": {
+          "width": 175.48920863309354,
+          "height": 51
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "23e9162b-99c8-4f06-a127-42301fa8e7f6"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 160,
+      "x": 1257,
+      "h": 51,
+      "i": "es-drager-1733206234451-11",
+      "y": 1015,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928441044992",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"能耗趋势分析\"}",
+        "size": {
+          "width": 160.29496402877697,
+          "height": 51
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "e844c96a-7809-42c6-9a9f-cd410e0392db"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 157,
+      "x": 1476,
+      "h": 51,
+      "i": "es-drager-1733206586758-12",
+      "y": 1017,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928462016512",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"排放实时监控\"}",
+        "size": {
+          "width": 157.53237410071944,
+          "height": 51
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "e11a0d7b-afaf-4108-88e4-224a6a2680c3"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 171,
+      "x": 1686,
+      "h": 51,
+      "i": "es-drager-1733206599671-13",
+      "y": 1018,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928478793728",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"本市排放分析\"}",
+        "size": {
+          "width": 171.3453237410072,
+          "height": 51
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#1E90FF",
+            "fontSize": 23,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "981adc79-b5c9-4ebf-9c4d-01acbce92f6d"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 99,
+      "x": 1781,
+      "h": 37,
+      "i": "es-drager-1733206655018-14",
+      "y": 326,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1029996928495570944",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 60,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "{  \"value\": \"单位：吨 N2O\"}",
+        "size": {
+          "width": 99.33812949640287,
+          "height": 37
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 170,
+        "turnConfig": {
+          "type": "_blank",
+          "url": ""
+        },
+        "linkType": "url",
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#FFFFFF",
+            "fontSize": 12,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "20121fda-3f44-4505-8705-40069f94d23d"
+    }
+  ],
+  "coverUrl": "https://static.jeecg.com/bigscreen/污水_1628673172738.jpg",
+  "backgroundColor": "#1E0047",
+  "backgroundImage": "/img/bg/bg5.png",
+  "theme": "dark",
+  "style": "bigScreen",
+  "designType": 100,
+  "protectionCode": "",
+  "type": "0",
+  "izTemplate": "1",
+  "createBy": "admin",
+  "lowAppId": null,
+  "tenantId": 1,
+  "appMenuGroupId": null,
+  "createTime": "2024-11-29 16:30:00",
+  "updateBy": "admin",
+  "updateTime": "2024-12-20 17:15:08",
+  "updateCount": 2,
+  "visitsNum": 0,
+  "delFlag": 0
+}

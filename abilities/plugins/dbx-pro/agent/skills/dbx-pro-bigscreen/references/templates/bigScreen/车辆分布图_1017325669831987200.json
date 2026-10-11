@@ -1,0 +1,2115 @@
+{
+  "id": "1017325669831987200",
+  "name": "车辆分布图",
+  "path": "/drag/page/view/1017325669831987200",
+  "desJson": "{\"width\":1920,\"height\":1600,\"waterMark\":{\"show\":false,\"content\":\"\",\"fontSize\":12,\"color\":\"#ffffff\",\"angle\":45},\"sysDefColor\":[{\"color\":\"#1e90ff\"},{\"color\":\"#90ee90\"},{\"color\":\"#00ced1\"},{\"color\":\"#e2bd84\"},{\"color\":\"#7a90e0\"},{\"color\":\"#3ba272\"},{\"color\":\"#2be7ff\"},{\"color\":\"#0a8ada\"},{\"color\":\"#ffd700\"}]}",
+  "template": [
+    {
+      "component": "JScrollBoard",
+      "visible": true,
+      "w": 433,
+      "x": 1455,
+      "h": 357,
+      "i": "es-drager-1732606845802-29",
+      "y": 988,
+      "orderNum": 0,
+      "componentName": "轮播表",
+      "pageCompId": "1030013421492948992",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"京A12345\",\"numer\":1573},{\"name\":\"京A12345\",\"numer\":3721},{\"name\":\"京A12345\",\"numer\":1234},{\"name\":\"京A12345\",\"numer\":4321},{\"name\":\"京A12345\",\"numer\":4536},{\"name\":\"京A12345\",\"numer\":2367},{\"name\":\"京A12345\",\"numer\":1357},{\"name\":\"京A12345\",\"numer\":7351},{\"name\":\"京A12345\",\"numer\":4523}]",
+        "size": {
+          "width": 433.863309352518,
+          "height": 357.2086330935252
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "oddRowBGC": "#1C2A42",
+          "headShow": true,
+          "hoverPause": true,
+          "indexWidth": 50,
+          "index": true,
+          "carousel": "single",
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "evenRowBGC": "#081832",
+          "header": [
+            {
+              "width": 200,
+              "label": "车牌号"
+            },
+            {
+              "width": 100,
+              "label": "次数(次)"
+            }
+          ],
+          "headerBGC": "#00BAFF00",
+          "headerHeight": 35,
+          "waitTime": 2000,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "component": "JScrollBoard",
+      "visible": true,
+      "w": 433,
+      "x": 971,
+      "h": 357,
+      "i": "es-drager-1732606819733-28",
+      "y": 983,
+      "orderNum": 0,
+      "componentName": "轮播表",
+      "pageCompId": "1030013421530697728",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"京A12345\",\"numer\":1573},{\"name\":\"京A12345\",\"numer\":3721},{\"name\":\"京A12345\",\"numer\":1234},{\"name\":\"京A12345\",\"numer\":4321},{\"name\":\"京A12345\",\"numer\":4536},{\"name\":\"京A12345\",\"numer\":2367},{\"name\":\"京A12345\",\"numer\":1357},{\"name\":\"京A12345\",\"numer\":7351},{\"name\":\"京A12345\",\"numer\":4523}]",
+        "size": {
+          "width": 433.863309352518,
+          "height": 357.2086330935252
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "oddRowBGC": "#1C2A42",
+          "headShow": true,
+          "hoverPause": true,
+          "indexWidth": 50,
+          "index": true,
+          "carousel": "single",
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "evenRowBGC": "#081832",
+          "header": [
+            {
+              "width": 200,
+              "label": "车牌号"
+            },
+            {
+              "width": 100,
+              "label": "速度(km/h)"
+            }
+          ],
+          "headerBGC": "#00BAFF00",
+          "headerHeight": 35,
+          "waitTime": 2000,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "component": "JScrollBoard",
+      "visible": true,
+      "w": 433,
+      "x": 497,
+      "h": 357,
+      "i": "3273336c-5efe-4575-8d9a-207cb8a2eacb",
+      "y": 991,
+      "orderNum": 0,
+      "componentName": "轮播表",
+      "pageCompId": "1030013421543280640",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"京A12345\",\"numer\":1573},{\"name\":\"京A12345\",\"numer\":3721},{\"name\":\"京A12345\",\"numer\":1234},{\"name\":\"京A12345\",\"numer\":4321},{\"name\":\"京A12345\",\"numer\":4536},{\"name\":\"京A12345\",\"numer\":2367},{\"name\":\"京A12345\",\"numer\":1357},{\"name\":\"京A12345\",\"numer\":7351},{\"name\":\"京A12345\",\"numer\":4523}]",
+        "size": {
+          "width": 433.863309352518,
+          "height": 357.2086330935252
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "oddRowBGC": "#1C2A42",
+          "headShow": true,
+          "hoverPause": true,
+          "indexWidth": 50,
+          "index": true,
+          "carousel": "single",
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "evenRowBGC": "#081832",
+          "header": [
+            {
+              "width": 200,
+              "label": "车牌号"
+            },
+            {
+              "width": 200,
+              "label": "时长(h)"
+            }
+          ],
+          "headerBGC": "#00BAFF00",
+          "headerHeight": 35,
+          "waitTime": 2000,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "component": "JScrollTable",
+      "visible": true,
+      "w": 432,
+      "x": 19,
+      "h": 364,
+      "i": "100348d4-3d0e-4965-be54-b8ec436a6ddf",
+      "y": 984,
+      "orderNum": 0,
+      "componentName": "表格",
+      "pageCompId": "1030013421555863552",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[  {    \"name\": \"京A12345\",    \"numer\": 1573  },  {    \"name\": \"京A12345\",    \"numer\": 3721  },  {    \"name\": \"京A12345\",    \"numer\": 1234  },  {    \"name\": \"京A12345\",    \"numer\": 4321  },  {    \"name\": \"京A12345\",    \"numer\": 4536  },  {    \"name\": \"京A12345\",    \"numer\": 2367  },  {    \"name\": \"京A12345\",    \"numer\": 1357  },  {    \"name\": \"京A12345\",    \"numer\": 7351  },  {    \"name\": \"京A12345\",    \"numer\": 4523  }]",
+        "size": {
+          "width": 432.431654676259,
+          "height": 364.8848920863309
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "headerBgColor": "#0A73FF00",
+          "borderColor": "#FFFFFF",
+          "textPosition": "center",
+          "scroll": true,
+          "scrollTime": 5000,
+          "bodyFontColor": "#FFFFFF",
+          "rankingTitle": "排名",
+          "showBorder": false,
+          "oddColor": "#0A2732",
+          "evenColor": "#003B51",
+          "fieldMapping": [
+            {
+              "name": "车牌号",
+              "width": 0,
+              "key": "name"
+            },
+            {
+              "name": "里程数(km)",
+              "width": 0,
+              "key": "numer"
+            }
+          ],
+          "showHead": true,
+          "borderWidth": 1,
+          "lineHeight": 60,
+          "fontSize": 20,
+          "ranking": true,
+          "borderStyle": "solid",
+          "headerFontColor": "#53D2F7"
+        }
+      }
+    },
+    {
+      "component": "JNegativeBar",
+      "visible": true,
+      "w": 427,
+      "x": 1466,
+      "h": 293,
+      "i": "33250dc0-8895-4a52-8f56-21ce4b8cb2c7",
+      "y": 591,
+      "orderNum": 0,
+      "componentName": "正负条形图",
+      "pageCompId": "1030013421572640768",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "分组"
+          },
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/26/stackedBar",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"超速\",\"value\":13.4,\"type\":\"昨天\"},{\"name\":\"SOS\",\"value\":14.4,\"type\":\"昨天\"},{\"name\":\"偏移\",\"value\":18.4,\"type\":\"昨天\"},{\"name\":\"其他\",\"value\":34.4,\"type\":\"昨天\"},{\"name\":\"超速\",\"value\":12.3,\"type\":\"今天\"},{\"name\":\"SOS\",\"value\":6.3,\"type\":\"今天\"},{\"name\":\"偏移\",\"value\":8.3,\"type\":\"今天\"},{\"name\":\"其他\",\"value\":13.8,\"type\":\"今天\"}]",
+        "size": {
+          "width": 427.8992805755396,
+          "height": 293
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "yAxis": {
+            "axisLabel": {
+              "color": "#EEF1FA"
+            },
+            "splitLine": {
+              "lineStyle": {
+                "color": "#EEF1FA"
+              },
+              "show": false,
+              "interval": 2
+            }
+          },
+          "xAxis": {
+            "axisLabel": {
+              "color": "#EEF1FA"
+            },
+            "type": "value"
+          },
+          "grid": {
+            "top": 30,
+            "left": 0,
+            "bottom": 18,
+            "right": 40,
+            "containLabel": true
+          },
+          "series": [],
+          "tooltip": {
+            "axisPointer": {
+              "label": {
+                "backgroundColor": "#333",
+                "show": true
+              },
+              "type": "shadow"
+            },
+            "trigger": "axis",
+            "textStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "component": "JLine",
+      "visible": true,
+      "w": 416,
+      "x": 1467,
+      "h": 235,
+      "i": "e607c7ab-576a-47d5-8b55-826623101a44",
+      "y": 272,
+      "orderNum": 0,
+      "componentName": "基础折线图",
+      "pageCompId": "1030013421585223680",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "{    \"categories\": [      \"1\",      \"3\",      \"5\",      \"7\",      \"9\",      \"11\",      \"13\",      \"15\",      \"17\",      \"19\",      \"21\",      \"23\",      \"25\",      \"27\",      \"29\",      \"31\",      \"33\",      \"35\"    ],    \"series\": [      {        \"name\": \"车辆行驶数\",        \"data\": [          32,          10,          85,          96,          10,          5,          56,          136,          128,          23,          10,          85,          96,          10,          5,          56,          136,          128        ]      }    ]}",
+        "size": {
+          "width": 416.84892086330933,
+          "height": 235.0791366906475
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "yAxis": {
+            "axisLabel": {
+              "color": "#EEF1FA"
+            },
+            "splitLine": {
+              "lineStyle": {
+                "color": "#EEF1FA"
+              },
+              "show": false,
+              "interval": 2
+            },
+            "nameTextStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "customColor": [
+            {
+              "color": "#F8E71C"
+            }
+          ],
+          "xAxis": {
+            "axisLabel": {
+              "color": "#EEF1FA"
+            },
+            "axisLine": {
+              "lineStyle": {
+                "color": "#EEF1FA"
+              }
+            },
+            "nameTextStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "grid": {
+            "top": 12,
+            "left": 0,
+            "bottom": 18,
+            "show": false,
+            "right": 40,
+            "containLabel": true
+          },
+          "series": [
+            {
+              "data": [],
+              "lineType": "line",
+              "itemStyle": {
+                "color": "#64b5f6"
+              },
+              "label": {
+                "color": "#EEF1FA"
+              },
+              "type": "line"
+            }
+          ],
+          "tooltip": {
+            "textStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "title": {
+            "subtext": "",
+            "left": 10,
+            "text": "",
+            "textStyle": {
+              "color": "#EEF1FA",
+              "fontWeight": "normal"
+            }
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "c4467b3c-f27f-46ab-9a44-c5482ed65c24"
+    },
+    {
+      "component": "JText",
+      "visible": true,
+      "w": 55,
+      "x": 1762,
+      "h": 33,
+      "i": "84c17367-92da-4d8f-9241-52f9d16b5b97",
+      "y": 255,
+      "orderNum": 0,
+      "componentName": "文本",
+      "pageCompId": "1030013421656526848",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "类型：",
+        "size": {
+          "width": 55.79856115107914,
+          "height": 33
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "openUrl": "",
+          "isLink": false,
+          "body": {
+            "color": "#FFFFFF",
+            "fontSize": 13,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "openType": "_blank"
+        }
+      },
+      "key": "506bfe3d-9aae-4650-8c27-52c244ba7497"
+    },
+    {
+      "component": "JSelectRadio",
+      "visible": true,
+      "w": 82,
+      "x": 1808,
+      "h": 38,
+      "i": "495ed46f-f087-4ef0-81cb-214d0c948157",
+      "y": 252,
+      "orderNum": 0,
+      "componentName": "选项卡",
+      "pageCompId": "1030013421673304064",
+      "config": {
+        "compShowConfig": [],
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "文本"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 80,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "[    {        \"label\": \"客运车\",        \"value\": \"1\"    },    {        \"label\": \"危险品运输车\",        \"value\": \"2\"    },    {        \"label\": \"网约车\",        \"value\": \"3\"    },    {        \"label\": \"学生班车\",        \"value\": \"4\"    }]",
+        "size": {
+          "width": 82.22302158273382,
+          "height": 38
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 400,
+        "linkageConfig": [],
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#39414D",
+          "borderColor": "#FF0000",
+          "color": "#FFFFFF",
+          "activeColor": "#FFFFFF",
+          "activeBorderColor": "#FF0000",
+          "borderWidth": 0,
+          "activeBackgroundColor": "#0A73FF",
+          "fontSize": 16,
+          "type": "select",
+          "activeBorderWidth": 0
+        }
+      },
+      "key": "05c6abf0-8001-4949-a7f8-0630012a67c0"
+    },
+    {
+      "component": "JPercentBar",
+      "visible": true,
+      "w": 421,
+      "x": 38,
+      "h": 287,
+      "i": "699209ac-ccdd-49f8-b38c-ce534bbb3819",
+      "y": 600,
+      "orderNum": 0,
+      "componentName": "百分比条形图",
+      "pageCompId": "1030013421685886976",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "分组"
+          },
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[  {    \"type\": \"行驶\",    \"name\": \"客运车\",    \"value\": 502  },  {    \"type\": \"行驶\",    \"name\": \"危险品运输车\",    \"value\": 635  },  {    \"type\": \"行驶\",    \"name\": \"网约车\",    \"value\": 809  },  {    \"type\": \"行驶\",    \"name\": \"学生班车\",    \"value\": 947  },  {    \"type\": \"停车\",    \"name\": \"客运车\",    \"value\": 1402  },  {    \"type\": \"停车\",    \"name\": \"危险品运输车\",    \"value\": 3634  },  {    \"type\": \"停车\",    \"name\": \"网约车\",    \"value\": 5268  },  {    \"type\": \"停车\",    \"name\": \"学生班车\",    \"value\": 106  },  {    \"type\": \"熄火\",    \"name\": \"客运车\",    \"value\": 107  },  {    \"type\": \"熄火\",    \"name\": \"危险品运输车\",    \"value\": 111  },  {    \"type\": \"熄火\",    \"name\": \"网约车\",    \"value\": 133  },  {    \"type\": \"熄火\",    \"name\": \"学生班车\",    \"value\": 221  },  {    \"type\": \"离线\",    \"name\": \"客运车\",    \"value\": 767  },  {    \"type\": \"离线\",    \"name\": \"危险品运输车\",    \"value\": 1766  },  {    \"type\": \"离线\",    \"name\": \"网约车\",    \"value\": 163  },  {    \"type\": \"离线\",    \"name\": \"学生班车\",    \"value\": 203  }]",
+        "size": {
+          "width": 421,
+          "height": 287.1798561151079
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "customColor": [
+            {
+              "color": "#1E90FF"
+            },
+            {
+              "color": "#F36F8A"
+            },
+            {
+              "color": "#EFE39B"
+            },
+            {
+              "color": "#00CED1"
+            }
+          ],
+          "yNameFontSize": 12,
+          "yNameFontColor": "#fff",
+          "legendFontColor": "#fff",
+          "legendFontSize": 16,
+          "xNameFontColor": "#fff",
+          "legendPosition": "bottom",
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "xNameFontSize": 12,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "legendLayout": "horizontal"
+        }
+      },
+      "key": "ce5bb7b0-5887-4ed0-84fa-145b20d70d61"
+    },
+    {
+      "component": "JBubbleMap",
+      "visible": true,
+      "w": 876,
+      "x": 538,
+      "h": 606,
+      "i": "75246cd7-2e2b-4e06-9f99-5ceb3d7c987b",
+      "y": 293,
+      "orderNum": 0,
+      "componentName": "散点地图",
+      "pageCompId": "1030013421698469888",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "commonOption": {
+          "barSize": 10,
+          "gradientColor": false,
+          "breadcrumb": {
+            "drillDown": false,
+            "textColor": "#000000"
+          },
+          "areaColor": {
+            "color1": "#1B173E",
+            "color2": "#0A0909"
+          },
+          "barColor": "#fff176",
+          "barColor2": "#fcc02e",
+          "inRange": {
+            "color": [
+              "#04387b",
+              "#467bc0"
+            ]
+          }
+        },
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "区域"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "jsConfig": "",
+        "dataType": 1,
+        "h": 360,
+        "activeKey": 1,
+        "url": "http://api.jeecg.com/mock/33/radar",
+        "timeOut": 0,
+        "chartData": "[  {    \"name\": \"河南\",    \"value\": 107.9,    \"lng\": 113.4668,    \"lat\": 34.6234  },  {    \"name\": \"江苏\",    \"value\": 124,    \"lng\": 118.8062,    \"lat\": 31.9208  },  {    \"name\": \"安徽\",    \"value\": 115,    \"lng\": 117.29,    \"lat\": 32.0581  },  {    \"name\": \"湖北\",    \"value\": 116,    \"lng\": 114.3896,    \"lat\": 30.6628  },  {    \"name\": \"浙江\",    \"value\": 157,    \"lng\": 119.5313,    \"lat\": 29.8773  },  {    \"name\": \"内蒙古\",    \"value\": 101.3,    \"lng\": 110.3467,    \"lat\": 41.4899  },  {    \"name\": \"江西\",    \"value\": 134,    \"lng\": 116.0046,    \"lat\": 28.6633  },  {    \"name\": \"湖南\",    \"value\": 112,    \"lng\": 113.0823,    \"lat\": 28.2568  },  {    \"name\": \"吉林\",    \"value\": 100.4,    \"lng\": 125.8154,    \"lat\": 44.2584  },  {    \"name\": \"云南\",    \"value\": 134,    \"lng\": 102.9199,    \"lat\": 25.4663  },  {    \"name\": \"黑龙江\",    \"value\": 115,    \"lng\": 127.9688,    \"lat\": 45.368  },  {    \"name\": \"台湾\",    \"value\": 143,    \"lng\": 121.4648,    \"lat\": 25.563  }]",
+        "size": {
+          "width": 876.3812949640288,
+          "height": 606.2014388489208
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "drillDown": false,
+          "area": {
+            "markerSize": 4.9,
+            "markerColor": "#C71F50",
+            "shadowBlur": 10,
+            "markerOpacity": 1,
+            "markerShape": "pin",
+            "markerType": "scatter",
+            "scatterLabelPosition": "inside",
+            "scatterLabelColor": "#FFFFFF",
+            "markerCount": 10,
+            "name": [
+              "中国"
+            ],
+            "scatterLabelShow": true,
+            "shadowColor": "#DDE330",
+            "value": [
+              "china"
+            ]
+          },
+          "geo": {
+            "top": 40,
+            "itemStyle": {
+              "normal": {
+                "shadowOffsetX": 0,
+                "borderColor": "#0692A4",
+                "shadowOffsetY": 0,
+                "areaColor": "",
+                "shadowBlur": -12,
+                "borderWidth": 1,
+                "shadowColor": "#80D9F8"
+              },
+              "emphasis": {
+                "areaColor": "#FFF59C",
+                "borderWidth": 0
+              }
+            },
+            "zoom": 1.2,
+            "label": {
+              "normal": {
+                "color": "#06A4D5",
+                "show": true
+              },
+              "emphasis": {
+                "color": "#fff",
+                "show": false
+              }
+            },
+            "roam": true
+          },
+          "grid": {
+            "bottom": 115,
+            "show": false
+          },
+          "legend": {
+            "data": []
+          },
+          "title": {
+            "left": 10,
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "graphic": [],
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "visualMap": {
+            "min": 0,
+            "top": "bottom",
+            "max": 200,
+            "left": "5%",
+            "calculable": true,
+            "show": false,
+            "type": "continuous",
+            "seriesIndex": [
+              1
+            ]
+          }
+        }
+      },
+      "key": "f6e121ba-6efb-4c28-8341-fbf39854c230"
+    },
+    {
+      "component": "JRing",
+      "visible": true,
+      "w": 436,
+      "x": 26,
+      "h": 290,
+      "i": "6a23edd1-c452-490d-9ea6-2cafb0c88848",
+      "y": 236,
+      "orderNum": 0,
+      "componentName": "饼状环形图",
+      "pageCompId": "1030013421715247104",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"客运\",\"value\":335},{\"name\":\"危险品运输\",\"value\":335},{\"name\":\"网约车\",\"value\":315},{\"name\":\"学生班车\",\"value\":200}]",
+        "size": {
+          "width": 436.60431654676256,
+          "height": 290.27338129496405
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 480,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "customColor": [
+            {
+              "color": "#4992FF"
+            },
+            {
+              "color": "#7CFFB2"
+            },
+            {
+              "color": "#FDDD60"
+            },
+            {
+              "color": "#FF6E76"
+            },
+            {
+              "color": "#58D9F9"
+            }
+          ],
+          "grid": {
+            "top": 50,
+            "left": 50,
+            "show": false
+          },
+          "series": [
+            {
+              "data": [],
+              "name": "Access From",
+              "avoidLabelOverlap": false,
+              "emphasis": {
+                "label": {
+                  "show": true,
+                  "fontSize": 14,
+                  "fontWeight": "bold"
+                }
+              },
+              "label": {
+                "show": false,
+                "position": "center"
+              },
+              "labelLine": {
+                "show": false
+              },
+              "type": "pie",
+              "radius": [
+                "40%",
+                "70%"
+              ]
+            }
+          ],
+          "legend": {
+            "r": 1,
+            "orient": "vertical",
+            "t": 55
+          },
+          "tooltip": {
+            "trigger": "item",
+            "textStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "outRadius": 93,
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#EEF1FA",
+              "fontWeight": "normal"
+            },
+            "subtextStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "innerRadius": 73,
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "6ca4e2ab-6969-471c-8869-8312bb10dbea"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 463,
+      "x": 1441,
+      "h": 440,
+      "i": "es-drager-1732593800434-27",
+      "y": 933,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421736218624",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 463.19424460431657,
+          "height": 440
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "行驶次数车辆前5位",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "db890cc9-9217-4564-85aa-ad1e4724506d"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 478,
+      "x": 950,
+      "h": 440,
+      "i": "es-drager-1732593795175-26",
+      "y": 925,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421752995840",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 478,
+          "height": 440.9496402877698
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "行驶最高时速前5位",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "6d8fbeb1-5c07-49e6-8c3f-492fafa598c3"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 482,
+      "x": 469,
+      "h": 444,
+      "i": "es-drager-1732593789308-25",
+      "y": 925,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421765578752",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 482,
+          "height": 444.8129496402878
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "行驶时长排名前5位",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "8a7d2f68-6a45-4f4b-8352-1c090bd45afe"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 460,
+      "x": 7,
+      "h": 446,
+      "i": "es-drager-1732593787920-24",
+      "y": 921,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421782355968",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 460.66906474820144,
+          "height": 446.3597122302158
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "行驶里程排名前5位",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "845a0bac-515e-4af1-917b-1bf2b02793e9"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 456,
+      "x": 1452,
+      "h": 374,
+      "i": "es-drager-1732593762696-23",
+      "y": 534,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421794938880",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 456,
+          "height": 374.52517985611513
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "车辆报警统计",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "e98cdd06-5442-434a-8dc9-22aaf69c301c"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 459,
+      "x": 13,
+      "h": 375,
+      "i": "es-drager-1732593756302-22",
+      "y": 540,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421807521792",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 459.1438848920863,
+          "height": 375.7769784172662
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "车辆状态统计",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "e77c52e8-9b3b-48ab-9a5b-fdb1bf521a3c"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 447,
+      "x": 1455,
+      "h": 340,
+      "i": "es-drager-1732593750101-21",
+      "y": 191,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421824299008",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 447.23741007194246,
+          "height": 340.0575539568345
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "车辆行驶数量",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "91332f38-df9e-42ff-994f-656058f672dd"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 965,
+      "x": 488,
+      "h": 724,
+      "i": "es-drager-1732593745158-20",
+      "y": 189,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421836881920",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 965,
+          "height": 724.0503597122303
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "车辆分布地图",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "32396b38-de00-43da-8678-e55dd933178c"
+    },
+    {
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 462,
+      "x": 16,
+      "h": 337,
+      "i": "2ef2cb99-efb7-450f-84e9-f5bc1c98478d",
+      "y": 193,
+      "orderNum": 0,
+      "componentName": "边框11",
+      "pageCompId": "1030013421849464832",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 462.85611510791364,
+          "height": 337.9424460431655
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "11",
+          "title": "车辆类型统计",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "6194d152-56f2-4f31-89b0-b81a5d4f2851"
+    },
+    {
+      "visible": true,
+      "h": 45,
+      "i": "es-drager-1732593027249-19",
+      "orderNum": 0,
+      "component": "JImg",
+      "w": 45,
+      "x": 1572,
+      "y": 56,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "图片",
+      "pageCompId": "1030013421870436352",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 44,
+          "height": 45
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#FF000000",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/info_7_1623231298012_1624325619894.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "a5d1d69f-a21c-4a71-9f97-e36e0d962a1c"
+    },
+    {
+      "visible": true,
+      "h": 45,
+      "i": "es-drager-1732593014565-17",
+      "orderNum": 0,
+      "component": "JImg",
+      "w": 45,
+      "x": 1321,
+      "y": 53,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "图片",
+      "pageCompId": "1030013421883019264",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 44,
+          "height": 45
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#FF000000",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/info_6_1623231289268_1624325609905.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "9605d822-322a-4a80-9802-cddf34ab21f9"
+    },
+    {
+      "visible": true,
+      "h": 92,
+      "i": "es-drager-1732592977311-16",
+      "orderNum": 0,
+      "component": "JColorBlock",
+      "w": 503,
+      "x": 1374,
+      "y": 36,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "颜色块",
+      "pageCompId": "1030013421908185088",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "前缀"
+          },
+          {
+            "mapping": "",
+            "filed": "后缀"
+          },
+          {
+            "mapping": "",
+            "filed": "颜色"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 175,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "[    {        \"backgroundColor\": \"\",        \"prefix\": \"行驶里程总数(km)\",        \"value\": \"25801\",        \"suffix\": \"\"    },    {        \"backgroundColor\": \"\",        \"prefix\": \"行驶里程平均数(km)\",        \"value\": \"5000\",        \"suffix\": \"\"    }]",
+        "size": {
+          "width": 503.48201438848923,
+          "height": 92
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "padding": 5,
+          "suffixFontSize": 16,
+          "prefixColor": "#FFFFFF",
+          "color": "#FF4E4E",
+          "prefixSplitx": 0,
+          "textAlign": "center",
+          "prefixSplity": 0,
+          "suffixFontWeight": "normal",
+          "prefix": "",
+          "whole": false,
+          "suffix": "",
+          "body": {
+            "color": "#FFFFFF",
+            "text": "",
+            "fontWeight": "bold",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "prefixFontSize": 16,
+          "prefixFontWeight": "normal",
+          "suffixSplitx": 40,
+          "suffixColor": "#FFFFFF",
+          "width": 50,
+          "lineNum": 2,
+          "fontSize": 25,
+          "borderSplitx": 20,
+          "borderSplity": 20,
+          "fontWeight": "bold",
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "height": 50
+        }
+      },
+      "key": "8c6e9b11-0db8-4df8-b344-4a39b67103ab"
+    },
+    {
+      "visible": true,
+      "h": 127.99999999999999,
+      "i": "es-drager-1732592903587-15",
+      "orderNum": 0,
+      "component": "JDragBorder",
+      "w": 606,
+      "x": 1292,
+      "y": 15,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "边框2",
+      "pageCompId": "1030013421920768000",
+      "config": {
+        "borderColor": "#83BFF6",
+        "size": {
+          "width": 606,
+          "height": 128.9136690647482
+        },
+        "background": "#034C6A",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "2",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "75082608-e7d0-4ed7-a5af-30ffa67a5d3f"
+    },
+    {
+      "visible": true,
+      "h": 45,
+      "i": "es-drager-1732592736386-14",
+      "orderNum": 0,
+      "component": "JImg",
+      "w": 45,
+      "x": 939.6546762589928,
+      "y": 58.618705035971225,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "图片",
+      "pageCompId": "1030013421941739520",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 44,
+          "height": 45
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#FF000000",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/info_5_1623231280791_1624325599438.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "fe0c69f6-062e-4414-9504-543deec4e3eb"
+    },
+    {
+      "visible": true,
+      "h": 92,
+      "i": "es-drager-1732592675646-13",
+      "orderNum": 0,
+      "component": "JColorBlock",
+      "w": 503,
+      "x": 737,
+      "y": 44,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "颜色块",
+      "pageCompId": "1030013421958516736",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "前缀"
+          },
+          {
+            "mapping": "",
+            "filed": "后缀"
+          },
+          {
+            "mapping": "",
+            "filed": "颜色"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 175,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "[  {    \"backgroundColor\": \"\",    \"prefix\": \"行驶里程总数(km)\",    \"value\": \"25801\",    \"suffixText\": \"\"  },  {    \"backgroundColor\": \"\",    \"prefix\": \"行驶里程平均数(km)\",    \"value\": \"5000\",    \"suffix\": \"\"  }]",
+        "size": {
+          "width": 503.48201438848923,
+          "height": 92
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "padding": 5,
+          "suffixFontSize": 16,
+          "prefixColor": "#FFFFFF",
+          "color": "#25F3DA",
+          "prefixSplitx": 0,
+          "textAlign": "center",
+          "prefixSplity": 0,
+          "suffixFontWeight": "normal",
+          "prefix": "",
+          "whole": false,
+          "suffix": "",
+          "body": {
+            "color": "#FFFFFF",
+            "text": "",
+            "fontWeight": "bold",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "prefixFontSize": 16,
+          "prefixFontWeight": "normal",
+          "suffixSplitx": 0,
+          "suffixColor": "#FFFFFF",
+          "width": 50,
+          "lineNum": 2,
+          "fontSize": 25,
+          "borderSplitx": 20,
+          "borderSplity": 20,
+          "fontWeight": "bold",
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "height": 50
+        }
+      },
+      "key": "b5eb6130-a4cb-4ddf-872f-017ce265bab0"
+    },
+    {
+      "visible": true,
+      "h": 45,
+      "i": "es-drager-1732592669320-12",
+      "orderNum": 0,
+      "component": "JImg",
+      "w": 45,
+      "x": 688.6546762589928,
+      "y": 56.618705035971225,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "图片",
+      "pageCompId": "1030013421971099648",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 44,
+          "height": 45
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#FF000000",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/info_4_1623231272463_1624325589615.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "a40f2812-7d44-442a-ba31-c031a694e81d"
+    },
+    {
+      "visible": true,
+      "h": 125,
+      "i": "es-drager-1732592660813-11",
+      "orderNum": 0,
+      "component": "JDragBorder",
+      "w": 609,
+      "x": 654.6546762589928,
+      "y": 14.618705035971225,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "边框2",
+      "pageCompId": "1030013421987876864",
+      "config": {
+        "borderColor": "#83BFF6",
+        "size": {
+          "width": 609,
+          "height": 125.5251798561151
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#034C6A",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "2",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "66712052-a9c5-4987-8e14-f3bee1de7e69"
+    },
+    {
+      "visible": true,
+      "h": 45,
+      "i": "es-drager-1732592202225-1",
+      "orderNum": 0,
+      "component": "JImg",
+      "w": 45,
+      "x": 428.3202703462231,
+      "y": 58.46093398718526,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "图片",
+      "pageCompId": "1030013422000459776",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 45,
+          "height": 43.143884892086334
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#FF000000",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/info_3_1623231102500_1624325578591.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "1a5d50a7-3f9f-4959-ac5c-5d9b678776c4"
+    },
+    {
+      "visible": true,
+      "h": 45,
+      "i": "6f02373b-d297-41fd-af74-462f10a5ccd2",
+      "orderNum": 0,
+      "component": "JImg",
+      "w": 45,
+      "x": 226.6328054743705,
+      "y": 58.46093398718526,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "图片",
+      "pageCompId": "1030013422017236992",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 45,
+          "height": 43.143884892086334
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#FF000000",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/info_2_1623231089591_1624325523682.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "c803a9c5-0619-45f8-9ecb-88d9159d6ba1"
+    },
+    {
+      "visible": true,
+      "h": 92,
+      "i": "0ed4243b-fdb8-4a0d-84f0-f2fc89de35fe",
+      "orderNum": 0,
+      "component": "JColorBlock",
+      "w": 592,
+      "x": 81.4375,
+      "y": 45.37499824359263,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "颜色块",
+      "pageCompId": "1030013422029819904",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "前缀"
+          },
+          {
+            "mapping": "",
+            "filed": "后缀"
+          },
+          {
+            "mapping": "",
+            "filed": "颜色"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 175,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "[  {    \"backgroundColor\": \"\",    \"prefix\": \"车辆总数(辆)\",    \"value\": \"15802\",    \"suffix\": \"\"  },  {    \"backgroundColor\": \"\",    \"prefix\": \"车辆使用数(辆)\",    \"value\": \"25801\",    \"suffix\": \"\"  },  {    \"backgroundColor\": \"\",    \"prefix\": \"车辆行驶数(辆)\",    \"value\": \"5321\",    \"suffix\": \"\"  }]",
+        "size": {
+          "width": 592.273381294964,
+          "height": 92
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "padding": 5,
+          "suffixFontSize": 16,
+          "prefixColor": "#FFFFFF",
+          "color": "#FFFF43",
+          "prefixSplitx": 0,
+          "textAlign": "center",
+          "prefixSplity": 0,
+          "suffixFontWeight": "normal",
+          "prefix": "",
+          "whole": false,
+          "suffix": "",
+          "body": {
+            "color": "#FFFFFF",
+            "text": "",
+            "fontWeight": "bold",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "prefixFontSize": 16,
+          "prefixFontWeight": "normal",
+          "suffixSplitx": 40,
+          "suffixColor": "#FFFFFF",
+          "width": 50,
+          "lineNum": 3,
+          "fontSize": 25,
+          "borderSplitx": 20,
+          "borderSplity": 20,
+          "fontWeight": "bold",
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "height": 50
+        }
+      },
+      "key": "f1b42a76-05c9-46b8-8631-ba2027ef96fc"
+    },
+    {
+      "visible": true,
+      "h": 45,
+      "i": "2083b05f-88bd-4301-9469-39df5041ec7c",
+      "orderNum": 0,
+      "component": "JImg",
+      "w": 45,
+      "x": 37.91405547437053,
+      "y": 58.46093398718526,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "图片",
+      "pageCompId": "1030013422046597120",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "width": 44,
+          "height": 45
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "#FF000000",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/info_1_1623231049122_1624325490933.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "ba67f4f0-e3c7-47e1-9d83-c8662bdd1919"
+    },
+    {
+      "visible": true,
+      "h": 127.99999999999999,
+      "i": "4475ea31-600d-4305-819a-986769ecc80f",
+      "orderNum": 0,
+      "component": "JDragBorder",
+      "w": 606,
+      "x": 16.531214871852512,
+      "y": 12.499994730777878,
+      "angle": 0,
+      "groupStyle": {},
+      "componentName": "边框2",
+      "pageCompId": "1030013422059180032",
+      "config": {
+        "borderColor": "#83BFF6",
+        "size": {
+          "width": 606,
+          "height": 128.9136690647482
+        },
+        "background": "#034C6A",
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "2",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      },
+      "key": "f5acc2e7-30fc-4d9d-9766-dbef50d0969d"
+    }
+  ],
+  "coverUrl": "https://static.jeecg.com/bigscreen/微信图片_20210610181744_1623320275616.png",
+  "backgroundColor": "#1E0047",
+  "backgroundImage": "/img/bg/bg1.png",
+  "theme": "dark",
+  "style": "bigScreen",
+  "designType": 100,
+  "protectionCode": "",
+  "type": "0",
+  "izTemplate": "1",
+  "createBy": "admin",
+  "lowAppId": null,
+  "tenantId": 1,
+  "appMenuGroupId": null,
+  "createTime": "2024-11-15 16:55:51",
+  "updateBy": "admin",
+  "updateTime": "2024-12-20 17:15:17",
+  "updateCount": 2,
+  "visitsNum": 0,
+  "delFlag": 0
+}

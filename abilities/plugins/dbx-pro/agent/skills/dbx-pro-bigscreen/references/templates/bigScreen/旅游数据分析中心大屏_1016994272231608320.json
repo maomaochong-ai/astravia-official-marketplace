@@ -1,0 +1,1720 @@
+{
+  "id": "1016994272231608320",
+  "name": "旅游数据分析中心大屏",
+  "path": "/drag/page/view/1016994272231608320",
+  "desJson": "{\"width\":1920,\"height\":1080}",
+  "template": [
+    {
+      "compTextName": "",
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 801,
+      "x": 550,
+      "h": 926,
+      "i": "es-drager-1731642710947-12",
+      "y": 128,
+      "orderNum": 300,
+      "pageCompId": "1021960592459091968",
+      "componentName": "边框1",
+      "config": {
+        "size": {
+          "width": 801,
+          "height": 926
+        },
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "8",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 488,
+      "x": 20,
+      "h": 926,
+      "i": "5427a7d4-3c10-425f-a059-ecadd99cf9e0",
+      "y": 127,
+      "orderNum": 300,
+      "pageCompId": "1021960592501035008",
+      "componentName": "边框1",
+      "config": {
+        "size": {
+          "width": 488,
+          "height": 926
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "8",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JDragBorder",
+      "visible": true,
+      "w": 507,
+      "x": 1398,
+      "h": 926,
+      "i": "es-drager-1731642738303-13",
+      "y": 125,
+      "orderNum": 300,
+      "pageCompId": "1021960592526200832",
+      "componentName": "边框1",
+      "config": {
+        "size": {
+          "width": 507,
+          "height": 926
+        },
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "option": {
+          "dur": 3,
+          "backgroundColor": "#ffffff00",
+          "mainColor": "#83BFF6",
+          "titleWidth": 250,
+          "type": "8",
+          "title": "边框",
+          "subColor": "#00CED1",
+          "reverse": false
+        }
+      }
+    },
+    {
+      "visible": true,
+      "h": 88,
+      "i": "3ec5db86-1dc8-4fc1-84c0-e7db4e7934bd",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 636,
+      "x": 673,
+      "y": 13,
+      "pageCompId": "1021960592555560960",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "旅游数据分析中心大屏",
+        "size": {
+          "width": 803,
+          "height": 89
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#E8E8E8",
+            "letterSpacing": 5,
+            "fontSize": 50,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "b992d9d0-a169-4750-8b85-043a6db79675"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "03c0a8d6-e38b-4b37-8158-d048079be048",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 139,
+      "x": 35,
+      "y": 139,
+      "pageCompId": "1021960592568143872",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "实时天气",
+        "size": {
+          "width": 139,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#D9D9D9",
+            "fontSize": 25,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "08550975-dab7-48f8-8323-f12b93b7d579"
+    },
+    {
+      "visible": true,
+      "h": 74,
+      "i": "a2f9a2bc-f6cc-4811-add1-aa48cd7d499e",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JImg",
+      "w": 91,
+      "x": 93.53557015642195,
+      "y": 202.6610746089451,
+      "pageCompId": "1021960592584921088",
+      "componentName": "图片",
+      "config": {
+        "size": {
+          "width": 91,
+          "height": 74
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/晴天_1623315350106.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      },
+      "key": "233b45a6-858d-4486-9fb7-1c70503502c0"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "es-drager-1731638452515-1",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 171,
+      "x": 47,
+      "y": 344,
+      "pageCompId": "1021960592601698304",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "游客性别统计",
+        "size": {
+          "width": 171,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#D9D9D9",
+            "fontSize": 25,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "03718e74-b30f-44e9-873d-75eacf011834"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "es-drager-1731638457909-2",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 231,
+      "x": 44,
+      "y": 650,
+      "pageCompId": "1021960592622669824",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "近七天游客流量统计",
+        "size": {
+          "width": 231,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#D9D9D9",
+            "fontSize": 25,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "9db0eb47-7974-4f3f-8c87-e761eba17b8d"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "es-drager-1731638464024-3",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 200,
+      "x": 576,
+      "y": 136,
+      "pageCompId": "1021960592647835648",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "今日游客统计",
+        "size": {
+          "width": 200,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#D9D9D9",
+            "fontSize": 25,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "ddacdb15-4f7f-4417-91f5-e2195199ed2f"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "es-drager-1731638496760-4",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 212,
+      "x": 1079,
+      "y": 140,
+      "pageCompId": "1021960592664612864",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "截止到当前时间段",
+        "size": {
+          "width": 212.7698028883034,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#DDDDDB",
+            "fontSize": 20,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "d064d0b9-1470-4d35-9fc4-c4b88efe63bd"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "es-drager-1731638502084-5",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 267,
+      "x": 1427,
+      "y": 144,
+      "pageCompId": "1021960592681390080",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "过去7天车辆抓拍总数",
+        "size": {
+          "width": 267,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#D9D9D9",
+            "fontSize": 25,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "d4a88ee7-5091-4b8b-80f4-395b5af94a13"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "es-drager-1731638509763-6",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 205,
+      "x": 1409,
+      "y": 309,
+      "pageCompId": "1021960592706555904",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "车辆类型统计",
+        "size": {
+          "width": 205,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#D9D9D9",
+            "fontSize": 25,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "f115414b-da0c-4606-9ecd-af9d464cd4a5"
+    },
+    {
+      "visible": true,
+      "h": 39,
+      "i": "es-drager-1731638514808-7",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JText",
+      "w": 192,
+      "x": 1431,
+      "y": 678,
+      "pageCompId": "1021960592735916032",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "车辆归属地统计",
+        "size": {
+          "width": 192,
+          "height": 39
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#D9D9D9",
+            "fontSize": 25,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "b91f0e67-d931-49ab-98ce-43bbdf1f6c97"
+    },
+    {
+      "visible": true,
+      "h": 100,
+      "i": "1f05d4e8-af8b-43b9-bb80-0a1e803c9407",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JDragDecoration",
+      "w": 443,
+      "x": 23,
+      "y": 16,
+      "pageCompId": "1021960592765276160",
+      "componentName": "装饰1",
+      "config": {
+        "size": {
+          "width": 443,
+          "height": 100
+        },
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#00CED1",
+          "fontSize": 15,
+          "type": "1",
+          "title": "装饰1",
+          "subColor": "#FAD400",
+          "reverse": false
+        }
+      },
+      "key": "053b7c8f-4c72-4230-a5f7-5eb46acce4e0"
+    },
+    {
+      "visible": true,
+      "h": 47,
+      "i": "16f505ae-dcc8-4329-841f-6816ed0f79fa",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JWeatherForecast",
+      "w": 257,
+      "x": 202,
+      "y": 184,
+      "pageCompId": "1021960592786247680",
+      "componentName": "滚动版",
+      "config": {
+        "size": {
+          "height": 47
+        },
+        "w": 257,
+        "dataType": 1,
+        "h": 47,
+        "option": {
+          "template": 94,
+          "bgColor": "",
+          "city": "",
+          "num": 2,
+          "fontSize": 16,
+          "fontColor": "#fff",
+          "url": ""
+        }
+      },
+      "key": "bf67a1de-364e-416a-88ff-ad9db3df8f5f"
+    },
+    {
+      "visible": true,
+      "h": 33,
+      "i": "1eb7afb8-829c-4ba6-a539-0b76f843d185",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JCurrentTime",
+      "w": 327,
+      "x": 154,
+      "y": 243,
+      "pageCompId": "1021960592807219200",
+      "componentName": "当前时间",
+      "config": {
+        "chartData": "",
+        "borderColor": "#FFFFFF00",
+        "size": {
+          "height": 33
+        },
+        "background": "#FFFFFF00",
+        "w": 270,
+        "dataType": 1,
+        "h": 33,
+        "turnConfig": {
+          "url": ""
+        },
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "option": {
+          "body": {
+            "color": "#FFFFFF",
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "showWeek": "show",
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "e7bf2eb6-d0d3-4427-851c-4b6f7620d152"
+    },
+    {
+      "visible": true,
+      "h": 47,
+      "i": "9c8ccf30-2db6-4f5b-9a47-358748ce0077",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JDragDecoration",
+      "w": 383,
+      "x": 74,
+      "y": 291,
+      "pageCompId": "1021960592844967936",
+      "componentName": "装饰1",
+      "config": {
+        "size": {
+          "width": 383,
+          "height": 47
+        },
+        "w": 300,
+        "dataType": 1,
+        "h": 27,
+        "option": {
+          "dur": 3,
+          "mainColor": "#00CED1",
+          "fontSize": 15,
+          "type": "10",
+          "title": "装饰10",
+          "subColor": "#FAD400",
+          "reverse": false
+        }
+      },
+      "key": "9f5b9308-ee8f-4a10-8bf5-74de1bd272fa"
+    },
+    {
+      "visible": true,
+      "h": 300,
+      "i": "e1437091-ec46-455b-851a-1b2262c9b427",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JLine",
+      "w": 488,
+      "x": 31,
+      "y": 699,
+      "pageCompId": "1021960592861745152",
+      "componentName": "基础折线图",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[    {        \"name\": \"周一\",        \"value\": 1000879,        \"type\": \"手机品牌\"    },    {        \"name\": \"周二\",        \"value\": 3400879,        \"type\": \"手机品牌\"    },    {        \"name\": \"周三\",        \"value\": 2300879,        \"type\": \"手机品牌\"    },    {        \"name\": \"周四\",        \"value\": 5400879,        \"type\": \"手机品牌\"    },    {        \"name\": \"周五\",        \"value\": 3400879,        \"type\": \"手机品牌\"    },    {        \"name\": \"周六\",        \"value\": 7400879,        \"type\": \"手机品牌\"    },    {        \"name\": \"周日\",        \"value\": 8400879,        \"type\": \"手机品牌\"    }]",
+        "size": {
+          "width": 488,
+          "height": 300
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "yAxis": {
+            "axisLabel": {
+              "color": "#909198"
+            },
+            "splitLine": {
+              "lineStyle": {
+                "color": "#9B9B9B"
+              },
+              "show": false,
+              "interval": 2
+            },
+            "nameTextStyle": {
+              "color": "#EEF1FA"
+            }
+          },
+          "customColor": [
+            {
+              "color": "#EECC0C"
+            }
+          ],
+          "xAxis": {
+            "axisLabel": {
+              "color": "#909198"
+            }
+          },
+          "grid": {
+            "top": 12,
+            "left": 0,
+            "bottom": 18,
+            "show": false,
+            "right": 40,
+            "containLabel": true
+          },
+          "series": [
+            {
+              "symbol": "circle",
+              "data": [],
+              "symbolSize": 12,
+              "itemStyle": {
+                "color": "#64b5f6"
+              },
+              "type": "line",
+              "lineWidth": 2
+            }
+          ],
+          "title": {
+            "subtext": "",
+            "left": 10,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "c371e000-99f4-43c6-b660-5cd19ec59887"
+    },
+    {
+      "visible": true,
+      "h": 41,
+      "i": "es-drager-1731638963126-8",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JDragDecoration",
+      "w": 396,
+      "x": 55,
+      "y": 607,
+      "pageCompId": "1021960592878522368",
+      "componentName": "装饰1",
+      "config": {
+        "size": {
+          "width": 396,
+          "height": 41
+        },
+        "w": 300,
+        "dataType": 1,
+        "h": 27,
+        "option": {
+          "dur": 3,
+          "mainColor": "#00CED1",
+          "fontSize": 15,
+          "type": "10",
+          "title": "装饰10",
+          "subColor": "#FAD400",
+          "reverse": false
+        }
+      },
+      "key": "bf2601e8-d445-49a6-a52d-9738278d633f"
+    },
+    {
+      "visible": true,
+      "h": 245,
+      "i": "ae124c04-e6d8-443b-9ddb-cb99c21300ed",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JGender",
+      "w": 317,
+      "x": 98,
+      "y": 393,
+      "pageCompId": "1021960592899493888",
+      "componentName": "男女占比",
+      "config": {
+        "chartData": "[{\"man\":50,\"woman\":35}]",
+        "size": {
+          "width": 317,
+          "height": 245
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "男"
+          },
+          {
+            "mapping": "",
+            "filed": "女"
+          }
+        ],
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "url": "http://api.jeecg.com/mock/26/pictogram",
+        "timeOut": 0,
+        "option": {
+          "grid": {
+            "bottom": 115
+          },
+          "series": [],
+          "title": {
+            "show": true,
+            "text": ""
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "02cb5192-9972-4517-b00e-1382685803d2"
+    },
+    {
+      "visible": true,
+      "h": 100,
+      "i": "da3036d0-e3b7-4a05-a229-0d05389e7370",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JDragDecoration",
+      "w": 604,
+      "x": 1326,
+      "y": 10,
+      "pageCompId": "1021960592941436928",
+      "componentName": "装饰1",
+      "config": {
+        "size": {
+          "width": 604,
+          "height": 100
+        },
+        "w": 300,
+        "dataType": 1,
+        "h": 100,
+        "option": {
+          "dur": 3,
+          "mainColor": "#00CED1",
+          "fontSize": 18,
+          "type": "2",
+          "title": "装饰2",
+          "subColor": "#FAD400",
+          "reverse": false
+        }
+      },
+      "key": "1712efe4-3815-46e2-aae4-2d08183b3e36"
+    },
+    {
+      "visible": true,
+      "h": 142,
+      "i": "c4fbcf36-1a87-499b-b0cb-46a26a2c2f5b",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JCountTo",
+      "w": 712,
+      "x": 582,
+      "y": 218,
+      "pageCompId": "1021960592958214144",
+      "componentName": "翻牌器",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 80,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "8745987",
+        "size": {
+          "width": 712,
+          "height": 142.9496402877698
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 300,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "suffixFontSize": 16,
+          "borderColor": "#31aefd",
+          "prefixColor": "#FFFFFF",
+          "color": "#EAC910",
+          "suffixFontWeight": "normal",
+          "prefix": "",
+          "whole": false,
+          "boxHeight": 95,
+          "suffix": "",
+          "type": "img",
+          "body": {
+            "color": "#FFFFFF",
+            "text": "",
+            "fontWeight": "bold",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "prefixFontSize": 16,
+          "prefixFontWeight": "normal",
+          "suffixColor": "#FFFFFF",
+          "borderImg": "/img/bg/border/border1.png",
+          "fontFamily": "DIGITALDREAMFAT",
+          "gridY": 5,
+          "backgroundImg": "",
+          "fontSize": 50,
+          "boxWidth": 90,
+          "fontWeight": "bold",
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      },
+      "key": "e4805388-607c-48a1-8b04-7ad672938721"
+    },
+    {
+      "visible": true,
+      "h": 527,
+      "i": "edd9d638-3fee-4e3e-84b4-9599bdc25a00",
+      "orderNum": 0,
+      "compTextName": "",
+      "component": "JBubbleMap",
+      "w": 718,
+      "x": 585,
+      "y": 393,
+      "pageCompId": "1021960592991768576",
+      "componentName": "散点地图",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "commonOption": {
+          "barSize": 10,
+          "gradientColor": false,
+          "breadcrumb": {
+            "drillDown": false,
+            "textColor": "#000000"
+          },
+          "areaColor": {
+            "color1": "#132937",
+            "color2": "#0A0909"
+          },
+          "barColor": "#fff176",
+          "barColor2": "#fcc02e",
+          "inRange": {
+            "color": [
+              "#04387b",
+              "#467bc0"
+            ]
+          }
+        },
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "区域"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "jsConfig": "",
+        "dataType": 1,
+        "h": 300,
+        "activeKey": 1,
+        "url": "http://api.jeecg.com/mock/33/radar",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"北京\",\"value\":199},{\"name\":\"新疆\",\"value\":180},{\"name\":\"河南\",\"value\":137},{\"name\":\"四川\",\"value\":125},{\"name\":\"黑龙江\",\"value\":123},{\"name\":\"广东\",\"value\":123},{\"name\":\"山东\",\"value\":119},{\"name\":\"福建\",\"value\":116},{\"name\":\"湖北\",\"value\":116},{\"name\":\"浙江\",\"value\":114},{\"name\":\"湖南\",\"value\":114},{\"name\":\"安徽\",\"value\":109},{\"name\":\"河北\",\"value\":102},{\"name\":\"江苏\",\"value\":92},{\"name\":\"江西\",\"value\":91},{\"name\":\"重庆\",\"value\":91},{\"name\":\"云南\",\"value\":83},{\"name\":\"吉林\",\"value\":82},{\"name\":\"山西\",\"value\":81},{\"name\":\"陕西\",\"value\":80},{\"name\":\"辽宁\",\"value\":67},{\"name\":\"贵州\",\"value\":62},{\"name\":\"广西\",\"value\":59},{\"name\":\"甘肃\",\"value\":56},{\"name\":\"内蒙古\",\"value\":47},{\"name\":\"天津\",\"value\":42},{\"name\":\"上海\",\"value\":24},{\"name\":\"宁夏\",\"value\":18},{\"name\":\"海南\",\"value\":14},{\"name\":\"青海\",\"value\":10},{\"name\":\"西藏\",\"value\":9}]",
+        "size": {
+          "width": 718,
+          "height": 527
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "drillDown": false,
+          "area": {
+            "markerColor": "#DDE330",
+            "shadowBlur": 10,
+            "markerCount": 5,
+            "markerOpacity": 1,
+            "name": [
+              "中国"
+            ],
+            "scatterLabelShow": false,
+            "shadowColor": "#DDE330",
+            "value": [
+              "china"
+            ],
+            "markerType": "effectScatter"
+          },
+          "geo": {
+            "top": 25,
+            "itemStyle": {
+              "normal": {
+                "shadowOffsetX": 0,
+                "shadowOffsetY": 0,
+                "borderColor": "#068FA1",
+                "areaColor": "",
+                "shadowBlur": 0,
+                "borderWidth": 1,
+                "shadowColor": "#80D9F8"
+              },
+              "emphasis": {
+                "areaColor": "#FFF59C",
+                "borderWidth": 0
+              }
+            },
+            "zoom": 1.2,
+            "label": {
+              "emphasis": {
+                "color": "#fff",
+                "show": false
+              }
+            },
+            "roam": true
+          },
+          "grid": {
+            "bottom": 115,
+            "show": false
+          },
+          "legend": {
+            "data": []
+          },
+          "title": {
+            "top": 19,
+            "left": 224,
+            "show": true,
+            "text": "全国游客分布情况",
+            "textStyle": {
+              "color": "#FFD700",
+              "fontSize": 25,
+              "fontWeight": "normal"
+            }
+          },
+          "graphic": [],
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "visualMap": {
+            "min": 0,
+            "top": "bottom",
+            "max": 200,
+            "left": "5%",
+            "calculable": true,
+            "show": false,
+            "type": "continuous",
+            "seriesIndex": [
+              1
+            ]
+          }
+        }
+      },
+      "key": "07e69455-5f45-4b5a-874b-db3adf6a800b"
+    },
+    {
+      "compTextName": "",
+      "component": "JImg",
+      "visible": true,
+      "w": 54,
+      "x": 1451,
+      "h": 51,
+      "i": "5d6a9f04-f23e-493c-8825-59b784cef860",
+      "y": 192,
+      "orderNum": 0,
+      "pageCompId": "1021960593008545792",
+      "componentName": "图片",
+      "config": {
+        "size": {
+          "width": 54,
+          "height": 51
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "w": 450,
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": -1,
+        "option": {
+          "padding": 0,
+          "backgroundColor": "",
+          "borderRadius": 0,
+          "rotateTime": 1000,
+          "opacity": 1,
+          "body": {
+            "url": "https://static.jeecg.com/bigscreen/汽车用品_1623316498991.png"
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          },
+          "izRotate": false
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 406,
+      "x": 1445,
+      "h": 47,
+      "i": "es-drager-1731641087446-9",
+      "y": 247,
+      "orderNum": 0,
+      "pageCompId": "1021960593029517312",
+      "componentName": "装饰1",
+      "config": {
+        "size": {
+          "width": 406,
+          "height": 47
+        },
+        "w": 300,
+        "dataType": 1,
+        "h": 27,
+        "option": {
+          "dur": 3,
+          "mainColor": "#00CED1",
+          "fontSize": 15,
+          "type": "10",
+          "title": "装饰10",
+          "subColor": "#FAD400",
+          "reverse": false
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JText",
+      "visible": true,
+      "w": 134,
+      "x": 1524,
+      "h": 33,
+      "i": "3716ccfd-c753-400e-80ba-37d73732e967",
+      "y": 199,
+      "orderNum": 300,
+      "pageCompId": "1021960593063071744",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "车辆抓拍总数",
+        "size": {
+          "width": 134,
+          "height": 33
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#FAD400",
+            "fontSize": 21,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JText",
+      "visible": true,
+      "w": 128,
+      "x": 1678,
+      "h": 45,
+      "i": "es-drager-1731641329682-10",
+      "y": 189,
+      "orderNum": 300,
+      "pageCompId": "1021960593079848960",
+      "componentName": "文本",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 33,
+        "url": "http://api.jeecg.com/mock/42/nav",
+        "timeOut": 0,
+        "chartData": "12345",
+        "size": {
+          "width": 128,
+          "height": 45
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 100,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "body": {
+            "color": "#FAD400",
+            "fontSize": 44,
+            "text": "",
+            "fontWeight": "normal",
+            "marginTop": 0,
+            "marginLeft": 0
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JRing",
+      "visible": true,
+      "w": 436,
+      "x": 1446,
+      "h": 300,
+      "i": "1fc939b3-3b6b-4d09-9c4e-cd37292f7ac5",
+      "y": 334,
+      "orderNum": 300,
+      "pageCompId": "1021960593096626176",
+      "componentName": "饼状环形图",
+      "config": {
+        "borderColor": "#FFFFFF00",
+        "dataMapping": [
+          {
+            "mapping": "",
+            "filed": "维度"
+          },
+          {
+            "mapping": "",
+            "filed": "数值"
+          }
+        ],
+        "dataType": 1,
+        "h": 300,
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[    {        \"name\": \"客车\",        \"value\": 1000879    },    {        \"name\": \"轿车\",        \"value\": 3400879    },    {        \"name\": \"SUV\",        \"value\": 2300879    },    {        \"name\": \"货车\",        \"value\": 5400879    },    {        \"name\": \"摩托车\",        \"value\": 3000    },    {        \"name\": \"自行车\",        \"value\": 2000    }]",
+        "size": {
+          "width": 436,
+          "height": 300
+        },
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "background": "#FFFFFF00",
+        "w": 480,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "option": {
+          "grid": {
+            "top": 50,
+            "left": 50,
+            "show": false
+          },
+          "series": [
+            {
+              "data": [],
+              "name": "Access From",
+              "avoidLabelOverlap": false,
+              "emphasis": {
+                "label": {
+                  "color": "#FFFFFF",
+                  "show": true,
+                  "fontSize": 14,
+                  "fontWeight": "bold"
+                }
+              },
+              "label": {
+                "color": "#EEF1FA",
+                "show": true,
+                "position": "center"
+              },
+              "labelLine": {
+                "show": false
+              },
+              "type": "pie",
+              "radius": [
+                "40%",
+                "70%"
+              ]
+            }
+          ],
+          "legend": {
+            "r": 1,
+            "orient": "vertical",
+            "t": 1,
+            "show": false
+          },
+          "tooltip": {
+            "trigger": "item"
+          },
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "fontWeight": "normal"
+            }
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JDragDecoration",
+      "visible": true,
+      "w": 421,
+      "x": 1435,
+      "h": 47,
+      "i": "es-drager-1731642551406-11",
+      "y": 617,
+      "orderNum": 0,
+      "pageCompId": "1021960593121792000",
+      "componentName": "装饰1",
+      "config": {
+        "size": {
+          "width": 421,
+          "height": 47
+        },
+        "w": 300,
+        "dataType": 1,
+        "h": 27,
+        "option": {
+          "dur": 3,
+          "mainColor": "#00CED1",
+          "fontSize": 15,
+          "type": "10",
+          "title": "装饰10",
+          "subColor": "#FAD400",
+          "reverse": false
+        }
+      }
+    },
+    {
+      "compTextName": "",
+      "component": "JCapsuleChart",
+      "visible": true,
+      "w": 450,
+      "x": 1427,
+      "h": 300,
+      "i": "37fa8779-2081-4f35-83ef-797ff9ddcce0",
+      "y": 728,
+      "orderNum": 300,
+      "pageCompId": "1021960593138569216",
+      "componentName": "胶囊图",
+      "config": {
+        "dataMapping": [
+          {
+            "mapping": "name",
+            "filed": "维度"
+          },
+          {
+            "mapping": "value",
+            "filed": "数值"
+          }
+        ],
+        "paramOption": [],
+        "dataType": 2,
+        "dataSetName": "车辆归属地",
+        "query": [],
+        "h": 300,
+        "dataSetApi": "https://api.jeecg.com/mock/26/activering",
+        "drillData": [],
+        "url": "http://api.jeecg.com/mock/33/chart",
+        "timeOut": 0,
+        "chartData": "[{\"name\":\"苹果\",\"value\":1000879,\"type\":\"手机品牌\"},{\"name\":\"三星\",\"value\":3400879,\"type\":\"手机品牌\"},{\"name\":\"小米\",\"value\":2300879,\"type\":\"手机品牌\"},{\"name\":\"oppo\",\"value\":5400879,\"type\":\"手机品牌\"},{\"name\":\"vivo\",\"value\":3400879,\"type\":\"手机品牌\"}]",
+        "size": {
+          "width": 450,
+          "height": 300
+        },
+        "dataSetId": "1011805223195824128",
+        "fieldOption": [
+          {
+            "label": "name",
+            "text": "name",
+            "value": "name"
+          },
+          {
+            "label": "value",
+            "text": "value",
+            "value": "value"
+          }
+        ],
+        "dataSetType": "api",
+        "actionConfig": {
+          "operateType": "modal",
+          "modalName": "",
+          "url": ""
+        },
+        "seriesType": [],
+        "w": 450,
+        "turnConfig": {
+          "url": ""
+        },
+        "linkageConfig": [],
+        "dataSetIzAgent": "0",
+        "option": {
+          "showValue": false,
+          "unit": "",
+          "customColor": [],
+          "title": {
+            "show": true,
+            "text": "",
+            "textStyle": {
+              "color": "#464646",
+              "fontWeight": "normal"
+            }
+          },
+          "card": {
+            "rightHref": "",
+            "size": "default",
+            "extra": "",
+            "title": ""
+          }
+        }
+      }
+    }
+  ],
+  "coverUrl": "https://static.jeecg.com/bigscreen/微信图片_20210610172802_1623317295293.png",
+  "backgroundColor": "#1E0047",
+  "backgroundImage": "/img/bg/bg1.png",
+  "theme": "dark",
+  "style": "bigScreen",
+  "designType": 100,
+  "protectionCode": "",
+  "type": "0",
+  "izTemplate": "1",
+  "createBy": "admin",
+  "lowAppId": null,
+  "tenantId": 3,
+  "appMenuGroupId": null,
+  "createTime": "2024-11-14 18:59:00",
+  "updateBy": "admin",
+  "updateTime": "2024-11-28 11:53:23",
+  "updateCount": 2,
+  "visitsNum": 0,
+  "delFlag": 0
+}
