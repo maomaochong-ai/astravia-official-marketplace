@@ -6,7 +6,7 @@
  *   HEAD_H + BODY_PAD + ROW_H × row + ROW_H/2
  */
 
-import type { ReactNode } from "react";
+import type { ReactNode, PointerEvent } from "react";
 
 export const HEAD_H = 30;
 export const ROW_H = 24;
@@ -40,6 +40,8 @@ export interface NodeCardProps {
 	inputs?: Socket[];
 	outputs?: Socket[];
 	children: ReactNode;
+	onPointerDown?: (e: PointerEvent) => void;
+	nodeId?: string;
 }
 
 const HANDLE = "absolute size-1.5 rounded-[1px] border border-surface bg-accent";
@@ -49,13 +51,16 @@ export function NodeCard({
 	selected = false,
 	inputs = [], outputs = [],
 	children,
+	onPointerDown,
+	nodeId,
 }: NodeCardProps) {
 	return (
 		<div
 			className={`absolute flex flex-col rounded-card border bg-surface-raised ${
-				selected ? "z-10 border-accent shadow-[0_0_0_3px_rgba(59,130,246,0.25)]" : "border-border"
+				selected ? "z-10 border-accent shadow-[0_0_0_3px_rgba(59,130,246,0.25)] cursor-grab" : "border-border cursor-grab"
 			}`}
 			style={{ left: x, top: y, width: w, height: h }}
+			onPointerDown={onPointerDown}
 		>
 			<header className="flex h-[30px] shrink-0 items-center gap-1.5 border-b border-border bg-surface px-2">
 				<span className="icon-[lucide--chevron-down] size-3 shrink-0 text-faint" />
@@ -72,7 +77,10 @@ export function NodeCard({
 				<span
 					key={`in-${i}`}
 					title="输入插槽"
-					className="absolute -left-[5px] size-2.5 rounded-full border-2 border-surface-raised"
+					data-socket-type="input"
+					data-socket-row={s.row}
+					data-node-id={nodeId}
+					className="pointer-events-auto absolute -left-[5px] size-2.5 cursor-crosshair rounded-full border-2 border-surface-raised hover:ring-2 hover:ring-accent/40"
 					style={{ top: rowDy(s.row) - 5, background: s.tone }}
 				/>
 			))}
@@ -80,7 +88,10 @@ export function NodeCard({
 				<span
 					key={`out-${i}`}
 					title="输出插槽"
-					className="absolute -right-[5px] size-2.5 rounded-full border-2 border-surface-raised"
+					data-socket-type="output"
+					data-socket-row={s.row}
+					data-node-id={nodeId}
+					className="pointer-events-auto absolute -right-[5px] size-2.5 cursor-crosshair rounded-full border-2 border-surface-raised hover:ring-2 hover:ring-accent/40"
 					style={{ top: rowDy(s.row) - 5, background: s.tone }}
 				/>
 			))}

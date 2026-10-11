@@ -2,31 +2,38 @@
  * node-graph.tsx — 节点画布（设计稿 NodeGraph.tsx 插件化版本）。
  *
  * 数据流节点：数据集 → SQL → 图表 → 看板产物。
- * LAYOUT 驱动坐标 + rowDy() 算插槽位置 → 连线端点永远落在插槽上。
+ * nodes 驱动坐标 + rowDy() 算插槽位置 → 连线端点永远落在插槽上。
  */
 
-import type { JSX } from "react";
+import { useEffect, useRef, useState, type JSX, type PointerEvent as RPointerEvent } from "react";
 import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE } from "./node-card";
 import { AreaChart, Donut, SERIES } from "./charts";
 import { Chip } from "./ui/chip";
+import { AiNodePanel } from "./ai-node-panel";
 
-const LAYOUT = {
-	ds1: { x: 16, y: 56, w: 180, h: 118, tone: TONE.table },
-	sql: { x: 220, y: 56, w: 192, h: 164, tone: TONE.result },
-	line: { x: 436, y: 40, w: 216, h: 222, tone: TONE.chart, selected: true },
-	ds2: { x: 16, y: 490, w: 180, h: 118, tone: TONE.table },
-	donut: { x: 436, y: 470, w: 216, h: 206, tone: TONE.chart },
-	out: { x: 700, y: 300, w: 164, h: 194, tone: TONE.chart },
+// ── 类型 ──
+export interface NodePos {
+	x: number; y: number; w: number; h: number;
+	tone: string; selected?: boolean;
+}
+export type NodeId = "ds1" | "sql" | "line" | "ds2" | "donut" | "out";
+export interface Link { from: NodeId; fromRow: number; to: NodeId; toRow: number; tone: string }
+
+// ── 初始状态（后续 useState 注入） ──
+const INITIAL_NODES: Record<NodeId, NodePos> = {
+	ds1:   { x: 16,   y: 56,  w: 180, h: 118, tone: TONE.table },
+	sql:   { x: 220,  y: 56,  w: 192, h: 164, tone: TONE.result },
+	line:  { x: 436,  y: 40,  w: 216, h: 222, tone: TONE.chart, selected: true },
+	ds2:   { x: 16,   y: 490, w: 180, h: 118, tone: TONE.table },
+	donut: { x: 436,  y: 470, w: 216, h: 206, tone: TONE.chart },
+	out:   { x: 700,  y: 300, w: 164, h: 194, tone: TONE.chart },
 };
 
-type NodeId = keyof typeof LAYOUT;
-type Link = { from: NodeId; fromRow: number; to: NodeId; toRow: number; tone: string };
-
-const LINKS: Link[] = [
-	{ from: "ds1", fromRow: 0, to: "sql", toRow: 0, tone: TONE.table },
-	{ from: "sql", fromRow: 1, to: "line", toRow: 0, tone: TONE.result },
+const INITIAL_LINKS: Link[] = [
+	{ from: "ds1", fromRow: 0, to: "sql",   toRow: 0, tone: TONE.table },
+	{ from: "sql", fromRow: 1, to: "line",  toRow: 0, tone: TONE.result },
 	{ from: "ds2", fromRow: 0, to: "donut", toRow: 0, tone: TONE.table },
-	{ from: "line", fromRow: 4, to: "out", toRow: 0, tone: TONE.chart },
+	{ from: "line", fromRow: 4, to: "out",  toRow: 0, tone: TONE.chart },
 	{ from: "donut", fromRow: 3, to: "out", toRow: 1, tone: TONE.chart },
 ];
 
@@ -36,9 +43,9 @@ const GROUPS = [
 	{ x: 428, y: 24, w: 440, h: 668, label: "图表与产物", count: "3", icon: "icon-[lucide--chart-line]" },
 ];
 
-function linkPath(l: Link): string {
-	const a = LAYOUT[l.from];
-	const b = LAYOUT[l.to];
+function linkPath(l: Link, nodes: Record<NodeId, NodePos>): string {
+	const a = nodes[l.from];
+	const b = nodes[l.to];
 	const x1 = a.x + a.w;
 	const y1 = a.y + rowDy(l.fromRow);
 	const x2 = b.x;
@@ -66,8 +73,123 @@ const CHANNELS = [
 ];
 
 export function NodeGraph(): JSX.Element {
+	const [nodes, setNodes] = useState<Record<NodeId, NodePos>>(INITIAL_NODES);
+	const [links, setLinks] = useState<Link[]>(INITIAL_LINKS);
+	const canvasRef = useRef<HTMLDivElement>(null);
+
+	// ── 节点拖拽 ──
+	const dragRef = useRef<{ id: NodeId; ox: number; oy: number } | null>(null);
+
+	function startDrag(id: NodeId, e: RPointerEvent<Element>) {
+		const rect = canvasRef.current?.getBoundingClientRect();
+		if (!rect) return;
+		const node = nodes[id];
+		dragRef.current = {
+			id,
+			ox: e.clientX - rect.left - node.x,
+			oy: e.clientY - rect.top - node.y,
+		};
+		setNodes((prev) => {
+			const next = { ...prev };
+			for (const k of Object.keys(next) as NodeId[]) {
+				next[k] = { ...next[k], selected: k === id };
+			}
+			return next;
+		});
+	}
+
+	// ── 端口连线 ──
+	const [pendingLink, setPendingLink] = useState<{
+		from: NodeId; fromRow: number; x1: number; y1: number; x2: number; y2: number;
+	} | null>(null);
+	const pendingRef = useRef<{ from: NodeId; fromRow: number } | null>(null);
+
+	/** 画布坐标下某节点某行 socket 的绝对位置。side: "r"=output(右), "l"=input(左) */
+	function socketPos(id: NodeId, row: number, side: "l" | "r"): { x: number; y: number } {
+		const n = nodes[id];
+		return {
+			x: n.x + (side === "r" ? n.w : 0),
+			y: n.y + rowDy(row),
+		};
+	}
+
+	/** 检测视口坐标下命中的 socket（elementFromPoint + data-socket-type）。 */
+	function hitSocket(clientX: number, clientY: number) {
+		const el = document.elementFromPoint(clientX, clientY);
+		if (!(el instanceof HTMLElement)) return null;
+		const type = el.dataset.socketType;
+		if (type !== "input" && type !== "output") return null;
+		const nodeId = el.dataset.nodeId as NodeId | undefined;
+		const row = Number(el.dataset.socketRow);
+		if (!nodeId || !nodes[nodeId]) return null;
+		return { type, nodeId, row };
+	}
+
+	/** 画布 pointerdown：拦截 output socket 启动连线。 */
+	function onCanvasPointerDown(e: RPointerEvent<HTMLDivElement>) {
+		const hit = hitSocket(e.clientX, e.clientY);
+		if (hit?.type === "output") {
+			e.stopPropagation(); // 阻止冒泡到 NodeCard 的 startDrag
+			const p = socketPos(hit.nodeId, hit.row, "r");
+			pendingRef.current = { from: hit.nodeId, fromRow: hit.row };
+			setPendingLink({ from: hit.nodeId, fromRow: hit.row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+		}
+	}
+
+	useEffect(() => {
+		function onMove(e: PointerEvent) {
+			const rect = canvasRef.current?.getBoundingClientRect();
+			if (!rect) return;
+			// 节点拖拽
+			const d = dragRef.current;
+			if (d) {
+				setNodes((prev) => ({
+					...prev,
+					[d.id]: {
+						...prev[d.id],
+						x: e.clientX - rect.left - d.ox,
+						y: e.clientY - rect.top - d.oy,
+					},
+				}));
+			}
+			// 端口连线 —— 临时贝塞尔跟随光标
+			const pl = pendingRef.current;
+			if (pl) {
+				setPendingLink((prev) => prev ? {
+					...prev,
+					x2: e.clientX - rect.left,
+					y2: e.clientY - rect.top,
+				} : null);
+			}
+		}
+		function onUp(e: PointerEvent) {
+			// 结束节点拖拽
+			dragRef.current = null;
+			// 结束端口连线 —— 检测 input socket
+			const pl = pendingRef.current;
+			if (pl) {
+				const hit = hitSocket(e.clientX, e.clientY);
+				if (hit?.type === "input" && hit.nodeId !== pl.from) {
+					setLinks((prev) => {
+						const tone = nodes[pl.from].tone;
+						return [...prev, { from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
+					});
+				}
+				pendingRef.current = null;
+				setPendingLink(null);
+			}
+		}
+		window.addEventListener("pointermove", onMove);
+		window.addEventListener("pointerup", onUp);
+		return () => {
+			window.removeEventListener("pointermove", onMove);
+			window.removeEventListener("pointerup", onUp);
+		};
+	}, [nodes]);
 	return (
 		<div
+			ref={canvasRef}
+			onPointerDown={onCanvasPointerDown}
 			className="relative min-h-0 flex-1 overflow-hidden bg-background"
 			style={{
 				backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
@@ -93,12 +215,12 @@ export function NodeGraph(): JSX.Element {
 
 			{/* SVG 连线 */}
 			<svg className="pointer-events-none absolute inset-0 h-full w-full">
-				{LINKS.map((l, i) => {
+				{links.map((l, i) => {
 					const hot = l.from === "line" || l.to === "line";
 					return (
 						<path
 							key={i}
-							d={linkPath(l)}
+							d={linkPath(l, nodes)}
 							fill="none"
 							stroke={l.tone}
 							strokeWidth={hot ? 2 : 1.5}
@@ -108,8 +230,25 @@ export function NodeGraph(): JSX.Element {
 				})}
 			</svg>
 
+			{/* 临时连线（拖拽中） */}
+			{pendingLink && (
+				<svg className="pointer-events-none absolute inset-0 h-full w-full">
+					<path
+						d={(() => {
+							const bend = Math.max(36, Math.abs(pendingLink.x2 - pendingLink.x1) * 0.5);
+							return `M ${pendingLink.x1} ${pendingLink.y1} C ${pendingLink.x1 + bend} ${pendingLink.y1}, ${pendingLink.x2 - bend} ${pendingLink.y2}, ${pendingLink.x2} ${pendingLink.y2}`;
+						})()}
+						fill="none"
+						stroke={nodes[pendingLink.from].tone}
+						strokeWidth={1.75}
+						strokeDasharray="6 4"
+						opacity={0.8}
+					/>
+				</svg>
+			)}
+
 			{/* ds1: orders_daily */}
-			<NodeCard {...LAYOUT.ds1} title="orders_daily" type="dataset" icon="icon-[lucide--database]"
+			<NodeCard {...nodes.ds1} nodeId="ds1" onPointerDown={(e) => startDrag("ds1", e)} title="orders_daily" type="dataset" icon="icon-[lucide--database]"
 				outputs={[{ row: 0, tone: TONE.table }]}>
 				<NodeRow label="表"><NodeValue mono>public.orders</NodeValue></NodeRow>
 				<NodeRow label="连接"><NodeValue mono>MySQL · 插件工作台</NodeValue></NodeRow>
@@ -117,7 +256,7 @@ export function NodeGraph(): JSX.Element {
 			</NodeCard>
 
 			{/* ds2: channel_share */}
-			<NodeCard {...LAYOUT.ds2} title="channel_dim" type="dataset" icon="icon-[lucide--database]"
+			<NodeCard {...nodes.ds2} nodeId="ds2" onPointerDown={(e) => startDrag("ds2", e)} title="channel_dim" type="dataset" icon="icon-[lucide--database]"
 				outputs={[{ row: 0, tone: TONE.table }]}>
 				<NodeRow label="表"><NodeValue mono>public.channel_dim</NodeValue></NodeRow>
 				<NodeRow label="连接"><NodeValue mono>MySQL · 插件工作台</NodeValue></NodeRow>
@@ -125,7 +264,7 @@ export function NodeGraph(): JSX.Element {
 			</NodeCard>
 
 			{/* sql: gmv_14d */}
-			<NodeCard {...LAYOUT.sql} title="gmv_14d" type="sql" icon="icon-[lucide--scroll-text]"
+			<NodeCard {...nodes.sql} nodeId="sql" onPointerDown={(e) => startDrag("sql", e)} title="gmv_14d" type="sql" icon="icon-[lucide--scroll-text]"
 				inputs={[{ row: 0, tone: TONE.table }]}
 				outputs={[{ row: 1, tone: TONE.result }]}>
 				<NodeRow label="表"><NodeSelect>orders_daily</NodeSelect></NodeRow>
@@ -142,7 +281,7 @@ export function NodeGraph(): JSX.Element {
 			</NodeCard>
 
 			{/* line: GMV 趋势（选中态）*/}
-			<NodeCard {...LAYOUT.line} title="GMV 趋势" type="echarts · line" icon="icon-[lucide--chart-line]"
+			<NodeCard {...nodes.line} nodeId="line" onPointerDown={(e) => startDrag("line", e)} title="GMV 趋势" type="echarts · line" icon="icon-[lucide--chart-line]"
 				inputs={[{ row: 0, tone: TONE.result }]}
 				outputs={[{ row: 4, tone: TONE.chart }]}>
 				<NodeRow label="结果集"><NodeValue mono>gmv_14d</NodeValue></NodeRow>
@@ -156,7 +295,7 @@ export function NodeGraph(): JSX.Element {
 			</NodeCard>
 
 			{/* donut: 渠道构成 */}
-			<NodeCard {...LAYOUT.donut} title="渠道构成" type="echarts · doughnut" icon="icon-[lucide--pie-chart]"
+			<NodeCard {...nodes.donut} nodeId="donut" onPointerDown={(e) => startDrag("donut", e)} title="渠道构成" type="echarts · doughnut" icon="icon-[lucide--pie-chart]"
 				inputs={[{ row: 0, tone: TONE.table }]}
 				outputs={[{ row: 3, tone: TONE.chart }]}>
 				<NodeRow label="数据集"><NodeSelect>channel_dim</NodeSelect></NodeRow>
@@ -169,7 +308,7 @@ export function NodeGraph(): JSX.Element {
 			</NodeCard>
 
 			{/* out: 看板产物 */}
-			<NodeCard {...LAYOUT.out} title="看板产物" type="output" icon="icon-[lucide--layout-dashboard]"
+			<NodeCard {...nodes.out} nodeId="out" onPointerDown={(e) => startDrag("out", e)} title="看板产物" type="output" icon="icon-[lucide--layout-dashboard]"
 				inputs={[
 					{ row: 0, tone: TONE.chart },
 					{ row: 1, tone: TONE.chart },
@@ -192,7 +331,7 @@ export function NodeGraph(): JSX.Element {
 			{/* 选中节点浮动工具条 */}
 			<div
 				className="absolute z-20 flex h-7 items-center gap-0.5 rounded-control border border-border bg-surface-raised px-1 shadow"
-				style={{ left: LAYOUT.line.x, top: LAYOUT.line.y + LAYOUT.line.h + 8 }}
+				style={{ left: nodes.line.x, top: nodes.line.y + nodes.line.h + 8 }}
 			>
 				{TOOLBOX.map((t) => (
 					<button key={t.title} title={t.title} type="button"
@@ -207,11 +346,14 @@ export function NodeGraph(): JSX.Element {
 				</button>
 			</div>
 
+			{/* AI 生成节点浮动面板 */}
+			<AiNodePanel x={16} y={620} w={284} h={232} />
+
 			{/* 缩略图导航 */}
 			<div className="absolute bottom-3 right-4 h-20 w-28 overflow-hidden rounded-control border border-border bg-background/90 p-1">
 				<div className="relative h-full w-full">
-					{(Object.keys(LAYOUT) as NodeId[]).map((id) => {
-						const n = LAYOUT[id];
+					{(Object.keys(nodes) as NodeId[]).map((id) => {
+						const n = nodes[id];
 						return (
 							<span
 								key={id}
