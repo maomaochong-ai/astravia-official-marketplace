@@ -24,6 +24,7 @@ import { NodeGraph, INITIAL_LINKS, INITIAL_NODES, type Link, type NodePos } from
 import { PropertyInspector, type SelectedNodeInfo } from "./components/property-inspector";
 import { EditorStatusBar } from "./components/editor-status-bar";
 import { RunPanel, NodePreviewCard, type RunNode } from "./components/run-overlay";
+import { AiGenerateDialog, ParamSuggest, type ParamRow } from "./components/ai-node-panel";
 
 /** template JSON schema（持久化）。 */
 interface CanvasTemplate {
@@ -64,6 +65,10 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 	const [showRunPanel, setShowRunPanel] = useState(false);
 	const [showPreview, setShowPreview] = useState(false);
 	const runTimerRef = useRef<number | null>(null);
+
+	// ── AI 生成节点状态 ──
+	const [showAiDialog, setShowAiDialog] = useState(false);
+	const [aiDialogPos, setAiDialogPos] = useState({ x: 240, y: 120 });
 
 	// ── 模板库 ──
 	function loadTemplates() {
@@ -233,6 +238,7 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				onSaveTemplate={saveCurrentAsTemplate}
 				onRunAll={handleRunAll}
 				onRunSelected={handleRunSelected}
+				onAiGenerate={() => setShowAiDialog((v) => !v)}
 			/>
 
 			{/* 主体三栏 */}
@@ -274,6 +280,27 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 							y={selectedNodeInfo.node.y + selectedNodeInfo.node.h + 12}
 							onCopy={() => { /* TODO: 导出为图片 */ }}
 							onLocate={() => { setShowRunPanel(false); setShowPreview(false); }}
+						/>
+					) : null}
+
+					{/* AI 生成节点对话框（设计稿 frames/ai-node.tsx 对齐） */}
+					{showAiDialog ? (
+						<AiGenerateDialog
+							x={aiDialogPos.x}
+							y={aiDialogPos.y}
+							prompt="把当前节点上的折线图按周聚合，补去年同期虚线对比"
+							rows={[
+								{ field: "图表类型", value: "折线图 · 面积", from: "ai" },
+								{ field: "聚合粒度", value: "按周（ISO 周）", from: "ai" },
+								{ field: "对比", value: "去年同期 · 虚线", from: "ai" },
+								{ field: "调色板", value: "科技（沿用）", from: "user" },
+							]}
+							resultName="line_gmv_weekly"
+							paramCount={4}
+							pendingCount={1}
+							onClose={() => setShowAiDialog(false)}
+							onRegenerate={() => { /* TODO: 调宿主 AI */ }}
+							onInsert={() => { setShowAiDialog(false); /* TODO: 插入画布 */ }}
 						/>
 					) : null}
 				</div>

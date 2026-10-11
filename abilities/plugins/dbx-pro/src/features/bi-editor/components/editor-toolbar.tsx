@@ -24,6 +24,7 @@ export function BigscreenToolbar({
 	onRunAll,
 	onRunSelected,
 	saving = false,
+	onAiGenerate,
 }: {
 	pageName: string;
 	theme: "dark" | "default";
@@ -36,6 +37,7 @@ export function BigscreenToolbar({
 	onRunAll?: () => void;
 	onRunSelected?: () => void;
 	saving?: boolean;
+	onAiGenerate?: () => void;
 }): JSX.Element {
 	const [editingName, setEditingName] = useState(false);
 	const [nameDraft, setNameDraft] = useState(pageName);
@@ -160,7 +162,8 @@ export function BigscreenToolbar({
 
 					<button
 						type="button"
-						className="flex h-7 items-center gap-1.5 rounded-control border border-accent/40 bg-accent-soft px-2.5 text-[12px] font-medium text-accent hover:bg-accent/10"
+						onClick={onAiGenerate}
+						className="flex h-7 items-center gap-1.5 rounded-control border border-accent/40 bg-accent-soft px-2.5 text-[12px] font-medium text-accent hover:bg-accent/10 disabled:opacity-50"
 						title="AI 自动生成节点（调 bi_utils.create_page + spec_builder）"
 					>
 						<Icon name="icon-[lucide--sparkles]" className="size-3.5" />
