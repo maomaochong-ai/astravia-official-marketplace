@@ -331,13 +331,13 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 			}}
 			data-drag-over={dragOver ? "true" : undefined}
 			className={`relative min-h-0 flex-1 overflow-hidden bg-background ${dragOver ? "ring-2 ring-accent/40 ring-inset" : ""}`}
-			style={{
-				backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
-				backgroundSize: "16px 16px",
-				color: "var(--color-border)",
-				opacity: 0.4,
-			}}
-		>
+	>
+		{/* 网格背景层 —— opacity 只作用于这个层，不影响节点 */}
+		<div className="pointer-events-none absolute inset-0 opacity-40" style={{
+			backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
+			backgroundSize: "16px 16px",
+			color: "var(--color-border)",
+		}} />
 			{/* 分组区域 */}
 			{GROUPS.map((g) => (
 				<div
