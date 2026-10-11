@@ -32,12 +32,12 @@ function nextLinkId(): string { LINK_SEQ++; return `l${LINK_SEQ}`; }
 
 // ── 初始状态（后续 useState 注入） ──
 export const INITIAL_NODES: Record<NodeId, NodePos> = {
-	ds1:   { x: 16,   y: 56,  w: 180, h: 118, tone: TONE.table },
-	sql:   { x: 220,  y: 56,  w: 192, h: 164, tone: TONE.result },
-	line:  { x: 436,  y: 40,  w: 216, h: 222, tone: TONE.chart, selected: true },
-	ds2:   { x: 16,   y: 490, w: 180, h: 118, tone: TONE.table },
-	donut: { x: 436,  y: 470, w: 216, h: 206, tone: TONE.chart },
-	out:   { x: 700,  y: 300, w: 164, h: 194, tone: TONE.chart },
+	ds1:   { x: 16,   y: 56,  w: 180, h: 118, tone: TONE.table,  kind: "source-sql" },
+	sql:   { x: 220,  y: 56,  w: 192, h: 164, tone: TONE.result, kind: "source-api" },
+	line:  { x: 436,  y: 40,  w: 216, h: 222, tone: TONE.chart,  kind: "chart-line", selected: true },
+	ds2:   { x: 16,   y: 490, w: 180, h: 118, tone: TONE.table,  kind: "source-table" },
+	donut: { x: 436,  y: 470, w: 216, h: 206, tone: TONE.chart,  kind: "chart-pie" },
+	out:   { x: 700,  y: 300, w: 164, h: 194, tone: TONE.chart,  kind: "output-table" },
 };
 
 export const INITIAL_LINKS: Link[] = [
