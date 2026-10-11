@@ -56,6 +56,19 @@ function normalizeSchemas(schemas: unknown, legacySchema?: string): string[] {
 	return [...new Set(list.filter((s) => s.length > 0))];
 }
 
+/** 按 name 去重 — 保留第一个（防引擎 list_connections 返回重复条目）。 */
+function dedupByName(list: DbConnection[]): DbConnection[] {
+	const seen = new Set<string>();
+	const out: DbConnection[] = [];
+	for (const c of list) {
+		const n = (c.name ?? "").trim();
+		if (!n || seen.has(n)) continue;
+		seen.add(n);
+		out.push(c);
+	}
+	return out;
+}
+
 /**
  * 合并引擎服务 summary 与本地镜像的非密元数据。
  * 引擎服务提供最新 host/port/database；本地镜像补 username / ssl / 安全标记。
@@ -122,7 +135,7 @@ export async function readAllConfigs(): Promise<DbConnection[]> {
 		let localList: DbConnection[] = [];
 		try { localList = await readLocalOnly(); } catch { /* ignore */ }
 
-		const merged = mergeWithLocalMirror(serverList, localList).sort((a, b) => a.name.localeCompare(b.name));
+		const merged = dedupByName(mergeWithLocalMirror(serverList, localList)).sort((a, b) => a.name.localeCompare(b.name));
 		await migrateLegacyPlaintext(localList);
 		return Promise.all(merged.map((c) => attachPassword(c)));
 	} catch (e) {
@@ -131,7 +144,7 @@ export async function readAllConfigs(): Promise<DbConnection[]> {
 	try {
 		const doc = await readJsonFile<{ connections?: DbConnection[] }>(getStorage(), STORE_PATH);
 		const list = Array.isArray(doc?.connections) ? doc!.connections : [];
-		const filtered = list
+		const filtered = dedupByName(list)
 			.filter((c): c is DbConnection => Boolean(c && typeof c.id === "string" && typeof c.name === "string"))
 			.sort((a, b) => a.name.localeCompare(b.name));
 		return Promise.all(filtered.map((c) => attachPassword(c)));
