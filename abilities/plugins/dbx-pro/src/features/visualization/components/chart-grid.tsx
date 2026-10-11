@@ -3,7 +3,7 @@
  *
  * 支持两种 ChartItem 格式：
  *   ① 旧 Chart.js 格式  → normalize + validate → 渲染
- *   ② 新 JimuBI 组件 JSON 格式（item.cfg?.option 存在）→ 跳过 normalize/validate，直接渲染
+ *   ② 新大屏组件 JSON 格式（item.cfg?.option 存在）→ 跳过 normalize/validate，直接渲染
  *
  * 布局模型：
  *   - 列数：resolveGridColumnCount (与 dbx-chart-collection 导出的 HTML 一致)
@@ -25,8 +25,8 @@ interface Props {
 	layout?: "auto" | "grid-2" | "grid-3" | "grid-4";
 }
 
-/** 检测 JimuBI 组件 JSON 格式 — item 带 cfg.option（compileBigscreen 输出）。 */
-function isJimuBIItem(item: ChartItem): boolean {
+/** 检测大屏组件 JSON 格式 — item 带 cfg.option（compileBigscreen 输出）。 */
+function isScreenItem(item: ChartItem): boolean {
 	const cfg = (item as { cfg?: unknown }).cfg;
 	return !!cfg && typeof cfg === "object" && "option" in (cfg as Record<string, unknown>);
 }
@@ -37,19 +37,19 @@ export function ChartGrid({ items, isScreen, showUnboundHint = false, layout = "
 	return (
 		<div className="viz-grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
 			{items.map((item, index) => {
-				const jimuFormat = isJimuBIItem(item);
-				// JimuBI 格式跳过 normalize/validate — 数据已在 cfg.option.series.data 里
-				const normalized = jimuFormat ? item.data : normalizeChartData(item.data, item.type);
-				const valid = jimuFormat ? { ok: true, reason: "" } : validateChartData(normalized);
+				const screenFormat = isScreenItem(item);
+				// 大屏格式跳过 normalize/validate — 数据已在 cfg.option.series.data 里
+				const normalized = screenFormat ? item.data : normalizeChartData(item.data, item.type);
+				const valid = screenFormat ? { ok: true, reason: "" } : validateChartData(normalized);
 
-				// JimuBI 格式优先用 cfg.h 高度
+				// 大屏格式优先用 cfg.h 高度
 				let height = item.height ?? (isScreen ? 280 : 250);
-				if (jimuFormat) {
+				if (screenFormat) {
 					const cfgH = (item as { cfg?: { h?: number } }).cfg?.h;
 					if (cfgH && cfgH > 0) height = cfgH;
 				}
 
-				const title = jimuFormat
+				const title = screenFormat
 					? (item.title ?? (item as { title?: string }).title ?? `组件 ${index + 1}`)
 					: (item.title ?? `图表 ${index + 1}`);
 

@@ -1,34 +1,34 @@
 /**
- * dbx-bigscreen-builder —— JimuBI spec_builder.py 的 TypeScript 对等实现。
+ * dbx-bigscreen-builder —— AI skill spec_builder.py 的 TypeScript 对等实现。
  *
  * AI 写紧凑 JSON spec → 本 builder 展开为 ECharts option / HTML 片段 / ChartItem[]。
- * 与 jimubi 的 spec_builder.py 共享同一套设计模式（ADR-0010a）：
+ * 与 AI skill 的 spec_builder.py 共享同一套设计模式（ADR-0010a）：
  *   ① 紧凑 spec 格式 ② defaults 库驱动展开 ③ per-type handler 路由
  *   ④ pitfall 防呆 ⑤ 命名色板自动应用 ⑥ 布局约束预警 ⑦ 变体支持
  *
- * 目标产物：不是 JimuBI 组件 JSON，而是 dbx-pro 的 ChartItem / EChartsOption / HTML。
+ * 目标产物：不是组件 JSON，而是 dbx-pro 的 ChartItem / EChartsOption / HTML。
  */
 
 // ============================================================================
 // 类型定义
 // ============================================================================
 
-/** jimubi 风格紧凑 spec。AI 只需要写最少字段。 */
-export interface JimubiCompactSpec {
+/** 紧凑 spec 风格紧凑 spec。AI 只需要写最少字段。 */
+export interface ScreenCompactSpec {
 	page?: { name?: string; bg?: string; theme?: "dark" | "light" };
-	palette?: JimubiPaletteName;
-	components: JimubiCompactComponent[];
+	palette?: ScreenPaletteName;
+	components: ScreenCompactComponent[];
 }
 
-export type JimubiPaletteName =
+export type ScreenPaletteName =
 	| "tech" | "tech-blue" | "gov" | "biz" | "retro" | "medical" | "financial" | "custom";
 
-export interface JimubiCompactComponent {
-	/** JimuBI 类型名：JBar, JLine, JPie, JStatsSummary, JCountTo, JScrollRankingBoard, ... */
+export interface ScreenCompactComponent {
+	/** 组件类型名：JBar, JLine, JPie, JStatsSummary, JCountTo, JScrollRankingBoard, ... */
 	type: string;
 	/** 变体：JStatsSummary variant "1"/"2"/"3" / JScrollList variant "1"/"2"/"3" / JDragBorder variant "边框2"/"边框3" */
 	variant?: string;
-	/** JimuBI 绝对坐标 [x, y, w, h]（可选，走 CSS Grid 就不要） */
+	/** 绝对坐标 [x, y, w, h]（可选，走 CSS Grid 就不要） */
 	pos?: [number, number, number, number];
 	/** 标题 */
 	title?: string;
@@ -49,12 +49,12 @@ export interface BuiltComponent {
 
 /** dbx builder 输入（palette 可选，默认 tech 深色） */
 export interface DbxBigscreenBuilderInput {
-	spec: JimubiCompactSpec;
+	spec: ScreenCompactSpec;
 	engine?: "echarts" | "chartjs"; // 默认 echarts
 }
 
 // ============================================================================
-// Palettes —— JimuBI PALETTES 对等实现（5 套命名色板）
+// Palettes —— 命名色板（5 套命名色板）
 // ============================================================================
 
 export interface Palette {
@@ -64,7 +64,7 @@ export interface Palette {
 	colors: string[];
 }
 
-const PALETTES: Record<JimubiPaletteName, Palette> = {
+const PALETTES: Record<ScreenPaletteName, Palette> = {
 	tech: { // 科技深色
 		title: "#f0c040", subtitle: "#00d4ff", label: "#ffffff", value: "#d4e8ff",
 		axis: "#8ab8d0", axisLine: "#1a3a5a", gridline: "#1a3a5a55",
@@ -106,10 +106,10 @@ const PALETTES: Record<JimubiPaletteName, Palette> = {
 };
 
 // ============================================================================
-// JimuBI → ECharts component type mapping
+// 组件 → ECharts component type mapping
 // ============================================================================
 
-/** ECharts 可渲染的 JimuBI 类型集合。不在此集合里的 → 降级处理。 */
+/** ECharts 可渲染的组件类型集合。不在此集合里的 → 降级处理。 */
 const ECHARTS_CARTESIAN = new Set([
 	"JBar", "JStackBar", "JMultipleBar", "JNegativeBar", "JPercentBar",
 	"JLine", "JSmoothLine", "JStepLine", "JArea", "JMultipleLine",
@@ -133,8 +133,8 @@ const HTML_COMPONENTS = new Set([
 ]);
 // 注意：JScrollRankingBoard 走 ECharts bar（自动排序 + 截断前 N），不走 HTML_COMPONENTS
 
-/** JimuBI → ECharts series type 映射 */
-const JIMUBI_TO_ECHARTS_TYPE: Record<string, string> = {
+/** 组件 → ECharts series type 映射 */
+const COMPONENT_TO_ECHARTS_TYPE: Record<string, string> = {
 	// Cartesian
 	JBar: "bar", JStackBar: "bar", JMultipleBar: "bar", JNegativeBar: "bar", JPercentBar: "bar",
 	JLine: "line", JSmoothLine: "line", JStepLine: "line", JArea: "line", JMultipleLine: "line",
@@ -159,11 +159,11 @@ const CITY_COORDS: Record<string, [number, number]> = {
 // Pitfall 防呆
 // ============================================================================
 
-function pitfallFix(comp: JimubiCompactComponent): { comp: JimubiCompactComponent; warnings: string[] } {
+function pitfallFix(comp: ScreenCompactComponent): { comp: ScreenCompactComponent; warnings: string[] } {
 	const warnings: string[] = [];
 	const c = { ...comp };
 
-	// 1. 字段名兼容：label → name（jimubi spec 里 label 和 name 混用）
+	// 1. 字段名兼容：label → name（紧凑 spec 里 label 和 name 混用）
 	if ((c as Record<string, unknown>).label !== undefined && c.type && ECHARTS_CARTESIAN.has(c.type)) {
 		if ((c as Record<string, unknown>).name === undefined) {
 			(c as Record<string, unknown>).name = (c as Record<string, unknown>).label;
@@ -200,7 +200,7 @@ function pitfallFix(comp: JimubiCompactComponent): { comp: JimubiCompactComponen
 	return { comp: c, warnings };
 }
 
-function layoutAdvisor(comp: JimubiCompactComponent): string[] {
+function layoutAdvisor(comp: ScreenCompactComponent): string[] {
 	const warnings: string[] = [];
 	const h = comp.pos?.[3];
 
@@ -216,14 +216,14 @@ function layoutAdvisor(comp: JimubiCompactComponent): string[] {
 }
 
 // ============================================================================
-// Handlers —— 核心：jimubi 紧凑 spec → ECharts option
+// Handlers —— 核心：紧凑 spec → ECharts option
 // ============================================================================
 
 /** 从 data 数组推断 ECharts data 格式 */
 function inferEChartsData(data: unknown[]): { labels: string[]; seriesData: unknown[] } {
 	if (!data || data.length === 0) return { labels: [], seriesData: [] };
 
-	// [{name, value}] 格式（jimubi 标准）
+	// [{name, value}] 格式（紧凑 spec 标准）
 	if (typeof data[0] === "object" && data[0] !== null && ("name" in (data[0] as object) || "value" in (data[0] as object))) {
 		const d = data as Array<Record<string, unknown>>;
 		return {
@@ -239,8 +239,8 @@ function inferEChartsData(data: unknown[]): { labels: string[]; seriesData: unkn
 }
 
 /** Cartesian 族 handler：JBar/JLine/JScatter 等 */
-function handleCartesian(comp: JimubiCompactComponent, palette: Palette): Record<string, unknown> {
-	const type = JIMUBI_TO_ECHARTS_TYPE[comp.type] ?? "bar";
+function handleCartesian(comp: ScreenCompactComponent, palette: Palette): Record<string, unknown> {
+	const type = COMPONENT_TO_ECHARTS_TYPE[comp.type] ?? "bar";
 	const { labels, seriesData } = inferEChartsData(comp.data as unknown[]);
 	const colors = (comp.colors as string[]) ?? palette.colors;
 
@@ -285,10 +285,10 @@ function handleCartesian(comp: JimubiCompactComponent, palette: Palette): Record
 }
 
 /** Polar 族 handler：JPie/JRing/JRose/JRadar/JFunnel */
-function handlePolar(comp: JimubiCompactComponent, palette: Palette): Record<string, unknown> {
+function handlePolar(comp: ScreenCompactComponent, palette: Palette): Record<string, unknown> {
 	const { labels, seriesData } = inferEChartsData(comp.data as unknown[]);
 	const colors = (comp.colors as string[]) ?? palette.colors;
-	const type = JIMUBI_TO_ECHARTS_TYPE[comp.type] ?? "pie";
+	const type = COMPONENT_TO_ECHARTS_TYPE[comp.type] ?? "pie";
 
 	const option: Record<string, unknown> = {
 		tooltip: { trigger: "item", backgroundColor: palette.tooltipBg, textStyle: { color: palette.tooltipTxt } },
@@ -322,7 +322,7 @@ function handlePolar(comp: JimubiCompactComponent, palette: Palette): Record<str
 }
 
 /** JGauge 族 handler */
-function handleGauge(comp: JimubiCompactComponent, palette: Palette): Record<string, unknown> {
+function handleGauge(comp: ScreenCompactComponent, palette: Palette): Record<string, unknown> {
 	const value = (comp.value as number) ?? 0;
 	const max = (comp.max as number) ?? 100;
 	const isSemi = comp.type === "JSemiGauge";
@@ -349,19 +349,19 @@ function handleGauge(comp: JimubiCompactComponent, palette: Palette): Record<str
 }
 
 /** JScrollRankingBoard → ECharts bar（自动排序 + 截断前 N）*/
-function handleScrollRanking(comp: JimubiCompactComponent, palette: Palette): Record<string, unknown> {
+function handleScrollRanking(comp: ScreenCompactComponent, palette: Palette): Record<string, unknown> {
 	const raw = (comp.data as Array<Record<string, unknown>>) ?? [];
 	const rowNum = (comp.rowNum as number) ?? raw.length;
 	const sorted = [...raw].sort((a, b) => (b.value as number) - (a.value as number)).slice(0, rowNum);
 
-	return handleCartesian({ ...comp, data: sorted } as JimubiCompactComponent, palette);
+	return handleCartesian({ ...comp, data: sorted } as ScreenCompactComponent, palette);
 }
 
 // ============================================================================
 // HTML 组件 handlers
 // ============================================================================
 
-function handleJText(comp: JimubiCompactComponent, palette: Palette): string {
+function handleJText(comp: ScreenCompactComponent, palette: Palette): string {
 	const text = (comp.text as string) ?? comp.title ?? "";
 	const style = (comp.style as string) ?? "normal";
 	const color = (comp.color as string) ?? (style === "title" ? palette.title : palette.label);
@@ -369,7 +369,7 @@ function handleJText(comp: JimubiCompactComponent, palette: Palette): string {
 	return `<div style="color:${color};font-size:${fontSize}px;font-weight:${style === "title" || style === "subtitle" ? 600 : 400};line-height:1.4;">${text}</div>`;
 }
 
-function handleJCountTo(comp: JimubiCompactComponent, palette: Palette): string {
+function handleJCountTo(comp: ScreenCompactComponent, palette: Palette): string {
 	const value = (comp.value as number) ?? 0;
 	const title = comp.title ?? "";
 	const suffix = (comp.suffix as string) ?? "";
@@ -380,7 +380,7 @@ ${title ? `<span style="font-size:13px;color:${palette.label};opacity:0.85;">${t
 </div>`;
 }
 
-function handleJStatsSummary(comp: JimubiCompactComponent, palette: Palette): string {
+function handleJStatsSummary(comp: ScreenCompactComponent, palette: Palette): string {
 	const variant = comp.variant ?? "1";
 	const items = (comp.items ?? comp.data ?? []) as Array<{ label: string; value: number | string; suffix?: string; trend?: string }>;
 
@@ -404,7 +404,7 @@ ${it.trend ? `<div style="font-size:11px;color:${it.trend.startsWith("+") ? "#7e
 	return `<div style="width:100%;border:1px solid ${palette.axisLine};border-radius:8px;overflow:hidden;background:rgba(0,0,0,0.02);">${html}</div>`;
 }
 
-function handleJScrollBoard(comp: JimubiCompactComponent, palette: Palette): string {
+function handleJScrollBoard(comp: ScreenCompactComponent, palette: Palette): string {
 	const title = comp.title ?? "";
 	const headers = (comp.headers as string[]) ?? (comp.data && (comp.data as Record<string, unknown>).columns as string[]) ?? [];
 	const rows = (comp.rows ?? comp.data ?? []) as unknown[][];
@@ -428,8 +428,8 @@ ${title ? `<div style="padding:8px 12px;background:${palette.axisLine};color:${p
 // 主编译入口
 // ============================================================================
 
-/** 编译一个 JimuBI 紧凑组件 → BuiltComponent */
-function compileComponent(comp: JimubiCompactComponent, palette: Palette, engine: "echarts" | "chartjs"): BuiltComponent {
+/** 编译一个大屏紧凑组件 → BuiltComponent */
+function compileComponent(comp: ScreenCompactComponent, palette: Palette, engine: "echarts" | "chartjs"): BuiltComponent {
 	const result: BuiltComponent = { kind: "echarts", type: comp.type, title: comp.title };
 	const warnings: string[] = [];
 
@@ -492,7 +492,7 @@ function compileComponent(comp: JimubiCompactComponent, palette: Palette, engine
 /** 主入口：编译整个 spec → BuiltComponent[] */
 export function dbxBigscreenBuilder(input: DbxBigscreenBuilderInput): BuiltComponent[] {
 	const { spec, engine = "echarts" } = input;
-	const paletteName = spec.palette ?? spec.page?.bg as JimubiPaletteName ?? "tech";
+	const paletteName = spec.palette ?? spec.page?.bg as ScreenPaletteName ?? "tech";
 	const palette = PALETTES[paletteName] ?? PALETTES.tech;
 
 	const results: BuiltComponent[] = [];
@@ -531,11 +531,11 @@ export function buildBigscreenHtml(input: DbxBigscreenBuilderInput): string {
 }
 
 /** 导出 palette 方便外部使用 */
-export function getPalette(name: JimubiPaletteName = "tech"): Palette {
+export function getPalette(name: ScreenPaletteName = "tech"): Palette {
 	return PALETTES[name] ?? PALETTES.tech;
 }
 
-/** 列出所有已支持的 JimuBI 组件类型 */
+/** 列出所有已支持的组件类型 */
 export function listSupportedTypes(): { echarts: string[]; html: string[]; error: string[] } {
 	return {
 		echarts: [...ECHARTS_CARTESIAN, ...ECHARTS_POLAR, ...ECHARTS_GAUGE, "JScrollRankingBoard"],

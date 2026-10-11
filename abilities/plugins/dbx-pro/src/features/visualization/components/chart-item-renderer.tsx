@@ -6,11 +6,11 @@
  * 支持两种 ChartItem 格式：
  *   ① 旧格式：Chart.js 风格 { type: "bar"|"line"|..., data: {labels, datasets}, ... }
  *      走 chartItemToEChartsOption 转换 → 生成 ECharts option → setOption
- *   ② 新格式：JimuBI 组件 JSON { cfg: { option, chartData, chart:{subclass}, w, h, ... } }
+ *   ② 新格式：大屏组件 JSON { cfg: { option, chartData, chart:{subclass}, w, h, ... } }
  *      cfg.option 是 compileBigscreen 输出的完整 ECharts option（已注入 theme/series/axis），
  *      直接 inst.setOption(item.cfg.option) 渲染，不再二次转换
  *
- * 关键判断：item.cfg?.option 存在 → JimuBI 格式；否则 → 旧 Chart.js 格式。
+ * 关键判断：item.cfg?.option 存在 → 大屏格式；否则 → 旧 Chart.js 格式。
  */
 
 import { useEffect, useRef, useState, type JSX } from "react";
@@ -23,8 +23,8 @@ interface Props {
 	isScreen: boolean;
 }
 
-/** JimuBI 格式检测：item 带 cfg.option → 直接 setOption 渲染完整 ECharts config。 */
-function isJimuBIFormat(item: ChartItem & { cfg?: unknown }): boolean {
+/** 大屏格式检测：item 带 cfg.option → 直接 setOption 渲染完整 ECharts config。 */
+function isScreenFormat(item: ChartItem & { cfg?: unknown }): boolean {
 	const cfg = (item as { cfg?: { option?: unknown } }).cfg;
 	return !!cfg && typeof cfg === "object" && "option" in cfg;
 }
@@ -46,9 +46,9 @@ export function ChartItemRenderer({ item, isScreen }: Props): JSX.Element {
 			if (!inst) { setRuntimeMissing(true); return; }
 			instanceRef.current = inst;
 
-			// 两条路径：JimuBI 直传 vs 旧 Chart.js 转换
+			// 两条路径：大屏直传 vs 旧 Chart.js 转换
 			let echartsOpt: unknown;
-			if (isJimuBIFormat(item)) {
+			if (isScreenFormat(item)) {
 				// 新格式：cfg.option 已是完整 ECharts option，直接 setOption
 				const cfg = (item as unknown as { cfg?: { option?: unknown } }).cfg;
 				echartsOpt = cfg?.option ?? {};
@@ -74,9 +74,9 @@ export function ChartItemRenderer({ item, isScreen }: Props): JSX.Element {
 		return () => { cancelled = true; instanceRef.current?.dispose(); instanceRef.current = null; };
 	}, [item, isScreen]);
 
-	// JimuBI 格式优先用 cfg.w/cfg.h ，否则用 item.height
+	// 大屏格式优先用 cfg.w/cfg.h ，否则用 item.height
 	let height = item.height ?? (isScreen ? 280 : 250);
-	if (isJimuBIFormat(item)) {
+	if (isScreenFormat(item)) {
 		const cfgH = (item as { cfg?: { h?: number } }).cfg?.h;
 		if (cfgH && cfgH > 0) height = cfgH;
 	}

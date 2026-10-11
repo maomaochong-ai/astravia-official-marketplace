@@ -7,8 +7,8 @@
  * 2. dbx_chart_collection — 打包看板/大屏（ECharts charts[] → HTML 页面）
  *    渲染引擎已从 Chart.js 切换为 ECharts（ADR-0010b）。
  *
- * 3. dbx_bigscreen_builder — JimuBI 紧凑 spec → ECharts option + HTML
- *    对等实现 jimubi-bigscreen spec_builder.py（ADR-0010a）。
+ * 3. dbx_bigscreen_builder — 大屏紧凑 spec → ECharts option + HTML
+ *    对等实现 AI skill spec_builder.py（ADR-0010a）。
  *
  * 4. dbx_report_builder — Jimureport 对等实现
  *    SQL + 参数化 + 多级表头 → HTML 报表（ADR-0010a）。
