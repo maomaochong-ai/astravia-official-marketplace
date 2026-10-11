@@ -557,7 +557,7 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 						x={contextMenu.x}
 						y={contextMenu.y}
 						onClose={() => setContextMenu(null)}
-						onPick={(kind) => {
+						onPick={(kind, _variant) => {
 							// 在右键位置插入一个新节点
 							const tpl = NODE_TEMPLATES[kind] ?? { w: 180, h: 110, tone: TONE.chart, kind };
 							nodeSeqRef.current++;

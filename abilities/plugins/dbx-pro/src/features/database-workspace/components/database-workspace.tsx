@@ -48,6 +48,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
+	/** 全屏模式：native = 浏览器 requestFullscreen；css = 插件沙箱 fallback */
+	const [fullscreenMode, setFullscreenMode] = useState<"native" | "css">("native");
 	// 底部「下载后台」货架默认收起，由顶栏下载入口开合（任务进度在顶栏环上已有反馈）。
 	const [downloadsOpen, setDownloadsOpen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
@@ -231,7 +233,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 
 	async function toggleFullscreen() {
 		if (fullscreen) {
-			if (document.fullscreenElement) {
+			if (fullscreenMode === "native" && document.fullscreenElement) {
 				await document.exitFullscreen();
 			}
 			setFullscreen(false);
@@ -240,12 +242,15 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			if (el?.requestFullscreen) {
 				try {
 					await el.requestFullscreen();
+					setFullscreenMode("native");
 					setFullscreen(true);
 				} catch {
 					// Fullscreen API 不可用（如插件沙箱），回退 CSS 方案
+					setFullscreenMode("css");
 					setFullscreen(true);
 				}
 			} else {
+				setFullscreenMode("css");
 				setFullscreen(true);
 			}
 		}
@@ -256,7 +261,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			ref={workspaceRef}
 			data-astravia-plugin-root="dbx-pro"
 			data-dbx-theme={theme}
-			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen ? "!fixed !inset-0 !z-[9999]" : ""}`}
+			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen && fullscreenMode === "css" ? "!absolute !inset-0 !z-[9999]" : ""}`}
 		>
 			<WorkbenchTopBar
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}

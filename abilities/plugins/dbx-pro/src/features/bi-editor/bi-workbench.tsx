@@ -5,16 +5,18 @@
  * 回答两个问题：我有哪些看板、现在该从哪起手。
  *
  * 左栏：资产导航 + 数据源快捷区
- * 中间：看板卡片网格（含 pages/nodes 计数 + dirty 状态 chip）+ 最近运行列表
+ * 中间：看板卡片网格（含 pages/nodes 计数 + dirty 状态 chip + Preview 缩略图）+ 最近运行列表
  * 右栏：从哪开始 + 产物链接 + 发布入口
  *
  * 所有 counts / pages / nodes / run log 从后端 hooks 拿，无 mock 数据。
+ * Preview 图表：从 template 解析第一个 chart 节点 kind，用确定性 hash 数据生成缩略图。
  */
 
 import { type JSX } from "react";
 import { Icon } from "./components/ui/icon";
 import { Chip } from "./components/ui/chip";
 import { IconButton } from "./components/ui/icon-button";
+import { AreaChart, Bars, Donut } from "./components/charts";
 import { useBigscreenPages } from "./hooks/use-bigscreen-pages";
 import { useRunlogs, type RunLogItem } from "./hooks/use-runlogs";
 import { useSharelinks, type SharelinkItem } from "./hooks/use-sharelinks";
@@ -39,6 +41,49 @@ interface BoardCardData {
 	nodes: string;
 	meta: string;
 	state: string;
+	/** 第一个图表节点 kind：line/bar/pie/donut/column/... 用于 Preview 缩略图 */
+	kind?: string;
+}
+
+/** 从任意字符串生成 0-99 稳定伪随机整数数组（长度 14）。
+ *  不抄设计稿 GMV mock 数据，而是用看板名称 hash 出自己的稳定序列，
+ *  保证同一张看板每次渲染 preview 形状一致。 */
+function hashPreview(seed: string, len = 14): number[] {
+	let h = 2166136261 >>> 0;
+	for (let i = 0; i < seed.length; i++) {
+		h ^= seed.charCodeAt(i);
+		h = Math.imul(h, 16777619);
+	}
+	const out: number[] = [];
+	for (let i = 0; i < len; i++) {
+		h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16);
+		out.push((h % 60) + 20); // 20-79 区间，所有值正且有起伏
+	}
+	return out;
+}
+
+function PreviewChart({ kind, seed }: { kind?: string; seed: string }): JSX.Element {
+	const v = hashPreview(seed);
+	if (!kind) {
+		return <AreaChart values={v} className="h-full w-full" stroke="currentColor" />;
+	}
+	if (/bar|column|histogram/i.test(kind)) {
+		return <Bars values={v.slice(0, 7)} className="h-full w-full" tone="bg-series-2" />;
+	}
+	if (/pie|donut|ring/i.test(kind)) {
+		const d = hashPreview(seed + "_d", 4);
+		const sum = d.reduce((a, b) => a + b, 0) || 1;
+		return (
+			<div className="flex h-full w-full items-center justify-center">
+				<Donut
+					size={64}
+					thickness={10}
+					segments={d.map((n, i) => ({ value: n / sum, color: ["var(--color-series-1)", "var(--color-series-2)", "var(--color-series-3)", "var(--color-series-4)"][i % 4] }))}
+				/>
+			</div>
+		);
+	}
+	return <AreaChart values={v} className="h-full w-full" stroke="currentColor" />;
 }
 
 export function BiWorkbench({ onOpenBoard, onCreateNew }: {
@@ -54,10 +99,20 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 	const boards: BoardCardData[] = pages.map((p) => {
 		let nodeCount = 0;
 		let pageCount = 1;
+		let chartKind: string | undefined;
 		try {
 			const tpl = typeof p.template === "string" ? JSON.parse(p.template) : p.template;
 			if (tpl && typeof tpl === "object" && "nodes" in tpl) {
-				nodeCount = Object.keys(tpl.nodes).length;
+				const nodes = tpl.nodes as Record<string, { kind?: string; type?: string; nodeType?: string }>;
+				nodeCount = Object.keys(nodes).length;
+				// 找第一个 chart 节点的 kind（line/bar/pie/donut/column...）
+				for (const n of Object.values(nodes)) {
+					const k = (n.kind ?? n.type ?? n.nodeType ?? "").toString().toLowerCase();
+					if (k && /line|bar|pie|donut|ring|column|histogram|area|scatter|funnel|gauge|radar|heatmap/.test(k)) {
+						chartKind = k;
+						break;
+					}
+				}
 			}
 		} catch { /* ignore */ }
 		const dirtyForPage = ((p as Record<string, unknown>).publishedCount as number | undefined) != null
@@ -70,6 +125,7 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 			nodes: `${nodeCount} 节点`,
 			meta: `更新于 ${formatTime(p.updateTime)}`,
 			state,
+			kind: chartKind,
 		};
 	});
 
@@ -162,35 +218,39 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 						</div>
 					</div>
 
-					{/* 看板卡片网格 */}
+					{/* 看板卡片网格 — 对齐设计稿：112px 高 Preview + 底部信息 */}
 					<div className="grid shrink-0 grid-cols-3 gap-4">
 						{boards.length === 0 ? (
 							<div className="col-span-3 flex h-[180px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border text-[11px] text-faint">
 								<Icon name="icon-[lucide--layout-dashboard]" className="size-6 text-muted" />
 								还没有看板 —— 点右上角「新建看板」开始
 							</div>
-						) : boards.map((b) => (
+						) : boards.map((b, i) => (
 							<button type="button" key={b.name}
 								onClick={() => onOpenBoard?.(b.name)}
-								className="group overflow-hidden rounded-card border bg-surface-raised text-left hover:border-border-strong">
+								className={`group overflow-hidden rounded-card border bg-surface-raised text-left ${
+									i === 0 ? "border-accent shadow-[0_0_0_3px_var(--color-accent-soft)]" : "border-border hover:border-border-strong"
+								}`}>
+								{/* Preview 缩略图区 — 112px 高，从 template 解析 kind 选图表类型 */}
 								<div className="relative h-[112px] border-b border-border bg-background px-3 py-3">
+									<div className="h-full w-full text-accent/70">
+										<PreviewChart kind={b.kind} seed={b.name} />
+									</div>
 									<span className="absolute right-2 top-2 flex h-5 items-center gap-1 rounded-chip bg-surface-raised px-1.5 font-mono text-[10px] text-muted">
 										{b.nodes}
 									</span>
-									<div className="flex h-full w-full items-center justify-center text-center text-[11px] text-muted">
-										{b.name}（{b.pages} · {b.nodes}）
-									</div>
 								</div>
 								<div className="flex flex-col gap-1.5 px-3 py-2.5">
 									<div className="flex items-center gap-2">
 										<span className="truncate text-[13px] font-medium text-surface-foreground">{b.name}</span>
-										{b.state === "草稿" ? <Chip tone="warning">草稿</Chip> : null}
-										<span className="ml-auto shrink-0 text-[10px] text-faint">{b.state}</span>
+										{b.state === "草稿" ? <Chip tone="warning">未运行</Chip> : null}
+										<IconButton size="xs" icon="icon-[lucide--x]" title="更多" className="ml-auto" />
 									</div>
 									<div className="flex items-center gap-2 text-[10px] text-faint">
 										<span>{b.pages}</span>
 										<span className="h-3 w-px bg-border" />
 										<span>{b.meta}</span>
+										<span className="ml-auto">{b.state}</span>
 									</div>
 								</div>
 							</button>
