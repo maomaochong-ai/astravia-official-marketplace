@@ -43,15 +43,13 @@ export function reducer(state: WorkbenchState, action: WorkbenchAction): Workben
 			return { ...state, connections: action.connections };
 
 		case "connectionsLoaded": {
-			// invalidateTree=true 时清除整棵树缓存（刷新按钮触发），
-			// 否则只更新连接列表（初始加载）。
+			// invalidateTree=true 时清除 children 缓存（schema 需要重新加载），
+			// 但保留 expandedNodes / loadingNodes —— 用户的展开状态不应被刷新重置。
 			if (action.invalidateTree) {
 				return {
 					...state,
 					connections: action.connections,
 					treeChildren: new Map(),
-					expandedNodes: new Set(),
-					loadingNodes: new Set(),
 				};
 			}
 			return { ...state, connections: action.connections };

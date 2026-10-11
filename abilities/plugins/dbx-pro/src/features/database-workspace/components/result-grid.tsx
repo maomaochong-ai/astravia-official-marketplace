@@ -790,7 +790,12 @@ export function ResultGrid({
 				batchSize,
 				knownTotal,
 				token,
-				onProgress: (rowsExported) => updateExportTask(task.id, { rowsExported }),
+				// xlsx 没有增量序列化，字节数要等组包完成；0 视为未知，不写字段（货架显示「—」）。
+				onProgress: (rowsExported, bytesExported) =>
+					updateExportTask(
+						task.id,
+						(bytesExported ?? 0) > 0 ? { rowsExported, bytesExported: bytesExported! } : { rowsExported },
+					),
 				fetchPage: ({ offset, limit }) =>
 					engineExecuteByName(connectionName, sql, {
 						rowLimit: ENGINE_ROW_CAP,
@@ -821,6 +826,10 @@ export function ResultGrid({
 			// 组包只做一次：降级下载复用同一份内容，不必在 base64 与字节数组之间来回转。
 			const xlsxBytes = kind === "xlsx" ? toXlsx(allColumns, xlsxRows, target) : null;
 			const textContent = kind === "xlsx" ? null : (stream as ChunkedTextExport).content();
+			// 落盘内容的精确字节数：xlsx 用组包结果，文本与写盘内容同源（含 BOM），只在这里编码一次。
+			const payloadBytes = xlsxBytes
+				? xlsxBytes.length
+				: new TextEncoder().encode(textContent as string).length;
 			const downloadFallback = (): void => {
 				const blob = xlsxBytes
 					? new Blob([xlsxBytes], { type: EXPORT_MIME.xlsx })
@@ -841,6 +850,7 @@ export function ResultGrid({
 						rowsExported: total,
 						totalRows: truncationNote ? total : knownTotal ?? latestKnownTotalRef.current ?? total,
 						note: truncationNote ? CONTENT_KEPT_NOTE + "；" + truncationNote : CONTENT_KEPT_NOTE,
+						bytesTotal: payloadBytes,
 					});
 					if (truncationNote) dispatch({ type: "setError", message: truncationNote });
 					return;
@@ -863,6 +873,7 @@ export function ResultGrid({
 				filePath,
 				totalRows: truncationNote ? total : knownTotal ?? latestKnownTotalRef.current ?? total,
 				note: truncationNote,
+				bytesTotal: payloadBytes,
 				finishedAt: Date.now(),
 			});
 			if (truncationNote) dispatch({ type: "setError", message: truncationNote });

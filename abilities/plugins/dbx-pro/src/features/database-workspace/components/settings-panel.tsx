@@ -106,6 +106,7 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 					</div>
 				</div>
 
+				<div className="flex flex-1 min-h-0 flex-col">
 				<div className="flex min-h-0 flex-1">
 					<nav className="dbx-settings-nav">
 						{CATEGORY_GROUPS.map((group, groupIdx) => {
@@ -159,22 +160,23 @@ export function SettingsPanel({ settings, onChange, onReset, onClearHistory, onC
 						)}
 						</div>
 					</div>
-					<div className="dbx-settings-footer">
-						<button
-							type="button"
-							onClick={onReset}
-							disabled={isDefaultSettings(settings)}
-							className="dbx-btn ghost disabled:opacity-50"
-						>
-							<span className="icon-[lucide--rotate-ccw] h-3.5 w-3.5" />
-							恢复默认设置
-						</button>
-						<span className="dbx-settings-footer__note">已保存到本地 · 偏好随插件数据目录，不写入连接配置</span>
-						<button type="button" onClick={onClose} className="dbx-btn primary">
-							完成
-						</button>
-					</div>
 				</div>
+				<div className="dbx-settings-footer">
+					<button
+						type="button"
+						onClick={onReset}
+						disabled={isDefaultSettings(settings)}
+						className="dbx-btn ghost disabled:opacity-50"
+					>
+						<span className="icon-[lucide--rotate-ccw] h-3.5 w-3.5" />
+						恢复默认设置
+					</button>
+					<span className="dbx-settings-footer__note">已保存到本地 · 偏好随插件数据目录，不写入连接配置</span>
+					<button type="button" onClick={onClose} className="dbx-btn primary">
+						完成
+					</button>
+				</div>
+			</div>
 			</div>
 		</>
 	);

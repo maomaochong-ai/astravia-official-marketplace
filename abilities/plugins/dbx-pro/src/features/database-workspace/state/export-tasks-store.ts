@@ -3,7 +3,7 @@
  *
  * 对标 dbx 桌面壳 useExportTracker：任务状态存活在任何组件之外，
  * 结果网格卸载、进度弹窗「最小化」后任务继续运行；顶栏后台任务按钮、
- * 后台任务 popover、进度弹窗都订阅同一份快照（useSyncExternalStore）。
+ * 底部「下载后台」货架、进度弹窗都订阅同一份快照（useSyncExternalStore）。
  */
 
 import { useSyncExternalStore } from "react";
@@ -35,6 +35,13 @@ export interface ExportTask {
 	rowsExported: number;
 	/** 总行数；null 未知，进度条走不确定动画。 */
 	totalRows: number | null;
+	/**
+	 * 取数阶段已经序列化出来的字节数（近似：文本格式不含块间分隔符）。
+	 * 只在文本流上递增；xlsx 是一次性组包，运行期不写这个字段。
+	 */
+	bytesExported?: number;
+	/** 落盘内容的精确字节数；未落盘时为 undefined，「大小」列显示「—」。 */
+	bytesTotal?: number;
 	status: ExportTaskStatus;
 	errorMessage?: string | null;
 	/** 完成但有需要告知的情况（如被上限截断、SQL 不支持分页仅导出前 N 行）。 */
@@ -207,7 +214,7 @@ function evictOldestUnsavedPayloads(): void {
 	}
 }
 
-/** React 订阅钩子：顶栏按钮 / popover / 进度弹窗共用同一快照。 */
+/** React 订阅钩子：顶栏按钮 / 下载后台货架 / 进度弹窗共用同一快照。 */
 export function useExportTasks(): ExportTask[] {
 	return useSyncExternalStore(subscribeExportTasks, getExportTasks, getExportTasks);
 }

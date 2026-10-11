@@ -344,6 +344,8 @@
 	background: var(--dbx-panel);
 	cursor: pointer;
 	text-align: left;
+	overflow: hidden;
+	min-width: 0;
 	transition: border-color 0.12s ease, background 0.12s ease;
 }
 

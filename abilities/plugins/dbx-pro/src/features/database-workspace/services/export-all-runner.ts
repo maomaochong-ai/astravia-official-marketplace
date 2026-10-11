@@ -49,8 +49,11 @@ export interface ExportAllOptions {
 	fetchPage: (request: ExportPageRequest) => Promise<ExportPage>;
 	/** 取消标志：每块开始前检查，保证取消不必等整批取完。 */
 	token: { cancelled: boolean };
-	/** 每取完一批回调一次累计行数（任务进度用）。 */
-	onProgress?: (rowsExported: number) => void;
+	/**
+	 * 每取完一批回调一次累计进度（任务进度用）。
+	 * bytesExported 是已序列化内容的近似字节数；xlsx 是一次性组包，取数阶段恒为 0。
+	 */
+	onProgress?: (rowsExported: number, bytesExported?: number) => void;
 }
 
 export interface ExportAllResult {
@@ -85,7 +88,7 @@ export async function runExportAll(options: ExportAllOptions): Promise<ExportAll
 	function reportProgress(rows: number): void {
 		if (!onProgress || rows <= lastReported) return;
 		lastReported = rows;
-		onProgress(rows);
+		onProgress(rows, stream?.bytes() ?? 0);
 	}
 
 	/** 取消 / 结束时返回快照：本批未 push 的行不计入 total。 */

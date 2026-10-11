@@ -114,6 +114,11 @@ export interface ChunkedTextExport {
 	push(rows: Record<string, unknown>[]): void;
 	/** 最终文本（仅在所有块 push 完后调用一次）。 */
 	content(): string;
+	/**
+	 * 已 push 分片按 UTF-8 编码后的字节数（近似：块间分隔符不计入，误差对 MB 级显示无感）。
+	 * 供「导出全部」上报实时进度，避免为了显示大小把整份文本重新编码一遍。
+	 */
+	bytes(): number;
 }
 
 export function createChunkedTextExport(
@@ -123,11 +128,20 @@ export function createChunkedTextExport(
 ): ChunkedTextExport {
 	const parts: string[] = [];
 	let pushed = 0;
+	// 字节数懒计算：只对上次统计之后新增的分片编码一次，累计仍是 O(n)。
+	let counted = 0;
+	let byteCount = 0;
+	const encoder = new TextEncoder();
+	const bytes = (): number => {
+		for (; counted < parts.length; counted += 1) byteCount += encoder.encode(parts[counted]).length;
+		return byteCount;
+	};
 
 	switch (kind) {
 		case "csv": {
 			parts.push(`\uFEFF${cols.map(csvEscape).join(",")}`);
 			return {
+				bytes,
 				push(rows) {
 					for (const row of rows) parts.push(cols.map((c) => csvEscape(cellText(row[c]))).join(","));
 					pushed += rows.length;
@@ -138,6 +152,7 @@ export function createChunkedTextExport(
 		case "txt": {
 			parts.push(cols.join("\t"));
 			return {
+				bytes,
 				push(rows) {
 					for (const row of rows) {
 						parts.push(cols.map((c) => cellText(row[c]).replaceAll("\t", " ")).join("\t"));
@@ -149,6 +164,7 @@ export function createChunkedTextExport(
 		}
 		case "jsonl": {
 			return {
+				bytes,
 				push(rows) {
 					for (const row of rows) {
 						const obj: Record<string, unknown> = {};
@@ -163,6 +179,7 @@ export function createChunkedTextExport(
 		case "json": {
 			// 与 toJson 保持一致的 2 空格缩进：每个对象整体缩进一级，对象间逗号分隔。
 			return {
+				bytes,
 				push(rows) {
 					for (const row of rows) {
 						const obj: Record<string, unknown> = {};
@@ -178,6 +195,7 @@ export function createChunkedTextExport(
 			parts.push(`| ${cols.join(" | ")} |`);
 			parts.push(`| ${cols.map(() => "---").join(" | ")} |`);
 			return {
+				bytes,
 				push(rows) {
 					for (const row of rows) {
 						parts.push(`| ${cols.map((c) => cellText(row[c]).replaceAll("|", "\\|")).join(" | ")} |`);
@@ -194,6 +212,7 @@ export function createChunkedTextExport(
 			for (const col of cols) parts.push(`      <th>${escapeHtml(col)}</th>`);
 			parts.push("    </tr>", "  </thead>", "  <tbody>");
 			return {
+				bytes,
 				push(rows) {
 					for (const row of rows) {
 						parts.push("    <tr>");
@@ -229,6 +248,7 @@ export function createChunkedTextExport(
 			};
 			parts.push(`INSERT INTO ${qualifiedTable} (${cols.map(quoteId).join(", ")}) VALUES`);
 			return {
+				bytes,
 				push(rows) {
 					for (const row of rows) {
 						parts.push(`  (${cols.map((c) => literal(row[c])).join(", ")})`);
