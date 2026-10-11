@@ -881,7 +881,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.8",
+      "version": "0.4.11",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -4055,6 +4055,36 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.8.astraviapkg",
             "sha256": "f0d6f72a32f0f0723dfa9b13d787b5d1f64f87b4342200f8e1cdfdbbd1e41b41"
           }
+        },
+        {
+          "version": "0.4.11",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.skills.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.11.astraviapkg",
+            "sha256": "0371b72d0655b62a6db30d5665ebc7ae26a3864ebf69ab3f2288677db160e1a1"
+          }
         }
       ]
     },
@@ -4332,5 +4362,5 @@
     }
   ],
   "version": "0.0.11",
-  "marketplaceVersion": "2026.10.11-6"
+  "marketplaceVersion": "2026.10.11-7"
 }
