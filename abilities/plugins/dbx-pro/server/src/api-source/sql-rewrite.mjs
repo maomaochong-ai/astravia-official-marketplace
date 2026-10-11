@@ -128,9 +128,13 @@ export function tokenize(sql) {
 		}
 		// 中文字段/表名很常见，裸写（不加双引号）必须也算标识符，否则
 		// `select * from 订单` 会因为 token 变成单个 punct 而漏掉重写。
+		// 连字符（-）也允许 —— API 数据源名常见连字符（如 api-users），
+		// rewriteApiTableRefs 只命中已知数据源名，不会误伤减法表达式。
 		if (/[A-Za-z_\u0080-\uFFFF]/.test(ch)) {
 			let j = i;
-			while (j < n && /[A-Za-z0-9_$\u0080-\uFFFF]/.test(text[j])) j += 1;
+			while (j < n && /[A-Za-z0-9_$\u0080-\uFFFF-]/.test(text[j])) j += 1;
+			// 标识符不能以连字符结尾（DuckDB 语法），回退尾部多余的连字符
+			while (j > i && text[j - 1] === "-") j -= 1;
 			tokens.push({ kind: "ident", text: text.slice(i, j) });
 			i = j;
 			continue;
