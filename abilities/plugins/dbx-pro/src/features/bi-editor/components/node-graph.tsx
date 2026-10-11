@@ -17,7 +17,13 @@ export interface NodePos {
 	tone: string; selected?: boolean;
 }
 export type NodeId = "ds1" | "sql" | "line" | "ds2" | "donut" | "out";
-export interface Link { from: NodeId; fromRow: number; to: NodeId; toRow: number; tone: string }
+export interface Link {
+	id: string;
+	from: NodeId; fromRow: number; to: NodeId; toRow: number; tone: string;
+}
+
+let LINK_SEQ = 0;
+function nextLinkId(): string { LINK_SEQ++; return `l${LINK_SEQ}`; }
 
 // ── 初始状态（后续 useState 注入） ──
 const INITIAL_NODES: Record<NodeId, NodePos> = {
@@ -30,11 +36,11 @@ const INITIAL_NODES: Record<NodeId, NodePos> = {
 };
 
 const INITIAL_LINKS: Link[] = [
-	{ from: "ds1", fromRow: 0, to: "sql",   toRow: 0, tone: TONE.table },
-	{ from: "sql", fromRow: 1, to: "line",  toRow: 0, tone: TONE.result },
-	{ from: "ds2", fromRow: 0, to: "donut", toRow: 0, tone: TONE.table },
-	{ from: "line", fromRow: 4, to: "out",  toRow: 0, tone: TONE.chart },
-	{ from: "donut", fromRow: 3, to: "out", toRow: 1, tone: TONE.chart },
+	{ id: nextLinkId(), from: "ds1",   fromRow: 0, to: "sql",   toRow: 0, tone: TONE.table },
+	{ id: nextLinkId(), from: "sql",   fromRow: 1, to: "line",  toRow: 0, tone: TONE.result },
+	{ id: nextLinkId(), from: "ds2",   fromRow: 0, to: "donut", toRow: 0, tone: TONE.table },
+	{ id: nextLinkId(), from: "line",  fromRow: 4, to: "out",  toRow: 0, tone: TONE.chart },
+	{ id: nextLinkId(), from: "donut", fromRow: 3, to: "out",  toRow: 1, tone: TONE.chart },
 ];
 
 const GROUPS = [
@@ -52,6 +58,22 @@ function linkPath(l: Link, nodes: Record<NodeId, NodePos>): string {
 	const y2 = b.y + rowDy(l.toRow);
 	const bend = Math.max(36, (x2 - x1) * 0.5);
 	return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
+}
+
+/** 贝塞尔曲线 t=0.5 的中点坐标（连线中点，用于 hover 按钮定位）。 */
+function linkMid(l: Link, nodes: Record<NodeId, NodePos>): { x: number; y: number } {
+	const a = nodes[l.from], b = nodes[l.to];
+	const x1 = a.x + a.w, y1 = a.y + rowDy(l.fromRow);
+	const x2 = b.x, y2 = b.y + rowDy(l.toRow);
+	const bend = Math.max(36, (x2 - x1) * 0.5);
+	const cx1 = x1 + bend, cy1 = y1;
+	const cx2 = x2 - bend, cy2 = y2;
+	// cubic-bezier t=0.5 闭式
+	const t = 0.5;
+	const mt = 1 - t;
+	const x = mt * mt * mt * x1 + 3 * mt * mt * t * cx1 + 3 * mt * t * t * cx2 + t * t * t * x2;
+	const y = mt * mt * mt * y1 + 3 * mt * mt * t * cy1 + 3 * mt * t * t * cy2 + t * t * t * y2;
+	return { x, y };
 }
 
 const TOOLBOX = [
@@ -103,6 +125,7 @@ export function NodeGraph(): JSX.Element {
 		from: NodeId; fromRow: number; x1: number; y1: number; x2: number; y2: number;
 	} | null>(null);
 	const pendingRef = useRef<{ from: NodeId; fromRow: number } | null>(null);
+	const [hoverLink, setHoverLink] = useState<string | null>(null);
 
 	/** 画布坐标下某节点某行 socket 的绝对位置。side: "r"=output(右), "l"=input(左) */
 	function socketPos(id: NodeId, row: number, side: "l" | "r"): { x: number; y: number } {
@@ -172,7 +195,7 @@ export function NodeGraph(): JSX.Element {
 				if (hit?.type === "input" && hit.nodeId !== pl.from) {
 					setLinks((prev) => {
 						const tone = nodes[pl.from].tone;
-						return [...prev, { from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
+						return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
 					});
 				}
 				pendingRef.current = null;
@@ -213,19 +236,56 @@ export function NodeGraph(): JSX.Element {
 				</div>
 			))}
 
-			{/* SVG 连线 */}
-			<svg className="pointer-events-none absolute inset-0 h-full w-full">
-				{links.map((l, i) => {
+			{/* SVG 连线（hover 高亮 + 中点 × 删除按钮） */}
+			<svg className="absolute inset-0 h-full w-full overflow-visible">
+				{links.map((l) => {
 					const hot = l.from === "line" || l.to === "line";
+					const isHover = hoverLink === l.id;
+					const mid = linkMid(l, nodes);
 					return (
-						<path
-							key={i}
-							d={linkPath(l, nodes)}
-							fill="none"
-							stroke={l.tone}
-							strokeWidth={hot ? 2 : 1.5}
-							opacity={hot ? 0.95 : 0.6}
-						/>
+						<g key={l.id}>
+							{/* 命中用的粗背景线（看不见，但扩了点击区域） */}
+							<path
+								d={linkPath(l, nodes)}
+								fill="none"
+								stroke="transparent"
+								strokeWidth={10}
+								strokeLinecap="round"
+								style={{ pointerEvents: "stroke" }}
+								onPointerEnter={() => setHoverLink(l.id)}
+								onPointerLeave={() => setHoverLink((prev) => prev === l.id ? null : prev)}
+							/>
+							{/* 视觉线 */}
+							<path
+								d={linkPath(l, nodes)}
+								fill="none"
+								stroke={l.tone}
+								strokeWidth={isHover ? 2.5 : (hot ? 2 : 1.5)}
+								strokeLinecap="round"
+								opacity={isHover ? 1 : (hot ? 0.95 : 0.6)}
+								style={{ pointerEvents: "none" }}
+							/>
+							{/* hover 时显示 × 删除按钮 */}
+							{isHover && (
+								<g
+									style={{ pointerEvents: "all" }}
+									onPointerDown={(e) => {
+										e.stopPropagation();
+										setLinks((prev) => prev.filter((p) => p.id !== l.id));
+										setHoverLink(null);
+									}}
+								>
+									<circle cx={mid.x} cy={mid.y} r={10} fill="var(--color-surface-raised)" stroke="var(--color-border-strong)" strokeWidth={1.5} />
+									<circle cx={mid.x} cy={mid.y} r={10} fill="transparent" />
+									<path
+										d={`M ${mid.x - 3.5} ${mid.y - 3.5} L ${mid.x + 3.5} ${mid.y + 3.5} M ${mid.x + 3.5} ${mid.y - 3.5} L ${mid.x - 3.5} ${mid.y + 3.5}`}
+										stroke="var(--color-danger)"
+										strokeWidth={1.6}
+										strokeLinecap="round"
+									/>
+								</g>
+							)}
+						</g>
 					);
 				})}
 			</svg>
