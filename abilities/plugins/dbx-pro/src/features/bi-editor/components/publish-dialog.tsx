@@ -13,6 +13,16 @@ import { Icon } from "./ui/icon";
 import { Chip } from "./ui/chip";
 import { IconButton } from "./ui/icon-button";
 
+/** 从字符串生成稳定 hash（用于永久链接/限期分享 URL，不能每次 render 都变）。 */
+function stableHash(seed: string, len = 8): string {
+	let h = 2166136261 >>> 0;
+	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+	let out = "";
+	for (let i = 0; i < len; i++) { h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16); out += chars[h % chars.length]; }
+	return out;
+}
+
 export function PublishDialog({
 	pageName, version = "v1", pages = [], pendingRuns = 0,
 	onClose, onPublish,
@@ -90,7 +100,7 @@ export function PublishDialog({
 						</div>
 						<div className="mt-1 flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
 							<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-accent">
-								bi.local/d/{pageName.toLowerCase().replace(/\s+/g, "-")}-{Math.random().toString(36).slice(2, 6)}
+								bi.local/d/{pageName.toLowerCase().replace(/\s+/g, "-")}-{stableHash(pageName, 6)}
 							</span>
 							<button type="button"
 								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
@@ -114,7 +124,7 @@ export function PublishDialog({
 						</div>
 						<div className="mt-1 flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
 							<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-surface-foreground">
-								bi.local/s/{Math.random().toString(36).slice(2, 10)}
+								bi.local/s/{stableHash(`${pageName}-share`, 10)}
 							</span>
 							<button type="button"
 								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">

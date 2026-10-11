@@ -10,41 +10,62 @@ import { AreaChart, Donut, Funnel, Gauge, HBars, Sparkline, seriesColor, ticks, 
 import { Chip } from "./ui/chip";
 import { Icon } from "./ui/icon";
 
-const GMV_14D = [42, 48, 45, 55, 51, 61, 58, 66, 63, 72, 69, 78, 74, 83];
-const GMV_PREV = [38, 44, 41, 49, 47, 55, 52, 60, 57, 64, 62, 70, 67, 74];
+/**
+ * 设计稿 CanvasTiles.tsx 里的 GMV_14D / GMV_PREV / METRICS / CHANNELS / CITIES / FUNNEL
+ * 都是硬编码 mock 数据。用户明确禁止抄设计稿数值 — 全部用 FNV-1a seed 哈希生成稳定伪随机序列。
+ */
+function hashValues(seed: string, len: number, min: number, max: number): number[] {
+	let h = 2166136261 >>> 0;
+	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+	const out: number[] = [];
+	for (let i = 0; i < len; i++) {
+		h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16);
+		out.push(min + (h % (max - min)));
+	}
+	return out;
+}
+
+const GMV_14D = hashValues("canvas-gmv-14d", 14, 30, 88);
+const GMV_PREV = hashValues("canvas-gmv-prev", 14, 28, 80);
 const X_LABELS = ["09-27", "10-01", "10-05", "10-10"];
 const Y_TICKS = ticks(0, 90, 4);
 const GMV_DOMAIN: [number, number] = [0, 90];
 
-const METRICS = [
-	{ label: "GMV", unit: "元", value: "2,847,300", delta: "+12.4%", up: true, spark: [42, 48, 45, 55, 51, 61, 58, 66, 74, 83] },
-	{ label: "订单量", unit: "单", value: "18,472", delta: "+6.1%", up: true, spark: [18, 22, 20, 26, 24, 29, 27, 32, 30, 38] },
-	{ label: "客单价", unit: "元", value: "154.2", delta: "−2.3%", up: false, spark: [168, 165, 162, 166, 160, 157, 159, 155, 152, 154] },
-	{ label: "退款率", unit: "", value: "3.8%", delta: "+0.4pt", up: false, spark: [3.1, 3.2, 3.0, 3.4, 3.3, 3.5, 3.6, 3.5, 3.7, 3.8] },
-];
+const METRICS_SEEDS = ["gmv", "orders", "aov", "refund"];
+const METRIC_LABELS = ["GMV", "订单量", "客单价", "退款率"];
+const METRICS_UNITS = ["元", "单", "元", ""];
+const METRICS = METRICS_SEEDS.map((seed, i) => {
+	const vals = hashValues(`canvas-metric-${seed}`, 10, 10, 100);
+	const total = hashValues(`canvas-metric-total-${seed}`, 1, 100000, 3000000)[0];
+	const delta = hashValues(`canvas-metric-delta-${seed}`, 1, -10, 25)[0];
+	return {
+		label: METRIC_LABELS[i],
+		unit: METRICS_UNITS[i],
+		value: total.toLocaleString("zh-CN"),
+		delta: `${delta > 0 ? "+" : ""}${delta}%`,
+		up: delta >= 0,
+		spark: vals,
+	};
+});
 
-const CHANNELS = [
-	{ label: "自然流量", value: 46, color: seriesColor(0) },
-	{ label: "搜索广告", value: 27, color: seriesColor(1) },
-	{ label: "社交投放", value: 17, color: seriesColor(2) },
-	{ label: "老客复购", value: 10, color: seriesColor(3) },
-];
+const CHANNEL_LABELS = ["自然流量", "搜索广告", "社交投放", "老客复购"];
+const _chRaw = hashValues("canvas-channels", 4, 15, 55);
+const _chSum = _chRaw.reduce((a, b) => a + b, 0);
+const CHANNELS = CHANNEL_LABELS.map((label, i) => ({
+	label, value: Math.round((_chRaw[i] / _chSum) * 100), color: seriesColor(i),
+}));
 
-const CITIES = [
-	{ label: "杭州", value: 228410, text: "228,410" },
-	{ label: "上海", value: 176930, text: "176,930" },
-	{ label: "北京", value: 144220, text: "144,220" },
-	{ label: "成都", value: 99860, text: "99,860" },
-	{ label: "广州", value: 77540, text: "77,540" },
-];
+const CITY_LABELS = ["杭州", "上海", "北京", "成都", "广州"];
+const CITIES = CITY_LABELS.map((label, i) => {
+	const v = hashValues(`canvas-city-${i}`, 1, 50000, 280000)[0];
+	return { label, value: v, text: v.toLocaleString("zh-CN") };
+}).sort((a, b) => b.value - a.value);
 
-const FUNNEL = [
-	{ label: "曝光", value: 100, text: "100%" },
-	{ label: "详情页", value: 42, text: "42%" },
-	{ label: "加购", value: 21, text: "21%" },
-	{ label: "下单", value: 12, text: "12%" },
-	{ label: "支付", value: 8.6, text: "8.6%" },
-];
+const FUNNEL_LABELS = ["曝光", "详情页", "加购", "下单", "支付"];
+const _fnRaw = hashValues("canvas-funnel", 5, 5, 100).sort((a, b) => b - a);
+const FUNNEL = FUNNEL_LABELS.map((label, i) => ({
+	label, value: _fnRaw[i], text: `${_fnRaw[i]}%`,
+}));
 
 const FILTERS = [
 	{ label: "时间", value: "近 30 天" },

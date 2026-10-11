@@ -89,16 +89,32 @@ const TOOLBOX = [
 	{ icon: "icon-[lucide--ellipsis]", title: "更多" },
 ];
 
-/** GMV 14 天数据（模拟）。 */
-const GMV = [42, 48, 45, 55, 51, 61, 58, 66, 63, 72, 69, 78, 74, 83];
+/**
+ * hashValues(seed, len) — FNV-1a 生成稳定伪随机整数数组。
+ * 不抄设计稿 GMV mock 数据（[42,48,45,55,51,…] 是设计稿的硬编码，用户明确禁止），
+ * 而是用 seed 哈希出自己的稳定序列，保证每次打开画布图表形状一致但数值来源独立。
+ */
+function hashValues(seed: string, len = 14, min = 30, max = 85): number[] {
+	let h = 2166136261 >>> 0;
+	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+	const out: number[] = [];
+	for (let i = 0; i < len; i++) {
+		h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16);
+		out.push(min + (h % (max - min)));
+	}
+	return out;
+}
 
-/** 渠道构成占比。 */
-const CHANNELS = [
-	{ value: 46, color: SERIES[0] },
-	{ value: 27, color: SERIES[1] },
-	{ value: 17, color: SERIES[2] },
-	{ value: 10, color: SERIES[3] },
-];
+/** GMV 14 天数据（稳定伪随机，不抄设计稿）。 */
+const GMV = hashValues("dbx-pro-nodegraph-gmv", 14, 30, 88);
+
+/** 渠道构成占比（稳定伪随机，4 项总和 100）。 */
+function hashSegments(seed: string, count: number): { value: number; color: string }[] {
+	const raw = hashValues(seed, count, 10, 40);
+	const sum = raw.reduce((a, b) => a + b, 0);
+	return raw.map((v, i) => ({ value: Math.round((v / sum) * 100), color: SERIES[i % SERIES.length] }));
+}
+const CHANNELS = hashSegments("dbx-pro-nodegraph-channels", 4);
 
 export interface NodeGraphProps {
 	nodes: Record<NodeId, NodePos>;

@@ -81,11 +81,21 @@ const START = [
 	{ icon: "icon-[lucide--scroll-text]", title: "粘一条 SQL", note: "已有 SQL 的话，贴进来就是数据集" },
 ];
 
-const PREVIEW: Record<string, number[]> = {
-	area: [42, 48, 45, 55, 51, 61, 58, 66, 63, 72, 69, 78, 74, 83],
-	bars: [36, 52, 44, 68, 58, 76, 63],
-	donut: [38, 27, 19, 16],
-};
+const PREVIEW = (() => {
+	function hv(seed: string, len: number, min: number, max: number): number[] {
+		let h = 2166136261 >>> 0;
+		for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+		const out: number[] = [];
+		for (let i = 0; i < len; i++) { h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16); out.push(min + (h % (max - min))); }
+		return out;
+	}
+	const _area = hv("bigscreen-preview-area", 14, 28, 88);
+	const _bars = hv("bigscreen-preview-bars", 7, 30, 82);
+	const _donutRaw = hv("bigscreen-preview-donut", 4, 10, 50);
+	const _donutSum = _donutRaw.reduce((a, b) => a + b, 0);
+	const _donut = _donutRaw.map((v) => Math.round((v / _donutSum) * 100));
+	return { area: _area, bars: _bars, donut: _donut };
+})();
 
 function Preview({ kind }: { kind: string }) {
 	if (kind === "bars") return <Bars values={PREVIEW.bars} className="h-full" tone="bg-[#10b981]" />;

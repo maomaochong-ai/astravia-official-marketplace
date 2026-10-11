@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/dbx-pro",
-  "version": "0.4.30",
+  "version": "0.4.31",
   "private": true,
   "type": "module",
   "scripts": {
@@ -42,5 +42,8 @@
     "pg": "^8.23.1",
     "recharts": "^3.10.1",
     "sql-formatter": "^15.8.0"
-  }
+  },
+  "styles": [
+    "dist/style.css"
+  ]
 }

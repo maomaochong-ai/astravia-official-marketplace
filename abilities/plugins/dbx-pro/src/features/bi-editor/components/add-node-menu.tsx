@@ -70,6 +70,7 @@ const GROUPS: MenuGroup[] = [
 
 const MENU_W = 248;   // 主菜单宽度（与设计稿一致）
 const VARIANT_W = 176; // 变体子菜单宽度
+const MENU_HEADER_H = 64; // 标题栏 h-8(32) + 搜索栏 h-8(32) — 菜单主体从 y+64 起
 const ITEM_H = 28;     // 每个菜单项高 h-7 = 28px
 const GROUP_HEADER_H = 20; // 分组标题高
 
@@ -172,7 +173,7 @@ export function AddNodeMenu({ x, y, onPick, onClose }: Props): JSX.Element {
 			{showVariantPanel && expandedItem && (
 				<div
 					className="absolute z-30 overflow-hidden rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]"
-					style={{ left: x + MENU_W + 8, top: y + expandedOffset - 4, width: VARIANT_W }}
+					style={{ left: x + MENU_W + 8, top: y + MENU_HEADER_H + expandedOffset - 4, width: VARIANT_W }}
 				>
 					<div className="flex h-8 items-center gap-2 border-b border-border bg-background px-2.5">
 						<Icon name={expandedItem.icon} className="size-3.5 shrink-0 text-accent" />
