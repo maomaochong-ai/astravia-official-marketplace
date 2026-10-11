@@ -7,11 +7,10 @@
  * 2. dbx_chart_collection — 打包看板/大屏（ECharts charts[] → HTML 页面）
  *    渲染引擎已从 Chart.js 切换为 ECharts（ADR-0010b）。
  *
- * 3. dbx_bigscreen_builder — 大屏紧凑 spec → ECharts option + HTML
- *    对等实现 AI skill spec_builder.py（ADR-0010a）。
+ * 3. dbx_execute_write — 写操作工具（INSERT/UPDATE/DELETE，自动事务 + 影响行数校验）。
  *
- * 4. dbx_report_builder — Jimureport 对等实现
- *    SQL + 参数化 + 多级表头 → HTML 报表（ADR-0010a）。
+ * 注：大屏/报表编译已统一走 server 端 /api/bigscreen/compile，
+ * 前端不做本地编译（Phase C1 后彻底移除了 dbx-bigscreen-builder / dbx-report-builder 两个死代码模块）。
  */
 
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
@@ -26,8 +25,3 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		ctx.agent.registerTool(createDbxChartCollectionTool()),
 	];
 }
-
-// 注意：dbx_bigscreen_builder 和 dbx_report_builder 目前是 TypeScript 纯函数模块，
-// 不是直接注册到 Agent 的 PluginAgentToolRegistration（与 dbx_chart_collection 不同）。
-// 它们被 dbx_chart_collection 和前端 UI 内部调用。
-// 如果后续需要暴露为独立 Agent 工具，按 dbx_chart_collection 的 createDbxChartCollectionTool 模式注册。

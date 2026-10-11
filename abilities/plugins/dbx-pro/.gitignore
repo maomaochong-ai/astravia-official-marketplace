@@ -13,3 +13,4 @@ dev-harness.html
 
 # 外部开源项目调研材料（仅本地留档，不进 Git / 不进制品）
 docs/research/
+.dbx-data/

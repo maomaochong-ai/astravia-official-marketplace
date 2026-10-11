@@ -1,12 +1,128 @@
-/* Shared color system for this design document: Tailwind v4 @theme tokens,
- * used by every frame. Reference them as utilities (bg-primary,
- * text-surface-foreground, …); edit here to reskin the whole document. */
+/* ui-mock/dbx-bi-editor · design tokens
+ * System: GitHub — a developer's night desk. Dimmed navy-black panels, quiet
+ * 1px borders, green for "go" and blue for "link". System font stack only,
+ * uniform 6px radius, flat surfaces; the border carries the structure.
+ * Palette per DESIGN.md "Color roles" (surface #0d1117 / raised #161b22).
+ *
+ * Same token set as dbx-pro.astravia-design: this mock is a second view of the
+ * same product (adr-0009 §2.2 仪表板编辑态), so the chrome must not drift.
+ * The three canvas levels — background (window) / surface (the dashboard
+ * artifact) / surface-raised (bars, rails, cards) — are what separate editor
+ * chrome from the artifact; nothing else needs a new token. */
+
 @theme {
-	--color-primary: #4f46e5;
+	/* ---- typefaces · system stack only -------------------------------- */
+	--font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		"PingFang SC", "Microsoft YaHei", sans-serif;
+	--font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+		"PingFang SC", "Microsoft YaHei", sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+		"Liberation Mono", "Courier New", monospace;
+
+	/* ---- ground: the three canvas levels ------------------------------ */
+	--color-background: #010409; /* window chrome · deepest inset        */
+	--color-surface: #0d1117; /* page and content canvas                 */
+	--color-surface-raised: #161b22; /* bars, rails, cards, code blocks  */
+	--color-surface-sunken: #161b22; /* wells, grid headers, chip fills  */
+	--color-surface-foreground: #e6edf3;
+	--color-muted: #8b949e;
+	--color-faint: #6e7681; /* disabled / locked only                     */
+	--color-border: #30363d;
+	--color-border-strong: #484f58;
+	--color-scrim: rgb(1 4 9 / 0.76);
+
+	/* ---- primary green: actions and success, never decoration --------- */
+	--color-primary: #238636;
 	--color-primary-foreground: #ffffff;
-	--color-surface: #f8fafc;
-	--color-surface-foreground: #0f172a;
-	--color-muted: #64748b;
-	--color-accent: #f59e0b;
-	--color-danger: #ef4444;
+
+	/* ---- accent blue: links, mentions, counters, focus ---------------- */
+	--color-accent: #58a6ff;
+	--color-accent-foreground: #0d1117;
+	--color-accent-soft: rgb(56 139 253 / 0.15);
+	--color-accent-emphasis: #1f6feb;
+
+	/* ---- semantic, never the accent ----------------------------------- */
+	--color-success: #3fb950;
+	--color-success-soft: rgb(63 185 80 / 0.15);
+	--color-warning: #d29922;
+	--color-warning-soft: rgb(210 153 34 / 0.15);
+	--color-danger: #f85149;
+	--color-danger-soft: rgb(248 81 73 / 0.15);
+	--color-ai: #a371f7;
+	--color-ai-soft: rgb(163 113 247 / 0.15);
+
+	/* ---- generated artefacts: the 大屏 canvas -------------------------- */
+	--color-screen: #0d1117;
+	--color-screen-raised: #161b22;
+	--color-screen-foreground: #e6edf3;
+	--color-screen-muted: #8b949e;
+	--color-screen-line: #30363d;
+
+	/* ---- chart series: one step out from the accent ------------------- */
+	--color-series-1: #58a6ff;
+	--color-series-2: #3fb950;
+	--color-series-3: #a371f7;
+	--color-series-4: #d29922;
+
+	/* ---- neutral wash behind counters and inline code ----------------- */
+	--color-neutral-muted: rgb(110 118 129 / 0.4);
+
+	/* ---- shape: one radius nearly everywhere, dialogs the exception --- */
+	--radius-chip: 6px;
+	--radius-control: 6px;
+	--radius-card: 6px;
+	--radius-sheet: 12px;
+
+	/* ---- elevation: menus and dialogs only, everything else is flat --- */
+	--shadow-popover: 0 8px 24px rgb(1 4 9 / 0.72);
+	--shadow-sheet: 0 24px 64px rgb(1 4 9 / 0.88);
+}
+
+/* The design engine ships no preflight, and native control chrome (2px outset
+ * borders, buttonface fills, Arial metrics, select arrows) would otherwise
+ * show through every button and field. This is the minimum reset that keeps a
+ * control's appearance owned by utilities. */
+@layer base {
+	button,
+	input,
+	textarea,
+	select {
+		margin: 0;
+		border: 0;
+		padding: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		letter-spacing: inherit;
+		text-align: inherit;
+	}
+	button {
+		cursor: pointer;
+	}
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6,
+	p,
+	figure,
+	blockquote {
+		margin: 0;
+		font-size: inherit;
+		font-weight: inherit;
+	}
+	ul,
+	ol {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	table {
+		border-collapse: collapse;
+		border-spacing: 0;
+	}
+	svg {
+		display: block;
+	}
 }

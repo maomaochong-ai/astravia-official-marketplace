@@ -2,11 +2,124 @@
 	"version": 1,
 	"type": "astravia-design",
 	"canvas": {
-		"x": 0,
-		"y": 0,
-		"zoom": 1
+		"zoom": 0.8017607608247478,
+		"x": -5192.71322054235,
+		"y": 106.4727715916398
 	},
-	"frames": [],
+	"frames": [
+		{
+			"id": "back-button",
+			"file": "frames/back-button.tsx",
+			"x": 1472,
+			"y": 0,
+			"width": 1488,
+			"height": 1000,
+			"title": "BI · 顶栏返回按钮",
+			"meta": {
+				"width": 1440,
+				"height": 820,
+				"title": "BI · 顶栏返回按钮"
+			}
+		},
+		{
+			"id": "dashboard",
+			"file": "frames/dashboard.tsx",
+			"x": 3040,
+			"y": 0,
+			"width": 1480,
+			"height": 1000,
+			"title": "BI · 看板产物（运行结果）",
+			"meta": {
+				"width": 1440,
+				"height": 900,
+				"title": "BI · 看板产物（运行结果）"
+			}
+		},
+		{
+			"id": "editor",
+			"file": "frames/editor.tsx",
+			"x": 0,
+			"y": 0,
+			"width": 1440,
+			"height": 1000,
+			"title": "BI · 仪表板编辑态（节点式）",
+			"meta": {
+				"width": 1440,
+				"height": 1000,
+				"title": "BI · 仪表板编辑态（节点式）"
+			}
+		},
+		{
+			"id": "ta",
+			"file": "frames/ta.tsx",
+			"x": 4600,
+			"y": 0,
+			"width": 1440,
+			"height": 1000,
+			"title": "T · 节点库",
+			"meta": {
+				"width": 1440,
+				"height": 1000,
+				"title": "T · 节点库"
+			}
+		},
+		{
+			"id": "tb",
+			"file": "frames/tb.tsx",
+			"x": 6120,
+			"y": 0,
+			"width": 891,
+			"height": 1000,
+			"title": "T · 节点画布",
+			"meta": {
+				"width": 880,
+				"height": 900,
+				"title": "T · 节点画布"
+			}
+		},
+		{
+			"id": "tc",
+			"file": "frames/tc.tsx",
+			"x": 7080,
+			"y": 0,
+			"width": 360,
+			"height": 1000,
+			"title": "T · 节点参数",
+			"meta": {
+				"width": 360,
+				"height": 1000,
+				"title": "T · 节点参数"
+			}
+		},
+		{
+			"id": "td",
+			"file": "frames/td.tsx",
+			"x": 7520,
+			"y": 0,
+			"width": 1440,
+			"height": 200,
+			"title": "T · 画布头与状态栏",
+			"meta": {
+				"width": 1440,
+				"height": 200,
+				"title": "T · 画布头与状态栏"
+			}
+		},
+		{
+			"id": "te",
+			"file": "frames/te.tsx",
+			"x": 9040,
+			"y": 0,
+			"width": 1440,
+			"height": 900,
+			"title": "T · 磁贴",
+			"meta": {
+				"width": 1440,
+				"height": 900,
+				"title": "T · 磁贴"
+			}
+		}
+	],
 	"defaultFrameSize": {
 		"width": 1440,
 		"height": 1000

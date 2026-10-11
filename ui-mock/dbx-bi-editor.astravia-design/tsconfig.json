@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"lib": ["DOM", "DOM.Iterable", "ES2022"],
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
+		"strict": false,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"isolatedModules": true,
+		"noEmit": true,
+		"resolveJsonModule": true
+	},
+	"include": ["components/**/*.tsx", "frames/**/*.tsx", "*.tsx", "*.ts"],
+	"exclude": ["node_modules"]
+}
