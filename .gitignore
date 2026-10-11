@@ -8,3 +8,5 @@ abilities/plugins/*/dist/
 abilities/plugins/*/release/
 dbx-pro.astravia-design
 design-resources/
+__pycache__/
+*.pyc
