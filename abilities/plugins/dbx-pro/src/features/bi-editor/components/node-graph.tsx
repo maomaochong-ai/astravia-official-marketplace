@@ -162,6 +162,12 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 							if (obj && typeof obj === "object" && "nodes" in obj) {
 								setNodes(obj.nodes);
 								setLinks(obj.links ?? []);
+								// 重置 nodeSeqRef 到模板内最大数字后缀 + 1，防止后续拖入冲突
+								const maxExisting = Object.keys(obj.nodes).reduce((max, id) => {
+									const m = id.match(/^n(\d+)$/);
+									return m ? Math.max(max, parseInt(m[1], 10)) : max;
+								}, 100);
+								nodeSeqRef.current = maxExisting;
 							}
 						} catch { /* ignore bad template JSON */ }
 					});
@@ -301,6 +307,15 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 			window.removeEventListener("pointerup", onUp);
 		};
 	}, [nodes]);
+
+	// ESC 关闭右键菜单
+	useEffect(() => {
+		if (!contextMenu) return;
+		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setContextMenu(null); };
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [contextMenu]);
+
 	return (
 		<div
 			ref={canvasRef}
