@@ -7,7 +7,7 @@
  * 拖拽自己实现（不引外部依赖）：pointerdown 记录起点与两侧当前像素宽，
  * pointermove 按像素夹逼，保证中栏始终留有可用宽度。
  * 首次挂载按容器实测宽度给设计稿默认宽；宿主面板过窄时退回比例分配。
- * 用户拖过之后改用像素值，容器尺寸变化不再强制缩放，保留用户的设定。
+ * 用户拖过之后改用像素值；容器变窄时只在渲染期把两栏夹回容器内，不改写用户的设定。
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
@@ -29,6 +29,39 @@ const DESIGN_LEFT = 248;
 const DESIGN_RIGHT = 300;
 /** 宿主面板窄于此宽度时改用比例分配，避免中栏被挤没。 */
 const NARROW_BREAKPOINT = 900;
+/** 左栏收起后退化成的图标列宽度（设计稿 ConnectionTree 的收起态）。 */
+const LEFT_COLLAPSED = 36;
+/** 两条 1px 发丝分隔线占用的宽度。 */
+const SPLITBAR_TOTAL = 2;
+
+/** 各栏像素约束（中栏始终保留，分隔线无法拖到不合理的大小） */
+const MIN_LEFT = 180;
+const MAX_LEFT_RATIO = 0.4;
+const MIN_RIGHT = 260;
+const MAX_RIGHT_RATIO = 0.5;
+const MIN_MID = 344;
+
+/**
+ * 把左右两栏收进「容器宽 − 中栏最小宽」。
+ *
+ * 拖拽只夹住了被拖的一侧，另一侧仍是会话里存下的旧宽度，两者相加就可能撑破容器
+ * （三栏之和大于容器宽，根节点的 overflow-hidden 会把右栏整块切掉）。这里在渲染期统一收口：
+ * 先按各自可让出的余量等比例退让；容器连两条最小宽度都装不下时整体等比压缩，中栏优先。
+ */
+function fitWidths(total: number, left: number, right: number, stub = 0): { left: number; right: number } {
+	const available = total - stub - SPLITBAR_TOTAL - MIN_MID;
+	if (left + right <= 0 || left + right <= available) return { left, right };
+	const leftRoom = Math.max(0, left - MIN_LEFT);
+	const rightRoom = Math.max(0, right - MIN_RIGHT);
+	const room = leftRoom + rightRoom;
+	const over = left + right - available;
+	if (room > 0 && over <= room) {
+		const cut = Math.round((over * leftRoom) / room);
+		return { left: left - cut, right: right - (over - cut) };
+	}
+	const scale = Math.max(0, available) / (left + right);
+	return { left: Math.round(left * scale), right: Math.round(right * scale) };
+}
 
 function defaultWidths(total: number): { left: number; right: number } {
 	if (total > 0 && total < NARROW_BREAKPOINT) {
@@ -44,13 +77,6 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 	const dragRef = useRef<DragState | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [dragging, setDragging] = useState<"left" | "right" | null>(null);
-
-	// 各栏像素约束（中栏始终保留，分隔线无法拖到不合理的大小）
-	const MIN_LEFT = 180;
-	const MAX_LEFT_RATIO = 0.4;
-	const MIN_RIGHT = 260;
-	const MAX_RIGHT_RATIO = 0.5;
-	const MIN_MID = 344;
 
 	const onPointerMove = useCallback((e: PointerEvent) => {
 		const drag = dragRef.current;
@@ -93,8 +119,15 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 		if (!el) return;
 		const total = el.getBoundingClientRect().width;
 		const { left: defLeft, right: defRight } = defaultWidths(total);
-		const curLeft = leftW || defLeft;
-		const curRight = rightW || defRight;
+		// 拖拽以夹取后的实际宽度为基准，两侧之和不会超过容器，拖动才不会跳。
+		const { left: fittedLeft, right: fittedRight } = fitWidths(
+			total,
+			leftW || defLeft,
+			rightW || defRight,
+			leftCollapsed ? LEFT_COLLAPSED : 0,
+		);
+		const curLeft = leftCollapsed ? LEFT_COLLAPSED : fittedLeft;
+		const curRight = fittedRight;
 		if (!leftW) setLeftW(curLeft);
 		if (!rightW) setRightW(curRight);
 		dragRef.current = {
@@ -150,8 +183,16 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 	}, [widthsHydrated, dragging, leftW, rightW]);
 
 	const defaults = defaultWidths(baseWidth);
-	const effectiveLeft = leftW || defaults.left;
-	const effectiveRight = rightW || defaults.right;
+	// 容器变窄（宿主面板收缩、会话里存着旧宽度）时把两栏夹回容器内：中栏永远不被挤没。
+	// 只夹渲染值、不回写 state，容器重新变宽时用户的拖拽设定仍然生效。
+	const fitted = fitWidths(
+		baseWidth,
+		leftW || defaults.left,
+		rightW || defaults.right,
+		leftCollapsed ? LEFT_COLLAPSED : 0,
+	);
+	const effectiveLeft = leftCollapsed ? LEFT_COLLAPSED : fitted.left;
+	const effectiveRight = fitted.right;
 
 	return (
 		<div ref={containerRef} className="relative flex min-h-0 flex-1 overflow-hidden bg-surface">

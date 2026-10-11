@@ -397,6 +397,9 @@
 .dbx-settings-nav .dbx-category-nav-item {
 	margin: 0;
 }
+
+/* 分组副标题（连接编辑器 nav 分组注释） */
+.dbx-settings-nav__subtitle {
 	padding: 8px 8px 4px;
 	font-size: 11px;
 	letter-spacing: 0.06em;
