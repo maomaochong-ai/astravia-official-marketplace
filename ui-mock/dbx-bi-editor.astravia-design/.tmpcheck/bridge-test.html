@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>bridge test</title>
+</head>
+<body>
+  <h1>design bridge reproduction</h1>
+  <iframe id="f" src="http://127.0.0.1:53900/back-button" width="1440" height="1000"></iframe>
+  <pre id="out">start</pre>
+  <script>
+    const out = document.getElementById('out');
+    const seen = { messages: 0, camelReady: 0, types: [], guardThrows: 0, guardThrewOnce: false, fixedGuardReady: 0 };
+
+    function log(line) {
+      out.textContent += '\n' + line;
+      console.log('TEST ' + line);
+    }
+
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data) return;
+      seen.messages++;
+      if (!seen.types.includes(data.type)) seen.types.push(data.type);
+      log('msg#' + seen.messages + ' type=' + data.type + ' payload=' +
+        JSON.stringify(Object.assign({}, data, { astraviaDesign: undefined, payload: undefined })).slice(0, 200));
+
+      // (1) does the frame actually post the camelCase-keyed message?
+      if (data.astraviaDesign === true && data.type === 'ready') {
+        seen.camelReady++;
+        log('frame -> parent ready: frameId=' + data.frameId);
+      }
+
+      // (2) the canvas guard, copied verbatim from CanvasTab-*.js:
+      //     if(!r||r.astravia-design!==!0)return;
+      try {
+        if (!data || data.astravia-design !== true) {
+          /* canvas would drop the message here */
+        }
+      } catch (err) {
+        seen.guardThrows++;
+        if (!seen.guardThrewOnce) {
+          seen.guardThrewOnce = true;
+          log('canvas guard THREW: ' + err.name + ': ' + err.message);
+        }
+      }
+
+      // (3) the corrected guard (what the engine clearly intends)
+      if (data.astraviaDesign === true && data.type === 'ready') {
+        seen.fixedGuardReady++;
+      }
+    });
+
+    setTimeout(function () {
+      log('SUMMARY ' + JSON.stringify(seen));
+    }, 4000);
+  </script>
+</body>
+</html>

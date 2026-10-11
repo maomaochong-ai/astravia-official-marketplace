@@ -1,0 +1,1 @@
+[1012/004521.241387:INFO:CONSOLE:17] "TEST SUMMARY {"messages":0,"camelReady":0,"types":[],"guardThrows":0,"guardThrewOnce":false,"fixedGuardReady":0}", source: http://127.0.0.1:8931/bridge-test.html (17)

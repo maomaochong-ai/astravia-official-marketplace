@@ -30,7 +30,7 @@ export function EditorStatusBar({ dirty = false, nodeCount = 0, linkCount = 0, l
 						<span className="font-mono tabular-nums text-faint">{lastRun}</span>
 					</>
 				)}
-				<span className="text-faint">v0.4.18</span>
+				<span className="text-faint">dbx-pro BI · v0.4.26</span>
 			</span>
 		</div>
 	);
