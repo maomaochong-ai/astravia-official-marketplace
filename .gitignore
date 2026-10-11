@@ -10,3 +10,7 @@ dbx-pro.astravia-design
 design-resources/
 __pycache__/
 *.pyc
+
+# Test outputs (build engine / script artifacts)
+output/
+.pycache__/
