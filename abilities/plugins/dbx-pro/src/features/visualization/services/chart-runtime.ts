@@ -6,10 +6,10 @@
  * `<script>` 会在 defaults 第一行抛错，所有画布空白且没有任何提示。
  * 所以在消费端统一内联：历史产物（HTML 里仍带 CDN 标签）也会随之修复，无需迁移数据。
  *
- * 库源码与升级方式见 ../vendor/README.md。
+ * 库源码与升级方式见 ../../../shared/vendor/README.md。
  */
 
-import chartUmd from "../vendor/chart.umd.js?raw";
+import chartUmd from "../../../shared/vendor/chart.umd.js?raw";
 
 /** 产物里唯一的 Chart.js 运行库引用：<script src="https://…/chart.umd(.min)?.js"></script> */
 const CHART_CDN_SCRIPT = /<script\s+src="https:\/\/[^"]*\/chart\.umd(?:\.min)?\.js"[^>]*>\s*<\/script>/;
