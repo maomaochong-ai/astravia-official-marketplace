@@ -1,0 +1,29 @@
+{
+  "id": "bigscreen-xiangshan-park",
+  "name": "香山公园客流大数据",
+  "industry": "旅游",
+  "layout": "left-center-right",
+  "description": "景区客流监控大屏：左地图/中 KPI 行 + 柱图/右排行榜 + 折线",
+  "thumbnailPrompt": "深色科技风大屏，左侧中国地图显示城市连线，中间是大数字 KPI 和柱状图，右侧是排行条形图和折线图",
+  "palette": "tech",
+  "spec": {
+    "page": { "name": "香山公园客流大数据", "theme": "dark" },
+    "palette": "tech",
+    "components": [
+      { "type": "JText", "text": "数据更新：2026-10-11 15:30", "style": "subtitle" },
+      { "type": "JStatsSummary", "title": "今日客流统计", "variant": "1", "items": [
+        { "label": "总客流", "value": "29,500", "suffix": "人" },
+        { "label": "同比", "value": "+12.5%", "trend": "+12.5%" },
+        { "label": "峰值", "value": "3,200", "suffix": "人/小时" }
+      ] },
+      { "type": "JBar", "title": "各区域客流", "data": [{ "name": "东门", "value": 12000 }, { "name": "西门", "value": 8500 }, { "name": "北门", "value": 3200 }, { "name": "南门", "value": 5800 }] },
+      { "type": "JScrollRankingBoard", "title": "热门景点 TOP5", "rowNum": 5, "data": [{ "name": "鬼见愁", "value": 8520 }, { "name": "香炉峰", "value": 7200 }, { "name": "玉华岫", "value": 5100 }, { "name": "眼镜湖", "value": 3800 }, { "name": "勤政殿", "value": 2900 }] },
+      { "type": "JGauge", "title": "客流饱和度", "value": 78, "max": 100 },
+      { "type": "JPie", "title": "年龄分布", "data": [{ "name": "18-25", "value": 35 }, { "name": "26-40", "value": 45 }, { "name": "41-60", "value": 18 }, { "name": "60+", "value": 2 }] }
+    ]
+  },
+  "mockDataRules": [
+    { "targetComponent": "JScrollRankingBoard", "generator": "top-n", "rowNum": 5, "min": 500, "max": 15000 },
+    { "targetComponent": "JGauge", "generator": "random-range", "min": 30, "max": 95 }
+  ]
+}

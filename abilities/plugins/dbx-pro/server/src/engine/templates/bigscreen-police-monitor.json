@@ -1,0 +1,27 @@
+{
+  "id": "bigscreen-police-monitor",
+  "name": "警务监控系统",
+  "industry": "警务",
+  "layout": "left-center-right",
+  "palette": "tech",
+  "spec": {
+    "page": { "name": "警务监控系统", "theme": "dark" },
+    "palette": "tech",
+    "components": [
+      { "type": "JStatsSummary", "title": "今日警情", "variant": "2", "items": [
+        { "label": "总警情", "value": "1,248", "suffix": "起" },
+        { "label": "已处理", "value": "986", "suffix": "起" },
+        { "label": "待处理", "value": "262", "suffix": "起" },
+        { "label": "处理率", "value": "79.0%", "suffix": "" }
+      ] },
+      { "type": "JBar", "title": "案件类型分布", "data": [{ "name": "盗窃", "value": 320 }, { "name": "纠纷", "value": 280 }, { "name": "交通", "value": 250 }, { "name": "治安", "value": 180 }, { "name": "其他", "value": 218 }] },
+      { "type": "JScrollRankingBoard", "title": "高发区域 TOP10", "rowNum": 8, "data": [{ "name": "朝阳区", "value": 285 }, { "name": "海淀区", "value": 256 }, { "name": "丰台区", "value": 198 }, { "name": "东城区", "value": 165 }] },
+      { "type": "JLine", "title": "24小时警情趋势", "data": [{ "name": "0时", "value": 12 }, { "name": "6时", "value": 8 }, { "name": "12时", "value": 45 }, { "name": "18时", "value": 52 }, { "name": "22时", "value": 38 }] },
+      { "type": "JGauge", "title": "在逃人员抓获率", "value": 92, "max": 100 }
+    ]
+  },
+  "mockDataRules": [
+    { "targetComponent": "JScrollRankingBoard", "generator": "top-n", "rowNum": 10, "min": 100, "max": 500 },
+    { "targetComponent": "JLine", "generator": "time-series", "count": 24, "min": 5, "max": 60 }
+  ]
+}

@@ -36,7 +36,8 @@ export interface DbxChartCollectionInput {
 	filters?: ChartFilter[];
 }
 
-const CHARTJS_CDN = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+// ECharts CDN 已移至 chart-shell.ts ECHARTS_CDN（ADR-0010b 切换引擎）
+import { ECHARTS_CDN } from "../features/visualization/chart-shell";
 
 /** 图表数量 / layout → 列数。UI 内渲染与导出共用同一份，避免两处网格对不上。 */
 export function resolveGridColumnCount(
@@ -143,7 +144,90 @@ export function validateChartData(data: unknown): { ok: boolean; reason?: string
 	return { ok: true };
 }
 
-/** 拼装图表区域 HTML 片段 + Chart.js 初始化代码，一次遍历返回两个字符串。 */
+/**
+ * Chart.js 格式 → ECharts option 转换。
+ *
+ * 旧 Chart.js 格式：{ type, data: { labels, datasets: [{ data, label, backgroundColor, borderColor }] }, options }
+ * 新 ECharts 格式：{ xAxis: { type: 'category', data }, yAxis: { type: 'value' }, series: [{ type, data, ... }] }
+ *
+ * 支持的 type 映射：bar / line / pie / doughnut / radar / scatter / bubble / polarArea → ECharts bar/line/pie/radar/scatter
+ */
+export function chartItemToEChartsOption(chart: ChartItem, normalizedData: unknown): Record<string, unknown> {
+	const cType = chart.type;
+	const data = normalizedData as Record<string, unknown>;
+	const labels = (data.labels as string[]) ?? [];
+	const datasets = (data.datasets as Array<Record<string, unknown>>) ?? [];
+	const userOpts = (chart.options as Record<string, unknown>) ?? {};
+
+	// pie / doughnut / radar 不需要 xAxis/yAxis
+	const isPolar = ["pie", "doughnut", "radar"].includes(cType);
+	// polarArea / bubble / scatter 也是特殊类型
+	const isSpecial = ["polarArea", "scatter", "bubble"].includes(cType);
+
+	// ECharts series 类型
+	const echartsTypeMap: Record<string, string> = {
+		bar: "bar", line: "line", pie: "pie", doughnut: "pie",
+		radar: "radar", scatter: "scatter", bubble: "scatter", polarArea: "pie",
+	};
+	const seriesType = echartsTypeMap[cType] ?? "bar";
+
+	// 构建 series
+	const series = datasets.map((ds) => {
+		const s: Record<string, unknown> = {
+			type: seriesType,
+			name: ds.label,
+			data: ds.data,
+		};
+		// 颜色映射
+		if (ds.backgroundColor) {
+			s.itemStyle = { color: ds.backgroundColor };
+			s.lineStyle = { color: ds.backgroundColor };
+			s.areaStyle = { color: ds.backgroundColor };
+		}
+		// bar 宽度
+		if (cType === "bar") s.barMaxWidth = 40;
+		// doughnut → 环形（radius 0-60%）
+		if (cType === "doughnut") {
+			s.radius = ["40%", "60%"];
+		}
+		// radar → indicator（labels 转 radar.indicator）
+		if (cType === "radar") {
+			s.indicator = labels.map((l) => ({ name: l }));
+			s.data = [{ value: ds.data, name: ds.label }];
+		}
+		return s;
+	});
+
+	const opt: Record<string, unknown> = {};
+	// xAxis / yAxis（polar 不需要）
+	if (!isPolar && !isSpecial) {
+		opt.xAxis = { type: "category", data: labels, axisLabel: { interval: 0 } };
+		opt.yAxis = { type: "value" };
+	}
+	// polarArea → pie 全占
+	if (cType === "polarArea") {
+		series[0].radius = "100%";
+	}
+
+	// legend（polar 类型通常需要 legend）
+	if (isPolar || datasets.length > 1) {
+		opt.legend = { top: 8, right: 10 };
+	}
+
+	// 合并用户 option —— ECharts option 直接透传
+	for (const [k, v] of Object.entries(userOpts)) {
+		opt[k] = v;
+	}
+
+	return opt;
+}
+
+/**
+ * 拼装图表区域 HTML 片段 + ECharts 初始化代码。
+ * 一次遍历返回两个字符串。
+ *
+ * 渲染引擎已从 Chart.js 切换为 ECharts（ADR-0010b）。
+ */
 function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string; js: string } {
 	const htmlParts: string[] = [];
 	const jsParts: string[] = [];
@@ -151,37 +235,42 @@ function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string;
 		const id = `chart-${i}`;
 		const height = chart.height ?? (isScreen ? 280 : 250);
 
-		// 先 normalize：AI 传的错格式自动修正（rows→datasets、裸数组→包装、缺 labels→补索引）
+		// normalize：AI 传的错格式自动修正（rows→datasets、裸数组→包装、缺 labels→补索引）
 		const normalizedData = normalizeChartData(chart.data, chart.type);
 		const valid = validateChartData(normalizedData);
 
 		if (!valid.ok) {
-			// 数据格式异常 → 渲染可见错误卡片，而不是静默空白 canvas
 			htmlParts.push(
 				`<div class="chart-card chart-error">` +
 				`<h3>${chart.title ?? `图表 ${i + 1}`}</h3>` +
 				`<div style="height:${height}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#ef4444;background:#fef2f2;border:1px dashed #fecaca;border-radius:8px;margin:12px 0;padding:16px;box-sizing:border-box;">` +
 				`<span style="font-weight:600;font-size:13px;">⚠️ 图表数据格式错误</span>` +
 				`<span style="font-size:11px;color:#7f1d1d;">${valid.reason}</span>` +
-				`<span style="font-size:10px;color:#b91c1c;">AI 未正确将查询结果转为 Chart.js { datasets: [...] } 格式</span>` +
+				`<span style="font-size:10px;color:#b91c1c;">AI 未正确将查询结果转为 ECharts 数据格式</span>` +
 				`</div></div>`
 			);
 			jsParts.push(`/* chart-${i} skipped: ${valid.reason} */`);
 			return;
 		}
 
-		// 自有渲染类型（funnel / boxplot / metric）：片段自包含，与 UI 抽屉用的是同一段字符
-		// （ADR-0009 §10 ⑤），所以这里不生成 `new Chart(...)`，也不往页面上放 canvas。
+		// 自有渲染类型（funnel / boxplot / metric）：HTML 片段自包含，不进 ECharts
 		if (isFigureType(chart.type)) {
 			htmlParts.push(
 				`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}${renderFigure({ ...chart, data: normalizedData as Record<string, unknown> }, { isScreen })}</div>`,
 			);
-			jsParts.push(`/* chart-${i} (${chart.type}) rendered without Chart.js */`);
+			jsParts.push(`/* chart-${i} (${chart.type}) rendered without ECharts */`);
 			return;
 		}
 
-		htmlParts.push(`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div style="height:${height}px"><canvas id="${id}"></canvas></div></div>`);
-		jsParts.push(`new Chart(document.getElementById('${id}'),{type:'${chart.type}',data:${JSON.stringify(normalizedData)},options:__dbxMergeOpts(${JSON.stringify(chart.options ?? {})})});`);
+		// ECharts 渲染：用 div（不是 canvas），echarts.init(dom).setOption(option)
+		const echartsOption = chartItemToEChartsOption(chart, normalizedData);
+		const theme = isScreen ? "dbx-dark" : "dbx-light";
+		htmlParts.push(
+			`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div id="${id}" style="width:100%;height:${height}px;"></div></div>`
+		);
+		jsParts.push(
+			`(function(){var dom=document.getElementById('${id}');var c=echarts.init(dom,'${theme}');c.setOption(${JSON.stringify(echartsOption)});window.addEventListener('resize',function(){c.resize();});})();`
+		);
 	});
 	return { html: htmlParts.join(""), js: jsParts.join("\n") };
 }
@@ -191,7 +280,7 @@ export function generateHtml(input: DbxChartCollectionInput): string {
 	const isScreen = (input.type ?? "dashboard") === "screen";
 	const title = input.title || "数据看板";
 	const chartArea = buildChartArea(charts, isScreen);
-	const head = buildHtmlHead({ title, chartJsCdn: CHARTJS_CDN, isScreen });
+	const head = buildHtmlHead({ title, isScreen });
 
 	// 模板字符串里只保留真正需要插值的部分，不再嵌套 blocks.map
 	return `${head}

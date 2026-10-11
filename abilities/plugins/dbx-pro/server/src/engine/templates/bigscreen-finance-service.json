@@ -1,0 +1,26 @@
+{
+  "id": "bigscreen-finance-service",
+  "name": "乡村振兴普惠金融服务平台",
+  "industry": "金融",
+  "layout": "grid",
+  "palette": "financial",
+  "spec": {
+    "page": { "name": "乡村振兴普惠金融", "theme": "dark" },
+    "palette": "financial",
+    "components": [
+      { "type": "JStatsSummary", "title": "普惠金融核心指标", "variant": "2", "items": [
+        { "label": "累计放贷", "value": "¥128.6亿", "suffix": "" },
+        { "label": "服务农户", "value": "85,600", "suffix": "户" },
+        { "label": "平均利率", "value": "4.85%", "suffix": "" },
+        { "label": "不良率", "value": "0.32%", "suffix": "" }
+      ] },
+      { "type": "JBar", "title": "各区域放贷额", "data": [{ "name": "华东", "value": 350000 }, { "name": "华南", "value": 280000 }, { "name": "华北", "value": 220000 }, { "name": "西部", "value": 260000 }, { "name": "中部", "value": 176000 }] },
+      { "type": "JLine", "title": "近24月放贷趋势", "data": [{ "name": "2024-01", "value": 8500 }, { "name": "2024-06", "value": 12000 }, { "name": "2024-12", "value": 15000 }, { "name": "2025-06", "value": 18500 }, { "name": "2025-12", "value": 22000 }] },
+      { "type": "JRadar", "title": "贷款结构", "data": [{ "name": "种植业", "value": 450 }, { "name": "养殖业", "value": 380 }, { "name": "加工业", "value": 320 }, { "name": "服务业", "value": 280 }, { "name": "流通业", "value": 250 }] },
+      { "type": "JPie", "title": "担保方式分布", "data": [{ "name": "信用", "value": 35 }, { "name": "保证", "value": 28 }, { "name": "抵押", "value": 22 }, { "name": "质押", "value": 15 }] }
+    ]
+  },
+  "mockDataRules": [
+    { "targetComponent": "JLine", "generator": "time-series", "count": 24, "min": 5000, "max": 30000 }
+  ]
+}

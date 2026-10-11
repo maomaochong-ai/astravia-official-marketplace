@@ -10,3 +10,9 @@ scripts/e2e/
 
 # 浏览器开发夹具（清理后不再需要）
 dev-harness.html
+
+# 外部开源项目调研材料（仅本地留档，不进 Git / 不进制品）
+docs/research/
+
+# JeecgBoot 外部 skill 原文参考（仅本地开发对照，不进 Git / 不进制品）
+agent/skills/jeecgboot-ref/

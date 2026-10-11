@@ -1,0 +1,23 @@
+{
+  "id": "bigscreen-medical-monitor",
+  "name": "医院实时数据监控",
+  "industry": "医疗",
+  "layout": "top-kpi-grid",
+  "palette": "medical",
+  "spec": {
+    "page": { "name": "医院实时数据监控", "theme": "dark" },
+    "palette": "medical",
+    "components": [
+      { "type": "JStatsSummary", "title": "医院运营指标", "variant": "2", "items": [
+        { "label": "今日门诊", "value": "3,856", "suffix": "人次" },
+        { "label": "住院", "value": "1,245", "suffix": "床" },
+        { "label": "手术", "value": "86", "suffix": "台" },
+        { "label": "急诊", "value": "428", "suffix": "次" }
+      ] },
+      { "type": "JBar", "title": "科室接诊量 TOP10", "data": [{ "name": "内科", "value": 850 }, { "name": "外科", "value": 720 }, { "name": "儿科", "value": 650 }, { "name": "妇产科", "value": 580 }, { "name": "骨科", "value": 420 }] },
+      { "type": "JFunnel", "title": "就诊流程转化", "data": [{ "name": "挂号", "value": 3856 }, { "name": "候诊", "value": 3520 }, { "name": "诊疗", "value": 3180 }, { "name": "缴费", "value": 2960 }, { "name": "取药", "value": 2820 }] },
+      { "type": "JPie", "title": "医保类型分布", "data": [{ "name": "职工医保", "value": 45 }, { "name": "居民医保", "value": 32 }, { "name": "商业保险", "value": 15 }, { "name": "自费", "value": 8 }] },
+      { "type": "JSemiGauge", "title": "床位使用率", "value": 91, "max": 100 }
+    ]
+  }
+}
