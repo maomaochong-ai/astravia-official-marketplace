@@ -514,14 +514,17 @@ export function compileComponent(c, p) {
 	}
 
 	// 通用后处理：pos → w/h；chartData list → string；透明背景
-	const pos = c.pos ?? [0, 0, 0, 0];
-	if (Array.isArray(pos) && pos.length >= 4) {
-		cfg.x = pos[0]; cfg.y = pos[1]; cfg.w = cfg.w ?? pos[2]; cfg.h = cfg.h ?? pos[3];
+	// 兼容两种 spec 格式：c.pos=[x,y,w,h] 数组 或 c.w/c.h 顶层字段
+	if (Array.isArray(c.pos) && c.pos.length >= 4) {
+		cfg.x = c.pos[0]; cfg.y = c.pos[1]; cfg.w = cfg.w ?? c.pos[2]; cfg.h = cfg.h ?? c.pos[3];
 	} else {
-		cfg.w = cfg.w ?? 400; cfg.h = cfg.h ?? 300;
+		cfg.w = cfg.w ?? c.w ?? 400; cfg.h = cfg.h ?? c.h ?? 300;
 	}
+	if (c.x !== undefined) cfg.x = cfg.x ?? c.x;
+	if (c.y !== undefined) cfg.y = cfg.y ?? c.y;
 	if (!cfg.dataType) cfg.dataType = 1;
-	if (cfg.chartData !== undefined && Array.isArray(cfg.chartData)) {
+	// chartData 统一序列化为 JSON 字符串（JimuBI 前端期望 string）
+	if (cfg.chartData !== undefined && typeof cfg.chartData !== "string") {
 		cfg.chartData = JSON.stringify(cfg.chartData);
 	}
 	cfg.background = cfg.background ?? "#FFFFFF00";
