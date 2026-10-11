@@ -1,8 +1,11 @@
 /**
- * publish-dialog.tsx — 发布与分享对话框（设计稿 share.tsx 对齐）。
+ * publish-dialog.tsx — 发布到工作树对话框（设计稿 PublishDialog.tsx 对齐）。
  *
- * 三种分享方式：链接（永久/定时）、嵌入（iframe 代码）、导出（PNG/PDF）。
- * 状态分两屏：填写元数据 → 发布中 → 发布完成。
+ * 语义：一次动作里的三个承诺 — 产物落到工作树、给一条永久链接、给一条限期分享。
+ * 遮住整个编辑器（不是只遮画布）：发布是一次对外承诺，用户按下之前不该再摸画布。
+ *
+ * 三种状态：草稿 vs 生成产物页面 单选；永久链接 + 限期分享 展示；
+ * footer 警告未运行节点数 + 发布按钮。
  */
 
 import { type JSX, useState } from "react";
@@ -10,174 +13,140 @@ import { Icon } from "./ui/icon";
 import { Chip } from "./ui/chip";
 import { IconButton } from "./ui/icon-button";
 
-type ShareMode = "link" | "embed" | "export";
-
-export function PublishDialog({ pageName, onClose }: { pageName: string; onClose: () => void }): JSX.Element {
-	const [mode, setMode] = useState<ShareMode>("link");
-	const [linkType, setLinkType] = useState<"permanent" | "timed">("permanent");
-	const [timedHours, setTimedHours] = useState(24);
-	const [state, setState] = useState<"edit" | "publishing" | "done">("edit");
-	const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
-
-	function handlePublish(): void {
-		setState("publishing");
-		setTimeout(() => {
-			setPublishedUrl(`https://bi.example.com/share/${Buffer.from(pageName).toString("base64").slice(0, 12)}`);
-			setState("done");
-		}, 900);
-	}
+export function PublishDialog({
+	pageName, version = "v1", pages = [], pendingRuns = 0,
+	onClose, onPublish,
+}: {
+	pageName: string;
+	version?: string;
+	pages?: string[];
+	pendingRuns?: number;
+	onClose: () => void;
+	onPublish?: () => void;
+}): JSX.Element {
+	/** true = 存草稿；false = 生成产物页面替换 */
+	const [draftOnly, setDraftOnly] = useState(true);
+	const [changeNote, setChangeNote] = useState("折线图改为按周聚合，补去年同期虚线");
 
 	return (
-		<div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
-			<div className="w-[560px] overflow-hidden rounded-card border border-border-strong bg-surface-raised shadow-2xl">
-				{/* 标题栏 */}
-				<div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-4">
-					<Icon name="icon-[lucide--share-2]" className="size-3.5 shrink-0 text-muted" />
-					<span className="text-[13px] font-semibold text-surface-foreground">发布与分享</span>
-					<Chip tone="accent">{pageName}</Chip>
-					<IconButton size="xs" icon="icon-[lucide--x]" title="关闭" onClick={onClose} className="ml-auto" />
-				</div>
+		<div className="absolute inset-0 z-40 flex items-center justify-center bg-scrim">
+			<div className="w-[560px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-[0_24px_64px_var(--color-scrim)]">
+				{/* header — 对齐设计稿：发布到 BI 工作树 */}
+				<header className="flex h-11 shrink-0 items-center gap-2 border-b border-border bg-background px-4">
+					<Icon name="icon-[lucide--upload]" className="size-4 shrink-0 text-accent" />
+					<span className="text-[13px] font-semibold text-surface-foreground">发布到 BI 工作树</span>
+					<Chip tone="accent">{pageName} {version}</Chip>
+					<IconButton size="sm" icon="icon-[lucide--x]" title="关闭" onClick={onClose} className="ml-auto" />
+				</header>
 
-				{/* 模式切换 */}
-				<div className="flex shrink-0 gap-1 border-b border-border px-4 py-2">
-					{(["link", "embed", "export"] as ShareMode[]).map((m) => (
-						<button
-							key={m}
-							type="button"
-							onClick={() => { setMode(m); setState("edit"); }}
-							className={`flex h-7 items-center gap-1.5 rounded-control px-3 text-[11px] whitespace-nowrap ${
-								mode === m ? "border border-border bg-surface text-surface-foreground" : "border border-transparent text-muted hover:text-surface-foreground"
-							}`}
-						>
-							<Icon name={
-								m === "link" ? "icon-[lucide--link]" :
-								m === "embed" ? "icon-[lucide--code]" : "icon-[lucide--download]"
-							} className="size-3" />
-							{m === "link" ? "分享链接" : m === "embed" ? "嵌入代码" : "导出文件"}
-						</button>
-					))}
-				</div>
+				<div className="flex flex-col gap-3 px-4 py-3">
+					{/* "这次改了什么" 变更说明输入 */}
+					<div>
+						<span className="text-[11px] text-muted">这次改了什么</span>
+						<input type="text" value={changeNote} onChange={(e) => setChangeNote(e.target.value)}
+							className="mt-1 h-8 w-full rounded-control border border-border bg-surface px-2.5 text-[12px] text-surface-foreground outline-none focus:border-accent" />
+					</div>
 
-				{/* 主内容 */}
-				<div className="max-h-[360px] overflow-y-auto px-4 py-4">
-					{mode === "link" ? (
-						state === "done" && publishedUrl ? (
-							<div className="flex flex-col gap-3">
-								<span className="flex h-7 items-center gap-2 text-[12px] text-surface-foreground">
-									<Chip tone="primary">已发布</Chip>
-									链接已生成，可以直接分享给他人
+					{/* 草稿 vs 生成产物页面 单选 */}
+					<div className="flex flex-col gap-1.5">
+						{[
+							{ key: "draft", title: "存进工作树（草稿）", desc: "随时继续改，产物页面保持上一版" },
+							{ key: "publish", title: "存进工作树并生成产物页面", desc: (pages.length ? pages.join(" · ") : "自动生成产物页面") + " 一起替换" },
+						].map((o) => (
+							<label key={o.key} className="flex cursor-pointer items-center gap-2.5">
+								<span
+									className={`grid size-3.5 shrink-0 place-items-center rounded-full border ${
+										draftOnly === (o.key === "draft") ? "border-accent" : "border-border-strong"
+									}`}
+								>
+									{draftOnly === (o.key === "draft") ? <span className="size-1.5 rounded-full bg-accent" /> : null}
 								</span>
-								<div className="flex h-9 items-center gap-2 rounded-control border border-border bg-background px-3">
-									<Icon name="icon-[lucide--link]" className="size-3.5 shrink-0 text-muted" />
-									<span className="truncate font-mono text-[11px] text-surface-foreground">{publishedUrl}</span>
-									<button type="button"
-										className="ml-auto flex h-6 shrink-0 items-center gap-1 rounded-control border border-border bg-surface px-2 text-[10px] text-muted hover:text-surface-foreground">
-										<Icon name="icon-[lucide--copy]" className="size-3" />复制
-									</button>
-								</div>
-								<div className="flex gap-2">
-									<button type="button" onClick={onClose}
-										className="flex h-8 items-center rounded-control border border-border bg-surface px-3 text-[11px] text-surface-foreground">
-										完成
-									</button>
-									<button type="button"
-										className="flex h-8 items-center gap-1 rounded-control border border-border bg-surface px-3 text-[11px] text-muted">
-										<Icon name="icon-[lucide--trash-2]" className="size-3" />撤回
-									</button>
-								</div>
-							</div>
-						) : state === "publishing" ? (
-							<div className="flex h-32 flex-col items-center justify-center gap-2">
-								<div className="size-6 animate-spin rounded-full border-2 border-border border-t-accent" />
-								<span className="text-[11px] text-muted">正在发布…</span>
-							</div>
-						) : (
-							<div className="flex flex-col gap-3">
-								<span className="text-[11px] text-muted">选择链接类型</span>
-								<div className="flex gap-2">
-									<button type="button" onClick={() => setLinkType("permanent")}
-										className={`flex h-20 flex-1 flex-col items-center justify-center gap-1 rounded-control border ${
-											linkType === "permanent" ? "border-accent bg-accent-soft" : "border-border bg-surface hover:border-border-strong"
-										}`}>
-										<Icon name="icon-[lucide--infinity]" className="size-5 text-muted" />
-										<span className="text-[11px] font-medium text-surface-foreground">永久链接</span>
-										<span className="text-[9px] text-faint">只要数据不删就有效</span>
-									</button>
-									<button type="button" onClick={() => setLinkType("timed")}
-										className={`flex h-20 flex-1 flex-col items-center justify-center gap-1 rounded-control border ${
-											linkType === "timed" ? "border-accent bg-accent-soft" : "border-border bg-surface hover:border-border-strong"
-										}`}>
-										<Icon name="icon-[lucide--timer]" className="size-5 text-muted" />
-										<span className="text-[11px] font-medium text-surface-foreground">限时链接</span>
-										<span className="text-[9px] text-faint">到期自动失效</span>
-									</button>
-								</div>
-								{linkType === "timed" ? (
-									<div className="flex items-center gap-2">
-										<span className="text-[11px] text-muted">有效时长</span>
-										<input type="range" min={1} max={168} value={timedHours}
-											onChange={(e) => setTimedHours(parseInt(e.target.value, 10))}
-											className="h-1 flex-1 accent-accent" />
-										<span className="w-16 shrink-0 text-right font-mono text-[11px] tabular-nums text-surface-foreground">
-											{timedHours < 24 ? `${timedHours}h` : `${Math.round(timedHours / 24)}d`}
-										</span>
-									</div>
-								) : null}
-								<div className="flex gap-2 pt-2">
-									<button type="button" onClick={handlePublish}
-										className="flex h-8 items-center gap-1 rounded-control bg-accent px-3 text-[11px] font-medium text-accent-foreground hover:opacity-90">
-										<Icon name="icon-[lucide--rocket]" className="size-3" />发布并生成链接
-									</button>
-									<button type="button" onClick={onClose}
-										className="flex h-8 items-center rounded-control border border-border bg-surface px-3 text-[11px] text-muted">
-										取消
-									</button>
-								</div>
-							</div>
-						)
-					) : mode === "embed" ? (
-						<div className="flex flex-col gap-3">
-							<div className="flex h-6 items-center gap-1.5 text-[11px] text-muted">
-								<Icon name="icon-[lucide--code]" className="size-3 shrink-0" />
-								嵌入到已有网页中 — iframe 代码
-							</div>
-							<pre className="overflow-x-auto rounded-control border border-border bg-background px-3 py-2 font-mono text-[10px] leading-relaxed text-surface-foreground">
-{`<iframe
-  src="https://bi.example.com/embed/${Buffer.from(pageName).toString("base64").slice(0, 12)}"
-  width="100%" height="600"
-  frameborder="0"
-></iframe>`}
-							</pre>
-							<button type="button" onClick={onClose}
-								className="mt-auto flex h-8 items-center rounded-control border border-border bg-surface px-3 text-[11px] text-surface-foreground">
-								完成
+								<span className="text-[12px] text-surface-foreground">{o.title}</span>
+								<span className="ml-auto shrink-0 text-[11px] text-faint">{o.desc}</span>
+							</label>
+						))}
+					</div>
+
+					{/* 产物页面 chips */}
+					<div className="flex items-center gap-1.5">
+						<span className="text-[11px] text-muted">产物页面</span>
+						{(pages.length ? pages : ["概览", "明细", "详情"]).map((p) => (
+							<Chip key={p}>{p}</Chip>
+						))}
+						<span className="grid size-[18px] shrink-0 place-items-center rounded-chip bg-neutral-muted text-muted">
+							<Icon name="icon-[lucide--plus]" className="size-2.5" />
+						</span>
+					</div>
+
+					<span className="h-px w-full shrink-0 bg-border" />
+
+					{/* 永久链接 */}
+					<div>
+						<div className="flex h-6 items-center gap-2">
+							<Icon name="icon-[lucide--link-2]" className="size-3.5 shrink-0 text-muted" />
+							<span className="text-[11px] text-surface-foreground">永久链接</span>
+							<Chip>只读</Chip>
+							<span className="ml-auto text-[10px] text-faint">随工作树更新，不会过期</span>
+						</div>
+						<div className="mt-1 flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
+							<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-accent">
+								bi.local/d/{pageName.toLowerCase().replace(/\s+/g, "-")}-{Math.random().toString(36).slice(2, 6)}
+							</span>
+							<button type="button"
+								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
+								<Icon name="icon-[lucide--copy]" className="size-2.5" />复制
 							</button>
 						</div>
-					) : (
-						<div className="flex flex-col gap-3">
-							<span className="text-[11px] text-muted">导出为静态文件，便于归档和汇报</span>
-							<div className="grid grid-cols-2 gap-2">
-								{[
-									{ icon: "icon-[lucide--image]", label: "PNG 截图", note: "适合放入 PPT" },
-									{ icon: "icon-[lucide--file-text]", label: "PDF 报告", note: "适合归档" },
-									{ icon: "icon-[lucide--table]", label: "CSV 数据", note: "带完整查询结果" },
-									{ icon: "icon-[lucide--file-json]", label: "JSON 配置", note: "方便迁移" },
-								].map((f) => (
-									<button key={f.label} type="button"
-										className="flex h-16 flex-col items-start justify-center gap-1 rounded-control border border-border bg-surface px-3 text-left hover:border-border-strong">
-										<Icon name={f.icon} className="size-4 text-muted" />
-										<span className="text-[11px] font-medium text-surface-foreground">{f.label}</span>
-										<span className="text-[9px] text-faint">{f.note}</span>
-									</button>
-								))}
+					</div>
+
+					{/* 限期分享 */}
+					<div>
+						<div className="flex h-6 items-center gap-2">
+							<Icon name="icon-[lucide--calendar-clock]" className="size-3.5 shrink-0 text-muted" />
+							<span className="text-[11px] text-surface-foreground">限期分享</span>
+							<div className="ml-auto flex shrink-0 items-center gap-1.5 text-[10px] text-muted">
+								<span className="flex h-6 items-center rounded-control border border-border bg-surface px-2">7 天</span>
+								<span className="flex h-6 items-center gap-1.5 rounded-control border border-border bg-surface px-2">
+									<Icon name="icon-[lucide--lock]" className="size-3 text-faint" />访问密码
+								</span>
+								<span className="flex h-6 items-center rounded-control border border-border bg-surface px-2">只读</span>
 							</div>
-							<button type="button" onClick={onClose}
-								className="mt-auto flex h-8 items-center rounded-control border border-border bg-surface px-3 text-[11px] text-surface-foreground">
-								完成
+						</div>
+						<div className="mt-1 flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
+							<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-surface-foreground">
+								bi.local/s/{Math.random().toString(36).slice(2, 10)}
+							</span>
+							<button type="button"
+								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
+								重新生成
+							</button>
+							<button type="button"
+								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
+								<Icon name="icon-[lucide--copy]" className="size-2.5" />复制
 							</button>
 						</div>
-					)}
+					</div>
 				</div>
+
+				{/* footer — 设计稿：未运行节点警告 + 发布按钮 */}
+				<footer className="flex h-12 shrink-0 items-center gap-2 border-t border-border bg-background px-4">
+					{pendingRuns > 0 ? (
+						<span className="flex h-6 items-center gap-1.5 rounded-chip bg-warning-soft px-2 text-[10px] text-warning">
+							<span className="size-1.5 shrink-0 rounded-full bg-warning" />
+							{pendingRuns} 个节点未运行
+						</span>
+					) : null}
+					<div className="ml-auto flex shrink-0 items-center gap-2">
+						<button type="button" onClick={onClose}
+							className="flex h-7 items-center rounded-control border border-transparent px-3 text-[11px] text-muted hover:border-border hover:text-surface-foreground">
+							取消
+						</button>
+						<button type="button" onClick={() => { onPublish?.(); onClose(); }}
+							className="flex h-7 items-center gap-1 rounded-control bg-accent px-3 text-[11px] font-medium text-accent-foreground hover:opacity-90">
+							<Icon name="icon-[lucide--upload]" className="size-2.5" />发布并复制链接
+						</button>
+					</div>
+				</footer>
 			</div>
 		</div>
 	);
