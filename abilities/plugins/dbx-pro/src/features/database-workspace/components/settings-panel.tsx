@@ -192,7 +192,7 @@ function QueryResultSettings({ settings, onChange }: { settings: WorkbenchSettin
 				hint="控制插件内 SQL 执行的写权限：strict=只读、writeAllowed=写/DDL 每次确认、permissive=放行所有自动确认。走自研直连驱动（不经过 dbx-mcp 的 SQL_BLOCKED 闸门）。"
 			>
 				<select
-					className="dbx-select"
+					className="dbx-form-input"
 					value={settings.sqlSafetyMode}
 					onChange={(e) => onChange("sqlSafetyMode", e.target.value as WorkbenchSettings["sqlSafetyMode"])}
 				>
