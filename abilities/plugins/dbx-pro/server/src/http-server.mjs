@@ -249,7 +249,7 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
         }
       }
 
-      // ── drag page API（自研 JimuBI 兼容层，直接返回原生格式不套 ok(data)）──
+      // ── drag page API（自研大屏页面后端，直接返回原生格式不套 ok(data)）──
       if (url.pathname.startsWith("/drag/")) {
         const jimuCtx = { dataDir };
         const dragTable = dragRoutes(jimuCtx);

@@ -1,8 +1,8 @@
 /**
- * drag.mjs — 自研大屏页面 API（JimuBI 兼容层）。
+ * drag.mjs — 自研大屏页面后端（AI skill 所需的 HTTP API）。
  *
  * 本 domain 实现 AI skill（bi_utils.py / spec_builder.py / template_ops.py 等）
- * 所需的 JimuBI 后端接口，完全用本地 JSON 文件存储（不依赖外部服务）。
+ * 所需的大屏页面后端接口，完全用本地 JSON 文件存储（不依赖外部服务）。
  *
  * 存储位置：`${ctx.dataDir}/pages/{pageId}.json`
  *   （dataDir 由宿主通过 --data 注入，dbx DATA_DIR 下的 pages/ 子目录）
@@ -23,9 +23,9 @@
  *   POST   /drag/onlDragDatasetHead/add/edit/delete   → 返回 ok
  *   GET    /drag/onlDragDatasetHead/queryFieldBySql    → 用 dbx-mcp 执行 SQL 返回列名（Phase A2）
  *   GET    /drag/onlDragDataSource/getOptions          → 用 dbx-mcp list_connections 返回（Phase A2）
- *   GET    /drag/jimuDragMap/list                       → 返回空
+ *   GET    /drag/jimuDragMap/list                       → 返回空（AI skill 约定路径，保持原名）
  *
- * 响应格式：统一 `{ success: true, result: ... }`（与 JeecgBoot JimuBI 后端一致）
+ * 响应格式：统一 `{ success: true, result: ... }`（AI skill bi_utils.py 期望的原生格式）
  *   错误：`{ success: false, message: "..." }`
  */
 
@@ -48,7 +48,7 @@ function pageFile(ctx, id) {
 }
 
 function genId() {
-	// JimuBI 用雪花 ID（19-20 位纯数字），本地用 UUID v4 + 前缀
+	// 本地替代雪花 ID — 16 位 hex，足够区分
 	const uuid = createHash("md5").update(`${Date.now()}-${Math.random()}`).digest("hex").slice(0, 16);
 	return uuid;
 }
@@ -97,12 +97,12 @@ function jimuErr(message, code = "BAD_REQUEST") {
 	return { success: false, message, code };
 }
 
-// ─── request-router 元组风格 + 原生 JimuBI handler ───
+// ─── 路由导出（由 http-server.mjs 直接消费，绕过 request-router） ───
 
-// 注意：本 domain 有两种调用方式
-//   1. request-router 走 dragRoutes(ctx) → 外层会套 ok(data)，handler 必须返回 JimuBI 格式
-//   2. http-server 直接调 handleJimuRequest() → 直接返回，不套 ok(data)
-// 无论哪种，handler 内部必须返回 JimuBI 原生格式 { success, result/error }
+// 本 domain 有特殊调用路径：http-server.mjs 在路径分发阶段直接拦截 /drag/*，
+// 用 dragRoutes(jimuCtx) 返回的元组表做 path+method 匹配，不走 request-router 的
+// 统一 ok() 包装。因此 handler 返回值必须是 AI skill 期望的原生格式 { success, result }，
+// 不能是 { ok, data }。ctx 也只传 { dataDir }，不依赖 createRouterContext 的 dbx-mcp 依赖。
 
 export function dragRoutes(ctx) {
 	return [

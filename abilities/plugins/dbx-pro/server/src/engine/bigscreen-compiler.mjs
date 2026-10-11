@@ -1,22 +1,22 @@
 /**
- * bigscreen-compiler —— Jimubi 紧凑 spec → **JimuBI 兼容组件 JSON**
+ * bigscreen-compiler —— 紧凑 spec → 大屏组件 JSON
  *
- * 与 JeecgBoot jimubi-bigscreen 的 Python spec_builder.py 同构：
+ * 与 AI skill (spec_builder.py) 同构：
  *   AI 输出紧凑 JSON spec → compile_component 分发 → SPECIAL_HANDLERS / 通用路径
  *   → load defaults/*.json → 合并 chartData → 应用 ECharts theme → 返回完整组件 JSON
  *
- * 组件 JSON 结构严格对齐 JimuBI defaults/*.json（大屏模式）：
+ * 组件 JSON 结构对齐 dbx 默认配置（大屏模式）：
  *   { w, h, dataType, chartData, option, chart: { subclass, category },
  *     url, timeOut, turnConfig, linkType, linkageConfig, markLineConfig, dataMapping,
  *     background, borderColor }
  *
- * 为什么不返回 HTML：JimuBI 流程是"组件 JSON → 存储 → 前端渲染"，dbx-pro 必须同构。
+ * 为什么不返回 HTML：主流程是"组件 JSON → 存储 → 前端 ECharts 渲染"，
  * generateBigscreenHtml() 保留作调试/预览工具（不是主流程）。
  */
 
 // ============ Defaults 内联（单一 bundle JSON）============
 // agent/skills/dbx-pro-bigscreen/scripts/defaults/*.json 由 bundle-defaults.mjs 先修复
-// （JimuBI Python 导出含 4 引号/三引号/None 等非标准 JSON）打包成
+// （AI skill Python 导出含 4 引号/三引号/None 等非标准 JSON）打包成
 // references/defaults/_defaults-bundle.json，再 esbuild JSON loader 内联进 bundle。
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore — ESM JSON import
@@ -464,7 +464,7 @@ function inferCompKey(type) {
 }
 
 /**
- * 编译单个紧凑 spec component → JimuBI 组件 JSON。
+ * 编译单个紧凑 spec component → 大屏组件 JSON。
  * @param {object} c   紧凑 spec（{ type, pos: [x,y,w,h], title, data, ... }）
  * @param {object} p   palette（6 套命名色板之一）
  * @returns {{ compKey: string, cfg: object, warnings: string[] }}
@@ -524,13 +524,13 @@ export function compileComponent(c, p) {
 	if (c.x !== undefined) cfg.x = cfg.x ?? c.x;
 	if (c.y !== undefined) cfg.y = cfg.y ?? c.y;
 	if (!cfg.dataType) cfg.dataType = 1;
-	// chartData 统一序列化为 JSON 字符串（JimuBI 前端期望 string）
+	// chartData 统一序列化为 JSON 字符串（前端期望 string 类型）
 	if (cfg.chartData !== undefined && typeof cfg.chartData !== "string") {
 		cfg.chartData = JSON.stringify(cfg.chartData);
 	}
 	cfg.background = cfg.background ?? "#FFFFFF00";
 	cfg.borderColor = cfg.borderColor ?? "#FFFFFF00";
-	// chart.category / chart.subclass（JimuBI 用这些字段识别组件类型）
+	// chart.category / chart.subclass（前端用这些字段识别组件类型）
 	cfg.chart = cfg.chart ?? { subclass: t, category: inferCategory(t) };
 
 	// 布局预警
@@ -561,7 +561,7 @@ function inferCategory(compType) {
 /**
  * 编译完整大屏。
  * @param {object} spec 紧凑 spec { page:{name,theme,bg}, palette, components:[{type,pos,...}] }
- * @returns {{ page: object, components: JimubiComponentJSON[], palette: object, warnings: string[] }}
+ * @returns {{ page: object, components: object[], palette: object, warnings: string[] }}
  */
 export function compileBigscreen(spec) {
 	const page = spec.page ?? {};
@@ -608,7 +608,7 @@ export function compileBigscreen(spec) {
 
 // ============ 以下为调试/预览用工具（不是主流程）============
 
-/** JimuBI 组件 JSON → 调试 HTML（1920×1080 canvas + 绝对定位，与 JimuBI bigscreen 布局一致）。 */
+/** 大屏组件 JSON → 调试 HTML（1920×1080 canvas + 绝对定位）。 */
 export function generateBigscreenHtml(spec) {
 	const { page, components, palette } = compileBigscreen(spec);
 	const isScreen = (page.theme ?? "dark") === "dark";

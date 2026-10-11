@@ -1,8 +1,8 @@
 /**
- * bigscreen.mjs — JimuBI 同构大屏 API。
+ * bigscreen.mjs — 大屏编译/渲染 API。
  *
  * 三条路由：
- *   POST /api/bigscreen/compile  → 紧凑 spec → JimuBI 兼容组件 JSON
+ *   POST /api/bigscreen/compile  → 紧凑 spec → 大屏组件 JSON
  *   POST /api/bigscreen/render   → 紧凑 spec → 完整 HTML 字符串
  *   GET  /api/bigscreen/templates → 内置模板清单（id/name/industry/palette/spec）
  *
