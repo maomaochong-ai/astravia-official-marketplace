@@ -1,7 +1,7 @@
 /**
  * 数据库工作台 — 插件主面板的装配入口。
  *
- * 这里只做三件事：挂 Provider、按三栏布局摆放子面板、控制两个抽屉的开合。
+ * 这里只做两件事：按布局摆放子面板（三栏 + 底部「下载后台」货架），并控制各抽屉的开合。
  * 所有交互状态都在 hooks/，所有面板组件都在 ./components/。
  */
 
@@ -15,6 +15,7 @@ import { SplitLayout } from "./split-layout";
 import { SqlEditorWorkspace } from "./sql-editor-workspace";
 import { WorkbenchProvider, useWorkbench } from "../hooks/use-workbench";
 import { WorkbenchTopBar } from "./workbench-top-bar";
+import { ExportTasksShelf } from "./export-tasks-shelf";
 import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { patchSession, readSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
@@ -45,6 +46,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
+	// 底部「下载后台」货架默认收起，由顶栏下载入口开合（任务进度在顶栏环上已有反馈）。
 	const [downloadsOpen, setDownloadsOpen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const { visualizations, addVisualization } = useVisualizationStore();
@@ -212,6 +214,9 @@ function DatabaseWorkspaceBody(): JSX.Element {
 					<RightPanel key="right" onCollapse={() => setHistoryOpen(false)} />,
 				]}
 			</SplitLayout>
+
+			{/* 下载后台按设计稿通栏停靠在整块工作台底部（与三栏同级，不缩在中间栏内） */}
+			{downloadsOpen && <ExportTasksShelf onCollapse={() => setDownloadsOpen(false)} />}
 
 			{connectionEditorOpen && (
 				<ConnectionEditorSheet

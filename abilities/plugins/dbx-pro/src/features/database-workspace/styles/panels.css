@@ -157,48 +157,67 @@
 .dbx-download-head {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
 	height: 40px;
 	min-height: 40px;
 	flex-shrink: 0;
 	padding: 0 12px;
 	border-bottom: 1px solid var(--dbx-border);
-	background: var(--dbx-surface);
+	background: var(--dbx-panel);
 }
 
 .dbx-download-head__title {
-	font-size: 12px;
+	font-size: 14px;
 	font-weight: 600;
+	letter-spacing: -0.01em;
 	color: var(--dbx-surface-foreground);
 }
 
 .dbx-download-head__meta {
-	font-size: 11px;
+	font-size: 12px;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 	color: var(--dbx-muted);
+}
+
+.dbx-download-head__actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-left: auto;
 }
 
 .dbx-download-cols {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 200px 150px 110px 140px 132px;
 	align-items: center;
-	gap: 8px;
+	gap: 12px;
 	height: 28px;
 	min-height: 28px;
 	padding: 0 12px;
 	border-bottom: 1px solid var(--dbx-border);
 	background: var(--dbx-panel-sunken);
-	font-size: 11px;
+	font-size: 12px;
 	white-space: nowrap;
-	color: var(--dbx-muted);
+	color: var(--dbx-faint);
+}
+
+.dbx-download-cols .is-right {
+	text-align: right;
+}
+
+/* 货架行数不设上限会吃光工作台高度：滚动区封顶约 6 行（设计稿示例为 5 行） */
+.dbx-download-rows {
+	min-height: 0;
+	max-height: 264px;
+	overflow-y: auto;
 }
 
 .dbx-download-row {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 200px 150px 110px 140px 132px;
 	align-items: center;
-	gap: 8px;
+	gap: 12px;
 	height: 44px;
 	padding: 0 12px;
 	border-bottom: 1px solid var(--dbx-border);
@@ -259,7 +278,7 @@
 	flex-shrink: 0;
 	text-align: right;
 	font-family: var(--dbx-font-mono);
-	font-size: 11px;
+	font-size: 12px;
 	font-variant-numeric: tabular-nums;
 	color: var(--dbx-muted);
 }
@@ -269,7 +288,7 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-family: var(--dbx-font-mono);
-	font-size: 11px;
+	font-size: 12px;
 	font-variant-numeric: tabular-nums;
 	color: var(--dbx-muted);
 }
@@ -278,14 +297,22 @@
 	text-align: right;
 }
 
+.dbx-download-cell.is-faint {
+	color: var(--dbx-faint);
+}
+
 .dbx-download-state {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	min-width: 0;
-	font-size: 11px;
+	font-size: 12px;
 	white-space: nowrap;
 	color: var(--dbx-muted);
+}
+
+.dbx-download-state.is-accent {
+	color: var(--dbx-accent);
 }
 
 .dbx-download-state.is-success {
@@ -300,25 +327,116 @@
 	color: var(--dbx-danger);
 }
 
+.dbx-download-state__text {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* 状态点：设计稿 StatusDot 的本地实现（共享 .dbx-status-dot 没有 accent 档位，且属宿主只读样式） */
+.dbx-download-dot {
+	width: 6px;
+	height: 6px;
+	flex-shrink: 0;
+	border-radius: 999px;
+	background: var(--dbx-border-strong);
+}
+
+.dbx-download-dot.is-accent {
+	background: var(--dbx-accent);
+}
+
+.dbx-download-dot.is-success {
+	background: var(--dbx-success);
+}
+
+.dbx-download-dot.is-warning {
+	background: var(--dbx-warning);
+}
+
+.dbx-download-dot.is-danger {
+	background: var(--dbx-danger);
+}
+
 .dbx-download-actions {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	gap: 4px;
+	gap: 2px;
+}
+
+.dbx-download-action--danger:hover {
+	color: var(--dbx-danger);
 }
 
 .dbx-download-foot {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: 8px;
 	height: 24px;
 	min-height: 24px;
 	flex-shrink: 0;
 	padding: 0 12px;
-	font-size: 11px;
+	font-size: 12px;
 	font-variant-numeric: tabular-nums;
 	color: var(--dbx-muted);
+}
+
+.dbx-download-foot__note {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	color: var(--dbx-faint);
+}
+
+.dbx-download-foot__summary {
+	margin-left: auto;
+	white-space: nowrap;
+}
+
+.dbx-download-task {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.dbx-download-source {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 12px;
+	color: var(--dbx-faint);
+}
+
+.dbx-download-row:last-child {
+	border-bottom: none;
+}
+
+.dbx-download-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 22px 12px;
+	color: var(--dbx-faint);
+}
+
+.dbx-download-empty__title {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--dbx-muted);
+}
+
+.dbx-download-empty__hint {
+	font-size: 11px;
+}
+
+/* 顶栏下载入口的角标：只剩「等待保存 / 未保存」时转琥珀色（该修饰类此前没有定义） */
+.dbx-count-badge.dbx-export-count--attention {
+	background: var(--dbx-warning-soft);
+	color: var(--dbx-warning);
 }
 
 /* 弹层形态的下载列表：货架列宽按容器压缩，只保留任务/进度/状态/操作 */
