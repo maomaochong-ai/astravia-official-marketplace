@@ -1,0 +1,5 @@
+.history/
+.snapshots/
+.astravia-design-build/
+node_modules/
+.notes.json

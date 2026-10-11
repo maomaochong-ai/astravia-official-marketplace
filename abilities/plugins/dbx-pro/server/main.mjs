@@ -99057,13 +99057,22 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
           return send(200, { jsonrpc: "2.0", id, error: { code: -32603, message: e.message } });
         }
       }
-      const internalPath = url.pathname.startsWith("/api") ? url.pathname.slice("/api".length) || "/" : url.pathname;
-      const outcome = await router.handle({
+      let pathname = url.pathname;
+      let outcome = await router.handle({
         method: req.method,
-        pathname: internalPath,
+        pathname,
         headers: req.headers,
         body
       });
+      if (outcome.status === 404 && pathname.startsWith("/api")) {
+        const stripped = pathname.slice("/api".length) || "/";
+        outcome = await router.handle({
+          method: req.method,
+          pathname: stripped,
+          headers: req.headers,
+          body
+        });
+      }
       send(outcome.status, outcome.body);
     } catch (error) {
       const code = error?.code ?? "INTERNAL";

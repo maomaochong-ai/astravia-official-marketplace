@@ -248,17 +248,18 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
         }
       }
 
-      // 剥 /api 前缀：前端 engine-client 调 /api/*，request-router 内部注册不带前缀
-      const internalPath = url.pathname.startsWith("/api")
-        ? url.pathname.slice("/api".length) || "/"
-        : url.pathname;
-
-      const outcome = await router.handle({
-        method: req.method,
-        pathname: internalPath,
-        headers: req.headers,
-        body,
+      // 双路径尝试：部分 domain（bigscreen/report/chart 等）注册带 "/api" 前缀，
+      // 另一些（connections/query/schema 等）不带。先试原路径，404 再剥 /api 前缀试。
+      let pathname = url.pathname;
+      let outcome = await router.handle({
+        method: req.method, pathname, headers: req.headers, body,
       });
+      if (outcome.status === 404 && pathname.startsWith("/api")) {
+        const stripped = pathname.slice("/api".length) || "/";
+        outcome = await router.handle({
+          method: req.method, pathname: stripped, headers: req.headers, body,
+        });
+      }
       send(outcome.status, outcome.body);
     } catch (error) {
       const code = error?.code ?? "INTERNAL";

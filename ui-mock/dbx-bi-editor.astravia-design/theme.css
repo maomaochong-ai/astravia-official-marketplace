@@ -1,0 +1,12 @@
+/* Shared color system for this design document: Tailwind v4 @theme tokens,
+ * used by every frame. Reference them as utilities (bg-primary,
+ * text-surface-foreground, …); edit here to reskin the whole document. */
+@theme {
+	--color-primary: #4f46e5;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #f8fafc;
+	--color-surface-foreground: #0f172a;
+	--color-muted: #64748b;
+	--color-accent: #f59e0b;
+	--color-danger: #ef4444;
+}

@@ -1,0 +1,14 @@
+{
+	"version": 1,
+	"type": "astravia-design",
+	"canvas": {
+		"x": 0,
+		"y": 0,
+		"zoom": 1
+	},
+	"frames": [],
+	"defaultFrameSize": {
+		"width": 1440,
+		"height": 1000
+	}
+}
