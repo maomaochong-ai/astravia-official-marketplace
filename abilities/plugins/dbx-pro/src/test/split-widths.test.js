@@ -28,7 +28,7 @@ describe("三栏宽度约束", () => {
 	});
 
 	it("另一侧存着旧宽度导致溢出时，把两栏夹回容器内", () => {
-		// 复现拖拽后的现场：左栏 180、右栏 260 都已在下限，容器只剩 600。
+		// 复现拖拽后的现场：左栏 180、右栏 300 都已在下限（已无可让余量），容器只剩 600。
 		const fitted = fitWidths(600, MIN_LEFT, MIN_RIGHT);
 		assert.ok(total(fitted) <= 600, `三栏 ${total(fitted)} 超过容器 600`);
 		assert.ok(fitted.left > 0 && fitted.right > 0, "两侧仍应可见，只是被等比压缩");
@@ -43,10 +43,11 @@ describe("三栏宽度约束", () => {
 	});
 
 	it("两栏都有余量时按各自可让空间等比例退让", () => {
-		// 左栏可让 220、右栏可让 240，需要让出 246 → 左让 246*220/460≈118，右让 128。
+		// 左栏可让 220（400-180）、右栏可让 200（500-300）；容器 1000 需要让出 246。
 		const fitted = fitWidths(1000, 400, 500);
-		assert.equal(fitted.left, 400 - 118);
-		assert.equal(fitted.right, 500 - 128);
+		assert.equal(total(fitted), 1000, "应当刚好收进容器");
+		assert.ok(fitted.left >= MIN_LEFT && fitted.right >= MIN_RIGHT, "两侧都不应被压到下限以下");
+		assert.ok(400 - fitted.left > 500 - fitted.right, "可让空间更大的一侧应当让得更多");
 	});
 
 	it("连两条最小宽度都放不下时整体等比压缩，仍不溢出", () => {

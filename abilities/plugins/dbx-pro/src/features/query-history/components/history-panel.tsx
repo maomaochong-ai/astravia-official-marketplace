@@ -231,7 +231,7 @@ export function HistoryPanel({
 									const ok = entry.status === "ok";
 									return (
 										<article key={entry.id} className="dbx-history-card">
-											<div className="flex items-center gap-1.5">
+											<div className="flex min-w-0 items-center gap-1.5">
 												<span
 													className={"size-1.5 shrink-0 rounded-full " + (ok ? "bg-success" : "bg-danger")}
 												/>
@@ -248,10 +248,13 @@ export function HistoryPanel({
 														</span>
 													</>
 												) : null}
-												<span className="min-w-0 truncate text-[12px] text-muted" title={entry.connName}>
-													{entry.connName}
+												{/* 连接名与取数路径是插件自己补的信息，列变窄时优先由它们让位；状态徽标始终完整可见。 */}
+												<span className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+													<span className="min-w-0 truncate text-[12px] text-muted" title={entry.connName}>
+														{entry.connName}
+													</span>
+													<PathBadge path={entry.path} fallback={Boolean(entry.error && entry.path === "cli")} />
 												</span>
-												<PathBadge path={entry.path} fallback={Boolean(entry.error && entry.path === "cli")} />
 												<span
 													className={
 														"ml-auto shrink-0 rounded-full border px-2 py-px text-[12px] whitespace-nowrap " +

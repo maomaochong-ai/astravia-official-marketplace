@@ -534,7 +534,9 @@
    本段不参与 @layer，会盖过 Tailwind 原子类；因此图库 markup 只用下面这些自定义类，
    颜色/尺寸/间距一律走 --dbx-* 令牌，不写死色值。 */
 
+/* 图库根本身就是容器查询的参照：宿主面板宽不等于窗口宽，media query 在这里没有意义。 */
 .dbx-root .viz-assets {
+	container-type: inline-size;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -555,6 +557,9 @@
 }
 .dbx-root .viz-assets-title {
 	margin: 0;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	font-size: 20px;
 	font-weight: 600;
 	letter-spacing: -0.02em;
@@ -572,7 +577,8 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	flex-shrink: 0;
+	flex-shrink: 1;
+	min-width: 0;
 	margin-left: auto;
 }
 
@@ -581,8 +587,9 @@
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	flex-shrink: 0;
+	flex-shrink: 1;
 	width: 240px;
+	min-width: 96px;
 	height: 28px;
 	padding: 0 10px;
 	border: 1px solid var(--dbx-border);
@@ -808,6 +815,7 @@
 	flex-shrink: 0;
 	height: 36px;
 	padding: 0 16px;
+	overflow: hidden;
 	border-bottom: 1px solid var(--dbx-line);
 	font-size: 11px;
 	white-space: nowrap;
@@ -817,6 +825,8 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
+	min-width: 0;
+	overflow: hidden;
 	margin-left: auto;
 }
 .dbx-root .viz-assets-grid {
@@ -834,8 +844,10 @@
 	align-items: center;
 	gap: 8px;
 	flex-shrink: 0;
+	min-width: 0;
 	height: 36px;
 	padding: 0 16px;
+	overflow: hidden;
 	border-top: 1px solid var(--dbx-line);
 	font-size: 11px;
 	white-space: nowrap;
@@ -931,10 +943,12 @@
 	font-weight: 600;
 	color: var(--dbx-surface-foreground);
 }
+/* 卡片刻意不裁切（下面 .viz-asset-card 无 overflow:hidden），所以行内容必须自己换行。 */
 .dbx-root .viz-asset-meta {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	flex-wrap: wrap;
+	gap: 4px 8px;
 	padding: 6px 10px 8px;
 	font-size: 11px;
 	white-space: nowrap;
@@ -951,6 +965,7 @@
 .dbx-root .viz-asset-actions {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: 4px;
 	padding: 0 10px 10px;
 }
@@ -1026,6 +1041,7 @@
 .dbx-root .viz-ghost-btn {
 	display: inline-flex;
 	flex: 1;
+	min-width: 0;
 	align-items: center;
 	justify-content: center;
 	gap: 4px;
@@ -1101,4 +1117,41 @@
 .dbx-root .viz-thumb-bar-2 { background: var(--dbx-series-2); }
 .dbx-root .viz-thumb-bar-3 { background: var(--dbx-series-3); }
 .dbx-root .viz-thumb-bar-4 { background: var(--dbx-series-4); }
+
+/* ──────────── BI：容器查询收放（放最后，靠源序覆盖上面的基础规则） ────────────
+   查询容器是 .viz-assets，所以断点按「图库自身宽度」算：左栏固定 272，剩下的是中栏。 */
+
+/* 中栏不足 716px（图库 <1000px）时三列已经放不下卡片，退到两列。 */
+@container (max-width: 1000px) {
+	.dbx-root .viz-assets-head {
+		padding: 0 16px;
+	}
+	.dbx-root .viz-assets-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+/* 中栏不足 484px（图库 <760px）时连两列也放不下，退回单列。 */
+@container (max-width: 760px) {
+	.dbx-root .viz-assets-grid {
+		grid-template-columns: repeat(1, minmax(0, 1fr));
+	}
+}
+
+/* 头部一行排不下（标题 + 计数 + 搜索 + 类型 chip）时换行，不要把按钮挤出容器。 */
+@container (max-width: 720px) {
+	.dbx-root .viz-assets-head {
+		height: auto;
+		min-height: 56px;
+		padding: 8px 16px;
+		flex-wrap: wrap;
+		row-gap: 8px;
+	}
+	.dbx-root .viz-assets-head-right {
+		width: 100%;
+		margin-left: 0;
+		flex-wrap: wrap;
+		row-gap: 8px;
+	}
+}
 

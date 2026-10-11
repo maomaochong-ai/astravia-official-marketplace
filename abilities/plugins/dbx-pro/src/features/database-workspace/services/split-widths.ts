@@ -21,7 +21,8 @@ export const SPLITBAR_TOTAL = 2;
 /** 各栏像素约束（中栏始终保留，分隔线无法拖到不合理的大小） */
 export const MIN_LEFT = 180;
 export const MAX_LEFT_RATIO = 0.4;
-export const MIN_RIGHT = 260;
+/** 右栏下限取设计稿的 300px：再窄的话历史卡片头部的耗时/行数/状态就装不下了。 */
+export const MIN_RIGHT = 300;
 export const MAX_RIGHT_RATIO = 0.5;
 export const MIN_MID = 344;
 
