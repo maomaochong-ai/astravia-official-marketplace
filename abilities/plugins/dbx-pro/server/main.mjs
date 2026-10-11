@@ -51,6 +51,419 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// server/src/engine/dbx-mcp-client.mjs
+import { spawn as spawn2 } from "node:child_process";
+import { existsSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+function resolveDataDir(explicitDir) {
+  if (explicitDir) {
+    mkdirSync(explicitDir, { recursive: true });
+    resolvedDataDir = explicitDir;
+    return explicitDir;
+  }
+  if (resolvedDataDir) return resolvedDataDir;
+  const dir = join(homedir(), ".astravia-dbx-data");
+  mkdirSync(dir, { recursive: true });
+  resolvedDataDir = dir;
+  return dir;
+}
+function detectPlatform() {
+  const platform2 = process.platform;
+  if (platform2 === "darwin") {
+    return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+  }
+  if (platform2 === "win32" && process.arch === "x64") return "win32-x64";
+  return null;
+}
+function resolveBinaryPath() {
+  const preferred = detectPlatform();
+  if (preferred && existsSync(BIN_PATH_BY_PLATFORM[preferred])) {
+    return BIN_PATH_BY_PLATFORM[preferred];
+  }
+  for (const tag of ["darwin-arm64", "darwin-x64", "win32-x64"]) {
+    if (tag !== preferred && existsSync(BIN_PATH_BY_PLATFORM[tag])) {
+      return BIN_PATH_BY_PLATFORM[tag];
+    }
+  }
+  throw new Error(
+    `dbx-mcp: \u627E\u4E0D\u5230\u53EF\u7528\u4E8C\u8FDB\u5236\uFF08\u5E73\u53F0 ${process.platform}-${process.arch}\uFF09\uFF0C\u671F\u671B darwin-arm64 / darwin-x64 / win32-x64`
+  );
+}
+function getDbxMcpClient(options) {
+  if (options) lastOptions = options;
+  if (!client) client = new DbxMcpClient(options ?? lastOptions ?? void 0);
+  return client;
+}
+async function disposeDbxMcpClient() {
+  if (client) {
+    await client.dispose();
+    client = null;
+  }
+}
+var _thisDir, _serverDir, BIN_PATH_BY_PLATFORM, resolvedDataDir, HANDSHAKE_TIMEOUT_MS, CALL_TIMEOUT_MS, SHUTDOWN_GRACE_MS, DbxMcpClient, client, lastOptions;
+var init_dbx_mcp_client = __esm({
+  "server/src/engine/dbx-mcp-client.mjs"() {
+    "use strict";
+    _thisDir = join(fileURLToPath(import.meta.url), "..");
+    _serverDir = _thisDir.endsWith("engine") ? join(_thisDir, "..", "..") : _thisDir;
+    BIN_PATH_BY_PLATFORM = {
+      "darwin-arm64": join(_serverDir, "bin", "dbx-mcp-darwin-arm64"),
+      "darwin-x64": join(_serverDir, "bin", "dbx-mcp-darwin-x64"),
+      "win32-x64": join(_serverDir, "bin", "dbx-mcp-win-x64.exe")
+    };
+    resolvedDataDir = null;
+    HANDSHAKE_TIMEOUT_MS = 6e4;
+    CALL_TIMEOUT_MS = 6e4;
+    SHUTDOWN_GRACE_MS = 2e3;
+    DbxMcpClient = class {
+      constructor(options = {}) {
+        this.handshakeTimeoutMs = options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS;
+        this.callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
+        this.extraEnv = options.extraEnv ?? {};
+        this.dataDir = options.dataDir ?? null;
+        this.child = null;
+        this.buffer = "";
+        this.nextId = 1;
+        this.pending = /* @__PURE__ */ new Map();
+        this.initialized = null;
+        this.phase = "idle";
+        this.lastError = null;
+      }
+      /**
+       * 在后台发起一次子进程连接。成功后 phase=ready；失败复位 initialized，
+       * 让后续真正需要子进程的 callTool 可以重试。
+       * 返回的 promise 会 reject（供需要结果的调用方感知），但不影响状态查询。
+       */
+      connect() {
+        if (this.phase === "ready") return Promise.resolve();
+        if (this.initialized) return this.initialized;
+        this.phase = "connecting";
+        this.lastError = null;
+        this.initialized = this.spawnAndHandshake().then(() => {
+          this.phase = "ready";
+        }).catch((err) => {
+          this.phase = "error";
+          this.lastError = err;
+          this.initialized = null;
+          this.reapCurrentChild();
+          throw err;
+        });
+        return this.initialized;
+      }
+      /** 需要子进程的调用方使用：已连接直接返回，连接中共享同一次，未连接则发起。 */
+      ensureInitialized() {
+        if (this.phase === "ready") return Promise.resolve();
+        if (this.initialized) return this.initialized;
+        return this.connect();
+      }
+      reapCurrentChild() {
+        const child = this.child;
+        this.child = null;
+        if (!child || child.killed) return;
+        child.kill();
+        const force = setTimeout(() => {
+          if (child && !child.killed) child.kill("SIGKILL");
+        }, SHUTDOWN_GRACE_MS);
+        if (force.unref) force.unref();
+      }
+      async callTool(name, args, timeoutMs) {
+        await this.ensureInitialized();
+        const id = this.nextId++;
+        const result = await this.request(
+          id,
+          "tools/call",
+          { name, arguments: args },
+          timeoutMs ?? this.callTimeoutMs
+        );
+        return result;
+      }
+      async dispose() {
+        const child = this.child;
+        this.child = null;
+        this.initialized = null;
+        for (const p of this.pending.values()) p.reject(new Error("dbx-mcp client disposed"));
+        this.pending.clear();
+        if (!child || child.killed) return;
+        const exited = new Promise((resolve) => child.once("exit", () => resolve()));
+        child.kill();
+        await Promise.race([
+          exited,
+          new Promise((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS))
+        ]);
+        if (!child.killed) child.kill("SIGKILL");
+      }
+      spawnAndHandshake() {
+        const bin = resolveBinaryPath();
+        const dbxDataDir = resolveDataDir(this.dataDir);
+        const child = spawn2(bin, [], {
+          stdio: ["pipe", "pipe", "pipe"],
+          env: {
+            ...process.env,
+            DBX_DATA_DIR: dbxDataDir,
+            ...this.extraEnv
+          }
+        });
+        this.child = child;
+        const isCurrent = () => this.child === child;
+        child.stdout.setEncoding("utf8");
+        child.stdout.on("data", (chunk) => this.onData(chunk));
+        child.stderr.on("data", (chunk) => {
+        });
+        child.on("exit", (code, signal) => {
+          if (!isCurrent()) return;
+          const err = new Error(`dbx-mcp exited (code=${code}, signal=${signal})`);
+          for (const p of this.pending.values()) p.reject(err);
+          this.pending.clear();
+          this.child = null;
+          this.initialized = null;
+        });
+        child.on("error", (err) => {
+          if (!isCurrent()) return;
+          for (const p of this.pending.values()) p.reject(err);
+          this.pending.clear();
+          this.child = null;
+          this.initialized = null;
+        });
+        return new Promise((resolve, reject) => {
+          this.request(
+            0,
+            "initialize",
+            {
+              protocolVersion: "2024-11-05",
+              capabilities: {},
+              clientInfo: { name: "dbx-pro-plugin", version: "0.1.1" }
+            },
+            this.handshakeTimeoutMs
+          ).then(() => {
+            if (!isCurrent()) {
+              reject(new Error("dbx-mcp client disposed during handshake"));
+              return;
+            }
+            this.sendNotification("notifications/initialized", {});
+            resolve();
+          }).catch((err) => reject(err));
+        });
+      }
+      request(id, method, params, timeoutMs) {
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            this.pending.delete(id);
+            reject(new Error(`dbx-mcp request "${method}" timeout after ${timeoutMs}ms`));
+          }, timeoutMs);
+          this.pending.set(id, {
+            resolve: (result) => {
+              clearTimeout(timer);
+              resolve(result);
+            },
+            reject: (err) => {
+              clearTimeout(timer);
+              reject(err);
+            }
+          });
+          this.sendMessage({ jsonrpc: "2.0", id, method, params });
+        });
+      }
+      sendNotification(method, params) {
+        this.sendMessage({ jsonrpc: "2.0", method, params });
+      }
+      /** 列出 dbx-mcp 暴露的所有 MCP 工具。 */
+      async listTools(timeoutMs = 3e4) {
+        await this.ensureInitialized();
+        const result = await this.request(this.nextId++, "tools/list", {}, timeoutMs);
+        return result?.tools ?? [];
+      }
+      sendMessage(message) {
+        if (!this.child) throw new Error("dbx-mcp client not started");
+        this.child.stdin.write(`${JSON.stringify(message)}
+`);
+      }
+      onData(chunk) {
+        this.buffer += chunk;
+        let idx = this.buffer.indexOf("\n");
+        while (idx !== -1) {
+          const line = this.buffer.slice(0, idx).trim();
+          this.buffer = this.buffer.slice(idx + 1);
+          if (!line) continue;
+          this.handleLine(line);
+          idx = this.buffer.indexOf("\n");
+        }
+      }
+      handleLine(line) {
+        let message;
+        try {
+          message = JSON.parse(line);
+        } catch {
+          return;
+        }
+        if (typeof message.id !== "number") return;
+        const p = this.pending.get(message.id);
+        if (!p) return;
+        this.pending.delete(message.id);
+        if (message.error) {
+          const msg = typeof message.error === "object" && message.error !== null && "message" in message.error ? String(message.error.message) : "dbx-mcp request error";
+          p.reject(new Error(msg));
+        } else {
+          p.resolve(message.result);
+        }
+      }
+    };
+    client = null;
+    lastOptions = null;
+  }
+});
+
+// server/src/engine/sql-safety.mjs
+function stripSqlComments(sql) {
+  let out = "";
+  let i = 0;
+  let inLine = false;
+  let inBlock = false;
+  let quote = null;
+  while (i < sql.length) {
+    const ch = sql[i];
+    const next = sql[i + 1];
+    if (inLine) {
+      if (ch === "\n") {
+        inLine = false;
+        out += ch;
+      }
+      i += 1;
+      continue;
+    }
+    if (inBlock) {
+      if (ch === "*" && next === "/") {
+        inBlock = false;
+        i += 2;
+        continue;
+      }
+      i += 1;
+      continue;
+    }
+    if (quote) {
+      out += ch;
+      if (ch === quote) {
+        if (next === quote) {
+          out += next;
+          i += 2;
+          continue;
+        }
+        quote = null;
+      }
+      i += 1;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (ch === "-" && next === "-") {
+      inLine = true;
+      i += 2;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      inBlock = true;
+      i += 2;
+      continue;
+    }
+    out += ch;
+    i += 1;
+  }
+  return out;
+}
+function firstKeyword(sql) {
+  const m = sql.trim().match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
+  return m ? m[0].toUpperCase() : "";
+}
+function isWriteStatement(sql) {
+  const cleaned = stripSqlComments(sql).trim();
+  if (!cleaned) return false;
+  const first = firstKeyword(cleaned);
+  if (READ_LEADERS.has(first)) {
+    if (first === "EXPLAIN") {
+      const rest = cleaned.slice(first.length).trim();
+      if (rest.toUpperCase().startsWith("ANALYZE")) {
+        const body = rest.slice(7).trim();
+        const bodyFirst = firstKeyword(body);
+        if (bodyFirst && !READ_LEADERS.has(bodyFirst)) return true;
+        return WRITE_KEYWORD_RE.test(body.toUpperCase());
+      }
+    }
+    return false;
+  }
+  if (first === "WITH") return WRITE_KEYWORD_RE.test(cleaned.toUpperCase());
+  return true;
+}
+function isDdlStatement(sql) {
+  const cleaned = stripSqlComments(sql).trim();
+  if (!cleaned) return false;
+  const first = firstKeyword(cleaned);
+  if (DDL_LEADERS.has(first)) return true;
+  if (first === "WITH") return DDL_KEYWORD_RE.test(cleaned.toUpperCase());
+  return false;
+}
+function splitStatements(sql) {
+  return stripSqlComments(sql).split(";").map((s) => s.trim()).filter((s) => s.length > 0);
+}
+function classifyQuery(sql) {
+  const statements = splitStatements(sql);
+  const kinds = statements.map((s) => {
+    if (isDdlStatement(s)) return "ddl";
+    return isWriteStatement(s) ? "write" : "read";
+  });
+  let kind = "read";
+  for (const k of kinds) {
+    if (k === "ddl") kind = "ddl";
+    else if (k === "write" && kind !== "ddl") kind = "write";
+  }
+  const requiresConfirmation = kind !== "read";
+  return { kind, kinds, statements, requiresConfirmation };
+}
+var READ_LEADERS, DDL_KEYWORDS, DDL_LEADERS, DDL_KEYWORD_RE, WRITE_KEYWORDS, WRITE_KEYWORD_RE;
+var init_sql_safety = __esm({
+  "server/src/engine/sql-safety.mjs"() {
+    "use strict";
+    READ_LEADERS = /* @__PURE__ */ new Set(["SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN", "USE", "VALUES"]);
+    DDL_KEYWORDS = ["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME"];
+    DDL_LEADERS = new Set(DDL_KEYWORDS);
+    DDL_KEYWORD_RE = new RegExp("\\b(?:" + DDL_KEYWORDS.join("|") + ")\\b");
+    WRITE_KEYWORDS = [
+      "INSERT",
+      "UPDATE",
+      "DELETE",
+      "REPLACE",
+      "MERGE",
+      "UPSERT",
+      "TRUNCATE",
+      "CREATE",
+      "ALTER",
+      "DROP",
+      "GRANT",
+      "REVOKE",
+      "COMMENT",
+      "CALL",
+      "EXEC",
+      "EXECUTE",
+      "DO",
+      "VACUUM",
+      "REINDEX",
+      "COPY",
+      "LOAD",
+      "LOCK",
+      "ATTACH",
+      "DETACH",
+      "RENAME",
+      "ANALYZE",
+      "SET"
+    ];
+    WRITE_KEYWORD_RE = new RegExp("\\b(?:" + WRITE_KEYWORDS.join("|") + ")\\b");
+  }
+});
+
 // node_modules/ms/index.js
 var require_ms = __commonJS({
   "node_modules/ms/index.js"(exports, module) {
@@ -348,7 +761,7 @@ var require_common = __commonJS({
 var require_browser = __commonJS({
   "node_modules/debug/src/browser.js"(exports, module) {
     exports.formatArgs = formatArgs;
-    exports.save = save;
+    exports.save = save2;
     exports.load = load;
     exports.useColors = useColors;
     exports.storage = localstorage();
@@ -475,7 +888,7 @@ var require_browser = __commonJS({
     }
     exports.log = console.debug || console.log || (() => {
     });
-    function save(namespaces) {
+    function save2(namespaces) {
       try {
         if (namespaces) {
           exports.storage.setItem("debug", namespaces);
@@ -522,7 +935,7 @@ var require_node = __commonJS({
     exports.init = init;
     exports.log = log;
     exports.formatArgs = formatArgs;
-    exports.save = save;
+    exports.save = save2;
     exports.load = load;
     exports.useColors = useColors;
     exports.destroy = util.deprecate(
@@ -658,7 +1071,7 @@ var require_node = __commonJS({
     function log(...args) {
       return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + "\n");
     }
-    function save(namespaces) {
+    function save2(namespaces) {
       if (namespaces) {
         process.env.DEBUG = namespaces;
       } else {
@@ -1443,7 +1856,7 @@ var require_Pool = __commonJS({
           return resource;
         }).catch((err) => {
           this._executeEventHandlers("acquireFail", eventId, err);
-          remove(this.pendingAcquires, pendingAcquire);
+          remove2(this.pendingAcquires, pendingAcquire);
           return Promise.reject(err);
         });
         this._tryAcquireOrCreate();
@@ -1590,7 +2003,7 @@ var require_Pool = __commonJS({
                 this._startReaping();
                 pendingAcquire.resolve(free.resource);
               } else {
-                remove(this.used, free);
+                remove2(this.used, free);
                 if (!validationSuccess) {
                   free.settle();
                   this._destroy(free.resource);
@@ -1605,7 +2018,7 @@ var require_Pool = __commonJS({
                 }
               }
             } finally {
-              remove(this.pendingValidations, pendingAcquire);
+              remove2(this.pendingValidations, pendingAcquire);
             }
           });
           this._validateResource(free.resource).then((validationSuccess) => {
@@ -1645,7 +2058,7 @@ var require_Pool = __commonJS({
             pendingAcquire.possibleTimeoutCause = err;
           });
           const retryTimer = setTimeout(() => {
-            remove(this.pendingRetryTimers, retryTimer);
+            remove2(this.pendingRetryTimers, retryTimer);
             this._tryAcquireOrCreate();
           }, this.createRetryIntervalMillis);
           this.pendingRetryTimers.push(retryTimer);
@@ -1656,7 +2069,7 @@ var require_Pool = __commonJS({
         this._executeEventHandlers("createRequest", eventId);
         const pendingCreate = new PendingOperation_1.PendingOperation(this.createTimeoutMillis);
         pendingCreate.promise = pendingCreate.promise.catch((err) => {
-          if (remove(this.pendingCreates, pendingCreate)) {
+          if (remove2(this.pendingCreates, pendingCreate)) {
             this._executeEventHandlers("createFail", eventId, err);
           }
           throw err;
@@ -1668,7 +2081,7 @@ var require_Pool = __commonJS({
             pendingCreate.resolve(resource);
             return null;
           }
-          remove(this.pendingCreates, pendingCreate);
+          remove2(this.pendingCreates, pendingCreate);
           this.free.push(new Resource_1.Resource(resource));
           pendingCreate.resolve(resource);
           this._executeEventHandlers("createSuccess", eventId, resource);
@@ -1678,7 +2091,7 @@ var require_Pool = __commonJS({
             pendingCreate.reject(err);
             return null;
           }
-          if (remove(this.pendingCreates, pendingCreate)) {
+          if (remove2(this.pendingCreates, pendingCreate)) {
             this._executeEventHandlers("createFail", eventId, err);
           }
           pendingCreate.reject(err);
@@ -1735,7 +2148,7 @@ var require_Pool = __commonJS({
       }
     };
     exports.Pool = Pool2;
-    function remove(arr, item) {
+    function remove2(arr, item) {
       const idx = arr.indexOf(item);
       if (idx === -1) {
         return false;
@@ -2256,7 +2669,7 @@ var require_table = __commonJS({
       let cursor = -1;
       let buffer = "";
       let escaped = false;
-      const path3 = [];
+      const path4 = [];
       while (++cursor < length) {
         const char = name.charAt(cursor);
         if (char === "[") {
@@ -2275,7 +2688,7 @@ var require_table = __commonJS({
           if (escaped) {
             buffer += char;
           } else {
-            path3.push(buffer);
+            path4.push(buffer);
             buffer = "";
           }
         } else {
@@ -2283,26 +2696,26 @@ var require_table = __commonJS({
         }
       }
       if (buffer) {
-        path3.push(buffer);
+        path4.push(buffer);
       }
-      switch (path3.length) {
+      switch (path4.length) {
         case 1:
           return {
-            name: path3[0],
+            name: path4[0],
             schema: null,
             database: null
           };
         case 2:
           return {
-            name: path3[1],
-            schema: path3[0],
+            name: path4[1],
+            schema: path4[0],
             database: null
           };
         case 3:
           return {
-            name: path3[2],
-            schema: path3[1],
-            database: path3[0]
+            name: path4[2],
+            schema: path4[1],
+            database: path4[0]
           };
         default:
           throw new Error("Invalid table name.");
@@ -5760,8 +6173,8 @@ var require_msalPlugins = __commonJS({
       }
     };
     var msalNodeFlowVSCodeCredentialControl = {
-      setVSCodeAuthRecordPath(path3) {
-        vsCodeAuthRecordPath = path3;
+      setVSCodeAuthRecordPath(path4) {
+        vsCodeAuthRecordPath = path4;
       },
       setVSCodeBroker(broker) {
         vsCodeBrokerInfo = {
@@ -7285,14 +7698,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports, module) {
     var Buffer3 = require_safe_buffer().Buffer;
-    var crypto = __require("crypto");
+    var crypto2 = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = __require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto2.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -7382,17 +7795,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto.createHmac("sha" + bits, secret);
+        var hmac = crypto2.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual2 = "timingSafeEqual" in crypto ? function timingSafeEqual3(a, b) {
+    var timingSafeEqual2 = "timingSafeEqual" in crypto2 ? function timingSafeEqual3(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto.timingSafeEqual(a, b);
+      return crypto2.timingSafeEqual(a, b);
     } : function timingSafeEqual3(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -7409,7 +7822,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto.createSign("RSA-SHA" + bits);
+        var signer = crypto2.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -7419,7 +7832,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto.createVerify("RSA-SHA" + bits);
+        var verifier = crypto2.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -7428,11 +7841,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto.createSign("RSA-SHA" + bits);
+        var signer = crypto2.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto2.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto2.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -7442,12 +7855,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto.createVerify("RSA-SHA" + bits);
+        var verifier = crypto2.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto2.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto2.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -8517,7 +8930,7 @@ var require_sort = __commonJS({
   "node_modules/semver/functions/sort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
-    var sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
+    var sort = (list2, loose) => list2.sort((a, b) => compareBuild(a, b, loose));
     module.exports = sort;
   }
 });
@@ -8527,7 +8940,7 @@ var require_rsort = __commonJS({
   "node_modules/semver/functions/rsort.js"(exports, module) {
     "use strict";
     var compareBuild = require_compare_build();
-    var rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
+    var rsort = (list2, loose) => list2.sort((a, b) => compareBuild(b, a, loose));
     module.exports = rsort;
   }
 });
@@ -10795,11 +11208,11 @@ var require_msal_node = __commonJS({
   "node_modules/@azure/msal-node/lib/msal-node.cjs"(exports) {
     "use strict";
     var node_crypto = __require("node:crypto");
-    var crypto = __require("crypto");
+    var crypto2 = __require("crypto");
     var jwt = require_jsonwebtoken();
     var http = __require("http");
-    var fs6 = __require("fs");
-    var path3 = __require("path");
+    var fs7 = __require("fs");
+    var path4 = __require("path");
     var Serializer = class {
       /**
        * serialize the JSON blob
@@ -17451,7 +17864,7 @@ ${serverError}`, correlationId);
        * @param buffer
        */
       sha256(buffer) {
-        return crypto.createHash(Hash.SHA256).update(buffer).digest();
+        return crypto2.createHash(Hash.SHA256).update(buffer).digest();
       }
     };
     var PkceGenerator = class {
@@ -17474,7 +17887,7 @@ ${serverError}`, correlationId);
         const charArr = [];
         const maxNumber = 256 - 256 % CharSet.CV_CHARSET.length;
         while (charArr.length <= RANDOM_OCTET_SIZE) {
-          const byte = crypto.randomBytes(1)[0];
+          const byte = crypto2.randomBytes(1)[0];
           if (byte >= maxNumber) {
             continue;
           }
@@ -17578,7 +17991,7 @@ ${serverError}`, correlationId);
         const value = components[key];
         input += `${Buffer.byteLength(key, "utf8")}:${key}${Buffer.byteLength(value, "utf8")}:${value}`;
       }
-      return crypto.createHash("sha256").update(input, "utf8").digest("base64url");
+      return crypto2.createHash("sha256").update(input, "utf8").digest("base64url");
     }
     function generateCredentialKey(credential, hash) {
       const familyId = credential.credentialType === CredentialType.REFRESH_TOKEN && credential.familyId || credential.clientId;
@@ -20541,7 +20954,7 @@ ${serverError}`, correlationId);
         if (!identityEndpoint || !imdsEndpoint) {
           const fileDetectionPath = AZURE_ARC_FILE_DETECTION[process.platform];
           try {
-            fs6.accessSync(fileDetectionPath, fs6.constants.F_OK | fs6.constants.R_OK);
+            fs7.accessSync(fileDetectionPath, fs7.constants.F_OK | fs7.constants.R_OK);
             identityEndpoint = DEFAULT_AZURE_ARC_IDENTITY_ENDPOINT;
             imdsEndpoint = HIMDS_EXECUTABLE_HELPER_STRING;
           } catch (err) {
@@ -20682,7 +21095,7 @@ ${serverError}`, correlationId);
             throw createManagedIdentityError(platformNotSupported, "");
           }
           const expectedSecretFilePath = SUPPORTED_AZURE_ARC_PLATFORMS[process.platform];
-          const fileName = path3.basename(secretFilePath);
+          const fileName = path4.basename(secretFilePath);
           if (!fileName.endsWith(".key")) {
             throw createManagedIdentityError(invalidFileExtension, "");
           }
@@ -20691,7 +21104,7 @@ ${serverError}`, correlationId);
           }
           let secretFileSize;
           try {
-            secretFileSize = await fs6.statSync(secretFilePath).size;
+            secretFileSize = await fs7.statSync(secretFilePath).size;
           } catch (e) {
             throw createManagedIdentityError(unableToReadSecretFile, "");
           }
@@ -20700,7 +21113,7 @@ ${serverError}`, correlationId);
           }
           let secret;
           try {
-            secret = fs6.readFileSync(secretFilePath, EncodingTypes.UTF8);
+            secret = fs7.readFileSync(secretFilePath, EncodingTypes.UTF8);
           } catch (e) {
             throw createManagedIdentityError(unableToReadSecretFile, "");
           }
@@ -21543,13 +21956,13 @@ var require_sha256 = __commonJS({
       computeSha256Hmac: () => computeSha256Hmac2
     });
     module.exports = __toCommonJS2(sha256_exports);
-    var import_node_crypto3 = __require("node:crypto");
+    var import_node_crypto4 = __require("node:crypto");
     async function computeSha256Hmac2(key, stringToSign, encoding) {
       const decodedKey = Buffer.from(key, "base64");
-      return (0, import_node_crypto3.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
+      return (0, import_node_crypto4.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
     }
     async function computeSha256Hash2(content, encoding) {
-      return (0, import_node_crypto3.createHash)("sha256").update(content).digest(encoding);
+      return (0, import_node_crypto4.createHash)("sha256").update(content).digest(encoding);
     }
   }
 });
@@ -22912,13 +23325,13 @@ function __disposeResources(env) {
   }
   return next();
 }
-function __rewriteRelativeImportExtension(path3, preserveJsx) {
-  if (typeof path3 === "string" && /^\.\.?\//.test(path3)) {
-    return path3.replace(/\.(tsx)$|((?:\.d)?)((?:\.[^./]+?)?)\.([cm]?)ts$/i, function(m, tsx, d, ext, cm) {
+function __rewriteRelativeImportExtension(path4, preserveJsx) {
+  if (typeof path4 === "string" && /^\.\.?\//.test(path4)) {
+    return path4.replace(/\.(tsx)$|((?:\.d)?)((?:\.[^./]+?)?)\.([cm]?)ts$/i, function(m, tsx, d, ext, cm) {
       return tsx ? preserveJsx ? ".jsx" : ".js" : d && (!ext || !cm) ? m : d + ext + "." + cm.toLowerCase() + "js";
     });
   }
-  return path3;
+  return path4;
 }
 var extendStatics, __assign, __createBinding, __setModuleDefault, ownKeys, _SuppressedError, tslib_es6_default;
 var init_tslib_es6 = __esm({
@@ -27992,8 +28405,8 @@ var require_getClient = __commonJS({
       const noDefaultAcceptHeader = clientOptions.internal?.noDefaultAcceptHeader ?? false;
       const { allowInsecureConnection, httpClient } = clientOptions;
       const endpointUrl = clientOptions.endpoint ?? endpoint;
-      const client2 = (path3, ...args) => {
-        const getUrl = (requestOptions) => (0, import_urlHelpers.buildRequestUrl)(endpointUrl, path3, args, { allowInsecureConnection, ...requestOptions });
+      const client2 = (path4, ...args) => {
+        const getUrl = (requestOptions) => (0, import_urlHelpers.buildRequestUrl)(endpointUrl, path4, args, { allowInsecureConnection, ...requestOptions });
         return {
           get: (requestOptions = {}) => {
             return buildOperation(
@@ -30949,15 +31362,15 @@ var require_urlHelpers2 = __commonJS({
       let isAbsolutePath = false;
       let requestUrl = replaceAll(baseUri, urlReplacements);
       if (operationSpec.path) {
-        let path3 = replaceAll(operationSpec.path, urlReplacements);
-        if (operationSpec.path === "/{nextLink}" && path3.startsWith("/")) {
-          path3 = path3.substring(1);
+        let path4 = replaceAll(operationSpec.path, urlReplacements);
+        if (operationSpec.path === "/{nextLink}" && path4.startsWith("/")) {
+          path4 = path4.substring(1);
         }
-        if (isAbsoluteUrl(path3)) {
-          requestUrl = path3;
+        if (isAbsoluteUrl(path4)) {
+          requestUrl = path4;
           isAbsolutePath = true;
         } else {
-          requestUrl = appendPath(requestUrl, path3);
+          requestUrl = appendPath(requestUrl, path4);
         }
       }
       const { queryParams, sequenceParams } = calculateQueryParameters(operationSpec, operationArguments, fallbackObject);
@@ -31003,9 +31416,9 @@ var require_urlHelpers2 = __commonJS({
       }
       const searchStart = pathToAppend.indexOf("?");
       if (searchStart !== -1) {
-        const path3 = pathToAppend.substring(0, searchStart);
+        const path4 = pathToAppend.substring(0, searchStart);
         const search = pathToAppend.substring(searchStart + 1);
-        newPath = newPath + path3;
+        newPath = newPath + path4;
         if (search) {
           parsedUrl.search = parsedUrl.search ? `${parsedUrl.search}&${search}` : search;
         }
@@ -33203,10 +33616,10 @@ var require_clientCertificateCredential = __commonJS({
     });
     module.exports = __toCommonJS2(clientCertificateCredential_exports);
     var import_msalClient = require_msalClient();
-    var import_node_crypto3 = __require("node:crypto");
+    var import_node_crypto4 = __require("node:crypto");
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_logging = require_logging();
-    var import_promises3 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var import_tracing = require_tracing();
     var credentialName = "ClientCertificateCredential";
     var logger2 = (0, import_logging.credentialLogger)(credentialName);
@@ -33276,7 +33689,7 @@ var require_clientCertificateCredential = __commonJS({
         );
         let privateKey;
         if (this.certificateConfiguration.certificatePassword !== void 0) {
-          privateKey = (0, import_node_crypto3.createPrivateKey)({
+          privateKey = (0, import_node_crypto4.createPrivateKey)({
             key: parts.certificateContents,
             passphrase: this.certificateConfiguration.certificatePassword,
             format: "pem"
@@ -33298,7 +33711,7 @@ var require_clientCertificateCredential = __commonJS({
     async function parseCertificate(certificateConfiguration, sendCertificateChain) {
       const certificate = certificateConfiguration.certificate;
       const certificatePath = certificateConfiguration.certificatePath;
-      const certificateContents = certificate || await (0, import_promises3.readFile)(certificatePath, "utf8");
+      const certificateContents = certificate || await (0, import_promises5.readFile)(certificatePath, "utf8");
       const x5c = sendCertificateChain ? certificateContents : void 0;
       const certificatePattern = /(-+BEGIN CERTIFICATE-+)(\n\r?|\r\n?)([A-Za-z0-9+/\n\r]+=*)(\n\r?|\r\n?)(-+END CERTIFICATE-+)/g;
       const publicKeys = [];
@@ -33312,8 +33725,8 @@ var require_clientCertificateCredential = __commonJS({
       if (publicKeys.length === 0) {
         throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
       }
-      const thumbprint = (0, import_node_crypto3.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-      const thumbprintSha256 = (0, import_node_crypto3.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprint = (0, import_node_crypto4.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprintSha256 = (0, import_node_crypto4.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
       return {
         certificateContents,
         thumbprintSha256,
@@ -34047,7 +34460,7 @@ var require_workloadIdentityCredential = __commonJS({
     var import_clientAssertionCredential = require_clientAssertionCredential();
     var import_errors = require_errors2();
     var import_tenantIdUtils = require_tenantIdUtils();
-    var import_promises3 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var credentialName = "WorkloadIdentityCredential";
     var SupportedWorkloadEnvironmentVariables = [
       "AZURE_TENANT_ID",
@@ -34134,7 +34547,7 @@ var require_workloadIdentityCredential = __commonJS({
           );
         }
         if (!this.azureFederatedTokenFileContent) {
-          const file = await (0, import_promises3.readFile)(this.federatedTokenFilePath, "utf8");
+          const file = await (0, import_promises5.readFile)(this.federatedTokenFilePath, "utf8");
           const value = file.trim();
           if (!value) {
             throw new import_errors.CredentialUnavailableError(
@@ -34627,9 +35040,9 @@ var require_resolveExecutable = __commonJS({
       resolveWindowsCommandInterpreter: () => resolveWindowsCommandInterpreter
     });
     module.exports = __toCommonJS2(resolveExecutable_exports);
-    var import_node_fs8 = __require("node:fs");
-    var import_node_path6 = __toESM2(__require("node:path"));
-    var import_node_url4 = __require("node:url");
+    var import_node_fs10 = __require("node:fs");
+    var import_node_path10 = __toESM2(__require("node:path"));
+    var import_node_url7 = __require("node:url");
     var import_errors = require_errors3();
     var WINDOWS_NATIVE_EXTENSIONS = [".exe", ".com"];
     var WINDOWS_BATCH_EXTENSIONS = [".cmd", ".bat"];
@@ -34675,8 +35088,8 @@ var require_resolveExecutable = __commonJS({
       return snapshot;
     }
     function normalizeCwd(cwd) {
-      const cwdPath = cwd instanceof URL ? (0, import_node_url4.fileURLToPath)(cwd) : cwd;
-      return import_node_path6.default.resolve(cwdPath ?? process.cwd());
+      const cwdPath = cwd instanceof URL ? (0, import_node_url7.fileURLToPath)(cwd) : cwd;
+      return import_node_path10.default.resolve(cwdPath ?? process.cwd());
     }
     function createProcessContext(options = {}) {
       if (options.allowWindowsBatchFiles !== void 0 && typeof options.allowWindowsBatchFiles !== "boolean") {
@@ -34692,11 +35105,11 @@ var require_resolveExecutable = __commonJS({
     }
     function isExecutableFile(filePath) {
       try {
-        if (!(0, import_node_fs8.statSync)(filePath).isFile()) {
+        if (!(0, import_node_fs10.statSync)(filePath).isFile()) {
           return false;
         }
         if (process.platform !== "win32") {
-          (0, import_node_fs8.accessSync)(filePath, import_node_fs8.constants.X_OK);
+          (0, import_node_fs10.accessSync)(filePath, import_node_fs10.constants.X_OK);
         }
         return true;
       } catch {
@@ -34710,7 +35123,7 @@ var require_resolveExecutable = __commonJS({
       return WINDOWS_BATCH_EXTENSIONS.some((candidate) => candidate === extension);
     }
     function resolveWindowsCandidate(candidate, allowWindowsBatchFiles) {
-      const extension = import_node_path6.default.extname(candidate).toLowerCase();
+      const extension = import_node_path10.default.extname(candidate).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
@@ -34737,7 +35150,7 @@ var require_resolveExecutable = __commonJS({
       const pathValue = getEnvironmentValue(context.env, "PATH") ?? "";
       const paths = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const entry of pathValue.split(import_node_path6.default.delimiter)) {
+      for (const entry of pathValue.split(import_node_path10.default.delimiter)) {
         let candidate = entry;
         if (process.platform === "win32") {
           candidate = candidate.trim();
@@ -34745,10 +35158,10 @@ var require_resolveExecutable = __commonJS({
             candidate = candidate.slice(1, -1);
           }
         }
-        if (!candidate || !import_node_path6.default.isAbsolute(candidate)) {
+        if (!candidate || !import_node_path10.default.isAbsolute(candidate)) {
           continue;
         }
-        const normalized = import_node_path6.default.resolve(candidate);
+        const normalized = import_node_path10.default.resolve(candidate);
         const key = process.platform === "win32" ? normalized.toLowerCase() : normalized;
         if (!seen.has(key)) {
           seen.add(key);
@@ -34774,8 +35187,8 @@ var require_resolveExecutable = __commonJS({
     }
     function resolveExecutableWithContext(command, context) {
       validateCommand(command);
-      if (hasPathSeparator(command) || import_node_path6.default.isAbsolute(command)) {
-        const candidate = import_node_path6.default.resolve(context.cwd, command);
+      if (hasPathSeparator(command) || import_node_path10.default.isAbsolute(command)) {
+        const candidate = import_node_path10.default.resolve(context.cwd, command);
         if (process.platform === "win32") {
           return resolveWindowsCandidate(candidate, context.allowWindowsBatchFiles);
         }
@@ -34784,20 +35197,20 @@ var require_resolveExecutable = __commonJS({
       const searchPaths = getSearchPaths(context);
       if (process.platform !== "win32") {
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path6.default.join(searchPath, command);
+          const candidate = import_node_path10.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
         }
         return void 0;
       }
-      const extension = import_node_path6.default.extname(command).toLowerCase();
+      const extension = import_node_path10.default.extname(command).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(context.allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
         }
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path6.default.join(searchPath, command);
+          const candidate = import_node_path10.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34806,7 +35219,7 @@ var require_resolveExecutable = __commonJS({
       }
       for (const searchPath of searchPaths) {
         for (const nativeExtension of WINDOWS_NATIVE_EXTENSIONS) {
-          const candidate = import_node_path6.default.join(searchPath, command + nativeExtension);
+          const candidate = import_node_path10.default.join(searchPath, command + nativeExtension);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -34815,7 +35228,7 @@ var require_resolveExecutable = __commonJS({
       if (context.allowWindowsBatchFiles) {
         for (const searchPath of searchPaths) {
           for (const batchExtension of WINDOWS_BATCH_EXTENSIONS) {
-            const candidate = import_node_path6.default.join(searchPath, command + batchExtension);
+            const candidate = import_node_path10.default.join(searchPath, command + batchExtension);
             if (isExecutableFile(candidate)) {
               return candidate;
             }
@@ -34829,9 +35242,9 @@ var require_resolveExecutable = __commonJS({
     }
     function canonicalizeWindowsPath(filePath) {
       try {
-        return import_node_fs8.realpathSync.native(filePath).toLowerCase();
+        return import_node_fs10.realpathSync.native(filePath).toLowerCase();
       } catch {
-        return import_node_path6.default.resolve(filePath).toLowerCase();
+        return import_node_path10.default.resolve(filePath).toLowerCase();
       }
     }
     function isWindowsDriveAbsolutePath(filePath) {
@@ -34845,7 +35258,7 @@ var require_resolveExecutable = __commonJS({
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
         });
       }
-      const executablePath = import_node_path6.default.join(systemRoot, "System32", "cmd.exe");
+      const executablePath = import_node_path10.default.join(systemRoot, "System32", "cmd.exe");
       if (!isExecutableFile(executablePath)) {
         throw new import_errors.ProcessError("The Windows command interpreter could not be found.", {
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
@@ -34911,7 +35324,7 @@ var require_normalizeCommand = __commonJS({
       normalizeCommand: () => normalizeCommand
     });
     module.exports = __toCommonJS2(normalizeCommand_exports);
-    var import_node_path6 = __toESM2(__require("node:path"));
+    var import_node_path10 = __toESM2(__require("node:path"));
     var import_errors = require_errors3();
     var import_resolveExecutable = require_resolveExecutable();
     var UNSAFE_BATCH_ARGUMENT = /[%!^&|<>()]/;
@@ -34975,7 +35388,7 @@ var require_normalizeCommand = __commonJS({
           windowsVerbatimArguments: false
         };
       }
-      const extension = import_node_path6.default.extname(resolvedPath).toLowerCase();
+      const extension = import_node_path10.default.extname(resolvedPath).toLowerCase();
       if (extension === ".exe" || extension === ".com") {
         return {
           executable: resolvedPath,
@@ -36089,7 +36502,7 @@ var require_visualStudioCodeCredential = __commonJS({
     var import_scopeUtils = require_scopeUtils();
     var import_msalPlugins = require_msalPlugins();
     var import_utils = require_utils3();
-    var import_promises3 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var CommonTenantId = "common";
     var VSCodeClientId = "aebc6443-996d-45c2-90f0-388ff96faa56";
     var logger2 = (0, import_logging.credentialLogger)("VisualStudioCodeCredential");
@@ -36201,7 +36614,7 @@ var require_visualStudioCodeCredential = __commonJS({
        */
       async loadAuthRecord(authRecordPath, scopes) {
         try {
-          const authRecordContent = await (0, import_promises3.readFile)(authRecordPath, { encoding: "utf8" });
+          const authRecordContent = await (0, import_promises5.readFile)(authRecordPath, { encoding: "utf8" });
           return (0, import_utils.deserializeAuthenticationRecord)(authRecordContent);
         } catch (error) {
           logger2.getToken.info((0, import_logging.formatError)(scopes, error));
@@ -37191,9 +37604,9 @@ var require_onBehalfOfCredential = __commonJS({
     var import_logging = require_logging();
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_errors = require_errors2();
-    var import_node_crypto3 = __require("node:crypto");
+    var import_node_crypto4 = __require("node:crypto");
     var import_scopeUtils = require_scopeUtils();
-    var import_promises3 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var import_tracing = require_tracing();
     var credentialName = "OnBehalfOfCredential";
     var logger2 = (0, import_logging.credentialLogger)(credentialName);
@@ -37312,7 +37725,7 @@ var require_onBehalfOfCredential = __commonJS({
       }
       async parseCertificate(configuration, sendCertificateChain) {
         const certificatePath = configuration.certificatePath;
-        const certificateContents = await (0, import_promises3.readFile)(certificatePath, "utf8");
+        const certificateContents = await (0, import_promises5.readFile)(certificatePath, "utf8");
         const x5c = sendCertificateChain ? certificateContents : void 0;
         const certificatePattern = /(-+BEGIN CERTIFICATE-+)(\n\r?|\r\n?)([A-Za-z0-9+/\n\r]+=*)(\n\r?|\r\n?)(-+END CERTIFICATE-+)/g;
         const publicKeys = [];
@@ -37326,8 +37739,8 @@ var require_onBehalfOfCredential = __commonJS({
         if (publicKeys.length === 0) {
           throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
         }
-        const thumbprint = (0, import_node_crypto3.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-        const thumbprintSha256 = (0, import_node_crypto3.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprint = (0, import_node_crypto4.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprintSha256 = (0, import_node_crypto4.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
         return {
           certificateContents,
           thumbprintSha256,
@@ -39100,17 +39513,17 @@ var require_md4 = __commonJS({
         return method;
       };
       var nodeWrap = function(method) {
-        var crypto = __require("crypto");
+        var crypto2 = __require("crypto");
         var Buffer3 = __require("buffer").Buffer;
         var nodeMethod = function(message) {
           if (typeof message === "string") {
-            return crypto.createHash("md4").update(message, "utf8").digest("hex");
+            return crypto2.createHash("md4").update(message, "utf8").digest("hex");
           } else if (ARRAY_BUFFER && message instanceof ArrayBuffer) {
             message = new Uint8Array(message);
           } else if (message.length === void 0) {
             return method(message);
           }
-          return crypto.createHash("md4").update(new Buffer3(message)).digest("hex");
+          return crypto2.createHash("md4").update(new Buffer3(message)).digest("hex");
         };
         return nodeMethod;
       };
@@ -39443,7 +39856,7 @@ var require_ntlm_payload = __commonJS({
     });
     exports.default = void 0;
     var _writableTrackingBuffer = _interopRequireDefault(require_writable_tracking_buffer());
-    var crypto = _interopRequireWildcard(__require("crypto"));
+    var crypto2 = _interopRequireWildcard(__require("crypto"));
     var _jsMd = _interopRequireDefault(require_md4());
     function _interopRequireWildcard(e, t) {
       if ("function" == typeof WeakMap) var r = /* @__PURE__ */ new WeakMap(), n = /* @__PURE__ */ new WeakMap();
@@ -39578,7 +39991,7 @@ var require_ntlm_payload = __commonJS({
         return Buffer.from(_jsMd.default.arrayBuffer(unicodeString));
       }
       hmacMD5(data, key) {
-        return crypto.createHmac("MD5", key).update(data).digest();
+        return crypto2.createHmac("MD5", key).update(data).digest();
       }
     };
     var _default = exports.default = NTLMResponsePayload;
@@ -42020,7 +42433,7 @@ var require_js_joda = __commonJS({
           this._map = map;
           return this;
         };
-        _proto.remove = function remove(key) {
+        _proto.remove = function remove2(key) {
           var keyName = key.name();
           var val = this._map[keyName];
           this._map[keyName] = void 0;
@@ -73106,10 +73519,10 @@ var require_lib4 = __commonJS({
       const _shrink = (newMax) => {
         let current = tail;
         const preserve = Math.min(size, newMax);
-        const remove = size - preserve;
+        const remove2 = size - preserve;
         const newKeyList = new Array(preserve);
         const newValList = new Array(preserve);
-        for (let i = 0; i < remove; i++) {
+        for (let i = 0; i < remove2; i++) {
           const key = keyList[head];
           onEviction === null || onEviction === void 0 ? void 0 : onEviction(key, valList[head]);
           keyMap.delete(key);
@@ -73730,19 +74143,19 @@ var require_ring_queue = __commonJS({
         return items;
       }
       _grow() {
-        const list = this._list;
-        const capacity = list.length;
+        const list2 = this._list;
+        const capacity = list2.length;
         if (this._head === 0) {
           this._tail = capacity;
-          list.length = capacity << 1;
+          list2.length = capacity << 1;
         } else {
           const grown = new Array(capacity << 1);
           let count = 0;
           for (let slot = this._head; slot < capacity; slot++) {
-            grown[count++] = list[slot];
+            grown[count++] = list2[slot];
           }
           for (let slot = 0; slot < this._tail; slot++) {
-            grown[count++] = list[slot];
+            grown[count++] = list2[slot];
           }
           this._list = grown;
           this._head = 0;
@@ -78996,11 +79409,11 @@ ${msg}:
 `);
     }
     exports.printDebugWithCode = printDebugWithCode;
-    function typeMatch(type, list, Types) {
-      if (Array.isArray(list)) {
-        return list.some((t) => type === Types[t]);
+    function typeMatch(type, list2, Types) {
+      if (Array.isArray(list2)) {
+        return list2.some((t) => type === Types[t]);
       }
-      return !!list;
+      return !!list2;
     }
     exports.typeMatch = typeMatch;
     var privateObjectProps = /* @__PURE__ */ new Set([
@@ -80609,9 +81022,9 @@ var require_client = __commonJS({
 var require_auth_41 = __commonJS({
   "node_modules/mysql2/lib/auth_41.js"(exports) {
     "use strict";
-    var crypto = __require("crypto");
+    var crypto2 = __require("crypto");
     function sha1(msg, msg1, msg2) {
-      const hash = crypto.createHash("sha1");
+      const hash = crypto2.createHash("sha1");
       hash.update(msg);
       if (msg1) {
         hash.update(msg1);
@@ -83037,7 +83450,7 @@ var require_sha256_password = __commonJS({
   "node_modules/mysql2/lib/auth_plugins/sha256_password.js"(exports, module) {
     "use strict";
     var PLUGIN_NAME = "sha256_password";
-    var crypto = __require("crypto");
+    var crypto2 = __require("crypto");
     var { xorRotating } = require_auth_41();
     var Tls = __require("tls");
     var REQUEST_SERVER_KEY_PACKET = Buffer.from([1]);
@@ -83046,7 +83459,7 @@ var require_sha256_password = __commonJS({
     var STATE_FINAL = -1;
     function encrypt(password, scramble, key) {
       const stage1 = xorRotating(Buffer.from(`${password}\0`, "utf8"), scramble);
-      return crypto.publicEncrypt(
+      return crypto2.publicEncrypt(
         {
           key,
           oaepHash: "sha1"
@@ -83098,7 +83511,7 @@ var require_caching_sha2_password = __commonJS({
   "node_modules/mysql2/lib/auth_plugins/caching_sha2_password.js"(exports, module) {
     "use strict";
     var PLUGIN_NAME = "caching_sha2_password";
-    var crypto = __require("crypto");
+    var crypto2 = __require("crypto");
     var { xor, xorRotating } = require_auth_41();
     var REQUEST_SERVER_KEY_PACKET = Buffer.from([2]);
     var FAST_AUTH_SUCCESS_PACKET = Buffer.from([3]);
@@ -83108,7 +83521,7 @@ var require_caching_sha2_password = __commonJS({
     var STATE_WAIT_SERVER_KEY = 2;
     var STATE_FINAL = -1;
     function sha256(msg) {
-      const hash = crypto.createHash("sha256");
+      const hash = crypto2.createHash("sha256");
       hash.update(msg);
       return hash.digest();
     }
@@ -83123,11 +83536,11 @@ var require_caching_sha2_password = __commonJS({
     }
     function encrypt(password, scramble, key) {
       const stage1 = xorRotating(Buffer.from(`${password}\0`, "utf8"), scramble);
-      return crypto.publicEncrypt(
+      return crypto2.publicEncrypt(
         {
           key,
           oaepHash: "sha1",
-          padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+          padding: crypto2.constants.RSA_PKCS1_OAEP_PADDING
         },
         stage1
       );
@@ -85505,12 +85918,12 @@ var require_query2 = __commonJS({
         this._fields.push(this._currentFields);
         return this.readField;
       }
-      _streamLocalInfile(connection, path3) {
+      _streamLocalInfile(connection, path4) {
         if (this._streamFactory) {
-          this._localStream = this._streamFactory(path3);
+          this._localStream = this._streamFactory(path4);
         } else {
           this._localStreamError = new Error(
-            `As a result of LOCAL INFILE command server wants to read ${path3} file, but as of v2.0 you must provide streamFactory option returning ReadStream.`
+            `As a result of LOCAL INFILE command server wants to read ${path4} file, but as of v2.0 you must provide streamFactory option returning ReadStream.`
           );
           connection.writePacket(EmptyPacket);
           return this.infileOk;
@@ -87038,7 +87451,7 @@ var require_named_placeholders = __commonJS({
         }
         return s;
       }
-      function join4(tree) {
+      function join7(tree) {
         if (tree.length === 1) {
           return tree;
         }
@@ -87064,7 +87477,7 @@ var require_named_placeholders = __commonJS({
         if (cache && (tree = cache.get(query))) {
           return toArrayParams(tree, paramsObj);
         }
-        tree = join4(parse(query));
+        tree = join7(parse(query));
         if (cache) {
           cache.set(query, tree);
         }
@@ -90918,7 +91331,7 @@ var require_cert_signatures = __commonJS({
 var require_sasl = __commonJS({
   "node_modules/pg/lib/crypto/sasl.js"(exports, module) {
     "use strict";
-    var crypto = require_utils8();
+    var crypto2 = require_utils8();
     var { signatureAlgorithmHashFromCertificate } = require_cert_signatures();
     function saslprep(password) {
       const nonAsciiSpace = /[\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000]/g;
@@ -90936,7 +91349,7 @@ var require_sasl = __commonJS({
       if (mechanism === "SCRAM-SHA-256-PLUS" && typeof stream.getPeerCertificate !== "function") {
         throw new Error("SASL: Mechanism SCRAM-SHA-256-PLUS requires a certificate");
       }
-      const clientNonce = crypto.randomBytes(18).toString("base64");
+      const clientNonce = crypto2.randomBytes(18).toString("base64");
       const gs2Header = mechanism === "SCRAM-SHA-256-PLUS" ? "p=tls-server-end-point" : stream ? "y" : "n";
       return {
         mechanism,
@@ -90978,20 +91391,20 @@ var require_sasl = __commonJS({
         const peerCert = stream.getPeerCertificate().raw;
         let hashName = signatureAlgorithmHashFromCertificate(peerCert);
         if (hashName === "MD5" || hashName === "SHA-1") hashName = "SHA-256";
-        const certHash = await crypto.hashByName(hashName, peerCert);
+        const certHash = await crypto2.hashByName(hashName, peerCert);
         const bindingData = Buffer.concat([Buffer.from("p=tls-server-end-point,,"), Buffer.from(certHash)]);
         channelBinding = bindingData.toString("base64");
       }
       const clientFinalMessageWithoutProof = "c=" + channelBinding + ",r=" + sv.nonce;
       const authMessage = clientFirstMessageBare + "," + serverFirstMessage + "," + clientFinalMessageWithoutProof;
       const saltBytes = Buffer.from(sv.salt, "base64");
-      const saltedPassword = await crypto.deriveKey(saslprep(password), saltBytes, sv.iteration);
-      const clientKey = await crypto.hmacSha256(saltedPassword, "Client Key");
-      const storedKey = await crypto.sha256(clientKey);
-      const clientSignature = await crypto.hmacSha256(storedKey, authMessage);
+      const saltedPassword = await crypto2.deriveKey(saslprep(password), saltBytes, sv.iteration);
+      const clientKey = await crypto2.hmacSha256(saltedPassword, "Client Key");
+      const storedKey = await crypto2.sha256(clientKey);
+      const clientSignature = await crypto2.hmacSha256(storedKey, authMessage);
       const clientProof = xorBuffers(Buffer.from(clientKey), Buffer.from(clientSignature)).toString("base64");
-      const serverKey = await crypto.hmacSha256(saltedPassword, "Server Key");
-      const serverSignatureBytes = await crypto.hmacSha256(serverKey, authMessage);
+      const serverKey = await crypto2.hmacSha256(saltedPassword, "Server Key");
+      const serverSignatureBytes = await crypto2.hmacSha256(serverKey, authMessage);
       session.message = "SASLResponse";
       session.serverSignature = Buffer.from(serverSignatureBytes).toString("base64");
       session.response = clientFinalMessageWithoutProof + ",p=" + clientProof;
@@ -91194,15 +91607,15 @@ var require_pg_connection_string = __commonJS({
       if (config.sslnegotiation === "direct" && config.ssl === void 0) {
         config.ssl = true;
       }
-      const fs6 = config.sslcert || config.sslkey || config.sslrootcert ? __require("fs") : null;
+      const fs7 = config.sslcert || config.sslkey || config.sslrootcert ? __require("fs") : null;
       if (config.sslcert) {
-        config.ssl.cert = fs6.readFileSync(config.sslcert).toString();
+        config.ssl.cert = fs7.readFileSync(config.sslcert).toString();
       }
       if (config.sslkey) {
-        config.ssl.key = fs6.readFileSync(config.sslkey).toString();
+        config.ssl.key = fs7.readFileSync(config.sslkey).toString();
       }
       if (config.sslrootcert) {
-        config.ssl.ca = fs6.readFileSync(config.sslrootcert).toString();
+        config.ssl.ca = fs7.readFileSync(config.sslrootcert).toString();
       }
       if (options.useLibpqCompat && config.uselibpqcompat) {
         throw new Error("Both useLibpqCompat and uselibpqcompat are set. Please use only one of them.");
@@ -92934,21 +93347,21 @@ var require_split2 = __commonJS({
     var kLast = /* @__PURE__ */ Symbol("last");
     var kDecoder = /* @__PURE__ */ Symbol("decoder");
     function transform(chunk, enc, cb) {
-      let list;
+      let list2;
       if (this.overflow) {
         const buf = this[kDecoder].write(chunk);
-        list = buf.split(this.matcher);
-        if (list.length === 1) return cb();
-        list.shift();
+        list2 = buf.split(this.matcher);
+        if (list2.length === 1) return cb();
+        list2.shift();
         this.overflow = false;
       } else {
         this[kLast] += this[kDecoder].write(chunk);
-        list = this[kLast].split(this.matcher);
+        list2 = this[kLast].split(this.matcher);
       }
-      this[kLast] = list.pop();
-      for (let i = 0; i < list.length; i++) {
+      this[kLast] = list2.pop();
+      for (let i = 0; i < list2.length; i++) {
         try {
-          push(this, this.mapper(list[i]));
+          push(this, this.mapper(list2[i]));
         } catch (error) {
           return cb(error);
         }
@@ -93030,7 +93443,7 @@ var require_split2 = __commonJS({
 var require_helper = __commonJS({
   "node_modules/pgpass/lib/helper.js"(exports, module) {
     "use strict";
-    var path3 = __require("path");
+    var path4 = __require("path");
     var Stream = __require("stream").Stream;
     var split = require_split2();
     var util = __require("util");
@@ -93069,7 +93482,7 @@ var require_helper = __commonJS({
     };
     module.exports.getFileName = function(rawEnv) {
       var env = rawEnv || process.env;
-      var file = env.PGPASSFILE || (isWin ? path3.join(env.APPDATA || "./", "postgresql", "pgpass.conf") : path3.join(env.HOME || "./", ".pgpass"));
+      var file = env.PGPASSFILE || (isWin ? path4.join(env.APPDATA || "./", "postgresql", "pgpass.conf") : path4.join(env.HOME || "./", ".pgpass"));
       return file;
     };
     module.exports.usePgPass = function(stats, fname) {
@@ -93201,16 +93614,16 @@ var require_helper = __commonJS({
 var require_lib6 = __commonJS({
   "node_modules/pgpass/lib/index.js"(exports, module) {
     "use strict";
-    var path3 = __require("path");
-    var fs6 = __require("fs");
+    var path4 = __require("path");
+    var fs7 = __require("fs");
     var helper = require_helper();
     module.exports = function(connInfo, cb) {
       var file = helper.getFileName();
-      fs6.stat(file, function(err, stat) {
+      fs7.stat(file, function(err, stat) {
         if (err || !helper.usePgPass(stat, file)) {
           return cb(void 0);
         }
-        var st = fs6.createReadStream(file);
+        var st = fs7.createReadStream(file);
         helper.getPassword(connInfo, st, cb);
       });
     };
@@ -93230,7 +93643,7 @@ var require_client2 = __commonJS({
     var Query2 = require_query3();
     var defaults2 = require_defaults2();
     var Connection2 = require_connection5();
-    var crypto = require_utils8();
+    var crypto2 = require_utils8();
     var activeQueryDeprecationNotice = nodeUtils.deprecate(
       () => {
       },
@@ -93485,7 +93898,7 @@ var require_client2 = __commonJS({
       _handleAuthMD5Password(msg) {
         this._getPassword(async () => {
           try {
-            const hashedPassword = await crypto.postgresMd5PasswordHash(this.user, this.password, msg.salt);
+            const hashedPassword = await crypto2.postgresMd5PasswordHash(this.user, this.password, msg.salt);
             this.connection.password(hashedPassword);
           } catch (e) {
             this.emit("error", e);
@@ -93922,9 +94335,9 @@ var require_pg_pool = __commonJS({
     var EventEmitter = __require("events").EventEmitter;
     var NOOP = function() {
     };
-    var removeWhere = (list, predicate) => {
-      const i = list.findIndex(predicate);
-      return i === -1 ? void 0 : list.splice(i, 1)[0];
+    var removeWhere = (list2, predicate) => {
+      const i = list2.findIndex(predicate);
+      return i === -1 ? void 0 : list2.splice(i, 1)[0];
     };
     var IdleItem = class {
       constructor(client2, idleListener, timeoutId) {
@@ -94896,11 +95309,154 @@ var require_lib7 = __commonJS({
   }
 });
 
+// server/src/engine/markdown-parser.mjs
+function textOf(result) {
+  return result?.content?.map((c) => c.text ?? "").join("\n") ?? "";
+}
+function parseMarkdownTable(text) {
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("|"));
+  if (lines.length < 2) return { columns: [], rows: [] };
+  const split = (line) => {
+    const PLACEHOLDER = "\0";
+    return line.replace(/^\|/, "").replace(/\|$/, "").replace(/\\\|/g, PLACEHOLDER).split("|").map((cell) => cell.trim().replaceAll(PLACEHOLDER, "\\|"));
+  };
+  const columns = split(lines[0]);
+  const rows = lines.slice(2).map((line) => {
+    const cells = split(line);
+    const row = {};
+    columns.forEach((col, i) => {
+      row[col] = cells[i] ?? "";
+    });
+    return row;
+  });
+  return { columns, rows };
+}
+function pick(row, names) {
+  for (const n of names) {
+    const v = row[n];
+    if (v !== void 0 && v !== "") return v;
+  }
+  return "";
+}
+function parseBulletList(text) {
+  const items = [];
+  for (const line of text.split("\n")) {
+    const m = line.trim().match(/^[-*]\s*(.+)$/);
+    if (m) items.push(m[1].trim());
+  }
+  return items;
+}
+function parseTableList(text) {
+  const tables = [];
+  for (const item of parseBulletList(text)) {
+    const m = item.match(/^(.+?)\s*\(([^)]+)\)(?:\s*--.*)?$/);
+    if (m) {
+      tables.push({ name: m[1].trim(), kind: m[2].trim() });
+    } else {
+      tables.push({ name: item.replace(/\s+--.*$/, "").trim(), kind: "" });
+    }
+  }
+  if (tables.length === 0) {
+    const { rows } = parseMarkdownTable(text);
+    for (const row of rows) {
+      const name = pick(row, ["Name", "name", "Table", "table", "Table Name", "\u8868\u540D"]);
+      if (name) tables.push({ name, kind: pick(row, ["Type", "type", "Kind", "kind", "Table Type", "\u7C7B\u578B"]) });
+    }
+  }
+  return tables;
+}
+function isPkMarker(cells) {
+  const hay = cells.join(" ").toUpperCase();
+  return hay.includes("(PK)") || /\bPK\b/.test(hay) || /\bPRI\b/.test(hay) || /\bPRIMARY KEY\b/.test(hay);
+}
+function parseDescribeColumns(rows) {
+  return rows.map((row) => {
+    const nameCell = pick(row, ["Column", "Name", "name"]);
+    const keyCell = pick(row, ["Key", "KeyType", "Key type", "keys"]);
+    const commentCell = pick(row, ["Comment", "comment"]);
+    const isPrimaryKey = isPkMarker([nameCell, keyCell, commentCell]);
+    const name = nameCell.replace(/\s*\((?:PK|PRIMARY KEY)\)\s*/gi, "").trim();
+    const defaultCell = pick(row, ["Default", "default"]);
+    return {
+      name,
+      type: pick(row, ["Type", "type"]),
+      nullable: (pick(row, ["Nullable", "nullable"]) || "YES").toUpperCase() !== "NO",
+      hasDefault: defaultCell.length > 0,
+      defaultValue: defaultCell,
+      comment: commentCell,
+      isPrimaryKey
+    };
+  });
+}
+function dedupeConnections(connections) {
+  const seenIds = /* @__PURE__ */ new Set();
+  const seenNames = /* @__PURE__ */ new Set();
+  const unique = [];
+  for (const connection of connections) {
+    const id = (connection.id ?? "").trim();
+    const name = (connection.name ?? "").trim();
+    if (!id && !name) {
+      unique.push(connection);
+      continue;
+    }
+    if (id && seenIds.has(id) || name && seenNames.has(name)) continue;
+    if (id) seenIds.add(id);
+    if (name) seenNames.add(name);
+    unique.push(connection);
+  }
+  return unique;
+}
+function parseConnections(text) {
+  const { rows } = parseMarkdownTable(text);
+  return rows.map((row) => ({
+    id: pick(row, ["ID", "Id", "id"]),
+    name: pick(row, ["Name", "name"]),
+    groupPath: pick(row, ["Group Path", "GroupPath", "group"]),
+    type: pick(row, ["Type", "type", "DB Type"]),
+    host: pick(row, ["Host", "host"]),
+    port: Number(pick(row, ["Port", "port"])) || 0,
+    database: pick(row, ["Database", "database", "DB"])
+  }));
+}
+function classifyError(raw) {
+  if (!raw) return { code: "UNKNOWN", detail: "" };
+  if (raw.includes("SQL_BLOCKED")) return { code: "SQL_BLOCKED", detail: raw };
+  if (raw.includes("DBX_NOT_RUNNING")) return { code: "DBX_NOT_RUNNING", detail: raw };
+  if (/connection.*not.*found|ConnectionNotFound/i.test(raw)) return { code: "CONNECTION_NOT_FOUND", detail: raw };
+  if (/MCP_READ_ONLY|read-only mode/i.test(raw)) return { code: "READ_ONLY", detail: raw };
+  if (/already exists/i.test(raw)) return { code: "CONNECTION_EXISTS", detail: raw };
+  if (/INVALID_CONNECTION_TYPE|Unsupported database type|INVALID_CONNECTION|Port is required/i.test(raw))
+    return { code: "INVALID_PARAMS", detail: raw };
+  if (/timed?\s*out|timeout/i.test(raw)) return { code: "TIMEOUT", detail: raw };
+  if (/connection|failed|refused|ECONN|TABLE_LIST_ERROR|CONNECTION_LOAD_ERROR|CONNECTION_SAVE_ERROR/i.test(raw))
+    return { code: "CONNECTION_FAILED", detail: raw };
+  return { code: "UNKNOWN", detail: raw };
+}
+function isMissingCatalogView(raw) {
+  if (!raw) return false;
+  const text = String(raw);
+  if (/information_schema|schemata/i.test(text) && /does not exist|no such|not found|unknown|not exist/i.test(text)) {
+    return true;
+  }
+  if (/no such table|SQLITE_ERROR|UNKNOWN_IDENTIFIER|UNKNOWN_TABLE/i.test(text)) return true;
+  if (/syntax error|not implemented|unsupported/i.test(text)) return true;
+  return false;
+}
+function extractDuration(text) {
+  const m = text.match(/(\d+(?:\.\d+)?)\s*(ms|s)\b/i);
+  return m ? m[0] : "";
+}
+var init_markdown_parser = __esm({
+  "server/src/engine/markdown-parser.mjs"() {
+    "use strict";
+  }
+});
+
 // server/src/http-server.mjs
 import { randomBytes, createHash as createHash2, timingSafeEqual } from "node:crypto";
-import { chmodSync as chmodSync2, existsSync as existsSync3, mkdirSync as mkdirSync4, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync as writeFileSync3 } from "node:fs";
+import { chmodSync as chmodSync2, existsSync as existsSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync3, renameSync as renameSync2, writeFileSync as writeFileSync3 } from "node:fs";
 import { homedir as homedir3 } from "node:os";
-import { join as join3 } from "node:path";
+import { join as join6 } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
@@ -95000,408 +95556,12 @@ function stringifyJson(value) {
   return JSON.stringify(value, jsonReplacer);
 }
 
-// server/src/engine/dbx-mcp-client.mjs
-import { spawn as spawn2 } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-var _thisDir = join(fileURLToPath(import.meta.url), "..");
-var _serverDir = _thisDir.endsWith("engine") ? join(_thisDir, "..", "..") : _thisDir;
-var BIN_PATH_BY_PLATFORM = {
-  "darwin-arm64": join(_serverDir, "bin", "dbx-mcp-darwin-arm64"),
-  "darwin-x64": join(_serverDir, "bin", "dbx-mcp-darwin-x64"),
-  "win32-x64": join(_serverDir, "bin", "dbx-mcp-win-x64.exe")
-};
-var resolvedDataDir = null;
-function resolveDataDir(explicitDir) {
-  if (explicitDir) {
-    mkdirSync(explicitDir, { recursive: true });
-    resolvedDataDir = explicitDir;
-    return explicitDir;
-  }
-  if (resolvedDataDir) return resolvedDataDir;
-  const dir = join(homedir(), ".astravia-dbx-data");
-  mkdirSync(dir, { recursive: true });
-  resolvedDataDir = dir;
-  return dir;
-}
-var HANDSHAKE_TIMEOUT_MS = 6e4;
-var CALL_TIMEOUT_MS = 6e4;
-var SHUTDOWN_GRACE_MS = 2e3;
-function detectPlatform() {
-  const platform2 = process.platform;
-  if (platform2 === "darwin") {
-    return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
-  }
-  if (platform2 === "win32" && process.arch === "x64") return "win32-x64";
-  return null;
-}
-function resolveBinaryPath() {
-  const preferred = detectPlatform();
-  if (preferred && existsSync(BIN_PATH_BY_PLATFORM[preferred])) {
-    return BIN_PATH_BY_PLATFORM[preferred];
-  }
-  for (const tag of ["darwin-arm64", "darwin-x64", "win32-x64"]) {
-    if (tag !== preferred && existsSync(BIN_PATH_BY_PLATFORM[tag])) {
-      return BIN_PATH_BY_PLATFORM[tag];
-    }
-  }
-  throw new Error(
-    `dbx-mcp: \u627E\u4E0D\u5230\u53EF\u7528\u4E8C\u8FDB\u5236\uFF08\u5E73\u53F0 ${process.platform}-${process.arch}\uFF09\uFF0C\u671F\u671B darwin-arm64 / darwin-x64 / win32-x64`
-  );
-}
-var DbxMcpClient = class {
-  constructor(options = {}) {
-    this.handshakeTimeoutMs = options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS;
-    this.callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
-    this.extraEnv = options.extraEnv ?? {};
-    this.dataDir = options.dataDir ?? null;
-    this.child = null;
-    this.buffer = "";
-    this.nextId = 1;
-    this.pending = /* @__PURE__ */ new Map();
-    this.initialized = null;
-    this.phase = "idle";
-    this.lastError = null;
-  }
-  /**
-   * 在后台发起一次子进程连接。成功后 phase=ready；失败复位 initialized，
-   * 让后续真正需要子进程的 callTool 可以重试。
-   * 返回的 promise 会 reject（供需要结果的调用方感知），但不影响状态查询。
-   */
-  connect() {
-    if (this.phase === "ready") return Promise.resolve();
-    if (this.initialized) return this.initialized;
-    this.phase = "connecting";
-    this.lastError = null;
-    this.initialized = this.spawnAndHandshake().then(() => {
-      this.phase = "ready";
-    }).catch((err) => {
-      this.phase = "error";
-      this.lastError = err;
-      this.initialized = null;
-      this.reapCurrentChild();
-      throw err;
-    });
-    return this.initialized;
-  }
-  /** 需要子进程的调用方使用：已连接直接返回，连接中共享同一次，未连接则发起。 */
-  ensureInitialized() {
-    if (this.phase === "ready") return Promise.resolve();
-    if (this.initialized) return this.initialized;
-    return this.connect();
-  }
-  reapCurrentChild() {
-    const child = this.child;
-    this.child = null;
-    if (!child || child.killed) return;
-    child.kill();
-    const force = setTimeout(() => {
-      if (child && !child.killed) child.kill("SIGKILL");
-    }, SHUTDOWN_GRACE_MS);
-    if (force.unref) force.unref();
-  }
-  async callTool(name, args, timeoutMs) {
-    await this.ensureInitialized();
-    const id = this.nextId++;
-    const result = await this.request(
-      id,
-      "tools/call",
-      { name, arguments: args },
-      timeoutMs ?? this.callTimeoutMs
-    );
-    return result;
-  }
-  async dispose() {
-    const child = this.child;
-    this.child = null;
-    this.initialized = null;
-    for (const p of this.pending.values()) p.reject(new Error("dbx-mcp client disposed"));
-    this.pending.clear();
-    if (!child || child.killed) return;
-    const exited = new Promise((resolve) => child.once("exit", () => resolve()));
-    child.kill();
-    await Promise.race([
-      exited,
-      new Promise((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS))
-    ]);
-    if (!child.killed) child.kill("SIGKILL");
-  }
-  spawnAndHandshake() {
-    const bin = resolveBinaryPath();
-    const dbxDataDir = resolveDataDir(this.dataDir);
-    const child = spawn2(bin, [], {
-      stdio: ["pipe", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        DBX_DATA_DIR: dbxDataDir,
-        ...this.extraEnv
-      }
-    });
-    this.child = child;
-    const isCurrent = () => this.child === child;
-    child.stdout.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => this.onData(chunk));
-    child.stderr.on("data", (chunk) => {
-    });
-    child.on("exit", (code, signal) => {
-      if (!isCurrent()) return;
-      const err = new Error(`dbx-mcp exited (code=${code}, signal=${signal})`);
-      for (const p of this.pending.values()) p.reject(err);
-      this.pending.clear();
-      this.child = null;
-      this.initialized = null;
-    });
-    child.on("error", (err) => {
-      if (!isCurrent()) return;
-      for (const p of this.pending.values()) p.reject(err);
-      this.pending.clear();
-      this.child = null;
-      this.initialized = null;
-    });
-    return new Promise((resolve, reject) => {
-      this.request(
-        0,
-        "initialize",
-        {
-          protocolVersion: "2024-11-05",
-          capabilities: {},
-          clientInfo: { name: "dbx-pro-plugin", version: "0.1.1" }
-        },
-        this.handshakeTimeoutMs
-      ).then(() => {
-        if (!isCurrent()) {
-          reject(new Error("dbx-mcp client disposed during handshake"));
-          return;
-        }
-        this.sendNotification("notifications/initialized", {});
-        resolve();
-      }).catch((err) => reject(err));
-    });
-  }
-  request(id, method, params, timeoutMs) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`dbx-mcp request "${method}" timeout after ${timeoutMs}ms`));
-      }, timeoutMs);
-      this.pending.set(id, {
-        resolve: (result) => {
-          clearTimeout(timer);
-          resolve(result);
-        },
-        reject: (err) => {
-          clearTimeout(timer);
-          reject(err);
-        }
-      });
-      this.sendMessage({ jsonrpc: "2.0", id, method, params });
-    });
-  }
-  sendNotification(method, params) {
-    this.sendMessage({ jsonrpc: "2.0", method, params });
-  }
-  /** 列出 dbx-mcp 暴露的所有 MCP 工具。 */
-  async listTools(timeoutMs = 3e4) {
-    await this.ensureInitialized();
-    const result = await this.request(this.nextId++, "tools/list", {}, timeoutMs);
-    return result?.tools ?? [];
-  }
-  sendMessage(message) {
-    if (!this.child) throw new Error("dbx-mcp client not started");
-    this.child.stdin.write(`${JSON.stringify(message)}
-`);
-  }
-  onData(chunk) {
-    this.buffer += chunk;
-    let idx = this.buffer.indexOf("\n");
-    while (idx !== -1) {
-      const line = this.buffer.slice(0, idx).trim();
-      this.buffer = this.buffer.slice(idx + 1);
-      if (!line) continue;
-      this.handleLine(line);
-      idx = this.buffer.indexOf("\n");
-    }
-  }
-  handleLine(line) {
-    let message;
-    try {
-      message = JSON.parse(line);
-    } catch {
-      return;
-    }
-    if (typeof message.id !== "number") return;
-    const p = this.pending.get(message.id);
-    if (!p) return;
-    this.pending.delete(message.id);
-    if (message.error) {
-      const msg = typeof message.error === "object" && message.error !== null && "message" in message.error ? String(message.error.message) : "dbx-mcp request error";
-      p.reject(new Error(msg));
-    } else {
-      p.resolve(message.result);
-    }
-  }
-};
-var client = null;
-var lastOptions = null;
-function getDbxMcpClient(options) {
-  if (options) lastOptions = options;
-  if (!client) client = new DbxMcpClient(options ?? lastOptions ?? void 0);
-  return client;
-}
-async function disposeDbxMcpClient() {
-  if (client) {
-    await client.dispose();
-    client = null;
-  }
-}
-
-// server/src/engine/sql-safety.mjs
-var READ_LEADERS = /* @__PURE__ */ new Set(["SELECT", "SHOW", "DESCRIBE", "DESC", "EXPLAIN", "USE", "VALUES"]);
-var DDL_KEYWORDS = ["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME"];
-var DDL_LEADERS = new Set(DDL_KEYWORDS);
-var DDL_KEYWORD_RE = new RegExp("\\b(?:" + DDL_KEYWORDS.join("|") + ")\\b");
-var WRITE_KEYWORDS = [
-  "INSERT",
-  "UPDATE",
-  "DELETE",
-  "REPLACE",
-  "MERGE",
-  "UPSERT",
-  "TRUNCATE",
-  "CREATE",
-  "ALTER",
-  "DROP",
-  "GRANT",
-  "REVOKE",
-  "COMMENT",
-  "CALL",
-  "EXEC",
-  "EXECUTE",
-  "DO",
-  "VACUUM",
-  "REINDEX",
-  "COPY",
-  "LOAD",
-  "LOCK",
-  "ATTACH",
-  "DETACH",
-  "RENAME",
-  "ANALYZE",
-  "SET"
-];
-var WRITE_KEYWORD_RE = new RegExp("\\b(?:" + WRITE_KEYWORDS.join("|") + ")\\b");
-function stripSqlComments(sql) {
-  let out = "";
-  let i = 0;
-  let inLine = false;
-  let inBlock = false;
-  let quote = null;
-  while (i < sql.length) {
-    const ch = sql[i];
-    const next = sql[i + 1];
-    if (inLine) {
-      if (ch === "\n") {
-        inLine = false;
-        out += ch;
-      }
-      i += 1;
-      continue;
-    }
-    if (inBlock) {
-      if (ch === "*" && next === "/") {
-        inBlock = false;
-        i += 2;
-        continue;
-      }
-      i += 1;
-      continue;
-    }
-    if (quote) {
-      out += ch;
-      if (ch === quote) {
-        if (next === quote) {
-          out += next;
-          i += 2;
-          continue;
-        }
-        quote = null;
-      }
-      i += 1;
-      continue;
-    }
-    if (ch === "'" || ch === '"') {
-      quote = ch;
-      out += ch;
-      i += 1;
-      continue;
-    }
-    if (ch === "-" && next === "-") {
-      inLine = true;
-      i += 2;
-      continue;
-    }
-    if (ch === "/" && next === "*") {
-      inBlock = true;
-      i += 2;
-      continue;
-    }
-    out += ch;
-    i += 1;
-  }
-  return out;
-}
-function firstKeyword(sql) {
-  const m = sql.trim().match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
-  return m ? m[0].toUpperCase() : "";
-}
-function isWriteStatement(sql) {
-  const cleaned = stripSqlComments(sql).trim();
-  if (!cleaned) return false;
-  const first = firstKeyword(cleaned);
-  if (READ_LEADERS.has(first)) {
-    if (first === "EXPLAIN") {
-      const rest = cleaned.slice(first.length).trim();
-      if (rest.toUpperCase().startsWith("ANALYZE")) {
-        const body = rest.slice(7).trim();
-        const bodyFirst = firstKeyword(body);
-        if (bodyFirst && !READ_LEADERS.has(bodyFirst)) return true;
-        return WRITE_KEYWORD_RE.test(body.toUpperCase());
-      }
-    }
-    return false;
-  }
-  if (first === "WITH") return WRITE_KEYWORD_RE.test(cleaned.toUpperCase());
-  return true;
-}
-function isDdlStatement(sql) {
-  const cleaned = stripSqlComments(sql).trim();
-  if (!cleaned) return false;
-  const first = firstKeyword(cleaned);
-  if (DDL_LEADERS.has(first)) return true;
-  if (first === "WITH") return DDL_KEYWORD_RE.test(cleaned.toUpperCase());
-  return false;
-}
-function splitStatements(sql) {
-  return stripSqlComments(sql).split(";").map((s) => s.trim()).filter((s) => s.length > 0);
-}
-function classifyQuery(sql) {
-  const statements = splitStatements(sql);
-  const kinds = statements.map((s) => {
-    if (isDdlStatement(s)) return "ddl";
-    return isWriteStatement(s) ? "write" : "read";
-  });
-  let kind = "read";
-  for (const k of kinds) {
-    if (k === "ddl") kind = "ddl";
-    else if (k === "write" && kind !== "ddl") kind = "write";
-  }
-  const requiresConfirmation = kind !== "read";
-  return { kind, kinds, statements, requiresConfirmation };
-}
+// server/src/api/router-context.mjs
+init_dbx_mcp_client();
+init_sql_safety();
 
 // server/src/engine/sql-pagination.mjs
+init_sql_safety();
 var PAGED_DIALECTS = /* @__PURE__ */ new Set([
   // MySQL 系（含 MySQL 协议的国产/云库）
   "mysql",
@@ -95887,11 +96047,11 @@ function tableFromRecords(records, { rowLimit = API_MAX_ROWS, dataPath = "" } = 
   return { columns, rows, truncated: truncatedRecords, totalRecords: records.length, dataPath };
 }
 function inferColumnTypes(records, columns) {
-  const list = Array.isArray(records) ? records : [];
+  const list2 = Array.isArray(records) ? records : [];
   const result = {};
   for (const column of columns ?? []) {
     const seen = /* @__PURE__ */ new Set();
-    for (const record of list) {
+    for (const record of list2) {
       if (!record || typeof record !== "object") continue;
       const value = record[column];
       if (value === null || value === void 0) continue;
@@ -96033,10 +96193,10 @@ function emptyStore() {
   return { schemaVersion: SCHEMA_VERSION, sources: [] };
 }
 function readApiStore(dataDir) {
-  const path3 = apiStorePath(dataDir);
-  if (!existsSync2(path3)) return emptyStore();
+  const path4 = apiStorePath(dataDir);
+  if (!existsSync2(path4)) return emptyStore();
   try {
-    const parsed = JSON.parse(readFileSync(path3, "utf8"));
+    const parsed = JSON.parse(readFileSync(path4, "utf8"));
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.sources)) return emptyStore();
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -96047,15 +96207,15 @@ function readApiStore(dataDir) {
   }
 }
 function writeApiStore(dataDir, store) {
-  const path3 = apiStorePath(dataDir);
-  mkdirSync2(dirname(path3), { recursive: true });
-  const tmp = `${path3}.tmp-${process.pid}`;
+  const path4 = apiStorePath(dataDir);
+  mkdirSync2(dirname(path4), { recursive: true });
+  const tmp = `${path4}.tmp-${process.pid}`;
   writeFileSync(tmp, `${JSON.stringify({ schemaVersion: SCHEMA_VERSION, sources: store.sources }, null, 2)}
 `, {
     mode: 384
   });
   chmodSync(tmp, 384);
-  renameSync(tmp, path3);
+  renameSync(tmp, path4);
 }
 function listApiSources(dataDir) {
   return readApiStore(dataDir).sources.map((source) => ({ ...source }));
@@ -96251,7 +96411,8 @@ function tokenize(sql) {
     }
     if (/[A-Za-z_\u0080-\uFFFF]/.test(ch)) {
       let j = i;
-      while (j < n && /[A-Za-z0-9_$\u0080-\uFFFF]/.test(text[j])) j += 1;
+      while (j < n && /[A-Za-z0-9_$\u0080-\uFFFF-]/.test(text[j])) j += 1;
+      while (j > i && text[j - 1] === "-") j -= 1;
       tokens.push({ kind: "ident", text: text.slice(i, j) });
       i = j;
       continue;
@@ -96352,8 +96513,8 @@ function aliasFollows(tokens, index) {
   if (name === null) return false;
   return !CLAUSE_KEYWORDS.has(name.toUpperCase());
 }
-function escapePath(path3) {
-  return String(path3).split("'").join("''");
+function escapePath(path4) {
+  return String(path4).split("'").join("''");
 }
 function rewriteApiTableRefs(sql, snapshotPaths, options = {}) {
   const paths = snapshotPaths instanceof Map ? snapshotPaths : new Map(Object.entries(snapshotPaths ?? {}));
@@ -96364,10 +96525,10 @@ function rewriteApiTableRefs(sql, snapshotPaths, options = {}) {
     const token = tokens[ref.index];
     const name = identName(token);
     if (name === null) continue;
-    const path3 = paths.get(name.toLowerCase());
-    if (!path3) continue;
+    const path4 = paths.get(name.toLowerCase());
+    if (!path4) continue;
     const alias = ref.hasAlias ? "" : ` AS "${name.split('"').join('""')}"`;
-    token.rewrite = `read_json_auto('${escapePath(path3)}')${alias}`;
+    token.rewrite = `read_json_auto('${escapePath(path4)}')${alias}`;
     replaced.add(name.toLowerCase());
   }
   const rewritten = tokens.map((token) => token.rewrite ?? token.text).join("");
@@ -96396,12 +96557,12 @@ async function materializeApiSource(dataDir, name, options = {}) {
   const result = await fetchApiSource(source, options);
   const dir = apiCacheDir(dataDir);
   mkdirSync3(dir, { recursive: true });
-  const path3 = apiSnapshotPath(dataDir, source.name);
-  writeFileSync2(path3, toNdjson(result.table.rows), { encoding: "utf8", mode: 384 });
+  const path4 = apiSnapshotPath(dataDir, source.name);
+  writeFileSync2(path4, toNdjson(result.table.rows), { encoding: "utf8", mode: 384 });
   return {
     name: source.name,
     url: result.url,
-    path: path3,
+    path: path4,
     columns: result.table.columns,
     rowCount: result.table.rows.length,
     totalRecords: result.table.totalRecords,
@@ -96446,145 +96607,11 @@ async function previewApiSource(dataDir, name, options = {}) {
   return fetchApiSource(source, options);
 }
 
-// server/src/engine/markdown-parser.mjs
-function textOf(result) {
-  return result?.content?.map((c) => c.text ?? "").join("\n") ?? "";
-}
-function parseMarkdownTable(text) {
-  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l.startsWith("|"));
-  if (lines.length < 2) return { columns: [], rows: [] };
-  const split = (line) => {
-    const PLACEHOLDER = "\0";
-    return line.replace(/^\|/, "").replace(/\|$/, "").replace(/\\\|/g, PLACEHOLDER).split("|").map((cell) => cell.trim().replaceAll(PLACEHOLDER, "\\|"));
-  };
-  const columns = split(lines[0]);
-  const rows = lines.slice(2).map((line) => {
-    const cells = split(line);
-    const row = {};
-    columns.forEach((col, i) => {
-      row[col] = cells[i] ?? "";
-    });
-    return row;
-  });
-  return { columns, rows };
-}
-function pick(row, names) {
-  for (const n of names) {
-    const v = row[n];
-    if (v !== void 0 && v !== "") return v;
-  }
-  return "";
-}
-function parseBulletList(text) {
-  const items = [];
-  for (const line of text.split("\n")) {
-    const m = line.trim().match(/^[-*]\s*(.+)$/);
-    if (m) items.push(m[1].trim());
-  }
-  return items;
-}
-function parseTableList(text) {
-  const tables = [];
-  for (const item of parseBulletList(text)) {
-    const m = item.match(/^(.+?)\s*\(([^)]+)\)(?:\s*--.*)?$/);
-    if (m) {
-      tables.push({ name: m[1].trim(), kind: m[2].trim() });
-    } else {
-      tables.push({ name: item.replace(/\s+--.*$/, "").trim(), kind: "" });
-    }
-  }
-  if (tables.length === 0) {
-    const { rows } = parseMarkdownTable(text);
-    for (const row of rows) {
-      const name = pick(row, ["Name", "name", "Table", "table", "Table Name", "\u8868\u540D"]);
-      if (name) tables.push({ name, kind: pick(row, ["Type", "type", "Kind", "kind", "Table Type", "\u7C7B\u578B"]) });
-    }
-  }
-  return tables;
-}
-function isPkMarker(cells) {
-  const hay = cells.join(" ").toUpperCase();
-  return hay.includes("(PK)") || /\bPK\b/.test(hay) || /\bPRI\b/.test(hay) || /\bPRIMARY KEY\b/.test(hay);
-}
-function parseDescribeColumns(rows) {
-  return rows.map((row) => {
-    const nameCell = pick(row, ["Column", "Name", "name"]);
-    const keyCell = pick(row, ["Key", "KeyType", "Key type", "keys"]);
-    const commentCell = pick(row, ["Comment", "comment"]);
-    const isPrimaryKey = isPkMarker([nameCell, keyCell, commentCell]);
-    const name = nameCell.replace(/\s*\((?:PK|PRIMARY KEY)\)\s*/gi, "").trim();
-    const defaultCell = pick(row, ["Default", "default"]);
-    return {
-      name,
-      type: pick(row, ["Type", "type"]),
-      nullable: (pick(row, ["Nullable", "nullable"]) || "YES").toUpperCase() !== "NO",
-      hasDefault: defaultCell.length > 0,
-      defaultValue: defaultCell,
-      comment: commentCell,
-      isPrimaryKey
-    };
-  });
-}
-function dedupeConnections(connections) {
-  const seenIds = /* @__PURE__ */ new Set();
-  const seenNames = /* @__PURE__ */ new Set();
-  const unique = [];
-  for (const connection of connections) {
-    const id = (connection.id ?? "").trim();
-    const name = (connection.name ?? "").trim();
-    if (!id && !name) {
-      unique.push(connection);
-      continue;
-    }
-    if (id && seenIds.has(id) || name && seenNames.has(name)) continue;
-    if (id) seenIds.add(id);
-    if (name) seenNames.add(name);
-    unique.push(connection);
-  }
-  return unique;
-}
-function parseConnections(text) {
-  const { rows } = parseMarkdownTable(text);
-  return rows.map((row) => ({
-    id: pick(row, ["ID", "Id", "id"]),
-    name: pick(row, ["Name", "name"]),
-    groupPath: pick(row, ["Group Path", "GroupPath", "group"]),
-    type: pick(row, ["Type", "type", "DB Type"]),
-    host: pick(row, ["Host", "host"]),
-    port: Number(pick(row, ["Port", "port"])) || 0,
-    database: pick(row, ["Database", "database", "DB"])
-  }));
-}
-function classifyError(raw) {
-  if (!raw) return { code: "UNKNOWN", detail: "" };
-  if (raw.includes("SQL_BLOCKED")) return { code: "SQL_BLOCKED", detail: raw };
-  if (raw.includes("DBX_NOT_RUNNING")) return { code: "DBX_NOT_RUNNING", detail: raw };
-  if (/connection.*not.*found|ConnectionNotFound/i.test(raw)) return { code: "CONNECTION_NOT_FOUND", detail: raw };
-  if (/MCP_READ_ONLY|read-only mode/i.test(raw)) return { code: "READ_ONLY", detail: raw };
-  if (/already exists/i.test(raw)) return { code: "CONNECTION_EXISTS", detail: raw };
-  if (/INVALID_CONNECTION_TYPE|Unsupported database type|INVALID_CONNECTION|Port is required/i.test(raw))
-    return { code: "INVALID_PARAMS", detail: raw };
-  if (/timed?\s*out|timeout/i.test(raw)) return { code: "TIMEOUT", detail: raw };
-  if (/connection|failed|refused|ECONN|TABLE_LIST_ERROR|CONNECTION_LOAD_ERROR|CONNECTION_SAVE_ERROR/i.test(raw))
-    return { code: "CONNECTION_FAILED", detail: raw };
-  return { code: "UNKNOWN", detail: raw };
-}
-function isMissingCatalogView(raw) {
-  if (!raw) return false;
-  const text = String(raw);
-  if (/information_schema|schemata/i.test(text) && /does not exist|no such|not found|unknown|not exist/i.test(text)) {
-    return true;
-  }
-  if (/no such table|SQLITE_ERROR|UNKNOWN_IDENTIFIER|UNKNOWN_TABLE/i.test(text)) return true;
-  if (/syntax error|not implemented|unsupported/i.test(text)) return true;
-  return false;
-}
-function extractDuration(text) {
-  const m = text.match(/(\d+(?:\.\d+)?)\s*(ms|s)\b/i);
-  return m ? m[0] : "";
-}
+// server/src/api/router-context.mjs
+init_markdown_parser();
 
 // server/src/engine/error-hints.mjs
+init_markdown_parser();
 var SQL_PREVIEW_LIMIT = 400;
 var MISSING_OBJECT_PATTERNS = [
   /(?:relation|table|view|materialized view)\s+"([^"]+)"\s+does not exist/i,
@@ -96695,6 +96722,595 @@ function buildSqlErrorHint(rawText, context = {}) {
   return lines.join("\n");
 }
 
+// server/src/api/router-context.mjs
+var DBX_MAX_ROWS = 1e3;
+var DBX_EFFECTIVE_ROW_CAP = 1e3;
+var SCHEMA_QUERIES = {
+  postgres: `SELECT n.nspname AS schema_name
+FROM pg_catalog.pg_namespace n
+WHERE n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+  AND n.nspname NOT LIKE 'pg_toast_temp_%'
+  AND n.nspname NOT LIKE 'pg_temp_%'
+ORDER BY n.nspname`,
+  sqlserver: `SELECT s.name AS schema_name
+FROM sys.schemas s
+WHERE s.name NOT IN (
+  'guest', 'INFORMATION_SCHEMA', 'sys',
+  'db_owner', 'db_accessadmin', 'db_securityadmin', 'db_ddladmin',
+  'db_backupoperator', 'db_datareader', 'db_datawriter',
+  'db_denydatareader', 'db_denydatawriter'
+)
+ORDER BY CASE WHEN s.name = 'dbo' THEN 0 ELSE 1 END, s.name`,
+  default: "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name"
+};
+function schemaQueryFor(dbType) {
+  const type = String(dbType ?? "").toLowerCase();
+  if (/postgres|redshift/.test(type)) return SCHEMA_QUERIES.postgres;
+  if (/mssql|sqlserver/.test(type)) return SCHEMA_QUERIES.sqlserver;
+  return SCHEMA_QUERIES.default;
+}
+function normalizeDbType(dbType) {
+  const value = String(dbType ?? "").toLowerCase();
+  if (value === "aurora-postgresql") return "postgres";
+  if (value === "mariadb") return "mysql";
+  if (value === "uds") return "postgres";
+  return value;
+}
+function toDbxAddParams(body) {
+  const args = { name: body.name, db_type: normalizeDbType(body.dbType), host: body.host };
+  if (body.port) args.port = body.port;
+  if (body.username) args.username = body.username;
+  if (body.password) args.password = body.password;
+  if (body.database) args.database = body.database;
+  if (body.ssl !== void 0) args.ssl = body.ssl === true;
+  if (!args.host && body.file) args.host = body.file;
+  return args;
+}
+function clampRowLimit(rowLimit) {
+  const value = Number.isFinite(rowLimit) ? Math.trunc(rowLimit) : DEFAULT_ROW_LIMIT;
+  return Math.min(Math.max(value, 1), MAX_ROW_LIMIT);
+}
+function clampTimeout(timeoutMs) {
+  const value = Number.isFinite(timeoutMs) ? Math.trunc(timeoutMs) : 3e4;
+  return Math.min(Math.max(value, 1e3), MAX_TIMEOUT_MS);
+}
+function dbxMaxRows(rowLimit) {
+  return Math.min(Math.max(rowLimit, 1), DBX_MAX_ROWS, DBX_EFFECTIVE_ROW_CAP);
+}
+function extractText(result, toolName) {
+  const text = textOf(result);
+  if (result.isError) {
+    const err = classifyError(text);
+    throw engineError(err.code, `${toolName} failed: ${err.detail}`, text);
+  }
+  return text;
+}
+function isDriverUnavailable(rawText) {
+  return /driver is not installed|DBX_DUCKDB_DRIVER_PATH/i.test(String(rawText ?? ""));
+}
+function createRouterContext({ auth, dataDir = null, now = () => Date.now() } = {}) {
+  if (!auth) throw new Error("createRouterContext \u9700\u8981 auth");
+  const mcpClient = () => getDbxMcpClient();
+  async function ensureApiEngineConnection() {
+    if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55\uFF0C\u65E0\u6CD5\u67E5\u8BE2 API \u63A5\u5165\u6570\u636E\u6E90");
+    try {
+      const result = await mcpClient().callTool("dbx_add_connection", {
+        name: API_ENGINE_CONNECTION,
+        db_type: "duckdb",
+        host: apiEngineDatabasePath(dataDir),
+        database: API_ENGINE_DATABASE
+      });
+      extractText(result, "dbx_add_connection");
+    } catch (e) {
+      if (e?.engineError) {
+        throw engineError(
+          "API_ENGINE_UNAVAILABLE",
+          `\u672C\u673A\u67E5\u8BE2\u901A\u9053\u4E0D\u53EF\u7528\uFF08\u9700\u8981 DuckDB \u9A71\u52A8\uFF09\uFF1A${e.message}`,
+          e.detail
+        );
+      }
+      throw e;
+    }
+  }
+  async function resolveWriteConnSpec(connectionName, connSpec) {
+    const base = { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType };
+    let authoritative = null;
+    try {
+      const result = await mcpClient().callTool("dbx_list_connections", {});
+      authoritative = parseConnections(textOf(result)).find((c) => c.name === connectionName) ?? null;
+    } catch {
+      authoritative = null;
+    }
+    if (!authoritative) return base;
+    return {
+      ...base,
+      db_type: base.db_type || authoritative.type,
+      host: base.host || authoritative.host,
+      port: base.port || authoritative.port,
+      database: base.database || authoritative.database
+    };
+  }
+  async function resolveQueryContext(connectionName, sql, effectiveSql) {
+    const context = { connection: connectionName, sql, effectiveSql };
+    try {
+      const result = await mcpClient().callTool("dbx_list_connections", {});
+      const found = parseConnections(textOf(result)).find((c) => c.name === connectionName);
+      if (found) {
+        context.dbType = found.type;
+        context.host = found.host;
+        context.port = found.port;
+        context.database = found.database;
+      }
+    } catch {
+    }
+    return context;
+  }
+  async function attachTableLocation(connectionName, dbType, rawName, context) {
+    const lookup = tableLocationQuery(dbType, rawName);
+    if (!lookup) return context;
+    try {
+      const result = await mcpClient().callTool(
+        "dbx_execute_query",
+        { connection_name: connectionName, sql: lookup, max_rows: 5 },
+        15e3
+      );
+      if (!result?.isError) context.tableLocation = parseTableLocations(textOf(result));
+    } catch {
+    }
+    return context;
+  }
+  async function describeFailure(connectionName, sql, effectiveSql, rawText) {
+    try {
+      const context = await resolveQueryContext(connectionName, sql, effectiveSql);
+      const missing = matchMissingObject(rawText);
+      if (missing) await attachTableLocation(connectionName, context.dbType, missing.name, context);
+      const text = [describeQueryContext(context), buildSqlErrorHint(rawText, context)].filter(Boolean).join("\n");
+      return text ? `
+${text}` : "";
+    } catch {
+      return "";
+    }
+  }
+  function toOutcome(text, extra = {}) {
+    const lim = extra.pageLimit ?? DBX_EFFECTIVE_ROW_CAP;
+    const { columns, rows: allRows } = parseMarkdownTable(text);
+    const rows = allRows.length > lim ? allRows.slice(0, lim) : allRows;
+    const truncated = extra.pageLimit === null && allRows.length >= DBX_EFFECTIVE_ROW_CAP;
+    const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
+    return {
+      columns,
+      rows,
+      row_count: rows.length,
+      truncated,
+      row_limit: extra.rowLimit,
+      max_rows: extra.maxRows,
+      engine_row_count: allRows.length,
+      duration_ms: extra.durationMs,
+      duration_hint: extractDuration(text),
+      raw_text: text,
+      affected_rows: affected ? parseInt(affected[1], 10) : null,
+      ...extra
+    };
+  }
+  return {
+    auth,
+    dataDir,
+    now,
+    mcpClient,
+    ensureApiEngineConnection,
+    resolveWriteConnSpec,
+    resolveQueryContext,
+    attachTableLocation,
+    describeFailure,
+    toOutcome,
+    isDriverUnavailable,
+    // 工具函数（从 engine/ 模块 import 过来让各 domain 统一用）
+    classifyQuery,
+    buildCountSql,
+    buildPagedSql,
+    canPaginate,
+    supportsPagination,
+    executeWrite,
+    inferColumnTypes,
+    isApiDbType,
+    normalizeApiSource,
+    fetchApiSource,
+    API_ENGINE_CONNECTION,
+    API_ENGINE_DATABASE,
+    apiEngineDatabasePath,
+    apiSourceToConnection,
+    apiSourceToPublic,
+    findApiSource,
+    isApiSourceName,
+    listApiSources,
+    removeApiSource,
+    upsertApiSource,
+    previewApiSource,
+    runApiQuery,
+    textOf,
+    parseMarkdownTable,
+    parseTableList,
+    parseDescribeColumns,
+    parseConnections,
+    dedupeConnections,
+    classifyError,
+    isMissingCatalogView,
+    pick,
+    extractText
+  };
+}
+
+// server/src/api/health.mjs
+function healthRoutes(ctx) {
+  return [
+    ["/health", "GET", false, async () => {
+      const c = ctx.mcpClient();
+      let dbxInfo;
+      if (c.phase === "ready") dbxInfo = { status: "connected" };
+      else if (c.phase === "connecting") dbxInfo = { status: "connecting" };
+      else if (c.phase === "error") dbxInfo = { status: "error", message: c.lastError?.message };
+      else dbxInfo = { status: "idle" };
+      return {
+        status: "ok",
+        version: ENGINE_VERSION,
+        protocol: PROTOCOL_VERSION,
+        row_cap: 1e3,
+        pid: process.pid,
+        node: process.version,
+        platform: `${process.platform}-${process.arch}`,
+        uptimeMs: Math.round(process.uptime() * 1e3),
+        auth: ctx.auth?.enabled ? "enabled" : "disabled",
+        dbx: dbxInfo,
+        drivers: [{ id: "dbx-cli", label: "dbx CLI (100+ databases)", tier: "first-class", ready: true }]
+      };
+    }]
+  ];
+}
+
+// server/src/api/connections.mjs
+function connectionsRoutes(ctx) {
+  return [
+    ["/connections", "GET", true, async () => {
+      const result = await ctx.mcpClient().callTool("dbx_list_connections", {});
+      const text = ctx.extractText(result, "dbx_list_connections");
+      const raw = ctx.parseConnections(text);
+      const engineConnections = ctx.dedupeConnections(raw).filter((c) => c.name !== ctx.API_ENGINE_CONNECTION);
+      const apiConnections = ctx.dataDir ? ctx.listApiSources(ctx.dataDir).map(ctx.apiSourceToConnection) : [];
+      return { connections: [...apiConnections, ...engineConnections] };
+    }],
+    ["/connections", "POST", true, async ({ body }) => {
+      if (!body?.name || !body?.dbType) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 name / dbType");
+      const dbxArgs = toDbxAddParams(body);
+      const result = await ctx.mcpClient().callTool("dbx_add_connection", dbxArgs);
+      const text = ctx.extractText(result, "dbx_add_connection");
+      const alreadyExists = /already exists/i.test(text);
+      if (alreadyExists) {
+        const existingList = await ctx.mcpClient().callTool("dbx_list_connections", {});
+        const existingText = ctx.extractText(existingList, "dbx_list_connections");
+        const existing = ctx.parseConnections(existingText).find(
+          (c) => c.name.toLowerCase() === body.name.toLowerCase()
+        );
+        return { id: existing?.id ?? "", name: body.name, detail: text, existing: true };
+      }
+      const idMatch = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+      return { id: idMatch?.[0] ?? "", name: body.name, detail: text, existing: false };
+    }],
+    ["/connections", "DELETE", true, async ({ body }) => {
+      const name = body?.name;
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connection name");
+      if (ctx.dataDir && ctx.isApiSourceName(ctx.dataDir, name)) {
+        ctx.removeApiSource(ctx.dataDir, name);
+        return { deleted: name };
+      }
+      const result = await ctx.mcpClient().callTool("dbx_remove_connection", { connection_name: name });
+      ctx.extractText(result, "dbx_remove_connection");
+      return { deleted: name };
+    }],
+    ["/connections/test", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName;
+      let tempName = null, actualName = connectionName;
+      if (!connectionName && body?.draft) {
+        tempName = `astravia-test-${Date.now().toString(36)}`;
+        const addResult = await ctx.mcpClient().callTool("dbx_add_connection", toDbxAddParams({ ...body.draft, name: tempName }));
+        ctx.extractText(addResult, "dbx_add_connection");
+        actualName = tempName;
+      }
+      if (!actualName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName \u6216 draft");
+      try {
+        const testResult = await ctx.mcpClient().callTool("dbx_list_tables", { connection_name: actualName });
+        const text = ctx.extractText(testResult, "dbx_list_tables");
+        const tableCount = ctx.parseTableList(text).length;
+        return { tableCount, detail: text };
+      } finally {
+        if (tempName) {
+          try {
+            await ctx.mcpClient().callTool("dbx_remove_connection", { connection_name: tempName });
+          } catch {
+          }
+        }
+      }
+    }]
+  ];
+}
+
+// server/src/api/api-sources.mjs
+function apiSourcesRoutes(ctx) {
+  return [
+    ["/api-sources", "POST", true, async ({ body }) => {
+      if (!ctx.dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55");
+      const name = String(body?.name ?? "").trim();
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u540D\u79F0");
+      const listResult = await ctx.mcpClient().callTool("dbx_list_connections", {});
+      const clash = ctx.parseConnections(ctx.extractText(listResult, "dbx_list_connections")).some(
+        (c) => c.name.toLowerCase() === name.toLowerCase()
+      );
+      if (clash) throw engineError("BAD_REQUEST", `\u5DF2\u5B58\u5728\u540C\u540D\u6570\u636E\u5E93\u8FDE\u63A5\u300C${name}\u300D\uFF0C\u8BF7\u6362\u4E00\u4E2A\u540D\u79F0`);
+      const saved = ctx.upsertApiSource(ctx.dataDir, body, body?.token ?? body?.secret ?? "");
+      return ctx.apiSourceToPublic(saved);
+    }],
+    ["/api-sources", "DELETE", true, async ({ body }) => {
+      if (!ctx.dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55");
+      const name = body?.name;
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 API \u63A5\u5165\u540D\u79F0");
+      ctx.removeApiSource(ctx.dataDir, name);
+      return { deleted: name };
+    }],
+    ["/api-sources/test", "POST", true, async ({ body }) => {
+      if (!ctx.dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55");
+      const draft = body?.draft ?? null;
+      const name = String((draft ?? body)?.name ?? "").trim();
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u540D\u79F0");
+      const stored = ctx.findApiSource(ctx.dataDir, name);
+      const secret = body?.token ?? body?.secret ?? stored?.secret ?? "";
+      const merged = draft && draft.headers === void 0 ? { ...draft, headers: stored?.headers ?? {} } : draft;
+      const fetched = merged ? await ctx.fetchApiSource({ ...ctx.normalizeApiSource({ ...merged, secret }), secret }, {}) : await ctx.previewApiSource(ctx.dataDir, name);
+      return {
+        name,
+        url: fetched.url,
+        status: fetched.status,
+        columns: fetched.table.columns,
+        sample: fetched.table.rows.slice(0, 20),
+        row_count: fetched.table.rows.length,
+        total_records: fetched.table.totalRecords,
+        truncated: fetched.table.truncated,
+        duration_ms: fetched.durationMs,
+        fetched_at: fetched.fetchedAt
+      };
+    }]
+  ];
+}
+
+// server/src/api/query.mjs
+function queryRoutes(ctx) {
+  return [
+    ["/query", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      const sql = body?.sql;
+      if (typeof sql !== "string" || sql.trim().length === 0) throw engineError("BAD_REQUEST", "SQL \u4E0D\u80FD\u4E3A\u7A7A");
+      const classified = ctx.classifyQuery(sql);
+      const isApiQuery = ctx.dataDir !== null && (ctx.isApiDbType(body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType) || ctx.isApiSourceName(ctx.dataDir, connectionName));
+      if (isApiQuery && classified.requiresConfirmation) {
+        throw engineError("WRITE_BLOCKED", "API \u63A5\u5165\u662F\u53EA\u8BFB\u6570\u636E\u6E90\uFF0C\u4E0D\u652F\u6301\u5199 / DDL");
+      }
+      const timeoutMs = clampTimeout(body?.timeoutMs);
+      const rowLimit = clampRowLimit(body?.rowLimit);
+      const started = ctx.now();
+      const maxRows = dbxMaxRows(rowLimit);
+      let pageLimit = null;
+      if (classified.requiresConfirmation) {
+        if (body?.allowWrite !== true) throw engineError("SQL_BLOCKED", "\u5199 / DDL \u9700\u8981\u663E\u5F0F\u786E\u8BA4");
+        if (body.confirmedWriteSql !== sql) throw engineError("CONFIRM_MISMATCH", "\u5199\u786E\u8BA4\u6587\u672C\u4E0E\u5F85\u6267\u884C SQL \u4E0D\u4E00\u81F4");
+        const connSpec = body?.connection;
+        if (!connSpec?.host) throw engineError("BAD_REQUEST", "\u5199\u64CD\u4F5C\u9700\u8981\u8FDE\u63A5\u914D\u7F6E\uFF08connection\uFF09");
+        if (connSpec.read_only === true) throw engineError("WRITE_BLOCKED", "\u8FDE\u63A5\u5DF2\u8BBE\u4E3A\u53EA\u8BFB\uFF0C\u5199\u64CD\u4F5C\u88AB\u62D2\u7EDD");
+        let writeResult;
+        try {
+          const resolvedSpec = await ctx.resolveWriteConnSpec(connectionName, connSpec);
+          writeResult = await ctx.executeWrite(resolvedSpec, sql);
+        } catch (e) {
+          if (e?.engineError) throw e;
+          const writeError = e?.message ?? String(e);
+          const hint2 = await ctx.describeFailure(connectionName, sql, sql, writeError);
+          throw engineError(e?.code ?? "WRITE_FAILED", `\u5199\u64CD\u4F5C\u6267\u884C\u5931\u8D25: ${writeError}${hint2}`, writeError);
+        }
+        return {
+          connection: connectionName,
+          kind: classified.kind,
+          statement_count: classified.statements.length,
+          columns: writeResult.columns,
+          rows: writeResult.rows,
+          row_count: writeResult.rows.length,
+          truncated: false,
+          row_limit: rowLimit,
+          max_rows: maxRows,
+          duration_ms: ctx.now() - started,
+          duration_hint: "self-write",
+          raw_text: null,
+          command: writeResult.command,
+          affected_rows: writeResult.affectedRows,
+          write_executed: true
+        };
+      }
+      const dbType = body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType;
+      const countOnly = body?.countOnly === true;
+      const pageReq = body?.page;
+      let effectiveSql = sql;
+      const pageable = !isApiQuery && ctx.canPaginate(sql);
+      if (pageable && countOnly) {
+        if (!ctx.supportsPagination(dbType)) throw engineError("BAD_REQUEST", "\u5F53\u524D\u6570\u636E\u5E93\u7C7B\u578B\u4E0D\u652F\u6301\u5206\u9875\u7EDF\u8BA1");
+        effectiveSql = ctx.buildCountSql(sql);
+      } else if (pageable && pageReq && Number.isFinite(pageReq.offset) && Number.isFinite(pageReq.limit)) {
+        if (!ctx.supportsPagination(dbType)) throw engineError("BAD_REQUEST", "\u5F53\u524D\u6570\u636E\u5E93\u7C7B\u578B\u4E0D\u652F\u6301\u5206\u9875");
+        const limit = Math.min(Math.max(Math.trunc(pageReq.limit), 1), DBX_EFFECTIVE_ROW_CAP);
+        const offset = Math.max(Math.trunc(pageReq.offset), 0);
+        pageLimit = limit;
+        effectiveSql = ctx.buildPagedSql(sql, dbType, limit, offset);
+      }
+      const toOutcome = (text, extra = {}) => ctx.toOutcome(text, {
+        pageLimit,
+        rowLimit,
+        maxRows,
+        durationMs: ctx.now() - started,
+        ...extra
+      });
+      if (isApiQuery) {
+        let run;
+        try {
+          run = await ctx.runApiQuery({
+            dataDir: ctx.dataDir,
+            sql,
+            maxRows,
+            engine: {
+              ensureConnection: ctx.ensureApiEngineConnection,
+              execute: async (engineSql, limit) => {
+                const engineResult = await ctx.mcpClient().callTool(
+                  "dbx_execute_query",
+                  { connection_name: ctx.API_ENGINE_CONNECTION, sql: engineSql, max_rows: limit ?? maxRows },
+                  timeoutMs
+                );
+                if (engineResult.isError) {
+                  const engineText = ctx.textOf(engineResult);
+                  if (ctx.isDriverUnavailable(engineText)) {
+                    throw engineError(
+                      "API_ENGINE_UNAVAILABLE",
+                      "\u672C\u673A\u67E5\u8BE2\u901A\u9053\u4E0D\u53EF\u7528\uFF1ADuckDB \u9A71\u52A8\u672A\u5B89\u88C5\u3002\u8BF7\u5728\u300C\u9A71\u52A8\u7BA1\u7406\u300D\u91CC\u5B89\u88C5 DuckDB\uFF0C\u6216\u8BBE\u7F6E DBX_DUCKDB_DRIVER_PATH \u540E\u91CD\u8BD5\uFF08\u63A5\u53E3\u6570\u636E\u5DF2\u53D6\u5230\uFF0C\u53EA\u662F\u6CA1\u5730\u65B9\u8DD1 SQL\uFF09\u3002",
+                      engineText
+                    );
+                  }
+                  const err2 = ctx.classifyError(engineText);
+                  throw engineError(err2.code, `\u5FEB\u7167\u67E5\u8BE2\u5931\u8D25: ${err2.detail}`, engineText);
+                }
+                return ctx.textOf(engineResult);
+              }
+            }
+          });
+        } catch (e) {
+          if (e?.engineError) throw e;
+          throw engineError(e?.code ?? "API_QUERY_FAILED", e?.message ?? String(e));
+        }
+        const outcome = toOutcome(run.engineText);
+        return {
+          ...outcome,
+          api: {
+            engine_sql: run.engineSql,
+            sources: run.sources.map((s) => ({
+              name: s.name,
+              url: s.url,
+              row_count: s.rowCount,
+              total_records: s.totalRecords,
+              truncated: s.truncated,
+              status: s.status,
+              fetched_at: s.fetchedAt,
+              duration_ms: s.durationMs
+            }))
+          }
+        };
+      }
+      let result;
+      try {
+        result = await ctx.mcpClient().callTool(
+          "dbx_execute_query",
+          { connection_name: connectionName, sql: effectiveSql, max_rows: pageLimit ?? maxRows },
+          timeoutMs
+        );
+      } catch (e) {
+        const msg = e?.message ?? String(e);
+        throw engineError("DBX_MCP_ERROR", `dbx-mcp \u8C03\u7528\u5931\u8D25: ${msg}`);
+      }
+      if (!result.isError) {
+        const outcome = toOutcome(ctx.textOf(result));
+        if (countOnly) {
+          const total = Number.parseInt(String(outcome.rows[0]?._dbx_total ?? "0"), 10);
+          return { kind: "count", connection: connectionName, total_count: Number.isFinite(total) ? total : 0 };
+        }
+        if (pageLimit) return { ...outcome, paged: true, pageable: true };
+        return { ...outcome, pageable };
+      }
+      const errorText = ctx.textOf(result);
+      const err = ctx.classifyError(errorText);
+      const hint = await ctx.describeFailure(connectionName, sql, effectiveSql, errorText);
+      throw engineError(err.code, `dbx_execute_query failed: ${err.detail}${hint}`, errorText);
+    }]
+  ];
+}
+
+// server/src/api/schema.mjs
+function schemaRoutes(ctx) {
+  return [
+    ["/tables", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      if (ctx.dataDir && ctx.isApiSourceName(ctx.dataDir, connectionName)) {
+        return { connection: connectionName, tables: [{ name: connectionName, kind: "table" }] };
+      }
+      const scope = body?.scope ?? {};
+      const args = { connection_name: connectionName };
+      if (scope.schema) args.schema = scope.schema;
+      if (scope.database) args.database = scope.database;
+      const result = await ctx.mcpClient().callTool("dbx_list_tables", args);
+      const text = ctx.extractText(result, "dbx_list_tables");
+      return { connection: connectionName, tables: ctx.parseTableList(text) };
+    }],
+    ["/describe", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      const target = body?.target ?? { schema: body?.schema, table: body?.table };
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      if (!target?.table) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 table");
+      if (ctx.dataDir && ctx.isApiSourceName(ctx.dataDir, connectionName)) {
+        const preview2 = await ctx.previewApiSource(ctx.dataDir, connectionName);
+        const types2 = ctx.inferColumnTypes(preview2.records, preview2.table.columns);
+        return {
+          connection: connectionName,
+          table: target.table,
+          columns: preview2.table.columns.map((name) => ({
+            name,
+            type: types2[name] ?? "varchar",
+            nullable: true,
+            hasDefault: false,
+            defaultValue: "",
+            comment: "API \u63A5\u5165\uFF1A\u7C7B\u578B\u7531\u672C\u6B21\u6837\u672C\u503C\u63A8\u5BFC",
+            isPrimaryKey: false
+          }))
+        };
+      }
+      const args = { connection_name: connectionName, table: target.table };
+      if (target.schema) args.schema = target.schema;
+      const result = await ctx.mcpClient().callTool("dbx_describe_table", args);
+      const text = ctx.extractText(result, "dbx_describe_table");
+      const { rows } = ctx.parseMarkdownTable(text);
+      return { connection: connectionName, table: target.table, columns: ctx.parseDescribeColumns(rows) };
+    }],
+    ["/schema-context", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      const result = await ctx.mcpClient().callTool("dbx_get_schema_context", { connection_name: connectionName });
+      const text = ctx.extractText(result, "dbx_get_schema_context");
+      return { connection: connectionName, schema: text };
+    }],
+    ["/schemas", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName ?? body?.connection?.name;
+      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
+      if (ctx.dataDir && ctx.isApiSourceName(ctx.dataDir, connectionName)) {
+        return { connection: connectionName, schemas: [], supported: false };
+      }
+      const result = await ctx.mcpClient().callTool("dbx_execute_query", {
+        connection_name: connectionName,
+        sql: schemaQueryFor(body?.dbType),
+        max_rows: 1e3
+      });
+      if (result.isError) {
+        const err = ctx.classifyError(ctx.textOf(result));
+        if (!ctx.isMissingCatalogView(err)) throw engineError(err.code, err.detail, ctx.textOf(result));
+        return { connection: connectionName, schemas: [], supported: false };
+      }
+      const { rows } = ctx.parseMarkdownTable(ctx.textOf(result));
+      const schemas = rows.map((row) => String(ctx.pick(row, ["schema_name", "SCHEMA_NAME", "Schema", "schema"])).trim()).filter((name) => name.length > 0);
+      return { connection: connectionName, schemas, supported: true };
+    }]
+  ];
+}
+
 // server/src/engine/reveal-item.mjs
 import path2 from "node:path";
 import { spawn as spawn3 } from "node:child_process";
@@ -96758,558 +97374,9 @@ function runRevealCommand(spec, timeoutMs = REVEAL_TIMEOUT_MS) {
   });
 }
 
-// server/src/engine/request-router.mjs
-var DBX_MAX_ROWS = 1e3;
-function clampRowLimit(rowLimit) {
-  const value = Number.isFinite(rowLimit) ? Math.trunc(rowLimit) : DEFAULT_ROW_LIMIT;
-  return Math.min(Math.max(value, 1), MAX_ROW_LIMIT);
-}
-var DBX_EFFECTIVE_ROW_CAP = 1e3;
-function dbxMaxRows(rowLimit) {
-  return Math.min(Math.max(rowLimit, 1), DBX_MAX_ROWS, DBX_EFFECTIVE_ROW_CAP);
-}
-var SCHEMA_QUERIES = {
-  postgres: `SELECT n.nspname AS schema_name
-FROM pg_catalog.pg_namespace n
-WHERE n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-  AND n.nspname NOT LIKE 'pg_toast_temp_%'
-  AND n.nspname NOT LIKE 'pg_temp_%'
-ORDER BY n.nspname`,
-  sqlserver: `SELECT s.name AS schema_name
-FROM sys.schemas s
-WHERE s.name NOT IN (
-  'guest', 'INFORMATION_SCHEMA', 'sys',
-  'db_owner', 'db_accessadmin', 'db_securityadmin', 'db_ddladmin',
-  'db_backupoperator', 'db_datareader', 'db_datawriter',
-  'db_denydatareader', 'db_denydatawriter'
-)
-ORDER BY CASE WHEN s.name = 'dbo' THEN 0 ELSE 1 END, s.name`,
-  default: "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name"
-};
-function schemaQueryFor(dbType) {
-  const type = String(dbType ?? "").toLowerCase();
-  if (/postgres|redshift/.test(type)) return SCHEMA_QUERIES.postgres;
-  if (/mssql|sqlserver/.test(type)) return SCHEMA_QUERIES.sqlserver;
-  return SCHEMA_QUERIES.default;
-}
-function clampTimeout(timeoutMs) {
-  const value = Number.isFinite(timeoutMs) ? Math.trunc(timeoutMs) : 3e4;
-  return Math.min(Math.max(value, 1e3), MAX_TIMEOUT_MS);
-}
-function extractText(result, toolName) {
-  const text = textOf(result);
-  if (result.isError) {
-    const err = classifyError(text);
-    throw engineError(err.code, `${toolName} failed: ${err.detail}`, text);
-  }
-  return text;
-}
-function normalizeDbType(dbType) {
-  const value = String(dbType ?? "").toLowerCase();
-  if (value === "aurora-postgresql") return "postgres";
-  if (value === "mariadb") return "mysql";
-  if (value === "uds") return "postgres";
-  return value;
-}
-function toDbxAddParams(body) {
-  const args = { name: body.name, db_type: normalizeDbType(body.dbType), host: body.host };
-  if (body.port) args.port = body.port;
-  if (body.username) args.username = body.username;
-  if (body.password) args.password = body.password;
-  if (body.database) args.database = body.database;
-  if (body.ssl !== void 0) args.ssl = body.ssl === true;
-  if (!args.host && body.file) args.host = body.file;
-  return args;
-}
-function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
-  if (!auth) throw new Error("createRouter \u9700\u8981 auth");
-  const mcpClient = () => getDbxMcpClient();
-  async function ensureApiEngineConnection() {
-    if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55\uFF0C\u65E0\u6CD5\u67E5\u8BE2 API \u63A5\u5165\u6570\u636E\u6E90");
-    try {
-      const result = await mcpClient().callTool("dbx_add_connection", {
-        name: API_ENGINE_CONNECTION,
-        db_type: "duckdb",
-        host: apiEngineDatabasePath(dataDir),
-        database: API_ENGINE_DATABASE
-      });
-      extractText(result, "dbx_add_connection");
-    } catch (e) {
-      if (e?.engineError) {
-        throw engineError(
-          "API_ENGINE_UNAVAILABLE",
-          `\u672C\u673A\u67E5\u8BE2\u901A\u9053\u4E0D\u53EF\u7528\uFF08\u9700\u8981 DuckDB \u9A71\u52A8\uFF09\uFF1A${e.message}`,
-          e.detail
-        );
-      }
-      throw e;
-    }
-  }
-  function isDriverUnavailable(rawText) {
-    return /driver is not installed|DBX_DUCKDB_DRIVER_PATH/i.test(String(rawText ?? ""));
-  }
-  async function resolveWriteConnSpec(connectionName, connSpec) {
-    const base = { ...connSpec, db_type: connSpec.db_type ?? connSpec.dbType };
-    let authoritative = null;
-    try {
-      const result = await mcpClient().callTool("dbx_list_connections", {});
-      authoritative = parseConnections(textOf(result)).find((c) => c.name === connectionName) ?? null;
-    } catch {
-      authoritative = null;
-    }
-    if (!authoritative) return base;
-    return {
-      ...base,
-      db_type: base.db_type || authoritative.type,
-      host: base.host || authoritative.host,
-      port: base.port || authoritative.port,
-      database: base.database || authoritative.database
-    };
-  }
-  async function resolveQueryContext(connectionName, sql, effectiveSql) {
-    const context = { connection: connectionName, sql, effectiveSql };
-    try {
-      const result = await mcpClient().callTool("dbx_list_connections", {});
-      const found = parseConnections(textOf(result)).find((c) => c.name === connectionName);
-      if (found) {
-        context.dbType = found.type;
-        context.host = found.host;
-        context.port = found.port;
-        context.database = found.database;
-      }
-    } catch {
-    }
-    return context;
-  }
-  async function attachTableLocation(connectionName, dbType, rawName, context) {
-    const lookup = tableLocationQuery(dbType, rawName);
-    if (!lookup) return context;
-    try {
-      const result = await mcpClient().callTool(
-        "dbx_execute_query",
-        { connection_name: connectionName, sql: lookup, max_rows: 5 },
-        15e3
-      );
-      if (!result?.isError) context.tableLocation = parseTableLocations(textOf(result));
-    } catch {
-    }
-    return context;
-  }
-  async function describeFailure(connectionName, sql, effectiveSql, rawText) {
-    try {
-      const context = await resolveQueryContext(connectionName, sql, effectiveSql);
-      const missing = matchMissingObject(rawText);
-      if (missing) await attachTableLocation(connectionName, context.dbType, missing.name, context);
-      const text = [describeQueryContext(context), buildSqlErrorHint(rawText, context)].filter(Boolean).join("\n");
-      return text ? `
-${text}` : "";
-    } catch {
-      return "";
-    }
-  }
-  const routeDefs = [
-    // === 健康检查 ===
-    // 只读子进程当前 phase，绝不 await/触发握手：健康检查是宿主高频轮询点，
-    // 曾因在热路径等待子进程导致连锁超时（引擎启动超时）。
-    ["/health", "GET", false, async () => {
-      const c = mcpClient();
-      let dbxInfo;
-      if (c.phase === "ready") dbxInfo = { status: "connected" };
-      else if (c.phase === "connecting") dbxInfo = { status: "connecting" };
-      else if (c.phase === "error") dbxInfo = { status: "error", message: c.lastError?.message };
-      else dbxInfo = { status: "idle" };
-      return {
-        status: "ok",
-        version: ENGINE_VERSION,
-        protocol: PROTOCOL_VERSION,
-        // 制品真实读上限。前端设置项用它当 max，避免 UI 允许设一个拿不到的值
-        // （src/domain/workbench-settings.ts 的 ENGINE_ROW_CAP 必须与这里一致，
-        //  由 src/test/engine-service.test.js 的断言守住）。
-        row_cap: DBX_EFFECTIVE_ROW_CAP,
-        pid: process.pid,
-        node: process.version,
-        platform: `${process.platform}-${process.arch}`,
-        uptimeMs: Math.round(process.uptime() * 1e3),
-        auth: auth?.enabled ? "enabled" : "disabled",
-        dbx: dbxInfo,
-        drivers: [{ id: "dbx-cli", label: "dbx CLI (100+ databases)", tier: "first-class", ready: true }]
-      };
-    }],
-    // === 连接管理 ===
-    ["/connections", "GET", true, async () => {
-      const result = await mcpClient().callTool("dbx_list_connections", {});
-      const text = extractText(result, "dbx_list_connections");
-      const raw = parseConnections(text);
-      const engineConnections = dedupeConnections(raw).filter((c) => c.name !== API_ENGINE_CONNECTION);
-      const apiConnections = dataDir ? listApiSources(dataDir).map(apiSourceToConnection) : [];
-      return { connections: [...apiConnections, ...engineConnections] };
-    }],
-    ["/connections", "POST", true, async ({ body }) => {
-      if (!body?.name || !body?.dbType) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 name / dbType");
-      const dbxArgs = toDbxAddParams(body);
-      const result = await mcpClient().callTool("dbx_add_connection", dbxArgs);
-      const text = extractText(result, "dbx_add_connection");
-      const alreadyExists = /already exists/i.test(text);
-      if (alreadyExists) {
-        const existingList = await mcpClient().callTool("dbx_list_connections", {});
-        const existingText = textOf(existingList);
-        const existing = parseConnections(existingText).find(
-          (c) => c.name.toLowerCase() === body.name.toLowerCase()
-        );
-        return {
-          id: existing?.id ?? "",
-          name: body.name,
-          detail: text,
-          existing: true
-        };
-      }
-      const idMatch = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
-      return { id: idMatch?.[0] ?? "", name: body.name, detail: text, existing: false };
-    }],
-    ["/connections", "DELETE", true, async ({ body }) => {
-      const name = body?.name;
-      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connection name");
-      if (dataDir && isApiSourceName(dataDir, name)) {
-        removeApiSource(dataDir, name);
-        return { deleted: name };
-      }
-      const result = await mcpClient().callTool("dbx_remove_connection", { connection_name: name });
-      extractText(result, "dbx_remove_connection");
-      return { deleted: name };
-    }],
-    ["/connections/test", "POST", true, async ({ body }) => {
-      const connectionName = body?.connectionName;
-      let tempName = null;
-      let actualName = connectionName;
-      if (!connectionName && body?.draft) {
-        tempName = `astravia-test-${Date.now().toString(36)}`;
-        const addResult = await mcpClient().callTool("dbx_add_connection", toDbxAddParams({ ...body.draft, name: tempName }));
-        extractText(addResult, "dbx_add_connection");
-        actualName = tempName;
-      }
-      if (!actualName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName \u6216 draft");
-      try {
-        const testResult = await mcpClient().callTool("dbx_list_tables", { connection_name: actualName });
-        const text = extractText(testResult, "dbx_list_tables");
-        const tableCount = parseTableList(text).length;
-        return { tableCount, detail: text };
-      } finally {
-        if (tempName) {
-          try {
-            await mcpClient().callTool("dbx_remove_connection", { connection_name: tempName });
-          } catch {
-          }
-        }
-      }
-    }],
-    // === API 接入（插件自有数据源，见 src/api-source/）===
-    // 为什么不注册进引擎：引擎的内置 dbType 清单是编译进去的，塞一个 `api` 进去
-    // 只会得到一个必然报错的入口（对照 M1.5 的 `jdbc` 结论）。取数与 SQL 重写都由插件做。
-    ["/api-sources", "POST", true, async ({ body }) => {
-      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55\uFF0C\u65E0\u6CD5\u4FDD\u5B58 API \u63A5\u5165");
-      const name = String(body?.name ?? "").trim();
-      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u540D\u79F0");
-      const listResult = await mcpClient().callTool("dbx_list_connections", {});
-      const clash = parseConnections(extractText(listResult, "dbx_list_connections")).some(
-        (c) => c.name.toLowerCase() === name.toLowerCase()
-      );
-      if (clash) throw engineError("BAD_REQUEST", `\u5DF2\u5B58\u5728\u540C\u540D\u6570\u636E\u5E93\u8FDE\u63A5\u300C${name}\u300D\uFF0C\u8BF7\u6362\u4E00\u4E2A\u540D\u79F0`);
-      const saved = upsertApiSource(dataDir, body, body?.token ?? body?.secret ?? "");
-      return apiSourceToPublic(saved);
-    }],
-    ["/api-sources", "DELETE", true, async ({ body }) => {
-      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55");
-      const name = body?.name;
-      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 API \u63A5\u5165\u540D\u79F0");
-      removeApiSource(dataDir, name);
-      return { deleted: name };
-    }],
-    // 两种用途：表单保存前验证（传 draft），连接树展开时按需取列（只传 name）。
-    ["/api-sources/test", "POST", true, async ({ body }) => {
-      if (!dataDir) throw engineError("API_ENGINE_UNAVAILABLE", "\u670D\u52A1\u7AEF\u6CA1\u6709\u6570\u636E\u76EE\u5F55");
-      const draft = body?.draft ?? null;
-      const name = String((draft ?? body)?.name ?? "").trim();
-      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11\u8FDE\u63A5\u540D\u79F0");
-      const stored = findApiSource(dataDir, name);
-      const secret = body?.token ?? body?.secret ?? stored?.secret ?? "";
-      const merged = draft && draft.headers === void 0 ? { ...draft, headers: stored?.headers ?? {} } : draft;
-      const fetched = merged ? await fetchApiSource({ ...normalizeApiSource({ ...merged, secret }), secret }, {}) : await previewApiSource(dataDir, name);
-      return {
-        name,
-        url: fetched.url,
-        status: fetched.status,
-        columns: fetched.table.columns,
-        sample: fetched.table.rows.slice(0, 20),
-        row_count: fetched.table.rows.length,
-        total_records: fetched.table.totalRecords,
-        truncated: fetched.table.truncated,
-        duration_ms: fetched.durationMs,
-        fetched_at: fetched.fetchedAt
-      };
-    }],
-    // === 查询执行 ===
-    ["/query", "POST", true, async ({ body }) => {
-      const connectionName = body?.connectionName ?? body?.connection?.name;
-      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
-      const sql = body?.sql;
-      if (typeof sql !== "string" || sql.trim().length === 0) throw engineError("BAD_REQUEST", "SQL \u4E0D\u80FD\u4E3A\u7A7A");
-      const classified = classifyQuery(sql);
-      const isApiQuery = dataDir !== null && (isApiDbType(body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType) || isApiSourceName(dataDir, connectionName));
-      if (isApiQuery && classified.requiresConfirmation) {
-        throw engineError("WRITE_BLOCKED", "API \u63A5\u5165\u662F\u53EA\u8BFB\u6570\u636E\u6E90\uFF0C\u4E0D\u652F\u6301\u5199 / DDL");
-      }
-      const timeoutMs = clampTimeout(body?.timeoutMs);
-      const rowLimit = clampRowLimit(body?.rowLimit);
-      const started = now();
-      const maxRows = dbxMaxRows(rowLimit);
-      let pageLimit = null;
-      const toOutcome = (text, extra = {}) => {
-        const lim = pageLimit ?? DBX_EFFECTIVE_ROW_CAP;
-        const { columns, rows: allRows } = parseMarkdownTable(text);
-        const rows = allRows.length > lim ? allRows.slice(0, lim) : allRows;
-        const truncated = pageLimit === null && allRows.length >= DBX_EFFECTIVE_ROW_CAP;
-        const affected = text.match(/(\d+)\s*row(?:s)?\s*(?:affected|inserted|updated|deleted)/i);
-        return {
-          connection: connectionName,
-          kind: classified.kind,
-          statement_count: classified.statements.length,
-          columns,
-          rows,
-          row_count: rows.length,
-          truncated,
-          row_limit: rowLimit,
-          max_rows: maxRows,
-          /** 引擎实际返回的行数（可能多于 row_limit，已被裁剪）。 */
-          engine_row_count: allRows.length,
-          duration_ms: now() - started,
-          duration_hint: extractDuration(text),
-          raw_text: text,
-          affected_rows: affected ? parseInt(affected[1], 10) : null,
-          ...extra
-        };
-      };
-      if (classified.requiresConfirmation) {
-        if (body?.allowWrite !== true) {
-          throw engineError("SQL_BLOCKED", "\u5199 / DDL \u9700\u8981\u663E\u5F0F\u786E\u8BA4");
-        }
-        if (body.confirmedWriteSql !== sql) {
-          throw engineError("CONFIRM_MISMATCH", "\u5199\u786E\u8BA4\u6587\u672C\u4E0E\u5F85\u6267\u884C SQL \u4E0D\u4E00\u81F4");
-        }
-        const connSpec = body?.connection;
-        if (!connSpec?.host) {
-          throw engineError("BAD_REQUEST", "\u5199\u64CD\u4F5C\u9700\u8981\u8FDE\u63A5\u914D\u7F6E\uFF08connection\uFF09");
-        }
-        if (connSpec.read_only === true) {
-          throw engineError("WRITE_BLOCKED", "\u8FDE\u63A5\u5DF2\u8BBE\u4E3A\u53EA\u8BFB\uFF0C\u5199\u64CD\u4F5C\u88AB\u62D2\u7EDD");
-        }
-        let writeResult;
-        try {
-          const resolvedSpec = await resolveWriteConnSpec(connectionName, connSpec);
-          writeResult = await executeWrite(resolvedSpec, sql);
-        } catch (e) {
-          if (e?.engineError) throw e;
-          const writeError = e?.message ?? String(e);
-          const hint2 = await describeFailure(connectionName, sql, sql, writeError);
-          throw engineError(e?.code ?? "WRITE_FAILED", `\u5199\u64CD\u4F5C\u6267\u884C\u5931\u8D25: ${writeError}${hint2}`, writeError);
-        }
-        return {
-          connection: connectionName,
-          kind: classified.kind,
-          statement_count: classified.statements.length,
-          columns: writeResult.columns,
-          rows: writeResult.rows,
-          row_count: writeResult.rows.length,
-          truncated: false,
-          row_limit: rowLimit,
-          max_rows: maxRows,
-          duration_ms: now() - started,
-          duration_hint: "self-write",
-          raw_text: null,
-          command: writeResult.command,
-          affected_rows: writeResult.affectedRows,
-          write_executed: true
-        };
-      }
-      const dbType = body?.dbType ?? body?.connection?.db_type ?? body?.connection?.dbType;
-      const countOnly = body?.countOnly === true;
-      const pageReq = body?.page;
-      let effectiveSql = sql;
-      const pageable = !isApiQuery && canPaginate(sql);
-      if (pageable && countOnly) {
-        if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "\u5F53\u524D\u6570\u636E\u5E93\u7C7B\u578B\u4E0D\u652F\u6301\u5206\u9875\u7EDF\u8BA1");
-        effectiveSql = buildCountSql(sql);
-      } else if (pageable && pageReq && Number.isFinite(pageReq.offset) && Number.isFinite(pageReq.limit)) {
-        if (!supportsPagination(dbType)) throw engineError("BAD_REQUEST", "\u5F53\u524D\u6570\u636E\u5E93\u7C7B\u578B\u4E0D\u652F\u6301\u5206\u9875");
-        const limit = Math.min(Math.max(Math.trunc(pageReq.limit), 1), DBX_EFFECTIVE_ROW_CAP);
-        const offset = Math.max(Math.trunc(pageReq.offset), 0);
-        pageLimit = limit;
-        effectiveSql = buildPagedSql(sql, dbType, limit, offset);
-      }
-      if (isApiQuery) {
-        let run;
-        try {
-          run = await runApiQuery({
-            dataDir,
-            sql,
-            maxRows,
-            engine: {
-              ensureConnection: ensureApiEngineConnection,
-              execute: async (engineSql, limit) => {
-                const engineResult = await mcpClient().callTool(
-                  "dbx_execute_query",
-                  {
-                    connection_name: API_ENGINE_CONNECTION,
-                    sql: engineSql,
-                    max_rows: limit ?? maxRows
-                  },
-                  timeoutMs
-                );
-                if (engineResult.isError) {
-                  const engineText = textOf(engineResult);
-                  if (isDriverUnavailable(engineText)) {
-                    throw engineError(
-                      "API_ENGINE_UNAVAILABLE",
-                      "\u672C\u673A\u67E5\u8BE2\u901A\u9053\u4E0D\u53EF\u7528\uFF1ADuckDB \u9A71\u52A8\u672A\u5B89\u88C5\u3002\u8BF7\u5728\u300C\u9A71\u52A8\u7BA1\u7406\u300D\u91CC\u5B89\u88C5 DuckDB\uFF0C\u6216\u8BBE\u7F6E DBX_DUCKDB_DRIVER_PATH \u540E\u91CD\u8BD5\uFF08\u63A5\u53E3\u6570\u636E\u5DF2\u53D6\u5230\uFF0C\u53EA\u662F\u6CA1\u5730\u65B9\u8DD1 SQL\uFF09\u3002",
-                      engineText
-                    );
-                  }
-                  const err2 = classifyError(engineText);
-                  throw engineError(err2.code, `\u5FEB\u7167\u67E5\u8BE2\u5931\u8D25: ${err2.detail}`, engineText);
-                }
-                return textOf(engineResult);
-              }
-            }
-          });
-        } catch (e) {
-          if (e?.engineError) throw e;
-          throw engineError(e?.code ?? "API_QUERY_FAILED", e?.message ?? String(e));
-        }
-        return toOutcome(run.engineText, {
-          api: {
-            engine_sql: run.engineSql,
-            // 每个数据源实际取了哪些行、从哪个地址取的 —— 取数不透明是最难排查的一类问题。
-            sources: run.sources.map((s) => ({
-              name: s.name,
-              url: s.url,
-              row_count: s.rowCount,
-              total_records: s.totalRecords,
-              truncated: s.truncated,
-              status: s.status,
-              fetched_at: s.fetchedAt,
-              duration_ms: s.durationMs
-            }))
-          }
-        });
-      }
-      let result;
-      try {
-        result = await mcpClient().callTool(
-          "dbx_execute_query",
-          {
-            connection_name: connectionName,
-            sql: effectiveSql,
-            // 翻页时本页行数就是页大小：不能用用户设置的去夹，否则「每页 200 行」会被截成 50。
-            max_rows: pageLimit ?? maxRows
-          },
-          timeoutMs
-        );
-      } catch (e) {
-        const msg = e?.message ?? String(e);
-        throw engineError("DBX_MCP_ERROR", `dbx-mcp \u8C03\u7528\u5931\u8D25: ${msg}`);
-      }
-      if (!result.isError) {
-        const outcome = toOutcome(textOf(result));
-        if (countOnly) {
-          const total = Number.parseInt(String(outcome.rows[0]?._dbx_total ?? "0"), 10);
-          return { kind: "count", connection: connectionName, total_count: Number.isFinite(total) ? total : 0 };
-        }
-        if (pageLimit) return { ...outcome, paged: true, pageable: true };
-        return { ...outcome, pageable };
-      }
-      const errorText = textOf(result);
-      const err = classifyError(errorText);
-      const hint = await describeFailure(connectionName, sql, effectiveSql, errorText);
-      throw engineError(err.code, `dbx_execute_query failed: ${err.detail}${hint}`, errorText);
-    }],
-    // === 对象浏览 ===
-    ["/tables", "POST", true, async ({ body }) => {
-      const connectionName = body?.connectionName ?? body?.connection?.name;
-      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
-      if (dataDir && isApiSourceName(dataDir, connectionName)) {
-        return { connection: connectionName, tables: [{ name: connectionName, kind: "table" }] };
-      }
-      const scope = body?.scope ?? {};
-      const args = { connection_name: connectionName };
-      if (scope.schema) args.schema = scope.schema;
-      if (scope.database) args.database = scope.database;
-      const result = await mcpClient().callTool("dbx_list_tables", args);
-      const text = extractText(result, "dbx_list_tables");
-      return { connection: connectionName, tables: parseTableList(text) };
-    }],
-    ["/describe", "POST", true, async ({ body }) => {
-      const connectionName = body?.connectionName ?? body?.connection?.name;
-      const target = body?.target ?? { schema: body?.schema, table: body?.table };
-      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
-      if (!target?.table) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 table");
-      if (dataDir && isApiSourceName(dataDir, connectionName)) {
-        const preview2 = await previewApiSource(dataDir, connectionName);
-        const types2 = inferColumnTypes(preview2.records, preview2.table.columns);
-        return {
-          connection: connectionName,
-          table: target.table,
-          columns: preview2.table.columns.map((name) => ({
-            name,
-            type: types2[name] ?? "varchar",
-            nullable: true,
-            hasDefault: false,
-            defaultValue: "",
-            comment: "API \u63A5\u5165\uFF1A\u7C7B\u578B\u7531\u672C\u6B21\u6837\u672C\u503C\u63A8\u5BFC",
-            isPrimaryKey: false
-          }))
-        };
-      }
-      const args = { connection_name: connectionName, table: target.table };
-      if (target.schema) args.schema = target.schema;
-      const result = await mcpClient().callTool("dbx_describe_table", args);
-      const text = extractText(result, "dbx_describe_table");
-      const { rows } = parseMarkdownTable(text);
-      return { connection: connectionName, table: target.table, columns: parseDescribeColumns(rows) };
-    }],
-    ["/schema-context", "POST", true, async ({ body }) => {
-      const connectionName = body?.connectionName;
-      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
-      const result = await mcpClient().callTool("dbx_get_schema_context", { connection_name: connectionName });
-      const text = extractText(result, "dbx_get_schema_context");
-      return { connection: connectionName, schema: text };
-    }],
-    // === Schema 列举（连接树 schema 层节点的数据源）===
-    // dbx-mcp 没有独立的 list_schemas 工具，这里按方言走目录/系统视图查询。
-    // 只有「这个库没有该目录视图」才回 supported=false 让前端退回扁平表树；
-    // 连接坏了 / 没权限这类真故障必须原样抛出，否则用户会看到一棵空树，
-    // 误以为库里没有表（比报错难排查得多）。
-    ["/schemas", "POST", true, async ({ body }) => {
-      const connectionName = body?.connectionName ?? body?.connection?.name;
-      if (!connectionName) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 connectionName");
-      if (dataDir && isApiSourceName(dataDir, connectionName)) {
-        return { connection: connectionName, schemas: [], supported: false };
-      }
-      const result = await mcpClient().callTool("dbx_execute_query", {
-        connection_name: connectionName,
-        sql: schemaQueryFor(body?.dbType),
-        max_rows: DBX_EFFECTIVE_ROW_CAP
-      });
-      if (result.isError) {
-        const err = classifyError(textOf(result));
-        if (!isMissingCatalogView(err)) throw engineError(err.code, err.detail, textOf(result));
-        return { connection: connectionName, schemas: [], supported: false };
-      }
-      const { rows } = parseMarkdownTable(textOf(result));
-      const schemas = rows.map((row) => String(pick(row, ["schema_name", "SCHEMA_NAME", "Schema", "schema"])).trim()).filter((name) => name.length > 0);
-      return { connection: connectionName, schemas, supported: true };
-    }],
-    // === 打开所在文件夹（导出完成态的真实入口）===
-    // community 插件拿不到宿主 official shell 能力，由本服务（本地回环 + token 鉴权）
-    // 以 spawn 参数数组方式执行平台原生命令；路径限定为绝对路径、无空字节。
+// server/src/api/reveal.mjs
+function revealRoutes() {
+  return [
     ["/reveal", "POST", true, async ({ body }) => {
       let spec;
       try {
@@ -97321,10 +97388,1116 @@ ${text}` : "";
       return { revealed: true, platform: process.platform };
     }]
   ];
+}
+
+// server/src/api/bigscreen.mjs
+import { readdir, readFile } from "node:fs/promises";
+import { join as join4, dirname as dirname3 } from "node:path";
+import { fileURLToPath as fileURLToPath4 } from "node:url";
+
+// server/src/engine/bigscreen-compiler.mjs
+import { readFileSync as readFileSync2, existsSync as existsSync3, readdirSync } from "node:fs";
+import { join as join3, dirname as dirname2 } from "node:path";
+import { fileURLToPath as fileURLToPath3 } from "node:url";
+var __dirname2 = dirname2(fileURLToPath3(import.meta.url));
+var DEFAULTS_DIR = join3(__dirname2, "..", "..", "agent", "skills", "dbx-pro-bigscreen", "scripts", "defaults");
+var DEFAULTS_CACHE = /* @__PURE__ */ new Map();
+function loadDef(compKey) {
+  let cached = DEFAULTS_CACHE.get(compKey);
+  if (cached === void 0) {
+    const path4 = join3(DEFAULTS_DIR, `${compKey}.json`);
+    if (!existsSync3(path4)) {
+      cached = null;
+      DEFAULTS_CACHE.set(compKey, null);
+      return null;
+    }
+    cached = JSON.parse(readFileSync2(path4, "utf-8"));
+    DEFAULTS_CACHE.set(compKey, cached);
+  }
+  if (!cached) return null;
+  return JSON.parse(JSON.stringify(cached));
+}
+var PALETTES = {
+  tech: { title: "#f0c040", subtitle: "#00d4ff", label: "#ffffff", value: "#d4e8ff", axis: "#8ab8d0", axisLine: "#1a3a5a", gridline: "#1a3a5a55", tooltipBg: "#0b1e3acc", tooltipTxt: "#e0f0ff", colors: ["#00d4ff", "#f0c040", "#ff6b6b", "#7ee8a2", "#ffa726", "#8ab8d0", "#00ffc8", "#d4a6ff"] },
+  gov: { title: "#ffd700", subtitle: "#00d4ff", label: "#ffffff", value: "#d4e8ff", axis: "#5a7a9a", axisLine: "#0a1a2a", gridline: "#1a3a5a44", tooltipBg: "#0a1a2acc", tooltipTxt: "#e0f0ff", colors: ["#ffd700", "#00d4ff", "#1e90ff", "#4169e1", "#6495ed", "#87ceeb", "#b0c4de", "#dda0dd"] },
+  biz: { title: "#00bcd4", subtitle: "#26c6da", label: "#e0f7fa", value: "#b2ebf2", axis: "#4dd0e1", axisLine: "#006064", gridline: "#00838f44", tooltipBg: "#004d4dcc", tooltipTxt: "#e0f7fa", colors: ["#00bcd4", "#26c6da", "#4dd0e1", "#00acc1", "#0097a7", "#00838f", "#80deea", "#b2ebf2"] },
+  retro: { title: "#ffd700", subtitle: "#ff8c00", label: "#2d1810", value: "#4a2c1e", axis: "#8b6914", axisLine: "#3d2914", gridline: "#5a3a2a44", tooltipBg: "#2d1810cc", tooltipTxt: "#ffe0b2", colors: ["#8b0000", "#ff4500", "#ff8c00", "#ffd700", "#b8860b", "#cd853f", "#deb887", "#daa520"] },
+  medical: { title: "#4caf50", subtitle: "#8bc34a", label: "#ffffff", value: "#e8f5e9", axis: "#81c784", axisLine: "#1b5e20", gridline: "#2e7d3244", tooltipBg: "#1b5e20cc", tooltipTxt: "#e8f5e9", colors: ["#4caf50", "#8bc34a", "#cddc39", "#00bcd4", "#ffffff", "#81c784", "#a5d6a7", "#c8e6c9"] },
+  financial: { title: "#ffc107", subtitle: "#ff9800", label: "#ffffff", value: "#e3f2fd", axis: "#64b5f6", axisLine: "#0d47a1", gridline: "#1565c044", tooltipBg: "#0d47a1cc", tooltipTxt: "#bbdefb", colors: ["#ffc107", "#ff9800", "#ff5722", "#0d47a1", "#1976d2", "#2196f3", "#64b5f6", "#90caf9"] }
+};
+PALETTES.dark = PALETTES.tech;
+PALETTES.bg4 = PALETTES.tech;
+PALETTES.light = { ...PALETTES.biz };
+var ECHARTS_CARTESIAN = /* @__PURE__ */ new Set([
+  "JBar",
+  "JStackBar",
+  "JHorizontalBar",
+  "JBackgroundBar",
+  "JDynamicBar",
+  "JMultipleBar",
+  "JNegativeBar",
+  "JPercentBar",
+  "JMixLineBar",
+  "JLine",
+  "JSmoothLine",
+  "JStepLine",
+  "JArea",
+  "JMultipleLine",
+  "DoubleLineBar",
+  "JScatter",
+  "JQuadrant",
+  "JBubble"
+]);
+var ECHARTS_POLAR = /* @__PURE__ */ new Set([
+  "JPie",
+  "JRose",
+  "JRotatePie",
+  "JRing",
+  "JBreakRing",
+  "JActiveRing",
+  "JRadialBar",
+  "JRadar",
+  "JCircleRadar",
+  "JFunnel",
+  "JPyramidFunnel"
+]);
+var ECHARTS_GAUGE = /* @__PURE__ */ new Set(["JGauge", "JColorGauge", "JAntvGauge", "JSemiGauge"]);
+var ECHARTS_MAP = /* @__PURE__ */ new Set(["JBubbleMap", "JFlyLineMap", "JBarMap", "JTotalFlyLineMap", "JTotalBarMap", "JHeatMap", "JAreaMap", "JGaoDeMap"]);
+var PROGRESS_COMPS = /* @__PURE__ */ new Set(["JCustomProgress", "JProgress", "JListProgress", "JRoundProgress", "JLiquid", "JCapsuleChart", "JRingProgress"]);
+var TABLE_COMPS = /* @__PURE__ */ new Set(["JScrollBoard", "JScrollTable", "JScrollList", "JScrollRankingBoard", "JFlashList", "JBubbleRank", "JDevHistory", "JCommonTable", "JList"]);
+var TEXT_COMPS = /* @__PURE__ */ new Set(["JText", "JCountTo", "JNumber", "JColorBlock", "JCurrentTime", "JOrbitRing", "JWordCloud", "JImgWordCloud", "JFlashCloud", "JPermanentCalendar", "JGender", "JRectangle"]);
+var DECOR_COMPS = /* @__PURE__ */ new Set(["JDragDecoration", "JDragBorder", "JImg", "JCarousel", "JCustomIcon", "JCardScroll", "JCardCarousel", "JCardScroll_1", "JCardScroll_2", "JCardScroll_3", "JStatsSummary", "JStatsSummary_1", "JStatsSummary_2", "JStatsSummary_3"]);
+var DISABLED_COMPONENTS = /* @__PURE__ */ new Set(["JRankingList", "JTotalProgress", "JPivotTable", "JFly3dMap"]);
+var CITY_COORDS = {
+  "\u5317\u4EAC": [116.4074, 39.9042],
+  "\u4E0A\u6D77": [121.4737, 31.2304],
+  "\u6DF1\u5733": [114.0579, 22.5431],
+  "\u5E7F\u5DDE": [113.2644, 23.1291],
+  "\u676D\u5DDE": [120.1551, 30.2741],
+  "\u6210\u90FD": [104.0657, 30.6586],
+  "\u6B66\u6C49": [114.2734, 30.5801],
+  "\u897F\u5B89": [108.9541, 34.2658],
+  "\u91CD\u5E86": [106.5049, 29.5331],
+  "\u5929\u6D25": [117.1901, 39.0851],
+  "\u5357\u4EAC": [118.7969, 32.0603],
+  "\u82CF\u5DDE": [120.5853, 31.299],
+  "\u9752\u5C9B": [120.3826, 36.0671],
+  "\u5927\u8FDE": [121.6147, 38.914],
+  "\u53A6\u95E8": [118.0894, 24.4798],
+  "\u957F\u6C99": [112.9388, 28.2278],
+  "\u90D1\u5DDE": [113.6253, 34.7466],
+  "\u6D4E\u5357": [117.1201, 36.6512],
+  "\u6C88\u9633": [123.4315, 41.8057],
+  "\u54C8\u5C14\u6EE8": [126.5349, 45.8038],
+  "\u6606\u660E": [102.8329, 24.8801],
+  "\u8D35\u9633": [106.6302, 26.6477],
+  "\u5357\u660C": [115.8921, 28.6765],
+  "\u5408\u80A5": [117.283, 31.8612],
+  "\u77F3\u5BB6\u5E84": [114.5149, 38.0428],
+  "\u592A\u539F": [112.5489, 37.8706],
+  "\u957F\u6625": [125.3245, 43.8868],
+  "\u798F\u5DDE": [119.2965, 26.0745],
+  "\u5170\u5DDE": [103.8343, 36.0611],
+  "\u94F6\u5DDD": [106.2309, 38.4872],
+  "\u4E4C\u9C81\u6728\u9F50": [87.6177, 43.7928],
+  "\u9999\u6E2F": [114.1694, 22.3193],
+  "\u6FB3\u95E8": [113.5439, 22.1987],
+  "\u53F0\u5317": [121.5654, 25.033]
+};
+function deepUpdate(target, source) {
+  if (!target || !source) return;
+  for (const k of Object.keys(source)) {
+    const sv = source[k];
+    if (sv && typeof sv === "object" && !Array.isArray(sv)) {
+      if (!target[k] || typeof target[k] !== "object") target[k] = {};
+      deepUpdate(target[k], sv);
+    } else {
+      target[k] = sv;
+    }
+  }
+}
+function gradient(direction, c1, c2) {
+  const dir = direction === "h" || direction === "horizontal" ? { x: 0, y: 0, x2: 1, y2: 0 } : { x: 0, y: 0, x2: 0, y2: 1 };
+  return { type: "linear", ...dir, colorStops: [{ offset: 0, color: c1 }, { offset: 1, color: c2 }] };
+}
+function applyEchartsTheme(opt, p, { hasAxes = true, titleText = null } = {}) {
+  if (titleText) {
+    const t = opt.title ?? {};
+    t.show = true;
+    t.text = titleText;
+    t.textStyle = t.textStyle ?? {};
+    t.textStyle.color = p.subtitle;
+    t.textStyle.fontSize = 13;
+    opt.title = t;
+  }
+  if (hasAxes) {
+    for (const ak of ["xAxis", "yAxis"]) {
+      let existing = opt[ak];
+      if (typeof existing === "string") opt[ak] = existing = { type: existing };
+      else if (!existing) opt[ak] = existing = {};
+      const axes = Array.isArray(existing) ? existing : [existing];
+      for (const a of axes) {
+        if (!a || typeof a !== "object") continue;
+        a.axisLabel = a.axisLabel ?? {};
+        a.axisLabel.color = p.axis;
+        a.axisLine = a.axisLine ?? {};
+        a.axisLine.lineStyle = a.axisLine.lineStyle ?? {};
+        a.axisLine.lineStyle.color = p.axisLine;
+        if (ak === "yAxis") {
+          a.splitLine = a.splitLine ?? {};
+          a.splitLine.lineStyle = a.splitLine.lineStyle ?? {};
+          a.splitLine.lineStyle.color = p.gridline;
+        }
+      }
+    }
+    const g = opt.grid ?? {};
+    if (g.bottom === void 0) g.bottom = 30;
+    if (g.left === void 0) g.left = 55;
+    if (g.right === void 0) g.right = 20;
+    g.top = Math.max(g.top ?? 0, 30);
+    opt.grid = g;
+  }
+  const tt = opt.tooltip ?? {};
+  tt.backgroundColor = p.tooltipBg;
+  tt.textStyle = tt.textStyle ?? {};
+  tt.textStyle.color = p.tooltipTxt;
+  opt.tooltip = tt;
+  const leg = opt.legend ?? {};
+  leg.textStyle = leg.textStyle ?? {};
+  leg.textStyle.color = p.axis;
+  opt.legend = leg;
+}
+function handleJText(c, p) {
+  const text = c.text ?? c.title ?? "";
+  const style = c.style ?? "label";
+  const sizeMap = { title: 40, subtitle: 22, label: 14, value: 28 };
+  const colorMap = { title: p.title, subtitle: p.subtitle, label: p.label, value: p.value };
+  const body = {
+    text,
+    color: c.color ?? colorMap[style] ?? p.label,
+    fontSize: c.fontSize ?? sizeMap[style] ?? 14,
+    fontWeight: c.fontWeight ?? (style === "title" || style === "value" ? "bold" : "normal"),
+    textAlign: c.align ?? "center"
+  };
+  if (c.letterSpacing) body.letterSpacing = c.letterSpacing;
+  if (c.fontStyle) body.fontStyle = c.fontStyle;
+  if (c.fontFamily) body.fontFamily = c.fontFamily;
+  return { compKey: "JText", cfg: { chartData: { value: text }, option: { body } } };
+}
+function handleJDragDecoration(c, p) {
+  return { compKey: "JDragDecoration", cfg: { option: {
+    type: String(c.variant ?? "1"),
+    mainColor: c.color ?? p.subtitle,
+    subColor: c.subColor ?? c.color ?? p.subtitle,
+    dur: c.dur ?? 3
+  } } };
+}
+function handleJDragBorder(c, p) {
+  const d = loadDef("JDragBorder") ?? { option: {} };
+  d.option.type = String(c.variant ?? "1");
+  if (c.color) {
+    d.option.mainColor = c.color;
+    d.option.subColor = c.subColor ?? c.color;
+  } else if (c.mainColor) d.option.mainColor = c.mainColor;
+  if (c.option) deepUpdate(d.option, c.option);
+  return { compKey: "JDragBorder", cfg: d };
+}
+function handleJStatsSummary(c, p) {
+  const d = loadDef("JStatsSummary_2") ?? loadDef("JStatsSummary") ?? {};
+  if (c.data) d.chartData = JSON.stringify(c.data.filter((it) => it.value !== void 0 && it.value !== null));
+  d.option = d.option ?? {};
+  d.option.color = c.color ?? p.title;
+  d.option.bgColor = c.bgColor ?? "transparent";
+  return { compKey: "JStatsSummary", cfg: d };
+}
+function handleJScrollBoard(c, p) {
+  const d = loadDef("JScrollBoard") ?? {};
+  if (c.headers) d.option = d.option ?? {};
+  d.option.headerName = c.headers;
+  if (c.rows) d.chartData = JSON.stringify(c.rows);
+  d.option = d.option ?? {};
+  d.option.backgroundColor = c.bgColor ?? "transparent";
+  return { compKey: "JScrollBoard", cfg: d };
+}
+function handleJScrollRankingBoard(c, p) {
+  const d = loadDef("JScrollRankingBoard") ?? {};
+  const data = c.data ?? c.rows ?? [];
+  const topN = c.topN ?? data.length;
+  const sorted = [...data].sort((a, b) => (b.value ?? 0) - (a.value ?? 0)).slice(0, topN);
+  d.chartData = JSON.stringify(sorted);
+  d.option = d.option ?? {};
+  d.option.color = c.color ?? p.title;
+  return { compKey: "JScrollRankingBoard", cfg: d };
+}
+function handleJCountTo(c, p) {
+  const d = loadDef("JCountTo") ?? {};
+  d.chartData = { value: c.value ?? 0 };
+  d.option = d.option ?? {};
+  Object.assign(d.option, {
+    whole: c.whole ?? true,
+    fontSize: c.fontSize ?? 48,
+    color: c.color ?? p.title,
+    fontWeight: c.fontWeight ?? "bold",
+    textAlign: c.align ?? "center"
+  });
+  if (c.prefix) d.option.prefix = c.prefix;
+  if (c.suffix) d.option.suffix = c.suffix;
+  return { compKey: "JCountTo", cfg: d };
+}
+function handleJNumber(c, p) {
+  const d = loadDef("JNumber") ?? {};
+  d.chartData = { value: c.value ?? 0 };
+  d.option = d.option ?? {};
+  d.option.body = d.option.body ?? {};
+  Object.assign(d.option.body, {
+    color: c.color ?? p.value,
+    fontSize: c.fontSize ?? 28,
+    fontWeight: c.fontWeight ?? "bold",
+    textAlign: c.align ?? "center"
+  });
+  if (c.prefix) d.option.body.prefix = c.prefix;
+  if (c.suffix) d.option.body.suffix = c.suffix;
+  return { compKey: "JNumber", cfg: d };
+}
+function handleJCapsuleChart(c, p) {
+  const d = loadDef("JCapsuleChart") ?? {};
+  d.chartData = JSON.stringify(c.data ?? []);
+  d.option = d.option ?? {};
+  d.option.showValue = c.showValue ?? true;
+  d.option.unit = c.unit ?? "";
+  if (c.colors) d.option.customColor = c.colors.map((col) => ({ color1: col, color: col }));
+  return { compKey: "JCapsuleChart", cfg: d };
+}
+function handleJListProgress(c, p) {
+  const d = loadDef("JListProgress") ?? {};
+  const rows = (c.data ?? []).map((it) => ({
+    title: it.title ?? "",
+    value: it.current ?? it.value ?? 0,
+    total: it.target ?? it.total ?? 100,
+    endLabel: it.label ?? it.endLabel ?? "",
+    date: it.date ?? ""
+  }));
+  d.chartData = JSON.stringify(rows);
+  d.option = d.option ?? {};
+  d.option.body = d.option.body ?? {};
+  d.option.bar = d.option.bar ?? {};
+  d.option.beginInfo = d.option.beginInfo ?? {};
+  d.option.body.color = c.textColor ?? p.value;
+  d.option.body.fontSize = c.fontSize ?? 16;
+  d.option.bar.background = "#1a3a5a";
+  d.option.bar.color = c.color ?? p.subtitle;
+  if (c.option) deepUpdate(d.option, c.option);
+  return { compKey: "JListProgress", cfg: d };
+}
+function handleJFlyLineMap(c, p) {
+  const d = loadDef("JFlyLineMap") ?? {};
+  const rows = [];
+  for (const it of c.data ?? []) {
+    if (it.from && it.to) {
+      const fc = CITY_COORDS[it.from];
+      const tc = CITY_COORDS[it.to];
+      if (!fc || !tc) throw new Error(`JFlyLineMap \u672A\u77E5\u57CE\u5E02: ${JSON.stringify(it)}`);
+      rows.push({ fromName: it.from, toName: it.to, fromLng: fc[0], fromLat: fc[1], toLng: tc[0], toLat: tc[1], value: it.value ?? 1 });
+    } else rows.push(it);
+  }
+  d.chartData = JSON.stringify(rows);
+  d.option = d.option ?? {};
+  const area = d.option.area ?? {};
+  const raw = area.value ?? [];
+  if (Array.isArray(raw) && raw.some((v) => String(v).toLowerCase() === "china")) area.value = ["100000"];
+  else if (!area.value || area.value.length === 0) area.value = ["100000"];
+  d.option.area = area;
+  if (c.title) {
+    d.option.title = d.option.title ?? {};
+    d.option.title.show = true;
+    d.option.title.text = c.title;
+    d.option.title.textStyle = { color: p.subtitle, fontSize: 13 };
+  }
+  d.commonOption = d.commonOption ?? {};
+  d.commonOption.effect = d.commonOption.effect ?? {};
+  Object.assign(d.commonOption.effect, { trailLength: c.trailLength ?? 0.2, symbolSize: c.symbolSize ?? 6, color: c.effectColor ?? p.title });
+  if (c.option) deepUpdate(d.option, c.option);
+  return { compKey: "JFlyLineMap", cfg: d };
+}
+function handleJMapSimple(compType, c, p) {
+  const d = loadDef(compType) ?? {};
+  if (c.data) d.chartData = JSON.stringify(c.data);
+  d.option = d.option ?? {};
+  if (c.title) {
+    d.option.title = d.option.title ?? {};
+    d.option.title.show = true;
+    d.option.title.text = c.title;
+    d.option.title.textStyle = { color: p.subtitle, fontSize: 13 };
+  }
+  if (c.option) deepUpdate(d.option, c.option);
+  d.commonOption = d.commonOption ?? {};
+  if (c.commonOption) deepUpdate(d.commonOption, c.commonOption);
+  return { compKey: compType, cfg: d };
+}
+var handleJAreaMap = (c, p) => handleJMapSimple("JAreaMap", c, p);
+var handleJBubbleMap = (c, p) => handleJMapSimple("JBubbleMap", c, p);
+var handleJBarMap = (c, p) => handleJMapSimple("JBarMap", c, p);
+function handleGauge(compType, c, p) {
+  const d = loadDef(compType) ?? {};
+  d.option = d.option ?? {};
+  d.option.series = d.option.series ?? [{ type: "gauge" }];
+  const ser = d.option.series[0];
+  ser.data = [{ value: c.value ?? 0, name: c.title ?? "" }];
+  if (c.title) ser.name = c.title;
+  if (c.min !== void 0) ser.min = c.min;
+  if (c.max !== void 0) ser.max = c.max;
+  if (c.radius) ser.radius = c.radius;
+  return { compKey: compType, cfg: d };
+}
+var handleJGauge = (c, p) => handleGauge("JGauge", c, p);
+var handleJColorGauge = (c, p) => handleGauge("JColorGauge", c, p);
+var handleJSemiGauge = (c, p) => handleGauge("JSemiGauge", c, p);
+var handleJAntvGauge = (c, p) => handleGauge("JAntvGauge", c, p);
+function handleJScrollList(c, p) {
+  const d = loadDef("JScrollList_2") ?? loadDef("JScrollList") ?? {};
+  d.chartData = JSON.stringify(c.data ?? []);
+  d.option = d.option ?? {};
+  d.option.colors = p.colors;
+  return { compKey: "JScrollList", cfg: d };
+}
+function handleJScrollTable(c, p) {
+  const d = loadDef("JScrollTable") ?? {};
+  if (c.headers) d.option = d.option ?? {};
+  d.option.headerName = c.headers;
+  if (c.rows) d.chartData = JSON.stringify(c.rows);
+  return { compKey: "JScrollTable", cfg: d };
+}
+function handleJLiquid(c, p) {
+  const d = loadDef("JLiquid") ?? {};
+  d.chartData = JSON.stringify({ value: c.value ?? 0.5 });
+  d.option = d.option ?? {};
+  d.option.color = c.color ?? p.subtitle;
+  return { compKey: "JLiquid", cfg: d };
+}
+function handleJRingProgress(c, p) {
+  const d = loadDef("JRingProgress") ?? {};
+  d.chartData = JSON.stringify([{ value: c.value ?? 0, title: c.title ?? "" }]);
+  d.option = d.option ?? {};
+  d.option.color = c.color ?? p.subtitle;
+  return { compKey: "JRingProgress", cfg: d };
+}
+var SPECIAL_HANDLERS = {
+  JText: handleJText,
+  JDragDecoration: handleJDragDecoration,
+  JDragBorder: handleJDragBorder,
+  JStatsSummary: handleJStatsSummary,
+  JScrollBoard: handleJScrollBoard,
+  JScrollRankingBoard: handleJScrollRankingBoard,
+  JCountTo: handleJCountTo,
+  JNumber: handleJNumber,
+  JCapsuleChart: handleJCapsuleChart,
+  JListProgress: handleJListProgress,
+  JFlyLineMap: handleJFlyLineMap,
+  JAreaMap: handleJAreaMap,
+  JBubbleMap: handleJBubbleMap,
+  JBarMap: handleJBarMap,
+  JGauge: handleJGauge,
+  JColorGauge: handleJColorGauge,
+  JAntvGauge: handleJAntvGauge,
+  JSemiGauge: handleJSemiGauge,
+  JLiquid: handleJLiquid,
+  JScrollList: handleJScrollList,
+  JScrollTable: handleJScrollTable,
+  JRingProgress: handleJRingProgress
+};
+function handleCartesian(c, p, type) {
+  const d = loadDef(type) ?? {};
+  d.option = d.option ?? {};
+  if (c.gradient) {
+    const [dir, c1, c2] = c.gradient;
+    d.option.color = gradient(dir, c1, c2);
+  } else if (c.color) {
+    d.option.color = c.color;
+  } else if (!d.option.color) {
+    d.option.color = p.colors;
+  }
+  if (c.colors) d.option.color = c.colors;
+  if (c.data && c.data.length > 0) {
+    const labels = c.data.map((d2) => String(d2.name ?? d2.label ?? ""));
+    const seriesData = c.data.map((d2) => d2.value ?? 0);
+    d.chartData = JSON.stringify(c.data);
+    d.option.series = d.option.series ?? [{ type: type === "JStackBar" ? "bar" : "bar", data: seriesData }];
+    d.option.series[0].data = seriesData;
+    if (c.title) d.option.series[0].name = c.title;
+    if (d.option.xAxis && typeof d.option.xAxis === "object") d.option.xAxis.data = labels;
+  }
+  applyEchartsTheme(d.option, p, { hasAxes: true, titleText: c.title ?? null });
+  if (c.option) deepUpdate(d.option, c.option);
+  return { compKey: type, cfg: d };
+}
+function handlePolar(c, p, type) {
+  const d = loadDef(type) ?? {};
+  d.option = d.option ?? {};
+  d.option.color = c.colors ?? d.option.color ?? p.colors;
+  if (c.data && c.data.length > 0) {
+    d.chartData = JSON.stringify(c.data);
+    d.option.series = d.option.series ?? [{ type: "pie", data: c.data }];
+    d.option.series[0].data = c.data;
+    if (c.title) {
+      d.option.title = d.option.title ?? {};
+      d.option.title.show = true;
+      d.option.title.text = c.title;
+    }
+  }
+  applyEchartsTheme(d.option, p, { hasAxes: false });
+  if (c.option) deepUpdate(d.option, c.option);
+  return { compKey: type, cfg: d };
+}
+function handleMap(c, p, type) {
+  const d = loadDef(type) ?? {};
+  d.option = d.option ?? {};
+  if (c.data) d.chartData = JSON.stringify(c.data);
+  if (c.title) {
+    d.option.title = d.option.title ?? {};
+    d.option.title.show = true;
+    d.option.title.text = c.title;
+    d.option.title.textStyle = { color: p.subtitle, fontSize: 13 };
+  }
+  if (c.option) deepUpdate(d.option, c.option);
+  return { compKey: type, cfg: d };
+}
+function handleGaugeLike(c, p, type) {
+  return SPECIAL_HANDLERS[type] ? SPECIAL_HANDLERS[type](c, p) : handleGauge(type, c, p);
+}
+function compileComponent(c, p) {
+  const warnings = [];
+  const t = c.type;
+  if (DISABLED_COMPONENTS.has(t)) {
+    throw new Error(`\u7EC4\u4EF6 ${t} \u5728\u5927\u5C4F\uFF08bigScreen\uFF09\u4E2D\u4E0D\u53D7\u652F\u6301\u3002\u66FF\u4EE3\u5EFA\u8BAE\uFF1AJRankingList\u2192JScrollRankingBoard\uFF1BJTotalProgress\u2192JListProgress/JCapsuleChart\uFF1BJPivotTable\u2192JScrollBoard/JCommonTable\uFF1BJFly3dMap\u2192JFlyLineMap/JTotalFlyLineMap`);
+  }
+  let compKey = t;
+  const variant = String(c.variant ?? "").trim();
+  if (variant) {
+    const cand = `${t}_${variant}`;
+    if (existsSync3(join3(DEFAULTS_DIR, `${cand}.json`))) compKey = cand;
+  }
+  let cfg;
+  if (SPECIAL_HANDLERS[compKey]) {
+    const r = SPECIAL_HANDLERS[compKey](c, p);
+    compKey = r.compKey;
+    cfg = r.cfg;
+  } else if (ECHARTS_CARTESIAN.has(t)) {
+    const r = handleCartesian(c, p, t);
+    compKey = r.compKey;
+    cfg = r.cfg;
+  } else if (ECHARTS_POLAR.has(t)) {
+    const r = handlePolar(c, p, t);
+    compKey = r.compKey;
+    cfg = r.cfg;
+  } else if (ECHARTS_MAP.has(t)) {
+    const r = handleMap(c, p, t);
+    compKey = r.compKey;
+    cfg = r.cfg;
+  } else if (ECHARTS_GAUGE.has(t)) {
+    const r = handleGaugeLike(c, p, t);
+    compKey = r.compKey;
+    cfg = r.cfg;
+  } else {
+    cfg = loadDef(compKey) ?? {};
+    if (c.data) {
+      cfg.chartData = JSON.stringify(c.data);
+    }
+    if (c.title && !cfg.title) cfg.title = c.title;
+    cfg.option = cfg.option ?? {};
+    if (c.option) deepUpdate(cfg.option, c.option);
+    cfg.commonOption = cfg.commonOption ?? {};
+    if (c.commonOption) deepUpdate(cfg.commonOption, c.commonOption);
+  }
+  if (Array.isArray(c.pos) && c.pos.length >= 4) {
+    cfg.x = c.pos[0];
+    cfg.y = c.pos[1];
+    cfg.w = cfg.w ?? c.pos[2];
+    cfg.h = cfg.h ?? c.pos[3];
+  } else {
+    cfg.w = cfg.w ?? c.w ?? 400;
+    cfg.h = cfg.h ?? c.h ?? 300;
+  }
+  if (c.x !== void 0) cfg.x = cfg.x ?? c.x;
+  if (c.y !== void 0) cfg.y = cfg.y ?? c.y;
+  if (!cfg.dataType) cfg.dataType = 1;
+  if (cfg.chartData !== void 0 && typeof cfg.chartData !== "string") {
+    cfg.chartData = JSON.stringify(cfg.chartData);
+  }
+  cfg.background = cfg.background ?? "#FFFFFF00";
+  cfg.borderColor = cfg.borderColor ?? "#FFFFFF00";
+  cfg.chart = cfg.chart ?? { subclass: t, category: inferCategory(t) };
+  if (ECHARTS_POLAR.has(t) && (cfg.h ?? 0) < 220) {
+    warnings.push(`\u26A0\uFE0F ${t} h=${cfg.h}<220\uFF0C\u997C/\u73AF\u56FE legend \u6613\u91CD\u53E0`);
+  }
+  if (t === "JStatsSummary" && (cfg.h ?? 0) < 150) {
+    warnings.push(`\u26A0\uFE0F JStatsSummary h=${cfg.h}<150\uFF0C\u5185\u5BB9\u53EF\u80FD\u88AB\u622A\u65AD`);
+  }
+  return { compKey, cfg, warnings };
+}
+function inferCategory(compType) {
+  if (ECHARTS_CARTESIAN.has(compType)) return "Bar";
+  if (ECHARTS_POLAR.has(compType)) return "Pie";
+  if (ECHARTS_GAUGE.has(compType)) return "Gauge";
+  if (ECHARTS_MAP.has(compType)) return "Map";
+  if (PROGRESS_COMPS.has(compType)) return "Progress";
+  if (TABLE_COMPS.has(compType)) return "Table";
+  if (TEXT_COMPS.has(compType)) return "Text";
+  if (DECOR_COMPS.has(compType)) return "Decoration";
+  return "Custom";
+}
+function compileBigscreen(spec) {
+  const page = spec.page ?? {};
+  const paletteName = spec.palette ?? page.bg ?? "tech";
+  const palette = PALETTES[paletteName] ?? PALETTES.tech;
+  const theme = page.theme ?? "dark";
+  const bgImage = page.bgImage ?? `/img/bg/${page.bg ?? "bg4"}.png`;
+  const components = [];
+  const allWarnings = [];
+  for (const c of spec.components ?? []) {
+    try {
+      const { compKey, cfg, warnings } = compileComponent(c, palette);
+      allWarnings.push(...warnings.map((w) => `[${compKey}] ${w}`));
+      components.push({
+        type: compKey,
+        title: c.title ?? c.name ?? c.text ?? "",
+        cfg
+      });
+    } catch (e) {
+      allWarnings.push(`[${c.type ?? "unknown"}] \u274C ${e.message}`);
+      components.push({
+        type: c.type,
+        title: c.title ?? "",
+        error: e.message
+      });
+    }
+  }
+  return {
+    page: {
+      name: page.name ?? "untitled",
+      style: page.style ?? "bigScreen",
+      theme,
+      width: page.width ?? 1920,
+      height: page.height ?? 1080,
+      backgroundImage: bgImage
+    },
+    components,
+    palette: { ...palette, name: paletteName },
+    warnings: allWarnings
+  };
+}
+function generateBigscreenHtml(spec) {
+  const { page, components, palette } = compileBigscreen(spec);
+  const isScreen = (page.theme ?? "dark") === "dark";
+  const canvasW = page.width ?? 1920;
+  const canvasH = page.height ?? 1080;
+  const bgCss = isScreen ? `html,body{margin:0;padding:0;background:#051020;color:#d4e8ff;font-family:system-ui,sans-serif;}.canvas{position:relative;width:${canvasW}px;height:${canvasH}px;margin:0 auto;background:linear-gradient(180deg,#0a1929 0%,#051020 100%);overflow:hidden;border:1px solid #1a3a5a;} .comp{position:absolute;overflow:hidden;border:1px solid #1a3a5a55;border-radius:4px;background:rgba(11,30,58,0.15);}` : `html,body{margin:0;padding:0;background:#f3f4f6;color:#1f2937;font-family:system-ui,sans-serif;}.canvas{position:relative;width:${canvasW}px;height:${canvasH}px;margin:0 auto;background:#f9fafb;overflow:hidden;border:1px solid #e5e7eb;}.comp{position:absolute;overflow:hidden;border:1px solid #e5e7eb;border-radius:4px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);}`;
+  const head = `<!DOCTYPE html><html lang="zh"><head><meta charset="UTF-8"><meta name="viewport" content="width=1">
+<title>${page.name}</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<style>${bgCss}</style>
+</head><body>
+<div class="canvas" style="background-image:url('${page.backgroundImage ?? ""}');">`;
+  const bodyHtml = components.map((c, i) => {
+    if (c.error) return `<div class="comp" style="left:0;top:0;width:400px;height:100px;color:#ef4444;font-size:12px;padding:8px;">\u274C ${c.type}: ${c.error}</div>`;
+    const cfg = c.cfg;
+    if (!cfg) return "";
+    const x = cfg.x ?? 0, y = cfg.y ?? 0, w = cfg.w ?? 400, h = cfg.h ?? 300;
+    const kind = inferKind(c.type);
+    if (kind === "echarts" && cfg.option) {
+      return `<div class="comp" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;" title="${c.title || c.type}"><div id="chart-${i}" style="width:100%;height:100%;"></div></div>`;
+    }
+    if (kind === "html") {
+      const html = renderHtmlComponent(c, cfg, palette);
+      return `<div class="comp" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border:none;background:transparent;">${html}</div>`;
+    }
+    return `<div class="comp" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;padding:8px;"><pre style="font-size:10px;color:#999;margin:0;overflow:hidden;">${c.type}</pre></div>`;
+  }).join("");
+  const js = `<script>
+(function(){${components.map((c, i) => {
+    if (c.error) return "";
+    const cfg = c.cfg;
+    if (!cfg) return "";
+    if (cfg.option && typeof cfg.option.series === "object" && inferKind(c.type) === "echarts") {
+      const opt = cfg.option;
+      return `(function(){var d=document.getElementById('chart-${i}');if(d){var e=echarts.init(d,'${isScreen ? "dark" : "light"}');e.setOption(${JSON.stringify(opt)});window.addEventListener('resize',function(){e.resize();});}})();`;
+    }
+    return "";
+  }).join("\n")}
+})();
+</script>`;
+  return `${head}${bodyHtml}${js}</body></html>`;
+}
+function renderHtmlComponent(c, cfg, p) {
+  const opt = cfg.option ?? {};
+  switch (c.type) {
+    case "JText": {
+      const body = opt.body ?? {};
+      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${body.color ?? p.label};font-size:${body.fontSize ?? 14}px;font-weight:${body.fontWeight ?? "normal"};text-align:${body.textAlign ?? "center"};letter-spacing:${body.letterSpacing ?? 0}px;">${body.text ?? cfg.chartData?.value ?? ""}</div>`;
+    }
+    case "JDragDecoration": {
+      const col = opt.mainColor ?? p.subtitle;
+      const sub = opt.subColor ?? col;
+      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,${col}33,${sub}33);border-top:2px solid ${col};border-bottom:2px solid ${sub};"><span style="color:${col};font-size:12px;">\u25B8 ${opt.title ?? opt.type ?? ""}</span></div>`;
+    }
+    case "JCountTo":
+    case "JNumber": {
+      const body = opt.body ?? opt;
+      const val = typeof cfg.chartData === "string" ? JSON.parse(cfg.chartData).value : cfg.chartData?.value ?? 0;
+      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${body.color ?? p.title};font-size:${body.fontSize ?? 32}px;font-weight:${body.fontWeight ?? "bold"};font-variant-numeric:tabular-nums;">${opt.prefix ?? body.prefix ?? ""}${val}${opt.suffix ?? body.suffix ?? ""}</div>`;
+    }
+    case "JStatsSummary": {
+      let items = [];
+      try {
+        items = JSON.parse(cfg.chartData ?? "[]");
+      } catch {
+        items = [];
+      }
+      if (!Array.isArray(items)) items = [];
+      const itemHtml = items.slice(0, 4).map((it) => `<div style="flex:1;text-align:center;padding:8px;border-right:1px solid ${p.axisLine};"><div style="font-size:20px;font-weight:700;color:${p.title};">${it.value ?? 0}${it.suffix ?? ""}</div><div style="font-size:11px;color:${p.label};opacity:0.8;margin-top:4px;">${it.name ?? it.label ?? ""}</div></div>`).join("");
+      return `<div style="width:100%;height:100%;display:flex;">${itemHtml}</div>`;
+    }
+    case "JScrollBoard":
+    case "JScrollTable": {
+      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.label};font-size:12px;padding:8px;overflow:hidden;"><pre style="margin:0;white-space:pre-wrap;">${c.type}</pre></div>`;
+    }
+    default:
+      return `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${p.label};font-size:11px;padding:4px;">${c.type}</div>`;
+  }
+}
+function inferKind(compType) {
+  if (ECHARTS_CARTESIAN.has(compType) || ECHARTS_POLAR.has(compType) || ECHARTS_GAUGE.has(compType)) return "echarts";
+  if (ECHARTS_MAP.has(compType)) return "echarts";
+  if (TEXT_COMPS.has(compType) || DECOR_COMPS.has(compType)) return "html";
+  return "html";
+}
+
+// server/src/api/bigscreen.mjs
+var __dirname3 = dirname3(fileURLToPath4(import.meta.url));
+var _templateCache = null;
+async function loadBigscreenTemplates() {
+  if (_templateCache) return _templateCache;
+  const templatesDir = join4(__dirname3, "..", "engine", "templates");
+  try {
+    const files = await readdir(templatesDir);
+    const templates = [];
+    for (const file of files.filter((f) => f.endsWith(".json"))) {
+      const raw = await readFile(join4(templatesDir, file), "utf-8");
+      const t = JSON.parse(raw);
+      templates.push({
+        id: t.id ?? file.replace(/\.json$/, ""),
+        name: t.name ?? t.id ?? file.replace(/\.json$/, ""),
+        industry: t.industry ?? "\u901A\u7528",
+        layout: t.layout ?? "grid",
+        palette: t.palette,
+        hasSpec: !!t.spec
+      });
+    }
+    _templateCache = templates.sort((a, b) => a.id.localeCompare(b.id));
+    return _templateCache;
+  } catch {
+    return [];
+  }
+}
+function bigscreenRoutes() {
+  return [
+    ["/api/bigscreen/compile", "POST", false, async ({ body }) => {
+      const spec = body?.spec;
+      if (!spec) throw engineError("BAD_REQUEST", "spec is required");
+      return compileBigscreen(spec);
+    }],
+    ["/api/bigscreen/render", "POST", false, async ({ body }) => {
+      const spec = body?.spec;
+      if (!spec) throw engineError("BAD_REQUEST", "spec is required");
+      return { html: generateBigscreenHtml(spec) };
+    }],
+    ["/api/bigscreen/templates", "GET", false, async () => {
+      const templates = await loadBigscreenTemplates();
+      return { templates };
+    }]
+  ];
+}
+
+// server/src/engine/report-executor.mjs
+function execReport({ columns, rows, options = {} }) {
+  const groupBy = options.groupBy ?? [];
+  if (groupBy.length === 0) return { columns, rows, groups: [] };
+  const sorted = [...rows].sort((a, b) => {
+    for (const g of groupBy) {
+      const av = String(a[g] ?? "");
+      const bv = String(b[g] ?? "");
+      if (av !== bv) return av.localeCompare(bv);
+    }
+    return 0;
+  });
+  const firstRow = sorted[0] ?? {};
+  const numericCols = columns.filter((c) => {
+    const v = firstRow[c];
+    return typeof v === "number" || typeof v === "string" && !isNaN(parseFloat(v)) && v.trim() !== "";
+  });
+  const result = [];
+  let currentGroup = null;
+  let groupRows = [];
+  const groups = [];
+  for (const row of sorted) {
+    const groupKey = groupBy.map((g) => String(row[g] ?? "")).join("||");
+    if (currentGroup !== null && groupKey !== currentGroup) {
+      result.push(...groupRows);
+      const subtotal = {};
+      for (const c of groupBy) subtotal[c] = groupRows[0][c];
+      subtotal["_isSubtotal"] = true;
+      for (const c of numericCols) subtotal[c] = groupRows.reduce((s, r) => s + (Number(r[c]) || 0), 0);
+      result.push(subtotal);
+      groups.push({ key: currentGroup, rows: groupRows.length });
+      groupRows = [];
+    }
+    currentGroup = groupKey;
+    groupRows.push(row);
+  }
+  if (groupRows.length > 0) {
+    result.push(...groupRows);
+    const subtotal = {};
+    for (const c of groupBy) subtotal[c] = groupRows[0][c];
+    subtotal["_isSubtotal"] = true;
+    for (const c of numericCols) subtotal[c] = groupRows.reduce((s, r) => s + (Number(r[c]) || 0), 0);
+    result.push(subtotal);
+    groups.push({ key: currentGroup, rows: groupRows.length });
+  }
+  const grandTotal = { _isGrandTotal: true };
+  for (const c of groupBy) grandTotal[c] = "\u5408\u8BA1";
+  for (const c of numericCols) grandTotal[c] = sorted.reduce((s, r) => s + (Number(r[c]) || 0), 0);
+  result.push(grandTotal);
+  return { columns, rows: result, groups };
+}
+function inferHeaderTree(columns, groupBy = []) {
+  if (groupBy.length === 0) {
+    return columns.map((c) => ({ title: c, colspan: 1, children: null }));
+  }
+  const groupSet = new Set(groupBy);
+  const leafCols = columns.filter((c) => !groupSet.has(c));
+  function build(remainingGroups, leafCols2) {
+    if (remainingGroups.length === 0) {
+      return leafCols2.map((c) => ({ title: c, colspan: 1, children: null }));
+    }
+    const [head, ...tail] = remainingGroups;
+    return [{
+      title: head,
+      colspan: 1,
+      // 分组头本身占 1 列
+      children: build(tail, leafCols2)
+    }];
+  }
+  const tree = build(groupBy, leafCols);
+  return tree.flat();
+}
+
+// server/src/api/report.mjs
+function reportRoutes(ctx) {
+  return [
+    ["/api/report/exec", "POST", true, async ({ body }) => {
+      const connectionName = body?.connectionName;
+      const sql = body?.sql;
+      if (!connectionName || !sql) throw engineError("BAD_REQUEST", "connectionName + sql \u5747\u4E3A\u5FC5\u586B");
+      const result = await ctx.mcpClient().callTool("dbx_execute_query", {
+        connection_name: connectionName,
+        sql,
+        max_rows: body?.maxRows ?? 1e3
+      });
+      if (result.isError) throw engineError("REPORT_EXEC_FAILED", ctx.textOf(result));
+      const { columns, rows } = ctx.parseMarkdownTable(ctx.textOf(result));
+      const aggregated = execReport({ columns, rows, options: body?.options ?? {} });
+      return { columns: aggregated.columns, rows: aggregated.rows, groups: aggregated.groups, rowCount: aggregated.rows.length };
+    }],
+    ["/api/report/headers", "POST", false, async ({ body }) => {
+      const tree = inferHeaderTree(body?.columns ?? [], body?.groupBy ?? []);
+      return { headers: tree };
+    }]
+  ];
+}
+
+// server/src/api/chart.mjs
+import { readFile as readFile2 } from "node:fs/promises";
+import { join as join5, dirname as dirname4 } from "node:path";
+import { fileURLToPath as fileURLToPath5 } from "node:url";
+var __dirname4 = dirname4(fileURLToPath5(import.meta.url));
+var _registryCache = null;
+async function loadChartRegistry() {
+  if (_registryCache) return _registryCache;
+  try {
+    const raw = await readFile2(join5(__dirname4, "..", "engine", "chart-registry.json"), "utf-8");
+    _registryCache = JSON.parse(raw);
+    return _registryCache;
+  } catch {
+    return { graphTypes: [] };
+  }
+}
+function chartRoutes() {
+  return [
+    ["/api/chart/graphTypes", "GET", false, async () => {
+      const registry = await loadChartRegistry();
+      return { graphTypes: registry.graphTypes ?? [] };
+    }]
+  ];
+}
+
+// server/src/api/json-store.mjs
+import { promises as fs6 } from "node:fs";
+import path3 from "node:path";
+import crypto from "node:crypto";
+var NOW_ISO = () => (/* @__PURE__ */ new Date()).toISOString();
+var STORE_DIR = (dataDir) => path3.join(dataDir ?? ".", "json-store");
+function genId() {
+  return crypto.randomUUID();
+}
+async function ensureDir(dataDir, table) {
+  const dir = path3.join(STORE_DIR(dataDir), table);
+  await fs6.mkdir(dir, { recursive: true });
+  return dir;
+}
+function recordPath(dir, id) {
+  return path3.join(dir, `${id}.json`);
+}
+async function readSafe(p) {
+  try {
+    return JSON.parse(await fs6.readFile(p, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+function escLike(kw) {
+  return String(kw ?? "").trim().toLowerCase();
+}
+async function save(ctx, { table, id = null, name, data, meta = {} }) {
+  if (!table || !name) throw engineError("BAD_REQUEST", "table + name \u5FC5\u586B");
+  const recId = id ?? genId();
+  const now = NOW_ISO();
+  const dir = await ensureDir(ctx.dataDir, table);
+  const existing = await readSafe(recordPath(dir, recId));
+  const created_at = existing?.created_at ?? now;
+  const rec = {
+    id: recId,
+    name,
+    data,
+    meta,
+    created_at,
+    updated_at: now
+  };
+  await fs6.writeFile(recordPath(dir, recId), JSON.stringify(rec, null, 2), "utf-8");
+  return { id: recId, name, created_at, updated_at: now, exists: !!existing };
+}
+async function queryById(ctx, { table, id }) {
+  if (!table || !id) throw engineError("BAD_REQUEST", "table + id \u5FC5\u586B");
+  const dir = path3.join(STORE_DIR(ctx.dataDir), table);
+  const rec = await readSafe(recordPath(dir, id));
+  return rec;
+}
+async function list(ctx, { table, keyword = "", limit = 100 }) {
+  if (!table) throw engineError("BAD_REQUEST", "table \u5FC5\u586B");
+  const dir = path3.join(STORE_DIR(ctx.dataDir), table);
+  const kw = escLike(keyword);
+  let files;
+  try {
+    files = await fs6.readdir(dir);
+  } catch {
+    return [];
+  }
+  const recs = [];
+  for (const f of files) {
+    if (!f.endsWith(".json")) continue;
+    const r = await readSafe(path3.join(dir, f));
+    if (!r) continue;
+    if (kw && !(r.name ?? "").toLowerCase().includes(kw)) continue;
+    recs.push(r);
+  }
+  recs.sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""));
+  return recs.slice(0, Math.min(limit, 1e3));
+}
+async function remove(ctx, { table, id }) {
+  if (!table || !id) throw engineError("BAD_REQUEST", "table + id \u5FC5\u586B");
+  const dir = path3.join(STORE_DIR(ctx.dataDir), table);
+  const p = recordPath(dir, id);
+  try {
+    await fs6.unlink(p);
+  } catch {
+  }
+  return { deleted: id };
+}
+
+// server/src/api/form.mjs
+var TABLE = "dbx_form_designs";
+function formRoutes(ctx) {
+  return [
+    ["/api/form/save", "POST", true, async ({ body }) => {
+      const id = body?.id ?? null;
+      const name = body?.name;
+      const data = body?.data;
+      const meta = body?.meta ?? {};
+      if (!name || !data) throw engineError("BAD_REQUEST", "name + data \u5FC5\u586B");
+      return save(ctx, { table: TABLE, id, name, data, meta });
+    }],
+    ["/api/form/query", "POST", true, async ({ body }) => {
+      const r = await queryById(ctx, { table: TABLE, id: body?.id });
+      if (!r) throw engineError("NOT_FOUND", `form ${body?.id} \u4E0D\u5B58\u5728`);
+      return r;
+    }],
+    ["/api/form/list", "POST", true, async ({ body }) => {
+      return list(ctx, { table: TABLE, keyword: body?.keyword ?? "", limit: body?.limit ?? 100 });
+    }],
+    ["/api/form/delete", "POST", true, async ({ body }) => {
+      return remove(ctx, { table: TABLE, id: body?.id });
+    }]
+  ];
+}
+
+// server/src/api/portal.mjs
+var TABLE2 = "dbx_portal_designs";
+function portalRoutes(ctx) {
+  return [
+    ["/api/portal/save", "POST", true, async ({ body }) => {
+      if (!body?.name || !body?.data) throw engineError("BAD_REQUEST", "name + data \u5FC5\u586B");
+      return save(ctx, { table: TABLE2, id: body.id, name: body.name, data: body.data, meta: body.meta ?? {} });
+    }],
+    ["/api/portal/query", "POST", true, async ({ body }) => {
+      const r = await queryById(ctx, { table: TABLE2, id: body?.id });
+      if (!r) throw engineError("NOT_FOUND", `portal ${body?.id} \u4E0D\u5B58\u5728`);
+      return r;
+    }],
+    ["/api/portal/list", "POST", true, async ({ body }) => {
+      return list(ctx, { table: TABLE2, keyword: body?.keyword ?? "", limit: body?.limit ?? 100 });
+    }],
+    ["/api/portal/delete", "POST", true, async ({ body }) => {
+      return remove(ctx, { table: TABLE2, id: body?.id });
+    }]
+  ];
+}
+
+// server/src/api/bpmn.mjs
+var TABLE3 = "dbx_bpmn_designs";
+function bpmnRoutes(ctx) {
+  return [
+    ["/api/bpmn/save", "POST", true, async ({ body }) => {
+      if (!body?.name) throw engineError("BAD_REQUEST", "name \u5FC5\u586B");
+      const data = body?.data ?? body?.xml ?? {};
+      return save(ctx, { table: TABLE3, id: body.id, name: body.name, data, meta: body.meta ?? {} });
+    }],
+    ["/api/bpmn/query", "POST", true, async ({ body }) => {
+      const r = await queryById(ctx, { table: TABLE3, id: body?.id });
+      if (!r) throw engineError("NOT_FOUND", `bpmn ${body?.id} \u4E0D\u5B58\u5728`);
+      return r;
+    }],
+    ["/api/bpmn/list", "POST", true, async ({ body }) => {
+      return list(ctx, { table: TABLE3, keyword: body?.keyword ?? "", limit: body?.limit ?? 100 });
+    }],
+    ["/api/bpmn/delete", "POST", true, async ({ body }) => {
+      return remove(ctx, { table: TABLE3, id: body?.id });
+    }]
+  ];
+}
+
+// server/src/api/codegen.mjs
+var TABLE4 = "dbx_codegen_configs";
+var BUILTIN_TEMPLATES = {
+  controller: (t) => `// ${t.name}Controller.ts \u2014 auto-generated
+import { Request, Response } from "express";
+export async function list${t.name}(req: Request, res: Response) {
+  // TODO: query ${t.table} with ${t.columns.length} columns
+  res.json({ columns: ${JSON.stringify(t.columns.map((c) => c.name))} });
+}`,
+  entity: (t) => `// ${t.name}.ts \u2014 auto-generated
+export interface ${t.name} {
+${t.columns.map((c) => `  ${c.name}: ${mapType(c.type)};`).join("\n")}
+}`,
+  api: (t) => `// api/${t.name.toLowerCase()}.ts \u2014 auto-generated
+export const ${t.name.toLowerCase()}Api = {
+  list: () => fetch("/api/${t.table.toLowerCase()}"),
+  get: (id: string) => fetch(\`/api/${t.table.toLowerCase()}/\${id}\`),
+};`
+};
+function mapType(dbType) {
+  const t = String(dbType ?? "").toLowerCase();
+  if (/int|num|float|decimal|real|double/.test(t)) return "number";
+  if (/bool/.test(t)) return "boolean";
+  if (/date|time/.test(t)) return "string";
+  return "string";
+}
+function codegenRoutes() {
+  return [
+    ["/api/codegen/generate", "POST", true, async ({ body }) => {
+      const table = body?.table;
+      const columns = body?.columns;
+      const name = body?.name ?? body?.table;
+      if (!table || !columns || !name) throw engineError("BAD_REQUEST", "table + columns + name \u5FC5\u586B");
+      if (!Array.isArray(columns)) throw engineError("BAD_REQUEST", "columns \u5FC5\u987B\u662F\u6570\u7EC4");
+      const tplCtx = { table, name, columns: columns.map((c) => ({ name: c.name, type: c.type ?? "varchar" })) };
+      const templates = body?.templates ?? Object.keys(BUILTIN_TEMPLATES);
+      const files = templates.map((key) => {
+        const fn = BUILTIN_TEMPLATES[key];
+        if (!fn) return null;
+        return {
+          template: key,
+          path: `${name.toLowerCase()}/${key === "controller" ? `${name}Controller.ts` : key === "entity" ? `${name}.ts` : `${name.toLowerCase()}.ts`}`,
+          content: fn(tplCtx)
+        };
+      }).filter(Boolean);
+      return { table, name, files, templateCount: files.length };
+    }],
+    ["/api/codegen/save", "POST", true, async ({ body }) => {
+      if (!body?.name) throw engineError("BAD_REQUEST", "name \u5FC5\u586B");
+      return save({ table: TABLE4, id: body.id, name: body.name, data: body.config ?? body, meta: body.meta ?? {} });
+    }],
+    ["/api/codegen/list", "POST", true, async ({ body }) => {
+      return list({ table: TABLE4, keyword: body?.keyword ?? "", limit: body?.limit ?? 100 });
+    }]
+  ];
+}
+
+// server/src/api/system.mjs
+var TABLE5 = "dbx_system_configs";
+function systemRoutes(ctx) {
+  return [
+    ["/api/system/save", "POST", true, async ({ body }) => {
+      if (!body?.name || !body?.category) throw engineError("BAD_REQUEST", "name + category \u5FC5\u586B");
+      const data = { ...body.data ?? {}, category: body.category };
+      return save(ctx, { table: TABLE5, id: body.id, name: body.name, data, meta: body.meta ?? {} });
+    }],
+    ["/api/system/query", "POST", true, async ({ body }) => {
+      const r = await queryById(ctx, { table: TABLE5, id: body?.id });
+      if (!r) throw engineError("NOT_FOUND", `system ${body?.id} \u4E0D\u5B58\u5728`);
+      return r;
+    }],
+    ["/api/system/list", "POST", true, async ({ body }) => {
+      const keyword = body?.category ? `${body.category} ${body?.keyword ?? ""}` : body?.keyword ?? "";
+      return list(ctx, { table: TABLE5, keyword, limit: body?.limit ?? 100 });
+    }],
+    ["/api/system/delete", "POST", true, async ({ body }) => {
+      return remove(ctx, { table: TABLE5, id: body?.id });
+    }]
+  ];
+}
+
+// server/src/engine/request-router.mjs
+function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
+  if (!auth) throw new Error("createRouter \u9700\u8981 auth");
+  const ctx = createRouterContext({ auth, dataDir, now });
+  const allRoutes = [
+    ...healthRoutes(ctx),
+    ...connectionsRoutes(ctx),
+    ...apiSourcesRoutes(ctx),
+    ...queryRoutes(ctx),
+    ...schemaRoutes(ctx),
+    ...revealRoutes(ctx),
+    ...bigscreenRoutes(),
+    ...reportRoutes(ctx),
+    ...chartRoutes(),
+    ...formRoutes(ctx),
+    ...portalRoutes(ctx),
+    ...bpmnRoutes(ctx),
+    ...codegenRoutes(ctx),
+    ...systemRoutes(ctx)
+  ];
   const routes = /* @__PURE__ */ new Map();
-  for (const [pathname, method, auth2, handler] of routeDefs) {
+  for (const [pathname, method, authRequired, handler] of allRoutes) {
     if (!routes.has(pathname)) routes.set(pathname, /* @__PURE__ */ new Map());
-    routes.get(pathname).set(method, { auth: auth2, handler });
+    routes.get(pathname).set(method, { auth: authRequired, handler });
   }
   async function handle(request) {
     const { method = "GET", pathname, headers = {}, body = null } = request ?? {};
@@ -97352,6 +98525,7 @@ ${text}` : "";
 }
 
 // server/src/http-server.mjs
+init_dbx_mcp_client();
 var HOST = "127.0.0.1";
 var SECRET_KEY_ENV = "ASTRAVIA_SERVICE_SECRET_ENGINE_KEY";
 function emit(event, payload = {}) {
@@ -97422,17 +98596,17 @@ function readJsonBody(req) {
   });
 }
 function ensureEngineKey(dataDir) {
-  const dir = dataDir ?? join3(homedir3(), ".astravia-dbx-data");
+  const dir = dataDir ?? join6(homedir3(), ".astravia-dbx-data");
   mkdirSync4(dir, { recursive: true });
   try {
     chmodSync2(dir, 448);
   } catch {
   }
-  const secretPath = join3(dir, "service-secrets.json");
+  const secretPath = join6(dir, "service-secrets.json");
   let doc = { schemaVersion: 1, values: {} };
-  if (existsSync3(secretPath)) {
+  if (existsSync4(secretPath)) {
     try {
-      doc = JSON.parse(readFileSync2(secretPath, "utf8"));
+      doc = JSON.parse(readFileSync3(secretPath, "utf8"));
     } catch {
     }
   }
@@ -97451,8 +98625,8 @@ async function resetLegacyDatabaseIfNeeded(client2, dataDir) {
   if (!/DATA_MIGRATION_REQUIRED/.test(text)) return false;
   await client2.dispose();
   const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-  const dbPath = join3(dataDir, "dbx.db");
-  if (existsSync3(dbPath)) renameSync2(dbPath, join3(dataDir, `dbx.db.legacy-${stamp}`));
+  const dbPath = join6(dataDir, "dbx.db");
+  if (existsSync4(dbPath)) renameSync2(dbPath, join6(dataDir, `dbx.db.legacy-${stamp}`));
   return true;
 }
 function withTimeout(promise, ms, fallback) {
@@ -97517,8 +98691,8 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
             return send(200, { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "dbx-pro", version: ENGINE_VERSION } } });
           }
           if (rpc.method === "tools/list") {
-            const list = await client3.listTools();
-            return send(200, { jsonrpc: "2.0", id, result: { tools: list } });
+            const list2 = await client3.listTools();
+            return send(200, { jsonrpc: "2.0", id, result: { tools: list2 } });
           }
           if (rpc.method === "tools/call") {
             const params = rpc.params ?? {};
