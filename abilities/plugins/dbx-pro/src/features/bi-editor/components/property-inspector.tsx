@@ -183,20 +183,44 @@ function NodePropertyForm({
 function Field({
 	field, node, onUpdate,
 }: { field: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: string[] }; node: NodePos; onUpdate: (patch: Partial<NodePos>) => void }) {
-	// 目前 NodePos 上还没有 per-field 的 value 存储（后续扩 NodeVal schema）。
-	// 这里先渲染占位输入框 —— 展示真实表单结构，onChange 已经连好等 NodeVal schema 落地后立即生效。
+	const values = node.values ?? {};
+	const current = values[field.key];
+	const setVal = (v: unknown) => onUpdate({ values: { ...values, [field.key]: v } });
+
 	return (
 		<Row label={field.label}>
 			{field.type === "select" && field.options ? (
-				<select className="h-7 w-full rounded-control border border-border bg-surface px-1 text-[11px] text-surface-foreground">
+				<select
+					value={String(current ?? "")}
+					onChange={(e) => setVal(e.target.value)}
+					className="h-7 w-full rounded-control border border-border bg-surface px-1 text-[11px] text-surface-foreground"
+				>
+					<option value="">—</option>
 					{field.options.map((o) => <option key={o} value={o}>{o}</option>)}
 				</select>
 			) : field.type === "textarea" ? (
-				<textarea rows={2} className="w-full rounded-control border border-border bg-surface px-2 py-1 font-mono text-[11px] text-muted" placeholder={`// ${field.key}`} />
+				<textarea
+					rows={2}
+					value={String(current ?? "")}
+					onChange={(e) => setVal(e.target.value)}
+					className="w-full rounded-control border border-border bg-surface px-2 py-1 font-mono text-[11px] text-surface-foreground"
+					placeholder={`// ${field.key}`}
+				/>
 			) : field.type === "number" ? (
-				<input type="number" className="h-7 w-full rounded-control border border-border bg-surface px-2 font-mono text-[11px] text-muted" placeholder="0" />
+				<input
+					type="number"
+					value={current === undefined || current === "" ? "" : Number(current)}
+					onChange={(e) => setVal(e.target.value === "" ? "" : Number(e.target.value))}
+					className="h-7 w-full rounded-control border border-border bg-surface px-2 font-mono text-[11px] text-surface-foreground"
+				/>
 			) : (
-				<input type="text" className="h-7 w-full rounded-control border border-border bg-surface px-2 text-[11px] text-muted" placeholder={field.key} />
+				<input
+					type="text"
+					value={String(current ?? "")}
+					onChange={(e) => setVal(e.target.value)}
+					className="h-7 w-full rounded-control border border-border bg-surface px-2 text-[11px] text-surface-foreground"
+					placeholder={field.key}
+				/>
 			)}
 		</Row>
 	);

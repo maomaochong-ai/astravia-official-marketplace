@@ -18,6 +18,8 @@ export interface NodePos {
 	tone: string; selected?: boolean;
 	/** 节点类型 key，对应 NODE_TEMPLATES 条目（source-sql / chart-bar / ...） */
 	kind?: string;
+	/** PropertyInspector 字段值（key 对应 NODE_SCHEMA.fields[i].key） */
+	values?: Record<string, unknown>;
 }
 export type NodeId = string;
 export interface Link {
