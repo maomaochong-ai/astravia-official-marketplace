@@ -236,35 +236,35 @@ export function engineDriverSetPath(driverKey: string, path: string, options: Ca
 	return engineRequest("/driver/set-path", { driverKey, path }, options);
 }
 
-// ─── JimuBI 大屏编译/渲染 ───
+// ─── 大屏编译/渲染 ───
 
-export interface JimuBigscreenSpec {
+export interface BigscreenSpec {
 	page?: Record<string, unknown>;
 	palette?: string;
 	components: Array<Record<string, unknown>>;
 }
 
-export interface JimuBigscreenComponent {
+export interface BigscreenComponent {
 	type: string;
 	title: string;
 	cfg: Record<string, unknown>;
 	error?: string;
 }
 
-export interface JimuBigscreenCompiled {
+export interface BigscreenCompiled {
 	page: Record<string, unknown>;
-	components: JimuBigscreenComponent[];
+	components: BigscreenComponent[];
 	palette: Record<string, unknown> & { name: string };
 	warnings: string[];
 }
 
-/** 调 server 端 /api/bigscreen/compile —— spec → JimuBI 组件 JSON。 */
-export function engineBigscreenCompile(spec: JimuBigscreenSpec, options: CallOptions = {}): Promise<JimuBigscreenCompiled> {
+/** 调 server 端 /api/bigscreen/compile —— spec → 组件 JSON。 */
+export function engineBigscreenCompile(spec: BigscreenSpec, options: CallOptions = {}): Promise<BigscreenCompiled> {
 	return engineRequest("/api/bigscreen/compile", { spec }, { timeoutMs: options.timeoutMs ?? 30_000, ...options });
 }
 
 /** 调 server 端 /api/bigscreen/render —— spec → 完整 HTML 字符串。 */
-export function engineBigscreenRender(spec: JimuBigscreenSpec, options: CallOptions = {}): Promise<{ html: string }> {
+export function engineBigscreenRender(spec: BigscreenSpec, options: CallOptions = {}): Promise<{ html: string }> {
 	return engineRequest("/api/bigscreen/render", { spec }, { timeoutMs: options.timeoutMs ?? 30_000, ...options });
 }
 

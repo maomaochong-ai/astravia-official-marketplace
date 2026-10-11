@@ -2,7 +2,7 @@
  * VisualizationTab — 可视化产物标签页组件（v0.0.103）
  *
  * 渲染路径：
- *   ① viz.spec 存在（JimuBI 紧凑格式）→ 调 compile API → 渲染 JimuBI 组件 JSON
+ *   ① viz.spec 存在（大屏紧凑格式）→ 调 compile API → 渲染组件 JSON
  *      → 附带 spec 微调面板（JSON 编辑器 + 重新编译按钮）
  *   ② viz.chartItems 存在（旧 Chart.js 格式）→ 直接 ChartGrid 渲染
  *   ③ viz.html 存在 → iframe 渲染（最老产物）
@@ -18,27 +18,27 @@ import { getUi } from "../../../runtime-contract.ts";
 import { resolveChartItems } from "../../../domain/chart-source";
 import { resolveVisualizationHtml } from "../visualization-html";
 import { ChartGrid } from "./chart-grid";
-import { compileJimuBigscreen, type JimuCompiledComponent, type JimuSpec } from "../services/jimu-compiler-service";
+import { compileBigscreen, type ScreenCompiledComponent, type ScreenSpec } from "../services/bigscreen-compiler-service";
 
 interface Props {
 	viz: Visualization;
 	onClose?: () => void;
 }
 
-/** 把 JimuBI compile 输出转成 ChartItem 格式（带 cfg 字段），ChartGrid/ChartItemRenderer 能识别。 */
-function jimuComponentsToChartItems(comps: JimuCompiledComponent[]): Visualization["chartItems"] {
+/** 把 compile 输出转成 ChartItem 格式（带 cfg 字段），ChartGrid/ChartItemRenderer 能识别。 */
+function screenComponentsToChartItems(comps: ScreenCompiledComponent[]): Visualization["chartItems"] {
 	return comps.map((c) => ({
 		type: c.type,
 		title: c.title,
-		// data 给空（JimuBI 格式跳过 normalize/validate），渲染时用 cfg.option
+		// data 给空（组件格式跳过 normalize/validate），渲染时用 cfg.option
 		data: [],
-		// cfg 是 compile 输出的完整 JimuBI JSON
+		// cfg 是 compile 输出的完整组件 JSON
 		cfg: c.cfg,
 	} as unknown as Visualization["chartItems"][number] & { cfg: unknown }));
 }
 
-/** 判断产物是否带 JimuBI spec（可微调）。 */
-function hasJimuSpec(viz: Visualization): viz is Visualization & { spec: JimuSpec } {
+/** 判断产物是否带大屏 spec（可微调）。 */
+function hasScreenSpec(viz: Visualization): viz is Visualization & { spec: ScreenSpec } {
 	const s = (viz as { spec?: unknown }).spec;
 	return !!s && typeof s === "object" && Array.isArray((s as { components?: unknown }).components);
 }
@@ -55,15 +55,15 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 	const legacyHtml = viz.html;
 	const baseItems = resolveChartItems(viz.chartItems ?? [], viz.datasets ?? [], viz.filters ?? []);
 	const isScreen = viz.type === "screen";
-	const jimuSpecAvailable = hasJimuSpec(viz);
+	const screenSpecAvailable = hasScreenSpec(viz);
 
 	// 初始化：如果有 spec，自动 compile 一次
 	useEffect(() => {
-		if (jimuSpecAvailable && !liveItems) {
+		if (screenSpecAvailable && !liveItems) {
 			setSpecText(JSON.stringify(viz.spec, null, 2));
-			triggerCompile(viz.spec as JimuSpec);
+			triggerCompile(viz.spec as ScreenSpec);
 		}
-	}, [viz, jimuSpecAvailable]);
+	}, [viz, screenSpecAvailable]);
 
 	useEffect(() => {
 		const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -75,24 +75,24 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 		try { getUi()?.notify?.({ message, variant: "error" }); } catch { /* ignore */ }
 	};
 
-	async function triggerCompile(spec: JimuSpec): Promise<void> {
+	async function triggerCompile(spec: ScreenSpec): Promise<void> {
 		setCompiling(true);
 		setCompileError(null);
-		const result = await compileJimuBigscreen(spec);
+		const result = await compileBigscreen(spec);
 		setCompiling(false);
 		if (!result.ok) {
 			setCompileError(result.error.message);
 			return;
 		}
 		if (result.data.warnings.length > 0) {
-			console.warn("[JimuBI compile warnings]", result.data.warnings);
+			console.warn("[compile warnings]", result.data.warnings);
 		}
-		setLiveItems(jimuComponentsToChartItems(result.data.components));
+		setLiveItems(screenComponentsToChartItems(result.data.components));
 	}
 
 	function handleRecompile(): void {
 		try {
-			const parsed = JSON.parse(specText) as JimuSpec;
+			const parsed = JSON.parse(specText) as ScreenSpec;
 			triggerCompile(parsed);
 		} catch (e) {
 			setCompileError(`Spec JSON 解析失败: ${e instanceof Error ? e.message : String(e)}`);
@@ -132,10 +132,10 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 					<span className={`toolbar-icon ${viz.type === "dashboard" ? "icon-[lucide--layout-dashboard]" : "icon-[lucide--monitor]"}`} />
 					<h3 className="toolbar-title">{viz.title}</h3>
 					<span className="toolbar-badge">{viz.type === "dashboard" ? "看板" : "大屏"}</span>
-					{jimuSpecAvailable && <span className="toolbar-badge viz-badge-jimu">JimuBI</span>}
+					{screenSpecAvailable && <span className="toolbar-badge viz-badge-screen">大屏</span>}
 				</div>
 				<div className="toolbar-right">
-					{jimuSpecAvailable && (
+					{screenSpecAvailable && (
 						<button
 							type="button"
 							onClick={() => setShowSpecEditor((v) => !v)}
@@ -164,10 +164,10 @@ export function VisualizationTab({ viz, onClose }: Props): JSX.Element {
 			</div>
 
 			{/* Spec 微调面板（条件展开） */}
-			{showSpecEditor && jimuSpecAvailable && (
+			{showSpecEditor && screenSpecAvailable && (
 				<div className="viz-spec-editor">
 					<div className="viz-spec-editor-header">
-						<span>JimuBI Spec（组件紧凑格式）</span>
+						<span>大屏 Spec（组件紧凑格式）</span>
 						<div className="viz-spec-editor-actions">
 							<button type="button" onClick={() => setSpecText(JSON.stringify(viz.spec, null, 2))} className="viz-btn-ghost">重置</button>
 							<button
