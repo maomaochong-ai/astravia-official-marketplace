@@ -312,6 +312,8 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 					onThemeChange={setActiveTheme}
 					selectedNode={selectedNodeInfo}
 					onNodeUpdate={handleNodeUpdate}
+					nodes={nodes}
+					links={links}
 					collapsed={rightCollapsed}
 					onToggleCollapsed={() => setRightCollapsed((v) => !v)}
 				/>

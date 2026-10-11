@@ -10,7 +10,7 @@
 
 import { type JSX } from "react";
 import type { BigscreenPage } from "../hooks/use-bigscreen-pages";
-import type { NodePos } from "./node-graph";
+import type { NodePos, Link } from "./node-graph";
 import { NODE_SCHEMA } from "./node-schema";
 import { Icon } from "./ui/icon";
 
@@ -27,6 +27,8 @@ export function PropertyInspector({
 	onNodeUpdate,
 	collapsed = false,
 	onToggleCollapsed,
+	nodes,
+	links = [],
 }: {
 	page: BigscreenPage;
 	theme: "dark" | "default";
@@ -35,6 +37,8 @@ export function PropertyInspector({
 	onNodeUpdate?: (id: string, patch: Partial<NodePos>) => void;
 	collapsed?: boolean;
 	onToggleCollapsed?: () => void;
+	nodes?: Record<string, NodePos>;
+	links?: Link[];
 }): JSX.Element {
 	const isScreen = page.style === "bigScreen";
 
@@ -69,6 +73,8 @@ export function PropertyInspector({
 						id={selectedNode.id}
 						node={selectedNode.node}
 						onUpdate={onNodeUpdate}
+						nodes={nodes}
+						links={links}
 					/>
 				) : (
 					<>
@@ -129,10 +135,22 @@ export function PropertyInspector({
 }
 
 function NodePropertyForm({
-	id, node, onUpdate,
-}: { id: string; node: NodePos; onUpdate: (id: string, patch: Partial<NodePos>) => void }) {
+	id, node, onUpdate, nodes, links,
+}: { id: string; node: NodePos; onUpdate: (id: string, patch: Partial<NodePos>) => void; nodes?: Record<string, NodePos>; links?: Link[] }) {
 	const kind = node.kind ?? "";
 	const schema = NODE_SCHEMA[kind] ?? NODE_SCHEMA._default;
+	const isSource = kind.startsWith("source-");
+
+	// ── 取数链路：从 links 反推上游数据源 ──
+	const upstreamNodes = (links ?? [])
+		.filter((l) => l.to === id)
+		.map((l) => nodes?.[l.from])
+		.filter((n): n is NodePos => !!n);
+
+	// ── 消费者：links 中 from === id 的下游节点 ──
+	const downstreamLinks = (links ?? []).filter((l) => l.from === id);
+	const consumerNodes = downstreamLinks.map((l) => nodes?.[l.to]).filter((n): n is NodePos => !!n);
+
 	return (
 		<>
 			<section>
@@ -152,6 +170,42 @@ function NodePropertyForm({
 					</Row>
 				</div>
 			</section>
+
+			{/* 数据源节点增强面板 — 对齐设计稿 data.tsx */}
+			{isSource && upstreamNodes.length > 0 ? (
+				<section>
+					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">取数链路</h3>
+					<div className="flex flex-wrap items-center gap-1.5">
+						{upstreamNodes.map((n, i) => (
+							<div key={i} className="flex items-center gap-1.5">
+								<span className="rounded-chip border border-border bg-surface px-2 py-0.5 text-[10px] text-surface-foreground">
+									{n.kind ?? "node"}
+								</span>
+								<Icon name="icon-[lucide--arrow-right]" className="size-3 text-faint" />
+							</div>
+						))}
+						<span className="rounded-chip bg-accent-soft px-2 py-0.5 text-[10px] text-accent">
+							→ {kind}
+						</span>
+					</div>
+				</section>
+			) : null}
+
+			{/* 数据源节点消费者面板 */}
+			{isSource && consumerNodes.length > 0 ? (
+				<section>
+					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">谁在用 ({consumerNodes.length})</h3>
+					<div className="space-y-0.5">
+						{consumerNodes.map((n, i) => (
+							<div key={i} className="flex h-6 items-center gap-1.5 rounded-control border border-transparent px-1 text-[11px] hover:border-border hover:bg-surface">
+								<Icon name="icon-[lucide--corner-down-left]" className="size-3 shrink-0 text-faint" />
+								<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-surface-foreground">{n.kind ?? "node"}</span>
+								<span className="shrink-0 text-[9px] text-faint">→ 下游</span>
+							</div>
+						))}
+					</div>
+				</section>
+			) : null}
 
 			<section>
 				<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">属性 · {schema.label}</h3>
