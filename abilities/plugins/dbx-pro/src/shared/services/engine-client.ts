@@ -150,7 +150,7 @@ function toEngineClientError(error: unknown): EngineClientError {
 	return new EngineClientError("TRANSPORT_ERROR", message, { detail: error });
 }
 
-async function engineRequest<T>(path: string, body: unknown, options: CallOptions = {}): Promise<T> {
+export async function engineRequest<T>(path: string, body: unknown, options: CallOptions = {}): Promise<T> {
 	const api = services;
 	if (!api) {
 		throw new EngineClientError(

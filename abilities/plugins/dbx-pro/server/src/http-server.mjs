@@ -249,7 +249,9 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
         }
       }
 
-      // ── drag page API（自研大屏页面后端，直接返回原生格式不套 ok(data)）──
+      // ── drag page API（自研大屏页面后端）──
+      // 套统一 {ok, data} envelope 让 engine-client 的 engineRequest 能消费
+      // （前端走 engineRequest → 宿主 service 代理 → engine）
       if (url.pathname.startsWith("/drag/")) {
         const jimuCtx = { dataDir };
         const dragTable = dragRoutes(jimuCtx);
@@ -258,15 +260,16 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
         if (match) {
           try {
             if (match[2]) auth.verify(req.headers);
-            const jimuResp = await match[3]({ body, query, headers: req.headers });
-            return send(200, jimuResp); // { success:true, result:... } 或 { success:false, message:... }
+            const dragResp = await match[3]({ body, query, headers: req.headers });
+            // dragResp = { success:true, result:... } 或 { success:false, message:... }
+            return send(200, { ok: dragResp.success, data: dragResp.success ? dragResp.result : null, error: dragResp.success ? null : { code: "DRAG_ERROR", message: dragResp.message ?? "未知错误" } });
           } catch (err) {
             const code = err?.code ?? "INTERNAL";
             const status = code === "BAD_REQUEST" ? 400 : code === "NOT_FOUND" ? 404 : 500;
-            return send(status, { success: false, message: err?.message ?? String(err), code });
+            return send(status, { ok: false, data: null, error: { code, message: err?.message ?? String(err) } });
           }
         }
-        return send(404, { success: false, message: `未知路径：${url.pathname}` });
+        return send(404, { ok: false, data: null, error: { code: "NOT_FOUND", message: `未知路径：${url.pathname}` } });
       }
 
       // 双路径尝试：部分 domain（bigscreen/report/chart 等）注册带 "/api" 前缀，

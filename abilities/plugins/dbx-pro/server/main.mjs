@@ -21990,13 +21990,13 @@ var require_sha256 = __commonJS({
       computeSha256Hmac: () => computeSha256Hmac2
     });
     module.exports = __toCommonJS2(sha256_exports);
-    var import_node_crypto4 = __require("node:crypto");
+    var import_node_crypto5 = __require("node:crypto");
     async function computeSha256Hmac2(key, stringToSign, encoding) {
       const decodedKey = Buffer.from(key, "base64");
-      return (0, import_node_crypto4.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
+      return (0, import_node_crypto5.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
     }
     async function computeSha256Hash2(content, encoding) {
-      return (0, import_node_crypto4.createHash)("sha256").update(content).digest(encoding);
+      return (0, import_node_crypto5.createHash)("sha256").update(content).digest(encoding);
     }
   }
 });
@@ -33650,7 +33650,7 @@ var require_clientCertificateCredential = __commonJS({
     });
     module.exports = __toCommonJS2(clientCertificateCredential_exports);
     var import_msalClient = require_msalClient();
-    var import_node_crypto4 = __require("node:crypto");
+    var import_node_crypto5 = __require("node:crypto");
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_logging = require_logging();
     var import_promises4 = __require("node:fs/promises");
@@ -33723,7 +33723,7 @@ var require_clientCertificateCredential = __commonJS({
         );
         let privateKey;
         if (this.certificateConfiguration.certificatePassword !== void 0) {
-          privateKey = (0, import_node_crypto4.createPrivateKey)({
+          privateKey = (0, import_node_crypto5.createPrivateKey)({
             key: parts.certificateContents,
             passphrase: this.certificateConfiguration.certificatePassword,
             format: "pem"
@@ -33759,8 +33759,8 @@ var require_clientCertificateCredential = __commonJS({
       if (publicKeys.length === 0) {
         throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
       }
-      const thumbprint = (0, import_node_crypto4.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-      const thumbprintSha256 = (0, import_node_crypto4.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprint = (0, import_node_crypto5.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprintSha256 = (0, import_node_crypto5.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
       return {
         certificateContents,
         thumbprintSha256,
@@ -35074,8 +35074,8 @@ var require_resolveExecutable = __commonJS({
       resolveWindowsCommandInterpreter: () => resolveWindowsCommandInterpreter
     });
     module.exports = __toCommonJS2(resolveExecutable_exports);
-    var import_node_fs10 = __require("node:fs");
-    var import_node_path9 = __toESM2(__require("node:path"));
+    var import_node_fs11 = __require("node:fs");
+    var import_node_path10 = __toESM2(__require("node:path"));
     var import_node_url5 = __require("node:url");
     var import_errors = require_errors3();
     var WINDOWS_NATIVE_EXTENSIONS = [".exe", ".com"];
@@ -35123,7 +35123,7 @@ var require_resolveExecutable = __commonJS({
     }
     function normalizeCwd(cwd) {
       const cwdPath = cwd instanceof URL ? (0, import_node_url5.fileURLToPath)(cwd) : cwd;
-      return import_node_path9.default.resolve(cwdPath ?? process.cwd());
+      return import_node_path10.default.resolve(cwdPath ?? process.cwd());
     }
     function createProcessContext(options = {}) {
       if (options.allowWindowsBatchFiles !== void 0 && typeof options.allowWindowsBatchFiles !== "boolean") {
@@ -35139,11 +35139,11 @@ var require_resolveExecutable = __commonJS({
     }
     function isExecutableFile(filePath) {
       try {
-        if (!(0, import_node_fs10.statSync)(filePath).isFile()) {
+        if (!(0, import_node_fs11.statSync)(filePath).isFile()) {
           return false;
         }
         if (process.platform !== "win32") {
-          (0, import_node_fs10.accessSync)(filePath, import_node_fs10.constants.X_OK);
+          (0, import_node_fs11.accessSync)(filePath, import_node_fs11.constants.X_OK);
         }
         return true;
       } catch {
@@ -35157,7 +35157,7 @@ var require_resolveExecutable = __commonJS({
       return WINDOWS_BATCH_EXTENSIONS.some((candidate) => candidate === extension);
     }
     function resolveWindowsCandidate(candidate, allowWindowsBatchFiles) {
-      const extension = import_node_path9.default.extname(candidate).toLowerCase();
+      const extension = import_node_path10.default.extname(candidate).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
@@ -35184,7 +35184,7 @@ var require_resolveExecutable = __commonJS({
       const pathValue = getEnvironmentValue(context.env, "PATH") ?? "";
       const paths = [];
       const seen = /* @__PURE__ */ new Set();
-      for (const entry of pathValue.split(import_node_path9.default.delimiter)) {
+      for (const entry of pathValue.split(import_node_path10.default.delimiter)) {
         let candidate = entry;
         if (process.platform === "win32") {
           candidate = candidate.trim();
@@ -35192,10 +35192,10 @@ var require_resolveExecutable = __commonJS({
             candidate = candidate.slice(1, -1);
           }
         }
-        if (!candidate || !import_node_path9.default.isAbsolute(candidate)) {
+        if (!candidate || !import_node_path10.default.isAbsolute(candidate)) {
           continue;
         }
-        const normalized = import_node_path9.default.resolve(candidate);
+        const normalized = import_node_path10.default.resolve(candidate);
         const key = process.platform === "win32" ? normalized.toLowerCase() : normalized;
         if (!seen.has(key)) {
           seen.add(key);
@@ -35221,8 +35221,8 @@ var require_resolveExecutable = __commonJS({
     }
     function resolveExecutableWithContext(command, context) {
       validateCommand(command);
-      if (hasPathSeparator(command) || import_node_path9.default.isAbsolute(command)) {
-        const candidate = import_node_path9.default.resolve(context.cwd, command);
+      if (hasPathSeparator(command) || import_node_path10.default.isAbsolute(command)) {
+        const candidate = import_node_path10.default.resolve(context.cwd, command);
         if (process.platform === "win32") {
           return resolveWindowsCandidate(candidate, context.allowWindowsBatchFiles);
         }
@@ -35231,20 +35231,20 @@ var require_resolveExecutable = __commonJS({
       const searchPaths = getSearchPaths(context);
       if (process.platform !== "win32") {
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path9.default.join(searchPath, command);
+          const candidate = import_node_path10.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
         }
         return void 0;
       }
-      const extension = import_node_path9.default.extname(command).toLowerCase();
+      const extension = import_node_path10.default.extname(command).toLowerCase();
       if (extension) {
         if (!isNativeExtension(extension) && !(context.allowWindowsBatchFiles && isBatchExtension(extension))) {
           return void 0;
         }
         for (const searchPath of searchPaths) {
-          const candidate = import_node_path9.default.join(searchPath, command);
+          const candidate = import_node_path10.default.join(searchPath, command);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -35253,7 +35253,7 @@ var require_resolveExecutable = __commonJS({
       }
       for (const searchPath of searchPaths) {
         for (const nativeExtension of WINDOWS_NATIVE_EXTENSIONS) {
-          const candidate = import_node_path9.default.join(searchPath, command + nativeExtension);
+          const candidate = import_node_path10.default.join(searchPath, command + nativeExtension);
           if (isExecutableFile(candidate)) {
             return candidate;
           }
@@ -35262,7 +35262,7 @@ var require_resolveExecutable = __commonJS({
       if (context.allowWindowsBatchFiles) {
         for (const searchPath of searchPaths) {
           for (const batchExtension of WINDOWS_BATCH_EXTENSIONS) {
-            const candidate = import_node_path9.default.join(searchPath, command + batchExtension);
+            const candidate = import_node_path10.default.join(searchPath, command + batchExtension);
             if (isExecutableFile(candidate)) {
               return candidate;
             }
@@ -35276,9 +35276,9 @@ var require_resolveExecutable = __commonJS({
     }
     function canonicalizeWindowsPath(filePath) {
       try {
-        return import_node_fs10.realpathSync.native(filePath).toLowerCase();
+        return import_node_fs11.realpathSync.native(filePath).toLowerCase();
       } catch {
-        return import_node_path9.default.resolve(filePath).toLowerCase();
+        return import_node_path10.default.resolve(filePath).toLowerCase();
       }
     }
     function isWindowsDriveAbsolutePath(filePath) {
@@ -35292,7 +35292,7 @@ var require_resolveExecutable = __commonJS({
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
         });
       }
-      const executablePath = import_node_path9.default.join(systemRoot, "System32", "cmd.exe");
+      const executablePath = import_node_path10.default.join(systemRoot, "System32", "cmd.exe");
       if (!isExecutableFile(executablePath)) {
         throw new import_errors.ProcessError("The Windows command interpreter could not be found.", {
           code: "ERR_UNTRUSTED_COMMAND_INTERPRETER"
@@ -35358,7 +35358,7 @@ var require_normalizeCommand = __commonJS({
       normalizeCommand: () => normalizeCommand
     });
     module.exports = __toCommonJS2(normalizeCommand_exports);
-    var import_node_path9 = __toESM2(__require("node:path"));
+    var import_node_path10 = __toESM2(__require("node:path"));
     var import_errors = require_errors3();
     var import_resolveExecutable = require_resolveExecutable();
     var UNSAFE_BATCH_ARGUMENT = /[%!^&|<>()]/;
@@ -35422,7 +35422,7 @@ var require_normalizeCommand = __commonJS({
           windowsVerbatimArguments: false
         };
       }
-      const extension = import_node_path9.default.extname(resolvedPath).toLowerCase();
+      const extension = import_node_path10.default.extname(resolvedPath).toLowerCase();
       if (extension === ".exe" || extension === ".com") {
         return {
           executable: resolvedPath,
@@ -37638,7 +37638,7 @@ var require_onBehalfOfCredential = __commonJS({
     var import_logging = require_logging();
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_errors = require_errors2();
-    var import_node_crypto4 = __require("node:crypto");
+    var import_node_crypto5 = __require("node:crypto");
     var import_scopeUtils = require_scopeUtils();
     var import_promises4 = __require("node:fs/promises");
     var import_tracing = require_tracing();
@@ -37773,8 +37773,8 @@ var require_onBehalfOfCredential = __commonJS({
         if (publicKeys.length === 0) {
           throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
         }
-        const thumbprint = (0, import_node_crypto4.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-        const thumbprintSha256 = (0, import_node_crypto4.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprint = (0, import_node_crypto5.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprintSha256 = (0, import_node_crypto5.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
         return {
           certificateContents,
           thumbprintSha256,
@@ -87485,7 +87485,7 @@ var require_named_placeholders = __commonJS({
         }
         return s;
       }
-      function join6(tree) {
+      function join7(tree) {
         if (tree.length === 1) {
           return tree;
         }
@@ -87511,7 +87511,7 @@ var require_named_placeholders = __commonJS({
         if (cache && (tree = cache.get(query))) {
           return toArrayParams(tree, paramsObj);
         }
-        tree = join6(parse(query));
+        tree = join7(parse(query));
         if (cache) {
           cache.set(query, tree);
         }
@@ -95487,10 +95487,10 @@ var init_markdown_parser = __esm({
 });
 
 // server/src/http-server.mjs
-import { randomBytes, createHash as createHash2, timingSafeEqual } from "node:crypto";
-import { chmodSync as chmodSync3, existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, renameSync as renameSync2, writeFileSync as writeFileSync4 } from "node:fs";
+import { randomBytes, createHash as createHash3, timingSafeEqual } from "node:crypto";
+import { chmodSync as chmodSync3, existsSync as existsSync5, mkdirSync as mkdirSync6, readFileSync as readFileSync4, renameSync as renameSync2, writeFileSync as writeFileSync5 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
-import { join as join5 } from "node:path";
+import { join as join6 } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
@@ -98864,6 +98864,205 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
   return { handle, routes };
 }
 
+// server/src/api/drag.mjs
+import { createHash as createHash2 } from "node:crypto";
+import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync3, writeFileSync as writeFileSync4, readdirSync as readdirSync2, statSync as statSync2, unlinkSync as unlinkSync2 } from "node:fs";
+import { join as join5 } from "node:path";
+function pagesDir(ctx) {
+  const base = ctx.dataDir || process.env.DBX_DATA_DIR || join5(process.cwd(), ".dbx-data");
+  const dir = join5(base, "pages");
+  if (!existsSync4(dir)) mkdirSync5(dir, { recursive: true });
+  return dir;
+}
+function pageFile(ctx, id) {
+  return join5(pagesDir(ctx), `${id}.json`);
+}
+function genId2() {
+  const uuid = createHash2("md5").update(`${Date.now()}-${Math.random()}`).digest("hex").slice(0, 16);
+  return uuid;
+}
+function readPage(ctx, id) {
+  const file = pageFile(ctx, id);
+  if (!existsSync4(file)) return null;
+  try {
+    return JSON.parse(readFileSync3(file, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+function writePage(ctx, page) {
+  const file = pageFile(ctx, page.id);
+  writeFileSync4(file, JSON.stringify(page, null, 2), "utf-8");
+}
+function emptyPage(id, fields) {
+  return {
+    id,
+    name: fields.name ?? "untitled",
+    type: fields.type ?? "0",
+    theme: fields.theme ?? "dark",
+    style: fields.style ?? "bigScreen",
+    backgroundImage: fields.backgroundImage ?? "",
+    designType: fields.designType ?? 100,
+    protectionCode: fields.protectionCode ?? "",
+    template: "[]",
+    updateCount: 1,
+    createTime: (/* @__PURE__ */ new Date()).toISOString(),
+    updateTime: (/* @__PURE__ */ new Date()).toISOString(),
+    path: `/drag/page/edit?id=${id}`,
+    visits: 0,
+    izTemplate: false,
+    izPrivate: false
+  };
+}
+function jimuResp(result) {
+  return { success: true, result };
+}
+function jimuErr(message, code = "BAD_REQUEST") {
+  return { success: false, message, code };
+}
+function dragRoutes(ctx) {
+  return [
+    // ── 创建空白页面 ──
+    ["/drag/page/add", "POST", true, async ({ body }) => {
+      const name = body?.name;
+      if (!name) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 name");
+      const id = genId2();
+      const page = emptyPage(id, body);
+      writePage(ctx, page);
+      return jimuResp({
+        id,
+        updateCount: page.updateCount,
+        path: page.path,
+        name: page.name
+      });
+    }],
+    // ── 查询页面详情 ──
+    ["/drag/page/queryById", "GET", true, async ({ query }) => {
+      const id = query?.id ?? query;
+      if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
+      const page = readPage(ctx, id);
+      if (!page) return jimuErr(`\u9875\u9762\u4E0D\u5B58\u5728: ${id}`, "NOT_FOUND");
+      return jimuResp(page);
+    }],
+    // ── 保存页面（整页覆盖写 template）──
+    ["/drag/page/edit", "POST", true, async ({ body }) => {
+      const id = body?.id;
+      if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
+      const page = readPage(ctx, id) ?? emptyPage(id, {});
+      if (body.name !== void 0) page.name = body.name;
+      if (body.style !== void 0) page.style = body.style;
+      if (body.theme !== void 0) page.theme = body.theme;
+      if (body.backgroundImage !== void 0) page.backgroundImage = body.backgroundImage;
+      if (body.designType !== void 0) page.designType = body.designType;
+      if (body.protectionCode !== void 0) page.protectionCode = body.protectionCode;
+      if (body.desJson !== void 0) page.desJson = body.desJson;
+      if (body.template !== void 0) page.template = body.template;
+      const clientCount = Number(body.updateCount ?? 0);
+      if (clientCount >= page.updateCount) {
+        page.updateCount = clientCount + 1;
+      } else {
+        page.updateCount += 1;
+      }
+      page.updateTime = (/* @__PURE__ */ new Date()).toISOString();
+      writePage(ctx, page);
+      return jimuResp({ updateCount: page.updateCount });
+    }],
+    // ── 分页列表 ──
+    ["/drag/page/list", "GET", true, async ({ query }) => {
+      const pageNo = Math.max(1, Number(query?.pageNo ?? 1));
+      const pageSize = Number(query?.pageSize ?? 50);
+      const style = query?.style;
+      const dir = pagesDir(ctx);
+      const files = existsSync4(dir) ? readdirSync2(dir).filter((f) => f.endsWith(".json")) : [];
+      const records = [];
+      for (const f of files) {
+        const p = readPage(ctx, f.replace(/\.json$/, ""));
+        if (!p) continue;
+        if (style && p.style !== style) continue;
+        records.push(p);
+      }
+      records.sort((a, b) => (b.updateTime ?? "").localeCompare(a.updateTime ?? ""));
+      const total = records.length;
+      const start = (pageNo - 1) * pageSize;
+      const slice = records.slice(start, start + pageSize).map((p) => ({
+        id: p.id,
+        name: p.name,
+        style: p.style,
+        theme: p.theme,
+        designType: p.designType,
+        backgroundImage: p.backgroundImage,
+        updateCount: p.updateCount,
+        updateTime: p.updateTime,
+        createTime: p.createTime,
+        visits: p.visits ?? 0
+      }));
+      return jimuResp({
+        records: slice,
+        total,
+        size: pageSize,
+        pages: Math.ceil(total / pageSize) || 1,
+        current: pageNo
+      });
+    }],
+    // ── 复制页面 ──
+    ["/drag/page/copyPage", "GET", true, async ({ query }) => {
+      const id = query?.id;
+      if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
+      const src = readPage(ctx, id);
+      if (!src) return jimuErr(`\u6E90\u9875\u9762\u4E0D\u5B58\u5728: ${id}`, "NOT_FOUND");
+      const newId = genId2();
+      const copy = {
+        ...src,
+        id: newId,
+        name: `${src.name} (\u526F\u672C)`,
+        updateCount: 1,
+        createTime: (/* @__PURE__ */ new Date()).toISOString(),
+        updateTime: (/* @__PURE__ */ new Date()).toISOString(),
+        path: `/drag/page/edit?id=${newId}`
+      };
+      writePage(ctx, copy);
+      return jimuResp({ id: newId, name: copy.name, path: copy.path });
+    }],
+    // ── 物理删除 ──
+    ["/drag/page/physicalDelete", "DELETE", true, async ({ query }) => {
+      const id = query?.id;
+      if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
+      const file = pageFile(ctx, id);
+      if (existsSync4(file)) unlinkSync2(file);
+      return jimuResp(true);
+    }],
+    // ── 软删除（本地 = 物理删除）──
+    ["/drag/page/delete", "DELETE", true, async ({ query }) => {
+      const id = query?.id;
+      if (!id) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 id");
+      const file = pageFile(ctx, id);
+      if (existsSync4(file)) unlinkSync2(file);
+      return jimuResp(true);
+    }],
+    // ── 恢复（no-op）──
+    ["/drag/page/recoveryDelete", "POST", true, async () => jimuResp(true)],
+    // ── 访问计数（no-op）──
+    ["/drag/page/addVisitsNumber", "POST", true, async ({ body }) => {
+      const id = body?.id;
+      if (!id) return jimuResp(true);
+      const p = readPage(ctx, id);
+      if (p) {
+        p.visits = (p.visits ?? 0) + 1;
+        writePage(ctx, p);
+      }
+      return jimuResp(true);
+    }],
+    // ── 数据集 stub（让 script_builder.py 等不报错）──
+    ["/drag/onlDragDatasetHead/list", "GET", true, async () => jimuResp({ records: [], total: 0 })],
+    ["/drag/onlDragDatasetHead/add", "POST", true, async () => jimuResp({ id: genId2() })],
+    ["/drag/onlDragDatasetHead/edit", "POST", true, async () => jimuResp(true)],
+    ["/drag/onlDragDatasetHead/delete", "DELETE", true, async () => jimuResp(true)],
+    ["/drag/onlDragDatasetHead/queryFieldBySql", "GET", true, async () => jimuResp([])],
+    ["/drag/onlDragDataSource/getOptions", "GET", true, async () => jimuResp([])],
+    ["/drag/jimuDragMap/list", "GET", true, async () => jimuResp({ records: [], total: 0 })]
+  ];
+}
+
 // server/src/http-server.mjs
 init_dbx_mcp_client();
 var HOST = "127.0.0.1";
@@ -98886,7 +99085,7 @@ function parseArgs(argv) {
   return args;
 }
 function digest(value) {
-  return createHash2("sha256").update(value).digest();
+  return createHash3("sha256").update(value).digest();
 }
 function createAuth({ token, disabled = false } = {}) {
   const enabled = !disabled && typeof token === "string" && token.length > 0;
@@ -98936,17 +99135,17 @@ function readJsonBody(req) {
   });
 }
 function ensureEngineKey(dataDir) {
-  const dir = dataDir ?? join5(homedir4(), ".astravia-dbx-data");
-  mkdirSync5(dir, { recursive: true });
+  const dir = dataDir ?? join6(homedir4(), ".astravia-dbx-data");
+  mkdirSync6(dir, { recursive: true });
   try {
     chmodSync3(dir, 448);
   } catch {
   }
-  const secretPath = join5(dir, "service-secrets.json");
+  const secretPath = join6(dir, "service-secrets.json");
   let doc = { schemaVersion: 1, values: {} };
-  if (existsSync4(secretPath)) {
+  if (existsSync5(secretPath)) {
     try {
-      doc = JSON.parse(readFileSync3(secretPath, "utf8"));
+      doc = JSON.parse(readFileSync4(secretPath, "utf8"));
     } catch {
     }
   }
@@ -98954,7 +99153,7 @@ function ensureEngineKey(dataDir) {
   if (typeof key !== "string" || key.length === 0) {
     key = randomBytes(32).toString("base64url");
     const next = { ...doc, values: { ...doc.values ?? {}, "engine-key": key } };
-    writeFileSync4(secretPath, JSON.stringify(next), { mode: 384 });
+    writeFileSync5(secretPath, JSON.stringify(next), { mode: 384 });
     chmodSync3(secretPath, 384);
   }
   return { key, dataDir: dir };
@@ -98965,8 +99164,8 @@ async function resetLegacyDatabaseIfNeeded(client2, dataDir) {
   if (!/DATA_MIGRATION_REQUIRED/.test(text)) return false;
   await client2.dispose();
   const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-  const dbPath = join5(dataDir, "dbx.db");
-  if (existsSync4(dbPath)) renameSync2(dbPath, join5(dataDir, `dbx.db.legacy-${stamp}`));
+  const dbPath = join6(dataDir, "dbx.db");
+  if (existsSync5(dbPath)) renameSync2(dbPath, join6(dataDir, `dbx.db.legacy-${stamp}`));
   return true;
 }
 function withTimeout(promise, ms, fallback) {
@@ -99056,6 +99255,24 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
           emit("mcp-error", { method: rpc.method, message: e.message });
           return send(200, { jsonrpc: "2.0", id, error: { code: -32603, message: e.message } });
         }
+      }
+      if (url.pathname.startsWith("/drag/")) {
+        const jimuCtx = { dataDir };
+        const dragTable = dragRoutes(jimuCtx);
+        const query = Object.fromEntries(url.searchParams.entries());
+        const match = dragTable.find(([p, m]) => p === url.pathname && (m === req.method || m === "*"));
+        if (match) {
+          try {
+            if (match[2]) auth.verify(req.headers);
+            const dragResp = await match[3]({ body, query, headers: req.headers });
+            return send(200, { ok: dragResp.success, data: dragResp.success ? dragResp.result : null, error: dragResp.success ? null : { code: "DRAG_ERROR", message: dragResp.message ?? "\u672A\u77E5\u9519\u8BEF" } });
+          } catch (err) {
+            const code = err?.code ?? "INTERNAL";
+            const status = code === "BAD_REQUEST" ? 400 : code === "NOT_FOUND" ? 404 : 500;
+            return send(status, { ok: false, data: null, error: { code, message: err?.message ?? String(err) } });
+          }
+        }
+        return send(404, { ok: false, data: null, error: { code: "NOT_FOUND", message: `\u672A\u77E5\u8DEF\u5F84\uFF1A${url.pathname}` } });
       }
       let pathname = url.pathname;
       let outcome = await router.handle({
