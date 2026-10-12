@@ -881,7 +881,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.47",
+      "version": "0.4.48",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -4655,6 +4655,36 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.47.astraviapkg",
             "sha256": "f9e6ed5f79c7d4984e830837be9c1a0bd8dd53a05e5d5d0f58523013b155ac97"
           }
+        },
+        {
+          "version": "0.4.48",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.skills.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.48.astraviapkg",
+            "sha256": "457c1561a41c8377520364592a0938ea56671813126df87fc5baa6aff106c5bc"
+          }
         }
       ]
     },
@@ -4931,6 +4961,6 @@
       ]
     }
   ],
-  "version": "0.4.47",
-  "marketplaceVersion": "2026.10.12-4"
+  "version": "0.4.48",
+  "marketplaceVersion": "2026.10.12-5"
 }
