@@ -1,5 +1,9 @@
+// @ts-nocheck — 两个 vite 版本（宿主 .tooling/open-astravia vs dbx-pro 本地）类型冲突，
+// PluginOption / Plugin<any> 在两份 vite 里的 rollup hook 签名不同，defineConfig 重载匹配失败。
+// 构建实际完全正常，只是 TS Server 在工作区里无法同时解析两份 vite 的类型。
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 import tailwindcss from "@tailwindcss/vite";
-import { readFileSync, renameSync, existsSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { readFileSync, renameSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { defineConfig } from "vite";
 import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
