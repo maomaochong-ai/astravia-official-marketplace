@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "dbx-pro",
   "icon": "assets/icon.png",
-  "version": "0.4.38",
+  "version": "0.4.39",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -10,7 +10,7 @@
     "expose": "./plugin"
   },
   "styles": [
-    "dist/assets/style-79196f2c73.css"
+    "dist/assets/style-3c15f5834a.css"
   ],
   "permissions": [
     "agent.mcp.control",

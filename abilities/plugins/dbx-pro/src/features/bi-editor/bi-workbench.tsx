@@ -18,9 +18,9 @@ import { Chip } from "./components/ui/chip";
 import { IconButton } from "./components/ui/icon-button";
 import { AreaChart, Bars, Donut } from "./components/charts";
 import { useBigscreenPages } from "./hooks/use-bigscreen-pages";
-import { useRunlogs } from "./hooks/use-runlogs";
-import { useSharelinks } from "./hooks/use-sharelinks";
-import { useWorktreeStatus } from "./hooks/use-worktree-status";
+import { useRunlogs } from "./hooks/use-runlogs.ts";
+import { useSharelinks } from "./hooks/use-sharelinks.ts";
+import { useWorktreeStatus } from "./hooks/use-worktree-status.ts";
 
 interface NavItem {
 	icon: string; label: string; key: string; count?: string;
@@ -90,9 +90,9 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 	onOpenBoard?: (pageId: string) => void;
 	onCreateNew?: () => void;
 }): JSX.Element {
-	const { pages, loading: pagesLoading } = useBigscreenPages();
+	const { pages } = useBigscreenPages();
 	const { runlogs, loading: runsLoading } = useRunlogs({ limit: 4 });
-	const { sharelinks, loading: shareLoading } = useSharelinks();
+	const { sharelinks } = useSharelinks();
 	const { dirty, publishedCount, updateCount, publish } = useWorktreeStatus();
 
 	// 从 pages 数组派生看板卡片
