@@ -2,15 +2,15 @@
 	"version": 1,
 	"type": "astravia-design",
 	"canvas": {
-		"x": 1458.7206539934891,
-		"y": -124.28159311166233,
-		"zoom": 0.1645544133162481
+		"zoom": 0.383530003522418,
+		"x": -7653.15557833256,
+		"y": 282.38055833588743
 	},
 	"frames": [
 		{
 			"id": "agent",
 			"file": "frames/agent.tsx",
-			"x": 18280,
+			"x": 0,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -24,7 +24,7 @@
 		{
 			"id": "ai-node",
 			"file": "frames/ai-node.tsx",
-			"x": 19800,
+			"x": 1520,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -38,7 +38,7 @@
 		{
 			"id": "back-button",
 			"file": "frames/back-button.tsx",
-			"x": 21320,
+			"x": 3040,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -52,7 +52,7 @@
 		{
 			"id": "bigscreen",
 			"file": "frames/bigscreen.tsx",
-			"x": 22840,
+			"x": 4560,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -66,7 +66,7 @@
 		{
 			"id": "dashboard",
 			"file": "frames/dashboard.tsx",
-			"x": 24360,
+			"x": 6080,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -80,7 +80,7 @@
 		{
 			"id": "data",
 			"file": "frames/data.tsx",
-			"x": 25880,
+			"x": 7600,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -94,7 +94,7 @@
 		{
 			"id": "editor",
 			"file": "frames/editor.tsx",
-			"x": 27400,
+			"x": 9120,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -108,10 +108,10 @@
 		{
 			"id": "frame-13",
 			"file": "frames/frame-13.tsx",
-			"x": -8176,
-			"y": 1042,
-			"width": 4212,
-			"height": 3369,
+			"x": 10640,
+			"y": 0,
+			"width": 4205,
+			"height": 3027,
 			"title": "新画框",
 			"meta": {
 				"width": 4205,
@@ -122,7 +122,7 @@
 		{
 			"id": "menu",
 			"file": "frames/menu.tsx",
-			"x": 28920,
+			"x": 14925,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -136,7 +136,7 @@
 		{
 			"id": "nodes",
 			"file": "frames/nodes.tsx",
-			"x": 30440,
+			"x": 16445,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -150,7 +150,7 @@
 		{
 			"id": "run",
 			"file": "frames/run.tsx",
-			"x": 31960,
+			"x": 17965,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -164,7 +164,7 @@
 		{
 			"id": "share",
 			"file": "frames/share.tsx",
-			"x": 33480,
+			"x": 19485,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -178,7 +178,7 @@
 		{
 			"id": "workbench",
 			"file": "frames/workbench.tsx",
-			"x": 16760,
+			"x": 21005,
 			"y": 0,
 			"width": 1440,
 			"height": 1000,
@@ -189,9 +189,5 @@
 				"title": "BI · 工作台首屏（我的看板）"
 			}
 		}
-	],
-	"defaultFrameSize": {
-		"width": 1440,
-		"height": 1000
-	}
+	]
 }

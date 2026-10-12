@@ -13,14 +13,14 @@
  */
 
 import { type JSX } from "react";
-import { Icon } from "../../shared/components/ui/icon";
-import { Chip } from "../../shared/components/ui/chip";
-import { IconButton } from "../../shared/components/ui/icon-button";
-import { AreaChart, Bars, Donut } from "../../shared/components/charts";
-import { useBigscreenPages } from "../../shared/hooks/use-bigscreen-pages";
-import { useRunlogs } from "../../shared/hooks/use-runlogs";
-import { useSharelinks } from "../../shared/hooks/use-sharelinks";
-import { useWorktreeStatus } from "../../shared/hooks/use-worktree-status";
+import { Icon } from "../shared/components/ui/icon";
+import { Chip } from "../shared/components/ui/chip";
+import { IconButton } from "../shared/components/ui/icon-button";
+import { AreaChart, Bars, Donut } from "../shared/components/charts";
+import { useBigscreenPages } from "../shared/hooks/use-bigscreen-pages";
+import { useRunlogs } from "../shared/hooks/use-runlogs";
+import { useSharelinks } from "../shared/hooks/use-sharelinks";
+import { useWorktreeStatus } from "../shared/hooks/use-worktree-status";
 
 interface NavItem {
 	icon: string; label: string; key: string; count?: string;

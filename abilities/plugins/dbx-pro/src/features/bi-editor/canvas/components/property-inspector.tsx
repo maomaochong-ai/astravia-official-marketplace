@@ -9,7 +9,7 @@
  */
 
 import { type JSX } from "react";
-import type { BigscreenPage } from "../hooks/use-bigscreen-pages";
+import type { BigscreenPage } from "../../shared/hooks/use-bigscreen-pages";
 import type { NodePos, Link } from "./node-graph";
 import { NODE_SCHEMA } from "./node-schema";
 import { Icon } from "../../shared/components/ui/icon";
