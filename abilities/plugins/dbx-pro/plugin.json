@@ -10,7 +10,7 @@
     "expose": "./plugin"
   },
   "styles": [
-    "dist/assets/style-354553468d.css"
+    "dist/assets/style-0b5ac6d241.css"
   ],
   "permissions": [
     "agent.mcp.control",

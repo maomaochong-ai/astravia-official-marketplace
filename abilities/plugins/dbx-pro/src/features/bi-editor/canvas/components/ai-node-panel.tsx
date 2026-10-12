@@ -8,8 +8,8 @@
  */
 
 import { type JSX } from "react";
-import { Icon } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/ui/icon";
-import { Chip } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/ui/chip";
+import { Icon } from "../../shared/components/ui/icon";
+import { Chip } from "../../shared/components/ui/chip";
 
 export interface ParamRow { field: string; value: string; from: "ai" | "user" | "dataset" }
 

@@ -2,7 +2,7 @@
  * use-sharelinks — 产物分享链接列表，接 /drag/sharelink/list。
  */
 import { useCallback, useEffect, useState } from "react";
-import { engineRequest } from "../../../shared/services/engine-client";
+import { engineRequest } from "../../../../shared/services/engine-client";
 
 export interface SharelinkItem {
 	id: string;

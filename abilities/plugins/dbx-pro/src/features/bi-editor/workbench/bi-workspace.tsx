@@ -16,13 +16,13 @@
 import { useCallback, useEffect, useState, type JSX } from "react";
 import { useBigscreenPages, type BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { BigscreenEditor } from "../canvas/canvas-editor";
-import { getUi } from "../../../../../../runtime-contract";
-import { engineRequest } from "../../../../../../shared/services/engine-client";
-import { Icon } from "../../shared/components/ui/icon";
-import { Chip } from "../../shared/components/ui/chip";
-import { IconButton } from "../../shared/components/ui/icon-button";
-import { Btn } from "../../shared/components/ui/btn";
-import { AreaChart, Bars, Donut, SERIES } from "../../shared/components/charts";
+import { getUi } from "../../../runtime-contract";
+import { engineRequest } from "../../../shared/services/engine-client";
+import { Icon } from "../shared/components/ui/icon";
+import { Chip } from "../shared/components/ui/chip";
+import { IconButton } from "../shared/components/ui/icon-button";
+import { Btn } from "../shared/components/ui/btn";
+import { AreaChart, Bars, Donut, SERIES } from "../shared/components/charts";
 
 // ── 后端类型（Phase B 新增端点返回值） ──
 interface DataSource { id: string; name: string; type: string; status: string; }

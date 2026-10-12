@@ -16,12 +16,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent } from "react";
-import { Icon } from "../../shared/components/ui/icon";
-import { Chip } from "../../shared/components/ui/chip";
-import { IconButton } from "../../shared/components/ui/icon-button";
-import { Btn } from "../../shared/components/ui/btn";
-import { AreaChart, Funnel } from "../../shared/components/charts";
-import { engineRequest } from "../../../../../../shared/services/engine-client";
+import { Icon } from "../shared/components/ui/icon";
+import { Chip } from "../shared/components/ui/chip";
+import { IconButton } from "../shared/components/ui/icon-button";
+import { Btn } from "../shared/components/ui/btn";
+import { AreaChart, Funnel } from "../shared/components/charts";
+import { engineRequest } from "../../../shared/services/engine-client";
 import type { BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 
 // ── 大屏节点库（设计稿 RAIL） ──

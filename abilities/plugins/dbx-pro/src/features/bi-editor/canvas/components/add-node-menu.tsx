@@ -9,7 +9,7 @@
  */
 
 import { useState, type JSX } from "react";
-import { Icon } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/ui/icon";
+import { Icon } from "../../shared/components/ui/icon";
 
 interface Props {
 	x: number;

@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { engineRequest } from "../../../shared/services/engine-client";
+import { engineRequest } from "../../../../shared/services/engine-client";
 
 export type BigscreenPage = {
 	id: string;

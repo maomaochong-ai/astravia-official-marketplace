@@ -15,7 +15,7 @@ import {
 	engineListConnections,
 	type EngineConnectionSummary,
 	type EngineQueryOutcome,
-} from "../../../../../../../../../../../shared/services/engine-client";
+} from "../../../../shared/services/engine-client";
 import type { NodePos, NodeId, Link } from "../components/node-graph";
 
 export interface NodeResult {

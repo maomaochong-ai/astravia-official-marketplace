@@ -22,7 +22,7 @@
 
 import { useCallback, useRef, useState, type JSX } from "react";
 import { CanvasGround } from "../shared/components/canvas-ground";
-import { NodeCard, TONE } from "../canva../canva../canva../canvas/components/node-card";
+import { NodeCard, TONE } from "../canvas/components/node-card";
 import { Icon } from "../shared/components/ui/icon";
 import { Chip } from "../shared/components/ui/chip";
 import { IconButton } from "../shared/components/ui/icon-button";

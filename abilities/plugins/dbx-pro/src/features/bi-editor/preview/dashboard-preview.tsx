@@ -11,7 +11,7 @@ import type { BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { CanvasTiles } from "../shared/components/canvas-tiles";
 import { Icon } from "../shared/components/ui/icon";
 import { Chip } from "../shared/components/ui/chip";
-import { engineRequest } from "../shared/services/engine-client";
+import { engineRequest } from "../../../shared/services/engine-client";
 
 interface RunLogItem {
 	id: string; pageName?: string; detail?: string;

@@ -2,7 +2,7 @@
  * use-runlogs — 最近运行日志列表，接 /drag/runlog/list。
  */
 import { useCallback, useEffect, useState } from "react";
-import { engineRequest } from "../../../shared/services/engine-client";
+import { engineRequest } from "../../../../shared/services/engine-client";
 
 export interface RunLogItem {
 	id: string;

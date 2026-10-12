@@ -8,9 +8,9 @@
  */
 
 import { type JSX } from "react";
-import { Icon } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/ui/icon";
-import { Chip } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/ui/chip";
-import { AreaChart } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/charts";
+import { Icon } from "../../shared/components/ui/icon";
+import { Chip } from "../../shared/components/ui/chip";
+import { AreaChart } from "../../shared/components/charts";
 
 export interface RunNode {
 	id: string; label: string; icon?: string;

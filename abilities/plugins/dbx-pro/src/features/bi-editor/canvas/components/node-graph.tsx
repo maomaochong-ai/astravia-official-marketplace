@@ -7,11 +7,11 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as RPointerEvent, type DragEvent, type Dispatch, type SetStateAction } from "react";
 import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE } from "./node-card";
-import { AreaChart, Donut, SERIES } from "../../../shared/components/charts";
-import { Chip } from "../../../shared/components/ui/chip";
+import { AreaChart, Donut, SERIES } from "../../shared/components/charts";
+import { Chip } from "../../shared/components/ui/chip";
 import { AiNodePanel } from "./ai-node-panel";
 import { AddNodeMenu } from "./add-node-menu";
-import { engineRequest } from "../../../../../../../shared/services/engine-client";
+import { engineRequest } from "../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
 
 // ── 类型 ──

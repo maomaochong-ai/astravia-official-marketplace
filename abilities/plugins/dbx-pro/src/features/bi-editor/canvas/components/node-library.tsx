@@ -6,7 +6,7 @@
  */
 
 import { type JSX, type DragEvent, useState } from "react";
-import { Icon } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/ui/icon";
+import { Icon } from "../../shared/components/ui/icon";
 
 type Group = { label: string; items: { key: string; icon: string; label: string }[] };
 

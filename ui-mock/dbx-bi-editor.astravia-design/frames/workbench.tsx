@@ -1,4 +1,4 @@
-export const frame = { width: 1440, height: 1000, title: "BI · 工作台入口（点 BI 按钮之后）" };
+export const frame = { width: 1440, height: 1000, title: "BI · 工作台首屏（我的看板）" };
 
 import { AreaChart, Bars, Donut } from "../components/Charts";
 import Btn from "../components/Btn";
@@ -16,13 +16,21 @@ const NAV = [
 ];
 
 const BOARDS = [
-	{ name: "渠道经营看板", pages: "3 页", nodes: "6 节点", meta: "更新于 22:24", state: "2 个变更未运行", kind: "area", on: true },
-	{ name: "城市分布看板", pages: "2 页", nodes: "5 节点", meta: "更新于 昨天", state: "已发布", kind: "bars", on: false },
-	{ name: "投放效果看板", pages: "3 页", nodes: "8 节点", meta: "更新于 10-09", state: "已发布", kind: "donut", on: false },
-	{ name: "渠道经营大屏", pages: "1 页", nodes: "8 节点", meta: "更新于 昨天", state: "已发布", kind: "area", on: false },
-	{ name: "商品结构看板", pages: "2 页", nodes: "4 节点", meta: "更新于 10-07", state: "已发布", kind: "bars", on: false },
-	{ name: "周会驾驶舱", pages: "4 页", nodes: "9 节点", meta: "更新于 10-02", state: "草稿", kind: "donut", on: false },
+	{ name: "渠道经营看板", pages: 3, nodes: 6, status: "运行中", updated: "22:24", kind: "area", on: true },
+	{ name: "城市分布看板", pages: 2, nodes: 5, status: "已发布", updated: "昨天", kind: "bars", on: false },
+	{ name: "投放效果看板", pages: 3, nodes: 8, status: "失败", updated: "10-09", kind: "donut", on: false },
+	{ name: "商品结构看板", pages: 2, nodes: 4, status: "已发布", updated: "10-07", kind: "bars", on: false },
+	{ name: "周会驾驶舱", pages: 4, nodes: 9, status: "草稿", updated: "10-02", kind: "area", on: false },
+	{ name: "用户留存看板", pages: 1, nodes: 3, status: "已发布", updated: "09-28", kind: "donut", on: false },
 ];
+
+/** 状态是封闭集合，chip 是它唯一的落点 —— adr-0001 gap ②。 */
+const STATUS_TONE: Record<string, "neutral" | "accent" | "primary" | "danger"> = {
+	已发布: "primary",
+	运行中: "accent",
+	草稿: "neutral",
+	失败: "danger",
+};
 
 const RUNS = [
 	{ time: "22:24", name: "渠道经营看板", detail: "6 节点 · 3 产物页面", cost: "1.2s", state: "成功" },
@@ -61,9 +69,12 @@ function Preview({ kind }: { kind: string }) {
 }
 
 /**
- * 工作台入口 —— 从数据资产点「BI」之后落到的第一屏。它回答两个问题：我有哪些看板、
- * 我现在该从哪起手。左栏是资产，中间是看板清单，右栏把「新建的三条路」和
- * 「这一版发到哪去了」并排放着，因为打开工作台的人要么在开新的，要么在收上一次的尾。
+ * 工作台首屏 —— 从数据资产点「BI」之后落到的第一屏（adr-0001 §2）。它回答两个问题：
+ * 我有哪些看板、我现在该从哪起手。左栏是资产，中间是看板清单，右栏把「新建的三条路」
+ * 和「这一版发到哪去了」并排放着，因为打开工作台的人要么在开新的，要么在收上一次的尾。
+ *
+ * 按 adr-0001 Phase 1，网格里只放 style === "default" 的看板，大屏从 NAV「数据大屏」进；
+ * 每张卡片的三枚 chip（页数 / 节点数 / 状态）是 gap ② 要补齐的元数据。
  */
 export default function BiWorkbench() {
 	return (
@@ -82,13 +93,6 @@ export default function BiWorkbench() {
 					<span className="ml-auto shrink-0 font-mono text-[10px] text-faint">⌘K</span>
 				</div>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
-					<Btn size="sm" variant="ghost" icon="icon-[lucide--table-2]">
-						数据集
-					</Btn>
-					<Btn size="sm" variant="ghost" icon="icon-[lucide--folder-tree]">
-						工作树
-					</Btn>
-					<span className="h-4 w-px shrink-0 bg-border" />
 					<IconButton size="sm" icon="icon-[lucide--clock-3]" title="最近打开" />
 					<div className="ml-1 grid size-7 shrink-0 place-items-center rounded-full border border-border bg-surface text-[11px] text-muted">
 						诸
@@ -165,23 +169,21 @@ export default function BiWorkbench() {
 									b.on ? "border-accent shadow-[0_0_0_3px_var(--color-accent-soft)]" : "border-border"
 								}`}
 							>
-								<div className="relative h-[112px] border-b border-border bg-background px-3 py-3">
+								<div className="h-[112px] border-b border-border bg-background px-3 py-3">
 									<Preview kind={b.kind} />
-									<span className="absolute right-2 top-2 flex h-5 items-center gap-1 rounded-chip bg-surface-raised px-1.5 font-mono text-[10px] text-muted">
-										{b.nodes}
-									</span>
 								</div>
-								<div className="flex flex-col gap-1.5 px-3 py-2.5">
+								<div className="flex flex-col gap-2 px-3 py-2.5">
 									<div className="flex items-center gap-2">
-										<span className="truncate text-[13px] font-medium text-surface-foreground">{b.name}</span>
-										{b.state === "2 个变更未运行" ? <Chip tone="warning">未运行</Chip> : null}
-										<IconButton size="xs" icon="icon-[lucide--x]" title="更多" className="ml-auto" />
+										<span className="min-w-0 flex-1 truncate text-[13px] font-medium text-surface-foreground">
+											{b.name}
+										</span>
+										<Chip tone={STATUS_TONE[b.status]}>{b.status}</Chip>
+										<IconButton size="xs" icon="icon-[lucide--ellipsis]" title="更多" />
 									</div>
-									<div className="flex items-center gap-2 text-[10px] text-faint">
-										<span>{b.pages}</span>
-										<span className="h-3 w-px bg-border" />
-										<span>{b.meta}</span>
-										<span className="ml-auto">{b.state}</span>
+									<div className="flex items-center gap-1.5">
+										<Chip mono>{b.pages} 页</Chip>
+										<Chip mono>{b.nodes} 节点</Chip>
+										<span className="ml-auto text-[10px] text-faint">{b.updated}</span>
 									</div>
 								</div>
 							</div>

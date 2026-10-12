@@ -41,18 +41,24 @@ const badVars = new Map();
 let iconCount = 0;
 let utilCount = 0;
 
-const iconifyRoot =
-  "/Users/zhugeyue/.astravia/plugin-data/astravia-ui-design/design-engine/0.4.0/node_modules/@iconify-json";
+// 引擎目录会随版本号变化，且没装依赖时不存在；逐一尝试可用来源。
+const iconifyRoots = [
+  "/Users/zhugeyue/.astravia/plugin-data/astravia-ui-design/design-engine/0.4.0/node_modules/@iconify-json",
+  resolve(import.meta.dirname, "../../../abilities/plugins/dbx-pro/node_modules/@iconify-json"),
+].filter((root) => existsSync(root));
 const iconSets = {};
-for (const set of readdirSync(iconifyRoot)) {
-  const f = join(iconifyRoot, set, "icons.json");
-  if (!existsSync(f)) continue;
-  try {
-    iconSets[set] = new Set(Object.keys(JSON.parse(readFileSync(f, "utf8")).icons ?? {}));
-  } catch {
-    iconSets[set] = new Set();
+for (const root of iconifyRoots) {
+  for (const set of readdirSync(root)) {
+    const f = join(root, set, "icons.json");
+    if (!existsSync(f) || iconSets[set]) continue;
+    try {
+      iconSets[set] = new Set(Object.keys(JSON.parse(readFileSync(f, "utf8")).icons ?? {}));
+    } catch {
+      iconSets[set] = new Set();
+    }
   }
 }
+console.log(`icon sets from: ${iconifyRoots.join(", ") || "(none found)"}`);
 
 function okUtility(suffix) {
   const name = suffix.replace(/\/[0-9.]+$/, "");

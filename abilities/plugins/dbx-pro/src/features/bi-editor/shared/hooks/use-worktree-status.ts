@@ -2,7 +2,7 @@
  * use-worktree-status — 工作树发布状态，接 /drag/worktree/status + /drag/worktree/publish。
  */
 import { useCallback, useEffect, useState } from "react";
-import { engineRequest } from "../../../shared/services/engine-client";
+import { engineRequest } from "../../../../shared/services/engine-client";
 
 export function useWorktreeStatus(): {
 	dirty: boolean;
