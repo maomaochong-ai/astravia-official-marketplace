@@ -179,7 +179,9 @@ function PageThumb({
 			<div className="flex flex-col gap-1.5 px-3 py-2.5">
 				<div className="flex items-center gap-2">
 					<span className="truncate text-[13px] font-medium text-surface-foreground">{page.name}</span>
-					{page.visits > 0 ? <Chip tone="neutral" mono>👁 {page.visits}</Chip> : null}
+					{page.visits > 0 ? (
+						<Chip tone="neutral" mono icon="icon-[lucide--eye]">{page.visits}</Chip>
+					) : null}
 					<IconButton size="xs" icon="icon-[lucide--more-horizontal]" title="更多" className="ml-auto" />
 				</div>
 				<div className="flex items-center gap-2 text-[10px] text-faint">
@@ -338,7 +340,12 @@ export function BigscreenWorkspace(): JSX.Element {
 						<span className="text-[15px] font-semibold text-surface-foreground">我的看板</span>
 						<Chip>{pages.length} 个</Chip>
 						{loading && <span className="text-[11px] text-muted">加载中…</span>}
-						{error && <span className="text-[11px] text-danger">⚠ {error}</span>}
+						{error && (
+							<span className="flex items-center gap-1 text-[11px] text-danger">
+								<Icon name="icon-[lucide--alert-triangle]" className="size-3" />
+								{error}
+							</span>
+						)}
 						<div className="ml-auto flex shrink-0 items-center gap-2">
 							<div className="flex h-7 items-center gap-1.5 rounded-control border border-border bg-surface px-2 text-[11px] text-muted">
 								<Icon name="icon-[lucide--history]" className="size-3.5 shrink-0" />最近更新

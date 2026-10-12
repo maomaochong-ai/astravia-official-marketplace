@@ -250,7 +250,7 @@ export function AgentWorkspace({ pageName = "未命名看板", onBack, onInsert 
 													<Btn size="sm" variant="primary" icon="icon-[lucide--square-plus]" onClick={handleInsert}>
 														{m.actions.primary}
 													</Btn>
-													<Btn size="sm" variant="ghost">
+													<Btn size="sm" variant="ghost" onClick={() => { /* 草稿已在右侧画布展示 */ }}>
 														{m.actions.secondary}
 													</Btn>
 													<span className="ml-auto text-[10px] text-faint">不写库</span>

@@ -400,11 +400,13 @@ function renderScreenNode(n: ScreenNode, _pageName: string): JSX.Element {
 				</div>
 			);
 		case "funnel": {
+			const funnelRaw = hashSeries(seed + "_funnel", 4).map((v, i) => Math.max(8, v - i * 10));
+			const funnelTotal = funnelRaw[0];
 			const stages = [
-				{ label: "曝光", value: 100, text: "1240 万" },
-				{ label: "点击", value: 62, text: "768 万" },
-				{ label: "加购", value: 34, text: "412 万" },
-				{ label: "下单", value: 18, text: "218 万" },
+				{ label: "曝光", value: 100, text: `${Math.round(funnelTotal * 12.4)} 万` },
+				{ label: "点击", value: Math.round((funnelRaw[1] / funnelTotal) * 100), text: `${Math.round(funnelRaw[1] * 12.4)} 万` },
+				{ label: "加购", value: Math.round((funnelRaw[2] / funnelTotal) * 100), text: `${Math.round(funnelRaw[2] * 12.4)} 万` },
+				{ label: "下单", value: Math.round((funnelRaw[3] / funnelTotal) * 100), text: `${Math.round(funnelRaw[3] * 12.4)} 万` },
 			];
 			return (
 				<div className="flex h-full w-full flex-col px-4 py-3">

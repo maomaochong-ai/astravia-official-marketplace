@@ -516,28 +516,71 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 					<span className="rounded-[2px] bg-background" />
 					<span className="rounded-[2px] bg-background" />
 				</div>
-				<button className="mt-1.5 flex h-[26px] shrink-0 items-center justify-center gap-1.5 rounded-control bg-accent text-[11px] font-medium text-white hover:bg-accent/90">
+				<button className="mt-1.5 flex h-[26px] shrink-0 items-center justify-center gap-1.5 rounded-control bg-accent text-[11px] font-medium text-white hover:bg-accent/90"
+					onClick={() => {
+						for (const [id, n] of Object.entries(nodes)) {
+							setNodes((prev) => ({ ...prev, [id]: { ...n, selected: false } }));
+						}
+					}}>
 					<span className="icon-[lucide--play] size-3" />运行画布
 				</button>
 			</NodeCard>
 
-			{/* 选中节点浮动工具条 */}
-			<div
-				className="absolute z-20 flex h-7 items-center gap-0.5 rounded-control border border-border bg-surface-raised px-1 shadow"
-				style={{ left: nodes.line.x, top: nodes.line.y + nodes.line.h + 8 }}
-			>
-				{TOOLBOX.map((t) => (
-					<button key={t.title} title={t.title} type="button"
-						className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground">
-						<span className={t.icon + " size-3"} />
-					</button>
-				))}
-				<span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
-				<button title="删除节点" type="button"
-					className="grid size-5 place-items-center rounded-control text-danger hover:bg-danger/10">
-					<span className="icon-[lucide--trash-2] size-3" />
-				</button>
-			</div>
+			{/* 选中节点浮动工具条（真正跟选中态联动） */}
+			{(() => {
+				const selId = Object.keys(nodes).find((k) => nodes[k].selected);
+				if (!selId) return null;
+				const sel = nodes[selId];
+				return (
+					<div
+						className="absolute z-20 flex h-7 items-center gap-0.5 rounded-control border border-border bg-surface-raised px-1 shadow"
+						style={{ left: sel.x, top: sel.y + sel.h + 8 }}
+					>
+						<button title="复制节点" type="button"
+							onClick={() => {
+								const cloneId = `${selId}_copy_${nodeSeqRef.current++}`;
+								setNodes((prev) => ({
+									...prev,
+									[cloneId]: { ...sel, x: sel.x + 24, y: sel.y + 24, selected: true },
+									[selId]: { ...sel, selected: false },
+								}));
+							}}
+							className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground">
+							<span className="icon-[lucide--copy] size-3" />
+						</button>
+						<button title="停用节点" type="button"
+							onClick={() => {
+								setNodes((prev) => ({ ...prev, [selId]: { ...sel, selected: false } }));
+							}}
+							className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground">
+							<span className="icon-[lucide--zap] size-3" />
+						</button>
+						<button title="只运行这个节点" type="button"
+							onClick={() => {
+								setNodes((prev) => {
+									const out: typeof prev = {};
+									for (const [id, n] of Object.entries(prev)) out[id] = { ...n, selected: id === selId };
+									return out;
+								});
+							}}
+							className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground">
+							<span className="icon-[lucide--play] size-3" />
+						</button>
+						<span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
+						<button title="删除节点" type="button"
+							onClick={() => {
+								setNodes((prev) => {
+									const out: typeof prev = {};
+									for (const [id, n] of Object.entries(prev)) if (id !== selId) out[id] = { ...n };
+									return out;
+								});
+							}}
+							className="grid size-5 place-items-center rounded-control text-danger hover:bg-danger/10">
+							<span className="icon-[lucide--trash-2] size-3" />
+						</button>
+					</div>
+				);
+			})()}
 
 			{/* AI 生成节点浮动面板 */}
 			<AiNodePanel x={16} y={620} w={284} h={232} />
