@@ -261,7 +261,7 @@ export function BigscreenWorkspace(): JSX.Element {
 
 	// 打开编辑器态（优先级最高）
 	if (editorPageId) {
-		return <BigscreenEditor pageId={editorPageId} onClose={() => setEditorPageId(null)} />;
+		return <BigscreenEditor pageId={editorPageId} onClose={() => setEditorPageId(null)} onSaved={refresh} />;
 	}
 
 	// Preview kind 轮换（让每个缩略图长得不一样）

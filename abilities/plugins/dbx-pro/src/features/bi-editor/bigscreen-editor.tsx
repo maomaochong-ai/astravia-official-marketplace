@@ -20,7 +20,7 @@ import type { BigscreenPage } from "./hooks/use-bigscreen-pages";
 import { BigscreenToolbar } from "./components/editor-toolbar";
 import { NodeLibrary } from "./components/node-library";
 import { CanvasStrip } from "./components/canvas-strip";
-import { NodeGraph, INITIAL_LINKS, INITIAL_NODES, type Link, type NodePos } from "./components/node-graph";
+import { NodeGraph, type Link, type NodePos } from "./components/node-graph";
 import { PropertyInspector, type SelectedNodeInfo } from "./components/property-inspector";
 import { EditorStatusBar } from "./components/editor-status-bar";
 import { RunPanel, NodePreviewCard, type RunNode } from "./components/run-overlay";
@@ -33,20 +33,47 @@ interface CanvasTemplate {
 	links: Link[];
 }
 
+/** 空画布 —— 服务端新建页面的默认 template 是字符串 "[]"，里面没有任何画布内容。 */
+function emptyTemplate(): CanvasTemplate {
+	return { nodes: {}, links: [] };
+}
+
+/**
+ * 解析持久化的 template。
+ * 只认 { nodes: {...}, links: [...] }；空串、"[]"、解析失败、结构不符一律返回空画布 ——
+ * 以前这里回退到演示布局，结果新建的页面一进去就是一堆别人的示例节点。
+ */
 function parseTemplate(raw: string | null | undefined): CanvasTemplate {
-	if (!raw) return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
+	if (!raw) return emptyTemplate();
 	try {
-		const obj = JSON.parse(raw);
-		if (obj && typeof obj === "object" && "nodes" in obj) {
-			return obj as CanvasTemplate;
-		}
-		return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
+		const obj: unknown = JSON.parse(raw);
+		if (!obj || typeof obj !== "object" || Array.isArray(obj)) return emptyTemplate();
+		const record = obj as { nodes?: unknown; links?: unknown };
+		const nodes =
+			record.nodes && typeof record.nodes === "object" && !Array.isArray(record.nodes)
+				? (record.nodes as Record<string, NodePos>)
+				: {};
+		const links = Array.isArray(record.links) ? (record.links as Link[]) : [];
+		return { nodes, links };
 	} catch {
-		return { nodes: INITIAL_NODES as Record<string, NodePos>, links: INITIAL_LINKS };
+		return emptyTemplate();
 	}
 }
 
-export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: () => void }): JSX.Element {
+/**
+ * 画布内容序列化 —— 既当保存载荷也当「有没被改过」的指纹。
+ * 排除 selected 这类临时交互字段：点一下节点不该把页面变成「未保存」。
+ */
+function serializeCanvas(nodes: Record<string, NodePos>, links: Link[]): string {
+	const clean: Record<string, NodePos> = {};
+	for (const [id, node] of Object.entries(nodes)) {
+		const { selected: _selected, ...rest } = node;
+		clean[id] = rest;
+	}
+	return JSON.stringify({ nodes: clean, links });
+}
+
+export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; onClose: () => void; onSaved?: () => void }): JSX.Element {
 	const [page, setPage] = useState<BigscreenPage | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [dirty, setDirty] = useState(false);
@@ -56,9 +83,11 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	const [rightCollapsed, setRightCollapsed] = useState(false);
 
-	// 画布状态
-	const [nodes, setNodes] = useState<Record<string, NodePos>>(() => INITIAL_NODES as Record<string, NodePos>);
-	const [links, setLinks] = useState<Link[]>(() => INITIAL_LINKS);
+	// 画布状态 —— 初值与服务端还没返回时保持一致：空画布，不预置演示节点
+	const [nodes, setNodes] = useState<Record<string, NodePos>>({});
+	const [links, setLinks] = useState<Link[]>([]);
+	// 「已保存内容」指纹；挂载和刚加载完都不该是脏的
+	const baselineRef = useRef<string>(serializeCanvas({}, []));
 
 	// ── 运行状态 ──
 	const [runNodes, setRunNodes] = useState<RunNode[]>([]);
@@ -101,6 +130,7 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				setPage(p);
 				setActiveTheme((p?.theme as "dark" | "default") ?? "dark");
 				const tpl = parseTemplate(p?.template ?? "");
+				baselineRef.current = serializeCanvas(tpl.nodes, tpl.links);
 				setNodes(tpl.nodes);
 				setLinks(tpl.links);
 			})
@@ -109,7 +139,9 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 		return () => { cancelled = true; };
 	}, [pageId]);
 
-	useEffect(() => { setDirty(true); }, [nodes, links]);
+	useEffect(() => {
+		setDirty(serializeCanvas(nodes, links) !== baselineRef.current);
+	}, [nodes, links]);
 
 	const selectedNodeInfo: SelectedNodeInfo | null = (() => {
 		for (const [id, n] of Object.entries(nodes)) {
@@ -131,7 +163,7 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 		if (!page || saving) return;
 		setSaving(true);
 		try {
-			const templateJson: CanvasTemplate = { nodes, links };
+			const template = serializeCanvas(nodes, links);
 			await engineRequest<{ updateCount: number }>("/drag/page/edit", {
 				id: page.id,
 				name: page.name,
@@ -141,10 +173,12 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 				backgroundImage: page.backgroundImage,
 				designType: page.designType,
 				protectionCode: "",
-				template: JSON.stringify(templateJson),
+				template,
 				updateCount: page.updateCount,
 			});
+			baselineRef.current = template;
 			setDirty(false);
+			onSaved?.();
 		} catch (e) {
 			console.error("保存失败", e);
 		} finally {
@@ -228,11 +262,10 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 	if (page.style === "bigScreen") {
 		return (
 			<BigscreenScreenEditor
+				key={page.id}
 				page={page}
 				onClose={onClose}
-				onSave={handleSave}
-				saving={saving}
-				dirty={dirty}
+				onSaved={onSaved}
 			/>
 		);
 	}
@@ -274,6 +307,22 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 						links={links}
 						setLinks={setLinks}
 					/>
+
+					{/* 空态引导 —— 真空白画布，不再插手演示节点 */}
+					{Object.keys(nodes).length === 0 && links.length === 0 ? (
+						<div
+							data-testid="canvas-empty-guide"
+							className="pointer-events-none absolute inset-x-0 bottom-0 top-11 z-10 grid place-items-center px-6"
+						>
+							<div className="flex max-w-[360px] flex-col items-center gap-1.5 rounded-card border border-dashed border-border bg-surface-raised/85 px-6 py-5 text-center">
+								<span className="icon-[lucide--boxes] size-5 text-faint" />
+								<span className="text-[13px] font-medium text-surface-foreground">空白画布</span>
+								<span className="text-[11px] leading-5 text-muted">
+									从左侧节点库点击节点添加；连好线后点右上角「保存」。保存写入的就是你放的节点，页面不会再自带演示数据。
+								</span>
+							</div>
+						</div>
+					) : null}
 
 					{/* 运行浮层（设计稿 frames/run.tsx 的 RunPanel + NodePreviewCard） */}
 					{showRunPanel && runNodes.length > 0 ? (

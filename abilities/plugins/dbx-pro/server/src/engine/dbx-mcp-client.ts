@@ -1,0 +1,400 @@
+/**
+ * dbx-mcp 轻量 MCP stdio 客户端（ESM .mjs 版）。
+ *
+ * 职责：管理 dbx-mcp 子进程生命周期，完成 JSON-RPC 握手，
+ * 并提供 tools/call 单发请求。不引入 @modelcontextprotocol/sdk 依赖
+ * （只需单服务器、无流式需求）。
+ *
+ * dbx 工具返回统一是 Markdown 文本（content[].text），结构化解析
+ * 由上层 markdown-parser 完成，本层只做协议传输。
+ *
+ * 用法：
+ *   import { getDbxMcpClient } from "./dbx-mcp-client.ts";
+ *   const client = getDbxMcpClient();
+ *   const result = await client.callTool("dbx_execute_query", { connection_name: "x", sql: "SELECT 1" });
+ *   console.log(result.content[0].text);  // Markdown 表格
+ */
+
+import type { ChildProcess } from "node:child_process";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// bundle 后 import.meta.url = server/main.mjs → dirname = server/
+// 开发期 import.meta.url = server/src/engine/*.mjs → dirname = server/src/engine/
+// 两种情况都要找到 server/ 目录
+const _thisDir = join(fileURLToPath(import.meta.url), "..");
+const _serverDir = _thisDir.endsWith("engine")
+  ? join(_thisDir, "..", "..")   // 开发期：server/src/engine/ → server/
+  : _thisDir;                    // bundle 后：server/ 直接用
+
+/** dbx-mcp 二进制路径表（按平台映射到 server/bin/）。 */
+const BIN_PATH_BY_PLATFORM = {
+  "darwin-arm64": join(_serverDir, "bin", "dbx-mcp-darwin-arm64"),
+  "darwin-x64":   join(_serverDir, "bin", "dbx-mcp-darwin-x64"),
+  "win32-x64":    join(_serverDir, "bin", "dbx-mcp-win-x64.exe"),
+};
+
+/**
+ * DBX_DATA_DIR：与宿主 Open-astravia 隔离，使用服务数据目录或回退到 ~/.astravia-dbx-data。
+ *
+ * 进程内缓存首次解析结果：dbx 的连接库（dbx.db）就在这个目录里，常驻子进程和
+ * 一次性提权子进程必须指向同一处，否则提权子进程会报 CONNECTION_NOT_FOUND。
+ */
+let resolvedDataDir = null;
+
+function resolveDataDir(explicitDir) {
+  if (explicitDir) {
+    mkdirSync(explicitDir, { recursive: true });
+    resolvedDataDir = explicitDir;
+    return explicitDir;
+  }
+  if (resolvedDataDir) return resolvedDataDir;
+  const dir = join(homedir(), ".astravia-dbx-data");
+  mkdirSync(dir, { recursive: true });
+  resolvedDataDir = dir;
+  return dir;
+}
+
+// 60s（非 15s）：首次 spawn 时 Gatekeeper 签名评估 / Rosetta 翻译启动可能要
+// 数十秒，这是合法的慢；过短会误杀仍在启动的子进程并引发反复重 spawn。
+const HANDSHAKE_TIMEOUT_MS = 60_000;
+const CALL_TIMEOUT_MS = 60_000;
+const SHUTDOWN_GRACE_MS = 2_000;
+
+/**
+ * 解析目标平台。
+ *
+ * 以运行本 service 的 node 进程架构为准：x64 node（含 Rosetta）必须配 x64 二进制，
+ * arm64 node 配 arm64。宿主 install/marker 也按同一平台校验，两者必须一致。
+ */
+function detectPlatform() {
+	const platform = process.platform;
+	if (platform === "darwin") {
+		return process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+	}
+	if (platform === "win32" && process.arch === "x64") return "win32-x64";
+	return null;
+}
+
+/**
+ * 扫描 ~/.astravia-dbx-data/drivers/ 目录，收集已安装的 managed driver 路径。
+ * 约定目录结构：drivers/<db_type>/<platform>/<binary> 或 drivers/<db_type>/<platform>/.path 配置文件。
+ * 返回形如 { DBX_DUCKDB_DRIVER_PATH: "/path/to/duckdb_worker" } 的环境变量字典。
+ */
+function collectDriverEnv(dataDir) {
+	const driverEnv = {};
+	const driversRoot = join(dataDir, "drivers");
+	if (!existsSync(driversRoot)) return driverEnv;
+
+	const platform = detectPlatform();
+	if (!platform) return driverEnv;
+
+	// 支持的驱动映射：<db_type> → <env_var>, <binary_name>
+	const DRIVER_MAP = {
+		duckdb: { envVar: "DBX_DUCKDB_DRIVER_PATH", binary: process.platform === "win32" ? "duckdb_worker.exe" : "duckdb_worker" },
+		redis: { envVar: "DBX_REDIS_DRIVER_PATH", binary: null }, // Redis 纯协议，不需要原生驱动
+	};
+
+	for (const [dbType, cfg] of Object.entries(DRIVER_MAP)) {
+		const driverDir = join(driversRoot, dbType, platform);
+		if (!existsSync(driverDir)) continue;
+
+		// 优先读取 .path 配置（手动指定的路径）
+		const pathFile = join(driverDir, ".path");
+		if (existsSync(pathFile)) {
+			const manualPath = readFileSync(pathFile, "utf-8").trim();
+			if (manualPath && existsSync(manualPath)) {
+				driverEnv[cfg.envVar] = manualPath;
+				continue;
+			}
+		}
+
+		// 其次检查解压后的驱动二进制
+		if (cfg.binary) {
+			const binaryPath = join(driverDir, cfg.binary);
+			if (existsSync(binaryPath)) {
+				driverEnv[cfg.envVar] = binaryPath;
+			}
+		}
+	}
+
+	return driverEnv;
+}
+
+/**
+ * 解析 dbx-mcp 二进制路径，并以「磁盘上实际存在」做兜底。
+ *
+ * 首选真实硬件平台；若该二进制缺失（例如裁剪安装），退回到任意存在的平台二进制，
+ * 避免 spawn ENOENT。
+ */
+function resolveBinaryPath() {
+  const preferred = detectPlatform();
+  if (preferred && existsSync(BIN_PATH_BY_PLATFORM[preferred])) {
+    return BIN_PATH_BY_PLATFORM[preferred];
+  }
+  for (const tag of ["darwin-arm64", "darwin-x64", "win32-x64"]) {
+    if (tag !== preferred && existsSync(BIN_PATH_BY_PLATFORM[tag])) {
+      return BIN_PATH_BY_PLATFORM[tag];
+    }
+  }
+  throw new Error(
+    `dbx-mcp: 找不到可用二进制（平台 ${process.platform}-${process.arch}），期望 darwin-arm64 / darwin-x64 / win32-x64`,
+  );
+}
+
+type Phase = "idle" | "connecting" | "ready" | "error";
+type PendingEntry = { resolve: (v: unknown) => void; reject: (e: Error) => void };
+
+class DbxMcpClient {
+  private handshakeTimeoutMs: number;
+  private callTimeoutMs: number;
+  private extraEnv: Record<string, string>;
+  private dataDir: string | null;
+  private child: ChildProcess | null;
+  private buffer: string;
+  private nextId: number;
+  private pending: Map<number, PendingEntry>;
+  private initialized: Promise<void> | null;
+  private phase: Phase;
+  private lastError: Error | null;
+
+  constructor(options: { handshakeTimeoutMs?: number; callTimeoutMs?: number; extraEnv?: Record<string, string>; dataDir?: string | null } = {}) {
+    this.handshakeTimeoutMs = options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS;
+    this.callTimeoutMs = options.callTimeoutMs ?? CALL_TIMEOUT_MS;
+    this.extraEnv = options.extraEnv ?? {};
+    this.dataDir = options.dataDir ?? null;
+    this.child = null;
+    this.buffer = "";
+    this.nextId = 1;
+    this.pending = new Map();
+    this.initialized = null;
+    // 子进程连接阶段：idle（未尝试）| connecting | ready | error。
+    // /health 只读它，不在热路径触发握手，从而与子进程解耦。
+    this.phase = "idle";
+    this.lastError = null;
+  }
+
+  /**
+   * 在后台发起一次子进程连接。成功后 phase=ready；失败复位 initialized，
+   * 让后续真正需要子进程的 callTool 可以重试。
+   * 返回的 promise 会 reject（供需要结果的调用方感知），但不影响状态查询。
+   */
+  connect(): Promise<void> {
+    if (this.phase === "ready") return Promise.resolve();
+    if (this.initialized) return this.initialized;
+    this.phase = "connecting";
+    this.lastError = null;
+    this.initialized = this.spawnAndHandshake()
+      .then(() => { this.phase = "ready"; })
+      .catch((err: Error) => {
+        this.phase = "error";
+        this.lastError = err;
+        this.initialized = null;
+        this.reapCurrentChild();
+        throw err;
+      });
+    return this.initialized;
+  }
+
+  /** 需要子进程的调用方使用：已连接直接返回，连接中共享同一次，未连接则发起。 */
+  ensureInitialized(): Promise<void> {
+    if (this.phase === "ready") return Promise.resolve();
+    if (this.initialized) return this.initialized;
+    return this.connect();
+  }
+
+  reapCurrentChild(): void {
+    const child = this.child;
+    this.child = null;
+    if (!child || child.killed) return;
+    child.kill();
+    const force = setTimeout(() => {
+      if (child && !child.killed) child.kill("SIGKILL");
+    }, SHUTDOWN_GRACE_MS);
+    if (force.unref) force.unref();
+  }
+
+  async callTool(name: string, args: Record<string, unknown>, timeoutMs?: number): Promise<unknown> {
+    await this.ensureInitialized();
+    const id = this.nextId++;
+    const result = await this.request(
+      id,
+      "tools/call",
+      { name, arguments: args },
+      timeoutMs ?? this.callTimeoutMs,
+    );
+    return result;
+  }
+
+  async dispose(): Promise<void> {
+    const child = this.child;
+    this.child = null;
+    this.initialized = null;
+    for (const p of this.pending.values()) p.reject(new Error("dbx-mcp client disposed"));
+    this.pending.clear();
+    if (!child || child.killed) return;
+    const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
+    child.kill();
+    await Promise.race([
+      exited,
+      new Promise<void>((resolve) => setTimeout(resolve, SHUTDOWN_GRACE_MS)),
+    ]);
+    if (!child.killed) child.kill("SIGKILL");
+  }
+
+  spawnAndHandshake(): Promise<void> {
+    const bin = resolveBinaryPath();
+    const dbxDataDir = resolveDataDir(this.dataDir);
+    // 扫描已安装的 managed driver 路径并注入环境变量
+    const driverEnv = collectDriverEnv(dbxDataDir);
+    const child = spawn(bin, [], {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        DBX_DATA_DIR: dbxDataDir,
+        ...this.extraEnv,
+        ...driverEnv,  // 驱动安装后的环境变量（DBX_DUCKDB_DRIVER_PATH 等）
+      },
+    });
+    this.child = child;
+    const isCurrent = () => this.child === child;
+
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string | Buffer) => this.onData(chunk));
+    child.stderr.on("data", (_chunk: Buffer) => {
+      // dbx-mcp 在 stderr 打日志，调试时取消注释
+      // process.stderr.write(`[dbx-mcp] ${chunk.toString()}`);
+    });
+    child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      if (!isCurrent()) return;
+      const err = new Error(`dbx-mcp exited (code=${code}, signal=${signal})`);
+      for (const p of this.pending.values()) p.reject(err);
+      this.pending.clear();
+      this.child = null;
+      this.initialized = null;
+    });
+    child.on("error", (err: Error) => {
+      if (!isCurrent()) return;
+      for (const p of this.pending.values()) p.reject(err);
+      this.pending.clear();
+      this.child = null;
+      this.initialized = null;
+    });
+
+    return new Promise<void>((resolve, reject) => {
+      this.request(
+        0,
+        "initialize",
+        {
+          protocolVersion: "2024-11-05",
+          capabilities: {},
+          clientInfo: { name: "dbx-pro-plugin", version: "0.1.1" },
+        },
+        this.handshakeTimeoutMs,
+      )
+        .then(() => {
+          if (!isCurrent()) {
+            reject(new Error("dbx-mcp client disposed during handshake"));
+            return;
+          }
+          this.sendNotification("notifications/initialized", {});
+          resolve();
+        })
+        .catch((err: Error) => reject(err));
+    });
+  }
+
+  request(id: number, method: string, params: unknown, timeoutMs: number): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`dbx-mcp request "${method}" timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+      this.pending.set(id, {
+        resolve: (result: unknown) => {
+          clearTimeout(timer);
+          resolve(result);
+        },
+        reject: (err: Error) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      });
+      this.sendMessage({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+
+  sendNotification(method: string, params: unknown): void {
+    this.sendMessage({ jsonrpc: "2.0", method, params });
+  }
+
+  /** 列出 dbx-mcp 暴露的所有 MCP 工具。 */
+  async listTools(timeoutMs = 30_000): Promise<unknown[]> {
+    await this.ensureInitialized();
+    const result = (await this.request(this.nextId++, "tools/list", {}, timeoutMs)) as { tools?: unknown[] } | undefined;
+    return result?.tools ?? [];
+  }
+
+  sendMessage(message: unknown): void {
+    if (!this.child) throw new Error("dbx-mcp client not started");
+    this.child.stdin.write(`${JSON.stringify(message)}\n`);
+  }
+
+  onData(chunk: string | Buffer): void {
+    const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    this.buffer += text;
+    let idx = this.buffer.indexOf("\n");
+    while (idx !== -1) {
+      const line = this.buffer.slice(0, idx).trim();
+      this.buffer = this.buffer.slice(idx + 1);
+      if (!line) continue;
+      this.handleLine(line);
+      idx = this.buffer.indexOf("\n");
+    }
+  }
+
+  handleLine(line: string): void {
+    let message: any;
+    try {
+      message = JSON.parse(line);
+    } catch {
+      return; // 非 JSON 行（日志）忽略
+    }
+    if (typeof message.id !== "number") return; // 服务端主动通知忽略
+    const p = this.pending.get(message.id);
+    if (!p) return;
+    this.pending.delete(message.id);
+    if (message.error) {
+      const msg =
+        typeof message.error === "object" && message.error !== null && "message" in message.error
+          ? String(message.error.message)
+          : "dbx-mcp request error";
+      p.reject(new Error(msg));
+    } else {
+      p.resolve(message.result);
+    }
+  }
+}
+
+// 单例（每个 service 进程一个 dbx-mcp 子进程）
+let client = null;
+// 记住最近一次构造参数：dispose 后重建（如旧库重置）仍带数据目录与密钥。
+let lastOptions = null;
+
+export function getDbxMcpClient(options) {
+  if (options) lastOptions = options;
+  if (!client) client = new DbxMcpClient(options ?? lastOptions ?? undefined);
+  return client;
+}
+
+export async function disposeDbxMcpClient() {
+  if (client) {
+    await client.dispose();
+    client = null;
+  }
+}
+
+export { DbxMcpClient };

@@ -56,10 +56,6 @@ interface ScreenSettings {
 	carousel: string;    // "3 页 · 间隔 15s"
 }
 
-interface ScreenParam { key: string; val: string; }
-
-// ── 初始节点（不抄设计稿 mock——全部 hash 生成） ──
-
 function hashSeries(seed: string, len = 14): number[] {
 	let h = 2166136261 >>> 0;
 	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -71,31 +67,14 @@ function hashSeries(seed: string, len = 14): number[] {
 	return out;
 }
 
-function makeInitialNodes(pageName: string): ScreenNode[] {
-	return [
-		{ id: "s-title", kind: "title-bar", x: 40, y: 20, w: 1840, h: 72, title: pageName },
-		{ id: "s-kpi1", kind: "kpi-card", x: 40, y: 110, w: 430, h: 120, title: "GMV · 近 14 天" },
-		{ id: "s-kpi2", kind: "kpi-card", x: 490, y: 110, w: 430, h: 120, title: "订单量" },
-		{ id: "s-kpi3", kind: "kpi-card", x: 940, y: 110, w: 430, h: 120, title: "客单价" },
-		{ id: "s-kpi4", kind: "kpi-card", x: 1390, y: 110, w: 490, h: 120, title: "新客占比" },
-		{ id: "s-line", kind: "line-chart", x: 40, y: 250, w: 1100, h: 380, title: "GMV 趋势 · 近 14 天" },
-		{ id: "s-funnel", kind: "funnel", x: 1180, y: 250, w: 340, h: 380, title: "转化漏斗" },
-		{ id: "s-rank", kind: "rank-list", x: 1540, y: 250, w: 380, h: 380, title: "渠道排行 · 前 5" },
-	];
+// ── 大屏模板：持久化到 page.template ──
+
+interface ScreenTemplate {
+	nodes: ScreenNode[];
+	settings: ScreenSettings;
 }
 
-// ── 大屏参数/设置（从 page.name hash 派生，不抄硬编码 mock） ──
-
-function makeParams(): ScreenParam[] {
-	return [
-		{ key: "度量", val: "gmv · sum" },
-		{ key: "单位", val: "万元 · 1 位小数" },
-		{ key: "阈值", val: "低于 60 标黄 · 高于 100 标绿" },
-		{ key: "动效", val: "数字滚动 600 ms" },
-	];
-}
-
-function makeSettings(): ScreenSettings {
+function defaultScreenSettings(): ScreenSettings {
 	return {
 		resolution: "1920 × 1080 · 16:9",
 		background: "深色渐变 · 内置第 2 套",
@@ -104,31 +83,104 @@ function makeSettings(): ScreenSettings {
 	};
 }
 
+const SCREEN_NODE_KINDS = ["title-bar", "kpi-card", "line-chart", "funnel", "rank-list", "carousel"];
+
+function isScreenNode(value: unknown): value is ScreenNode {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+	const node = value as Record<string, unknown>;
+	if (typeof node.id !== "string" || !node.id) return false;
+	if (typeof node.kind !== "string" || !SCREEN_NODE_KINDS.includes(node.kind)) return false;
+	for (const key of ["x", "y", "w", "h"]) {
+		if (typeof node[key] !== "number" || !Number.isFinite(node[key] as number)) return false;
+	}
+	return typeof node.title === "string";
+}
+
+/** 只收认识的大屏设置字段，不把历史残留字段原样带回去 */
+function pickSettings(source: Record<string, unknown>): Partial<ScreenSettings> {
+	const out: Partial<ScreenSettings> = {};
+	for (const key of ["resolution", "background", "autoRefresh", "carousel"] as const) {
+		if (typeof source[key] === "string") out[key] = source[key] as string;
+	}
+	return out;
+}
+
+/**
+ * 解析 page.template。
+ * 只有 { nodes: ScreenNode[] } 算大屏内容；空串、"[]"、看板画布的 { nodes: {...}, links: [...] }、
+ * 解析失败一律当空大屏 —— 以前这里直接铺一套演示节点，新建的大屏一进去全是假的。
+ */
+function parseScreenTemplate(raw: string | null | undefined): ScreenTemplate {
+	const empty = (): ScreenTemplate => ({ nodes: [], settings: defaultScreenSettings() });
+	if (!raw) return empty();
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return empty();
+		const record = parsed as { nodes?: unknown; settings?: unknown };
+		if (!Array.isArray(record.nodes)) return empty();
+		const nodes = record.nodes.filter(isScreenNode).map((n) => ({ ...n, selected: false }));
+		const settings =
+			record.settings && typeof record.settings === "object" && !Array.isArray(record.settings)
+				? { ...defaultScreenSettings(), ...pickSettings(record.settings as Record<string, unknown>) }
+				: defaultScreenSettings();
+		return { nodes, settings };
+	} catch {
+		return empty();
+	}
+}
+
+/** 序列化大屏内容；selected 是临时选中态，不落盘 */
+function serializeScreenTemplate(nodes: ScreenNode[], settings: ScreenSettings): string {
+	return JSON.stringify({
+		nodes: nodes.map((n) => ({ id: n.id, kind: n.kind, x: n.x, y: n.y, w: n.w, h: n.h, title: n.title })),
+		settings,
+	});
+}
+
+/** 新节点序号从已加载内容之后开始，避开 page.template 里已有的 id */
+function nextNodeSeq(nodes: ScreenNode[]): number {
+	let max = 9;
+	for (const n of nodes) {
+		const m = /-(\d+)$/.exec(n.id);
+		if (m) max = Math.max(max, Number(m[1]));
+	}
+	return max + 1;
+}
+
 // ── 组件 ──
 
 export interface BigscreenScreenEditorProps {
 	page: BigscreenPage;
 	onClose: () => void;
-	onSave: () => void;
-	saving: boolean;
-	dirty: boolean;
+	/** 保存成功回调（回传最新 updateCount，父级据此刷新列表） */
+	onSaved?: (updateCount: number) => void;
 }
 
-export function BigscreenScreenEditor({
-	page, onClose, onSave, saving, dirty,
-}: BigscreenScreenEditorProps): JSX.Element {
-	const [nodes, setNodes] = useState<ScreenNode[]>(() => makeInitialNodes(page.name));
+export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScreenEditorProps): JSX.Element {
+	// 初值只认 page.template：新建的大屏就是空画布，不铺演示节点
+	const [initial] = useState<ScreenTemplate>(() => parseScreenTemplate(page.template));
+	const [nodes, setNodes] = useState<ScreenNode[]>(initial.nodes);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [zoom, setZoom] = useState(0.42); // 设计稿默认 42%
 	const zoomRef = useRef(0.42); // 给 event handler 读，避免 useEffect 依赖 zoom
 	const [linkCopied, setLinkCopied] = useState(false);
-	const nodeSeqRef = useRef(10);
+	const nodeSeqRef = useRef(nextNodeSeq(initial.nodes));
 	const canvasWrapRef = useRef<HTMLDivElement>(null);
 	const [canvasOffset, setCanvasOffset] = useState({ tx: 0, ty: 0 }); // translate 补偿
-	const [settings, setSettings] = useState<ScreenSettings>(() => makeSettings());
+	const [settings, setSettings] = useState<ScreenSettings>(initial.settings);
+	// 保存由本组件自己负责：已落盘指纹 + 保存中/未保存/错误
+	const persistedRef = useRef<string>(serializeScreenTemplate(initial.nodes, initial.settings));
+	const [saving, setSaving] = useState(false);
+	const [dirty, setDirty] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
 	// zoom → zoomRef 同步（每次 zoom setState 后同步）
 	useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+
+	// 内容真的变了才算脏：挂载和刚加载完都不该是「未保存」
+	useEffect(() => {
+		setDirty(serializeScreenTemplate(nodes, settings) !== persistedRef.current);
+	}, [nodes, settings]);
 
 	const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
 	const nodeCount = nodes.length;
@@ -268,7 +320,41 @@ export function BigscreenScreenEditor({
 		} catch { /* 后端没跑时静默 */ }
 	}
 
+	// ── 保存：写的就是本画布自己的 { nodes, settings } ──
+	async function handleSave(): Promise<boolean> {
+		if (saving) return false;
+		setSaving(true);
+		setError(null);
+		const template = serializeScreenTemplate(nodes, settings);
+		try {
+			const res = await engineRequest<{ updateCount?: number }>("/drag/page/edit", {
+				id: page.id,
+				name: page.name,
+				type: "0",
+				theme: page.theme,
+				style: page.style,
+				backgroundImage: page.backgroundImage,
+				designType: page.designType,
+				protectionCode: "",
+				template,
+				updateCount: page.updateCount,
+			});
+			persistedRef.current = template;
+			setDirty(false);
+			onSaved?.(res?.updateCount ?? page.updateCount);
+			return true;
+		} catch (e) {
+			setError(e instanceof Error ? e.message : String(e));
+			return false;
+		} finally {
+			setSaving(false);
+		}
+	}
+
 	async function handlePublish() {
+		// 先保存再发布：保存失败就不发
+		const saved = await handleSave();
+		if (!saved) return;
 		try {
 			await engineRequest("/drag/share/publish", { pageId: page.id });
 		} catch { /* 后端没跑时静默 */ }
@@ -288,10 +374,11 @@ export function BigscreenScreenEditor({
 				<Chip tone="accent">大屏 · {SCREEN_W} × {SCREEN_H}</Chip>
 				<Chip>1 页 · {nodeCount} 个节点</Chip>
 				{dirty ? <Chip tone="warning">未保存</Chip> : null}
+				{error ? <Chip tone="danger">保存失败：{error}</Chip> : null}
 				<div className="ml-auto flex shrink-0 items-center gap-2">
 					<Btn size="sm" variant="ghost" icon="icon-[lucide--share-2]" onClick={() => setLinkCopied(true)}>分享</Btn>
 					<Btn size="sm" variant="default" icon="icon-[lucide--play]" onClick={handleRunAll}>预览</Btn>
-					<Btn size="sm" variant="primary" icon="icon-[lucide--upload]" onClick={() => { void onSave(); void handlePublish(); }} disabled={saving}>发布到工作树</Btn>
+					<Btn size="sm" variant="primary" icon="icon-[lucide--upload]" onClick={() => { void handlePublish(); }} disabled={saving}>发布到工作树</Btn>
 				</div>
 			</header>
 
@@ -379,6 +466,22 @@ export function BigscreenScreenEditor({
 								</defs>
 								<rect width="100%" height="100%" fill="url(#screen-grid)" />
 							</svg>
+
+							{/* 空态引导 —— 真·空白大屏，不预铺节点 */}
+							{nodes.length === 0 ? (
+								<div
+									data-testid="screen-empty-guide"
+									className="pointer-events-none absolute inset-0 grid place-items-center"
+								>
+									<div className="flex w-[460px] flex-col items-center gap-2 rounded-card border border-dashed border-border bg-surface-raised px-8 py-7 text-center">
+										<Icon name="icon-[lucide--boxes]" className="size-6 text-faint" />
+										<span className="text-[20px] font-semibold text-surface-foreground">空白大屏</span>
+										<span className="text-[13px] leading-6 text-muted">
+											从左侧「大屏节点」点击任意类型添加，例如「大屏标题」「大屏折线」「大屏指标卡」；保存后这里留下的就是你放的内容。
+										</span>
+									</div>
+								</div>
+							) : null}
 
 							{/* 大屏节点渲染（按 id 排序，后面的盖前面的） */}
 							{nodes.map((n) => (

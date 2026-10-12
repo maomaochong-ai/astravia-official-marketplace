@@ -10,7 +10,7 @@
     "expose": "./plugin"
   },
   "styles": [
-    "dist/assets/style-a35faceb7e.css"
+    "dist/assets/style-2fb80197b4.css"
   ],
   "permissions": [
     "agent.mcp.control",
@@ -50,7 +50,7 @@
               "executable": "server/bin/dbx-mcp-darwin-arm64",
               "artifacts": [
                 {
-                  "sha256": "64ce8408d8883ba3ee34574e2b6a1f0625d092f9f4324bf43599bdcf799a891e",
+                  "sha256": "1f71a2a667412ae01d5d3f6df40f8e785a88d79eb3826022945a646b58fd9ef3",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
@@ -65,7 +65,7 @@
               "executable": "server/bin/dbx-mcp-darwin-x64",
               "artifacts": [
                 {
-                  "sha256": "64ce8408d8883ba3ee34574e2b6a1f0625d092f9f4324bf43599bdcf799a891e",
+                  "sha256": "1f71a2a667412ae01d5d3f6df40f8e785a88d79eb3826022945a646b58fd9ef3",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },
@@ -80,7 +80,7 @@
               "executable": "server/bin/dbx-mcp-win-x64.exe",
               "artifacts": [
                 {
-                  "sha256": "64ce8408d8883ba3ee34574e2b6a1f0625d092f9f4324bf43599bdcf799a891e",
+                  "sha256": "1f71a2a667412ae01d5d3f6df40f8e785a88d79eb3826022945a646b58fd9ef3",
                   "archive": "file",
                   "destination": "server/main.mjs"
                 },

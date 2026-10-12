@@ -31,29 +31,23 @@ export interface Link {
 let LINK_SEQ = 0;
 function nextLinkId(): string { LINK_SEQ++; return `l${LINK_SEQ}`; }
 
-// ── 初始状态（后续 useState 注入） ──
-export const INITIAL_NODES: Record<NodeId, NodePos> = {
-	ds1:   { x: 16,   y: 56,  w: 180, h: 118, tone: TONE.table,  kind: "source-sql" },
-	sql:   { x: 220,  y: 56,  w: 192, h: 164, tone: TONE.result, kind: "source-api" },
-	line:  { x: 436,  y: 40,  w: 216, h: 222, tone: TONE.chart,  kind: "chart-line", selected: true },
-	ds2:   { x: 16,   y: 490, w: 180, h: 118, tone: TONE.table,  kind: "source-table" },
-	donut: { x: 436,  y: 470, w: 216, h: 206, tone: TONE.chart,  kind: "chart-pie" },
-	out:   { x: 700,  y: 300, w: 164, h: 194, tone: TONE.chart,  kind: "output-table" },
-};
-
-export const INITIAL_LINKS: Link[] = [
-	{ id: nextLinkId(), from: "ds1",   fromRow: 0, to: "sql",   toRow: 0, tone: TONE.table },
-	{ id: nextLinkId(), from: "sql",   fromRow: 1, to: "line",  toRow: 0, tone: TONE.result },
-	{ id: nextLinkId(), from: "ds2",   fromRow: 0, to: "donut", toRow: 0, tone: TONE.table },
-	{ id: nextLinkId(), from: "line",  fromRow: 4, to: "out",  toRow: 0, tone: TONE.chart },
-	{ id: nextLinkId(), from: "donut", fromRow: 3, to: "out",  toRow: 1, tone: TONE.chart },
-];
-
 const GROUPS = [
-	{ x: 4, y: 40, w: 204, h: 592, label: "数据源", count: "2", icon: "icon-[lucide--database]" },
-	{ x: 212, y: 40, w: 208, h: 190, label: "SQL 查询", count: "1", icon: "icon-[lucide--scroll-text]" },
-	{ x: 428, y: 24, w: 440, h: 668, label: "图表与产物", count: "3", icon: "icon-[lucide--chart-line]" },
+	{ x: 4, y: 40, w: 204, h: 592, label: "数据源", icon: "icon-[lucide--database]" },
+	{ x: 212, y: 40, w: 208, h: 190, label: "SQL 查询", icon: "icon-[lucide--scroll-text]" },
+	{ x: 428, y: 24, w: 440, h: 668, label: "图表与产物", icon: "icon-[lucide--chart-line]" },
 ];
+
+/** 分组框内的节点数 —— 按节点真实坐标推导，不写死演示计数。 */
+function countNodesInGroup(
+	g: { x: number; y: number; w: number; h: number },
+	nodes: Record<NodeId, NodePos>,
+): number {
+	let count = 0;
+	for (const p of Object.values(nodes)) {
+		if (p.x >= g.x && p.x < g.x + g.w && p.y >= g.y && p.y < g.y + g.h) count++;
+	}
+	return count;
+}
 
 function linkPath(l: Link, nodes: Record<NodeId, NodePos>): string {
 	const a = nodes[l.from];
@@ -366,20 +360,22 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 			backgroundSize: "16px 16px",
 			color: "var(--color-border)",
 		}} />
-			{/* 分组区域 */}
-			{GROUPS.map((g) => (
-				<div
-					key={g.label}
-					className="absolute rounded-[8px] border border-border bg-surface/25"
-					style={{ left: g.x, top: g.y, width: g.w, height: g.h }}
-				>
-					<span className="absolute -top-[9px] left-2 flex h-[18px] items-center gap-1.5 rounded-control border border-border bg-background px-2">
-						<span className={g.icon + " size-3 text-faint"} />
-						<span className="text-[10px] text-muted">{g.label}</span>
-						<span className="font-mono text-[10px] text-faint">{g.count}</span>
-					</span>
-				</div>
-			))}
+			{/* 分组区域 —— 只在画布上真有节点时出现，避免空画布上摆一堆假分组 */}
+			{Object.keys(nodes).length > 0
+				? GROUPS.map((g) => (
+					<div
+						key={g.label}
+						className="absolute rounded-[8px] border border-border bg-surface/25"
+						style={{ left: g.x, top: g.y, width: g.w, height: g.h }}
+					>
+						<span className="absolute -top-[9px] left-2 flex h-[18px] items-center gap-1.5 rounded-control border border-border bg-background px-2">
+							<span className={g.icon + " size-3 text-faint"} />
+							<span className="text-[10px] text-muted">{g.label}</span>
+							<span className="font-mono text-[10px] text-faint">{countNodesInGroup(g, nodes)}</span>
+						</span>
+					</div>
+				))
+				: null}
 
 			{/* SVG 连线（hover 高亮 + 中点 × 删除按钮） */}
 			<svg className="absolute inset-0 h-full w-full overflow-visible">
