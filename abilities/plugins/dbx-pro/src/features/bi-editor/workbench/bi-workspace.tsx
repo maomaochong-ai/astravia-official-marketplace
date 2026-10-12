@@ -16,8 +16,8 @@
 import { useCallback, useEffect, useState, type JSX } from "react";
 import { useBigscreenPages, type BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { BigscreenEditor } from "../canvas/canvas-editor";
-import { getUi } from "../../../runtime-contract";
-import { engineRequest } from "../../../shared/services/engine-client";
+import { getUi } from "../../../../runtime-contract";
+import { engineRequest } from "../../../../shared/services/engine-client";
 import { Icon } from "../../shared/components/ui/icon";
 import { Chip } from "../../shared/components/ui/chip";
 import { IconButton } from "../../shared/components/ui/icon-button";

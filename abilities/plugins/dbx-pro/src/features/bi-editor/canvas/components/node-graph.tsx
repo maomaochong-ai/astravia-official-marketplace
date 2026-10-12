@@ -11,7 +11,7 @@ import { AreaChart, Donut, SERIES } from "../../../shared/components/charts";
 import { Chip } from "../../../shared/components/ui/chip";
 import { AiNodePanel } from "./ai-node-panel";
 import { AddNodeMenu } from "./add-node-menu";
-import { engineRequest } from "../../../../shared/services/engine-client";
+import { engineRequest } from "../../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
 
 // ── 类型 ──
