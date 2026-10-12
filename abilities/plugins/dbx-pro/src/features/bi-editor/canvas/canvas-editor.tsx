@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX } from "react";
-import { engineRequest } from "../../../../shared/services/engine-client";
+import { engineRequest } from "../../../../../../shared/services/engine-client";
 import { getUi } from "../../runtime-contract";
 import type { BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { useCanvasExecution } from "./hooks/use-canvas-execution";

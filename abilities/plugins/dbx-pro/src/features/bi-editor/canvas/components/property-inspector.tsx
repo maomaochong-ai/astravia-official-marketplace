@@ -13,7 +13,7 @@ import type { BigscreenPage } from "../hooks/use-bigscreen-pages";
 import type { NodePos, Link } from "./node-graph";
 import { NODE_SCHEMA } from "./node-schema";
 import { Icon } from "../../shar../../shared/component../../shar../../shared/component../../shar../../shared/component../../shar../../shared/components/ui/icon";
-import type { EngineConnectionSummary } from "../../../../../shared/services/engine-client";
+import type { EngineConnectionSummary } from "../../../../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
 
 export interface SelectedNodeInfo {
