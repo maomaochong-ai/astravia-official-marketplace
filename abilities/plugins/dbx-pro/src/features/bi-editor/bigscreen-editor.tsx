@@ -25,6 +25,7 @@ import { PropertyInspector, type SelectedNodeInfo } from "./components/property-
 import { EditorStatusBar } from "./components/editor-status-bar";
 import { RunPanel, NodePreviewCard, type RunNode } from "./components/run-overlay";
 import { AiGenerateDialog, ParamSuggest, type ParamRow } from "./components/ai-node-panel";
+import { BigscreenScreenEditor } from "./bigscreen-screen-editor";
 
 /** template JSON schema（持久化）。 */
 interface CanvasTemplate {
@@ -220,6 +221,19 @@ export function BigscreenEditor({ pageId, onClose }: { pageId: string; onClose: 
 			<div className="flex h-full items-center justify-center bg-surface text-muted">
 				加载中 {loading ? "…" : "(失败)"}
 			</div>
+		);
+	}
+
+	// 大屏模式 → 独立编辑器（frames/bigscreen.tsx 对齐）
+	if (page.style === "bigScreen") {
+		return (
+			<BigscreenScreenEditor
+				page={page}
+				onClose={onClose}
+				onSave={handleSave}
+				saving={saving}
+				dirty={dirty}
+			/>
 		);
 	}
 
