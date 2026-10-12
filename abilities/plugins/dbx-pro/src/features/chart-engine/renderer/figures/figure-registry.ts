@@ -10,7 +10,7 @@
  * 导出产物，只能由本仓库的代码生成（ADR-0009 §9 M2）。
  */
 
-import type { ChartItem } from "../../../domain/chart-contract";
+import type { ChartItem } from "../../../../domain/chart-contract";
 import { renderBoxplotFigure } from "./boxplot-figure";
 import type { FigureContext, FigureRenderer } from "./figure-context";
 import { renderFunnelFigure } from "./funnel-figure";

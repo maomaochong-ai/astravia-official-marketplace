@@ -99836,6 +99836,57 @@ function dragRoutes(ctx) {
       const list2 = readTemplates(ctx).filter((t) => t.id !== query?.id);
       writeTemplates(ctx, list2);
       return pageResp(true);
+    }],
+    // ════════════════════════════════════════════════════════════════════
+    // Phase D · AI 生成节点参数（engine mock，宿主端点未暴露时降级此）
+    // ════════════════════════════════════════════════════════════════════
+    ["/drag/ai/generate", "POST", true, async ({ body }) => {
+      const prompt = body?.prompt ?? "";
+      const seed = prompt || `ai-${Date.now()}`;
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < seed.length; i++) {
+        h ^= seed.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      const pick2 = (arr) => arr[h % arr.length];
+      h = Math.imul(h, 16777619);
+      h ^= h >>> 16;
+      const chartHints = [
+        { kw: ["\u6298\u7EBF", "\u8D8B\u52BF", "\u589E\u957F"], kind: "line", label: "\u6298\u7EBF\u56FE \xB7 \u9762\u79EF" },
+        { kw: ["\u997C", "\u73AF\u5F62", "\u5360\u6BD4"], kind: "donut", label: "\u73AF\u5F62\u56FE" },
+        { kw: ["\u67F1", "\u6761\u5F62", "\u5BF9\u6BD4"], kind: "bar", label: "\u67F1\u72B6\u56FE" },
+        { kw: ["\u6F0F\u6597", "\u8F6C\u5316"], kind: "funnel", label: "\u6F0F\u6597\u56FE" },
+        { kw: ["KPI", "\u5927\u6570\u5B57", "\u6307\u6807"], kind: "kpi", label: "KPI \u5927\u6570\u5B57" },
+        { kw: ["\u7BB1\u7EBF", "\u5206\u5E03"], kind: "boxplot", label: "\u7BB1\u7EBF\u56FE" }
+      ];
+      let guessed = chartHints.find((c) => c.kw.some((k) => prompt.includes(k)));
+      if (!guessed) guessed = pick2(chartHints);
+      const grains = ["\u6309\u5929", "\u6309\u5468\uFF08ISO \u5468\uFF09", "\u6309\u6708", "\u6309\u5B63\u5EA6"];
+      const grain = pick2(grains);
+      h = Math.imul(h, 16777619);
+      h ^= h >>> 16;
+      const comparisons = ["\u65E0\u5BF9\u6BD4", "\u53BB\u5E74\u540C\u671F \xB7 \u865A\u7EBF", "\u4E0A\u671F\u73AF\u6BD4", "\u5747\u503C\u53C2\u8003\u7EBF"];
+      const cmp = pick2(comparisons);
+      h = Math.imul(h, 16777619);
+      h ^= h >>> 16;
+      const palettes = ["\u79D1\u6280\uFF08\u6CBF\u7528\uFF09", "\u5546\u52A1\u84DD", "\u6696\u8272\u8C03", "\u6DF1\u8272\u6A21\u5F0F"];
+      const pal = pick2(palettes);
+      const rows = [
+        { field: "\u56FE\u8868\u7C7B\u578B", value: guessed.label, from: "ai" },
+        { field: "\u805A\u5408\u7C92\u5EA6", value: grain, from: "ai" },
+        { field: "\u5BF9\u6BD4", value: cmp, from: "ai" },
+        { field: "\u8C03\u8272\u677F", value: pal, from: "user" },
+        { field: "\u6570\u636E\u6E90", value: "\u63D2\u4EF6\u5DE5\u4F5C\u53F0 \xB7 MySQL", from: "dataset" }
+      ];
+      const slug = prompt.replace(/[^\w\u4e00-\u9fa5]/g, "_").replace(/_+/g, "_").slice(0, 32) || `ai_${(h >>> 0).toString(16).slice(0, 6)}`;
+      return pageResp({
+        prompt,
+        rows,
+        resultName: slug.startsWith("_") ? `ai${slug}` : slug,
+        paramCount: rows.length,
+        pendingCount: 1,
+        kindHint: guessed.kind
+      });
     }]
   ];
 }

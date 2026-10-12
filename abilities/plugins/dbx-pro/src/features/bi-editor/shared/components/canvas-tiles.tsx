@@ -9,20 +9,14 @@ import { type JSX, type ReactNode } from "react";
 import { AreaChart, Donut, Funnel, Gauge, HBars, Sparkline, seriesColor, ticks, yPercent } from "./charts";
 import { Chip } from "./ui/chip";
 import { Icon } from "./ui/icon";
+import { fnv1aArray } from "../../../../shared/utils/hash";
 
 /**
  * 设计稿 CanvasTiles.tsx 里的 GMV_14D / GMV_PREV / METRICS / CHANNELS / CITIES / FUNNEL
  * 都是硬编码 mock 数据。用户明确禁止抄设计稿数值 — 全部用 FNV-1a seed 哈希生成稳定伪随机序列。
  */
 function hashValues(seed: string, len: number, min: number, max: number): number[] {
-	let h = 2166136261 >>> 0;
-	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-	const out: number[] = [];
-	for (let i = 0; i < len; i++) {
-		h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16);
-		out.push(min + (h % (max - min)));
-	}
-	return out;
+	return fnv1aArray(seed, len, min, max);
 }
 
 const GMV_14D = hashValues("canvas-gmv-14d", 14, 30, 88);

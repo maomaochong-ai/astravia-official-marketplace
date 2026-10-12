@@ -70,7 +70,7 @@ const GROUPS: MenuGroup[] = [
 
 const MENU_W = 248;   // 主菜单宽度（与设计稿一致）
 const VARIANT_W = 176; // 变体子菜单宽度
-const MENU_HEADER_H = 64; // 标题栏 h-8(32) + 搜索栏 h-8(32) — 菜单主体从 y+64 起
+const MENU_HEADER_H = 32; // 标题栏 h-8(32) — 菜单主体从 y+32 起
 const ITEM_H = 28;     // 每个菜单项高 h-7 = 28px
 const GROUP_HEADER_H = 20; // 分组标题高
 
@@ -109,13 +109,6 @@ export function AddNodeMenu({ x, y, onPick, onClose }: Props): JSX.Element {
 					<Icon name="icon-[lucide--square-plus]" className="size-3.5 shrink-0 text-accent" />
 					<span className="text-[11px] font-medium text-surface-foreground">添加节点</span>
 					<span className="ml-auto font-mono text-[10px] tabular-nums text-faint">X {Math.round(x)} · Y {Math.round(y)}</span>
-				</div>
-
-				{/* 搜索栏 */}
-				<div className="flex h-8 shrink-0 items-center gap-2 border-b border-border px-2.5">
-					<Icon name="icon-[lucide--search]" className="size-3.5 shrink-0 text-faint" />
-					<span className="text-[11px] text-faint">搜索节点类型…</span>
-					<span className="ml-auto rounded-[3px] border border-border px-1 font-mono text-[9px] text-faint">/</span>
 				</div>
 
 				{/* 菜单主体 */}

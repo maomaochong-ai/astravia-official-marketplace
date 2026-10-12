@@ -159,11 +159,11 @@ export function AgentWorkspace({ pageName = "未命名看板", onBack, onInsert 
 	]);
 	const [input, setInput] = useState("");
 
-	// 草稿画布状态
-	const [draftNodes] = useState<DraftNodePos[]>(() => makeInitialDraftNodes());
-	const [draftLinks] = useState<DraftLink[]>(() => INITIAL_DRAFT_LINKS);
-	const [pendingCount] = useState(3);
-	const [insertedCount] = useState(4);
+	// 草稿画布状态（只读，不更新）
+	const draftNodes = makeInitialDraftNodes();
+	const draftLinks = INITIAL_DRAFT_LINKS;
+	const pendingCount = 3;
+	const insertedCount = 4;
 	const [zoom, setZoom] = useState(1);
 
 	// 会话 ID（不抄设计稿硬编码）

@@ -12,7 +12,7 @@
  * Preview 图表：从 template 解析第一个 chart 节点 kind，用确定性 hash 数据生成缩略图。
  */
 
-import { type JSX } from "react";
+import { useState, type JSX } from "react";
 import { Icon } from "../shared/components/ui/icon";
 import { Chip } from "../shared/components/ui/chip";
 import { IconButton } from "../shared/components/ui/icon-button";
@@ -86,14 +86,17 @@ function PreviewChart({ kind, seed }: { kind?: string; seed: string }): JSX.Elem
 	return <AreaChart values={v} className="h-full w-full" stroke="currentColor" />;
 }
 
-export function BiWorkbench({ onOpenBoard, onCreateNew }: {
+export function BiWorkbench({ onOpenBoard, onCreateNew, onOpenDatasource, onOpenWorktree }: {
 	onOpenBoard?: (pageId: string) => void;
 	onCreateNew?: () => void;
+	onOpenDatasource?: () => void;
+	onOpenWorktree?: () => void;
 }): JSX.Element {
 	const { pages } = useBigscreenPages();
 	const { runlogs, loading: runsLoading } = useRunlogs({ limit: 4 });
 	const { sharelinks } = useSharelinks();
 	const { dirty, publishedCount, updateCount, publish } = useWorktreeStatus();
+	const [activeNav, setActiveNav] = useState("boards");
 
 	// 从 pages 数组派生看板卡片
 	const boards: BoardCardData[] = pages.map((p) => {
@@ -139,47 +142,50 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 	return (
 		<div className="flex h-full w-full flex-col overflow-hidden bg-background font-sans text-[14px] text-surface-foreground">
 			{/* 顶栏 */}
-			<header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-raised px-5">
+			<header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-raised px-3 sm:px-5">
 				<div className="flex shrink-0 items-center gap-2">
 					<Icon name="icon-[lucide--database]" className="size-4 text-muted" />
-					<span className="text-[13px] text-muted">数据资产</span>
-					<Icon name="icon-[lucide--chevron-right]" className="size-3.5 text-faint" />
+					<span className="hidden sm:inline text-[13px] text-muted">数据资产</span>
+					<Icon name="icon-[lucide--chevron-right]" className="hidden sm:inline size-3.5 text-faint" />
 					<span className="text-[13px] font-semibold text-surface-foreground">BI 工作台</span>
 					<Chip tone="accent">本地工作树</Chip>
 				</div>
-				<div className="flex h-8 w-72 shrink-0 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
+				<div className="hidden md:flex h-8 w-72 shrink-0 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
 					<Icon name="icon-[lucide--search]" className="size-3.5 shrink-0 text-faint" />
 					<span className="text-[12px] text-faint">搜索看板、大屏、数据集</span>
 					<span className="ml-auto shrink-0 font-mono text-[10px] text-faint">⌘K</span>
 				</div>
 				<div className="ml-auto flex shrink-0 items-center gap-1">
-					<button type="button" className="flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 text-[11px] text-muted hover:border-border hover:text-surface-foreground">
+					<button type="button" onClick={onOpenDatasource} className="hidden lg:flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 text-[11px] text-muted hover:border-border hover:text-surface-foreground">
 						<Icon name="icon-[lucide--table-2]" className="size-3.5" />数据集
 					</button>
-					<button type="button" className="flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 text-[11px] text-muted hover:border-border hover:text-surface-foreground">
+					<button type="button" onClick={onOpenWorktree} className="hidden lg:flex h-7 items-center gap-1.5 rounded-control border border-transparent px-2 text-[11px] text-muted hover:border-border hover:text-surface-foreground">
 						<Icon name="icon-[lucide--folder-tree]" className="size-3.5" />工作树
 					</button>
-					<span className="h-4 w-px shrink-0 bg-border" />
+					<span className="hidden lg:block h-4 w-px shrink-0 bg-border" />
 					<IconButton size="sm" icon="icon-[lucide--clock-3]" title="最近打开" />
-					<div className="ml-1 grid size-7 shrink-0 place-items-center rounded-full border border-border bg-surface text-[11px] text-muted">
-						诸
-					</div>
+					{/* 用户头像 - 当前阶段不显示 */}
 				</div>
 			</header>
 
 			<div className="flex min-h-0 flex-1">
 				{/* 左栏 — 资产导航 */}
-				<aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface-raised px-2 py-3">
+				<aside className="hidden md:flex w-52 shrink-0 flex-col border-r border-border bg-surface-raised px-2 py-3">
 					<div className="flex flex-col gap-0.5">
-						{NAV.map((n, i) => {
-							const on = i === 0; // 默认选中"我的看板"
+						{NAV.map((n) => {
+							const on = activeNav === n.key;
 							const count = navCounts[n.key];
 							return (
-								<div key={n.label} className={`flex h-8 items-center gap-2 rounded-control px-2 ${on ? "bg-accent-soft" : ""}`}>
+								<button
+									key={n.label}
+									type="button"
+									onClick={() => setActiveNav(n.key)}
+									className={`flex h-8 items-center gap-2 rounded-control px-2 text-left ${on ? "bg-accent-soft" : "hover:bg-accent-soft/40"}`}
+								>
 									<Icon name={n.icon} className={`size-3.5 shrink-0 ${on ? "text-accent" : "text-muted"}`} />
 									<span className={`text-[12px] ${on ? "font-medium text-accent" : "text-surface-foreground"}`}>{n.label}</span>
 									{count ? <span className="ml-auto font-mono text-[10px] text-faint">{count}</span> : null}
-								</div>
+								</button>
 							);
 						})}
 					</div>
@@ -193,7 +199,7 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 								{navCounts.worktree}
 							</span>
 						</div>
-						<button type="button" className="flex h-6 items-center gap-1.5 rounded-control px-2 text-[10px] text-muted hover:text-surface-foreground">
+						<button type="button" onClick={onOpenDatasource} className="flex h-6 items-center gap-1.5 rounded-control px-2 text-[10px] text-muted hover:text-surface-foreground">
 							<Icon name="icon-[lucide--settings]" className="size-3" />
 							管理数据源
 						</button>
@@ -201,12 +207,12 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 				</aside>
 
 				{/* 中间 — 看板卡片 + 最近运行 */}
-				<main className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-6">
+				<main className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
 					<div className="flex h-8 shrink-0 items-center gap-3">
 						<span className="text-[15px] font-semibold text-surface-foreground">我的看板</span>
 						<Chip>{pages.length} 个</Chip>
 						<div className="ml-auto flex shrink-0 items-center gap-2">
-							<div className="flex h-7 items-center gap-1.5 rounded-control border border-border bg-surface px-2 text-[11px] text-muted">
+							<div className="hidden sm:flex h-7 items-center gap-1.5 rounded-control border border-border bg-surface px-2 text-[11px] text-muted">
 								<Icon name="icon-[lucide--clock-3]" className="size-3.5 shrink-0" />
 								最近更新
 								<Icon name="icon-[lucide--chevron-down]" className="size-3 text-faint" />
@@ -218,10 +224,10 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 						</div>
 					</div>
 
-					{/* 看板卡片网格 — 对齐设计稿：112px 高 Preview + 底部信息 */}
-					<div className="grid shrink-0 grid-cols-3 gap-4">
+					{/* 看板卡片网格 — 响应式列数 */}
+					<div className="grid shrink-0 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 						{boards.length === 0 ? (
-							<div className="col-span-3 flex h-[180px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border text-[11px] text-faint">
+							<div className="col-span-full flex h-[180px] flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border text-[11px] text-faint">
 								<Icon name="icon-[lucide--layout-dashboard]" className="size-6 text-muted" />
 								还没有看板 —— 点右上角「新建看板」开始
 							</div>
@@ -288,23 +294,24 @@ export function BiWorkbench({ onOpenBoard, onCreateNew }: {
 					</div>
 				</main>
 
-				{/* 右栏 — 从哪开始 + 产物链接 + 发布 */}
-				<aside className="flex w-72 shrink-0 flex-col gap-4 overflow-hidden border-l border-border bg-surface-raised p-4">
+				{/* 右栏 — 从哪开始 + 产物链接 + 发布 - 在小屏幕上隐藏 */}
+				<aside className="hidden xl:flex w-72 shrink-0 flex-col gap-4 overflow-hidden border-l border-border bg-surface-raised p-4">
 					<div className="flex flex-col gap-2">
 						<span className="text-[11px] font-medium text-surface-foreground">从哪开始</span>
 						{[
-							{ icon: "icon-[lucide--table-2]", title: "从数据集新建", note: "选一张表，勾字段，直接出图" },
-							{ icon: "icon-[lucide--wand-sparkles]", title: "让 AI 生成", note: "说一句要什么，它去拼节点" },
-							{ icon: "icon-[lucide--scroll-text]", title: "粘一条 SQL", note: "已有 SQL 的话，贴进来就是数据集" },
+							{ icon: "icon-[lucide--table-2]", title: "从数据集新建", note: "选一张表，勾字段，直接出图", onClick: onCreateNew },
+							{ icon: "icon-[lucide--wand-sparkles]", title: "让 AI 生成", note: "说一句要什么，它去拼节点", onClick: onCreateNew },
+							{ icon: "icon-[lucide--scroll-text]", title: "粘一条 SQL", note: "已有 SQL 的话，贴进来就是数据集", onClick: onCreateNew },
 						].map((s) => (
-							<div key={s.title} className="flex items-center gap-2.5 rounded-card border border-border bg-surface px-3 py-2.5">
+							<button key={s.title} type="button" onClick={s.onClick}
+								className="flex items-center gap-2.5 rounded-card border border-border bg-surface px-3 py-2.5 text-left hover:border-border-strong">
 								<Icon name={s.icon} className="size-4 shrink-0 text-accent" />
 								<div className="flex min-w-0 flex-col">
 									<span className="text-[12px] text-surface-foreground">{s.title}</span>
 									<span className="truncate text-[10px] text-faint">{s.note}</span>
 								</div>
 								<Icon name="icon-[lucide--chevron-right]" className="ml-auto size-3.5 shrink-0 text-faint" />
-							</div>
+							</button>
 						))}
 					</div>
 

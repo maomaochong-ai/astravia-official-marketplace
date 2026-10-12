@@ -14,7 +14,7 @@
  * 离群点（outliers）不画 —— 五数概括里没有它们，见 ADR-0009 §9 M2。
  */
 
-import type { ChartItem } from "../../../domain/chart-contract";
+import type { ChartItem } from "../../../../domain/chart-contract";
 import type { FigureContext } from "./figure-context";
 import { seriesColor, withAlpha } from "./figure-palette";
 import { readFigureLabels, readFirstSeriesEntries } from "./figure-series";

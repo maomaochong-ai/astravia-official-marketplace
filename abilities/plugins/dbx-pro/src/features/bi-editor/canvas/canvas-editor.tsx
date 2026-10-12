@@ -19,15 +19,17 @@ import { engineRequest } from "../../../shared/services/engine-client";
 import { getUi } from "../../../runtime-contract";
 import type { BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { useCanvasExecution } from "./hooks/use-canvas-execution";
+import { useCanvasHistory } from "./hooks/use-canvas-history";
 import { BigscreenToolbar } from "./components/editor-toolbar";
 import { NodeLibrary } from "./components/node-library";
-import { CanvasStrip } from "./components/canvas-strip";
-import { NodeGraph, type Link, type NodePos } from "./components/node-graph";
+import { CanvasStrip, type GridStep } from "./components/canvas-strip";
+import { NodeGraph, type Link, type NodeGraphApi, type NodePos } from "./components/node-graph";
 import { PropertyInspector, type SelectedNodeInfo } from "./components/property-inspector";
-import { EditorStatusBar } from "./components/editor-status-bar";
-import { RunPanel, NodePreviewCard, type RunNode } from "./components/run-overlay";
-import { AiGenerateDialog, ParamSuggest, type ParamRow } from "./components/ai-node-panel";
+import { EditorStatusBar, type RunSummary } from "./components/editor-status-bar";
+import { RunPanel, type RunNode } from "./components/run-overlay";
+import { AiGenerateDialog, type ParamRow } from "./components/ai-node-panel";
 import { BigscreenScreenEditor } from "./screen-editor";
+import { DEFAULT_PALETTE_ID, paletteById, paletteStyle } from "../shared/canvas-palettes";
 
 /** template JSON schema（持久化）。 */
 interface CanvasTemplate {
@@ -75,7 +77,13 @@ function serializeCanvas(nodes: Record<string, NodePos>, links: Link[]): string 
 	return JSON.stringify({ nodes: clean, links });
 }
 
-export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; onClose: () => void; onSaved?: () => void }): JSX.Element {
+export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
+	pageId: string;
+	onClose: () => void;
+	onSaved?: () => void;
+	/** 可选：首次加载时如果 page.template 为空，用这个 preset 代替空画布（三条入口场景）。 */
+	initialPreset?: { nodes: Record<string, NodePos>; links?: Link[] };
+}): JSX.Element {
 	const [page, setPage] = useState<BigscreenPage | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [dirty, setDirty] = useState(false);
@@ -85,8 +93,33 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
 	const [rightCollapsed, setRightCollapsed] = useState(false);
 
+	// ── 侧边栏可拖拽 resize ──
+	const [leftWidth, setLeftWidth] = useState(240);
+	const [rightWidth, setRightWidth] = useState(280);
+	const resizingRef = useRef<{ side: "left" | "right"; startX: number; startW: number } | null>(null);
+
+	useEffect(() => {
+		function onMove(e: PointerEvent) {
+			const r = resizingRef.current;
+			if (!r) return;
+			const delta = e.clientX - r.startX;
+			if (r.side === "left") {
+				setLeftWidth(Math.max(160, Math.min(400, r.startW + delta)));
+			} else {
+				setRightWidth(Math.max(220, Math.min(480, r.startW - delta)));
+			}
+		}
+		function onUp() { resizingRef.current = null; document.body.style.cursor = ""; }
+		window.addEventListener("pointermove", onMove);
+		window.addEventListener("pointerup", onUp);
+		return () => {
+			window.removeEventListener("pointermove", onMove);
+			window.removeEventListener("pointerup", onUp);
+		};
+	}, []);
+
 	// 画布执行引擎
-	const { nodeResults, connections, running: execRunning, runAll, getUpstreamData, refreshConnections, extractSeries } = useCanvasExecution();
+	const { nodeResults, connections, running: execRunning, runAll, getUpstreamData, refreshConnections } = useCanvasExecution();
 
 	// 加载连接列表
 	useEffect(() => { refreshConnections(); }, [refreshConnections]);
@@ -97,16 +130,71 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 	// 「已保存内容」指纹；挂载和刚加载完都不该是脏的
 	const baselineRef = useRef<string>(serializeCanvas({}, []));
 
+	// ── 画布视图状态（顶栏工具簇与画布头共享） ──
+	const [paletteId, setPaletteId] = useState<string>(DEFAULT_PALETTE_ID);
+	const [gridStep, setGridStep] = useState<GridStep>(8);
+	const [guidesOn, setGuidesOn] = useState(true);
+	const [canvasScale, setCanvasScale] = useState(1);
+	const graphApiRef = useRef<NodeGraphApi | null>(null);
+
+	// ── 运行汇总（底栏状态栏用） ──
+	const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
+	// 最近一次运行时的画布指纹；与当前指纹不同即表示结果已过期
+	const [runFingerprint, setRunFingerprint] = useState<string | null>(null);
+
+	// 画布内容的稳定指纹：既做「有没有被改过」的判断，也做撤销历史的去重键
+	const fingerprint = serializeCanvas(nodes, links);
+	const runStale = runFingerprint !== null && runFingerprint !== fingerprint;
+	const palette = paletteById(paletteId);
+
+	// 撤销/重做：快照栈以「空闲提交」为单位，一次拖拽只落一个历史点
+	const {
+		canUndo,
+		canRedo,
+		undo: undoCanvas,
+		redo: redoCanvas,
+		reset: resetHistory,
+	} = useCanvasHistory({
+		snapshot: { nodes, links } satisfies CanvasTemplate,
+		fingerprint,
+		onApply: (snap: CanvasTemplate) => {
+			setNodes(snap.nodes);
+			setLinks(snap.links);
+		},
+	});
+
+	// 平移也会回抛 viewport：倍率没变就把原值还回去，React 会跳过重渲染
+	const handleViewportChange = useCallback((v: { scale: number; tx: number; ty: number }) => {
+		setCanvasScale((prev) => (prev === v.scale ? prev : v.scale));
+	}, []);
+
 	// ── 运行状态 ──
 	const [runNodes, setRunNodes] = useState<RunNode[]>([]);
 	const [running, setRunning] = useState(false);
 	const [showRunPanel, setShowRunPanel] = useState(false);
-	const [showPreview, setShowPreview] = useState(false);
-	const runTimerRef = useRef<number | null>(null);
 
 	// ── AI 生成节点状态 ──
 	const [showAiDialog, setShowAiDialog] = useState(false);
-	const [aiDialogPos, setAiDialogPos] = useState({ x: 240, y: 120 });
+	const [aiDialogPos] = useState({ x: 240, y: 120 });
+	const [aiResult, setAiResult] = useState<{
+		prompt: string; rows: ParamRow[]; resultName: string; paramCount: number; pendingCount: number; kindHint?: string;
+	} | null>(null);
+	const [aiLoading, setAiLoading] = useState(false);
+
+	/** 调 engine /drag/ai/generate 真实端点（宿主 AI 未暴露时 engine mock） */
+	const fetchAiResult = useCallback(async (prompt: string) => {
+		setAiLoading(true);
+		try {
+			const r = await engineRequest<{
+				prompt: string; rows: ParamRow[]; resultName: string; paramCount: number; pendingCount: number; kindHint?: string;
+			}>("/drag/ai/generate", { prompt, canvasContext: { nodes: Object.keys(nodes).length } }, { method: "POST" });
+			setAiResult(r ?? { prompt, rows: [], resultName: "—", paramCount: 0, pendingCount: 0 });
+		} catch (e) {
+			getUi()?.notify?.({ message: `AI 生成失败: ${(e as Error).message}`, variant: "error" });
+		} finally {
+			setAiLoading(false);
+		}
+	}, [nodes, getUi]);
 
 	// ── 模板库 ──
 	function loadTemplates() {
@@ -115,12 +203,8 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 			.catch(() => { /* 静默 */ });
 	}
 	function saveCurrentAsTemplate() {
-		const name = prompt("模板名称？", `${page?.name ?? "未命名"} 模板`);
-		if (!name) return;
-		const tpl = JSON.stringify({ nodes, links });
-		engineRequest<{ id: string }>("/drag/template/save", { name, template: tpl })
-			.then(() => { loadTemplates(); })
-			.catch((e) => { console.error("保存模板失败", e); });
+		// TODO: 自定义 TemplateSaveDialog 替换原生 prompt（与 bi-workspace 的 AiDialog 对齐）
+		getUi()?.notify?.({ message: "保存模板弹窗待实现", variant: "info" });
 	}
 	function deleteTemplate(id: string) {
 		engineRequest<boolean>(`/drag/template/delete?id=${encodeURIComponent(id)}`, undefined, { method: "DELETE" })
@@ -137,19 +221,28 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 				if (cancelled) return;
 				setPage(p);
 				setActiveTheme((p?.theme as "dark" | "default") ?? "dark");
-				const tpl = parseTemplate(p?.template ?? "");
+				const parsed = parseTemplate(p?.template ?? "");
+				// 空模板 + 有 initialPreset → 用 preset（三条入口场景）
+				const hasAnyNodes = Object.keys(parsed.nodes).length > 0 || parsed.links.length > 0;
+				const tpl = (!hasAnyNodes && initialPreset)
+					? { nodes: initialPreset.nodes, links: initialPreset.links ?? [] }
+					: parsed;
 				baselineRef.current = serializeCanvas(tpl.nodes, tpl.links);
 				setNodes(tpl.nodes);
 				setLinks(tpl.links);
+				// 换页等于换画布：历史基线跟着重置，上一页的运行结果也不再适用
+				resetHistory({ nodes: tpl.nodes, links: tpl.links }, baselineRef.current);
+				setRunSummary(null);
+				setRunFingerprint(null);
 			})
-			.catch((e) => { console.error("加载页面失败", e); })
+			.catch((e) => { getUi()?.notify?.({ message: `加载页面失败: ${(e as Error).message}`, variant: "error" }); })
 			.finally(() => { if (!cancelled) setLoading(false); });
 		return () => { cancelled = true; };
-	}, [pageId]);
+	}, [pageId, initialPreset]);
 
 	useEffect(() => {
-		setDirty(serializeCanvas(nodes, links) !== baselineRef.current);
-	}, [nodes, links]);
+		setDirty(fingerprint !== baselineRef.current);
+	}, [fingerprint]);
 
 	const selectedNodeInfo: SelectedNodeInfo | null = (() => {
 		for (const [id, n] of Object.entries(nodes)) {
@@ -188,7 +281,7 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 			setDirty(false);
 			onSaved?.();
 		} catch (e) {
-			console.error("保存失败", e);
+			getUi()?.notify?.({ message: `保存失败: ${(e as Error).message}`, variant: "error" });
 		} finally {
 			setSaving(false);
 		}
@@ -212,22 +305,25 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 		setRunNodes(initial);
 		setRunning(true);
 		setShowRunPanel(true);
-		setShowPreview(true);
 
 		// 标记所有节点为运行中
 		setRunNodes(initial.map((rn) => ({ ...rn, status: "running" })));
 
 		// 执行全部节点
-		await runAll(nodes, links);
+		const outcome = await runAll(nodes, links);
 
 		// 根据执行结果更新状态
 		setRunNodes(initial.map((rn) => {
-			const result = nodeResults[rn.id];
+			const result = outcome.results[rn.id];
 			if (result?.error) {
 				return { ...rn, status: "error", note: result.error.slice(0, 30) };
 			}
 			if (result) {
 				return { ...rn, status: "done", duration: result.durationMs, note: `${result.rowCount} 行` };
+			}
+			// 停用节点在「运行全部」里被跳过：保持等待态并注明原因，不谎报「无数据」
+			if (nodes[rn.id]?.muted) {
+				return { ...rn, status: "wait", note: "已停用" };
 			}
 			// 非数据源节点：检查是否有上游数据
 			const upstream = getUpstreamData(rn.id, links, nodes);
@@ -238,29 +334,43 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 		}));
 
 		setRunning(false);
-	}, [nodes, links, execRunning, runAll, nodeResults, getUpstreamData]);
+		if (outcome.skippedMuted > 0) {
+			getUi()?.notify?.({ message: `已跳过 ${outcome.skippedMuted} 个停用节点`, variant: "info" });
+		}
+		setRunSummary({
+			at: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+			durationMs: outcome.durationMs,
+			nodeCount: outcome.nodeCount,
+		});
+		setRunFingerprint(fingerprint);
+	}, [nodes, links, execRunning, runAll, getUpstreamData]);
 
-	const handleRunSelected = useCallback(async () => {
-		if (!selectedNodeInfo) return;
-		const sel = selectedNodeInfo;
-		const n = nodes[sel.id];
+	const handleRunNode = useCallback(async (targetId: string) => {
+		const n = nodes[targetId];
+		if (!n || execRunning) return;
 		const initial: RunNode[] = [{
-			id: sel.id,
-			label: (n.values?.title as string) ?? n.kind ?? sel.id,
+			id: targetId,
+			label: (n.values?.title as string) ?? n.kind ?? targetId,
 			status: "running",
 			icon: "icon-[lucide--play]",
 		}];
 		setRunNodes(initial);
 		setRunning(true);
 		setShowRunPanel(true);
-		setShowPreview(true);
 
 		// 执行选中的节点
 		const kind = n.kind;
 		if (kind === "source-sql" || kind === "source-table" || kind === "source-api") {
 			// 数据源节点：只执行这个节点
-			await runAll({ [sel.id]: n }, []);
-			const result = nodeResults[sel.id];
+			// 点名运行单个节点时不看「停用」——用户在节点上明确要求跑它
+			const outcome = await runAll({ [targetId]: { ...n, muted: false } }, []);
+			setRunSummary({
+				at: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+				durationMs: outcome.durationMs,
+				nodeCount: outcome.nodeCount,
+			});
+			setRunFingerprint(fingerprint);
+			const result = outcome.results[targetId];
 			if (result?.error) {
 				setRunNodes([{ ...initial[0], status: "error", note: result.error.slice(0, 30) }]);
 			} else if (result) {
@@ -270,7 +380,7 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 			}
 		} else {
 			// 非数据源节点：从上游获取数据
-			const upstream = getUpstreamData(sel.id, links, nodes);
+			const upstream = getUpstreamData(targetId, links, nodes);
 			if (upstream) {
 				setRunNodes([{ ...initial[0], status: "done", duration: 0, note: `${upstream.rowCount} 行（上游）` }]);
 			} else {
@@ -279,11 +389,7 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 		}
 
 		setRunning(false);
-	}, [selectedNodeInfo, nodes, links, runAll, nodeResults, getUpstreamData]);
-
-	useEffect(() => () => {
-		if (runTimerRef.current) window.clearTimeout(runTimerRef.current);
-	}, []);
+	}, [nodes, links, execRunning, runAll, getUpstreamData]);
 
 	if (loading || !page) {
 		return (
@@ -305,8 +411,11 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 		);
 	}
 
+	// canvas-editor 的 theme 值是 "dark" | "default"，CSS data-dbx-theme 要 "dark" | "light"
+	const dbxTheme = activeTheme === "default" ? "light" : activeTheme;
+
 	return (
-		<div className="flex h-full min-h-0 flex-col bg-surface text-surface-foreground">
+		<div className="dbx-root flex h-full min-h-0 flex-col" data-dbx-theme={dbxTheme} style={paletteStyle(palette)}>
 			{/* 顶栏 Toolbar */}
 			<BigscreenToolbar
 				pageName={page.name}
@@ -319,29 +428,74 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 				onRename={(n: string) => { setPage({ ...page, name: n }); setDirty(true); }}
 				onSaveTemplate={saveCurrentAsTemplate}
 				onRunAll={handleRunAll}
-				onRunSelected={handleRunSelected}
-				onAiGenerate={() => setShowAiDialog((v) => !v)}
+				onRunSelected={() => { if (selectedNodeInfo) void handleRunNode(selectedNodeInfo.id); }}
+				canUndo={canUndo}
+				canRedo={canRedo}
+				onUndo={undoCanvas}
+				onRedo={redoCanvas}
+				guidesOn={guidesOn}
+				onGuidesToggle={() => setGuidesOn((v) => !v)}
+				onArrange={(layout) => graphApiRef.current?.arrange(layout, "all")}
+				onAiGenerate={async () => {
+				// TODO: 让 AiGenerateDialog 承担 prompt 输入（当前只显示结果）
+				setShowAiDialog(true);
+				await fetchAiResult("");
+			}}
 			/>
 
-			{/* 主体三栏 */}
+			{/* 主体三栏（可拖拽 resize）- 响应式布局 */}
 			<div className="flex min-h-0 flex-1">
-				{/* 左栏：节点库 */}
-				<NodeLibrary
-					collapsed={leftCollapsed}
-					onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
-					templates={templates}
-					onDeleteTemplate={deleteTemplate}
-				/>
+				{/* 左栏：节点库（宽度可拖拽，collapsed 时 w-10 折叠态）- 在小屏幕上可隐藏 */}
+				<div style={{ width: leftCollapsed ? 40 : leftWidth }} className="hidden md:block h-full shrink-0 overflow-hidden transition-[width] duration-150">
+					<NodeLibrary
+						collapsed={leftCollapsed}
+						onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
+						templates={templates}
+						onDeleteTemplate={deleteTemplate}
+					/>
+				</div>
 
-				{/* 中栏：CanvasStrip + NodeGraph + 运行浮层 */}
-				<div className="relative flex min-w-0 flex-1 flex-col">
-					<CanvasStrip />
+				{/* 左 resize handle */}
+				{!leftCollapsed ? (
+					<div
+						onPointerDown={(e) => {
+							e.preventDefault();
+							resizingRef.current = { side: "left", startX: e.clientX, startW: leftWidth };
+							document.body.style.cursor = "col-resize";
+						}}
+						className="w-[3px] shrink-0 cursor-col-resize bg-transparent hover:bg-accent/60 active:bg-accent transition-colors"
+						title="拖拽调整节点库宽度"
+					/>
+				) : null}
+
+				{/* 中栏：CanvasStrip + NodeGraph + 运行浮层
+				    flex-1 min-w-0 overflow-x-auto: 极窄窗口下 mid 栏横向滚动而非被挤压到负值 */}
+				<div className="relative flex min-w-0 flex-1 flex-col overflow-x-auto">
+					<CanvasStrip
+						nodeCount={Object.keys(nodes).length}
+						linkCount={links.length}
+						palette={palette}
+						onPaletteChange={setPaletteId}
+						gridStep={gridStep}
+						onGridStepChange={setGridStep}
+						scale={canvasScale}
+						onFitView={() => graphApiRef.current?.fitView("all")}
+						onZoomIn={() => graphApiRef.current?.zoomBy(1)}
+						onZoomOut={() => graphApiRef.current?.zoomBy(-1)}
+						onZoomReset={() => graphApiRef.current?.zoomTo(1)}
+					/>
 					<NodeGraph
 						nodes={nodes}
 						setNodes={setNodes}
 						links={links}
 						setLinks={setLinks}
 						nodeResults={nodeResults}
+						gridStep={gridStep}
+						onGridStepChange={setGridStep}
+						guidesOn={guidesOn}
+						onViewportChange={handleViewportChange}
+						api={graphApiRef}
+						onRunNode={(id) => { void handleRunNode(id); }}
 					/>
 
 					{/* 空态引导 —— 真空白画布，不再插手演示节点 */}
@@ -360,77 +514,106 @@ export function BigscreenEditor({ pageId, onClose, onSaved }: { pageId: string; 
 						</div>
 					) : null}
 
-					{/* 运行浮层（设计稿 frames/run.tsx 的 RunPanel + NodePreviewCard） */}
+					{/* 运行浮层：RunPanel 用 fixed 视口相对定位（右下角），不受 mid 栏 overflow-x-auto 裁剪 */}
 					{showRunPanel && runNodes.length > 0 ? (
 						<RunPanel
 							nodes={runNodes}
 							running={running}
-							x={560}
-							y={420}
 							onRunAll={handleRunAll}
-							onRunSelected={handleRunSelected}
+							onRunSelected={() => { if (selectedNodeInfo) void handleRunNode(selectedNodeInfo.id); }}
+							onClose={() => setShowRunPanel(false)}
 						/>
 					) : null}
 
-					{showPreview && selectedNodeInfo ? (
-						<NodePreviewCard
-							nodeLabel={(nodes[selectedNodeInfo.id]?.values?.title as string) ?? selectedNodeInfo.id}
-							x={selectedNodeInfo.node.x}
-							y={selectedNodeInfo.node.y + selectedNodeInfo.node.h + 12}
-							onCopy={() => {
-								const el = document.querySelector(`[data-node-id="${selectedNodeInfo.id}"]`) as HTMLElement | null;
-								if (!el) return;
-								el.scrollIntoView({ behavior: "smooth", block: "center" });
-							}}
-							onLocate={() => { setShowRunPanel(false); setShowPreview(false); }}
-						/>
-					) : null}
+					{/* 节点预览收敛到右栏 PropertyInspector，不再单独渲染 NodePreviewCard 遮罩节点 */}
 
-					{/* AI 生成节点对话框（设计稿 frames/ai-node.tsx 对齐） */}
+				{/* AI 生成节点对话框 — 真实调 engine /drag/ai/generate */}
 					{showAiDialog ? (
 						<AiGenerateDialog
 							x={aiDialogPos.x}
 							y={aiDialogPos.y}
-							prompt="把当前节点上的折线图按周聚合，补去年同期虚线对比"
-							rows={[
-								{ field: "图表类型", value: "折线图 · 面积", from: "ai" },
-								{ field: "聚合粒度", value: "按周（ISO 周）", from: "ai" },
-								{ field: "对比", value: "去年同期 · 虚线", from: "ai" },
-								{ field: "调色板", value: "科技（沿用）", from: "user" },
-							]}
-							resultName="line_gmv_weekly"
-							paramCount={4}
-							pendingCount={1}
+							prompt={aiResult?.prompt ?? "AI 正在生成…"}
+							rows={aiResult?.rows ?? []}
+							resultName={aiResult?.resultName}
+							paramCount={aiResult?.paramCount}
+							pendingCount={aiResult?.pendingCount}
 							onClose={() => setShowAiDialog(false)}
 							onRegenerate={() => {
-								getUi()?.notify?.({ message: "AI 生成节点功能需要配置后端 AI 服务", variant: "info" });
+								if (aiResult?.prompt) void fetchAiResult(aiResult.prompt);
 							}}
 							onInsert={() => {
+								if (!aiResult) return;
+								// 关掉对话框 → 创建图表节点（用 engine 返回的 kindHint）→ 执行数据源
 								setShowAiDialog(false);
-								getUi()?.notify?.({ message: "AI 生成节点功能需要配置后端 AI 服务", variant: "info" });
+								const hintKind = aiResult.kindHint ? `chart-${aiResult.kindHint}` : null;
+								const chartId = hintKind
+									? Object.keys(nodes).find((k) => nodes[k]?.kind === hintKind)
+									: (Object.keys(nodes) as (keyof typeof nodes & string)[]).find(
+										(k) => (nodes[k as string]?.kind ?? "").startsWith("chart-"),
+									);
+								if (chartId) {
+									setNodes((prev) => {
+										const n = prev[chartId as string];
+										if (!n) return prev;
+										return {
+											...prev,
+											[chartId as string]: {
+												...n,
+												selected: true,
+												values: { ...(n.values ?? {}), title: aiResult.resultName },
+											},
+										};
+									});
+									void handleRunAll();
+									getUi()?.notify?.({ message: `已根据 AI 建议更新 ${aiResult.resultName}`, variant: "success" });
+								} else {
+									getUi()?.notify?.({ message: "画布上没有图表节点，AI 无法写入", variant: "info" });
+								}
 							}}
 						/>
 					) : null}
 				</div>
 
-				{/* 右栏：属性面板 */}
-				<PropertyInspector
-					page={page}
-					theme={activeTheme}
-					onThemeChange={setActiveTheme}
-					selectedNode={selectedNodeInfo}
-					onNodeUpdate={handleNodeUpdate}
-					nodes={nodes}
-					links={links}
-					collapsed={rightCollapsed}
-					onToggleCollapsed={() => setRightCollapsed((v) => !v)}
-					connections={connections}
-					nodeResults={nodeResults}
-				/>
+				{/* 右 resize handle */}
+				{!rightCollapsed ? (
+					<div
+						onPointerDown={(e) => {
+							e.preventDefault();
+							resizingRef.current = { side: "right", startX: e.clientX, startW: rightWidth };
+							document.body.style.cursor = "col-resize";
+						}}
+						className="w-[3px] shrink-0 cursor-col-resize bg-transparent hover:bg-accent/60 active:bg-accent transition-colors"
+						title="拖拽调整属性面板宽度"
+					/>
+				) : null}
+
+				{/* 右栏：属性面板（宽度可拖拽）- 在小屏幕上可隐藏 */}
+				<div style={{ width: rightCollapsed ? 40 : rightWidth }} className="hidden lg:block h-full shrink-0 overflow-hidden transition-[width] duration-150">
+					<PropertyInspector
+						page={page}
+						theme={activeTheme}
+						onThemeChange={setActiveTheme}
+						selectedNode={selectedNodeInfo}
+						onNodeUpdate={handleNodeUpdate}
+						nodes={nodes}
+						links={links}
+						collapsed={rightCollapsed}
+						onToggleCollapsed={() => setRightCollapsed((v) => !v)}
+						connections={connections}
+						nodeResults={nodeResults}
+					/>
+				</div>
 			</div>
 
 			{/* 底栏状态栏 */}
-			<EditorStatusBar dirty={dirty} nodeCount={Object.keys(nodes).length} linkCount={links.length} />
+			<EditorStatusBar
+				dirty={dirty}
+				nodeCount={Object.keys(nodes).length}
+				linkCount={links.length}
+				run={runSummary}
+				running={running}
+				stale={runStale}
+			/>
 		</div>
 	);
 }

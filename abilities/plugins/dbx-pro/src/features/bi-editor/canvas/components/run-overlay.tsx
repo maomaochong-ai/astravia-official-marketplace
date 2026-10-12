@@ -19,10 +19,11 @@ export interface RunNode {
 }
 
 /** 全部运行面板 — 设计稿 RunPanel 对齐 */
-export function RunPanel({ nodes = [], running = true, x, y, onRunAll, onRunSelected }: {
+export function RunPanel({ nodes = [], running = true, x, y, onRunAll, onRunSelected, onClose }: {
 	nodes?: RunNode[]; running?: boolean;
-	x: number; y: number;
+	x?: number; y?: number;
 	onRunAll?: () => void; onRunSelected?: () => void;
+	onClose?: () => void;
 }): JSX.Element {
 	const doneCount = nodes.filter(n => n.status === "done").length;
 	const waitCount = nodes.filter(n => n.status === "wait").length;
@@ -35,8 +36,9 @@ export function RunPanel({ nodes = [], running = true, x, y, onRunAll, onRunSele
 		"text-faint icon-[lucide--clock]";
 
 	return (
-		<div className="absolute z-30 w-[296px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]"
-			style={{ left: x, top: y }}
+		// 视口相对 fixed 定位，避免被 canvas mid 栏的 overflow-x-auto 裁剪
+		<div className="fixed z-50 w-[296px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]"
+			style={{ right: 16, bottom: 16 }}
 		>
 			{/* header */}
 			<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
@@ -47,6 +49,16 @@ export function RunPanel({ nodes = [], running = true, x, y, onRunAll, onRunSele
 				<span className="ml-auto font-mono text-[10px] tabular-nums text-muted">
 					{doneCount} / {nodes.length} · {totalMs ? `${(totalMs / 1000).toFixed(1)}s` : "—"}
 				</span>
+				{onClose && (
+					<button
+						type="button"
+						onClick={onClose}
+						className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground"
+						title="关闭"
+					>
+						<Icon name="icon-[lucide--x]" className="size-3" />
+					</button>
+				)}
 			</div>
 
 			{/* body — 节点列表 */}

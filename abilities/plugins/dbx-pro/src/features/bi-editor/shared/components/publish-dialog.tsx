@@ -12,15 +12,11 @@ import { type JSX, useState } from "react";
 import { Icon } from "./ui/icon";
 import { Chip } from "./ui/chip";
 import { IconButton } from "./ui/icon-button";
+import { fnv1aString } from "../../../../shared/utils/hash";
 
 /** 从字符串生成稳定 hash（用于永久链接/限期分享 URL，不能每次 render 都变）。 */
 function stableHash(seed: string, len = 8): string {
-	let h = 2166136261 >>> 0;
-	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-	const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-	let out = "";
-	for (let i = 0; i < len; i++) { h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16); out += chars[h % chars.length]; }
-	return out;
+	return fnv1aString(seed, len);
 }
 
 export function PublishDialog({
@@ -34,9 +30,20 @@ export function PublishDialog({
 	onClose: () => void;
 	onPublish?: () => void;
 }): JSX.Element {
-	/** true = 存草稿；false = 生成产物页面替换 */
 	const [draftOnly, setDraftOnly] = useState(true);
 	const [changeNote, setChangeNote] = useState("折线图改为按周聚合，补去年同期虚线");
+	const [copiedPerm, setCopiedPerm] = useState(false);
+	const [copiedShare, setCopiedShare] = useState(false);
+	const [shareSeed, setShareSeed] = useState(0);
+
+	const permUrl = `bi.local/d/${pageName.toLowerCase().replace(/\s+/g, "-")}-${stableHash(pageName, 6)}`;
+	const shareUrl = `bi.local/s/${stableHash(`${pageName}-share-${shareSeed}`, 10)}`;
+
+	function copyToClipboard(text: string, which: "perm" | "share") {
+		navigator?.clipboard?.writeText(text);
+		if (which === "perm") { setCopiedPerm(true); setTimeout(() => setCopiedPerm(false), 1500); }
+		else { setCopiedShare(true); setTimeout(() => setCopiedShare(false), 1500); }
+	}
 
 	return (
 		<div className="absolute inset-0 z-40 flex items-center justify-center bg-scrim">
@@ -100,11 +107,11 @@ export function PublishDialog({
 						</div>
 						<div className="mt-1 flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
 							<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-accent">
-								bi.local/d/{pageName.toLowerCase().replace(/\s+/g, "-")}-{stableHash(pageName, 6)}
+								{permUrl}
 							</span>
-							<button type="button"
+							<button type="button" onClick={() => copyToClipboard(permUrl, "perm")}
 								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
-								<Icon name="icon-[lucide--copy]" className="size-2.5" />复制
+								<Icon name="icon-[lucide--copy]" className="size-2.5" />{copiedPerm ? "已复制" : "复制"}
 							</button>
 						</div>
 					</div>
@@ -124,15 +131,15 @@ export function PublishDialog({
 						</div>
 						<div className="mt-1 flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
 							<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-surface-foreground">
-								bi.local/s/{stableHash(`${pageName}-share`, 10)}
+								{shareUrl}
 							</span>
-							<button type="button"
+							<button type="button" onClick={() => setShareSeed((s) => s + 1)}
 								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
 								重新生成
 							</button>
-							<button type="button"
+							<button type="button" onClick={() => copyToClipboard(shareUrl, "share")}
 								className="flex h-6 shrink-0 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
-								<Icon name="icon-[lucide--copy]" className="size-2.5" />复制
+								<Icon name="icon-[lucide--copy]" className="size-2.5" />{copiedShare ? "已复制" : "复制"}
 							</button>
 						</div>
 					</div>

@@ -298,8 +298,9 @@ function Field({
 	const current = values[field.key];
 	const setVal = (v: unknown) => onUpdate({ values: { ...values, [field.key]: v } });
 
-	// 数据源下拉：使用真实连接列表
-	const isDatasourceField = field.key === "datasourceId";
+	// 数据源下拉：所有数据源/连接类节点的下拉字段都用真实 connections 填充
+	const DATASOURCE_KEYS = new Set(["datasourceId", "connectionId"]);
+	const isDatasourceField = DATASOURCE_KEYS.has(field.key);
 	const datasourceOptions = connections ?? [];
 
 	return (
@@ -313,7 +314,7 @@ function Field({
 					<option value="">— 选择数据源 —</option>
 					{isDatasourceField
 						? datasourceOptions.map((c) => (
-							<option key={c.name} value={c.name}>
+							<option key={c.id} value={c.id}>
 								{c.name} ({c.type})
 							</option>
 						))

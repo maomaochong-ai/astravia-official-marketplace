@@ -63,10 +63,10 @@ describe("设置面板 · 每页行数输入", () => {
 		assert.equal(changes.length, 0);
 
 		fireEvent.blur(input);
-		assert.equal(changes.length, 1);
+		// 修改默认每页行数时会自动同步表打开默认行数，因此触发 2 次变更。
+		assert.equal(changes.length, 2);
 		assert.equal(changes[0].rowLimit, 2_000);
-		// 其他字段原样带过去：变更只针对这一项。
-		assert.equal(changes[0].tableOpenPageSize, DEFAULT_SETTINGS.tableOpenPageSize);
+		assert.equal(changes[1].tableOpenPageSize, 2_000);
 		assert.equal(input.value, "2000");
 	});
 
@@ -84,8 +84,10 @@ describe("设置面板 · 每页行数输入", () => {
 
 		fireEvent.blur(input);
 		assert.equal(input.value, String(MAX_RESULT_PAGE_SIZE));
-		assert.equal(changes.length, 1);
+		// 修改默认每页行数时会自动同步表打开默认行数，因此触发 2 次变更。
+		assert.equal(changes.length, 2);
 		assert.equal(changes[0].rowLimit, MAX_RESULT_PAGE_SIZE);
+		assert.equal(changes[1].tableOpenPageSize, MAX_RESULT_PAGE_SIZE);
 	});
 
 	it("输入 0 时保留原值，并说明下限", () => {
@@ -108,12 +110,16 @@ describe("设置面板 · 每页行数输入", () => {
 
 		type(input, "3000");
 		fireEvent.keyDown(input, { key: "Enter" });
-		assert.equal(changes.length, 1);
+		// 修改默认每页行数时会自动同步表打开默认行数，因此触发 2 次变更。
+		assert.equal(changes.length, 2);
 		assert.equal(changes[0].rowLimit, 3_000);
+		assert.equal(changes[1].tableOpenPageSize, 3_000);
 
+		// 改回默认值并失焦：由于测试用的 settings 是静态的（不随 onChange 更新），
+		// 组件的 value prop 仍是默认值 100，与输入框的 "100" 相同，commit 提前返回，不触发 onChange。
 		fireEvent.change(input, { target: { value: String(DEFAULT_SETTINGS.rowLimit) } });
 		fireEvent.blur(input);
-		assert.equal(changes.length, 1, "值未变化时不应触发写入");
+		assert.equal(changes.length, 2, "值未变化时不应触发写入");
 	});
 
 	it("表打开默认行数走同一套校验", () => {

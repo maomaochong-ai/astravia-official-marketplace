@@ -13,7 +13,7 @@
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
 import { getChartDefaultsScript } from "../features/chart-engine/renderer/echarts/defaults";
-import { buildHtmlHead } from "../features/chart-engine/renderer/echarts/shell";
+import { buildHtmlHead, escapeHtml } from "../features/chart-engine/renderer/echarts/shell";
 import type { ChartItem, ChartFilter } from "../domain/chart-contract";
 import { pruneUnboundSources } from "../domain/chart-source";
 import { prepareDatasets, type DatasetSpecInput } from "../domain/dataset-spec";
@@ -238,24 +238,28 @@ function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string;
 		const normalizedData = normalizeChartData(chart.data, chart.type);
 		const valid = validateChartData(normalizedData);
 
+		const safeTitle = escapeHtml(chart.title ?? `图表 ${i + 1}`);
+		const safeDesc = chart.description ? escapeHtml(chart.description) : "";
+
 		if (!valid.ok) {
+			const safeReason = escapeHtml(valid.reason ?? "");
 			htmlParts.push(
 				`<div class="chart-card chart-error">` +
-				`<h3>${chart.title ?? `图表 ${i + 1}`}</h3>` +
+				`<h3>${safeTitle}</h3>` +
 				`<div style="height:${height}px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#ef4444;background:#fef2f2;border:1px dashed #fecaca;border-radius:8px;margin:12px 0;padding:16px;box-sizing:border-box;">` +
 				`<span style="font-weight:600;font-size:13px;">⚠️ 图表数据格式错误</span>` +
-				`<span style="font-size:11px;color:#7f1d1d;">${valid.reason}</span>` +
+				`<span style="font-size:11px;color:#7f1d1d;">${safeReason}</span>` +
 				`<span style="font-size:10px;color:#b91c1c;">AI 未正确将查询结果转为 ECharts 数据格式</span>` +
 				`</div></div>`
 			);
-			jsParts.push(`/* chart-${i} skipped: ${valid.reason} */`);
+			jsParts.push(`/* chart-${i} skipped */`);
 			return;
 		}
 
 		// 自有渲染类型（funnel / boxplot / metric）：HTML 片段自包含，不进 ECharts
 		if (isFigureType(chart.type)) {
 			htmlParts.push(
-				`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}${renderFigure({ ...chart, data: normalizedData as Record<string, unknown> }, { isScreen })}</div>`,
+				`<div class="chart-card"><h3>${safeTitle}</h3>${safeDesc ? `<p class="chart-desc">${safeDesc}</p>` : ""}${renderFigure({ ...chart, data: normalizedData as Record<string, unknown> }, { isScreen })}</div>`,
 			);
 			jsParts.push(`/* chart-${i} (${chart.type}) rendered without ECharts */`);
 			return;
@@ -265,7 +269,7 @@ function buildChartArea(charts: ChartItem[], isScreen: boolean): { html: string;
 		const echartsOption = chartItemToEChartsOption(chart, normalizedData);
 		const theme = isScreen ? "dbx-dark" : "dbx-light";
 		htmlParts.push(
-			`<div class="chart-card"><h3>${chart.title ?? `图表 ${i + 1}`}</h3>${chart.description ? `<p class="chart-desc">${chart.description}</p>` : ""}<div id="${id}" style="width:100%;height:${height}px;"></div></div>`
+			`<div class="chart-card"><h3>${safeTitle}</h3>${safeDesc ? `<p class="chart-desc">${safeDesc}</p>` : ""}<div id="${id}" style="width:100%;height:${height}px;"></div></div>`
 		);
 		jsParts.push(
 			`(function(){var dom=document.getElementById('${id}');var c=echarts.init(dom,'${theme}');c.setOption(${JSON.stringify(echartsOption)});window.addEventListener('resize',function(){c.resize();});})();`

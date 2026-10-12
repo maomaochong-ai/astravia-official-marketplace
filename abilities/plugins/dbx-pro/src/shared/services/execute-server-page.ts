@@ -75,15 +75,16 @@ export async function executeServerPage(
 		if (mergedRows.length >= pageSize) break;
 	}
 
-	const head = first as EngineQueryOutcome;
+	if (!first) {
+		throw new Error(`executeServerPage: no data returned for connection "${connectionName}"`);
+	}
+
 	return {
-		...head,
+		...first,
 		rows: mergedRows.slice(0, pageSize),
 		row_count: Math.min(mergedRows.length, pageSize),
-		// 非分页 SQL 保留引擎截断标记（toQueryResult 据此提示 1000 行上限）；
-		// 分页拼页不标截断：没取满是因为到底了，取满了下一页继续取。
-		truncated: head.paged === true ? false : head.truncated,
-		paged: head.paged === true ? true : undefined,
-		engine_row_count: head.paged === true ? mergedRows.length : lastRows,
+		truncated: first.paged === true ? false : first.truncated,
+		paged: first.paged === true ? true : undefined,
+		engine_row_count: first.paged === true ? mergedRows.length : lastRows,
 	};
 }

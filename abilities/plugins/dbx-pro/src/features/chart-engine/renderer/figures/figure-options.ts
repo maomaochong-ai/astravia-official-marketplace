@@ -8,7 +8,7 @@
  * 原生 8 种类型忽略这一节（Chart.js 也不认识它，无害）。
  */
 
-import type { ChartItem } from "../../../domain/chart-contract";
+import type { ChartItem } from "../../../../domain/chart-contract";
 
 export interface FigureOptions {
 	/** 数值后缀，如 "万元" / "%" / "单" */

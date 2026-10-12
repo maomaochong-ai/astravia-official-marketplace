@@ -5,7 +5,7 @@
  * 各渲染器只依赖这里的**类型**。
  */
 
-import type { ChartItem } from "../../../domain/chart-contract";
+import type { ChartItem } from "../../../../domain/chart-contract";
 import type { FigureOptions } from "./figure-options";
 import type { FigurePalette } from "./figure-palette";
 

@@ -11,7 +11,7 @@
  * 顺序按 labels 原样，不做排序 —— 漏斗的顺序就是业务阶段顺序，由 SQL 决定。
  */
 
-import type { ChartItem } from "../../../domain/chart-contract";
+import type { ChartItem } from "../../../../domain/chart-contract";
 import type { FigureContext } from "./figure-context";
 import { seriesColor } from "./figure-palette";
 import { readFigureLabels, readFigureSeries } from "./figure-series";

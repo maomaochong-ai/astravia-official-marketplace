@@ -116,7 +116,7 @@ describe("看板画布 · 空模板不再是 demo", () => {
 
 		assert.ok(screen.getByTestId("canvas-empty-guide"), "空画布应显示引导");
 		assert.ok(screen.getByText("已同步"), "刚进入不该是「未保存」");
-		assert.equal(container.querySelector('[style*="left: 4px"]'), null, "空画布上不该摆分组框");
+		assert.equal(container.querySelectorAll("[data-node-group-zone]").length, 0, "空画布上不该摆固定分组框");
 	});
 
 	it("template 解析不了（脏数据）也退回空白画布，而不是演示布局", async () => {
@@ -124,7 +124,7 @@ describe("看板画布 · 空模板不再是 demo", () => {
 		const { container } = await openEditor(engine);
 
 		assert.ok(screen.getByTestId("canvas-empty-guide"));
-		assert.equal(container.querySelector('[style*="left: 4px"]'), null);
+		assert.equal(container.querySelectorAll("[data-node-group-zone]").length, 0);
 	});
 
 	it("空画布保存下去的是空内容，不会凭空写出节点", async () => {
@@ -146,7 +146,6 @@ describe("看板画布 · 空模板不再是 demo", () => {
 		const { container } = await openEditor(engine);
 
 		assert.equal(screen.queryByTestId("canvas-empty-guide"), null, "有节点就不该再显示空态引导");
-		assert.ok(container.querySelector('[style*="left: 4px"]'), "有节点时应渲染分组框");
 		assert.ok(screen.getByText("已同步"), "带着 selected 的旧数据加载后也不该是「未保存」");
 
 		await saveViaShortcut();
@@ -159,32 +158,21 @@ describe("看板画布 · 空模板不再是 demo", () => {
 		assert.equal("selected" in template.nodes.n1, false, "临时选中态不该写进库");
 	});
 
-	it("分组框计数按节点真实坐标推导，不是写死的演示数字", async () => {
+	it("分组节点作为独立节点渲染，不再是固定分组框", async () => {
 		const engine = stubEngine({
 			current: page({
 				template: JSON.stringify({
 					nodes: {
 						a: { ...REAL_NODE, x: 40, y: 80 },
 						b: { ...REAL_NODE, x: 80, y: 200 },
-						c: { ...REAL_NODE, x: 600, y: 300 },
+						g1: { x: 400, y: 40, w: 220, h: 400, tone: "#64748b", kind: "group-source", isGroup: true, groupLabel: "数据源", groupIcon: "icon-[lucide--database]" },
 					},
 					links: [],
 				}),
 			}),
 		});
-		const { container } = await openEditor(engine);
+		await openEditor(engine);
 
-		const frames = container.querySelectorAll('[style*="left: 4px"], [style*="left: 212px"], [style*="left: 428px"]');
-		assert.equal(frames.length, 3, "三个分组框都应渲染");
-		// a、b 落在「数据源」框内，c 落在「图表与产物」框内
-		const LABELS = ["数据源", "SQL 查询", "图表与产物"];
-		const counts: Record<string, number> = {};
-		for (const el of frames) {
-			const text = el.textContent ?? "";
-			const label = LABELS.find((l) => text.startsWith(l));
-			assert.ok(label, `分组框文案异常：${text}`);
-			counts[label] = Number(text.slice(label.length));
-		}
-		assert.deepEqual(counts, { "数据源": 2, "SQL 查询": 0, "图表与产物": 1 });
+		assert.equal(screen.queryByTestId("canvas-empty-guide"), null, "有节点就不该显示空态引导");
 	});
 });

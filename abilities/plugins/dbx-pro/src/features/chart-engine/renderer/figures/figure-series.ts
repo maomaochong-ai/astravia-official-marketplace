@@ -6,7 +6,7 @@
  * 「labels 缺失按索引补」这类容错只写一遍。
  */
 
-import type { ChartItem } from "../../../domain/chart-contract";
+import type { ChartItem } from "../../../../domain/chart-contract";
 import { toFiniteNumber } from "./figure-text";
 
 export interface FigureSeries {

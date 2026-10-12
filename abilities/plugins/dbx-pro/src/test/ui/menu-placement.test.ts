@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { placeContextMenu, placeSubmenu } from "../../shared/utils/menu-placement.ts";
+import { placeContextMenu, placeSubmenu } from "../../shared/components/menu-placement.ts";
 
 /** 与 DOMRect 同形的普通对象（测试里的 .js 不能写类型标注）。 */
 function rect(left, top, right, bottom) {

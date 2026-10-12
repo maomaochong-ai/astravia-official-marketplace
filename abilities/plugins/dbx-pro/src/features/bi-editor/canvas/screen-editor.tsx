@@ -164,6 +164,7 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 	const [zoom, setZoom] = useState(0.42); // 设计稿默认 42%
 	const zoomRef = useRef(0.42); // 给 event handler 读，避免 useEffect 依赖 zoom
 	const [linkCopied, setLinkCopied] = useState(false);
+	const linkCopiedTimerRef = useRef<number | null>(null);
 	const nodeSeqRef = useRef(nextNodeSeq(initial.nodes));
 	const canvasWrapRef = useRef<HTMLDivElement>(null);
 	const [canvasOffset, setCanvasOffset] = useState({ tx: 0, ty: 0 }); // translate 补偿
@@ -176,6 +177,10 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 
 	// zoom → zoomRef 同步（每次 zoom setState 后同步）
 	useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+
+	useEffect(() => () => {
+		if (linkCopiedTimerRef.current) clearTimeout(linkCopiedTimerRef.current);
+	}, []);
 
 	// 内容真的变了才算脏：挂载和刚加载完都不该是「未保存」
 	useEffect(() => {
@@ -379,7 +384,8 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 					<Btn size="sm" variant="ghost" icon="icon-[lucide--share-2]" onClick={() => {
 						navigator?.clipboard?.writeText(shareUrl);
 						setLinkCopied(true);
-						setTimeout(() => setLinkCopied(false), 1500);
+						if (linkCopiedTimerRef.current) clearTimeout(linkCopiedTimerRef.current);
+						linkCopiedTimerRef.current = window.setTimeout(() => setLinkCopied(false), 1500);
 					}}>{linkCopied ? "已复制" : "分享"}</Btn>
 					<Btn size="sm" variant="default" icon="icon-[lucide--play]" onClick={handleRunAll}>预览</Btn>
 					<Btn size="sm" variant="primary" icon="icon-[lucide--upload]" onClick={() => { void handlePublish(); }} disabled={saving}>发布到工作树</Btn>
@@ -653,7 +659,8 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 							onClick={() => {
 								navigator?.clipboard?.writeText(shareUrl);
 								setLinkCopied(true);
-								setTimeout(() => setLinkCopied(false), 1500);
+								if (linkCopiedTimerRef.current) clearTimeout(linkCopiedTimerRef.current);
+								linkCopiedTimerRef.current = window.setTimeout(() => setLinkCopied(false), 1500);
 							}}
 						>{linkCopied ? "已复制" : "复制"}</Btn>
 					</div>

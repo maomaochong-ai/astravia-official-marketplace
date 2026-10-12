@@ -11,6 +11,15 @@
 
 import { useCallback, useEffect, useState, type JSX } from "react";
 import { Icon } from "../../shared/components/ui/icon";
+import { IconButton } from "../../shared/components/ui/icon-button";
+import { ARRANGE_LAYOUTS, type ArrangeLayout } from "../lib/auto-layout";
+import { ShortcutsDialog } from "./shortcuts-dialog";
+
+/** 焦点在输入框里时，⌘Z / G 这类按键交还给输入框自己处理。 */
+function isTypingEvent(e: KeyboardEvent): boolean {
+	const t = e.target as HTMLElement | null;
+	return !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+}
 
 export function BigscreenToolbar({
 	pageName,
@@ -25,36 +34,47 @@ export function BigscreenToolbar({
 	onRunSelected,
 	saving = false,
 	onAiGenerate,
+	canUndo = false,
+	canRedo = false,
+	onUndo,
+	onRedo,
+	guidesOn = true,
+	onGuidesToggle,
+	onArrange,
 }: {
 	pageName: string;
 	theme: "dark" | "default";
 	dirty: boolean;
 	onBack: () => void;
 	onThemeChange: (t: "dark" | "default") => void;
-	onSave: () => void;
+	onSave: () => void | Promise<void>;
 	onRename: (n: string) => void;
 	onSaveTemplate?: () => void;
 	onRunAll?: () => void;
 	onRunSelected?: () => void;
 	saving?: boolean;
 	onAiGenerate?: () => void;
+	canUndo?: boolean;
+	canRedo?: boolean;
+	onUndo?: () => void;
+	onRedo?: () => void;
+	guidesOn?: boolean;
+	onGuidesToggle?: () => void;
+	onArrange?: (layout: ArrangeLayout) => void;
 }): JSX.Element {
 	const [editingName, setEditingName] = useState(false);
 	const [nameDraft, setNameDraft] = useState(pageName);
-
-	// ── 返回拦截：有未保存更改时三选一 ──
-	const [backDialog, setBackDialog] = useState<null | "save-leave" | "discard-leave" | "cancel">(null);
+	const [shortcutsOpen, setShortcutsOpen] = useState(false);
+	const [arrangeOpen, setArrangeOpen] = useState(false);
 
 	useEffect(() => { setNameDraft(pageName); }, [pageName]);
 
-	const handleBackClick = useCallback(() => {
-		if (saving) return; // 保存中忽略
+	const handleBackClick = useCallback(async () => {
+		if (saving) return;
 		if (dirty) {
-			onSave?.();
-			onBack();
-		} else {
-			onBack();
+			await onSave?.();
 		}
+		onBack();
 	}, [saving, dirty, onSave, onBack]);
 
 	// ── 快捷键 ──
@@ -71,11 +91,21 @@ export function BigscreenToolbar({
 			} else if (e.key.toLowerCase() === "r") {
 				e.preventDefault();
 				onRunAll?.();
+			} else if (e.key.toLowerCase() === "z" && !isTypingEvent(e)) {
+				e.preventDefault();
+				if (e.shiftKey) onRedo?.();
+				else onUndo?.();
+			} else if (e.key.toLowerCase() === "y" && !isTypingEvent(e)) {
+				e.preventDefault();
+				onRedo?.();
+			} else if (e.key === "/") {
+				e.preventDefault();
+				setShortcutsOpen(true);
 			}
 		}
 		window.addEventListener("keydown", handler);
 		return () => window.removeEventListener("keydown", handler);
-	}, [saving, onSave, onRunAll, handleBackClick]);
+	}, [saving, onSave, onRunAll, onUndo, onRedo, handleBackClick]);
 
 	function commitName() {
 		const trimmed = nameDraft.trim();
@@ -85,8 +115,7 @@ export function BigscreenToolbar({
 	}
 
 	return (
-		<>
-			<div className="flex h-11 shrink-0 items-center gap-2 border-b border-border bg-surface-raised px-3">
+		<div className="flex h-11 shrink-0 items-center gap-2 border-b border-border bg-surface-raised px-3">
 				{/* 返回按钮 — 对齐 frames/back-button.tsx */}
 				<button
 					type="button"
@@ -132,6 +161,68 @@ export function BigscreenToolbar({
 						{saving && <Icon name="icon-[lucide--loader]" className="size-3 text-accent animate-spin" />}
 					</button>
 				)}
+
+				{/* 画布工具簇 —— 撤销/重做、自动排列、对齐辅助线、快捷键 */}
+				<div className="relative flex shrink-0 items-center gap-0.5">
+					<IconButton
+						size="xs"
+						icon="icon-[lucide--undo-2]"
+						title="撤销（⌘Z）"
+						disabled={!canUndo}
+						onClick={onUndo}
+					/>
+					<IconButton
+						size="xs"
+						icon="icon-[lucide--redo-2]"
+						title="重做（⇧⌘Z）"
+						disabled={!canRedo}
+						onClick={onRedo}
+					/>
+					<span className="mx-1 h-5 w-px shrink-0 bg-border" />
+					<IconButton
+						size="xs"
+						icon="icon-[lucide--layout-grid]"
+						active={arrangeOpen}
+						title="自动排列（垂直 / 水平 / 网格）"
+						onClick={() => setArrangeOpen((v) => !v)}
+					/>
+					<IconButton
+						size="xs"
+						icon={guidesOn ? "icon-[lucide--ruler]" : "icon-[lucide--eye-off]"}
+						active={guidesOn}
+						title={guidesOn ? "对齐辅助线：开（点击关闭）" : "对齐辅助线：关（点击打开）"}
+						onClick={onGuidesToggle}
+					/>
+					<IconButton
+						size="xs"
+						icon="icon-[lucide--keyboard]"
+						title="键盘快捷键（⌘/）"
+						onClick={() => setShortcutsOpen(true)}
+					/>
+
+					{arrangeOpen ? (
+						<>
+							<div className="fixed inset-0 z-20" onPointerDown={() => setArrangeOpen(false)} />
+							<div
+								role="menu"
+								className="absolute top-[30px] left-0 z-30 w-[164px] overflow-hidden rounded-card border border-border bg-surface-raised py-1 shadow-popover"
+							>
+								{ARRANGE_LAYOUTS.map((o) => (
+									<button
+										key={o.layout}
+										type="button"
+										role="menuitem"
+										className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-surface-foreground hover:bg-neutral-muted"
+										onClick={() => { onArrange?.(o.layout); setArrangeOpen(false); }}
+									>
+										<Icon name={o.icon} className="size-3.5 shrink-0 text-muted" />
+										<span>{o.label}</span>
+									</button>
+								))}
+							</div>
+						</>
+					) : null}
+				</div>
 
 				{/* 中间按钮簇 */}
 				<div className="mx-auto flex items-center gap-1.5">
@@ -210,43 +301,8 @@ export function BigscreenToolbar({
 						<span>深色</span>
 					</button>
 				</div>
-			</div>
 
-			{/* 返回拦截对话框（dirty 状态）— 简化为自动保存后离开，预留扩展 */}
-			{backDialog ? (
-				<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60">
-					<div className="w-[360px] overflow-hidden rounded-card border border-border bg-surface shadow-2xl">
-						<div className="px-4 py-3">
-							<div className="text-[13px] font-semibold text-surface-foreground">有未保存的更改</div>
-							<p className="mt-1 text-[11px] text-muted">离开前要保存吗？</p>
-						</div>
-						<div className="flex flex-col gap-1 border-t border-border px-3 py-2">
-							<button
-								type="button"
-								className="flex h-8 items-center gap-2 rounded-control bg-accent px-3 text-[12px] font-medium text-accent-foreground"
-								onClick={() => { setBackDialog(null); onSave(); onBack(); }}
-							>
-								<Icon name="icon-[lucide--save]" className="size-3.5" />
-								保存并离开
-							</button>
-							<button
-								type="button"
-								className="flex h-8 items-center gap-2 rounded-control border border-transparent px-3 text-[12px] text-muted hover:border-border hover:text-surface-foreground"
-								onClick={() => { setBackDialog(null); onBack(); }}
-							>
-								不保存，直接离开
-							</button>
-							<button
-								type="button"
-								className="flex h-8 items-center gap-2 rounded-control border border-transparent px-3 text-[12px] text-muted hover:border-border hover:text-surface-foreground"
-								onClick={() => setBackDialog(null)}
-							>
-								取消
-							</button>
-						</div>
-					</div>
-				</div>
-			) : null}
-		</>
+				{shortcutsOpen ? <ShortcutsDialog onClose={() => setShortcutsOpen(false)} /> : null}
+			</div>
 	);
 }

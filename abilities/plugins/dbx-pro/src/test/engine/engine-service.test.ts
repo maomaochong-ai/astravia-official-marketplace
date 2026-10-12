@@ -32,8 +32,9 @@ function readEngineRowCap() {
 }
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
-const PLUGIN_ROOT = resolve(HERE, "..", "..");
-const ENGINE_ENTRY = process.env.DBX_ENGINE_ENTRY ?? join(PLUGIN_ROOT, "server", "src", "http-server.mjs");
+const PLUGIN_ROOT = resolve(HERE, "..", "..", "..");
+// 引擎入口：优先使用环境变量，否则使用构建产物 main.ts（需要 --experimental-strip-types）
+const ENGINE_ENTRY = process.env.DBX_ENGINE_ENTRY ?? join(PLUGIN_ROOT, "server", "main.ts");
 const TOKEN = "e2e-token-1234567890";
 
 let workDir;
@@ -45,7 +46,7 @@ function startEngine({ args = [], token = TOKEN } = {}) {
 		if (token === null || token === undefined) delete env.ASTRAVIA_SERVICE_SECRET_ENGINE_KEY;
 		else env.ASTRAVIA_SERVICE_SECRET_ENGINE_KEY = token;
 
-		const child = spawn(process.execPath, [ENGINE_ENTRY, "--port", "0", ...args], {
+		const child = spawn(process.execPath, ["--experimental-strip-types", ENGINE_ENTRY, "--port", "0", ...args], {
 			env,
 			stdio: ["ignore", "pipe", "pipe"],
 		});

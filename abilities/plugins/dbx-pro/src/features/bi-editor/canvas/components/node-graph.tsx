@@ -3,25 +3,43 @@
  *
  * 数据流节点：数据集 → SQL → 图表 → 看板产物。
  * nodes 驱动坐标 + rowDy() 算插槽位置 → 连线端点永远落在插槽上。
+ *
+ * Viewport 数学：
+ *   整个节点/连线/分组区域包在一个 transform 容器里：
+ *     transform: translate(tx, ty) scale(scale)
+ *     transform-origin: 0 0（左上角）
+ *   屏幕坐标 → 画布坐标：canvasX = (screenX - rect.left - tx) / scale
+ *   画布坐标 → 屏幕坐标：screenX = rect.left + tx + canvasX * scale
+ *   这样所有节点坐标始终是"画布坐标系"下的值，viewport 只影响视觉渲染 + 命中检测。
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as RPointerEvent, type DragEvent, type Dispatch, type SetStateAction } from "react";
-import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE } from "./node-card";
+import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE, type SocketHandlers } from "./node-card";
 import { AreaChart, Donut, SERIES } from "../../shared/components/charts";
+import { applyArrangement, computeArrangement, DEFAULT_ARRANGE_GAP, type ArrangeBox, type ArrangeLayout } from "../lib/auto-layout";
+import type { GridStep } from "./canvas-strip";
 import { Chip } from "../../shared/components/ui/chip";
-import { AiNodePanel } from "./ai-node-panel";
 import { AddNodeMenu } from "./add-node-menu";
 import { engineRequest } from "../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
+import { fnv1aArray } from "../../../../shared/utils/hash";
 
 // ── 类型 ──
 export interface NodePos {
 	x: number; y: number; w: number; h: number;
 	tone: string; selected?: boolean;
+	/** 停用（ComfyUI 的 mute / bypass 语义）：节点仍在画布上，但运行时会跳过。 */
+	muted?: boolean;
 	/** 节点类型 key，对应 NODE_TEMPLATES 条目（source-sql / chart-bar / ...） */
 	kind?: string;
 	/** PropertyInspector 字段值（key 对应 NODE_SCHEMA.fields[i].key） */
 	values?: Record<string, unknown>;
+	/** 是否为分组节点 */
+	isGroup?: boolean;
+	/** 分组节点标签 */
+	groupLabel?: string;
+	/** 分组节点图标 */
+	groupIcon?: string;
 }
 export type NodeId = string;
 export interface Link {
@@ -29,47 +47,41 @@ export interface Link {
 	from: NodeId; fromRow: number; to: NodeId; toRow: number; tone: string;
 }
 
-let LINK_SEQ = 0;
-function nextLinkId(): string { LINK_SEQ++; return `l${LINK_SEQ}`; }
+// nextLinkId 改为组件内 linkSeqRef（见 NodeGraph 内），避免多实例 HMR 冲突
 
-const GROUPS = [
-	{ x: 4, y: 40, w: 204, h: 592, label: "数据源", icon: "icon-[lucide--database]" },
-	{ x: 212, y: 40, w: 208, h: 190, label: "SQL 查询", icon: "icon-[lucide--scroll-text]" },
-	{ x: 428, y: 24, w: 440, h: 668, label: "图表与产物", icon: "icon-[lucide--chart-line]" },
-];
-
-/** 分组框内的节点数 —— 按节点真实坐标推导，不写死演示计数。 */
-function countNodesInGroup(
-	g: { x: number; y: number; w: number; h: number },
-	nodes: Record<NodeId, NodePos>,
-): number {
-	let count = 0;
-	for (const p of Object.values(nodes)) {
-		if (p.x >= g.x && p.x < g.x + g.w && p.y >= g.y && p.y < g.y + g.h) count++;
-	}
-	return count;
+/** 分组节点类型 - 作为独立节点可拖拽创建 */
+export interface GroupNode {
+	id: string;
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+	label: string;
+	icon: string;
+	collapsed?: boolean;
 }
 
 function linkPath(l: Link, nodes: Record<NodeId, NodePos>): string {
 	const a = nodes[l.from];
 	const b = nodes[l.to];
+	if (!a || !b) return "";  // 节点被删但 link 残留 → 跳过渲染
 	const x1 = a.x + a.w;
 	const y1 = a.y + rowDy(l.fromRow);
 	const x2 = b.x;
 	const y2 = b.y + rowDy(l.toRow);
-	const bend = Math.max(36, (x2 - x1) * 0.5);
+	const bend = Math.max(36, Math.abs(x2 - x1) * 0.5);
 	return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
 }
 
 /** 贝塞尔曲线 t=0.5 的中点坐标（连线中点，用于 hover 按钮定位）。 */
 function linkMid(l: Link, nodes: Record<NodeId, NodePos>): { x: number; y: number } {
 	const a = nodes[l.from], b = nodes[l.to];
+	if (!a || !b) return { x: 0, y: 0 };
 	const x1 = a.x + a.w, y1 = a.y + rowDy(l.fromRow);
 	const x2 = b.x, y2 = b.y + rowDy(l.toRow);
 	const bend = Math.max(36, (x2 - x1) * 0.5);
 	const cx1 = x1 + bend, cy1 = y1;
 	const cx2 = x2 - bend, cy2 = y2;
-	// cubic-bezier t=0.5 闭式
 	const t = 0.5;
 	const mt = 1 - t;
 	const x = mt * mt * mt * x1 + 3 * mt * mt * t * cx1 + 3 * mt * t * t * cx2 + t * t * t * x2;
@@ -77,29 +89,14 @@ function linkMid(l: Link, nodes: Record<NodeId, NodePos>): { x: number; y: numbe
 	return { x, y };
 }
 
-const TOOLBOX = [
-	{ icon: "icon-[lucide--copy]", title: "复制节点" },
-	{ icon: "icon-[lucide--zap]", title: "停用（旁路）" },
-	{ icon: "icon-[lucide--play]", title: "只运行这个节点" },
-	{ icon: "icon-[lucide--ellipsis]", title: "更多" },
-];
-
 /**
  * hashValues(seed, len) — FNV-1a 生成稳定伪随机整数数组。
  * 不抄设计稿 GMV mock 数据（[42,48,45,55,51,…] 是设计稿的硬编码，用户明确禁止），
  * 而是用 seed 哈希出自己的稳定序列，保证每次打开画布图表形状一致但数值来源独立。
  */
 function hashValues(seed: string, len = 14, min = 30, max = 85): number[] {
-	let h = 2166136261 >>> 0;
-	for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-	const out: number[] = [];
-	for (let i = 0; i < len; i++) {
-		h ^= (h >>> 13); h = Math.imul(h, 1274126177); h ^= (h >>> 16);
-		out.push(min + (h % (max - min)));
-	}
-	return out;
+	return fnv1aArray(seed, len, min, max);
 }
-
 
 function hashSegments(seed: string, count: number): { value: number; color: string }[] {
 	const raw = hashValues(seed, count, 10, 40);
@@ -113,38 +110,220 @@ export interface NodeGraphProps {
 	links: Link[];
 	setLinks: Dispatch<SetStateAction<Link[]>>;
 	nodeResults?: Record<NodeId, NodeResult>;
+	/** 网格吸附步长（0 = 关闭）。受控时由父级持有，缺省时用组件内部状态。 */
+	gridStep?: GridStep;
+	onGridStepChange?: (step: GridStep) => void;
+	/** 是否显示并对齐辅助线（关闭后只剩网格吸附）。 */
+	guidesOn?: boolean;
+	/** viewport 变化回调：工具条上的缩放百分比靠它。 */
+	onViewportChange?: (viewport: { scale: number; tx: number; ty: number }) => void;
+	/** 命令式出口：顶栏按钮与快捷键通过它驱动画布动作。 */
+	api?: { current: NodeGraphApi | null };
+	/** 「只运行这个节点」——节点右键菜单与悬浮工具条用。 */
+	onRunNode?: (id: NodeId) => void;
 }
+
+/**
+ * 画布上的离散编辑动作。分类对照 ComfyUI：
+ *   useSelectionOperations.ts（copy / paste / duplicate / delete）
+ *   useArrangeNodes.ts（垂直 / 水平 / 网格排列）
+ *   useCoreCommands.ts（ToggleSelectedNodes.Mute / Bypass）
+ */
+export interface NodeGraphApi {
+	/** 适配视图：`all` 框住全部节点，`selection` 聚焦选中节点。 */
+	fitView: (mode?: "all" | "selection") => void;
+	/** 相对当前倍率缩放：steps 为正放大、为负缩小。 */
+	zoomBy: (steps: number) => void;
+	/** 缩放到指定倍率（1 = 100%）。 */
+	zoomTo: (scale: number) => void;
+	/** 自动排列；`selection` 只排选中节点。 */
+	arrange: (layout: ArrangeLayout, scope?: "all" | "selection") => void;
+	/** 复制选中节点到剪贴板（不产生新节点）。 */
+	copySelection: () => void;
+	/** 粘贴剪贴板内容（偏移 24px、重新分配 id）。 */
+	pasteClipboard: () => void;
+	/** 原地复制选中节点。 */
+	duplicateSelection: () => void;
+	/** 删除选中节点及其连线。 */
+	deleteSelection: () => void;
+	/** 停用 / 启用选中节点。 */
+	toggleMuteSelection: () => void;
+}
+
+/** 缩放上下限与每级步长。比 ComfyUI litegraph 的 0.1~10 收紧到 BI 画布更实用的区间。 */
+export const MIN_CANVAS_ZOOM = 0.25;
+export const MAX_CANVAS_ZOOM = 2.5;
+export const CANVAS_ZOOM_STEP = 1.2;
+/** 缩放结果落到该半径内时吸附回 100%，方便回到「所见即所得」比例。 */
+const ZOOM_SNAP = 0.02;
+
+/** 缩放钳制 + 100% 吸附。 */
+function clampZoom(scale: number): number {
+	const clamped = Math.min(MAX_CANVAS_ZOOM, Math.max(MIN_CANVAS_ZOOM, scale));
+	return Math.abs(clamped - 1) <= ZOOM_SNAP ? 1 : clamped;
+}
+
+/**
+ * 按新倍率重建 viewport —— 锚点（画布元素内的局部坐标）缩放前后屏幕位置不动。
+ * canvasPoint = (anchor - t) / scale，所以新 t = anchor - canvasPoint * nextScale。
+ */
+function zoomViewport(
+	v: { scale: number; tx: number; ty: number },
+	nextScale: number,
+	anchor: { x: number; y: number },
+): { scale: number; tx: number; ty: number } {
+	const cx = (anchor.x - v.tx) / v.scale;
+	const cy = (anchor.y - v.ty) / v.scale;
+	return { scale: nextScale, tx: anchor.x - cx * nextScale, ty: anchor.y - cy * nextScale };
+}
+
+/** 剪贴板里的连线快照（不含 id，粘贴时重新分配）。 */
+type LinkSnapshot = Omit<Link, "id">;
+/** 复制/粘贴载荷：节点保留原 id 用于重映射连线两端。 */
+type CanvasClipboard = { nodes: { id: NodeId; node: NodePos }[]; links: LinkSnapshot[] };
 
 /** 节点模板注册表——DnD 创建新节点时按模板生成默认属性。
  *  key 即 kind，kind 存入 NodePos.kind 后 PropertyInspector 按此渲染表单。 */
 export const NODE_TEMPLATES: Record<string, Omit<NodePos, "x" | "y">> = {
-	"source-sql":   { w: 180, h: 118, tone: TONE.table, kind: "source-sql" },
-	"source-table": { w: 180, h: 96,  tone: TONE.table, kind: "source-table" },
-	"source-api":   { w: 180, h: 96,  tone: TONE.table, kind: "source-api" },
-	"chart-bar":    { w: 216, h: 190, tone: TONE.chart, kind: "chart-bar", selected: true },
-	"chart-line":   { w: 216, h: 222, tone: TONE.chart, kind: "chart-line", selected: true },
-	"chart-pie":    { w: 216, h: 206, tone: TONE.chart, kind: "chart-pie" },
-	"chart-scatter":{ w: 216, h: 190, tone: TONE.chart, kind: "chart-scatter" },
-	"chart-map":    { w: 240, h: 240, tone: TONE.chart, kind: "chart-map" },
-	"chart-radar":  { w: 216, h: 190, tone: TONE.chart, kind: "chart-radar" },
-	"metric-big":   { w: 180, h: 110, tone: TONE.result, kind: "metric-big" },
-	"metric-trend": { w: 180, h: 110, tone: TONE.result, kind: "metric-trend" },
-	"metric-gauge": { w: 180, h: 130, tone: TONE.result, kind: "metric-gauge" },
-	"filter-select":{ w: 180, h: 88,  tone: TONE.control, kind: "filter-select" },
-	"filter-date":  { w: 180, h: 88,  tone: TONE.control, kind: "filter-date" },
-	"filter-input": { w: 180, h: 88,  tone: TONE.control, kind: "filter-input" },
-	"output-table": { w: 220, h: 180, tone: TONE.chart, kind: "output-table" },
-	"output-text":  { w: 200, h: 120, tone: TONE.chart, kind: "output-text" },
-	"output-image": { w: 220, h: 160, tone: TONE.chart, kind: "output-image" },
+	// ── 数据源（设计稿 4 种） ──
+	"source-sql":      { w: 180, h: 118, tone: TONE.table,  kind: "source-sql" },
+	"source-connector":{ w: 180, h: 108, tone: TONE.table,  kind: "source-connector" },
+	"source-extract":  { w: 180, h: 96,  tone: TONE.table,  kind: "source-extract" },
+	"source-csv":      { w: 180, h: 108, tone: TONE.table,  kind: "source-csv" },
+	"source-table":    { w: 180, h: 96,  tone: TONE.table,  kind: "source-table" },
+	"source-api":      { w: 180, h: 96,  tone: TONE.table,  kind: "source-api" },
+
+	// ── 图表（设计稿 6 种） ──
+	"chart-line":      { w: 216, h: 222, tone: TONE.chart,  kind: "chart-line" },
+	"chart-bar":       { w: 216, h: 190, tone: TONE.chart,  kind: "chart-bar" },
+	"chart-donut":     { w: 216, h: 206, tone: TONE.chart,  kind: "chart-donut" },
+	"chart-kpi":       { w: 180, h: 110, tone: TONE.result, kind: "chart-kpi" },
+	"chart-funnel":    { w: 216, h: 210, tone: TONE.chart,  kind: "chart-funnel" },
+	"chart-boxplot":   { w: 216, h: 200, tone: TONE.chart,  kind: "chart-boxplot" },
+	"chart-pie":       { w: 216, h: 206, tone: TONE.chart,  kind: "chart-pie" },
+	"chart-scatter":   { w: 216, h: 190, tone: TONE.chart,  kind: "chart-scatter" },
+	"chart-map":       { w: 240, h: 240, tone: TONE.chart,  kind: "chart-map" },
+	"chart-radar":     { w: 216, h: 190, tone: TONE.chart,  kind: "chart-radar" },
+
+	// ── 大屏（设计稿 6 种） ──
+	"screen-page":     { w: 260, h: 80,  tone: TONE.chart,  kind: "screen-page" },
+	"screen-title":    { w: 260, h: 72,  tone: TONE.chart,  kind: "screen-title" },
+	"screen-metric":   { w: 200, h: 110, tone: TONE.result, kind: "screen-metric" },
+	"screen-rank":     { w: 220, h: 210, tone: TONE.chart,  kind: "screen-rank" },
+	"screen-map":      { w: 320, h: 280, tone: TONE.chart,  kind: "screen-map" },
+	"screen-carousel": { w: 240, h: 200, tone: TONE.chart,  kind: "screen-carousel" },
+
+	// ── 控件产物（设计稿 3 种 + 补 filter-text） ──
+	"filter-select":   { w: 180, h: 88,  tone: TONE.control, kind: "filter-select" },
+	"filter-date":     { w: 180, h: 88,  tone: TONE.control, kind: "filter-date" },
+	"filter-text":     { w: 180, h: 78,  tone: TONE.control, kind: "filter-text" },
+	"output-page":     { w: 220, h: 180, tone: TONE.chart,  kind: "output-page" },
+	"output-publish":  { w: 180, h: 88,  tone: TONE.control, kind: "output-publish" },
+
+	// ── 高级组件（设计稿 4 种，badge=true） ──
+	"adv-summary":     { w: 200, h: 110, tone: TONE.result, kind: "adv-summary" },
+	"adv-tabs":        { w: 220, h: 200, tone: TONE.chart,  kind: "adv-tabs" },
+	"adv-table":       { w: 240, h: 220, tone: TONE.chart,  kind: "adv-table" },
+	"adv-calendar":    { w: 240, h: 240, tone: TONE.chart,  kind: "adv-calendar" },
+
+	// ── 向后兼容：旧指标类 ──
+	"metric-big":      { w: 180, h: 110, tone: TONE.result, kind: "metric-big" },
+	"metric-trend":    { w: 180, h: 110, tone: TONE.result, kind: "metric-trend" },
+	"metric-gauge":    { w: 180, h: 130, tone: TONE.result, kind: "metric-gauge" },
+	"filter-input":    { w: 180, h: 88,  tone: TONE.control, kind: "filter-input" },
+	"output-table":    { w: 220, h: 180, tone: TONE.chart,  kind: "output-table" },
+	"output-text":     { w: 200, h: 120, tone: TONE.chart,  kind: "output-text" },
+	"output-image":    { w: 220, h: 160, tone: TONE.chart,  kind: "output-image" },
+
+	// ── 分组节点（可作为独立节点拖拽创建） ──
+	"group-source":    { w: 220, h: 400, tone: "#64748b", kind: "group-source", isGroup: true, groupLabel: "数据源", groupIcon: "icon-[lucide--database]" },
+	"group-chart":     { w: 280, h: 450, tone: "#64748b", kind: "group-chart", isGroup: true, groupLabel: "图表", groupIcon: "icon-[lucide--chart-line]" },
+	"group-custom":    { w: 240, h: 300, tone: "#64748b", kind: "group-custom", isGroup: true, groupLabel: "自定义分组", groupIcon: "icon-[lucide--layers]" },
 };
 
-export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }: NodeGraphProps): JSX.Element {
+export function NodeGraph({
+	nodes,
+	setNodes,
+	links,
+	setLinks,
+	nodeResults = {},
+	gridStep: controlledGridStep,
+	onGridStepChange,
+	guidesOn = true,
+	onViewportChange,
+	api,
+	onRunNode,
+}: NodeGraphProps): JSX.Element {
 	const canvasRef = useRef<HTMLDivElement>(null);
+	/** 每实例独立的 link 计数器——避免模块级共享导致 HMR 冲突或多画布 id 撞 */
+	const linkSeqRef = useRef(0);
+	const nextLinkId = () => { linkSeqRef.current++; return `l${linkSeqRef.current}`; };
+
+	// ── Viewport：缩放 + 平移 ──
+	// transform-origin: 0 0；顺序：translate(tx, ty) → scale(scale)
+	const [viewport, setViewport] = useState<{ scale: number; tx: number; ty: number }>({ scale: 1, tx: 0, ty: 0 });
+	const viewportRef = useRef(viewport);
+	viewportRef.current = viewport;
+
+	// 缩放百分比要显示在 CanvasStrip 上 → 每次 viewport 变化回抛一次
+	const onViewportChangeRef = useRef(onViewportChange);
+	onViewportChangeRef.current = onViewportChange;
+	useEffect(() => { onViewportChangeRef.current?.(viewport); }, [viewport]);
+
+	const nodesRef = useRef(nodes);
+	nodesRef.current = nodes;
+
+	/**
+	 * links / 回调也进 ref：键盘与剪贴板路径在 deps 为空的 effect 里读取，
+	 * 否则闭包里会拿到首次渲染时的旧值。
+	 */
+	const linksRef = useRef(links);
+	linksRef.current = links;
+	const onGridStepChangeRef = useRef(onGridStepChange);
+	onGridStepChangeRef.current = onGridStepChange;
+	const onRunNodeRef = useRef(onRunNode);
+	onRunNodeRef.current = onRunNode;
+	/** 内部剪贴板：跨节点删除也保留内容（对齐 ComfyUI 的序列化剪贴板）。 */
+	const clipboardRef = useRef<CanvasClipboard | null>(null);
+
+	/** 屏幕坐标 → 画布坐标（逆变换） */
+	const screenToCanvas = useCallback((clientX: number, clientY: number): { x: number; y: number } => {
+		const rect = canvasRef.current?.getBoundingClientRect();
+		if (!rect) return { x: clientX, y: clientY };
+		const v = viewportRef.current;
+		return {
+			x: (clientX - rect.left - v.tx) / v.scale,
+			y: (clientY - rect.top - v.ty) / v.scale,
+		};
+	}, []);
+
+	/** 画布坐标 → 屏幕坐标（正变换） */
+	const canvasToScreen = useCallback((cx: number, cy: number): { x: number; y: number } => {
+		const rect = canvasRef.current?.getBoundingClientRect();
+		if (!rect) return { x: cx, y: cy };
+		const v = viewportRef.current;
+		return {
+			x: rect.left + v.tx + cx * v.scale,
+			y: rect.top + v.ty + cy * v.scale,
+		};
+	}, []);
+
 	const [dragOver, setDragOver] = useState(false);
 	const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+	const [nodeContextMenu, setNodeContextMenu] = useState<{ nodeId: NodeId; x: number; y: number } | null>(null);
+	/** output socket 连线末端弹出的 AddNodeMenu 位置 + 源头 socket */
+	const [linkOutContext, setLinkOutContext] = useState<{ from: NodeId; fromRow: number; x: number; y: number } | null>(null);
+
+	// ── 框选状态 ──
+	const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+	const selectionBoxRef = useRef<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+
+	// ── Resize 状态 ──
+	const [resizing, setResizing] = useState<{ id: NodeId; corner: "tl" | "tr" | "bl" | "br"; startX: number; startY: number; startW: number; startH: number; startNodeX: number; startNodeY: number } | null>(null);
+	const resizingRef = useRef<typeof resizing>(null);
 
 	// ── DnD：从 NodeLibrary 拖入新节点 ──
-	const nodeSeqRef = useRef(100); // 独立序号，与 LINK_SEQ 不冲突。ref 防止 render 重置
+	const nodeSeqRef = useRef(100);
 
 	function onCanvasDragOver(e: DragEvent) {
 		e.preventDefault();
@@ -159,7 +338,6 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 		try {
 			const payload = JSON.parse(data) as { kind?: string; nodeType?: string; templateId?: string };
 
-			// ── 模板拖入 → 整个画布替换 ──
 			if (payload.kind === "template" && payload.templateId) {
 				engineRequest<{ id: string; name: string; template: string }[]>(`/drag/template/list`, undefined, { method: "GET" })
 					.then((list) => {
@@ -170,7 +348,6 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 							if (obj && typeof obj === "object" && "nodes" in obj) {
 								setNodes(obj.nodes);
 								setLinks(obj.links ?? []);
-								// 重置 nodeSeqRef 到模板内最大数字后缀 + 1，防止后续拖入冲突
 								const maxExisting = Object.keys(obj.nodes).reduce((max, id) => {
 									const m = id.match(/^n(\d+)$/);
 									return m ? Math.max(max, parseInt(m[1], 10)) : max;
@@ -182,48 +359,112 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 				return;
 			}
 
-			// ── 单节点拖入 ──
 			const type = payload.nodeType;
 			if (!type) return;
-			const rect = canvasRef.current?.getBoundingClientRect();
-			if (!rect) return;
-			const x = e.clientX - rect.left - 90; // 居中偏移
-			const y = e.clientY - rect.top - 40;
+			// 屏幕坐标 → 画布坐标（逆 transform）
+			const canvasPt = screenToCanvas(e.clientX, e.clientY);
+			const x = canvasPt.x - 90;
+			const y = canvasPt.y - 40;
 			const tpl = NODE_TEMPLATES[type] ?? { w: 180, h: 110, tone: TONE.chart };
 			nodeSeqRef.current++;
 			const newId = `n${nodeSeqRef.current}`;
-			// 找当前选中节点作为自动连线 source（UX：拖入新节点自动串到最近选中的节点后面）
-			const selectedId = (Object.keys(nodes) as NodeId[]).find((k) => nodes[k].selected);
-			const newNode: NodePos = { ...tpl, x: Math.max(8, x), y: Math.max(8, y) };
-			setNodes((prev) => ({ ...prev, [newId]: newNode }));
-			if (selectedId && selectedId !== newId) {
-				setLinks((prev) => {
-					const tone = nodes[selectedId].tone;
-					return [...prev, { id: nextLinkId(), from: selectedId, fromRow: 0, to: newId, toRow: 0, tone }];
-				});
-			}
+			const newNode: NodePos = { ...tpl, x: Math.max(8, x), y: Math.max(8, y), kind: type, selected: true };
+			setNodes((prev) => {
+				const next: typeof prev = {};
+				for (const [id, n] of Object.entries(prev)) next[id] = { ...n, selected: false };
+				next[newId] = newNode;
+				return next;
+			});
 		} catch { /* ignore bad data */ }
 	}
 
 	// ── 节点拖拽 ──
-	const dragRef = useRef<{ id: NodeId; ox: number; oy: number } | null>(null);
+	// 点击 vs 拖拽 阈值（ComfyUI maxClickDrift=6px）—— pointerdown 只记起点，
+	// 移动 ≥6px 才真正进入 drag；<6px + pointerup 就是单击。
+	const pendingClickRef = useRef<{
+		id: NodeId;
+		startCx: number;
+		startCy: number;
+		nodeAlreadySelected: boolean;
+		rafId: number | null;
+	} | null>(null);
+
+	/** dragRef 在进入 drag 模式时填充，记录所有被拖节点的初始 offset */
+	const dragRef = useRef<{
+		// 主拖节点 id（用来判断是否进入了 drag 模式）
+		primaryId: NodeId;
+		// [id] = { ocx, ocy } — 画布坐标下节点原点相对主拖起点的偏移
+		offsets: Record<NodeId, { ocx: number; ocy: number }>;
+		rafId: number | null;
+	} | null>(null);
+
+	const CLICK_DRIFT = 6; // px — 小于这个漂移算单击，大于算拖拽
+
+	// ── Snap-to-grid + 对齐辅助线 ──
+	const GUIDE_TOL = 4;     // 对齐辅助线容差 4px
+	// 网格步长受控：父级（CanvasStrip）持有时以父级为准，单独使用组件时退回内部状态
+	const [gridStepInner, setGridStepInner] = useState<GridStep>(8);
+	const gridStep = controlledGridStep ?? gridStepInner;
+	/** 步长 0 即「关闭吸附」。 */
+	const snapOn = gridStep > 0;
+	// snapRef 由步长派生：拖拽/缩放热路径（deps 为空的 pointer effect）只读 ref，不追 state
+	const snapRef = useRef(snapOn);
+	snapRef.current = snapOn;
+	const gridRef = useRef<number>(gridStep);
+	gridRef.current = gridStep;
+	const guidesOnRef = useRef(guidesOn);
+	guidesOnRef.current = guidesOn;
+	const setGridStep = useCallback((step: GridStep) => {
+		setGridStepInner(step);
+		onGridStepChangeRef.current?.(step);
+	}, []);
+	const [guides, setGuides] = useState<{ x?: number; y?: number } | null>(null);
+	const guidesRef = useRef(guides);
+	guidesRef.current = guides;
+	// 关掉辅助线时清掉残留的线，避免下次打开闪现旧位置
+	useEffect(() => { if (!guidesOn) setGuides(null); }, [guidesOn]);
 
 	function startDrag(id: NodeId, e: RPointerEvent<Element>) {
-		const rect = canvasRef.current?.getBoundingClientRect();
-		if (!rect) return;
+		e.stopPropagation();
+		const canvasPt = screenToCanvas(e.clientX, e.clientY);
 		const node = nodes[id];
-		dragRef.current = {
-			id,
-			ox: e.clientX - rect.left - node.x,
-			oy: e.clientY - rect.top - node.y,
-		};
-		setNodes((prev) => {
-			const next = { ...prev };
-			for (const k of Object.keys(next) as NodeId[]) {
-				next[k] = { ...next[k], selected: k === id };
+		if (!node) return;
+		// 只记录 pending click，不立刻 setNodes
+		// Alt + 拖拽 = 拖出一份副本（原件留在原位），ComfyUI 的习惯做法
+		let dragId = id;
+		let alreadySelected = node.selected ?? false;
+		if (e.altKey) {
+			const cloneId = instantiate({ nodes: [{ id, node }], links: [] }, 0, 0);
+			if (cloneId) {
+				dragId = cloneId;
+				alreadySelected = true; // 副本已被选中 → 走「已选中」分支，只拖副本
 			}
-			return next;
-		});
+		}
+		pendingClickRef.current = {
+			id: dragId,
+			startCx: canvasPt.x,
+			startCy: canvasPt.y,
+			nodeAlreadySelected: alreadySelected,
+			rafId: null,
+		};
+	}
+
+	// ── 节点 Resize ──
+	function startResize(id: NodeId, corner: "tl" | "tr" | "bl" | "br", e: RPointerEvent<Element>) {
+		e.stopPropagation();
+		const node = nodes[id];
+		const canvasPt = screenToCanvas(e.clientX, e.clientY);
+		resizingRef.current = {
+			id,
+			corner,
+			startX: canvasPt.x,
+			startY: canvasPt.y,
+			startW: node.w,
+			startH: node.h,
+			startNodeX: node.x,
+			startNodeY: node.y,
+		};
+		setResizing(resizingRef.current);
 	}
 
 	// ── 端口连线 ──
@@ -233,7 +474,7 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 	const pendingRef = useRef<{ from: NodeId; fromRow: number } | null>(null);
 	const [hoverLink, setHoverLink] = useState<string | null>(null);
 
-	/** 画布坐标下某节点某行 socket 的绝对位置。side: "r"=output(右), "l"=input(左) */
+	/** 画布坐标下某节点某行 socket 的绝对位置。 */
 	function socketPos(id: NodeId, row: number, side: "l" | "r"): { x: number; y: number } {
 		const n = nodes[id];
 		return {
@@ -241,6 +482,30 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 			y: n.y + rowDy(row),
 		};
 	}
+
+	// ── NodeCard socket 直接回调（绕过 canvas 的 onCanvasPointerDown 被 stopPropagation 阻断） ──
+	const socketHandlers: SocketHandlers = {
+		onOutputDown: ({ nodeId, row }) => {
+			const n = nodesRef.current[nodeId];
+			if (!n) return;
+			const p = socketPos(nodeId, row, "r");
+			pendingRef.current = { from: nodeId, fromRow: row };
+			setPendingLink({ from: nodeId, fromRow: row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+			setLinkOutContext({ from: nodeId, fromRow: row, x: p.x + 20, y: p.y - 12 });
+		},
+		onInputDown: ({ nodeId, row }) => {
+			const pl = pendingRef.current;
+			if (!pl || pl.from === nodeId) return;
+			const fromNode = nodesRef.current[pl.from];
+			const tone = fromNode?.tone ?? TONE.chart;
+			setLinks((prev) => [...prev, {
+				id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: nodeId, toRow: row, tone,
+			}]);
+			pendingRef.current = null;
+			setPendingLink(null);
+			setLinkOutContext(null);
+		},
+	};
 
 	/** 检测视口坐标下命中的 socket（elementFromPoint + data-socket-type）。 */
 	function hitSocket(clientX: number, clientY: number) {
@@ -254,18 +519,47 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 		return { type, nodeId, row };
 	}
 
-	/** 画布 pointerdown：拦截 output socket 启动连线 + 空白区点击取消选中。 */
+	/** 判断点击是否落在节点卡片 / socket / 分组区域 上。 */
+	function isCanvasBlank(target: EventTarget | null): boolean {
+		if (!(target instanceof HTMLElement)) return true;
+		if (target.closest("[data-node-id], [data-socket-type], [class*='group-zone']")) return false;
+		return true;
+	}
+
+	/** 画布 pointerdown：拦截 output socket → 启动 pendingLink + 弹出 AddNodeMenu；空白区点击 → 取消选中。 */
 	function onCanvasPointerDown(e: RPointerEvent<HTMLDivElement>) {
 		const hit = hitSocket(e.clientX, e.clientY);
 		if (hit?.type === "output") {
-			e.stopPropagation(); // 阻止冒泡到 NodeCard 的 startDrag
+			e.stopPropagation();
 			const p = socketPos(hit.nodeId, hit.row, "r");
 			pendingRef.current = { from: hit.nodeId, fromRow: hit.row };
 			setPendingLink({ from: hit.nodeId, fromRow: hit.row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+			// 同时弹出 AddNodeMenu，位置在连线末端附近（画布坐标下 socket 右一点）
+			setLinkOutContext({ from: hit.nodeId, fromRow: hit.row, x: p.x + 20, y: p.y - 12 });
 			return;
 		}
-		// 空白区点击 → 取消所有节点选中
-		if (e.target === e.currentTarget || (e.target as HTMLElement)?.tagName === "svg") {
+		if (hit?.type === "input") {
+			// 如果是连线中（pendingLink），则完成连线
+			e.stopPropagation();
+			const pl = pendingRef.current;
+			if (pl && hit.nodeId !== pl.from) {
+				setLinks((prev) => {
+					const tone = nodes[pl.from].tone;
+					return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
+				});
+				pendingRef.current = null;
+				setPendingLink(null);
+				setLinkOutContext(null);
+			}
+			return;
+		}
+		// 扩大空白区判定：只要没命中节点卡片、socket、分组区域就取消选中
+		if (isCanvasBlank(e.target)) {
+			// 清 click-drag 状态机（保险：NodeCard stopPropagation 已阻止冒泡）
+			pendingClickRef.current = null;
+			if (dragRef.current?.rafId) cancelAnimationFrame(dragRef.current.rafId);
+			dragRef.current = null;
+			resizingRef.current = null;
 			const anySelected = (Object.keys(nodes) as NodeId[]).some((k) => nodes[k].selected);
 			if (anySelected) {
 				setNodes((prev) => {
@@ -274,50 +568,266 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 					return next;
 				});
 			}
+			// 同时清除右键/linkOut 菜单
+			setContextMenu(null);
+			setNodeContextMenu(null);
+			setLinkOutContext(null);
 		}
 	}
 
+	// ── 全局 pointermove / pointerup：节点拖拽 + 端口连线 + 画布拖动平移 ──
+	const canvasPanRef = useRef<{ startCx: number; startCy: number; tx0: number; ty0: number } | null>(null);
+
 	useEffect(() => {
 		function onMove(e: PointerEvent) {
-			const rect = canvasRef.current?.getBoundingClientRect();
-			if (!rect) return;
-			// 节点拖拽
-			const d = dragRef.current;
-			if (d) {
+		// click → drag 阈值判断：如果 pendingClickRef 存在，检查漂移
+		const cx = e.clientX, cy = e.clientY;
+		const canvasPt = screenToCanvas(cx, cy);
+		const pc = pendingClickRef.current;
+		if (pc && !dragRef.current) {
+			const dx = canvasPt.x - pc.startCx;
+			const dy = canvasPt.y - pc.startCy;
+			if (dx * dx + dy * dy >= CLICK_DRIFT * CLICK_DRIFT) {
+				// 进入 drag 模式：先设置选中状态（单击时不设置）
+				setNodes((prev) => {
+					const next = { ...prev };
+					const pn = prev[pc.id];
+					if (!pn) return prev;
+					const wasSel = pn.selected;
+					// 如果主拖节点已选中 → 只保留它 + 其他已选中的一起拖
+					// 如果没选中 → 只选中它（框选逻辑）
+					if (wasSel) {
+						for (const k of Object.keys(next) as NodeId[]) {
+							if (k !== pc.id && !next[k].selected) next[k] = { ...next[k], selected: false };
+						}
+					} else {
+						for (const k of Object.keys(next) as NodeId[]) next[k] = { ...next[k], selected: k === pc.id };
+					}
+					return next;
+				});
+				// 构建 dragRef.offsets：所有 selected 节点都记录偏移
+				const cur = nodesRef.current;
+				const offsets: Record<NodeId, { ocx: number; ocy: number }> = {};
+				const pcNode = cur[pc.id];
+				// Alt 克隆出来的副本可能刚写入 state、本轮闭包里还没看到 → 放弃这次拖拽
+				if (!pcNode) { pendingClickRef.current = null; return; }
+				offsets[pc.id] = { ocx: canvasPt.x - pcNode.x, ocy: canvasPt.y - pcNode.y };
+				for (const k of Object.keys(cur) as NodeId[]) {
+					if (k === pc.id) continue;
+					if (cur[k].selected) {
+						offsets[k] = { ocx: canvasPt.x - cur[k].x, ocy: canvasPt.y - cur[k].y };
+					}
+				}
+				dragRef.current = { primaryId: pc.id, offsets, rafId: null };
+				pendingClickRef.current = null; // 清 pending，不再处理
+			} else {
+				// 还在阈值内，什么都不做
+			}
+		}
+
+		// 节点拖拽 RAF（多节点）
+		const d = dragRef.current;
+		if (d) {
+			if (d.rafId) cancelAnimationFrame(d.rafId);
+			d.rafId = requestAnimationFrame(() => {
+				const cur = nodesRef.current;
+				const canvasPt2 = screenToCanvas(cx, cy);
+				const updates: Record<NodeId, { x: number; y: number }> = {};
+				for (const id of Object.keys(d.offsets) as NodeId[]) {
+					if (!cur[id]) continue;
+					let nx = canvasPt2.x - d.offsets[id].ocx;
+					let ny = canvasPt2.y - d.offsets[id].ocy;
+					// ① snap-to-grid
+					if (snapRef.current) {
+						nx = Math.round(nx / gridRef.current) * gridRef.current;
+						ny = Math.round(ny / gridRef.current) * gridRef.current;
+					}
+					updates[id] = { x: nx, y: ny };
+				}
+
+				// ② 对齐辅助线检测（只对主拖节点）
+				const primaryPos = updates[d.primaryId];
+				let gx: number | undefined, gy: number | undefined;
+				if (primaryPos && guidesOnRef.current) {
+					const pn = cur[d.primaryId];
+					const pRect = {
+						l: primaryPos.x,
+						r: primaryPos.x + pn.w,
+						t: primaryPos.y,
+						b: primaryPos.y + pn.h,
+						cx: primaryPos.x + pn.w / 2,
+						cy: primaryPos.y + pn.h / 2,
+					};
+					for (const [id, n] of Object.entries(cur)) {
+						if (id === d.primaryId || updates[id]) continue; // 跳过自己和一起拖的
+						const r = { l: n.x, r: n.x + n.w, t: n.y, b: n.y + n.h, cx: n.x + n.w / 2, cy: n.y + n.h / 2 };
+						if (Math.abs(pRect.l - r.l) <= GUIDE_TOL) { gx = r.l; if (snapRef.current) updates[d.primaryId].x = r.l; }
+						else if (Math.abs(pRect.r - r.r) <= GUIDE_TOL) { gx = r.r; if (snapRef.current) updates[d.primaryId].x = r.r - pn.w; }
+						else if (Math.abs(pRect.cx - r.cx) <= GUIDE_TOL) { gx = r.cx; if (snapRef.current) updates[d.primaryId].x = r.cx - pn.w / 2; }
+						if (Math.abs(pRect.t - r.t) <= GUIDE_TOL) { gy = r.t; if (snapRef.current) updates[d.primaryId].y = r.t; }
+						else if (Math.abs(pRect.b - r.b) <= GUIDE_TOL) { gy = r.b; if (snapRef.current) updates[d.primaryId].y = r.b - pn.h; }
+						else if (Math.abs(pRect.cy - r.cy) <= GUIDE_TOL) { gy = r.cy; if (snapRef.current) updates[d.primaryId].y = r.cy - pn.h / 2; }
+						if (gx !== undefined && gy !== undefined) break;
+					}
+				}
+				const newGuides = (gx !== undefined || gy !== undefined) ? { x: gx, y: gy } : null;
+				if ((newGuides?.x ?? 0) !== (guidesRef.current?.x ?? 0) || (newGuides?.y ?? 0) !== (guidesRef.current?.y ?? 0)) {
+					setGuides(newGuides);
+				}
+
+				setNodes((prev) => {
+					const next = { ...prev };
+					for (const [id, pos] of Object.entries(updates)) {
+						const old = next[id];
+						if (old) next[id] = { ...old, x: pos.x, y: pos.y };
+					}
+					return next;
+				});
+			});
+		} else if (guidesRef.current) {
+			setGuides(null);
+		}
+			// 端口连线 —— 临时贝塞尔跟随光标（画布坐标）
+			const pl = pendingRef.current;
+			if (pl) {
+				const canvasPt = screenToCanvas(e.clientX, e.clientY);
+				setPendingLink((prev) => prev ? {
+					...prev,
+					x2: canvasPt.x,
+					y2: canvasPt.y,
+				} : null);
+			}
+			// 框选模式
+			const sb = selectionBoxRef.current;
+			if (sb) {
+				const canvasPt = screenToCanvas(e.clientX, e.clientY);
+				sb.endX = canvasPt.x;
+				sb.endY = canvasPt.y;
+				setSelectionBox({ ...sb });
+			}
+			// Resize 模式
+			const rs = resizingRef.current;
+			if (rs) {
+				const canvasPt = screenToCanvas(e.clientX, e.clientY);
+				const dx = canvasPt.x - rs.startX;
+				const dy = canvasPt.y - rs.startY;
+				const minW = 120;
+				const minH = 80;
+				let newW = rs.startW;
+				let newH = rs.startH;
+				let newX = rs.startNodeX;
+				let newY = rs.startNodeY;
+
+				if (rs.corner === "br") {
+					newW = Math.max(minW, rs.startW + dx);
+					newH = Math.max(minH, rs.startH + dy);
+				} else if (rs.corner === "bl") {
+					newW = Math.max(minW, rs.startW - dx);
+					newH = Math.max(minH, rs.startH + dy);
+					newX = rs.startNodeX + (rs.startW - newW);
+				} else if (rs.corner === "tr") {
+					newW = Math.max(minW, rs.startW + dx);
+					newH = Math.max(minH, rs.startH - dy);
+					newY = rs.startNodeY + (rs.startH - newH);
+				} else if (rs.corner === "tl") {
+					newW = Math.max(minW, rs.startW - dx);
+					newH = Math.max(minH, rs.startH - dy);
+					newX = rs.startNodeX + (rs.startW - newW);
+					newY = rs.startNodeY + (rs.startH - newH);
+				}
+
+				// resize 也 snap-to-grid
+				if (snapRef.current) {
+					newW = Math.max(minW, Math.round(newW / gridRef.current) * gridRef.current);
+					newH = Math.max(minH, Math.round(newH / gridRef.current) * gridRef.current);
+					newX = Math.round(newX / gridRef.current) * gridRef.current;
+					newY = Math.round(newY / gridRef.current) * gridRef.current;
+				}
+
 				setNodes((prev) => ({
 					...prev,
-					[d.id]: {
-						...prev[d.id],
-						x: e.clientX - rect.left - d.ox,
-						y: e.clientY - rect.top - d.oy,
+					[rs.id]: {
+						...prev[rs.id],
+						x: newX,
+						y: newY,
+						w: newW,
+						h: newH,
 					},
 				}));
 			}
-			// 端口连线 —— 临时贝塞尔跟随光标
-			const pl = pendingRef.current;
-			if (pl) {
-				setPendingLink((prev) => prev ? {
-					...prev,
-					x2: e.clientX - rect.left,
-					y2: e.clientY - rect.top,
-				} : null);
+			// 画布拖动平移（空白处按下拖动）
+			const cp = canvasPanRef.current;
+			if (cp) {
+				const canvasPt = screenToCanvas(e.clientX, e.clientY);
+				setViewport((v) => ({
+					...v,
+					tx: cp.tx0 + (canvasPt.x - cp.startCx) * v.scale,
+					ty: cp.ty0 + (canvasPt.y - cp.startCy) * v.scale,
+				}));
 			}
 		}
 		function onUp(e: PointerEvent) {
-			// 结束节点拖拽
+			// 1. pendingClickRef 还在 → 用户没进入 drag，这就是一次单击
+			const pc = pendingClickRef.current;
+			if (pc && !dragRef.current) {
+				// 单击选中：和旧逻辑一致（点一下选中，不切换多选状态）
+				setNodes((prev) => {
+					const next = { ...prev };
+					const pn = next[pc.id];
+					if (!pn) return prev;
+					if (!pn.selected) {
+						// 没选中 → 选中它 + 清其他
+						for (const k of Object.keys(next) as NodeId[]) next[k] = { ...next[k], selected: k === pc.id };
+					}
+					// 已选中 → 保持原样（支持框选后单击已选中节点不丢选中）
+					return next;
+				});
+			}
+			pendingClickRef.current = null;
+
+			// 2. 清理拖拽 RAF
+			const d = dragRef.current;
+			if (d?.rafId) cancelAnimationFrame(d.rafId);
 			dragRef.current = null;
+			setGuides(null); // 清理对齐辅助线
+			canvasPanRef.current = null;
+			resizingRef.current = null;
+			setResizing(null);
+			// 结束框选
+			const sb = selectionBoxRef.current;
+			if (sb) {
+				const minX = Math.min(sb.startX, sb.endX);
+				const maxX = Math.max(sb.startX, sb.endX);
+				const minY = Math.min(sb.startY, sb.endY);
+				const maxY = Math.max(sb.startY, sb.endY);
+				// 只有框选区域足够大时才执行选择
+				if (maxX - minX > 5 || maxY - minY > 5) {
+					setNodes((prev) => {
+						const next = { ...prev };
+						for (const [id, n] of Object.entries(next)) {
+							// 检查节点是否在框选区域内
+							const inBox = n.x >= minX && n.x + n.w <= maxX && n.y >= minY && n.y + n.h <= maxY;
+							next[id] = { ...n, selected: inBox };
+						}
+						return next;
+					});
+				}
+				selectionBoxRef.current = null;
+				setSelectionBox(null);
+			}
 			// 结束端口连线 —— 检测 input socket
 			const pl = pendingRef.current;
 			if (pl) {
 				const hit = hitSocket(e.clientX, e.clientY);
 				if (hit?.type === "input" && hit.nodeId !== pl.from) {
 					setLinks((prev) => {
-						const tone = nodes[pl.from].tone;
+						const tone = nodesRef.current[pl.from]?.tone ?? "#10b981";
 						return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
 					});
 				}
 				pendingRef.current = null;
 				setPendingLink(null);
+				setLinkOutContext(null);
 			}
 		}
 		window.addEventListener("pointermove", onMove);
@@ -326,304 +836,801 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 			window.removeEventListener("pointermove", onMove);
 			window.removeEventListener("pointerup", onUp);
 		};
-	}, [nodes]);
+	// 空依赖数组：window pointermove/up listeners 不依赖 nodes 变化。
+	// 内部所有状态读取走闭包 ref（dragRef / resizingRef / pendingRef / canvasPanRef / selectionBoxRef），
+	// 避免拖拽/resize 过程中 useEffect 反复解绑重绑 listeners 导致抖动和中断。
+	}, []);
 
-	// ESC 关闭右键菜单
+	// ── 滚轮：Ctrl/⌘+wheel 缩放（以鼠标位置为锚点），纯 wheel 平移画布 ──
+	const onWheel = useCallback((e: WheelEvent) => {
+		if (!canvasRef.current) return;
+		const rect = canvasRef.current.getBoundingClientRect();
+		const sx = e.clientX - rect.left; // 相对 canvas 左上角的屏幕坐标
+		const sy = e.clientY - rect.top;
+
+		if (e.ctrlKey || e.metaKey) {
+			// Ctrl/⌘ + wheel → 缩放（以鼠标位置为锚点，clampZoom 统一限量）
+			e.preventDefault();
+			setViewport((v) => {
+				const delta = e.deltaY > 0 ? -0.12 : 0.12;
+				const nextScale = clampZoom(v.scale + delta);
+				// 缩放后让光标下的画布点保持不动
+				return zoomViewport(v, nextScale, { x: sx, y: sy });
+			});
+		} else {
+			// 纯 wheel → pan
+			e.preventDefault();
+			setViewport((v) => ({ ...v, tx: v.tx - e.deltaX, ty: v.ty - e.deltaY }));
+		}
+	}, []);
+
+	useEffect(() => {
+		const el = canvasRef.current;
+		if (!el) return;
+		el.addEventListener("wheel", onWheel, { passive: false });
+		return () => el.removeEventListener("wheel", onWheel);
+	}, [onWheel]);
+
+	// ── fitView：自动缩放 + 平移，让所有节点可见（或聚焦选中节点） ──
+	function fitView(mode: "all" | "selection" = "all") {
+		const rect = canvasRef.current?.getBoundingClientRect();
+		if (!rect) return;
+		const cur = nodesRef.current;
+		const entries = Object.values(cur);
+		if (entries.length === 0) return;
+
+		const target = mode === "selection" ? entries.filter((n) => n.selected) : entries;
+		if (target.length === 0) return;
+
+		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+		for (const n of target) {
+			if (n.x < minX) minX = n.x;
+			if (n.y < minY) minY = n.y;
+			if (n.x + n.w > maxX) maxX = n.x + n.w;
+			if (n.y + n.h > maxY) maxY = n.y + n.h;
+		}
+		const bw = maxX - minX;
+		const bh = maxY - minY;
+		const pad = 48; // 边距
+		const sx = (rect.width - pad * 2) / Math.max(bw, 1);
+		const sy = (rect.height - pad * 2) / Math.max(bh, 1);
+		const scale = clampZoom(Math.min(sx, sy));
+		// 让 bounding box 中心对准画布中心
+		const cx = rect.width / 2 - ((minX + maxX) / 2) * scale;
+		const cy = rect.height / 2 - ((minY + maxY) / 2) * scale;
+		setViewport({ scale, tx: cx, ty: cy });
+	}
+
+	// 画布空白拖动：pointerdown 在 canvas 空白区 → 记录起点（支持框选）
+	function onCanvasBlankPointerDown(e: RPointerEvent<HTMLDivElement>) {
+		if (!isCanvasBlank(e.target)) return;
+		if (e.button !== 0) return;
+		const canvasPt = screenToCanvas(e.clientX, e.clientY);
+		// 常规画布编辑器：普通拖拽 = 框选，Shift / Space = pan（拖动画布）
+		if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) {
+			// 按住修饰键 → pan 画布
+			canvasPanRef.current = {
+				startCx: canvasPt.x,
+				startCy: canvasPt.y,
+				tx0: viewport.tx,
+				ty0: viewport.ty,
+			};
+		} else {
+			// 普通拖拽 = 框选
+			selectionBoxRef.current = {
+				startX: canvasPt.x,
+				startY: canvasPt.y,
+				endX: canvasPt.x,
+				endY: canvasPt.y,
+			};
+			setSelectionBox({
+				startX: canvasPt.x,
+				startY: canvasPt.y,
+				endX: canvasPt.x,
+				endY: canvasPt.y,
+			});
+		}
+	}
+
+	// ── 全局键盘 handler：全选 / 删除 / Escape ──
+	useEffect(() => {
+		function onKey(e: KeyboardEvent) {
+			// 如果正在输入文本，不拦截
+			const t = e.target as HTMLElement | null;
+			if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+
+			const mod = e.ctrlKey || e.metaKey;
+
+			if (mod && e.key.toLowerCase() === "a") {
+				e.preventDefault();
+				setNodes((prev) => {
+					const next = { ...prev };
+					for (const k of Object.keys(next) as NodeId[]) next[k] = { ...next[k], selected: true };
+					return next;
+				});
+				return;
+			}
+			if (e.key === "Delete" || e.key === "Backspace") {
+				e.preventDefault();
+				const selectedIds = (Object.keys(nodesRef.current) as NodeId[]).filter((k) => nodesRef.current[k].selected);
+				if (selectedIds.length === 0) return;
+				const selSet = new Set(selectedIds);
+				setNodes((prev) => {
+					const next: typeof prev = {};
+					for (const [id, n] of Object.entries(prev)) if (!selSet.has(id)) next[id] = { ...n };
+					return next;
+				});
+				setLinks((prev) => prev.filter((l) => !selSet.has(l.from) && !selSet.has(l.to)));
+				return;
+			}
+			if (mod && e.key.toLowerCase() === "c") {
+				e.preventDefault();
+				copySelection();
+				return;
+			}
+			if (mod && e.key.toLowerCase() === "v") {
+				e.preventDefault();
+				pasteClipboard();
+				return;
+			}
+			if (mod && e.key.toLowerCase() === "d") {
+				e.preventDefault();
+				duplicateSelection();
+				return;
+			}
+			if (mod && e.key.toLowerCase() === "m") {
+				// ⌘/Ctrl + M = 停用 / 启用选中节点（ComfyUI 的 mute）
+				e.preventDefault();
+				toggleMute();
+				return;
+			}
+			if (e.key.toLowerCase() === "g" && !mod && !e.shiftKey && !e.altKey) {
+				// G = 关 / 开网格吸附（重新打开回到 8px；不拦截修饰键组合）
+				e.preventDefault();
+				setGridStep(gridRef.current > 0 ? 0 : 8);
+				return;
+			}
+			if (e.key === "Home") {
+				e.preventDefault();
+				// ComfyUI 风格的 Home 键 fitView：有选中聚焦选中，没选中看全部
+				const hasSel = (Object.keys(nodesRef.current) as NodeId[]).some((k) => nodesRef.current[k].selected);
+				fitView(hasSel ? "selection" : "all");
+				return;
+			}
+			if (e.key === "Escape") {
+				setNodes((prev) => {
+					const next = { ...prev };
+					let changed = false;
+					for (const k of Object.keys(next) as NodeId[]) {
+						if (next[k].selected) { next[k] = { ...next[k], selected: false }; changed = true; }
+					}
+					return changed ? next : prev;
+				});
+				setContextMenu(null);
+				setNodeContextMenu(null);
+				setLinkOutContext(null);
+				setPendingLink(null);
+				pendingRef.current = null;
+				pendingClickRef.current = null; // click-drag 状态机也要清
+				if (dragRef.current?.rafId) cancelAnimationFrame(dragRef.current.rafId);
+				dragRef.current = null;
+			}
+		}
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [setNodes, setLinks, setGridStep]);
+
+	// ESC 关闭画布空白右键菜单
 	useEffect(() => {
 		if (!contextMenu) return;
 		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setContextMenu(null); };
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
 	}, [contextMenu]);
+	useEffect(() => {
+		if (!nodeContextMenu) return;
+		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setNodeContextMenu(null); };
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [nodeContextMenu]);
+	useEffect(() => {
+		if (!linkOutContext) return;
+		const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setLinkOutContext(null); setPendingLink(null); pendingRef.current = null; } };
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [linkOutContext]);
+
+	// ── 工具函数：插入新节点（画布坐标），清其他选中，返回新 id ──
+	function insertNode(kind: string, canvasX: number, canvasY: number): { id: NodeId; node: NodePos } {
+		const tpl = NODE_TEMPLATES[kind] ?? { w: 180, h: 110, tone: TONE.chart, kind };
+		nodeSeqRef.current++;
+		const newId = `n${nodeSeqRef.current}`;
+		const newNode: NodePos = { ...tpl, x: Math.max(8, canvasX), y: Math.max(8, canvasY), kind, selected: true };
+		setNodes((prev) => {
+			const next: typeof prev = {};
+			for (const [id, n] of Object.entries(prev)) next[id] = { ...n, selected: false };
+			next[newId] = newNode;
+			return next;
+		});
+		return { id: newId, node: newNode };
+	}
+
+	// ── 选中集合与编辑动作 ──
+	// 参考 ComfyUI：useSelectionOperations（批量删除 / 排列）、useArrangeNodes（三种自动布局）、
+	// LGraphEventMode.NEVER（停用节点后运行时不执行）。
+
+	/** 当前选中节点 id（保持 nodes 的插入顺序，排列结果才稳定）。 */
+	function selectedIds(): NodeId[] {
+		const cur = nodesRef.current;
+		return (Object.keys(cur) as NodeId[]).filter((id) => cur[id].selected);
+	}
+
+	/** 只选中一个节点（右键「只运行这个节点」前先把选中态挪过去）。 */
+	function selectOnly(id: NodeId) {
+		setNodes((prev) => {
+			const next: Record<NodeId, NodePos> = {};
+			for (const [k, n] of Object.entries(prev)) next[k] = { ...n, selected: k === id };
+			return next;
+		});
+	}
+
+	/** 复制单个节点（右键菜单）：走快照 → instantiate，id 统一由 nodeSeq 分配。 */
+	function duplicateNode(id: NodeId) {
+		const n = nodesRef.current[id];
+		if (!n) return;
+		instantiate({ nodes: [{ id, node: n }], links: [] }, 24, 24);
+	}
+
+	/** 删除节点及其两端连线。 */
+	function removeNodes(ids: NodeId[]) {
+		if (ids.length === 0) return;
+		const set = new Set(ids);
+		setNodes((prev) => {
+			const next: Record<NodeId, NodePos> = {};
+			for (const [id, n] of Object.entries(prev)) if (!set.has(id)) next[id] = n;
+			return next;
+		});
+		setLinks((prev) => prev.filter((l) => !set.has(l.from) && !set.has(l.to)));
+		setNodeContextMenu(null);
+	}
+
+	/** 停用 / 启用节点（不传参 = 当前选中集）。停用后「全部运行」会跳过它。 */
+	function toggleMute(target?: NodeId[]) {
+		const ids = target ?? selectedIds();
+		if (ids.length === 0) return;
+		const set = new Set(ids);
+		setNodes((prev) => {
+			const next = { ...prev };
+			for (const id of set) {
+				const n = next[id];
+				if (n) next[id] = { ...n, muted: !n.muted };
+			}
+			return next;
+		});
+	}
+
+	/**
+	 * 用一份快照生成新节点：重新分配 id、整体平移 (dx, dy)、重连组内连线，
+	 * 并把选中状态换到副本上。返回第一个新节点的 id。
+	 * 快照而不是活 id —— 所以源节点被删除后剪贴板依旧可用（与 ComfyUI 一致）。
+	 */
+	function instantiate(spec: CanvasClipboard, dx: number, dy: number): NodeId | null {
+		if (spec.nodes.length === 0) return null;
+		const idMap = new Map<NodeId, NodeId>();
+		const fresh: Record<NodeId, NodePos> = {};
+		let primary: NodeId | null = null;
+		for (const entry of spec.nodes) {
+			nodeSeqRef.current++;
+			const newId = `n${nodeSeqRef.current}`;
+			idMap.set(entry.id, newId);
+			if (!primary) primary = newId;
+			fresh[newId] = { ...entry.node, x: entry.node.x + dx, y: entry.node.y + dy, selected: true };
+		}
+		const freshLinks: Link[] = [];
+		for (const l of spec.links) {
+			const from = idMap.get(l.from);
+			const to = idMap.get(l.to);
+			if (from && to) freshLinks.push({ ...l, id: nextLinkId(), from, to });
+		}
+		setNodes((prev) => {
+			const next: Record<NodeId, NodePos> = {};
+			for (const [id, n] of Object.entries(prev)) next[id] = n.selected ? { ...n, selected: false } : n;
+			return { ...next, ...fresh };
+		});
+		if (freshLinks.length > 0) setLinks((prev) => [...prev, ...freshLinks]);
+		return primary;
+	}
+
+	/** 把选中子图截成可重建的快照（只保留组内连线）。 */
+	function snapshotSelection(): CanvasClipboard | null {
+		const cur = nodesRef.current;
+		const ids = selectedIds();
+		if (ids.length === 0) return null;
+		const set = new Set(ids);
+		return {
+			nodes: ids.map((id) => ({ id, node: cur[id] })),
+			links: linksRef.current
+				.filter((l) => set.has(l.from) && set.has(l.to))
+				.map((l) => ({ from: l.from, fromRow: l.fromRow, to: l.to, toRow: l.toRow, tone: l.tone })),
+		};
+	}
+
+	/** ⌘C：快照进内部剪贴板；顺带写一份 JSON 到系统剪贴板，便于跨窗口粘。 */
+	function copySelection() {
+		const spec = snapshotSelection();
+		if (!spec) return;
+		clipboardRef.current = spec;
+		const clip = typeof navigator === "undefined" ? undefined : navigator.clipboard;
+		if (clip) void clip.writeText(JSON.stringify(spec)).catch(() => undefined);
+	}
+
+	/** ⌘V：粘贴到原位置右下偏移 24px。 */
+	function pasteClipboard() {
+		const spec = clipboardRef.current;
+		if (!spec) return;
+		instantiate(spec, 24, 24);
+	}
+
+	/** ⌘D：就地复制选中节点。 */
+	function duplicateSelection() {
+		const spec = snapshotSelection();
+		if (!spec) return;
+		instantiate(spec, 24, 24);
+	}
+
+	/** Delete：删除选中节点。 */
+	function deleteSelection() {
+		removeNodes(selectedIds());
+	}
+
+	/** 自动排列；分组容器不参与（它是别人的外框）。 */
+	function arrange(layout: ArrangeLayout, scope: "all" | "selection" = "all") {
+		const cur = nodesRef.current;
+		const ids = scope === "selection" ? selectedIds() : (Object.keys(cur) as NodeId[]);
+		const boxes: ArrangeBox[] = [];
+		for (const id of ids) {
+			const n = cur[id];
+			if (!n || n.isGroup) continue;
+			boxes.push({ id, x: n.x, y: n.y, w: n.w, h: n.h });
+		}
+		const updates = computeArrangement(boxes, layout, DEFAULT_ARRANGE_GAP);
+		if (updates.length === 0) return;
+		setNodes((prev) => applyArrangement(prev, updates));
+		// 排完把结果拉回视野（等 React 提交后再量尺寸）
+		requestAnimationFrame(() => fitView(scope === "selection" ? "selection" : "all"));
+	}
+
+	/** 画布中心（缩放锚点，屏幕坐标）。 */
+	function canvasCenter(): { x: number; y: number } {
+		const rect = canvasRef.current?.getBoundingClientRect();
+		return { x: (rect?.width ?? 0) / 2, y: (rect?.height ?? 0) / 2 };
+	}
+
+	/** 缩放到指定倍率（以画布中心为锚点）。 */
+	function zoomTo(scale: number) {
+		setViewport((v) => zoomViewport(v, clampZoom(scale), canvasCenter()));
+	}
+
+	/** 按挡位步进：+1 放大一挡，-1 缩小一挡。 */
+	function zoomBy(steps: number) {
+		setViewport((v) => zoomViewport(v, clampZoom(v.scale * Math.pow(CANVAS_ZOOM_STEP, steps)), canvasCenter()));
+	}
+
+	// 命令式出口：顶栏（CanvasStrip / EditorToolbar）通过 ref 调用，避免把整套画布状态提升到父级
+	if (api) {
+		api.current = {
+			fitView,
+			zoomBy,
+			zoomTo,
+			arrange,
+			copySelection,
+			pasteClipboard,
+			duplicateSelection,
+			deleteSelection,
+			toggleMuteSelection: () => toggleMute(),
+		};
+	}
 
 	return (
 		<div
 			ref={canvasRef}
-			onPointerDown={onCanvasPointerDown}
+			onPointerDown={(e) => {
+				onCanvasPointerDown(e);
+				onCanvasBlankPointerDown(e);
+			}}
 			onDragOver={onCanvasDragOver}
 			onDragLeave={onCanvasDragLeave}
 			onDrop={onCanvasDrop}
 			onContextMenu={(e) => {
 				e.preventDefault();
+				// 只有空白区弹画布右键菜单，节点自己会弹节点右键
+				if (!isCanvasBlank(e.target)) return;
 				const rect = canvasRef.current?.getBoundingClientRect();
 				if (!rect) return;
-				setContextMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+				const canvasPt = screenToCanvas(e.clientX, e.clientY);
+				setContextMenu({ x: canvasPt.x, y: canvasPt.y });
+				setNodeContextMenu(null);
+				setLinkOutContext(null);
 			}}
 			data-drag-over={dragOver ? "true" : undefined}
-			className={`relative min-h-0 flex-1 overflow-hidden bg-background ${dragOver ? "ring-2 ring-accent/40 ring-inset" : ""}`}
-	>
-		{/* 网格背景层 —— opacity 只作用于这个层，不影响节点 */}
-		<div className="pointer-events-none absolute inset-0 opacity-40" style={{
-			backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
-			backgroundSize: "16px 16px",
-			color: "var(--color-border)",
-		}} />
-			{/* 分组区域 —— 只在画布上真有节点时出现，避免空画布上摆一堆假分组 */}
-			{Object.keys(nodes).length > 0
-				? GROUPS.map((g) => (
-					<div
-						key={g.label}
-						className="absolute rounded-[8px] border border-border bg-surface/25"
-						style={{ left: g.x, top: g.y, width: g.w, height: g.h }}
-					>
-						<span className="absolute -top-[9px] left-2 flex h-[18px] items-center gap-1.5 rounded-control border border-border bg-background px-2">
-							<span className={g.icon + " size-3 text-faint"} />
-							<span className="text-[10px] text-muted">{g.label}</span>
-							<span className="font-mono text-[10px] text-faint">{countNodesInGroup(g, nodes)}</span>
-						</span>
-					</div>
-				))
-				: null}
-
-			{/* SVG 连线（hover 高亮 + 中点 × 删除按钮） */}
-			<svg className="absolute inset-0 h-full w-full overflow-visible">
-				{links.map((l) => {
-					const hot = l.from === "line" || l.to === "line";
-					const isHover = hoverLink === l.id;
-					const mid = linkMid(l, nodes);
-					return (
-						<g key={l.id}>
-							{/* 命中用的粗背景线（看不见，但扩了点击区域） */}
-							<path
-								d={linkPath(l, nodes)}
-								fill="none"
-								stroke="transparent"
-								strokeWidth={10}
-								strokeLinecap="round"
-								style={{ pointerEvents: "stroke" }}
-								onPointerEnter={() => setHoverLink(l.id)}
-								onPointerLeave={() => setHoverLink((prev) => prev === l.id ? null : prev)}
-							/>
-							{/* 视觉线 */}
-							<path
-								d={linkPath(l, nodes)}
-								fill="none"
-								stroke={l.tone}
-								strokeWidth={isHover ? 2.5 : (hot ? 2 : 1.5)}
-								strokeLinecap="round"
-								opacity={isHover ? 1 : (hot ? 0.95 : 0.6)}
-								style={{ pointerEvents: "none" }}
-							/>
-							{/* hover 时显示 × 删除按钮 */}
-							{isHover && (
-								<g
-									style={{ pointerEvents: "all" }}
-									onPointerDown={(e) => {
-										e.stopPropagation();
-										setLinks((prev) => prev.filter((p) => p.id !== l.id));
-										setHoverLink(null);
-									}}
-								>
-									<circle cx={mid.x} cy={mid.y} r={10} fill="var(--color-surface-raised)" stroke="var(--color-border-strong)" strokeWidth={1.5} />
-									<circle cx={mid.x} cy={mid.y} r={10} fill="transparent" />
-									<path
-										d={`M ${mid.x - 3.5} ${mid.y - 3.5} L ${mid.x + 3.5} ${mid.y + 3.5} M ${mid.x + 3.5} ${mid.y - 3.5} L ${mid.x - 3.5} ${mid.y + 3.5}`}
-										stroke="var(--color-danger)"
-										strokeWidth={1.6}
-										strokeLinecap="round"
-									/>
-								</g>
-							)}
-						</g>
-					);
-				})}
-			</svg>
-
-			{/* 临时连线（拖拽中） */}
-			{pendingLink && (
-				<svg className="pointer-events-none absolute inset-0 h-full w-full">
-					<path
-						d={(() => {
-							const bend = Math.max(36, Math.abs(pendingLink.x2 - pendingLink.x1) * 0.5);
-							return `M ${pendingLink.x1} ${pendingLink.y1} C ${pendingLink.x1 + bend} ${pendingLink.y1}, ${pendingLink.x2 - bend} ${pendingLink.y2}, ${pendingLink.x2} ${pendingLink.y2}`;
-						})()}
-						fill="none"
-						stroke={nodes[pendingLink.from].tone}
-						strokeWidth={1.75}
-						strokeDasharray="6 4"
-						opacity={0.8}
-					/>
-				</svg>
+			className={`relative min-h-0 min-w-[800px] flex-1 overflow-hidden bg-background ${dragOver ? "ring-2 ring-accent/40 ring-inset" : ""}`}
+		>
+			{/* 网格背景层 —— 不随 viewport transform，保持固定；步长 0（关闭）时整层不渲染 */}
+			{snapOn && (
+				<div className="pointer-events-none absolute inset-0 opacity-40" style={{ backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`, backgroundSize: `${gridStep}px ${gridStep}px`, color: "var(--color-border)" }} />
 			)}
 
-			{/* 动态渲染所有节点 */}
-			{(Object.keys(nodes) as NodeId[]).map((id) => {
-				const n = nodes[id];
-				if (!n) return null;
-				const kind = n.kind ?? "";
-				const values = n.values ?? {};
-				const result = nodeResults[id];
-				const title = (values.title as string) ?? kind ?? id;
+			{/* ── viewport transform 容器 ──
+			    节点、连线 SVG、分组区域都在这个 transform 之下。
+			    平移单位是"屏幕 px"，scale 是"画布单位 → 屏幕 px"的倍率。 */}
+			<div
+				style={{
+					transform: `translate(${viewport.tx}px, ${viewport.ty}px) scale(${viewport.scale})`,
+					transformOrigin: "0 0",
+				}}
+			>
+				{/* 分组节点作为普通节点渲染 - 不再默认显示固定分组 */}
 
-				// 按 kind 决定输入/输出插槽
-				const isSource = kind.startsWith("source-");
-				const isChart = kind.startsWith("chart-");
-				const isMetric = kind.startsWith("metric-");
-				const isFilter = kind.startsWith("filter-");
-				const isOutput = kind.startsWith("output-");
+				{/* 对齐辅助线（画布坐标，viewport 变换下） */}
+				{guidesOn && guides && (guides.x !== undefined || guides.y !== undefined) && (
+					<svg className="pointer-events-none absolute overflow-visible" style={{ left: 0, top: 0, width: 1, height: 1 }} preserveAspectRatio="none">
+						<g stroke="var(--color-accent)" strokeWidth={1 / viewport.scale} opacity={0.75}>
+							{guides.x !== undefined && <line x1={guides.x} y1={-4000} x2={guides.x} y2={4000} />}
+							{guides.y !== undefined && <line x1={-4000} y1={guides.y} x2={4000} y2={guides.y} />}
+						</g>
+					</svg>
+				)}
 
-				const inputs: { row: number; tone: string }[] = isSource ? [] : [{ row: 0, tone: TONE.table }];
-				const outputs: { row: number; tone: string }[] = isOutput ? [] : [{ row: 0, tone: isSource ? TONE.table : isChart ? TONE.chart : TONE.result }];
+				{/* SVG 连线（hover 高亮 + 中点 × 删除按钮） */}
+				<svg className="absolute overflow-visible" style={{ left: 0, top: 0, width: 1, height: 1 }} preserveAspectRatio="none">
+					{links.map((l) => {
+						const isHover = hoverLink === l.id;
+						const mid = linkMid(l, nodes);
+						return (
+							<g key={l.id}>
+								<path
+									d={linkPath(l, nodes)}
+									fill="none"
+									stroke="transparent"
+									strokeWidth={10}
+									strokeLinecap="round"
+									style={{ pointerEvents: "stroke" }}
+									onPointerEnter={() => setHoverLink(l.id)}
+									onPointerLeave={() => setHoverLink((prev) => prev === l.id ? null : prev)}
+								/>
+								<path
+									d={linkPath(l, nodes)}
+									fill="none"
+									stroke={l.tone}
+									strokeWidth={isHover ? 2.5 : 1.5}
+									strokeLinecap="round"
+									opacity={isHover ? 1 : 0.6}
+									style={{ pointerEvents: "none" }}
+								/>
+								{isHover && (
+									<g
+										style={{ pointerEvents: "all" }}
+										onPointerDown={(e) => {
+											e.stopPropagation();
+											setLinks((prev) => prev.filter((p) => p.id !== l.id));
+											setHoverLink(null);
+										}}
+									>
+										<circle cx={mid.x} cy={mid.y} r={10} fill="var(--color-surface-raised)" stroke="var(--color-border-strong)" strokeWidth={1.5} />
+										<path
+											d={`M ${mid.x - 3.5} ${mid.y - 3.5} L ${mid.x + 3.5} ${mid.y + 3.5} M ${mid.x + 3.5} ${mid.y - 3.5} L ${mid.x - 3.5} ${mid.y + 3.5}`}
+											stroke="var(--color-danger)"
+											strokeWidth={1.6}
+											strokeLinecap="round"
+										/>
+									</g>
+								)}
+							</g>
+						);
+					})}
+				</svg>
 
-				// 图表数据：优先用执行结果，否则用 hash 伪随机
-				const chartValues = result && result.columns.length > 0
-					? result.rows.slice(0, 14).map((r) => {
-						const numVal = Object.values(r).find((v) => typeof v === "number");
-						return typeof numVal === "number" ? numVal : 0;
-					})
-					: hashValues(`node-${id}`, 14, 30, 88);
+				{/* 临时连线（拖拽中） */}
+				{pendingLink && (
+					<svg className="pointer-events-none absolute" style={{ left: 0, top: 0, width: 1, height: 1 }}>
+						<path
+							d={(() => {
+								const bend = Math.max(36, Math.abs(pendingLink.x2 - pendingLink.x1) * 0.5);
+								return `M ${pendingLink.x1} ${pendingLink.y1} C ${pendingLink.x1 + bend} ${pendingLink.y1}, ${pendingLink.x2 - bend} ${pendingLink.y2}, ${pendingLink.x2} ${pendingLink.y2}`;
+							})()}
+							fill="none"
+							stroke={nodes[pendingLink.from]?.tone ?? TONE.chart}
+							strokeWidth={1.75}
+							strokeDasharray="6 4"
+							opacity={0.8}
+						/>
+					</svg>
+				)}
 
-				// 节点类型图标
-				const kindIcon = isSource ? "icon-[lucide--database]" :
-					isChart ? "icon-[lucide--chart-line]" :
-					isMetric ? "icon-[lucide--calculator]" :
-					isFilter ? "icon-[lucide--list-filter]" :
-					isOutput ? "icon-[lucide--layout-dashboard]" :
-					"icon-[lucide--circle]";
+				{/* 动态渲染所有节点 */}
+				{(Object.keys(nodes) as NodeId[]).map((id) => {
+					const n = nodes[id];
+					if (!n) return null;
+					const kind = n.kind ?? "";
+					const values = n.values ?? {};
+					const result = nodeResults[id];
+					const title = (values.title as string) ?? kind ?? id;
 
-				const kindLabel = isSource ? "数据源" :
-					isChart ? "图表" :
-					isMetric ? "指标" :
-					isFilter ? "控件" :
-					isOutput ? "输出" : kind;
+					const isGroup = n.isGroup || kind.startsWith("group-");
+					const isSource = kind.startsWith("source-");
+					const isChart = kind.startsWith("chart-");
+					const isMetric = kind.startsWith("metric-");
+					const isFilter = kind.startsWith("filter-");
+					const isOutput = kind.startsWith("output-");
+					const isAdv = kind.startsWith("adv-");
+					const isScreen = kind.startsWith("screen-");
 
-				return (
-					<NodeCard
-						key={id}
-						{...n}
-						nodeId={id}
-						onPointerDown={(e) => startDrag(id, e)}
-						title={title}
-						type={kindLabel}
-						icon={kindIcon}
-						inputs={inputs}
-						outputs={outputs}
-					>
-						{/* 数据源节点：显示 SQL 或表名 */}
-						{isSource && (
-							<>
-								{values.sql ? (
-									<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface px-1.5 py-1 font-mono text-[9.5px] leading-[13px] text-muted">
-										{String(values.sql).split("\n").slice(0, 4).map((line, i) => (
-											<div key={i}>{line}</div>
+					// screen-page 是容器类，无 outputs；screen-map outputs 正常
+					const isScreenContainer = kind === "screen-page";
+
+					const inputs: { row: number; tone: string }[] = (isSource || isGroup) ? [] : [{ row: 0, tone: TONE.table }];
+					const outputs: { row: number; tone: string }[] = (isOutput || isAdv || isGroup || isScreenContainer) ? [] : [{ row: 0, tone: isSource ? TONE.table : isChart ? TONE.chart : (isScreen ? TONE.chart : TONE.result) }];
+
+					const chartValues = result && result.columns.length > 0
+						? result.rows.slice(0, 14).map((r) => {
+							const numVal = Object.values(r).find((v) => typeof v === "number");
+							return typeof numVal === "number" ? numVal : 0;
+						})
+						: hashValues(`node-${id}`, 14, 30, 88);
+
+					const kindIcon = isGroup ? (n.groupIcon ?? "icon-[lucide--layers]") :
+						isSource ? "icon-[lucide--database]" :
+						isChart ? "icon-[lucide--chart-line]" :
+						isMetric ? "icon-[lucide--calculator]" :
+						isFilter ? "icon-[lucide--list-filter]" :
+						isOutput ? "icon-[lucide--layout-dashboard]" :
+						isAdv ? "icon-[lucide--sparkles]" :
+						isScreen ? "icon-[lucide--monitor]" :
+						"icon-[lucide--circle]";
+
+					const kindLabel = isGroup ? "分组" :
+						isSource ? "数据源" :
+						isChart ? "图表" :
+						isMetric ? "指标" :
+						isFilter ? "控件" :
+						isOutput ? "输出" :
+						isAdv ? "高级" :
+						isScreen ? "大屏" : kind;
+
+					return (
+						<NodeCard
+							key={id}
+							{...n}
+							nodeId={id}
+							onPointerDown={(e) => startDrag(id, e)}
+							onResizeStart={(corner, e) => startResize(id, corner, e)}
+							socketHandlers={socketHandlers}
+							title={title}
+							type={kindLabel}
+							icon={kindIcon}
+							inputs={inputs}
+							outputs={outputs}
+						>
+							{isSource && (
+								<>
+									{values.sql ? (
+										<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface px-1.5 py-1 font-mono text-[9.5px] leading-[13px] text-muted">
+											{String(values.sql).split("\n").slice(0, 4).map((line, i) => (
+												<div key={i}>{line}</div>
+											))}
+										</div>
+									) : values.table ? (
+										<NodeRow label="表"><NodeValue mono>{String(values.table)}</NodeValue></NodeRow>
+									) : (
+										<NodeRow label="配置"><NodeValue>点击右侧面板配置</NodeValue></NodeRow>
+									)}
+									{result && (
+										<NodeRow label="结果">
+											<NodeValue mono>{result.rowCount} 行 · {result.columns.length} 列</NodeValue>
+										</NodeRow>
+									)}
+									{values.datasourceId && (
+										<NodeRow label="数据源"><NodeValue mono>{String(values.datasourceId)}</NodeValue></NodeRow>
+									)}
+								</>
+							)}
+
+							{isChart && (
+								<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
+									{kind === "chart-pie" || kind === "chart-donut" ? (
+										<Donut
+											segments={chartValues.slice(0, 4).map((v, i) => ({
+												value: Math.max(5, v),
+												color: SERIES[i % SERIES.length],
+											}))}
+											size={56}
+											thickness={8}
+											holeFill="var(--color-surface)"
+										/>
+									) : (
+										<AreaChart values={chartValues} stroke={SERIES[1]} />
+									)}
+								</div>
+							)}
+
+							{isMetric && (
+								<div className="mt-1 flex flex-1 flex-col items-center justify-center">
+									<span className="font-mono text-[22px] font-bold text-surface-foreground">
+										{chartValues[0] ?? "—"}
+									</span>
+									<span className="text-[10px] text-muted">{title}</span>
+								</div>
+							)}
+
+							{isFilter && kind === "filter-text" && (
+								<>
+									<NodeRow label="文本"><NodeSelect>{String(values.placeholder ?? "输入关键字...")}</NodeSelect></NodeRow>
+									{values.field && <NodeRow label="字段"><NodeValue mono>{String(values.field)}</NodeValue></NodeRow>}
+								</>
+							)}
+
+							{isFilter && kind === "filter-date" && (
+								<>
+									<NodeRow label="日期"><NodeSelect>{String(values.field ?? "选择日期范围")}</NodeSelect></NodeRow>
+									<NodeRow label="模式"><NodeSeg options={["range", "single"]} active={String(values.mode ?? "range")} /></NodeRow>
+								</>
+							)}
+
+							{isFilter && kind !== "filter-text" && kind !== "filter-date" && (
+								<NodeRow label="类型"><NodeValue>{kind.replace("filter-", "")}</NodeValue></NodeRow>
+							)}
+
+							{kind === "adv-summary" && (
+								<div className="mt-1 flex flex-1 flex-col items-center justify-center">
+									<span className="font-mono text-[22px] font-bold text-surface-foreground">
+										{result?.columns.length ? String(result.rows[0]?.[result.columns[0]] ?? "—") : (chartValues[0] ?? "—")}
+									</span>
+									<span className="text-[10px] text-muted">{String(values.metric ?? title)}</span>
+								</div>
+							)}
+
+							{kind === "adv-tabs" && (
+								<div className="mt-1 flex min-h-0 flex-1 flex-col rounded-[4px] border border-border bg-surface">
+									<div className="flex shrink-0 gap-1 border-b border-border px-1 pt-1">
+										{["概览", "明细", "趋势"].map((t, i) => (
+											<span key={t} className={`rounded-t-[3px] px-1.5 py-0.5 text-[10px] ${i === 0 ? "bg-background text-surface-foreground" : "text-faint"}`}>{t}</span>
 										))}
 									</div>
-								) : values.table ? (
-									<NodeRow label="表"><NodeValue mono>{String(values.table)}</NodeValue></NodeRow>
-								) : (
-									<NodeRow label="配置"><NodeValue>点击右侧面板配置</NodeValue></NodeRow>
-								)}
-								{result && (
-									<NodeRow label="结果">
-										<NodeValue mono>{result.rowCount} 行 · {result.columns.length} 列</NodeValue>
-									</NodeRow>
-								)}
-								{values.datasourceId && (
-									<NodeRow label="数据源"><NodeValue mono>{String(values.datasourceId)}</NodeValue></NodeRow>
-								)}
-							</>
-						)}
+									<div className="flex-1" />
+								</div>
+							)}
 
-						{/* 图表节点：显示迷你图表 */}
-						{isChart && (
-							<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
-								{kind === "chart-pie" ? (
-									<Donut
-										segments={chartValues.slice(0, 4).map((v, i) => ({
-											value: Math.max(5, v),
-											color: SERIES[i % SERIES.length],
-										}))}
-										size={56}
-										thickness={8}
-										holeFill="var(--color-surface)"
-									/>
-								) : (
-									<AreaChart values={chartValues} stroke={SERIES[1]} />
-								)}
-							</div>
-						)}
+							{kind === "adv-table" && (
+								<div className="mt-1 flex min-h-0 flex-1 flex-col rounded-[4px] border border-border bg-surface">
+									<div className="grid shrink-0 grid-cols-3 gap-1 border-b border-border px-1 py-0.5 text-[10px] text-faint">
+										<span>列 A</span><span>列 B</span><span>列 C</span>
+									</div>
+									{[0, 1, 2].map((i) => (
+										<div key={i} className="grid grid-cols-3 gap-1 border-b border-border/60 px-1 py-0.5 text-[10px] text-surface-foreground">
+											<span>—</span><span>—</span><span>—</span>
+										</div>
+									))}
+								</div>
+							)}
 
-						{/* 指标节点：显示大数字 */}
-						{isMetric && (
-							<div className="mt-1 flex flex-1 flex-col items-center justify-center">
-								<span className="font-mono text-[22px] font-bold text-surface-foreground">
-									{chartValues[0] ?? "—"}
-								</span>
-								<span className="text-[10px] text-muted">{title}</span>
-							</div>
-						)}
+							{kind === "adv-calendar" && (
+								<div className="mt-1 grid min-h-0 flex-1 grid-cols-7 gap-px rounded-[4px] border border-border bg-surface p-1 text-[9px]">
+									{["日", "一", "二", "三", "四", "五", "六"].map((d) => (
+										<div key={d} className="text-center text-faint">{d}</div>
+									))}
+									{Array.from({ length: 28 }).map((_, i) => (
+										<div key={i} className="aspect-square grid place-items-center rounded-[2px] text-muted">
+											{i + 1}
+										</div>
+									))}
+								</div>
+							)}
 
-						{/* 控件节点 */}
-						{isFilter && (
-							<NodeRow label="类型"><NodeValue>{kind.replace("filter-", "")}</NodeValue></NodeRow>
-						)}
+							{isOutput && (
+								<div className="mt-1 grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-1 rounded-[4px] border border-border bg-surface p-1">
+									<span className="col-span-3 rounded-[2px] bg-background" />
+									<span className="rounded-[2px] bg-background" />
+									<span className="col-span-2 rounded-[2px]" style={{ background: n.tone + "33" }} />
+								</div>
+							)}
 
-						{/* 输出节点 */}
-						{isOutput && (
-							<div className="mt-1 grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-1 rounded-[4px] border border-border bg-surface p-1">
-								<span className="col-span-3 rounded-[2px] bg-background" />
-								<span className="rounded-[2px] bg-background" />
-								<span className="col-span-2 rounded-[2px]" style={{ background: n.tone + "33" }} />
-							</div>
-						)}
+							{isGroup && (
+								<div className="mt-1 flex min-h-0 flex-1 flex-col items-center justify-center rounded-[4px] border border-dashed border-border bg-surface/30 p-2">
+									<span className={n.groupIcon ?? "icon-[lucide--layers]"} style={{ width: 24, height: 24, color: "var(--color-muted)" }} />
+									<span className="mt-1 text-[10px] text-muted">{n.groupLabel ?? "分组"}</span>
+									<span className="mt-0.5 text-[9px] text-faint">拖入节点到此分组</span>
+								</div>
+							)}
 
-						{/* 未分类节点 */}
-						{!isSource && !isChart && !isMetric && !isFilter && !isOutput && (
-							<NodeRow label="类型"><NodeValue>{kind || "(未配置)"}</NodeValue></NodeRow>
-						)}
-					</NodeCard>
-				);
-			})}
+							{kind === "screen-page" && (
+								<div className="mt-1 flex min-h-0 flex-1 items-center justify-between rounded-[4px] border border-border bg-surface px-2">
+									<span className="text-[10px] text-muted">{title}</span>
+									<div className="flex items-center gap-1">
+										<span className="size-1.5 rounded-full" style={{ background: "var(--color-series-1)" }} />
+										<span className="size-1.5 rounded-full border border-border" />
+										<span className="size-1.5 rounded-full border border-border" />
+									</div>
+								</div>
+							)}
 
-			{/* 选中节点浮动工具条（真正跟选中态联动） */}
+							{kind === "screen-map" && (
+								<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface p-1">
+									<svg viewBox="0 0 280 220" className="h-full w-full">
+										<defs>
+											<linearGradient id="map-bg" x1="0" y1="0" x2="0" y2="1">
+												<stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.12" />
+												<stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0.04" />
+											</linearGradient>
+										</defs>
+										{/* 世界地图简化轮廓 */}
+										<path
+											d="M30 140 Q50 80 90 70 Q120 65 150 80 Q170 60 200 55 Q230 50 250 70 Q265 90 260 120 Q250 140 230 145 Q200 155 170 150 Q140 155 110 160 Q80 158 55 155 Q38 152 30 140 Z"
+											fill="url(#map-bg)"
+											stroke={SERIES[0]}
+											strokeWidth="1.5"
+										/>
+										{/* 数据点 */}
+										{[
+											{ x: 80, y: 100, r: 3 },
+											{ x: 130, y: 115, r: 4 },
+											{ x: 180, y: 90, r: 2.5 },
+											{ x: 210, y: 125, r: 3.5 },
+											{ x: 100, y: 135, r: 2 },
+										].map((p, i) => (
+											<g key={i}>
+												<circle cx={p.x} cy={p.y} r={p.r + 3} fill={SERIES[i % SERIES.length]} opacity="0.18" />
+												<circle cx={p.x} cy={p.y} r={p.r} fill={SERIES[i % SERIES.length]} />
+											</g>
+										))}
+									</svg>
+								</div>
+							)}
+
+							{!isSource && !isChart && !isMetric && !isFilter && !isOutput && !isAdv && !isGroup && !isScreenContainer && kind !== "screen-map" && (
+								<NodeRow label="类型"><NodeValue>{kind || "(未配置)"}</NodeValue></NodeRow>
+							)}
+						</NodeCard>
+					);
+				})}
+			</div>
+
+			{/* ── 选中节点浮动工具条（放在 viewport 外面，用屏幕坐标） ──
+			    节点在 transform 容器里有 scale/translate，工具条在外面，所以需要从画布坐标转换回屏幕坐标 */}
 			{(() => {
 				const selId = Object.keys(nodes).find((k) => nodes[k].selected);
 				if (!selId) return null;
 				const sel = nodes[selId];
+				const screen = canvasToScreen(sel.x, sel.y + sel.h + 8);
 				return (
 					<div
 						className="absolute z-20 flex h-7 items-center gap-0.5 rounded-control border border-border bg-surface-raised px-1 shadow"
-						style={{ left: sel.x, top: sel.y + sel.h + 8 }}
+						style={{ left: screen.x, top: screen.y }}
 					>
 						<button title="复制节点" type="button"
 							onClick={() => {
-								const cloneId = `${selId}_copy_${nodeSeqRef.current++}`;
-								setNodes((prev) => ({
-									...prev,
-									[cloneId]: { ...sel, x: sel.x + 24, y: sel.y + 24, selected: true },
-									[selId]: { ...sel, selected: false },
-								}));
+								duplicateSelection();
 							}}
 							className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground">
 							<span className="icon-[lucide--copy] size-3" />
 						</button>
-						<button title="停用节点" type="button"
+						<button title={sel.muted ? "启用节点" : "停用节点"} type="button"
 							onClick={() => {
-								setNodes((prev) => ({ ...prev, [selId]: { ...sel, selected: false } }));
+								toggleMute([selId]);
 							}}
 							className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground">
-							<span className="icon-[lucide--zap] size-3" />
+							<span className={sel.muted ? "icon-[lucide--circle-play] size-3" : "icon-[lucide--ban] size-3"} />
 						</button>
 						<button title="只运行这个节点" type="button"
 							onClick={() => {
-								setNodes((prev) => {
-									const out: typeof prev = {};
-									for (const [id, n] of Object.entries(prev)) out[id] = { ...n, selected: id === selId };
-									return out;
-								});
+								selectOnly(selId);
+								onRunNode?.(selId);
 							}}
 							className="grid size-5 place-items-center rounded-control text-muted hover:bg-surface hover:text-surface-foreground">
 							<span className="icon-[lucide--play] size-3" />
 						</button>
 						<span className="mx-0.5 h-4 w-px shrink-0 bg-border" />
 						<button title="删除节点" type="button"
-							onClick={() => {
-								setNodes((prev) => {
-									const out: typeof prev = {};
-									for (const [id, n] of Object.entries(prev)) if (id !== selId) out[id] = { ...n };
-									return out;
-								});
-							}}
+							onClick={() => removeNodes([selId])}
 							className="grid size-5 place-items-center rounded-control text-danger hover:bg-danger/10">
 							<span className="icon-[lucide--trash-2] size-3" />
 						</button>
@@ -631,52 +1638,302 @@ export function NodeGraph({ nodes, setNodes, links, setLinks, nodeResults = {} }
 				);
 			})()}
 
-			{/* AI 生成节点浮动面板 */}
-			<AiNodePanel x={16} y={620} w={284} h={232} />
-
-			{/* 缩略图导航 */}
-			<div className="absolute bottom-3 right-4 h-20 w-28 overflow-hidden rounded-control border border-border bg-background/90 p-1">
-				<div className="relative h-full w-full">
-					{(Object.keys(nodes) as NodeId[]).map((id) => {
-						const n = nodes[id];
-						return (
-							<span
-								key={id}
-								className="absolute rounded-[1px]"
-								style={{
-									left: `${(n.x / 880) * 100}%`,
-									top: `${(n.y / 864) * 100}%`,
-									width: `${(n.w / 880) * 100}%`,
-									height: `${(n.h / 864) * 100}%`,
-									background: n.tone,
-									opacity: 0.65,
-								}}
-							/>
-						);
-					})}
-				</div>
-			</div>
-
-			{/* 右键添加节点遮罩 + 菜单 —— 设计稿 menu.tsx 对齐：半透明让画布退到后面 */}
-			{contextMenu ? (
-				<>
-					<div className="absolute inset-0 z-20 bg-background/55" onClick={() => setContextMenu(null)} />
-					<AddNodeMenu
-						x={contextMenu.x}
-						y={contextMenu.y}
-						onClose={() => setContextMenu(null)}
-						onPick={(kind, _variant) => {
-							// 在右键位置插入一个新节点
-							const tpl = NODE_TEMPLATES[kind] ?? { w: 180, h: 110, tone: TONE.chart, kind };
-							nodeSeqRef.current++;
-							const newId = `n${nodeSeqRef.current}`;
-							const newNode: NodePos = { ...tpl, x: contextMenu.x - 60, y: contextMenu.y - 30, kind };
-							setNodes((prev) => ({ ...prev, [newId]: newNode }));
-							setContextMenu(null);
-						}}
+			{/* ── 框选矩形（放在 viewport 外面、canvas 容器内 → 用容器坐标 + 反向 viewport 变换）
+                 canvasToScreen 返回视口坐标（含 rect.left/top），但 absolute 定位原点是容器左上角
+                 所以直接用 tx + cx * scale 算容器内偏移 */}
+			{selectionBox && (() => {
+				const v = viewport;
+				const x1 = v.tx + selectionBox.startX * v.scale;
+				const y1 = v.ty + selectionBox.startY * v.scale;
+				const x2 = v.tx + selectionBox.endX * v.scale;
+				const y2 = v.ty + selectionBox.endY * v.scale;
+				const x = Math.min(x1, x2);
+				const y = Math.min(y1, y2);
+				const w = Math.abs(x2 - x1);
+				const h = Math.abs(y2 - y1);
+				return (
+					<div
+						className="pointer-events-none absolute z-40 border-2 border-accent bg-accent/10"
+						style={{ left: x, top: y, width: w, height: h }}
 					/>
-				</>
+				);
+			})()}
+
+			{/* ── 缩略图导航（放在 viewport 外面，不受 transform 影响） ── */}
+			<Minimap
+				nodes={nodes}
+				links={links}
+				viewport={viewport}
+				canvasRef={canvasRef}
+				onViewportChange={(tx, ty) => setViewport((v) => ({ ...v, tx, ty }))}
+			/>
+
+			{/* ── 画布空白区右键 AddNodeMenu（无遮罩，直接浮在画布上） ── */}
+			{contextMenu ? (
+				<AddNodeMenu
+					x={viewport.tx + contextMenu.x * viewport.scale}
+					y={viewport.ty + contextMenu.y * viewport.scale}
+					onClose={() => setContextMenu(null)}
+					onPick={(kind, _variant) => {
+						insertNode(kind, contextMenu.x - 60, contextMenu.y - 30);
+						setContextMenu(null);
+					}}
+				/>
 			) : null}
+
+			{/* ── output socket 连线末端弹出的 AddNodeMenu ── */}
+			{linkOutContext ? (
+				<AddNodeMenu
+					x={viewport.tx + linkOutContext.x * viewport.scale}
+					y={viewport.ty + linkOutContext.y * viewport.scale}
+					onClose={() => { setLinkOutContext(null); setPendingLink(null); pendingRef.current = null; }}
+					onPick={(kind) => {
+						const { id: newId } = insertNode(kind, linkOutContext.x + 160, linkOutContext.y - 30);
+						// 自动完成连线：pendingLink.from → 新节点 input socket（row 0）
+						const tone = nodes[linkOutContext.from]?.tone ?? TONE.chart;
+						setLinks((prev) => [...prev, {
+							id: nextLinkId(),
+							from: linkOutContext.from,
+							fromRow: linkOutContext.fromRow,
+							to: newId,
+							toRow: 0,
+							tone,
+						}]);
+						setLinkOutContext(null);
+						setPendingLink(null);
+						pendingRef.current = null;
+					}}
+				/>
+			) : null}
+
+			{/* ── 节点专属右键菜单（放在 viewport 外面，用屏幕坐标） ── */}
+			{nodeContextMenu ? (
+				<NodeContextMenu
+					x={viewport.tx + nodeContextMenu.x * viewport.scale}
+					y={viewport.ty + nodeContextMenu.y * viewport.scale}
+					onClose={() => setNodeContextMenu(null)}
+					muted={nodes[nodeContextMenu.nodeId]?.muted ?? false}
+					onCopy={() => {
+						duplicateNode(nodeContextMenu.nodeId);
+						setNodeContextMenu(null);
+					}}
+					onRunThis={() => {
+						selectOnly(nodeContextMenu.nodeId);
+						onRunNode?.(nodeContextMenu.nodeId);
+						setNodeContextMenu(null);
+					}}
+					onDisable={() => {
+						toggleMute([nodeContextMenu.nodeId]);
+					}}
+					onDelete={() => {
+						removeNodes([nodeContextMenu.nodeId]);
+					}}
+				/>
+			) : null}
+		</div>
+	);
+}
+
+// ── Minimap（缩略图）子组件 ──
+/** 缩略图：显示所有节点 + 当前 viewport 可视区矩形框 + 点击跳转 + 拖动平移主画布 */
+interface MinimapProps {
+	nodes: Record<NodeId, NodePos>;
+	links: Link[];
+	viewport: { scale: number; tx: number; ty: number };
+	canvasRef: React.RefObject<HTMLDivElement | null>;
+	onViewportChange: (tx: number, ty: number) => void;
+}
+
+/** 画布参考尺寸（和原缩略图用的 880×864 一致） */
+const MAP_W = 880;
+const MAP_H = 864;
+
+function Minimap({ nodes, viewport, canvasRef, onViewportChange }: MinimapProps): JSX.Element {
+	const MINI_W = 112;
+	const MINI_H = 80;
+
+	// 计算缩略图中 viewport 矩形的位置/尺寸
+	function viewportRectInMap(): { x: number; y: number; w: number; h: number } {
+		const rect = canvasRef.current?.getBoundingClientRect();
+		if (!rect) return { x: 0, y: 0, w: MINI_W, h: MINI_H };
+		// 可视画布区域（画布坐标系）
+		const vw = rect.width / viewport.scale;
+		const vh = rect.height / viewport.scale;
+		// 左上角画布坐标
+		const vx = -viewport.tx / viewport.scale;
+		const vy = -viewport.ty / viewport.scale;
+		// 缩略图用画布坐标系比例
+		return {
+			x: (vx / MAP_W) * MINI_W,
+			y: (vy / MAP_H) * MINI_H,
+			w: (vw / MAP_W) * MINI_W,
+			h: (vh / MAP_H) * MINI_H,
+		};
+	}
+
+	// 点击缩略图空白区 → 平移到目标位置
+	function onMiniPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+		const rect = e.currentTarget.getBoundingClientRect();
+		const lx = e.clientX - rect.left;
+		const ly = e.clientY - rect.top;
+		// 缩略图坐标 → 画布坐标 → 算 tx/ty
+		const canvasX = (lx / MINI_W) * MAP_W;
+		const canvasY = (ly / MINI_H) * MAP_H;
+		const cRect = canvasRef.current?.getBoundingClientRect();
+		if (!cRect) return;
+		// 让缩略图点对准画布中心点
+		const ntx = cRect.width / 2 - canvasX * viewport.scale;
+		const nty = cRect.height / 2 - canvasY * viewport.scale;
+		onViewportChange(ntx, nty);
+	}
+
+	// 拖动 viewport 框 → 实时平移
+	const dragRef = useRef<{ startX: number; startY: number; vx0: number; vy0: number } | null>(null);
+	function onViewportBoxPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+		e.stopPropagation();
+		e.preventDefault();
+		const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+		if (!rect) return;
+		const vr = viewportRectInMap();
+		dragRef.current = {
+			startX: e.clientX - rect.left,
+			startY: e.clientY - rect.top,
+			vx0: vr.x,
+			vy0: vr.y,
+		};
+	}
+	useEffect(() => {
+		function onMove(e: PointerEvent) {
+			if (!dragRef.current) return;
+			const rect = (e.target as HTMLElement).closest("[data-minimap-root]")?.getBoundingClientRect();
+			if (!rect) return;
+			const lx = e.clientX - rect.left;
+			const ly = e.clientY - rect.top;
+			const dx = lx - dragRef.current.startX;
+			const dy = ly - dragRef.current.startY;
+			// 缩略图位移 → 画布坐标位移 → 新 tx/ty
+			const canvasDx = (dx / MINI_W) * MAP_W;
+			const canvasDy = (dy / MINI_H) * MAP_H;
+			onViewportChange(
+				viewport.tx + canvasDx * viewport.scale,
+				viewport.ty + canvasDy * viewport.scale,
+			);
+		}
+		function onUp() { dragRef.current = null; }
+		window.addEventListener("pointermove", onMove);
+		window.addEventListener("pointerup", onUp);
+		return () => {
+			window.removeEventListener("pointermove", onMove);
+			window.removeEventListener("pointerup", onUp);
+		};
+	}, [viewport, onViewportChange]);
+
+	const vr = viewportRectInMap();
+
+	return (
+		<div
+			data-minimap-root
+			onPointerDown={onMiniPointerDown}
+			className="absolute bottom-3 right-4 h-20 w-28 cursor-grab overflow-hidden rounded-control border border-border bg-background/90 p-1"
+		>
+			<div className="relative h-full w-full">
+				{(Object.keys(nodes) as NodeId[]).map((id) => {
+					const n = nodes[id];
+					return (
+						<span
+							key={id}
+							className="absolute rounded-[1px]"
+							style={{
+								left: `${(n.x / MAP_W) * 100}%`,
+								top: `${(n.y / MAP_H) * 100}%`,
+								width: `${(n.w / MAP_W) * 100}%`,
+								height: `${(n.h / MAP_H) * 100}%`,
+								background: n.tone,
+								opacity: 0.65,
+							}}
+						/>
+					);
+				})}
+				{/* viewport 可视区矩形框 */}
+				<div
+					onPointerDown={onViewportBoxPointerDown}
+					className="absolute cursor-grab rounded-[1px] border border-accent/80 bg-accent/10"
+					style={{ left: vr.x, top: vr.y, width: vr.w, height: vr.h }}
+				/>
+			</div>
+		</div>
+	);
+}
+
+// ── NodeContextMenu（节点专属右键菜单）子组件 ──
+interface NodeContextMenuProps {
+	x: number;
+	y: number;
+	onClose: () => void;
+	onCopy: () => void;
+	onRunThis: () => void;
+	/** 节点是否已停用 —— 决定显示「停用节点」还是「启用节点」。 */
+	muted: boolean;
+	onDisable: () => void;
+	onDelete: () => void;
+}
+
+function NodeContextMenu({ x, y, muted, onClose, onCopy, onRunThis, onDisable, onDelete }: NodeContextMenuProps): JSX.Element {
+	useEffect(() => {
+		function onClick() { onClose(); }
+		// 用 setTimeout 避免 mousedown 触发立即关闭
+		const t = setTimeout(() => {
+			window.addEventListener("mousedown", onClick);
+		}, 0);
+		return () => {
+			clearTimeout(t);
+			window.removeEventListener("mousedown", onClick);
+		};
+	}, [onClose]);
+
+	const items: { icon: string; label: string; onClick: () => void; danger?: boolean }[] = [
+		{ icon: "icon-[lucide--copy]", label: "复制节点", onClick: onCopy },
+		{ icon: "icon-[lucide--play]", label: "只运行这个节点", onClick: onRunThis },
+		{ icon: muted ? "icon-[lucide--circle-play]" : "icon-[lucide--ban]", label: muted ? "启用节点" : "停用节点", onClick: onDisable },
+	];
+
+	const dangerItems = [
+		{ icon: "icon-[lucide--trash-2]", label: "删除节点", onClick: onDelete },
+	];
+
+	return (
+		<div
+			onMouseDown={(e) => e.stopPropagation()}
+			className="absolute z-30 w-[180px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]"
+			style={{ left: x, top: y }}
+		>
+			<div className="py-1">
+				{items.map((it) => (
+					<button
+						key={it.label}
+						type="button"
+						onClick={(e) => { e.stopPropagation(); it.onClick(); }}
+						className="flex h-7 w-full items-center gap-2 px-2.5 text-[11px] text-surface-foreground hover:bg-accent-soft hover:text-accent"
+					>
+						<span className={it.icon + " size-3.5 shrink-0"} />
+						<span>{it.label}</span>
+					</button>
+				))}
+			</div>
+			<div className="mx-2 h-px bg-border" />
+			<div className="py-1">
+				{dangerItems.map((it) => (
+					<button
+						key={it.label}
+						type="button"
+						onClick={(e) => { e.stopPropagation(); it.onClick(); }}
+						className="flex h-7 w-full items-center gap-2 px-2.5 text-[11px] text-danger hover:bg-danger/10"
+					>
+						<span className={it.icon + " size-3.5 shrink-0"} />
+						<span>{it.label}</span>
+					</button>
+				))}
+			</div>
 		</div>
 	);
 }

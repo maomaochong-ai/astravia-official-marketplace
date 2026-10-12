@@ -13,6 +13,10 @@ import screenCss from "../../themes/screen.css?raw";
 /** ECharts CDN —— 带 dark 内置 theme。 */
 export const ECHARTS_CDN = "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js";
 
+export function escapeHtml(s: string): string {
+	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 /** 返回主题 CSS 字符串（iframe <style> 内联）。 */
 export function getShellCss(isScreen: boolean): string {
 	return isScreen ? screenCss : dashboardCss;
@@ -25,18 +29,19 @@ export function buildHtmlHead(options: {
 }): string {
 	const { title, isScreen } = options;
 	const css = getShellCss(isScreen);
+	const safeTitle = escapeHtml(title);
 	return `<!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title}</title>
+<title>${safeTitle}</title>
 <script src="${ECHARTS_CDN}"></script>
 <style>${css}</style>
 </head>
 <body>
 <div class="header">
-  <h1>${title}</h1>
+  <h1>${safeTitle}</h1>
   <p>${isScreen ? "数据大屏 · ECharts + Auto Layout" : "企业看板 · ECharts + Auto Layout"}</p>
 </div>`;
 }

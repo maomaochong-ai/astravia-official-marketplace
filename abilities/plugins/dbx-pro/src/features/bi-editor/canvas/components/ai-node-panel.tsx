@@ -10,6 +10,7 @@
 import { type JSX } from "react";
 import { Icon } from "../../shared/components/ui/icon";
 import { Chip } from "../../shared/components/ui/chip";
+import { getUi } from "../../../../runtime-contract";
 
 export interface ParamRow { field: string; value: string; from: "ai" | "user" | "dataset" }
 
@@ -208,11 +209,11 @@ export function AiNodePanel({ x, y, w, h }: { x: number; y: number; w: number; h
 				</div>
 				<div className="flex shrink-0 items-center gap-1.5">
 					<button type="button" className="flex h-7 items-center gap-1.5 rounded-control bg-accent-soft px-2.5 text-[11px] font-medium text-accent"
-						onClick={() => alert("AI 生成节点（占位：宿主端点未暴露）")}>
+						onClick={() => getUi()?.notify?.({ message: "AI 生成节点待接宿主端点", variant: "info" })}>
 						<Icon name="icon-[lucide--wand-sparkles]" className="size-3" />生成节点
 					</button>
 					<button type="button" className="flex h-7 items-center gap-1.5 rounded-control border border-border bg-surface px-2.5 text-[11px] text-muted"
-						onClick={() => alert("插入画布（占位：宿主端点未暴露）")}>
+						onClick={() => getUi()?.notify?.({ message: "插入画布待接宿主端点", variant: "info" })}>
 						<Icon name="icon-[lucide--plus]" className="size-3" />插入画布
 					</button>
 				</div>

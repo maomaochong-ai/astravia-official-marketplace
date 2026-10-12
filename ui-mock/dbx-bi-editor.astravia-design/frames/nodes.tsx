@@ -110,22 +110,30 @@ const BANDS: Band[] = [
 	},
 	{
 		label: "大屏",
-		hint: "1920 × 1080 基准 —— 字号与间距按 3 倍投屏重新排过",
+		hint: "1920 × 1080 基准 —— 大屏另有 8 类编排节点，这里先放 6 个代表",
 		items: [
+			{
+				title: "大屏页面",
+				type: "多页面",
+				icon: "icon-[lucide--presentation]",
+				tone: C,
+				rows: [["基准", "1920 × 1080"], ["页数", "上限 10 页"]],
+				note: "一个页面就是一张 16:9 画布，多页之间可以轮播",
+			},
 			{
 				title: "大屏标题",
 				type: "标题条",
 				icon: "icon-[lucide--monitor]",
 				tone: C,
-				rows: [["字号", "64 px"], ["装饰", "分隔线"]],
+				rows: [["字号", "64 px"], ["装饰", "左右分隔线"]],
 				note: "一条居中的标题 + 左右装饰线，不是普通文本节点",
 			},
 			{
 				title: "大屏指标卡",
-				type: "大屏指标",
+				type: "翻牌器",
 				icon: "icon-[lucide--activity]",
 				tone: C,
-				rows: [["字号", "96 px"], ["动效", "数字滚动"]],
+				rows: [["字号", "96 px"], ["动效", "数字滚动 600 ms"]],
 				note: "看板指标卡的大屏版，数字口径一致、只是排列更开",
 			},
 			{
@@ -133,15 +141,23 @@ const BANDS: Band[] = [
 				type: "排行榜",
 				icon: "icon-[lucide--list-ordered]",
 				tone: C,
-				rows: [["条数", "前 10"], ["滚动", "8s 一轮"]],
+				rows: [["条数", "前 10"], ["滚动", "8 s 一轮"]],
 				note: "名次带条形底，超过一屏自动轮播",
+			},
+			{
+				title: "大屏地图",
+				type: "地图 · 多图层",
+				icon: "icon-[lucide--map]",
+				tone: C,
+				rows: [["图层", "底图 + 数据层"], ["动效", "Tooltips 轮播"]],
+				note: "底图、数据层、标注层分开叠，点位动效可以轮播",
 			},
 			{
 				title: "大屏轮播",
 				type: "轮播容器",
 				icon: "icon-[lucide--layout-dashboard]",
 				tone: C,
-				rows: [["页数", "3 页"], ["间隔", "15s"]],
+				rows: [["页数", "3 页"], ["间隔", "15 s"]],
 				note: "把多个大屏页面串成一轮，节点里只放编排参数",
 			},
 		],
@@ -231,7 +247,7 @@ export default function NodeCatalog() {
 			<header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-raised px-6">
 				<Icon name="icon-[lucide--boxes]" className="size-4 shrink-0 text-accent" />
 				<span className="text-[15px] font-semibold text-surface-foreground">节点总览</span>
-				<Chip tone="accent">18 种 · 看板 14 / 大屏 4</Chip>
+				<Chip tone="accent">20 种 · 看板 14 / 大屏 6</Chip>
 				<div className="flex h-7 shrink-0 items-center gap-0.5 rounded-control border border-border bg-surface p-0.5">
 					{["全部", "看板节点", "大屏节点"].map((t) => (
 						<span

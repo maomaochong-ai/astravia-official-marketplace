@@ -13,7 +13,7 @@
  * 而不是 clamp()/vw：卡片宽度取决于 Grid 列数和抽屉宽度，vw 会让 UI 里的字号跟导出页对不上。
  */
 
-import type { ChartItem } from "../../../domain/chart-contract";
+import type { ChartItem } from "../../../../domain/chart-contract";
 import type { FigureContext } from "./figure-context";
 import type { FigurePalette } from "./figure-palette";
 import { readFigureLabels, readFigureSeries } from "./figure-series";

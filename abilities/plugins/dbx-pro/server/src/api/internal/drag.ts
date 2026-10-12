@@ -434,5 +434,77 @@ export function dragRoutes(ctx) {
 			writeTemplates(ctx, list);
 			return pageResp(true);
 		}],
+
+		// ════════════════════════════════════════════════════════════════════
+		// Phase D · AI 生成节点参数（engine mock，宿主端点未暴露时降级此）
+		// ════════════════════════════════════════════════════════════════════
+		["/drag/ai/generate", "POST", true, async ({ body }) => {
+			/**
+			 * 画布 AI 生成参数 mock 端点：
+			 *   输入：{ prompt: string, canvasContext?: { nodes: [...], datasources: [...] } }
+			 *   输出：{ prompt, rows: ParamRow[], resultName, paramCount, pendingCount }
+			 *
+			 * 真实宿主端点未暴露时用此降级：
+			 *   用 FNV-1a 对 prompt 哈希 → 生成稳定的"AI 推断"参数行
+			 *   这样同一个 prompt 每次返回一样的参数（可重现、可插入画布）
+			 *   UI 上显示 Chip"AI 推断" vs "手动" vs "取自数据集" 区分来源
+			 */
+			const prompt = body?.prompt ?? "";
+			const seed = prompt || `ai-${Date.now()}`;
+			let h = 2166136261 >>> 0;
+			for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+
+			const pick = (arr) => arr[h % arr.length];
+			h = Math.imul(h, 16777619); h ^= (h >>> 16);
+
+			// 图表类型从 prompt 里猜
+			const chartHints = [
+				{ kw: ["折线", "趋势", "增长"], kind: "line", label: "折线图 · 面积" },
+				{ kw: ["饼", "环形", "占比"], kind: "donut", label: "环形图" },
+				{ kw: ["柱", "条形", "对比"], kind: "bar", label: "柱状图" },
+				{ kw: ["漏斗", "转化"], kind: "funnel", label: "漏斗图" },
+				{ kw: ["KPI", "大数字", "指标"], kind: "kpi", label: "KPI 大数字" },
+				{ kw: ["箱线", "分布"], kind: "boxplot", label: "箱线图" },
+			];
+			let guessed = chartHints.find((c) => c.kw.some((k) => prompt.includes(k)));
+			if (!guessed) guessed = pick(chartHints);
+
+			// 聚合粒度
+			const grains = ["按天", "按周（ISO 周）", "按月", "按季度"];
+			const grain = pick(grains);
+			h = Math.imul(h, 16777619); h ^= (h >>> 16);
+
+			// 对比策略
+			const comparisons = ["无对比", "去年同期 · 虚线", "上期环比", "均值参考线"];
+			const cmp = pick(comparisons);
+			h = Math.imul(h, 16777619); h ^= (h >>> 16);
+
+			// 调色板
+			const palettes = ["科技（沿用）", "商务蓝", "暖色调", "深色模式"];
+			const pal = pick(palettes);
+
+			const rows = [
+				{ field: "图表类型", value: guessed.label, from: "ai" },
+				{ field: "聚合粒度", value: grain, from: "ai" },
+				{ field: "对比", value: cmp, from: "ai" },
+				{ field: "调色板", value: pal, from: "user" },
+				{ field: "数据源", value: "插件工作台 · MySQL", from: "dataset" },
+			];
+
+			// 生成结果名：小写 prompt 前几个词
+			const slug = prompt
+				.replace(/[^\w\u4e00-\u9fa5]/g, "_")
+				.replace(/_+/g, "_")
+				.slice(0, 32) || `ai_${(h >>> 0).toString(16).slice(0, 6)}`;
+
+			return pageResp({
+				prompt,
+				rows,
+				resultName: slug.startsWith("_") ? `ai${slug}` : slug,
+				paramCount: rows.length,
+				pendingCount: 1,
+				kindHint: guessed.kind,
+			});
+		}],
 	];
 }
