@@ -15,7 +15,7 @@
  *   └──────────────────────────────────────────────────────────────────────────────┘
  */
 
-import { useCallback, useEffect, useRef, useState, type JSX } from "react";
+import { useCallback, useEffect, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from "react";
 import { Icon } from "./components/ui/icon";
 import { Chip } from "./components/ui/chip";
 import { IconButton } from "./components/ui/icon-button";
@@ -117,15 +117,49 @@ export interface BigscreenScreenEditorProps {
 export function BigscreenScreenEditor({
 	page, onClose, onSave, saving, dirty,
 }: BigscreenScreenEditorProps): JSX.Element {
-	const [nodes] = useState<ScreenNode[]>(() => makeInitialNodes(page.name));
+	const [nodes, setNodes] = useState<ScreenNode[]>(() => makeInitialNodes(page.name));
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [zoom, setZoom] = useState(0.42); // 设计稿默认 42%
 	const [linkCopied, setLinkCopied] = useState(false);
+	const nodeSeqRef = useRef(10);
+	const canvasWrapRef = useRef<HTMLDivElement>(null);
 	const settings = useRef(makeSettings()).current;
 	const params = useRef(makeParams()).current;
 
 	const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
 	const nodeCount = nodes.length;
+
+	// 大屏节点类型 → 默认尺寸
+	const KIND_DEFAULTS: Record<string, { w: number; h: number; kind: string; title: string }> = {
+		"title-bar": { w: 1840, h: 72, kind: "title-bar", title: "大屏标题" },
+		"kpi-card": { w: 430, h: 120, kind: "kpi-card", title: "指标卡" },
+		"line-chart": { w: 1100, h: 380, kind: "line-chart", title: "折线图" },
+		"funnel": { w: 340, h: 380, kind: "funnel", title: "漏斗" },
+		"rank-list": { w: 380, h: 380, kind: "rank-list", title: "排行榜" },
+		"carousel": { w: 1100, h: 380, kind: "carousel", title: "轮播" },
+	};
+
+	const handleRailClick = useCallback((kindKey: string) => {
+		const def = KIND_DEFAULTS[kindKey];
+		if (!def) return;
+		const newNode: ScreenNode = {
+			id: `s-${kindKey}-${nodeSeqRef.current++}`,
+			kind: def.kind,
+			title: `${def.title} ${nodeSeqRef.current}`,
+			x: 60 + ((nodes.length * 24) % 300),
+			y: 400 + ((nodes.length * 24) % 200),
+			w: def.w,
+			h: def.h,
+			selected: true,
+		};
+		setNodes((prev) => [...prev.map((n) => ({ ...n, selected: false })), newNode]);
+		setSelectedId(newNode.id);
+	}, [nodes.length]);
+
+	// 画布点击空白区 → 取消选中
+	const handleCanvasBgClick = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+		if (e.target === e.currentTarget) setSelectedId(null);
+	}, []);
 
 	// 适配视图：根据容器宽高计算合适的 zoom
 	const fitContainer = useCallback(() => {
@@ -199,10 +233,17 @@ export function BigscreenScreenEditor({
 						{SCREEN_RAIL.map((r) => {
 							const count = railCounts[r.countKey];
 							const on = count > 0;
+							// countKey → kindKey（KIND_DEFAULTS 的 key）
+							const kindKeyMap: Record<string, string> = {
+								title: "title-bar", kpi: "kpi-card", line: "line-chart",
+								funnel: "funnel", rank: "rank-list", carousel: "carousel",
+							};
+							const kindKey = kindKeyMap[r.countKey] ?? r.countKey;
 							return (
 								<button
 									key={r.label}
 									type="button"
+									onClick={() => handleRailClick(kindKey)}
 									className={`flex h-7 w-full items-center gap-2 rounded-[4px] px-2 text-left ${
 										on ? "bg-accent-soft" : "hover:bg-surface"
 									}`}
@@ -243,7 +284,9 @@ export function BigscreenScreenEditor({
 					{/* scale 容器 */}
 					<div data-screen-fit-container className="flex min-h-0 flex-1 items-center justify-center bg-screen p-6">
 						<div
-							className="relative overflow-hidden rounded-card border border-screen-line bg-screen p-8"
+							ref={canvasWrapRef}
+							onClick={handleCanvasBgClick}
+							className="relative overflow-hidden rounded-card border border-screen-line bg-screen p-8 cursor-default"
 							style={{
 								width: SCREEN_W,
 								height: SCREEN_H,

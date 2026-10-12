@@ -1,10 +1,13 @@
-// @ts-nocheck
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync, renameSync, existsSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { defineConfig } from "vite";
 import { astraviaPluginFederation } from "@astravia-org/plugin-vite";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** ESM 下没有 __dirname，用 import.meta.url 推导。 */
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
  * tailwind4-vite-plugin 把 CSS 输出到 dist/style.css（根目录、无 content-hash）。
