@@ -74,7 +74,7 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
 
 	// === 统一请求处理 ===
 	async function handle(request) {
-		const { method = "GET", pathname, headers = {}, body = null } = request ?? {};
+		const { method = "GET", pathname, headers = {}, body = null, query = {} } = request ?? {};
 		const methodMap = routes.get(pathname);
 		if (!methodMap) {
 			const error = engineError("NOT_FOUND", `未知路径：${pathname}`);
@@ -88,7 +88,7 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() } = 
 		}
 		try {
 			if (route.auth) auth.verify(headers);
-			const data = await route.handler({ body, headers });
+			const data = await route.handler({ body, headers, query });
 			return { status: 200, body: ok(data) };
 		} catch (error) {
 			const normalized = normalizeThrown(error);

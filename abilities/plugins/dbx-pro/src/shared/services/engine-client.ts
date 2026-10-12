@@ -206,22 +206,48 @@ export function engineHealth(options: CallOptions = {}): Promise<EngineHealth> {
 
 // ─── 驱动管理 ───
 
+/** 安装阶段。idle = 从未安装过；done/error 是终态。 */
+export type DriverInstallPhase = "idle" | "resolving" | "downloading" | "extracting" | "done" | "error";
+
+/** 安装进度（服务端落盘，因此插件重载/宿主重启后仍然可见）。 */
+export interface DriverInstallProgress {
+	status: DriverInstallPhase;
+	downloaded: number;
+	total: number;
+	percent?: number;
+	error?: string;
+	startedAt?: number;
+	finishedAt?: number;
+	version?: string;
+	sourceUrl?: string;
+	installedPath?: string;
+	/** 装好后是否成功重启了 dbx-mcp（false 表示需下次重启宿主才生效）。 */
+	bridgeRestarted?: boolean;
+}
+
 export interface DriverStatus {
 	key: string;
 	label: string;
 	installed: boolean;
 	reason?: string;
-	path?: string;
+	/** 已安装时的驱动二进制绝对路径。 */
+	installedPath?: string;
 	sizeBytes?: number;
 	envVar?: string;
 	description?: string;
 	expectedPath?: string;
+	platform?: string;
+	downloadSource?: string;
+	registryUrl?: string;
+	installStatus?: DriverInstallProgress;
 }
 
 export interface DriverInstallResult {
 	ok: boolean;
 	driverKey: string;
 	installedPath?: string;
+	note?: string;
+	installStatus?: DriverInstallProgress;
 }
 
 export function engineDriverStatus(options: CallOptions = {}): Promise<{ drivers: DriverStatus[] }> {
@@ -232,7 +258,11 @@ export function engineDriverInstall(driverKey: string, customUrl?: string, optio
 	return engineRequest<DriverInstallResult>("/driver/install", { driverKey, ...(customUrl ? { url: customUrl } : {}) }, { timeoutMs: options.timeoutMs ?? 120_000, ...options });
 }
 
-export function engineDriverSetPath(driverKey: string, path: string, options: CallOptions = {}): Promise<{ ok: boolean; driverKey: string; path: string }> {
+export function engineDriverSetPath(
+	driverKey: string,
+	path: string,
+	options: CallOptions = {},
+): Promise<{ ok: boolean; driverKey: string; path: string; installedPath?: string; bridgeRestarted?: boolean }> {
 	return engineRequest("/driver/set-path", { driverKey, path }, options);
 }
 

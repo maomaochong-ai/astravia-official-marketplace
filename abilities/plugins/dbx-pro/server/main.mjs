@@ -79,8 +79,8 @@ function detectPlatform() {
 }
 function collectDriverEnv(dataDir) {
   const driverEnv = {};
-  const driversRoot = join(dataDir, "drivers");
-  if (!existsSync(driversRoot)) return driverEnv;
+  const driversRoot2 = join(dataDir, "drivers");
+  if (!existsSync(driversRoot2)) return driverEnv;
   const platform2 = detectPlatform();
   if (!platform2) return driverEnv;
   const DRIVER_MAP = {
@@ -89,9 +89,9 @@ function collectDriverEnv(dataDir) {
     // Redis 纯协议，不需要原生驱动
   };
   for (const [dbType, cfg] of Object.entries(DRIVER_MAP)) {
-    const driverDir2 = join(driversRoot, dbType, platform2);
-    if (!existsSync(driverDir2)) continue;
-    const pathFile = join(driverDir2, ".path");
+    const driverDir = join(driversRoot2, dbType, platform2);
+    if (!existsSync(driverDir)) continue;
+    const pathFile = join(driverDir, ".path");
     if (existsSync(pathFile)) {
       const manualPath = readFileSync(pathFile, "utf-8").trim();
       if (manualPath && existsSync(manualPath)) {
@@ -100,7 +100,7 @@ function collectDriverEnv(dataDir) {
       }
     }
     if (cfg.binary) {
-      const binaryPath = join(driverDir2, cfg.binary);
+      const binaryPath = join(driverDir, cfg.binary);
       if (existsSync(binaryPath)) {
         driverEnv[cfg.envVar] = binaryPath;
       }
@@ -4174,7 +4174,7 @@ var require_request = __commonJS({
     "use strict";
     var debug = require_src()("mssql:base");
     var { EventEmitter } = __require("node:events");
-    var { Readable } = __require("node:stream");
+    var { Readable: Readable2 } = __require("node:stream");
     var { IDS, objectHasProperty: objectHasProperty2, getPoolId, isValidParameterName } = require_utils2();
     var globalConnection = require_global_connection();
     var { RequestError, ConnectionError } = require_error();
@@ -4524,7 +4524,7 @@ var require_request = __commonJS({
       toReadableStream(streamOptions = {}) {
         this.stream = true;
         this.pause();
-        const readableStream = new Readable({
+        const readableStream = new Readable2({
           ...streamOptions,
           objectMode: true,
           read: () => {
@@ -7637,15 +7637,15 @@ var require_ecdsa_sig_formatter = __commonJS({
       return dst;
     }
     function countPadding(buf, start, stop) {
-      var padding = 0;
-      while (start + padding < stop && buf[start + padding] === 0) {
-        ++padding;
+      var padding2 = 0;
+      while (start + padding2 < stop && buf[start + padding2] === 0) {
+        ++padding2;
       }
-      var needsSign = buf[start + padding] >= MAX_OCTET;
+      var needsSign = buf[start + padding2] >= MAX_OCTET;
       if (needsSign) {
-        --padding;
+        --padding2;
       }
-      return padding;
+      return padding2;
     }
     function joseToDer(signature, alg) {
       signature = signatureAsBuffer(signature);
@@ -7804,9 +7804,9 @@ var require_jwa = __commonJS({
     }
     function toBase64(base64url) {
       base64url = base64url.toString();
-      var padding = 4 - base64url.length % 4;
-      if (padding !== 4) {
-        for (var i = 0; i < padding; ++i) {
+      var padding2 = 4 - base64url.length % 4;
+      if (padding2 !== 4) {
+        for (var i = 0; i < padding2; ++i) {
           base64url += "=";
         }
       }
@@ -21990,13 +21990,13 @@ var require_sha256 = __commonJS({
       computeSha256Hmac: () => computeSha256Hmac2
     });
     module.exports = __toCommonJS2(sha256_exports);
-    var import_node_crypto5 = __require("node:crypto");
+    var import_node_crypto6 = __require("node:crypto");
     async function computeSha256Hmac2(key, stringToSign, encoding) {
       const decodedKey = Buffer.from(key, "base64");
-      return (0, import_node_crypto5.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
+      return (0, import_node_crypto6.createHmac)("sha256", decodedKey).update(stringToSign).digest(encoding);
     }
     async function computeSha256Hash2(content, encoding) {
-      return (0, import_node_crypto5.createHash)("sha256").update(content).digest(encoding);
+      return (0, import_node_crypto6.createHash)("sha256").update(content).digest(encoding);
     }
   }
 });
@@ -24399,7 +24399,7 @@ var require_httpHeaders = __commonJS({
       createHttpHeaders: () => createHttpHeaders2
     });
     module.exports = __toCommonJS2(httpHeaders_exports);
-    function normalizeName(name) {
+    function normalizeName2(name) {
       return name.toLowerCase();
     }
     function normalizeValue(value) {
@@ -24427,7 +24427,7 @@ var require_httpHeaders = __commonJS({
        * @param value - The value of the header to set.
        */
       set(name, value) {
-        this._headersMap.set(normalizeName(name), { name, value: normalizeValue(value) });
+        this._headersMap.set(normalizeName2(name), { name, value: normalizeValue(value) });
       }
       /**
        * Get the header value for the provided header name, or undefined if no header exists in this
@@ -24435,21 +24435,21 @@ var require_httpHeaders = __commonJS({
        * @param name - The name of the header. This value is case-insensitive.
        */
       get(name) {
-        return this._headersMap.get(normalizeName(name))?.value;
+        return this._headersMap.get(normalizeName2(name))?.value;
       }
       /**
        * Get whether or not this header collection contains a header entry for the provided header name.
        * @param name - The name of the header to set. This value is case-insensitive.
        */
       has(name) {
-        return this._headersMap.has(normalizeName(name));
+        return this._headersMap.has(normalizeName2(name));
       }
       /**
        * Remove the header with the provided headerName.
        * @param name - The name of the header to remove.
        */
       delete(name) {
-        this._headersMap.delete(normalizeName(name));
+        this._headersMap.delete(normalizeName2(name));
       }
       /**
        * Get the JSON object representation of this HTTP header collection.
@@ -24625,7 +24625,7 @@ var require_pipeline = __commonJS({
       }
       sendRequest(httpClient, request) {
         const policies = this.getOrderedPolicies();
-        const pipeline = policies.reduceRight(
+        const pipeline2 = policies.reduceRight(
           (next, policy) => {
             return (req) => {
               return policy.sendRequest(req, next);
@@ -24633,7 +24633,7 @@ var require_pipeline = __commonJS({
           },
           (req) => httpClient.sendRequest(req)
         );
-        return pipeline(request);
+        return pipeline2(request);
       }
       getOrderedPolicies() {
         if (!this._orderedPolicies) {
@@ -24967,8 +24967,8 @@ var require_nodeHttpClient = __commonJS({
     module.exports = __toCommonJS2(nodeHttpClient_exports);
     var import_node_http2 = __toESM2(__require("node:http"));
     var import_node_https = __toESM2(__require("node:https"));
-    var import_node_zlib = __toESM2(__require("node:zlib"));
-    var import_node_stream = __require("node:stream");
+    var import_node_zlib2 = __toESM2(__require("node:zlib"));
+    var import_node_stream2 = __require("node:stream");
     var import_AbortError = require_AbortError2();
     var import_httpHeaders = require_httpHeaders();
     var import_restError = require_restError();
@@ -24997,7 +24997,7 @@ var require_nodeHttpClient = __commonJS({
     function isArrayBuffer(body) {
       return body && typeof body.byteLength === "number";
     }
-    var ReportTransform = class extends import_node_stream.Transform {
+    var ReportTransform = class extends import_node_stream2.Transform {
       loadedBytes = 0;
       progressCallback;
       // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
@@ -25219,11 +25219,11 @@ var require_nodeHttpClient = __commonJS({
     function getDecodedResponseStream(stream, headers) {
       const contentEncoding = headers.get("Content-Encoding");
       if (contentEncoding === "gzip") {
-        const unzip = import_node_zlib.default.createGunzip();
+        const unzip = import_node_zlib2.default.createGunzip();
         stream.pipe(unzip);
         return unzip;
       } else if (contentEncoding === "deflate") {
-        const inflate = import_node_zlib.default.createInflate();
+        const inflate = import_node_zlib2.default.createInflate();
         stream.pipe(inflate);
         return inflate;
       }
@@ -27072,16 +27072,16 @@ var require_platformPolicies = __commonJS({
     var import_proxy = require_proxyPolicy();
     var import_decompress = require_decompressResponsePolicy();
     var import_redirectPolicy = require_redirectPolicy();
-    function addPlatformPolicies(pipeline, options) {
+    function addPlatformPolicies(pipeline2, options) {
       if (options.agent) {
-        pipeline.addPolicy((0, import_agentPolicy.agentPolicy)(options.agent));
+        pipeline2.addPolicy((0, import_agentPolicy.agentPolicy)(options.agent));
       }
       if (options.tlsOptions) {
-        pipeline.addPolicy((0, import_tlsPolicy.tlsPolicy)(options.tlsOptions));
+        pipeline2.addPolicy((0, import_tlsPolicy.tlsPolicy)(options.tlsOptions));
       }
-      pipeline.addPolicy((0, import_proxy.proxyPolicy)(options.proxyOptions));
-      pipeline.addPolicy((0, import_decompress.decompressResponsePolicy)());
-      pipeline.addPolicy((0, import_redirectPolicy.redirectPolicy)(options.redirectOptions), { afterPhase: "Retry" });
+      pipeline2.addPolicy((0, import_proxy.proxyPolicy)(options.proxyOptions));
+      pipeline2.addPolicy((0, import_decompress.decompressResponsePolicy)());
+      pipeline2.addPolicy((0, import_redirectPolicy.redirectPolicy)(options.redirectOptions), { afterPhase: "Retry" });
     }
   }
 });
@@ -27414,14 +27414,14 @@ var require_createPipelineFromOptions = __commonJS({
     var import_policies = require_platformPolicies();
     var import_multipartPolicy = require_multipartPolicy();
     function createPipelineFromOptions2(options) {
-      const pipeline = (0, import_pipeline.createEmptyPipeline)();
-      (0, import_policies.addPlatformPolicies)(pipeline, options);
-      pipeline.addPolicy((0, import_formDataPolicy.formDataPolicy)(), { beforePolicies: [import_multipartPolicy.multipartPolicyName] });
-      pipeline.addPolicy((0, import_userAgentPolicy.userAgentPolicy)(options.userAgentOptions));
-      pipeline.addPolicy((0, import_multipartPolicy.multipartPolicy)(), { afterPhase: "Deserialize" });
-      pipeline.addPolicy((0, import_defaultRetryPolicy.defaultRetryPolicy)(options.retryOptions), { phase: "Retry" });
-      pipeline.addPolicy((0, import_logPolicy.logPolicy)(options.loggingOptions), { afterPhase: "Sign" });
-      return pipeline;
+      const pipeline2 = (0, import_pipeline.createEmptyPipeline)();
+      (0, import_policies.addPlatformPolicies)(pipeline2, options);
+      pipeline2.addPolicy((0, import_formDataPolicy.formDataPolicy)(), { beforePolicies: [import_multipartPolicy.multipartPolicyName] });
+      pipeline2.addPolicy((0, import_userAgentPolicy.userAgentPolicy)(options.userAgentOptions));
+      pipeline2.addPolicy((0, import_multipartPolicy.multipartPolicy)(), { afterPhase: "Deserialize" });
+      pipeline2.addPolicy((0, import_defaultRetryPolicy.defaultRetryPolicy)(options.retryOptions), { phase: "Retry" });
+      pipeline2.addPolicy((0, import_logPolicy.logPolicy)(options.loggingOptions), { afterPhase: "Sign" });
+      return pipeline2;
     }
   }
 });
@@ -27805,29 +27805,29 @@ var require_clientHelpers = __commonJS({
     var import_oauth2AuthenticationPolicy = require_oauth2AuthenticationPolicy();
     var cachedHttpClient;
     function createDefaultPipeline(options = {}) {
-      const pipeline = (0, import_createPipelineFromOptions.createPipelineFromOptions)(options);
-      pipeline.addPolicy((0, import_apiVersionPolicy.apiVersionPolicy)(options));
+      const pipeline2 = (0, import_createPipelineFromOptions.createPipelineFromOptions)(options);
+      pipeline2.addPolicy((0, import_apiVersionPolicy.apiVersionPolicy)(options));
       const { credential, authSchemes, allowInsecureConnection } = options;
       if (credential) {
         if ((0, import_credentials.isApiKeyCredential)(credential)) {
-          pipeline.addPolicy(
+          pipeline2.addPolicy(
             (0, import_apiKeyAuthenticationPolicy.apiKeyAuthenticationPolicy)({ authSchemes, credential, allowInsecureConnection })
           );
         } else if ((0, import_credentials.isBasicCredential)(credential)) {
-          pipeline.addPolicy(
+          pipeline2.addPolicy(
             (0, import_basicAuthenticationPolicy.basicAuthenticationPolicy)({ authSchemes, credential, allowInsecureConnection })
           );
         } else if ((0, import_credentials.isBearerTokenCredential)(credential)) {
-          pipeline.addPolicy(
+          pipeline2.addPolicy(
             (0, import_bearerAuthenticationPolicy.bearerAuthenticationPolicy)({ authSchemes, credential, allowInsecureConnection })
           );
         } else if ((0, import_credentials.isOAuth2TokenCredential)(credential)) {
-          pipeline.addPolicy(
+          pipeline2.addPolicy(
             (0, import_oauth2AuthenticationPolicy.oauth2AuthenticationPolicy)({ authSchemes, credential, allowInsecureConnection })
           );
         }
       }
-      return pipeline;
+      return pipeline2;
     }
     function getCachedDefaultHttpsClient() {
       if (!cachedHttpClient) {
@@ -28004,11 +28004,11 @@ var require_sendRequest = __commonJS({
     var import_clientHelpers = require_clientHelpers();
     var import_typeGuards = require_typeGuards2();
     var import_multipart = require_multipart();
-    async function sendRequest(method, url, pipeline, options = {}, customHttpClient) {
+    async function sendRequest(method, url, pipeline2, options = {}, customHttpClient) {
       const httpClient = customHttpClient ?? (0, import_clientHelpers.getCachedDefaultHttpsClient)();
       const request = buildPipelineRequest(method, url, options);
       try {
-        const response = await pipeline.sendRequest(httpClient, request);
+        const response = await pipeline2.sendRequest(httpClient, request);
         const headers = response.headers.toJSON();
         const stream = response.readableStreamBody ?? response.browserStreamBody;
         const parsedBody = options.responseAsStream || stream !== void 0 ? void 0 : getResponseBody(response);
@@ -28427,11 +28427,11 @@ var require_getClient = __commonJS({
     var import_urlHelpers = require_urlHelpers();
     var import_env = require_env();
     function getClient2(endpoint, clientOptions = {}) {
-      const pipeline = clientOptions.pipeline ?? (0, import_clientHelpers.createDefaultPipeline)(clientOptions);
+      const pipeline2 = clientOptions.pipeline ?? (0, import_clientHelpers.createDefaultPipeline)(clientOptions);
       if (clientOptions.additionalPolicies?.length) {
         for (const { policy, position } of clientOptions.additionalPolicies) {
           const afterPhase = position === "perRetry" ? "Sign" : void 0;
-          pipeline.addPolicy(policy, {
+          pipeline2.addPolicy(policy, {
             afterPhase
           });
         }
@@ -28446,7 +28446,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "GET",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28457,7 +28457,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "POST",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28468,7 +28468,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "PUT",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28479,7 +28479,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "PATCH",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28490,7 +28490,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "DELETE",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28501,7 +28501,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "HEAD",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28512,7 +28512,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "OPTIONS",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28523,7 +28523,7 @@ var require_getClient = __commonJS({
             return buildOperation(
               "TRACE",
               getUrl(requestOptions),
-              pipeline,
+              pipeline2,
               requestOptions,
               allowInsecureConnection,
               httpClient,
@@ -28535,17 +28535,17 @@ var require_getClient = __commonJS({
       return {
         path: client2,
         pathUnchecked: client2,
-        pipeline
+        pipeline: pipeline2
       };
     }
-    function buildOperation(method, url, pipeline, options, allowInsecureConnection, httpClient, noDefaultAcceptHeader = false) {
+    function buildOperation(method, url, pipeline2, options, allowInsecureConnection, httpClient, noDefaultAcceptHeader = false) {
       allowInsecureConnection = options.allowInsecureConnection ?? allowInsecureConnection;
       return {
         then: function(onFulfilled, onrejected) {
           return (0, import_sendRequest.sendRequest)(
             method,
             url,
-            pipeline,
+            pipeline2,
             { ...options, allowInsecureConnection, noDefaultAcceptHeader },
             httpClient
           ).then(onFulfilled, onrejected);
@@ -28559,7 +28559,7 @@ var require_getClient = __commonJS({
             return (0, import_sendRequest.sendRequest)(
               method,
               url,
-              pipeline,
+              pipeline2,
               { ...options, allowInsecureConnection, noDefaultAcceptHeader, responseAsStream: true },
               httpClient
             );
@@ -28570,7 +28570,7 @@ var require_getClient = __commonJS({
             return (0, import_sendRequest.sendRequest)(
               method,
               url,
-              pipeline,
+              pipeline2,
               { ...options, allowInsecureConnection, noDefaultAcceptHeader, responseAsStream: true },
               httpClient
             );
@@ -30007,31 +30007,31 @@ var require_createPipelineFromOptions2 = __commonJS({
     var import_tracingPolicy = require_tracingPolicy();
     var import_wrapAbortSignalLikePolicy = require_wrapAbortSignalLikePolicy();
     function createPipelineFromOptions2(options) {
-      const pipeline = (0, import_pipeline.createEmptyPipeline)();
+      const pipeline2 = (0, import_pipeline.createEmptyPipeline)();
       if (import_core_util.isNodeLike) {
         if (options.agent) {
-          pipeline.addPolicy((0, import_agentPolicy.agentPolicy)(options.agent));
+          pipeline2.addPolicy((0, import_agentPolicy.agentPolicy)(options.agent));
         }
         if (options.tlsOptions) {
-          pipeline.addPolicy((0, import_tlsPolicy.tlsPolicy)(options.tlsOptions));
+          pipeline2.addPolicy((0, import_tlsPolicy.tlsPolicy)(options.tlsOptions));
         }
-        pipeline.addPolicy((0, import_proxyPolicy.proxyPolicy)(options.proxyOptions));
-        pipeline.addPolicy((0, import_decompressResponsePolicy.decompressResponsePolicy)());
+        pipeline2.addPolicy((0, import_proxyPolicy.proxyPolicy)(options.proxyOptions));
+        pipeline2.addPolicy((0, import_decompressResponsePolicy.decompressResponsePolicy)());
       }
-      pipeline.addPolicy((0, import_wrapAbortSignalLikePolicy.wrapAbortSignalLikePolicy)());
-      pipeline.addPolicy((0, import_formDataPolicy.formDataPolicy)(), { beforePolicies: [import_multipartPolicy.multipartPolicyName] });
-      pipeline.addPolicy((0, import_userAgentPolicy.userAgentPolicy)(options.userAgentOptions));
-      pipeline.addPolicy((0, import_setClientRequestIdPolicy.setClientRequestIdPolicy)(options.telemetryOptions?.clientRequestIdHeaderName));
-      pipeline.addPolicy((0, import_multipartPolicy.multipartPolicy)(), { afterPhase: "Deserialize" });
-      pipeline.addPolicy((0, import_defaultRetryPolicy.defaultRetryPolicy)(options.retryOptions), { phase: "Retry" });
-      pipeline.addPolicy((0, import_tracingPolicy.tracingPolicy)({ ...options.userAgentOptions, ...options.loggingOptions }), {
+      pipeline2.addPolicy((0, import_wrapAbortSignalLikePolicy.wrapAbortSignalLikePolicy)());
+      pipeline2.addPolicy((0, import_formDataPolicy.formDataPolicy)(), { beforePolicies: [import_multipartPolicy.multipartPolicyName] });
+      pipeline2.addPolicy((0, import_userAgentPolicy.userAgentPolicy)(options.userAgentOptions));
+      pipeline2.addPolicy((0, import_setClientRequestIdPolicy.setClientRequestIdPolicy)(options.telemetryOptions?.clientRequestIdHeaderName));
+      pipeline2.addPolicy((0, import_multipartPolicy.multipartPolicy)(), { afterPhase: "Deserialize" });
+      pipeline2.addPolicy((0, import_defaultRetryPolicy.defaultRetryPolicy)(options.retryOptions), { phase: "Retry" });
+      pipeline2.addPolicy((0, import_tracingPolicy.tracingPolicy)({ ...options.userAgentOptions, ...options.loggingOptions }), {
         afterPhase: "Retry"
       });
       if (import_core_util.isNodeLike) {
-        pipeline.addPolicy((0, import_redirectPolicy.redirectPolicy)(options.redirectOptions), { afterPhase: "Retry" });
+        pipeline2.addPolicy((0, import_redirectPolicy.redirectPolicy)(options.redirectOptions), { afterPhase: "Retry" });
       }
-      pipeline.addPolicy((0, import_logPolicy.logPolicy)(options.loggingOptions), { afterPhase: "Sign" });
-      return pipeline;
+      pipeline2.addPolicy((0, import_logPolicy.logPolicy)(options.loggingOptions), { afterPhase: "Sign" });
+      return pipeline2;
     }
   }
 });
@@ -31342,18 +31342,18 @@ var require_pipeline3 = __commonJS({
     var core_rest_pipeline_1 = require_commonjs6();
     var serializationPolicy_js_1 = require_serializationPolicy();
     function createClientPipeline(options = {}) {
-      const pipeline = (0, core_rest_pipeline_1.createPipelineFromOptions)(options ?? {});
+      const pipeline2 = (0, core_rest_pipeline_1.createPipelineFromOptions)(options ?? {});
       if (options.credentialOptions) {
-        pipeline.addPolicy((0, core_rest_pipeline_1.bearerTokenAuthenticationPolicy)({
+        pipeline2.addPolicy((0, core_rest_pipeline_1.bearerTokenAuthenticationPolicy)({
           credential: options.credentialOptions.credential,
           scopes: options.credentialOptions.credentialScopes
         }));
       }
-      pipeline.addPolicy((0, serializationPolicy_js_1.serializationPolicy)(options.serializationOptions), { phase: "Serialize" });
-      pipeline.addPolicy((0, deserializationPolicy_js_1.deserializationPolicy)(options.deserializationOptions), {
+      pipeline2.addPolicy((0, serializationPolicy_js_1.serializationPolicy)(options.serializationOptions), { phase: "Serialize" });
+      pipeline2.addPolicy((0, deserializationPolicy_js_1.deserializationPolicy)(options.deserializationOptions), {
         phase: "Deserialize"
       });
-      return pipeline;
+      return pipeline2;
     }
   }
 });
@@ -33650,10 +33650,10 @@ var require_clientCertificateCredential = __commonJS({
     });
     module.exports = __toCommonJS2(clientCertificateCredential_exports);
     var import_msalClient = require_msalClient();
-    var import_node_crypto5 = __require("node:crypto");
+    var import_node_crypto6 = __require("node:crypto");
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_logging = require_logging();
-    var import_promises4 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var import_tracing = require_tracing();
     var credentialName = "ClientCertificateCredential";
     var logger2 = (0, import_logging.credentialLogger)(credentialName);
@@ -33723,7 +33723,7 @@ var require_clientCertificateCredential = __commonJS({
         );
         let privateKey;
         if (this.certificateConfiguration.certificatePassword !== void 0) {
-          privateKey = (0, import_node_crypto5.createPrivateKey)({
+          privateKey = (0, import_node_crypto6.createPrivateKey)({
             key: parts.certificateContents,
             passphrase: this.certificateConfiguration.certificatePassword,
             format: "pem"
@@ -33745,7 +33745,7 @@ var require_clientCertificateCredential = __commonJS({
     async function parseCertificate(certificateConfiguration, sendCertificateChain) {
       const certificate = certificateConfiguration.certificate;
       const certificatePath = certificateConfiguration.certificatePath;
-      const certificateContents = certificate || await (0, import_promises4.readFile)(certificatePath, "utf8");
+      const certificateContents = certificate || await (0, import_promises5.readFile)(certificatePath, "utf8");
       const x5c = sendCertificateChain ? certificateContents : void 0;
       const certificatePattern = /(-+BEGIN CERTIFICATE-+)(\n\r?|\r\n?)([A-Za-z0-9+/\n\r]+=*)(\n\r?|\r\n?)(-+END CERTIFICATE-+)/g;
       const publicKeys = [];
@@ -33759,8 +33759,8 @@ var require_clientCertificateCredential = __commonJS({
       if (publicKeys.length === 0) {
         throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
       }
-      const thumbprint = (0, import_node_crypto5.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-      const thumbprintSha256 = (0, import_node_crypto5.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprint = (0, import_node_crypto6.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+      const thumbprintSha256 = (0, import_node_crypto6.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
       return {
         certificateContents,
         thumbprintSha256,
@@ -34494,7 +34494,7 @@ var require_workloadIdentityCredential = __commonJS({
     var import_clientAssertionCredential = require_clientAssertionCredential();
     var import_errors = require_errors2();
     var import_tenantIdUtils = require_tenantIdUtils();
-    var import_promises4 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var credentialName = "WorkloadIdentityCredential";
     var SupportedWorkloadEnvironmentVariables = [
       "AZURE_TENANT_ID",
@@ -34581,7 +34581,7 @@ var require_workloadIdentityCredential = __commonJS({
           );
         }
         if (!this.azureFederatedTokenFileContent) {
-          const file = await (0, import_promises4.readFile)(this.federatedTokenFilePath, "utf8");
+          const file = await (0, import_promises5.readFile)(this.federatedTokenFilePath, "utf8");
           const value = file.trim();
           if (!value) {
             throw new import_errors.CredentialUnavailableError(
@@ -35074,7 +35074,7 @@ var require_resolveExecutable = __commonJS({
       resolveWindowsCommandInterpreter: () => resolveWindowsCommandInterpreter
     });
     module.exports = __toCommonJS2(resolveExecutable_exports);
-    var import_node_fs11 = __require("node:fs");
+    var import_node_fs12 = __require("node:fs");
     var import_node_path10 = __toESM2(__require("node:path"));
     var import_node_url5 = __require("node:url");
     var import_errors = require_errors3();
@@ -35139,11 +35139,11 @@ var require_resolveExecutable = __commonJS({
     }
     function isExecutableFile(filePath) {
       try {
-        if (!(0, import_node_fs11.statSync)(filePath).isFile()) {
+        if (!(0, import_node_fs12.statSync)(filePath).isFile()) {
           return false;
         }
         if (process.platform !== "win32") {
-          (0, import_node_fs11.accessSync)(filePath, import_node_fs11.constants.X_OK);
+          (0, import_node_fs12.accessSync)(filePath, import_node_fs12.constants.X_OK);
         }
         return true;
       } catch {
@@ -35276,7 +35276,7 @@ var require_resolveExecutable = __commonJS({
     }
     function canonicalizeWindowsPath(filePath) {
       try {
-        return import_node_fs11.realpathSync.native(filePath).toLowerCase();
+        return import_node_fs12.realpathSync.native(filePath).toLowerCase();
       } catch {
         return import_node_path10.default.resolve(filePath).toLowerCase();
       }
@@ -36536,7 +36536,7 @@ var require_visualStudioCodeCredential = __commonJS({
     var import_scopeUtils = require_scopeUtils();
     var import_msalPlugins = require_msalPlugins();
     var import_utils = require_utils3();
-    var import_promises4 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var CommonTenantId = "common";
     var VSCodeClientId = "aebc6443-996d-45c2-90f0-388ff96faa56";
     var logger2 = (0, import_logging.credentialLogger)("VisualStudioCodeCredential");
@@ -36648,7 +36648,7 @@ var require_visualStudioCodeCredential = __commonJS({
        */
       async loadAuthRecord(authRecordPath, scopes) {
         try {
-          const authRecordContent = await (0, import_promises4.readFile)(authRecordPath, { encoding: "utf8" });
+          const authRecordContent = await (0, import_promises5.readFile)(authRecordPath, { encoding: "utf8" });
           return (0, import_utils.deserializeAuthenticationRecord)(authRecordContent);
         } catch (error) {
           logger2.getToken.info((0, import_logging.formatError)(scopes, error));
@@ -37638,9 +37638,9 @@ var require_onBehalfOfCredential = __commonJS({
     var import_logging = require_logging();
     var import_tenantIdUtils = require_tenantIdUtils();
     var import_errors = require_errors2();
-    var import_node_crypto5 = __require("node:crypto");
+    var import_node_crypto6 = __require("node:crypto");
     var import_scopeUtils = require_scopeUtils();
-    var import_promises4 = __require("node:fs/promises");
+    var import_promises5 = __require("node:fs/promises");
     var import_tracing = require_tracing();
     var credentialName = "OnBehalfOfCredential";
     var logger2 = (0, import_logging.credentialLogger)(credentialName);
@@ -37759,7 +37759,7 @@ var require_onBehalfOfCredential = __commonJS({
       }
       async parseCertificate(configuration, sendCertificateChain) {
         const certificatePath = configuration.certificatePath;
-        const certificateContents = await (0, import_promises4.readFile)(certificatePath, "utf8");
+        const certificateContents = await (0, import_promises5.readFile)(certificatePath, "utf8");
         const x5c = sendCertificateChain ? certificateContents : void 0;
         const certificatePattern = /(-+BEGIN CERTIFICATE-+)(\n\r?|\r\n?)([A-Za-z0-9+/\n\r]+=*)(\n\r?|\r\n?)(-+END CERTIFICATE-+)/g;
         const publicKeys = [];
@@ -37773,8 +37773,8 @@ var require_onBehalfOfCredential = __commonJS({
         if (publicKeys.length === 0) {
           throw new Error("The file at the specified path does not contain a PEM-encoded certificate.");
         }
-        const thumbprint = (0, import_node_crypto5.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
-        const thumbprintSha256 = (0, import_node_crypto5.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprint = (0, import_node_crypto6.createHash)("sha1").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
+        const thumbprintSha256 = (0, import_node_crypto6.createHash)("sha256").update(Buffer.from(publicKeys[0], "base64")).digest("hex").toUpperCase();
         return {
           certificateContents,
           thumbprintSha256,
@@ -37814,10 +37814,10 @@ var require_tokenProvider = __commonJS({
     var import_core_rest_pipeline = require_commonjs6();
     function getBearerTokenProvider2(credential, scopes, options) {
       const { abortSignal, tracingOptions } = options || {};
-      const pipeline = (0, import_core_rest_pipeline.createEmptyPipeline)();
-      pipeline.addPolicy((0, import_core_rest_pipeline.bearerTokenAuthenticationPolicy)({ credential, scopes }));
+      const pipeline2 = (0, import_core_rest_pipeline.createEmptyPipeline)();
+      pipeline2.addPolicy((0, import_core_rest_pipeline.bearerTokenAuthenticationPolicy)({ credential, scopes }));
       async function getRefreshedToken() {
-        const res = await pipeline.sendRequest(
+        const res = await pipeline2.sendRequest(
           {
             sendRequest: (request) => Promise.resolve({
               request,
@@ -55031,14 +55031,14 @@ var require_streams = __commonJS({
     "use strict";
     var Buffer3 = require_safer().Buffer;
     module.exports = function(streamModule) {
-      var Transform = streamModule.Transform;
+      var Transform2 = streamModule.Transform;
       function IconvLiteEncoderStream(conv, options) {
         this.conv = conv;
         options = options || {};
         options.decodeStrings = false;
-        Transform.call(this, options);
+        Transform2.call(this, options);
       }
-      IconvLiteEncoderStream.prototype = Object.create(Transform.prototype, {
+      IconvLiteEncoderStream.prototype = Object.create(Transform2.prototype, {
         constructor: { value: IconvLiteEncoderStream }
       });
       IconvLiteEncoderStream.prototype._transform = function(chunk, encoding, done) {
@@ -55077,9 +55077,9 @@ var require_streams = __commonJS({
         this.conv = conv;
         options = options || {};
         options.encoding = this.encoding = "utf8";
-        Transform.call(this, options);
+        Transform2.call(this, options);
       }
-      IconvLiteDecoderStream.prototype = Object.create(Transform.prototype, {
+      IconvLiteDecoderStream.prototype = Object.create(Transform2.prototype, {
         constructor: { value: IconvLiteDecoderStream }
       });
       IconvLiteDecoderStream.prototype._transform = function(chunk, encoding, done) {
@@ -60428,10 +60428,10 @@ var require_from = __commonJS({
     var { PromisePrototypeThen, SymbolAsyncIterator, SymbolIterator } = require_primordials();
     var { Buffer: Buffer3 } = __require("buffer");
     var { ERR_INVALID_ARG_TYPE, ERR_STREAM_NULL_VALUES } = require_errors4().codes;
-    function from(Readable, iterable, opts) {
+    function from(Readable2, iterable, opts) {
       let iterator;
       if (typeof iterable === "string" || iterable instanceof Buffer3) {
-        return new Readable({
+        return new Readable2({
           objectMode: true,
           ...opts,
           read() {
@@ -60450,7 +60450,7 @@ var require_from = __commonJS({
       } else {
         throw new ERR_INVALID_ARG_TYPE("iterable", ["Iterable"], iterable);
       }
-      const readable = new Readable({
+      const readable = new Readable2({
         objectMode: true,
         highWaterMark: 1,
         // TODO(ronag): What options should be allowed?
@@ -60534,8 +60534,8 @@ var require_readable = __commonJS({
       SymbolAsyncIterator,
       Symbol: Symbol2
     } = require_primordials();
-    module.exports = Readable;
-    Readable.ReadableState = ReadableState;
+    module.exports = Readable2;
+    Readable2.ReadableState = ReadableState;
     var { EventEmitter: EE } = __require("events");
     var { Stream, prependListener } = require_legacy();
     var { Buffer: Buffer3 } = __require("buffer");
@@ -60562,8 +60562,8 @@ var require_readable = __commonJS({
     var kPaused = Symbol2("kPaused");
     var { StringDecoder } = require_string_decoder();
     var from = require_from();
-    ObjectSetPrototypeOf(Readable.prototype, Stream.prototype);
-    ObjectSetPrototypeOf(Readable, Stream);
+    ObjectSetPrototypeOf(Readable2.prototype, Stream.prototype);
+    ObjectSetPrototypeOf(Readable2, Stream);
     var nop = () => {
     };
     var { errorOrDestroy } = destroyImpl;
@@ -60658,8 +60658,8 @@ var require_readable = __commonJS({
         this.encoding = options.encoding;
       }
     }
-    function Readable(options) {
-      if (!(this instanceof Readable)) return new Readable(options);
+    function Readable2(options) {
+      if (!(this instanceof Readable2)) return new Readable2(options);
       const isDuplex = this instanceof require_duplex();
       this._readableState = new ReadableState(options, this, isDuplex);
       if (options) {
@@ -60675,15 +60675,15 @@ var require_readable = __commonJS({
         }
       });
     }
-    Readable.prototype.destroy = destroyImpl.destroy;
-    Readable.prototype._undestroy = destroyImpl.undestroy;
-    Readable.prototype._destroy = function(err, cb) {
+    Readable2.prototype.destroy = destroyImpl.destroy;
+    Readable2.prototype._undestroy = destroyImpl.undestroy;
+    Readable2.prototype._destroy = function(err, cb) {
       cb(err);
     };
-    Readable.prototype[EE.captureRejectionSymbol] = function(err) {
+    Readable2.prototype[EE.captureRejectionSymbol] = function(err) {
       this.destroy(err);
     };
-    Readable.prototype[SymbolAsyncDispose] = function() {
+    Readable2.prototype[SymbolAsyncDispose] = function() {
       let error;
       if (!this.destroyed) {
         error = this.readableEnded ? null : new AbortError2();
@@ -60691,10 +60691,10 @@ var require_readable = __commonJS({
       }
       return new Promise2((resolve, reject) => eos(this, (err) => err && err !== error ? reject(err) : resolve(null)));
     };
-    Readable.prototype.push = function(chunk, encoding) {
+    Readable2.prototype.push = function(chunk, encoding) {
       return readableAddChunk(this, chunk, encoding, false);
     };
-    Readable.prototype.unshift = function(chunk, encoding) {
+    Readable2.prototype.unshift = function(chunk, encoding) {
       return readableAddChunk(this, chunk, encoding, true);
     };
     function readableAddChunk(stream, chunk, encoding, addToFront) {
@@ -60768,11 +60768,11 @@ var require_readable = __commonJS({
       }
       maybeReadMore(stream, state);
     }
-    Readable.prototype.isPaused = function() {
+    Readable2.prototype.isPaused = function() {
       const state = this._readableState;
       return state[kPaused] === true || state.flowing === false;
     };
-    Readable.prototype.setEncoding = function(enc) {
+    Readable2.prototype.setEncoding = function(enc) {
       const decoder = new StringDecoder(enc);
       this._readableState.decoder = decoder;
       this._readableState.encoding = this._readableState.decoder.encoding;
@@ -60811,7 +60811,7 @@ var require_readable = __commonJS({
       if (n <= state.length) return n;
       return state.ended ? state.length : 0;
     }
-    Readable.prototype.read = function(n) {
+    Readable2.prototype.read = function(n) {
       debug("read", n);
       if (n === void 0) {
         n = NaN;
@@ -60933,10 +60933,10 @@ var require_readable = __commonJS({
       }
       state.readingMore = false;
     }
-    Readable.prototype._read = function(n) {
+    Readable2.prototype._read = function(n) {
       throw new ERR_METHOD_NOT_IMPLEMENTED("_read()");
     };
-    Readable.prototype.pipe = function(dest, pipeOpts) {
+    Readable2.prototype.pipe = function(dest, pipeOpts) {
       const src = this;
       const state = this._readableState;
       if (state.pipes.length === 1) {
@@ -61061,7 +61061,7 @@ var require_readable = __commonJS({
         }
       };
     }
-    Readable.prototype.unpipe = function(dest) {
+    Readable2.prototype.unpipe = function(dest) {
       const state = this._readableState;
       const unpipeInfo = {
         hasUnpiped: false
@@ -61084,7 +61084,7 @@ var require_readable = __commonJS({
       dest.emit("unpipe", this, unpipeInfo);
       return this;
     };
-    Readable.prototype.on = function(ev, fn) {
+    Readable2.prototype.on = function(ev, fn) {
       const res = Stream.prototype.on.call(this, ev, fn);
       const state = this._readableState;
       if (ev === "data") {
@@ -61105,16 +61105,16 @@ var require_readable = __commonJS({
       }
       return res;
     };
-    Readable.prototype.addListener = Readable.prototype.on;
-    Readable.prototype.removeListener = function(ev, fn) {
+    Readable2.prototype.addListener = Readable2.prototype.on;
+    Readable2.prototype.removeListener = function(ev, fn) {
       const res = Stream.prototype.removeListener.call(this, ev, fn);
       if (ev === "readable") {
         process9.nextTick(updateReadableListening, this);
       }
       return res;
     };
-    Readable.prototype.off = Readable.prototype.removeListener;
-    Readable.prototype.removeAllListeners = function(ev) {
+    Readable2.prototype.off = Readable2.prototype.removeListener;
+    Readable2.prototype.removeAllListeners = function(ev) {
       const res = Stream.prototype.removeAllListeners.apply(this, arguments);
       if (ev === "readable" || ev === void 0) {
         process9.nextTick(updateReadableListening, this);
@@ -61136,7 +61136,7 @@ var require_readable = __commonJS({
       debug("readable nexttick read 0");
       self2.read(0);
     }
-    Readable.prototype.resume = function() {
+    Readable2.prototype.resume = function() {
       const state = this._readableState;
       if (!state.flowing) {
         debug("resume");
@@ -61162,7 +61162,7 @@ var require_readable = __commonJS({
       flow(stream);
       if (state.flowing && !state.reading) stream.read(0);
     }
-    Readable.prototype.pause = function() {
+    Readable2.prototype.pause = function() {
       debug("call pause flowing=%j", this._readableState.flowing);
       if (this._readableState.flowing !== false) {
         debug("pause");
@@ -61177,7 +61177,7 @@ var require_readable = __commonJS({
       debug("flow", state.flowing);
       while (state.flowing && stream.read() !== null) ;
     }
-    Readable.prototype.wrap = function(stream) {
+    Readable2.prototype.wrap = function(stream) {
       let paused = false;
       stream.on("data", (chunk) => {
         if (!this.push(chunk) && stream.pause) {
@@ -61212,10 +61212,10 @@ var require_readable = __commonJS({
       }
       return this;
     };
-    Readable.prototype[SymbolAsyncIterator] = function() {
+    Readable2.prototype[SymbolAsyncIterator] = function() {
       return streamToAsyncIterator(this);
     };
-    Readable.prototype.iterator = function(options) {
+    Readable2.prototype.iterator = function(options) {
       if (options !== void 0) {
         validateObject(options, "options");
       }
@@ -61223,7 +61223,7 @@ var require_readable = __commonJS({
     };
     function streamToAsyncIterator(stream, options) {
       if (typeof stream.read !== "function") {
-        stream = Readable.wrap(stream, {
+        stream = Readable2.wrap(stream, {
           objectMode: true
         });
       }
@@ -61279,7 +61279,7 @@ var require_readable = __commonJS({
         }
       }
     }
-    ObjectDefineProperties(Readable.prototype, {
+    ObjectDefineProperties(Readable2.prototype, {
       readable: {
         __proto__: null,
         get() {
@@ -61406,7 +61406,7 @@ var require_readable = __commonJS({
         }
       }
     });
-    Readable._fromList = fromList;
+    Readable2._fromList = fromList;
     function fromList(n, state) {
       if (state.length === 0) return null;
       let ret;
@@ -61453,23 +61453,23 @@ var require_readable = __commonJS({
         stream.end();
       }
     }
-    Readable.from = function(iterable, opts) {
-      return from(Readable, iterable, opts);
+    Readable2.from = function(iterable, opts) {
+      return from(Readable2, iterable, opts);
     };
     var webStreamsAdapters;
     function lazyWebStreams() {
       if (webStreamsAdapters === void 0) webStreamsAdapters = {};
       return webStreamsAdapters;
     }
-    Readable.fromWeb = function(readableStream, options) {
+    Readable2.fromWeb = function(readableStream, options) {
       return lazyWebStreams().newStreamReadableFromReadableStream(readableStream, options);
     };
-    Readable.toWeb = function(streamReadable, options) {
+    Readable2.toWeb = function(streamReadable, options) {
       return lazyWebStreams().newReadableStreamFromStreamReadable(streamReadable, options);
     };
-    Readable.wrap = function(src, options) {
+    Readable2.wrap = function(src, options) {
       var _ref, _src$readableObjectMo;
-      return new Readable({
+      return new Readable2({
         objectMode: (_ref = (_src$readableObjectMo = src.readableObjectMode) !== null && _src$readableObjectMo !== void 0 ? _src$readableObjectMo : src.objectMode) !== null && _ref !== void 0 ? _ref : true,
         ...options,
         destroy(err, callback) {
@@ -62125,7 +62125,7 @@ var require_duplexify = __commonJS({
     } = require_errors4();
     var { destroyer } = require_destroy();
     var Duplex = require_duplex();
-    var Readable = require_readable();
+    var Readable2 = require_readable();
     var Writable = require_writable();
     var { createDeferredPromise } = require_util();
     var from = require_from();
@@ -62175,7 +62175,7 @@ var require_duplexify = __commonJS({
       }
       if (isReadableStream(body)) {
         return _duplexify({
-          readable: Readable.fromWeb(body)
+          readable: Readable2.fromWeb(body)
         });
       }
       if (isWritableStream(body)) {
@@ -62339,7 +62339,7 @@ var require_duplexify = __commonJS({
       };
     }
     function _duplexify(pair) {
-      const r = pair.readable && typeof pair.readable.read !== "function" ? Readable.wrap(pair.readable) : pair.readable;
+      const r = pair.readable && typeof pair.readable.read !== "function" ? Readable2.wrap(pair.readable) : pair.readable;
       const w = pair.writable;
       let readable = !!isReadable(r);
       let writable = !!isWritable(w);
@@ -62460,10 +62460,10 @@ var require_duplex = __commonJS({
       ObjectSetPrototypeOf
     } = require_primordials();
     module.exports = Duplex;
-    var Readable = require_readable();
+    var Readable2 = require_readable();
     var Writable = require_writable();
-    ObjectSetPrototypeOf(Duplex.prototype, Readable.prototype);
-    ObjectSetPrototypeOf(Duplex, Readable);
+    ObjectSetPrototypeOf(Duplex.prototype, Readable2.prototype);
+    ObjectSetPrototypeOf(Duplex, Readable2);
     {
       const keys = ObjectKeys(Writable.prototype);
       for (let i = 0; i < keys.length; i++) {
@@ -62473,7 +62473,7 @@ var require_duplex = __commonJS({
     }
     function Duplex(options) {
       if (!(this instanceof Duplex)) return new Duplex(options);
-      Readable.call(this, options);
+      Readable2.call(this, options);
       Writable.call(this, options);
       if (options) {
         this.allowHalfOpen = options.allowHalfOpen !== false;
@@ -62571,15 +62571,15 @@ var require_transform = __commonJS({
   "node_modules/readable-stream/lib/internal/streams/transform.js"(exports, module) {
     "use strict";
     var { ObjectSetPrototypeOf, Symbol: Symbol2 } = require_primordials();
-    module.exports = Transform;
+    module.exports = Transform2;
     var { ERR_METHOD_NOT_IMPLEMENTED } = require_errors4().codes;
     var Duplex = require_duplex();
     var { getHighWaterMark } = require_state();
-    ObjectSetPrototypeOf(Transform.prototype, Duplex.prototype);
-    ObjectSetPrototypeOf(Transform, Duplex);
+    ObjectSetPrototypeOf(Transform2.prototype, Duplex.prototype);
+    ObjectSetPrototypeOf(Transform2, Duplex);
     var kCallback = Symbol2("kCallback");
-    function Transform(options) {
-      if (!(this instanceof Transform)) return new Transform(options);
+    function Transform2(options) {
+      if (!(this instanceof Transform2)) return new Transform2(options);
       const readableHighWaterMark = options ? getHighWaterMark(this, options, "readableHighWaterMark", true) : null;
       if (readableHighWaterMark === 0) {
         options = {
@@ -62633,11 +62633,11 @@ var require_transform = __commonJS({
         final.call(this);
       }
     }
-    Transform.prototype._final = final;
-    Transform.prototype._transform = function(chunk, encoding, callback) {
+    Transform2.prototype._final = final;
+    Transform2.prototype._transform = function(chunk, encoding, callback) {
       throw new ERR_METHOD_NOT_IMPLEMENTED("_transform()");
     };
-    Transform.prototype._write = function(chunk, encoding, callback) {
+    Transform2.prototype._write = function(chunk, encoding, callback) {
       const rState = this._readableState;
       const wState = this._writableState;
       const length = rState.length;
@@ -62658,7 +62658,7 @@ var require_transform = __commonJS({
         }
       });
     };
-    Transform.prototype._read = function() {
+    Transform2.prototype._read = function() {
       if (this[kCallback]) {
         const callback = this[kCallback];
         this[kCallback] = null;
@@ -62674,12 +62674,12 @@ var require_passthrough = __commonJS({
     "use strict";
     var { ObjectSetPrototypeOf } = require_primordials();
     module.exports = PassThrough;
-    var Transform = require_transform();
-    ObjectSetPrototypeOf(PassThrough.prototype, Transform.prototype);
-    ObjectSetPrototypeOf(PassThrough, Transform);
+    var Transform2 = require_transform();
+    ObjectSetPrototypeOf(PassThrough.prototype, Transform2.prototype);
+    ObjectSetPrototypeOf(PassThrough, Transform2);
     function PassThrough(options) {
       if (!(this instanceof PassThrough)) return new PassThrough(options);
-      Transform.call(this, options);
+      Transform2.call(this, options);
     }
     PassThrough.prototype._transform = function(chunk, encoding, cb) {
       cb(null, chunk);
@@ -62720,7 +62720,7 @@ var require_pipeline4 = __commonJS({
     } = require_utils6();
     var AbortController2 = globalThis.AbortController || require_abort_controller().AbortController;
     var PassThrough;
-    var Readable;
+    var Readable2;
     var addAbortListener;
     function destroyer(stream, reading, writing) {
       let finished = false;
@@ -62759,10 +62759,10 @@ var require_pipeline4 = __commonJS({
       throw new ERR_INVALID_ARG_TYPE("val", ["Readable", "Iterable", "AsyncIterable"], val);
     }
     async function* fromReadable(val) {
-      if (!Readable) {
-        Readable = require_readable();
+      if (!Readable2) {
+        Readable2 = require_readable();
       }
-      yield* Readable.prototype[SymbolAsyncIterator].call(val);
+      yield* Readable2.prototype[SymbolAsyncIterator].call(val);
     }
     async function pumpToNode(iterable, writable, finish, { end }) {
       let error;
@@ -62844,7 +62844,7 @@ var require_pipeline4 = __commonJS({
         }
       }
     }
-    function pipeline(...streams) {
+    function pipeline2(...streams) {
       return pipelineImpl(streams, once(popCallback(streams)));
     }
     function pipelineImpl(streams, callback, opts) {
@@ -63110,7 +63110,7 @@ var require_pipeline4 = __commonJS({
     }
     module.exports = {
       pipelineImpl,
-      pipeline
+      pipeline: pipeline2
     };
   }
 });
@@ -63119,7 +63119,7 @@ var require_pipeline4 = __commonJS({
 var require_compose = __commonJS({
   "node_modules/readable-stream/lib/internal/streams/compose.js"(exports, module) {
     "use strict";
-    var { pipeline } = require_pipeline4();
+    var { pipeline: pipeline2 } = require_pipeline4();
     var Duplex = require_duplex();
     var { destroyer } = require_destroy();
     var {
@@ -63179,7 +63179,7 @@ var require_compose = __commonJS({
         }
       }
       const head = streams[0];
-      const tail = pipeline(streams, onfinished);
+      const tail = pipeline2(streams, onfinished);
       const writable = !!(isWritable(head) || isWritableStream(head) || isTransformStream(head));
       const readable = !!(isReadable(tail) || isReadableStream(tail) || isTransformStream(tail));
       d = new Duplex({
@@ -63722,7 +63722,7 @@ var require_promises = __commonJS({
     var { pipelineImpl: pl } = require_pipeline4();
     var { finished } = require_end_of_stream();
     require_stream();
-    function pipeline(...streams) {
+    function pipeline2(...streams) {
       return new Promise2((resolve, reject) => {
         let signal;
         let end;
@@ -63750,7 +63750,7 @@ var require_promises = __commonJS({
     }
     module.exports = {
       finished,
-      pipeline
+      pipeline: pipeline2
     };
   }
 });
@@ -63770,7 +63770,7 @@ var require_stream = __commonJS({
     } = require_errors4();
     var compose = require_compose();
     var { setDefaultHighWaterMark, getDefaultHighWaterMark } = require_state();
-    var { pipeline } = require_pipeline4();
+    var { pipeline: pipeline2 } = require_pipeline4();
     var { destroyer } = require_destroy();
     var eos = require_end_of_stream();
     var promises = require_promises();
@@ -63834,7 +63834,7 @@ var require_stream = __commonJS({
     Stream.Duplex = require_duplex();
     Stream.Transform = require_transform();
     Stream.PassThrough = require_passthrough();
-    Stream.pipeline = pipeline;
+    Stream.pipeline = pipeline2;
     var { addAbortSignal } = require_add_abort_signal();
     Stream.addAbortSignal = addAbortSignal;
     Stream.finished = eos;
@@ -63850,7 +63850,7 @@ var require_stream = __commonJS({
         return promises;
       }
     });
-    ObjectDefineProperty(pipeline, customPromisify, {
+    ObjectDefineProperty(pipeline2, customPromisify, {
       __proto__: null,
       enumerable: true,
       get() {
@@ -85090,7 +85090,7 @@ var require_static_text_parser = __commonJS({
     for (const t in Types) {
       typeNames[Types[t]] = t;
     }
-    function readField({
+    function readField2({
       packet,
       field,
       type,
@@ -85193,7 +85193,7 @@ var require_static_text_parser = __commonJS({
           for (let i = 0; i < fields2.length; i++) {
             const field = fields2[i];
             const typeCast = options2.typeCast ? options2.typeCast : config.typeCast;
-            const next = () => readField({
+            const next = () => readField2({
               packet,
               field,
               type: field.columnType,
@@ -85822,7 +85822,7 @@ var require_query2 = __commonJS({
     "use strict";
     var process9 = __require("process");
     var Timers = __require("timers");
-    var Readable = __require("stream").Readable;
+    var Readable2 = __require("stream").Readable;
     var Command = require_command();
     var Packets = require_packets();
     var getTextParser = require_text_parser();
@@ -86071,7 +86071,7 @@ var require_query2 = __commonJS({
       stream(options) {
         options = options || /* @__PURE__ */ Object.create(null);
         options.objectMode = true;
-        const stream = new Readable({
+        const stream = new Readable2({
           ...options,
           emitClose: true,
           autoDestroy: true,
@@ -87559,7 +87559,7 @@ var require_connection2 = __commonJS({
     var Tls = __require("tls");
     var Timers = __require("timers");
     var EventEmitter = __require("events").EventEmitter;
-    var Readable = __require("stream").Readable;
+    var Readable2 = __require("stream").Readable;
     var Queue = require_ring_queue();
     var SqlString = require_lib3();
     var { createLRU } = require_lib4();
@@ -88398,7 +88398,7 @@ var require_connection2 = __commonJS({
       }
       createBinlogStream(opts) {
         let test = 1;
-        const stream = new Readable({ objectMode: true });
+        const stream = new Readable2({ objectMode: true });
         stream._read = function() {
           return {
             data: test++
@@ -93376,7 +93376,7 @@ var require_connection5 = __commonJS({
 var require_split2 = __commonJS({
   "node_modules/split2/index.js"(exports, module) {
     "use strict";
-    var { Transform } = __require("stream");
+    var { Transform: Transform2 } = __require("stream");
     var { StringDecoder } = __require("string_decoder");
     var kLast = /* @__PURE__ */ Symbol("last");
     var kDecoder = /* @__PURE__ */ Symbol("decoder");
@@ -93455,7 +93455,7 @@ var require_split2 = __commonJS({
       options.transform = transform;
       options.flush = flush;
       options.readableObjectMode = true;
-      const stream = new Transform(options);
+      const stream = new Transform2(options);
       stream[kLast] = "";
       stream[kDecoder] = new StringDecoder("utf8");
       stream.matcher = matcher;
@@ -95487,8 +95487,8 @@ var init_markdown_parser = __esm({
 });
 
 // server/src/http-server.mjs
-import { randomBytes, createHash as createHash3, timingSafeEqual } from "node:crypto";
-import { chmodSync as chmodSync3, existsSync as existsSync5, mkdirSync as mkdirSync6, readFileSync as readFileSync5, renameSync as renameSync2, writeFileSync as writeFileSync5 } from "node:fs";
+import { randomBytes, createHash as createHash4, timingSafeEqual } from "node:crypto";
+import { chmodSync as chmodSync3, existsSync as existsSync5, mkdirSync as mkdirSync6, readFileSync as readFileSync5, renameSync as renameSync3, writeFileSync as writeFileSync5 } from "node:fs";
 import { homedir as homedir4 } from "node:os";
 import { join as join6 } from "node:path";
 import { createServer } from "node:http";
@@ -95515,6 +95515,13 @@ var STATUS_BY_CODE = Object.freeze({
   CONNECTION_NOT_FOUND: 404,
   WRITE_UNSUPPORTED: 501,
   DRIVER_UNSUPPORTED: 501,
+  // 驱动安装链路（见 engine/driver-registry.mjs、driver-archive.mjs、driver-download.mjs）。
+  // 清单/归档内容不合约 → 4xx（用户重试无用）；下载与清单拉取失败 → 502（网络/上游）。
+  DRIVER_REGISTRY_INVALID: 400,
+  DRIVER_ARCHIVE_INVALID: 400,
+  DRIVER_REGISTRY_UNAVAILABLE: 502,
+  DRIVER_DOWNLOAD_FAILED: 502,
+  DRIVER_ARCHIVE_UNSUPPORTED: 501,
   DRIVER_ERROR: 502,
   CONNECTION_ERROR: 502,
   DBX_MCP_ERROR: 502,
@@ -96893,7 +96900,7 @@ function createRouterContext({ auth, dataDir = null, now = () => Date.now() } = 
     }
     return context;
   }
-  async function describeFailure(connectionName, sql, effectiveSql, rawText) {
+  async function describeFailure2(connectionName, sql, effectiveSql, rawText) {
     try {
       const context = await resolveQueryContext(connectionName, sql, effectiveSql);
       const missing = matchMissingObject(rawText);
@@ -96937,7 +96944,7 @@ ${text}` : "";
     resolveWriteConnSpec,
     resolveQueryContext,
     attachTableLocation,
-    describeFailure,
+    describeFailure: describeFailure2,
     toOutcome,
     isDriverUnavailable,
     // 工具函数（从 engine/ 模块 import 过来让各 domain 统一用）
@@ -98673,18 +98680,356 @@ function systemRoutes(ctx) {
 
 // server/src/api/driver.mjs
 import {
+  chmodSync as chmodSync2,
+  copyFileSync,
   existsSync as existsSync3,
   mkdirSync as mkdirSync4,
-  chmodSync as chmodSync2,
-  statSync,
-  createWriteStream,
   readFileSync as readFileSync3,
+  renameSync as renameSync2,
+  rmSync,
+  statSync,
   writeFileSync as writeFileSync3
 } from "node:fs";
-import { join as join4 } from "node:path";
 import { homedir as homedir3 } from "node:os";
-var DRIVERS_ROOT = join4(homedir3(), ".astravia-dbx-data", "drivers");
-var DBX_AGENTS_LATEST = "https://github.com/t8y2/dbx/releases/download/agents-latest";
+import { join as join4 } from "node:path";
+
+// server/src/engine/driver-archive.mjs
+import { zstdDecompressSync } from "node:zlib";
+var BLOCK = 512;
+var MAX_ENTRY_BYTES = 512 * 1024 * 1024;
+var FORMAT_TAR_ZSTD = "tar_zstd";
+var FORMAT_RAW = "raw";
+function decompressZstd(buffer, { maxOutputBytes = MAX_ENTRY_BYTES } = {}) {
+  if (typeof zstdDecompressSync !== "function") {
+    throw engineError(
+      "DRIVER_ARCHIVE_UNSUPPORTED",
+      `\u5F53\u524D Node\uFF08${process.version}\uFF09\u4E0D\u652F\u6301 zstd \u89E3\u538B\uFF0C\u8BF7\u5347\u7EA7\u5F15\u64CE\u8FD0\u884C\u65F6\u6216\u6539\u7528\u624B\u52A8\u6307\u5B9A\u8DEF\u5F84\u5B89\u88C5\u9A71\u52A8`
+    );
+  }
+  try {
+    return zstdDecompressSync(buffer, { maxOutputLength: maxOutputBytes });
+  } catch (error) {
+    throw engineError("DRIVER_ARCHIVE_INVALID", `zstd \u89E3\u538B\u5931\u8D25\uFF1A${error.message}`);
+  }
+}
+function readField(buffer, start, end) {
+  const slice = buffer.subarray(start, end);
+  const nul = slice.indexOf(0);
+  return slice.subarray(0, nul === -1 ? slice.length : nul).toString("utf8");
+}
+function readNumber(buffer, start, end) {
+  const slice = buffer.subarray(start, end);
+  if (slice.length === 0) return 0;
+  const first = slice[0];
+  if (first === 128 || first === 255) {
+    let value = first & 127;
+    for (let i = 1; i < slice.length; i += 1) value = value * 256 + slice[i];
+    return first === 255 ? value - 2 ** (7 + 8 * (slice.length - 1)) : value;
+  }
+  const text = readField(buffer, start, end).trim();
+  if (!text) return 0;
+  const parsed = Number.parseInt(text, 8);
+  if (Number.isNaN(parsed)) {
+    throw engineError("DRIVER_ARCHIVE_INVALID", `tar \u5934\u7684\u6570\u503C\u5B57\u6BB5\u65E0\u6CD5\u89E3\u6790\uFF1A${JSON.stringify(text)}`);
+  }
+  return parsed;
+}
+function isZeroBlock(block) {
+  for (let i = 0; i < block.length; i += 1) if (block[i] !== 0) return false;
+  return true;
+}
+function parsePax(data) {
+  const text = data.toString("utf8");
+  const records = {};
+  let offset = 0;
+  while (offset < text.length) {
+    const space = text.indexOf(" ", offset);
+    if (space === -1) break;
+    const length = Number.parseInt(text.slice(offset, space), 10);
+    if (!Number.isFinite(length) || length <= 0) break;
+    const record = text.slice(space + 1, offset + length);
+    const eq = record.indexOf("=");
+    if (eq !== -1) records[record.slice(0, eq)] = record.slice(eq + 1).replace(/\n$/, "");
+    offset += length;
+  }
+  return records;
+}
+var MANIFEST_ENTRY = "agent-registry.json";
+function isManifestEntry(name) {
+  return name === MANIFEST_ENTRY || name.endsWith(`/${MANIFEST_ENTRY}`);
+}
+function paxMode(value) {
+  if (value === void 0 || value === null || value === "") return null;
+  const text = String(value);
+  const parsed = /^[0-7]+$/.test(text) ? Number.parseInt(text, 8) : Number.parseInt(text, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+function normalizeName(name) {
+  return name.replace(/^\.\//, "");
+}
+function padding(size) {
+  return (BLOCK - size % BLOCK) % BLOCK;
+}
+function readTarEntries(buffer) {
+  const entries = [];
+  const globalPax = {};
+  let pendingPax = null;
+  let pendingLongName = null;
+  let offset = 0;
+  while (offset + BLOCK <= buffer.length) {
+    const header = buffer.subarray(offset, offset + BLOCK);
+    if (isZeroBlock(header)) break;
+    offset += BLOCK;
+    const size = readNumber(header, 124, 136);
+    const type = String.fromCharCode(header[156] || 48);
+    const dataStart = offset;
+    const dataEnd = dataStart + size;
+    if (dataEnd > buffer.length) {
+      throw engineError("DRIVER_ARCHIVE_INVALID", `tar \u5F52\u6863\u88AB\u622A\u65AD\uFF1A\u6761\u76EE\u58F0\u660E ${size} \u5B57\u8282\uFF0C\u5F52\u6863\u53EA\u5269 ${buffer.length - dataStart}`);
+    }
+    if (type === "x" || type === "g") {
+      const pax = parsePax(buffer.subarray(dataStart, dataEnd));
+      if (type === "g") Object.assign(globalPax, pax);
+      else pendingPax = pax;
+      offset = dataEnd + padding(size);
+      continue;
+    }
+    if (type === "L" || type === "K") {
+      const value = readField(buffer, dataStart, dataEnd);
+      if (type === "L") pendingLongName = value;
+      offset = dataEnd + padding(size);
+      continue;
+    }
+    if (type === "0") {
+      const prefix = readField(header, 345, 500);
+      const pax = { ...globalPax, ...pendingPax ?? {} };
+      const rawName = pax.path || pendingLongName || (prefix ? `${prefix}/${readField(header, 0, 100)}` : readField(header, 0, 100));
+      entries.push({
+        name: normalizeName(rawName),
+        mode: paxMode(pax.mode) ?? readNumber(header, 100, 108),
+        size,
+        data: buffer.subarray(dataStart, dataStart + size)
+      });
+    }
+    pendingPax = null;
+    pendingLongName = null;
+    offset = dataEnd + padding(size);
+  }
+  return entries;
+}
+function pickDriverEntry(entries) {
+  const regular = entries.filter((entry) => entry.size > 0 && !isManifestEntry(entry.name));
+  if (regular.length === 0) {
+    const names = entries.map((entry) => entry.name).join(", ") || "\uFF08\u7A7A\u5F52\u6863\uFF09";
+    throw engineError("DRIVER_ARCHIVE_INVALID", `\u5F52\u6863\u91CC\u6CA1\u6709\u53EF\u7528\u7684\u9A71\u52A8\u6587\u4EF6\uFF1A${names}`);
+  }
+  const declared = regular.filter((entry) => entry.name.startsWith("drivers/"));
+  const candidates = declared.length > 0 ? declared : regular;
+  return candidates.reduce((best, entry) => entry.size > best.size ? entry : best);
+}
+function extractDriverPayload(archive, { maxOutputBytes = MAX_ENTRY_BYTES } = {}) {
+  const tar = decompressZstd(archive, { maxOutputBytes });
+  const entry = pickDriverEntry(readTarEntries(tar));
+  return { name: entry.name, mode: entry.mode, data: entry.data };
+}
+
+// server/src/engine/driver-download.mjs
+import { createHash as createHash2 } from "node:crypto";
+import { createWriteStream } from "node:fs";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+var DEFAULT_IDLE_TIMEOUT_MS = 6e4;
+var PROGRESS_INTERVAL_MS = 200;
+function describeFailure(error, controller) {
+  if (controller.signal.aborted && controller.signal.reason instanceof Error) return controller.signal.reason.message;
+  const code = error?.cause?.code ?? error?.code;
+  return `${error?.message ?? String(error)}${code ? `\uFF08${code}\uFF09` : ""}`;
+}
+async function downloadToFile({
+  url,
+  destPath,
+  expectedSha256,
+  declaredTotal = 0,
+  idleTimeoutMs = DEFAULT_IDLE_TIMEOUT_MS,
+  onProgress,
+  fetchImpl = globalThis.fetch,
+  signal
+} = {}) {
+  const controller = new AbortController();
+  let timer = null;
+  const arm = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(
+      () => controller.abort(new Error(`\u4E0B\u8F7D\u4E2D\u65AD\uFF1A${Math.round(idleTimeoutMs / 1e3)} \u79D2\u5185\u6CA1\u6709\u6536\u5230\u6570\u636E\uFF08\u7F51\u7EDC\u4E0D\u53EF\u8FBE\u6216\u88AB\u4E2D\u65AD\uFF09`)),
+      idleTimeoutMs
+    );
+  };
+  const disarm = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+  };
+  if (signal) {
+    if (signal.aborted) throw engineError("DRIVER_DOWNLOAD_FAILED", "\u4E0B\u8F7D\u5DF2\u53D6\u6D88");
+    signal.addEventListener("abort", () => controller.abort(new Error("\u4E0B\u8F7D\u5DF2\u53D6\u6D88")), { once: true });
+  }
+  arm();
+  let response;
+  try {
+    response = await fetchImpl(url, { redirect: "follow", signal: controller.signal });
+  } catch (error) {
+    disarm();
+    throw engineError("DRIVER_DOWNLOAD_FAILED", `\u4E0B\u8F7D\u5931\u8D25\uFF1A${describeFailure(error, controller)}`);
+  }
+  if (!response.ok) {
+    disarm();
+    throw engineError("DRIVER_DOWNLOAD_FAILED", `\u4E0B\u8F7D\u5931\u8D25\uFF1AHTTP ${response.status} ${response.statusText ?? ""}\uFF08${url}\uFF09`.trim());
+  }
+  if (!response.body) {
+    disarm();
+    throw engineError("DRIVER_DOWNLOAD_FAILED", `\u4E0B\u8F7D\u5931\u8D25\uFF1A\u54CD\u5E94\u6CA1\u6709 body\uFF08${url}\uFF09`);
+  }
+  const contentLength = Number(response.headers?.get?.("content-length") ?? 0) || 0;
+  const total = contentLength || declaredTotal;
+  const hash = createHash2("sha256");
+  let downloaded = 0;
+  let lastReport = 0;
+  onProgress?.({ downloaded: 0, total });
+  const meter = new Transform({
+    transform(chunk, _encoding, callback) {
+      downloaded += chunk.length;
+      hash.update(chunk);
+      arm();
+      const now = Date.now();
+      if (now - lastReport >= PROGRESS_INTERVAL_MS) {
+        lastReport = now;
+        onProgress?.({ downloaded, total: total || downloaded });
+      }
+      callback(null, chunk);
+    }
+  });
+  try {
+    await pipeline(Readable.fromWeb(response.body), meter, createWriteStream(destPath), { signal: controller.signal });
+  } catch (error) {
+    throw engineError("DRIVER_DOWNLOAD_FAILED", `\u4E0B\u8F7D\u5931\u8D25\uFF1A${describeFailure(error, controller)}`);
+  } finally {
+    disarm();
+  }
+  onProgress?.({ downloaded, total: total || downloaded });
+  const sha256 = hash.digest("hex");
+  if (expectedSha256 && sha256 !== String(expectedSha256).toLowerCase()) {
+    throw engineError(
+      "DRIVER_DOWNLOAD_FAILED",
+      `\u4E0B\u8F7D\u6821\u9A8C\u5931\u8D25\uFF1Asha256 \u4E0D\u4E00\u81F4\uFF08\u6E05\u5355 ${expectedSha256}\uFF0C\u5B9E\u9645 ${sha256}\uFF09`
+    );
+  }
+  return { bytes: downloaded, sha256 };
+}
+
+// server/src/engine/driver-registry.mjs
+var AGENTS_REGISTRY_URL = "https://github.com/t8y2/dbx/releases/download/agents-latest/agent-registry.json";
+var DRIVERS_REGISTRY_URL_ENV = "DBX_DRIVERS_REGISTRY_URL";
+function defaultRegistryUrl() {
+  return process.env[DRIVERS_REGISTRY_URL_ENV]?.trim() || AGENTS_REGISTRY_URL;
+}
+function registryUrl() {
+  return defaultRegistryUrl();
+}
+var ALLOWED_ARTIFACT_HOSTS = /* @__PURE__ */ new Set([
+  "github.com",
+  "release-assets.githubusercontent.com",
+  "objects.githubusercontent.com"
+]);
+var REGISTRY_TIMEOUT_MS = 2e4;
+var REGISTRY_CACHE_MS = 10 * 60 * 1e3;
+var registryCache = null;
+function artifactFormatOf(url) {
+  return /\.(tar\.zst|tar\.zstd|tzst)(\?.*)?$/i.test(String(url ?? "")) ? FORMAT_TAR_ZSTD : FORMAT_RAW;
+}
+function assertAllowedArtifactUrl(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw engineError("DRIVER_REGISTRY_INVALID", `\u6E05\u5355\u91CC\u7684\u4EA7\u7269\u5730\u5740\u4E0D\u662F\u5408\u6CD5 URL\uFF1A${url}`);
+  }
+  const loopback = parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost" || parsed.hostname === "[::1]";
+  if (parsed.protocol === "http:" && loopback) return parsed;
+  if (parsed.protocol !== "https:" || !ALLOWED_ARTIFACT_HOSTS.has(parsed.hostname)) {
+    throw engineError(
+      "DRIVER_REGISTRY_INVALID",
+      `\u6E05\u5355\u91CC\u7684\u4EA7\u7269\u5730\u5740\u4E0D\u5728\u5141\u8BB8\u8303\u56F4\u5185\uFF1A${url}\uFF08\u53EA\u63A5\u53D7 ${[...ALLOWED_ARTIFACT_HOSTS].join(" / ")} \u7684 https \u5730\u5740\uFF09`
+    );
+  }
+  return parsed;
+}
+async function fetchAgentRegistry({
+  fetchImpl = globalThis.fetch,
+  registryUrl: registryUrl2 = defaultRegistryUrl(),
+  timeoutMs = REGISTRY_TIMEOUT_MS,
+  cacheMs = REGISTRY_CACHE_MS
+} = {}) {
+  if (registryCache && registryCache.url === registryUrl2 && Date.now() - registryCache.at < cacheMs) return registryCache.value;
+  let response;
+  try {
+    response = await fetchImpl(registryUrl2, {
+      redirect: "follow",
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (error) {
+    const code = error?.cause?.code ?? error?.code;
+    throw engineError(
+      "DRIVER_REGISTRY_UNAVAILABLE",
+      `\u65E0\u6CD5\u83B7\u53D6\u9A71\u52A8\u6E05\u5355\uFF08${registryUrl2}\uFF09\uFF1A${error?.message ?? error}${code ? `\uFF08${code}\uFF09` : ""}`
+    );
+  }
+  if (!response.ok) {
+    throw engineError("DRIVER_REGISTRY_UNAVAILABLE", `\u65E0\u6CD5\u83B7\u53D6\u9A71\u52A8\u6E05\u5355\uFF08${registryUrl2}\uFF09\uFF1AHTTP ${response.status} ${response.statusText ?? ""}`.trim());
+  }
+  let value;
+  try {
+    value = await response.json();
+  } catch (error) {
+    throw engineError("DRIVER_REGISTRY_INVALID", `\u9A71\u52A8\u6E05\u5355\u4E0D\u662F\u5408\u6CD5 JSON\uFF1A${error.message}`);
+  }
+  registryCache = { at: Date.now(), url: registryUrl2, value };
+  return value;
+}
+function pickNativeArtifact(registry, { driverKey, platformTag }) {
+  const driver = registry?.drivers?.[driverKey];
+  if (!driver) {
+    const known = Object.keys(registry?.drivers ?? {}).join(", ") || "\uFF08\u7A7A\uFF09";
+    throw engineError("DRIVER_UNSUPPORTED", `\u9A71\u52A8\u6E05\u5355\u91CC\u6CA1\u6709 ${driverKey}\uFF08\u6E05\u5355\u91CC\u6709\uFF1A${known}\uFF09`);
+  }
+  const native = driver.native?.[platformTag];
+  if (!native) {
+    const known = Object.keys(driver.native ?? {}).join(", ") || "\uFF08\u7A7A\uFF09";
+    throw engineError("DRIVER_UNSUPPORTED", `\u9A71\u52A8\u6E05\u5355\u91CC\u6CA1\u6709 ${driverKey} \u7684 ${platformTag} \u4EA7\u7269\uFF08\u6E05\u5355\u91CC\u6709\uFF1A${known}\uFF09`);
+  }
+  if (!native.url) {
+    throw engineError("DRIVER_REGISTRY_INVALID", `\u9A71\u52A8\u6E05\u5355\u91CC ${driverKey}/${platformTag} \u7F3A\u5C11 url`);
+  }
+  if (!native.sha256) {
+    throw engineError("DRIVER_REGISTRY_INVALID", `\u9A71\u52A8\u6E05\u5355\u91CC ${driverKey}/${platformTag} \u7F3A\u5C11 sha256\uFF0C\u62D2\u7EDD\u5B89\u88C5\uFF08\u65E0\u6CD5\u6821\u9A8C\u5B8C\u6574\u6027\uFF09`);
+  }
+  assertAllowedArtifactUrl(native.url);
+  return {
+    url: native.url,
+    sha256: String(native.sha256).toLowerCase(),
+    size: Number(native.size ?? 0) || 0,
+    format: native.format ? String(native.format) : artifactFormatOf(native.url),
+    version: driver.version ? String(driver.version) : void 0
+  };
+}
+async function resolveDriverArtifact({ driverKey, platformTag, fetchImpl, timeoutMs, registryUrl: registryUrl2 } = {}) {
+  const registry = await fetchAgentRegistry({ fetchImpl, timeoutMs, registryUrl: registryUrl2 });
+  return pickNativeArtifact(registry, { driverKey, platformTag });
+}
+
+// server/src/api/driver.mjs
+var DRIVER_ROOT_ENV = "DBX_DRIVERS_ROOT";
+var STALE_INSTALL_MS = 15 * 60 * 1e3;
+var STATUS_PERSIST_INTERVAL_MS = 500;
 function platformKey() {
   const { platform: platform2, arch: arch2 } = process;
   if (platform2 === "darwin") return arch2 === "arm64" ? "darwin-arm64" : "darwin-x64";
@@ -98705,228 +99050,333 @@ var DRIVERS = [
     label: "DuckDB Native Driver\uFF08API \u6570\u636E\u6E90\u672C\u673A\u67E5\u8BE2\u901A\u9053\uFF09",
     description: "dbx API \u6570\u636E\u6E90\u7684\u672C\u5730 SQL \u6267\u884C\u5F15\u64CE\u3002\u6267\u884C SELECT \u7B49\u67E5\u8BE2\u65F6\u7531 dbx-mcp spawn \u4E3A sidecar \u8FDB\u7A0B\u3002",
     envVar: "DBX_DUCKDB_DRIVER_PATH",
-    binaryName: "duckdb_worker",
-    releaseArtifact: (platTag) => `dbx-agent-duckdb-${platTag}${process.platform === "win32" ? ".exe" : ""}`
+    // 文件名必须与 dbx-mcp-client.DRIVER_MAP 里的 binary 完全一致（win32 带 .exe）。
+    binaryName: process.platform === "win32" ? "duckdb_worker.exe" : "duckdb_worker"
   }
 ];
-var STATUS_FILE = join4(DRIVERS_ROOT, ".install-status.json");
-function ensureDriversRoot() {
-  if (!existsSync3(DRIVERS_ROOT)) mkdirSync4(DRIVERS_ROOT, { recursive: true });
-}
-function loadStatuses() {
-  try {
-    if (!existsSync3(STATUS_FILE)) return /* @__PURE__ */ new Map();
-    const raw = readFileSync3(STATUS_FILE, "utf-8");
-    const obj = JSON.parse(raw);
-    const m = /* @__PURE__ */ new Map();
-    for (const [k, v] of Object.entries(obj)) m.set(k, v);
-    return m;
-  } catch {
-    return /* @__PURE__ */ new Map();
-  }
-}
-function saveStatuses(map) {
-  try {
-    ensureDriversRoot();
-    const obj = Object.fromEntries(map);
-    writeFileSync3(STATUS_FILE, JSON.stringify(obj, null, 2));
-  } catch {
-  }
-}
-var INSTALL_STATUS = loadStatuses();
-function getInstallStatus(key) {
-  return INSTALL_STATUS.get(key) ?? { status: "idle", downloaded: 0, total: 0 };
-}
-function setInstallStatus(key, val) {
-  INSTALL_STATUS.set(key, val);
-  saveStatuses(INSTALL_STATUS);
-}
-function driverDir(key) {
-  return join4(DRIVERS_ROOT, key, platformKey());
-}
-function driverBinary(key) {
-  const d = DRIVERS.find((d2) => d2.key === key);
-  return join4(driverDir(key), d.binaryName);
-}
 function findDriver(key) {
-  return DRIVERS.find((d) => d.key === key);
+  return DRIVERS.find((driver) => driver.key === key);
 }
-function ensureDir2(p) {
-  if (!existsSync3(p)) mkdirSync4(p, { recursive: true });
+function driversRoot(ctx) {
+  const override = process.env[DRIVER_ROOT_ENV];
+  if (override) return override;
+  const dataDir = ctx?.dataDir ?? join4(homedir3(), ".astravia-dbx-data");
+  return join4(dataDir, "drivers");
 }
-function driverRoutes() {
-  return [
-    ["/driver/status", "POST", true, async () => {
-      const out = DRIVERS.map((d) => {
-        const binary = driverBinary(d.key);
-        const installed = existsSync3(binary);
-        let sizeBytes;
-        if (installed) {
-          try {
-            sizeBytes = statSync(binary).size;
-          } catch {
-          }
-        }
-        const platTag = releasePlatformTag();
-        const installUrl = platTag ? `${DBX_AGENTS_LATEST}/${d.releaseArtifact(platTag)}` : null;
-        const st = getInstallStatus(d.key);
-        if (installed && (st.status === "downloading" || st.status === "installing")) {
-          const finalSt = { status: "done", downloaded: sizeBytes ?? 0, total: sizeBytes ?? 0 };
-          setInstallStatus(d.key, finalSt);
-          return {
-            key: d.key,
-            label: d.label,
-            installed,
-            installedPath: binary,
-            sizeBytes,
-            envVar: d.envVar,
-            description: d.description,
-            expectedPath: binary,
-            reason: void 0,
-            downloadUrl: installUrl,
-            installStatus: finalSt
-          };
-        }
-        if (!installed && st.status !== "idle" && st.startedAt && Date.now() - st.startedAt > 10 * 60 * 1e3) {
-          setInstallStatus(d.key, { status: "idle", downloaded: 0, total: 0 });
-        }
-        return {
-          key: d.key,
-          label: d.label,
-          installed,
-          installedPath: installed ? binary : void 0,
-          sizeBytes,
-          envVar: d.envVar,
-          description: d.description,
-          expectedPath: binary,
-          reason: installed ? void 0 : "\u672A\u68C0\u6D4B\u5230\u9A71\u52A8\u53EF\u6267\u884C\u6587\u4EF6\uFF0C\u70B9\u51FB\u300C\u5B89\u88C5\u300D\u4ECE dbx agents release \u4E0B\u8F7D",
-          downloadUrl: installUrl,
-          installStatus: getInstallStatus(d.key)
-        };
-      });
-      return { drivers: out };
-    }],
-    ["/driver/install", "POST", true, async ({ body }) => {
-      const { driverKey, url } = body || {};
-      const driver = findDriver(driverKey);
-      if (!driver) return { ok: false, error: `\u672A\u77E5\u9A71\u52A8: ${driverKey}` };
-      const binary = driverBinary(driverKey);
-      if (existsSync3(binary)) {
-        setInstallStatus(driverKey, { status: "done", downloaded: statSync(binary).size, total: statSync(binary).size });
-        return { ok: true, driverKey, installedPath: binary, note: "\u5DF2\u5B58\u5728", installStatus: getInstallStatus(driverKey) };
-      }
-      let downloadUrl = url;
-      if (!downloadUrl) {
-        const platTag = releasePlatformTag();
-        if (!platTag) return { ok: false, driverKey, error: `\u4E0D\u652F\u6301\u7684\u5E73\u53F0: ${process.platform}-${process.arch}` };
-        downloadUrl = `${DBX_AGENTS_LATEST}/${driver.releaseArtifact(platTag)}`;
-      }
-      const existing = getInstallStatus(driverKey);
-      if (existing.status === "downloading" || existing.status === "installing") {
-        return { ok: true, driverKey, note: "\u5DF2\u5728\u5B89\u88C5\u4E2D", installStatus: existing };
-      }
-      setInstallStatus(driverKey, { status: "downloading", downloaded: 0, total: 0, startedAt: Date.now() });
-      const startedAt = Date.now();
-      (async () => {
-        try {
-          ensureDir2(driverDir(driverKey));
-          await downloadFileStreaming(downloadUrl, binary, (downloaded, total) => {
-            setInstallStatus(driverKey, {
-              status: "downloading",
-              downloaded,
-              total,
-              percent: total > 0 ? Math.round(downloaded / total * 100) : void 0,
-              startedAt
-            });
-          });
-          setInstallStatus(driverKey, {
-            status: "installing",
-            downloaded: statSync(binary).size,
-            total: statSync(binary).size,
-            startedAt
-          });
-          chmodSync2(binary, 493);
-          setInstallStatus(driverKey, {
-            status: "done",
-            downloaded: statSync(binary).size,
-            total: statSync(binary).size,
-            startedAt
-          });
-        } catch (e) {
-          setInstallStatus(driverKey, {
-            status: "error",
-            downloaded: INSTALL_STATUS.get(driverKey)?.downloaded ?? 0,
-            total: INSTALL_STATUS.get(driverKey)?.total ?? 0,
-            error: e.message,
-            startedAt
-          });
-        }
-      })();
-      return {
-        ok: true,
-        driverKey,
-        note: "\u4E0B\u8F7D\u5DF2\u5F00\u59CB\uFF0C\u8F6E\u8BE2 /driver/status \u67E5\u770B\u8FDB\u5EA6",
-        installStatus: getInstallStatus(driverKey)
-      };
-    }],
-    ["/driver/install-status", "GET", true, async ({ query }) => {
-      const key = query?.driverKey;
-      if (!key) return { ok: false, error: "\u7F3A\u5C11 driverKey" };
-      return { ok: true, driverKey: key, status: getInstallStatus(key) };
-    }],
-    ["/driver/set-path", "POST", true, async ({ body }) => {
-      const { driverKey, path: path4 } = body || {};
-      const driver = findDriver(driverKey);
-      if (!driver) return { ok: false, driverKey, error: `\u672A\u77E5\u9A71\u52A8: ${driverKey}` };
-      if (!path4) return { ok: false, error: "\u7F3A\u5C11 path \u53C2\u6570" };
-      if (!existsSync3(path4)) return { ok: false, error: `\u6587\u4EF6\u4E0D\u5B58\u5728: ${path4}` };
-      ensureDir2(driverDir(driverKey));
-      const dest = driverBinary(driverKey);
-      try {
-        const { copyFileSync } = await import("node:fs");
-        copyFileSync(path4, dest);
-        chmodSync2(dest, 493);
-        setInstallStatus(driverKey, { status: "done", downloaded: statSync(dest).size, total: statSync(dest).size });
-      } catch (e) {
-        return { ok: false, driverKey, error: `\u590D\u5236\u5931\u8D25: ${e.message}\u3002\u53EF\u624B\u52A8\u8BBE\u7F6E\u73AF\u5883\u53D8\u91CF ${driver.envVar}=${path4}` };
-      }
-      return { ok: true, driverKey, path: dest };
-    }],
-    ["/driver/reset-status", "POST", true, async ({ body }) => {
-      const key = body?.driverKey;
-      if (key) INSTALL_STATUS.delete(key);
-      else INSTALL_STATUS.clear();
-      saveStatuses(INSTALL_STATUS);
-      return { ok: true };
-    }]
-  ];
+function driverTargetDir(ctx, driverKey) {
+  return join4(driversRoot(ctx), driverKey, platformKey());
 }
-async function downloadFileStreaming(url, destPath, onProgress) {
-  const resp = await fetch(url, { redirect: "follow" });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
-  const total = Number(resp.headers.get("content-length") ?? 0);
-  onProgress(0, total);
-  if (!resp.body) throw new Error("\u54CD\u5E94\u65E0 body");
-  const writer = createWriteStream(destPath);
-  const reader = resp.body.getReader();
-  let downloaded = 0;
+function driverBinaryPath(ctx, driverKey) {
+  const driver = findDriver(driverKey);
+  if (!driver) throw engineError("BAD_REQUEST", `\u672A\u77E5\u9A71\u52A8: ${driverKey}`);
+  return join4(driverTargetDir(ctx, driverKey), driver.binaryName);
+}
+function ensureDir2(path4) {
+  if (!existsSync3(path4)) mkdirSync4(path4, { recursive: true });
+}
+function createStatusStore(root) {
+  const file = join4(root, ".install-status.json");
+  const map = /* @__PURE__ */ new Map();
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      writer.write(value);
-      downloaded += value.byteLength;
-      onProgress(downloaded, total || downloaded);
+    if (existsSync3(file)) {
+      for (const [key, value] of Object.entries(JSON.parse(readFileSync3(file, "utf-8")))) map.set(key, value);
     }
-    writer.end();
-    await new Promise((res, rej) => writer.on("finish", res).on("error", rej));
-  } catch (e) {
+  } catch {
+  }
+  const persist = () => {
     try {
-      writer.end();
+      ensureDir2(root);
+      writeFileSync3(file, JSON.stringify(Object.fromEntries(map), null, 2));
     } catch {
     }
-    throw e;
+  };
+  return {
+    file,
+    get: (key) => map.get(key) ?? { status: "idle", downloaded: 0, total: 0 },
+    raw: (key) => map.get(key),
+    /** 只更新内存（高频进度用）。 */
+    touch: (key, value) => map.set(key, value),
+    /** 更新并落盘。 */
+    set: (key, value) => {
+      map.set(key, value);
+      persist();
+    },
+    remove: (key) => {
+      if (key) map.delete(key);
+      else map.clear();
+      persist();
+    }
+  };
+}
+function createStatusWriter(store, driverKey, startedAt) {
+  let lastPersistAt = 0;
+  return function write(patch, { force = false } = {}) {
+    const previous = store.raw(driverKey) ?? {};
+    const next = { ...previous, ...patch, startedAt: previous.startedAt ?? startedAt };
+    if (Number(next.total) > 0) {
+      next.percent = Math.max(0, Math.min(100, Math.round(Number(next.downloaded ?? 0) / Number(next.total) * 100)));
+    }
+    const now = Date.now();
+    if (force || next.status !== previous.status || now - lastPersistAt >= STATUS_PERSIST_INTERVAL_MS) {
+      lastPersistAt = now;
+      store.set(driverKey, next);
+    } else {
+      store.touch(driverKey, next);
+    }
+    return next;
+  };
+}
+var ACTIVE_INSTALL_STATES = /* @__PURE__ */ new Set(["resolving", "downloading", "extracting"]);
+function isActiveInstall(status) {
+  if (!ACTIVE_INSTALL_STATES.has(status.status)) return false;
+  return Date.now() - Number(status.startedAt ?? 0) < STALE_INSTALL_MS;
+}
+function isStaleInstall(status) {
+  return ACTIVE_INSTALL_STATES.has(status.status) && !isActiveInstall(status);
+}
+async function restartBridge(ctx) {
+  try {
+    await ctx?.disposeDbxMcpClient?.();
+    return true;
+  } catch {
+    return false;
   }
+}
+async function runInstall({ ctx, store, driver, urlOverride, startedAt }) {
+  const target = driverBinaryPath(ctx, driver.key);
+  const dir = driverTargetDir(ctx, driver.key);
+  const partPath = `${target}.part`;
+  const write = createStatusWriter(store, driver.key, startedAt);
+  try {
+    ensureDir2(dir);
+    let artifact;
+    if (urlOverride) {
+      artifact = { url: urlOverride, sha256: null, size: 0, format: artifactFormatOf(urlOverride), version: void 0 };
+    } else {
+      const platformTag = releasePlatformTag();
+      if (!platformTag) throw engineError("DRIVER_UNSUPPORTED", `\u4E0D\u652F\u6301\u7684\u5E73\u53F0: ${process.platform}-${process.arch}`);
+      write({ status: "resolving", downloaded: 0, total: 0, error: void 0 }, { force: true });
+      artifact = await resolveDriverArtifact({ driverKey: driver.key, platformTag });
+    }
+    write(
+      {
+        status: "downloading",
+        downloaded: 0,
+        total: artifact.size ?? 0,
+        error: void 0,
+        version: artifact.version,
+        sourceUrl: artifact.url
+      },
+      { force: true }
+    );
+    const { bytes } = await downloadToFile({
+      url: artifact.url,
+      destPath: partPath,
+      expectedSha256: artifact.sha256,
+      declaredTotal: artifact.size ?? 0,
+      onProgress: ({ downloaded, total }) => write({ status: "downloading", downloaded, total })
+    });
+    let installedBytes = bytes;
+    if (artifact.format === FORMAT_TAR_ZSTD) {
+      write({ status: "extracting", downloaded: bytes, total: bytes }, { force: true });
+      const payload = extractDriverPayload(readFileSync3(partPath));
+      const stagedPath = `${target}.staged-${process.pid}`;
+      rmSync(stagedPath, { force: true });
+      writeFileSync3(stagedPath, payload.data, { mode: 493 });
+      chmodSync2(stagedPath, 493);
+      renameSync2(stagedPath, target);
+      rmSync(partPath, { force: true });
+      installedBytes = payload.data.length;
+    } else {
+      chmodSync2(partPath, 493);
+      renameSync2(partPath, target);
+    }
+    write(
+      {
+        status: "done",
+        downloaded: installedBytes,
+        total: installedBytes,
+        installedPath: target,
+        finishedAt: Date.now(),
+        bridgeRestarted: true,
+        error: void 0
+      },
+      { force: true }
+    );
+    if (!await restartBridge(ctx)) {
+      write({ bridgeRestarted: false }, { force: true });
+    }
+  } catch (error) {
+    rmSync(partPath, { force: true });
+    rmSync(`${target}.staged-${process.pid}`, { force: true });
+    write({ status: "error", error: error?.message ?? String(error), finishedAt: Date.now() }, { force: true });
+  }
+}
+function driverRoutes(ctx = {}) {
+  const store = createStatusStore(driversRoot(ctx));
+  const inflight = /* @__PURE__ */ new Set();
+  function reconcile(driver) {
+    const binary = driverBinaryPath(ctx, driver.key);
+    const installed = existsSync3(binary);
+    const status = store.get(driver.key);
+    if (installed) {
+      let sizeBytes;
+      try {
+        sizeBytes = statSync(binary).size;
+      } catch {
+      }
+      if (status.status !== "done" || status.downloaded !== sizeBytes) {
+        store.set(driver.key, {
+          ...status,
+          status: "done",
+          downloaded: sizeBytes ?? 0,
+          total: sizeBytes ?? 0,
+          percent: 100,
+          installedPath: binary
+        });
+      }
+      inflight.delete(driver.key);
+      return { binary, installed, status: store.get(driver.key), sizeBytes };
+    }
+    if (isStaleInstall(status) && !inflight.has(driver.key)) {
+      store.set(driver.key, {
+        ...status,
+        status: "error",
+        error: "\u5B89\u88C5\u4E2D\u65AD\uFF1A\u8D85\u8FC7 15 \u5206\u949F\u6CA1\u6709\u8FDB\u5C55\uFF0C\u8BF7\u91CD\u8BD5",
+        finishedAt: Date.now()
+      });
+    }
+    return { binary, installed, status: store.get(driver.key), sizeBytes: void 0 };
+  }
+  return [
+    [
+      "/driver/status",
+      "POST",
+      true,
+      async () => {
+        const platformTag = releasePlatformTag();
+        return {
+          drivers: DRIVERS.map((driver) => {
+            const { binary, installed, status, sizeBytes } = reconcile(driver);
+            return {
+              key: driver.key,
+              label: driver.label,
+              description: driver.description,
+              envVar: driver.envVar,
+              installed,
+              installedPath: installed ? binary : void 0,
+              sizeBytes,
+              expectedPath: binary,
+              platform: platformKey(),
+              registryUrl: registryUrl(),
+              downloadSource: platformTag ? "dbx agents release" : `\u4E0D\u652F\u6301\u7684\u5E73\u53F0: ${process.platform}-${process.arch}`,
+              reason: installed ? void 0 : "\u672A\u68C0\u6D4B\u5230\u9A71\u52A8\u53EF\u6267\u884C\u6587\u4EF6\uFF0C\u70B9\u51FB\u300C\u5B89\u88C5\u300D\u4ECE dbx agents release \u4E0B\u8F7D",
+              installStatus: status
+            };
+          })
+        };
+      }
+    ],
+    [
+      "/driver/install",
+      "POST",
+      true,
+      async ({ body }) => {
+        const { driverKey, url: urlOverride } = body || {};
+        const driver = findDriver(driverKey);
+        if (!driver) {
+          throw engineError("BAD_REQUEST", `\u672A\u77E5\u9A71\u52A8: ${driverKey}\uFF08\u53EF\u7528\uFF1A${DRIVERS.map((d) => d.key).join(", ")}\uFF09`);
+        }
+        if (!urlOverride && !releasePlatformTag()) {
+          throw engineError("DRIVER_UNSUPPORTED", `\u4E0D\u652F\u6301\u7684\u5E73\u53F0: ${process.platform}-${process.arch}`);
+        }
+        const target = driverBinaryPath(ctx, driver.key);
+        if (existsSync3(target)) {
+          let sizeBytes = 0;
+          try {
+            sizeBytes = statSync(target).size;
+          } catch {
+          }
+          const done = { status: "done", downloaded: sizeBytes, total: sizeBytes, percent: 100, installedPath: target };
+          store.set(driver.key, { ...store.raw(driver.key), ...done });
+          return { ok: true, driverKey: driver.key, installedPath: target, note: "\u9A71\u52A8\u5DF2\u5B58\u5728", installStatus: store.get(driver.key) };
+        }
+        const status = store.get(driver.key);
+        if (inflight.has(driver.key) || isActiveInstall(status)) {
+          return { ok: true, driverKey: driver.key, note: "\u5DF2\u5728\u5B89\u88C5\u4E2D", installStatus: status };
+        }
+        const startedAt = Date.now();
+        inflight.add(driver.key);
+        seedInstallStatus(store, driver.key, startedAt, urlOverride);
+        void runInstall({ ctx, store, driver, urlOverride, startedAt }).finally(() => {
+          inflight.delete(driver.key);
+        });
+        return {
+          ok: true,
+          driverKey: driver.key,
+          note: "\u4E0B\u8F7D\u5DF2\u5F00\u59CB\uFF0C\u8F6E\u8BE2 /driver/status \u67E5\u770B\u8FDB\u5EA6",
+          installStatus: store.get(driver.key)
+        };
+      }
+    ],
+    [
+      "/driver/install-status",
+      "GET",
+      true,
+      async ({ query }) => {
+        const key = query?.driverKey ?? DRIVERS[0]?.key;
+        if (!findDriver(key)) {
+          throw engineError("BAD_REQUEST", `\u672A\u77E5\u9A71\u52A8: ${key}\uFF08\u53EF\u7528\uFF1A${DRIVERS.map((d) => d.key).join(", ")}\uFF09`);
+        }
+        return { driverKey: key, installStatus: store.get(key) };
+      }
+    ],
+    [
+      "/driver/set-path",
+      "POST",
+      true,
+      async ({ body }) => {
+        const { driverKey, path: path4 } = body || {};
+        const driver = findDriver(driverKey);
+        if (!driver) throw engineError("BAD_REQUEST", `\u672A\u77E5\u9A71\u52A8: ${driverKey}`);
+        if (!path4) throw engineError("BAD_REQUEST", "\u7F3A\u5C11 path \u53C2\u6570");
+        if (!existsSync3(path4)) throw engineError("BAD_REQUEST", `\u6587\u4EF6\u4E0D\u5B58\u5728: ${path4}`);
+        const dest = driverBinaryPath(ctx, driver.key);
+        ensureDir2(driverTargetDir(ctx, driver.key));
+        try {
+          copyFileSync(path4, dest);
+          chmodSync2(dest, 493);
+        } catch (error) {
+          throw engineError(
+            "DRIVER_ERROR",
+            `\u590D\u5236\u9A71\u52A8\u5931\u8D25: ${error.message}\u3002\u53EF\u624B\u52A8\u8BBE\u7F6E\u73AF\u5883\u53D8\u91CF ${driver.envVar}=${path4}`
+          );
+        }
+        const sizeBytes = statSync(dest).size;
+        store.set(driver.key, { status: "done", downloaded: sizeBytes, total: sizeBytes, percent: 100, installedPath: dest });
+        const bridgeRestarted = await restartBridge(ctx);
+        return { ok: true, driverKey: driver.key, path: dest, installedPath: dest, bridgeRestarted };
+      }
+    ],
+    [
+      "/driver/reset-status",
+      "POST",
+      true,
+      async ({ body }) => {
+        store.remove(body?.driverKey);
+        return { ok: true };
+      }
+    ]
+  ];
+}
+function seedInstallStatus(store, driverKey, startedAt, urlOverride) {
+  store.set(driverKey, {
+    status: "resolving",
+    downloaded: 0,
+    total: 0,
+    startedAt,
+    sourceUrl: urlOverride
+  });
 }
 
 // server/src/engine/request-router.mjs
@@ -98956,7 +99406,7 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
     routes.get(pathname).set(method, { auth: authRequired, handler });
   }
   async function handle(request) {
-    const { method = "GET", pathname, headers = {}, body = null } = request ?? {};
+    const { method = "GET", pathname, headers = {}, body = null, query = {} } = request ?? {};
     const methodMap = routes.get(pathname);
     if (!methodMap) {
       const error = engineError("NOT_FOUND", `\u672A\u77E5\u8DEF\u5F84\uFF1A${pathname}`);
@@ -98970,7 +99420,7 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
     }
     try {
       if (route.auth) auth.verify(headers);
-      const data = await route.handler({ body, headers });
+      const data = await route.handler({ body, headers, query });
       return { status: 200, body: ok(data) };
     } catch (error) {
       const normalized = normalizeThrown(error);
@@ -98981,7 +99431,7 @@ function createRouter({ auth, dataDir = null, now = () => Date.now() } = {}) {
 }
 
 // server/src/api/drag.mjs
-import { createHash as createHash2 } from "node:crypto";
+import { createHash as createHash3 } from "node:crypto";
 import { existsSync as existsSync4, mkdirSync as mkdirSync5, readFileSync as readFileSync4, writeFileSync as writeFileSync4, readdirSync as readdirSync2, unlinkSync as unlinkSync2 } from "node:fs";
 import { join as join5 } from "node:path";
 function pagesDir(ctx) {
@@ -98994,7 +99444,7 @@ function pageFile(ctx, id) {
   return join5(pagesDir(ctx), `${id}.json`);
 }
 function genId2() {
-  const uuid = createHash2("md5").update(`${Date.now()}-${Math.random()}`).digest("hex").slice(0, 16);
+  const uuid = createHash3("md5").update(`${Date.now()}-${Math.random()}`).digest("hex").slice(0, 16);
   return uuid;
 }
 function readPage(ctx, id) {
@@ -99381,7 +99831,7 @@ function parseArgs(argv) {
   return args;
 }
 function digest(value) {
-  return createHash3("sha256").update(value).digest();
+  return createHash4("sha256").update(value).digest();
 }
 function createAuth({ token, disabled = false } = {}) {
   const enabled = !disabled && typeof token === "string" && token.length > 0;
@@ -99461,7 +99911,7 @@ async function resetLegacyDatabaseIfNeeded(client2, dataDir) {
   await client2.dispose();
   const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
   const dbPath = join6(dataDir, "dbx.db");
-  if (existsSync5(dbPath)) renameSync2(dbPath, join6(dataDir, `dbx.db.legacy-${stamp}`));
+  if (existsSync5(dbPath)) renameSync3(dbPath, join6(dataDir, `dbx.db.legacy-${stamp}`));
   return true;
 }
 function withTimeout(promise, ms, fallback) {
@@ -99555,12 +100005,12 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
       if (url.pathname.startsWith("/drag/")) {
         const pageCtx = { dataDir };
         const dragTable = dragRoutes(pageCtx);
-        const query = Object.fromEntries(url.searchParams.entries());
+        const query2 = Object.fromEntries(url.searchParams.entries());
         const match = dragTable.find(([p, m]) => p === url.pathname && (m === req.method || m === "*"));
         if (match) {
           try {
             if (match[2]) auth.verify(req.headers);
-            const dragResp = await match[3]({ body, query, headers: req.headers });
+            const dragResp = await match[3]({ body, query: query2, headers: req.headers });
             return send(200, { ok: dragResp.success, data: dragResp.success ? dragResp.result : null, error: dragResp.success ? null : { code: "DRAG_ERROR", message: dragResp.message ?? "\u672A\u77E5\u9519\u8BEF" } });
           } catch (err) {
             const code = err?.code ?? "INTERNAL";
@@ -99571,11 +100021,13 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
         return send(404, { ok: false, data: null, error: { code: "NOT_FOUND", message: `\u672A\u77E5\u8DEF\u5F84\uFF1A${url.pathname}` } });
       }
       let pathname = url.pathname;
+      const query = Object.fromEntries(url.searchParams.entries());
       let outcome = await router.handle({
         method: req.method,
         pathname,
         headers: req.headers,
-        body
+        body,
+        query
       });
       if (outcome.status === 404 && pathname.startsWith("/api")) {
         const stripped = pathname.slice("/api".length) || "/";
@@ -99583,7 +100035,8 @@ function createEngineServer({ token, dataDir = null, authDisabled = false } = {}
           method: req.method,
           pathname: stripped,
           headers: req.headers,
-          body
+          body,
+          query
         });
       }
       send(outcome.status, outcome.body);

@@ -15,7 +15,7 @@
  *   └──────────────────────────────────────────────────────────────────────────────┘
  */
 
-import { useCallback, useEffect, useRef, useState, type JSX, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent } from "react";
 import { Icon } from "./components/ui/icon";
 import { Chip } from "./components/ui/chip";
 import { IconButton } from "./components/ui/icon-button";
@@ -120,14 +120,24 @@ export function BigscreenScreenEditor({
 	const [nodes, setNodes] = useState<ScreenNode[]>(() => makeInitialNodes(page.name));
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [zoom, setZoom] = useState(0.42); // 设计稿默认 42%
+	const zoomRef = useRef(0.42); // 给 event handler 读，避免 useEffect 依赖 zoom
 	const [linkCopied, setLinkCopied] = useState(false);
 	const nodeSeqRef = useRef(10);
 	const canvasWrapRef = useRef<HTMLDivElement>(null);
-	const settings = useRef(makeSettings()).current;
-	const params = useRef(makeParams()).current;
+	const [canvasOffset, setCanvasOffset] = useState({ tx: 0, ty: 0 }); // translate 补偿
+	const [settings, setSettings] = useState<ScreenSettings>(() => makeSettings());
+
+	// zoom → zoomRef 同步（每次 zoom setState 后同步）
+	useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
 	const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
 	const nodeCount = nodes.length;
+
+	// 更新选中节点的某个属性（右栏表单 onChange 回调）
+	function patchSelectedNode(patch: Partial<ScreenNode>) {
+		if (!selectedId) return;
+		setNodes((prev) => prev.map((n) => n.id === selectedId ? { ...n, ...patch } : n));
+	}
 
 	// 大屏节点类型 → 默认尺寸
 	const KIND_DEFAULTS: Record<string, { w: number; h: number; kind: string; title: string }> = {
@@ -156,21 +166,87 @@ export function BigscreenScreenEditor({
 		setSelectedId(newNode.id);
 	}, [nodes.length]);
 
+	// ── 节点拖拽（scale 容器坐标逆映射）──
+	const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null);
+
+	function startDrag(id: string, e: ReactPointerEvent<HTMLDivElement>) {
+		e.stopPropagation();
+		const n = nodes.find((x) => x.id === id);
+		if (!n) return;
+		// 用 canvasWrapRef（scale 容器自身）的 rect + zoomRef 做逆映射
+		// transformOrigin: "top left" → canvas 左上角对齐容器左上角
+		const rect = canvasWrapRef.current?.getBoundingClientRect();
+		if (!rect) return;
+		const z = zoomRef.current;
+		const canvasX = (e.clientX - rect.left) / z;
+		const canvasY = (e.clientY - rect.top) / z;
+		dragRef.current = { id, ox: canvasX - n.x, oy: canvasY - n.y };
+		setSelectedId(id);
+	}
+
+	// window pointermove/up — 不依赖 zoom state（读 zoomRef），避免重注册
+	useEffect(() => {
+		function onMove(e: PointerEvent) {
+			const d = dragRef.current;
+			if (!d) return;
+			const rect = canvasWrapRef.current?.getBoundingClientRect();
+			if (!rect) return;
+			const z = zoomRef.current;
+			const canvasX = (e.clientX - rect.left) / z;
+			const canvasY = (e.clientY - rect.top) / z;
+			setNodes((prev) => prev.map((n) => n.id === d.id ? { ...n, x: canvasX - d.ox, y: canvasY - d.oy } : n));
+		}
+		function onUp() { dragRef.current = null; }
+		window.addEventListener("pointermove", onMove);
+		window.addEventListener("pointerup", onUp);
+		return () => {
+			window.removeEventListener("pointermove", onMove);
+			window.removeEventListener("pointerup", onUp);
+		};
+	}, []); // 空依赖 — 用 ref 读 zoom，listener 永远不重注册
+
+	// Delete / Backspace 删除选中节点
+	useEffect(() => {
+		function onKey(e: KeyboardEvent) {
+			if (!selectedId) return;
+			if (e.key === "Delete" || e.key === "Backspace") {
+				const tag = (e.target as HTMLElement | null)?.tagName;
+				if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+				setNodes((prev) => prev.filter((n) => n.id !== selectedId));
+				setSelectedId(null);
+			}
+		}
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [selectedId]);
+
 	// 画布点击空白区 → 取消选中
-	const handleCanvasBgClick = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+	const handleCanvasBgClick = useCallback((e: ReactPointerEvent<HTMLDivElement>) => {
 		if (e.target === e.currentTarget) setSelectedId(null);
 	}, []);
 
-	// 适配视图：根据容器宽高计算合适的 zoom
+	// 适配视图 + 计算 translate 补偿 —— 统一在 useEffect 里做（DOM 就绪后）
 	const fitContainer = useCallback(() => {
-		const el = document.querySelector("[data-screen-fit-container]");
+		const el = document.querySelector("[data-screen-fit-container]") as HTMLElement | null;
 		if (!el) return;
 		const r = el.getBoundingClientRect();
-		const z = Math.min(r.width / SCREEN_W, r.height / SCREEN_H, 1);
-		setZoom(Number((z * 0.92).toFixed(2)));
+		if (r.width < 20 || r.height < 20) return; // 容器还没布局好
+		const availW = r.width - 48;
+		const availH = r.height - 48;
+		const z = Math.min(availW / SCREEN_W, availH / SCREEN_H, 1);
+		const newZoom = Number(Math.max(0.1, Math.min(2, z * 0.9)).toFixed(2));
+		setZoom((cur) => (cur === newZoom ? cur : newZoom));
+		const scaledW = SCREEN_W * newZoom;
+		const scaledH = SCREEN_H * newZoom;
+		setCanvasOffset({ tx: Math.max(0, (availW - scaledW) / 2), ty: Math.max(0, (availH - scaledH) / 2) });
 	}, []);
 
-	useEffect(() => { fitContainer(); }, [fitContainer]);
+	useEffect(() => {
+		fitContainer();
+		const onResize = () => fitContainer();
+		window.addEventListener("resize", onResize);
+		return () => window.removeEventListener("resize", onResize);
+	}, [fitContainer]);
 
 	// 大屏节点类型计数（从 nodes 数组实时派生，不用硬编码）
 	const railCounts = (() => {
@@ -185,8 +261,6 @@ export function BigscreenScreenEditor({
 		}
 		return counts;
 	})();
-
-	const selectedNodeParams = selectedNode ? params : params;
 
 	async function handleRunAll() {
 		try {
@@ -281,17 +355,19 @@ export function BigscreenScreenEditor({
 						</div>
 					</div>
 
-					{/* scale 容器 */}
-					<div data-screen-fit-container className="flex min-h-0 flex-1 items-center justify-center bg-screen p-6">
+					{/* scale 容器 — transform-origin top-left + translate 补偿居中
+						  坐标映射：canvasX = (clientX - rect.left) / zoom
+						  因为 top-left + translate 补偿后，scale 容器的渲染 rect.left/top 就是 translate 后的位置 */}
+					<div data-screen-fit-container className="relative flex min-h-0 flex-1 bg-screen p-6">
 						<div
 							ref={canvasWrapRef}
-							onClick={handleCanvasBgClick}
+							onPointerDown={handleCanvasBgClick}
 							className="relative overflow-hidden rounded-card border border-screen-line bg-screen p-8 cursor-default"
 							style={{
 								width: SCREEN_W,
 								height: SCREEN_H,
-								transform: `scale(${zoom})`,
-								transformOrigin: "center center",
+								transform: `translate(${canvasOffset.tx}px, ${canvasOffset.ty}px) scale(${zoom})`,
+								transformOrigin: "top left",
 							}}
 						>
 							{/* 网格参考线（背景） */}
@@ -308,8 +384,8 @@ export function BigscreenScreenEditor({
 							{nodes.map((n) => (
 								<div
 									key={n.id}
-									onMouseDown={() => setSelectedId(n.id)}
-									className={`absolute flex flex-col rounded-card border bg-surface-raised ${
+									onPointerDown={(e) => startDrag(n.id, e)}
+									className={`absolute flex flex-col rounded-card border bg-surface-raised cursor-grab ${
 										selectedId === n.id ? "z-20 border-accent shadow-[0_0_0_3px_rgba(59,130,246,0.25)]" : "border-border z-10"
 									}`}
 									style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
@@ -321,42 +397,138 @@ export function BigscreenScreenEditor({
 					</div>
 				</div>
 
-				{/* 右栏：节点参数 + 大屏设置 + 链接 */}
+				{/* 右栏：节点属性可编辑 + 大屏设置 + 链接 */}
 				<aside className="flex w-72 shrink-0 flex-col gap-4 overflow-hidden border-l border-border bg-surface-raised p-4">
-					{/* 节点参数 */}
-					<div className="flex flex-col gap-2">
-						<div className="flex items-center gap-2">
-							<Icon name={selectedNode ? "icon-[lucide--activity]" : "icon-[lucide--activity]"} className="size-3.5 shrink-0 text-accent" />
-							<span className="text-[11px] font-medium text-surface-foreground">
-								节点参数 · {selectedNode?.title ?? "未选中"}
-							</span>
-						</div>
-						<div className="flex flex-col gap-1 rounded-card border border-border bg-surface px-2.5 py-2">
-							{selectedNodeParams.map((p) => (
-								<div key={p.key} className="flex h-6 items-center gap-2">
-									<span className="w-[46px] shrink-0 truncate text-[10px] text-muted">{p.key}</span>
-									<span className="min-w-0 flex-1 truncate text-[10px] text-surface-foreground">{p.val}</span>
+					{/* 节点属性（有选中时显示可编辑表单） */}
+					{selectedNode ? (
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center gap-2">
+								<Icon name="icon-[lucide--activity]" className="size-3.5 shrink-0 text-accent" />
+								<span className="text-[11px] font-medium text-surface-foreground">
+									节点属性 · {selectedNode.kind}
+								</span>
+								<button
+									type="button"
+									onClick={() => {
+										setNodes((prev) => prev.filter((n) => n.id !== selectedId));
+										setSelectedId(null);
+									}}
+									className="ml-auto grid size-5 place-items-center rounded-control text-danger hover:bg-danger/10"
+									title="删除节点（Delete / Backspace）"
+								><Icon name="icon-[lucide--trash-2]" className="size-3" /></button>
+							</div>
+							<div className="flex flex-col gap-2 rounded-card border border-border bg-surface px-2.5 py-2">
+								{/* title 编辑 */}
+								<EditRow label="标题">
+									<input
+										type="text"
+										value={selectedNode.title}
+										onChange={(e) => patchSelectedNode({ title: e.target.value })}
+										className="h-7 w-full rounded-control border border-border bg-background px-2 text-[11px] text-surface-foreground"
+									/>
+								</EditRow>
+								{/* kind（只读显示） */}
+								<EditRow label="类型">
+									<span className="font-mono text-[10px] text-muted">{selectedNode.kind}</span>
+								</EditRow>
+								{/* 位置 × 尺寸 */}
+								<div className="grid grid-cols-2 gap-1.5">
+									<EditRow label="X">
+										<input
+											type="number"
+											value={Math.round(selectedNode.x)}
+											onChange={(e) => patchSelectedNode({ x: Number(e.target.value) })}
+											className="h-7 w-full rounded-control border border-border bg-background px-2 font-mono text-[11px] text-surface-foreground"
+										/>
+									</EditRow>
+									<EditRow label="Y">
+										<input
+											type="number"
+											value={Math.round(selectedNode.y)}
+											onChange={(e) => patchSelectedNode({ y: Number(e.target.value) })}
+											className="h-7 w-full rounded-control border border-border bg-background px-2 font-mono text-[11px] text-surface-foreground"
+										/>
+									</EditRow>
+									<EditRow label="宽">
+										<input
+											type="number"
+											value={Math.round(selectedNode.w)}
+											onChange={(e) => patchSelectedNode({ w: Number(e.target.value) })}
+											className="h-7 w-full rounded-control border border-border bg-background px-2 font-mono text-[11px] text-surface-foreground"
+										/>
+									</EditRow>
+									<EditRow label="高">
+										<input
+											type="number"
+											value={Math.round(selectedNode.h)}
+											onChange={(e) => patchSelectedNode({ h: Number(e.target.value) })}
+											className="h-7 w-full rounded-control border border-border bg-background px-2 font-mono text-[11px] text-surface-foreground"
+										/>
+									</EditRow>
 								</div>
-							))}
+							</div>
+							<span className="text-[10px] text-faint">提示：画布中直接拖动节点也可改变位置</span>
 						</div>
-						{selectedNode?.kind === "kpi-card" ? (
-							<span className="text-[10px] text-faint">选中画布上的 4 张卡会一起改，它们共用同一组参数。</span>
-						) : null}
-					</div>
+					) : (
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center gap-2">
+								<Icon name="icon-[lucide--activity]" className="size-3.5 shrink-0 text-muted" />
+								<span className="text-[11px] font-medium text-surface-foreground">节点属性</span>
+							</div>
+							<div className="rounded-card border border-dashed border-border p-3 text-center text-[11px] text-muted">
+								<span className="font-mono text-faint">◈</span>
+								<p className="mt-1">未选中任何节点</p>
+								<p className="mt-0.5 text-faint">点击画布中的节点编辑属性</p>
+							</div>
+						</div>
+					)}
 
-					{/* 大屏设置 */}
+					{/* 大屏设置（可编辑） */}
 					<div className="flex flex-col gap-2 border-t border-border pt-3">
 						<div className="flex items-center gap-2">
 							<Icon name="icon-[lucide--settings]" className="size-3.5 shrink-0 text-muted" />
 							<span className="text-[11px] font-medium text-surface-foreground">大屏设置</span>
 						</div>
-						<div className="flex flex-col gap-1 rounded-card border border-border bg-surface px-2.5 py-2">
-							{Object.entries(settings).map(([k, v]) => (
-								<div key={k} className="flex h-6 items-center gap-2">
-									<span className="w-[46px] shrink-0 truncate text-[10px] text-muted">{k}</span>
-									<span className="min-w-0 flex-1 truncate text-[10px] text-surface-foreground">{v}</span>
-								</div>
-							))}
+						<div className="flex flex-col gap-2 rounded-card border border-border bg-surface px-2.5 py-2">
+							<EditRow label="分辨率">
+								<select
+									value={settings.resolution}
+									onChange={(e) => setSettings((s) => ({ ...s, resolution: e.target.value }))}
+									className="h-7 w-full rounded-control border border-border bg-background px-2 text-[11px] text-surface-foreground"
+								>
+									<option value="1920 × 1080 · 16:9">1920 × 1080 · 16:9</option>
+									<option value="3840 × 2160 · 4K">3840 × 2160 · 4K</option>
+									<option value="1366 × 768 · 标准">1366 × 768 · 标准</option>
+								</select>
+							</EditRow>
+							<EditRow label="背景">
+								<input
+									type="text"
+									value={settings.background}
+									onChange={(e) => setSettings((s) => ({ ...s, background: e.target.value }))}
+									className="h-7 w-full rounded-control border border-border bg-background px-2 text-[11px] text-surface-foreground"
+								/>
+							</EditRow>
+							<EditRow label="自动刷新">
+								<select
+									value={settings.autoRefresh}
+									onChange={(e) => setSettings((s) => ({ ...s, autoRefresh: e.target.value }))}
+									className="h-7 w-full rounded-control border border-border bg-background px-2 text-[11px] text-surface-foreground"
+								>
+									<option value="1 分钟">1 分钟</option>
+									<option value="5 分钟">5 分钟</option>
+									<option value="15 分钟">15 分钟</option>
+									<option value="关闭">关闭</option>
+								</select>
+							</EditRow>
+							<EditRow label="轮播">
+								<input
+									type="text"
+									value={settings.carousel}
+									onChange={(e) => setSettings((s) => ({ ...s, carousel: e.target.value }))}
+									className="h-7 w-full rounded-control border border-border bg-background px-2 text-[11px] text-surface-foreground"
+								/>
+							</EditRow>
 						</div>
 					</div>
 
@@ -395,6 +567,16 @@ export function BigscreenScreenEditor({
 				</div>
 			</footer>
 		</div>
+	);
+}
+
+// ── 辅助组件 ──
+function EditRow({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+	return (
+		<label className="flex items-center gap-2">
+			<span className="w-[46px] shrink-0 truncate text-[10px] text-muted">{label}</span>
+			<span className="min-w-0 flex-1">{children}</span>
+		</label>
 	);
 }
 

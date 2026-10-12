@@ -262,7 +262,7 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 		return { type, nodeId, row };
 	}
 
-	/** 画布 pointerdown：拦截 output socket 启动连线。 */
+	/** 画布 pointerdown：拦截 output socket 启动连线 + 空白区点击取消选中。 */
 	function onCanvasPointerDown(e: RPointerEvent<HTMLDivElement>) {
 		const hit = hitSocket(e.clientX, e.clientY);
 		if (hit?.type === "output") {
@@ -270,6 +270,18 @@ export function NodeGraph({ nodes, setNodes, links, setLinks }: NodeGraphProps):
 			const p = socketPos(hit.nodeId, hit.row, "r");
 			pendingRef.current = { from: hit.nodeId, fromRow: hit.row };
 			setPendingLink({ from: hit.nodeId, fromRow: hit.row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+			return;
+		}
+		// 空白区点击 → 取消所有节点选中
+		if (e.target === e.currentTarget || (e.target as HTMLElement)?.tagName === "svg") {
+			const anySelected = (Object.keys(nodes) as NodeId[]).some((k) => nodes[k].selected);
+			if (anySelected) {
+				setNodes((prev) => {
+					const next = { ...prev };
+					for (const k of Object.keys(next) as NodeId[]) next[k] = { ...next[k], selected: false };
+					return next;
+				});
+			}
 		}
 	}
 

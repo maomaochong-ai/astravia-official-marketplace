@@ -43,6 +43,13 @@ const STATUS_BY_CODE = Object.freeze({
   CONNECTION_NOT_FOUND: 404,
   WRITE_UNSUPPORTED: 501,
   DRIVER_UNSUPPORTED: 501,
+  // 驱动安装链路（见 engine/driver-registry.mjs、driver-archive.mjs、driver-download.mjs）。
+  // 清单/归档内容不合约 → 4xx（用户重试无用）；下载与清单拉取失败 → 502（网络/上游）。
+  DRIVER_REGISTRY_INVALID: 400,
+  DRIVER_ARCHIVE_INVALID: 400,
+  DRIVER_REGISTRY_UNAVAILABLE: 502,
+  DRIVER_DOWNLOAD_FAILED: 502,
+  DRIVER_ARCHIVE_UNSUPPORTED: 501,
   DRIVER_ERROR: 502,
   CONNECTION_ERROR: 502,
   DBX_MCP_ERROR: 502,

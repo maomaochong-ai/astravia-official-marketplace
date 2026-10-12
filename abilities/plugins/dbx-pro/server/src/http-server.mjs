@@ -275,13 +275,14 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
       // 双路径尝试：部分 domain（bigscreen/report/chart 等）注册带 "/api" 前缀，
       // 另一些（connections/query/schema 等）不带。先试原路径，404 再剥 /api 前缀试。
       let pathname = url.pathname;
+      const query = Object.fromEntries(url.searchParams.entries());
       let outcome = await router.handle({
-        method: req.method, pathname, headers: req.headers, body,
+        method: req.method, pathname, headers: req.headers, body, query,
       });
       if (outcome.status === 404 && pathname.startsWith("/api")) {
         const stripped = pathname.slice("/api".length) || "/";
         outcome = await router.handle({
-          method: req.method, pathname: stripped, headers: req.headers, body,
+          method: req.method, pathname: stripped, headers: req.headers, body, query,
         });
       }
       send(outcome.status, outcome.body);
