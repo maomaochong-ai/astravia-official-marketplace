@@ -21,24 +21,24 @@ import {
 	normalizeThrown,
 	ok,
 } from "./protocol.ts";
-import { createRouterContext } from "../api/router-context.ts";
+import { createRouterContext } from "../api/internal/router-context.ts";
 
 // === 各功能域路由（import 顺序 = 注册顺序，对行为无影响）===
-import { healthRoutes } from "../api/health.ts";
-import { connectionsRoutes } from "../api/connections.ts";
-import { apiSourcesRoutes } from "../api/api-sources.ts";
-import { queryRoutes } from "../api/query.ts";
-import { schemaRoutes } from "../api/schema.ts";
-import { revealRoutes } from "../api/reveal.ts";
-import { bigscreenRoutes } from "../api/bigscreen.ts";
-import { reportRoutes } from "../api/report.ts";
-import { chartRoutes } from "../api/chart.ts";
-import { formRoutes } from "../api/form.ts";
-import { portalRoutes } from "../api/portal.ts";
-import { bpmnRoutes } from "../api/bpmn.ts";
-import { codegenRoutes } from "../api/codegen.ts";
-import { systemRoutes } from "../api/system.ts";
-import { driverRoutes } from "../api/driver.ts";
+import { healthRoutes } from "../api/internal/health.ts";
+import { connectionsRoutes } from "../api/internal/connections.ts";
+import { apiSourcesRoutes } from "../api/external/routes.ts";
+import { queryRoutes } from "../api/internal/query.ts";
+import { schemaRoutes } from "../api/internal/schema.ts";
+import { revealRoutes } from "../api/internal/reveal.ts";
+import { bigscreenRoutes } from "../api/internal/bigscreen.ts";
+import { reportRoutes } from "../api/internal/report.ts";
+import { chartRoutes } from "../api/internal/chart.ts";
+import { formRoutes } from "../api/internal/form.ts";
+import { portalRoutes } from "../api/internal/portal.ts";
+import { bpmnRoutes } from "../api/internal/bpmn.ts";
+import { codegenRoutes } from "../api/internal/codegen.ts";
+import { systemRoutes } from "../api/internal/system.ts";
+import { driverRoutes } from "../api/internal/driver.ts";
 
 type RouterAuth = { verify: (headers: Record<string, string | string[] | undefined>) => void };
 

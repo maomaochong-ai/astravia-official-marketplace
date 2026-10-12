@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "dbx-pro",
   "icon": "assets/icon.png",
-  "version": "0.4.44",
+  "version": "0.4.46",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -10,7 +10,7 @@
     "expose": "./plugin"
   },
   "styles": [
-    "dist/assets/style-2fb80197b4.css"
+    "dist/assets/style-354553468d.css"
   ],
   "permissions": [
     "agent.mcp.control",
@@ -44,15 +44,15 @@
         "runtime": {
           "kind": "host-node",
           "version": "0.0.20",
-          "entry": "server/main.mjs",
+          "entry": "server/main.ts",
           "platforms": {
             "darwin-arm64": {
               "executable": "server/bin/dbx-mcp-darwin-arm64",
               "artifacts": [
                 {
-                  "sha256": "1f71a2a667412ae01d5d3f6df40f8e785a88d79eb3826022945a646b58fd9ef3",
+                  "sha256": "6dee1ea528b948f43cd286287c3903b1b069bfdac36c0583c4f3458b7f99cf51",
                   "archive": "file",
-                  "destination": "server/main.mjs"
+                  "destination": "server/main.ts"
                 },
                 {
                   "sha256": "69e69e6aa273a7de57618275baed87928c9b2668d813b06dc86465317b482fb3",
@@ -65,9 +65,9 @@
               "executable": "server/bin/dbx-mcp-darwin-x64",
               "artifacts": [
                 {
-                  "sha256": "1f71a2a667412ae01d5d3f6df40f8e785a88d79eb3826022945a646b58fd9ef3",
+                  "sha256": "6dee1ea528b948f43cd286287c3903b1b069bfdac36c0583c4f3458b7f99cf51",
                   "archive": "file",
-                  "destination": "server/main.mjs"
+                  "destination": "server/main.ts"
                 },
                 {
                   "sha256": "e3198fd8a5348edf569aed2abedf2f30b9c0f512ae45976300b897f07a7536ce",
@@ -80,9 +80,9 @@
               "executable": "server/bin/dbx-mcp-win-x64.exe",
               "artifacts": [
                 {
-                  "sha256": "1f71a2a667412ae01d5d3f6df40f8e785a88d79eb3826022945a646b58fd9ef3",
+                  "sha256": "6dee1ea528b948f43cd286287c3903b1b069bfdac36c0583c4f3458b7f99cf51",
                   "archive": "file",
-                  "destination": "server/main.mjs"
+                  "destination": "server/main.ts"
                 },
                 {
                   "sha256": "598980a9a357203e2f68f8b6401b385f9928bf9443b13cd83f9986cfd66034cd",

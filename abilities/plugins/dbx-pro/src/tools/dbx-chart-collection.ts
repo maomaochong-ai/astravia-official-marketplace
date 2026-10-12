@@ -2,24 +2,23 @@
  * dbx_chart_collection — 轻量看板/大屏生成工具。
  *
  * 只负责编排：接收 Chart.js charts[] → 拼装 HTML shell + Chart.js init → 返回 iframe srcDoc。
- * 模板/CSS 在 chart-shell.ts，Chart.js defaults 在 chart-defaults.ts，
+ * 模板/CSS 在 renderer/echarts/shell.ts，Chart.js defaults 在 renderer/echarts/defaults.ts，
  * 本文件不硬编码任何样式或 JS 配置。
  *
  * M1 起接收可选的 `datasets[]`：传了数据集就**不再落库 html**（html 退化为导出产物），
  * 产物改由 datasets + chartItems 驱动，可在「BI」里筛选与重新取数。
- * 模板/CSS 在 chart-shell.ts，Chart.js defaults 在 chart-defaults.ts，
+ * 模板/CSS 在 renderer/echarts/shell.ts，Chart.js defaults 在 renderer/echarts/defaults.ts，
  * 本文件不硬编码任何样式或 JS 配置。
  */
 
 import type { PluginAgentToolRegistration } from "@astravia-org/plugin-sdk";
-import { showVisualizationPreview, saveVisualizationToStore } from "../features/visualization/visualization-bridge";
-import { getChartDefaultsScript } from "../features/visualization/chart-defaults";
-import { buildHtmlHead } from "../features/visualization/chart-shell";
+import { getChartDefaultsScript } from "../features/chart-engine/renderer/echarts/defaults";
+import { buildHtmlHead } from "../features/chart-engine/renderer/echarts/shell";
 import type { ChartItem, ChartFilter } from "../domain/chart-contract";
 import { pruneUnboundSources } from "../domain/chart-source";
 import { prepareDatasets, type DatasetSpecInput } from "../domain/dataset-spec";
-import { SERIES_COLORS } from "../features/visualization/figures/figure-palette";
-import { isFigureType, renderFigure } from "../features/visualization/figures/figure-registry";
+import { SERIES_COLORS } from "../features/chart-engine/renderer/figures/figure-palette";
+import { isFigureType, renderFigure } from "../features/chart-engine/renderer/figures/figure-registry";
 
 export type ChartType = ChartItem["type"];
 
@@ -36,8 +35,8 @@ export interface DbxChartCollectionInput {
 	filters?: ChartFilter[];
 }
 
-// ECharts CDN 已移至 chart-shell.ts ECHARTS_CDN（ADR-0010b 切换引擎）
-import { ECHARTS_CDN } from "../features/visualization/chart-shell";
+// ECharts CDN 已移至 renderer/echarts/shell.ts ECHARTS_CDN（ADR-0010b 切换引擎）
+import { ECHARTS_CDN } from "../features/chart-engine/renderer/echarts/shell";
 
 /** 图表数量 / layout → 列数。UI 内渲染与导出共用同一份，避免两处网格对不上。 */
 export function resolveGridColumnCount(
@@ -406,8 +405,6 @@ export function createDbxChartCollectionTool(): PluginAgentToolRegistration<DbxC
 						? { datasets: prepared.datasets, filters: input.filters ?? [] }
 						: { html: generateHtml(input) }),
 				};
-				saveVisualizationToStore(viz);
-				showVisualizationPreview(viz);
 
 				const kind = viz.type === "screen" ? "大屏" : "看板";
 				const notes: string[] = [];

@@ -10,11 +10,20 @@
 
 const BLOCK = 512;
 
-function octal(value, length) {
+function octal(value: number, length: number) {
   return value.toString(8).padStart(length - 1, "0") + "\0";
 }
 
-function headerBlock({ name, size, mode = 0o644, type = "0", prefix = "" }) {
+interface TarEntry {
+  name: string;
+  data?: string | Buffer;
+  size?: number;
+  mode?: number;
+  type?: string;
+  prefix?: string;
+}
+
+function headerBlock({ name, size, mode = 0o644, type = "0", prefix = "" }: { name: string; size: number; mode?: number; type?: string; prefix?: string }) {
   const block = Buffer.alloc(BLOCK);
   block.write(name.slice(0, 100), 0, 100, "utf8");
   block.write(octal(mode & 0o7777, 8), 100, 8);
@@ -40,7 +49,7 @@ function pad(data) {
 }
 
 /** PAX 扩展记录：`<总长> key=value\n`，总长包含长度字段自身与空格。 */
-export function paxRecord(key, value) {
+export function paxRecord(key: string, value: string): string {
   const body = ` ${key}=${value}\n`;
   let total = Buffer.byteLength(body) + 1;
   for (;;) {
@@ -52,8 +61,8 @@ export function paxRecord(key, value) {
 }
 
 /** 按顺序写出条目，末尾两个全零块收尾。 */
-export function makeTar(entries) {
-  const parts = [];
+export function makeTar(entries: TarEntry[]): Buffer {
+  const parts: Buffer[] = [];
   for (const entry of entries) {
     const data = Buffer.isBuffer(entry.data) ? entry.data : Buffer.from(entry.data ?? "", "utf8");
     parts.push(
@@ -72,8 +81,15 @@ export function makeTar(entries) {
   return Buffer.concat(parts);
 }
 
+interface DriverArchiveOptions {
+  version?: string;
+  platformTag?: string;
+  payload?: string | Buffer;
+  payloadName?: string;
+}
+
 /** 上游产物同构：一个 agent-registry.json + 一个不带扩展名的 driver payload。 */
-export function makeDriverArchive({ version = "0.1.30", platformTag = "macos-x64", payload, payloadName } = {}) {
+export function makeDriverArchive({ version = "0.1.30", platformTag = "macos-x64", payload, payloadName }: DriverArchiveOptions = {}) {
   const bytes = Buffer.isBuffer(payload) ? payload : Buffer.from(payload ?? "duckdb-driver-payload", "utf8");
   const name = payloadName ?? `drivers/dbx-agent-duckdb-${version}-${platformTag}`;
   return makeTar([

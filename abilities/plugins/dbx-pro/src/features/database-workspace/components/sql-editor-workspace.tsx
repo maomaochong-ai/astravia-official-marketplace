@@ -9,8 +9,7 @@ import { ResultPanel } from "./result-panel";
 import { SqlEditor } from "./sql-editor";
 import { TabBar } from "./tab-bar";
 import { useWorkbench } from "../hooks/use-workbench";
-import { VisualizationTab } from "../../visualization/components/visualization-tab";
-import { BigscreenWorkspace } from "../../bi-editor/bigscreen-workspace";
+import { BiWorkspace } from "../../bi-editor/workbench/bi-workspace";
 import { DriverManagerPage } from "./driver-manager-page";
 
 export function SqlEditorWorkspace(): JSX.Element {
@@ -27,7 +26,7 @@ export function SqlEditorWorkspace(): JSX.Element {
 			<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
 				<TabBar />
 				<div className="min-h-0 flex-1 overflow-hidden">
-					<BigscreenWorkspace />
+					<BiWorkspace />
 				</div>
 			</div>
 		);
@@ -41,16 +40,6 @@ export function SqlEditorWorkspace(): JSX.Element {
 				<div className="min-h-0 flex-1 overflow-hidden">
 					<DriverManagerPage />
 				</div>
-			</div>
-		);
-	}
-
-	// 如果是可视化标签页，显示可视化内容
-	if (activeTab?.visualization) {
-		return (
-			<div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
-				<TabBar />
-				<VisualizationTab viz={activeTab.visualization} />
 			</div>
 		);
 	}

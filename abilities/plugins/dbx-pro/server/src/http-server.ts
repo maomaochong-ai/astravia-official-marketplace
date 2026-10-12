@@ -10,7 +10,7 @@
  *   --auth-disabled  显式关闭鉴权（仅本机联调用）
  */
 
-import type { IncomingMessage, ServerResponse, Server as NodeHttpServer } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { createRouter } from "./engine/request-router.ts";
-import { dragRoutes } from "./api/drag.ts";
+import { dragRoutes } from "./api/internal/drag.ts";
 import { disposeDbxMcpClient, getDbxMcpClient } from "./engine/dbx-mcp-client.ts";
 import {
   ENGINE_VERSION,
@@ -31,13 +31,13 @@ import {
 const HOST = "127.0.0.1";
 const SECRET_KEY_ENV = "ASTRAVIA_SERVICE_SECRET_ENGINE_KEY";
 
-function emit(event, payload = {}) {
+function emit(event: string, payload: Record<string, unknown> = {}) {
   process.stdout.write(
     `${JSON.stringify({ event, version: ENGINE_VERSION, ts: new Date().toISOString(), ...payload })}\n`,
   );
 }
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]): { port: number; dataDir: string | null; authDisabled: boolean; help: boolean } {
   const args = { port: 0, dataDir: null, authDisabled: false, help: false };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -49,7 +49,7 @@ function parseArgs(argv) {
   return args;
 }
 
-function digest(value) {
+function digest(value: string | Buffer): Buffer {
   return createHash("sha256").update(value).digest();
 }
 
@@ -70,12 +70,12 @@ export function createAuth({ token, disabled = false }: { token?: string | null;
   };
 }
 
-function readJsonBody(req) {
+function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
     let failed = false;
-    req.on("data", (chunk) => {
+    req.on("data", (chunk: Buffer) => {
       if (failed) return;
       size += chunk.length;
       if (size > MAX_BODY_BYTES) {
@@ -96,7 +96,7 @@ function readJsonBody(req) {
         reject(engineError("BAD_REQUEST", `请求体不是合法 JSON：${error instanceof Error ? error.message : error}`));
       }
     });
-    req.on("error", (error) => {
+    req.on("error", (error: Error) => {
       if (!failed) reject(engineError("BAD_REQUEST", error instanceof Error ? error.message : String(error)));
     });
   });
@@ -110,7 +110,7 @@ function readJsonBody(req) {
  * （0600），首次启动生成 32 字节随机密钥，并经 DBX_SECRET_KEY 注入子进程。
  * 已有部署沿用既有密钥，保证 dbx.db 可解密。
  */
-function ensureEngineKey(dataDir) {
+function ensureEngineKey(dataDir?: string | null) {
   const dir = dataDir ?? join(homedir(), ".astravia-dbx-data");
   mkdirSync(dir, { recursive: true });
   try { chmodSync(dir, 0o700); } catch {}
@@ -136,12 +136,13 @@ function ensureEngineKey(dataDir) {
  * dbx.db.legacy-<时间戳> 并重建客户端：新库按新密钥加密，用户重新添加连接
  * （密码仍保留在宿主加密凭据库，旧库文件不删除）。
  */
-async function resetLegacyDatabaseIfNeeded(client, dataDir) {
-  const result = await client.callTool("dbx_list_connections", {});
-  const text = result.isError ? result.content.map((c) => c.text).join("") : "";
+async function resetLegacyDatabaseIfNeeded(client: unknown, dataDir: string) {
+  const clientAny = client as { callTool: (name: string, args: Record<string, unknown>) => Promise<{ isError?: boolean; content: unknown[] }>; dispose: () => Promise<void> };
+  const result = await clientAny.callTool("dbx_list_connections", {});
+  const text = result.isError ? result.content.map((c) => (c as { text: string }).text).join("") : "";
   if (!/DATA_MIGRATION_REQUIRED/.test(text)) return false;
 
-  await client.dispose();
+  await clientAny.dispose();
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const dbPath = join(dataDir, "dbx.db");
   if (existsSync(dbPath)) renameSync(dbPath, join(dataDir, `dbx.db.legacy-${stamp}`));
@@ -149,7 +150,7 @@ async function resetLegacyDatabaseIfNeeded(client, dataDir) {
 }
 
 /** 给 promise 加超时：超时后以 fallback 解决（不抛错），用于不阻塞主流程的预检。 */
-function withTimeout(promise, ms, fallback) {
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(fallback), ms);
     if (timer.unref) timer.unref();
@@ -175,6 +176,7 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
   const ready = withTimeout(
     resetLegacyDatabaseIfNeeded(client, resolvedDataDir).then((reset) => {
       if (reset) getDbxMcpClient(undefined);
+      return false;
     }),
     8_000,
     false,
@@ -183,7 +185,7 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
   const router = createRouter({ auth, dataDir: resolvedDataDir });
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-    const send = (status, body) => {
+    const send = (status: number, body: unknown) => {
       if (res.writableEnded) return;
       const payload = stringifyJson(body);
       res.writeHead(status, {
@@ -194,7 +196,7 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
       res.end(payload);
     };
 
-    let url;
+    let url: URL;
     try {
       url = new URL(req.url ?? "/", `http://${HOST}`);
     } catch {

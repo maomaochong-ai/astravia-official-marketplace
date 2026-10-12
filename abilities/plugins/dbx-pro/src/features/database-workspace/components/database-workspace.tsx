@@ -21,8 +21,6 @@ import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { patchSession, readSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
-import { setPreviewCallback, setSaveCallback } from "../../visualization/visualization-bridge";
-import { useVisualizationStore } from "../../visualization/visualization-store";
 import { DRIVER_TAB_ID, GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
 import { getUi } from "../../../runtime-contract";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
@@ -53,7 +51,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	// 底部「下载后台」货架默认收起，由顶栏下载入口开合（任务进度在顶栏环上已有反馈）。
 	const [downloadsOpen, setDownloadsOpen] = useState(false);
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
-	const { visualizations, addVisualization } = useVisualizationStore();
 	const workspaceRef = useRef<HTMLDivElement>(null);
 	const theme = useDetectedTheme();
 
@@ -72,32 +69,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	useEffect(() => {
 		applyPluginTheme();
 	}, []);
-
-	// 注册可视化预览和保存回调
-	useEffect(() => {
-		setPreviewCallback((viz) => {
-			// 创建新标签页
-			const id = nextTabId("viz");
-			dispatch({
-				type: "addTab",
-				tab: {
-					id,
-					label: viz.title,
-					connectionName: viz.connection,
-					sql: "",
-					isRunning: false,
-					visualization: viz,
-				},
-			});
-		});
-		setSaveCallback((viz) => {
-			addVisualization(viz);
-		});
-		return () => {
-			setPreviewCallback(null);
-			setSaveCallback(null);
-		};
-	}, [addVisualization, dispatch]);
 
 	useEffect(() => {
 		function onFullscreenChange() {
@@ -272,7 +243,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onToggleHistory={toggleHistoryPanel}
 				historyOpen={historyOpen || aiAssistantOpen}
 				onOpenVisualizationGallery={openGalleryTab}
-				visualizationCount={visualizations.length}
+				visualizationCount={0}
 				fullscreen={fullscreen}
 				onToggleFullscreen={() => void toggleFullscreen()}
 				downloadsOpen={downloadsOpen}

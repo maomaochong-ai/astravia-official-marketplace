@@ -21,7 +21,12 @@ import { isEngineError } from "../src/engine/protocol.ts";
 const REAL_ARTIFACT_URL =
   "https://github.com/t8y2/dbx/releases/download/agents-v0.2.134/dbx-agent-duckdb-0.1.29-macos-x64.tar.zst";
 
-function registryFixture(overrides = {}) {
+interface RegistryFixtureOverrides {
+  driver?: Record<string, unknown>;
+  drivers?: Record<string, unknown>;
+}
+
+function registryFixture(overrides: RegistryFixtureOverrides = {}) {
   return {
     drivers: {
       duckdb: {
@@ -42,8 +47,16 @@ function registryFixture(overrides = {}) {
   };
 }
 
-function stubFetch({ body, status = 200, statusText = "OK", failWith = null, onCall } = {}) {
-  return async (url) => {
+interface StubFetchOptions {
+  body?: unknown;
+  status?: number;
+  statusText?: string;
+  failWith?: Error | null;
+  onCall?: (url: string) => void;
+}
+
+function stubFetch({ body, status = 200, statusText = "OK", failWith = null, onCall }: StubFetchOptions = {}): typeof fetch {
+  return (async (url: string) => {
     onCall?.(url);
     if (failWith) throw failWith;
     return {
@@ -52,7 +65,7 @@ function stubFetch({ body, status = 200, statusText = "OK", failWith = null, onC
       statusText,
       json: async () => body,
     };
-  };
+  }) as unknown as typeof fetch;
 }
 
 afterEach(() => resetAgentRegistryCache());
@@ -157,14 +170,14 @@ describe("driver-registry · 清单拉取", () => {
   });
 
   it("清单不是合法 JSON 时报 DRIVER_REGISTRY_INVALID", async () => {
-    const badJson = async () => ({
+    const badJson = (async () => ({
       ok: true,
       status: 200,
       statusText: "OK",
       json: async () => {
         throw new Error("Unexpected token <");
       },
-    });
+    })) as unknown as typeof fetch;
     await assert.rejects(
       fetchAgentRegistry({ fetchImpl: badJson }),
       (error) => isEngineError(error) && error.code === "DRIVER_REGISTRY_INVALID",

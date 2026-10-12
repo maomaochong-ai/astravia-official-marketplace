@@ -6,7 +6,7 @@
  */
 
 import type { JSX } from "react";
-import { HistoryPanel } from "../../query-history/components/history-panel";
+import { HistoryPanel } from "./history-panel";
 import { useWorkbench } from "../hooks/use-workbench";
 import { buildQueryPrompt } from "../../../shared/ai/send-context";
 import { getConversation } from "../../../runtime-contract";

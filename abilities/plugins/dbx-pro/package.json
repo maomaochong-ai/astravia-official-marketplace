@@ -1,12 +1,12 @@
 {
   "name": "@astravia-marketplace/dbx-pro",
-  "version": "0.4.44",
+  "version": "0.4.46",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "build:engine": "node scripts/build-engine.mjs --write",
-    "test": "node --import ./src/test/support/dom-setup.mjs --experimental-strip-types --test src/test/*.test.js server/test/*.test.mjs",
+    "build:engine": "node --experimental-strip-types scripts/build-engine.ts --write",
+    "test": "node --import ./src/test/support/dom-setup.ts --experimental-strip-types --test 'src/test/**/*.test.ts' 'server/test/**/*.test.ts'",
     "check": "tsc --noEmit"
   },
   "devDependencies": {
@@ -32,6 +32,7 @@
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "tailwindcss": "^4.1.12",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.2",
     "vite": "^7.1.7"
   },

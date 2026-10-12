@@ -12,13 +12,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, afterEach, describe, it } from "node:test";
 import { zstdCompressSync } from "node:zlib";
 
-import { driverBinaryPath, driverRoutes, driversRoot, platformKey, releasePlatformTag } from "../src/api/driver.ts";
+import { driverBinaryPath, driverRoutes, driversRoot, platformKey, releasePlatformTag } from "../src/api/internal/driver.ts";
 import { resetAgentRegistryCache } from "../src/engine/driver-registry.ts";
 import { isEngineError } from "../src/engine/protocol.ts";
 import { makeDriverArchive } from "./support/tar-builder.ts";
@@ -29,12 +30,37 @@ const PAYLOAD = Buffer.from("duckdb-worker-payload-bytes\n");
 const HAS_ZSTD = typeof zstdCompressSync === "function";
 const ARCHIVE = HAS_ZSTD ? zstdCompressSync(makeDriverArchive({ payload: PAYLOAD, platformTag: PLATFORM_TAG })) : Buffer.alloc(0);
 
-const roots = new Set();
-const servers = new Set();
+const roots = new Set<string>();
+const servers = new Set<Server>();
+
+interface ReleaseOptions {
+  registryStatus: number;
+  archiveStatus: number;
+  delayMs: number;
+  hits: { registry: number; archive: number };
+  registry?: unknown;
+  archive?: Buffer;
+}
+
+interface ReleaseStatePartial {
+  registryStatus?: number;
+  archiveStatus?: number;
+  delayMs?: number;
+  hits?: { registry: number; archive: number };
+}
+
+interface TestContext {
+  dataDir: string;
+  disposeDbxMcpClient: () => Promise<void>;
+}
+
+interface UseReleaseOptions {
+  prepare?: (ctx: TestContext) => void;
+}
 
 /** 本地「release」：清单与归档都可控，用来复现 404 / sha 不符 / 慢下载。 */
-async function startReleaseServer(state = {}) {
-  const options = { registryStatus: 200, archiveStatus: 200, delayMs: 0, hits: { registry: 0, archive: 0 }, ...state };
+async function startReleaseServer(state: ReleaseStatePartial = {}) {
+  const options: ReleaseOptions = { registryStatus: 200, archiveStatus: 200, delayMs: 0, hits: { registry: 0, archive: 0 }, ...state };
   const server = createServer(async (req, res) => {
     if (options.delayMs) await new Promise((resolve) => setTimeout(resolve, options.delayMs));
     if (req.url.startsWith("/agent-registry.json")) {
@@ -53,9 +79,9 @@ async function startReleaseServer(state = {}) {
     res.writeHead(options.archiveStatus, { "content-type": "application/octet-stream", "content-length": String(options.archive?.length ?? 0) });
     res.end(options.archive);
   });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   servers.add(server);
-  const { port } = server.address();
+  const { port } = server.address() as AddressInfo;
   return {
     options,
     origin: `http://127.0.0.1:${port}`,
@@ -118,7 +144,7 @@ async function waitForInstall(routes, { timeoutMs = 8000 } = {}) {
  * 每个用例都要自己的 routes（内部持有状态文件与单飞集合）。
  * `prepare` 在 routes 创建**之前**跑：状态文件只在创建时读一次，事后写没用。
  */
-function useRelease(release, { prepare } = {}) {
+function useRelease(release: Awaited<ReturnType<typeof startReleaseServer>>, { prepare }: UseReleaseOptions = {}) {
   process.env.DBX_DRIVERS_REGISTRY_URL = release.registryUrl;
   resetAgentRegistryCache();
   const fixture = makeContext();

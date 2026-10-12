@@ -5,7 +5,7 @@
  * 必须自行提供与 plugin.json 声明一致的 artifacts，否则 service 永远不会就绪。
  *
  * 两类 artifact：
- * - server/main.mjs（bridge）：构建期以 `?raw` 内联进插件，运行时 base64 编码；
+ * - server/main.ts（bridge）：构建期以 `?raw` 内联进插件，运行时 base64 编码；
  * - server/bin/dbx-mcp-<platform>（大文件）：按平台从官方 release 下载，
  *   SHA-256 校验（见 runtime-lock.json）。
  *
@@ -13,7 +13,7 @@
  */
 
 import type { PluginContext, PluginServiceArtifactPayload, PluginServiceStatus } from "@astravia-org/plugin-sdk";
-import bridgeSource from "../server/main.mjs?raw";
+import bridgeSource from "../server/main.ts?raw";
 import runtimeLock from "../runtime-lock.json";
 // 平台二进制以 vite 资源方式随插件包分发到 dist/assets（?url），运行时按当前平台
 // 直接读取，无需访问 GitHub；SHA 校验仍以 runtime-lock.json 为准。
@@ -222,7 +222,7 @@ async function ensureEngineStartedOnce(context: PluginContext): Promise<void> {
 		const assets = BINARY_ASSETS[platformTag];
 		if (!assets) throw new Error(`不支持的引擎运行平台：${tag}`);
 		const payloads: PluginServiceArtifactPayload[] = [
-			{ destination: "server/main.mjs", data: utf8ToBase64(bridgeSource) },
+			{ destination: "server/main.ts", data: utf8ToBase64(bridgeSource) },
 		];
 		for (const asset of assets) {
 			// 检查插件是否仍然活跃

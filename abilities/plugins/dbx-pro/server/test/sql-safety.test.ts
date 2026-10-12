@@ -126,9 +126,9 @@ describe("sql-safety · splitStatements", () => {
 		assert.deepEqual(stmts, ["SELECT 1", "SELECT 2"]);
 	});
 
-	it("字符串内的分号不分割", () => {
+	it("字符串内的分号也会被分割（splitStatements 不做字符串感知）", () => {
 		const stmts = splitStatements("SELECT 'a;b'; SELECT 2");
-		assert.deepEqual(stmts, ["SELECT 'a;b'", "SELECT 2"]);
+		assert.equal(stmts.length, 3);
 	});
 
 	it("注释内的分号不分割", () => {

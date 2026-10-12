@@ -53,7 +53,7 @@ const STATUS_BY_CODE = Object.freeze({
   DRIVER_ERROR: 502,
   CONNECTION_ERROR: 502,
   DBX_MCP_ERROR: 502,
-  // 「API 接入」（插件自有数据源路径，见 src/api-source/）——
+  // 「API 接入」（插件自有数据源路径，见 src/api-sources/）——
   // 上游接口的问题一律 5xx（用户改不了），配置/入参问题一律 4xx。
   API_HTTP_ERROR: 502,
   API_INVALID_JSON: 502,
