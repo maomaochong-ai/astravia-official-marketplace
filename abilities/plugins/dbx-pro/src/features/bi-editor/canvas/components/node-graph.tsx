@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as RPointerEvent, type DragEvent, type Dispatch, type SetStateAction } from "react";
 import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE, type SocketHandlers } from "./node-card";
-import { AreaChart, Donut, SERIES } from "../../shared/components/charts";
+import { BarChart, Boxplot, ChartFrame, Donut, EmptyChart, Funnel, LineChart, RadarChart, ScatterChart, SERIES } from "../../shared/components/charts";
 import { applyArrangement, computeArrangement, DEFAULT_ARRANGE_GAP, type ArrangeBox, type ArrangeLayout } from "../lib/auto-layout";
 import type { GridStep } from "./canvas-strip";
 import { Chip } from "../../shared/components/ui/chip";
@@ -23,6 +23,8 @@ import { AddNodeMenu } from "./add-node-menu";
 import { engineRequest } from "../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
 import { fnv1aArray } from "../../../../shared/utils/hash";
+import { resolveNodeChartData, type NodeChartData } from "../lib/node-chart-data";
+import { isChartKind, wireTone } from "../lib/link-tone";
 
 // ── 类型 ──
 export interface NodePos {
@@ -104,12 +106,137 @@ function hashSegments(seed: string, count: number): { value: number; color: stri
 	return raw.map((v, i) => ({ value: Math.round((v / sum) * 100), color: SERIES[i % SERIES.length] }));
 }
 
+/** 大数字格式化：整数原样、小数两位；非有限值退回「—」。 */
+function formatMetric(value: number | undefined): string {
+	if (value === undefined || !Number.isFinite(value)) return "—";
+	return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+/** 按 kind 分派迷你图本体；数据只从 NodeChartData 进来，拿不到数据时由调用方渲染占位卡。 */
+function renderChartArea(kind: string, data: NodeChartData): JSX.Element {
+	if (kind === "chart-pie" || kind === "chart-donut") {
+		return (
+			<ChartFrame hint={`${data.values.length} 项`}>
+				<Donut
+					segments={data.values.slice(0, 4).map((v, i) => ({
+						value: Math.max(1, Math.abs(v)),
+						color: SERIES[i % SERIES.length],
+					}))}
+					size={56}
+					thickness={8}
+					holeFill="var(--color-surface)"
+				/>
+			</ChartFrame>
+		);
+	}
+	if (kind === "chart-funnel") {
+		const stages = data.labels.slice(0, 5).map((label, i) => ({
+			label,
+			value: Math.abs(data.values[i] ?? 0),
+			text: formatMetric(data.values[i]),
+		}));
+		// Funnel 内部拿 stages[0].value 当分母，全 0 会算出 NaN 宽度，这里提前拦下。
+		const maxStage = stages.reduce((max, stage) => Math.max(max, stage.value), 0);
+		if (maxStage <= 0) return <EmptyChart message="数值全为 0，无法绘制漏斗" />;
+		return (
+			<ChartFrame hint={`${stages.length} 阶段`}>
+				<div className="flex h-full flex-col justify-center overflow-hidden">
+					<Funnel stages={stages} />
+				</div>
+			</ChartFrame>
+		);
+	}
+	if (kind === "chart-boxplot") {
+		return (
+			<ChartFrame hint={`${data.boxGroups.length} 组`}>
+				<Boxplot groups={data.boxGroups} tone={SERIES[2]} />
+			</ChartFrame>
+		);
+	}
+	if (kind === "chart-scatter") {
+		return (
+			<ChartFrame hint={`${data.values.length} 点`}>
+				<ScatterChart values={data.values} tone={SERIES[0]} />
+			</ChartFrame>
+		);
+	}
+	if (kind === "chart-radar") {
+		return (
+			<ChartFrame hint={`${data.values.length} 维`}>
+				<RadarChart values={data.values} labels={data.labels} tone={SERIES[3]} />
+			</ChartFrame>
+		);
+	}
+	if (kind === "chart-map") {
+		// 迷你图里 map 暂时用散点近似（真实地图需要 geoJSON + 投影，工作量大）
+		return (
+			<ChartFrame hint={`${data.values.length} 点`}>
+				<ScatterChart values={data.values} tone={SERIES[0]} />
+			</ChartFrame>
+		);
+	}
+	if (kind === "chart-bar") {
+		return (
+			<ChartFrame hint={`${data.values.length} 点`}>
+				<BarChart values={data.values} tone={SERIES[1]} />
+			</ChartFrame>
+		);
+	}
+	return (
+		<ChartFrame hint={`${data.values.length} 点`}>
+			<LineChart values={data.values} stroke={SERIES[1]} />
+		</ChartFrame>
+	);
+}
+
+/**
+ * 图表节点卡片内容：图体 + 结果集 / 维度 / 数值 映射行。
+ * 没有真实结果时渲染显式「无数据」占位——不得回退哈希序列充数。
+ */
+function renderChartBody(kind: string, data: NodeChartData): JSX.Element {
+	if (data.status !== "ok") {
+		return (
+			<EmptyChart
+				message={data.note || "无数据"}
+				hint={data.status === "field-missing" ? "在右侧属性面板选择字段" : undefined}
+			/>
+		);
+	}
+	if (kind === "chart-kpi") {
+		return (
+			<>
+				<div className="flex min-h-0 flex-1 flex-col items-center justify-center">
+					<span className="font-mono text-[22px] font-bold text-surface-foreground">
+						{formatMetric(data.values[0])}
+					</span>
+					<span className="text-[10px] text-muted">{data.valueField ?? "—"}</span>
+				</div>
+				<NodeRow label="结果集">
+					<NodeValue mono>{data.source === "upstream" ? "上游" : "本节点"} · {data.rowCount} 行</NodeValue>
+				</NodeRow>
+			</>
+		);
+	}
+	return (
+		<>
+			{renderChartArea(kind, data)}
+			<NodeRow label="结果集">
+				<NodeValue mono>{data.source === "upstream" ? "上游" : "本节点"} · {data.rowCount} 行</NodeValue>
+			</NodeRow>
+			<NodeRow label="维度"><NodeValue mono>{data.labelField ?? "—"}</NodeValue></NodeRow>
+			<NodeRow label="数值"><NodeValue mono>{data.valueField ?? "—"}</NodeValue></NodeRow>
+		</>
+	);
+}
+
 export interface NodeGraphProps {
 	nodes: Record<NodeId, NodePos>;
 	setNodes: Dispatch<SetStateAction<Record<NodeId, NodePos>>>;
 	links: Link[];
 	setLinks: Dispatch<SetStateAction<Link[]>>;
 	nodeResults?: Record<NodeId, NodeResult>;
+	/** 取某节点的上游结果（canvas-editor 传入）；图表节点拿不到自身结果时用它取数。 */
+	getUpstreamResult?: (id: NodeId) => NodeResult | null;
 	/** 网格吸附步长（0 = 关闭）。受控时由父级持有，缺省时用组件内部状态。 */
 	gridStep?: GridStep;
 	onGridStepChange?: (step: GridStep) => void;
@@ -247,6 +374,7 @@ export function NodeGraph({
 	links,
 	setLinks,
 	nodeResults = {},
+	getUpstreamResult,
 	gridStep: controlledGridStep,
 	onGridStepChange,
 	guidesOn = true,
@@ -476,28 +604,56 @@ export function NodeGraph({
 
 	/** 画布坐标下某节点某行 socket 的绝对位置。 */
 	function socketPos(id: NodeId, row: number, side: "l" | "r"): { x: number; y: number } {
-		const n = nodes[id];
+		const n = nodesRef.current[id];
+		if (!n) return { x: 0, y: 0 };
 		return {
 			x: n.x + (side === "r" ? n.w : 0),
 			y: n.y + rowDy(row),
 		};
 	}
 
+	// ── 端口连线：拖拽优先 ──
+	// 以前 pointerdown 就弹 AddNodeMenu，单击插槽也会误弹菜单；现在只启动待定连线，
+	// 指针真正拖过 CLICK_DRIFT（与「单击/拖拽」同一阈值）才确认是「拉一条新链」并弹菜单。
+	const linkStartRef = useRef<{ cx: number; cy: number; menuOpened: boolean } | null>(null);
+
+	/** 从 output socket 启动一条待定连线，此时不弹菜单。 */
+	function beginLink(nodeId: NodeId, row: number, clientX: number, clientY: number) {
+		// 防重入：如果之前的待定连线没清理（Esc/误操作残留），先 cancel
+		if (pendingRef.current) {
+			pendingRef.current = null;
+			setPendingLink(null);
+			linkStartRef.current = null;
+		}
+		const p = socketPos(nodeId, row, "r");
+		pendingRef.current = { from: nodeId, fromRow: row };
+		setPendingLink({ from: nodeId, fromRow: row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+		linkStartRef.current = { cx: clientX, cy: clientY, menuOpened: false };
+	}
+
+	/** 在指针处打开「连线末端 AddNodeMenu」（入参为视口坐标，内部转画布坐标）。 */
+	function openLinkOutMenu(clientX: number, clientY: number) {
+		const pl = pendingRef.current;
+		if (!pl) return;
+		const canvasPt = screenToCanvas(clientX, clientY);
+		setLinkOutContext({ from: pl.from, fromRow: pl.fromRow, x: canvasPt.x, y: canvasPt.y });
+		if (linkStartRef.current) linkStartRef.current.menuOpened = true;
+	}
+
 	// ── NodeCard socket 直接回调（绕过 canvas 的 onCanvasPointerDown 被 stopPropagation 阻断） ──
 	const socketHandlers: SocketHandlers = {
-		onOutputDown: ({ nodeId, row }) => {
+		onOutputDown: ({ nodeId, row, clientX, clientY }) => {
 			const n = nodesRef.current[nodeId];
 			if (!n) return;
-			const p = socketPos(nodeId, row, "r");
-			pendingRef.current = { from: nodeId, fromRow: row };
-			setPendingLink({ from: nodeId, fromRow: row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
-			setLinkOutContext({ from: nodeId, fromRow: row, x: p.x + 20, y: p.y - 12 });
+			// 拖拽优先：只启动待定连线，不弹菜单（见 beginLink 注释）
+			beginLink(nodeId, row, clientX, clientY);
 		},
 		onInputDown: ({ nodeId, row }) => {
 			const pl = pendingRef.current;
 			if (!pl || pl.from === nodeId) return;
 			const fromNode = nodesRef.current[pl.from];
-			const tone = fromNode?.tone ?? TONE.chart;
+			// 图表节点连线跟随输出插槽的系列色，非图表节点沿用数据类型色（唯一推导在 link-tone.ts）
+			const tone = wireTone(fromNode?.tone, isChartKind(fromNode?.kind));
 			setLinks((prev) => [...prev, {
 				id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: nodeId, toRow: row, tone,
 			}]);
@@ -515,7 +671,7 @@ export function NodeGraph({
 		if (type !== "input" && type !== "output") return null;
 		const nodeId = el.dataset.nodeId as NodeId | undefined;
 		const row = Number(el.dataset.socketRow);
-		if (!nodeId || !nodes[nodeId]) return null;
+		if (!nodeId || !nodesRef.current[nodeId]) return null;
 		return { type, nodeId, row };
 	}
 
@@ -526,16 +682,13 @@ export function NodeGraph({
 		return true;
 	}
 
-	/** 画布 pointerdown：拦截 output socket → 启动 pendingLink + 弹出 AddNodeMenu；空白区点击 → 取消选中。 */
+	/** 画布 pointerdown：拦截 output socket → 启动待定连线（菜单等拖拽确认后再弹）；空白区点击 → 取消选中。 */
 	function onCanvasPointerDown(e: RPointerEvent<HTMLDivElement>) {
 		const hit = hitSocket(e.clientX, e.clientY);
 		if (hit?.type === "output") {
 			e.stopPropagation();
-			const p = socketPos(hit.nodeId, hit.row, "r");
-			pendingRef.current = { from: hit.nodeId, fromRow: hit.row };
-			setPendingLink({ from: hit.nodeId, fromRow: hit.row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
-			// 同时弹出 AddNodeMenu，位置在连线末端附近（画布坐标下 socket 右一点）
-			setLinkOutContext({ from: hit.nodeId, fromRow: hit.row, x: p.x + 20, y: p.y - 12 });
+			// 拖拽优先：只启动待定连线，不弹菜单
+			beginLink(hit.nodeId, hit.row, e.clientX, e.clientY);
 			return;
 		}
 		if (hit?.type === "input") {
@@ -544,7 +697,8 @@ export function NodeGraph({
 			const pl = pendingRef.current;
 			if (pl && hit.nodeId !== pl.from) {
 				setLinks((prev) => {
-					const tone = nodes[pl.from].tone;
+					const srcNode = nodes[pl.from];
+					const tone = wireTone(srcNode?.tone, isChartKind(srcNode?.kind));
 					return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
 				});
 				pendingRef.current = null;
@@ -696,6 +850,13 @@ export function NodeGraph({
 					x2: canvasPt.x,
 					y2: canvasPt.y,
 				} : null);
+				// 拖过阈值 → 确认是「从插槽拉线」，此时才弹 AddNodeMenu
+				const ls = linkStartRef.current;
+				if (ls && !ls.menuOpened) {
+					const dx = e.clientX - ls.cx;
+					const dy = e.clientY - ls.cy;
+					if (dx * dx + dy * dy >= CLICK_DRIFT * CLICK_DRIFT) openLinkOutMenu(e.clientX, e.clientY);
+				}
 			}
 			// 框选模式
 			const sb = selectionBoxRef.current;
@@ -821,13 +982,19 @@ export function NodeGraph({
 				const hit = hitSocket(e.clientX, e.clientY);
 				if (hit?.type === "input" && hit.nodeId !== pl.from) {
 					setLinks((prev) => {
-						const tone = nodesRef.current[pl.from]?.tone ?? "#10b981";
+						const srcNode = nodesRef.current[pl.from];
+						const tone = wireTone(srcNode?.tone, isChartKind(srcNode?.kind));
 						return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
 					});
 				}
+				// 未命中输入插槽：拖到空白处松手 → 视为「从插槽起一条新链」，在落点弹菜单；
+				// 单击插槽（没拖动、也没落在空白处）→ 什么都不做，避免误弹。
+				if (hit?.type !== "input" && isCanvasBlank(e.target)) openLinkOutMenu(e.clientX, e.clientY);
 				pendingRef.current = null;
 				setPendingLink(null);
-				setLinkOutContext(null);
+				// 菜单若是本次拖拽打开的，保留它（用户还要在里面挑节点类型）
+				if (!linkStartRef.current?.menuOpened) setLinkOutContext(null);
+				linkStartRef.current = null;
 			}
 		}
 		window.addEventListener("pointermove", onMove);
@@ -1011,6 +1178,9 @@ export function NodeGraph({
 				setLinkOutContext(null);
 				setPendingLink(null);
 				pendingRef.current = null;
+				linkStartRef.current = null; // 漏清：否则下次 beginLink 可能残留
+				resizingRef.current = null; // 漏清：resize 中 Esc 取消
+				setResizing(null);
 				pendingClickRef.current = null; // click-drag 状态机也要清
 				if (dragRef.current?.rafId) cancelAnimationFrame(dragRef.current.rafId);
 				dragRef.current = null;
@@ -1273,16 +1443,16 @@ export function NodeGraph({
 
 				{/* 对齐辅助线（画布坐标，viewport 变换下） */}
 				{guidesOn && guides && (guides.x !== undefined || guides.y !== undefined) && (
-					<svg className="pointer-events-none absolute overflow-visible" style={{ left: 0, top: 0, width: 1, height: 1 }} preserveAspectRatio="none">
-						<g stroke="var(--color-accent)" strokeWidth={1 / viewport.scale} opacity={0.75}>
+					<svg className="pointer-events-none absolute overflow-visible" style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}>
+						<g strokeWidth={1 / viewport.scale} opacity={0.75} style={{ stroke: "var(--color-accent)" }}>
 							{guides.x !== undefined && <line x1={guides.x} y1={-4000} x2={guides.x} y2={4000} />}
 							{guides.y !== undefined && <line x1={-4000} y1={guides.y} x2={4000} y2={guides.y} />}
 						</g>
 					</svg>
 				)}
 
-				{/* SVG 连线（hover 高亮 + 中点 × 删除按钮） */}
-				<svg className="absolute overflow-visible" style={{ left: 0, top: 0, width: 1, height: 1 }} preserveAspectRatio="none">
+				{/* SVG 连线（hover 高亮 + 中点 × 删除按钮） —— 用超大 CSS 尺寸避免 viewBox 裁剪 */}
+				<svg className="absolute overflow-visible" style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}>
 					{links.map((l) => {
 						const isHover = hoverLink === l.id;
 						const mid = linkMid(l, nodes);
@@ -1301,11 +1471,11 @@ export function NodeGraph({
 								<path
 									d={linkPath(l, nodes)}
 									fill="none"
-									stroke={l.tone}
 									strokeWidth={isHover ? 2.5 : 1.5}
 									strokeLinecap="round"
 									opacity={isHover ? 1 : 0.6}
-									style={{ pointerEvents: "none" }}
+									// 连线色可能是 CSS 变量（图表节点取系列色），必须走 style —— SVG 属性不接受 var()
+									style={{ stroke: l.tone, pointerEvents: "none" }}
 								/>
 								{isHover && (
 									<g
@@ -1316,12 +1486,12 @@ export function NodeGraph({
 											setHoverLink(null);
 										}}
 									>
-										<circle cx={mid.x} cy={mid.y} r={10} fill="var(--color-surface-raised)" stroke="var(--color-border-strong)" strokeWidth={1.5} />
+										<circle cx={mid.x} cy={mid.y} r={10} strokeWidth={1.5} style={{ fill: "var(--color-surface-raised)", stroke: "var(--color-border-strong)" }} />
 										<path
 											d={`M ${mid.x - 3.5} ${mid.y - 3.5} L ${mid.x + 3.5} ${mid.y + 3.5} M ${mid.x + 3.5} ${mid.y - 3.5} L ${mid.x - 3.5} ${mid.y + 3.5}`}
-											stroke="var(--color-danger)"
 											strokeWidth={1.6}
 											strokeLinecap="round"
+											style={{ stroke: "var(--color-danger)" }}
 										/>
 									</g>
 								)}
@@ -1330,19 +1500,20 @@ export function NodeGraph({
 					})}
 				</svg>
 
-				{/* 临时连线（拖拽中） */}
+				{/* 临时连线（拖拽中） —— 同样用超大尺寸避免裁剪 */}
 				{pendingLink && (
-					<svg className="pointer-events-none absolute" style={{ left: 0, top: 0, width: 1, height: 1 }}>
+					<svg className="pointer-events-none absolute overflow-visible" style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}>
 						<path
 							d={(() => {
 								const bend = Math.max(36, Math.abs(pendingLink.x2 - pendingLink.x1) * 0.5);
 								return `M ${pendingLink.x1} ${pendingLink.y1} C ${pendingLink.x1 + bend} ${pendingLink.y1}, ${pendingLink.x2 - bend} ${pendingLink.y2}, ${pendingLink.x2} ${pendingLink.y2}`;
 							})()}
 							fill="none"
-							stroke={nodes[pendingLink.from]?.tone ?? TONE.chart}
 							strokeWidth={1.75}
 							strokeDasharray="6 4"
 							opacity={0.8}
+							// 待定连线与正式连线同色，同样走 wireTone + style
+							style={{ stroke: wireTone(nodes[pendingLink.from]?.tone, isChartKind(nodes[pendingLink.from]?.kind)) }}
 						/>
 					</svg>
 				)}
@@ -1358,7 +1529,7 @@ export function NodeGraph({
 
 					const isGroup = n.isGroup || kind.startsWith("group-");
 					const isSource = kind.startsWith("source-");
-					const isChart = kind.startsWith("chart-");
+					const isChart = isChartKind(kind);
 					const isMetric = kind.startsWith("metric-");
 					const isFilter = kind.startsWith("filter-");
 					const isOutput = kind.startsWith("output-");
@@ -1369,14 +1540,22 @@ export function NodeGraph({
 					const isScreenContainer = kind === "screen-page";
 
 					const inputs: { row: number; tone: string }[] = (isSource || isGroup) ? [] : [{ row: 0, tone: TONE.table }];
-					const outputs: { row: number; tone: string }[] = (isOutput || isAdv || isGroup || isScreenContainer) ? [] : [{ row: 0, tone: isSource ? TONE.table : isChart ? TONE.chart : (isScreen ? TONE.chart : TONE.result) }];
+					// 图表类节点的色调跟随画布调色板（系列色 1）：换调色板时画布主体立刻有反馈；
+					// 其余节点仍是「数据类型」语义色，不受调色板影响。
+					const outputs: { row: number; tone: string }[] = (isOutput || isAdv || isGroup || isScreenContainer) ? [] : [{ row: 0, tone: wireTone(isSource ? TONE.table : (isScreen ? TONE.chart : TONE.result), isChart) }];
 
-					const chartValues = result && result.columns.length > 0
+					// 非图表节点（指标 / 通用节点）沿用既有兜底值；图表节点不再走哈希序列，见下方 chartData。
+					const placeholderValues = result && result.columns.length > 0
 						? result.rows.slice(0, 14).map((r) => {
 							const numVal = Object.values(r).find((v) => typeof v === "number");
 							return typeof numVal === "number" ? numVal : 0;
 						})
 						: hashValues(`node-${id}`, 14, 30, 88);
+
+					// 图表节点的唯一数据入口：自身结果 → 上游结果 → 显式「无数据」。
+					const chartData = isChart
+						? resolveNodeChartData(kind, values, result ?? null, getUpstreamResult ? getUpstreamResult(id) : null)
+						: null;
 
 					const kindIcon = isGroup ? (n.groupIcon ?? "icon-[lucide--layers]") :
 						isSource ? "icon-[lucide--database]" :
@@ -1401,62 +1580,108 @@ export function NodeGraph({
 						<NodeCard
 							key={id}
 							{...n}
+							// 覆盖展开的 tone：图表类节点用系列色，使调色板对画布卡片可见；
+							// 与输出插槽、连线同源（link-tone.ts），三者不会再出现色差
+							tone={wireTone(n.tone, isChart)}
 							nodeId={id}
 							onPointerDown={(e) => startDrag(id, e)}
 							onResizeStart={(corner, e) => startResize(id, corner, e)}
 							socketHandlers={socketHandlers}
+							onNodeContextMenu={(nodeId, cx, cy) => {
+								const canvasPt = screenToCanvas(cx, cy);
+								// 先选中（单选右键 → 选中并弹出菜单），方便后续复制/删除
+								setNodes((prev) => {
+									const next = { ...prev };
+									let changed = false;
+									for (const k of Object.keys(next) as NodeId[]) {
+										if (next[k].selected !== (k === nodeId)) {
+											next[k] = { ...next[k], selected: k === nodeId };
+											changed = true;
+										}
+									}
+									return changed ? next : prev;
+								});
+								setNodeContextMenu({ nodeId, x: canvasPt.x, y: canvasPt.y });
+							}}
 							title={title}
 							type={kindLabel}
 							icon={kindIcon}
 							inputs={inputs}
 							outputs={outputs}
 						>
+							{/* 数据源类节点 — 按 kind 差异化内部 UI */}
 							{isSource && (
 								<>
-									{values.sql ? (
-										<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface px-1.5 py-1 font-mono text-[9.5px] leading-[13px] text-muted">
-											{String(values.sql).split("\n").slice(0, 4).map((line, i) => (
-												<div key={i}>{line}</div>
-											))}
-										</div>
-									) : values.table ? (
-										<NodeRow label="表"><NodeValue mono>{String(values.table)}</NodeValue></NodeRow>
-									) : (
-										<NodeRow label="配置"><NodeValue>点击右侧面板配置</NodeValue></NodeRow>
+									{kind === "source-sql" && (
+										<>
+											{values.sql ? (
+												<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface px-1.5 py-1 font-mono text-[9.5px] leading-[13px] text-muted">
+													{String(values.sql).split("\n").slice(0, 4).map((line, i) => (
+														<div key={i}>{line}</div>
+													))}
+												</div>
+											) : (
+												<NodeRow label="SQL"><NodeValue>PropertyInspector 输入 SQL</NodeValue></NodeRow>
+											)}
+										</>
 									)}
+									{kind === "source-table" && (
+										<>
+											<NodeRow label="表名"><NodeValue mono>{String(values.table ?? "(未指定)")}</NodeValue></NodeRow>
+											{values.limit != null && <NodeRow label="Limit"><NodeValue mono>{String(values.limit)}</NodeValue></NodeRow>}
+										</>
+									)}
+									{kind === "source-connector" && (
+										<>
+											<NodeRow label="连接"><NodeValue mono>{String(values.connectionId ?? values.datasourceId ?? "(未选择)")}</NodeValue></NodeRow>
+											<NodeRow label="表名"><NodeValue mono>{String(values.tableName ?? values.table ?? "(未指定)")}</NodeValue></NodeRow>
+										</>
+									)}
+									{kind === "source-csv" && (
+										<>
+											<div className="mt-1 flex min-h-0 flex-1 flex-col items-center justify-center rounded-[4px] border border-dashed border-border bg-surface p-1.5">
+												<span className="icon-[lucide--file-text] size-4 text-faint" />
+												<span className="mt-0.5 text-[9px] text-muted">{String(values.fileName ?? "data.csv")}</span>
+												<span className="text-[9px] text-faint">{result ? `${result.rowCount} 行 · ${result.columns.length} 列` : "本地文件"}</span>
+											</div>
+										</>
+									)}
+									{kind === "source-api" && (
+										<>
+											<NodeRow label="URL"><NodeValue mono><span className="truncate">{String(values.url ?? "/api/endpoint")}</span></NodeValue></NodeRow>
+											<NodeRow label="方法"><NodeSeg options={["GET", "POST"]} active={String(values.method ?? "GET")} /></NodeRow>
+										</>
+									)}
+									{kind === "source-extract" && (
+										<>
+											<NodeRow label="任务"><NodeValue mono>{String(values.extractId ?? "(未配置)")}</NodeValue></NodeRow>
+											<NodeRow label="类型"><NodeValue>{String(values.extractType ?? "抽取")}</NodeValue></NodeRow>
+										</>
+									)}
+									{/* 通用执行结果条（所有数据源节点共享） */}
 									{result && (
 										<NodeRow label="结果">
-											<NodeValue mono>{result.rowCount} 行 · {result.columns.length} 列</NodeValue>
+											<NodeValue mono>
+												{result.error
+													? <span className="text-danger">✗ {result.error.slice(0, 24)}</span>
+													: <>{result.rowCount} 行 · {result.columns.length} 列 · {result.durationMs}ms</>
+												}
+											</NodeValue>
 										</NodeRow>
-									)}
-									{values.datasourceId && (
-										<NodeRow label="数据源"><NodeValue mono>{String(values.datasourceId)}</NodeValue></NodeRow>
 									)}
 								</>
 							)}
 
-							{isChart && (
-								<div className="mt-1 min-h-0 flex-1 overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
-									{kind === "chart-pie" || kind === "chart-donut" ? (
-										<Donut
-											segments={chartValues.slice(0, 4).map((v, i) => ({
-												value: Math.max(5, v),
-												color: SERIES[i % SERIES.length],
-											}))}
-											size={56}
-											thickness={8}
-											holeFill="var(--color-surface)"
-										/>
-									) : (
-										<AreaChart values={chartValues} stroke={SERIES[1]} />
-									)}
+							{isChart && chartData && (
+								<div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
+									{renderChartBody(kind, chartData)}
 								</div>
 							)}
 
 							{isMetric && (
 								<div className="mt-1 flex flex-1 flex-col items-center justify-center">
 									<span className="font-mono text-[22px] font-bold text-surface-foreground">
-										{chartValues[0] ?? "—"}
+										{placeholderValues[0] ?? "—"}
 									</span>
 									<span className="text-[10px] text-muted">{title}</span>
 								</div>
@@ -1483,7 +1708,7 @@ export function NodeGraph({
 							{kind === "adv-summary" && (
 								<div className="mt-1 flex flex-1 flex-col items-center justify-center">
 									<span className="font-mono text-[22px] font-bold text-surface-foreground">
-										{result?.columns.length ? String(result.rows[0]?.[result.columns[0]] ?? "—") : (chartValues[0] ?? "—")}
+										{result?.columns.length ? String(result.rows[0]?.[result.columns[0]] ?? "—") : (placeholderValues[0] ?? "—")}
 									</span>
 									<span className="text-[10px] text-muted">{String(values.metric ?? title)}</span>
 								</div>
@@ -1566,7 +1791,7 @@ export function NodeGraph({
 										<path
 											d="M30 140 Q50 80 90 70 Q120 65 150 80 Q170 60 200 55 Q230 50 250 70 Q265 90 260 120 Q250 140 230 145 Q200 155 170 150 Q140 155 110 160 Q80 158 55 155 Q38 152 30 140 Z"
 											fill="url(#map-bg)"
-											stroke={SERIES[0]}
+											style={{ stroke: SERIES[0] }}
 											strokeWidth="1.5"
 										/>
 										{/* 数据点 */}
@@ -1578,8 +1803,8 @@ export function NodeGraph({
 											{ x: 100, y: 135, r: 2 },
 										].map((p, i) => (
 											<g key={i}>
-												<circle cx={p.x} cy={p.y} r={p.r + 3} fill={SERIES[i % SERIES.length]} opacity="0.18" />
-												<circle cx={p.x} cy={p.y} r={p.r} fill={SERIES[i % SERIES.length]} />
+												<circle cx={p.x} cy={p.y} r={p.r + 3} opacity="0.18" style={{ fill: SERIES[i % SERIES.length] }} />
+												<circle cx={p.x} cy={p.y} r={p.r} style={{ fill: SERIES[i % SERIES.length] }} />
 											</g>
 										))}
 									</svg>
@@ -1690,7 +1915,7 @@ export function NodeGraph({
 					onPick={(kind) => {
 						const { id: newId } = insertNode(kind, linkOutContext.x + 160, linkOutContext.y - 30);
 						// 自动完成连线：pendingLink.from → 新节点 input socket（row 0）
-						const tone = nodes[linkOutContext.from]?.tone ?? TONE.chart;
+						const tone = wireTone(nodes[linkOutContext.from]?.tone, isChartKind(nodes[linkOutContext.from]?.kind));
 						setLinks((prev) => [...prev, {
 							id: nextLinkId(),
 							from: linkOutContext.from,

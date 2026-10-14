@@ -15,6 +15,11 @@ import { NODE_SCHEMA } from "./node-schema";
 import { Icon } from "../../shared/components/ui/icon";
 import type { EngineConnectionSummary } from "../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
+import { connectionDisplayLabel, resolveConnectionName } from "../lib/connection-ref";
+import { useConnectionTables } from "../hooks/use-connection-tables";
+
+/** 「选表」类字段：值应该是某个连接下的真实表名。 */
+const TABLE_FIELD_KEYS = new Set(["table", "tableName"]);
 
 export interface SelectedNodeInfo {
 	id: string;
@@ -50,17 +55,19 @@ export function PropertyInspector({
 
 	if (collapsed) {
 		return (
-			<div className="flex w-10 shrink-0 flex-col items-center gap-1 border-l border-border bg-surface-raised py-2">
+			<div className="flex h-full w-10 shrink-0 flex-col items-center gap-1 border-l border-border bg-surface-raised py-2">
 				<button type="button" onClick={onToggleCollapsed}
 					className="grid size-7 place-items-center rounded-control text-faint hover:bg-accent-soft hover:text-accent" title="展开属性面板">
 					<Icon name="icon-[lucide--panel-right-open]" className="size-3.5" />
 				</button>
+				<div className="mt-auto h-px w-6 bg-border" />
+				<span className="font-mono text-[9px] text-faint">{selectedNode ? selectedNode.id.slice(0, 3) : "·"}</span>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex w-72 shrink-0 flex-col border-l border-border bg-surface-raised">
+		<div className="flex h-full w-72 shrink-0 flex-col bg-surface-raised">
 			<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3 text-[12px] font-medium">
 				<span className="text-muted">属性</span>
 				<span className="text-surface-foreground">·</span>
@@ -73,7 +80,7 @@ export function PropertyInspector({
 				</button>
 			</div>
 
-			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-3 space-y-4">
+			<div className="dbx-scroll min-h-0 flex-1 overflow-y-auto p-3 pb-6 space-y-4">
 				{selectedNode && onNodeUpdate ? (
 					<NodePropertyForm
 						id={selectedNode.id}
@@ -138,6 +145,18 @@ export function PropertyInspector({
 					</>
 				)}
 			</div>
+
+			{/* 底部收尾条：让面板视觉完整，滚到底时有承接感 */}
+			<div className="flex h-7 shrink-0 items-center gap-2 border-t border-border bg-surface px-3 text-[10px] text-faint">
+				<span className="font-mono">⌘K</span>
+				<span>聚焦画布</span>
+				<span className="mx-1 h-3 w-px bg-border" />
+				<span className="font-mono">⌘R</span>
+				<span>运行</span>
+				<span className="mx-auto font-mono text-[9px]">
+					{selectedNode ? `${selectedNode.id.slice(0, 10)} · ${Math.round(selectedNode.node.w)}×${Math.round(selectedNode.node.h)}` : "·"}
+				</span>
+			</div>
 		</div>
 	);
 }
@@ -159,8 +178,31 @@ function NodePropertyForm({
 	const downstreamLinks = (links ?? []).filter((l) => l.from === id);
 	const consumerNodes = downstreamLinks.map((l) => nodes?.[l.to]).filter((n): n is NodePos => !!n);
 
-	// ── 当前节点的执行结果 ──
+	// ── 当前节点的执行结果 + 上游数据源的 columns（图表节点从上游取数） ──
 	const result = nodeResults?.[id];
+	const upstreamLinks = (links ?? []).filter((l) => l.to === id);
+	const columnsFromUpstream = upstreamLinks.flatMap((l) => {
+		const r = nodeResults?.[l.from];
+		return r ? r.columns : [];
+	});
+	const columns = result?.columns?.length ? result.columns : columnsFromUpstream;
+	// ── 选表下拉：把连接引用解析成连接名，再拉该连接的真实表列表 ──
+	// 写入侧存的是连接 id（见 Field 的数据源下拉），执行侧按 name 跑，这里复用同一解析器。
+	const connectionRef =
+		kind === "source-connector"
+			? (node.values?.connectionId ?? node.values?.datasourceId)
+			: (node.values?.datasourceId ?? node.values?.connectionId);
+	const connectionName = resolveConnectionName(connectionRef, connections);
+	const connectionLabel = connectionDisplayLabel(connectionRef, connections);
+	// 非数据源节点不请求表列表，避免无意义的 IO
+	const tablesState = useConnectionTables(isSource ? connectionName : null);
+	const tableOptions: FieldTableOptions = {
+		connectionName,
+		connectionLabel,
+		tables: tablesState.tables,
+		loading: tablesState.loading,
+		error: tablesState.error,
+	};
 
 	return (
 		<>
@@ -222,7 +264,15 @@ function NodePropertyForm({
 				<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">属性 · {schema.label}</h3>
 				<div className="space-y-2">
 					{schema.fields.map((f) => (
-						<Field key={f.key} field={f} node={node} onUpdate={(patch) => onUpdate(id, patch)} connections={connections} />
+						<Field
+							key={f.key}
+							field={f}
+							node={node}
+							onUpdate={(patch) => onUpdate(id, patch)}
+							connections={connections}
+							tableOptions={tableOptions}
+							columns={columns}
+						/>
 					))}
 				</div>
 			</section>
@@ -291,9 +341,71 @@ function NodePropertyForm({
 	);
 }
 
+/** 「选表」字段的可用选项，由 NodePropertyForm 解析连接后传入。 */
+interface FieldTableOptions {
+	connectionName: string;
+	connectionLabel: string;
+	tables: string[];
+	loading: boolean;
+	error: string | null;
+}
+
+/** 表列表不可用时，说明为什么退回自由文本输入。 */
+function tableFallbackReason(options: FieldTableOptions): string {
+	if (!options.connectionName) return "选择数据源后可下拉选表";
+	if (options.loading) return `正在读取「${options.connectionLabel}」的表…`;
+	if (options.error) return `读取「${options.connectionLabel}」表列表失败（${options.error}），可手动输入`;
+	return `「${options.connectionLabel}」下未发现表，可手动输入`;
+}
+
+/**
+ * 「选表」字段：能列出表就给下拉，否则保留自由文本输入。
+ * 已手填过表名时把当前值补进选项，避免下拉把用户已有的值吃掉。
+ */
+function TableField({
+	value, onChange, field, options,
+}: {
+	value: string;
+	onChange: (v: unknown) => void;
+	field: { key: string; label: string };
+	options: FieldTableOptions;
+}) {
+	if (options.tables.length > 0) {
+		return (
+			<select
+				data-field-key={field.key}
+				value={value}
+				onChange={(e) => onChange(e.target.value)}
+				className="h-7 w-full rounded-control border border-border bg-surface px-1 text-[11px] text-surface-foreground"
+			>
+				<option value="">— 选择表 —</option>
+				{value && !options.tables.includes(value) ? <option value={value}>{value}（当前值）</option> : null}
+				{options.tables.map((t) => (
+					<option key={t} value={t}>
+						{t}
+					</option>
+				))}
+			</select>
+		);
+	}
+	return (
+		<div className="flex flex-col gap-1">
+			<input
+				data-field-key={field.key}
+				type="text"
+				value={value}
+				onChange={(e) => onChange(e.target.value)}
+				className="h-7 w-full rounded-control border border-border bg-surface px-2 text-[11px] text-surface-foreground"
+				placeholder={field.key}
+			/>
+			<span className="text-[10px] text-faint">{tableFallbackReason(options)}</span>
+		</div>
+	);
+}
+
 function Field({
-	field, node, onUpdate, connections,
-}: { field: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: string[] }; node: NodePos; onUpdate: (patch: Partial<NodePos>) => void; connections?: EngineConnectionSummary[] }) {
+	field, node, onUpdate, connections, tableOptions, columns,
+}: { field: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: string[] }; node: NodePos; onUpdate: (patch: Partial<NodePos>) => void; connections?: EngineConnectionSummary[]; tableOptions?: FieldTableOptions; columns?: string[] }) {
 	const values = node.values ?? {};
 	const current = values[field.key];
 	const setVal = (v: unknown) => onUpdate({ values: { ...values, [field.key]: v } });
@@ -303,9 +415,24 @@ function Field({
 	const isDatasourceField = DATASOURCE_KEYS.has(field.key);
 	const datasourceOptions = connections ?? [];
 
+	// 图表字段下拉：从上游/当前结果 columns 生成（xField, yField, category, value ...）
+	const CHART_FIELD_KEYS = new Set(["xField", "yField", "category", "value", "titleField", "groupField", "angleField", "sizeField", "colorField"]);
+	const isChartField = CHART_FIELD_KEYS.has(field.key);
+	const chartColumns = columns ?? [];
+
 	return (
 		<Row label={field.label}>
-			{field.type === "select" && (isDatasourceField || field.options) ? (
+			{/* 图表字段：有上游/当前 columns 时渲染下拉 */}
+			{isChartField && chartColumns.length > 0 ? (
+				<select
+					value={String(current ?? "")}
+					onChange={(e) => setVal(e.target.value)}
+					className="h-7 w-full rounded-control border border-border bg-surface px-1 text-[11px] text-surface-foreground"
+				>
+					<option value="">— 选择字段 —</option>
+					{chartColumns.map((c) => <option key={c} value={c}>{c}</option>)}
+				</select>
+			) : field.type === "select" && (isDatasourceField || field.options) ? (
 				<select
 					value={String(current ?? "")}
 					onChange={(e) => setVal(e.target.value)}
@@ -321,6 +448,8 @@ function Field({
 						: field.options?.map((o) => <option key={o} value={o}>{o}</option>)
 					}
 				</select>
+			) : tableOptions && TABLE_FIELD_KEYS.has(field.key) ? (
+				<TableField value={String(current ?? "")} onChange={setVal} field={field} options={tableOptions} />
 			) : field.type === "textarea" ? (
 				<textarea
 					rows={2}

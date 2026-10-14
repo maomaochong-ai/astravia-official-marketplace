@@ -2,7 +2,8 @@
  * 宿主运行时契约 — 持有 PluginContext 句柄。
  * 用 any 避免导入 plugin-sdk 深层类型触发 MF idle timeout。
  *
- * 只暴露 feature 层实际需要的四个门面：command / conversation / storage / services。
+ * 只暴露 feature 层实际需要的门面：command / conversation / permissions / ui / storage /
+ * secrets / services / fs / ai。多一个门面就多一处宿主契约耦合，不要顺手加。
  * 连接配置与查询历史走 storage（宿主托管的插件私有目录），不再自行拼接
  * 文件路径 —— 插件拿不到宿主 userData，也不应假设外层目录存在。
  */
@@ -94,4 +95,17 @@ export function getFs(): {
 } | null {
 	const ctx = requireCtx();
 	return (ctx as { fs?: { saveAs?: unknown } }).fs?.saveAs ? (ctx.fs as never) : null;
+}
+
+/**
+ * 宿主 AI 能力（ai.chat：多轮对话 + 工具调用，能力对应 plugin.json 的 ai.complete）。
+ * 未声明权限、宿主版本过旧或用户未授权时返回 null —— 调用方据此给出「问数不可用」的
+ * 明确提示，而不是抛一个看不懂的权限异常。
+ *
+ * 模型调用发生在插件内部 loop（features/ask/ask-loop.ts），不经过宿主 Agent：
+ * run_sql 只是随 ai.chat 一起发给模型的工具声明，不注册进宿主工具名册。
+ */
+export function getAi(): any | null {
+	const ctx = requireCtx();
+	return (ctx as { ai?: unknown }).ai ?? null;
 }

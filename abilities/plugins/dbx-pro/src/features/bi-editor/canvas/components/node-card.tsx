@@ -4,9 +4,15 @@
  * 数据流节点：顶部标题条 + 体内联参数 + 左右插槽。
  * 坐标约定（NodeGraph 连线用同一套 rowDy() 算插槽位置）：
  *   HEAD_H + BODY_PAD + ROW_H × row + ROW_H/2
+ *
+ * 颜色规则（两种语义，别混）：
+ * - 数据类型色 TONE：非图表节点按「产出什么」着色（数据集蓝 / 结果橙 / 控件橙红）；
+ * - 系列色 SERIES：图表类节点的输出插槽与连线走画布调色板（--color-series-1），
+ *   换调色板时画布主体立刻有反馈。NodeGraph 用 wireTone() 统一推导，插槽与连线必然同色。
+ * 插槽色走 style.background（JS 样式，var() 有效）；SVG presentation attribute 则不吃 var()。
  */
 
-import { memo, type ReactNode, type PointerEvent } from "react";
+import { memo, type ReactNode, type PointerEvent, type JSX } from "react";
 
 export const HEAD_H = 30;
 export const ROW_H = 24;
@@ -17,7 +23,7 @@ export function rowDy(row: number): number {
 	return HEAD_H + BODY_PAD + ROW_H * row + ROW_H / 2;
 }
 
-/** 数据类型决定插槽颜色 + 连线颜色。 */
+/** 数据类型色：非图表节点的插槽与连线颜色（图表类节点由 link-tone.ts 的 wireTone 换成系列色）。 */
 export const TONE = {
 	table: "#3b82f6",   // 数据集
 	result: "#f59e0b",  // 查询结果 / AI
@@ -29,7 +35,7 @@ type Socket = { row: number; tone: string };
 
 /** socket 事件回调——NodeGraph 注入，NodeCard 调用后返回事件的原生处理。 */
 export interface SocketHandlers {
-	/** 输出 socket 被按下 → NodeGraph 应启动 pendingLink + 弹出 AddNodeMenu */
+	/** 输出 socket 被按下 → 只启动 pendingLink（拖拽优先）；菜单要等拖过阈值或落在空白处才弹 */
 	onOutputDown?: (args: { nodeId: string; row: number; tone: string; clientX: number; clientY: number }) => void;
 	/** 输入 socket 被按下 → 如果有 pendingLink 就完成连线 */
 	onInputDown?: (args: { nodeId: string; row: number; tone: string; clientX: number; clientY: number }) => void;
@@ -54,6 +60,8 @@ export interface NodeCardProps {
 	onResizeStart?: (corner: "tl" | "tr" | "bl" | "br", e: PointerEvent) => void;
 	nodeId?: string;
 	socketHandlers?: SocketHandlers;
+	/** 右键节点时调用：NodeGraph 注入，负责弹 NodeContextMenu 并在 canvas 坐标系定位。 */
+	onNodeContextMenu?: (nodeId: string, clientX: number, clientY: number) => void;
 }
 
 const HANDLE = "absolute size-1.5 rounded-[1px] border border-surface bg-accent";
@@ -62,13 +70,15 @@ export const NodeCard = memo(function NodeCard({
 	title, type, icon, tone, x, y, w, h,
 	selected = false,
 	muted = false,
-	inputs = [], outputs = [],
+	inputs = [],
+	outputs = [],
 	children,
 	onPointerDown,
 	onResizeStart,
 	nodeId,
 	socketHandlers,
-}: NodeCardProps) {
+	onNodeContextMenu,
+}: NodeCardProps): JSX.Element {
 	return (
 		<div
 			className={`absolute flex flex-col rounded-card bg-surface-raised border ${
@@ -79,6 +89,14 @@ export const NodeCard = memo(function NodeCard({
 			style={{ left: x, top: y, width: w, height: h }}
 			data-node-id={nodeId}
 			onPointerDown={onPointerDown}
+			onContextMenu={(e) => {
+				e.preventDefault(); // 阻止浏览器原生菜单
+				if (onNodeContextMenu && nodeId) {
+					onNodeContextMenu(nodeId, e.clientX, e.clientY);
+				} else {
+					e.stopPropagation(); // 无 handler 时阻止冒泡到 canvas
+				}
+			}}
 		>
 			<header className="flex h-[30px] shrink-0 items-center gap-1.5 border-b border-border bg-surface px-2">
 				<span className="icon-[lucide--chevron-down] size-3 shrink-0 text-faint" />

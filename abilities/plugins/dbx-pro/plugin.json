@@ -2,7 +2,7 @@
   "id": "dbx-pro",
   "name": "dbx-pro",
   "icon": "assets/icon.png",
-  "version": "0.4.66",
+  "version": "0.4.75",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -10,7 +10,7 @@
     "expose": "./plugin"
   },
   "styles": [
-    "dist/assets/style-96d5d000ef.css"
+    "dist/assets/style-f68d7663a8.css"
   ],
   "permissions": [
     "agent.mcp.control",
@@ -28,7 +28,8 @@
     "storage.write",
     "fs.write",
     "shell.openExternal",
-    "network.fetch"
+    "network.fetch",
+    "ai.complete"
   ],
   "network": {
     "allowedHosts": [

@@ -27,7 +27,7 @@ import { NodeGraph, type Link, type NodeGraphApi, type NodePos } from "./compone
 import { PropertyInspector, type SelectedNodeInfo } from "./components/property-inspector";
 import { EditorStatusBar, type RunSummary } from "./components/editor-status-bar";
 import { RunPanel, type RunNode } from "./components/run-overlay";
-import { AiGenerateDialog, type ParamRow } from "./components/ai-node-panel";
+import { AiGenerateDialog, TemplateSaveDialog, type ParamRow } from "./components/ai-node-panel";
 import { BigscreenScreenEditor } from "./screen-editor";
 import { DEFAULT_PALETTE_ID, paletteById, paletteStyle } from "../shared/canvas-palettes";
 
@@ -127,6 +127,12 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 	// 画布状态 —— 初值与服务端还没返回时保持一致：空画布，不预置演示节点
 	const [nodes, setNodes] = useState<Record<string, NodePos>>({});
 	const [links, setLinks] = useState<Link[]>([]);
+
+	// 图表节点的取数入口：拿不到自身结果时从上游数据源结果里取。
+	const getUpstreamResult = useCallback(
+		(id: string) => getUpstreamData(id, links, nodes),
+		[getUpstreamData, links, nodes],
+	);
 	// 「已保存内容」指纹；挂载和刚加载完都不该是脏的
 	const baselineRef = useRef<string>(serializeCanvas({}, []));
 
@@ -181,6 +187,10 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 	} | null>(null);
 	const [aiLoading, setAiLoading] = useState(false);
 
+	// ── 模板保存 Dialog ──
+	const [showSaveDialog, setShowSaveDialog] = useState(false);
+	const [savingTemplate, setSavingTemplate] = useState(false);
+
 	/** 调 engine /drag/ai/generate 真实端点（宿主 AI 未暴露时 engine mock） */
 	const fetchAiResult = useCallback(async (prompt: string) => {
 		setAiLoading(true);
@@ -203,8 +213,31 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 			.catch(() => { /* 静默 */ });
 	}
 	function saveCurrentAsTemplate() {
-		// TODO: 自定义 TemplateSaveDialog 替换原生 prompt（与 bi-workspace 的 AiDialog 对齐）
-		getUi()?.notify?.({ message: "保存模板弹窗待实现", variant: "info" });
+		// 只有画布有内容才允许保存空模板（空模板没意义）
+		if (Object.keys(nodes).length === 0 && links.length === 0) {
+			getUi()?.notify?.({ message: "画布为空，没什么可保存的", variant: "info" });
+			return;
+		}
+		setShowSaveDialog(true);
+	}
+	async function confirmSaveTemplate(name: string) {
+		if (savingTemplate) return;
+		setSavingTemplate(true);
+		try {
+			const tpl = serializeCanvas(nodes, links);
+			await engineRequest<{ id: string; name: string; template: string; createTime: string }>(
+				"/drag/template/save",
+				{ name, template: tpl },
+				{ method: "POST" },
+			);
+			getUi()?.notify?.({ message: `已保存模板「${name}」`, variant: "success" });
+			setShowSaveDialog(false);
+			loadTemplates();
+		} catch (e) {
+			getUi()?.notify?.({ message: `保存模板失败: ${(e as Error).message}`, variant: "error" });
+		} finally {
+			setSavingTemplate(false);
+		}
 	}
 	function deleteTemplate(id: string) {
 		engineRequest<boolean>(`/drag/template/delete?id=${encodeURIComponent(id)}`, undefined, { method: "DELETE" })
@@ -250,6 +283,15 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 		}
 		return null;
 	})();
+
+	// 选中节点即展开属性面板：选中的意图就是配置它，收起态下不展开等于无从配置。
+	// 只在选中的节点发生变化时展开，用户手动收起后不会被反复弹开。
+	const selectedId = selectedNodeInfo?.id ?? null;
+	const lastAutoExpandedRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (selectedId && selectedId !== lastAutoExpandedRef.current) setRightCollapsed(false);
+		lastAutoExpandedRef.current = selectedId;
+	}, [selectedId]);
 
 	function handleNodeUpdate(id: string, patch: Partial<NodePos>) {
 		setNodes((prev) => {
@@ -436,17 +478,16 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 				guidesOn={guidesOn}
 				onGuidesToggle={() => setGuidesOn((v) => !v)}
 				onArrange={(layout) => graphApiRef.current?.arrange(layout, "all")}
-				onAiGenerate={async () => {
-				// TODO: 让 AiGenerateDialog 承担 prompt 输入（当前只显示结果）
-				setShowAiDialog(true);
-				await fetchAiResult("");
-			}}
+				onAiGenerate={() => {
+					setAiResult(null);  // 清上次残留结果
+					setShowAiDialog(true);
+				}}
 			/>
 
 			{/* 主体三栏（可拖拽 resize）- 响应式布局 */}
 			<div className="flex min-h-0 flex-1">
 				{/* 左栏：节点库（宽度可拖拽，collapsed 时 w-10 折叠态）- 在小屏幕上可隐藏 */}
-				<div style={{ width: leftCollapsed ? 40 : leftWidth }} className="hidden md:block h-full shrink-0 overflow-hidden transition-[width] duration-150">
+				<div style={{ width: leftCollapsed ? 40 : leftWidth }} className="hidden md:flex h-full shrink-0 overflow-hidden transition-[width] duration-150">
 					<NodeLibrary
 						collapsed={leftCollapsed}
 						onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
@@ -463,7 +504,7 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 							resizingRef.current = { side: "left", startX: e.clientX, startW: leftWidth };
 							document.body.style.cursor = "col-resize";
 						}}
-						className="w-[3px] shrink-0 cursor-col-resize bg-transparent hover:bg-accent/60 active:bg-accent transition-colors"
+						className="w-[3px] shrink-0 cursor-col-resize bg-border hover:bg-accent/60 active:bg-accent transition-colors"
 						title="拖拽调整节点库宽度"
 					/>
 				) : null}
@@ -490,6 +531,7 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 						links={links}
 						setLinks={setLinks}
 						nodeResults={nodeResults}
+						getUpstreamResult={getUpstreamResult}
 						gridStep={gridStep}
 						onGridStepChange={setGridStep}
 						guidesOn={guidesOn}
@@ -532,12 +574,14 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 						<AiGenerateDialog
 							x={aiDialogPos.x}
 							y={aiDialogPos.y}
-							prompt={aiResult?.prompt ?? "AI 正在生成…"}
+							aiLoading={aiLoading}
+							prompt={aiResult?.prompt}
 							rows={aiResult?.rows ?? []}
 							resultName={aiResult?.resultName}
 							paramCount={aiResult?.paramCount}
 							pendingCount={aiResult?.pendingCount}
-							onClose={() => setShowAiDialog(false)}
+							onClose={() => { setShowAiDialog(false); setAiResult(null); }}
+							onGenerate={(p) => { void fetchAiResult(p); }}
 							onRegenerate={() => {
 								if (aiResult?.prompt) void fetchAiResult(aiResult.prompt);
 							}}
@@ -572,6 +616,18 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 							}}
 						/>
 					) : null}
+
+					{/* 模板保存 Dialog — 替换原先的 notify 占位 */}
+					{showSaveDialog ? (
+						<TemplateSaveDialog
+							x={aiDialogPos.x}
+							y={aiDialogPos.y}
+							defaultName={page?.name ?? ""}
+							saving={savingTemplate}
+							onClose={() => setShowSaveDialog(false)}
+							onConfirm={(name) => { void confirmSaveTemplate(name); }}
+						/>
+					) : null}
 				</div>
 
 				{/* 右 resize handle */}
@@ -582,13 +638,13 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 							resizingRef.current = { side: "right", startX: e.clientX, startW: rightWidth };
 							document.body.style.cursor = "col-resize";
 						}}
-						className="w-[3px] shrink-0 cursor-col-resize bg-transparent hover:bg-accent/60 active:bg-accent transition-colors"
+						className="w-[3px] shrink-0 cursor-col-resize bg-border hover:bg-accent/60 active:bg-accent transition-colors"
 						title="拖拽调整属性面板宽度"
 					/>
 				) : null}
 
 				{/* 右栏：属性面板（宽度可拖拽）- 在小屏幕上可隐藏 */}
-				<div style={{ width: rightCollapsed ? 40 : rightWidth }} className="hidden lg:block h-full shrink-0 overflow-hidden transition-[width] duration-150">
+				<div style={{ width: rightCollapsed ? 40 : rightWidth }} className="hidden lg:flex h-full shrink-0 overflow-hidden transition-[width] duration-150">
 					<PropertyInspector
 						page={page}
 						theme={activeTheme}

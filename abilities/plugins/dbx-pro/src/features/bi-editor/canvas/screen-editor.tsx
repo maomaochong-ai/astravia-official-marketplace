@@ -175,6 +175,42 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 	const [dirty, setDirty] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	// ── 右键菜单（fixed 定位，用 clientX/clientY 不涉及 scale 逆映射）──
+	const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+	const ctxMenuRef = useRef<HTMLDivElement>(null);
+	function duplicateScreenNode(id: string) {
+		setNodes((prev) => {
+			const src = prev.find((n) => n.id === id);
+			if (!src) return prev;
+			const copy: ScreenNode = {
+				...src,
+				id: `s-${src.kind}-${nodeSeqRef.current++}`,
+				x: src.x + 24,
+				y: src.y + 24,
+				selected: true,
+			};
+			setSelectedId(copy.id);
+			return [...prev.map((n) => ({ ...n, selected: false })), copy];
+		});
+		setCtxMenu(null);
+	}
+	function deleteScreenNode(id: string) {
+		setNodes((prev) => prev.filter((n) => n.id !== id));
+		if (selectedId === id) setSelectedId(null);
+		setCtxMenu(null);
+	}
+	// 点击菜单外部关闭
+	useEffect(() => {
+		if (!ctxMenu) return;
+		function onDown(e: MouseEvent) {
+			if (ctxMenuRef.current && !ctxMenuRef.current.contains(e.target as Node)) {
+				setCtxMenu(null);
+			}
+		}
+		window.addEventListener("mousedown", onDown);
+		return () => window.removeEventListener("mousedown", onDown);
+	}, [ctxMenu]);
+
 	// zoom → zoomRef 同步（每次 zoom setState 后同步）
 	useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
@@ -222,6 +258,41 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 		setNodes((prev) => [...prev.map((n) => ({ ...n, selected: false })), newNode]);
 		setSelectedId(newNode.id);
 	}, [nodes.length]);
+
+	// ── HTML5 DnD：左栏 → 画布 ──
+	const [dragOver, setDragOver] = useState(false);
+
+	function handleScreenDrop(e: React.DragEvent<HTMLDivElement>) {
+		e.preventDefault();
+		setDragOver(false);
+		const data = e.dataTransfer?.getData("application/json");
+		if (!data) return;
+		try {
+			const payload = JSON.parse(data) as { screenKind?: string };
+			const kindKey = payload.screenKind;
+			if (!kindKey) return;
+			const def = KIND_DEFAULTS[kindKey];
+			if (!def) return;
+			// 坐标逆映射（同 startDrag：scale 容器 rect + zoom）
+			const rect = canvasWrapRef.current?.getBoundingClientRect();
+			if (!rect) return;
+			const z = zoomRef.current;
+			const cx = (e.clientX - rect.left) / z - def.w / 2; // 节点中心对准鼠标
+			const cy = (e.clientY - rect.top) / z - def.h / 2;
+			const newNode: ScreenNode = {
+				id: `s-${kindKey}-${nodeSeqRef.current++}`,
+				kind: def.kind,
+				title: `${def.title} ${nodeSeqRef.current}`,
+				x: Math.max(0, cx),
+				y: Math.max(0, cy),
+				w: def.w,
+				h: def.h,
+				selected: true,
+			};
+			setNodes((prev) => [...prev.map((n) => ({ ...n, selected: false })), newNode]);
+			setSelectedId(newNode.id);
+		} catch { /* ignore bad JSON */ }
+	}
 
 	// ── 节点拖拽（scale 容器坐标逆映射）──
 	const dragRef = useRef<{ id: string; ox: number; oy: number } | null>(null);
@@ -414,6 +485,11 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 								<button
 									key={r.label}
 									type="button"
+									draggable="true"
+									onDragStart={(e) => {
+										e.dataTransfer.setData("application/json", JSON.stringify({ screenKind: kindKey }));
+										e.dataTransfer.effectAllowed = "copy";
+									}}
 									onClick={() => handleRailClick(kindKey)}
 									className={`flex h-7 w-full items-center gap-2 rounded-[4px] px-2 text-left ${
 										on ? "bg-accent-soft" : "hover:bg-surface"
@@ -455,10 +531,22 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 					{/* scale 容器 — transform-origin top-left + translate 补偿居中
 						  坐标映射：canvasX = (clientX - rect.left) / zoom
 						  因为 top-left + translate 补偿后，scale 容器的渲染 rect.left/top 就是 translate 后的位置 */}
-					<div data-screen-fit-container className="relative flex min-h-0 flex-1 bg-screen p-6">
+					<div
+						data-screen-fit-container
+						className={`relative flex min-h-0 flex-1 bg-screen p-6 ${dragOver ? "ring-2 ring-accent/40 ring-inset" : ""}`}
+						onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+						onDragLeave={() => setDragOver(false)}
+					>
 						<div
 							ref={canvasWrapRef}
 							onPointerDown={handleCanvasBgClick}
+							onDrop={handleScreenDrop}
+							onContextMenu={(e) => {
+								if (e.target === e.currentTarget) {
+									e.preventDefault();
+									setCtxMenu(null);
+								}
+							}}
 							className="relative overflow-hidden rounded-card border border-screen-line bg-screen p-8 cursor-default"
 							style={{
 								width: SCREEN_W,
@@ -498,6 +586,12 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 								<div
 									key={n.id}
 									onPointerDown={(e) => startDrag(n.id, e)}
+									onContextMenu={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										setSelectedId(n.id);
+										setCtxMenu({ x: e.clientX, y: e.clientY, nodeId: n.id });
+									}}
 									className={`absolute flex flex-col rounded-card border bg-surface-raised cursor-grab ${
 										selectedId === n.id ? "z-20 border-accent shadow-[0_0_0_3px_rgba(59,130,246,0.25)]" : "border-border z-10"
 									}`}
@@ -680,6 +774,41 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 					<Btn size="sm" variant="primary" icon="icon-[lucide--play]" onClick={handleRunAll}>整体运行</Btn>
 				</div>
 			</footer>
+
+			{/* 右键菜单 — fixed 定位，用 clientX/clientY 不涉及 scale 逆映射 */}
+			{ctxMenu ? (
+				<div
+					ref={ctxMenuRef}
+					role="menu"
+					className="fixed z-[100] flex w-[168px] flex-col overflow-hidden rounded-card border border-border bg-surface-raised py-1 shadow-[0_12px_32px_var(--color-scrim)]"
+					style={{
+						left: Math.min(ctxMenu.x, window.innerWidth - 180),
+						top: Math.min(ctxMenu.y, window.innerHeight - 100),
+					}}
+				>
+					<button
+						type="button"
+						role="menuitem"
+						className="flex h-8 items-center gap-2 px-3 text-[12px] text-surface-foreground hover:bg-accent-soft hover:text-accent"
+						onClick={() => duplicateScreenNode(ctxMenu.nodeId)}
+					>
+						<Icon name="icon-[lucide--copy]" className="size-3.5 shrink-0" />
+						<span>复制节点</span>
+						<span className="ml-auto font-mono text-[10px] text-faint">⌘D</span>
+					</button>
+					<span className="mx-2 my-1 h-px bg-border" />
+					<button
+						type="button"
+						role="menuitem"
+						className="flex h-8 items-center gap-2 px-3 text-[12px] text-danger hover:bg-danger/10"
+						onClick={() => deleteScreenNode(ctxMenu.nodeId)}
+					>
+						<Icon name="icon-[lucide--trash-2]" className="size-3.5 shrink-0" />
+						<span>删除节点</span>
+						<span className="ml-auto font-mono text-[10px] text-faint">Del</span>
+					</button>
+				</div>
+			) : null}
 		</div>
 	);
 }

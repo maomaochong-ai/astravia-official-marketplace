@@ -190,7 +190,7 @@ export function NodeLibrary({
 
 	if (collapsed) {
 		return (
-			<div className="flex w-10 shrink-0 flex-col items-center gap-1 border-r border-b border-border bg-surface-raised py-2">
+			<div className="flex h-full w-10 shrink-0 flex-col items-center gap-1 border-r border-border bg-surface-raised py-2">
 				<button
 					type="button"
 					onClick={onToggleCollapsed}
@@ -204,7 +204,7 @@ export function NodeLibrary({
 	}
 
 	return (
-		<aside className="flex w-60 shrink-0 flex-col overflow-hidden border-r border-border bg-surface-raised">
+		<aside className="flex h-full w-60 shrink-0 flex-col overflow-hidden bg-surface-raised">
 			{/* 顶栏 h-9 */}
 			<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
 				<Icon name="icon-[lucide--layers]" className="size-3.5 shrink-0 text-muted" />

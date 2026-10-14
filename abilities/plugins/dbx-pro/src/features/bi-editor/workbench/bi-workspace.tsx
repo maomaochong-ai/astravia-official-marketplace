@@ -6,7 +6,9 @@
  *   - 搜索框前端实时过滤
  *   - 排序下拉（更新时间 / 名称 / 创建时间 / 修改次数）
  *   - Grid / List 视图切换
- *   - 右栏三条入口（从数据集新建 / 让 AI 生成 / 粘一条 SQL）真实对话框 + 创建 + 跳转画布预置节点
+ *   - 右栏三条入口（从数据集新建 / 问数（让 AI 生成）/ 粘一条 SQL）真实对话框 + 创建 + 跳转画布预置节点
+ *   - 问数面板（对齐 Quick BI 智能问数）：选数据集 → 自然语言提问 → 插件内 AI loop 自助 run_sql 取数
+ *     → 展示 SQL / 数据 / 图表 → 一键落画布为 source-sql + chart 节点图
  *   - 清空全部 notify("功能开发中") 占位
  */
 
@@ -22,6 +24,9 @@ import { Btn } from "../shared/components/ui/btn";
 import { AreaChart, Bars, Donut, SERIES } from "../shared/components/charts";
 import type { NodePos, Link } from "../canvas/components/node-graph";
 import { fnv1aArray } from "../../../shared/utils/hash";
+import { AskPanel } from "../../ask/ask-panel";
+import { toCanvasKind } from "../../ask/ask-chart";
+import type { AskDraft } from "../../ask/ask-types";
 
 // ── 后端类型 ──
 interface DataSource { id: string; name: string; type: string; status: string; tables?: string[]; }
@@ -98,7 +103,7 @@ type TreeRow = {
 // ── 常量：右栏三条入口 ──
 const START = [
 	{ icon: "icon-[lucide--table-2]",      id: "from-dataset", title: "从数据集新建", note: "选一张表，勾字段，直接出图" },
-	{ icon: "icon-[lucide--wand-sparkles]", id: "ai-generate",   title: "让 AI 生成",   note: "说一句要什么，它去拼节点" },
+	{ icon: "icon-[lucide--wand-sparkles]", id: "ai-generate",   title: "问数（让 AI 生成）", note: "说一句要什么，它自己去取数并拼好节点" },
 	{ icon: "icon-[lucide--scroll-text]",  id: "paste-sql",     title: "粘一条 SQL",   note: "已有 SQL 的话，贴进来就是数据集" },
 ];
 
@@ -223,24 +228,39 @@ function presetFromDataset(): { nodes: Record<string, NodePos>; links: Link[] } 
 		links: [{ id: "lp1", from: "n100", fromRow: 0, to: "n101", toRow: 0, tone: "#3b82f6" }],
 	};
 }
-function presetAi(chartKind: string): { nodes: Record<string, NodePos>; links: Link[] } {
-	const ns: Record<string, NodePos> = {
-		n200: { x: 60,  y: 140, w: 180, h: 118, tone: "#3b82f6", kind: "source-sql",
-			values: { title: "AI 生成数据源", sql: "SELECT d, sum(gmv) as gmv FROM orders GROUP BY d ORDER BY d LIMIT 14" } },
-		n201: { x: 300, y: 90,  w: 216, h: 222, tone: "#8b5cf6", kind: chartKind, selected: true,
-			values: { title: "AI 建议图表" } },
-	};
-	return {
-		nodes: ns,
-		links: [{ id: "la1", from: "n200", fromRow: 0, to: "n201", toRow: 0, tone: "#3b82f6" }],
-	};
-}
 function presetSql(sql: string): { nodes: Record<string, NodePos>; links: Link[] } {
 	const ns: Record<string, NodePos> = {
 		n300: { x: 60, y: 140, w: 180, h: 118, tone: "#f59e0b", kind: "source-sql", selected: true,
 			values: { title: "SQL 数据集", sql } },
 	};
 	return { nodes: ns, links: [] };
+}
+
+/**
+ * 问数结果落画布：SQL 数据源 + 图表节点，一条连线。
+ *
+ * 与 presetSql 的差别：这里的 SQL 与图型是问数面板真跑过、真取到数的结果，所以必须把连接一起带上 ——
+ * 节点里存连接 id（属性面板的数据源下拉写的就是 id），引擎执行时由
+ * resolveConnectionName 转成连接名（见 canvas/lib/connection-ref.ts）。
+ */
+function presetAsk(draft: AskDraft): { nodes: Record<string, NodePos>; links: Link[] } {
+	const connection = draft.connectionId || draft.connectionName;
+	const ns: Record<string, NodePos> = {
+		n400: { x: 60, y: 140, w: 180, h: 118, tone: "#3b82f6", kind: "source-sql",
+			values: { title: draft.title, sql: draft.sql, datasourceId: connection, connectionId: connection } },
+	};
+	// 明细表在画布上没有对应节点（不能透传，见 toCanvasKind）：只落数据源节点。
+	const canvasKind = toCanvasKind(draft.chartKind);
+	if (!canvasKind) {
+		ns.n400.selected = true;
+		return { nodes: ns, links: [] };
+	}
+	ns.n401 = { x: 300, y: 90, w: 216, h: 222, tone: "#8b5cf6", kind: canvasKind, selected: true,
+		values: { title: draft.title } };
+	return {
+		nodes: ns,
+		links: [{ id: "lq1", from: "n400", fromRow: 0, to: "n401", toRow: 0, tone: "#3b82f6" }],
+	};
 }
 
 export function BiWorkspace(): JSX.Element {
@@ -279,6 +299,16 @@ export function BiWorkspace(): JSX.Element {
 	const notify = (msg: string, variant: "success" | "error" | "info" = "info") => {
 		try { getUi()?.notify?.({ message: msg, variant }); } catch { /* ignore */ }
 	};
+
+	// ── 临时高亮「最近运行」面板 ──
+	const [runlogsFlash, setRunlogsFlash] = useState(false);
+	function focusRunlogs() {
+		const el = document.getElementById("runlogs-panel");
+		if (!el) return;
+		el.scrollIntoView({ behavior: "smooth", block: "center" });
+		setRunlogsFlash(true);
+		window.setTimeout(() => setRunlogsFlash(false), 1500);
+	}
 
 	// ── 派生：按 NAV + search + sort 过滤后的 pages ──
 	const derivedPages = useMemo(() => {
@@ -602,7 +632,7 @@ export function BiWorkspace(): JSX.Element {
 
 				<div className="ml-auto flex shrink-0 items-center gap-1">
 					<Btn size="sm" variant="ghost" icon="icon-[lucide--history]"
-						onClick={() => notify("最近运行记录在下方「最近运行」面板", "info")}>最近运行</Btn>
+						onClick={focusRunlogs}>最近运行</Btn>
 					<span className="h-4 w-px shrink-0 bg-border" />
 					<div className="ml-1 grid size-7 shrink-0 place-items-center rounded-full border border-border bg-surface text-[11px] text-muted">诸</div>
 				</div>
@@ -774,7 +804,12 @@ export function BiWorkspace(): JSX.Element {
 
 					{/* 最近运行 */}
 					{(activeNav === "board" || activeNav === "bigscreen") && (
-						<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-raised">
+						<div
+							id="runlogs-panel"
+							className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border bg-surface-raised transition-all duration-300 ${
+								runlogsFlash ? "border-accent shadow-[0_0_0_3px_var(--color-accent-soft)]" : "border-border"
+							}`}
+						>
 							<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
 								<Icon name="icon-[lucide--play]" className="size-3.5 shrink-0 text-muted" />
 								<span className="text-[11px] font-medium text-surface-foreground">最近运行</span>
@@ -883,14 +918,23 @@ export function BiWorkspace(): JSX.Element {
 					void handleCreateWithPreset("default", preset);
 				}} />}
 
-			{/* ── 对话框：让 AI 生成 ── */}
-			{dlgAi && <AiDialog onClose={() => setDlgAi(false)}
-				onConfirm={(prompt, chartKind) => {
-					setDlgAi(false);
-					notify("AI 后端未接入，已为你生成骨架节点", "info");
-					void handleCreateWithPreset("default", presetAi(chartKind));
-					void prompt; void chartKind;
-				}} />}
+			{/* ── 问数面板：对齐 Quick BI 智能问数（选数据集 → 提问 → 真取数 → 落画布） ── */}
+			{dlgAi && (
+				<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60" onClick={() => setDlgAi(false)}>
+					<div
+						className="h-[min(660px,88vh)] w-[min(880px,92vw)] overflow-hidden rounded-card border border-border bg-surface-raised shadow-2xl"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<AskPanel
+							onClose={() => setDlgAi(false)}
+							onInsert={(draft) => {
+								setDlgAi(false);
+								void handleCreateWithPreset("default", presetAsk(draft));
+							}}
+						/>
+					</div>
+				</div>
+			)}
 
 			{/* ── 对话框：粘一条 SQL ── */}
 			{dlgSql && <SqlDialog onClose={() => setDlgSql(false)}
@@ -950,49 +994,6 @@ function DatasetDialog({
 					<button type="button" className="h-7 rounded-control border border-border bg-surface px-3 text-[12px] text-muted hover:text-surface-foreground" onClick={onClose}>取消</button>
 					<button type="button" className="h-7 rounded-control bg-accent px-3 text-[12px] font-medium text-accent-foreground"
 						onClick={() => onConfirm(ds, table, fieldsText.split(",").map((s) => s.trim()).filter(Boolean))}>确认 → 进入画布</button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function AiDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: (prompt: string, chartKind: string) => void }): JSX.Element {
-	const [prompt, setPrompt] = useState("近 14 天 GMV 按周聚合折线图");
-	const [chartKind, setChartKind] = useState("chart-line");
-	const KINDS = [
-		{ k: "chart-line", label: "折线图" }, { k: "chart-bar", label: "柱状图" },
-		{ k: "chart-donut", label: "饼图" }, { k: "chart-kpi", label: "KPI 卡" },
-		{ k: "chart-funnel", label: "漏斗" },
-	];
-	return (
-		<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60" onClick={onClose}>
-			<div className="w-[440px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-2xl" onClick={(e) => e.stopPropagation()}>
-				<div className="flex h-10 items-center gap-2 border-b border-border bg-background px-3">
-					<Icon name="icon-[lucide--wand-sparkles]" className="size-3.5 text-ai" />
-					<span className="text-[12px] font-medium text-surface-foreground">让 AI 生成</span>
-					<button type="button" className="ml-auto grid size-5 place-items-center rounded-[2px] text-faint hover:bg-border" onClick={onClose}>
-						<Icon name="icon-[lucide--x]" className="size-3" />
-					</button>
-				</div>
-				<div className="flex flex-col gap-3 p-4">
-					<label className="flex flex-col gap-1">
-						<span className="text-[11px] text-muted">描述你想要什么</span>
-						<textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)}
-							className="rounded-control border border-border bg-surface px-2 py-1 text-[12px] text-surface-foreground" />
-					</label>
-					<label className="flex flex-col gap-1">
-						<span className="text-[11px] text-muted">主要图表类型</span>
-						<select value={chartKind} onChange={(e) => setChartKind(e.target.value)}
-							className="h-8 rounded-control border border-border bg-surface px-2 text-[12px] text-surface-foreground">
-							{KINDS.map((k) => <option key={k.k} value={k.k}>{k.label}</option>)}
-						</select>
-					</label>
-					<span className="text-[10px] text-faint">后端 AI 端点未接入，点确认会在画布预置数据源 + 图表节点骨架</span>
-				</div>
-				<div className="flex justify-end gap-2 border-t border-border bg-background px-3 py-2">
-					<button type="button" className="h-7 rounded-control border border-border bg-surface px-3 text-[12px] text-muted hover:text-surface-foreground" onClick={onClose}>取消</button>
-					<button type="button" className="h-7 rounded-control bg-ai px-3 text-[12px] font-medium text-ai-foreground"
-						onClick={() => onConfirm(prompt, chartKind)}>生成骨架 → 进入画布</button>
 				</div>
 			</div>
 		</div>

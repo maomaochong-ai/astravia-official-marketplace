@@ -18,6 +18,7 @@ import {
 } from "../../../../shared/services/engine-client";
 import type { NodePos, NodeId, Link } from "../components/node-graph";
 import { fnv1aRange } from "../../../../shared/utils/hash";
+import { resolveConnectionName } from "../lib/connection-ref";
 
 export interface NodeResult {
 	columns: string[];
@@ -110,7 +111,8 @@ export function useCanvasExecution(): UseCanvasExecutionReturn {
 		// ── source-sql：真实 engine 执行 ──
 		if (kind === "source-sql") {
 			const sql = String(values.sql ?? "").trim();
-			const connectionName = String(values.datasourceId ?? "");
+			// 面板存的是连接 id，引擎按 name 执行：统一在此解析（旧页面因此自动修复）
+			const connectionName = resolveConnectionName(values.datasourceId ?? values.connectionId, connections);
 			if (!sql) {
 				const result = errorToResult("SQL 为空");
 				resultsRef.current[id] = result;
@@ -142,7 +144,7 @@ export function useCanvasExecution(): UseCanvasExecutionReturn {
 		// ── source-table：真实 engine 执行 ──
 		if (kind === "source-table") {
 			const table = String(values.table ?? "").trim();
-			const connectionName = String(values.datasourceId ?? "");
+			const connectionName = resolveConnectionName(values.datasourceId ?? values.connectionId, connections);
 			const limit = Number(values.limit) || 1000;
 			if (!table) {
 				const result = errorToResult("未指定表名");
@@ -174,7 +176,7 @@ export function useCanvasExecution(): UseCanvasExecutionReturn {
 
 		// ── source-connector：直连 MySQL（engine client 真实执行，无连接时 mock） ──
 		if (kind === "source-connector") {
-			const connectionName = String(values.connectionId ?? values.datasourceId ?? "");
+			const connectionName = resolveConnectionName(values.connectionId ?? values.datasourceId, connections);
 			const tableName = String(values.tableName ?? values.table ?? "").trim();
 			if (!tableName) {
 				resultsRef.current[id] = errorToResult("未指定表名");
@@ -229,7 +231,7 @@ export function useCanvasExecution(): UseCanvasExecutionReturn {
 		}
 
 		// 非数据源节点：从上游获取数据，这里不做额外执行
-	}, []);
+	}, [connections]);
 
 	const getUpstreamData = useCallback((id: NodeId, links: Link[], nodes: Record<NodeId, NodePos>): NodeResult | null => {
 		// 找到所有指向当前节点的连线

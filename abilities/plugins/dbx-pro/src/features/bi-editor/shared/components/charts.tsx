@@ -321,6 +321,126 @@ export function Boxplot({ groups, className = "h-full w-full", tone = SERIES[2] 
 	);
 }
 
+// ── 散点图（x = index, y = values；支持多维度 values[][] 但迷你图只用一维） ──
+interface ScatterChartProps {
+	values: number[];
+	tone?: string;
+	className?: string;
+	domain?: [number, number];
+}
+
+export function ScatterChart({
+	values, tone = SERIES[0], className = "h-full w-full", domain,
+}: ScatterChartProps) {
+	if (values.length === 0) {
+		return (
+			<svg viewBox="0 0 100 100" preserveAspectRatio="none" className={className}>
+				<text x="50" y="54" textAnchor="middle" fontSize="6" fill="currentColor" fillOpacity="0.35">
+					无数据
+				</text>
+			</svg>
+		);
+	}
+	const [min, max] = domain ?? [Math.min(...values), Math.max(...values)];
+	const span = max - min || 1;
+	const points = values.map((v, i) => {
+		const x = values.length > 1 ? (i / (values.length - 1)) * 96 + 2 : 50;
+		const y = 94 - ((v - min) / span) * 88 - 2;
+		return { x, y };
+	});
+	return (
+		<svg viewBox="0 0 100 100" preserveAspectRatio="none" className={className}>
+			{/* 网格 */}
+			{[25, 50, 75].map((y) => (
+				<line key={y} x1="0" y1={y} x2="100" y2={y}
+					stroke="currentColor" strokeOpacity="0.12" strokeWidth="0.5" />
+			))}
+			{/* 点 */}
+			{points.map((p, i) => (
+				<g key={i}>
+					<circle cx={p.x} cy={p.y} r="2.6" style={{ fill: tone }} fillOpacity="0.22" />
+					<circle cx={p.x} cy={p.y} r="1.4" style={{ fill: tone }} />
+				</g>
+			))}
+		</svg>
+	);
+}
+
+// ── 雷达图（values 是各维度数值，labels 是轴名；迷你图里轴名压缩成首字） ──
+interface RadarChartProps {
+	values: number[];
+	labels?: string[];
+	tone?: string;
+	className?: string;
+	domain?: [number, number];
+}
+
+export function RadarChart({
+	values, labels = [], tone = SERIES[0], className = "h-full w-full", domain,
+}: RadarChartProps) {
+	const n = values.length;
+	if (n < 3) {
+		return (
+			<svg viewBox="0 0 100 100" preserveAspectRatio="none" className={className}>
+				<text x="50" y="54" textAnchor="middle" fontSize="6" fill="currentColor" fillOpacity="0.35">
+					需 ≥3 维度
+				</text>
+			</svg>
+		);
+	}
+	const [min, max] = domain ?? [Math.min(...values), Math.max(...values)];
+	const span = max - min || 1;
+	const cx = 50, cy = 50, R = 36;
+	// 极坐标 → 画布坐标（从正上方开始，顺时针）
+	const angle = (i: number) => (-Math.PI / 2) + (i / n) * Math.PI * 2;
+	const axisPt = (i: number, r: number) => ({
+		x: cx + Math.cos(angle(i)) * r,
+		y: cy + Math.sin(angle(i)) * r,
+	});
+	// 数据点
+	const pts = values.map((v, i) => {
+		const r = ((v - min) / span) * R;
+		return axisPt(i, r);
+	});
+	const polygon = pts.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(" ");
+	// 网格（3 层同心多边形）
+	const gridLevels = [0.33, 0.66, 1];
+	const axisPaths = Array.from({ length: n }, (_, i) => {
+		const p = axisPt(i, R);
+		return `M${cx},${cy} L${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+	}).join(" ");
+	return (
+		<svg viewBox="0 0 100 100" preserveAspectRatio="none" className={className}>
+			{/* 同心网格 */}
+			{gridLevels.map((lv, li) => {
+				const poly = Array.from({ length: n }, (_, i) => {
+					const p = axisPt(i, R * lv);
+					return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+				}).join(" ");
+				return <polygon key={li} points={poly} fill="none" stroke="currentColor" strokeOpacity="0.14" strokeWidth="0.5" />;
+			})}
+			{/* 轴线 */}
+			<path d={axisPaths} fill="none" stroke="currentColor" strokeOpacity="0.18" strokeWidth="0.5" />
+			{/* 数据多边形 */}
+			<polygon points={polygon} style={{ fill: tone }} fillOpacity="0.22" stroke={tone} strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+			{/* 数据点 */}
+			{pts.map((p, i) => (
+				<circle key={i} cx={p.x} cy={p.y} r="1.5" style={{ fill: tone }} />
+			))}
+			{/* 轴名（迷你图里只显示首字或缩写） */}
+			{labels.slice(0, n).map((l, i) => {
+				const p = axisPt(i, R + 7);
+				return (
+					<text key={i} x={p.x} y={p.y + 1.8} fontSize="4" textAnchor="middle"
+						fill="currentColor" fillOpacity="0.5">
+						{l.slice(0, 4)}
+					</text>
+				);
+			})}
+		</svg>
+	);
+}
+
 // ── 图表外框（标题 / 角标 + 自适应高度的图表区） ──
 export function ChartFrame({
 	title,
@@ -335,7 +455,7 @@ export function ChartFrame({
 	children: ReactNode;
 }) {
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-1">
+		<div className="flex min-h-0 flex-1 flex-col gap-1">
 			{title || hint ? (
 				<div className="flex items-center justify-between gap-2 text-[10px] text-muted">
 					<span className="min-w-0 truncate">{title}</span>

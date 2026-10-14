@@ -162,6 +162,7 @@ function resolveValueField(
 	spec: FieldSpec,
 	values: Record<string, unknown>,
 	result: NodeResult,
+	labelField: string | null,
 ): FieldResolution {
 	const configured = configuredField(values, spec.value);
 	if (spec.multiValue) {
@@ -177,8 +178,9 @@ function resolveValueField(
 			? { field: configured, error: null }
 			: { field: null, error: `字段 ${configured} 不在结果列中` };
 	}
-	// 未配置（或雷达图多值一个都没命中但也没配）→ 第一个以数值为主的列。
-	const inferred = result.columns.find((column) => mostlyNumeric(result, column));
+	// 未配置（或雷达图多值一个都没命中但也没配）→ 第一个以数值为主的列；
+	// 排除已当作维度的那一列，避免「同一个列既是维度又是数值」（如单行的 month="01"）。
+	const inferred = result.columns.find((column) => column !== labelField && mostlyNumeric(result, column));
 	return inferred ? { field: inferred, error: null } : { field: null, error: "结果列中没有数值列" };
 }
 
@@ -247,7 +249,7 @@ export function resolveNodeChartData(
 	// KPI 只要一个数值，不需要维度列。
 	const label = spec.label === null ? { field: null, error: null } : resolveLabelField(spec, values, result);
 	if (label.error) return emptyResult("field-missing", label.error);
-	const value = resolveValueField(spec, values, result);
+	const value = resolveValueField(spec, values, result, label.field);
 	if (value.error) return emptyResult("field-missing", value.error);
 	if (!value.field) return emptyResult("field-missing", "结果列中没有数值列");
 
