@@ -1,19 +1,23 @@
 {
   "name": "@astravia-marketplace/rea",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.12",
-    "@types/react": "^19.1.1",
-    "@astravia-org/plugin-cli": "^0.1.4",
     "@astravia-org/plugin-sdk": "^0.3.2",
     "@astravia-org/plugin-vite": "^0.2.1",
-    "@astravia-org/ui": "^0.1.0",
+    "@iconify-json/mdi": "^1.2.3",
+    "@iconify/tailwind4": "^1.2.3",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.1.1",
+    "@types/react-dom": "^19.1.1",
     "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.7"
   }
