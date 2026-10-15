@@ -18,7 +18,18 @@ probe and install it on demand.
   Agent Skill, including all `references/*.md` workflows. This guides the Agent
   on when to call REA, how to read Evidence, and how to recover from a missing
   provider.
-- `src/index.tsx` — registers a single `ui.slot.ability-detail` panel that shows
+- `src/index.tsx` — registers **two** UI slots that work together:
+  1. `ui.slot.activity-tab` "rea.workflow" — a 6-stage reverse-engineering workflow
+     panel (provider status bar, 6 target types routing, stage strip, per-stage
+     diagram, controls). Theme follows the host via `@theme inline` CSS variables
+     in `src/style.css`.
+  2. `ui.slot.input-action` "rea.openTab" — a toggle button below the AI input bar.
+     Turning it on attaches the tab, opens it at full width, and uses
+     `decoratePrompt` to inject REA workflow instructions into the next outgoing
+     prompt. Turning it off detaches the tab.
+
+  No interactive setup flow is required; the upstream CLI is pulled on first use
+  by the host's `cliProviders` runtime.
   the current `cliProviders.getStatus()` for `rea-agents`. No interactive setup
   flow is required; the upstream CLI is pulled on first use.
 - `locales/{en,zh}.json` — bilingual names, descriptions and status labels.

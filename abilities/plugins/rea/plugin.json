@@ -1,7 +1,7 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -14,6 +14,7 @@
   "minAppVersion": "0.5.60",
   "permissions": [
     "ui.slot.activity-tab",
+    "ui.slot.input-action",
     "agent.skills.control"
   ],
   "providers": {

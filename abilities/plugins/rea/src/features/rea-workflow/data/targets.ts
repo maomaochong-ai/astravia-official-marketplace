@@ -31,18 +31,10 @@ export interface TargetDefinition {
 	readonly hintKey: string;
 	/** i18n key: tab.target.<kind>.tools（推荐工具栈，3-4 个名词） */
 	readonly toolsKey: string;
-	/** 跳到哪个阶段（默认 stage 2 = route）。 */
-	readonly routeStage: number;
+	/** 跳到哪个阶段（当前所有目标都跳到 stage 2 = route；预留字段以便未来扩展）。 */
+	readonly routeStage: 2;
 	/** 推荐起点命令 i18n key: tab.target.<kind>.command。 */
 	readonly commandKey: string;
-	/** 跳到该目标时显示的「目标类型引导」SVG。 */
-	readonly diagram:
-		| "js-three-paths"
-		| "dotnet-managed"
-		| "native-three-providers"
-		| "firmware-pipeline"
-		| "web-traffic"
-		| "mobile-stack";
 }
 
 export const TARGETS: readonly TargetDefinition[] = [
@@ -53,7 +45,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		toolsKey: "tab.target.javascript.tools",
 		routeStage: 2,
 		commandKey: "tab.target.javascript.command",
-		diagram: "js-three-paths",
 	},
 	{
 		kind: "dotnet",
@@ -62,7 +53,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		toolsKey: "tab.target.dotnet.tools",
 		routeStage: 2,
 		commandKey: "tab.target.dotnet.command",
-		diagram: "dotnet-managed",
 	},
 	{
 		kind: "native",
@@ -71,7 +61,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		toolsKey: "tab.target.native.tools",
 		routeStage: 2,
 		commandKey: "tab.target.native.command",
-		diagram: "native-three-providers",
 	},
 	{
 		kind: "firmware",
@@ -80,7 +69,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		toolsKey: "tab.target.firmware.tools",
 		routeStage: 2,
 		commandKey: "tab.target.firmware.command",
-		diagram: "firmware-pipeline",
 	},
 	{
 		kind: "web",
@@ -89,7 +77,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		toolsKey: "tab.target.web.tools",
 		routeStage: 2,
 		commandKey: "tab.target.web.command",
-		diagram: "web-traffic",
 	},
 	{
 		kind: "mobile",
@@ -98,7 +85,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		toolsKey: "tab.target.mobile.tools",
 		routeStage: 2,
 		commandKey: "tab.target.mobile.command",
-		diagram: "mobile-stack",
 	},
 ] as const;
 

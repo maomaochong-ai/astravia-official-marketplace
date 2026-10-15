@@ -53,7 +53,7 @@
       "slug": "rea",
       "name": "Reverse Engineer Anything",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-       "version": "0.2.1",
+        "version": "0.2.2",
       "configVersion": 1,
       "license": "MIT",
       "author": "morluto / REA",

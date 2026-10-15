@@ -8,7 +8,7 @@
  * 主题色走 src/style.css 的 @theme inline，从宿主 :root 读取。
  */
 
-import { useEffect, useMemo, useState, type JSX } from "react";
+import { useMemo, useState, type JSX } from "react";
 import { useActivityTab } from "@astravia-org/plugin-sdk";
 import { ReaProviderStatusBar } from "./rea-provider-status-bar";
 import { ReaWorkflowTargetRouting } from "./rea-workflow-target-routing";
@@ -31,11 +31,6 @@ export interface ReaWorkflowTabProps {
 export function ReaWorkflowTab({ provider }: ReaWorkflowTabProps): JSX.Element {
 	const { active } = useActivityTab();
 	const [currentStage, setCurrentStage] = useState<number>(1);
-	const [mounted, setMounted] = useState<boolean>(false);
-
-	useEffect(() => {
-		setMounted(true);
-	}, []);
 
 	const stage = useMemo(
 		() => STAGES.find((s) => s.index === currentStage) ?? STAGES[0]!,
@@ -50,7 +45,7 @@ export function ReaWorkflowTab({ provider }: ReaWorkflowTabProps): JSX.Element {
 	const atFirst = currentStage <= 1;
 	const atLast = currentStage >= TOTAL_STAGES;
 
-	const animateClass = active && mounted ? "motion-safe:animate-in motion-safe:fade-in-0" : "";
+	const animateClass = active ? "motion-safe:animate-in motion-safe:fade-in-0" : "";
 
 	return (
 		<div className={`flex h-full w-full flex-col overflow-hidden bg-background text-foreground ${animateClass}`}>
