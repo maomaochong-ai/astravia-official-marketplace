@@ -8,7 +8,7 @@
 import { useEffect, useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PluginCliProviderPhase, PluginCliProviderStatus } from "@astravia-org/plugin-sdk";
-import { StatusChip } from "../../shared/components/status-chip";
+import { StatusChip } from "../../../shared/components/status-chip";
 import { ReaErrorExplainer, tryParseReaError } from "./rea-error-explainer";
 
 interface ReaProviderStatusBarProps {
