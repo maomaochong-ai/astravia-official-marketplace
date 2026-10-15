@@ -180,5 +180,7 @@
   "tab.target.mobile.label": "Mobile",
   "tab.target.mobile.hint": "Decompile Android APKs (jadx / apktool), inspect iOS bundles, attach with Frida over adb. Use when the target runs on a phone or tablet.",
   "tab.target.mobile.tools": "jadx · apktool · adb · frida",
-  "tab.target.mobile.command": "rea --target mobile --apk <path>\nrea adb-device-analysis --device <serial> --attach"
+  "tab.target.mobile.command": "rea --target mobile --apk <path>\nrea adb-device-analysis --device <serial> --attach",
+  "action.openTab.label": "Reverse engineer with REA",
+  "prompt.workflow.instructions": "REA workflow is active. Follow the 6-stage reverse-engineering process (route → connect → analyze → lift → verify → evidence). Pick a target type (JavaScript / .NET / native / firmware / web / mobile) before running any analysis, and treat recentOutput as the source of truth for CLI status."
 }

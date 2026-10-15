@@ -180,5 +180,7 @@
   "tab.target.mobile.label": "移动端",
   "tab.target.mobile.hint": "反编译 Android APK（jadx / apktool），检查 iOS 包，通过 adb 用 Frida 挂载。目标是手机或平板应用时使用。",
   "tab.target.mobile.tools": "jadx · apktool · adb · frida",
-  "tab.target.mobile.command": "rea --target mobile --apk <path>\nrea adb-device-analysis --device <serial> --attach"
+  "tab.target.mobile.command": "rea --target mobile --apk <path>\nrea adb-device-analysis --device <serial> --attach",
+  "action.openTab.label": "用 REA 逆向分析",
+  "prompt.workflow.instructions": "REA 工作流已激活。请按 6 阶段逆向流程（路由 → 接入 → 分析 → 提升 → 验证 → 证据）执行；运行任何分析前先选定目标类型（JavaScript / .NET / 原生 / 固件 / Web / 移动），并把 recentOutput 视为 CLI 状态的唯一事实源。"
 }
