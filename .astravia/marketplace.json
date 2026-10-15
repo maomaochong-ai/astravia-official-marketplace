@@ -83,7 +83,7 @@
       "slug": "rea",
       "name": "Reverse Engineer Anything",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "configVersion": 1,
       "license": "MIT",
       "author": "morluto / REA",
@@ -147,6 +147,21 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.2.astraviapkg",
             "sha256": "9f9e0de6fed054e7347a8447dc465426150d376c40f8e55786f95aeb507b1642"
+          }
+        },
+        {
+          "version": "0.2.3",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.3.astraviapkg",
+            "sha256": "b51e3d4604c02dd43beab0ec68133cb16c0b535b2e649e7ce28b4a59d5c0ba68"
           }
         }
       ]
@@ -5793,5 +5808,5 @@
     }
   ],
   "version": "0.4.75",
-  "marketplaceVersion": "2026.10.15-9"
+  "marketplaceVersion": "2026.10.15-10"
 }
