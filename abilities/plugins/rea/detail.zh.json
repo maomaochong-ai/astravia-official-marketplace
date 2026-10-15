@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "用证据说话，逆向已发布的软件",
+      "description": "REA 给 Agent 提供一套结构化工具，用来调查编译或打包后的应用。每条结论都附 Evidence 记录，列出背后的文件、偏移、哈希与已知边界。",
+      "badges": ["原生", "JavaScript / Electron", "托管代码 (.NET / JVM)", "固件", "网站流量"]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "原生与固件分析",
+          "description": "用 REA 自带工具与可选的 Ghidra 反汇编编译后的二进制与固件，对比版本、解释功能、定位未签名代码，全程不用离开对话。",
+          "icon": "solar:programming-bold"
+        },
+        {
+          "title": "JavaScript 与 Electron 应用",
+          "description": "把已发布的 ASAR 归档、ESM 模块以及 Electron 应用的 IPC 接口映射回源码，读出产出这份制品的构建步骤。",
+          "icon": "solar:programming-bold"
+        },
+        {
+          "title": "托管代码（.NET / JVM）",
+          "description": "把托管程序集和字节码反编译成可读内容，回收符号、推断调用图、在源码仓库已不可得时解释行为。",
+          "icon": "solar:programming-bold"
+        },
+        {
+          "title": "运行时观察",
+          "description": "用 REA 的运行时 provider（Fiddler、类 mitmproxy 抓包、运行中应用观察）抓取流量、日志、进程状态，回答关于「正在运行的程序」的问题。",
+          "icon": "solar:programming-bold"
+        }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "我有一个闭源 Electron 应用在 /tmp/sample.app。2.3 比 2.2 多了哪些功能？新版本用了哪些 IPC 通道？",
+        "assistant_reply": "REA 把两份 ASAR 归档映成模块视图，并 diff 了 IPC 接口。2.3 新增了 `app://sync/v2` 与 `app://telemetry/v2` 两个通道，并把本地 SQLite 缓存换成了密封索引。证据（偏移、哈希、IPC 合约）见下方；限制章节标出了三个无法读取的原生模块和未解密的资源。"
+      }
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "从 Astravia 市场添加官方 REA 插件。插件内置 Skill，Agent 知道何时该调 REA。"
+        },
+        {
+          "title": "安装 REA CLI",
+          "description": "首次使用时 Astravia 会探测 `npx -y rea-agents@latest --version`。CLI 会在本地缓存包，不做全局安装。"
+        },
+        {
+          "title": "按需接入引擎",
+          "description": "原生与固件分析建议本机装好 Ghidra；JavaScript 与 Electron 不需要额外引擎。doctor 命令会告诉你缺哪个 provider。"
+        },
+        {
+          "title": "向 Agent 提问",
+          "description": "把 Agent 指向一个文件、归档或运行中的应用并提问，REA 返回 Evidence 记录，由 Agent 在对话中展示。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "REA 不会安装或升级 Node.js、npm、Homebrew、Java、Ghidra、IDA、JADX、Binwalk、Unblob。使用现成的前置依赖；doctor 会告诉你某个任务缺哪一项需要自行补上。"
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "逆向工程可能受当地法律和许可证条款约束。对某个制品运行 REA 之前，请先确认你有分析它的权利。"
+    },
+    {
+      "type": "links",
+      "items": [
+        { "label": "REA 项目主页", "href": "https://rea.tools/" },
+        { "label": "REA GitHub 仓库", "href": "https://github.com/morluto/rea" },
+        { "label": "指南与工作流", "href": "https://rea.tools/guides/" }
+      ]
+    }
+  ]
+}
