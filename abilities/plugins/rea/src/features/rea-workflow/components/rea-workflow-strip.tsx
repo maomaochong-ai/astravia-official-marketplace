@@ -17,7 +17,7 @@ interface StripProps {
 	readonly onSelect: (stage: number) => void;
 }
 
-export function ReaWorkflowStrip({ currentStage, onSelect }: StripProps): JSX.Element {
+export function ReaWorkflowStageStrip({ currentStage, onSelect }: StripProps): JSX.Element {
 	const { t } = useTranslation();
 	return (
 		<div className="border-b border-border bg-card/30 px-3 py-2.5">
