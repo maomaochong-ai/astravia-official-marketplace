@@ -1,0 +1,52 @@
+{
+  "id": "rea",
+  "name": "%name%",
+  "version": "0.2.1",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "rea",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "minAppVersion": "0.5.60",
+  "permissions": [
+    "ui.slot.activity-tab",
+    "agent.skills.control"
+  ],
+  "providers": {
+    "cli": [
+      {
+        "id": "rea-agents",
+        "command": "npx",
+        "probe": {
+          "args": [
+            "-y",
+            "rea-agents@latest",
+            "--version"
+          ],
+          "timeoutMs": 60000
+        },
+        "install": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "rea-agents@latest",
+            "--version"
+          ],
+          "timeoutMs": 600000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "skillPaths": [
+      "agent/skills/reverse-engineer-anything"
+    ]
+  },
+  "description": "%description%",
+  "author": "morluto / REA",
+  "defaultLocale": "en"
+}

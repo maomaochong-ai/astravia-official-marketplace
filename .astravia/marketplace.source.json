@@ -50,6 +50,50 @@
     {
       "type": "plugin",
       "slug": "cli-proxy-api",
+      "slug": "rea",
+      "name": "Reverse Engineer Anything",
+      "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
+       "version": "0.2.1",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "morluto / REA",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "reverse-engineering",
+        "binary-analysis",
+        "decompilation",
+        "javascript",
+        "electron",
+        "analysis"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "逆向工程助手",
+            "description": "把 REA 接入 Astravia，让 Agent 逆向原生二进制、JavaScript 与 Electron 应用、.NET 程序集、固件以及网站流量——每条结论都附上证据与边界。",
+            "tags": [
+              "逆向工程",
+              "二进制分析",
+              "反编译",
+              "javascript",
+              "electron",
+              "分析"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/rea"
+      },
+      "minAppVersion": "0.5.60"
+    },
+    {
+      "type": "plugin",
+      "slug": "cli-proxy-api",
       "name": "CLIProxyAPI",
       "description": "Run a managed local gateway for Gemini CLI, Codex, Claude, Antigravity, Kimi and xAI accounts, then use its models in Astravia.",
       "version": "1.10.5",
@@ -642,7 +686,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.75",
+      "version": "0.4.76",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Reverse engineer shipped software with evidence",
+      "description": "REA gives the agent a structured toolset for investigating compiled or packaged applications. Every claim is backed by an Evidence record that lists the files, offsets, hashes, and limitations behind it.",
+      "badges": ["Native", "JavaScript / Electron", "Managed (.NET / JVM)", "Firmware", "Website traffic"]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "Native & firmware analysis",
+          "description": "Disassemble compiled binaries and firmware with bundled REA tools and optional Ghidra. Compare versions, explain features, and surface unsigned code without leaving the conversation.",
+          "icon": "solar:programming-bold"
+        },
+        {
+          "title": "JavaScript & Electron apps",
+          "description": "Map shipped ASAR archives, ESM modules and the IPC surface of Electron apps back to their source. Read the build steps that produced the artifact you are debugging.",
+          "icon": "solar:programming-bold"
+        },
+        {
+          "title": "Managed code (.NET / JVM)",
+          "description": "Decompile managed assemblies and bytecode into something readable. Recover symbols, infer call graphs, and explain behaviour even when the source repository is gone.",
+          "icon": "solar:programming-bold"
+        },
+        {
+          "title": "Runtime observation",
+          "description": "Capture live traffic, logs and process state with REA's runtime providers (Fiddler, mitmproxy-style hooks, launched-app observation) so the agent can answer questions about a running program.",
+          "icon": "solar:programming-bold"
+        }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "I have this closed-source Electron app at /tmp/sample.app. What features did version 2.3 add compared to 2.2, and which IPC channels did the new release use?",
+        "assistant_reply": "REA mapped both ASAR archives into module views and diffed the IPC surface. The 2.3 release added channels `app://sync/v2` and `app://telemetry/v2` and replaced the local SQLite cache with a sealed index. Evidence (offsets, hashes and the IPC contract) is attached below; limitations call out the three unreadable native modules and the encrypted assets I could not decrypt."
+      }
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "Add the official REA plugin from the Astravia marketplace. The plugin ships the bundled Skill so the agent knows when to call REA."
+        },
+        {
+          "title": "Install the REA CLI",
+          "description": "Astravia probes `npx -y rea-agents@latest --version` on first use. The CLI caches the package locally; no global install is performed."
+        },
+        {
+          "title": "Connect the engine you need",
+          "description": "Native and firmware work reads best with Ghidra installed locally; JavaScript and Electron work needs no extra engine. The doctor command reports which provider is missing."
+        },
+        {
+          "title": "Ask the agent",
+          "description": "Point the agent at a file, package, or running app and ask a question. REA returns an Evidence record that the agent surfaces in chat."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "REA never installs or upgrades Node.js, npm, Homebrew, Java, Ghidra, IDA, JADX, Binwalk, or Unblob. Use existing prerequisites; the doctor command tells you which one to bring if a task needs it."
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "Reverse engineering can be subject to local law and license terms. Confirm you have the right to analyze a given artifact before invoking REA on it."
+    },
+    {
+      "type": "links",
+      "items": [
+        { "label": "REA project site", "href": "https://rea.tools/" },
+        { "label": "REA on GitHub", "href": "https://github.com/morluto/rea" },
+        { "label": "Guides and workflows", "href": "https://rea.tools/guides/" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+/*
+ * Tailwind CSS — 限定在插件 @scope 内。
+ *
+ * 只导 theme + utilities，不导 preflight：preflight 里有全局 box-sizing /
+ * margin / font-family 重置，漏到插件根节点外面会污染宿主 UI。
+ * 与 as-ocr/src/style.css / tihu/src/style.css 保持一致策略。
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/*
+ * 宿主 CSS variables → Tailwind theme token 映射。
+ *
+ * 插件 CSS 被 plugin-vite 包进 @scope ([data-astravia-plugin-root="rea"])，
+ * Tailwind 的 :root dark: 变体穿不过这个边界；只有宿主 CSS variables 能继承进来。
+ * 把它们映射成 Tailwind 语义色（bg-card / text-foreground / border-border …），
+ * 让活动栏 Tab 里的工具类正确读到宿主主题。
+ *
+ * warning 不是所有主题都暴露，自带主题兜底色；缺值时 Tailwind 走 fallback 链。
+ */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-border: var(--border);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-warning: var(--warning, #d97706);
+}
+
+/* mdi / solar 图标按需生成（icon-[mdi--*] / icon-[solar--*]）。 */
+@plugin "@iconify/tailwind4";

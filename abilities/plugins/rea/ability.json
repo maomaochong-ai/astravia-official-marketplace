@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "rea",
+      "version": "0.2.1",
+  "icon": "assets/icon.svg",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "fallback": "README.md",
+    "meta": [
+      { "key": "homepage", "value": "https://rea.tools/" },
+      { "key": "repository", "value": "https://github.com/morluto/rea" },
+      { "key": "docs", "value": "https://rea.tools/guides/" }
+    ],
+    "i18n": {
+      "zh": { "path": "detail.zh.json" }
+    }
+  }
+}
