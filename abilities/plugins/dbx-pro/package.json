@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/dbx-pro",
-  "version": "0.4.76",
+  "version": "0.4.78",
   "private": true,
   "type": "module",
   "scripts": {

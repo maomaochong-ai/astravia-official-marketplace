@@ -19,6 +19,7 @@ import { BarChart, Boxplot, ChartFrame, Donut, EmptyChart, Funnel, LineChart, Ra
 import { applyArrangement, computeArrangement, DEFAULT_ARRANGE_GAP, type ArrangeBox, type ArrangeLayout } from "../lib/auto-layout";
 import type { GridStep } from "./canvas-strip";
 import { Chip } from "../../shared/components/ui/chip";
+import { Icon } from "../../shared/components/ui/icon";
 import { AddNodeMenu } from "./add-node-menu";
 import { engineRequest } from "../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
@@ -2129,7 +2130,7 @@ function NodeContextMenu({ x, y, muted, onClose, onCopy, onRunThis, onDisable, o
 	return (
 		<div
 			onMouseDown={(e) => e.stopPropagation()}
-			className="absolute z-30 w-[180px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]"
+			className="absolute z-30 max-h-[240px] w-[180px] overflow-y-auto rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]"
 			style={{ left: x, top: y }}
 		>
 			<div className="py-1">
@@ -2140,7 +2141,7 @@ function NodeContextMenu({ x, y, muted, onClose, onCopy, onRunThis, onDisable, o
 						onClick={(e) => { e.stopPropagation(); it.onClick(); }}
 						className="flex h-7 w-full items-center gap-2 px-2.5 text-[11px] text-surface-foreground hover:bg-accent-soft hover:text-accent"
 					>
-						<span className={it.icon + " size-3.5 shrink-0"} />
+						<Icon name={it.icon} className="size-3.5 shrink-0" />
 						<span>{it.label}</span>
 					</button>
 				))}
@@ -2154,7 +2155,7 @@ function NodeContextMenu({ x, y, muted, onClose, onCopy, onRunThis, onDisable, o
 						onClick={(e) => { e.stopPropagation(); it.onClick(); }}
 						className="flex h-7 w-full items-center gap-2 px-2.5 text-[11px] text-danger hover:bg-danger/10"
 					>
-						<span className={it.icon + " size-3.5 shrink-0"} />
+						<Icon name={it.icon} className="size-3.5 shrink-0" />
 						<span>{it.label}</span>
 					</button>
 				))}

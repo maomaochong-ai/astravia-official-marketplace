@@ -17,6 +17,7 @@ import { useBigscreenPages, type BigscreenPage } from "../shared/hooks/use-bigsc
 import { BigscreenEditor } from "../canvas/canvas-editor";
 import { getUi } from "../../../runtime-contract";
 import { engineRequest } from "../../../shared/services/engine-client";
+import dbxIcon from "../../../../assets/icon.png";
 import { Icon } from "../shared/components/ui/icon";
 import { Chip } from "../shared/components/ui/chip";
 import { IconButton } from "../shared/components/ui/icon-button";
@@ -610,9 +611,7 @@ export function BiWorkspace(): JSX.Element {
 			{/* 顶栏 */}
 			<header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-raised px-5">
 				<div className="flex shrink-0 items-center gap-2">
-					<Icon name="icon-[lucide--database]" className="size-4 text-muted" />
-					<span className="text-[13px] text-muted">数据资产</span>
-					<Icon name="icon-[lucide--chevron-right]" className="size-3.5 text-faint" />
+					<img src={dbxIcon} alt="dbx-pro" className="size-6 rounded-sm" />
 					<span className="text-[13px] font-semibold text-surface-foreground">BI 工作台</span>
 					<Chip tone="accent">本地工作树</Chip>
 				</div>

@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "free-model-gateway",
+	"version": "0.0.1",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "generic",
+					"user_prompt": "把本地免费模型服务跑起来，模型加到模型列表里。",
+					"assistant_reply": "免费模型网关已装好服务器运行时并启动：健康检查通过、模型列表已同步进 Astravia，可以直接在模型选择器里用了。侧边栏「免费模型网关」可随时启停服务、打开管理界面或重新同步模型。上游复用厂商免费通道，使用风险由你自担。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "装完即用，一套界面管起来",
+				"items": [
+					{
+						"title": "运行时随包分发",
+						"description": "上游 standalone 服务器整树打进插件包，由宿主用托管 Node 拉起，端口与数据目录自动注入，无需克隆仓库或配环境。",
+						"icon": "solar:box-linear"
+					},
+					{
+						"title": "一键启停",
+						"description": "激活即自动安装并启动，随插件禁用与应用退出自动清理；支持手动启停、重启与日志查看。",
+						"icon": "solar:play-circle-linear"
+					},
+					{
+						"title": "模型自动入列",
+						"description": "就绪后读取服务自生成的密钥、拉取 /v1/models 并写入宿主模型注册表，OpenAI 兼容端点即插即用。",
+						"icon": "solar:widget-5-linear"
+					},
+					{
+						"title": "风险自知",
+						"description": "页面内置风险声明：上游复用厂商免费通道可能违反其条款，一切后果由使用者自行承担。",
+						"icon": "solar:danger-triangle-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "generic",
+							"user_prompt": "Start my local free-model server and add its models to the model list.",
+							"assistant_reply": "The Free Model Gateway installed and started the server runtime: health check passed and the model list is synced into Astravia — pick a model and go. Start/stop the server, open the management UI, or resync models anytime from the sidebar entry. The upstream reuses vendor free channels; you accept the risks."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Works right after install",
+						"items": [
+							{
+								"title": "Runtime ships with the plugin",
+								"description": "The whole upstream standalone server tree is bundled; the host starts it with its managed Node and injects the port and data directory. No repo clone, no path setup.",
+								"icon": "solar:box-linear"
+							},
+							{
+								"title": "One-click lifecycle",
+								"description": "Installs and starts on activation, cleaned up automatically on plugin disable and app quit; manual start/stop, restart and logs included.",
+								"icon": "solar:play-circle-linear"
+							},
+							{
+								"title": "Models auto-listed",
+								"description": "Once ready it reads the server-generated key, fetches /v1/models and writes them into the host model registry as an OpenAI-compatible endpoint.",
+								"icon": "solar:widget-5-linear"
+							},
+							{
+								"title": "Informed risk",
+								"description": "A built-in disclaimer: the upstream reuses vendor free channels and may violate their terms; the user accepts all consequences.",
+								"icon": "solar:danger-triangle-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

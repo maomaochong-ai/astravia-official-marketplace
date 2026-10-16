@@ -124,6 +124,7 @@ export const NodeCard = memo(function NodeCard({
 						e.stopPropagation(); e.preventDefault();
 						if (socketHandlers?.onInputDown) socketHandlers.onInputDown({ nodeId: nodeId ?? "", row: s.row, tone: s.tone, clientX: e.clientX, clientY: e.clientY });
 					}}
+					onContextMenu={(e) => e.preventDefault()}
 					className="pointer-events-auto absolute -left-[6px] size-3 cursor-crosshair rounded-full border-2 border-surface-raised hover:scale-125 hover:ring-2 hover:ring-accent/40 transition-all"
 					style={{ top: rowDy(s.row) - 6, background: s.tone, zIndex: 20 }}
 				/>
@@ -139,6 +140,7 @@ export const NodeCard = memo(function NodeCard({
 						e.stopPropagation(); e.preventDefault();
 						if (socketHandlers?.onOutputDown) socketHandlers.onOutputDown({ nodeId: nodeId ?? "", row: s.row, tone: s.tone, clientX: e.clientX, clientY: e.clientY });
 					}}
+					onContextMenu={(e) => e.preventDefault()}
 					className="pointer-events-auto absolute -right-[6px] size-3 cursor-crosshair rounded-full border-2 border-surface-raised hover:scale-125 hover:ring-2 hover:ring-accent/40 transition-all"
 					style={{ top: rowDy(s.row) - 6, background: s.tone, zIndex: 20 }}
 				/>

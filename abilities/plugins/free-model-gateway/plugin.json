@@ -1,0 +1,101 @@
+{
+	"id": "free-model-gateway",
+	"name": "%plugin.name%",
+	"icon": "assets/icon.png",
+	"version": "0.0.1",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^2.0.0",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "freeModelGateway",
+		"expose": "./plugin"
+	},
+	"styles": [
+		"dist/style.css"
+	],
+	"permissions": [
+		"ui.slot.workspace-view",
+		"models.manage",
+		"storage.read",
+		"storage.write",
+		"shell.openExternal"
+	],
+	"providers": {
+		"services": [
+			{
+				"id": "ofm-gateway",
+				"runtime": {
+					"kind": "host-node",
+					"version": "2.1.0",
+					"entry": "server/boot.mjs",
+					"platforms": {
+						"win32-x64": {
+							"executable": "server/packages/standalone/cli.mjs",
+							"artifacts": [
+								{
+									"sha256": "b6f1d631691e0a8f47134f5a65856c3d75c68406f61f71e974e05a98b257aba9",
+									"archive": "zip",
+									"destination": "server"
+								}
+							]
+						},
+						"darwin-x64": {
+							"executable": "server/packages/standalone/cli.mjs",
+							"artifacts": [
+								{
+									"sha256": "b6f1d631691e0a8f47134f5a65856c3d75c68406f61f71e974e05a98b257aba9",
+									"archive": "zip",
+									"destination": "server"
+								}
+							]
+						},
+						"darwin-arm64": {
+							"executable": "server/packages/standalone/cli.mjs",
+							"artifacts": [
+								{
+									"sha256": "b6f1d631691e0a8f47134f5a65856c3d75c68406f61f71e974e05a98b257aba9",
+									"archive": "zip",
+									"destination": "server"
+								}
+							]
+						},
+						"linux-x64": {
+							"executable": "server/packages/standalone/cli.mjs",
+							"artifacts": [
+								{
+									"sha256": "b6f1d631691e0a8f47134f5a65856c3d75c68406f61f71e974e05a98b257aba9",
+									"archive": "zip",
+									"destination": "server"
+								}
+							]
+						},
+						"linux-arm64": {
+							"executable": "server/packages/standalone/cli.mjs",
+							"artifacts": [
+								{
+									"sha256": "b6f1d631691e0a8f47134f5a65856c3d75c68406f61f71e974e05a98b257aba9",
+									"archive": "zip",
+									"destination": "server"
+								}
+							]
+						}
+					}
+				},
+				"process": {
+					"args": [
+						"--port",
+						"${ASTRAVIA_SERVICE_PORT}",
+						"--data-dir",
+						"${ASTRAVIA_SERVICE_DATA_DIR}"
+					]
+				},
+				"health": {
+					"path": "/health",
+					"timeoutMs": 45000
+				}
+			}
+		]
+	},
+	"description": "%plugin.description%",
+	"author": "Astravia Community"
+}
