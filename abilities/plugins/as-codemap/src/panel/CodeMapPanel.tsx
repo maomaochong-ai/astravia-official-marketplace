@@ -2,12 +2,13 @@
  * 右侧「代码图谱」面板：构建入口 + 符号/引用总览。
  * Tailwind className（宿主规范：禁手写业务 CSS）。
  */
-
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { CodeMapStore } from "../store/codemap-store";
 
 export function CodeMapPanel({ store }: { store: CodeMapStore }): JSX.Element {
+	const { t } = useTranslation();
 	const [, force] = useState(0);
 	useEffect(() => store.subscribe(() => force((n) => n + 1)), [store]);
 
@@ -16,23 +17,21 @@ export function CodeMapPanel({ store }: { store: CodeMapStore }): JSX.Element {
 	return (
 		<div className="flex h-full flex-col">
 			<div className="flex items-center gap-2 border-b border-border px-3 py-2">
-				<span className="text-sm font-medium">代码图谱</span>
+				<span className="text-sm font-medium">{t("view.map")}</span>
 				{index ? (
 					<span className="text-xs text-muted-foreground">
-						{index.fileCount} 文件 · {index.symbolCount} 符号
+						{t("map.summary.built", { fileCount: index.fileCount, symbolCount: index.symbolCount })}
 					</span>
 				) : (
-					<span className="text-xs text-muted-foreground">尚未构建</span>
+					<span className="text-xs text-muted-foreground">{t("map.summary.empty")}</span>
 				)}
 			</div>
 			<div className="flex-1 overflow-y-auto px-3 py-2">
 				{index === null ? (
 					<div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
 						<span className="icon-[mdi--graph-outline] h-8 w-8 opacity-50" />
-						<p className="text-sm">构建码谱后可查询符号与引用</p>
-						<p className="max-w-64 text-xs leading-5">
-							在对话里说「构建码谱」，agent 会扫描当前工作区；之后可用 code_graph_query 查询符号定位与调用关系。
-						</p>
+						<p className="text-sm">{t("map.empty.title")}</p>
+						<p className="max-w-64 text-xs leading-5">{t("map.empty.hint")}</p>
 					</div>
 				) : (
 					<div className="text-xs leading-6">
@@ -47,7 +46,7 @@ export function CodeMapPanel({ store }: { store: CodeMapStore }): JSX.Element {
 						))}
 						{index.graph.symbols.length > 200 ? (
 							<div className="mt-2 text-muted-foreground/70">
-								…另有 {index.graph.symbols.length - 200} 个符号，用 code_graph_query 精确查询。
+								{t("map.overflow", { count: index.graph.symbols.length - 200 })}
 							</div>
 						) : null}
 					</div>

@@ -11,6 +11,19 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* 宿主没暴露的语义色（warning / success）由本插件在 [data-astravia-plugin-root="as-codemap"]
+   作用域内派生：跟着宿主 [data-mode="dark|light"] 自动亮暗，作用域外读不到这些变量。
+   选 oklch 是为了确保在两层半透明叠加下仍可分辨明度；亮度沿用宿主语义色的力度。
+   数值要跟着宿主主题族走时，调这里即可。 */
+[data-astravia-plugin-root="as-codemap"][data-mode="dark"] {
+	--warning: oklch(0.78 0.16 80);
+	--success: oklch(0.72 0.15 150);
+}
+[data-astravia-plugin-root="as-codemap"][data-mode="light"] {
+	--warning: oklch(0.55 0.16 60);
+	--success: oklch(0.55 0.15 145);
+}
+
 /* 宿主 CSS variables → Tailwind theme token 映射。
    插件 CSS 被 plugin-vite 包进 @scope ([data-astravia-plugin-root="as-codemap"])，
    Tailwind 的 :root dark: 变体都穿不过这个边界——只有 host 的 CSS variables 能继承进来。
@@ -33,6 +46,9 @@
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
 	--color-warning: var(--warning);
+	--color-success: var(--success);
+	/* 重命名文件 icon 用宿主上下文强调色，让 status dot 不会撞 severity 红黄。 */
+	--color-context-segment-4: var(--context-segment-4);
 }
 
 /* mdi 图标按需生成（icon-[mdi--*]）。 */

@@ -688,8 +688,8 @@
       "type": "plugin",
       "slug": "as-codemap",
       "name": "Code Map",
-      "description": "Scan the workspace into a symbol-and-reference map, then let the AI answer where a symbol is defined and who calls it.",
-      "version": "0.1.4",
+      "description": "Scan the workspace into a symbol-and-reference map, let the AI answer where a symbol is defined and who calls it, and browse findings in a PR-style code review panel.",
+      "version": "0.2.0",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -703,19 +703,21 @@
         "symbols",
         "references",
         "navigation",
-        "code-map"
+        "code-map",
+        "code-review"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "代码图谱",
-            "description": "把工作区扫描成符号与引用图谱，AI 可以据此回答某个符号定义在哪、被谁调用。",
+            "description": "把工作区扫描成符号与引用图谱，AI 可以据此回答某个符号定义在哪、被谁调用；审查面板以 PR 风格呈现发现。",
             "tags": [
               "代码库",
               "符号",
               "引用",
               "代码导航",
-              "代码图谱"
+              "代码图谱",
+              "代码审查"
             ]
           }
         }
