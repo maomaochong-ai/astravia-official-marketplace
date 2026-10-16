@@ -19,6 +19,11 @@ import {
 	ReaWorkflowTab,
 	type ReaProviderBridge,
 } from "./features/rea-workflow";
+import { activateLiveWatch } from "./features/rea-workflow/live/activate-live-watch";
+import { activateReaAgentIntegration } from "./features/rea-workflow/live/agent-integration";
+import { activateProviderRecovery } from "./features/rea-workflow/live/provider-recovery";
+import { ReaLiveStore } from "./features/rea-workflow/live/session-store";
+import { registerReaWorkflowTools } from "./tools/rea-workflow-tools";
 
 const REA_PROVIDER_ID = "rea-agents";
 const REA_TAB_ID = "rea.workflow";
@@ -52,6 +57,13 @@ export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const provider = createProviderBridge(ctx);
 
+		// 实时层：会话事件 → 快照；引擎自愈；Agent 侧提示与自检工具。
+		const store = new ReaLiveStore();
+		const liveWatch = activateLiveWatch(ctx, store);
+		const recovery = activateProviderRecovery(ctx, store, REA_PROVIDER_ID);
+		const agentIntegration = activateReaAgentIntegration(ctx, store);
+		const toolDisposables = registerReaWorkflowTools(ctx, store, REA_PROVIDER_ID);
+
 		const tabDisposable = ctx.ui.registerActivityTab({
 			id: REA_TAB_ID,
 			label: ctx.i18n.t("tab.label"),
@@ -59,7 +71,7 @@ export default definePlugin({
 			order: 22,
 			scope_use: ["conversation", "project"],
 			initiallyVisible: true,
-			component: () => <ReaWorkflowTab provider={provider} />,
+			component: () => <ReaWorkflowTab provider={provider} store={store} />,
 		});
 
 		// 输入栏 toggle：on 时把面板上栏 + 打开；off 时下栏。
@@ -84,6 +96,10 @@ export default definePlugin({
 
 		return {
 			dispose(): void {
+				for (const disposable of toolDisposables) disposable.dispose();
+				agentIntegration.dispose();
+				recovery.dispose();
+				liveWatch.dispose();
 				actionDisposable.dispose();
 				tabDisposable.dispose();
 			},

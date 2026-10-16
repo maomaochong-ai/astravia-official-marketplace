@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "rea",
-      "version": "0.2.2",
+  "version": "0.3.0",
   "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",

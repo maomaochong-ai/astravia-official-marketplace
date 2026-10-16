@@ -3,7 +3,7 @@
  *
  * 阶段编号（1-based, 0 索引由组件层处理）：
  *   1. connect   探测 → 失败模式 → 兜底（read-only 物理探测）
- *   2. route     22 目标类型分流到 4 个子流程（按证据强度聚类）
+ *   2. route     把 22 个上游目标类型聚成 6 个入口（javascript / dotnet / native / firmware / web / mobile）
  *   3. summary   把分散发现翻成 5 字段报告（who/where/what/why/evidence）
  *   4. plan      8 步循环计划（确认→请求→穷尽→记录→重启→补漏→证据→询问）
  *   5. read      5 份 references 按需加载（连接 / 原生 / JS / Android / 运行时 / 证据）

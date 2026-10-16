@@ -1,7 +1,7 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -15,7 +15,12 @@
   "permissions": [
     "ui.slot.activity-tab",
     "ui.slot.input-action",
-    "agent.skills.control"
+    "agent.skills.control",
+    "agent.mcp.control",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.systemPrompt.write",
+    "agent.continuation.register"
   ],
   "providers": {
     "cli": [
@@ -45,7 +50,17 @@
   "agent": {
     "skillPaths": [
       "agent/skills/reverse-engineer-anything"
-    ]
+    ],
+    "mcpServers": {
+      "rea": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "rea-agents@latest",
+          "mcp"
+        ]
+      }
+    }
   },
   "description": "%description%",
   "author": "morluto / REA",

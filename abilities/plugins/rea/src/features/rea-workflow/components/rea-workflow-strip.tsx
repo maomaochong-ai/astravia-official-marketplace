@@ -15,15 +15,18 @@ import { STAGES, TOTAL_STAGES } from "../data/stages";
 interface StripProps {
 	readonly currentStage: number;
 	readonly onSelect: (stage: number) => void;
+	/** 会话里实际跑过的阶段（1-based）；有真实活动时比“已翻到第几页”更可信。 */
+	readonly completedStages?: readonly number[];
 }
 
-export function ReaWorkflowStageStrip({ currentStage, onSelect }: StripProps): JSX.Element {
+export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages }: StripProps): JSX.Element {
 	const { t } = useTranslation();
 	return (
 		<div className="border-b border-border bg-card/30 px-3 py-2.5">
 			<ol className="flex items-center gap-1.5" aria-label={t("tab.strip.aria")}>
 				{STAGES.map((stage, idx) => {
-					const status: "done" | "active" | "todo" = currentStage > stage.index ? "done" : currentStage === stage.index ? "active" : "todo";
+					const visited = completedStages?.includes(stage.index) ?? false;
+					const status: "done" | "active" | "todo" = currentStage === stage.index ? "active" : currentStage > stage.index || visited ? "done" : "todo";
 					const dotFill =
 						status === "active" ? "rgb(from var(--primary) r g b / 0.18)" : status === "done" ? "rgb(from var(--primary) r g b / 0.10)" : "var(--muted)";
 					const dotStroke = status === "todo" ? "var(--border)" : "var(--primary)";

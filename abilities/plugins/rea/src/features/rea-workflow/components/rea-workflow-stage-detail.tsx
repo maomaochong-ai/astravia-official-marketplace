@@ -12,15 +12,17 @@ import { ReaWorkflowStageDiagram } from "./rea-workflow-stage-diagram";
 
 interface DetailProps {
 	readonly stage: StageDefinition;
+	/** 总阶段数，用于 "Stage n of N"。 */
+	readonly total: number;
 }
 
-export function ReaWorkflowStageDetail({ stage }: DetailProps): JSX.Element {
+export function ReaWorkflowStageDetail({ stage, total }: DetailProps): JSX.Element {
 	const { t } = useTranslation();
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-card text-card-foreground">
 			<header className="border-b border-border px-4 py-3">
 				<div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-					<span>{t("tab.detail.stageOf", { current: stage.index, total: 6 })}</span>
+					<span>{t("tab.detail.stageOf", { current: stage.index, total })}</span>
 				</div>
 				<h2 className="mt-1 text-sm font-semibold leading-tight text-foreground">{t(stage.headingKey)}</h2>
 				<p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t(stage.subtitleKey)}</p>
@@ -43,7 +45,7 @@ export function ReaWorkflowStageDetail({ stage }: DetailProps): JSX.Element {
 					{stage.bullets.map((b, i) => (
 						<li key={i} className="flex gap-2 text-foreground/90">
 							<span className="mt-1 inline-block size-1 shrink-0 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
-							<span>{t(b.key)}</span>
+							<span>{t(b.i18nKey)}</span>
 						</li>
 					))}
 				</ul>

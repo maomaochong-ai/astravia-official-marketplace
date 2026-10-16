@@ -11,28 +11,26 @@ probe and install it on demand.
 
 ## What the plugin ships
 
-- `plugin.json` — declares `providers.cli: rea-agents`, the `agent.skills.control`
-  permission and the `agent.skillPaths` entry that points at
-  `agent/skills/reverse-engineer-anything/`.
+- `plugin.json` — declares `providers.cli: rea-agents`, the
+  `agent.skills.control` permission and the `agent.skillPaths` entry that points
+  at `agent/skills/reverse-engineer-anything/`.
 - `agent/skills/reverse-engineer-anything/` — a verbatim copy of REA's upstream
   Agent Skill, including all `references/*.md` workflows. This guides the Agent
   on when to call REA, how to read Evidence, and how to recover from a missing
   provider.
 - `src/index.tsx` — registers **two** UI slots that work together:
-  1. `ui.slot.activity-tab` "rea.workflow" — a 6-stage reverse-engineering workflow
-     panel (provider status bar, 6 target types routing, stage strip, per-stage
-     diagram, controls). Theme follows the host via `@theme inline` CSS variables
-     in `src/style.css`.
-  2. `ui.slot.input-action` "rea.openTab" — a toggle button below the AI input bar.
-     Turning it on attaches the tab, opens it at full width, and uses
+  1. `ui.slot.activity-tab` "rea.workflow" — a 6-stage reverse-engineering
+     workflow panel (provider status bar, 6 target types routing, stage strip,
+     per-stage diagram, controls). Theme follows the host via `@theme inline`
+     CSS variables in `src/style.css`.
+  2. `ui.slot.input-action` "rea.openTab" — a toggle button below the AI input
+     bar. Turning it on attaches the tab, opens it at full width, and uses
      `decoratePrompt` to inject REA workflow instructions into the next outgoing
      prompt. Turning it off detaches the tab.
-
-  No interactive setup flow is required; the upstream CLI is pulled on first use
-  by the host's `cliProviders` runtime.
-  the current `cliProviders.getStatus()` for `rea-agents`. No interactive setup
-  flow is required; the upstream CLI is pulled on first use.
-- `locales/{en,zh}.json` — bilingual names, descriptions and status labels.
+  No interactive setup flow is required; the upstream CLI is pulled on first
+  use by the host's `cliProviders` runtime.
+- `locales/{en,zh}.json` — bilingual names, descriptions, status labels, and
+  decorate-prompt instructions.
 
 ## CLI probing
 

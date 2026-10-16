@@ -11,15 +11,18 @@ import { TARGETS, getTarget, type TargetKind } from "../data/targets";
 
 export interface ReaWorkflowTargetRoutingProps {
 	readonly onRoute: (stage: number) => void;
+	/** 从真实工具调用推断出的目标类型；只做提示，用户仍可手动改选。 */
+	readonly detected?: TargetKind | null;
 }
 
-export function ReaWorkflowTargetRouting({ onRoute }: ReaWorkflowTargetRoutingProps): JSX.Element {
+export function ReaWorkflowTargetRouting({ onRoute, detected }: ReaWorkflowTargetRoutingProps): JSX.Element {
 	const { t } = useTranslation();
-	const [active, setActive] = useState<TargetKind | null>(null);
+	const [picked, setPicked] = useState<TargetKind | null>(null);
+	const active: TargetKind | null = picked ?? detected ?? null;
 
 	const handlePick = (kind: TargetKind): void => {
 		const target = getTarget(kind);
-		setActive(kind);
+		setPicked(kind);
 		onRoute(target.routeStage);
 	};
 
@@ -32,14 +35,16 @@ export function ReaWorkflowTargetRouting({ onRoute }: ReaWorkflowTargetRoutingPr
 				<h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
 					{t("tab.target.sectionTitle")}
 				</h3>
-				{active ? (
+				{picked ? (
 					<button
 						type="button"
 						className="inline-flex h-5 items-center rounded text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-						onClick={() => setActive(null)}
+						onClick={() => setPicked(null)}
 					>
 						{t("tab.target.clear")}
 					</button>
+				) : detected ? (
+					<span className="text-[10.5px] text-muted-foreground">{t("tab.target.autoDetected")}</span>
 				) : null}
 			</header>
 			<div className="flex flex-wrap gap-1.5">
