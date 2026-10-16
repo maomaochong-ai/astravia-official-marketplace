@@ -103,7 +103,7 @@
       "detail": {
         "i18n": {
           "zh": {
-            "name": "逆向工程助手",
+            "name": "逆向工程",
             "description": "把 REA 接入 Astravia，让 Agent 逆向原生二进制、JavaScript 与 Electron 应用、.NET 程序集、固件以及网站流量——每条结论都附上证据与边界。",
             "tags": [
               "逆向工程",
@@ -5807,6 +5807,6 @@
       ]
     }
   ],
-  "version": "0.4.75",
-  "marketplaceVersion": "2026.10.15-10"
+  "version": "0.4.76",
+  "marketplaceVersion": "2026.10.16-1"
 }
