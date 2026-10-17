@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "type": "skill",
+  "slug": "tailored-resume-generator",
+  "name": "Resume Tailoring",
+  "description": "Rewrite a resume against one specific job posting: reorder real experience, mirror the posting's keywords for ATS parsing, quantify what can be quantified, and name the gaps worth closing.",
+  "version": "1.0.0",
+  "configVersion": 1,
+  "license": "Unspecified",
+  "author": "Astravia",
+  "category": "Productivity",
+  "categoryI18n": {
+    "zh": "效率",
+    "en": "Productivity"
+  },
+  "tags": [
+    "resume",
+    "job",
+    "career",
+    "ats",
+    "writing"
+  ],
+  "icon": "solar:document-text-bold",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/maomaochong-ai/astravia-official-marketplace"
+      },
+      {
+        "label": "Provenance",
+        "value": "https://github.com/maomaochong-ai/astravia-official-marketplace/blob/main/abilities/skills/tailored-resume-generator/NOTICE.md"
+      },
+      {
+        "key": "license",
+        "value": "Upstream license unspecified"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json",
+        "name": "简历定制",
+        "description": "针对一个具体岗位改写简历：重排真实经历、对齐招聘方关键词以通过筛选系统、把能量化的成果量化，并说明还差什么。",
+        "tags": [
+          "简历",
+          "求职",
+          "转行",
+          "ATS",
+          "面试"
+        ]
+      }
+    }
+  }
+}
