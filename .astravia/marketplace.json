@@ -5918,9 +5918,9 @@
     {
       "type": "plugin",
       "slug": "rea",
-      "name": "Reverse Engineer Anything",
+      "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -5940,7 +5940,7 @@
       "detail": {
         "i18n": {
           "zh": {
-            "name": "逆向工程",
+            "name": "rea逆向工程",
             "description": "把 REA 接入 Astravia，让 Agent 逆向原生二进制、JavaScript 与 Electron 应用、.NET 程序集、固件以及网站流量——每条结论都附上证据与边界。",
             "tags": [
               "逆向工程",
@@ -6041,10 +6041,32 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.3.2.astraviapkg",
             "sha256": "f0be17098107a4262c7036beac54e146f59dbf12469a858cd80e1eef04140933"
           }
+        },
+        {
+          "version": "0.3.3",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control",
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.systemPrompt.write",
+            "agent.continuation.register",
+            "agent.session.read",
+            "agent.session.write"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.3.3.astraviapkg",
+            "sha256": "92e6acdf1711da568c79d91a4a9acad2cca6fb4b97f79fccbbf9509148b19985"
+          }
         }
       ]
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.17-4"
+  "marketplaceVersion": "2026.10.17-5"
 }
