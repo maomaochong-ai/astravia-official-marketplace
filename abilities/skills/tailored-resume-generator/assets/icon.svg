@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Resume tailoring">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4F46E5"/>
+      <stop offset="0.55" stop-color="#6D5CE7"/>
+      <stop offset="1" stop-color="#9333EA"/>
+    </linearGradient>
+    <linearGradient id="check" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <circle cx="404" cy="96" r="128" fill="#FFFFFF" opacity="0.08"/>
+
+  <rect x="140" y="96" width="220" height="300" rx="28" fill="#FFFFFF" opacity="0.18"/>
+  <rect x="128" y="84" width="220" height="300" rx="28" fill="#FFFFFF"/>
+
+  <rect x="160" y="124" width="116" height="20" rx="10" fill="#312E81"/>
+  <rect x="160" y="166" width="156" height="14" rx="7" fill="#C7D2FE"/>
+  <rect x="160" y="196" width="132" height="14" rx="7" fill="#C7D2FE"/>
+  <rect x="160" y="226" width="156" height="14" rx="7" fill="#C7D2FE"/>
+  <rect x="160" y="272" width="72" height="14" rx="7" fill="#F59E0B"/>
+  <rect x="160" y="302" width="140" height="14" rx="7" fill="#C7D2FE"/>
+  <rect x="160" y="332" width="104" height="14" rx="7" fill="#C7D2FE"/>
+
+  <circle cx="356" cy="356" r="80" fill="#FFFFFF"/>
+  <circle cx="356" cy="356" r="68" fill="url(#check)"/>
+  <path d="M324 356.5 L348 380 L390 335" fill="none" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
