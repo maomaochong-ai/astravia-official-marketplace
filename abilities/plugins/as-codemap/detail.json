@@ -6,7 +6,10 @@
       "eyebrow": "Code navigation",
       "title": "Know where a symbol lives — and who calls it",
       "description": "as-codemap scans the workspace into a symbol-and-reference map, so the AI can answer navigation questions about your own codebase instead of guessing.",
-      "badges": ["Workspace-scoped", "No configuration"]
+      "badges": [
+        "Workspace-scoped",
+        "No configuration"
+      ]
     },
     {
       "type": "feature-grid",
@@ -33,8 +36,8 @@
           "icon": "assets/icons/layers-bold.svg"
         },
         {
-          "title": "Code Review tab",
-          "description": "A PR-style panel groups findings by file and severity, with inline diff highlights. Ships with sample data in this version; agent-driven review runs arrive in a later release.",
+          "title": "Code Map tab",
+          "description": "The same map is one click away as a workspace tab, named after the plugin. Code review lives in the Code Review ability, which runs ocr and keeps findings by severity.",
           "icon": "assets/icons/shield-check-bold.svg"
         }
       ]
@@ -65,8 +68,8 @@
           "description": "Scanned files and symbols appear in the panel; ask follow-up questions in the same conversation."
         },
         {
-          "title": "Open the Code Review tab",
-          "description": "Findings are grouped by file and severity — filter by error, warning, or note. This version ships sample data to preview the workflow."
+          "title": "Open the Code Map tab",
+          "description": "The tab shows the same scanned symbols as the side panel, so you can keep it open while reading code."
         }
       ]
     },

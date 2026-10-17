@@ -13,22 +13,22 @@
         {
           "title": "Native & firmware analysis",
           "description": "Disassemble compiled binaries and firmware with bundled REA tools and optional Ghidra. Compare versions, explain features, and surface unsigned code without leaving the conversation.",
-          "icon": "solar:programming-bold"
+          "icon": "solar:cpu-bolt-bold"
         },
         {
           "title": "JavaScript & Electron apps",
           "description": "Map shipped ASAR archives, ESM modules and the IPC surface of Electron apps back to their source. Read the build steps that produced the artifact you are debugging.",
-          "icon": "solar:programming-bold"
+          "icon": "solar:code-2-bold"
         },
         {
           "title": "Managed code (.NET / JVM)",
           "description": "Decompile managed assemblies and bytecode into something readable. Recover symbols, infer call graphs, and explain behaviour even when the source repository is gone.",
-          "icon": "solar:programming-bold"
+          "icon": "solar:layers-bold"
         },
         {
           "title": "Runtime observation",
           "description": "Capture live traffic, logs and process state with REA's runtime providers (Fiddler, mitmproxy-style hooks, launched-app observation) so the agent can answer questions about a running program.",
-          "icon": "solar:programming-bold"
+          "icon": "solar:eye-bold"
         }
       ]
     },

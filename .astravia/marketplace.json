@@ -5533,7 +5533,7 @@
       "slug": "as-codemap",
       "name": "Code Map",
       "description": "Scan the workspace into a symbol-and-reference map, let the AI answer where a symbol is defined and who calls it, and browse findings in a PR-style code review panel.",
-      "version": "0.2.1",
+      "version": "0.2.4",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -5669,6 +5669,27 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.2.1.astraviapkg",
             "sha256": "52790f5d7933ba955b2cbb7922605dd16619767503436b95b8296d7884806a5a"
           }
+        },
+        {
+          "version": "0.2.4",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "fs.read",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.2.4.astraviapkg",
+            "sha256": "fe9f7a29d38b55409a5a5f3045e87560d2be6267593da04a7dbdea9aaeee4f98"
+          }
         }
       ]
     },
@@ -5677,7 +5698,7 @@
       "slug": "as-ocr",
       "name": "Code Review",
       "description": "Run alibaba/open-code-review from the conversation and list its findings by severity, so bugs and risky patterns surface before they ship.",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -5842,6 +5863,29 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.10.astraviapkg",
             "sha256": "f228c6b8c9ad35fbf3ca9cf8b8cbdfdabd81ba8471060c664061eacd7c89315d"
           }
+        },
+        {
+          "version": "0.1.11",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "agent.command.run",
+            "shell.openExternal"
+          ],
+          "commands": [
+            "git"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.11.astraviapkg",
+            "sha256": "32702b26699dbe945baf8bbfca2061eb93b63f4925b528b515f30913b67f063e"
+          }
         }
       ]
     },
@@ -5943,7 +5987,7 @@
       "slug": "rea",
       "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.3.4",
+      "version": "0.3.5",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6108,10 +6152,32 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.3.4.astraviapkg",
             "sha256": "d28c3da4d8470093cfe7ce092ba8026123290d9045f6465107c3f4f96763b9cf"
           }
+        },
+        {
+          "version": "0.3.5",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control",
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.systemPrompt.write",
+            "agent.continuation.register",
+            "agent.session.read",
+            "agent.session.write"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.3.5.astraviapkg",
+            "sha256": "d1568edd67c47a4e1d37ea8a985189946d1b55b68bfa67d69d7e44c10b95ef6a"
+          }
         }
       ]
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.17-6"
+  "marketplaceVersion": "2026.10.17-7"
 }

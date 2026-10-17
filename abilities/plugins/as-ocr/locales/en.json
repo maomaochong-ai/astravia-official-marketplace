@@ -1,5 +1,5 @@
 {
 	"plugin.name": "Code Review",
 	"plugin.description": "AI code review bridging alibaba/open-code-review: line-precise findings grouped by severity, so NPE, thread-safety, XSS and SQL-injection problems surface before they ship.",
-	"tab.reviews": "Reviews"
+	"tab.reviews": "Code Review"
 }

@@ -13,22 +13,22 @@
         {
           "title": "原生与固件分析",
           "description": "用 REA 自带工具与可选的 Ghidra 反汇编编译后的二进制与固件，对比版本、解释功能、定位未签名代码，全程不用离开对话。",
-          "icon": "solar:programming-bold"
+          "icon": "solar:cpu-bolt-bold"
         },
         {
           "title": "JavaScript 与 Electron 应用",
           "description": "把已发布的 ASAR 归档、ESM 模块以及 Electron 应用的 IPC 接口映射回源码，读出产出这份制品的构建步骤。",
-          "icon": "solar:programming-bold"
+          "icon": "solar:code-2-bold"
         },
         {
           "title": "托管代码（.NET / JVM）",
           "description": "把托管程序集和字节码反编译成可读内容，回收符号、推断调用图、在源码仓库已不可得时解释行为。",
-          "icon": "solar:programming-bold"
+          "icon": "solar:layers-bold"
         },
         {
           "title": "运行时观察",
           "description": "用 REA 的运行时 provider（Fiddler、类 mitmproxy 抓包、运行中应用观察）抓取流量、日志、进程状态，回答关于「正在运行的程序」的问题。",
-          "icon": "solar:programming-bold"
+          "icon": "solar:eye-bold"
         }
       ]
     },
