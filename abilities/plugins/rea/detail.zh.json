@@ -36,8 +36,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "我有一个闭源 Electron 应用在 /tmp/sample.app。2.3 比 2.2 多了哪些功能？新版本用了哪些 IPC 通道？",
-        "assistant_reply": "REA 把两份 ASAR 归档映成模块视图，并 diff 了 IPC 接口。2.3 新增了 `app://sync/v2` 与 `app://telemetry/v2` 两个通道，并把本地 SQLite 缓存换成了密封索引。证据（偏移、哈希、IPC 合约）见下方；限制章节标出了三个无法读取的原生模块和未解密的资源。"
+        "user_prompt": "我有一个闭源 Electron 应用在 /tmp/sample.app。2.3 比 2.2 多了哪些功能？",
+        "assistant_reply": "REA 映出两份 ASAR 模块视图并 diff IPC：2.3 新增 sync/v2、telemetry/v2，缓存换成密封索引。"
       }
     },
     {

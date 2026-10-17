@@ -36,8 +36,8 @@
       "type": "showcase",
       "showcase": {
         "template": "chat-thread",
-        "user_prompt": "I have this closed-source Electron app at /tmp/sample.app. What features did version 2.3 add compared to 2.2, and which IPC channels did the new release use?",
-        "assistant_reply": "REA mapped both ASAR archives into module views and diffed the IPC surface. The 2.3 release added channels `app://sync/v2` and `app://telemetry/v2` and replaced the local SQLite cache with a sealed index. Evidence (offsets, hashes and the IPC contract) is attached below; limitations call out the three unreadable native modules and the encrypted assets I could not decrypt."
+        "user_prompt": "Closed-source Electron app at /tmp/sample.app: what did 2.3 add over 2.2, and which IPC channels are new?",
+        "assistant_reply": "REA diffed IPC across both ASAR archives: 2.3 adds sync/v2, telemetry/v2."
       }
     },
     {
