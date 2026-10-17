@@ -27,7 +27,7 @@ our-free-model 通过模拟厂商 IDE 客户端复用其免费推理通道，可
 ## 设计边界
 
 - **自包含外置插件**：运行时随包分发（供应链固定在上游 v2.1.0 的树快照），但**不进 presets、不随 App 分发**，由用户自行安装并承担合规责任。
-- **构建产物不入库**：`server-src/` 入库（可审计的 vendor 树），`public/ofm-server.zip` 由 `bun run build` 生成、`.gitignore` 排除；`--check` 保证 zip 的 sha256 与 `plugin.json` 声明一致，防止漂移。
+- **构建产物只提交 zip**：`server-src/`（上游 vendor 树）与 `dist/` 都不入库，仓库里只提交预打包的 `public/ofm-server.zip`（上游 v2.1.0 树快照）。CI 干净检出时没有上游源码、也只跑 `vite build`，由 vite 把 `public/` 拷进 `dist/`——漏提交 zip 就等于安装后 `dist/ofm-server.zip` 404。zip 的 sha256 必须与 `plugin.json` 五个平台条目的声明一致，防止漂移。
 - **单进程单端点**：一个 owned provider（`free-model`）承载全部模型，`api: "openai-completions"`，`baseUrl = <服务地址>/v1`。
 - **防误删**：`replaceOwnedProviders` 是原子快照（省略即删除），上游一次空响应会被拒绝同步，绝不把用户已可用的模型列表清空。
 - **密钥零明文**：forwardKey 每次同步时从服务数据目录读取、即取即用，不写进插件配置、不进日志（宿主对服务 stdout 做密钥脱敏）。
@@ -36,15 +36,13 @@ our-free-model 通过模拟厂商 IDE 客户端复用其免费推理通道，可
 ## 开发
 
 ```bash
-bun install
-bun run check            # tsc --noEmit
-bun run test             # vitest（scripts/quality/run-vitest.mjs）
-bun run build:server-zip # 重新生成 public/ofm-server.zip 并校验 manifest sha256
-bun run build            # vite build → dist/（public/ 会被拷进 dist/）
+npm install      # 依赖见 package.json（本包未提交 lock 文件）
+npm run check    # tsc --noEmit
+npm run build    # vite build → dist/（public/ofm-server.zip 会被拷进 dist/）
 ```
 
-重新 vendor 上游：把上游仓库树（排除 `.git`、`.github`、`docs`、`scripts`、`packages/standalone/frontend`、`package-lock.json`）复制到 `server-src/`，再 `bun run build:server-zip`，把打印出的 sha256 写入 `plugin.json` 的 5 个平台条目。
+重新 vendor 上游：把上游仓库树（排除 `.git`、`.github`、`docs`、`scripts`、`packages/standalone/frontend`、`package-lock.json`）复制到 `server-src/`（本仓库已 gitignore 该目录），在**上游**仓库跑它的 `bun run build:server-zip` 产出 zip，拷回 `public/ofm-server.zip`，再把打印出的 sha256 写进 `plugin.json` 的 5 个平台条目。
 
-打包：`plugin.json`、`dist/`、`locales/`、`icon.png`、`ability.json` 压成 `release/free-model-gateway-<version>.astraviapkg` 后在 Desktop 插件管理页安装。
+打包由市场 CI 完成：`scripts/stage-plugin-release.py` 收 `plugin.json`、`package.json`、`README.md`、`dist/`、`locales/`、`assets/`，产出不可变的 `free-model-gateway-<version>.astraviapkg`。`ability.json`、`detail*.json` 只用于市场展示，不进包。
 
-测试约定：`bun ../../../../scripts/quality/run-vitest.mjs --run`（从插件目录），不要裸跑 `bun test`。
+测试：`test/` 下有 3 个 vitest 用例，但 `package.json` 未登记 `test` 脚本，市场 CI 目前不执行它们；本地用 `npx vitest run`（需要完整的 `npm install`）。
