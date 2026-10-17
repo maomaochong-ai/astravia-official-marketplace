@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "type": "skill",
+  "slug": "codebase-migration-refactor",
+  "name": "Codebase Migration and Refactoring",
+  "description": "Run a large migration or multi-file refactor as one precise transform in reviewable batches: measure the blast radius, drive codemods with AST tooling, verify tests and CI after every batch, and audit the dead config and leftover shims afterwards.",
+  "version": "1.0.0",
+  "license": "Unspecified",
+  "author": "Astravia",
+  "category": "Development",
+  "categoryI18n": {
+    "zh": "开发",
+    "en": "Development"
+  },
+  "tags": [
+    "refactor",
+    "migration",
+    "codemod",
+    "upgrade",
+    "monorepo"
+  ],
+  "icon": "assets/icon.svg",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/maomaochong-ai/astravia-official-marketplace"
+      },
+      {
+        "label": "Provenance",
+        "value": "https://github.com/maomaochong-ai/astravia-official-marketplace/blob/main/abilities/skills/codebase-migration-refactor/NOTICE.md"
+      },
+      {
+        "key": "license",
+        "value": "Upstream license unspecified"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json",
+        "name": "代码库迁移与重构",
+        "description": "把动辄上百个文件的框架升级或重构，拆成一条精确的变换规则，按批改完、按批验证；同时清掉迁移后留下的死配置与临时兼容层。",
+        "tags": [
+          "重构",
+          "迁移",
+          "代码改造",
+          "框架升级",
+          "单体仓库"
+        ]
+      }
+    }
+  }
+}
