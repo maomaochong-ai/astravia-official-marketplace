@@ -3,10 +3,10 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "ONE TRANSFORM, MANY FILES",
+      "eyebrow": "ONE TRANSFORM, MANY PRs",
       "title": "Change 200 files without one 8,000-line diff",
-      "description": "Give Astravia the upgrade or the rename. It writes the transform down precisely, measures how far it reaches, runs it through AST tooling in batches, and proves each batch green before the next one starts.",
-      "badges": ["Blast-radius check", "AST codemods", "Batch review", "Residue audit"]
+      "description": "Give Astravia the upgrade or the rename. It writes the transform down precisely, measures how far it reaches, then ships it as a tracked migration: one GitHub pull request per batch, CI verified before the next batch starts, progress recorded on one issue.",
+      "badges": ["Blast-radius check", "AST codemods", "One PR per batch", "CI-gated"]
     },
     {
       "type": "showcase",
@@ -14,12 +14,12 @@
         "template": "chat-thread",
         "brand_name": "Astravia",
         "user_prompt": "Move this repo from jest to vitest.",
-        "assistant_reply": "8 batches, suite green, 3 hand-fixes."
+        "assistant_reply": "Issue LIN-482, 8 PRs, all green."
       }
     },
     {
       "type": "feature-grid",
-      "title": "What makes the migration survive review",
+      "title": "What keeps a 200-file change reviewable",
       "items": [
         {
           "title": "The transform, written down",
@@ -28,25 +28,29 @@
         },
         {
           "title": "Scope measured first",
-          "description": "It counts the files before editing and splits them into variants, so the ones hiding outside tests are found by search, not by a failing production build.",
+          "description": "It counts the files before editing and splits them into variants, so the calls hiding outside the test directory are found by search, not by a failing production build.",
           "icon": "solar:magnifer-zoom-in-bold"
         },
         {
-          "title": "Syntax-aware, not text-aware",
-          "description": "Renames run through ast-grep, ts-morph, jscodeshift or the language's own codemod, so comments, strings and unrelated exports keep their meaning.",
+          "title": "One pull request per batch",
+          "description": "Roughly 25 files per PR, each linked to one tracking issue, each with the codemod path and the hand-patched files named in the body. Review a small diff and say go.",
           "icon": "solar:code-square-bold"
         },
         {
-          "title": "Verified every batch",
-          "description": "Focused tests and a zero-count grep after each batch, the full suite and a real app start on the last one — plus a residue sweep for dead config and leftover shims.",
+          "title": "CI gates every batch",
+          "description": "The next branch only starts after the previous PR lands green; the last batch runs the full suite, starts the app, then sweeps for dead config and leftover shims.",
           "icon": "solar:shield-check-bold"
         }
       ]
     },
     {
       "type": "steps",
-      "title": "Three steps to a shippable migration",
+      "title": "From request to merged batches",
       "items": [
+        {
+          "title": "Connect once",
+          "description": "The migration is coordinated through the Composio CLI: one login, then link your GitHub account for pull requests and CI status, and Linear (or Jira) for the tracking issue. Nothing is pushed before you approve the first batch."
+        },
         {
           "title": "State the change",
           "description": "Point at the repo and name what changes — framework version, old API, config format, or the boundary being moved. A failing test or a sample file pins the target."
@@ -57,19 +61,25 @@
         },
         {
           "title": "Merge batch by batch",
-          "description": "Each batch is its own branch and commit with the checks it passed. Approve the diff, say continue, and the next batch rebases on top."
+          "description": "Each batch is its own branch and PR with the checks it passed. Approve, and the next batch rebases on top; progress lands as comments on the tracking issue."
         }
       ]
     },
     {
       "type": "callout",
+      "tone": "info",
+      "title": "What you need before the first batch",
+      "content": "A GitHub account with push access to the target repo, and a Linear or Jira workspace for the tracking issue. Composio is installed and linked once; without it the migration still describes each transform correctly, but opens no PRs and records no CI verdict, so the review trail has to be assembled by hand."
+    },
+    {
+      "type": "callout",
       "tone": "warning",
-      "title": "It will stop instead of guessing",
+      "title": "It stops instead of guessing",
       "content": "If the search reaches thousands of files, if two transforms get tangled in one diff, or if a file resists every codemod, it reports that and asks — rather than inventing a rule that silently changes code you never pointed at. Rollback is per batch, so a branch that goes wrong is reverted alone."
     },
     {
       "type": "markdown",
-      "content": "## What it produces\n\n- A written transform you can re-run or hand to a teammate.\n- Batches of roughly 25 files, each with a commit, the checks that ran, and a note on anything hand-patched.\n- A closing report: what changed, what deliberately did not, how to verify it, and the residue list — dead config keys, disabled checks, compatibility shims, stale docs.\n\n## Where it helps most\n\nFramework upgrades that touch every import; API renames across a monorepo; test runner or bundler swaps; CommonJS to ESM; splitting a growing module into packages; and any long-postponed cleanup where the work is known but nobody wants the 8,000-line diff.\n\n## What it will not do\n\nMerge without you. Force-push a reviewed branch. Reformat files it did not otherwise touch — that only buries the real change. And when the scope is unclear it asks one question instead of choosing a cheap interpretation of “clean it up”."
+      "content": "## What it produces\n\n- A written transform you can re-run or hand to a teammate.\n- One tracking issue with a comment per batch, and roughly 25 files per pull request — each with its codemod, the checks that ran, and anything hand-patched.\n- A closing report: what changed, what deliberately did not, how to verify it, and the residue list — dead config keys, disabled checks, compatibility shims, stale docs.\n\n## Where it helps most\n\nFramework upgrades that touch every import; API renames across a monorepo; test runner or bundler swaps; CommonJS to ESM; splitting a growing module into packages; and any long-postponed cleanup where the work is known but nobody wants the 8,000-line diff.\n\n## What it will not do\n\nMerge without you. Force-push a reviewed batch. Reformat files it did not otherwise touch — that only buries the real change. And when the scope is unclear it asks one question instead of choosing a cheap interpretation of “clean it up”."
     }
   ]
 }

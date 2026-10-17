@@ -553,8 +553,8 @@
       "type": "skill",
       "slug": "codebase-migration-refactor",
       "name": "Codebase Migration and Refactoring",
-      "description": "Run a large migration or multi-file refactor as one precise transform in reviewable batches: measure the blast radius, drive codemods with AST tooling, verify tests and CI after every batch, and audit the dead config and leftover shims afterwards.",
-      "version": "1.0.0",
+      "description": "Run a large migration or multi-file refactor through a tracked pipeline: measure the blast radius, apply AST codemods, open one pull request per batch, gate each batch on CI, and audit the dead config and leftover shims afterwards.",
+      "version": "1.0.1",
       "configVersion": 1,
       "license": "Unspecified",
       "author": "Astravia",
@@ -574,7 +574,7 @@
         "i18n": {
           "zh": {
             "name": "代码库迁移与重构",
-            "description": "把动辄上百个文件的框架升级或重构，拆成一条精确的变换规则，按批改完、按批验证；同时清掉迁移后留下的死配置与临时兼容层。",
+            "description": "把动辄上百个文件的框架升级或重构，按批次推进：一条精确变换规则、AST 改造、每批一个 PR、CI 绿了才继续，最后清掉迁移留下的死配置与临时兼容层。",
             "tags": [
               "重构",
               "迁移",
@@ -6281,5 +6281,5 @@
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.17-12"
+  "marketplaceVersion": "2026.10.17-13"
 }

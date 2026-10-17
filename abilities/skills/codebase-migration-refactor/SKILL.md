@@ -1,93 +1,155 @@
 ---
 name: codebase-migration-refactor
 alias: 代码库迁移与重构 · Codebase Migration
-version: 1.0.0
-description: Plan and execute large-scale migrations and multi-file refactors in reviewable batches — pin the exact transform, measure its blast radius, drive codemods with AST tooling, verify tests and CI after every batch, and audit the residue the migration leaves behind.
+version: 1.0.1
+description: Run large codebase migrations and multi-file refactors. Uses the Composio CLI to coordinate issue tracking, batched PRs, and CI verification while the agent executes the transforms locally across hundreds of files.
 ---
 
 # Codebase Migration & Refactoring
 
-A migration is one precise transform applied hundreds of times, shipped in slices a reviewer can approve. The agent does the edits; git, the codemod tool and the test suite are the ceremony around them.
+Coordinate framework upgrades, API renames, config rewrites, and structural refactors across hundreds of files. Local edits are driven by the agent; the [Composio CLI](https://docs.composio.dev/docs/cli) handles the surrounding ceremony: tracking issues, per-batch PRs, and CI verification.
 
-## When to use
+## When to Use
 
-- Framework or runtime upgrade: React 17 → 19, Node 18 → 22, Django 4 → 5, Spring Boot 2 → 3.
-- API rename across a monorepo: `getUserById` → `users.byId`.
-- Tooling or format migration: webpack → vite, eslint → biome, jest → vitest, CommonJS → ESM.
-- Structural refactor: splitting a module, extracting a package, moving a directory boundary.
-- Any "change 200 files the same way" task that has to land in reviewable slices.
+- Framework upgrade (React 17 → 19, Node 18 → 22, Django 4 → 5).
+- API rename across a monorepo (e.g., `getUserById` → `users.byId`).
+- Config/format migration (webpack → vite, eslint → biome, jest → vitest).
+- Any "change 200 files the same way" task that needs to ship in reviewable slices.
 
-Not for a single-file edit, and not for a rename whose only witness is grep: if the symbol is generated, aliased or re-exported, treat it as a refactor with tests (below), not a search-and-replace.
+Not for a single-file edit. And if the only witness to a rename is grep — the symbol is generated, aliased or re-exported — treat it as a refactor with a test net (see *Refactors that move code*), not a search-and-replace.
 
-## 1. Define the transform before touching a file
-
-Write the transform as a rule you could hand to someone else. Vague scope is the failure mode that produces 800-line diffs.
-
-- Bad: "migrate to vitest."
-- Good: "replace `jest.mock` with `vi.mock`, `jest.fn()` with `vi.fn()`, `jest.spyOn` with `vi.spyOn`, rename `jest.config.js` → `vitest.config.ts` from template X, and add `globals: true` only where the config already imported from `@jest/globals`."
-
-Then measure the blast radius and write the numbers down:
+## Prereqs
 
 ```bash
-rg -l 'jest\.(mock|fn|spyOn)' | wc -l          # files to change
-rg -l 'from "jest"'                            # variants to handle separately
-rg -l 'jest\.' | grep -v '\.test\.'            # ones hiding outside tests
+curl -fsSL https://composio.dev/install | bash
+composio login
+composio link github        # for PRs + CI status
+composio link linear        # or jira — for migration tracking
 ```
 
-Check the workspace is clean (`git status`) and record the baseline: current test result, build time, and any already-failing test. A migration judged against a broken baseline cannot be verified later.
+Local tools the agent will use directly: `git`, `rg`, `jscodeshift`/`ts-morph`/`comby`/`ast-grep` (language-appropriate), and your test runner.
 
-## 2. Pick the tool that matches the shape of the change
+If `composio` is missing or not linked, stop and tell the user what is missing. Do not silently fall back to bare `git`: the tracking issue, the per-batch PR and the CI verdict are the three things that make a 200-file change reviewable.
 
-- **AST codemod** — `ast-grep`, `ts-morph`, `jscodeshift`, `comby`, `grit`, or the language's own (Nova/rewrite for Java, Rector for PHP, `cargo fix`, `ruff --fix`). Default choice: a rename that must not touch comments or strings needs syntax, not text.
-- **Search and replace** — only when the token is unique, unambiguous, and the file set is small enough to read the diff.
-- **Manual pass with a checklist** — for the handful of files a codemod structurally cannot reach; note each one in the batch description.
+## Planning Phase
 
-Prefer a codemod that fails loudly on an unexpected pattern over one that silently skips it. Dry-run on ten files first and read the produced diff before scaling up.
+1. **Define the transform precisely.** Bad: "migrate to vitest." Good: "replace `jest.mock` with `vi.mock`, swap `jest.fn()` for `vi.fn()`, rename `jest.config.js` → `vitest.config.ts` using template X."
 
-## 3. Execute in batches
+2. **Scope the blast radius:**
 
-Batch size is set by reviewability, not by speed. Twenty-five files or one logical subtree per batch, whichever comes first.
+   ```bash
+   rg -l 'jest\.(mock|fn|spyOn)' | wc -l      # files to change
+   rg -l 'from "jest"' | sort                 # variants to handle separately
+   rg -l 'jest\.' | grep -v '\.test\.'        # ones hiding outside tests
+   ```
 
-Loop, and finish each pass before starting the next:
+   Also record the baseline before touching anything: clean `git status`, the current test result, build time, and **any test already failing**. A migration judged against a broken baseline cannot be verified later.
 
-1. Build the batch list from files not yet in `done.list`.
-2. Run the codemod, then read the diff (`git diff --stat` and spot-check three files).
-3. Run the focused tests for the touched area; fix or hand-patch what the codemod missed.
-4. Commit one transform only, with the batch and the codemod path in the message: `migrate(test): jest → vitest (batch 3)`.
-5. Verify in CI, then append the batch to `done.list`.
-6. Merge, rebase the next batch onto it, repeat.
+3. **File a tracking issue:**
 
-Per-batch checks: `rg` count trends toward zero, type-check passes, and the diff contains nothing unrelated. Mixed transforms in one batch make a rollback impossible to reason about; keep a rename and a format change in separate branches even when they touch the same files.
+   ```bash
+   composio execute LINEAR_CREATE_ISSUE -d '{
+     "teamId":"TEAM_ID",
+     "title":"Migrate test runner: jest → vitest",
+     "description":"Batches of ~25 files. Checkpoint after each PR lands green."
+   }'
+   ```
 
-## 4. Verify, then verify again
+   Keep the returned issue id (e.g. `LIN-482`): every batch PR body and every status comment references it.
 
-Per batch:
+## Execute in Reviewable Batches
+
+Loop: pick N files → transform → test → PR → wait for green → merge → next batch.
 
 ```bash
-rg 'jest\.(mock|fn|spyOn)' | wc -l    # the number that must reach 0
-npm test -- --changed                 # or the project's focused runner
-git diff --stat main...HEAD           # scope check
+# Batch helper: first 25 untouched files matching the pattern
+BATCH=$(rg -l 'jest\.mock' | grep -v done.list | head -25)
+echo "$BATCH" > batch.list
 ```
 
-On the last batch, without shortcuts:
+The agent runs the codemod on `batch.list`, then:
 
-- Run the **full** suite, not `--changed`.
-- Build and start the app; a migration that compiles and fails at runtime is still broken.
-- Confirm pinned toolchain parity with CI (`.nvmrc`, `engines`, `pyproject.toml`, `rust-toolchain.toml`).
-- Grep again for the old symbol, including docs, templates, fixtures and snapshots.
+```bash
+git checkout -b migrate/vitest-batch-03
+xargs < batch.list codemod-runner   # e.g. jscodeshift / ts-morph / comby / ast-grep
+npm test -- --changed
+git add -A && git commit -m "migrate(test): jest → vitest (batch 3)"
+git push -u origin migrate/vitest-batch-03
 
-## 5. Refactors need a safety net first
+composio execute GITHUB_CREATE_A_PULL_REQUEST -d '{
+  "owner":"acme","repo":"app",
+  "head":"migrate/vitest-batch-03","base":"main",
+  "title":"migrate(test): jest → vitest (batch 3)",
+  "body":"Part of LIN-482. 25 files. Codemod: `transforms/jest-to-vitest.ts`."
+}'
+```
 
-When the change moves code rather than renames it, write the net before moving anything:
+Then poll CI and merge when green:
 
-- Characterization tests that capture current behaviour, even where that behaviour is ugly.
-- One pass per concern: move the file → update imports → rename the symbol → change call sites. Never all four in one commit.
-- Keep public entry points and exported types stable; if an interface must change, change it in a commit that contains only that.
-- Prefer a temporary re-export shim over a big-bang rename: `export * from "./new/location"` keeps every consumer compiling while the move lands.
+```bash
+composio execute GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY \
+  -d '{"owner":"acme","repo":"app","branch":"migrate/vitest-batch-03"}'
+```
 
-## 6. Audit what the migration left behind
+Before opening the PR, read the diff (`git diff --stat`, plus three files end to end) and hand-patch whatever the codemod missed — name each hand-edit in the PR body. After the PR merges green, append the batch to `done.list` and rebase the next branch onto the updated `main` before starting it.
 
-Finished code is not a finished migration. After the last batch, sweep for residue:
+## Workflow Script
+
+Write `scripts/migrate-batch.ts` into the target repo and run it per batch with `composio run --file scripts/migrate-batch.ts -- --batch 3`:
+
+```ts
+const batch = process.argv[process.argv.indexOf("--batch") + 1];
+
+const pr = await execute("GITHUB_CREATE_A_PULL_REQUEST", {
+  owner: "acme", repo: "app",
+  head: `migrate/vitest-batch-${batch}`, base: "main",
+  title: `migrate(test): jest → vitest (batch ${batch})`,
+  body: `Part of LIN-482. See transforms/jest-to-vitest.ts.`
+});
+
+await execute("LINEAR_CREATE_COMMENT", {
+  issueId: "LIN-482",
+  body: `Opened PR #${pr.number}: ${pr.html_url}`
+});
+```
+
+## Refactors That Move Code
+
+The loop above assumes "the same change, applied many times". When the change instead moves code — extracting a package, splitting a module, relocating a directory boundary — the transform alone is not enough:
+
+- Write characterization tests that capture current behaviour first, even where that behaviour is ugly.
+- One concern per commit: move the file → update imports → rename the symbol → change call sites. Never all four at once.
+- Keep public entry points and exported types stable; an interface change gets a commit of its own.
+- Prefer a temporary re-export shim (`export * from "./new/location"`) over a big-bang rename: every consumer keeps compiling while the move lands, and the shim dies in a later batch that is itself auditable.
+
+## Safety Rails
+
+- **One transform per PR.** Never mix a rename with a format change.
+- **Keep a `done.list`** of files already migrated so the next batch skips them.
+- **Run the full test suite on the last batch**, even if per-batch PRs ran `--changed`.
+- **Codemod first, hand-edit second.** If the codemod misses 3 files, patch them manually and note it in the PR body.
+- **Roll back per-batch**, not globally. Each PR should revert cleanly.
+- **Do not reformat files you did not otherwise change** — it buries the real diff and makes the rollback unreviewable.
+- **Never force-push a batch that has been reviewed or merged.**
+- **Stop and ask when the blast radius exceeds what the user described.** 4,000 files means the transform is wrong, not that the batches should be bigger.
+
+## Verification Loop
+
+After each merge:
+
+```bash
+rg 'jest\.(mock|fn|spyOn)' | wc -l     # should trend to 0
+npm test                                # full suite
+composio execute GITHUB_LIST_WORKFLOW_RUNS_FOR_A_REPOSITORY \
+  -d '{"owner":"acme","repo":"app","branch":"main","event":"push"}' \
+  | jq '.workflow_runs[0].conclusion'
+```
+
+On the last batch, without shortcuts: run the **full** suite, build and start the app (a migration that compiles and fails at runtime is still broken), confirm toolchain parity with CI (`.nvmrc`, `engines`, `pyproject.toml`, `rust-toolchain.toml`), and grep again for the old symbol in docs, templates, fixtures and snapshots.
+
+## Audit What the Migration Left Behind
+
+A zero grep count proves the files you changed are right; it proves nothing about what you did not touch. Sweep before closing:
 
 ```bash
 rg -n 'jest' --glob '!node_modules' --glob '!done.list'      # old tool name anywhere
@@ -95,34 +157,25 @@ rg -n 'webpack|babel' package.json tsconfig*.json            # dead config keys
 rg -n 'TODO|FIXME|migrat' --glob '!node_modules' | head -40   # half-finished notes
 ```
 
-Check specifically:
-
-- **Dead configuration** — keys the new tool ignores, `jest` blocks in `package.json`, obsolete path aliases, scripts that still call the removed binary.
-- **Silently disabled checks** — lint rules, strict mode, hooks or CI jobs that were turned off "temporarily" during the migration and never restored.
-- **Leftover shims** — compatibility re-exports, dual configs, `if (legacy)` branches. Name them in the report so they do not become permanent.
-- **Docs and templates** — setup instructions, scaffolding templates, example snippets and CI workflow paths still describing the old stack.
+- **Dead configuration** — keys the new tool ignores, the old runner's block in `package.json`, obsolete path aliases, scripts still invoking the removed binary.
+- **Silently disabled checks** — lint rules, strict mode, hooks or CI jobs turned off "temporarily" during the migration and never restored.
+- **Leftover shims** — compatibility re-exports, dual configs, `if (legacy)` branches. Name them in the issue comment so they do not become permanent.
+- **Docs and templates** — setup guides, scaffolding templates and CI workflow paths still describing the old stack.
 - **Secrets** — a config rewrite that inlined an env var as a literal, or moved a token into a file that is now committed.
 
-Report the list as open items with file paths; do not silently delete things you are not sure about.
-
-## Reporting
-
-Close each batch with one short paragraph: files touched, codemod used, checks that ran, anything hand-patched. Close the migration with: what changed, what deliberately did not, how to verify it, and the residue above.
-
-## Safety rails
-
-- One transform per branch. Never mix a rename with a format change.
-- Keep `done.list` in the repo (or the tracking issue) so the next batch skips finished files.
-- Codemod first, hand-edit second; every hand-edit is named in the batch description.
-- Roll back per batch. If a batch needs a global revert, it was too big.
-- Never force-push a batch that has already been reviewed or merged.
-- Do not reformat files you did not otherwise change; it buries the real diff.
-- Stop and ask when the blast radius exceeds what the user described: 4,000 files means the transform is wrong, not that the batches need to be bigger.
+Post the list to the tracking issue as open items with file paths; do not silently delete what you are not sure about.
 
 ## Troubleshooting
 
-- **Codemod regex catches too much** — switch to AST matching (`ast-grep --pattern`, `ts-morph`), or narrow to files that import the old symbol.
-- **Tests pass locally, CI fails** — toolchain version drift; pin the same Node/Python version and lockfile, and run the CI command verbatim.
-- **Diff too large to review** — halve the batch; reviewers stop reading somewhere around 400 lines.
-- **Two batches keep conflicting** — rebase the open batch before merging the current one, or reorder them so shared files land in a single batch.
-- **One file resists every codemod** — transform it manually, commit it alone, and note why in the PR body.
+- **Codemod regex catches too much** → switch to AST-based tooling (`ast-grep`, `ts-morph`) for structural matches.
+- **Tests pass locally, CI fails** → pin Node/Python version parity; check `.nvmrc` / `pyproject.toml`, and run the CI command verbatim.
+- **PR too big to review** → cut batch size in half; maintainers won't review 800-line diffs.
+- **Conflicts between batches** → rebase the open batch before merging the current one; never force-push merged batches.
+- **One file resists every codemod** → transform it manually, commit it alone, and say why in the PR body.
+- **`composio execute` fails on auth or a missing link** → re-run `composio login` / `composio link github`, and report the failure instead of continuing batches without a PR trail.
+
+## Reporting
+
+Close each batch with one short paragraph on the tracking issue: files touched, codemod used, CI verdict, anything hand-patched. Close the migration with: what changed, what deliberately did not, how to verify it, and the residue list above.
+
+Full CLI reference: [docs.composio.dev/docs/cli](https://docs.composio.dev/docs/cli)

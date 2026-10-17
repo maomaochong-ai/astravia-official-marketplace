@@ -3,10 +3,10 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "一条规则，改遍全仓",
+      "eyebrow": "一条规则，一串 PR",
       "title": "两百个文件要改，别变成一个八千行的 diff",
-      "description": "把升级目标或重命名要求交给 Astravia：它先把变换写成一条精确规则，量出影响范围，再用语法级工具分批改，每批都跑到绿了才动下一批。",
-      "badges": ["影响范围盘点", "语法级改造", "分批可审", "残留清查"]
+      "description": "把升级目标或重命名要求交给 Astravia：它先把变换写成一条精确规则，量出影响范围，然后按批次推进——每批一个 GitHub PR，CI 绿了才开下一批，进度记在同一个 issue 上。",
+      "badges": ["影响范围盘点", "语法级改造", "一批一 PR", "CI 把关"]
     },
     {
       "type": "showcase",
@@ -14,12 +14,12 @@
         "template": "chat-thread",
         "brand_name": "Astravia",
         "user_prompt": "把这个仓库从 jest 换到 vitest。",
-        "assistant_reply": "分 8 批改完，测试全绿，3 处手工补。"
+        "assistant_reply": "issue LIN-482，8 个 PR 全绿。"
       }
     },
     {
       "type": "feature-grid",
-      "title": "能让迁移通过评审的几件事",
+      "title": "让两百个文件的改动可评审",
       "items": [
         {
           "title": "变换先写成规则",
@@ -32,21 +32,25 @@
           "icon": "solar:magnifer-zoom-in-bold"
         },
         {
-          "title": "按语法改，不按文本改",
-          "description": "重命名走 ast-grep、ts-morph、jscodeshift 或语言自带的 codemod，注释、字符串和无关导出的语义不会被顺手改坏。",
+          "title": "一批一个 PR",
+          "description": "每个 PR 约 25 个文件，挂在同一个 tracking issue 下，正文写明用的 codemod 与手工补改的文件。你只看一个小 diff，说继续。",
           "icon": "solar:code-square-bold"
         },
         {
-          "title": "每批都验证",
-          "description": "每批跑相关测试并让旧写法的搜索计数归零；最后一批跑全量测试、真正启动一次应用，再清查死配置与遗留兼容层。",
+          "title": "每批都要过 CI",
+          "description": "上一批 PR 绿了才开下一个分支；最后一批跑全量测试、真正启动一次应用，再清查死配置与遗留兼容层。",
           "icon": "solar:shield-check-bold"
         }
       ]
     },
     {
       "type": "steps",
-      "title": "三步得到可合并的迁移",
+      "title": "从提出要求到合并完成",
       "items": [
+        {
+          "title": "先连接一次",
+          "description": "整场迁移由 Composio CLI 串联：登录一次，接上 GitHub 账号（用于开 PR、看 CI 状态），再接 Linear 或 Jira（用于建 tracking issue）。第一批未经你同意不会推送。"
+        },
         {
           "title": "说明要改什么",
           "description": "指定仓库和改动目标——框架版本、旧 API、配置格式，或者要挪动的模块边界。给一个失败的测试或一个样例文件，目标会更明确。"
@@ -57,9 +61,15 @@
         },
         {
           "title": "一批一批合",
-          "description": "每批是独立分支和提交，附上跑过的检查。看完 diff 说继续，下一批会把它 rebase 上去。"
+          "description": "每批是独立分支与 PR，附上跑过的检查。确认后下一批 rebase 上去，进度以评论形式回到 tracking issue。"
         }
       ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "title": "第一批开始前需要准备什么",
+      "content": "一个有目标仓库推送权限的 GitHub 账号，以及一个用来记进度 issue 的 Linear 或 Jira 空间。Composio 只需安装并连接一次；没有它时，变换规则与分批计划依然可用，但不会代开 PR，也没有 CI 结论可查，评审记录需要自己整理。"
     },
     {
       "type": "callout",
@@ -69,7 +79,7 @@
     },
     {
       "type": "markdown",
-      "content": "## 会产出什么\n\n- 一份写下来的变换规则，可以重复执行，也可以交给同事。\n- 每批约 25 个文件，各自带提交、跑过的检查和手工补改说明。\n- 收尾报告：改了什么、哪些是故意没改、怎么验证，以及残留清单——死配置、被关掉的检查、兼容层、过时的文档。\n\n## 最适合的场景\n\n每个 import 都会被影响的框架升级；单体仓库里的跨包 API 重命名；测试框架或打包器替换；CommonJS 迁到 ESM；把膨胀的模块拆成独立包；以及那些「知道该做、但没人愿意开八千行 diff」的积压清理。\n\n## 它不会做什么\n\n不替你合并、不强推已经评审过的分支、不顺手格式化没改逻辑的文件（那只会把真正的改动埋掉）。范围不清楚时它会先问一句，而不是挑一个便宜的解读把「顺手清理一下」做实。"
+      "content": "## 会产出什么\n\n- 一份写下来的变换规则，可以重复执行，也可以交给同事。\n- 一个 tracking issue，每批一条评论；每批约 25 个文件的 PR，正文写明用的 codemod、跑过的检查和手工补改的地方。\n- 收尾报告：改了什么、哪些是故意没改、怎么验证，以及残留清单——死配置、被关掉的检查、兼容层、过时的文档。\n\n## 最适合的场景\n\n每个 import 都会被影响的框架升级；单体仓库里的跨包 API 重命名；测试框架或打包器替换；CommonJS 迁到 ESM；把膨胀的模块拆成独立包；以及那些「知道该做、但没人愿意开八千行 diff」的积压清理。\n\n## 它不会做什么\n\n不替你合并、不强推已经评审过的批次、不顺手格式化没改逻辑的文件（那只会把真正的改动埋掉）。范围不清楚时它会先问一句，而不是挑一个便宜的解读把「顺手清理一下」做实。"
     }
   ]
 }
