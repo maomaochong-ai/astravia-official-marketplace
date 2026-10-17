@@ -8,6 +8,20 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import type { CodeMapStore } from "./codemap-store";
 
+/**
+ * 会话 cwd → 可扫描的根目录。
+ *
+ * tool handler 的 session.cwd 来自会话；没有项目目录的会话可能落到主进程 cwd（`/`）。
+ * 拿文件系统根当工作区会把整个盘当成码谱，所以宁可拒绝。
+ */
+export function resolveScanRoot(cwd: string | undefined): string | null {
+	const normalized = (cwd ?? "").trim().replace(/[\\/]+$/, "");
+	if (!normalized) return null; // "" 或文件系统根 "/"
+	if (/^[A-Za-z]:$/.test(normalized)) return null; // Windows 盘符根 "C:"
+	const absolute = normalized.startsWith("/") || /^[A-Za-z]:[\\/]/.test(normalized);
+	return absolute ? normalized : null;
+}
+
 export function registerCodeMapBuildTool(ctx: PluginContext, store: CodeMapStore): void {
 	ctx.agent.registerTool({
 		id: "as-codemap.build",
@@ -26,7 +40,18 @@ export function registerCodeMapBuildTool(ctx: PluginContext, store: CodeMapStore
 		scope_use: ["conversation", "project"],
 		timeoutMs: 120_000,
 		async handler({ session }) {
-			const index = await store.rebuild(session.cwd);
+			const root = resolveScanRoot(session.cwd);
+			if (!root) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `当前会话没有可扫描的工作区目录（cwd: ${session.cwd || "空"}）。请在 Astravia 里打开一个项目目录后再构建码谱。`,
+						},
+					],
+				};
+			}
+			const index = await store.rebuild(root);
 			return {
 				content: [
 					{

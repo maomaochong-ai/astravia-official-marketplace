@@ -2,7 +2,7 @@
   "id": "as-codemap",
   "name": "%plugin.name%",
   "icon": "assets/icon.svg",
-  "version": "0.2.1",
+  "version": "0.2.4",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
@@ -16,6 +16,7 @@
   "minAppVersion": "0.5.60",
   "permissions": [
     "ui.slot.workspace-view",
+    "ui.slot.activity-tab",
     "agent.tools.register",
     "agent.toolHandler.execute",
     "agent.session.read",

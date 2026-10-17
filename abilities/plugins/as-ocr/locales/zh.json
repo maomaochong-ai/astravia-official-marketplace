@@ -1,5 +1,5 @@
 {
 	"plugin.name": "代码审查",
 	"plugin.description": "AI 代码审查：桥接 alibaba/open-code-review，行级发现按严重级别分组，让空指针、线程安全、XSS、SQL 注入等问题在提交前暴露。",
-	"tab.reviews": "审查"
+	"tab.reviews": "代码审查"
 }

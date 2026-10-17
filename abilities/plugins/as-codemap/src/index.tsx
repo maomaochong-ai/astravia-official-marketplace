@@ -7,14 +7,13 @@
  *   wasm 资源成本高），精度对拓扑导航足够，重构级分析请用 IDE；
  * - workspace-view 插槽（跨项目，与 kanban 同款）展示 Code Map；图谱数据按
  *   workspace root 分片存 storage；
- * - activity-tab 插槽「代码审查」：复用图谱 + 模拟 review 数据，
- *   复刻 GitHub PR Review 视觉（三栏 + diff 行内高亮 + 严重度配色）；
+ * - activity-tab 插槽「代码图谱」：与侧边面板同一块 CodeMapPanel，标签页名称
+ *   与插件中文名一致；代码审查由 as-ocr 插件提供，本插件不再重复。
  * - agent 工具 code_graph_query：模型查符号/引用不必再 grep 遍历。
  */
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import "./style.css";
 import { CodeMapPanel } from "./panel/CodeMapPanel";
-import { ReviewTab } from "./panel/ReviewTab";
 import { registerCodeMapBuildTool } from "./store/codemap-build-tool";
 import { CodeMapStore } from "./store/codemap-store";
 import { registerCodeMapTool } from "./store/codemap-tool";
@@ -40,11 +39,14 @@ export default definePlugin({
 		});
 
 		ctx.ui.registerActivityTab({
-			id: "as-codemap.review",
+			id: "as-codemap.map",
 			order: 35,
-			label: ctx.i18n.t("view.review"),
-			icon: <span className="icon-[mdi--shield-check-outline] h-4 w-4" />,
-			component: () => <ReviewTab store={activeStore} />,
+			// 标签页名称与插件中文名一致（代码图谱），文案与侧边面板共用 view.map。
+			label: ctx.i18n.t("view.map"),
+			icon: <span className="icon-[mdi--graph-outline] h-4 w-4" />,
+			// scope_use 漏写时宿主 fail-closed，tab 永远不会上栏。
+			scope_use: ["project", "conversation"],
+			component: () => <CodeMapPanel store={activeStore} />,
 		});
 	},
 	deactivate() {
