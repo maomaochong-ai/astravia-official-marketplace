@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "ONE POSTING AT A TIME",
+      "title": "Stop sending the same resume to every job",
+      "description": "Give Astravia the posting and your resume. It finds what that employer is screening for, rebuilds the resume around the experience that matches, and tells you where the evidence still runs out.",
+      "badges": ["Job description analysis", "ATS keywords", "Gap report", "Interview hooks"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "I'm applying for this senior data analyst role. Here's the posting and my current resume — can you tailor it?",
+        "assistant_reply": "I'll pull the must-have requirements and the terms that repeat across the posting, lead the summary with the five years of analysis work and the SQL, Python and A/B testing they ask for, quantify the campaign and automation results, and flag the healthcare-industry requirement as the one gap left to address."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What changes when it is tailored",
+      "items": [
+        {
+          "title": "The posting comes first",
+          "description": "Requirements are split into screening gates, core skills and nice-to-haves, so the resume answers them in that order instead of listing everything equally.",
+          "icon": "solar:target-bold"
+        },
+        {
+          "title": "Evidence, not adjectives",
+          "description": "Each requirement is matched to a real role, project or number in your background — and marked as direct, transferable or missing.",
+          "icon": "solar:checklist-minimalistic-bold"
+        },
+        {
+          "title": "Written for the parser too",
+          "description": "Standard headings, the posting's exact terminology, acronyms paired with full terms, and a layout that survives an applicant tracking system.",
+          "icon": "solar:document-text-bold"
+        },
+        {
+          "title": "Gaps stated plainly",
+          "description": "What the posting asks for and your resume cannot support, with concrete ways to close it before the interview stage.",
+          "icon": "solar:pen-new-square-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Three inputs, one tailored version",
+      "items": [
+        {
+          "title": "Add the posting",
+          "description": "Paste the full job description or attach the file. Company and title help anchor the summary."
+        },
+        {
+          "title": "Add your background",
+          "description": "Attach the current resume, or describe roles, dates, skills and results. Numbers you can supply become quantified bullets."
+        },
+        {
+          "title": "Review, then iterate",
+          "description": "Check every claim against your own record, then ask for a different emphasis, length or format — Markdown, plain text, Word or PDF."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "title": "It reorganizes, it does not invent",
+      "content": "Employers, titles, dates, degrees and metrics stay as you provide them. When a number is missing the resume is written without it, and anything the material cannot support stays in the gap report instead of the resume."
+    },
+    {
+      "type": "markdown",
+      "content": "## What it produces\n\n- A tailored resume in Markdown by default, with plain-text, Word or PDF output on request.\n- A short rationale: which requirements drove which bullets.\n- Strengths to reuse in the cover letter, gaps still open, and interview talking points drawn from your own experience.\n\n## Regional conventions\n\nUS and Canadian resumes run to one page without photos or personal details; UK and European CVs usually run to two; mainland Chinese resumes commonly include a photo and expect exact dates for education and roles. Tell it which market you are targeting, and it follows that market instead of assuming one.\n\n## Privacy\n\nA resume is personal data. The skill uses it only for the tailoring you asked for, and you should review every line before it leaves your hands."
+    }
+  ]
+}
