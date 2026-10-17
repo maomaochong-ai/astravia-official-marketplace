@@ -134,7 +134,7 @@ function ConnectDecisionTree(): JSX.Element {
 			<Arrow x1={340} y1={180} x2={410} y2={120} />
 			<Node x={420} y={90} width={140} height={44} fill={PRIMARY_FILL_12} stroke={PRIMARY} strokeWidth={1.5}>
 				<text x={490} y={108} textAnchor="middle" className="fill-foreground" fontSize={11} fontWeight={500}>
-					--dry-run
+					dry run
 				</text>
 				<text x={490} y={122} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
 					read-only verify
@@ -143,7 +143,7 @@ function ConnectDecisionTree(): JSX.Element {
 			<Arrow x1={560} y1={112} x2={610} y2={112} />
 			<Node x={620} y={90} width={84} height={44} fill="transparent" stroke="currentColor" strokeWidth={1}>
 				<text x={662} y={108} textAnchor="middle" className="fill-foreground" fontSize={10}>
-					→ rea route
+					→ route
 				</text>
 				<text x={662} y={122} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
 					{`(${t("tab.diagram.nextStage")})`}
@@ -212,13 +212,13 @@ function RouteFanOut(): JSX.Element {
 					{t("tab.diagram.route.mode")}
 				</text>
 				<text x={490} y={122} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
-					auto | guided | step
+					one entry tool per target
 				</text>
 			</Node>
 			<Arrow x1={570} y1={112} x2={620} y2={112} />
 			<Node x={630} y={90} width={80} height={44} fill="transparent" stroke="currentColor" strokeWidth={1}>
 				<text x={670} y={108} textAnchor="middle" className="fill-foreground" fontSize={10}>
-					→ rea summary
+					→ summary
 				</text>
 				<text x={670} y={122} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
 					{`(${t("tab.diagram.nextStage")})`}
@@ -273,7 +273,7 @@ function SummaryFiveFields(): JSX.Element {
 			<Arrow x1={570} y1={112} x2={620} y2={112} />
 			<Node x={630} y={90} width={80} height={44} fill="transparent" stroke="currentColor" strokeWidth={1}>
 				<text x={670} y={108} textAnchor="middle" className="fill-foreground" fontSize={10}>
-					→ rea plan
+					→ plan
 				</text>
 				<text x={670} y={122} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
 					{`(${t("tab.diagram.nextStage")})`}
@@ -371,10 +371,10 @@ function ReadReferencesRouting(): JSX.Element {
 			<line x1={150} y1={112} x2={210} y2={112} stroke="currentColor" strokeWidth={1.2} markerEnd="url(#rea-arrow)" />
 			<Node x={220} y={90} width={70} height={44} fill="transparent" stroke="currentColor" strokeWidth={1}>
 				<text x={255} y={108} textAnchor="middle" className="fill-foreground" fontSize={10}>
-					rea read
+					read
 				</text>
 				<text x={255} y={122} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
-					--ref
+					reference
 				</text>
 			</Node>
 			<g>
@@ -430,10 +430,10 @@ function FinishChecklist(): JSX.Element {
 			<line x1={420} y1={112} x2={470} y2={112} stroke="currentColor" strokeWidth={1.2} markerEnd="url(#rea-arrow)" />
 			<Node x={480} y={90} width={130} height={44} fill={PRIMARY_FILL_12} stroke={PRIMARY} strokeWidth={1.5}>
 				<text x={545} y={108} textAnchor="middle" className="fill-foreground" fontSize={11} fontWeight={500}>
-					rea finish
+					finish
 				</text>
 				<text x={545} y={122} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
-					--report / --handoff
+					report / handoff
 				</text>
 			</Node>
 			<text x={VIEW.width / 2} y={210} textAnchor="middle" className="fill-muted-foreground" fontSize={10}>

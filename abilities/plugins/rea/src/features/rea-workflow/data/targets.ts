@@ -33,8 +33,6 @@ export interface TargetDefinition {
 	readonly toolsKey: string;
 	/** 跳到哪个阶段（当前所有目标都跳到 stage 2 = route；预留字段以便未来扩展）。 */
 	readonly routeStage: 2;
-	/** 推荐起点命令 i18n key: tab.target.<kind>.command。 */
-	readonly commandKey: string;
 }
 
 export const TARGETS: readonly TargetDefinition[] = [
@@ -44,7 +42,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		hintKey: "tab.target.javascript.hint",
 		toolsKey: "tab.target.javascript.tools",
 		routeStage: 2,
-		commandKey: "tab.target.javascript.command",
 	},
 	{
 		kind: "dotnet",
@@ -52,7 +49,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		hintKey: "tab.target.dotnet.hint",
 		toolsKey: "tab.target.dotnet.tools",
 		routeStage: 2,
-		commandKey: "tab.target.dotnet.command",
 	},
 	{
 		kind: "native",
@@ -60,7 +56,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		hintKey: "tab.target.native.hint",
 		toolsKey: "tab.target.native.tools",
 		routeStage: 2,
-		commandKey: "tab.target.native.command",
 	},
 	{
 		kind: "firmware",
@@ -68,7 +63,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		hintKey: "tab.target.firmware.hint",
 		toolsKey: "tab.target.firmware.tools",
 		routeStage: 2,
-		commandKey: "tab.target.firmware.command",
 	},
 	{
 		kind: "web",
@@ -76,7 +70,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		hintKey: "tab.target.web.hint",
 		toolsKey: "tab.target.web.tools",
 		routeStage: 2,
-		commandKey: "tab.target.web.command",
 	},
 	{
 		kind: "mobile",
@@ -84,7 +77,6 @@ export const TARGETS: readonly TargetDefinition[] = [
 		hintKey: "tab.target.mobile.hint",
 		toolsKey: "tab.target.mobile.tools",
 		routeStage: 2,
-		commandKey: "tab.target.mobile.command",
 	},
 ] as const;
 

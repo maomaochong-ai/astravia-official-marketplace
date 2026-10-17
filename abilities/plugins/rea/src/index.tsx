@@ -50,6 +50,25 @@ function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
 				if (status.providerId === REA_PROVIDER_ID) listener(status);
 			}),
 		retry: () => ctx.cliProviders.retry(REA_PROVIDER_ID),
+		run: (args, options) => ctx.cliProviders.run(REA_PROVIDER_ID, [...args], options),
+	};
+}
+
+/**
+ * 把「交给 Agent」的结构化逆向任务写进当前输入框。
+ *
+ * 需要 agent.session.write；宿主拒绝或当前没有可写会话时返回 false，
+ * 工作台据此提示用户手动复制，而不是静默失败。
+ */
+function createPromptWriter(ctx: PluginContext): (prompt: string) => boolean {
+	return (prompt: string) => {
+		try {
+			ctx.conversation.insertText(prompt);
+			return true;
+		} catch (error) {
+			console.warn("[rea] cannot write to composer", error);
+			return false;
+		}
 	};
 }
 
@@ -79,6 +98,7 @@ function activateLiveLayer(ctx: PluginContext, store: ReaLiveStore): Disposable[
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const provider = createProviderBridge(ctx);
+		const insertPrompt = createPromptWriter(ctx);
 		const store = new ReaLiveStore();
 
 		// UI 槽位先注册：它是插件的可见入口，不能因为后面某一层不可用就整个消失。
@@ -89,7 +109,7 @@ export default definePlugin({
 			order: 22,
 			scope_use: ["conversation", "project"],
 			initiallyVisible: true,
-			component: () => <ReaWorkflowTab provider={provider} store={store} />,
+			component: () => <ReaWorkflowTab provider={provider} store={store} insertPrompt={insertPrompt} />,
 		});
 
 		// 输入栏 toggle：on 时把面板上栏 + 打开；off 时下栏。

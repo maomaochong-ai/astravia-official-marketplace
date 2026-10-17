@@ -31,8 +31,8 @@ export interface StageDefinition {
 	readonly subtitleKey: string;
 	/** 4 条原理 bullets。 */
 	readonly bullets: readonly StageBullet[];
-	/** 关键命令（多行文本渲染在 <pre>）。 */
-	readonly command: string;
+	/** 引用 data/commands.ts 里的命令 id；阶段详情把这些命令渲染成可运行行。 */
+	readonly commandIds: readonly string[];
 	/** 关联 reference 路径（包内相对，可选）。 */
 	readonly referencePath?: string;
 	/** 失败兜底文案 i18n key，落在 `tab.detail.<slug>.fallback`。 */
@@ -61,8 +61,7 @@ export const STAGES: readonly StageDefinition[] = [
 			{ i18nKey: "tab.detail.connect.bullet3" },
 			{ i18nKey: "tab.detail.connect.bullet4" },
 		],
-		command:
-			"rea doctor --json\nrea --version\nrea capabilities --json\nrea --target <kind> --dry-run",
+		commandIds: ["doctor", "capabilities", "providers"],
 		referencePath: "agent/skills/reverse-engineer-anything/references/connection-and-recovery.md",
 		fallbackKey: "tab.detail.connect.fallback",
 		diagram: "connect-decision-tree",
@@ -78,8 +77,7 @@ export const STAGES: readonly StageDefinition[] = [
 			{ i18nKey: "tab.detail.route.bullet3" },
 			{ i18nKey: "tab.detail.route.bullet4" },
 		],
-		command:
-			"rea route --target <kind> --mode <auto|guided|step>\nrea list-targets --json",
+		commandIds: ["inspect-artifact", "analyze-auto", "managed-artifact", "android-package"],
 		fallbackKey: "tab.detail.route.fallback",
 		diagram: "route-fan-out",
 	},
@@ -94,8 +92,7 @@ export const STAGES: readonly StageDefinition[] = [
 			{ i18nKey: "tab.detail.summary.bullet3" },
 			{ i18nKey: "tab.detail.summary.bullet4" },
 		],
-		command:
-			"rea summary --target <kind> --format json --output <path>\nrea summary --target <kind> --format markdown",
+		commandIds: [],
 		fallbackKey: "tab.detail.summary.fallback",
 		diagram: "summary-five-fields",
 	},
@@ -110,8 +107,7 @@ export const STAGES: readonly StageDefinition[] = [
 			{ i18nKey: "tab.detail.plan.bullet3" },
 			{ i18nKey: "tab.detail.plan.bullet4" },
 		],
-		command:
-			"rea plan --target <kind> --steps 1..8\nrea plan --target <kind> --step confirm --question \"<ask>\"",
+		commandIds: [],
 		fallbackKey: "tab.detail.plan.fallback",
 		diagram: "plan-eight-steps",
 	},
@@ -126,8 +122,7 @@ export const STAGES: readonly StageDefinition[] = [
 			{ i18nKey: "tab.detail.read.bullet3" },
 			{ i18nKey: "tab.detail.read.bullet4" },
 		],
-		command:
-			"rea read --target <kind> --ref connection-and-recovery\nrea read --target <kind> --ref native-and-artifacts",
+		commandIds: [],
 		referencePath: "agent/skills/reverse-engineer-anything/references/native-and-artifacts.md",
 		fallbackKey: "tab.detail.read.fallback",
 		diagram: "read-references-routing",
@@ -143,8 +138,7 @@ export const STAGES: readonly StageDefinition[] = [
 			{ i18nKey: "tab.detail.finish.bullet3" },
 			{ i18nKey: "tab.detail.finish.bullet4" },
 		],
-		command:
-			"rea finish --target <kind> --report <path>\nrea finish --target <kind> --handoff --next-steps",
+		commandIds: [],
 		referencePath: "agent/skills/reverse-engineer-anything/references/evidence-workflows.md",
 		fallbackKey: "tab.detail.finish.fallback",
 		diagram: "finish-checklist",

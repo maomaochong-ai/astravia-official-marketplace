@@ -1,36 +1,36 @@
 /**
- * 目标类型路由卡：tab 顶部一排 6 个 chip（JavaScript / .NET / Native / Firmware / Web / Mobile），
- * 选中后展示「该目标的推荐工具栈 + 入口命令」并把 stage 切到 route。
+ * 目标类型选择：一排 6 个 chip（JavaScript / .NET / Native / Firmware / Web / Mobile）。
  *
- * 6 个 chip 的色号用 neutral；选中用 primary 半透明叠 + 边框高亮。
+ * 受控组件：选中状态由工作台持有，便于「选目标 → 命令清单随之切换 → 一键交给 Agent」
+ * 这条链路共享同一份数据。芯片下方只说明该目标的判定依据与推荐工具栈；
+ * 具体可跑的命令由工作台的命令清单提供，这里不再写命令行文本。
  */
 
-import { useState, type JSX } from "react";
+import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { TARGETS, getTarget, type TargetKind } from "../data/targets";
 
 export interface ReaWorkflowTargetRoutingProps {
-	readonly onRoute: (stage: number) => void;
+	/** 当前生效的目标类型（工作台选择 + 会话检测的合并结果）。 */
+	readonly active: TargetKind | null;
+	/** 是否由用户手动选定（false 时说明来自会话检测）。 */
+	readonly picked: boolean;
 	/** 从真实工具调用推断出的目标类型；只做提示，用户仍可手动改选。 */
 	readonly detected?: TargetKind | null;
+	readonly onPick: (kind: TargetKind) => void;
+	readonly onClear: () => void;
 }
 
-export function ReaWorkflowTargetRouting({ onRoute, detected }: ReaWorkflowTargetRoutingProps): JSX.Element {
+export function ReaWorkflowTargetRouting({
+	active,
+	picked,
+	detected,
+	onPick,
+	onClear,
+}: ReaWorkflowTargetRoutingProps): JSX.Element {
 	const { t } = useTranslation();
-	const [picked, setPicked] = useState<TargetKind | null>(null);
-	const active: TargetKind | null = picked ?? detected ?? null;
-
-	const handlePick = (kind: TargetKind): void => {
-		const target = getTarget(kind);
-		setPicked(kind);
-		onRoute(target.routeStage);
-	};
-
 	return (
-		<section
-			className="border-b border-border bg-card/30 px-3 py-2.5"
-			aria-label={t("tab.target.sectionAria")}
-		>
+		<div aria-label={t("tab.target.sectionAria")}>
 			<header className="mb-1.5 flex items-center justify-between">
 				<h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
 					{t("tab.target.sectionTitle")}
@@ -39,7 +39,7 @@ export function ReaWorkflowTargetRouting({ onRoute, detected }: ReaWorkflowTarge
 					<button
 						type="button"
 						className="inline-flex h-5 items-center rounded text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-						onClick={() => setPicked(null)}
+						onClick={onClear}
 					>
 						{t("tab.target.clear")}
 					</button>
@@ -54,7 +54,7 @@ export function ReaWorkflowTargetRouting({ onRoute, detected }: ReaWorkflowTarge
 						<button
 							key={target.kind}
 							type="button"
-							onClick={() => handlePick(target.kind)}
+							onClick={() => onPick(target.kind)}
 							className={
 								isActive
 									? "inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/50 bg-primary/15 px-2.5 text-[11.5px] font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
@@ -62,14 +62,16 @@ export function ReaWorkflowTargetRouting({ onRoute, detected }: ReaWorkflowTarge
 							}
 							aria-pressed={isActive}
 						>
-							<span aria-hidden className="text-[12px] leading-none">{iconFor(target.kind)}</span>
+							<span aria-hidden className="text-[12px] leading-none">
+								{iconFor(target.kind)}
+							</span>
 							<span>{t(target.labelKey)}</span>
 						</button>
 					);
 				})}
 			</div>
 			{active ? <TargetDetail kind={active} /> : null}
-		</section>
+		</div>
 	);
 }
 
@@ -79,18 +81,8 @@ function TargetDetail({ kind }: { kind: TargetKind }): JSX.Element {
 	return (
 		<div className="mt-2 rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2.5 py-1.5">
 			<p className="text-[11px] leading-relaxed text-foreground/90">{t(target.hintKey)}</p>
-			<p className="mt-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">
-				{t("tab.target.toolsLabel")}
-			</p>
+			<p className="mt-1 text-[10.5px] uppercase tracking-wide text-muted-foreground">{t("tab.target.toolsLabel")}</p>
 			<p className="text-[11px] font-mono text-foreground/85">{t(target.toolsKey)}</p>
-			<details className="mt-1.5">
-				<summary className="cursor-pointer text-[10.5px] text-primary hover:underline">
-					{t("tab.target.commandLabel")}
-				</summary>
-				<pre className="mt-1 overflow-auto rounded bg-muted/50 px-2 py-1 font-mono text-[10.5px] leading-relaxed text-foreground/85">
-{t(target.commandKey)}
-				</pre>
-			</details>
 		</div>
 	);
 }
