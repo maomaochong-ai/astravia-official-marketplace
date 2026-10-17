@@ -167,7 +167,8 @@ function RunCard({ run }: { run: ReviewRun }): JSX.Element {
 					{run.ok ? (run.findings.length === 0 ? "通过" : `${run.findings.length} 个发现`) : "失败"}
 				</span>
 				<span className="text-muted-foreground/60">
-					{run.scope} · {(run.durationMs / 1000).toFixed(1)}s
+					{run.scope} · {run.engine === "delegate" ? "委托" : "ocr"}
+					{run.durationMs > 0 ? ` · ${(run.durationMs / 1000).toFixed(1)}s` : ""}
 				</span>
 			</div>
 			{!run.ok && run.error ? (

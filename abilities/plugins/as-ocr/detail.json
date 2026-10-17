@@ -6,7 +6,7 @@
 			"eyebrow": "Code review",
 			"title": "Review your changes with the rules that already exist",
 			"description": "as-ocr runs alibaba/open-code-review from the conversation and lists its findings by severity, so NPE, thread-safety, XSS and SQL-injection problems surface before they ship.",
-			"badges": ["Runs locally", "Severity-sorted"]
+			"badges": ["Runs locally", "Severity-sorted", "No API key"]
 		},
 		{
 			"type": "feature-grid",
@@ -24,7 +24,7 @@
 				},
 				{
 					"title": "One command to run a review",
-					"description": "Ask for a review; the AI calls the ocr CLI with the right arguments and parses its JSON report.",
+					"description": "Ask for a review; ocr picks the files and the matching rules, git supplies the diffs, and your current session model does the judging — no extra API key.",
 					"icon": "assets/icons/bot-bold.svg"
 				},
 				{
@@ -64,7 +64,7 @@
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "The first enable downloads a ~53 MB ocr binary (global npm package). If that install fails because of a network or proxy problem, the ability reports the reason and a retry action instead of reviewing."
+			"content": "The first enable downloads a ~53 MB ocr binary (global npm package). If that install fails because of a network or proxy problem, the ability reports the reason and a retry action instead of reviewing. Reviews run inside the workspace, which must be a git repository, and use only the git command for diffs."
 		}
 	]
 }

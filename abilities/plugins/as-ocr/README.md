@@ -4,7 +4,7 @@
 
 ## 形态
 
-- **agent 工具 `code_review`**：对话里说「审查一下改动」即触发。工作区模式（staged+unstaged+untracked）或分支区间（`from` 参数）。发现按严重度分组返回给模型，可直接进入修复讨论。
+- **agent 工具 `code_review`**：对话里说「审查一下改动」即触发。工作区模式（staged+unstaged+untracked）或分支区间（`from` 参数）。默认走 **委托模式**：ocr 只负责选文件与给规则，diff 由 git 取，判断交给会话里的模型——**不需要任何 API Key**。审完由 `code_review_report` 把发现写回面板。
 - **活动面板「审查」标签**：历史 20 次运行留存，按 critical/major/minor/info 分组、file:line 定位。
 - **零服务进程，依赖自动装**：插件不捆绑二进制——ocr 由宿主按 `plugin.json#providers.cli` 的声明安装（npm 全局包，约 53 MB），启用插件后自动完成；安装阶段与日志实时显示在「审查」标签页顶部。
 
@@ -26,11 +26,20 @@ brew install open-code-review
 go install github.com/alibaba/open-code-review/cmd/ocr@latest
 ```
 
-ocr 自身需要一个 OpenAI 兼容端点（叙述审查用）；delegate 模式下可复用当前 agent 的模型。详见 [ocr 文档](https://github.com/alibaba/open-code-review)。
+### 两种执行模式
+
+| 模式 | 需要配置 | 谁做判断 | 何时用 |
+| --- | --- | --- | --- |
+| **委托 delegate**（默认） | 无 | 当前会话的模型 | 开箱即用（推荐） |
+| ocr 托管 | `ocr config provider` + 端点 | ocr 自己调 LLM | 已配好端点、想要 ocr 的内置提示词与反思流程（传 `engine: "ocr"`） |
+
+`ocr review` 必须先有 LLM 端点，否则报 `no valid LLM endpoint configured`——这也是过去「代码审查不可用」的第二层原因。委托模式绕开了这一层：`ocr delegate preview` / `delegate rule` 都是纯确定性计算，无需模型。
+
+委托模式需要工作区是 **git 仓库**（ocr 用它枚举改动、`git` 用来取 diff），所以插件声明了 `agent.command.run` 权限与 `commands: ["git"]`（仅 `git`，只跑 diff/show，由你在设置里单独开关）。
 
 ## 权限清单（最小集）
 
-`ui.slot.activity-tab` · `agent.tools.register` · `agent.toolHandler.execute` · `agent.session.read` · `storage.read/write` · `fs.read` · `shell.openExternal`
+`ui.slot.activity-tab` · `agent.tools.register` · `agent.toolHandler.execute` · `agent.session.read` · `storage.read/write` · `fs.read` · `agent.command.run`（仅 `git`）· `shell.openExternal`
 
 ## 许可
 

@@ -2,7 +2,7 @@
 	"id": "as-ocr",
 	"name": "%plugin.name%",
 	"icon": "assets/icon.svg",
-	"version": "0.1.5",
+	"version": "0.1.10",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
@@ -22,7 +22,11 @@
 		"storage.read",
 		"storage.write",
 		"fs.read",
+		"agent.command.run",
 		"shell.openExternal"
+	],
+	"commands": [
+		"git"
 	],
 	"providers": {
 		"cli": [

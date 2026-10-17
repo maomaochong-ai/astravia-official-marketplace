@@ -6,7 +6,7 @@
 			"eyebrow": "代码审查",
 			"title": "用现成的规则审你的改动",
 			"description": "as-ocr 在对话里调用 alibaba/open-code-review，把结果按严重级别列出来——空指针、线程安全、XSS、SQL 注入等风险在提交前就能看到。",
-			"badges": ["本地运行", "按级别排序"]
+			"badges": ["本地运行", "按级别排序", "无需 API Key"]
 		},
 		{
 			"type": "feature-grid",
@@ -24,7 +24,7 @@
 				},
 				{
 					"title": "一句话触发审查",
-					"description": "让 AI 去跑；它会用正确的参数调用 ocr CLI，并解析返回的 JSON 报告。",
+					"description": "让 AI 去跑；ocr 负责选文件与匹配规则，git 提供 diff，判断由当前会话的模型完成——不用另外配 API Key。",
 					"icon": "assets/icons/bot-bold.svg"
 				},
 				{
@@ -64,7 +64,7 @@
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "首次启用需要下载约 53 MB 的 ocr 二进制（npm 全局包）。若安装因网络或代理失败，本能力会给出失败原因和重试入口，而不是直接开始审查。"
+			"content": "首次启用需要下载约 53 MB 的 ocr 二进制（npm 全局包）。若安装因网络或代理失败，本能力会给出失败原因和重试入口，而不是直接开始审查。审查在当前工作区内进行，工作区需要是 git 仓库，且只会调用 git 取 diff。"
 		}
 	]
 }

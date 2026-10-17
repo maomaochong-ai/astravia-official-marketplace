@@ -28,6 +28,8 @@ export interface ReviewRun {
 	readonly findings: readonly ReviewFinding[];
 	readonly rawSummary: string;
 	readonly ok: boolean;
+	/** delegate = 模型自己审（默认）；ocr = ocr 调自己的 LLM。旧记录没有该字段。 */
+	readonly engine?: "delegate" | "ocr";
 	readonly error?: string;
 }
 
