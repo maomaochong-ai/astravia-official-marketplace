@@ -2,12 +2,15 @@
  * 直接探测外部可执行文件在不在。
  *
  * doctor 只覆盖 REA 自己的分析引擎（node / host / hopper / ghidra / ida / jadx /
- * ilspycmd），frida、adb、apktool、binwalk、gdb… 它一概不管。以前这些一律显示
- * 「未知」，对用户没有信息量。这里用宿主声明的命令通道跑一次 `--version`：
+ * ilspycmd），frida、adb、apktool、binwalk、tshark、pwntools… 它一概不管。以前这些
+ * 一律显示「未知」，对用户没有信息量。这里用宿主声明的命令通道跑一次 `--version`：
  *
  *   能跑起来   ⇒ 可执行文件存在（版本能解析就带上，解析不了也不算失败）；
  *   ENOENT     ⇒ 没装；
  *   被权限挡住 ⇒ 未知，并且明确告诉用户是插件没拿到命令执行授权，不是没装。
+ *
+ * 没有稳定 `--version` 入口的工具（pwntools / pwndbg / JEB / Chrome）不设探测配方：
+ * 硬跑一个 python -c 会把「导入失败」当成「装好了」。这几项留给会话证据与手动确认。
  *
  * 探测是只读的：不写文件、不联网、不改配置，超时 6 秒。
  */
@@ -29,11 +32,17 @@ export const TOOL_PROBES: Readonly<Record<string, ToolProbeRecipe>> = {
 	adb: { file: "adb", args: ["version"] },
 	apktool: { file: "apktool", args: ["--version"] },
 	binwalk: { file: "binwalk", args: ["--help"] },
+	unblob: { file: "unblob", args: ["--version"] },
+	tshark: { file: "tshark", args: ["--version"] },
+	capinfos: { file: "capinfos", args: ["--version"] },
+	sigrok: { file: "sigrok-cli", args: ["--version"] },
 	objdump: { file: "objdump", args: ["--version"] },
 	gdb: { file: "gdb", args: ["--version"] },
 	rizin: { file: "rizin", args: ["-v"] },
 	cutter: { file: "cutter", args: ["--version"] },
 	jadx: { file: "jadx", args: ["--version"] },
+	mitmdump: { file: "mitmdump", args: ["--version"] },
+	wabt: { file: "wasm-validate", args: ["--version"] },
 	brew: { file: "brew", args: ["--version"] },
 };
 

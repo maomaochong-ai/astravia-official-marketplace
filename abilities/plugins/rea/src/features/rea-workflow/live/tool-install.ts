@@ -8,7 +8,8 @@
  *   manual  需要授权、需要设置应用看不到的环境变量、或装完还得再配置——只给可复制的命令
  *
  * manual 里 ghidra 尤其要说清：装了 Ghidra 还得让 `GHIDRA_INSTALL_DIR` 出现在
- * Astravia 主进程的环境里，否则 REA 依然用不了。所以不给「一键安装」，避免装完还是红的。
+ * Astravia 主进程的环境里，否则 REA 依然用不了。pwntools / pwndbg 走 Python / gdb
+ * 生态同样不在应用能管的范围内。所以这些都不给「一键安装」，避免装完还是红的。
  */
 
 export type InstallKind = "rea" | "brew" | "manual";
@@ -25,15 +26,25 @@ export const INSTALL_RECIPES: Readonly<Record<string, InstallRecipe>> = {
 	hopper: { kind: "rea", args: ["setup", "--yes", "--installHopper"] },
 	apktool: { kind: "brew", args: ["install", "apktool"] },
 	binwalk: { kind: "brew", args: ["install", "binwalk"] },
+	unblob: { kind: "manual", command: "pip3 install --user unblob" },
 	adb: { kind: "brew", args: ["install", "--cask", "android-platform-tools"] },
 	rizin: { kind: "brew", args: ["install", "rizin"] },
+	wabt: { kind: "brew", args: ["install", "wabt"] },
+	mitmdump: { kind: "brew", args: ["install", "mitmproxy"] },
 	ghidra: { kind: "manual", command: "brew install --cask ghidra" },
 	jadx: { kind: "manual", command: "brew install jadx" },
 	cutter: { kind: "manual", command: "brew install --cask cutter" },
 	objdump: { kind: "manual", command: "brew install binutils" },
+	tshark: { kind: "manual", command: "brew install --cask wireshark" },
+	capinfos: { kind: "manual", command: "brew install --cask wireshark" },
+	sigrok: { kind: "manual", command: "brew install sigrok-cli" },
 	frida: { kind: "manual", command: "pip3 install --user frida-tools" },
+	pwntools: { kind: "manual", command: "pip3 install --user pwntools" },
+	pwndbg: { kind: "manual", command: "brew install pwndbg" },
 	gdb: { kind: "manual", command: "brew install gdb" },
 	java: { kind: "manual", command: "brew install --cask temurin" },
+	browser: { kind: "manual", command: "brew install --cask google-chrome" },
+	jeb: { kind: "manual", command: "REA_JEB_MCP_URL=http://127.0.0.1:<port>" },
 };
 
 export function installRecipeFor(id: string): InstallRecipe | null {

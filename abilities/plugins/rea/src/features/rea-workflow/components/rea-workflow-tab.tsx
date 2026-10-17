@@ -26,7 +26,7 @@ import { useDoctorReport } from "../hooks/use-doctor-report";
 import { useWorkbench } from "../hooks/use-workbench";
 import { useReaLiveSnapshot } from "../live/use-live-snapshot";
 import { scopeLiveCalls, type ReaLiveStore } from "../live/session-store";
-import { buildStageDigest } from "../live/diagram-live";
+import { buildStageDigest, bypassedStageIds } from "../live/diagram-live";
 import { STAGE_INDEX } from "../live/tool-taxonomy";
 
 export interface ReaProviderBridge {
@@ -59,7 +59,8 @@ export function ReaWorkflowTab({
 	const { t } = useTranslation();
 	const { active, cwd } = useActivityTab();
 	const [currentStage, setCurrentStage] = useState<number>(1);
-	const [showLog, setShowLog] = useState<boolean>(false);
+	// 默认展开：用户打开 tab 就是想看刚才跑了什么，不该再多点一次。
+	const [showLog, setShowLog] = useState<boolean>(true);
 	const snapshot = useReaLiveSnapshot(store);
 	// 会话里推进到新阶段时自动翻页；用户手动点选后就停在那，直到下一次真实推进。
 	const liveStage = snapshot.activeStage ? STAGE_INDEX[snapshot.activeStage] : null;
@@ -97,6 +98,8 @@ export function ReaWorkflowTab({
 	});
 
 	const calls = useMemo(() => scopeLiveCalls(snapshot, cwd), [snapshot, cwd]);
+	// 被流程越过的阶段（自身没有调用、下游已有调用）：流程条要如实区分「没开始」和「跳过」。
+	const bypassed = useMemo(() => bypassedStageIds(calls).map((id) => STAGE_INDEX[id]), [calls]);
 	// 示意图与阶段标题用的是同一份真实信号：当前阶段的调用数 / 正在跑的工具。
 	const stageLive = useMemo(
 		() => ({ calls, running: snapshot.runningToolNames, digest: buildStageDigest(currentStage, calls, snapshot.runningToolNames) }),
@@ -126,6 +129,7 @@ export function ReaWorkflowTab({
 					workbench={workbench}
 					detected={snapshot.detectedTarget ?? snapshot.hintedTarget}
 					calls={calls}
+					running={snapshot.runningToolNames}
 					report={report}
 					run={provider.run}
 					runCommand={runCommand}
@@ -137,12 +141,13 @@ export function ReaWorkflowTab({
 						onSelect={handleSelect}
 						completedStages={snapshot.visitedStages.map((id) => STAGE_INDEX[id])}
 						liveStage={liveStage}
+						bypassedStages={bypassed}
 					/>
 				</div>
 				<ReaWorkflowStageDetail stage={stage} total={TOTAL_STAGES} live={stageLive} doctor={report.status} />
 			</div>
 			{showLog ? (
-				<div className="max-h-56 shrink-0 overflow-auto border-t border-border">
+				<div className="shrink-0 border-t border-border">
 					<ReaLiveCallLog calls={calls} errors={snapshot.errors} onSelectStage={handleSelect} />
 				</div>
 			) : null}

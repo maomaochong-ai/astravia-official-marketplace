@@ -58,7 +58,8 @@ function ConnectDecisionTree({ calls, running }: DiagramProps): JSX.Element {
 	const { t } = useTranslation();
 	const node = (binding?: DiagramBinding): DiagramNodeLive => resolveNodeLive(binding, calls, running);
 	const probe = node({ kind: "stage", stage: "connect" });
-	const dryRun = node({ kind: "stage", stage: "connect" });
+	// 预演是 connect 的最后一步：下游阶段已经开跑，就说明它确实完成了。
+	const dryRun = node({ kind: "milestone", after: ["route", "plan", "read"] });
 	const handoff = node({ kind: "stage", stage: "route" });
 	const fails = [t("tab.diagram.connect.fail1"), t("tab.diagram.connect.fail2"), t("tab.diagram.connect.fail3")];
 	return (
@@ -88,7 +89,8 @@ function RouteFanOut({ calls, running }: DiagramProps): JSX.Element {
 	const { t } = useTranslation();
 	const node = (binding?: DiagramBinding): DiagramNodeLive => resolveNodeLive(binding, calls, running);
 	const source = node({ kind: "stage", stage: "route" });
-	const mode = node({ kind: "stage", stage: "route" });
+	// 工作模式确定之后才有下游调用，用后续阶段反推这一节点。
+	const mode = node({ kind: "milestone", after: ["plan", "read", "finish"] });
 	const handoff = node({ kind: "stage", stage: "summary" });
 	// 四个入口桶各自绑定目标类型：真实调用落在哪个桶，那个桶就亮。
 	const buckets = [
@@ -180,18 +182,24 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 	const { t } = useTranslation();
 	const node = (binding?: DiagramBinding): DiagramNodeLive => resolveNodeLive(binding, calls, running);
 	const handoff = node({ kind: "stage", stage: "read" });
+	const started = calls.length > 0;
 	const steps: ReadonlyArray<{
 		readonly key: string;
 		readonly label: string;
 		readonly tone: "primary" | "warning" | "neutral";
 		readonly live?: DiagramNodeLive;
 	}> = [
-		{ key: "1", label: t("tab.diagram.plan.step1"), tone: "primary" },
+		{ key: "1", label: t("tab.diagram.plan.step1"), tone: "primary", live: node({ kind: "stage", stage: "route" }) },
 		{ key: "2", label: t("tab.diagram.plan.step2"), tone: "primary", live: node({ kind: "stage", stage: "connect" }) },
 		{ key: "3", label: t("tab.diagram.plan.step3"), tone: "primary", live: node({ kind: "tools", tools: GRAPH_TOOLS }) },
-		{ key: "4", label: t("tab.diagram.plan.step4"), tone: "primary" },
-		{ key: "5", label: t("tab.diagram.plan.step5"), tone: "primary" },
-		{ key: "?", label: t("tab.diagram.plan.step6"), tone: "warning" },
+		{ key: "4", label: t("tab.diagram.plan.step4"), tone: "primary", live: node({ kind: "stage", stage: "read" }) },
+		{ key: "5", label: t("tab.diagram.plan.step5"), tone: "primary", live: node({ kind: "any", of: [{ kind: "stage", stage: "read" }, { kind: "stage", stage: "finish" }] }) },
+		{
+			key: "?",
+			label: t("tab.diagram.plan.step6"),
+			tone: "warning",
+			live: node({ kind: "tools", tools: ["record_unknown", "list_unknowns", "update_unknown"] }),
+		},
 		{
 			key: "✓",
 			label: t("tab.diagram.plan.step7"),
@@ -220,18 +228,24 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 							{step.key}
 						</span>
 						<span className="min-w-0 break-words text-[10px] leading-tight">{step.label}</span>
-						{step.live && step.live.state !== "idle" ? (
+						{step.live && (step.live.state !== "idle" || started) ? (
 							<span
 								className={`ml-auto shrink-0 text-[9px] tabular-nums ${
-									step.live.state === "failed" ? "text-red-600 dark:text-red-400" : "text-primary"
+									step.live.state === "failed"
+										? "text-red-600 dark:text-red-400"
+										: step.live.state === "idle"
+											? "text-muted-foreground"
+											: "text-primary"
 								}`}
-								title={step.live.tools[0] ?? undefined}
+								title={step.live.state === "idle" ? t("tab.live.diagram.unmetHint") : (step.live.tools[0] ?? undefined)}
 							>
 								{step.live.state === "active"
 									? t("tab.live.diagram.running")
-									: step.live.count > 0
-										? t("tab.live.diagram.calls", { count: step.live.count })
-										: t("tab.live.diagram.reached")}
+									: step.live.state === "idle"
+										? t("tab.live.diagram.unmet")
+										: step.live.count > 0
+											? t("tab.live.diagram.calls", { count: step.live.count })
+											: t("tab.live.diagram.reached")}
 							</span>
 						) : null}
 					</div>
@@ -302,20 +316,32 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 	const { t } = useTranslation();
 	const node = (binding?: DiagramBinding): DiagramNodeLive => resolveNodeLive(binding, calls, running);
 	const finish = node({ kind: "stage", stage: "finish" });
-	// 每条清单绑定产出它的真实工具；没有对应工具的第 3 条跟随 finish 阶段聚合状态。
+	// 每条清单绑定**产出它的工具族**：不要求必须是某一个冷门工具，否则正常分析里几乎永远不会亮。
+	// 一个都没命中的条目不假装完成，下面会标成「未执行」。
 	const checks = [
 		{
 			label: t("tab.diagram.finish.check1"),
-			live: node({ kind: "tools", tools: ["verify_reconstruction", "evaluate_reconstruction_coverage"] }),
+			live: node({
+				kind: "any",
+				of: [
+					{ kind: "tools", tools: ["verify_reconstruction", "evaluate_reconstruction_coverage"] },
+					{ kind: "tools", tools: ["build_reconstruction_obligation_ledger", "import_managed_reconstruction"] },
+				],
+			}),
 		},
-		{ label: t("tab.diagram.finish.check2"), live: node({ kind: "tools", tools: ["correlate_static_and_runtime"] }) },
-		{ label: t("tab.diagram.finish.check3"), live: node({ kind: "tools", tools: ["list_unknowns", "record_unknown"] }) },
+		{ label: t("tab.diagram.finish.check2"), live: node({ kind: "tools", tools: RUNTIME_TOOLS }) },
+		{ label: t("tab.diagram.finish.check3"), live: node({ kind: "tools", tools: ["list_unknowns", "record_unknown", "update_unknown"] }) },
 		{
 			label: t("tab.diagram.finish.check4"),
 			live: node({ kind: "tools", tools: ["export_evidence_bundle", "import_evidence_bundle", "get_evidence_bundle"] }),
 		},
-		{ label: t("tab.diagram.finish.check5"), live: node({ kind: "tools", tools: ["verify_unknown_resolution", "update_unknown"] }) },
+		{
+			label: t("tab.diagram.finish.check5"),
+			live: node({ kind: "tools", tools: ["verify_unknown_resolution", "update_unknown", "verify_reconstruction"] }),
+		},
 	];
+	// 会话已经开跑、但这几条检查本次没有对应调用：如实标成「未执行」。
+	const started = calls.length > 0;
 	return (
 		<ReaDiagramFrame ariaLabel={t("tab.detail.finish.diagramAria")}>
 			<ul className="space-y-1.5">
@@ -333,16 +359,21 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 								}`}
 								aria-hidden="true"
 							>
-								{state === "failed" ? "!" : "✓"}
+								{state === "failed" ? "!" : state === "idle" ? "–" : "✓"}
 							</span>
 							<span className="min-w-0 break-words text-[10px] leading-snug text-foreground/90">{check.label}</span>
-							{state !== "idle" ? (
-								<span className="ml-auto shrink-0 text-[9px] tabular-nums text-primary">
+							{state !== "idle" || started ? (
+								<span
+									className={`ml-auto shrink-0 text-[9px] tabular-nums ${state === "idle" ? "text-muted-foreground" : "text-primary"}`}
+									title={state === "idle" ? t("tab.live.diagram.unmetHint") : undefined}
+								>
 									{state === "active"
 										? t("tab.live.diagram.running")
-										: check.live.count > 0
-											? t("tab.live.diagram.calls", { count: check.live.count })
-											: t("tab.live.diagram.reached")}
+										: state === "idle"
+											? t("tab.live.diagram.unmet")
+											: check.live.count > 0
+												? t("tab.live.diagram.calls", { count: check.live.count })
+												: t("tab.live.diagram.reached")}
 								</span>
 							) : null}
 						</li>

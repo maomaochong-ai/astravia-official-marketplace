@@ -19,6 +19,7 @@ interface WorkbenchProps {
 	readonly workbench: Workbench;
 	readonly detected: TargetKind | null;
 	readonly calls: readonly ReaLiveCall[];
+	readonly running: readonly string[];
 	readonly report: DoctorReport;
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
 	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
@@ -42,6 +43,7 @@ export function ReaWorkbench({
 	workbench,
 	detected,
 	calls,
+	running,
 	report,
 	run,
 	runCommand,
@@ -76,6 +78,7 @@ export function ReaWorkbench({
 				picked={workbench.picked}
 				detected={detected}
 				calls={calls}
+				running={running}
 				report={report}
 				run={run}
 				runCommand={runCommand}

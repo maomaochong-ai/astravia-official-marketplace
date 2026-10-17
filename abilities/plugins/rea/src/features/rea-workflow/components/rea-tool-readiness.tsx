@@ -6,11 +6,14 @@
  *   probe   宿主命令通道跑一次 `--version` —— doctor 不管的工具靠它；
  *   session 本次会话真实调用过没有。
  *
+ * 清单是**该目标类型的完整需求**，不是「这次碰巧出现过的」。分组显示：
+ * 缺失（可操作）→ 未确认（给探测/安装入口）→ 已就绪（默认收起，可展开核对）。
+ *
  * 缺失项必须可操作：能一键装的给按钮（REA 官方安装 / brew），装完仍然要额外
  * 配置的只给可复制命令 + 原因，绝不给「装了也没用」的假一键安装。
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
@@ -29,7 +32,7 @@ import {
 import type { ReaLiveCall } from "../live/session-store";
 import { installRecipeFor, isOneClick } from "../live/tool-install";
 import { probeRecipeFor } from "../live/tool-probe";
-import { requiredTools } from "../live/tool-requirements";
+import { requiredTools, runningRequirementIds } from "../live/tool-requirements";
 
 type ReaRunner = (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
 type CommandRunner = (file: string, args: readonly string[]) => Promise<PluginCommandRunResult>;
@@ -37,11 +40,15 @@ type CommandRunner = (file: string, args: readonly string[]) => Promise<PluginCo
 interface ToolReadinessProps {
 	readonly target: TargetKind | null;
 	readonly calls: readonly ReaLiveCall[];
+	/** 此刻正在跑的工具名：命中的那一行改成「运行中」。 */
+	readonly running: readonly string[];
 	readonly report: DoctorReport;
 	readonly run: ReaRunner;
 	readonly runCommand: CommandRunner | null;
 	readonly cwd: string | null;
 }
+
+const UNKNOWN_PREVIEW = 3;
 
 function stateTone(item: ToolReadiness): "success" | "warning" | "neutral" {
 	if (item.state === "ready") return "success";
@@ -56,13 +63,15 @@ function sourceKey(source: ReadinessSource | null): string {
 export function ReaToolReadiness({
 	target,
 	calls,
+	running,
 	report,
 	run,
 	runCommand,
 	cwd,
 }: ToolReadinessProps): JSX.Element {
 	const { t } = useTranslation();
-	const requirements = useMemo(() => requiredTools(target, calls), [target, calls]);
+	const [expanded, setExpanded] = useState(false);
+	const requirements = useMemo(() => requiredTools(target), [target]);
 	const probeIds = useMemo(
 		() => requirements.filter((requirement) => probeRecipeFor(requirement.id) !== null).map((requirement) => requirement.id),
 		[requirements],
@@ -84,11 +93,19 @@ export function ReaToolReadiness({
 		[requirements, report.checks, probeState.probes, calls],
 	);
 
+	const runningIds = runningRequirementIds(running);
 	const summary = summarizeReadiness(items);
-	const missing = items.filter((item) => item.state === "missing");
-	const visible = missing.length > 0 ? missing : items.filter((item) => item.state !== "ready").slice(0, 4);
-	const oneClick = items.find((item) => item.state !== "ready" && isOneClick(installRecipeFor(item.requirement.id)));
-	const commandOnly = items.find((item) => item.state !== "ready" && installRecipeFor(item.requirement.id)?.kind === "manual");
+	// 运行中的工具单独置顶，不再重复出现在三组里。
+	const rest = items.filter((item) => !runningIds.has(item.requirement.id));
+	const missing = rest.filter((item) => item.state === "missing");
+	const unknown = rest.filter((item) => item.state === "unknown");
+	const ready = rest.filter((item) => item.state === "ready");
+
+	// 运行中的工具永远显示，即使已经就绪——用户要看到「现在在跑哪个」。
+	const runningItems = items.filter((item) => runningIds.has(item.requirement.id));
+	const unknownVisible = expanded ? unknown : unknown.slice(0, UNKNOWN_PREVIEW);
+	const showReady = expanded && ready.length > 0;
+	const hintCount = !expanded && unknown.length > UNKNOWN_PREVIEW ? unknown.length - UNKNOWN_PREVIEW : 0;
 
 	const hintFor = (item: ToolReadiness): string | null => {
 		if (item.remediation !== null) return item.remediation;
@@ -98,6 +115,92 @@ export function ReaToolReadiness({
 		if (item.state === "unknown") return t("tab.tools.unknownHint", { tool: item.requirement.label });
 		return null;
 	};
+
+	const renderRow = (item: ToolReadiness): JSX.Element => {
+		const hint = hintFor(item);
+		const installable = install.canInstall(item.requirement.id);
+		const isRunning = runningIds.has(item.requirement.id);
+		return (
+			<li key={item.requirement.id} className="rounded-[min(var(--radius-md),6px)] border border-border/70 bg-card/40 px-2 py-1">
+				<div className="flex min-w-0 items-center gap-1.5">
+					<span
+						aria-hidden
+						className={`size-1.5 shrink-0 rounded-full ${
+							isRunning
+								? "bg-primary motion-safe:animate-pulse"
+								: item.state === "ready"
+									? "bg-emerald-500"
+									: item.state === "missing"
+										? "bg-amber-500"
+										: "bg-muted-foreground/50"
+						}`}
+					/>
+					<span className="shrink-0 text-[11px] font-medium text-foreground/90">{item.requirement.label}</span>
+					<span
+						className="min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground"
+						title={item.detail ?? t(item.requirement.purposeKey)}
+					>
+						{item.detail ?? t(item.requirement.purposeKey)}
+					</span>
+					{isRunning ? (
+						<StatusChip tone="progress" className="shrink-0" title={t("tab.tools.runningHint")}>
+							{t("tab.tools.running")}
+						</StatusChip>
+					) : null}
+					<StatusChip
+						tone={stateTone(item)}
+						className="shrink-0"
+						title={`${t(`tab.tools.state.${item.state}`)} · ${t(sourceKey(item.source))}`}
+					>
+						{t(`tab.tools.state.${item.state}`)}
+					</StatusChip>
+					{installable ? (
+						<button
+							type="button"
+							onClick={() => install.install(item.requirement.id)}
+							disabled={install.installingId !== null}
+							title={t(
+								installRecipeFor(item.requirement.id)?.kind === "brew" ? "tab.tools.brewHint" : "tab.tools.installHint",
+							)}
+							className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/10 px-1.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+						>
+							{install.installingId === item.requirement.id ? (
+								<span aria-hidden className="icon-[lucide--loader-circle] size-2.5 motion-safe:animate-spin" />
+							) : (
+								<span aria-hidden className="icon-[lucide--download] size-2.5" />
+							)}
+							{t(install.installingId === item.requirement.id ? "tab.tools.installing" : "tab.tools.install")}
+						</button>
+					) : hint !== null ? (
+						<button
+							type="button"
+							onClick={() => void copyText(hint)}
+							title={hint}
+							className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+						>
+							<span aria-hidden className="icon-[lucide--copy] size-2.5" />
+							{t("tab.tools.copy")}
+						</button>
+					) : null}
+				</div>
+				{hint !== null && !installable ? (
+					<p className="mt-0.5 pl-3 text-[10px] leading-snug text-muted-foreground" title={hint}>
+						<span className="line-clamp-2">{hint}</span>
+					</p>
+				) : null}
+			</li>
+		);
+	};
+
+	const section = (labelKey: string, list: readonly ToolReadiness[]): JSX.Element | null =>
+		list.length === 0 ? null : (
+			<div className="mt-1 flex flex-col gap-1">
+				<span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+					{t(labelKey, { count: list.length })}
+				</span>
+				<ul className="flex flex-col gap-1">{list.map(renderRow)}</ul>
+			</div>
+		);
 
 	return (
 		<div className="mt-1.5 rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2.5 py-1.5">
@@ -113,87 +216,35 @@ export function ReaToolReadiness({
 				) : summary.total === 0 ? (
 					<span className="shrink-0 text-[10.5px] text-muted-foreground">{t("tab.tools.empty")}</span>
 				) : (
-					<StatusChip tone={summary.missing > 0 ? "warning" : "success"}>
-						{t("tab.tools.summary", { ready: summary.ready, total: summary.total })}
+					<StatusChip
+						tone={summary.missing > 0 ? "warning" : "success"}
+						title={t("tab.tools.sourceHint")}
+					>
+						{t("tab.tools.summaryFull", { ready: summary.ready, total: summary.total, missing: summary.missing })}
 					</StatusChip>
 				)}
 			</div>
 
-			{visible.length > 0 ? (
-				<ul className="mt-1.5 flex flex-col gap-1">
-					{visible.map((item) => {
-						const hint = hintFor(item);
-						const installable = install.canInstall(item.requirement.id);
-						return (
-							<li
-								key={item.requirement.id}
-								className="rounded-[min(var(--radius-md),6px)] border border-border/70 bg-card/40 px-2 py-1"
-							>
-								<div className="flex min-w-0 items-center gap-1.5">
-									<span
-										aria-hidden
-										className={`size-1.5 shrink-0 rounded-full ${
-											item.state === "ready"
-												? "bg-emerald-500"
-												: item.state === "missing"
-													? "bg-amber-500"
-													: "bg-muted-foreground/50"
-										}`}
-									/>
-									<span className="shrink-0 text-[11px] font-medium text-foreground/90">{item.requirement.label}</span>
-									<span
-										className="min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground"
-										title={item.detail ?? t(item.requirement.purposeKey)}
-									>
-										{item.detail ?? t(item.requirement.purposeKey)}
-									</span>
-									<StatusChip
-										tone={stateTone(item)}
-										className="shrink-0"
-										title={`${t(`tab.tools.state.${item.state}`)} · ${t(sourceKey(item.source))}`}
-									>
-										{t(`tab.tools.state.${item.state}`)}
-									</StatusChip>
-									{installable ? (
-										<button
-											type="button"
-											onClick={() => install.install(item.requirement.id)}
-											disabled={install.installingId !== null}
-											title={t(
-												installRecipeFor(item.requirement.id)?.kind === "brew"
-													? "tab.tools.brewHint"
-													: "tab.tools.installHint",
-											)}
-											className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/10 px-1.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
-										>
-											{install.installingId === item.requirement.id ? (
-												<span aria-hidden className="icon-[lucide--loader-circle] size-2.5 motion-safe:animate-spin" />
-											) : (
-												<span aria-hidden className="icon-[lucide--download] size-2.5" />
-											)}
-											{t(install.installingId === item.requirement.id ? "tab.tools.installing" : "tab.tools.install")}
-										</button>
-									) : hint !== null ? (
-										<button
-											type="button"
-											onClick={() => void copyText(hint)}
-											title={hint}
-											className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-										>
-											<span aria-hidden className="icon-[lucide--copy] size-2.5" />
-											{t("tab.tools.copy")}
-										</button>
-									) : null}
-								</div>
-								{hint !== null && !installable ? (
-									<p className="mt-0.5 pl-3 text-[10px] leading-snug text-muted-foreground" title={hint}>
-										<span className="line-clamp-2">{hint}</span>
-									</p>
-								) : null}
-							</li>
-						);
-					})}
-				</ul>
+			{runningItems.length > 0 ? section("tab.tools.section.running", runningItems) : null}
+			{section("tab.tools.section.missing", missing)}
+			{section("tab.tools.section.unknown", unknownVisible)}
+
+			{showReady ? section("tab.tools.section.ready", ready) : null}
+
+			{unknown.length > UNKNOWN_PREVIEW || ready.length > 0 ? (
+				<button
+					type="button"
+					onClick={() => setExpanded((prev) => !prev)}
+					title={t(expanded ? "tab.tools.collapseAll" : "tab.tools.expandAll")}
+					className="mt-1 inline-flex h-5 w-fit items-center gap-1 rounded text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+				>
+					<span aria-hidden className={`icon-[lucide--chevron-down] size-3 ${expanded ? "rotate-180" : ""}`} />
+					{expanded
+						? t("tab.tools.collapseAll")
+						: hintCount > 0
+							? t("tab.tools.moreUnknown", { count: hintCount })
+							: t("tab.tools.showAll", { count: ready.length })}
+				</button>
 			) : null}
 
 			<div className="mt-1 flex min-w-0 items-center justify-between gap-2">
@@ -202,10 +253,10 @@ export function ReaToolReadiness({
 						? t("tab.tools.installSuccess")
 						: install.tone === "danger"
 							? t("tab.tools.installFailed", { message: install.message ?? "" })
-							: oneClick !== undefined
-								? t("tab.tools.installableHint", { tool: oneClick.requirement.label })
-								: commandOnly !== undefined
-									? t("tab.tools.commandOnlyHint", { tool: commandOnly.requirement.label })
+							: missing.length > 0 && isOneClick(installRecipeFor(missing[0]?.requirement.id ?? ""))
+								? t("tab.tools.installableHint", { tool: missing[0]?.requirement.label ?? "" })
+								: missing.length > 0
+									? t("tab.tools.manualHint", { tool: missing[0]?.requirement.label ?? "" })
 									: t("tab.tools.sourceHint")}
 				</span>
 				<button

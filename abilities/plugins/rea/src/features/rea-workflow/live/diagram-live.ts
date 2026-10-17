@@ -15,7 +15,7 @@
 
 import type { TargetKind } from "../data/targets";
 import type { ReaLiveCall } from "./session-store";
-import { classifyTool, stageIdForIndex, type ReaStageId } from "./tool-taxonomy";
+import { classifyTool, STAGE_ORDER, stageIdForIndex, type ReaStageId } from "./tool-taxonomy";
 
 export type DiagramNodeState = "idle" | "active" | "hit" | "failed";
 
@@ -43,7 +43,9 @@ export type DiagramBinding =
 	| { readonly kind: "tools"; readonly tools: readonly string[] }
 	| { readonly kind: "targets"; readonly targets: readonly TargetKind[] }
 	| { readonly kind: "milestone"; readonly after: readonly ReaStageId[] }
-	| { readonly kind: "total" };
+	| { readonly kind: "total" }
+	/** 任一子绑定命中就算命中：同一个节点可以有多个可观测来源。 */
+	| { readonly kind: "any"; readonly of: readonly DiagramBinding[] };
 
 function matchesCall(binding: DiagramBinding, call: ReaLiveCall): boolean {
 	switch (binding.kind) {
@@ -53,6 +55,8 @@ function matchesCall(binding: DiagramBinding, call: ReaLiveCall): boolean {
 			return binding.tools.includes(call.toolName);
 		case "targets":
 			return call.targets.some((target) => binding.targets.includes(target));
+		case "any":
+			return binding.of.some((child) => matchesCall(child, call));
 		default:
 			return false;
 	}
@@ -68,6 +72,8 @@ function matchesRunning(binding: DiagramBinding, toolName: string): boolean {
 			const classification = classifyTool(toolName);
 			return classification.targets.some((target) => binding.targets.includes(target));
 		}
+		case "any":
+			return binding.of.some((child) => matchesRunning(child, toolName));
 		default:
 			return false;
 	}
@@ -158,6 +164,24 @@ export function resolveEdgeState(before: DiagramNodeLive, after: DiagramNodeLive
 	if (before.state === "hit" && after.state === "hit") return "done";
 	if (before.state === "hit") return "flowing";
 	return "idle";
+}
+
+/**
+ * 本次会话被「越过」的阶段：阶段自身没有调用记录，但下游阶段已经有真实调用。
+ *
+ * 典型是 summary（没有专属工具），以及 Agent 跳步：open_binary 之后直接读与收尾，
+ * 中间 route/plan 没留下调用。流程条要把这种情况画成「已越过」而不是「没开始」，
+ * 否则界面看起来就像流程卡住了。
+ */
+export function bypassedStageIds(calls: readonly ReaLiveCall[]): readonly ReaStageId[] {
+	const touched = new Set(calls.map((call) => call.stage));
+	let lastIndex = -1;
+	for (let i = 0; i < STAGE_ORDER.length; i += 1) {
+		const stage = STAGE_ORDER[i];
+		if (stage !== undefined && touched.has(stage)) lastIndex = i;
+	}
+	if (lastIndex <= 0) return [];
+	return STAGE_ORDER.filter((stage, index) => index < lastIndex && !touched.has(stage));
 }
 
 /** 传给阶段详情与示意图的一份实时数据：调用列表、正在运行的工具、阶段摘要。 */

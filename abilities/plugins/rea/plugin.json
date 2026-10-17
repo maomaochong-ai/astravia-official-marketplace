@@ -1,7 +1,7 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -37,6 +37,12 @@
     "rizin",
     "cutter",
     "jadx",
+    "unblob",
+    "tshark",
+    "capinfos",
+    "sigrok-cli",
+    "wasm-validate",
+    "mitmdump",
     "brew"
   ],
   "providers": {

@@ -1,16 +1,20 @@
 /**
- * 「这次逆向需要哪些外部工具」的推导表。
+ * 「这个目标类型需要哪些外部工具」的完整清单。
  *
- * 两类来源，必须分开表达，不能混成一句「推荐工具栈」：
+ * 清单口径对齐上游 README 的 What you can analyze 表：每一行里 Caller-supplied /
+ * 需要安装的东西都算一项。之前这里只列了 doctor 覆盖的几个引擎，其余靠「本次会话
+ * 调用过才出现」，于是面板永远只显示一小撮工具 —— 用户看到的就是「不全」。
+ *
+ * 两类来源，必须分开表达：
  *
  *   doctor     `rea doctor --json` 能直接证明的工具（node / host / hopper / ghidra /
  *              ida / jadx / ilspycmd）。检查项命名规则见上游 DoctorDiagnostics.ts：
  *              `<provider>` 或 `<provider>-<check>`。
- *   runtime    doctor 观测不到的运行时依赖（frida / adb / apktool / binwalk / gdb…）。
- *              只能靠本次会话里这些工具的真实调用结果判断：调用成功过 ⇒ 可用。
+ *   runtime    doctor 观测不到的依赖（frida / adb / apktool / binwalk / pwntools…）。
+ *              由命令探测给结论；探测不到时才退回「本次会话是否真的调用成功过」。
  *
- * 目标类型决定基础需求；宿主对话里实际调用过的工具再把运行时依赖补进来——
- * 这正是「按会话选工具」的可证实部分，其余不猜。
+ * 目标类型决定清单内容，而不是决定「这次用没用过」。没证据的项显示「未确认」并给出
+ * 可操作下一步，不隐藏、也不谎称缺失。
  */
 
 import type { TargetKind } from "../data/targets";
@@ -124,6 +128,14 @@ export const TOOL_REQUIREMENTS: readonly ToolRequirement[] = [
 		purposeKey: "tab.tools.purpose.apktool",
 	},
 	{
+		id: "jeb",
+		label: "JEB",
+		source: "runtime",
+		doctorId: null,
+		targets: ["mobile"],
+		purposeKey: "tab.tools.purpose.jeb",
+	},
+	{
 		id: "binwalk",
 		label: "binwalk",
 		source: "runtime",
@@ -132,12 +144,60 @@ export const TOOL_REQUIREMENTS: readonly ToolRequirement[] = [
 		purposeKey: "tab.tools.purpose.binwalk",
 	},
 	{
+		id: "unblob",
+		label: "unblob",
+		source: "runtime",
+		doctorId: null,
+		targets: ["firmware"],
+		purposeKey: "tab.tools.purpose.unblob",
+	},
+	{
+		id: "tshark",
+		label: "tshark",
+		source: "runtime",
+		doctorId: null,
+		targets: ["firmware"],
+		purposeKey: "tab.tools.purpose.tshark",
+	},
+	{
+		id: "capinfos",
+		label: "capinfos",
+		source: "runtime",
+		doctorId: null,
+		targets: ["firmware"],
+		purposeKey: "tab.tools.purpose.capinfos",
+	},
+	{
+		id: "sigrok",
+		label: "sigrok-cli",
+		source: "runtime",
+		doctorId: null,
+		targets: ["firmware"],
+		purposeKey: "tab.tools.purpose.sigrok",
+	},
+	{
 		id: "gdb",
 		label: "gdb",
 		source: "runtime",
 		doctorId: null,
 		targets: ["native"],
 		purposeKey: "tab.tools.purpose.gdb",
+	},
+	{
+		id: "pwndbg",
+		label: "pwndbg",
+		source: "runtime",
+		doctorId: null,
+		targets: ["native"],
+		purposeKey: "tab.tools.purpose.pwndbg",
+	},
+	{
+		id: "pwntools",
+		label: "pwntools",
+		source: "runtime",
+		doctorId: null,
+		targets: ["native"],
+		purposeKey: "tab.tools.purpose.pwntools",
 	},
 	{
 		id: "rizin",
@@ -164,22 +224,47 @@ export const TOOL_REQUIREMENTS: readonly ToolRequirement[] = [
 		purposeKey: "tab.tools.purpose.cutter",
 	},
 	{
-		id: "jeb",
-		label: "JEB",
+		id: "wabt",
+		label: "WABT",
 		source: "runtime",
 		doctorId: null,
-		targets: ["mobile"],
-		purposeKey: "tab.tools.purpose.jeb",
+		targets: ["native"],
+		purposeKey: "tab.tools.purpose.wabt",
+	},
+	{
+		id: "mitmdump",
+		label: "mitmdump",
+		source: "runtime",
+		doctorId: null,
+		targets: ["web"],
+		purposeKey: "tab.tools.purpose.mitmdump",
+	},
+	{
+		id: "browser",
+		label: "Chrome",
+		source: "runtime",
+		doctorId: null,
+		targets: ["web"],
+		purposeKey: "tab.tools.purpose.browser",
 	},
 ] as const;
 
-/** 工具名 → 运行时依赖 id。用于从真实调用里补出「这次用了什么」。 */
+/**
+ * 工具名 → 运行时依赖 id。用于两件事：
+ *   1. 把「这条真实调用属于哪个工具」落到清单上（会话证据）；
+ *   2. 会话正在跑的时候，同一条规则也能算出「哪个工具正在运行」。
+ */
 const RUNTIME_TOOL_RULES: readonly { readonly test: RegExp; readonly id: string }[] = [
 	{ test: /frida/, id: "frida" },
 	{ test: /(^|_)adb_|^list_adb|^inspect_adb|^install_adb|^pull_adb|^push_adb|^read_adb|^search_android|^trace_android/, id: "adb" },
 	{ test: /apktool|android_package|android_resources/, id: "apktool" },
 	{ test: /jeb/, id: "jeb" },
 	{ test: /firmware|binwalk/, id: "binwalk" },
+	{ test: /pcap/, id: "tshark" },
+	{ test: /signal/, id: "sigrok" },
+	{ test: /wasm/, id: "wabt" },
+	{ test: /inspect_binary_layout|inspect_recorded_crash/, id: "pwntools" },
+	{ test: /^web_|webmcp|browser|_web_/, id: "browser" },
 	{ test: /gdb/, id: "gdb" },
 	{ test: /rizin/, id: "rizin" },
 	{ test: /objdump/, id: "objdump" },
@@ -209,20 +294,24 @@ export function runtimeEvidence(requirementId: string, calls: readonly ReaLiveCa
 }
 
 /**
- * 推导本次需要的工具：目标类型的基础需求 + 会话中真实出现过的运行时依赖。
- * 顺序稳定（先 doctor 类，再 runtime 类），保证 UI 不因重渲染抖动。
+ * 这个目标类型的完整工具清单。顺序按 TOOL_REQUIREMENTS 固定，不随会话变化，
+ * 保证面板不会因为多了一次调用就重排。
  */
-export function requiredTools(target: TargetKind | null, calls: readonly ReaLiveCall[]): readonly ToolRequirement[] {
-	const used = new Set<string>();
-	for (const call of calls) {
-		const name = normalizeToolName(call.rawToolName);
-		for (const rule of RUNTIME_TOOL_RULES) {
-			if (rule.test.test(name)) used.add(rule.id);
-		}
-	}
+export function requiredTools(target: TargetKind | null): readonly ToolRequirement[] {
 	return TOOL_REQUIREMENTS.filter((requirement) => {
 		if (requirement.targets.length === 0) return true;
-		if (requirement.source === "runtime") return used.has(requirement.id);
 		return target !== null && requirement.targets.includes(target);
 	});
+}
+
+/** 正在运行的工具名 → 清单里的 id。用于把「运行中」高亮到对应的工具行。 */
+export function runningRequirementIds(toolNames: readonly string[]): ReadonlySet<string> {
+	const ids = new Set<string>();
+	for (const raw of toolNames) {
+		const name = normalizeToolName(raw);
+		for (const rule of RUNTIME_TOOL_RULES) {
+			if (rule.test.test(name)) ids.add(rule.id);
+		}
+	}
+	return ids;
 }

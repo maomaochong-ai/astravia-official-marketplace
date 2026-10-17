@@ -15,6 +15,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { StatusChip, type StatusTone } from "../../../shared/components/status-chip";
 import type { TargetKind } from "../data/targets";
 import type { ReaLiveState } from "../live/session-store";
+import { ReaActivityMatrix } from "./rea-activity-matrix";
 import { STAGE_INDEX, STAGE_ORDER, type ReaStageId } from "../live/tool-taxonomy";
 
 interface LiveStatusProps {
@@ -128,6 +129,8 @@ export function ReaLiveStatus({ snapshot, onSelectStage, onUseTarget }: LiveStat
 					);
 				})}
 			</div>
+
+			<ReaActivityMatrix calls={snapshot.calls} />
 
 			<div className="flex h-4 min-w-0 items-center gap-1.5">
 				<span

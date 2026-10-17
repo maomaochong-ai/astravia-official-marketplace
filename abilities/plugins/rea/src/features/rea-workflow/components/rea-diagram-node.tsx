@@ -29,9 +29,11 @@ interface NodeProps {
 	readonly mono?: boolean;
 	/** 真实会话活动；缺省表示这个节点只是参考内容。 */
 	readonly live?: DiagramNodeLive;
+	/** 会话已经开跑，但这个节点没有命中：说明本次没走到这一步，而不是还在等。 */
+	readonly unmet?: boolean;
 }
 
-export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, live }: NodeProps): JSX.Element {
+export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, live, unmet = false }: NodeProps): JSX.Element {
 	const { t } = useTranslation();
 	const style = TONE[tone];
 	const state = live?.state ?? "idle";
@@ -56,7 +58,7 @@ export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, li
 			{hint ? (
 				<div className="mt-1 break-words text-[10px] leading-snug text-muted-foreground">{hint}</div>
 			) : null}
-			{state !== "idle" && live ? (
+			{live && (state !== "idle" || unmet) ? (
 				<div className="mt-1 flex min-w-0 items-center justify-center gap-1 text-[9px] leading-none motion-safe:animate-rea-rise">
 					{state === "active" ? (
 						<>
@@ -75,6 +77,10 @@ export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, li
 								{t("tab.live.diagram.failed", { count: live.errors })}
 							</span>
 						</>
+					) : state === "idle" ? (
+						<span className="shrink-0 text-muted-foreground" title={t("tab.live.diagram.unmetHint")}>
+							{t("tab.live.diagram.unmet")}
+						</span>
 					) : (
 						<>
 							<span aria-hidden className="icon-[lucide--circle-check] size-2.5 shrink-0 text-primary" />
