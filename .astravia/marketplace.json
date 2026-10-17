@@ -5997,7 +5997,7 @@
       "slug": "free-model-gateway",
       "name": "Free Model Gateway",
       "description": "Run a managed local gateway that reuses upstream free-model channels, syncs models into Astravia and ships a one-click UI for start/stop, logs and risk.",
-      "version": "0.0.6",
+      "version": "0.0.7",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6115,6 +6115,23 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-free-model-gateway/free-model-gateway-0.0.6.astraviapkg",
             "sha256": "3d9587dfbb9a55ffdc1393d6b1e3f8e5b2b843a7bc522d49024c27f4fe70ccdb"
+          }
+        },
+        {
+          "version": "0.0.7",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "models.manage",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-free-model-gateway/free-model-gateway-0.0.7.astraviapkg",
+            "sha256": "71b12b35a1488edfec0ad9d4798a1a83beb5ba5597cf50cfdb6a788690034518"
           }
         }
       ]
@@ -6438,5 +6455,5 @@
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.17-19"
+  "marketplaceVersion": "2026.10.17-20"
 }
