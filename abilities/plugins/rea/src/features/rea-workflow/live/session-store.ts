@@ -10,6 +10,7 @@
 import type { ConversationEvent, PluginCliProviderPhase } from "@astravia-org/plugin-sdk";
 import type { TargetKind } from "../data/targets";
 import { classifyTool, detectTargetFromText, type ReaStageId, STAGE_ORDER } from "./tool-taxonomy";
+import { inferTargetHint } from "./target-inference";
 
 export const MAX_CALLS = 80;
 export const MAX_ERRORS = 20;
@@ -43,6 +44,10 @@ export interface ReaLiveState {
 	readonly visitedStages: readonly ReaStageId[];
 	readonly stageCallCounts: Readonly<Record<ReaStageId, number>>;
 	readonly detectedTarget: TargetKind | null;
+	/** 用户消息里提到的目标类型（比工具调用更早出现，用于自动选中类型）。 */
+	readonly hintedTarget: TargetKind | null;
+	/** 用户消息里提到的路径/URL。 */
+	readonly hintedPath: string | null;
 	/** 会话里最近一次带路径的调用参数；工作台可据此一键回填目标。 */
 	readonly lastTargetPath: string | null;
 	readonly runningToolNames: readonly string[];
@@ -73,6 +78,8 @@ export const EMPTY_LIVE_STATE: ReaLiveState = {
 	stageCallCounts: EMPTY_STAGE_COUNTS,
 	detectedTarget: null,
 	lastTargetPath: null,
+	hintedTarget: null,
+	hintedPath: null,
 	runningToolNames: [],
 	callCount: 0,
 	errorCount: 0,
@@ -119,12 +126,18 @@ function pickTargetPath(args: unknown): string | null {
 	return null;
 }
 
+/**
+ * 参数预览：路径优先，否则 JSON。
+ *
+ * 上限 600 字符——折叠时只显示一行，展开要能看到整段参数；120 字符会造成
+ * 「展开了还是不全」。80 条 × 600 字符的内存开销可以忽略。
+ */
 function previewArgs(args: unknown): string {
 	const path = pickTargetPath(args);
-	if (path) return truncate(path, 120);
+	if (path) return truncate(path, 600);
 	if (args === undefined || args === null) return "";
 	try {
-		return truncate(JSON.stringify(args), 120);
+		return truncate(JSON.stringify(args), 600);
 	} catch {
 		return "";
 	}
@@ -192,6 +205,8 @@ export class ReaLiveStore {
 			errorCount: 0,
 			turns: 0,
 			lastTargetPath: null,
+			hintedTarget: null,
+			hintedPath: null,
 		}));
 	}
 
@@ -228,6 +243,19 @@ export class ReaLiveStore {
 					cwd: event.conversation.cwd,
 				}));
 				return;
+			case "message-added": {
+				// 用户消息里通常已经写清目标（路径/URL/产品类型）。只采信 role=user，
+				// 模型自己说的话不能当作用户意图。
+				if (event.message.role !== "user") return;
+				const hint = inferTargetHint(event.message.text);
+				if (hint.kind === null && hint.path === null) return;
+				this.commit((state) => ({
+					...state,
+					hintedTarget: hint.kind ?? state.hintedTarget,
+					hintedPath: hint.path ?? state.hintedPath,
+				}));
+				return;
+			}
 			case "tool-call-args":
 				this.upsertCall(event.toolCallId, event.toolName, event.args, { authoritative: false });
 				return;

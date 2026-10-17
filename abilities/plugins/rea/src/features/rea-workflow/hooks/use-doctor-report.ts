@@ -75,7 +75,10 @@ export function useDoctorReport(deps: DoctorReportDeps): DoctorReport {
 					timeoutMs: DOCTOR_TIMEOUT_MS,
 				});
 				if (requestId.current !== id) return;
-				const parsed = result.exitCode === 0 ? parseDoctorChecks(result.stdout) : null;
+				// doctor 存在缺失项时会以非 0 退出（healthy:false）。以前按退出码判定，
+				// 整份报告被当成「检测失败」，所有工具于是回落 unknown——这就是
+				// 「node 明明可用却显示检测失败」的根因。只要 stdout 里有合法 JSON 就采信。
+				const parsed = parseDoctorChecks(result.stdout);
 				if (parsed === null) {
 					setChecks(null);
 					setStatus("failed");

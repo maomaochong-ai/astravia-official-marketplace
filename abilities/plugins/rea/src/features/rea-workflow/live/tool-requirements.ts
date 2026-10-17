@@ -30,8 +30,6 @@ export interface ToolRequirement {
 	readonly targets: readonly TargetKind[];
 	/** i18n key：这个工具用来做什么。 */
 	readonly purposeKey: string;
-	/** REA CLI 里能无人值守安装它时给出的参数（不含包名前缀）。 */
-	readonly autoInstallArgs?: readonly string[];
 }
 
 const ALWAYS: readonly TargetKind[] = [];
@@ -60,7 +58,6 @@ export const TOOL_REQUIREMENTS: readonly ToolRequirement[] = [
 		doctorId: "hopper",
 		targets: ["native"],
 		purposeKey: "tab.tools.purpose.hopper",
-		autoInstallArgs: ["setup", "--yes", "--installHopper"],
 	},
 	{
 		id: "ghidra",
@@ -93,6 +90,14 @@ export const TOOL_REQUIREMENTS: readonly ToolRequirement[] = [
 		doctorId: "ilspycmd",
 		targets: ["dotnet"],
 		purposeKey: "tab.tools.purpose.ilspycmd",
+	},
+	{
+		id: "java",
+		label: "Java",
+		source: "runtime",
+		doctorId: null,
+		targets: ["native", "firmware", "mobile"],
+		purposeKey: "tab.tools.purpose.java",
 	},
 	{
 		id: "frida",

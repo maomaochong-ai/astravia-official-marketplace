@@ -21,6 +21,7 @@ interface WorkbenchProps {
 	readonly calls: readonly ReaLiveCall[];
 	readonly report: DoctorReport;
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
+	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
 	readonly cwd: string | null;
 }
 
@@ -32,9 +33,23 @@ const FEEDBACK_TEXT: Record<Exclude<Workbench["handoff"], "idle">, string> = {
 	failed: "tab.workbench.handoffFailed",
 };
 
-export function ReaWorkbench({ workbench, detected, calls, report, run, cwd }: WorkbenchProps): JSX.Element {
+const BLOCK_TEXT: Record<Exclude<NonNullable<Workbench["blockReason"]>, "sending">, string> = {
+	empty: "tab.workbench.targetRequired",
+	noKind: "tab.workbench.kindUnknown",
+};
+
+export function ReaWorkbench({
+	workbench,
+	detected,
+	calls,
+	report,
+	run,
+	runCommand,
+	cwd,
+}: WorkbenchProps): JSX.Element {
 	const { t } = useTranslation();
-	const canHandoff = workbench.active !== null && workbench.target.trim().length > 0;
+	const canHandoff = workbench.blockReason === null;
+	const blockReason = workbench.blockReason;
 	const feedback = workbench.handoff;
 	const tone =
 		feedback === "sent" || feedback === "inserted"
@@ -63,6 +78,7 @@ export function ReaWorkbench({ workbench, detected, calls, report, run, cwd }: W
 				calls={calls}
 				report={report}
 				run={run}
+				runCommand={runCommand}
 				cwd={cwd}
 				onPick={workbench.pick}
 				onClear={workbench.clearPick}
@@ -78,6 +94,11 @@ export function ReaWorkbench({ workbench, detected, calls, report, run, cwd }: W
 					type="text"
 					value={workbench.target}
 					onChange={(event) => workbench.setTarget(event.target.value)}
+					onKeyDown={(event) => {
+						if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+						event.preventDefault();
+						if (canHandoff) workbench.handoffToAgent();
+					}}
 					placeholder={t("tab.workbench.targetPlaceholder")}
 					spellCheck={false}
 					autoComplete="off"
@@ -98,7 +119,13 @@ export function ReaWorkbench({ workbench, detected, calls, report, run, cwd }: W
 					type="button"
 					onClick={() => workbench.handoffToAgent()}
 					disabled={!canHandoff || feedback === "sending"}
-					title={canHandoff ? t("tab.workbench.handoffHint") : t("tab.workbench.targetRequired")}
+					title={
+						blockReason === "noKind"
+							? t("tab.workbench.kindUnknown")
+							: blockReason === "empty"
+								? t("tab.workbench.targetRequired")
+								: t("tab.workbench.handoffHint")
+					}
 					className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),8px)] border border-primary/40 bg-primary/10 px-2 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
 				>
 					{feedback === "sending" ? (
@@ -117,8 +144,11 @@ export function ReaWorkbench({ workbench, detected, calls, report, run, cwd }: W
 						{t(FEEDBACK_TEXT[feedback])}
 					</span>
 				) : (
-					<span className="min-w-0 truncate text-[10.5px] leading-none text-muted-foreground">
-						{canHandoff ? t("tab.workbench.ready") : ""}
+					<span
+						className={`min-w-0 truncate text-[10.5px] leading-none ${blockReason === null ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"}`}
+						title={blockReason === null ? undefined : t(BLOCK_TEXT[blockReason as keyof typeof BLOCK_TEXT])}
+					>
+						{blockReason === null ? t("tab.workbench.ready") : t(BLOCK_TEXT[blockReason as keyof typeof BLOCK_TEXT])}
 					</span>
 				)}
 				{feedback === "failed" && workbench.promptText.length > 0 ? (

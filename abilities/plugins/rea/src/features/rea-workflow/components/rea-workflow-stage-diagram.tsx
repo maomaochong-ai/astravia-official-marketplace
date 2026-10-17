@@ -349,7 +349,7 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 					);
 				})}
 			</ul>
-			<ReaDiagramConnector state={resolveEdgeState(checks[0]?.live ?? finish, finish)} />
+			{/* 清单与收尾节点之间不画箭头：清单不是会话节点，连线会让人以为 finish 之前还有一步。 */}
 			<ReaDiagramNode
 				tone="primary"
 				title="finish"

@@ -27,6 +27,7 @@ export interface ReaWorkflowTargetRoutingProps {
 	readonly calls: readonly ReaLiveCall[];
 	readonly report: DoctorReport;
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
+	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
 	readonly cwd: string | null;
 	readonly onPick: (kind: TargetKind) => void;
 	readonly onClear: () => void;
@@ -42,6 +43,7 @@ export function ReaWorkflowTargetRouting({
 	report,
 	run,
 	cwd,
+	runCommand,
 	onPick,
 	onClear,
 	onFollowDetected,
@@ -134,8 +136,12 @@ export function ReaWorkflowTargetRouting({
 			</div>
 
 			{active ? (
-				<TargetDetail kind={active} calls={calls} report={report} run={run} cwd={cwd} />
-			) : null}
+				<TargetDetail kind={active} calls={calls} report={report} run={run} runCommand={runCommand} cwd={cwd} />
+			) : (
+				<p className="mt-1 text-[10.5px] leading-snug text-muted-foreground" title={t("tab.target.noSignalHint")}>
+					{t("tab.target.noSignalHint")}
+				</p>
+			)}
 		</div>
 	);
 }
@@ -145,16 +151,17 @@ interface TargetDetailProps {
 	readonly calls: readonly ReaLiveCall[];
 	readonly report: DoctorReport;
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
+	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
 	readonly cwd: string | null;
 }
 
-function TargetDetail({ kind, calls, report, run, cwd }: TargetDetailProps): JSX.Element {
+function TargetDetail({ kind, calls, report, run, runCommand, cwd }: TargetDetailProps): JSX.Element {
 	const { t } = useTranslation();
 	const target = getTarget(kind);
 	return (
 		<div className="mt-2 rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2.5 py-1.5">
 			<p className="text-[11px] leading-relaxed text-foreground/90">{t(target.hintKey)}</p>
-			<ReaToolReadiness target={kind} calls={calls} report={report} run={run} cwd={cwd} />
+			<ReaToolReadiness target={kind} calls={calls} report={report} run={run} runCommand={runCommand} cwd={cwd} />
 		</div>
 	);
 }

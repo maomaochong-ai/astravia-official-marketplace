@@ -1,7 +1,7 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -22,7 +22,22 @@
     "agent.systemPrompt.write",
     "agent.continuation.register",
     "agent.session.read",
-    "agent.session.write"
+    "agent.session.write",
+    "agent.command.run"
+  ],
+  "commands": [
+    "node",
+    "java",
+    "frida",
+    "adb",
+    "apktool",
+    "binwalk",
+    "objdump",
+    "gdb",
+    "rizin",
+    "cutter",
+    "jadx",
+    "brew"
   ],
   "providers": {
     "cli": [

@@ -13,7 +13,7 @@
  */
 import "./style.css";
 import type { JSX } from "react";
-import type { Disposable, PluginContext, SendPromptResult } from "@astravia-org/plugin-sdk";
+import type { Disposable, PluginCommandRunResult, PluginContext, SendPromptResult } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import {
 	ReaWorkflowTab,
@@ -74,6 +74,18 @@ function createPromptWriter(ctx: PluginContext): (prompt: string) => boolean {
 }
 
 /**
+ * 直接命令通道：工具探测（`--version`）与 brew 安装用。
+ *
+ * 需要 `agent.command.run` 权限 + `plugin.json` 声明，缺任一项调用就抛错；
+ * 上层把这类错误当作「未授权」而不是「工具未安装」，不会误导用户。
+ */
+function createCommandRunner(
+	ctx: PluginContext,
+): ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null {
+	return async (file, args) => ctx.command.run(file, [...args], { timeoutMs: 10 * 60_000 });
+}
+
+/**
  * 实时层：会话事件 → 快照；引擎自愈；Agent 侧提示与自检工具。
  *
  * 逐段 try：任何一段失败只降级这部分能力，不让整次 activate 抛错——tab 与输入栏入口
@@ -101,6 +113,7 @@ export default definePlugin({
 		const provider = createProviderBridge(ctx);
 		const sendPrompt = createPromptSender(ctx);
 		const insertPrompt = createPromptWriter(ctx);
+		const runCommand = createCommandRunner(ctx);
 		const store = new ReaLiveStore();
 
 		// UI 槽位先注册：它是插件的可见入口，不能因为后面某一层不可用就整个消失。
@@ -112,7 +125,13 @@ export default definePlugin({
 			scope_use: ["conversation", "project"],
 			initiallyVisible: true,
 			component: () => (
-				<ReaWorkflowTab provider={provider} store={store} sendPrompt={sendPrompt} insertPrompt={insertPrompt} />
+				<ReaWorkflowTab
+					provider={provider}
+					store={store}
+					sendPrompt={sendPrompt}
+					insertPrompt={insertPrompt}
+					runCommand={runCommand}
+				/>
 			),
 		});
 

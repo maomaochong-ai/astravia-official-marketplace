@@ -1,14 +1,16 @@
 /**
  * 「本次需要的工具」就绪面板。
  *
- * 与旧的静态「推荐工具栈」的区别：
- *   - 清单由目标类型 + 本次会话真实调用过的工具推导（live/tool-requirements.ts）；
- *   - 状态来自自动跑的 `rea doctor --json`（live/doctor-readiness.ts），不是我猜的；
- *   - 缺失项直接给 doctor 自带的 remediation；只有 REA 官方支持无人值守安装的
- *     （Hopper）才显示「一键安装」，其余明确写「需手动安装」，不给假承诺。
+ * 状态来源三条，全部可指认（live/doctor-readiness.ts）：
+ *   doctor  `rea doctor --json` 的逐项检查 —— REA 自己的判断；
+ *   probe   宿主命令通道跑一次 `--version` —— doctor 不管的工具靠它；
+ *   session 本次会话真实调用过没有。
+ *
+ * 缺失项必须可操作：能一键装的给按钮（REA 官方安装 / brew），装完仍然要额外
+ * 配置的只给可复制命令 + 原因，绝不给「装了也没用」的假一键安装。
  */
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
@@ -17,15 +19,27 @@ import { copyText } from "../../../shared/services/clipboard";
 import type { TargetKind } from "../data/targets";
 import type { DoctorReport } from "../hooks/use-doctor-report";
 import { useToolInstall } from "../hooks/use-tool-install";
-import { installableRequirement, resolveReadiness, summarizeReadiness, type ToolReadiness } from "../live/doctor-readiness";
+import { useToolProbes } from "../hooks/use-tool-probes";
+import {
+	resolveReadiness,
+	summarizeReadiness,
+	type ReadinessSource,
+	type ToolReadiness,
+} from "../live/doctor-readiness";
 import type { ReaLiveCall } from "../live/session-store";
+import { installRecipeFor, isOneClick } from "../live/tool-install";
+import { probeRecipeFor } from "../live/tool-probe";
 import { requiredTools } from "../live/tool-requirements";
+
+type ReaRunner = (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
+type CommandRunner = (file: string, args: readonly string[]) => Promise<PluginCommandRunResult>;
 
 interface ToolReadinessProps {
 	readonly target: TargetKind | null;
 	readonly calls: readonly ReaLiveCall[];
 	readonly report: DoctorReport;
-	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
+	readonly run: ReaRunner;
+	readonly runCommand: CommandRunner | null;
 	readonly cwd: string | null;
 }
 
@@ -35,17 +49,55 @@ function stateTone(item: ToolReadiness): "success" | "warning" | "neutral" {
 	return "neutral";
 }
 
-export function ReaToolReadiness({ target, calls, report, run, cwd }: ToolReadinessProps): JSX.Element {
+function sourceKey(source: ReadinessSource | null): string {
+	return source === null ? "tab.tools.source.none" : `tab.tools.source.${source}`;
+}
+
+export function ReaToolReadiness({
+	target,
+	calls,
+	report,
+	run,
+	runCommand,
+	cwd,
+}: ToolReadinessProps): JSX.Element {
 	const { t } = useTranslation();
-	const install = useToolInstall({ run, cwd, onFinished: report.recheck });
-	const items = useMemo(
-		() => requiredTools(target, calls).map((requirement) => resolveReadiness(requirement, report.checks, calls)),
-		[target, calls, report.checks],
+	const requirements = useMemo(() => requiredTools(target, calls), [target, calls]);
+	const probeIds = useMemo(
+		() => requirements.filter((requirement) => probeRecipeFor(requirement.id) !== null).map((requirement) => requirement.id),
+		[requirements],
 	);
+	const probeState = useToolProbes({ run: runCommand, ids: probeIds, enabled: true });
+
+	const recheckAll = useCallback(() => {
+		probeState.reprobe();
+		report.recheck();
+	}, [probeState, report]);
+
+	const install = useToolInstall({ runRea: run, runCommand, cwd, onFinished: recheckAll });
+
+	const items = useMemo(
+		() =>
+			requirements.map((requirement) =>
+				resolveReadiness(requirement, { checks: report.checks, probes: probeState.probes, calls }),
+			),
+		[requirements, report.checks, probeState.probes, calls],
+	);
+
 	const summary = summarizeReadiness(items);
 	const missing = items.filter((item) => item.state === "missing");
-	const installable = installableRequirement(items);
 	const visible = missing.length > 0 ? missing : items.filter((item) => item.state !== "ready").slice(0, 4);
+	const oneClick = items.find((item) => item.state !== "ready" && isOneClick(installRecipeFor(item.requirement.id)));
+	const commandOnly = items.find((item) => item.state !== "ready" && installRecipeFor(item.requirement.id)?.kind === "manual");
+
+	const hintFor = (item: ToolReadiness): string | null => {
+		if (item.remediation !== null) return item.remediation;
+		const recipe = installRecipeFor(item.requirement.id);
+		if (recipe?.kind === "manual" && recipe.command) return recipe.command;
+		if (item.probeBlocked) return t("tab.tools.blockedHint");
+		if (item.state === "unknown") return t("tab.tools.unknownHint", { tool: item.requirement.label });
+		return null;
+	};
 
 	return (
 		<div className="mt-1.5 rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2.5 py-1.5">
@@ -53,14 +105,10 @@ export function ReaToolReadiness({ target, calls, report, run, cwd }: ToolReadin
 				<span className="min-w-0 truncate text-[10.5px] uppercase tracking-wide text-muted-foreground">
 					{t("tab.tools.title")}
 				</span>
-				{report.status === "checking" ? (
+				{report.status === "checking" || probeState.probing ? (
 					<StatusChip tone="progress">
 						<span aria-hidden className="icon-[lucide--loader-circle] size-3 motion-safe:animate-spin" />
 						{t("tab.tools.checking")}
-					</StatusChip>
-				) : report.status === "failed" ? (
-					<StatusChip tone="warning" title={report.message ?? undefined}>
-						{t("tab.tools.checkFailed")}
 					</StatusChip>
 				) : summary.total === 0 ? (
 					<span className="shrink-0 text-[10.5px] text-muted-foreground">{t("tab.tools.empty")}</span>
@@ -73,62 +121,78 @@ export function ReaToolReadiness({ target, calls, report, run, cwd }: ToolReadin
 
 			{visible.length > 0 ? (
 				<ul className="mt-1.5 flex flex-col gap-1">
-					{visible.map((item) => (
-						<li
-							key={item.requirement.id}
-							className="rounded-[min(var(--radius-md),6px)] border border-border/70 bg-card/40 px-2 py-1"
-						>
-							<div className="flex min-w-0 items-center gap-1.5">
-								<span
-									aria-hidden
-									className={`size-1.5 shrink-0 rounded-full ${
-										item.state === "ready" ? "bg-emerald-500" : item.state === "missing" ? "bg-amber-500" : "bg-muted-foreground/50"
-									}`}
-								/>
-								<span className="shrink-0 text-[11px] font-medium text-foreground/90">{item.requirement.label}</span>
-								<span
-									className="min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground"
-									title={t(item.requirement.purposeKey)}
-								>
-									{item.detail ?? t(item.requirement.purposeKey)}
-								</span>
-								<StatusChip tone={stateTone(item)} className="shrink-0" title={item.remediation ?? undefined}>
-									{t(`tab.tools.state.${item.state}`)}
-								</StatusChip>
-								{item.requirement.autoInstallArgs ? (
-									<button
-										type="button"
-										onClick={() => install.install(item.requirement.autoInstallArgs ?? [])}
-										disabled={install.installing}
-										title={t("tab.tools.installHint")}
-										className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/10 px-1.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+					{visible.map((item) => {
+						const hint = hintFor(item);
+						const installable = install.canInstall(item.requirement.id);
+						return (
+							<li
+								key={item.requirement.id}
+								className="rounded-[min(var(--radius-md),6px)] border border-border/70 bg-card/40 px-2 py-1"
+							>
+								<div className="flex min-w-0 items-center gap-1.5">
+									<span
+										aria-hidden
+										className={`size-1.5 shrink-0 rounded-full ${
+											item.state === "ready"
+												? "bg-emerald-500"
+												: item.state === "missing"
+													? "bg-amber-500"
+													: "bg-muted-foreground/50"
+										}`}
+									/>
+									<span className="shrink-0 text-[11px] font-medium text-foreground/90">{item.requirement.label}</span>
+									<span
+										className="min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground"
+										title={item.detail ?? t(item.requirement.purposeKey)}
 									>
-										{install.installing ? (
-											<span aria-hidden className="icon-[lucide--loader-circle] size-2.5 motion-safe:animate-spin" />
-										) : (
-											<span aria-hidden className="icon-[lucide--download] size-2.5" />
-										)}
-										{t(install.installing ? "tab.tools.installing" : "tab.tools.install")}
-									</button>
-								) : item.remediation ? (
-									<button
-										type="button"
-										onClick={() => void copyText(item.remediation ?? "")}
-										title={item.remediation}
-										className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+										{item.detail ?? t(item.requirement.purposeKey)}
+									</span>
+									<StatusChip
+										tone={stateTone(item)}
+										className="shrink-0"
+										title={`${t(`tab.tools.state.${item.state}`)} · ${t(sourceKey(item.source))}`}
 									>
-										<span aria-hidden className="icon-[lucide--copy] size-2.5" />
-										{t("tab.tools.copy")}
-									</button>
+										{t(`tab.tools.state.${item.state}`)}
+									</StatusChip>
+									{installable ? (
+										<button
+											type="button"
+											onClick={() => install.install(item.requirement.id)}
+											disabled={install.installingId !== null}
+											title={t(
+												installRecipeFor(item.requirement.id)?.kind === "brew"
+													? "tab.tools.brewHint"
+													: "tab.tools.installHint",
+											)}
+											className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/10 px-1.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+										>
+											{install.installingId === item.requirement.id ? (
+												<span aria-hidden className="icon-[lucide--loader-circle] size-2.5 motion-safe:animate-spin" />
+											) : (
+												<span aria-hidden className="icon-[lucide--download] size-2.5" />
+											)}
+											{t(install.installingId === item.requirement.id ? "tab.tools.installing" : "tab.tools.install")}
+										</button>
+									) : hint !== null ? (
+										<button
+											type="button"
+											onClick={() => void copyText(hint)}
+											title={hint}
+											className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+										>
+											<span aria-hidden className="icon-[lucide--copy] size-2.5" />
+											{t("tab.tools.copy")}
+										</button>
+									) : null}
+								</div>
+								{hint !== null && !installable ? (
+									<p className="mt-0.5 pl-3 text-[10px] leading-snug text-muted-foreground" title={hint}>
+										<span className="line-clamp-2">{hint}</span>
+									</p>
 								) : null}
-							</div>
-							{item.remediation ? (
-								<p className="mt-0.5 pl-3 text-[10px] leading-snug text-muted-foreground" title={item.remediation}>
-									<span className="line-clamp-2">{item.remediation}</span>
-								</p>
-							) : null}
-						</li>
-					))}
+							</li>
+						);
+					})}
 				</ul>
 			) : null}
 
@@ -138,20 +202,20 @@ export function ReaToolReadiness({ target, calls, report, run, cwd }: ToolReadin
 						? t("tab.tools.installSuccess")
 						: install.tone === "danger"
 							? t("tab.tools.installFailed", { message: install.message ?? "" })
-							: installable && report.status === "ready"
-								? t("tab.tools.installableHint", { tool: installable.requirement.label })
-								: t("tab.tools.sourceHint")}
+							: oneClick !== undefined
+								? t("tab.tools.installableHint", { tool: oneClick.requirement.label })
+								: commandOnly !== undefined
+									? t("tab.tools.commandOnlyHint", { tool: commandOnly.requirement.label })
+									: t("tab.tools.sourceHint")}
 				</span>
-				{report.status === "ready" || report.status === "failed" ? (
-					<button
-						type="button"
-						onClick={report.recheck}
-						className="inline-flex h-5 shrink-0 items-center gap-1 rounded px-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-					>
-						<span aria-hidden className="icon-[lucide--refresh-cw] size-2.5" />
-						{t("tab.tools.recheck")}
-					</button>
-				) : null}
+				<button
+					type="button"
+					onClick={recheckAll}
+					className="inline-flex h-5 shrink-0 items-center gap-1 rounded px-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+				>
+					<span aria-hidden className="icon-[lucide--refresh-cw] size-2.5" />
+					{t("tab.tools.recheck")}
+				</button>
 			</div>
 		</div>
 	);

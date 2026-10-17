@@ -1,15 +1,21 @@
 /**
- * `rea doctor --json` → 逐工具就绪状态。
+ * 逐工具就绪状态：多来源合并，缺一不可地说明「凭什么这么说」。
  *
- * 上游 DoctorDiagnostics.ts 把核心检查与各提供方检查拍平进同一个 `checks` 数组，
- * 提供方检查名形如 `<provider>` 或 `<provider>-<check>`，所以这里用前缀匹配，
- * 不做模糊猜测。doctor 结果里没有的工具一律标 unknown —— 不推定「已安装」。
+ * 三个来源，可信度从高到低：
  *
- * doctor 之外的运行时依赖（frida / adb / apktool…）只能靠会话里真实调用过没有：
- * 成功过算可用，全部失败算调用失败，没调用过就是未知。
+ *   doctor   `rea doctor --json` 的逐项检查（REA 自己的分析引擎视角）。
+ *            上游 DoctorDiagnostics.ts 把提供方检查拍平进同一个 checks 数组，
+ *            名字形如 `<provider>` 或 `<provider>-<check>`，所以用前缀匹配。
+ *   probe    宿主命令通道跑一次 `--version`（live/tool-probe.ts）。doctor 不管
+ *            frida / adb / apktool / binwalk / gdb 这些，探测能给出确定结论。
+ *   session  本次会话里真实调用过没有：成功过算可用，全失败算不可用。
+ *
+ * 三者都没有证据时仍然是 unknown，但 UI 必须同时给出「怎么才能让它变确定」，
+ * 不允许只写一个「未知」。
  */
 
 import type { ReaLiveCall } from "./session-store";
+import type { ProbeOutcome } from "./tool-probe";
 import { runtimeEvidence, type SessionToolEvidence, type ToolRequirement } from "./tool-requirements";
 
 export interface DoctorCheck {
@@ -22,12 +28,24 @@ export interface DoctorCheck {
 
 export type ReadinessState = "ready" | "missing" | "unknown";
 
+/** 状态是从哪来的：doctor 检查 / 命令探测 / 会话调用。 */
+export type ReadinessSource = "doctor" | "probe" | "session";
+
 export interface ToolReadiness {
 	readonly requirement: ToolRequirement;
 	readonly state: ReadinessState;
 	readonly detail: string | null;
 	readonly remediation: string | null;
 	readonly evidence: SessionToolEvidence | null;
+	readonly source: ReadinessSource | null;
+	/** 探测被权限挡住（插件没拿到命令执行授权），不是「没装」。 */
+	readonly probeBlocked: boolean;
+}
+
+export interface ReadinessInputs {
+	readonly checks: readonly DoctorCheck[] | null;
+	readonly probes: Readonly<Record<string, ProbeOutcome>>;
+	readonly calls: readonly ReaLiveCall[];
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -75,21 +93,71 @@ function matchesProvider(requirement: ToolRequirement, name: string): boolean {
 	return name === id || name.startsWith(`${id}-`);
 }
 
-/**
- * 解析单个需求。
- *
- * runtime 依赖优先看会话证据（可证实），doctor 类只看 doctor 输出。
- */
-export function resolveReadiness(
+function fromDoctor(
 	requirement: ToolRequirement,
 	checks: readonly DoctorCheck[] | null,
-	calls: readonly ReaLiveCall[],
-): ToolReadiness {
-	const evidence = runtimeEvidence(requirement.id, calls);
+	evidence: SessionToolEvidence | null,
+): ToolReadiness | null {
+	if (checks === null) return null;
+	const matched = checks.filter((check) => matchesProvider(requirement, check.name));
+	if (matched.length === 0) return null;
+	const failed = matched.find((check) => !check.ok);
+	if (!failed) {
+		const first = matched[0];
+		return {
+			requirement,
+			state: "ready",
+			detail: first?.detail ?? null,
+			remediation: null,
+			evidence,
+			source: "doctor",
+			probeBlocked: false,
+		};
+	}
+	return {
+		requirement,
+		state: "missing",
+		detail: failed.detail ?? failed.classification ?? null,
+		remediation: failed.remediation ?? null,
+		evidence,
+		source: "doctor",
+		probeBlocked: false,
+	};
+}
+
+/** 解析单个需求。 */
+export function resolveReadiness(requirement: ToolRequirement, inputs: ReadinessInputs): ToolReadiness {
+	const evidence = runtimeEvidence(requirement.id, inputs.calls);
+	const probe = inputs.probes[requirement.id] ?? null;
+
+	if (requirement.source === "doctor") {
+		const fromChecks = fromDoctor(requirement, inputs.checks, evidence);
+		if (fromChecks !== null) return fromChecks;
+	}
+
+	if (probe !== null && probe.state === "ready") {
+		return {
+			requirement,
+			state: "ready",
+			detail: probe.detail,
+			remediation: null,
+			evidence,
+			source: "probe",
+			probeBlocked: false,
+		};
+	}
 
 	if (requirement.source === "runtime") {
 		if (evidence && evidence.calls > evidence.errors) {
-			return { requirement, state: "ready", detail: null, remediation: null, evidence };
+			return {
+				requirement,
+				state: "ready",
+				detail: null,
+				remediation: null,
+				evidence,
+				source: "session",
+				probeBlocked: false,
+			};
 		}
 		if (evidence) {
 			return {
@@ -98,29 +166,32 @@ export function resolveReadiness(
 				detail: null,
 				remediation: null,
 				evidence,
+				source: "session",
+				probeBlocked: false,
 			};
 		}
-		return { requirement, state: "unknown", detail: null, remediation: null, evidence };
 	}
 
-	if (checks === null) {
-		return { requirement, state: "unknown", detail: null, remediation: null, evidence };
+	if (probe !== null && probe.state === "missing") {
+		return {
+			requirement,
+			state: "missing",
+			detail: null,
+			remediation: null,
+			evidence,
+			source: "probe",
+			probeBlocked: false,
+		};
 	}
-	const matched = checks.filter((check) => matchesProvider(requirement, check.name));
-	if (matched.length === 0) {
-		return { requirement, state: "unknown", detail: null, remediation: null, evidence };
-	}
-	const failed = matched.find((check) => !check.ok);
-	if (!failed) {
-		const first = matched[0];
-		return { requirement, state: "ready", detail: first?.detail ?? null, remediation: null, evidence };
-	}
+
 	return {
 		requirement,
-		state: "missing",
-		detail: failed.detail ?? failed.classification ?? null,
-		remediation: failed.remediation ?? null,
+		state: "unknown",
+		detail: null,
+		remediation: null,
 		evidence,
+		source: probe?.state === "blocked" ? "probe" : null,
+		probeBlocked: probe?.state === "blocked",
 	};
 }
 
@@ -141,9 +212,4 @@ export function summarizeReadiness(items: readonly ToolReadiness[]): ReadinessSu
 		else unknown += 1;
 	}
 	return { ready, missing, unknown, total: items.length };
-}
-
-/** 可以无人值守安装的缺失项（目前只有 REA 官方支持的 Hopper）。 */
-export function installableRequirement(items: readonly ToolReadiness[]): ToolReadiness | null {
-	return items.find((item) => item.state === "missing" && item.requirement.autoInstallArgs !== undefined) ?? null;
 }

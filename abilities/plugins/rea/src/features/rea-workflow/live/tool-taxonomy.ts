@@ -211,7 +211,11 @@ export function detectTargetFromTool(toolName: string): TargetKind | null {
 
 const EXTENSION_KINDS: readonly { readonly test: RegExp; readonly kind: TargetKind }[] = [
 	{ test: /\.(dll|exe|winmd)$/i, kind: "dotnet" },
-	{ test: /\.(apk|aab|dex|ipa|app|hap)$/i, kind: "mobile" },
+	{ test: /\.(apk|aab|dex|ipa|hap)$/i, kind: "mobile" },
+	// .app 两边都可能是：macOS 应用包（/Applications/Foo.app）和 iOS 解包后的
+	// Payload/Foo.app。后面那种由 detectTargetFromText 的前置规则拦住，
+	// 其余一律当原生二进制 —— 这正是 Hopper / Ghidra 接手的对象。
+	{ test: /\.app$/i, kind: "native" },
 	{ test: /\.(bin|elf|so|dylib|img|rom|fw)$/i, kind: "native" },
 	{ test: /\.(js|mjs|cjs|asar|jsx|ts)$/i, kind: "javascript" },
 	{ test: /^https?:\/\//i, kind: "web" },
@@ -221,6 +225,8 @@ const EXTENSION_KINDS: readonly { readonly test: RegExp; readonly kind: TargetKi
 export function detectTargetFromText(text: string | null | undefined): TargetKind | null {
 	if (!text) return null;
 	if (/index\.android\.bundle/i.test(text)) return "mobile";
+	// iOS 解包目录里的 .app 属于移动端，不是 macOS 应用包。
+	if (/\/Payload\/[^/]+\.app/i.test(text)) return "mobile";
 	for (const rule of EXTENSION_KINDS) {
 		if (rule.test.test(text)) return rule.kind;
 	}

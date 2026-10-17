@@ -45,9 +45,17 @@ export interface ReaWorkflowTabProps {
 	readonly sendPrompt: (prompt: string) => Promise<SendPromptResult>;
 	/** 只填入输入框；不可用时返回 false。 */
 	readonly insertPrompt: (prompt: string) => boolean;
+	/** 直接执行外部命令（工具探测 / brew 安装）；无 `agent.command.run` 时为 null。 */
+	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
 }
 
-export function ReaWorkflowTab({ provider, store, sendPrompt, insertPrompt }: ReaWorkflowTabProps): JSX.Element {
+export function ReaWorkflowTab({
+	provider,
+	store,
+	sendPrompt,
+	insertPrompt,
+	runCommand,
+}: ReaWorkflowTabProps): JSX.Element {
 	const { t } = useTranslation();
 	const { active, cwd } = useActivityTab();
 	const [currentStage, setCurrentStage] = useState<number>(1);
@@ -75,6 +83,8 @@ export function ReaWorkflowTab({ provider, store, sendPrompt, insertPrompt }: Re
 		cwd: cwd ?? null,
 		detected: snapshot.detectedTarget,
 		detectedPath: snapshot.lastTargetPath,
+		hinted: snapshot.hintedTarget,
+		hintedPath: snapshot.hintedPath,
 		onRoute: handleSelect,
 	});
 
@@ -114,10 +124,11 @@ export function ReaWorkflowTab({ provider, store, sendPrompt, insertPrompt }: Re
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<ReaWorkbench
 					workbench={workbench}
-					detected={snapshot.detectedTarget}
+					detected={snapshot.detectedTarget ?? snapshot.hintedTarget}
 					calls={calls}
 					report={report}
 					run={provider.run}
+					runCommand={runCommand}
 					cwd={cwd ?? null}
 				/>
 				<div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
