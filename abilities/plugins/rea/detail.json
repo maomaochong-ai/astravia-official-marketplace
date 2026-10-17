@@ -64,7 +64,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "REA never installs or upgrades Node.js, npm, Homebrew, Java, Ghidra, IDA, JADX, Binwalk, or Unblob. Use existing prerequisites; the doctor command tells you which one to bring if a task needs it."
+      "content": "The agent never installs anything on your machine on its own. The plugin's tool panel runs a real version probe, and marks a tool ready only when that holds up. Hopper can be installed through REA's own channel; tools that Homebrew carries (apktool, binwalk, rizin, adb) are installed only after you press the button. Node.js, Ghidra, IDA and JADX still have to come from you — they need environment variables or a licence, so installing them alone does not make them ready."
     },
     {
       "type": "callout",

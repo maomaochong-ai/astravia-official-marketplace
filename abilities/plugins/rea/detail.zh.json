@@ -64,7 +64,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "REA 不会安装或升级 Node.js、npm、Homebrew、Java、Ghidra、IDA、JADX、Binwalk、Unblob。使用现成的前置依赖；doctor 会告诉你某个任务缺哪一项需要自行补上。"
+      "content": "Agent 不会自作主张往你机器上装东西。插件里的「本次需要的工具」会直接跑一次版本探测，把能如实确定的工具标成就绪；Hopper 可通过 REA 自己的安装通道装上，Homebrew 上有的工具（apktool、binwalk、rizin、adb）会先征得你点确认再装。Node.js、Ghidra、IDA、JADX 仍需你自备——它们要环境变量或授权，装完不会自动就绪。"
     },
     {
       "type": "callout",
