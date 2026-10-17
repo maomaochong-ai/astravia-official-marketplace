@@ -7,7 +7,7 @@
 				"template": "chat-over-canvas",
 				"canvas": "generic",
 				"user_prompt": "Start my local free-model server and add its models to the model list.",
-				"assistant_reply": "The Free Model Gateway installed and started the server runtime: health check passed and the model list is synced into Astravia — pick a model and go. Start/stop the server, open the management UI, or resync models anytime from the sidebar entry. The upstream reuses vendor free channels; you accept the risks."
+				"assistant_reply": "Server running, health check passed. Free models are synced into your model list — pick one and start chatting."
 			}
 		},
 		{
