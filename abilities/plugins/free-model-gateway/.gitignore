@@ -1,5 +1,8 @@
 node_modules/
 dist/
 release/
-public/ofm-server.zip
 server-src/
+
+# public/ofm-server.zip 是必须随源码提交的运行时物料：CI 只跑 vite build，
+# 由 vite 把 public/ 拷进 dist/，再随 .astraviapkg 分发；漏提交就等于安装时 404。
+# 重新生成：bun scripts/build-server-zip.mjs（需要本地放入上游 server-src/）。

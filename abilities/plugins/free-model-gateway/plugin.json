@@ -2,7 +2,7 @@
 	"id": "free-model-gateway",
 	"name": "%plugin.name%",
 	"icon": "assets/icon.png",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
