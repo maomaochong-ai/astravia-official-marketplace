@@ -142,11 +142,15 @@ export class GatewayController {
 		this.setState({ busy: true });
 		try {
 			let status = await this.ctx.services.getStatus(SERVICE_ID);
-			if (status.phase === "ready") {
+			if (status.phase === "ready" && status.installed !== false) {
 				this.applyReady();
 				return;
 			}
 			if (!status.installed) {
+				// 宿主拒绝在子进程存活时替换运行时，而版本更新时旧实例仍在跑。
+				// stop() 幂等：状态可能已显示 stopped，但子进程仍挂在宿主记录上，正是要清理的情形。
+				this.setState({ phase: "stopping" });
+				await this.ctx.services.stop(SERVICE_ID);
 				this.setState({ phase: "installing" });
 				const data = await this.fetchArtifactBase64();
 				status = await this.ctx.services.install(SERVICE_ID, [

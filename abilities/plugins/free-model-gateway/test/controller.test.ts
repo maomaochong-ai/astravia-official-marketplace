@@ -17,6 +17,7 @@ interface Fakes {
 	startError?: Error;
 	stopCalls: number;
 	stopError?: Error;
+	events: string[];
 	requests: Array<{ path: string; headers?: Record<string, string> }>;
 	modelsBody: unknown;
 	modelsOk: boolean;
@@ -46,6 +47,7 @@ function makeFakes(overrides: Partial<Fakes> = {}): Fakes {
 		installs: [],
 		startCalls: 0,
 		stopCalls: 0,
+		events: [],
 		requests: [],
 		modelsBody: { object: "list", data: [{ id: "m1" }, { id: "m2" }] },
 		modelsOk: true,
@@ -76,6 +78,7 @@ function makeCtx(fakes: Fakes): PluginContext {
 			getStatus: async () => fakes.status,
 			install: async (serviceId: string, artifacts: Array<{ destination: string; data: string }>) => {
 				if (fakes.installError) throw fakes.installError;
+				fakes.events.push("install");
 				fakes.installs.push({ serviceId, artifacts });
 				fakes.status = { ...fakes.status, phase: "stopped", installed: true };
 				return fakes.status;
@@ -83,6 +86,7 @@ function makeCtx(fakes: Fakes): PluginContext {
 			start: async () => {
 				if (fakes.startError) throw fakes.startError;
 				fakes.startCalls += 1;
+				fakes.events.push("start");
 				fakes.status = { ...fakes.status, phase: "ready" };
 				emit(fakes);
 				return fakes.status;
@@ -90,6 +94,7 @@ function makeCtx(fakes: Fakes): PluginContext {
 			stop: async () => {
 				if (fakes.stopError) throw fakes.stopError;
 				fakes.stopCalls += 1;
+				fakes.events.push("stop");
 				fakes.status = { ...fakes.status, phase: "stopped" };
 				emit(fakes);
 				return fakes.status;
@@ -229,6 +234,24 @@ describe("GatewayController", () => {
 			{ serviceId: SERVICE_ID, artifacts: [{ destination: "server", data: "AQID" }] },
 		]);
 		expect(fakes.startCalls).toBe(1);
+		expect(fakes.events).toEqual(["stop", "install", "start"]);
+	});
+
+	// 升级时宿主把状态降回 stopped，但旧子进程仍挂在启主记录上；此时直接 install 会报
+	// “Stop the service before installing its runtime”。install 前无条件 stop 才能清掉它。
+	it("stops the stale instance before installing a runtime that reports itself as stopped", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => ({ ok: true, status: 200, arrayBuffer: async () => new Uint8Array([1]).buffer })),
+		);
+		const fakes = makeFakes({ status: serviceStatus({ phase: "stopped", installed: false }) });
+		const controller = new GatewayController(makeCtx(fakes));
+
+		await controller.ensureRunning();
+
+		expect(fakes.events.slice(0, 2)).toEqual(["stop", "install"]);
+		expect(fakes.stopCalls).toBe(1);
+		expect(controller.getState().phase).toBe("running");
 	});
 
 	it("reports an install failure and notifies with the underlying error", async () => {
