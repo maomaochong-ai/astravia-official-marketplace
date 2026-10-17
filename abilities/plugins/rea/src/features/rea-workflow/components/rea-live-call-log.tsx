@@ -44,7 +44,7 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 						<div key={`${error.toolName}-${error.at}`} className="flex items-start gap-1.5 text-[11px]">
 							<span className="tabular-nums text-muted-foreground">{timeLabel(error.at)}</span>
 							<span className="font-medium text-red-600 dark:text-red-400">{error.toolName}</span>
-							<span className="line-clamp-2 text-muted-foreground">{error.message}</span>
+							<span className="min-w-0 line-clamp-2 text-muted-foreground">{error.message}</span>
 						</div>
 					))}
 				</div>

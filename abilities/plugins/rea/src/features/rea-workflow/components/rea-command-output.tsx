@@ -66,7 +66,7 @@ export function ReaCommandOutput({ state, onClear }: OutputPanelProps): JSX.Elem
 					/>
 					{t(`tab.run.phase.${state.phase}`)}
 				</StatusChip>
-				<span className="truncate text-[11px] text-foreground/85">{state.label}</span>
+				<span className="min-w-0 max-w-full truncate text-[11px] text-foreground/85">{state.label}</span>
 				{state.exitCode !== null ? (
 					<span className="text-[10.5px] text-muted-foreground">{t("tab.run.exit", { code: state.exitCode })}</span>
 				) : null}

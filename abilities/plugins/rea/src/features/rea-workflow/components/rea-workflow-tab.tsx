@@ -26,6 +26,7 @@ import { STAGES, TOTAL_STAGES } from "../data/stages";
 import { useWorkbench } from "../hooks/use-workbench";
 import { useReaLiveSnapshot } from "../live/use-live-snapshot";
 import { scopeLiveCalls, type ReaLiveStore } from "../live/session-store";
+import { buildStageDigest } from "../live/diagram-live";
 import { STAGE_INDEX } from "../live/tool-taxonomy";
 
 export interface ReaProviderBridge {
@@ -76,10 +77,15 @@ export function ReaWorkflowTab({ provider, store, insertPrompt }: ReaWorkflowTab
 	});
 
 	const calls = useMemo(() => scopeLiveCalls(snapshot, cwd), [snapshot, cwd]);
+	// 示意图与阶段标题用的是同一份真实信号：当前阶段的调用数 / 正在跑的工具。
+	const stageLive = useMemo(
+		() => ({ calls, running: snapshot.runningToolNames, digest: buildStageDigest(currentStage, calls, snapshot.runningToolNames) }),
+		[calls, currentStage, snapshot.runningToolNames],
+	);
 	const animateClass = active ? "motion-safe:animate-in motion-safe:fade-in-0" : "";
 
 	return (
-		<div className={`flex h-full w-full flex-col overflow-hidden bg-background text-foreground ${animateClass}`}>
+		<div className={`@container flex h-full w-full flex-col overflow-hidden bg-background text-foreground ${animateClass}`}>
 			<ReaProviderStatusBar
 				getStatus={provider.getStatus}
 				onStatusChanged={provider.onStatusChanged}
@@ -111,6 +117,7 @@ export function ReaWorkflowTab({ provider, store, insertPrompt }: ReaWorkflowTab
 					activeCommandId={workbench.runner.state?.commandId ?? null}
 					activeTarget={workbench.active}
 					onRun={workbench.runCommand}
+					live={stageLive}
 				/>
 			</div>
 			{showLog ? (
@@ -127,7 +134,7 @@ export function ReaWorkflowTab({ provider, store, insertPrompt }: ReaWorkflowTab
 				>
 					{showLog ? t("live.calls.hide") : t("live.calls.show")}
 				</button>
-				<span className="truncate text-[10px] text-muted-foreground">
+				<span className="min-w-0 truncate text-[10px] text-muted-foreground">
 					{t("live.calls.count", { count: calls.length })}
 				</span>
 			</div>

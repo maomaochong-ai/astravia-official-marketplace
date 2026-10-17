@@ -24,8 +24,11 @@ interface StripProps {
 export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages, liveStage }: StripProps): JSX.Element {
 	const { t } = useTranslation();
 	return (
-		<div className="border-b border-border bg-card/30 px-3 py-2.5">
-			<ol className="flex items-center gap-1.5" aria-label={t("tab.strip.aria")}>
+		<div className="border-b border-border bg-card/30 px-2 py-2.5 @min-[400px]:px-3">
+			<ol
+				className="flex items-center gap-1 @min-[420px]:gap-1.5 @max-[419px]:grid @max-[419px]:grid-cols-3 @max-[419px]:gap-1"
+				aria-label={t("tab.strip.aria")}
+			>
 				{STAGES.map((stage, idx) => {
 					const visited = completedStages?.includes(stage.index) ?? false;
 					const live = liveStage === stage.index;
@@ -40,28 +43,37 @@ export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages,
 								? "font-medium text-foreground/80"
 								: "text-muted-foreground";
 					return (
-						<li key={stage.index} className="flex flex-1 items-center gap-1.5 last:flex-none">
+						<li
+							key={stage.index}
+							className="flex min-w-0 flex-1 items-center gap-1 last:flex-none @min-[420px]:gap-1.5 @max-[419px]:justify-center"
+						>
 							<button
 								type="button"
-								className="group flex min-w-0 flex-1 flex-col items-center gap-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-md px-1 py-1"
+								className="group flex min-w-0 w-full flex-col items-center gap-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-md px-1 py-1"
 								aria-current={status === "active" ? "step" : undefined}
 								aria-label={t(stage.labelKey)}
 								onClick={() => onSelect(stage.index)}
 							>
 								<span
-									className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold ${status === "active" ? "motion-safe:animate-pulse" : ""}`}
+									className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold ${
+										status === "active" ? (live ? "motion-safe:animate-rea-ring" : "motion-safe:animate-pulse") : ""
+									}`}
 									style={{ backgroundColor: dotFill, color: status === "todo" ? "var(--muted-foreground)" : "var(--primary)", border: `1px solid ${dotStroke}` }}
 								>
 									{stage.index}
 								</span>
-								<span className={`line-clamp-1 text-[10px] leading-tight ${textCls}`}>{t(stage.labelKey)}</span>
+								<span className={`block w-full truncate text-[10px] leading-tight ${textCls}`}>{t(stage.labelKey)}</span>
 								{live ? (
-									<span className="size-1 rounded-full bg-primary motion-safe:animate-pulse" aria-hidden />
+									<span
+										className="size-1 rounded-full bg-primary motion-safe:animate-ping"
+										title={t("tab.live.diagram.live")}
+										aria-hidden
+									/>
 								) : null}
 							</button>
 							{idx < TOTAL_STAGES - 1 ? (
 								<span
-									className="h-px w-3 shrink-0 sm:w-5"
+									className="h-px w-2 shrink-0 @min-[520px]:w-5 @max-[419px]:hidden"
 									style={{
 										backgroundColor: status === "done" ? "var(--primary)" : "var(--border)",
 										opacity: status === "done" ? 0.55 : 1,

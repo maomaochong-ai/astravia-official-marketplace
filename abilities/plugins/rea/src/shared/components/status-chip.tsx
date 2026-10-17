@@ -19,7 +19,7 @@ const TONE_CLASS: Record<StatusTone, string> = {
 };
 
 const BASE =
-	"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium";
+	"inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium";
 
 export interface StatusChipProps {
 	readonly tone: StatusTone;

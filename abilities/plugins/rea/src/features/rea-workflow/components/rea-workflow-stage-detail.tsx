@@ -14,6 +14,9 @@ import { commandsForTarget, findCommand, type ReaCommandDefinition } from "../da
 import { ReaCommandList } from "./rea-command-list";
 import type { TargetKind } from "../data/targets";
 import type { StageDefinition } from "../data/stages";
+import type { StageLiveSource } from "../live/diagram-live";
+import { StatusChip } from "../../../shared/components/status-chip";
+import { ReaDiagramLiveCaption } from "./rea-diagram-live-caption";
 import { ReaWorkflowStageDiagram } from "./rea-workflow-stage-diagram";
 
 interface DetailProps {
@@ -27,6 +30,8 @@ interface DetailProps {
 	readonly onRun: (command: ReaCommandDefinition) => void;
 	/** 工作台当前目标类型；用来把阶段命令限定在该目标的入口命令上。 */
 	readonly activeTarget: TargetKind | null;
+	/** 当前工作目录范围内的真实调用 + 本阶段摘要，用于把示意图点亮。 */
+	readonly live: StageLiveSource;
 }
 
 export function ReaWorkflowStageDetail({
@@ -37,6 +42,7 @@ export function ReaWorkflowStageDetail({
 	activeCommandId,
 	activeTarget,
 	onRun,
+	live,
 }: DetailProps): JSX.Element {
 	const { t } = useTranslation();
 	const declared = stage.commandIds
@@ -49,28 +55,39 @@ export function ReaWorkflowStageDetail({
 	const commands = scoped.length > 0 ? scoped : declared;
 	return (
 		<div className="flex flex-col bg-card text-card-foreground">
-			<header className="border-b border-border px-4 py-3">
-				<div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-					<span>{t("tab.detail.stageOf", { current: stage.index, total })}</span>
+			<header className="border-b border-border px-3 py-3 @min-[400px]:px-4">
+				<div className="flex min-w-0 items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+					<span className="min-w-0 truncate">{t("tab.detail.stageOf", { current: stage.index, total })}</span>
+					<StatusChip
+						tone={live.digest.state === "active" ? "progress" : live.digest.state === "done" ? "success" : "neutral"}
+						className="normal-case tracking-normal"
+					>
+						<span
+							className={`size-1.5 rounded-full bg-current ${live.digest.state === "active" ? "motion-safe:animate-pulse" : ""}`}
+							aria-hidden
+						/>
+						{t(`tab.live.stage.${live.digest.state}`)}
+					</StatusChip>
 				</div>
-				<h2 className="mt-1 text-sm font-semibold leading-tight text-foreground">{t(stage.headingKey)}</h2>
-				<p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t(stage.subtitleKey)}</p>
+				<h2 className="mt-1 text-pretty text-sm font-semibold leading-tight text-foreground">{t(stage.headingKey)}</h2>
+				<p className="mt-1 text-pretty text-xs leading-relaxed text-muted-foreground">{t(stage.subtitleKey)}</p>
 			</header>
 
-			<section className="border-b border-border px-4 py-3">
+			<section className="border-b border-border px-3 py-3 @min-[400px]:px-4">
 				<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					{t("tab.detail.section.flow")}
 				</h3>
+				<ReaDiagramLiveCaption digest={live.digest} />
 				<div className="rounded-[min(var(--radius-md),10px)] border border-border bg-background/40 p-2">
-					<ReaWorkflowStageDiagram kind={stage.diagram} />
+					<ReaWorkflowStageDiagram kind={stage.diagram} calls={live.calls} running={live.running} />
 				</div>
 			</section>
 
-			<section className="border-b border-border px-4 py-3">
+			<section className="border-b border-border px-3 py-3 @min-[400px]:px-4">
 				<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					{t("tab.detail.section.bullets")}
 				</h3>
-				<ul className="space-y-1.5 text-xs leading-relaxed">
+				<ul className="space-y-1.5 text-pretty text-xs leading-relaxed">
 					{stage.bullets.map((b, i) => (
 						<li key={i} className="flex gap-2 text-foreground/90">
 							<span className="mt-1 inline-block size-1 shrink-0 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
@@ -80,7 +97,7 @@ export function ReaWorkflowStageDetail({
 				</ul>
 			</section>
 
-			<section className="border-b border-border px-4 py-3">
+			<section className="border-b border-border px-3 py-3 @min-[400px]:px-4">
 				{commands.length > 0 ? (
 					<>
 						<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -100,7 +117,7 @@ export function ReaWorkflowStageDetail({
 			</section>
 
 			{stage.referencePath ? (
-				<section className="border-b border-border px-4 py-3">
+				<section className="border-b border-border px-3 py-3 @min-[400px]:px-4">
 					<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 						{t("tab.detail.section.reference")}
 					</h3>
@@ -110,7 +127,7 @@ export function ReaWorkflowStageDetail({
 				</section>
 			) : null}
 
-			<section className="px-4 py-3">
+			<section className="px-3 py-3 @min-[400px]:px-4">
 				<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					{t("tab.detail.section.fallback")}
 				</h3>

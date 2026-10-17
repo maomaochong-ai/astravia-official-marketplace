@@ -42,3 +42,60 @@
 
 /* lucide / solar 图标按需生成（面板内用 lucide，详情页用 solar）。 */
 @plugin "@iconify/tailwind4";
+
+/*
+ * 流程图实时态动画。
+ *
+ * 面板是宿主侧栏，宽度随拖拽变化，所以动效只用 transform / box-shadow，不参与布局；
+ * 使用处统一加 motion-safe:，系统开启「减少动态效果」时不播。
+ * 颜色读宿主 --primary，确保浅色/深色主题下都是当前主题的主色。
+ */
+@theme {
+	--animate-rea-ring: rea-ring 1.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+	--animate-rea-flow: rea-flow 1.15s ease-in-out infinite;
+	--animate-rea-rise: rea-rise 220ms cubic-bezier(0.16, 1, 0.3, 1);
+
+	@keyframes rea-ring {
+		0% {
+			box-shadow:
+				0 0 0 1px rgb(from var(--primary) r g b / 0.55),
+				0 0 0 0 rgb(from var(--primary) r g b / 0.3);
+		}
+		70% {
+			box-shadow:
+				0 0 0 1px rgb(from var(--primary) r g b / 0.45),
+				0 0 0 5px rgb(from var(--primary) r g b / 0);
+		}
+		100% {
+			box-shadow:
+				0 0 0 1px rgb(from var(--primary) r g b / 0.45),
+				0 0 0 0 rgb(from var(--primary) r g b / 0);
+		}
+	}
+
+	@keyframes rea-flow {
+		0% {
+			transform: translateY(-110%);
+			opacity: 0;
+		}
+		35% {
+			opacity: 1;
+		}
+		100% {
+			transform: translateY(230%);
+			opacity: 0;
+		}
+	}
+
+	@keyframes rea-rise {
+		from {
+			opacity: 0;
+			transform: translateY(3px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+}
+

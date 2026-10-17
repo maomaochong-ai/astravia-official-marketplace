@@ -31,7 +31,7 @@ export function ReaWorkflowTargetRouting({
 	const { t } = useTranslation();
 	return (
 		<div aria-label={t("tab.target.sectionAria")}>
-			<header className="mb-1.5 flex items-center justify-between">
+			<header className="mb-1.5 flex min-w-0 items-center justify-between gap-2">
 				<h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
 					{t("tab.target.sectionTitle")}
 				</h3>
@@ -44,7 +44,7 @@ export function ReaWorkflowTargetRouting({
 						{t("tab.target.clear")}
 					</button>
 				) : detected ? (
-					<span className="text-[10.5px] text-muted-foreground">{t("tab.target.autoDetected")}</span>
+					<span className="shrink-0 whitespace-nowrap text-[10.5px] text-muted-foreground">{t("tab.target.autoDetected")}</span>
 				) : null}
 			</header>
 			<div className="flex flex-wrap gap-1.5">
@@ -57,8 +57,8 @@ export function ReaWorkflowTargetRouting({
 							onClick={() => onPick(target.kind)}
 							className={
 								isActive
-									? "inline-flex h-7 items-center gap-1.5 rounded-full border border-primary/50 bg-primary/15 px-2.5 text-[11.5px] font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-									: "inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-background/40 px-2.5 text-[11.5px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+									? "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border border-primary/50 bg-primary/15 px-2.5 text-[11.5px] font-medium text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+									: "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-background/40 px-2.5 text-[11.5px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 							}
 							aria-pressed={isActive}
 						>

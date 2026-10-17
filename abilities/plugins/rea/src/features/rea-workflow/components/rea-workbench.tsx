@@ -25,9 +25,13 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 
 	return (
 		<section className="border-b border-border bg-card/25 px-3 py-2.5">
-			<header className="mb-2 flex items-baseline justify-between gap-2">
-				<h2 className="text-[12px] font-semibold leading-tight text-foreground">{t("tab.workbench.title")}</h2>
-				<span className="truncate text-[10px] text-muted-foreground">{t("tab.workbench.subtitle")}</span>
+			<header className="mb-2 flex min-w-0 items-baseline justify-between gap-2">
+				<h2 className="shrink-0 whitespace-nowrap text-[12px] font-semibold leading-tight text-foreground">
+					{t("tab.workbench.title")}
+				</h2>
+				<span className="min-w-0 truncate text-[10px] text-muted-foreground @max-[340px]:hidden">
+					{t("tab.workbench.subtitle")}
+				</span>
 			</header>
 
 			<ReaWorkflowTargetRouting

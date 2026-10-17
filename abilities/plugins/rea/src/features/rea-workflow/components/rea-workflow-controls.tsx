@@ -19,12 +19,12 @@ export function ReaWorkflowControls({ currentStage, onChange }: ControlsProps): 
 	const atFirst = currentStage <= 1;
 	const atLast = currentStage >= TOTAL_STAGES;
 	const baseBtn =
-		"inline-flex h-7 items-center gap-1 rounded-md border border-border bg-background/40 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+		"inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-border bg-background/40 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 	return (
-		<div className="flex items-center justify-between gap-2 border-t border-border bg-card/30 px-3 py-2">
+		<div className="flex items-center justify-between gap-1.5 border-t border-border bg-card/30 px-2 py-2 @min-[400px]:gap-2 @min-[400px]:px-3">
 			<button
 				type="button"
-				className={baseBtn}
+				className={`${baseBtn} @max-[399px]:hidden`}
 				disabled={atFirst}
 				onClick={() => onChange(1)}
 				title={t("tab.controls.first.title")}
@@ -41,7 +41,7 @@ export function ReaWorkflowControls({ currentStage, onChange }: ControlsProps): 
 				<span aria-hidden>‹</span>
 				<span>{t("tab.controls.prev")}</span>
 			</button>
-			<span className="text-[11px] tabular-nums text-muted-foreground">
+			<span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">
 				{t("tab.controls.indicator", { current: currentStage, total: TOTAL_STAGES })}
 			</span>
 			<button
@@ -55,7 +55,7 @@ export function ReaWorkflowControls({ currentStage, onChange }: ControlsProps): 
 			</button>
 			<button
 				type="button"
-				className={baseBtn}
+				className={`${baseBtn} @max-[399px]:hidden`}
 				disabled={atLast}
 				onClick={() => onChange(TOTAL_STAGES)}
 				title={t("tab.controls.last.title")}

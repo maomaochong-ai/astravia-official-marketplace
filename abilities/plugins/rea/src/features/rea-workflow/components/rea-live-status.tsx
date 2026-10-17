@@ -144,7 +144,7 @@ export function ReaLiveStatus({ snapshot, onSelectStage, onUseTarget }: LiveStat
 									: "bg-emerald-500"
 						}`}
 					/>
-					<span className="shrink-0">{t("live.last.tool", { tool: lastCall.toolName })}</span>
+					<span className="min-w-0 max-w-[60%] truncate">{t("live.last.tool", { tool: lastCall.toolName })}</span>
 					{lastCall.argsPreview ? (
 						<span className="min-w-0 flex-1 truncate font-mono opacity-80">{lastCall.argsPreview}</span>
 					) : null}
