@@ -514,7 +514,7 @@
       "slug": "tailored-resume-generator",
       "name": "Resume Tailoring",
       "description": "Rewrite a resume against one specific job posting: reorder real experience, mirror the posting's keywords for ATS parsing, quantify what can be quantified, and name the gaps worth closing.",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "configVersion": 1,
       "license": "Unspecified",
       "author": "Astravia",
@@ -6219,5 +6219,5 @@
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.17-8"
+  "marketplaceVersion": "2026.10.17-9"
 }

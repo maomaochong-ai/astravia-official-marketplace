@@ -13,8 +13,8 @@
       "showcase": {
         "template": "chat-thread",
         "brand_name": "Astravia",
-        "user_prompt": "I'm applying for this senior data analyst role. Here's the posting and my current resume — can you tailor it?",
-        "assistant_reply": "I'll pull the must-have requirements and the terms that repeat across the posting, lead the summary with the five years of analysis work and the SQL, Python and A/B testing they ask for, quantify the campaign and automation results, and flag the healthcare-industry requirement as the one gap left to address."
+        "user_prompt": "Tailor my resume to this analyst posting.",
+        "assistant_reply": "Rewritten for ATS, quantified, gaps flagged."
       }
     },
     {

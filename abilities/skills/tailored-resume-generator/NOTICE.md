@@ -12,7 +12,7 @@
 
 - `SKILL.md`：补齐 `version` frontmatter；正文从通用提示词改写为 Astravia 内的执行流程——先读工作区里已有的简历文件而不是让用户重复粘贴、按岗位拆解→证据映射→写作→格式→差距报告的次序组织、补充地区简历习惯（北美 / 欧洲 / 中文）、隐私处理与「不编造」约束。
 - `ability.json`、`detail.json`、`detail.zh.json`：新增展示层，默认英文、中文放在 `zh` 覆盖里。
-- 图标使用 Iconify 的 Solar 名称 `solar:document-text-bold`，由桌面端渲染，不随包分发图形文件。
+- 图标为自制 SVG（`assets/icon.svg`），不含上游素材与任何第三方图形资产。
 
 ## 未包含
 

@@ -1,6 +1,6 @@
 ---
 name: tailored-resume-generator
-version: 1.0.0
+version: 1.0.1
 description: Analyzes a job description and rewrites a resume against it — surfacing the experience, keywords and quantified achievements that posting screens for, matching ATS parsing rules, and reporting gaps plus interview talking points.
 ---
 

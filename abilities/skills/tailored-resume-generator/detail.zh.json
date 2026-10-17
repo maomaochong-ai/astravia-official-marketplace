@@ -13,8 +13,8 @@
       "showcase": {
         "template": "chat-thread",
         "brand_name": "Astravia",
-        "user_prompt": "我在投一个高级数据分析师岗位，JD 和现在的简历都附上了，帮我改一版。",
-        "assistant_reply": "我会先提岗位的硬性要求和反复出现的关键词，把五年数据分析经历与 SQL、Python、A/B 测试提到摘要最前面，把活动优化和自动化脚本的成果量化；医疗行业经验是这份简历目前唯一没覆盖的门槛，我会单独列出来。"
+        "user_prompt": "按这个岗位改一版简历，关键词对齐。",
+        "assistant_reply": "已重排经历、量化成果，并标出缺口。"
       }
     },
     {

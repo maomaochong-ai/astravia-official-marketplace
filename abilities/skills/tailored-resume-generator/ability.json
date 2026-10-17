@@ -5,7 +5,7 @@
   "name": "Resume Tailoring",
   "description": "Rewrite a resume against one specific job posting: reorder real experience, mirror the posting's keywords for ATS parsing, quantify what can be quantified, and name the gaps worth closing.",
   "version": "1.0.0",
-  "configVersion": 1,
+  "version": "1.0.1",
   "license": "Unspecified",
   "author": "Astravia",
   "category": "Productivity",
@@ -20,7 +20,7 @@
     "ats",
     "writing"
   ],
-  "icon": "solar:document-text-bold",
+  "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",
     "path": "detail.json",
