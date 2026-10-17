@@ -397,7 +397,7 @@
       "slug": "xiaohongshu",
       "name": "Xiaohongshu Accounts",
       "description": "Manage multiple Xiaohongshu accounts and run built-in MCP tasks concurrently through the account selected for each task.",
-      "version": "1.1.28",
+      "version": "1.1.29",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / xpzouying",
@@ -642,7 +642,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.78",
+      "version": "0.4.79",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -689,7 +689,7 @@
       "slug": "as-codemap",
       "name": "Code Map",
       "description": "Scan the workspace into a symbol-and-reference map, let the AI answer where a symbol is defined and who calls it, and browse findings in a PR-style code review panel.",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -773,7 +773,7 @@
       "slug": "free-model-gateway",
       "name": "Free Model Gateway",
       "description": "Run a managed local gateway that reuses upstream free-model channels, syncs models into Astravia and ships a one-click UI for start/stop, logs and risk.",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -814,7 +814,7 @@
       "slug": "rea",
       "name": "Reverse Engineer Anything",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -853,6 +853,5 @@
       "minAppVersion": "0.5.60"
     }
   ],
-
   "version": "0.4.78"
 }

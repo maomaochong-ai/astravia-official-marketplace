@@ -134,160 +134,163 @@
 	--dbx-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
 		monospace;
 
-	/* ── 浅色（默认；深色由 prefers-color-scheme / data-dbx-theme 覆盖） ── */
+	/* ── 浅色（默认；对齐宿主 open-astravia 桌面端浅色值 ── */
 	--dbx-panel: #ffffff;
-	--dbx-panel-sunken: #f6f8fa;
-	--dbx-surface: #f6f8fa;
-	--dbx-surface-foreground: #1f2328;
-	--dbx-muted: #656d76;
-	--dbx-faint: #8c959f;
-	--dbx-border: #d0d7de;
-	--dbx-border-strong: #afb8c1;
-	--dbx-scrim: rgb(31 35 40 / 0.5);
-	--dbx-neutral-muted: rgb(101 109 118 / 0.16);
-	--dbx-primary: #1f883d;
+	--dbx-panel-sunken: #fafafa;
+	--dbx-surface: #fafafa;
+	--dbx-surface-foreground: #000000;
+	--dbx-muted: #525252;
+	--dbx-faint: #a3a3a3;
+	--dbx-border: #e6e6e6;
+	--dbx-border-strong: #d4d4d4;
+	--dbx-scrim: rgb(0 0 0 / 0.45);
+	--dbx-neutral-muted: rgb(0 0 0 / 0.06);
+	--dbx-primary: #1f883d;       /* 保持绿：BI 正向动作语义色，宿主无对应 */
 	--dbx-primary-fg: #ffffff;
-	--dbx-accent: #0969da;
-	--dbx-accent-soft: rgb(9 105 218 / 0.12);
-	--dbx-accent-emphasis: #0550ae;
+	--dbx-accent: #6366f1;        /* 对齐宿主品牌色 Indigo rgb(99,102,241) */
+	--dbx-accent-soft: rgb(99 102 241 / 0.12);
+	--dbx-accent-emphasis: #4f46e5;
 	--dbx-success: #1a7f37;
 	--dbx-success-soft: rgb(26 127 55 / 0.12);
 	--dbx-warning: #9a6700;
 	--dbx-warning-soft: rgb(154 103 0 / 0.14);
-	--dbx-danger: #cf222e;
-	--dbx-danger-soft: rgb(207 34 46 / 0.12);
-	--dbx-ai: #8250df;
-	--dbx-ai-soft: rgb(130 80 223 / 0.12);
-	--dbx-series-1: #0969da;
+	--dbx-danger: #ef4444;        /* 对齐宿主 destructive rgb(239,68,68) */
+	--dbx-danger-soft: rgb(239 68 68 / 0.12);
+	--dbx-ai: #6366f1;            /* 跟 accent 统一 Indigo 系 */
+	--dbx-ai-soft: rgb(99 102 241 / 0.12);
+	--dbx-series-1: #6366f1;      /* 跟随新 accent */
 	--dbx-series-2: #1a7f37;
-	--dbx-series-3: #8250df;
-	--dbx-series-4: #9a6700;
+	--dbx-series-3: #f59e0b;
+	--dbx-series-4: #ef4444;
 	--dbx-radius-sheet: 12px;
-	--dbx-shadow-popover: 0 8px 24px rgb(31 35 40 / 0.15);
-	--dbx-shadow-sheet: 0 24px 64px rgb(31 35 40 / 0.28);
+	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.08);
+	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
 	.dbx-root {
-		--dbx-panel: #0d1117;
-		--dbx-panel-sunken: #161b22;
-		--dbx-surface: #161b22;
-		--dbx-surface-foreground: #e6edf3;
-		--dbx-muted: #8b949e;
+		/* ── 对齐宿主 open-astravia 桌面端深色值 ── */
+		--dbx-panel: #14161e;            /* background rgb(20,22,30) */
+		--dbx-panel-sunken: #1a1c24;     /* card rgb(26,28,36) */
+		--dbx-surface: #1a1c24;          /* card rgb(26,28,36) */
+		--dbx-surface-foreground: #dce0ea; /* foreground rgb(220,224,234) */
+		--dbx-muted: #8a90a0;            /* muted-foreground rgb(138,144,160) */
 		--dbx-faint: #6e7681;
-		--dbx-border: #30363d;
-		--dbx-border-strong: #484f58;
-		--dbx-scrim: rgb(1 4 9 / 0.76);
-		--dbx-neutral-muted: rgb(110 118 129 / 0.4);
+		--dbx-border: #2a2d38;           /* border rgb(42,45,56) */
+		--dbx-border-strong: #3a3d4a;
+		--dbx-scrim: rgb(0 0 0 / 0.72);
+		--dbx-neutral-muted: rgb(255 255 255 / 0.08);
 		--dbx-primary: #238636;
 		--dbx-primary-fg: #ffffff;
-		--dbx-accent: #58a6ff;
-		--dbx-accent-soft: rgb(56 139 253 / 0.15);
-		--dbx-accent-emphasis: #1f6feb;
+		--dbx-accent: #6366f1;           /* 对齐宿主品牌色 Indigo */
+		--dbx-accent-soft: rgb(99 102 241 / 0.18);
+		--dbx-accent-emphasis: #4f46e5;
 		--dbx-success: #3fb950;
 		--dbx-success-soft: rgb(63 185 80 / 0.15);
 		--dbx-warning: #d29922;
 		--dbx-warning-soft: rgb(210 153 34 / 0.15);
-		--dbx-danger: #f85149;
-		--dbx-danger-soft: rgb(248 81 73 / 0.15);
-		--dbx-ai: #a371f7;
-		--dbx-ai-soft: rgb(163 113 247 / 0.15);
-		--dbx-series-1: #58a6ff;
+		--dbx-danger: #ff5b5b;           /* 对齐宿主 destructive rgb(255,91,91) */
+		--dbx-danger-soft: rgb(255 91 91 / 0.15);
+		--dbx-ai: #6366f1;
+		--dbx-ai-soft: rgb(99 102 241 / 0.18);
+		--dbx-series-1: #6366f1;
 		--dbx-series-2: #3fb950;
-		--dbx-series-3: #a371f7;
-		--dbx-series-4: #d29922;
-		--dbx-shadow-popover: 0 8px 24px rgb(1 4 9 / 0.72);
-		--dbx-shadow-sheet: 0 24px 64px rgb(1 4 9 / 0.88);
+		--dbx-series-3: #fbbf24;
+		--dbx-series-4: #ff5b5b;
+		--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
+		--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.6);
 	}
 }
 
 /* 深色照设计稿：值逐字取自 dbx-pro.astravia-design/theme.css */
 :scope[data-dbx-theme="dark"],
 .dbx-root[data-dbx-theme="dark"] {
-	--dbx-panel: #0d1117;
-	--dbx-panel-sunken: #161b22;
-	--dbx-surface: #161b22;
-	--dbx-surface-foreground: #e6edf3;
-	--dbx-muted: #8b949e;
+	/* ── 对齐宿主 open-astravia 桌面端深色值 ── */
+	--dbx-panel: #14161e;
+	--dbx-panel-sunken: #1a1c24;
+	--dbx-surface: #1a1c24;
+	--dbx-surface-foreground: #dce0ea;
+	--dbx-muted: #8a90a0;
 	--dbx-faint: #6e7681;
-	--dbx-border: #30363d;
-	--dbx-border-strong: #484f58;
-	--dbx-scrim: rgb(1 4 9 / 0.76);
-	--dbx-neutral-muted: rgb(110 118 129 / 0.4);
+	--dbx-border: #2a2d38;
+	--dbx-border-strong: #3a3d4a;
+	--dbx-scrim: rgb(0 0 0 / 0.72);
+	--dbx-neutral-muted: rgb(255 255 255 / 0.08);
 	--dbx-primary: #238636;
 	--dbx-primary-fg: #ffffff;
-	--dbx-accent: #58a6ff;
-	--dbx-accent-soft: rgb(56 139 253 / 0.15);
-	--dbx-accent-emphasis: #1f6feb;
+	--dbx-accent: #6366f1;
+	--dbx-accent-soft: rgb(99 102 241 / 0.18);
+	--dbx-accent-emphasis: #4f46e5;
 	--dbx-success: #3fb950;
 	--dbx-success-soft: rgb(63 185 80 / 0.15);
 	--dbx-warning: #d29922;
 	--dbx-warning-soft: rgb(210 153 34 / 0.15);
-	--dbx-danger: #f85149;
-	--dbx-danger-soft: rgb(248 81 73 / 0.15);
-	--dbx-ai: #a371f7;
-	--dbx-ai-soft: rgb(163 113 247 / 0.15);
-	--dbx-series-1: #58a6ff;
+	--dbx-danger: #ff5b5b;
+	--dbx-danger-soft: rgb(255 91 91 / 0.15);
+	--dbx-ai: #6366f1;
+	--dbx-ai-soft: rgb(99 102 241 / 0.18);
+	--dbx-series-1: #6366f1;
 	--dbx-series-2: #3fb950;
-	--dbx-series-3: #a371f7;
-	--dbx-series-4: #d29922;
-	--dbx-shadow-popover: 0 8px 24px rgb(1 4 9 / 0.72);
-	--dbx-shadow-sheet: 0 24px 64px rgb(1 4 9 / 0.88);
+	--dbx-series-3: #fbbf24;
+	--dbx-series-4: #ff5b5b;
+	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
+	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.6);
 }
 
 :scope[data-dbx-theme="light"],
 .dbx-root[data-dbx-theme="light"] {
+	/* ── 对齐宿主 open-astravia 桌面端浅色值 ── */
 	--dbx-panel: #ffffff;
-	--dbx-panel-sunken: #f6f8fa;
-	--dbx-surface: #f6f8fa;
-	--dbx-surface-foreground: #1f2328;
-	--dbx-muted: #656d76;
-	--dbx-faint: #8c959f;
-	--dbx-border: #d0d7de;
-	--dbx-border-strong: #afb8c1;
-	--dbx-scrim: rgb(31 35 40 / 0.5);
-	--dbx-neutral-muted: rgb(101 109 118 / 0.16);
+	--dbx-panel-sunken: #fafafa;
+	--dbx-surface: #fafafa;
+	--dbx-surface-foreground: #000000;
+	--dbx-muted: #525252;
+	--dbx-faint: #a3a3a3;
+	--dbx-border: #e6e6e6;
+	--dbx-border-strong: #d4d4d4;
+	--dbx-scrim: rgb(0 0 0 / 0.45);
+	--dbx-neutral-muted: rgb(0 0 0 / 0.06);
 	--dbx-primary: #1f883d;
 	--dbx-primary-fg: #ffffff;
-	--dbx-accent: #0969da;
-	--dbx-accent-soft: rgb(9 105 218 / 0.12);
-	--dbx-accent-emphasis: #0550ae;
+	--dbx-accent: #6366f1;
+	--dbx-accent-soft: rgb(99 102 241 / 0.12);
+	--dbx-accent-emphasis: #4f46e5;
 	--dbx-success: #1a7f37;
 	--dbx-success-soft: rgb(26 127 55 / 0.12);
 	--dbx-warning: #9a6700;
 	--dbx-warning-soft: rgb(154 103 0 / 0.14);
-	--dbx-danger: #cf222e;
-	--dbx-danger-soft: rgb(207 34 46 / 0.12);
-	--dbx-ai: #8250df;
-	--dbx-ai-soft: rgb(130 80 223 / 0.12);
-	--dbx-series-1: #0969da;
+	--dbx-danger: #ef4444;
+	--dbx-danger-soft: rgb(239 68 68 / 0.12);
+	--dbx-ai: #6366f1;
+	--dbx-ai-soft: rgb(99 102 241 / 0.12);
+	--dbx-series-1: #6366f1;
 	--dbx-series-2: #1a7f37;
-	--dbx-series-3: #8250df;
-	--dbx-series-4: #9a6700;
-	--dbx-shadow-popover: 0 8px 24px rgb(31 35 40 / 0.15);
-	--dbx-shadow-sheet: 0 24px 64px rgb(31 35 40 / 0.28);
+	--dbx-series-3: #f59e0b;
+	--dbx-series-4: #ef4444;
+	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.08);
+	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.12);
 }
 
-/* 窗口 chrome 最底层：设计稿 --color-background = #010409，比 surface 再深一档。
+/* 窗口 chrome 最底层：对齐宿主 background 深色值。
    插件把它挂在 --dbx-canvas 上（bg-canvas），不覆盖宿主的 --background。 */
 .dbx-root {
-	--dbx-canvas: #f6f8fa;
+	--dbx-canvas: #fafafa;
 }
 
 @media (prefers-color-scheme: dark) {
 	.dbx-root {
-		--dbx-canvas: #010409;
+		--dbx-canvas: #14161e;           /* 对齐宿主 background rgb(20,22,30) */
 	}
 }
 
 :scope[data-dbx-theme="light"],
 .dbx-root[data-dbx-theme="light"] {
-	--dbx-canvas: #f6f8fa;
+	--dbx-canvas: #fafafa;
 }
 
 :scope[data-dbx-theme="dark"],
 .dbx-root[data-dbx-theme="dark"] {
-	--dbx-canvas: #010409;
+	--dbx-canvas: #14161e;
 }
 
 /* 宿主核心变量 → 设计稿令牌（仅作用于插件作用域内）

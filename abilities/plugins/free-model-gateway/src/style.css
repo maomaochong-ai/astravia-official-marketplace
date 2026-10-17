@@ -1,0 +1,9 @@
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。
+   只 @import utilities 会漏掉依赖 theme 变量的工具类（spacing/radius/blur：
+   h-9 / gap-1.5 / rounded-lg …全部生成不出来）。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+/* 图标库：与宿主一致，用 iconify 的 `icon-[solar--*]` 工具类。 */
+@plugin "@iconify/tailwind4";
+

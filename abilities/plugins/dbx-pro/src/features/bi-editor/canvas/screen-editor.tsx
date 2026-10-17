@@ -223,6 +223,32 @@ export function BigscreenScreenEditor({ page, onClose, onSaved }: BigscreenScree
 		setDirty(serializeScreenTemplate(nodes, settings) !== persistedRef.current);
 	}, [nodes, settings]);
 
+	// ── 全局键盘快捷键（大屏编辑器独立体系，没有 NodeGraph 的现成 handler）──
+	useEffect(() => {
+		function onKey(e: KeyboardEvent) {
+			const t = e.target as HTMLElement | null;
+			const isEditing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+			if (isEditing) return;
+
+			const mod = e.ctrlKey || e.metaKey;
+
+			if (!selectedId) return;
+
+			if (e.key === "Delete" || e.key === "Backspace") {
+				e.preventDefault();
+				deleteScreenNode(selectedId);
+				return;
+			}
+			if (mod && e.key.toLowerCase() === "d") {
+				e.preventDefault();
+				duplicateScreenNode(selectedId);
+				return;
+			}
+		}
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [selectedId]);
+
 	const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
 	const nodeCount = nodes.length;
 

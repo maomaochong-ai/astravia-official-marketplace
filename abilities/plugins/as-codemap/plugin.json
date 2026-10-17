@@ -2,7 +2,7 @@
   "id": "as-codemap",
   "name": "%plugin.name%",
   "icon": "assets/icon.svg",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",

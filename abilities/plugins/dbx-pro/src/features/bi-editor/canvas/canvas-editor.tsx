@@ -387,6 +387,51 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 		setRunFingerprint(fingerprint);
 	}, [nodes, links, execRunning, runAll, getUpstreamData]);
 
+	// ── 画布级全局键盘快捷键 ──
+	// NodeGraph 内部已有：⌘A/⌘C/⌘V/⌘D/⌘M/Delete/G/Home/Esc
+	// 此处补：⌘Z 撤销 / ⌘⇧Z + ⌘Y 重做 / ⌘F 搜索 / ⌘S 保存 / ⌘Enter 运行全部
+	useEffect(() => {
+		function onKey(e: KeyboardEvent) {
+			const t = e.target as HTMLElement | null;
+			const isEditing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+
+			const mod = e.ctrlKey || e.metaKey;
+			const key = e.key.toLowerCase();
+
+			if (mod && !e.shiftKey && key === "z") {
+				if (isEditing) return; // 输入框里让浏览器自己 undo
+				e.preventDefault();
+				undoCanvas();
+				return;
+			}
+			if (mod && (key === "y" || (e.shiftKey && key === "z"))) {
+				if (isEditing) return;
+				e.preventDefault();
+				redoCanvas();
+				return;
+			}
+			if (mod && key === "f") {
+				e.preventDefault();
+				const el = document.getElementById("node-library-search") as HTMLInputElement | null;
+				if (el) { el.focus(); el.select(); }
+				return;
+			}
+			if (mod && key === "s") {
+				e.preventDefault();
+				void handleSave();
+				return;
+			}
+			if (mod && key === "enter") {
+				if (isEditing) return;
+				e.preventDefault();
+				void handleRunAll();
+				return;
+			}
+		}
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [undoCanvas, redoCanvas, handleSave, handleRunAll]);
+
 	const handleRunNode = useCallback(async (targetId: string) => {
 		const n = nodes[targetId];
 		if (!n || execRunning) return;

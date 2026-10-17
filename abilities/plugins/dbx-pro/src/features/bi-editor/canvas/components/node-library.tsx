@@ -225,6 +225,7 @@ export function NodeLibrary({
 				<div className="flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2">
 					<Icon name="icon-[lucide--search]" className="size-3.5 shrink-0 text-faint" />
 					<input
+						id="node-library-search"
 						type="text"
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
