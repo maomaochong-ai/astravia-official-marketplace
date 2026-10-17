@@ -156,7 +156,13 @@ export function ReaWorkflowTab({
 						bypassedStages={bypassed}
 					/>
 				</div>
-				<ReaWorkflowStageDetail stage={stage} total={TOTAL_STAGES} live={stageLive} doctor={report.status} />
+				<ReaWorkflowStageDetail
+					stage={stage}
+					total={TOTAL_STAGES}
+					live={stageLive}
+					doctor={report.status}
+					target={workbench.active ?? snapshot.detectedTarget}
+				/>
 			</div>
 			{showLog ? (
 				<div className="shrink-0 border-t border-border">

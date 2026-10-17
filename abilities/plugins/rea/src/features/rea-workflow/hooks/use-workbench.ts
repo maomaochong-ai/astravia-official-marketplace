@@ -129,9 +129,13 @@ const kindSource: KindSource | null =
 		if (trimmed.length === 0) return null;
 		const kind = picked ?? detectTargetFromMessage(trimmed) ?? current.detected ?? current.hinted;
 		if (kind === null) return null;
+		const definition = getTarget(kind);
 		return t("tab.workbench.handoffPrompt", {
 			target: trimmed,
-			kind: t(getTarget(kind).labelKey),
+			kind: t(definition.labelKey),
+			// 入口工具随目标类型变：JS 从 ASAR 下手、固件从 binwalk 下手，不是同一句话。
+			entry: definition.entryTool,
+			firstMove: t(definition.firstMoveKey),
 		});
 	};
 

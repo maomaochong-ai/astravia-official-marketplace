@@ -31,7 +31,7 @@ import {
 	type ToolReadiness,
 } from "../live/doctor-readiness";
 import type { ReaLiveCall } from "../live/session-store";
-import { installRecipeFor, isOneClick } from "../live/tool-install";
+import { describeRecipe, installRecipeFor, isRunnable, needsConfigAfterInstall } from "../live/tool-install";
 import { probeRecipeFor } from "../live/tool-probe";
 import { requiredTools, runningRequirementIds } from "../live/tool-requirements";
 
@@ -118,7 +118,8 @@ export function ReaToolReadiness({
 	const hintFor = (item: ToolReadiness): string | null => {
 		if (item.remediation !== null) return item.remediation;
 		const recipe = installRecipeFor(item.requirement.id);
-		if (recipe?.kind === "manual" && recipe.command) return recipe.command;
+		// 有可复制命令就始终能复制：即使给了安装按钮，用户也可能想自己装。
+		if (recipe) return describeRecipe(recipe);
 		if (item.probeBlocked) return t("tab.tools.blockedHint");
 		if (item.state === "unknown") return t("tab.tools.unknownHint", { tool: item.requirement.label });
 		return null;
@@ -168,7 +169,9 @@ export function ReaToolReadiness({
 							onClick={() => install.install(item.requirement.id)}
 							disabled={install.installingId !== null}
 							title={t(
-								installRecipeFor(item.requirement.id)?.kind === "brew" ? "tab.tools.brewHint" : "tab.tools.installHint",
+								installRecipeFor(item.requirement.id)?.runner?.channel === "rea"
+									? "tab.tools.installHint"
+									: "tab.tools.commandHint",
 							)}
 							className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/10 px-1.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
 						>
@@ -179,7 +182,8 @@ export function ReaToolReadiness({
 							)}
 							{t(install.installingId === item.requirement.id ? "tab.tools.installing" : "tab.tools.install")}
 						</button>
-					) : hint !== null ? (
+					) : null}
+					{hint !== null ? (
 						<button
 							type="button"
 							onClick={() => void copyText(hint)}
@@ -194,6 +198,11 @@ export function ReaToolReadiness({
 				{hint !== null && !installable ? (
 					<p className="mt-0.5 pl-3 text-[10px] leading-snug text-muted-foreground" title={hint}>
 						<span className="line-clamp-2">{hint}</span>
+					</p>
+				) : null}
+				{needsConfigAfterInstall(installRecipeFor(item.requirement.id)) ? (
+					<p className="mt-0.5 pl-3 text-[10px] leading-snug text-amber-700 dark:text-amber-400">
+						<span className="line-clamp-2">{t(installRecipeFor(item.requirement.id)?.noteKey ?? "tab.tools.note.generic")}</span>
 					</p>
 				) : null}
 			</li>
@@ -273,10 +282,10 @@ export function ReaToolReadiness({
 						? t("tab.tools.installSuccess")
 						: install.tone === "danger"
 							? t("tab.tools.installFailed", { message: install.message ?? "" })
-							: missing.length > 0 && isOneClick(installRecipeFor(missing[0]?.requirement.id ?? ""))
+							: missing.length > 0 && isRunnable(installRecipeFor(missing[0]?.requirement.id ?? ""))
 								? t("tab.tools.installableHint", { tool: missing[0]?.requirement.label ?? "" })
 								: missing.length > 0
-									? t("tab.tools.manualHint", { tool: missing[0]?.requirement.label ?? "" })
+									? t("tab.tools.copyHint", { tool: missing[0]?.requirement.label ?? "" })
 									: t("tab.tools.sourceHint")}
 				</span>
 				<button

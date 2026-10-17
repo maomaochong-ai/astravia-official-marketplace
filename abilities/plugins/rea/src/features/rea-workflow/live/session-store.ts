@@ -15,6 +15,34 @@ import { inferTargetHint } from "./target-inference";
 export const MAX_CALLS = 80;
 export const MAX_ERRORS = 20;
 
+/**
+ * 目标类型是被哪类证据认出来的。权重递增：工具名族（最弱）< 调用参数里的路径 < 入口工具。
+ * 弱证据不得覆盖强证据 —— 否则一次 `inspect_plist` 就能把已经打开的 macOS 应用
+ * 从 native 改成 mobile，chip 上的高亮会来回跳。
+ */
+export type TargetSource = "tool" | "args" | "entry";
+
+const TARGET_SOURCE_RANK: Readonly<Record<TargetSource, number>> = { tool: 1, args: 2, entry: 3 };
+
+/** 一上手就直指单一目标类型的入口工具：它们给出的结论比后续零散工具可信。 */
+const ENTRY_TOOLS: ReadonlySet<string> = new Set([
+	"open_binary",
+	"binary_session",
+	"inspect_artifact",
+	"inspect_binary_layout",
+	"inspect_managed_artifact",
+	"analyze_javascript_application",
+	"inspect_android_package",
+	"inspect_firmware_regions",
+	"extract_firmware",
+	"list_browser_targets",
+	"list_electron_targets",
+	"list_javascript_runtime_targets",
+	"open_jeb_project",
+	"start_gdb_session",
+	"start_frida_session",
+]);
+
 export interface ReaLiveCall {
 	readonly id: string;
 	/** REA 自己的工具名（已从 mcp_<server>_<tool> 还原）。 */
@@ -44,6 +72,8 @@ export interface ReaLiveState {
 	readonly visitedStages: readonly ReaStageId[];
 	readonly stageCallCounts: Readonly<Record<ReaStageId, number>>;
 	readonly detectedTarget: TargetKind | null;
+	/** 这个类型是哪类证据认出来的：入口工具 / 调用参数 / 工具名族（见 targetSignal）。 */
+	readonly detectedSource: TargetSource | null;
 	/** 用户消息里提到的目标类型（比工具调用更早出现，用于自动选中类型）。 */
 	readonly hintedTarget: TargetKind | null;
 	/** 用户消息里提到的路径/URL。 */
@@ -77,6 +107,7 @@ export const EMPTY_LIVE_STATE: ReaLiveState = {
 	visitedStages: [],
 	stageCallCounts: EMPTY_STAGE_COUNTS,
 	detectedTarget: null,
+	detectedSource: null,
 	lastTargetPath: null,
 	hintedTarget: null,
 	hintedPath: null,
@@ -123,6 +154,25 @@ function pickTargetPath(args: unknown): string | null {
 		const value = record[key];
 		if (typeof value === "string" && value.trim() !== "") return value;
 	}
+	return null;
+}
+
+/**
+ * 一次调用里能读出目标类型的所有证据，按可信度挑一条。
+ * 返回值 null 表示这次调用没有提供任何目标类型信息（不编造）。
+ */
+function targetSignal(
+	toolName: string,
+	argsText: string | null,
+	targetPath: string | null,
+	toolTargets: readonly TargetKind[],
+): { readonly kind: TargetKind; readonly source: TargetSource } | null {
+	const byPath = detectTargetFromText(targetPath ?? argsText);
+	if (byPath !== null) {
+		return { kind: byPath, source: ENTRY_TOOLS.has(toolName) ? "entry" : "args" };
+	}
+	const byName = toolTargets[0] ?? null;
+	if (byName !== null) return { kind: byName, source: ENTRY_TOOLS.has(toolName) ? "entry" : "tool" };
 	return null;
 }
 
@@ -218,6 +268,8 @@ export class ReaLiveStore {
 			activeStage: null,
 			visitedStages: [],
 			stageCallCounts: EMPTY_STAGE_COUNTS,
+			detectedTarget: null,
+			detectedSource: null,
 			runningToolNames: [],
 			callCount: 0,
 			errorCount: 0,
@@ -226,6 +278,21 @@ export class ReaLiveStore {
 			hintedTarget: null,
 			hintedPath: null,
 		}));
+	}
+
+	/**
+	 * 目标类型的证据合并：强证据可以覆盖弱证据，弱证据不能反过来改写强证据。
+	 * 同一强度内后到的算数（用户先打开 .app 再钻到 app.asar，就是类型切换）。
+	 */
+	private mergeTarget(
+		state: ReaLiveState,
+		signal: { readonly kind: TargetKind; readonly source: TargetSource } | null,
+	): Partial<Pick<ReaLiveState, "detectedTarget" | "detectedSource">> {
+		if (signal === null) return {};
+		const previousRank = state.detectedSource === null ? 0 : TARGET_SOURCE_RANK[state.detectedSource];
+		if (TARGET_SOURCE_RANK[signal.source] < previousRank) return {};
+		if (state.detectedTarget === signal.kind && state.detectedSource === signal.source) return {};
+		return { detectedTarget: signal.kind, detectedSource: signal.source };
 	}
 
 	setProvider(phase: PluginCliProviderPhase, message?: string): void {
@@ -265,10 +332,15 @@ export class ReaLiveStore {
 					this.pendingRecoveryNotice = null;
 					this.pendingRecoverySession = null;
 				}
+				// 目标识别属于具体会话：不带上一个会话的结论，否则 chip 会亮错类型。
+				const switched = this.state.sessionId !== event.conversation.id;
 				this.commit((state) => ({
 					...state,
 					sessionId: event.conversation.id,
 					cwd: event.conversation.cwd,
+					...(switched
+						? { detectedTarget: null, detectedSource: null, hintedTarget: null, hintedPath: null, lastTargetPath: null }
+						: {}),
 				}));
 				return;
 			}
@@ -310,7 +382,7 @@ export class ReaLiveStore {
 		if (existing) {
 			const nextArgsPreview = previewArgs(args);
 			const nextTargetPath = pickTargetPath(args);
-			const nextTarget = detectTargetFromText(nextTargetPath ?? textArg(args));
+			const signal = targetSignal(existing.toolName, textArg(args), nextTargetPath, existing.targets);
 			const argsPreview = nextArgsPreview || existing.argsPreview;
 			const targetPath = nextTargetPath ?? existing.targetPath;
 			const startedAt = options.authoritative ? now : existing.startedAt;
@@ -318,19 +390,23 @@ export class ReaLiveStore {
 				argsPreview === existing.argsPreview &&
 				targetPath === existing.targetPath &&
 				startedAt === existing.startedAt &&
-				(nextTarget === null || nextTarget === this.state.detectedTarget);
+				(signal === null || signal.kind === this.state.detectedTarget);
 			if (unchanged) return;
+			// 参数后到也可能带来新的目标类型：把参数证据并回这条调用，绑定到目标类型的图节点才亮得稳。
+			const targets =
+				signal !== null && !existing.targets.includes(signal.kind) ? [...existing.targets, signal.kind] : existing.targets;
 			const updated: ReaLiveCall = {
 				...existing,
 				argsPreview,
 				targetPath,
+				targets,
 				startedAt,
 			};
 			this.callIndex.set(id, updated);
 			this.commit((state) => ({
 				...state,
 				calls: state.calls.map((call) => (call.id === id ? updated : call)),
-				detectedTarget: nextTarget ?? state.detectedTarget,
+				...this.mergeTarget(state, signal),
 				lastTargetPath: targetPath ?? state.lastTargetPath,
 				lastActivityAt: now,
 			}));
@@ -339,16 +415,20 @@ export class ReaLiveStore {
 
 		const classification = classifyTool(rawToolName);
 		const targetPath = pickTargetPath(args);
-		const target =
-			detectTargetFromText(targetPath ?? textArg(args)) ?? classification.targets[0] ?? null;
+		const signal = targetSignal(classification.name, textArg(args), targetPath, classification.targets);
+		// 参数证据也写进这条调用：图节点按目标类型绑定，只靠工具名会漏掉「路径说了算」的情况。
+		const targets =
+			signal !== null && !classification.targets.includes(signal.kind)
+				? [...classification.targets, signal.kind]
+				: classification.targets;
 		const call: ReaLiveCall = {
 			id,
 			toolName: classification.name,
 			rawToolName,
 			stage: classification.stage,
-			targets: classification.targets,
+			targets,
 			argsPreview: previewArgs(args),
-			targetPath: pickTargetPath(args),
+			targetPath,
 			startedAt: now,
 			endedAt: null,
 			isError: null,
@@ -362,7 +442,7 @@ export class ReaLiveStore {
 				...state,
 				calls,
 				callCount: state.callCount + 1,
-				detectedTarget: target ?? state.detectedTarget,
+				...this.mergeTarget(state, signal),
 				lastTargetPath: targetPath ?? state.lastTargetPath,
 				...this.deriveStages(calls),
 				runningToolNames: deriveRunning(calls),

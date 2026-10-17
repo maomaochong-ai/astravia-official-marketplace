@@ -11,9 +11,12 @@
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { StageDefinition } from "../data/stages";
+import { getTarget, type TargetKind } from "../data/targets";
 import type { DoctorStatus } from "../hooks/use-doctor-report";
 import type { StageLiveSource } from "../live/diagram-live";
+import { agentActionsFor } from "../live/agent-actions";
 import { StatusChip } from "../../../shared/components/status-chip";
+import { ReaAgentActionRow } from "./rea-agent-action-row";
 import { ReaDiagramLiveCaption } from "./rea-diagram-live-caption";
 import { ReaStagePoints } from "./rea-stage-points";
 import { ReaWorkflowStageDiagram } from "./rea-workflow-stage-diagram";
@@ -26,15 +29,25 @@ interface DetailProps {
 	readonly live: StageLiveSource;
 	/** doctor 自动检测的状态，用于点亮「环境/依赖」类要点。 */
 	readonly doctor: DoctorStatus;
+	/** 当前选定 / 识别出的目标类型；null 表示还没定，动作清单保持阶段默认顺序。 */
+	readonly target: TargetKind | null;
 }
 
-export function ReaWorkflowStageDetail({ stage, total, live, doctor }: DetailProps): JSX.Element {
+export function ReaWorkflowStageDetail({ stage, total, live, doctor, target }: DetailProps): JSX.Element {
 	const { t } = useTranslation();
+	const entryTool = target === null ? null : getTarget(target).entryTool;
+	const actions = agentActionsFor(stage.toolNames, { entryTool, calls: live.calls, running: live.running });
 	return (
 		<div className="flex flex-col bg-card text-card-foreground">
 			<header className="border-b border-border px-3 py-3 @min-[400px]:px-4">
 				<div className="flex min-w-0 items-center justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-					<span className="min-w-0 truncate">{t("tab.detail.stageOf", { current: stage.index, total })}</span>
+					<span className="min-w-0 truncate font-mono text-[9.5px] tracking-[0.08em] text-foreground/70">
+						{t("tab.detail.microLabel", {
+							target: target === null ? t("tab.detail.microNone") : t(getTarget(target).labelKey),
+							index: String(stage.index).padStart(2, "0"),
+							calls: live.digest.calls,
+						})}
+					</span>
 					<StatusChip
 						tone={live.digest.state === "active" ? "progress" : live.digest.state === "done" ? "success" : "neutral"}
 						className="normal-case tracking-normal"
@@ -71,17 +84,12 @@ export function ReaWorkflowStageDetail({ stage, total, live, doctor }: DetailPro
 				<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					{t("tab.detail.section.automation")}
 				</h3>
-				<p className="text-pretty text-[11px] leading-relaxed text-muted-foreground">{t("tab.detail.agentDriven")}</p>
-				<ul className="mt-1.5 flex flex-wrap gap-1">
-					{stage.toolNames.map((name) => (
-						<li key={name}>
-							<code
-								className="inline-block max-w-[160px] truncate rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80"
-								title={name}
-							>
-								{name}
-							</code>
-						</li>
+				<p className="text-pretty text-[11px] leading-relaxed text-muted-foreground">
+					{target === null ? t("tab.detail.agentDriven") : t("tab.detail.agentDrivenTarget", { target: t(getTarget(target).labelKey) })}
+				</p>
+				<ul className="mt-1.5 flex flex-col gap-1">
+					{actions.map((action) => (
+						<ReaAgentActionRow key={action.name} action={action} />
 					))}
 				</ul>
 			</section>

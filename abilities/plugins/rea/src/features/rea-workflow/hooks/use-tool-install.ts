@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PluginCommandSpawnExit, PluginCommandSpawnHandle } from "@astravia-org/plugin-sdk";
-import { describeRecipe, installRecipeFor, isOneClick } from "../live/tool-install";
+import { describeRecipe, installRecipeFor, isRunnable } from "../live/tool-install";
 
 /** 轮询间隔：既要让日志看起来是「活的」，又不能把 IPC 打满。 */
 const POLL_MS = 700;
@@ -41,7 +41,7 @@ export interface ToolInstallDeps {
 	readonly spawnRea:
 		| ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>)
 		| null;
-	/** 直接 spawn 外部命令（brew）；null 表示没有 `agent.command.spawn` 授权。 */
+	/** 直接 spawn 外部命令（brew / pip3）；null 表示没有 `agent.command.spawn` 授权。 */
 	readonly spawnCommand:
 		| ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>)
 		| null;
@@ -110,16 +110,17 @@ export function useToolInstall(deps: ToolInstallDeps): ToolInstall {
 
 	const canInstall = useCallback((id: string): boolean => {
 		const recipe = installRecipeFor(id);
-		if (!isOneClick(recipe)) return false;
-		return recipe?.kind === "rea" ? depsRef.current.spawnRea !== null : depsRef.current.spawnCommand !== null;
+		if (!isRunnable(recipe)) return false;
+		return recipe.runner?.channel === "rea" ? depsRef.current.spawnRea !== null : depsRef.current.spawnCommand !== null;
 	}, []);
 
 	const install = useCallback((id: string): void => {
 		const recipe = installRecipeFor(id);
-		if (recipe === null || !isOneClick(recipe) || busy.current) return;
+		if (!isRunnable(recipe) || busy.current) return;
 		const current = depsRef.current;
-		const args = recipe.args ?? [];
-		if (recipe.kind === "rea" ? current.spawnRea === null : current.spawnCommand === null) {
+		const runner = recipe.runner;
+		if (runner === null) return;
+		if (runner.channel === "rea" ? current.spawnRea === null : current.spawnCommand === null) {
 			setTone("danger");
 			setMessage("no spawn channel");
 			return;
@@ -181,9 +182,9 @@ export function useToolInstall(deps: ToolInstallDeps): ToolInstall {
 			let handle: PluginCommandSpawnHandle;
 			try {
 				handle =
-					recipe.kind === "rea"
-						? await current.spawnRea!(args, current.cwd ? { cwd: current.cwd } : {})
-						: await current.spawnCommand!("brew", [...args]);
+					runner.channel === "rea"
+						? await current.spawnRea!(runner.args, current.cwd ? { cwd: current.cwd } : {})
+						: await current.spawnCommand!(runner.file ?? "brew", [...runner.args]);
 			} catch (error) {
 				busy.current = false;
 				const reason = error instanceof Error ? error.message : String(error);

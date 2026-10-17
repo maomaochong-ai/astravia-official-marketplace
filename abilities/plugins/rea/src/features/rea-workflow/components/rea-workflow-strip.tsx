@@ -73,7 +73,7 @@ export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages,
 										border: status === "bypassed" ? `1px dashed ${dotStroke}` : `1px solid ${dotStroke}`,
 									}}
 								>
-									{stage.index}
+									{String(stage.index).padStart(2, "0")}
 								</span>
 								<span className={`block w-full truncate text-[10px] leading-tight ${textCls}`} title={bypassedHint ?? t(stage.labelKey)}>
 									{t(stage.labelKey)}

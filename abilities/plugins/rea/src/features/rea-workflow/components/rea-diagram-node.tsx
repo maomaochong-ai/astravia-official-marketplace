@@ -31,9 +31,22 @@ interface NodeProps {
 	readonly live?: DiagramNodeLive;
 	/** 会话已经开跑，但这个节点没有命中：说明本次没走到这一步，而不是还在等。 */
 	readonly unmet?: boolean;
+	/**
+	 * 当前选定 / 识别出的目标类型落在这个节点上。
+	 * 只表示「路线选到了这里」，不算证据命中 —— 没有真实调用时用虚线环区分。
+	 */
+	readonly selected?: boolean;
 }
 
-export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, live, unmet = false }: NodeProps): JSX.Element {
+export function ReaDiagramNode({
+	tone = "neutral",
+	title,
+	hint,
+	mono = false,
+	live,
+	unmet = false,
+	selected = false,
+}: NodeProps): JSX.Element {
 	const { t } = useTranslation();
 	const style = TONE[tone];
 	const state = live?.state ?? "idle";
@@ -45,9 +58,10 @@ export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, li
 				: state === "hit"
 					? "border-primary/45"
 					: "";
+	const selectedBox = selected && state === "idle" ? "border-dashed border-primary/60 bg-primary/5" : "";
 	return (
 		<div
-			className={`min-w-0 rounded-[min(var(--radius-md),8px)] border px-2.5 py-2 text-center transition-colors duration-200 ${style.box} ${stateBox}`}
+			className={`min-w-0 rounded-[min(var(--radius-md),8px)] border px-2.5 py-2 text-center transition-colors duration-200 ${style.box} ${selectedBox} ${stateBox}`}
 			data-rea-node-state={state}
 		>
 			<div
@@ -58,13 +72,13 @@ export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, li
 			{hint ? (
 				<div className="mt-1 break-words text-[10px] leading-snug text-muted-foreground">{hint}</div>
 			) : null}
-			{live && (state !== "idle" || unmet) ? (
+			{(live && (state !== "idle" || unmet)) || selected ? (
 				<div className="mt-1 flex min-w-0 items-center justify-center gap-1 text-[9px] leading-none motion-safe:animate-rea-rise">
 					{state === "active" ? (
 						<>
 							<span className="size-1 shrink-0 rounded-full bg-primary motion-safe:animate-ping" aria-hidden />
 							<span className="shrink-0 font-medium text-primary">{t("tab.live.diagram.running")}</span>
-							{live.running[0] ? (
+							{live?.running[0] ? (
 								<code className="min-w-0 truncate font-mono text-foreground/80" title={live.running[0]}>
 									{live.running[0]}
 								</code>
@@ -74,27 +88,29 @@ export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, li
 						<>
 							<span aria-hidden className="icon-[lucide--triangle-alert] size-2.5 shrink-0 text-red-500" />
 							<span className="shrink-0 font-medium tabular-nums text-red-600 dark:text-red-400">
-								{t("tab.live.diagram.failed", { count: live.errors })}
+								{t("tab.live.diagram.failed", { count: live?.errors ?? 0 })}
 							</span>
 						</>
-					) : state === "idle" ? (
-						<span className="shrink-0 text-muted-foreground" title={t("tab.live.diagram.unmetHint")}>
-							{t("tab.live.diagram.unmet")}
-						</span>
-					) : (
+					) : state === "hit" ? (
 						<>
 							<span aria-hidden className="icon-[lucide--circle-check] size-2.5 shrink-0 text-primary" />
 							<span className="shrink-0 font-medium tabular-nums text-primary">
-								{live.count > 0
-									? t("tab.live.diagram.calls", { count: live.count })
-									: t("tab.live.diagram.reached")}
+								{(live?.count ?? 0) > 0 ? t("tab.live.diagram.calls", { count: live?.count ?? 0 }) : t("tab.live.diagram.reached")}
 							</span>
-							{live.tools[0] ? (
+							{live?.tools[0] ? (
 								<code className="min-w-0 truncate font-mono text-muted-foreground" title={live.tools[0]}>
 									{live.tools[0]}
 								</code>
 							) : null}
 						</>
+					) : selected ? (
+						<span className="shrink-0 font-medium text-primary" title={t("tab.diagram.selectedHint")}>
+							{t("tab.diagram.selected")}
+						</span>
+					) : (
+						<span className="shrink-0 text-muted-foreground" title={t("tab.live.diagram.unmetHint")}>
+							{t("tab.live.diagram.unmet")}
+						</span>
 					)}
 				</div>
 			) : null}

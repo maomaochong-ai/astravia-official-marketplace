@@ -67,7 +67,13 @@ export function ReaWorkbench({
 					: "text-muted-foreground";
 
 	return (
-		<section className="border-b border-border bg-card/25 px-3 py-2.5">
+		<section
+			className="border-b border-border bg-card/25 px-3 py-2.5"
+			style={{
+				backgroundImage:
+					"radial-gradient(140% 90% at 0% 0%, color-mix(in oklab, var(--primary) 7%, transparent) 0%, transparent 62%)",
+			}}
+		>
 			<header className="mb-2 flex min-w-0 items-baseline justify-between gap-2">
 				<h2 className="shrink-0 whitespace-nowrap text-[12px] font-semibold leading-tight text-foreground">
 					{t("tab.workbench.title")}
@@ -95,6 +101,12 @@ export function ReaWorkbench({
 			/>
 
 			<div className="mt-2 flex items-center gap-1.5">
+				<span
+					className="hidden shrink-0 font-mono text-[9px] uppercase leading-none tracking-[0.14em] text-muted-foreground/80 @min-[380px]:inline"
+					title={t("tab.workbench.targetLabel")}
+				>
+					{t("tab.workbench.targetTag")}
+				</span>
 				<label className="sr-only" htmlFor="rea-target-input">
 					{t("tab.workbench.targetLabel")}
 				</label>

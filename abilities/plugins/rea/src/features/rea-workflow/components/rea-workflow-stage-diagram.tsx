@@ -21,6 +21,7 @@ import {
 	type DiagramBinding,
 	type DiagramNodeLive,
 } from "../live/diagram-live";
+import type { TargetKind } from "../data/targets";
 import type { ReaLiveCall } from "../live/session-store";
 import { ReaDiagramConnector } from "./rea-diagram-connector";
 import { ReaDiagramFrame } from "./rea-diagram-frame";
@@ -31,6 +32,8 @@ interface DiagramProps {
 	/** 当前工作目录范围内的真实调用，来自 ReaWorkflowTab 的实时快照。 */
 	readonly calls: readonly ReaLiveCall[];
 	readonly running: readonly string[];
+	/** 当前选定 / 识别出的目标类型：只用来标「路线选到了这里」，不等于证据命中。 */
+	readonly target?: TargetKind | null;
 }
 
 const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"] as const;
@@ -85,7 +88,7 @@ function ConnectDecisionTree({ calls, running }: DiagramProps): JSX.Element {
 }
 
 /** Stage 2 — Route：22 类型 → 4 大类 → 工作模式 */
-function RouteFanOut({ calls, running }: DiagramProps): JSX.Element {
+function RouteFanOut({ calls, running, target }: DiagramProps): JSX.Element {
 	const { t } = useTranslation();
 	const node = (binding?: DiagramBinding): DiagramNodeLive => resolveNodeLive(binding, calls, running);
 	const source = node({ kind: "stage", stage: "route" });
@@ -93,11 +96,28 @@ function RouteFanOut({ calls, running }: DiagramProps): JSX.Element {
 	const mode = node({ kind: "milestone", after: ["plan", "read", "finish"] });
 	const handoff = node({ kind: "stage", stage: "summary" });
 	// 四个入口桶各自绑定目标类型：真实调用落在哪个桶，那个桶就亮。
+	// 选定的类型只额外加一道虚线环 —— 「路线选到这里」和「已经有证据」必须分得清。
 	const buckets = [
-		{ title: t("tab.diagram.route.bucket1"), hint: t("tab.diagram.route.bucket1Hint"), live: node({ kind: "targets", targets: ["native"] }) },
-		{ title: t("tab.diagram.route.bucket2"), hint: t("tab.diagram.route.bucket2Hint"), live: node({ kind: "targets", targets: ["dotnet"] }) },
-		{ title: t("tab.diagram.route.bucket3"), hint: t("tab.diagram.route.bucket3Hint"), live: node({ kind: "targets", targets: ["javascript"] }) },
 		{
+			kind: "native" as const,
+			title: t("tab.diagram.route.bucket1"),
+			hint: t("tab.diagram.route.bucket1Hint"),
+			live: node({ kind: "targets", targets: ["native"] }),
+		},
+		{
+			kind: "dotnet" as const,
+			title: t("tab.diagram.route.bucket2"),
+			hint: t("tab.diagram.route.bucket2Hint"),
+			live: node({ kind: "targets", targets: ["dotnet"] }),
+		},
+		{
+			kind: "javascript" as const,
+			title: t("tab.diagram.route.bucket3"),
+			hint: t("tab.diagram.route.bucket3Hint"),
+			live: node({ kind: "targets", targets: ["javascript"] }),
+		},
+		{
+			kind: "mobile" as const,
 			title: t("tab.diagram.route.bucket4"),
 			hint: t("tab.diagram.route.bucket4Hint"),
 			live: node({ kind: "targets", targets: ["mobile", "firmware"] }),
@@ -119,6 +139,7 @@ function RouteFanOut({ calls, running }: DiagramProps): JSX.Element {
 						title={`${CIRCLED[index]} ${bucket.title}`}
 						hint={bucket.hint}
 						live={bucket.live}
+						selected={target === bucket.kind}
 					/>
 				))}
 			</div>
@@ -195,13 +216,13 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 		{ key: "4", label: t("tab.diagram.plan.step4"), tone: "primary", live: node({ kind: "stage", stage: "read" }) },
 		{ key: "5", label: t("tab.diagram.plan.step5"), tone: "primary", live: node({ kind: "any", of: [{ kind: "stage", stage: "read" }, { kind: "stage", stage: "finish" }] }) },
 		{
-			key: "?",
+			key: "6",
 			label: t("tab.diagram.plan.step6"),
 			tone: "warning",
 			live: node({ kind: "tools", tools: ["record_unknown", "list_unknowns", "update_unknown"] }),
 		},
 		{
-			key: "✓",
+			key: "7",
 			label: t("tab.diagram.plan.step7"),
 			tone: "neutral",
 			live: node({ kind: "tools", tools: ["build_reconstruction_obligation_ledger", "import_managed_reconstruction"] }),
@@ -258,52 +279,89 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 }
 
 /** Stage 5 — Read：summary → 按目标类型读一份 references */
-function ReadReferencesRouting({ calls, running }: DiagramProps): JSX.Element {
+function ReadReferencesRouting({ calls, running, target }: DiagramProps): JSX.Element {
 	const { t } = useTranslation();
 	const node = (binding?: DiagramBinding): DiagramNodeLive => resolveNodeLive(binding, calls, running);
 	const summary = node({ kind: "milestone", after: ["plan"] });
 	const handoff = node({ kind: "stage", stage: "finish" });
 	// 每份参考绑定它实际对应的证据来源：目标类型或工具族。
+	// `kinds` 只用于「本次路线会读这份」的虚线标记，是否点亮仍然只看真实调用。
 	const refs = [
-		{ name: "connection-and-recovery", hint: t("tab.diagram.read.ref1"), live: node({ kind: "stage", stage: "connect" }) },
-		{ name: "native-and-artifacts", hint: t("tab.diagram.read.ref2"), live: node({ kind: "targets", targets: ["native", "dotnet"] }) },
-		{ name: "javascript-applications", hint: t("tab.diagram.read.ref3"), live: node({ kind: "targets", targets: ["javascript"] }) },
-		{ name: "android-applications", hint: t("tab.diagram.read.ref4"), live: node({ kind: "targets", targets: ["mobile"] }) },
-		{ name: "runtime-observation", hint: t("tab.diagram.read.ref5"), live: node({ kind: "tools", tools: RUNTIME_TOOLS }) },
-		{ name: "evidence-workflows", hint: t("tab.diagram.read.ref6"), live: node({ kind: "stage", stage: "finish" }) },
+		{
+			name: "connection-and-recovery",
+			hint: t("tab.diagram.read.ref1"),
+			live: node({ kind: "stage", stage: "connect" }),
+		},
+		{
+			name: "native-and-artifacts",
+			hint: t("tab.diagram.read.ref2"),
+			kinds: ["native", "dotnet", "firmware"] as const,
+			live: node({ kind: "targets", targets: ["native", "dotnet"] }),
+		},
+		{
+			name: "javascript-applications",
+			hint: t("tab.diagram.read.ref3"),
+			kinds: ["javascript"] as const,
+			live: node({ kind: "targets", targets: ["javascript"] }),
+		},
+		{
+			name: "android-applications",
+			hint: t("tab.diagram.read.ref4"),
+			kinds: ["mobile"] as const,
+			live: node({ kind: "targets", targets: ["mobile"] }),
+		},
+		{
+			name: "runtime-observation",
+			hint: t("tab.diagram.read.ref5"),
+			live: node({ kind: "tools", tools: RUNTIME_TOOLS }),
+		},
+		{
+			name: "evidence-workflows",
+			hint: t("tab.diagram.read.ref6"),
+			live: node({ kind: "stage", stage: "finish" }),
+		},
 	];
 	return (
 		<ReaDiagramFrame ariaLabel={t("tab.detail.read.diagramAria")}>
 			<ReaDiagramNode tone="primary" title="summary" hint="who · where · what" live={summary} />
 			<ReaDiagramConnector label={t("tab.diagram.read.pick")} state={resolveEdgeState(summary, refs[0]?.live ?? summary)} />
 			<div className="flex flex-col gap-1.5">
-				{refs.map((ref) => (
-					<div
-						key={ref.name}
-						data-rea-node-state={ref.live.state}
-						className={`min-w-0 rounded-[min(var(--radius-md),8px)] border bg-card px-2 py-1.5 ${
-							ref.live.state === "active"
-								? "border-primary/80 motion-safe:animate-rea-ring"
-								: ref.live.state === "idle"
-									? "border-border"
-									: "border-primary/45"
-						}`}
-					>
-						<div className="flex min-w-0 items-baseline gap-1.5">
-							<span className="min-w-0 break-all font-mono text-[10px] leading-tight text-foreground">{ref.name}.md</span>
-							{ref.live.state !== "idle" ? (
-								<span className="ml-auto shrink-0 text-[9px] tabular-nums text-primary">
-									{ref.live.state === "active"
-										? t("tab.live.diagram.running")
-										: ref.live.count > 0
-											? t("tab.live.diagram.calls", { count: ref.live.count })
-											: t("tab.live.diagram.reached")}
-								</span>
-							) : null}
+				{refs.map((ref) => {
+					const selected = target != null && ref.kinds?.some((kind) => kind === target) === true;
+					return (
+						<div
+							key={ref.name}
+							data-rea-node-state={ref.live.state}
+							className={`min-w-0 rounded-[min(var(--radius-md),8px)] border bg-card px-2 py-1.5 ${
+								ref.live.state === "active"
+									? "border-primary/80 motion-safe:animate-rea-ring"
+									: ref.live.state === "idle"
+										? selected
+											? "border-dashed border-primary/60 bg-primary/5"
+											: "border-border"
+										: "border-primary/45"
+							}`}
+						>
+							<div className="flex min-w-0 items-baseline gap-1.5">
+								<span className="min-w-0 break-all font-mono text-[10px] leading-tight text-foreground">{ref.name}.md</span>
+								{ref.live.state !== "idle" ? (
+									<span className="ml-auto shrink-0 text-[9px] tabular-nums text-primary">
+										{ref.live.state === "active"
+											? t("tab.live.diagram.running")
+											: ref.live.count > 0
+												? t("tab.live.diagram.calls", { count: ref.live.count })
+												: t("tab.live.diagram.reached")}
+									</span>
+								) : selected ? (
+									<span className="ml-auto shrink-0 font-medium text-primary" title={t("tab.diagram.selectedHint")}>
+										{t("tab.diagram.selected")}
+									</span>
+								) : null}
+							</div>
+							<div className="mt-0.5 break-words text-[10px] leading-snug text-muted-foreground">{ref.hint}</div>
 						</div>
-						<div className="mt-0.5 break-words text-[10px] leading-snug text-muted-foreground">{ref.hint}</div>
-					</div>
-				))}
+					);
+				})}
 			</div>
 			<ReaDiagramConnector state={resolveEdgeState(refs[0]?.live ?? summary, handoff)} />
 			<ReaDiagramNode tone="quiet" title={t("tab.diagram.read.handoff")} live={handoff} />
@@ -394,18 +452,18 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 	);
 }
 
-export function ReaWorkflowStageDiagram({ kind, calls, running }: DiagramProps): JSX.Element {
+export function ReaWorkflowStageDiagram({ kind, calls, running, target = null }: DiagramProps): JSX.Element {
 	switch (kind) {
 		case "connect-decision-tree":
 			return <ConnectDecisionTree kind={kind} calls={calls} running={running} />;
 		case "route-fan-out":
-			return <RouteFanOut kind={kind} calls={calls} running={running} />;
+			return <RouteFanOut kind={kind} calls={calls} running={running} target={target} />;
 		case "summary-five-fields":
 			return <SummaryFiveFields kind={kind} calls={calls} running={running} />;
 		case "plan-eight-steps":
 			return <PlanEightSteps kind={kind} calls={calls} running={running} />;
 		case "read-references-routing":
-			return <ReadReferencesRouting kind={kind} calls={calls} running={running} />;
+			return <ReadReferencesRouting kind={kind} calls={calls} running={running} target={target} />;
 		case "finish-checklist":
 			return <FinishChecklist kind={kind} calls={calls} running={running} />;
 		default: {

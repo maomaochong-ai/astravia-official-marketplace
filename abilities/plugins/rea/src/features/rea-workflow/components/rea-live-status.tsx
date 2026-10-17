@@ -47,6 +47,13 @@ export function ReaLiveStatus({ snapshot, onSelectStage, onUseTarget }: LiveStat
 	return (
 		<div className="flex flex-col gap-1.5 border-b border-border bg-card/20 px-3 py-2">
 			<div className="flex min-h-[20px] flex-wrap items-center gap-1.5">
+				<span
+					className="shrink-0 font-mono text-[9px] uppercase leading-none tracking-[0.14em] text-muted-foreground/80"
+					title={t("live.console.labelHint")}
+				>
+					{t("live.console.label")}
+				</span>
+				<span aria-hidden className="h-3 w-px shrink-0 bg-border" />
 				<StatusChip tone={phaseTone(phase)} title={snapshot.providerMessage ?? undefined}>
 					<span
 						className={`size-1.5 rounded-full bg-current ${phase === "ready" ? "" : "motion-safe:animate-pulse"}`}

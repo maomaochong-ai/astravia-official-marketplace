@@ -102,6 +102,26 @@ export function normalizeToolName(raw: string): string {
 	return name;
 }
 
+/**
+ * Apple 平台上与类型无关的工具：macOS 应用包和 iOS App 都会用到它们，
+ * 目标类型应由被打开的那个制品决定，轮不到工具名裁定。
+ * 不单独排除的话，`inspect_plist` 会把已经打开的 macOS 应用从 native 改判成 mobile。
+ */
+const APPLE_AGNOSTIC_TOOLS: ReadonlySet<string> = new Set([
+	"inspect_macho",
+	"inspect_signature",
+	"inspect_plist",
+	"inspect_keyed_archive",
+	"inspect_asset_catalog",
+	"decode_interface_builder",
+	"trace_dylib_resolution",
+	"get_objc_classes",
+	"get_objc_protocols",
+	"analyze_swift_types",
+	"demangle_swift",
+	"project_apple_application_graph",
+]);
+
 /** 目标类型识别用：工具名 → 目标类型（同一工具只归一个类型）。 */
 export const TARGET_TOOLS: Readonly<Record<string, TargetKind>> = {
 	// JavaScript / Electron
@@ -191,7 +211,7 @@ export const TARGET_TOOLS: Readonly<Record<string, TargetKind>> = {
 const TARGET_RULES: readonly { readonly test: RegExp; readonly kind: TargetKind }[] = [
 	{ test: /firmware|packet|signal|pcap|binwalk/, kind: "firmware" },
 	{
-		test: /android|adb_|apktool|jeb|macho|objc|swift|dart|flutter|plist|keyed_archive|asset_catalog|interface_builder|dylib|harmony/,
+		test: /android|adb_|apktool|jeb|dart|flutter|harmony/,
 		kind: "mobile",
 	},
 	{ test: /managed/, kind: "dotnet" },
@@ -201,6 +221,7 @@ const TARGET_RULES: readonly { readonly test: RegExp; readonly kind: TargetKind 
 
 /** 从工具名推断目标类型；无法判断返回 null。 */
 export function detectTargetFromTool(toolName: string): TargetKind | null {
+	if (APPLE_AGNOSTIC_TOOLS.has(toolName)) return null;
 	const exact = TARGET_TOOLS[toolName];
 	if (exact) return exact;
 	for (const rule of TARGET_RULES) {
