@@ -44,7 +44,9 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 						<div key={`${error.toolName}-${error.at}`} className="flex items-start gap-1.5 text-[11px]">
 							<span className="tabular-nums text-muted-foreground">{timeLabel(error.at)}</span>
 							<span className="font-medium text-red-600 dark:text-red-400">{error.toolName}</span>
-							<span className="min-w-0 line-clamp-2 text-muted-foreground">{error.message}</span>
+							<span className="min-w-0 line-clamp-2 text-muted-foreground" title={error.message}>
+								{error.message}
+							</span>
 						</div>
 					))}
 				</div>
@@ -64,12 +66,18 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 										className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-full"
 										onClick={() => onSelectStage(stageIndex)}
 									>
-										<StatusChip tone={call.isError ? "danger" : "neutral"} className="cursor-pointer">
+										<StatusChip
+											tone={call.isError ? "danger" : "neutral"}
+											className="cursor-pointer"
+											title={t(`tab.stage.${call.stage}.label`)}
+										>
 											{t(`tab.stage.${call.stage}.label`)}
 										</StatusChip>
 									</button>
 								) : (
-									<StatusChip tone="neutral">{t("live.calls.noStage")}</StatusChip>
+									<StatusChip tone="neutral" title={call.rawToolName}>
+										{t("live.calls.noStage")}
+									</StatusChip>
 								)}
 								<div className="flex min-w-0 flex-1 flex-col">
 									<div className="flex flex-wrap items-center gap-1.5">
@@ -80,14 +88,22 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 											{call.toolName}
 										</span>
 										{call.targets.map((target: TargetKind) => (
-											<StatusChip key={target} tone="progress">
+											<StatusChip key={target} tone="progress" title={t(`tab.target.${target}.hint`)}>
 												{t(`tab.target.${target}.label`)}
 											</StatusChip>
 										))}
-										<span className="tabular-nums text-[10px] text-muted-foreground">{durationLabel(call)}</span>
+										<span
+											className="tabular-nums text-[10px] text-muted-foreground"
+											title={durationLabel(call)}
+										>
+											{durationLabel(call)}
+										</span>
 									</div>
 									{call.argsPreview ? (
-										<span className="line-clamp-1 font-mono text-[10px] text-muted-foreground">
+										<span
+											className="line-clamp-1 font-mono text-[10px] text-muted-foreground"
+											title={call.argsPreview}
+										>
 											{call.argsPreview}
 										</span>
 									) : null}

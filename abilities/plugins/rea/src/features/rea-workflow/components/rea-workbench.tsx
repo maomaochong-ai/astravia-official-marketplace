@@ -1,27 +1,49 @@
 /**
- * 逆向工作台（展示层）：目标类型 → 目标路径/URL → 可运行命令 → 结果 → 交给 Agent。
+ * 逆向工作台（展示层）：目标类型 → 目标路径/URL → 交给 Agent。
  *
- * 状态全部来自 useWorkbench；这个组件只负责排版，方便阶段详情复用同一台命令运行器。
- * 命令清单来自 data/commands.ts，参数与上游 docs/cli.md 对齐，不写上游没有的命令。
+ * 不再手工跑 CLI：阶段详情会说明 Agent 会自动执行哪些 REA 工具，这里只负责
+ * 「选定目标并把任务真正发进对话」。发送回执占一行固定高度，避免按钮下方内容上下跳。
  */
 
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
 import type { TargetKind } from "../data/targets";
+import type { DoctorReport } from "../hooks/use-doctor-report";
 import type { Workbench } from "../hooks/use-workbench";
-import { ReaCommandList } from "./rea-command-list";
-import { ReaCommandOutput } from "./rea-command-output";
+import type { ReaLiveCall } from "../live/session-store";
+import { copyText } from "../../../shared/services/clipboard";
 import { ReaWorkflowTargetRouting } from "./rea-workflow-target-routing";
 
 interface WorkbenchProps {
 	readonly workbench: Workbench;
 	readonly detected: TargetKind | null;
+	readonly calls: readonly ReaLiveCall[];
+	readonly report: DoctorReport;
+	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
+	readonly cwd: string | null;
 }
 
-export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Element {
+const FEEDBACK_TEXT: Record<Exclude<Workbench["handoff"], "idle">, string> = {
+	sending: "tab.workbench.sending",
+	sent: "tab.workbench.sent",
+	queued: "tab.workbench.queued",
+	inserted: "tab.workbench.inserted",
+	failed: "tab.workbench.handoffFailed",
+};
+
+export function ReaWorkbench({ workbench, detected, calls, report, run, cwd }: WorkbenchProps): JSX.Element {
 	const { t } = useTranslation();
 	const canHandoff = workbench.active !== null && workbench.target.trim().length > 0;
-	const { runner } = workbench;
+	const feedback = workbench.handoff;
+	const tone =
+		feedback === "sent" || feedback === "inserted"
+			? "text-emerald-600 dark:text-emerald-400"
+			: feedback === "queued"
+				? "text-primary"
+				: feedback === "failed"
+					? "text-amber-600 dark:text-amber-400"
+					: "text-muted-foreground";
 
 	return (
 		<section className="border-b border-border bg-card/25 px-3 py-2.5">
@@ -38,8 +60,13 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 				active={workbench.active}
 				picked={workbench.picked}
 				detected={detected}
+				calls={calls}
+				report={report}
+				run={run}
+				cwd={cwd}
 				onPick={workbench.pick}
 				onClear={workbench.clearPick}
+				onFollowDetected={workbench.clearPick}
 			/>
 
 			<div className="mt-2 flex items-center gap-1.5">
@@ -54,43 +81,57 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 					placeholder={t("tab.workbench.targetPlaceholder")}
 					spellCheck={false}
 					autoComplete="off"
+					title={workbench.target}
 					className="h-7 min-w-0 flex-1 rounded-[min(var(--radius-md),8px)] border border-border bg-background px-2 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 				/>
 				<button
 					type="button"
-					onClick={workbench.handoffToAgent}
+					onClick={() => workbench.insertToChat()}
 					disabled={!canHandoff}
-					title={canHandoff ? t("tab.workbench.handoffHint") : t("tab.workbench.targetRequired")}
-					className="inline-flex h-7 shrink-0 items-center rounded-[min(var(--radius-md),8px)] border border-primary/40 bg-primary/10 px-2 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+					title={t("tab.workbench.insertHint")}
+					className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),8px)] border border-border px-2 text-[11px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
 				>
+					<span aria-hidden className="icon-[lucide--text-cursor-input] size-3" />
+					{t("tab.workbench.insert")}
+				</button>
+				<button
+					type="button"
+					onClick={() => workbench.handoffToAgent()}
+					disabled={!canHandoff || feedback === "sending"}
+					title={canHandoff ? t("tab.workbench.handoffHint") : t("tab.workbench.targetRequired")}
+					className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),8px)] border border-primary/40 bg-primary/10 px-2 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+				>
+					{feedback === "sending" ? (
+						<span aria-hidden className="icon-[lucide--loader-circle] size-3 motion-safe:animate-spin" />
+					) : (
+						<span aria-hidden className="icon-[lucide--send] size-3" />
+					)}
 					{t("tab.workbench.handoff")}
 				</button>
 			</div>
 
-			{workbench.handoff !== "idle" ? (
-				<p
-					className={`mt-1 text-[10.5px] leading-relaxed ${
-						workbench.handoff === "done" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-					}`}
-				>
-					{workbench.handoff === "done" ? t("tab.workbench.handoffDone") : t("tab.workbench.handoffFailed")}
-				</p>
-			) : null}
-
-			<div className="mt-2.5">
-				<h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-					{t("tab.workbench.commandsTitle")}
-				</h3>
-				<ReaCommandList
-					commands={workbench.commands}
-					target={workbench.target}
-					busy={runner.busy}
-					activeCommandId={runner.state?.commandId ?? null}
-					onRun={workbench.runCommand}
-				/>
+			{/* 固定高度：回执出现/消失不再顶走下面的阶段条。 */}
+			<div className="mt-1 flex h-4 min-w-0 items-center gap-1.5">
+				{feedback !== "idle" ? (
+					<span className={`min-w-0 truncate text-[10.5px] leading-none ${tone}`} title={t(FEEDBACK_TEXT[feedback])}>
+						{t(FEEDBACK_TEXT[feedback])}
+					</span>
+				) : (
+					<span className="min-w-0 truncate text-[10.5px] leading-none text-muted-foreground">
+						{canHandoff ? t("tab.workbench.ready") : ""}
+					</span>
+				)}
+				{feedback === "failed" && workbench.promptText.length > 0 ? (
+					<button
+						type="button"
+						onClick={() => void copyText(workbench.promptText)}
+						className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-1 text-[10px] text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					>
+						<span aria-hidden className="icon-[lucide--copy] size-2.5" />
+						{t("tab.workbench.copyPrompt")}
+					</button>
+				) : null}
 			</div>
-
-			{runner.state ? <ReaCommandOutput state={runner.state} onClear={runner.clear} /> : null}
 		</section>
 	);
 }

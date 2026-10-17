@@ -63,7 +63,9 @@ export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, li
 							<span className="size-1 shrink-0 rounded-full bg-primary motion-safe:animate-ping" aria-hidden />
 							<span className="shrink-0 font-medium text-primary">{t("tab.live.diagram.running")}</span>
 							{live.running[0] ? (
-								<code className="min-w-0 truncate font-mono text-foreground/80">{live.running[0]}</code>
+								<code className="min-w-0 truncate font-mono text-foreground/80" title={live.running[0]}>
+									{live.running[0]}
+								</code>
 							) : null}
 						</>
 					) : state === "failed" ? (
@@ -82,7 +84,9 @@ export function ReaDiagramNode({ tone = "neutral", title, hint, mono = false, li
 									: t("tab.live.diagram.reached")}
 							</span>
 							{live.tools[0] ? (
-								<code className="min-w-0 truncate font-mono text-muted-foreground">{live.tools[0]}</code>
+								<code className="min-w-0 truncate font-mono text-muted-foreground" title={live.tools[0]}>
+									{live.tools[0]}
+								</code>
 							) : null}
 						</>
 					)}

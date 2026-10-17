@@ -1,58 +1,35 @@
 /**
- * 单阶段详情卡：标题 + 副标题 + 流程示意图 + 4 个要点 + 可运行命令 + 关联 reference + 失败兜底。
+ * 单阶段详情卡：标题 + 副标题 + 流程示意图 + 关键要点 + Agent 侧动作 + 关联 reference + 失败兜底。
  *
  * 容器：bg-card / border-border / rounded-[min(var(--radius-md),10px)]。
  * 段落标题：text-[10px] uppercase tracking-wider text-muted-foreground。
  *
- * 命令不再写死文本：阶段只声明命令 id，由工作台用同一份命令目录渲染成可点击执行的行，
- * 输入框里的目标路径会对 `{target}` 做替换。
+ * 这里不提供「手动跑命令」：运行 REA CLI 与 Agent 侧自动调用 MCP 工具是同一件事的两种入口，
+ * 并存只会让人分不清该点哪个。插件负责显示进度与所需工具，执行交给 Agent。
  */
 
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { commandsForTarget, findCommand, type ReaCommandDefinition } from "../data/commands";
-import { ReaCommandList } from "./rea-command-list";
-import type { TargetKind } from "../data/targets";
 import type { StageDefinition } from "../data/stages";
+import type { DoctorStatus } from "../hooks/use-doctor-report";
 import type { StageLiveSource } from "../live/diagram-live";
 import { StatusChip } from "../../../shared/components/status-chip";
 import { ReaDiagramLiveCaption } from "./rea-diagram-live-caption";
+import { ReaStagePoints } from "./rea-stage-points";
 import { ReaWorkflowStageDiagram } from "./rea-workflow-stage-diagram";
 
 interface DetailProps {
 	readonly stage: StageDefinition;
 	/** 总阶段数，用于 "Stage n of N"。 */
 	readonly total: number;
-	/** 工作台输入框里的目标路径/URL，用于替换命令里的 `{target}`。 */
-	readonly target: string;
-	readonly busy: boolean;
-	readonly activeCommandId: string | null;
-	readonly onRun: (command: ReaCommandDefinition) => void;
-	/** 工作台当前目标类型；用来把阶段命令限定在该目标的入口命令上。 */
-	readonly activeTarget: TargetKind | null;
 	/** 当前工作目录范围内的真实调用 + 本阶段摘要，用于把示意图点亮。 */
 	readonly live: StageLiveSource;
+	/** doctor 自动检测的状态，用于点亮「环境/依赖」类要点。 */
+	readonly doctor: DoctorStatus;
 }
 
-export function ReaWorkflowStageDetail({
-	stage,
-	total,
-	target,
-	busy,
-	activeCommandId,
-	activeTarget,
-	onRun,
-	live,
-}: DetailProps): JSX.Element {
+export function ReaWorkflowStageDetail({ stage, total, live, doctor }: DetailProps): JSX.Element {
 	const { t } = useTranslation();
-	const declared = stage.commandIds
-		.map((id) => findCommand(id))
-		.filter((command): command is ReaCommandDefinition => command !== null);
-	// 已选定目标时只留该目标的入口命令，避免 .NET 用户看到 APK 命令；未选目标时全列（这正是选路由的时候）。
-	const scoped = activeTarget
-		? declared.filter((command) => commandsForTarget(activeTarget).some((candidate) => candidate.id === command.id))
-		: declared;
-	const commands = scoped.length > 0 ? scoped : declared;
 	return (
 		<div className="flex flex-col bg-card text-card-foreground">
 			<header className="border-b border-border px-3 py-3 @min-[400px]:px-4">
@@ -87,33 +64,26 @@ export function ReaWorkflowStageDetail({
 				<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					{t("tab.detail.section.bullets")}
 				</h3>
-				<ul className="space-y-1.5 text-pretty text-xs leading-relaxed">
-					{stage.bullets.map((b, i) => (
-						<li key={i} className="flex gap-2 text-foreground/90">
-							<span className="mt-1 inline-block size-1 shrink-0 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
-							<span>{t(b.i18nKey)}</span>
-						</li>
-					))}
-				</ul>
+				<ReaStagePoints points={stage.points} calls={live.calls} running={live.running} doctor={doctor} />
 			</section>
 
 			<section className="border-b border-border px-3 py-3 @min-[400px]:px-4">
-				{commands.length > 0 ? (
-					<>
-						<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-							{t("tab.detail.section.command")}
-						</h3>
-						<ReaCommandList
-							commands={commands}
-							target={target}
-							busy={busy}
-							activeCommandId={activeCommandId}
-							onRun={onRun}
-						/>
-					</>
-				) : (
-					<p className="text-xs leading-relaxed text-muted-foreground">{t("tab.detail.agentDriven")}</p>
-				)}
+				<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+					{t("tab.detail.section.automation")}
+				</h3>
+				<p className="text-pretty text-[11px] leading-relaxed text-muted-foreground">{t("tab.detail.agentDriven")}</p>
+				<ul className="mt-1.5 flex flex-wrap gap-1">
+					{stage.toolNames.map((name) => (
+						<li key={name}>
+							<code
+								className="inline-block max-w-[160px] truncate rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground/80"
+								title={name}
+							>
+								{name}
+							</code>
+						</li>
+					))}
+				</ul>
 			</section>
 
 			{stage.referencePath ? (
@@ -121,7 +91,10 @@ export function ReaWorkflowStageDetail({
 					<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 						{t("tab.detail.section.reference")}
 					</h3>
-					<code className="block truncate rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2 py-1 font-mono text-[11px] text-foreground/80">
+					<code
+						className="block truncate rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2 py-1 font-mono text-[11px] text-foreground/80"
+						title={stage.referencePath}
+					>
 						{stage.referencePath}
 					</code>
 				</section>

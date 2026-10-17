@@ -62,7 +62,9 @@ export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages,
 								>
 									{stage.index}
 								</span>
-								<span className={`block w-full truncate text-[10px] leading-tight ${textCls}`}>{t(stage.labelKey)}</span>
+								<span className={`block w-full truncate text-[10px] leading-tight ${textCls}`} title={t(stage.labelKey)}>
+									{t(stage.labelKey)}
+								</span>
 								{live ? (
 									<span
 										className="size-1 rounded-full bg-primary motion-safe:animate-ping"

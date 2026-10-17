@@ -30,7 +30,6 @@ export interface TargetDefinition {
 	/** i18n key: tab.target.<kind>.hint（一句话） */
 	readonly hintKey: string;
 	/** i18n key: tab.target.<kind>.tools（推荐工具栈，3-4 个名词） */
-	readonly toolsKey: string;
 	/** 跳到哪个阶段（当前所有目标都跳到 stage 2 = route；预留字段以便未来扩展）。 */
 	readonly routeStage: 2;
 }
@@ -40,42 +39,36 @@ export const TARGETS: readonly TargetDefinition[] = [
 		kind: "javascript",
 		labelKey: "tab.target.javascript.label",
 		hintKey: "tab.target.javascript.hint",
-		toolsKey: "tab.target.javascript.tools",
 		routeStage: 2,
 	},
 	{
 		kind: "dotnet",
 		labelKey: "tab.target.dotnet.label",
 		hintKey: "tab.target.dotnet.hint",
-		toolsKey: "tab.target.dotnet.tools",
 		routeStage: 2,
 	},
 	{
 		kind: "native",
 		labelKey: "tab.target.native.label",
 		hintKey: "tab.target.native.hint",
-		toolsKey: "tab.target.native.tools",
 		routeStage: 2,
 	},
 	{
 		kind: "firmware",
 		labelKey: "tab.target.firmware.label",
 		hintKey: "tab.target.firmware.hint",
-		toolsKey: "tab.target.firmware.tools",
 		routeStage: 2,
 	},
 	{
 		kind: "web",
 		labelKey: "tab.target.web.label",
 		hintKey: "tab.target.web.hint",
-		toolsKey: "tab.target.web.tools",
 		routeStage: 2,
 	},
 	{
 		kind: "mobile",
 		labelKey: "tab.target.mobile.label",
 		hintKey: "tab.target.mobile.hint",
-		toolsKey: "tab.target.mobile.tools",
 		routeStage: 2,
 	},
 ] as const;

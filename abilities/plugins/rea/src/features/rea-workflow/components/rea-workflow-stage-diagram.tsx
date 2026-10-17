@@ -162,6 +162,7 @@ function SummaryFiveFields({ calls, running }: DiagramProps): JSX.Element {
 				{fields.map((field) => (
 					<div
 						key={field}
+						title={field}
 						className="min-w-0 truncate rounded-[min(var(--radius-md),6px)] border border-border bg-card px-2 py-1 font-mono text-[10px] text-foreground"
 					>
 						{field}

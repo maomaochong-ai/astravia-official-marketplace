@@ -1,23 +1,26 @@
 /**
- * 工作台状态：目标类型选择 + 目标路径输入 + 命令运行器 + 「交给 Agent」回执。
+ * 工作台状态：目标类型 + 目标路径 + 交给 Agent 的回执。
  *
- * 放在 hook 里是因为 tab 顶部的工作台与下方的阶段详情要共享同一台运行器和同一个目标值
- * （阶段详情会把阶段声明的命令 id 渲染成可点击执行的行）。工作目录与 prompt 写入能力
- * 由装配层通过 deps 注入，组件本身不碰 ctx。
+ * 「交给 Agent」现在做的是真的发送（`conversation.sendPrompt`），不是只往输入框塞文本：
+ * 塞文本会让用户看不到任何变化（草稿区在别的窗口/别的滚动位置），这是最容易被当成
+ * "按钮没反应"的失败方式。发送结果按宿主回执如实区分 sent / queued；
+ * 发送不可用时退回「仅填入」，两者都失败才报失败，并保留任务文本供复制。
+ *
+ * 命令执行不再是工作台职责：手动跑 CLI 与 Agent 侧自动执行重叠且职责含糊，
+ * 阶段详情只说明「Agent 会执行哪些工具」，不提供第二条执行途径。
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
-import { commandsForTarget, type ReaCommandDefinition } from "../data/commands";
+import type { SendPromptResult } from "@astravia-org/plugin-sdk";
 import { getTarget, type TargetKind } from "../data/targets";
-import { useCommandRunner, type CommandRunner } from "./use-command-runner";
 
-export type HandoffState = "idle" | "done" | "failed";
+export type HandoffState = "idle" | "sending" | "sent" | "queued" | "inserted" | "failed";
 
 export interface WorkbenchDeps {
-	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
-	/** 把结构化任务写进输入框；返回 false 表示当前会话不可写（权限或状态不允许）。 */
+	/** 真正把 prompt 发进当前会话。没有活跃会话时会抛错。 */
+	readonly sendPrompt: (prompt: string) => Promise<SendPromptResult>;
+	/** 只填入输入框、不发送；返回 false 表示当前会话不可写。 */
 	readonly insertPrompt: (prompt: string) => boolean;
 	readonly cwd: string | null;
 	readonly detected: TargetKind | null;
@@ -32,22 +35,28 @@ export interface Workbench {
 	readonly active: TargetKind | null;
 	readonly picked: boolean;
 	readonly target: string;
-	readonly commands: readonly ReaCommandDefinition[];
-	readonly runner: CommandRunner;
 	readonly handoff: HandoffState;
+	/** 最近一次要交给 Agent 的完整任务文本；失败时可复制。 */
+	readonly promptText: string;
 	pick(kind: TargetKind): void;
 	clearPick(): void;
 	setTarget(value: string): void;
-	runCommand(command: ReaCommandDefinition): void;
-	handoffToAgent(): void;
+	/** 发送到对话；给了 targetOverride 时用它替代当前输入框内容（用于会话发现路径的直接回填）。 */
+	handoffToAgent(targetOverride?: string): void;
+	/** 只填入宿主输入框、不发送。 */
+	insertToChat(targetOverride?: string): void;
 }
 
 export function useWorkbench(deps: WorkbenchDeps): Workbench {
 	const { t } = useTranslation();
+	const depsRef = useRef(deps);
+	depsRef.current = deps;
 	const [picked, setPicked] = useState<TargetKind | null>(null);
 	const [target, setTargetValue] = useState<string>("");
 	const [handoff, setHandoff] = useState<HandoffState>("idle");
+	const [promptText, setPromptText] = useState<string>("");
 	const autoFilled = useRef<string | null>(null);
+	const sending = useRef(false);
 
 	// 会话里刚发现的路径直接落到输入框：Agent 已经找到了目标，用户不必手抄一遍。
 	// 只填空输入框，不覆盖用户已经写下的内容。
@@ -59,24 +68,28 @@ export function useWorkbench(deps: WorkbenchDeps): Workbench {
 	}, [deps.detectedPath]);
 
 	const active = picked ?? deps.detected ?? null;
-	const runner = useCommandRunner({
-		run: deps.run,
-		cwd: deps.cwd,
-		labelOf: (command) => t(command.labelKey),
-		targetRequiredMessage: t("tab.workbench.targetRequired"),
-	});
+
+	const buildPrompt = (targetOverride?: string): string | null => {
+		const current = depsRef.current;
+		const kind = picked ?? current.detected ?? null;
+		const trimmed = (targetOverride ?? target).trim();
+		if (kind === null || trimmed.length === 0) return null;
+		return t("tab.workbench.handoffPrompt", {
+			target: trimmed,
+			kind: t(getTarget(kind).labelKey),
+		});
+	};
 
 	return {
 		active,
 		picked: picked !== null,
 		target,
-		commands: commandsForTarget(active),
-		runner,
 		handoff,
+		promptText,
 		pick: (kind) => {
 			setPicked(kind);
 			setHandoff("idle");
-			deps.onRoute(getTarget(kind).routeStage);
+			depsRef.current.onRoute(getTarget(kind).routeStage);
 		},
 		clearPick: () => {
 			setPicked(null);
@@ -84,16 +97,38 @@ export function useWorkbench(deps: WorkbenchDeps): Workbench {
 		},
 		setTarget: (value) => {
 			setTargetValue(value);
-			setHandoff("idle");
+			setHandoff((prev) => (prev === "sending" ? prev : "idle"));
 		},
-		runCommand: (command) => runner.runCommand(command, target),
-		handoffToAgent: () => {
-			if (!active || target.trim().length === 0) return;
-			const prompt = t("tab.workbench.handoffPrompt", {
-				target: target.trim(),
-				kind: t(getTarget(active).labelKey),
-			});
-			setHandoff(deps.insertPrompt(prompt) ? "done" : "failed");
+		handoffToAgent: (targetOverride) => {
+			if (sending.current) return;
+			const prompt = buildPrompt(targetOverride);
+			if (prompt === null) return;
+			setPromptText(prompt);
+			sending.current = true;
+			setHandoff("sending");
+
+			void (async () => {
+				try {
+					const result = await depsRef.current.sendPrompt(prompt);
+					if (result.status === "sent" || result.status === "queued") {
+						setHandoff(result.status);
+						return;
+					}
+				} catch (error) {
+					console.warn("[rea] sendPrompt failed, falling back to insertText", error);
+				} finally {
+					sending.current = false;
+				}
+				// 发送通道不可用（没有活跃会话 / 权限被拒）：退回只填入，仍让用户能一键发送。
+				const inserted = depsRef.current.insertPrompt(prompt);
+				setHandoff(inserted ? "inserted" : "failed");
+			})();
+		},
+		insertToChat: (targetOverride) => {
+			const prompt = buildPrompt(targetOverride);
+			if (prompt === null) return;
+			setPromptText(prompt);
+			setHandoff(depsRef.current.insertPrompt(prompt) ? "inserted" : "failed");
 		},
 	};
 }

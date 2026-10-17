@@ -13,7 +13,7 @@
  */
 import "./style.css";
 import type { JSX } from "react";
-import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import type { Disposable, PluginContext, SendPromptResult } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import {
 	ReaWorkflowTab,
@@ -51,11 +51,16 @@ function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
 }
 
 /**
- * 把「交给 Agent」的结构化逆向任务写进当前输入框。
+ * 「交给 Agent」的两条通道：
+ *   sendPrompt —— 真正发进当前会话（需要 agent.session.write），宿主返回 sent/queued/failed；
+ *   insertPrompt —— 只填入输入框，发送通道不可用时退回到这里。
  *
- * 需要 agent.session.write；宿主拒绝或当前没有可写会话时返回 false，
- * 工作台据此提示用户手动复制，而不是静默失败。
+ * 只走插入会造成「点了没反应」：草稿在用户没看的位置，所以要优先发送。
  */
+function createPromptSender(ctx: PluginContext): (prompt: string) => Promise<SendPromptResult> {
+	return (prompt: string) => ctx.conversation.sendPrompt(prompt);
+}
+
 function createPromptWriter(ctx: PluginContext): (prompt: string) => boolean {
 	return (prompt: string) => {
 		try {
@@ -94,6 +99,7 @@ function activateLiveLayer(ctx: PluginContext, store: ReaLiveStore): Disposable[
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const provider = createProviderBridge(ctx);
+		const sendPrompt = createPromptSender(ctx);
 		const insertPrompt = createPromptWriter(ctx);
 		const store = new ReaLiveStore();
 
@@ -105,7 +111,9 @@ export default definePlugin({
 			order: 22,
 			scope_use: ["conversation", "project"],
 			initiallyVisible: true,
-			component: () => <ReaWorkflowTab provider={provider} store={store} insertPrompt={insertPrompt} />,
+			component: () => (
+				<ReaWorkflowTab provider={provider} store={store} sendPrompt={sendPrompt} insertPrompt={insertPrompt} />
+			),
 		});
 
 		// 输入栏 toggle：on 时把面板上栏 + 打开；off 时下栏。

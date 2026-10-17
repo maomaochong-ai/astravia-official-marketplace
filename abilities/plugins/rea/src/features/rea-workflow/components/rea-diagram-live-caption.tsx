@@ -37,12 +37,16 @@ export function ReaDiagramLiveCaption({ digest }: CaptionProps): JSX.Element {
 			{running ? (
 				<span className="flex min-w-0 flex-1 items-center gap-1">
 					<span className="shrink-0 text-primary">{t("tab.live.diagram.running")}</span>
-					<code className="min-w-0 truncate font-mono text-foreground/85">{running}</code>
+					<code className="min-w-0 truncate font-mono text-foreground/85" title={running}>
+						{running}
+					</code>
 				</span>
 			) : digest.lastTool ? (
 				<span className="flex min-w-0 flex-1 items-center gap-1">
 					<span className="shrink-0">{t("tab.live.diagram.last")}</span>
-					<code className="min-w-0 truncate font-mono text-foreground/85">{digest.lastTool}</code>
+					<code className="min-w-0 truncate font-mono text-foreground/85" title={digest.lastTool}>
+						{digest.lastTool}
+					</code>
 				</span>
 			) : idle ? (
 				<span className="min-w-0 flex-1 truncate">{t("tab.live.diagram.idle")}</span>
