@@ -7,6 +7,16 @@
 	"detail": {
 		"format": "blocks",
 		"path": "detail.json",
+		"meta": [
+			{
+				"key": "repository",
+				"value": "https://github.com/Ebony-Vinyl/dsh-our-free-model"
+			},
+			{
+				"key": "license",
+				"value": "MIT"
+			}
+		],
 		"i18n": {
 			"zh": {
 				"path": "detail.zh.json"
