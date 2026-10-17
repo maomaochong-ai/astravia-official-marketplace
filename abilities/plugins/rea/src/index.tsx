@@ -29,16 +29,12 @@ const REA_PROVIDER_ID = "rea-agents";
 const REA_TAB_ID = "rea.workflow";
 const REA_ACTION_ID = "rea.openTab";
 
-// 主机内嵌 SVG 图标（MF 共享依赖异步填充，模块顶层不求值 JSX，用工厂函数惰性构造）。
-// 选用「指南针 + 弯箭头」的「定向探索」语义，跟 REA 逆向目标路由的概念吻合。
+// 宿主 tab 图标槽位按 <svg> 尺寸渲染，不能直接用 Iconify 的 CSS 类；
+// 这里内联 @iconify-json/lucide 的 compass 图标（与面板内 lucide/solar 图标同一套视觉语言）。
 const reaIcon = (): JSX.Element => (
 	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-		<circle cx="12" cy="12" r="9" />
-		<path
-			d="M15.5 8.5l-2 4.5-4.5 2 2-4.5 4.5-2Z"
-			strokeLinejoin="round"
-		/>
-		<path d="M12 3v2M12 19v2M3 12h2M19 12h2" strokeLinecap="round" />
+		<circle cx="12" cy="12" r="10" />
+		<path d="m16.24 7.76l-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
 	</svg>
 );
 

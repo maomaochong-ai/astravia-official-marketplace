@@ -98,7 +98,7 @@ function SummaryFiveFields(): JSX.Element {
 				hint="who · where · what · why · evidence"
 			/>
 			<ReaDiagramConnector label={t("tab.diagram.summary.fieldsHint")} />
-			<div className="grid grid-cols-2 gap-1.5">
+			<div className="grid min-w-0 grid-cols-1 gap-1.5 min-[360px]:grid-cols-2">
 				{fields.map((field) => (
 					<div
 						key={field}
@@ -134,7 +134,7 @@ function PlanEightSteps(): JSX.Element {
 	} as const;
 	return (
 		<ReaDiagramFrame ariaLabel={t("tab.detail.plan.diagramAria")}>
-			<div className="grid grid-cols-2 gap-1.5">
+			<div className="grid min-w-0 grid-cols-1 gap-1.5 min-[360px]:grid-cols-2">
 				{steps.map((step) => (
 					<div
 						key={step.key}

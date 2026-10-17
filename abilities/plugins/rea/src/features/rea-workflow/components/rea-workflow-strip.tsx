@@ -17,15 +17,18 @@ interface StripProps {
 	readonly onSelect: (stage: number) => void;
 	/** 会话里实际跑过的阶段（1-based）；有真实活动时比“已翻到第几页”更可信。 */
 	readonly completedStages?: readonly number[];
+	/** 会话当前正在做那个阶段（1-based）；与手动翻页分开，避免互相覆盖。 */
+	readonly liveStage?: number | null;
 }
 
-export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages }: StripProps): JSX.Element {
+export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages, liveStage }: StripProps): JSX.Element {
 	const { t } = useTranslation();
 	return (
 		<div className="border-b border-border bg-card/30 px-3 py-2.5">
 			<ol className="flex items-center gap-1.5" aria-label={t("tab.strip.aria")}>
 				{STAGES.map((stage, idx) => {
 					const visited = completedStages?.includes(stage.index) ?? false;
+					const live = liveStage === stage.index;
 					const status: "done" | "active" | "todo" = currentStage === stage.index ? "active" : currentStage > stage.index || visited ? "done" : "todo";
 					const dotFill =
 						status === "active" ? "rgb(from var(--primary) r g b / 0.18)" : status === "done" ? "rgb(from var(--primary) r g b / 0.10)" : "var(--muted)";
@@ -52,6 +55,9 @@ export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages 
 									{stage.index}
 								</span>
 								<span className={`line-clamp-1 text-[10px] leading-tight ${textCls}`}>{t(stage.labelKey)}</span>
+								{live ? (
+									<span className="size-1 rounded-full bg-primary motion-safe:animate-pulse" aria-hidden />
+								) : null}
 							</button>
 							{idx < TOTAL_STAGES - 1 ? (
 								<span

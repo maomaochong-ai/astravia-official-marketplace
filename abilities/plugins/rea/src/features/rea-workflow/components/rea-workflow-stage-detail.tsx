@@ -61,7 +61,7 @@ export function ReaWorkflowStageDetail({
 				<h3 className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 					{t("tab.detail.section.flow")}
 				</h3>
-				<div className="overflow-hidden rounded-[min(var(--radius-md),10px)] border border-border bg-background/40 p-2">
+				<div className="rounded-[min(var(--radius-md),10px)] border border-border bg-background/40 p-2">
 					<ReaWorkflowStageDiagram kind={stage.diagram} />
 				</div>
 			</section>

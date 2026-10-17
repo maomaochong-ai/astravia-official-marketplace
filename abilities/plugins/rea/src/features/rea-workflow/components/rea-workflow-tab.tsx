@@ -12,7 +12,7 @@
  * 主题色走 src/style.css 的 @theme inline，从宿主 :root 读取。
  */
 
-import { useMemo, useState, type JSX } from "react";
+import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { useActivityTab, useTranslation } from "@astravia-org/plugin-sdk";
 import type { PluginCliProviderStatus, PluginCommandRunResult } from "@astravia-org/plugin-sdk";
 import { ReaProviderStatusBar } from "./rea-provider-status-bar";
@@ -50,6 +50,14 @@ export function ReaWorkflowTab({ provider, store, insertPrompt }: ReaWorkflowTab
 	const [currentStage, setCurrentStage] = useState<number>(1);
 	const [showLog, setShowLog] = useState<boolean>(false);
 	const snapshot = useReaLiveSnapshot(store);
+	// 会话里推进到新阶段时自动翻页；用户手动点选后就停在那，直到下一次真实推进。
+	const liveStage = snapshot.activeStage ? STAGE_INDEX[snapshot.activeStage] : null;
+	const followedStage = useRef<number | null>(null);
+	useEffect(() => {
+		if (liveStage === null || liveStage === followedStage.current) return;
+		followedStage.current = liveStage;
+		setCurrentStage(liveStage);
+	}, [liveStage]);
 
 	const stage = useMemo(() => STAGES.find((s) => s.index === currentStage) ?? STAGES[0]!, [currentStage]);
 
@@ -63,6 +71,7 @@ export function ReaWorkflowTab({ provider, store, insertPrompt }: ReaWorkflowTab
 		insertPrompt,
 		cwd: cwd ?? null,
 		detected: snapshot.detectedTarget,
+		detectedPath: snapshot.lastTargetPath,
 		onRoute: handleSelect,
 	});
 
@@ -76,7 +85,14 @@ export function ReaWorkflowTab({ provider, store, insertPrompt }: ReaWorkflowTab
 				onStatusChanged={provider.onStatusChanged}
 				retry={provider.retry}
 			/>
-			<ReaLiveStatus snapshot={snapshot} onSelectStage={handleSelect} />
+			<ReaLiveStatus
+				snapshot={snapshot}
+				onSelectStage={handleSelect}
+				onUseTarget={(path) => {
+					workbench.setTarget(path);
+					handleSelect(2);
+				}}
+			/>
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				<ReaWorkbench workbench={workbench} detected={snapshot.detectedTarget} />
 				<div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
@@ -84,6 +100,7 @@ export function ReaWorkflowTab({ provider, store, insertPrompt }: ReaWorkflowTab
 						currentStage={currentStage}
 						onSelect={handleSelect}
 						completedStages={snapshot.visitedStages.map((id) => STAGE_INDEX[id])}
+						liveStage={liveStage}
 					/>
 				</div>
 				<ReaWorkflowStageDetail

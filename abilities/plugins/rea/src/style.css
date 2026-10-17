@@ -40,5 +40,5 @@
 	--color-warning: var(--warning, #d97706);
 }
 
-/* mdi / solar 图标按需生成（icon-[mdi--*] / icon-[solar--*]）。 */
+/* lucide / solar 图标按需生成（面板内用 lucide，详情页用 solar）。 */
 @plugin "@iconify/tailwind4";

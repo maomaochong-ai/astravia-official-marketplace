@@ -16,6 +16,8 @@ import { STAGE_INDEX, STAGE_ORDER, type ReaStageId } from "../live/tool-taxonomy
 interface LiveStatusProps {
 	readonly snapshot: ReaLiveState;
 	readonly onSelectStage: (stage: number) => void;
+	/** 把会话里发现的路径直接填进工作台目标输入框。 */
+	readonly onUseTarget: (path: string) => void;
 }
 
 function phaseTone(phase: ReaLiveState["providerPhase"]): StatusTone {
@@ -35,10 +37,11 @@ function phaseTone(phase: ReaLiveState["providerPhase"]): StatusTone {
 	}
 }
 
-export function ReaLiveStatus({ snapshot, onSelectStage }: LiveStatusProps): JSX.Element {
+export function ReaLiveStatus({ snapshot, onSelectStage, onUseTarget }: LiveStatusProps): JSX.Element {
 	const { t } = useTranslation();
 	const phase = snapshot.providerPhase ?? "checking";
 	const running = snapshot.runningToolNames;
+	const lastCall = snapshot.calls.length > 0 ? snapshot.calls[snapshot.calls.length - 1] : null;
 
 	return (
 		<div className="flex flex-col gap-2 border-b border-border bg-card/20 px-3 py-2">
@@ -106,6 +109,45 @@ export function ReaLiveStatus({ snapshot, onSelectStage }: LiveStatusProps): JSX
 				<div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
 					<span className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse" aria-hidden />
 					{t("live.running", { tools: running.join(", ") })}
+				</div>
+			) : null}
+
+			{snapshot.lastTargetPath ? (
+				<div className="flex min-w-0 items-center gap-1.5 text-[10.5px]">
+					<span className="shrink-0 text-muted-foreground">{t("live.target.last")}</span>
+					<code
+						className="min-w-0 flex-1 truncate font-mono text-foreground/85"
+						title={snapshot.lastTargetPath}
+					>
+						{snapshot.lastTargetPath}
+					</code>
+					<button
+						type="button"
+						onClick={() => onUseTarget(snapshot.lastTargetPath ?? "")}
+						className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					>
+						<span aria-hidden className="icon-[lucide--corner-down-left] size-3" />
+						{t("live.target.use")}
+					</button>
+				</div>
+			) : null}
+
+			{lastCall ? (
+				<div className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-muted-foreground">
+					<span
+						aria-hidden
+						className={`size-1.5 shrink-0 rounded-full ${
+							lastCall.isError
+								? "bg-red-500"
+								: lastCall.endedAt === null
+									? "bg-primary motion-safe:animate-pulse"
+									: "bg-emerald-500"
+						}`}
+					/>
+					<span className="shrink-0">{t("live.last.tool", { tool: lastCall.toolName })}</span>
+					{lastCall.argsPreview ? (
+						<span className="min-w-0 flex-1 truncate font-mono opacity-80">{lastCall.argsPreview}</span>
+					) : null}
 				</div>
 			) : null}
 		</div>

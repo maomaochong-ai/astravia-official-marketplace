@@ -6,7 +6,7 @@
  * 由装配层通过 deps 注入，组件本身不碰 ctx。
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
 import { commandsForTarget, type ReaCommandDefinition } from "../data/commands";
@@ -21,6 +21,8 @@ export interface WorkbenchDeps {
 	readonly insertPrompt: (prompt: string) => boolean;
 	readonly cwd: string | null;
 	readonly detected: TargetKind | null;
+	/** 会话里最近一次带路径的工具参数；仅在目标输入框为空时自动回填。 */
+	readonly detectedPath: string | null;
 	/** 选定目标后跳到对应阶段（当前全部跳 route）。 */
 	readonly onRoute: (stage: number) => void;
 }
@@ -45,6 +47,16 @@ export function useWorkbench(deps: WorkbenchDeps): Workbench {
 	const [picked, setPicked] = useState<TargetKind | null>(null);
 	const [target, setTargetValue] = useState<string>("");
 	const [handoff, setHandoff] = useState<HandoffState>("idle");
+	const autoFilled = useRef<string | null>(null);
+
+	// 会话里刚发现的路径直接落到输入框：Agent 已经找到了目标，用户不必手抄一遍。
+	// 只填空输入框，不覆盖用户已经写下的内容。
+	useEffect(() => {
+		const path = deps.detectedPath;
+		if (!path || path === autoFilled.current) return;
+		autoFilled.current = path;
+		setTargetValue((current) => (current.trim().length === 0 ? path : current));
+	}, [deps.detectedPath]);
 
 	const active = picked ?? deps.detected ?? null;
 	const runner = useCommandRunner({

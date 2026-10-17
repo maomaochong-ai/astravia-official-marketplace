@@ -62,9 +62,7 @@ export function ReaWorkflowTargetRouting({
 							}
 							aria-pressed={isActive}
 						>
-							<span aria-hidden className="text-[12px] leading-none">
-								{iconFor(target.kind)}
-							</span>
+							<span aria-hidden className={`${iconFor(target.kind)} shrink-0 text-[12px] leading-none`} />
 							<span>{t(target.labelKey)}</span>
 						</button>
 					);
@@ -87,19 +85,20 @@ function TargetDetail({ kind }: { kind: TargetKind }): JSX.Element {
 	);
 }
 
+/** 目标图标统一取自 @iconify-json/lucide，经 @iconify/tailwind4 生成图标工具类。 */
 function iconFor(kind: TargetKind): string {
 	switch (kind) {
 		case "javascript":
-			return "JS";
+			return "icon-[lucide--file-code]";
 		case "dotnet":
-			return ".NET";
+			return "icon-[lucide--binary]";
 		case "native":
-			return "⚙";
+			return "icon-[lucide--cpu]";
 		case "firmware":
-			return "▤";
+			return "icon-[lucide--hard-drive]";
 		case "web":
-			return "≋";
+			return "icon-[lucide--globe]";
 		case "mobile":
-			return "▢";
+			return "icon-[lucide--smartphone]";
 	}
 }

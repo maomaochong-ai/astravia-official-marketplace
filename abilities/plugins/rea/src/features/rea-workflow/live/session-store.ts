@@ -43,6 +43,8 @@ export interface ReaLiveState {
 	readonly visitedStages: readonly ReaStageId[];
 	readonly stageCallCounts: Readonly<Record<ReaStageId, number>>;
 	readonly detectedTarget: TargetKind | null;
+	/** 会话里最近一次带路径的调用参数；工作台可据此一键回填目标。 */
+	readonly lastTargetPath: string | null;
 	readonly runningToolNames: readonly string[];
 	readonly callCount: number;
 	readonly errorCount: number;
@@ -70,6 +72,7 @@ export const EMPTY_LIVE_STATE: ReaLiveState = {
 	visitedStages: [],
 	stageCallCounts: EMPTY_STAGE_COUNTS,
 	detectedTarget: null,
+	lastTargetPath: null,
 	runningToolNames: [],
 	callCount: 0,
 	errorCount: 0,
@@ -188,6 +191,7 @@ export class ReaLiveStore {
 			callCount: 0,
 			errorCount: 0,
 			turns: 0,
+			lastTargetPath: null,
 		}));
 	}
 
@@ -270,6 +274,7 @@ export class ReaLiveStore {
 				...state,
 				calls: state.calls.map((call) => (call.id === id ? updated : call)),
 				detectedTarget: nextTarget ?? state.detectedTarget,
+				lastTargetPath: targetPath ?? state.lastTargetPath,
 				lastActivityAt: now,
 			}));
 			return;
@@ -300,6 +305,7 @@ export class ReaLiveStore {
 				calls,
 				callCount: state.callCount + 1,
 				detectedTarget: target ?? state.detectedTarget,
+				lastTargetPath: targetPath ?? state.lastTargetPath,
 				...this.deriveStages(calls),
 				runningToolNames: deriveRunning(calls),
 				lastActivityAt: now,

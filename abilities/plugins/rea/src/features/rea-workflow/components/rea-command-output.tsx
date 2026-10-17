@@ -8,6 +8,7 @@
 import { useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { StatusChip, type StatusTone } from "../../../shared/components/status-chip";
+import { diagnoseRun } from "../data/run-diagnostics";
 import type { CommandRunState } from "../hooks/use-command-runner";
 
 const HEAD_CHARS = 2200;
@@ -37,6 +38,12 @@ export function ReaCommandOutput({ state, onClear }: OutputPanelProps): JSX.Elem
 	const stream = state.stderr.trim().length > 0 ? state.stderr : state.stdout;
 	const { body, clipped } = clip(stream.trim());
 	const empty = body.length === 0;
+	const diagnosis = diagnoseRun({
+		message: state.message,
+		stderr: state.stderr,
+		stdout: state.stdout,
+		exitCode: state.exitCode,
+	});
 
 	const copy = (): void => {
 		const text = [state.commandLine, "", stream].join("\n");
@@ -91,6 +98,15 @@ export function ReaCommandOutput({ state, onClear }: OutputPanelProps): JSX.Elem
 			{state.message ? (
 				<p className="border-b border-border/60 px-2 py-1.5 text-[11px] leading-relaxed text-amber-600 dark:text-amber-400">
 					{state.message}
+				</p>
+			) : null}
+			{diagnosis ? (
+				<p className="flex items-start gap-1.5 border-b border-border/60 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
+					<span aria-hidden className="icon-[lucide--lightbulb] mt-px size-3 shrink-0" />
+					<span className="min-w-0 break-words">
+						<span className="font-medium">{t("tab.run.hint.lead")}</span>
+						{t(diagnosis.hintKey)}
+					</span>
 				</p>
 			) : null}
 			<pre className="max-h-44 overflow-auto px-2 py-1.5 font-mono text-[10px] leading-relaxed text-foreground/85">
