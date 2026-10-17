@@ -2,7 +2,7 @@
 	"id": "free-model-gateway",
 	"name": "%plugin.name%",
 	"icon": "assets/icon.png",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
@@ -33,7 +33,7 @@
 							"executable": "server/packages/standalone/cli.mjs",
 							"artifacts": [
 								{
-									"sha256": "6eb678f5300dea0bbf43b3fa0510f07be387f0ddacd125a4fb36398313877e45",
+									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
 									"archive": "zip",
 									"destination": "server"
 								}
@@ -43,7 +43,7 @@
 							"executable": "server/packages/standalone/cli.mjs",
 							"artifacts": [
 								{
-									"sha256": "6eb678f5300dea0bbf43b3fa0510f07be387f0ddacd125a4fb36398313877e45",
+									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
 									"archive": "zip",
 									"destination": "server"
 								}
@@ -53,7 +53,7 @@
 							"executable": "server/packages/standalone/cli.mjs",
 							"artifacts": [
 								{
-									"sha256": "6eb678f5300dea0bbf43b3fa0510f07be387f0ddacd125a4fb36398313877e45",
+									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
 									"archive": "zip",
 									"destination": "server"
 								}
@@ -63,7 +63,7 @@
 							"executable": "server/packages/standalone/cli.mjs",
 							"artifacts": [
 								{
-									"sha256": "6eb678f5300dea0bbf43b3fa0510f07be387f0ddacd125a4fb36398313877e45",
+									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
 									"archive": "zip",
 									"destination": "server"
 								}
@@ -73,7 +73,7 @@
 							"executable": "server/packages/standalone/cli.mjs",
 							"artifacts": [
 								{
-									"sha256": "6eb678f5300dea0bbf43b3fa0510f07be387f0ddacd125a4fb36398313877e45",
+									"sha256": "7fba718242b57bcdd0853bf0905d8e186a85ec3462bd268e5b943023931481b5",
 									"archive": "zip",
 									"destination": "server"
 								}
