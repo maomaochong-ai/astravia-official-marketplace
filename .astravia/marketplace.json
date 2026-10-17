@@ -6141,7 +6141,7 @@
       "slug": "rea",
       "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6536,10 +6536,53 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.4.1.astraviapkg",
             "sha256": "fc017e20e443e6b5668f8dab1287b6c3809d777871062de5d194ec048928d06b"
           }
+        },
+        {
+          "version": "0.4.2",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control",
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.systemPrompt.write",
+            "agent.continuation.register",
+            "agent.session.read",
+            "agent.session.write",
+            "agent.command.run",
+            "agent.command.spawn"
+          ],
+          "commands": [
+            "node",
+            "java",
+            "frida",
+            "adb",
+            "apktool",
+            "binwalk",
+            "objdump",
+            "gdb",
+            "rizin",
+            "cutter",
+            "jadx",
+            "unblob",
+            "tshark",
+            "capinfos",
+            "sigrok-cli",
+            "wasm-validate",
+            "mitmdump",
+            "brew"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.4.2.astraviapkg",
+            "sha256": "c7fd63bd2179c225ffad229d0fc8c138ded22764873e5b4a817607e7b10b1d64"
+          }
         }
       ]
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.17-22"
+  "marketplaceVersion": "2026.10.17-23"
 }
