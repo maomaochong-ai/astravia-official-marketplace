@@ -80,94 +80,6 @@
     },
     {
       "type": "plugin",
-      "slug": "rea",
-      "name": "Reverse Engineer Anything",
-      "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.2.3",
-      "configVersion": 1,
-      "license": "MIT",
-      "author": "morluto / REA",
-      "category": "Development",
-      "categoryI18n": {
-        "zh": "开发",
-        "en": "Development"
-      },
-      "tags": [
-        "reverse-engineering",
-        "binary-analysis",
-        "decompilation",
-        "javascript",
-        "electron",
-        "analysis"
-      ],
-      "detail": {
-        "i18n": {
-          "zh": {
-            "name": "逆向工程",
-            "description": "把 REA 接入 Astravia，让 Agent 逆向原生二进制、JavaScript 与 Electron 应用、.NET 程序集、固件以及网站流量——每条结论都附上证据与边界。",
-            "tags": [
-              "逆向工程",
-              "二进制分析",
-              "反编译",
-              "javascript",
-              "electron",
-              "分析"
-            ]
-          }
-        }
-      },
-      "source": {
-        "path": "abilities/plugins/rea"
-      },
-      "releases": [
-        {
-          "version": "0.2.1",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.skills.control"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.1.astraviapkg",
-            "sha256": "abd7b425031d0908ff237ee2ba88ea3c99458c9ebf870d0fd7817b314e442a61"
-          }
-        },
-        {
-          "version": "0.2.2",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "ui.slot.input-action",
-            "agent.skills.control"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.2.astraviapkg",
-            "sha256": "9f9e0de6fed054e7347a8447dc465426150d376c40f8e55786f95aeb507b1642"
-          }
-        },
-        {
-          "version": "0.2.3",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "ui.slot.input-action",
-            "agent.skills.control"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.3.astraviapkg",
-            "sha256": "b51e3d4604c02dd43beab0ec68133cb16c0b535b2e649e7ce28b4a59d5c0ba68"
-          }
-        }
-      ]
-    },
-    {
-      "type": "plugin",
       "slug": "cli-proxy-api",
       "name": "CLIProxyAPI",
       "description": "Run a managed local gateway for Gemini CLI, Codex, Claude, Antigravity, Kimi and xAI accounts, then use its models in Astravia.",
@@ -602,7 +514,7 @@
       "slug": "xiaohongshu",
       "name": "Xiaohongshu Accounts",
       "description": "Manage multiple Xiaohongshu accounts and run built-in MCP tasks concurrently through the account selected for each task.",
-      "version": "1.1.28",
+      "version": "1.1.29",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / xpzouying",
@@ -648,6 +560,26 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-xiaohongshu/xiaohongshu-1.1.28.astraviapkg",
             "sha256": "5398f894d9f8d49807bbb497466dc557814e3e3c4860f141e62e47d21cde26b2"
+          }
+        },
+        {
+          "version": "1.1.29",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "ui.slot.ability-detail",
+            "ui.slot.workspace-view",
+            "storage.read",
+            "storage.write",
+            "secrets.read",
+            "secrets.write",
+            "network.fetch"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-xiaohongshu/xiaohongshu-1.1.29.astraviapkg",
+            "sha256": "8030418c5c61cd65ed3ea847684d9eabb9b861eb514971d52019ed9e99bfcb60"
           }
         }
       ]
@@ -969,7 +901,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.77",
+      "version": "0.4.79",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -5562,6 +5494,37 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.77.astraviapkg",
             "sha256": "59a6f015e1e9325f8ee0069c905938a6edec7ba12d83777bbd1b3327f7fac319"
           }
+        },
+        {
+          "version": "0.4.79",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.skills.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch",
+            "ai.complete"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.79.astraviapkg",
+            "sha256": "677c146c3c708b10dd8203da45e9150f412c5d0be0c4126896180f432eb169ca"
+          }
         }
       ]
     },
@@ -5569,8 +5532,8 @@
       "type": "plugin",
       "slug": "as-codemap",
       "name": "Code Map",
-      "description": "Scan the workspace into a symbol-and-reference map, then let the AI answer where a symbol is defined and who calls it.",
-      "version": "0.1.4",
+      "description": "Scan the workspace into a symbol-and-reference map, let the AI answer where a symbol is defined and who calls it, and browse findings in a PR-style code review panel.",
+      "version": "0.2.1",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia / zhangqingkun976",
@@ -5584,19 +5547,21 @@
         "symbols",
         "references",
         "navigation",
-        "code-map"
+        "code-map",
+        "code-review"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "代码图谱",
-            "description": "把工作区扫描成符号与引用图谱，AI 可以据此回答某个符号定义在哪、被谁调用。",
+            "description": "把工作区扫描成符号与引用图谱，AI 可以据此回答某个符号定义在哪、被谁调用；审查面板以 PR 风格呈现发现。",
             "tags": [
               "代码库",
               "符号",
               "引用",
               "代码导航",
-              "代码图谱"
+              "代码图谱",
+              "代码审查"
             ]
           }
         }
@@ -5683,6 +5648,26 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.4.astraviapkg",
             "sha256": "c153f38793d99bbec683115af249bfa2d8b9a2c35554c4e7a491db6f45ca4f0d"
+          }
+        },
+        {
+          "version": "0.2.1",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.read",
+            "fs.read",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.2.1.astraviapkg",
+            "sha256": "52790f5d7933ba955b2cbb7922605dd16619767503436b95b8296d7884806a5a"
           }
         }
       ]
@@ -5836,8 +5821,175 @@
           }
         }
       ]
+    },
+    {
+      "type": "plugin",
+      "slug": "free-model-gateway",
+      "name": "Free Model Gateway",
+      "description": "Run a managed local gateway that reuses upstream free-model channels, syncs models into Astravia and ships a one-click UI for start/stop, logs and risk.",
+      "version": "0.0.2",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia Community",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "models",
+        "gateway",
+        "free",
+        "llm",
+        "local"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "免费模型网关",
+            "description": "运行受管的本地网关，复用上游免费模型通道并同步模型到 Astravia，提供一键启停、日志与风险声明界面。",
+            "tags": [
+              "模型",
+              "网关",
+              "免费",
+              "大模型",
+              "本地"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/free-model-gateway"
+      },
+      "releases": [
+        {
+          "version": "0.0.2",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "models.manage",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-free-model-gateway/free-model-gateway-0.0.2.astraviapkg",
+            "sha256": "0f730f276d8a972564a0e7aa1996c05a5f7f3353dd8252b180831d3227652c4b"
+          }
+        }
+      ]
+    },
+    {
+      "type": "plugin",
+      "slug": "rea",
+      "name": "Reverse Engineer Anything",
+      "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
+      "version": "0.3.1",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia Community",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "reverse-engineering",
+        "binary",
+        "electron",
+        "dotnet",
+        "firmware",
+        "traffic"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "逆向工程",
+            "description": "把 REA 接入 Astravia，让 Agent 逆向原生二进制、JavaScript 与 Electron 应用、.NET 程序集、固件以及网站流量——每条结论都附上证据与边界。",
+            "tags": [
+              "逆向工程",
+              "二进制",
+              "Electron",
+              "dotnet",
+              "固件",
+              "网络流量"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/rea"
+      },
+      "releases": [
+        {
+          "version": "0.2.1",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.1.astraviapkg",
+            "sha256": "abd7b425031d0908ff237ee2ba88ea3c99458c9ebf870d0fd7817b314e442a61"
+          }
+        },
+        {
+          "version": "0.2.2",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.2.astraviapkg",
+            "sha256": "9f9e0de6fed054e7347a8447dc465426150d376c40f8e55786f95aeb507b1642"
+          }
+        },
+        {
+          "version": "0.2.3",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.2.3.astraviapkg",
+            "sha256": "b51e3d4604c02dd43beab0ec68133cb16c0b535b2e649e7ce28b4a59d5c0ba68"
+          }
+        },
+        {
+          "version": "0.3.1",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control",
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.systemPrompt.write",
+            "agent.continuation.register"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.3.1.astraviapkg",
+            "sha256": "dd305161ae199e7f0d85ccb961a601ff47e8228cffcaf82fd3e2ca10ab4f89ef"
+          }
+        }
+      ]
     }
   ],
-  "version": "0.4.77",
-  "marketplaceVersion": "2026.10.16-2"
+  "version": "0.4.78",
+  "marketplaceVersion": "2026.10.17-1"
 }

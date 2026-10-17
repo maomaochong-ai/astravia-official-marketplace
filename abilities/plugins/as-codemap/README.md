@@ -6,6 +6,7 @@
 
 - **解析层**（`src/parser/symbol-graph.ts`，纯函数、零依赖）：从 ts/tsx/js/jsx/mjs/cjs 提取 function/class/method/const/interface 声明与跨文件引用计数；单文件 512KB / 5000 行 / 总数 5000 封顶，跳过 dot 目录与 node_modules/dist/out。
 - **右侧面板**（workspace-view 插槽）：按工作区展示符号列表 + file:line；图谱按 workspace root 分片存 storage。
+- **代码审查标签页**（activity-tab 插槽）：PR 风格审查发现面板（文件列表 → diff → 发现详情三态视图，四级严重度，diff 行内高亮）；v0.2.0 起内置示例数据，真实 `code_review_run` agent 工具后续版本提供。
 - **agent 工具 `code_graph_query`**：名称子串 + kind 过滤查询符号，附带引用计数；工具描述明示「拓扑导航用，重构级精度请读原文件」。
 - **agent 工具 `code_graph_build`**：扫描当前会话工作区并重建图谱；面板只读 store，构建只能由 agent 侧触发。
 

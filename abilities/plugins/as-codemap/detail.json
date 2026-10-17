@@ -31,6 +31,11 @@
           "title": "Code Map view",
           "description": "A workspace view lists the scanned files and symbols for one-click lookup.",
           "icon": "assets/icons/layers-bold.svg"
+        },
+        {
+          "title": "Code Review tab",
+          "description": "A PR-style panel groups findings by file and severity, with inline diff highlights. Ships with sample data in this version; agent-driven review runs arrive in a later release.",
+          "icon": "assets/icons/shield-check-bold.svg"
         }
       ]
     },
@@ -58,6 +63,10 @@
         {
           "title": "Open the Code Map view",
           "description": "Scanned files and symbols appear in the panel; ask follow-up questions in the same conversation."
+        },
+        {
+          "title": "Open the Code Review tab",
+          "description": "Findings are grouped by file and severity — filter by error, warning, or note. This version ships sample data to preview the workflow."
         }
       ]
     },

@@ -31,6 +31,11 @@
           "title": "代码图谱视图",
           "description": "工作区视图列出已扫描的文件与符号，便于快速定位。",
           "icon": "assets/icons/layers-bold.svg"
+        },
+        {
+          "title": "代码审查标签页",
+          "description": "以 PR 风格按文件与严重度分组展示审查发现，diff 行内高亮。本版本内置示例数据，agent 驱动的真实审查将在后续版本提供。",
+          "icon": "assets/icons/shield-check-bold.svg"
         }
       ]
     },
@@ -58,6 +63,10 @@
         {
           "title": "打开代码图谱视图",
           "description": "已扫描的文件与符号会出现在面板里，接着在同一会话里追问。"
+        },
+        {
+          "title": "打开代码审查标签页",
+          "description": "审查发现按文件与严重度分组，可按错误、警告、提示过滤。本版本为示例数据，用于预览审查工作流。"
         }
       ]
     },

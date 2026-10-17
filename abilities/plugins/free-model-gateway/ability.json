@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "free-model-gateway",
+	"version": "0.0.2",
+	"icon": "assets/icon.png",
+	"detail": {
+		"format": "blocks",
+		"path": "detail.json",
+		"i18n": {
+			"zh": {
+				"path": "detail.zh.json"
+			}
+		}
+	}
+}
