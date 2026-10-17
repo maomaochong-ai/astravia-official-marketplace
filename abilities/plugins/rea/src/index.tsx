@@ -53,17 +53,35 @@ function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
 	};
 }
 
+/**
+ * 实时层：会话事件 → 快照；引擎自愈；Agent 侧提示与自检工具。
+ *
+ * 逐段 try：任何一段失败只降级这部分能力，不让整次 activate 抛错——tab 与输入栏入口
+ * 已经注册完毕，缺权限或 API 不可用时它们仍然在。
+ */
+function activateLiveLayer(ctx: PluginContext, store: ReaLiveStore): Disposable[] {
+	const disposables: Disposable[] = [];
+	const start = (name: string, activate: () => Disposable | Disposable[]): void => {
+		try {
+			const result = activate();
+			for (const item of Array.isArray(result) ? result : [result]) disposables.push(item);
+		} catch (error) {
+			console.warn(`[rea] live layer "${name}" unavailable`, error);
+		}
+	};
+	start("live-watch", () => activateLiveWatch(ctx, store));
+	start("provider-recovery", () => activateProviderRecovery(ctx, store, REA_PROVIDER_ID));
+	start("agent-integration", () => activateReaAgentIntegration(ctx, store));
+	start("tools", () => registerReaWorkflowTools(ctx, store, REA_PROVIDER_ID));
+	return disposables;
+}
+
 export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		const provider = createProviderBridge(ctx);
-
-		// 实时层：会话事件 → 快照；引擎自愈；Agent 侧提示与自检工具。
 		const store = new ReaLiveStore();
-		const liveWatch = activateLiveWatch(ctx, store);
-		const recovery = activateProviderRecovery(ctx, store, REA_PROVIDER_ID);
-		const agentIntegration = activateReaAgentIntegration(ctx, store);
-		const toolDisposables = registerReaWorkflowTools(ctx, store, REA_PROVIDER_ID);
 
+		// UI 槽位先注册：它是插件的可见入口，不能因为后面某一层不可用就整个消失。
 		const tabDisposable = ctx.ui.registerActivityTab({
 			id: REA_TAB_ID,
 			label: ctx.i18n.t("tab.label"),
@@ -94,12 +112,11 @@ export default definePlugin({
 			}),
 		});
 
+		const liveDisposables = activateLiveLayer(ctx, store);
+
 		return {
 			dispose(): void {
-				for (const disposable of toolDisposables) disposable.dispose();
-				agentIntegration.dispose();
-				recovery.dispose();
-				liveWatch.dispose();
+				for (const disposable of liveDisposables.reverse()) disposable.dispose();
 				actionDisposable.dispose();
 				tabDisposable.dispose();
 			},
