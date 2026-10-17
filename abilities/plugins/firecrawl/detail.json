@@ -1,0 +1,94 @@
+{
+	"schemaVersion": 1,
+	"blocks": [
+		{
+			"type": "hero",
+			"eyebrow": "Web reading",
+			"title": "Give the agent clean Markdown from the pages it needs",
+			"description": "Scrape one page, list a site's URLs, or crawl a section depth-limited. Every fetch shows up in an animated spider console, together with the links that were refused and the rule that refused them.",
+			"badges": ["No API key", "Works offline from any URL", "robots.txt aware"]
+		},
+		{
+			"type": "showcase",
+			"showcase": {
+				"template": "chat-thread",
+				"user_prompt": "Crawl the Astravia plugin docs under /docs/plugin and tell me what I need to declare for an activity tab.",
+				"assistant_reply": "Crawled 9 pages under /docs/plugin (12-page limit, depth 2, sitemap seeded). The tab contract is in ui-slots.md: a plugin registers a component with zero props, declares scope_use, and must keep its UI inside the panel rectangle — no fixed positioning or portals. Two links to the changelog were refused by the /docs/plugin scope, and one /blog link by the exclude rule."
+			}
+		},
+		{
+			"type": "feature-grid",
+			"title": "What it does",
+			"items": [
+				{
+					"title": "Three tools, one job each",
+					"description": "firecrawl_scrape for a single page, firecrawl_map to list URLs without downloading them, firecrawl_crawl to read several pages in breadth-first order.",
+					"icon": "solar:layers-minimalistic-linear"
+				},
+				{
+					"title": "Readable Markdown, not raw HTML",
+					"description": "Article extraction strips navigation, cookie banners and footers first; turndown converts the rest. When extraction would lose the page, it falls back to converting the full document.",
+					"icon": "solar:document-text-linear"
+				},
+				{
+					"title": "Honest about what it skipped",
+					"description": "Every refused link carries a reason — depth, scope, pattern, robots.txt, file type, social media — and the count is reported instead of quietly dropping pages.",
+					"icon": "solar:shield-check-linear"
+				},
+				{
+					"title": "Spider console",
+					"description": "The start page sits in the middle and each hop moves outward one ring. Spiders drop onto the page being fetched, packets travel down the active spokes, and refused links stay visible as dashed threads.",
+					"icon": "solar:graph-new-linear"
+				},
+				{
+					"title": "Agent and panel share one run",
+					"description": "A crawl the agent starts animates the console you already have open, and a crawl you start from the console follows exactly the same rules.",
+					"icon": "solar:refresh-circle-linear"
+				},
+				{
+					"title": "Polite by default",
+					"description": "robots.txt is honoured, crawl-delay respected, sitemaps read from robots.txt, and the crawl stays inside the start URL's directory unless you widen it.",
+					"icon": "solar:leaf-linear"
+				}
+			]
+		},
+		{
+			"type": "markdown",
+			"content": "## Reading the spider web\n\n- **Center dot** — the page you started from; each ring outward is one link hop.\n- **Solid dot** — page fetched and converted. **Hollow dashed dot** — link refused; hover the console for the rule.\n- **Spider with a pulse ring** — being fetched right now; the moving packet is the request travelling down that spoke.\n- **Red ×** — request failed (timeout, HTTP error, unsupported content type).\n\nAnimation only runs while the tab is visible and the crawl is live, and it is disabled automatically when your system asks for reduced motion."
+		},
+		{
+			"type": "steps",
+			"title": "Start using it",
+			"items": [
+				{
+					"title": "Install and enable the plugin",
+					"description": "The Crawler tab appears in the activity panel; the agent gains the three firecrawl tools and the skill."
+				},
+				{
+					"title": "Open the crawler panel",
+					"description": "Click the spider button above the message box, type /firecrawl in the composer, or pick Firecrawl from the skill menu."
+				},
+				{
+					"title": "Paste a URL and crawl",
+					"description": "Defaults are 12 pages and depth 2. Widen the options only if you need more; the console explains every refusal."
+				},
+				{
+					"title": "Or just ask",
+					"description": "“Crawl example.com/docs and summarize the API pages.” The agent chooses the tool and the same console follows along."
+				}
+			]
+		},
+		{
+			"type": "callout",
+			"tone": "warning",
+			"content": "This fetches pages over plain HTTP: it does not run JavaScript, log in, or submit forms, so client-rendered apps and authenticated pages will come back thin or empty. Requests come from your machine, and robots.txt refusals are reported rather than bypassed."
+		},
+		{
+			"type": "links",
+			"items": [
+				{ "label": "Firecrawl project", "href": "https://github.com/firecrawl/firecrawl" },
+				{ "label": "How the crawler behaves", "href": "https://github.com/firecrawl/firecrawl#readme" }
+			]
+		}
+	]
+}

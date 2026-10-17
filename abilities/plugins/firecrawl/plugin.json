@@ -1,0 +1,52 @@
+{
+  "id": "firecrawl",
+  "name": "%name%",
+  "version": "0.1.0",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "firecrawl",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "minAppVersion": "0.5.60",
+  "permissions": [
+    "network.fetch",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control",
+    "ui.slot.activity-tab",
+    "ui.slot.input-action"
+  ],
+  "network": {
+    "allowedHosts": [
+      "*"
+    ]
+  },
+  "agent": {
+    "skillPaths": [
+      "agent/skills/firecrawl"
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "skillPicker": "visible",
+        "commandPalette": "visible",
+        "abilityCatalog": "visible",
+        "agentConfiguration": "visible",
+        "pluginDetail": "visible"
+      },
+      "skills": {
+        "firecrawl": {
+          "displayName": "Firecrawl",
+          "displayDescription": "Scrape a page into clean Markdown, map a site's links, or crawl a site depth-limited — with a live spider console in the activity panel."
+        }
+      }
+    }
+  },
+  "description": "%description%",
+  "author": "Astravia Community",
+  "defaultLocale": "en"
+}

@@ -1,0 +1,227 @@
+/**
+ * URL normalization and crawl-depth maths.
+ *
+ * Mirrors the semantics of firecrawl's JS fallback filter (`filterLinks` in
+ * apps/api/src/scraper/WebScraper/crawler.ts) so that a plugin-driven crawl
+ * denies and accepts the same edges a server-side crawl would.
+ */
+
+const NON_WEB_PROTOCOLS = ["mailto:", "tel:", "telnet:", "ftp:", "ftps:", "ssh:", "file:"] as const;
+
+/** Social networks firecrawl refuses to crawl: they are not documents we can read. */
+const SOCIAL_MEDIA_HOSTS = [
+	"facebook.com",
+	"twitter.com",
+	"x.com",
+	"linkedin.com",
+	"instagram.com",
+	"pinterest.com",
+	"tiktok.com",
+	"reddit.com",
+	"youtube.com",
+	"youtu.be",
+	"discord.gg",
+	"t.me",
+	"wa.me",
+	"threads.net",
+	"mastodon.social",
+	"bsky.app",
+] as const;
+
+/** Extensions skipped by `isFile()` — non-document payloads. */
+const FILE_EXTENSIONS = new Set([
+	"png",
+	"jpg",
+	"jpeg",
+	"gif",
+	"webp",
+	"avif",
+	"svg",
+	"ico",
+	"bmp",
+	"tiff",
+	"mp4",
+	"mov",
+	"webm",
+	"avi",
+	"mkv",
+	"mp3",
+	"wav",
+	"ogg",
+	"flac",
+	"m4a",
+	"zip",
+	"gz",
+	"tar",
+	"bz2",
+	"xz",
+	"7z",
+	"rar",
+	"css",
+	"js",
+	"mjs",
+	"json",
+	"xml",
+	"rss",
+	"atom",
+	"woff",
+	"woff2",
+	"ttf",
+	"otf",
+	"eot",
+	"exe",
+	"dmg",
+	"pkg",
+	"deb",
+	"rpm",
+	"apk",
+	"wasm",
+	"map",
+	// Documents the fetcher cannot turn into Markdown: refusing them with a reason
+	// is better than returning an empty page the agent would report as content.
+	"pdf",
+	"doc",
+	"docx",
+	"xls",
+	"xlsx",
+	"ppt",
+	"pptx",
+	"epub",
+	"rtf",
+]);
+
+export interface NormalizedUrl {
+	href: string;
+	origin: string;
+	hostname: string;
+	pathname: string;
+	search: string;
+	hash: string;
+}
+
+export function isNonWebProtocol(raw: string): boolean {
+	const value = raw.trim().toLowerCase();
+	return NON_WEB_PROTOCOLS.some((protocol) => value.startsWith(protocol));
+}
+
+export function isSocialMediaHost(hostname: string): boolean {
+	const host = hostname.replace(/^www\./, "").toLowerCase();
+	return SOCIAL_MEDIA_HOSTS.some((entry) => host === entry || host.endsWith(`.${entry}`));
+}
+
+/**
+ * Normalizes a link for de-duplication: resolves it against a base, drops the
+ * section anchor (firecrawl treats `#fragment` as a duplicate of the page) and
+ * removes default ports. Returns `null` for anything unusable.
+ */
+export function normalizeUrl(raw: string, base?: string): NormalizedUrl | null {
+	const trimmed = raw.trim();
+	if (!trimmed || trimmed.startsWith("#")) return null;
+	if (isNonWebProtocol(trimmed)) return null;
+	let url: URL;
+	try {
+		url = base ? new URL(trimmed, base) : new URL(trimmed);
+	} catch {
+		return null;
+	}
+	if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+	url.hash = "";
+	url.hostname = url.hostname.toLowerCase();
+	return {
+		href: url.toString(),
+		origin: url.origin,
+		hostname: url.hostname,
+		pathname: url.pathname,
+		search: url.search,
+		hash: url.hash,
+	};
+}
+
+/** Number of path segments, the unit firecrawl's `maxDepth` is expressed in. */
+export function getUrlDepth(raw: string): number {
+	let pathname: string;
+	try {
+		pathname = new URL(raw).pathname;
+	} catch {
+		return 0;
+	}
+	return pathname.split("/").filter(Boolean).length;
+}
+
+/** `www.example.com` and `example.com` are the same site for crawl purposes. */
+export function stripWww(hostname: string): string {
+	return hostname.replace(/^www\./, "").toLowerCase();
+}
+
+export function isSameSite(left: string, right: string): boolean {
+	return stripWww(left) === stripWww(right);
+}
+
+export function isSubdomainOf(hostname: string, domain: string): boolean {
+	const host = stripWww(hostname);
+	const parent = stripWww(domain);
+	return host !== parent && host.endsWith(`.${parent}`);
+}
+
+export function fileExtension(url: string): string | null {
+	const path = url.split("?")[0]?.split("#")[0] ?? "";
+	const last = path.split("/").pop() ?? "";
+	const dot = last.lastIndexOf(".");
+	if (dot <= 0 || dot === last.length - 1) return null;
+	return last.slice(dot + 1).toLowerCase();
+}
+
+export function isFileUrl(url: string): boolean {
+	const extension = fileExtension(url);
+	return extension !== null && FILE_EXTENSIONS.has(extension);
+}
+
+/** Path used for include/exclude regex matching (firecrawl matches the pathname by default). */
+export function pathForPatterns(url: string): string {
+	try {
+		return new URL(url).pathname;
+	} catch {
+		return url;
+	}
+}
+
+export function originOf(url: string): string {
+	try {
+		return new URL(url).origin;
+	} catch {
+		return "";
+	}
+}
+
+export function hostOf(url: string): string {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return "";
+	}
+}
+
+/** Last path segment, used as the spider-web node label. */
+export function urlLabel(url: string): string {
+	let pathname = "/";
+	let search = "";
+	try {
+		const parsed = new URL(url);
+		pathname = parsed.pathname;
+		search = parsed.search;
+	} catch {
+		return url;
+	}
+	const segment = pathname.split("/").filter(Boolean).pop();
+	if (!segment) return hostOf(url) || "/";
+	const decoded = safeDecode(segment);
+	return `${decoded}${search ? "?…" : ""}`.slice(0, 42);
+}
+
+function safeDecode(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
+	}
+}
