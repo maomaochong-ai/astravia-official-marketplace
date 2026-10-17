@@ -894,7 +894,7 @@
       "slug": "rea",
       "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
