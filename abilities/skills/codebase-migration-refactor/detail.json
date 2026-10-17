@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "ONE TRANSFORM, MANY FILES",
+      "title": "Change 200 files without one 8,000-line diff",
+      "description": "Give Astravia the upgrade or the rename. It writes the transform down precisely, measures how far it reaches, runs it through AST tooling in batches, and proves each batch green before the next one starts.",
+      "badges": ["Blast-radius check", "AST codemods", "Batch review", "Residue audit"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "Move this repo from jest to vitest.",
+        "assistant_reply": "8 batches, suite green, 3 hand-fixes."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What makes the migration survive review",
+      "items": [
+        {
+          "title": "The transform, written down",
+          "description": "“Modernize the tests” becomes an exact rule — which call becomes which, which config is renamed, which variants stay untouched — so every batch applies the same decision.",
+          "icon": "solar:document-add-bold"
+        },
+        {
+          "title": "Scope measured first",
+          "description": "It counts the files before editing and splits them into variants, so the ones hiding outside tests are found by search, not by a failing production build.",
+          "icon": "solar:magnifer-zoom-in-bold"
+        },
+        {
+          "title": "Syntax-aware, not text-aware",
+          "description": "Renames run through ast-grep, ts-morph, jscodeshift or the language's own codemod, so comments, strings and unrelated exports keep their meaning.",
+          "icon": "solar:code-square-bold"
+        },
+        {
+          "title": "Verified every batch",
+          "description": "Focused tests and a zero-count grep after each batch, the full suite and a real app start on the last one — plus a residue sweep for dead config and leftover shims.",
+          "icon": "solar:shield-check-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Three steps to a shippable migration",
+      "items": [
+        {
+          "title": "State the change",
+          "description": "Point at the repo and name what changes — framework version, old API, config format, or the boundary being moved. A failing test or a sample file pins the target."
+        },
+        {
+          "title": "Review the plan, not 200 files",
+          "description": "You get the written transform, the file count, the tool choice and the batch order. Correct the rule here, where a fix costs one sentence."
+        },
+        {
+          "title": "Merge batch by batch",
+          "description": "Each batch is its own branch and commit with the checks it passed. Approve the diff, say continue, and the next batch rebases on top."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "title": "It will stop instead of guessing",
+      "content": "If the search reaches thousands of files, if two transforms get tangled in one diff, or if a file resists every codemod, it reports that and asks — rather than inventing a rule that silently changes code you never pointed at. Rollback is per batch, so a branch that goes wrong is reverted alone."
+    },
+    {
+      "type": "markdown",
+      "content": "## What it produces\n\n- A written transform you can re-run or hand to a teammate.\n- Batches of roughly 25 files, each with a commit, the checks that ran, and a note on anything hand-patched.\n- A closing report: what changed, what deliberately did not, how to verify it, and the residue list — dead config keys, disabled checks, compatibility shims, stale docs.\n\n## Where it helps most\n\nFramework upgrades that touch every import; API renames across a monorepo; test runner or bundler swaps; CommonJS to ESM; splitting a growing module into packages; and any long-postponed cleanup where the work is known but nobody wants the 8,000-line diff.\n\n## What it will not do\n\nMerge without you. Force-push a reviewed branch. Reformat files it did not otherwise touch — that only buries the real change. And when the scope is unclear it asks one question instead of choosing a cheap interpretation of “clean it up”."
+    }
+  ]
+}
