@@ -19,7 +19,7 @@
 				},
 				{
 					"title": "Severity sorting",
-					"description": "critical / major / minor / info, grouped so blocking items come first.",
+					"description": "critical / high / medium / low, grouped by file with category tags so blocking items come first.",
 					"icon": "assets/icons/list-check-bold.svg"
 				},
 				{
@@ -28,8 +28,8 @@
 					"icon": "assets/icons/bot-bold.svg"
 				},
 				{
-					"title": "Reviews tab",
-					"description": "An activity panel tab keeps every run with its scope, duration and file:line findings.",
+					"title": "Code Review tab",
+					"description": "Every run is kept with its scope and duration: filter by severity or category, read findings grouped by file with before/after code, and mark them fixed or ignored.",
 					"icon": "assets/icons/clipboard-check-bold.svg"
 				}
 			]
@@ -40,7 +40,7 @@
 				"template": "chat-over-canvas",
 				"canvas": "code",
 				"user_prompt": "Review my changes.",
-				"assistant_reply": "Review finished: 2 critical, 3 major. critical · src/parser/reader.ts:88 — possible NPE."
+				"assistant_reply": "Review finished: 2 critical, 3 high. critical · src/parser/reader.ts:88 — possible NPE. Suggested fix attached — mark it fixed to hide it."
 			}
 		},
 		{

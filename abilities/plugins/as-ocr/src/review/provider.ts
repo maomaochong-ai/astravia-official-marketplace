@@ -87,7 +87,7 @@ export function watchOcrProvider(ctx: PluginContext): Disposable {
 		if (status.phase === "installing") {
 			announced = true;
 			ctx.ui.notify({
-				message: `首次使用需要 ocr CLI，正在自动安装 ${OCR_INSTALL_PACKAGE}（约 53 MB）。进度可随时在「审查」面板查看。`,
+				message: `首次使用需要 ocr CLI，正在自动安装 ${OCR_INSTALL_PACKAGE}（约 53 MB）。进度可随时在「代码审查」面板查看。`,
 				variant: "info",
 				durationMs: 8000,
 			});
@@ -96,7 +96,7 @@ export function watchOcrProvider(ctx: PluginContext): Disposable {
 		if (status.phase === "failed") {
 			announced = true;
 			ctx.ui.notify({
-				message: `ocr CLI 安装失败：${status.message || outputTail(status.recentOutput, 3) || "原因未知"}。可在「审查」面板点「重试安装」。`,
+				message: `ocr CLI 安装失败：${status.message || outputTail(status.recentOutput, 3) || "原因未知"}。可在「代码审查」面板点「重试安装」。`,
 				variant: "error",
 				error: status.message ?? outputTail(status.recentOutput, 6),
 			});

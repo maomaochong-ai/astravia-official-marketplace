@@ -2,7 +2,7 @@
 	"id": "as-ocr",
 	"name": "%plugin.name%",
 	"icon": "assets/icon.svg",
-	"version": "0.1.11",
+	"version": "0.1.12",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
@@ -20,8 +20,8 @@
 		"agent.toolHandler.execute",
 		"agent.session.read",
 		"storage.read",
+		"workspace.read",
 		"storage.write",
-		"fs.read",
 		"agent.command.run",
 		"shell.openExternal"
 	],

@@ -29,7 +29,9 @@ import {
 	selectDiffBudget,
 } from "./delegate.ts";
 import { isProviderBusy, OCR_MANUAL_INSTALL, OCR_PROVIDER_ID, outputTail, phaseLabel } from "./provider.ts";
-import type { ReviewFinding, ReviewRun, ReviewStore } from "./store";
+import type { ReviewFinding } from "./finding.ts";
+import { normalizeFindings } from "./finding.ts";
+import type { ReviewCoverage, ReviewRun, ReviewStore } from "./store";
 
 export interface CodeReviewInput {
 	from?: string;
@@ -45,48 +47,20 @@ export interface CodeReviewReportInput {
 	summary?: string;
 }
 
-interface OcrRawFinding {
-	file?: unknown;
-	line?: unknown;
-	severity?: unknown;
-	message?: unknown;
-	rule?: unknown;
-}
-
-const SEVERITIES = new Set(["critical", "major", "minor", "info"]);
-
 /** 单次简报最多取多少个文件的 diff（其余交给模型自行读取）。 */
 const MAX_DIFF_FILES = 40;
 /** 单个 diff 命令的超时。 */
 const GIT_TIMEOUT_MS = 60_000;
 
-function normalizeSeverity(value: unknown): ReviewFinding["severity"] {
-	return typeof value === "string" && SEVERITIES.has(value)
-		? (value as ReviewFinding["severity"])
-		: "info";
-}
-
-export function normalizeFindings(raw: unknown): ReviewFinding[] {
-	if (!Array.isArray(raw)) return [];
-	const out: ReviewFinding[] = [];
-	for (const item of raw) {
-		if (typeof item !== "object" || item === null) continue;
-		const f = item as OcrRawFinding;
-		if (typeof f.file !== "string" || typeof f.message !== "string") continue;
-		out.push({
-			file: f.file,
-			line: typeof f.line === "number" ? f.line : 0,
-			severity: normalizeSeverity(f.severity),
-			message: f.message,
-			...(typeof f.rule === "string" ? { rule: f.rule } : {}),
-		});
-	}
-	return out;
-}
-
-/** 组装 ocr 托管模式的参数（独立出来便于测试）。 */
-export function buildOcrArgs(input: CodeReviewInput, outputPath: string): string[] {
-	const args = ["review", "--format", "json", "--output", outputPath];
+/**
+ * 组装 ocr 托管模式的参数（独立出来便于测试）。
+ *
+ * `--output -` 让结果 JSON 走 stdout：上游 json 格式下进度全部改写 stderr，stdout 恒为
+ * 单一可解析文档（shared.go#newQuietHandle）。中转文件方案已废弃——`/tmp` 不在宿主允许的
+ * 根目录内，`ctx.fs.readFile` 会被拒，而且失败路径拿不到清理时机，文件会一直残留。
+ */
+export function buildOcrArgs(input: CodeReviewInput): string[] {
+	const args = ["review", "--format", "json", "--output", "-"];
 	if (input.commit) args.push("--commit", input.commit);
 	else if (input.from) args.push("--from", input.from, "--to", input.to ?? "HEAD");
 	return args;
@@ -189,7 +163,7 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 			"When to use: the user asks to review changes / 审查改动 / check the diff before committing, or you finished a change and want a defect pass.",
 			"Do NOT use for: general questions about code (just read it), or when the user only wants a git diff summary (use the git panel).",
 			"",
-			"Default (delegation, no API key): returns ocr-selected files + resolved rules + git diffs. YOU then review against the rules, and call `code_review_report` with the findings so the user sees them in the 审查 panel.",
+			"Default (delegation, no API key): returns ocr-selected files + resolved rules + git diffs. YOU then review against the rules, and call `code_review_report` with the findings so the user sees them in the 代码审查 (Code Review) panel.",
 			'Set `engine: "ocr"` only if the user already ran `ocr config provider`: then ocr drives the whole review with its own LLM.',
 			"",
 			'Input: {"from": "<base-branch>", "to": "<ref>", "commit": "<sha>"} — all optional; default is workspace changes (staged + unstaged + untracked).',
@@ -222,19 +196,16 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 		async handler({ trigger, session }) {
 			const startedAt = Date.now();
 			const parsed = (trigger.input ?? {}) as CodeReviewInput;
-			const cwd = resolveRunCwd(session.cwd);
+			const engine = parsed.engine === "ocr" ? "ocr" : "delegate";
+			const scope = scopeOf(parsed);
+			const cwd = resolveRunCwd(session.cwd) ?? workspaceRootOf(ctx);
 			if (!cwd) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: `当前会话没有可用的工作区目录（cwd: ${session.cwd || "空"}），无法发起审查。请在 Astravia 里打开一个项目目录后重试。`,
-						},
-					],
-				};
+				const error = `当前会话没有可用的工作区目录（会话 cwd：${session.cwd || "空"}，文件列表也没有打开的项目），无法发起审查。请在 Astravia 里打开一个项目目录后重试。`;
+				recordFailure(store, startedAt, engine, scope, error);
+				return { content: [{ type: "text", text: error }] };
 			}
-			if (parsed.engine === "ocr") {
-				return runOcrReview(ctx, store, parsed, cwd, startedAt, session.id ?? "run");
+			if (engine === "ocr") {
+				return runOcrReview(ctx, store, parsed, cwd, startedAt);
 			}
 			return runDelegateReview(ctx, store, parsed, cwd, startedAt);
 		},
@@ -245,10 +216,16 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 		name: "code_review_report",
 		label: "Code Review Report",
 		description: [
-			"Record the findings of a delegated `code_review` run so the user sees them in the 审查 (Reviews) panel.",
+			"Record the findings of a delegated `code_review` run so the user sees them in the 代码审查 (Code Review) panel.",
 			"Call it once, after you finished reviewing the brief returned by `code_review`. Pass an empty findings array when nothing is wrong.",
 			"",
-			'Input: {"findings": [{"file": "<repo-relative path>", "line": 42, "severity": "critical|major|minor|info", "message": "<what is wrong and why>", "rule": "<optional rule hint>"}], "scope": "<from code_review>", "summary": "<one paragraph>"}',
+			"Precision over recall: report only defects you verified in the diff. Do not restate the change, and do not guess.",
+			"",
+			'severity: "critical" (data loss / security / guaranteed crash) | "high" (breaks a real path) | "medium" (edge case or maintainability risk) | "low" (nit).',
+			'category: "bug" | "security" | "performance" | "maintainability" | "test" | "style" | "documentation" | "other".',
+			"existing_code / suggestion_code: paste the offending lines and the replacement verbatim (without line-number prefixes) so the panel can show a before/after diff. Omit them when the fix is not a local rewrite.",
+			"",
+			'Input: {"findings": [{"file": "<repo-relative path>", "line": 42, "end_line": 44, "severity": "high", "category": "bug", "message": "<what is wrong, when it triggers, how to fix>", "existing_code": "<verbatim>", "suggestion_code": "<verbatim>", "rule": "<optional rule hint>"}], "scope": "<from code_review>", "summary": "<one paragraph>"}',
 		].join("\n"),
 		parameters: {
 			type: "object",
@@ -261,8 +238,35 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 						properties: {
 							file: { type: "string", description: "Repo-relative path, as shown in the brief" },
 							line: { type: "number", description: "Changed line number (omit or 0 when unknown)" },
-							severity: { type: "string", enum: ["critical", "major", "minor", "info"] },
+							end_line: { type: "number", description: "Last line of the finding when it spans several lines (optional)" },
+							severity: {
+								type: "string",
+								enum: ["critical", "high", "medium", "low"],
+								description: "critical = data loss/security/crash; high = breaks a real path; medium = edge case; low = nit",
+							},
+							category: {
+								type: "string",
+								enum: [
+									"bug",
+									"security",
+									"performance",
+									"maintainability",
+									"test",
+									"style",
+									"documentation",
+									"other",
+								],
+								description: "What kind of problem this is; defaults to other when omitted",
+							},
 							message: { type: "string", description: "Concrete defect, its trigger, and the fix direction" },
+							existing_code: {
+								type: "string",
+								description: "Verbatim current code the finding points at (enables the before/after view)",
+							},
+							suggestion_code: {
+								type: "string",
+								description: "Verbatim replacement code (omit when the fix is not a local rewrite)",
+							},
 							rule: { type: "string", description: "Optional rule that flagged it" },
 						},
 						required: ["file", "message"],
@@ -277,6 +281,9 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 		async handler({ trigger }) {
 			const input = (trigger.input ?? {}) as CodeReviewReportInput;
 			const findings = normalizeFindings(input.findings);
+			// 简报阶段的覆盖度只对紧跟着的这次上报有效；消费后立即清空，避免脏数据粘到下一次。
+			const coverage = pendingCoverage;
+			pendingCoverage = null;
 			store.appendRun({
 				id: `run-${Date.now()}`,
 				startedAt: Date.now(),
@@ -286,6 +293,7 @@ export function registerReviewTool(ctx: PluginContext, store: ReviewStore): void
 				rawSummary: input.summary ?? "",
 				ok: true,
 				engine: "delegate",
+				...(coverage ? { coverage } : {}),
 			});
 			return { content: [{ type: "text", text: store.summaryForAgent() }] };
 		},
@@ -311,6 +319,81 @@ async function resolveRepoRoot(ctx: PluginContext, cwd: string): Promise<string 
 	}
 }
 
+/**
+ * 会话没绑定目录时的兜底：从 Finder 启动的宿主主进程 cwd 是 `/`，`session.cwd` 也可能是空的或根。
+ * 此时退回文件列表里的活动工作区，否则插件只能反复告诉用户「没有工作区」。
+ *
+ * 读工作区需要 `workspace.read`；没授权或旧宿主不提供该 API 时返回 null，不影响原有行为。
+ */
+function workspaceRootOf(ctx: PluginContext): string | null {
+	try {
+		const root = ctx.fileExplorer.getWorkspaceRoots()[0];
+		return root ? resolveRunCwd(root.path) : null;
+	} catch {
+		return null;
+	}
+}
+
+/** 审查范围标签：面板与工具回写的文字用同一套口径。 */
+function scopeOf(input: CodeReviewInput): string {
+	if (input.commit) return input.commit.slice(0, 10);
+	if (input.from) return `${input.from}…${input.to ?? "HEAD"}`;
+	return "workspace";
+}
+
+/**
+ * 失败也落一条运行记录。
+ *
+ * 面板是用户唯一的反馈面：只要没记录，那里就会一直挂着上一次（可能是几小时前、甚至旧版本的）
+ * 结论，看起来像「刚才这次又失败了」。
+ */
+function recordFailure(
+	store: ReviewStore,
+	startedAt: number,
+	engine: "delegate" | "ocr",
+	scope: string,
+	error: string,
+	coverage?: ReviewCoverage,
+): void {
+	store.appendRun({
+		id: `run-${startedAt}`,
+		startedAt,
+		durationMs: Date.now() - startedAt,
+		scope,
+		findings: [],
+		rawSummary: "",
+		ok: false,
+		engine,
+		...(coverage ? { coverage } : {}),
+		error,
+	});
+}
+
+/** ocr JSON 主契约是 comments[]；子集偶见 findings[]，两种都认。 */
+function pickComments(parsed: unknown): unknown {
+	if (Array.isArray(parsed)) return parsed;
+	if (typeof parsed !== "object" || parsed === null) return [];
+	const record = parsed as { comments?: unknown; findings?: unknown };
+	if (Array.isArray(record.comments)) return record.comments;
+	if (Array.isArray(record.findings)) return record.findings;
+	return [];
+}
+
+/** ocr 的项目级总结（project_summary）作为面板摘要行。 */
+function pickProjectSummary(parsed: unknown): string {
+	if (typeof parsed !== "object" || parsed === null) return "";
+	const summary = (parsed as { project_summary?: unknown }).project_summary;
+	return typeof summary === "string" ? summary.trim() : "";
+}
+
+/**
+ * 最近一次委托简报的覆盖度。
+ *
+ * 简报走工具返回值交给模型，`code_review_report` 才落库；面板要区分「没发现问题」和
+ * 「本来就没东西可审」，所以把这次简报的覆盖度暂存到报告回来。
+ */
+let pendingCoverage: ReviewCoverage | null = null;
+
 /** 委托模式：ocr 选文件 + 给规则，git 取 diff，模型自己审。 */
 async function runDelegateReview(
 	ctx: PluginContext,
@@ -319,6 +402,7 @@ async function runDelegateReview(
 	cwd: string,
 	startedAt: number,
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+	const scope = scopeOf(input);
 	let previewOut: PluginCommandRunResult;
 	// 仓库根同时用于 ocr 与 git：preview 返回的是仓库根相对路径，会话 cwd 可能只是仓库子目录。
 	const repo = await resolveRepoRoot(ctx, cwd);
@@ -329,33 +413,27 @@ async function runDelegateReview(
 			timeoutMs: 120_000,
 		});
 	} catch (error) {
-		return { content: [{ type: "text", text: await providerBlockedMessage(ctx, error) }] };
+		const message = await providerBlockedMessage(ctx, error);
+		recordFailure(store, startedAt, "delegate", scope, message, { reviewable: 0, excluded: 0, missing: 0 });
+		return { content: [{ type: "text", text: message }] };
 	}
 	if (previewOut.exitCode !== 0) {
 		const message = describeRunFailure(previewOut.stderr || previewOut.stdout, root);
-		store.appendRun({
-			id: `run-${startedAt}`,
-			startedAt,
-			durationMs: Date.now() - startedAt,
-			scope: "workspace",
-			findings: [],
-			rawSummary: "",
-			ok: false,
-			engine: "delegate",
-			error: message,
-		});
+		recordFailure(store, startedAt, "delegate", scope, message, { reviewable: 0, excluded: 0, missing: 0 });
 		return { content: [{ type: "text", text: message }] };
 	}
 
 	const preview = parsePreview(previewOut.stdout);
-	const scope = describeScope(preview);
+
+	const runScope = describeScope(preview);
 
 	if (preview.files.length === 0) {
 		store.appendRun({
 			id: `run-${startedAt}`,
 			startedAt,
 			durationMs: Date.now() - startedAt,
-			scope,
+			scope: runScope,
+			coverage: { reviewable: 0, excluded: preview.excluded.length, missing: 0 },
 			findings: [],
 			rawSummary: "",
 			ok: true,
@@ -369,7 +447,7 @@ async function runDelegateReview(
 			content: [
 				{
 					type: "text",
-					text: `工作区 ${root} 在 ${scope} 范围内没有可审查的改动。${excluded}\n无需提交 code_review_report。`,
+				text: `工作区 ${root} 在 ${runScope} 范围内没有可审查的改动。${excluded}\n无需提交 code_review_report。`,
 				},
 			],
 		};
@@ -388,9 +466,15 @@ async function runDelegateReview(
 	}
 
 	const diffs = new Map<string, string>();
+	const deleted: string[] = [];
 	let gitBlocked = false;
 	for (const file of preview.files.slice(0, MAX_DIFF_FILES)) {
-		if (file.status === "deleted") continue;
+		// 已删除的文件没有新内容可读，从「missing（需自行读取）」里拿出来，
+		// 在简报里单独列出，免得模型去读一个不存在的文件。
+		if (file.status === "deleted") {
+			deleted.push(file.path);
+			continue;
+		}
 		const diff = await readDiff(ctx, preview, root, file.path);
 		if (diff === null) {
 			gitBlocked = true;
@@ -399,8 +483,17 @@ async function runDelegateReview(
 		diffs.set(file.path, diff);
 	}
 
-	const { files, missing } = selectDiffBudget(preview, diffs);
-	const brief = composeBrief({ root, preview, rules, files, missing });
+	const { files, missing: missingAll } = selectDiffBudget(preview, diffs);
+	// 已删除的文件不进 missing（没有内容可读），单独列一节，免得模型去读不存在的文件。
+	const deletedSet = new Set(deleted);
+	const missing = missingAll.filter((path) => !deletedSet.has(path));
+	const deletedListed = deleted.map((p) => `- \`${p}\`（已删除，内容已不存在）`).join("\n");
+	const brief = composeBrief({ root, preview, rules, files, missing }) + (deletedListed ? `\n\n已删除的文件（不在上面 diff 里）：\n${deletedListed}` : "");
+	pendingCoverage = {
+		reviewable: preview.reviewable,
+		excluded: preview.excluded.length,
+		missing: gitBlocked ? preview.files.length : missing.length,
+	};
 
 	const guide = [
 		"---",
@@ -410,7 +503,8 @@ async function runDelegateReview(
 			: missing.length > 0
 				? "没取到 diff 的文件请自行读取后再审查，不要凭文件名下结论。"
 				: "",
-		"审完后调用 code_review_report 提交发现（没有发现就传空数组），用户会在「审查」面板看到结果。",
+		"审完后调用 code_review_report 提交发现（没有发现就传空数组），用户会在「代码审查」面板看到结果。",
+		"每条发现带上 category（bug/security/performance/maintainability/test/style/documentation/other）；能贴出原文与改法时再带 existing_code / suggestion_code，面板会渲染成对照视图。",
 	]
 		.filter(Boolean)
 		.join("\n");
@@ -425,55 +519,53 @@ async function runOcrReview(
 	input: CodeReviewInput,
 	cwd: string,
 	startedAt: number,
-	sessionId: string,
 ): Promise<{ content: Array<{ type: "text"; text: string }> }> {
-	const scope = input.commit ? input.commit.slice(0, 10) : input.from ? `${input.from}…${input.to ?? "HEAD"}` : "workspace";
-	const tmp = `/tmp/as-ocr-${sessionId}-${startedAt}.json`;
+	const scope = scopeOf(input);
 	let outcome: PluginCommandRunResult;
 	try {
-		outcome = await ctx.cliProviders.run(OCR_PROVIDER_ID, buildOcrArgs(input, tmp), {
+		outcome = await ctx.cliProviders.run(OCR_PROVIDER_ID, buildOcrArgs(input), {
 			cwd,
 			timeoutMs: 600_000,
 		});
 	} catch (error) {
-		return { content: [{ type: "text", text: await providerBlockedMessage(ctx, error) }] };
+		const message = await providerBlockedMessage(ctx, error);
+		recordFailure(store, startedAt, "ocr", scope, message);
+		return { content: [{ type: "text", text: message }] };
 	}
 
 	if (outcome.exitCode === null || /not found|ENOENT/i.test(outcome.stderr)) {
-		return {
-			content: [
-				{
-					type: "text",
-					text: `ocr 调用未成功：${outcome.stderr.slice(0, 200) || "可执行文件未响应"}。插件启用后宿主会自动安装 ocr，进度见「审查」面板；也可手动安装：${OCR_MANUAL_INSTALL}`,
-				},
-			],
-		};
+		const detail = outcome.stderr.slice(0, 200) || "可执行文件未响应";
+		const message = `ocr 调用未成功：${detail}。插件启用后宿主会自动安装 ocr，进度见「代码审查」面板；也可手动安装：${OCR_MANUAL_INSTALL}`;
+		recordFailure(store, startedAt, "ocr", scope, message);
+		return { content: [{ type: "text", text: message }] };
 	}
 
 	let findings: ReviewFinding[] = [];
+	let rawSummary = "";
+	let parseIssue: string | undefined;
 	if (outcome.exitCode === 0) {
 		try {
-			const fileResult = await ctx.fs.readFile(tmp);
-			const parsedJson: unknown = JSON.parse(fileResult.content);
-			findings = normalizeFindings(
-				Array.isArray(parsedJson) ? parsedJson : ((parsedJson as { findings?: unknown[] }).findings ?? []),
-			);
+			const parsedJson: unknown = JSON.parse(outcome.stdout);
+			findings = normalizeFindings(pickComments(parsedJson));
+			rawSummary = pickProjectSummary(parsedJson);
 		} catch {
-			/* JSON 解析失败按空结果处理 */
+			// stdout 不是合法 JSON：这是插件契约被破坏（上游保证 json 格式下 stdout 只有一份文档），
+			// 不能静默当「审完零发现」，否则面板会把失败伪装成通过。
+			parseIssue = `ocr 返回的结果不是可解析的 JSON（stdout 前 200 字：${outcome.stdout.slice(0, 200) || "空"}）`;
 		}
 	}
 
-	const ok = outcome.exitCode === 0;
+	const ok = outcome.exitCode === 0 && !parseIssue;
 	const run: ReviewRun = {
 		id: `run-${startedAt}`,
 		startedAt,
 		durationMs: Date.now() - startedAt,
 		scope,
 		findings,
-		rawSummary: "",
+		rawSummary,
 		ok,
 		engine: "ocr",
-		...(ok ? {} : { error: describeRunFailure(outcome.stderr, cwd) }),
+		...(ok ? {} : { error: parseIssue ?? describeRunFailure(outcome.stderr, cwd) }),
 	};
 	store.appendRun(run);
 
@@ -481,7 +573,7 @@ async function runOcrReview(
 		content: [
 			{
 				type: "text",
-				text: ok ? store.summaryForAgent() : `ocr failed: ${describeRunFailure(outcome.stderr, cwd)}`,
+			text: ok ? store.summaryForAgent() : `ocr failed: ${parseIssue ?? describeRunFailure(outcome.stderr, cwd)}`,
 			},
 		],
 	};

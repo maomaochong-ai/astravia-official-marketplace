@@ -19,7 +19,7 @@
 				},
 				{
 					"title": "按严重级别排序",
-					"description": "critical / major / minor / info 分组展示，阻断项排在最前面。",
+					"description": "critical / high / medium / low 分级，按文件分组并附类别标签，阻断项排在最前面。",
 					"icon": "assets/icons/list-check-bold.svg"
 				},
 				{
@@ -28,8 +28,8 @@
 					"icon": "assets/icons/bot-bold.svg"
 				},
 				{
-					"title": "审查标签页",
-					"description": "活动面板里保留每次运行的范围、耗时与 file:line 级发现。",
+					"title": "代码审查标签页",
+					"description": "每次运行都保留范围与耗时：可按级别/类别筛选，按文件分组查看带原文/建议对照的发现，把处理过的标为已修复或忽略。",
 					"icon": "assets/icons/clipboard-check-bold.svg"
 				}
 			]
@@ -40,7 +40,7 @@
 				"template": "chat-over-canvas",
 				"canvas": "code",
 				"user_prompt": "审查一下我的改动。",
-				"assistant_reply": "审查完成：2 个 critical、3 个 major。critical · src/parser/reader.ts:88 —— 取值前未判空。"
+				"assistant_reply": "审查完成：2 个严重、3 个高。严重 · src/parser/reader.ts:88 —— 取值前未判空。附了建议改法，修完标「已修复」就会隐藏。"
 			}
 		},
 		{
