@@ -71,8 +71,10 @@ export function activateReaAgentIntegration(
 		handler: () => {
 			const recoveredAt = store.peekRecoveryNotice();
 			if (recoveredAt === null) return null;
-			// 没有做过 REA 工作时不要拿这件事打断会话。
-			if (store.getSnapshot().callCount === 0) {
+			const { sessionId } = store.getSnapshot();
+			// 只为本会话自身的引擎中断续跑：换过会话、或本会话根本没调过 REA，
+			// 都不能拿一句话打断用户当前的话题。
+			if (!store.recoveryAppliesTo(sessionId) || store.sessionCallCount() === 0) {
 				store.consumeRecoveryNotice();
 				return null;
 			}

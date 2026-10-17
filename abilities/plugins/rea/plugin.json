@@ -1,7 +1,7 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.3.9",
+  "version": "0.4.0",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -23,7 +23,8 @@
     "agent.continuation.register",
     "agent.session.read",
     "agent.session.write",
-    "agent.command.run"
+    "agent.command.run",
+    "agent.command.spawn"
   ],
   "commands": [
     "node",

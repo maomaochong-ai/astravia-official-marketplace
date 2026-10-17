@@ -13,7 +13,13 @@
  */
 import "./style.css";
 import type { JSX } from "react";
-import type { Disposable, PluginCommandRunResult, PluginContext, SendPromptResult } from "@astravia-org/plugin-sdk";
+import type {
+	Disposable,
+	PluginCommandRunResult,
+	PluginCommandSpawnHandle,
+	PluginContext,
+	SendPromptResult,
+} from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import {
 	ReaWorkflowTab,
@@ -39,6 +45,9 @@ const reaIcon = (): JSX.Element => (
 );
 
 function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
+	// 旧宿主可能还没有 spawn（长驻进程通道）：探测不到就整条通道为 null，
+	// 面板退回只给可复制命令，而不是给一个点了报错的按钮。
+	const spawnCli = typeof ctx.cliProviders.spawn === "function" ? ctx.cliProviders.spawn.bind(ctx.cliProviders) : null;
 	return {
 		getStatus: () => ctx.cliProviders.getStatus(REA_PROVIDER_ID),
 		onStatusChanged: (listener) =>
@@ -47,6 +56,7 @@ function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
 			}),
 		retry: () => ctx.cliProviders.retry(REA_PROVIDER_ID),
 		run: (args, options) => ctx.cliProviders.run(REA_PROVIDER_ID, [...args], options),
+		spawn: spawnCli === null ? null : (args, options) => spawnCli(REA_PROVIDER_ID, [...args], options),
 	};
 }
 
@@ -86,6 +96,21 @@ function createCommandRunner(
 }
 
 /**
+ * 长驻命令通道：一键安装要「看得到过程、停得下来」，`run` 两者都做不到。
+ *
+ * 需要 `agent.command.spawn` 权限 + `plugin.json` 声明；缺失时整条通道为 null，
+ * 面板会退回只给可复制命令，而不是给一个点了没反应的按钮。
+ */
+function createCommandSpawner(
+	ctx: PluginContext,
+): ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>) | null {
+	// 旧宿主没有 spawn 时直接不给通道——不能返回一个必然抛错的函数。
+	if (typeof ctx.command?.spawn !== "function") return null;
+	const spawn = ctx.command.spawn.bind(ctx.command);
+	return async (file, args) => spawn(file, [...args], {});
+}
+
+/**
  * 实时层：会话事件 → 快照；引擎自愈；Agent 侧提示与自检工具。
  *
  * 逐段 try：任何一段失败只降级这部分能力，不让整次 activate 抛错——tab 与输入栏入口
@@ -114,6 +139,7 @@ export default definePlugin({
 		const sendPrompt = createPromptSender(ctx);
 		const insertPrompt = createPromptWriter(ctx);
 		const runCommand = createCommandRunner(ctx);
+		const spawnCommand = createCommandSpawner(ctx);
 		const store = new ReaLiveStore();
 
 		// UI 槽位先注册：它是插件的可见入口，不能因为后面某一层不可用就整个消失。
@@ -131,6 +157,7 @@ export default definePlugin({
 					sendPrompt={sendPrompt}
 					insertPrompt={insertPrompt}
 					runCommand={runCommand}
+					spawnCommand={spawnCommand}
 				/>
 			),
 		});

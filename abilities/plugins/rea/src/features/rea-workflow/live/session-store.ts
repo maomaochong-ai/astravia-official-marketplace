@@ -170,6 +170,10 @@ export class ReaLiveStore {
 	private readonly listeners = new Set<() => void>();
 	private callIndex = new Map<string, ReaLiveCall>();
 	private pendingRecoveryNotice: number | null = null;
+	/** 置位时所在的会话；切到别的会话就作废——旧会话的中断不应该打断新会话。 */
+	private pendingRecoverySession: string | null = null;
+	/** 本会话内的 REA 调用数（跨会话不累加）。 */
+	private sessionCalls = 0;
 
 	subscribe = (listener: () => void): (() => void) => {
 		this.listeners.add(listener);
@@ -184,6 +188,7 @@ export class ReaLiveStore {
 	consumeRecoveryNotice(): number | null {
 		const value = this.pendingRecoveryNotice;
 		this.pendingRecoveryNotice = null;
+		this.pendingRecoverySession = null;
 		return value;
 	}
 
@@ -191,8 +196,21 @@ export class ReaLiveStore {
 		return this.pendingRecoveryNotice;
 	}
 
+	/** 这条恢复提示是不是当前会话产生的。 */
+	recoveryAppliesTo(sessionId: string | null): boolean {
+		return this.pendingRecoveryNotice !== null && sessionId !== null && this.pendingRecoverySession === sessionId;
+	}
+
+	/** 当前会话内的 REA 调用数（跨会话不累加，用来判断本会话到底做过逆向没有）。 */
+	sessionCallCount(): number {
+		return this.sessionCalls;
+	}
+
 	reset(): void {
 		this.callIndex = new Map();
+		this.pendingRecoveryNotice = null;
+		this.pendingRecoverySession = null;
+		this.sessionCalls = 0;
 		this.commit((state) => ({
 			...state,
 			calls: [],
@@ -214,8 +232,12 @@ export class ReaLiveStore {
 		const previous = this.state.providerPhase;
 		const message_ = message ?? null;
 		if (previous === phase && this.state.providerMessage === message_) return;
-		const recovered = previous !== null && previous !== "ready" && phase === "ready";
-		if (recovered) this.pendingRecoveryNotice = Date.now();
+		// 只有「真的坏过又好了」才算恢复。checking / installing / verifying → ready 是
+		// 正常启动握手，把它当恢复会每次新会话都往对话里塞一条续跑指令。
+		if (previous === "failed" && phase === "ready" && this.state.sessionId !== null) {
+			this.pendingRecoveryNotice = Date.now();
+			this.pendingRecoverySession = this.state.sessionId;
+		}
 		this.commit((state) => ({ ...state, providerPhase: phase, providerMessage: message_ }));
 	}
 
@@ -236,13 +258,20 @@ export class ReaLiveStore {
 			case "turn-end":
 				this.commit((state) => ({ ...state, lastActivityAt: Date.now() }));
 				return;
-			case "conversation-changed":
+			case "conversation-changed": {
+				// 换会话：本会话计数归零，属于上个会话的恢复提示直接作废。
+				this.sessionCalls = 0;
+				if (this.pendingRecoverySession !== event.conversation.id) {
+					this.pendingRecoveryNotice = null;
+					this.pendingRecoverySession = null;
+				}
 				this.commit((state) => ({
 					...state,
 					sessionId: event.conversation.id,
 					cwd: event.conversation.cwd,
 				}));
 				return;
+			}
 			case "message-added": {
 				// 用户消息里通常已经写清目标（路径/URL/产品类型）。只采信 role=user，
 				// 模型自己说的话不能当作用户意图。
@@ -326,6 +355,7 @@ export class ReaLiveStore {
 			cwd: this.state.cwd,
 		};
 		this.callIndex.set(id, call);
+		this.sessionCalls += 1;
 		this.commit((state) => {
 			const calls = [...state.calls, call].slice(-MAX_CALLS);
 			return {
@@ -360,6 +390,7 @@ export class ReaLiveStore {
 				cwd: this.state.cwd,
 			};
 			this.callIndex.set(id, call);
+			this.sessionCalls += 1;
 			this.commit((state) => {
 				const calls = [...state.calls, call].slice(-MAX_CALLS);
 				return {

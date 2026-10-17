@@ -11,7 +11,7 @@
 
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
+import type { PluginCommandRunResult, PluginCommandSpawnHandle } from "@astravia-org/plugin-sdk";
 import type { DoctorReport } from "../hooks/use-doctor-report";
 import type { ReaLiveCall } from "../live/session-store";
 import { TARGETS, getTarget, type TargetKind } from "../data/targets";
@@ -30,6 +30,8 @@ export interface ReaWorkflowTargetRoutingProps {
 	readonly report: DoctorReport;
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
 	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
+	readonly spawnRea: ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
+	readonly spawnCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>) | null;
 	readonly cwd: string | null;
 	readonly onPick: (kind: TargetKind) => void;
 	readonly onClear: () => void;
@@ -47,6 +49,8 @@ export function ReaWorkflowTargetRouting({
 	run,
 	cwd,
 	runCommand,
+	spawnRea,
+	spawnCommand,
 	onPick,
 	onClear,
 	onFollowDetected,
@@ -139,7 +143,17 @@ export function ReaWorkflowTargetRouting({
 			</div>
 
 			{active ? (
-				<TargetDetail kind={active} calls={calls} running={running} report={report} run={run} runCommand={runCommand} cwd={cwd} />
+				<TargetDetail
+					kind={active}
+					calls={calls}
+					running={running}
+					report={report}
+					run={run}
+					runCommand={runCommand}
+					spawnRea={spawnRea}
+					spawnCommand={spawnCommand}
+					cwd={cwd}
+				/>
 			) : (
 				<p className="mt-1 text-[10.5px] leading-snug text-muted-foreground" title={t("tab.target.noSignalHint")}>
 					{t("tab.target.noSignalHint")}
@@ -156,16 +170,38 @@ interface TargetDetailProps {
 	readonly report: DoctorReport;
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
 	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
+	readonly spawnRea: ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
+	readonly spawnCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>) | null;
 	readonly cwd: string | null;
 }
 
-function TargetDetail({ kind, calls, running, report, run, runCommand, cwd }: TargetDetailProps): JSX.Element {
+function TargetDetail({
+	kind,
+	calls,
+	running,
+	report,
+	run,
+	runCommand,
+	spawnRea,
+	spawnCommand,
+	cwd,
+}: TargetDetailProps): JSX.Element {
 	const { t } = useTranslation();
 	const target = getTarget(kind);
 	return (
 		<div className="mt-2 rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2.5 py-1.5">
 			<p className="text-[11px] leading-relaxed text-foreground/90">{t(target.hintKey)}</p>
-			<ReaToolReadiness target={kind} calls={calls} running={running} report={report} run={run} runCommand={runCommand} cwd={cwd} />
+			<ReaToolReadiness
+				target={kind}
+				calls={calls}
+				running={running}
+				report={report}
+				run={run}
+				runCommand={runCommand}
+				spawnRea={spawnRea}
+				spawnCommand={spawnCommand}
+				cwd={cwd}
+			/>
 		</div>
 	);
 }

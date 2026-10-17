@@ -13,7 +13,12 @@
 
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { useActivityTab, useTranslation } from "@astravia-org/plugin-sdk";
-import type { PluginCliProviderStatus, PluginCommandRunResult, SendPromptResult } from "@astravia-org/plugin-sdk";
+import type {
+	PluginCliProviderStatus,
+	PluginCommandRunResult,
+	PluginCommandSpawnHandle,
+	SendPromptResult,
+} from "@astravia-org/plugin-sdk";
 import { ReaProviderStatusBar } from "./rea-provider-status-bar";
 import { ReaLiveStatus } from "./rea-live-status";
 import { ReaLiveCallLog } from "./rea-live-call-log";
@@ -35,6 +40,8 @@ export interface ReaProviderBridge {
 	retry(): Promise<void>;
 	/** 运行 `npx -y rea-agents@latest <args>`；args 不含包名前缀。 */
 	run(args: readonly string[], options: { cwd?: string; timeoutMs: number }): Promise<PluginCommandRunResult>;
+	/** 同一个 provider 的长驻进程（安装用；可看输出、可停止）。 */
+	spawn: ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
 }
 
 export interface ReaWorkflowTabProps {
@@ -47,6 +54,8 @@ export interface ReaWorkflowTabProps {
 	readonly insertPrompt: (prompt: string) => boolean;
 	/** 直接执行外部命令（工具探测 / brew 安装）；无 `agent.command.run` 时为 null。 */
 	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
+	/** 长驻进程：brew 安装要能看过程、能中途取消；无 `agent.command.spawn` 时为 null。 */
+	readonly spawnCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>) | null;
 }
 
 export function ReaWorkflowTab({
@@ -55,6 +64,7 @@ export function ReaWorkflowTab({
 	sendPrompt,
 	insertPrompt,
 	runCommand,
+	spawnCommand,
 }: ReaWorkflowTabProps): JSX.Element {
 	const { t } = useTranslation();
 	const { active, cwd } = useActivityTab();
@@ -133,6 +143,8 @@ export function ReaWorkflowTab({
 					report={report}
 					run={provider.run}
 					runCommand={runCommand}
+					spawnRea={provider.spawn}
+					spawnCommand={spawnCommand}
 					cwd={cwd ?? null}
 				/>
 				<div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">

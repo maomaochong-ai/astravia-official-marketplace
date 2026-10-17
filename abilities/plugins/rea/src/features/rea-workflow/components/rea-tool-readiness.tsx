@@ -16,12 +16,13 @@
 import { useCallback, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
+import type { PluginCommandRunResult, PluginCommandSpawnHandle } from "@astravia-org/plugin-sdk";
 import { StatusChip } from "../../../shared/components/status-chip";
 import { copyText } from "../../../shared/services/clipboard";
 import type { TargetKind } from "../data/targets";
 import type { DoctorReport } from "../hooks/use-doctor-report";
 import { useToolInstall } from "../hooks/use-tool-install";
+import { ReaInstallProgress } from "./rea-install-progress";
 import { useToolProbes } from "../hooks/use-tool-probes";
 import {
 	resolveReadiness,
@@ -36,6 +37,8 @@ import { requiredTools, runningRequirementIds } from "../live/tool-requirements"
 
 type ReaRunner = (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
 type CommandRunner = (file: string, args: readonly string[]) => Promise<PluginCommandRunResult>;
+type ReaSpawner = (args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>;
+type CommandSpawner = (file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>;
 
 interface ToolReadinessProps {
 	readonly target: TargetKind | null;
@@ -45,6 +48,9 @@ interface ToolReadinessProps {
 	readonly report: DoctorReport;
 	readonly run: ReaRunner;
 	readonly runCommand: CommandRunner | null;
+	/** 长驻进程通道：安装要能看过程、能中途取消，run 做不到。 */
+	readonly spawnRea: ReaSpawner | null;
+	readonly spawnCommand: CommandSpawner | null;
 	readonly cwd: string | null;
 }
 
@@ -67,6 +73,8 @@ export function ReaToolReadiness({
 	report,
 	run,
 	runCommand,
+	spawnRea,
+	spawnCommand,
 	cwd,
 }: ToolReadinessProps): JSX.Element {
 	const { t } = useTranslation();
@@ -83,7 +91,7 @@ export function ReaToolReadiness({
 		report.recheck();
 	}, [probeState, report]);
 
-	const install = useToolInstall({ runRea: run, runCommand, cwd, onFinished: recheckAll });
+	const install = useToolInstall({ spawnRea, spawnCommand, cwd, onFinished: recheckAll });
 
 	const items = useMemo(
 		() =>
@@ -224,6 +232,18 @@ export function ReaToolReadiness({
 					</StatusChip>
 				)}
 			</div>
+
+			{install.progress !== null ? (
+				<ReaInstallProgress
+					progress={install.progress}
+					label={
+						items.find((item) => item.requirement.id === install.progress?.toolId)?.requirement.label ??
+						install.progress.toolId
+					}
+					onCancel={install.cancel}
+					onDismiss={install.dismiss}
+				/>
+			) : null}
 
 			{runningItems.length > 0 ? section("tab.tools.section.running", runningItems) : null}
 			{section("tab.tools.section.missing", missing)}

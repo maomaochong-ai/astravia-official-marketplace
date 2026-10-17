@@ -7,7 +7,7 @@
 
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { PluginCommandRunResult } from "@astravia-org/plugin-sdk";
+import type { PluginCommandRunResult, PluginCommandSpawnHandle } from "@astravia-org/plugin-sdk";
 import type { TargetKind } from "../data/targets";
 import type { DoctorReport } from "../hooks/use-doctor-report";
 import type { Workbench } from "../hooks/use-workbench";
@@ -23,6 +23,8 @@ interface WorkbenchProps {
 	readonly report: DoctorReport;
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
 	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
+	readonly spawnRea: ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
+	readonly spawnCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>) | null;
 	readonly cwd: string | null;
 }
 
@@ -47,6 +49,8 @@ export function ReaWorkbench({
 	report,
 	run,
 	runCommand,
+	spawnRea,
+	spawnCommand,
 	cwd,
 }: WorkbenchProps): JSX.Element {
 	const { t } = useTranslation();
@@ -82,6 +86,8 @@ export function ReaWorkbench({
 				report={report}
 				run={run}
 				runCommand={runCommand}
+				spawnRea={spawnRea}
+				spawnCommand={spawnCommand}
 				cwd={cwd}
 				onPick={workbench.pick}
 				onClear={workbench.clearPick}
@@ -129,7 +135,7 @@ export function ReaWorkbench({
 								? t("tab.workbench.targetRequired")
 								: t("tab.workbench.handoffHint")
 					}
-					className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),8px)] border border-primary/40 bg-primary/10 px-2 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground"
+					className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 text-[11px] font-medium text-primary shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:shadow-none"
 				>
 					{feedback === "sending" ? (
 						<span aria-hidden className="icon-[lucide--loader-circle] size-3 motion-safe:animate-spin" />

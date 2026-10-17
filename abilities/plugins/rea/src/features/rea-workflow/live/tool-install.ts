@@ -7,6 +7,11 @@
  *   brew    Homebrew 装完即可被 REA 直接用到，属于真正的一键安装
  *   manual  需要授权、需要设置应用看不到的环境变量、或装完还得再配置——只给可复制的命令
  *
+ * brew 只收「装完命令就在 PATH 上、REA 立刻能调」的 formula：
+ *   wireshark 用 formula 而不是 `--cask wireshark`（cask 要管理员密码改 dumpcap 权限，
+ *   而且我们只需要 tshark / capinfos 两个 CLI）；binutils 是 keg-only，装完 objdump
+ *   依然不在 PATH 上，所以留在 manual 里说清楚。
+ *
  * manual 里 ghidra 尤其要说清：装了 Ghidra 还得让 `GHIDRA_INSTALL_DIR` 出现在
  * Astravia 主进程的环境里，否则 REA 依然用不了。pwntools / pwndbg 走 Python / gdb
  * 生态同样不在应用能管的范围内。所以这些都不给「一键安装」，避免装完还是红的。
@@ -32,12 +37,12 @@ export const INSTALL_RECIPES: Readonly<Record<string, InstallRecipe>> = {
 	wabt: { kind: "brew", args: ["install", "wabt"] },
 	mitmdump: { kind: "brew", args: ["install", "mitmproxy"] },
 	ghidra: { kind: "manual", command: "brew install --cask ghidra" },
-	jadx: { kind: "manual", command: "brew install jadx" },
+	jadx: { kind: "brew", args: ["install", "jadx"] },
 	cutter: { kind: "manual", command: "brew install --cask cutter" },
 	objdump: { kind: "manual", command: "brew install binutils" },
-	tshark: { kind: "manual", command: "brew install --cask wireshark" },
-	capinfos: { kind: "manual", command: "brew install --cask wireshark" },
-	sigrok: { kind: "manual", command: "brew install sigrok-cli" },
+	tshark: { kind: "brew", args: ["install", "wireshark"] },
+	capinfos: { kind: "brew", args: ["install", "wireshark"] },
+	sigrok: { kind: "brew", args: ["install", "sigrok-cli"] },
 	frida: { kind: "manual", command: "pip3 install --user frida-tools" },
 	pwntools: { kind: "manual", command: "pip3 install --user pwntools" },
 	pwndbg: { kind: "manual", command: "brew install pwndbg" },
@@ -54,4 +59,11 @@ export function installRecipeFor(id: string): InstallRecipe | null {
 /** 真正能由插件直接执行的一键安装（rea / brew）。 */
 export function isOneClick(recipe: InstallRecipe | null): boolean {
 	return recipe !== null && (recipe.kind === "rea" || recipe.kind === "brew");
+}
+
+/** 一行人类可读的命令，用于「正在安装」这一行的副标题与复制内容。 */
+export function describeRecipe(recipe: InstallRecipe): string {
+	if (recipe.kind === "rea") return `rea ${(recipe.args ?? []).join(" ")}`.trim();
+	if (recipe.kind === "brew") return `brew ${(recipe.args ?? []).join(" ")}`.trim();
+	return recipe.command ?? "";
 }

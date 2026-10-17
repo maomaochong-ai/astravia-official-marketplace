@@ -79,7 +79,7 @@ function ConnectDecisionTree({ calls, running }: DiagramProps): JSX.Element {
 				live={dryRun}
 			/>
 			<ReaDiagramConnector state={resolveEdgeState(dryRun, handoff)} />
-			<ReaDiagramNode tone="quiet" title={`→ route (${t("tab.diagram.nextStage")})`} live={handoff} />
+			<ReaDiagramNode tone="quiet" title={`route (${t("tab.diagram.nextStage")})`} live={handoff} />
 		</ReaDiagramFrame>
 	);
 }
@@ -130,7 +130,7 @@ function RouteFanOut({ calls, running }: DiagramProps): JSX.Element {
 				live={mode}
 			/>
 			<ReaDiagramConnector state={resolveEdgeState(mode, handoff)} />
-			<ReaDiagramNode tone="quiet" title={`→ summary (${t("tab.diagram.nextStage")})`} live={handoff} />
+			<ReaDiagramNode tone="quiet" title={`summary (${t("tab.diagram.nextStage")})`} live={handoff} />
 		</ReaDiagramFrame>
 	);
 }
@@ -172,7 +172,7 @@ function SummaryFiveFields({ calls, running }: DiagramProps): JSX.Element {
 				))}
 			</div>
 			<ReaDiagramConnector state={resolveEdgeState(report, handoff)} />
-			<ReaDiagramNode tone="quiet" title={`→ plan (${t("tab.diagram.nextStage")})`} live={handoff} />
+			<ReaDiagramNode tone="quiet" title={`plan (${t("tab.diagram.nextStage")})`} live={handoff} />
 		</ReaDiagramFrame>
 	);
 }
@@ -252,7 +252,7 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 				))}
 			</div>
 			<ReaDiagramConnector label={t("tab.diagram.plan.loopHint")} state={resolveEdgeState(steps[0]?.live ?? handoff, handoff)} />
-			<ReaDiagramNode tone="quiet" title={`→ ${t("tab.diagram.plan.handoff")}`} live={handoff} />
+			<ReaDiagramNode tone="quiet" title={t("tab.diagram.plan.handoff")} live={handoff} />
 		</ReaDiagramFrame>
 	);
 }
@@ -306,7 +306,7 @@ function ReadReferencesRouting({ calls, running }: DiagramProps): JSX.Element {
 				))}
 			</div>
 			<ReaDiagramConnector state={resolveEdgeState(refs[0]?.live ?? summary, handoff)} />
-			<ReaDiagramNode tone="quiet" title={`→ ${t("tab.diagram.read.handoff")}`} live={handoff} />
+			<ReaDiagramNode tone="quiet" title={t("tab.diagram.read.handoff")} live={handoff} />
 		</ReaDiagramFrame>
 	);
 }
