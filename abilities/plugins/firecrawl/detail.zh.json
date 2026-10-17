@@ -1,0 +1,94 @@
+{
+	"schemaVersion": 1,
+	"blocks": [
+		{
+			"type": "hero",
+			"eyebrow": "网页阅读",
+			"title": "把需要的网页变成 Agent 能直接读的 Markdown",
+			"description": "单页抓取、列出站点链接、按深度爬取某个栏目。每次抓取都会出现在带特效的蜘蛛控制台里，同时告诉你哪些链接被跳过、被哪条规则跳过。",
+			"badges": ["无需 API Key", "任意网址可用", "遵守 robots.txt"]
+		},
+		{
+			"type": "showcase",
+			"showcase": {
+				"template": "chat-thread",
+				"user_prompt": "把 Astravia 插件文档 /docs/plugin 爬一遍，告诉我做一个活动面板标签页需要声明什么。",
+				"assistant_reply": "抓取了 /docs/plugin 下 9 个页面（上限 12 页、深度 2、用上了 sitemap）。标签页契约在 ui-slots.md：零 props 组件、必须声明 scope_use，并且 UI 必须留在面板矩形内，不能用 fixed 定位或 portal。有两条更新日志链接因为不在 /docs/plugin 范围内被拒绝，还有一条 /blog 链接命中了排除规则。"
+			}
+		},
+		{
+			"type": "feature-grid",
+			"title": "它能做什么",
+			"items": [
+				{
+					"title": "三个工具各司其职",
+					"description": "firecrawl_scrape 抓单页，firecrawl_map 只列 URL 不下载，firecrawl_crawl 按广度优先读多页。",
+					"icon": "solar:layers-minimalistic-linear"
+				},
+				{
+					"title": "给的是 Markdown，不是原始 HTML",
+					"description": "先抽取正文，去掉导航、Cookie 提示与页脚；剩余部分转成 Markdown。正文抽不出来时回退到整页转换，不会给你一个空页面。",
+					"icon": "solar:document-text-linear"
+				},
+				{
+					"title": "老老实实说明跳过了什么",
+					"description": "每条被拒链接都带原因——深度、范围、路径规则、robots.txt、文件类型、社交媒体——并汇总数量，而不是悄悄少给你几页。",
+					"icon": "solar:shield-check-linear"
+				},
+				{
+					"title": "蜘蛛控制台",
+					"description": "起始页在中心，每向外一圈就是多一跳。正在抓取的那一页上方落着蜘蛛，请求沿连线飞出；被拒的链接留成虚线，不会凭空消失。",
+					"icon": "solar:graph-new-linear"
+				},
+				{
+					"title": "Agent 与面板共用同一次任务",
+					"description": "Agent 发起的爬取会直接驱动你已经打开的控制台；你在面板里发起的爬取，走的是完全相同的规则。",
+					"icon": "solar:refresh-circle-linear"
+				},
+				{
+					"title": "默认守规矩",
+					"description": "遵守 robots.txt 与 crawl-delay，从 robots.txt 读 sitemap，默认不越出起始地址所在目录。",
+					"icon": "solar:leaf-linear"
+				}
+			]
+		},
+		{
+			"type": "markdown",
+			"content": "## 怎么看这张蜘蛛网\n\n- **中心点** —— 你开始的页面；每向外一圈代表多一跳链接。\n- **实心点** —— 已抓取并转换完成。**虚线空心点** —— 链接被拒绝，控制台里有具体原因。\n- **带光环的蜘蛛** —— 正在抓取这一页；沿连线移动的小点就是这次请求。\n- **红色 ×** —— 请求失败（超时、HTTP 错误、不支持的内容类型）。\n\n只有标签页可见且爬取进行中才会播放动画；系统开启「减少动态效果」时自动关闭。"
+		},
+		{
+			"type": "steps",
+			"title": "开始使用",
+			"items": [
+				{
+					"title": "安装并启用插件",
+					"description": "活动面板出现「爬虫控制台」标签，Agent 获得三个 firecrawl 工具与对应技能。"
+				},
+				{
+					"title": "打开爬虫面板",
+					"description": "点输入框上方的蜘蛛图标、在输入框敲 /firecrawl，或在技能菜单里选 Firecrawl。"
+				},
+				{
+					"title": "粘贴网址开始爬取",
+					"description": "默认 12 页、深度 2。需要更多再放宽选项；被拒绝的链接控制台会逐个说明。"
+				},
+				{
+					"title": "或者直接说一句",
+					"description": "「把 example.com/docs 爬一遍并总结 API 页面」。Agent 会自己选工具，同一个控制台同步演示。"
+				}
+			]
+		},
+		{
+			"type": "callout",
+			"tone": "warning",
+			"content": "它是纯 HTTP 抓取：不执行 JavaScript、不登录、不提交表单，所以客户端渲染的应用和需要登录的页面会拿到很少内容甚至为空。请求从你的机器发出；robots.txt 的拒绝会被如实报告，不会绕过。"
+		},
+		{
+			"type": "links",
+			"items": [
+				{ "label": "Firecrawl 项目", "href": "https://github.com/firecrawl/firecrawl" },
+				{ "label": "爬虫行为说明", "href": "https://github.com/firecrawl/firecrawl#readme" }
+			]
+		}
+	]
+}
