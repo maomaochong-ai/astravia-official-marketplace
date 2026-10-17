@@ -1,10 +1,9 @@
 /**
- * 实时总览条：引擎状态 + 目标 + 阶段计数 + 当前动作 + 最近目标。
+ * 实时总览条：引擎状态 + 目标 + 执行环（覆盖度 / 当前步骤）+ 最近目标。
  *
- * 布局必须稳定：内容随会话增长时不能把下面的工作台和阶段区顶来顶去。
- * 所以四块都是「固定行数 + 单行截断」，不再用「有数据才渲染」的条件行：
- *   - 阶段条用 grid，窄宽度换 3 列 × 2 行，行数恒定；
- *   - 当前动作与最近目标各占一行固定高度，没内容时渲染占位。
+ * 布局必须稳定：内容随会话增长时不能把下面的工作台和阶段区顶来顶去，
+ * 所以每块都是「固定行数 + 单行截断」：执行环的轨道与步骤行高度恒定，
+ * 最近目标没内容时渲染占位而不是消失。
  *
  * 目标类型不是用户选的，是从真实工具调用里推断出来的，这里显示「识别到」并允许
  * 一键填进宿主对话（同时填进工作台），避免用户复制粘贴。
@@ -15,8 +14,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { StatusChip, type StatusTone } from "../../../shared/components/status-chip";
 import type { TargetKind } from "../data/targets";
 import type { ReaLiveState } from "../live/session-store";
-import { ReaActivityMatrix } from "./rea-activity-matrix";
-import { STAGE_INDEX, STAGE_ORDER, type ReaStageId } from "../live/tool-taxonomy";
+import { ReaLoopConsole } from "./rea-loop-console";
 
 interface LiveStatusProps {
 	readonly snapshot: ReaLiveState;
@@ -42,30 +40,9 @@ function phaseTone(phase: ReaLiveState["providerPhase"]): StatusTone {
 	}
 }
 
-/** 阶段格子的配色。不用 StatusChip：它自带 whitespace-nowrap + px-2，在 6 列网格里会溢出。 */
-function stageTone(active: boolean, visited: boolean): string {
-	if (active) return "bg-primary/15 text-primary";
-	if (visited) return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-	return "bg-muted text-muted-foreground";
-}
-
 export function ReaLiveStatus({ snapshot, onSelectStage, onUseTarget }: LiveStatusProps): JSX.Element {
 	const { t } = useTranslation();
 	const phase = snapshot.providerPhase ?? "checking";
-	const running = snapshot.runningToolNames;
-	const lastCall = snapshot.calls.length > 0 ? snapshot.calls[snapshot.calls.length - 1] : null;
-
-	// 当前动作：优先「正在跑什么」，其次「最近跑完什么」，都没有就说明还没开始。
-	const activity =
-		running.length > 0
-			? { tone: "progress" as const, text: t("live.running", { tools: running.join(", ") }), title: running.join(", ") }
-			: lastCall
-				? {
-						tone: lastCall.isError ? ("danger" as const) : ("neutral" as const),
-						text: t("live.last.tool", { tool: lastCall.toolName }),
-						title: lastCall.argsPreview || lastCall.toolName,
-					}
-				: { tone: "neutral" as const, text: t("live.idle"), title: t("live.idle") };
 
 	return (
 		<div className="flex flex-col gap-1.5 border-b border-border bg-card/20 px-3 py-2">
@@ -103,50 +80,7 @@ export function ReaLiveStatus({ snapshot, onSelectStage, onUseTarget }: LiveStat
 					{t("live.counts.turns", { turns: snapshot.turns })}
 				</StatusChip>
 			</div>
-
-			<div className="grid grid-cols-6 gap-1 @max-[380px]:grid-cols-3">
-				{STAGE_ORDER.map((stage: ReaStageId) => {
-					const index = STAGE_INDEX[stage];
-					const count = snapshot.stageCallCounts[stage] ?? 0;
-					const active = snapshot.activeStage === stage;
-					const visited = snapshot.visitedStages.includes(stage);
-					return (
-						<button
-							key={stage}
-							type="button"
-							onClick={() => onSelectStage(index)}
-							className="min-w-0 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-							aria-current={active ? "step" : undefined}
-							title={t("live.stage.toolCount", { count })}
-						>
-							<span
-								className={`flex min-w-0 items-center justify-center gap-0.5 overflow-hidden rounded-full px-1 py-0.5 text-[10.5px] font-medium leading-tight ${stageTone(active, visited)} ${active ? "motion-safe:animate-pulse" : ""}`}
-							>
-								<span className="min-w-0 truncate">{t(`tab.stage.${stage}.label`)}</span>
-								{count > 0 ? <span className="shrink-0 tabular-nums opacity-70">{count}</span> : null}
-							</span>
-						</button>
-					);
-				})}
-			</div>
-
-			<ReaActivityMatrix calls={snapshot.calls} />
-
-			<div className="flex h-4 min-w-0 items-center gap-1.5">
-				<span
-					aria-hidden
-					className={`size-1.5 shrink-0 rounded-full ${
-						activity.tone === "progress"
-							? "bg-primary motion-safe:animate-pulse"
-							: activity.tone === "danger"
-								? "bg-red-500"
-								: "bg-muted-foreground/50"
-					}`}
-				/>
-				<span className="min-w-0 flex-1 truncate text-[10.5px] leading-none text-muted-foreground" title={activity.title}>
-					{activity.text}
-				</span>
-			</div>
+			<ReaLoopConsole snapshot={snapshot} />
 
 			<div className="flex h-5 min-w-0 items-center gap-1.5 text-[10.5px]">
 				<span className="shrink-0 text-muted-foreground">{t("live.target.last")}</span>
