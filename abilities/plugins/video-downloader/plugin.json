@@ -1,0 +1,153 @@
+{
+  "id": "video-downloader",
+  "name": "%name%",
+  "description": "%description%",
+  "icon": "assets/icon.svg",
+  "version": "1.0.0",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "styles": ["dist/style.css"],
+  "moduleFederation": {
+    "remoteName": "video-downloader",
+    "expose": "./plugin"
+  },
+  "permissions": [
+    "agent.mcp.control",
+    "ui.slot.ability-detail",
+    "ui.slot.workspace-view",
+    "network.fetch"
+  ],
+  "network": {
+    "allowedHosts": ["github.com", "release-assets.githubusercontent.com"]
+  },
+  "providers": {
+    "services": [
+      {
+        "id": "video-downloader",
+        "runtime": {
+          "kind": "host-node",
+          "version": "1.0.0",
+          "entry": "service/dist/main.js",
+          "platforms": {
+            "win32-x64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+                  "archive": "zip",
+                  "destination": "service"
+                },
+                {
+                  "sha256": "bc487da29bac7c0d76607b8ebbe5ca43d6d94c927e551165344eeae713b02098",
+                  "archive": "zip",
+                  "destination": "bin"
+                }
+              ]
+            },
+            "win32-arm64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+                  "archive": "zip",
+                  "destination": "service"
+                },
+                {
+                  "sha256": "8920adababa3d76448a1fd4a2cbfd45d148a738c5ed1682c015d800e28e0787f",
+                  "archive": "zip",
+                  "destination": "bin"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+                  "archive": "zip",
+                  "destination": "service"
+                },
+                {
+                  "sha256": "fdaae939f0f9196626f76bfa4a8e1c7ff5592d2c5b206ddae8d849c09c720614",
+                  "archive": "tar.gz",
+                  "destination": "bin"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+                  "archive": "zip",
+                  "destination": "service"
+                },
+                {
+                  "sha256": "550433a17a3f4c18329be525828c4707fab4de8f5d4b8a1a711c189fd0798e2f",
+                  "archive": "tar.gz",
+                  "destination": "bin"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+                  "archive": "zip",
+                  "destination": "service"
+                },
+                {
+                  "sha256": "9cb35bb2d6414be130e91e25962bbfdaa1905ddeba40467aa552ad2e04372ee4",
+                  "archive": "tar.gz",
+                  "destination": "bin"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "service/dist/main.js",
+              "artifacts": [
+                {
+                  "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+                  "archive": "zip",
+                  "destination": "service"
+                },
+                {
+                  "sha256": "479b09290b8ddda43c994ec5685649eb4635f4bd24ff24e494eddaae473879d7",
+                  "archive": "tar.gz",
+                  "destination": "bin"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+          }
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 60000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "mcpServers": {
+      "video-downloader": {
+        "type": "service",
+        "serviceId": "video-downloader",
+        "path": "/mcp",
+        "displayName": "Video Downloader",
+        "description": "Probe and download video or audio from a supported site URL; can list tasks and reveal finished files."
+      }
+    }
+  },
+  "author": "Astravia",
+  "defaultLocale": "en"
+}

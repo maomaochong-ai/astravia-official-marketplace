@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "视频下载器",
+      "title": "正在看的视频，按你选的清晰度保存下来",
+      "description": "粘贴受支持站点的链接，对照每个清晰度的格式与体积，取回文件并放进你指定的文件夹。",
+      "badges": ["128 个站点", "本地引擎", "无需账号"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "把这个视频按 1080p 下载下来：https://www.bilibili.com/video/BV1GJ411x7h7",
+        "assistant_reply": "已解析该页面：共 4 个清晰度，1080p 为 42.6 MB，画面与声音是分开的两条流，保存前会用 ffmpeg 合并。任务已加入队列，完成后会放进你的下载文件夹。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "先看清再下载",
+          "description": "每个清晰度都带上封装格式与体积，不必凭标签猜测。",
+          "icon": "solar:slider-vertical-linear"
+        },
+        {
+          "title": "可干预的队列",
+          "description": "逐条显示进度、速度与剩余时间，支持取消、重试与在文件夹中显示。",
+          "icon": "solar:list-check-linear"
+        },
+        {
+          "title": "纯音频也支持",
+          "description": "站点提供音频流时可直接保存为声音文件，适合音乐与访谈。",
+          "icon": "solar:music-note-2-linear"
+        },
+        {
+          "title": "文件只在本机",
+          "description": "引擎在本机运行，直接写入下载文件夹，不上传任何内容。",
+          "icon": "solar:folder-with-files-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "打开「视频下载器」",
+          "description": "首次使用会准备好固定版本的本地引擎。"
+        },
+        {
+          "title": "粘贴链接并解析",
+          "description": "页面会被解析成标题与一组可选清晰度。"
+        },
+        {
+          "title": "选择清晰度并下载",
+          "description": "进度出现在队列里，完成后文件会移动到下载文件夹。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "不少站点的高清清晰度把画面与声音分开提供，需要 ffmpeg 合并。未安装时这些清晰度会被标注，安装后可在设置里重新检测。请只下载你有权保存的内容。"
+    },
+    {
+      "type": "links",
+      "items": [
+        { "label": "支持的站点", "href": "https://github.com/iawia002/lux/blob/master/README.md" },
+        { "label": "下载 ffmpeg", "href": "https://ffmpeg.org/download.html" }
+      ]
+    }
+  ]
+}

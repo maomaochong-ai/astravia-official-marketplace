@@ -1,0 +1,89 @@
+{
+  "version": "1.0.0",
+  "platforms": {
+    "win32-x64": [
+      {
+        "destination": "service",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-1.0.0/video-downloader-service-1.0.0.zip",
+        "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+        "archive": "zip"
+      },
+      {
+        "destination": "bin",
+        "url": "https://github.com/iawia002/lux/releases/download/v0.24.1/lux_0.24.1_Windows_x86_64.zip",
+        "sha256": "bc487da29bac7c0d76607b8ebbe5ca43d6d94c927e551165344eeae713b02098",
+        "archive": "zip"
+      }
+    ],
+    "win32-arm64": [
+      {
+        "destination": "service",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-1.0.0/video-downloader-service-1.0.0.zip",
+        "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+        "archive": "zip"
+      },
+      {
+        "destination": "bin",
+        "url": "https://github.com/iawia002/lux/releases/download/v0.24.1/lux_0.24.1_Windows_arm64.zip",
+        "sha256": "8920adababa3d76448a1fd4a2cbfd45d148a738c5ed1682c015d800e28e0787f",
+        "archive": "zip"
+      }
+    ],
+    "darwin-x64": [
+      {
+        "destination": "service",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-1.0.0/video-downloader-service-1.0.0.zip",
+        "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+        "archive": "zip"
+      },
+      {
+        "destination": "bin",
+        "url": "https://github.com/iawia002/lux/releases/download/v0.24.1/lux_0.24.1_Darwin_x86_64.tar.gz",
+        "sha256": "fdaae939f0f9196626f76bfa4a8e1c7ff5592d2c5b206ddae8d849c09c720614",
+        "archive": "tar.gz"
+      }
+    ],
+    "darwin-arm64": [
+      {
+        "destination": "service",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-1.0.0/video-downloader-service-1.0.0.zip",
+        "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+        "archive": "zip"
+      },
+      {
+        "destination": "bin",
+        "url": "https://github.com/iawia002/lux/releases/download/v0.24.1/lux_0.24.1_Darwin_arm64.tar.gz",
+        "sha256": "550433a17a3f4c18329be525828c4707fab4de8f5d4b8a1a711c189fd0798e2f",
+        "archive": "tar.gz"
+      }
+    ],
+    "linux-x64": [
+      {
+        "destination": "service",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-1.0.0/video-downloader-service-1.0.0.zip",
+        "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+        "archive": "zip"
+      },
+      {
+        "destination": "bin",
+        "url": "https://github.com/iawia002/lux/releases/download/v0.24.1/lux_0.24.1_Linux_x86_64.tar.gz",
+        "sha256": "9cb35bb2d6414be130e91e25962bbfdaa1905ddeba40467aa552ad2e04372ee4",
+        "archive": "tar.gz"
+      }
+    ],
+    "linux-arm64": [
+      {
+        "destination": "service",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-1.0.0/video-downloader-service-1.0.0.zip",
+        "sha256": "f2e0dc1aa332f3b608d6d1df1bc14e2cccc1690ffc34b4cca57e7cd26aecc79e",
+        "archive": "zip"
+      },
+      {
+        "destination": "bin",
+        "url": "https://github.com/iawia002/lux/releases/download/v0.24.1/lux_0.24.1_Linux_arm64.tar.gz",
+        "sha256": "479b09290b8ddda43c994ec5685649eb4635f4bd24ff24e494eddaae473879d7",
+        "archive": "tar.gz"
+      }
+    ]
+  }
+}

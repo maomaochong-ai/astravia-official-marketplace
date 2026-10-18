@@ -847,6 +847,47 @@
         "path": "abilities/plugins/rea"
       },
       "minAppVersion": "0.5.60"
+    },
+    {
+      "type": "plugin",
+      "slug": "video-downloader",
+      "name": "Video Downloader",
+      "description": "Paste a video link and download the highest quality locally — 1000+ sites supported through a bundled engine, with progress, queue and Library shortcut.",
+      "version": "1.0.0",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Media",
+      "categoryI18n": {
+        "zh": "媒体",
+        "en": "Media"
+      },
+      "tags": [
+        "video",
+        "download",
+        "media",
+        "youtube",
+        "bilibili"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "视频下载器",
+            "description": "粘贴视频链接即可在本地下载最高画质，内置引擎覆盖 1000+ 站点，支持进度、队列与直达文件夹。",
+            "tags": [
+              "视频",
+              "下载",
+              "媒体",
+              "YouTube",
+              "Bilibili"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/video-downloader"
+      },
+      "minAppVersion": "0.5.59"
     }
   ],
   "version": "0.4.78"

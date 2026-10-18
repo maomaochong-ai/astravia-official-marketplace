@@ -16,3 +16,7 @@ output/
 .pycache__/
 ui-mock-dbx-bi-editor.astravia-design/history
 ui-mock
+
+# 上游参考源码（逆向与调研用，不参与发布）
+tmp/
+ui-mock

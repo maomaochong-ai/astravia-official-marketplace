@@ -1,0 +1,17 @@
+{
+  "name": "iawia002/lux",
+  "version": "v0.24.1",
+  "revision": "dd00f6d258d80b6684a0b9402d7124e5c18ef42f",
+  "license": "MIT",
+  "repository": "https://github.com/iawia002/lux",
+  "updatePolicy": "pinned",
+  "assets": {
+    "win32-x64": "lux_0.24.1_Windows_x86_64.zip",
+    "win32-arm64": "lux_0.24.1_Windows_arm64.zip",
+    "darwin-x64": "lux_0.24.1_Darwin_x86_64.tar.gz",
+    "darwin-arm64": "lux_0.24.1_Darwin_arm64.tar.gz",
+    "linux-x64": "lux_0.24.1_Linux_x86_64.tar.gz",
+    "linux-arm64": "lux_0.24.1_Linux_arm64.tar.gz"
+  },
+  "notes": "Binaries are pinned to the v0.24.1 release and installed from the upstream GitHub release, never resolved from 'latest'. Digests come from lux_0.24.1_checksums.txt."
+}
