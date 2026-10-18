@@ -45,8 +45,8 @@
       "type": "steps",
       "items": [
         {
-          "title": "Open the Video Downloader view",
-          "description": "The panel prepares its pinned local engine on first use."
+          "title": "Open it from the composer or the tab bar",
+          "description": "Click Download under the composer, pick the Video Downloader tab, or use the sidebar view. The pinned local engine is prepared on first use."
         },
         {
           "title": "Paste a link and analyze",
