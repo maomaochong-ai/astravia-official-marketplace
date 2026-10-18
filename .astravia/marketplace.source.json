@@ -853,7 +853,7 @@
       "slug": "firecrawl",
       "name": "Firecrawl Connector",
       "description": "Read pages through the Firecrawl API: Markdown by default, plus HTML, links, screenshots, images, video and audio URLs, summaries or schema-shaped JSON. Crawl a section, map a site, search, parse PDFs and Office files, drive a browser session or the browsing agent. Works without a key at a lower rate limit; connect one on this page to lift it.",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "configVersion": 1,
       "license": "AGPL-3.0",
       "author": "Astravia Community",

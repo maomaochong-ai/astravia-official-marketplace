@@ -76,6 +76,7 @@ const STRINGS: Record<string, string> = {
 	"console.artifacts.all": "All",
 	"console.artifacts.ask": "Ask the agent",
 	"console.artifacts.empty": "Nothing captured yet",
+	"console.artifacts.failed": "The run ended before any page was captured.",
 	"console.history.empty": "No archived runs yet",
 	"artifact.kind.markdown": "Markdown",
 	"artifact.kind.links": "Links",
@@ -170,6 +171,43 @@ describe("CrawlConsoleTab", () => {
 		// The preview replaces the list in place; nothing leaves the panel rectangle.
 		expect(view.getByText(/Hello from the captured page/)).toBeTruthy();
 		expect(view.getByText(/Back/)).toBeTruthy();
+	});
+
+	it("keeps the log in view when a run fails, and the empty shelf names the reason", async () => {
+		const failure: JobStatus = {
+			status: "failed",
+			completed: 0,
+			total: 0,
+			error: "Upstream rate limit reached.",
+			next: null,
+			data: [],
+		};
+		const client = {
+			crawl: async () => ({ id: "c-1" }),
+			job: async () => failure,
+			jobErrors: async () => [],
+			cancel: async () => undefined,
+		} as unknown as FirecrawlClient;
+		const config = {
+			state: { settings: { endpoint: "" }, endpoint: "https://api.firecrawl.dev", hasKey: false, reason: "" },
+			subscribe: () => () => {},
+			configure: async () => {},
+			require: async () => client,
+			maybeClient: client,
+		} as unknown as FirecrawlConfig;
+		const store = new CrawlRunStore(config);
+		const view = render(<CrawlConsoleTab store={store} config={config} />);
+
+		await act(async () => {
+			await store.start("https://example.com/docs/", DEFAULT_CRAWL_JOB_OPTIONS);
+		});
+
+		// The log is the only tab that explains a failed run, so it stays selected.
+		const active = view.getAllByRole("tab").find((node) => node.getAttribute("aria-selected") === "true");
+		expect(active?.textContent).toContain("Console");
+
+		// The shelf sits behind =hidden=, but it still has to say why it is empty.
+		expect(view.getByText("The run ended before any page was captured.")).toBeTruthy();
 	});
 
 	it("shows the keyless hint without blocking a start", () => {

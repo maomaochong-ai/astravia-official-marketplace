@@ -128,6 +128,10 @@ const MAX_PAGE_DOCUMENT_CHARS = 24_000;
 const MAX_DOCUMENT_CHARS = 400_000;
 /** Poll cadence while the job is `scraping`. */
 const TICK_MS = 2_500;
+/** Widest gap between polls once the upstream bucket starts refusing them. */
+const MAX_TICK_MS = 30_000;
+/** Consecutive failed polls after which the watch gives up on the status endpoint. */
+const MAX_POLL_FAILURES = 8;
 /** A crawl can legitimately run for hours; the console stops watching after this. */
 const MAX_WATCH_MS = 30 * 60_000;
 /** Arrival marks kept for the web animation; more than this reads as noise. */
@@ -313,28 +317,64 @@ export class CrawlRunStore {
 		};
 	}
 
-	/** Polls a job to completion, painting every page it has not seen yet. */
+	/**
+	 * Polls a job to completion, painting every page it has not seen yet.
+	 *
+	 * A poll can fail on its own — a 429 while the upstream bucket refills, a
+	 * dropped connection — and a crawl that is still running upstream must not be
+	 * reported as failed because of it. Failed polls widen the gap and retry, and
+	 * once the watch ends the pages are read anyway: the run is closed out on what
+	 * upstream actually has, not on the last response that happened to arrive.
+	 */
 	private async watch(kind: JobKind, jobId: string): Promise<void> {
 		const client = await this.config.require();
 		const deadline = Date.now() + MAX_WATCH_MS;
 		const seen = new Set(this.snapshot.pages.map((page) => page.url));
-		let status: JobStatus = await client.job(kind, jobId);
-		this.apply(status, seen);
+		let interval = TICK_MS;
+		let failures = 0;
+		let lastFailure: string | null = null;
 
-		while (status.status === "scraping" && !this.stopped && Date.now() < deadline) {
-			await new Promise((resolve) => setTimeout(resolve, TICK_MS));
-			status = await client.job(kind, jobId);
-			this.apply(status, seen);
+		const poll = async (): Promise<JobStatus | null> => {
+			try {
+				const next = await client.job(kind, jobId);
+				failures = 0;
+				interval = TICK_MS;
+				this.apply(next, seen);
+				return next;
+			} catch (error) {
+				lastFailure = error instanceof Error ? error.message : String(error);
+				failures += 1;
+				interval = Math.min(MAX_TICK_MS, interval * 2);
+				this.pushLine("warn", `poll  retry ${failures}  ${lastFailure}`, "queue");
+				this.emit();
+				return null;
+			}
+		};
+
+		let status = await poll();
+		while (
+			(status === null || status.status === "scraping") &&
+			!this.stopped &&
+			Date.now() < deadline &&
+			failures < MAX_POLL_FAILURES
+		) {
+			await new Promise((resolve) => setTimeout(resolve, interval));
+			if (this.stopped) break;
+			status = await poll();
 		}
 
-		if (status.status === "completed") {
-			// The status payload is capped at 10 MB; walk the `next` cursors first.
+		// Whatever the last poll said, the job may be done: walking the `next`
+		// cursors is what puts pages in the shelf, and a lost status response is not
+		// a lost crawl. Skip it only when the user cancelled or upstream failed.
+		if (!this.stopped && (status === null || status.status === "completed")) {
 			try {
 				const documents = await readJobPages(client, kind, jobId, { maxPages: 20 });
 				this.ingestDocuments(documents, seen);
 			} catch {
 				// The pages already painted stay valid; paging is best effort.
 			}
+		}
+		if (!this.stopped && (status === null || status.status !== "cancelled")) {
 			try {
 				const errors = await client.jobErrors(kind, jobId);
 				this.ingestErrors(errors);
@@ -345,24 +385,24 @@ export class CrawlRunStore {
 
 		this.watching = false;
 		const duration = Date.now() - this.snapshot.startedAt;
+		const outcome =
+			this.stopped || status?.status === "cancelled" ? "stopped" : status?.status === "completed" ? "completed" : "failed";
 		this.snapshot = {
 			...this.snapshot,
-			status:
-				this.stopped || status.status === "cancelled"
-					? "stopped"
-					: status.status === "failed"
-						? "failed"
-						: "completed",
+			status: outcome,
 			endedAt: Date.now(),
-			creditsUsed: status.creditsUsed ?? this.snapshot.creditsUsed,
-			expiresAt: status.expiresAt ?? this.snapshot.expiresAt,
+			creditsUsed: status?.creditsUsed ?? this.snapshot.creditsUsed,
+			expiresAt: status?.expiresAt ?? this.snapshot.expiresAt,
 			counts: { ...this.snapshot.counts, fetching: 0 },
-			lastError: status.error ?? this.snapshot.lastError,
+			// A status we never got is itself the explanation; keep it rather than
+			// letting the run end with a blank error.
+			lastError: status?.error ?? lastFailure ?? this.snapshot.lastError,
 		};
+		const pages = status ? `${status.completed}/${status.total}` : `${this.snapshot.counts.crawled}/${this.snapshot.counts.discovered}`;
 		this.pushLine(
-			status.status === "failed" ? "error" : "ok",
-			`run end  ${status.status}  pages=${status.completed}/${status.total}  ${formatDuration(duration)}` +
-				`${status.creditsUsed !== undefined ? `  credits=${status.creditsUsed}` : ""}`,
+			outcome === "failed" ? "error" : "ok",
+			`run end  ${status?.status ?? "unknown"}  pages=${pages}  ${formatDuration(duration)}` +
+				`${status?.creditsUsed !== undefined ? `  credits=${status.creditsUsed}` : ""}`,
 			"run",
 		);
 		this.emit();
@@ -583,7 +623,9 @@ export class CrawlRunStore {
 		if (hasPluginContext()) getPluginContext().ui.notify({ message, error: true });
 	}
 
-	private ingestErrors(errors: ReadonlyArray<{ url?: string; error?: string; code?: string; statusCode?: number }>): void {
+	private ingestErrors(
+		errors: ReadonlyArray<{ url?: string; error?: string; code?: string; statusCode?: number; robots?: boolean }>,
+	): void {
 		if (errors.length === 0) return;
 		const nodes = this.snapshot.nodes.slice();
 		const denialsByCode = { ...this.snapshot.denialsByCode };
@@ -592,8 +634,16 @@ export class CrawlRunStore {
 
 		for (const entry of errors) {
 			const url = entry.url ?? "";
-			const message = entry.error ?? entry.code ?? `HTTP ${entry.statusCode ?? "?"}`;
-			const isDenial = /robots|denied|forbidden|blocked/i.test(`${entry.code ?? ""} ${message}`);
+			// A link to another site's homepage is skipped on purpose, not failed;
+			// counting it as a failure turns a normal crawl into a wall of red.
+			if (/external_link/i.test(entry.code ?? "")) {
+				this.pushLine("info", `skip  ${url || "(unknown)"}  external link`, "note");
+				continue;
+			}
+			const message = entry.robots
+				? "blocked by robots.txt"
+				: entry.error ?? entry.code ?? `HTTP ${entry.statusCode ?? "?"}`;
+			const isDenial = entry.robots === true || /robots|denied|forbidden|blocked/i.test(`${entry.code ?? ""} ${message}`);
 			failed += isDenial ? 0 : 1;
 			denied += isDenial ? 1 : 0;
 			if (isDenial && entry.code) denialsByCode[entry.code] = (denialsByCode[entry.code] ?? 0) + 1;
