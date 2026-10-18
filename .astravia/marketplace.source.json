@@ -936,8 +936,8 @@
       "type": "plugin",
       "slug": "firecrawl",
       "name": "Firecrawl Web Crawler",
-      "description": "Turn any public page into clean Markdown, crawl a site within a page budget, and watch the spider console show every page it kept and every link it refused.",
-      "version": "0.2.0",
+      "description": "Turn pages into clean Markdown, read PDFs and Office files, download video streams, and see every page kept or refused in the spider console. Runs on its own or through your Firecrawl API key.",
+      "version": "0.3.1",
       "configVersion": 1,
       "license": "AGPL-3.0",
       "author": "Astravia Community",
@@ -957,7 +957,7 @@
         "i18n": {
           "zh": {
             "name": "Firecrawl 网页爬取",
-            "description": "把任意公开网页变成干净的 Markdown，在页数预算内爬取整站，并在蜘蛛控制台里看清每一页被收录、每一条链接被拒绝的原因。",
+            "description": "把网页变成干净的 Markdown，读取 PDF 与 Office 文件，下载视频流，并在蜘蛛控制台里看清每一页被收录或被拒绝的原因。可完全本地运行，也可接入 Firecrawl API 密钥。",
             "tags": [
               "网页",
               "爬虫",

@@ -21,11 +21,19 @@ export function hasBrowserApi(ctx: PluginContext): boolean {
 	return Boolean(browser && browser.sessions && typeof browser.sessions.create === "function");
 }
 
+const PROFILE_ID = /^[A-Za-z0-9._-]{1,64}$/;
+
 export function createBrowserPortFactory(ctx: PluginContext): BrowserPortFactory | undefined {
 	if (!hasBrowserApi(ctx)) return undefined;
-	return async (): Promise<BrowserPort> => {
+	return async (options): Promise<BrowserPort> => {
 		const browser = ctx.browser;
-		const session = await browser.sessions.create({ profile: { type: "ephemeral" } });
+		const wanted = options?.profileId?.trim();
+		if (wanted && !PROFILE_ID.test(wanted)) {
+			throw new Error(`Invalid browser profile id: use 1-64 letters, digits, dot, dash or underscore`);
+		}
+		const session = await browser.sessions.create({
+			profile: wanted ? { type: "persistent", id: wanted } : { type: "ephemeral" },
+		});
 		let closed = false;
 		const close = async (): Promise<void> => {
 			if (closed) return;

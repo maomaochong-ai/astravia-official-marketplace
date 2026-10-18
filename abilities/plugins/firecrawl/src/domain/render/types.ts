@@ -23,8 +23,15 @@ export type OutputFormat =
 	| "json"
 	| "extract"
 	| "summary"
+	| "images"
+	/** Base64 of the received body, so callers can archive the raw bytes. */
+	| "rawBase64"
+	/** Diff against the previous stored copy of the same URL. */
+	| "changeTracking"
 	/** Plugin extension: page structure plus every image / video / audio URL found. */
-	| "media";
+	| "media"
+	/** Values of chosen attributes on matching elements. */
+	| "attributes";
 
 export const ALL_FORMATS: readonly OutputFormat[] = [
 	"markdown",
@@ -36,7 +43,11 @@ export const ALL_FORMATS: readonly OutputFormat[] = [
 	"json",
 	"extract",
 	"summary",
+	"images",
+	"rawBase64",
+	"changeTracking",
 	"media",
+	"attributes",
 ];
 
 /** Same action vocabulary as firecrawl's `actions[]`, restricted to what the host browser accepts. */
@@ -76,7 +87,12 @@ export interface BrowserPort {
 	close(): Promise<void>;
 }
 
-export type BrowserPortFactory = () => Promise<BrowserPort>;
+export interface BrowserOpenOptions {
+	/** Persistent profile id; absent means an ephemeral session. */
+	profileId?: string;
+}
+
+export type BrowserPortFactory = (options?: BrowserOpenOptions) => Promise<BrowserPort>;
 
 export interface BrowserRenderOptions {
 	url: string;
@@ -86,6 +102,14 @@ export interface BrowserRenderOptions {
 	timeoutMs: number;
 	includeLinks?: boolean;
 	screenshot?: "none" | "viewport" | "fullPage";
+	/** Reuse a persistent browser profile so logins survive between calls. */
+	profileId?: string;
+	/**
+	 * HTML already fetched with custom headers. The browser renders this snapshot
+	 * through a `data:` URL instead of navigating to the origin, because the host
+	 * browser API cannot set request headers.
+	 */
+	prefetchedHtml?: string;
 }
 
 export interface RenderedPage {

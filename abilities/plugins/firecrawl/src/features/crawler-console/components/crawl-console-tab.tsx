@@ -1,9 +1,9 @@
 /**
  * Activity-tab root.
  *
- * Zero props by contract, so the store arrives through a closure created in
- * activate(). The tab stays inside the panel rectangle: no portal, no
- * position:fixed, no viewport-height math.
+ * Zero props by contract, so the store and the upstream gate arrive through a
+ * closure created in activate(). The tab stays inside the panel rectangle: no
+ * portal, no position:fixed, no viewport-height math.
  */
 
 import type { ReactElement } from "react";
@@ -12,11 +12,13 @@ import type { CrawlRunStore } from "../services/crawl-run-store";
 import { useCrawlRun } from "../hooks/use-crawl-run";
 import { useTranslate } from "../hooks/use-translate";
 import { CrawlControlBar } from "./crawl-control-bar";
+import { EngineBar } from "./engine-bar";
 import { ConsoleStream } from "./console-stream";
 import { SpiderWebPanel } from "./spider-web-panel";
 import { formatBytes, formatCount, formatDuration } from "../../../shared/formatters/format";
+import type { UpstreamGate } from "../../../runtime/upstream";
 
-export function CrawlConsoleTab({ store }: { store: CrawlRunStore }): ReactElement {
+export function CrawlConsoleTab({ store, gate }: { store: CrawlRunStore; gate?: UpstreamGate }): ReactElement {
 	const { active } = useActivityTab();
 	const t = useTranslate();
 	const snapshot = useCrawlRun(store);
@@ -34,6 +36,12 @@ export function CrawlConsoleTab({ store }: { store: CrawlRunStore }): ReactEleme
 					</span>
 				) : null}
 			</header>
+
+			{gate ? (
+				<div className="shrink-0">
+					<EngineBar gate={gate} />
+				</div>
+			) : null}
 
 			<div className="shrink-0">
 				<CrawlControlBar store={store} snapshot={snapshot} />

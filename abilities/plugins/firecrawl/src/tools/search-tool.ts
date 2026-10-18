@@ -14,7 +14,7 @@ import { scrapePage } from "../domain/scrape/pipeline";
 import type { BinaryFetch, HttpClient } from "../domain/scrape/http";
 import type { BrowserPortFactory, RenderMode } from "../domain/render/types";
 import type { CrawlRunStore } from "../features/crawler-console/services/crawl-run-store";
-import { clip, readBoolean, readEnum, readNumber, readString } from "./tool-arguments";
+import { clip, readBoolean, readEnum, readEnumArray, readNumber, readString, readStringArray } from "./tool-arguments";
 import { formatDuration } from "../shared/formatters/format";
 import { describeError } from "./scrape-tool";
 
@@ -42,13 +42,23 @@ export function createSearchTool(
 			"",
 			"Do NOT use it for: a URL you already have (firecrawl_scrape), a site's URL list (firecrawl_map),",
 			"or anything that must be exhaustive — this returns the provider's top hits, not a full index.",
-			"Provider: DuckDuckGo HTML (no API key). Rate limits apply; keep limit small.",
+			"Provider: DuckDuckGo HTML (no API key). Rate limits apply; limit above 20 pages through the provider's pager.",
 		].join("\n"),
 		parameters: {
 			type: "object",
 			properties: {
 				query: { type: "string", description: "Search query, in the user's language." },
-				limit: { type: "number", description: "Results to return (1-20, default 5)." },
+				limit: { type: "number", description: "Results to return (1-50, default 5). Above 20 uses the provider's pager." },
+				sources: {
+					type: "array",
+					items: { type: "string", enum: ["web"] },
+					description: "Where to search: only \"web\" is available (an HTML endpoint cannot serve an image index).",
+				},
+				categories: {
+					type: "array",
+					items: { type: "string", enum: ["github", "research", "pdf"] },
+					description: "Narrow the search: github (site:github.com), research (site:arxiv.org), pdf (filetype:pdf).",
+				},
 				scrape: { type: "boolean", description: "Fetch each result and include its Markdown (default false)." },
 				pagesToScrape: { type: "number", description: "How many results to fetch when scraping (1-5, default 3)." },
 				country: { type: "string", description: "Region hint such as cn-zh, us-en, jp-jp." },
@@ -67,7 +77,12 @@ export function createSearchTool(
 			const input = context.trigger.input;
 			const query = readString(input, "query");
 			if (!query) throw new Error('"query" is required');
-			const limit = readNumber(input, "limit", { min: 1, max: 20, def: 5 });
+			const limit = readNumber(input, "limit", { min: 1, max: 50, def: 5 });
+			const sources = readStringArray(input, "sources", 4);
+			if (sources.length > 0 && !sources.includes("web")) {
+				throw new Error('Only the "web" source is available: this plugin searches an HTML endpoint with no image index.');
+			}
+			const categories = readEnumArray(input, "categories", ["github", "research", "pdf"] as const, 3);
 			const scrape = readBoolean(input, "scrape", false);
 			const pagesToScrape = readNumber(input, "pagesToScrape", { min: 1, max: 5, def: 3 });
 			const render = readEnum(input, "render", RENDER_MODES, "auto");
@@ -82,6 +97,7 @@ export function createSearchTool(
 					lang: readString(input, "lang"),
 					timeRange: readString(input, "timeRange") ? timeRange : undefined,
 					timeoutMs: Math.min(timeoutMs, 30_000),
+					categories,
 				});
 			} catch (error) {
 				store.note("error", `search failed  ${describeError(error)}`);

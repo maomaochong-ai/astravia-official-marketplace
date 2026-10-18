@@ -18,6 +18,22 @@ export interface BrowserRender extends RenderedPage {
 }
 
 const MAX_TEXT_CHARS = 400_000;
+/** Chromium refuses data: navigations above roughly 2 MB; stay well under it. */
+const MAX_PREFETCHED_HTML = 1_800_000;
+
+/**
+ * Snapshot URL for header-carrying renders.
+ *
+ * A `data:` document has no origin of its own, so the original URL is injected as
+ * a `<base>`: relative links and same-origin subresources still resolve, while
+ * cookies and header-gated subresource requests do not replay.
+ */
+export function snapshotUrl(html: string, baseUrl: string): string {
+	const withBase = /<base\s/i.test(html)
+		? html
+		: html.replace(/<head(\s[^>]*)?>/i, (head) => `${head}<base href="${baseUrl.replace(/"/g, "&quot;")}">`);
+	return `data:text/html;charset=utf-8,${encodeURIComponent(withBase)}`;
+}
 
 export async function renderWithBrowser(
 	factory: BrowserPortFactory,
@@ -26,7 +42,7 @@ export async function renderWithBrowser(
 	const startedAt = Date.now();
 	let port: BrowserPort | null = null;
 	try {
-		port = await factory();
+		port = await factory(options.profileId ? { profileId: options.profileId } : undefined);
 	} catch (error) {
 		throw new ScrapeError(
 			`Browser rendering is unavailable: ${error instanceof Error ? error.message : String(error)}`,
@@ -42,8 +58,16 @@ export async function renderWithBrowser(
 	let screenshotDataUrl: string | null = null;
 
 	try {
-		const opened = await port.open(options.url, options.timeoutMs);
-		finalUrl = opened.url || options.url;
+		// With headers, the prefetched snapshot is what the browser renders; the
+		// final URL still reports the original address, not the data: URL.
+		let target = options.url;
+		if (options.prefetchedHtml) {
+			const candidate = snapshotUrl(options.prefetchedHtml, options.url);
+			if (candidate.length <= MAX_PREFETCHED_HTML) target = candidate;
+			else notes.push("The HTML was too large to render as a header-carrying snapshot; the browser navigated without custom headers");
+		}
+		const opened = await port.open(target, options.timeoutMs);
+		finalUrl = opened.url && !opened.url.startsWith("data:") ? opened.url : options.url;
 		title = opened.title ?? "";
 
 		if (options.waitForMs && options.waitForMs > 0) {

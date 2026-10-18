@@ -8,20 +8,25 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { ScrapeError, scrapePage } from "../domain/scrape/pipeline";
 import type { BinaryFetch, HttpClient } from "../domain/scrape/http";
+import type { PageCache } from "../domain/scrape/cache";
 import type { BrowserPortFactory, OutputFormat, RenderMode } from "../domain/render/types";
 import { ALL_FORMATS } from "../domain/render/types";
 import type { AiPort } from "../domain/ai/extract";
 import { extractFromPages, summarizePage } from "../domain/ai/extract";
 import type { CrawlRunStore } from "../features/crawler-console/services/crawl-run-store";
 import { formatBytes, formatDuration } from "../shared/formatters/format";
+import { coerceSelectors } from "../domain/html/attributes";
 import {
 	clip,
 	readActions,
+	readAttributesInput,
 	readBoolean,
 	readEnum,
 	readEnumArray,
 	readJsonObject,
+	readHeaders,
 	readNumber,
+	readOptionalString,
 	readString,
 	readStringArray,
 	requireUrl,
@@ -42,6 +47,7 @@ export function createScrapeTool(
 	browser: BrowserPortFactory | undefined,
 	ai: AiPort | undefined,
 	binary: BinaryFetch | undefined,
+	cache?: PageCache,
 ) {
 	return {
 		id: "firecrawl_scrape",
@@ -72,7 +78,7 @@ export function createScrapeTool(
 					type: "array",
 					items: { type: "string", enum: [...ALL_FORMATS] },
 					description:
-						"Outputs besides Markdown: html, rawHtml, links, screenshot, screenshot@fullPage, summary, json, extract, media. Markdown is always returned. media lists every image/video/audio URL and marks HLS/DASH playlists.",
+						"Outputs besides Markdown: html, rawHtml, rawBase64, links, images, screenshot, screenshot@fullPage, summary, json, extract, changeTracking, media. Markdown is always returned. media lists every image/video/audio URL and marks HLS/DASH playlists.",
 				},
 				render: { type: "string", enum: [...RENDER_MODES], description: "auto (default), static (HTTP only) or browser (always render)." },
 				onlyMainContent: {
@@ -121,6 +127,37 @@ export function createScrapeTool(
 				prompt: { type: "string", description: "For json/extract: what to pull out of the page." },
 				schema: { type: "object", description: "For json/extract: JSON Schema the extracted object must satisfy." },
 				timeoutMs: { type: "number", description: "Per-request timeout in milliseconds (1000-120000, default 30000)." },
+				headers: {
+					type: "object",
+					description: "Extra request headers, e.g. {\"accept-language\":\"de\"}. Applied to the HTTP fetch; the browser engine renders that snapshot because it cannot set headers itself.",
+				},
+				headersJson: { type: "string", description: "Same as headers, as a JSON object string." },
+				maxAge: {
+					type: "number",
+					description:
+						"Milliseconds a stored copy may be reused for (e.g. 3600000). 0 (default) always fetches. Only the same URL and same options hit.",
+				},
+				storeInCache: { type: "boolean", description: "Store the result for later maxAge reuse (default true)." },
+				attributes: {
+					type: "array",
+					items: { type: "string" },
+					description:
+						"Attribute selectors for the attributes format, as \"selector@attribute\" or bare selectors (text). e.g. [\"a@href\", \"h2\", \"meta[name=description]@content\"].",
+				},
+				engine: {
+					type: "string",
+					enum: ["auto", "upstream", "local"],
+					description:
+						"auto (default) uses the Firecrawl API when one is configured, otherwise the local engine; upstream forces the API; local never leaves this machine.",
+				},
+				changeTracking: {
+					type: "boolean",
+					description: "Report what changed since the stored copy of this URL (added/removed lines).",
+				},
+				profile: {
+					type: "string",
+					description: "Persistent browser profile id, so a logged-in session survives between calls.",
+				},
 			},
 			required: ["url"],
 			additionalProperties: false,
@@ -142,6 +179,13 @@ export function createScrapeTool(
 				const waitForMs = readNumber(input, "waitFor", { min: 0, max: 60_000, def: 0 });
 				const timeoutMs = readNumber(input, "timeoutMs", { min: 1_000, max: 120_000, def: 30_000 });
 				const actions = readActions(input);
+				const headers = readHeaders(input);
+				const headerString = readOptionalString(input, "headersJson");
+				const maxAgeMs = readNumber(input, "maxAge", { min: 0, max: 30 * 24 * 60 * 60 * 1_000, def: 0 });
+				const storeInCache = readBoolean(input, "storeInCache", true);
+				const changeTracking = readBoolean(input, "changeTracking", false);
+				const profileId = readOptionalString(input, "profile") ?? undefined;
+				const attributeSelectors = coerceSelectors(readAttributesInput(input));
 
 				const wantsAi = formats.includes("json") || formats.includes("extract") || formats.includes("summary");
 				if (wantsAi && !ai) {
@@ -163,8 +207,14 @@ export function createScrapeTool(
 						formats,
 						waitForMs,
 						actions,
+						headers: headerString ? { ...headers, ...readHeaders({ headers: headerString }) } : headers,
+						maxAgeMs,
+						storeInCache,
+						changeTracking,
+						profileId,
+						attributeSelectors,
 					},
-					{ browser, binary },
+					{ browser, binary, cache },
 				);
 				store.note(
 					"ok",
@@ -217,6 +267,12 @@ export function createScrapeTool(
 				}
 				if (result.outputs.rawHtml && formats.includes("rawHtml")) {
 					lines.push("", "--- rawHtml (truncated) ---", clip(result.outputs.rawHtml, MAX_HTML));
+				}
+				if (result.outputs.changeTracking) {
+					lines.push("", "--- changeTracking ---", result.outputs.changeTracking);
+				}
+				if (result.outputs.images) {
+					lines.push("", "--- images (JSON) ---", result.outputs.images);
 				}
 				if (formats.includes("summary")) {
 					const summary = await summarizePage(ai!, { url: result.finalUrl, markdown: result.markdown });

@@ -3,8 +3,9 @@ import type { CrawlOptions } from "./domain/events";
 /** Activity tab id — one string, shared by the registration and the tool opener. */
 export const FIRECRAWL_TAB_ID = "crawl.console";
 
-const MAX_LIMIT = 50;
-const MAX_DEPTH = 5;
+// Mirrors the tool schema bounds: the console and the model share one envelope.
+const MAX_LIMIT = 200;
+const MAX_DEPTH = 10;
 const MAX_CONCURRENCY = 8;
 
 /**
@@ -17,6 +18,8 @@ export function clampCrawlOptions(options: CrawlOptions): CrawlOptions {
 		...options,
 		limit: clamp(options.limit, 1, MAX_LIMIT, 12),
 		maxDepth: clamp(options.maxDepth, 0, MAX_DEPTH, 2),
+		maxDiscoveryDepth:
+			options.maxDiscoveryDepth === null ? null : clamp(options.maxDiscoveryDepth, 0, MAX_DEPTH, 2),
 		concurrency: clamp(options.concurrency, 1, MAX_CONCURRENCY, 4),
 		timeoutMs: clamp(options.timeoutMs, 1_000, 120_000, 30_000),
 	};

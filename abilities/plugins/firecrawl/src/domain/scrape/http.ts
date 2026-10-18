@@ -8,6 +8,10 @@
 
 export interface HttpRequestInit {
 	url: string;
+	/** Defaults to GET. PUT/PATCH/DELETE exist for the upstream REST API. */
+	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+	/** JSON body, only meaningful when `method` is not GET. */
+	body?: unknown;
 	headers?: Record<string, string>;
 	timeoutMs?: number;
 }

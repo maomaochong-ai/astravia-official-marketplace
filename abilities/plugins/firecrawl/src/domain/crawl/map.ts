@@ -34,6 +34,8 @@ export interface MapOptions {
 	/** Skip the start page and report sitemap URLs only. */
 	sitemapOnly: boolean;
 	timeoutMs: number;
+	/** Extra request headers for robots.txt, sitemaps and the start page. */
+	headers?: Record<string, string>;
 	render: RenderMode;
 }
 
@@ -87,7 +89,7 @@ export async function mapSite(
 
 	const robots = options.ignoreRobotsTxt
 		? null
-		: await loadRobots(client, origin, undefined, Math.min(options.timeoutMs, 15_000));
+		: await loadRobots(client, origin, undefined, Math.min(options.timeoutMs, 15_000), options.headers);
 	if (robots) {
 		onEvent?.({
 			type: "robots",
@@ -105,7 +107,10 @@ export async function mapSite(
 	const candidates: string[] = [start.href];
 	let sitemapInfo: MapResult["sitemap"] = null;
 	if (!options.ignoreSitemap && robots && robots.sitemaps.length > 0) {
-		const sitemap = await collectSitemapUrls(client, robots.sitemaps, { timeoutMs: options.timeoutMs });
+		const sitemap = await collectSitemapUrls(client, robots.sitemaps, {
+			timeoutMs: options.timeoutMs,
+			headers: options.headers,
+		});
 		sitemapInfo = { fetched: sitemap.fetched, urls: sitemap.urls.length };
 		onEvent?.({
 			type: "sitemap",
@@ -124,7 +129,13 @@ export async function mapSite(
 			const page = await scrapePage(
 				client,
 				start.href,
-				{ onlyMainContent: true, timeoutMs: options.timeoutMs, render: options.render, includeLinks: true },
+				{
+					onlyMainContent: true,
+					timeoutMs: options.timeoutMs,
+					render: options.render,
+					includeLinks: true,
+					headers: options.headers,
+				},
 				{ browser: deps.browser },
 			);
 			candidates.push(...page.links.map((link) => link.url));

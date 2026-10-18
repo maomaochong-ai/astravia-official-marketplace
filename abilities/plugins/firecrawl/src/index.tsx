@@ -20,10 +20,12 @@ import { crawlSite } from "./domain/crawl/crawler";
 import { createHostBinaryFetcher, createHostHttpClient } from "./runtime/http-client";
 import { createBrowserPortFactory } from "./runtime/browser-session";
 import { createAiPort } from "./runtime/ai";
+import { createHostPageCache } from "./runtime/scrape-cache";
 import { setPluginContext } from "./runtime/plugin-context";
 import { watchConversation } from "./runtime/conversation-watch";
 import { FIRECRAWL_TAB_ID } from "./tab-id";
 import { registerFirecrawlTools } from "./tools/register-tools";
+import { createUpstreamGate } from "./runtime/upstream";
 
 const FIRECRAWL_ACTION_ID = "firecrawl.openConsole";
 
@@ -46,8 +48,18 @@ export default definePlugin({
 		const ai = createAiPort(ctx);
 		// Binary transport (PDFs): a base64 fetch, so documents are read as documents.
 		const binary = createHostBinaryFetcher(ctx);
+		// Page cache for maxAge/changeTracking; undefined unless the user granted storage.
+		const cache = createHostPageCache(ctx);
+		// Upstream engine: which service to call and with which key. Reading it is
+		// best-effort — a host without storage/secrets keeps the local engine.
+		const gate = createUpstreamGate(ctx, client);
+		try {
+			await gate.load();
+		} catch (error) {
+			console.warn("[firecrawl] upstream settings unavailable", error);
+		}
 		const store = new CrawlRunStore((target, options, hooks) =>
-			crawlSite(client, target, options, hooks, { browser, binary }),
+			crawlSite(client, target, options, hooks, { browser, binary, cache }),
 		);
 		// The console follows the conversation: a URL mentioned in the prompt, or one
 		// the agent is about to fetch, becomes the target without the user retyping it.
@@ -62,12 +74,12 @@ export default definePlugin({
 			order: 26,
 			scope_use: ["conversation", "project"],
 			initiallyVisible: true,
-			component: () => <CrawlConsoleTab store={store} />,
+			component: () => <CrawlConsoleTab store={store} gate={gate} />,
 		});
 
 		let tools: Disposable[] = [];
 		try {
-			tools = registerFirecrawlTools(ctx, { client, store, browser, ai, binary });
+			tools = registerFirecrawlTools(ctx, { client, store, browser, ai, binary, cache, gate });
 		} catch (error) {
 			console.warn("[firecrawl] tool registration unavailable", error);
 			ctx.ui.notify({

@@ -23,10 +23,11 @@ export function createHostHttpClient(ctx: PluginContext): HttpClient {
 		try {
 			const response = await ctx.network.request<unknown>({
 				url: init.url,
-				method: "GET",
+				method: init.method ?? "GET",
 				headers: init.headers,
 				timeoutMs: init.timeoutMs,
 				responseType: "text",
+				...(init.body === undefined ? {} : { body: { type: "json" as const, value: init.body } }),
 			});
 			const body = typeof response.body === "string" ? response.body : JSON.stringify(response.body ?? "");
 			return {

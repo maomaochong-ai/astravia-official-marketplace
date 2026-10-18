@@ -15,6 +15,7 @@ import { DEFAULT_USER_AGENT } from "../render/fetch";
 import { ScrapeError, scrapePage } from "../scrape/pipeline";
 import type { BinaryFetch, HttpClient } from "../scrape/http";
 import type { BrowserPortFactory } from "../render/types";
+import type { PageCache } from "../scrape/cache";
 import type { CrawlEvent, CrawlOptions, CrawlPage, CrawlSummary } from "../events";
 import type { DenialCode } from "../denial";
 import { describeCrawlScope, getCrawlScope } from "./scope";
@@ -25,6 +26,8 @@ import { dedupeKey, normalizeUrl, originOf } from "../url";
 
 export interface CrawlDeps {
 	browser?: BrowserPortFactory;
+	/** Shared page cache, so `maxAge` can reuse pages across a crawl and a scrape. */
+	cache?: PageCache;
 	/** Base64 transport, so PDFs are parsed as documents rather than refused. */
 	binary?: BinaryFetch;
 }
@@ -141,7 +144,13 @@ export async function crawlSite(
 
 	// 1. robots.txt — always fetched for the origin unless the caller opted out.
 	if (!options.ignoreRobotsTxt) {
-		robots = await loadRobots(client, origin, DEFAULT_USER_AGENT, Math.min(options.timeoutMs, 15_000));
+		robots = await loadRobots(
+			client,
+			origin,
+			options.robotsUserAgent,
+			Math.min(options.timeoutMs, 15_000),
+			options.headers,
+		);
 		emit({
 			type: "robots",
 			origin,
@@ -156,8 +165,12 @@ export async function crawlSite(
 	}
 
 	// 2. Sitemap seeding — the frontier gets the site's own map before hop 1.
-	if (options.useSitemap && options.maxDepth >= 1 && robots.sitemaps.length > 0) {
-		const sitemap = await collectSitemapUrls(client, robots.sitemaps, { timeoutMs: options.timeoutMs });
+	// `sitemap: "only"` means the sitemap *is* the frontier: seed it even at depth 0.
+	if (options.sitemap !== "skip" && (options.maxDepth >= 1 || options.sitemap === "only") && robots.sitemaps.length > 0) {
+		const sitemap = await collectSitemapUrls(client, robots.sitemaps, {
+			timeoutMs: options.timeoutMs,
+			headers: options.headers,
+		});
 		emit({
 			type: "sitemap",
 			seed: robots.sitemaps[0] ?? "",
@@ -194,9 +207,13 @@ export async function crawlSite(
 					onlyMainContent: options.onlyMainContent,
 					timeoutMs: options.timeoutMs,
 					userAgent: DEFAULT_USER_AGENT,
+					headers: options.headers,
+					profileId: options.profileId ?? undefined,
 					includeLinks: true,
+					attributeSelectors: options.attributeSelectors,
+					maxAgeMs: options.maxAge > 0 ? options.maxAge : undefined,
 				},
-				{ browser: deps.browser, binary: deps.binary },
+				{ browser: deps.browser, binary: deps.binary, cache: deps.cache },
 			);
 			if (result.fallbackReason) {
 				emit({
@@ -246,6 +263,8 @@ export async function crawlSite(
 
 			// No early return at maxDepth: the links of the deepest page still have to be
 			// reported as DEPTH_LIMIT so the console can say what stopped the crawl.
+			// `sitemap: "only"` crawls exactly the sitemap URLs: no link expansion.
+			if (options.sitemap === "only") return;
 			for (const link of result.links) {
 				if (visited.size >= frontierCeiling && queue.length >= frontierCeiling) break;
 				if (link.anchored) {

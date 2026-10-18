@@ -5,8 +5,8 @@
 			"type": "hero",
 			"eyebrow": "Web reading",
 			"title": "Give the agent clean Markdown from the pages it needs",
-			"description": "Scrape one page, list a site's URLs, or crawl a section depth-limited. Every fetch shows up in an animated spider console, together with the links that were refused and the rule that refused them.",
-			"badges": ["No API key", "Works offline from any URL", "robots.txt aware"]
+			"description": "Scrape one page, list a site's URLs, crawl a section depth-limited, read a PDF or Word file, download a video, and watch every fetch in an animated spider console. Works on its own, or through your Firecrawl API key for OCR, stealth proxying and scheduled monitors.",
+			"badges": ["Runs without a key", "JavaScript rendering", "robots.txt aware"]
 		},
 		{
 			"type": "showcase",
@@ -21,14 +21,24 @@
 			"title": "What it does",
 			"items": [
 				{
-					"title": "Three tools, one job each",
-					"description": "firecrawl_scrape for a single page, firecrawl_map to list URLs without downloading them, firecrawl_crawl to read several pages in breadth-first order.",
+					"title": "Ten tools, one answer shape",
+					"description": "scrape, batch_scrape, crawl, map, search, extract, parse, video, job_status and monitor. The same call works whether the local engine or your Firecrawl API answers it, so prompts and habits transfer.",
 					"icon": "solar:layers-minimalistic-linear"
 				},
 				{
-					"title": "Readable Markdown, not raw HTML",
-					"description": "Article extraction strips navigation, cookie banners and footers first; turndown converts the rest. When extraction would lose the page, it falls back to converting the full document.",
+					"title": "Pages that need JavaScript",
+					"description": "Static HTML first; the host browser takes over when the page is an app shell or the text is too thin. Screenshots, wait-for and click actions are supported.",
+					"icon": "solar:monitor-smartphone-linear"
+				},
+				{
+					"title": "Documents, not just HTML",
+					"description": "PDFs keep their text layer and page count; DOCX and XLSX are read as documents with headings, lists and tables instead of being refused as binary.",
 					"icon": "solar:document-text-linear"
+				},
+				{
+					"title": "Video and audio you can keep",
+					"description": "HLS and DASH streams are read segment by segment and written as one file through the save dialog. Encrypted and DRM-protected streams are named as such, not worked around.",
+					"icon": "solar:video-library-linear"
 				},
 				{
 					"title": "Honest about what it skipped",
@@ -39,22 +49,12 @@
 					"title": "Spider console",
 					"description": "The start page sits in the middle and each hop moves outward one ring. Spiders drop onto the page being fetched, packets travel down the active spokes, and refused links stay visible as dashed threads.",
 					"icon": "solar:graph-new-linear"
-				},
-				{
-					"title": "Agent and panel share one run",
-					"description": "A crawl the agent starts animates the console you already have open, and a crawl you start from the console follows exactly the same rules.",
-					"icon": "solar:refresh-circle-linear"
-				},
-				{
-					"title": "Polite by default",
-					"description": "robots.txt is honoured, crawl-delay respected, sitemaps read from robots.txt, and the crawl stays inside the start URL's directory unless you widen it.",
-					"icon": "solar:leaf-linear"
 				}
 			]
 		},
 		{
 			"type": "markdown",
-			"content": "## Reading the spider web\n\n- **Center dot** — the page you started from; each ring outward is one link hop.\n- **Solid dot** — page fetched and converted. **Hollow dashed dot** — link refused; hover the console for the rule.\n- **Spider with a pulse ring** — being fetched right now; the moving packet is the request travelling down that spoke.\n- **Red ×** — request failed (timeout, HTTP error, unsupported content type).\n\nAnimation only runs while the tab is visible and the crawl is live, and it is disabled automatically when your system asks for reduced motion."
+			"content": "## Two engines, one console\n\nThe console header carries an engine bar:\n\n- **auto** — Firecrawl API when an endpoint or key is set, local engine otherwise.\n- **API** — always the Firecrawl v2 API (api.firecrawl.dev or your own instance). Adds OCR for scanned PDFs, stealth proxying, a hosted job queue and cron-scheduled monitors.\n- **local** — always in-plugin. No key, no account, no per-page cost.\n\nThe API key lives in the host credential vault; it is never written to a config file, never shown again after saving, and never passed as a tool argument.\n\n## Reading the spider web\n\n- **Center dot** — the page you started from; each ring outward is one link hop.\n- **Solid dot** — page fetched and converted. **Hollow dashed dot** — link refused; hover the console for the rule.\n- **Spider with a pulse ring** — being fetched right now; the moving packet is the request travelling down that spoke.\n- **Red ×** — request failed (timeout, HTTP error, unsupported content type).\n\nAnimation only runs while the tab is visible and the crawl is live, and it is disabled automatically when your system asks for reduced motion."
 		},
 		{
 			"type": "steps",
@@ -62,32 +62,32 @@
 			"items": [
 				{
 					"title": "Install and enable the plugin",
-					"description": "The Crawler tab appears in the activity panel; the agent gains the three firecrawl tools and the skill."
+					"description": "The Crawler tab appears in the activity panel, and the agent gains the firecrawl tools plus the skill."
 				},
 				{
-					"title": "Open the crawler panel",
-					"description": "Click the spider button above the message box, type /firecrawl in the composer, or pick Firecrawl from the skill menu."
+					"title": "Optional: connect your Firecrawl API",
+					"description": "Open the engine bar and paste an endpoint and key. Skip it to stay entirely local."
 				},
 				{
 					"title": "Paste a URL and crawl",
-					"description": "Defaults are 12 pages and depth 2. Widen the options only if you need more; the console explains every refusal."
+					"description": "Defaults are 12 pages and depth 2. Widen them only if you need more; the console explains every refusal."
 				},
 				{
 					"title": "Or just ask",
-					"description": "“Crawl example.com/docs and summarize the API pages.” The agent chooses the tool and the same console follows along."
+					"description": "“Crawl example.com/docs and summarize the API pages”, “read this PDF as Markdown”, “download the video on this page”. The agent picks the tool and the same console follows along."
 				}
 			]
 		},
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "This fetches pages over plain HTTP: it does not run JavaScript, log in, or submit forms, so client-rendered apps and authenticated pages will come back thin or empty. Requests come from your machine, and robots.txt refusals are reported rather than bypassed."
+			"content": "Unencrypted HLS/DASH segments are downloaded and joined. DRM (Widevine/PlayReady/FairPlay) and encrypted playlists are reported, never decrypted. robots.txt is honoured, logins and captchas are not defeated, and requests come from your machine."
 		},
 		{
 			"type": "links",
 			"items": [
 				{ "label": "Firecrawl project", "href": "https://github.com/firecrawl/firecrawl" },
-				{ "label": "How the crawler behaves", "href": "https://github.com/firecrawl/firecrawl#readme" }
+				{ "label": "Firecrawl API documentation", "href": "https://docs.firecrawl.dev" }
 			]
 		}
 	]

@@ -63,6 +63,12 @@ export function readBoolean(input: unknown, key: string, def: boolean): boolean 
 	return typeof value === "boolean" ? value : def;
 }
 
+/** Raw `attributes` argument: a selector list, or `"a@href,h2"`. */
+export function readAttributesInput(input: unknown): unknown {
+	if (!input || typeof input !== "object") return undefined;
+	return (input as Record<string, unknown>).attributes;
+}
+
 export function readStringArray(input: unknown, key: string, max = 20): string[] {
 	if (!input || typeof input !== "object") return [];
 	const value = (input as Record<string, unknown>)[key];
@@ -72,6 +78,51 @@ export function readStringArray(input: unknown, key: string, max = 20): string[]
 		.map((entry) => entry.trim())
 		.filter(Boolean)
 		.slice(0, max);
+}
+
+export function readOptionalString(input: unknown, key: string): string | null {
+	return readString(input, key) ?? null;
+}
+
+const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,64}$/;
+const MAX_HEADER_VALUE = 2_000;
+
+/**
+ * Request headers from either an object or a JSON string.
+ *
+ * Rejects anything the host transport would refuse later, and rejects header
+ * values containing CR/LF so a caller cannot smuggle a second request.
+ */
+export function readHeaders(input: unknown, key = "headers", max = 20): Record<string, string> {
+	if (!input || typeof input !== "object") return {};
+	const raw = (input as Record<string, unknown>)[key];
+	if (raw === undefined || raw === null || raw === "") return {};
+
+	let source: unknown = raw;
+	if (typeof raw === "string") {
+		try {
+			source = JSON.parse(raw);
+		} catch {
+			throw new ToolArgumentError(`"${key}" must be an object or a JSON object string`);
+		}
+	}
+	if (!source || typeof source !== "object" || Array.isArray(source)) {
+		throw new ToolArgumentError(`"${key}" must be an object of header name → string value`);
+	}
+
+	const entries = Object.entries(source as Record<string, unknown>);
+	if (entries.length > max) throw new ToolArgumentError(`"${key}" accepts at most ${max} headers`);
+
+	const headers: Record<string, string> = {};
+	for (const [name, value] of entries) {
+		if (!HEADER_NAME.test(name)) throw new ToolArgumentError(`Invalid header name "${name}"`);
+		const text = typeof value === "string" ? value : typeof value === "number" ? String(value) : null;
+		if (text === null) throw new ToolArgumentError(`Header "${name}" must have a string value`);
+		if (/[\r\n]/.test(text)) throw new ToolArgumentError(`Header "${name}" must not contain line breaks`);
+		if (text.length > MAX_HEADER_VALUE) throw new ToolArgumentError(`Header "${name}" is longer than ${MAX_HEADER_VALUE} characters`);
+		headers[name] = text;
+	}
+	return headers;
 }
 
 /** Rejects patterns that would throw inside the matcher, with a readable message. */

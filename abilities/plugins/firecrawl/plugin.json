@@ -1,7 +1,7 @@
 {
   "id": "firecrawl",
   "name": "%name%",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -22,7 +22,14 @@
     "browser.read",
     "browser.interact",
     "ai.complete",
-    "agent.session.read"
+    "agent.session.read",
+    "browser.profile.persist",
+    "storage.read",
+    "storage.write",
+    "fs.write",
+    "secrets.read",
+    "secrets.write",
+    "fs.read"
   ],
   "browser": {
     "allowedHosts": [
@@ -50,7 +57,7 @@
       "skills": {
         "firecrawl": {
           "displayName": "Firecrawl",
-          "displayDescription": "Scrape a page into clean Markdown, map a site's links, or crawl a site depth-limited — with a live spider console in the activity panel."
+          "displayDescription": "Read the web as Markdown, and see what a page is made of: scrape one page, map a site, crawl a section, search, extract structured fields, parse PDF/DOCX/XLSX, download a video stream, and follow hosted jobs or scheduled monitors."
         }
       }
     }

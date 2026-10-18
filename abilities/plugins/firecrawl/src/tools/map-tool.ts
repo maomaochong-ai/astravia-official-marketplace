@@ -8,7 +8,16 @@ import type { MapOptions } from "../domain/crawl/map";
 import type { HttpClient } from "../domain/scrape/http";
 import type { BrowserPortFactory, RenderMode } from "../domain/render/types";
 import type { CrawlRunStore } from "../features/crawler-console/services/crawl-run-store";
-import { compilePatterns, readBoolean, readEnum, readNumber, readString, readStringArray, requireUrl } from "./tool-arguments";
+import {
+	compilePatterns,
+	readBoolean,
+	readEnum,
+	readHeaders,
+	readNumber,
+	readString,
+	readStringArray,
+	requireUrl,
+} from "./tool-arguments";
 import { formatDuration } from "../shared/formatters/format";
 
 const MAX_URLS_LISTED = 300;
@@ -40,7 +49,7 @@ export function createMapTool(
 			type: "object",
 			properties: {
 				url: { type: "string", description: "Absolute http(s) URL whose site should be mapped." },
-				limit: { type: "number", description: "Maximum URLs to return (1-500, default 200)." },
+				limit: { type: "number", description: "Maximum URLs to return (1-5000, default 500)." },
 				search: { type: "string", description: "Keep only URLs matching this word/phrase, best matches first." },
 				includePaths: { type: "array", items: { type: "string" }, description: "Keep only paths matching these regular expressions." },
 				excludePaths: { type: "array", items: { type: "string" }, description: "Drop paths matching these regular expressions." },
@@ -48,11 +57,16 @@ export function createMapTool(
 				includeSubdomains: { type: "boolean", description: "Include subdomains (default false)." },
 				allowExternalLinks: { type: "boolean", description: "Include links to other domains (default false)." },
 				ignoreQueryParameters: { type: "boolean", description: "Treat URLs differing only by query string as one (default false)." },
+				ignoreCache: { type: "boolean", description: "Send Cache-Control: no-cache (default false)." },
 				ignoreRobotsTxt: { type: "boolean", description: "Ignore robots.txt disallow rules (default false)." },
 				ignoreSitemap: { type: "boolean", description: "Do not read robots.txt sitemaps (default false)." },
 				sitemapOnly: { type: "boolean", description: "Report sitemap URLs only, skipping the start page (default false)." },
 				render: { type: "string", enum: [...RENDER_MODES], description: "How to read the start page: auto (default), static or browser." },
 				timeoutMs: { type: "number", description: "Per-request timeout in milliseconds (1000-120000, default 30000)." },
+				headers: {
+					type: "object",
+					description: "Extra request headers for robots.txt, sitemaps and the start page, e.g. {\"accept-language\":\"de\"}.",
+				},
 			},
 			required: ["url"],
 			additionalProperties: false,
@@ -64,7 +78,7 @@ export function createMapTool(
 			const url = requireUrl(context.trigger.input);
 			const options: MapOptions = {
 				...DEFAULT_MAP_OPTIONS,
-				limit: readNumber(context.trigger.input, "limit", { min: 1, max: 500, def: DEFAULT_MAP_OPTIONS.limit }),
+				limit: readNumber(context.trigger.input, "limit", { min: 1, max: 5_000, def: DEFAULT_MAP_OPTIONS.limit }),
 				search: readString(context.trigger.input, "search"),
 				includePaths: readStringArray(context.trigger.input, "includePaths"),
 				excludePaths: readStringArray(context.trigger.input, "excludePaths"),
@@ -77,6 +91,7 @@ export function createMapTool(
 				sitemapOnly: readBoolean(context.trigger.input, "sitemapOnly", false),
 				render: readEnum(context.trigger.input, "render", RENDER_MODES, "auto"),
 				timeoutMs: readNumber(context.trigger.input, "timeoutMs", { min: 1_000, max: 120_000, def: DEFAULT_MAP_OPTIONS.timeoutMs }),
+				headers: withNoCache(readHeaders(context.trigger.input), readBoolean(context.trigger.input, "ignoreCache", false)),
 			};
 			compilePatterns(options.includePaths);
 			compilePatterns(options.excludePaths);
@@ -110,4 +125,8 @@ export function createMapTool(
 			return lines.join("\n");
 		},
 	};
+}
+
+function withNoCache(headers: Record<string, string>, ignoreCache: boolean): Record<string, string> {
+	return ignoreCache ? { ...headers, "cache-control": "no-cache" } : headers;
 }

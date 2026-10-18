@@ -13,6 +13,10 @@ import type { ElementProfile } from "./html/elements";
 /** Engines a page can be produced by, shared by events, tools and the console. */
 export type EngineName = RenderEngineName;
 
+export type SitemapMode = "only" | "include" | "skip";
+
+import type { AttributeSelector } from "./html/attributes";
+
 export interface CrawlOptions {
 	/** Pages to fetch, including the start URL. */
 	limit: number;
@@ -29,7 +33,18 @@ export interface CrawlOptions {
 	/** firecrawl's replacement for `allowBackwardLinks`: crawl the whole domain, not just deeper paths. */
 	crawlEntireDomain: boolean;
 	ignoreRobotsTxt: boolean;
-	useSitemap: boolean;
+	/** Upstream `sitemap`: `include` seeds from the sitemap, `only` never expands links, `skip` ignores it. */
+	sitemap: SitemapMode;
+	/** UA used for robots.txt; a site may grant a more permissive group to a specific bot. */
+	robotsUserAgent: string;
+	/** Extra request headers for every page (HTTP engine only). */
+	headers: Record<string, string>;
+	/** Reuse a persistent browser profile so a logged-in crawl sees real content. */
+	profileId: string | null;
+	/** Reuse a stored copy of each page younger than this (ms); 0 disables reuse. */
+	maxAge: number;
+	/** Selectors for the `attributes` format on every crawled page. */
+	attributeSelectors: readonly AttributeSelector[];
 	onlyMainContent: boolean;
 	timeoutMs: number;
 	/** Match include/exclude regexes against the full URL. */
@@ -58,7 +73,12 @@ export const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 	allowBackwardCrawling: false,
 	crawlEntireDomain: false,
 	ignoreRobotsTxt: false,
-	useSitemap: true,
+	sitemap: "include",
+	robotsUserAgent: "FirecrawlAgent",
+	headers: {},
+	profileId: null,
+	maxAge: 0,
+	attributeSelectors: [],
 	onlyMainContent: true,
 	timeoutMs: 30_000,
 	regexOnFullURL: false,
@@ -68,6 +88,18 @@ export const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 	render: "auto",
 	formats: ["markdown"],
 };
+
+/**
+ * Options safe to store in the UI snapshot or POST to a webhook.
+ * Request headers can carry credentials, so only their names survive.
+ */
+export function redactCrawlOptions(options: CrawlOptions): CrawlOptions {
+	const names = Object.keys(options.headers ?? {});
+	if (names.length === 0) return options;
+	const redacted: Record<string, string> = {};
+	for (const name of names) redacted[name] = "•••";
+	return { ...options, headers: redacted };
+}
 
 export type CrawlEvent =
 	| { type: "run-start"; target: string; options: CrawlOptions; at: number }

@@ -8,6 +8,7 @@
  */
 
 import type { CrawlEvent, CrawlOptions, CrawlSummary } from "../../../domain/events";
+import { redactCrawlOptions } from "../../../domain/events";
 import type { ElementProfile, MediaRef } from "../../../domain/html/elements";
 import { urlLabel } from "../../../domain/url";
 import { formatBytes, formatCount, formatDuration, truncate } from "../../../shared/formatters/format";
@@ -195,7 +196,8 @@ export class CrawlRunStore {
 			status: "running",
 			target,
 			targetSource: this.snapshot.targetSource === "none" ? "manual" : this.snapshot.targetSource,
-			options,
+			// Header values can be credentials; the panel only needs the option set.
+			options: redactCrawlOptions(options),
 			startedAt: Date.now(),
 		};
 		this.pushLine(

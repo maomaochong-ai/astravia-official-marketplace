@@ -59,9 +59,15 @@ export async function loadRobots(
 	origin: string,
 	userAgent = DEFAULT_ROBOTS_USER_AGENT,
 	timeoutMs = 15_000,
+	headers?: Record<string, string>,
 ): Promise<RobotsPolicy> {
 	try {
-		const response = await client({ url: `${origin}/robots.txt`, timeoutMs });
+		const request: { url: string; timeoutMs: number; headers?: Record<string, string> } = {
+			url: `${origin}/robots.txt`,
+			timeoutMs,
+		};
+		if (headers && Object.keys(headers).length > 0) request.headers = headers;
+		const response = await client(request);
 		if (response.status === 404 || response.status === 410) {
 			return { ...ALLOW_ALL, status: response.status, present: true, isAllowed: () => true };
 		}

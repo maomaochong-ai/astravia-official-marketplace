@@ -219,7 +219,11 @@ export function CrawlControlBar({
 							))}
 						</div>
 					</div>
-					<Toggle label={t("console.opt.sitemap")} checked={options.useSitemap} onChange={(useSitemap) => patch({ useSitemap })} />
+					<Toggle
+						label={t("console.opt.sitemap")}
+						checked={options.sitemap !== "skip"}
+						onChange={(enabled) => patch({ sitemap: enabled ? "include" : "skip" })}
+					/>
 					<Toggle
 						label={t("console.opt.mainContent")}
 						checked={options.onlyMainContent}

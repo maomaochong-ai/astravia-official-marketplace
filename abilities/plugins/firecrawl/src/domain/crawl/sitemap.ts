@@ -48,7 +48,7 @@ export function parseSitemap(xml: string): { urls: string[]; children: string[] 
 export async function collectSitemapUrls(
 	client: HttpClient,
 	seeds: readonly string[],
-	options: { timeoutMs?: number; limit?: number; urlLimit?: number } = {},
+	options: { timeoutMs?: number; limit?: number; urlLimit?: number; headers?: Record<string, string> } = {},
 ): Promise<SitemapResult> {
 	const limit = options.limit ?? SITEMAP_LIMIT;
 	const urlLimit = options.urlLimit ?? SITEMAP_URL_LIMIT;
@@ -66,7 +66,11 @@ export async function collectSitemapUrls(
 				if (seen.has(url)) return null;
 				seen.add(url);
 				try {
-					const response = await client({ url, timeoutMs });
+					const response = await client(
+						options.headers && Object.keys(options.headers).length > 0
+							? { url, timeoutMs, headers: options.headers }
+							: { url, timeoutMs },
+					);
 					if (!response.ok) return null;
 					return parseSitemap(response.body);
 				} catch {
