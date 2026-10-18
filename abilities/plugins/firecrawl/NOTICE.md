@@ -15,10 +15,20 @@ No upstream source file is copied into this package. What is derived:
 - the shape of the per-link refusal accounting (a stable code per rule) and the honesty rule that a
   crawl reports what it skipped instead of silently truncating.
 
-The implementation here is a smaller in-process port: no Fire Engine, no queues, no Redis, no
-JavaScript rendering, no LLM extraction. Firecrawl's own code is AGPL-3.0; this plugin is
-distributed under the licence declared in `ability.json` (`AGPL-3.0`) so that the attribution
-obligation is honoured either way. If you redistribute a modified build, keep this notice.
+The local half of this plugin is an in-process implementation written for it: no Fire Engine, no
+queues, no Redis. It does include JavaScript rendering through the host browser, PDF/DOCX/XLSX text
+extraction, HLS/DASH segment download and model-assisted extraction, all built on this plugin's own
+code.
+
+The other half does not reimplement upstream at all: it speaks the Firecrawl v2 REST API
+(`/v2/scrape`, `/v2/batch/scrape`, `/v2/crawl`, `/v2/map`, `/v2/search`, `/v2/extract`,
+`/v2/monitor`, …) and presents the responses through the same tools. Endpoint paths and request
+field names follow the public API contract so an api.firecrawl.dev key or a self-hosted instance
+work unchanged. Nothing from the upstream repository is vendored here.
+
+Firecrawl's own source is AGPL-3.0; this plugin is distributed under the licence declared in
+`ability.json` (`AGPL-3.0`) so the attribution obligation is honoured either way. If you
+redistribute a modified build, keep this notice.
 
 ## Bundled third-party libraries
 
