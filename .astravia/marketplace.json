@@ -6141,7 +6141,7 @@
       "slug": "rea",
       "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.4.3",
+      "version": "0.4.4",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6622,6 +6622,50 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.4.3.astraviapkg",
             "sha256": "5c2cc2eb406a8fe823067e5a0c00e01dbbe176c4355536d3a5dcbc315e09febe"
           }
+        },
+        {
+          "version": "0.4.4",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control",
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.systemPrompt.write",
+            "agent.continuation.register",
+            "agent.session.read",
+            "agent.session.write",
+            "agent.command.run",
+            "agent.command.spawn"
+          ],
+          "commands": [
+            "node",
+            "java",
+            "frida",
+            "adb",
+            "apktool",
+            "binwalk",
+            "objdump",
+            "gdb",
+            "rizin",
+            "cutter",
+            "jadx",
+            "unblob",
+            "tshark",
+            "capinfos",
+            "sigrok-cli",
+            "wasm-validate",
+            "mitmdump",
+            "brew",
+            "pipx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.4.4.astraviapkg",
+            "sha256": "89800d0313a98e864d0c03bd247e84f31e2543b8816a22f31e016cb6370364a7"
+          }
         }
       ]
     },
@@ -6709,5 +6753,5 @@
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.18-1"
+  "marketplaceVersion": "2026.10.18-2"
 }
