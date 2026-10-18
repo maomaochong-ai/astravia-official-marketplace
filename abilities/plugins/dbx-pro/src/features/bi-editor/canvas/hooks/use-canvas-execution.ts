@@ -17,7 +17,8 @@ import {
 	type EngineQueryOutcome,
 } from "../../../../shared/services/engine-client";
 import type { NodePos, NodeId, Link } from "../components/node-graph";
-import { fnv1aRange } from "../../../../shared/utils/hash";
+import { parseCsv } from "../lib/parse-csv";
+import { parseRestJson } from "../lib/parse-rest-json";
 import { resolveConnectionName } from "../lib/connection-ref";
 
 export interface NodeResult {
@@ -70,23 +71,15 @@ function quoteIdent(name: string): string {
 	return `"${name.replace(/"/g, '""')}"`;
 }
 
-function hv(seed: string, min: number, max: number): number {
-	return fnv1aRange(seed, min, max);
-}
-function mockRows(seed: string, count: number, colCount: number): Record<string, unknown>[] {
-	const colNames = ["ts", "value", "category", "x", "y", "amount"];
-	const out: Record<string, unknown>[] = [];
-	for (let i = 0; i < count; i++) {
-		const row: Record<string, unknown> = {};
-		for (let c = 0; c < colCount; c++) {
-			const cname = colNames[c] ?? `col_${c + 1}`;
-			if (cname === "ts") row[cname] = `2025-${String(1 + (i % 12)).padStart(2, "0")}-${String(1 + (i % 28)).padStart(2, "0")}`;
-			else if (cname === "category") row[cname] = ["A", "B", "C", "D", "E"][i % 5];
-			else row[cname] = hv(`${seed}-r${i}-c${c}`, 20, 900);
-		}
-		out.push(row);
-	}
-	return out;
+/** 把一行结果写进缓存并同步 state（执行器里多处重复同一模式）。 */
+function commitResult(
+	id: NodeId,
+	result: NodeResult,
+	cache: Record<NodeId, NodeResult>,
+	set: (next: Record<NodeId, NodeResult>) => void,
+): void {
+	cache[id] = result;
+	set({ ...cache });
 }
 
 export function useCanvasExecution(): UseCanvasExecutionReturn {
@@ -127,7 +120,8 @@ export function useCanvasExecution(): UseCanvasExecutionReturn {
 			}
 			try {
 				const outcome = await engineExecuteByName(connectionName, sql, {
-					timeoutMs: Number(values.timeout) || 30_000,
+					// 面板单位是秒，默认 30s
+					timeoutMs: (Number(values.timeout) > 0 ? Number(values.timeout) : 30) * 1000,
 					rowLimit: 1000,
 				});
 				const result = outcomeToResult(outcome);
@@ -190,8 +184,25 @@ export function useCanvasExecution(): UseCanvasExecutionReturn {
 				return;
 			}
 			try {
-				const outcome = await engineExecuteByName(connectionName, `SELECT * FROM ${quoteIdent(tableName)} LIMIT 500`, {
-					timeoutMs: 30_000, rowLimit: 500,
+				// 面板的 Limit 生效：默认 500，上限 5000（与 rowLimit 保持一致）
+				const wanted = Number(values.limit);
+				const limit = Number.isFinite(wanted) && wanted > 0 ? Math.min(5000, Math.floor(wanted)) : 500;
+				// 「选字段」写的是 JSON 数组；为空或不合法则取全部列
+				let projection = "*";
+				const rawFields = String(values.fields ?? "").trim();
+				if (rawFields) {
+					try {
+						const parsed = JSON.parse(rawFields) as unknown;
+						const names = Array.isArray(parsed)
+							? parsed.filter((x): x is string => typeof x === "string" && x.trim() !== "")
+							: [];
+						if (names.length > 0) projection = names.map(quoteIdent).join(", ");
+					} catch {
+						// 非法 JSON 不阻断查询，按全部列执行
+					}
+				}
+				const outcome = await engineExecuteByName(connectionName, `SELECT ${projection} FROM ${quoteIdent(tableName)} LIMIT ${limit}`, {
+					timeoutMs: 30_000, rowLimit: limit,
 				});
 				resultsRef.current[id] = outcomeToResult(outcome);
 			} catch (e) {
@@ -202,31 +213,103 @@ export function useCanvasExecution(): UseCanvasExecutionReturn {
 			return;
 		}
 
-		// ── source-csv：本地 CSV（纯 mock，展示 fileName + rowCount） ──
+		// ── source-csv：粘贴的 CSV / TSV 文本真解析 ──
 		if (kind === "source-csv") {
-			const fileName = String(values.fileName ?? "data.csv");
-			const rowCount = Number(values.rowCount) || 120;
-			resultsRef.current[id] = {
-				columns: ["col_1", "col_2", "col_3", "col_4"],
-				rows: mockRows("csv-" + fileName, rowCount, 4),
-				rowCount,
-				durationMs: 42,
-			};
-			setNodeResults({ ...resultsRef.current });
+			const started = performance.now();
+			const content = String(values.content ?? "");
+			if (!content.trim()) {
+				commitResult(id, errorToResult("未粘贴 CSV 内容：在右侧属性面板粘贴数据", performance.now() - started), resultsRef.current, setNodeResults);
+				return;
+			}
+			const hasHeader = values.hasHeader !== "no";
+			const parsed = parseCsv(content, hasHeader);
+			if (parsed.rows.length === 0) {
+				commitResult(id, errorToResult(parsed.note || "CSV 没有可用数据行", performance.now() - started), resultsRef.current, setNodeResults);
+				return;
+			}
+			commitResult(
+				id,
+				{
+					columns: parsed.columns,
+					rows: parsed.rows,
+					rowCount: parsed.rows.length,
+					durationMs: Math.max(1, Math.round(performance.now() - started)),
+				},
+				resultsRef.current,
+				setNodeResults,
+			);
 			return;
 		}
 
-		// ── source-extract / source-api：一律 mock 出一份假数据 ──
-		if (kind === "source-extract" || kind === "source-api") {
-			const label = kind === "source-extract" ? "抽取任务" : "HTTP API";
-			resultsRef.current[id] = {
-				columns: ["ts", "value", "category"],
-				rows: mockRows("extract-" + id, 30, 3),
-				rowCount: 30,
-				durationMs: Math.round(20 + Math.random() * 80),
-			};
-			setNodeResults({ ...resultsRef.current });
-			void label; // 未使用警告避免
+		// ── source-api：真发 HTTP 请求，失败如实报错 ──
+		if (kind === "source-api") {
+			const started = performance.now();
+			const url = String(values.url ?? "").trim();
+			if (!url) {
+				commitResult(id, errorToResult("未填写接口地址：在右侧属性面板填写 URL", performance.now() - started), resultsRef.current, setNodeResults);
+				return;
+			}
+			const method = String(values.method ?? "GET").toUpperCase();
+			let headers: Record<string, string> = { Accept: "application/json" };
+			const rawHeaders = String(values.headers ?? "").trim();
+			if (rawHeaders) {
+				try {
+					const parsed = JSON.parse(rawHeaders) as unknown;
+					if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+						headers = { ...headers, ...(parsed as Record<string, string>) };
+					}
+				} catch {
+					commitResult(id, errorToResult("请求头不是合法 JSON", performance.now() - started), resultsRef.current, setNodeResults);
+					return;
+				}
+			}
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), 15_000);
+			try {
+				const response = await fetch(url, {
+					method,
+					headers,
+					body: method === "GET" || method === "HEAD" ? undefined : String(values.body ?? "") || undefined,
+					signal: controller.signal,
+				});
+				if (!response.ok) {
+					commitResult(id, errorToResult(`接口返回 ${response.status} ${response.statusText}`.trim(), performance.now() - started), resultsRef.current, setNodeResults);
+					return;
+				}
+				const payload: unknown = await response.json();
+				const table = parseRestJson(payload, Number(values.limit) > 0 ? Number(values.limit) : 1000);
+				if (table.rows.length === 0) {
+					commitResult(id, errorToResult("接口返回的 JSON 里没有可用数据行", performance.now() - started), resultsRef.current, setNodeResults);
+					return;
+				}
+				commitResult(
+					id,
+					{
+						columns: table.columns,
+						rows: table.rows,
+						rowCount: table.truncatedFrom ?? table.rows.length,
+						durationMs: Math.max(1, Math.round(performance.now() - started)),
+					},
+					resultsRef.current,
+					setNodeResults,
+				);
+			} catch (e) {
+				const raw = e instanceof Error ? e.message : String(e);
+				const message = e instanceof DOMException && e.name === "AbortError"
+					? "接口请求超时（15s）"
+					: raw === "Failed to fetch"
+						? "请求失败：网络不可达，或被接口的跨域策略拦截"
+						: raw;
+				commitResult(id, errorToResult(message, performance.now() - started), resultsRef.current, setNodeResults);
+			} finally {
+				clearTimeout(timeout);
+			}
+			return;
+		}
+
+		// ── source-extract：抽取任务没有引擎侧接口，不做假数据 ──
+		if (kind === "source-extract") {
+			commitResult(id, errorToResult("抽取任务尚未接入：请改用 SQL 查询或直连数据源节点"), resultsRef.current, setNodeResults);
 			return;
 		}
 

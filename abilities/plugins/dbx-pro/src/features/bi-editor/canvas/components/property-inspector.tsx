@@ -11,7 +11,8 @@
 import { type JSX } from "react";
 import type { BigscreenPage } from "../../shared/hooks/use-bigscreen-pages";
 import type { NodePos, Link } from "./node-graph";
-import { NODE_SCHEMA } from "./node-schema";
+import { NODE_SCHEMA, type NodeField } from "./node-schema";
+import { DimensionsField, FiltersField, MeasuresField } from "./semantic-fields";
 import { Icon } from "../../shared/components/ui/icon";
 import type { EngineConnectionSummary } from "../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
@@ -405,7 +406,7 @@ function TableField({
 
 function Field({
 	field, node, onUpdate, connections, tableOptions, columns,
-}: { field: { key: string; label: string; type: "text" | "number" | "select" | "textarea"; options?: string[] }; node: NodePos; onUpdate: (patch: Partial<NodePos>) => void; connections?: EngineConnectionSummary[]; tableOptions?: FieldTableOptions; columns?: string[] }) {
+}: { field: NodeField; node: NodePos; onUpdate: (patch: Partial<NodePos>) => void; connections?: EngineConnectionSummary[]; tableOptions?: FieldTableOptions; columns?: string[] }) {
 	const values = node.values ?? {};
 	const current = values[field.key];
 	const setVal = (v: unknown) => onUpdate({ values: { ...values, [field.key]: v } });
@@ -422,8 +423,15 @@ function Field({
 
 	return (
 		<Row label={field.label}>
+			{field.hint ? <p className="mb-1 text-[10px] leading-snug text-faint">{field.hint}</p> : null}
 			{/* 图表字段：有上游/当前 columns 时渲染下拉 */}
-			{isChartField && chartColumns.length > 0 ? (
+			{field.type === "dimensions" ? (
+				<DimensionsField raw={current} columns={chartColumns} onChange={setVal} />
+			) : field.type === "measures" ? (
+				<MeasuresField raw={current} columns={chartColumns} onChange={setVal} />
+			) : field.type === "filters" ? (
+				<FiltersField raw={current} columns={chartColumns} onChange={setVal} />
+			) : isChartField && chartColumns.length > 0 ? (
 				<select
 					value={String(current ?? "")}
 					onChange={(e) => setVal(e.target.value)}
@@ -445,7 +453,9 @@ function Field({
 								{c.name} ({c.type})
 							</option>
 						))
-						: field.options?.map((o) => <option key={o} value={o}>{o}</option>)
+						: field.options?.map((o, i) => (
+							<option key={o} value={o}>{field.optionLabels?.[i] ?? o}</option>
+						))
 					}
 				</select>
 			) : tableOptions && TABLE_FIELD_KEYS.has(field.key) ? (

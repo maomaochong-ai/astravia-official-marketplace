@@ -35,6 +35,9 @@ import { engineRequest } from "../../../../shared/services/engine-client";
 import type { NodeResult } from "../hooks/use-canvas-execution";
 import { fnv1aArray } from "../../../../shared/utils/hash";
 import { resolveNodeChartData, type NodeChartData } from "../lib/node-chart-data";
+import { buildChartOption, parseChartStyle } from "../lib/chart-option";
+import { formatNumber } from "../lib/chart-spec";
+import { EChart, ECHARTS_KINDS } from "../../shared/components/echart";
 import { isChartKind, wireTone } from "../lib/link-tone";
 
 // ── 类型 ──
@@ -217,7 +220,64 @@ function renderChartArea(kind: string, data: NodeChartData): JSX.Element {
  * 图表节点卡片内容：图体 + 结果集 / 维度 / 数值 映射行。
  * 没有真实结果时渲染显式「无数据」占位——不得回退哈希序列充数。
  */
-function renderChartBody(kind: string, data: NodeChartData): JSX.Element {
+/** 只能在语义层下绘制的类型：没有维度/度量配置就没有合理降级画法。 */
+const SEMANTIC_ONLY = new Set([
+	"chart-area", "chart-heatmap", "chart-treemap", "chart-sankey",
+	"chart-waterfall", "chart-combo", "chart-gauge",
+]);
+
+/** 单元格文本：数组/对象折叠成一行，空值显式给破折号。 */
+function cellText(value: unknown): string {
+	if (value === null || value === undefined) return "—";
+	if (typeof value === "object") {
+		try {
+			const json = JSON.stringify(value);
+			return json.length > 40 ? `${json.slice(0, 40)}…` : json;
+		} catch {
+			return "—";
+		}
+	}
+	return String(value);
+}
+
+/**
+ * 结果集表格（output-table / adv-table 共用）。
+ * 只渲染上游真实结果，未运行或报错就给空态，不画占位行。
+ */
+function renderTableBody(result: NodeResult | undefined, values: Record<string, unknown>): JSX.Element {
+	const raw = Number(values.limit);
+	const limit = Number.isFinite(raw) && raw > 0 ? Math.min(50, Math.floor(raw)) : 8;
+	if (!result) return <EmptyChart message="尚无数据" hint="先运行上游数据源节点" />;
+	if (result.error) return <EmptyChart message={result.error} />;
+	if (result.columns.length === 0) return <EmptyChart message="上游结果没有列" />;
+
+	const columns = result.columns.slice(0, 4);
+	const rows = result.rows.slice(0, limit);
+	return (
+		<div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border bg-surface">
+			<div className="flex shrink-0 border-b border-border text-[10px] text-faint">
+				{columns.map((c) => (
+					<span key={c} className="min-w-0 flex-1 truncate px-1.5 py-0.5">{c}</span>
+				))}
+			</div>
+			<div className="min-h-0 flex-1 overflow-hidden">
+				{rows.map((row, i) => (
+					<div key={i} className="flex border-b border-border/60 text-[10px] text-surface-foreground">
+						{columns.map((c) => (
+							<span key={c} className="min-w-0 flex-1 truncate px-1.5 py-0.5">{cellText(row[c])}</span>
+						))}
+					</div>
+				))}
+			</div>
+			<div className="flex h-4 shrink-0 items-center justify-between px-1.5 text-[9px] text-faint">
+				<span>{rows.length} / {result.rowCount} 行</span>
+				<span>{result.durationMs} ms</span>
+			</div>
+		</div>
+	);
+}
+
+function renderChartBody(kind: string, data: NodeChartData, values: Record<string, unknown> = {}): JSX.Element {
 	if (data.status !== "ok") {
 		return (
 			<EmptyChart
@@ -226,14 +286,35 @@ function renderChartBody(kind: string, data: NodeChartData): JSX.Element {
 			/>
 		);
 	}
+	// 配了度量的节点全部走 ECharts；没配的旧页面继续用迷你图，行为不变。
+	if (data.frame && ECHARTS_KINDS.has(kind)) {
+		const option = buildChartOption(kind, data.frame, parseChartStyle(values));
+		if (option) {
+			return (
+				<>
+					<ChartFrame hint={`${data.frame.categories.length} 项`}>
+						<EChart option={option} ariaLabel={`${kind} 图表`} />
+					</ChartFrame>
+					<NodeRow label="结果集">
+						<NodeValue mono>{data.source === "upstream" ? "上游" : "本节点"} · {data.rowCount} 行</NodeValue>
+					</NodeRow>
+					<NodeRow label="分组"><NodeValue mono>{data.frame.dimensionLabels.join(" / ") || "—"}</NodeValue></NodeRow>
+					<NodeRow label="度量"><NodeValue mono>{data.frame.measureLabel || "—"}</NodeValue></NodeRow>
+				</>
+			);
+		}
+	}
+	if (SEMANTIC_ONLY.has(kind)) {
+		return <EmptyChart message="缺少维度与度量配置" hint="在右侧属性面板添加度量" />;
+	}
 	if (kind === "chart-kpi") {
 		return (
 			<>
 				<div className="flex min-h-0 flex-1 flex-col items-center justify-center">
 					<span className="font-mono text-[22px] font-bold text-surface-foreground">
-						{formatMetric(data.values[0])}
+						{data.frame ? formatNumber(data.frame.total, data.frame.series[0]?.format ?? "auto") : formatMetric(data.values[0])}
 					</span>
-					<span className="text-[10px] text-muted">{data.valueField ?? "—"}</span>
+					<span className="text-[10px] text-muted">{data.frame?.measureLabel || data.valueField || "—"}</span>
 				</div>
 				<NodeRow label="结果集">
 					<NodeValue mono>{data.source === "upstream" ? "上游" : "本节点"} · {data.rowCount} 行</NodeValue>
@@ -359,6 +440,13 @@ export const NODE_TEMPLATES: Record<string, Omit<NodePos, "x" | "y">> = {
 	"chart-scatter":   { w: 216, h: 190, tone: TONE.chart,  kind: "chart-scatter" },
 	"chart-map":       { w: 240, h: 240, tone: TONE.chart,  kind: "chart-map" },
 	"chart-radar":     { w: 216, h: 190, tone: TONE.chart,  kind: "chart-radar" },
+	"chart-area":      { w: 216, h: 222, tone: TONE.chart,  kind: "chart-area" },
+	"chart-combo":     { w: 240, h: 220, tone: TONE.chart,  kind: "chart-combo" },
+	"chart-heatmap":   { w: 240, h: 200, tone: TONE.chart,  kind: "chart-heatmap" },
+	"chart-treemap":   { w: 240, h: 200, tone: TONE.chart,  kind: "chart-treemap" },
+	"chart-sankey":    { w: 260, h: 210, tone: TONE.chart,  kind: "chart-sankey" },
+	"chart-waterfall": { w: 240, h: 200, tone: TONE.chart,  kind: "chart-waterfall" },
+	"chart-gauge":     { w: 200, h: 190, tone: TONE.chart,  kind: "chart-gauge" },
 
 	// ── 大屏（设计稿 6 种） ──
 	"screen-page":     { w: 260, h: 80,  tone: TONE.chart,  kind: "screen-page" },
@@ -1274,11 +1362,18 @@ export function NodeGraph({
 	}, [linkOutContext]);
 
 	// ── 工具函数：插入新节点（画布坐标），清其他选中，返回新 id ──
-	function insertNode(kind: string, canvasX: number, canvasY: number): { id: NodeId; node: NodePos } {
+	function insertNode(kind: string, canvasX: number, canvasY: number, initial?: Record<string, unknown>): { id: NodeId; node: NodePos } {
 		const tpl = NODE_TEMPLATES[kind] ?? { w: 180, h: 110, tone: TONE.chart, kind };
 		nodeSeqRef.current++;
 		const newId = `n${nodeSeqRef.current}`;
-		const newNode: NodePos = { ...tpl, x: Math.max(8, canvasX), y: Math.max(8, canvasY), kind, selected: true };
+		const newNode: NodePos = {
+			...tpl,
+			x: Math.max(8, canvasX),
+			y: Math.max(8, canvasY),
+			kind,
+			selected: true,
+			...(initial ? { values: initial } : {}),
+		};
 		setNodes((prev) => {
 			const next: typeof prev = {};
 			for (const [id, n] of Object.entries(prev)) next[id] = { ...n, selected: false };
@@ -1811,7 +1906,7 @@ export function NodeGraph({
 
 							{isChart && chartData && (
 								<div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
-									{renderChartBody(kind, chartData)}
+									{renderChartBody(kind, chartData, values)}
 								</div>
 							)}
 
@@ -1862,18 +1957,7 @@ export function NodeGraph({
 								</div>
 							)}
 
-							{kind === "adv-table" && (
-								<div className="mt-1 flex min-h-0 flex-1 flex-col rounded-[4px] border border-border bg-surface">
-									<div className="grid shrink-0 grid-cols-3 gap-1 border-b border-border px-1 py-0.5 text-[10px] text-faint">
-										<span>列 A</span><span>列 B</span><span>列 C</span>
-									</div>
-									{[0, 1, 2].map((i) => (
-										<div key={i} className="grid grid-cols-3 gap-1 border-b border-border/60 px-1 py-0.5 text-[10px] text-surface-foreground">
-											<span>—</span><span>—</span><span>—</span>
-										</div>
-									))}
-								</div>
-							)}
+							{(kind === "adv-table" || kind === "output-table") && renderTableBody(result, values)}
 
 							{kind === "adv-calendar" && (
 								<div className="mt-1 grid min-h-0 flex-1 grid-cols-7 gap-px rounded-[4px] border border-border bg-surface p-1 text-[9px]">
@@ -1888,7 +1972,7 @@ export function NodeGraph({
 								</div>
 							)}
 
-							{isOutput && (
+							{isOutput && kind !== "output-table" && (
 								<div className="mt-1 grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-1 rounded-[4px] border border-border bg-surface p-1">
 									<span className="col-span-3 rounded-[2px] bg-background" />
 									<span className="rounded-[2px] bg-background" />
@@ -2036,8 +2120,8 @@ export function NodeGraph({
 					x={viewport.tx + contextMenu.x * viewport.scale}
 					y={viewport.ty + contextMenu.y * viewport.scale}
 					onClose={() => setContextMenu(null)}
-					onPick={(kind, _variant) => {
-						insertNode(kind, contextMenu.x - 60, contextMenu.y - 30);
+					onPick={(kind, initial) => {
+						insertNode(kind, contextMenu.x - 60, contextMenu.y - 30, initial);
 						setContextMenu(null);
 					}}
 				/>
@@ -2049,8 +2133,8 @@ export function NodeGraph({
 					x={viewport.tx + linkOutContext.x * viewport.scale}
 					y={viewport.ty + linkOutContext.y * viewport.scale}
 					onClose={() => { setLinkOutContext(null); setPendingLink(null); pendingRef.current = null; }}
-					onPick={(kind) => {
-						const { id: newId } = insertNode(kind, linkOutContext.x + 160, linkOutContext.y - 30);
+					onPick={(kind, initial) => {
+						const { id: newId } = insertNode(kind, linkOutContext.x + 160, linkOutContext.y - 30, initial);
 						// 自动完成连线：pendingLink.from → 新节点 input socket（row 0）
 						const tone = wireTone(nodes[linkOutContext.from]?.tone, isChartKind(nodes[linkOutContext.from]?.kind));
 						setLinks((prev) => [...prev, {

@@ -13,6 +13,7 @@
  */
 
 import type { NodeResult } from "../hooks/use-canvas-execution";
+import { buildFrame, hasSemanticConfig, parseChartSpec, type ChartFrame } from "./chart-spec";
 
 export type ChartDataStatus = "ok" | "no-result" | "field-missing" | "unsupported";
 
@@ -41,6 +42,8 @@ export interface NodeChartData {
 	rowCount: number;
 	/** 面向用户的一句话说明；解析成功时为空串。 */
 	note: string;
+	/** 语义层产出（维度 / 度量 / 过滤 / 排序 / TopN）；未配置度量时 null。 */
+	frame: ChartFrame | null;
 }
 
 /** 每类图表用哪些字段当维度 / 数值（键名严格取自 node-schema.ts，不改名）。 */
@@ -66,6 +69,14 @@ const FIELD_SPECS: Record<string, FieldSpec> = {
 	"chart-map": { label: "geoField", value: "valueField", unsupported: "地图尚未接入" },
 	"chart-radar": { label: "indicatorField", value: "valueFields", multiValue: true, unsupported: "雷达图尚未接入" },
 	"chart-kpi": { label: null, value: "valueField" },
+	// 语义层新增类型：字段名沿用同一套，未配度量时仍可按 xField / yField 降级渲染。
+	"chart-area": { label: "xField", value: "yField" },
+	"chart-heatmap": { label: "xField", value: "yField" },
+	"chart-treemap": { label: "category", value: "value" },
+	"chart-sankey": { label: "xField", value: "yField" },
+	"chart-waterfall": { label: "xField", value: "yField" },
+	"chart-combo": { label: "xField", value: "yField" },
+	"chart-gauge": { label: null, value: "valueField" },
 };
 
 const DEFAULT_LIMIT = 14;
@@ -85,6 +96,7 @@ function emptyResult(status: ChartDataStatus, note: string): NodeChartData {
 		valueField: null,
 		rowCount: 0,
 		note,
+		frame: null,
 	};
 }
 
@@ -237,7 +249,11 @@ export function resolveNodeChartData(
 	if (!spec) {
 		return emptyResult("unsupported", kind.startsWith("chart-") ? "该图表类型尚未接入" : "非图表节点");
 	}
-	if (spec.unsupported) return emptyResult("unsupported", spec.unsupported);
+	// 已配置度量的节点走语义层：渲染器支持比旧字段映射更多的图表类型，
+	// 旧路径里的 unsupported 不再适用（散点 / 雷达现在都能画）。
+	const chartSpec = parseChartSpec(values);
+	const semantic = hasSemanticConfig(chartSpec) && kind !== "chart-boxplot";
+	if (!semantic && spec.unsupported) return emptyResult("unsupported", spec.unsupported);
 
 	const picked = pickSource(self, "self") ?? pickSource(upstream, "upstream");
 	if (!picked) {
@@ -245,6 +261,24 @@ export function resolveNodeChartData(
 		return emptyResult("no-result", hasResult ? EMPTY_RESULT_NOTE : NO_RESULT_NOTE);
 	}
 	const { result, source } = picked;
+
+	if (semantic) {
+		const frame = buildFrame(result, chartSpec);
+		const first = frame.series[0];
+		return {
+			status: "ok",
+			source,
+			// labels / values 继续填首度量的结果，旧调用方（卡片映射行、测试）不用改。
+			labels: frame.categories,
+			values: first?.data ?? [],
+			boxGroups: [],
+			labelField: frame.dimensionLabels[0] ?? null,
+			valueField: chartSpec.measures[0]?.field ?? null,
+			rowCount: result.rows.length,
+			note: "",
+			frame,
+		};
+	}
 
 	// KPI 只要一个数值，不需要维度列。
 	const label = spec.label === null ? { field: null, error: null } : resolveLabelField(spec, values, result);
@@ -269,6 +303,7 @@ export function resolveNodeChartData(
 			valueField,
 			rowCount: result.rows.length,
 			note: "",
+			frame: null,
 		};
 	}
 
@@ -284,5 +319,6 @@ export function resolveNodeChartData(
 		valueField,
 		rowCount: result.rows.length,
 		note: "",
+		frame: null,
 	};
 }

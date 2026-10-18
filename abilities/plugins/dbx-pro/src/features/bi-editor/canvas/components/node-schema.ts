@@ -10,13 +10,37 @@
 export interface NodeField {
 	key: string;
 	label: string;
-	type: "text" | "number" | "select" | "textarea";
+	type: "text" | "number" | "select" | "textarea" | "dimensions" | "measures" | "filters";
 	options?: string[];
+	/** select 选项的显示名（与 options 一一对应）；省略时直接显示原值。 */
+	optionLabels?: string[];
+	hint?: string;
 }
 
 export interface NodeSchema {
 	label: string;
 	fields: NodeField[];
+}
+
+/**
+ * 图表节点共享字段。
+ *
+ * 维度 / 度量分开是 BI 语义的基础：维度决定分组，度量决定聚合口径。
+ * 两者都以 JSON 存在节点 values 里，由 chart-spec.ts 解析。
+ */
+function chartFields(extra: NodeField[] = [], hint?: string): NodeField[] {
+	return [
+		{ key: "title", label: "标题", type: "text" },
+		{ key: "dimensions", label: "维度", type: "dimensions", hint: hint ?? "按维度分组，不配则整表算一个值" },
+		{ key: "measures", label: "度量", type: "measures" },
+		{ key: "filters", label: "筛选条件", type: "filters" },
+		...extra,
+		{ key: "sort", label: "排序", type: "select", options: ["none", "asc", "desc"], optionLabels: ["不排序", "升序", "降序"] },
+		{ key: "limit", label: "TopN", type: "number", hint: "留空则不截断" },
+		{ key: "legend", label: "图例", type: "select", options: ["no", "yes"], optionLabels: ["隐藏", "显示"] },
+		{ key: "labels", label: "数值标签", type: "select", options: ["no", "yes"], optionLabels: ["隐藏", "显示"] },
+		{ key: "valueFormat", label: "数值格式", type: "select", options: ["auto", "plain", "thousand", "compact", "percent", "currency"], optionLabels: ["自动", "整数", "千分位", "万 / 亿", "百分比", "金额"] },
+	];
 }
 
 export const NODE_SCHEMA: Record<string, NodeSchema> = {
@@ -44,7 +68,8 @@ export const NODE_SCHEMA: Record<string, NodeSchema> = {
 			{ key: "title", label: "名称", type: "text" },
 			{ key: "connectionId", label: "连接", type: "select" },   // 从 engine connections 动态填充
 			{ key: "tableName", label: "选表", type: "text" },
-			{ key: "fields", label: "选字段(JSON)", type: "textarea" },
+			{ key: "fields", label: "选字段", type: "textarea", hint: "JSON 数组，如 [\"id\", \"amount\"]；留空取全部列" },
+			{ key: "limit", label: "最多行数", type: "number" },
 		],
 	},
 	"source-extract": {
@@ -60,9 +85,8 @@ export const NODE_SCHEMA: Record<string, NodeSchema> = {
 		label: "本地 CSV",
 		fields: [
 			{ key: "title", label: "名称", type: "text" },
-			{ key: "fileName", label: "文件名", type: "text" },
-			{ key: "rowCount", label: "行数", type: "number" },
-			{ key: "hasHeader", label: "首行表头", type: "select", options: ["yes", "no"] },
+			{ key: "content", label: "CSV 内容", type: "textarea", hint: "直接粘贴，逗号 / 制表符分隔均可，首行默认作为表头" },
+			{ key: "hasHeader", label: "首行表头", type: "select", options: ["yes", "no"], optionLabels: ["是", "否"] },
 		],
 	},
 	"source-table": {
@@ -78,68 +102,79 @@ export const NODE_SCHEMA: Record<string, NodeSchema> = {
 		label: "HTTP API",
 		fields: [
 			{ key: "title", label: "名称", type: "text" },
-			{ key: "url", label: "URL", type: "text" },
+			{ key: "url", label: "URL", type: "text", hint: "返回 JSON；数组或 { data: [...] } 均可" },
 			{ key: "method", label: "Method", type: "select", options: ["GET", "POST"] },
-			{ key: "headers", label: "Headers", type: "textarea" },
+			{ key: "headers", label: "Headers", type: "textarea", hint: "JSON 对象，如 {\"Authorization\": \"Bearer …\"}" },
+			{ key: "body", label: "Body", type: "textarea", hint: "仅 POST 使用" },
+			{ key: "limit", label: "最多行数", type: "number" },
 		],
 	},
 
 	// ── 图表 ──
+	// 所有图表节点共享同一套语义字段：维度 → 分组，度量 → 系列，筛选/排序/TopN → 后处理。
+	// 旧页面里只有 xField / yField 时仍按旧路径渲染（见 node-chart-data.ts）。
 	"chart-bar": {
-		label: "柱图",
-		fields: [
-			{ key: "title", label: "标题", type: "text" },
-			{ key: "xField", label: "X 字段", type: "text" },
-			{ key: "yField", label: "Y 字段", type: "text" },
-			{ key: "orientation", label: "方向", type: "select", options: ["vertical", "horizontal"] },
-			{ key: "stacked", label: "堆叠", type: "select", options: ["no", "yes"] },
-		],
+		label: "柱状图",
+		fields: chartFields([
+			{ key: "orientation", label: "方向", type: "select", options: ["vertical", "horizontal"], optionLabels: ["纵向", "横向"] },
+			{ key: "stack", label: "堆叠", type: "select", options: ["none", "normal", "percent"], optionLabels: ["不堆叠", "堆叠", "百分比"] },
+		]),
 	},
 	"chart-line": {
 		label: "折线图",
-		fields: [
-			{ key: "title", label: "标题", type: "text" },
-			{ key: "xField", label: "X 字段", type: "text" },
-			{ key: "yField", label: "Y 字段", type: "text" },
-			{ key: "smooth", label: "平滑", type: "select", options: ["no", "yes"] },
-			{ key: "area", label: "面积", type: "select", options: ["no", "yes"] },
-		],
+		fields: chartFields([
+			{ key: "smooth", label: "平滑", type: "select", options: ["no", "yes"], optionLabels: ["关闭", "开启"] },
+			{ key: "area", label: "面积", type: "select", options: ["no", "yes"], optionLabels: ["关闭", "开启"] },
+		]),
 	},
-	"chart-pie": {
-		label: "饼图",
-		fields: [
-			{ key: "title", label: "标题", type: "text" },
-			{ key: "category", label: "分类字段", type: "text" },
-			{ key: "value", label: "值字段", type: "text" },
-			{ key: "donut", label: "环形", type: "select", options: ["no", "yes"] },
-		],
+	"chart-area": {
+		label: "面积图",
+		fields: chartFields([
+			{ key: "smooth", label: "平滑", type: "select", options: ["no", "yes"], optionLabels: ["关闭", "开启"] },
+			{ key: "stack", label: "堆叠", type: "select", options: ["none", "normal", "percent"], optionLabels: ["不堆叠", "堆叠", "百分比"] },
+		]),
 	},
+	"chart-combo": {
+		label: "双轴图",
+		fields: chartFields([
+			{ key: "smooth", label: "平滑", type: "select", options: ["no", "yes"], optionLabels: ["关闭", "开启"] },
+		], "第一个度量画柱、第二个画线"),
+	},
+	"chart-pie": { label: "饼图", fields: chartFields([]) },
 	"chart-donut": {
 		label: "环形图",
-		fields: [
-			{ key: "title", label: "标题", type: "text" },
-			{ key: "category", label: "分类字段", type: "text" },
-			{ key: "value", label: "值字段", type: "text" },
+		fields: chartFields([
 			{ key: "innerRadius", label: "内半径(%)", type: "number" },
-		],
+		]),
 	},
-	"chart-kpi": {
-		label: "KPI 指标卡",
-		fields: [
-			{ key: "title", label: "标签", type: "text" },
-			{ key: "valueField", label: "值字段", type: "text" },
-			{ key: "compareField", label: "对比字段", type: "text" },
-			{ key: "prefix", label: "前缀", type: "text" },
-		],
+	"chart-scatter": {
+		label: "散点图",
+		fields: chartFields([], "两个度量分别作为横轴与纵轴"),
 	},
-	"chart-funnel": {
-		label: "漏斗图",
-		fields: [
-			{ key: "title", label: "标题", type: "text" },
-			{ key: "stageField", label: "阶段字段", type: "text" },
-			{ key: "valueField", label: "值字段", type: "text" },
-			{ key: "sort", label: "排序", type: "select", options: ["desc", "asc"] },
-		],
+	"chart-radar": {
+		label: "雷达图",
+		fields: chartFields([], "维度作为指标轴，每个度量一条包络线"),
+	},
+	"chart-funnel": { label: "漏斗图", fields: chartFields([]) },
+	"chart-gauge": {
+		label: "仪表盘",
+		fields: chartFields([
+			{ key: "yMin", label: "最小值", type: "number" },
+			{ key: "yMax", label: "最大值", type: "number" },
+		], "度量总计作为指针值"),
+	},
+	"chart-heatmap": {
+		label: "热力图",
+		fields: chartFields([], "配置两个维度：第二个维度作为横向分类"),
+	},
+	"chart-treemap": { label: "矩形树图", fields: chartFields([]) },
+	"chart-sankey": {
+		label: "桑基图",
+		fields: chartFields([], "配置两个维度：第一个作为来源、第二个作为去向"),
+	},
+	"chart-waterfall": {
+		label: "瀑布图",
+		fields: chartFields([], "最后一项按总计渲染"),
 	},
 	"chart-boxplot": {
 		label: "箱线图",
@@ -149,13 +184,16 @@ export const NODE_SCHEMA: Record<string, NodeSchema> = {
 			{ key: "yField", label: "数值字段", type: "text" },
 		],
 	},
-	"chart-scatter": {
-		label: "散点图",
+	"chart-kpi": {
+		label: "KPI 指标卡",
 		fields: [
-			{ key: "title", label: "标题", type: "text" },
-			{ key: "xField", label: "X 字段", type: "text" },
-			{ key: "yField", label: "Y 字段", type: "text" },
-			{ key: "sizeField", label: "大小字段", type: "text" },
+			{ key: "title", label: "标签", type: "text" },
+			{ key: "valueField", label: "值字段（未配度量时的降级字段）", type: "text" },
+			{ key: "measures", label: "度量", type: "measures" },
+			{ key: "filters", label: "筛选", type: "filters" },
+			{ key: "compareField", label: "对比字段", type: "text" },
+			{ key: "prefix", label: "前缀", type: "text" },
+			{ key: "valueFormat", label: "数值格式", type: "select", options: ["auto", "plain", "thousand", "compact", "percent", "currency"], optionLabels: ["自动", "整数", "千分位", "万 / 亿", "百分比", "金额"] },
 		],
 	},
 	"chart-map": {
@@ -165,14 +203,6 @@ export const NODE_SCHEMA: Record<string, NodeSchema> = {
 			{ key: "geoField", label: "地理字段", type: "text" },
 			{ key: "valueField", label: "值字段", type: "text" },
 			{ key: "mapType", label: "底图", type: "select", options: ["China", "World"] },
-		],
-	},
-	"chart-radar": {
-		label: "雷达图",
-		fields: [
-			{ key: "title", label: "标题", type: "text" },
-			{ key: "indicatorField", label: "指标字段", type: "text" },
-			{ key: "valueFields", label: "值字段(逗号分隔)", type: "text" },
 		],
 	},
 
