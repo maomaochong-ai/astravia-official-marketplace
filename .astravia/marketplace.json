@@ -981,7 +981,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.79",
+      "version": "0.4.80",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -5605,389 +5605,36 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.79.astraviapkg",
             "sha256": "677c146c3c708b10dd8203da45e9150f412c5d0be0c4126896180f432eb169ca"
           }
-        }
-      ]
-    },
-    {
-      "type": "plugin",
-      "slug": "as-codemap",
-      "name": "Code Map",
-      "description": "Scan the workspace into a symbol-and-reference map, let the AI answer where a symbol is defined and who calls it, and browse findings in a PR-style code review panel.",
-      "version": "0.2.4",
-      "configVersion": 1,
-      "license": "Apache-2.0",
-      "author": "Astravia / zhangqingkun976",
-      "category": "Development",
-      "categoryI18n": {
-        "zh": "开发",
-        "en": "Development"
-      },
-      "tags": [
-        "codebase",
-        "symbols",
-        "references",
-        "navigation",
-        "code-map",
-        "code-review"
-      ],
-      "detail": {
-        "i18n": {
-          "zh": {
-            "name": "代码图谱",
-            "description": "把工作区扫描成符号与引用图谱，AI 可以据此回答某个符号定义在哪、被谁调用；审查面板以 PR 风格呈现发现。",
-            "tags": [
-              "代码库",
-              "符号",
-              "引用",
-              "代码导航",
-              "代码图谱",
-              "代码审查"
-            ]
-          }
-        }
-      },
-      "source": {
-        "path": "abilities/plugins/as-codemap"
-      },
-      "releases": [
-        {
-          "version": "0.1.1",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.workspace-view",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "fs.read",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.1.astraviapkg",
-            "sha256": "913700a99cc9968cc31f1fe21371db2a430e9c78349ed91a128d6131e802bdb1"
-          }
         },
         {
-          "version": "0.1.2",
-          "minAppVersion": "0.5.60",
+          "version": "0.4.80",
+          "minAppVersion": "0.5.59",
           "pluginApiVersion": "^2.0.0",
           "permissions": [
-            "ui.slot.workspace-view",
+            "agent.mcp.control",
+            "agent.skills.control",
             "agent.tools.register",
             "agent.toolHandler.execute",
-            "agent.session.read",
-            "fs.read",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.2.astraviapkg",
-            "sha256": "4f95e9e7b2f1f77767df7058eb2faee7385de34d642114a3b706e4de6c32559b"
-          }
-        },
-        {
-          "version": "0.1.3",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.workspace-view",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "fs.read",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.3.astraviapkg",
-            "sha256": "f5ef3e1eb2723e6f2e20939b8948bbb31f4ef71e7915d1909def2ad0edb0b062"
-          }
-        },
-        {
-          "version": "0.1.4",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.workspace-view",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "fs.read",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.1.4.astraviapkg",
-            "sha256": "c153f38793d99bbec683115af249bfa2d8b9a2c35554c4e7a491db6f45ca4f0d"
-          }
-        },
-        {
-          "version": "0.2.1",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.workspace-view",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "fs.read",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.2.1.astraviapkg",
-            "sha256": "52790f5d7933ba955b2cbb7922605dd16619767503436b95b8296d7884806a5a"
-          }
-        },
-        {
-          "version": "0.2.4",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.workspace-view",
             "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "fs.read",
-            "storage.read",
-            "storage.write",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-codemap/as-codemap-0.2.4.astraviapkg",
-            "sha256": "fe9f7a29d38b55409a5a5f3045e87560d2be6267593da04a7dbdea9aaeee4f98"
-          }
-        }
-      ]
-    },
-    {
-      "type": "plugin",
-      "slug": "as-ocr",
-      "name": "Code Review",
-      "description": "Run alibaba/open-code-review from the conversation and list its findings by severity, so bugs and risky patterns surface before they ship.",
-      "version": "0.1.12",
-      "configVersion": 1,
-      "license": "Apache-2.0",
-      "author": "Astravia / zhangqingkun976",
-      "category": "Development",
-      "categoryI18n": {
-        "zh": "开发",
-        "en": "Development"
-      },
-      "tags": [
-        "code-review",
-        "static-analysis",
-        "quality",
-        "npe",
-        "security"
-      ],
-      "detail": {
-        "i18n": {
-          "zh": {
-            "name": "代码审查",
-            "description": "在对话里调用 alibaba/open-code-review，把空指针、线程安全、XSS、SQL 注入等发现按严重级别整理出来。",
-            "tags": [
-              "代码审查",
-              "静态分析",
-              "代码质量",
-              "空指针",
-              "安全"
-            ]
-          }
-        }
-      },
-      "source": {
-        "path": "abilities/plugins/as-ocr"
-      },
-      "releases": [
-        {
-          "version": "0.1.1",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "storage.read",
-            "storage.write",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
             "agent.command.run",
-            "fs.read",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.1.astraviapkg",
-            "sha256": "d9b264c58e297eb61bd2dd245aadacae22711b5bb424f191f172c9d9cb119de8"
-          }
-        },
-        {
-          "version": "0.1.2",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
             "agent.session.read",
+            "agent.session.write",
             "storage.read",
             "storage.write",
-            "agent.command.run",
-            "fs.read",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.2.astraviapkg",
-            "sha256": "96f36b37d2163c4bbb3194dc76cea0e9ce2f45c9a28ba6b3f5698a05c847078f"
-          }
-        },
-        {
-          "version": "0.1.3",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "storage.read",
-            "storage.write",
-            "agent.command.run",
-            "fs.read",
-            "shell.openExternal"
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch",
+            "ai.complete"
           ],
           "commands": [
-            "ocr"
+            "dbx"
           ],
           "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.3.astraviapkg",
-            "sha256": "c8353c3fadcb7b4969936b012b81720546d9e36b73f32bffcf93c13b4ac41255"
-          }
-        },
-        {
-          "version": "0.1.4",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "storage.read",
-            "storage.write",
-            "agent.command.run",
-            "fs.read",
-            "shell.openExternal"
-          ],
-          "commands": [
-            "ocr"
-          ],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.4.astraviapkg",
-            "sha256": "6faa33960d7143a83a6fc5b5198f4a410a55d85048b73dd621d01a5008cce696"
-          }
-        },
-        {
-          "version": "0.1.5",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "storage.read",
-            "storage.write",
-            "fs.read",
-            "shell.openExternal"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.5.astraviapkg",
-            "sha256": "374009c45bf33586ea0406b48dbb077bc69b824b2cd8d37586cc14bd14e7939d"
-          }
-        },
-        {
-          "version": "0.1.10",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "storage.read",
-            "storage.write",
-            "fs.read",
-            "agent.command.run",
-            "shell.openExternal"
-          ],
-          "commands": [
-            "git"
-          ],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.10.astraviapkg",
-            "sha256": "f228c6b8c9ad35fbf3ca9cf8b8cbdfdabd81ba8471060c664061eacd7c89315d"
-          }
-        },
-        {
-          "version": "0.1.11",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "storage.read",
-            "storage.write",
-            "fs.read",
-            "agent.command.run",
-            "shell.openExternal"
-          ],
-          "commands": [
-            "git"
-          ],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.11.astraviapkg",
-            "sha256": "32702b26699dbe945baf8bbfca2061eb93b63f4925b528b515f30913b67f063e"
-          }
-        },
-        {
-          "version": "0.1.12",
-          "minAppVersion": "0.5.60",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.activity-tab",
-            "agent.tools.register",
-            "agent.toolHandler.execute",
-            "agent.session.read",
-            "storage.read",
-            "workspace.read",
-            "storage.write",
-            "agent.command.run",
-            "shell.openExternal"
-          ],
-          "commands": [
-            "git"
-          ],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-as-ocr/as-ocr-0.1.12.astraviapkg",
-            "sha256": "b2fab5ca0aa4d7e0a6e7796dc11ce0d899666467b9797e25bc44961ca590e199"
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.80.astraviapkg",
+            "sha256": "6080ff21bd21a43562d2de33b5ab8b0d73fc9f926ae8a20de56931fd8bb40c72"
           }
         }
       ]
@@ -6826,5 +6473,5 @@
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.18-4"
+  "marketplaceVersion": "2026.10.18-5"
 }
