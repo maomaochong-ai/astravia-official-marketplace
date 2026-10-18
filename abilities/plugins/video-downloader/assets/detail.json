@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Video Downloader",
+      "title": "Save the video you are watching, at the quality you pick",
+      "description": "Paste a link from a supported site, compare the available renditions with their file sizes, and keep the file in a folder you choose.",
+      "badges": ["128 sites", "Local engine", "No account needed"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "Download this in 1080p: https://www.bilibili.com/video/BV1GJ411x7h7",
+        "assistant_reply": "Probed the page — 4 renditions available, 1080p is 42.6 MB and arrives as separate video and audio tracks, so it is merged with ffmpeg before saving. The download is queued and will land in your download folder."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "Quality before bytes",
+          "description": "Every rendition is listed with its container and file size, so you choose knowingly instead of guessing from a label.",
+          "icon": "solar:slider-vertical-linear"
+        },
+        {
+          "title": "A queue you can steer",
+          "description": "Progress, speed and remaining time per task, with cancel, retry and reveal-in-folder actions.",
+          "icon": "solar:list-check-linear"
+        },
+        {
+          "title": "Audio-only renditions",
+          "description": "Sites that expose audio streams can be saved as sound files, which is handy for music and talks.",
+          "icon": "solar:music-note-2-linear"
+        },
+        {
+          "title": "Files stay local",
+          "description": "The engine runs on your machine and writes straight to your download folder; nothing is uploaded.",
+          "icon": "solar:folder-with-files-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "Open the Video Downloader view",
+          "description": "The panel prepares its pinned local engine on first use."
+        },
+        {
+          "title": "Paste a link and analyze",
+          "description": "The page is resolved into a title and a list of renditions."
+        },
+        {
+          "title": "Pick a rendition and download",
+          "description": "Progress appears in the queue; finished files are moved to your download folder."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. If ffmpeg is missing, those renditions are marked and the plugin explains how to re-check after installing it. Only download material you have the right to keep."
+    },
+    {
+      "type": "links",
+      "items": [
+        { "label": "Supported sites", "href": "https://github.com/iawia002/lux/blob/master/README.md" },
+        { "label": "ffmpeg downloads", "href": "https://ffmpeg.org/download.html" }
+      ]
+    }
+  ]
+}
