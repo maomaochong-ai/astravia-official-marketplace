@@ -4,7 +4,7 @@
 [Firecrawl](https://docs.firecrawl.dev) 执行——本插件不再自带任何抓取引擎。
 
 ```text
-Agent 工具  ──►  请求体  ──►  Firecrawl API v2  ──►  Markdown / JSON / 任务状态
+Agent 工具  ──►  请求体  ──►  Firecrawl API v2  ──►  Markdown / 媒体地址 / JSON / 任务状态
 控制台      ──►  POST /v2/crawl ──►  GET /v2/crawl/{id}  ──►  蜘蛛图 + 页面
 ```
 
@@ -37,7 +37,7 @@ Firecrawl 不止一种集成面，宿主对每种都有对应机制。本插件�
 
 | 扩展点 | 说明 |
 | --- | --- |
-| 活动面板 `crawl.console` | 连接条（端点 / API Key）+ 蜘蛛面板（页面结构 / 链接拓扑）+ Artifacts / Pages / Links / Media / Issues / Console / Chat / History 八个标签页，另有每页输出类型勾选。未开始时保持静止；运行时逐页显示收录、拒绝原因，以及找到的每个媒体地址。抓到的页面同时按类型上架（Markdown、链接、图片、媒体、JSON、解析出的文档），最近几次运行留在磁盘上，产物可再次打开 |
+| 活动面板 `crawl.console` | 连接条（端点 / API Key）+ 蜘蛛面板（页面结构 / 链接拓扑）+ Artifacts / Pages / Links / Media / Issues / Console / Chat / History 八个标签页，另有每页输出类型勾选。未开始时保持静止；运行时逐页显示收录、拒绝原因，以及找到的每个媒体地址。抓到的页面同时按类型上架（Markdown、链接、图片、视频、音频、JSON、解析出的文档），最近几次运行留在磁盘上，产物可再次打开 |
 | `firecrawl_crawl` 的工具调用插槽 | Agent 发起的爬取在对话里显示成一张卡片：运行时是实时页数，结束后是工具原文，一键打开同一对话对应的控制台 |
 | 输入框下方 `ui.slot.input-action`「Firecrawl」 | 打开时以最大宽度挂载面板，并把爬取指令注入下一条提示；关闭时卸载 |
 | `firecrawl_scrape` | 单页 → 你要的格式：`markdown`、`html`、`rawHtml`、`links`、`screenshot`（可整页）、`images`、`summary`、`json`、`audio`、`video`、`media`、`branding`、`product`、`menu`、`attributes`、`changeTracking`、`rawBase64`，以及 `question` / `highlights` |
@@ -46,16 +46,14 @@ Firecrawl 不止一种集成面，宿主对每种都有对应机制。本插件�
 | `firecrawl_map` | 由 sitemap 与页面链接汇总 URL 清单，最多 5000 条 |
 | `firecrawl_search` | 网页搜索，支持来源、分类、域名过滤与时间范围 |
 | `firecrawl_extract` | 跨一个或多个 URL 的 schema 抽取 |
+| `firecrawl_account` | 读取额度、队列深度与仍在运行的爬取任务。花钱之前先看额度，或用来找回超出标签页生命周期的任务 id |
 | `firecrawl_parse` | **本地**文档 → Markdown：PDF、DOCX、XLSX、PPTX 等，上传到 `/v2/parse`（≤20 MB）。URL 走 `firecrawl_scrape`。 |
 | `firecrawl_video` | 用 `scrape` 的 `video` / `audio` 格式取页面媒体地址（含 HLS/DASH 清单），返回带签名的 URL；本地不做转码 |
 | `firecrawl_job_status` | 查看、等待或取消 crawl/batch 任务 |
 | `firecrawl_interact` | 在 Firecrawl 沙箱里开一个有状态的浏览器会话：`create` 拿 id，`execute` 用 Node / Python / Bash 驱动页面，`stop` 关闭。代码不在本地运行，也不会回显到控制台 |
-| `firecrawl_agent` | 受 `maxCredits` 约束的跨页检索：`prompt` 加可选 `schema`，轮询 `GET /v2/agent/{id}` 直到完成或触到额度（此时标记为部分结果） |
+| `firecrawl_agent` | 受 `maxCredits` 约束的跨页检索：`prompt` 加可选 `schema`，轮询 `GET /v2/agent/{id}` 直到完成或触到额度（此时标记为部分结果）。`trace: true` 会附上已有运行的步骤日志 |
 | `firecrawl_index_search` | 一个工具、三类语料：`developer`（文档 / issue / PR / readme）、`gov`、`research`（论文搜索、读单篇、沿引用扩展） |
 | `firecrawl_monitor` | 创建、列出、修改、立即运行、查看与删除定时监控（`scrape` / `crawl` / `search` 目标，cron 或间隔调度） |
-| `firecrawl_interact` | Firecrawl 沙箱里的有状态浏览器会话：开一次，之后跨调用运行代码、点击、读取，最后关闭。任何代码都不在本机执行 |
-| `firecrawl_agent` | Firecrawl 的浏览 Agent：一句自然语言问题换一个结构化答案，页面由上游自己挑。用 `maxCredits` 限住成本；长任务返回 job id，再次调用不重复计费 |
-| `firecrawl_index_search` | 搜索精选语料而非开放网络：`developer`（文档、issue、PR、readme、agent skill）、`gov`、`research`（论文与引用） |
 | Skill `firecrawl`（`agent/skills/firecrawl/`） | 让 Agent 知道何时用哪个工具，如何如实报告上限与上游错误 |
 
 面板与工具共用同一份 run store，所以 Agent 发起的爬取会在面板里动起来，而不是悄无声息地跑完。

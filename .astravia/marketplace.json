@@ -6365,7 +6365,7 @@
       "slug": "firecrawl",
       "name": "Firecrawl Connector",
       "description": "Read pages through the Firecrawl API: Markdown by default, plus HTML, links, screenshots, images, video and audio URLs, summaries or schema-shaped JSON. Crawl a section, map a site, search, parse PDFs and Office files, drive a browser session or the browsing agent. Works without a key at a lower rate limit; connect one on this page to lift it.",
-      "version": "0.3.2",
+      "version": "0.3.3",
       "configVersion": 1,
       "license": "AGPL-3.0",
       "author": "Astravia Community",
@@ -6500,10 +6500,38 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-firecrawl/firecrawl-0.3.2.astraviapkg",
             "sha256": "50f33f5e013c8ae7f0895a7c51da26eb1a56f335f79915d4c0320567836dce7d"
           }
+        },
+        {
+          "version": "0.3.3",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "network.fetch",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "ui.slot.tool-call",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "secrets.read",
+            "secrets.write",
+            "fs.read",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-firecrawl/firecrawl-0.3.3.astraviapkg",
+            "sha256": "6e74949ece25893359e02fcd413a8e7e29c11661aeaa2998488a415f06781747"
+          }
         }
       ]
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.18-6"
+  "marketplaceVersion": "2026.10.18-7"
 }

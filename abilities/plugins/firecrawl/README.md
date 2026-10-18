@@ -7,7 +7,7 @@ for, not prose by default. Every request is executed by [Firecrawl](https://docs
 plugin ships no scraper of its own.
 
 ```text
-agent tool  ──►  request body  ──►  Firecrawl API v2  ──►  Markdown / JSON / job status
+agent tool  ──►  request body  ──►  Firecrawl API v2  ──►  Markdown / media URLs / JSON / job status
 console     ──►  POST /v2/crawl ──►  GET /v2/crawl/{id}  ──►  spider web + pages
 ```
 
@@ -46,7 +46,7 @@ self-hosted endpoint.
 
 | Extension point | What it does |
 | --- | --- |
-| Activity tab `crawl.console` | Connection bar (endpoint, API key), output-format picker, spider panel (page anatomy or link topology) plus Artifacts / Pages / Links / Media / Issues / Console / Chat / History tabs. Idle until a run starts; shows every admitted page, every refused page and its upstream error, and every media URL found. Every captured page is also shelved by type (Markdown, links, images, media, JSON, parsed documents), and the last runs stay on disk so their products can be reopened. |
+| Activity tab `crawl.console` | Connection bar (endpoint, API key), output-format picker, spider panel (page anatomy or link topology) plus Artifacts / Pages / Links / Media / Issues / Console / Chat / History tabs. Idle until a run starts; shows every admitted page, every refused page and its upstream error, and every media URL found. Every captured page is also shelved by type (Markdown, links, images, video, audio, JSON, parsed documents), and the last runs stay on disk so their products can be reopened. |
 | `ui.slot.tool-call` on `firecrawl_crawl` | The agent's crawl becomes a card in the transcript: live page counts while it runs, the tool's own result afterwards, and one click to the console anchored on the same conversation. |
 | `ui.slot.input-action` "Firecrawl" | Toggle below the input bar. On: attaches the console at full width and injects crawl instructions into the next prompt. Off: detaches it. |
 | `firecrawl_scrape` | One page → the formats you ask for: `markdown`, `html`, `rawHtml`, `links`, `screenshot` (optionally full page), `images`, `summary`, `json`, `audio`, `video`, `media`, `branding`, `product`, `menu`, `attributes`, `changeTracking`, `rawBase64`, plus `question` / `highlights`. |
@@ -55,16 +55,14 @@ self-hosted endpoint.
 | `firecrawl_map` | URL inventory from sitemaps plus page links, up to 5000 entries. |
 | `firecrawl_search` | Web search with sources, categories, domain filters and a recency window. |
 | `firecrawl_extract` | Schema-shaped extraction across one or more URLs. |
+| `firecrawl_account` | Credits, queue depth and crawls still running upstream for the key. Read before an expensive run, or to recover the id of a crawl that outlived the tab. |
 | `firecrawl_parse` | A **local** document → Markdown: PDF, DOCX, XLSX, PPTX and friends, uploaded to `/v2/parse` (≤20 MB). URLs go through `firecrawl_scrape`. |
 | `firecrawl_video` | Media URLs for a page, including HLS/DASH manifests, from `scrape` with the `video` / `audio` formats. Returns the signed URL; nothing is transcoded locally. |
 | `firecrawl_interact` | A stateful browser session in Firecrawl's sandbox: `create` returns an id, `execute` runs Node / Python / Bash against the live page, `stop` closes it. The code never runs locally and is not echoed to the console. |
-| `firecrawl_agent` | Cross-page research bounded by `maxCredits`: `prompt` plus an optional `schema`, polling `GET /v2/agent/{id}` until the run completes or hits the budget (reported as partial). |
+| `firecrawl_agent` | Cross-page research bounded by `maxCredits`: `prompt` plus an optional `schema`, polling `GET /v2/agent/{id}` until the run completes or hits the budget (reported as partial). `trace: true` adds the ordered step log of an existing run. |
 | `firecrawl_index_search` | One tool, three corpora: `developer` (docs, issues, pull requests, readmes), `gov`, and `research` (papers, single-paper reads, citation walking). |
 | `firecrawl_job_status` | Inspect, wait for or cancel a crawl/batch job. |
 | `firecrawl_monitor` | Create, list, update, run, inspect and delete scheduled monitors (`scrape` / `crawl` / `search` targets with a cron or interval schedule). |
-| `firecrawl_interact` | A stateful browser session inside Firecrawl's sandbox: open it once, then run code, click and read across calls, and close it. Nothing executes on this machine. |
-| `firecrawl_agent` | Firecrawl's browsing agent: one plain-language question, one structured answer, with the pages chosen upstream. Bounded by `maxCredits`; long runs return a job id instead of charging twice. |
-| `firecrawl_index_search` | Search curated corpora instead of the open web: `developer` (docs, issues, PRs, readmes, agent skills), `gov`, and `research` (papers, citations). |
 | Skill `firecrawl` (`agent/skills/firecrawl/`) | Tells the Agent when to pick which tool and how to report limits and upstream errors honestly. |
 
 The tab and the tools share one run store, so a crawl the Agent starts animates in the panel
