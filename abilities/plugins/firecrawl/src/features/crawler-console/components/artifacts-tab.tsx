@@ -67,6 +67,19 @@ export function ArtifactsTab({ snapshot }: { snapshot: CrawlRunSnapshot }) {
 	};
 
 	if (snapshot.artifacts.length === 0) {
+		// An empty shelf after a failed run reads as "nothing happened"; the reason
+		// lives on the console tab, so at least name it here.
+		if (snapshot.status === "failed") {
+			return (
+				<div className="flex flex-col gap-1 px-1 py-3 text-[11px]">
+					<p className="text-destructive">{t("console.artifacts.failed")}</p>
+					{snapshot.lastError ? (
+						<p className="break-words text-muted-foreground">{snapshot.lastError}</p>
+					) : null}
+					<p className="text-muted-foreground">{t("console.artifacts.failedHint")}</p>
+				</div>
+			);
+		}
 		return <p className="px-1 py-3 text-[11px] text-muted-foreground">{t("console.artifacts.empty")}</p>;
 	}
 

@@ -197,6 +197,11 @@ export interface JobPageError {
 	error?: string;
 	code?: string;
 	statusCode?: number;
+	/**
+	 * Set when upstream reported the URL under `robotsBlocked` instead of `errors`.
+	 * That array carries bare URLs, so there is no code or message to show.
+	 */
+	robots?: boolean;
 }
 
 export interface MapResult {

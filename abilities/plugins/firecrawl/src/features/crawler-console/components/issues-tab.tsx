@@ -55,6 +55,13 @@ export function IssuesTab({ snapshot }: { snapshot: CrawlRunSnapshot }) {
 				) : null}
 			</div>
 			<div className="min-h-0 flex-1 overflow-y-auto py-1">
+				{/* A run that produced nothing but refusals needs the reason spelled out,
+				    otherwise the tab only lists URLs and reads like a plugin failure. */}
+				{snapshot.counts.crawled === 0 && snapshot.counts.denied > 0 ? (
+					<p className="mb-1.5 rounded border border-destructive/30 bg-destructive/5 px-1.5 py-1 text-[9.5px] leading-snug text-destructive">
+						{t("console.issues.nothingCrawled")}
+					</p>
+				) : null}
 				{blocked.length > 0 ? (
 					<section className="mb-1.5">
 						<h3 className="px-1 text-[10px] font-medium text-foreground">

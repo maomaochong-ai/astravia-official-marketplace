@@ -112,6 +112,23 @@ describe("REST client", () => {
 		expect(calls).toHaveLength(2);
 	});
 
+	it("waits out a throttled request and keeps polling instead of failing the crawl", async () => {
+		let attempt = 0;
+		const { transport, calls } = fakeTransport(() => {
+			attempt += 1;
+			if (attempt < 3) {
+				return { status: 429, body: { success: false, error: "rate limited", retry_after_seconds: 0.01 } };
+			}
+			return { body: { success: true, status: "completed", completed: 1, total: 1, data: [] } };
+		});
+		const client = createClient({ apiKey: "k", transport });
+
+		const job = await client.job("crawl", "c-1");
+
+		expect(job.status).toBe("completed");
+		expect(calls).toHaveLength(3);
+	});
+
 	it("routes batch and crawl jobs to their own endpoints", async () => {
 		const { transport, calls } = fakeTransport((call) => {
 			if (call.method === "DELETE") return { body: { status: "cancelled" } };
@@ -160,6 +177,18 @@ describe("REST client", () => {
 
 		await expect(client.jobErrors("crawl", "c-1")).resolves.toEqual([
 			{ url: "https://a.test/private", error: "Blocked by robots.txt", code: "ROBOTS_BLOCKED" },
+		]);
+	});
+
+	it("folds the robotsBlocked url list into the error rows", async () => {
+		const { transport } = fakeTransport(() => ({
+			body: { errors: [], robotsBlocked: ["https://a.test/secret", "https://a.test/private"] },
+		}));
+		const client = createClient({ apiKey: "k", transport });
+
+		await expect(client.jobErrors("crawl", "c-1")).resolves.toEqual([
+			{ url: "https://a.test/secret", robots: true },
+			{ url: "https://a.test/private", robots: true },
 		]);
 	});
 });

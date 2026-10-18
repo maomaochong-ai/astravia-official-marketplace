@@ -40,7 +40,28 @@ export const DEFAULT_ENDPOINT = "https://api.firecrawl.dev";
 /** Job creation can take a while when the upstream queue is busy. */
 const SUBMIT_TIMEOUT_MS = 120_000;
 const READ_TIMEOUT_MS = 30_000;
-const MAX_ATTEMPTS = 2;
+/** A throttled request is worth waiting out; a broken server is not. */
+const MAX_THROTTLE_ATTEMPTS = 4;
+const MAX_SERVER_ERROR_ATTEMPTS = 3;
+const THROTTLE_BACKOFF_MS = [2_000, 6_000, 15_000];
+const SERVER_BACKOFF_MS = [400, 1_200];
+const MAX_BACKOFF_MS = 30_000;
+
+/**
+ * Resolves how long to wait before retrying, preferring upstream's own advice.
+ *
+ * Firecrawl reports throttling as `retry_after_seconds` (occasionally nested in
+ * an error object); ignoring it is what turns a two-second stall into a failed
+ * crawl, because our default backoff is far shorter than a refilling bucket.
+ */
+function retryDelayMs(attempt: number, payload: unknown): number {
+	const record = (payload ?? {}) as Record<string, unknown>;
+	const nested = record.error && typeof record.error === "object" ? (record.error as Record<string, unknown>) : {};
+	const raw = record.retry_after_seconds ?? record.retry_after ?? record.retryAfter ?? nested.retry_after_seconds;
+	const seconds = typeof raw === "number" ? raw : typeof raw === "string" ? Number.parseFloat(raw) : Number.NaN;
+	if (Number.isFinite(seconds) && seconds > 0) return Math.min(MAX_BACKOFF_MS, seconds * 1_000 + 250);
+	return THROTTLE_BACKOFF_MS[Math.min(attempt - 1, THROTTLE_BACKOFF_MS.length - 1)];
+}
 
 export interface ClientOptions {
 	endpoint?: string;
@@ -146,7 +167,7 @@ export function createClient(options: ClientOptions): FirecrawlClient {
 	): Promise<Record<string, unknown>> {
 		const url = /^https?:\/\//i.test(target) ? target : `${endpoint}${target}`;
 		let lastError: unknown;
-		for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+		for (let attempt = 1; attempt <= MAX_THROTTLE_ATTEMPTS; attempt += 1) {
 			let response;
 			try {
 				response = await transport({
@@ -162,8 +183,10 @@ export function createClient(options: ClientOptions): FirecrawlClient {
 				});
 			} catch (error) {
 				lastError = error;
-				if (attempt === MAX_ATTEMPTS) break;
-				await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+				// A failed write may still have landed upstream (job created, page paid
+				// for), so only reads are safe to replay blindly.
+				if (attempt === MAX_THROTTLE_ATTEMPTS || method !== "GET") break;
+				await new Promise((resolve) => setTimeout(resolve, SERVER_BACKOFF_MS[Math.min(attempt - 1, SERVER_BACKOFF_MS.length - 1)]));
 				continue;
 			}
 
@@ -175,9 +198,12 @@ export function createClient(options: ClientOptions): FirecrawlClient {
 			}
 
 			if (response.ok) return (payload ?? {}) as Record<string, unknown>;
-			const retryable = response.status === 429 || response.status >= 500;
-			if (retryable && attempt < MAX_ATTEMPTS) {
-				await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
+			const throttled = response.status === 429;
+			const retryable = throttled || response.status >= 500;
+			if (retryable && attempt < (throttled ? MAX_THROTTLE_ATTEMPTS : MAX_SERVER_ERROR_ATTEMPTS)) {
+				await new Promise((resolve) =>
+					setTimeout(resolve, throttled ? retryDelayMs(attempt, payload) : SERVER_BACKOFF_MS[attempt - 1]),
+				);
 				continue;
 			}
 			const failure = describeFailure(response.status, payload);
@@ -255,7 +281,7 @@ export function createClient(options: ClientOptions): FirecrawlClient {
 				: Array.isArray(payload.data)
 					? payload.data
 					: [];
-			return list
+			const errors = list
 				.filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object")
 				.map(
 					(entry): JobPageError => ({
@@ -265,6 +291,10 @@ export function createClient(options: ClientOptions): FirecrawlClient {
 						statusCode: typeof entry.statusCode === "number" ? entry.statusCode : undefined,
 					}),
 				);
+			// Refusals caused by robots.txt come back in their own array of bare URLs,
+			// so reading only `errors` hides the reason a crawl produced nothing.
+			for (const url of asStringArray(payload.robotsBlocked)) errors.push({ url, robots: true });
+			return errors;
 		},
 
 		async map(body) {

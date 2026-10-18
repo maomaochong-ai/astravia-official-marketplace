@@ -23,6 +23,7 @@ import { HistoryTab } from "./history-tab";
 import { ConversationTab } from "./conversation-tab";
 
 type InspectorTab = "artifacts" | "pages" | "links" | "media" | "issues" | "console" | "chat" | "history";
+const ORDER: InspectorTab[] = ["artifacts", "pages", "links", "media", "issues", "console", "chat", "history"];
 
 function linkCount(snapshot: CrawlRunSnapshot): number {
 	let total = 0;
@@ -47,16 +48,39 @@ export function InspectorPanel({
 	const [tab, setTab] = useState<InspectorTab>("console");
 	const [chatMounted, setChatMounted] = useState(false);
 	const previous = useRef(snapshot.status);
+	const strip = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
 		const was = previous.current;
 		previous.current = snapshot.status;
-		if (was === "running" && snapshot.status !== "running" && tab === "console") setTab("artifacts");
-	}, [snapshot.status, tab]);
+		if (was !== "running" || snapshot.status === "running") return;
+		// A failed run has nothing to shelve: the log is the only tab that explains
+		// what happened, so leave the user (or move them back) there instead of
+		// landing on an empty shelf.
+		if (snapshot.status === "failed") {
+			setTab("console");
+			return;
+		}
+		if (tab === "console") setTab(snapshot.artifacts.length > 0 ? "artifacts" : "pages");
+	}, [snapshot.status, tab, snapshot.artifacts.length]);
+
+	// Eight tabs do not fit a narrow console; without this the rightmost ones sit
+	// off-screen behind a scrollbar nobody notices.
+	useEffect(() => {
+		const active = strip.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+		active?.scrollIntoView({ block: "nearest", inline: "nearest" });
+	}, [tab]);
 
 	const select = (next: InspectorTab) => {
 		if (next === "chat") setChatMounted(true);
 		setTab(next);
+	};
+
+	const step = (delta: number): void => {
+		const order = ORDER;
+		const index = order.indexOf(tab);
+		const next = order[(index + delta + order.length) % order.length];
+		select(next);
 	};
 
 	const tabs: { id: InspectorTab; label: string; count?: number; tone?: string }[] = [
@@ -83,13 +107,33 @@ export function InspectorPanel({
 	return (
 		<section className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-border/70 bg-background">
 			<div className="flex shrink-0 items-center gap-0.5 border-b border-border/70 px-1">
-				<div role="tablist" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1">
+				<div
+					ref={strip}
+					role="tablist"
+					onKeyDown={(event) => {
+						if (event.key === "ArrowRight") {
+							event.preventDefault();
+							step(1);
+						} else if (event.key === "ArrowLeft") {
+							event.preventDefault();
+							step(-1);
+						} else if (event.key === "Home") {
+							event.preventDefault();
+							select(ORDER[0]);
+						} else if (event.key === "End") {
+							event.preventDefault();
+							select(ORDER[ORDER.length - 1]);
+						}
+					}}
+					className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1"
+				>
 					{tabs.map((entry) => (
 						<button
 							key={entry.id}
 							type="button"
 							aria-selected={tab === entry.id}
 							role="tab"
+							tabIndex={tab === entry.id ? 0 : -1}
 							onClick={() => select(entry.id)}
 							className={`flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] transition-colors ${
 								tab === entry.id ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"

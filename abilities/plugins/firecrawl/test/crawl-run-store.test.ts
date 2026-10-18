@@ -152,6 +152,26 @@ describe("crawl run store", () => {
 		expect(snapshot.lines.some((line) => line.kind === "fail")).toBe(true);
 	});
 
+	it("counts a bare robots refusal as denied and an external skip as neither", async () => {
+		const client = fakeClient({
+			job: vi.fn(async () => status({ completed: 0, total: 0 })),
+			jobErrors: vi.fn(async () => [
+				{ url: "https://a.test/secret", robots: true },
+				{ url: "https://other.test/", error: "External link skipped", code: "EXTERNAL_LINK" },
+			]),
+		});
+		const store = new CrawlRunStore(fakeConfig(client));
+
+		await store.start("https://a.test", OPTIONS);
+
+		const snapshot = store.getSnapshot();
+		expect(snapshot.counts).toMatchObject({ denied: 1, failed: 0 });
+		expect(snapshot.nodes.find((node) => node.url.endsWith("/secret"))?.state).toBe("denied");
+		expect(snapshot.nodes.some((node) => node.url.includes("other.test"))).toBe(false);
+		expect(snapshot.lines.some((line) => line.kind === "deny" && /robots/i.test(line.text))).toBe(true);
+		expect(snapshot.lines.some((line) => /external link/i.test(line.text))).toBe(true);
+	});
+
 	it("cancels the upstream job on stop and keeps what was already collected", async () => {
 		vi.useFakeTimers();
 		const client = fakeClient({
@@ -173,6 +193,49 @@ describe("crawl run store", () => {
 		expect(snapshot.status).toBe("stopped");
 		expect(snapshot.counts.fetching).toBe(0);
 		expect(snapshot.pages).toHaveLength(1);
+	});
+
+	it("survives a throttled poll and still shelves the pages it finishes with", async () => {
+		vi.useFakeTimers();
+		let polls = 0;
+		const client = fakeClient({
+			job: vi.fn(async () => {
+				polls += 1;
+				if (polls === 1) throw new Error("Upstream rate limit reached.");
+				return status({ completed: 1, total: 1, data: [page("https://a.test/a", "a")] });
+			}),
+		});
+		const store = new CrawlRunStore(fakeConfig(client));
+
+		const run = store.start("https://a.test", OPTIONS);
+		await vi.advanceTimersByTimeAsync(10_000);
+		await run;
+
+		const snapshot = store.getSnapshot();
+		expect(snapshot.status).toBe("completed");
+		expect(snapshot.pages).toHaveLength(1);
+		expect(snapshot.counts.fetching).toBe(0);
+		expect(snapshot.lines.some((line) => line.level === "warn" && line.text.includes("poll"))).toBe(true);
+	});
+
+	it("closes a run out when polling keeps failing instead of hanging on `running`", async () => {
+		vi.useFakeTimers();
+		const client = fakeClient({
+			job: vi.fn(async () => {
+				throw new Error("Upstream rate limit reached.");
+			}),
+		});
+		const store = new CrawlRunStore(fakeConfig(client));
+
+		const run = store.start("https://a.test", OPTIONS);
+		await vi.advanceTimersByTimeAsync(20 * 60_000);
+		await expect(run).resolves.toBeUndefined();
+
+		const snapshot = store.getSnapshot();
+		expect(snapshot.status).toBe("failed");
+		expect(snapshot.lastError).toMatch(/rate limit/);
+		expect(snapshot.counts.fetching).toBe(0);
+		expect(snapshot.lines.some((line) => line.text.startsWith("run end"))).toBe(true);
 	});
 
 	it("writes console lines for work done outside a crawl", () => {

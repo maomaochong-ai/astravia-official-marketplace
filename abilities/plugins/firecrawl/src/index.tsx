@@ -143,7 +143,6 @@ export default definePlugin({
 				action?.dispose();
 				slot?.dispose();
 				setupDisposable.dispose();
-				setupDisposable.dispose();
 				tabDisposable.dispose();
 			},
 		};

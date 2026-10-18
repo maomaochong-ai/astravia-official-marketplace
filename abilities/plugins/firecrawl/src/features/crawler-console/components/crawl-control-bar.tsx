@@ -121,10 +121,17 @@ export function CrawlControlBar({
 			return;
 		}
 		void store.start(trimmed, clampCrawlJobOptions(options)).catch((error: unknown) => {
-			getPluginContext().ui.notify({
-				message: error instanceof Error ? error.message : String(error),
-				error: true,
-			});
+			const message = error instanceof Error ? error.message : String(error);
+			// The switch is enterprise-only, so a rejected run under it can never
+			// succeed: turn it back off and say so, rather than leaving the trap armed
+			// for the next attempt.
+			if (options.ignoreRobotsTxt && /enterprise/i.test(message)) {
+				patch({ ignoreRobotsTxt: false });
+				setShowAdvanced(true);
+				getPluginContext().ui.notify({ message: t("console.error.robotsReset"), error: true });
+				return;
+			}
+			getPluginContext().ui.notify({ message, error: true });
 		});
 	};
 
@@ -272,13 +279,22 @@ export function CrawlControlBar({
 				<p className="text-[10px] text-amber-600 dark:text-amber-400">{t("console.formats.binary")}</p>
 			) : null}
 
-			<button
-				type="button"
-				onClick={() => setShowAdvanced((value) => !value)}
-				className="self-start text-[10px] text-muted-foreground underline-offset-2 hover:underline"
-			>
-				{showAdvanced ? t("console.advanced.hide") : t("console.advanced.show")}
-			</button>
+			<div className="flex items-center gap-1.5 self-start">
+				<button
+					type="button"
+					onClick={() => setShowAdvanced((value) => !value)}
+					className="text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+				>
+					{showAdvanced ? t("console.advanced.hide") : t("console.advanced.show")}
+				</button>
+				{/* Collapsed options can still be off their defaults; say so, otherwise a
+				    hidden toggle explaining a rejected run is invisible. */}
+				{!showAdvanced && options.ignoreRobotsTxt ? (
+					<span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-600 dark:text-amber-400">
+						{t("console.advanced.robotsBadge")}
+					</span>
+				) : null}
+			</div>
 
 			{showAdvanced ? (
 				<div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border/60 pt-1.5">
