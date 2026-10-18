@@ -6630,7 +6630,7 @@
       "slug": "firecrawl",
       "name": "Firecrawl Web Crawler",
       "description": "Turn any public page into clean Markdown, crawl a site within a page budget, and watch the spider console show every page it kept and every link it refused.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "configVersion": 1,
       "license": "AGPL-3.0",
       "author": "Astravia Community",
@@ -6682,10 +6682,32 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-firecrawl/firecrawl-0.1.0.astraviapkg",
             "sha256": "b9d47bb8eade6f1b79f25d3d34c93b93acf3a4f0a23f6fb2642f065caa3c3ff0"
           }
+        },
+        {
+          "version": "0.2.0",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "network.fetch",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "browser.read",
+            "browser.interact",
+            "ai.complete",
+            "agent.session.read"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-firecrawl/firecrawl-0.2.0.astraviapkg",
+            "sha256": "15b4d39afc1b332116a1c48509692dcb20c29516314242d455a2e93d0d20e782"
+          }
         }
       ]
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.17-24"
+  "marketplaceVersion": "2026.10.18-1"
 }
