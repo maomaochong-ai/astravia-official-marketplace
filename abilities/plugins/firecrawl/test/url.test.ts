@@ -3,6 +3,7 @@ import {
 	fileExtension,
 	getUrlDepth,
 	isFileUrl,
+	isPdfUrl,
 	isSameSite,
 	isSocialMediaHost,
 	isSubdomainOf,
@@ -51,7 +52,10 @@ describe("site identity", () => {
 
 describe("file detection", () => {
 	it("flags document and archive URLs", () => {
-		expect(isFileUrl("https://example.com/report.pdf")).toBe(true);
+		// PDFs are parsed as documents now, so they are no longer refused as file types.
+		expect(isFileUrl("https://example.com/report.pdf")).toBe(false);
+		expect(isPdfUrl("https://example.com/report.pdf")).toBe(true);
+		expect(isPdfUrl("https://example.com/docs")).toBe(false);
 		expect(isFileUrl("https://example.com/app.zip")).toBe(true);
 		expect(fileExtension("https://example.com/app.zip")).toBe("zip");
 	});

@@ -19,7 +19,7 @@ const FILES: Record<string, { status?: number; type?: string; body: string }> = 
 	"https://example.com/sitemap.xml": {
 		body: `<urlset><url><loc>${START}guide</loc></url></urlset>`,
 	},
-	[START]: { body: page("Docs home", ["/docs/guide", "/docs/api/v1", "/docs/secret", "/private/secret", "https://other.com/x", "/docs/manual.pdf"]) },
+	[START]: { body: page("Docs home", ["/docs/guide", "/docs/api/v1", "/docs/secret", "/private/secret", "https://other.com/x", "/docs/manual.zip"]) },
 	"https://example.com/docs/guide": { body: page("Guide", ["/docs/", "/docs/deep/deeper/deepest"]) },
 	"https://example.com/docs/api/v1": { body: page("API v1", []) },
 	"https://example.com/docs/deep/deeper/deepest": { body: page("Too deep", []) },
@@ -68,7 +68,7 @@ describe("crawlSite", () => {
 		const codes = summary.denied.map((denial) => `${denial.code}:${denial.url}`);
 		expect(codes).toContain("BACKWARD_CRAWLING:https://example.com/private/secret");
 		expect(codes).toContain("EXTERNAL_LINK:https://other.com/x");
-		expect(codes).toContain("FILE_TYPE:https://example.com/docs/manual.pdf");
+		expect(codes).toContain("FILE_TYPE:https://example.com/docs/manual.zip");
 		expect(codes).toContain("ROBOTS_TXT:https://example.com/docs/secret");
 
 		expect(events.some((event) => event.type === "robots")).toBe(true);

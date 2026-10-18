@@ -5,17 +5,29 @@
  * Redis and Fire Engine; the plugin owns the same decision surface (admission
  * rules, robots, sitemap seeding, depth, limit, per-page denial accounting) and
  * runs it in-process so the console can animate a crawl the user can watch.
+ *
+ * Every page goes through the scrape pipeline, which means a crawl escalates to
+ * the host browser exactly where a single scrape would — client-rendered sites
+ * are crawled, not silently returned empty.
  */
 
-import { DEFAULT_USER_AGENT, ScrapeError, scrapePage } from "../scrape/pipeline";
-import type { HttpClient } from "../scrape/http";
+import { DEFAULT_USER_AGENT } from "../render/fetch";
+import { ScrapeError, scrapePage } from "../scrape/pipeline";
+import type { BinaryFetch, HttpClient } from "../scrape/http";
+import type { BrowserPortFactory } from "../render/types";
 import type { CrawlEvent, CrawlOptions, CrawlPage, CrawlSummary } from "../events";
 import type { DenialCode } from "../denial";
 import { describeCrawlScope, getCrawlScope } from "./scope";
 import { admitLink } from "./admission";
 import { loadRobots, type RobotsPolicy } from "./robots";
 import { collectSitemapUrls } from "./sitemap";
-import { normalizeUrl, originOf } from "../url";
+import { dedupeKey, normalizeUrl, originOf } from "../url";
+
+export interface CrawlDeps {
+	browser?: BrowserPortFactory;
+	/** Base64 transport, so PDFs are parsed as documents rather than refused. */
+	binary?: BinaryFetch;
+}
 
 export interface CrawlHooks {
 	onEvent?: (event: CrawlEvent) => void;
@@ -54,6 +66,7 @@ export async function crawlSite(
 	startUrl: string,
 	options: CrawlOptions,
 	hooks: CrawlHooks = {},
+	deps: CrawlDeps = {},
 ): Promise<CrawlSummary> {
 	const startedAt = Date.now();
 	const emit = (event: CrawlEvent): void => hooks.onEvent?.(event);
@@ -67,14 +80,28 @@ export async function crawlSite(
 	}
 	const origin = originOf(start.href);
 	const scope = getCrawlScope(start.href);
-	const visited = new Set<string>([start.href]);
+	const keyOf = (url: string): string =>
+		dedupeKey(url, {
+			ignoreQueryParameters: options.ignoreQueryParameters,
+			deduplicateSimilarURLs: options.deduplicateSimilarURLs,
+		});
+	const visited = new Set<string>([keyOf(start.href)]);
 	const queue: FrontierItem[] = [];
 	const pages: CrawlPage[] = [];
 	const denied: CrawlSummary["denied"] = [];
 	const failed: CrawlSummary["failed"] = [];
 	const frontierCeiling = Math.max(options.limit * MAX_FRONTIER_FACTOR, options.limit + 10);
+	const discoveryDepth = options.maxDiscoveryDepth ?? options.maxDepth;
 
-	let robots: RobotsPolicy = { present: false, status: 0, sitemaps: [], crawlDelayMs: null, ruleCount: 0, failedOpen: false, isAllowed: () => true };
+	let robots: RobotsPolicy = {
+		present: false,
+		status: 0,
+		sitemaps: [],
+		crawlDelayMs: null,
+		ruleCount: 0,
+		failedOpen: false,
+		isAllowed: () => true,
+	};
 
 	emit({ type: "run-start", target: start.href, options, at: now() });
 
@@ -90,10 +117,27 @@ export async function crawlSite(
 			recordDenial(item.url, item.depth, item.parent, "LIMIT_REACHED", "frontier full — raise limit to keep discovering");
 			return;
 		}
-		visited.add(item.url);
+		visited.add(keyOf(item.url));
 		queue.push(item);
 		emit({ type: "queued", url: item.url, depth: item.depth, parent: item.parent, via: item.via, at: now() });
 	};
+
+	const admission = (depth: number) => ({
+		startUrl: start.href,
+		scope,
+		depth,
+		maxDepth: options.maxDepth,
+		includePaths: options.includePaths,
+		excludePaths: options.excludePaths,
+		allowExternalLinks: options.allowExternalLinks,
+		allowSubdomains: options.allowSubdomains,
+		allowBackwardCrawling: options.allowBackwardCrawling || options.crawlEntireDomain,
+		regexOnFullURL: options.regexOnFullURL,
+		dedupeKey: keyOf,
+		robots,
+		ignoreRobotsTxt: options.ignoreRobotsTxt,
+		visited,
+	});
 
 	// 1. robots.txt — always fetched for the origin unless the caller opted out.
 	if (!options.ignoreRobotsTxt) {
@@ -124,20 +168,7 @@ export async function crawlSite(
 		});
 		for (const url of sitemap.urls) {
 			if (queue.length >= frontierCeiling) break;
-			const verdict = admitLink(url, {
-				startUrl: start.href,
-				scope,
-				depth: 1,
-				maxDepth: Math.max(options.maxDepth, 1),
-				includePaths: options.includePaths,
-				excludePaths: options.excludePaths,
-				allowExternalLinks: options.allowExternalLinks,
-				allowSubdomains: options.allowSubdomains,
-				allowBackwardCrawling: options.allowBackwardCrawling,
-				robots,
-				ignoreRobotsTxt: options.ignoreRobotsTxt,
-				visited,
-			});
+			const verdict = admitLink(url, admission(1));
 			if ("code" in verdict) {
 				// A sitemap repeats the same URLs across child maps; duplicates are not a decision worth counting.
 				if (verdict.code !== "DUPLICATE") denyCounts.set(verdict.code, (denyCounts.get(verdict.code) ?? 0) + 1);
@@ -154,21 +185,30 @@ export async function crawlSite(
 	const crawlOne = async (item: FrontierItem): Promise<void> => {
 		emit({ type: "fetching", url: item.url, depth: item.depth, parent: item.parent, at: now() });
 		try {
-			const result = await scrapePage(client, item.url, {
-				onlyMainContent: options.onlyMainContent,
-				timeoutMs: options.timeoutMs,
-				userAgent: DEFAULT_USER_AGENT,
-			});
+			const result = await scrapePage(
+				client,
+				item.url,
+				{
+					render: options.render,
+					formats: options.formats.filter((format) => format !== "screenshot" && format !== "screenshot@fullPage"),
+					onlyMainContent: options.onlyMainContent,
+					timeoutMs: options.timeoutMs,
+					userAgent: DEFAULT_USER_AGENT,
+					includeLinks: true,
+				},
+				{ browser: deps.browser, binary: deps.binary },
+			);
 			if (result.fallbackReason) {
 				emit({
 					type: "engine-fallback",
 					url: item.url,
-					from: result.attemptedEngines[0] ?? "fetch",
+					from: result.attempts[0] ?? "fetch",
 					to: result.engine,
 					reason: result.fallbackReason,
 					at: now(),
 				});
 			}
+			const chars = (result.text || result.markdown).length;
 			const page: CrawlPage = {
 				url: item.url,
 				finalUrl: result.finalUrl,
@@ -180,9 +220,10 @@ export async function crawlSite(
 				status: result.status,
 				engine: result.engine,
 				bytes: result.bytes,
-				chars: result.charCount,
+				chars,
 				durationMs: result.durationMs,
 				warnings: result.warnings.length,
+				elements: result.elements,
 			};
 			pages.push(page);
 			hooks.onPage?.(page);
@@ -193,11 +234,13 @@ export async function crawlSite(
 				parent: item.parent,
 				status: result.status,
 				engine: result.engine,
+				rendered: result.rendered,
 				bytes: result.bytes,
-				chars: result.charCount,
+				chars,
 				links: result.links.length,
 				durationMs: result.durationMs,
 				title: result.title,
+				elements: result.elements,
 				at: now(),
 			});
 
@@ -213,20 +256,19 @@ export async function crawlSite(
 					}
 					continue;
 				}
-				const verdict = admitLink(link.url, {
-					startUrl: start.href,
-					scope,
-					depth: item.depth + 1,
-					maxDepth: options.maxDepth,
-					includePaths: options.includePaths,
-					excludePaths: options.excludePaths,
-					allowExternalLinks: options.allowExternalLinks,
-					allowSubdomains: options.allowSubdomains,
-					allowBackwardCrawling: options.allowBackwardCrawling,
-					robots,
-					ignoreRobotsTxt: options.ignoreRobotsTxt,
-					visited,
-				});
+				if (item.depth + 1 > discoveryDepth) {
+					if ((denyCounts.get("DEPTH_LIMIT") ?? 0) < denialCap) {
+						recordDenial(
+							link.url,
+							item.depth + 1,
+							item.url,
+							"DEPTH_LIMIT",
+							`discovery stops below ${discoveryDepth} hop(s)`,
+						);
+					}
+					continue;
+				}
+				const verdict = admitLink(link.url, admission(item.depth + 1));
 				if ("code" in verdict) {
 					if (verdict.code === "DUPLICATE") continue;
 					recordDenial(link.url, item.depth + 1, item.url, verdict.code, verdict.message);
@@ -251,7 +293,8 @@ export async function crawlSite(
 		}
 		const batch = queue.splice(0, Math.max(1, Math.min(options.concurrency, options.limit - pages.length)));
 		await Promise.all(batch.map((item) => crawlOne(item)));
-		if (robots.crawlDelayMs && queue.length > 0) await sleep(robots.crawlDelayMs, hooks.signal);
+		const pause = Math.max(robots.crawlDelayMs ?? 0, options.delayMs);
+		if (pause > 0 && queue.length > 0) await sleep(pause, hooks.signal);
 	}
 	if (hooks.signal?.aborted) aborted = true;
 
@@ -268,6 +311,5 @@ export async function crawlSite(
 		at: now(),
 	});
 
-	return { startUrl: start.href, pages, denied, failed, status, durationMs, options };
+	return { startUrl: start.href, pages, denied, failed, status, durationMs, options, scope: describeCrawlScope(scope) };
 }
-

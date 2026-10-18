@@ -3,17 +3,23 @@
  */
 
 import type { PluginContext } from "@astravia-org/plugin-sdk";
-import { mapSite } from "../domain/crawl/map";
+import { DEFAULT_MAP_OPTIONS, mapSite } from "../domain/crawl/map";
+import type { MapOptions } from "../domain/crawl/map";
 import type { HttpClient } from "../domain/scrape/http";
+import type { BrowserPortFactory, RenderMode } from "../domain/render/types";
 import type { CrawlRunStore } from "../features/crawler-console/services/crawl-run-store";
-import { clampCrawlOptions } from "../tab-id";
-import { DEFAULT_CRAWL_OPTIONS } from "../domain/events";
-import { compilePatterns, readBoolean, readNumber, readStringArray, requireUrl } from "./tool-arguments";
+import { compilePatterns, readBoolean, readEnum, readNumber, readString, readStringArray, requireUrl } from "./tool-arguments";
 import { formatDuration } from "../shared/formatters/format";
 
 const MAX_URLS_LISTED = 300;
+const RENDER_MODES: readonly RenderMode[] = ["auto", "static", "browser"];
 
-export function createMapTool(_ctx: PluginContext, client: HttpClient, store: CrawlRunStore) {
+export function createMapTool(
+	_ctx: PluginContext,
+	client: HttpClient,
+	store: CrawlRunStore,
+	browser: BrowserPortFactory | undefined,
+) {
 	return {
 		id: "firecrawl_map",
 		name: "firecrawl_map",
@@ -23,27 +29,29 @@ export function createMapTool(_ctx: PluginContext, client: HttpClient, store: Cr
 			"on the start page, then filters them with the same rules the crawler applies.",
 			"",
 			"Use it before firecrawl_crawl to choose which pages are worth reading, or when the user asks",
-			"'what pages does this site have / which docs pages exist under /api'.",
+			"'what pages does this site have / which docs pages exist under /api'. `search` narrows the list",
+			"to URLs whose path mentions a word (e.g. \"api\", \"pricing\").",
 			"Do NOT use it to fetch content (that is firecrawl_scrape). It returns URLs only, and it cannot",
 			"invent pages a site does not link to or list in a sitemap.",
 			"",
-			"Defaults: 200 URLs, sitemap seeding on, same-site only.",
+			"Defaults: 200 URLs, sitemap seeding on, same-site only, browser rendering for the start page.",
 		].join("\n"),
 		parameters: {
 			type: "object",
 			properties: {
 				url: { type: "string", description: "Absolute http(s) URL whose site should be mapped." },
 				limit: { type: "number", description: "Maximum URLs to return (1-500, default 200)." },
+				search: { type: "string", description: "Keep only URLs matching this word/phrase, best matches first." },
 				includePaths: { type: "array", items: { type: "string" }, description: "Keep only paths matching these regular expressions." },
 				excludePaths: { type: "array", items: { type: "string" }, description: "Drop paths matching these regular expressions." },
+				filterByPath: { type: "boolean", description: "Apply includePaths as a filter (default false)." },
+				includeSubdomains: { type: "boolean", description: "Include subdomains (default false)." },
 				allowExternalLinks: { type: "boolean", description: "Include links to other domains (default false)." },
-				allowSubdomains: { type: "boolean", description: "Include subdomains (default false)." },
-				allowBackwardCrawling: {
-					type: "boolean",
-					description: "Include URLs above the start path (default false keeps the start directory scope).",
-				},
+				ignoreQueryParameters: { type: "boolean", description: "Treat URLs differing only by query string as one (default false)." },
 				ignoreRobotsTxt: { type: "boolean", description: "Ignore robots.txt disallow rules (default false)." },
-				useSitemap: { type: "boolean", description: "Read robots.txt sitemaps (default true)." },
+				ignoreSitemap: { type: "boolean", description: "Do not read robots.txt sitemaps (default false)." },
+				sitemapOnly: { type: "boolean", description: "Report sitemap URLs only, skipping the start page (default false)." },
+				render: { type: "string", enum: [...RENDER_MODES], description: "How to read the start page: auto (default), static or browser." },
 				timeoutMs: { type: "number", description: "Per-request timeout in milliseconds (1000-120000, default 30000)." },
 			},
 			required: ["url"],
@@ -54,22 +62,26 @@ export function createMapTool(_ctx: PluginContext, client: HttpClient, store: Cr
 		timeoutMs: 180_000,
 		handler: async (context: { trigger: { input?: unknown } }) => {
 			const url = requireUrl(context.trigger.input);
-			const base = clampCrawlOptions(DEFAULT_CRAWL_OPTIONS);
-			const options = {
-				limit: readNumber(context.trigger.input, "limit", { min: 1, max: 500, def: 200 }),
+			const options: MapOptions = {
+				...DEFAULT_MAP_OPTIONS,
+				limit: readNumber(context.trigger.input, "limit", { min: 1, max: 500, def: DEFAULT_MAP_OPTIONS.limit }),
+				search: readString(context.trigger.input, "search"),
 				includePaths: readStringArray(context.trigger.input, "includePaths"),
 				excludePaths: readStringArray(context.trigger.input, "excludePaths"),
+				filterByPath: readBoolean(context.trigger.input, "filterByPath", false),
+				includeSubdomains: readBoolean(context.trigger.input, "includeSubdomains", false),
 				allowExternalLinks: readBoolean(context.trigger.input, "allowExternalLinks", false),
-				allowSubdomains: readBoolean(context.trigger.input, "allowSubdomains", false),
-				allowBackwardCrawling: readBoolean(context.trigger.input, "allowBackwardCrawling", false),
+				ignoreQueryParameters: readBoolean(context.trigger.input, "ignoreQueryParameters", false),
 				ignoreRobotsTxt: readBoolean(context.trigger.input, "ignoreRobotsTxt", false),
-				useSitemap: readBoolean(context.trigger.input, "useSitemap", true),
-				timeoutMs: readNumber(context.trigger.input, "timeoutMs", { min: 1_000, max: 120_000, def: base.timeoutMs }),
+				ignoreSitemap: readBoolean(context.trigger.input, "ignoreSitemap", false),
+				sitemapOnly: readBoolean(context.trigger.input, "sitemapOnly", false),
+				render: readEnum(context.trigger.input, "render", RENDER_MODES, "auto"),
+				timeoutMs: readNumber(context.trigger.input, "timeoutMs", { min: 1_000, max: 120_000, def: DEFAULT_MAP_OPTIONS.timeoutMs }),
 			};
 			compilePatterns(options.includePaths);
 			compilePatterns(options.excludePaths);
 
-			const result = await mapSite(client, url, options, (event) => store.ingest(event));
+			const result = await mapSite(client, url, options, (event) => store.ingest(event), undefined, { browser });
 			store.note(
 				"ok",
 				`map  ${url}  ${result.urls.length} urls  denied=${result.denied.length}  ${formatDuration(result.durationMs)}`,

@@ -8,6 +8,7 @@
  */
 
 import type { CrawlEvent, CrawlOptions, CrawlSummary } from "../../../domain/events";
+import type { ElementProfile, MediaRef } from "../../../domain/html/elements";
 import { urlLabel } from "../../../domain/url";
 import { formatBytes, formatCount, formatDuration, truncate } from "../../../shared/formatters/format";
 
@@ -24,6 +25,8 @@ export interface CrawlNodeView {
 	title?: string;
 	chars?: number;
 	durationMs?: number;
+	engine?: string;
+	elements?: ElementProfile;
 }
 
 export type ConsoleLevel = "info" | "ok" | "warn" | "error" | "deny";
@@ -33,6 +36,20 @@ export interface ConsoleLine {
 	at: number;
 	level: ConsoleLevel;
 	text: string;
+}
+
+/** Everything the run has pulled out of pages so far, for the console's element rail. */
+export interface ElementTotals {
+	headings: number;
+	paragraphs: number;
+	links: number;
+	images: number;
+	videos: number;
+	audio: number;
+	code: number;
+	tables: number;
+	media: MediaRef[];
+	streamed: number;
 }
 
 export interface CrawlCounts {
@@ -48,6 +65,8 @@ export interface CrawlRunSnapshot {
 	runId: string | null;
 	status: "idle" | "running" | "completed" | "stopped" | "failed";
 	target: string;
+	/** How the target got there: typed here, lifted from the conversation, or set by a tool call. */
+	targetSource: "none" | "manual" | "conversation" | "tool";
 	options: CrawlOptions | null;
 	startedAt: number;
 	endedAt: number | null;
@@ -57,7 +76,16 @@ export interface CrawlRunSnapshot {
 	bytes: number;
 	chars: number;
 	lines: ConsoleLine[];
-	pages: Array<{ url: string; title: string; chars: number; depth: number }>;
+	pages: Array<{
+		url: string;
+		title: string;
+		chars: number;
+		depth: number;
+		engine: string;
+		status: number;
+		elements?: ElementProfile;
+	}>;
+	elements: ElementTotals;
 	robots: { present: boolean; status: number; rules: number; sitemaps: number; failedOpen: boolean } | null;
 	sitemap: { fetched: number; urls: number; truncated: boolean } | null;
 	lastError: string | null;
@@ -78,6 +106,7 @@ function emptySnapshot(): CrawlRunSnapshot {
 		runId: null,
 		status: "idle",
 		target: "",
+		targetSource: "none",
 		options: null,
 		startedAt: 0,
 		endedAt: null,
@@ -88,6 +117,7 @@ function emptySnapshot(): CrawlRunSnapshot {
 		chars: 0,
 		lines: [],
 		pages: [],
+		elements: { headings: 0, paragraphs: 0, links: 0, images: 0, videos: 0, audio: 0, code: 0, tables: 0, media: [], streamed: 0 },
 		robots: null,
 		sitemap: null,
 		lastError: null,
@@ -131,6 +161,24 @@ export class CrawlRunStore {
 		this.emit();
 	}
 
+	/**
+	 * Records where the user (or a tool) pointed the crawler, without starting it.
+	 *
+	 * A running crawl owns its target: overwriting it mid-run would make the
+	 * console describe a different page than the one being fetched.
+	 */
+	setTarget(url: string, source: "manual" | "conversation" | "tool"): void {
+		if (this.running || !url) return;
+		if (this.snapshot.target === url && this.snapshot.targetSource === source) return;
+		this.snapshot = { ...this.snapshot, target: url, targetSource: source };
+		this.emit();
+	}
+
+	/** True when a detected URL differs from what the console is already showing. */
+	get targetIsStale(): boolean {
+		return this.snapshot.status === "completed" || this.snapshot.status === "stopped";
+	}
+
 	/** Starts a crawl unless one is already running. */
 	async start(target: string, options: CrawlOptions): Promise<CrawlSummary> {
 		if (this.running) {
@@ -141,7 +189,15 @@ export class CrawlRunStore {
 		this.controller = new AbortController();
 		this.lineId = 0;
 		this.nodesTruncated = false;
-		this.snapshot = { ...emptySnapshot(), runId, status: "running", target, options, startedAt: Date.now() };
+		this.snapshot = {
+			...emptySnapshot(),
+			runId,
+			status: "running",
+			target,
+			targetSource: this.snapshot.targetSource === "none" ? "manual" : this.snapshot.targetSource,
+			options,
+			startedAt: Date.now(),
+		};
 		this.pushLine(
 			"info",
 			`run start  ${target}  limit=${options.limit} depth=${options.maxDepth} concurrency=${options.concurrency}`,
@@ -216,6 +272,8 @@ export class CrawlRunStore {
 					title: event.title,
 					chars: event.chars,
 					durationMs: event.durationMs,
+					engine: event.engine,
+					elements: event.elements,
 				});
 				this.snapshot = {
 					...this.snapshot,
@@ -223,8 +281,17 @@ export class CrawlRunStore {
 					chars: this.snapshot.chars + event.chars,
 					pages: [
 						...this.snapshot.pages,
-						{ url: event.url, title: event.title, chars: event.chars, depth: event.depth },
+						{
+							url: event.url,
+							title: event.title,
+							chars: event.chars,
+							depth: event.depth,
+							engine: event.engine,
+							status: event.status,
+							elements: event.elements,
+						},
 					].slice(-MAX_PAGES),
+					elements: addElements(this.snapshot.elements, event.elements),
 				};
 				this.pushLine(
 					"ok",
@@ -323,6 +390,32 @@ export class CrawlRunStore {
 	private emit(): void {
 		for (const listener of this.listeners) listener();
 	}
+}
+
+function addElements(total: ElementTotals, next: ElementProfile | undefined): ElementTotals {
+	if (!next) return total;
+	// One entry per URL: the same player is often found on several pages, and the
+	// ledger is a list of sources, not a hit count.
+	const seen = new Set(total.media.map((entry) => `${entry.kind}:${entry.url}`));
+	const media = total.media.slice();
+	for (const entry of next.media) {
+		const key = `${entry.kind}:${entry.url}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		media.push(entry);
+	}
+	return {
+		headings: total.headings + next.headings,
+		paragraphs: total.paragraphs + next.paragraphs,
+		links: total.links + next.links,
+		images: total.images + next.images,
+		videos: total.videos + next.videos,
+		audio: total.audio + next.audio,
+		code: total.code + next.code,
+		tables: total.tables + next.tables,
+		media: media.slice(-200),
+		streamed: total.streamed + next.streamed,
+	};
 }
 
 function pathOf(url: string): string {

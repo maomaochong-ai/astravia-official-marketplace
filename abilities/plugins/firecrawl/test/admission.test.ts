@@ -65,8 +65,9 @@ describe("admitLink", () => {
 		expect(code(admitLink("/docs/api", context({ includePaths: ["^/docs/"] })))).toBeNull();
 	});
 
-	it("refuses files and social hosts", () => {
-		expect(code(admitLink("/docs/manual.pdf", context()))).toBe("FILE_TYPE");
+	it("refuses archives but allows PDFs, which the PDF engine parses", () => {
+		expect(code(admitLink("/docs/manual.pdf", context()))).toBeNull();
+		expect(code(admitLink("/docs/manual.zip", context()))).toBe("FILE_TYPE");
 		expect(
 			code(admitLink("https://x.com/example", context({ allowExternalLinks: true, allowBackwardCrawling: true }))),
 		).toBe("SOCIAL_MEDIA");

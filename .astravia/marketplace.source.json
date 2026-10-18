@@ -937,7 +937,7 @@
       "slug": "firecrawl",
       "name": "Firecrawl Web Crawler",
       "description": "Turn any public page into clean Markdown, crawl a site within a page budget, and watch the spider console show every page it kept and every link it refused.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "configVersion": 1,
       "license": "AGPL-3.0",
       "author": "Astravia Community",

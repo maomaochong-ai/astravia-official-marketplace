@@ -3,10 +3,12 @@
  *
  * Seeds come from robots.txt sitemaps plus the links on the start page; both go
  * through the same admission filter the crawler uses, so `map` never reports a
- * URL that `crawl` would refuse.
+ * URL that `crawl` would refuse. A client-rendered site contributes the links
+ * the browser can see when `render` is not `static`.
  */
 
 import type { HttpClient } from "../scrape/http";
+import type { BrowserPortFactory, RenderMode } from "../render/types";
 import type { CrawlEvent } from "../events";
 import type { DenialCode } from "../denial";
 import { scrapePage } from "../scrape/pipeline";
@@ -14,19 +16,41 @@ import { loadRobots } from "./robots";
 import { collectSitemapUrls } from "./sitemap";
 import { admitLink } from "./admission";
 import { getCrawlScope } from "./scope";
-import { normalizeUrl, originOf } from "../url";
+import { dedupeKey, normalizeUrl, originOf } from "../url";
 
 export interface MapOptions {
 	limit: number;
+	/** Keep only URLs containing this string (upstream ranks, we filter). */
+	search?: string;
+	includeSubdomains: boolean;
+	allowExternalLinks: boolean;
 	includePaths: string[];
 	excludePaths: string[];
-	allowExternalLinks: boolean;
-	allowSubdomains: boolean;
-	allowBackwardCrawling: boolean;
+	/** Only report URLs whose path matches includePaths. */
+	filterByPath: boolean;
+	ignoreQueryParameters: boolean;
 	ignoreRobotsTxt: boolean;
-	useSitemap: boolean;
+	ignoreSitemap: boolean;
+	/** Skip the start page and report sitemap URLs only. */
+	sitemapOnly: boolean;
 	timeoutMs: number;
+	render: RenderMode;
 }
+
+export const DEFAULT_MAP_OPTIONS: MapOptions = {
+	limit: 200,
+	includeSubdomains: false,
+	allowExternalLinks: false,
+	includePaths: [],
+	excludePaths: [],
+	filterByPath: false,
+	ignoreQueryParameters: false,
+	ignoreRobotsTxt: false,
+	ignoreSitemap: false,
+	sitemapOnly: false,
+	timeoutMs: 30_000,
+	render: "auto",
+};
 
 export interface MapResult {
 	startUrl: string;
@@ -38,19 +62,25 @@ export interface MapResult {
 	truncated: boolean;
 }
 
+export interface MapDeps {
+	browser?: BrowserPortFactory;
+}
+
 export async function mapSite(
 	client: HttpClient,
 	startUrl: string,
 	options: MapOptions,
 	onEvent?: (event: CrawlEvent) => void,
 	signal?: AbortSignal,
+	deps: MapDeps = {},
 ): Promise<MapResult> {
 	const startedAt = Date.now();
 	const start = normalizeUrl(startUrl);
 	if (!start) throw new Error(`Not a mappable URL: ${startUrl}`);
 	const origin = originOf(start.href);
 	const scope = getCrawlScope(start.href);
-	const visited = new Set<string>();
+	const keyOf = (url: string): string => dedupeKey(url, { ignoreQueryParameters: options.ignoreQueryParameters });
+	const visited = new Set<string>([keyOf(start.href)]);
 	const urls: string[] = [];
 	const denied: MapResult["denied"] = [];
 	const denialSeen = new Map<DenialCode, number>();
@@ -74,7 +104,7 @@ export async function mapSite(
 
 	const candidates: string[] = [start.href];
 	let sitemapInfo: MapResult["sitemap"] = null;
-	if (options.useSitemap && robots && robots.sitemaps.length > 0) {
+	if (!options.ignoreSitemap && robots && robots.sitemaps.length > 0) {
 		const sitemap = await collectSitemapUrls(client, robots.sitemaps, { timeoutMs: options.timeoutMs });
 		sitemapInfo = { fetched: sitemap.fetched, urls: sitemap.urls.length };
 		onEvent?.({
@@ -89,26 +119,37 @@ export async function mapSite(
 	}
 
 	// The start page's own links are what `map` reports when a site has no sitemap.
-	try {
-		const page = await scrapePage(client, start.href, { onlyMainContent: true, timeoutMs: options.timeoutMs });
-		candidates.push(...page.links.map((link) => link.url));
-	} catch {
-		// A start page that cannot be fetched is still mappable from its sitemap.
+	if (!options.sitemapOnly) {
+		try {
+			const page = await scrapePage(
+				client,
+				start.href,
+				{ onlyMainContent: true, timeoutMs: options.timeoutMs, render: options.render, includeLinks: true },
+				{ browser: deps.browser },
+			);
+			candidates.push(...page.links.map((link) => link.url));
+		} catch {
+			// A start page that cannot be fetched is still mappable from its sitemap.
+		}
 	}
 
-	for (const candidate of candidates) {
+	const ranked = options.search ? rankBySearch(candidates, options.search) : candidates;
+
+	for (const candidate of ranked) {
 		if (signal?.aborted) break;
 		if (urls.length >= options.limit) break;
 		const verdict = admitLink(candidate, {
 			startUrl: start.href,
 			scope,
 			depth: 0,
-			maxDepth: 99,
-			includePaths: options.includePaths,
+			maxDepth: Number.MAX_SAFE_INTEGER,
+			includePaths: options.filterByPath ? options.includePaths : [],
 			excludePaths: options.excludePaths,
 			allowExternalLinks: options.allowExternalLinks,
-			allowSubdomains: options.allowSubdomains,
-			allowBackwardCrawling: options.allowBackwardCrawling,
+			allowSubdomains: options.includeSubdomains,
+			allowBackwardCrawling: true,
+			regexOnFullURL: false,
+			dedupeKey: keyOf,
 			robots: robots ?? { isAllowed: () => true },
 			ignoreRobotsTxt: options.ignoreRobotsTxt,
 			visited,
@@ -131,7 +172,7 @@ export async function mapSite(
 			}
 			continue;
 		}
-		visited.add(verdict.url);
+		visited.add(keyOf(verdict.url));
 		urls.push(verdict.url);
 		onEvent?.({ type: "queued", url: verdict.url, depth: 0, parent: null, via: "sitemap", at: Date.now() });
 	}
@@ -153,4 +194,22 @@ export async function mapSite(
 		durationMs: Date.now() - startedAt,
 		truncated: urls.length >= options.limit,
 	};
+}
+
+/** Stable ordering: exact/token hits first, then substring hits, then the rest. */
+function rankBySearch(candidates: readonly string[], search: string): string[] {
+	const needle = search.trim().toLowerCase();
+	if (!needle) return [...candidates];
+	const tokens = needle.split(/\s+/).filter(Boolean);
+	const score = (url: string): number => {
+		const haystack = url.toLowerCase();
+		let value = 0;
+		if (haystack.includes(needle)) value += 10;
+		for (const token of tokens) if (haystack.includes(token)) value += 1;
+		return value;
+	};
+	return candidates
+		.map((url, index) => ({ url, index, score: score(url) }))
+		.sort((left, right) => right.score - left.score || left.index - right.index)
+		.map((entry) => entry.url);
 }

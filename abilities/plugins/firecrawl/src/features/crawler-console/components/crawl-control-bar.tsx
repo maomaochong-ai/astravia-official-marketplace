@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import type { CrawlOptions } from "../../../domain/events";
+import type { RenderMode } from "../../../domain/render/types";
 import { DEFAULT_CRAWL_OPTIONS } from "../../../domain/events";
 import { clampCrawlOptions } from "../../../tab-id";
 import type { CrawlRunSnapshot, CrawlRunStore } from "../services/crawl-run-store";
@@ -122,6 +123,10 @@ export function CrawlControlBar({
 				<input
 					value={target}
 					onChange={(event) => setTarget(event.target.value)}
+					onBlur={() => {
+						const trimmed = target.trim();
+						if (/^https?:\/\//i.test(trimmed)) store.setTarget(trimmed, "manual");
+					}}
 					onKeyDown={(event) => {
 						if (event.key === "Enter" && !running) start();
 					}}
@@ -172,6 +177,11 @@ export function CrawlControlBar({
 					max={8}
 					onChange={(concurrency) => patch({ concurrency })}
 				/>
+				{snapshot.targetSource === "conversation" || snapshot.targetSource === "tool" ? (
+					<span className="shrink-0 rounded bg-accent px-1.5 py-1 font-mono text-[9.5px] text-accent-foreground">
+						{snapshot.targetSource === "tool" ? t("console.target.fromTool") : t("console.target.fromChat")}
+					</span>
+				) : null}
 				<span
 					className={`shrink-0 rounded px-1.5 py-1 text-[10px] font-medium ${STATUS_TONE[snapshot.status]}`}
 					title={snapshot.lastError ?? undefined}
@@ -190,6 +200,25 @@ export function CrawlControlBar({
 
 			{showAdvanced ? (
 				<div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border/60 pt-1.5">
+					<div className="col-span-2 flex items-center gap-1.5">
+						<span className="text-[10.5px] text-muted-foreground">{t("console.opt.render")}</span>
+						<div className="flex overflow-hidden rounded border border-border/70">
+							{(["auto", "static", "browser"] as const).map((mode) => (
+								<button
+									key={mode}
+									type="button"
+									onClick={() => patch({ render: mode as RenderMode })}
+									className={`px-1.5 py-0.5 text-[10px] transition-colors ${
+										options.render === mode
+											? "bg-primary/12 text-foreground"
+											: "text-muted-foreground hover:bg-muted/60"
+									}`}
+								>
+									{t(`console.render.${mode}`)}
+								</button>
+							))}
+						</div>
+					</div>
 					<Toggle label={t("console.opt.sitemap")} checked={options.useSitemap} onChange={(useSitemap) => patch({ useSitemap })} />
 					<Toggle
 						label={t("console.opt.mainContent")}

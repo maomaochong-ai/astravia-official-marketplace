@@ -77,9 +77,7 @@ const FILE_EXTENSIONS = new Set([
 	"apk",
 	"wasm",
 	"map",
-	// Documents the fetcher cannot turn into Markdown: refusing them with a reason
-	// is better than returning an empty page the agent would report as content.
-	"pdf",
+	// Office containers stay refused: nothing in the plugin can turn them into text.
 	"doc",
 	"docx",
 	"xls",
@@ -176,14 +174,79 @@ export function isFileUrl(url: string): boolean {
 	return extension !== null && FILE_EXTENSIONS.has(extension);
 }
 
-/** Path used for include/exclude regex matching (firecrawl matches the pathname by default). */
-export function pathForPatterns(url: string): string {
+/** PDFs are documents we can read, so they are crawled and parsed instead of refused. */
+export function isPdfUrl(url: string): boolean {
+	return fileExtension(url) === "pdf";
+}
+
+/**
+ * The string include/exclude regexes run against.
+ *
+ * firecrawl matches the pathname by default and the whole URL with
+ * `regexOnFullURL`, which is the difference between `/blog` and
+ * `https://site.com/blog`.
+ */
+export function pathForPatterns(url: string, fullUrl = false): string {
+	if (fullUrl) return url;
 	try {
 		return new URL(url).pathname;
 	} catch {
 		return url;
 	}
 }
+
+/** Query parameters that only describe a campaign, not a different page. */
+const TRACKING_PARAMETERS = [
+	"utm_source",
+	"utm_medium",
+	"utm_campaign",
+	"utm_term",
+	"utm_content",
+	"utm_id",
+	"gclid",
+	"fbclid",
+	"msclkid",
+	"mc_cid",
+	"mc_eid",
+	"ref",
+	"ref_src",
+	"_hsenc",
+	"_hsmi",
+] as const;
+
+export interface DedupeOptions {
+	/** Treat `?page=2` and no query string as the same page. */
+	ignoreQueryParameters?: boolean;
+	/** Drop tracking parameters and normalise index suffixes (`/docs` vs `/docs/`). */
+	deduplicateSimilarURLs?: boolean;
+}
+
+/**
+ * Key used to decide whether two links point at the same document.
+ *
+ * Kept separate from `normalizeUrl` because the crawl queue still needs the
+ * original href: this only answers "have we already got this page?"
+ */
+export function dedupeKey(url: string, options: DedupeOptions = {}): string {
+	if (!options.ignoreQueryParameters && !options.deduplicateSimilarURLs) return url;
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		return url;
+	}
+	parsed.hash = "";
+	if (options.ignoreQueryParameters) {
+		parsed.search = "";
+	} else if (options.deduplicateSimilarURLs) {
+		for (const parameter of TRACKING_PARAMETERS) parsed.searchParams.delete(parameter);
+		parsed.searchParams.sort();
+		if (parsed.pathname.length > 1 && parsed.pathname.endsWith("/")) parsed.pathname = parsed.pathname.slice(0, -1);
+		if (parsed.protocol === "https:" && parsed.port === "443") parsed.port = "";
+	}
+	return parsed.toString();
+}
+
 
 export function originOf(url: string): string {
 	try {

@@ -83,8 +83,27 @@ describe("scrapePage", () => {
 	it("falls back to the whole document when extraction leaves too little", async () => {
 		const thin = `<!doctype html><html><body><div id="app"><p>Rendered by JS</p></div><script>x()</script></body></html>`;
 		const result = await scrapePage(client(html(thin)), "https://example.com/app");
-		expect(result.attemptedEngines).toContain("fetch");
+		expect(result.attempts).toContain("fetch");
 		expect(result.markdown).toContain("Rendered by JS");
+	});
+
+	it("lists media in the media format and names protected streams", async () => {
+		const withMedia = ARTICLE.replace(
+			"</article>",
+			`<video src="https://example.com/clip.m3u8"><source src="blob:https://example.com/9a" type="video/mp4"></video>
+			 <img src="/cover.png" alt="Cover"></article>`,
+		);
+		const result = await scrapePage(client(html(withMedia)), "https://example.com/docs/install", {
+			formats: ["media"],
+		});
+		expect(result.elements?.media.map((entry) => entry.url)).toContain("https://example.com/clip.m3u8");
+		expect(result.elements?.media.map((entry) => entry.url)).toContain("https://example.com/cover.png");
+		expect(result.elements?.media.find((entry) => entry.url.endsWith(".m3u8"))?.manifest).toBe(true);
+
+		const media = JSON.parse(result.outputs.media ?? "{}") as { media?: unknown[]; streamed?: number };
+		expect(media.media).toHaveLength(2);
+		expect(media.streamed).toBe(1);
+		expect(result.notes.join(" ")).toContain("not a file");
 	});
 
 	it("rejects binary content with a reason the agent can report", async () => {

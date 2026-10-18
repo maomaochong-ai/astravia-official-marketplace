@@ -1,7 +1,7 @@
 {
   "id": "firecrawl",
   "name": "%name%",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -18,8 +18,17 @@
     "agent.toolHandler.execute",
     "agent.skills.control",
     "ui.slot.activity-tab",
-    "ui.slot.input-action"
+    "ui.slot.input-action",
+    "browser.read",
+    "browser.interact",
+    "ai.complete",
+    "agent.session.read"
   ],
+  "browser": {
+    "allowedHosts": [
+      "*"
+    ]
+  },
   "network": {
     "allowedHosts": [
       "*"

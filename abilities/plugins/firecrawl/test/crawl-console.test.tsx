@@ -67,6 +67,7 @@ const SUMMARY: CrawlSummary = {
 	status: "completed",
 	durationMs: 1200,
 	options: DEFAULT_CRAWL_OPTIONS,
+	scope: "/docs/*",
 };
 
 describe("CrawlConsoleTab", () => {

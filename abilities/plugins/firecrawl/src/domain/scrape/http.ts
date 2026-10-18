@@ -25,6 +25,18 @@ export interface HttpResponse {
 
 export type HttpClient = (request: HttpRequestInit) => Promise<HttpResponse>;
 
+/** Binary payload (PDF) as base64 — the host transport cannot return bytes to a plugin. */
+export interface HttpBinaryResponse {
+	url: string;
+	status: number;
+	ok: boolean;
+	headers: Record<string, string>;
+	base64: string;
+	bytes: number;
+}
+
+export type BinaryFetch = (request: HttpRequestInit) => Promise<HttpBinaryResponse>;
+
 export class HttpTransportError extends Error {
 	constructor(
 		message: string,

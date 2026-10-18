@@ -7,6 +7,8 @@
  * schema descriptions so the model sees them.
  */
 
+import type { BrowserAction } from "../domain/render/types";
+
 export class ToolArgumentError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -88,4 +90,106 @@ export function compilePatterns(patterns: readonly string[]): RegExp[] {
 export function clip(value: string, max: number): string {
 	if (value.length <= max) return value;
 	return `${value.slice(0, max)}\n\n[... truncated ${value.length - max} characters]`;
+}
+
+/** Reads one of a fixed vocabulary, ignoring unknown values (the model sees the enum). */
+export function readEnum<T extends string>(input: unknown, key: string, allowed: readonly T[], def: T): T {
+	const value = readString(input, key);
+	if (!value) return def;
+	return (allowed as readonly string[]).includes(value) ? (value as T) : def;
+}
+
+export function readEnumArray<T extends string>(input: unknown, key: string, allowed: readonly T[], max = 8): T[] {
+	const raw = readStringArray(input, key, max);
+	const values: T[] = [];
+	for (const entry of raw) {
+		if ((allowed as readonly string[]).includes(entry) && !values.includes(entry as T)) values.push(entry as T);
+	}
+	return values;
+}
+
+/** A JSON object argument coming from the model (JSON Schema, extracted shape). */
+export function readJsonObject(input: unknown, key: string): Record<string, unknown> | undefined {
+	if (!input || typeof input !== "object") return undefined;
+	const value = (input as Record<string, unknown>)[key];
+	if (value === undefined || value === null) return undefined;
+	if (typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+	if (typeof value === "string") {
+		try {
+			const parsed: unknown = JSON.parse(value);
+			if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+		} catch {
+			// fall through to the readable error below
+		}
+	}
+	throw new ToolArgumentError(`"${key}" must be a JSON object`);
+}
+
+const MAX_ACTIONS = 10;
+
+/**
+ * Validates firecrawl-style `actions[]`.
+ *
+ * The host browser's `act()` accepts a closed vocabulary; anything unknown is a
+ * caller mistake we must catch here, with the action index, not a runtime throw
+ * halfway through a page interaction.
+ */
+export function readActions(input: unknown, key = "actions"): BrowserAction[] {
+	if (!input || typeof input !== "object") return [];
+	const value = (input as Record<string, unknown>)[key];
+	if (value === undefined || value === null) return [];
+	if (!Array.isArray(value)) throw new ToolArgumentError(`"${key}" must be an array of action objects`);
+	const actions: BrowserAction[] = [];
+	for (const [index, entry] of value.slice(0, MAX_ACTIONS).entries()) {
+		if (!entry || typeof entry !== "object") throw new ToolArgumentError(`"${key}[${index}]" must be an object`);
+		const record = entry as Record<string, unknown>;
+		const type = typeof record.type === "string" ? record.type : "";
+		const target = typeof record.target === "string" ? record.target.trim() : "";
+		const text = typeof record.value === "string" ? record.value : "";
+		switch (type) {
+			case "click":
+				if (!target) throw new ToolArgumentError(`"${key}[${index}].target" is required for click`);
+				actions.push({ type: "click", target });
+				break;
+			case "fill":
+			case "type":
+			case "select":
+				if (!target) throw new ToolArgumentError(`"${key}[${index}].target" is required for ${type}`);
+				actions.push({ type, target, value: text });
+				break;
+			case "check":
+				actions.push({ type: "check", target, checked: record.checked !== false });
+				break;
+			case "press": {
+				const combo = target || text || (typeof record.key === "string" ? record.key : "");
+				if (!combo) throw new ToolArgumentError(`"${key}[${index}].key" is required for press`);
+				actions.push({ type: "press", key: combo });
+				break;
+			}
+			case "scroll": {
+				const direction = record.direction === "up" || record.direction === "left" || record.direction === "right" ? record.direction : "down";
+				const amount = typeof record.amount === "number" && Number.isFinite(record.amount) ? Math.min(10, Math.max(1, Math.round(record.amount))) : undefined;
+				actions.push({ type: "scroll", direction, amount });
+				break;
+			}
+			case "wait": {
+				const milliseconds = typeof record.milliseconds === "number" && Number.isFinite(record.milliseconds)
+					? Math.min(60_000, Math.max(0, Math.round(record.milliseconds)))
+					: undefined;
+				actions.push({ type: "wait", milliseconds, target: target || undefined });
+				break;
+			}
+			case "back":
+				actions.push({ type: "back" });
+				break;
+			case "reload":
+				actions.push({ type: "reload" });
+				break;
+			default:
+				throw new ToolArgumentError(
+					`"${key}[${index}].type" must be one of click, fill, type, select, check, press, scroll, wait, back, reload`,
+				);
+		}
+	}
+	return actions;
 }

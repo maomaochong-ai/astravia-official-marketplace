@@ -31,6 +31,10 @@ export interface AdmissionContext {
 	allowExternalLinks: boolean;
 	allowSubdomains: boolean;
 	allowBackwardCrawling: boolean;
+	/** Match include/exclude regexes against the whole URL instead of the pathname. */
+	regexOnFullURL?: boolean;
+	/** Maps a URL to the key used for duplicate detection (query handling). */
+	dedupeKey?: (url: string) => string;
 	robots: { isAllowed(url: string): boolean };
 	ignoreRobotsTxt: boolean;
 	/** Already queued or crawled (normalized hrefs). */
@@ -54,7 +58,7 @@ export function admitLink(rawUrl: string, context: AdmissionContext): { url: str
 		return denial("URL_PARSE_ERROR", { url: rawUrl });
 	}
 	const url = normalized.href;
-	const path = pathForPatterns(url);
+	const path = pathForPatterns(url, context.regexOnFullURL === true);
 
 	const startHost = hostOf(context.startUrl);
 	const host = hostOf(url);
@@ -85,7 +89,8 @@ export function admitLink(rawUrl: string, context: AdmissionContext): { url: str
 	if (!context.ignoreRobotsTxt && !context.robots.isAllowed(url)) {
 		return denial("ROBOTS_TXT", { url });
 	}
-	if (context.visited.has(url)) {
+	const key = context.dedupeKey ? context.dedupeKey(url) : url;
+	if (context.visited.has(key)) {
 		return denial("DUPLICATE", { url });
 	}
 	return { url };

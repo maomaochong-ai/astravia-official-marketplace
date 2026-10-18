@@ -10,7 +10,10 @@ import type { CrawlOptions, CrawlSummary } from "../domain/events";
 import { DEFAULT_CRAWL_OPTIONS } from "../domain/events";
 import type { CrawlRunStore } from "../features/crawler-console/services/crawl-run-store";
 import { clampCrawlOptions, FIRECRAWL_TAB_ID } from "../tab-id";
-import { clip, compilePatterns, readBoolean, readNumber, readStringArray, requireUrl } from "./tool-arguments";
+import type { RenderMode } from "../domain/render/types";
+import { clip, compilePatterns, readBoolean, readEnum, readNumber, readStringArray, requireUrl } from "./tool-arguments";
+
+const RENDER_MODES: readonly RenderMode[] = ["auto", "static", "browser"];
 import { formatDuration } from "../shared/formatters/format";
 
 const MAX_PAGE_MARKDOWN = 3_500;
@@ -31,6 +34,9 @@ export function createCrawlTool(ctx: PluginContext, store: CrawlRunStore) {
 			"Do NOT use it for a single page (firecrawl_scrape), for a URL list you already have (scrape each),",
 			"or to mirror a whole site (limit caps the run; this is not a site downloader).",
 			"",
+			"Pages that need JavaScript are rendered by the host browser automatically (render: \"auto\");",
+			"set render: \"static\" to stay on plain HTTP, or \"browser\" to force rendering everywhere.",
+			"",
 			"Defaults: limit 12 pages, maxDepth 2 link hops, concurrency 4. A live console opens in the",
 			"activity panel while it runs.",
 		].join("\n"),
@@ -40,6 +46,25 @@ export function createCrawlTool(ctx: PluginContext, store: CrawlRunStore) {
 				url: { type: "string", description: "Absolute http(s) URL to start from." },
 				limit: { type: "number", description: "Pages to fetch including the start page (1-50, default 12)." },
 				maxDepth: { type: "number", description: "Link hops below the start URL (0-5, default 2). 0 = only the start page." },
+				maxDiscoveryDepth: {
+					type: "number",
+					description: "Hops used for link discovery; pages deeper than this are reported but not crawled (default: maxDepth).",
+				},
+				render: { type: "string", enum: [...RENDER_MODES], description: "auto (default), static or browser." },
+				delay: { type: "number", description: "Seconds to wait between page batches (0-60, default 0; robots crawl-delay still applies)." },
+				regexOnFullURL: { type: "boolean", description: "Match include/exclude patterns against the full URL (default false = pathname only)." },
+				ignoreQueryParameters: {
+					type: "boolean",
+					description: "Treat ?a=1 and no query string as the same page (default false).",
+				},
+				deduplicateSimilarURLs: {
+					type: "boolean",
+					description: "Drop tracking parameters and trailing-slash duplicates (default true).",
+				},
+				crawlEntireDomain: {
+					type: "boolean",
+					description: "Crawl the whole domain instead of staying under the start URL's directory (default false).",
+				},
 				includePaths: {
 					type: "array",
 					items: { type: "string" },
@@ -78,6 +103,13 @@ export function createCrawlTool(ctx: PluginContext, store: CrawlRunStore) {
 					...DEFAULT_CRAWL_OPTIONS,
 					limit: readNumber(context.trigger.input, "limit", { min: 1, max: 50, def: DEFAULT_CRAWL_OPTIONS.limit }),
 					maxDepth: readNumber(context.trigger.input, "maxDepth", { min: 0, max: 5, def: DEFAULT_CRAWL_OPTIONS.maxDepth }),
+					maxDiscoveryDepth: readOptionalNumber(context.trigger.input, "maxDiscoveryDepth", { min: 0, max: 5 }),
+					render: readEnum(context.trigger.input, "render", RENDER_MODES, "auto"),
+					delayMs: readNumber(context.trigger.input, "delay", { min: 0, max: 60, def: 0 }) * 1_000,
+					regexOnFullURL: readBoolean(context.trigger.input, "regexOnFullURL", false),
+					ignoreQueryParameters: readBoolean(context.trigger.input, "ignoreQueryParameters", false),
+					deduplicateSimilarURLs: readBoolean(context.trigger.input, "deduplicateSimilarURLs", true),
+					crawlEntireDomain: readBoolean(context.trigger.input, "crawlEntireDomain", false),
 					concurrency: readNumber(context.trigger.input, "concurrency", { min: 1, max: 8, def: DEFAULT_CRAWL_OPTIONS.concurrency }),
 					includePaths: readStringArray(context.trigger.input, "includePaths"),
 					excludePaths: readStringArray(context.trigger.input, "excludePaths"),
@@ -105,6 +137,12 @@ export function createCrawlTool(ctx: PluginContext, store: CrawlRunStore) {
 			}
 		},
 	};
+}
+
+function readOptionalNumber(input: unknown, key: string, bounds: { min: number; max: number }): number | null {
+	const raw = input && typeof input === "object" ? (input as Record<string, unknown>)[key] : undefined;
+	if (raw === undefined || raw === null) return null;
+	return readNumber(input, key, { ...bounds, def: bounds.min });
 }
 
 export function renderSummary(summary: CrawlSummary): string {

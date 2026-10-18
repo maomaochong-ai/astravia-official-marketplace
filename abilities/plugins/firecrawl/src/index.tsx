@@ -17,8 +17,11 @@ import { definePlugin } from "@astravia-org/plugin-sdk";
 import { CrawlConsoleTab } from "./features/crawler-console";
 import { CrawlRunStore } from "./features/crawler-console/services/crawl-run-store";
 import { crawlSite } from "./domain/crawl/crawler";
-import { createHostHttpClient } from "./runtime/http-client";
+import { createHostBinaryFetcher, createHostHttpClient } from "./runtime/http-client";
+import { createBrowserPortFactory } from "./runtime/browser-session";
+import { createAiPort } from "./runtime/ai";
 import { setPluginContext } from "./runtime/plugin-context";
+import { watchConversation } from "./runtime/conversation-watch";
 import { FIRECRAWL_TAB_ID } from "./tab-id";
 import { registerFirecrawlTools } from "./tools/register-tools";
 
@@ -37,7 +40,18 @@ export default definePlugin({
 		setPluginContext(ctx);
 
 		const client = createHostHttpClient(ctx);
-		const store = new CrawlRunStore((target, options, hooks) => crawlSite(client, target, options, hooks));
+		// Both handles are optional: a host without the browser runtime or a
+		// configured model still scrapes, crawls and maps.
+		const browser = createBrowserPortFactory(ctx);
+		const ai = createAiPort(ctx);
+		// Binary transport (PDFs): a base64 fetch, so documents are read as documents.
+		const binary = createHostBinaryFetcher(ctx);
+		const store = new CrawlRunStore((target, options, hooks) =>
+			crawlSite(client, target, options, hooks, { browser, binary }),
+		);
+		// The console follows the conversation: a URL mentioned in the prompt, or one
+		// the agent is about to fetch, becomes the target without the user retyping it.
+		const conversation = watchConversation(ctx, store);
 
 		// The tab is the visible entry point: register it before anything that can
 		// fail, so a missing optional API never removes the plugin from the UI.
@@ -53,7 +67,7 @@ export default definePlugin({
 
 		let tools: Disposable[] = [];
 		try {
-			tools = registerFirecrawlTools(ctx, client, store);
+			tools = registerFirecrawlTools(ctx, { client, store, browser, ai, binary });
 		} catch (error) {
 			console.warn("[firecrawl] tool registration unavailable", error);
 			ctx.ui.notify({
@@ -81,6 +95,7 @@ export default definePlugin({
 
 		return {
 			dispose(): void {
+				conversation.dispose();
 				store.stop();
 				for (const disposable of [...tools].reverse()) disposable.dispose();
 				action?.dispose();

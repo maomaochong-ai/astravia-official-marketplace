@@ -7,38 +7,66 @@
  */
 
 import type { DenialCode } from "./denial";
-import type { EngineName } from "./scrape/pipeline";
+import type { OutputFormat, RenderEngineName, RenderMode } from "./render/types";
+import type { ElementProfile } from "./html/elements";
+
+/** Engines a page can be produced by, shared by events, tools and the console. */
+export type EngineName = RenderEngineName;
 
 export interface CrawlOptions {
 	/** Pages to fetch, including the start URL. */
 	limit: number;
-	/** Link hops below the start URL. */
+	/** Link hops below the start URL (firecrawl `maxDepth`, default 10 upstream). */
 	maxDepth: number;
+	/** Hops used for discovery only; null means "same as maxDepth". */
+	maxDiscoveryDepth: number | null;
 	concurrency: number;
 	includePaths: string[];
 	excludePaths: string[];
 	allowExternalLinks: boolean;
 	allowSubdomains: boolean;
 	allowBackwardCrawling: boolean;
+	/** firecrawl's replacement for `allowBackwardLinks`: crawl the whole domain, not just deeper paths. */
+	crawlEntireDomain: boolean;
 	ignoreRobotsTxt: boolean;
 	useSitemap: boolean;
 	onlyMainContent: boolean;
 	timeoutMs: number;
+	/** Match include/exclude regexes against the full URL. */
+	regexOnFullURL: boolean;
+	/** `?a=1` and no query string are the same page. */
+	ignoreQueryParameters: boolean;
+	/** Drop tracking parameters and trailing-slash duplicates. */
+	deduplicateSimilarURLs: boolean;
+	/** Politeness delay between page fetches. */
+	delayMs: number;
+	/** Engine policy for every page in the crawl. */
+	render: RenderMode;
+	/** Extra per-page outputs (`links`, `html`, `json`). */
+	formats: OutputFormat[];
 }
 
 export const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 	limit: 12,
 	maxDepth: 2,
+	maxDiscoveryDepth: null,
 	concurrency: 4,
 	includePaths: [],
 	excludePaths: [],
 	allowExternalLinks: false,
 	allowSubdomains: false,
 	allowBackwardCrawling: false,
+	crawlEntireDomain: false,
 	ignoreRobotsTxt: false,
 	useSitemap: true,
 	onlyMainContent: true,
 	timeoutMs: 30_000,
+	regexOnFullURL: false,
+	ignoreQueryParameters: false,
+	deduplicateSimilarURLs: true,
+	delayMs: 0,
+	render: "auto",
+	formats: ["markdown"],
 };
 
 export type CrawlEvent =
@@ -73,11 +101,14 @@ export type CrawlEvent =
 			parent: string | null;
 			status: number;
 			engine: EngineName;
+			rendered: boolean;
 			bytes: number;
 			chars: number;
 			links: number;
 			durationMs: number;
 			title: string;
+			/** Page structure, so the console can animate what was extracted. */
+			elements?: ElementProfile;
 			at: number;
 	  }
 	| {
@@ -118,6 +149,7 @@ export interface CrawlPage {
 	chars: number;
 	durationMs: number;
 	warnings: number;
+	elements?: ElementProfile;
 }
 
 export interface CrawlSummary {
@@ -128,4 +160,6 @@ export interface CrawlSummary {
 	status: "completed" | "stopped" | "failed";
 	durationMs: number;
 	options: CrawlOptions;
+	/** Human-readable crawl scope (`/docs/*`), useful in tool output. */
+	scope: string;
 }
