@@ -1,9 +1,9 @@
 /**
- * 已保存连接的清单 — 侧栏的列表页。
+ * 已保存连接的清单 — 首屏与侧栏列表页共用。
  *
- * 对齐设计稿 frames/connections.tsx：搜索行（h-9）+ 58px 连接行 + 动作图标按钮。
- * 每行给出状态点 / 连接名 / 端点 / 读写权限 / 三个动作：测试、编辑、删除。
- * 测试进行中禁用该行按钮，避免并发跑多次连通性检查。
+ * 布局对齐插件工作台（参考 xiaohongshu）：概览卡 + 搜索/过滤行 + 自适应卡片网格。
+ * 卡片内所有文本都走 min-w-0 + truncate，宽度由网格分配，不再有固定像素列宽：
+ * 宿主侧边栏被拖窄时不会再把文字挤出圆角容器。
  */
 
 import { useEffect, useMemo, useState, type JSX } from "react";
@@ -21,16 +21,31 @@ export interface ConnectionListProps {
 	onDelete: (conn: DbConnection) => void;
 	onDuplicate: (conn: DbConnection) => void;
 	onCreate: () => void;
+	/** 首屏整页：在搜索行上方显示概览卡。模态弹窗高度有限，不传。 */
+	showSummary?: boolean;
 }
 
 type AccessFilter = "all" | "ro" | "rw";
 
-/** 行的端点摘要：host:port · database */
+/** 卡片里的端点摘要：host:port · database */
 function endpointOf(conn: DbConnection): string {
 	const host = conn.host ?? "";
 	const port = conn.port ? `:${conn.port}` : "";
 	const database = conn.database ? ` · ${conn.database}` : "";
 	return `${host}${port}${database}`;
+}
+
+function OverviewCard({ label, value, hint, tone }: { label: string; value: number; hint: string; tone: string }): JSX.Element {
+	return (
+		<div className="min-w-0 rounded-xl border border-border/60 bg-card/45 p-3 shadow-xs">
+			<div className="flex items-center gap-1.5 text-[11px] font-medium text-muted">
+				<span className={`size-1.5 shrink-0 rounded-full ${tone}`} />
+				<span className="truncate">{label}</span>
+			</div>
+			<div className="mt-1 font-mono text-xl leading-none font-semibold tabular-nums text-surface-foreground">{value}</div>
+			<div className="mt-2 truncate border-t border-border/40 pt-1.5 text-[11px] text-faint">{hint}</div>
+		</div>
+	);
 }
 
 export function ConnectionList({
@@ -42,10 +57,11 @@ export function ConnectionList({
 	onDelete,
 	onDuplicate,
 	onCreate,
+	showSummary = false,
 }: ConnectionListProps): JSX.Element {
 	const [query, setQuery] = useState("");
 	const [filter, setFilter] = useState<AccessFilter>("all");
-	/** 行内二次确认删除：删除按钮第一次点击进入 pending，2s 内再点才真删。 */
+	/** 卡片内二次确认删除：删除按钮第一次点击进入 pending，2s 内再点才真删。 */
 	const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 	useEffect(() => {
 		if (!pendingDeleteId) return;
@@ -68,61 +84,56 @@ export function ConnectionList({
 		});
 	}, [connections, filter, query]);
 
+	const filterChip = (key: AccessFilter, label: string, count: number): JSX.Element => (
+		<button
+			type="button"
+			onClick={() => setFilter(key)}
+			className={`shrink-0 rounded-chip px-2 py-1 text-[12px] whitespace-nowrap transition ${
+				filter === key
+					? "border border-border bg-neutral-muted text-surface-foreground"
+					: "text-muted hover:text-surface-foreground"
+			}`}
+		>
+			{label} {count}
+		</button>
+	);
+
 	return (
 		<div className="flex min-h-0 flex-1 flex-col">
-			{/* 搜索 + 过滤：设计稿 h-9 行 */}
-			<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-4">
-				<div className="flex h-7 min-w-0 flex-1 items-center gap-1.5 rounded-control border border-border bg-surface px-2.5">
+			{showSummary ? (
+				<div className="grid shrink-0 grid-cols-3 gap-2.5 px-5 pt-3 pb-1" data-testid="connection-summary-grid">
+					<OverviewCard label="数据源" value={connections.length} hint="已保存到本机" tone="bg-accent" />
+					<OverviewCard label="可写" value={writableCount} hint="允许执行变更" tone="bg-warning" />
+					<OverviewCard label="只读" value={readOnlyCount} hint="仅查询，不改数据" tone="bg-success" />
+				</div>
+			) : null}
+
+			{/* 搜索 + 过滤：窄面板自动换行，永远不撑破容器 */}
+			<div className="flex shrink-0 flex-wrap items-center gap-2 px-5 py-3">
+				<div className="flex h-8 min-w-[132px] flex-1 items-center gap-1.5 rounded-control border border-border bg-surface px-2.5">
 					<span className="icon-[lucide--search] size-3.5 shrink-0 text-muted" />
 					<input
 						type="search"
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
-						placeholder="搜索数据源名称、主机…"
+						placeholder="搜索名称、主机…"
 						className="h-full min-w-0 flex-1 appearance-none border-none bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-muted"
 					/>
 				</div>
-				<button
-					type="button"
-					onClick={() => setFilter("all")}
-					className={`shrink-0 rounded-chip px-2 py-1 text-[12px] whitespace-nowrap transition ${
-						filter === "all"
-							? "border border-border bg-neutral-muted text-surface-foreground"
-							: "px-1.5 text-muted hover:text-surface-foreground"
-					}`}
-				>
-					全部 {connections.length}
-				</button>
-				<button
-					type="button"
-					onClick={() => setFilter("ro")}
-					className={`shrink-0 rounded-chip px-2 py-1 text-[12px] whitespace-nowrap transition ${
-						filter === "ro"
-							? "border border-border bg-neutral-muted text-surface-foreground"
-							: "px-1.5 text-muted hover:text-surface-foreground"
-					}`}
-				>
-					只读 {readOnlyCount}
-				</button>
-				<button
-					type="button"
-					onClick={() => setFilter("rw")}
-					className={`shrink-0 rounded-chip px-2 py-1 text-[12px] whitespace-nowrap transition ${
-						filter === "rw"
-							? "border border-border bg-neutral-muted text-surface-foreground"
-							: "px-1.5 text-muted hover:text-surface-foreground"
-					}`}
-				>
-					可写 {writableCount}
-				</button>
+				<div className="flex shrink-0 items-center gap-1">
+					{filterChip("all", "全部", connections.length)}
+					{filterChip("rw", "可写", writableCount)}
+					{filterChip("ro", "只读", readOnlyCount)}
+				</div>
 			</div>
 
-			{/* 行列表：设计稿 58px 行，行内 padding 16px */}
-			<div className="min-h-0 flex-1 overflow-y-auto pt-1">
+			<div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
 				{connections.length === 0 ? (
-					<div className="px-4 py-10 text-center">
-						<p className="m-0 text-[12px] text-muted">还没有保存的数据源</p>
-						<button type="button" className="dbx-btn primary mt-3" onClick={onCreate}>
+					<div className="rounded-2xl border border-dashed border-border px-5 py-12 text-center">
+						<span className="icon-[lucide--database] mx-auto block size-6 text-faint" />
+						<p className="mt-3 mb-0 text-[13px] font-medium text-surface-foreground">还没有保存的数据源</p>
+						<p className="mt-1 mb-0 text-[12px] text-muted">连接 MySQL、PostgreSQL、ClickHouse 等数据库后即可查询与分析。</p>
+						<button type="button" className="dbx-btn primary mt-4" onClick={onCreate}>
 							<span className="icon-[lucide--plus] size-3.5" />
 							新建数据源
 						</button>
@@ -130,113 +141,108 @@ export function ConnectionList({
 				) : visible.length === 0 ? (
 					<div className="px-4 py-10 text-center text-[12px] text-muted">没有匹配的数据源</div>
 				) : (
-						visible.map((conn) => (
-						<div
-							key={conn.id}
-							className="group flex h-[58px] cursor-pointer items-center gap-3 border-t border-border px-4 hover:bg-neutral-muted"
-							onDoubleClick={() => onEdit(conn)}
-						>
-							<span className={`size-1.5 shrink-0 rounded-full ${conn.read_only ? "bg-accent" : "bg-warning"}`} />
-
-							<div className="flex w-[150px] shrink-0 items-center gap-2">
-								<DatabaseTypeIcon dbType={conn.db_type} size="small" />
-								<div className="min-w-0">
-									<div className="truncate text-[14px] font-semibold text-surface-foreground">{conn.name}</div>
-									{/* 设计稿副标题是显示名（如 PostgreSQL 16.2），不是内部 db_type；版本号引擎未回报，故只到显示名。 */}
-									<div className="truncate font-mono text-[12px] text-muted">
-										{findDbType(conn.db_type)?.label ?? conn.db_type}
+					<div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3" data-testid="connection-card-grid">
+						{visible.map((conn) => {
+							const typeLabel = findDbType(conn.db_type)?.label ?? conn.db_type;
+							const connectionState = conn.last_test_at == null
+								? { dot: "bg-border-strong", text: "未测试", cls: "text-muted" }
+								: conn.last_test_ok
+									? { dot: "bg-success", text: "已连接", cls: "text-success" }
+									: { dot: "bg-danger", text: "连接失败", cls: "text-danger" };
+							return (
+								<article
+									key={conn.id}
+									data-testid="connection-card"
+									className="group flex min-w-0 cursor-pointer flex-col rounded-xl border border-border/60 bg-card/45 p-3 shadow-xs transition hover:border-border-strong hover:bg-card"
+									onDoubleClick={() => onEdit(conn)}
+								>
+									<div className="flex min-w-0 items-center gap-2">
+										<DatabaseTypeIcon dbType={conn.db_type} size="small" />
+										<span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-surface-foreground">{conn.name}</span>
+										<span
+											className={`shrink-0 rounded-chip border px-1.5 py-px text-[11px] whitespace-nowrap ${
+												conn.read_only
+													? "border-border text-muted"
+													: "border-warning/40 bg-warning-soft text-warning"
+											}`}
+										>
+											{conn.read_only ? "只读" : "可写"}
+										</span>
 									</div>
-								</div>
-							</div>
 
-							<div className="flex min-w-0 flex-1 items-center gap-2">
-								<span className="truncate font-mono text-[12px] text-muted">{endpointOf(conn)}</span>
-								{conn.is_production ? (
-									<span className="shrink-0 rounded-chip border border-warning/40 bg-warning-soft px-1.5 py-px text-[12px] whitespace-nowrap text-warning">
-										生产
-									</span>
-								) : null}
-							</div>
+									<div className="mt-1.5 flex min-w-0 items-center gap-1.5">
+										<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted">{typeLabel}</span>
+										{conn.is_production ? (
+											<span className="shrink-0 rounded-chip bg-warning-soft px-1.5 py-px text-[10px] whitespace-nowrap text-warning">生产</span>
+										) : null}
+									</div>
+									<div className="truncate font-mono text-[11px] text-faint">{endpointOf(conn)}</div>
 
-							<span className="w-[40px] shrink-0 text-center text-[12px] whitespace-nowrap text-muted">
-								{conn.read_only ? "只读" : "可写"}
-							</span>
+									<div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-border/40 pt-2">
+										<span
+											className="inline-flex min-w-0 items-center gap-1.5"
+											title={conn.last_test_error ?? connectionState.text}
+										>
+											<span className={`size-1.5 shrink-0 rounded-full ${connectionState.dot}`} />
+											<span className={`truncate text-[11px] ${connectionState.cls}`}>{connectionState.text}</span>
+										</span>
 
-							<span className="flex w-[86px] shrink-0 justify-end">
-								{conn.last_test_at == null ? (
-									<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-										<span className="size-1.5 shrink-0 rounded-full bg-border-strong" />
-										<span className="text-[12px] text-muted">未测试</span>
-									</span>
-								) : conn.last_test_ok ? (
-									<span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-										<span className="size-1.5 shrink-0 rounded-full bg-success" />
-										<span className="text-[12px] text-success">已连接</span>
-									</span>
-								) : (
-									<span
-										className="inline-flex items-center gap-1.5 whitespace-nowrap"
-										title={conn.last_test_error ?? "连接失败"}
-									>
-										<span className="size-1.5 shrink-0 rounded-full bg-danger" />
-										<span className="text-[12px] text-danger">连接失败</span>
-									</span>
-								)}
-							</span>
-
-							<div className="flex w-[200px] shrink-0 items-center justify-end gap-1">
-								<button
-									type="button"
-									onClick={() => onTest(conn)}
-									disabled={testing}
-									title="测试数据源"
-									className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground disabled:opacity-40"
-								>
-									<span className={`size-3.5 ${testing ? "icon-[lucide--loader-circle] animate-spin" : "icon-[lucide--plug]"}`} />
-								</button>
-								<button
-									type="button"
-									onClick={() => onEdit(conn)}
-									title="编辑数据源"
-									className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground"
-								>
-									<span className="icon-[lucide--pencil] size-3.5" />
-								</button>
-								<button
-									type="button"
-									onClick={() => onDuplicate(conn)}
-									title="复制为新数据源"
-									className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground"
-								>
-									<span className="icon-[lucide--copy-plus] size-3.5" />
-								</button>
-								<button
-									type="button"
-									onClick={() => {
-										if (pendingDeleteId === conn.id) {
-											setPendingDeleteId(null);
-											void onDelete(conn);
-										} else {
-											setPendingDeleteId(conn.id);
-										}
-									}}
-									title={pendingDeleteId === conn.id ? "再点一次确认删除" : "删除数据源"}
-									className={`flex size-6 items-center justify-center rounded-control transition ${
-										pendingDeleteId === conn.id
-											? "bg-danger text-surface"
-											: "text-muted hover:bg-danger-soft hover:text-danger"
-									}`}
-								>
-									<span className={`size-3.5 ${pendingDeleteId === conn.id ? "icon-[lucide--check]" : "icon-[lucide--trash-2]"}`} />
-								</button>
-							</div>
-						</div>
-					))
+										<div className="flex shrink-0 items-center gap-0.5">
+											<button
+												type="button"
+												onClick={() => onTest(conn)}
+												disabled={testing}
+												title="测试数据源"
+												className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground disabled:opacity-40"
+											>
+												<span className={`size-3.5 ${testing ? "icon-[lucide--loader-circle] animate-spin" : "icon-[lucide--plug]"}`} />
+											</button>
+											<button
+												type="button"
+												onClick={() => onEdit(conn)}
+												title="编辑数据源"
+												className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground"
+											>
+												<span className="icon-[lucide--pencil] size-3.5" />
+											</button>
+											<button
+												type="button"
+												onClick={() => onDuplicate(conn)}
+												title="复制为新数据源"
+												className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground"
+											>
+												<span className="icon-[lucide--copy-plus] size-3.5" />
+											</button>
+											<button
+												type="button"
+												onClick={() => {
+													if (pendingDeleteId === conn.id) {
+														setPendingDeleteId(null);
+														void onDelete(conn);
+													} else {
+														setPendingDeleteId(conn.id);
+													}
+												}}
+												title={pendingDeleteId === conn.id ? "再点一次确认删除" : "删除数据源"}
+												className={`flex size-6 items-center justify-center rounded-control transition ${
+													pendingDeleteId === conn.id
+														? "bg-danger text-surface"
+														: "text-muted hover:bg-danger-soft hover:text-danger"
+												}`}
+											>
+												<span className={`size-3.5 ${pendingDeleteId === conn.id ? "icon-[lucide--check]" : "icon-[lucide--trash-2]"}`} />
+											</button>
+										</div>
+									</div>
+								</article>
+							);
+						})}
+					</div>
 				)}
 			</div>
 
 			{testResult ? (
-				<div className="shrink-0 border-t border-border px-4 py-2 font-mono text-[12px] break-all text-surface-foreground">
+				<div className="shrink-0 border-t border-border px-5 py-2 font-mono text-[12px] break-all text-surface-foreground">
 					{testResult}
 				</div>
 			) : null}
