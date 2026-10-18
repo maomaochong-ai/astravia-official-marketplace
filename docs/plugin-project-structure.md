@@ -120,12 +120,3 @@ node --test tests/marketplace.test.mjs
 ```
 
 插件运行内容变化时提升插件版本，并同步 `plugin.json`、`ability.json`、`package.json`、锁文件、构建产物、归档和顶层 `marketplaceVersion`。
-
-## 服务的分发
-
-`plugin.json` 的 service artifact 只有 `sha256` / `archive` / `destination`，没有 `url`：字节由插件前端下载后用
-`ctx.services.install` 部署。CI 只把 `plugin-<slug>` 上的 `.astraviapkg` 作为制品发布，**不会发布服务包**。
-
-因此带独立服务包（如 `runtime.kind: "host-node"`）的插件，必须自己把服务归档发到 `<slug>-<version>` 这个
-append-only Release，并让仓库内 `runtime-lock.json` 的 URL 指向它；否则安装时会 404。发完用
-`curl -sI` 和 `sha256` 复核一次，确认与锁文件逐字一致。
