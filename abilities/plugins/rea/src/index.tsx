@@ -111,6 +111,17 @@ function createCommandSpawner(
 }
 
 /**
+ * 活动面板宽度通道：宿主没有 tab 级 fullscreen，只能用 `ui.setActivityPanelWidth`
+ * 把面板拉满 / 还原。旧宿主没有这个方法时返回 null，按钮随之隐藏。
+ */
+function createPanelWidthSetter(ctx: PluginContext): ((width: number | "max") => void) | null {
+	const api = ctx.ui as { setActivityPanelWidth?: unknown };
+	if (typeof api.setActivityPanelWidth !== "function") return null;
+	const setWidth = ctx.ui.setActivityPanelWidth.bind(ctx.ui);
+	return (width) => setWidth(width);
+}
+
+/**
  * 实时层：会话事件 → 快照；引擎自愈；Agent 侧提示与自检工具。
  *
  * 逐段 try：任何一段失败只降级这部分能力，不让整次 activate 抛错——tab 与输入栏入口
@@ -140,6 +151,7 @@ export default definePlugin({
 		const insertPrompt = createPromptWriter(ctx);
 		const runCommand = createCommandRunner(ctx);
 		const spawnCommand = createCommandSpawner(ctx);
+		const setPanelWidth = createPanelWidthSetter(ctx);
 		const store = new ReaLiveStore();
 
 		// UI 槽位先注册：它是插件的可见入口，不能因为后面某一层不可用就整个消失。
@@ -158,6 +170,7 @@ export default definePlugin({
 					insertPrompt={insertPrompt}
 					runCommand={runCommand}
 					spawnCommand={spawnCommand}
+					setPanelWidth={setPanelWidth}
 				/>
 			),
 		});

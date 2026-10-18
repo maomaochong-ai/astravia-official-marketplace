@@ -5,7 +5,7 @@
  * 「选定目标并把任务真正发进对话」。发送回执占一行固定高度，避免按钮下方内容上下跳。
  */
 
-import type { JSX } from "react";
+import { useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PluginCommandRunResult, PluginCommandSpawnHandle } from "@astravia-org/plugin-sdk";
 import type { TargetKind } from "../data/targets";
@@ -14,6 +14,7 @@ import type { Workbench } from "../hooks/use-workbench";
 import type { ReaLiveCall } from "../live/session-store";
 import { copyText } from "../../../shared/services/clipboard";
 import { ReaWorkflowTargetRouting } from "./rea-workflow-target-routing";
+import { ReaUsageExamples } from "./rea-usage-examples";
 
 interface WorkbenchProps {
 	readonly workbench: Workbench;
@@ -54,6 +55,7 @@ export function ReaWorkbench({
 	cwd,
 }: WorkbenchProps): JSX.Element {
 	const { t } = useTranslation();
+	const [examplesOpen, setExamplesOpen] = useState(false);
 	const canHandoff = workbench.blockReason === null;
 	const blockReason = workbench.blockReason;
 	const feedback = workbench.handoff;
@@ -78,9 +80,19 @@ export function ReaWorkbench({
 				<h2 className="shrink-0 whitespace-nowrap text-[12px] font-semibold leading-tight text-foreground">
 					{t("tab.workbench.title")}
 				</h2>
-				<span className="min-w-0 truncate text-[10px] text-muted-foreground @max-[340px]:hidden">
+				<span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground @max-[340px]:hidden">
 					{t("tab.workbench.subtitle")}
 				</span>
+				<button
+					type="button"
+					onClick={() => setExamplesOpen((prev) => !prev)}
+					aria-expanded={examplesOpen}
+					title={t(examplesOpen ? "tab.examples.close" : "tab.examples.openHint")}
+					className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-border px-1.5 text-[10px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+				>
+					<span aria-hidden className="icon-[lucide--sparkles] size-2.5" />
+					{t("tab.examples.button")}
+				</button>
 			</header>
 
 			<ReaWorkflowTargetRouting
@@ -182,7 +194,16 @@ export function ReaWorkbench({
 						{t("tab.workbench.copyPrompt")}
 					</button>
 				) : null}
+
 			</div>
+
+			{examplesOpen ? (
+				<ReaUsageExamples
+					target={workbench.target}
+					targetKind={workbench.active ?? detected}
+					onClose={() => setExamplesOpen(false)}
+				/>
+			) : null}
 		</section>
 	);
 }

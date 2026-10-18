@@ -3,9 +3,12 @@
  *
  * 为什么要自动跑：用户不该为了「能看到缺什么」先手工执行一条命令。
  * 什么时候跑：
- *   - 引擎进入 ready 且已确定目标类型时自动跑一次（每个目标类型一次）；
+ *   - 引擎进入 ready 就自动跑一次（doctor 不接受目标参数，没理由等目标类型）；
  *   - 用户点「重新检测」；
  *   - 一键安装完成后自动复检。
+ *
+ * 以前这里多一道「必须先确定目标类型」的闸门，结果是工具的 Host 行永远停在
+ * 「未确认」—— doctor 根本没跑过。doctor 的 checks 是全量的，与目标无关。
  *
  * 只读诊断，不写宿主状态；doctor 本身不改任何配置。
  */
@@ -13,7 +16,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PluginCliProviderPhase, PluginCommandRunResult } from "@astravia-org/plugin-sdk";
 import { parseDoctorChecks, type DoctorCheck } from "../live/doctor-readiness";
-import type { TargetKind } from "../data/targets";
 
 const DOCTOR_TIMEOUT_MS = 90_000;
 
@@ -22,7 +24,6 @@ export type DoctorStatus = "idle" | "checking" | "ready" | "failed";
 export interface DoctorReportDeps {
 	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
 	readonly cwd: string | null;
-	readonly target: TargetKind | null;
 	readonly providerPhase: PluginCliProviderPhase | null;
 }
 
@@ -58,8 +59,8 @@ export function useDoctorReport(deps: DoctorReportDeps): DoctorReport {
 			setStatus((prev) => (prev === "ready" ? prev : "idle"));
 			return;
 		}
-		if (current.target === null) return;
-		const key = `${current.target}:${nonce}`;
+		// doctor 与目标类型无关：只看「跑过没有」。改 recheck / 复装后 nonce 变了就重跑。
+		const key = `nonce:${nonce}`;
 		if (ranFor.current === key) return;
 		ranFor.current = key;
 
@@ -95,7 +96,7 @@ export function useDoctorReport(deps: DoctorReportDeps): DoctorReport {
 				setMessage(error instanceof Error ? error.message : String(error));
 			}
 		})();
-	}, [deps.providerPhase, deps.target, nonce]);
+	}, [deps.providerPhase, nonce]);
 
 	return { checks, status, message, lastRunAt, recheck };
 }

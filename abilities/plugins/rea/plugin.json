@@ -1,7 +1,7 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -44,7 +44,8 @@
     "sigrok-cli",
     "wasm-validate",
     "mitmdump",
-    "brew"
+    "brew",
+    "pipx"
   ],
   "providers": {
     "cli": [

@@ -31,7 +31,7 @@ import {
 	type ToolReadiness,
 } from "../live/doctor-readiness";
 import type { ReaLiveCall } from "../live/session-store";
-import { describeRecipe, installRecipeFor, isRunnable, needsConfigAfterInstall } from "../live/tool-install";
+import { describeRecipe, firstChannel, installRecipeFor, isRunnable, needsConfigAfterInstall } from "../live/tool-install";
 import { probeRecipeFor } from "../live/tool-probe";
 import { requiredTools, runningRequirementIds } from "../live/tool-requirements";
 
@@ -103,6 +103,10 @@ export function ReaToolReadiness({
 
 	const runningIds = runningRequirementIds(running);
 	const summary = summarizeReadiness(items);
+	// 失败原因翻译成可操作的中文/英文；宿主原文留在 title 里供搜索。
+	const failureText = install.progress?.failure
+		? t(install.progress.failure.key, { detail: install.progress.failure.detail })
+		: null;
 	// 运行中的工具单独置顶，不再重复出现在三组里。
 	const rest = items.filter((item) => !runningIds.has(item.requirement.id));
 	const missing = rest.filter((item) => item.state === "missing");
@@ -127,7 +131,9 @@ export function ReaToolReadiness({
 
 	const renderRow = (item: ToolReadiness): JSX.Element => {
 		const hint = hintFor(item);
-		const installable = install.canInstall(item.requirement.id);
+		// 已经就绪的工具再给一个安装按钮只是噪声（用户本轮反馈的就是这个）。
+		// 未确认仍保留安装入口：没有证据不等于装好了，装完才能真的用。
+		const installable = item.state !== "ready" && install.canInstall(item.requirement.id);
 		const isRunning = runningIds.has(item.requirement.id);
 		return (
 			<li key={item.requirement.id} className="rounded-[min(var(--radius-md),6px)] border border-border/70 bg-card/40 px-2 py-1">
@@ -169,7 +175,7 @@ export function ReaToolReadiness({
 							onClick={() => install.install(item.requirement.id)}
 							disabled={install.installingId !== null}
 							title={t(
-								installRecipeFor(item.requirement.id)?.runner?.channel === "rea"
+								firstChannel(installRecipeFor(item.requirement.id)) === "rea"
 									? "tab.tools.installHint"
 									: "tab.tools.commandHint",
 							)}
@@ -277,11 +283,11 @@ export function ReaToolReadiness({
 			) : null}
 
 			<div className="mt-1 flex min-w-0 items-center justify-between gap-2">
-				<span className="min-w-0 truncate text-[10px] text-muted-foreground" title={report.message ?? undefined}>
+				<span className="min-w-0 truncate text-[10px] text-muted-foreground" title={failureText ?? report.message ?? undefined}>
 					{install.tone === "success"
 						? t("tab.tools.installSuccess")
 						: install.tone === "danger"
-							? t("tab.tools.installFailed", { message: install.message ?? "" })
+							? t("tab.tools.installFailed", { message: failureText ?? "" })
 							: missing.length > 0 && isRunnable(installRecipeFor(missing[0]?.requirement.id ?? ""))
 								? t("tab.tools.installableHint", { tool: missing[0]?.requirement.label ?? "" })
 								: missing.length > 0

@@ -9,7 +9,9 @@
  *
  *   doctor     `rea doctor --json` 能直接证明的工具（node / host / hopper / ghidra /
  *              ida / jadx / ilspycmd）。检查项命名规则见上游 DoctorDiagnostics.ts：
- *              `<provider>` 或 `<provider>-<check>`。
+ *              `<provider>` 或 `<provider>-<check>`。注意 `host` 这一项不是「宿主连接」，
+ *              而是「当前操作系统是否在被支持的矩阵里」（macOS ≥12 / 受支持 Linux /
+ *              win32-x64），见上游 DoctorDiagnostics.ts 的 hostCheck。
  *   runtime    doctor 观测不到的依赖（frida / adb / apktool / binwalk / pwntools…）。
  *              由命令探测给结论；探测不到时才退回「本次会话是否真的调用成功过」。
  *
@@ -49,7 +51,7 @@ export const TOOL_REQUIREMENTS: readonly ToolRequirement[] = [
 	},
 	{
 		id: "host",
-		label: "Host",
+		label: "Host OS",
 		source: "doctor",
 		doctorId: "host",
 		targets: ALWAYS,

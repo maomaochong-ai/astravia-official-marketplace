@@ -28,6 +28,7 @@ import { ReaWorkflowStageDetail } from "./rea-workflow-stage-detail";
 import { ReaWorkflowControls } from "./rea-workflow-controls";
 import { STAGES, TOTAL_STAGES } from "../data/stages";
 import { useDoctorReport } from "../hooks/use-doctor-report";
+import { usePanelFullscreen } from "../hooks/use-panel-fullscreen";
 import { useWorkbench } from "../hooks/use-workbench";
 import { useReaLiveSnapshot } from "../live/use-live-snapshot";
 import { scopeLiveCalls, type ReaLiveStore } from "../live/session-store";
@@ -56,6 +57,8 @@ export interface ReaWorkflowTabProps {
 	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
 	/** 长驻进程：brew 安装要能看过程、能中途取消；无 `agent.command.spawn` 时为 null。 */
 	readonly spawnCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>) | null;
+	/** 把活动面板宽度拉满 / 还原（宿主没有 tab 级 fullscreen，只能改面板宽度）。 */
+	readonly setPanelWidth: ((width: number | "max") => void) | null;
 }
 
 export function ReaWorkflowTab({
@@ -65,6 +68,7 @@ export function ReaWorkflowTab({
 	insertPrompt,
 	runCommand,
 	spawnCommand,
+	setPanelWidth,
 }: ReaWorkflowTabProps): JSX.Element {
 	const { t } = useTranslation();
 	const { active, cwd } = useActivityTab();
@@ -99,13 +103,14 @@ export function ReaWorkflowTab({
 		onRoute: handleSelect,
 	});
 
-	// doctor 只在引擎就绪且已有目标类型时跑：这时「缺什么工具」才有意义。
+	// doctor 不接收目标参数：引擎一就绪就跑，否则 Host 等行会永远停在「未确认」。
 	const report = useDoctorReport({
 		run: provider.run,
 		cwd: cwd ?? null,
-		target: workbench.active,
 		providerPhase: snapshot.providerPhase,
 	});
+	const panelRef = useRef<HTMLDivElement | null>(null);
+	const panelFullscreen = usePanelFullscreen(panelRef, setPanelWidth);
 
 	const calls = useMemo(() => scopeLiveCalls(snapshot, cwd), [snapshot, cwd]);
 	// 被流程越过的阶段（自身没有调用、下游已有调用）：流程条要如实区分「没开始」和「跳过」。
@@ -118,7 +123,7 @@ export function ReaWorkflowTab({
 	const animateClass = active ? "motion-safe:animate-in motion-safe:fade-in-0" : "";
 
 	return (
-		<div className={`@container flex h-full w-full flex-col overflow-hidden bg-background text-foreground ${animateClass}`}>
+		<div ref={panelRef} className={`@container flex h-full w-full flex-col overflow-hidden bg-background text-foreground ${animateClass}`}>
 			<ReaProviderStatusBar
 				getStatus={provider.getStatus}
 				onStatusChanged={provider.onStatusChanged}
@@ -181,6 +186,21 @@ export function ReaWorkflowTab({
 				<span className="min-w-0 truncate text-[10px] text-muted-foreground">
 					{t("live.calls.count", { count: calls.length })}
 				</span>
+				{panelFullscreen.available ? (
+					<button
+						type="button"
+						onClick={panelFullscreen.toggle}
+						aria-pressed={panelFullscreen.fullscreen}
+						title={t(panelFullscreen.fullscreen ? "tab.panel.restoreHint" : "tab.panel.fullscreenHint")}
+						className="ml-auto inline-flex h-5 shrink-0 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					>
+						<span
+							aria-hidden
+							className={`size-3 ${panelFullscreen.fullscreen ? "icon-[lucide--minimize]" : "icon-[lucide--maximize]"}`}
+						/>
+						{t(panelFullscreen.fullscreen ? "tab.panel.restore" : "tab.panel.fullscreen")}
+					</button>
+				) : null}
 			</div>
 			<ReaWorkflowControls currentStage={currentStage} onChange={handleSelect} />
 		</div>

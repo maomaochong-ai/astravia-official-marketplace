@@ -59,6 +59,9 @@
 
 	--animate-rea-blink: rea-blink 1.1s steps(1, end) infinite;
 
+	/* 安装进度条的扫描条纹：步内没有可数的子进度，只能表示「正在跑」。 */
+	--animate-rea-sweep: rea-sweep 1.4s ease-in-out infinite;
+
 	/* 终端光标：只闪 opacity，不占布局宽度也不触发重排。 */
 	@keyframes rea-blink {
 		0%,
@@ -112,6 +115,15 @@
 		100% {
 			transform: translateY(230%);
 			opacity: 0;
+		}
+	}
+
+	@keyframes rea-sweep {
+		0% {
+			transform: translateX(-110%);
+		}
+		100% {
+			transform: translateX(320%);
 		}
 	}
 
