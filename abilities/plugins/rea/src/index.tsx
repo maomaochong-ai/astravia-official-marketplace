@@ -12,7 +12,6 @@
  * 主题通过 src/style.css 的 @theme inline 跟随宿主。
  */
 import "./style.css";
-import type { JSX } from "react";
 import type {
 	Disposable,
 	PluginCommandRunResult,
@@ -35,14 +34,8 @@ const REA_PROVIDER_ID = "rea-agents";
 const REA_TAB_ID = "rea.workflow";
 const REA_ACTION_ID = "rea.openTab";
 
-// 宿主 tab 图标槽位按 <svg> 尺寸渲染，不能直接用 Iconify 的 CSS 类；
-// 这里内联 @iconify-json/lucide 的 compass 图标（与面板内 lucide/solar 图标同一套视觉语言）。
-const reaIcon = (): JSX.Element => (
-	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-		<circle cx="12" cy="12" r="10" />
-		<path d="m16.24 7.76l-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
-	</svg>
-);
+// 两个槽位的图标都不内联：省略 `icon` 时宿主回落到 plugin.json#icon（同一张官方 R 徽标），
+// tab 与能力页因此是同一套标识，不会多出一套自绘图形。
 
 function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
 	// 旧宿主可能还没有 spawn（长驻进程通道）：探测不到就整条通道为 null，
@@ -158,7 +151,6 @@ export default definePlugin({
 		const tabDisposable = ctx.ui.registerActivityTab({
 			id: REA_TAB_ID,
 			label: ctx.i18n.t("tab.label"),
-			icon: reaIcon(),
 			order: 22,
 			scope_use: ["conversation", "project"],
 			initiallyVisible: true,
@@ -177,10 +169,10 @@ export default definePlugin({
 
 		// 输入栏 toggle：on 时把面板上栏 + 打开；off 时下栏。
 		// decoratePrompt 注入 REA 工作流指令，让下一条 prompt 自动进入逆向流程。
+		// label 取短名：宿主 actions 行是单行 nowrap，chip 太长会把同一行的其它插件挤到可视区外。
 		const actionDisposable = ctx.ui.registerInputAction({
 			id: REA_ACTION_ID,
 			label: ctx.i18n.t("action.openTab.label"),
-			icon: reaIcon(),
 			scope_use: ["conversation", "project"],
 			onToggle: (active) => {
 				if (active) {

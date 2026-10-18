@@ -1,9 +1,10 @@
 {
   "id": "rea",
   "name": "%name%",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
+  "icon": "assets/icon.svg",
   "moduleFederation": {
     "remoteName": "rea",
     "expose": "./plugin"
@@ -76,6 +77,22 @@
     "skillPaths": [
       "agent/skills/reverse-engineer-anything"
     ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "skillPicker": "visible",
+        "commandPalette": "visible",
+        "abilityCatalog": "visible",
+        "agentConfiguration": "visible",
+        "pluginDetail": "visible"
+      },
+      "skills": {
+        "reverse-engineer-anything": {
+          "displayName": "%skill.name%",
+          "displayDescription": "%skill.description%"
+        }
+      }
+    },
     "mcpServers": {
       "rea": {
         "command": "npx",
