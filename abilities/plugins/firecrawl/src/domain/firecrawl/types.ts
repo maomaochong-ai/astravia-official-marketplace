@@ -97,6 +97,40 @@ export interface AgentStatus {
 	threadId?: string;
 }
 
+/** One step of an agent run. Ordered by `producerSequence`, never by `occurredAt`. */
+export interface AgentTraceEvent {
+	type?: string;
+	eventId?: string;
+	occurredAt?: string;
+	producerSequence?: number;
+	[key: string]: unknown;
+}
+
+export interface AgentTrace {
+	events: AgentTraceEvent[];
+	creditsUsed?: number;
+	activeBrowserSessions?: number;
+}
+
+/** `/v2/team/queue-status`: what the account is running and what it may run. */
+export interface QueueStatus {
+	jobsInQueue: number;
+	activeJobsInQueue: number;
+	waitingJobsInQueue: number;
+	maxConcurrency: number;
+	mostRecentSuccess?: string;
+}
+
+/** `/v2/crawl/active`: crawls upstream is still working on for this key. */
+export interface ActiveCrawl {
+	id: string;
+	url?: string;
+	status?: string;
+	createdAt?: string;
+	/** The page limit the crawl was started with — an intent, not progress. */
+	limit?: number;
+}
+
 export interface IndexHit {
 	type?: string;
 	url?: string;
@@ -227,6 +261,7 @@ export interface FirecrawlClient {
 	agent: {
 		start(body: Record<string, unknown>): Promise<AgentRun>;
 		status(id: string): Promise<AgentStatus>;
+		trace(id: string, options?: { liveView?: boolean }): Promise<AgentTrace>;
 	};
 	searchDeveloper(body: Record<string, unknown>): Promise<DeveloperSearchResult>;
 	searchGov(body: Record<string, unknown>): Promise<GovSearchResult>;
@@ -243,6 +278,8 @@ export interface FirecrawlClient {
 		checks(id: string, options?: { limit?: number; skip?: number }): Promise<{ data: MonitorCheck[]; next: string | null }>;
 	};
 	credits(): Promise<CreditUsage>;
+	queue(): Promise<QueueStatus>;
+	activeCrawls(): Promise<ActiveCrawl[]>;
 }
 
 export class FirecrawlError extends Error {

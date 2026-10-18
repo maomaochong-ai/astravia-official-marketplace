@@ -56,10 +56,16 @@ function NumberField({
 	);
 }
 
-/** `markdown` is never removable: the page preview and the markdown artifact read it. */
+/**
+ * Format chips are not free toggles: `rawBase64` is exclusive upstream and
+ * `markdown` is what the page preview reads, so the two trade places.
+ */
 function toggleFormat(current: CrawlFormatOption[], option: CrawlFormatOption): CrawlFormatOption[] {
-	if (option === "markdown") return current;
-	return current.includes(option) ? current.filter((entry) => entry !== option) : [...current, option];
+	if (option === "rawBase64") return current.includes("rawBase64") ? ["markdown"] : ["rawBase64"];
+	const base = current.filter((entry) => entry !== "rawBase64");
+	if (option === "markdown") return base.includes("markdown") ? base : ["markdown", ...base];
+	const next = base.includes(option) ? base.filter((entry) => entry !== option) : [...base, option];
+	return next.length > 0 ? next : ["markdown"];
 }
 
 function Toggle({
@@ -206,27 +212,65 @@ export function CrawlControlBar({
 			<div className="flex flex-wrap items-center gap-1">
 				<span className="shrink-0 text-[10px] text-muted-foreground">{t("console.formats.label")}</span>
 				{CRAWL_FORMAT_OPTIONS.map((option) => {
-					const locked = option === "markdown";
 					const active = options.formats.includes(option);
+					// `attributes` needs a selector before it can produce anything, so it is
+					// greyed out rather than sent upstream as an empty request.
+					const needsSelectors = option === "attributes" && !(options.attributeSelectors ?? "").trim();
+					const reason =
+						option === "rawBase64"
+							? t("console.formats.binary")
+							: needsSelectors
+								? t("console.formats.needSelectors")
+								: option === "markdown"
+									? t("console.formats.hint")
+									: undefined;
 					return (
 						<button
 							key={option}
 							type="button"
-							disabled={locked}
+							disabled={needsSelectors}
 							aria-pressed={active}
-							title={locked ? t("console.formats.hint") : undefined}
+							title={reason}
 							onClick={() => patch({ formats: toggleFormat(options.formats, option) as CrawlFormatOption[] })}
 							className={`rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
 								active
 									? "border-primary/40 bg-primary/15 text-primary"
 									: "border-border text-muted-foreground hover:bg-muted"
-							} ${locked ? "cursor-default opacity-70" : ""}`}
+							} ${needsSelectors ? "cursor-not-allowed opacity-50" : ""}`}
 						>
 							{t(`console.format.${option}`)}
 						</button>
 					);
 				})}
 			</div>
+
+			{options.formats.includes("attributes") ? (
+				<label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+					<span className="shrink-0">{t("console.formats.selectors")}</span>
+					<input
+						value={options.attributeSelectors ?? ""}
+						onChange={(event) => patch({ attributeSelectors: event.target.value })}
+						placeholder={t("console.formats.selectorsPlaceholder")}
+						className="min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px]"
+					/>
+				</label>
+			) : null}
+
+			{options.formats.includes("json") ? (
+				<label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+					<span className="shrink-0">{t("console.formats.jsonPrompt")}</span>
+					<input
+						value={options.jsonPrompt ?? ""}
+						onChange={(event) => patch({ jsonPrompt: event.target.value })}
+						placeholder={t("console.formats.jsonPromptPlaceholder")}
+						className="min-w-0 flex-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px]"
+					/>
+				</label>
+			) : null}
+
+			{options.formats.includes("rawBase64") ? (
+				<p className="text-[10px] text-amber-600 dark:text-amber-400">{t("console.formats.binary")}</p>
+			) : null}
 
 			<button
 				type="button"
@@ -273,6 +317,11 @@ export function CrawlControlBar({
 						checked={options.ignoreRobotsTxt}
 						onChange={(ignoreRobotsTxt) => patch({ ignoreRobotsTxt })}
 					/>
+					{options.ignoreRobotsTxt ? (
+						<p className="col-span-2 text-[10px] text-amber-600 dark:text-amber-400">
+							{t("console.advanced.robotsEnterprise")}
+						</p>
+					) : null}
 				</div>
 			) : null}
 		</section>

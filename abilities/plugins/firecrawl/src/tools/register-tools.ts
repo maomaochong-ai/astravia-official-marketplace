@@ -22,6 +22,7 @@ import { createVideoTool } from "./video-tool";
 import { createInteractTool } from "./interact-tool";
 import { createAgentTool } from "./agent-tool";
 import { createIndexSearchTool } from "./index-search-tool";
+import { createAccountTool } from "./account-tool";
 
 type UnknownInput = Record<string, unknown>;
 
@@ -42,6 +43,7 @@ export function registerFirecrawlTools(ctx: PluginContext, deps: ToolDeps): Disp
 		createInteractTool(deps),
 		createAgentTool(deps),
 		createIndexSearchTool(deps),
+		createAccountTool(deps),
 	] as Array<PluginAgentToolRegistration<UnknownInput>>;
 
 	return tools.map((tool) => ctx.agent.registerTool(tool));

@@ -1,8 +1,8 @@
 ---
 name: firecrawl
-description: Read the web through the Firecrawl API: pages as Markdown plus HTML, links, screenshots, images, video/audio URLs, summaries or schema-shaped JSON. Use firecrawl_scrape for one page, firecrawl_batch_scrape for a known URL list, firecrawl_map to list a site's URLs, firecrawl_crawl for several pages depth-limited, firecrawl_search to find pages, firecrawl_extract to shape data out of URLs, firecrawl_parse for PDF/DOCX/XLSX/PPTX, firecrawl_video for a page's media URLs, firecrawl_interact to drive a stateful browser session, firecrawl_agent to research a question across pages, firecrawl_index_search for the developer/gov/research corpora, and firecrawl_job_status / firecrawl_monitor for upstream jobs and scheduled monitors. Prefer it over guessing or over raw HTTP when the user needs page content, docs pages, changelogs, a site's structure, media sources, or a document read as text.
+description: Read the web through the Firecrawl API: pages as Markdown plus HTML, links, screenshots, images, video/audio URLs, summaries or schema-shaped JSON. Use firecrawl_scrape for one page, firecrawl_batch_scrape for a known URL list, firecrawl_map to list a site's URLs, firecrawl_crawl for several pages depth-limited, firecrawl_search to find pages, firecrawl_extract to shape data out of URLs, firecrawl_parse for PDF/DOCX/XLSX/PPTX, firecrawl_video for a page's media URLs, firecrawl_interact to drive a stateful browser session, firecrawl_agent to research a question across pages, firecrawl_index_search for the developer/gov/research corpora, firecrawl_job_status / firecrawl_monitor for upstream jobs and scheduled monitors, and firecrawl_account to read credits, queue depth and crawls still running under the key. Prefer it over guessing or over raw HTTP when the user needs page content, docs pages, changelogs, a site's structure, media sources, or a document read as text.
 metadata:
-  version: "5"
+  version: "6"
 ---
 
 # Firecrawl Connector
@@ -31,6 +31,7 @@ choose: do not offer a "local" mode, and do not ask for a `render` option.
 | an answer assembled from several unknown pages | `firecrawl_agent` |
 | "what do the issues/docs/this paper say" | `firecrawl_index_search` |
 | the state of a crawl/batch job started with `wait: false` | `firecrawl_job_status` |
+| credits, queue depth, or a crawl still running upstream | `firecrawl_account` |
 | a page watched on a schedule | `firecrawl_monitor` |
 
 `firecrawl_map` returns URLs only — it never fetches content. Do not map a site
@@ -47,7 +48,8 @@ and then claim you read its pages.
   the user names a section, e.g. `["^/docs/"]`.
 - Set `ignoreRobotsTxt` only when the user explicitly asks to bypass robots.txt,
   and say so in the answer.
-- A crawl returns Markdown per page plus the counts of refused and failed pages.
+- A crawl returns each page in the formats asked for, plus the counts of refused
+  and failed pages. Unstructured pages come back as media URLs, not as prose.
   Read `/v2/crawl/{id}/errors` through the console view or `firecrawl_job_status`
   when the user expected a page that did not arrive.
 - `maxAge` reuses upstream's cached copy (milliseconds) on `scrape`, `batch_scrape`
@@ -70,12 +72,13 @@ Firecrawl's sandbox: say that before handling a credential.
 
 ### Formats
 
-`formats` picks the outputs: `markdown` (default), `html`, `rawHtml`, `rawBase64`,
-`links`, `images`, `screenshot`, `screenshot@fullPage`, `json`, `summary`,
-`audio`, `video`, `media`, `attributes`, `changeTracking`, `branding`, `product`,
-`menu`. Only `markdown` is prose: the rest are structured records, URLs, images or
-media, and a page whose content is a video comes back as a media URL rather than
-text. Questions and highlights are not format entries — pass the `question` or
+`formats` picks the outputs. On `scrape` / `batch_scrape` / `crawl`: `markdown`
+(default), `html`, `rawHtml`, `rawBase64`, `links`, `images`, `screenshot`,
+`screenshot@fullPage`, `json`, `summary`, `audio`, `video`, `media`,
+`attributes`, `changeTracking`. Only `markdown` is prose: the rest are structured
+records, URLs, images or media, and a page whose content is a video comes back as
+a media URL rather than text. `branding`, `product` and `menu` exist on `scrape`
+only. Questions and highlights are not format entries — pass the `question` or
 `highlights` parameter and the plugin attaches the payload for you.
 
 - `attributes` takes selectors like `["a@href", "h2", ".price@data-price"]` and
@@ -106,6 +109,15 @@ job id. Poll it with `firecrawl_job_status` rather than re-running the job;
 scrape/crawl/search with a cron or interval schedule — it runs upstream, so it
 keeps running after the conversation ends.
 
+### Account state
+
+`firecrawl_account` reads what the key is allowed to spend and what it is already
+doing: `operation: "usage"` for remaining and plan credits, `"queue"` for jobs
+upstream is holding, `"active"` for crawls still running. Reading never costs
+credits. Use `"active"` before starting a big crawl when the user mentions an
+earlier run that "never finished", and `"usage"` before a request that could hit
+a credit limit — a `402` afterwards is late.
+
 ### Agent runs
 
 `firecrawl_agent` is the only tool that answers without a URL: give it a `prompt`
@@ -114,7 +126,9 @@ call for "compare these three vendors' free plans", not for "read this page".
 `maxCredits` bounds the spend; a run that reaches it comes back partial, which is
 not the same as a failure — report the partial answer and say it stopped at the
 budget. `wait: false` returns a job id; re-call the tool with `jobId` to collect
-the result without paying for a second run.
+the result without paying for a second run. Add `trace: true` to see the run's
+ordered step log — which pages and searches the agent used — when the answer is
+surprising; it reads an existing run and costs nothing.
 
 ### Curated indexes
 

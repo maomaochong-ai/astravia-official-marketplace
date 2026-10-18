@@ -6,7 +6,16 @@
  * translation layer.
  */
 
-import { DEFAULT_CRAWL_FORMATS, clampCrawlFormats, toUpstreamFormats, type CrawlFormatOption } from "./formats";
+import {
+	DEFAULT_CRAWL_FORMATS,
+	MAX_CRAWL_FORMATS,
+	RAW_BASE64_PAGE_LIMIT,
+	clampCrawlFormats,
+	isExclusiveFormat,
+	parseSelectorList,
+	toUpstreamFormats,
+	type CrawlFormatOption,
+} from "./formats";
 
 export interface CrawlJobOptions {
 	limit: number;
@@ -22,6 +31,10 @@ export interface CrawlJobOptions {
 	onlyMainContent: boolean;
 	/** Per-page outputs. `markdown` stays in the list because the console renders it. */
 	formats: CrawlFormatOption[];
+	/** Selectors for the `attributes` format, as typed: `a@href, h2`. */
+	attributeSelectors?: string;
+	/** Optional prompt for the `json` format (upstream extracts against it). */
+	jsonPrompt?: string;
 }
 
 export const CRAWL_LIMITS = {
@@ -44,6 +57,8 @@ export const DEFAULT_CRAWL_JOB_OPTIONS: CrawlJobOptions = {
 	ignoreRobotsTxt: false,
 	onlyMainContent: true,
 	formats: [...DEFAULT_CRAWL_FORMATS],
+	attributeSelectors: "",
+	jsonPrompt: "",
 };
 
 function clampNumber(value: unknown, bounds: { min: number; max: number; fallback: number }): number {
@@ -52,8 +67,12 @@ function clampNumber(value: unknown, bounds: { min: number; max: number; fallbac
 }
 
 export function clampCrawlJobOptions(options: Partial<CrawlJobOptions>): CrawlJobOptions {
+	const formats = clampCrawlFormats(options.formats);
+	const limit = clampNumber(options.limit, CRAWL_LIMITS.limit);
 	return {
-		limit: clampNumber(options.limit, CRAWL_LIMITS.limit),
+		// A base64 page is the page itself, response cap and all: keep the run small
+		// rather than let the host refuse the last pages of a large crawl.
+		limit: isExclusiveFormat(formats) ? Math.min(limit, RAW_BASE64_PAGE_LIMIT) : limit,
 		maxDiscoveryDepth: clampNumber(options.maxDiscoveryDepth, CRAWL_LIMITS.maxDiscoveryDepth),
 		maxConcurrency: clampNumber(options.maxConcurrency, CRAWL_LIMITS.maxConcurrency),
 		delay: clampNumber(options.delay, CRAWL_LIMITS.delay),
@@ -64,7 +83,9 @@ export function clampCrawlJobOptions(options: Partial<CrawlJobOptions>): CrawlJo
 		crawlEntireDomain: options.crawlEntireDomain ?? DEFAULT_CRAWL_JOB_OPTIONS.crawlEntireDomain,
 		ignoreRobotsTxt: options.ignoreRobotsTxt ?? DEFAULT_CRAWL_JOB_OPTIONS.ignoreRobotsTxt,
 		onlyMainContent: options.onlyMainContent ?? DEFAULT_CRAWL_JOB_OPTIONS.onlyMainContent,
-		formats: clampCrawlFormats(options.formats),
+		formats: formats.slice(0, MAX_CRAWL_FORMATS),
+		attributeSelectors: typeof options.attributeSelectors === "string" ? options.attributeSelectors : "",
+		jsonPrompt: typeof options.jsonPrompt === "string" ? options.jsonPrompt : "",
 	};
 }
 
@@ -97,7 +118,16 @@ export function crawlJobBody(url: string, options: CrawlJobOptions, extras: Craw
 	if (extras.webhookUrl) body.webhook = { url: extras.webhookUrl, events: ["completed", "page"] };
 	const scrapeOptions = extras.scrapeOptions ?? {};
 	const perPage: Record<string, unknown> = {
-		formats: toUpstreamFormats(options.formats),
+		// Payloads only matter when the matching format was actually requested, so a
+		// stale selector field cannot change a run that does not use `attributes`.
+		formats: toUpstreamFormats(options.formats, {
+			...(options.formats.includes("attributes")
+				? { selectors: parseSelectorList(options.attributeSelectors ?? "") }
+				: {}),
+			...(options.formats.includes("json") && (options.jsonPrompt ?? "").trim()
+				? { prompt: (options.jsonPrompt ?? "").trim() }
+				: {}),
+		}),
 		onlyMainContent: options.onlyMainContent,
 		...scrapeOptions,
 	};

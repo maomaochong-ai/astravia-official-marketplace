@@ -34,10 +34,12 @@ export const formatsProperty = {
 export const crawlFormatsProperty = {
 	type: "array",
 	items: { type: "string", enum: [...CRAWL_FORMAT_OPTIONS] },
+	// A JSON Schema `description` is a single string; an array is rejected by
+	// strict function-calling providers and makes the whole tool unusable.
 	description: [
 		"Outputs to request for every crawled page. `markdown` is always kept; add links, images, media,",
 		"summary, html, json or changeTracking. Defaults to markdown only.",
-	],
+	].join(" "),
 } as const;
 
 export const actionsProperty = {

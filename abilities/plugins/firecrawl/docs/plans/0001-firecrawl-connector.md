@@ -2,7 +2,7 @@
 
 - 来源决策：[`../adr/0001-firecrawl-integration-mode.md`](../adr/0001-firecrawl-integration-mode.md)
 - 状态：**实施完成，待真机验收**（阶段 0–4 已落地并通过自动化门禁，阶段 5 见 §5）
-- 版本：插件 `0.3.2`（已发布 0.3.1 → 0.3.2：仅走 REST v2、18 种输出格式、interact / agent / index search）
+- 版本：插件 `0.3.3`（0.3.2 → 0.3.3：补齐 13 种可请求格式与媒体产物拆分、`firecrawl_account`、agent trace；0.3.1 → 0.3.2 为仅走 REST v2、interact / agent / index search）
 
 ## 0. 目标与非目标
 
@@ -178,7 +178,7 @@ docs/plans/0001-…-connector.md        本文
 ## 5. 完成定义
 
 - [x] 阶段 3 与阶段 4 的代码与文案全部落地
-- [x] 自动化门禁全绿（见 §3：`npm run check` / `npm test` 93 项 / `npm run build` → `release/firecrawl-0.3.2.astraviapkg` / 仓库 `check` / `node --test` 62 项）
+- [x] 自动化门禁全绿（见 §3：`npm run check` / `npm test` 106 项（13 个文件）/ `npm run build` → `release/firecrawl-0.3.3.astraviapkg`（16 个运行时文件）/ 仓库 `check` / `node --test` 62 项）
 - [ ] 能力页授权在真实桌面客户端走通一次（需人工：安装 → 打开能力页 → 跳官网取 Key → 粘贴 → 看到额度）
 - [x] README / SKILL / detail 与新命名、新授权流程一致
 - [ ] 真机上确认产物货架与历史在重启后仍在（需人工：跑一次 crawl → 重启客户端 → 历史里恢复该运行）

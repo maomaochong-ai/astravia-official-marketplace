@@ -17,8 +17,11 @@ import {
 	type JobPageError,
 	type JobStatus,
 	type MapResult,
+	type ActiveCrawl,
 	type AgentRun,
 	type AgentStatus,
+	type AgentTrace,
+	type AgentTraceEvent,
 	type DeveloperSearchResult,
 	type GovSearchResult,
 	type IndexHit,
@@ -27,6 +30,7 @@ import {
 	type Monitor,
 	type PaperHit,
 	type PaperSearchResult,
+	type QueueStatus,
 	type SearchResult,
 } from "./types";
 import type { Transport, TransportBody } from "./transport";
@@ -63,9 +67,22 @@ function describeFailure(status: number, payload: unknown): { message: string; c
 					? record.detail
 					: "";
 	const code = typeof record.code === "string" ? record.code : `http_${status}`;
-	if (status === 401 || status === 403) {
+	if (status === 401) {
 		return {
-			message: `Upstream rejected the API key (${status}). Connect a valid key on the ability page or in the console, and check that it belongs to this endpoint.`,
+			message: `Upstream rejected the API key (401)${detail.length > 0 ? `: ${detail}` : ""}. Connect a valid key on the ability page or in the console.`,
+			code,
+		};
+	}
+	if (status === 403) {
+		// Firecrawl answers 403 for policy denials, not for a bad key: an endpoint,
+		// format or IP allowlist on the key/team, an Enterprise-only option
+		// (`ignoreRobotsTxt`, `zeroDataRetention`), or the legacy v0 API. The body
+		// names the exact rule, so it has to reach the user verbatim.
+		return {
+			message:
+				detail.length > 0
+					? `Upstream denied this request (403): ${detail}`
+					: "Upstream denied this request (403). The key or team is restricted (allowed endpoints, formats or IP addresses), or the request uses an Enterprise-only option such as ignoreRobotsTxt or zeroDataRetention. The key itself is valid.",
 			code,
 		};
 	}
@@ -344,6 +361,19 @@ export function createClient(options: ClientOptions): FirecrawlClient {
 					threadId: typeof payload.threadId === "string" ? payload.threadId : undefined,
 				} satisfies AgentStatus;
 			},
+			async trace(id, options = {}) {
+				const payload = await send("GET", `/v2/agent/${id}/trace${toQuery({ liveView: options.liveView })}`);
+				const events = Array.isArray(payload.events) ? (payload.events as AgentTraceEvent[]) : [];
+				// `occurredAt` is wall-clock and can repeat or arrive out of order; the
+				// producer's monotonic counter is the only stable reading order.
+				events.sort((left, right) => (left.producerSequence ?? 0) - (right.producerSequence ?? 0));
+				return {
+					events,
+					creditsUsed: typeof payload.creditsUsed === "number" ? payload.creditsUsed : undefined,
+					activeBrowserSessions:
+						typeof payload.activeBrowserSessions === "number" ? payload.activeBrowserSessions : undefined,
+				} satisfies AgentTrace;
+			},
 		},
 
 		async searchDeveloper(body) {
@@ -446,6 +476,48 @@ export function createClient(options: ClientOptions): FirecrawlClient {
 		async credits() {
 			const payload = await send("GET", "/v2/team/credit-usage");
 			return (payload.data ?? payload) as Record<string, unknown>;
+		},
+
+		async queue() {
+			const payload = await send("GET", "/v2/team/queue-status");
+			const number = (key: string): number => (typeof payload[key] === "number" ? (payload[key] as number) : 0);
+			return {
+				jobsInQueue: number("jobsInQueue"),
+				activeJobsInQueue: number("activeJobsInQueue"),
+				waitingJobsInQueue: number("waitingJobsInQueue"),
+				maxConcurrency: number("maxConcurrency"),
+				mostRecentSuccess:
+					typeof payload.mostRecentSuccess === "string" ? payload.mostRecentSuccess : undefined,
+			} satisfies QueueStatus;
+		},
+
+		async activeCrawls() {
+			const payload = await send("GET", "/v2/crawl/active");
+			// The schema advertises `crawls` but the documented example returns `data`,
+			// so neither spelling is trusted on its own.
+			const raw = Array.isArray(payload.crawls)
+				? payload.crawls
+				: Array.isArray(payload.data)
+					? payload.data
+					: [];
+			return raw
+				.filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object")
+				.map((entry) => {
+					const options = entry.options && typeof entry.options === "object" ? (entry.options as Record<string, unknown>) : {};
+					const scrapeOptions =
+						options.scrapeOptions && typeof options.scrapeOptions === "object"
+							? (options.scrapeOptions as Record<string, unknown>)
+							: {};
+					return {
+						id: typeof entry.id === "string" ? entry.id : "",
+						url: typeof entry.url === "string" ? entry.url : undefined,
+						status: typeof entry.status === "string" ? entry.status : undefined,
+						createdAt: typeof entry.createdAt === "string" ? entry.createdAt : undefined,
+						// Upstream reports no per-crawl progress here, so only the requested limit is kept.
+						limit: typeof scrapeOptions.limit === "number" ? (scrapeOptions.limit as number) : undefined,
+					} satisfies ActiveCrawl;
+				})
+				.filter((entry) => entry.id.length > 0);
 		},
 	};
 }

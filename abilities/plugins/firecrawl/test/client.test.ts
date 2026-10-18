@@ -87,6 +87,18 @@ describe("REST client", () => {
 		});
 	});
 
+	it("passes the upstream 403 policy text through instead of blaming the key", async () => {
+		const reason =
+			"The ignoreRobotsTxt parameter is an enterprise feature. Contact support@firecrawl.com to explore whether it can be enabled for your team.";
+		const { transport } = fakeTransport(() => ({ status: 403, body: { success: false, error: reason } }));
+		const client = createClient({ apiKey: "k", transport });
+
+		await expect(client.scrape({ url: "https://a.test" })).rejects.toMatchObject({
+			status: 403,
+			message: expect.stringContaining(reason) as unknown as string,
+		});
+	});
+
 	it("retries a 5xx once, then succeeds", async () => {
 		let attempt = 0;
 		const { transport, calls } = fakeTransport(() => {

@@ -16,7 +16,17 @@
 import type { ElementProfile } from "./profile";
 import type { FirecrawlDocument } from "./types";
 
-export const ARTIFACT_KINDS = ["markdown", "links", "images", "media", "json", "document"] as const;
+export const ARTIFACT_KINDS = [
+	"markdown",
+	"links",
+	"images",
+	"video",
+	"audio",
+	// Kept so a run archived before 0.4.2 still restores; nothing emits it now.
+	"media",
+	"json",
+	"document",
+] as const;
 
 export type ArtifactKind = (typeof ARTIFACT_KINDS)[number];
 
@@ -119,15 +129,23 @@ export function linkItems(document: FirecrawlDocument, markdown: string, base: s
 	);
 }
 
-/** Images: the API's array, the Markdown embeds, and the page's own social image. */
+/**
+ * Images: the API's array, the Markdown embeds, the page's own social image, and
+ * the rendered screenshot when upstream stored it as a URL.
+ *
+ * The screenshot lands here rather than in a kind of its own: the crawled record
+ * only carries a hosted image link, which is exactly what this list is for.
+ */
 export function imageItems(document: FirecrawlDocument, markdown: string, base: string): string[] {
 	const provided = Array.isArray(document.images) ? document.images.map(imageUrl) : [];
 	const metadata = document.metadata ?? {};
 	const social = [metadata.ogImage, metadata["og:image"], metadata.twitterImage].filter(
 		(entry): entry is string => typeof entry === "string" && entry.length > 0,
 	);
+	const shots = Array.isArray(document.actions?.screenshots) ? document.actions.screenshots : [];
+	const screenshot = typeof document.screenshot === "string" && document.screenshot ? [document.screenshot] : [];
 	return unique(
-		[...provided, ...markdownMatches(IMAGE_PATTERN, markdown), ...social]
+		[...provided, ...markdownMatches(IMAGE_PATTERN, markdown), ...social, ...screenshot, ...shots]
 			.map((entry) => absolute(entry ?? "", base))
 			.filter((entry): entry is string => Boolean(entry)),
 		MAX_IMAGE_ITEMS,
@@ -221,9 +239,32 @@ export function pageArtifacts(
 	const images = listArtifact("images", source, title, imageItems(document, markdown, source), at);
 	if (images) out.push(images);
 
-	const streams = elements.media.map((ref) => ref.url);
-	const media = listArtifact("media", source, title, unique(streams, MAX_MEDIA_ITEMS), at);
-	if (media) out.push(media);
+	// Video and audio are separate kinds because they are separate deliverables: a
+	// crawl page usually has one or the other, and a merged list forces the reader to
+	// pick the extension out of the URL to know what they are looking at.
+	const video = listArtifact(
+		"video",
+		source,
+		title,
+		unique(
+			elements.media.filter((ref) => ref.kind === "video").map((ref) => ref.url),
+			MAX_MEDIA_ITEMS,
+		),
+		at,
+	);
+	if (video) out.push(video);
+
+	const audio = listArtifact(
+		"audio",
+		source,
+		title,
+		unique(
+			elements.media.filter((ref) => ref.kind === "audio").map((ref) => ref.url),
+			MAX_MEDIA_ITEMS,
+		),
+		at,
+	);
+	if (audio) out.push(audio);
 
 	const structured = document.json ?? document.extract ?? document.summary;
 	if (structured !== undefined && structured !== null && structured !== "") {
@@ -296,7 +337,7 @@ export function artifactText(artifact: CrawlArtifact): string {
 
 export function artifactExtension(kind: ArtifactKind): string {
 	if (kind === "json") return "json";
-	if (kind === "links" || kind === "images" || kind === "media") return "txt";
+	if (["links", "images", "media", "video", "audio"].includes(kind)) return "txt";
 	if (kind === "document") return "md";
 	return "md";
 }

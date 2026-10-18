@@ -57,26 +57,45 @@ export const FORMAT_OPTIONS = [
 export type FormatOption = (typeof FORMAT_OPTIONS)[number];
 
 /**
- * Formats worth offering at crawl scale.
+ * Formats offered at crawl scale, in the console's display order.
  *
- * `screenshot` is excluded (a screenshot per page is megabytes of base64),
- * `rawBase64` is exclusive upstream, and `question`/`highlights`/`attributes`
- * need a per-page payload that a crawl has no single answer for.
+ * A crawl produces one record per page, so every entry here has to survive being
+ * multiplied by the page limit. That rules nothing out on capability — the list
+ * mirrors the upstream per-page outputs — but `rawBase64` is exclusive upstream
+ * and heavy per page, so selecting it pins the run to a couple of pages (see
+ * `crawlJobBody`); `attributes` needs selectors and `json` can take a prompt, both
+ * supplied from the console's format payload fields.
  */
 export const CRAWL_FORMAT_OPTIONS = [
 	"markdown",
 	"links",
 	"images",
-	"media",
-	"summary",
+	"video",
+	"audio",
+	"screenshot",
 	"html",
+	"rawHtml",
+	"summary",
 	"json",
+	"attributes",
 	"changeTracking",
+	"rawBase64",
 ] as const;
 
 export type CrawlFormatOption = (typeof CRAWL_FORMAT_OPTIONS)[number];
 
 export const DEFAULT_CRAWL_FORMATS: CrawlFormatOption[] = ["markdown"];
+
+/** The console can ask for the whole vocabulary; only `rawBase64` collapses it. */
+export const MAX_CRAWL_FORMATS = CRAWL_FORMAT_OPTIONS.length;
+
+/** `rawBase64` is a whole-page payload: upstream rejects it next to anything else. */
+export function isExclusiveFormat(formats: readonly string[]): boolean {
+	return formats.includes("rawBase64");
+}
+
+/** Pages worth crawling when the payload per page is the page itself. */
+export const RAW_BASE64_PAGE_LIMIT = 2;
 
 const MAX_FORMATS = 8;
 
@@ -106,11 +125,22 @@ export function clampFormats(value: unknown, max = MAX_FORMATS): FormatOption[] 
 	return kept.length > 0 ? kept : ["markdown"];
 }
 
-export function clampCrawlFormats(value: unknown, max = MAX_FORMATS): CrawlFormatOption[] {
+export function clampCrawlFormats(value: unknown, max = MAX_CRAWL_FORMATS): CrawlFormatOption[] {
+	const source = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
 	const kept: CrawlFormatOption[] = [];
-	for (const name of clampFormats(value, max)) {
-		if (isCrawlFormatOption(name) && !kept.includes(name)) kept.push(name);
+	for (const entry of source) {
+		if (typeof entry !== "string") continue;
+		const name = entry.trim();
+		// `media` was one combined chip before 0.4.2; expand it so a run saved in the
+		// old shape still restores with both media outputs selected.
+		const expanded = name === "media" ? ["video", "audio"] : [name];
+		for (const item of expanded) {
+			if (!isCrawlFormatOption(item) || kept.includes(item)) continue;
+			kept.push(item);
+			if (kept.length >= max) break;
+		}
 	}
+	if (kept.includes("rawBase64")) return ["rawBase64"];
 	// Markdown is the console's own preview, so a run that dropped it would look
 	// empty even though it succeeded.
 	if (!kept.includes("markdown")) kept.unshift("markdown");
@@ -127,6 +157,29 @@ export interface FormatPayloads {
 }
 
 const MAX_SELECTORS = 20;
+
+/**
+ * Parses the console's selector field: `a@href, h2, .price@data-price`.
+ *
+ * The `@attribute` suffix is how the `attributes` format asks for something other
+ * than the element's text, which is upstream's default. Newlines work as
+ * separators too, because a long selector list reads better one per line.
+ */
+export function parseSelectorList(text: string): Array<{ selector: string; attribute: string }> {
+	const out: Array<{ selector: string; attribute: string }> = [];
+	for (const raw of text.split(/[,\n]/)) {
+		const entry = raw.trim();
+		if (!entry) continue;
+		const at = entry.lastIndexOf("@");
+		const selector = at > 0 ? entry.slice(0, at).trim() : entry;
+		const attribute = at > 0 ? entry.slice(at + 1).trim() : "text";
+		if (!selector) continue;
+		if (out.some((item) => item.selector === selector && item.attribute === attribute)) continue;
+		out.push({ selector, attribute: attribute || "text" });
+		if (out.length >= MAX_SELECTORS) break;
+	}
+	return out;
+}
 
 /**
  * Translates the connector vocabulary into the upstream `Formats` array.

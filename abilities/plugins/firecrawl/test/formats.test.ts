@@ -7,9 +7,13 @@
 import { describe, expect, it } from "vitest";
 import {
 	CRAWL_FORMAT_OPTIONS,
+	MAX_CRAWL_FORMATS,
+	RAW_BASE64_PAGE_LIMIT,
 	FORMAT_OPTIONS,
 	clampCrawlFormats,
 	clampFormats,
+	isExclusiveFormat,
+	parseSelectorList,
 	toUpstreamFormats,
 } from "../src/domain/firecrawl/formats";
 
@@ -32,14 +36,67 @@ describe("clampFormats", () => {
 });
 
 describe("clampCrawlFormats", () => {
-	it("accepts only the crawl subset", () => {
-		expect(clampCrawlFormats(["markdown", "screenshot", "rawBase64", "links"])).toEqual(["markdown", "links"]);
-		expect(CRAWL_FORMAT_OPTIONS).toContain("changeTracking");
+	it("offers every per-page output the console can ask for", () => {
+		expect([...CRAWL_FORMAT_OPTIONS]).toEqual([
+			"markdown",
+			"links",
+			"images",
+			"video",
+			"audio",
+			"screenshot",
+			"html",
+			"rawHtml",
+			"summary",
+			"json",
+			"attributes",
+			"changeTracking",
+			"rawBase64",
+		]);
+		expect(MAX_CRAWL_FORMATS).toBe(CRAWL_FORMAT_OPTIONS.length);
+		expect(clampCrawlFormats(["markdown", "screenshot", "links"])).toEqual(["markdown", "screenshot", "links"]);
+	});
+
+	it("expands a run saved with the old combined media chip", () => {
+		expect(clampCrawlFormats(["media"])).toEqual(["markdown", "video", "audio"]);
+	});
+
+	it("collapses everything to rawBase64, which upstream refuses to combine", () => {
+		expect(clampCrawlFormats(["markdown", "rawBase64", "links"])).toEqual(["rawBase64"]);
+		expect(isExclusiveFormat(["rawBase64"])).toBe(true);
+		expect(isExclusiveFormat(["markdown"])).toBe(false);
+		expect(RAW_BASE64_PAGE_LIMIT).toBe(2);
 	});
 
 	it("always keeps markdown, because the console renders it", () => {
 		expect(clampCrawlFormats(["links"])).toEqual(["markdown", "links"]);
 		expect(clampCrawlFormats("nonsense")).toEqual(["markdown"]);
+	});
+});
+
+describe("parseSelectorList", () => {
+	it("reads the console field, defaulting to the element text", () => {
+		expect(parseSelectorList("h2, a@href, .price@data-price")).toEqual([
+			{ selector: "h2", attribute: "text" },
+			{ selector: "a", attribute: "href" },
+			{ selector: ".price", attribute: "data-price" },
+		]);
+	});
+
+	it("accepts one selector per line and drops repeats", () => {
+		expect(parseSelectorList("h2\na@href\nh2")).toEqual([
+			{ selector: "h2", attribute: "text" },
+			{ selector: "a", attribute: "href" },
+		]);
+	});
+
+	it("ignores what an empty field means", () => {
+		expect(parseSelectorList("")).toEqual([]);
+		expect(parseSelectorList(" , \n ")).toEqual([]);
+	});
+
+	it("caps a paste at twenty selectors", () => {
+		const text = Array.from({ length: 30 }, (_, index) => `.item-${index}`).join(", ");
+		expect(parseSelectorList(text)).toHaveLength(20);
 	});
 });
 

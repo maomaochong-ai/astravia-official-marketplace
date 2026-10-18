@@ -16,15 +16,18 @@ import type { FirecrawlDocument } from "../src/domain/firecrawl/types";
 
 const SOURCE = "https://example.com/docs/";
 
-function elements(media: string[] = []): ElementProfile {
-	return { media: media.map((url) => ({ url })) } as unknown as ElementProfile;
+function elements(media: Array<{ url: string; kind?: "image" | "video" | "audio" }> = []): ElementProfile {
+	return { media: media.map((entry) => ({ kind: "video", ...entry })) } as unknown as ElementProfile;
 }
 
 function page(document: Partial<FirecrawlDocument>): FirecrawlDocument {
 	return { url: SOURCE, metadata: { statusCode: 200 }, ...document } as FirecrawlDocument;
 }
 
-function derive(document: Partial<FirecrawlDocument>, media: string[] = []) {
+function derive(
+	document: Partial<FirecrawlDocument>,
+	media: Array<{ url: string; kind?: "image" | "video" | "audio" }> = [],
+) {
 	return pageArtifacts(page(document), {
 		source: SOURCE,
 		title: "Docs home",
@@ -40,10 +43,13 @@ describe("pageArtifacts", () => {
 				markdown: "Read [the guide](/guide) and ![shot](/shot.png), then [elsewhere](https://other.test/x).",
 				json: { title: "Docs" },
 			},
-			["https://cdn.test/clip.mp4"],
+			[
+				{ url: "https://cdn.test/clip.mp4" },
+				{ url: "https://cdn.test/episode.mp3", kind: "audio" },
+			],
 		);
 
-		expect(artifacts.map((entry) => entry.kind)).toEqual(["markdown", "links", "images", "media", "json"]);
+		expect(artifacts.map((entry) => entry.kind)).toEqual(["markdown", "links", "images", "video", "audio", "json"]);
 
 		const links = artifacts.find((entry) => entry.kind === "links");
 		expect(links?.items).toContain("https://example.com/guide");
@@ -52,8 +58,8 @@ describe("pageArtifacts", () => {
 		const images = artifacts.find((entry) => entry.kind === "images");
 		expect(images?.items).toEqual(["https://example.com/shot.png"]);
 
-		const media = artifacts.find((entry) => entry.kind === "media");
-		expect(media?.items).toEqual(["https://cdn.test/clip.mp4"]);
+		expect(artifacts.find((entry) => entry.kind === "video")?.items).toEqual(["https://cdn.test/clip.mp4"]);
+		expect(artifacts.find((entry) => entry.kind === "audio")?.items).toEqual(["https://cdn.test/episode.mp3"]);
 
 		const structured = artifacts.find((entry) => entry.kind === "json");
 		expect(structured?.text).toContain("\"title\": \"Docs\"");
@@ -87,13 +93,13 @@ describe("pageArtifacts", () => {
 	it("caps what one page may contribute", () => {
 		const links = Array.from({ length: MAX_LINK_ITEMS + 20 }, (_, index) => `[l${index}](/p${index})`).join(" ");
 		const images = Array.from({ length: MAX_IMAGE_ITEMS + 10 }, (_, index) => `![i${index}](/i${index}.png)`).join(" ");
-		const media = Array.from({ length: 40 }, (_, index) => `https://cdn.test/${index}.mp4`);
+		const media = Array.from({ length: 40 }, (_, index) => ({ url: `https://cdn.test/${index}.mp4` }));
 		const artifacts = derive({ markdown: "x".repeat(MAX_TEXT_CHARS + 500) + links + images }, media);
 
 		expect(artifacts.find((entry) => entry.kind === "markdown")?.text).toHaveLength(MAX_TEXT_CHARS);
 		expect(artifacts.find((entry) => entry.kind === "links")?.items).toHaveLength(MAX_LINK_ITEMS);
 		expect(artifacts.find((entry) => entry.kind === "images")?.items).toHaveLength(MAX_IMAGE_ITEMS);
-		expect(artifacts.find((entry) => entry.kind === "media")?.items).toHaveLength(MAX_MEDIA_ITEMS);
+		expect(artifacts.find((entry) => entry.kind === "video")?.items).toHaveLength(MAX_MEDIA_ITEMS);
 	});
 
 	it("measures real bytes so the archive stays honest", () => {

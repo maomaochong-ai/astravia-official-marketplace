@@ -10,7 +10,7 @@
  */
 
 import { clip } from "../domain/firecrawl/documents";
-import type { AgentStatus } from "../domain/firecrawl/types";
+import type { AgentStatus, AgentTrace } from "../domain/firecrawl/types";
 import type { ToolDeps } from "./deps";
 import { readBoolean, readJsonObject, readNumber, readOptionalString, readStringArray } from "./tool-arguments";
 import { ToolArgumentError, readEnum } from "./tool-arguments";
@@ -37,6 +37,28 @@ function describeAgentStatus(status: AgentStatus): string {
 	return lines.join("\n");
 }
 
+const TRACE_SKIP = new Set(["type", "occurredAt", "producerSequence"]);
+
+/**
+ * The step log behind an answer.
+ *
+ * Events are already ordered by `producerSequence`; the newest are the ones that
+ * explain a stop, so only the tail is shown and each step is trimmed to its
+ * distinguishing fields.
+ */
+function describeTrace(trace: AgentTrace): string {
+	const lines = [
+		`Trace: ${trace.events.length} step${trace.events.length === 1 ? "" : "s"}${trace.creditsUsed !== undefined ? `  credits=${trace.creditsUsed}` : ""}`,
+	];
+	for (const event of trace.events.slice(-40)) {
+		const rest = Object.fromEntries(Object.entries(event).filter(([key]) => !TRACE_SKIP.has(key)));
+		const detail = Object.keys(rest).length > 0 ? `  ${clip(JSON.stringify(rest), 240)}` : "";
+		lines.push(`- ${event.producerSequence ?? "?"}  ${event.type ?? "event"}${event.occurredAt ? `  at ${event.occurredAt}` : ""}${detail}`);
+	}
+	if (trace.events.length > 40) lines.unshift(`[... ${trace.events.length - 40} earlier steps omitted]`);
+	return lines.join("\n");
+}
+
 export function createAgentTool({ config, store }: ToolDeps) {
 	return {
 		id: "firecrawl_agent",
@@ -55,6 +77,9 @@ export function createAgentTool({ config, store }: ToolDeps) {
 			"Cost is bounded by `maxCredits` (default 2500 upstream). A run that hits that limit returns a",
 			"partial result instead of failing; it is reported as partial on purpose. Long runs return a job id —",
 			"call this tool again with `jobId` to collect the answer without paying twice.",
+			"",
+			"`trace: true` adds the run's step log — which pages or searches the agent used, in order — so a",
+			"surprising answer can be checked without paying for a second run. It reads an existing run only.",
 		].join("\n"),
 		parameters: {
 			type: "object",
@@ -71,6 +96,7 @@ export function createAgentTool({ config, store }: ToolDeps) {
 				wait: { type: "boolean", description: "Wait for the run to finish before answering. Default true." },
 				timeoutMs: { type: "number", description: "How long to wait, in milliseconds (default 300000)." },
 				jobId: { type: "string", description: "Read a run started by an earlier call instead of starting a new one." },
+				trace: { type: "boolean", description: "Include the run's ordered step log. Default false." },
 			},
 			required: ["prompt"],
 			additionalProperties: false,
@@ -131,6 +157,14 @@ export function createAgentTool({ config, store }: ToolDeps) {
 			}
 
 			const lines = [describeAgentStatus(status), "", `job=${jobId}`];
+			if (readBoolean(input, "trace", false)) {
+				try {
+					const trace = await client.agent.trace(jobId);
+					lines.push("", describeTrace(trace));
+				} catch (error) {
+					lines.push("", `Trace unavailable: ${error instanceof Error ? error.message : String(error)}`);
+				}
+			}
 			if (!TERMINAL.includes(status.status)) {
 				lines.push(`Still running upstream. Call firecrawl_agent with jobId "${jobId}" again later.`);
 			}
