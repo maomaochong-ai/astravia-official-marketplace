@@ -4,6 +4,11 @@ Downloads video, audio and image renditions from the sites supported by
 [`iawia002/lux`](https://github.com/iawia002/lux). The panel is deliberately small: one link
 field, a rendition list with real file sizes, and a queue. Everything runs locally.
 
+The same panel is exposed through three host surfaces, all registered in `src/index.tsx`:
+the sidebar workspace view (`downloader`), the conversation activity tab (`downloads`, on the
+tab bar from the start and also in the "+" picker), and the composer chip (`open-downloads`)
+that opens the tab for the current conversation.
+
 ## Runtime shape
 
 The plugin is a `host-node` managed service plus one pinned binary:

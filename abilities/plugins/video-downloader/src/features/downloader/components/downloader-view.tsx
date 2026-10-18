@@ -19,7 +19,14 @@ function apiFor(ctx: ManagedPluginContext): DownloaderApi {
   return created;
 }
 
-export function DownloaderView({ ctx }: { ctx: ManagedPluginContext }) {
+export function DownloaderView({
+  ctx,
+  variant = "page",
+}: {
+  ctx: ManagedPluginContext;
+  /** `panel` drops the page title: the activity tab already labels the surface. */
+  variant?: "page" | "panel";
+}) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const controller = useDownloader(ctx, apiFor(ctx));
@@ -30,11 +37,15 @@ export function DownloaderView({ ctx }: { ctx: ManagedPluginContext }) {
 
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
-      <div className="mx-auto w-full max-w-2xl px-6 py-7">
+      <div className={variant === "panel" ? "mx-auto w-full max-w-2xl px-4 py-4" : "mx-auto w-full max-w-2xl px-6 py-7"}>
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-base font-medium text-foreground">{t("downloader.title")}</h1>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("downloader.subtitle")}</p>
+            {variant === "panel" ? null : (
+              <>
+                <h1 className="text-base font-medium text-foreground">{t("downloader.title")}</h1>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("downloader.subtitle")}</p>
+              </>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <span
