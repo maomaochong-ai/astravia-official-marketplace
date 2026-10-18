@@ -1,17 +1,16 @@
 /**
  * Start/stop controls for the console.
  *
- * The console runs the same code path as the agent tool, so a crawl started here
- * behaves identically (same robots/sitemap/scope rules, same event stream). Only
- * the option set the agent may request is exposed — no hidden extras.
+ * The console submits the same `POST /v2/crawl` body the agent tool does, so a
+ * crawl started here behaves identically. Only upstream discovery options are
+ * exposed — no hidden extras.
  */
 
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
-import type { CrawlOptions } from "../../../domain/events";
-import type { RenderMode } from "../../../domain/render/types";
-import { DEFAULT_CRAWL_OPTIONS } from "../../../domain/events";
-import { clampCrawlOptions } from "../../../tab-id";
+import type { CrawlJobOptions } from "../../../domain/firecrawl/options";
+import { DEFAULT_CRAWL_JOB_OPTIONS, clampCrawlJobOptions } from "../../../domain/firecrawl/options";
+import { CRAWL_FORMAT_OPTIONS, type CrawlFormatOption } from "../../../domain/firecrawl/formats";
 import type { CrawlRunSnapshot, CrawlRunStore } from "../services/crawl-run-store";
 import { useTranslate } from "../hooks/use-translate";
 import { getPluginContext } from "../../../runtime/plugin-context";
@@ -57,6 +56,12 @@ function NumberField({
 	);
 }
 
+/** `markdown` is never removable: the page preview and the markdown artifact read it. */
+function toggleFormat(current: CrawlFormatOption[], option: CrawlFormatOption): CrawlFormatOption[] {
+	if (option === "markdown") return current;
+	return current.includes(option) ? current.filter((entry) => entry !== option) : [...current, option];
+}
+
 function Toggle({
 	label,
 	checked,
@@ -88,7 +93,7 @@ export function CrawlControlBar({
 }): ReactElement {
 	const t = useTranslate();
 	const [target, setTarget] = useState(snapshot.target || "");
-	const [options, setOptions] = useState<CrawlOptions>(snapshot.options ?? DEFAULT_CRAWL_OPTIONS);
+	const [options, setOptions] = useState<CrawlJobOptions>(snapshot.options ?? DEFAULT_CRAWL_JOB_OPTIONS);
 	const [showAdvanced, setShowAdvanced] = useState(false);
 	const running = snapshot.status === "running";
 
@@ -99,8 +104,8 @@ export function CrawlControlBar({
 		if (snapshot.options) setOptions(snapshot.options);
 	}, [snapshot.runId]);
 
-	const patch = (partial: Partial<CrawlOptions>): void => {
-		setOptions((current) => clampCrawlOptions({ ...current, ...partial }));
+	const patch = (partial: Partial<CrawlJobOptions>): void => {
+		setOptions((current) => clampCrawlJobOptions({ ...current, ...partial }));
 	};
 
 	const start = (): void => {
@@ -109,7 +114,7 @@ export function CrawlControlBar({
 			getPluginContext().ui.notify({ message: t("console.error.badUrl"), error: true });
 			return;
 		}
-		void store.start(trimmed, clampCrawlOptions(options)).catch((error: unknown) => {
+		void store.start(trimmed, clampCrawlJobOptions(options)).catch((error: unknown) => {
 			getPluginContext().ui.notify({
 				message: error instanceof Error ? error.message : String(error),
 				error: true,
@@ -158,24 +163,32 @@ export function CrawlControlBar({
 					label={t("console.limit")}
 					value={options.limit}
 					min={1}
-					max={50}
+					max={500}
 					onChange={(limit) => patch({ limit })}
 					suffix={t("console.unit.pages")}
 				/>
 				<NumberField
 					label={t("console.depth")}
-					value={options.maxDepth}
+					value={options.maxDiscoveryDepth}
 					min={0}
 					max={5}
-					onChange={(maxDepth) => patch({ maxDepth })}
+					onChange={(maxDiscoveryDepth) => patch({ maxDiscoveryDepth })}
 					suffix={t("console.unit.hops")}
 				/>
 				<NumberField
 					label={t("console.concurrency")}
-					value={options.concurrency}
+					value={options.maxConcurrency}
 					min={1}
-					max={8}
-					onChange={(concurrency) => patch({ concurrency })}
+					max={10}
+					onChange={(maxConcurrency) => patch({ maxConcurrency })}
+				/>
+				<NumberField
+					label={t("console.delay")}
+					value={options.delay}
+					min={0}
+					max={5_000}
+					onChange={(delay) => patch({ delay })}
+					suffix="ms"
 				/>
 				{snapshot.targetSource === "conversation" || snapshot.targetSource === "tool" ? (
 					<span className="shrink-0 rounded bg-accent px-1.5 py-1 font-mono text-[9.5px] text-accent-foreground">
@@ -190,6 +203,31 @@ export function CrawlControlBar({
 				</span>
 			</div>
 
+			<div className="flex flex-wrap items-center gap-1">
+				<span className="shrink-0 text-[10px] text-muted-foreground">{t("console.formats.label")}</span>
+				{CRAWL_FORMAT_OPTIONS.map((option) => {
+					const locked = option === "markdown";
+					const active = options.formats.includes(option);
+					return (
+						<button
+							key={option}
+							type="button"
+							disabled={locked}
+							aria-pressed={active}
+							title={locked ? t("console.formats.hint") : undefined}
+							onClick={() => patch({ formats: toggleFormat(options.formats, option) as CrawlFormatOption[] })}
+							className={`rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+								active
+									? "border-primary/40 bg-primary/15 text-primary"
+									: "border-border text-muted-foreground hover:bg-muted"
+							} ${locked ? "cursor-default opacity-70" : ""}`}
+						>
+							{t(`console.format.${option}`)}
+						</button>
+					);
+				})}
+			</div>
+
 			<button
 				type="button"
 				onClick={() => setShowAdvanced((value) => !value)}
@@ -200,25 +238,6 @@ export function CrawlControlBar({
 
 			{showAdvanced ? (
 				<div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border/60 pt-1.5">
-					<div className="col-span-2 flex items-center gap-1.5">
-						<span className="text-[10.5px] text-muted-foreground">{t("console.opt.render")}</span>
-						<div className="flex overflow-hidden rounded border border-border/70">
-							{(["auto", "static", "browser"] as const).map((mode) => (
-								<button
-									key={mode}
-									type="button"
-									onClick={() => patch({ render: mode as RenderMode })}
-									className={`px-1.5 py-0.5 text-[10px] transition-colors ${
-										options.render === mode
-											? "bg-primary/12 text-foreground"
-											: "text-muted-foreground hover:bg-muted/60"
-									}`}
-								>
-									{t(`console.render.${mode}`)}
-								</button>
-							))}
-						</div>
-					</div>
 					<Toggle
 						label={t("console.opt.sitemap")}
 						checked={options.sitemap !== "skip"}
@@ -240,9 +259,14 @@ export function CrawlControlBar({
 						onChange={(allowSubdomains) => patch({ allowSubdomains })}
 					/>
 					<Toggle
-						label={t("console.opt.backward")}
-						checked={options.allowBackwardCrawling}
-						onChange={(allowBackwardCrawling) => patch({ allowBackwardCrawling })}
+						label={t("console.opt.queryParams")}
+						checked={options.ignoreQueryParameters}
+						onChange={(ignoreQueryParameters) => patch({ ignoreQueryParameters })}
+					/>
+					<Toggle
+						label={t("console.opt.entireDomain")}
+						checked={options.crawlEntireDomain}
+						onChange={(crawlEntireDomain) => patch({ crawlEntireDomain })}
 					/>
 					<Toggle
 						label={t("console.opt.ignoreRobots")}

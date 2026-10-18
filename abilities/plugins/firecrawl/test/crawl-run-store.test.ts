@@ -1,253 +1,187 @@
-import { describe, expect, it } from "vitest";
+/**
+ * The console store describes an upstream crawl job. These tests pin the parts
+ * that user-visible behaviour depends on: counters, page ingestion, the error
+ * list becoming denials, and cancellation reaching the API.
+ */
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { FirecrawlClient, FirecrawlDocument, JobStatus } from "../src/domain/firecrawl/types";
+import { DEFAULT_CRAWL_JOB_OPTIONS } from "../src/domain/firecrawl/options";
+import type { FirecrawlConfig } from "../src/runtime/config";
 import { CrawlRunStore } from "../src/features/crawler-console/services/crawl-run-store";
-import type { CrawlEvent, CrawlPage, CrawlSummary } from "../src/domain/events";
-import { DEFAULT_CRAWL_OPTIONS } from "../src/domain/events";
-import type { ElementProfile } from "../src/domain/html/elements";
 
-const OPTIONS = { ...DEFAULT_CRAWL_OPTIONS, limit: 3, maxDepth: 2 };
-const START = "https://example.com/docs/";
+const OPTIONS = { ...DEFAULT_CRAWL_JOB_OPTIONS, limit: 3, maxDiscoveryDepth: 2 };
 
-function profile(overrides: Partial<ElementProfile> = {}): ElementProfile {
-	return {
-		title: "Docs",
-		headings: 2,
-		paragraphs: 5,
-		links: 4,
-		images: 1,
-		videos: 1,
-		audio: 0,
-		code: 0,
-		lists: 1,
-		tables: 0,
-		forms: 0,
-		iframes: 0,
-		chars: 900,
-		media: [{ url: "https://example.com/clip.mp4", kind: "video" }],
-		streamed: 0,
-		...overrides,
-	};
+function status(overrides: Partial<JobStatus> = {}): JobStatus {
+	return { status: "completed", completed: 0, total: 0, data: [], next: null, ...overrides };
 }
 
-function page(overrides: Partial<CrawlPage> = {}): CrawlPage {
-	return {
-		url: START,
-		finalUrl: START,
-		depth: 0,
-		parent: null,
-		title: "Docs",
-		markdown: "# Docs",
-		linkCount: 4,
-		status: 200,
-		engine: "fetch",
-		bytes: 1200,
-		chars: 900,
-		durationMs: 80,
-		warnings: 0,
-		...overrides,
-	};
+function page(url: string, markdown: string, extra: Partial<FirecrawlDocument> = {}): FirecrawlDocument {
+	return { url, markdown, title: `title of ${url}`, ...extra } as FirecrawlDocument;
 }
 
-function summary(overrides: Partial<CrawlSummary> = {}): CrawlSummary {
-	return {
-		startUrl: START,
-		pages: [page()],
-		denied: [{ url: "https://example.com/blog", code: "BACKWARD_CRAWLING", message: "outside /docs/", depth: 1 }],
-		failed: [],
-		status: "completed",
-		durationMs: 1200,
-		scope: "/docs/*",
-		options: OPTIONS,
+function fakeClient(overrides: Partial<FirecrawlClient> = {}) {
+	const client = {
+		endpoint: "https://api.firecrawl.dev",
+		hasKey: false,
+		scrape: vi.fn(),
+		upload: vi.fn(),
+		batchScrape: vi.fn(),
+		crawl: vi.fn(async () => ({ id: "c-1" })),
+		job: vi.fn(async () => status()),
+		cancel: vi.fn(async () => undefined),
+		jobErrors: vi.fn(async () => []),
+		map: vi.fn(),
+		search: vi.fn(),
+		extract: vi.fn(),
+		extractStatus: vi.fn(),
+		monitors: {},
+		credits: vi.fn(),
 		...overrides,
 	};
+	return client as unknown as FirecrawlClient & { [K in keyof typeof client]: (typeof client)[K] };
 }
 
-describe("CrawlRunStore", () => {
-	it("starts idle and refuses overlapping runs", async () => {
-		const gate: { release?: () => void } = {};
-		const store = new CrawlRunStore(
-			() =>
-				new Promise<CrawlSummary>((resolve) => {
-					gate.release = () => resolve(summary());
-				}),
-		);
+function fakeConfig(client: FirecrawlClient): FirecrawlConfig {
+	return { require: async () => client, maybeClient: client } as unknown as FirecrawlConfig;
+}
+
+afterEach(() => {
+	vi.useRealTimers();
+});
+
+describe("crawl run store", () => {
+	it("starts idle and takes a target only while idle", () => {
+		const store = new CrawlRunStore(fakeConfig(fakeClient()));
+
 		expect(store.getSnapshot().status).toBe("idle");
+		expect(store.running).toBe(false);
 
-		const first = store.start(START, OPTIONS);
-		await expect(store.start(START, OPTIONS)).rejects.toThrow(/already running/);
-
-		gate.release?.();
-		await first;
-		expect(store.getSnapshot().status).toBe("completed");
+		store.setTarget("https://a.test/docs", "conversation");
+		expect(store.getSnapshot().target).toBe("https://a.test/docs");
+		expect(store.getSnapshot().targetSource).toBe("conversation");
 	});
 
-	it("tracks node states and counters from the event stream", async () => {
-		const store = new CrawlRunStore(async (_target, _options, hooks) => {
-			const events: CrawlEvent[] = [
-				{ type: "queued", url: START, depth: 0, parent: null, via: "seed", at: 1 },
-				{ type: "fetching", url: START, depth: 0, parent: null, at: 2 },
-				{
-					type: "crawled",
-					url: START,
-					depth: 0,
-					parent: null,
-					status: 200,
-					rendered: false,
-					engine: "fetch",
-					bytes: 1200,
-					chars: 900,
-					links: 4,
-					durationMs: 80,
-					title: "Docs",
-					at: 3,
-				},
-				{
-					type: "denied",
-					url: "https://example.com/blog",
-					depth: 1,
-					parent: START,
-					code: "BACKWARD_CRAWLING",
-					message: "outside /docs/",
-					at: 4,
-				},
-				{
-					type: "failed",
-					url: "https://example.com/docs/gone",
-					depth: 1,
-					parent: START,
-					message: "404",
-					code: "http-status",
-					status: 404,
-					at: 5,
-				},
-			];
-			for (const event of events) hooks.onEvent(event);
-			return summary();
+	it("submits the crawl body, then paints pages and counters from the job", async () => {
+		const client = fakeClient({
+			job: vi.fn(async () =>
+				status({
+					completed: 2,
+					total: 2,
+					creditsUsed: 7,
+					expiresAt: "2026-01-01T00:00:00.000Z",
+					data: [page("https://a.test/docs", "# root docs"), page("https://a.test/docs/intro", "intro")],
+				}),
+			),
 		});
+		const store = new CrawlRunStore(fakeConfig(client));
 
-		await store.start(START, OPTIONS);
+		await store.start("https://a.test/docs", OPTIONS);
+
+		expect(client.crawl).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: "https://a.test/docs",
+				limit: 3,
+				maxDiscoveryDepth: 2,
+				ignoreQueryParameters: true,
+			}),
+		);
+
 		const snapshot = store.getSnapshot();
-		expect(snapshot.counts).toMatchObject({ crawled: 1, denied: 1, failed: 1, fetching: 0 });
-		expect(snapshot.bytes).toBe(1200);
-		expect(snapshot.chars).toBe(900);
-		expect(snapshot.denialsByCode.BACKWARD_CRAWLING).toBe(1);
-		expect(snapshot.nodes.map((node) => node.state)).toEqual(["crawled", "denied", "failed"]);
-		expect(snapshot.lines.length).toBeGreaterThan(2);
+		expect(snapshot.status).toBe("completed");
+		expect(snapshot.jobId).toBe("c-1");
+		expect(snapshot.counts).toMatchObject({ crawled: 2, queued: 0, fetching: 0, discovered: 2 });
+		expect(snapshot.creditsUsed).toBe(7);
+		expect(snapshot.expiresAt).toBe("2026-01-01T00:00:00.000Z");
+		expect(snapshot.pages.map((entry) => entry.url)).toEqual(["https://a.test/docs", "https://a.test/docs/intro"]);
+		expect(snapshot.pages[0].markdown).toBe("# root docs");
+
+		const intro = snapshot.nodes.find((node) => node.url.endsWith("/intro"));
+		expect(intro).toMatchObject({ depth: 1, state: "crawled", parentId: "https://a.test/docs" });
+		expect(snapshot.lines.some((line) => line.kind === "run" && line.text.startsWith("run end"))).toBe(true);
+	});
+
+	it("marks the run failed when the submit is rejected", async () => {
+		const client = fakeClient({
+			crawl: vi.fn(async () => {
+				throw new Error("Upstream rate limit reached.");
+			}),
+		});
+		const store = new CrawlRunStore(fakeConfig(client));
+
+		await expect(store.start("https://a.test", OPTIONS)).rejects.toThrow(/rate limit/);
+
+		const snapshot = store.getSnapshot();
+		expect(snapshot.status).toBe("failed");
+		expect(snapshot.lastError).toMatch(/rate limit/);
+		expect(snapshot.lines.some((line) => line.level === "error")).toBe(true);
+	});
+
+	it("adopts a crawl started by a tool instead of starting a second one", async () => {
+		const client = fakeClient({
+			job: vi.fn(async () => status({ completed: 1, total: 1, data: [page("https://a.test/p", "text")] })),
+		});
+		const store = new CrawlRunStore(fakeConfig(client));
+
+		store.adopt("c-tool", "https://a.test");
+
+		await vi.waitFor(() => expect(store.getSnapshot().status).toBe("completed"));
+		expect(store.getSnapshot().targetSource).toBe("tool");
+		expect(client.crawl).not.toHaveBeenCalled();
+		expect(store.getSnapshot().pages).toHaveLength(1);
+	});
+
+	it("separates robots denials from hard failures using the errors endpoint", async () => {
+		const client = fakeClient({
+			job: vi.fn(async () => status({ completed: 1, total: 2 })),
+			jobErrors: vi.fn(async () => [
+				{ url: "https://a.test/private", error: "Blocked by robots.txt", code: "ROBOTS_BLOCKED" },
+				{ url: "https://a.test/broken", error: "HTTP 500", statusCode: 500 },
+			]),
+		});
+		const store = new CrawlRunStore(fakeConfig(client));
+
+		await store.start("https://a.test", OPTIONS);
+
+		const snapshot = store.getSnapshot();
+		expect(snapshot.counts).toMatchObject({ denied: 1, failed: 1 });
+		expect(snapshot.denialsByCode).toEqual({ ROBOTS_BLOCKED: 1 });
+		expect(snapshot.nodes.find((node) => node.url.endsWith("/private"))?.state).toBe("denied");
+		expect(snapshot.nodes.find((node) => node.url.endsWith("/broken"))?.state).toBe("failed");
+		expect(snapshot.lines.some((line) => line.kind === "deny")).toBe(true);
+		expect(snapshot.lines.some((line) => line.kind === "fail")).toBe(true);
+	});
+
+	it("cancels the upstream job on stop and keeps what was already collected", async () => {
+		vi.useFakeTimers();
+		const client = fakeClient({
+			job: vi.fn(async () => status({ status: "scraping", completed: 1, total: 5, data: [page("https://a.test/a", "a")] })),
+		});
+		const store = new CrawlRunStore(fakeConfig(client));
+
+		const run = store.start("https://a.test", OPTIONS);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(store.getSnapshot().status).toBe("running");
+		expect(store.getSnapshot().counts.queued).toBe(4);
+
+		store.stop();
+		await vi.advanceTimersByTimeAsync(3_000);
+		await run;
+
+		expect(client.cancel).toHaveBeenCalledWith("crawl", "c-1");
+		const snapshot = store.getSnapshot();
+		expect(snapshot.status).toBe("stopped");
+		expect(snapshot.counts.fetching).toBe(0);
 		expect(snapshot.pages).toHaveLength(1);
 	});
 
-	it("records a failure without losing the event history", async () => {
-		const store = new CrawlRunStore(async () => {
-			throw new Error("boom");
-		});
-		await expect(store.start(START, OPTIONS)).rejects.toThrow("boom");
-		const snapshot = store.getSnapshot();
-		expect(snapshot.status).toBe("failed");
-		expect(snapshot.lastError).toBe("boom");
-		expect(snapshot.lines.at(-1)?.level).toBe("error");
-	});
+	it("writes console lines for work done outside a crawl", () => {
+		const store = new CrawlRunStore(fakeConfig(fakeClient()));
 
-	it("keeps non-crawl notes visible", () => {
-		const store = new CrawlRunStore(async () => summary());
-		store.note("ok", "scrape  https://example.com  1200 chars");
-		expect(store.getSnapshot().lines[0]).toMatchObject({ level: "ok" });
-	});
+		store.note("ok", "scrape  https://a.test  1.2 KB");
 
-	it("adopts a detected target only while idle", async () => {
-		const gate: { release?: () => void } = {};
-		const store = new CrawlRunStore(
-			() =>
-				new Promise<CrawlSummary>((resolve) => {
-					gate.release = () => resolve(summary());
-				}),
-		);
-
-		store.setTarget("https://example.com/from-chat", "conversation");
-		expect(store.getSnapshot().target).toBe("https://example.com/from-chat");
-		expect(store.getSnapshot().targetSource).toBe("conversation");
-
-		const run = store.start("https://example.com/from-chat", OPTIONS);
-		store.setTarget("https://example.com/later", "tool");
-		expect(store.getSnapshot().target).toBe("https://example.com/from-chat");
-
-		gate.release?.();
-		await run;
-		store.setTarget("https://example.com/after", "manual");
-		expect(store.getSnapshot().target).toBe("https://example.com/after");
-		expect(store.getSnapshot().targetSource).toBe("manual");
-	});
-
-	it("accumulates element totals and the media ledger", async () => {
-		const store = new CrawlRunStore(async (_target, _options, hooks) => {
-			hooks.onEvent({
-				type: "crawled",
-				url: START,
-				depth: 0,
-				parent: null,
-				status: 200,
-				rendered: false,
-				engine: "fetch",
-				bytes: 1200,
-				chars: 900,
-				links: 4,
-				durationMs: 80,
-				title: "Docs",
-				elements: profile(),
-				at: 1,
-			});
-			hooks.onEvent({
-				type: "crawled",
-				url: "https://example.com/docs/b",
-				depth: 1,
-				parent: START,
-				status: 200,
-				rendered: true,
-				engine: "browser",
-				bytes: 800,
-				chars: 400,
-				links: 2,
-				durationMs: 200,
-				title: "B",
-				elements: profile({
-					headings: 1,
-					paragraphs: 2,
-					links: 2,
-					images: 0,
-					videos: 0,
-					media: [
-						{ url: "https://example.com/clip.mp4", kind: "video" },
-						{ url: "https://example.com/stream.m3u8", kind: "video", manifest: true },
-					],
-					streamed: 1,
-				}),
-				at: 2,
-			});
-			return summary();
-		});
-
-		await store.start(START, OPTIONS);
-		const snapshot = store.getSnapshot();
-		expect(snapshot.elements).toMatchObject({ headings: 3, paragraphs: 7, links: 6, videos: 1, streamed: 1 });
-		expect(snapshot.elements.media.map((entry) => entry.url)).toEqual([
-			"https://example.com/clip.mp4",
-			"https://example.com/stream.m3u8",
+		expect(store.getSnapshot().lines).toEqual([
+			expect.objectContaining({ level: "ok", kind: "note", text: "scrape  https://a.test  1.2 KB" }),
 		]);
-		expect(snapshot.pages.map((entry) => entry.engine)).toEqual(["fetch", "browser"]);
-	});
-
-	it("stops through the abort signal handed to the runner", async () => {
-		let signal: AbortSignal | null = null;
-		const store = new CrawlRunStore(
-			(_target, _options, hooks) =>
-				new Promise<CrawlSummary>((resolve) => {
-					signal = hooks.signal;
-					hooks.signal.addEventListener("abort", () => resolve(summary({ status: "stopped" })));
-				}),
-		);
-		const run = store.start(START, OPTIONS);
-		expect(signal!.aborted).toBe(false);
-		store.stop();
-		await run;
-		expect(signal!.aborted).toBe(true);
-		expect(store.getSnapshot().status).toBe("stopped");
 	});
 });

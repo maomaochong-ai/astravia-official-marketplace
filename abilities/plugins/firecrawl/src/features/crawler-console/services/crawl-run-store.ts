@@ -1,16 +1,27 @@
 /**
  * Single source of truth for "what the crawler is doing right now".
  *
- * The store is created once per plugin activation and shared by the tool
- * handlers and the activity tab, so a crawl started from the conversation
- * animates the console the user has open — and a crawl started from the console
- * is the same code path the agent calls.
+ * A crawl is an upstream job: `POST /v2/crawl` returns an id, the console polls
+ * it and paints pages as they arrive. The store therefore holds a job id rather
+ * than a local crawl loop, and a crawl started by a tool can be adopted by the
+ * console so both views describe the same run.
  */
 
-import type { CrawlEvent, CrawlOptions, CrawlSummary } from "../../../domain/events";
-import { redactCrawlOptions } from "../../../domain/events";
-import type { ElementProfile, MediaRef } from "../../../domain/html/elements";
-import { urlLabel } from "../../../domain/url";
+import { readJobPages } from "../../../domain/firecrawl/client";
+import {
+	MAX_ARTIFACTS,
+	type ArtifactKind,
+	type CrawlArtifact,
+	pageArtifacts,
+} from "../../../domain/firecrawl/artifacts";
+import type { FirecrawlDocument, JobKind, JobStatus } from "../../../domain/firecrawl/types";
+import type { RunArchive, RunSummary } from "./run-archive";
+import type { CrawlJobOptions } from "../../../domain/firecrawl/options";
+import { crawlJobBody, pathDepth, urlLabel } from "../../../domain/firecrawl/options";
+import type { ElementProfile, ElementTotals } from "../../../domain/firecrawl/profile";
+import { addProfile, EMPTY_ELEMENT_TOTALS, profileDocument } from "../../../domain/firecrawl/profile";
+import { getPluginContext, hasPluginContext } from "../../../runtime/plugin-context";
+import type { FirecrawlConfig } from "../../../runtime/config";
 import { formatBytes, formatCount, formatDuration, truncate } from "../../../shared/formatters/format";
 
 export type NodeState = "queued" | "fetching" | "crawled" | "denied" | "failed";
@@ -26,31 +37,24 @@ export interface CrawlNodeView {
 	title?: string;
 	chars?: number;
 	durationMs?: number;
-	engine?: string;
 	elements?: ElementProfile;
 }
 
 export type ConsoleLevel = "info" | "ok" | "warn" | "error" | "deny";
 
+/**
+ * What a console line is about, so the rail can be scanned by category instead
+ * of read line by line. The text stays free-form: the badge classifies, it does
+ * not replace the message.
+ */
+export type ConsoleKind = "run" | "queue" | "get" | "deny" | "fail" | "note";
+
 export interface ConsoleLine {
 	id: number;
 	at: number;
 	level: ConsoleLevel;
+	kind: ConsoleKind;
 	text: string;
-}
-
-/** Everything the run has pulled out of pages so far, for the console's element rail. */
-export interface ElementTotals {
-	headings: number;
-	paragraphs: number;
-	links: number;
-	images: number;
-	videos: number;
-	audio: number;
-	code: number;
-	tables: number;
-	media: MediaRef[];
-	streamed: number;
 }
 
 export interface CrawlCounts {
@@ -62,13 +66,30 @@ export interface CrawlCounts {
 	discovered: number;
 }
 
+export interface CrawlPageView {
+	url: string;
+	title: string;
+	chars: number;
+	depth: number;
+	status: number;
+	finalUrl?: string;
+	linkCount?: number;
+	bytes?: number;
+	durationMs?: number;
+	/** Truncated page text, so the console can preview what was actually captured. */
+	markdown?: string;
+	elements?: ElementProfile;
+}
+
 export interface CrawlRunSnapshot {
 	runId: string | null;
+	/** Upstream crawl id; null until the API answers with one. */
+	jobId: string | null;
 	status: "idle" | "running" | "completed" | "stopped" | "failed";
 	target: string;
 	/** How the target got there: typed here, lifted from the conversation, or set by a tool call. */
 	targetSource: "none" | "manual" | "conversation" | "tool";
-	options: CrawlOptions | null;
+	options: CrawlJobOptions | null;
 	startedAt: number;
 	endedAt: number | null;
 	nodes: CrawlNodeView[];
@@ -77,34 +98,45 @@ export interface CrawlRunSnapshot {
 	bytes: number;
 	chars: number;
 	lines: ConsoleLine[];
-	pages: Array<{
-		url: string;
-		title: string;
-		chars: number;
-		depth: number;
-		engine: string;
-		status: number;
-		elements?: ElementProfile;
-	}>;
+	pages: CrawlPageView[];
 	elements: ElementTotals;
-	robots: { present: boolean; status: number; rules: number; sitemaps: number; failedOpen: boolean } | null;
-	sitemap: { fetched: number; urls: number; truncated: boolean } | null;
+	/** What this run produced, split by type; the shelf and the archive read from here. */
+	artifacts: CrawlArtifact[];
+	/** Newest page arrivals, so the web can animate what just landed. */
+	arrivals: Arrival[];
+	/** Finished runs on disk, newest first. Empty until `loadHistory()` resolves. */
+	history: RunSummary[];
+	/** True when the shot came from storage: controls are live, nothing is being polled. */
+	archived: boolean;
+	creditsUsed: number | null;
+	expiresAt: string | null;
 	lastError: string | null;
 }
 
-export type CrawlRunner = (
-	target: string,
-	options: CrawlOptions,
-	hooks: { onEvent: (event: CrawlEvent) => void; signal: AbortSignal },
-) => Promise<CrawlSummary>;
+export interface Arrival {
+	url: string;
+	kinds: ArtifactKind[];
+	at: number;
+}
 
 const MAX_NODES = 180;
 const MAX_LINES = 400;
 const MAX_PAGES = 200;
+/** Markdown kept per page for the console preview. The full text lives in the tool result. */
+const MAX_PAGE_DOCUMENT_CHARS = 24_000;
+/** Total markdown the snapshot may retain, across pages. */
+const MAX_DOCUMENT_CHARS = 400_000;
+/** Poll cadence while the job is `scraping`. */
+const TICK_MS = 2_500;
+/** A crawl can legitimately run for hours; the console stops watching after this. */
+const MAX_WATCH_MS = 30 * 60_000;
+/** Arrival marks kept for the web animation; more than this reads as noise. */
+const MAX_ARRIVALS = 10;
 
 function emptySnapshot(): CrawlRunSnapshot {
 	return {
 		runId: null,
+		jobId: null,
 		status: "idle",
 		target: "",
 		targetSource: "none",
@@ -118,9 +150,13 @@ function emptySnapshot(): CrawlRunSnapshot {
 		chars: 0,
 		lines: [],
 		pages: [],
-		elements: { headings: 0, paragraphs: 0, links: 0, images: 0, videos: 0, audio: 0, code: 0, tables: 0, media: [], streamed: 0 },
-		robots: null,
-		sitemap: null,
+		elements: { ...EMPTY_ELEMENT_TOTALS, media: [] },
+		creditsUsed: null,
+		artifacts: [],
+		arrivals: [],
+		history: [],
+		archived: false,
+		expiresAt: null,
 		lastError: null,
 	};
 }
@@ -128,12 +164,17 @@ function emptySnapshot(): CrawlRunSnapshot {
 export class CrawlRunStore {
 	private snapshot: CrawlRunSnapshot = emptySnapshot();
 	private listeners = new Set<() => void>();
-	private controller: AbortController | null = null;
 	private lineId = 0;
 	private runSeq = 0;
 	private nodesTruncated = false;
+	private watching = false;
+	private stopped = false;
 
-	constructor(private readonly runner: CrawlRunner) {}
+	constructor(
+		private readonly config: FirecrawlConfig,
+		/** Optional: without storage the console still runs, it just forgets finished runs. */
+		private readonly archive: RunArchive | null = null,
+	) {}
 
 	getSnapshot = (): CrawlRunSnapshot => this.snapshot;
 
@@ -152,13 +193,42 @@ export class CrawlRunStore {
 		return this.nodesTruncated;
 	}
 
-	stop(): void {
-		this.controller?.abort();
+	/** True when a detected URL differs from what the console is already showing. */
+	get targetIsStale(): boolean {
+		return this.snapshot.status === "completed" || this.snapshot.status === "stopped";
 	}
 
-	/** Writes a console line for work done outside a crawl (scrape / map). */
+	/** Cancels the upstream job; the console keeps what it already collected. */
+	stop(): void {
+		this.stopped = true;
+		const jobId = this.snapshot.jobId;
+		if (jobId) {
+			void this.config.maybeClient?.cancel("crawl", jobId).catch(() => undefined);
+		}
+		if (this.snapshot.status === "running") {
+			this.snapshot = { ...this.snapshot, status: "stopped", endedAt: Date.now(), counts: { ...this.snapshot.counts, fetching: 0 } };
+			this.pushLine("warn", "run stopped by user", "run");
+			this.emit();
+			void this.persist();
+		}
+	}
+
+	/** Writes a console line for work done outside a crawl (scrape / map / parse). */
 	note(level: ConsoleLevel, text: string): void {
-		this.pushLine(level, text);
+		this.pushLine(level, text, "note");
+		this.emit();
+	}
+
+	/** Mirrors a tool's wait loop into the console counters. */
+	progress(completed: number, total: number): void {
+		if (!this.watching) return;
+		const counts = {
+			...this.snapshot.counts,
+			crawled: completed,
+			queued: Math.max(0, total - completed),
+			discovered: Math.max(this.snapshot.counts.discovered, total),
+		};
+		this.snapshot = { ...this.snapshot, counts };
 		this.emit();
 	}
 
@@ -175,217 +245,400 @@ export class CrawlRunStore {
 		this.emit();
 	}
 
-	/** True when a detected URL differs from what the console is already showing. */
-	get targetIsStale(): boolean {
-		return this.snapshot.status === "completed" || this.snapshot.status === "stopped";
-	}
-
-	/** Starts a crawl unless one is already running. */
-	async start(target: string, options: CrawlOptions): Promise<CrawlSummary> {
-		if (this.running) {
-			throw new Error("A crawl is already running — stop it first");
-		}
-		this.runSeq += 1;
-		const runId = `run-${Date.now().toString(36)}-${this.runSeq}`;
-		this.controller = new AbortController();
-		this.lineId = 0;
-		this.nodesTruncated = false;
-		this.snapshot = {
-			...emptySnapshot(),
-			runId,
-			status: "running",
-			target,
-			targetSource: this.snapshot.targetSource === "none" ? "manual" : this.snapshot.targetSource,
-			// Header values can be credentials; the panel only needs the option set.
-			options: redactCrawlOptions(options),
-			startedAt: Date.now(),
-		};
+	/** Starts a crawl from the console and follows it to the end. */
+	async start(target: string, options: CrawlJobOptions): Promise<void> {
+		if (this.running) throw new Error("A crawl is already running — stop it first");
+		const client = await this.config.require();
+		const body = crawlJobBody(target, options);
+		this.begin(target, options, this.snapshot.targetSource === "none" ? "manual" : this.snapshot.targetSource);
 		this.pushLine(
 			"info",
-			`run start  ${target}  limit=${options.limit} depth=${options.maxDepth} concurrency=${options.concurrency}`,
+			`run start  ${target}  limit=${options.limit} depth=${options.maxDiscoveryDepth} concurrency=${options.maxConcurrency}`,
+			"run",
 		);
 		this.emit();
 
+		let handle;
 		try {
-			const summary = await this.runner(target, options, {
-				onEvent: (event) => this.ingest(event),
-				signal: this.controller.signal,
-			});
-			this.snapshot = {
-				...this.snapshot,
-				status: summary.status,
-				endedAt: Date.now(),
-				counts: { ...this.snapshot.counts, fetching: 0, crawled: summary.pages.length, denied: summary.denied.length },
-			};
-			this.emit();
-			return summary;
+			handle = await client.crawl(body);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.snapshot = { ...this.snapshot, status: "failed", endedAt: Date.now(), lastError: message };
-			this.pushLine("error", `run failed  ${message}`);
+			this.pushLine("error", `run failed  ${message}`, "run");
 			this.emit();
 			throw error;
-		} finally {
-			this.controller = null;
 		}
+
+		this.snapshot = { ...this.snapshot, jobId: handle.id };
+		this.pushLine("info", `job  ${handle.id}`, "run");
+		this.emit();
+		await this.watch("crawl", handle.id);
 	}
 
-	ingest(event: CrawlEvent): void {
-		switch (event.type) {
-			case "run-start":
-				return;
-			case "robots":
-				this.snapshot = {
-					...this.snapshot,
-					robots: {
-						present: event.present,
-						status: event.status,
-						rules: event.rules,
-						sitemaps: event.sitemaps,
-						failedOpen: event.failedOpen,
-					},
-				};
-				this.pushLine(
-					event.failedOpen ? "warn" : "info",
-					`robots.txt  ${event.status || "unreachable"}  ${event.rules} rules  ${
-						event.crawlDelayMs ? `crawl-delay ${formatDuration(event.crawlDelayMs)}` : "no crawl-delay"
-					}  sitemaps=${event.sitemaps}${event.failedOpen ? "  (failed open)" : ""}`,
-				);
-				break;
-			case "sitemap":
-				this.snapshot = {
-					...this.snapshot,
-					sitemap: { fetched: event.fetched, urls: event.urls, truncated: event.truncated },
-				};
-				this.pushLine(
-					"info",
-					`sitemap  ${event.fetched} file(s)  ${event.urls} urls${event.truncated ? "  (truncated)" : ""}`,
-				);
-				break;
-			case "queued":
-				this.transition(event.url, event.depth, event.parent, "queued");
-				this.pushLine("info", `queued  ${pathOf(event.url)}  depth=${event.depth}  via ${event.via}`);
-				break;
-			case "fetching":
-				this.transition(event.url, event.depth, event.parent, "fetching");
-				break;
-			case "crawled":
-				this.transition(event.url, event.depth, event.parent, "crawled", {
-					title: event.title,
-					chars: event.chars,
-					durationMs: event.durationMs,
-					engine: event.engine,
-					elements: event.elements,
-				});
-				this.snapshot = {
-					...this.snapshot,
-					bytes: this.snapshot.bytes + event.bytes,
-					chars: this.snapshot.chars + event.chars,
-					pages: [
-						...this.snapshot.pages,
-						{
-							url: event.url,
-							title: event.title,
-							chars: event.chars,
-							depth: event.depth,
-							engine: event.engine,
-							status: event.status,
-							elements: event.elements,
-						},
-					].slice(-MAX_PAGES),
-					elements: addElements(this.snapshot.elements, event.elements),
-				};
-				this.pushLine(
-					"ok",
-					`GET  ${event.status}  ${pathOf(event.url)}  ${formatBytes(event.bytes)}  engine=${event.engine}  ${formatDuration(
-						event.durationMs,
-					)}  links=${event.links}  chars=${formatCount(event.chars)}`,
-				);
-				break;
-			case "denied":
-				this.transition(event.url, event.depth, event.parent, "denied", { code: event.code }, true);
-				this.pushLine("deny", `deny  ${pathOf(event.url)}  ${event.code}  ${truncate(event.message, 110)}`);
-				break;
-			case "failed":
-				this.transition(event.url, event.depth, event.parent, "failed", { code: event.code }, true);
-				this.snapshot = { ...this.snapshot, lastError: event.message };
-				this.pushLine("error", `fail  ${pathOf(event.url)}  ${event.code}  ${truncate(event.message, 130)}`);
-				break;
-			case "engine-fallback":
-				this.pushLine("warn", `engine  ${event.from} → ${event.to}  ${truncate(event.reason, 110)}`);
-				break;
-			case "run-end":
-				this.snapshot = {
-					...this.snapshot,
-					status: event.status,
-					endedAt: event.at,
-					counts: { ...this.snapshot.counts, fetching: 0 },
-				};
-				this.pushLine(
-					event.status === "completed" ? "ok" : "warn",
-					`run end  ${event.status}  pages=${event.crawled}  denied=${event.denied}  failed=${event.failed}  discovered=${event.discovered}  ${formatDuration(
-						event.durationMs,
-					)}`,
-				);
-				break;
+	/**
+	 * Follows a job started elsewhere (a tool call), so the console animates the
+	 * same run instead of showing an idle panel.
+	 */
+	adopt(jobId: string, target: string): void {
+		if (this.snapshot.jobId === jobId) return;
+		if (this.running && !this.stopped) return;
+		this.begin(target, this.snapshot.options ?? null, "tool");
+		this.snapshot = { ...this.snapshot, jobId };
+		this.pushLine("info", `run start  ${target}  (started by a tool)  job=${jobId}`, "run");
+		this.emit();
+		void this.watch("crawl", jobId).catch((error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			this.snapshot = { ...this.snapshot, status: "failed", endedAt: Date.now(), lastError: message };
+			this.pushLine("error", `run failed  ${message}`, "run");
+			this.emit();
+		});
+	}
+
+	private begin(target: string, options: CrawlJobOptions | null, source: CrawlRunSnapshot["targetSource"]): void {
+		this.runSeq += 1;
+		this.lineId = 0;
+		this.nodesTruncated = false;
+		this.stopped = false;
+		this.watching = true;
+		this.snapshot = {
+			...emptySnapshot(),
+			// The shelf outlives a run: a new crawl replaces the shot, not the history.
+			history: this.snapshot.history,
+			runId: `run-${Date.now().toString(36)}-${this.runSeq}`,
+			status: "running",
+			target,
+			targetSource: source,
+			options,
+			startedAt: Date.now(),
+		};
+	}
+
+	/** Polls a job to completion, painting every page it has not seen yet. */
+	private async watch(kind: JobKind, jobId: string): Promise<void> {
+		const client = await this.config.require();
+		const deadline = Date.now() + MAX_WATCH_MS;
+		const seen = new Set(this.snapshot.pages.map((page) => page.url));
+		let status: JobStatus = await client.job(kind, jobId);
+		this.apply(status, seen);
+
+		while (status.status === "scraping" && !this.stopped && Date.now() < deadline) {
+			await new Promise((resolve) => setTimeout(resolve, TICK_MS));
+			status = await client.job(kind, jobId);
+			this.apply(status, seen);
 		}
+
+		if (status.status === "completed") {
+			// The status payload is capped at 10 MB; walk the `next` cursors first.
+			try {
+				const documents = await readJobPages(client, kind, jobId, { maxPages: 20 });
+				this.ingestDocuments(documents, seen);
+			} catch {
+				// The pages already painted stay valid; paging is best effort.
+			}
+			try {
+				const errors = await client.jobErrors(kind, jobId);
+				this.ingestErrors(errors);
+			} catch {
+				// Errors are diagnostics; never fail the run over them.
+			}
+		}
+
+		this.watching = false;
+		const duration = Date.now() - this.snapshot.startedAt;
+		this.snapshot = {
+			...this.snapshot,
+			status:
+				this.stopped || status.status === "cancelled"
+					? "stopped"
+					: status.status === "failed"
+						? "failed"
+						: "completed",
+			endedAt: Date.now(),
+			creditsUsed: status.creditsUsed ?? this.snapshot.creditsUsed,
+			expiresAt: status.expiresAt ?? this.snapshot.expiresAt,
+			counts: { ...this.snapshot.counts, fetching: 0 },
+			lastError: status.error ?? this.snapshot.lastError,
+		};
+		this.pushLine(
+			status.status === "failed" ? "error" : "ok",
+			`run end  ${status.status}  pages=${status.completed}/${status.total}  ${formatDuration(duration)}` +
+				`${status.creditsUsed !== undefined ? `  credits=${status.creditsUsed}` : ""}`,
+			"run",
+		);
+		this.emit();
+		await this.persist();
+	}
+
+	/** Applies one status response: counters, nodes and newly arrived pages. */
+	private apply(status: JobStatus, seen: Set<string>): void {
+		if (this.stopped) return;
+		const total = Math.max(0, status.total);
+		const completed = Math.max(0, status.completed);
+		this.snapshot = {
+			...this.snapshot,
+			counts: {
+				...this.snapshot.counts,
+				crawled: completed,
+				queued: Math.max(0, total - completed),
+				fetching: status.status === "scraping" ? 1 : 0,
+				discovered: Math.max(this.snapshot.counts.discovered, total),
+			},
+			creditsUsed: status.creditsUsed ?? this.snapshot.creditsUsed,
+			expiresAt: status.expiresAt ?? this.snapshot.expiresAt,
+		};
+		this.ingestDocuments(status.data, seen);
+	}
+
+	private ingestDocuments(documents: readonly unknown[], seen: Set<string>): void {
+		const target = this.snapshot.target;
+		let pages = this.snapshot.pages.slice();
+		let nodes = this.snapshot.nodes.slice();
+		let elements = this.snapshot.elements;
+		let bytes = this.snapshot.bytes;
+		let chars = this.snapshot.chars;
+		let artifacts = this.snapshot.artifacts.slice();
+		let arrivals = this.snapshot.arrivals.slice();
+		let budget = Math.max(0, MAX_DOCUMENT_CHARS - pages.reduce((sum, page) => sum + (page.markdown?.length ?? 0), 0));
+
+		for (const raw of documents) {
+			if (!raw || typeof raw !== "object") continue;
+			const document = raw as Record<string, unknown>;
+			const url = typeof document.url === "string" ? document.url : "";
+			if (!url || seen.has(url)) continue;
+			seen.add(url);
+
+			const markdown = typeof document.markdown === "string" ? document.markdown : "";
+			const profile = profileDocument(document);
+			const keep = Math.min(MAX_PAGE_DOCUMENT_CHARS, budget);
+			const preview = markdown.slice(0, keep);
+			budget -= preview.length;
+			const depth = pathDepth(url, target);
+			const parentId = depth > 0 && target ? this.parentOf(url, depth, nodes, target) : null;
+			const statusCode = typeof document.metadata === "object" && document.metadata
+				? Number((document.metadata as Record<string, unknown>).statusCode ?? 200)
+				: 200;
+
+			pages.push({
+				url,
+				title: typeof document.title === "string" ? document.title : typeof document.metadata === "object" && document.metadata
+					? String((document.metadata as Record<string, unknown>).title ?? "")
+					: "",
+				chars: markdown.length,
+				depth,
+				status: Number.isFinite(statusCode) ? statusCode : 200,
+				linkCount: Array.isArray(document.links) ? document.links.length : undefined,
+				bytes: markdown.length,
+				...(preview.length > 0 ? { markdown: preview } : {}),
+				elements: profile,
+			});
+			if (pages.length > MAX_PAGES) pages = pages.slice(-MAX_PAGES);
+
+			bytes += markdown.length;
+			chars += markdown.length;
+			elements = addProfile(elements, profile);
+
+			const title = typeof document.title === "string" ? document.title : "";
+			const produced = pageArtifacts(document as FirecrawlDocument, {
+				source: url,
+				title: title || urlLabel(url),
+				elements: profile,
+				at: Date.now(),
+			});
+			if (produced.length > 0) {
+				artifacts = [...artifacts, ...produced].slice(-MAX_ARTIFACTS);
+				arrivals = [...arrivals, { url, kinds: produced.map((artifact) => artifact.kind), at: Date.now() }].slice(-MAX_ARRIVALS);
+			}
+
+			if (nodes.length < MAX_NODES) {
+				nodes = [
+					...nodes,
+					{
+						id: url,
+						url,
+						label: urlLabel(url),
+						depth,
+						parentId,
+						state: "crawled",
+						title: typeof document.title === "string" ? document.title : undefined,
+						chars: markdown.length,
+						durationMs: 0,
+						elements: profile,
+					},
+				];
+			} else {
+				this.nodesTruncated = true;
+			}
+
+			this.pushLine(
+				"ok",
+				`GET  ${pathOf(url)}  ${formatBytes(markdown.length)}  chars=${formatCount(markdown.length)}`,
+				"get",
+			);
+		}
+
+		this.snapshot = { ...this.snapshot, pages, nodes, elements, bytes, chars, artifacts, arrivals };
 		this.emit();
 	}
 
-	/** Applies one node state change and keeps the counters exact. */
-	private transition(
-		url: string,
-		depth: number,
-		parent: string | null,
-		state: NodeState,
-		extra: Partial<CrawlNodeView> = {},
-		countAsNew = false,
-	): void {
-		const nodes = this.snapshot.nodes;
-		const index = nodes.findIndex((node) => node.id === url);
-		const counts = { ...this.snapshot.counts };
-		const previousState = index === -1 ? null : nodes[index].state;
-		if (previousState === state) return;
-		if (previousState) {
-			if (previousState === "queued") counts.queued = Math.max(0, counts.queued - 1);
-			if (previousState === "fetching") counts.fetching = Math.max(0, counts.fetching - 1);
-			if (previousState === "crawled") counts.crawled = Math.max(0, counts.crawled - 1);
-			if (previousState === "denied") counts.denied = Math.max(0, counts.denied - 1);
-			if (previousState === "failed") counts.failed = Math.max(0, counts.failed - 1);
-		}
-		if (state === "queued") counts.queued += 1;
-		if (state === "fetching") counts.fetching += 1;
-		if (state === "crawled") counts.crawled += 1;
-		if (state === "denied") counts.denied += 1;
-		if (state === "failed") counts.failed += 1;
-		if (countAsNew || index === -1) counts.discovered = Math.max(counts.discovered, counts.crawled + counts.denied + counts.failed + counts.queued + counts.fetching);
-
-		let nextNodes = nodes;
-		if (index === -1) {
-			if (nodes.length >= MAX_NODES) {
-				this.nodesTruncated = true;
-			} else {
-				nextNodes = [
-					...nodes,
-					{ id: url, url, label: urlLabel(url), depth, parentId: parent, state, ...extra },
-				];
-			}
-		} else {
-			nextNodes = nodes.slice();
-			nextNodes[index] = { ...nextNodes[index], state, ...extra };
-		}
-
-		const denialsByCode =
-			state === "denied" && extra.code
-				? { ...this.snapshot.denialsByCode, [extra.code]: (this.snapshot.denialsByCode[extra.code] ?? 0) + 1 }
-				: this.snapshot.denialsByCode;
-
-		this.snapshot = { ...this.snapshot, nodes: nextNodes, counts, denialsByCode };
+	/** Shelf for work that is not a crawl (a parsed upload): one artifact, no run. */
+	recordArtifact(artifact: CrawlArtifact | null): void {
+		if (!artifact) return;
+		this.snapshot = { ...this.snapshot, artifacts: [...this.snapshot.artifacts, artifact].slice(-MAX_ARTIFACTS) };
+		this.emit();
 	}
 
-	private pushLine(level: ConsoleLevel, text: string): void {
+	/** Reads the archive index once, at activation. */
+	async loadHistory(): Promise<void> {
+		if (!this.archive) return;
+		try {
+			const history = await this.archive.list();
+			this.snapshot = { ...this.snapshot, history };
+			this.emit();
+		} catch (error) {
+			this.report("history", error);
+		}
+	}
+
+	/**
+	 * Re-opens a finished run from storage. The panel then behaves like it does
+	 * after a crawl ends: everything readable, nothing polling.
+	 */
+	async restore(id: string): Promise<boolean> {
+		if (!this.archive) return false;
+		try {
+			const run = await this.archive.read(id);
+			if (!run) return false;
+			this.stopped = true;
+			this.watching = false;
+			const total = run.counts.crawled + run.counts.denied + run.counts.failed;
+			this.snapshot = {
+				...emptySnapshot(),
+				history: this.snapshot.history,
+				runId: run.id,
+				status: run.status,
+				target: run.target,
+				targetSource: "manual",
+				startedAt: run.startedAt,
+				endedAt: run.endedAt,
+				counts: { crawled: run.counts.crawled, fetching: 0, queued: 0, denied: run.counts.denied, failed: run.counts.failed, discovered: total },
+				creditsUsed: run.creditsUsed,
+				artifacts: run.artifacts,
+				archived: true,
+			};
+			this.pushLine("info", `restore  ${run.target}  pages=${run.counts.crawled}  artifacts=${run.artifacts.length}`, "run");
+			this.emit();
+			return true;
+		} catch (error) {
+			this.report("restore", error);
+			return false;
+		}
+	}
+
+	async removeArchived(id: string): Promise<void> {
+		if (!this.archive) return;
+		try {
+			const history = await this.archive.remove(id);
+			const cleared = this.snapshot.archived && this.snapshot.runId === id;
+			this.snapshot = cleared ? { ...emptySnapshot(), history } : { ...this.snapshot, history };
+			this.emit();
+		} catch (error) {
+			this.report("delete", error);
+		}
+	}
+
+	private async persist(): Promise<void> {
+		const runId = this.snapshot.runId;
+		if (!this.archive || this.snapshot.archived || !runId) return;
+		const { artifacts, pages } = this.snapshot;
+		if (artifacts.length === 0 && pages.length === 0) return;
+		try {
+			const history = await this.archive.write({
+				version: 1,
+				id: runId,
+				target: this.snapshot.target,
+				status:
+					this.snapshot.status === "failed" ? "failed" : this.snapshot.status === "stopped" ? "stopped" : "completed",
+				startedAt: this.snapshot.startedAt,
+				endedAt: this.snapshot.endedAt ?? Date.now(),
+				counts: {
+					crawled: this.snapshot.counts.crawled,
+					denied: this.snapshot.counts.denied,
+					failed: this.snapshot.counts.failed,
+				},
+				creditsUsed: this.snapshot.creditsUsed ?? 0,
+				artifacts,
+			});
+			this.snapshot = { ...this.snapshot, history };
+			this.pushLine("info", `saved  ${runId}  artifacts=${artifacts.length}`, "run");
+			this.emit();
+		} catch (error) {
+			this.report("save", error);
+		}
+	}
+
+	/** Logs, then surfaces through the host only when a context exists (unit tests have none). */
+	private report(what: string, error: unknown): void {
+		const message = error instanceof Error ? error.message : String(error);
+		console.warn(`[firecrawl] console ${what} failed`, error);
+		if (hasPluginContext()) getPluginContext().ui.notify({ message, error: true });
+	}
+
+	private ingestErrors(errors: ReadonlyArray<{ url?: string; error?: string; code?: string; statusCode?: number }>): void {
+		if (errors.length === 0) return;
+		const nodes = this.snapshot.nodes.slice();
+		const denialsByCode = { ...this.snapshot.denialsByCode };
+		let denied = this.snapshot.counts.denied;
+		let failed = this.snapshot.counts.failed;
+
+		for (const entry of errors) {
+			const url = entry.url ?? "";
+			const message = entry.error ?? entry.code ?? `HTTP ${entry.statusCode ?? "?"}`;
+			const isDenial = /robots|denied|forbidden|blocked/i.test(`${entry.code ?? ""} ${message}`);
+			failed += isDenial ? 0 : 1;
+			denied += isDenial ? 1 : 0;
+			if (isDenial && entry.code) denialsByCode[entry.code] = (denialsByCode[entry.code] ?? 0) + 1;
+			if (url && nodes.length < MAX_NODES) {
+				nodes.push({
+					id: url,
+					url,
+					label: urlLabel(url),
+					depth: pathDepth(url, this.snapshot.target),
+					parentId: this.snapshot.target || null,
+					state: isDenial ? "denied" : "failed",
+					code: entry.code,
+				});
+			}
+			this.pushLine(
+				isDenial ? "deny" : "error",
+				`${isDenial ? "deny" : "fail"}  ${url || "(unknown)"}  ${truncate(message, 130)}`,
+				isDenial ? "deny" : "fail",
+			);
+		}
+
+		this.snapshot = {
+			...this.snapshot,
+			nodes,
+			denialsByCode,
+			counts: {
+				...this.snapshot.counts,
+				denied,
+				failed,
+				discovered: Math.max(this.snapshot.counts.discovered, this.snapshot.counts.crawled + denied + failed),
+			},
+			lastError: errors[0]?.error ?? this.snapshot.lastError,
+		};
+		this.emit();
+	}
+
+	private parentOf(url: string, depth: number, nodes: readonly CrawlNodeView[], target: string): string {
+		const prefix = url.replace(/\/[^/]*$/, "/");
+		const match = nodes.find((node) => node.depth === depth - 1 && prefix.startsWith(node.url.replace(/\/$/, "")));
+		return match?.url ?? target;
+	}
+
+	private pushLine(level: ConsoleLevel, text: string, kind: ConsoleKind): void {
 		this.lineId += 1;
-		const line: ConsoleLine = { id: this.lineId, at: Date.now(), level, text };
+		const line: ConsoleLine = { id: this.lineId, at: Date.now(), level, kind, text };
 		this.snapshot = { ...this.snapshot, lines: [...this.snapshot.lines, line].slice(-MAX_LINES) };
 	}
 
@@ -394,37 +647,10 @@ export class CrawlRunStore {
 	}
 }
 
-function addElements(total: ElementTotals, next: ElementProfile | undefined): ElementTotals {
-	if (!next) return total;
-	// One entry per URL: the same player is often found on several pages, and the
-	// ledger is a list of sources, not a hit count.
-	const seen = new Set(total.media.map((entry) => `${entry.kind}:${entry.url}`));
-	const media = total.media.slice();
-	for (const entry of next.media) {
-		const key = `${entry.kind}:${entry.url}`;
-		if (seen.has(key)) continue;
-		seen.add(key);
-		media.push(entry);
-	}
-	return {
-		headings: total.headings + next.headings,
-		paragraphs: total.paragraphs + next.paragraphs,
-		links: total.links + next.links,
-		images: total.images + next.images,
-		videos: total.videos + next.videos,
-		audio: total.audio + next.audio,
-		code: total.code + next.code,
-		tables: total.tables + next.tables,
-		media: media.slice(-200),
-		streamed: total.streamed + next.streamed,
-	};
-}
-
 function pathOf(url: string): string {
 	try {
-		const parsed = new URL(url);
-		return `${parsed.pathname}${parsed.search}`.slice(0, 64);
+		return new URL(url).pathname.slice(0, 80);
 	} catch {
-		return url.slice(0, 64);
+		return url.slice(0, 80);
 	}
 }

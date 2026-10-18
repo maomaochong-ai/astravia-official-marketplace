@@ -1,94 +1,51 @@
 /**
- * Host-mediated HTTP client.
+ * Host-mediated HTTP transport.
  *
- * `ctx.network.request` executes in the main process: no renderer CORS, per-hop
- * redirect validation, 32 MiB cap, 300 s ceiling. The domain layer only sees the
- * small `HttpClient` contract, which keeps the crawl engine testable.
+ * Requests run in the main process (`ctx.network.request`), so there is no CORS
+ * and the plugin never sees raw sockets. Two body kinds are supported: JSON for
+ * the REST calls, multipart for `/v2/parse` uploads.
  */
 
 import type { PluginContext } from "@astravia-org/plugin-sdk";
-import {
-	HttpTransportError,
-	type BinaryFetch,
-	type HttpClient,
-	type HttpRequestInit,
-	type HttpResponse,
-} from "../domain/scrape/http";
+import { TransportError, type Transport, type TransportFailure } from "../domain/firecrawl/transport";
 
-const encoder = new TextEncoder();
-
-export function createHostHttpClient(ctx: PluginContext): HttpClient {
-	return async (init: HttpRequestInit): Promise<HttpResponse> => {
-		const startedAt = Date.now();
-		try {
-			const response = await ctx.network.request<unknown>({
-				url: init.url,
-				method: init.method ?? "GET",
-				headers: init.headers,
-				timeoutMs: init.timeoutMs,
-				responseType: "text",
-				...(init.body === undefined ? {} : { body: { type: "json" as const, value: init.body } }),
-			});
-			const body = typeof response.body === "string" ? response.body : JSON.stringify(response.body ?? "");
-			return {
-				url: init.url,
-				status: response.status,
-				ok: response.ok,
-				headers: response.headers ?? {},
-				body,
-				durationMs: Date.now() - startedAt,
-				bytes: encoder.encode(body).length,
-			};
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			const reason = /timed out|timeout/i.test(message)
-				? "timed-out"
-				: /not allowed|host/i.test(message)
-					? "host-not-allowed"
-					: /too large|32 ?MiB/i.test(message)
-						? "response-too-large"
-						: "transport-failed";
-			throw new HttpTransportError(message, reason);
-		}
-	};
+function classify(message: string): TransportFailure {
+	const lower = message.toLowerCase();
+	if (lower.includes("timed out") || lower.includes("timeout")) return "timed-out";
+	if (lower.includes("too large") || lower.includes("size limit") || lower.includes("payload")) return "response-too-large";
+	if (lower.includes("not allowed") || lower.includes("allowlist") || lower.includes("allowedhosts") || lower.includes("host")) {
+		return "host-not-allowed";
+	}
+	return "transport-failed";
 }
 
-/**
- * Base64 transport for PDFs.
- *
- * Same host request, different `responseType`: the renderer never sees a
- * `Uint8Array`, the PDF parser decodes the string itself.
- */
-export function createHostBinaryFetcher(ctx: PluginContext): BinaryFetch {
-	return async (init: HttpRequestInit) => {
+function explain(reason: TransportFailure, url: string, message: string): string {
+	if (reason === "host-not-allowed") {
+		return `The host refused ${new URL(url).host}: add it to network.allowedHosts in plugin.json (${message}).`;
+	}
+	if (reason === "response-too-large") {
+		return `The response from ${url} exceeded the host transfer limit: ${message}`;
+	}
+	return message;
+}
+
+export function createHostTransport(ctx: PluginContext): Transport {
+	return async (request) => {
 		try {
-			const response = await ctx.network.request<unknown>({
-				url: init.url,
-				method: "GET",
-				headers: init.headers,
-				timeoutMs: init.timeoutMs,
-				responseType: "base64",
+			const response = await ctx.network.request<string>({
+				url: request.url,
+				method: request.method,
+				headers: request.headers,
+				body: request.body,
+				responseType: "text",
+				timeoutMs: request.timeoutMs,
 			});
-			const base64 = typeof response.body === "string" ? response.body : "";
-			if (!base64) throw new Error("empty binary body");
-			return {
-				url: init.url,
-				status: response.status,
-				ok: response.ok,
-				headers: response.headers ?? {},
-				base64,
-				bytes: Math.floor((base64.length * 3) / 4),
-			};
+			const body = typeof response.body === "string" ? response.body : JSON.stringify(response.body ?? "");
+			return { status: response.status, ok: response.ok, body };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			const reason = /timed out|timeout/i.test(message)
-				? "timed-out"
-				: /not allowed|host/i.test(message)
-					? "host-not-allowed"
-					: /too large|32 ?MiB/i.test(message)
-						? "response-too-large"
-						: "transport-failed";
-			throw new HttpTransportError(message, reason);
+			const reason = classify(message);
+			throw new TransportError(explain(reason, request.url, message), reason);
 		}
 	};
 }
