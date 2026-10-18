@@ -1,9 +1,8 @@
 /**
  * 连接管理工作区视图 — 从宿主侧边栏打开的整页面板。
  *
- * 对齐设计稿 frames/connections.tsx：面板 = Sheet 头部（h-12 抬升底）+ 步骤条（h-11）
- * + 搜索行与 58px 连接行 + h-14 页脚。三步流程（连接列表 → 数据库类型 → 连接配置）
- * 由 ConnectionEditorFlow 提供，工作台内的模态弹窗复用同一流程，两边功能一致。
+ * 首屏只有一层标题：工作台级 eyebrow + 标题 + 引擎状态由 ConnectionEditorFlow 的整页头部渲染，
+ * 这里只管主题外壳与引擎探测，不再自己画一条「数据库工作台」标题栏（否则会出现两行相同图标）。
  *
  * 该视图挂在宿主侧边栏，运行在 WorkbenchProvider 之外，
  * 只能使用连接编辑 hook（自带存储读写），不能调用 useWorkbench。
@@ -12,7 +11,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
 import { engineHealth } from "../../../shared/services/engine-client";
-import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 import { ConnectionEditorFlow } from "./connection-editor-flow";
 
 type EngineState = "checking" | "running" | "unavailable";
@@ -51,23 +49,9 @@ export function ConnectionManagerView(): JSX.Element {
 			data-dbx-theme={theme}
 			className="dbx-root flex h-full min-h-0 flex-col bg-surface text-surface-foreground"
 		>
-			{/* 工作台状态位：与设计稿顶栏的引擎指示同一语义 */}
-			<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border bg-surface-raised px-3">
-				<span className="icon-[lucide--database] size-3.5 shrink-0 text-muted" />
-				<span className="text-[14px] font-semibold tracking-tight whitespace-nowrap text-surface-foreground">
-					数据库工作台
-				</span>
-				<span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap">
-					<span className={`size-1.5 shrink-0 rounded-full ${statusTone}`} />
-					<span className="text-[12px] text-muted">{statusLabel}</span>
-					<span className="font-mono text-[12px] tabular-nums text-faint">
-						v{PLUGIN_VERSION}
-						{engineVersion ? ` · ${engineVersion}` : ""}
-					</span>
-				</span>
-			</div>
-
-			<ConnectionEditorFlow />
+			<ConnectionEditorFlow
+				engine={{ label: statusLabel, version: engineVersion, tone: statusTone }}
+			/>
 		</div>
 	);
 }

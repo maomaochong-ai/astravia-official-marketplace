@@ -599,8 +599,10 @@ export function NodeGraph({
 	// ── 端口连线 ──
 	const [pendingLink, setPendingLink] = useState<{
 		from: NodeId; fromRow: number; x1: number; y1: number; x2: number; y2: number;
+		/** out = 从输出插槽向右拉；in = 从输入插槽向左拉（反向建边） */
+		dir: "out" | "in";
 	} | null>(null);
-	const pendingRef = useRef<{ from: NodeId; fromRow: number } | null>(null);
+	const pendingRef = useRef<{ from: NodeId; fromRow: number; dir: "out" | "in" } | null>(null);
 	const [hoverLink, setHoverLink] = useState<string | null>(null);
 
 	/** 画布坐标下某节点某行 socket 的绝对位置。 */
@@ -616,20 +618,20 @@ export function NodeGraph({
 	// ── 端口连线：拖拽优先 ──
 	// 以前 pointerdown 就弹 AddNodeMenu，单击插槽也会误弹菜单；现在只启动待定连线，
 	// 指针真正拖过 CLICK_DRIFT（与「单击/拖拽」同一阈值）才确认是「拉一条新链」并弹菜单。
-	const linkStartRef = useRef<{ cx: number; cy: number; menuOpened: boolean } | null>(null);
+	const linkStartRef = useRef<{ menuOpened: boolean } | null>(null);
 
 	/** 从 output socket 启动一条待定连线，此时不弹菜单。 */
-	function beginLink(nodeId: NodeId, row: number, clientX: number, clientY: number) {
+	function beginLink(nodeId: NodeId, row: number, dir: "out" | "in" = "out") {
 		// 防重入：如果之前的待定连线没清理（Esc/误操作残留），先 cancel
 		if (pendingRef.current) {
 			pendingRef.current = null;
 			setPendingLink(null);
-			linkStartRef.current = null;
 		}
-		const p = socketPos(nodeId, row, "r");
-		pendingRef.current = { from: nodeId, fromRow: row };
-		setPendingLink({ from: nodeId, fromRow: row, x1: p.x, y1: p.y, x2: p.x, y2: p.y });
-		linkStartRef.current = { cx: clientX, cy: clientY, menuOpened: false };
+		// 起点固定在同侧插槽：out 取右缘，in 取左缘
+		const p = socketPos(nodeId, row, dir === "out" ? "r" : "l");
+		pendingRef.current = { from: nodeId, fromRow: row, dir };
+		setPendingLink({ from: nodeId, fromRow: row, x1: p.x, y1: p.y, x2: p.x, y2: p.y, dir });
+		linkStartRef.current = { menuOpened: false };
 	}
 
 	/** 在指针处打开「连线末端 AddNodeMenu」（入参为视口坐标，内部转画布坐标）。 */
@@ -643,15 +645,20 @@ export function NodeGraph({
 
 	// ── NodeCard socket 直接回调（绕过 canvas 的 onCanvasPointerDown 被 stopPropagation 阻断） ──
 	const socketHandlers: SocketHandlers = {
-		onOutputDown: ({ nodeId, row, clientX, clientY }) => {
+		onOutputDown: ({ nodeId, row }) => {
 			const n = nodesRef.current[nodeId];
 			if (!n) return;
 			// 拖拽优先：只启动待定连线，不弹菜单（见 beginLink 注释）
-			beginLink(nodeId, row, clientX, clientY);
+			beginLink(nodeId, row, "out");
 		},
 		onInputDown: ({ nodeId, row }) => {
 			const pl = pendingRef.current;
-			if (!pl || pl.from === nodeId) return;
+			// 没有待定连线 → 从输入插槽反向拉一条，落到某个输出插槽即建边
+			if (!pl) {
+				beginLink(nodeId, row, "in");
+				return;
+			}
+			if (pl.dir === "in" || pl.from === nodeId) return;
 			const fromNode = nodesRef.current[pl.from];
 			// 图表节点连线跟随输出插槽的系列色，非图表节点沿用数据类型色（唯一推导在 link-tone.ts）
 			const tone = wireTone(fromNode?.tone, isChartKind(fromNode?.kind));
@@ -689,23 +696,27 @@ export function NodeGraph({
 		if (hit?.type === "output") {
 			e.stopPropagation();
 			// 拖拽优先：只启动待定连线，不弹菜单
-			beginLink(hit.nodeId, hit.row, e.clientX, e.clientY);
+			beginLink(hit.nodeId, hit.row, "out");
 			return;
 		}
 		if (hit?.type === "input") {
 			// 如果是连线中（pendingLink），则完成连线
 			e.stopPropagation();
 			const pl = pendingRef.current;
-			if (pl && hit.nodeId !== pl.from) {
-				setLinks((prev) => {
-					const srcNode = nodes[pl.from];
-					const tone = wireTone(srcNode?.tone, isChartKind(srcNode?.kind));
-					return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
-				});
-				pendingRef.current = null;
-				setPendingLink(null);
-				setLinkOutContext(null);
+			// 没有待定连线 → 从输入插槽反向拉一条，落到某个输出插槽即建边
+			if (!pl) {
+				beginLink(hit.nodeId, hit.row, "in");
+				return;
 			}
+			if (pl.dir === "in" || hit.nodeId === pl.from) return;
+			setLinks((prev) => {
+				const srcNode = nodes[pl.from];
+				const tone = wireTone(srcNode?.tone, isChartKind(srcNode?.kind));
+				return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
+			});
+			pendingRef.current = null;
+			setPendingLink(null);
+			setLinkOutContext(null);
 			return;
 		}
 		// 扩大空白区判定：只要没命中节点卡片、socket、分组区域就取消选中
@@ -851,13 +862,8 @@ export function NodeGraph({
 					x2: canvasPt.x,
 					y2: canvasPt.y,
 				} : null);
-				// 拖过阈值 → 确认是「从插槽拉线」，此时才弹 AddNodeMenu
-				const ls = linkStartRef.current;
-				if (ls && !ls.menuOpened) {
-					const dx = e.clientX - ls.cx;
-					const dy = e.clientY - ls.cy;
-					if (dx * dx + dy * dy >= CLICK_DRIFT * CLICK_DRIFT) openLinkOutMenu(e.clientX, e.clientY);
-				}
+				// 菜单等 pointerup 落在空白处才弹：拖动途中弹会自动打断拖线，
+				// 用户还没到目标插槽就被菜单抢了焦点，看起来像「拖不出线」。
 			}
 			// 框选模式
 			const sb = selectionBoxRef.current;
@@ -977,20 +983,26 @@ export function NodeGraph({
 				selectionBoxRef.current = null;
 				setSelectionBox(null);
 			}
-			// 结束端口连线 —— 检测 input socket
+			// 结束端口连线 —— out 拉向 input、in 反向拉向 output，方向正规化后建边
 			const pl = pendingRef.current;
 			if (pl) {
 				const hit = hitSocket(e.clientX, e.clientY);
-				if (hit?.type === "input" && hit.nodeId !== pl.from) {
+				const wantSide = pl.dir === "out" ? "input" : "output";
+				if (hit?.type === wantSide && hit.nodeId !== pl.from) {
+					const src = pl.dir === "out"
+						? { node: pl.from, row: pl.fromRow }
+						: { node: hit.nodeId, row: hit.row };
+					const dst = pl.dir === "out"
+						? { node: hit.nodeId, row: hit.row }
+						: { node: pl.from, row: pl.fromRow };
 					setLinks((prev) => {
-						const srcNode = nodesRef.current[pl.from];
+						const srcNode = nodesRef.current[src.node];
 						const tone = wireTone(srcNode?.tone, isChartKind(srcNode?.kind));
-						return [...prev, { id: nextLinkId(), from: pl.from, fromRow: pl.fromRow, to: hit.nodeId, toRow: hit.row, tone }];
+						return [...prev, { id: nextLinkId(), from: src.node, fromRow: src.row, to: dst.node, toRow: dst.row, tone }];
 					});
 				}
-				// 未命中输入插槽：拖到空白处松手 → 视为「从插槽起一条新链」，在落点弹菜单；
-				// 单击插槽（没拖动、也没落在空白处）→ 什么都不做，避免误弹。
-				if (hit?.type !== "input" && isCanvasBlank(e.target)) openLinkOutMenu(e.clientX, e.clientY);
+				// 只有「从输出插槽向右拉」在空白处松手才视为「起一条新链」；反向拉线落空就丢弃。
+				if (pl.dir === "out" && hit?.type !== "input" && isCanvasBlank(e.target)) openLinkOutMenu(e.clientX, e.clientY);
 				pendingRef.current = null;
 				setPendingLink(null);
 				// 菜单若是本次拖拽打开的，保留它（用户还要在里面挑节点类型）
@@ -1506,7 +1518,9 @@ export function NodeGraph({
 					<svg className="pointer-events-none absolute overflow-visible" style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}>
 						<path
 							d={(() => {
-								const bend = Math.max(36, Math.abs(pendingLink.x2 - pendingLink.x1) * 0.5);
+								// 从输入插槽向左拉时控制点镜像，否则线会先往右甩再编回来
+								const sign = pendingLink.dir === "out" ? 1 : -1;
+								const bend = Math.max(36, Math.abs(pendingLink.x2 - pendingLink.x1) * 0.5) * sign;
 								return `M ${pendingLink.x1} ${pendingLink.y1} C ${pendingLink.x1 + bend} ${pendingLink.y1}, ${pendingLink.x2 - bend} ${pendingLink.y2}, ${pendingLink.x2} ${pendingLink.y2}`;
 							})()}
 							fill="none"

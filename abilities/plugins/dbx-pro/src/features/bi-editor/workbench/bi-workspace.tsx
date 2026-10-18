@@ -12,7 +12,8 @@
  *   - 清空全部 notify("功能开发中") 占位
  */
 
-import { useCallback, useEffect, useMemo, useState, type JSX } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { useElementWidth } from "../../../shared/hooks/use-element-width";
 import { useBigscreenPages, type BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { BigscreenEditor } from "../canvas/canvas-editor";
 import { getUi } from "../../../runtime-contract";
@@ -100,6 +101,57 @@ type TreeRow = {
 	/** depth0 点击后切换到哪个 NavId；depth1 留空 = 不切 activeNav */
 	navKey?: NavId;
 };
+
+// ── 数据集：从页面模板里的数据源节点派生 ──
+/** 画布 source* 节点类型 → 中文名。模板里没有独立数据集表，数据集就是这些节点本身。 */
+const SOURCE_LABEL: Record<string, string> = {
+	"source-sql": "SQL 查询",
+	"source-connector": "直连数据源",
+	"source-table": "数据表",
+	"source-api": "接口",
+	"source-csv": "本地文件",
+	"source-extract": "抽取任务",
+};
+
+interface DatasetRow {
+	key: string;
+	title: string;
+	kind: string;
+	/** 连接名 / 表名，能直接看出数据从哪来 */
+	origin: string;
+	detail: string;
+	pageName: string;
+}
+
+/** 模板只认 { nodes, links }；解析失败当空画布，不让一条坏数据拖垮整个列表。 */
+function collectDatasets(pages: BigscreenPage[]): DatasetRow[] {
+	const rows: DatasetRow[] = [];
+	for (const page of pages) {
+		let parsed: unknown = page.template;
+		if (typeof parsed === "string") {
+			try { parsed = JSON.parse(parsed); } catch { continue; }
+		}
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) continue;
+		const nodes = (parsed as { nodes?: Record<string, { kind?: string; values?: Record<string, unknown> }> }).nodes;
+		if (!nodes || typeof nodes !== "object") continue;
+		for (const [nodeId, node] of Object.entries(nodes)) {
+			const kind = String(node?.kind ?? "");
+			if (!kind.startsWith("source")) continue;
+			const v = node.values ?? {};
+			const origin = String(v.tableName ?? "") || String(v.datasourceId ?? v.connectionId ?? "");
+			const raw = String(v.sql ?? v.fields ?? "").replace(/\s+/g, " ").trim();
+			rows.push({
+				key: `${page.id}:${nodeId}`,
+				title: String(v.title ?? "").trim() || SOURCE_LABEL[kind] || "数据集",
+				kind: SOURCE_LABEL[kind] ?? kind,
+				origin,
+				detail: raw.length > 120 ? `${raw.slice(0, 120)}…` : raw,
+				pageName: page.name,
+			});
+		}
+	}
+	return rows;
+}
 
 // ── 常量：右栏三条入口 ──
 const START = [
@@ -265,6 +317,11 @@ function presetAsk(draft: AskDraft): { nodes: Record<string, NodePos>; links: Li
 }
 
 export function BiWorkspace(): JSX.Element {
+	const rootRef = useRef<HTMLDivElement>(null);
+	const rootWidth = useElementWidth(rootRef);
+	// 0 = 还没量到，按宽屏算，避免首帧闪成 compact
+	const compact = rootWidth > 0 && rootWidth < 720;
+	const narrow = rootWidth > 0 && rootWidth < 1080;
 	const { pages, loading, error, refresh, create, remove, copy } = useBigscreenPages();
 	const [editorPageId, setEditorPageId] = useState<string | null>(null);
 	const [editorPreset, setEditorPreset] = useState<{ nodes: Record<string, NodePos>; links: Link[] } | undefined>(undefined);
@@ -334,7 +391,7 @@ export function BiWorkspace(): JSX.Element {
 	// ── 派生：工作树目录（从真实数据，不是写死的） ──
 	const boardPages = pages.filter((p) => p.style === "default");
 	const bigscreenPages = pages.filter((p) => p.style === "bigScreen");
-	const datasetCount = pages.length; // 简化：style 不同都算"数据集"
+	const datasetRows = useMemo(() => collectDatasets(pages), [pages]);
 
 	const treeRows: TreeRow[] = useMemo(() => {
 		const rows: TreeRow[] = [];
@@ -370,12 +427,12 @@ export function BiWorkspace(): JSX.Element {
 		const datasetOpen = treeOpen.dataset ?? true;
 		rows.push({
 			key: "dataset", navKey: "dataset", label: "数据集",
-			count: String(datasetCount),
+			count: String(datasetRows.length),
 			depth: 0, icon: "icon-[lucide--table-2]",
 			open: datasetOpen, on: activeNav === "dataset",
 		});
 		if (datasetOpen) {
-			rows.push({ key: "dataset-folder-0", label: "未分组", count: String(datasetCount), depth: 1, icon: "icon-[lucide--folder]" });
+			rows.push({ key: "dataset-folder-0", label: "未分组", count: String(datasetRows.length), depth: 1, icon: "icon-[lucide--folder]" });
 		}
 
 		// ④ 数据源（从 datasources 派生）
@@ -399,6 +456,21 @@ export function BiWorkspace(): JSX.Element {
 			});
 		}
 
+		// ④' 工作树 / 分享给我 —— renderMainContent 已有对应视图，这里补上入口
+		rows.push({
+			key: "worktree", navKey: "worktree", label: "工作树",
+			count: worktree?.dirtyCount ? String(worktree.dirtyCount) : undefined,
+			depth: 0, icon: "icon-[lucide--git-branch]",
+			on: activeNav === "worktree",
+			alert: !!worktree?.dirtyCount,
+		});
+		rows.push({
+			key: "shared", navKey: "shared", label: "分享给我",
+			count: String(sharelinks.length),
+			depth: 0, icon: "icon-[lucide--link-2]",
+			on: activeNav === "shared",
+		});
+
 		// ⑤ 回收站
 		rows.push({
 			key: "trash", navKey: "trash", label: "回收站",
@@ -407,8 +479,9 @@ export function BiWorkspace(): JSX.Element {
 			open: treeOpen.trash ?? false, on: activeNav === "trash",
 		});
 
+
 		return rows;
-	}, [boardPages.length, bigscreenPages.length, datasetCount, datasources, worktree, activeNav, treeOpen]);
+	}, [boardPages.length, bigscreenPages.length, datasetRows.length, datasources, worktree, sharelinks.length, activeNav, treeOpen]);
 
 	// ── 三个入口：创建看板 page → 设置 preset → 跳转编辑器（不再创建大屏） ──
 	async function handleCreateWithPreset(preset: { nodes: Record<string, NodePos>; links: Link[] }) {
@@ -462,21 +535,30 @@ export function BiWorkspace(): JSX.Element {
 	function renderMainContent(): JSX.Element {
 		if (activeNav === "sources") return renderDatasourceList();
 		if (activeNav === "dataset") {
-			// 数据集：暂不独立实现，展示"全部 pages 列表"
-			if (pages.length === 0) {
-				return <div className="flex h-full items-center justify-center rounded-card border border-dashed border-border bg-surface-raised text-[12px] text-muted">暂无数据集</div>;
+			if (datasetRows.length === 0) {
+				return <div className="flex h-full items-center justify-center rounded-card border border-dashed border-border bg-surface-raised px-4 text-center text-[12px] text-muted">画布里放一个「数据源」或「手写 SQL」节点后，这里会出现数据集</div>;
 			}
 			return (
-				<div className="flex shrink-0 flex-col gap-1 rounded-card border border-border bg-surface-raised p-1">
-					{pages.map((p) => (
-						<div key={p.id} className="flex h-10 items-center gap-3 rounded-[4px] px-2 hover:bg-surface cursor-pointer"
-							onClick={() => { setEditorPreset(undefined); setEditorPageId(p.id); }}>
-							<Icon name={p.style === "bigScreen" ? "icon-[lucide--monitor]" : "icon-[lucide--layout-dashboard]"} className="size-3.5 shrink-0 text-muted" />
-							<span className="min-w-0 flex-1 truncate text-[12px] text-surface-foreground">{p.name}</span>
-							<Chip tone="neutral" mono>{p.style === "bigScreen" ? "大屏" : "看板"}</Chip>
-							<span className="font-mono text-[10px] text-faint">{p.updateCount} 次</span>
-						</div>
-					))}
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-raised">
+					<div className="flex h-9 shrink-0 items-center gap-3 border-b border-border px-2 text-[10px] text-faint">
+						<span className="w-44 shrink-0">名称</span>
+						<span className="w-24 shrink-0">类型</span>
+						<span className="min-w-0 flex-1">来源</span>
+						<span className="w-28 shrink-0 text-right">所属页面</span>
+					</div>
+					<div className="min-h-0 flex-1 overflow-y-auto">
+						{datasetRows.map((d) => (
+							<div key={d.key} className="flex h-9 items-center gap-3 border-b border-border/60 px-2 last:border-b-0 hover:bg-surface">
+								<Icon name="icon-[lucide--table-2]" className="size-3.5 shrink-0 text-muted" />
+								<span className="w-44 shrink-0 truncate text-[12px] text-surface-foreground">{d.title}</span>
+								<span className="w-24 shrink-0 truncate text-[11px] text-muted">{d.kind}</span>
+								<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted" title={d.detail || d.origin}>
+									{d.origin || d.detail || "—"}
+								</span>
+								<span className="w-28 shrink-0 truncate text-right text-[11px] text-faint">{d.pageName}</span>
+							</div>
+						))}
+					</div>
 				</div>
 			);
 		}
@@ -593,6 +675,10 @@ export function BiWorkspace(): JSX.Element {
 						<Icon name={l.type === "permanent" ? "icon-[lucide--link-2]" : "icon-[lucide--calendar-clock]"} className="size-3.5 shrink-0 text-muted" />
 						<span className="min-w-0 flex-1 truncate font-mono text-[11px] text-surface-foreground">{l.path}</span>
 						<span className={`font-mono text-[10px] ${l.type === "permanent" ? "text-faint" : "text-warning"}`}>{formatShareExpires(l.expiresAt)}</span>
+						<IconButton size="xs" icon="icon-[lucide--copy]" title="复制链接" onClick={() => {
+							void navigator.clipboard?.writeText(`https://${l.path}`);
+							notify("已复制链接", "success");
+						}} />
 					</div>
 				))}
 			</div>
@@ -606,17 +692,17 @@ export function BiWorkspace(): JSX.Element {
 	const activeLabel = NAV_LABELS[activeNav] ?? "看板";
 
 	return (
-		<div className="flex h-full w-full flex-col overflow-hidden bg-background font-sans text-[14px] text-surface-foreground">
+		<div ref={rootRef} className="flex h-full w-full flex-col overflow-hidden bg-background font-sans text-[14px] text-surface-foreground">
 			{/* 顶栏 */}
-			<header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-raised px-5">
+			<header className={`flex h-14 shrink-0 items-center gap-3 border-b border-border bg-surface-raised ${compact ? "px-3" : "px-5"}`}>
 				<div className="flex shrink-0 items-center gap-2">
 					<img src={dbxIcon} alt="dbx-pro" className="size-6 rounded-sm" />
-					<span className="text-[13px] font-semibold text-surface-foreground">BI 工作台</span>
-					<Chip tone="accent">本地工作树</Chip>
+					<span className="truncate text-[13px] font-semibold text-surface-foreground">BI 工作台</span>
+					{compact ? null : <Chip tone="accent">本地工作树</Chip>}
 				</div>
 
 				{/* 搜索框 — 真实 state */}
-				<div className="flex h-8 w-72 shrink-0 items-center gap-2 rounded-control border border-border bg-surface px-2.5">
+				<div className={`flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5 ${compact ? "min-w-0 flex-1" : "w-72 shrink-0"}`}>
 					<Icon name="icon-[lucide--search]" className="size-3.5 shrink-0 text-faint" />
 					<input
 						type="text"
@@ -625,12 +711,13 @@ export function BiWorkspace(): JSX.Element {
 						placeholder="搜索看板、大屏、数据集"
 						className="min-w-0 flex-1 bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-faint"
 					/>
-					<span className="shrink-0 font-mono text-[10px] text-faint">⌘K</span>
+					{compact ? null : <span className="shrink-0 font-mono text-[10px] text-faint">⌘K</span>}
 				</div>
 
 				<div className="ml-auto flex shrink-0 items-center gap-1">
-					<Btn size="sm" variant="ghost" icon="icon-[lucide--history]"
-						onClick={focusRunlogs}>最近运行</Btn>
+					{compact
+						? <IconButton size="sm" icon="icon-[lucide--history]" title="最近运行" onClick={focusRunlogs} />
+						: <Btn size="sm" variant="ghost" icon="icon-[lucide--history]" onClick={focusRunlogs}>最近运行</Btn>}
 					<span className="h-4 w-px shrink-0 bg-border" />
 					<div className="ml-1 grid size-7 shrink-0 place-items-center rounded-full border border-border bg-surface text-[11px] text-muted">诸</div>
 				</div>
@@ -638,7 +725,9 @@ export function BiWorkspace(): JSX.Element {
 
 			<div className="flex min-h-0 flex-1">
 				{/* 左栏：工作树目录树（与设计稿 frames/workbench.tsx L67-L114 对齐） */}
-				<aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface-raised px-2 py-3">
+				<aside className={compact
+					? "hidden"
+					: "flex w-52 shrink-0 flex-col border-r border-border bg-surface-raised px-2 py-3"}>
 					<div className="flex flex-col gap-0.5">
 						{treeRows.map((n) => {
 							const rowOn = !!n.on;
@@ -720,7 +809,24 @@ export function BiWorkspace(): JSX.Element {
 				</aside>
 
 				{/* 主栏 */}
-				<main className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-6">
+				<main className={`flex min-w-0 flex-1 flex-col gap-4 overflow-hidden ${compact ? "p-4" : "p-6"}`}>
+					{/* 窄面板：左栅隐藏，六项导航改横向 chips，不丢功能 */}
+					{compact && (
+						<div className="flex shrink-0 items-center gap-1 overflow-x-auto pb-1">
+							{treeRows.filter((r) => r.depth === 0).map((r) => (
+								<button
+									key={r.key}
+									type="button"
+									className={`flex shrink-0 items-center gap-1.5 rounded-control border px-2 py-1 text-[11px] ${r.on ? "border-border bg-neutral-muted text-surface-foreground" : "border-transparent text-muted hover:text-surface-foreground"}`}
+									onClick={() => r.navKey && setActiveNav(r.navKey)}
+								>
+									{r.icon ? <Icon name={r.icon} className="size-3.5 shrink-0" /> : null}
+									{r.label}
+									{r.count ? <span className="font-mono tabular-nums text-faint">{r.count}</span> : null}
+								</button>
+							))}
+						</div>
+					)}
 					{/* 主栏顶栏：标题 + 排序 + 视图切换 + 新建 */}
 					<div className="flex h-8 shrink-0 items-center gap-3">
 						<span className="text-[15px] font-semibold text-surface-foreground">{activeLabel}</span>
@@ -827,7 +933,9 @@ export function BiWorkspace(): JSX.Element {
 				</main>
 
 				{/* 右栏：从哪开始 + 产物链接 + 发布 */}
-				<aside className="flex w-72 shrink-0 flex-col gap-4 overflow-hidden border-l border-border bg-surface-raised p-4">
+				<aside className={narrow
+					? "hidden"
+					: "flex w-72 shrink-0 flex-col gap-4 overflow-hidden border-l border-border bg-surface-raised p-4"}>
 					<div className="flex flex-col gap-2">
 						<span className="text-[11px] font-medium text-surface-foreground">从哪开始</span>
 						{START.map((s) => (
@@ -948,8 +1056,8 @@ function DatasetDialog({
 	onConfirm: (ds: DataSource | null, table: string, fields: string[]) => void;
 }): JSX.Element {
 	const [dsIdx, setDsIdx] = useState(0);
-	const [table, setTable] = useState("orders");
-	const [fieldsText, setFieldsText] = useState("d, gmv, channel");
+	const [table, setTable] = useState("");
+	const [fieldsText, setFieldsText] = useState("");
 	const ds = datasources[dsIdx] ?? null;
 	return (
 		<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60" onClick={onClose}>
@@ -973,18 +1081,21 @@ function DatasetDialog({
 					<label className="flex flex-col gap-1">
 						<span className="text-[11px] text-muted">选表</span>
 						<input type="text" value={table} onChange={(e) => setTable(e.target.value)}
+							placeholder={ds?.tables?.[0] ?? "例如 orders"}
 							className="h-8 rounded-control border border-border bg-surface px-2 text-[12px] text-surface-foreground" />
 					</label>
 					<label className="flex flex-col gap-1">
 						<span className="text-[11px] text-muted">选字段（逗号分隔）</span>
 						<input type="text" value={fieldsText} onChange={(e) => setFieldsText(e.target.value)}
+							placeholder="留空则取全部字段"
 							className="h-8 rounded-control border border-border bg-surface px-2 font-mono text-[12px] text-surface-foreground" />
 					</label>
-					<span className="text-[10px] text-faint">mock：engine 未暴露 listTables，表名/字段手动填</span>
+					<span className="text-[10px] text-faint">引擎暂未暴露表清单接口，表名与字段需手动填写</span>
 				</div>
 				<div className="flex justify-end gap-2 border-t border-border bg-background px-3 py-2">
 					<button type="button" className="h-7 rounded-control border border-border bg-surface px-3 text-[12px] text-muted hover:text-surface-foreground" onClick={onClose}>取消</button>
-					<button type="button" className="h-7 rounded-control bg-accent px-3 text-[12px] font-medium text-accent-foreground"
+					<button type="button" disabled={!table.trim()}
+						className="h-7 rounded-control bg-accent px-3 text-[12px] font-medium text-accent-foreground disabled:opacity-50"
 						onClick={() => onConfirm(ds, table, fieldsText.split(",").map((s) => s.trim()).filter(Boolean))}>确认 → 进入画布</button>
 				</div>
 			</div>
@@ -993,19 +1104,11 @@ function DatasetDialog({
 }
 
 function SqlDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: (sql: string) => void }): JSX.Element {
-	const [sql, setSql] = useState("SELECT d, sum(gmv) as gmv FROM orders WHERE d >= current_date - 14 GROUP BY d ORDER BY d");
-	const [parsing, setParsing] = useState(false);
-	const [parsed, setParsed] = useState<string | null>(null);
-	function doParse() {
-		setParsing(true);
-		// mock 解析：等 400ms 返回第一列
-		setTimeout(() => {
-			const m = sql.match(/select\s+([\w,\s]+?)(?:\s+from\b|$)/i);
-			const firstCol = m?.[1]?.split(",")[0]?.trim() ?? "col_1";
-			setParsed(firstCol);
-			setParsing(false);
-		}, 400);
-	}
+	const [sql, setSql] = useState("");
+	const parsed = useMemo(() => {
+		const m = sql.match(/select\s+([\w,\s]+?)(?:\s+from\b|$)/i);
+		return m?.[1]?.split(",")[0]?.trim() ?? null;
+	}, [sql]);
 	return (
 		<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60" onClick={onClose}>
 			<div className="w-[520px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -1017,16 +1120,13 @@ function SqlDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: (sq
 					</button>
 				</div>
 				<div className="flex flex-col gap-3 p-4">
-					<textarea rows={6} value={sql} onChange={(e) => { setSql(e.target.value); setParsed(null); }}
+					<textarea rows={6} value={sql} onChange={(e) => setSql(e.target.value)}
 						className="rounded-control border border-border bg-surface px-2 py-1 font-mono text-[11px] text-surface-foreground"
 						placeholder="SELECT ... FROM ... WHERE ..." />
 					<div className="flex items-center gap-2">
-						<Btn size="xs" variant="ghost" icon="icon-[lucide--play]" onClick={doParse} disabled={parsing}>
-							{parsing ? "解析中…" : "解析"}
-						</Btn>
-						{parsed ? (
-							<span className="text-[10px] text-muted">解析成功：首列 <span className="font-mono text-surface-foreground">{parsed}</span></span>
-						) : null}
+						<span className="text-[10px] text-muted">
+							{parsed ? <>首列 <span className="font-mono text-surface-foreground">{parsed}</span></> : "无法从 SQL 中识别首列，请检查 SELECT 子句"}
+						</span>
 					</div>
 				</div>
 				<div className="flex justify-end gap-2 border-t border-border bg-background px-3 py-2">

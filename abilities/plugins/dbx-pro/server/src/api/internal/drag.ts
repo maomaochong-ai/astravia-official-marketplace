@@ -227,6 +227,8 @@ export function dragRoutes(ctx) {
 				id: p.id, name: p.name, style: p.style, theme: p.theme,
 				designType: p.designType, backgroundImage: p.backgroundImage,
 				updateCount: p.updateCount, updateTime: p.updateTime,
+				// 工作台卡片需要节点数与图表类型做缩略图，数据集视图也靠它派生。
+				template: p.template,
 				createTime: p.createTime, visits: p.visits ?? 0,
 			}));
 			return pageResp({ records: slice, total, size: pageSize, pages: Math.ceil(total / pageSize) || 1, current: pageNo });

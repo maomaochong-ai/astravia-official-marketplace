@@ -20,6 +20,8 @@ import { DB_TYPE_MANIFEST, type DbConnection, type DbType } from "../../../domai
 import { isReadyDbType, tierReasonText } from "../../../domain/driver-tiers";
 import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon";
 import { API_CATALOG_ENTRY } from "../services/connection-type-catalog";
+import { useElementWidth } from "../../../shared/hooks/use-element-width";
+import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 
 export interface ConnectionEditorFlowProps {
 	/** 连接增 / 删 / 改后通知外层重载工作台（回传受影响连接名）。 */
@@ -28,6 +30,11 @@ export interface ConnectionEditorFlowProps {
 	onClose?: () => void;
 	/** 侧边栏整页场景：列表步显示返回总览按钮（模态不显示）。 */
 	onExit?: () => void;
+	/**
+	 * 整页模式的状态位：由 ConnectionManagerView 探测引擎后传入。
+	 * 标题与引擎状态共用一行，避免再叠一层「数据库工作台」标题条。
+	 */
+	engine?: { label: string; version: string | null; tone: string };
 }
 
 type DialogStep = "list" | "select" | "config";
@@ -43,7 +50,14 @@ const RELATIONAL_TYPES = ["mysql", "postgres", "mariadb", "sqlite", "sqlserver",
 const NOSQL_TYPES = ["mongodb", "redis", "elasticsearch", "cassandra", "neo4j"];
 const ANALYTICS_TYPES = ["clickhouse", "snowflake", "bigquery", "doris", "starrocks"];
 
-export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEditorFlowProps): JSX.Element {
+export function ConnectionEditorFlow({ onChange, onClose, onExit, engine }: ConnectionEditorFlowProps): JSX.Element {
+	/** 整页（宿主侧边栏）与模态弹窗共用流程主体，只有整页才渲染工作台级标题。 */
+	const isPage = !onClose;
+	const flowRef = useRef<HTMLDivElement>(null);
+	const flowWidth = useElementWidth(flowRef);
+	// 0 = 首帧未测量，按宽屏处理，避免闪一下窄布局
+	const compact = flowWidth > 0 && flowWidth < 640;
+	const typeColumns = compact ? 1 : flowWidth > 0 && flowWidth < 900 ? 2 : 3;
 	const editor = useConnectionEditor({ onChange });
 	const [step, setStep] = useState<DialogStep>("list");
 	const [chosenDbType, setChosenDbType] = useState<DbType | null>(null);
@@ -228,68 +242,138 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 
 	return (
 		<div className="dbx-connection-flow">
-			{/* 头部 */}
-			<div className="dbx-connection-header">
-				<div className="flex items-center gap-2 min-w-0 flex-1">
-					{step === "list" && onExit && (
-						<button
-							type="button"
-							className="dbx-iconbtn"
-							onClick={onExit}
-							title="返回总览"
-						>
-							<span className="icon-[lucide--arrow-left] h-4 w-4" />
-						</button>
-					)}
-					<span className="icon-[lucide--database] h-4 w-4 shrink-0 text-muted" />
-					<h2 className="dbx-connection-title">
-						{step === "list" && "管理数据源"}
-						{step === "select" && "选择数据源类型"}
-						{step === "config" && (editor.editing?.name ? "编辑数据源" : "新建数据源")}
-					</h2>
-				</div>
-				{step === "select" && (
-					<span className="ml-auto shrink-0 font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
-						{allTypeEntries.length} 种
-					</span>
-				)}
-				{step === "config" && (
-					<span className="ml-auto shrink-0 text-[12px] whitespace-nowrap text-muted">
-						数据源信息只保存在本机，密码交给系统凭据库
-					</span>
-				)}
-				{onClose && (
-					<button
-						type="button"
-						className="dbx-iconbtn"
-						onClick={onClose}
-						title="关闭"
-					>
-						<span className="icon-[lucide--x] h-4 w-4" />
-					</button>
-				)}
-			</div>
-			{/* 步骤条：设计稿 h-11 行 */}
-			<div className="flex h-11 shrink-0 items-center gap-3 border-b border-border px-4">
-				<Stepper current={step === "list" ? 0 : step === "select" ? 1 : 2} />
-				{step === "select" && (
-					<span className="ml-auto text-[12px] tabular-nums whitespace-nowrap text-faint">
-						共 {allTypeEntries.length} 种 · {readyTypeCount} 种可直接查询
-					</span>
-				)}
-				{step === "config" && editor.editing && (
-					<div className="ml-auto flex shrink-0 items-center gap-2">
-						<div className="dbx-conn-typechip">
-							<span className="dbx-conn-typechip__badge is-brand"><DatabaseTypeIcon dbType={editor.editing.db_type} size="small" /></span>
-							{editingTypeLabel}
-						</div>
-						<button type="button" className="dbx-btn ghost" onClick={handleBackToSelect}>
-							<span className="icon-[lucide--chevron-left] size-3.5" />
-							更改
-						</button>
+			{/* 头部：整页模式只保留一行（eyebrow + 标题 + 引擎状态），模态保留原 Sheet 头 */}
+			{isPage ? (
+				<div className="shrink-0 border-b border-border bg-surface-raised px-5 pt-3 pb-2.5">
+					<div className="flex min-w-0 items-center gap-2">
+						{step === "list" && onExit ? (
+							<button type="button" className="dbx-iconbtn" onClick={onExit} title="返回总览">
+								<span className="icon-[lucide--arrow-left] h-3.5 w-3.5" />
+							</button>
+						) : null}
+						<span className="icon-[lucide--database] size-3.5 shrink-0 text-accent" />
+						<span className="truncate text-[11px] font-semibold tracking-[0.16em] text-accent uppercase">数据库工作台</span>
+						<span className="ml-auto flex min-w-0 shrink-0 items-center gap-1.5">
+							<span className={`size-1.5 shrink-0 rounded-full ${engine?.tone ?? "bg-warning"}`} />
+							<span className="truncate text-[11px] text-muted">{engine?.label ?? "正在检测引擎"}</span>
+							<span className="hidden truncate font-mono text-[11px] tabular-nums text-faint sm:inline">
+								v{PLUGIN_VERSION}{engine?.version ? ` · ${engine.version}` : ""}
+							</span>
+						</span>
 					</div>
-				)}
-			</div>
+					<div className="mt-1 flex min-w-0 items-end gap-3">
+						<div className="min-w-0 flex-1">
+							<h1 className="m-0 truncate text-xl font-bold tracking-tight text-surface-foreground">
+								{step === "list"
+									? "数据源"
+									: step === "select"
+										? "选择数据源类型"
+										: editor.editing?.name
+											? "编辑数据源"
+											: "新建数据源"}
+							</h1>
+							<p className="mt-0.5 mb-0 truncate text-[12px] leading-relaxed text-muted">
+								{step === "list"
+									? "连接一次，之后在对话里直接查询、分析与出图。凭据只保存在本机。"
+									: step === "select"
+										? `共 ${allTypeEntries.length} 种 · ${readyTypeCount} 种可直接查询`
+										: "数据源信息只保存在本机，密码交给系统凭据库"}
+							</p>
+						</div>
+						<div className="flex shrink-0 items-center gap-1.5">
+							{step === "list" ? (
+								<>
+									<button
+										type="button"
+										className="dbx-btn ghost text-[12px]"
+										title="诊断所有数据源连通性"
+										onClick={() => void handleDiagnoseAll()}
+										disabled={diagnoseRunning || editor.connections.length === 0}
+									>
+										<span className={`size-3.5 ${diagnoseRunning ? "icon-[lucide--loader] animate-spin" : "icon-[lucide--stethoscope]"}`} />
+										{diagnoseRunning ? "诊断中…" : "诊断"}
+									</button>
+									<button type="button" className="dbx-btn primary" onClick={handleCreateNew}>
+										<span className="icon-[lucide--plus] size-3.5" />
+										新建数据源
+									</button>
+								</>
+							) : (
+								<button
+									type="button"
+									className="dbx-btn ghost"
+									onClick={step === "select" ? handleBackToList : handleBackToSelect}
+								>
+									<span className="icon-[lucide--chevron-left] size-3.5" />
+									{step === "select" ? "返回" : "更改类型"}
+								</button>
+							)}
+						</div>
+					</div>
+					{step !== "list" ? (
+						<div className="mt-2 flex min-w-0 items-center gap-3 overflow-x-auto">
+							<Stepper current={step === "select" ? 1 : 2} />
+						</div>
+					) : null}
+					{diagnoseResult ? (
+						<div className="mt-2 inline-flex shrink-0 items-center gap-1 rounded-chip border border-border px-2 py-1 text-[11px]">
+							<span className="text-success">通过 {diagnoseResult.ok}</span>
+							<span className="text-muted">/</span>
+							<span className={diagnoseResult.fail > 0 ? "text-danger" : "text-muted"}>失败 {diagnoseResult.fail}</span>
+							<span className="text-muted">/</span>
+							<span className="text-muted">共 {diagnoseResult.total}</span>
+						</div>
+					) : null}
+				</div>
+			) : (
+				<>
+					<div className="dbx-connection-header">
+						<div className="flex min-w-0 flex-1 items-center gap-2">
+							<span className="icon-[lucide--database] h-4 w-4 shrink-0 text-muted" />
+							<h2 className="dbx-connection-title">
+								{step === "list" && "管理数据源"}
+								{step === "select" && "选择数据源类型"}
+								{step === "config" && (editor.editing?.name ? "编辑数据源" : "新建数据源")}
+							</h2>
+						</div>
+						{step === "select" && (
+							<span className="ml-auto shrink-0 font-mono text-[12px] tabular-nums whitespace-nowrap text-muted">
+								{allTypeEntries.length} 种
+							</span>
+						)}
+						{step === "config" && (
+							<span className="ml-auto shrink-0 text-[12px] whitespace-nowrap text-muted">
+								数据源信息只保存在本机，密码交给系统凭据库
+							</span>
+						)}
+						{onClose && (
+							<button type="button" className="dbx-iconbtn" onClick={onClose} title="关闭">
+								<span className="icon-[lucide--x] h-4 w-4" />
+							</button>
+						)}
+					</div>
+					<div className="flex h-11 shrink-0 items-center gap-3 border-b border-border px-4">
+						<Stepper current={step === "list" ? 0 : step === "select" ? 1 : 2} />
+						{step === "select" && (
+							<span className="ml-auto text-[12px] tabular-nums whitespace-nowrap text-faint">
+								共 {allTypeEntries.length} 种 · {readyTypeCount} 种可直接查询
+							</span>
+						)}
+						{step === "config" && editor.editing && (
+							<div className="ml-auto flex shrink-0 items-center gap-2">
+								<div className="dbx-conn-typechip">
+									<span className="dbx-conn-typechip__badge is-brand"><DatabaseTypeIcon dbType={editor.editing.db_type} size="small" /></span>
+									{editingTypeLabel}
+								</div>
+								<button type="button" className="dbx-btn ghost" onClick={handleBackToSelect}>
+									<span className="icon-[lucide--chevron-left] size-3.5" />
+									更改
+								</button>
+							</div>
+						)}
+					</div>
+				</>
+			)}
 
 			{/* 内容区 */}
 			<div className={`dbx-connection-body${step === "list" || step === "select" ? " is-flush" : ""}`}>
@@ -305,7 +389,8 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 						onDuplicate={(c) => handleDuplicate(c)}
 						onCreate={handleCreateNew}
 					/>
-					<div className="dbx-connection-footer">
+						showSummary={isPage}
+					<div className={isPage ? "hidden" : "dbx-connection-footer"}>
 						<button type="button" className="dbx-btn primary" onClick={handleCreateNew}>
 							<span className="icon-[lucide--plus] h-3.5 w-3.5" />
 							新建数据源
@@ -373,11 +458,30 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 									<span className="icon-[lucide--list] size-3.5" />
 								</button>
 							</div>
+						{/* 窄面板：左侧分类导航隐藏，改用横向分类切换 */}
+						{compact ? (
+							<div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border px-4 py-2">
+								{categories.map((cat) => (
+									<button
+										key={cat.key}
+										type="button"
+										onClick={() => handleCategoryClick(cat.key)}
+										className={`shrink-0 rounded-chip px-2 py-1 text-[12px] whitespace-nowrap transition ${
+											selectedCategory === cat.key
+												? "border border-border bg-neutral-muted text-surface-foreground"
+												: "text-muted hover:text-surface-foreground"
+										}`}
+									>
+										{cat.label} <span className="font-mono text-[11px] tabular-nums text-faint">{cat.types.length}</span>
+									</button>
+								))}
+							</div>
+						) : null}
 						</div>
 
 						{/* 分类导航（176px）+ 类型卡片（三列） */}
 						<div className="flex min-h-0 flex-1">
-							<nav className="dbx-conn-nav">
+							<nav className={compact ? "hidden" : "dbx-conn-nav"}>
 								<div className="dbx-conn-nav__head">分类</div>
 								{categories.map((cat) => (
 									<button
@@ -404,8 +508,13 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit }: ConnectionEd
 										ref={(el) => { categoryRefs.current[cat.key] = el; }}
 										className={
 											viewMode === "grid"
-												? "col-span-3 grid grid-cols-3 content-start gap-3"
+												? "col-span-3 grid content-start gap-3"
 												: "col-span-3 flex flex-col gap-1"
+										}
+										style={
+											viewMode === "grid"
+												? { gridTemplateColumns: `repeat(${typeColumns}, minmax(0, 1fr))` }
+												: undefined
 										}
 									>
 										<h3 className="dbx-db-type-grid__head">
