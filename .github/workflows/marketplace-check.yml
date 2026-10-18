@@ -20,16 +20,9 @@ jobs:
         with:
           node-version: 22.21.1
       - run: node scripts/marketplace.mjs check
-      - name: Build candidate against the current distribution
-        run: |
-          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
-            git worktree add --detach "$RUNNER_TEMP/marketplace-previous" origin/gh-pages
-            node scripts/marketplace.mjs build --previous "$RUNNER_TEMP/marketplace-previous"
-          else
-            node scripts/marketplace.mjs build
-          fi
-      - name: Check source and built package contracts
-        run: node --test tests/*.test.mjs
+      # 构建候选制品前必须先备好 tooling：@astravia-org/plugin-{sdk,vite} 未发布到 npm，
+      # 插件 package-lock 里指向 .tooling/open-astravia；缺失时 npm ci 会静默跳过这两个包，
+      # 于是任何需要重新构建的插件都会以「Cannot find module」失败。顺序与 publish 工作流一致。
       - name: Resolve publication tool revision
         id: tooling
         run: echo "commit=$(node -p 'require("./.astravia/publish.json").toolingCommit')" >> "$GITHUB_OUTPUT"
@@ -45,6 +38,16 @@ jobs:
           cd .tooling/open-astravia
           bun install --frozen-lockfile 2>&1 | tail -5
           bun run build 2>&1 | tail -10
+      - name: Build candidate against the current distribution
+        run: |
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git worktree add --detach "$RUNNER_TEMP/marketplace-previous" origin/gh-pages
+            node scripts/marketplace.mjs build --previous "$RUNNER_TEMP/marketplace-previous"
+          else
+            node scripts/marketplace.mjs build
+          fi
+      - name: Check source and built package contracts
+        run: node --test tests/*.test.mjs
       - name: Check stable Desktop compatibility and package digests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
