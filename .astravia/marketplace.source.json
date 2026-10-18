@@ -847,51 +847,6 @@
         "path": "abilities/plugins/rea"
       },
       "minAppVersion": "0.5.60"
-    },
-    {
-      "type": "plugin",
-      "slug": "firecrawl",
-      "name": "Firecrawl Connector",
-      "description": "Read pages through the Firecrawl API: Markdown by default, plus HTML, links, screenshots, images, video and audio URLs, summaries or schema-shaped JSON. Crawl a section, map a site, search, parse PDFs and Office files, drive a browser session or the browsing agent. Works without a key at a lower rate limit; connect one on this page to lift it.",
-      "version": "0.3.4",
-      "configVersion": 1,
-      "license": "AGPL-3.0",
-      "author": "Astravia Community",
-      "category": "Development",
-      "categoryI18n": {
-        "zh": "开发",
-        "en": "Development"
-      },
-      "tags": [
-        "web",
-        "crawler",
-        "scraper",
-        "markdown",
-        "media",
-        "browser",
-        "robots"
-      ],
-      "detail": {
-        "i18n": {
-          "zh": {
-            "name": "Firecrawl 连接器",
-            "description": "通过 Firecrawl API 读取网页：默认 Markdown，也可同时要 HTML、链接、截图、图片、视频与音频地址、摘要或按 schema 的 JSON。还能爬取某个栏目、列出整站链接、搜索、解析 PDF 与 Office 文件、操作浏览器会话或让检索智能体跨页作答。不配密钥也能用，只是速率更低；在本页连接密钥即可解除限制。",
-            "tags": [
-              "网页",
-              "爬虫",
-              "抓取",
-              "Markdown",
-              "媒体",
-              "浏览器",
-              "robots"
-            ]
-          }
-        }
-      },
-      "source": {
-        "path": "abilities/plugins/firecrawl"
-      },
-      "minAppVersion": "0.5.60"
     }
   ],
   "version": "0.4.78"
