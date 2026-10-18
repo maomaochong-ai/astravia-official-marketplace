@@ -149,7 +149,7 @@ function MetricTile({ metric, className }: { metric: (typeof METRICS)[number]; c
 					<Sparkline values={metric.spark} stroke={metric.up ? seriesColor(0) : seriesColor(3)} className="ml-auto h-4 w-8 shrink-0" />
 				</span>
 				<span className="flex items-center gap-1.5 text-[10px] whitespace-nowrap">
-					<Chip tone={metric.up ? "primary" : "danger"} mono>{metric.delta}</Chip>
+					<Chip tone={metric.up ? "success" : "danger"} mono>{metric.delta}</Chip>
 					<span className="text-faint">环比上周期</span>
 				</span>
 			</div>

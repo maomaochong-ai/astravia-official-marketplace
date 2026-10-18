@@ -410,11 +410,11 @@ export function BiWorkspace(): JSX.Element {
 		return rows;
 	}, [boardPages.length, bigscreenPages.length, datasetCount, datasources, worktree, activeNav, treeOpen]);
 
-	// ── 三个入口：创建 page → 设置 preset → 跳转编辑器 ──
-	async function handleCreateWithPreset(style: "bigScreen" | "default", preset: { nodes: Record<string, NodePos>; links: Link[] }) {
+	// ── 三个入口：创建看板 page → 设置 preset → 跳转编辑器（不再创建大屏） ──
+	async function handleCreateWithPreset(preset: { nodes: Record<string, NodePos>; links: Link[] }) {
 		setCreating(true);
 		try {
-			const id = await create(`新${style === "bigScreen" ? "大屏" : "看板"} ${pages.length + 1}`, { style });
+			const id = await create(`新看板 ${pages.length + 1}`, { style: "default" });
 			setEditorPreset(preset);
 			setEditorPageId(id);
 			notify("已创建，编辑器已预置节点", "success");
@@ -425,12 +425,11 @@ export function BiWorkspace(): JSX.Element {
 		}
 	}
 
-	async function handleCreate(style: "bigScreen" | "default") {
+	async function handleCreate() {
 		setCreating(true);
 		try {
-			const name = style === "bigScreen" ? `新大屏 ${pages.length + 1}` : `新看板 ${pages.length + 1}`;
-			const id = await create(name, { style });
-			notify(`${style === "bigScreen" ? "大屏" : "看板"} 创建成功`, "success");
+			const id = await create(`新看板 ${pages.length + 1}`, { style: "default" });
+			notify("看板创建成功", "success");
 			setEditorPreset(undefined);
 			setEditorPageId(id);
 		} catch (err) {
@@ -494,7 +493,7 @@ export function BiWorkspace(): JSX.Element {
 			(activeNav === "bigscreen" && derivedPages.filter((p) => p.style === "bigScreen").length === 0 && !loading)) {
 			return (
 				<div className="flex h-[200px] shrink-0 items-center justify-center rounded-card border border-border bg-surface-raised text-muted">
-					{loading ? "加载中…" : "还没有页面，点右上角「新建」开始"}
+					{loading ? "加载中…" : activeNav === "bigscreen" ? "还没有大屏" : "还没有看板，点右上角「新建看板」开始"}
 				</div>
 			);
 		}
@@ -572,7 +571,7 @@ export function BiWorkspace(): JSX.Element {
 					<div key={p.id} className="flex h-10 items-center gap-3 rounded-[4px] px-2 hover:bg-surface">
 						<Icon name={p.style === "bigScreen" ? "icon-[lucide--monitor]" : "icon-[lucide--layout-dashboard]"} className="size-3.5 shrink-0 text-muted" />
 						<span className="min-w-0 flex-1 truncate text-[12px] text-surface-foreground">{p.name}</span>
-						{p.dirty ? <Chip tone="warning">未发布</Chip> : <Chip tone="primary">已发布</Chip>}
+						{p.dirty ? <Chip tone="warning">未发布</Chip> : <Chip tone="success">已发布</Chip>}
 						{p.dirty ? (
 							<Btn size="xs" variant="primary" icon="icon-[lucide--upload]"
 								onClick={() => { void publish([p.id]); notify("已发布", "success"); }}>发布</Btn>
@@ -692,15 +691,15 @@ export function BiWorkspace(): JSX.Element {
 										</span>
 									) : null}
 
-									{/* depth0 看板/大屏行追加「+新建」按钮 */}
-									{n.depth === 0 && (n.key === "board" || n.key === "bigscreen") && (
+									{/* depth0 看板行追加「+新建」按钮；大屏不再提供新建入口 */}
+									{n.depth === 0 && n.key === "board" && (
 										<button
 											type="button"
 											className="grid size-5 shrink-0 place-items-center rounded-[3px] text-faint hover:bg-accent-soft hover:text-accent transition-colors"
-											title={n.key === "board" ? "新建看板" : "新建大屏"}
+											title="新建看板"
 											onClick={(e) => {
 												e.stopPropagation();
-												void handleCreate(n.key === "bigscreen" ? "bigScreen" : "default");
+												void handleCreate();
 											}}
 										>
 											<Icon name="icon-[lucide--plus]" className="size-3" />
@@ -786,13 +785,7 @@ export function BiWorkspace(): JSX.Element {
 									</div>
 									<Btn size="sm" variant="default" icon="icon-[lucide--refresh-cw]" onClick={() => void refresh()}>刷新</Btn>
 									{activeNav === "board" && (
-										<>
-											<Btn size="sm" variant="primary" icon="icon-[lucide--plus]" disabled={creating} onClick={() => void handleCreate("default")}>新建看板</Btn>
-											<Btn size="sm" variant="ai" icon="icon-[lucide--monitor]" disabled={creating} onClick={() => void handleCreate("bigScreen")}>新建大屏</Btn>
-										</>
-									)}
-									{activeNav === "bigscreen" && (
-										<Btn size="sm" variant="ai" icon="icon-[lucide--monitor]" disabled={creating} onClick={() => void handleCreate("bigScreen")}>新建大屏</Btn>
+										<Btn size="sm" variant="primary" icon="icon-[lucide--plus]" disabled={creating} onClick={() => void handleCreate()}>新建看板</Btn>
 									)}
 								</div>
 							</>
@@ -914,7 +907,7 @@ export function BiWorkspace(): JSX.Element {
 					preset.nodes.n100.values = {
 						title: table, tableName: table, connectionId: ds?.name ?? "", fields: fields.join(","),
 					};
-					void handleCreateWithPreset("default", preset);
+					void handleCreateWithPreset(preset);
 				}} />}
 
 			{/* ── 问数面板：对齐 Quick BI 智能问数（选数据集 → 提问 → 真取数 → 落画布） ── */}
@@ -928,7 +921,7 @@ export function BiWorkspace(): JSX.Element {
 							onClose={() => setDlgAi(false)}
 							onInsert={(draft) => {
 								setDlgAi(false);
-								void handleCreateWithPreset("default", presetAsk(draft));
+								void handleCreateWithPreset(presetAsk(draft));
 							}}
 						/>
 					</div>
@@ -939,7 +932,7 @@ export function BiWorkspace(): JSX.Element {
 			{dlgSql && <SqlDialog onClose={() => setDlgSql(false)}
 				onConfirm={(sql) => {
 					setDlgSql(false);
-					void handleCreateWithPreset("default", presetSql(sql));
+					void handleCreateWithPreset(presetSql(sql));
 				}} />}
 		</div>
 	);

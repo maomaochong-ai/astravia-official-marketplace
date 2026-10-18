@@ -29,6 +29,17 @@ export interface WorkbenchTopBarProps {
 	onToggleDownloads: () => void;
 	/** 打开驱动管理 dialog */
 	onOpenDriverManager: () => void;
+	/**
+	 * compact（容器装不下三栏）时才提供：开合左栏抽屉。
+	 * 三栏模式下左栏常驻，不需要这个开关。
+	 */
+	onToggleConnections?: () => void;
+	connectionsOpen?: boolean;
+	/**
+	 * 容器偏窄：按钮只留图标（保留 title 作为悬浮说明），
+	 * 否则顶栏在宿主 260px 宽时会把按钮文案折成竖排。
+	 */
+	compact?: boolean;
 }
 
 export function WorkbenchTopBar({
@@ -45,6 +56,9 @@ export function WorkbenchTopBar({
 	downloadsOpen,
 	onToggleDownloads,
 	onOpenDriverManager,
+	onToggleConnections,
+	connectionsOpen = false,
+	compact = false,
 }: WorkbenchTopBarProps): JSX.Element {
 	const { history, state } = useWorkbench();
 	// 引擎健康：unknown=未查询 / ready=绿 / starting=黄 / error=红
@@ -99,21 +113,41 @@ export function WorkbenchTopBar({
 	const engine = ENGINE_STATUS[engineState];
 
 	return (
-		<header className="flex h-9 shrink-0 items-center gap-1 overflow-hidden border-b border-border bg-surface-raised px-2">
+		<header
+			className={
+				"shrink-0 border-b border-border bg-surface-raised " +
+				// compact 下顶栏拆成两行：一行放新建类动作，一行放导航类动作。
+				// 单行在 260px 的宿主面板里连图标按钮都排不下，会被 overflow 裁掉尾巴。
+				(compact ? "flex flex-col" : "flex h-9 items-center gap-1 overflow-hidden px-2")
+			}
+		>
 			{/* 左：新建连接 / 新建查询 / AI 协助 + 引擎状态
 			    —— 包进 flex-1 min-w-0 容器，引擎状态可截断，按钮不缩 */}
-			<div className="flex min-w-0 flex-1 items-center gap-1">
+			<div className={compact ? "flex h-9 items-center gap-1 overflow-hidden px-2" : "flex min-w-0 flex-1 items-center gap-1"}>
+				{/* compact 下左栏变成抽屉，需要顶栏给一个开关；三栏模式下左栏常驻不显示 */}
+				{onToggleConnections && (
+					<button
+						type="button"
+						onClick={onToggleConnections}
+						title="数据源（打开连接树）"
+						aria-label="数据源"
+						aria-expanded={connectionsOpen}
+						className={"dbx-iconbtn shrink-0" + (connectionsOpen ? " is-active" : "")}
+					>
+						<span className="icon-[lucide--panel-left] h-3.5 w-3.5" />
+					</button>
+				)}
 				<button type="button" onClick={onOpenConnectionEditor} className="dbx-btn shrink-0 whitespace-nowrap" title="新建数据源">
 					<span className="icon-[lucide--plus] h-3.5 w-3.5" />
-					新建数据源
+					{!compact && "新建数据源"}
 				</button>
 				<button type="button" onClick={onNewQuery} className="dbx-btn ghost shrink-0 whitespace-nowrap" title="新建查询">
 					<span className="icon-[lucide--square-pen] h-3.5 w-3.5" />
-					新建查询
+					{!compact && "新建查询"}
 				</button>
 				<button type="button" onClick={onOpenAiAssistant} className="dbx-btn ai shrink-0 whitespace-nowrap" title="让 AI 协助连接数据库">
 					<span className="icon-[lucide--sparkles] h-3.5 w-3.5" />
-					AI 协助
+					{!compact && "AI 协助"}
 				</button>
 
 				<span className="mx-2 h-4 w-px shrink-0 bg-border" />
@@ -130,7 +164,11 @@ export function WorkbenchTopBar({
 
 			{/* 右：后台任务 / 查询历史 / BI / 设置 / 全屏。
 			 * 设计稿的「工作台」导航项在本插件里没有对应目标（工作台就是本界面），故不再放一个空按钮。 */}
-			<div className="flex shrink-0 items-center gap-0.5">
+			<div
+				className={
+					compact ? "flex h-9 items-center justify-end gap-1 overflow-hidden border-t border-border px-2" : "flex shrink-0 items-center gap-0.5"
+				}
+			>
 				<ExportTasksTrigger open={downloadsOpen} onToggle={onToggleDownloads} />
 				<span className="mx-1.5 h-4 w-px shrink-0 bg-border" />
 				<button
@@ -141,7 +179,7 @@ export function WorkbenchTopBar({
 					className={"dbx-nav-item shrink-0 whitespace-nowrap" + (historyOpen ? " is-active" : "")}
 				>
 					<span className="icon-[lucide--history] h-3.5 w-3.5" />
-					查询历史
+					{!compact && "查询历史"}
 					{history.length > 0 && <span className="dbx-count-badge">{history.length}</span>}
 				</button>
 				<button
@@ -151,7 +189,7 @@ export function WorkbenchTopBar({
 					className="dbx-nav-item shrink-0 whitespace-nowrap"
 				>
 					<span className="icon-[lucide--layout-dashboard] h-3.5 w-3.5" />
-					BI
+					{!compact && "BI"}
 					{visualizationCount > 0 && <span className="dbx-count-badge">{visualizationCount}</span>}
 				</button>
 				<button
@@ -161,7 +199,7 @@ export function WorkbenchTopBar({
 					className="dbx-nav-item shrink-0 whitespace-nowrap"
 				>
 					<span className="icon-[lucide--settings-2] h-3.5 w-3.5" />
-					设置
+					{!compact && "设置"}
 				</button>
 				<button
 					type="button"
@@ -170,7 +208,7 @@ export function WorkbenchTopBar({
 					className="dbx-nav-item shrink-0 whitespace-nowrap"
 				>
 					<span className="icon-[lucide--hard-drive-download] h-3.5 w-3.5" />
-					驱动
+					{!compact && "驱动"}
 				</button>
 				<button
 					type="button"

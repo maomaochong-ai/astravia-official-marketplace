@@ -1,47 +1,14 @@
 /* ============================================================
- * SQL 编辑器：CodeMirror 外壳的明 / 暗配色
+ * SQL 编辑器：CodeMirror 外壳的微调
  *
- * token 语法高亮色在 sql-editor.tsx 中以明 / 暗两套 HighlightStyle
- * 直接给具体色值（CodeMirror 注入的样式表中 var() 在部分宿主挂载
- * 方式下取不到变量）；这里只管背景 / 行号 / 选区 / 补全弹层等外壳。
- *
- * data-dbx-theme 由 sql-editor.tsx 写在编辑器容器上（取值来自
- * shared/theme/plugin-theme.ts），所以这里可以直接按属性分支。
- * 颜色取设计稿 ground / surface 与推导的浅色板，与 style.css 一致。
+ * 外壳色（文字 / 光标 / 行号 / 选区 / 补全弹层 / 选中项）统一定义在
+ * src/style.css 的 .dbx-root 里，全部由宿主令牌派生，跟随宿主主题自动切换，
+ * 因此这个文件不再保存任何明 / 暗两套色值。
+ * token 语法高亮色在 sql-editor.tsx 中以两套 HighlightStyle 给具体色值
+ * （style-mod 注入的高亮样式里 var() 在部分宿主挂载方式下取不到变量）。
  * ============================================================ */
 
-/* ── 深色（照设计稿）────────────────────────────────────── */
-.dbx-sql-theme[data-dbx-theme="dark"] {
-	--dbx-cm-text: #e6edf3;
-	--dbx-cm-caret: #e6edf3;
-	--dbx-cm-gutter: #6e7681;
-	--dbx-cm-gutter-border: var(--dbx-border);
-	--dbx-cm-active-line: rgb(56 139 253 / 0.08);
-	--dbx-cm-selection: rgb(56 139 253 / 0.28);
-	--dbx-cm-tooltip-bg: #161b22;
-	--dbx-cm-tooltip-border: var(--dbx-border);
-	--dbx-cm-tooltip-selected: rgb(56 139 253 / 0.28);
-}
-
-/* ── 浅色（推导色板）────────────────────────────────────── */
-.dbx-sql-theme[data-dbx-theme="light"] {
-	--dbx-cm-text: #1f2328;
-	--dbx-cm-caret: #1f2328;
-	--dbx-cm-gutter: #8c959f;
-	--dbx-cm-gutter-border: var(--dbx-border);
-	--dbx-cm-active-line: rgb(9 105 218 / 0.06);
-	--dbx-cm-selection: rgb(9 105 218 / 0.16);
-	--dbx-cm-tooltip-bg: #ffffff;
-	--dbx-cm-tooltip-border: var(--dbx-border);
-	--dbx-cm-tooltip-selected: rgb(9 105 218 / 0.14);
-}
-
-/* 执行按钮：取设计稿主色（.dbx-cta 本身已是 primary 变体），这里只补投影 */
+/* 执行按钮：.dbx-cta 本身已是 primary 变体，这里只补投影 */
 .dbx-sql-theme .dbx-cta {
-	box-shadow: 0 1px 2px rgb(1 4 9 / 0.24);
-}
-
-/* 补全选中项在浅色下加深文字对比 */
-.dbx-sql-theme[data-dbx-theme="light"] .cm-tooltip-autocomplete ul li[aria-selected] {
-	color: #1f2328;
+	box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
 }

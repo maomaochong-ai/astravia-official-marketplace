@@ -36,7 +36,27 @@ interface DragState {
 	otherW: number;
 }
 
-export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight: _onToggleRight }: { children: [JSX.Element, JSX.Element, JSX.Element]; onDragStart?: (side: "left" | "right") => void; leftCollapsed?: boolean; rightCollapsed?: boolean; onToggleLeft?: () => void; onToggleRight?: () => void }): JSX.Element {
+export interface SplitLayoutProps {
+	children: [JSX.Element, JSX.Element, JSX.Element];
+	onDragStart?: (side: "left" | "right") => void;
+	leftCollapsed?: boolean;
+	rightCollapsed?: boolean;
+	onToggleLeft?: () => void;
+	onToggleRight?: () => void;
+	/**
+	 * 容器装不下三栏（< THREE_PANE_MIN）时改为单栏 + 抽屉。
+	 * 判据由调用方按容器实测宽度给出，拖动分隔线的状态在本模式下不使用。
+	 */
+	compact?: boolean;
+	/** compact 下左栏抽屉是否展开（连接树） */
+	leftOverlayOpen?: boolean;
+	onCloseLeftOverlay?: () => void;
+	/** compact 下右栏抽屉是否展开（查询历史 / AI） */
+	rightOverlayOpen?: boolean;
+	onCloseRightOverlay?: () => void;
+}
+
+export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollapsed, onToggleLeft, onToggleRight: _onToggleRight, compact = false, leftOverlayOpen = false, onCloseLeftOverlay, rightOverlayOpen = false, onCloseRightOverlay }: SplitLayoutProps): JSX.Element {
 	// 三栏宽度（px）。0 表示首次按容器尺寸用默认比例初始化。
 	const [leftW, setLeftW] = useState(0);
 	const [rightW, setRightW] = useState(0);
@@ -159,6 +179,40 @@ export function SplitLayout({ children, onDragStart, leftCollapsed, rightCollaps
 	);
 	const effectiveLeft = leftCollapsed ? LEFT_COLLAPSED : fitted.left;
 	const effectiveRight = fitted.right;
+	// ── compact：装不下三栏就只保留中栏，左右改抽屉 ──
+	// 抽屉用 absolute 盖在中栏上，不参与宽度分配，因而不可能再挤到中栏；
+	// 中栏宽度永远是容器宽，文字不会被压成竖排。
+	if (compact) {
+		return (
+			<div ref={containerRef} className="relative flex min-h-0 flex-1 overflow-hidden bg-surface">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children[1]}</div>
+
+				{leftOverlayOpen && (
+					<>
+						<div className="absolute inset-0 z-20 bg-scrim" onClick={onCloseLeftOverlay} />
+						<div
+							className="absolute inset-y-0 left-0 z-30 flex flex-col border-r border-border bg-surface-raised shadow-xl"
+							style={{ width: "min(280px, 85%)" }}
+						>
+							{children[0]}
+						</div>
+					</>
+				)}
+
+				{rightOverlayOpen && (
+					<>
+						<div className="absolute inset-0 z-20 bg-scrim" onClick={onCloseRightOverlay} />
+						<div
+							className="absolute inset-y-0 right-0 z-30 flex flex-col border-l border-border bg-surface-raised shadow-xl"
+							style={{ width: "min(340px, 92%)" }}
+						>
+							{children[2]}
+						</div>
+					</>
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div ref={containerRef} className="relative flex min-h-0 flex-1 overflow-hidden bg-surface">

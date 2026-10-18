@@ -46,8 +46,8 @@ import { resolveExecutableSql } from "../services/executable-sql";
 const MONO_FONT = "'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace";
 
 /**
- * 编辑器外观：颜色全部走 --dbx-cm-* 变量，明 / 暗两套取值在 sql-editor.css
- * 按插件根 data-dbx-theme 切换，宿主强制主题时不会出现浅底浅字。
+ * 编辑器外观：颜色全部走 --dbx-cm-* 变量，取值在 src/style.css 里由宿主令牌派生
+ * （跟随宿主的明 / 暗与主题换色），宿主强制主题时不会出现浅底浅字。
  */
 const editorTheme = EditorView.theme({
 	"&": { backgroundColor: "transparent", color: "var(--dbx-cm-text)", height: "100%" },

@@ -26,6 +26,21 @@ export const MIN_RIGHT = 300;
 export const MAX_RIGHT_RATIO = 0.5;
 export const MIN_MID = 344;
 
+/**
+ * 三栏并排所需的最小宽度：左 180 + 中 344 + 右 300 + 两条发丝线。
+ *
+ * 低于它就没有“把三栏都摆下”的解（宿主的活动面板最窄只有 260px），继续按比例压缩
+ * 只会得到 0～80px 的栏位，栏内 nowrap 文案逐字换行。因此这个阈值是布局策略的分界：
+ * 低于它切到 compact 单栏 + 抽屉。
+ */
+export const THREE_PANE_MIN = MIN_LEFT + MIN_MID + MIN_RIGHT + SPLITBAR_TOTAL;
+
+/** 容器能否同时摆下三栏（stub = 左栏收起后的图标列占宽）。 */
+export function canFitThreePane(total: number, stub = 0): boolean {
+	if (total <= 0) return false;
+	return total - stub - SPLITBAR_TOTAL - MIN_MID >= MIN_LEFT + MIN_RIGHT;
+}
+
 /** 首次挂载（或容器宽度未知时）的默认栏宽。 */
 export function defaultWidths(total: number): { left: number; right: number } {
 	if (total > 0 && total < NARROW_BREAKPOINT) {
@@ -39,7 +54,9 @@ export function defaultWidths(total: number): { left: number; right: number } {
  *
  * 拖拽只夹住了被拖的一侧，另一侧仍是会话里存下的旧宽度，两者相加就可能撑破容器
  * （三栏之和大于容器宽，根节点的 overflow-hidden 会把右栏整块切掉）。这里统一收口：
- * 先按各自可让出的余量等比例退让；容器连两条最小宽度都装不下时整体等比压缩，中栏优先。
+ * 先按各自可让出的余量等比例退让；退到两条最小宽度还装不下时不再等比压缩——
+ * 那会把两栏压成 0～80px、nowrap 文案逐字换行；这时直接返回下限，
+ * 由调用方（SplitLayout 的 compact 分支）切成单栏 + 抽屉。
  */
 export function fitWidths(
 	total: number,
@@ -57,6 +74,5 @@ export function fitWidths(
 		const cut = Math.round((over * leftRoom) / room);
 		return { left: left - cut, right: right - (over - cut) };
 	}
-	const scale = Math.max(0, available) / (left + right);
-	return { left: Math.round(left * scale), right: Math.round(right * scale) };
+	return { left: MIN_LEFT, right: MIN_RIGHT };
 }
