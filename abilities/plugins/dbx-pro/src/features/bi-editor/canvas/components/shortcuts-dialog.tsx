@@ -33,6 +33,7 @@ const GROUPS: ShortcutGroup[] = [
 			{ keys: ["空白拖拽"], label: "框选多个节点" },
 			{ keys: ["滚轮"], label: "平移画布" },
 			{ keys: ["⌘", "滚轮"], label: "以指针为中心缩放（25%–250%）" },
+			{ keys: ["双击空白"], label: "在落点添加节点" },
 		],
 	},
 	{

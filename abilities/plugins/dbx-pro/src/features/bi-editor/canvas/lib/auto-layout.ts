@@ -138,3 +138,93 @@ export function applyArrangement<T extends { x: number; y: number }>(
 	}
 	return next;
 }
+
+// ── 对齐 / 等距分布 ──
+// 与 Superset、Metabase 的 dashboard 编辑态一致：多选后能按包围盒对齐、按首尾等距铺开。
+// 与「自动排列」不同，这两个动作不改变节点顺序，只把坐标对齐到参考线。
+
+export type AlignMode = "left" | "hcenter" | "right" | "top" | "vcenter" | "bottom";
+
+/** 对齐方向的参考轴：横向看 x，纵向看 y。 */
+export type DistributeAxis = "horizontal" | "vertical";
+
+export interface AlignOption {
+	mode: AlignMode;
+	label: string;
+	icon: string;
+}
+
+export interface DistributeOption {
+	axis: DistributeAxis;
+	label: string;
+	icon: string;
+}
+
+export const ALIGN_MODES: AlignOption[] = [
+	{ mode: "left", label: "左对齐", icon: "icon-[lucide--align-start-vertical]" },
+	{ mode: "hcenter", label: "水平居中", icon: "icon-[lucide--align-center-vertical]" },
+	{ mode: "right", label: "右对齐", icon: "icon-[lucide--align-end-vertical]" },
+	{ mode: "top", label: "顶部对齐", icon: "icon-[lucide--align-start-horizontal]" },
+	{ mode: "vcenter", label: "垂直居中", icon: "icon-[lucide--align-center-horizontal]" },
+	{ mode: "bottom", label: "底部对齐", icon: "icon-[lucide--align-end-horizontal]" },
+];
+
+export const DISTRIBUTE_AXES: DistributeOption[] = [
+	{ axis: "horizontal", label: "水平等距", icon: "icon-[lucide--align-horizontal-space-around]" },
+	{ axis: "vertical", label: "垂直等距", icon: "icon-[lucide--align-vertical-space-around]" },
+];
+
+/**
+ * 按选择集包围盒对齐。少于 2 个节点没有参考对象，直接返回空数组。
+ * 只改动坐标轴上的那一维，另一维保持原位 —— 这样连续对齐不会打乱用户已有的排布。
+ */
+export function computeAlign(boxes: ArrangeBox[], mode: AlignMode): ArrangeUpdate[] {
+	if (boxes.length < 2) return [];
+	const left = Math.min(...boxes.map((b) => b.x));
+	const right = Math.max(...boxes.map((b) => b.x + b.w));
+	const top = Math.min(...boxes.map((b) => b.y));
+	const bottom = Math.max(...boxes.map((b) => b.y + b.h));
+
+	return boxes.map((box) => {
+		let { x, y } = box;
+		switch (mode) {
+			case "left": x = left; break;
+			case "right": x = right - box.w; break;
+			case "hcenter": x = (left + right) / 2 - box.w / 2; break;
+			case "top": y = top; break;
+			case "bottom": y = bottom - box.h; break;
+			case "vcenter": y = (top + bottom) / 2 - box.h / 2; break;
+		}
+		return { nodeId: box.id, x: Math.round(x), y: Math.round(y) };
+	});
+}
+
+/**
+ * 等距分布：首尾节点位置不动，中间节点按相等间隙铺开。
+ * 需要至少 3 个节点才有「中间」可调；间隙为负说明节点本身比可用空间大，保持重叠但不重叠到首尾之外。
+ */
+export function computeDistribute(boxes: ArrangeBox[], axis: DistributeAxis): ArrangeUpdate[] {
+	if (boxes.length < 3) return [];
+	const horizontal = axis === "horizontal";
+	const sorted = [...boxes].sort((a, b) => (horizontal ? a.x - b.x : a.y - b.y));
+	const first = sorted[0];
+	const last = sorted[sorted.length - 1];
+
+	const span = horizontal
+		? last.x + last.w - first.x
+		: last.y + last.h - first.y;
+	const sumSize = sorted.reduce((acc, b) => acc + (horizontal ? b.w : b.h), 0);
+	const gap = (span - sumSize) / (sorted.length - 1);
+
+	const updates: ArrangeUpdate[] = [];
+	let cursor = horizontal ? first.x : first.y;
+	for (const box of sorted) {
+		updates.push({
+			nodeId: box.id,
+			x: Math.round(horizontal ? cursor : box.x),
+			y: Math.round(horizontal ? box.y : cursor),
+		});
+		cursor += (horizontal ? box.w : box.h) + gap;
+	}
+	return updates;
+}

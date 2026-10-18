@@ -14,9 +14,19 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent as RPointerEvent, type DragEvent, type Dispatch, type SetStateAction } from "react";
-import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, rowDy, TONE, type SocketHandlers } from "./node-card";
+import { NodeCard, NodeRow, NodeValue, NodeSelect, NodeSeg, HEAD_H, rowDy, TONE, type SocketHandlers } from "./node-card";
 import { BarChart, Boxplot, ChartFrame, Donut, EmptyChart, Funnel, LineChart, RadarChart, ScatterChart, SERIES } from "../../shared/components/charts";
-import { applyArrangement, computeArrangement, DEFAULT_ARRANGE_GAP, type ArrangeBox, type ArrangeLayout } from "../lib/auto-layout";
+import {
+	applyArrangement,
+	computeAlign,
+	computeArrangement,
+	computeDistribute,
+	DEFAULT_ARRANGE_GAP,
+	type AlignMode,
+	type ArrangeBox,
+	type ArrangeLayout,
+	type DistributeAxis,
+} from "../lib/auto-layout";
 import type { GridStep } from "./canvas-strip";
 import { Chip } from "../../shared/components/ui/chip";
 import { Icon } from "../../shared/components/ui/icon";
@@ -37,6 +47,12 @@ export interface NodePos {
 	kind?: string;
 	/** PropertyInspector 字段值（key 对应 NODE_SCHEMA.fields[i].key） */
 	values?: Record<string, unknown>;
+	/** 折叠：只留标题条（几何高度同步收到 HEAD_H，连线端点按标题栏中线算）。 */
+	collapsed?: boolean;
+	/** 折叠前的原高度，展开时恢复。 */
+	expandedH?: number;
+	/** 锁定：禁止拖拽 / 缩放 / 删除，避免误碰关键节点。 */
+	locked?: boolean;
 	/** 是否为分组节点 */
 	isGroup?: boolean;
 	/** 分组节点标签 */
@@ -63,6 +79,13 @@ export interface GroupNode {
 	icon: string;
 	collapsed?: boolean;
 }
+
+/**
+ * 连线 SVG 用超大尺寸避免 viewBox 裁剪：元素左上角被移到 -SVG_ORIGIN，
+ * 但内部 path 仍用画布坐标，所以必须包一层 translate(SVG_ORIGIN, SVG_ORIGIN) 抵消，
+ * 否则整条线会画到视口外 20000px 处（看不见，也点不到）。
+ */
+const SVG_ORIGIN = 20000;
 
 function linkPath(l: Link, nodes: Record<NodeId, NodePos>): string {
 	const a = nodes[l.from];
@@ -266,6 +289,10 @@ export interface NodeGraphApi {
 	zoomTo: (scale: number) => void;
 	/** 自动排列；`selection` 只排选中节点。 */
 	arrange: (layout: ArrangeLayout, scope?: "all" | "selection") => void;
+	/** 把选中节点按包围盒对齐（少于 2 个选中时无效果）。 */
+	alignSelection: (mode: AlignMode) => void;
+	/** 选中节点等距分布（少于 3 个时无效果）。 */
+	distributeSelection: (axis: DistributeAxis) => void;
 	/** 复制选中节点到剪贴板（不产生新节点）。 */
 	copySelection: () => void;
 	/** 粘贴剪贴板内容（偏移 24px、重新分配 id）。 */
@@ -558,7 +585,8 @@ export function NodeGraph({
 		const canvasPt = screenToCanvas(e.clientX, e.clientY);
 		const node = nodes[id];
 		if (!node) return;
-		// 只记录 pending click，不立刻 setNodes
+		// 锁定节点也要走完 pendingClick：单击仍可选中（方便看属性 / 右键解锁），
+		// 真正拦住拖拽的是 onMove 里的 locked 判定。
 		// Alt + 拖拽 = 拖出一份副本（原件留在原位），ComfyUI 的习惯做法
 		let dragId = id;
 		let alreadySelected = node.selected ?? false;
@@ -582,6 +610,7 @@ export function NodeGraph({
 	function startResize(id: NodeId, corner: "tl" | "tr" | "bl" | "br", e: RPointerEvent<Element>) {
 		e.stopPropagation();
 		const node = nodes[id];
+		if (!node || node.locked) return;
 		const canvasPt = screenToCanvas(e.clientX, e.clientY);
 		resizingRef.current = {
 			id,
@@ -611,7 +640,8 @@ export function NodeGraph({
 		if (!n) return { x: 0, y: 0 };
 		return {
 			x: n.x + (side === "r" ? n.w : 0),
-			y: n.y + rowDy(row),
+			// 折叠节点没有 body，插槽全部落到标题栏中线
+			y: n.y + (n.collapsed ? HEAD_H / 2 : rowDy(row)),
 		};
 	}
 
@@ -690,6 +720,16 @@ export function NodeGraph({
 		return true;
 	}
 
+	/** 命中某张节点卡片本体（不要求压在插槽上）。 */
+	function hitNodeCard(clientX: number, clientY: number): NodeId | null {
+		const el = document.elementFromPoint(clientX, clientY);
+		if (!(el instanceof HTMLElement)) return null;
+		const card = el.closest("[data-node-id]");
+		if (!(card instanceof HTMLElement)) return null;
+		const id = card.dataset.nodeId as NodeId | undefined;
+		return id && nodesRef.current[id] ? id : null;
+	}
+
 	/** 画布 pointerdown：拦截 output socket → 启动待定连线（菜单等拖拽确认后再弹）；空白区点击 → 取消选中。 */
 	function onCanvasPointerDown(e: RPointerEvent<HTMLDivElement>) {
 		const hit = hitSocket(e.clientX, e.clientY);
@@ -751,6 +791,8 @@ export function NodeGraph({
 		const canvasPt = screenToCanvas(cx, cy);
 		const pc = pendingClickRef.current;
 		if (pc && !dragRef.current) {
+			// 锁定节点不进入拖拽：pendingClick 留给 onUp 做单击选中
+			if (nodesRef.current[pc.id]?.locked) return;
 			const dx = canvasPt.x - pc.startCx;
 			const dy = canvasPt.y - pc.startCy;
 			if (dx * dx + dy * dy >= CLICK_DRIFT * CLICK_DRIFT) {
@@ -988,12 +1030,19 @@ export function NodeGraph({
 			if (pl) {
 				const hit = hitSocket(e.clientX, e.clientY);
 				const wantSide = pl.dir === "out" ? "input" : "output";
-				if (hit?.type === wantSide && hit.nodeId !== pl.from) {
+				// 宽容落点：没精确压在插槽上、但落在目标节点卡片上，也算连到该节点首行插槽。
+				// 插槽只有 12px，真实拖拽很难每次都对准；只认精确命中会让用户觉得「怎么也连不上」。
+				let target = hit?.type === wantSide ? hit : null;
+				if (!target) {
+					const cardId = hitNodeCard(e.clientX, e.clientY);
+					if (cardId && cardId !== pl.from) target = { type: wantSide, nodeId: cardId, row: 0 };
+				}
+				if (target && target.nodeId !== pl.from) {
 					const src = pl.dir === "out"
 						? { node: pl.from, row: pl.fromRow }
-						: { node: hit.nodeId, row: hit.row };
+						: { node: target.nodeId, row: target.row };
 					const dst = pl.dir === "out"
-						? { node: hit.nodeId, row: hit.row }
+						? { node: target.nodeId, row: target.row }
 						: { node: pl.from, row: pl.fromRow };
 					setLinks((prev) => {
 						const srcNode = nodesRef.current[src.node];
@@ -1002,7 +1051,7 @@ export function NodeGraph({
 					});
 				}
 				// 只有「从输出插槽向右拉」在空白处松手才视为「起一条新链」；反向拉线落空就丢弃。
-				if (pl.dir === "out" && hit?.type !== "input" && isCanvasBlank(e.target)) openLinkOutMenu(e.clientX, e.clientY);
+				if (pl.dir === "out" && !target && !hit && isCanvasBlank(e.target)) openLinkOutMenu(e.clientX, e.clientY);
 				pendingRef.current = null;
 				setPendingLink(null);
 				// 菜单若是本次拖拽打开的，保留它（用户还要在里面挑节点类型）
@@ -1132,7 +1181,8 @@ export function NodeGraph({
 			}
 			if (e.key === "Delete" || e.key === "Backspace") {
 				e.preventDefault();
-				const selectedIds = (Object.keys(nodesRef.current) as NodeId[]).filter((k) => nodesRef.current[k].selected);
+				const selectedIds = (Object.keys(nodesRef.current) as NodeId[])
+					.filter((k) => nodesRef.current[k].selected && !nodesRef.current[k].locked);
 				if (selectedIds.length === 0) return;
 				const selSet = new Set(selectedIds);
 				setNodes((prev) => {
@@ -1266,8 +1316,10 @@ export function NodeGraph({
 
 	/** 删除节点及其两端连线。 */
 	function removeNodes(ids: NodeId[]) {
-		if (ids.length === 0) return;
-		const set = new Set(ids);
+		// 锁定节点不能被删：否则「锁定」只剩视觉标记，最容易丢数据的路径反而没拦住
+		const deletable = ids.filter((id) => !nodesRef.current[id]?.locked);
+		if (deletable.length === 0) return;
+		const set = new Set(deletable);
 		setNodes((prev) => {
 			const next: Record<NodeId, NodePos> = {};
 			for (const [id, n] of Object.entries(prev)) if (!set.has(id)) next[id] = n;
@@ -1293,7 +1345,62 @@ export function NodeGraph({
 	}
 
 	/**
-	 * 用一份快照生成新节点：重新分配 id、整体平移 (dx, dy)、重连组内连线，
+	/** 折叠 / 展开单个节点：几何高度跟着收放，连线端点才能跟着落到标题栏中线。 */
+	function toggleCollapse(id: NodeId) {
+		setNodes((prev) => {
+			const n = prev[id];
+			if (!n) return prev;
+			if (n.collapsed) {
+				return { ...prev, [id]: { ...n, collapsed: false, h: n.expandedH ?? n.h, expandedH: undefined } };
+			}
+			// 已经比标题栏还矮的节点（异常数据）就不要折叠，否则展开无路可走
+			if (n.h <= HEAD_H) return prev;
+			return { ...prev, [id]: { ...n, collapsed: true, h: HEAD_H, expandedH: n.h } };
+		});
+	}
+
+	/** 锁定 / 解锁：锁定后拖拽、缩放、删除全部拦住，运行与参数编辑仍可用。 */
+	function toggleLock(target?: NodeId[]) {
+		const ids = target ?? selectedIds();
+		if (ids.length === 0) return;
+		const set = new Set(ids);
+		setNodes((prev) => {
+			const next = { ...prev };
+			for (const id of set) {
+				const n = next[id];
+				if (n) next[id] = { ...n, locked: !n.locked };
+			}
+			return next;
+		});
+	}
+
+	/** 对齐选中节点（<2 个时没参考对象，直接跳过）。 */
+	function alignSelection(mode: AlignMode) {
+		const updates = computeAlign(collectSelectedBoxes(), mode);
+		if (updates.length === 0) return;
+		setNodes((prev) => applyArrangement(prev, updates));
+	}
+
+	/** 等距分布：首尾不动，中间按相等间隙铺开。 */
+	function distributeSelection(axis: DistributeAxis) {
+		const updates = computeDistribute(collectSelectedBoxes(), axis);
+		if (updates.length === 0) return;
+		setNodes((prev) => applyArrangement(prev, updates));
+	}
+
+	/** 选中节点的几何盒（分组容器不参与对齐，它是别人的外框）。 */
+	function collectSelectedBoxes(): ArrangeBox[] {
+		const cur = nodesRef.current;
+		const boxes: ArrangeBox[] = [];
+		for (const id of selectedIds()) {
+			const n = cur[id];
+			if (!n || n.isGroup) continue;
+			boxes.push({ id, x: n.x, y: n.y, w: n.w, h: n.h });
+		}
+		return boxes;
+	}
+
+	/**
 	 * 并把选中状态换到副本上。返回第一个新节点的 id。
 	 * 快照而不是活 id —— 所以源节点被删除后剪贴板依旧可用（与 ComfyUI 一致）。
 	 */
@@ -1406,6 +1513,8 @@ export function NodeGraph({
 			zoomBy,
 			zoomTo,
 			arrange,
+			alignSelection,
+			distributeSelection,
 			copySelection,
 			pasteClipboard,
 			duplicateSelection,
@@ -1436,6 +1545,14 @@ export function NodeGraph({
 				setLinkOutContext(null);
 			}}
 			data-drag-over={dragOver ? "true" : undefined}
+			onDoubleClick={(e) => {
+				// 双击空白 = 在落点处快速添加节点（Superset / Metabase 画布编辑态的通行习惯）
+				if (!isCanvasBlank(e.target)) return;
+				const canvasPt = screenToCanvas(e.clientX, e.clientY);
+				setContextMenu({ x: canvasPt.x, y: canvasPt.y });
+				setNodeContextMenu(null);
+				setLinkOutContext(null);
+			}}
 			className={`relative min-h-0 min-w-[800px] flex-1 overflow-hidden bg-background ${dragOver ? "ring-2 ring-accent/40 ring-inset" : ""}`}
 		>
 			{/* 网格背景层 —— 不随 viewport transform，保持固定；步长 0（关闭）时整层不渲染 */}
@@ -1456,8 +1573,8 @@ export function NodeGraph({
 
 				{/* 对齐辅助线（画布坐标，viewport 变换下） */}
 				{guidesOn && guides && (guides.x !== undefined || guides.y !== undefined) && (
-					<svg className="pointer-events-none absolute overflow-visible" style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}>
-						<g strokeWidth={1 / viewport.scale} opacity={0.75} style={{ stroke: "var(--color-accent)" }}>
+					<svg className="pointer-events-none absolute overflow-visible" style={{ left: -SVG_ORIGIN, top: -SVG_ORIGIN, width: SVG_ORIGIN * 2, height: SVG_ORIGIN * 2 }}>
+						<g transform={`translate(${SVG_ORIGIN} ${SVG_ORIGIN})`} strokeWidth={1 / viewport.scale} opacity={0.75} style={{ stroke: "var(--color-accent)" }}>
 							{guides.x !== undefined && <line x1={guides.x} y1={-4000} x2={guides.x} y2={4000} />}
 							{guides.y !== undefined && <line x1={-4000} y1={guides.y} x2={4000} y2={guides.y} />}
 						</g>
@@ -1465,7 +1582,8 @@ export function NodeGraph({
 				)}
 
 				{/* SVG 连线（hover 高亮 + 中点 × 删除按钮） —— 用超大 CSS 尺寸避免 viewBox 裁剪 */}
-				<svg className="absolute overflow-visible" style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}>
+				<svg className="absolute overflow-visible" style={{ left: -SVG_ORIGIN, top: -SVG_ORIGIN, width: SVG_ORIGIN * 2, height: SVG_ORIGIN * 2 }}>
+					<g transform={`translate(${SVG_ORIGIN} ${SVG_ORIGIN})`}>
 					{links.map((l) => {
 						const isHover = hoverLink === l.id;
 						const mid = linkMid(l, nodes);
@@ -1511,11 +1629,13 @@ export function NodeGraph({
 							</g>
 						);
 					})}
+					</g>
 				</svg>
 
 				{/* 临时连线（拖拽中） —— 同样用超大尺寸避免裁剪 */}
 				{pendingLink && (
-					<svg className="pointer-events-none absolute overflow-visible" style={{ left: -20000, top: -20000, width: 40000, height: 40000 }}>
+					<svg className="pointer-events-none absolute overflow-visible" style={{ left: -SVG_ORIGIN, top: -SVG_ORIGIN, width: SVG_ORIGIN * 2, height: SVG_ORIGIN * 2 }}>
+						<g transform={`translate(${SVG_ORIGIN} ${SVG_ORIGIN})`}>
 						<path
 							d={(() => {
 								// 从输入插槽向左拉时控制点镜像，否则线会先往右甩再编回来
@@ -1530,6 +1650,7 @@ export function NodeGraph({
 							// 待定连线与正式连线同色，同样走 wireTone + style
 							style={{ stroke: wireTone(nodes[pendingLink.from]?.tone, isChartKind(nodes[pendingLink.from]?.kind)) }}
 						/>
+						</g>
 					</svg>
 				)}
 
@@ -1595,6 +1716,7 @@ export function NodeGraph({
 						<NodeCard
 							key={id}
 							{...n}
+							onToggleCollapse={() => toggleCollapse(id)}
 							// 覆盖展开的 tone：图表类节点用系列色，使调色板对画布卡片可见；
 							// 与输出插槽、连线同源（link-tone.ts），三者不会再出现色差
 							tone={wireTone(n.tone, isChart)}
@@ -1953,6 +2075,16 @@ export function NodeGraph({
 					y={viewport.ty + nodeContextMenu.y * viewport.scale}
 					onClose={() => setNodeContextMenu(null)}
 					muted={nodes[nodeContextMenu.nodeId]?.muted ?? false}
+					locked={nodes[nodeContextMenu.nodeId]?.locked ?? false}
+					collapsed={nodes[nodeContextMenu.nodeId]?.collapsed ?? false}
+					onToggleLock={() => {
+						toggleLock([nodeContextMenu.nodeId]);
+						setNodeContextMenu(null);
+					}}
+					onToggleCollapse={() => {
+						toggleCollapse(nodeContextMenu.nodeId);
+						setNodeContextMenu(null);
+					}}
 					onCopy={() => {
 						duplicateNode(nodeContextMenu.nodeId);
 						setNodeContextMenu(null);
@@ -2114,11 +2246,17 @@ interface NodeContextMenuProps {
 	onRunThis: () => void;
 	/** 节点是否已停用 —— 决定显示「停用节点」还是「启用节点」。 */
 	muted: boolean;
+	/** 是否已锁定 —— 决定显示「锁定节点」还是「解锁节点」。 */
+	locked: boolean;
+	/** 是否已折叠 —— 决定显示「折叠节点」还是「展开节点」。 */
+	collapsed: boolean;
+	onToggleLock: () => void;
+	onToggleCollapse: () => void;
 	onDisable: () => void;
 	onDelete: () => void;
 }
 
-function NodeContextMenu({ x, y, muted, onClose, onCopy, onRunThis, onDisable, onDelete }: NodeContextMenuProps): JSX.Element {
+function NodeContextMenu({ x, y, muted, locked, collapsed, onClose, onCopy, onRunThis, onDisable, onToggleLock, onToggleCollapse, onDelete }: NodeContextMenuProps): JSX.Element {
 	useEffect(() => {
 		function onClick() { onClose(); }
 		// 用 setTimeout 避免 mousedown 触发立即关闭
@@ -2135,6 +2273,8 @@ function NodeContextMenu({ x, y, muted, onClose, onCopy, onRunThis, onDisable, o
 		{ icon: "icon-[lucide--copy]", label: "复制节点", onClick: onCopy },
 		{ icon: "icon-[lucide--play]", label: "只运行这个节点", onClick: onRunThis },
 		{ icon: muted ? "icon-[lucide--circle-play]" : "icon-[lucide--ban]", label: muted ? "启用节点" : "停用节点", onClick: onDisable },
+		{ icon: collapsed ? "icon-[lucide--chevrons-up-down]" : "icon-[lucide--chevrons-down-up]", label: collapsed ? "展开节点" : "折叠节点", onClick: onToggleCollapse },
+		{ icon: locked ? "icon-[lucide--lock-open]" : "icon-[lucide--lock]", label: locked ? "解锁节点" : "锁定节点", onClick: onToggleLock },
 	];
 
 	const dangerItems = [

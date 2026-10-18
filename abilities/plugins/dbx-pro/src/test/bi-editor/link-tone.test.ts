@@ -147,6 +147,13 @@ function outputSocket(container: HTMLElement, nodeId: string): HTMLElement {
 	return el as HTMLElement;
 }
 
+/** 外层是 24px 命中热区（透明），真正的有色圆点在内部 data-socket-dot 上。 */
+function socketDot(el: HTMLElement): HTMLElement {
+	const dot = el.querySelector("[data-socket-dot]");
+	assert.ok(dot, "插槽应有视觉圆点");
+	return dot as HTMLElement;
+}
+
 function inputSocket(container: HTMLElement, nodeId: string): HTMLElement {
 	const el = container.querySelector(`[data-socket-type="input"][data-node-id="${nodeId}"]`);
 	assert.ok(el, `节点 ${nodeId} 应有输入插槽`);
@@ -188,7 +195,7 @@ describe("画布 · 连线与输出插槽同色（DOM）", () => {
 		const out = outputSocket(container, "n1");
 		const target = inputSocket(container, "n2");
 
-		assert.equal(out.style.background, SERIES[0], "图表节点输出插槽应是系列色");
+		assert.equal(socketDot(out).style.background, SERIES[0], "图表节点输出插槽应是系列色");
 
 		fireEvent.pointerDown(out, { clientX: 100, clientY: 100 });
 		document.elementFromPoint = () => target;
@@ -209,7 +216,7 @@ describe("画布 · 连线与输出插槽同色（DOM）", () => {
 		const out = outputSocket(container, "n1");
 		const target = inputSocket(container, "n2");
 
-		assert.equal(out.style.background, TONE.result, "非图表节点输出插槽应是结果色");
+		assert.equal(socketDot(out).style.background, TONE.result, "非图表节点输出插槽应是结果色");
 
 		fireEvent.pointerDown(out, { clientX: 100, clientY: 100 });
 		document.elementFromPoint = () => target;
