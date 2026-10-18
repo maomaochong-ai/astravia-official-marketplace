@@ -1,5 +1,9 @@
 /**
  * 三栏宽度约束：容器变窄时不允许三栏之和超过容器宽（否则根节点 overflow-hidden 会切掉右栏）。
+ *
+ * 两条不变量：
+ * 1) 宽度永远不收口到下限以下——被压成 0～80px 的栏位会让 nowrap 文案逐字换行；
+ * 2) 装不下三栏时返回下限，由调用方（SplitLayout 的 compact 分支）切成单栏 + 抽屉。
  */
 
 import assert from "node:assert/strict";
@@ -12,6 +16,8 @@ import {
 	MIN_MID,
 	MIN_RIGHT,
 	SPLITBAR_TOTAL,
+	THREE_PANE_MIN,
+	canFitThreePane,
 	defaultWidths,
 	fitWidths,
 } from "../../features/database-workspace/services/split-widths.ts";
@@ -25,13 +31,6 @@ describe("三栏宽度约束", () => {
 	it("容器足够宽时原样保留用户宽度", () => {
 		const fitted = fitWidths(1600, DESIGN_LEFT, DESIGN_RIGHT);
 		assert.deepEqual(fitted, { left: DESIGN_LEFT, right: DESIGN_RIGHT });
-	});
-
-	it("另一侧存着旧宽度导致溢出时，把两栏夹回容器内", () => {
-		// 复现拖拽后的现场：左栏 180、右栏 300 都已在下限（已无可让余量），容器只剩 600。
-		const fitted = fitWidths(600, MIN_LEFT, MIN_RIGHT);
-		assert.ok(total(fitted) <= 600, `三栏 ${total(fitted)} 超过容器 600`);
-		assert.ok(fitted.left > 0 && fitted.right > 0, "两侧仍应可见，只是被等比压缩");
 	});
 
 	it("只压让得出余量的一侧，不动已经到下限的一侧", () => {
@@ -50,10 +49,24 @@ describe("三栏宽度约束", () => {
 		assert.ok(400 - fitted.left > 500 - fitted.right, "可让空间更大的一侧应当让得更多");
 	});
 
-	it("连两条最小宽度都放不下时整体等比压缩，仍不溢出", () => {
-		const fitted = fitWidths(700, 400, 400, 0);
-		assert.ok(total(fitted) <= 700, `三栏 ${total(fitted)} 超过容器 700`);
-		assert.ok(fitted.left > 0 && fitted.right > 0);
+	it("连两条最小宽度都装不下时返回下限，不再等比压缩", () => {
+		// 宿主活动面板最窄 260px：三栏之和 826 根本放不下，等比压缩会得到 0 宽的两栏。
+		const fitted = fitWidths(600, MIN_LEFT, MIN_RIGHT);
+		assert.deepEqual(fitted, { left: MIN_LEFT, right: MIN_RIGHT });
+		assert.equal(canFitThreePane(600), false);
+	});
+
+	it("极窄容器（260px）也不会把栏位压到下限以下", () => {
+		const fitted = fitWidths(260, 400, 400);
+		assert.equal(fitted.left, MIN_LEFT);
+		assert.equal(fitted.right, MIN_RIGHT);
+		assert.equal(canFitThreePane(260), false);
+	});
+
+	it("THREE_PANE_MIN 正好是三栏最小宽度之和，临界值可取整", () => {
+		assert.equal(THREE_PANE_MIN, MIN_LEFT + MIN_MID + MIN_RIGHT + SPLITBAR_TOTAL);
+		assert.equal(canFitThreePane(THREE_PANE_MIN), true);
+		assert.equal(canFitThreePane(THREE_PANE_MIN - 1), false);
 	});
 
 	it("左栏收起时把 36px 图标列算进容器占用", () => {

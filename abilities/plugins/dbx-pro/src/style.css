@@ -11,14 +11,14 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-/* 宿主 CSS variables → Tailwind theme token 映射，再补一套设计稿语义令牌。
+/* 宿主 CSS variables → Tailwind theme token 映射，再补一套工作台语义令牌。
    插件 CSS 被 plugin-vite 包进 @scope ([data-astravia-plugin-root="dbx-pro"])，
    Tailwind 的 :root dark: 变体都穿不过这个边界——只有 host 的 CSS variables 能继承进来。
    把它们映射成语义色 token（bg-background / text-foreground / border-border …），
    让 Tailwind 工具类和 .dbx-root 自定义样式统一读同一组变量。
    （与宿主内置插件 astravia-ui-design / browser / comfyui 保持一致） */
 @theme inline {
-	/* 宿主核心变量（在 .dbx-root 内被重映射为设计稿色，见文件下半部分） */
+	/* 宿主核心变量：插件内**不重映射**，工具类直接落在宿主值上 */
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -26,7 +26,7 @@
 	--color-popover: var(--popover);
 	--color-popover-foreground: var(--popover-foreground);
 	--color-border: var(--border);
-	/* 设计稿词表（theme.css）：text-muted = #8b949e、text-accent = #58a6ff。
+	/* 设计稿词表（theme.css）：text-muted = 次级文字、text-accent = 品牌色。
 	   半透明洗色底一律走 bg-neutral-muted，不要再拿 --color-muted / --color-accent 当填充色。 */
 	--color-muted: var(--dbx-muted);
 	--color-muted-foreground: var(--muted-foreground);
@@ -39,9 +39,9 @@
 	--color-primary-fg: var(--dbx-primary-fg);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
-	--color-warning: var(--warning);
+	--color-warning: var(--dbx-warning);
 
-	/* 设计稿语义令牌（GitHub 系统） */
+	/* 语义令牌（全部由宿主令牌派生，见下方 .dbx-root） */
 	--color-surface: var(--dbx-panel);
 	--color-canvas: var(--dbx-canvas);
 	--color-surface-raised: var(--dbx-surface);
@@ -72,7 +72,7 @@
 	--color-screen-muted: var(--dbx-screen-muted);
 	--color-screen-line: var(--dbx-screen-line);
 
-	/* 形状 / 阴影 / 字体：设计稿统一 6px 圆角，扁平表面，阴影只留给浮层 */
+	/* 形状 / 阴影 / 字体：圆角与字体跟随宿主体系，阴影只留给浮层 */
 	--radius-chip: var(--dbx-radius-chip);
 	--radius-control: var(--dbx-radius-control);
 	--radius-card: var(--dbx-radius-card);
@@ -96,12 +96,15 @@
  * 同时渲染在 JSX 根元素与工作台根元素上，变量定义在 .dbx-root 下即可
  * 被 scope 内所有后代（含 portal 到 .dbx-root 的菜单/浮层）继承。
  *
- * ⚠️ 本文件在 .dbx-root 内**重映射宿主核心变量**（--background /
- *    --foreground / --border / --primary …），这是对早先
- *    「严禁覆盖宿主核心变量」约定的有意放宽：@scope 把作用域限制在
- *    插件根节点及其后代，宿主 UI 读不到这些值。这样约 70 处
- *    var(--foreground)、33 处 var(--background) 以及全部
- *    bg-* / text-* / border-* 工具类无需改名即可整体换肤。
+ * 令牌分三层，默认全部由宿主令牌派生：
+ *   1. 字体 / 圆角 —— 引用宿主 --font-* 与 --radius-*
+ *   2. 语义色 —— 引用宿主 --background / --card / --foreground / --border /
+ *      --primary / --destructive / --term-* / --context-segment-*；
+ *      宿主没有对应项的（faint、中性洗色、描边加强）用 color-mix 推导
+ *   3. 大屏与导出成品 —— 两种主题下都保持深色，写死字面量（导出 HTML 自带这套值）
+ *
+ * 这样宿主切明暗或换 mono / xianxia 等主题时，插件自动跟随，
+ * 不需要在插件里再同步一份色值；只有「阴影强度 / 遮罩」仍按明暗分档。
  *
  * ⚠️ 注释里不要出现「星号紧跟斜杠」的写法（例如 bg-* 后面直接跟 /）：
  *    那会被 CSS 解析器当成注释结束符，把注释提前切断，
@@ -111,232 +114,102 @@
  * 祖先选择器无法匹配 scope 根之外的 html 元素（会被解读成 :scope html…）。
  * 因此由 src/shared/theme/plugin-theme.ts 把 data-dbx-theme 写到
  * 每个 [data-astravia-plugin-root="dbx-pro"] 元素上，CSS 用属性选择器读取。
- * 三级兜底：默认浅色 → prefers-color-scheme 深色 → data-dbx-theme 属性。
+ * 语义色本身与明暗无关（宿主已经按模式算好），这里只用它切阴影与遮罩。
  * ============================================================ */
 .dbx-root {
+	/* 字体与圆角只能写字面量：tailwindcss/theme.css 在 @scope 根上重新声明了
+	   --font-sans / --font-mono / --radius / --radius-*，插件内部读到的已是
+	   Tailwind 默认值而非宿主值，所以这里镜像宿主 styles.css 的定义
+	   （-apple-system / SF Mono 字族；--radius: 0.5rem 推出的 4/6/8/12px）。 */
+	--dbx-font-sans: -apple-system, "SF Pro Text", "SF Pro Display", "Helvetica Neue",
+		sans-serif;
+	--dbx-font-mono: "SF Mono", "Fira Code", monospace;
 	--dbx-font-display: var(--dbx-font-sans);
-	--dbx-radius-chip: 6px;
+
+	--dbx-radius-chip: 4px;
 	--dbx-radius-control: 6px;
-	--dbx-radius-card: 6px;
+	--dbx-radius-card: 8px;
 	--dbx-radius-sheet: 12px;
 
-	/* 大屏 / 导出的深色成品：两种主题下都保持深色（夜间运维屏） */
+	/* ── 表面 ── */
+	--dbx-panel: var(--background);
+	--dbx-canvas: var(--background);
+	--dbx-panel-sunken: var(--card);
+	--dbx-surface: var(--card);
+	--dbx-surface-foreground: var(--foreground);
+	--dbx-muted: var(--muted-foreground);
+	--dbx-faint: color-mix(in srgb, var(--muted-foreground) 62%, var(--background));
+
+	/* ── 描边与中性洗色 ── */
+	--dbx-border: var(--border);
+	--dbx-border-strong: color-mix(in srgb, var(--foreground) 12%, var(--border));
+	--dbx-neutral-muted: color-mix(in srgb, var(--foreground) 7%, transparent);
+
+	/* ── 品牌色：宿主 --primary 是唯一的行动色（CTA / 链接 / 选中态） ── */
+	--dbx-primary: var(--primary);
+	--dbx-primary-fg: var(--primary-foreground);
+	--dbx-accent: var(--primary);
+	--dbx-accent-soft: color-mix(in srgb, var(--primary) 12%, transparent);
+	--dbx-accent-emphasis: color-mix(in srgb, var(--primary) 82%, var(--foreground));
+	--dbx-ai: var(--primary);
+	--dbx-ai-soft: color-mix(in srgb, var(--primary) 12%, transparent);
+
+	/* ── 状态色：绿的/黄的不取 GitHub 值，改用宿主终端 ANSI 令牌（已按模式调过对比度） ── */
+	--dbx-success: var(--term-green);
+	--dbx-success-soft: color-mix(in srgb, var(--term-green) 14%, transparent);
+	--dbx-warning: var(--term-yellow);
+	--dbx-warning-soft: color-mix(in srgb, var(--term-yellow) 16%, transparent);
+	--dbx-danger: var(--destructive);
+	--dbx-danger-soft: color-mix(in srgb, var(--destructive) 14%, transparent);
+
+	/* ── 图表分类色：宿主 --context-segment-*（oklch 分类色板）。
+	   --chart-* 默认值含中性灰，做不了分类色，因此按 紫/蓝/青/红 取 1·2·3·5。 ── */
+	--dbx-series-1: var(--context-segment-1);
+	--dbx-series-2: var(--context-segment-2);
+	--dbx-series-3: var(--context-segment-3);
+	--dbx-series-4: var(--context-segment-5);
+
+	/* ── 浮层遮罩与阴影（唯一的明暗分档，见下方 data-dbx-theme 块） ── */
+	--dbx-scrim: rgb(0 0 0 / 0.45);
+	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.08);
+	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.12);
+
+	/* ── 大屏 / 导出的深色成品：两种主题下都保持深色（夜间运维屏） ── */
 	--dbx-screen: #0d1117;
 	--dbx-screen-raised: #161b22;
 	--dbx-screen-foreground: #e6edf3;
 	--dbx-screen-muted: #8b949e;
 	--dbx-screen-line: #30363d;
-}
 
-.dbx-root {
-	--dbx-font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial,
-		"PingFang SC", "Microsoft YaHei", sans-serif;
-	--dbx-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
-		monospace;
-
-	/* ── 浅色（默认；对齐宿主 open-astravia 桌面端浅色值 ── */
-	--dbx-panel: #ffffff;
-	--dbx-panel-sunken: #fafafa;
-	--dbx-surface: #fafafa;
-	--dbx-surface-foreground: #000000;
-	--dbx-muted: #525252;
-	--dbx-faint: #a3a3a3;
-	--dbx-border: #e6e6e6;
-	--dbx-border-strong: #d4d4d4;
-	--dbx-scrim: rgb(0 0 0 / 0.45);
-	--dbx-neutral-muted: rgb(0 0 0 / 0.06);
-	--dbx-primary: #1f883d;       /* 保持绿：BI 正向动作语义色，宿主无对应 */
-	--dbx-primary-fg: #ffffff;
-	--dbx-accent: #6366f1;        /* 对齐宿主品牌色 Indigo rgb(99,102,241) */
-	--dbx-accent-soft: rgb(99 102 241 / 0.12);
-	--dbx-accent-emphasis: #4f46e5;
-	--dbx-success: #1a7f37;
-	--dbx-success-soft: rgb(26 127 55 / 0.12);
-	--dbx-warning: #9a6700;
-	--dbx-warning-soft: rgb(154 103 0 / 0.14);
-	--dbx-danger: #ef4444;        /* 对齐宿主 destructive rgb(239,68,68) */
-	--dbx-danger-soft: rgb(239 68 68 / 0.12);
-	--dbx-ai: #6366f1;            /* 跟 accent 统一 Indigo 系 */
-	--dbx-ai-soft: rgb(99 102 241 / 0.12);
-	--dbx-series-1: #6366f1;      /* 跟随新 accent */
-	--dbx-series-2: #1a7f37;
-	--dbx-series-3: #f59e0b;
-	--dbx-series-4: #ef4444;
-	--dbx-radius-sheet: 12px;
-	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.08);
-	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.12);
-}
-
-@media (prefers-color-scheme: dark) {
-	.dbx-root {
-		/* ── 对齐宿主 open-astravia 桌面端深色值 ── */
-		--dbx-panel: #14161e;            /* background rgb(20,22,30) */
-		--dbx-panel-sunken: #1a1c24;     /* card rgb(26,28,36) */
-		--dbx-surface: #1a1c24;          /* card rgb(26,28,36) */
-		--dbx-surface-foreground: #dce0ea; /* foreground rgb(220,224,234) */
-		--dbx-muted: #8a90a0;            /* muted-foreground rgb(138,144,160) */
-		--dbx-faint: #6e7681;
-		--dbx-border: #2a2d38;           /* border rgb(42,45,56) */
-		--dbx-border-strong: #3a3d4a;
-		--dbx-scrim: rgb(0 0 0 / 0.72);
-		--dbx-neutral-muted: rgb(255 255 255 / 0.08);
-		--dbx-primary: #238636;
-		--dbx-primary-fg: #ffffff;
-		--dbx-accent: #6366f1;           /* 对齐宿主品牌色 Indigo */
-		--dbx-accent-soft: rgb(99 102 241 / 0.18);
-		--dbx-accent-emphasis: #4f46e5;
-		--dbx-success: #3fb950;
-		--dbx-success-soft: rgb(63 185 80 / 0.15);
-		--dbx-warning: #d29922;
-		--dbx-warning-soft: rgb(210 153 34 / 0.15);
-		--dbx-danger: #ff5b5b;           /* 对齐宿主 destructive rgb(255,91,91) */
-		--dbx-danger-soft: rgb(255 91 91 / 0.15);
-		--dbx-ai: #6366f1;
-		--dbx-ai-soft: rgb(99 102 241 / 0.18);
-		--dbx-series-1: #6366f1;
-		--dbx-series-2: #3fb950;
-		--dbx-series-3: #fbbf24;
-		--dbx-series-4: #ff5b5b;
-		--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
-		--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.6);
-	}
-}
-
-/* 深色照设计稿：值逐字取自 dbx-pro.astravia-design/theme.css */
-:scope[data-dbx-theme="dark"],
-.dbx-root[data-dbx-theme="dark"] {
-	/* ── 对齐宿主 open-astravia 桌面端深色值 ── */
-	--dbx-panel: #14161e;
-	--dbx-panel-sunken: #1a1c24;
-	--dbx-surface: #1a1c24;
-	--dbx-surface-foreground: #dce0ea;
-	--dbx-muted: #8a90a0;
-	--dbx-faint: #6e7681;
-	--dbx-border: #2a2d38;
-	--dbx-border-strong: #3a3d4a;
-	--dbx-scrim: rgb(0 0 0 / 0.72);
-	--dbx-neutral-muted: rgb(255 255 255 / 0.08);
-	--dbx-primary: #238636;
-	--dbx-primary-fg: #ffffff;
-	--dbx-accent: #6366f1;
-	--dbx-accent-soft: rgb(99 102 241 / 0.18);
-	--dbx-accent-emphasis: #4f46e5;
-	--dbx-success: #3fb950;
-	--dbx-success-soft: rgb(63 185 80 / 0.15);
-	--dbx-warning: #d29922;
-	--dbx-warning-soft: rgb(210 153 34 / 0.15);
-	--dbx-danger: #ff5b5b;
-	--dbx-danger-soft: rgb(255 91 91 / 0.15);
-	--dbx-ai: #6366f1;
-	--dbx-ai-soft: rgb(99 102 241 / 0.18);
-	--dbx-series-1: #6366f1;
-	--dbx-series-2: #3fb950;
-	--dbx-series-3: #fbbf24;
-	--dbx-series-4: #ff5b5b;
-	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
-	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.6);
-}
-
-:scope[data-dbx-theme="light"],
-.dbx-root[data-dbx-theme="light"] {
-	/* ── 对齐宿主 open-astravia 桌面端浅色值 ── */
-	--dbx-panel: #ffffff;
-	--dbx-panel-sunken: #fafafa;
-	--dbx-surface: #fafafa;
-	--dbx-surface-foreground: #000000;
-	--dbx-muted: #525252;
-	--dbx-faint: #a3a3a3;
-	--dbx-border: #e6e6e6;
-	--dbx-border-strong: #d4d4d4;
-	--dbx-scrim: rgb(0 0 0 / 0.45);
-	--dbx-neutral-muted: rgb(0 0 0 / 0.06);
-	--dbx-primary: #1f883d;
-	--dbx-primary-fg: #ffffff;
-	--dbx-accent: #6366f1;
-	--dbx-accent-soft: rgb(99 102 241 / 0.12);
-	--dbx-accent-emphasis: #4f46e5;
-	--dbx-success: #1a7f37;
-	--dbx-success-soft: rgb(26 127 55 / 0.12);
-	--dbx-warning: #9a6700;
-	--dbx-warning-soft: rgb(154 103 0 / 0.14);
-	--dbx-danger: #ef4444;
-	--dbx-danger-soft: rgb(239 68 68 / 0.12);
-	--dbx-ai: #6366f1;
-	--dbx-ai-soft: rgb(99 102 241 / 0.12);
-	--dbx-series-1: #6366f1;
-	--dbx-series-2: #1a7f37;
-	--dbx-series-3: #f59e0b;
-	--dbx-series-4: #ef4444;
-	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.08);
-	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.12);
-}
-
-/* 窗口 chrome 最底层：对齐宿主 background 深色值。
-   插件把它挂在 --dbx-canvas 上（bg-canvas），不覆盖宿主的 --background。 */
-.dbx-root {
-	--dbx-canvas: #fafafa;
-}
-
-@media (prefers-color-scheme: dark) {
-	.dbx-root {
-		--dbx-canvas: #14161e;           /* 对齐宿主 background rgb(20,22,30) */
-	}
-}
-
-:scope[data-dbx-theme="light"],
-.dbx-root[data-dbx-theme="light"] {
-	--dbx-canvas: #fafafa;
-}
-
-:scope[data-dbx-theme="dark"],
-.dbx-root[data-dbx-theme="dark"] {
-	--dbx-canvas: #14161e;
-}
-
-/* 宿主核心变量 → 设计稿令牌（仅作用于插件作用域内）
-   这是「旧 markup 不改名也能换肤」的关键：既有 70 处 var(--foreground)、
-   33 处 var(--background) 与全体 bg-* / text-* / border-* 工具类都会读到新值。 */
-.dbx-root {
-	--background: var(--dbx-panel);
-	--foreground: var(--dbx-surface-foreground);
-	--card: var(--dbx-surface);
-	--card-foreground: var(--dbx-surface-foreground);
-	--popover: var(--dbx-surface);
-	--popover-foreground: var(--dbx-surface-foreground);
-	--border: var(--dbx-border);
-	--muted: var(--dbx-neutral-muted);
-	--muted-foreground: var(--dbx-muted);
-	--accent: var(--dbx-neutral-muted);
-	--accent-foreground: var(--dbx-surface-foreground);
-	--primary: var(--dbx-primary);
-	--primary-foreground: var(--dbx-primary-fg);
-	--destructive: var(--dbx-danger);
-	--destructive-foreground: #ffffff;
-	--warning: var(--dbx-warning);
-}
-
-/* 旧派生令牌：语义不变，只把取值改为设计稿令牌。
-   --dbx-line*  = 设计稿的 1px 边框
-   --dbx-surface = 抬升面（工具条/面板头/卡片底色）
-   --dbx-surface-2 = 控件填充 / hover 洗色
-   --dbx-gutter  = 三栏缝隙的凹陷底色 */
-.dbx-root {
+	/* 旧派生令牌：语义不变，只是取值改为上面的语义层。
+	   --dbx-line*   = 1px 边框
+	   --dbx-surface-2 = 控件填充 / hover 洗色
+	   --dbx-gutter  = 三栏缝隙的凹陷底色 */
 	--dbx-line: var(--dbx-border);
 	--dbx-line-soft: color-mix(in srgb, var(--dbx-border) 58%, transparent);
 	--dbx-surface-2: var(--dbx-neutral-muted);
 	--dbx-hover: var(--dbx-neutral-muted);
 	--dbx-gutter: var(--dbx-panel-sunken);
 
-	/* CodeMirror 配色 */
+	/* CodeMirror 外壳配色（语法高亮字面量在 sql-editor.tsx，style-mod 注入时读不到 var）。
+	   --dbx-cm-gutter 是行号**文字**色，不是 gutter 背景。 */
 	--dbx-cm-text: var(--dbx-surface-foreground);
 	--dbx-cm-caret: var(--dbx-accent);
-	--dbx-cm-selection: var(--dbx-accent-soft);
-	--dbx-cm-active-line: var(--dbx-accent-soft);
-	--dbx-cm-gutter: var(--dbx-panel);
+	--dbx-cm-selection: color-mix(in srgb, var(--dbx-accent) 26%, transparent);
+	--dbx-cm-active-line: color-mix(in srgb, var(--dbx-accent) 8%, transparent);
+	--dbx-cm-gutter: var(--dbx-muted);
 	--dbx-cm-gutter-border: var(--dbx-border);
 	--dbx-cm-tooltip-bg: var(--dbx-surface);
 	--dbx-cm-tooltip-border: var(--dbx-border);
-	--dbx-cm-tooltip-selected: var(--dbx-accent-soft);
+	--dbx-cm-tooltip-selected: color-mix(in srgb, var(--dbx-accent) 18%, transparent);
+}
+
+/* 深色：只调阴影强度与遮罩深度，色相全部由宿主令牌给出 */
+:scope[data-dbx-theme="dark"],
+.dbx-root[data-dbx-theme="dark"] {
+	--dbx-scrim: rgb(0 0 0 / 0.72);
+	--dbx-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.4);
+	--dbx-shadow-sheet: 0 24px 64px rgb(0 0 0 / 0.6);
 }
 
 /* CodeMirror：编辑器容器定位 + 光标配色。
@@ -370,4 +243,3 @@
 }
 
 .dbx-history-card:hover .dbx-history-sql { color: var(--dbx-surface-foreground); }
-

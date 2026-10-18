@@ -60,11 +60,13 @@ export function useBigscreenPages() {
 
 	const create = useCallback(
 		async (name: string, opts: Partial<{ style: "bigScreen" | "default"; theme: string; designType: number }> = {}) => {
+			// 插件不再提供新建大屏入口，缺省落到普通看板（引擎仍支持两种 style）
+			const style = opts.style ?? "default";
 			const payload = {
 				name,
 				type: "0",
-				theme: opts.theme ?? (opts.style === "default" ? "default" : "dark"),
-				style: opts.style ?? "bigScreen",
+				theme: opts.theme ?? (style === "default" ? "default" : "dark"),
+				style,
 				backgroundImage: "",
 				designType: opts.designType ?? 100,
 				protectionCode: "",

@@ -2,18 +2,19 @@
  * Chip — 小 pill 标签。
  *
  * ~15% 底色 + 匹配文字色。 never decorative — 永远传递 meta 信息。
+ * 色调名描述语义（success/warning/danger/accent），不要用 primary 表达“成功”。
  * 支持 mono 字重（ID/计数/列名）和可选图标。
  */
 
 import type { JSX, ReactNode } from "react";
 import { Icon } from "./icon";
 
-export type ChipTone = "neutral" | "accent" | "primary" | "warning" | "danger" | "ai";
+export type ChipTone = "neutral" | "accent" | "success" | "warning" | "danger" | "ai";
 
 const TONES: Record<ChipTone, string> = {
 	neutral: "bg-neutral-muted text-muted",
 	accent: "bg-accent-soft text-accent",
-	primary: "bg-primary/15 text-success",
+	success: "bg-success-soft text-success",
 	warning: "bg-warning-soft text-warning",
 	danger: "bg-danger-soft text-danger",
 	ai: "bg-ai-soft text-ai",

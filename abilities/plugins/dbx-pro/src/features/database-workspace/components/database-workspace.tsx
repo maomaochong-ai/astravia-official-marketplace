@@ -21,10 +21,12 @@ import { DEFAULT_SETTINGS } from "../../../domain/workbench-settings";
 import { patchSession, readSession } from "../../../domain/workbench-session";
 import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
+import { THREE_PANE_MIN } from "../services/split-widths";
 import { DRIVER_TAB_ID, GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
 import { getUi } from "../../../runtime-contract";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
+import { useElementWidth } from "../../../shared/hooks/use-element-width";
 import { applyPluginTheme } from "../../../shared/theme/plugin-theme";
 
 export function DatabaseWorkspace(): JSX.Element {
@@ -45,6 +47,8 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const [sessionHydrated, setSessionHydrated] = useState(false);
 	// 右栏只承载查询历史，默认收起。
 	const [historyOpen, setHistoryOpen] = useState(false);
+	/** compact（容器装不下三栏）下左栏是抽屉，默认收起 */
+	const [treeOverlayOpen, setTreeOverlayOpen] = useState(false);
 	const [fullscreen, setFullscreen] = useState(false);
 	/** 全屏模式：native = 浏览器 requestFullscreen；css = 插件沙箱 fallback */
 	const [fullscreenMode, setFullscreenMode] = useState<"native" | "css">("native");
@@ -53,6 +57,14 @@ function DatabaseWorkspaceBody(): JSX.Element {
 	const { settings, updateSettings, clearAllHistory, wipeAllData, refreshConnections, invalidateConnection, dispatch, state } = useWorkbench();
 	const workspaceRef = useRef<HTMLDivElement>(null);
 	const theme = useDetectedTheme();
+	// 宿主活动面板宽度可拖到 260px；三栏策略只在容器够宽时成立，判据必须是实测宽度。
+	const rootWidth = useElementWidth(workspaceRef);
+	const compact = rootWidth > 0 && rootWidth < THREE_PANE_MIN;
+
+	// 容器变宽回到三栏后抽屉没意义，关掉避免下次变窄时残留展开态。
+	useEffect(() => {
+		if (!compact) setTreeOverlayOpen(false);
+	}, [compact]);
 
 	// 首屏加载完成 → 向宿主发送友好的成功通知（重载后确认 UI 渲染成功的第一手信号）
 	useEffect(() => {
@@ -248,14 +260,25 @@ function DatabaseWorkspaceBody(): JSX.Element {
 				onToggleFullscreen={() => void toggleFullscreen()}
 				downloadsOpen={downloadsOpen}
 				onToggleDownloads={() => setDownloadsOpen((v) => !v)}
+				compact={compact}
+				onToggleConnections={compact ? () => setTreeOverlayOpen((v) => !v) : undefined}
+				connectionsOpen={compact && treeOverlayOpen}
 			/>
 			<SplitLayout
 				leftCollapsed={leftCollapsed}
 				rightCollapsed={!(historyOpen || aiAssistantOpen)}
 				onToggleLeft={() => setLeftCollapsed((v) => !v)}
+				compact={compact}
+				leftOverlayOpen={compact && treeOverlayOpen}
+				onCloseLeftOverlay={() => setTreeOverlayOpen(false)}
+				rightOverlayOpen={compact && (historyOpen || aiAssistantOpen)}
+				onCloseRightOverlay={collapseRightPanel}
 			>
 				{[
-					<ConnectionTree key="left" onCollapse={() => setLeftCollapsed(true)} />,
+					<ConnectionTree
+						key="left"
+						onCollapse={() => (compact ? setTreeOverlayOpen(false) : setLeftCollapsed(true))}
+					/>,
 					// 中间面板按 activeTab 类型切换：driver → DriverManagerPage，其余 → SqlEditorWorkspace
 					(() => {
 						const activeTab = state.tabs.find((t) => t.id === state.activeTabId);

@@ -111,8 +111,8 @@ function prefersColorScheme(): PluginTheme | null {
 }
 
 /**
- * 宿主色板兜底：读插件根**之外**的 --background（插件根内部已被设计稿令牌覆盖，
- * 读它会得到自我引用的结果），再沿祖先链找第一个不透明背景色。
+ * 宿主色板兜底：读插件根**之外**的 --background（插件根自身不再重映射宿主令牌，
+ * 但仍以父节点为准，避免读到任何后代注入的同名变量），再沿祖先链找第一个不透明背景色。
  */
 function probeHostBackground(root: HTMLElement | null): PluginTheme | null {
 	if (typeof document === "undefined") return null;
