@@ -1,122 +1,91 @@
 /**
- * firecrawl_extract — structured data across several pages.
- *
- * Upstream runs FIRE-1 over a URL set. The plugin runs the user's own model over
- * the Markdown of those pages, returns parsed JSON, and refuses to pretend a
- * malformed answer is data.
+ * firecrawl_extract — structured data across one or more pages.
  */
 
-import type { PluginContext } from "@astravia-org/plugin-sdk";
-import type { BinaryFetch, HttpClient } from "../domain/scrape/http";
-import type { BrowserPortFactory, RenderMode } from "../domain/render/types";
-import type { AiPort } from "../domain/ai/extract";
-import { extractFromPages } from "../domain/ai/extract";
-import { scrapePage } from "../domain/scrape/pipeline";
-import type { CrawlRunStore } from "../features/crawler-console/services/crawl-run-store";
-import { clip, readEnum, readJsonObject, readNumber, readString, readStringArray, requireUrl } from "./tool-arguments";
-import { describeError } from "./scrape-tool";
+import { clip } from "../domain/firecrawl/documents";
+import type { ExtractStatus } from "../domain/firecrawl/types";
+import type { ToolDeps } from "./deps";
+import { extractBody } from "./request-bodies";
+import { readBoolean, readNumber, readOptionalString, requireUrl } from "./tool-arguments";
 
-const MAX_URLS = 10;
-const MAX_MARKDOWN_PER_PAGE = 18_000;
-const RENDER_MODES: readonly RenderMode[] = ["auto", "static", "browser"];
+const TERMINAL = ["completed", "failed", "cancelled"];
 
-export function createExtractTool(
-	_ctx: PluginContext,
-	client: HttpClient,
-	store: CrawlRunStore,
-	browser: BrowserPortFactory | undefined,
-	ai: AiPort | undefined,
-	binary: BinaryFetch | undefined,
-) {
+export function createExtractTool({ config, store }: ToolDeps) {
 	return {
 		id: "firecrawl_extract",
 		name: "firecrawl_extract",
 		label: "%tool.extract.label%",
 		description: [
-			"Read several pages and return one JSON object matching a schema: prices, contacts, specs,",
-			"release notes, comparison tables — anything that has to come back as fields, not prose.",
+			"Extract structured data from pages that match a JSON schema or a prompt. Firecrawl finds the",
+			"right pages (from a URL, a list of URLs, or a web search) and returns one JSON object instead of",
+			"page text.",
 			"",
-			"Give either `urls` (up to 10) or `url` alone. `prompt` says what to pull out; `schema` (JSON Schema)",
-			"constrains the shape. The answer is parsed and validated as JSON — if the model returns prose,",
-			"the call fails with what it said instead of inventing fields.",
+			"Use it when the user wants records — prices, contacts, release notes, product specs — not prose.",
+			"Describe the shape in `schema` and say what to find in `prompt`.",
+			"Do NOT use it for open-ended reading (firecrawl_scrape): extraction can silently drop fields the",
+			"schema did not ask for, so quote whole pages when the user needs the original text.",
 			"",
-			"Use it when the user wants a table/record out of one or more pages, or across a handful of URLs.",
-			"Do NOT use it for: summarising (firecrawl_scrape with formats:[\"summary\"]), a single page's prose",
-			"(firecrawl_scrape), or crawling a whole site first (firecrawl_crawl, then extract on chosen URLs).",
-			"Requires a model configured in Astravia (uses the user's own provider and credits).",
+			"Extraction costs credits per page and may outlast the wait window. When that happens the answer",
+			"includes a job id; call this tool again with `jobId` to collect the result instead of paying for",
+			"a second run.",
 		].join("\n"),
 		parameters: {
 			type: "object",
 			properties: {
-				urls: { type: "array", items: { type: "string" }, description: "Pages to read (1-10 absolute http(s) URLs)." },
-				url: { type: "string", description: "Single page shortcut when you only have one URL." },
+				urls: { type: "array", items: { type: "string" }, description: "Pages to extract from." },
+				url: { type: "string", description: "Single start page to crawl from when `urls` is absent." },
+				query: { type: "string", description: "Natural-language description when no URL is known; needs enableWebSearch." },
 				prompt: { type: "string", description: "What to extract, in plain language." },
-				schema: { type: "object", description: "JSON Schema describing the object to return." },
-				systemPrompt: { type: "string", description: "Optional override for the extraction instructions." },
-				render: { type: "string", enum: [...RENDER_MODES], description: "Rendering mode for the pages (default auto)." },
-				timeoutMs: { type: "number", description: "Per-page fetch timeout in milliseconds (1000-120000, default 30000)." },
+				schema: { type: "object", description: "JSON Schema the result must follow." },
+				enableWebSearch: { type: "boolean", description: "Let Firecrawl search the web for matching pages. Default false." },
+				wait: { type: "boolean", description: "Wait for the job to finish before answering. Default true." },
+				timeoutMs: { type: "number", description: "How long to wait, in milliseconds (default 300000)." },
+				jobId: { type: "string", description: "Read an extraction started by an earlier call instead of starting a new one." },
 			},
 			additionalProperties: false,
 		},
 		scope_use: ["conversation", "project"] as const,
 		context: { conversation: "summary" },
-		timeoutMs: 300_000,
+		timeoutMs: 330_000,
 		handler: async (context: { trigger: { input?: unknown } }) => {
 			const input = context.trigger.input;
-			if (!ai) {
-				throw new Error("firecrawl_extract needs a configured model: choose one in Astravia settings, then retry");
-			}
-			const urls = dedupeUrls([
-				...readStringArray(input, "urls", MAX_URLS).map((value) => requireUrl({ url: value })),
-				...(readString(input, "url") ? [requireUrl(input)] : []),
-			]);
-			if (urls.length === 0) throw new Error('"urls" (or "url") is required');
-			const render = readEnum(input, "render", RENDER_MODES, "auto");
-			const timeoutMs = readNumber(input, "timeoutMs", { min: 1_000, max: 120_000, def: 30_000 });
-			store.setTarget(urls[0], "tool");
-			const prompt = readString(input, "prompt");
-			const schema = readJsonObject(input, "schema");
-			if (!prompt && !schema) throw new Error('give "prompt" or "schema" (or both) so the model knows what to extract');
+			const client = await config.require();
+			const existing = readOptionalString(input, "jobId");
 
-			const pages: Array<{ url: string; markdown: string }> = [];
-			const skipped: Array<{ url: string; reason: string }> = [];
-			for (const url of urls) {
-				try {
-					const page = await scrapePage(
-						client,
-						url,
-						{ render, timeoutMs, onlyMainContent: true, includeLinks: false },
-						{ browser, binary },
-					);
-					pages.push({ url: page.finalUrl, markdown: clip(page.markdown, MAX_MARKDOWN_PER_PAGE) });
-					store.note("ok", `extract←scrape  ${url}  chars=${page.text.length}`);
-				} catch (error) {
-					skipped.push({ url, reason: describeError(error) });
-					store.note("warn", `extract skip  ${url}  ${describeError(error)}`);
+			let jobId = existing ?? "";
+			if (!jobId) {
+				const body = extractBody(input);
+				const startUrl = readOptionalString(input, "url");
+				if (startUrl) body.url = requireUrl(input, "url");
+				const handle = await client.extract(body);
+				jobId = handle.id;
+				store.note("ok", `extract  job=${handle.id}`);
+				if (!readBoolean(input, "wait", true)) {
+					return [
+						"Extraction job started.",
+						`Job id: ${jobId}`,
+						`Call firecrawl_extract with jobId "${jobId}" once it finishes to collect the result.`,
+					].join("\n");
 				}
 			}
-			if (pages.length === 0) {
-				throw new Error(`No page could be read: ${skipped.map((entry) => `${entry.url} (${entry.reason})`).join("; ")}`);
+
+			const timeoutMs = readNumber(input, "timeoutMs", { min: 5_000, max: 300_000, def: 300_000 });
+			const deadline = Date.now() + timeoutMs;
+			let status: ExtractStatus = await client.extractStatus(jobId);
+			while (!TERMINAL.includes(status.status) && Date.now() < deadline) {
+				await new Promise((resolve) => setTimeout(resolve, 2_500));
+				status = await client.extractStatus(jobId);
 			}
 
-			const extraction = await extractFromPages(ai, pages, {
-				prompt,
-				schema,
-				systemPrompt: readString(input, "systemPrompt"),
-			});
-			store.note("ok", `extract  ${pages.length} page(s)  json=${JSON.stringify(extraction.data).length} chars`);
-
-			const lines = [
-				`Extracted from ${pages.length} page(s): ${extraction.usedUrls.join(", ")}`,
-			];
-			if (skipped.length > 0) lines.push(`Skipped: ${skipped.map((entry) => `${entry.url} (${entry.reason})`).join("; ")}`);
-			if (extraction.repaired) lines.push("Note: the model's answer needed repair before it parsed as JSON — verify the values.");
-			lines.push("", "```json", JSON.stringify(extraction.data, null, 2), "```");
+			const lines = [`Extraction ${status.status}  job=${jobId}`];
+			if (status.error) lines.push(`Error: ${status.error}`);
+			if (status.data !== undefined && status.data !== null) {
+				lines.push("", clip(JSON.stringify(status.data, null, 2), 20_000));
+			}
+			if (!TERMINAL.includes(status.status)) {
+				lines.push("", `Still running upstream. Call firecrawl_extract with jobId "${jobId}" again later.`);
+			}
 			return lines.join("\n");
 		},
 	};
-}
-
-function dedupeUrls(urls: readonly string[]): string[] {
-	return Array.from(new Set(urls)).slice(0, MAX_URLS);
 }

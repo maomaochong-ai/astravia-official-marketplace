@@ -851,9 +851,9 @@
     {
       "type": "plugin",
       "slug": "firecrawl",
-      "name": "Firecrawl Web Crawler",
-      "description": "Turn pages into clean Markdown, read PDFs and Office files, download video streams, and see every page kept or refused in the spider console. Runs on its own or through your Firecrawl API key.",
-      "version": "0.3.1",
+      "name": "Firecrawl Connector",
+      "description": "Read pages through the Firecrawl API: Markdown by default, plus HTML, links, screenshots, images, video and audio URLs, summaries or schema-shaped JSON. Crawl a section, map a site, search, parse PDFs and Office files, drive a browser session or the browsing agent. Works without a key at a lower rate limit; connect one on this page to lift it.",
+      "version": "0.4.1",
       "configVersion": 1,
       "license": "AGPL-3.0",
       "author": "Astravia Community",
@@ -867,18 +867,22 @@
         "crawler",
         "scraper",
         "markdown",
+        "media",
+        "browser",
         "robots"
       ],
       "detail": {
         "i18n": {
           "zh": {
-            "name": "Firecrawl 网页爬取",
-            "description": "把网页变成干净的 Markdown，读取 PDF 与 Office 文件，下载视频流，并在蜘蛛控制台里看清每一页被收录或被拒绝的原因。可完全本地运行，也可接入 Firecrawl API 密钥。",
+            "name": "Firecrawl 连接器",
+            "description": "通过 Firecrawl API 读取网页：默认 Markdown，也可同时要 HTML、链接、截图、图片、视频与音频地址、摘要或按 schema 的 JSON。还能爬取某个栏目、列出整站链接、搜索、解析 PDF 与 Office 文件、操作浏览器会话或让检索智能体跨页作答。不配密钥也能用，只是速率更低；在本页连接密钥即可解除限制。",
             "tags": [
               "网页",
               "爬虫",
               "抓取",
               "Markdown",
+              "媒体",
+              "浏览器",
               "robots"
             ]
           }

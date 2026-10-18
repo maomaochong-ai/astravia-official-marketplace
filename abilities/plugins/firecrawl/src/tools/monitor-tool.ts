@@ -7,22 +7,22 @@
  */
 
 import { readBoolean, readNumber, readOptionalString, readStringArray, requireUrl } from "./tool-arguments";
-import type { UpstreamGate } from "../runtime/upstream";
-import type { UpstreamMonitor } from "../domain/backend/types";
+import type { ToolDeps } from "./deps";
+import type { Monitor } from "../domain/firecrawl/types";
 
 const OPERATIONS = ["create", "list", "get", "update", "delete", "run", "checks"] as const;
 const TARGET_TYPES = ["scrape", "crawl", "search"] as const;
 const STATUSES = ["active", "paused"] as const;
 const TIMEZONES_HINT = "IANA name such as UTC, Europe/Berlin, Asia/Shanghai.";
 
-export function createMonitorTool(gate: UpstreamGate, _store: unknown) {
+export function createMonitorTool({ config }: ToolDeps) {
 	return {
 		id: "firecrawl_monitor",
 		name: "firecrawl_monitor",
 		label: "%tool.monitor.label%",
 		description: [
 			"Scheduled monitoring: re-check chosen pages, a crawl, or search queries on a cron schedule and read",
-			"the history of what changed. Upstream runs the scheduler, so this needs the Firecrawl API engine.",
+			"the history of what changed. Upstream runs the scheduler and keeps the history.",
 			"",
 			"Use it when the user asks to 'watch this page', 'tell me when it changes', 'check these docs daily'.",
 			"For one-off reads use firecrawl_scrape or firecrawl_crawl instead.",
@@ -52,7 +52,7 @@ export function createMonitorTool(gate: UpstreamGate, _store: unknown) {
 		timeoutMs: 180_000,
 		handler: async (context: { trigger: { input?: unknown } }) => {
 			const input = context.trigger.input;
-			const client = await gate.require();
+			const client = await config.require();
 			const operation = readOptionalString(input, "operation") ?? "create";
 			const id = readOptionalString(input, "id");
 
@@ -159,7 +159,7 @@ export function createMonitorTool(gate: UpstreamGate, _store: unknown) {
 	};
 }
 
-function formatMonitor(monitor: UpstreamMonitor): string {
+function formatMonitor(monitor: Monitor): string {
 	const record = (monitor ?? {}) as Record<string, unknown>;
 	const schedule = (record.schedule ?? {}) as Record<string, unknown>;
 	const targets = Array.isArray(record.targets) ? (record.targets as Array<Record<string, unknown>>) : [];

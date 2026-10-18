@@ -1,105 +1,114 @@
-# Firecrawl（Astravia 插件）
+# Firecrawl连接器
 
-在 Astravia 里把网页变成 Markdown，并把爬取过程画成一只在页面结构里行走的蜘蛛。同一批工具由两个引擎回答：
+在 Astravia 里读取网页，并把爬取过程画成一只在页面结构里行走的蜘蛛。默认拿到 Markdown，同一次调用也可以要 HTML、链接、截图、图片、视频与音频地址、摘要或按 schema 的 JSON——返回什么取决于你要的格式，而不是只有正文。每个请求都由
+[Firecrawl](https://docs.firecrawl.dev) 执行——本插件不再自带任何抓取引擎。
 
-- **本地引擎**：抓取、JavaScript 渲染、PDF/DOCX/XLSX 文本、正文提取、`robots.txt` 判定与广度优先爬取都在
-  插件内完成，网络与浏览器出口走宿主权限。不需要 Key，也不需要服务端。
-- **Firecrawl API 引擎**：同样的工具调用发给 [Firecrawl v2 API](https://docs.firecrawl.dev)（api.firecrawl.dev
-  或自建实例），OCR、反爬代理、托管任务队列与定时监控直接用上游能力，不再自行重写。
+```text
+Agent 工具  ──►  请求体  ──►  Firecrawl API v2  ──►  Markdown / JSON / 任务状态
+控制台      ──►  POST /v2/crawl ──►  GET /v2/crawl/{id}  ──►  蜘蛛图 + 页面
+```
 
-`engine: "auto"`（默认）在配置了端点或 Key 时走 API，否则走本地。每个工具还接受单次调用的 `engine` 参数，
-可临时覆盖全局设置。两个引擎下工具名、参数与回答形状完全一致。
+## 接入 Firecrawl 的三种方式
+
+Firecrawl 不止一种集成面，宿主对每种都有对应机制。本插件用的是真正传输数据的那一种：
+
+| 方式 | 是什么 | 为什么采用 / 不采用 |
+| --- | --- | --- |
+| **REST API v2** | `https://api.firecrawl.dev`（或自建实例），用 API Key 走 HTTPS | **已采用。** 请求由宿主发出（`ctx.network.request`），没有 CORS、没有额外进程，Key 留在宿主凭据库。覆盖面最全：scrape、parse、map、crawl、batch、search、extract、monitor。 |
+| **MCP 服务器** | `https://mcp.firecrawl.dev/v2/mcp`、`/v2/mcp-oauth`（登录）或无 Key | **不内嵌。** OAuth 变体不需要密钥，技术上可以声明；但它会把工具重复成 `mcp_plugin-firecrawl-*`，绕开控制台与运行记录，并把登录态放进宿主 MCP 设置里，插件无法查看或注销。偏好这种工具面的话，请直接在 MCP 客户端里添加。 |
+| **CLI** | `npx -y firecrawl-cli@latest …`，或由宿主通过 `providers.cli` 安装的 30–43 MB 独立二进制 | **不封装。** CLI 是同一批端点的第二个客户端：能力完全相同，却多一次下载和一次进程启动。请在终端使用；完整推理见 [docs/adr/0001-firecrawl-integration-mode.md](docs/adr/0001-firecrawl-integration-mode.md)，上游事实见 [docs/search/official-surfaces.md](docs/search/official-surfaces.md)。 |
+
+因此「用哪个引擎」不再是设置项：只有一条路径，Key 只影响速率与额度。
+
+## 连接账户
+
+免密钥可用，但 Firecrawl 在这种模式下只提供 Search、Scrape、Parse，且速率更低。账户卡片挂在能力详情页，
+整个授权过程不必离开 Astravia：
+
+1. 点「打开 firecrawl.dev」，浏览器打开官方 API Key 页面；登录并创建 Key。
+2. 粘贴到卡片里，点「校验并保存」。
+3. 插件先用这个候选 Key 调 `GET /v2/team/credit-usage`。只有上游认可的 Key 才会写进宿主密钥库；
+   被拒绝的 Key 如实报错，原有凭据保持不变。
+4. 卡片随后显示套餐额度、剩余额度与重置日期。「断开连接」会删除密钥并回到免密钥模式。
+
+控制台的连接条通过「授权」按钮到达同一页面，并额外接受自建实例端点。
 
 ## 插件提供什么
 
 | 扩展点 | 说明 |
 | --- | --- |
-| 活动面板 `crawl.console` | 引擎条（模式 / 端点 / API Key）+ 蜘蛛面板（页面结构 / 链接拓扑两种视图）+ Console / Pages / Elements 三个标签页。未开始时保持静止；运行时逐页显示收录、拒绝及原因，以及找到的每个媒体地址 |
+| 活动面板 `crawl.console` | 连接条（端点 / API Key）+ 蜘蛛面板（页面结构 / 链接拓扑）+ Artifacts / Pages / Links / Media / Issues / Console / Chat / History 八个标签页，另有每页输出类型勾选。未开始时保持静止；运行时逐页显示收录、拒绝原因，以及找到的每个媒体地址。抓到的页面同时按类型上架（Markdown、链接、图片、媒体、JSON、解析出的文档），最近几次运行留在磁盘上，产物可再次打开 |
+| `firecrawl_crawl` 的工具调用插槽 | Agent 发起的爬取在对话里显示成一张卡片：运行时是实时页数，结束后是工具原文，一键打开同一对话对应的控制台 |
 | 输入框下方 `ui.slot.input-action`「Firecrawl」 | 打开时以最大宽度挂载面板，并把爬取指令注入下一条提示；关闭时卸载 |
-| `firecrawl_scrape` | 单页 → Markdown，可选 `html` / `rawHtml` / `links` / `screenshot` / `media` / `images` / `json` / `summary` / `extract` / `answer` / `highlights` / `attributes` / `rawBase64` / `changeTracking` |
-| `firecrawl_batch_scrape` | 已知 URL 列表。API 引擎下是真正的任务：`wait: false` 返回 id，交给 `firecrawl_job_status` 轮询 |
-| `firecrawl_crawl` | 同站有界爬取：深度、页数、作用域、include/exclude、sitemap 三态、`prompt`、`webhookUrl`、`maxAge` 与 `scrapeOptions` |
+| `firecrawl_scrape` | 单页 → 你要的格式：`markdown`、`html`、`rawHtml`、`links`、`screenshot`（可整页）、`images`、`summary`、`json`、`audio`、`video`、`media`、`branding`、`product`、`menu`、`attributes`、`changeTracking`、`rawBase64`，以及 `question` / `highlights` |
+| `firecrawl_batch_scrape` | 已知 URL 列表，真正的上游任务：`wait: false` 返回 id，交给 `firecrawl_job_status` 轮询 |
+| `firecrawl_crawl` | 有界爬取：`limit`、`maxDepth`、作用域、include/exclude、sitemap 三态、`prompt`、`webhookUrl`、`maxAge` 与 `scrapeOptions` |
 | `firecrawl_map` | 由 sitemap 与页面链接汇总 URL 清单，最多 5000 条 |
-| `firecrawl_search` | 网页搜索，支持分类、来源、域名过滤与时间范围 |
+| `firecrawl_search` | 网页搜索，支持来源、分类、域名过滤与时间范围 |
 | `firecrawl_extract` | 跨一个或多个 URL 的 schema 抽取 |
-| `firecrawl_parse` | 文档 → Markdown：PDF、DOCX、XLSX 及其宏变体，来自 URL 或本地路径 |
-| `firecrawl_video` | 下载未加密的视频/音频流：HLS 播放列表、DASH 清单或直链，缺清单时从页面里发现 |
-| `firecrawl_job_status` | 查看、等待或取消上游 crawl/batch 任务 |
-| `firecrawl_monitor` | 创建、列出、修改、立即运行、查看与删除定时监控（`scrape` / `crawl` / `search` 目标，cron 或间隔调度）。仅 API 引擎 |
-| Skill `firecrawl`（`agent/skills/firecrawl/`） | 让 Agent 知道何时用哪个工具，如何如实报告上限与 `robots.txt` 拒绝 |
+| `firecrawl_parse` | **本地**文档 → Markdown：PDF、DOCX、XLSX、PPTX 等，上传到 `/v2/parse`（≤20 MB）。URL 走 `firecrawl_scrape`。 |
+| `firecrawl_video` | 用 `scrape` 的 `video` / `audio` 格式取页面媒体地址（含 HLS/DASH 清单），返回带签名的 URL；本地不做转码 |
+| `firecrawl_job_status` | 查看、等待或取消 crawl/batch 任务 |
+| `firecrawl_interact` | 在 Firecrawl 沙箱里开一个有状态的浏览器会话：`create` 拿 id，`execute` 用 Node / Python / Bash 驱动页面，`stop` 关闭。代码不在本地运行，也不会回显到控制台 |
+| `firecrawl_agent` | 受 `maxCredits` 约束的跨页检索：`prompt` 加可选 `schema`，轮询 `GET /v2/agent/{id}` 直到完成或触到额度（此时标记为部分结果） |
+| `firecrawl_index_search` | 一个工具、三类语料：`developer`（文档 / issue / PR / readme）、`gov`、`research`（论文搜索、读单篇、沿引用扩展） |
+| `firecrawl_monitor` | 创建、列出、修改、立即运行、查看与删除定时监控（`scrape` / `crawl` / `search` 目标，cron 或间隔调度） |
+| `firecrawl_interact` | Firecrawl 沙箱里的有状态浏览器会话：开一次，之后跨调用运行代码、点击、读取，最后关闭。任何代码都不在本机执行 |
+| `firecrawl_agent` | Firecrawl 的浏览 Agent：一句自然语言问题换一个结构化答案，页面由上游自己挑。用 `maxCredits` 限住成本；长任务返回 job id，再次调用不重复计费 |
+| `firecrawl_index_search` | 搜索精选语料而非开放网络：`developer`（文档、issue、PR、readme、agent skill）、`gov`、`research`（论文与引用） |
+| Skill `firecrawl`（`agent/skills/firecrawl/`） | 让 Agent 知道何时用哪个工具，如何如实报告上限与上游错误 |
 
 面板与工具共用同一份 run store，所以 Agent 发起的爬取会在面板里动起来，而不是悄无声息地跑完。
 控制台目标会跟随对话：在聊天里粘贴一个网址，面板在任何工具调用发生前就先采用它。
+两个方向都是通的：Agent 发起的爬取会点亮面板，产物上的「问 AI」则把摘要送回同一段对话。
 
-## 配置 API 引擎
+## 无 Key 可用，Key 带来什么
 
-打开爬虫控制台，用顶部的引擎条：
+托管 API 接受不带 Key 的请求，只是速率限制更低，所以装好即可用。在连接条里填入 Key 会提高吞吐，
+并消耗你的额度。
 
-- **模式**：`auto`（配置即走 API）、`API`、`local`。
-- **端点**：留空即 `https://api.firecrawl.dev`；自建实例写 `http://localhost:3002`，无需 Key。
-- **API Key**：写入宿主凭据保险库，不落设置文件、不进日志、不作为工具参数。留空提交保留原 Key；清空保险库条目即删除。
-
-没有端点也没有 Key 时插件完全本地运行——这也是 API 被视为增强而非前提的原因。
+- **端点**：留空即 `https://api.firecrawl.dev`；自建实例写 `http://localhost:3002`。
+- **API Key**：写入宿主凭据保险库，不落设置文件、不进日志、不作为工具参数。留空提交保留原 Key；
+  清空保险库条目即删除。
+- **速率与额度按原样报告**：`429` 译为「触发速率限制」，`402` 译为「额度不足」，`401`/`403`
+  译为「API 拒绝了这个 Key」。
 
 ## 页面是怎么抓的
 
-`render: "auto"`（默认）先读静态 HTML，只有在文档看起来由前端渲染、正文短于 320 字符，或请求截图时才升级
-到浏览器会话。`render: "static"` 永不开浏览器；`render: "browser"` 始终走浏览器并优先取渲染后文本。
+`scrape` 把 `formats`、`onlyMainContent`、`waitFor`、`timeout`、动作序列、`proxy`、`parsers`、
+`location` 与 `maxAge` 原样发给上游。抓取、JavaScript 渲染与 Markdown 转换都由 Firecrawl 完成，
+这里拿到的是最终文档。
 
-- **PDF** 按文档解析（文本层 + 页数），不会被当成二进制拒绝。
-- **DOCX / XLSX** 走手写的 OOXML 读取器：标题、列表项、加粗片段与表格都转成 Markdown，每个工作表一段。
-- **`text/markdown`** 原样透传。
-- **其他二进制**明确拒绝并给出原因，而不是返回空页面。
-- **媒体地址**从 `img`、`video`、`audio`、`source` 及 `og:video*` / `og:audio` meta 采集，按页面 URL 解析为绝对地址并去重。
-- **自定义请求头**由 HTTP 抓取发送。宿主浏览器 API 不能设置请求头，所以浏览器渲染走的是这份快照：通过
-  `data:` URL 加载并注入指向原地址的 `<base>`——Cookie 与需要凭据的子资源不会随之重放。
-
-## 与上游 Firecrawl 的能力对照
-
-插件内已实现：Markdown / HTML / raw HTML / 链接 / 截图 / 媒体 / 图片 / raw base64 / `attributes` 的 scrape，
-按 schema 的 JSON 抽取，带深度、页数、作用域、include/exclude、sitemap 三态（`include` / `only` / `skip`）与 robots
-的 crawl，整轮爬取后统一回答的 `prompt`，把摘要 POST 出去的 `webhookUrl`，sitemap 发现，带搜索的 `map`，
-带分类的网页搜索，经宿主浏览器的 JS 渲染（可用持久登录 profile），PDF/DOCX/XLSX 文本，scrape/batch/crawl 上的
-`maxAge` 缓存复用与 `changeTracking`，自定义请求头，提示注入告警，HLS/DASH 分片下载，以及完整的 Firecrawl API 第二引擎。
-
-交给 API 引擎而不是自行重写的：OCR、反爬/隐身代理、托管任务队列（`firecrawl_job_status`）、定时监控。
-
-以简化形式实现：
-
-- **浏览器渲染**能拿到文本、截图与无障碍快照。插件 API 没有 `evaluate` / `outerHTML`，因此拿不到*渲染后*的
-  HTML 树：浏览器渲染页面的元素结构由文本推导，不是 DOM。
-- **DASH** 支持带 `$Number$` 的 `SegmentTemplate`（含 `$RepresentationID$` / `$Bandwidth$` 与 `SegmentTimeline`）。
-  其他寻址方式的清单会明确报「不支持」，不会默默拼出一个坏文件。
-- **搜索**默认使用 DuckDuckGo 的 HTML 端点（无需 Key），而不是付费搜索提供方。
+- **PDF / DOCX / XLSX / PPTX** 以 multipart 走 `/v2/parse`（单文件上限 20 MB）；已经发布在网址上的
+  文件直接走 `scrape`。
+- **`rawBase64`** 必须作为唯一格式请求；插件会收拢格式列表，而不是让上游报错。
+- **`audio` / `video`** 返回约一小时后失效的签名 URL。`firecrawl_video` 只报告地址，不串流、不拼接分片、
+  不解密。
+- **`attributes`** 接受 `["a@href", "h2", ".price@data-price"]` 这类选择器，每个选择器返回一组去重值。
+- **自定义请求头**会转交上游，这也是需要请求头的页面能正常读取的原因。
 
 ## 限制
 
-这些是插件的真实边界，Agent 被要求如实报告而不是猜测。
+这些是真实边界，Agent 被要求如实报告而不是猜测。
 
-- **不做 DRM 绕过、不做解密、不拼接加密媒体分片。** 使用 Widevine / PlayReady / FairPlay，或 HLS
-  `#EXT-X-KEY` 里 `METHOD=AES-128` / `SAMPLE-AES`，或 MPD 含 `ContentProtection` 的页面，只读取其公开的文本
-  部分。`firecrawl_video` 会报告保护类型并停止，不会尝试破解——这是法律边界，不是待办事项。**未加密的
-  HLS/DASH 分片会真实下载并拼接。**
-- **`blob:` Media Source 流**只存在于播放页面里，被标记为受保护流，没有可下载的文件。
-- **加密或混淆内容会直接从 Markdown 里缺失。** 需要登录、付费墙 Cookie 或验证码才能渲染的页面，只会得到
-  内容稀薄或被拦截的结果，插件不会尝试突破这些限制。
-- **没有本地调度器与本地任务队列。** 插件 API 不允许插件注册后台任务，所以 `firecrawl_monitor` 与异步任务
-  队列属于 API 引擎；本地 `batch_scrape` 仍在一次调用里读完 URL，没有可轮询的 id。
-- **`maxAge` 缓存需要 `storage.read` / `storage.write`。** 未授权时每次都真实抓取，`changeTracking` 每次都报「新」。
-- 扫描版 PDF 本地没有 OCR：整页图片不会产出文本——这正是 API 引擎补上的部分。
-- `robots.txt` 始终生效。`ignoreRobotsTxt` 只用于用户自己的站点，插件不会自造绕过方式。
+- **没有本地兜底。** API 不可达时工具以传输原因失败（`timed-out`、`host-not-allowed`、
+  `response-too-large`），不会改为自己抓取。
+- **不做 DRM 绕过。** 受保护的流会被如实标为受保护；插件没有解密分片的代码，API 也不会返回解密后的媒体。
+- **不突破登录墙、付费墙与验证码。** 爬取会报告内容稀薄或被拦截的结果；`proxy` 是上游的住宅出口路由，
+  不是本插件自建的绕过手段。
+- **没有本地调度器。** `firecrawl_monitor` 与异步任务都在上游，插件只负责调用。
+- **没有本地缓存。** `maxAge` 与 `changeTracking` 是上游能力——插件只发送参数，不保存页面副本。
+- **`robots.txt`** 默认生效。`ignoreRobotsTxt` 只用于用户自己的站点。
 
 ## 行为边界
 
-- **深度 = 从起始 URL 出发的链接跳数**，不是 URL 路径层级。`maxDepth: 0` 只读起始页。
-- **`limit` 限制抓取页数**，达到即停；被拒绝的链接会报告，不会静默丢弃。
-- **作用域**由起始 URL 推出：目录 URL 覆盖其子树；文档 URL 放宽到所在目录；其余覆盖自身及其子级。
-- **准入顺序固定**：外部站点 → 反向爬取 → 深度 → 排除 → 包含 → 社交平台 → 文件类型 → `robots.txt` → 重复，
-  第一条命中的规则就是报告的原因。
-- **默认遵守 `robots.txt`**。拒绝不会被绕过。
-- 站内声明 sitemap 时先做播种。`sitemap: "only"` 把 sitemap 当作全部待爬队列且不再展开链接；`"skip"` 则完全忽略 sitemap。
-- **提示注入扫描**匹配已知的指令覆盖话术并作为 warning 报告，从不改写页面内容。
-- **请求头会先脱敏**，再进入控制台快照或 webhook 载荷。
+- **深度（`maxDepth`）= 从起始 URL 出发的链接跳数**，不是 URL 路径层级。`0` 只读起始页。控制台里同一
+  字段显示为 `maxDiscoveryDepth`，那是 API 的叫法。
+- **`limit` 限制抓取页数**。达到上限时控制台会说明，而不是暗示站点只有这些页面。
+- **控制台提交的 `POST /v2/crawl` 请求体与 Agent 工具完全相同**，手动发起与 Agent 发起的爬取行为一致。
+- **页面由上游分页返回。** store 每次 tick 最多续读 20 页，大爬取会先显示首屏再持续补全。
+- **被拒绝与失败的页面来自 `/v2/crawl/{id}/errors`**，按上游消息分类：robots 拒绝记为 `deny`，其余记为
+  `fail`。
 
 ## 开发
 
@@ -113,8 +122,15 @@ npm run build        # 本地预检；dist/ 与 release/ 不提交
 `npm install` 需要能解析 `@astravia-org/*` 开发依赖，市场构建会临时把它们指向本地宿主检出。
 
 目录结构遵循 [docs/plugin-project-structure.md](../../../docs/plugin-project-structure.md)：
-`src/domain/backend` 上游 REST 客户端与类型、`src/domain` 纯逻辑与单测（PDF / OOXML / 媒体流 / 元素采集）、
-`src/features` 控制台 UI、`src/runtime` 上下文/网络/上游门控/对话监听、`src/tools` 工具注册（本地与上游实现）、
-`src/index.tsx` 装配、`agent/skills` Skill、`locales` 文案。
 
-上游归属与第三方许可见 [NOTICE.md](NOTICE.md)。
+```text
+src/domain/firecrawl/   类型、传输契约、REST 客户端、爬取选项、文档整形
+src/features/           控制台 UI：store、hooks、组件
+src/runtime/            插件上下文、宿主传输、连接配置（设置 + 凭据库）、对话监听
+src/tools/              Agent 工具注册与「参数 → 请求体」翻译
+src/index.tsx           装配：标签页、工具、输入动作、卸载
+agent/skills/           Agent Skill
+locales/                文案（en、zh）
+```
+
+上游归属与许可见 [NOTICE.md](NOTICE.md)。

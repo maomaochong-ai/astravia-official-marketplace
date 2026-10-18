@@ -1,9 +1,10 @@
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, render, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { FirecrawlClient, FirecrawlDocument, JobStatus } from "../src/domain/firecrawl/types";
+import { DEFAULT_CRAWL_JOB_OPTIONS } from "../src/domain/firecrawl/options";
+import type { FirecrawlConfig } from "../src/runtime/config";
 import { CrawlConsoleTab } from "../src/features/crawler-console/components/crawl-console-tab";
 import { CrawlRunStore } from "../src/features/crawler-console/services/crawl-run-store";
-import { DEFAULT_CRAWL_OPTIONS } from "../src/domain/events";
-import type { CrawlEvent, CrawlSummary } from "../src/domain/events";
 
 const STRINGS: Record<string, string> = {
 	"console.title": "Crawl console",
@@ -36,7 +37,52 @@ const STRINGS: Record<string, string> = {
 	"metric.queued": "queued",
 	"metric.denied": "refused",
 	"metric.failed": "failed",
-	"metric.downloaded": "downloaded",
+	"metric.credits": "credits",
+	"connection.keyed": "API key set",
+	"connection.keyless": "keyless",
+	"console.preview.back": "Back",
+	"console.preview.pending": "text not captured",
+	"console.preview.structure": "Structure",
+	"console.preview.copy": "Copy",
+	"console.preview.download": "Download",
+	"console.preview.open": "Browser",
+	"console.opt.sitemap": "Use sitemap",
+	"console.opt.mainContent": "Main content only",
+	"console.opt.external": "Follow external links",
+	"console.opt.subdomains": "Include subdomains",
+	"console.opt.entireDomain": "Crawl the whole domain",
+	"console.opt.queryParams": "Ignore query parameters",
+	"console.opt.ignoreRobots": "Ignore robots.txt",
+	"console.delay": "Delay between requests",
+	"spider.el.headings": "headings",
+	"spider.el.paragraphs": "paragraphs",
+	"spider.el.links": "links",
+	"spider.el.images": "images",
+	"spider.el.videos": "video",
+	"spider.el.tables": "tables",
+	"console.tab.artifacts": "Artifacts",
+	"console.tab.history": "History",
+	"console.tab.links": "Links",
+	"console.tab.issues": "Issues",
+	"console.links.count": "{{count}} links",
+	"console.links.domains": "{{count}} domains",
+	"console.links.empty": "No links captured",
+	"console.links.search": "Filter links",
+	"console.links.use": "Crawl",
+	"console.issues.empty": "Nothing was refused",
+	"console.issues.denied": "refused",
+	"console.issues.failed": "failed",
+	"console.issues.warning": "Warnings",
+	"console.artifacts.all": "All",
+	"console.artifacts.ask": "Ask the agent",
+	"console.artifacts.empty": "Nothing captured yet",
+	"console.history.empty": "No archived runs yet",
+	"artifact.kind.markdown": "Markdown",
+	"artifact.kind.links": "Links",
+	"artifact.kind.images": "Images",
+	"artifact.kind.media": "Media",
+	"artifact.kind.json": "JSON",
+	"artifact.kind.document": "Document",
 };
 
 vi.mock("../src/runtime/plugin-context", () => ({
@@ -45,7 +91,7 @@ vi.mock("../src/runtime/plugin-context", () => ({
 		i18n: {
 			locale: "en",
 			t: (key: string, params?: Record<string, string | number>) =>
-				(params ? `${STRINGS[key] ?? key} ${JSON.stringify(params)}` : (STRINGS[key] ?? key)),
+				params ? `${STRINGS[key] ?? key} ${JSON.stringify(params)}` : (STRINGS[key] ?? key),
 			onChange: () => ({ dispose: () => {} }),
 		},
 		ui: { notify: () => {} },
@@ -55,92 +101,142 @@ vi.mock("../src/runtime/plugin-context", () => ({
 
 afterEach(cleanup);
 
-function event(type: CrawlEvent["type"], extra: Record<string, unknown> = {}): CrawlEvent {
-	return { type, at: 1, ...extra } as CrawlEvent;
+function document(url: string, title: string, markdown: string): FirecrawlDocument {
+	return { url, title, markdown, links: [], metadata: { statusCode: 200 } } as FirecrawlDocument;
 }
 
-const SUMMARY: CrawlSummary = {
-	startUrl: "https://example.com/docs/",
-	pages: [],
-	denied: [],
-	failed: [],
-	status: "completed",
-	durationMs: 1200,
-	options: DEFAULT_CRAWL_OPTIONS,
-	scope: "/docs/*",
-};
+/**
+ * A completed crawl is enough for every view under test: the console renders
+ * from the store snapshot, and the snapshot comes from one status response.
+ */
+function harness(documents: FirecrawlDocument[]) {
+	const status: JobStatus = {
+		status: "completed",
+		completed: documents.length,
+		total: documents.length,
+		creditsUsed: 3,
+		next: null,
+		data: documents,
+	};
+	const client = {
+		crawl: async () => ({ id: "c-1" }),
+		job: async () => status,
+		jobErrors: async () => [],
+		cancel: async () => undefined,
+	} as unknown as FirecrawlClient;
+	const config = {
+		state: { settings: { endpoint: "" }, endpoint: "https://api.firecrawl.dev", hasKey: false, reason: "" },
+		subscribe: () => () => {},
+		configure: async () => {},
+		require: async () => client,
+		maybeClient: client,
+	} as unknown as FirecrawlConfig;
+	return { store: new CrawlRunStore(config), config };
+}
 
 describe("CrawlConsoleTab", () => {
-	it("renders idle, then reflects a run started elsewhere", async () => {
-		let release: (value: CrawlSummary) => void = () => {};
-		const store = new CrawlRunStore(
-			(_target, _options, hooks) =>
-				new Promise<CrawlSummary>((resolve) => {
-					release = resolve;
-					hooks.onEvent?.(event("queued", { url: "https://example.com/docs/", depth: 0, parent: null, via: "seed" }));
-					hooks.onEvent?.(event("fetching", { url: "https://example.com/docs/", depth: 0, parent: null }));
-				}),
-		);
+	it("renders idle, then reflects a run started by the console", async () => {
+		const { store, config } = harness([document("https://example.com/docs/", "Docs home", "Hello.")]);
+		const view = render(<CrawlConsoleTab store={store} config={config} />);
 
-		const view = render(<CrawlConsoleTab store={store} />);
 		expect(view.getByText("No crawl yet")).toBeTruthy();
 		expect(view.getByText("Waiting for the first page")).toBeTruthy();
 
 		await act(async () => {
-			void store.start("https://example.com/docs/", DEFAULT_CRAWL_OPTIONS);
+			await store.start("https://example.com/docs/", DEFAULT_CRAWL_JOB_OPTIONS);
 		});
 
-		// A run started by the tools (not by this form) still shows the target and progress.
-		expect(view.getByText("https://example.com/docs/")).toBeTruthy();
-		expect(view.getByText("Stop")).toBeTruthy();
-
-		await act(async () => {
-			store.ingest(event("crawled", {
-				url: "https://example.com/docs/",
-				depth: 0,
-				parent: null,
-				status: 200,
-				engine: "fetch",
-				bytes: 512,
-				chars: 300,
-				links: 4,
-				durationMs: 40,
-				title: "Docs home",
-			}));
-			store.ingest(event("denied", {
-				url: "https://example.com/private",
-				depth: 1,
-				parent: "https://example.com/docs/",
-				code: "BACKWARD_CRAWLING",
-				message: "outside the start scope",
-			}));
-			release(SUMMARY);
-		});
-
-		expect(view.getByText(/BACKWARD_CRAWLING|outside the start scope/)).toBeTruthy();
+		expect(view.getByDisplayValue("https://example.com/docs/")).toBeTruthy();
+		expect(view.getByText("completed")).toBeTruthy();
+		expect(view.getByText(/run end/)).toBeTruthy();
 	});
 
-	it("switches to the pages list and back", async () => {
-		const store = new CrawlRunStore(async () => SUMMARY);
-		const view = render(<CrawlConsoleTab store={store} />);
+	it("switches to the pages list and previews a captured page", async () => {
+		const url = "https://example.com/docs/";
+		const { store, config } = harness([document(url, "Docs home", "Hello from the captured page.")]);
+		const view = render(<CrawlConsoleTab store={store} config={config} />);
+
 		await act(async () => {
-			store.ingest(event("crawled", {
-				url: "https://example.com/docs/",
-				depth: 0,
-				parent: null,
-				status: 200,
-				engine: "fetch",
-				bytes: 512,
-				chars: 300,
-				links: 0,
-				durationMs: 40,
-				title: "Docs home",
-			}));
+			await store.start(url, DEFAULT_CRAWL_JOB_OPTIONS);
 		});
+
 		await act(async () => {
-			// The control bar's page-limit label is also "Pages"; the tab is last.
 			view.getAllByText("Pages").at(-1)!.click();
 		});
-		expect(view.getAllByText("Docs home").length).toBeGreaterThan(0);
+		await act(async () => {
+			within(view.getByRole("list", { name: "Pages" })).getByText("Docs home").click();
+		});
+
+		// The preview replaces the list in place; nothing leaves the panel rectangle.
+		expect(view.getByText(/Hello from the captured page/)).toBeTruthy();
+		expect(view.getByText(/Back/)).toBeTruthy();
+	});
+
+	it("shows the keyless hint without blocking a start", () => {
+		const { store, config } = harness([]);
+		const view = render(<CrawlConsoleTab store={store} config={config} />);
+
+		expect(view.getByText("keyless")).toBeTruthy();
+		expect(view.getByText("Start crawl")).toBeTruthy();
+	});
+
+	it("shelves what was captured by type and leaves the history empty until a run is archived", async () => {
+		const url = "https://example.com/docs/";
+		const page = {
+			url,
+			title: "Docs home",
+			markdown: "Read [the guide](/guide) and ![shot](/shot.png)",
+			links: [],
+			metadata: { statusCode: 200 },
+		} as FirecrawlDocument;
+		const { store, config } = harness([page]);
+		const view = render(<CrawlConsoleTab store={store} config={config} />);
+
+		await act(async () => {
+			await store.start(url, DEFAULT_CRAWL_JOB_OPTIONS);
+		});
+
+		const shelf = view.getByRole("list", { name: "Artifacts" });
+		// One page becomes typed products: the prose, its outbound links, its images.
+		expect(view.getAllByText("Markdown").length).toBeGreaterThan(0);
+		expect(view.getAllByText("Links").length).toBeGreaterThan(0);
+		expect(within(shelf).getAllByText("Docs home").length).toBeGreaterThan(0);
+
+		await act(async () => {
+			within(shelf).getAllByText("Docs home")[0]!.click();
+		});
+		expect(view.getByText(/the guide/)).toBeTruthy();
+
+		await act(async () => {
+			view.getAllByText("History").at(-1)!.click();
+		});
+		expect(view.getByText("No archived runs yet")).toBeTruthy();
+	});
+
+	it("pools outbound links in their own tab and reports an empty issue list", async () => {
+		const url = "https://example.com/docs/";
+		const page = {
+			url,
+			title: "Docs home",
+			markdown: "Read [the guide](/guide)",
+			links: [],
+			metadata: { statusCode: 200 },
+		} as FirecrawlDocument;
+		const { store, config } = harness([page]);
+		const view = render(<CrawlConsoleTab store={store} config={config} />);
+
+		await act(async () => {
+			await store.start(url, DEFAULT_CRAWL_JOB_OPTIONS);
+		});
+
+		await act(async () => {
+			view.getByRole("tab", { name: /Links/ }).click();
+		});
+		expect(view.getByText("/guide")).toBeTruthy();
+
+		await act(async () => {
+			view.getByRole("tab", { name: /Issues/ }).click();
+		});
+		expect(view.getByText("Nothing was refused")).toBeTruthy();
 	});
 });

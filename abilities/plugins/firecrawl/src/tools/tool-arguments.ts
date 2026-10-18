@@ -7,7 +7,17 @@
  * schema descriptions so the model sees them.
  */
 
-import type { BrowserAction } from "../domain/render/types";
+export type ScrapeAction =
+	| { type: "click"; selector: string; all?: boolean }
+	| { type: "write"; text: string }
+	| { type: "press"; key: string }
+	| { type: "scroll"; direction?: "up" | "down" | "left" | "right"; selector?: string }
+	| { type: "wait"; milliseconds: number }
+	| { type: "wait"; selector: string }
+	| { type: "screenshot"; fullPage?: boolean; quality?: number; viewport?: { width: number; height: number } }
+	| { type: "scrape" }
+	| { type: "executeJavascript"; script: string }
+	| { type: "pdf"; format?: string; landscape?: boolean; scale?: number };
 
 export class ToolArgumentError extends Error {
 	constructor(message: string) {
@@ -63,10 +73,64 @@ export function readBoolean(input: unknown, key: string, def: boolean): boolean 
 	return typeof value === "boolean" ? value : def;
 }
 
+/** Distinguishes "not set" from "explicitly false" for options whose upstream default is true. */
+export function readOptionalBoolean(input: unknown, key: string): boolean | undefined {
+	if (!input || typeof input !== "object") return undefined;
+	const value = (input as Record<string, unknown>)[key];
+	return typeof value === "boolean" ? value : undefined;
+}
+
 /** Raw `attributes` argument: a selector list, or `"a@href,h2"`. */
 export function readAttributesInput(input: unknown): unknown {
 	if (!input || typeof input !== "object") return undefined;
 	return (input as Record<string, unknown>).attributes;
+}
+
+const MAX_SELECTORS = 20;
+
+/**
+ * Normalises the `attributes` argument into upstream's selector objects.
+ *
+ * Accepts `"h1, a@href"`, `["h1", "a@href"]` and `[{ selector, attribute }]`.
+ */
+export function readAttributeSelectors(input: unknown): Array<{ selector: string; attribute: string }> {
+	const raw = readAttributesInput(input);
+	if (raw === undefined || raw === null) return [];
+	const selectors: Array<{ selector: string; attribute: string }> = [];
+	const push = (selector: string, attribute: string): void => {
+		const cleanSelector = selector.trim();
+		if (!cleanSelector || selectors.length >= MAX_SELECTORS) return;
+		const cleanAttribute = attribute.trim() || "text";
+		if (selectors.some((entry) => entry.selector === cleanSelector && entry.attribute === cleanAttribute)) return;
+		selectors.push({ selector: cleanSelector, attribute: cleanAttribute });
+	};
+	const fromString = (value: string): void => {
+		for (const part of value.split(",")) {
+			const trimmed = part.trim();
+			if (!trimmed) continue;
+			const at = trimmed.lastIndexOf("@");
+			if (at > 0) push(trimmed.slice(0, at), trimmed.slice(at + 1));
+			else push(trimmed, "text");
+		}
+	};
+	if (typeof raw === "string") fromString(raw);
+	else if (Array.isArray(raw)) {
+		for (const entry of raw) {
+			if (typeof entry === "string") fromString(entry);
+			else if (entry && typeof entry === "object") {
+				const record = entry as Record<string, unknown>;
+				if (typeof record.selector === "string") {
+					push(record.selector, typeof record.attribute === "string" ? record.attribute : "text");
+				}
+			}
+		}
+	} else if (raw && typeof raw === "object") {
+		const record = raw as Record<string, unknown>;
+		if (typeof record.selector === "string") {
+			push(record.selector, typeof record.attribute === "string" ? record.attribute : "text");
+		}
+	}
+	return selectors;
 }
 
 export function readStringArray(input: unknown, key: string, max = 20): string[] {
@@ -177,68 +241,142 @@ export function readJsonObject(input: unknown, key: string): Record<string, unkn
 }
 
 const MAX_ACTIONS = 10;
+const MAX_SCRIPT_CHARS = 20_000;
+const ACTION_TYPES = "click, write, press, scroll, wait, screenshot, scrape, executeJavascript, pdf";
+
+function actionText(record: Record<string, unknown>, ...keys: string[]): string {
+	for (const key of keys) {
+		const value = record[key];
+		if (typeof value === "string" && value.trim()) return value.trim();
+	}
+	return "";
+}
+
+function actionString(record: Record<string, unknown>, key: string): string | undefined {
+	const value = record[key];
+	return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
 
 /**
- * Validates firecrawl-style `actions[]`.
+ * Validates `actions[]` against the upstream action union.
  *
- * The host browser's `act()` accepts a closed vocabulary; anything unknown is a
- * caller mistake we must catch here, with the action index, not a runtime throw
- * halfway through a page interaction.
+ * Upstream's vocabulary is the contract: click / write / press / scroll / wait /
+ * screenshot / scrape / executeJavascript / pdf, all keyed on `selector` and
+ * `text`. Older callers in this plugin's own history used `target`, `fill` and
+ * `check`; `target` and `fill`/`type` are accepted as aliases, while actions
+ * upstream cannot express (select, check, back, reload) fail loudly instead of
+ * being silently dropped by the API.
  */
-export function readActions(input: unknown, key = "actions"): BrowserAction[] {
+export function readActions(input: unknown, key = "actions"): ScrapeAction[] {
 	if (!input || typeof input !== "object") return [];
 	const value = (input as Record<string, unknown>)[key];
 	if (value === undefined || value === null) return [];
 	if (!Array.isArray(value)) throw new ToolArgumentError(`"${key}" must be an array of action objects`);
-	const actions: BrowserAction[] = [];
+	const actions: ScrapeAction[] = [];
 	for (const [index, entry] of value.slice(0, MAX_ACTIONS).entries()) {
-		if (!entry || typeof entry !== "object") throw new ToolArgumentError(`"${key}[${index}]" must be an object`);
+		const prefix = `"${key}[${index}]"`;
+		if (!entry || typeof entry !== "object") throw new ToolArgumentError(`${prefix} must be an object`);
 		const record = entry as Record<string, unknown>;
-		const type = typeof record.type === "string" ? record.type : "";
-		const target = typeof record.target === "string" ? record.target.trim() : "";
-		const text = typeof record.value === "string" ? record.value : "";
+		const type = typeof record.type === "string" ? record.type.trim() : "";
+		const selector = actionText(record, "selector", "target");
+		const text = actionText(record, "text", "value");
 		switch (type) {
 			case "click":
-				if (!target) throw new ToolArgumentError(`"${key}[${index}].target" is required for click`);
-				actions.push({ type: "click", target });
+				if (!selector) throw new ToolArgumentError(`${prefix}.selector is required for click`);
+				actions.push({ type: "click", selector, ...(record.all === true ? { all: true } : {}) });
 				break;
+			case "write":
 			case "fill":
-			case "type":
-			case "select":
-				if (!target) throw new ToolArgumentError(`"${key}[${index}].target" is required for ${type}`);
-				actions.push({ type, target, value: text });
+			case "type": {
+				if (!text) throw new ToolArgumentError(`${prefix}.text is required for ${type}`);
+				// Upstream writes into the focused element, so a targeted write is a
+				// click followed by a write. Expand it here rather than dropping
+				// either half of the caller's intent.
+				if (selector && actions.length + 2 <= MAX_ACTIONS) {
+					actions.push({ type: "click", selector }, { type: "write", text });
+				} else if (selector) {
+					throw new ToolArgumentError(`${prefix} needs a click before the write and would exceed ${MAX_ACTIONS} actions`);
+				} else {
+					actions.push({ type: "write", text });
+				}
 				break;
-			case "check":
-				actions.push({ type: "check", target, checked: record.checked !== false });
-				break;
+			}
 			case "press": {
-				const combo = target || text || (typeof record.key === "string" ? record.key : "");
-				if (!combo) throw new ToolArgumentError(`"${key}[${index}].key" is required for press`);
+				const combo = actionText(record, "key", "text", "value") || selector;
+				if (!combo) throw new ToolArgumentError(`${prefix}.key is required for press`);
 				actions.push({ type: "press", key: combo });
 				break;
 			}
 			case "scroll": {
-				const direction = record.direction === "up" || record.direction === "left" || record.direction === "right" ? record.direction : "down";
-				const amount = typeof record.amount === "number" && Number.isFinite(record.amount) ? Math.min(10, Math.max(1, Math.round(record.amount))) : undefined;
-				actions.push({ type: "scroll", direction, amount });
+				const direction =
+					record.direction === "up" || record.direction === "left" || record.direction === "right" || record.direction === "down"
+						? record.direction
+						: undefined;
+				const target = actionString(record, "selector") ?? actionString(record, "target");
+				actions.push({ type: "scroll", ...(direction ? { direction } : {}), ...(target ? { selector: target } : {}) });
 				break;
 			}
 			case "wait": {
-				const milliseconds = typeof record.milliseconds === "number" && Number.isFinite(record.milliseconds)
-					? Math.min(60_000, Math.max(0, Math.round(record.milliseconds)))
-					: undefined;
-				actions.push({ type: "wait", milliseconds, target: target || undefined });
+				if (selector) {
+					actions.push({ type: "wait", selector });
+					break;
+				}
+				const milliseconds = typeof record.milliseconds === "number" && Number.isFinite(record.milliseconds) ? Math.round(record.milliseconds) : NaN;
+				if (!Number.isFinite(milliseconds) || milliseconds < 1) {
+					throw new ToolArgumentError(`${prefix} needs either "selector" or a positive "milliseconds"`);
+				}
+				actions.push({ type: "wait", milliseconds: Math.min(60_000, milliseconds) });
 				break;
 			}
-			case "back":
-				actions.push({ type: "back" });
+			case "screenshot": {
+				const quality =
+					typeof record.quality === "number" && Number.isFinite(record.quality)
+						? Math.min(100, Math.max(1, Math.round(record.quality)))
+						: undefined;
+				const rawViewport = record.viewport;
+				const viewport =
+					rawViewport && typeof rawViewport === "object" && typeof (rawViewport as Record<string, unknown>).width === "number" && typeof (rawViewport as Record<string, unknown>).height === "number"
+						? {
+								width: Math.max(1, Math.round((rawViewport as Record<string, number>).width)),
+								height: Math.max(1, Math.round((rawViewport as Record<string, number>).height)),
+							}
+						: undefined;
+				actions.push({
+					type: "screenshot",
+					...(record.fullPage === true ? { fullPage: true } : {}),
+					...(quality !== undefined ? { quality } : {}),
+					...(viewport ? { viewport } : {}),
+				});
 				break;
-			case "reload":
-				actions.push({ type: "reload" });
+			}
+			case "scrape":
+				actions.push({ type: "scrape" });
 				break;
+			case "executeJavascript": {
+				const script = actionText(record, "script");
+				if (!script) throw new ToolArgumentError(`${prefix}.script is required for executeJavascript`);
+				if (script.length > MAX_SCRIPT_CHARS) {
+					throw new ToolArgumentError(`${prefix}.script is longer than ${MAX_SCRIPT_CHARS} characters`);
+				}
+				actions.push({ type: "executeJavascript", script });
+				break;
+			}
+			case "pdf": {
+				const format = actionString(record, "format");
+				const scale = typeof record.scale === "number" && Number.isFinite(record.scale) ? Math.min(2, Math.max(0.1, record.scale)) : undefined;
+				actions.push({
+					type: "pdf",
+					...(format ? { format } : {}),
+					...(record.landscape === true ? { landscape: true } : {}),
+					...(scale !== undefined ? { scale } : {}),
+				});
+				break;
+			}
+			case "":
+				throw new ToolArgumentError(`${prefix}.type is required; one of ${ACTION_TYPES}`);
 			default:
 				throw new ToolArgumentError(
-					`"${key}[${index}].type" must be one of click, fill, type, select, check, press, scroll, wait, back, reload`,
+					`${prefix}.type "${type}" is not an upstream action; use one of ${ACTION_TYPES}. Selects, checkboxes, back and reload have no upstream action — use {"type":"executeJavascript","script":"…"} instead.`,
 				);
 		}
 	}

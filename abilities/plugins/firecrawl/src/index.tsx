@@ -10,22 +10,23 @@
  * The store is created once per activation and passed to components through a
  * closure: activity-tab components are typed as zero-props.
  */
+
 import "./style.css";
 import type { JSX } from "react";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import { CrawlConsoleTab } from "./features/crawler-console";
+import { AbilitySetupSlot, setSetupDeps } from "./features/setup";
 import { CrawlRunStore } from "./features/crawler-console/services/crawl-run-store";
-import { crawlSite } from "./domain/crawl/crawler";
-import { createHostBinaryFetcher, createHostHttpClient } from "./runtime/http-client";
-import { createBrowserPortFactory } from "./runtime/browser-session";
-import { createAiPort } from "./runtime/ai";
-import { createHostPageCache } from "./runtime/scrape-cache";
+import { RunArchive } from "./features/crawler-console/services/run-archive";
+import { setConsoleDeps } from "./features/crawler-console/deps";
+import { CrawlToolCall } from "./features/crawler-console/components/crawl-tool-call";
+import { createHostTransport } from "./runtime/http-client";
 import { setPluginContext } from "./runtime/plugin-context";
 import { watchConversation } from "./runtime/conversation-watch";
 import { FIRECRAWL_TAB_ID } from "./tab-id";
 import { registerFirecrawlTools } from "./tools/register-tools";
-import { createUpstreamGate } from "./runtime/upstream";
+import { createFirecrawlConfig } from "./runtime/config";
 
 const FIRECRAWL_ACTION_ID = "firecrawl.openConsole";
 
@@ -41,26 +42,31 @@ export default definePlugin({
 	async activate(ctx: PluginContext): Promise<Disposable> {
 		setPluginContext(ctx);
 
-		const client = createHostHttpClient(ctx);
-		// Both handles are optional: a host without the browser runtime or a
-		// configured model still scrapes, crawls and maps.
-		const browser = createBrowserPortFactory(ctx);
-		const ai = createAiPort(ctx);
-		// Binary transport (PDFs): a base64 fetch, so documents are read as documents.
-		const binary = createHostBinaryFetcher(ctx);
-		// Page cache for maxAge/changeTracking; undefined unless the user granted storage.
-		const cache = createHostPageCache(ctx);
-		// Upstream engine: which service to call and with which key. Reading it is
-		// best-effort — a host without storage/secrets keeps the local engine.
-		const gate = createUpstreamGate(ctx, client);
+		const transport = createHostTransport(ctx);
+		// Connection settings: endpoint plus the API key, which lives in the host
+		// vault. A missing key is not an error — the hosted API answers keyless at
+		// a lower rate limit, so the plugin still works out of the box.
+		const config = createFirecrawlConfig(ctx, transport);
 		try {
-			await gate.load();
+			await config.load();
 		} catch (error) {
-			console.warn("[firecrawl] upstream settings unavailable", error);
+			console.warn("[firecrawl] connection settings unavailable", error);
 		}
-		const store = new CrawlRunStore((target, options, hooks) =>
-			crawlSite(client, target, options, hooks, { browser, binary, cache }),
-		);
+
+		// Finished runs outlive the session: their artifacts are what a user comes back
+		// for, and the host storage namespace is the only writable place they can live.
+		const archive = new RunArchive({
+			list: (prefix) => ctx.storage.list(prefix),
+			readFile: (path, encoding) => ctx.storage.readFile(path, encoding),
+			writeFile: (path, data, encoding) => ctx.storage.writeFile(path, data, encoding),
+			commit: (changes) => ctx.storage.commit(changes),
+		});
+		const store = new CrawlRunStore(config, archive);
+		// Reading the index is best effort: an unavailable storage namespace must not
+		// keep the tab off the screen.
+		void store.loadHistory().catch((error: unknown) => {
+			console.warn("[firecrawl] run history unavailable", error);
+		});
 		// The console follows the conversation: a URL mentioned in the prompt, or one
 		// the agent is about to fetch, becomes the target without the user retyping it.
 		const conversation = watchConversation(ctx, store);
@@ -74,18 +80,42 @@ export default definePlugin({
 			order: 26,
 			scope_use: ["conversation", "project"],
 			initiallyVisible: true,
-			component: () => <CrawlConsoleTab store={store} gate={gate} />,
+			component: () => <CrawlConsoleTab store={store} config={config} />,
+		});
+
+		// The ability page is where a user decides to connect; publish the config
+		// before anything can render the slot, which has no prop channel for it.
+		setSetupDeps({ ctx, config });
+
+		const setupDisposable = ctx.ui.registerAbilityDetailSlot({
+			id: "firecrawl.setup",
+			abilityId: "firecrawl",
+			component: AbilitySetupSlot,
 		});
 
 		let tools: Disposable[] = [];
 		try {
-			tools = registerFirecrawlTools(ctx, { client, store, browser, ai, binary, cache, gate });
+			tools = registerFirecrawlTools(ctx, { ctx, config, store });
 		} catch (error) {
 			console.warn("[firecrawl] tool registration unavailable", error);
 			ctx.ui.notify({
 				message: error instanceof Error ? error.message : String(error),
 				error: true,
 			});
+		}
+
+		// The transcript is where an agent-started crawl is first seen. Publish the
+		// store for that slot, then take over rendering for this one tool.
+		setConsoleDeps({ ctx, store });
+		let slot: Disposable | null = null;
+		try {
+			slot = ctx.ui.registerToolCallSlot({
+				id: "firecrawl.crawl-call",
+				toolName: "firecrawl_crawl",
+				component: CrawlToolCall,
+			});
+		} catch (error) {
+			console.warn("[firecrawl] tool-call slot unavailable", error);
 		}
 
 		let action: Disposable | null = null;
@@ -111,6 +141,9 @@ export default definePlugin({
 				store.stop();
 				for (const disposable of [...tools].reverse()) disposable.dispose();
 				action?.dispose();
+				slot?.dispose();
+				setupDisposable.dispose();
+				setupDisposable.dispose();
 				tabDisposable.dispose();
 			},
 		};

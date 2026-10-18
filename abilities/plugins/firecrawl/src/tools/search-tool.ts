@@ -1,145 +1,83 @@
 /**
- * firecrawl_search — the web, then optionally the pages themselves.
- *
- * Upstream searches its own index and can immediately scrape the hits
- * (`scrapeOptions`). The plugin has no index, so it asks DuckDuckGo for the
- * ranking and then runs each hit through the same scrape pipeline — which is
- * what makes `search + read the top 3` one tool call instead of two round trips.
+ * firecrawl_search — web search, optionally with scraped page content.
  */
 
-import type { PluginContext } from "@astravia-org/plugin-sdk";
-import { searchWeb } from "../domain/search/search";
-import type { SearchResult } from "../domain/search/search";
-import { scrapePage } from "../domain/scrape/pipeline";
-import type { BinaryFetch, HttpClient } from "../domain/scrape/http";
-import type { BrowserPortFactory, RenderMode } from "../domain/render/types";
-import type { CrawlRunStore } from "../features/crawler-console/services/crawl-run-store";
-import { clip, readBoolean, readEnum, readEnumArray, readNumber, readString, readStringArray } from "./tool-arguments";
-import { formatDuration } from "../shared/formatters/format";
-import { describeError } from "./scrape-tool";
+import { clip } from "../domain/firecrawl/documents";
+import type { ToolDeps } from "./deps";
+import { searchBody } from "./request-bodies";
 
-const MAX_PAGE_MARKDOWN = 6_000;
-const RENDER_MODES: readonly RenderMode[] = ["auto", "static", "browser"];
+function text(record: Record<string, unknown>, key: string): string {
+	const value = record[key];
+	return typeof value === "string" ? value : "";
+}
 
-export function createSearchTool(
-	_ctx: PluginContext,
-	client: HttpClient,
-	store: CrawlRunStore,
-	browser: BrowserPortFactory | undefined,
-	binary: BinaryFetch | undefined,
-) {
+export function createSearchTool({ config, store }: ToolDeps) {
 	return {
 		id: "firecrawl_search",
 		name: "firecrawl_search",
 		label: "%tool.search.label%",
 		description: [
-			"Search the web and — optionally — read the top results in the same call.",
+			"Search the web and get back result URLs, titles and snippets — with the option to scrape each",
+			"result in the same call (`scrapeResults: true`), so you can answer from the content instead of",
+			"guessing from a snippet.",
 			"",
-			"Use it when the user asks a question that needs current pages but gives no URL, or says",
-			"'find the official docs for X', 'search for recent posts about Y', 'what do people say about Z'.",
-			"Set `scrape: true` (or `limit` ≤ 5) to also return each result's Markdown; without it you get",
-			"titles, URLs and snippets, which is enough to pick one page for firecrawl_scrape.",
+			"Use it when the user asks about something current, or when you do not know which URL holds the",
+			"answer. Then read the best result with firecrawl_scrape if you need the full page.",
+			"Do NOT use it to fetch a URL you already have (firecrawl_scrape), and do not present snippets as",
+			"verified facts when `scrapeResults` is off.",
 			"",
-			"Do NOT use it for: a URL you already have (firecrawl_scrape), a site's URL list (firecrawl_map),",
-			"or anything that must be exhaustive — this returns the provider's top hits, not a full index.",
-			"Provider: DuckDuckGo HTML (no API key). Rate limits apply; limit above 20 pages through the provider's pager.",
+			"`sources` can include web, news, images; `categories` can include github, research, pdf.",
 		].join("\n"),
 		parameters: {
 			type: "object",
 			properties: {
-				query: { type: "string", description: "Search query, in the user's language." },
-				limit: { type: "number", description: "Results to return (1-50, default 5). Above 20 uses the provider's pager." },
+				query: { type: "string", description: "What to search for, in natural language." },
+				limit: { type: "number", description: "Number of results (1-100, default 10)." },
 				sources: {
 					type: "array",
-					items: { type: "string", enum: ["web"] },
-					description: "Where to search: only \"web\" is available (an HTML endpoint cannot serve an image index).",
+					items: { type: "string", enum: ["web", "news", "images"] },
+					description: "Result sources. Default web.",
 				},
 				categories: {
 					type: "array",
 					items: { type: "string", enum: ["github", "research", "pdf"] },
-					description: "Narrow the search: github (site:github.com), research (site:arxiv.org), pdf (filetype:pdf).",
+					description: "Restrict results to these kinds of sources.",
 				},
-				scrape: { type: "boolean", description: "Fetch each result and include its Markdown (default false)." },
-				pagesToScrape: { type: "number", description: "How many results to fetch when scraping (1-5, default 3)." },
-				country: { type: "string", description: "Region hint such as cn-zh, us-en, jp-jp." },
-				lang: { type: "string", description: "Language hint such as zh, en, ja." },
-				timeRange: { type: "string", enum: ["d", "w", "m", "y"], description: "Recency filter: day, week, month, year." },
-				render: { type: "string", enum: [...RENDER_MODES], description: "Rendering mode for scraped results (default auto)." },
-				timeoutMs: { type: "number", description: "Per-request timeout in milliseconds (1000-120000, default 30000)." },
+				includeDomains: { type: "array", items: { type: "string" }, description: "Only these domains." },
+				excludeDomains: { type: "array", items: { type: "string" }, description: "Never these domains." },
+				timeRange: {
+					type: "string",
+					enum: ["hour", "day", "week", "month", "year"],
+					description: "Only results published within this window.",
+				},
+				scrapeResults: {
+					type: "boolean",
+					description: "Also scrape each result and return its Markdown. Slower and costs more. Default false.",
+				},
 			},
 			required: ["query"],
 			additionalProperties: false,
 		},
 		scope_use: ["conversation", "project"] as const,
 		context: { conversation: "summary" },
-		timeoutMs: 300_000,
+		timeoutMs: 180_000,
 		handler: async (context: { trigger: { input?: unknown } }) => {
-			const input = context.trigger.input;
-			const query = readString(input, "query");
-			if (!query) throw new Error('"query" is required');
-			const limit = readNumber(input, "limit", { min: 1, max: 50, def: 5 });
-			const sources = readStringArray(input, "sources", 4);
-			if (sources.length > 0 && !sources.includes("web")) {
-				throw new Error('Only the "web" source is available: this plugin searches an HTML endpoint with no image index.');
+			const body = searchBody(context.trigger.input);
+			const client = await config.require();
+			const result = await client.search(body);
+			store.note("ok", `search  ${String(body.query)}  ${result.results.length} results`);
+			const lines = [
+				`${result.results.length} result(s) for "${String(body.query)}"${result.creditsUsed !== undefined ? `  credits: ${result.creditsUsed}` : ""}`,
+			];
+			if (result.warning) lines.push(`Warning: ${result.warning}`);
+			for (const [index, entry] of result.results.entries()) {
+				lines.push("", `${index + 1}. ${text(entry, "title") || "(untitled)"}`, `URL: ${text(entry, "url")}`);
+				const description = text(entry, "description");
+				if (description) lines.push(clip(description, 500));
+				const markdown = text(entry, "markdown");
+				if (markdown) lines.push("", clip(markdown, 2_000));
 			}
-			const categories = readEnumArray(input, "categories", ["github", "research", "pdf"] as const, 3);
-			const scrape = readBoolean(input, "scrape", false);
-			const pagesToScrape = readNumber(input, "pagesToScrape", { min: 1, max: 5, def: 3 });
-			const render = readEnum(input, "render", RENDER_MODES, "auto");
-			const timeoutMs = readNumber(input, "timeoutMs", { min: 1_000, max: 120_000, def: 30_000 });
-			const timeRange = readEnum(input, "timeRange", ["d", "w", "m", "y"] as const, "w");
-
-			let results: SearchResult[];
-			try {
-				results = await searchWeb(client, query, {
-					limit,
-					country: readString(input, "country"),
-					lang: readString(input, "lang"),
-					timeRange: readString(input, "timeRange") ? timeRange : undefined,
-					timeoutMs: Math.min(timeoutMs, 30_000),
-					categories,
-				});
-			} catch (error) {
-				store.note("error", `search failed  ${describeError(error)}`);
-				throw new Error(`Search failed: ${describeError(error)}`);
-			}
-			store.note("ok", `search  "${query}"  ${results.length} result(s)`);
-
-			const lines = [`Search "${query}" → ${results.length} result(s) via duckduckgo.`];
-			for (const result of results) {
-				lines.push("", `${result.position}. ${result.title}`, `   ${result.url}`);
-				if (result.description) lines.push(`   ${clip(result.description, 400)}`);
-			}
-			if (results.length === 0) {
-				lines.push("", "No results. The provider may be rate limiting; retry later or scrape a known URL.");
-			}
-
-			if (scrape && results.length > 0) {
-				lines.push("", "--- pages ---");
-				for (const result of results.slice(0, pagesToScrape)) {
-					try {
-						const page = await scrapePage(
-							client,
-							result.url,
-							{ render, timeoutMs, onlyMainContent: true, includeLinks: false },
-							{ browser, binary },
-						);
-						lines.push(
-							"",
-							`## ${page.title || result.url}`,
-							`${page.finalUrl}  (engine ${page.engine}, ${page.text.length} chars)`,
-							clip(page.markdown, MAX_PAGE_MARKDOWN),
-						);
-						store.note("ok", `search→scrape  ${result.url}  ${formatDuration(page.durationMs)}`);
-					} catch (error) {
-						lines.push("", `## ${result.url}`, `Failed to read: ${describeError(error)}`);
-					}
-				}
-			}
-
 			return lines.join("\n");
 		},
 	};
 }
-
-export type { SearchResult };

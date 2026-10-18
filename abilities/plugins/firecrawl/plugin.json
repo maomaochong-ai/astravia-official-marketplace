@@ -1,7 +1,7 @@
 {
   "id": "firecrawl",
   "name": "%name%",
-  "version": "0.3.1",
+  "version": "0.4.1",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -19,23 +19,17 @@
     "agent.skills.control",
     "ui.slot.activity-tab",
     "ui.slot.input-action",
-    "browser.read",
-    "browser.interact",
-    "ai.complete",
+    "ui.slot.ability-detail",
+    "ui.slot.tool-call",
     "agent.session.read",
-    "browser.profile.persist",
+    "agent.session.write",
     "storage.read",
     "storage.write",
-    "fs.write",
     "secrets.read",
     "secrets.write",
-    "fs.read"
+    "fs.read",
+    "shell.openExternal"
   ],
-  "browser": {
-    "allowedHosts": [
-      "*"
-    ]
-  },
   "network": {
     "allowedHosts": [
       "*"
@@ -56,8 +50,8 @@
       },
       "skills": {
         "firecrawl": {
-          "displayName": "Firecrawl",
-          "displayDescription": "Read the web as Markdown, and see what a page is made of: scrape one page, map a site, crawl a section, search, extract structured fields, parse PDF/DOCX/XLSX, download a video stream, and follow hosted jobs or scheduled monitors."
+          "displayName": "Firecrawl Connector",
+          "displayDescription": "Read pages through the Firecrawl API as Markdown, with optional HTML, links, screenshots, images, video and audio URLs, summaries or schema-shaped JSON. Crawl a section, map a site, search, parse PDF/DOCX/XLSX, drive a stateful browser session, ask the browsing agent for a cross-page answer, and follow hosted jobs or scheduled monitors."
         }
       }
     }
