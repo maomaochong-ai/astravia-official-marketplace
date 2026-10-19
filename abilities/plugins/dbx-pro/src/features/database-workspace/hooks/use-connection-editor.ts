@@ -36,8 +36,11 @@ export interface ConnectionEditorState {
 	editing: DbConnection | null;
 	/** 侧栏当前页：列表还是表单。 */
 	view: "list" | "form";
-	testing: boolean;
-	/** 测试结果文案；null 表示不显示。 */
+	/** 正在测试哪个连接（卡片的旋转 / 禁用只作用于这一个 id，避免一个测试影响全部卡片）。 */
+	testingId: string | null;
+	/** 各连接 id 的最后一次测试结果文案；null 表示该连接尚无结果。 */
+	testResults: Record<string, string>;
+	/** 测试结果文案；null 表示不显示（兼容表单尾部提示）。 */
 	testResult: string | null;
 	/** 替换当前草稿（字段表单的受控输入）。 */
 	setEditing: (conn: DbConnection) => void;
@@ -79,7 +82,8 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	const [connections, setConnections] = useState<DbConnection[]>([]);
 	const [editing, setEditing] = useState<DbConnection | null>(null);
 	const [view, setView] = useState<"list" | "form">("list");
-	const [testing, setTesting] = useState(false);
+	const [testingId, setTestingId] = useState<string | null>(null);
+	const [testResults, setTestResults] = useState<Record<string, string>>({});
 	const [testResult, setTestResult] = useState<string | null>(null);
 	const [availableSchemas, setAvailableSchemas] = useState<string[]>([]);
 	const [loadingSchemas, setLoadingSchemas] = useState(false);
@@ -251,15 +255,16 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 	 * 这样连接列表右侧行能显示最新状态 chip 而不是硬编码「已配置」。
 	 */
 	async function test(conn: DbConnection): Promise<void> {
-		setTesting(true);
+		setTestingId(conn.id);
 		setTestResult(null);
+		setTestResults((prev) => ({ ...prev, [conn.id]: "测试中…" }));
 		const started = performance.now();
 		let ok = false;
 		let errorMsg: string | undefined;
 		try {
 			if (isApiConnectionType(conn.db_type)) {
-				if (!conn.name.trim()) { setTestResult("❌ 请先填写连接名称"); return; }
-				if (!apiSpecOf(conn).url.trim()) { setTestResult("❌ 请先填写接口地址"); return; }
+				if (!conn.name.trim()) { setTestResult("❌ 请先填写连接名称"); setTestingId(null); return; }
+				if (!apiSpecOf(conn).url.trim()) { setTestResult("❌ 请先填写接口地址"); setTestingId(null); return; }
 				const payload = apiSourcePayload(conn);
 				const outcome = await engineTestApiSource({
 					name: conn.name.trim(),
@@ -268,9 +273,9 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 					token: payload.token,
 				});
 				ok = true;
-				setTestResult(
-					`✅ 接口可达 · HTTP ${outcome.status} · 取到 ${outcome.row_count} 行 / ${outcome.columns.length} 列 · ${outcome.duration_ms}ms · 取数路径：插件直连`,
-				);
+				const apiMsg = `✅ 接口可达 · HTTP ${outcome.status} · 取到 ${outcome.row_count} 行 / ${outcome.columns.length} 列 · ${outcome.duration_ms}ms · 取数路径：插件直连`;
+				setTestResults((prev) => ({ ...prev, [conn.id]: apiMsg }));
+				setTestResult(apiMsg);
 			} else {
 				await writeConfig(conn);
 				await engineExecuteByName(conn.name, "SELECT 1 AS ok", { timeoutMs: 10_000 });
@@ -278,15 +283,19 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 				ok = true;
 				// 测试未改 schema 选择：只刷新连接，不失效树（避免折叠已展开节点）。
 				onChange?.();
-				setTestResult(`✅ 连接成功 · ${elapsed} ms · 取数路径：引擎`);
+				const okMsg = `✔ 连接成功 · ${elapsed} ms · 取数路径：引擎`;
+				setTestResults((prev) => ({ ...prev, [conn.id]: okMsg }));
+				setTestResult(okMsg);
 			}
 		} catch (err) {
 			const elapsed = Math.round(performance.now() - started);
 			const code = (err as { code?: string } | null)?.code;
 			errorMsg = code ? `[${code}] ${err instanceof Error ? err.message : String(err)}` : (err instanceof Error ? err.message : String(err));
-			setTestResult(`❌ 连接失败${code ? ` [${code}]` : ""}（${elapsed} ms）: ${errorMsg}`);
+			const failMsg = `❌ 连接失败${code ? ` [${code}]` : ""}（${elapsed} ms）: ${errorMsg}`;
+			setTestResults((prev) => ({ ...prev, [conn.id]: failMsg }));
+			setTestResult(failMsg);
 		} finally {
-			setTesting(false);
+			setTestingId(null);
 			// 持久化测试状态到存储 —— 连接列表和批量诊断都要读
 			try {
 				const patched: DbConnection = {
@@ -389,7 +398,8 @@ export function useConnectionEditor(options: UseConnectionEditorOptions = {}): C
 		connections,
 		editing,
 		view,
-		testing,
+		testingId,
+		testResults,
 		testResult,
 		setEditing,
 		setDbType,

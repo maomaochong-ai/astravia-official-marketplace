@@ -4,6 +4,8 @@
  * 布局对齐插件工作台（参考 xiaohongshu）：概览卡 + 搜索/过滤行 + 自适应卡片网格。
  * 卡片内所有文本都走 min-w-0 + truncate，宽度由网格分配，不再有固定像素列宽：
  * 宿主侧边栏被拖窄时不会再把文字挤出圆角容器。
+ * 每个卡的「测试数据源」旋转 / 禁用只作用于该卡自身（testingId === conn.id），
+ * 测试结果也内联在该卡下展示，不全局广播——测一个数据源不影响其他卡片。
  */
 
 import { useEffect, useMemo, useState, type JSX } from "react";
@@ -12,10 +14,10 @@ import { DatabaseTypeIcon } from "../../../shared/components/database-type-icon"
 
 export interface ConnectionListProps {
 	connections: DbConnection[];
-	/** 正在跑连通性测试。 */
-	testing: boolean;
-	/** 测试结果文案；null 表示不显示。 */
-	testResult: string | null;
+	/** 正在测试哪个连接的 id；只有该卡旋转 / 禁用，其他卡不受影响。 */
+	testingId: string | null;
+	/** 各连接 id 的最后一次测试结果文案（卡片内联展示）；空对象表示都没有。 */
+	testResults: Record<string, string>;
 	onEdit: (conn: DbConnection) => void;
 	onTest: (conn: DbConnection) => void;
 	onDelete: (conn: DbConnection) => void;
@@ -50,8 +52,8 @@ function OverviewCard({ label, value, hint, tone }: { label: string; value: numb
 
 export function ConnectionList({
 	connections,
-	testing,
-	testResult,
+	testingId,
+	testResults,
 	onEdit,
 	onTest,
 	onDelete,
@@ -149,6 +151,8 @@ export function ConnectionList({
 								: conn.last_test_ok
 									? { dot: "bg-success", text: "已连接", cls: "text-success" }
 									: { dot: "bg-danger", text: "连接失败", cls: "text-danger" };
+							const isTesting = testingId === conn.id;
+							const cardResult = testResults[conn.id];
 							return (
 								<article
 									key={conn.id}
@@ -178,6 +182,17 @@ export function ConnectionList({
 									</div>
 									<div className="truncate font-mono text-[11px] text-faint">{endpointOf(conn)}</div>
 
+									{/* 本次测试结果（只在测试按钮所属的卡片内联显示，不广播到其他卡） */}
+									{cardResult ? (
+										<div
+											className={`mt-2 truncate border-t border-border/40 pt-1.5 font-mono text-[11px] break-all ${
+												cardResult.startsWith("❌") ? "text-danger" : cardResult.startsWith("测试中") ? "text-muted" : "text-success"
+											}`}
+										>
+											{cardResult.replace(/^[✅❌]\s*/, "")}
+										</div>
+									) : null}
+
 									<div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-border/40 pt-2">
 										<span
 											className="inline-flex min-w-0 items-center gap-1.5"
@@ -191,11 +206,11 @@ export function ConnectionList({
 											<button
 												type="button"
 												onClick={() => onTest(conn)}
-												disabled={testing}
+												disabled={isTesting}
 												title="测试数据源"
 												className="flex size-6 items-center justify-center rounded-control text-muted transition hover:bg-surface hover:text-surface-foreground disabled:opacity-40"
 											>
-												<span className={`size-3.5 ${testing ? "icon-[lucide--loader-circle] animate-spin" : "icon-[lucide--plug]"}`} />
+												<span className={`size-3.5 ${isTesting ? "icon-[lucide--loader-circle] animate-spin" : "icon-[lucide--plug]"}`} />
 											</button>
 											<button
 												type="button"
@@ -240,12 +255,6 @@ export function ConnectionList({
 					</div>
 				)}
 			</div>
-
-			{testResult ? (
-				<div className="shrink-0 border-t border-border px-5 py-2 font-mono text-[12px] break-all text-surface-foreground">
-					{testResult}
-				</div>
-			) : null}
 		</div>
 	);
 }

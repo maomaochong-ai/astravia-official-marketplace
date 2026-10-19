@@ -31,7 +31,7 @@ import { autocompletion, closeBrackets, completionKeymap } from "@codemirror/aut
 import { MSSQL, MySQL, PostgreSQL, SQLite, sql } from "@codemirror/lang-sql";
 import { useWorkbench } from "../hooks/use-workbench";
 import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
-import { getFs, getUi } from "../../../runtime-contract";
+import { getFs, getUi, getConversation } from "../../../runtime-contract";
 import {
 	formatDialect,
 	mysql,
@@ -303,6 +303,22 @@ export function SqlEditor(): JSX.Element {
 		void runTabSql(activeTab.id, override, activeTab.connectionName ?? undefined, { mode: "server" });
 	}
 
+	/** 把选中的 SQL（或全文）填入宿主 AI 输入框，供用户编辑后交给对话。 */
+	function handleSendToAi() {
+		const view = viewRef.current;
+		if (!view || !activeTab) return;
+		const snippet = resolveExecutableSql(view.state.doc, view.state.selection.main);
+		const text = (snippet && snippet.trim() ? snippet : view.state.doc.toString()).trim();
+		if (!text) return;
+		const conversation = getConversation();
+		if (!conversation?.insertText) {
+			getUi()?.notify?.({ message: "宿主不支持把文本填入对话输入框。", variant: "warning" });
+			return;
+		}
+		conversation.insertText(text);
+		getUi()?.notify?.({ message: selectionLength > 0 ? "已把选中的 SQL 填入对话输入框" : "已把 SQL 填入对话输入框", variant: "success" });
+	}
+
 	/** Save SQL to file via宿主 fs API */
 	async function handleSave() {
 		if (!activeTab || !activeTab.sql.trim()) return;
@@ -433,7 +449,15 @@ export function SqlEditor(): JSX.Element {
 					<span className="mr-1 text-[12px] tabular-nums whitespace-nowrap text-faint">
 						{activeTab?.connectionName ?? "未绑定连接"}
 					</span>
-					{/* 清空编辑器 */}
+					{/* 填入宿主 AI 输入框（选中片段或全文） */}
+					<button
+						type="button"
+						onClick={handleSendToAi}
+						title={selectionLength > 0 ? "把选中的 SQL 填入对话输入框" : "把 SQL 填入对话输入框"}
+						className="dbx-icon-btn"
+					>
+						<span className="icon-[lucide--message-square-plus] h-3.5 w-3.5" />
+					</button>
 					<button type="button" onClick={clearEditor} title="清空编辑器" className="dbx-icon-btn">
 						<span className="icon-[lucide--eraser] h-3.5 w-3.5" />
 					</button>

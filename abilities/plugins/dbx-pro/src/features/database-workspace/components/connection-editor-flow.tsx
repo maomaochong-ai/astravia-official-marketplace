@@ -381,15 +381,15 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit, engine }: Conn
 					<>
 					<ConnectionList
 						connections={editor.connections}
-						testing={editor.testing}
-						testResult={editor.testResult}
+						testingId={editor.testingId}
+						testResults={editor.testResults}
 						onEdit={(conn) => handleEdit(conn)}
 						onTest={(c) => void editor.test(c)}
 						onDelete={(c) => void editor.remove(c)}
 						onDuplicate={(c) => handleDuplicate(c)}
 						onCreate={handleCreateNew}
-					/>
 						showSummary={isPage}
+					/>
 					<div className={isPage ? "hidden" : "dbx-connection-footer"}>
 						<button type="button" className="dbx-btn primary" onClick={handleCreateNew}>
 							<span className="icon-[lucide--plus] h-3.5 w-3.5" />
@@ -629,11 +629,11 @@ export function ConnectionEditorFlow({ onChange, onClose, onExit, engine }: Conn
 					<button
 						type="button"
 						className="dbx-btn"
-						disabled={editor.testing}
+						disabled={editor.testingId !== null}
 						onClick={() => { if (editor.editing) void editor.test(editor.editing); }}
 					>
 						<span className="icon-[lucide--plug] size-3.5" />
-						{editor.testing ? "测试中…" : "测试连接"}
+						{editor.testingId !== null ? "测试中…" : "测试连接"}
 					</button>
 					{editor.testResult && (
 						<div className={`dbx-conn-test${editor.testResult.startsWith("❌") ? " is-error" : ""}`}>

@@ -17,6 +17,8 @@ import { useElementWidth } from "../../../shared/hooks/use-element-width";
 import { useBigscreenPages, type BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { BigscreenEditor } from "../canvas/canvas-editor";
 import { getUi } from "../../../runtime-contract";
+import { readAllConfigs } from "../../../domain/dbx-storage";
+import type { DbConnection } from "../../../domain/connection-config";
 import { engineRequest } from "../../../shared/services/engine-client";
 import dbxIcon from "../../../../assets/icon.png";
 import { Icon } from "../shared/components/ui/icon";
@@ -36,9 +38,27 @@ interface WorktreeStatus { pages: { id: string; name: string; style: string; upd
 function useDatasources(): { items: DataSource[]; refresh: () => void } {
 	const [items, setItems] = useState<DataSource[]>([]);
 	const refresh = useCallback(() => {
-		engineRequest<DataSource[]>("/drag/datasource/list", undefined, { method: "GET" })
-			.then((r) => setItems(r ?? []))
-			.catch(() => { /* 后端没跑时静默 */ });
+		(async () => {
+			// 对接数据库工作台：已保存的连接（插件私有存储）就是 BI 侧栏的数据源，
+			// 与数据库工作台/连接管理用的是同一批配置，避免两套数据源各记各的。
+			let engineItems: DataSource[] = [];
+			try {
+				engineItems = await engineRequest<DataSource[]>("/drag/datasource/list", undefined, { method: "GET" });
+			} catch { /* 后端没跑时静默 */ }
+			let saved: DbConnection[] = [];
+			try { saved = await readAllConfigs(); } catch { /* 存储不可用则回退引擎列表 */ }
+			const fromConnections: DataSource[] = saved.map((c) => ({
+				id: c.id,
+				name: c.name,
+				type: c.db_type,
+				status: c.last_test_ok === false ? "disconnected" : "connected",
+			}));
+			// 合并去重：优先引擎（可能带 tables/表信息），同名连接用保存的连接补一次。
+			const byName = new Map<string, DataSource>();
+			for (const d of engineItems) byName.set(d.name, d);
+			for (const c of fromConnections) if (!byName.has(c.name)) byName.set(c.name, c);
+			setItems([...byName.values()]);
+		})().catch(() => {});
 	}, []);
 	useEffect(() => { refresh(); }, [refresh]);
 	return { items, refresh };
@@ -46,6 +66,7 @@ function useDatasources(): { items: DataSource[]; refresh: () => void } {
 function useSharelinks(): { items: ShareLink[] } {
 	const [items, setItems] = useState<ShareLink[]>([]);
 	useEffect(() => {
+		engineRequest
 		engineRequest<ShareLink[]>("/drag/sharelink/list", undefined, { method: "GET" })
 			.then((r) => setItems(r ?? []))
 			.catch(() => { /* 后端没跑时静默 */ });
