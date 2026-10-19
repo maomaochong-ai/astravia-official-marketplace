@@ -1001,7 +1001,7 @@
       "slug": "dbx-pro",
       "name": "dbx-pro Database Workbench",
       "description": "Connect to PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases. Encrypted connection manager, multi-tab SQL editor, sortable result grid, write safety confirmation and query history. Turn any query result into filterable dashboards and big screens — 11 chart types, offline single-file export — and let AI read your database through MCP.",
-      "version": "0.4.84",
+      "version": "0.4.85",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -5749,6 +5749,37 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.84.astraviapkg",
             "sha256": "ace60a6ebc7004f3d720bec2bf3692de2bcf89dfa660116437da5157c42a55c9"
           }
+        },
+        {
+          "version": "0.4.85",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "agent.skills.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "ui.slot.activity-tab",
+            "ui.slot.workspace-view",
+            "ui.slot.input-action",
+            "ui.slot.ability-detail",
+            "agent.command.run",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.write",
+            "shell.openExternal",
+            "network.fetch",
+            "ai.complete"
+          ],
+          "commands": [
+            "dbx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-dbx-pro/dbx-pro-0.4.85.astraviapkg",
+            "sha256": "9d8b3845c2605f2f5e283a15397806a63f3143e8a8ed5596a5b9dd0faac5664c"
+          }
         }
       ]
     },
@@ -6692,8 +6723,74 @@
           }
         }
       ]
+    },
+    {
+      "type": "plugin",
+      "slug": "binary-triage",
+      "name": "Binary Triage",
+      "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy and a 0-100 risk score.",
+      "version": "1.0.0",
+      "configVersion": 1,
+      "license": "Apache-2.0",
+      "author": "Astravia",
+      "category": "Security",
+      "categoryI18n": {
+        "zh": "安全",
+        "en": "Security"
+      },
+      "tags": [
+        "binary",
+        "reverse-engineering",
+        "android",
+        "apk",
+        "security",
+        "malware",
+        "elf",
+        "pe"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "二进制体检",
+            "description": "在对话里体检 APK、iOS 包、ELF、PE 或 Mach-O 文件：权限、导出组件、硬编码凭据、节区熵与 0-100 风险评分。",
+            "tags": [
+              "二进制",
+              "逆向",
+              "安卓",
+              "APK",
+              "安全",
+              "恶意软件",
+              "ELF",
+              "PE"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/binary-triage"
+      },
+      "releases": [
+        {
+          "version": "1.0.0",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.session.write",
+            "fs.read",
+            "fs.write"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-binary-triage/binary-triage-1.0.0.astraviapkg",
+            "sha256": "0f4e3104fb47252104b68f31349a4bd650ccaef69cfb1b7533a596d8315c63e9"
+          }
+        }
+      ]
     }
   ],
-  "version": "0.4.78",
-  "marketplaceVersion": "2026.10.19-11"
+  "version": "0.4.79",
+  "marketplaceVersion": "2026.10.19-12"
 }

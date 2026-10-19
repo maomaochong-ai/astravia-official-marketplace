@@ -1,0 +1,66 @@
+{
+	"schemaVersion": 1,
+	"blocks": [
+		{
+			"type": "hero",
+			"eyebrow": "Static analysis",
+			"title": "Know what a package does before you install it",
+			"description": "Drop an APK, IPA, DEX, shared library, executable or archive into the workspace and get a readable verdict: what it is, what it asks for, what it hides, and how much it deserves your trust.",
+			"badges": ["APK · IPA · ELF · PE · Mach-O", "Offline", "Never executes the sample"]
+		},
+		{
+			"type": "feature-grid",
+			"items": [
+				{
+					"title": "Format-aware facts",
+					"description": "One pass recognises Android packages and bundles, iOS apps, ELF, PE, Mach-O, raw DEX and plain archives, then reports architecture, entry point, size, entropy and SHA-256."
+				},
+				{
+					"title": "Manifest and permission review",
+					"description": "Reads the binary AndroidManifest inside the APK: package identity, SDK range, debuggable and backup flags, exported components and every requested permission."
+				},
+				{
+					"title": "Native hardening checks",
+					"description": "Flags writable+executable segments, executable stacks, missing PIE or NX, packer signatures and stripped tooling — the differences that decide how hard a library is to attack."
+				},
+				{
+					"title": "Evidence, not guesses",
+					"description": "Runtime-loading, shell execution, reflection, weak crypto and credential-shaped strings are reported with the exact strings and offsets that triggered them."
+				},
+				{
+					"title": "One score you can defend",
+					"description": "Each rule carries a severity and a weight, so the 0-100 risk score and A-E grade can be traced back to named rule ids instead of a black box."
+				},
+				{
+					"title": "Reports that leave the app",
+					"description": "Copy the markdown, or save markdown or JSON through the system dialog to attach to a review, a ticket or an internal security note."
+				}
+			]
+		},
+		{
+			"type": "showcase",
+			"template": "chat-thread",
+			"user_prompt": "这个 APK 为什么风险分 62？申请了哪些危险权限？",
+			"assistant_reply": "风险 62（D 级）主要由三条规则推高：\n\n| 规则 | 严重度 | 说明 |\n| --- | --- | --- |\n| `apk.exported-component` | 高 | 3 个 Activity/Service 对外导出且没有权限保护 |\n| `apk.dynamic-loading` | 高 | DEX 中出现 DexClassLoader，真实逻辑在运行期解出 |\n| `apk.dangerous-permission` | 中 | 申请了 READ_SMS、ACCESS_FINE_LOCATION、READ_CONTACTS |\n\n另外没有任何 v2/v3 签名，只有旧的 META-INF 签名。建议从官方渠道重新下载；如果必须继续分析，先 dump 运行期解出的 dex 再看代码。"
+		},
+		{
+			"type": "steps",
+			"items": [
+				{ "title": "Open the Binary Triage tab", "description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder." },
+				{ "title": "Pick a sample or paste a path", "description": "Click a file in the list, or type any path relative to the workspace. Nothing is uploaded and nothing is executed." },
+				{ "title": "Read the report", "description": "Risk score, the findings that drove it, manifest facts and per-section details. Switch between Summary and Full, then copy or save the report." }
+			]
+		},
+		{
+			"type": "callout",
+			"tone": "warning",
+			"content": "This is static triage, not proof of safety. Android signature digests are read, not cryptographically verified; packed or encrypted code is reported as a hint and never unpacked; behaviour that only shows up at runtime stays invisible here. Treat a low score as \"nothing obvious\", not as an approval."
+		},
+		{
+			"type": "links",
+			"items": [
+				{ "label": "Source and issue tracker", "href": "https://github.com/maomaochong-ai/astravia-official-marketplace" }
+			]
+		}
+	]
+}
