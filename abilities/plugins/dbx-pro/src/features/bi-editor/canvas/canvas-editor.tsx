@@ -20,6 +20,7 @@ import { getUi } from "../../../runtime-contract";
 import type { BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
 import { useCanvasExecution } from "./hooks/use-canvas-execution";
 import { useCanvasHistory } from "./hooks/use-canvas-history";
+import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
 import { BigscreenToolbar } from "./components/editor-toolbar";
 import { NodeLibrary } from "./components/node-library";
 import { CanvasStrip, type GridStep } from "./components/canvas-strip";
@@ -498,8 +499,9 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 		);
 	}
 
-	// canvas-editor 的 theme 值是 "dark" | "default"，CSS data-dbx-theme 要 "dark" | "light"
-	const dbxTheme = activeTheme === "default" ? "light" : activeTheme;
+	// 编辑器皮肤主题：跟随宿主（open-astravia），而非这个页面的内容主题 activeTheme。
+	// activeTheme 仍是页面内容明暗（深色大屏/浅色看板），但皮肤壳统一随宿主。
+	const dbxTheme = useDetectedTheme();
 
 	return (
 		<div className="dbx-root flex h-full min-h-0 flex-col" data-dbx-theme={dbxTheme} style={paletteStyle(palette)}>
@@ -538,8 +540,8 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 					<NodeLibrary
 						collapsed={leftCollapsed}
 						onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
-						templates={templates}
 						onDeleteTemplate={deleteTemplate}
+						onInsertItem={(key) => graphApiRef.current?.insertAtCenter(key)}
 					/>
 				</div>
 

@@ -173,11 +173,13 @@ export function NodeLibrary({
 	onToggleCollapsed,
 	templates = [],
 	onDeleteTemplate,
+	onInsertItem,
 }: {
 	collapsed?: boolean;
 	onToggleCollapsed?: () => void;
 	templates?: TemplateItem[];
 	onDeleteTemplate?: (id: string) => void;
+	onInsertItem?: (key: string, label: string) => void;
 }): JSX.Element {
 	const [search, setSearch] = useState("");
 
@@ -304,6 +306,10 @@ export function NodeLibrary({
 												label: item.label,
 											}),
 										);
+									}}
+									onDoubleClick={() => {
+										// 双击插入：把 key 交给画布，由画布在中心创建节点（与拖拽同源）
+										onInsertItem?.(item.key, item.label);
 									}}
 									className="group flex h-7 shrink-0 cursor-grab items-center gap-2 px-3 active:cursor-grabbing hover:bg-accent-soft/40"
 									title={`${item.label}（拖到画布）`}
