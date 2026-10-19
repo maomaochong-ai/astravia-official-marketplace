@@ -554,7 +554,7 @@
       "slug": "codebase-migration-refactor",
       "name": "Codebase Migration and Refactoring",
       "description": "Run a large migration or multi-file refactor through a tracked pipeline: measure the blast radius, apply AST codemods, open one pull request per batch, gate each batch on CI, and audit the dead config and leftover shims afterwards.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "configVersion": 1,
       "license": "Unspecified",
       "author": "Astravia",
@@ -6518,5 +6518,5 @@
     }
   ],
   "version": "0.4.78",
-  "marketplaceVersion": "2026.10.19-3"
+  "marketplaceVersion": "2026.10.19-4"
 }

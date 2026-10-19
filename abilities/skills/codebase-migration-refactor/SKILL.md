@@ -1,7 +1,7 @@
 ---
 name: codebase-migration-refactor
 alias: Codebase Migration and Refactoring
-version: 1.0.2
+version: 1.0.3
 description: Run large codebase migrations and multi-file refactors. Uses the Composio CLI to coordinate issue tracking, batched PRs, and CI verification while the agent executes the transforms locally across hundreds of files.
 ---
 
