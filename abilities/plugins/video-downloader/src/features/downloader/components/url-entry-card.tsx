@@ -3,6 +3,8 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 interface UrlEntryCardProps {
   url: string;
   probing: boolean;
+  /** The service is not usable yet: keep the card visible but inert instead of hiding it. */
+  disabled?: boolean;
   error: string | null;
   /** Optional remedy shown next to the error, e.g. opening the cookie field. */
   remedy?: { label: string; run(): void };
@@ -11,22 +13,32 @@ interface UrlEntryCardProps {
   onPaste(): void;
 }
 
-export function UrlEntryCard({ url, probing, error, remedy, onUrlChange, onAnalyze, onPaste }: UrlEntryCardProps) {
+export function UrlEntryCard({
+  url,
+  probing,
+  disabled = false,
+  error,
+  remedy,
+  onUrlChange,
+  onAnalyze,
+  onPaste,
+}: UrlEntryCardProps) {
   const { t } = useTranslation();
-  const canAnalyze = url.trim().length > 0 && !probing;
+  const canAnalyze = !disabled && url.trim().length > 0 && !probing;
 
   return (
     <div>
       <div
         className={`flex items-center gap-2 rounded-xl border bg-card p-2 transition-colors ${
           error ? "border-destructive/60" : "border-border focus-within:border-primary/60"
-        }`}
+        } ${disabled ? "opacity-60" : ""}`}
       >
         <span className="icon-[solar--link-minimalistic-2-linear] ml-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <input
           value={url}
           spellCheck={false}
           autoComplete="off"
+          disabled={disabled}
           onChange={(event) => onUrlChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && canAnalyze) onAnalyze();
@@ -37,6 +49,7 @@ export function UrlEntryCard({ url, probing, error, remedy, onUrlChange, onAnaly
         <button
           type="button"
           onClick={onPaste}
+          disabled={disabled}
           className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <span className="icon-[solar--clipboard-linear] size-3.5" aria-hidden="true" />

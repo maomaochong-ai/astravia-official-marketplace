@@ -75,7 +75,8 @@ export function DownloaderView({
               aria-label={t("action.settings")}
               title={t("action.settings")}
               onClick={() => setSettingsOpen((open) => !open)}
-              className={`grid size-7 place-items-center rounded-md transition-colors hover:bg-accent ${
+              disabled={!state.settings}
+              className={`grid size-7 place-items-center rounded-md transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
                 settingsOpen ? "text-foreground" : "text-muted-foreground"
               }`}
             >
@@ -86,26 +87,33 @@ export function DownloaderView({
 
         {state.booting ? (
           <p className="mt-8 text-xs text-muted-foreground">{t("status.booting")}</p>
-        ) : state.bootError ? (
-          <div className="mt-8 rounded-xl border border-border bg-card p-4">
-            <p className="text-xs text-destructive">{state.bootError}</p>
-            <button
-              type="button"
-              onClick={() => void controller.reload()}
-              className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
-              {t("status.retry")}
-            </button>
-          </div>
         ) : (
           <>
+            {state.bootError ? (
+              <div className="mt-5 rounded-xl border border-destructive/40 bg-card p-4">
+                <p className="text-xs leading-relaxed text-destructive">{state.bootError}</p>
+                <button
+                  type="button"
+                  onClick={() => void controller.reload()}
+                  className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
+                  {t("status.retry")}
+                </button>
+              </div>
+            ) : null}
+
+            {/* Keep the surface shaped like the downloader even when it cannot run, instead of
+                collapsing the panel to a single error line. */}
             <div className="mt-5">
               <UrlEntryCard
                 url={state.url}
                 probing={state.probing}
+                disabled={Boolean(state.bootError)}
                 error={probeError ? t(probeError) : state.probeError}
                 onUrlChange={controller.setUrl}
+                onPaste={() => void controller.useClipboard()}
+                onAnalyze={() => void controller.analyze()}
                 remedy={
                   needsCookie
                     ? { label: t("action.fillCookie"), run: () => setSettingsOpen(true) }
@@ -113,8 +121,6 @@ export function DownloaderView({
                       ? { label: t("action.tryYtdlp"), run: () => void controller.retryWithSecondEngine() }
                       : undefined
                 }
-                onAnalyze={() => void controller.analyze()}
-                onPaste={() => void controller.useClipboard()}
               />
             </div>
 
@@ -134,7 +140,7 @@ export function DownloaderView({
               />
             ) : null}
 
-            {!result && state.tasks.length === 0 ? <DownloaderEmptyState /> : null}
+            {!result && state.tasks.length === 0 && !state.bootError ? <DownloaderEmptyState /> : null}
 
             <DownloadQueue
               tasks={state.tasks}

@@ -141,6 +141,9 @@ async function ensureServiceStartedOnce(ctx: ManagedPluginContext): Promise<void
     for (const asset of assets) {
       payloads.push({ destination: asset.destination, data: await downloadAsset(ctx, asset) });
     }
+    // An earlier version's process can still be alive while this runtime is missing, and the host
+    // refuses to install over a running child. Stop it first so an upgrade can replace the runtime.
+    await ctx.services.stop(SERVICE_ID);
     status = await ctx.services.install(SERVICE_ID, payloads);
     if (!status.installed) throw new Error(status.message ?? ctx.i18n.t("error.runtimeInstall"));
   }

@@ -68,6 +68,25 @@ describe("service runtime bootstrap", () => {
     expect(serviceStartupFailure()).toBeNull();
   });
 
+  // Upgrading a plugin whose previous runtime is still running must stop it first: the host
+  // refuses `install` while a child process is alive ("Stop the service before installing").
+  it("stops the previous runtime before installing", async () => {
+    const calls: string[] = [];
+    const { context, install } = createContext();
+    context.services.stop = vi.fn(async () => {
+      calls.push("stop");
+      return status();
+    });
+    install.mockImplementation(async () => {
+      calls.push("install");
+      return status({ installed: true });
+    });
+
+    await ensureServiceStarted(context as never);
+
+    expect(calls).toEqual(["stop", "install"]);
+  });
+
   it("retries a dropped transfer before giving up", async () => {
     const { context, request } = createContext();
     request.mockRejectedValueOnce(new Error("socket hang up"));
