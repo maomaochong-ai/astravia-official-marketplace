@@ -1,0 +1,6 @@
+/* Tailwind —— 只导 theme + utilities，不导 preflight。
+   preflight 的全局重置一旦漏出插件根节点会污染宿主侧边栏与主题色，
+   与 dbx-pro / rea / web-element-picker 的策略保持一致。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);

@@ -1,0 +1,25 @@
+{
+	"id": "binary-triage",
+	"name": "%plugin.name%",
+	"description": "%plugin.description%",
+	"icon": "assets/icon.svg",
+	"version": "1.0.0",
+	"pluginApiVersion": "^2.0.0",
+	"entry": "dist/mf-manifest.json",
+	"styles": ["dist/style.css"],
+	"moduleFederation": {
+		"remoteName": "binary_triage",
+		"expose": "./plugin"
+	},
+	"minAppVersion": "0.5.59",
+	"permissions": [
+		"ui.slot.activity-tab",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.session.write",
+		"fs.read",
+		"fs.write"
+	],
+	"defaultLocale": "en",
+	"author": "Astravia"
+}
