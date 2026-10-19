@@ -1,0 +1,100 @@
+# 二进制体检
+
+在 Astravia 内离线静态体检安卓安装包、iOS 应用、原生二进制与压缩包，不依赖任何外部工具链，也从不运行样本。
+
+插件只回答一个问题：**这是什么文件，评审应该先看哪里？**
+
+## 能分析什么
+
+| 输入 | 识别依据 | 收集的事实 |
+| --- | --- | --- |
+| `.apk` | `AndroidManifest.xml` + `classes*.dex` | 清单模型、权限、组件、签名方案、DEX 字符串 |
+| `.aab` | `BundleConfig.pb` 或 `base/manifest/…` | 清单模型、DEX 列表、各 ABI 原生库 |
+| `.ipa` | `Payload/*.app/` | 主二进制的 Mach-O 头、切片与加固标志 |
+| `.jar` | `META-INF/MANIFEST.MF` | 归档布局、内嵌可执行文件 |
+| `.zip` | 中央目录结束记录 | 条目数、压缩比、越界或重名条目 |
+| ELF / PE / Mach-O | 魔数 | 架构、入口点、节区、加固标志、导入表 |
+| `.dex` | `dex\n` | 字符串/类型/方法计数与字符串样例 |
+| 其它 | — | 熵分布与字符串抽样 |
+
+报告结构（`schemaVersion: 1`）：`target`、`risk`（分数 + A–E 等级 + 主因）、`summary`、`findings`、`facts`、`sections`、`limits`。
+
+## 规则目录
+
+五大类共 37 条规则：`manifest`、`code`、`native`、`package`、`format`。每条规则有稳定 id、严重度、权重与英文建议：
+
+- `src/domain/audit/rules.ts` —— 注册表与权重（`critical` 45、`high` 22、`medium` 10、`low` 4、`info` 0，封顶 100）
+- `locales/en.json`、`locales/zh.json` —— 面板用的 `rule.<id>.title`；有测试保证注册表与两份 catalog 始终对齐
+
+领域层只产出 `ruleId` 与证据。Agent 路径的标题来自注册表，面板通过插件 catalog 解析 `rule.<id>.title`。
+
+## Agent 工具
+
+统一从 `src/tools/register-tools.ts` 注册，一个工具一个文件：
+
+| 工具 | 用途 |
+| --- | --- |
+| `triage_binary` | 完整体检，返回有预算上限的 markdown（摘要约 4.5k 字符，完整约 24k） |
+| `scan_binary_strings` | 带文件偏移的字符串提取与过滤 |
+| `explain_triage_finding` | 规则参考：严重度、分类、为什么重要 |
+| `export_triage_report` | 完整体检结果交给系统保存对话框，导出 markdown 或 JSON |
+
+四个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限 160 MiB。
+
+## 权限
+
+| 权限 | 原因 |
+| --- | --- |
+| `ui.slot.activity-tab` | 工作台面板 |
+| `agent.tools.register`、`agent.toolHandler.execute` | 四个工具 |
+| `agent.session.write` | 工具结果写回对话 |
+| `fs.read` | 列目录与读取样本 |
+| `fs.write` | `fs.saveAs` 导出报告（路径由用户选择） |
+
+## 目录
+
+```text
+src/
+├── index.tsx                        # 只做装配：bridge、标签卡、工具、清理
+├── runtime-contract.ts              # 标签卡读取的 PluginContext 句柄
+├── domain/                          # 不含 React、不依赖宿主 API
+│   ├── bytes.ts digest.ts entropy.ts strings.ts base64.ts
+│   ├── archive/   zip.ts axml.ts archive-facts.ts
+│   ├── android/   manifest-model.ts dex.ts audit.ts
+│   ├── native/    types.ts elf.ts pe.ts macho.ts audit.ts
+│   ├── audit/     rules.ts findings.ts secrets.ts
+│   ├── report/    report.ts
+│   └── triage.ts                    # 入口：识别 → 解析 → 审计 → 报告
+├── tools/                           # 一个 Agent 工具一个文件
+├── features/triage-workbench/       # components/ + hooks/
+├── shared/components/               # 严重度标签
+└── test/                            # 夹具与测试
+```
+
+`src/domain/` 不依赖 `@astravia-org/plugin-sdk`，可以直接在 Node 里跑。
+
+## 开发
+
+```bash
+cd abilities/plugins/binary-triage
+npm install
+npm run check     # tsc --noEmit
+npm run test      # vitest（领域夹具 + 面板接线）
+npm run build     # vite build → dist/
+```
+
+本仓库里 SDK 通过开发 tooling 解析（`../../../.tooling/open-astravia/packages/plugins/plugin-sdk`），因此 `package-lock.json` 里是 `link: true` 条目。完整市场构建会重新生成：
+
+```bash
+node scripts/marketplace.mjs check
+node scripts/marketplace.mjs build
+node --test tests/*.test.mjs
+```
+
+## 需要知道的边界
+
+- 安卓签名只读取 v1 文件与 APK Signing Block 中的方案和摘要，**不做密码学验签**。
+- 加壳/加密代码只报告，不脱壳；`native.packed` 是启发式判断（熵 + 导入数量，或 `UPX!` 标记）。
+- DEX 字符串扫描上限 6 个 dex、24 MiB；体检内字符串提取上限 400 条，独立工具上限 500 条。
+- Mach-O fat 二进制只分析第一个切片；IPA 最多尝试三个 `Payload/*.app/*` 候选定位主二进制。
+- 不执行、不打补丁、不重签、不重打包。按设计只读。
