@@ -5,6 +5,7 @@ import { revealInFileManager } from "../fs/reveal.js";
 import { callTool, MCP_TOOLS } from "../mcp/tool-catalog.js";
 import { isHttpUrl, type ServiceContext } from "../service-context.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
+import { SERVICE_VERSION } from "../version.js";
 
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
@@ -86,7 +87,7 @@ export function createRouter(context: ServiceContext) {
     if (method === "GET" && (path === "/health" || path === "/api/v1/health")) {
       sendJson(response, 200, {
         status: "ok",
-        version: "1.0.0",
+        version: SERVICE_VERSION,
         capabilities: { ytdlp: context.ytdlp, ffmpeg: context.ffmpeg },
         directory: context.settings().downloadDirectory,
       });
@@ -257,7 +258,7 @@ export function createRouter(context: ServiceContext) {
           mcpEnvelope(id, {
             protocolVersion: "2024-11-05",
             capabilities: { tools: {} },
-            serverInfo: { name: "video-downloader", version: "1.0.0" },
+            serverInfo: { name: "video-downloader", version: SERVICE_VERSION },
           }),
         );
         return;

@@ -1,51 +1,51 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "platforms": {
     "win32-x64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.0/video-downloader-service-2.0.0.zip",
-        "sha256": "947a213731db8ddaf1cab8f1964c981b06926391798f4ee9b771fafba78b97ab",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.1/video-downloader-service-2.0.1.zip",
+        "sha256": "46adf58e54d62f8ad5e3544441f6ba02b2244e0a983707655b5ec7f4a1c9f057",
         "archive": "zip"
       }
     ],
     "win32-arm64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.0/video-downloader-service-2.0.0.zip",
-        "sha256": "947a213731db8ddaf1cab8f1964c981b06926391798f4ee9b771fafba78b97ab",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.1/video-downloader-service-2.0.1.zip",
+        "sha256": "46adf58e54d62f8ad5e3544441f6ba02b2244e0a983707655b5ec7f4a1c9f057",
         "archive": "zip"
       }
     ],
     "darwin-x64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.0/video-downloader-service-2.0.0.zip",
-        "sha256": "947a213731db8ddaf1cab8f1964c981b06926391798f4ee9b771fafba78b97ab",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.1/video-downloader-service-2.0.1.zip",
+        "sha256": "46adf58e54d62f8ad5e3544441f6ba02b2244e0a983707655b5ec7f4a1c9f057",
         "archive": "zip"
       }
     ],
     "darwin-arm64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.0/video-downloader-service-2.0.0.zip",
-        "sha256": "947a213731db8ddaf1cab8f1964c981b06926391798f4ee9b771fafba78b97ab",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.1/video-downloader-service-2.0.1.zip",
+        "sha256": "46adf58e54d62f8ad5e3544441f6ba02b2244e0a983707655b5ec7f4a1c9f057",
         "archive": "zip"
       }
     ],
     "linux-x64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.0/video-downloader-service-2.0.0.zip",
-        "sha256": "947a213731db8ddaf1cab8f1964c981b06926391798f4ee9b771fafba78b97ab",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.1/video-downloader-service-2.0.1.zip",
+        "sha256": "46adf58e54d62f8ad5e3544441f6ba02b2244e0a983707655b5ec7f4a1c9f057",
         "archive": "zip"
       }
     ],
     "linux-arm64": [
       {
         "destination": "service",
-        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.0/video-downloader-service-2.0.0.zip",
-        "sha256": "947a213731db8ddaf1cab8f1964c981b06926391798f4ee9b771fafba78b97ab",
+        "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/video-downloader-2.0.1/video-downloader-service-2.0.1.zip",
+        "sha256": "46adf58e54d62f8ad5e3544441f6ba02b2244e0a983707655b5ec7f4a1c9f057",
         "archive": "zip"
       }
     ]

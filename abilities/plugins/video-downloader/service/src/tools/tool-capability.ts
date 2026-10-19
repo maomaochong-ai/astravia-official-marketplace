@@ -13,6 +13,14 @@ export interface ToolCapability {
 export const UNAVAILABLE: ToolCapability = { available: false, path: null, version: null, source: null };
 
 const MAX_SEARCH_DEPTH = 3;
+/** How long a version probe of a system-installed tool may take. */
+const PATH_PROBE_TIMEOUT_MS = 15_000;
+/**
+ * A provisioned binary is 30–40 MB and unsigned, so the first execution can stall for a minute
+ * while the OS scans it. The budget is generous because a timeout here used to look like "the
+ * tool is still being installed" and left the panel waiting forever.
+ */
+const PROVISIONED_PROBE_TIMEOUT_MS = 120_000;
 
 export async function isExecutable(path: string): Promise<boolean> {
   try {
@@ -71,27 +79,47 @@ export interface ProvisionedBinary {
   versionArgs: string[];
   /** Defaults to the first dotted token, which fits yt-dlp's `2026.08.19`. */
   extractVersion?: (output: string) => string | null;
+  /**
+   * Version to report for the provisioned copy without executing it. `null` means "installed,
+   * version unknown". Passing this (or `null`) makes an existing provisioned file authoritative —
+   * the installer only writes it after the pinned digest matched.
+   */
+  provisionedVersion?: string | null;
 }
 
 /**
  * Resolve a tool the plugin may have provisioned itself, falling back to PATH so a locally
  * installed copy still works during development.
  */
-export async function inspectProvisioned({ provisioned, command, versionArgs, extractVersion }: ProvisionedBinary): Promise<ToolCapability> {
+export async function inspectProvisioned({
+  provisioned,
+  command,
+  versionArgs,
+  extractVersion,
+  provisionedVersion,
+}: ProvisionedBinary): Promise<ToolCapability> {
   const extract = extractVersion ?? firstVersionToken;
   if (await isFile(provisioned)) {
     if (!(await isExecutable(provisioned))) await chmod(provisioned, 0o755).catch(() => undefined);
-    const version = await versionOf(provisioned, versionArgs, extract);
+    if (provisionedVersion !== undefined) {
+      return { available: true, path: provisioned, version: provisionedVersion, source: "bundled" };
+    }
+    const version = await versionOf(provisioned, versionArgs, extract, PROVISIONED_PROBE_TIMEOUT_MS);
     if (version !== undefined) return { available: true, path: provisioned, version, source: "bundled" };
   }
-  const version = await versionOf(command, versionArgs, extract);
+  const version = await versionOf(command, versionArgs, extract, PATH_PROBE_TIMEOUT_MS);
   if (version !== undefined) return { available: true, path: command, version, source: "path" };
   return UNAVAILABLE;
 }
 
-export async function versionOf(path: string, args: string[], extract: (output: string) => string | null): Promise<string | null | undefined> {
+export async function versionOf(
+  path: string,
+  args: string[],
+  extract: (output: string) => string | null,
+  timeoutMs = PATH_PROBE_TIMEOUT_MS,
+): Promise<string | null | undefined> {
   try {
-    const result = await runCommand(path, args, { timeoutMs: 15_000 });
+    const result = await runCommand(path, args, { timeoutMs });
     if (result.code !== 0) return undefined;
     return extract(`${result.stdout}\n${result.stderr}`.trim());
   } catch {
@@ -105,5 +133,6 @@ export async function inspectFfmpeg(toolDir: string): Promise<ToolCapability> {
     command: "ffmpeg",
     versionArgs: ["-version"],
     extractVersion: (output) => /ffmpeg version (\S+)/iu.exec(output)?.[1] ?? null,
+    provisionedVersion: null,
   });
 }

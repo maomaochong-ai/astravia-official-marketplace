@@ -853,7 +853,7 @@
       "slug": "video-downloader",
       "name": "Video Downloader",
       "description": "Paste a video link and download the highest quality locally — 1000+ sites supported, with progress, a queue and a shortcut to the finished file. The engine sets itself up, so there is nothing to install.",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "configVersion": 2,
       "license": "MIT",
       "author": "Astravia",

@@ -1,9 +1,10 @@
-import { mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ffmpegReleaseFor } from "../tools/ffmpeg-release.js";
 import { FfmpegInstaller } from "../tools/ffmpeg-installer.js";
+import { inspectProvisioned } from "../tools/tool-capability.js";
 import { withToolPath } from "../tools/tool-paths.js";
 
 const temporaryDirectories: string[] = [];
@@ -62,5 +63,50 @@ describe("withToolPath", () => {
     const env = withToolPath("/data/bin", { PATH: "/usr/bin", HOME: "/home/u" });
     expect(env.PATH?.startsWith(`/data/bin${process.platform === "win32" ? ";" : ":"}`)).toBe(true);
     expect(env.HOME).toBe("/home/u");
+  });
+});
+describe("inspectProvisioned", () => {
+  it("trusts a provisioned binary the installer already verified", async () => {
+    const directory = await makeTempDirectory();
+    const provisioned = join(directory, "yt-dlp");
+    // Fails if it is ever spawned: the reported version can then only come from the pin.
+    await writeFile(provisioned, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+
+    const capability = await inspectProvisioned({
+      provisioned,
+      command: "video-downloader-tool-that-is-not-on-path",
+      versionArgs: ["--version"],
+      provisionedVersion: "9.9.9",
+    });
+
+    expect(capability).toEqual({ available: true, path: provisioned, version: "9.9.9", source: "bundled" });
+  });
+
+  it("reports an installed binary as available when its version is unknown", async () => {
+    const directory = await makeTempDirectory();
+    const provisioned = join(directory, "ffmpeg");
+    await writeFile(provisioned, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+
+    const capability = await inspectProvisioned({
+      provisioned,
+      command: "video-downloader-tool-that-is-not-on-path",
+      versionArgs: ["-version"],
+      provisionedVersion: null,
+    });
+
+    expect(capability).toEqual({ available: true, path: provisioned, version: null, source: "bundled" });
+  });
+
+  it("still falls back to PATH and reports a missing tool as unavailable", async () => {
+    const directory = await makeTempDirectory();
+
+    const capability = await inspectProvisioned({
+      provisioned: join(directory, "yt-dlp"),
+      command: "video-downloader-tool-that-is-not-on-path",
+      versionArgs: ["--version"],
+      provisionedVersion: "9.9.9",
+    });
+
+    expect(capability.available).toBe(false);
   });
 });

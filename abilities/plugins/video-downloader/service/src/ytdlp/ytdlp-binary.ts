@@ -1,5 +1,5 @@
 import { inspectProvisioned, type ToolCapability } from "../tools/tool-capability.js";
-import { ytdlpReleasePath } from "./ytdlp-release.js";
+import { YTDLP_VERSION, ytdlpReleasePath } from "./ytdlp-release.js";
 
 /**
  * Locate the yt-dlp that was provisioned into `<dataRoot>/bin`, falling back to PATH so a
@@ -10,5 +10,8 @@ export async function inspectYtdlp(dataRoot: string): Promise<ToolCapability> {
     provisioned: ytdlpReleasePath(dataRoot),
     command: "yt-dlp",
     versionArgs: ["--version"],
+    // The installer verifies the pinned digest before writing this path, so its version is known
+    // without spawning a 37 MB binary on every capability refresh.
+    provisionedVersion: YTDLP_VERSION,
   });
 }
