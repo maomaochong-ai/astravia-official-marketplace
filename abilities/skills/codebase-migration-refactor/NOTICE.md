@@ -26,9 +26,9 @@
 
 ## 展示层
 
-- `ability.json`、`detail.json`、`detail.zh.json`：新增展示层，默认英文，中文放在 `zh` 覆盖里；中文条目名称为「代码库迁移与重构」。
+- `ability.json`、`detail.json`、`detail.zh.json`：新增展示层，默认英文，中文放在 `zh` 覆盖里；展示名统一为英文「Codebase Migration and Refactoring」，中文条目名称只在 `detail.i18n.zh` 与 `detail.zh.json` 中保留。
 - 详情页在使用步骤前明确写出前置条件（GitHub 推送权限 + Linear/Jira 空间 + 一次 Composio 登录连接），并说明没有它时哪些能力不可用，不做免配置承诺。
-- 图标为自制 SVG（`assets/icon.svg`）：旧结构条块 → 新模块容器，不含上游素材与任何第三方图形资产。
+- 图标使用 Solar 图标集的 `code-bold`（`icon: "solar:code-bold"`），以代码符号代表代码库本体；不再使用自制 SVG，避免在目录页出现与能力无关的装饰性图形。
 
 ## 未包含
 
