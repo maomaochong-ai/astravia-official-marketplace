@@ -3,7 +3,7 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.svg",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": ["dist/style.css"],
