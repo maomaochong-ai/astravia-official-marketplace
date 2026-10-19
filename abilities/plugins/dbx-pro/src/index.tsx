@@ -135,13 +135,8 @@ export default definePlugin({
 		const activityTab = ctx.ui.registerActivityTab({
 			id: "dbx-pro",
 			label: "dbx-pro",
-			icon: (
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-					<ellipse cx="12" cy="5" rx="8" ry="3" />
-					<path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
-					<path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v6" />
-				</svg>
-			),
+			// 省略 icon：宿主解析 plugin.json#icon（官方 assets/icon.png）作为品牌图标，
+			// 随主题 mask / 缩放保持一致，插件端不另起一套资源。
 			component: DatabaseWorkspace,
 			scope_use: ["im-claw", "conversation", "project", "cli"],
 			retention: "pinned",

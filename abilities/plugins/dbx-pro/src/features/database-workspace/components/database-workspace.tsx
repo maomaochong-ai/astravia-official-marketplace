@@ -244,7 +244,7 @@ function DatabaseWorkspaceBody(): JSX.Element {
 			ref={workspaceRef}
 			data-astravia-plugin-root="dbx-pro"
 			data-dbx-theme={theme}
-			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen && fullscreenMode === "css" ? "!absolute !inset-0 !z-[9999]" : ""}`}
+			className={`dbx-root relative flex h-full w-full min-h-0 flex-col bg-background text-foreground ${fullscreen && fullscreenMode === "css" ? "!fixed !inset-0 !z-[9999] !overflow-hidden" : ""}`}
 		>
 			<WorkbenchTopBar
 				onOpenConnectionEditor={() => setConnectionEditorOpen(true)}

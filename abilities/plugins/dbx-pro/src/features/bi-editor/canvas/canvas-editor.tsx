@@ -478,6 +478,9 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 
 		setRunning(false);
 	}, [nodes, links, execRunning, runAll, getUpstreamData]);
+	// 编辑器皮肤主题必须无条件调用（hook）：但若放在下方大屏/看板两处条件 return 之后，
+	// 切换页面样式（board ↔ bigScreen）或 loading 翻转时 hook 数量漂移，触发 Rendered fewer hooks (#310)。
+	const dbxTheme = useDetectedTheme();
 
 	if (loading || !page) {
 		return (
@@ -499,9 +502,8 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 		);
 	}
 
-	// 编辑器皮肤主题：跟随宿主（open-astravia），而非这个页面的内容主题 activeTheme。
+	// dbxTheme 在组件顶部无条件解析（见上方 hook 位置的注释）；此处直接使用。
 	// activeTheme 仍是页面内容明暗（深色大屏/浅色看板），但皮肤壳统一随宿主。
-	const dbxTheme = useDetectedTheme();
 
 	return (
 		<div className="dbx-root flex h-full min-h-0 flex-col" data-dbx-theme={dbxTheme} style={paletteStyle(palette)}>
