@@ -1,1 +1,6 @@
-@import "tailwindcss";
+/* Tailwind — 只导 theme + utilities，不导 preflight。
+   preflight 里的 box-sizing / margin / font-family 全局重置一旦漏出插件根节点，
+   会污染宿主（尤其侧边栏/主题色）。与 dbx-pro / rea 的策略保持一致。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);

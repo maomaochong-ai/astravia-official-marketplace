@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* Tailwind — 只导 theme + utilities，不导 preflight，避免全局 reset 污染宿主 UI。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 @plugin "@iconify/tailwind4";
 
 @theme inline {

@@ -26,13 +26,9 @@ import { Btn } from "../shared/components/ui/btn";
 import { AreaChart, Bars, Donut, SERIES } from "../shared/components/charts";
 import type { NodePos, Link } from "../canvas/components/node-graph";
 import { fnv1aArray } from "../../../shared/utils/hash";
-import { AskPanel } from "../../ask/ask-panel";
-import { toCanvasKind } from "../../ask/ask-chart";
-import type { AskDraft } from "../../ask/ask-types";
 
 // ── 后端类型 ──
 interface DataSource { id: string; name: string; type: string; status: string; tables?: string[]; }
-interface RunLog { id: string; pageId?: string; pageName: string; detail: string; cost: string; state: string; createTime: string; }
 interface ShareLink { id: string; pageId?: string; path: string; type: "permanent" | "timed"; expiresAt: string | null; password: string | null; createTime: string; }
 interface WorktreeStatus { pages: { id: string; name: string; style: string; updateCount: number; publishedCount: number; publishedAt: string | null; dirty: boolean; }[]; dirtyCount: number; }
 
@@ -46,15 +42,6 @@ function useDatasources(): { items: DataSource[]; refresh: () => void } {
 	}, []);
 	useEffect(() => { refresh(); }, [refresh]);
 	return { items, refresh };
-}
-function useRunlogs(): { items: RunLog[] } {
-	const [items, setItems] = useState<RunLog[]>([]);
-	useEffect(() => {
-		engineRequest<{ records: RunLog[] }>("/drag/runlog/list?limit=4", undefined, { method: "GET" })
-			.then((r) => setItems(r?.records ?? []))
-			.catch(() => { /* 后端没跑时静默 */ });
-	}, []);
-	return { items };
 }
 function useSharelinks(): { items: ShareLink[] } {
 	const [items, setItems] = useState<ShareLink[]>([]);
@@ -158,12 +145,6 @@ function collectDatasets(pages: BigscreenPage[]): DatasetRow[] {
 	return rows;
 }
 
-// ── 常量：右栏三条入口 ──
-const START = [
-	{ icon: "icon-[lucide--table-2]",      id: "from-dataset", title: "从数据集新建", note: "选一张表，勾字段，直接出图" },
-	{ icon: "icon-[lucide--wand-sparkles]", id: "ai-generate",   title: "问数（让 AI 生成）", note: "说一句要什么，它自己去取数并拼好节点" },
-	{ icon: "icon-[lucide--scroll-text]",  id: "paste-sql",     title: "粘一条 SQL",   note: "已有 SQL 的话，贴进来就是数据集" },
-];
 
 const PREVIEW = (() => {
 	function hv(seed: string, len: number, min: number, max: number): number[] {
@@ -197,13 +178,6 @@ function formatDate(iso?: string): string {
 		const d = new Date(iso);
 		return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 	} catch { return ""; }
-}
-function formatRunTime(iso?: string): string {
-	if (!iso) return "—";
-	try {
-		const d = new Date(iso);
-		return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-	} catch { return "—"; }
 }
 function formatShareExpires(iso: string | null): string {
 	if (!iso) return "不过期";
@@ -272,53 +246,6 @@ function PageThumb({
 	);
 }
 
-// ── 预置画布节点工具（三条入口 → canvas-editor 自动预置） ──
-function presetFromDataset(): { nodes: Record<string, NodePos>; links: Link[] } {
-	const ns: Record<string, NodePos> = {
-		n100: { x: 60,  y: 120, w: 180, h: 108, tone: "#3b82f6", kind: "source-connector", selected: true,
-			values: { title: "订单表", tableName: "orders", connectionId: "生产库" } },
-		n101: { x: 300, y: 80,  w: 216, h: 222, tone: "#10b981", kind: "chart-line",
-			values: { title: "GMV 趋势", xField: "ts", yField: "amount" } },
-	};
-	return {
-		nodes: ns,
-		links: [{ id: "lp1", from: "n100", fromRow: 0, to: "n101", toRow: 0, tone: "#3b82f6" }],
-	};
-}
-function presetSql(sql: string): { nodes: Record<string, NodePos>; links: Link[] } {
-	const ns: Record<string, NodePos> = {
-		n300: { x: 60, y: 140, w: 180, h: 118, tone: "#f59e0b", kind: "source-sql", selected: true,
-			values: { title: "SQL 数据集", sql } },
-	};
-	return { nodes: ns, links: [] };
-}
-
-/**
- * 问数结果落画布：SQL 数据源 + 图表节点，一条连线。
- *
- * 与 presetSql 的差别：这里的 SQL 与图型是问数面板真跑过、真取到数的结果，所以必须把连接一起带上 ——
- * 节点里存连接 id（属性面板的数据源下拉写的就是 id），引擎执行时由
- * resolveConnectionName 转成连接名（见 canvas/lib/connection-ref.ts）。
- */
-function presetAsk(draft: AskDraft): { nodes: Record<string, NodePos>; links: Link[] } {
-	const connection = draft.connectionId || draft.connectionName;
-	const ns: Record<string, NodePos> = {
-		n400: { x: 60, y: 140, w: 180, h: 118, tone: "#3b82f6", kind: "source-sql",
-			values: { title: draft.title, sql: draft.sql, datasourceId: connection, connectionId: connection } },
-	};
-	// 明细表在画布上没有对应节点（不能透传，见 toCanvasKind）：只落数据源节点。
-	const canvasKind = toCanvasKind(draft.chartKind);
-	if (!canvasKind) {
-		ns.n400.selected = true;
-		return { nodes: ns, links: [] };
-	}
-	ns.n401 = { x: 300, y: 90, w: 216, h: 222, tone: "#8b5cf6", kind: canvasKind, selected: true,
-		values: { title: draft.title } };
-	return {
-		nodes: ns,
-		links: [{ id: "lq1", from: "n400", fromRow: 0, to: "n401", toRow: 0, tone: "#3b82f6" }],
-	};
-}
 
 export function BiWorkspace(): JSX.Element {
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -333,7 +260,6 @@ export function BiWorkspace(): JSX.Element {
 
 	// ── 真实 hook 数据 ──
 	const { items: datasources } = useDatasources();
-	const { items: runlogs } = useRunlogs();
 	const { items: sharelinks } = useSharelinks();
 	const { status: worktree, publish } = useWorktreeStatus();
 
@@ -344,6 +270,15 @@ export function BiWorkspace(): JSX.Element {
 	const [sortKey, setSortKey] = useState<"updateTime" | "name" | "createTime" | "updateCount">("updateTime");
 	const [sortOpen, setSortOpen] = useState(false);
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+	/** 从左侧看板/大屏树点产物后聚焦到的页面 id（先聚焦视图，不直接进画布）。 */
+	const [focusPageId, setFocusPageId] = useState<string | null>(null);
+
+	// 聚焦到某产物时，把对应卡片滚动进可视区，方便用户接着操作。
+	useEffect(() => {
+		if (!focusPageId) return;
+		const el = document.querySelector(`[data-focused-id="${focusPageId}"]`);
+		el?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+	}, [focusPageId, viewMode]);
 
 	// ── 工作树展开/折叠（默认 depth0 全开，回收站关） ──
 	const [treeOpen, setTreeOpen] = useState<Record<string, boolean>>({
@@ -354,10 +289,6 @@ export function BiWorkspace(): JSX.Element {
 		setTreeOpen((prev) => ({ ...prev, [key]: !prev[key] }));
 	}
 
-	// ── 对话框状态（右栏三条入口） ──
-	const [dlgDataset, setDlgDataset] = useState(false);   // 从数据集新建
-	const [dlgAi, setDlgAi] = useState(false);             // 让 AI 生成
-	const [dlgSql, setDlgSql] = useState(false);           // 粘一条 SQL
 
 	const notify = (msg: string, variant: "success" | "error" | "info" = "info") => {
 		try { getUi()?.notify?.({ message: msg, variant }); } catch { /* ignore */ }
@@ -419,8 +350,9 @@ export function BiWorkspace(): JSX.Element {
 				rows.push({
 					key: `board-${p.id}`,
 					label: p.name,
-					pageId: p.id,
 					depth: 1,
+					navKey: "board",
+					pageId: p.id,
 					icon: "icon-[lucide--file-text]",
 					dot: worktree?.pages.some((w) => w.id === p.id && w.dirty) ? "bg-warning" : undefined,
 				});
@@ -443,6 +375,7 @@ export function BiWorkspace(): JSX.Element {
 					label: p.name,
 					pageId: p.id,
 					depth: 1,
+					navKey: "bigscreen",
 					icon: "icon-[lucide--presentation]",
 					dot: worktree?.pages.some((w) => w.id === p.id && w.dirty) ? "bg-warning" : undefined,
 				});
@@ -520,20 +453,6 @@ export function BiWorkspace(): JSX.Element {
 		// 叶子直接展示页面名称，依赖 pages 而不只是 length，改名后树才不会留旧文本
 	}, [pages, datasources, worktree, sharelinks.length, activeNav, treeOpen]);
 
-	// ── 三个入口：创建看板 page → 设置 preset → 跳转编辑器（不再创建大屏） ──
-	async function handleCreateWithPreset(preset: { nodes: Record<string, NodePos>; links: Link[] }) {
-		setCreating(true);
-		try {
-			const id = await create(`新看板 ${pages.length + 1}`, { style: "default" });
-			setEditorPreset(preset);
-			setEditorPageId(id);
-			notify("已创建，编辑器已预置节点", "success");
-		} catch (err) {
-			notify(`创建失败: ${err instanceof Error ? err.message : String(err)}`, "error");
-		} finally {
-			setCreating(false);
-		}
-	}
 
 	async function handleCreate() {
 		setCreating(true);
@@ -643,17 +562,23 @@ export function BiWorkspace(): JSX.Element {
 
 		return (
 			<div className="grid shrink-0 grid-cols-3 gap-4">
-				{derivedPages.map((p, i) => (
-					<PageThumb
-						key={p.id}
-						page={p}
-						previewKind={previewKindFor(i)}
-						onOpen={(pg) => { setEditorPreset(undefined); setEditorPageId(pg.id); }}
-						onDelete={handleDelete}
-						onClone={handleCopy}
-						onCopy={handleCopy}
-					/>
-				))}
+				{derivedPages.map((p, i) => {
+					const focused = p.id === focusPageId;
+					return (
+						<div key={p.id} data-focused-id={focused ? p.id : undefined}
+							className={focused ? "rounded-card ring-2 ring-accent ring-offset-1" : ""}
+							onClick={() => { if (focused) setFocusPageId(null); }}>
+							<PageThumb
+								page={p}
+								previewKind={previewKindFor(i)}
+								onOpen={(pg) => { setFocusPageId(null); setEditorPreset(undefined); setEditorPageId(pg.id); }}
+								onDelete={handleDelete}
+								onClone={handleCopy}
+								onCopy={handleCopy}
+							/>
+						</div>
+					);
+				})}
 			</div>
 		);
 	}
@@ -774,8 +699,14 @@ export function BiWorkspace(): JSX.Element {
 										toggleTree(n.key);
 										return;
 									}
-									// depth1：页面叶子直接打开编辑器，数据源叶子回到数据源列表
+									// depth1：看板/大屏产物叶子 → 先聚焦对应分类视图（不直接进画布）；数据源叶子照旧打开编辑器
 									if (n.pageId) {
+										if (n.navKey) {
+											setActiveNav(n.navKey);
+										setViewMode("grid");
+										setFocusPageId(n.pageId);
+											return;
+										}
 										setEditorPreset(undefined);
 										setEditorPageId(n.pageId);
 										return;
@@ -937,61 +868,12 @@ export function BiWorkspace(): JSX.Element {
 
 					{renderMainContent()}
 
-					{/* 最近运行 */}
-					{(activeNav === "board" || activeNav === "bigscreen") && (
-						<div
-							id="runlogs-panel"
-							className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-raised"
-						>
-							<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
-								<Icon name="icon-[lucide--play]" className="size-3.5 shrink-0 text-muted" />
-								<span className="text-[11px] font-medium text-surface-foreground">最近运行</span>
-								<span className="ml-auto text-[10px] text-faint">看板与大屏共用同一本账</span>
-							</div>
-							<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-1.5 py-1.5">
-								{runlogs.length === 0 ? (
-									<div className="flex h-full items-center justify-center text-[11px] text-faint">暂无运行记录</div>
-								) : runlogs.map((r) => (
-									<div key={r.id} className="flex h-8 items-center gap-3 rounded-[4px] px-2 hover:bg-surface">
-										<span className="w-10 shrink-0 font-mono text-[10px] tabular-nums text-faint">{formatRunTime(r.createTime)}</span>
-										<span className="w-40 shrink-0 truncate text-[11px] text-surface-foreground">{r.pageName}</span>
-										<span className="min-w-0 flex-1 truncate text-[10px] text-faint">{r.detail}</span>
-										<span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-muted">{r.cost}</span>
-										<span className={`flex h-[18px] shrink-0 items-center rounded-chip px-1.5 text-[10px] ${
-											r.state === "成功" ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
-										}`}>{r.state}</span>
-									</div>
-								))}
-							</div>
-						</div>
-					)}
 				</main>
 
-				{/* 右栏：从哪开始 + 产物链接 + 发布 */}
+				{/* 右栏：产物链接 + 发布 */}
 				<aside className={narrow
 					? "hidden"
 					: "flex w-72 shrink-0 flex-col gap-4 overflow-hidden border-l border-border bg-surface-raised p-4"}>
-					<div className="flex flex-col gap-2">
-						<span className="text-[11px] font-medium text-surface-foreground">从哪开始</span>
-						{START.map((s) => (
-							<div
-								key={s.id}
-								className="flex cursor-pointer items-center gap-2.5 rounded-card border border-border bg-surface px-3 py-2.5 hover:border-border-strong"
-								onClick={() => {
-									if (s.id === "from-dataset") setDlgDataset(true);
-									else if (s.id === "ai-generate") setDlgAi(true);
-									else if (s.id === "paste-sql") setDlgSql(true);
-								}}
-							>
-								<Icon name={s.icon} className="size-4 shrink-0 text-accent" />
-								<div className="flex min-w-0 flex-col">
-									<span className="text-[12px] text-surface-foreground">{s.title}</span>
-									<span className="truncate text-[10px] text-faint">{s.note}</span>
-								</div>
-								<Icon name="icon-[lucide--chevron-right]" className="ml-auto size-3.5 shrink-0 text-faint" />
-							</div>
-						))}
-					</div>
 
 					<div className="flex flex-col gap-2 border-t border-border pt-3">
 						<span className="text-[11px] font-medium text-surface-foreground">产物链接</span>
@@ -1041,135 +923,6 @@ export function BiWorkspace(): JSX.Element {
 				</aside>
 			</div>
 
-			{/* ── 对话框：从数据集新建 ── */}
-			{dlgDataset && <DatasetDialog datasources={datasources} onClose={() => setDlgDataset(false)}
-				onConfirm={(ds, table, fields) => {
-					setDlgDataset(false);
-					const preset = presetFromDataset();
-					// 把用户选的连接/表/字段写进预置节点
-					preset.nodes.n100.values = {
-						title: table, tableName: table, connectionId: ds?.name ?? "", fields: fields.join(","),
-					};
-					void handleCreateWithPreset(preset);
-				}} />}
-
-			{/* ── 问数面板：对齐 Quick BI 智能问数（选数据集 → 提问 → 真取数 → 落画布） ── */}
-			{dlgAi && (
-				<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60" onClick={() => setDlgAi(false)}>
-					<div
-						className="h-[min(660px,88vh)] w-[min(880px,92vw)] overflow-hidden rounded-card border border-border bg-surface-raised shadow-2xl"
-						onClick={(e) => e.stopPropagation()}
-					>
-						<AskPanel
-							onClose={() => setDlgAi(false)}
-							onInsert={(draft) => {
-								setDlgAi(false);
-								void handleCreateWithPreset(presetAsk(draft));
-							}}
-						/>
-					</div>
-				</div>
-			)}
-
-			{/* ── 对话框：粘一条 SQL ── */}
-			{dlgSql && <SqlDialog onClose={() => setDlgSql(false)}
-				onConfirm={(sql) => {
-					setDlgSql(false);
-					void handleCreateWithPreset(presetSql(sql));
-				}} />}
-		</div>
-	);
-}
-
-// ── 对话框组件 ──
-
-function DatasetDialog({
-	datasources, onClose, onConfirm,
-}: {
-	datasources: DataSource[];
-	onClose: () => void;
-	onConfirm: (ds: DataSource | null, table: string, fields: string[]) => void;
-}): JSX.Element {
-	const [dsIdx, setDsIdx] = useState(0);
-	const [table, setTable] = useState("");
-	const [fieldsText, setFieldsText] = useState("");
-	const ds = datasources[dsIdx] ?? null;
-	return (
-		<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60" onClick={onClose}>
-			<div className="w-[440px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-2xl" onClick={(e) => e.stopPropagation()}>
-				<div className="flex h-10 items-center gap-2 border-b border-border bg-background px-3">
-					<Icon name="icon-[lucide--table-2]" className="size-3.5 text-accent" />
-					<span className="text-[12px] font-medium text-surface-foreground">从数据集新建</span>
-					<button type="button" className="ml-auto grid size-5 place-items-center rounded-[2px] text-faint hover:bg-border" onClick={onClose}>
-						<Icon name="icon-[lucide--x]" className="size-3" />
-					</button>
-				</div>
-				<div className="flex flex-col gap-3 p-4">
-					<label className="flex flex-col gap-1">
-						<span className="text-[11px] text-muted">选择数据源</span>
-						<select value={dsIdx} onChange={(e) => setDsIdx(Number(e.target.value))}
-							className="h-8 rounded-control border border-border bg-surface px-2 text-[12px] text-surface-foreground">
-							{datasources.length === 0 ? <option value={-1}>（暂无数据源）</option> :
-								datasources.map((d, i) => <option key={d.id} value={i}>{d.name} · {d.type}</option>)}
-						</select>
-					</label>
-					<label className="flex flex-col gap-1">
-						<span className="text-[11px] text-muted">选表</span>
-						<input type="text" value={table} onChange={(e) => setTable(e.target.value)}
-							placeholder={ds?.tables?.[0] ?? "例如 orders"}
-							className="h-8 rounded-control border border-border bg-surface px-2 text-[12px] text-surface-foreground" />
-					</label>
-					<label className="flex flex-col gap-1">
-						<span className="text-[11px] text-muted">选字段（逗号分隔）</span>
-						<input type="text" value={fieldsText} onChange={(e) => setFieldsText(e.target.value)}
-							placeholder="留空则取全部字段"
-							className="h-8 rounded-control border border-border bg-surface px-2 font-mono text-[12px] text-surface-foreground" />
-					</label>
-					<span className="text-[10px] text-faint">引擎暂未暴露表清单接口，表名与字段需手动填写</span>
-				</div>
-				<div className="flex justify-end gap-2 border-t border-border bg-background px-3 py-2">
-					<button type="button" className="h-7 rounded-control border border-border bg-surface px-3 text-[12px] text-muted hover:text-surface-foreground" onClick={onClose}>取消</button>
-					<button type="button" disabled={!table.trim()}
-						className="h-7 rounded-control bg-accent px-3 text-[12px] font-medium text-accent-foreground disabled:opacity-50"
-						onClick={() => onConfirm(ds, table, fieldsText.split(",").map((s) => s.trim()).filter(Boolean))}>确认 → 进入画布</button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function SqlDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: (sql: string) => void }): JSX.Element {
-	const [sql, setSql] = useState("");
-	const parsed = useMemo(() => {
-		const m = sql.match(/select\s+([\w,\s]+?)(?:\s+from\b|$)/i);
-		return m?.[1]?.split(",")[0]?.trim() ?? null;
-	}, [sql]);
-	return (
-		<div className="fixed inset-0 z-50 grid place-items-center bg-scrim/60" onClick={onClose}>
-			<div className="w-[520px] overflow-hidden rounded-card border border-border bg-surface-raised shadow-2xl" onClick={(e) => e.stopPropagation()}>
-				<div className="flex h-10 items-center gap-2 border-b border-border bg-background px-3">
-					<Icon name="icon-[lucide--scroll-text]" className="size-3.5 text-accent" />
-					<span className="text-[12px] font-medium text-surface-foreground">粘一条 SQL</span>
-					<button type="button" className="ml-auto grid size-5 place-items-center rounded-[2px] text-faint hover:bg-border" onClick={onClose}>
-						<Icon name="icon-[lucide--x]" className="size-3" />
-					</button>
-				</div>
-				<div className="flex flex-col gap-3 p-4">
-					<textarea rows={6} value={sql} onChange={(e) => setSql(e.target.value)}
-						className="rounded-control border border-border bg-surface px-2 py-1 font-mono text-[11px] text-surface-foreground"
-						placeholder="SELECT ... FROM ... WHERE ..." />
-					<div className="flex items-center gap-2">
-						<span className="text-[10px] text-muted">
-							{parsed ? <>首列 <span className="font-mono text-surface-foreground">{parsed}</span></> : "无法从 SQL 中识别首列，请检查 SELECT 子句"}
-						</span>
-					</div>
-				</div>
-				<div className="flex justify-end gap-2 border-t border-border bg-background px-3 py-2">
-					<button type="button" className="h-7 rounded-control border border-border bg-surface px-3 text-[12px] text-muted hover:text-surface-foreground" onClick={onClose}>取消</button>
-					<button type="button" className="h-7 rounded-control bg-accent px-3 text-[12px] font-medium text-accent-foreground disabled:opacity-50"
-						disabled={!sql.trim()} onClick={() => onConfirm(sql)}>→ 进入画布（自动加 source-sql）</button>
-				</div>
-			</div>
 		</div>
 	);
 }

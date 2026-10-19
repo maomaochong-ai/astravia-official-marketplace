@@ -384,6 +384,8 @@ export interface NodeGraphApi {
 	deleteSelection: () => void;
 	/** 停用 / 启用选中节点。 */
 	toggleMuteSelection: () => void;
+	/** NodeLibrary 双击插入：在画布中心按 kind 创建节点并选中。 */
+	insertAtCenter: (kind: string, label?: string) => void;
 }
 
 /** 缩放上下限与每级步长。比 ComfyUI litegraph 的 0.1~10 收紧到 BI 画布更实用的区间。 */
@@ -1601,11 +1603,21 @@ export function NodeGraph({
 		setViewport((v) => zoomViewport(v, clampZoom(v.scale * Math.pow(CANVAS_ZOOM_STEP, steps)), canvasCenter()));
 	}
 
+	/** NodeLibrary 双击插入：把新节点放到画布中心（避开用户已经放满的左下角落点）。 */
+	function insertAtCenter(kind: string) {
+		const rect = canvasRef.current?.getBoundingClientRect();
+		const cx = rect ? rect.left + rect.width / 2 : 0;
+		const cy = rect ? rect.top + rect.height / 2 : 0;
+		const pt = screenToCanvas(cx, cy);
+		insertNode(kind, pt.x, pt.y);
+	}
+
 	// 命令式出口：顶栏（CanvasStrip / EditorToolbar）通过 ref 调用，避免把整套画布状态提升到父级
 	if (api) {
 		api.current = {
 			fitView,
 			zoomBy,
+			insertAtCenter,
 			zoomTo,
 			arrange,
 			alignSelection,
@@ -2040,13 +2052,15 @@ export function NodeGraph({
 				})}
 			</div>
 
-			{/* ── 选中节点浮动工具条（放在 viewport 外面，用屏幕坐标） ──
-			    节点在 transform 容器里有 scale/translate，工具条在外面，所以需要从画布坐标转换回屏幕坐标 */}
+			{/* ── 选中节点浮动工具条（放在 viewport 外面，但仍在 transform 容器外、canvas 容器内） ──
+			    用 canvasToScreen（视口坐标）会多算一次 rect.left/top，而 absolute 定位以 canvas 容器为参照，
+			    两者差一个容器偏移，导致工具条明显偏离节点；改用容器坐标（viewport.tx/ty + 画布坐标×scale），
+			    与下方案框(selectionBox)、右键菜单(NodeContextMenu)保持一致。 */}
 			{(() => {
 				const selId = Object.keys(nodes).find((k) => nodes[k].selected);
 				if (!selId) return null;
 				const sel = nodes[selId];
-				const screen = canvasToScreen(sel.x, sel.y + sel.h + 8);
+				const screen = { x: viewport.tx + sel.x * viewport.scale, y: viewport.ty + (sel.y + sel.h + 8) * viewport.scale };
 				return (
 					<div
 						className="absolute z-20 flex h-7 items-center gap-0.5 rounded-control border border-border bg-surface-raised px-1 shadow"
