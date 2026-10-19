@@ -84,28 +84,24 @@ describe("normalizeSettings", () => {
 });
 
 describe("summarizeFailure", () => {
-  it("removes colour codes and progress noise", () => {
-    const message = summarizeFailure("lux", "\u001b[31mrequest failed: 403\u001b[0m\n[====>   ] 12%", "").message;
-    expect(message).toBe("request failed: 403");
+  it("keeps the engine's ERROR line and drops warnings", () => {
+    const stderr = [
+      "WARNING: [youtube] falling back to the next client",
+      "ERROR: unable to download video data: HTTP Error 403: Forbidden",
+    ].join("\n");
+    const failure = summarizeFailure(stderr, "");
+    expect(failure.message).toBe("unable to download video data: HTTP Error 403: Forbidden");
+    expect(failure.code).toBe("site_blocked");
   });
 
   it("never returns an empty string", () => {
-    expect(summarizeFailure("lux", "", "")).toEqual({ message: "下载失败", code: null });
+    expect(summarizeFailure("", "")).toEqual({ message: "下载失败", code: null });
   });
 
-  it("keeps the cause lux wrote on stdout after `error:` and drops the stack", () => {
-    const output = [
-      "Downloading https://www.youtube.com/watch?v=aqz-KE-bpKQ error:",
-      'Get "https://www.youtube.com": dial tcp 31.13.92.37:443: connect: operation timed out',
-      "github.com/iawia002/lux/extractors.Extract",
-      "\tgithub.com/iawia002/lux/extractors/extractors.go:54",
-      "runtime.goexit",
-      "\truntime/asm_arm64.s:1222",
-    ].join("\n");
-
-    const failure = summarizeFailure("lux", "", output);
-    expect(failure.code).toBe("network_timeout");
-    expect(failure.message).toBe('Get "https://www.youtube.com": dial tcp 31.13.92.37:443: connect: operation timed out');
+  it("falls back to stdout when the engine reported there", () => {
+    expect(summarizeFailure("", "ERROR: Fresh cookies (not necessarily logged in) are needed").code).toBe(
+      "auth_required",
+    );
   });
 });
 
@@ -116,7 +112,6 @@ function taskWith(overrides: Partial<DownloadTask>): DownloadTask {
     site: "youtube",
     title: "v",
     streamId: "1080",
-    engine: "lux",
     quality: "1080P",
     ext: "mp4",
     needsFfmpeg: false,

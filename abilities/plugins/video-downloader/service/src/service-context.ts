@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { ServiceError } from "./errors.js";
-import { inspectLux } from "./lux/lux-binary.js";
-import { probeMedia } from "./lux/probe.js";
 import type { MediaItem } from "./media/types.js";
 import { describeSiteGroups } from "./media/site-catalog.js";
 import { SettingsStore, type ServiceSettings } from "./settings/settings-store.js";
@@ -13,7 +11,6 @@ import { FfmpegInstaller, type FfmpegInstallState } from "./tools/ffmpeg-install
 import { inspectFfmpeg, UNAVAILABLE, type ToolCapability } from "./tools/tool-capability.js";
 import { toolDirectory } from "./tools/tool-paths.js";
 import type { ServiceEnvironment } from "./environment.js";
-import { engineOrder, isEngineName, type EngineName, type EnginePreference } from "./engine/engine-name.js";
 import { inspectYtdlp } from "./ytdlp/ytdlp-binary.js";
 import { probeWithYtdlp } from "./ytdlp/probe.js";
 import { removeCookieFile, writeCookieFile } from "./ytdlp/cookies.js";
@@ -24,10 +21,6 @@ export interface ProbeSummary {
   failure: string | null;
   failureCode: string | null;
   elapsedMs: number;
-  /** Engine that produced the items, or whose failure is being reported. */
-  engine: EngineName | null;
-  /** Engines that actually ran; empty when none was installed. */
-  triedEngines: EngineName[];
 }
 
 export interface CreateTaskInput {
@@ -39,36 +32,25 @@ export interface CreateTaskInput {
   ext?: string;
   needsFfmpeg?: boolean;
   totalBytes?: number;
-  /** Engine the item was probed with; defaults to the first available one. */
-  engine?: string;
 }
+
+/** Failure code used while the engine is still being provisioned in the background. */
+export const ENGINE_PREPARING = "engine_preparing";
 
 /**
- * How much a failure tells the user, used to pick between two engines' diagnoses.
+ * Owns settings, tasks and the two provisioned tools.
  *
- * A blocked page is more informative than an engine that was not installed: the first can be
- * retried elsewhere, the second only says the tool is missing.
+ * yt-dlp is the only engine and is fetched on first use: the service starts downloading it as
+ * soon as the process is up, so a user who opens the panel a moment later finds it ready. ffmpeg
+ * is only needed to merge a video-only rendition with its audio track, so it is fetched when a
+ * download actually asks for it instead of costing everyone ~30 MB up front.
  */
-const FAILURE_RANK: Record<string, number> = {
-  engine_unavailable: 0,
-  site_blocked: 1,
-  site_unsupported: 2,
-  auth_required: 3,
-  network_timeout: 4,
-  network_blocked: 5,
-};
-
-function rankOf(code: string | null): number {
-  return code ? (FAILURE_RANK[code] ?? 0) : 0;
-}
-
 export class ServiceContext {
   readonly settingsStore: SettingsStore;
   readonly taskStore: TaskStore;
   readonly runner: DownloadRunner;
   readonly ffmpegInstaller: FfmpegInstaller;
   readonly ytdlpInstaller: YtdlpInstaller;
-  lux: ToolCapability = UNAVAILABLE;
   ffmpeg: ToolCapability = UNAVAILABLE;
   ytdlp: ToolCapability = UNAVAILABLE;
 
@@ -80,7 +62,6 @@ export class ServiceContext {
     this.runner = new DownloadRunner({
       store: this.taskStore,
       settings: () => this.settingsStore.current(),
-      luxPath: () => (this.lux.available ? this.lux.path : null),
       ytdlpPath: () => (this.ytdlp.available ? this.ytdlp.path : null),
       dataRoot: environment.dataRoot,
       toolDirectory: toolDirectory(environment.dataRoot),
@@ -95,16 +76,22 @@ export class ServiceContext {
     await this.refreshCapabilities();
   }
 
-  async refreshCapabilities(): Promise<{ lux: ToolCapability; ffmpeg: ToolCapability; ytdlp: ToolCapability }> {
-    const [lux, ffmpeg, ytdlp] = await Promise.all([
-      inspectLux(this.environment.runtimeRoot),
+  async refreshCapabilities(): Promise<{ ytdlp: ToolCapability; ffmpeg: ToolCapability }> {
+    const [ffmpeg, ytdlp] = await Promise.all([
       inspectFfmpeg(toolDirectory(this.environment.dataRoot)),
       inspectYtdlp(this.environment.dataRoot),
     ]);
-    this.lux = lux;
     this.ffmpeg = ffmpeg;
     this.ytdlp = ytdlp;
-    return { lux, ffmpeg, ytdlp };
+    return { ytdlp, ffmpeg };
+  }
+
+  /**
+   * Start fetching the engine in the background. Safe to call repeatedly: the installer is
+   * single-flight and returns immediately once the binary is in place.
+   */
+  provisionEngine(): void {
+    this.startYtdlpInstall();
   }
 
   ffmpegInstallState(): FfmpegInstallState {
@@ -155,81 +142,58 @@ export class ServiceContext {
   }
 
   /**
-   * Resolve a page with the configured engine, or with both when the setting is `auto`.
+   * Resolve a page with the engine.
    *
-   * `auto` stops at the first engine that returns items, so the bundled lux stays the default
-   * and yt-dlp is only paid for when the first engine refuses the page. An explicit `engine`
-   * overrides the setting for this call only, which is how the panel retries a refused page
-   * with the other engine without rewriting the user's preference.
+   * Probing never waits for the provisioning download: the panel's request has a short budget and
+   * a first run on a slow link would exceed it. It reports `engine_preparing` instead, the panel
+   * follows the install progress and probes again once the binary is in place.
    */
-  async probe(url: string, engine?: EnginePreference): Promise<ProbeSummary> {
-    const preference = engine ?? this.settings().engine;
-    const tried: EngineName[] = [];
-    let best: ProbeSummary | null = null;
-
-    for (const candidate of engineOrder(preference)) {
-      const capability = candidate === "yt-dlp" ? this.ytdlp : this.lux;
-      if (!capability.available || !capability.path) continue;
-      tried.push(candidate);
-      const outcome =
-        candidate === "yt-dlp" ? await this.probeWithYtdlp(capability.path, url) : await this.probeWithLux(capability.path, url);
-      const summary: ProbeSummary = { ...outcome, engine: candidate, triedEngines: [...tried] };
-      if (summary.items.length > 0) return summary;
-      if (!best || rankOf(summary.failureCode) > rankOf(best.failureCode)) best = summary;
-    }
-
-    if (!best) {
+  async probe(url: string): Promise<ProbeSummary> {
+    if (!this.ytdlp.available || !this.ytdlp.path) {
+      this.provisionEngine();
       return {
         items: [],
-        failure: "下载引擎尚未就绪，请先在插件面板完成安装",
-        failureCode: "engine_unavailable",
+        failure: "下载引擎正在准备，请稍候再试",
+        failureCode: ENGINE_PREPARING,
         elapsedMs: 0,
-        engine: null,
-        triedEngines: tried,
       };
     }
-    return { ...best, triedEngines: tried };
+    return this.probeWithYtdlp(this.ytdlp.path, url);
   }
 
-  private async probeWithLux(luxPath: string, url: string): Promise<Omit<ProbeSummary, "engine" | "triedEngines">> {
-    const outcome = await probeMedia(luxPath, url, { cookie: this.settings().cookie });
-    return { items: outcome.items, failure: outcome.failure, failureCode: outcome.failureCode, elapsedMs: outcome.elapsedMs };
-  }
-
-  private async probeWithYtdlp(ytdlpPath: string, url: string): Promise<Omit<ProbeSummary, "engine" | "triedEngines">> {
+  private async probeWithYtdlp(ytdlpPath: string, url: string): Promise<ProbeSummary> {
     const jarName = `probe-${randomUUID().slice(0, 8)}`;
-    const cookieFile = await writeCookieFile(this.environment.dataRoot, this.settings().cookie, url, jarName).catch(() => null);
+    const cookieFile = await writeCookieFile(this.environment.dataRoot, this.settings().cookie, url, jarName).catch(
+      () => null,
+    );
     try {
       const outcome = await probeWithYtdlp(ytdlpPath, url, { cookieFile });
-      return { items: outcome.items, failure: outcome.failure, failureCode: outcome.failureCode, elapsedMs: outcome.elapsedMs };
+      return {
+        items: outcome.items,
+        failure: outcome.failure,
+        failureCode: outcome.failureCode,
+        elapsedMs: outcome.elapsedMs,
+      };
     } finally {
       await removeCookieFile(cookieFile);
     }
   }
 
   createTask(input: CreateTaskInput): DownloadTask {
-    const engine: EngineName = isEngineName(input.engine)
-      ? input.engine
-      : this.lux.available
-        ? "lux"
-        : "yt-dlp";
-    const capability = engine === "yt-dlp" ? this.ytdlp : this.lux;
-    if (!capability.available) {
-      throw new ServiceError(
-        "engine_unavailable",
-        engine === "yt-dlp" ? "yt-dlp 引擎尚未安装，请先在设置里安装" : "下载引擎尚未就绪，请先在插件面板完成安装",
-        503,
-      );
+    if (!this.ytdlp.available) {
+      this.provisionEngine();
+      throw new ServiceError(ENGINE_PREPARING, "下载引擎正在准备，请稍候再试", 503);
     }
     if (input.needsFfmpeg === true && !this.ffmpeg.available) {
-      throw new ServiceError("ffmpeg_required", "该清晰度需要 ffmpeg 合并音视频。请先安装 ffmpeg 再试。", 412);
+      // The retry that follows this failure finds ffmpeg downloaded or downloading.
+      this.startFfmpegInstall();
+      throw new ServiceError("ffmpeg_required", "该清晰度需要 ffmpeg 合并音视频，正在自动准备，请稍候再试。", 412);
     }
     const task = this.taskStore.create({
       url: input.url,
       site: input.site?.trim() ?? "",
       title: input.title?.trim() || input.url,
       streamId: input.streamId,
-      engine,
       quality: input.quality?.trim() ?? "",
       ext: (input.ext ?? "mp4").toLowerCase(),
       needsFfmpeg: input.needsFfmpeg === true,

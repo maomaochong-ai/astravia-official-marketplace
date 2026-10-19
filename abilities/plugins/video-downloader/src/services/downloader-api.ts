@@ -1,7 +1,6 @@
 import type {
   Capabilities,
   DownloadTask,
-  EngineName,
   NewDownloadInput,
   ProbeResult,
   ServiceSettings,
@@ -32,7 +31,7 @@ export interface DownloaderApi {
   installFfmpeg(): Promise<ToolInstall>;
   ytdlp(): Promise<{ ytdlp: Capabilities["ytdlp"]; install: ToolInstall }>;
   installYtdlp(): Promise<ToolInstall>;
-  probe(url: string, engine?: EngineName): Promise<ProbeResult>;
+  probe(url: string): Promise<ProbeResult>;
   tasks(): Promise<DownloadTask[]>;
   createTask(input: NewDownloadInput): Promise<DownloadTask>;
   cancelTask(id: string): Promise<void>;
@@ -87,9 +86,7 @@ export function createDownloaderApi(ctx: ManagedPluginContext): DownloaderApi {
     installYtdlp: () =>
       call<{ install: ToolInstall }>("/api/v1/ytdlp", { method: "POST", timeoutMs: 30_000 }).then((body) => body.install),
 
-    // `engine` pins this one probe, so the panel can retry a refused page without changing settings.
-    probe: (url, engine) =>
-      call<ProbeResult>("/api/v1/probe", { method: "POST", body: engine ? { url, engine } : { url }, timeoutMs: 90_000 }),
+    probe: (url) => call<ProbeResult>("/api/v1/probe", { method: "POST", body: { url }, timeoutMs: 90_000 }),
 
     tasks: () => call<{ tasks: DownloadTask[] }>("/api/v1/tasks").then((body) => body.tasks),
 

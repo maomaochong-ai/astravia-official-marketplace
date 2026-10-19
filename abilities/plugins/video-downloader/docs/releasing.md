@@ -29,9 +29,11 @@ shasum -a 256 release/video-downloader-service-<version>.zip   # must match runt
 Newly created assets can answer 404 for a few seconds before the CDN catches up; retry
 before treating it as a mistake.
 
-The lux binary is a separate upstream release (`iawia002/lux`), pinned in the same lock
-file by version and sha256. Do not resolve "latest" — bump the pin deliberately, and only
-after checking the checksums file for the six platforms.
+The download engine and ffmpeg are not part of the release at all: the service fetches them
+from their upstream GitHub releases at run time. `upstream.json` records the pinned versions,
+and `service/src/ytdlp/ytdlp-release.ts` / `service/src/tools/ffmpeg-release.ts` carry the
+per-platform digests that are verified before a binary is executed. Do not resolve "latest" —
+bump a pin deliberately and only after measuring the new assets.
 
 Package bytes are immutable per version: the publish step refuses to overwrite an
 existing `.astraviapkg` whose digest changed. Any source change that lands inside the

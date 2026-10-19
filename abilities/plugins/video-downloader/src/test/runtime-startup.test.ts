@@ -87,6 +87,37 @@ describe("service runtime bootstrap", () => {
     expect(calls).toEqual(["stop", "install"]);
   });
 
+  // The host's status can lag the child process, so a stopped-looking service occasionally still
+  // rejects the install. One extra stop must recover it instead of failing the whole upgrade.
+  it("stops again and retries when the host still sees the previous child", async () => {
+    const calls: string[] = [];
+    const { context, install } = createContext();
+    context.services.stop = vi.fn(async () => {
+      calls.push("stop");
+      return status();
+    });
+    install.mockImplementationOnce(async () => {
+      calls.push("install");
+      throw new Error("Stop the service before installing its runtime");
+    });
+    install.mockImplementation(async () => {
+      calls.push("install");
+      return status({ installed: true });
+    });
+
+    await ensureServiceStarted(context as never);
+
+    expect(calls).toEqual(["stop", "install", "stop", "install"]);
+  });
+
+  it("does not retry an install failure it cannot explain", async () => {
+    const { context, install } = createContext();
+    install.mockRejectedValue(new Error("disk is full"));
+
+    await expect(ensureServiceStarted(context as never)).rejects.toThrow(/disk is full/u);
+    expect(install).toHaveBeenCalledTimes(1);
+  });
+
   it("retries a dropped transfer before giving up", async () => {
     const { context, request } = createContext();
     request.mockRejectedValueOnce(new Error("socket hang up"));

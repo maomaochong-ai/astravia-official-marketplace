@@ -22,19 +22,18 @@ function asTool(value: unknown): ToolCapability {
 }
 
 /**
- * `/api/v1/capabilities` answers with a flat `{ lux, ytdlp, ffmpeg }` object; an earlier build
+ * `/api/v1/capabilities` answers with a flat `{ ytdlp, ffmpeg }` object; an earlier build
  * wrapped it as `{ capabilities: { … } }`. Accepting both keeps a shape drift from crashing the
- * panel, which previously read `capabilities.lux.available` on an object that only had `ffmpeg`.
+ * panel, which previously read a missing key on an object that only had some of them.
  */
 export function normalizeCapabilities(payload: unknown): Capabilities {
   if (!payload || typeof payload !== "object") {
-    return { lux: MISSING_TOOL, ytdlp: MISSING_TOOL, ffmpeg: MISSING_TOOL };
+    return { ytdlp: MISSING_TOOL, ffmpeg: MISSING_TOOL };
   }
   const record = payload as Record<string, unknown>;
   const inner = record.capabilities;
   const body = inner && typeof inner === "object" ? (inner as Record<string, unknown>) : record;
-  // `ytdlp` is absent from services older than 1.3.0; the missing-tool default covers that.
-  return { lux: asTool(body.lux), ytdlp: asTool(body.ytdlp), ffmpeg: asTool(body.ffmpeg) };
+  return { ytdlp: asTool(body.ytdlp), ffmpeg: asTool(body.ffmpeg) };
 }
 
 /** Read one tool without trusting that the payload carried every key. */

@@ -1,11 +1,5 @@
 export type MediaKind = "video" | "audio" | "image";
 
-/** Engines the service can resolve a page with. */
-export type EngineName = "lux" | "yt-dlp";
-
-/** What the user picked: a fixed engine, or "try the default first". */
-export type EnginePreference = "auto" | EngineName;
-
 export interface MediaFormat {
   id: string;
   label: string;
@@ -33,10 +27,6 @@ export interface ProbeResult {
   /** Machine readable reason for `failure`, when the service could classify it. */
   failureCode: string | null;
   elapsedMs: number;
-  /** Engine that produced the items, or whose failure is being reported. */
-  engine?: EngineName | null;
-  /** Engines that actually ran; empty when none is installed. */
-  triedEngines?: EngineName[];
 }
 
 export type TaskPhase =
@@ -68,8 +58,6 @@ export interface DownloadTask {
   finishedAt: number | null;
   filePath: string | null;
   error: string | null;
-  /** Engine that resolved the page; absent on tasks created before the second engine. */
-  engine?: EngineName;
   /** Machine readable reason for `error`; older persisted tasks may omit it. */
   errorCode?: string | null;
 }
@@ -82,7 +70,6 @@ export interface ToolCapability {
 }
 
 export interface Capabilities {
-  lux: ToolCapability;
   ytdlp: ToolCapability;
   ffmpeg: ToolCapability;
 }
@@ -105,7 +92,6 @@ export interface ServiceSettings {
   cookie: string;
   multiThread: boolean;
   keepPartialFiles: boolean;
-  engine: EnginePreference;
 }
 
 export interface NewDownloadInput {
@@ -117,6 +103,4 @@ export interface NewDownloadInput {
   ext: string;
   needsFfmpeg: boolean;
   totalBytes: number;
-  /** Engine the item was probed with, so the service spawns the matching command. */
-  engine?: EngineName;
 }

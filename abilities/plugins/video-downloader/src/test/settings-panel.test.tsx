@@ -26,11 +26,9 @@ const settings = {
   cookie: "",
   multiThread: true,
   keepPartialFiles: false,
-  engine: "auto" as const,
 };
 
 const capabilities = {
-  lux: { available: true, path: "/bin/lux", version: "0.24.1", source: "bundled" as const },
   ytdlp: { available: true, path: "/data/bin/yt-dlp", version: "2026.08.19", source: "bundled" as const },
   ffmpeg: { available: false, path: null, version: null, source: null },
 };
@@ -38,12 +36,11 @@ const capabilities = {
 const noops = {
   onSave: () => undefined,
   onRefreshCapabilities: () => undefined,
-  onInstallFfmpeg: () => undefined,
-  onInstallYtdlp: () => undefined,
+  onRetryPreparation: () => undefined,
 };
 
 describe("DownloadSettingsPanel", () => {
-  it("renders while ffmpeg is missing and an install is in progress", () => {
+  it("shows ffmpeg being prepared without offering an install button", () => {
     const markup = renderToString(
       <DownloadSettingsPanel
         settings={settings}
@@ -55,15 +52,16 @@ describe("DownloadSettingsPanel", () => {
         {...noops}
       />,
     );
-    expect(markup).toContain("Installing 26%");
+    expect(markup).toContain("Preparing 26%");
+    expect(markup).not.toContain("Install ffmpeg");
+    expect(markup).not.toContain("Install yt-dlp");
   });
 
-  it("marks the saved engine as pressed and offers yt-dlp when it is missing", () => {
-    const withoutYtdlp = { ...capabilities, ytdlp: { available: false, path: null, version: null, source: null } };
+  it("keeps the picker out of the panel now that one engine serves every site", () => {
     const markup = renderToString(
       <DownloadSettingsPanel
-        settings={{ ...settings, engine: "yt-dlp" }}
-        capabilities={withoutYtdlp}
+        settings={settings}
+        capabilities={capabilities}
         ffmpegInstall={null}
         ffmpegBusy={false}
         ytdlpInstall={null}
@@ -71,9 +69,41 @@ describe("DownloadSettingsPanel", () => {
         {...noops}
       />,
     );
-    expect(markup).toContain("yt-dlp · not installed");
-    expect(markup).toContain("Install yt-dlp");
-    expect(markup).toMatch(/aria-pressed="true"[^>]*>yt-dlp|>yt-dlp<\/button>/);
+    expect(markup).not.toContain("Auto");
+    expect(markup).not.toContain("Bundled");
+    expect(markup).toContain("yt-dlp 2026.08.19");
+  });
+
+  it("offers a retry only after a failed engine download", () => {
+    const markup = renderToString(
+      <DownloadSettingsPanel
+        settings={settings}
+        capabilities={{ ...capabilities, ytdlp: { available: false, path: null, version: null, source: null } }}
+        ffmpegInstall={null}
+        ffmpegBusy={false}
+        ytdlpInstall={{ phase: "failed", receivedBytes: 0, totalBytes: 100, supported: true, error: "socket closed" }}
+        ytdlpBusy={false}
+        {...noops}
+      />,
+    );
+    expect(markup).toContain("Download failed");
+    expect(markup).toContain("Retry");
+  });
+
+  it("renders when capabilities arrive empty", () => {
+    const empty = {} as unknown as typeof capabilities;
+    const markup = renderToString(
+      <DownloadSettingsPanel
+        settings={settings}
+        capabilities={empty}
+        ffmpegInstall={null}
+        ffmpegBusy={false}
+        ytdlpInstall={null}
+        ytdlpBusy={false}
+        {...noops}
+      />,
+    );
+    expect(markup).toContain("Not ready yet");
   });
 
   it("renders when settings arrive without a cookie field", () => {
@@ -83,42 +113,6 @@ describe("DownloadSettingsPanel", () => {
         <DownloadSettingsPanel
           settings={legacy}
           capabilities={null}
-          ffmpegInstall={null}
-          ffmpegBusy={false}
-          ytdlpInstall={null}
-          ytdlpBusy={false}
-          {...noops}
-        />,
-      ),
-    ).not.toThrow();
-  });
-
-  // Regression: the service answered with a flat `{ lux, ffmpeg }` while the client read
-  // `body.capabilities`, so `lux` was missing and the engine row crashed the whole view.
-  it("renders when capabilities arrive without the lux entry", () => {
-    const partial = { ffmpeg: capabilities.ffmpeg } as unknown as typeof capabilities;
-    const markup = renderToString(
-      <DownloadSettingsPanel
-        settings={settings}
-        capabilities={partial}
-        ffmpegInstall={null}
-        ffmpegBusy={false}
-        ytdlpInstall={null}
-        ytdlpBusy={false}
-        {...noops}
-      />,
-    );
-    expect(markup).toContain("engine missing");
-    expect(markup).toContain("ffmpeg not found");
-  });
-
-  it("renders when capabilities arrive empty", () => {
-    const empty = {} as unknown as typeof capabilities;
-    expect(() =>
-      renderToString(
-        <DownloadSettingsPanel
-          settings={settings}
-          capabilities={empty}
           ffmpegInstall={null}
           ffmpegBusy={false}
           ytdlpInstall={null}

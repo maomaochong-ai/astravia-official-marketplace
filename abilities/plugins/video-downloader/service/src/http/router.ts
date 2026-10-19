@@ -5,7 +5,6 @@ import { revealInFileManager } from "../fs/reveal.js";
 import { callTool, MCP_TOOLS } from "../mcp/tool-catalog.js";
 import { isHttpUrl, type ServiceContext } from "../service-context.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
-import { normalizeEnginePreference } from "../engine/engine-name.js";
 
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
@@ -88,7 +87,7 @@ export function createRouter(context: ServiceContext) {
       sendJson(response, 200, {
         status: "ok",
         version: "1.0.0",
-        capabilities: { lux: context.lux, ffmpeg: context.ffmpeg, ytdlp: context.ytdlp },
+        capabilities: { ytdlp: context.ytdlp, ffmpeg: context.ffmpeg },
         directory: context.settings().downloadDirectory,
       });
       return;
@@ -96,7 +95,7 @@ export function createRouter(context: ServiceContext) {
 
     if (path === "/api/v1/capabilities") {
       if (method === "GET") {
-        sendJson(response, 200, { lux: context.lux, ffmpeg: context.ffmpeg, ytdlp: context.ytdlp });
+        sendJson(response, 200, { ytdlp: context.ytdlp, ffmpeg: context.ffmpeg });
         return;
       }
       if (method === "POST") {
@@ -136,9 +135,7 @@ export function createRouter(context: ServiceContext) {
         sendError(response, 400, "invalid_url", "请输入以 http:// 或 https:// 开头的链接");
         return;
       }
-      // An explicit `engine` in the body overrides the stored preference for this probe only.
-      const requestedEngine = asString(body.engine);
-      const result = await context.probe(target, requestedEngine ? normalizeEnginePreference(requestedEngine) : undefined);
+      const result = await context.probe(target);
       sendJson(response, 200, result);
       return;
     }
@@ -169,7 +166,6 @@ export function createRouter(context: ServiceContext) {
           ext: asString(body.ext) || "mp4",
           needsFfmpeg: body.needsFfmpeg === true,
           totalBytes: asNumber(body.totalBytes),
-          engine: asString(body.engine),
         });
         sendJson(response, 201, { task });
         return;
@@ -227,7 +223,6 @@ export function createRouter(context: ServiceContext) {
           ext: task.ext,
           needsFfmpeg: task.needsFfmpeg,
           totalBytes: task.totalBytes,
-          engine: task.engine,
         });
         sendJson(response, 201, { task: retried });
         return;
@@ -247,7 +242,6 @@ export function createRouter(context: ServiceContext) {
         if (typeof body.cookie === "string") patch.cookie = body.cookie;
         if (typeof body.multiThread === "boolean") patch.multiThread = body.multiThread;
         if (typeof body.keepPartialFiles === "boolean") patch.keepPartialFiles = body.keepPartialFiles;
-        if (typeof body.engine === "string") patch.engine = body.engine as ServiceSettings["engine"];
         sendJson(response, 200, { settings: await context.updateSettings(patch) });
         return;
       }
@@ -289,10 +283,13 @@ export function createRouter(context: ServiceContext) {
             getTask: (taskId) => context.getTask(taskId),
             cancelTask: (taskId) => context.cancelTask(taskId),
             settings: () => context.settings(),
-            ensureFfmpeg: () => context.ensureFfmpeg(),
-            ffmpegInstall: () => context.ffmpegInstallState(),
-            ensureYtdlp: () => context.ensureYtdlp(),
-            ytdlpInstall: () => context.ytdlpInstallState(),
+            engineStatus: () => ({
+              ytdlp: context.ytdlp,
+              ytdlpInstall: context.ytdlpInstallState(),
+              ffmpeg: context.ffmpeg,
+              ffmpegInstall: context.ffmpegInstallState(),
+            }),
+            prepareEngine: () => context.provisionEngine(),
             describeSites: () => context.describeSites(),
           });
           sendJson(response, 200, mcpText(id, result.text, result.isError === true));

@@ -1,25 +1,25 @@
 {
-  "name": "iawia002/lux",
-  "version": "v0.24.1",
-  "revision": "dd00f6d258d80b6684a0b9402d7124e5c18ef42f",
-  "license": "MIT",
-  "repository": "https://github.com/iawia002/lux",
+  "name": "yt-dlp/yt-dlp",
+  "version": "2026.08.19",
+  "revision": "2026.08.19",
+  "license": "Unlicense",
+  "repository": "https://github.com/yt-dlp/yt-dlp",
   "updatePolicy": "pinned",
   "assets": {
-    "win32-x64": "lux_0.24.1_Windows_x86_64.zip",
-    "win32-arm64": "lux_0.24.1_Windows_arm64.zip",
-    "darwin-x64": "lux_0.24.1_Darwin_x86_64.tar.gz",
-    "darwin-arm64": "lux_0.24.1_Darwin_arm64.tar.gz",
-    "linux-x64": "lux_0.24.1_Linux_x86_64.tar.gz",
-    "linux-arm64": "lux_0.24.1_Linux_arm64.tar.gz"
+    "win32-x64": "yt-dlp.exe",
+    "win32-arm64": "yt-dlp_arm64.exe",
+    "darwin-x64": "yt-dlp_macos",
+    "darwin-arm64": "yt-dlp_macos",
+    "linux-x64": "yt-dlp_linux",
+    "linux-arm64": "yt-dlp_linux_aarch64"
   },
-  "notes": "Binaries are pinned to the v0.24.1 release and installed from the upstream GitHub release, never resolved from 'latest'. Digests come from lux_0.24.1_checksums.txt.",
+  "notes": "The only download engine. Binaries are pinned to the 2026.08.19 release and fetched from the upstream GitHub release the first time the service starts, never resolved from 'latest'. Digests are the release digests published by GitHub for each asset and are verified before the binary is executed.",
   "ffmpeg": {
     "name": "eugeneware/ffmpeg-static",
     "version": "b6.1.1",
     "license": "GPL-3.0-or-later",
     "repository": "https://github.com/eugeneware/ffmpeg-static",
     "updatePolicy": "pinned",
-    "notes": "Downloaded on demand into <dataRoot>/bin, never bundled in the plugin package. Digests are measured from the pinned release assets and verified before the binary is used."
+    "notes": "Downloaded on demand into <dataRoot>/bin only when a rendition has to be merged, never bundled in the plugin package. Digests are measured from the pinned release assets and verified before the binary is used."
   }
 }

@@ -22,7 +22,7 @@ src/features/downloader/           the workspace view: URL entry, preview, queue
 src/features/settings/             the inline settings panel
 src/features/connection/           the ability-detail status slot
 src/shared/components/             presentational primitives used by more than one feature
-service/src/                       the managed service (http, lux, media, tasks, mcp)
+service/src/                       the managed service (http, ytdlp, tools, media, tasks, mcp)
 assets/                            icons plus the detail blocks that ship inside the package
 docs/panel-design.md               why the panel looks the way it does, and the research behind it
 src/test/                          panel-side pure logic suites
@@ -47,7 +47,9 @@ Rules that this project follows:
 - Every path the service writes must be relative to `ASTRAVIA_SERVICE_DATA_DIR`; the working
   directory of a download is per-task and removed when the task settles.
 - `needsFfmpeg` means "this rendition cannot be produced without ffmpeg" — today that is
-  `partCount > 1`, because lux merges multi-part streams through ffmpeg in both branches.
+  `hasVideo && !hasAudio`, because yt-dlp only exposes such a rendition as separate streams.
+- Nothing is installed by the user. The service provisions `yt-dlp` on boot and ffmpeg when a
+  merge needs it; a request that arrives too early answers `engine_preparing` instead of waiting.
 - Agent tool descriptions stay English and factual; user-facing copy stays in `locales/`.
 
 ## Verify

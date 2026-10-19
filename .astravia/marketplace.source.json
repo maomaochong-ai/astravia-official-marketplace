@@ -852,9 +852,9 @@
       "type": "plugin",
       "slug": "video-downloader",
       "name": "Video Downloader",
-      "description": "Paste a video link and download the highest quality locally — 1000+ sites supported through a bundled engine, with progress, queue and Library shortcut.",
-      "version": "1.3.2",
-      "configVersion": 1,
+      "description": "Paste a video link and download the highest quality locally — 1000+ sites supported, with progress, a queue and a shortcut to the finished file. The engine sets itself up, so there is nothing to install.",
+      "version": "2.0.0",
+      "configVersion": 2,
       "license": "MIT",
       "author": "Astravia",
       "category": "Media",
@@ -873,7 +873,7 @@
         "i18n": {
           "zh": {
             "name": "视频下载器",
-            "description": "粘贴视频链接即可在本地下载最高画质，内置引擎覆盖 1000+ 站点，支持进度、队列与直达文件夹。",
+            "description": "粘贴视频链接即可在本地下载最高画质，覆盖 1000+ 站点，支持进度、队列与直达文件夹；解析与合并组件会自动准备好，无需手动安装。",
             "tags": [
               "视频",
               "下载",

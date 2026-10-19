@@ -21,6 +21,9 @@ const releaseRoot = join(pluginRoot, "release");
 const staging = join(releaseRoot, ".staging");
 const archive = join(releaseRoot, `video-downloader-service-${manifest.version}.zip`);
 
+// `tsc` never deletes output for a source file that was removed, so a stale module would keep
+// shipping after its source is gone. Build from a clean tree instead.
+rmSync(join(serviceRoot, "dist"), { recursive: true, force: true });
 execFileSync("npm", ["run", "build"], { cwd: serviceRoot, stdio: "inherit" });
 
 rmSync(staging, { recursive: true, force: true });

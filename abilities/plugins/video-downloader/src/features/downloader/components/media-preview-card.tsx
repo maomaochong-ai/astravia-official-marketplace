@@ -15,7 +15,6 @@ interface MediaPreviewCardProps {
   onSelectItem(index: number): void;
   onSelectFormat(formatId: string): void;
   onStart(): void;
-  onInstallFfmpeg(): void;
 }
 
 export function MediaPreviewCard({
@@ -29,14 +28,15 @@ export function MediaPreviewCard({
   onSelectItem,
   onSelectFormat,
   onStart,
-  onInstallFfmpeg,
 }: MediaPreviewCardProps) {
   const { t } = useTranslation();
   const item = items[activeIndex];
   if (!item) return null;
   const selected = item.formats.find((format) => format.id === selectedFormatId) ?? null;
-  const blocked = selected?.needsFfmpeg === true && !ffmpegAvailable;
-  const installing = blocked && (ffmpegBusy || ffmpegInstall?.phase === "downloading" || ffmpegInstall?.phase === "verifying");
+  // Selecting a two-stream rendition never blocks the download: the service fetches ffmpeg and
+  // the panel waits for it, so this only decides which status line to show.
+  const merging = selected?.needsFfmpeg === true;
+  const preparing = merging && (!ffmpegAvailable || ffmpegBusy);
   const percent =
     ffmpegInstall && ffmpegInstall.totalBytes > 0
       ? Math.min(100, Math.max(0, Math.round((ffmpegInstall.receivedBytes / ffmpegInstall.totalBytes) * 100)))
@@ -71,7 +71,6 @@ export function MediaPreviewCard({
       <div className="mt-3.5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {item.formats.map((format) => {
           const active = format.id === selectedFormatId;
-          const unavailable = format.needsFfmpeg && !ffmpegAvailable;
           return (
             <button
               key={format.id}
@@ -79,10 +78,8 @@ export function MediaPreviewCard({
               onClick={() => onSelectFormat(format.id)}
               aria-pressed={active}
               className={`rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
-                active
-                  ? "border-primary/70 bg-primary/10"
-                  : "border-border hover:border-muted-foreground/40 hover:bg-accent"
-              } ${unavailable ? "opacity-60" : ""}`}
+                active ? "border-primary/70 bg-primary/10" : "border-border hover:border-muted-foreground/40 hover:bg-accent"
+              }`}
             >
               <span className={`block text-xs font-medium ${active ? "text-primary" : "text-foreground"}`}>
                 {format.quality}
@@ -98,57 +95,41 @@ export function MediaPreviewCard({
       </div>
 
       <div className="mt-3.5 flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {blocked ? (
-            <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {preparing ? (
+            <>
               <span className="icon-[solar--cpu-bolt-linear] size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
               <span className="min-w-0 truncate text-[11px] text-muted-foreground">
-                {installing
-                  ? t("preview.ffmpegInstalling", { percent })
-                  : t("preview.ffmpegMissing", { size: formatBytes(ffmpegInstall?.totalBytes || 0) })}
+                {ffmpegBusy && ffmpegInstall?.totalBytes
+                  ? t("preview.ffmpegPreparing", { percent })
+                  : t("preview.ffmpegAuto")}
               </span>
-              {installing ? (
+              {ffmpegBusy ? (
                 <span className="h-1 w-14 shrink-0 overflow-hidden rounded-full bg-muted" aria-hidden="true">
                   <span
                     className="block h-full rounded-full bg-primary transition-[width]"
                     style={{ width: `${percent}%` }}
                   />
                 </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onInstallFfmpeg}
-                  className="inline-flex h-6 shrink-0 items-center rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  {t("action.installFfmpeg")}
-                </button>
-              )}
-            </div>
+              ) : null}
+            </>
           ) : (
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {selected?.needsFfmpeg
-                ? t("preview.ffmpegNote")
-                : selected
-                  ? t("preview.singlePart")
-                  : ""}
+              {merging ? t("preview.ffmpegNote") : selected ? t("preview.singlePart") : ""}
             </p>
           )}
         </div>
         <button
           type="button"
-          disabled={!selected || starting || installing}
+          disabled={!selected || starting}
           onClick={onStart}
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           <span
-            className={`${starting || installing ? "icon-[solar--refresh-linear] animate-spin" : "icon-[solar--download-minimalistic-linear]"} size-3.5`}
+            className={`${starting ? "icon-[solar--refresh-linear] animate-spin" : "icon-[solar--download-minimalistic-linear]"} size-3.5`}
             aria-hidden="true"
           />
-          {starting || installing
-            ? t("action.starting")
-            : blocked
-              ? t("action.installAndDownload")
-              : t("action.download")}
+          {starting ? t("action.starting") : t("action.download")}
         </button>
       </div>
     </section>

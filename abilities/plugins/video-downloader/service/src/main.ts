@@ -6,6 +6,9 @@ async function main(): Promise<void> {
   const environment = readEnvironment();
   const context = new ServiceContext(environment);
   await context.initialize();
+  // Fetch the engine in the background: the first probe then finds it ready instead of
+  // making the user wait for ~37 MB behind a button that no longer exists.
+  context.provisionEngine();
 
   const router = createRouter(context);
   const port = await router.listen(environment.port);

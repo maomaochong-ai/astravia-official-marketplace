@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type {
   Capabilities,
   DownloadTask,
-  EngineName,
   MediaItem,
   ProbeResult,
   ServiceSettings,
@@ -18,8 +17,11 @@ const POLL_INTERVAL_MS = 900;
 const INSTALL_POLL_MS = 600;
 const INSTALL_TIMEOUT_MS = 20 * 60_000;
 
-/** Tools the service can provision on demand. */
-type InstallableTool = "ffmpeg" | "ytdlp";
+/** Tool the service provisions on its own; the panel only ever reads progress for it. */
+type ProvisionedTool = "ffmpeg" | "ytdlp";
+
+/** Failure code the service reports while it is still fetching the download engine. */
+const ENGINE_PREPARING = "engine_preparing";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -59,9 +61,8 @@ export interface DownloaderController {
   revealTask(id: string): Promise<void>;
   saveSettings(patch: Partial<ServiceSettings>): Promise<void>;
   refreshCapabilities(): Promise<void>;
-  installFfmpeg(): Promise<void>;
-  installYtdlp(): Promise<void>;
-  retryWithSecondEngine(): Promise<void>;
+  /** Retry a preparation that failed; the panel never asks the user to install anything. */
+  retryPreparation(): Promise<void>;
   reload(): Promise<void>;
 }
 
@@ -173,7 +174,33 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.booting, state.bootError]);
 
-  async function analyze(engine?: EngineName): Promise<void> {
+  const ytdlpReady = state.capabilities?.ytdlp.available === true;
+  const engineStalled = state.ytdlpInstall?.phase === "failed";
+
+  // The service fetches the engine by itself. This tracker just turns that download into a
+  // visible percentage, so the first probe never fails for a reason the user cannot see.
+  useEffect(() => {
+    if (state.booting || state.bootError || ytdlpReady || engineStalled) return;
+    let cancelled = false;
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          const body = await api.ytdlp();
+          if (cancelled) return;
+          applyTool("ytdlp", body.ytdlp, body.install);
+        } catch {
+          // The task poller already surfaces a service that stopped answering.
+        }
+      })();
+    }, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.booting, state.bootError, ytdlpReady, engineStalled]);
+
+  async function analyze(): Promise<void> {
     // A pasted share message wraps the link in prose, so the target is extracted first and
     // written back into the field: the user sees the URL that is actually being resolved.
     const url = extractTargetUrl(state.url);
@@ -184,26 +211,38 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
     if (url !== state.url.trim()) patch({ url });
     patch({ probing: true, probeError: null, probeErrorCode: null });
     try {
-      const result = await api.probe(url, engine);
-      if (!result.items.length) {
-        patch({
-          probing: false,
-          result: null,
-          probeError: result.failure ?? ctx.i18n.t("error.noMedia"),
-          probeErrorCode: result.failureCode ?? null,
-        });
-        return;
+      const result = await api.probe(url);
+      if (!result.items.length && result.failureCode === ENGINE_PREPARING) {
+        // First run on a fresh install: wait for the engine the service is fetching, then look
+        // once more. A second `engine_preparing` is surfaced as an error instead of looping.
+        if (await waitForTool("ytdlp")) {
+          applyProbeResult(await api.probe(url));
+          return;
+        }
       }
-      const first = result.items[0];
-      patch({
-        probing: false,
-        result,
-        activeItemIndex: 0,
-        selectedFormatId: first?.recommendedFormatId ?? first?.formats[0]?.id ?? null,
-      });
+      applyProbeResult(result);
     } catch (error) {
       patch({ probing: false, result: null, probeError: messageOf(error), probeErrorCode: null });
     }
+  }
+
+  function applyProbeResult(result: ProbeResult): void {
+    if (!result.items.length) {
+      patch({
+        probing: false,
+        result: null,
+        probeError: result.failure ?? ctx.i18n.t("error.noMedia"),
+        probeErrorCode: result.failureCode ?? null,
+      });
+      return;
+    }
+    const first = result.items[0];
+    patch({
+      probing: false,
+      result,
+      activeItemIndex: 0,
+      selectedFormatId: first?.recommendedFormatId ?? first?.formats[0]?.id ?? null,
+    });
   }
 
   async function useClipboard(): Promise<void> {
@@ -232,7 +271,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   }
 
   /** Read one provisioned tool plus its install progress; the two endpoints differ only in key. */
-  async function readTool(tool: InstallableTool): Promise<{ capability: ToolCapability; install: ToolInstall }> {
+  async function readTool(tool: ProvisionedTool): Promise<{ capability: ToolCapability; install: ToolInstall }> {
     if (tool === "ffmpeg") {
       const body = await api.ffmpeg();
       return { capability: body.ffmpeg, install: body.install };
@@ -242,7 +281,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   }
 
   /** Merge a toolchain read into state without clobbering capabilities loaded in the same render. */
-  function applyTool(tool: InstallableTool, capability: ToolCapability, install: ToolInstall): void {
+  function applyTool(tool: ProvisionedTool, capability: ToolCapability, install: ToolInstall): void {
     if (!mounted.current) return;
     setState((current) => {
       const capabilities = current.capabilities
@@ -257,10 +296,10 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   }
 
   /**
-   * Downloads a pinned tool build and waits for it, so a rendition that needs an extra step (a
-   * merge, or a second engine) never leaves the user to install it by hand.
+   * Wait for a tool the service is fetching, so a rendition that needs an extra step (a merge)
+   * never leaves the user to install it by hand. Progress is mirrored into state as it moves.
    */
-  async function waitForTool(tool: InstallableTool): Promise<boolean> {
+  async function waitForTool(tool: ProvisionedTool): Promise<boolean> {
     const current = await readTool(tool);
     if (current.capability.available) return true;
 
@@ -276,7 +315,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
         install = next.install;
         applyTool(tool, next.capability, install);
       }
-      if (install.phase === "failed") throw new Error(install.error ?? `${tool} install failed`);
+      if (install.phase === "failed") throw new Error(install.error ?? `${tool} provisioning failed`);
       // The POST may already have found a usable binary, so the authoritative answer is a fresh read.
       const latest = await readTool(tool);
       applyTool(tool, latest.capability, latest.install);
@@ -299,7 +338,6 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
       ext: format.ext,
       needsFfmpeg: format.needsFfmpeg,
       totalBytes: format.sizeBytes,
-      engine: state.result?.engine ?? undefined,
     });
   }
 
@@ -360,29 +398,11 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
         report(ctx.i18n.t("error.settingsFailed"), error);
       }
     },
-    installFfmpeg: async () => {
+    retryPreparation: async () => {
       try {
-        await waitForTool("ffmpeg");
+        if (!(await waitForTool("ytdlp"))) report(ctx.i18n.t("error.enginePrepareFailed"));
       } catch (error) {
-        report(ctx.i18n.t("error.ffmpegInstallFailed"), error);
-      }
-    },
-    installYtdlp: async () => {
-      try {
-        await waitForTool("ytdlp");
-      } catch (error) {
-        report(ctx.i18n.t("error.ytdlpInstallFailed"), error);
-      }
-    },
-    retryWithSecondEngine: async () => {
-      try {
-        if (!state.capabilities?.ytdlp.available && !(await waitForTool("ytdlp"))) {
-          report(ctx.i18n.t("error.ytdlpRequired"));
-          return;
-        }
-        await analyze("yt-dlp");
-      } catch (error) {
-        report(ctx.i18n.t("error.engineSwitchFailed"), error);
+        report(ctx.i18n.t("error.enginePrepareFailed"), error);
       }
     },
     refreshCapabilities: async () => {

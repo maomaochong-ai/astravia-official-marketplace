@@ -9,7 +9,7 @@ the conclusions built on it.
 | Source | What we could actually read | Confidence |
 | --- | --- | --- |
 | cobalt.tools (web app) | Live DOM and copy: one URL field as the entire first screen, an inline paste button inside the field, format pills under it, a compact result card afterwards, no account and no site picker. | High — text-level, the layout claims are read off the markup, not a screenshot. |
-| lux (bundled engine) | CLI surface: `-j/--json` for probing, `-f <streamId>` for a specific rendition, `-p` playlist, `-o` output template, `-c` cookies. | High — read from source. |
+| yt-dlp (download engine) | CLI surface: `--dump-single-json` for probing, `-f <selector>` for a specific rendition, `--no-playlist`, `-o` output template, `--cookies`. | High — read from source. |
 | Downie, 4K Video Downloader, Seal, Stacher | Product pages and documentation describing behaviour: paste-to-fetch, per-quality list with size and codec, queue with per-item progress, "show in folder" on completion, cookie import for private videos. | Medium — behaviour only. **No pixel-level evidence**: this environment could not capture screenshots (headless Chrome timed out, image input unavailable), so no spacing, colour, or typography was taken from them. |
 
 The medium-confidence row is used only for *what a downloader must show* (quality list
@@ -37,19 +37,19 @@ own modal opened from the header, so the primary flow stays a single column.
 
 ## Why this shape
 
-- **One field, not a site picker.** lux resolves the site from the URL; asking the user to
+- **One field, not a site picker.** The engine resolves the site from the URL; asking the user to
   choose a platform first would be a step that can only be wrong. The site catalogue is
   used for labels and monograms after the fact, never as input.
 - **Quality before downloading, not after.** Downie-family tools let you pick a rendition
-  before the transfer starts. lux can only honour a specific stream through `-f`, so the
+  before the transfer starts. The engine can only honour a specific stream through `-f`, so the
   probe result is shown as the choice, and the queue receives an already-decided stream.
-- **Progress is measured, not parsed.** lux draws an ANSI progress bar that is unusable
+- **Progress is measured, not parsed.** The engine's terminal progress output is unusable
   from a child process. The service instead samples the bytes in the task's own work
-  directory, which is why the published percentage can differ from lux's own bar by a
-  fraction of a second.
-- **ffmpeg is surfaced, never auto-installed.** DASH renditions are split video/audio, so
-  most 1080p downloads need a merge. The panel says so per format and the task is rejected
-  up front rather than discovered at 95%.
+  directory, which is why the published percentage can lag by a fraction of a second.
+- **ffmpeg is surfaced, never installed by hand.** DASH renditions are split video/audio, so
+  most 1080p downloads need a merge. The panel says so per format, the task is rejected up
+  front rather than discovered at 95%, and the service fetches ffmpeg while the panel shows
+  its progress — the user never sees an install button.
 
 ## Colour and theme
 

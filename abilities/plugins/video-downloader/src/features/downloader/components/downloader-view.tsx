@@ -36,9 +36,12 @@ export function DownloaderView({
 
   const ffmpegAvailable = toolCapability(state.capabilities, "ffmpeg").available;
   const needsCookie = state.probeErrorCode === "auth_required";
-  // A refusal (403 / anti-bot) is not fixed by a cookie here: the honest remedy is the other engine.
-  const needsOtherEngine =
-    state.probeErrorCode === "site_blocked" && state.result?.engine !== "yt-dlp" && state.capabilities?.ytdlp.available !== false;
+  const enginePreparing = state.capabilities?.ytdlp.available === false;
+  const engineFailed = state.ytdlpInstall?.phase === "failed";
+  const enginePercent =
+    state.ytdlpInstall && state.ytdlpInstall.totalBytes > 0
+      ? Math.min(100, Math.max(0, Math.round((state.ytdlpInstall.receivedBytes / state.ytdlpInstall.totalBytes) * 100)))
+      : 0;
   const result = state.result;
   const probeError = failureMessageKey(state.probeErrorCode);
 
@@ -57,18 +60,28 @@ export function DownloaderView({
           <div className="flex shrink-0 items-center gap-1.5">
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] ${
-                state.bootError
-                  ? "border-destructive/40 text-destructive"
-                  : ffmpegAvailable
-                    ? "border-border text-muted-foreground"
-                    : "border-border text-muted-foreground"
+                state.bootError || engineFailed ? "border-destructive/40 text-destructive" : "border-border text-muted-foreground"
               }`}
             >
               <span
-                className={`size-1.5 rounded-full ${state.bootError ? "bg-destructive" : ffmpegAvailable ? "bg-primary" : "bg-muted-foreground"}`}
+                className={`size-1.5 rounded-full ${
+                  state.bootError || engineFailed
+                    ? "bg-destructive"
+                    : enginePreparing
+                      ? "bg-muted-foreground"
+                      : "bg-primary"
+                }`}
                 aria-hidden="true"
               />
-              {state.bootError ? t("status.offline") : ffmpegAvailable ? t("status.ready") : t("status.noFfmpeg")}
+              {state.bootError
+                ? t("status.offline")
+                : engineFailed
+                  ? t("status.engineFailed")
+                  : enginePreparing
+                    ? t("status.enginePreparing", { percent: enginePercent })
+                    : ffmpegAvailable
+                      ? t("status.ready")
+                      : t("status.noFfmpeg")}
             </span>
             <button
               type="button"
@@ -115,11 +128,7 @@ export function DownloaderView({
                 onPaste={() => void controller.useClipboard()}
                 onAnalyze={() => void controller.analyze()}
                 remedy={
-                  needsCookie
-                    ? { label: t("action.fillCookie"), run: () => setSettingsOpen(true) }
-                    : needsOtherEngine
-                      ? { label: t("action.tryYtdlp"), run: () => void controller.retryWithSecondEngine() }
-                      : undefined
+                  needsCookie ? { label: t("action.fillCookie"), run: () => setSettingsOpen(true) } : undefined
                 }
               />
             </div>
@@ -136,7 +145,6 @@ export function DownloaderView({
                 onSelectItem={controller.selectItem}
                 onSelectFormat={controller.selectFormat}
                 onStart={() => void controller.startDownload()}
-                onInstallFfmpeg={() => void controller.installFfmpeg()}
               />
             ) : null}
 
@@ -160,8 +168,7 @@ export function DownloaderView({
                 ytdlpBusy={state.ytdlpBusy}
                 onSave={(patch) => void controller.saveSettings(patch)}
                 onRefreshCapabilities={() => void controller.refreshCapabilities()}
-                onInstallFfmpeg={() => void controller.installFfmpeg()}
-                onInstallYtdlp={() => void controller.installYtdlp()}
+                onRetryPreparation={() => void controller.retryPreparation()}
                 focusCookie={needsCookie}
               />
             ) : null}

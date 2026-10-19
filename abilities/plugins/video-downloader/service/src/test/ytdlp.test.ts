@@ -3,7 +3,6 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { engineOrder, isEngineName, normalizeEnginePreference } from "../engine/engine-name.js";
 import {
   COOKIE_FILE_HEADER,
   cookieFileContent,
@@ -21,26 +20,6 @@ import { YtdlpInstaller } from "../ytdlp/ytdlp-installer.js";
 
 const HEADER = "name=value; uid=abc123";
 
-describe("engine-name", () => {
-  it("only accepts the two engines", () => {
-    expect(isEngineName("lux")).toBe(true);
-    expect(isEngineName("yt-dlp")).toBe(true);
-    expect(isEngineName("ytdlp")).toBe(false);
-    expect(isEngineName(undefined)).toBe(false);
-  });
-
-  it("falls back to auto for a stored value it does not recognise", () => {
-    expect(normalizeEnginePreference("yt-dlp")).toBe("yt-dlp");
-    expect(normalizeEnginePreference("garbage")).toBe("auto");
-    expect(normalizeEnginePreference(7)).toBe("auto");
-  });
-
-  it("orders auto as bundled-first and pins an explicit choice", () => {
-    expect(engineOrder("auto")).toEqual(["lux", "yt-dlp"]);
-    expect(engineOrder("lux")).toEqual(["lux"]);
-    expect(engineOrder("yt-dlp")).toEqual(["yt-dlp"]);
-  });
-});
 
 describe("cookies", () => {
   it("recognises a Netscape jar by its header or by seven tab-separated columns", () => {

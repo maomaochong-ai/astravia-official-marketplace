@@ -91,6 +91,21 @@ async function downloadAsset(ctx: ManagedPluginContext, asset: RuntimeAsset): Pr
   }
 }
 
+async function installRuntime(
+  ctx: ManagedPluginContext,
+  payloads: Array<{ destination: string; data: string }>,
+): Promise<ServiceStatus> {
+  try {
+    return await ctx.services.install(SERVICE_ID, payloads);
+  } catch (error) {
+    // The host can still see a child that survived `stop()` (its status lags the process), and it
+    // refuses to install over a running child. One more stop is cheaper than failing the upgrade.
+    if (!/stop the service/i.test(messageOf(error))) throw error;
+    await ctx.services.stop(SERVICE_ID);
+    return ctx.services.install(SERVICE_ID, payloads);
+  }
+}
+
 async function waitForStatus(
   ctx: ManagedPluginContext,
   accept: (status: ServiceStatus) => boolean,
@@ -144,7 +159,7 @@ async function ensureServiceStartedOnce(ctx: ManagedPluginContext): Promise<void
     // An earlier version's process can still be alive while this runtime is missing, and the host
     // refuses to install over a running child. Stop it first so an upgrade can replace the runtime.
     await ctx.services.stop(SERVICE_ID);
-    status = await ctx.services.install(SERVICE_ID, payloads);
+    status = await installRuntime(ctx, payloads);
     if (!status.installed) throw new Error(status.message ?? ctx.i18n.t("error.runtimeInstall"));
   }
 

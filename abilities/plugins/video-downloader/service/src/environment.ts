@@ -4,9 +4,9 @@ import { join, resolve } from "node:path";
 /**
  * Runtime directories handed over by the desktop host.
  *
- * `ASTRAVIA_SERVICE_RUNTIME_DIR` is the unpacked service version directory; the lux payload
- * is unpacked underneath it. The remaining variables are optional so the service can also be
- * started by hand during development.
+ * `ASTRAVIA_SERVICE_RUNTIME_DIR` is the unpacked service version directory, which is where the
+ * host-native entry point is resolved from. The remaining variables are optional so the service can
+ * also be started by hand during development.
  */
 export interface ServiceEnvironment {
   port: number;

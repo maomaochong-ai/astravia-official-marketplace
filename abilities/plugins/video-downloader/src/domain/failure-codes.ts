@@ -4,6 +4,8 @@
  */
 const FAILURE_MESSAGE_KEYS: Record<string, string> = {
   engine_unavailable: "error.serviceUnavailable",
+  engine_preparing: "error.enginePreparing",
+  ffmpeg_required: "error.ffmpegPreparing",
   network_timeout: "error.networkTimeout",
   network_blocked: "error.networkBlocked",
   auth_required: "error.authRequired",

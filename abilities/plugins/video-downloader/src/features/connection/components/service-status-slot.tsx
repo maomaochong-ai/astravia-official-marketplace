@@ -5,13 +5,27 @@ import type { Capabilities } from "../../../domain/media-info";
 import type { ManagedPluginContext } from "../../../runtime-contract";
 import { createDownloaderApi } from "../../../services/downloader-api";
 
-function StatusRow({ label, available, version }: { label: string; available: boolean; version: string | null }) {
+function StatusRow({
+  label,
+  available,
+  version,
+  preparing,
+}: {
+  label: string;
+  available: boolean;
+  version: string | null;
+  preparing?: boolean;
+}) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
       <span className="text-xs text-foreground">{label}</span>
       <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <span className={`size-1.5 rounded-full ${available ? "bg-primary" : "bg-destructive"}`} aria-hidden="true" />
-        {available ? (version ?? "—") : "—"}
+        <span
+          className={`size-1.5 rounded-full ${available ? "bg-primary" : preparing ? "bg-muted-foreground/60" : "bg-destructive"}`}
+          aria-hidden="true"
+        />
+        {available ? (version ?? "—") : preparing ? t("status.preparing") : "—"}
       </span>
     </div>
   );
@@ -21,7 +35,6 @@ function StatusRow({ label, available, version }: { label: string; available: bo
 export function ServiceStatusSlot({ ctx }: { ctx: ManagedPluginContext }) {
   const { t } = useTranslation();
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
-  const lux = toolCapability(capabilities, "lux");
   const ytdlp = toolCapability(capabilities, "ytdlp");
   const ffmpeg = toolCapability(capabilities, "ffmpeg");
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +55,9 @@ export function ServiceStatusSlot({ ctx }: { ctx: ManagedPluginContext }) {
 
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-2">
-      <StatusRow label={t("status.lux")} available={lux.available} version={lux.version} />
+      <StatusRow label={t("status.engine")} available={ytdlp.available} version={ytdlp.version} preparing />
       <div className="border-t border-border" />
-      <StatusRow label="yt-dlp" available={ytdlp.available} version={ytdlp.version} />
-      <div className="border-t border-border" />
-      <StatusRow label="ffmpeg" available={ffmpeg.available} version={ffmpeg.version} />
+      <StatusRow label="ffmpeg" available={ffmpeg.available} version={ffmpeg.version} preparing />
       <div className="border-t border-border" />
       <p className="py-2 text-[11px] leading-relaxed text-muted-foreground">
         {error ?? (ffmpeg.available ? t("status.ffmpegReadyHint") : t("status.ffmpegMissingHint"))}

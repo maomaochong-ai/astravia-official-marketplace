@@ -2,7 +2,6 @@ import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { describeLuxFailure, summarizeLuxFailure } from "../lux/diagnostics.js";
 import { ffmpegReleaseFor } from "../tools/ffmpeg-release.js";
 import { FfmpegInstaller } from "../tools/ffmpeg-installer.js";
 import { withToolPath } from "../tools/tool-paths.js";
@@ -17,77 +16,6 @@ async function makeTempDirectory(): Promise<string> {
 
 afterEach(async () => {
   await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
-});
-
-/** Trimmed copy of what lux writes when the YouTube extractor cannot reach the site. */
-const YOUTUBE_FAILURE = `Downloading https://www.youtube.com/watch?v=aqz-KE-bpKQ error: Get "https://youtube.com/embed/aqz-KE-bpKQ?hl=en": dial tcp 31.13.92.37:443: connect: operation timed out
-
-goroutine 1 [running]:
-github.com/iawia002/lux/extractors/youtube.(*extractor).Extract(0x1400012a000, {0x1400013e000, 0x2b}, 0x1400012c180)
-\t/opt/hostedtoolcache/go/1.22.2/x64/src/github.com/iawia002/lux/extractors/youtube/youtube.go:353 +0x2d4
-main.main.func1(0x1400012c180)
-\t/Users/runner/work/lux/lux/main.go:120 +0x1c
-runtime.goexit()
-\t/opt/hostedtoolcache/go/1.22.2/x64/src/runtime/asm_arm64.s:1222 +0x1
-`;
-
-/**
- * Verbatim shape of a real failure: lux writes `Downloading … error:` on one line, the cause
- * on the next, then a Go stack trace — all on stdout, with nothing on stderr.
- */
-const REAL_YOUTUBE_FAILURE = `Downloading https://www.youtube.com/watch?v=aqz-KE-bpKQ error:
-Get "https://www.youtube.com": dial tcp 31.13.92.37:443: connect: operation timed out
-github.com/iawia002/lux/extractors/youtube.(*extractor).Extract
-\tgithub.com/iawia002/lux/extractors/youtube/youtube.go:48
-github.com/iawia002/lux/extractors.Extract
-\tgithub.com/iawia002/lux/extractors/extractors.go:54
-main.main
-\tgithub.com/iawia002/lux/main.go:13
-runtime.main
-\truntime/proc.go:290
-runtime.goexit
-\truntime/asm_arm64.s:1447
-`;
-
-describe("summarizeLuxFailure", () => {
-  it("keeps the real reason and drops Go stack frames", () => {
-    const failure = summarizeLuxFailure(YOUTUBE_FAILURE, "");
-    expect(failure?.code).toBe("network_timeout");
-    expect(failure?.detail).toContain("operation timed out");
-    expect(failure?.detail).not.toContain("runtime.goexit");
-    expect(failure?.detail).not.toContain("asm_arm64.s");
-    expect(describeLuxFailure(failure!)).toContain("超时");
-  });
-
-  it("reads the real cause when lux writes it on the line after `error:`", () => {
-    const failure = summarizeLuxFailure("", REAL_YOUTUBE_FAILURE);
-    expect(failure?.code).toBe("network_timeout");
-    expect(failure?.detail).toBe(
-      'Get "https://www.youtube.com": dial tcp 31.13.92.37:443: connect: operation timed out',
-    );
-  });
-
-  it("separates a refused request from a missing login", () => {
-    expect(summarizeLuxFailure('Downloading https://x.test/v error: status 403 Forbidden', "")?.code).toBe(
-      "site_blocked",
-    );
-    expect(summarizeLuxFailure("Downloading https://x.test/v error: request error: HTTP 403", "")?.code).toBe(
-      "site_blocked",
-    );
-    expect(summarizeLuxFailure("Downloading https://x.test/v error: 401 Unauthorized", "")?.code).toBe(
-      "auth_required",
-    );
-    expect(summarizeLuxFailure("Downloading https://x.test/v error: login required", "")?.code).toBe(
-      "auth_required",
-    );
-    expect(summarizeLuxFailure("Downloading https://x.test/v error: no extractor for this URL", "")?.code).toBe(
-      "site_unsupported",
-    );
-  });
-
-  it("returns null when nothing was written", () => {
-    expect(summarizeLuxFailure("", "")).toBeNull();
-  });
 });
 
 describe("ffmpegReleaseFor", () => {
