@@ -65,7 +65,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. The plugin downloads that build itself, so nothing needs to be installed by hand. Sites that require a signed-in session can be unlocked with a site cookie in settings; sites that sign their own API requests reject outside clients, and the panel tells you which of the two happened."
+      "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. The plugin downloads that build itself, so nothing needs to be installed by hand. Sites that require a signed-in session can be unlocked with a site cookie in settings; sites that sign their own API requests reject outside clients, and the panel tells you which of the two happened. If a site refuses that engine, the panel offers a retry with a second engine (yt-dlp), which also accepts a cookies.txt exported from your browser. Some sites — Douyin among them — check a signed-in browser session and cannot be resolved anonymously by either engine."
     },
     {
       "type": "links",
