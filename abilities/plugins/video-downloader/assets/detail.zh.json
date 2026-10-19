@@ -61,13 +61,13 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "不少站点的高清清晰度把画面与声音分开提供，需要 ffmpeg 合并。未安装时这些清晰度会被标注，安装后可在设置里重新检测。请只下载你有权保存的内容。"
+      "content": "不少站点的高清清晰度把画面与声音分开提供，需要 ffmpeg 合并。插件会在第一次需要时自行下载并校验这份构建（约 18–29 MB，只需一次），无需用户手动安装；该二进制来自 ffmpeg-static 发布，遵循其 GPL 许可。请只下载你有权保存的内容。"
     },
     {
       "type": "links",
       "items": [
         { "label": "支持的站点", "href": "https://github.com/iawia002/lux/blob/master/README.md" },
-        { "label": "下载 ffmpeg", "href": "https://ffmpeg.org/download.html" }
+        { "label": "ffmpeg 许可", "href": "https://ffmpeg.org/legal.html" }
       ]
     }
   ]

@@ -61,13 +61,13 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. If ffmpeg is missing, those renditions are marked and the plugin explains how to re-check after installing it. Only download material you have the right to keep."
+      "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. The plugin downloads and verifies that build itself (about 18–29 MB, once) the first time you need it, so nothing has to be installed by hand. The bundled binary comes from the ffmpeg-static release and keeps its GPL licence. Only download material you have the right to keep."
     },
     {
       "type": "links",
       "items": [
         { "label": "Supported sites", "href": "https://github.com/iawia002/lux/blob/master/README.md" },
-        { "label": "ffmpeg downloads", "href": "https://ffmpeg.org/download.html" }
+        { "label": "ffmpeg licence", "href": "https://ffmpeg.org/legal.html" }
       ]
     }
   ]
