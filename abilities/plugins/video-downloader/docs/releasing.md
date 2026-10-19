@@ -9,13 +9,15 @@ only — no `url` — because the panel downloads the bytes itself and hands the
 `ctx.services.install`. That URL lives in `runtime-lock.json`, and nothing in CI
 creates it. Skip it and the plugin installs fine, then fails to start with a 404.
 
-So each version needs two releases:
+So each version needs two releases, and the service one has to exist first — a version whose
+lock points at a missing asset installs fine and then fails to start with a 404:
 
-1. Push `main`. CI validates, uploads, and advances the gh-pages index for
+1. Bump the version, run `npm run package:service`, and record the digest. Point the matching
+   `runtime-lock.json` entry and the six `plugin.json` artifacts at it.
+2. Create the release tagged `video-downloader-<version>` and attach
+   `release/video-downloader-service-<version>.zip`.
+3. Push `main`. CI validates, uploads, and advances the gh-pages index for
    `plugin-video-downloader`.
-2. Run `npm run package:service`, then attach `release/video-downloader-service-<version>.zip`
-   to a release tagged `video-downloader-<version>`, and point the matching
-   `runtime-lock.json` entry at it.
 
 Then confirm the runtime lock is actually downloadable and byte-identical:
 
