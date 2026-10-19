@@ -174,8 +174,55 @@ describe("resolveNodeChartData — 未接入 / KPI", () => {
 	});
 
 	it("未知 kind 也归到 unsupported，不抛异常", () => {
-		const data = resolveNodeChartData("chart-sankey", {}, result(["v"], [{ v: 1 }]), null);
+		const data = resolveNodeChartData("chart-quadrant", {}, result(["v"], [{ v: 1 }]), null);
 		assert.equal(data.status, "unsupported");
+	});
+
+	it("配了维度/度量后，新图表类型走语义层并产出 frame", () => {
+		const resultSet = result(
+			["region", "gmv", "orderId"],
+			[
+				{ region: "华东", gmv: 100, orderId: 1 },
+				{ region: "华东", gmv: 50, orderId: 2 },
+				{ region: "华北", gmv: 30, orderId: 3 },
+			],
+		);
+		const data = resolveNodeChartData(
+			"chart-sankey",
+			{
+				dimensions: JSON.stringify([{ field: "region" }]),
+				measures: JSON.stringify([{ field: "gmv", agg: "sum" }]),
+			},
+			resultSet,
+			null,
+		);
+		assert.equal(data.status, "ok");
+		assert.ok(data.frame);
+		assert.deepEqual(data.frame?.categories, ["华东", "华北"]);
+		// labels / values 继续等于首度量，旧调用方无感
+		assert.deepEqual(data.values, [150, 30]);
+		assert.equal(data.valueField, "gmv");
+	});
+
+	it("配了度量后，散点不再报 unsupported", () => {
+		const resultSet = result(
+			["gmv", "orders"],
+			[{ gmv: 10, orders: 2 }, { gmv: 20, orders: 5 }],
+		);
+		const data = resolveNodeChartData(
+			"chart-scatter",
+			{
+				dimensions: JSON.stringify([]),
+				measures: JSON.stringify([
+					{ field: "gmv", agg: "sum" },
+					{ field: "orders", agg: "sum" },
+				]),
+			},
+			resultSet,
+			null,
+		);
+		assert.equal(data.status, "ok");
+		assert.equal(data.frame?.series.length, 2);
 	});
 
 	it("KPI 只取一个数值、没有维度列", () => {

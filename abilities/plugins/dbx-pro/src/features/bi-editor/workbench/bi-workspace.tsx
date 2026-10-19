@@ -98,8 +98,10 @@ type TreeRow = {
 	on?: boolean;
 	/** 这一支下面有未发布变更 */
 	alert?: boolean;
-	/** depth0 点击后切换到哪个 NavId；depth1 留空 = 不切 activeNav */
+	/** depth0 点击后切换到哪个 NavId；depth1 数据源叶子用它跳回数据源列表 */
 	navKey?: NavId;
+	/** depth1 叶子对应的页面 id：点击直接打开编辑器 */
+	pageId?: string;
 };
 
 // ── 数据集：从页面模板里的数据源节点派生 ──
@@ -115,6 +117,8 @@ const SOURCE_LABEL: Record<string, string> = {
 
 interface DatasetRow {
 	key: string;
+	/** 数据集所属页面，用于从目录树直接跳过去 */
+	pageId: string;
 	title: string;
 	kind: string;
 	/** 连接名 / 表名，能直接看出数据从哪来 */
@@ -142,6 +146,7 @@ function collectDatasets(pages: BigscreenPage[]): DatasetRow[] {
 			const raw = String(v.sql ?? v.fields ?? "").replace(/\s+/g, " ").trim();
 			rows.push({
 				key: `${page.id}:${nodeId}`,
+				pageId: page.id,
 				title: String(v.title ?? "").trim() || SOURCE_LABEL[kind] || "数据集",
 				kind: SOURCE_LABEL[kind] ?? kind,
 				origin,
@@ -244,7 +249,6 @@ function PageThumb({
 					{page.visits > 0 ? (
 						<Chip tone="neutral" mono icon="icon-[lucide--eye]">{page.visits}</Chip>
 					) : null}
-					<IconButton size="xs" icon="icon-[lucide--more-horizontal]" title="更多" className="ml-auto" />
 				</div>
 				<div className="flex items-center gap-2 text-[10px] text-faint">
 					<span>{formatDate(page.updateTime)}</span>
@@ -336,6 +340,7 @@ export function BiWorkspace(): JSX.Element {
 	// ── 工作台本地 state ──
 	const [activeNav, setActiveNav] = useState<NavId>("board");
 	const [searchQuery, setSearchQuery] = useState("");
+	const searchRef = useRef<HTMLInputElement>(null);
 	const [sortKey, setSortKey] = useState<"updateTime" | "name" | "createTime" | "updateCount">("updateTime");
 	const [sortOpen, setSortOpen] = useState(false);
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -358,15 +363,18 @@ export function BiWorkspace(): JSX.Element {
 		try { getUi()?.notify?.({ message: msg, variant }); } catch { /* ignore */ }
 	};
 
-	// ── 临时高亮「最近运行」面板 ──
-	const [runlogsFlash, setRunlogsFlash] = useState(false);
-	function focusRunlogs() {
-		const el = document.getElementById("runlogs-panel");
-		if (!el) return;
-		el.scrollIntoView({ behavior: "smooth", block: "center" });
-		setRunlogsFlash(true);
-		window.setTimeout(() => setRunlogsFlash(false), 1500);
-	}
+	// ── ⌘K / Ctrl+K 聚焦搜索（顶栏标了快捷键，就得真的能用） ──
+	useEffect(() => {
+		function onKey(e: KeyboardEvent) {
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+				e.preventDefault();
+				searchRef.current?.focus();
+				searchRef.current?.select();
+			}
+		}
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, []);
 
 	// ── 派生：按 NAV + search + sort 过滤后的 pages ──
 	const derivedPages = useMemo(() => {
@@ -406,8 +414,17 @@ export function BiWorkspace(): JSX.Element {
 			alert: worktree?.pages.some((p) => p.style === "default" && p.dirty) ?? false,
 		});
 		if (boardOpen) {
-			// depth1 叶子：暂时只按 style 分 folder 跳过，直接渲染未分组
-			rows.push({ key: "board-folder-0", label: "未分组", count: String(boardPages.length), depth: 1, icon: "icon-[lucide--folder]" });
+			// depth1 直接列真实看板：点一下就能打开，不再放没有动作的「未分组」占位行。
+			boardPages.forEach((p) => {
+				rows.push({
+					key: `board-${p.id}`,
+					label: p.name,
+					pageId: p.id,
+					depth: 1,
+					icon: "icon-[lucide--file-text]",
+					dot: worktree?.pages.some((w) => w.id === p.id && w.dirty) ? "bg-warning" : undefined,
+				});
+			});
 		}
 
 		// ② 数据大屏
@@ -420,7 +437,16 @@ export function BiWorkspace(): JSX.Element {
 			alert: worktree?.pages.some((p) => p.style === "bigScreen" && p.dirty) ?? false,
 		});
 		if (bigscreenOpen) {
-			rows.push({ key: "bigscreen-folder-0", label: "未分组", count: String(bigscreenPages.length), depth: 1, icon: "icon-[lucide--folder]" });
+			bigscreenPages.forEach((p) => {
+				rows.push({
+					key: `bigscreen-${p.id}`,
+					label: p.name,
+					pageId: p.id,
+					depth: 1,
+					icon: "icon-[lucide--presentation]",
+					dot: worktree?.pages.some((w) => w.id === p.id && w.dirty) ? "bg-warning" : undefined,
+				});
+			});
 		}
 
 		// ③ 数据集（简化：所有 pages 都算"数据集"，depth1 叶子只渲染未分组）
@@ -432,7 +458,16 @@ export function BiWorkspace(): JSX.Element {
 			open: datasetOpen, on: activeNav === "dataset",
 		});
 		if (datasetOpen) {
-			rows.push({ key: "dataset-folder-0", label: "未分组", count: String(datasetRows.length), depth: 1, icon: "icon-[lucide--folder]" });
+			// 数据集本身就是画布里的 source 节点，点进去打开它所属的页面。
+			datasetRows.forEach((d) => {
+				rows.push({
+					key: `dataset-${d.key}`,
+					label: d.title,
+					depth: 1,
+					icon: "icon-[lucide--table-2]",
+					pageId: d.pageId,
+				});
+			});
 		}
 
 		// ④ 数据源（从 datasources 派生）
@@ -451,6 +486,7 @@ export function BiWorkspace(): JSX.Element {
 					label: ds.name,
 					count: tables > 0 ? `${tables} 表` : undefined,
 					depth: 1,
+					navKey: "sources",
 					dot: ds.status === "connected" ? "bg-success" : "bg-border-strong",
 				});
 			});
@@ -481,7 +517,8 @@ export function BiWorkspace(): JSX.Element {
 
 
 		return rows;
-	}, [boardPages.length, bigscreenPages.length, datasetRows.length, datasources, worktree, sharelinks.length, activeNav, treeOpen]);
+		// 叶子直接展示页面名称，依赖 pages 而不只是 length，改名后树才不会留旧文本
+	}, [pages, datasources, worktree, sharelinks.length, activeNav, treeOpen]);
 
 	// ── 三个入口：创建看板 page → 设置 preset → 跳转编辑器（不再创建大屏） ──
 	async function handleCreateWithPreset(preset: { nodes: Record<string, NodePos>; links: Link[] }) {
@@ -698,13 +735,13 @@ export function BiWorkspace(): JSX.Element {
 				<div className="flex shrink-0 items-center gap-2">
 					<img src={dbxIcon} alt="dbx-pro" className="size-6 rounded-sm" />
 					<span className="truncate text-[13px] font-semibold text-surface-foreground">BI 工作台</span>
-					{compact ? null : <Chip tone="accent">本地工作树</Chip>}
 				</div>
 
 				{/* 搜索框 — 真实 state */}
 				<div className={`flex h-8 items-center gap-2 rounded-control border border-border bg-surface px-2.5 ${compact ? "min-w-0 flex-1" : "w-72 shrink-0"}`}>
 					<Icon name="icon-[lucide--search]" className="size-3.5 shrink-0 text-faint" />
 					<input
+						ref={searchRef}
 						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
@@ -714,13 +751,6 @@ export function BiWorkspace(): JSX.Element {
 					{compact ? null : <span className="shrink-0 font-mono text-[10px] text-faint">⌘K</span>}
 				</div>
 
-				<div className="ml-auto flex shrink-0 items-center gap-1">
-					{compact
-						? <IconButton size="sm" icon="icon-[lucide--history]" title="最近运行" onClick={focusRunlogs} />
-						: <Btn size="sm" variant="ghost" icon="icon-[lucide--history]" onClick={focusRunlogs}>最近运行</Btn>}
-					<span className="h-4 w-px shrink-0 bg-border" />
-					<div className="ml-1 grid size-7 shrink-0 place-items-center rounded-full border border-border bg-surface text-[11px] text-muted">诸</div>
-				</div>
 			</header>
 
 			<div className="flex min-h-0 flex-1">
@@ -737,14 +767,21 @@ export function BiWorkspace(): JSX.Element {
 									className={`flex h-7 w-full cursor-pointer items-center gap-1.5 rounded-control pr-1.5 ${
 										n.depth === 0 ? "pl-1.5" : "pl-[18px]"
 									} ${rowOn ? "bg-accent-soft" : "text-muted hover:bg-surface hover:text-surface-foreground"}`}
-									onClick={() => {
-										if (n.depth === 0) {
-											// depth0：同时 toggle 展开 + 切 activeNav
-											if (n.navKey) setActiveNav(n.navKey);
-											toggleTree(n.key);
-										}
-										// depth1：只视觉高亮（不切 activeNav）—— 设计稿也没这个交互，忽略
-									}}
+								onClick={() => {
+									if (n.depth === 0) {
+										// depth0：同时 toggle 展开 + 切 activeNav
+										if (n.navKey) setActiveNav(n.navKey);
+										toggleTree(n.key);
+										return;
+									}
+									// depth1：页面叶子直接打开编辑器，数据源叶子回到数据源列表
+									if (n.pageId) {
+										setEditorPreset(undefined);
+										setEditorPageId(n.pageId);
+										return;
+									}
+									if (n.navKey) setActiveNav(n.navKey);
+								}}
 								>
 									{n.depth === 0 ? (
 										<Icon
@@ -904,9 +941,7 @@ export function BiWorkspace(): JSX.Element {
 					{(activeNav === "board" || activeNav === "bigscreen") && (
 						<div
 							id="runlogs-panel"
-							className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border bg-surface-raised transition-all duration-300 ${
-								runlogsFlash ? "border-accent shadow-[0_0_0_3px_var(--color-accent-soft)]" : "border-border"
-							}`}
+							className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-raised"
 						>
 							<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-3">
 								<Icon name="icon-[lucide--play]" className="size-3.5 shrink-0 text-muted" />

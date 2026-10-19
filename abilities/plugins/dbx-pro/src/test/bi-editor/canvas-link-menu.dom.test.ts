@@ -121,7 +121,23 @@ describe("画布 · 端口连线拖拽优先（D4）", () => {
 		assert.equal(pendingPath(container), null, "松手后待定连线应收起");
 	});
 
-	it("从输入插槽反向拖到输出插槽 → 反向建边，方向被正规化", async () => {
+		it("超大连线画布必须把路径平移回来，否则整条线画到视口外", () => {
+			const { container } = mount({ n1: SOURCE_NODE });
+			fireEvent.pointerDown(outputSocket(container, "n1"), { clientX: 100, clientY: 100 });
+
+			const pending = pendingPath(container);
+			assert.ok(pending, "应出现待定连线");
+			assert.equal(pending.closest("svg")?.style.left, "-20000px", "SVG 左上角被移到画布外");
+			assert.equal(
+				pending.closest("g")?.getAttribute("transform"),
+				"translate(20000 20000)",
+				"路径坐标是画布坐标，必须用 translate 抵消 SVG 偏移",
+			);
+
+			fireEvent.pointerUp(window, { clientX: 900, clientY: 900 });
+		});
+
+		it("从输入插槽反向拖到输出插槽 → 反向建边，方向被正规化", async () => {
 		const { container } = mount({ n1: SOURCE_NODE, n2: CHART_NODE });
 		const target = inputSocket(container, "n2");
 		assert.ok(target, "chart 节点应有输入插槽");

@@ -523,6 +523,8 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 				guidesOn={guidesOn}
 				onGuidesToggle={() => setGuidesOn((v) => !v)}
 				onArrange={(layout) => graphApiRef.current?.arrange(layout, "all")}
+				onAlign={(mode) => graphApiRef.current?.alignSelection(mode)}
+				onDistribute={(axis) => graphApiRef.current?.distributeSelection(axis)}
 				onAiGenerate={() => {
 					setAiResult(null);  // 清上次残留结果
 					setShowAiDialog(true);

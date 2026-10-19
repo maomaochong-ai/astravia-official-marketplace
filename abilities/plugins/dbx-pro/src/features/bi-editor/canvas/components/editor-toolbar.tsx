@@ -12,7 +12,14 @@
 import { useCallback, useEffect, useState, type JSX } from "react";
 import { Icon } from "../../shared/components/ui/icon";
 import { IconButton } from "../../shared/components/ui/icon-button";
-import { ARRANGE_LAYOUTS, type ArrangeLayout } from "../lib/auto-layout";
+import {
+	ALIGN_MODES,
+	ARRANGE_LAYOUTS,
+	DISTRIBUTE_AXES,
+	type AlignMode,
+	type ArrangeLayout,
+	type DistributeAxis,
+} from "../lib/auto-layout";
 import { ShortcutsDialog } from "./shortcuts-dialog";
 
 /** 焦点在输入框里时，⌘Z / G 这类按键交还给输入框自己处理。 */
@@ -41,6 +48,8 @@ export function BigscreenToolbar({
 	guidesOn = true,
 	onGuidesToggle,
 	onArrange,
+	onAlign,
+	onDistribute,
 }: {
 	pageName: string;
 	theme: "dark" | "default";
@@ -61,6 +70,8 @@ export function BigscreenToolbar({
 	guidesOn?: boolean;
 	onGuidesToggle?: () => void;
 	onArrange?: (layout: ArrangeLayout) => void;
+	onAlign?: (mode: AlignMode) => void;
+	onDistribute?: (axis: DistributeAxis) => void;
 }): JSX.Element {
 	const [editingName, setEditingName] = useState(false);
 	const [nameDraft, setNameDraft] = useState(pageName);
@@ -183,7 +194,7 @@ export function BigscreenToolbar({
 						size="xs"
 						icon="icon-[lucide--layout-grid]"
 						active={arrangeOpen}
-						title="自动排列（垂直 / 水平 / 网格）"
+						title="排列与对齐（自动排列 / 对齐选中 / 等距分布）"
 						onClick={() => setArrangeOpen((v) => !v)}
 					/>
 					<IconButton
@@ -205,7 +216,7 @@ export function BigscreenToolbar({
 							<div className="fixed inset-0 z-20" onPointerDown={() => setArrangeOpen(false)} />
 							<div
 								role="menu"
-								className="absolute top-[30px] left-0 z-30 w-[164px] overflow-hidden rounded-card border border-border bg-surface-raised py-1 shadow-popover"
+								className="absolute top-[30px] left-0 z-30 max-h-[360px] w-[168px] overflow-y-auto rounded-card border border-border bg-surface-raised py-1 shadow-popover"
 							>
 								{ARRANGE_LAYOUTS.map((o) => (
 									<button
@@ -219,6 +230,36 @@ export function BigscreenToolbar({
 										<span>{o.label}</span>
 									</button>
 								))}
+								<div className="mt-1 border-t border-border pt-1">
+									<div className="px-2.5 pb-0.5 text-[10px] text-faint">对齐选中</div>
+									{ALIGN_MODES.map((o) => (
+										<button
+											key={o.mode}
+											type="button"
+											role="menuitem"
+											className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-surface-foreground hover:bg-neutral-muted"
+											onClick={() => { onAlign?.(o.mode); setArrangeOpen(false); }}
+										>
+											<Icon name={o.icon} className="size-3.5 shrink-0 text-muted" />
+											<span>{o.label}</span>
+										</button>
+									))}
+								</div>
+								<div className="mt-1 border-t border-border pt-1">
+									<div className="px-2.5 pb-0.5 text-[10px] text-faint">等距分布</div>
+									{DISTRIBUTE_AXES.map((o) => (
+										<button
+											key={o.axis}
+											type="button"
+											role="menuitem"
+											className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[12px] text-surface-foreground hover:bg-neutral-muted"
+											onClick={() => { onDistribute?.(o.axis); setArrangeOpen(false); }}
+										>
+											<Icon name={o.icon} className="size-3.5 shrink-0 text-muted" />
+											<span>{o.label}</span>
+										</button>
+									))}
+								</div>
 							</div>
 						</>
 					) : null}

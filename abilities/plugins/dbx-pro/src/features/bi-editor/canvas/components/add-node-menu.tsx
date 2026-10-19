@@ -11,10 +11,17 @@
 import { useState, type JSX } from "react";
 import { Icon } from "../../shared/components/ui/icon";
 
+/** 变体：同一个图表入口下的预设（映射到不同 kind，或同一 kind 加初始配置）。 */
+interface MenuVariant {
+	label: string;
+	kind: string;
+	values?: Record<string, unknown>;
+}
+
 interface Props {
 	x: number;
 	y: number;
-	onPick: (kind: string, variant?: string) => void;
+	onPick: (kind: string, values?: Record<string, unknown>) => void;
 	onClose: () => void;
 }
 
@@ -23,7 +30,7 @@ interface MenuItem {
 	label: string;
 	hint?: string;
 	kind: string;
-	variants?: string[];
+	variants?: MenuVariant[];
 }
 
 interface MenuGroup {
@@ -35,35 +42,72 @@ const GROUPS: MenuGroup[] = [
 	{
 		label: "数据",
 		items: [
-			{ icon: "icon-[lucide--database]", label: "数据源", hint: "MySQL", kind: "source-sql" },
-			{ icon: "icon-[lucide--table-2]", label: "SQL 数据集", hint: "一键套用", kind: "source-table" },
-			{ icon: "icon-[lucide--scroll-text]", label: "手写 SQL", kind: "source-sql" },
-			{ icon: "icon-[lucide--upload]", label: "本地文件", hint: "CSV", kind: "source-api" },
+			{ icon: "icon-[lucide--scroll-text]", label: "SQL 查询", hint: "写 SQL", kind: "source-sql" },
+			{ icon: "icon-[lucide--table-2]", label: "表读取", hint: "选表即取", kind: "source-table" },
+			{ icon: "icon-[lucide--database]", label: "直连数据源", hint: "已连接库", kind: "source-connector" },
+			{ icon: "icon-[lucide--clipboard-paste]", label: "粘贴 CSV", hint: "本地数据", kind: "source-csv" },
+			{ icon: "icon-[lucide--braces]", label: "HTTP 接口", hint: "返回 JSON", kind: "source-api" },
 		],
 	},
 	{
 		label: "图表",
 		items: [
-			{ icon: "icon-[lucide--chart-line]", label: "折线图", hint: "6 变体", kind: "chart-line", variants: ["基础折线", "面积", "堆叠", "双轴", "平滑", "阶梯"] },
-			{ icon: "icon-[lucide--chart-column]", label: "柱状图", hint: "5 变体", kind: "chart-bar", variants: ["分组柱", "堆叠柱", "百分比", "双轴", "横向柱"] },
-			{ icon: "icon-[lucide--chart-pie]", label: "饼图 / 环图", hint: "2 变体", kind: "chart-pie", variants: ["实心饼图", "环形图"] },
-			{ icon: "icon-[lucide--gauge]", label: "指标卡", kind: "metric-big" },
+			{
+				icon: "icon-[lucide--chart-line]", label: "折线图", hint: "6 变体", kind: "chart-line",
+				variants: [
+					{ label: "基础折线", kind: "chart-line" },
+					{ label: "面积图", kind: "chart-area" },
+					{ label: "堆叠面积", kind: "chart-area", values: { stack: "normal" } },
+					{ label: "百分比面积", kind: "chart-area", values: { stack: "percent" } },
+					{ label: "平滑曲线", kind: "chart-line", values: { smooth: "yes" } },
+					{ label: "双轴组合", kind: "chart-combo" },
+				],
+			},
+			{
+				icon: "icon-[lucide--chart-column]", label: "柱状图", hint: "6 变体", kind: "chart-bar",
+				variants: [
+					{ label: "分组柱", kind: "chart-bar" },
+					{ label: "堆叠柱", kind: "chart-bar", values: { stack: "normal" } },
+					{ label: "百分比柱", kind: "chart-bar", values: { stack: "percent" } },
+					{ label: "横向柱", kind: "chart-bar", values: { orientation: "horizontal" } },
+					{ label: "双轴组合", kind: "chart-combo" },
+					{ label: "瀑布图", kind: "chart-waterfall" },
+				],
+			},
+			{
+				icon: "icon-[lucide--chart-pie]", label: "饼图 / 环图", hint: "2 变体", kind: "chart-pie",
+				variants: [
+					{ label: "实心饼图", kind: "chart-pie" },
+					{ label: "环形图", kind: "chart-donut" },
+				],
+			},
+			{ icon: "icon-[lucide--chart-scatter]", label: "散点图", kind: "chart-scatter" },
+			{ icon: "icon-[lucide--radar]", label: "雷达图", kind: "chart-radar" },
+			{ icon: "icon-[lucide--filter]", label: "漏斗图", kind: "chart-funnel" },
+			{ icon: "icon-[lucide--grid-3x3]", label: "热力图", kind: "chart-heatmap" },
+			{ icon: "icon-[lucide--layout-grid]", label: "矩形树图", kind: "chart-treemap" },
+			{ icon: "icon-[lucide--git-fork]", label: "桑基图", kind: "chart-sankey" },
+			{ icon: "icon-[lucide--waves]", label: "瀑布图", kind: "chart-waterfall" },
+			{ icon: "icon-[lucide--gauge]", label: "仪表盘", kind: "chart-gauge" },
+			{ icon: "icon-[lucide--chart-no-axes-combined]", label: "箱线图", kind: "chart-boxplot" },
+			{ icon: "icon-[lucide--hash]", label: "指标卡", kind: "chart-kpi" },
 		],
 	},
 	{
 		label: "大屏",
 		items: [
-			{ icon: "icon-[lucide--monitor]", label: "大屏标题", kind: "metric-trend" },
-			{ icon: "icon-[lucide--activity]", label: "大屏指标卡", kind: "metric-gauge" },
-			{ icon: "icon-[lucide--list-ordered]", label: "大屏排行榜", kind: "chart-bar" },
+			{ icon: "icon-[lucide--heading]", label: "大屏标题", kind: "screen-title" },
+			{ icon: "icon-[lucide--activity]", label: "大屏指标卡", kind: "screen-metric" },
+			{ icon: "icon-[lucide--list-ordered]", label: "大屏排行榜", kind: "screen-rank" },
 		],
 	},
 	{
 		label: "控件与产物",
 		items: [
 			{ icon: "icon-[lucide--list-filter]", label: "筛选器", kind: "filter-select" },
-			{ icon: "icon-[lucide--layout-dashboard]", label: "看板产物页面", kind: "output-table" },
-			{ icon: "icon-[lucide--share-2]", label: "发布与分享", kind: "output-text" },
+			{ icon: "icon-[lucide--table]", label: "明细表", kind: "output-table" },
+			{ icon: "icon-[lucide--layout-dashboard]", label: "看板页面", kind: "output-page" },
+			{ icon: "icon-[lucide--share-2]", label: "发布与分享", kind: "output-publish" },
 		],
 	},
 ];
@@ -175,15 +219,15 @@ export function AddNodeMenu({ x, y, onPick, onClose }: Props): JSX.Element {
 					<div className="py-1">
 						{expandedItem.variants!.map((v) => (
 							<button
-								key={v}
+								key={v.label}
 								type="button"
 								onClick={() => {
-									onPick(expandedItem!.kind, v);
+									onPick(v.kind, v.values);
 									onClose();
 								}}
 								className="flex h-6 w-full items-center px-2.5 text-[11px] text-muted hover:bg-accent-soft hover:text-accent"
 							>
-								{v}
+								{v.label}
 							</button>
 						))}
 					</div>

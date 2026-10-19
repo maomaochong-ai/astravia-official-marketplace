@@ -53,6 +53,12 @@ export interface NodeCardProps {
 	selected?: boolean;
 	/** 停用（ComfyUI bypass/mute）：仍渲染但运行时会跳过，视觉上变灰。 */
 	muted?: boolean;
+	/** 折叠：只留标题条，节点高度收到 HEAD_H。 */
+	collapsed?: boolean;
+	/** 锁定：不能再拖拽 / 缩放 / 删除，防止误碰关键节点。 */
+	locked?: boolean;
+	/** 点击标题栏的展开箭头时调用。 */
+	onToggleCollapse?: () => void;
 	inputs?: Socket[];
 	outputs?: Socket[];
 	children: ReactNode;
@@ -70,6 +76,9 @@ export const NodeCard = memo(function NodeCard({
 	title, type, icon, tone, x, y, w, h,
 	selected = false,
 	muted = false,
+	collapsed = false,
+	locked = false,
+	onToggleCollapse,
 	inputs = [],
 	outputs = [],
 	children,
@@ -86,7 +95,7 @@ export const NodeCard = memo(function NodeCard({
 					: selected ? "z-10 border-accent outline outline-2 outline-dashed outline-offset-2 outline-accent/70 cursor-grab shadow-[0_0_0_3px_rgba(59,130,246,0.25)]"
 						: "border-border cursor-grab"
 			}`}
-			style={{ left: x, top: y, width: w, height: h }}
+			style={{ left: x, top: y, width: w, height: collapsed ? HEAD_H : h }}
 			data-node-id={nodeId}
 			onPointerDown={onPointerDown}
 			onContextMenu={(e) => {
@@ -99,11 +108,24 @@ export const NodeCard = memo(function NodeCard({
 			}}
 		>
 			<header className="flex h-[30px] shrink-0 items-center gap-1.5 border-b border-border bg-surface px-2">
-				<span className="icon-[lucide--chevron-down] size-3 shrink-0 text-faint" />
+				{onToggleCollapse ? (
+					<button
+						type="button"
+						title={collapsed ? "展开节点" : "折叠节点"}
+						onPointerDown={(e) => e.stopPropagation()}
+						onClick={(e) => { e.stopPropagation(); onToggleCollapse(); }}
+						className="grid size-3.5 shrink-0 place-items-center rounded-[2px] text-faint hover:bg-neutral-muted hover:text-surface-foreground"
+					>
+						<span className={collapsed ? "icon-[lucide--chevron-right] size-3" : "icon-[lucide--chevron-down] size-3"} />
+					</button>
+				) : (
+					<span className="icon-[lucide--chevron-down] size-3 shrink-0 text-faint" />
+				)}
 				<span className="grid size-[18px] shrink-0 place-items-center rounded-[4px] bg-background" style={{ color: tone }}>
 					<span className={icon} style={{ width: 12, height: 12 }} />
 				</span>
 				<span className="min-w-0 flex-1 truncate text-[11px] font-medium text-surface-foreground">{title}</span>
+				{locked ? <span className="icon-[lucide--lock] size-3 shrink-0 text-warning" title="已锁定" /> : null}
 				{muted ? (
 					<span className="shrink-0 rounded-chip bg-neutral-muted px-1 text-[9px] text-muted">已停用</span>
 				) : (
@@ -111,9 +133,13 @@ export const NodeCard = memo(function NodeCard({
 				)}
 			</header>
 
-			<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">{children}</div>
+			{collapsed ? null : (
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2">{children}</div>
+			)}
 
 			{inputs.map((s, i) => (
+				// 外层是 24px 透明命中区，内层才是可见的 12px 圆点。
+				// 直接拿 12px 圆点当热区时，鼠标差几像素就落到画布上变成平移，看起来像「插槽拖不动」。
 				<span
 					key={`in-${i}`}
 					title="输入插槽"
@@ -125,9 +151,15 @@ export const NodeCard = memo(function NodeCard({
 						if (socketHandlers?.onInputDown) socketHandlers.onInputDown({ nodeId: nodeId ?? "", row: s.row, tone: s.tone, clientX: e.clientX, clientY: e.clientY });
 					}}
 					onContextMenu={(e) => e.preventDefault()}
-					className="pointer-events-auto absolute -left-[6px] size-3 cursor-crosshair rounded-full border-2 border-surface-raised hover:scale-125 hover:ring-2 hover:ring-accent/40 transition-all"
-					style={{ top: rowDy(s.row) - 6, background: s.tone, zIndex: 20 }}
-				/>
+					className="group pointer-events-auto absolute -left-3 grid size-6 cursor-crosshair place-items-center"
+					style={{ top: (collapsed ? HEAD_H / 2 : rowDy(s.row)) - 12, zIndex: 20 }}
+				>
+					<span
+						data-socket-dot
+						className="pointer-events-none size-3 rounded-full border-2 border-surface-raised transition-transform group-hover:scale-125 group-hover:ring-2 group-hover:ring-accent/40"
+						style={{ background: s.tone }}
+					/>
+				</span>
 			))}
 			{outputs.map((s, i) => (
 				<span
@@ -141,12 +173,18 @@ export const NodeCard = memo(function NodeCard({
 						if (socketHandlers?.onOutputDown) socketHandlers.onOutputDown({ nodeId: nodeId ?? "", row: s.row, tone: s.tone, clientX: e.clientX, clientY: e.clientY });
 					}}
 					onContextMenu={(e) => e.preventDefault()}
-					className="pointer-events-auto absolute -right-[6px] size-3 cursor-crosshair rounded-full border-2 border-surface-raised hover:scale-125 hover:ring-2 hover:ring-accent/40 transition-all"
-					style={{ top: rowDy(s.row) - 6, background: s.tone, zIndex: 20 }}
-				/>
+					className="group pointer-events-auto absolute -right-3 grid size-6 cursor-crosshair place-items-center"
+					style={{ top: (collapsed ? HEAD_H / 2 : rowDy(s.row)) - 12, zIndex: 20 }}
+				>
+					<span
+						data-socket-dot
+						className="pointer-events-none size-3 rounded-full border-2 border-surface-raised transition-transform group-hover:scale-125 group-hover:ring-2 group-hover:ring-accent/40"
+						style={{ background: s.tone }}
+					/>
+				</span>
 			))}
 
-			{selected && onResizeStart && (
+			{selected && onResizeStart && !collapsed && (
 				<>
 					<span
 						className={`${HANDLE} -top-[3px] -left-[3px] cursor-nwse-resize hover:bg-accent-hover`}
