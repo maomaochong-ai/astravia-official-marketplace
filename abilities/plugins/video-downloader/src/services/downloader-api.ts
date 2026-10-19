@@ -1,6 +1,7 @@
 import type {
   Capabilities,
   DownloadTask,
+  FfmpegInstall,
   NewDownloadInput,
   ProbeResult,
   ServiceSettings,
@@ -25,6 +26,8 @@ export class ServiceRequestError extends Error {
 
 export interface DownloaderApi {
   capabilities(refresh?: boolean): Promise<Capabilities>;
+  ffmpeg(): Promise<{ ffmpeg: Capabilities["ffmpeg"]; install: FfmpegInstall }>;
+  installFfmpeg(): Promise<FfmpegInstall>;
   probe(url: string): Promise<ProbeResult>;
   tasks(): Promise<DownloadTask[]>;
   createTask(input: NewDownloadInput): Promise<DownloadTask>;
@@ -69,6 +72,11 @@ export function createDownloaderApi(ctx: ManagedPluginContext): DownloaderApi {
         method: refresh ? "POST" : "GET",
         timeoutMs: 30_000,
       }).then((body) => body.capabilities),
+
+    ffmpeg: () => call<{ ffmpeg: Capabilities["ffmpeg"]; install: FfmpegInstall }>("/api/v1/ffmpeg", { timeoutMs: 30_000 }),
+
+    installFfmpeg: () =>
+      call<{ install: FfmpegInstall }>("/api/v1/ffmpeg", { method: "POST", timeoutMs: 30_000 }).then((body) => body.install),
 
     probe: (url) => call<ProbeResult>("/api/v1/probe", { method: "POST", body: { url }, timeoutMs: 90_000 }),
 

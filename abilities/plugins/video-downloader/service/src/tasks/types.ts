@@ -29,6 +29,8 @@ export interface DownloadTask {
   finishedAt: number | null;
   filePath: string | null;
   error: string | null;
+  /** Machine readable reason for `error`, so the panel can localize it. */
+  errorCode: string | null;
 }
 
 const ACTIVE_PHASES = new Set<TaskPhase>(["extracting", "downloading", "merging", "moving"]);

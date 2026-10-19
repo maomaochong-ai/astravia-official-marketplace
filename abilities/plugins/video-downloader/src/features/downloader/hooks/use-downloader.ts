@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   Capabilities,
   DownloadTask,
+  FfmpegInstall,
   MediaItem,
   ProbeResult,
   ServiceSettings,
@@ -10,6 +11,12 @@ import type { DownloaderApi, ServiceRequestError } from "../../../services/downl
 import type { ManagedPluginContext } from "../../../runtime-contract";
 
 const POLL_INTERVAL_MS = 900;
+const INSTALL_POLL_MS = 600;
+const INSTALL_TIMEOUT_MS = 20 * 60_000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export interface DownloaderState {
   booting: boolean;
@@ -20,10 +27,13 @@ export interface DownloaderState {
   url: string;
   probing: boolean;
   probeError: string | null;
+  probeErrorCode: string | null;
   result: ProbeResult | null;
   activeItemIndex: number;
   selectedFormatId: string | null;
   starting: boolean;
+  ffmpegInstall: FfmpegInstall | null;
+  ffmpegBusy: boolean;
 }
 
 export interface DownloaderController {
@@ -40,6 +50,7 @@ export interface DownloaderController {
   revealTask(id: string): Promise<void>;
   saveSettings(patch: Partial<ServiceSettings>): Promise<void>;
   refreshCapabilities(): Promise<void>;
+  installFfmpeg(): Promise<void>;
   reload(): Promise<void>;
 }
 
@@ -52,10 +63,13 @@ const INITIAL_STATE: DownloaderState = {
   url: "",
   probing: false,
   probeError: null,
+  probeErrorCode: null,
   result: null,
   activeItemIndex: 0,
   selectedFormatId: null,
   starting: false,
+  ffmpegInstall: null,
+  ffmpegBusy: false,
 };
 
 function activeItem(state: DownloaderState): MediaItem | null {
@@ -95,8 +109,19 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   async function boot(): Promise<void> {
     patch({ booting: true, bootError: null });
     try {
-      const [capabilities, settings, tasks] = await Promise.all([api.capabilities(), api.settings(), api.tasks()]);
-      patch({ booting: false, capabilities, settings, tasks });
+      const [capabilities, settings, tasks, toolchain] = await Promise.all([
+        api.capabilities(),
+        api.settings(),
+        api.tasks(),
+        api.ffmpeg(),
+      ]);
+      patch({
+        booting: false,
+        capabilities: { ...capabilities, ffmpeg: toolchain.ffmpeg },
+        settings,
+        tasks,
+        ffmpegInstall: toolchain.install,
+      });
     } catch (error) {
       patch({ booting: false, bootError: messageOf(error) });
       report(ctx.i18n.t("error.serviceUnavailable"), error);
@@ -121,7 +146,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   async function analyze(): Promise<void> {
     const url = state.url.trim();
     if (!url) return;
-    patch({ probing: true, probeError: null });
+    patch({ probing: true, probeError: null, probeErrorCode: null });
     try {
       const result = await api.probe(url);
       if (!result.items.length) {
@@ -129,6 +154,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
           probing: false,
           result: null,
           probeError: result.failure ?? ctx.i18n.t("error.noMedia"),
+          probeErrorCode: result.failureCode ?? null,
         });
         return;
       }
@@ -140,7 +166,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
         selectedFormatId: first?.recommendedFormatId ?? first?.formats[0]?.id ?? null,
       });
     } catch (error) {
-      patch({ probing: false, result: null, probeError: messageOf(error) });
+      patch({ probing: false, result: null, probeError: messageOf(error), probeErrorCode: null });
     }
   }
 
@@ -169,28 +195,87 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
     patch({ selectedFormatId: formatId });
   }
 
-  async function startDownload(): Promise<void> {
+  /**
+   * Downloads the pinned ffmpeg build and waits for it, so a multi-part rendition never leaves
+   * the user to install ffmpeg by hand.
+   */
+  async function waitForFfmpeg(): Promise<boolean> {
+    let capability = state.capabilities?.ffmpeg ?? (await api.ffmpeg()).ffmpeg;
+    if (capability.available) return true;
+
+    patch({ ffmpegBusy: true });
+    try {
+      let install = await api.installFfmpeg();
+      patch({ ffmpegInstall: install });
+      const deadline = Date.now() + INSTALL_TIMEOUT_MS;
+      while (install.phase === "idle" || install.phase === "downloading" || install.phase === "verifying") {
+        if (Date.now() > deadline) break;
+        await delay(INSTALL_POLL_MS);
+        const next = await api.ffmpeg();
+        install = next.install;
+        applyCapabilities(next.ffmpeg, install);
+      }
+      if (install.phase === "failed") throw new Error(install.error ?? "ffmpeg install failed");
+      // The POST may already have found a usable binary, so the authoritative answer is a fresh read.
+      const latest = await api.ffmpeg();
+      applyCapabilities(latest.ffmpeg, latest.install);
+      return latest.ffmpeg.available;
+    } finally {
+      patch({ ffmpegBusy: false });
+    }
+  }
+
+  /** Merge a toolchain read into state without clobbering capabilities loaded in the same render. */
+  function applyCapabilities(ffmpeg: Capabilities["ffmpeg"], install: FfmpegInstall): void {
+    if (!mounted.current) return;
+    setState((current) => ({
+      ...current,
+      ffmpegInstall: install,
+      capabilities: current.capabilities ? { ...current.capabilities, ffmpeg } : null,
+    }));
+  }
+
+  async function sendDownload(): Promise<void> {
     const item = activeItem(state);
     const format = item?.formats.find((candidate) => candidate.id === state.selectedFormatId);
     if (!item || !format) return;
+    await api.createTask({
+      url: item.sourceUrl,
+      site: item.site,
+      title: item.title,
+      streamId: format.id,
+      quality: format.quality,
+      ext: format.ext,
+      needsFfmpeg: format.needsFfmpeg,
+      totalBytes: format.sizeBytes,
+    });
+  }
+
+  async function startDownload(): Promise<void> {
+    if (!activeItem(state)) return;
     patch({ starting: true });
     try {
-      await api.createTask({
-        url: item.sourceUrl,
-        site: item.site,
-        title: item.title,
-        streamId: format.id,
-        quality: format.quality,
-        ext: format.ext,
-        needsFfmpeg: format.needsFfmpeg,
-        totalBytes: format.sizeBytes,
-      });
+      await sendDownload();
       patch({ starting: false, result: null, url: "", selectedFormatId: null, activeItemIndex: 0 });
       await loadTasks();
     } catch (error) {
-      patch({ starting: false });
       const code = (error as ServiceRequestError).code;
-      report(code === "ffmpeg_required" ? ctx.i18n.t("error.ffmpegRequired") : ctx.i18n.t("error.startFailed"), error);
+      if (code === "ffmpeg_required") {
+        patch({ starting: false });
+        try {
+          if (await waitForFfmpeg()) {
+            await startDownload();
+            return;
+          }
+        } catch (installError) {
+          report(ctx.i18n.t("error.ffmpegInstallFailed"), installError);
+          return;
+        }
+        report(ctx.i18n.t("error.ffmpegRequired"), error);
+        return;
+      }
+      patch({ starting: false });
+      report(code === "engine_unavailable" ? ctx.i18n.t("error.serviceUnavailable") : ctx.i18n.t("error.startFailed"), error);
     }
   }
 
@@ -221,6 +306,13 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
         patch({ settings });
       } catch (error) {
         report(ctx.i18n.t("error.settingsFailed"), error);
+      }
+    },
+    installFfmpeg: async () => {
+      try {
+        await waitForFfmpeg();
+      } catch (error) {
+        report(ctx.i18n.t("error.ffmpegInstallFailed"), error);
       }
     },
     refreshCapabilities: async () => {

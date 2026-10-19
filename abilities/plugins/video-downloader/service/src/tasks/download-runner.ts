@@ -4,6 +4,8 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { measureDirectory } from "../fs/directory-usage.js";
 import { ensureDirectory, moveProducedFiles, sanitizeFileName } from "../fs/files.js";
+import { withToolPath } from "../tools/tool-paths.js";
+import { summarizeLuxFailure } from "../lux/diagnostics.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { TaskStore } from "./task-store.js";
 import { estimateRemaining, type DownloadTask } from "./types.js";
@@ -26,6 +28,8 @@ interface RunningTask {
   speedBps: number;
   sawBytes: boolean;
   stderrTail: string;
+  /** lux reports most failures on stdout, so a bounded copy of it is kept for the error message. */
+  stdoutTail: string;
 }
 
 export interface RunnerDependencies {
@@ -33,19 +37,16 @@ export interface RunnerDependencies {
   settings: () => ServiceSettings;
   luxPath: () => string | null;
   dataRoot: string;
+  /** Directory holding tools the plugin provisioned itself (ffmpeg). */
+  toolDirectory: string;
   onUpdate?: (task: DownloadTask) => void;
 }
 
-/** Strip trailing diagnostics from a lux run into one readable line. */
-export function summarizeFailure(stderr: string, stdout: string): string {
-  const lines = `${stderr}\n${stdout}`
-    .replace(ANSI, "")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const relevant = lines.filter((line) => !/^\d+%|^\[|Speed|remaining/iu.test(line));
-  const tail = (relevant.length > 0 ? relevant : lines).slice(-2).join(" ").trim();
-  return tail.slice(0, 400) || "下载失败";
+/** Reduce a failed lux run to one readable line, without its Go stack trace. */
+export function summarizeFailure(stderr: string, stdout: string): { message: string; code: string | null } {
+  const failure = summarizeLuxFailure(stderr, stdout);
+  if (!failure) return { message: "下载失败", code: null };
+  return { message: failure.detail.slice(0, 240), code: failure.code };
 }
 
 /**
@@ -114,6 +115,7 @@ export class DownloadRunner {
       speedBps: 0,
       sawBytes: false,
       stderrTail: "",
+      stdoutTail: "",
     };
     this.running.set(task.id, state);
     await ensureDirectory(workDirectory);
@@ -128,7 +130,13 @@ export class DownloadRunner {
 
     let child: LuxChildProcess;
     try {
-      child = spawn(lux, args, { cwd: workDirectory, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+      // lux resolves `ffmpeg` through PATH, so the provisioned tool directory goes first.
+      child = spawn(lux, args, {
+        cwd: workDirectory,
+        env: withToolPath(this.dependencies.toolDirectory),
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
     } catch (error) {
       this.running.delete(task.id);
       store.update(task.id, {
@@ -146,18 +154,27 @@ export class DownloadRunner {
       const text = chunk.toString("utf8").replace(ANSI, "");
       state.stderrTail = `${state.stderrTail}${text}`.slice(-4000);
     });
-    child.stdout.on("data", () => undefined);
+    child.stdout.on("data", (chunk: Buffer) => {
+      state.stdoutTail = `${state.stdoutTail}${chunk.toString("utf8").replace(ANSI, "")}`.slice(-4000);
+    });
 
     state.timer = setInterval(() => void this.sample(task.id), POLL_INTERVAL_MS);
 
     child.on("error", (error) => {
-      void this.finish(task.id, { ok: false, reason: error.message });
+      void this.finish(task.id, { ok: false, reason: error.message, code: null });
     });
     child.on("close", (code) => {
-      const tail = state.stderrTail;
+      const stderrTail = state.stderrTail;
+      const stdoutTail = state.stdoutTail;
+      if (state.canceled) {
+        void this.finish(task.id, { ok: false, reason: "已取消", code: null });
+        return;
+      }
+      const failure = code === 0 ? null : summarizeFailure(stderrTail, stdoutTail);
       void this.finish(task.id, {
-        ok: code === 0 && !state.canceled,
-        reason: state.canceled ? "已取消" : code === 0 ? "" : summarizeFailure(tail, ""),
+        ok: code === 0,
+        reason: failure?.message ?? "",
+        code: failure?.code ?? null,
       });
     });
   }
@@ -197,7 +214,7 @@ export class DownloadRunner {
     this.emit(taskId);
   }
 
-  private async finish(taskId: string, outcome: { ok: boolean; reason: string }): Promise<void> {
+  private async finish(taskId: string, outcome: { ok: boolean; reason: string; code: string | null }): Promise<void> {
     const state = this.running.get(taskId);
     if (!state) return;
     this.running.delete(taskId);
@@ -233,6 +250,7 @@ export class DownloadRunner {
         etaSeconds: null,
         finishedAt: Date.now(),
         error: outcome.reason || "下载失败",
+        errorCode: outcome.code,
       });
       // Keeping the work directory lets the user resume a large transfer by hand.
       if (!settings.keepPartialFiles) {

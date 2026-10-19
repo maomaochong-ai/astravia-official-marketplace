@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { ManagedPluginContext } from "../../../runtime-contract";
+import { failureMessageKey } from "../../../domain/failure-codes";
 import { createDownloaderApi, type DownloaderApi } from "../../../services/downloader-api";
 import { DownloadSettingsPanel } from "../../settings/components/download-settings-panel";
 import { DownloadQueue } from "./download-queue";
@@ -34,6 +35,7 @@ export function DownloaderView({
 
   const ffmpegAvailable = state.capabilities?.ffmpeg.available === true;
   const result = state.result;
+  const probeError = failureMessageKey(state.probeErrorCode);
 
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
@@ -97,7 +99,7 @@ export function DownloaderView({
               <UrlEntryCard
                 url={state.url}
                 probing={state.probing}
-                error={state.probeError}
+                error={probeError ? t(probeError) : state.probeError}
                 onUrlChange={controller.setUrl}
                 onAnalyze={() => void controller.analyze()}
                 onPaste={() => void controller.useClipboard()}
@@ -110,10 +112,13 @@ export function DownloaderView({
                 activeIndex={state.activeItemIndex}
                 selectedFormatId={state.selectedFormatId}
                 ffmpegAvailable={ffmpegAvailable}
+                ffmpegInstall={state.ffmpegInstall}
+                ffmpegBusy={state.ffmpegBusy}
                 starting={state.starting}
                 onSelectItem={controller.selectItem}
                 onSelectFormat={controller.selectFormat}
                 onStart={() => void controller.startDownload()}
+                onInstallFfmpeg={() => void controller.installFfmpeg()}
               />
             ) : null}
 
@@ -131,8 +136,11 @@ export function DownloaderView({
               <DownloadSettingsPanel
                 settings={state.settings}
                 capabilities={state.capabilities}
+                ffmpegInstall={state.ffmpegInstall}
+                ffmpegBusy={state.ffmpegBusy}
                 onSave={(patch) => void controller.saveSettings(patch)}
                 onRefreshCapabilities={() => void controller.refreshCapabilities()}
+                onInstallFfmpeg={() => void controller.installFfmpeg()}
               />
             ) : null}
           </>

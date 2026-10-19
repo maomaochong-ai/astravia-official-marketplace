@@ -90,13 +90,21 @@ export async function inspectLux(runtimeRoot: string): Promise<ToolCapability> {
   return UNAVAILABLE;
 }
 
-export async function inspectFfmpeg(): Promise<ToolCapability> {
+export async function inspectFfmpeg(toolDir: string): Promise<ToolCapability> {
+  const provisioned = join(toolDir, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+  const candidate = (await isFile(provisioned)) ? provisioned : "ffmpeg";
   try {
-    const result = await runCommand("ffmpeg", ["-version"], { timeoutMs: 15_000 });
+    if (candidate !== "ffmpeg" && !(await isExecutable(candidate))) await chmod(candidate, 0o755).catch(() => undefined);
+    const result = await runCommand(candidate, ["-version"], { timeoutMs: 15_000 });
     if (result.code !== 0) return UNAVAILABLE;
     const output = `${result.stdout}\n${result.stderr}`.trim();
-    const match = /ffmpeg version (\S+)/i.exec(output);
-    return { available: true, path: "ffmpeg", version: match?.[1] ?? null, source: "path" };
+    const match = /ffmpeg version (\S+)/iu.exec(output);
+    return {
+      available: true,
+      path: candidate,
+      version: match?.[1] ?? null,
+      source: candidate === "ffmpeg" ? "path" : "bundled",
+    };
   } catch {
     return UNAVAILABLE;
   }

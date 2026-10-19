@@ -13,5 +13,13 @@
     "linux-x64": "lux_0.24.1_Linux_x86_64.tar.gz",
     "linux-arm64": "lux_0.24.1_Linux_arm64.tar.gz"
   },
-  "notes": "Binaries are pinned to the v0.24.1 release and installed from the upstream GitHub release, never resolved from 'latest'. Digests come from lux_0.24.1_checksums.txt."
+  "notes": "Binaries are pinned to the v0.24.1 release and installed from the upstream GitHub release, never resolved from 'latest'. Digests come from lux_0.24.1_checksums.txt.",
+  "ffmpeg": {
+    "name": "eugeneware/ffmpeg-static",
+    "version": "b6.1.1",
+    "license": "GPL-3.0-or-later",
+    "repository": "https://github.com/eugeneware/ffmpeg-static",
+    "updatePolicy": "pinned",
+    "notes": "Downloaded on demand into <dataRoot>/bin, never bundled in the plugin package. Digests are measured from the pinned release assets and verified before the binary is used."
+  }
 }

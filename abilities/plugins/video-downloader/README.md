@@ -43,7 +43,8 @@ The service is a small `node:http` server built with `tsc` only — no runtime d
 | `GET\|DELETE /api/v1/tasks/:id` | Inspect or drop one task |
 | `POST /api/v1/tasks/:id/{cancel,reveal,retry}` | Task actions |
 | `GET\|PUT /api/v1/settings` | Download folder, concurrency, cookie, threading, partial files |
-| `POST /mcp` | Hand-written JSON-RPC for the Agent (`video_probe`, `video_download`, `video_tasks`, `video_cancel`, `video_supported_sites`) |
+| `GET\|POST /api/v1/ffmpeg` | Read install progress, or start downloading the pinned build |
+| `POST /mcp` | Hand-written JSON-RPC for the Agent (`video_probe`, `video_download`, `video_tasks`, `video_cancel`, `video_supported_sites`, `video_install_ffmpeg`) |
 
 Downloads run through `lux` with `-s` (no ANSI progress bar) inside a per-task working
 directory that is also the process `cwd`, which keeps lux's relative merge manifests
@@ -53,9 +54,18 @@ contained. Progress is sampled from bytes on disk rather than parsed from the te
 
 `lux` merges every multi-part rendition through ffmpeg: `MergeToMP4` for plain MP4 and
 `MergeFilesWithSameExtension` (one `-i` per part, stream copy) for muxed DASH/fMP4 payloads.
-Only single-part streams avoid it. So `needsFfmpeg` is `partCount > 1`, ffmpeg is treated as
-an optional host dependency, and a task that needs it while ffmpeg is missing is rejected
-with `412 ffmpeg_required` instead of failing halfway through.
+Only single-part streams avoid it. So `needsFfmpeg` is `partCount > 1`, and a task that needs
+it while ffmpeg is missing is rejected with `412 ffmpeg_required` instead of failing halfway
+through; the panel then installs ffmpeg and retries once.
+
+ffmpeg is not shipped in the plugin package (18–29 MB per platform, GPL). `tools/ffmpeg-release.ts`
+pins one `eugeneware/ffmpeg-static` release asset per platform with its SHA-256, and lists a
+byte-identical npmmirror copy as the fallback source because GitHub is slow or unreachable on some
+networks. `tools/ffmpeg-installer.ts` tries each source in order, downloads into
+`<dataRoot>/bin/ffmpeg(.exe)`, verifies the digest, gunzips and renames atomically. `spawn` prepends that directory to `PATH`, which is how lux's
+`exec.LookPath("ffmpeg")` fallback finds it. `GET /api/v1/ffmpeg` reports progress,
+`POST /api/v1/ffmpeg` starts the download, and the Agent tool `video_install_ffmpeg` blocks
+until it finishes.
 
 ## Presentation
 

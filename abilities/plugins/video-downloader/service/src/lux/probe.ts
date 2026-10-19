@@ -1,4 +1,5 @@
 import { runCommand } from "../process/run-command.js";
+import { describeLuxFailure, summarizeLuxFailure, type LuxFailureCode } from "./diagnostics.js";
 import { normalizeProbe, probeFailureReason } from "../media/normalize.js";
 import type { LuxRawData, MediaProbeResult } from "../media/types.js";
 
@@ -10,6 +11,7 @@ export interface ProbeOptions {
 
 export interface ProbeOutcome extends MediaProbeResult {
   failure: string | null;
+  failureCode: LuxFailureCode | null;
   raw: string;
 }
 
@@ -69,30 +71,27 @@ export async function probeMedia(luxPath: string, url: string, options: ProbeOpt
   const data = parseProbeOutput(result.stdout);
 
   if (data.length === 0) {
-    const failure = result.timedOut
-      ? "解析超时，请稍后重试"
-      : collectDiagnostics(result.stderr, result.stdout) || "没有从该链接解析出可下载的媒体";
-    return { items: [], failure, raw: result.stdout, elapsedMs };
+    if (result.timedOut) {
+      return { items: [], failure: "解析超时，请稍后重试", failureCode: "network_timeout", raw: result.stdout, elapsedMs };
+    }
+    const failure = summarizeLuxFailure(result.stderr, result.stdout);
+    return {
+      items: [],
+      failure: failure ? describeLuxFailure(failure) : "没有从该链接解析出可下载的媒体",
+      failureCode: failure?.code ?? null,
+      raw: result.stdout,
+      elapsedMs,
+    };
   }
 
   const items = normalizeProbe(data);
-  const failure = items.length === 0 ? probeFailureReason(data) ?? collectDiagnostics(result.stderr, result.stdout) : null;
-  return { items, failure: failure || null, raw: result.stdout, elapsedMs };
-}
-
-function collectDiagnostics(stderr: string, stdout: string): string {
-  const fromStderr = stderr
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("["))
-    .slice(-3)
-    .join(" ");
-  if (fromStderr) return fromStderr;
-  const fromStdout = stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("[") && !line.startsWith("{") && !line.startsWith("\""))
-    .slice(-3)
-    .join(" ");
-  return fromStdout;
+  if (items.length > 0) return { items, failure: null, failureCode: null, raw: result.stdout, elapsedMs };
+  const failure = summarizeLuxFailure(result.stderr, result.stdout);
+  return {
+    items,
+    failure: probeFailureReason(data) ?? (failure ? describeLuxFailure(failure) : null),
+    failureCode: failure?.code ?? null,
+    raw: result.stdout,
+    elapsedMs,
+  };
 }

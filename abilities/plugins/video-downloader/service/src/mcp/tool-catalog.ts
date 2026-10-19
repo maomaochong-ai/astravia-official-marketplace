@@ -1,6 +1,8 @@
 import type { DownloadTask } from "../tasks/types.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { MediaItem } from "../media/types.js";
+import type { ToolCapability } from "../lux/lux-binary.js";
+import type { FfmpegInstallState } from "../tools/ffmpeg-installer.js";
 
 export interface McpToolSchema {
   name: string;
@@ -56,6 +58,12 @@ export const MCP_TOOLS: McpToolSchema[] = [
     },
   },
   {
+    name: "video_install_ffmpeg",
+    description:
+      "Install the pinned ffmpeg build used to merge multi-part renditions. Safe to call when ffmpeg is already available. Blocks until the download finishes.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "video_supported_sites",
     description: "List the sites this downloader is known to handle, grouped by brand.",
     inputSchema: { type: "object", properties: {} },
@@ -78,6 +86,8 @@ export interface ToolDependencies {
   getTask: (id: string) => DownloadTask | undefined;
   cancelTask: (id: string) => boolean;
   settings: () => ServiceSettings;
+  ensureFfmpeg: () => Promise<ToolCapability>;
+  ffmpegInstall: () => FfmpegInstallState;
   describeSites: () => Array<{ name: string; sites: string[] }>;
 }
 
@@ -180,6 +190,18 @@ export async function callTool(name: string, args: Record<string, unknown>, deps
       if (!taskId) return { text: "Missing required argument: task_id", isError: true };
       const canceled = deps.cancelTask(taskId);
       return canceled ? { text: `Canceled ${taskId}` } : { text: `Task is not running: ${taskId}`, isError: true };
+    }
+    case "video_install_ffmpeg": {
+      const capability = await deps.ensureFfmpeg();
+      const install = deps.ffmpegInstall();
+      return {
+        text: JSON.stringify(
+          { available: capability.available, version: capability.version, path: capability.path, install },
+          null,
+          2,
+        ),
+        isError: install.phase === "failed",
+      };
     }
     case "video_supported_sites": {
       return { text: JSON.stringify({ groups: deps.describeSites() }, null, 2) };

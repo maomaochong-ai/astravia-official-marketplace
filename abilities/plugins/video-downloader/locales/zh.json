@@ -12,7 +12,7 @@
   "action.settings": "设置",
   "preview.formatCount": "{{count}} 个清晰度",
   "preview.ffmpegNote": "该清晰度的画面与声音是分开的，保存前会用 ffmpeg 合并。",
-  "preview.ffmpegMissing": "该清晰度需要 ffmpeg 合并画面与声音。安装 ffmpeg 后到设置里重新检测。",
+  "preview.ffmpegMissing": "这个清晰度的音视频是分开的，需要 ffmpeg 合并（下载 {{size}}）。",
   "preview.singlePart": "单文件，无需额外工具。",
   "kind.video": "视频",
   "kind.audio": "音频",
@@ -69,5 +69,16 @@
   "error.settingsFailed": "无法保存设置",
   "error.capabilityRefreshFailed": "无法重新检测引擎",
   "empty.title": "还没有任务",
-  "empty.hint": "在上方粘贴视频链接，选择清晰度后即可开始下载。"
+  "empty.hint": "在上方粘贴视频链接，选择清晰度后即可开始下载。",
+  "action.installFfmpeg": "安装 ffmpeg",
+  "action.installAndDownload": "安装并下载",
+  "preview.ffmpegInstalling": "正在安装 ffmpeg… {{percent}}%",
+  "error.ffmpegInstallFailed": "ffmpeg 安装失败",
+  "error.networkBlocked": "无法访问该站点，请检查网络或代理后重试。",
+  "error.networkTimeout": "连接该站点超时，请检查网络或代理后重试。",
+  "error.authRequired": "该站点需要登录，请在设置里填写 Cookie 后重试。",
+  "error.siteUnsupported": "该链接暂不支持解析，请确认它是受支持的视频页面。",
+  "settings.ffmpegInstall": "安装",
+  "settings.ffmpegInstalling": "正在安装 {{percent}}%",
+  "settings.ffmpegUnsupported": "该平台暂无自动安装包"
 }

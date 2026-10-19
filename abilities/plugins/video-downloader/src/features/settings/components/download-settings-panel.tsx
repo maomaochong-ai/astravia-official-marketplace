@@ -1,12 +1,16 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { Capabilities, ServiceSettings } from "../../../domain/media-info";
+import { formatBytes } from "../../../domain/format-bytes";
+import type { Capabilities, FfmpegInstall, ServiceSettings } from "../../../domain/media-info";
 
 interface DownloadSettingsPanelProps {
   settings: ServiceSettings;
   capabilities: Capabilities | null;
+  ffmpegInstall: FfmpegInstall | null;
+  ffmpegBusy: boolean;
   onSave(patch: Partial<ServiceSettings>): void;
   onRefreshCapabilities(): void;
+  onInstallFfmpeg(): void;
 }
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
@@ -42,7 +46,15 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-export function DownloadSettingsPanel({ settings, capabilities, onSave, onRefreshCapabilities }: DownloadSettingsPanelProps) {
+export function DownloadSettingsPanel({
+  settings,
+  capabilities,
+  ffmpegInstall,
+  ffmpegBusy,
+  onSave,
+  onRefreshCapabilities,
+  onInstallFfmpeg,
+}: DownloadSettingsPanelProps) {
   const { t } = useTranslation();
   const [directory, setDirectory] = useState(settings.downloadDirectory);
   const [cookie, setCookie] = useState(settings.cookie);
@@ -53,6 +65,12 @@ export function DownloadSettingsPanel({ settings, capabilities, onSave, onRefres
   }, [settings.downloadDirectory, settings.cookie]);
 
   const ffmpeg = capabilities?.ffmpeg ?? null;
+  const installing =
+    ffmpegBusy || ffmpegInstall?.phase === "downloading" || ffmpegInstall?.phase === "verifying";
+  const percent =
+    ffmpegInstall && ffmpegInstall.totalBytes > 0
+      ? Math.min(100, Math.max(0, Math.round((ffmpegInstall.receivedBytes / ffmpegInstall.totalBytes) * 100)))
+      : 0;
 
   return (
     <section className="mt-4 rounded-xl border border-border bg-card px-4 py-2">
@@ -138,14 +156,35 @@ export function DownloadSettingsPanel({ settings, capabilities, onSave, onRefres
             {ffmpeg?.available ? `ffmpeg ${ffmpeg.version ?? ""}` : t("settings.ffmpegMissing")}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefreshCapabilities}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
-          {t("settings.refresh")}
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {ffmpeg?.available ? null : installing ? (
+            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] tabular-nums text-muted-foreground">
+              <span className="icon-[solar--refresh-linear] size-3 animate-spin" aria-hidden="true" />
+              {t("settings.ffmpegInstalling", { percent })}
+            </span>
+          ) : ffmpegInstall?.supported === false ? (
+            <span className="text-[11px] text-muted-foreground">{t("settings.ffmpegUnsupported")}</span>
+          ) : (
+            <button
+              type="button"
+              onClick={onInstallFfmpeg}
+              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-primary/60 px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
+            >
+              <span className="icon-[solar--cpu-bolt-linear] size-3" aria-hidden="true" />
+              {ffmpegInstall?.totalBytes
+                ? `${t("settings.ffmpegInstall")} (${formatBytes(ffmpegInstall.totalBytes)})`
+                : t("settings.ffmpegInstall")}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onRefreshCapabilities}
+            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
+            {t("settings.refresh")}
+          </button>
+        </div>
       </div>
     </section>
   );

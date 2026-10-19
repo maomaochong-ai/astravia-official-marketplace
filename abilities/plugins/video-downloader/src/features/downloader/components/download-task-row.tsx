@@ -1,4 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { failureMessageKey } from "../../../domain/failure-codes";
 import { formatBytes, formatDuration, formatSpeed } from "../../../domain/format-bytes";
 import type { DownloadTask } from "../../../domain/media-info";
 import { phaseLabelKey, progressOf } from "../../../domain/task-state";
@@ -27,6 +28,7 @@ export function DownloadTaskRow({ task, onCancel, onRetry, onRemove, onReveal }:
   const size = task.totalBytes > 0 ? formatBytes(task.totalBytes) : null;
 
   const meta = [task.site, task.quality, task.ext.toUpperCase(), size].filter(Boolean).join(" · ");
+  const failureKey = failureMessageKey(task.errorCode);
 
   const status = speed
     ? `${speed}${eta ? ` · ${t("task.remaining", { time: eta })}` : ""}`
@@ -64,8 +66,10 @@ export function DownloadTaskRow({ task, onCancel, onRetry, onRemove, onReveal }:
           </div>
         ) : null}
 
-        {failed && task.error ? (
-          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-destructive">{task.error}</p>
+        {failed && (failureKey || task.error) ? (
+          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-destructive">
+            {failureKey ? t(failureKey) : task.error}
+          </p>
         ) : null}
 
         <div className="mt-1.5 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">

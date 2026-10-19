@@ -24,6 +24,8 @@ export interface MediaItem {
 export interface ProbeResult {
   items: MediaItem[];
   failure: string | null;
+  /** Machine readable reason for `failure`, when the service could classify it. */
+  failureCode: string | null;
   elapsedMs: number;
 }
 
@@ -56,6 +58,8 @@ export interface DownloadTask {
   finishedAt: number | null;
   filePath: string | null;
   error: string | null;
+  /** Machine readable reason for `error`; older persisted tasks may omit it. */
+  errorCode?: string | null;
 }
 
 export interface ToolCapability {
@@ -68,6 +72,17 @@ export interface ToolCapability {
 export interface Capabilities {
   lux: ToolCapability;
   ffmpeg: ToolCapability;
+}
+
+export type FfmpegInstallPhase = "idle" | "downloading" | "verifying" | "ready" | "failed";
+
+export interface FfmpegInstall {
+  phase: FfmpegInstallPhase;
+  receivedBytes: number;
+  totalBytes: number;
+  /** False when the platform has no pinned build to download. */
+  supported: boolean;
+  error: string | null;
 }
 
 export interface ServiceSettings {

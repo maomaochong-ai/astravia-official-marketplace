@@ -89,6 +89,7 @@ export class TaskStore {
       finishedAt: null,
       filePath: null,
       error: null,
+      errorCode: null,
     };
     this.tasks.set(task.id, task);
     this.persist();

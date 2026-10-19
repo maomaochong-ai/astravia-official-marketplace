@@ -103,6 +103,18 @@ export function createRouter(context: ServiceContext) {
       }
     }
 
+    if (path === "/api/v1/ffmpeg") {
+      if (method === "GET") {
+        sendJson(response, 200, { ffmpeg: context.ffmpeg, install: context.ffmpegInstallState() });
+        return;
+      }
+      if (method === "POST") {
+        const install = context.startFfmpegInstall();
+        sendJson(response, 202, { ffmpeg: context.ffmpeg, install });
+        return;
+      }
+    }
+
     if (method === "POST" && path === "/api/v1/probe") {
       const body = await readJsonBody(request);
       const target = asString(body.url);
@@ -258,6 +270,8 @@ export function createRouter(context: ServiceContext) {
             getTask: (taskId) => context.getTask(taskId),
             cancelTask: (taskId) => context.cancelTask(taskId),
             settings: () => context.settings(),
+            ensureFfmpeg: () => context.ensureFfmpeg(),
+            ffmpegInstall: () => context.ffmpegInstallState(),
             describeSites: () => context.describeSites(),
           });
           sendJson(response, 200, mcpText(id, result.text, result.isError === true));
