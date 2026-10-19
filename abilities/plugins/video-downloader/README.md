@@ -4,6 +4,16 @@ Downloads video, audio and image renditions from the sites supported by
 [`iawia002/lux`](https://github.com/iawia002/lux). The panel is deliberately small: one link
 field, a rendition list with real file sizes, and a queue. Everything runs locally.
 
+The field accepts arbitrary share text, not only a bare URL: `src/domain/target-url.ts` pulls
+the first link out of a message such as `7.97 复制打开抖音，看看【…】 https://v.douyin.com/abc/ eBT:/`, adds
+`https://` to schemeless short links (`b23.tv/BV1xx`), and the field is rewritten with the exact
+URL that is about to be resolved.
+
+A `403` from a site is reported as `site_blocked`, not as a missing login: sites that sign their
+own API requests (douyin, for example) reject the pinned engine regardless of cookies, so the
+panel says what happened instead of asking for a cookie that cannot help. `auth_required` is
+reserved for `401` and explicit login prompts, where the site cookie in settings is the fix.
+
 The same panel is exposed through three host surfaces, all registered in `src/index.tsx`:
 the sidebar workspace view (`downloader`), the conversation activity tab (`downloads`, on the
 tab bar from the start and also in the "+" picker), and the composer chip (`open-downloads`)

@@ -6,7 +6,11 @@
       "eyebrow": "视频下载器",
       "title": "正在看的视频，按你选的清晰度保存下来",
       "description": "粘贴受支持站点的链接，对照每个清晰度的格式与体积，取回文件并放进你指定的文件夹。",
-      "badges": ["128 个站点", "本地引擎", "无需账号"]
+      "badges": [
+        "128 个站点",
+        "本地引擎",
+        "无需账号"
+      ]
     },
     {
       "type": "showcase",
@@ -50,7 +54,7 @@
         },
         {
           "title": "粘贴链接并解析",
-          "description": "页面会被解析成标题与一组可选清晰度。"
+          "description": "粘贴链接或整段分享文案：会先从中提取链接并回填，再把页面解析成标题与清晰度列表。"
         },
         {
           "title": "选择清晰度并下载",
@@ -61,13 +65,19 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "不少站点的高清清晰度把画面与声音分开提供，需要 ffmpeg 合并。插件会在第一次需要时自行下载并校验这份构建（约 18–29 MB，只需一次），无需用户手动安装；该二进制来自 ffmpeg-static 发布，遵循其 GPL 许可。请只下载你有权保存的内容。"
+      "content": "很多站点的高清清晰度把画面与声音分开存放，保存前会用 ffmpeg 合并。插件会自行下载该组件，不需要手动安装。需要登录会话的站点可以在设置里填写站点 Cookie；而自行校验请求签名的站点会拒绝外部客户端，面板会如实说明是哪种情况。"
     },
     {
       "type": "links",
       "items": [
-        { "label": "支持的站点", "href": "https://github.com/iawia002/lux/blob/master/README.md" },
-        { "label": "ffmpeg 许可", "href": "https://ffmpeg.org/legal.html" }
+        {
+          "label": "支持的站点",
+          "href": "https://github.com/iawia002/lux/blob/master/README.md"
+        },
+        {
+          "label": "ffmpeg 许可",
+          "href": "https://ffmpeg.org/legal.html"
+        }
       ]
     }
   ]
