@@ -4,9 +4,9 @@
 
 - 原始文件：`codex-skills/02_代码库迁移与重构/代码库迁移与重构工具/SKILL.md`（本地技能集合，128 行，上游 `name: codebase-migrate`）
 - 同目录另有一份 `bringyour-migration-auditor/SKILL.md`，主题是 Claude Code → Codex 的**工具链配置迁移审计**（AGENTS.md/CLAUDE.md 作用域、hooks、MCP 配置），与本包「代码库迁移与重构」不是同一对象，因此未并入。
-- 上游集合未附带 `LICENSE` 或任何许可声明，也没有可追溯的仓库地址与 commit，因此本包**不声明**具体许可证（`license: "Unspecified"`）。
+- 上游集合未附带 `LICENSE` 或任何许可声明。本包为在官方市场首次发布的改编内容，因此**自行采用 MIT 许可证**（见本目录 `LICENSE`），`license: "MIT"`。
 
-公开分发前请先确认上游授权；若上游补充了许可，把许可证名称与全文一并替换进本目录即可。
+若上游后续补足了许可且与本包 MIT 选择冲突，需重新评估；届时把新的许可证名称与全文一并替换进本目录，并同步 `ability.json` 与市场索引的 `license` 字段。
 
 ## 改编原则
 
