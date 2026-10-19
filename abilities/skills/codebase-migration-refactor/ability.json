@@ -4,7 +4,7 @@
   "slug": "codebase-migration-refactor",
   "name": "Codebase Migration and Refactoring",
   "description": "Run a large migration or multi-file refactor through a tracked pipeline: measure the blast radius, apply AST codemods, open one pull request per batch, gate each batch on CI, and audit the dead config and leftover shims afterwards.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "Unspecified",
   "author": "Astravia",
   "category": "Development",
@@ -19,7 +19,7 @@
     "upgrade",
     "monorepo"
   ],
-  "icon": "assets/icon.svg",
+  "icon": "solar:code-bold",
   "detail": {
     "format": "blocks",
     "path": "detail.json",
