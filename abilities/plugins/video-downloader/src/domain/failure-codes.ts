@@ -7,6 +7,7 @@ const FAILURE_MESSAGE_KEYS: Record<string, string> = {
   network_timeout: "error.networkTimeout",
   network_blocked: "error.networkBlocked",
   auth_required: "error.authRequired",
+  site_blocked: "error.siteBlocked",
   site_unsupported: "error.siteUnsupported",
 };
 

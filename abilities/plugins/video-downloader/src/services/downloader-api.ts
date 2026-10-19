@@ -6,6 +6,7 @@ import type {
   ProbeResult,
   ServiceSettings,
 } from "../domain/media-info";
+import { normalizeCapabilities } from "../domain/capabilities";
 import { SERVICE_ID } from "../plugin-ids";
 import type { ManagedPluginContext } from "../runtime-contract";
 
@@ -68,10 +69,10 @@ export function createDownloaderApi(ctx: ManagedPluginContext): DownloaderApi {
 
   return {
     capabilities: (refresh = false) =>
-      call<{ capabilities: Capabilities }>("/api/v1/capabilities", {
+      call<Record<string, unknown>>("/api/v1/capabilities", {
         method: refresh ? "POST" : "GET",
         timeoutMs: 30_000,
-      }).then((body) => body.capabilities),
+      }).then(normalizeCapabilities),
 
     ffmpeg: () => call<{ ffmpeg: Capabilities["ffmpeg"]; install: FfmpegInstall }>("/api/v1/ffmpeg", { timeoutMs: 30_000 }),
 

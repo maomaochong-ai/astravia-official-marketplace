@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { ManagedPluginContext } from "../../../runtime-contract";
+import { toolCapability } from "../../../domain/capabilities";
 import { failureMessageKey } from "../../../domain/failure-codes";
 import { createDownloaderApi, type DownloaderApi } from "../../../services/downloader-api";
 import { DownloadSettingsPanel } from "../../settings/components/download-settings-panel";
@@ -33,7 +34,8 @@ export function DownloaderView({
   const controller = useDownloader(ctx, apiFor(ctx));
   const { state } = controller;
 
-  const ffmpegAvailable = state.capabilities?.ffmpeg.available === true;
+  const ffmpegAvailable = toolCapability(state.capabilities, "ffmpeg").available;
+  const needsCookie = state.probeErrorCode === "auth_required";
   const result = state.result;
   const probeError = failureMessageKey(state.probeErrorCode);
 
@@ -101,6 +103,11 @@ export function DownloaderView({
                 probing={state.probing}
                 error={probeError ? t(probeError) : state.probeError}
                 onUrlChange={controller.setUrl}
+                remedy={
+                  needsCookie
+                    ? { label: t("action.fillCookie"), run: () => setSettingsOpen(true) }
+                    : undefined
+                }
                 onAnalyze={() => void controller.analyze()}
                 onPaste={() => void controller.useClipboard()}
               />
@@ -141,6 +148,7 @@ export function DownloaderView({
                 onSave={(patch) => void controller.saveSettings(patch)}
                 onRefreshCapabilities={() => void controller.refreshCapabilities()}
                 onInstallFfmpeg={() => void controller.installFfmpeg()}
+                focusCookie={needsCookie}
               />
             ) : null}
           </>

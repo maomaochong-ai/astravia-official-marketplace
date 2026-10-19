@@ -9,6 +9,7 @@ import type {
 } from "../../../domain/media-info";
 import type { DownloaderApi, ServiceRequestError } from "../../../services/downloader-api";
 import type { ManagedPluginContext } from "../../../runtime-contract";
+import { extractTargetUrl } from "../../../domain/target-url";
 
 const POLL_INTERVAL_MS = 900;
 const INSTALL_POLL_MS = 600;
@@ -144,8 +145,14 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   }, [state.booting, state.bootError]);
 
   async function analyze(): Promise<void> {
-    const url = state.url.trim();
-    if (!url) return;
+    // A pasted share message wraps the link in prose, so the target is extracted first and
+    // written back into the field: the user sees the URL that is actually being resolved.
+    const url = extractTargetUrl(state.url);
+    if (!url) {
+      patch({ probing: false, result: null, probeError: ctx.i18n.t("error.noLink"), probeErrorCode: null });
+      return;
+    }
+    if (url !== state.url.trim()) patch({ url });
     patch({ probing: true, probeError: null, probeErrorCode: null });
     try {
       const result = await api.probe(url);
@@ -173,7 +180,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   async function useClipboard(): Promise<void> {
     try {
       const text = await navigator.clipboard.readText();
-      if (text.trim()) patch({ url: text.trim(), probeError: null });
+      if (text.trim()) patch({ url: extractTargetUrl(text) || text.trim(), probeError: null });
     } catch (error) {
       report(ctx.i18n.t("error.clipboard"), error);
     }

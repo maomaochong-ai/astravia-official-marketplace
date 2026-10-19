@@ -67,8 +67,19 @@ describe("summarizeLuxFailure", () => {
     );
   });
 
-  it("classifies auth and unsupported-site failures", () => {
-    expect(summarizeLuxFailure('Downloading https://x.test/v error: status 403 Forbidden', "")?.code).toBe("auth_required");
+  it("separates a refused request from a missing login", () => {
+    expect(summarizeLuxFailure('Downloading https://x.test/v error: status 403 Forbidden', "")?.code).toBe(
+      "site_blocked",
+    );
+    expect(summarizeLuxFailure("Downloading https://x.test/v error: request error: HTTP 403", "")?.code).toBe(
+      "site_blocked",
+    );
+    expect(summarizeLuxFailure("Downloading https://x.test/v error: 401 Unauthorized", "")?.code).toBe(
+      "auth_required",
+    );
+    expect(summarizeLuxFailure("Downloading https://x.test/v error: login required", "")?.code).toBe(
+      "auth_required",
+    );
     expect(summarizeLuxFailure("Downloading https://x.test/v error: no extractor for this URL", "")?.code).toBe(
       "site_unsupported",
     );

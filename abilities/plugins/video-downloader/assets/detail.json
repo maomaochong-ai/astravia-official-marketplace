@@ -6,7 +6,11 @@
       "eyebrow": "Video Downloader",
       "title": "Save the video you are watching, at the quality you pick",
       "description": "Paste a link from a supported site, compare the available renditions with their file sizes, and keep the file in a folder you choose.",
-      "badges": ["128 sites", "Local engine", "No account needed"]
+      "badges": [
+        "128 sites",
+        "Local engine",
+        "No account needed"
+      ]
     },
     {
       "type": "showcase",
@@ -50,7 +54,7 @@
         },
         {
           "title": "Paste a link and analyze",
-          "description": "The page is resolved into a title and a list of renditions."
+          "description": "Paste a link or a whole share message: the link inside it is extracted and checked against the field, then the page is resolved into a title and a list of renditions."
         },
         {
           "title": "Pick a rendition and download",
@@ -61,13 +65,19 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. The plugin downloads and verifies that build itself (about 18–29 MB, once) the first time you need it, so nothing has to be installed by hand. The bundled binary comes from the ffmpeg-static release and keeps its GPL licence. Only download material you have the right to keep."
+      "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. The plugin downloads that build itself, so nothing needs to be installed by hand. Sites that require a signed-in session can be unlocked with a site cookie in settings; sites that sign their own API requests reject outside clients, and the panel tells you which of the two happened."
     },
     {
       "type": "links",
       "items": [
-        { "label": "Supported sites", "href": "https://github.com/iawia002/lux/blob/master/README.md" },
-        { "label": "ffmpeg licence", "href": "https://ffmpeg.org/legal.html" }
+        {
+          "label": "Supported sites",
+          "href": "https://github.com/iawia002/lux/blob/master/README.md"
+        },
+        {
+          "label": "ffmpeg licence",
+          "href": "https://ffmpeg.org/legal.html"
+        }
       ]
     }
   ]

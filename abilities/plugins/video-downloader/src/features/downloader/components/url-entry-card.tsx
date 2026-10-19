@@ -4,23 +4,25 @@ interface UrlEntryCardProps {
   url: string;
   probing: boolean;
   error: string | null;
+  /** Optional remedy shown next to the error, e.g. opening the cookie field. */
+  remedy?: { label: string; run(): void };
   onUrlChange(value: string): void;
   onAnalyze(): void;
   onPaste(): void;
 }
 
-export function UrlEntryCard({ url, probing, error, onUrlChange, onAnalyze, onPaste }: UrlEntryCardProps) {
+export function UrlEntryCard({ url, probing, error, remedy, onUrlChange, onAnalyze, onPaste }: UrlEntryCardProps) {
   const { t } = useTranslation();
   const canAnalyze = url.trim().length > 0 && !probing;
 
   return (
     <div>
       <div
-        className={`flex items-center gap-1.5 rounded-xl border bg-card p-1.5 transition-colors ${
+        className={`flex items-center gap-2 rounded-xl border bg-card p-2 transition-colors ${
           error ? "border-destructive/60" : "border-border focus-within:border-primary/60"
         }`}
       >
-        <span className="icon-[solar--link-minimalistic-2-linear] ml-1.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="icon-[solar--link-minimalistic-2-linear] ml-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <input
           value={url}
           spellCheck={false}
@@ -30,7 +32,7 @@ export function UrlEntryCard({ url, probing, error, onUrlChange, onAnalyze, onPa
             if (event.key === "Enter" && canAnalyze) onAnalyze();
           }}
           placeholder={t("field.url.placeholder")}
-          className="h-9 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="h-9 min-w-0 flex-1 bg-transparent pl-2 text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
         <button
           type="button"
@@ -54,7 +56,20 @@ export function UrlEntryCard({ url, probing, error, onUrlChange, onAnalyze, onPa
           {probing ? t("action.analyzing") : t("action.analyze")}
         </button>
       </div>
-      {error ? <p className="mt-2 px-1 text-xs leading-relaxed text-destructive">{error}</p> : null}
+      {error ? (
+        <div className="mt-2 flex items-start gap-2 px-1">
+          <p className="text-xs leading-relaxed text-destructive">{error}</p>
+          {remedy ? (
+            <button
+              type="button"
+              onClick={remedy.run}
+              className="shrink-0 text-xs text-primary underline-offset-2 transition-opacity hover:opacity-80 hover:underline"
+            >
+              {remedy.label}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

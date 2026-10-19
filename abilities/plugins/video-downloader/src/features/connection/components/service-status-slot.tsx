@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { toolCapability } from "../../../domain/capabilities";
 import type { Capabilities } from "../../../domain/media-info";
 import type { ManagedPluginContext } from "../../../runtime-contract";
 import { createDownloaderApi } from "../../../services/downloader-api";
@@ -20,6 +21,8 @@ function StatusRow({ label, available, version }: { label: string; available: bo
 export function ServiceStatusSlot({ ctx }: { ctx: ManagedPluginContext }) {
   const { t } = useTranslation();
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
+  const lux = toolCapability(capabilities, "lux");
+  const ffmpeg = toolCapability(capabilities, "ffmpeg");
   const [error, setError] = useState<string | null>(null);
 
   async function load(refresh: boolean): Promise<void> {
@@ -38,16 +41,12 @@ export function ServiceStatusSlot({ ctx }: { ctx: ManagedPluginContext }) {
 
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-2">
-      <StatusRow label={t("status.lux")} available={capabilities?.lux.available === true} version={capabilities?.lux.version ?? null} />
+      <StatusRow label={t("status.lux")} available={lux.available} version={lux.version} />
       <div className="border-t border-border" />
-      <StatusRow
-        label="ffmpeg"
-        available={capabilities?.ffmpeg.available === true}
-        version={capabilities?.ffmpeg.version ?? null}
-      />
+      <StatusRow label="ffmpeg" available={ffmpeg.available} version={ffmpeg.version} />
       <div className="border-t border-border" />
       <p className="py-2 text-[11px] leading-relaxed text-muted-foreground">
-        {error ?? (capabilities?.ffmpeg.available ? t("status.ffmpegReadyHint") : t("status.ffmpegMissingHint"))}
+        {error ?? (ffmpeg.available ? t("status.ffmpegReadyHint") : t("status.ffmpegMissingHint"))}
       </p>
       <div className="flex justify-end pb-2">
         <button

@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { toolCapability } from "../../../domain/capabilities";
 import { formatBytes } from "../../../domain/format-bytes";
 import type { Capabilities, FfmpegInstall, ServiceSettings } from "../../../domain/media-info";
 
@@ -11,6 +12,8 @@ interface DownloadSettingsPanelProps {
   onSave(patch: Partial<ServiceSettings>): void;
   onRefreshCapabilities(): void;
   onInstallFfmpeg(): void;
+  /** Jump straight to the cookie field when the failure was a missing session. */
+  focusCookie?: boolean;
 }
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
@@ -54,17 +57,26 @@ export function DownloadSettingsPanel({
   onSave,
   onRefreshCapabilities,
   onInstallFfmpeg,
+  focusCookie = false,
 }: DownloadSettingsPanelProps) {
   const { t } = useTranslation();
   const [directory, setDirectory] = useState(settings.downloadDirectory);
   const [cookie, setCookie] = useState(settings.cookie);
+  const cookieField = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setDirectory(settings.downloadDirectory);
     setCookie(settings.cookie);
   }, [settings.downloadDirectory, settings.cookie]);
 
-  const ffmpeg = capabilities?.ffmpeg ?? null;
+  useEffect(() => {
+    if (!focusCookie) return;
+    cookieField.current?.focus();
+    cookieField.current?.scrollIntoView({ block: "center" });
+  }, [focusCookie]);
+
+  const lux = toolCapability(capabilities, "lux");
+  const ffmpeg = toolCapability(capabilities, "ffmpeg");
   const installing =
     ffmpegBusy || ffmpegInstall?.phase === "downloading" || ffmpegInstall?.phase === "verifying";
   const percent =
@@ -131,6 +143,7 @@ export function DownloadSettingsPanel({
 
       <Field label={t("settings.cookie")} hint={t("settings.cookieHint")}>
         <textarea
+          ref={cookieField}
           value={cookie}
           spellCheck={false}
           placeholder={t("settings.cookiePlaceholder")}
@@ -149,11 +162,9 @@ export function DownloadSettingsPanel({
         <div className="min-w-0">
           <p className="text-xs font-medium text-foreground">{t("settings.engine")}</p>
           <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            {capabilities?.lux.available
-              ? `lux ${capabilities.lux.version ?? ""}`
-              : t("settings.luxMissing")}
+            {lux.available ? `lux ${lux.version ?? ""}` : t("settings.luxMissing")}
             {" · "}
-            {ffmpeg?.available ? `ffmpeg ${ffmpeg.version ?? ""}` : t("settings.ffmpegMissing")}
+            {ffmpeg.available ? `ffmpeg ${ffmpeg.version ?? ""}` : t("settings.ffmpegMissing")}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
