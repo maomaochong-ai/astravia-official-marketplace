@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { defaultDownloadDirectory } from "../environment.js";
+import { normalizeEnginePreference, type EnginePreference } from "../engine/engine-name.js";
 import { ensureDirectory } from "../fs/files.js";
 
 export interface ServiceSettings {
@@ -9,6 +10,8 @@ export interface ServiceSettings {
   cookie: string;
   multiThread: boolean;
   keepPartialFiles: boolean;
+  /** Which engine resolves and downloads a page; `auto` tries lux first, then yt-dlp. */
+  engine: EnginePreference;
 }
 
 export const DEFAULT_SETTINGS: ServiceSettings = {
@@ -17,6 +20,7 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   cookie: "",
   multiThread: false,
   keepPartialFiles: false,
+  engine: "auto",
 };
 
 function clampInteger(value: unknown, min: number, max: number, fallback: number): number {
@@ -34,6 +38,7 @@ export function normalizeSettings(input: Partial<ServiceSettings> | null | undef
     cookie: typeof source.cookie === "string" ? source.cookie.trim() : "",
     multiThread: source.multiThread === true,
     keepPartialFiles: source.keepPartialFiles === true,
+    engine: normalizeEnginePreference(source.engine),
   };
 }
 

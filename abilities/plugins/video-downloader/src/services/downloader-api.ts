@@ -1,10 +1,11 @@
 import type {
   Capabilities,
   DownloadTask,
-  FfmpegInstall,
+  EngineName,
   NewDownloadInput,
   ProbeResult,
   ServiceSettings,
+  ToolInstall,
 } from "../domain/media-info";
 import { normalizeCapabilities } from "../domain/capabilities";
 import { SERVICE_ID } from "../plugin-ids";
@@ -27,9 +28,11 @@ export class ServiceRequestError extends Error {
 
 export interface DownloaderApi {
   capabilities(refresh?: boolean): Promise<Capabilities>;
-  ffmpeg(): Promise<{ ffmpeg: Capabilities["ffmpeg"]; install: FfmpegInstall }>;
-  installFfmpeg(): Promise<FfmpegInstall>;
-  probe(url: string): Promise<ProbeResult>;
+  ffmpeg(): Promise<{ ffmpeg: Capabilities["ffmpeg"]; install: ToolInstall }>;
+  installFfmpeg(): Promise<ToolInstall>;
+  ytdlp(): Promise<{ ytdlp: Capabilities["ytdlp"]; install: ToolInstall }>;
+  installYtdlp(): Promise<ToolInstall>;
+  probe(url: string, engine?: EngineName): Promise<ProbeResult>;
   tasks(): Promise<DownloadTask[]>;
   createTask(input: NewDownloadInput): Promise<DownloadTask>;
   cancelTask(id: string): Promise<void>;
@@ -74,12 +77,19 @@ export function createDownloaderApi(ctx: ManagedPluginContext): DownloaderApi {
         timeoutMs: 30_000,
       }).then(normalizeCapabilities),
 
-    ffmpeg: () => call<{ ffmpeg: Capabilities["ffmpeg"]; install: FfmpegInstall }>("/api/v1/ffmpeg", { timeoutMs: 30_000 }),
+    ffmpeg: () => call<{ ffmpeg: Capabilities["ffmpeg"]; install: ToolInstall }>("/api/v1/ffmpeg", { timeoutMs: 30_000 }),
 
     installFfmpeg: () =>
-      call<{ install: FfmpegInstall }>("/api/v1/ffmpeg", { method: "POST", timeoutMs: 30_000 }).then((body) => body.install),
+      call<{ install: ToolInstall }>("/api/v1/ffmpeg", { method: "POST", timeoutMs: 30_000 }).then((body) => body.install),
 
-    probe: (url) => call<ProbeResult>("/api/v1/probe", { method: "POST", body: { url }, timeoutMs: 90_000 }),
+    ytdlp: () => call<{ ytdlp: Capabilities["ytdlp"]; install: ToolInstall }>("/api/v1/ytdlp", { timeoutMs: 30_000 }),
+
+    installYtdlp: () =>
+      call<{ install: ToolInstall }>("/api/v1/ytdlp", { method: "POST", timeoutMs: 30_000 }).then((body) => body.install),
+
+    // `engine` pins this one probe, so the panel can retry a refused page without changing settings.
+    probe: (url, engine) =>
+      call<ProbeResult>("/api/v1/probe", { method: "POST", body: engine ? { url, engine } : { url }, timeoutMs: 90_000 }),
 
     tasks: () => call<{ tasks: DownloadTask[] }>("/api/v1/tasks").then((body) => body.tasks),
 

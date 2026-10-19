@@ -1,8 +1,9 @@
 import type { DownloadTask } from "../tasks/types.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { MediaItem } from "../media/types.js";
-import type { ToolCapability } from "../lux/lux-binary.js";
+import type { ToolCapability } from "../tools/tool-capability.js";
 import type { FfmpegInstallState } from "../tools/ffmpeg-installer.js";
+import type { YtdlpInstallState } from "../ytdlp/ytdlp-installer.js";
 
 export interface McpToolSchema {
   name: string;
@@ -64,6 +65,12 @@ export const MCP_TOOLS: McpToolSchema[] = [
     inputSchema: { type: "object", properties: {} },
   },
   {
+    name: "video_install_ytdlp",
+    description:
+      "Install the pinned yt-dlp build, the second download engine. It is needed for sites the bundled engine refuses and is the only engine that can use a browser session cookie. Safe to call when yt-dlp is already available. Blocks until the download finishes.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
     name: "video_supported_sites",
     description: "List the sites this downloader is known to handle, grouped by brand.",
     inputSchema: { type: "object", properties: {} },
@@ -71,7 +78,7 @@ export const MCP_TOOLS: McpToolSchema[] = [
 ];
 
 export interface ToolDependencies {
-  probe: (url: string) => Promise<{ items: MediaItem[]; failure: string | null }>;
+  probe: (url: string) => Promise<{ items: MediaItem[]; failure: string | null; engine?: string | null }>;
   createTask: (input: {
     url: string;
     site: string;
@@ -81,6 +88,7 @@ export interface ToolDependencies {
     ext: string;
     needsFfmpeg: boolean;
     totalBytes: number;
+    engine?: string;
   }) => DownloadTask;
   listTasks: () => DownloadTask[];
   getTask: (id: string) => DownloadTask | undefined;
@@ -88,6 +96,8 @@ export interface ToolDependencies {
   settings: () => ServiceSettings;
   ensureFfmpeg: () => Promise<ToolCapability>;
   ffmpegInstall: () => FfmpegInstallState;
+  ensureYtdlp: () => Promise<ToolCapability>;
+  ytdlpInstall: () => YtdlpInstallState;
   describeSites: () => Array<{ name: string; sites: string[] }>;
 }
 
@@ -102,6 +112,7 @@ function summarizeTask(task: DownloadTask): Record<string, unknown> {
     title: task.title,
     site: task.site,
     format: task.quality || task.streamId,
+    engine: task.engine,
     ext: task.ext,
     needs_ffmpeg: task.needsFfmpeg,
     phase: task.phase,
@@ -171,6 +182,7 @@ export async function callTool(name: string, args: Record<string, unknown>, deps
         ext: format.ext,
         needsFfmpeg: format.needsFfmpeg,
         totalBytes: format.sizeBytes,
+        engine: outcome.engine ?? undefined,
       });
       return { text: JSON.stringify({ queued: summarizeTask(task), directory: deps.settings().downloadDirectory }, null, 2) };
     }
@@ -194,6 +206,18 @@ export async function callTool(name: string, args: Record<string, unknown>, deps
     case "video_install_ffmpeg": {
       const capability = await deps.ensureFfmpeg();
       const install = deps.ffmpegInstall();
+      return {
+        text: JSON.stringify(
+          { available: capability.available, version: capability.version, path: capability.path, install },
+          null,
+          2,
+        ),
+        isError: install.phase === "failed",
+      };
+    }
+    case "video_install_ytdlp": {
+      const capability = await deps.ensureYtdlp();
+      const install = deps.ytdlpInstall();
       return {
         text: JSON.stringify(
           { available: capability.available, version: capability.version, path: capability.path, install },

@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { formatBytes } from "../../../domain/format-bytes";
-import type { FfmpegInstall, MediaItem } from "../../../domain/media-info";
+import type { MediaItem, ToolInstall } from "../../../domain/media-info";
 import { siteLabel } from "../../../domain/site-catalog";
 import { SiteMonogram } from "../../../shared/components/site-monogram";
 
@@ -9,7 +9,7 @@ interface MediaPreviewCardProps {
   activeIndex: number;
   selectedFormatId: string | null;
   ffmpegAvailable: boolean;
-  ffmpegInstall: FfmpegInstall | null;
+  ffmpegInstall: ToolInstall | null;
   ffmpegBusy: boolean;
   starting: boolean;
   onSelectItem(index: number): void;

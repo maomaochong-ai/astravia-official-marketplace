@@ -2,16 +2,22 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { toolCapability } from "../../../domain/capabilities";
 import { formatBytes } from "../../../domain/format-bytes";
-import type { Capabilities, FfmpegInstall, ServiceSettings } from "../../../domain/media-info";
+import type { Capabilities, EnginePreference, ServiceSettings, ToolInstall } from "../../../domain/media-info";
+
+/** Order the engine picker renders in: the default first, then the two concrete engines. */
+const ENGINE_CHOICES: EnginePreference[] = ["auto", "lux", "yt-dlp"];
 
 interface DownloadSettingsPanelProps {
   settings: ServiceSettings;
   capabilities: Capabilities | null;
-  ffmpegInstall: FfmpegInstall | null;
+  ffmpegInstall: ToolInstall | null;
   ffmpegBusy: boolean;
+  ytdlpInstall: ToolInstall | null;
+  ytdlpBusy: boolean;
   onSave(patch: Partial<ServiceSettings>): void;
   onRefreshCapabilities(): void;
   onInstallFfmpeg(): void;
+  onInstallYtdlp(): void;
   /** Jump straight to the cookie field when the failure was a missing session. */
   focusCookie?: boolean;
 }
@@ -49,14 +55,76 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+/** One line of the toolchain list: what is installed, and the button that fixes it. */
+function ToolRow({ caption, available, action }: { caption: string; available: boolean; action?: ReactNode }) {
+  return (
+    <li className="flex items-center justify-between gap-3">
+      <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span
+          aria-hidden="true"
+          className={`size-1.5 shrink-0 rounded-full ${available ? "bg-primary" : "bg-muted-foreground/40"}`}
+        />
+        <span className="truncate">{caption}</span>
+      </span>
+      {action}
+    </li>
+  );
+}
+
+/** Install button that turns into a progress readout while the download runs. */
+function InstallAction({
+  label,
+  install,
+  busy,
+  unsupportedLabel,
+  installingLabel,
+  onInstall,
+}: {
+  label: string;
+  install: ToolInstall | null;
+  busy: boolean;
+  unsupportedLabel: string;
+  installingLabel: (percent: number) => string;
+  onInstall: () => void;
+}) {
+  if (busy || install?.phase === "downloading" || install?.phase === "verifying") {
+    const percent =
+      install && install.totalBytes > 0
+        ? Math.min(100, Math.max(0, Math.round((install.receivedBytes / install.totalBytes) * 100)))
+        : 0;
+    return (
+      <span className="inline-flex h-6 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] tabular-nums text-muted-foreground">
+        <span className="icon-[solar--refresh-linear] size-3 animate-spin" aria-hidden="true" />
+        {installingLabel(percent)}
+      </span>
+    );
+  }
+  if (install?.supported === false) {
+    return <span className="text-[11px] text-muted-foreground">{unsupportedLabel}</span>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={onInstall}
+      className="inline-flex h-6 items-center gap-1.5 rounded-md border border-primary/60 px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
+    >
+      <span className="icon-[solar--download-minimalistic-linear] size-3" aria-hidden="true" />
+      {install?.totalBytes ? `${label} (${formatBytes(install.totalBytes)})` : label}
+    </button>
+  );
+}
+
 export function DownloadSettingsPanel({
   settings,
   capabilities,
   ffmpegInstall,
   ffmpegBusy,
+  ytdlpInstall,
+  ytdlpBusy,
   onSave,
   onRefreshCapabilities,
   onInstallFfmpeg,
+  onInstallYtdlp,
   focusCookie = false,
 }: DownloadSettingsPanelProps) {
   const { t } = useTranslation();
@@ -76,13 +144,8 @@ export function DownloadSettingsPanel({
   }, [focusCookie]);
 
   const lux = toolCapability(capabilities, "lux");
+  const ytdlp = toolCapability(capabilities, "ytdlp");
   const ffmpeg = toolCapability(capabilities, "ffmpeg");
-  const installing =
-    ffmpegBusy || ffmpegInstall?.phase === "downloading" || ffmpegInstall?.phase === "verifying";
-  const percent =
-    ffmpegInstall && ffmpegInstall.totalBytes > 0
-      ? Math.min(100, Math.max(0, Math.round((ffmpegInstall.receivedBytes / ffmpegInstall.totalBytes) * 100)))
-      : 0;
 
   return (
     <section className="mt-4 rounded-xl border border-border bg-card px-4 py-2">
@@ -158,34 +221,70 @@ export function DownloadSettingsPanel({
 
       <div className="border-t border-border" />
 
-      <div className="flex items-center justify-between gap-4 py-2.5">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-foreground">{t("settings.engine")}</p>
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            {lux.available ? `lux ${lux.version ?? ""}` : t("settings.luxMissing")}
-            {" · "}
-            {ffmpeg.available ? `ffmpeg ${ffmpeg.version ?? ""}` : t("settings.ffmpegMissing")}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          {ffmpeg?.available ? null : installing ? (
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] tabular-nums text-muted-foreground">
-              <span className="icon-[solar--refresh-linear] size-3 animate-spin" aria-hidden="true" />
-              {t("settings.ffmpegInstalling", { percent })}
-            </span>
-          ) : ffmpegInstall?.supported === false ? (
-            <span className="text-[11px] text-muted-foreground">{t("settings.ffmpegUnsupported")}</span>
-          ) : (
+      <Field label={t("settings.engine")} hint={t("settings.engineHint")}>
+        <div className="flex gap-1">
+          {ENGINE_CHOICES.map((choice) => (
             <button
+              key={choice}
               type="button"
-              onClick={onInstallFfmpeg}
-              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-primary/60 px-2 text-[11px] text-primary transition-colors hover:bg-primary/10"
+              aria-pressed={settings.engine === choice}
+              onClick={() => onSave({ engine: choice })}
+              className={`h-7 rounded-md border px-2 text-[11px] transition-colors ${
+                settings.engine === choice
+                  ? "border-primary/70 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
             >
-              <span className="icon-[solar--cpu-bolt-linear] size-3" aria-hidden="true" />
-              {ffmpegInstall?.totalBytes
-                ? `${t("settings.ffmpegInstall")} (${formatBytes(ffmpegInstall.totalBytes)})`
-                : t("settings.ffmpegInstall")}
+              {t(`settings.engine.${choice}`)}
             </button>
+          ))}
+        </div>
+      </Field>
+
+      <div className="border-t border-border" />
+
+      <div className="flex items-start justify-between gap-4 py-2.5">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-foreground">{t("settings.toolchain")}</p>
+          <ul className="mt-1 space-y-1">
+            <ToolRow
+              available={lux.available}
+              caption={lux.available ? `lux ${lux.version ?? ""}`.trim() : `lux · ${t("settings.luxMissing")}`}
+            />
+            <ToolRow
+              available={ytdlp.available}
+              caption={
+                ytdlp.available ? `yt-dlp ${ytdlp.version ?? ""}`.trim() : `yt-dlp · ${t("settings.ytdlpMissing")}`
+              }
+            />
+            <ToolRow
+              available={ffmpeg.available}
+              caption={
+                ffmpeg.available ? `ffmpeg ${ffmpeg.version ?? ""}`.trim() : `ffmpeg · ${t("settings.ffmpegMissing")}`
+              }
+            />
+          </ul>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {ytdlp.available ? null : (
+            <InstallAction
+              label={t("settings.ytdlpInstall")}
+              install={ytdlpInstall}
+              busy={ytdlpBusy}
+              unsupportedLabel={t("settings.ffmpegUnsupported")}
+              installingLabel={(percent) => t("settings.ytdlpInstalling", { percent })}
+              onInstall={onInstallYtdlp}
+            />
+          )}
+          {ffmpeg.available ? null : (
+            <InstallAction
+              label={t("settings.ffmpegInstall")}
+              install={ffmpegInstall}
+              busy={ffmpegBusy}
+              unsupportedLabel={t("settings.ffmpegUnsupported")}
+              installingLabel={(percent) => t("settings.ffmpegInstalling", { percent })}
+              onInstall={onInstallFfmpeg}
+            />
           )}
           <button
             type="button"
@@ -197,6 +296,7 @@ export function DownloadSettingsPanel({
           </button>
         </div>
       </div>
+
     </section>
   );
 }

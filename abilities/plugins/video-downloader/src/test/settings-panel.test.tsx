@@ -26,11 +26,20 @@ const settings = {
   cookie: "",
   multiThread: true,
   keepPartialFiles: false,
+  engine: "auto" as const,
 };
 
 const capabilities = {
   lux: { available: true, path: "/bin/lux", version: "0.24.1", source: "bundled" as const },
+  ytdlp: { available: true, path: "/data/bin/yt-dlp", version: "2026.08.19", source: "bundled" as const },
   ffmpeg: { available: false, path: null, version: null, source: null },
+};
+
+const noops = {
+  onSave: () => undefined,
+  onRefreshCapabilities: () => undefined,
+  onInstallFfmpeg: () => undefined,
+  onInstallYtdlp: () => undefined,
 };
 
 describe("DownloadSettingsPanel", () => {
@@ -41,12 +50,30 @@ describe("DownloadSettingsPanel", () => {
         capabilities={capabilities}
         ffmpegInstall={{ phase: "downloading", receivedBytes: 5_000_000, totalBytes: 19_246_198, supported: true, error: null }}
         ffmpegBusy={false}
-        onSave={() => undefined}
-        onRefreshCapabilities={() => undefined}
-        onInstallFfmpeg={() => undefined}
+        ytdlpInstall={null}
+        ytdlpBusy={false}
+        {...noops}
       />,
     );
     expect(markup).toContain("Installing 26%");
+  });
+
+  it("marks the saved engine as pressed and offers yt-dlp when it is missing", () => {
+    const withoutYtdlp = { ...capabilities, ytdlp: { available: false, path: null, version: null, source: null } };
+    const markup = renderToString(
+      <DownloadSettingsPanel
+        settings={{ ...settings, engine: "yt-dlp" }}
+        capabilities={withoutYtdlp}
+        ffmpegInstall={null}
+        ffmpegBusy={false}
+        ytdlpInstall={null}
+        ytdlpBusy={false}
+        {...noops}
+      />,
+    );
+    expect(markup).toContain("yt-dlp · not installed");
+    expect(markup).toContain("Install yt-dlp");
+    expect(markup).toMatch(/aria-pressed="true"[^>]*>yt-dlp|>yt-dlp<\/button>/);
   });
 
   it("renders when settings arrive without a cookie field", () => {
@@ -58,9 +85,9 @@ describe("DownloadSettingsPanel", () => {
           capabilities={null}
           ffmpegInstall={null}
           ffmpegBusy={false}
-          onSave={() => undefined}
-          onRefreshCapabilities={() => undefined}
-          onInstallFfmpeg={() => undefined}
+          ytdlpInstall={null}
+          ytdlpBusy={false}
+          {...noops}
         />,
       ),
     ).not.toThrow();
@@ -76,9 +103,9 @@ describe("DownloadSettingsPanel", () => {
         capabilities={partial}
         ffmpegInstall={null}
         ffmpegBusy={false}
-        onSave={() => undefined}
-        onRefreshCapabilities={() => undefined}
-        onInstallFfmpeg={() => undefined}
+        ytdlpInstall={null}
+        ytdlpBusy={false}
+        {...noops}
       />,
     );
     expect(markup).toContain("engine missing");
@@ -94,9 +121,9 @@ describe("DownloadSettingsPanel", () => {
           capabilities={empty}
           ffmpegInstall={null}
           ffmpegBusy={false}
-          onSave={() => undefined}
-          onRefreshCapabilities={() => undefined}
-          onInstallFfmpeg={() => undefined}
+          ytdlpInstall={null}
+          ytdlpBusy={false}
+          {...noops}
         />,
       ),
     ).not.toThrow();

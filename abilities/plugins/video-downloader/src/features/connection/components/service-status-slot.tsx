@@ -22,6 +22,7 @@ export function ServiceStatusSlot({ ctx }: { ctx: ManagedPluginContext }) {
   const { t } = useTranslation();
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const lux = toolCapability(capabilities, "lux");
+  const ytdlp = toolCapability(capabilities, "ytdlp");
   const ffmpeg = toolCapability(capabilities, "ffmpeg");
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +43,8 @@ export function ServiceStatusSlot({ ctx }: { ctx: ManagedPluginContext }) {
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-2">
       <StatusRow label={t("status.lux")} available={lux.available} version={lux.version} />
+      <div className="border-t border-border" />
+      <StatusRow label="yt-dlp" available={ytdlp.available} version={ytdlp.version} />
       <div className="border-t border-border" />
       <StatusRow label="ffmpeg" available={ffmpeg.available} version={ffmpeg.version} />
       <div className="border-t border-border" />

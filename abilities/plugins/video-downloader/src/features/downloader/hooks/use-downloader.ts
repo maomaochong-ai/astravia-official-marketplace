@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type {
   Capabilities,
   DownloadTask,
-  FfmpegInstall,
+  EngineName,
   MediaItem,
   ProbeResult,
   ServiceSettings,
+  ToolCapability,
+  ToolInstall,
 } from "../../../domain/media-info";
 import type { DownloaderApi, ServiceRequestError } from "../../../services/downloader-api";
 import type { ManagedPluginContext } from "../../../runtime-contract";
@@ -14,6 +16,9 @@ import { extractTargetUrl } from "../../../domain/target-url";
 const POLL_INTERVAL_MS = 900;
 const INSTALL_POLL_MS = 600;
 const INSTALL_TIMEOUT_MS = 20 * 60_000;
+
+/** Tools the service can provision on demand. */
+type InstallableTool = "ffmpeg" | "ytdlp";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,8 +38,10 @@ export interface DownloaderState {
   activeItemIndex: number;
   selectedFormatId: string | null;
   starting: boolean;
-  ffmpegInstall: FfmpegInstall | null;
+  ffmpegInstall: ToolInstall | null;
   ffmpegBusy: boolean;
+  ytdlpInstall: ToolInstall | null;
+  ytdlpBusy: boolean;
 }
 
 export interface DownloaderController {
@@ -52,6 +59,8 @@ export interface DownloaderController {
   saveSettings(patch: Partial<ServiceSettings>): Promise<void>;
   refreshCapabilities(): Promise<void>;
   installFfmpeg(): Promise<void>;
+  installYtdlp(): Promise<void>;
+  retryWithSecondEngine(): Promise<void>;
   reload(): Promise<void>;
 }
 
@@ -70,7 +79,9 @@ const INITIAL_STATE: DownloaderState = {
   selectedFormatId: null,
   starting: false,
   ffmpegInstall: null,
+  ytdlpInstall: null,
   ffmpegBusy: false,
+  ytdlpBusy: false,
 };
 
 function activeItem(state: DownloaderState): MediaItem | null {
@@ -110,18 +121,20 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   async function boot(): Promise<void> {
     patch({ booting: true, bootError: null });
     try {
-      const [capabilities, settings, tasks, toolchain] = await Promise.all([
+      const [capabilities, settings, tasks, ffmpegTool, ytdlpTool] = await Promise.all([
         api.capabilities(),
         api.settings(),
         api.tasks(),
         api.ffmpeg(),
+        api.ytdlp(),
       ]);
       patch({
         booting: false,
-        capabilities: { ...capabilities, ffmpeg: toolchain.ffmpeg },
+        capabilities: { ...capabilities, ffmpeg: ffmpegTool.ffmpeg, ytdlp: ytdlpTool.ytdlp },
         settings,
         tasks,
-        ffmpegInstall: toolchain.install,
+        ffmpegInstall: ffmpegTool.install,
+        ytdlpInstall: ytdlpTool.install,
       });
     } catch (error) {
       patch({ booting: false, bootError: messageOf(error) });
@@ -144,7 +157,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.booting, state.bootError]);
 
-  async function analyze(): Promise<void> {
+  async function analyze(engine?: EngineName): Promise<void> {
     // A pasted share message wraps the link in prose, so the target is extracted first and
     // written back into the field: the user sees the URL that is actually being resolved.
     const url = extractTargetUrl(state.url);
@@ -155,7 +168,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
     if (url !== state.url.trim()) patch({ url });
     patch({ probing: true, probeError: null, probeErrorCode: null });
     try {
-      const result = await api.probe(url);
+      const result = await api.probe(url, engine);
       if (!result.items.length) {
         patch({
           probing: false,
@@ -202,44 +215,59 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
     patch({ selectedFormatId: formatId });
   }
 
-  /**
-   * Downloads the pinned ffmpeg build and waits for it, so a multi-part rendition never leaves
-   * the user to install ffmpeg by hand.
-   */
-  async function waitForFfmpeg(): Promise<boolean> {
-    let capability = state.capabilities?.ffmpeg ?? (await api.ffmpeg()).ffmpeg;
-    if (capability.available) return true;
+  /** Read one provisioned tool plus its install progress; the two endpoints differ only in key. */
+  async function readTool(tool: InstallableTool): Promise<{ capability: ToolCapability; install: ToolInstall }> {
+    if (tool === "ffmpeg") {
+      const body = await api.ffmpeg();
+      return { capability: body.ffmpeg, install: body.install };
+    }
+    const body = await api.ytdlp();
+    return { capability: body.ytdlp, install: body.install };
+  }
 
-    patch({ ffmpegBusy: true });
+  /** Merge a toolchain read into state without clobbering capabilities loaded in the same render. */
+  function applyTool(tool: InstallableTool, capability: ToolCapability, install: ToolInstall): void {
+    if (!mounted.current) return;
+    setState((current) => {
+      const capabilities = current.capabilities
+        ? tool === "ffmpeg"
+          ? { ...current.capabilities, ffmpeg: capability }
+          : { ...current.capabilities, ytdlp: capability }
+        : null;
+      return tool === "ffmpeg"
+        ? { ...current, ffmpegInstall: install, capabilities }
+        : { ...current, ytdlpInstall: install, capabilities };
+    });
+  }
+
+  /**
+   * Downloads a pinned tool build and waits for it, so a rendition that needs an extra step (a
+   * merge, or a second engine) never leaves the user to install it by hand.
+   */
+  async function waitForTool(tool: InstallableTool): Promise<boolean> {
+    const current = await readTool(tool);
+    if (current.capability.available) return true;
+
+    patch(tool === "ffmpeg" ? { ffmpegBusy: true } : { ytdlpBusy: true });
     try {
-      let install = await api.installFfmpeg();
-      patch({ ffmpegInstall: install });
+      let install = await (tool === "ffmpeg" ? api.installFfmpeg() : api.installYtdlp());
+      applyTool(tool, current.capability, install);
       const deadline = Date.now() + INSTALL_TIMEOUT_MS;
       while (install.phase === "idle" || install.phase === "downloading" || install.phase === "verifying") {
         if (Date.now() > deadline) break;
         await delay(INSTALL_POLL_MS);
-        const next = await api.ffmpeg();
+        const next = await readTool(tool);
         install = next.install;
-        applyCapabilities(next.ffmpeg, install);
+        applyTool(tool, next.capability, install);
       }
-      if (install.phase === "failed") throw new Error(install.error ?? "ffmpeg install failed");
+      if (install.phase === "failed") throw new Error(install.error ?? `${tool} install failed`);
       // The POST may already have found a usable binary, so the authoritative answer is a fresh read.
-      const latest = await api.ffmpeg();
-      applyCapabilities(latest.ffmpeg, latest.install);
-      return latest.ffmpeg.available;
+      const latest = await readTool(tool);
+      applyTool(tool, latest.capability, latest.install);
+      return latest.capability.available;
     } finally {
-      patch({ ffmpegBusy: false });
+      patch(tool === "ffmpeg" ? { ffmpegBusy: false } : { ytdlpBusy: false });
     }
-  }
-
-  /** Merge a toolchain read into state without clobbering capabilities loaded in the same render. */
-  function applyCapabilities(ffmpeg: Capabilities["ffmpeg"], install: FfmpegInstall): void {
-    if (!mounted.current) return;
-    setState((current) => ({
-      ...current,
-      ffmpegInstall: install,
-      capabilities: current.capabilities ? { ...current.capabilities, ffmpeg } : null,
-    }));
   }
 
   async function sendDownload(): Promise<void> {
@@ -255,6 +283,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
       ext: format.ext,
       needsFfmpeg: format.needsFfmpeg,
       totalBytes: format.sizeBytes,
+      engine: state.result?.engine ?? undefined,
     });
   }
 
@@ -270,7 +299,7 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
       if (code === "ffmpeg_required") {
         patch({ starting: false });
         try {
-          if (await waitForFfmpeg()) {
+          if (await waitForTool("ffmpeg")) {
             await startDownload();
             return;
           }
@@ -317,9 +346,27 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
     },
     installFfmpeg: async () => {
       try {
-        await waitForFfmpeg();
+        await waitForTool("ffmpeg");
       } catch (error) {
         report(ctx.i18n.t("error.ffmpegInstallFailed"), error);
+      }
+    },
+    installYtdlp: async () => {
+      try {
+        await waitForTool("ytdlp");
+      } catch (error) {
+        report(ctx.i18n.t("error.ytdlpInstallFailed"), error);
+      }
+    },
+    retryWithSecondEngine: async () => {
+      try {
+        if (!state.capabilities?.ytdlp.available && !(await waitForTool("ytdlp"))) {
+          report(ctx.i18n.t("error.ytdlpRequired"));
+          return;
+        }
+        await analyze("yt-dlp");
+      } catch (error) {
+        report(ctx.i18n.t("error.engineSwitchFailed"), error);
       }
     },
     refreshCapabilities: async () => {

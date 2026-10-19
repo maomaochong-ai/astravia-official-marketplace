@@ -4,6 +4,8 @@ import { ServiceError } from "../errors.js";
 import { revealInFileManager } from "../fs/reveal.js";
 import { callTool, MCP_TOOLS } from "../mcp/tool-catalog.js";
 import { isHttpUrl, type ServiceContext } from "../service-context.js";
+import type { ServiceSettings } from "../settings/settings-store.js";
+import { normalizeEnginePreference } from "../engine/engine-name.js";
 
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
@@ -86,7 +88,7 @@ export function createRouter(context: ServiceContext) {
       sendJson(response, 200, {
         status: "ok",
         version: "1.0.0",
-        capabilities: { lux: context.lux, ffmpeg: context.ffmpeg },
+        capabilities: { lux: context.lux, ffmpeg: context.ffmpeg, ytdlp: context.ytdlp },
         directory: context.settings().downloadDirectory,
       });
       return;
@@ -94,7 +96,7 @@ export function createRouter(context: ServiceContext) {
 
     if (path === "/api/v1/capabilities") {
       if (method === "GET") {
-        sendJson(response, 200, { lux: context.lux, ffmpeg: context.ffmpeg });
+        sendJson(response, 200, { lux: context.lux, ffmpeg: context.ffmpeg, ytdlp: context.ytdlp });
         return;
       }
       if (method === "POST") {
@@ -115,6 +117,18 @@ export function createRouter(context: ServiceContext) {
       }
     }
 
+    if (path === "/api/v1/ytdlp") {
+      if (method === "GET") {
+        sendJson(response, 200, { ytdlp: context.ytdlp, install: context.ytdlpInstallState() });
+        return;
+      }
+      if (method === "POST") {
+        const install = context.startYtdlpInstall();
+        sendJson(response, 202, { ytdlp: context.ytdlp, install });
+        return;
+      }
+    }
+
     if (method === "POST" && path === "/api/v1/probe") {
       const body = await readJsonBody(request);
       const target = asString(body.url);
@@ -122,7 +136,9 @@ export function createRouter(context: ServiceContext) {
         sendError(response, 400, "invalid_url", "请输入以 http:// 或 https:// 开头的链接");
         return;
       }
-      const result = await context.probe(target);
+      // An explicit `engine` in the body overrides the stored preference for this probe only.
+      const requestedEngine = asString(body.engine);
+      const result = await context.probe(target, requestedEngine ? normalizeEnginePreference(requestedEngine) : undefined);
       sendJson(response, 200, result);
       return;
     }
@@ -153,6 +169,7 @@ export function createRouter(context: ServiceContext) {
           ext: asString(body.ext) || "mp4",
           needsFfmpeg: body.needsFfmpeg === true,
           totalBytes: asNumber(body.totalBytes),
+          engine: asString(body.engine),
         });
         sendJson(response, 201, { task });
         return;
@@ -210,6 +227,7 @@ export function createRouter(context: ServiceContext) {
           ext: task.ext,
           needsFfmpeg: task.needsFfmpeg,
           totalBytes: task.totalBytes,
+          engine: task.engine,
         });
         sendJson(response, 201, { task: retried });
         return;
@@ -229,6 +247,7 @@ export function createRouter(context: ServiceContext) {
         if (typeof body.cookie === "string") patch.cookie = body.cookie;
         if (typeof body.multiThread === "boolean") patch.multiThread = body.multiThread;
         if (typeof body.keepPartialFiles === "boolean") patch.keepPartialFiles = body.keepPartialFiles;
+        if (typeof body.engine === "string") patch.engine = body.engine as ServiceSettings["engine"];
         sendJson(response, 200, { settings: await context.updateSettings(patch) });
         return;
       }
@@ -272,6 +291,8 @@ export function createRouter(context: ServiceContext) {
             settings: () => context.settings(),
             ensureFfmpeg: () => context.ensureFfmpeg(),
             ffmpegInstall: () => context.ffmpegInstallState(),
+            ensureYtdlp: () => context.ensureYtdlp(),
+            ytdlpInstall: () => context.ytdlpInstallState(),
             describeSites: () => context.describeSites(),
           });
           sendJson(response, 200, mcpText(id, result.text, result.isError === true));

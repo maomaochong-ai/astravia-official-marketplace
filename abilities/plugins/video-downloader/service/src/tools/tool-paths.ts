@@ -5,8 +5,8 @@ export function toolDirectory(dataRoot: string): string {
   return join(dataRoot, "bin");
 }
 
-export function toolFileName(base: string): string {
-  return process.platform === "win32" ? `${base}.exe` : base;
+export function toolFileName(base: string, platform: NodeJS.Platform = process.platform): string {
+  return platform === "win32" ? `${base}.exe` : base;
 }
 
 /**

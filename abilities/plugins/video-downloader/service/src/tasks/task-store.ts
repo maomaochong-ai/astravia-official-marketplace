@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ensureDirectory } from "../fs/files.js";
+import { isEngineName, type EngineName } from "../engine/engine-name.js";
 import { isActivePhase, type DownloadTask } from "./types.js";
 
 const HISTORY_LIMIT = 60;
@@ -11,6 +12,7 @@ export interface NewTaskInput {
   site: string;
   title: string;
   streamId: string;
+  engine: EngineName;
   quality: string;
   ext: string;
   needsFfmpeg: boolean;
@@ -42,6 +44,8 @@ export class TaskStore {
       for (const entry of parsed) {
         const task = entry as DownloadTask;
         if (!task?.id || typeof task.id !== "string") continue;
+        // History written before the engine field existed came from lux only.
+        if (!isEngineName(task.engine)) task.engine = "lux";
         if (isActivePhase(task.phase) || task.phase === "queued") {
           this.tasks.set(task.id, {
             ...task,
@@ -76,6 +80,7 @@ export class TaskStore {
       site: input.site,
       title: input.title,
       streamId: input.streamId,
+      engine: input.engine,
       quality: input.quality,
       ext: input.ext,
       needsFfmpeg: input.needsFfmpeg,

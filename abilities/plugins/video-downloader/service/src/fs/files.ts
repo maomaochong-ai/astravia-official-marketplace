@@ -21,8 +21,8 @@ export function sanitizeFileName(input: string, maxLength = 120): string {
   return fallback.slice(0, maxLength).trim();
 }
 
-export async function ensureDirectory(directory: string): Promise<void> {
-  await mkdir(directory, { recursive: true });
+export async function ensureDirectory(directory: string, mode?: number): Promise<void> {
+  await mkdir(directory, { recursive: true, ...(mode === undefined ? {} : { mode }) });
 }
 
 async function exists(path: string): Promise<boolean> {

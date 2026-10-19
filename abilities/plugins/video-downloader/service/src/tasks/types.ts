@@ -1,3 +1,5 @@
+import type { EngineName } from "../engine/engine-name.js";
+
 export type TaskPhase =
   | "queued"
   | "extracting"
@@ -14,6 +16,8 @@ export interface DownloadTask {
   site: string;
   title: string;
   streamId: string;
+  /** Engine that resolved the page, so the runner knows which command to spawn. */
+  engine: EngineName;
   quality: string;
   ext: string;
   /** Upstream splits this rendition into parts that lux remuxes with ffmpeg. */

@@ -85,12 +85,12 @@ describe("normalizeSettings", () => {
 
 describe("summarizeFailure", () => {
   it("removes colour codes and progress noise", () => {
-    const message = summarizeFailure("\u001b[31mrequest failed: 403\u001b[0m\n[====>   ] 12%", "").message;
+    const message = summarizeFailure("lux", "\u001b[31mrequest failed: 403\u001b[0m\n[====>   ] 12%", "").message;
     expect(message).toBe("request failed: 403");
   });
 
   it("never returns an empty string", () => {
-    expect(summarizeFailure("", "")).toEqual({ message: "下载失败", code: null });
+    expect(summarizeFailure("lux", "", "")).toEqual({ message: "下载失败", code: null });
   });
 
   it("keeps the cause lux wrote on stdout after `error:` and drops the stack", () => {
@@ -103,7 +103,7 @@ describe("summarizeFailure", () => {
       "\truntime/asm_arm64.s:1222",
     ].join("\n");
 
-    const failure = summarizeFailure("", output);
+    const failure = summarizeFailure("lux", "", output);
     expect(failure.code).toBe("network_timeout");
     expect(failure.message).toBe('Get "https://www.youtube.com": dial tcp 31.13.92.37:443: connect: operation timed out');
   });
@@ -116,6 +116,7 @@ function taskWith(overrides: Partial<DownloadTask>): DownloadTask {
     site: "youtube",
     title: "v",
     streamId: "1080",
+    engine: "lux",
     quality: "1080P",
     ext: "mp4",
     needsFfmpeg: false,

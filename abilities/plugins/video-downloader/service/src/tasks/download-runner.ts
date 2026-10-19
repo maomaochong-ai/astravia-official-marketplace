@@ -6,6 +6,9 @@ import { measureDirectory } from "../fs/directory-usage.js";
 import { ensureDirectory, moveProducedFiles, sanitizeFileName } from "../fs/files.js";
 import { withToolPath } from "../tools/tool-paths.js";
 import { summarizeLuxFailure } from "../lux/diagnostics.js";
+import { codeOfYtdlpFailure, firstYtdlpErrorLine } from "../ytdlp/diagnostics.js";
+import { removeCookieFile, writeCookieFile } from "../ytdlp/cookies.js";
+import type { EngineName } from "../engine/engine-name.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { TaskStore } from "./task-store.js";
 import { estimateRemaining, type DownloadTask } from "./types.js";
@@ -28,33 +31,41 @@ interface RunningTask {
   speedBps: number;
   sawBytes: boolean;
   stderrTail: string;
-  /** lux reports most failures on stdout, so a bounded copy of it is kept for the error message. */
+  /** Engines report most failures on stdout, so a bounded copy of it is kept for the message. */
   stdoutTail: string;
+  /** Jar written for this task only, removed when the task settles. */
+  cookieFile: string | null;
 }
 
 export interface RunnerDependencies {
   store: TaskStore;
   settings: () => ServiceSettings;
   luxPath: () => string | null;
+  ytdlpPath: () => string | null;
   dataRoot: string;
   /** Directory holding tools the plugin provisioned itself (ffmpeg). */
   toolDirectory: string;
   onUpdate?: (task: DownloadTask) => void;
 }
 
-/** Reduce a failed lux run to one readable line, without its Go stack trace. */
-export function summarizeFailure(stderr: string, stdout: string): { message: string; code: string | null } {
+/** Reduce a failed engine run to one readable line; lux needs its Go stack trace stripped. */
+export function summarizeFailure(engine: EngineName, stderr: string, stdout: string): { message: string; code: string | null } {
+  if (engine === "yt-dlp") {
+    const line = firstYtdlpErrorLine(stderr) ?? firstYtdlpErrorLine(stdout);
+    if (!line) return { message: "下载失败", code: null };
+    return { message: line.slice(0, 240), code: codeOfYtdlpFailure(line) };
+  }
   const failure = summarizeLuxFailure(stderr, stdout);
   if (!failure) return { message: "下载失败", code: null };
   return { message: failure.detail.slice(0, 240), code: failure.code };
 }
 
 /**
- * Owns the lifecycle of every download: queueing, spawning lux, sampling progress from the
- * work directory, then moving finished files into the user's download folder.
+ * Owns the lifecycle of every download: queueing, spawning the task's engine, sampling progress
+ * from the work directory, then moving finished files into the user's download folder.
  *
- * Progress is measured from bytes on disk rather than from lux's terminal progress bar,
- * which is a TTY-oriented rendering with colour codes and is not a stable interface.
+ * Progress is measured from bytes on disk rather than from a terminal progress bar, which is a
+ * TTY-oriented rendering with colour codes and is not a stable interface.
  */
 export class DownloadRunner {
   private readonly running = new Map<string, RunningTask>();
@@ -88,12 +99,16 @@ export class DownloadRunner {
   }
 
   private async run(task: DownloadTask): Promise<void> {
-    const lux = this.dependencies.luxPath();
     const store = this.dependencies.store;
-    if (!lux) {
+    const enginePath = task.engine === "yt-dlp" ? this.dependencies.ytdlpPath() : this.dependencies.luxPath();
+    if (!enginePath) {
       store.update(task.id, {
         phase: "failed",
-        error: "未找到 lux 可执行文件，请重新安装插件服务",
+        error:
+          task.engine === "yt-dlp"
+            ? "未找到 yt-dlp 可执行文件，请先在设置里安装 yt-dlp 引擎"
+            : "未找到 lux 可执行文件，请重新安装插件服务",
+        errorCode: "engine_unavailable",
         finishedAt: Date.now(),
       });
       this.emit(task.id);
@@ -116,22 +131,30 @@ export class DownloadRunner {
       sawBytes: false,
       stderrTail: "",
       stdoutTail: "",
+      cookieFile: null,
     };
     this.running.set(task.id, state);
     await ensureDirectory(workDirectory);
 
-    const args = ["-s"];
-    if (settings.cookie) args.push("-c", settings.cookie);
-    if (settings.multiThread) args.push("-m");
-    args.push("-f", task.streamId, "-o", workDirectory, "-O", sanitizeFileName(task.title), task.url);
+    // yt-dlp reads cookies from a jar, and the jar is scoped to this task's host.
+    if (task.engine === "yt-dlp" && settings.cookie.trim()) {
+      state.cookieFile = await writeCookieFile(
+        this.dependencies.dataRoot,
+        settings.cookie,
+        task.url,
+        `task-${task.id}`,
+      ).catch(() => null);
+    }
+
+    const args = this.argumentsFor(task, settings, workDirectory, state.cookieFile);
 
     store.update(task.id, { phase: "extracting", startedAt: Date.now() });
     this.emit(task.id);
 
     let child: LuxChildProcess;
     try {
-      // lux resolves `ffmpeg` through PATH, so the provisioned tool directory goes first.
-      child = spawn(lux, args, {
+      // Both engines resolve `ffmpeg` through PATH, so the provisioned tool directory goes first.
+      child = spawn(enginePath, args, {
         cwd: workDirectory,
         env: withToolPath(this.dependencies.toolDirectory),
         stdio: ["ignore", "pipe", "pipe"],
@@ -139,6 +162,7 @@ export class DownloadRunner {
       });
     } catch (error) {
       this.running.delete(task.id);
+      await removeCookieFile(state.cookieFile);
       store.update(task.id, {
         phase: "failed",
         error: error instanceof Error ? error.message : String(error),
@@ -170,13 +194,34 @@ export class DownloadRunner {
         void this.finish(task.id, { ok: false, reason: "已取消", code: null });
         return;
       }
-      const failure = code === 0 ? null : summarizeFailure(stderrTail, stdoutTail);
+      const failure = code === 0 ? null : summarizeFailure(task.engine, stderrTail, stdoutTail);
       void this.finish(task.id, {
         ok: code === 0,
         reason: failure?.message ?? "",
         code: failure?.code ?? null,
       });
     });
+  }
+
+  /** Command line for the task's engine; the two accept different download options. */
+  private argumentsFor(
+    task: DownloadTask,
+    settings: ServiceSettings,
+    workDirectory: string,
+    cookieFile: string | null,
+  ): string[] {
+    if (task.engine === "yt-dlp") {
+      const args = ["--no-warnings", "--no-playlist", "--no-progress"];
+      if (cookieFile) args.push("--cookies", cookieFile);
+      // The template lets the engine name the file; `moveProducedFiles` works on the directory.
+      args.push("-f", task.streamId, "-o", join(workDirectory, "%(title)s.%(ext)s"), task.url);
+      return args;
+    }
+    const args = ["-s"];
+    if (settings.cookie) args.push("-c", settings.cookie);
+    if (settings.multiThread) args.push("-m");
+    args.push("-f", task.streamId, "-o", workDirectory, "-O", sanitizeFileName(task.title), task.url);
+    return args;
   }
 
   private async sample(taskId: string): Promise<void> {
@@ -220,6 +265,7 @@ export class DownloadRunner {
     this.running.delete(taskId);
     if (state.timer) clearInterval(state.timer);
     state.child = null;
+    await removeCookieFile(state.cookieFile);
 
     const store = this.dependencies.store;
     const task = store.get(taskId);

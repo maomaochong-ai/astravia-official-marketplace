@@ -36,6 +36,9 @@ export function DownloaderView({
 
   const ffmpegAvailable = toolCapability(state.capabilities, "ffmpeg").available;
   const needsCookie = state.probeErrorCode === "auth_required";
+  // A refusal (403 / anti-bot) is not fixed by a cookie here: the honest remedy is the other engine.
+  const needsOtherEngine =
+    state.probeErrorCode === "site_blocked" && state.result?.engine !== "yt-dlp" && state.capabilities?.ytdlp.available !== false;
   const result = state.result;
   const probeError = failureMessageKey(state.probeErrorCode);
 
@@ -106,7 +109,9 @@ export function DownloaderView({
                 remedy={
                   needsCookie
                     ? { label: t("action.fillCookie"), run: () => setSettingsOpen(true) }
-                    : undefined
+                    : needsOtherEngine
+                      ? { label: t("action.tryYtdlp"), run: () => void controller.retryWithSecondEngine() }
+                      : undefined
                 }
                 onAnalyze={() => void controller.analyze()}
                 onPaste={() => void controller.useClipboard()}
@@ -145,9 +150,12 @@ export function DownloaderView({
                 capabilities={state.capabilities}
                 ffmpegInstall={state.ffmpegInstall}
                 ffmpegBusy={state.ffmpegBusy}
+                ytdlpInstall={state.ytdlpInstall}
+                ytdlpBusy={state.ytdlpBusy}
                 onSave={(patch) => void controller.saveSettings(patch)}
                 onRefreshCapabilities={() => void controller.refreshCapabilities()}
                 onInstallFfmpeg={() => void controller.installFfmpeg()}
+                onInstallYtdlp={() => void controller.installYtdlp()}
                 focusCookie={needsCookie}
               />
             ) : null}
