@@ -11,9 +11,37 @@ interface RuntimeAsset {
 
 const assetsByPlatform = runtimeLock.platforms as unknown as Record<PlatformTag, RuntimeAsset[]>;
 
+// A pinned artifact can be slow or drop on a bad link; one retry covers that without
+// turning a missing upload into a long stall.
+const DOWNLOAD_ATTEMPTS = 2;
+
 // Activation can be replayed while the host refreshes plugin contributions; share one
 // in-flight startup so two activations cannot both decide the runtime is missing.
 let startup: Promise<void> | undefined;
+let startupFailure: string | null = null;
+
+/**
+ * Why the last runtime bootstrap failed. Every later service request only reports
+ * "Service is not ready", so the panel needs this to show the real cause.
+ */
+export function serviceStartupFailure(): string | null {
+  return startupFailure;
+}
+
+/** A failure the caller already explained well enough that a retry cannot help. */
+class RuntimeAssetError extends Error {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
+    super(message);
+    this.name = "RuntimeAssetError";
+  }
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function sha256(base64: string): Promise<string> {
   const binary = atob(base64);
@@ -24,6 +52,43 @@ function sha256(base64: string): Promise<string> {
     .then((digest) =>
       Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(""),
     );
+}
+
+async function fetchAsset(ctx: ManagedPluginContext, asset: RuntimeAsset): Promise<string> {
+  const response = await ctx.network.request<string>({
+    url: asset.url,
+    responseType: "base64",
+    timeoutMs: 180_000,
+  });
+  if (!response.ok || typeof response.body !== "string") {
+    const params = { asset: asset.destination, version: runtimeLock.version, status: response.status };
+    throw new RuntimeAssetError(
+      response.status === 404
+        ? ctx.i18n.t("error.runtimeMissing", params)
+        : ctx.i18n.t("error.runtimeDownload", params),
+      // 404 means the pinned file was never published: retrying cannot fix that.
+      response.status !== 404,
+    );
+  }
+  if ((await sha256(response.body)) !== asset.sha256) {
+    throw new RuntimeAssetError(
+      ctx.i18n.t("error.runtimeChecksum", { asset: asset.destination }),
+      // A truncated transfer shows up as a checksum mismatch; one retry is worth it.
+      true,
+    );
+  }
+  return response.body;
+}
+
+async function downloadAsset(ctx: ManagedPluginContext, asset: RuntimeAsset): Promise<string> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await fetchAsset(ctx, asset);
+    } catch (error) {
+      const retryable = !(error instanceof RuntimeAssetError) || error.retryable;
+      if (!retryable || attempt >= DOWNLOAD_ATTEMPTS) throw error;
+    }
+  }
 }
 
 async function waitForStatus(
@@ -43,9 +108,15 @@ async function waitForStatus(
 
 export async function ensureServiceStarted(ctx: ManagedPluginContext): Promise<void> {
   if (startup) return startup;
-  startup = ensureServiceStartedOnce(ctx).finally(() => {
-    startup = undefined;
-  });
+  startupFailure = null;
+  startup = ensureServiceStartedOnce(ctx)
+    .catch((error: unknown) => {
+      startupFailure = messageOf(error);
+      throw error;
+    })
+    .finally(() => {
+      startup = undefined;
+    });
   return startup;
 }
 
@@ -68,21 +139,10 @@ async function ensureServiceStartedOnce(ctx: ManagedPluginContext): Promise<void
     if (!assets) throw new Error(`Unsupported runtime platform: ${tag}`);
     const payloads: Array<{ destination: string; data: string }> = [];
     for (const asset of assets) {
-      const response = await ctx.network.request<string>({
-        url: asset.url,
-        responseType: "base64",
-        timeoutMs: 180_000,
-      });
-      if (!response.ok || typeof response.body !== "string") {
-        throw new Error(`下载运行时失败：HTTP ${response.status}`);
-      }
-      if ((await sha256(response.body)) !== asset.sha256) {
-        throw new Error(`运行时校验失败：${asset.destination}`);
-      }
-      payloads.push({ destination: asset.destination, data: response.body });
+      payloads.push({ destination: asset.destination, data: await downloadAsset(ctx, asset) });
     }
     status = await ctx.services.install(SERVICE_ID, payloads);
-    if (!status.installed) throw new Error(status.message ?? "运行时安装失败");
+    if (!status.installed) throw new Error(status.message ?? ctx.i18n.t("error.runtimeInstall"));
   }
 
   status = await ctx.services.start(SERVICE_ID);

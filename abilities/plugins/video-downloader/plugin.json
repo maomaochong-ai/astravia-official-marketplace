@@ -3,10 +3,12 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.svg",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
-  "styles": ["dist/style.css"],
+  "styles": [
+    "dist/style.css"
+  ],
   "moduleFederation": {
     "remoteName": "video-downloader",
     "expose": "./plugin"
@@ -20,7 +22,11 @@
     "network.fetch"
   ],
   "network": {
-    "allowedHosts": ["github.com", "release-assets.githubusercontent.com", "registry.npmmirror.com"]
+    "allowedHosts": [
+      "github.com",
+      "release-assets.githubusercontent.com",
+      "registry.npmmirror.com"
+    ]
   },
   "providers": {
     "services": [
@@ -28,14 +34,14 @@
         "id": "video-downloader",
         "runtime": {
           "kind": "host-node",
-          "version": "1.3.0",
+          "version": "1.3.1",
           "entry": "service/dist/main.js",
           "platforms": {
             "win32-x64": {
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "ceb9bd8c38d00de2320828d41f3f6f068bdf1560fe6db241c0764f7b81232631",
+                  "sha256": "ca695e9159179209e227215f642336afcaa72619427359173c320d8c1379e92c",
                   "archive": "zip",
                   "destination": "service"
                 },
@@ -50,7 +56,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "ceb9bd8c38d00de2320828d41f3f6f068bdf1560fe6db241c0764f7b81232631",
+                  "sha256": "ca695e9159179209e227215f642336afcaa72619427359173c320d8c1379e92c",
                   "archive": "zip",
                   "destination": "service"
                 },
@@ -65,7 +71,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "ceb9bd8c38d00de2320828d41f3f6f068bdf1560fe6db241c0764f7b81232631",
+                  "sha256": "ca695e9159179209e227215f642336afcaa72619427359173c320d8c1379e92c",
                   "archive": "zip",
                   "destination": "service"
                 },
@@ -80,7 +86,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "ceb9bd8c38d00de2320828d41f3f6f068bdf1560fe6db241c0764f7b81232631",
+                  "sha256": "ca695e9159179209e227215f642336afcaa72619427359173c320d8c1379e92c",
                   "archive": "zip",
                   "destination": "service"
                 },
@@ -95,7 +101,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "ceb9bd8c38d00de2320828d41f3f6f068bdf1560fe6db241c0764f7b81232631",
+                  "sha256": "ca695e9159179209e227215f642336afcaa72619427359173c320d8c1379e92c",
                   "archive": "zip",
                   "destination": "service"
                 },
@@ -110,7 +116,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "ceb9bd8c38d00de2320828d41f3f6f068bdf1560fe6db241c0764f7b81232631",
+                  "sha256": "ca695e9159179209e227215f642336afcaa72619427359173c320d8c1379e92c",
                   "archive": "zip",
                   "destination": "service"
                 },

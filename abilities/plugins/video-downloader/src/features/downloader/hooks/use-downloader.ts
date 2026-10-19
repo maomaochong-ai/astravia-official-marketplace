@@ -12,6 +12,7 @@ import type {
 import type { DownloaderApi, ServiceRequestError } from "../../../services/downloader-api";
 import type { ManagedPluginContext } from "../../../runtime-contract";
 import { extractTargetUrl } from "../../../domain/target-url";
+import { ensureServiceStarted, serviceStartupFailure } from "../../../runtime";
 
 const POLL_INTERVAL_MS = 900;
 const INSTALL_POLL_MS = 600;
@@ -137,9 +138,24 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
         ytdlpInstall: ytdlpTool.install,
       });
     } catch (error) {
-      patch({ booting: false, bootError: messageOf(error) });
-      report(ctx.i18n.t("error.serviceUnavailable"), error);
+      // Activation already reported the bootstrap failure; show its cause here instead of the
+      // downstream "Service is not ready" every request reports, and do not notify twice.
+      const failure = serviceStartupFailure();
+      patch({ booting: false, bootError: failure ?? messageOf(error) });
+      if (!failure) report(ctx.i18n.t("error.serviceUnavailable"), error);
     }
+  }
+
+  async function restart(): Promise<void> {
+    patch({ booting: true, bootError: null });
+    try {
+      await ensureServiceStarted(ctx);
+    } catch (error) {
+      patch({ booting: false, bootError: serviceStartupFailure() ?? messageOf(error) });
+      report(ctx.i18n.t("error.serviceStart"), error);
+      return;
+    }
+    await boot();
   }
 
   useEffect(() => {
@@ -377,6 +393,6 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
         report(ctx.i18n.t("error.capabilityRefreshFailed"), error);
       }
     },
-    reload: boot,
+    reload: restart,
   };
 }
