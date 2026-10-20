@@ -6,7 +6,11 @@
 			"eyebrow": "Static analysis",
 			"title": "Know what a package does before you install it",
 			"description": "Drop an APK, IPA, DEX, shared library, executable or archive into the workspace and get a readable verdict: what it is, what it asks for, what it hides, and how much it deserves your trust.",
-			"badges": ["APK · IPA · ELF · PE · Mach-O", "Offline", "Never executes the sample"]
+			"badges": [
+				"APK · IPA · ELF · PE · Mach-O",
+				"Offline",
+				"Never executes the sample"
+			]
 		},
 		{
 			"type": "feature-grid",
@@ -48,10 +52,24 @@
 		{
 			"type": "steps",
 			"items": [
-				{ "title": "Open the Hanshuang Pojia tab", "description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder." },
-				{ "title": "Pick a sample or paste a path", "description": "Click a file in the list, or type any path. Project files up to 32 MiB go to the local engine; anything larger, or outside the project folder, is handed to the agent in one click. Nothing is uploaded and nothing is executed." },
-				{ "title": "Read the report", "description": "Risk score, the findings that drove it, manifest facts and per-section details. Switch between Summary and Full, then copy or save the report." }
+				{
+					"title": "Open the Hanshuang Pojia tab",
+					"description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder."
+				},
+				{
+					"title": "Pick a sample or paste a path",
+					"description": "Click a file in the list, or type any path. Project files up to 32 MiB go to the local engine; anything larger, or outside the project folder, is handed to the agent in one click. Nothing is uploaded and nothing is executed."
+				},
+				{
+					"title": "Read the report",
+					"description": "Risk score, the findings that drove it, manifest facts and per-section details. Switch between Summary and Full, then copy or save the report."
+				}
 			]
+		},
+		{
+			"type": "callout",
+			"tone": "info",
+			"content": "The activity-bar tab is now a twelve-page workbench: Workbench, Guide, Samples, Findings, Strings, Manifest, Entropy, Signature, Compare, Self check, Reports and Settings. Every page reads the same report, so a sample you analyse once stays inspectable from every angle — including a report-to-report diff of two builds. Purple buttons send an English prompt to the conversation, and a report produced by the agent in chat appears back in the panel with a \"from chat\" marker. Settings can switch analysis mode, disable individual rules and change scan resolution; storage is optional and the panel degrades to session-only memory when the host has not granted it."
 		},
 		{
 			"type": "callout",
@@ -66,7 +84,10 @@
 		{
 			"type": "links",
 			"items": [
-				{ "label": "Source and issue tracker", "href": "https://github.com/maomaochong-ai/astravia-official-marketplace" }
+				{
+					"label": "Source and issue tracker",
+					"href": "https://github.com/maomaochong-ai/astravia-official-marketplace"
+				}
 			]
 		}
 	]
