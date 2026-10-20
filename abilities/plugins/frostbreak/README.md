@@ -39,7 +39,7 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `explain_triage_finding` | rule reference: severity, category, why it matters |
 | `export_triage_report` | full triage handed to the save dialog as markdown or JSON |
 
-All four declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs` API. Samples are read with `fs.readBinaryFile` and capped at 160 MiB.
+All four declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs` API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling. Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
 ## Permissions
 
@@ -59,6 +59,8 @@ src/
 ├── runtime-contract.ts              # the PluginContext handle the tab reads
 ├── domain/                          # no React, no host APIs
 │   ├── bytes.ts digest.ts entropy.ts strings.ts base64.ts
+│   ├── sample-path.ts               # path resolution + project-boundary check
+│   ├── sample-scope.ts              # engine-readability: project scope + 32 MiB ceiling
 │   ├── archive/   zip.ts axml.ts archive-facts.ts
 │   ├── android/   manifest-model.ts dex.ts audit.ts
 │   ├── native/    types.ts elf.ts pe.ts macho.ts audit.ts
