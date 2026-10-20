@@ -1,7 +1,7 @@
 {
 	"plugin.name": "寒霜破甲",
 	"plugin.description": "离线静态体检 APK、AAB、IPA、DEX、ELF、PE、Mach-O 与压缩包：识别格式、清单事实、权限、导出组件、原生加固、硬编码凭据并给出评分报告——不执行样本，不依赖外部工具链。",
-	"skill.name": "寒霜破甲 · 二进制体检",
+	"skill.name": "寒霜破甲",
 	"skill.description": "静态体检 APK、IPA、DEX、ELF、PE、Mach-O 文件，并说明风险评分到底由什么支撑。",
 	"tab.label": "寒霜破甲",
 	"severity.critical": "严重",
