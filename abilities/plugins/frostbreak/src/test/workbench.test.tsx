@@ -6,6 +6,7 @@ import type { TriageReport } from "../domain/report/report";
 import type { TriageSample } from "../domain/triage";
 import type { TriageBridge } from "../features/triage-workbench/bridge";
 import { TriageWorkbench } from "../features/triage-workbench/components/triage-workbench";
+import { sampleErrorText } from "../features/triage-workbench/sample-error";
 
 vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
@@ -107,6 +108,43 @@ describe("triage workbench", () => {
 
 		expect(await screen.findByText("file is too large")).toBeTruthy();
 		expect(screen.getByText("panel.error.retry")).toBeTruthy();
+	});
+
+	it("explains how to start and copies a ready-made prompt", async () => {
+		const writeText = vi.fn(async () => undefined);
+		Object.assign(navigator, { clipboard: { writeText } });
+		const api = bridge();
+		render(<TriageWorkbench bridge={api} cwd="/work" />);
+
+		expect(screen.getByText("panel.intro.step1.title")).toBeTruthy();
+		expect(screen.getByText("panel.intro.step3.title")).toBeTruthy();
+
+		fireEvent.click(screen.getByText("panel.intro.prompts.one"));
+
+		await waitFor(() => expect(writeText).toHaveBeenCalledWith("panel.intro.prompts.one"));
+		await waitFor(() => expect(api.notify).toHaveBeenCalledWith("panel.intro.prompts.copied", "success"));
+	});
+
+	it("translates a host path rejection into an actionable message", async () => {
+		const api = bridge({
+			loadSample: vi.fn(async () =>
+				Promise.reject(
+					new Error("Error invoking remote method 'astravia:plugins:capabilities:fs:stat': CapabilityError: Capability provider failed: cap.foundation.astravia.fs.stat"),
+				),
+			),
+		});
+		render(<TriageWorkbench bridge={api} cwd="/work" />);
+		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
+
+		expect(await screen.findByText("panel.error.outsideProject")).toBeTruthy();
+	});
+
+	it("leaves ordinary load errors untouched", () => {
+		const t = (key: string) => key;
+		expect(sampleErrorText("file not found: /work/x.apk", t)).toBe("file not found: /work/x.apk");
+		expect(sampleErrorText("Capability provider failed: cap.foundation.astravia.fs.stat", t)).toBe(
+			"panel.error.outsideProject",
+		);
 	});
 
 	it("asks for a workspace when the host has no cwd", () => {

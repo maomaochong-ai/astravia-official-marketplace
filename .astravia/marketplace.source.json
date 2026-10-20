@@ -894,7 +894,7 @@
       "slug": "frostbreak",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy and a 0-100 risk score.",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -934,7 +934,7 @@
       "source": {
         "path": "abilities/plugins/frostbreak"
       },
-      "minAppVersion": "0.5.59"
+      "minAppVersion": "0.5.60"
     }
   ],
   "version": "0.4.81"
