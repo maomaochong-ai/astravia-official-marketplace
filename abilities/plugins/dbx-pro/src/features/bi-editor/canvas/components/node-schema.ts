@@ -205,6 +205,32 @@ export const NODE_SCHEMA: Record<string, NodeSchema> = {
 			{ key: "mapType", label: "底图", type: "select", options: ["China", "World"] },
 		],
 	},
+	"chart-bubble": {
+		label: "气泡图",
+		fields: chartFields([], "两个度量分别作为横轴与纵轴，第三个度量决定气泡大小"),
+	},
+	"chart-bullet": {
+		label: "子弹图",
+		fields: chartFields([], "维度为分组，度量作为进度条；前端可读目标值"),
+	},
+	"chart-oilgauge": {
+		label: "油量图",
+		fields: chartFields([
+			{ key: "yMin", label: "最小值", type: "number" },
+			{ key: "yMax", label: "最大值", type: "number" },
+		], "度量总计作为油量刻度"),
+	},
+	"chart-wordcloud": {
+		label: "词云",
+		fields: chartFields([], "类别为词、度量为词频权重"),
+	},
+	"chart-liquid": {
+		label: "水波图",
+		fields: chartFields([
+			{ key: "yMin", label: "最小值", type: "number" },
+			{ key: "yMax", label: "最大值", type: "number" },
+		], "度量总计在最小值与最大值间的占比"),
+	},
 
 	// ── 指标 ──
 	"metric-big": {

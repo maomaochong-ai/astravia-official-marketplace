@@ -159,11 +159,9 @@ describe("resolveNodeChartData — 箱线图", () => {
 });
 
 describe("resolveNodeChartData — 未接入 / KPI", () => {
-	it("散点 / 地图 / 雷达如实报 unsupported，不退化成一个别的图", () => {
+	it("雷达如实报 unsupported（散点 / 地图已接入渲染器）", () => {
 		const resultSet = result(["x", "y"], [{ x: 1, y: 2 }]);
 		for (const [kind, xField, yField] of [
-			["chart-scatter", "xField", "yField"],
-			["chart-map", "geoField", "valueField"],
 			["chart-radar", "indicatorField", "valueFields"],
 		] as const) {
 			const data = resolveNodeChartData(kind, { [xField]: "x", [yField]: "y" }, resultSet, null);

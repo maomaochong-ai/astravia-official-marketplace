@@ -449,6 +449,11 @@ export const NODE_TEMPLATES: Record<string, Omit<NodePos, "x" | "y">> = {
 	"chart-sankey":    { w: 260, h: 210, tone: TONE.chart,  kind: "chart-sankey" },
 	"chart-waterfall": { w: 240, h: 200, tone: TONE.chart,  kind: "chart-waterfall" },
 	"chart-gauge":     { w: 200, h: 190, tone: TONE.chart,  kind: "chart-gauge" },
+	"chart-bubble":    { w: 216, h: 190, tone: TONE.chart,  kind: "chart-bubble" },
+	"chart-bullet":    { w: 240, h: 200, tone: TONE.chart,  kind: "chart-bullet" },
+	"chart-oilgauge":  { w: 210, h: 200, tone: TONE.result, kind: "chart-oilgauge" },
+	"chart-wordcloud": { w: 240, h: 200, tone: TONE.chart,  kind: "chart-wordcloud" },
+	"chart-liquid":    { w: 200, h: 200, tone: TONE.result, kind: "chart-liquid" },
 
 	// ── 大屏（设计稿 6 种） ──
 	"screen-page":     { w: 260, h: 80,  tone: TONE.chart,  kind: "screen-page" },
