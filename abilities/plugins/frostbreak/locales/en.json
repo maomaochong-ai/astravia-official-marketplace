@@ -1,7 +1,7 @@
 {
 	"plugin.name": "Hanshuang Pojia",
 	"plugin.description": "Statically triage APK, AAB, IPA, DEX, ELF, PE, Mach-O and archive samples: format, manifest facts, permissions, exported components, native hardening, embedded secrets and a scored report — no execution, no external toolchain.",
-	"skill.name": "Hanshuang Pojia · Binary triage",
+	"skill.name": "Hanshuang Pojia",
 	"skill.description": "Statically audit an APK, IPA, DEX, ELF, PE or Mach-O file and explain what drives its risk score.",
 	"tab.label": "Hanshuang Pojia",
 	"severity.critical": "critical",
