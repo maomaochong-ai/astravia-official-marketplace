@@ -39,9 +39,11 @@
 		},
 		{
 			"type": "showcase",
-			"template": "chat-thread",
-			"user_prompt": "这个 APK 为什么风险分 62？申请了哪些危险权限？",
-			"assistant_reply": "风险 62（D 级）主要由三条规则推高：\n\n| 规则 | 严重度 | 说明 |\n| --- | --- | --- |\n| `apk.exported-component` | 高 | 3 个 Activity/Service 对外导出且没有权限保护 |\n| `apk.dynamic-loading` | 高 | DEX 中出现 DexClassLoader，真实逻辑在运行期解出 |\n| `apk.dangerous-permission` | 中 | 申请了 READ_SMS、ACCESS_FINE_LOCATION、READ_CONTACTS |\n\n另外没有任何 v2/v3 签名，只有旧的 META-INF 签名。建议从官方渠道重新下载；如果必须继续分析，先 dump 运行期解出的 dex 再看代码。"
+			"showcase": {
+				"template": "chat-thread",
+				"user_prompt": "Why does this APK score 62? Which risky permissions does it ask for?",
+				"assistant_reply": "62 (grade D) is driven by three rules:\n\n| Rule | Severity | What it means |\n| --- | --- | --- |\n| `apk.exported-component` | High | 3 activities/services are exported with no permission guard |\n| `apk.dynamic-loading` | High | `DexClassLoader` appears in the DEX, so the real logic is unpacked at runtime |\n| `apk.dangerous-permission` | Medium | Requests `READ_SMS`, `ACCESS_FINE_LOCATION`, `READ_CONTACTS` |\n\nIt also has no v2/v3 signature, only the legacy META-INF signature. Re-download it from the official channel; if you must keep analysing, dump the runtime-loaded dex first and review that code instead."
+			}
 		},
 		{
 			"type": "steps",
