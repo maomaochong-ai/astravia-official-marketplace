@@ -492,3 +492,247 @@ export function buildApk(options: { withSignature?: boolean; withDex?: boolean }
 	}
 	return buildZip(entries);
 }
+
+/* --------------------------------------------------- symbol-table fixtures */
+
+function alignTo(value: number, alignment: number): number {
+	return value + padTo(value, alignment);
+}
+
+function elf64Symbol(name: number, info: number, shndx: number, value: number): Uint8Array {
+	return concat([u32le(name), new Uint8Array([info, 0]), u16le(shndx), u64le(value), u64le(0)]);
+}
+
+/** ELF64 带 .dynsym（一条导入 + 一条导出）与 .symtab（一条本地函数）。 */
+export function buildElfWithSymbols(): Uint8Array {
+	const text = new Uint8Array([0x55, 0x48, 0x89, 0xe5, 0xc3]);
+	const dynstr = utf8("\0imported_fn\0exported_init\0");
+	const strtab = utf8("\0local_helper\0");
+	const dynsym = concat([new Uint8Array(24), elf64Symbol(1, 0x12, 0, 0), elf64Symbol(13, 0x12, 1, 0x1040)]);
+	const symtab = concat([new Uint8Array(24), elf64Symbol(1, 0x02, 1, 0x1050)]);
+	const shstrtab = utf8("\0.text\0.dynsym\0.dynstr\0.symtab\0.strtab\0.shstrtab\0");
+
+	const parts: { offset: number; data: Uint8Array }[] = [];
+	let cursor = 64;
+	const place = (data: Uint8Array, alignment = 8): number => {
+		cursor = alignTo(cursor, alignment);
+		const offset = cursor;
+		cursor += data.byteLength;
+		parts.push({ offset, data });
+		return offset;
+	};
+	const textOffset = place(text);
+	const dynsymOffset = place(dynsym);
+	const dynstrOffset = place(dynstr);
+	const symtabOffset = place(symtab);
+	const strtabOffset = place(strtab);
+	const shstrtabOffset = place(shstrtab);
+	const sectionOffset = alignTo(cursor, 8);
+	const sectionCount = 7;
+	const out = new Uint8Array(sectionOffset + sectionCount * 64);
+	const view = new DataView(out.buffer);
+
+	out.set([0x7f, 0x45, 0x4c, 0x46, 2, 1, 1], 0);
+	view.setUint16(16, 3, true);
+	view.setUint16(18, 0x3e, true);
+	view.setUint32(20, 1, true);
+	view.setBigUint64(24, 0x1040n, true);
+	view.setUint16(52, 64, true);
+	view.setUint16(54, 56, true);
+	view.setUint16(58, 64, true);
+	view.setUint16(60, sectionCount, true);
+	view.setUint16(62, 6, true);
+	view.setBigUint64(40, BigInt(sectionOffset), true);
+	for (const part of parts) out.set(part.data, part.offset);
+
+	const writeSection = (index: number, name: number, type: number, flags: number, offset: number, size: number, link: number, entsize: number): void => {
+		const base = sectionOffset + index * 64;
+		view.setUint32(base, name, true);
+		view.setUint32(base + 4, type, true);
+		view.setBigUint64(base + 8, BigInt(flags), true);
+		view.setBigUint64(base + 24, BigInt(offset), true);
+		view.setBigUint64(base + 32, BigInt(size), true);
+		view.setUint32(base + 40, link, true);
+		view.setBigUint64(base + 48, BigInt(16), true);
+		view.setBigUint64(base + 56, BigInt(entsize), true);
+	};
+	writeSection(0, 0, 0, 0, 0, 0, 0, 0);
+	writeSection(1, 1, 1, 0x6, textOffset, text.byteLength, 0, 0);
+	writeSection(2, 7, 11, 0x2, dynsymOffset, dynsym.byteLength, 3, 24);
+	writeSection(3, 15, 3, 0x2, dynstrOffset, dynstr.byteLength, 0, 0);
+	writeSection(4, 23, 2, 0, symtabOffset, symtab.byteLength, 5, 24);
+	writeSection(5, 31, 3, 0, strtabOffset, strtab.byteLength, 0, 0);
+	writeSection(6, 39, 3, 0, shstrtabOffset, shstrtab.byteLength, 0, 0);
+	return out;
+}
+
+/** PE32+，两个节，导出表里两条具名导出（0x1000 / 0x1010）。 */
+export function buildPeWithExports(): Uint8Array {
+	const out = new Uint8Array(0x600);
+	const view = new DataView(out.buffer);
+	out.set([0x4d, 0x5a], 0);
+	view.setUint32(0x3c, 0x40, true);
+	out.set([0x50, 0x45, 0x00, 0x00], 0x40);
+	const coff = 0x44;
+	view.setUint16(coff, 0x8664, true);
+	view.setUint16(coff + 2, 2, true);
+	view.setUint16(coff + 16, 0xf0, true);
+	view.setUint16(coff + 18, 0x0022, true);
+	const optional = coff + 20;
+	view.setUint16(optional, 0x20b, true);
+	view.setUint32(optional + 16, 0x1000, true);
+	view.setBigUint64(optional + 24, 0x140000000n, true);
+	view.setUint16(optional + 70, 0x0160, true);
+	view.setUint32(optional + 108, 16, true);
+	view.setUint32(optional + 112, 0x2000, true);
+	view.setUint32(optional + 116, 0x28, true);
+
+	const sectionTable = optional + 0xf0;
+	out.set(utf8(".text"), sectionTable);
+	view.setUint32(sectionTable + 8, 0x200, true);
+	view.setUint32(sectionTable + 12, 0x1000, true);
+	view.setUint32(sectionTable + 16, 0x200, true);
+	view.setUint32(sectionTable + 20, 0x200, true);
+	view.setUint32(sectionTable + 36, 0x60000020, true);
+	out.set(utf8(".rdata"), sectionTable + 40);
+	view.setUint32(sectionTable + 48, 0x200, true);
+	view.setUint32(sectionTable + 52, 0x2000, true);
+	view.setUint32(sectionTable + 56, 0x200, true);
+	view.setUint32(sectionTable + 60, 0x400, true);
+	view.setUint32(sectionTable + 76, 0x40000040, true);
+
+	const rdata = 0x400;
+	view.setUint32(rdata + 12, 0x2040, true);
+	view.setUint32(rdata + 16, 1, true);
+	view.setUint32(rdata + 20, 2, true);
+	view.setUint32(rdata + 24, 2, true);
+	view.setUint32(rdata + 28, 0x2060, true);
+	view.setUint32(rdata + 32, 0x2070, true);
+	view.setUint32(rdata + 36, 0x20a0, true);
+	out.set(utf8("demo.dll\0"), rdata + 0x40);
+	view.setUint32(rdata + 0x60, 0x1000, true);
+	view.setUint32(rdata + 0x64, 0x1010, true);
+	view.setUint32(rdata + 0x70, 0x2080, true);
+	view.setUint32(rdata + 0x74, 0x2090, true);
+	view.setUint16(rdata + 0xa0, 0, true);
+	view.setUint16(rdata + 0xa2, 1, true);
+	out.set(utf8("ExportedMain\0"), rdata + 0x80);
+	out.set(utf8("ExportedHelper\0"), rdata + 0x90);
+	return out;
+}
+
+/** 单切片 Mach-O 64：LC_SYMTAB 里一条具名函数 + 一条未定义导入。 */
+export function buildMachoWithSymbols(): Uint8Array {
+	const symoff = 32 + 24;
+	const strings = utf8("\0_main\0_printf\0");
+	const symbols = concat([
+		new Uint8Array(16),
+		concat([u32le(1), new Uint8Array([0x0f, 1]), u16le(0), u64le(0x1000)]),
+		concat([u32le(7), new Uint8Array([0x01, 0]), u16le(0), u64le(0)]),
+	]);
+	const stroff = symoff + symbols.byteLength;
+	const header = concat([
+		u32le(0xfeedfacf),
+		u32le(0x01000007),
+		u32le(3),
+		u32le(6),
+		u32le(1),
+		u32le(24),
+		u32le(0x00200085),
+		u32le(0),
+	]);
+	const command = concat([u32le(0x2), u32le(24), u32le(symoff), u32le(3), u32le(stroff), u32le(strings.byteLength)]);
+	return concat([header, command, symbols, strings]);
+}
+
+/**
+ * DEX：一个类 com.example.PremiumGate，三个方法（checkLicense / isVip / onCreate(int)），
+ * 以及字符串池里的 license 与 VIP 接口地址。
+ */
+export function buildDexWithClasses(): Uint8Array {
+	const strings = [
+		"Lcom/example/PremiumGate;",
+		"Ljava/lang/Object;",
+		"V",
+		"I",
+		"checkLicense",
+		"isVip",
+		"onCreate",
+		"license",
+		"https://api.example.com/vip",
+		"VI",
+	];
+	const stringIdsOffset = 0x70;
+	const typeIdsOffset = stringIdsOffset + strings.length * 4;
+	const protoIdsOffset = typeIdsOffset + 4 * 4;
+	const methodIdsOffset = protoIdsOffset + 2 * 12;
+	const classDefsOffset = methodIdsOffset + 3 * 8;
+	const dataOffset = classDefsOffset + 32;
+
+	const stringData: Uint8Array[] = [];
+	const stringOffsets: number[] = [];
+	let cursor = 0;
+	for (const value of strings) {
+		const encoded = utf8(value);
+		stringOffsets.push(cursor);
+		const chunk = concat([new Uint8Array([encoded.byteLength & 0x7f]), encoded, new Uint8Array([0])]);
+		stringData.push(chunk);
+		cursor += chunk.byteLength;
+	}
+	const stringBytes = concat(stringData);
+
+	const typeList = concat([u32le(1), u16le(3), u16le(0)]);
+	const classData = new Uint8Array([0x00, 0x00, 0x02, 0x01, 0x00, 0x02, 0x00, 0x01, 0x01, 0x00, 0x01, 0x04, 0x00]);
+	const typeListOffset = dataOffset + stringBytes.byteLength;
+	const classDataOffset = typeListOffset + typeList.byteLength;
+	const fileSize = classDataOffset + classData.byteLength;
+
+	const out = new Uint8Array(fileSize);
+	const view = new DataView(out.buffer);
+	out.set([0x64, 0x65, 0x78, 0x0a, 0x30, 0x33, 0x35, 0x00], 0);
+	view.setUint32(32, fileSize, true);
+	view.setUint32(36, 0x70, true);
+	view.setUint32(40, 0x12345678, true);
+	view.setUint32(56, strings.length, true);
+	view.setUint32(60, stringIdsOffset, true);
+	view.setUint32(64, 4, true);
+	view.setUint32(68, typeIdsOffset, true);
+	view.setUint32(72, 2, true);
+	view.setUint32(76, protoIdsOffset, true);
+	view.setUint32(88, 3, true);
+	view.setUint32(92, methodIdsOffset, true);
+	view.setUint32(96, 1, true);
+	view.setUint32(100, classDefsOffset, true);
+	view.setUint32(104, fileSize - dataOffset, true);
+	view.setUint32(108, dataOffset, true);
+
+	stringOffsets.forEach((value, index) => view.setUint32(stringIdsOffset + index * 4, dataOffset + value, true));
+	[0, 1, 2, 3].forEach((value, index) => view.setUint32(typeIdsOffset + index * 4, value, true));
+	view.setUint32(protoIdsOffset, 2, true);
+	view.setUint32(protoIdsOffset + 4, 2, true);
+	view.setUint32(protoIdsOffset + 8, 0, true);
+	view.setUint32(protoIdsOffset + 12, 9, true);
+	view.setUint32(protoIdsOffset + 16, 2, true);
+	view.setUint32(protoIdsOffset + 20, typeListOffset, true);
+
+	const writeMethod = (index: number, proto: number, name: number): void => {
+		const base = methodIdsOffset + index * 8;
+		view.setUint16(base, 0, true);
+		view.setUint16(base + 2, proto, true);
+		view.setUint32(base + 4, name, true);
+	};
+	writeMethod(0, 0, 4);
+	writeMethod(1, 0, 5);
+	writeMethod(2, 1, 6);
+
+	view.setUint32(classDefsOffset, 0, true);
+	view.setUint32(classDefsOffset + 4, 0x0001, true);
+	view.setUint32(classDefsOffset + 8, 1, true);
+	view.setUint32(classDefsOffset + 20, 0xffffffff, true);
+	view.setUint32(classDefsOffset + 24, classDataOffset, true);
+
+	out.set(stringBytes, dataOffset);
+	out.set(typeList, typeListOffset);
+	out.set(classData, classDataOffset);
+	return out;
+}

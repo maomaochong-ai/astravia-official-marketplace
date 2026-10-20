@@ -131,5 +131,9 @@
 	"tool.triage.label": "寒霜破甲",
 	"tool.strings.label": "字符串扫描",
 	"tool.explain.label": "解释结论",
-	"tool.export.label": "导出体检报告"
+	"tool.export.label": "导出体检报告",
+	"tool.symbols.label": "列出符号表",
+	"tool.disasm.label": "反汇编区间",
+	"tool.dex.label": "检索 DEX 符号",
+	"tool.diff.label": "二进制比对"
 }

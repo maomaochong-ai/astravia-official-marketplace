@@ -97,16 +97,44 @@ describe("loadSample", () => {
 });
 
 describe("agent tools", () => {
-	it("registers the four tools", () => {
+	it("registers every tool", () => {
 		const { ctx, registered } = fakeContext(new Map());
 		const disposables = registerTools(ctx);
-		expect(disposables).toHaveLength(4);
+		expect(disposables).toHaveLength(8);
 		expect(registered.map(item => item.id).sort()).toEqual([
+			"diff_binaries",
+			"disassemble_range",
 			"explain_triage_finding",
 			"export_triage_report",
+			"list_code_symbols",
 			"scan_binary_strings",
+			"search_dex_symbols",
 			"triage_binary",
 		]);
+	});
+
+	it("list_code_symbols reports a stripped binary instead of guessing", async () => {
+		const { ctx, call } = fakeContext(new Map([["/work/demo.elf", buildElf()]]));
+		registerTools(ctx);
+		const output = await call("list_code_symbols", { path: "demo.elf" });
+		expect(output).toContain("stripped");
+	});
+
+	it("disassemble_range needs a known architecture", async () => {
+		const { ctx, call } = fakeContext(new Map([["/work/blob.bin", utf8("hello")]]));
+		registerTools(ctx);
+		const output = await call("disassemble_range", { path: "blob.bin" });
+		expect(output).toContain("arch");
+	});
+
+	it("diff_binaries reports identical samples", async () => {
+		const { ctx, call } = fakeContext(new Map([
+			["/work/a.bin", utf8("same")],
+			["/work/b.bin", utf8("same")],
+		]));
+		registerTools(ctx);
+		const output = await call("diff_binaries", { path: "a.bin", otherPath: "b.bin" });
+		expect(output).toContain("Byte-identical");
 	});
 
 	it("triage_binary returns a markdown report", async () => {

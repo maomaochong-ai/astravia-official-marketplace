@@ -1,7 +1,11 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import { registerDiffBinariesTool } from "./diff-binaries";
+import { registerDisassembleRangeTool } from "./disassemble-range";
 import { registerExplainFindingTool } from "./explain-finding";
 import { registerExportReportTool } from "./export-triage-report";
+import { registerListCodeSymbolsTool } from "./list-code-symbols";
 import { registerScanStringsTool } from "./scan-strings";
+import { registerSearchDexSymbolsTool } from "./search-dex-symbols";
 import { registerTriageBinaryTool } from "./triage-binary";
 
 /**
@@ -11,7 +15,16 @@ import { registerTriageBinaryTool } from "./triage-binary";
  */
 export function registerTools(ctx: PluginContext): Disposable[] {
 	const disposables: Disposable[] = [];
-	for (const register of [registerTriageBinaryTool, registerScanStringsTool, registerExplainFindingTool, registerExportReportTool]) {
+	for (const register of [
+		registerTriageBinaryTool,
+		registerScanStringsTool,
+		registerExplainFindingTool,
+		registerExportReportTool,
+		registerListCodeSymbolsTool,
+		registerDisassembleRangeTool,
+		registerSearchDexSymbolsTool,
+		registerDiffBinariesTool,
+	]) {
 		try {
 			disposables.push(register(ctx));
 		} catch (error) {

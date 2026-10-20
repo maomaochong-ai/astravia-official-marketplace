@@ -45,7 +45,7 @@ function readMutf8(bytes: Uint8Array, start: number, length: number): string {
 	}
 }
 
-function readUleb128(bytes: Uint8Array, start: number): { value: number; next: number } {
+export function readUleb128(bytes: Uint8Array, start: number): { value: number; next: number } {
 	let value = 0;
 	let shift = 0;
 	let cursor = start;
@@ -57,6 +57,14 @@ function readUleb128(bytes: Uint8Array, start: number): { value: number; next: n
 		shift += 7;
 	}
 	return { value: value >>> 0, next: cursor };
+}
+
+/** 读取 string_ids 指向的一条 MUTF-8 字符串；越界或超长返回空串。 */
+export function readDexString(bytes: Uint8Array, dataOffset: number, maxLength = MAX_STRING_LENGTH): string {
+	if (dataOffset + 2 >= bytes.byteLength) return "";
+	const { value: length, next } = readUleb128(bytes, dataOffset);
+	if (length === 0 || length > maxLength) return "";
+	return readMutf8(bytes, next, length);
 }
 
 export function parseDex(bytes: Uint8Array, options: { maxStrings?: number } = {}): DexFacts {
@@ -72,10 +80,7 @@ export function parseDex(bytes: Uint8Array, options: { maxStrings?: number } = {
 
 	for (let index = 0; index < Math.min(stringCount, maxStrings); index += 1) {
 		const dataOffset = u32(bytes, stringIdsOffset + index * 4);
-		if (dataOffset + 2 >= bytes.byteLength) continue;
-		const { value: length, next } = readUleb128(bytes, dataOffset);
-		if (length === 0 || length > MAX_STRING_LENGTH) continue;
-		const value = readMutf8(bytes, next, length);
+		const value = readDexString(bytes, dataOffset);
 		if (value.length > 0) strings.push(value);
 	}
 	if (stringCount > maxStrings) truncated = true;

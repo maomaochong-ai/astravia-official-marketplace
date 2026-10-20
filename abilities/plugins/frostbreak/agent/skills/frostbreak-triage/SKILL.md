@@ -17,8 +17,9 @@ it does at runtime.
 - "Why is this binary flagged?" → follow up with `explain_triage_finding`.
 - A suspicious attachment or download needs a first read before anyone opens it.
 
-Do not use it to decompile, patch, repack, sign, or bypass an app's protection. It is a triage
-instrument, not a decompiler.
+Do not use it to patch, repack, sign, or bypass an app's protection. It is a triage and static
+analysis instrument: it reads symbols, byte ranges and DEX tables, and it does not decompile to
+Java or C, generate Frida hooks, produce keygens, or build license-bypass patches.
 
 ## Workflow
 
@@ -37,6 +38,37 @@ instrument, not a decompiler.
    - `explain_triage_finding` — what a rule id checks, why it matters, what to do next.
 5. **Offer a file** with `export_triage_report` when the user wants something to attach, archive or
    hand to a reviewer (`markdown` by default, `json` for machine-readable output).
+
+## Static code analysis
+
+Four more tools read code structure straight from the bytes. They cover the plugin-native part of what
+radare2, jadx and apktool would give you, with no install and no scratch copy of the sample written to
+disk — so try them before reaching for an external toolchain.
+
+- `list_code_symbols` — `{"path", "query"?, "kind": "all" | "function" | "export" | "import"}` — ELF
+  `.symtab`/`.dynsym`, the PE export directory, Mach-O `LC_SYMTAB`, merged with the import table. When
+  the binary is stripped it says so and only imports remain: report that, and never invent function
+  names to fill the table.
+- `disassemble_range` — `{"path", "offset", "length", "maxInstructions", "arch"?}` — a linear sweep of a
+  byte range for AArch64 and x86/x86-64. Another architecture returns a warning, not a guess.
+- `search_dex_symbols` — `{"path", "query", "kind"?, "limit"?}` — classes, method signatures with their
+  declaring class, and string-pool entries, from a `.dex` or from the first three `classes*.dex` of an
+  APK. This is the index a smali search would give you without materialising smali.
+- `diff_binaries` — `{"path", "otherPath", "maxHunks"?}` — byte-level hunks between two builds, so a
+  patched check shows up as a few changed bytes instead of a wall of noise.
+
+Read them honestly:
+
+- Addresses are **file offsets**, and branch targets print as `file+0x…`. They are not virtual
+  addresses, and a target does not prove the branch is reachable.
+- `.byte` / `.word` / `db 0xNN` means "this sweep did not decode it", not "invalid code". The sweep
+  advances one byte past an unknown opcode and never claims to resynchronise, so the instruction after
+  it may be misaligned — say that when you quote a listing.
+- There is no control-flow graph, no pseudo-C, no assembler, no Java or smali decompilation, and no
+  annotation or try-catch parsing. Never present a listing as decompiled source.
+- When the user needs real decompilation, drive the actual tool from the shell — `jadx -d out app.apk`,
+  `apktool d app.apk`, `r2 -q -c 'aaa; afl' app.bin`, `analyzeHeadless` for Ghidra — and attribute each
+  claim to the tool that produced it. This plugin cannot bundle or execute those binaries.
 
 ## When the plugin's reader cannot open it
 
