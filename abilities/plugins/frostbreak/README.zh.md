@@ -39,7 +39,7 @@
 | `explain_triage_finding` | 规则参考：严重度、分类、为什么重要 |
 | `export_triage_report` | 完整体检结果交给系统保存对话框，导出 markdown 或 JSON |
 
-四个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限 160 MiB。
+四个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
 
 ## 权限
 
@@ -59,6 +59,8 @@ src/
 ├── runtime-contract.ts              # 标签卡读取的 PluginContext 句柄
 ├── domain/                          # 不含 React、不依赖宿主 API
 │   ├── bytes.ts digest.ts entropy.ts strings.ts base64.ts
+│   ├── sample-path.ts               # 路径解析与项目边界判定
+│   ├── sample-scope.ts              # 引擎可读性：项目范围 + 32 MiB 上限
 │   ├── archive/   zip.ts axml.ts archive-facts.ts
 │   ├── android/   manifest-model.ts dex.ts audit.ts
 │   ├── native/    types.ts elf.ts pe.ts macho.ts audit.ts

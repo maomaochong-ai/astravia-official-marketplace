@@ -1,9 +1,9 @@
 import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReportMode, TriageReport } from "../../../domain/report/report";
-import { isOutsideProject } from "../../../domain/sample-path";
+import { scopeForSample } from "../../../domain/sample-scope";
 import type { TriageSample } from "../../../domain/triage";
-import type { TriageBridge } from "../bridge";
+import type { HandoffOutcome, TriageBridge } from "../bridge";
 import type { SampleFailure } from "../sample-error";
 import { classifySampleFailure } from "../sample-error";
 
@@ -44,6 +44,8 @@ export interface TriageWorkbench {
 	selectMode: (mode: ReportMode) => void;
 	reset: () => void;
 	exportReport: (format: "markdown" | "json") => Promise<string | null>;
+	/** 引擎读不到的样本（项目外 / 超出宿主上限）交给对话里的 Agent。 */
+	handOff: (prompt: string) => Promise<HandoffOutcome | null>;
 }
 
 function isSampleName(name: string): boolean {
@@ -125,7 +127,7 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 			const current = (requestId.current += 1);
 			// 宿主只授权项目根目录，越界路径必然抛被包住的 CapabilityError；先判一次，
 			// 免得用户等一轮 IPC 才看到一句无法照做的英文报错。
-			if (isOutsideProject(trimmed, cwd)) {
+			if (scopeForSample(trimmed, cwd, null) === "outside-project") {
 				lastSample.current = null;
 				setReport(null);
 				setPhase("error");
@@ -134,10 +136,23 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 			}
 			setPhase("loading");
 			setError(null);
+			// 先 stat 再读：宿主的读取上限是硬性的，超限时不必把整次 IPC 读一遍才失败。
 			bridge
-				.loadSample(trimmed, cwd)
+				.stat(trimmed, cwd)
+				.catch(() => null)
+				.then(entry => {
+					if (current !== requestId.current) return null;
+					if (entry && scopeForSample(trimmed, cwd, entry.size) === "too-large") {
+						lastSample.current = null;
+						setReport(null);
+						setPhase("error");
+						setError({ kind: "too-large", detail: trimmed, size: entry.size });
+						return null;
+					}
+					return bridge.loadSample(trimmed, cwd);
+				})
 				.then(sample => {
-					if (current !== requestId.current) return;
+					if (!sample || current !== requestId.current) return;
 					lastSample.current = sample;
 					run(sample, mode);
 				})
@@ -151,6 +166,15 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 				});
 		},
 		[bridge, cwd, mode, run],
+	);
+
+	/** 把引擎读不到的样本交给对话里的 Agent：宿主 Agent 有完整文件权限，能接着查。 */
+	const handOff = useCallback(
+		(prompt: string): Promise<HandoffOutcome | null> => {
+			if (!cwd) return Promise.resolve(null);
+			return bridge.handOff(prompt, cwd).catch(() => null);
+		},
+		[bridge, cwd],
 	);
 
 	/** 切换详细程度时重跑同一份样本，否则界面上的内容会和开关不一致。 */
@@ -191,5 +215,6 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 		selectMode,
 		reset,
 		exportReport,
+		handOff,
 	};
 }

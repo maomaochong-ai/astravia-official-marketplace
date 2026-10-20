@@ -38,6 +38,27 @@ instrument, not a decompiler.
 5. **Offer a file** with `export_triage_report` when the user wants something to attach, archive or
    hand to a reviewer (`markdown` by default, `json` for machine-readable output).
 
+## When the plugin's reader cannot open it
+
+The triage tools read through the host file capability: files inside the working directory only, at
+most 32 MiB per file. A portable app folder on the Desktop, or a 180 MiB installer, fails with a path
+or size error. That is a host limit, not a verdict about the sample — say so, then do the pass
+yourself with the shell and report in the same shape:
+
+1. **Identity** — `shasum -a 256 <path>`, size with `stat -f%z <path>` (macOS) or `stat -c%s <path>`,
+   and `file <path>` for the container.
+2. **Container** — for an Electron or portable Windows app, list the folder, check `variant.json` and
+   `package.json`, and look inside `resources/` for `app.asar` and `*.ps1` installers. If the scripts
+   show what the app installs or writes, that belongs in the report as a fact.
+3. **Headers** — `xxd -l 512 <path>` for the magic and the first records; use a short
+   `python3 -c 'import struct ...'` snippet when you need parsed PE / ELF / Mach-O fields.
+4. **Strings** — `strings -n 8 <path> | sort | uniq -c | sort -rn | head -60`, then grep that tail for
+   URLs, hosts, script names, product ids and credential shapes. Quote only what you saw.
+5. **Report the same way** — format, notable facts, findings with evidence, and an explicit list of
+   what you could not see: packed payloads, signature validity, anything outside the bytes you read.
+
+Never execute the sample, and never upload it to a third-party service to compensate for the limit.
+
 ## Reading the report
 
 - `risk.score` is 0-100, weighted by severity: critical 45, high 22, medium 10, low 4, info 0,
