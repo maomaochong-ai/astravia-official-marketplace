@@ -131,5 +131,9 @@
 	"tool.triage.label": "Triage binary",
 	"tool.strings.label": "Scan strings",
 	"tool.explain.label": "Explain finding",
-	"tool.export.label": "Export triage report"
+	"tool.export.label": "Export triage report",
+	"tool.symbols.label": "List code symbols",
+	"tool.disasm.label": "Disassemble range",
+	"tool.dex.label": "Search DEX symbols",
+	"tool.diff.label": "Diff binaries"
 }

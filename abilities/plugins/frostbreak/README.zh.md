@@ -38,15 +38,19 @@
 | `scan_binary_strings` | 带文件偏移的字符串提取与过滤 |
 | `explain_triage_finding` | 规则参考：严重度、分类、为什么重要 |
 | `export_triage_report` | 完整体检结果交给系统保存对话框，导出 markdown 或 JSON |
+| `list_code_symbols` | ELF `.symtab`/`.dynsym`、PE 导出表、Mach-O `LC_SYMTAB`，并合并导入函数 |
+| `disassemble_range` | 对 AArch64 / x86 / x86-64 字节区间做线性扫描反汇编 |
+| `search_dex_symbols` | 在 `.dex` 或 APK 里检索类、方法签名与字符串池 |
+| `diff_binaries` | 两个样本之间的字节级差异块 |
 
-四个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+八个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
 
 ## 权限
 
 | 权限 | 原因 |
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
-| `agent.tools.register`、`agent.toolHandler.execute` | 四个工具 |
+| `agent.tools.register`、`agent.toolHandler.execute` | 八个工具 |
 | `agent.session.write` | 工具结果写回对话 |
 | `fs.read` | 列目录与读取样本 |
 | `fs.write` | `fs.saveAs` 导出报告（路径由用户选择） |
@@ -62,8 +66,10 @@ src/
 │   ├── sample-path.ts               # 路径解析与项目边界判定
 │   ├── sample-scope.ts              # 引擎可读性：项目范围 + 32 MiB 上限
 │   ├── archive/   zip.ts axml.ts archive-facts.ts
-│   ├── android/   manifest-model.ts dex.ts audit.ts
+│   ├── diff.ts                     # 字节级差异块与预算
+│   ├── android/   manifest-model.ts dex.ts dex-index.ts audit.ts
 │   ├── native/    types.ts elf.ts pe.ts macho.ts audit.ts
+│   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
 │   └── triage.ts                    # 入口：识别 → 解析 → 审计 → 报告
@@ -99,4 +105,7 @@ node --test tests/*.test.mjs
 - 加壳/加密代码只报告，不脱壳；`native.packed` 是启发式判断（熵 + 导入数量，或 `UPX!` 标记）。
 - DEX 字符串扫描上限 6 个 dex、24 MiB；体检内字符串提取上限 400 条，独立工具上限 500 条。
 - Mach-O fat 二进制只分析第一个切片；IPA 最多尝试三个 `Payload/*.app/*` 候选定位主二进制。
-- 不执行、不打补丁、不重签、不重打包。按设计只读。
+- `disassemble_range` 是带文件偏移的线性扫描，不是控制流分析：无法解码的字节输出 `db 0xNN` 并前进一个字节，
+  所以未知指令之后的清单可能失步；分支目标写作 `file+0x…`，不证明可达性。没有伪 C、没有汇编器、不做 Java/smali 反编译。
+- 符号表完全取决文件自身：被 strip 的二进制只会有导入，工具会明说，不会编造函数名。
+- 不执行、不打补丁、不重签、不重打包，也不生成 Frida hook、keygen 输入或授权绕过补丁。按设计只读。

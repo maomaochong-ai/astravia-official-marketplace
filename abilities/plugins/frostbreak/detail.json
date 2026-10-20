@@ -55,6 +55,11 @@
 		},
 		{
 			"type": "callout",
+			"tone": "info",
+			"content": "Code-level questions go through the agent: `list_code_symbols` reads ELF, PE and Mach-O symbol and export tables, `disassemble_range` sweeps an AArch64 or x86 byte range, `search_dex_symbols` finds classes, methods and strings in a DEX or APK, and `diff_binaries` shows what changed between two builds. Every listing is a linear sweep with file offsets - never decompiled source, and never a claim about what runs."
+		},
+		{
+			"type": "callout",
 			"tone": "warning",
 			"content": "This is static triage, not proof of safety. Android signature digests are read, not cryptographically verified; packed or encrypted code is reported as a hint and never unpacked; behaviour that only shows up at runtime stays invisible here. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the panel can only read files inside the open project folder, and at most 32 MiB per file. Bigger or out-of-project samples are still analysable — the panel hands them to the chat agent, which has the app's own file access."
 		},
