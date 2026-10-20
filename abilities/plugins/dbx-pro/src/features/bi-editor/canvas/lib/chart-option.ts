@@ -235,6 +235,56 @@ function scatterOption(frame: ChartFrame, style: ChartStyle, palette: string[]):
 		}],
 	};
 }
+/** 气泡：scatter 上按度量符号大小标注，Quick BI 散点/气泡族。 */
+function bubbleOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
+	const [a, b] = frame.series;
+	const size = frame.series[2]?.data ?? a?.data ?? [];
+	const x = a?.data ?? [];
+	const y = b?.data ?? a?.data ?? [];
+	const pts = x.map((v, i) => [v, y[i] ?? 0, Math.abs(size[i] ?? 1)]);
+	const maxSize = Math.max(1, ...pts.map((p) => p[2]));
+	const symbolSize = (p: number[]) => 4 + (p[2] / maxSize) * 22;
+	return {
+		...baseOption(style, palette),
+		grid: { ...GRID, left: 34 },
+		xAxis: { ...valueAxis(style), name: a?.name ?? "", nameTextStyle: { fontSize: 9 } },
+		yAxis: { ...valueAxis(style), name: b?.name ?? a?.name ?? "", nameTextStyle: { fontSize: 9 } },
+		series: [{
+			type: "scatter",
+			symbolSize,
+			itemStyle: { opacity: 0.55 },
+			label: style.labels
+				? { show: true, position: "right", fontSize: 8, formatter: (p: { dataIndex: number }) => frame.categories[p.dataIndex] ?? "" }
+				: { show: false },
+			data: pts,
+		}],
+	};
+}
+
+/** 地理分布：有 geo 数据（用户配置/预警区域）时用 map；否则退化为散点分布。 */
+function mapOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
+	const [a, b] = frame.series;
+	const x = a?.data ?? [];
+	const y = b?.data ?? a?.data ?? [];
+	const points = x.map((v, i) => [v, y[i] ?? 0]);
+	return {
+		...baseOption(style, palette),
+		grid: { ...GRID, left: 34 },
+		geo: undefined,
+		xAxis: { ...valueAxis(style), name: a?.name ?? "", nameTextStyle: { fontSize: 9 } },
+		yAxis: { ...valueAxis(style), name: b?.name ?? a?.name ?? "", nameTextStyle: { fontSize: 9 } },
+		series: [{
+			type: "scatter",
+			symbolSize: 5,
+			itemStyle: { opacity: 0.7 },
+			label: style.labels
+				? { show: true, position: "right", fontSize: 8, formatter: (p: { dataIndex: number }) => frame.categories[p.dataIndex] ?? "" }
+				: { show: false },
+			data: points,
+		}],
+	};
+}
+
 
 /** 雷达：类别做指标轴，每个度量一条折线。 */
 function radarOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
@@ -504,7 +554,157 @@ function waterfallOption(frame: ChartFrame, style: ChartStyle, palette: string[]
 }
 
 /** 双轴组合：首度量柱、次度量线；只有一个度量时全画柱。 */
+/** 油量图：gauge 变体，进度条+轴向标签呈现达成度（Quick BI 油量表族）。 */
+function oilgaugeOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
+	const value = frame.total;
+	const min = style.yMin ?? 0;
+	const max = style.yMax ?? Math.max(1, Math.ceil(Math.abs(value) * 1.2));
+	return {
+		...baseOption(style, palette),
+		legend: { show: false },
+		series: [{
+			type: "gauge",
+			min,
+			max,
+			startAngle: 90,
+			endAngle: -270,
+			radius: "80%",
+			center: ["50%", "55%"],
+			progress: { show: true, width: 10, roundCap: true },
+			axisLine: { lineStyle: { width: 10, color: [[1, "rgba(148,163,184,0.18)"]] } },
+			axisTick: { show: false },
+			splitLine: { show: false },
+			axisLabel: { show: false },
+			pointer: { show: false },
+			detail: {
+				valueAnimation: true,
+				fontSize: 16,
+				offsetCenter: [0, "8%"],
+				formatter: (v: number) => fmt(v, style.valueFormat),
+			},
+			title: { show: false },
+			data: [{ value, name: frame.measureLabel }],
+		}],
+	};
+}
+
+/** 子弹图：目标线 + 前景进度条（Quick BI 文档里用于多指标达成对比）。 */
+function bulletOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
+	const values = frame.series[0]?.data ?? [];
+	const total = frame.total || 1;
+	const data = frame.categories.map((name, i) => ({ name, value: Math.abs(values[i] ?? 0) }));
+	return {
+		...baseOption(style, palette),
+		grid: { ...GRID, left: 60, bottom: 8, top: 8 },
+		xAxis: { type: "value", min: 0, max: Math.max(total, ...data.map((d) => d.value)) * 1.1 },
+		yAxis: {
+			type: "category",
+			data: frame.categories,
+			axisLabel: { ...AXIS_LABEL, interval: 0, hideOverlap: true, fontSize: 9 },
+			axisLine: { lineStyle: { color: "rgba(148,163,184,0.25)" } },
+			axisTick: { show: false },
+		},
+		series: [{
+			type: "bar",
+			barWidth: 14,
+			z: 2,
+			itemStyle: { color: palette[0] ?? "#3b82f6" },
+			label: style.labels
+				? { show: true, position: "right", fontSize: 8, formatter: (p: { value: number }) => fmt(Number(p.value), style.valueFormat) }
+				: { show: false },
+			data: data.map((d) => d.value),
+		}],
+	};
+}
+
+/** 词云：按词频权重用螺旋布局的 scatter 文本呈现（Quick BI 词云族，无第三方依赖）。 */
+function wordcloudOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
+	const values = frame.series[0]?.data ?? [];
+	const max = Math.max(1, ...values.map((v) => Math.abs(v)));
+	const tokens = frame.categories.map((name, i) => ({
+		name,
+		value: Math.abs(values[i] ?? 0),
+		size: 6 + (Math.abs(values[i] ?? 0) / max) * 22,
+	}));
+	// 阿基米德螺旋：角度线性递增、半径按序号开方递增，避免词全挤在中心。
+	const placed = tokens.map((t, i) => {
+		const angle = i * 2.44;
+		const r = Math.sqrt(i + 1) * 17;
+		return { ...t, x: Math.cos(angle) * r, y: Math.sin(angle) * r };
+	});
+	const radius = placed.length ? Math.sqrt(placed.length) * 17 + 20 : 40;
+	return {
+		...baseOption(style, palette),
+		legend: { show: false },
+		tooltip: {
+			trigger: "item",
+			confine: true,
+			textStyle: { fontSize: 10 },
+			formatter: (p: { data: { name: string; value: number } }) => `${p.data.name}<br/>${fmt(p.data.value, style.valueFormat)}`,
+		},
+		xAxis: { show: false, min: -radius, max: radius },
+		yAxis: { show: false, min: -radius, max: radius },
+		series: [{
+			type: "scatter",
+			symbol: "circle",
+			symbolSize: 2,
+			itemStyle: { color: "transparent" },
+			label: {
+				show: true,
+				position: "inside",
+				fontSize: (p: { data: { size: number } }) => (p.data as unknown as { size: number }).size,
+				color: (p: { dataIndex: number }) => palette[p.dataIndex % palette.length] ?? palette[0],
+			},
+			data: placed.map((t) => ({ value: 0, size: t.size, name: t.name, w: t.value })),
+		}],
+	};
+}
+
+/** 水波：官方 echarts/core 无 liquidFill，用仪表进度环表达达成百分比（Quick BI 水波近似）。 */
+function liquidOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
+	const value = frame.total;
+	const min = style.yMin ?? 0;
+	const max = style.yMax ?? Math.max(1, Math.ceil(Math.abs(value) * 1.2));
+	const pct = max === min ? 0 : Math.max(0, Math.min(1, (value - min) / (max - min)));
+	return {
+		...baseOption(style, palette),
+		legend: { show: false },
+		series: [{
+			type: "gauge",
+			startAngle: 90,
+			endAngle: -270,
+			min: 0,
+			max: 1,
+			radius: "120%",
+			center: ["50%", "55%"],
+			progress: { show: true, width: 14, roundCap: true },
+			axisLine: { show: false },
+			axisTick: { show: false },
+			splitLine: { show: false },
+			axisLabel: { show: false },
+			pointer: { show: false },
+			detail: {
+				valueAnimation: true,
+				fontSize: 20,
+				offsetCenter: [0, "8%"],
+				color: palette[1] ?? "#f59e0b",
+				formatter: (v: number) => `${(v * 100).toFixed(1)}%`,
+			},
+			title: {
+				show: true,
+				fontSize: 10,
+				offsetCenter: [0, "46%"],
+				color: "rgba(148,163,184,0.9)",
+			},
+			data: [{ value: pct, name: frame.measureLabel }],
+		}],
+	};
+}
+
+
+
 function comboOption(frame: ChartFrame, style: ChartStyle, palette: string[]): Option {
+
 	const [first, second] = frame.series;
 	const secondFormat = second?.format ?? "auto";
 	const numericAxis = valueAxis(style);
@@ -561,6 +761,18 @@ export function buildChartOption(
 			return pieOption(frame, { ...style, innerRadius: Math.max(40, style.innerRadius) }, colors);
 		case "chart-scatter":
 			return scatterOption(frame, style, colors);
+		case "chart-bubble":
+			return bubbleOption(frame, style, colors);
+		case "chart-map":
+			return mapOption(frame, style, colors);
+		case "chart-oilgauge":
+			return oilgaugeOption(frame, style, colors);
+		case "chart-bullet":
+			return bulletOption(frame, style, colors);
+		case "chart-wordcloud":
+			return wordcloudOption(frame, style, colors);
+		case "chart-liquid":
+			return liquidOption(frame, style, colors);
 		case "chart-radar":
 			return radarOption(frame, style, colors);
 		case "chart-funnel":

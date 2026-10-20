@@ -142,4 +142,11 @@ export const ECHARTS_KINDS = new Set([
 	"chart-sankey",
 	"chart-waterfall",
 	"chart-combo",
+	"chart-bubble",
+	"chart-map",
+	"chart-oilgauge",
+	"chart-bullet",
+	"chart-wordcloud",
+	"chart-liquid",
+	"chart-boxplot",
 ]);

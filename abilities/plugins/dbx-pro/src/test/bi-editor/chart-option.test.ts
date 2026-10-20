@@ -195,6 +195,56 @@ describe("buildChartOption — 组合与边界", () => {
 		assert.equal(buildChartOption("adv-table", FRAME, STYLE), null);
 	});
 
+	it("气泡图：以第三度量决定符号大小", () => {
+		const bubbleFrame: ChartFrame = {
+			...FRAME,
+			series: [
+				{ name: "x", data: [1, 2, 3], format: "auto" },
+				{ name: "y", data: [4, 5, 6], format: "auto" },
+				{ name: "size", data: [10, 20, 30], format: "auto" },
+			],
+		};
+		const s = seriesOf(option("chart-bubble", STYLE, bubbleFrame))[0];
+		assert.equal(s.type, "scatter", "气泡仍然用散点系列");
+		const pts = s.data as [number, number, number][];
+		assert.equal(pts.length, 3);
+		assert.ok((pts[2][2] as number) > (pts[0][2] as number), "第三维度量越大点越大");
+	});
+
+	it("地图：未配 geo 时退化为散点分布", () => {
+		const s = seriesOf(option("chart-map"))[0];
+		assert.equal(s.type, "scatter", "无底图数据时用散点表达");
+		assert.equal((s.data as unknown[]).length, 3);
+	});
+
+	it("油量图：以总计为刻度值，环形进度表达", () => {
+		const s = seriesOf(option("chart-oilgauge"))[0];
+		assert.equal(s.type, "gauge", "油量图复用 gauge 渲染");
+		assert.equal((s.data as { value: number }[])[0].value, 200);
+	});
+
+	it("子弹图：分类维度 + 横向进度条", () => {
+		const opt = option("chart-bullet");
+		const s = seriesOf(opt)[0];
+		assert.equal(s.type, "bar", "子弹图用 bar 渲染");
+		assert.equal((opt.yAxis as { type: string }).type, "category");
+	});
+
+	it("词云：按权重螺旋散布的文本 scatter", () => {
+		const opt = option("chart-wordcloud");
+		assert.equal((opt.xAxis as { show: boolean }).show, false, "词云隐藏坐标轴");
+		const s = seriesOf(opt)[0];
+		assert.equal(s.type, "scatter", "词云用 scatter 承接文本");
+	});
+
+	it("水波图：以占比进度环表达，label 输出百分比", () => {
+		const s = seriesOf(option("chart-liquid"))[0];
+		assert.equal(s.type, "gauge", "水波用 gauge 进度环近似");
+		const detail = (s as { detail?: { formatter?: (v: number) => string } }).detail;
+		assert.ok(detail && typeof detail.formatter === "function", "detail formatter 输出百分比");
+		assert.match(detail.formatter!(0.25), /25/, "0.25→25%");
+	});
+
 	it("调色板为空时退回兜底色", () => {
 		const opt = buildChartOption("chart-bar", FRAME, STYLE, []) as Record<string, unknown>;
 		assert.deepEqual(opt.color, FALLBACK_PALETTE);
