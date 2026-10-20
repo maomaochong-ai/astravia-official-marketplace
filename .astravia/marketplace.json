@@ -6729,7 +6729,7 @@
       "slug": "frostbreak",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy and a 0-100 risk score.",
-      "version": "1.0.2",
+      "version": "1.1.0",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -6805,10 +6805,29 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-frostbreak/frostbreak-1.0.2.astraviapkg",
             "sha256": "f54beb2598ca17d8f7dceb934ef5324438673a897fab1cc8c80c2043a993b0fc"
           }
+        },
+        {
+          "version": "1.1.0",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "agent.session.write",
+            "fs.read",
+            "fs.write"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-frostbreak/frostbreak-1.1.0.astraviapkg",
+            "sha256": "2776292ad6678ae26f5f2702ce79c8873b142b448a22da485a354f4b7bf809a9"
+          }
         }
       ]
     }
   ],
   "version": "0.4.81",
-  "marketplaceVersion": "2026.10.20-2"
+  "marketplaceVersion": "2026.10.20-3"
 }
