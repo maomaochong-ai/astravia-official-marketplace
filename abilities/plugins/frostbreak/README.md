@@ -38,15 +38,19 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `scan_binary_strings` | filtered printable-string extraction with file offsets |
 | `explain_triage_finding` | rule reference: severity, category, why it matters |
 | `export_triage_report` | full triage handed to the save dialog as markdown or JSON |
+| `list_code_symbols` | ELF `.symtab`/`.dynsym`, PE exports and Mach-O `LC_SYMTAB`, merged with imports |
+| `disassemble_range` | linear-sweep listing of a byte range for AArch64 and x86/x86-64 |
+| `search_dex_symbols` | classes, method signatures and string-pool entries from a `.dex` or an APK |
+| `diff_binaries` | byte-level hunks between two samples |
 
-All four declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs` API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling. Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
+All eight declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs` API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling. Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
 ## Permissions
 
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the four tools |
+| `agent.tools.register`, `agent.toolHandler.execute` | the eight tools |
 | `agent.session.write` | tool results in the conversation |
 | `fs.read` | listing the workspace and reading samples |
 | `fs.write` | `fs.saveAs` for exported reports (the user picks the path) |
@@ -62,8 +66,10 @@ src/
 │   ├── sample-path.ts               # path resolution + project-boundary check
 │   ├── sample-scope.ts              # engine-readability: project scope + 32 MiB ceiling
 │   ├── archive/   zip.ts axml.ts archive-facts.ts
-│   ├── android/   manifest-model.ts dex.ts audit.ts
+│   ├── diff.ts                     # byte-level diff hunks with a reporting budget
+│   ├── android/   manifest-model.ts dex.ts dex-index.ts audit.ts
 │   ├── native/    types.ts elf.ts pe.ts macho.ts audit.ts
+│   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
 │   └── triage.ts                    # entry point: detect → parse → audit → report
@@ -99,4 +105,11 @@ node --test tests/*.test.mjs
 - Packed/encrypted code is reported, never unpacked; `native.packed` is a heuristic (entropy + import count, or a `UPX!` marker).
 - DEX string scan is capped at 6 dex files and 24 MiB; string extraction stops at 400 results per call in triage and 500 in the standalone tool.
 - Mach-O fat binaries analyse the first slice; IPA lookup tries at most three `Payload/*.app/*` candidates for the main binary.
-- Nothing is executed, patched, resigned or repacked. The plugin is read-only by design.
+- `disassemble_range` is a linear sweep with file offsets, not a control-flow analysis: unknown bytes
+  print as `db 0xNN` and the sweep advances one byte, so a listing after an unknown opcode may be
+  misaligned. Branch targets say `file+0x…` and prove nothing about reachability. No pseudo-C, no
+  assembler, no Java/smali decompilation.
+- Symbol tables are whatever the file carries: a stripped binary yields imports only, and the tool
+  says so rather than inventing names.
+- Nothing is executed, patched, resigned or repacked, and no Frida hook, keygen input or license-bypass
+  patch is generated. The plugin is read-only by design.
