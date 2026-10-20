@@ -74,12 +74,37 @@ src/
 │   ├── report/    report.ts
 │   └── triage.ts                    # 入口：识别 → 解析 → 审计 → 报告
 ├── tools/                           # 一个 Agent 工具一个文件
-├── features/triage-workbench/       # components/ + hooks/
-├── shared/components/               # 严重度标签
+├── runtime/panel-channel.ts         # Agent → 面板的报告回程通道
+├── features/workbench/              # 面板本体
+│   ├── bridge.ts state.ts prompts.ts
+│   ├── report-compare.ts sections.ts severity.ts sample-error.ts
+│   ├── hooks/                       # use-workbench、use-library、use-chat
+│   └── components/
+│       ├── workbench-screen.tsx     # 导航与外壳
+│       ├── shell/                   # 侧栏、顶栏、表格、标签、图标
+│       ├── workbench/               # 投放区、风险环、发现行、拦截页
+│       └── pages/                   # 十二个页面
 └── test/                            # 夹具与测试
 ```
 
 `src/domain/` 不依赖 `@astravia-org/plugin-sdk`，可以直接在 Node 里跑。
+
+## 工作台面板
+
+活动栏标签卡现在是一个十二页的工作台，而不是单页报告：工作台、使用指南、样本、发现、字符串、
+清单、熵分布、签名、对比、自检、报告、设置。只有在样本被读进来之后才会出现分析结果，
+每个页面读的都是同一份报告。
+
+刻意分成两条车道：
+
+- **面板内** —— 内置引擎，处理项目目录内、32 MiB 以下的文件。摘要、格式、清单、权限、组件、
+  节区、熵、字符串、签名结构与两份报告之间的差分都在本地完成。
+- **对话里** —— 紫色按钮经 `ctx.conversation` 发出一条英文指令，由 Agent 调用同一套工具
+  处理面板够不到的部分（项目外路径、超过宿主读取上限的文件、jadx/apktool/radare2、全量字符串扫描）。
+  没有可用的会话时如实报「未连接」，不会静默丢弃。
+
+`triage_binary` 会把报告经 `src/runtime/panel-channel.ts` 推回面板，因此在对话里分析过的样本
+会带着「来自对话」标记进入报告库。
 
 ## 开发
 

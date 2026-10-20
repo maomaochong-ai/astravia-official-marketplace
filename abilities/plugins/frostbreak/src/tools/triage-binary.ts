@@ -1,6 +1,7 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { renderMarkdown } from "../domain/report/report";
 import { triage } from "../domain/triage";
+import { publishPanelEvent } from "../runtime/panel-channel";
 import { loadSample } from "./read-sample";
 
 interface TriageBinaryInput {
@@ -48,6 +49,8 @@ export function registerTriageBinaryTool(ctx: PluginContext): Disposable {
 				const input = context.trigger.input;
 				const sample = await loadSample(context.host.fs, context.session.cwd, input.path ?? "");
 				const report = await triage(sample, { mode: input.mode === "full" ? "full" : "summary" });
+				// 面板与工具同处插件渲染进程：把报告推回面板，用户不必把结论再抄一遍。
+				publishPanelEvent({ type: "report", report, source: "agent" });
 				return renderMarkdown(report, { mode: report.mode });
 			} catch (error) {
 				return `Triage failed: ${error instanceof Error ? error.message : String(error)}`;

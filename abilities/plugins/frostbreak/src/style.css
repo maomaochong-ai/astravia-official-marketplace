@@ -1,6 +1,118 @@
 /* Tailwind —— 只导 theme + utilities，不导 preflight。
    preflight 的全局重置一旦漏出插件根节点会污染宿主侧边栏与主题色，
-   与 dbx-pro / rea / web-element-picker 的策略保持一致。 */
+   与 dbx-pro / rea / web-element-picker 的策略保持一致。
+   plugin-vite 会在 tailwind 导入后自动注入 @astravia-org/plugin-sdk/tailwind-theme.css，
+   所以 bg-background / text-foreground / border-border 这些宿主语义色可以直接用。 */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
+
+/*
+ * 设计稿（ui-mock/reverse-triage-workbench）的 token 表。
+ *
+ * 插件 CSS 被包进 @scope，:root 上声明的变量穿不进来，所以这里：
+ *   1. @theme inline 把 token 直接内联进 utility（不依赖 :root 上的 --color-*）；
+ *   2. 真实取值挂在 .fb-root 上，随宿主主题继承；
+ *   3. 浅色主题只覆盖风险色，因为它们是为深色背景调的。
+ * 结构与文字走宿主 --background / --foreground / --card / --border，
+ * 面板在浅色与深色下都能读。
+ */
+@theme inline {
+	--color-surface: var(--fb-surface);
+	--color-surface-2: var(--fb-surface-2);
+	--color-surface-3: var(--fb-surface-3);
+	--color-surface-4: var(--fb-surface-4);
+	--color-surface-hover: var(--fb-surface-hover);
+	--color-surface-active: var(--fb-surface-active);
+	--color-surface-chip: var(--fb-surface-chip);
+	--color-text: var(--fb-text);
+	--color-text-2: var(--fb-text-2);
+	--color-text-3: var(--fb-text-3);
+	--color-text-4: var(--fb-text-4);
+	--color-line: var(--fb-line);
+	--color-line-strong: var(--fb-line-strong);
+	--color-line-subtle: var(--fb-line-subtle);
+	--color-risk-high: var(--fb-risk-high);
+	--color-risk-high-deep: var(--fb-risk-high-deep);
+	--color-risk-medium: var(--fb-risk-medium);
+	--color-risk-medium-deep: var(--fb-risk-medium-deep);
+	--color-risk-low: var(--fb-risk-low);
+	--color-risk-low-deep: var(--fb-risk-low-deep);
+	--color-purple: var(--fb-purple);
+}
+
+.fb-root {
+	--fb-surface: var(--background);
+	--fb-surface-2: var(--card);
+	--fb-surface-3: var(--muted);
+	--fb-surface-4: color-mix(in oklab, var(--foreground) 9%, var(--card));
+	--fb-surface-hover: color-mix(in oklab, var(--foreground) 6%, transparent);
+	--fb-surface-active: color-mix(in oklab, var(--foreground) 11%, transparent);
+	--fb-surface-chip: color-mix(in oklab, var(--foreground) 8%, transparent);
+	--fb-text: var(--foreground);
+	--fb-text-2: color-mix(in oklab, var(--foreground) 72%, transparent);
+	--fb-text-3: color-mix(in oklab, var(--foreground) 52%, transparent);
+	--fb-text-4: color-mix(in oklab, var(--foreground) 38%, transparent);
+	--fb-line: var(--border);
+	--fb-line-strong: color-mix(in oklab, var(--foreground) 18%, transparent);
+	--fb-line-subtle: color-mix(in oklab, var(--foreground) 7%, transparent);
+	--fb-risk-high: #ff6764;
+	--fb-risk-high-deep: #e02e2a;
+	--fb-risk-medium: #ff8549;
+	--fb-risk-medium-deep: #e25507;
+	--fb-risk-low: #40c977;
+	--fb-risk-low-deep: #00a240;
+	--fb-purple: #c27aff;
+
+	font-variant-numeric: tabular-nums;
+}
+
+/* 浅色主题下这三支颜色是为深色背景选的，换成同色相更深的一档保证可读。 */
+[data-mode="light"] .fb-root {
+	--fb-risk-high: #d32b28;
+	--fb-risk-high-deep: #a81d1b;
+	--fb-risk-medium: #bf4a00;
+	--fb-risk-medium-deep: #9a3a00;
+	--fb-risk-low: #0b7a37;
+	--fb-risk-low-deep: #075f2a;
+	--fb-purple: #7b3ec4;
+}
+
+/* 面板里横向滚动的表格与纵向滚动的正文都用细滚动条，避免抢视觉重量。 */
+.fb-scroll {
+	scrollbar-width: thin;
+	scrollbar-color: var(--fb-line-strong) transparent;
+}
+.fb-scroll::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+.fb-scroll::-webkit-scrollbar-track {
+	background: transparent;
+}
+.fb-scroll::-webkit-scrollbar-thumb {
+	background: var(--fb-line-strong);
+	border-radius: 999px;
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+/* 分析中骨架：只在 motion-safe 下播动画。 */
+@keyframes fb-pulse {
+	0%,
+	100% {
+		opacity: 0.25;
+	}
+	50% {
+		opacity: 0.7;
+	}
+}
+.fb-pulse {
+	animation: fb-pulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.fb-pulse {
+		animation: none;
+		opacity: 0.45;
+	}
+}
