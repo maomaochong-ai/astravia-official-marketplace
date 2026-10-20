@@ -1,6 +1,6 @@
 ---
 name: frostbreak-triage
-description: Statically triage an unknown binary or app package — APK, AAB, IPA, DEX, JAR, ZIP, ELF, PE, Mach-O, .so, .dll, .dylib. Use when the user asks what a package does, whether an APK is safe, which permissions or exported components it exposes, what strings or credentials it carries, or why a binary is flagged. Read-only: samples are never executed, uploaded or modified.
+description: "Statically triage an unknown binary or app package - APK, AAB, IPA, DEX, JAR, ZIP, ELF, PE, Mach-O, .so, .dll, .dylib. Use when the user asks what a package does, whether an APK is safe, which permissions or exported components it exposes, what strings or credentials it carries, or why a binary is flagged. Read-only, samples are never executed, uploaded or modified."
 ---
 
 # Frostbreak triage

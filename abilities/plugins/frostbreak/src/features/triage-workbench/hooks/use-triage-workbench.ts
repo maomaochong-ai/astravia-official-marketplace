@@ -1,8 +1,11 @@
 import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReportMode, TriageReport } from "../../../domain/report/report";
+import { isOutsideProject } from "../../../domain/sample-path";
 import type { TriageSample } from "../../../domain/triage";
 import type { TriageBridge } from "../bridge";
+import type { SampleFailure } from "../sample-error";
+import { classifySampleFailure } from "../sample-error";
 
 /** 目录里优先列出的样本扩展名；其余文件仍可手动输入路径分析。 */
 const SAMPLE_EXTENSIONS = [
@@ -35,7 +38,7 @@ export interface TriageWorkbench {
 	mode: ReportMode;
 	phase: WorkbenchPhase;
 	report: TriageReport | null;
-	error: string | null;
+	error: SampleFailure | null;
 	refreshFiles: () => void;
 	analyse: (path: string) => void;
 	selectMode: (mode: ReportMode) => void;
@@ -63,7 +66,7 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 	const [mode, setMode] = useState<ReportMode>("summary");
 	const [phase, setPhase] = useState<WorkbenchPhase>("idle");
 	const [report, setReport] = useState<TriageReport | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<SampleFailure | null>(null);
 	const requestId = useRef(0);
 	/** 最近读入内存的样本：切换 summary / full 时不必再从磁盘读一遍。 */
 	const lastSample = useRef<TriageSample | null>(null);
@@ -108,7 +111,7 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 					if (current !== requestId.current) return;
 					setReport(null);
 					setPhase("error");
-					setError(failure instanceof Error ? failure.message : String(failure));
+					setError({ kind: "other", detail: failure instanceof Error ? failure.message : String(failure) });
 				});
 		},
 		[bridge],
@@ -118,8 +121,17 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 		(path: string) => {
 			const trimmed = path.trim();
 			if (trimmed.length === 0) return;
-			const current = (requestId.current += 1);
 			setSelectedPath(trimmed);
+			const current = (requestId.current += 1);
+			// 宿主只授权项目根目录，越界路径必然抛被包住的 CapabilityError；先判一次，
+			// 免得用户等一轮 IPC 才看到一句无法照做的英文报错。
+			if (isOutsideProject(trimmed, cwd)) {
+				lastSample.current = null;
+				setReport(null);
+				setPhase("error");
+				setError({ kind: "outside-project", detail: trimmed });
+				return;
+			}
 			setPhase("loading");
 			setError(null);
 			bridge
@@ -131,10 +143,11 @@ export function useTriageWorkbench(bridge: TriageBridge, cwd: string | null): Tr
 				})
 				.catch((failure: unknown) => {
 					if (current !== requestId.current) return;
+					const message = failure instanceof Error ? failure.message : String(failure);
 					lastSample.current = null;
 					setReport(null);
 					setPhase("error");
-					setError(failure instanceof Error ? failure.message : String(failure));
+					setError({ kind: classifySampleFailure(message), detail: message });
 				});
 		},
 		[bridge, cwd, mode, run],

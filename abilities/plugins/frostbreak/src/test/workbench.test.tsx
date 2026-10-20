@@ -6,7 +6,8 @@ import type { TriageReport } from "../domain/report/report";
 import type { TriageSample } from "../domain/triage";
 import type { TriageBridge } from "../features/triage-workbench/bridge";
 import { TriageWorkbench } from "../features/triage-workbench/components/triage-workbench";
-import { sampleErrorText } from "../features/triage-workbench/sample-error";
+import type { SampleFailure } from "../features/triage-workbench/sample-error";
+import { describeSampleFailure } from "../features/triage-workbench/sample-error";
 
 vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
@@ -141,14 +142,42 @@ describe("triage workbench", () => {
 
 	it("leaves ordinary load errors untouched", () => {
 		const t = (key: string) => key;
-		expect(sampleErrorText("file not found: /work/x.apk", t)).toBe("file not found: /work/x.apk");
-		expect(sampleErrorText("Capability provider failed: cap.foundation.astravia.fs.stat", t)).toBe(
-			"panel.error.outsideProject",
-		);
+		const other: SampleFailure = { kind: "other", detail: "file not found: /work/x.apk" };
+		expect(describeSampleFailure(other, t, "/work")).toBe("file not found: /work/x.apk");
+		const blocked: SampleFailure = { kind: "host-blocked", detail: "Capability provider failed: cap.foundation.astravia.fs.stat" };
+		expect(describeSampleFailure(blocked, t, "/work")).toBe("panel.error.outsideProject");
+	});
+
+	it("rejects a sample outside the project before the host IPC", async () => {
+		const api = bridge();
+		render(<TriageWorkbench bridge={api} cwd="/work" />);
+
+		fireEvent.change(screen.getByLabelText("panel.path.placeholder"), { target: { value: "~/.astravia/image-cache/demo.png" } });
+		fireEvent.click(screen.getByText("panel.path.analyse"));
+
+		expect(await screen.findByText("panel.error.outsideProjectDetail")).toBeTruthy();
+		expect(screen.getByText("panel.error.hint")).toBeTruthy();
+		expect(api.loadSample).not.toHaveBeenCalled();
+	});
+
+	it("keeps the usage guide reachable once a report is on screen", async () => {
+		const api = bridge();
+		render(<TriageWorkbench bridge={api} cwd="/work" />);
+		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
+
+		expect(await screen.findByText("panel.report.next.title")).toBeTruthy();
+		expect(screen.queryByText("panel.intro.step1.title")).toBeNull();
+
+		fireEvent.click(screen.getByText("panel.header.guide"));
+
+		expect(screen.getByText("panel.intro.step1.title")).toBeTruthy();
+		fireEvent.click(screen.getByText("panel.header.guideClose"));
+		expect(screen.getByText("panel.report.next.title")).toBeTruthy();
 	});
 
 	it("asks for a workspace when the host has no cwd", () => {
 		render(<TriageWorkbench bridge={bridge()} cwd={null} />);
 		expect(screen.getByText("panel.rail.noCwd")).toBeTruthy();
+		expect(screen.getByText("panel.intro.bodyNoWorkspace")).toBeTruthy();
 	});
 });
