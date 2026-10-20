@@ -1,0 +1,56 @@
+---
+name: frostbreak-triage
+description: Statically triage an unknown binary or app package — APK, AAB, IPA, DEX, JAR, ZIP, ELF, PE, Mach-O, .so, .dll, .dylib. Use when the user asks what a package does, whether an APK is safe, which permissions or exported components it exposes, what strings or credentials it carries, or why a binary is flagged. Read-only: samples are never executed, uploaded or modified.
+---
+
+# Frostbreak triage
+
+Everything below runs locally on the sample's bytes. There is no external toolchain, no network
+call, and no execution of the sample — so conclusions describe what the file *contains*, not what
+it does at runtime.
+
+## When to use it
+
+- "What is this APK / IPA / .so / .exe, and is it safe?"
+- "Which permissions and exported components does it have?"
+- "Does it carry hardcoded keys, tokens or URLs?"
+- "Why is this binary flagged?" → follow up with `explain_triage_finding`.
+- A suspicious attachment or download needs a first read before anyone opens it.
+
+Do not use it to decompile, patch, repack, sign, or bypass an app's protection. It is a triage
+instrument, not a decompiler.
+
+## Workflow
+
+1. **Locate the sample.** Use the path the user gave. Relative paths resolve against the session
+   working directory; `..` is clamped to the workspace root. If the user only describes a file,
+   ask for its path instead of guessing.
+2. **Run `triage_binary`** with `{"path": "..."}`. Keep `mode: "summary"` (default) for the first
+   pass; it stays under ~4500 characters. Ask for `mode: "full"` only when the summary is not
+   enough or the user wants the whole table.
+3. **Report what the score rests on**, not the score alone: format and SHA-256, the top
+   `risk.drivers`, every `critical` / `high` finding with its evidence, and the `limits` the
+   report declares.
+4. **Follow up with evidence** when the user wants detail:
+   - `scan_binary_strings` — URLs, hosts, SDK markers, embedded paths; supports a plain-text or
+     regex `query`.
+   - `explain_triage_finding` — what a rule id checks, why it matters, what to do next.
+5. **Offer a file** with `export_triage_report` when the user wants something to attach, archive or
+   hand to a reviewer (`markdown` by default, `json` for machine-readable output).
+
+## Reading the report
+
+- `risk.score` is 0-100, weighted by severity: critical 45, high 22, medium 10, low 4, info 0,
+  capped at 100. Grades: A ≤ 10, B ≤ 30, C ≤ 55, D ≤ 75, E above 75.
+- Every finding carries a `ruleId`, a `severity` and `evidence` strings. Quote the evidence;
+  never upgrade a rule into a claim the evidence does not support.
+- `limits` is part of the answer. Say what was not covered: only the first DEX, native signature
+  digests not cryptographically verified, packed code that hides its real imports, and so on.
+- No CVE lookup, no malware-family naming and no signature verification of Android certificates.
+  If the user needs any of those, say the report does not cover it.
+
+## Boundaries
+
+- A low score means "no rule matched", not "safe". Say it that way.
+- Never claim the sample is harmful, cracked, or malicious beyond what a rule reports.
+- Do not run the sample, install it, or open it with another program to "confirm" a finding.

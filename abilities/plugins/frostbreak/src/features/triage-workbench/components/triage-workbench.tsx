@@ -4,6 +4,7 @@ import type { Severity } from "../../../domain/audit/rules";
 import { SEVERITY_ORDER } from "../../../domain/audit/rules";
 import { renderMarkdown } from "../../../domain/report/report";
 import type { TriageBridge } from "../bridge";
+import { sampleErrorText } from "../sample-error";
 import { useTriageWorkbench } from "../hooks/use-triage-workbench";
 import { FindingList } from "./finding-list";
 import { ReportFacts } from "./report-facts";
@@ -11,6 +12,7 @@ import { ReportHeader } from "./report-header";
 import { ReportSections } from "./report-sections";
 import { RiskMeter } from "./risk-meter";
 import { SampleRail } from "./sample-rail";
+import { WorkbenchIntro } from "./workbench-intro";
 
 export interface TriageWorkbenchProps {
 	bridge: TriageBridge;
@@ -24,6 +26,13 @@ export function TriageWorkbench({ bridge, cwd }: TriageWorkbenchProps) {
 	const model = useTriageWorkbench(bridge, cwd);
 	const [filter, setFilter] = useState<Severity | "all">("all");
 	const busy = model.phase === "loading";
+
+	const pickPrompt = (prompt: string) => {
+		navigator.clipboard?.writeText(prompt).then(
+			() => bridge.notify(t("panel.intro.prompts.copied"), "success"),
+			() => bridge.notify(t("panel.intro.prompts.copyFailed"), "error"),
+		);
+	};
 
 	const copyMarkdown = () => {
 		if (!model.report) return;
@@ -66,16 +75,7 @@ export function TriageWorkbench({ bridge, cwd }: TriageWorkbenchProps) {
 
 			<main className="flex min-w-0 flex-1 flex-col">
 				{model.phase === "idle" ? (
-					<div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
-						<div className="flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 text-foreground/35 dark:border-white/10">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5" aria-hidden>
-								<path d="M12 3 4.5 6v6c0 4.5 3.2 7.6 7.5 9 4.3-1.4 7.5-4.5 7.5-9V6L12 3Z" strokeLinejoin="round" />
-								<path d="m9 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
-						</div>
-						<p className="text-[12.5px] font-medium text-foreground/75">{t("panel.empty.title")}</p>
-						<p className="max-w-[380px] text-[11px] leading-relaxed text-foreground/45">{t("panel.empty.body")}</p>
-					</div>
+					<WorkbenchIntro hasWorkspace={Boolean(cwd)} onPickPrompt={pickPrompt} />
 				) : null}
 
 				{model.phase === "loading" ? (
@@ -89,7 +89,7 @@ export function TriageWorkbench({ bridge, cwd }: TriageWorkbenchProps) {
 					<div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
 						<p className="text-[12.5px] font-medium text-foreground/80">{t("panel.error.title")}</p>
 						<p className="max-w-[420px] break-words rounded-md border border-red-500/25 bg-red-500/[0.06] px-2.5 py-1.5 text-[11px] leading-relaxed text-red-600 dark:text-red-400">
-							{model.error}
+							{sampleErrorText(model.error ?? "", t)}
 						</p>
 						{model.selectedPath ? (
 							<button
