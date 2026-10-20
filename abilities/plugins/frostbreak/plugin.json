@@ -1,14 +1,16 @@
 {
-	"id": "binary-triage",
+	"id": "frostbreak",
 	"name": "%plugin.name%",
 	"description": "%plugin.description%",
 	"icon": "assets/icon.svg",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
-	"styles": ["dist/style.css"],
+	"styles": [
+		"dist/style.css"
+	],
 	"moduleFederation": {
-		"remoteName": "binary_triage",
+		"remoteName": "frostbreak",
 		"expose": "./plugin"
 	},
 	"minAppVersion": "0.5.59",

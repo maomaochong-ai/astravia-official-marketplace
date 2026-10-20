@@ -21,7 +21,7 @@ export default defineConfig({
 		{
 			// 能力详情页在插件运行期从 dist/assets 读取这两份正文；随构建产物一起发出去，
 			// 安装后的详情不依赖市场源。
-			name: "binary-triage-runtime-resources",
+			name: "frostbreak-runtime-resources",
 			generateBundle() {
 				for (const source of ["detail.json", "detail.zh.json"]) {
 					this.emitFile({
@@ -34,7 +34,7 @@ export default defineConfig({
 		},
 		tailwindcss(),
 		astraviaPluginFederation({
-			name: "binary_triage",
+			name: "frostbreak",
 			entry: "./src/index.tsx",
 		}),
 	],

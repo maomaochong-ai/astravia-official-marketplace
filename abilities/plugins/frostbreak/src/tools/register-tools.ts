@@ -15,7 +15,7 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		try {
 			disposables.push(register(ctx));
 		} catch (error) {
-			console.error("[binary-triage] tool registration failed", error);
+			console.error("[frostbreak] tool registration failed", error);
 		}
 	}
 	return disposables;
