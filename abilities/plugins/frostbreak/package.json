@@ -1,6 +1,6 @@
 {
-  "name": "@astravia-marketplace/binary-triage",
-  "version": "1.0.0",
+  "name": "@astravia-marketplace/frostbreak",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "scripts": {

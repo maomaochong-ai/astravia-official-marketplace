@@ -32,7 +32,7 @@ function bridgeFor(ctx: PluginContext): TriageBridge {
 				},
 			);
 		},
-		notify: (message, variant) => ctx.ui.notify({ message, variant, title: "Binary Triage" }),
+		notify: (message, variant) => ctx.ui.notify({ message, variant, title: "Hanshuang Pojia" }),
 	};
 	bridges.set(ctx, bridge);
 	return bridge;
@@ -53,7 +53,7 @@ export default definePlugin({
 
 		try {
 			ctx.ui.registerActivityTab({
-				id: "binary-triage",
+				id: "frostbreak",
 				label: "%tab.label%",
 				component: TriageTab,
 				scope_use: ["conversation", "project"],
@@ -61,7 +61,7 @@ export default definePlugin({
 				initiallyVisible: true,
 			});
 		} catch (error) {
-			console.error("[binary-triage] activity tab registration failed", error);
+			console.error("[frostbreak] activity tab registration failed", error);
 		}
 
 		return () => {
@@ -69,7 +69,7 @@ export default definePlugin({
 				try {
 					disposable.dispose();
 				} catch (error) {
-					console.error("[binary-triage] tool disposal failed", error);
+					console.error("[frostbreak] tool disposal failed", error);
 				}
 			}
 		};

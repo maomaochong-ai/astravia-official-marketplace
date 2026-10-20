@@ -1,4 +1,4 @@
-# 二进制体检
+# 寒霜破甲
 
 在 Astravia 内离线静态体检安卓安装包、iOS 应用、原生二进制与压缩包，不依赖任何外部工具链，也从不运行样本。
 
@@ -76,7 +76,7 @@ src/
 ## 开发
 
 ```bash
-cd abilities/plugins/binary-triage
+cd abilities/plugins/frostbreak
 npm install
 npm run check     # tsc --noEmit
 npm run test      # vitest（领域夹具 + 面板接线）
