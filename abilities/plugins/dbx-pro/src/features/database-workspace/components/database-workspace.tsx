@@ -23,7 +23,6 @@ import { engineAddConnection } from "../../../shared/services/engine-client";
 import { writeConfig } from "../../../domain/dbx-storage";
 import { THREE_PANE_MIN } from "../services/split-widths";
 import { DRIVER_TAB_ID, GALLERY_TAB_ID, nextQueryLabel, nextTabId } from "../state/tab-ids";
-import { getUi } from "../../../runtime-contract";
 import { PLUGIN_VERSION } from "../../../domain/plugin-version";
 import { useDetectedTheme } from "../../../shared/hooks/use-detected-theme";
 import { useElementWidth } from "../../../shared/hooks/use-element-width";
@@ -66,15 +65,6 @@ function DatabaseWorkspaceBody(): JSX.Element {
 		if (!compact) setTreeOverlayOpen(false);
 	}, [compact]);
 
-	// 首屏加载完成 → 向宿主发送友好的成功通知（重载后确认 UI 渲染成功的第一手信号）
-	useEffect(() => {
-		try {
-			getUi()?.notify({
-				message: `dbx-pro v${PLUGIN_VERSION} 已就绪`,
-				variant: "success",
-			});
-		} catch { /* 宿主不支持 notify 或运行时未就绪时静默忽略 */ }
-	}, []);
 
 	// 把主题写到插件根属性上（本元素就是插件根之一）。宿主切主题由
 	// initPluginTheme 的 observer 同步；这里补的是面板后挂载的情况。
