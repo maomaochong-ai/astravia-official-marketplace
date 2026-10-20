@@ -1,9 +1,13 @@
 import type { PluginFsApi, PluginFsStatResult } from "@astravia-org/plugin-sdk";
 import { fromBase64 } from "../domain/base64";
 import { baseName, resolveSamplePath } from "../domain/sample-path";
+import { READ_LIMIT_BYTES, READ_LIMIT_LABEL } from "../domain/sample-scope";
 
-/** 单文件读取上限：再大就不是「体检一个样本」，而是分析整个固件镜像。 */
-export const MAX_SAMPLE_BYTES = 160 * 1024 * 1024;
+/**
+ * 单文件读取上限直接对齐宿主：`fs.readBinaryFile` 在 filesystem-service 里硬性拒绝 32 MiB
+ * 以上的文件，所以插件写得再大也只会在 IPC 里失败。
+ */
+export const MAX_SAMPLE_BYTES = READ_LIMIT_BYTES;
 
 export interface LoadedSample {
 	path: string;
@@ -24,7 +28,9 @@ export async function loadSample(fs: PluginFsApi, cwd: string, raw: string): Pro
 	}
 	if (!entry) throw new Error(`file not found: ${path}`);
 	if (entry.size > MAX_SAMPLE_BYTES) {
-		throw new Error(`${path} is ${(entry.size / 1024 / 1024).toFixed(1)} MiB, above the 160 MiB analysis limit`);
+		throw new Error(
+			`${path} is ${(entry.size / 1024 / 1024).toFixed(1)} MiB, above the ${READ_LIMIT_LABEL} the host lets a plugin read`,
+		);
 	}
 	const file = await fs.readBinaryFile(path);
 	const bytes = fromBase64(file.data);

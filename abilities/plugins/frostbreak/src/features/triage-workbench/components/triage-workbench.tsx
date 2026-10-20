@@ -4,8 +4,10 @@ import type { Severity } from "../../../domain/audit/rules";
 import { SEVERITY_ORDER } from "../../../domain/audit/rules";
 import { renderMarkdown } from "../../../domain/report/report";
 import type { TriageBridge } from "../bridge";
-import { describeSampleFailure } from "../sample-error";
+import type { SampleFailure } from "../sample-error";
+import { describeSampleFailure, isHandoffFailure } from "../sample-error";
 import { useTriageWorkbench } from "../hooks/use-triage-workbench";
+import { BlockedPanel } from "./blocked-panel";
 import { FindingList } from "./finding-list";
 import { PanelHeader } from "./panel-header";
 import { ReportFacts } from "./report-facts";
@@ -63,6 +65,31 @@ export function TriageWorkbench({ bridge, cwd }: TriageWorkbenchProps) {
 			});
 	};
 
+	/** 引擎读不到的样本：把「为什么」和「接着查什么」一并交给对话里的 Agent。 */
+	const handOff = (failure: SampleFailure) => {
+		if (!cwd) {
+			bridge.notify(t("panel.blocked.noWorkspace"), "warning");
+			return;
+		}
+		const reason = t(failure.kind === "too-large" ? "panel.blocked.reason.tooLarge" : "panel.blocked.reason.outside");
+		model
+			.handOff(t("panel.handoff.prompt", { path: failure.detail, reason }))
+			.then(outcome => {
+				if (!outcome) {
+					bridge.notify(t("panel.blocked.handoffFailed", { message: failure.detail }), "error");
+					return;
+				}
+				bridge.notify(t(outcome === "sent" ? "panel.blocked.handoffSent" : "panel.blocked.handoffOpened"), "success");
+			});
+	};
+
+	const copyPath = (path: string) => {
+		navigator.clipboard?.writeText(path).then(
+			() => bridge.notify(t("panel.blocked.pathCopied"), "success"),
+			() => bridge.notify(t("panel.blocked.pathCopyFailed"), "error"),
+		);
+	};
+
 	const findings = model.report
 		? filter === "all"
 			? model.report.findings
@@ -101,7 +128,20 @@ export function TriageWorkbench({ bridge, cwd }: TriageWorkbenchProps) {
 						</div>
 					) : null}
 
-					{!guideOpen && model.phase === "error" ? (
+					{!guideOpen && model.phase === "error" && model.error && isHandoffFailure(model.error.kind) ? (
+						<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+							<BlockedPanel
+								failure={model.error}
+								root={cwd}
+								hasWorkspace={Boolean(cwd)}
+								busy={busy}
+								onHandOff={() => handOff(model.error!)}
+								onCopyPath={() => copyPath(model.error!.detail)}
+							/>
+						</div>
+					) : null}
+
+					{!guideOpen && model.phase === "error" && (!model.error || !isHandoffFailure(model.error.kind)) ? (
 						<div className="flex flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
 							<p className="text-[12.5px] font-medium text-foreground/80">{t("panel.error.title")}</p>
 							<p className="max-w-[420px] break-words rounded-md border border-red-500/25 bg-red-500/[0.06] px-2.5 py-1.5 text-[11px] leading-relaxed text-red-600 dark:text-red-400">

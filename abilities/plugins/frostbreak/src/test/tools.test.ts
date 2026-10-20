@@ -92,7 +92,7 @@ describe("loadSample", () => {
 
 		const big = fakeContext(new Map([["/work/big.bin", new Uint8Array(8)]]));
 		big.fs.stat = async () => ({ size: MAX_SAMPLE_BYTES + 1, modifiedAt: 0, createdAt: 0 });
-		await expect(loadSample(big.fs, "/work", "big.bin")).rejects.toThrow("above the 160 MiB analysis limit");
+		await expect(loadSample(big.fs, "/work", "big.bin")).rejects.toThrow("above the 32 MiB the host lets a plugin read");
 	});
 });
 

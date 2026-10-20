@@ -49,14 +49,14 @@
 			"type": "steps",
 			"items": [
 				{ "title": "Open the Hanshuang Pojia tab", "description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder." },
-				{ "title": "Pick a sample or paste a path", "description": "Click a file in the list, or type any path relative to the workspace. Nothing is uploaded and nothing is executed." },
+				{ "title": "Pick a sample or paste a path", "description": "Click a file in the list, or type any path. Project files up to 32 MiB go to the local engine; anything larger, or outside the project folder, is handed to the agent in one click. Nothing is uploaded and nothing is executed." },
 				{ "title": "Read the report", "description": "Risk score, the findings that drove it, manifest facts and per-section details. Switch between Summary and Full, then copy or save the report." }
 			]
 		},
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "This is static triage, not proof of safety. Android signature digests are read, not cryptographically verified; packed or encrypted code is reported as a hint and never unpacked; behaviour that only shows up at runtime stays invisible here. Treat a low score as \"nothing obvious\", not as an approval."
+			"content": "This is static triage, not proof of safety. Android signature digests are read, not cryptographically verified; packed or encrypted code is reported as a hint and never unpacked; behaviour that only shows up at runtime stays invisible here. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the panel can only read files inside the open project folder, and at most 32 MiB per file. Bigger or out-of-project samples are still analysable — the panel hands them to the chat agent, which has the app's own file access."
 		},
 		{
 			"type": "links",

@@ -2,6 +2,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
 import { formatBytes } from "../../../domain/report/report";
+import { READ_LIMIT_LABEL } from "../../../domain/sample-scope";
 
 export interface SampleRailProps {
 	cwd: string | null;
@@ -60,6 +61,7 @@ export function SampleRail({ cwd, files, loading, selectedPath, busy, onRefresh,
 						{t("panel.path.analyse")}
 					</button>
 				</div>
+				<p className="mt-1 text-[9.5px] leading-relaxed text-foreground/35">{t("panel.rail.scope", { limit: READ_LIMIT_LABEL })}</p>
 			</div>
 
 			<div className="min-h-0 flex-1 overflow-y-auto p-1">

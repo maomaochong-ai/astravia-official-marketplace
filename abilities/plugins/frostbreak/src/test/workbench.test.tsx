@@ -49,10 +49,12 @@ function bridge(overrides: Partial<TriageBridge> = {}): TriageBridge {
 			{ name: "notes.txt", path: "/work/notes.txt", size: 128, isDirectory: false },
 			{ name: "lib", path: "/work/lib", size: 0, isDirectory: true },
 		]),
+		stat: vi.fn(async () => ({ size: 4_194_304 })),
 		loadSample: vi.fn(async () => SAMPLE),
 		analyse: vi.fn(async () => REPORT),
 		notify: vi.fn(),
 		saveReport: vi.fn(async () => "/work/demo-triage.md"),
+		handOff: vi.fn(async () => "sent" as const),
 		...overrides,
 	} as TriageBridge;
 }
@@ -146,6 +148,8 @@ describe("triage workbench", () => {
 		expect(describeSampleFailure(other, t, "/work")).toBe("file not found: /work/x.apk");
 		const blocked: SampleFailure = { kind: "host-blocked", detail: "Capability provider failed: cap.foundation.astravia.fs.stat" };
 		expect(describeSampleFailure(blocked, t, "/work")).toBe("panel.error.outsideProject");
+		const tooLarge: SampleFailure = { kind: "too-large", detail: "/work/big.exe", size: 188_882_944 };
+		expect(describeSampleFailure(tooLarge, t, "/work")).toContain("panel.error.tooLargeDetail");
 	});
 
 	it("rejects a sample outside the project before the host IPC", async () => {
@@ -155,10 +159,38 @@ describe("triage workbench", () => {
 		fireEvent.change(screen.getByLabelText("panel.path.placeholder"), { target: { value: "~/.astravia/image-cache/demo.png" } });
 		fireEvent.click(screen.getByText("panel.path.analyse"));
 
-		expect(await screen.findByText("panel.error.outsideProjectDetail")).toBeTruthy();
-		expect(screen.getByText("panel.error.hint")).toBeTruthy();
+		expect(await screen.findByText("panel.blocked.title")).toBeTruthy();
+		expect(screen.getByText("panel.blocked.why")).toBeTruthy();
 		expect(api.loadSample).not.toHaveBeenCalled();
 	});
+
+	it("hands an oversized sample to the agent instead of dead-ending on the host limit", async () => {
+		const api = bridge({ stat: vi.fn(async () => ({ size: 188_882_944 })) });
+		render(<TriageWorkbench bridge={api} cwd="/work" />);
+
+		fireEvent.change(screen.getByLabelText("panel.path.placeholder"), { target: { value: "/work/HanshuangPojia.exe" } });
+		fireEvent.click(screen.getByText("panel.path.analyse"));
+
+		expect(await screen.findByText("panel.blocked.title")).toBeTruthy();
+		expect(api.loadSample).not.toHaveBeenCalled();
+
+		fireEvent.click(screen.getByText("panel.blocked.handoff"));
+
+		await waitFor(() => expect(api.handOff).toHaveBeenCalledWith("panel.handoff.prompt", "/work"));
+		await waitFor(() => expect(api.notify).toHaveBeenCalledWith("panel.blocked.handoffSent", "success"));
+	});
+
+	it("offers the agent handoff for a sample outside the project", async () => {
+		const api = bridge();
+		render(<TriageWorkbench bridge={api} cwd="/work" />);
+
+		fireEvent.change(screen.getByLabelText("panel.path.placeholder"), { target: { value: "/Users/someone/Desktop/app.exe" } });
+		fireEvent.click(screen.getByText("panel.path.analyse"));
+		fireEvent.click(await screen.findByText("panel.blocked.handoff"));
+
+		await waitFor(() => expect(api.handOff).toHaveBeenCalledWith("panel.handoff.prompt", "/work"));
+	});
+
 
 	it("keeps the usage guide reachable once a report is on screen", async () => {
 		const api = bridge();
