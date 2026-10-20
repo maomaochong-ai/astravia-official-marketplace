@@ -12,7 +12,7 @@ import { looksLikeElf, parseElf } from "./native/elf";
 import { looksLikeMacho, parseMacho } from "./native/macho";
 import { looksLikePe, parsePe } from "./native/pe";
 import type { NativeFacts } from "./native/types";
-import { buildReport, formatBytes, type ReportRow, type ReportSection, type ReportMode, type TriageReport } from "./report/report";
+import { buildReport, formatBytes, type ReportRow, type ReportSection, type ReportMode, type ReportSignature, type TriageReport } from "./report/report";
 import { extractStrings } from "./strings";
 
 export type SampleFormat = "apk" | "aab" | "ipa" | "jar" | "zip" | "elf" | "pe" | "macho" | "dex" | "unknown";
@@ -27,6 +27,8 @@ export interface TriageOptions {
 	mode?: ReportMode;
 	generatedAt?: string;
 	maxStrings?: number;
+	/** 面板设置里被关掉的规则：评分和报告都不再计入。 */
+	disabledRules?: readonly string[];
 }
 
 const MAX_DEX_FILES = 6;
@@ -198,6 +200,7 @@ function nativeFactsRows(facts: NativeFacts): ReportRow[] {
 }
 
 interface Draft {
+	signature?: ReportSignature;
 	findings: Finding[];
 	facts: ReportRow[];
 	sections: ReportSection[];
@@ -287,7 +290,7 @@ async function analyseApkLike(bytes: Uint8Array, index: ZipIndex, format: Sample
 		`Readable strings were sampled from the first ${formatBytes(MAX_STRING_SCAN)} of the file.`,
 	);
 
-	return { findings, facts, sections, limits, summary };
+	return { findings, facts, sections, limits, summary, signature: { ...signature } };
 }
 
 async function analyseIpa(bytes: Uint8Array, index: ZipIndex): Promise<Draft> {
@@ -517,5 +520,7 @@ export async function triage(sample: TriageSample, options: TriageOptions = {}):
 		sections: draft.sections,
 		limits: draft.limits,
 		summary: draft.summary,
+		disabledRules: options.disabledRules,
+		signature: draft.signature,
 	});
 }

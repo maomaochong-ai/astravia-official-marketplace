@@ -32,6 +32,14 @@ export interface RiskSummary {
 	drivers: { ruleId: string; severity: Severity; title: string }[];
 }
 
+/** 结构化签名事实；面板的「签名校验」页直接读它，不解析证书。 */
+export interface ReportSignature {
+	v1: boolean;
+	v2: boolean;
+	v3: boolean;
+	schemes: string[];
+}
+
 export interface TriageReport {
 	schemaVersion: 1;
 	mode: ReportMode;
@@ -42,6 +50,8 @@ export interface TriageReport {
 	facts: ReportRow[];
 	sections: ReportSection[];
 	limits: string[];
+	/** 仅 APK 产出；其它格式没有签名块可比。 */
+	signature?: ReportSignature;
 }
 
 export interface ReportDraft {
@@ -51,6 +61,9 @@ export interface ReportDraft {
 	facts: ReportRow[];
 	sections: ReportSection[];
 	limits: string[];
+	signature?: ReportSignature;
+	/** 用户关掉的规则：不进评分、不进列表，报告里也不再出现。 */
+	disabledRules?: readonly string[];
 	summary: string[];
 }
 
@@ -63,7 +76,8 @@ const SEVERITY_LABEL: Record<Severity, string> = {
 };
 
 export function buildReport(draft: ReportDraft): TriageReport {
-	const findings = dedupeFindings(draft.findings);
+	const disabled = new Set(draft.disabledRules ?? []);
+	const findings = dedupeFindings(draft.findings).filter(item => !disabled.has(item.ruleId));
 	const score = scoreFindings(findings);
 	const summary = [...draft.summary, ...findings.filter(item => item.severity !== "info").slice(0, 3).map(item => `${SEVERITY_LABEL[item.severity]}: ${item.title}`)].slice(0, 8);
 	const drivers = findings
@@ -82,6 +96,7 @@ export function buildReport(draft: ReportDraft): TriageReport {
 		facts: draft.facts,
 		sections: draft.sections,
 		limits: draft.limits,
+		...(draft.signature ? { signature: draft.signature } : {}),
 	};
 }
 

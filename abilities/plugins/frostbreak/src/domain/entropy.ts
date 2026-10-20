@@ -65,3 +65,36 @@ export function highEntropyBands(bytes: Uint8Array, options: { blockSize?: numbe
 	if (open) bands.push(open);
 	return bands;
 }
+
+/** 面板「熵分布」柱状图需要逐桶的熵值，与 highEntropyBands 的判定阈值无关。 */
+export interface EntropyBucket {
+	/** 桶在文件中的起始偏移；面板据此把柱子和字节范围对上。 */
+	offset: number;
+	length: number;
+	entropy: number;
+}
+
+/**
+ * 把文件等分成 buckets 个桶，逐桶算熵。
+ *
+ * 面板只画这一条曲线，因此桶数固定在上限内并做抽样：一个 32 MiB 的样本
+ * 也要在几百毫秒内出图，而曲线形状足够看出「哪里是不可压缩的载荷」。
+ */
+export function entropyProfile(bytes: Uint8Array, buckets = 25, sampleLimit = 32 * 1024): EntropyBucket[] {
+	const count = Math.max(1, Math.min(200, Math.floor(buckets)));
+	const total = bytes.byteLength;
+	if (total === 0) return [];
+	const size = Math.max(1, Math.ceil(total / count));
+	const out: EntropyBucket[] = [];
+	for (let index = 0; index < count; index += 1) {
+		const offset = index * size;
+		if (offset >= total) break;
+		const end = Math.min(total, offset + size);
+		out.push({
+			offset,
+			length: end - offset,
+			entropy: shannonEntropy(sampleBytes(bytes.subarray(offset, end), sampleLimit)),
+		});
+	}
+	return out;
+}

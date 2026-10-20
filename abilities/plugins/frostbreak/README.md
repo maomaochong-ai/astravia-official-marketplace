@@ -74,12 +74,40 @@ src/
 │   ├── report/    report.ts
 │   └── triage.ts                    # entry point: detect → parse → audit → report
 ├── tools/                           # one Agent tool per file
-├── features/triage-workbench/       # components/ + hooks/
-├── shared/components/               # severity chip
+├── runtime/panel-channel.ts         # agent → panel report channel
+├── features/workbench/              # the panel
+│   ├── bridge.ts state.ts prompts.ts
+│   ├── report-compare.ts sections.ts severity.ts sample-error.ts
+│   ├── hooks/                       # use-workbench, use-library, use-chat
+│   └── components/
+│       ├── workbench-screen.tsx     # navigation + shell
+│       ├── shell/                   # sidebar, top bar, tables, chips, icons
+│       ├── workbench/               # dropzone, risk ring, findings, blocked panel
+│       └── pages/                   # the twelve screens
 └── test/                            # fixtures and tests
 ```
 
 `src/domain/` has no dependency on `@astravia-org/plugin-sdk` — it can be exercised in plain Node.
+
+## The workbench panel
+
+The activity-bar tab is a twelve-page workbench rather than a single report view: `Workbench`,
+`Guide`, `Samples`, `Findings`, `Strings`, `Manifest`, `Entropy`, `Signature`, `Compare`,
+`Self check`, `Reports` and `Settings`. Analysis results only appear once a sample has been read,
+and every page reads from the same report.
+
+Two lanes, deliberately:
+
+- **In the panel** — the bundled engine, for files inside the open project below 32 MiB. Digest,
+  format, manifest, permissions, components, sections, entropy, strings, signature structure and a
+  report-to-report diff all run locally.
+- **In the conversation** — purple buttons send an English prompt through `ctx.conversation`; the
+  agent calls the same tools for anything the panel cannot reach (out-of-project paths, files above
+  the host read cap, jadx/apktool/radare2, full-string scans). A prompt that cannot be sent because
+  no conversation is attached is reported as such, never silently dropped.
+
+`triage_binary` publishes its report back into the panel through `src/runtime/panel-channel.ts`,
+so a sample analysed in chat lands in the panel's library with a `from chat` marker.
 
 ## Development
 

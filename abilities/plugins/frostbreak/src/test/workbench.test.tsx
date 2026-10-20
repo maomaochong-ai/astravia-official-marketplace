@@ -1,19 +1,23 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildReport } from "../domain/report/report";
 import type { TriageReport } from "../domain/report/report";
+import { buildReport } from "../domain/report/report";
 import type { TriageSample } from "../domain/triage";
-import type { TriageBridge } from "../features/triage-workbench/bridge";
-import { TriageWorkbench } from "../features/triage-workbench/components/triage-workbench";
-import type { SampleFailure } from "../features/triage-workbench/sample-error";
-import { describeSampleFailure } from "../features/triage-workbench/sample-error";
+import type { WorkbenchBridge } from "../features/workbench/bridge";
+import { WorkbenchScreen } from "../features/workbench/components/workbench-screen";
+import { publishPanelEvent } from "../runtime/panel-channel";
 
 vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const SAMPLE: TriageSample = { path: "/work/demo.apk", name: "demo.apk", bytes: new Uint8Array(2048) };
+const TEXT = new TextEncoder().encode("http://example.com/api\0AKIAABCDEFGHIJKLMNOP\0");
+const BYTES = new Uint8Array(2048);
+BYTES.set(TEXT.subarray(0, 40), 0);
+BYTES.set(TEXT.subarray(41), 64);
+
+const SAMPLE: TriageSample = { path: "/work/demo.apk", name: "demo.apk", bytes: BYTES };
 
 const REPORT: TriageReport = buildReport({
 	mode: "summary",
@@ -36,180 +40,230 @@ const REPORT: TriageReport = buildReport({
 			evidence: ["AWS access key: AKIA…LE (20 chars)"],
 		},
 	],
-	facts: [{ label: "Archive entries", value: "6" }],
-	sections: [{ id: "components", title: "Components", columns: ["Component", "Exposure"], rows: [{ label: "activity .Main", value: "exported" }] }],
+	facts: [
+		{ label: "Package name", value: "com.example.triage" },
+		{ label: "Version name", value: "2.0" },
+	],
+	sections: [
+		{ id: "components", title: "Components", columns: ["Component", "Exposure"], rows: [{ label: "activity .Main", value: "exported" }] },
+		{ id: "permissions", title: "Requested permissions", columns: ["Permission", "Note"], rows: [{ label: "android.permission.CAMERA", value: "platform" }] },
+	],
 	limits: ["Only the first DEX file was scanned."],
 	summary: ["com.example.triage 2.0 · 3 components"],
+	signature: { v1: true, v2: true, v3: false, schemes: ["SHA-256"] },
 });
 
-function bridge(overrides: Partial<TriageBridge> = {}): TriageBridge {
+function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 	return {
 		listFiles: vi.fn(async () => [
-			{ name: "demo.apk", path: "/work/demo.apk", size: 4_194_304, isDirectory: false },
-			{ name: "notes.txt", path: "/work/notes.txt", size: 128, isDirectory: false },
-			{ name: "lib", path: "/work/lib", size: 0, isDirectory: true },
+			{ name: "demo.apk", path: "/work/demo.apk", size: 4_194_304, isDirectory: false, modifiedAt: 0 },
+			{ name: "notes.txt", path: "/work/notes.txt", size: 128, isDirectory: false, modifiedAt: 0 },
+			{ name: "lib", path: "/work/lib", size: 0, isDirectory: true, modifiedAt: 0 },
 		]),
 		stat: vi.fn(async () => ({ size: 4_194_304 })),
 		loadSample: vi.fn(async () => SAMPLE),
 		analyse: vi.fn(async () => REPORT),
 		notify: vi.fn(),
 		saveReport: vi.fn(async () => "/work/demo-triage.md"),
-		handOff: vi.fn(async () => "sent" as const),
+		chat: vi.fn(async () => "sent" as const),
+		subscribeChat: vi.fn(() => () => {}),
+		readState: vi.fn(async () => null),
+		writeState: vi.fn(async () => true),
+		settings: vi.fn(async () => null),
+		saveSettings: vi.fn(async () => true),
+		library: vi.fn(async () => null),
+		saveLibrary: vi.fn(async () => true),
 		...overrides,
-	} as TriageBridge;
+	};
+}
+
+async function open(api: WorkbenchBridge, cwd: string | null = "/work") {
+	render(<WorkbenchScreen bridge={api} cwd={cwd} />);
+	await act(async () => {});
+	if (cwd) await waitFor(() => expect(api.listFiles).toHaveBeenCalled());
+}
+
+async function go(page: string) {
+	fireEvent.click(screen.getByTitle(`nav.${page}`));
+}
+
+async function analyseDemo(api: WorkbenchBridge) {
+	await go("samples");
+	fireEvent.click(await screen.findByTitle("/work/demo.apk"));
+	await waitFor(() => expect(api.stat).toHaveBeenCalled());
 }
 
 afterEach(cleanup);
 
-describe("triage workbench", () => {
+describe("workbench shell", () => {
 	it("lists only sample files from the workspace", async () => {
-		render(<TriageWorkbench bridge={bridge()} cwd="/work" />);
+		const api = makeBridge();
+		await open(api);
+		await go("samples");
 		expect(await screen.findByTitle("/work/demo.apk")).toBeTruthy();
 		expect(screen.queryByText("notes.txt")).toBeNull();
 		expect(screen.queryByText("lib")).toBeNull();
 	});
 
-	it("runs a triage from a click and shows the score, grade and findings", async () => {
-		const api = bridge();
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-
-		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
-
-		await waitFor(() => expect(api.analyse).toHaveBeenCalledWith(SAMPLE, "summary"));
+	it("runs a triage from a click and shows the score and findings", async () => {
+		const api = makeBridge();
+		await open(api);
+		await analyseDemo(api);
 		expect(api.loadSample).toHaveBeenCalledWith("/work/demo.apk", "/work");
-
-		expect(await screen.findByText(String(REPORT.risk.score))).toBeTruthy();
-		expect(screen.getAllByText(REPORT.risk.grade).length).toBeGreaterThan(0);
-		expect(screen.getAllByText("Application is debuggable").length).toBeGreaterThan(0);
-		expect(screen.getByText("debuggable is true")).toBeTruthy();
-		expect(screen.getByText("com.example.triage 2.0 · 3 components")).toBeTruthy();
-		expect(screen.getByText("Android package (APK)")).toBeTruthy();
+		expect(api.analyse).toHaveBeenCalledWith(SAMPLE, { mode: "summary", disabledRules: [] });
+		expect((await screen.findAllByText("Application is debuggable")).length).toBeGreaterThan(0);
+		expect(screen.getAllByText(String(REPORT.risk.score)).length).toBeGreaterThan(0);
 	});
 
-	it("re-analyses with the full mode when the header switch is used", async () => {
-		const api = bridge();
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
-		fireEvent.click(await screen.findByText("panel.mode.full"));
-		await waitFor(() => expect(api.analyse).toHaveBeenLastCalledWith(SAMPLE, "full"));
+	it("re-analyses with the full mode after switching it in settings", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("settings");
+		fireEvent.click(screen.getByText("mode.full"));
+		await analyseDemo(api);
+		await waitFor(() => expect(api.analyse).toHaveBeenLastCalledWith(SAMPLE, { mode: "full", disabledRules: [] }));
 	});
 
 	it("saves a report and reports where it landed", async () => {
-		const api = bridge();
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
-		fireEvent.click(await screen.findByText("panel.action.exportMarkdown"));
-
+		const api = makeBridge();
+		await open(api);
+		await analyseDemo(api);
+		await go("reports");
+		fireEvent.click(screen.getByText("reports.export"));
 		await waitFor(() => expect(api.saveReport).toHaveBeenCalledWith(REPORT, "summary", "markdown"));
-		await waitFor(() => expect(api.notify).toHaveBeenCalledWith("panel.action.saved", "success"));
+		expect(api.notify).toHaveBeenCalledWith("panel.action.saved", "success");
 	});
 
-	it("surfaces a failed load as an error with a retry", async () => {
-		const api = bridge({ loadSample: vi.fn(async () => Promise.reject(new Error("file is too large"))) });
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
+	it("surfaces a failed load as an error that can be cleared", async () => {
+		const api = makeBridge({ loadSample: vi.fn(async () => Promise.reject(new Error("boom"))) });
+		await open(api);
+		await analyseDemo(api);
+		expect(await screen.findByText("blocked.other.title")).toBeTruthy();
+		expect(screen.getByText("boom")).toBeTruthy();
+		fireEvent.click(screen.getByText("blocked.retry"));
+		await waitFor(() => expect(screen.queryByText("blocked.other.title")).toBeNull());
+	});
+});
 
-		expect(await screen.findByText("file is too large")).toBeTruthy();
-		expect(screen.getByText("panel.error.retry")).toBeTruthy();
+describe("workbench handoff", () => {
+	it("explains the flow and sends a prompt from the guide", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("guide");
+		expect(await screen.findByText("guide.step.pick.title")).toBeTruthy();
+		fireEvent.click(screen.getByTitle("ai.workflow"));
+		await waitFor(() => expect(api.chat).toHaveBeenCalled());
+		expect(api.notify).toHaveBeenCalledWith("chat.sent", "success");
 	});
 
-	it("explains how to start and copies a ready-made prompt", async () => {
-		const writeText = vi.fn(async () => undefined);
-		Object.assign(navigator, { clipboard: { writeText } });
-		const api = bridge();
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-
-		expect(screen.getByText("panel.intro.step1.title")).toBeTruthy();
-		expect(screen.getByText("panel.intro.step3.title")).toBeTruthy();
-
-		fireEvent.click(screen.getByText("panel.intro.prompts.one"));
-
-		await waitFor(() => expect(writeText).toHaveBeenCalledWith("panel.intro.prompts.one"));
-		await waitFor(() => expect(api.notify).toHaveBeenCalledWith("panel.intro.prompts.copied", "success"));
-	});
-
-	it("translates a host path rejection into an actionable message", async () => {
-		const api = bridge({
-			loadSample: vi.fn(async () =>
-				Promise.reject(
-					new Error("Error invoking remote method 'astravia:plugins:capabilities:fs:stat': CapabilityError: Capability provider failed: cap.foundation.astravia.fs.stat"),
-				),
-			),
+	it("translates a host path rejection into the handoff lane", async () => {
+		const api = makeBridge({
+			loadSample: vi.fn(async () => Promise.reject(new Error("Capability provider failed: path is outside the project"))),
 		});
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
-
-		expect(await screen.findByText("panel.error.outsideProject")).toBeTruthy();
-	});
-
-	it("leaves ordinary load errors untouched", () => {
-		const t = (key: string) => key;
-		const other: SampleFailure = { kind: "other", detail: "file not found: /work/x.apk" };
-		expect(describeSampleFailure(other, t, "/work")).toBe("file not found: /work/x.apk");
-		const blocked: SampleFailure = { kind: "host-blocked", detail: "Capability provider failed: cap.foundation.astravia.fs.stat" };
-		expect(describeSampleFailure(blocked, t, "/work")).toBe("panel.error.outsideProject");
-		const tooLarge: SampleFailure = { kind: "too-large", detail: "/work/big.exe", size: 188_882_944 };
-		expect(describeSampleFailure(tooLarge, t, "/work")).toContain("panel.error.tooLargeDetail");
+		await open(api);
+		await analyseDemo(api);
+		expect(await screen.findByText("blocked.outside.title")).toBeTruthy();
+		expect(screen.getByText("blocked.handoff")).toBeTruthy();
 	});
 
 	it("rejects a sample outside the project before the host IPC", async () => {
-		const api = bridge();
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-
-		fireEvent.change(screen.getByLabelText("panel.path.placeholder"), { target: { value: "~/.astravia/image-cache/demo.png" } });
+		const api = makeBridge();
+		await open(api);
+		await go("samples");
+		fireEvent.change(screen.getByPlaceholderText("panel.path.placeholder"), { target: { value: "/tmp/other.apk" } });
 		fireEvent.click(screen.getByText("panel.path.analyse"));
-
-		expect(await screen.findByText("panel.blocked.title")).toBeTruthy();
-		expect(screen.getByText("panel.blocked.why")).toBeTruthy();
+		expect(await screen.findByText("blocked.outside.title")).toBeTruthy();
 		expect(api.loadSample).not.toHaveBeenCalled();
 	});
 
-	it("hands an oversized sample to the agent instead of dead-ending on the host limit", async () => {
-		const api = bridge({ stat: vi.fn(async () => ({ size: 188_882_944 })) });
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-
-		fireEvent.change(screen.getByLabelText("panel.path.placeholder"), { target: { value: "/work/HanshuangPojia.exe" } });
-		fireEvent.click(screen.getByText("panel.path.analyse"));
-
-		expect(await screen.findByText("panel.blocked.title")).toBeTruthy();
+	it("refuses an oversized sample before reading it", async () => {
+		const api = makeBridge({ stat: vi.fn(async () => ({ size: 40 * 1024 * 1024 })) });
+		await open(api);
+		await analyseDemo(api);
+		expect(await screen.findByText("blocked.tooLarge.title")).toBeTruthy();
 		expect(api.loadSample).not.toHaveBeenCalled();
-
-		fireEvent.click(screen.getByText("panel.blocked.handoff"));
-
-		await waitFor(() => expect(api.handOff).toHaveBeenCalledWith("panel.handoff.prompt", "/work"));
-		await waitFor(() => expect(api.notify).toHaveBeenCalledWith("panel.blocked.handoffSent", "success"));
 	});
 
-	it("offers the agent handoff for a sample outside the project", async () => {
-		const api = bridge();
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-
-		fireEvent.change(screen.getByLabelText("panel.path.placeholder"), { target: { value: "/Users/someone/Desktop/app.exe" } });
-		fireEvent.click(screen.getByText("panel.path.analyse"));
-		fireEvent.click(await screen.findByText("panel.blocked.handoff"));
-
-		await waitFor(() => expect(api.handOff).toHaveBeenCalledWith("panel.handoff.prompt", "/work"));
+	it("hands an oversized sample to the agent with one click", async () => {
+		const api = makeBridge({ stat: vi.fn(async () => ({ size: 40 * 1024 * 1024 })) });
+		await open(api);
+		await analyseDemo(api);
+		fireEvent.click(await screen.findByText("blocked.handoff"));
+		await waitFor(() => expect(api.chat).toHaveBeenCalled());
+		const [prompt] = vi.mocked(api.chat).mock.calls[0]!;
+		expect(prompt.length).toBeGreaterThan(0);
+		expect(api.notify).toHaveBeenCalledWith("chat.sent", "success");
 	});
 
-
-	it("keeps the usage guide reachable once a report is on screen", async () => {
-		const api = bridge();
-		render(<TriageWorkbench bridge={api} cwd="/work" />);
-		fireEvent.click(await screen.findByTitle("/work/demo.apk"));
-
-		expect(await screen.findByText("panel.report.next.title")).toBeTruthy();
-		expect(screen.queryByText("panel.intro.step1.title")).toBeNull();
-
-		fireEvent.click(screen.getByText("panel.header.guide"));
-
-		expect(screen.getByText("panel.intro.step1.title")).toBeTruthy();
-		fireEvent.click(screen.getByText("panel.header.guideClose"));
-		expect(screen.getByText("panel.report.next.title")).toBeTruthy();
+	it("reports a queued prompt instead of claiming it was sent", async () => {
+		const api = makeBridge({ chat: vi.fn(async () => "queued" as const) });
+		await open(api);
+		await go("guide");
+		fireEvent.click(await screen.findByTitle("ai.workflow"));
+		await waitFor(() => expect(api.notify).toHaveBeenCalledWith("chat.queued", "info"));
 	});
 
-	it("asks for a workspace when the host has no cwd", () => {
-		render(<TriageWorkbench bridge={bridge()} cwd={null} />);
-		expect(screen.getByText("panel.rail.noCwd")).toBeTruthy();
-		expect(screen.getByText("panel.intro.bodyNoWorkspace")).toBeTruthy();
+	it("asks for a workspace when the host has no cwd", async () => {
+		const api = makeBridge();
+		await open(api, null);
+		await go("samples");
+		expect(await screen.findByText("panel.rail.noCwd")).toBeTruthy();
+	});
+});
+
+describe("workbench state", () => {
+	it("navigates every page from the sidebar", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("findings");
+		expect(await screen.findByText("empty.noReport.title")).toBeTruthy();
+		await go("selfcheck");
+		expect(await screen.findByText("selfcheck.item.digest")).toBeTruthy();
+		await go("settings");
+		expect(await screen.findByText("settings.mode.title")).toBeTruthy();
+	});
+
+	it("takes a report published from the conversation", async () => {
+		const api = makeBridge();
+		await open(api);
+		act(() => publishPanelEvent({ type: "report", report: REPORT, source: "agent" }));
+		expect(await screen.findByText("dropzone.fromAgent")).toBeTruthy();
+		await go("reports");
+		expect((await screen.findAllByText("demo.apk")).length).toBeGreaterThan(0);
+	});
+
+	it("passes disabled rules into the engine", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("settings");
+		fireEvent.click(screen.getAllByRole("switch")[0]!);
+		await analyseDemo(api);
+		await waitFor(() => expect(api.analyse).toHaveBeenLastCalledWith(SAMPLE, { mode: "summary", disabledRules: [expect.any(String)] }));
+	});
+
+	it("extracts strings locally once a sample is loaded", async () => {
+		const api = makeBridge();
+		await open(api);
+		await analyseDemo(api);
+		await go("strings");
+		expect(await screen.findByText("http://example.com/api")).toBeTruthy();
+	});
+
+	it("needs two analysed reports before comparing", async () => {
+		const api = makeBridge();
+		await open(api);
+		await analyseDemo(api);
+		await go("compare");
+		expect(await screen.findByText("compare.needTwo.title")).toBeTruthy();
+	});
+
+	it("shows the manifest pages only after a report exists", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("manifest");
+		expect(await screen.findByText("empty.noReport.title")).toBeTruthy();
+		await analyseDemo(api);
+		await go("manifest");
+		expect(await screen.findByText("android.permission.CAMERA")).toBeTruthy();
 	});
 });
