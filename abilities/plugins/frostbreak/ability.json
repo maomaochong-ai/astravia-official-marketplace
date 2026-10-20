@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "type": "plugin",
-  "slug": "binary-triage",
-  "version": "1.0.0",
+  "slug": "frostbreak",
+  "version": "1.0.1",
   "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",

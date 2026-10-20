@@ -46,7 +46,7 @@
 		{
 			"type": "steps",
 			"items": [
-				{ "title": "Open the Binary Triage tab", "description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder." },
+				{ "title": "Open the Hanshuang Pojia tab", "description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder." },
 				{ "title": "Pick a sample or paste a path", "description": "Click a file in the list, or type any path relative to the workspace. Nothing is uploaded and nothing is executed." },
 				{ "title": "Read the report", "description": "Risk score, the findings that drove it, manifest facts and per-section details. Switch between Summary and Full, then copy or save the report." }
 			]

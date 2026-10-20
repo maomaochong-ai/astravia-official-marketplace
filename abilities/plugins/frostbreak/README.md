@@ -1,4 +1,4 @@
-# Binary Triage
+# Hanshuang Pojia
 
 Static triage for Android packages, iOS apps, native binaries and archives — entirely inside Astravia, with no external toolchain and no execution of the sample.
 
@@ -76,7 +76,7 @@ src/
 ## Development
 
 ```bash
-cd abilities/plugins/binary-triage
+cd abilities/plugins/frostbreak
 npm install
 npm run check     # tsc --noEmit
 npm run test      # vitest (domain fixtures + panel wiring)
