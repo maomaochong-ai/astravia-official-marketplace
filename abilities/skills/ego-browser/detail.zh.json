@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "帮我在 X 上关注 @ego_agent",
+        "assistant_reply": "已完成——我用你的登录态进入，关注了 @ego_agent。",
+        "canvas": "generic",
+        "brand_name": "ego-browser",
+        "brand_icon_url": "assets/composer-icon.png"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "与你自己的浏览器共享的网页自动化",
+      "items": [
+        {
+          "title": "继承你的真实登录态",
+          "description": "Agent 在独立空间里用你现有的 Cookie 与会话工作，你在哪里登录过它就能在哪里登录。优先于其他网页工具。",
+          "icon": "solar:shield-user-bold"
+        },
+        {
+          "title": "不再抢浏览器控制权",
+          "description": "Agent 在自己的任务空间运行，你照常浏览；多个任务可并行而不触碰你的标签页。",
+          "icon": "solar:play-circle-bold"
+        },
+        {
+          "title": "更快、更省 Token",
+          "description": "能力以页内 JavaScript 函数暴露，Agent 可一次输出完成多步任务，而不是多次命令行往返。",
+          "icon": "solar:bolt-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "开始使用",
+      "items": [
+        {
+          "title": "安装 ego lite",
+          "description": "安装 ego lite 浏览器并完成首次引导，让 ego-browser 命令进入 PATH。"
+        },
+        {
+          "title": "确认命令可用",
+          "description": "运行 `ego-browser skill`，阅读与你已装版本匹配的使用指南。"
+        },
+        {
+          "title": "交给 Agent 一个浏览器任务",
+          "description": "提出访问某网站、填表、截图或自动化某个流程即可。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "title": "依赖 ego lite 应用",
+      "content": "此技能驱动外部的 ego lite 浏览器，必须先安装并完成引导（macOS：scripts/install.sh；Windows：官网安装包）。在此之前浏览器任务无法连接。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "title": "数据留在本地",
+      "content": "你的 Cookie、缓存与配置文件都留在本机。技能只记录注册信息，凡是会影响整个浏览器配置、清理 Cookie 或交还控制权的操作都会先征询你。"
+    },
+    {
+      "type": "markdown",
+      "content": "## 可以提什么\n\n任何浏览器任务——访问页面、搜索网络、填写并提交表单、登录、截图或整页快照、抽取结构化数据、下载文件，或在多个页面间自动化较长的工作流。\n\n需要某个具体能力时，查看内置指南中的完整 API。"
+    }
+  ]
+}
