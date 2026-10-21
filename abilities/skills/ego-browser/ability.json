@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "type": "skill",
+  "slug": "ego-browser",
+  "version": "0.0.1",
+  "icon": "assets/composer-icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "fallback": "SKILL.md",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/citrolabs/ego-lite"
+      },
+      {
+        "key": "license",
+        "value": "MIT"
+      }
+    ],
+    "i18n": {
+      "zh": { "path": "detail.zh.json" }
+    }
+  }
+}
