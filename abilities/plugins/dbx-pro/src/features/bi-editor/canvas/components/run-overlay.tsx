@@ -19,10 +19,11 @@ export interface RunNode {
 }
 
 /** 全部运行面板 — 设计稿 RunPanel 对齐 */
-export function RunPanel({ nodes = [], running = true, x, y, onRunAll, onRunSelected, onClose }: {
+export function RunPanel({ nodes = [], running = true, x, y, onRunAll, onRunSelected, onClose, onPreview }: {
 	nodes?: RunNode[]; running?: boolean;
 	x?: number; y?: number;
 	onRunAll?: () => void; onRunSelected?: () => void;
+	onPreview?: () => void;
 	onClose?: () => void;
 }): JSX.Element {
 	const doneCount = nodes.filter(n => n.status === "done").length;
@@ -82,6 +83,13 @@ export function RunPanel({ nodes = [], running = true, x, y, onRunAll, onRunSele
 
 			{/* footer — 设计稿的「仅运行选中 / ⌘R 全部 / 运行全部」*/}
 			<footer className="flex h-11 shrink-0 items-center gap-2 border-t border-border bg-background px-2.5">
+				{!running && doneCount > 0 && onPreview ? (
+					<button type="button" onClick={onPreview}
+						className="flex h-6 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-accent hover:border-border hover:text-surface-foreground"
+						title="把所有图表按真实数据渲染成一整块可预览看板">
+						<span className="icon-[lucide--layout-dashboard] size-2.5" />看板预览
+					</button>
+				) : null}
 				<button type="button" onClick={onRunSelected}
 					className="flex h-6 items-center gap-1 rounded-control border border-transparent px-2 text-[10px] text-muted hover:border-border hover:text-surface-foreground">
 					仅运行选中

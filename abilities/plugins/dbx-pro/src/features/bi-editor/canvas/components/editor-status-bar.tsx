@@ -82,7 +82,7 @@ export function EditorStatusBar({
 			<span>连线 <span className="font-mono tabular-nums text-surface-foreground">{linkCount}</span></span>
 
 			<span className="ml-auto flex items-center gap-3">
-				<span className="text-faint">dbx-pro BI · v{PLUGIN_VERSION}</span>
+				<span className="text-faint">dbx BI · v{PLUGIN_VERSION}</span>
 			</span>
 		</div>
 	);

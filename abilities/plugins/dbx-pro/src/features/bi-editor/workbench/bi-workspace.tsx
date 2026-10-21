@@ -2,7 +2,7 @@
  * bi-workspace.tsx — BI 工作台入口（首屏）。
  *
  * 完整功能实现：
- *   - NAV 6 项真实切换（我的看板 / 数据大屏 / 数据集 / 工作树 / 分享给我 / 回收站）
+ *   - NAV 5 项真实切换（我的看板 / 数据集 / 数据源 / 工作树 / 分享给我 / 回收站）
  *   - 搜索框前端实时过滤
  *   - 排序下拉（更新时间 / 名称 / 创建时间 / 修改次数）
  *   - Grid / List 视图切换
@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import { useElementWidth } from "../../../shared/hooks/use-element-width";
 import { useBigscreenPages, type BigscreenPage } from "../shared/hooks/use-bigscreen-pages";
-import { BigscreenEditor } from "../canvas/canvas-editor";
+import { CanvasEditor } from "../canvas/canvas-editor";
 import { getUi } from "../../../runtime-contract";
 import { readAllConfigs } from "../../../domain/dbx-storage";
 import type { DbConnection } from "../../../domain/connection-config";
@@ -89,7 +89,7 @@ function useWorktreeStatus(): { status: WorktreeStatus | null; publish: (pageIds
 }
 
 // ── NAV 定义 ──
-type NavId = "board" | "bigscreen" | "dataset" | "sources" | "worktree" | "shared" | "trash";
+type NavId = "board" | "dataset" | "sources" | "worktree" | "shared" | "trash";
 
 /** 工作树目录行 —— 与设计稿 frames/workbench.tsx L32-L44 对齐 */
 type TreeRow = {
@@ -212,7 +212,7 @@ function formatShareExpires(iso: string | null): string {
 }
 
 function PageThumb({
-	page, previewKind, onOpen, onDelete, onCopy, onClone,
+	page, previewKind, onOpen, onDelete, onCopy, onClone, onRename, onShare,
 }: {
 	page: BigscreenPage;
 	previewKind: string;
@@ -220,9 +220,10 @@ function PageThumb({
 	onDelete: (p: BigscreenPage) => void;
 	onCopy: (p: BigscreenPage) => void;
 	onClone: (p: BigscreenPage) => void;
+	onRename: (p: BigscreenPage) => void;
+	onShare: (p: BigscreenPage) => void;
 }) {
-	const isScreen = page.style === "bigScreen";
-	const kind = isScreen ? "大屏" : "看板";
+	const kind = "看板";
 	return (
 		<div
 			className="group overflow-hidden rounded-card border bg-surface-raised transition hover:border-border-strong border-border"
@@ -234,7 +235,7 @@ function PageThumb({
 					{page.updateCount} 次
 				</span>
 				<div className="absolute left-2 top-2 flex h-5 items-center gap-1 rounded-chip bg-surface-raised px-1.5">
-					<span className={`size-1.5 rounded-full ${isScreen ? "bg-accent" : "bg-success"}`} />
+					<span className="size-1.5 rounded-full bg-success"/>
 					<span className="text-[10px] font-medium text-muted">{kind}</span>
 				</div>
 			</div>
@@ -251,6 +252,16 @@ function PageThumb({
 					<span>更新 {page.updateCount} 次</span>
 				</div>
 				<div className="flex gap-1">
+					<button
+						type="button"
+						className="rounded-control border border-border bg-surface px-2 py-0.5 text-[10px] text-muted hover:border-border-strong hover:text-surface-foreground"
+						onClick={(e) => { e.stopPropagation(); onRename(page); }}
+					>重命名</button>
+					<button
+						type="button"
+						className="rounded-control border border-border bg-surface px-2 py-0.5 text-[10px] text-muted hover:border-border-strong hover:text-surface-foreground"
+						onClick={(e) => { e.stopPropagation(); onShare(page); }}
+					>分享</button>
 					<button
 						type="button"
 						className="rounded-control border border-border bg-surface px-2 py-0.5 text-[10px] text-muted hover:border-border-strong hover:text-surface-foreground"
@@ -291,8 +302,13 @@ export function BiWorkspace(): JSX.Element {
 	const [sortKey, setSortKey] = useState<"updateTime" | "name" | "createTime" | "updateCount">("updateTime");
 	const [sortOpen, setSortOpen] = useState(false);
 	const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-	/** 从左侧看板/大屏树点产物后聚焦到的页面 id（先聚焦视图，不直接进画布）。 */
+	/** 从左侧看板树点产物后聚焦到的页面 id（先聚焦视图，不直接进画布）。 */
 	const [focusPageId, setFocusPageId] = useState<string | null>(null);
+	const [renamePage, setRenamePage] = useState<BigscreenPage | null>(null);
+	const [renameVal, setRenameVal] = useState("");
+	const [sharePage, setSharePage] = useState<BigscreenPage | null>(null);
+	const [shareType, setShareType] = useState<"permanent" | "timed">("permanent");
+	const [shareBusy, setShareBusy] = useState(false);
 
 	// 聚焦到某产物时，把对应卡片滚动进可视区，方便用户接着操作。
 	useEffect(() => {
@@ -303,7 +319,7 @@ export function BiWorkspace(): JSX.Element {
 
 	// ── 工作树展开/折叠（默认 depth0 全开，回收站关） ──
 	const [treeOpen, setTreeOpen] = useState<Record<string, boolean>>({
-		board: true, bigscreen: false, dataset: true, sources: true, trash: false,
+		board: true, dataset: true, sources: true, trash: false,
 	});
 	/** 切换 depth0 展开状态；depth1 叶子也有自己的展开状态 */
 	function toggleTree(key: string) {
@@ -331,8 +347,6 @@ export function BiWorkspace(): JSX.Element {
 	// ── 派生：按 NAV + search + sort 过滤后的 pages ──
 	const derivedPages = useMemo(() => {
 		let arr = pages;
-		if (activeNav === "board") arr = arr.filter((p) => p.style === "default");
-		else if (activeNav === "bigscreen") arr = arr.filter((p) => p.style === "bigScreen");
 		// dataset / sources / worktree / shared / trash 不渲染 pages 网格
 		const q = searchQuery.trim().toLowerCase();
 		if (q) arr = arr.filter((p) => p.name.toLowerCase().includes(q));
@@ -349,8 +363,6 @@ export function BiWorkspace(): JSX.Element {
 	}, [pages, activeNav, searchQuery, sortKey]);
 
 	// ── 派生：工作树目录（从真实数据，不是写死的） ──
-	const boardPages = pages.filter((p) => p.style === "default");
-	const bigscreenPages = pages.filter((p) => p.style === "bigScreen");
 	const datasetRows = useMemo(() => collectDatasets(pages), [pages]);
 
 	const treeRows: TreeRow[] = useMemo(() => {
@@ -360,14 +372,14 @@ export function BiWorkspace(): JSX.Element {
 		const boardOpen = treeOpen.board ?? true;
 		rows.push({
 			key: "board", navKey: "board", label: "我的看板",
-			count: String(boardPages.length),
+			count: String(pages.length),
 			depth: 0, icon: "icon-[lucide--layout-dashboard]",
 			open: boardOpen, on: activeNav === "board",
 			alert: worktree?.pages.some((p) => p.style === "default" && p.dirty) ?? false,
 		});
 		if (boardOpen) {
 			// depth1 直接列真实看板：点一下就能打开，不再放没有动作的「未分组」占位行。
-			boardPages.forEach((p) => {
+			pages.forEach((p) => {
 				rows.push({
 					key: `board-${p.id}`,
 					label: p.name,
@@ -380,28 +392,6 @@ export function BiWorkspace(): JSX.Element {
 			});
 		}
 
-		// ② 数据大屏
-		const bigscreenOpen = treeOpen.bigscreen ?? false;
-		rows.push({
-			key: "bigscreen", navKey: "bigscreen", label: "数据大屏",
-			count: String(bigscreenPages.length),
-			depth: 0, icon: "icon-[lucide--monitor]",
-			open: bigscreenOpen, on: activeNav === "bigscreen",
-			alert: worktree?.pages.some((p) => p.style === "bigScreen" && p.dirty) ?? false,
-		});
-		if (bigscreenOpen) {
-			bigscreenPages.forEach((p) => {
-				rows.push({
-					key: `bigscreen-${p.id}`,
-					label: p.name,
-					pageId: p.id,
-					depth: 1,
-					navKey: "bigscreen",
-					icon: "icon-[lucide--presentation]",
-					dot: worktree?.pages.some((w) => w.id === p.id && w.dirty) ? "bg-warning" : undefined,
-				});
-			});
-		}
 
 		// ③ 数据集（简化：所有 pages 都算"数据集"，depth1 叶子只渲染未分组）
 		const datasetOpen = treeOpen.dataset ?? true;
@@ -499,9 +489,40 @@ export function BiWorkspace(): JSX.Element {
 		catch (err) { notify(`复制失败: ${err instanceof Error ? err.message : String(err)}`, "error"); }
 	}
 
+	async function handleRename(page: BigscreenPage) {
+		const name = renameVal.trim();
+		if (!name || name === page.name) { setRenamePage(null); return; }
+		try {
+			await engineRequest<{ updateCount: number }>("/drag/page/edit", { id: page.id, name });
+			notify("已重命名", "success");
+			setRenamePage(null);
+			await refresh();
+		} catch (err) {
+			notify(`重命名失败: ${err instanceof Error ? err.message : String(err)}`, "error");
+		}
+	}
+
+	async function handleShare(page: BigscreenPage) {
+		setShareBusy(true);
+		try {
+			const link = await engineRequest<ShareLink>("/drag/sharelink/create", {
+				pageId: page.id,
+				type: shareType,
+				expiresAt: shareType === "timed" ? new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString() : undefined,
+			});
+			await navigator.clipboard?.writeText(`https://${link.path}`).catch(() => {});
+			notify("已生成并复制分享链接", "success");
+			setSharePage(null);
+		} catch (err) {
+			notify(`分享失败: ${err instanceof Error ? err.message : String(err)}`, "error");
+		} finally {
+			setShareBusy(false);
+		}
+	}
+
 	// 打开编辑器态（优先级最高）
 	if (editorPageId) {
-		return <BigscreenEditor pageId={editorPageId} onClose={() => { setEditorPageId(null); setEditorPreset(undefined); }} onSaved={refresh} initialPreset={editorPreset} />;
+		return <CanvasEditor pageId={editorPageId} onClose={() => { setEditorPageId(null); setEditorPreset(undefined); }} onSaved={refresh} initialPreset={editorPreset} />;
 	}
 
 	function previewKindFor(i: number): string {
@@ -547,12 +568,11 @@ export function BiWorkspace(): JSX.Element {
 			</div>
 		);
 
-		// board / bigscreen：Grid 或 List
-		if (loading || (activeNav === "board" && derivedPages.filter((p) => p.style === "default").length === 0) ||
-			(activeNav === "bigscreen" && derivedPages.filter((p) => p.style === "bigScreen").length === 0 && !loading)) {
+		// board：Grid 或 List
+		if (loading || (activeNav === "board" && derivedPages.length === 0)) {
 			return (
 				<div className="flex h-[200px] shrink-0 items-center justify-center rounded-card border border-border bg-surface-raised text-muted">
-					{loading ? "加载中…" : activeNav === "bigscreen" ? "还没有大屏" : "还没有看板，点右上角「新建看板」开始"}
+					{loading ? "加载中…" : "还没有看板，点右上角「新建看板」开始"}
 				</div>
 			);
 		}
@@ -564,7 +584,7 @@ export function BiWorkspace(): JSX.Element {
 						<div key={p.id} className="flex h-10 items-center gap-3 rounded-[4px] px-2 hover:bg-surface cursor-pointer"
 							onClick={() => { setEditorPreset(undefined); setEditorPageId(p.id); }}>
 							<span className="grid size-6 place-items-center rounded-[3px] bg-accent-soft text-accent">
-								<Icon name={p.style === "bigScreen" ? "icon-[lucide--monitor]" : "icon-[lucide--layout-dashboard]"} className="size-3" />
+								<Icon name="icon-[lucide--layout-dashboard]" className="size-3" />
 							</span>
 							<span className="min-w-0 flex-1 truncate text-[12px] text-surface-foreground">{p.name}</span>
 							<span className="w-24 shrink-0 text-right font-mono text-[10px] text-faint">{p.updateCount} 次</span>
@@ -596,6 +616,8 @@ export function BiWorkspace(): JSX.Element {
 								onDelete={handleDelete}
 								onClone={handleCopy}
 								onCopy={handleCopy}
+								onRename={(pg) => { setRenameVal(pg.name); setRenamePage(pg); }}
+								onShare={setSharePage}
 							/>
 						</div>
 					);
@@ -634,7 +656,7 @@ export function BiWorkspace(): JSX.Element {
 			<div className="flex shrink-0 flex-col gap-1 rounded-card border border-border bg-surface-raised p-1">
 				{worktree.pages.map((p) => (
 					<div key={p.id} className="flex h-10 items-center gap-3 rounded-[4px] px-2 hover:bg-surface">
-						<Icon name={p.style === "bigScreen" ? "icon-[lucide--monitor]" : "icon-[lucide--layout-dashboard]"} className="size-3.5 shrink-0 text-muted" />
+						<Icon name="icon-[lucide--layout-dashboard]" className="size-3.5 shrink-0 text-muted" />
 						<span className="min-w-0 flex-1 truncate text-[12px] text-surface-foreground">{p.name}</span>
 						{p.dirty ? <Chip tone="warning">未发布</Chip> : <Chip tone="success">已发布</Chip>}
 						{p.dirty ? (
@@ -669,7 +691,7 @@ export function BiWorkspace(): JSX.Element {
 	}
 
 	const NAV_LABELS: Record<NavId, string> = {
-		board: "我的看板", bigscreen: "数据大屏", dataset: "数据集",
+		board: "我的看板", dataset: "数据集",
 		sources: "数据源", worktree: "工作树", shared: "分享给我", trash: "回收站",
 	};
 	const activeLabel = NAV_LABELS[activeNav] ?? "看板";
@@ -691,7 +713,7 @@ export function BiWorkspace(): JSX.Element {
 						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
-						placeholder="搜索看板、大屏、数据集"
+						placeholder="搜索看板、数据集"
 						className="min-w-0 flex-1 bg-transparent text-[12px] text-surface-foreground outline-none placeholder:text-faint"
 					/>
 					{compact ? null : <span className="shrink-0 font-mono text-[10px] text-faint">⌘K</span>}
@@ -720,7 +742,7 @@ export function BiWorkspace(): JSX.Element {
 										toggleTree(n.key);
 										return;
 									}
-									// depth1：看板/大屏产物叶子 → 先聚焦对应分类视图（不直接进画布）；数据源叶子照旧打开编辑器
+									// depth1：看板产物叶子 → 先聚焦对应分类视图（不直接进画布）；数据源叶子照旧打开编辑器
 									if (n.pageId) {
 										if (n.navKey) {
 											setActiveNav(n.navKey);
@@ -769,7 +791,7 @@ export function BiWorkspace(): JSX.Element {
 										</span>
 									) : null}
 
-									{/* depth0 看板行追加「+新建」按钮；大屏不再提供新建入口 */}
+									{/* depth0 看板行追加「+新建」按钮 */}
 									{n.depth === 0 && n.key === "board" && (
 										<button
 											type="button"
@@ -820,7 +842,6 @@ export function BiWorkspace(): JSX.Element {
 					<div className="flex h-8 shrink-0 items-center gap-3">
 						<span className="text-[15px] font-semibold text-surface-foreground">{activeLabel}</span>
 						{activeNav === "board" && <Chip>{derivedPages.length} 个</Chip>}
-						{activeNav === "bigscreen" && <Chip>{derivedPages.length} 个</Chip>}
 						{loading && <span className="text-[11px] text-muted">加载中…</span>}
 						{error && (
 							<span className="flex items-center gap-1 text-[11px] text-danger">
@@ -829,8 +850,8 @@ export function BiWorkspace(): JSX.Element {
 							</span>
 						)}
 
-						{/* 只有 board / bigscreen 显示排序和视图切换 */}
-						{(activeNav === "board" || activeNav === "bigscreen") && (
+						{/* 只有 board 显示排序和视图切换 */}
+						{(activeNav === "board") && (
 							<>
 								<div className="ml-auto flex shrink-0 items-center gap-2">
 									{/* 排序下拉 */}
@@ -889,59 +910,51 @@ export function BiWorkspace(): JSX.Element {
 
 					{renderMainContent()}
 
-				</main>
-
-				{/* 右栏：产物链接 + 发布 */}
-				<aside className={narrow
-					? "hidden"
-					: "flex w-72 shrink-0 flex-col gap-4 overflow-hidden border-l border-border bg-surface-raised p-4"}>
-
-					<div className="flex flex-col gap-2 border-t border-border pt-3">
-						<span className="text-[11px] font-medium text-surface-foreground">产物链接</span>
-						{sharelinks.length === 0 ? (
-							<div className="rounded-card border border-dashed border-border px-3 py-2 text-center text-[10px] text-faint">暂无分享链接</div>
-						) : sharelinks.map((l) => (
-							<div key={l.id} className="flex flex-col gap-1 rounded-card border border-border bg-surface px-2.5 py-2">
-								<div className="flex items-center gap-2">
-									<Icon name={l.type === "permanent" ? "icon-[lucide--link-2]" : "icon-[lucide--calendar-clock]"} className="size-3.5 shrink-0 text-muted" />
-									<span className="text-[11px] text-surface-foreground">{l.type === "permanent" ? "永久链接" : "限期分享"}</span>
-									<span className={`ml-auto font-mono text-[10px] ${l.type === "permanent" ? "text-faint" : "text-warning"}`}>
-										{l.type === "permanent" ? "不过期" : formatShareExpires(l.expiresAt)}
-									</span>
-								</div>
-								<div className="flex items-center gap-1.5">
-									<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-muted">{l.path}</span>
-									{l.password ? <Icon name="icon-[lucide--lock]" className="size-3 shrink-0 text-faint" /> : null}
-									<IconButton size="xs" icon="icon-[lucide--copy]" title="复制链接" onClick={() => {
-										navigator?.clipboard?.writeText(`https://${l.path}`);
-										notify("已复制链接", "success");
-									}} />
+					{renamePage && (
+						<div className="fixed inset-0 z-50 grid place-items-center bg-black/40" onClick={() => setRenamePage(null)}>
+							<div className="w-80 rounded-card border border-border bg-surface-raised p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+								<div className="mb-3 text-[13px] font-medium text-surface-foreground">重命名看板</div>
+								<input
+									autoFocus
+									value={renameVal}
+									onChange={(e) => setRenameVal(e.target.value)}
+									onKeyDown={(e) => { if (e.key === "Enter") void handleRename(renamePage); }}
+									placeholder="看板名称"
+									className="w-full rounded-control border border-border bg-surface px-2.5 py-1.5 text-[12px] text-surface-foreground outline-none focus:border-accent"
+								/>
+								<div className="mt-3 flex justify-end gap-2">
+									<Btn size="xs" variant="default" onClick={() => setRenamePage(null)}>取消</Btn>
+									<Btn size="xs" variant="primary" onClick={() => void handleRename(renamePage)}>确定</Btn>
 								</div>
 							</div>
-						))}
-					</div>
-
-					<div className="mt-auto flex flex-col gap-2 rounded-card border border-border bg-surface px-3 py-2.5">
-						<div className="flex items-center gap-2">
-							<Icon name="icon-[lucide--folder-tree]" className={`size-3.5 shrink-0 ${worktree?.dirtyCount ? "text-warning" : "text-success"}`} />
-							<span className="text-[11px] text-surface-foreground">
-								工作树 {worktree?.dirtyCount ?? 0} 个变更待发布
-							</span>
 						</div>
-						<Btn
-							size="sm"
-							variant="primary"
-							icon="icon-[lucide--upload]"
-							disabled={!worktree?.dirtyCount}
-							onClick={async () => {
-								if (!worktree) return;
-								const dirtyIds = worktree.pages.filter((p) => p.dirty).map((p) => p.id);
-								await publish(dirtyIds);
-								notify(`已发布 ${dirtyIds.length} 个页面`, "success");
-							}}
-						>发布并复制链接</Btn>
-					</div>
-				</aside>
+					)}
+
+					{sharePage && (
+						<div className="fixed inset-0 z-50 grid place-items-center bg-black/40" onClick={() => setSharePage(null)}>
+							<div className="w-80 rounded-card border border-border bg-surface-raised p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+								<div className="mb-3 text-[13px] font-medium text-surface-foreground">分享「{sharePage.name}」</div>
+								<div className="flex flex-col gap-2">
+									<label className="flex items-center gap-2 text-[12px] text-surface-foreground">
+										<input type="radio" name="shareType" checked={shareType === "permanent"} onChange={() => setShareType("permanent")} />
+										<span>永久链接</span>
+									</label>
+									<label className="flex items-center gap-2 text-[12px] text-surface-foreground">
+										<input type="radio" name="shareType" checked={shareType === "timed"} onChange={() => setShareType("timed")} />
+										<span>限期分享（7 天）</span>
+									</label>
+								</div>
+								<div className="mt-3 flex justify-end gap-2">
+									<Btn size="xs" variant="default" onClick={() => setSharePage(null)}>取消</Btn>
+									<Btn size="xs" variant="primary" disabled={shareBusy} icon="icon-[lucide--link]"
+										onClick={() => void handleShare(sharePage)}>{shareBusy ? "生成中" : "生成并复制"}</Btn>
+								</div>
+							</div>
+						</div>
+					)}
+
+				</main>
+
 			</div>
 
 		</div>

@@ -1,5 +1,5 @@
 /**
- * dbx-pro 插件装配入口 — activate + registerActivityTab + 初始化运行时契约。
+ * dbx 插件装配入口 — activate + registerActivityTab + 初始化运行时契约。
  *
  * 宿主 ctx 被 setRuntime(ctx) 保存到 runtime-contract.ts，各 feature 层通过
  * getCommand/getConversation/getStorage/getServices 访问；ctx.services 在激活时绑定到
@@ -134,7 +134,7 @@ export default definePlugin({
 		// 注册主工作台 Activity Tab
 		const activityTab = ctx.ui.registerActivityTab({
 			id: "dbx-pro",
-			label: "dbx-pro",
+			label: "dbx",
 			// 省略 icon：宿主解析 plugin.json#icon（官方 assets/icon.png）作为品牌图标，
 			// 随主题 mask / 缩放保持一致，插件端不另起一套资源。
 			component: DatabaseWorkspace,
@@ -143,11 +143,11 @@ export default definePlugin({
 			initiallyVisible: true,
 		});
 
-		// 侧边栏 dbx-pro数据库工作区视图（与工作台内新建连接同一套三步流程）
+		// 侧边栏 dbx数据库工作区视图（与工作台内新建连接同一套三步流程）
 		const workspaceView = ctx.ui.registerWorkspaceView({
 			id: "dbx-connections",
 			label: "%connection.title%",
-			description: "管理 dbx-pro 数据库连接",
+			description: "管理 dbx 数据库连接",
 			iconTint: false,
 			component: ConnectionManagerPanel,
 		});
@@ -184,7 +184,7 @@ export default definePlugin({
 			if (!isActivationError && isRuntimeActive()) {
 				try {
 					ctx.ui.notify({
-						message: "dbx-pro 引擎服务启动失败，查询功能暂不可用",
+						message: "dbx 引擎服务启动失败，查询功能暂不可用",
 						error: reason,
 						variant: "error",
 					});

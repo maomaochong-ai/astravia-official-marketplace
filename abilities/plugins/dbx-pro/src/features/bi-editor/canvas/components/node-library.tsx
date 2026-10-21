@@ -204,7 +204,6 @@ export function NodeLibrary({
 			}))
 			.filter((g) => g.items.length > 0);
 	}, [search]);
-
 	if (collapsed) {
 		return (
 			<div className="flex h-full w-10 shrink-0 flex-col items-center gap-1 border-r border-border bg-surface-raised py-2">
@@ -216,6 +215,19 @@ export function NodeLibrary({
 				>
 					<Icon name="icon-[lucide--panel-left-open]" className="size-3.5" />
 				</button>
+				<div className="mt-1 flex w-full flex-col items-center gap-0.5">
+					{GROUPS.map((g) => (
+						<button
+							key={g.label}
+							type="button"
+							onClick={onToggleCollapsed}
+							className="group grid size-7 place-items-center rounded-control text-faint hover:bg-accent-soft hover:text-accent"
+							title={`${g.label}：收起详情`}
+						>
+							<Icon name={g.items[0]?.icon ?? "icon-[lucide--box]"} className="size-3.5" />
+						</button>
+					))}
+				</div>
 			</div>
 		);
 	}
@@ -329,7 +341,6 @@ export function NodeLibrary({
 										{item.label}
 									</span>
 									{item.badge ? <span className="shrink-0 font-mono text-[9px] text-ai">J</span> : null}
-									<Icon name="icon-[lucide--plus]" className="size-3 shrink-0 text-faint opacity-0 group-hover:opacity-100 transition-opacity" />
 								</div>
 							))}
 						</div>

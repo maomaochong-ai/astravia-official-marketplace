@@ -36,6 +36,7 @@ import type { NodeResult } from "../hooks/use-canvas-execution";
 import { fnv1aArray } from "../../../../shared/utils/hash";
 import { resolveNodeChartData, type NodeChartData } from "../lib/node-chart-data";
 import { buildChartOption, parseChartStyle } from "../lib/chart-option";
+import { buildChartTile } from "../lib/chart-tile";
 import { formatNumber } from "../lib/chart-spec";
 import { EChart, ECHARTS_KINDS } from "../../shared/components/echart";
 import { isChartKind, wireTone } from "../lib/link-tone";
@@ -564,6 +565,8 @@ export function NodeGraph({
 	const [nodeContextMenu, setNodeContextMenu] = useState<{ nodeId: NodeId; x: number; y: number } | null>(null);
 	/** output socket 连线末端弹出的 AddNodeMenu 位置 + 源头 socket */
 	const [linkOutContext, setLinkOutContext] = useState<{ from: NodeId; fromRow: number; x: number; y: number } | null>(null);
+	/** 图表放大：目标节点（在卡片上的放大按钮触发）。 */
+	const [magnify, setMagnify] = useState<{ id: NodeId; kind: string } | null>(null);
 
 	// ── 框选状态 ──
 	const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
@@ -811,7 +814,7 @@ export function NodeGraph({
 	/** 判断点击是否落在节点卡片 / socket / 分组区域 上。 */
 	function isCanvasBlank(target: EventTarget | null): boolean {
 		if (!(target instanceof HTMLElement)) return true;
-		if (target.closest("[data-node-id], [data-socket-type], [class*='group-zone']")) return false;
+		if (target.closest("[data-node-id], [data-socket-type], [class*='group-zone'], [data-node-action-bar], [data-context-menu]")) return false;
 		return true;
 	}
 
@@ -1922,10 +1925,22 @@ export function NodeGraph({
 							)}
 
 							{isChart && chartData && (
-								<div className="mt-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
-									{renderChartBody(kind, chartData, values)}
+								<div className="group relative mt-1 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[4px] border border-border bg-surface p-1 text-[10px] text-muted">
+							{
+									renderChartBody(kind, chartData, values)}
+									{chartData.status === "ok" && ECHARTS_KINDS.has(kind) ? (
+										<button
+											type="button"
+											title="放大图表"
+											onPointerDown={(e) => e.stopPropagation()}
+											onClick={(e) => { e.stopPropagation(); setMagnify({ id, kind }); }}
+											className="absolute right-7 top-6 z-10 grid size-5 place-items-center rounded-control bg-surface-raised text-faint opacity-0 shadow hover:text-accent focus-visible:opacity-100 group-hover:opacity-100"
+										>
+											<span className="icon-[lucide--maximize-2] size-3" />
+										</button>
+									) : null}
 								</div>
-							)}
+								)}
 
 							{isMetric && (
 								<div className="mt-1 flex flex-1 flex-col items-center justify-center">
@@ -2068,7 +2083,9 @@ export function NodeGraph({
 				const screen = { x: viewport.tx + sel.x * viewport.scale, y: viewport.ty + (sel.y + sel.h + 8) * viewport.scale };
 				return (
 					<div
-						className="absolute z-20 flex h-7 items-center gap-0.5 rounded-control border border-border bg-surface-raised px-1 shadow"
+						data-node-action-bar
+						onPointerDown={(e) => e.stopPropagation()}
+						className="absolute z-30 flex h-7 items-center gap-0.5 rounded-control border border-border bg-surface-raised px-1 shadow"
 						style={{ left: screen.x, top: screen.y }}
 					>
 						<button title="复制节点" type="button"
@@ -2205,6 +2222,36 @@ export function NodeGraph({
 					}}
 				/>
 			) : null}
+
+			{/* 图表放大浮层：生成大图预览，点遮罩或 Esc 关闭 */}
+			{magnify && (() => {
+				const mn = nodes[magnify.id];
+				if (!mn) return null;
+				const result = nodeResults[magnify.id] ?? null;
+				const { data: chartData, option } = buildChartTile(magnify.kind, mn.values ?? {}, result, getUpstreamResult ? getUpstreamResult(magnify.id) : null);
+				return (
+					<div
+						className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-8"
+						onPointerDown={(e) => { if (e.target === e.currentTarget) setMagnify(null); }}
+						onKeyDown={(e) => { if (e.key === "Escape") setMagnify(null); }}
+						tabIndex={0}
+					>
+					<div className="relative flex h-[86vh] w-full max-w-6xl flex-col overflow-hidden rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]">
+						<div className="flex h-10 shrink-0 items-center gap-2 border-b border-border bg-surface px-3">
+							<span className="text-[12px] font-medium text-surface-foreground">{(mn.values?.title as string) || magnify.kind || "图表"} — 放大</span>
+							<span className="font-mono text-[10px] text-faint">{chartData.status === "ok" ? `${chartData.rowCount} 行` : chartData.note}</span>
+							<button type="button" onClick={() => setMagnify(null)}
+								className="ml-auto grid size-7 place-items-center rounded-control text-muted hover:bg-neutral-muted hover:text-surface-foreground" title="关闭">
+								<span className="icon-[lucide--x] size-4" />
+							</button>
+						</div>
+						<div className="dbx-scroll min-h-0 flex-1 overflow-auto p-4">
+							{option ? <EChart option={option} className="h-[78vh] w-full" /> : <div className="grid h-full place-items-center text-[12px] text-muted">该图表无可用数据</div>}
+						</div>
+					</div>
+				</div>
+				);
+			})()}
 		</div>
 	);
 }
@@ -2386,6 +2433,8 @@ function NodeContextMenu({ x, y, muted, locked, collapsed, onClose, onCopy, onRu
 
 	return (
 		<div
+			data-context-menu
+			onPointerDown={(e) => e.stopPropagation()}
 			onMouseDown={(e) => e.stopPropagation()}
 			className="absolute z-30 max-h-[240px] w-[180px] overflow-y-auto rounded-card border border-border bg-surface-raised shadow-[0_18px_48px_var(--color-scrim)]"
 			style={{ left: x, top: y }}

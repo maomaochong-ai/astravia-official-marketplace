@@ -1,4 +1,4 @@
-# dbx-pro
+# dbx
 
 Astravia 数据库工作台：连接多种数据库、浏览库表结构、写 SQL、看结果。
 
