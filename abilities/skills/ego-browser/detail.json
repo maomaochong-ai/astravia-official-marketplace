@@ -55,7 +55,7 @@
       "type": "callout",
       "tone": "warning",
       "title": "Requires the ego lite app",
-      "content": "This skill drives the external ego lite browser. It must be installed and onboarded first (macOS: scripts/install.sh; Windows: the ego lite website installer). Until then, browser tasks will not connect."
+      "content": "This skill drives the external ego lite browser. It must be installed and onboarded first (macOS: scripts/install.sh; Windows: scripts/install.ps1; other platforms: the ego lite website). Until then, browser tasks will not connect."
     },
     {
       "type": "callout",
