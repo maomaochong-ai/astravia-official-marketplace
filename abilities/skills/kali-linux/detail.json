@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "My staging box is 10.20.0.14 — check which ports are open and whether the admin panel leaks anything",
+        "assistant_reply": "Pulled Kali into a local container, ran a service scan on 10.20.0.14: 22, 80, 8080 open. 8080 answers as Jenkins 2.44 — I can go deeper with nikto, say the word.",
+        "canvas": "generic",
+        "brand_name": "Kali Linux",
+        "brand_icon_url": "assets/composer-icon.png"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "A Kali box the agent can actually drive",
+      "items": [
+        {
+          "title": "Installs itself when missing",
+          "description": "No Kali on the desktop? The skill provisions one for the host OS: the kali-linux WSL2 distribution on Windows, the official kalilinux/kali-rolling container on macOS and Linux. Re-runs never duplicate the install.",
+          "icon": "solar:download-minimalistic-bold"
+        },
+        {
+          "title": "One CLI instead of a VM you babysit",
+          "description": "status, install, run, ensure, stop. Tools are installed on demand through apt, so the environment grows with the task instead of pulling a 4 GB metapackage up front.",
+          "icon": "solar:terminal-square-bold"
+        },
+        {
+          "title": "Guardrails that refuse to guess",
+          "description": "Commands aimed at public addresses, or patterns that can wipe a system, are blocked unless you opt in explicitly. Every execution is appended to an audit log you can read.",
+          "icon": "solar:shield-warning-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Get started",
+      "items": [
+        {
+          "title": "Ask for a Kali runtime",
+          "description": "The skill checks for an existing Kali (container, WSL distribution, or a native install) and runs its per-OS installer when nothing is found."
+        },
+        {
+          "title": "Confirm it is ready",
+          "description": "status prints backend, image and Kali version. It is the one check worth reading before the first scan."
+        },
+        {
+          "title": "Name the target and the goal",
+          "description": "Give an address you own plus what you want to learn, for example: scan this host and tell me which services are outdated."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "title": "Only point it at systems you are allowed to test",
+      "content": "Kali tooling sends real traffic at real hosts. The skill asks for an explicit authorization before any target outside a private network range, and keeps a denylist for commands that can destroy a machine. Penetration testing without written permission is illegal in most jurisdictions — the guardrail is a speed bump, not a licence."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "title": "Contained by default",
+      "content": "The container backend mounts only the current working directory (as /work) and a private apt cache. It cannot read the rest of your home directory, and the Kali environment itself stays on the machine — nothing is uploaded."
+    },
+    {
+      "type": "markdown",
+      "content": "## What you can ask\n\nReconnaissance (nmap, masscan, dnsrecon), web application testing (nikto, gobuster, ffuf, whatweb, sqlmap, wpscan), credential auditing against a lab you own (hydra, john, hashcat), network analysis (tshark, tcpdump inside the container), forensics (binwalk, foremost, exiftool), and CTF-style work driven from a single conversational goal.\n\nInteractive tools such as msfconsole or sqlmap are driven in batch form (`-x` resource scripts, `--batch`), because the agent runs commands non-interactively. Tools that need physical hardware — wireless cards, USB devices — are out of reach of the container backend; use a VM or a native install for those and point the skill at it."
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "我的测试机是 10.20.0.14，看看开了哪些端口，后台管理页有没有泄露信息",
+        "assistant_reply": "已经把 Kali 拉进本地容器，对 10.20.0.14 做了服务识别：22、80、8080 开着，8080 是 Jenkins 2.44。要不要我用 nikto 再往下挖一层？",
+        "canvas": "generic",
+        "brand_name": "Kali Linux",
+        "brand_icon_url": "assets/composer-icon.png"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "一个 Agent 真能开动的 Kali",
+      "items": [
+        {
+          "title": "没装就自己装",
+          "description": "桌面里找不到 Kali 时，按系统自行部署：Windows 用 kali-linux WSL2 发行版，macOS 与 Linux 用官方 kalilinux/kali-rolling 容器。重复执行不会重复安装。",
+          "icon": "solar:download-minimalistic-bold"
+        },
+        {
+          "title": "一条命令，而不是一台要伺候的虚拟机",
+          "description": "status、install、run、ensure、stop 五个动作。工具用 apt 按需安装，环境跟着任务长，而不是一上来就拉 4 GB 的元包。",
+          "icon": "solar:terminal-square-bold"
+        },
+        {
+          "title": "护栏不靠猜",
+          "description": "指向公网地址的命令，以及能抹掉系统的命令模式，默认拦下，必须显式放行。每次执行都写进可读的审计日志。",
+          "icon": "solar:shield-warning-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "先说一句要 Kali",
+          "description": "技能会先找现成的 Kali（容器、WSL 发行版或本机安装），都没有时才跑对应系统的安装流程。"
+        },
+        {
+          "title": "确认它真的就绪",
+          "description": "status 会打印后端、镜像和 Kali 版本。第一次扫描之前，这一行值得看一眼。"
+        },
+        {
+          "title": "给它目标和目的",
+          "description": "地址必须是你自己的，再说清要搞清楚什么，例如：扫这台机器，告诉我哪些服务版本偏旧。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "title": "只能指向你有权测试的系统",
+      "content": "Kali 的工具会向真实主机发真实流量。目标落在私有网段之外时，技能会要求你显式授权；能毁掉机器的命令另有黑名单。未经书面许可做渗透测试在多数司法辖区都是违法的——护栏只是减速带，不是许可证。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "title": "默认关在盒子里",
+      "content": "容器后端只挂载当前工作目录（映射为 /work）和一份私有 apt 缓存，读不到你主目录的其它内容；Kali 环境本身留在本机，不上传任何数据。"
+    },
+    {
+      "type": "markdown",
+      "content": "## 可以交给它做什么\n\n信息收集（nmap、masscan、dnsrecon）、Web 应用测试（nikto、gobuster、ffuf、whatweb、sqlmap、wpscan）、自有靶场里的口令审计（hydra、john、hashcat）、容器内的抓包分析（tshark、tcpdump）、取证（binwalk、foremost、exiftool），以及用一句话目标驱动的 CTF 类任务。\n\nmsfconsole、sqlmap 这类交互式工具按批处理方式驱动（`-x` 资源脚本、`--batch`），因为 Agent 不占用交互式终端。需要物理硬件的场景——无线网卡、USB 设备——容器后端做不到：请改用虚拟机或本机安装，再让技能指向它。"
+    }
+  ]
+}

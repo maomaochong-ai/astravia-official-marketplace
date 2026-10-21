@@ -1,0 +1,285 @@
+# kali.ps1 — drive a local Kali Linux environment on Windows through WSL2.
+#
+# The WSL2 backend only. For the container backend on Windows, run scripts/kali.sh
+# from Git Bash (it delegates its install step back to this file).
+#
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File kali.ps1 status
+#   powershell -ExecutionPolicy Bypass -File kali.ps1 install
+#   powershell -ExecutionPolicy Bypass -File kali.ps1 run "nmap -sV 192.168.64.7"
+#   powershell -ExecutionPolicy Bypass -File kali.ps1 script   (reads stdin)
+#   powershell -ExecutionPolicy Bypass -File kali.ps1 ensure nmap sqlmap
+#   powershell -ExecutionPolicy Bypass -File kali.ps1 tools
+#   powershell -ExecutionPolicy Bypass -File kali.ps1 stop
+#
+# Environment:
+#   KALI_WSL_DISTRO=kali-linux
+#   KALI_STATE_DIR=%USERPROFILE%\.astravia-kali
+#   KALI_TIMEOUT=300
+#   KALI_AUTHORIZED_HOSTS="host1 host2"
+#   KALI_TARGET_AUTH=1
+#   KALI_ALLOW_DESTRUCTIVE=1
+
+$ErrorActionPreference = 'Stop'
+
+$Distro    = if ($env:KALI_WSL_DISTRO) { $env:KALI_WSL_DISTRO } else { 'kali-linux' }
+$StateDir  = if ($env:KALI_STATE_DIR) { $env:KALI_STATE_DIR } else { Join-Path $env:USERPROFILE '.astravia-kali' }
+$Timeout   = if ($env:KALI_TIMEOUT) { [int]$env:KALI_TIMEOUT } else { 300 }
+$AuditLog  = Join-Path $StateDir 'audit.log'
+$DenyPatterns = @(
+  'rm -rf /', 'rm -rf /*', 'mkfs', 'dd of=/dev/', ':(){', 'shutdown', 'reboot',
+  'chmod -r 000 /', '> /dev/sd', 'wipefs', 'fdisk /dev/', 'curl | sh', 'curl|sh',
+  'wget -o- | sh', 'wget -qo- | sh'
+)
+
+function Write-Log { param([string]$Message) [Console]::Error.WriteLine($Message) }
+
+function Fail {
+  param([string]$Message, [int]$Code = 1)
+  Write-Log "error: $Message"
+  exit $Code
+}
+
+# A refusal is not a failure to retry: 78 is EX_CONFIG on every platform.
+function Refuse { param([string]$Message) Fail $Message 78 }
+
+function Test-Admin {
+  $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+  $principal = New-Object Security.Principal.WindowsPrincipal($id)
+  return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Test-DistroRegistered {
+  if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) { return $false }
+  try {
+    $names = & wsl.exe -l -q 2>$null
+    foreach ($name in $names) {
+      $clean = ($name -replace "`0", '').Trim()
+      if ($clean -eq $Distro) { return $true }
+    }
+  } catch { return $false }
+  return $false
+}
+
+function Test-PrivateIPv4 {
+  param([string]$Ip)
+  if ($Ip -match '^(10\.|127\.|192\.168\.|169\.254\.|0\.)') { return $true }
+  if ($Ip -match '^172\.(1[6-9]|2[0-9]|3[01])\.') { return $true }
+  return $false
+}
+
+function Test-PrivateIPv6 {
+  param([string]$Ip)
+  if ($Ip -eq '::1' -or $Ip -match '^(fc|fd|fe80)') { return $true }
+  return $false
+}
+
+function Test-HostAuthorized {
+  param([string]$HostName)
+  if ($env:KALI_TARGET_AUTH -eq '1') { return $true }
+  if (-not $env:KALI_AUTHORIZED_HOSTS) { return $false }
+  foreach ($entry in ($env:KALI_AUTHORIZED_HOSTS -split '[\s,]+')) {
+    if ($entry -and $entry -eq $HostName) { return $true }
+  }
+  return $false
+}
+
+function Assert-Target {
+  param([string]$HostName, [string]$Raw)
+  if ([string]::IsNullOrWhiteSpace($HostName)) { return }
+  $h = $HostName -replace '^\[', '' -replace '\]$', ''
+  switch -regex ($h) {
+    '^(localhost|127\.0\.0\.1|::1)$' { return }
+    '\.(local|localhost|test|invalid|internal)$' { return }
+    '^(example\.com|example\.org)$' { return }
+  }
+  if ($h -match ':') {
+    if (Test-PrivateIPv6 $h) { return }
+    Refuse "$Raw targets $h, which is not a private address. Ask the user for an explicit authorization first."
+  }
+  if ($h -match '^\d{1,3}(\.\d{1,3}){3}$') {
+    if (Test-PrivateIPv4 $h) { return }
+    if (Test-HostAuthorized $h) { return }
+    Refuse @"
+$Raw targets $h, which is not a private address.
+  Scanning a host you do not own is illegal in most places. If the user has
+  already stated they are authorized, set KALI_AUTHORIZED_HOSTS='$h' for that call.
+  Do not set this on your own initiative.
+"@
+  }
+  # Hostnames cannot be classified without resolving them; the skill instructions
+  # require an explicit user authorization before any such target.
+}
+
+function Assert-Command {
+  param([string]$Command)
+  if ($env:KALI_ALLOW_DESTRUCTIVE -ne '1') {
+    $lower = $Command.ToLowerInvariant()
+    foreach ($pattern in $DenyPatterns) {
+      if ($lower.Contains($pattern)) {
+        Refuse "command matches the destructive-pattern denylist ('$pattern'). Set KALI_ALLOW_DESTRUCTIVE=1 only if the user asked for that exact operation."
+      }
+    }
+  }
+  foreach ($m in [regex]::Matches($Command, '(\d{1,3}\.){3}\d{1,3}(/\d{1,2})?')) {
+    Assert-Target -HostName $m.Value -Raw $Command
+  }
+  foreach ($m in [regex]::Matches($Command, '(https?|ftp)://[^\s]+')) {
+    $hostPart = $m.Value -replace '^[a-zA-Z]*://', ''
+    $hostPart = $hostPart -replace '/.*$', '' -replace '^.*@', ''
+    $hostPart = $hostPart -replace ':\d+$', ''
+    Assert-Target -HostName $hostPart -Raw $Command
+  }
+}
+
+function Write-Audit {
+  param([string]$Status, [string]$Command)
+  try {
+    if (-not (Test-Path $StateDir)) { New-Item -ItemType Directory -Path $StateDir -Force | Out-Null }
+    $stamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    Add-Content -Path $AuditLog -Value ("{0}`twsl`t{1}`t{2}" -f $stamp, $Status, $Command)
+  } catch { }
+}
+
+function Invoke-InKali {
+  param([string]$Command)
+  Assert-Command $Command
+  Write-Audit 'START' $Command
+  $wrapped = "timeout $Timeout bash -lc " + "'" + ($Command -replace "'", "'\''") + "'"
+  $code = 0
+  try {
+    & wsl.exe -d $Distro --cd (Get-Location).Path -- bash -lc $wrapped
+    $code = $LASTEXITCODE
+  } catch {
+    Write-Log "error: $($_.Exception.Message)"
+    $code = 1
+  }
+  Write-Audit "EXIT=$code" $Command
+  exit $code
+}
+
+function Show-Status {
+  $registered = Test-DistroRegistered
+  $ready = $registered
+  $version = ''
+  $hint = ''
+  if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
+    $hint = 'wsl.exe not found; this backend only exists on Windows'
+  } elseif (-not $registered) {
+    $hint = "WSL distribution $Distro is not registered; run 'kali.ps1 install' from an elevated PowerShell"
+  } else {
+    try {
+      $version = (& wsl.exe -d $Distro -- sh -c '. /etc/os-release && printf "%s" "$PRETTY_NAME"' 2>$null | Out-String).Trim()
+    } catch { $version = '' }
+  }
+  Write-Output 'backend=wsl'
+  Write-Output "ready=$($ready.ToString().ToLower())"
+  Write-Output "runtime=wsl:$Distro"
+  Write-Output "container="
+  Write-Output "image_present=$($registered.ToString().ToLower())"
+  Write-Output "workdir=$((Get-Location).Path)"
+  Write-Output "audit_log=$AuditLog"
+  if ($version) { Write-Output "kali_version=$version" }
+  if ($hint) { Write-Output "hint=$hint" }
+}
+
+function Install-Kali {
+  if ($Distro -and (Test-DistroRegistered)) {
+    Write-Log "WSL distribution $Distro is already registered; nothing to install"
+    return
+  }
+  if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
+    Fail 'wsl.exe not found. Enable the "Windows Subsystem for Linux" optional feature first, then re-run install.'
+  }
+  if (-not (Test-Admin)) {
+    Fail @"
+registering a WSL distribution needs an elevated PowerShell. Ask the user to run:
+
+  wsl --install --distribution $Distro --no-launch
+  wsl -d $Distro -u root -- apt-get update
+  wsl -d $Distro -u root -- apt-get install -y kali-linux-headless
+
+then re-run 'kali.ps1 status'.
+"@
+  }
+  Write-Log "installing the $Distro WSL distribution (this downloads a few hundred MB) …"
+  & wsl.exe --install --distribution $Distro --no-launch
+  if ($LASTEXITCODE -ne 0) { Fail "wsl --install failed with exit code $LASTEXITCODE" }
+  Write-Log 'initializing apt inside the new distribution …'
+  & wsl.exe -d $Distro -u root -- sh -c 'apt-get update -qq'
+  Write-Log "Kali is ready. Re-run 'kali.ps1 status' to confirm."
+}
+
+function Ensure-Tools {
+  param([string[]]$Tools)
+  $map = @{
+    'nc' = 'netcat-traditional'; 'netcat' = 'netcat-traditional'
+    'msf' = 'metasploit-framework'; 'metasploit' = 'metasploit-framework'
+    'seclists' = 'seclists'; 'wordlists' = 'seclists'
+    'dig' = 'dnsutils'; 'nslookup' = 'dnsutils'
+    'impacket' = 'python3-impacket'
+  }
+  if ($Tools.Count -eq 1 -and $Tools[0] -eq '--profile') {
+    $packages = 'kali-linux-headless'
+  } else {
+    $packages = ($Tools | ForEach-Object { if ($map.ContainsKey($_)) { $map[$_] } else { $_ } }) -join ' '
+  }
+  Write-Log "ensuring: $packages"
+  Invoke-InKali @"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq || { echo 'apt-get update failed' >&2; exit 1; }
+apt-get install -y --no-install-recommends $packages
+"@
+}
+
+function Show-Tools {
+  Invoke-InKali @'
+for t in nmap masscan sqlmap hydra john hashcat nikto gobuster ffuf whatweb wpscan dirb dnsrecon whois smbclient msfconsole tshark tcpdump aircrack-ng binwalk foremost exiftool socat nc python3; do
+  if command -v "$t" >/dev/null 2>&1; then printf "%-16s %s\n" "$t" "$(command -v "$t")"; else printf "%-16s %s\n" "$t" "-"; fi
+done
+'@
+}
+
+function Show-Usage {
+  @'
+kali.ps1 — drive a local Kali Linux environment through WSL2
+
+  status               detect the WSL distribution and readiness (always exit 0)
+  install              register and initialize the kali-linux distribution
+  run "<command>"      run one command inside Kali
+  script               run a script from stdin inside Kali
+  ensure <tool…>       apt-install tools (use --profile for the headless set)
+  tools                show which key tools are installed
+  stop                 terminate the distribution (state is kept)
+
+Docs: references/install.md, references/runbook.md, references/safety.md
+'@ | Write-Output
+}
+
+if ($args.Count -lt 1) { Show-Usage; exit 64 }
+$action = $args[0]
+$rest = @()
+if ($args.Count -gt 1) { $rest = $args[1..($args.Count - 1)] }
+
+switch ($action) {
+  'status'  { Show-Status }
+  'install' { Install-Kali }
+  'run' {
+    if ($rest.Count -lt 1) { Fail 'usage: kali.ps1 run "<command>"' }
+    Invoke-InKali ($rest -join ' ')
+  }
+  'script' {
+    $body = [Console]::In.ReadToEnd()
+    if ([string]::IsNullOrWhiteSpace($body)) { Fail 'no script on stdin' }
+    Invoke-InKali $body
+  }
+  'ensure' {
+    if ($rest.Count -lt 1) { Fail 'usage: kali.ps1 ensure <tool…> | --profile headless' }
+    Ensure-Tools $rest
+  }
+  'tools'   { Show-Tools }
+  'stop'    { & wsl.exe --terminate $Distro; Write-Log "distribution $Distro terminated (state kept)" }
+  'help'    { Show-Usage }
+  { $_ -in '-h', '--help' } { Show-Usage }
+  default   { Fail "unknown command '$action' (try: kali.ps1 help)" }
+}
