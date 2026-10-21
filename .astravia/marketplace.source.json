@@ -963,6 +963,34 @@
       "source": {
         "path": "abilities/skills/ego-browser"
       }
+    },
+    {
+      "type": "skill",
+      "slug": "kali-linux",
+      "name": "Kali Linux",
+      "description": "Run Kali Linux tooling on this machine without a VM: the skill provisions a per-OS Kali runtime (WSL2 on Windows, the official rolling container on macOS and Linux) and drives scans, web testing, credential audits and forensics through one audited CLI.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Security",
+      "categoryI18n": {
+        "zh": "安全",
+        "en": "Security"
+      },
+      "tags": ["kali", "linux", "security", "pentest", "nmap", "wsl", "docker"],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Kali Linux",
+            "description": "不用虚拟机就能在本机跑 Kali 工具：技能按系统自动部署 Kali（Windows 用 WSL2，macOS 与 Linux 用官方滚动容器），并用一个带审计的命令行驱动扫描、Web 测试、口令审计与取证。",
+            "tags": ["Kali", "Linux", "安全", "渗透测试", "nmap", "WSL", "Docker"]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/skills/kali-linux"
+      }
     }
   ],
   "version": "0.4.81"
