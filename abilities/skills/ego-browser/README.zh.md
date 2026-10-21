@@ -12,6 +12,8 @@
 
 1. 安装 ego lite 浏览器：
    - macOS：运行 `scripts/install.sh`（按你的 CPU 架构下载并安装 DMG、去掉隔离属性并启动应用），或从 https://lite.ego.app/ 安装。
+   - Windows：运行 `scripts/install.ps1`（下载并静默安装 x64 安装包、等待 `ego-browser` 就绪并启动应用），或从 https://lite.ego.app/ 安装。
+   - 其他平台：从 https://lite.ego.app/ 安装。
    - Windows / 其他平台：从 https://lite.ego.app/ 下载安装，然后打开 ego lite。
 2. 在应用内完成首次引导（可选：导入 Chrome 数据）。引导会把 `ego-browser` 命令注册进 PATH。
 3. 确认命令可用：
@@ -41,7 +43,7 @@ Agent 会在任务空间里打开页面、读取快照并汇报结果，你自�
 - `references/guide.md` —— 完整使用指南（API 面：snapshot、选择器、导航、等待、鼠标/键盘、页面/标签/PDF、下载、对话框、任务空间生命周期）。
 - `references/install.md` —— ego lite 应用的安装/升级/排障。
 - `references/clearing-state.md` —— 清理 Cookie、缓存或存储前必读（有些命令会清到整个浏览器配置）。
-- `scripts/install.sh` —— macOS 一键安装脚本。
+- `scripts/install.sh` —— macOS 一键安装脚本；`scripts/install.ps1` —— Windows 一键安装脚本（PowerShell 5.1+）。
 
 ## 许可证
 
