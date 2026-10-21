@@ -935,6 +935,34 @@
         "path": "abilities/plugins/frostbreak"
       },
       "minAppVersion": "0.5.60"
+    },
+    {
+      "type": "skill",
+      "slug": "ego-browser",
+      "name": "ego-browser",
+      "description": "Drive websites and browser automation through the ego lite Chromium browser with your own login state, without losing control of your tabs.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia / Citro Labs",
+      "category": "Automation",
+      "categoryI18n": {
+        "zh": "自动化",
+        "en": "Automation"
+      },
+      "tags": ["browser", "automation", "web", "ego-lite", "scraping"],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "ego-browser",
+            "description": "通过 ego lite 浏览器驱动网页与浏览器自动化，沿用你自己的登录态，且不抢你标签页的控制权。",
+            "tags": ["浏览器", "自动化", "网页", "ego-lite", "抓取"]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/skills/ego-browser"
+      }
     }
   ],
   "version": "0.4.81"
