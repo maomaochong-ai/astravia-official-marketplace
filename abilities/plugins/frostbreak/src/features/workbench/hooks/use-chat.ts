@@ -21,9 +21,15 @@ export function useChat(bridge: WorkbenchBridge, cwd: string | null): ChatModel 
 
 	useEffect(() => {
 		alive.current = true;
-		const unsubscribe = bridge.subscribeChat(next => {
-			if (alive.current) setState(next);
-		});
+		let unsubscribe = () => {};
+		try {
+			unsubscribe = bridge.subscribeChat(next => {
+				if (alive.current) setState(next);
+			});
+		} catch (error) {
+			// 订阅被权限拒绕时只能看到「未连接」，但面板本身必须活下来。
+			console.warn("[frostbreak] chat subscription failed", error);
+		}
 		return () => {
 			alive.current = false;
 			unsubscribe();

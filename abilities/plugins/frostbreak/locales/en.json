@@ -456,5 +456,7 @@
 	"blocked.retry": "Pick another sample",
 	"empty.noReport.title": "No report open",
 	"empty.noReport.body": "Analyse a sample in the workbench first; this page reads from that report.",
-	"meta.sha256": "SHA-256"
+	"meta.sha256": "SHA-256",
+	"panel.crash.title": "This panel hit an error",
+	"panel.crash.body": "The workbench caught the failure so the tab stays usable. Copy the message below into the chat if you want it looked at."
 }

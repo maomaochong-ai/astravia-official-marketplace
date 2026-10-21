@@ -266,4 +266,19 @@ describe("workbench state", () => {
 		await go("manifest");
 		expect(await screen.findByText("android.permission.CAMERA")).toBeTruthy();
 	});
+
+	it("keeps the panel usable when the host denies the chat subscription", async () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const api = makeBridge({
+			subscribeChat: vi.fn(() => {
+				throw new Error("Plugin permission denied: agent.session.read");
+			}),
+		});
+		await open(api);
+		expect(api.subscribeChat).toHaveBeenCalled();
+		expect(screen.getByTitle("nav.samples")).toBeTruthy();
+		await analyseDemo(api);
+		expect((await screen.findAllByText("Application is debuggable")).length).toBeGreaterThan(0);
+		warn.mockRestore();
+	});
 });
