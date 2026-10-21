@@ -51,7 +51,9 @@ All eight declare `scope_use` explicitly (fail-closed) and only touch the worksp
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
 | `agent.tools.register`, `agent.toolHandler.execute` | the eight tools |
-| `agent.session.write` | tool results in the conversation |
+| `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
+| `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
+| `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
 | `fs.read` | listing the workspace and reading samples |
 | `fs.write` | `fs.saveAs` for exported reports (the user picks the path) |
 
