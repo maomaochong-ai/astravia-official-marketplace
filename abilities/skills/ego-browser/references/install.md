@@ -37,6 +37,21 @@ After the script opens the ego lite app, the user completes the first-run onboar
 
 ## Install on Windows
 
+The install script at `scripts/install.ps1` automates Windows installation (PowerShell 5.1+). The macOS script is a shell script; Windows uses this PowerShell counterpart. It will:
+
+- Download the ego lite Windows installer (x64) from the official CDN.
+- Run it silently and wait until the `ego-browser` command is reachable.
+- Poke the install directory into the current session's PATH.
+- Launch the `ego lite` app.
+
+Run it from PowerShell (use the script's actual path under this skill's directory):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File skills/ego-browser/scripts/install.ps1
+```
+
+If ego lite is already installed, the script skips the download and just opens the app.
+
 There is no install script for Windows. Have the user download the installer from https://lite.ego.app/ and run it, then open ego lite.
 
 ## Onboarding
@@ -103,7 +118,7 @@ Once the environment is ready, return to the user's original task: run `ego-brow
 
 ## Troubleshooting
 
-- **Not macOS**: `scripts/install.sh` supports macOS only (`uname -s` is `Darwin`). On Windows and other platforms, have the user download and install from the ego lite website at https://lite.ego.app/.
+- **Not macOS**: `scripts/install.sh` supports macOS only (`uname -s` is `Darwin`). On Windows, use `scripts/install.ps1`; on other platforms, have the user download and install from the ego lite website at https://lite.ego.app/.
 - **Download failed**: the script retries 3 times automatically; if it still fails, it's usually a network issue — have the user check their network and retry.
 - **Gatekeeper still blocks it (macOS)**: the script already tries to strip quarantine; if the first launch is still blocked, have the user allow ego lite manually under System Settings → Privacy & Security.
 - **SmartScreen blocks the installer (Windows)**: have the user choose "More info" and then "Run anyway" in the SmartScreen dialog.
