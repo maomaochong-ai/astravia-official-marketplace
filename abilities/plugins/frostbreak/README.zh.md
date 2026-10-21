@@ -51,7 +51,9 @@
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
 | `agent.tools.register`、`agent.toolHandler.execute` | 八个工具 |
-| `agent.session.write` | 工具结果写回对话 |
+| `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
+| `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
+| `storage.read`、`storage.write` | 样本架与设置能跨重启保留；没有授权时面板退化为会话内存 |
 | `fs.read` | 列目录与读取样本 |
 | `fs.write` | `fs.saveAs` 导出报告（路径由用户选择） |
 

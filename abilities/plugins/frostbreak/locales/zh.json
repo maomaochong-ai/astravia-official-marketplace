@@ -456,5 +456,7 @@
 	"blocked.retry": "换一个样本",
 	"empty.noReport.title": "还没有打开的報告",
 	"empty.noReport.body": "先在工作台里分析一个样本，这一页的数据来自那份报告。",
-	"meta.sha256": "SHA-256"
+	"meta.sha256": "SHA-256",
+	"panel.crash.title": "面板出错了",
+	"panel.crash.body": "工作台已经拦住这次异常，标签页仍然可用。把下面的信息贴进对话框，就能让它继续排查。"
 }

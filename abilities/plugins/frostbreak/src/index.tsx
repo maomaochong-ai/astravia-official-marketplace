@@ -4,6 +4,7 @@ import { reportToJson, renderMarkdown } from "./domain/report/report";
 import { resolveSamplePath } from "./domain/sample-path";
 import { triage } from "./domain/triage";
 import type { WorkbenchBridge } from "./features/workbench/bridge";
+import { PanelBoundary } from "./features/workbench/components/shell/panel-boundary";
 import { WorkbenchScreen } from "./features/workbench/components/workbench-screen";
 import { LIBRARY_STATE_PATH, SETTINGS_STATE_PATH, type ChatState, type LibraryEntry, type WorkbenchSettings } from "./features/workbench/state";
 import { getRuntime, setRuntime } from "./runtime-contract";
@@ -111,29 +112,36 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 				latest = next;
 				listener(next);
 			};
-			const handle = ctx.conversation.on((event: ConversationEvent) => {
-				switch (event.type) {
-					case "conversation-changed":
-						push(chatStateOf(event.conversation));
-						return;
-					case "turn-start":
-						push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "streaming", tool: null });
-						return;
-					case "turn-end":
-						push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "idle", tool: null });
-						return;
-					case "tool-call-start":
-						if (!isPluginTool(event.toolName)) return;
-						push({ ...latest, status: "streaming", tool: event.toolName });
-						return;
-					case "tool-call-end":
-						if (!isPluginTool(event.toolName)) return;
-						push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "idle", tool: null });
-						return;
-					default:
-						return;
-				}
-			});
+			// 订阅要 agent.session.read；授权缺失时宿主抛错，这里退化成「看不到状态」而不是炸掉面板。
+			let handle: { dispose(): void };
+			try {
+				handle = ctx.conversation.on((event: ConversationEvent) => {
+					switch (event.type) {
+						case "conversation-changed":
+							push(chatStateOf(event.conversation));
+							return;
+						case "turn-start":
+							push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "streaming", tool: null });
+							return;
+						case "turn-end":
+							push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "idle", tool: null });
+							return;
+						case "tool-call-start":
+							if (!isPluginTool(event.toolName)) return;
+							push({ ...latest, status: "streaming", tool: event.toolName });
+							return;
+						case "tool-call-end":
+							if (!isPluginTool(event.toolName)) return;
+							push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "idle", tool: null });
+							return;
+						default:
+							return;
+					}
+				});
+			} catch (error) {
+				console.warn("[frostbreak] chat subscription unavailable", error);
+				return () => {};
+			}
 			return () => handle.dispose();
 		},
 
@@ -153,7 +161,11 @@ function WorkbenchTab() {
 	const { cwd } = useActivityTab();
 	const ctx = getRuntime();
 	if (!ctx) return null;
-	return <WorkbenchScreen bridge={bridgeFor(ctx)} cwd={cwd} />;
+	return (
+		<PanelBoundary>
+			<WorkbenchScreen bridge={bridgeFor(ctx)} cwd={cwd} />
+		</PanelBoundary>
+	);
 }
 
 export default definePlugin({
