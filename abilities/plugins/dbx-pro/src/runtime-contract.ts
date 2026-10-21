@@ -35,7 +35,7 @@ export function isRuntimeActive(): boolean {
 
 function requireCtx(): any {
 	if (!_ctx || !_isActive) {
-		throw new Error("dbx-pro plugin not activated or has been deactivated");
+		throw new Error("dbx plugin not activated or has been deactivated");
 	}
 	return _ctx;
 }

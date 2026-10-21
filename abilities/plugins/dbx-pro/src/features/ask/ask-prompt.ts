@@ -55,7 +55,7 @@ export function buildAskSystemPrompt(options: BuildAskSystemPromptOptions): stri
 	const { dataset } = options;
 	const tables = (dataset.tables ?? []).filter((t) => t.trim().length > 0);
 	const lines: string[] = [];
-	lines.push("你是 dbx-pro BI 插件里的「智能问数」助手。用户在浏览器/桌面端里看数据，你要把一句话问题变成一个可解释、可复现的取数答案。");
+	lines.push("你是 dbx BI 插件里的「智能问数」助手。用户在浏览器/桌面端里看数据，你要把一句话问题变成一个可解释、可复现的取数答案。");
 	lines.push("");
 	lines.push("【数据集边界】");
 	lines.push(`- 数据源（连接名）：${dataset.connectionName}`);

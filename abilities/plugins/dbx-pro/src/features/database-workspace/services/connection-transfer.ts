@@ -52,7 +52,7 @@ export async function exportConnectionsFile(): Promise<number> {
 	try {
 		const a = document.createElement("a");
 		a.href = url;
-		a.download = `dbx-pro-connections-${stamp()}.json`;
+		a.download = `dbx-connections-${stamp()}.json`;
 		document.body.appendChild(a);
 		a.click();
 		a.remove();

@@ -29,8 +29,8 @@ import { connectionsRoutes } from "../api/internal/connections.ts";
 import { apiSourcesRoutes } from "../api/external/routes.ts";
 import { queryRoutes } from "../api/internal/query.ts";
 import { schemaRoutes } from "../api/internal/schema.ts";
-import { revealRoutes } from "../api/internal/reveal.ts";
 import { bigscreenRoutes } from "../api/internal/bigscreen.ts";
+import { revealRoutes } from "../api/internal/reveal.ts";
 import { reportRoutes } from "../api/internal/report.ts";
 import { chartRoutes } from "../api/internal/chart.ts";
 import { formRoutes } from "../api/internal/form.ts";
@@ -56,8 +56,8 @@ export function createRouter({ auth, dataDir = null, now = () => Date.now() }: {
 		...queryRoutes(ctx),
 		...schemaRoutes(ctx),
 		...revealRoutes(),
-		...bigscreenRoutes(),
 		...reportRoutes(ctx),
+		...bigscreenRoutes(),
 		...chartRoutes(),
 		...formRoutes(ctx),
 		...portalRoutes(ctx),

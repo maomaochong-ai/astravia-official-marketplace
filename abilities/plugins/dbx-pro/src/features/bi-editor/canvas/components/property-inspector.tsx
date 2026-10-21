@@ -261,6 +261,37 @@ function NodePropertyForm({
 				</section>
 			) : null}
 
+			{/* 数据源节点数据预览 — 以表格形式展示 result 数据 */}
+			{isSource && result && !result.error && result.rows.length > 0 ? (
+				<section>
+					<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">数据预览 ({result.rowCount} 行)</h3>
+					<div className="overflow-hidden rounded-card border border-border">
+						<div className="dbx-scroll max-h-[220px] overflow-auto">
+							<table className="w-full border-collapse text-[10px]">
+								<thead className="sticky top-0 z-10 bg-surface">
+									<tr>
+										{result.columns.map((c) => (
+											<th key={c} className="whitespace-nowrap border-b border-border px-2 py-1 text-left font-medium text-muted">{c}</th>
+										))}
+									</tr>
+								</thead>
+								<tbody>
+									{result.rows.slice(0, 50).map((row, i) => (
+										<tr key={i} className="border-b border-border/60 last:border-b-0">
+											{result.columns.map((c) => (
+												<td key={c} className="max-w-[120px] truncate px-2 py-0.5 font-mono text-[10px] text-surface-foreground">{String(row[c] ?? "")}</td>
+											))}
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</div>
+					{result.rows.length > 50 ? <p className="mt-1 text-[9px] text-faint">仅显示前 50 行</p> : null}
+				</section>
+			) : null}
+
+
 			<section>
 				<h3 className="mb-2 font-mono text-[10px] uppercase tracking-wider text-faint">属性 · {schema.label}</h3>
 				<div className="space-y-2">

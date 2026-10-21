@@ -1,5 +1,5 @@
 /**
- * bigscreen-editor.tsx — BI 编辑器主容器。
+ * canvas-editor.tsx — BI 编辑器主容器。
  *
  * 布局：
  *   ┌─ Toolbar（返回/页面名/保存/运行/AI 生成/主题）
@@ -29,8 +29,8 @@ import { PropertyInspector, type SelectedNodeInfo } from "./components/property-
 import { EditorStatusBar, type RunSummary } from "./components/editor-status-bar";
 import { RunPanel, type RunNode } from "./components/run-overlay";
 import { AiGenerateDialog, TemplateSaveDialog, type ParamRow } from "./components/ai-node-panel";
-import { BigscreenScreenEditor } from "./screen-editor";
 import { DEFAULT_PALETTE_ID, paletteById, paletteStyle } from "../shared/canvas-palettes";
+import { BoardPreview } from "./components/board-preview";
 
 /** template JSON schema（持久化）。 */
 interface CanvasTemplate {
@@ -78,7 +78,7 @@ function serializeCanvas(nodes: Record<string, NodePos>, links: Link[]): string 
 	return JSON.stringify({ nodes: clean, links });
 }
 
-export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
+export function CanvasEditor({ pageId, onClose, onSaved, initialPreset }: {
 	pageId: string;
 	onClose: () => void;
 	onSaved?: () => void;
@@ -92,7 +92,7 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 	const [activeTheme, setActiveTheme] = useState<"dark" | "default">("dark");
 	const [templates, setTemplates] = useState<{ id: string; name: string; template: string; createTime: string }[]>([]);
 	const [leftCollapsed, setLeftCollapsed] = useState(false);
-	const [rightCollapsed, setRightCollapsed] = useState(false);
+	const [rightCollapsed, setRightCollapsed] = useState(true);
 
 	// ── 侧边栏可拖拽 resize ──
 	const [leftWidth, setLeftWidth] = useState(240);
@@ -179,6 +179,7 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 	const [runNodes, setRunNodes] = useState<RunNode[]>([]);
 	const [running, setRunning] = useState(false);
 	const [showRunPanel, setShowRunPanel] = useState(false);
+	const [showBoardPreview, setShowBoardPreview] = useState(false);
 
 	// ── AI 生成节点状态 ──
 	const [showAiDialog, setShowAiDialog] = useState(false);
@@ -386,6 +387,12 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 			nodeCount: outcome.nodeCount,
 		});
 		setRunFingerprint(fingerprint);
+
+		// 运行完后若有成功节点，自动弹出可预览看板
+		const anyDone = entries.some(([id]) => outcome.results[id] && !outcome.results[id].error);
+		if (anyDone) {
+			setShowBoardPreview(true);
+		}
 	}, [nodes, links, execRunning, runAll, getUpstreamData]);
 
 	// ── 画布级全局键盘快捷键 ──
@@ -490,17 +497,6 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 		);
 	}
 
-	// 大屏模式 → 独立编辑器（frames/bigscreen.tsx 对齐）
-	if (page.style === "bigScreen") {
-		return (
-			<BigscreenScreenEditor
-				key={page.id}
-				page={page}
-				onClose={onClose}
-				onSaved={onSaved}
-			/>
-		);
-	}
 
 	// dbxTheme 在组件顶部无条件解析（见上方 hook 位置的注释）；此处直接使用。
 	// activeTheme 仍是页面内容明暗（深色大屏/浅色看板），但皮肤壳统一随宿主。
@@ -614,7 +610,17 @@ export function BigscreenEditor({ pageId, onClose, onSaved, initialPreset }: {
 							running={running}
 							onRunAll={handleRunAll}
 							onRunSelected={() => { if (selectedNodeInfo) void handleRunNode(selectedNodeInfo.id); }}
+							onPreview={() => setShowBoardPreview(true)}
 							onClose={() => setShowRunPanel(false)}
+						/>
+					) : null}
+
+					{showBoardPreview ? (
+						<BoardPreview
+							nodes={nodes}
+							nodeResults={nodeResults}
+							caption={`${page.name} · 看板预览`}
+							onClose={() => setShowBoardPreview(false)}
 						/>
 					) : null}
 

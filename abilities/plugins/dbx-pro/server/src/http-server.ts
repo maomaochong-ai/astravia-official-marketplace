@@ -216,7 +216,7 @@ export function createEngineServer({ token, dataDir = null, authDisabled = false
         try {
           if (rpc.method === "initialize") {
             await client.ensureInitialized();
-            return send(200, { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "dbx-pro", version: ENGINE_VERSION } } });
+            return send(200, { jsonrpc: "2.0", id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "dbx", version: ENGINE_VERSION } } });
           }
           if (rpc.method === "tools/list") {
             const list = await client.listTools();
@@ -310,7 +310,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     process.stdout.write(
-      "dbx-pro engine (dbx-mcp bridge)\n  --port <n>        listen port (0 = random)\n  --data <dir>      service data directory (dbx-mcp stores dbx.db here)\n  --auth-disabled   disable token auth (local dev only)\n",
+      "dbx engine (dbx-mcp bridge)\n  --port <n>        listen port (0 = random)\n  --data <dir>      service data directory (dbx-mcp stores dbx.db here)\n  --auth-disabled   disable token auth (local dev only)\n",
     );
     return;
   }

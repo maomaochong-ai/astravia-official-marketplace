@@ -5,7 +5,7 @@
  * 而不是让用户凭记忆手打表名；拿不到表列表时退回自由文本输入并说明原因。
  *
  * 为什么这样写：
- * - 引擎请求层用 bindEngineServices 换掉（与 bigscreen-empty-canvas.test.ts 一致），
+ * - 引擎请求层用 bindEngineServices 换掉，
  *   不起真实引擎、不打网络。真实链路是 api.request（不是全局 fetch）。
  * - 不用 JSX：node 原生不转换 JSX，统一用 createElement。
  * - 表列表按连接名做了模块级缓存，测试之间必须清理，否则第二个用例会读到第一个的缓存。

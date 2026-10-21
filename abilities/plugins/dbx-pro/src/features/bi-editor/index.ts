@@ -14,8 +14,7 @@ export { BiWorkspace } from "./workbench/bi-workspace";
 export { BiWorkbench } from "./workbench/bi-workbench";
 
 // 画布编辑器
-export { BigscreenEditor } from "./canvas/canvas-editor";
-export { BigscreenScreenEditor } from "./canvas/screen-editor";
+export { CanvasEditor } from "./canvas/canvas-editor";
 
 // 预览态
 export { DashboardView } from "./preview/dashboard-preview";
