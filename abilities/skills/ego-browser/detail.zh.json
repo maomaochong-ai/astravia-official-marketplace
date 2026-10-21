@@ -55,7 +55,7 @@
       "type": "callout",
       "tone": "warning",
       "title": "依赖 ego lite 应用",
-      "content": "此技能驱动外部的 ego lite 浏览器，必须先安装并完成引导（macOS：scripts/install.sh；Windows：官网安装包）。在此之前浏览器任务无法连接。"
+      "content": "此技能驱动外部的 ego lite 浏览器，必须先安装并完成引导（macOS：scripts/install.sh；Windows：scripts/install.ps1；其他平台：ego lite 官网）。在此之前浏览器任务无法连接。"
     },
     {
       "type": "callout",

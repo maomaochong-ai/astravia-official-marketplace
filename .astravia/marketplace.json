@@ -7042,7 +7042,7 @@
       "slug": "ego-browser",
       "name": "ego-browser",
       "description": "Drive websites and browser automation through the ego lite Chromium browser with your own login state, without losing control of your tabs.",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia / Citro Labs",
@@ -7079,5 +7079,5 @@
     }
   ],
   "version": "0.4.81",
-  "marketplaceVersion": "2026.10.21-4"
+  "marketplaceVersion": "2026.10.21-5"
 }
