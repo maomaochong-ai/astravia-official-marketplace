@@ -4,9 +4,9 @@
     {
       "type": "hero",
       "eyebrow": "数据库工作台",
-      "title": "dbx-pro —— Astravia 里的数据库工作台与看板",
-      "description": "管理连接、浏览 Schema、编写并运行 SQL、查看可排序的结果表格，再把任意查询结果做成可筛选的看板或大屏。读路径经 dbx-mcp 支持 PostgreSQL、MySQL、SQLite、ClickHouse 等 100+ 种数据库；写与 DDL 经插件内置驱动执行。",
-      "badges": ["100+ 种数据库", "看板与大屏", "11 种图表", "筛选与重新取数", "DDL 写入", "AI 双向联动"]
+      "title": "dbx —— Astravia 里的数据库工作台与看板",
+      "description": "管理连接、浏览 Schema、编写并运行 SQL、查看可排序的结果表格，再把任意查询结果做成可筛选的看板。读路径经 dbx-mcp 支持 PostgreSQL、MySQL、SQLite、ClickHouse 等 100+ 种数据库；写与 DDL 经插件内置驱动执行。",
+      "badges": ["100+ 种数据库", "看板", "11 种图表", "筛选与重新取数", "DDL 写入", "AI 双向联动"]
     },
     {
       "type": "feature-grid",
@@ -20,8 +20,8 @@
           "description": "多标签编辑器，按方言高亮与补全：⌘/Ctrl+Enter 运行整段，也可以只执行选中的部分。结果可排序、翻页、复制为 TSV、导出为 CSV。"
         },
         {
-          "title": "看板、大屏与 11 种图表",
-          "description": "让 AI 把查询结果画成图，产物就落在「BI」里：看板适合阅读，大屏适合挂墙展示。折线、柱状、饼图、环形、极区、雷达、散点、气泡来自 Chart.js，漏斗、箱线图与指标卡由插件自己渲染。"
+            "title": "看板与 11 种图表",
+            "description": "让 AI 把查询结果画成图，产物就落在「BI」里，成为一个可筛选可预览的看板。折线、柱状、饼图、环形、极区、雷达、散点、气泡来自 Chart.js，漏斗、箱线图与指标卡由插件自己渲染。"
         },
         {
           "title": "数据集筛选、重新取数与血缘",
@@ -40,7 +40,7 @@
     {
       "type": "steps",
       "items": [
-        { "title": "打开工作台", "description": "从能力市场安装 dbx-pro，打开它活动栏里的页签。引擎随插件启动，不需要另外装 CLI。" },
+        { "title": "打开工作台", "description": "从能力市场安装 dbx，打开它活动栏里的页签。引擎随插件启动，不需要另外装 CLI。" },
         { "title": "添加一个连接", "description": "点右上角「连接」，选数据库类型并填写信息；SQLite 只需选一个文件。" },
         { "title": "跑一条查询", "description": "输入 SQL 后按 ⌘/Ctrl+Enter。如果语句要写入或改结构，会先弹出对话框让你确认。" },
         { "title": "做成看板", "description": "让 AI 把结果画成图，产物会出现在「BI」里，在那里可以筛选、重新取数、看血缘，或导出成一个断网可用的 HTML 文件。" }

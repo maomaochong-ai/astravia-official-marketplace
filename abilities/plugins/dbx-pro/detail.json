@@ -4,9 +4,9 @@
     {
       "type": "hero",
       "eyebrow": "Database workbench",
-      "title": "dbx-pro — a database workbench and BI workspace inside Astravia",
-      "description": "Manage connections, browse schemas, write and run SQL, read sortable result grids — then turn any query result into a filterable dashboard or big screen. Reads go through dbx-mcp for PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases; writes and DDL run through the bundled drivers.",
-      "badges": ["100+ databases", "Dashboards & big screens", "11 chart types", "Filters & refetch", "DDL writes", "Bidirectional AI"]
+      "title": "dbx — a database workbench and BI workspace inside Astravia",
+      "description": "Manage connections, browse schemas, write and run SQL, read sortable result grids — then turn any query result into a filterable dashboard. Reads go through dbx-mcp for PostgreSQL, MySQL, SQLite, ClickHouse and 100+ databases; writes and DDL run through the bundled drivers.",
+      "badges": ["100+ databases", "Dashboards", "11 chart types", "Filters & refetch", "DDL writes", "Bidirectional AI"]
     },
     {
       "type": "feature-grid",
@@ -20,8 +20,8 @@
           "description": "Multi-tab editor with per-dialect highlighting and completion: run the whole statement with ⌘/Ctrl+Enter, or execute just the selected part. Results sort, paginate, copy as TSV and export as CSV."
         },
         {
-          "title": "Dashboards, big screens and 11 chart types",
-          "description": "Ask AI to chart a query result and the artifact lands under \"BI\": dashboards for reading, big screens for wall display. Line, bar, pie, doughnut, polar area, radar, scatter and bubble from Chart.js, plus funnel, boxplot and metric cards."
+          "title": "Dashboards and 11 chart types",
+          "description": "Ask AI to chart a query result and the artifact lands under \"BI\": a filterable dashboard you can preview. Line, bar, pie, doughnut, polar area, radar, scatter and bubble from Chart.js, plus funnel, boxplot and metric cards."
         },
         {
           "title": "Dataset filters, refetch and lineage",
@@ -40,7 +40,7 @@
     {
       "type": "steps",
       "items": [
-        { "title": "Open the workbench", "description": "Install dbx-pro from the marketplace and open its activity tab. The engine starts with the plugin, so there is no separate CLI to install." },
+        { "title": "Open the workbench", "description": "Install dbx from the marketplace and open its activity tab. The engine starts with the plugin, so there is no separate CLI to install." },
         { "title": "Add a connection", "description": "Click \"Connect\" in the top right, pick a database type and fill in the fields; for SQLite just choose a file." },
         { "title": "Run a query", "description": "Type SQL and press ⌘/Ctrl+Enter. If the statement writes or changes schema, confirm it in the dialog that appears." },
         { "title": "Turn it into a dashboard", "description": "Ask AI to chart the result. The artifact appears under the BI tab, where you can filter it, refetch it, check its lineage, or export one offline HTML file." }
