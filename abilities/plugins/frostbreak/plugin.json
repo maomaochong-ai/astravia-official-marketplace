@@ -3,7 +3,7 @@
 	"name": "%plugin.name%",
 	"description": "%plugin.description%",
 	"icon": "assets/icon.svg",
-	"version": "1.5.2",
+	"version": "1.5.3",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"styles": [
@@ -19,6 +19,7 @@
 		"agent.tools.register",
 		"agent.toolHandler.execute",
 		"agent.skills.control",
+		"agent.systemPrompt.write",
 		"agent.session.read",
 		"agent.session.write",
 		"storage.read",
@@ -27,6 +28,11 @@
 		"fs.write"
 	],
 	"agent": {
+		"systemPrompt": {
+			"promptPaths": [
+				"AGENT.md"
+			]
+		},
 		"skillPaths": [
 			"agent/skills/frostbreak-triage"
 		],

@@ -51,9 +51,36 @@ def plugin_entry(catalog: dict, slug: str) -> dict:
     raise ValueError(f"Plugin {slug} is not listed in the marketplace")
 
 
+def declared_runtime_files(directory: Path) -> set[str]:
+    """Root-level files plugin.json names outside the fixed list above.
+
+    `agent.systemPrompt.promptPaths` is the one field that points at a file the
+    host reads, so a prompt document must travel with the package. Only bare
+    names are picked up here; anything under a directory is already covered by
+    RUNTIME_DIRS, and the host rejects paths that climb out of the package.
+    """
+    manifest_path = directory / "plugin.json"
+    if not manifest_path.exists():
+        return set()
+    try:
+        manifest = json.loads(manifest_path.read_text("utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return set()
+    agent = manifest.get("agent")
+    if not isinstance(agent, dict):
+        return set()
+    system_prompt = agent.get("systemPrompt")
+    if not isinstance(system_prompt, dict):
+        return set()
+    paths = system_prompt.get("promptPaths")
+    if not isinstance(paths, list):
+        return set()
+    return {path for path in paths if isinstance(path, str) and path and "/" not in path and not path.startswith(".")}
+
+
 def regular_files(directory: Path) -> list[Path]:
     result = []
-    for name in sorted(RUNTIME_FILES):
+    for name in sorted(RUNTIME_FILES | declared_runtime_files(directory)):
         path = directory / name
         if path.exists():
             result.append(path)
