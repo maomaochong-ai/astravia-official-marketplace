@@ -13,7 +13,7 @@
 > 任何真实任务都会把上下文推到 150k+ token，于是每轮都触发 `context compaction`，而压缩摘要
 > 是 20k–72k 字符的 markdown 流式重渲染 —— 宿主在长摘要流式路径上会反复抛 React #185
 > （Maximum update depth exceeded）并弹出重试界面。常驻块按「每轮都要用」的标准裁剪到
-> 10 KB 以内，其余内容改为按需加载。取舍与验证见 README「提示体积预算」一节。
+> 10 KB 量级（`tests/prompt-budget.test.mjs` 的硬上限是 12 KB），其余内容改为按需加载。取舍与验证见 README「提示体积预算」一节。
 >
 > Code, commands, paths, and identifiers stay verbatim. 正文用用户的语言。
 

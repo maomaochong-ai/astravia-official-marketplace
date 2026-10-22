@@ -4,10 +4,11 @@ Static triage for Android packages, iOS apps, native binaries and archives — e
 
 The plugin answers one question: *what is this file, and what should a reviewer look at first?*
 
-Since 2.0 the bundled agent document also carries the **workbench kit protocol** (`PART V`) — lab mode,
-the deployment and verification board, knowledge-base-first recon, and the `seep` / `ida` MCP tool
-matrix. That layer is documentation the agent follows when the desktop kit is installed; the panel
-below still runs with no external toolchain and never executes a sample.
+Since 2.0 the plugin also carries the **workbench kit protocol** — lab mode, the deployment and
+verification board, knowledge-base-first recon, and the `seep` / `ida` MCP tool matrix. It lives in
+the skill (`agent/skills/hanshuang-pojia/SKILL.md`), which the host loads on demand, not in the block
+injected into every session. That layer is documentation the agent follows when the desktop kit is
+installed; the panel below still runs with no external toolchain and never executes a sample.
 
 ## What it analyses
 
@@ -115,7 +116,7 @@ permission is ever revoked.
 
 ## Workbench kit 2.0
 
-The agent document gained a fifth part in 2.0, bound to the 寒霜破甲工具 desktop kit (`seep-kit` 1.6.0).
+The kit protocol arrived in 2.0 and now lives in the skill, bound to the 寒霜破甲工具 desktop kit (`seep-kit` 1.6.0).
 It tells the agent how to work with the kit when it is installed:
 
 | Part | Content |
@@ -148,7 +149,7 @@ for on every turn.
 AGENTS.md                            # injected into every session through promptPaths
 agent/
 └── skills/hanshuang-pojia/          # the skill the host lists in every conversation
-    ├── SKILL.md                     # PART V of the agent document + the kit protocol
+    ├── SKILL.md                     # the full agent document, PART I–V, including the kit protocol
     └── references/workbench-2.0.md  # kit layout, MCP tool list, manual index, host installers
 agent/docs/
 ├── SKILL-LIBRARY.md                 # bundled skill tree: inventory, provenance, why not registered
@@ -227,6 +228,7 @@ npm install
 npm run check     # tsc --noEmit
 npm run test      # vitest (domain fixtures + panel wiring)
 npm run build     # vite build → dist/
+node scripts/sync-docs.mjs --check   # the bundled document index still matches the markdown on disk
 ```
 
 In this repository the SDK resolves through the dev tooling (`../../../.tooling/open-astravia/packages/plugins/plugin-sdk`), which is why `package-lock.json` records `link: true` entries. A full marketplace build regenerates it:
@@ -236,6 +238,10 @@ node scripts/marketplace.mjs check
 node scripts/marketplace.mjs build
 node --test tests/*.test.mjs
 ```
+
+The 309 field documents under `src/content/docs/` are indexed by `scripts/sync-docs.mjs`; run it without
+`--check` after adding or editing one, and keep `--check` in CI. The documents ship as lazy chunks, so an
+article that is never opened costs no download.
 
 ## Limits worth knowing
 

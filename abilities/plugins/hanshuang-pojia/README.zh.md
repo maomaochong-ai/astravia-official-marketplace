@@ -4,9 +4,7 @@
 
 插件只回答一个问题：**这是什么文件，评审应该先看哪里？**
 
-从 2.0 起，随包智能体文档多了一层 **工作台工具包协议**（`PART V`）——实验模式开关、部署与校验看板、
-先查知识库的侦察顺序，以及 `seep` / `ida` 的 MCP 工具矩阵。这层是指挥智能体配合桌面工具包干活的文档；
-面板本身仍然零外部依赖、从不运行样本。
+从 2.0 起，插件还带一层 **工作台工具包协议**——实验模式开关、部署与校验看板、先查知识库的侦察顺序，以及 `seep` / `ida` 的 MCP 工具矩阵。这份内容现在放在技能里（`agent/skills/hanshuang-pojia/SKILL.md`），由宿主按需加载，不占用每轮注入的那段系统提示。它是指挥智能体配合桌面工具包干活的文档；面板本身仍然零外部依赖、从不运行样本。
 
 ## 能分析什么
 
@@ -110,7 +108,7 @@ node scripts/sync-agent-doc.mjs --remove             # 再把托管的块删掉
 
 ## 工作台工具包 2.0
 
-2.0 给智能体文档添了第五部分，绑定「寒霜破甲工具」桌面包（`seep-kit` 1.6.0）：
+工具包协议是 2.0 加进来的，现在随技能的第五部分发布，绑定「寒霜破甲工具」桌面包（`seep-kit` 1.6.0）：
 
 | 节 | 内容 |
 | --- | --- |
@@ -138,7 +136,7 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 AGENTS.md                             # 经 promptPaths 注入每个会话
 agent/
 └── skills/hanshuang-pojia/          # 宿主在对话区列出的技能
-    ├── SKILL.md                     # 智能体文档正文 + 工具包协议
+    ├── SKILL.md                     # 智能体文档全文（PART I–V，含工具包协议）
     └── references/workbench-2.0.md  # 实测目录结构、MCP 工具全表、手册索引、宿主安装矩阵
 agent/docs/
 ├── SKILL-LIBRARY.md                 # 随包技能库：清单、来源、为何不注册成技能
@@ -211,6 +209,7 @@ npm install
 npm run check     # tsc --noEmit
 npm run test      # vitest（领域夹具 + 面板接线）
 npm run build     # vite build → dist/
+node scripts/sync-docs.mjs --check   # 内置文档索引与磁盘 markdown 仍然一致
 ```
 
 本仓库里 SDK 通过开发 tooling 解析（`../../../.tooling/open-astravia/packages/plugins/plugin-sdk`），因此 `package-lock.json` 里是 `link: true` 条目。完整市场构建会重新生成：
@@ -220,6 +219,8 @@ node scripts/marketplace.mjs check
 node scripts/marketplace.mjs build
 node --test tests/*.test.mjs
 ```
+
+`src/content/docs/` 下 309 篇实战文档的索引由 `scripts/sync-docs.mjs` 生成：新增或修改文档后不带 `--check` 跑一次，CI 里则保留 `--check`。文档按需切成独立 chunk，没点开的文章不产生下载。
 
 ## 需要知道的边界
 

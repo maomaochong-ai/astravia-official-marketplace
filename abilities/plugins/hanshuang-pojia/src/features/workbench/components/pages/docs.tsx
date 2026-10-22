@@ -27,7 +27,6 @@ function kilobytes(bytes: number): string {
 export function DocsPage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const { docs, chat } = model;
-	const needle = docs.query.trim();
 	const listing = docs.hits;
 
 	return (
@@ -67,7 +66,7 @@ export function DocsPage({ model }: PageProps) {
 							/>
 							<div className="flex items-center justify-between gap-2">
 								<FilterChips items={MODES.map(mode => ({ id: mode, label: t(`docs.search.${mode}`) }))} value={docs.mode} onChange={mode => docs.setMode(mode)} />
-								<span className="font-mono text-[10px] text-text-4">{listing ? `${listing.length}${needle && docs.mode === "full" ? "" : ""}` : ""}</span>
+								<span className="font-mono text-[10px] text-text-4">{listing ? listing.length : ""}</span>
 							</div>
 						</div>
 
