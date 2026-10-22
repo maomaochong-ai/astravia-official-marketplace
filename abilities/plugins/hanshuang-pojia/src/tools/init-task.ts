@@ -50,7 +50,12 @@ export function registerInitTaskTool(ctx: PluginContext): Disposable {
 			const rawRoot = (input.root ?? "").trim();
 			if (rawRoot && isOutsideProject(rawRoot, cwd)) return `root must stay inside the open project: ${rawRoot}`;
 			if (!cwd && !rawRoot) return "No working directory is available; pass root explicitly.";
-			const root = rawRoot ? resolveSamplePath(cwd, rawRoot) : cwd;
+			let root: string;
+			try {
+				root = rawRoot ? resolveSamplePath(cwd, rawRoot) : cwd;
+			} catch (error) {
+				return error instanceof Error ? error.message : String(error);
+			}
 
 			try {
 				const result = await initTaskWorkspace(context.host.fs, {

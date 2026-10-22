@@ -7,7 +7,9 @@
  * whether the process bridge is usable, so the same code is exercised in tests
  * without radare2 installed.
  */
-import type { CommandResult, ToolId } from "./catalog";
+import type { CommandResult, Invocation, ToolId } from "./catalog";
+
+export type { Invocation } from "./catalog";
 
 export type RadareOperation =
 	| "info"
@@ -22,12 +24,6 @@ export type RadareOperation =
 
 export type RadareOutputMode = "full" | "fold" | "summary";
 export type DiffMode = "code" | "hex" | "stats";
-
-export interface Invocation {
-	file: string;
-	args: string[];
-	timeoutMs: number;
-}
 
 export interface RadareRequest {
 	operation: RadareOperation;
@@ -84,7 +80,10 @@ const FOLD_KEYWORDS = [
  * command channel is the only form of `r2 -c` passthrough this plugin will run:
  * patching bytes or dropping to a shell is not analysis.
  */
-const BLOCKED_COMMAND = /^(?:w|!|#!|oo|o|d|P|R|m|=|\.)/;
+// r2 spells several write/open families in both cases, so every letter that can patch, open or
+// restart is listed twice. `P` stays uppercase-only: lowercase `p` is the print family, and a
+// case-insensitive rule would refuse `pdf`, `pdc` and `px`. `dr` stays allowed below.
+const BLOCKED_COMMAND = /^(?:[wWoOdDmMrR]|P|!|#!|=|\.)/;
 
 /**
  * Sequences that leave r2's own parser: pipes and redirects hand the command to a shell,
@@ -92,7 +91,6 @@ const BLOCKED_COMMAND = /^(?:w|!|#!|oo|o|d|P|R|m|=|\.)/;
  * `~!` is the negated grep filter and stays allowed. The rest of the `=` family is
  * blocked as a command (remote connections and `=h`, which serves an r2 console over
  * a socket) — that is network exposure, not analysis of a file.
- * `~!` is the negated grep filter and stays allowed.
  */
 const DISALLOWED_SEQUENCES: readonly { pattern: RegExp; why: string }[] = [
 	{ pattern: /\|/, why: "a pipe hands the command to a shell" },
@@ -102,7 +100,7 @@ const DISALLOWED_SEQUENCES: readonly { pattern: RegExp; why: string }[] = [
 	{ pattern: /(^|[^~])=!/, why: "`=!` runs a local shell command" },
 ];
 
-/** Read-only members of the `d` (debug) family that never execute the sample. */
+/** Read-only members of the `d` (debug) family that never execute the sample. Matched as typed: `DR` is refused, not normalised. */
 const ALLOWED_COMMAND = /^dr\b/;
 
 function normalizeLimit(value: number | undefined, fallback: number, max: number): number {
@@ -158,6 +156,13 @@ export function stripNoise(text: string): string {
 		.trim();
 }
 
+/** Output rows with r2's `INFO:` / `WARN:` / `ERROR:` chatter gone and blank lines dropped. */
+export function outputLines(text: string): string[] {
+	return stripNoise(text)
+		.split(/\r?\n/)
+		.filter(line => line.trim().length > 0);
+}
+
 export function paginate(lines: readonly string[], limit: number, unit: string): string {
 	const shown = lines.slice(0, limit);
 	if (lines.length <= limit) return shown.join("\n");
@@ -177,10 +182,7 @@ export function branchSkeleton(lines: readonly string[]): string[] {
 }
 
 export function foldStatements(lines: readonly string[]): string[] {
-	return lines.filter(line => {
-		const padded = ` ${line.toLowerCase()} `;
-		return FOLD_KEYWORDS.some(keyword => padded.includes(keyword));
-	});
+	return filterLines(lines, FOLD_KEYWORDS);
 }
 
 export function truncateChars(text: string, maxChars: number, hint: string): string {
@@ -205,7 +207,7 @@ function renderListing(
 ): string {
 	const broken = failure(results);
 	if (broken) return broken;
-	const lines = stripNoise(results[0]?.stdout ?? "").split(/\r?\n/).filter(line => line.trim().length > 0);
+	const lines = outputLines(results[0]?.stdout ?? "");
 	if (lines.length === 0) return "[no output — the symbol may not exist or the binary is stripped]";
 	if (mode === "fold") {
 		const folded = foldStatements(lines);
@@ -224,7 +226,7 @@ function renderBranch(
 ): string {
 	const broken = failure(results);
 	if (broken) return broken;
-	const lines = stripNoise(results[0]?.stdout ?? "").split(/\r?\n/).filter(line => line.trim().length > 0);
+	const lines = outputLines(results[0]?.stdout ?? "");
 	if (lines.length === 0) return "[no output — the symbol may not exist or the binary is stripped]";
 	const kept = branchSkeleton(lines);
 	const header = `[branch — kept ${kept.length}/${lines.length} lines: compare, branch, call and return only]`;
@@ -279,7 +281,7 @@ export function planRadare(request: RadareRequest): RadarePlan {
 				render: results => {
 					const broken = failure(results);
 					if (broken) return broken;
-					const all = stripNoise(results[0]?.stdout ?? "").split(/\r?\n/).filter(line => line.trim().length > 0);
+					const all = outputLines(results[0]?.stdout ?? "");
 					const needle = (request.filter ?? "").toLowerCase();
 					const matched = needle ? all.filter(line => line.toLowerCase().includes(needle)) : all;
 					if (matched.length === 0) return `[no strings matched ${JSON.stringify(request.filter ?? "")}]`;
@@ -295,7 +297,7 @@ export function planRadare(request: RadareRequest): RadarePlan {
 				render: results => {
 					const broken = failure(results);
 					if (broken) return broken;
-					const all = stripNoise(results[0]?.stdout ?? "").split(/\r?\n/).filter(line => line.trim().length > 0);
+					const all = outputLines(results[0]?.stdout ?? "");
 					const needle = (request.filter ?? "").toLowerCase();
 					const matched = needle ? all.filter(line => line.toLowerCase().includes(needle)) : all;
 					if (matched.length === 0) return "[no matching functions]";
@@ -344,7 +346,7 @@ export function planRadare(request: RadareRequest): RadarePlan {
 				render: results => {
 					const broken = failure(results);
 					if (broken) return broken;
-					const all = stripNoise(results[0]?.stdout ?? "").split(/\r?\n/).filter(line => line.trim().length > 0);
+					const all = outputLines(results[0]?.stdout ?? "");
 					if (all.length === 0) return `[no xrefs ${direction === "axt" ? "to" : "from"} ${target}]`;
 					const shown = all.slice(0, limit);
 					const header = `[xrefs ${direction === "axt" ? "to" : "from"} ${target} — ${all.length} reference(s), showing ${shown.length}]`;
@@ -376,9 +378,9 @@ export function planRadare(request: RadareRequest): RadarePlan {
 				render: results => {
 					const broken = failure(results);
 					if (broken) return broken;
-					const text = stripNoise(results[0]?.stdout ?? "");
-					if (!text) return "[no differences reported]";
-					return truncateChars(paginate(text.split(/\r?\n/), limit, "diff lines"), maxChars, "use diff_mode=stats for a summary");
+					const rows = outputLines(results[0]?.stdout ?? "");
+					if (rows.length === 0) return "[no differences reported]";
+					return truncateChars(paginate(rows, limit, "diff lines"), maxChars, "use diff_mode=stats for a summary");
 				},
 			};
 		}
@@ -390,11 +392,13 @@ export function planRadare(request: RadareRequest): RadarePlan {
 			return {
 				operation: request.operation,
 				invocations: [r2Invocation(full, path)],
-				render: results => failure(results) ?? truncateChars(paginate(
-					stripNoise(results[0]?.stdout ?? "").split(/\r?\n/),
-					Math.max(limit, 1),
-					"lines",
-				), maxChars, "ask for a narrower command"),
+				render: results =>
+					failure(results) ??
+					truncateChars(
+						paginate(outputLines(results[0]?.stdout ?? ""), Math.max(limit, 1), "lines"),
+						maxChars,
+						"ask for a narrower command",
+					),
 			};
 		}
 	}

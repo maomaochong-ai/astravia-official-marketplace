@@ -100,7 +100,9 @@ export function registerRunRadareTool(ctx: PluginContext): Disposable {
 		},
 		scope_use: ["conversation", "project"],
 		context: { conversation: "summary" },
-		timeoutMs: 300_000,
+		// `decompile` + `summary` can run three 120 s r2 passes back to back; the host must
+		// outlast them or the user sees an empty result instead of the rendered one.
+		timeoutMs: 420_000,
 		handler: async context => {
 			const input = context.trigger.input;
 			const operation = input.operation;
@@ -117,14 +119,22 @@ export function registerRunRadareTool(ctx: PluginContext): Disposable {
 				if (isOutsideProject(path, context.session.cwd)) {
 					return `path must stay inside the open project: ${path}`;
 				}
-				path = resolveSamplePath(context.session.cwd, path);
+				try {
+					path = resolveSamplePath(context.session.cwd, path);
+				} catch (error) {
+					return error instanceof Error ? error.message : String(error);
+				}
 			}
 			if (operation === "diff") {
 				if (!otherPath) return "other_path is required for operation=diff.";
 				if (isOutsideProject(otherPath, context.session.cwd)) {
 					return `other_path must stay inside the open project: ${otherPath}`;
 				}
-				otherPath = resolveSamplePath(context.session.cwd, otherPath);
+				try {
+					otherPath = resolveSamplePath(context.session.cwd, otherPath);
+				} catch (error) {
+					return error instanceof Error ? error.message : String(error);
+				}
 			}
 
 			const needed = OPERATION_TOOL[operation];

@@ -11,9 +11,10 @@
 | 阶段 | 内容 | 版本 | 状态 |
 |---|---|---|---|
 | P1 | 伪代码恢复、语义 diff、hook 模板、目录批量 triage、CLI | 2.4.1 | 已完成 |
-| P2 | 外部进程桥（`commands` + `ctx.command.run`）：`probe_environment`、`run_radare`、`decompile_android`、`init_task` | 2.4.2 | 本次完成 |
-| P3 | 指令编码器（asm ↔ bytes）、Overview 流水线状态条、DEX code-item 视图 | 2.4.3 | 规划 |
-| P4 | 跨样本基线（同一家族的重复样本聚合）、报告三列对比 | 2.4.4 | 规划 |
+| P2 | 外部进程桥（`commands` + `ctx.command.run`）：`probe_environment`、`run_radare`、`decompile_android`、`init_task` | 2.4.2 | 已完成 |
+| P2-fix | 2.4.2 上线后审查修正：相对路径不再被判越界、apktool 不再强删输出目录、已存在的输出目录先拒、守卫不再误杀 `p*` 打印命令 | 2.4.3 | 本次完成 |
+| P3 | 指令编码器（asm ↔ bytes）、Overview 流水线状态条、DEX code-item 视图 | 2.4.4 | 规划 |
+| P4 | 跨样本基线（同一家族的重复样本聚合）、报告三列对比 | 2.4.5 | 规划 |
 
 每个阶段都必须同时完成：领域实现 → 工具注册 → 面板呈现（若该阶段有 UI）→ 测试 → 双语文案 →
 版本与文档同步 → CI 发布。
@@ -188,7 +189,7 @@
 | 项 | 结果 |
 |---|---|
 | 工具注册 | 18，`EXPECTED_TOOL_COUNT = 18`；四个新工具各自有真实调用用例 |
-| 自检 | 29 个 spec 文件 / 300 条断言全绿（P1 基线 27 / 251） |
+| 自检 | 29 个 spec 文件 / 301 条用例全绿（P1 记录为 26 / 241）。本机 load 100 时两个 jsdom 外壳用例会撞 5s 默认超时，单跑与放宽超时后均全绿 |
 | 类型 | `tsc --noEmit` 无输出 |
 | 构建 | `vite build` 成功，500 个运行时文件 → `hanshuang-pojia-2.4.2.astraviapkg` |
 | 文档 | `sync-docs.mjs --check` → `309 documents`；根 `marketplace.mjs check` 通过 |

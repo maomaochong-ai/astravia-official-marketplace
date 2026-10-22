@@ -35,12 +35,12 @@ export const WORKSPACE_DIRS = ["samples", "exports", "reports"] as const;
 export const MAX_NAME_CHARS = 64;
 
 /**
- * Anything outside `[A-Za-z0-9_-]` becomes `_`, which also removes separators:
- * a task name can never escape the workspace root.
+ * 字母（含中文等非 ASCII 文字）、数字与 `_`/`-` 之外的一切都换成 `_`，所以分隔符本身也被
+ * 移除；任务名永远跑不出工作区根目录，同时允许中文案件名。
  */
 export function safeTaskName(name: string): string {
 	const trimmed = name.trim().slice(0, MAX_NAME_CHARS);
-	const cleaned = trimmed.replace(/[^\w-]/g, "_").replace(/^_+|_+$/g, "");
+	const cleaned = trimmed.replace(/[^\p{L}\p{N}_-]/gu, "_").replace(/^_+|_+$/g, "");
 	return cleaned.replace(/^[.-]+/, "");
 }
 

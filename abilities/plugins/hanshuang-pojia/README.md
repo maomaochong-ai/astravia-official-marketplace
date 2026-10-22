@@ -76,10 +76,15 @@ makes on top of it, not something this plugin emits.
 The four toolchain tools follow the same rule. `plugin.json#commands` declares exactly the eight
 executables they may spawn, the host asks the user before granting `agent.command.run`, and every call
 is `execFile` with an argument vector — no shell. `run_radare`'s `cmd` operation refuses writes, shells,
-the debugger, file opens, script execution, project commands, mounts and the `=` remote family (`w`, `!`,
-`oo`, `o`, `d`, `P`, `R`, `m`, `.`, `=`) and lets the read-only `dr` family through; anything that would
-leave r2's own parser is refused too — pipes (`|`), redirects (`>`/`<`), `$(…)`, backticks and `=!`.
-`decompile_android` writes next to the APK, never into it, and there is deliberately no `patches/`
+the debugger, file opens, script execution, project commands, mounts and the `=` remote family (`w`/`W`,
+`!`, `o`/`O`, `d`/`D`, `P`, `R`/`r`, `m`/`M`, `.`, `=`) and lets the read-only `dr` family through; anything that
+would leave r2's own parser is refused too — pipes (`|`), redirects (`>`/`<`), `$(…)`, backticks and `=!`.
+`decompile_android` writes next to the APK, never into it, and only into a directory that does not exist
+
+yet: an existing `output_dir` is refused rather than merged into, and `apktool` runs without `-f` so a
+re-run can never wipe a folder you own. There is deliberately no `patches/` directory anywhere.
+`probe_environment` runs eight short `--version` calls, caches the answer for a minute and names the
+remedy for each failure mode: a host refusal is a setting, an absent binary is an install.
 directory anywhere. `probe_environment` runs eight short `--version` calls, caches the answer for a
 minute and names the remedy for each failure mode: a host refusal is a setting, an absent binary is
 an install.

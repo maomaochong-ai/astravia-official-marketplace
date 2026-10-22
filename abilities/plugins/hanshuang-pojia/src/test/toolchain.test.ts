@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 import type { CommandResult, CommandRunner } from "../domain/toolchain/catalog";
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { defaultOutputDir, planAndroid, renderSearch, searchSourceTree } from "../domain/toolchain/android";
+import {
+	MAX_SEARCH_CHARS,
+	defaultOutputDir,
+	planAndroid,
+	renderSearch,
+	searchSourceTree,
+} from "../domain/toolchain/android";
 import { COMMANDS, TOOLCHAIN, specFor, specsForCapability, type ToolId } from "../domain/toolchain/catalog";
 import { probeToolchain, renderToolchain } from "../domain/toolchain/probe";
 import { OPERATION_TOOL, assertReadOnly, branchSkeleton, planRadare } from "../domain/toolchain/radare";
@@ -177,7 +183,8 @@ describe("command runner", () => {
 
 describe("read-only command guard", () => {
 	it("keeps analysis commands", () => {
-		for (const command of ["iI", "afl~main", "pdc @ sym.main", "dr", "aaa; afl", "iz"]) {
+		// `pdf` / `px` are the print family: a case-insensitive block on `P` would refuse them.
+		for (const command of ["iI", "afl~main", "pdc @ sym.main", "pdf @ main", "px 64 @ main", "dr", "aaa; afl", "iz"]) {
 			expect(() => assertReadOnly(command)).not.toThrow();
 		}
 	});
@@ -195,7 +202,7 @@ describe("read-only command guard", () => {
 	});
 
 	it("refuses anything that writes, debugs or shells out", () => {
-		for (const command of ["wx 90", "wa nop", "!sh", "oo+", "dc", "Ps", "R", "m /tmp/x", "#!pipe", "=h 9090"]) {
+		for (const command of ["wx 90", "Wx 90", "wa nop", "!sh", "oo+", "Oh", "dc", "Dh", "Ps", "R", "rr", "m /tmp/x", "M /media", "#!pipe", "=h 9090"]) {
 			expect(() => assertReadOnly(command)).toThrow(/read-only radare2 commands/);
 		}
 	});
@@ -318,7 +325,8 @@ describe("planAndroid", () => {
 		expect(jadx.invocation.args).not.toContain("--deobf");
 
 		const apktool = planAndroid({ operation: "unpack", apkPath: "/w/a.apk", noSources: true });
-		expect(apktool.invocation).toMatchObject({ file: "apktool", args: ["d", "-f", "-s", "-o", "/w/a_apktool", "/w/a.apk"] });
+		// No `-f`: apktool has to fail on an existing directory rather than delete it.
+		expect(apktool.invocation).toMatchObject({ file: "apktool", args: ["d", "-s", "-o", "/w/a_apktool", "/w/a.apk"] });
 		expect(apktool.render([ok("")])).toContain("smali               : skipped (-s)");
 	});
 
@@ -368,6 +376,18 @@ describe("searchSourceTree", () => {
 		const empty = await searchSourceTree(fs, { directory: "/w", pattern: "zzz" });
 		expect(renderSearch(empty, "zzz")).toContain("No matches for");
 		await expect(searchSourceTree(fs, { directory: "/w", pattern: "  " })).rejects.toThrow("pattern is required");
+	});
+
+	it("names the files it skipped instead of reporting a thin result as absence", async () => {
+		const huge = { path: "/w/big.smali", relPath: "big.smali", name: "big.smali" };
+		const bigFs = {
+			listFilesRecursive: async () => [huge],
+			readFile: async () => ({ content: "x".repeat(MAX_SEARCH_CHARS + 1) }),
+		};
+		const result = await searchSourceTree(bigFs, { directory: "/w", pattern: "x" });
+		expect(result.scanned).toBe(0);
+		expect(result.skipped).toBe(1);
+		expect(renderSearch(result, "x")).toContain("skipped as too large");
 	});
 });
 
@@ -419,6 +439,10 @@ describe("toolchain tools", () => {
 		tree?: { path: string; relPath: string; name: string }[];
 		permissions?: string[];
 		run?: (file: string, args: readonly string[]) => Promise<CommandResult>;
+		/** Paths that already exist on disk, so a tool can be shown an occupied destination. */
+		existing?: string[];
+		/** Two levels deep by default in the escape tests: `/work` alone cannot show a `..` escape. */
+		cwd?: string;
 	}
 
 	function fakePlugin(options: FakeHost = {}) {
@@ -428,7 +452,10 @@ describe("toolchain tools", () => {
 		const tree = options.tree ?? [];
 
 		const fs = {
-			stat: async (path: string) => (written.has(path) ? { size: 1, modifiedAt: 0, createdAt: 0 } : null),
+			stat: async (path: string) =>
+				written.has(path) || (options.existing ?? []).includes(path)
+					? { size: 1, modifiedAt: 0, createdAt: 0 }
+					: null,
 			writeFile: async (path: string, content: string) => {
 				written.set(path, content);
 			},
@@ -446,7 +473,7 @@ describe("toolchain tools", () => {
 							definition.handler({
 								trigger: { input },
 								host: { fs },
-								session: { cwd: "/work" },
+								session: { cwd: options.cwd ?? "/work" },
 							} as never) as Promise<string>,
 					});
 					return { dispose: () => undefined };
@@ -507,6 +534,19 @@ describe("toolchain tools", () => {
 		const { ctx, call } = fakePlugin({ run: hostRun() });
 		registerRunRadareTool(ctx);
 		expect(await call("run_radare", { operation: "info", path: "/etc/passwd" })).toContain("must stay inside the open project");
+		// A relative path is resolved against the project, so `..` has to be refused rather than clamped:
+		// `/work` alone cannot show it, hence the deeper cwd. Command arguments never pass the host's
+		// own root check, so this guard is the only one standing.
+		const deep = fakePlugin({ run: hostRun(), cwd: "/work/case-1" });
+		registerRunRadareTool(deep.ctx);
+		for (const escaping of ["../secret.elf", "../../etc/passwd", "sub/../../secret.elf"]) {
+			expect(await deep.call("run_radare", { operation: "info", path: escaping })).toContain(
+				"must stay inside the open project",
+			);
+		}
+		expect(await deep.call("run_radare", { operation: "info", path: "sub/../demo.elf" })).not.toContain(
+			"must stay inside the open project",
+		);
 		expect(await call("run_radare", { operation: "diff", path: "a.elf" })).toContain("other_path is required");
 	});
 
@@ -556,6 +596,31 @@ describe("toolchain tools", () => {
 		const output = await call("decompile_android", { operation: "decompile", apk_path: "demo.apk" });
 		expect(output).toContain("jadx");
 		expect(output).toContain("not available");
+	});
+
+	it("decompile_android never targets a directory it would have to merge into or wipe", async () => {
+		const existing = fakePlugin({ run: hostRun(), existing: ["/work/out"] });
+		registerDecompileAndroidTool(existing.ctx);
+		expect(
+			await existing.call("decompile_android", { operation: "decompile", apk_path: "demo.apk", output_dir: "out" }),
+		).toContain("already exists");
+
+		const ancestor = fakePlugin({ run: hostRun() });
+		registerDecompileAndroidTool(ancestor.ctx);
+		expect(await ancestor.call("decompile_android", { operation: "unpack", apk_path: "demo.apk", output_dir: "." })).toContain(
+			"cannot contain the sample itself",
+		);
+	});
+
+	it("decompile_android keeps the APK and the destination inside the open project", async () => {
+		const deep = fakePlugin({ run: hostRun(), cwd: "/work/case-1" });
+		registerDecompileAndroidTool(deep.ctx);
+		expect(await deep.call("decompile_android", { operation: "decompile", apk_path: "../secret.apk" })).toContain(
+			"must stay inside the open project",
+		);
+		expect(
+			await deep.call("decompile_android", { operation: "decompile", apk_path: "demo.apk", output_dir: "../../out" }),
+		).toContain("must stay inside the open project");
 	});
 
 	it("init_task creates the layout and never overwrites an existing README", async () => {

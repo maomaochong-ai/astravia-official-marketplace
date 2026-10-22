@@ -17,7 +17,9 @@ export const READ_LIMIT_LABEL = "32 MiB";
 export type SampleScope = "ready" | "outside-project" | "too-large";
 
 export function scopeForSample(raw: string, cwd: string | null, size: number | null): SampleScope {
-	if (isOutsideProject(raw, cwd)) return "outside-project";
+	// No workspace attached: nothing to be outside of. `isOutsideProject` keeps its stricter stance
+	// for the command channel, which never passes through the host's own root check.
+	if (cwd && isOutsideProject(raw, cwd)) return "outside-project";
 	if (size !== null && size > READ_LIMIT_BYTES) return "too-large";
 	return "ready";
 }

@@ -279,11 +279,11 @@ bundled and nothing is installed for you.
 |---|---|---|---|
 | file type, arch, sections, entropy, imports | `triage_binary`, Manifest / Entropy pages | `run_radare operation=info` cross-checks the same fields | `mcp_ida_*` (rename / retype / structs) |
 | strings, wide strings, secret patterns | `scan_binary_strings`, Strings page | `run_radare operation=strings all_sections=true` (`rabin2 -zz`) | — |
-| symbols, exports, entry point | `list_code_symbols` | `run_radare operation=symbols` | `mcp_ida_*` |
+| symbols, exports, entry point | `list_code_symbols` (in-process ELF/PE/Mach-O / DEX tables) | `run_radare operation=functions` (r2 function list; `info` for the header fields) | `mcp_ida_*` |
 | disassembly, function list, CFG, xrefs | `disassemble_range` + the self-built engine | `run_radare operation=disasm/functions/xrefs`, `full`/`fold`/`summary` | — |
 | C-like pseudocode | `decompile_function` (register-level, no types, no SSA) | `run_radare operation=decompile` (r2 `pdc`) for a second opinion | IDA's Hex-Rays output |
 | bytes ↔ instruction text | not ported | `run_radare operation=asm` (`rasm2`, both directions) | — |
-| two builds compared | `diff_binaries` (bytes), `diff_functions` (instruction shape) | `run_radare operation=diff` (`radiff2 -C` / `-s` / `-g`) | — |
+| two builds compared | `diff_binaries` (bytes), `diff_functions` (instruction shape) | `run_radare operation=diff` (`radiff2 -C` code / `-x` hex / `-s` stats via `diff_mode`) | — |
 | APK facts, decompile, unpack, smali | `search_dex_symbols`, `decompile_android operation=smali_search` | `decompile_android operation=decompile/unpack` (jadx / apktool into a sibling directory) | — |
 | Frida hook scaffold | `generate_hook` (observation only) | — | `seep_apk_gen_hook` (kit's own variant) |
 | method lookup, documents | `search_docs` / `read_doc` over the 309 bundled documents | — | `seep_kb_payloads` — deliberately not ported |

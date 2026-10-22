@@ -61,12 +61,22 @@ function firstLine(text: string): string {
 
 function classify(spec: ToolSpec, result: CommandResult): ToolStatus {
 	const banner = firstLine(result.stdout) || firstLine(result.stderr);
-	if (result.exitCode === 0 && banner) {
-		return { id: spec.id, binary: spec.binary, available: true, detail: banner, blocked: false };
-	}
-	if (result.exitCode === 0 || (result.exitCode !== null && banner)) {
-		// A tool that answered without a distinguishable version banner is still runnable.
+	if (result.exitCode === 0) {
+		// A tool that answered cleanly without a distinguishable version banner is still runnable.
 		return { id: spec.id, binary: spec.binary, available: true, detail: banner || "present", blocked: false };
+	}
+	// Non-zero exit is a failure even when it printed something: `jadx --version` without a JDK
+	// writes an error and exits 1, and calling that "available" would send the user down the
+	// wrong path (install jadx again instead of installing Java).
+	if (result.exitCode !== null && banner) {
+		return {
+			id: spec.id,
+			binary: spec.binary,
+			available: false,
+			detail: `exited with ${result.exitCode}: ${banner}`,
+			blocked: false,
+			install: spec.install,
+		};
 	}
 	return {
 		id: spec.id,
@@ -120,10 +130,6 @@ export async function probeToolchain(
 		capabilities,
 		missing: ALL_CAPABILITIES.filter(capability => !capabilities[capability]),
 	};
-}
-
-export function capabilityAvailable(report: ToolchainReport, capability: Capability): boolean {
-	return report.capabilities[capability] === true;
 }
 
 /** Names the tools that must be installed before `capability` works, for error text. */

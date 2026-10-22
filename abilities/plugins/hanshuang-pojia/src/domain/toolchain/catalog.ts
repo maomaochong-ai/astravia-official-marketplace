@@ -19,6 +19,13 @@ export interface CommandRunOptions {
 }
 
 /** Injected in tests; bound to `ctx.command.run` in the plugin runtime. */
+
+/** One executable plus its argument vector. Shared by every planner, so both halves name a process the same way. */
+export interface Invocation {
+	file: string;
+	args: string[];
+	timeoutMs: number;
+}
 export type CommandRunner = (
 	file: string,
 	args: readonly string[],

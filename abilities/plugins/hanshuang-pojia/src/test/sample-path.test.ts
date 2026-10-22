@@ -32,7 +32,10 @@ describe("isOutsideProject", () => {
 		expect(isOutsideProject("D:\\samples\\a.apk", "C:\\work")).toBe(true);
 	});
 
-	it("stays silent when no workspace is attached", () => {
-		expect(isOutsideProject("/Users/me/a.apk", null)).toBe(false);
+	it("refuses to vouch for an absolute path when no workspace is attached", () => {
+		// Nothing to compare against, and the command channel skips the host's root check, so an
+		// absolute path is not treated as reachable. `scopeForSample` is the lenient layer.
+		expect(isOutsideProject("/Users/me/a.apk", null)).toBe(true);
+		expect(isOutsideProject("a.apk", null)).toBe(false);
 	});
 });

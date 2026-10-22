@@ -1,7 +1,8 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { baseName, isOutsideProject, resolveSamplePath } from "../domain/sample-path";
+import { baseName, containsPath, isOutsideProject, resolveSamplePath } from "../domain/sample-path";
 import { specFor } from "../domain/toolchain/catalog";
 import {
+	defaultOutputDir,
 	MAX_HITS,
 	planAndroid,
 	renderSearch,
@@ -97,11 +98,27 @@ export function registerDecompileAndroidTool(ctx: PluginContext): Disposable {
 			const rawApk = (input.apk_path ?? "").trim();
 			if (!rawApk) return `apk_path is required for operation=${operation}.`;
 			if (isOutsideProject(rawApk, cwd)) return `apk_path must stay inside the open project: ${rawApk}`;
-			const apkPath = resolveSamplePath(cwd, rawApk);
-
 			const rawOut = (input.output_dir ?? "").trim();
 			if (rawOut && isOutsideProject(rawOut, cwd)) return `output_dir must stay inside the open project: ${rawOut}`;
-			const outputDir = rawOut ? resolveSamplePath(cwd, rawOut) : undefined;
+			let apkPath: string;
+			let outputDir: string;
+			try {
+				apkPath = resolveSamplePath(cwd, rawApk);
+				outputDir = rawOut
+					? resolveSamplePath(cwd, rawOut)
+					: defaultOutputDir(apkPath, operation === "decompile" ? "jadx" : "apktool");
+			} catch (error) {
+				return error instanceof Error ? error.message : String(error);
+			}
+			// jadx writes into whatever directory it is given and apktool without `-f` refuses an
+			// existing one, but a destination that already holds something — or that contains the
+			// sample itself — must never reach the argument list.
+			if (containsPath(outputDir, apkPath)) {
+				return `output_dir cannot contain the sample itself (${apkPath}); pick a fresh directory next to the APK.`;
+			}
+			if (await context.host.fs.stat(outputDir)) {
+				return `output_dir already exists: ${outputDir}. Pick a new directory — jadx would mix its output into it.`;
+			}
 
 			const needed = operation === "decompile" ? "jadx" : "apktool";
 			const spec = specFor(needed);
