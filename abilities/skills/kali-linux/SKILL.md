@@ -1,8 +1,12 @@
 ---
 name: kali-linux
-version: 0.0.1
+version: 0.0.3
 description: >-
   Use when the user wants Kali Linux tooling running on their own machine — port and service scans, web application testing, password auditing against a lab they own, packet analysis, forensics, or CTF work — or asks to "use Kali" locally. Provisions a per-OS Kali runtime on demand (Windows: the kali-linux WSL2 distribution; macOS and Linux: the official kalilinux/kali-rolling container) and drives it through scripts/kali.sh, or scripts/kali.ps1 on Windows. Every target outside a private address range needs an explicit authorization from the user first.
+metadata:
+  astravia:
+    presentation:
+      icon: assets/icon.png
 ---
 
 # kali-linux
@@ -27,6 +31,14 @@ powershell -ExecutionPolicy Bypass -File "$SKILL\scripts\kali.ps1" status
 
 - `ready=true` → a Kali runtime already answers. Go to step 3.
 - `ready=false` → read `backend` and `hint`, then go to step 2.
+
+When you need a verdict instead of a state dump — anything is failing and you want to know *which* piece — run `doctor` with the same interpreter substitution:
+
+```bash
+sh "$SKILL/scripts/kali.sh" doctor
+```
+
+It prints one `[PASS]`/`[WARN]`/`[FAIL]` line per check (backend, CLI, daemon or distribution, image, workdir, Kali version, tool coverage, audit log) and ends in `READY` or `NOT READY`, exiting 1 on any `FAIL`. Unlike `status` it never creates or starts anything and writes no audit records, so it is safe to run first.
 
 `backend` is one of `docker` (container), `wsl` (Windows distribution), `native` (this machine *is* Kali), `ssh` (a Kali box the user pointed you at), or `none`.
 
@@ -84,7 +96,7 @@ Read `references/safety.md` before the first destructive-sounding request. The s
 
 ## Step 5 — Leaving things tidy
 
-`stop` keeps the container and its apt cache, and stops the process. `reset` deletes the container (the audit log and `/work` data stay). Only `stop` when the user says the session is over; never `reset` without being asked — it throws away every tool the user waited for.
+`stop` keeps the container and its apt cache, and stops the process. `reset` deletes the container (the audit log and `/work` data stay). Only `stop` when the user says the session is over; never `reset` without being asked — it throws away every tool the user waited for. On Windows `reset` runs `wsl --unregister`, so the distribution and every tool inside it are gone; the audit log lives on the host and survives.
 
 ## When something goes wrong
 
@@ -93,3 +105,15 @@ Read `references/safety.md` before the first destructive-sounding request. The s
 - Tool missing after `ensure` → the package name differs per suite; check `apt-cache search` through `run` instead of guessing, then record the mapping you used.
 - Scan produces nothing → confirm the target is reachable from *inside* Kali (`run "ip route"`), not just from the host; the container sees its own network namespace.
 - Wireless/USB tooling → unavailable in the container backend by design. Say so instead of faking it.
+## Working with the other skills
+
+Kali finds and demonstrates; the sibling skills are what turn the findings into something the user can hand over. Reach for them by name instead of reinventing their job inside this skill:
+
+- **Reports.** `docx` builds the Word deliverable, `pdf` reads and renders PDFs (scope documents, vendor advisories, the report you just exported), `xlsx` keeps the host and finding inventory in a spreadsheet. Do not hand-roll a .docx or a PDF inside Kali.
+- **Web application testing.** `ego-browser` drives a real browser against the same target when the question is what the page *does* (session handling, client-side controls) rather than what the port speaks. Scan with Kali, then reproduce the finding in the browser.
+- **Open-source verification.** `zhihu-search` is the way to check Chinese-language public reporting on a product or CVE discussion. It is a research tool, not a scanning one.
+- **Cloud surface** (`cloudflare`, `wrangler`, `workers-best-practices`) covers the user's own deployed Workers and configuration. That is authoring and audit space, not a target list; never point Kali at a Cloudflare-hosted third-party.
+
+What does *not* belong here: `codebase-migration-refactor`, `remotion-best-practices` and `tailored-resume-generator` share no ground with a pentest environment. Ignore them even when the conversation drifts toward them.
+
+When a run matters for the deliverable, say what Kali produced and then hand the raw output to the document skill — do not paraphrase evidence into a summary and call it a finding.

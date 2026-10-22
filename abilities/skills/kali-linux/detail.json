@@ -23,13 +23,18 @@
         },
         {
           "title": "One CLI instead of a VM you babysit",
-          "description": "status, install, run, ensure, stop. Tools are installed on demand through apt, so the environment grows with the task instead of pulling a 4 GB metapackage up front.",
+          "description": "status, doctor, run, ensure, stop. Tools are installed on demand through apt, so the environment grows with the task instead of pulling a 4 GB metapackage up front.",
           "icon": "solar:terminal-square-bold"
         },
         {
           "title": "Guardrails that refuse to guess",
           "description": "Commands aimed at public addresses, or patterns that can wipe a system, are blocked unless you opt in explicitly. Every execution is appended to an audit log you can read.",
           "icon": "solar:shield-warning-bold"
+        },
+        {
+          "title": "Hands the evidence to the document skills",
+          "description": "Raw output stays raw. Reports go out through the docx, pdf and xlsx skills, browser-side behaviour is reproduced with ego-browser, and Chinese-language public reporting is checked with zhihu-search — Kali does not reinvent any of them.",
+          "icon": "solar:document-add-bold"
         }
       ]
     },

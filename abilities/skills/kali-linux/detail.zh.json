@@ -23,13 +23,18 @@
         },
         {
           "title": "一条命令，而不是一台要伺候的虚拟机",
-          "description": "status、install、run、ensure、stop 五个动作。工具用 apt 按需安装，环境跟着任务长，而不是一上来就拉 4 GB 的元包。",
+          "description": "status、doctor、run、ensure、stop 等动作。工具用 apt 按需安装，环境跟着任务长，而不是一上来就拉 4 GB 的元包。",
           "icon": "solar:terminal-square-bold"
         },
         {
           "title": "护栏不靠猜",
           "description": "指向公网地址的命令，以及能抹掉系统的命令模式，默认拦下，必须显式放行。每次执行都写进可读的审计日志。",
           "icon": "solar:shield-warning-bold"
+        },
+        {
+          "title": "把证据交给文档类技能收尾",
+          "description": "原始输出仍然保持原样。报告交给 docx、pdf、xlsx，页面侧行为用 ego-browser 复现，中文公开信息用 zhihu-search 核对，Kali 不重造其中任何一件。",
+          "icon": "solar:document-add-bold"
         }
       ]
     },

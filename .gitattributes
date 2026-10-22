@@ -1,1 +1,6 @@
 .githooks/* text eol=lf
+# Windows PowerShell 5.1 decodes BOM-less files with the ANSI code page and is
+# unreliable about here-string terminators in LF-only files; ship .ps1 as CRLF.
+*.ps1 text eol=crlf
+# Shell scripts must stay LF or they break under bash on macOS, WSL and CI.
+*.sh text eol=lf

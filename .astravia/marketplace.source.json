@@ -969,7 +969,7 @@
       "slug": "kali-linux",
       "name": "Kali Linux",
       "description": "Run Kali Linux tooling on this machine without a VM: the skill provisions a per-OS Kali runtime (WSL2 on Windows, the official rolling container on macOS and Linux) and drives scans, web testing, credential audits and forensics through one audited CLI.",
-      "version": "0.0.1",
+      "version": "0.0.3",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",

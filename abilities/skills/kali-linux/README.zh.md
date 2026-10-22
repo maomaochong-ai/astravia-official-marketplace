@@ -4,17 +4,18 @@
 
 ## 它做什么
 
-`scripts/kali.sh`（macOS / Linux）与 `scripts/kali.ps1`（Windows）包住一个 Kali 运行时，对外只有几个动作：
+`scripts/kali.sh`（macOS / Linux）与 `scripts/kali.ps1`（Windows）包住一个 Kali 运行时，对外只有九个动作：
 
 | 命令 | 作用 |
 | --- | --- |
 | `status` | 报告后端、就绪状态、镜像与 Kali 版本（`key=value`，恒定 exit 0） |
+| `doctor` | 同样的检查改成 `[PASS]`/`[WARN]`/`[FAIL]` 逐行输出，末尾给 `READY` 或 `NOT READY`（失败 exit 1）；不装、不启、不写审计 |
 | `install` | 按当前系统部署 Kali；幂等，不会重复装 |
 | `run "<命令>"` | 在 Kali 里跑一条命令，输出实时回传，带超时 |
 | `script` | 从 stdin 读多行脚本执行 |
 | `ensure <工具…>` | 用 apt 装工具，已装的跳过（`--profile headless` 装完整无头工具集） |
 | `tools` | 查看关键工具的安装情况 |
-| `stop` / `reset` | 停容器，或删容器 |
+| `stop` / `reset` | 停运行时，或销毁它（删容器 / 注销 WSL 发行版） |
 
 后端由系统自动决定：
 

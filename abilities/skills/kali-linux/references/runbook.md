@@ -8,6 +8,19 @@ Shell form used throughout:
 sh scripts/kali.sh run "<command>"
 ```
 
+## Is the environment healthy?
+
+```bash
+sh scripts/kali.sh doctor      # or: powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 doctor
+```
+
+One line per check, `[PASS]` / `[WARN]` / `[FAIL]`, then `READY` or `NOT READY`. It exits 1 when anything `FAIL`s, and it is read-only: no container is created, nothing is started, and no audit record is written. Run it before blaming a tool for behaviour the environment is actually causing.
+
+- `[FAIL] docker daemon` / `[FAIL] distribution` → the runtime is not up. `install` is the fix, not a retry of the scan.
+- `[WARN] tools` → the distribution answers, the toolbox is thin. `ensure <tool>` installs only what the task needs.
+- `[WARN] inside Kali` → the checks that need the distribution were skipped because it could not be entered. Fix the backend line above first; the rest of the output is then meaningful.
+
+
 ## Reconnaissance
 
 | Goal | Command |

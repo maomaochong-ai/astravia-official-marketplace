@@ -35,6 +35,7 @@ Common failures:
 - `0x80370102` / "virtual machine could not be started" → virtualization is disabled in firmware; the user must enable VT-x/AMD-V.
 - `The term 'wsl.exe' is not recognized` → WSL optional feature is off: `dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart` then reboot.
 - Distribution registers but `status` says `ready=false` → the first launch was never initialized; run `wsl -d kali-linux -u root -- true` once.
+- `The string is missing the terminator` or other parse errors on a file that looks fine → the script is ASCII-only and keeps no here-strings precisely so it parses under Windows PowerShell 5.1; if you edit it, do not reintroduce either (`.gitattributes` also pins `*.ps1` to CRLF, because 5.1 is unreliable about here-string terminators in LF-only files).
 - DNS works on Windows but not inside Kali → known WSL networking issue; `wsl --shutdown` and retry, and check `/etc/resolv.conf`.
 
 ## macOS
@@ -72,7 +73,7 @@ sh scripts/kali.sh ensure nmap
 sh scripts/kali.sh run "nmap --version | head -1"
 ```
 
-If `status` reports `ready=false`, the `hint=` line names the exact missing step. That line is the first thing to quote when asking the user for help.
+If `status` reports `ready=false`, the `hint=` line names the exact missing step. That line is the first thing to quote when asking the user for help. For a per-check verdict in one shot, run `doctor` — it separates "the runtime is not up" from "the runtime is up and the tools are thin", which are different fixes.
 
 ## Removing it
 
@@ -83,6 +84,7 @@ docker rmi kalilinux/kali-rolling:latest # optional: drop the image (~1 GB with 
 
 ```powershell
 wsl --unregister kali-linux              # Windows: destroys the distribution and everything in it
+powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 reset   # the same thing, from the skill
 ```
 
 `stop` is the soft option — it keeps the container, the tools the user waited for, and the apt cache, so the next `run` is instant. Never `reset` or `unregister` without an explicit request; it throws that work away.
