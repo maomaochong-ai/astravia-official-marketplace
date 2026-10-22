@@ -1,8 +1,8 @@
 ---
 name: kali-linux
-version: 0.1.1
+version: 0.1.2
 description: >-
-  Use when the user wants Kali Linux tooling running on their own machine — port and service scans, vulnerability analysis, web and API testing, exploitation, password auditing, wireless assessment, cloud-native and container security, RFID/NFC, VoIP/ICS, reverse engineering, forensics triage, post-exploitation, or source-code and dependency audit — or asks to "use Kali" locally. Provisions a per-OS Kali runtime on demand (Windows: the kali-linux WSL2 distribution; macOS and Linux: the official kalilinux/kali-rolling container) and drives it through scripts/kali.sh, or scripts/kali.ps1 on Windows. Ships 16 scenario playbooks and 270 tool references for phased, evidence-first engagements. The driver provisions and executes but does not classify targets or filter commands: scope and destructive-operation decisions belong to the conversation with the user, and every command is written to the audit log.
+  Use when the user wants Kali Linux tooling running on their own machine — port and service scans, vulnerability analysis, web and API testing, exploitation, password auditing, wireless assessment, cloud-native and container security, RFID/NFC, VoIP/ICS, reverse engineering, forensics triage, post-exploitation, or source-code and dependency audit — or asks to "use Kali" locally. Provisions a per-OS Kali runtime on demand (Windows: the kali-linux WSL2 distribution; macOS and Linux: the official kalilinux/kali-rolling container) and drives it through scripts/kali.sh, or scripts/kali.ps1 on Windows. Ships 16 scenario playbooks and 270 tool references for phased, evidence-first engagements. The driver provisions and executes but does not classify targets or filter commands: scope and destructive-operation decisions belong to the conversation with the user, and every command is written to the audit log. `host` reads the host's own activity without going through the container.
 metadata:
   astravia:
     presentation:
@@ -11,7 +11,7 @@ metadata:
 
 # kali-linux
 
-This skill gives the agent a real Kali Linux environment on this machine, a single CLI to run commands in it, and a full engagement methodology on top: 16 scenario playbooks and 270 per-tool references covering the whole pentest lifecycle. The Kali install is the environment; `scripts/kali.sh` supplies detection, provisioning, the command wrapper and the guardrails; `references/` supplies the tradecraft.
+This skill gives the agent a real Kali Linux environment on this machine, a single CLI to run commands in it, and a full engagement methodology on top: 16 scenario playbooks and 270 per-tool references covering the whole pentest lifecycle. The Kali install is the environment; `scripts/kali.sh` supplies detection, provisioning, the command wrapper, the audit log and the host probe; `references/` supplies the tradecraft.
 
 The skill directory is written as `$SKILL` below — the directory this `SKILL.md` lives in.
 
@@ -23,6 +23,33 @@ Two entry points, in this order:
 ## What this needs
 
 Exactly one of: the Docker CLI plus a running container runtime (macOS, Linux), the `kali-linux` WSL2 distribution (Windows), this machine being Kali itself, or SSH to a Kali box the user already owns. No MCP server, no host configuration, no API key — the skill drives its own scripts and nothing else.
+
+## What this cannot see
+
+Everything runs inside the Kali runtime — a container on macOS and Linux, the
+`kali-linux` WSL2 distribution on Windows. That runtime has no path to the host
+desktop: no display server, no window list, no screen capture, no host process
+table, no clipboard. Only the work directory is mounted.
+
+So "what is this computer doing right now", "which window am I in", "what was I
+looking at" are questions about the **host**, not about Kali. Answer them from
+the host, with `host` — not by guessing, and not by reaching for a container
+tool that would have to see a screen it cannot see:
+
+```bash
+sh "$SKILL/scripts/kali.sh" host
+```
+
+It prints `platform`, `frontmost_app`, `frontmost_window`, `idle_seconds`, then
+a `--- top cpu ---` block. It always exits 0 and never starts the runtime, so it
+is safe to run before `status`. On macOS the window title sits behind a one-time
+Automation permission — without it that line reads `unknown` and the rest still
+works. Windows prints `open_windows` with titles instead of one frontmost app.
+
+`host` looks at the machine the user is sitting at, and it is written to the
+audit log like any other action. It is for that machine, when the user asks what
+it is doing. It is not a way to observe someone else's computer, and the
+container backends leave you nothing to observe with even if it were.
 
 ## Ground rules
 
