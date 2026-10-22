@@ -56,7 +56,7 @@ export function DocsPage({ model }: PageProps) {
 				</div>
 
 				<div className="grid gap-2.5 @min-[900px]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
-					<div className="flex min-w-0 flex-col gap-2.5">
+					<div data-testid="docs-list" className={`min-w-0 flex-col gap-2.5 @min-[900px]:flex ${docs.listOpen || !docs.selected ? "flex" : "hidden"}`}>
 						<div className="flex flex-col gap-1.5">
 							<input
 								value={docs.query}
@@ -111,6 +111,7 @@ export function DocsPage({ model }: PageProps) {
 														return (
 															<button
 																key={entry.id}
+															data-doc-id={entry.id}
 																type="button"
 																onClick={() => docs.select(entry.id)}
 																aria-pressed={active}
@@ -135,6 +136,14 @@ export function DocsPage({ model }: PageProps) {
 						actions={
 							docs.selected ? (
 								<>
+									<button
+										type="button"
+										onClick={docs.showList}
+										className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover @min-[900px]:hidden"
+									>
+										<Icon name="chevron" className="size-3 rotate-180" />
+										<span>{t("docs.reader.back")}</span>
+									</button>
 									<span className="hidden font-mono text-[10px] text-text-4 @min-[1100px]:inline">{`${docs.selected.lines} ${t("docs.reader.lines")} · ${kilobytes(docs.selected.bytes)}`}</span>
 									<button
 										type="button"

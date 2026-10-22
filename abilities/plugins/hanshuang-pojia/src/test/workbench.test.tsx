@@ -108,6 +108,25 @@ describe("workbench shell", () => {
 		expect(screen.getAllByText(/Knowledge Base/).length).toBeGreaterThan(0);
 	});
 
+	it("hands the pane to the reader after a pick, and gives the list back", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("docs");
+		await screen.findByRole("heading", { level: 1 }, { timeout: 4000 });
+
+		// 窄面板下单列：目录在开，正文在下方。
+		const list = screen.getByTestId("docs-list");
+		expect(list.className).toContain("flex");
+		expect(list.className).not.toContain("hidden");
+
+		fireEvent.click(list.querySelector('[data-doc-id="kb/README"]') as HTMLButtonElement);
+		await waitFor(() => expect(screen.getByTestId("docs-list").className).toContain("hidden"));
+
+		// 返回按钮把目录让回来，而不是让人以为文档打不开。
+		fireEvent.click(screen.getByText("docs.reader.back"));
+		await waitFor(() => expect(screen.getByTestId("docs-list").className).not.toContain("hidden"));
+	});
+
 	it("lists only sample files from the workspace", async () => {
 		const api = makeBridge();
 		await open(api);

@@ -44,10 +44,32 @@
 | `disassemble_range` | 对 AArch64 / x86 / x86-64 字节区间做线性扫描反汇编 |
 | `search_dex_symbols` | 在 `.dex` 或 APK 里检索类、方法签名与字符串池 |
 | `diff_binaries` | 两个样本之间的字节级差异块 |
+| `decompile_function` | 单个函数的寄存器级伪 C，并列出它引用的字符串 |
+| `diff_functions` | 两个版本之间哪些函数改了形状、哪些只改了常量 |
+| `generate_hook` | 为命中的 Dalvik 方法生成 Frida **观测**脚本（绝不改写返回值） |
+| `triage_directory` | 目录下所有二进制的风险表，最差的排最前 |
 | `search_docs` | 在 309 篇随包文档里按标题 / id / 主题检索 |
 | `read_doc` | 读一篇文档正文（Markdown），超预算时明确标识截断位置 |
 
-十个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+十四个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+
+四个新工具都明确写出了自己不是什么：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是
+指令形状指纹，不是等价性证明；hook 模板只观测并原样返回原值 —— 在它上面写绕过是人的决定，不是插件
+产出的东西。
+
+同一套引擎可以在终端里跑，不经过插件沙箱：
+
+```bash
+node scripts/analyze.mjs triage sample.apk --json
+node scripts/analyze.mjs decompile libfoo.so --symbol check_license
+node scripts/analyze.mjs diff v1.elf v2.elf
+node scripts/analyze.mjs hook app.apk --query license --package com.example.app
+node scripts/analyze.mjs docs frida --group kb
+```
+
+`scripts/analyze.mjs` 用 esbuild 打包 `src/cli/analyze.ts`，只 import `src/domain`，因此能读进程能读的
+任何路径 —— 不涉及插件 fs 授权。子命令：`triage`、`strings`、`symbols`、`disasm`、`decompile`、`diff`、
+`hook`、`docs`。退出码：`0` 正常、`1` 用法错误、`2` 分析失败。
 
 ## 权限
 
@@ -102,7 +124,7 @@
 `src/test/skill-library.test.ts` 会重算清单，防止构建时静默丢失。它们按路径路由（`PART V.6`），
 没有注册成 `skillPaths`：上游 frontmatter 用了 YAML 块标量、描述超上限，而且 `ida-reverse` 重名。
 
-提示词本体不该背的细节放在 `agent/skills/hanshuang-pojia/references/workbench-2.0.md`：实测的工具包目录结构、
+提示词本体不该背的细节放在 `agent/skills/hanshuang-pojia/references/plugin-handbook.md`：实测的工具包目录结构、
 MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中继与记忆机制。每轮付费的只有技能索引项，
 所以正文可以写全。
 
@@ -112,7 +134,7 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 agent/
 └── skills/hanshuang-pojia/          # 宿主在对话区列出的技能
     ├── SKILL.md                     # 智能体文档全文（PART I–V，含工具包协议）
-    └── references/workbench-2.0.md  # 实测目录结构、MCP 工具全表、手册索引、宿主安装矩阵
+    └── references/plugin-handbook.md  # 实测目录结构、MCP 工具全表、手册索引、宿主安装矩阵
 agent/docs/
 ├── SKILL-LIBRARY.md                 # 随包技能库：清单、来源、为何不注册成技能
 ├── skill-library.sha256             # 165 条逐文件哈希；测试会重算它

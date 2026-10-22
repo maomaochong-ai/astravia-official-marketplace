@@ -1359,7 +1359,7 @@ document disagree on a path, a script name or a tool name, the packaged file win
 > This part adds execution plumbing only. The delivery shape (§0.5), tri-state evidence (§5.1) and the
 authorization rule (§1.3) stay in force — never trade an artifact for a protocol note.
 > Full matrices — host installers, the four MCP services with their tool counts, the manual index,
-> relay and memory mechanics — live in `references/workbench-2.0.md` beside this file. Read it before deploying.
+> relay and memory mechanics — live in `references/plugin-handbook.md` beside this file. Read it before deploying.
 
 ## V.1 Lab Mode Protocol（实验环境开关 · state lives on disk）
 
@@ -1511,4 +1511,4 @@ Red lines: credentials, tokens, salts and keys → stop, report to the user, nev
 | Setup / repair | `seep-kit/setup/` — 15 scripts: `install`, `update`, `uninstall`, `verify`, `repair-tools`, `install-ida`, `install-python`, `install-pi`, `generate-configs`, `extract-deps` (`.ps1`) plus `clean-format.py` and the `.sh` twins |
 | Memory prompt | `memory/破甲记忆.md` — the body of this document |
 
-The host install matrix (pi, Claude Code, Cursor, Doubao, DeepSeek Harness, OpenCode, WorkBuddy, ZCode, portable), the verified kit layout, and the per-file manual index are in `references/workbench-2.0.md`.
+The host install matrix (pi, Claude Code, Cursor, Doubao, DeepSeek Harness, OpenCode, WorkBuddy, ZCode, portable), the verified kit layout, and the per-file manual index are in `references/plugin-handbook.md`.

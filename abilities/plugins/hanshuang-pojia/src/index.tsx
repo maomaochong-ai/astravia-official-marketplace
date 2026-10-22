@@ -4,6 +4,7 @@ import { reportToJson, renderMarkdown } from "./domain/report/report";
 import { resolveSamplePath } from "./domain/sample-path";
 import { triage } from "./domain/triage";
 import type { WorkbenchBridge } from "./features/workbench/bridge";
+import { deliverPrompt } from "./features/workbench/services/chat";
 import { PanelBoundary } from "./features/workbench/components/shell/panel-boundary";
 import { WorkbenchScreen } from "./features/workbench/components/workbench-screen";
 import { LIBRARY_STATE_PATH, SETTINGS_STATE_PATH, type ChatState, type LibraryEntry, type WorkbenchSettings } from "./features/workbench/state";
@@ -15,16 +16,6 @@ import type { LabState } from "./domain/lab-mode";
 import { LAB_STATE_PATH } from "./features/workbench/hooks/use-lab";
 import { registerRuntimeContributions } from "./runtime/contributions";
 import "./style.css";
-
-/**
- * `sendPrompt` 在宿主没有活动会话时抛错；其余错误（权限、模型、网络）不应该被
- * 当成「没会话」而静默新建，否则用户的会话会被顶掉。所以只认这一种错。
- */
-function looksLikeNoSession(error: unknown): boolean {
-	const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
-	return /no active|not active|no session|no conversation|没有.*会话|未打开/.test(message);
-}
-
 
 function chatStateOf(state: ConversationState): ChatState {
 	return {
@@ -59,6 +50,17 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 	const cached = bridges.get(ctx);
 	if (cached) return cached;
 
+	// 权威的「当前有没有活跃会话」：订阅后宿主会立刻 replay 一次 conversation-changed，
+	// 比从 sendPrompt 的报错文案里猜可靠。undefined 表示还没收到。
+	let activeSession: string | null | undefined;
+	try {
+		ctx.conversation.on(event => {
+			if (event.type === "conversation-changed") activeSession = event.conversation.id;
+		});
+	} catch {
+		// 缺 agent.session.read 时保持未知，chat() 退回「先发再兜底」。
+	}
+
 	const bridge: WorkbenchBridge = {
 		listFiles: directory => ctx.fs.readDir(directory),
 		stat: async (path, cwd) => {
@@ -87,22 +89,7 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		},
 		notify: (message, variant) => ctx.ui.notify({ message, variant, title: "Hanshuang Pojia" }),
 
-		chat: async (prompt, cwd) => {
-			if (!cwd) throw new Error("no workspace folder is attached to this panel");
-			// 只在「宿主真的没有活动会话」时才新建；其余失败原样上抛，不偷偷把用户正在看的会话顶掉。
-			try {
-				const result = await ctx.conversation.sendPrompt(prompt);
-				if (result.status === "failed") throw new Error(result.error?.message ?? "sendPrompt failed");
-				return result.status === "queued" ? "queued" : "sent";
-			} catch (error) {
-				if (!looksLikeNoSession(error)) throw error;
-			}
-			// navigate:false 让用户留在插件标签页看进度；面板自己的通知已经告诉用户消息去哪了。
-			await ctx.conversation.createSession(cwd, { navigate: false });
-			const created = await ctx.conversation.sendPrompt(prompt);
-			if (created.status === "failed") throw new Error(created.error?.message ?? "sendPrompt failed");
-			return "opened";
-		},
+		chat: (prompt, cwd) => deliverPrompt(ctx.conversation, prompt, cwd, activeSession),
 
 		subscribeChat: listener => {
 			// 真值来自 conversation-changed；turn 事件只在该会话存在时改流式状态。

@@ -35,7 +35,7 @@ abilities/plugins/hanshuang-pojia/
 │  └─ skills/hanshuang-pojia/
 │     ├─ SKILL.md                # PART I–V: routing, per-track delivery templates, JIT stages
 │     └─ references/
-│        └─ workbench-2.0.md     # this file
+│        └─ plugin-handbook.md    # this file
 ├─ scripts/
 │  ├─ sync-docs.mjs              # regenerates src/content/docs/index.json + docs.sha256, --check
 ├─ src/
@@ -76,7 +76,7 @@ abilities/plugins/hanshuang-pojia/
 │  │  └─ panel-channel.ts        # report events with a 40-event replay backlog + current page signal
 │  ├─ tools/                     # one file per agent tool, plus ids.ts and register-tools.ts
 │  └─ content/docs/              # bundled field documents: kb/ manual/ kit-docs/ + index.json
-└─ src/test/                     # 21 spec files; every feature lands with a test
+└─ src/test/                     # 26 spec files; every feature lands with a test
 ```
 
 Fourteen pages, in `NAV` order: `overview`, `guide`, `docs`, `samples`, `findings`, `strings`,
@@ -152,7 +152,7 @@ the kit thinks, never what this panel thinks.
 
 ## 5. Agent tools
 
-Ten tools, declared once in `src/tools/ids.ts` and registered in `src/tools/register-tools.ts`.
+Fourteen tools, declared once in `src/tools/ids.ts` and registered in `src/tools/register-tools.ts`.
 Every one declares `scope_use` for the conversation and project scenarios, so it is fail-closed
 outside them.
 
@@ -166,12 +166,23 @@ outside them.
 | `diff_binaries` | what actually changed between two builds, as hunks | `domain/diff.ts` |
 | `explain_triage_finding` | what one rule id means and what to do next | `domain/audit/rules.ts` |
 | `export_triage_report` | hands the finished report to the save dialog | `domain/report/report.ts` |
+| `decompile_function` | register-level pseudo-C for one function, with its string references | `domain/native/pseudo.ts` |
+| `diff_functions` | which functions changed shape vs only changed constants, between two builds | `domain/native/semantic-diff.ts` |
+| `generate_hook` | a Frida **observation** script for matched Dalvik methods (never rewrites a result) | `domain/android/hook-template.ts` |
+| `triage_directory` | one risk table for every binary under a directory | `domain/batch.ts` |
 | `search_docs` | which field document covers a topic | `services/docs.ts` |
 | `read_doc` | the body of one field document, truncated visibly | `services/docs.ts` |
 
 Adding a tool means touching four places: the tool file, `register-tools.ts`, `ids.ts`, and both
-locale files — and `src/test/tools.test.ts` asserts the registered count, so a missed step fails
-the suite instead of shipping quietly.
+locale files — plus `EXPECTED_TOOL_COUNT` in `ids.ts`, which is the one number the health page and
+`src/test/tools.test.ts` both compare against. A missed step fails the suite instead of shipping
+quietly, and the self-check page shows `n of 14` when the registry drifts.
+
+The same engines are reachable outside the panel through `scripts/analyze.mjs` (bundled with
+esbuild, `src/cli/analyze.ts`, imports only `src/domain`): `triage`, `strings`, `symbols`,
+`disasm`, `decompile`, `diff`, `hook`, `docs`. It reads arbitrary paths — the fs grant only
+applies to the plugin sandbox — so it is the way to reproduce a panel number in a terminal or
+in CI.
 
 The panel cannot call MCP tools. It never could: MCP lives in the host's agent runtime, not in a
 plugin's renderer. Everything the panel shows is computed from bytes it read itself.

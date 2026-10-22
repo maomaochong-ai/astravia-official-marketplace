@@ -8,7 +8,7 @@
 
 import { runEngineSelfCheck } from "../../../domain/selfcheck";
 import type { LabState } from "../../../domain/lab-mode";
-import { TOOL_IDS } from "../../../tools/ids";
+import { EXPECTED_TOOL_COUNT, TOOL_IDS } from "../../../tools/ids";
 import { DOC_ENTRIES, DOC_TOTALS } from "./docs";
 
 export type HealthStatus = "pass" | "warn" | "fail";
@@ -25,11 +25,19 @@ export interface HealthGroup {
 	items: HealthItem[];
 }
 
-export interface HealthReport {
-	groups: HealthGroup[];
+/** 顶部结论条的三态：全部通过 / 只有可选降级 / 有硬失败。 */
+export type HealthVerdict = "ready" | "degraded" | "blocked";
+
+export interface HealthTally {
 	passed: number;
 	optional: number;
 	failed: number;
+	total: number;
+}
+
+export interface HealthReport extends HealthTally {
+	groups: HealthGroup[];
+	verdict: HealthVerdict;
 }
 
 export interface HostFacts {
@@ -90,7 +98,11 @@ function toolGroup(): HealthGroup {
 		id: "tools",
 		items: [
 			item("tools.count", unique === TOOL_IDS.length ? "pass" : "fail", `${unique} distinct tool ids, ${TOOL_IDS.length} declared.`),
-			item("tools.declared", TOOL_IDS.length === 10 ? "pass" : "fail", TOOL_IDS.join(", ")),
+			item(
+				"tools.declared",
+				TOOL_IDS.length === EXPECTED_TOOL_COUNT ? "pass" : "fail",
+				`${TOOL_IDS.length} of ${EXPECTED_TOOL_COUNT} expected: ${TOOL_IDS.join(", ")}`,
+			),
 			item("tools.scope", "pass", "Every tool declares scope_use; fail-closed outside conversation and project scenarios."),
 			item(
 				"tools.kit",
@@ -117,13 +129,29 @@ function hostGroup(facts: HostFacts): HealthGroup {
 	};
 }
 
+/** 一组的逐项计数，组头徽标用 `passed / total`。 */
+export function tallyOf(items: readonly HealthItem[]): HealthTally {
+	return {
+		passed: items.filter(entry => entry.status === "pass").length,
+		optional: items.filter(entry => entry.status === "warn").length,
+		failed: items.filter(entry => entry.status === "fail").length,
+		total: items.length,
+	};
+}
+
+/** 组的状态沿用最差一项：有 fail 就是 fail，否则有 warn 就是 warn。 */
+export function statusOfTally(tally: HealthTally): HealthStatus {
+	if (tally.failed > 0) return "fail";
+	if (tally.optional > 0) return "warn";
+	return "pass";
+}
+
 export function buildHealthReport(facts: HostFacts): HealthReport {
 	const groups = [assetGroup(), engineGroup(), toolGroup(), hostGroup(facts)];
-	const all = groups.flatMap(group => group.items);
+	const tally = tallyOf(groups.flatMap(group => group.items));
 	return {
 		groups,
-		passed: all.filter(entry => entry.status === "pass").length,
-		optional: all.filter(entry => entry.status === "warn").length,
-		failed: all.filter(entry => entry.status === "fail").length,
+		...tally,
+		verdict: tally.failed > 0 ? "blocked" : tally.optional > 0 ? "degraded" : "ready",
 	};
 }

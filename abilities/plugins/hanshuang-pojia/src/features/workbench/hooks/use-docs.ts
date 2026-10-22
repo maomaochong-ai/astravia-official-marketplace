@@ -20,6 +20,9 @@ export interface DocsModel {
 	body: string | null;
 	loading: boolean;
 	error: string | null;
+	/** 窄面板下单列时目录是否可见；宽面板由 CSS 强制双列，不看这个值。 */
+	listOpen: boolean;
+	showList(): void;
 	copyPath(): void;
 }
 
@@ -37,6 +40,7 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 	const [fullHits, setFullHits] = useState<DocHit[] | null>(null);
 	const [searching, setSearching] = useState(false);
 	const [selected, setSelected] = useState<DocEntry | null>(null);
+	const [listOpen, setListOpen] = useState(true);
 	const [body, setBody] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -112,8 +116,14 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 			return;
 		}
 		const entry = docById(id);
-		if (entry) setSelected(entry);
+		if (entry) {
+			setSelected(entry);
+			// 窄面板里正文与目录是二选一，点完就切到正文；宽面板不受影响。
+			setListOpen(false);
+		}
 	}, []);
+
+	const showList = useCallback(() => setListOpen(true), []);
 
 	const copyPath = useCallback(() => {
 		if (!selected) return;
@@ -138,5 +148,7 @@ export function useDocs(bridge: WorkbenchBridge, enabled: boolean): DocsModel {
 		loading,
 		error,
 		copyPath,
+		listOpen,
+		showList,
 	};
 }

@@ -87,6 +87,11 @@
 			"content": "This is static triage, not proof of safety. Android signature digests are read, not cryptographically verified; packed or encrypted code is reported as a hint and never unpacked; behaviour that only shows up at runtime stays invisible here. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the panel can only read files inside the open project folder, and at most 32 MiB per file. Bigger or out-of-project samples are still analysable — the panel hands them to the chat agent, which has the app's own file access."
 		},
 		{
+			"type": "callout",
+			"tone": "info",
+			"content": "Install this from the marketplace rather than from a downloaded package. The host records where an ability came from, and it never overwrites one source with another: if you already installed a build by hand, adding the newer one stops at \"the same ability id is already installed from another source\". Remove the hand-installed copy under My Abilities first, then install here — from then on upgrades follow the marketplace by themselves."
+		},
+		{
 			"type": "links",
 			"items": [
 				{

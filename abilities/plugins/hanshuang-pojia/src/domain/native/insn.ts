@@ -156,13 +156,14 @@ function decodeAarch64(word: number, offset: number): Decoded {
 
 	const imm12 = (word >>> 10) & 0xfff;
 	const lsl12 = ((word >>> 22) & 1) === 1 ? `, lsl #12` : "";
-	const arith = (word & 0xff000000) >>> 0;
-	if (arith === 0x91000000 || arith === 0xd1000000 || arith === 0x11000000 || arith === 0x51000000) {
-		const isSub = ((word & 0x40000000) >>> 0) !== 0;
-		const setsFlags = ((word & 0x20000000) >>> 0) !== 0;
-		if (setsFlags && rd === 31) return out(`cmp ${r(rn)}, #0x${hex(imm12)}${lsl12}`);
-		const name = isSub ? "sub" : "add";
-		return out(`${name}${setsFlags ? "s" : ""} ${r(rd)}, ${r(rn)}, #0x${hex(imm12)}${lsl12}`);
+	// ADD/ADDS/SUB/SUBS (immediate)：只钉 28..24 位，sf/op/S 从各自位取。
+	// 早先按整字节比对，等于只认 4 种编码，`cmp w0, #0`（32 位 SUBS）直接掉进 .word。
+	if (((word & 0x1f000000) >>> 0) === 0x11000000) {
+		const isSub = ((word >>> 30) & 1) === 1;
+		const setsFlags = ((word >>> 29) & 1) === 1;
+		const value = `#0x${hex(imm12)}${lsl12}`;
+		if (setsFlags && rd === 31) return out(`${isSub ? "cmp" : "cmn"} ${r(rn)}, ${value}`);
+		return out(`${isSub ? "sub" : "add"}${setsFlags ? "s" : ""} ${r(rd)}, ${r(rn)}, ${value}`);
 	}
 
 	const loadStore = (word & 0xffc00000) >>> 0;
@@ -197,16 +198,48 @@ function decodeAarch64(word: number, offset: number): Decoded {
 		return out(`ldp ${x(rd)}, ${x((word >>> 10) & 0x1f)}, ${address}`);
 	}
 
-	if (((word & 0xffe0ffe0) >>> 0) === 0xaa0003e0) return out(`mov x${rd}, x${rm}`);
-	if (((word & 0xffe0ffe0) >>> 0) === 0x2a0003e0) return out(`mov w${rd}, w${rm}`);
-	if (((word & 0xff200000) >>> 0) === 0x8b000000) {
-		const setsFlags = ((word & 0x20000000) >>> 0) !== 0;
-		if (setsFlags && rd === 31) return out(`cmp x${rn}, x${rm}`);
-		return out(`${setsFlags ? "adds" : "add"} x${rd}, x${rn}, x${rm}`);
+	// 寄存器型数据处理的覆盖范围决定了真实 arm64 二进制能不能读：编译器生成的
+	// 比较、条件选择、位运算几乎全是这三族，缺一族就整片 `.word`。
+	const wide = ((word >>> 31) & 1) === 1;
+	const reg = wide ? x : w;
+	const shiftType = (word >>> 22) & 3;
+	const shiftAmount = (word >>> 10) & 0x3f;
+	const shiftText = shiftAmount === 0 ? "" : `, ${["lsl", "lsr", "asr", "ror"][shiftType]!} #${shiftAmount}`;
+
+	// ADD/ADDS/SUB/SUBS (shifted register)：ADD=S=0，SUB=op，S 置位后 rd=31 即 cmp/cmn。
+	if (((word & 0x1f200000) >>> 0) === 0x0b000000) {
+		const isSub = ((word >>> 30) & 1) === 1;
+		const setsFlags = ((word >>> 29) & 1) === 1;
+		if (setsFlags && rd === 31) return out(`${isSub ? "cmp" : "cmn"} ${reg(rn)}, ${reg(rm)}${shiftText}`);
+		return out(`${isSub ? "sub" : "add"}${setsFlags ? "s" : ""} ${reg(rd)}, ${reg(rn)}, ${reg(rm)}${shiftText}`);
 	}
-	if (((word & 0xff200000) >>> 0) === 0xeb000000) {
-		if (rd === 31) return out(`cmp x${rn}, x${rm}`);
-		return out(`subs x${rd}, x${rn}, x${rm}`);
+
+	// 逻辑移位寄存器族：AND / ORR / EOR / ANDS。rn=31 的 ORR 就是 mov，
+	// ANDS 且 rd=31 就是 tst —— 这是编译器输出里最高频的三个「别名」。
+	if (((word & 0x1f000000) >>> 0) === 0x0a000000) {
+		const opc = (word >>> 29) & 3;
+		if (opc === 3 && rd === 31) return out(`tst ${reg(rn)}, ${reg(rm)}${shiftText}`);
+		if (opc === 1 && rn === 31) return out(`mov ${reg(rd)}, ${reg(rm)}${shiftText}`);
+		const name = opc === 0 ? "and" : opc === 1 ? "orr" : opc === 2 ? "eor" : "ands";
+		return out(`${name} ${reg(rd)}, ${reg(rn)}, ${reg(rm)}${shiftText}`);
+	}
+
+	// 立即数移位：LSL/LSR/ASR 的别名编码（UBFM/SBFM）。
+	if (((word & 0x1f800000) >>> 0) === 0x53000000) {
+		const opc = (word >>> 29) & 3;
+		const immr = (word >>> 16) & 0x3f;
+		const imms = (word >>> 10) & 0x3f;
+		if (opc === 2 && imms + 1 === immr) return out(`lsl ${reg(rd)}, ${reg(rn)}, #${(wide ? 64 : 32) - immr}`);
+	}
+
+	// 条件选择族 CSEL/CSINC/CSINV/CSNEG，以及 csinc(rd, zr, zr, !cond) 的 cset 别名。
+	if (((word & 0x1fe00800) >>> 0) === 0x1a800000) {
+		const op2 = (word >>> 10) & 3;
+		const condition = CONDITIONS[word & 0x0f]!;
+		if (op2 === 1 && rn === 31 && rm === 31 && condition === "ne") return out(`cset ${reg(rd)}, eq`);
+		if (op2 === 1 && rn === 31 && rm === 31 && condition === "eq") return out(`cset ${reg(rd)}, ne`);
+		const name = ["csel", "csinc", "csinv", "csneg"][op2]!;
+		return out(`${name} ${reg(rd)}, ${reg(rn)}, ${reg(rm)}, ${condition}`);
 	}
 
 	return out(`.word 0x${hex(word, 8)}`);

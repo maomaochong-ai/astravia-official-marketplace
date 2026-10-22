@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { toBase64 } from "../domain/base64";
 import { registerExplainFindingTool } from "../tools/explain-finding";
 import { registerExportReportTool } from "../tools/export-triage-report";
+import { EXPECTED_TOOL_COUNT } from "../tools/ids";
 import { registerTools } from "../tools/register-tools";
 import { baseName, isAbsolutePath, resolveSamplePath } from "../domain/sample-path";
 import { MAX_SAMPLE_BYTES, loadSample } from "../tools/read-sample";
@@ -100,18 +101,22 @@ describe("agent tools", () => {
 	it("registers every tool", () => {
 		const { ctx, registered } = fakeContext(new Map());
 		const disposables = registerTools(ctx);
-		expect(disposables).toHaveLength(10);
+		expect(disposables).toHaveLength(EXPECTED_TOOL_COUNT);
 		expect(registered.map(item => item.id).sort()).toEqual([
+			"decompile_function",
 			"diff_binaries",
+			"diff_functions",
 			"disassemble_range",
 			"explain_triage_finding",
 			"export_triage_report",
+			"generate_hook",
 			"list_code_symbols",
 			"read_doc",
 			"scan_binary_strings",
 			"search_dex_symbols",
 			"search_docs",
 			"triage_binary",
+			"triage_directory",
 		]);
 	});
 

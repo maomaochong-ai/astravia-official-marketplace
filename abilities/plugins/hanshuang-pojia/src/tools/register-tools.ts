@@ -1,5 +1,7 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
+import { registerDecompileFunctionTool } from "./decompile-function";
 import { registerDiffBinariesTool } from "./diff-binaries";
+import { registerDiffFunctionsTool } from "./diff-functions";
 import { registerDisassembleRangeTool } from "./disassemble-range";
 import { registerSearchDocsTool } from "./search-docs";
 import { registerExplainFindingTool } from "./explain-finding";
@@ -7,7 +9,9 @@ import { registerExportReportTool } from "./export-triage-report";
 import { registerListCodeSymbolsTool } from "./list-code-symbols";
 import { registerScanStringsTool } from "./scan-strings";
 import { registerReadDocTool } from "./read-doc";
+import { registerGenerateHookTool } from "./generate-hook";
 import { registerSearchDexSymbolsTool } from "./search-dex-symbols";
+import { registerTriageDirectoryTool } from "./triage-directory";
 import { registerTriageBinaryTool } from "./triage-binary";
 
 /**
@@ -26,6 +30,10 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerDisassembleRangeTool,
 		registerSearchDexSymbolsTool,
 		registerDiffBinariesTool,
+		registerDecompileFunctionTool,
+		registerDiffFunctionsTool,
+		registerGenerateHookTool,
+		registerTriageDirectoryTool,
 		registerSearchDocsTool,
 		registerReadDocTool,
 	]) {

@@ -15,7 +15,7 @@ import { buildFunctionView, isControlRelevant } from "./cfg";
 import type { FunctionView } from "./cfg";
 import { isExecutableOffset, vaddrToOffset } from "./image";
 import type { AddressMap } from "./image";
-import { decodeAt } from "./insn";
+import { decodeAt, decodeRange } from "./insn";
 import type { DisasmArch } from "./insn";
 import { callersOf } from "./xref";
 import type { XrefIndex } from "./xref";
@@ -311,6 +311,46 @@ export function functionBoundFor(start: number, candidates: readonly FunctionCan
 	if (range && range.end < bound) bound = range.end;
 	if (!Number.isFinite(bound)) bound = start + fallbackSpan;
 	return bound;
+}
+
+/**
+ * 把「函数后面跟着的数据」从区间里剪掉。
+ *
+ * 最后一个符号之后没有任何东西能告诉调用者函数的边界，固定跨度就会把 `__cstring`、
+ * 跳转表、桩数据一起解码成指令 —— 伪代码末尾那一片 `.word` 就是这么来的。
+ * 判据是保守的：只在「ret 之后连续 4 个不可解码字」时才剪，宁可多留也不误删真实分支。
+ */
+export function trimTrailingData(bytes: Uint8Array, arch: DisasmArch, start: number, end: number, maxInstructions = 4096): number {
+	const run = decodeRange(bytes, arch, start, end, maxInstructions);
+	let cutoff = end;
+	for (let index = 0; index < run.instructions.length; index += 1) {
+		const instruction = run.instructions[index]!;
+		if (instruction.mnemonic !== "ret") continue;
+		let junk = 0;
+		for (let cursor = index + 1; cursor < run.instructions.length; cursor += 1) {
+			if (!run.instructions[cursor]!.mnemonic.startsWith(".") && !run.instructions[cursor]!.mnemonic.startsWith("db")) break;
+			junk += 1;
+		}
+		if (junk >= 4 && instruction.offset + instruction.size < cutoff) cutoff = instruction.offset + instruction.size;
+	}
+	return cutoff;
+}
+
+/**
+ * 用已知符号偏移推断函数结束位置。
+ *
+ * `buildFunctionView` 在拿不到 `end` 时会取一个固定跨度，于是在真实二进制里
+ * 一个 3 条指令的小函数会连带把后面整段数据当成指令读出来 —— 输出看起来「有东西」，
+ * 实际全是错的行。这里优先用「下一个符号」，其次可执行段末尾，最后才退回固定跨度。
+ */
+export function symbolBoundFor(start: number, offsets: Iterable<number>, map: AddressMap, fallbackSpan = 8192): number {
+	let bound = Number.POSITIVE_INFINITY;
+	for (const offset of offsets) {
+		if (offset > start && offset < bound) bound = offset;
+	}
+	const range = map.executable.find(item => start >= item.start && start < item.end);
+	if (range && range.end < bound) bound = range.end;
+	return Number.isFinite(bound) ? bound : start + fallbackSpan;
 }
 
 /** 确认 `offset` 处确实能解码出指令（页面上点击前做一次守卫）。 */

@@ -566,6 +566,74 @@ export function buildElfWithSymbols(): Uint8Array {
 	return out;
 }
 
+/**
+ * ELF64，`.text` 带真实 vaddr（0x1000）与按地址命名的符号。
+ *
+ * 前面的 `buildElfWithSymbols` 不写 sh_addr，符号地址落不进可执行段 —— 用来测符号表没问题，
+ * 但函数级分析（指纹、边界推断）需要地址能真正映射回文件偏移，所以另建一个。
+ */
+export function buildElfWithAddressedText(code: Uint8Array, symbols: readonly { name: string; offset: number }[], base = 0x1000): Uint8Array {
+	const names = ["\0", ...symbols.map(symbol => `${symbol.name}\0`)].join("");
+	const strtab = utf8(names);
+	const symtab = concat([
+		new Uint8Array(24),
+		...symbols.map(symbol => {
+			const nameOffset = names.indexOf(`\0${symbol.name}\0`) + 1;
+			return elf64Symbol(nameOffset, 0x12, 1, base + symbol.offset);
+		}),
+	]);
+	const shstrtab = utf8("\0.text\0.symtab\0.strtab\0.shstrtab\0");
+
+	const parts: { offset: number; data: Uint8Array }[] = [];
+	let cursor = 64;
+	const place = (data: Uint8Array, alignment = 8): number => {
+		cursor = alignTo(cursor, alignment);
+		const offset = cursor;
+		cursor += data.byteLength;
+		parts.push({ offset, data });
+		return offset;
+	};
+	const textOffset = place(code);
+	const symtabOffset = place(symtab);
+	const strtabOffset = place(strtab);
+	const shstrtabOffset = place(shstrtab);
+	const sectionOffset = alignTo(cursor, 8);
+	const sectionCount = 5;
+	const out = new Uint8Array(sectionOffset + sectionCount * 64);
+	const view = new DataView(out.buffer);
+
+	out.set([0x7f, 0x45, 0x4c, 0x46, 2, 1, 1], 0);
+	view.setUint16(16, 2, true);
+	view.setUint16(18, 0x3e, true);
+	view.setUint32(20, 1, true);
+	view.setBigUint64(24, BigInt(base + (symbols[0]?.offset ?? 0)), true);
+	view.setUint16(52, 64, true);
+	view.setUint16(54, 56, true);
+	view.setUint16(58, 64, true);
+	view.setUint16(60, sectionCount, true);
+	view.setUint16(62, 4, true);
+	view.setBigUint64(40, BigInt(sectionOffset), true);
+	for (const part of parts) out.set(part.data, part.offset);
+
+	const writeSection = (index: number, name: number, type: number, flags: number, addr: number, offset: number, size: number, link: number, entsize: number): void => {
+		const at = sectionOffset + index * 64;
+		view.setUint32(at, name, true);
+		view.setUint32(at + 4, type, true);
+		view.setBigUint64(at + 8, BigInt(flags), true);
+		view.setBigUint64(at + 16, BigInt(addr), true);
+		view.setBigUint64(at + 24, BigInt(offset), true);
+		view.setBigUint64(at + 32, BigInt(size), true);
+		view.setUint32(at + 40, link, true);
+		view.setBigUint64(at + 56, BigInt(entsize), true);
+	};
+	writeSection(0, 0, 0, 0, 0, 0, 0, 0, 0);
+	writeSection(1, 1, 1, 0x6, base, textOffset, code.byteLength, 0, 0);
+	writeSection(2, 7, 2, 0, 0, symtabOffset, symtab.byteLength, 3, 24);
+	writeSection(3, 15, 3, 0, 0, strtabOffset, strtab.byteLength, 0, 0);
+	writeSection(4, 23, 3, 0, 0, shstrtabOffset, shstrtab.byteLength, 0, 0);
+	return out;
+}
+
 /** PE32+，两个节，导出表里两条具名导出（0x1000 / 0x1010）。 */
 export function buildPeWithExports(): Uint8Array {
 	const out = new Uint8Array(0x600);
