@@ -50,19 +50,43 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `disassemble_range` | linear-sweep listing of a byte range for AArch64 and x86/x86-64 |
 | `search_dex_symbols` | classes, method signatures and string-pool entries from a `.dex` or an APK |
 | `diff_binaries` | byte-level hunks between two samples |
+| `decompile_function` | register-level pseudo-C for one function, plus the strings it references |
+| `diff_functions` | which functions changed shape vs only changed constants, between two builds |
+| `generate_hook` | a Frida **observation** script for matched Dalvik methods (it never rewrites a result) |
+| `triage_directory` | one risk table for every binary under a directory, worst grade first |
 | `search_docs` | keyword search over the 309 bundled field documents (title, id, topic) |
 | `read_doc` | one document body as Markdown, truncated at a visible character budget |
 
-All ten declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
+All fourteen declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
 API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling.
 Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
+
+The four newest tools are honest about what they are not: no type recovery, no SSA, no variable
+merging in the pseudo-C; the diff is an instruction-shape fingerprint, not a proof of equivalence;
+the hook template observes and returns the original value — writing a bypass is a decision a human
+makes on top of it, not something this plugin emits.
+
+The same engines run from a terminal, outside the plugin sandbox:
+
+```bash
+node scripts/analyze.mjs triage sample.apk --json
+node scripts/analyze.mjs decompile libfoo.so --symbol check_license
+node scripts/analyze.mjs diff v1.elf v2.elf
+node scripts/analyze.mjs hook app.apk --query license --package com.example.app
+node scripts/analyze.mjs docs frida --group kb
+```
+
+`scripts/analyze.mjs` bundles `src/cli/analyze.ts` with esbuild and imports only `src/domain`, so it
+reads any path the process can read — no plugin fs grant involved. Commands: `triage`, `strings`,
+`symbols`, `disasm`, `decompile`, `diff`, `hook`, `docs`. Exit codes: `0` ok, `1` usage error,
+`2` analysis failure.
 
 ## Permissions
 
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the ten tools |
+| `agent.tools.register`, `agent.toolHandler.execute` | the fourteen tools |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
 | `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
@@ -117,7 +141,7 @@ inventory and provenance, `agent/docs/skill-library.sha256` the per-file hashes,
 They are routed by path (`PART V.6`) rather than registered as skill paths: upstream frontmatter uses
 YAML block scalars and over-cap descriptions, and `ida-reverse` exists twice.
 
-`agent/skills/hanshuang-pojia/references/workbench-2.0.md` holds the detail the skill body should
+`agent/skills/hanshuang-pojia/references/plugin-handbook.md` holds the detail the skill body should
 not carry: the verified kit layout, the full MCP tool list, the ten manuals, the per-host installer
 table, the deployment-check baseline, and the relay / memory mechanics. Only the skill's index entry is
 paid for on every turn, so the body can stay complete without costing anything until it is invoked.
@@ -128,7 +152,7 @@ paid for on every turn, so the body can stay complete without costing anything u
 agent/
 └── skills/hanshuang-pojia/          # the skill the host lists in every conversation
     ├── SKILL.md                     # the full agent document, PART I–V, including the kit protocol
-    └── references/workbench-2.0.md  # kit layout, MCP tool list, manual index, host installers
+    └── references/plugin-handbook.md  # kit layout, MCP tool list, manual index, host installers
 agent/docs/
 ├── SKILL-LIBRARY.md                 # bundled skill tree: inventory, provenance, why not registered
 ├── skill-library.sha256             # 165 per-file hashes; the test recomputes this
