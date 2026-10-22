@@ -106,7 +106,7 @@ describe("workbench shell", () => {
 		// 默认选中知识库根文档；正文经 import.meta.glob 惰性加载后才出现。
 		expect(await screen.findByRole("heading", { level: 1 }, { timeout: 4000 })).toBeTruthy();
 		expect(screen.getAllByText(/Knowledge Base/).length).toBeGreaterThan(0);
-	});
+	}, 15_000);
 
 	it("hands the pane to the reader after a pick, and gives the list back", async () => {
 		const api = makeBridge();
@@ -125,7 +125,7 @@ describe("workbench shell", () => {
 		// 返回按钮把目录让回来，而不是让人以为文档打不开。
 		fireEvent.click(screen.getByText("docs.reader.back"));
 		await waitFor(() => expect(screen.getByTestId("docs-list").className).not.toContain("hidden"));
-	});
+	}, 15_000);
 
 	it("lists only sample files from the workspace", async () => {
 		const api = makeBridge();

@@ -255,6 +255,13 @@ describe("planRadare", () => {
 		expect(shaped).toContain("callers (xrefs to)");
 	});
 
+	it("says so when a build has no pdc instead of returning silence", () => {
+		const plan = planRadare({ operation: "decompile", path, target: "sym.main" });
+		const text = plan.render([ok("")]);
+		expect(text).toContain("may not ship pdc");
+	});
+
+
 	it("paginates long output and says what it dropped", () => {
 		const plan = planRadare({ operation: "strings", path, limit: 2 });
 		const text = plan.render([ok("one\ntwo\nthree\n")]);

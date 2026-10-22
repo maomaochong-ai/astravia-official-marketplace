@@ -321,10 +321,17 @@ export function planRadare(request: RadareRequest): RadarePlan {
 			return {
 				operation: request.operation,
 				invocations: [r2Invocation(analyzed(command), path)],
-				render: results =>
-					request.operation === "disasm" && mode === "fold"
-						? renderBranch(results, maxChars)
-						: renderListing(results, mode, request.operation === "disasm" ? "instructions" : "statements", maxChars, lines),
+				render: results => {
+					const text =
+						request.operation === "disasm" && mode === "fold"
+							? renderBranch(results, maxChars)
+							: renderListing(results, mode, request.operation === "disasm" ? "instructions" : "statements", maxChars, lines);
+					// `pdc` is missing from some r2 builds; an empty result then means "unsupported", not "nothing here".
+					if (request.operation === "decompile" && text.startsWith("[no output")) {
+						return `${text}\n[note: this r2 build may not ship pdc — try operation=disasm for the same target]`;
+					}
+					return text;
+				},
 			};
 		}
 

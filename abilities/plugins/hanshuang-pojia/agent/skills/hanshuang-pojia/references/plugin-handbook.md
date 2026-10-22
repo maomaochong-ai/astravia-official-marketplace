@@ -176,7 +176,7 @@ outside them.
 | `search_docs` | which field document covers a topic | `services/docs.ts` |
 | `read_doc` | the body of one field document, truncated visibly | `services/docs.ts` |
 | `probe_environment` | which declared executables actually run, with version banners, keeping a host refusal apart from a missing binary | `domain/toolchain/probe.ts` |
-| `run_radare` | 9 r2 / rabin2 / radiff2 / rasm2 operations, shaped by `full` / `fold` / `summary` | `domain/toolchain/radare.ts` |
+| `run_radare` | 9 r2 / rabin2 / radiff2 / rasm2 operations, shaped by `full` / `fold` / `summary`; the tenth, `cmd`, is read-only only — write, shell, debugger, project, mount and `=` remote commands are refused | `domain/toolchain/radare.ts` |
 | `decompile_android` | jadx / apktool output beside the sample, plus `smali_search` over the unpacked tree | `domain/toolchain/android.ts` |
 | `init_task` | the per-target case layout (`samples/`, `exports/`, `reports/`, README, report skeleton) | `domain/toolchain/workspace.ts` |
 
