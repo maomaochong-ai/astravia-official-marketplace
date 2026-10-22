@@ -6822,8 +6822,8 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 309 bundled field documents the agent can search mid-investigation.",
-      "version": "2.4.1",
-      "configVersion": 1,
+      "version": "2.4.2",
+      "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
       "category": "Security",
@@ -6983,6 +6983,41 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.4.1.astraviapkg",
             "sha256": "a3c2ec0c313efb1f58e049e55dba58246cf5cbd7a92340580308f83ab2759e65"
           }
+        },
+        {
+          "version": "2.4.2",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.hooks.register",
+            "agent.hookHandler.execute",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "fs.write",
+            "agent.command.run"
+          ],
+          "commands": [
+            "r2",
+            "rabin2",
+            "radiff2",
+            "rasm2",
+            "jadx",
+            "apktool",
+            "java",
+            "frida"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.4.2.astraviapkg",
+            "sha256": "bf396c8ed42bd70202f31bb3c1e277fdaf156e65d9f8c113334b1328f6c0666e"
+          }
         }
       ]
     },
@@ -7076,5 +7111,5 @@
     }
   ],
   "version": "0.4.86",
-  "marketplaceVersion": "2026.10.22-11"
+  "marketplaceVersion": "2026.10.22-12"
 }

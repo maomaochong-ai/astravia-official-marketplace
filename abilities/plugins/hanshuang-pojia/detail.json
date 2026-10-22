@@ -79,7 +79,12 @@
 		{
 			"type": "callout",
 			"tone": "info",
-			"content": "The bundled agent document carries the workbench kit 2.0 protocol as its fifth part: lab mode entered with `lab：` and left with `退出实验`, the deployment and verification board driven by `setup/verify.ps1 -Detailed`, knowledge-base-first recon, and the `seep` (23 tools) / `ida` (~243) MCP matrix with its Radare2 fallback table. Since 2.1 the kit's skill library ships with it - 165 files, 2.4 MB, byte-identical to the upstream tree, routed by path from the protocol. It is payload and documentation, not a dependency: the panel above still runs with no external toolchain, and nothing here is installed behind your back."
+			"content": "If radare2, jadx or apktool are already on this machine, the agent can borrow them instead of approximating: `probe_environment` reports which of r2, rabin2, radiff2, rasm2, jadx, apktool, java and frida actually answer and with which version; `run_radare` covers headers, full string scans, the analysed function list, disassembly, pseudo-C, cross references, assemble/disassemble and binary diff; `decompile_android` turns an APK into Java sources or smali next to it and then searches that tree without loading whole files. Nothing is downloaded or installed, every call is a single executable with an argument vector, and the command channel is read-only - writes, shells, the debugger and project commands are refused. When a binary is missing the answer says which one and how to install it; when the host refuses the channel it says that instead of pretending the engine answered."
+		},
+		{
+			"type": "callout",
+			"tone": "info",
+			"content": "The bundled agent document carries the workbench kit 2.0 protocol as its fifth part: lab mode entered with `lab：` and left with `退出实验`, the deployment and verification board driven by `setup/verify.ps1 -Detailed`, knowledge-base-first recon, and the `seep` (23 MCP tools) / `ida` (~243) matrix with its Radare2 fallback table. Since 2.1 the kit's skill library ships with it - 165 files, 2.4 MB, byte-identical to the upstream tree, routed by path from the protocol. It is payload and documentation, not a dependency: the panel and the local radare2 / jadx tools work without the kit, and nothing here is installed behind your back."
 		},
 		{
 			"type": "callout",

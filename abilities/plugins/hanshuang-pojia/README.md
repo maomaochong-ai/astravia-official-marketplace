@@ -1,6 +1,6 @@
 # Hanshuang Pojia
 
-Static triage for Android packages, iOS apps, native binaries and archives — entirely inside Astravia, with no external toolchain and no execution of the sample.
+Static triage for Android packages, iOS apps, native binaries and archives — entirely inside Astravia. The sample is never executed, and the package bundles no engine: radare2, jadx and apktool are borrowed from the machine, and only when they are already there.
 
 The plugin answers one question: *what is this file, and what should a reviewer look at first?*
 
@@ -8,9 +8,12 @@ Since 2.0 the plugin also carries the **workbench kit protocol** — lab mode, t
 verification board, knowledge-base-first recon, and the `seep` / `ida` MCP tool matrix. It lives in
 the skill (`agent/skills/hanshuang-pojia/SKILL.md`), which the host loads on demand — the package no
 longer injects a standing block into every session. That layer is documentation the agent follows when
-the desktop kit is installed; the panel below still runs with no external toolchain and never executes
-a sample.
-installed; the panel below still runs with no external toolchain and never executes a sample.
+the desktop kit is installed.
+
+Two layers run without the kit: the panel's own TypeScript engine, which needs nothing but the file,
+and four tools that call the user's `r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` / `java`
+through the host command channel. Neither executes the sample, and a missing or refused binary is
+reported as such instead of being faked.
 
 ## What it analyses
 
@@ -56,15 +59,30 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `triage_directory` | one risk table for every binary under a directory, worst grade first |
 | `search_docs` | keyword search over the 309 bundled field documents (title, id, topic) |
 | `read_doc` | one document body as Markdown, truncated at a visible character budget |
+| `probe_environment` | which declared executables run, with version banners, separating a host refusal from a missing binary |
+| `run_radare` | r2 / rabin2 / radiff2 / rasm2: info, strings, functions, disasm, pseudo-C, xrefs, asm, diff, read-only `cmd` |
+| `decompile_android` | jadx / apktool into a sibling directory, then `smali_search` over the unpacked tree |
+| `init_task` | the per-target case layout — `samples/`, `exports/`, `reports/`, README and report skeleton |
 
-All fourteen declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
+All eighteen declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
 API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling.
 Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
-The four newest tools are honest about what they are not: no type recovery, no SSA, no variable
+The four analysis tools are honest about what they are not: no type recovery, no SSA, no variable
 merging in the pseudo-C; the diff is an instruction-shape fingerprint, not a proof of equivalence;
 the hook template observes and returns the original value — writing a bypass is a decision a human
 makes on top of it, not something this plugin emits.
+
+The four toolchain tools follow the same rule. `plugin.json#commands` declares exactly the eight
+executables they may spawn, the host asks the user before granting `agent.command.run`, and every call
+is `execFile` with an argument vector — no shell. `run_radare`'s `cmd` operation refuses writes, shells,
+the debugger, file opens, script execution, project commands, mounts and the `=` remote family (`w`, `!`,
+`oo`, `o`, `d`, `P`, `R`, `m`, `.`, `=`) and lets the read-only `dr` family through; anything that would
+leave r2's own parser is refused too — pipes (`|`), redirects (`>`/`<`), `$(…)`, backticks and `=!`.
+`decompile_android` writes next to the APK, never into it, and there is deliberately no `patches/`
+directory anywhere. `probe_environment` runs eight short `--version` calls, caches the answer for a
+minute and names the remedy for each failure mode: a host refusal is a setting, an absent binary is
+an install.
 
 The same engines run from a terminal, outside the plugin sandbox:
 
@@ -86,7 +104,8 @@ reads any path the process can read — no plugin fs grant involved. Commands: `
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the fourteen tools |
+| `agent.tools.register`, `agent.toolHandler.execute` | the eighteen tools |
+| `agent.command.run` | `probe_environment`, `run_radare`, `decompile_android`: the eight executables declared in `commands`, each one approved by the user |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
 | `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
@@ -172,6 +191,13 @@ src/
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
 │   └── triage.ts                    # entry point: detect → parse → audit → report
+├── domain/toolchain/                # external executables: nothing here starts a process by itself
+│   ├── catalog.ts                   # TOOLCHAIN / COMMANDS: must equal plugin.json#commands
+│   ├── probe.ts                     # per-tool version probe, refusal vs absence
+│   ├── radare.ts                    # r2/rabin2/radiff2/rasm2 plans + the read-only guard
+│   ├── android.ts                   # jadx/apktool plans, and the smali tree search
+│   ├── workspace.ts                 # case layout (no patches/)
+│   └── paths.ts
 ├── tools/                           # one Agent tool per file
 ├── runtime/panel-channel.ts         # agent → panel report channel
 ├── features/workbench/              # the panel
@@ -214,7 +240,7 @@ Two lanes, deliberately:
   report-to-report diff all run locally.
 - **In the conversation** — purple buttons send an English prompt through `ctx.conversation`; the
   agent calls the same tools for anything the panel cannot reach (out-of-project paths, files above
-  the host read cap, jadx/apktool/radare2, full-string scans). A prompt that cannot be sent because
+  the host read cap, real jadx/apktool/radare2 work, full-string scans). A prompt that cannot be sent because
   no conversation is attached is reported as such, never silently dropped.
 
 `triage_binary` publishes its report back into the panel through `src/runtime/panel-channel.ts`,
@@ -246,6 +272,14 @@ article that is never opened costs no download.
 ## Limits worth knowing
 
 - Android signature digests are read from the v1 files and the APK Signing Block, **not** cryptographically verified.
+- The four toolchain tools borrow binaries; they never download or install one. `probe_environment` reports
+  what is present, and when the host refuses the channel the fix is the plugin's declaration or its
+  settings, not `PATH`.
+- `run_radare` runs one r2 invocation per call (three for `decompile` with `output_mode=summary`) with a
+  120 s ceiling, and refuses anything outside its read-only whitelist. `decompile_android` gives jadx and
+  apktool 10 minutes each and returns the head of the log, not the sources.
+- `smali_search` reads extension-filtered files up to 2 MiB each, at most 8 000 of them, and stops at the
+  hit limit — it says so rather than pretending the tree ended.
 - Packed/encrypted code is reported, never unpacked; `native.packed` is a heuristic (entropy + import count, or a `UPX!` marker).
 - DEX string scan is capped at 6 dex files and 24 MiB; string extraction stops at 400 results per call in triage and 500 in the standalone tool.
 - Mach-O fat binaries analyse the first slice; IPA lookup tries at most three `Payload/*.app/*` candidates for the main binary.
