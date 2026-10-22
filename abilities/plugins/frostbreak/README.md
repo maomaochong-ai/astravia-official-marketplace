@@ -56,6 +56,33 @@ All eight declare `scope_use` explicitly (fail-closed) and only touch the worksp
 | `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
 | `fs.read` | listing the workspace and reading samples |
 | `fs.write` | `fs.saveAs` for exported reports (the user picks the path) |
+| `agent.systemPrompt.write` | injecting `AGENT.md` into every session's system prompt |
+
+## The agent document
+
+`AGENT.md` is what the agent reads before anyone asks it anything. `plugin.json` declares it under
+`agent.systemPrompt.promptPaths`, so the host appends it as a system-prompt block for every
+session in every project — the same reach a user-level `~/.claude/CLAUDE.md` has, scoped to this
+plugin. It is short on purpose: it is paid for on every turn.
+
+`scripts/sync-agent-doc.mjs` keeps the user-level copy in step as well:
+
+```bash
+node scripts/sync-agent-doc.mjs --print              # where the two copies live
+node scripts/sync-agent-doc.mjs                      # write <agentDir>/AGENTS.md
+node scripts/sync-agent-doc.mjs --check              # exit 1 when either copy is stale
+node scripts/sync-agent-doc.mjs --from README.md     # replace AGENT.md from another markdown
+node scripts/sync-agent-doc.mjs --remove             # drop the managed block again
+```
+
+The user-level file is edited, never overwritten: the text sits between `<!-- frostbreak:begin -->`
+and `<!-- frostbreak:end -->`, so a `AGENTS.md` the user already wrote keeps everything around it.
+The script resolves `<agentDir>` the way the host does — `ASTRAVIA_CODING_AGENT_DIR`, then
+`ASTRAVIA_HOME` / `ASTRAVIA_CONFIG_DIR`, then `~/.astravia/agent`.
+
+Why both: the manifest path is what actually reaches the model, with no file to keep in sync. The
+user-level file is the readable, editable copy — for people who want to see what the plugin tells
+the agent, and for hosts too old to honour `promptPaths`.
 
 ## Layout
 

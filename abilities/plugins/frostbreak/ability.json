@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "frostbreak",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",
