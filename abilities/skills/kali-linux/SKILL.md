@@ -1,8 +1,8 @@
 ---
 name: kali-linux
-version: 0.1.0
+version: 0.1.1
 description: >-
-  Use when the user wants Kali Linux tooling running on their own machine — port and service scans, vulnerability analysis, web and API testing, exploitation, password auditing, wireless assessment, cloud-native and container security, RFID/NFC, VoIP/ICS, reverse engineering, forensics triage, post-exploitation, or source-code and dependency audit — or asks to "use Kali" locally. Provisions a per-OS Kali runtime on demand (Windows: the kali-linux WSL2 distribution; macOS and Linux: the official kalilinux/kali-rolling container) and drives it through scripts/kali.sh, or scripts/kali.ps1 on Windows. Ships 16 scenario playbooks and 270 tool references for phased, evidence-first engagements. Every target outside a private address range needs an explicit authorization from the user first.
+  Use when the user wants Kali Linux tooling running on their own machine — port and service scans, vulnerability analysis, web and API testing, exploitation, password auditing, wireless assessment, cloud-native and container security, RFID/NFC, VoIP/ICS, reverse engineering, forensics triage, post-exploitation, or source-code and dependency audit — or asks to "use Kali" locally. Provisions a per-OS Kali runtime on demand (Windows: the kali-linux WSL2 distribution; macOS and Linux: the official kalilinux/kali-rolling container) and drives it through scripts/kali.sh, or scripts/kali.ps1 on Windows. Ships 16 scenario playbooks and 270 tool references for phased, evidence-first engagements. The driver provisions and executes but does not classify targets or filter commands: scope and destructive-operation decisions belong to the conversation with the user, and every command is written to the audit log.
 metadata:
   astravia:
     presentation:
@@ -210,14 +210,16 @@ The 270 tool documents were written for a hand-built Kali where the agent was ro
 - **Cross-service and cross-host reuse.** Services on one host often share filesystems, databases, sessions and proxies; credentials found anywhere get tried against every in-scope host and service. Both directions are standard lateral-movement paths.
 - **Long jobs.** Write output to `/work/<file>` and read the file afterwards. The default per-command timeout is 300 s (`KALI_TIMEOUT` overrides it); raise it deliberately for a scan you have already scoped, don't retry blindly.
 
-## Step 6 — The two switches, and what they are not
+## Step 6 — Nothing stands between the plan and the packet
 
-Ground rules say what is allowed; `references/safety.md` says why. This step is only the mechanics of getting past a check that fired correctly:
+Earlier versions of this driver refused targets outside private ranges (exit 78) and refused a denylist of destructive patterns. Both checks are gone. `KALI_AUTHORIZED_HOSTS`, `KALI_TARGET_AUTH` and `KALI_ALLOW_DESTRUCTIVE` no longer exist and setting them does nothing.
 
-- **`KALI_AUTHORIZED_HOSTS=<host>`** — pass it on the same command, for the specific host the user named. Private ranges (`10/8`, `172.16/12`, `192.168/16`, `127/8`, `fc00::/7`, `*.local`, `localhost`) pass without it. **Never** set this variable on your own initiative to get a command through: if it is needed, the authorization is what is missing, not the variable.
-- **`KALI_ALLOW_DESTRUCTIVE=1`** — `rm -rf /`, `mkfs`, `dd of=/dev/…`, fork bombs, `shutdown`/`reboot` and piping a download into a shell are refused without it. Setting it to "see whether the failure goes away" is exactly the failure mode it exists to stop.
+The gate that remains is the one you open yourself:
 
-A refusal exits 78 (`EX_CONFIG`) on every platform. That is not a transient error: do not retry it, and do not wrap the command in something that hides the code.
+- **Before an out-of-scope target**, say the address, say who owns it, and let the user answer. Nobody will stop you if you skip this — that is exactly why skipping it is the failure mode.
+- **Before a destructive command** (`rm -rf`, `mkfs`, `dd of=/dev/…`, `fdisk`, `wipefs`, `shutdown`, `reboot`, piping a download into a shell), state what it will touch. On the native backend that answer is the user's whole disk; in the container it is `/work` and the apt cache.
+- **Nothing will report the mistake back to you.** There is no exit code to interpret and no message explaining what was blocked. A command that should not have run will run, and the audit log's START line is the only record.
+
 
 ## Step 7 — Leaving things tidy
 
@@ -294,8 +296,8 @@ When you report back to the user in chat, keep it to at most three main problems
 
 - `references/install.md` — per-platform provisioning and removal.
 - `references/runbook.md` — one-screen tool selection by job.
-- `references/safety.md` — authorization model, denylist reasoning, audit log, legal notes.
-- `references/examples.md` — four worked round trips, including the ones that end in a refusal.
+- `references/safety.md` — why there is no technical gate, what each backend can reach, audit log, legal notes.
+- `references/examples.md` — four worked round trips, including the out-of-scope one and what to say instead of a flag.
 - `references/environment/` — backend capability table, and the state-file formats you write every phase.
 - `references/playbooks/` — 16 scenario workflows plus the decision tree and handoff map.
 - `references/<category>/README.md` — Golden Path and Decision Tree for choosing a tool in that phase.

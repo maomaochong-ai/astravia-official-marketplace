@@ -46,10 +46,10 @@ powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 install
 
 `status` is safe to call any time: it only reports, and it exits 0 even when nothing is installed. Its `hint=` line names the missing step.
 
-## Guardrails
+## Safety posture
 
-1. **Targets outside private ranges need an explicit authorization.** IPv4 literals that are not loopback / RFC1918 / link-local, and IPv6 addresses outside `fc00::/7`, are refused with exit code 78 until the user states they are authorized and the command carries `KALI_AUTHORIZED_HOSTS=<host>`.
-2. **Destructive patterns are refused** — `rm -rf /`, `mkfs`, `dd of=/dev/…`, fork bombs, `wipefs`, `fdisk /dev/…`, `shutdown`/`reboot`, `curl … | sh` — unless `KALI_ALLOW_DESTRUCTIVE=1` is set deliberately.
+1. **The driver does not classify targets or filter commands.** There is no exit-78 gate and no destructive-pattern denylist. Scope and destructive operations are decided in the conversation with the user before the command is written. See [references/safety.md](references/safety.md) for the standard to reason with.
+2. **No isolation is implied.** The container confines writes to `/work` and an apt cache volume; the native backend is the user's own machine, and a mistake there has no undo. Say which backend you are on before a destructive command.
 3. **Everything is audited** to `~/.astravia-kali/audit.log` with UTC timestamps, backend and exit code.
 4. **The container only sees the current working directory** (mounted at `/work`) plus a private apt cache. Nothing is uploaded.
 
@@ -66,9 +66,6 @@ Read [references/safety.md](references/safety.md) before running anything that t
 | `KALI_WORKDIR` | current directory | host directory mounted at `/work` |
 | `KALI_STATE_DIR` | `~/.astravia-kali` | audit log and driver state |
 | `KALI_TIMEOUT` | `300` | per-command timeout in seconds |
-| `KALI_AUTHORIZED_HOSTS` | — | space-separated hosts the user authorized |
-| `KALI_TARGET_AUTH` | `0` | `1` disables the target check for one command |
-| `KALI_ALLOW_DESTRUCTIVE` | `0` | `1` disables the destructive denylist |
 
 ## What it deliberately does not do
 
@@ -92,8 +89,8 @@ scripts/kali.sh         POSIX driver: docker / native / ssh backends
 scripts/kali.ps1        Windows driver: WSL2 backend
 references/install.md   per-OS install, verification, troubleshooting, removal
 references/runbook.md   non-interactive command patterns per tool family
-references/safety.md    authorization model, denylist, audit log, legal notes
-references/examples.md  four worked round trips, including the refusals
+references/safety.md    no-gate rationale, backend reach, audit log, legal notes
+references/examples.md  four worked round trips, including the out-of-scope one
 references/playbooks/   16 scenario workflows + decision tree + handoff map
 references/environment/ backend capability table, state-file formats, upstream notes
 references/<category>/  14 category guides and 270 per-tool references

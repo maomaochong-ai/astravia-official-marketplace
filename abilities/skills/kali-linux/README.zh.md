@@ -44,10 +44,10 @@ powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 install
 
 `status` 随时可以调：它只读不写，什么都没装也照样 exit 0；缺哪一步，看 `hint=` 那一行。
 
-## 护栏
+## 安全姿态
 
-1. **私有网段之外的目标必须先拿到明确授权。** 非 loopback / RFC1918 / 链路本地的 IPv4 字面量，以及 `fc00::/7` 之外的 IPv6，一律以退出码 78 拒绝，直到用户明确说「这台我有权测」，并在命令里带上 `KALI_AUTHORIZED_HOSTS=<host>`。
-2. **破坏性命令默认拦下** —— `rm -rf /`、`mkfs`、`dd of=/dev/…`、fork 炸弹、`wipefs`、`fdisk /dev/…`、`shutdown`/`reboot`、`curl … | sh`，除非显式设置 `KALI_ALLOW_DESTRUCTIVE=1`。
+1. **驱动不做目标分类，也不过滤命令。** 没有 exit 78 的门，也没有破坏性命令黑名单。范围和破坏性操作在写命令之前、靠着和用户的对话定下来；判断标准见 [references/safety.md](references/safety.md)。
+2. **不隐含任何隔离。** 容器把写入限在 `/work` 和 apt 缓存卷；原生后端就是你自己的机器，在那里出错没有撤销。写破坏性命令之前，先说清自己在哪个后端。
 3. **全部留痕** —— 每条命令带 UTC 时间戳、后端与退出码写进 `~/.astravia-kali/audit.log`。
 4. **容器只看得到当前工作目录**（挂到 `/work`）和一份私有 apt 缓存；不上传任何数据。
 
@@ -64,9 +64,6 @@ powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 install
 | `KALI_WORKDIR` | 当前目录 | 挂到 `/work` 的宿主机目录 |
 | `KALI_STATE_DIR` | `~/.astravia-kali` | 审计日志与驱动状态 |
 | `KALI_TIMEOUT` | `300` | 单条命令超时秒数 |
-| `KALI_AUTHORIZED_HOSTS` | — | 用户已授权的目标，空格分隔 |
-| `KALI_TARGET_AUTH` | `0` | 为 `1` 时对本次命令关闭目标检查 |
-| `KALI_ALLOW_DESTRUCTIVE` | `0` | 为 `1` 时关闭破坏性命令黑名单 |
 
 ## 它明确不做的事
 
@@ -90,8 +87,8 @@ scripts/kali.sh         POSIX 驱动：docker / native / ssh 后端
 scripts/kali.ps1        Windows 驱动：WSL2 后端
 references/install.md   各系统安装、验证、排障、卸载
 references/runbook.md   各类工具的非交互写法
-references/safety.md    授权模型、黑名单、审计日志、法律提示
-references/examples.md  四个完整问答范例（含该拒绝的场面）
+references/safety.md    为何不设技术门、各后端可触及范围、审计日志、法律提示
+references/examples.md  四个完整问答范例（含越界目标那一例）
 references/playbooks/   16 份场景工作流 + 决策树 + 交接图
 references/environment/ 后端能力对照表、状态文件格式、上游环境笔记
 references/<分类>/      14 份分类指南与 270 份单工具参考

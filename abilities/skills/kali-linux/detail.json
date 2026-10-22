@@ -65,7 +65,7 @@
       "type": "callout",
       "tone": "warning",
       "title": "Only point it at systems you are allowed to test",
-      "content": "Kali tooling sends real traffic at real hosts. The skill asks for an explicit authorization before any target outside a private network range, and keeps a denylist for commands that can destroy a machine. Penetration testing without written permission is illegal in most jurisdictions — the guardrail is a speed bump, not a licence."
+      "content": "Kali tooling sends real traffic at real hosts. This driver does not classify targets or block dangerous commands — it provisions the runtime, runs what it is told, and writes every command to an audit log. Scope and destructive operations are settled in the conversation with the agent beforehand. Penetration testing without written permission is illegal in most jurisdictions, and nothing in the tooling will stop it for you."
     },
     {
       "type": "callout",
