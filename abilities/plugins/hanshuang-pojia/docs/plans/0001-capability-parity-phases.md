@@ -10,10 +10,10 @@
 
 | 阶段 | 内容 | 版本 | 状态 |
 |---|---|---|---|
-| P1 | 伪代码恢复、语义 diff、hook 模板、目录批量 triage、CLI | 2.4.1 | 本次完成 |
-| P2 | 指令编码器（asm ↔ bytes）、Overview 流水线状态条 | 2.4.2 | 规划 |
-| P3 | DEX code-item 视图、结构化 checklist、case 初始化 | 2.4.3 | 规划 |
-| P4 | 报告对比增强、跨样本基线（同一家族的重复样本聚合） | 2.4.4 | 规划 |
+| P1 | 伪代码恢复、语义 diff、hook 模板、目录批量 triage、CLI | 2.4.1 | 已完成 |
+| P2 | 外部进程桥（`commands` + `ctx.command.run`）：`probe_environment`、`run_radare`、`decompile_android`、`init_task` | 2.4.2 | 本次完成 |
+| P3 | 指令编码器（asm ↔ bytes）、Overview 流水线状态条、DEX code-item 视图 | 2.4.3 | 规划 |
+| P4 | 跨样本基线（同一家族的重复样本聚合）、报告三列对比 | 2.4.4 | 规划 |
 
 每个阶段都必须同时完成：领域实现 → 工具注册 → 面板呈现（若该阶段有 UI）→ 测试 → 双语文案 →
 版本与文档同步 → CI 发布。
@@ -104,28 +104,40 @@
 
 ---
 
-## P2：编码器与流水线可视化（2.4.2）
+## P2：外部进程桥（2.4.2）
+
+依据 [ADR 0002](../adr/0002-external-process-bridge.md)。三条 MCP 通道里，自建 `host-node` 服务与
+`npx` stdio 都被否决，选 `plugin.json#commands` + `ctx.command.run`。
+
+1. `src/domain/toolchain/catalog.ts`：`TOOLCHAIN`（8 项，含版本参数与安装提示）、`COMMANDS`、
+   `specsForCapability`。`COMMANDS` 与 `plugin.json#commands` 逐字节一致，由测试守护。
+2. `src/domain/toolchain/probe.ts`：`probeToolchain` → `ToolStatus[]` + 能力布尔表；区分「宿主拒绝」与
+   「未安装」；`renderToolchain` 输出逐行对齐的可用性表。
+3. `src/domain/toolchain/radare.ts`：9 个 operation 的纯函数 `planRadare`（返回 invocations + render），
+   `assertReadOnly` 只读守卫，`stripNoise`/`paginate`/`branchSkeleton`/`foldStatements`/`truncateChars`。
+4. `src/domain/toolchain/android.ts`：`planAndroid`（jadx / apktool）+ `searchSourceTree`（走插件 `fs`，
+   不经进程）。`src/domain/toolchain/workspace.ts`：`initTaskWorkspace`（**不含 `patches/`**）。
+5. `src/features/workbench/services/toolchain.ts`：把 `ctx.command.run` 适配为 `CommandRunner`，探针 60s 缓存。
+   工具 handler 拿不到 `ctx.command`，只能在 `activate` 闭包里捕获。
+6. 四个工具：`probe_environment`、`run_radare`、`decompile_android`、`init_task`；工具数 14 → 18。
+7. `plugin.json`：`permissions` += `agent.command.run`，新增 `commands`（8 条）。
+8. 验收：`toolchain.test.ts` 全绿；未装 r2 时 `probe_environment` 报 `✗ not installed` 而非权限错；
+   装 r2 后 `run_radare` 对自编 aarch64 样本取 `info`/`functions`/`disasm` 有真实输出。
+
+## P3：编码器、流水线状态条与 DEX 指令视图（2.4.3）
 
 1. `src/domain/native/encode.ts`：x86 / x86-64 / AArch64 常见指令编码子集（`mov`/`add`/`sub`/`xor`/
    `cmp`/`jmp`/`call`/`ret`/`nop`），双向 `asm → bytes`；无法编码时明确报错并给出最接近的候选，
-   不输出"大概对"的字节。工具 `assemble_instructions`。
+   不输出「大概对」的字节。
 2. Overview 页流水线状态条：对照 `render_workflow.html` 的四段（画像 → 控制流 → 智库 → 验证），
    状态取自当前报告的 sections 与 settings，不引入假进度。
-3. 验收：编码后用 `disassemble_range` 回转得到同一文本；流水线在无样本时显示"等待样本"。
-
-## P3：DEX 指令级视图与结构化清单（2.4.3）
-
-1. `src/domain/android/dex-code.ts`：解析 `code_item`（registers、insns、try/catch），渲染 smali 风格
-   指令文本；工具 `disassemble_dex_method`。上限 2 000 条指令，超出显式截断。
-2. `src/domain/checklists.ts`：从随包 `manual` 与 kb 文章派生结构化清单（标题层级 + 复选框），
-   工具 `list_checklist`；不新造内容，只重排既有文档。
-3. 工具 `init_case`：在项目内建 `<case>/` 骨架（`README.md`、`hashes.txt`、`report.md` 占位），
-   写入前要求显式路径，绝不落在项目外。
-4. 验收：对夹具 DEX 的方法输出与 `method_ids` 描述一致；清单条目可回溯到源文档 id。
+3. `src/domain/android/dex-code.ts`：解析 `code_item`（registers、insns、try/catch），渲染 smali 风格
+   指令文本；上限 2 000 条指令，超出显式截断。
+4. 验收：编码后用 `disassemble_range` 回转得到同一文本；流水线在无样本时显示「等待样本」。
 
 ## P4：跨样本基线（2.4.4）
 
-1. 样本库增加"家族"分组：同一 `shape` 指纹集合的样本归并，报告里给出共同函数数与差异函数数。
+1. 样本库增加「家族」分组：同一 `shape` 指纹集合的样本归并，报告里给出共同函数数与差异函数数。
 2. `reports` 页支持两份报告并排对比（既有 `report-compare.ts` 扩展为三列：共同 / 左有 / 右有）。
 3. 验收：同家族两个样本的并排视图稳定排序，新增发现高亮可解释。
 
@@ -139,7 +151,9 @@
 | 领域 | `src/test/semantic-diff.test.ts` | 自比为零、常量变化、增删函数、架构不一致 |
 | 领域 | `src/test/hook-template.test.ts` | overload 生成、未命中提示、无绕过语句 |
 | 领域 | `src/test/batch.test.ts` | 扩展名过滤、排序、跳过与失败计数 |
-| 工具 | `src/test/tools.test.ts` | 注册数量 14、id 清单、四个新工具的真实调用 |
+| 工具 | `src/test/tools.test.ts` | 注册数量 18、id 清单、四个离线工具的真实调用 |
+| 工具 | `src/test/toolchain.test.ts` | 可执行文件目录与 manifest 逐字节一致、探针三态、只读守卫、四个工具链工具的真实调用 |
+| 领域 | `src/test/toolchain.test.ts` | `planRadare` 九种操作、`planAndroid` 两种反编译、`searchSourceTree`、`initTaskWorkspace` |
 | 集成 | `src/test/cli.test.ts` | `scripts/analyze.mjs` 在临时目录对夹具跑 `triage` / `decompile` |
 | 内容 | `src/test/skill-library.test.ts` | 165 文件哈希不变（改名不影响） |
 | 发布 | 根 `tests/marketplace.test.mjs` | 清单与包内容一致、版本同步 |
@@ -165,6 +179,35 @@
 2. 函数没有 `end` 时按固定跨度读，把后面整段数据当指令；补 `symbolBoundFor` + `trimTrailingData`。
 3. 指令形状把 32/64 位寄存器混同，32 位溢出回归会被误报成"只改常量"；形状改为保留位宽与逗号位置。
 4. 两侧都指纹不出函数时仍报"相同"；改为至少一条匹配才允许 `identical`，否则显式警告。
+
+## P2 落地记录（2.4.2）
+
+写入时点：2.4.2 源码完成，工具数 14 → 18，`plugin.json` 新增 `commands`（8 条）与
+`agent.command.run`，`.astravia/marketplace.source.json` 的 `configVersion` 1 → 2。
+
+| 项 | 结果 |
+|---|---|
+| 工具注册 | 18，`EXPECTED_TOOL_COUNT = 18`；四个新工具各自有真实调用用例 |
+| 自检 | 29 个 spec 文件 / 300 条断言全绿（P1 基线 27 / 251） |
+| 类型 | `tsc --noEmit` 无输出 |
+| 构建 | `vite build` 成功，500 个运行时文件 → `hanshuang-pojia-2.4.2.astraviapkg` |
+| 文档 | `sync-docs.mjs --check` → `309 documents`；根 `marketplace.mjs check` 通过 |
+| 根测试 | `node --test tests/*.test.mjs` → 66 pass / 0 fail |
+
+过程中修掉的真实缺陷：
+
+1. `failure()` 用 `stripNoise` 洗 stderr，而 r2 的诊断几乎都带 `WARN:` / `ERROR:` 前缀，于是
+   “样本打不开”被退化成“no output”。改为 stderr 原样保留。
+2. `SearchHit.path` 存的是相对路径，名字却与宿主的绝对 `path` 重叠；命中的渲染因此可能被误用。
+   改名为 `relPath`。
+3. 只读守卫只拦命令首字母，`pdf @ main|sh`、`pdf @ main > out`、`. script.r2`、`afl$(id)`、`=!id`、
+   `o /etc/passwd` 全部能绕过——它们不碰 `w`/`!`，却分别能掉 shell、写文件、跑脚本、打开任意文件。
+   新增“离开 r2 自身解析器”的黑名单（管道、重定向、`$(`、反引号、`=!`），并把 `o`（打开文件）与
+   `.`（执行脚本）列入首字符黑名单。
+4. 探针原先把 `dr` 与整个 `d`（调试）家族混同，可读寄存器的只读命令被误杀；加 `ALLOWED_COMMAND` 放行。
+5. `capabilities` 的语义定死为“该能力所需的可执行文件全部可用”并有测试守护：r2 被拒时
+   `radare` 必为 false，不能因为 rabin2 还能跑 `info` 就声称反汇编可用。
+
 
 ---
 

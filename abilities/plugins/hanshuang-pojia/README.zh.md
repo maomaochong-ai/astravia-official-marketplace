@@ -1,10 +1,12 @@
 # 寒霜破甲
 
-在 Astravia 内离线静态体检安卓安装包、iOS 应用、原生二进制与压缩包，不依赖任何外部工具链，也从不运行样本。
+在 Astravia 内离线静态体检安卓安装包、iOS 应用、原生二进制与压缩包。样本从不运行，包内也不自带引擎：radare2 / jadx / apktool 只在你的机器上已经装好时才会被借用。
 
 插件只回答一个问题：**这是什么文件，评审应该先看哪里？**
 
-从 2.0 起，插件还带一层 **工作台工具包协议**——实验模式开关、部署与校验看板、先查知识库的侦察顺序，以及 `seep` / `ida` 的 MCP 工具矩阵。这份内容现在放在技能里（`agent/skills/hanshuang-pojia/SKILL.md`），由宿主按需加载，不占用每轮注入的那段系统提示。它是指挥智能体配合桌面工具包干活的文档；面板本身仍然零外部依赖、从不运行样本。
+从 2.0 起，插件还带一层 **工作台工具包协议**——实验模式开关、部署与校验看板、先查知识库的侦察顺序，以及 `seep` / `ida` 的 MCP 工具矩阵。这份内容现在放在技能里（`agent/skills/hanshuang-pojia/SKILL.md`），由宿主按需加载，不占用每轮注入的那段系统提示。它是指挥智能体配合桌面工具包干活的文档。
+
+不装工具包也有两层能跑：面板自己的 TypeScript 引擎，只要一个文件就能出结果；以及四个通过宿主命令通道调用本机 `r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` / `java` 的工具。两者都不执行样本；二进制缺失或被宿主拒绝，都会如实报出来，不会伪造结果。
 
 ## 能分析什么
 
@@ -50,12 +52,24 @@
 | `triage_directory` | 目录下所有二进制的风险表，最差的排最前 |
 | `search_docs` | 在 309 篇随包文档里按标题 / id / 主题检索 |
 | `read_doc` | 读一篇文档正文（Markdown），超预算时明确标识截断位置 |
+| `probe_environment` | 探测已声明的可执行文件是否真能跑，给出各自版本横幅，并区分「宿主拒绝」与「未安装」 |
+| `run_radare` | r2 / rabin2 / radiff2 / rasm2：头信息、字符串、函数表、反汇编、伪 C、交叉引用、汇编、差分，以及只读 `cmd` |
+| `decompile_android` | 用 jadx / apktool 输出到相邻目录，再对整个目录做 `smali_search` |
+| `init_task` | 单个目标的案件目录：`samples/`、`exports/`、`reports/`、README 与报告模板 |
 
-十四个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+十八个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
 
 四个新工具都明确写出了自己不是什么：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是
 指令形状指纹，不是等价性证明；hook 模板只观测并原样返回原值 —— 在它上面写绕过是人的决定，不是插件
 产出的东西。
+
+四个工具链工具遵循同一条规则：`plugin.json#commands` 里逐字声明它们可以启动的八个可执行文件，宿主在授予
+`agent.command.run` 前会问用户，每次调用都是带参数数组的 `execFile`，不经过 shell。`run_radare` 的 `cmd`
+拒绝写、shell、调试器、打开文件、脚本执行、工程与挂载命令（`w`、`!`、`oo`、`o`、`d`、`P`、`R`、`m`、`.`），
+只放行 `dr` 这类只读族；凡是会离开 r2 自身解析器的写法也一律拒绝 —— 管道 `|`、重定向 `>`/`<`、`$()`、
+反引号与 `=!`。
+`decompile_android` 只写到 APK 旁边的目录，从不改原文件，全局也没有 `patches/` 目录。`probe_environment`
+跑八次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。
 
 同一套引擎可以在终端里跑，不经过插件沙箱：
 
@@ -76,7 +90,8 @@ node scripts/analyze.mjs docs frida --group kb
 | 权限 | 原因 |
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
-| `agent.tools.register`、`agent.toolHandler.execute` | 十个工具 |
+| `agent.tools.register`、`agent.toolHandler.execute` | 十八个工具 |
+| `agent.command.run` | `probe_environment`、`run_radare`、`decompile_android`：使用 `commands` 里声明的八个可执行文件，每个都需用户授权 |
 | `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
 | `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
 | `storage.read`、`storage.write` | 样本架与设置能跨重启保留；没有授权时面板退化为会话内存 |
@@ -154,6 +169,13 @@ src/
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
 │   └── triage.ts                    # 入口：识别 → 解析 → 审计 → 报告
+├── domain/toolchain/                # 外部可执行文件：这层自己不启动进程
+│   ├── catalog.ts                   # TOOLCHAIN / COMMANDS，必须与 plugin.json#commands 一致
+│   ├── probe.ts                     # 逐个工具探测版本，区分拒绝与缺失
+│   ├── radare.ts                    # r2/rabin2/radiff2/rasm2 计划与只读守卫
+│   ├── android.ts                   # jadx/apktool 计划，以及 smali 目录检索
+│   ├── workspace.ts                 # 案件目录布局（没有 patches/）
+│   └── paths.ts
 ├── tools/                           # 一个 Agent 工具一个文件
 ├── runtime/panel-channel.ts         # Agent → 面板的报告回程通道
 ├── features/workbench/              # 面板本体
@@ -190,7 +212,7 @@ chunk，所以打开文档页的代价是一篇，而不是 4 MB。同一批文�
 - **面板内** —— 内置引擎，处理项目目录内、32 MiB 以下的文件。摘要、格式、清单、权限、组件、
   节区、熵、字符串、签名结构与两份报告之间的差分都在本地完成。
 - **对话里** —— 紫色按钮经 `ctx.conversation` 发出一条英文指令，由 Agent 调用同一套工具
-  处理面板够不到的部分（项目外路径、超过宿主读取上限的文件、jadx/apktool/radare2、全量字符串扫描）。
+  处理面板够不到的部分（项目外路径、超过宿主读取上限的文件、真正的 jadx/apktool/radare2 活、全量字符串扫描）。
   没有可用的会话时如实报「未连接」，不会静默丢弃。
 
 `triage_binary` 会把报告经 `src/runtime/panel-channel.ts` 推回面板，因此在对话里分析过的样本
@@ -220,6 +242,9 @@ node --test tests/*.test.mjs
 ## 需要知道的边界
 
 - 安卓签名只读取 v1 文件与 APK Signing Block 中的方案和摘要，**不做密码学验签**。
+- 工具链工具只会借用已装的二进制，不会下载或安装。`probe_environment` 报告实际存在什么；通道被宿主拒绝时，该改的是插件声明或设置，不是 `PATH`。
+- `run_radare` 每次只跑一条 r2 命令（`decompile` 的 `output_mode=summary` 是三条），单次上限 120 秒，白名单之外一律拒绝；`decompile_android` 给 jadx 与 apktool 各 10 分钟，只回日志开头，不回源码。
+- `smali_search` 只读扩展名过滤后的文件，单文件 2 MiB、最多 8 000 个；命中上限时会明说，不假装已经搜完。
 - 加壳/加密代码只报告，不脱壳；`native.packed` 是启发式判断（熵 + 导入数量，或 `UPX!` 标记）。
 - DEX 字符串扫描上限 6 个 dex、24 MiB；体检内字符串提取上限 400 条，独立工具上限 500 条。
 - Mach-O fat 二进制只分析第一个切片；IPA 最多尝试三个 `Payload/*.app/*` 候选定位主二进制。

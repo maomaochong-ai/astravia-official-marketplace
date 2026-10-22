@@ -119,9 +119,11 @@ export function buildPrompt(action: PromptAction, context: PromptContext = {}): 
 			].join("\n");
 		case "toolchain":
 			return [
-				"The Hanshuang Pojia panel runs a pure TypeScript engine, so it cannot see jadx, apktool, radare2, Ghidra or IDA on this machine.",
-				`Check what is actually reachable for deeper work on ${subject(context)}: whether the workbench kit's seep MCP server answers seep_status and which of radare2 / jadx / apktool / its knowledge base it reports, whether the ida MCP server is connected, and which of jadx / apktool / radare2 / IDA is installed on its own, with the version.`,
-				"Then say which one you would use and what it buys me over the panel. If IDA is absent, go through the seep radare2 path instead of stopping.",
+				"The Hanshuang Pojia panel can drive this machine's own radare2, jadx and apktool when the host allows it, and it can reach the workbench kit's MCP servers for the rest.",
+				`Start with probe_environment against ${subject(context)}: it separates a refused command from a missing binary, which decides whether the fix is a setting or an install.`,
+				"When the executable is present, use run_radare (info, strings, functions, disasm, decompile, xrefs, asm, diff) and decompile_android (jadx or apktool, then smali_search over the result) instead of guessing from the panel's own decoder.",
+				"Then check the kit: whether its seep MCP server answers seep_status, whether the ida MCP server is connected, and what each reports for radare2 / jadx / apktool / IDA and its knowledge base.",
+				"Say which engine you would use for what and what it buys me over the panel, and go through radare2 or the seep path when IDA is absent instead of stopping.",
 				"Do not install anything without asking me first.",
 			].join("\n");
 		case "disasm":

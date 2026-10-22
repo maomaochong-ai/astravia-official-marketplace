@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/hanshuang-pojia",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,8 @@
   "devDependencies": {
     "@astravia-org/plugin-sdk": "^0.3.10",
     "@astravia-org/plugin-vite": "^0.2.4",
+    "@iconify-json/lucide": "^1.2.147",
+    "@iconify-json/solar": "^1.2.13",
     "@tailwindcss/vite": "^4.1.12",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.3.0",

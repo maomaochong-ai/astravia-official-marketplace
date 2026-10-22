@@ -103,6 +103,7 @@ describe("agent tools", () => {
 		const disposables = registerTools(ctx);
 		expect(disposables).toHaveLength(EXPECTED_TOOL_COUNT);
 		expect(registered.map(item => item.id).sort()).toEqual([
+			"decompile_android",
 			"decompile_function",
 			"diff_binaries",
 			"diff_functions",
@@ -110,8 +111,11 @@ describe("agent tools", () => {
 			"explain_triage_finding",
 			"export_triage_report",
 			"generate_hook",
+			"init_task",
 			"list_code_symbols",
+			"probe_environment",
 			"read_doc",
+			"run_radare",
 			"scan_binary_strings",
 			"search_dex_symbols",
 			"search_docs",

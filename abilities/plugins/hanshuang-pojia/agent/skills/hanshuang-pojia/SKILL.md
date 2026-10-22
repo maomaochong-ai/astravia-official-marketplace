@@ -1448,7 +1448,7 @@ The plugin carries the kit's own field documents (292 knowledge-base articles, 1
 - Config lives at `~/.pi/agent/mcp.json`; never hardcode an IDA install path — resolve it from `mcpServers.ida.command`.
 - Readiness probes: `seep_status`, `seep_ida_status`.
 - Priority: `seep_*` when it can do the job → `mcp_ida_*` when deep decompilation is the blocker → `js-reverse` / `playwright` for browser targets.
-- The panel already answers the first static pass (sections, symbols, entry, disassembly, CFG, xrefs, three densities) in-process; MCP adds pseudo-C, APK, Frida, diff and the KB. A missing server narrows depth, never disables the Disassembly page.
+- Without the kit, four native tools cover part of the same ground — but only when the binaries already exist on the machine and the host granted `agent.command.run`. `probe_environment` reports which of r2 / rabin2 / radiff2 / rasm2 / jadx / apktool / java / frida actually answer; `run_radare` covers info, strings, functions, disasm, pseudo-C, xrefs, assemble, diff and a read-only `cmd`; `decompile_android` produces jadx sources or apktool smali next to the APK and then searches that tree with `smali_search`. Probe first, then choose: a refused channel and an absent binary are different failures, and only the second one is an install. The panel already answers the first static pass (sections, symbols, entry, disassembly, CFG, xrefs, three densities) in-process; MCP still adds IDA depth, live Frida instrumentation, js-reverse and the served KB. A missing server narrows depth, never disables the Disassembly page.
 - IDA absent must not block the task. Degrade, keep going, and say so in the report:
 
 | Need | seep replacement |

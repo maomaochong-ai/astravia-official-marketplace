@@ -28,6 +28,8 @@ export function DocsPage({ model }: PageProps) {
 	const { t } = useTranslation();
 	const { docs, chat } = model;
 	const listing = docs.hits;
+	// 列表与栅格列模板必须同进同退：列模板留在两列时，收起列表会让正文落进 240–300px 的首列。
+	const showList = docs.listOpen || !docs.selected;
 
 	return (
 		<>
@@ -55,8 +57,8 @@ export function DocsPage({ model }: PageProps) {
 					<StatTile label={t("docs.stat.lines")} value={docs.totals.lines} />
 				</div>
 
-				<div className="grid gap-2.5 @min-[900px]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]">
-					<div data-testid="docs-list" className={`min-w-0 flex-col gap-2.5 @min-[900px]:flex ${docs.listOpen || !docs.selected ? "flex" : "hidden"}`}>
+				<div className={`grid gap-2.5 ${showList ? "@min-[900px]:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]" : ""}`}>
+					<div data-testid="docs-list" className={`min-w-0 flex-col gap-2.5 ${showList ? "flex" : "hidden"}`}>
 						<div className="flex flex-col gap-1.5">
 							<input
 								value={docs.query}

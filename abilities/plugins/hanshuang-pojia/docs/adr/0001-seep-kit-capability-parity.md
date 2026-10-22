@@ -3,7 +3,12 @@
 - 状态：已接受（2026-10-22）
 - 决策对象：`abilities/plugins/hanshuang-pojia`（插件，当前 2.4.0）
 - 参照对象：`seep-kit` 1.6.0（外部工具箱，随 `寒霜破甲工具` 分发）
-- 关联文档：[实施方案](../plans/0001-capability-parity-phases.md)
+- 关联文档：[实施方案](../plans/0001-capability-parity-phases.md)、[ADR 0002](./0002-external-process-bridge.md)
+
+> 后续变更：本 ADR 依据「插件不能起子进程」这一个当时未被核实的前提，把 `seep_r2_*` / `seep_apk_*`
+> 一族判为拒绝或规划。宿主实际提供了被授权的 `plugin.json#commands` + `ctx.command.run` 通道，
+> [ADR 0002](./0002-external-process-bridge.md) 推翻该前提并在 2.4.2 对等实现。本文保留原矩阵作为
+> 历史记录；涉及外部进程的结论以 ADR 0002 为准，`seep_kb_payloads` 与规避策略类拒绝项不变。
 
 ## 1. 背景
 
@@ -134,10 +139,22 @@ true / 改判定"这类语句 —— 那是把分析工具变成绕过生成器�
 制品"，超出授权验证的边界。`SKILL.md` 里关于交付形状的既有表述不改（用户要求不删减），但插件
 不新增任何自动化实现去生成绕过制品。工具面只到"指出判定点 + 给出可观测的插桩模板"。
 
-### D8 不内置 jadx / apktool / IDA
+### D8 不内置 jadx / apktool / IDA，改为声明式外挂（2.4.2 修订）
 
-它们是外部二进制，插件无权起进程，市场也不该分发第三方反编译器。`plugin-handbook.md` §7 已给降级
-矩阵：缺 IDA 走 r2 面，缺 r2 走插件自身解码器。文档里写清"深度受限、覆盖面不受限"。
+原决策的理由是“插件无权起进程”，于是把深度工作全推给 kit。2.4.2 改的是手段，不是目的：插件仍然
+不分发任何第三方二进制，也不为缺失的引擎做代偿；区别在于它现在可以调用**用户自己已安装**的可执行文件。
+
+- 声明：`plugin.json#commands` 逐字列出八个可执行文件（`r2`、`rabin2`、`radiff2`、`rasm2`、`jadx`、
+  `apktool`、`java`、`frida`），`src/domain/toolchain/catalog.ts` 的 `COMMANDS` 与之逐字节一致，测试两边对账。
+- 授权：另需 `agent.command.run`，由宿主在运行时问用户；没有权限时 `createCommandRunner` 返回 `null`，
+  工具输出“不可用”而不是抛错。
+- 形态：一律 `execFile` 语义 + 参数数组，不走 shell；`run_radare` 的 `cmd` 只放行只读族，写、shell、
+  调试器、工程、挂载命令一律拒绝。
+- 降级：`probe_environment` 把“宿主拒绝”与“未安装”分开报；缺引擎时 `run_radare` / `decompile_android`
+  直接说需要哪个二进制、怎么装，不编造结果。
+
+IDA 不在其中：它没有可脚本化的命令行契约，继续走 kit 的 MCP 矩阵（`plugin-handbook.md` §7 的降级表不变）。
+
 
 ### D9 技能库保持为文档资产
 
@@ -159,23 +176,30 @@ true / 改判定"这类语句 —— 那是把分析工具变成绕过生成器�
 
 ### D12 版本按 0.0.1 递增，发布走 CI
 
-每次对外可见的能力变化递增 patch：本次 2.4.0 → 2.4.1。四处身份文件（`plugin.json`、
-`ability.json`、`package.json`、`.astravia/marketplace.source.json`）与锁文件同步，`dist/` 由 CI
-构建，不提交。
+每次对外可见的能力变化递增 patch：本次 2.4.1 → 2.4.2。四处身份文件（`plugin.json`、`ability.json`、
+`package.json`、`.astravia/marketplace.source.json`）同步，`configVersion` 因新增权限与 `commands`
+属于配置契约变更而同步 +1（1 → 2），`dist/` 由 CI 构建，不提交。
 
 ## 4. 后果
 
-- **能力覆盖**：23 个 seep 工具的可观察结果里，17 项由插件自己在进程内给出（含本期 4 项）。
-- **新增工具面**：10 → 14 个 Agent 工具。`ids.ts`、`register-tools.ts`、locale 文案、工具计数
-  断言四处同步，漏一处测试就红。
-- **诚实性成本**：伪代码、语义 diff、hook 模板都必须带"这不是什么"的说明，文案与测试一起写。
-- **不可移植项**：jadx / apktool / IDA / r2 任意命令永久缺席，靠文档与降级路径兜住。
+- **能力覆盖**：23 个 seep 工具的可观察结果里，17 项由插件自己在进程内给出；另有 4 项（`seep_reverse`、
+  `seep_decompile_apk`、`seep_disasm`、`seep_list_functions` 对应的 radare2 / jadx / apktool 面）现在通过
+  用户本机二进制补齐，前提是宿主授予命令通道。
+- **新增工具面**：10 → 18 个 Agent 工具。`ids.ts`、`register-tools.ts`、locale 文案、工具计数断言四处
+  同步，漏一处测试就红。
+- **诚实性成本**：伪代码、语义 diff、hook 模板都必须带“这不是什么”的说明，文案与测试一起写；工具链工具
+  同样要把“宿主拒绝”和“未安装”分开说。
+- **不可移植项**：IDA 与任意 r2 命令仍永久缺席（后者只放行只读族），靠文档与降级路径兜住。
 - **风险**：`triage_directory` 在小文件极多的目录会慢；靠扩展名白名单 + 顺序执行 + 上限收敛，
-  并在输出里报告"跳过了多少、失败了几个"。
+  并在输出里报告"跳过了多少、失败了几个"。外部命令的代价是“看起来有工具就有答案”：对未安装的引擎，
+  输出必须保留安装提示而不是静默降级成插件自己的近似结果。
 
 ## 5. 验证
 
-- `bun run check`（tsc）、`bun run test`（vitest，含新增 4 组用例）、`bun run build`。
+- `npm run check`（tsc）、`npm run test`（vitest，含 `src/test/toolchain.test.ts` 与 18 个工具的注册断言）、
+  `npm run build`。`src/test/toolchain.test.ts` 同时校验 `plugin.json#commands` 与 `catalog.ts#COMMANDS`
+  逐字一致，以及所有断言都只用假 runner（不会真的去起 r2 / jadx）。
 - `node scripts/sync-docs.mjs --check`：文档索引与磁盘一致。
 - `node scripts/analyze.mjs triage <真实样本>`：CLI 在终端跑通同一条链路。
-- 安装到桌面端后，在对话里各调一次新工具，确认工具描述、参数 schema、输出形状符合预期。
+- 安装到桌面端后，在对话里各调一次新工具，确认工具描述、参数 schema、输出形状符合预期；
+  另需在没有安装 r2 / jadx 的机器上确认 `probe_environment` 给出的是安装提示，而不是泛化错误。

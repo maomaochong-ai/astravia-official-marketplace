@@ -9,7 +9,7 @@ export type PageId = "overview" | "guide" | "docs" | "samples" | "findings" | "s
 
 export interface NavItem {
 	id: PageId;
-	/** solar/lucide 风格的图标名，见 components/shell/icon.tsx。 */
+	/** 图标名，见 components/shell/icon-paths.ts；导航一律用 nav-* 前缀的 solar bold。 */
 	icon: string;
 }
 
@@ -20,23 +20,23 @@ export interface NavGroup {
 }
 
 export const NAV: readonly NavGroup[] = [
-	{ id: "workflow", items: [{ id: "overview", icon: "layout" }, { id: "guide", icon: "book" }, { id: "docs", icon: "library" }] },
-	{ id: "analysis", items: [{ id: "samples", icon: "boxes" }, { id: "findings", icon: "scan" }, { id: "strings", icon: "type" }, { id: "disasm", icon: "code" }] },
+	{ id: "workflow", items: [{ id: "overview", icon: "nav-overview" }, { id: "guide", icon: "nav-guide" }, { id: "docs", icon: "nav-docs" }] },
+	{ id: "analysis", items: [{ id: "samples", icon: "nav-samples" }, { id: "findings", icon: "nav-findings" }, { id: "strings", icon: "nav-strings" }, { id: "disasm", icon: "nav-disasm" }] },
 	{
 		id: "forensics",
 		items: [
-			{ id: "manifest", icon: "shield" },
-			{ id: "entropy", icon: "activity" },
-			{ id: "signature", icon: "fingerprint" },
-			{ id: "compare", icon: "compare" },
+			{ id: "manifest", icon: "nav-manifest" },
+			{ id: "entropy", icon: "nav-entropy" },
+			{ id: "signature", icon: "nav-signature" },
+			{ id: "compare", icon: "nav-compare" },
 		],
 	},
 	{
 		id: "system",
 		items: [
-			{ id: "selfcheck", icon: "clipboard" },
-			{ id: "reports", icon: "file" },
-			{ id: "settings", icon: "settings" },
+			{ id: "selfcheck", icon: "nav-selfcheck" },
+			{ id: "reports", icon: "nav-reports" },
+			{ id: "settings", icon: "nav-settings" },
 		],
 	},
 ];

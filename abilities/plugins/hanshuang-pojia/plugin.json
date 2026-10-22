@@ -3,7 +3,7 @@
 	"name": "%plugin.name%",
 	"description": "%plugin.description%",
 	"icon": "assets/icon.svg",
-	"version": "2.4.1",
+	"version": "2.4.2",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"styles": [
@@ -27,7 +27,18 @@
 		"storage.read",
 		"storage.write",
 		"fs.read",
-		"fs.write"
+		"fs.write",
+		"agent.command.run"
+	],
+	"commands": [
+		"r2",
+		"rabin2",
+		"radiff2",
+		"rasm2",
+		"jadx",
+		"apktool",
+		"java",
+		"frida"
 	],
 	"agent": {
 		"skillPaths": [

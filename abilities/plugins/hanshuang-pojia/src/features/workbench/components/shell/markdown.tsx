@@ -83,7 +83,8 @@ function Block({ block }: { block: MdBlock }) {
 		case "table":
 			return (
 				<div className="fb-scroll overflow-x-auto rounded border border-line-subtle">
-					<table className="w-full border-collapse text-left text-[11.5px]">
+					{/* 窄面板里 4 列表格若跟着容器缩，每格只剩几个字；给下限，不够就横向滚。 */}
+					<table className="w-full min-w-[22rem] border-collapse text-left text-[11.5px]">
 						<thead className="bg-surface-3">
 							<tr>
 								{block.head.map((cell, index) => (
@@ -97,7 +98,7 @@ function Block({ block }: { block: MdBlock }) {
 							{block.rows.map((row, rowIndex) => (
 								<tr key={rowIndex} className="even:bg-surface-2">
 									{row.map((cell, cellIndex) => (
-										<td key={cellIndex} className="border-b border-line-subtle px-2.5 py-1.5 align-top text-text-2">
+										<td key={cellIndex} className="break-words border-b border-line-subtle px-2.5 py-1.5 align-top text-text-2">
 											<Inlines nodes={cell} />
 										</td>
 									))}

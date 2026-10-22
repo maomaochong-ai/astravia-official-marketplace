@@ -152,7 +152,10 @@ the kit thinks, never what this panel thinks.
 
 ## 5. Agent tools
 
-Fourteen tools, declared once in `src/tools/ids.ts` and registered in `src/tools/register-tools.ts`.
+Eighteen tools, declared once in `src/tools/ids.ts` and registered in `src/tools/register-tools.ts`.
+Every one declares `scope_use` for the conversation and project scenarios, so it is fail-closed
+outside them. The last four reach the machine's own `radare2` / `jadx` / `apktool`; the first
+eight only read bytes the plugin already holds.
 Every one declares `scope_use` for the conversation and project scenarios, so it is fail-closed
 outside them.
 
@@ -172,11 +175,15 @@ outside them.
 | `triage_directory` | one risk table for every binary under a directory | `domain/batch.ts` |
 | `search_docs` | which field document covers a topic | `services/docs.ts` |
 | `read_doc` | the body of one field document, truncated visibly | `services/docs.ts` |
+| `probe_environment` | which declared executables actually run, with version banners, keeping a host refusal apart from a missing binary | `domain/toolchain/probe.ts` |
+| `run_radare` | 9 r2 / rabin2 / radiff2 / rasm2 operations, shaped by `full` / `fold` / `summary` | `domain/toolchain/radare.ts` |
+| `decompile_android` | jadx / apktool output beside the sample, plus `smali_search` over the unpacked tree | `domain/toolchain/android.ts` |
+| `init_task` | the per-target case layout (`samples/`, `exports/`, `reports/`, README, report skeleton) | `domain/toolchain/workspace.ts` |
 
 Adding a tool means touching four places: the tool file, `register-tools.ts`, `ids.ts`, and both
 locale files — plus `EXPECTED_TOOL_COUNT` in `ids.ts`, which is the one number the health page and
 `src/test/tools.test.ts` both compare against. A missed step fails the suite instead of shipping
-quietly, and the self-check page shows `n of 14` when the registry drifts.
+quietly, and the self-check page shows `n of 18` when the registry drifts.
 
 The same engines are reachable outside the panel through `scripts/analyze.mjs` (bundled with
 esbuild, `src/cli/analyze.ts`, imports only `src/domain`): `triage`, `strings`, `symbols`,
@@ -262,30 +269,35 @@ deliverable. Never abort the task; never drop the "no decompiler" caveat silentl
 | method, payloads, checklist | `seep_kb_search`, `seep_kb_read`, `seep_kb_payloads`, `seep_kb_checklist` |
 | case scaffold / triage / report | `seep_task_init`, `seep_auto_triage`, `seep_gen_security_report` |
 
-### 7.6 Coverage: what the plugin already does offline, and what still needs the kit
+### 7.6 Coverage: what runs without the kit, what needs the machine's tools, what only the kit adds
 
-Everything in the left column runs inside the panel with no MCP server, no Python and no radare2
-binary; the right column is the measured gap against the kit, not a wish list.
+Three columns now, because 2.4.2 added a real command bridge: `plugin.json#commands` declares eight
+executables and the host runs them through `agent.command.run` after the user grants it. Nothing is
+bundled and nothing is installed for you.
 
-| Need | In the plugin, offline | Only the kit adds |
-|---|---|---|
-| file type, arch, sections, entropy, imports | `triage_binary`, panel Manifest / Entropy pages | — |
-| strings, wide strings, secret patterns | `scan_binary_strings`, Strings page | `seep_r2_strings` over sections the panel does not map |
-| symbols, exports, entry point | `list_code_symbols` | `mcp_ida_*` rename / retype / structs |
-| disassembly, function list, CFG, xrefs | `disassemble_range` + the self-built engine (function tiers, call graph, three verbosity levels) | `seep_r2_decompile` (C-like pseudocode), `seep_r2_cmd` (arbitrary r2) |
-| bytes to instruction text | not ported | `seep_r2_asm` (asm <-> hex both directions) |
-| two builds compared | `diff_binaries` (raw bytes, hunks) | `seep_r2_diff -m code` (semantic, function level) |
-| DEX classes, methods, string pool | `search_dex_symbols` | `seep_apk_decompile` / `seep_apk_unpack` (apktool + jadx artifacts on disk), `seep_apk_smali_search` |
-| Frida hook scaffold | not ported | `seep_apk_gen_hook` |
-| method lookup, payloads, checklists | `search_docs` / `read_doc` over the 309 bundled documents | `seep_kb_checklist` / `seep_kb_payloads` (structured views of the same articles) |
-| triage flow, risk score, report | `triage_binary`, `explain_triage_finding`, `export_triage_report`, Findings / Reports pages | `seep_auto_triage` (needs the Python server to walk a directory) |
+| Need | In the plugin, no external tool | Needs `r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` | Only the kit adds |
+|---|---|---|---|
+| file type, arch, sections, entropy, imports | `triage_binary`, Manifest / Entropy pages | `run_radare operation=info` cross-checks the same fields | `mcp_ida_*` (rename / retype / structs) |
+| strings, wide strings, secret patterns | `scan_binary_strings`, Strings page | `run_radare operation=strings all_sections=true` (`rabin2 -zz`) | — |
+| symbols, exports, entry point | `list_code_symbols` | `run_radare operation=symbols` | `mcp_ida_*` |
+| disassembly, function list, CFG, xrefs | `disassemble_range` + the self-built engine | `run_radare operation=disasm/functions/xrefs`, `full`/`fold`/`summary` | — |
+| C-like pseudocode | `decompile_function` (register-level, no types, no SSA) | `run_radare operation=decompile` (r2 `pdc`) for a second opinion | IDA's Hex-Rays output |
+| bytes ↔ instruction text | not ported | `run_radare operation=asm` (`rasm2`, both directions) | — |
+| two builds compared | `diff_binaries` (bytes), `diff_functions` (instruction shape) | `run_radare operation=diff` (`radiff2 -C` / `-s` / `-g`) | — |
+| APK facts, decompile, unpack, smali | `search_dex_symbols`, `decompile_android operation=smali_search` | `decompile_android operation=decompile/unpack` (jadx / apktool into a sibling directory) | — |
+| Frida hook scaffold | `generate_hook` (observation only) | — | `seep_apk_gen_hook` (kit's own variant) |
+| method lookup, documents | `search_docs` / `read_doc` over the 309 bundled documents | — | `seep_kb_payloads` — deliberately not ported |
+| case scaffold, risk score, report | `init_task`, `triage_binary`, `triage_directory`, `explain_triage_finding`, `export_triage_report` | — | `seep_auto_triage` (kit's Python walker) |
+| which tools are even present | `probe_environment` (`✓` / `✗` / `!` per binary, with install hints) | — | — |
 
-What this means in practice: the first pass never blocks. Missing IDA or radare2 narrows **depth**
-(pseudocode, full APK unpack, hook generation), not coverage of the initial assessment.
+What this means in practice: the first pass never blocks. A missing radare2 or JDK narrows **depth**
+(no `pdc`, no APK unpack), never the initial assessment — and `probe_environment` says which of the two
+problems you have: the binary is absent, or the host refused the call (`!`, fix it in plugin settings,
+not by installing more software).
 
-Alignment order when adding more of the kit's surface, highest value first: pseudo-C recovery from the
-existing CFG; semantic binary diff on top of `diff_binaries`; a Frida hook template generator from
-`search_dex_symbols` output; archive walking so a whole directory can be triaged in one run.
+What is left for the kit is exactly what a plugin cannot own: an IDA session, the kit's Python
+orchestration, and the payload library. `seep_kb_payloads` stays out on purpose.
+
 
 ---
 

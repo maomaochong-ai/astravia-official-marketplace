@@ -107,7 +107,7 @@ function toolGroup(): HealthGroup {
 			item(
 				"tools.kit",
 				"warn",
-				"The MCP-backed layers (radare2, IDA, jadx, apktool) live in the kit process; the panel works from its own decoder and says so instead of pretending they answered.",
+				"The panel runs nothing itself. Four tools drive the user's own r2 / rabin2 / radiff2 / rasm2 / jadx / apktool / java through plugin.json#commands, probe_environment reports which are present, and a refused or missing binary is named rather than faked. IDA and the kit's seep server stay in the workbench kit.",
 			),
 		],
 	};

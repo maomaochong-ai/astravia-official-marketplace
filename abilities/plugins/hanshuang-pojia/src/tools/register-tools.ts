@@ -13,6 +13,10 @@ import { registerGenerateHookTool } from "./generate-hook";
 import { registerSearchDexSymbolsTool } from "./search-dex-symbols";
 import { registerTriageDirectoryTool } from "./triage-directory";
 import { registerTriageBinaryTool } from "./triage-binary";
+import { registerProbeEnvironmentTool } from "./probe-environment";
+import { registerRunRadareTool } from "./run-radare";
+import { registerDecompileAndroidTool } from "./decompile-android";
+import { registerInitTaskTool } from "./init-task";
 
 /**
  * 工具注册总入口。每个工具单独 try：
@@ -36,6 +40,10 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerTriageDirectoryTool,
 		registerSearchDocsTool,
 		registerReadDocTool,
+		registerProbeEnvironmentTool,
+		registerRunRadareTool,
+		registerDecompileAndroidTool,
+		registerInitTaskTool,
 	]) {
 		try {
 			disposables.push(register(ctx));
