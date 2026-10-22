@@ -6,8 +6,10 @@ The plugin answers one question: *what is this file, and what should a reviewer 
 
 Since 2.0 the plugin also carries the **workbench kit protocol** — lab mode, the deployment and
 verification board, knowledge-base-first recon, and the `seep` / `ida` MCP tool matrix. It lives in
-the skill (`agent/skills/hanshuang-pojia/SKILL.md`), which the host loads on demand, not in the block
-injected into every session. That layer is documentation the agent follows when the desktop kit is
+the skill (`agent/skills/hanshuang-pojia/SKILL.md`), which the host loads on demand — the package no
+longer injects a standing block into every session. That layer is documentation the agent follows when
+the desktop kit is installed; the panel below still runs with no external toolchain and never executes
+a sample.
 installed; the panel below still runs with no external toolchain and never executes a sample.
 
 ## What it analyses
@@ -66,53 +68,30 @@ Bigger or out-of-project samples are handed to the chat agent, which runs with t
 | `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
 | `fs.read` | listing the workspace and reading samples |
 | `fs.write` | `fs.saveAs` for exported reports (the user picks the path) |
-| `agent.systemPrompt.write` | injecting the package-root `AGENTS.md` into every session's system prompt |
+| `agent.systemPrompt.write` | the dynamic per-turn kernel block: lab state, the page the user is looking at, the tool list |
 
-## The agent document
+## Where the rules live
 
-The `AGENTS.md` in the package root is what the agent reads before anyone asks it anything. `plugin.json`
-`agent.systemPrompt.promptPaths`, so the host appends it as a system-prompt block for every
-session in every project — the same reach a user-level `~/.claude/CLAUDE.md` has, scoped to this
-plugin. It is short on purpose: it is paid for on every turn.
+The package ships **no always-on system-prompt block.** The rules that must hold on every turn live in
+the skill (`agent/skills/hanshuang-pojia/SKILL.md`), and the host pays for a skill only through its
+index entry — `name` plus `description`, about 380 characters. The 97 KB body enters the context only
+when the agent invokes the skill for the task at hand.
 
-## Prompt budget
+The one thing the plugin injects per turn is the kernel block built at runtime by
+`src/domain/kernel.ts` (`agent.systemPrompt.write`): whether lab mode is on, which panel page the user
+is looking at, which tools are reachable. That is state, not prose, so it cannot be a static file.
 
-The always-on block holds only the rules that must fire on every turn: identity and authorization,
-the artifact-first opening, evidence labels, copy-first plus the four artifacts, the routing table,
-the receipt formats, the activation words, and the condensed anti-refusal list. Everything long-form —
-the per-track delivery templates, the few-shot regression set, the JIT stages, PART V and the MCP tool
-matrix — lives in the skill (`agent/skills/hanshuang-pojia/SKILL.md`), which the host loads on demand.
+Until 2.3.2 the package root also carried an `AGENTS.md` that `agent.systemPrompt.promptPaths` appended
+to every session, plus `scripts/sync-agent-doc.mjs`, which copied the same text into
+`<agentDir>/AGENTS.md` as a user-level instruction file. Both are gone: they put roughly 3.5k tokens of
+identical text in front of every turn, and after the first sync the same contract arrived twice through
+two unrelated injection paths. If an earlier version wrote that user-level copy on this machine,
+`<agentDir>/AGENTS.md` holds a block between `<!-- hanshuang-pojia:begin -->` and
+`<!-- hanshuang-pojia:end -->` — delete the block, the file if it held nothing else, or reinstall and
+the plugin stops contributing it.
 
-This split is not cosmetic. A 96 KB block is roughly 30k tokens of context before the user types
-anything, so an ordinary task hits `context compaction` within a turn or two, and the compaction card
-replays a 20k-72k character markdown summary through the streaming renderer. That path is where the
-host app used to throw `React error #185` (Maximum update depth exceeded) and fall back to its retry
-screen. `tests/prompt-budget.test.mjs` in the marketplace repository fails on any plugin whose injected
-block grows past 12 KB, so the split cannot silently regress.
-
-The literal user-level copy lives at `<agentDir>/AGENTS.md`. A plugin cannot write there: every
-`fs` call it makes is checked against the open project roots, and the host exposes no install hook
-that runs code when a package lands. An agent shell is not constrained that way, so the packaged
-`AGENTS.md` ends with the one command that asks the agent to write the user-level copy once per machine:
-
-```bash
-node scripts/sync-agent-doc.mjs                      # write <agentDir>/AGENTS.md
-node scripts/sync-agent-doc.mjs --print              # where the two copies live
-node scripts/sync-agent-doc.mjs --check              # exit 1 when either copy is stale
-node scripts/sync-agent-doc.mjs --from README.md     # replace the packaged AGENTS.md from another file
-node scripts/sync-agent-doc.mjs --remove             # drop the managed block again
-```
-
-The script ships inside the package (`scripts/`), so the installed copy is the one that runs. It
-edits, never overwrites: the text sits between `<!-- hanshuang-pojia:begin -->` and
-`<!-- hanshuang-pojia:end -->`, so an `AGENTS.md` the user already wrote keeps everything around it, and
-a second run prints `unchanged`. It resolves `<agentDir>` the way the host does —
-`ASTRAVIA_CODING_AGENT_DIR`, then `ASTRAVIA_HOME` / `ASTRAVIA_CONFIG_DIR`, then `~/.astravia/agent`.
-
-Why both: the manifest path works with no file on disk and no agent cooperation, so the plugin is
-known even if the copy is never written. The user-level file is the readable, editable copy — for
-people who want to see what the plugin tells the agent, and one that keeps working if the
-permission is ever revoked.
+`tests/prompt-budget.test.mjs` in the marketplace repository still fails any plugin that declares
+`promptPaths` with a block above 12 KB, so the always-on channel cannot silently come back.
 
 ## Workbench kit 2.0
 
@@ -138,15 +117,14 @@ inventory and provenance, `agent/docs/skill-library.sha256` the per-file hashes,
 They are routed by path (`PART V.6`) rather than registered as skill paths: upstream frontmatter uses
 YAML block scalars and over-cap descriptions, and `ida-reverse` exists twice.
 
-`agent/skills/hanshuang-pojia/references/workbench-2.0.md` holds the detail the prompt body should
-not carry: the verified kit layout, the full MCP tool list, the ten manuals, the per-host installer table, the
-deployment-check baseline, and the relay / memory mechanics. The prompt stays lean because it is paid
-for on every turn.
+`agent/skills/hanshuang-pojia/references/workbench-2.0.md` holds the detail the skill body should
+not carry: the verified kit layout, the full MCP tool list, the ten manuals, the per-host installer
+table, the deployment-check baseline, and the relay / memory mechanics. Only the skill's index entry is
+paid for on every turn, so the body can stay complete without costing anything until it is invoked.
 
 ## Layout
 
 ```text
-AGENTS.md                            # injected into every session through promptPaths
 agent/
 └── skills/hanshuang-pojia/          # the skill the host lists in every conversation
     ├── SKILL.md                     # the full agent document, PART I–V, including the kit protocol
@@ -155,8 +133,6 @@ agent/docs/
 ├── SKILL-LIBRARY.md                 # bundled skill tree: inventory, provenance, why not registered
 ├── skill-library.sha256             # 165 per-file hashes; the test recomputes this
 └── skill-library/                   # byte-exact copy of seep-kit/Tool/skill (165 files, 2.4 MB)
-scripts/
-└── sync-agent-doc.mjs               # writes the user-level copy from this package
 src/
 ├── index.tsx                        # assembly only: bridge, tab, tools, cleanup
 ├── runtime-contract.ts              # the PluginContext handle the tab reads
