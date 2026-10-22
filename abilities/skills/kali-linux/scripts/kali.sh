@@ -214,7 +214,10 @@ kali_exec() {
 
 audit() {
 	mkdir -p "$STATE_DIR" 2>/dev/null || true
-	printf '%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$BACKEND" "$1" "$2" >>"$AUDIT_LOG" 2>/dev/null || true
+	# One record per line: a multi-line script body would otherwise split the record and
+	# break the tab-separated format the docs promise.
+	text=$(printf '%s' "$2" | awk 'BEGIN { ORS = "" } NR > 1 { printf "\\n" } { printf "%s", $0 }')
+	printf '%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$BACKEND" "$1" "$text" >>"$AUDIT_LOG" 2>/dev/null || true
 }
 
 run_guarded() {
@@ -303,6 +306,125 @@ cmd_status() {
 	printf 'audit_log=%s\n' "$AUDIT_LOG"
 	[ -n "$kali_version" ] && printf 'kali_version=%s\n' "$kali_version"
 	[ -n "$hint" ] && printf 'hint=%s\n' "$hint"
+	return 0
+}
+
+# `doctor` speaks the same [PASS]/[FAIL] dialect as the docx and xlsx skills so a
+# user who has run one of those recognises the output immediately. Unlike
+# `status`, it exits non-zero when something needed is missing: this is the
+# command to run when you want a verdict, not a state dump. Probes deliberately
+# bypass kali_exec: a diagnosis must not create a container, start one, or write
+# audit records.
+cmd_doctor() {
+	BACKEND=$(detect_backend)
+	fails=0
+	report() { # mark label detail
+		printf '[%s] %-26s %s\n' "$1" "$2" "${3:-}"
+		if [ "$1" = FAIL ]; then fails=$((fails + 1)); fi
+		return 0
+	}
+	probe() {
+		case "$BACKEND" in
+		docker) docker exec "$CONTAINER" bash -lc "$1" 2>/dev/null ;;
+		native) bash -lc "$1" 2>/dev/null ;;
+		ssh)
+			quoted=$(printf '%s' "$1" | sed "s/'/'\\\\''/g")
+			ssh -o BatchMode=yes -o ConnectTimeout=8 "$KALI_SSH" "bash -lc '$quoted'" 2>/dev/null
+			;;
+		wsl) wsl.exe -d "$WSL_DISTRO" --cd "$WORKDIR" -- bash -lc "$1" 2>/dev/null ;;
+		*) return 1 ;;
+		esac
+	}
+
+	report PASS backend "$BACKEND"
+
+	case "$BACKEND" in
+	docker)
+		if have docker; then
+			report PASS 'docker CLI' "$(docker --version 2>/dev/null | head -1)"
+		else
+			report FAIL 'docker CLI' "not installed; run 'kali.sh install'"
+		fi
+		if have docker; then
+			if docker_reachable; then
+				report PASS 'docker daemon' reachable
+			else
+				report FAIL 'docker daemon' "not reachable; start colima or Docker Desktop"
+			fi
+			if docker image inspect "$IMAGE" >/dev/null 2>&1; then
+				report PASS 'image' "$IMAGE"
+			else
+				report FAIL 'image' "$IMAGE missing; run 'kali.sh install'"
+			fi
+			case "$(container_state)" in
+			missing) report WARN container "$CONTAINER not created; 'kali.sh install' creates it" ;;
+			false) report WARN container "$CONTAINER is stopped; 'kali.sh run' starts it" ;;
+			*) report PASS container "$CONTAINER (running)" ;;
+			esac
+		fi
+		;;
+	native)
+		report PASS runtime "native $(sh -c '. /etc/os-release 2>/dev/null && printf "%s" "$PRETTY_NAME"' 2>/dev/null || true)"
+		;;
+	ssh)
+		if have ssh; then report PASS 'ssh client' "$(command -v ssh)"; else report FAIL 'ssh client' 'not installed'; fi
+		if have ssh && ssh -o BatchMode=yes -o ConnectTimeout=8 "$KALI_SSH" true >/dev/null 2>&1; then
+			report PASS 'ssh target' "$KALI_SSH reachable"
+		else
+			report FAIL 'ssh target' "cannot reach $KALI_SSH (key auth only)"
+		fi
+		;;
+	wsl)
+		if have wsl.exe; then
+			report PASS 'wsl.exe' "$(command -v wsl.exe)"
+		else
+			report FAIL 'wsl.exe' "not found; enable the WSL optional feature, then reboot"
+		fi
+		if have wsl.exe; then
+			if wsl.exe -d "$WSL_DISTRO" -- true >/dev/null 2>&1; then
+				report PASS 'distribution' "$WSL_DISTRO registered"
+			else
+				report FAIL 'distribution' "$WSL_DISTRO not registered; run 'kali.ps1 install' elevated"
+			fi
+		fi
+		;;
+	*)
+		report FAIL platform "unsupported platform $(uname -s); no backend available"
+		;;
+	esac
+
+	if probe true >/dev/null 2>&1; then
+		if probe 'touch .kali-doctor && rm -f .kali-doctor' >/dev/null 2>&1; then
+			report PASS workdir "$WORKDIR writable inside Kali"
+		else
+			report FAIL workdir "$WORKDIR not writable inside Kali"
+		fi
+		report PASS 'kali version' "$(probe '. /etc/os-release && printf "%s" "$PRETTY_NAME"' || true)"
+		missing=$(probe 'for t in nmap masscan sqlmap hydra john hashcat nikto gobuster ffuf whatweb wpscan dirb dnsrecon whois smbclient msfconsole tshark tcpdump aircrack-ng binwalk foremost exiftool socat nc python3; do command -v "$t" >/dev/null 2>&1 || printf "%s " "$t"; done' || true)
+		total=23
+		absent=0
+		if [ -n "$missing" ]; then absent=$(printf '%s' "$missing" | wc -w | tr -d ' '); fi
+		if [ "$absent" -eq 0 ]; then
+			report PASS tools "$total/$total key tools present"
+		else
+			report WARN tools "$((total - absent))/$total present; missing $(printf '%s' "$missing" | sed 's/ *$//')"
+		fi
+	else
+		report WARN 'inside Kali' 'not runnable yet; checks that need the distribution were skipped'
+	fi
+
+	mkdir -p "$STATE_DIR" 2>/dev/null || true
+	if [ -w "$STATE_DIR" ]; then
+		report PASS 'audit log' "$AUDIT_LOG"
+	else
+		report FAIL 'audit log' "$STATE_DIR is not writable"
+	fi
+
+	if [ "$fails" -gt 0 ]; then
+		printf '\nNOT READY (%s check(s) failed; see FAIL above)\n' "$fails"
+		return 1
+	fi
+	printf '\nREADY\n'
 	return 0
 }
 
@@ -446,6 +568,7 @@ usage() {
 kali.sh — drive a local Kali Linux environment
 
   status                     detect backend and readiness (always exit 0)
+  doctor                     the same checks as PASS/FAIL lines; exit 1 if a check fails
   install                    install / provision Kali for this OS
   run "<command>"            run one command inside Kali
   script                     run a script from stdin inside Kali
@@ -468,6 +591,7 @@ main() {
 	shift
 	case "$action" in
 	status) cmd_status ;;
+	doctor) cmd_doctor || exit $? ;;
 	install) cmd_install ;;
 	run) cmd_run "$@" ;;
 	script) cmd_script ;;

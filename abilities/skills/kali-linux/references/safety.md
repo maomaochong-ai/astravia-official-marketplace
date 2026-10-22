@@ -45,7 +45,7 @@ Every `run`, `script`, and `ensure` appends two lines to `~/.astravia-kali/audit
 2026-10-21T18:18:41Z\tdocker\tEXIT=0\tnmap 10.0.0.9
 ```
 
-Timestamps are UTC; fields are separated by a literal tab (written `\t` above for legibility). The log is the answer to "what did you run on my machine?" — read it rather than reconstructing from memory. `reset`/`unregister` do not delete it.
+Timestamps are UTC; fields are separated by a literal tab (written `\t` above for legibility). Embedded line breaks in the command are escaped as `\n`, so every record stays on one line and a multi-line `script` body is still a single START/EXIT pair. The log is the answer to "what did you run on my machine?" — read it rather than reconstructing from memory. `reset`/`unregister` do not delete it.
 
 ## 5. Data handling
 

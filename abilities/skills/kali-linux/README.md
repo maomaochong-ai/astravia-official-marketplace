@@ -4,17 +4,18 @@ A skill that gives the agent a real Kali Linux environment on the user's own mac
 
 ## What it does
 
-`scripts/kali.sh` (macOS/Linux) and `scripts/kali.ps1` (Windows) wrap a Kali runtime and expose six operations:
+`scripts/kali.sh` (macOS/Linux) and `scripts/kali.ps1` (Windows) wrap a Kali runtime and expose nine operations:
 
 | Command | Purpose |
 | --- | --- |
 | `status` | report backend, readiness, image and Kali version (`key=value`, always exit 0) |
+| `doctor` | the same checks as `[PASS]`/`[WARN]`/`[FAIL]` lines, ending in `READY` or `NOT READY` (exit 1); never installs, starts or audits |
 | `install` | provision Kali for this OS; idempotent, never duplicates work |
 | `run "<cmd>"` | execute one command inside Kali, streaming output, with a timeout |
 | `script` | execute a multi-line script from stdin |
 | `ensure <tool…>` | apt-install tools, skipping what is already present (`--profile headless` for the full set) |
 | `tools` | show which key tools are installed |
-| `stop` / `reset` | stop the container, or delete it |
+| `stop` / `reset` | stop the runtime, or destroy it (container deleted, WSL distribution unregistered) |
 
 Backends, chosen automatically:
 
