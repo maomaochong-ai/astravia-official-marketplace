@@ -3,7 +3,7 @@
 	"name": "%plugin.name%",
 	"description": "%plugin.description%",
 	"icon": "assets/icon.svg",
-	"version": "2.3.1",
+	"version": "2.3.2",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"styles": [
@@ -20,6 +20,8 @@
 		"agent.toolHandler.execute",
 		"agent.skills.control",
 		"agent.systemPrompt.write",
+		"agent.hooks.register",
+		"agent.hookHandler.execute",
 		"agent.session.read",
 		"agent.session.write",
 		"storage.read",

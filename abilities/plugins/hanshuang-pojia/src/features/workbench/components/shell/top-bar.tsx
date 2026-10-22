@@ -1,4 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import type { LabState } from "../../../../domain/lab-mode";
 import type { ChatState, PageId } from "../../state";
 import { Icon } from "./icon";
 
@@ -9,6 +10,9 @@ export interface TopBarProps {
 	/** 顶部白色主按钮：把当前样本交给对话。 */
 	onSend(): void;
 	canSend: boolean;
+	/** 实验环境开关：开着时提示块会带上交付规范，所以必须在界面上看得见。 */
+	lab: LabState;
+	onToggleLab(): void;
 }
 
 const DOT: Record<ChatState["status"], string> = {
@@ -18,7 +22,7 @@ const DOT: Record<ChatState["status"], string> = {
 };
 
 /** 面包屑 + 宿主对话状态 + 主操作。设计稿的紫色徽标在这里承担「回程」可见性。 */
-export function TopBar({ page, chat, sending, onSend, canSend }: TopBarProps) {
+export function TopBar({ page, chat, sending, onSend, canSend, lab, onToggleLab }: TopBarProps) {
 	const { t } = useTranslation();
 	const label =
 		chat.status === "streaming"
@@ -37,6 +41,18 @@ export function TopBar({ page, chat, sending, onSend, canSend }: TopBarProps) {
 				<span className="hidden shrink-0 text-text-4 @min-[560px]:inline">/</span>
 				<span className="min-w-0 truncate font-medium text-text-2">{t(`nav.${page}`)}</span>
 			</div>
+
+			<button
+				type="button"
+				onClick={onToggleLab}
+				title={t(lab.enabled ? "lab.onHint" : "lab.offHint")}
+				className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+					lab.enabled ? "border-risk-low/40 bg-risk-low/10 text-risk-low" : "border-line bg-surface-3 text-text-4 hover:text-text-2"
+				}`}
+			>
+				<span className={`size-1.5 rounded-full ${lab.enabled ? "bg-risk-low" : "bg-text-4"}`} />
+				<span>{t(lab.enabled ? "lab.on" : "lab.off")}</span>
+			</button>
 
 			<div
 				className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 ${

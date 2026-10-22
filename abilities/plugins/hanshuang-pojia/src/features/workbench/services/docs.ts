@@ -110,4 +110,9 @@ export const DOC_TOTALS = {
 	documents: DOC_ENTRIES.length,
 	bytes: DOC_ENTRIES.reduce((total, entry) => total + entry.bytes, 0),
 	lines: DOC_ENTRIES.reduce((total, entry) => total + entry.lines, 0),
+	/** 按分组统计；自检页拿它核对三组都没掉。 */
+	byGroup: DOC_ENTRIES.reduce<Record<string, number>>((totals, entry) => {
+		totals[entry.group] = (totals[entry.group] ?? 0) + 1;
+		return totals;
+	}, {}),
 };

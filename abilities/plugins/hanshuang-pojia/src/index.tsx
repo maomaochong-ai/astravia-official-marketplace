@@ -10,23 +10,21 @@ import { LIBRARY_STATE_PATH, SETTINGS_STATE_PATH, type ChatState, type LibraryEn
 import { getRuntime, setRuntime } from "./runtime-contract";
 import { registerTools } from "./tools/register-tools";
 import { loadSample } from "./tools/read-sample";
+import { isPluginTool } from "./tools/ids";
+import type { LabState } from "./domain/lab-mode";
+import { LAB_STATE_PATH } from "./features/workbench/hooks/use-lab";
+import { registerRuntimeContributions } from "./runtime/contributions";
 import "./style.css";
 
-/** 插件自己的工具 id；宿主可能给它们加前缀，所以用 includes 判定。 */
-const TOOL_IDS = [
-	"triage_binary",
-	"scan_binary_strings",
-	"explain_triage_finding",
-	"export_triage_report",
-	"list_code_symbols",
-	"disassemble_range",
-	"search_dex_symbols",
-	"diff_binaries",
-];
-
-function isPluginTool(toolName: string): boolean {
-	return TOOL_IDS.some(id => toolName === id || toolName.endsWith(`.${id}`) || toolName.includes(id));
+/**
+ * `sendPrompt` 在宿主没有活动会话时抛错；其余错误（权限、模型、网络）不应该被
+ * 当成「没会话」而静默新建，否则用户的会话会被顶掉。所以只认这一种错。
+ */
+function looksLikeNoSession(error: unknown): boolean {
+	const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+	return /no active|not active|no session|no conversation|没有.*会话|未打开/.test(message);
 }
+
 
 function chatStateOf(state: ConversationState): ChatState {
 	return {
@@ -91,26 +89,31 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 
 		chat: async (prompt, cwd) => {
 			if (!cwd) throw new Error("no workspace folder is attached to this panel");
-			// 有活跃会话就直接发；宿主在没有活跃会话时会抛错，这时才新开一个。
+			// 只在「宿主真的没有活动会话」时才新建；其余失败原样上抛，不偷偷把用户正在看的会话顶掉。
 			try {
 				const result = await ctx.conversation.sendPrompt(prompt);
 				if (result.status === "failed") throw new Error(result.error?.message ?? "sendPrompt failed");
 				return result.status === "queued" ? "queued" : "sent";
-			} catch {
-				// fall through: 没有活跃会话
+			} catch (error) {
+				if (!looksLikeNoSession(error)) throw error;
 			}
-			await ctx.conversation.createSession(cwd, { navigate: true });
+			// navigate:false 让用户留在插件标签页看进度；面板自己的通知已经告诉用户消息去哪了。
+			await ctx.conversation.createSession(cwd, { navigate: false });
 			const created = await ctx.conversation.sendPrompt(prompt);
 			if (created.status === "failed") throw new Error(created.error?.message ?? "sendPrompt failed");
 			return "opened";
 		},
 
 		subscribeChat: listener => {
-			// tool 是「插件工具正在跑」的瞬时标记，其余状态都从会话快照派生。
+			// 真值来自 conversation-changed；turn 事件只在该会话存在时改流式状态。
 			let latest: ChatState = { status: "disconnected", tool: null, cwd: null };
+			let hasSession = false;
 			const push = (next: ChatState) => {
 				latest = next;
 				listener(next);
+			};
+			const settle = (status: ChatState["status"], tool: string | null) => {
+				push({ ...latest, status: hasSession ? status : "disconnected", tool });
 			};
 			// 订阅要 agent.session.read；授权缺失时宿主抛错，这里退化成「看不到状态」而不是炸掉面板。
 			let handle: { dispose(): void };
@@ -118,21 +121,22 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 				handle = ctx.conversation.on((event: ConversationEvent) => {
 					switch (event.type) {
 						case "conversation-changed":
+							hasSession = event.conversation.id !== null;
 							push(chatStateOf(event.conversation));
 							return;
 						case "turn-start":
-							push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "streaming", tool: null });
+							settle("streaming", null);
 							return;
 						case "turn-end":
-							push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "idle", tool: null });
+							settle("idle", null);
 							return;
 						case "tool-call-start":
 							if (!isPluginTool(event.toolName)) return;
-							push({ ...latest, status: "streaming", tool: event.toolName });
+							settle("streaming", event.toolName);
 							return;
 						case "tool-call-end":
 							if (!isPluginTool(event.toolName)) return;
-							push({ ...latest, status: latest.status === "disconnected" ? "disconnected" : "idle", tool: null });
+							settle("idle", null);
 							return;
 						default:
 							return;
@@ -151,6 +155,8 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		saveSettings: settings => writeJson(ctx.storage, SETTINGS_STATE_PATH, settings),
 		library: () => readJson<LibraryEntry[]>(ctx.storage, LIBRARY_STATE_PATH),
 		saveLibrary: entries => writeJson(ctx.storage, LIBRARY_STATE_PATH, entries),
+		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
+		saveLabMode: state => writeJson(ctx.storage, LAB_STATE_PATH, state),
 	};
 	bridges.set(ctx, bridge);
 	return bridge;
@@ -172,6 +178,7 @@ export default definePlugin({
 	activate(ctx) {
 		setRuntime(ctx);
 		const disposables = registerTools(ctx);
+		disposables.push(...registerRuntimeContributions(ctx));
 
 		try {
 			ctx.ui.registerActivityTab({

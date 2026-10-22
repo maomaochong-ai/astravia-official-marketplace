@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useMemo } from "react";
-import { runEngineSelfCheck, type SelfCheckItem } from "../../../../domain/selfcheck";
+import { buildHealthReport, type HealthItem, type HealthStatus } from "../../services/health";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
@@ -8,27 +8,42 @@ import { PageHeader } from "../shell/page-header";
 import { Tag } from "../shell/tag";
 import type { PageProps } from "./overview";
 
-interface HostCheck {
-	id: string;
-	ok: boolean;
-	detail: string;
-}
+const TONE: Record<HealthStatus, string> = {
+	pass: "text-risk-low",
+	warn: "text-risk-medium",
+	fail: "text-risk-high",
+};
+
+const ICON: Record<HealthStatus, string> = {
+	pass: "check",
+	warn: "alert",
+	fail: "close",
+};
 
 /**
- * 自检页：引擎每一项都真跑一次；宿主能力只报告「此刻是否可用」。
- * jadx / apktool / radare2 不在插件进程里，面板不会假装能探测它们。
+ * 自检页：每一项都真跑一次，结论来自运行结果而不是静态清单。
+ *
+ * 呈现方式照搬上游体检脚本的分组结构（一组一张卡、逐项 PASS / OPT / FAIL、
+ * 顶部一条汇总），但检查对象换成插件自己的东西：随包文档索引、解码引擎、
+ * 工具注册表、宿主桥接。kit 的目录结构不在这里，因为它不归插件管。
  */
 export function SelfCheckPage({ model }: PageProps) {
 	const { t } = useTranslation();
-	const engine = useMemo<SelfCheckItem[]>(() => runEngineSelfCheck(), []);
-	const failures = engine.filter(item => item.status === "fail").length;
+	const { state: lab } = model.lab;
 
-	const host: HostCheck[] = [
-		{ id: "host.cwd", ok: model.cwd !== null, detail: model.cwd ?? t("selfcheck.host.cwdMissing") },
-		{ id: "host.storage", ok: model.persisted, detail: model.persisted ? t("selfcheck.host.storageOn") : t("selfcheck.host.storageOff") },
-		{ id: "host.chat", ok: model.chat.state.status !== "disconnected", detail: model.chat.state.status === "disconnected" ? t("chat.state.disconnected") : t("chat.state.connected") },
-		{ id: "host.limit", ok: true, detail: t("selfcheck.host.limit") },
-	];
+	const report = useMemo(
+		() =>
+			buildHealthReport({
+				cwd: model.cwd,
+				persisted: model.persisted,
+				chatStatus: model.chat.state.status,
+				lab,
+			}),
+		[model.cwd, model.persisted, model.chat.state.status, lab],
+	);
+
+	const total = report.passed + report.optional + report.failed;
+	const ready = report.failed === 0;
 
 	return (
 		<>
@@ -38,39 +53,31 @@ export function SelfCheckPage({ model }: PageProps) {
 				actions={<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={model.chat.sending} />}
 			/>
 			<div className="space-y-3 p-4">
-				<Card
-					title={t("selfcheck.engine")}
-					actions={<Tag tone={failures === 0 ? "low" : "high"}>{failures === 0 ? t("selfcheck.pass") : t("selfcheck.failed", { count: failures })}</Tag>}
-					bodyClassName="divide-y divide-line-subtle"
-				>
-					{engine.map(item => (
-						<div key={item.id} className="flex items-start gap-2.5 px-3.5 py-2">
-							<Icon
-								name={item.status === "pass" ? "check" : item.status === "warn" ? "alert" : "close"}
-								className={`mt-0.5 size-3.5 shrink-0 ${item.status === "pass" ? "text-risk-low" : item.status === "warn" ? "text-risk-medium" : "text-risk-high"}`}
-							/>
-							<div className="min-w-0 flex-1">
-								<div className="font-mono text-[11.5px] text-text">{t(`selfcheck.item.${item.id}`)}</div>
-								<div className="mt-0.5 break-words font-mono text-[10px] leading-relaxed text-text-4">{item.detail}</div>
-							</div>
-						</div>
-					))}
-				</Card>
+				<div className="flex flex-wrap items-center gap-2 rounded-md border border-line-subtle bg-surface-2 px-3.5 py-2.5">
+					<Tag tone={ready ? "low" : "high"}>
+						{t(ready ? "selfcheck.summary.ready" : "selfcheck.summary.blocked", { passed: report.passed, total })}
+					</Tag>
+					<span className="text-[10.5px] text-text-3">{t("selfcheck.summary.optional", { count: report.optional })}</span>
+					{report.failed > 0 ? <span className="text-[10.5px] text-risk-high">{t("selfcheck.summary.failed", { count: report.failed })}</span> : null}
+					<span className="ml-auto font-mono text-[10px] text-text-4">{t("selfcheck.summary.basis")}</span>
+				</div>
 
-				<Card title={t("selfcheck.host.title")} bodyClassName="divide-y divide-line-subtle">
-					{host.map(item => (
-						<div key={item.id} className="flex items-start gap-2.5 px-3.5 py-2">
-							<Icon
-								name={item.ok ? "check" : "ban"}
-								className={`mt-0.5 size-3.5 shrink-0 ${item.ok ? "text-risk-low" : "text-risk-medium"}`}
-							/>
-							<div className="min-w-0 flex-1">
-								<div className="text-[11.5px] text-text">{t(item.id)}</div>
-								<div className="mt-0.5 break-words font-mono text-[10px] leading-relaxed text-text-4">{item.detail}</div>
-							</div>
-						</div>
-					))}
-				</Card>
+				{report.groups.map(group => (
+					<Card
+						key={group.id}
+						title={t(`selfcheck.group.${group.id}`)}
+						actions={
+							<Tag tone={group.items.some(entry => entry.status === "fail") ? "high" : group.items.some(entry => entry.status === "warn") ? "medium" : "low"}>
+								{t("selfcheck.group.count", { count: group.items.length })}
+							</Tag>
+						}
+						bodyClassName="divide-y divide-line-subtle"
+					>
+						{group.items.map(entry => (
+							<HealthRow key={entry.id} entry={entry} label={t(`selfcheck.item.${entry.id}`)} />
+						))}
+					</Card>
+				))}
 
 				<Card title={t("selfcheck.tools.title")} bodyClassName="p-3.5">
 					<p className="text-[10.5px] leading-relaxed text-text-3">{t("selfcheck.tools.body")}</p>
@@ -81,5 +88,18 @@ export function SelfCheckPage({ model }: PageProps) {
 				</Card>
 			</div>
 		</>
+	);
+}
+
+function HealthRow({ entry, label }: { entry: HealthItem; label: string }) {
+	return (
+		<div className="flex items-start gap-2.5 px-3.5 py-2">
+			<Icon name={ICON[entry.status]} className={`mt-0.5 size-3.5 shrink-0 ${TONE[entry.status]}`} />
+			<div className="min-w-0 flex-1">
+				<div className="text-[11.5px] text-text">{label}</div>
+				<div className="mt-0.5 break-words font-mono text-[10px] leading-relaxed text-text-4">{entry.detail}</div>
+			</div>
+			<span className={`shrink-0 font-mono text-[9.5px] uppercase tracking-wide ${TONE[entry.status]}`}>{entry.status}</span>
+		</div>
 	);
 }

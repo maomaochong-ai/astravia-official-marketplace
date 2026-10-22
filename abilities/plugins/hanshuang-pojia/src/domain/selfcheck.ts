@@ -43,6 +43,19 @@ function magic(prefix: readonly number[], size = 64): Uint8Array {
 	return bytes;
 }
 
+/**
+ * PE 不是「MZ 开头」就够：解析器要求 e_lfanew 指向 `PE\0\0`。
+ * 自检必须给一个真能被认下的最小头，否则它报的 FAIL 是夹具的问题，不是产品的。
+ */
+function peFixture(): Uint8Array {
+	const bytes = new Uint8Array(0x48);
+	bytes[0] = 0x4d;
+	bytes[1] = 0x5a;
+	bytes[0x3c] = 0x40;
+	bytes.set([0x50, 0x45, 0x00, 0x00], 0x40);
+	return bytes;
+}
+
 /** 逐项跑一遍编码器；任何一项抛错都会以 fail 呈现，而不是让整页空白。 */
 export function runEngineSelfCheck(): SelfCheckItem[] {
 	return [
@@ -67,9 +80,9 @@ export function runEngineSelfCheck(): SelfCheckItem[] {
 		}),
 		run("detect", () => {
 			const elf = looksLikeElf(magic([0x7f, 0x45, 0x4c, 0x46]));
-			const pe = looksLikePe(magic([0x4d, 0x5a]));
+			const pe = looksLikePe(peFixture());
 			const macho = looksLikeMacho(magic([0xcf, 0xfa, 0xed, 0xfe]));
-			const dex = looksLikeDex(magic([0x64, 0x65, 0x78, 0x0a, 0x30, 0x33, 0x35, 0x00]));
+			const dex = looksLikeDex(magic([0x64, 0x65, 0x78, 0x0a, 0x30, 0x33, 0x35, 0x00], 0x70));
 			return elf && pe && macho && dex
 				? { status: "pass", detail: "ELF, PE, Mach-O and DEX magic all resolve to their parser." }
 				: { status: "fail", detail: `Magic detection: elf ${elf}, pe ${pe}, macho ${macho}, dex ${dex}.` };

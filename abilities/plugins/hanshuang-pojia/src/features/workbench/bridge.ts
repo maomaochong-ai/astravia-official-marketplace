@@ -1,4 +1,5 @@
 import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
+import type { LabState } from "../../domain/lab-mode";
 import type { ReportMode, TriageReport } from "../../domain/report/report";
 import type { TriageSample } from "../../domain/triage";
 import type { ChatOutcome, ChatState, LibraryEntry, WorkbenchSettings } from "./state";
@@ -16,6 +17,9 @@ export interface WorkbenchBridge {
 	loadSample(path: string, cwd: string | null): Promise<TriageSample>;
 	analyse(sample: TriageSample, options: { mode: ReportMode; disabledRules: readonly string[] }): Promise<TriageReport>;
 	notify(message: string, variant?: NotifyVariant): void;
+	/** 实验环境开关的状态；对话里的 `lab：` 与面板开关写同一份。 */
+	labMode(): Promise<LabState | null>;
+	saveLabMode(state: LabState): Promise<boolean>;
 	saveReport(report: TriageReport, mode: ReportMode, format: "markdown" | "json"): Promise<string | null>;
 	/** 把一句英文指令送进对话：有活跃会话就直接发，没有就新开一个。 */
 	chat(prompt: string, cwd: string | null): Promise<ChatOutcome>;

@@ -54,6 +54,8 @@ export function WorkbenchScreen({ bridge, cwd }: WorkbenchScreenProps) {
 				sending={model.chat.sending}
 				canSend={model.cwd !== null}
 				onSend={() => model.ask("continue")}
+				lab={model.lab.state}
+				onToggleLab={() => model.lab.set(!model.lab.state.enabled)}
 			/>
 			<div className="flex min-h-0 flex-1">
 				<Sidebar page={model.page} onNavigate={model.go} />

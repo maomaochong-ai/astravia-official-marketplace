@@ -18,6 +18,8 @@ import type { LibraryEntry, PageId, WorkbenchSettings } from "../state";
 import { useChat, type ChatModel } from "./use-chat";
 import { useDisasm, type DisasmModel } from "./use-disasm";
 import { useDocs, type DocsModel } from "./use-docs";
+import { useLab, type LabModel } from "./use-lab";
+import { setAgentPage } from "../../../runtime/panel-channel";
 import { useLibrary } from "./use-library";
 
 const SAMPLE_EXTENSIONS = [".apk", ".aab", ".ipa", ".jar", ".zip", ".dex", ".so", ".dll", ".exe", ".dylib", ".elf", ".bin", ".node", ".wasm", ".app"];
@@ -69,6 +71,7 @@ export interface WorkbenchModel {
 	setCompare(slot: "a" | "b", id: string | null): void;
 
 	chat: ChatModel;
+	lab: LabModel;
 
 	strings: StringHit[] | null;
 	entropy: EntropyBucket[] | null;
@@ -98,6 +101,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 	const { t } = useTranslation();
 	const library = useLibrary(bridge);
 	const chat = useChat(bridge, cwd);
+	const lab = useLab(bridge);
 
 	const [page, setPage] = useState<PageId>("overview");
 	const [files, setFiles] = useState<PluginFsEntry[]>([]);
@@ -368,7 +372,14 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 		else setCompareB(id);
 	}, []);
 
-	const go = useCallback((next: PageId) => setPage(next), []);
+	const go = useCallback(
+		(next: PageId) => {
+			setPage(next);
+			// 页面信号给动态提示块用：模型据此知道用户在看哪一块，而不是猜。
+			setAgentPage(next);
+		},
+		[],
+	);
 
 	return {
 		cwd,
@@ -398,6 +409,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 		compareB,
 		setCompare,
 		chat,
+		lab,
 		strings,
 		entropy,
 		disasm,

@@ -73,6 +73,8 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 		saveSettings: vi.fn(async () => true),
 		library: vi.fn(async () => null),
 		saveLibrary: vi.fn(async () => true),
+		labMode: vi.fn(async () => null),
+		saveLabMode: vi.fn(async () => true),
 		...overrides,
 	};
 }
@@ -228,7 +230,7 @@ describe("workbench state", () => {
 		await go("findings");
 		expect(await screen.findByText("empty.noReport.title")).toBeTruthy();
 		await go("selfcheck");
-		expect(await screen.findByText("selfcheck.item.digest")).toBeTruthy();
+		expect(await screen.findByText("selfcheck.item.engine.digest")).toBeTruthy();
 		await go("settings");
 		expect(await screen.findByText("settings.mode.title")).toBeTruthy();
 	});
