@@ -35,6 +35,11 @@
           "title": "Hands the evidence to the document skills",
           "description": "Raw output stays raw. Reports go out through the docx, pdf and xlsx skills, browser-side behaviour is reproduced with ego-browser, and Chinese-language public reporting is checked with zhihu-search — Kali does not reinvent any of them.",
           "icon": "solar:document-add-bold"
+        },
+        {
+          "title": "Sixteen playbooks instead of a tool list",
+          "description": "Each scenario — internal network, external surface, web, API, Active Directory, passwords, wireless, cloud, mobile, RFID/NFC, VoIP/ICS, post-exploitation, forensics, source audit, protocols, reporting — has a phase-by-phase workflow with stopping points and risk gates, backed by 270 per-tool references.",
+          "icon": "solar:map-bold"
         }
       ]
     },
@@ -70,7 +75,7 @@
     },
     {
       "type": "markdown",
-      "content": "## What you can ask\n\nReconnaissance (nmap, masscan, dnsrecon), web application testing (nikto, gobuster, ffuf, whatweb, sqlmap, wpscan), credential auditing against a lab you own (hydra, john, hashcat), network analysis (tshark, tcpdump inside the container), forensics (binwalk, foremost, exiftool), and CTF-style work driven from a single conversational goal.\n\nInteractive tools such as msfconsole or sqlmap are driven in batch form (`-x` resource scripts, `--batch`), because the agent runs commands non-interactively. Tools that need physical hardware — wireless cards, USB devices — are out of reach of the container backend; use a VM or a native install for those and point the skill at it."
+      "content": "## What you can ask\n\nReconnaissance, web and API testing, Active Directory, credential auditing against a lab you own, wireless, cloud-native and Kubernetes assessment, mobile apps, RFID/NFC, VoIP/ICS, reverse engineering, forensics, post-exploitation, source and dependency audit — 16 scenario playbooks cover all of it, with 14 category guides and 270 tool references underneath.\n\nThe playbook decides the phases; the category guide picks the tool; the tool document has the parameters. Work in that order and read only the layer you are on.\n\nInteractive tools such as msfconsole or sqlmap are driven in batch form (`-x` resource scripts, `--batch`), because the agent runs commands non-interactively. Tools that need physical hardware — wireless cards, USB devices — are out of reach of the container backend; use a VM or a native install for those and point the skill at it."
     }
   ]
 }

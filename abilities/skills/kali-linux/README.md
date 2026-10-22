@@ -1,10 +1,12 @@
 # Kali Linux
 
-A skill that gives the agent a real Kali Linux environment on the user's own machine — provisioned per operating system, driven by one CLI, and bounded by guardrails that refuse to guess.
+A skill that gives the agent a real Kali Linux environment on the user's own machine — provisioned per operating system, driven by one CLI, bounded by guardrails that refuse to guess, and carrying a full engagement methodology: **16 scenario playbooks, 14 category guides and 270 per-tool references**.
 
 ## What it does
 
-`scripts/kali.sh` (macOS/Linux) and `scripts/kali.ps1` (Windows) wrap a Kali runtime and expose nine operations:
+Two halves.
+
+**The runtime.** `scripts/kali.sh` (macOS/Linux) and `scripts/kali.ps1` (Windows) wrap a Kali environment and expose nine operations:
 
 | Command | Purpose |
 | --- | --- |
@@ -16,6 +18,10 @@ A skill that gives the agent a real Kali Linux environment on the user's own mac
 | `ensure <tool…>` | apt-install tools, skipping what is already present (`--profile headless` for the full set) |
 | `tools` | show which key tools are installed |
 | `stop` / `reset` | stop the runtime, or destroy it (container deleted, WSL distribution unregistered) |
+
+**The methodology.** `references/playbooks/` holds one workflow per scenario — internal network, external attack surface, web application, API security, Active Directory, password audit, wireless, cloud-native, mobile, RFID/NFC, VoIP/ICS, post-exploitation, forensics triage, source-code audit, internal network protocols, and reporting. Each playbook names its phases, stopping points, risk gates and expected artifacts, and hands off to the others when a signal appears. Under them sit 14 category guides (Golden Path + decision tree for picking a tool) and 270 per-tool references (parameters, examples, output handling). `references/environment/state-files.md` defines the nine state files that keep a multi-session engagement from depending on chat memory.
+
+The four-layer reading order is in [SKILL.md](SKILL.md): playbook index → playbook → category guide → the one tool document you are about to run.
 
 Backends, chosen automatically:
 
@@ -74,22 +80,31 @@ Read [references/safety.md](references/safety.md) before running anything that t
 ## Layout
 
 ```
-ability.json          identity and detail wiring
-SKILL.md              instructions for the agent
-detail.json           marketplace detail page (en)
-detail.zh.json        marketplace detail page (zh)
-README.md             this file
-README.zh.md          Chinese README
-scripts/kali.sh       POSIX driver: docker / native / ssh backends
-scripts/kali.ps1      Windows driver: WSL2 backend
-references/install.md per-OS install, verification, troubleshooting, removal
-references/runbook.md non-interactive command patterns per tool family
-references/safety.md  authorization model, denylist, audit log, legal notes
-assets/               official Kali dragon icon
+ability.json            identity and detail wiring
+SKILL.md                instructions for the agent (four-layer reading order)
+detail.json             marketplace detail page (en)
+detail.zh.json          marketplace detail page (zh)
+README.md               this file
+README.zh.md            Chinese README
+NOTICE.md               attribution: Kali artwork, upstream reference library
+LICENSE-Apache-2.0.md   license of the derived reference library
+scripts/kali.sh         POSIX driver: docker / native / ssh backends
+scripts/kali.ps1        Windows driver: WSL2 backend
+references/install.md   per-OS install, verification, troubleshooting, removal
+references/runbook.md   non-interactive command patterns per tool family
+references/safety.md    authorization model, denylist, audit log, legal notes
+references/examples.md  four worked round trips, including the refusals
+references/playbooks/   16 scenario workflows + decision tree + handoff map
+references/environment/ backend capability table, state-file formats, upstream notes
+references/<category>/  14 category guides and 270 per-tool references
+assets/                 official Kali dragon icon
 ```
 
 ## Attribution
 
 The card icon and composer icon are rendered from the official Kali dragon artwork published at <https://www.kali.org/images/kali-dragon-icon.svg>. Kali Linux is a project of OffSec; the dragon mark belongs to them and is used here only to identify the product this skill drives. See [NOTICE.md](NOTICE.md).
 
+The playbooks, category guides and tool references are derived from the Apache-2.0 licensed [x-glacier/kali-pentest](https://github.com/x-glacier/kali-pentest) project and adapted to this skill's single-command execution model; the modifications are listed in [NOTICE.md](NOTICE.md) and the license text is in [LICENSE-Apache-2.0.md](LICENSE-Apache-2.0.md).
+
 The skill's own scripts and documentation are MIT-licensed, like the rest of this marketplace.
+
