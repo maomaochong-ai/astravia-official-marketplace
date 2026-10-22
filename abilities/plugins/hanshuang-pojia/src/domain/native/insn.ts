@@ -254,6 +254,22 @@ const REG_8 = ["al", "cl", "dl", "bl", "spl", "bpl", "sil", "dil", "r8b", "r9b",
 
 type RegisterSize = 8 | 16 | 32 | 64;
 
+/** 编码器复用同一张寄存器表：解码与编码对「rax 是 0、r8 是 8」必须只有一个答案。 */
+export function x86Register(name: string): { index: number; size: RegisterSize } | null {
+	const lower = name.trim().toLowerCase();
+	const tables: [RegisterSize, string[]][] = [
+		[64, REG_64],
+		[32, REG_32],
+		[16, REG_16],
+		[8, REG_8],
+	];
+	for (const [size, table] of tables) {
+		const index = table.indexOf(lower);
+		if (index !== -1) return { index, size };
+	}
+	return null;
+}
+
 function registerName(index: number, size: RegisterSize): string {
 	if (size === 64) return REG_64[index]!;
 	if (size === 32) return REG_32[index]!;
