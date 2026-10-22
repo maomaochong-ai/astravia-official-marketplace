@@ -35,6 +35,11 @@
           "title": "把证据交给文档类技能收尾",
           "description": "原始输出仍然保持原样。报告交给 docx、pdf、xlsx，页面侧行为用 ego-browser 复现，中文公开信息用 zhihu-search 核对，Kali 不重造其中任何一件。",
           "icon": "solar:document-add-bold"
+        },
+        {
+          "title": "16 份 playbook，而不是一张工具清单",
+          "description": "内网、外部攻击面、Web、API、活动目录、口令、无线、云原生、移动应用、RFID/NFC、VoIP/ICS、后利用、取证、源码审计、内网协议、报告——每个场景一份分阶段工作流，写明停止点与风险门，其下是 270 份单工具参考。",
+          "icon": "solar:map-bold"
         }
       ]
     },
@@ -70,7 +75,7 @@
     },
     {
       "type": "markdown",
-      "content": "## 可以交给它做什么\n\n信息收集（nmap、masscan、dnsrecon）、Web 应用测试（nikto、gobuster、ffuf、whatweb、sqlmap、wpscan）、自有靶场里的口令审计（hydra、john、hashcat）、容器内的抓包分析（tshark、tcpdump）、取证（binwalk、foremost、exiftool），以及用一句话目标驱动的 CTF 类任务。\n\nmsfconsole、sqlmap 这类交互式工具按批处理方式驱动（`-x` 资源脚本、`--batch`），因为 Agent 不占用交互式终端。需要物理硬件的场景——无线网卡、USB 设备——容器后端做不到：请改用虚拟机或本机安装，再让技能指向它。"
+      "content": "## 可以交给它做什么\n\n信息收集、Web 与 API 测试、活动目录、自有靶场里的口令审计、无线、云原生与 Kubernetes 评估、移动应用、RFID/NFC、VoIP/ICS、逆向、取证、后利用、源码与依赖审计——16 份场景 playbook 覆盖全部，下面还有 14 份分类指南与 270 份工具参考。\n\nplaybook 决定阶段，分类指南挑工具，工具文档给参数。按这个顺序读，而且只读当前这一层。\n\nmsfconsole、sqlmap 这类交互式工具按批处理方式驱动（`-x` 资源脚本、`--batch`），因为 Agent 不占用交互式终端。需要物理硬件的场景——无线网卡、USB 设备——容器后端做不到：请改用虚拟机或本机安装，再让技能指向它。"
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Kali Linux
 
-一个把 Kali Linux 装到用户自己机器上的技能：按操作系统自动部署，用一个命令行驱动，并用硬拦的护栏代替「靠自觉」。
+一个把 Kali Linux 装到用户自己机器上的技能：按操作系统自动部署，用一个命令行驱动，用硬拦的护栏代替「靠自觉」，并带上一整套实战方法论——**16 个场景 playbook、14 份分类指南、270 份单工具参考**。
 
 ## 它做什么
 
@@ -16,6 +16,10 @@
 | `ensure <工具…>` | 用 apt 装工具，已装的跳过（`--profile headless` 装完整无头工具集） |
 | `tools` | 查看关键工具的安装情况 |
 | `stop` / `reset` | 停运行时，或销毁它（删容器 / 注销 WSL 发行版） |
+
+**方法论部分。** `references/playbooks/` 每个场景一份工作流：内网、外部攻击面、Web、API、活动目录、口令审计、无线、云原生、移动应用、RFID/NFC、VoIP/ICS、后利用、取证应急、源码审计、内网协议、报告。每份都写明阶段、停止点、风险门与应交出的产物，并在发现新信号时交接给下一份。其下是 14 份分类指南（Golden Path + 决策树挑工具）与 270 份单工具参考（参数、示例、输出处理）。`references/environment/state-files.md` 定义九个状态文件，让跨会话的评估不再依赖聊天记忆。
+
+四层阅读顺序写在 [SKILL.md](SKILL.md) 里：playbook 索引 → playbook → 分类指南 → 你即将跑的那一个工具文档。
 
 后端由系统自动决定：
 
@@ -74,22 +78,30 @@ powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 install
 ## 目录结构
 
 ```
-ability.json          身份与详情页接线
-SKILL.md              发给 Agent 的指令
-detail.json           市场详情页（英文）
-detail.zh.json        市场详情页（中文）
-README.md             英文 README
-README.zh.md          本文件
-scripts/kali.sh       POSIX 驱动：docker / native / ssh 后端
-scripts/kali.ps1      Windows 驱动：WSL2 后端
-references/install.md 各系统安装、验证、排障、卸载
-references/runbook.md 各类工具的非交互写法
-references/safety.md  授权模型、黑名单、审计日志、法律提示
-assets/               官方 Kali 龙图标
+ability.json            身份与详情页接线
+SKILL.md                发给 Agent 的指令（四层阅读顺序）
+detail.json             市场详情页（英文）
+detail.zh.json          市场详情页（中文）
+README.md               英文 README
+README.zh.md            本文件
+NOTICE.md               署名：Kali 图标与上游参考库
+LICENSE-Apache-2.0.md   衍生参考库的许可证
+scripts/kali.sh         POSIX 驱动：docker / native / ssh 后端
+scripts/kali.ps1        Windows 驱动：WSL2 后端
+references/install.md   各系统安装、验证、排障、卸载
+references/runbook.md   各类工具的非交互写法
+references/safety.md    授权模型、黑名单、审计日志、法律提示
+references/examples.md  四个完整问答范例（含该拒绝的场面）
+references/playbooks/   16 份场景工作流 + 决策树 + 交接图
+references/environment/ 后端能力对照表、状态文件格式、上游环境笔记
+references/<分类>/      14 份分类指南与 270 份单工具参考
+assets/                 官方 Kali 龙图标
 ```
 
 ## 署名
 
 卡片图标与对话图标由官方 Kali 龙形图栅格化而来，原图取自 <https://www.kali.org/images/kali-dragon-icon.svg>。Kali Linux 是 OffSec 的项目，该龙形标识归其所有，此处仅用于指代本技能所驱动的产品。详见 [NOTICE.md](NOTICE.md)。
+
+playbook、分类指南与工具参考衍生自 Apache-2.0 许可的 [x-glacier/kali-pentest](https://github.com/x-glacier/kali-pentest) 项目，已改写为本技能的单命令执行模型；具体修改列在 [NOTICE.md](NOTICE.md)，许可证全文见 [LICENSE-Apache-2.0.md](LICENSE-Apache-2.0.md)。
 
 技能自身的脚本与文档和市场其它部分一样采用 MIT 许可。

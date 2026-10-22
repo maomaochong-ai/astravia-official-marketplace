@@ -7081,8 +7081,8 @@
       "type": "skill",
       "slug": "kali-linux",
       "name": "Kali Linux",
-      "description": "Run Kali Linux tooling on this machine without a VM: the skill provisions a per-OS Kali runtime (WSL2 on Windows, the official rolling container on macOS and Linux) and drives scans, web testing, credential audits and forensics through one audited CLI.",
-      "version": "0.0.3",
+      "description": "Run Kali Linux tooling on this machine without a VM: the skill provisions a per-OS Kali runtime (WSL2 on Windows, the official rolling container on macOS and Linux), drives every command through one audited CLI, and ships 16 scenario playbooks with 270 per-tool references covering recon, web and API testing, Active Directory, passwords, wireless, cloud-native, forensics and reporting.",
+      "version": "0.1.0",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -7098,13 +7098,15 @@
         "pentest",
         "nmap",
         "wsl",
-        "docker"
+        "docker",
+        "playbook",
+        "methodology"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "Kali Linux",
-            "description": "不用虚拟机就能在本机跑 Kali 工具：技能按系统自动部署 Kali（Windows 用 WSL2，macOS 与 Linux 用官方滚动容器），并用一个带审计的命令行驱动扫描、Web 测试、口令审计与取证。",
+            "description": "不用虚拟机就能在本机跑 Kali 工具：技能按系统自动部署 Kali（Windows 用 WSL2，macOS 与 Linux 用官方滚动容器），每条命令都走同一个带审计的命令行，并自带 16 份场景 playbook 与 270 份单工具参考，覆盖信息收集、Web 与 API 测试、活动目录、口令、无线、云原生、取证与报告。",
             "tags": [
               "Kali",
               "Linux",
@@ -7112,7 +7114,9 @@
               "渗透测试",
               "nmap",
               "WSL",
-              "Docker"
+              "Docker",
+              "场景手册",
+              "方法论"
             ]
           }
         }
@@ -7123,5 +7127,5 @@
     }
   ],
   "version": "0.4.81",
-  "marketplaceVersion": "2026.10.22-1"
+  "marketplaceVersion": "2026.10.22-2"
 }
