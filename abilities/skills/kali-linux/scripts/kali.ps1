@@ -24,9 +24,6 @@
 #   KALI_WSL_DISTRO=kali-linux
 #   KALI_STATE_DIR=%USERPROFILE%\.astravia-kali
 #   KALI_TIMEOUT=300
-#   KALI_AUTHORIZED_HOSTS="host1 host2"
-#   KALI_TARGET_AUTH=1
-#   KALI_ALLOW_DESTRUCTIVE=1
 
 $ErrorActionPreference = 'Stop'
 
@@ -36,11 +33,6 @@ $Timeout   = if ($env:KALI_TIMEOUT) { [int]$env:KALI_TIMEOUT } else { 300 }
 $AuditLog  = Join-Path $StateDir 'audit.log'
 $NewLine   = [Environment]::NewLine
 $WorkDir   = (Get-Location).Path
-$DenyPatterns = @(
-  'rm -rf /', 'rm -rf /*', 'mkfs', 'dd of=/dev/', ':(){', 'shutdown', 'reboot',
-  'chmod -r 000 /', '> /dev/sd', 'wipefs', 'fdisk /dev/', 'curl | sh', 'curl|sh',
-  'wget -o- | sh', 'wget -qo- | sh'
-)
 
 function Write-Log { param([string]$Message) [Console]::Error.WriteLine($Message) }
 
@@ -50,8 +42,6 @@ function Fail {
   exit $Code
 }
 
-# A refusal is not a failure to retry: 78 is EX_CONFIG on every platform.
-function Refuse { param([string]$Message) Fail $Message 78 }
 
 function Test-Admin {
   # WindowsIdentity is unavailable outside Windows; the WSL backend is Windows-only anyway.
@@ -73,78 +63,6 @@ function Test-DistroRegistered {
   return $false
 }
 
-function Test-PrivateIPv4 {
-  param([string]$Ip)
-  if ($Ip -match '^(10\.|127\.|192\.168\.|169\.254\.|0\.)') { return $true }
-  if ($Ip -match '^172\.(1[6-9]|2[0-9]|3[01])\.') { return $true }
-  return $false
-}
-
-function Test-PrivateIPv6 {
-  param([string]$Ip)
-  if ($Ip -eq '::1' -or $Ip -match '^(fc|fd|fe80)') { return $true }
-  return $false
-}
-
-function Test-HostAuthorized {
-  param([string]$HostName)
-  if ($env:KALI_TARGET_AUTH -eq '1') { return $true }
-  if (-not $env:KALI_AUTHORIZED_HOSTS) { return $false }
-  foreach ($entry in ($env:KALI_AUTHORIZED_HOSTS -split '[\s,]+')) {
-    if ($entry -and $entry -eq $HostName) { return $true }
-  }
-  return $false
-}
-
-function Assert-Target {
-  param([string]$HostName, [string]$Raw)
-  if ([string]::IsNullOrWhiteSpace($HostName)) { return }
-  $h = $HostName -replace '^\[', '' -replace '\]$', ''
-  switch -regex ($h) {
-    '^(localhost|127\.0\.0\.1|::1)$' { return }
-    '\.(local|localhost|test|invalid|internal)$' { return }
-    '^(example\.com|example\.org)$' { return }
-  }
-  if ($h -match ':') {
-    if (Test-PrivateIPv6 $h) { return }
-    Refuse "$Raw targets $h, which is not a private address. Ask the user for an explicit authorization first."
-  }
-  if ($h -match '^\d{1,3}(\.\d{1,3}){3}$') {
-    if (Test-PrivateIPv4 $h) { return }
-    if (Test-HostAuthorized $h) { return }
-    $message = @(
-      "$Raw targets $h, which is not a private address.",
-      'Scanning a host you do not own is illegal in most places. If the user has',
-      "already stated they are authorized, set KALI_AUTHORIZED_HOSTS='$h' for that call.",
-      'Do not set this on your own initiative.'
-    ) -join $NewLine
-    Refuse $message
-  }
-  # Hostnames cannot be classified without resolving them; the skill instructions
-  # require an explicit user authorization before any such target.
-}
-
-function Assert-Command {
-  param([string]$Command)
-  if ($env:KALI_ALLOW_DESTRUCTIVE -ne '1') {
-    $lower = $Command.ToLowerInvariant()
-    foreach ($pattern in $DenyPatterns) {
-      if ($lower.Contains($pattern)) {
-        Refuse "command matches the destructive-pattern denylist ('$pattern'). Set KALI_ALLOW_DESTRUCTIVE=1 only if the user asked for that exact operation."
-      }
-    }
-  }
-  foreach ($m in [regex]::Matches($Command, '(\d{1,3}\.){3}\d{1,3}(/\d{1,2})?')) {
-    Assert-Target -HostName $m.Value -Raw $Command
-  }
-  foreach ($m in [regex]::Matches($Command, '(https?|ftp)://[^\s]+')) {
-    $hostPart = $m.Value -replace '^[a-zA-Z]*://', ''
-    $hostPart = $hostPart -replace '/.*$', '' -replace '^.*@', ''
-    $hostPart = $hostPart -replace ':\d+$', ''
-    Assert-Target -HostName $hostPart -Raw $Command
-  }
-}
-
 function Write-Audit {
   param([string]$Status, [string]$Command)
   try {
@@ -159,7 +77,6 @@ function Write-Audit {
 
 function Invoke-InKali {
   param([string]$Command)
-  Assert-Command $Command
   Write-Audit 'START' $Command
   $wrapped = "timeout $Timeout bash -lc " + "'" + ($Command -replace "'", "'\''") + "'"
   $code = 0

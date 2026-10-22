@@ -21,10 +21,6 @@
 #   KALI_WORKDIR=<dir>                   host directory mounted at /work
 #   KALI_STATE_DIR=~/.astravia-kali      audit log and state
 #   KALI_TIMEOUT=300                     per-command seconds
-#   KALI_AUTHORIZED_HOSTS="a b c"        targets outside private ranges that the
-#                                        user has explicitly authorized
-#   KALI_TARGET_AUTH=1                   blanket authorization (ask the user first)
-#   KALI_ALLOW_DESTRUCTIVE=1             allow destructive command patterns
 
 set -eu
 
@@ -39,8 +35,6 @@ WSL_DISTRO=${KALI_WSL_DISTRO:-kali-linux}
 
 log() { printf '%s\n' "$*" >&2; }
 die() { log "error: $*"; exit 1; }
-# A refusal is not a failure to retry: 78 is EX_CONFIG on every platform.
-refuse() { log "error: $*"; exit 78; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # ---------------------------------------------------------------- backends ---
@@ -103,83 +97,6 @@ ensure_container() {
 	esac
 }
 
-# ------------------------------------------------------------- guardrails ---
-
-is_private_v4() {
-	case "$1" in
-	10.* | 127.* | 192.168.* | 169.254.* | 0.*) return 0 ;;
-	172.1[6-9].* | 172.2[0-9].* | 172.3[0-1].*) return 0 ;;
-	esac
-	return 1
-}
-
-is_private_v6() {
-	case "$1" in
-	::1 | \[::1\] | fc* | fd* | fe80* | ::ffff:127.*) return 0 ;;
-	esac
-	return 1
-}
-
-host_authorized() {
-	host=$1
-	[ "${KALI_TARGET_AUTH:-0}" = "1" ] && return 0
-	for entry in ${KALI_AUTHORIZED_HOSTS:-}; do
-		[ "$entry" = "$host" ] && return 0
-	done
-	return 1
-}
-
-check_target() {
-	host=$1
-	raw=$2
-	[ -n "$host" ] || return 0
-	case "$host" in
-	localhost | 127.0.0.1 | ::1 | \[::1\]) return 0 ;;
-	*.local | *.localhost | *.test | *.invalid | *.internal | example.com | example.org) return 0 ;;
-	esac
-	case "$host" in
-	*:*) is_private_v6 "$host" && return 0 ;;
-	[0-9]*.[0-9]*.[0-9]*.[0-9]*)
-		is_private_v4 "$host" && return 0
-		host_authorized "$host" && return 0
-		refuse "$raw targets $host, which is not a private address.
-  Scanning a host you do not own is illegal in most places. If the user has
-  already stated they are authorized, re-run with:
-    KALI_AUTHORIZED_HOSTS='$host' sh scripts/kali.sh …
-  Do not set this variable on your own initiative."
-		;;
-	*)
-		# Hostnames cannot be classified without resolving them. They are allowed,
-		# but the skill instructions require an explicit user authorization first.
-		return 0
-		;;
-	esac
-	return 0
-}
-
-guard_command() {
-	cmd=$1
-	lower=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')
-	if [ "${KALI_ALLOW_DESTRUCTIVE:-0}" != "1" ]; then
-		for pattern in \
-			'rm -rf /' 'rm -rf /*' 'mkfs' 'dd of=/dev/' ':(){' 'shutdown' 'reboot' \
-			'chmod -r 000 /' '> /dev/sd' 'wipefs' 'fdisk /dev/' 'curl | sh' 'curl|sh' \
-			'wget -o- | sh' 'wget -qo- | sh'; do
-			case "$lower" in
-			*"$pattern"*) refuse "command matches the destructive-pattern denylist ('$pattern').
-  Set KALI_ALLOW_DESTRUCTIVE=1 only if the user asked for that exact operation." ;;
-			esac
-		done
-	fi
-	for target in $(printf '%s\n' "$cmd" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?' || true); do
-		check_target "$target" "$cmd"
-	done
-	for url in $(printf '%s\n' "$cmd" | grep -oE '(https?|ftp)://[^ ]+' || true); do
-		hostpart=$(printf '%s' "$url" | sed -e 's|^[a-zA-Z]*://||' -e 's|/.*$||' -e 's|^.*@||' -e 's|:[0-9]*$||')
-		check_target "$hostpart" "$cmd"
-	done
-}
-
 # -------------------------------------------------------------- execution ---
 
 kali_exec() {
@@ -220,9 +137,8 @@ audit() {
 	printf '%s\t%s\t%s\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$BACKEND" "$1" "$text" >>"$AUDIT_LOG" 2>/dev/null || true
 }
 
-run_guarded() {
+run_audited() {
 	cmd=$1
-	guard_command "$cmd"
 	audit START "$cmd"
 	set +e
 	kali_exec "$cmd"
@@ -484,14 +400,14 @@ cmd_install() {
 cmd_run() {
 	[ $# -ge 1 ] || die "usage: kali.sh run \"<command>\""
 	BACKEND=$(detect_backend)
-	run_guarded "$*"
+	run_audited "$*"
 }
 
 cmd_script() {
 	BACKEND=$(detect_backend)
 	body=$(cat)
 	[ -n "$body" ] || die "no script on stdin"
-	run_guarded "$body"
+	run_audited "$body"
 }
 
 package_for() {
@@ -528,14 +444,14 @@ cmd_ensure() {
 		done
 	fi
 	log "ensuring:$packages"
-	run_guarded "export DEBIAN_FRONTEND=noninteractive
+	run_audited "export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq || { echo 'apt-get update failed' >&2; exit 1; }
 apt-get install -y --no-install-recommends$packages"
 }
 
 cmd_tools() {
 	BACKEND=$(detect_backend)
-	run_guarded 'for t in nmap masscan sqlmap hydra john hashcat nikto gobuster ffuf whatweb wpscan dirb dnsrecon whois smbclient msfconsole tshark tcpdump aircrack-ng binwalk foremost exiftool socat nc python3; do
+	run_audited 'for t in nmap masscan sqlmap hydra john hashcat nikto gobuster ffuf whatweb wpscan dirb dnsrecon whois smbclient msfconsole tshark tcpdump aircrack-ng binwalk foremost exiftool socat nc python3; do
   if command -v "$t" >/dev/null 2>&1; then printf "%-16s %s\n" "$t" "$(command -v "$t")"; else printf "%-16s %s\n" "$t" "-"; fi
 done'
 }

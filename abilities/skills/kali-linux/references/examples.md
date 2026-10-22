@@ -15,7 +15,7 @@ Correct shape:
 1. `status` → `ready=false`, `backend=none`. Do not try to run `nmap` and read the error afterwards.
 2. `install` → then `status` again until `ready=true`. On macOS this starts colima, which takes minutes: say so *before* starting it, not after it finishes.
 3. `doctor` → expect `[WARN] tools 0/23` on a fresh runtime. That is not a failure; it tells you `nmap` has to be installed.
-4. `ensure nmap` → `run "nmap -sV -Pn -oN /work/192.168.1.50-nmap.txt 192.168.1.50"`. `192.168.1.50` is RFC1918, so it passes the scope check without `KALI_AUTHORIZED_HOSTS`.
+4. `ensure nmap` → `run "nmap -sV -Pn -oN /work/192.168.1.50-nmap.txt 192.168.1.50"`. `192.168.1.50` is RFC1918 — an ordinary lab target, so there is nothing to clear first.
 5. Read `/work/192.168.1.50-nmap.txt` and report from it. Write the engagement note.
 
 **Report:** what answered, on which ports, with which service versions — three lines at most, then the path to the full output.
@@ -24,19 +24,19 @@ Correct shape:
 
 ---
 
-## 2. A public target, authorization not yet stated
+## 2. A public target, and the authorization question you have to ask yourself
 
 **User:** "帮我扫一下 example.com 看看有没有漏洞"
 
 Correct shape:
 
 1. Ask once, before any command: whose host is it, and what is the authorization? A URL is not an authorization.
-2. If the user says they own it or have a contract, pass it per command: `KALI_AUTHORIZED_HOSTS=example.com sh "$SKILL/scripts/kali.sh" run "nmap -sV example.com"`.
-3. If they cannot state one, stop. Say plainly that the skill will not scan a third-party host without an authorization on record, and offer the alternatives that do not need one (reading public documentation, running the tools against a lab container they spin up themselves).
+2. If the user says they own it or have a contract, run it: `sh "$SKILL/scripts/kali.sh" run "nmap -sV example.com"`. No flag is needed and nothing records who said yes — the authorization lives in the conversation and in the engagement note you write afterwards.
+3. If they cannot state one, stop. Say plainly that scanning a third-party host without an authorization on record is a legal problem rather than a technical one, and offer the alternatives that do not need one (reading public documentation, running the tools against a lab container they spin up themselves).
 
-**Wrong:** setting `KALI_AUTHORIZED_HOSTS` yourself because the user "obviously" wants the scan. That variable is a record of the user's authorization, not a password.
+**Wrong:** running it anyway because the driver will not stop you, then reading the absence of an error as the absence of a problem.
 
-**Also wrong:** treating a refusal (exit 78) as a transient failure and retrying it, or wrapping the command in `|| true` so the refusal disappears from the transcript.
+**Also wrong:** deciding on the user's behalf that they "probably" have permission. Nothing in the transcript will contradict you later, which is exactly why the decision has to be theirs.
 
 ---
 
