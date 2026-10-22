@@ -6822,7 +6822,7 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 309 bundled field documents the agent can search mid-investigation.",
-      "version": "2.3.1",
+      "version": "2.3.2",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -6907,6 +6907,31 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.3.1.astraviapkg",
             "sha256": "9ae35772347b81d2d02cc985a98d81d8c8bcc859876c77b40a65826c2629daef"
+          }
+        },
+        {
+          "version": "2.3.2",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.hooks.register",
+            "agent.hookHandler.execute",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "fs.write"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.3.2.astraviapkg",
+            "sha256": "fc653017fb7a911d03218e5990413ff56a0d7383abb2eb7245d57abd3aa61a64"
           }
         }
       ]
@@ -7000,6 +7025,6 @@
       }
     }
   ],
-  "version": "0.4.83",
-  "marketplaceVersion": "2026.10.22-8"
+  "version": "0.4.84",
+  "marketplaceVersion": "2026.10.22-9"
 }
