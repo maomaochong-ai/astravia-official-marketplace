@@ -176,6 +176,24 @@ function Show-Tools {
   Invoke-InKali $body
 }
 
+# The Kali runtime has no path to the host desktop. This reads the host itself,
+# outside the distribution, so a question about "what is this machine doing"
+# can be answered instead of refused.
+function Show-Host {
+  Write-Audit 'HOST' 'host'
+  Write-Output 'platform=Windows'
+  $wins = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -ne '' } | Sort-Object -Property ProcessName)
+  Write-Output ('open_windows=' + $wins.Count)
+  foreach ($w in ($wins | Select-Object -First 12)) {
+    Write-Output ('  ' + $w.ProcessName + ' | ' + $w.MainWindowTitle)
+  }
+  Write-Output '--- top cpu ---'
+  $procs = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $null -ne $_.CPU } | Sort-Object -Property CPU -Descending)
+  foreach ($p in ($procs | Select-Object -First 8)) {
+    Write-Output ($p.ProcessName + ' ' + [math]::Round($p.CPU, 1))
+  }
+}
+
 # Same [PASS]/[FAIL] contract as kali.sh doctor (and the docx/xlsx skills).
 # Probes never go through Invoke-InKali: a diagnosis must not write audit
 # records, and it must not start the distribution as a side effect.
@@ -264,6 +282,8 @@ function Show-Usage {
     '  script               run a script from stdin inside Kali',
     '  ensure <tool...>     apt-install tools (use --profile for the headless set)',
     '  tools                show which key tools are installed',
+    '  host                 what the host machine itself is doing now (open',
+    '                       windows with titles, top CPU)',
     '  stop                 terminate the distribution (state is kept)',
     '  reset                unregister the distribution (the audit log is kept)',
     '',
@@ -295,6 +315,7 @@ switch ($action) {
     Ensure-Tools $rest
   }
   'tools'   { Show-Tools }
+  'host'    { Show-Host }
   'stop'    { & wsl.exe --terminate $Distro; Write-Log "distribution $Distro terminated (state kept)" }
   'reset'   {
     if (-not (Test-DistroRegistered)) { Write-Log "distribution $Distro is not registered; nothing to reset"; exit 0 }

@@ -456,6 +456,44 @@ cmd_tools() {
 done'
 }
 
+# The Kali runtime has no path to the host desktop. This reads the host itself,
+# outside the container, and prints what is on it right now — frontmost app,
+# window title, idle time, top CPU consumers — so a question about "what is this
+# machine doing" can be answered instead of refused.
+cmd_host() {
+	BACKEND=$(detect_backend 2>/dev/null || printf 'none')
+	audit HOST 'host'
+	printf 'platform=%s\n' "$(uname -s)"
+	case "$(uname -s)" in
+	Darwin)
+		# lsappinfo needs no permission and answers the main question on its own; the
+		# window title sits behind the Automation prompt, so it is best-effort.
+		asn=$(lsappinfo front 2>/dev/null || true)
+		if [ -n "$asn" ]; then
+			app=$(lsappinfo info -only name "$asn" 2>/dev/null | awk -F'"' '{ print $4 }' || true)
+		else
+			app=""
+		fi
+		win=$(osascript -e 'tell application "System Events" to get name of first window of (first application process whose frontmost is true)' 2>/dev/null || true)
+		idle=$(ioreg -c IOHIDSystem 2>/dev/null | awk '/HIDIdleTime/ { print int($NF / 1000000000); exit }' || true)
+		printf 'frontmost_app=%s\n' "${app:-unknown}"
+		printf 'frontmost_window=%s\n' "${win:-unknown (Automation permission not granted)}"
+		printf 'idle_seconds=%s\n' "${idle:-unknown}"
+		printf -- '--- top cpu ---\n'
+		ps -Ao pcpu=,comm= -r 2>/dev/null | head -8 || true
+		;;
+	*)
+		win=$( { command -v xdotool >/dev/null 2>&1 && xdotool getactivewindow getwindowname 2>/dev/null; } || true)
+		printf 'frontmost_app=%s\n' "${win:-unknown}"
+		printf 'frontmost_window=%s\n' "${win:-unknown}"
+		printf 'idle_seconds=unknown\n'
+		printf -- '--- top cpu ---\n'
+		ps -Ao pcpu=,comm= --sort=-pcpu 2>/dev/null | head -8 || ps -Ao pcpu=,comm= -r 2>/dev/null | head -8 || true
+		;;
+	esac
+	return 0
+}
+
 cmd_stop() {
 	BACKEND=$(detect_backend)
 	case "$BACKEND" in
@@ -491,6 +529,8 @@ kali.sh — drive a local Kali Linux environment
   ensure <tool|--profile headless>
                              apt-install tools, skipping what is present
   tools                      show which key tools are installed
+  host                       what the host machine itself is doing now (frontmost
+                             app, window title, idle time, top CPU)
   stop                       stop the container, keep its state
   reset                      delete the container (docker backend)
 
@@ -513,6 +553,7 @@ main() {
 	script) cmd_script ;;
 	ensure) cmd_ensure "$@" ;;
 	tools) cmd_tools ;;
+	host) cmd_host ;;
 	stop) cmd_stop ;;
 	reset) cmd_reset ;;
 	help | -h | --help) usage ;;

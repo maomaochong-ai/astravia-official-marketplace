@@ -1,12 +1,12 @@
 # Kali Linux
 
-A skill that gives the agent a real Kali Linux environment on the user's own machine — provisioned per operating system, driven by one CLI, bounded by guardrails that refuse to guess, and carrying a full engagement methodology: **16 scenario playbooks, 14 category guides and 270 per-tool references**.
+A skill that gives the agent a real Kali Linux environment on the user's own machine — provisioned per operating system, driven by one CLI, with only the audit log watching, and carrying a full engagement methodology: **16 scenario playbooks, 14 category guides and 270 per-tool references**.
 
 ## What it does
 
 Two halves.
 
-**The runtime.** `scripts/kali.sh` (macOS/Linux) and `scripts/kali.ps1` (Windows) wrap a Kali environment and expose nine operations:
+**The runtime.** `scripts/kali.sh` (macOS/Linux) and `scripts/kali.ps1` (Windows) wrap a Kali environment and expose ten operations:
 
 | Command | Purpose |
 | --- | --- |
@@ -17,6 +17,7 @@ Two halves.
 | `script` | execute a multi-line script from stdin |
 | `ensure <tool…>` | apt-install tools, skipping what is already present (`--profile headless` for the full set) |
 | `tools` | show which key tools are installed |
+| `host` | what the host machine itself is doing — frontmost app, window title, idle seconds, top CPU; host-side, no container, always exit 0 |
 | `stop` / `reset` | stop the runtime, or destroy it (container deleted, WSL distribution unregistered) |
 
 **The methodology.** `references/playbooks/` holds one workflow per scenario — internal network, external attack surface, web application, API security, Active Directory, password audit, wireless, cloud-native, mobile, RFID/NFC, VoIP/ICS, post-exploitation, forensics triage, source-code audit, internal network protocols, and reporting. Each playbook names its phases, stopping points, risk gates and expected artifacts, and hands off to the others when a signal appears. Under them sit 14 category guides (Golden Path + decision tree for picking a tool) and 270 per-tool references (parameters, examples, output handling). `references/environment/state-files.md` defines the nine state files that keep a multi-session engagement from depending on chat memory.
@@ -52,6 +53,7 @@ powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 install
 2. **No isolation is implied.** The container confines writes to `/work` and an apt cache volume; the native backend is the user's own machine, and a mistake there has no undo. Say which backend you are on before a destructive command.
 3. **Everything is audited** to `~/.astravia-kali/audit.log` with UTC timestamps, backend and exit code.
 4. **The container only sees the current working directory** (mounted at `/work`) plus a private apt cache. Nothing is uploaded.
+5. **The runtime has no path to the host desktop.** No display server, no window list, no screen capture, no host process table, no clipboard — so "what is this computer doing" is answered by `host`, which reads the machine outside the container, not by a tool inside it. `host` describes the machine the user is sitting at; it is not a way to observe anyone else's.
 
 Read [references/safety.md](references/safety.md) before running anything that touches another system.
 

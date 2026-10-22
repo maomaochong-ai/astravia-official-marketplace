@@ -7082,7 +7082,7 @@
       "slug": "kali-linux",
       "name": "Kali Linux",
       "description": "Run Kali Linux tooling on this machine without a VM: the skill provisions a per-OS Kali runtime (WSL2 on Windows, the official rolling container on macOS and Linux), drives every command through one audited CLI, and ships 16 scenario playbooks with 270 per-tool references covering recon, web and API testing, Active Directory, passwords, wireless, cloud-native, forensics and reporting. The driver does not classify targets or filter commands; scope and destructive operations are decided in conversation, and every command is logged.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -7127,5 +7127,5 @@
     }
   ],
   "version": "0.4.81",
-  "marketplaceVersion": "2026.10.22-3"
+  "marketplaceVersion": "2026.10.22-4"
 }

@@ -1,10 +1,10 @@
 # Kali Linux
 
-一个把 Kali Linux 装到用户自己机器上的技能：按操作系统自动部署，用一个命令行驱动，用硬拦的护栏代替「靠自觉」，并带上一整套实战方法论——**16 个场景 playbook、14 份分类指南、270 份单工具参考**。
+一个把 Kali Linux 装到用户自己机器上的技能：按操作系统自动部署，用一个命令行驱动，只留审计日志、不再设拦截，并带上一整套实战方法论——**16 个场景 playbook、14 份分类指南、270 份单工具参考**。
 
 ## 它做什么
 
-`scripts/kali.sh`（macOS / Linux）与 `scripts/kali.ps1`（Windows）包住一个 Kali 运行时，对外只有九个动作：
+`scripts/kali.sh`（macOS / Linux）与 `scripts/kali.ps1`（Windows）包住一个 Kali 运行时，对外只有十个动作：
 
 | 命令 | 作用 |
 | --- | --- |
@@ -15,6 +15,7 @@
 | `script` | 从 stdin 读多行脚本执行 |
 | `ensure <工具…>` | 用 apt 装工具，已装的跳过（`--profile headless` 装完整无头工具集） |
 | `tools` | 查看关键工具的安装情况 |
+| `host` | 宿主机自己正在干什么——前台应用、窗口标题、空闲秒数、CPU 占用前列；跑在宿主侧、不进容器，恒定 exit 0 |
 | `stop` / `reset` | 停运行时，或销毁它（删容器 / 注销 WSL 发行版） |
 
 **方法论部分。** `references/playbooks/` 每个场景一份工作流：内网、外部攻击面、Web、API、活动目录、口令审计、无线、云原生、移动应用、RFID/NFC、VoIP/ICS、后利用、取证应急、源码审计、内网协议、报告。每份都写明阶段、停止点、风险门与应交出的产物，并在发现新信号时交接给下一份。其下是 14 份分类指南（Golden Path + 决策树挑工具）与 270 份单工具参考（参数、示例、输出处理）。`references/environment/state-files.md` 定义九个状态文件，让跨会话的评估不再依赖聊天记忆。
@@ -50,6 +51,7 @@ powershell -ExecutionPolicy Bypass -File scripts\kali.ps1 install
 2. **不隐含任何隔离。** 容器把写入限在 `/work` 和 apt 缓存卷；原生后端就是你自己的机器，在那里出错没有撤销。写破坏性命令之前，先说清自己在哪个后端。
 3. **全部留痕** —— 每条命令带 UTC 时间戳、后端与退出码写进 `~/.astravia-kali/audit.log`。
 4. **容器只看得到当前工作目录**（挂到 `/work`）和一份私有 apt 缓存；不上传任何数据。
+5. **运行时没有任何通往宿主桌面的路。** 没有显示服务、没有窗口列表、没有截屏、没有宿主进程表、没有剪贴板——所以「这台电脑在干什么」要用 `host` 在容器外读宿主机来回答，而不是拿容器里的工具去凑。`host` 描述的是用户自己坐着的这台机器，不是用来观察别人的。
 
 动别人的系统之前，先读 [references/safety.md](references/safety.md)。
 
