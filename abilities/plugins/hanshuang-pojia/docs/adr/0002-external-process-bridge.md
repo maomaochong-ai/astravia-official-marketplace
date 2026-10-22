@@ -122,5 +122,10 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 - `src/test/toolchain.test.ts`：`COMMANDS` ↔ `plugin.json` 一致、探针版本解析、拒绝/缺失区分、
   只读守卫、fold/branch/summary/截断文案、jadx/apktool 参数、smali 搜索与工作区骨架。
 - `tsc --noEmit`、`vitest run`、`vite build`、`sync-docs.mjs --check`、根 `marketplace.mjs check`。
-- 真机：装 radare2 后 `run_radare` 对自编 aarch64 样本取 `info`/`functions`/`disasm`；未装时
-  `probe_environment` 必须报 `✗ not installed` 而不是报权限问题。
+- 真机（本机实跑一次探针，runner 用 `execFile` 并复刻宿主「spawn 失败即抛错」的语义）：
+  `frida ✓ 17.24.1`；`r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` 均为
+  `✗ spawn <bin> ENOENT`；`java ✗ exited with 1: Unable to locate a Java Runtime`（有二进制、无 JRE）。
+  「没装」与「装了但起不来」的区分因此是被真实输出验证过的。同一份输出也说明了**依赖 radare2 的
+  验收项在本机仍未验证**：不装 r2 就报不出 `info`/`functions`/`disasm`，而插件不会替用户装。
+- 待验：装好 radare2（并给 jadx/apktool 配一个可用 JRE）后，`run_radare` 对自编 aarch64 样本取
+  `info`/`functions`/`disasm`，`decompile_android` 对真实 APK 出 smali。
