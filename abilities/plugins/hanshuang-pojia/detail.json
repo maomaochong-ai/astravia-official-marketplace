@@ -69,12 +69,17 @@
 		{
 			"type": "callout",
 			"tone": "info",
-			"content": "The activity-bar tab is now a twelve-page workbench: Workbench, Guide, Samples, Findings, Strings, Manifest, Entropy, Signature, Compare, Self check, Reports and Settings. Every page reads the same report, so a sample you analyse once stays inspectable from every angle — including a report-to-report diff of two builds. Purple buttons send an English prompt to the conversation, and a report produced by the agent in chat appears back in the panel with a \"from chat\" marker. Settings can switch analysis mode, disable individual rules and change scan resolution; storage is optional and the panel degrades to session-only memory when the host has not granted it."
+			"content": "The activity-bar tab is now a fourteen-page workbench: Workbench, Guide, Documents, Samples, Findings, Strings, Disassembly, Manifest, Entropy, Signature, Compare, Self check, Reports and Settings. Every page reads the same report, so a sample you analyse once stays inspectable from every angle — including a report-to-report diff of two builds. Two pages stand on their own: Disassembly walks the sample's own executable sections, ranks candidate functions and renders one at a time as a control-flow listing in summary, branches-only or full density, cut at a character budget; Documents renders the 309 field write-ups, manuals and tool docs the plugin ships byte for byte, with in-memory title search and on-demand full-text search, each body loaded as its own build chunk. Purple buttons send an English prompt to the conversation, and a report produced by the agent in chat appears back in the panel with a \"from chat\" marker. Settings can switch analysis mode, disable individual rules and change scan resolution; storage is optional and the panel degrades to session-only memory when the host has not granted it."
 		},
 		{
 			"type": "callout",
 			"tone": "info",
 			"content": "Code-level questions go through the agent: `list_code_symbols` reads ELF, PE and Mach-O symbol and export tables, `disassemble_range` sweeps an AArch64 or x86 byte range, `search_dex_symbols` finds classes, methods and strings in a DEX or APK, and `diff_binaries` shows what changed between two builds. Every listing is a linear sweep with file offsets - never decompiled source, and never a claim about what runs."
+		},
+		{
+			"type": "callout",
+			"tone": "info",
+			"content": "The bundled agent document carries the workbench kit 2.0 protocol as its fifth part: lab mode entered with `lab：` and left with `退出实验`, the deployment and verification board driven by `setup/verify.ps1 -Detailed`, knowledge-base-first recon, and the `seep` (23 tools) / `ida` (~243) MCP matrix with its Radare2 fallback table. Since 2.1 the kit's skill library ships with it - 165 files, 2.4 MB, byte-identical to the upstream tree, routed by path from the protocol. It is payload and documentation, not a dependency: the panel above still runs with no external toolchain, and nothing here is installed behind your back."
 		},
 		{
 			"type": "callout",
