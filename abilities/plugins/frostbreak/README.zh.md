@@ -56,6 +56,35 @@
 | `storage.read`、`storage.write` | 样本架与设置能跨重启保留；没有授权时面板退化为会话内存 |
 | `fs.read` | 列目录与读取样本 |
 | `fs.write` | `fs.saveAs` 导出报告（路径由用户选择） |
+| `agent.systemPrompt.write` | 把 `AGENT.md` 注入每个会话的系统提示 |
+
+## 智能体文档
+
+`AGENT.md` 是智能体在被提问之前先看到的那段话。`plugin.json` 用
+`agent.systemPrompt.promptPaths` 声明它，宿主会把它作为一个系统提示块，对**所有项目**的
+每个会话生效——作用面等同于用户级的 `~/.claude/CLAUDE.md`，只是范围限定在这个插件内。
+它刻意写得很短：这一段每一轮对话都要付 token。
+
+`scripts/sync-agent-doc.mjs` 额外维护用户级的那份副本：
+
+```bash
+node scripts/sync-agent-doc.mjs --print              # 两份副本分别在哪
+node scripts/sync-agent-doc.mjs                      # 写 <agentDir>/AGENTS.md
+node scripts/sync-agent-doc.mjs --check              # 任一份不新鲜就 exit 1
+node scripts/sync-agent-doc.mjs --from README.md     # 用另一个 md 替换 AGENT.md
+node scripts/sync-agent-doc.mjs --remove             # 再把托管的块删掉
+```
+
+用户级那份文件是**编辑**而不是覆盖：文本夹在 `<!-- frostbreak:begin -->` 与
+`<!-- frostbreak:end -->` 之间，用户自己写过的 `AGENTS.md` 上下文全部保留。脚本解析
+`<agentDir>` 的顺序与宿主一致——先是 `ASTRAVIA_CODING_AGENT_DIR`，然后是
+`ASTRAVIA_HOME` / `ASTRAVIA_CONFIG_DIR`，最后才是 `~/.astravia/agent`。
+
+为什么两份都要：真正能送到模型面前的是清单声明的那条路，不需要额外同步任何文件；
+用户级那份是给人看的、可编辑的副本，也是旧版宿主不认 `promptPaths` 时的退路。
+
+升级到本版本时，宿主**不会自动授予**新增的 `agent.systemPrompt.write` 权限（旧授权与新声明
+取交集），需要在确认界面勾选一次；不勾选时插件的其余功能照常，只是这段文档不会被注入。
 
 ## 目录
 
