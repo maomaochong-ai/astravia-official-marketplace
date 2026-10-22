@@ -9,7 +9,7 @@
  */
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import type { CommandResult, CommandRunner } from "../../../domain/toolchain/catalog";
-import { probeToolchain, type ToolchainReport } from "../../../domain/toolchain/probe";
+import { BLOCKED_PATTERN, NOT_FOUND_PATTERN, probeToolchain, type ToolchainReport } from "../../../domain/toolchain/probe";
 import { R2_TIMEOUT } from "../../../domain/toolchain/radare";
 
 /** Re-probing on every tool call would spawn eight processes per turn. */
@@ -49,13 +49,13 @@ export function resetProbeCache(): void {
 /** Turns a rejected `ctx.command.run` into the same shape the probe reports. */
 export function describeCommandFailure(error: unknown): string {
 	const message = error instanceof Error ? error.message : String(error);
-	if (/permission|not (?:declared|allowed|enabled)|denied|disabled|unauthori[sz]ed/i.test(message)) {
+	if (BLOCKED_PATTERN.test(message) && !NOT_FOUND_PATTERN.test(message)) {
 		return (
 			`The host refused this command (${message}). Declare the executable in plugin.json#commands and enable ` +
 			"it in the plugin settings; installing more software will not help."
 		);
 	}
-	if (/(?:ENOENT|not found|no such file)/i.test(message)) {
+	if (NOT_FOUND_PATTERN.test(message)) {
 		return `The executable was not found (${message}). Run probe_environment to see what is installed.`;
 	}
 	return `The command could not be started: ${message}`;

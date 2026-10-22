@@ -42,10 +42,14 @@ export const DEFAULT_PROBE_TIMEOUT = 4_000;
 const ALL_CAPABILITIES = Object.keys(CAPABILITY_LABEL) as Capability[];
 const MAX_VERSION_CHARS = 120;
 
-/** Host-side refusals read like `Command "r2" is not declared …` or `permission denied`. */
-const BLOCKED_PATTERN = /permission|not (?:declared|allowed|enabled)|denied|disabled|unauthori[sz]ed/i;
+/**
+ * Host-side refusals read like `Command "r2" is not declared …` or `permission denied`.
+ * Exported because the service layer classifies the same rejections for the tools; two copies
+ * drifted apart once already (`cannot find` was in one and not the other).
+ */
+export const BLOCKED_PATTERN = /permission|not (?:declared|allowed|enabled)|denied|disabled|unauthori[sz]ed/i;
 
-const NOT_FOUND_PATTERN = /(?:ENOENT|not found|no such file|cannot find)/i;
+export const NOT_FOUND_PATTERN = /(?:ENOENT|not found|no such file|cannot find)/i;
 
 function messageOf(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
