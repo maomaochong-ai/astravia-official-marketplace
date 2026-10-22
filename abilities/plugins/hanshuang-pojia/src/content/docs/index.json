@@ -1,0 +1,3092 @@
+[
+	{
+		"id": "kb/ai-findings/README",
+		"group": "kb",
+		"topic": "ai-findings",
+		"title": "AI Findings",
+		"path": "src/content/docs/kb/ai-findings/README.md",
+		"bytes": 1085,
+		"lines": 29,
+		"sha256": "e3047303d43c9468"
+	},
+	{
+		"id": "kb/AI-USAGE",
+		"group": "kb",
+		"topic": "",
+		"title": "Knowledge Base AI Usage",
+		"path": "src/content/docs/kb/AI-USAGE.md",
+		"bytes": 808,
+		"lines": 23,
+		"sha256": "5b7e4402e4c38d79"
+	},
+	{
+		"id": "kb/apk-reverse/ai-findings/README",
+		"group": "kb",
+		"topic": "apk-reverse/ai-findings",
+		"title": "APK Reverse AI Findings",
+		"path": "src/content/docs/kb/apk-reverse/ai-findings/README.md",
+		"bytes": 968,
+		"lines": 27,
+		"sha256": "04de29a44edfb465"
+	},
+	{
+		"id": "kb/apk-reverse/README",
+		"group": "kb",
+		"topic": "apk-reverse",
+		"title": "APK Reverse 逆向工程知识库 — Android 逆向 23 篇",
+		"path": "src/content/docs/kb/apk-reverse/README.md",
+		"bytes": 573,
+		"lines": 19,
+		"sha256": "a545b8615f2caacd"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/01-dex-java/01-smali-injection",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/01-dex-java",
+		"title": "Smali 代码注入与 DEX 修改",
+		"path": "src/content/docs/kb/apk-reverse/techniques/01-dex-java/01-smali-injection.md",
+		"bytes": 6392,
+		"lines": 169,
+		"sha256": "db65bb3c191e4dcd"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/02-native/01-il2cpp-offset-discovery",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/02-native",
+		"title": "Unity IL2CPP 静态逆向与偏移发现",
+		"path": "src/content/docs/kb/apk-reverse/techniques/02-native/01-il2cpp-offset-discovery.md",
+		"bytes": 5245,
+		"lines": 135,
+		"sha256": "d25eab8a392d193e"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/02-native/02-pointer-chain-patterns",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/02-native",
+		"title": "指针链遍历模式",
+		"path": "src/content/docs/kb/apk-reverse/techniques/02-native/02-pointer-chain-patterns.md",
+		"bytes": 5366,
+		"lines": 128,
+		"sha256": "812f3669df34ecd9"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/02-native/03-ue4-offset-hunting",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/02-native",
+		"title": "UE4 引擎游戏偏移发现",
+		"path": "src/content/docs/kb/apk-reverse/techniques/02-native/03-ue4-offset-hunting.md",
+		"bytes": 6044,
+		"lines": 158,
+		"sha256": "2ca699d89ee32c7a"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/02-native/04-kernel-procfs-driver",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/02-native",
+		"title": "Kernel Driver 注入：proc 节点读写",
+		"path": "src/content/docs/kb/apk-reverse/techniques/02-native/04-kernel-procfs-driver.md",
+		"bytes": 6021,
+		"lines": 169,
+		"sha256": "219a186dc4f77f60"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/02-native/05-virt-phys-memory",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/02-native",
+		"title": "虚拟地址 → 物理地址转换",
+		"path": "src/content/docs/kb/apk-reverse/techniques/02-native/05-virt-phys-memory.md",
+		"bytes": 6272,
+		"lines": 179,
+		"sha256": "b23969914a2bd059"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/02-native/06-jni-register-natives-tracing",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/02-native",
+		"title": "JNI RegisterNatives 追踪与 Native 入口还原",
+		"path": "src/content/docs/kb/apk-reverse/techniques/02-native/06-jni-register-natives-tracing.md",
+		"bytes": 7865,
+		"lines": 204,
+		"sha256": "d5161293ecfc6db3"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/03-manifest/01-entry-point-tracing",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/03-manifest",
+		"title": "入口点追踪与组件分析",
+		"path": "src/content/docs/kb/apk-reverse/techniques/03-manifest/01-entry-point-tracing.md",
+		"bytes": 5849,
+		"lines": 162,
+		"sha256": "65f41b75e80b747f"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/04-crypto/01-game-encryption-patterns",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/04-crypto",
+		"title": "游戏数据加解密识别与绕过",
+		"path": "src/content/docs/kb/apk-reverse/techniques/04-crypto/01-game-encryption-patterns.md",
+		"bytes": 6247,
+		"lines": 160,
+		"sha256": "d229a636038f1077"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/04-crypto/02-rc4-custom-crypto",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/04-crypto",
+		"title": "自定义对称加密：RC4 与组合模式",
+		"path": "src/content/docs/kb/apk-reverse/techniques/04-crypto/02-rc4-custom-crypto.md",
+		"bytes": 6717,
+		"lines": 176,
+		"sha256": "63e4baddf4b89910"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/05-network/01-game-protocol-hook",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/05-network",
+		"title": "游戏协议 Hook 与封包分析",
+		"path": "src/content/docs/kb/apk-reverse/techniques/05-network/01-game-protocol-hook.md",
+		"bytes": 6853,
+		"lines": 187,
+		"sha256": "ad280763074376f7"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/05-network/02-license-verification-bypass",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/05-network",
+		"title": "在线验证系统分析与绕过",
+		"path": "src/content/docs/kb/apk-reverse/techniques/05-network/02-license-verification-bypass.md",
+		"bytes": 6769,
+		"lines": 183,
+		"sha256": "b69b94ee43bb282f"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/05-network/03-tls-pinning-unpinning",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/05-network",
+		"title": "TLS Pinning 定位与 Unpinning",
+		"path": "src/content/docs/kb/apk-reverse/techniques/05-network/03-tls-pinning-unpinning.md",
+		"bytes": 6218,
+		"lines": 178,
+		"sha256": "bbc9274f7a0e92cc"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/06-dynamic/01-memory-rw-hook",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/06-dynamic",
+		"title": "进程内存读写检测与 Hook",
+		"path": "src/content/docs/kb/apk-reverse/techniques/06-dynamic/01-memory-rw-hook.md",
+		"bytes": 4267,
+		"lines": 106,
+		"sha256": "984697fe89eb978a"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/06-dynamic/02-overlay-rendering-hook",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/06-dynamic",
+		"title": "Overlay 渲染与 ImGui 检测",
+		"path": "src/content/docs/kb/apk-reverse/techniques/06-dynamic/02-overlay-rendering-hook.md",
+		"bytes": 5041,
+		"lines": 138,
+		"sha256": "97713808a72ec011"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/06-dynamic/03-touch-input-hook",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/06-dynamic",
+		"title": "触摸输入 Hook 与注入分析",
+		"path": "src/content/docs/kb/apk-reverse/techniques/06-dynamic/03-touch-input-hook.md",
+		"bytes": 6369,
+		"lines": 171,
+		"sha256": "5fde6d819c9b3268"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/07-packer/01-obfuscation-detection",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/07-packer",
+		"title": "编译期混淆检测与识别",
+		"path": "src/content/docs/kb/apk-reverse/techniques/07-packer/01-obfuscation-detection.md",
+		"bytes": 5219,
+		"lines": 128,
+		"sha256": "7b2c24312108aba0"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/07-packer/02-self-extracting-payload",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/07-packer",
+		"title": "自解压 Payload 与脚本嵌入",
+		"path": "src/content/docs/kb/apk-reverse/techniques/07-packer/02-self-extracting-payload.md",
+		"bytes": 5905,
+		"lines": 173,
+		"sha256": "43049b8cb6fc116f"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/07-packer/03-vmp-dex2c-detection",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/07-packer",
+		"title": "VMP/dex2c 加固识别与形态判定",
+		"path": "src/content/docs/kb/apk-reverse/techniques/07-packer/03-vmp-dex2c-detection.md",
+		"bytes": 8104,
+		"lines": 190,
+		"sha256": "e9f4aa63c3d42fd6"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/07-packer/04-vmp-dump-trace-recovery",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/07-packer",
+		"title": "VMP 脱壳与语义还原（Dump/Trace/Recovery）",
+		"path": "src/content/docs/kb/apk-reverse/techniques/07-packer/04-vmp-dump-trace-recovery.md",
+		"bytes": 9924,
+		"lines": 216,
+		"sha256": "5c325eda82a30f33"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/07-packer/05-vmp-anti-debug-bypass",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/07-packer",
+		"title": "Android 反调试检测与绕过（VMP 场景）",
+		"path": "src/content/docs/kb/apk-reverse/techniques/07-packer/05-vmp-anti-debug-bypass.md",
+		"bytes": 8262,
+		"lines": 196,
+		"sha256": "34651525e8efc0bb"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/08-patch-repack/01-so-injection-repack",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/08-patch-repack",
+		"title": "Native SO 注入与 APK 重打包",
+		"path": "src/content/docs/kb/apk-reverse/techniques/08-patch-repack/01-so-injection-repack.md",
+		"bytes": 6192,
+		"lines": 184,
+		"sha256": "a93d41a32e0e4617"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/08-patch-repack/02-signature-integrity-bypass",
+		"group": "kb",
+		"topic": "apk-reverse/techniques/08-patch-repack",
+		"title": "签名与完整性检查绕过",
+		"path": "src/content/docs/kb/apk-reverse/techniques/08-patch-repack/02-signature-integrity-bypass.md",
+		"bytes": 6100,
+		"lines": 189,
+		"sha256": "509ad13bb5a19e02"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/attack-network",
+		"group": "kb",
+		"topic": "apk-reverse/techniques",
+		"title": "APK 逆向攻击网",
+		"path": "src/content/docs/kb/apk-reverse/techniques/attack-network.md",
+		"bytes": 14205,
+		"lines": 346,
+		"sha256": "2dbd42b3763da1a3"
+	},
+	{
+		"id": "kb/apk-reverse/techniques/README",
+		"group": "kb",
+		"topic": "apk-reverse/techniques",
+		"title": "APK 逆向技术库",
+		"path": "src/content/docs/kb/apk-reverse/techniques/README.md",
+		"bytes": 4260,
+		"lines": 73,
+		"sha256": "4b97bf0181d904df"
+	},
+	{
+		"id": "kb/ctf-website/checklists/attack-matrix",
+		"group": "kb",
+		"topic": "ctf-website/checklists",
+		"title": "Web CTF Attack Matrix",
+		"path": "src/content/docs/kb/ctf-website/checklists/attack-matrix.md",
+		"bytes": 1146,
+		"lines": 21,
+		"sha256": "67d6eded0fb37404"
+	},
+	{
+		"id": "kb/ctf-website/checklists/evidence",
+		"group": "kb",
+		"topic": "ctf-website/checklists",
+		"title": "Evidence Checklist",
+		"path": "src/content/docs/kb/ctf-website/checklists/evidence.md",
+		"bytes": 519,
+		"lines": 15,
+		"sha256": "65214d5482dcf81e"
+	},
+	{
+		"id": "kb/ctf-website/checklists/README",
+		"group": "kb",
+		"topic": "ctf-website/checklists",
+		"title": "Web CTF Checklists AI Usage",
+		"path": "src/content/docs/kb/ctf-website/checklists/README.md",
+		"bytes": 297,
+		"lines": 12,
+		"sha256": "3e833d5ed79738bd"
+	},
+	{
+		"id": "kb/ctf-website/checklists/web-ctf-first-30-min",
+		"group": "kb",
+		"topic": "ctf-website/checklists",
+		"title": "Web CTF First 30 Minutes",
+		"path": "src/content/docs/kb/ctf-website/checklists/web-ctf-first-30-min.md",
+		"bytes": 1346,
+		"lines": 34,
+		"sha256": "cff5c68174306385"
+	},
+	{
+		"id": "kb/ctf-website/payloads/README",
+		"group": "kb",
+		"topic": "ctf-website/payloads",
+		"title": "Web CTF Payload Knowledge AI Usage",
+		"path": "src/content/docs/kb/ctf-website/payloads/README.md",
+		"bytes": 295,
+		"lines": 11,
+		"sha256": "5de2e66a6a2cee5f"
+	},
+	{
+		"id": "kb/ctf-website/payloads/web-payload-seeds",
+		"group": "kb",
+		"topic": "ctf-website/payloads",
+		"title": "Web Payload Seeds",
+		"path": "src/content/docs/kb/ctf-website/payloads/web-payload-seeds.md",
+		"bytes": 838,
+		"lines": 67,
+		"sha256": "0062062bc5c2675d"
+	},
+	{
+		"id": "kb/ctf-website/README",
+		"group": "kb",
+		"topic": "ctf-website",
+		"title": "CTF Website 渗透测试知识库 — Web 攻击全表面 118 篇",
+		"path": "src/content/docs/kb/ctf-website/README.md",
+		"bytes": 886,
+		"lines": 26,
+		"sha256": "c957f2f4f95f4267"
+	},
+	{
+		"id": "kb/ctf-website/techniques/00-workflow/24h-loop-orchestration",
+		"group": "kb",
+		"topic": "ctf-website/techniques/00-workflow",
+		"title": "24h Loop Orchestration",
+		"path": "src/content/docs/kb/ctf-website/techniques/00-workflow/24h-loop-orchestration.md",
+		"bytes": 5172,
+		"lines": 157,
+		"sha256": "27c43a87100850e2"
+	},
+	{
+		"id": "kb/ctf-website/techniques/01-recon/captcha-bypass",
+		"group": "kb",
+		"topic": "ctf-website/techniques/01-recon",
+		"title": "验证码绕过技术与自动化",
+		"path": "src/content/docs/kb/ctf-website/techniques/01-recon/captcha-bypass.md",
+		"bytes": 10305,
+		"lines": 299,
+		"sha256": "6c87b4dfceb31bb2"
+	},
+	{
+		"id": "kb/ctf-website/techniques/01-recon/cloudflare-bypass",
+		"group": "kb",
+		"topic": "ctf-website/techniques/01-recon",
+		"title": "Cloudflare 绕过：寻找真实源服务器 IP",
+		"path": "src/content/docs/kb/ctf-website/techniques/01-recon/cloudflare-bypass.md",
+		"bytes": 8941,
+		"lines": 250,
+		"sha256": "44f57673e21921c7"
+	},
+	{
+		"id": "kb/ctf-website/techniques/01-recon/fofa-hunting",
+		"group": "kb",
+		"topic": "ctf-website/techniques/01-recon",
+		"title": "FOFA 资产测绘与漏洞狩猎",
+		"path": "src/content/docs/kb/ctf-website/techniques/01-recon/fofa-hunting.md",
+		"bytes": 13008,
+		"lines": 379,
+		"sha256": "913bd78eb999f7ac"
+	},
+	{
+		"id": "kb/ctf-website/techniques/01-recon/recon-routing",
+		"group": "kb",
+		"topic": "ctf-website/techniques/01-recon",
+		"title": "Recon & 路由绕过",
+		"path": "src/content/docs/kb/ctf-website/techniques/01-recon/recon-routing.md",
+		"bytes": 12141,
+		"lines": 312,
+		"sha256": "9d1bab3e2de9fe27"
+	},
+	{
+		"id": "kb/ctf-website/techniques/01-recon/version-fingerprinting",
+		"group": "kb",
+		"topic": "ctf-website/techniques/01-recon",
+		"title": "版本指纹识别",
+		"path": "src/content/docs/kb/ctf-website/techniques/01-recon/version-fingerprinting.md",
+		"bytes": 11765,
+		"lines": 313,
+		"sha256": "b9ea7c16972f617f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/host-header",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth",
+		"title": "Host Header 攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/host-header.md",
+		"bytes": 10968,
+		"lines": 274,
+		"sha256": "65bf1467b5d424b3"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/00-overview",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT 攻击全景",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/00-overview.md",
+		"bytes": 11976,
+		"lines": 236,
+		"sha256": "4ea57fd971010ddf"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/01-alg-none",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT alg: none 无签名绕过",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/01-alg-none.md",
+		"bytes": 10137,
+		"lines": 255,
+		"sha256": "7749d2514df96334"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/02-algorithm-confusion",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT 算法混淆 (Algorithm Confusion)",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/02-algorithm-confusion.md",
+		"bytes": 12165,
+		"lines": 284,
+		"sha256": "53fe15cdaa4bdc38"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/03-weak-key-bruteforce",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT 弱 HMAC 密钥爆破",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/03-weak-key-bruteforce.md",
+		"bytes": 11048,
+		"lines": 299,
+		"sha256": "893c14979e23649e"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/04-kid-injection",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT kid 参数注入",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/04-kid-injection.md",
+		"bytes": 11673,
+		"lines": 321,
+		"sha256": "85f07b49aa215959"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/05-jku-x5u-abuse",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT jku / x5u 密钥源劫持",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/05-jku-x5u-abuse.md",
+		"bytes": 12076,
+		"lines": 317,
+		"sha256": "6ec712ccf1d013a4"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/06-claim-missing",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT Claim 验证缺失 & Token 混用",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/06-claim-missing.md",
+		"bytes": 14738,
+		"lines": 366,
+		"sha256": "3b453a5165789108"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/07-theft-replay",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT 窃取、重放与持久化",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/07-theft-replay.md",
+		"bytes": 12578,
+		"lines": 298,
+		"sha256": "f5221f882fca14e5"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/08-cve-library",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT 依赖库 CVE 与指纹路由",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/08-cve-library.md",
+		"bytes": 11160,
+		"lines": 246,
+		"sha256": "06ecc9845f160ef5"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/09-toolchain-operations",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT 工具链、操作流程与结果矩阵",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/09-toolchain-operations.md",
+		"bytes": 8378,
+		"lines": 218,
+		"sha256": "65447c22dca6e3a6"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/jwt/README",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth/jwt",
+		"title": "JWT 攻击技术库",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/jwt/README.md",
+		"bytes": 1346,
+		"lines": 33,
+		"sha256": "9ba372272392600b"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/ldap-injection",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth",
+		"title": "LDAP Injection",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/ldap-injection.md",
+		"bytes": 11384,
+		"lines": 281,
+		"sha256": "d5188935d915d20f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/oauth-sso",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth",
+		"title": "OAuth 2.0 / OIDC 攻击实战",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/oauth-sso.md",
+		"bytes": 16764,
+		"lines": 429,
+		"sha256": "915ae84a4603c2b5"
+	},
+	{
+		"id": "kb/ctf-website/techniques/02-auth/saml-attacks",
+		"group": "kb",
+		"topic": "ctf-website/techniques/02-auth",
+		"title": "SAML 2.0 攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/02-auth/saml-attacks.md",
+		"bytes": 10031,
+		"lines": 265,
+		"sha256": "653761f75fc0f58a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/03-injection/graphql",
+		"group": "kb",
+		"topic": "ctf-website/techniques/03-injection",
+		"title": "GraphQL 攻击实战",
+		"path": "src/content/docs/kb/ctf-website/techniques/03-injection/graphql.md",
+		"bytes": 17685,
+		"lines": 480,
+		"sha256": "df88c00aab167e84"
+	},
+	{
+		"id": "kb/ctf-website/techniques/03-injection/grpc-protobuf",
+		"group": "kb",
+		"topic": "ctf-website/techniques/03-injection",
+		"title": "gRPC / Protobuf 攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/03-injection/grpc-protobuf.md",
+		"bytes": 8528,
+		"lines": 208,
+		"sha256": "ddff6948a339aaac"
+	},
+	{
+		"id": "kb/ctf-website/techniques/03-injection/hpp-crlf",
+		"group": "kb",
+		"topic": "ctf-website/techniques/03-injection",
+		"title": "HPP / CRLF Injection / Header Injection",
+		"path": "src/content/docs/kb/ctf-website/techniques/03-injection/hpp-crlf.md",
+		"bytes": 8815,
+		"lines": 214,
+		"sha256": "491aee3e0857fa98"
+	},
+	{
+		"id": "kb/ctf-website/techniques/03-injection/prototype-pollution",
+		"group": "kb",
+		"topic": "ctf-website/techniques/03-injection",
+		"title": "Prototype Pollution (原型链污染)",
+		"path": "src/content/docs/kb/ctf-website/techniques/03-injection/prototype-pollution.md",
+		"bytes": 9491,
+		"lines": 217,
+		"sha256": "800d93874fb9303c"
+	},
+	{
+		"id": "kb/ctf-website/techniques/03-injection/redos-timing",
+		"group": "kb",
+		"topic": "ctf-website/techniques/03-injection",
+		"title": "ReDoS & 时序攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/03-injection/redos-timing.md",
+		"bytes": 9122,
+		"lines": 231,
+		"sha256": "ea66853465eca1c8"
+	},
+	{
+		"id": "kb/ctf-website/techniques/03-injection/sqli-nosqli",
+		"group": "kb",
+		"topic": "ctf-website/techniques/03-injection",
+		"title": "SQLi & NoSQLi (数据库注入高阶实战)",
+		"path": "src/content/docs/kb/ctf-website/techniques/03-injection/sqli-nosqli.md",
+		"bytes": 26344,
+		"lines": 663,
+		"sha256": "d7517a5f8c2ac24f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/03-injection/ssti",
+		"group": "kb",
+		"topic": "ctf-website/techniques/03-injection",
+		"title": "SSTI (Server-Side Template Injection)",
+		"path": "src/content/docs/kb/ctf-website/techniques/03-injection/ssti.md",
+		"bytes": 14601,
+		"lines": 379,
+		"sha256": "ee06c794c439cab2"
+	},
+	{
+		"id": "kb/ctf-website/techniques/04-ssrf/open-redirect",
+		"group": "kb",
+		"topic": "ctf-website/techniques/04-ssrf",
+		"title": "Open Redirect & Redirect Chain Attacks",
+		"path": "src/content/docs/kb/ctf-website/techniques/04-ssrf/open-redirect.md",
+		"bytes": 7796,
+		"lines": 180,
+		"sha256": "7a8019672d91a131"
+	},
+	{
+		"id": "kb/ctf-website/techniques/04-ssrf/ssrf",
+		"group": "kb",
+		"topic": "ctf-website/techniques/04-ssrf",
+		"title": "SSRF (Server-Side Request Forgery)",
+		"path": "src/content/docs/kb/ctf-website/techniques/04-ssrf/ssrf.md",
+		"bytes": 19691,
+		"lines": 461,
+		"sha256": "8d21ddc9185d5ac9"
+	},
+	{
+		"id": "kb/ctf-website/techniques/05-deserialization/deserialization",
+		"group": "kb",
+		"topic": "ctf-website/techniques/05-deserialization",
+		"title": "Deserialization Vulnerabilities",
+		"path": "src/content/docs/kb/ctf-website/techniques/05-deserialization/deserialization.md",
+		"bytes": 7750,
+		"lines": 187,
+		"sha256": "8ee16c1ecb906b8b"
+	},
+	{
+		"id": "kb/ctf-website/techniques/06-file-attacks/file-upload-xxe-lfi",
+		"group": "kb",
+		"topic": "ctf-website/techniques/06-file-attacks",
+		"title": "File Upload / XXE / LFI / Path Traversal",
+		"path": "src/content/docs/kb/ctf-website/techniques/06-file-attacks/file-upload-xxe-lfi.md",
+		"bytes": 22966,
+		"lines": 607,
+		"sha256": "77107d6c845b32dc"
+	},
+	{
+		"id": "kb/ctf-website/techniques/07-client/admin-bot-xss",
+		"group": "kb",
+		"topic": "ctf-website/techniques/07-client",
+		"title": "Admin Bot / XSS 实战",
+		"path": "src/content/docs/kb/ctf-website/techniques/07-client/admin-bot-xss.md",
+		"bytes": 9203,
+		"lines": 207,
+		"sha256": "ea11df282fac65a7"
+	},
+	{
+		"id": "kb/ctf-website/techniques/07-client/cors-csrf",
+		"group": "kb",
+		"topic": "ctf-website/techniques/07-client",
+		"title": "CORS / CSRF 高级攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/07-client/cors-csrf.md",
+		"bytes": 9932,
+		"lines": 246,
+		"sha256": "3cced3f720ec890e"
+	},
+	{
+		"id": "kb/ctf-website/techniques/07-client/js-runtime",
+		"group": "kb",
+		"topic": "ctf-website/techniques/07-client",
+		"title": "JS Runtime / Browser Reversing",
+		"path": "src/content/docs/kb/ctf-website/techniques/07-client/js-runtime.md",
+		"bytes": 11139,
+		"lines": 278,
+		"sha256": "3af12a64f70a6f4a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/07-client/postmessage",
+		"group": "kb",
+		"topic": "ctf-website/techniques/07-client",
+		"title": "PostMessage / 跨域通信攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/07-client/postmessage.md",
+		"bytes": 7877,
+		"lines": 190,
+		"sha256": "5dab9a8aa36a42c0"
+	},
+	{
+		"id": "kb/ctf-website/techniques/07-client/web-crypto-abuse",
+		"group": "kb",
+		"topic": "ctf-website/techniques/07-client",
+		"title": "Web Crypto API 滥用",
+		"path": "src/content/docs/kb/ctf-website/techniques/07-client/web-crypto-abuse.md",
+		"bytes": 9160,
+		"lines": 228,
+		"sha256": "e105a3f6d5fff398"
+	},
+	{
+		"id": "kb/ctf-website/techniques/07-client/websocket",
+		"group": "kb",
+		"topic": "ctf-website/techniques/07-client",
+		"title": "WebSocket 攻击实战",
+		"path": "src/content/docs/kb/ctf-website/techniques/07-client/websocket.md",
+		"bytes": 16843,
+		"lines": 438,
+		"sha256": "a3c64ae80d7f4538"
+	},
+	{
+		"id": "kb/ctf-website/techniques/08-infra/http2-attacks",
+		"group": "kb",
+		"topic": "ctf-website/techniques/08-infra",
+		"title": "HTTP/2 攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/08-infra/http2-attacks.md",
+		"bytes": 6835,
+		"lines": 203,
+		"sha256": "700862637efaeb17"
+	},
+	{
+		"id": "kb/ctf-website/techniques/08-infra/race-cache-smuggling",
+		"group": "kb",
+		"topic": "ctf-website/techniques/08-infra",
+		"title": "Race Condition / Cache Poisoning / Request Smuggling",
+		"path": "src/content/docs/kb/ctf-website/techniques/08-infra/race-cache-smuggling.md",
+		"bytes": 19212,
+		"lines": 490,
+		"sha256": "d8bfe4be2248fb11"
+	},
+	{
+		"id": "kb/ctf-website/techniques/08-infra/web-cache-deception",
+		"group": "kb",
+		"topic": "ctf-website/techniques/08-infra",
+		"title": "Web Cache Deception",
+		"path": "src/content/docs/kb/ctf-website/techniques/08-infra/web-cache-deception.md",
+		"bytes": 12929,
+		"lines": 289,
+		"sha256": "2159acc8177d61cc"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/01-browser-sandbox-escape",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "Blink UAF：CSSFontFeatureValuesMap 迭代器悬空指针（CVE-2026-2441）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/01-browser-sandbox-escape.md",
+		"bytes": 7537,
+		"lines": 197,
+		"sha256": "49641a9adfb963ce"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/02-redis-zipmap-rce",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "Redis/Valkey RESTORE：zipmap 长度前缀步长不一致（CVE-2026-25243）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/02-redis-zipmap-rce.md",
+		"bytes": 7228,
+		"lines": 179,
+		"sha256": "f575bc24a7fbf340"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/03-cpanel-caldav-traversal",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "cPanel CalDAV 预认证路径穿越（CVE-2026-29205）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/03-cpanel-caldav-traversal.md",
+		"bytes": 5522,
+		"lines": 152,
+		"sha256": "700c7b7b8ff55f1e"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/04-nezha-path-traversal-jwt",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "Nezha Monitoring：路径遍历 + JWT 伪造管理员接管（CVE-2026-53519）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/04-nezha-path-traversal-jwt.md",
+		"bytes": 5412,
+		"lines": 146,
+		"sha256": "3bbfdefcc0a4d9ae"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/05-litellm-privesc",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "LiteLLM：API Key 生成绕过角色限制 + 自提权（CVE-2026-47101）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/05-litellm-privesc.md",
+		"bytes": 5673,
+		"lines": 148,
+		"sha256": "ade63bdbdd7c7fad"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/06-nginx-rewrite-heapoverflow",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "NGINX rewrite 模块：set 缓冲区长度错配堆溢出（CVE-2026-42945）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/06-nginx-rewrite-heapoverflow.md",
+		"bytes": 7097,
+		"lines": 181,
+		"sha256": "970d03ae5921eda0"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/cve-correlation-graph",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "CVE Correlation Graph（CVE 关联网）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/cve-correlation-graph.md",
+		"bytes": 4247,
+		"lines": 100,
+		"sha256": "7f13bf8819841587"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/cve-workflow",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "CVE Workflow For World-Class Web CTF",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/cve-workflow.md",
+		"bytes": 4628,
+		"lines": 96,
+		"sha256": "baef3d35f00b5986"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/multi-cve-chain-playbook",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "Multi-CVE Chain Playbook（多 CVE 组合联合利用）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/multi-cve-chain-playbook.md",
+		"bytes": 5416,
+		"lines": 121,
+		"sha256": "1fb1cc2088fcb68a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/09-cve/README",
+		"group": "kb",
+		"topic": "ctf-website/techniques/09-cve",
+		"title": "CVE 技术库（Web / 内核 / 本地）",
+		"path": "src/content/docs/kb/ctf-website/techniques/09-cve/README.md",
+		"bytes": 1480,
+		"lines": 31,
+		"sha256": "b413cc8ee033df2b"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/aws-iam-privesc",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "AWS IAM 权限枚举与提权路径",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/aws-iam-privesc.md",
+		"bytes": 5435,
+		"lines": 139,
+		"sha256": "b2186d3b4592b198"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/ci-cd-pipeline",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "CI/CD Pipeline 攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/ci-cd-pipeline.md",
+		"bytes": 10749,
+		"lines": 263,
+		"sha256": "2c09bb5c02e3c155"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/container-runtime-escape",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "容器运行时逃逸打点",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/container-runtime-escape.md",
+		"bytes": 4974,
+		"lines": 132,
+		"sha256": "ae40b0a6599b295a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/github-actions-abuse-paths",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "GitHub Actions 滥用路径",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/github-actions-abuse-paths.md",
+		"bytes": 4661,
+		"lines": 120,
+		"sha256": "7bfff2271b1d9fbf"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/k8s-rbac-attack-paths",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "Kubernetes RBAC 攻击路径",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/k8s-rbac-attack-paths.md",
+		"bytes": 5421,
+		"lines": 129,
+		"sha256": "14849fd6eb504fb9"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/kubernetes-container",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "Kubernetes & 容器逃逸",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/kubernetes-container.md",
+		"bytes": 12405,
+		"lines": 299,
+		"sha256": "5b88418d23fde618"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/serverless-lambda",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "Serverless / Lambda 攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/serverless-lambda.md",
+		"bytes": 12046,
+		"lines": 287,
+		"sha256": "0898a5fc39649f26"
+	},
+	{
+		"id": "kb/ctf-website/techniques/10-cloud/terraform-state-secrets",
+		"group": "kb",
+		"topic": "ctf-website/techniques/10-cloud",
+		"title": "Terraform State 与 IaC 凭证泄露",
+		"path": "src/content/docs/kb/ctf-website/techniques/10-cloud/terraform-state-secrets.md",
+		"bytes": 4480,
+		"lines": 115,
+		"sha256": "f80ad6060149eb2f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/11-dos/01-valkey-resp-dos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/11-dos",
+		"title": "Valkey RESP 协议：预认证断言失败 DoS（CVE-2026-27623）",
+		"path": "src/content/docs/kb/ctf-website/techniques/11-dos/01-valkey-resp-dos.md",
+		"bytes": 5591,
+		"lines": 142,
+		"sha256": "75ee0013b58aef2d"
+	},
+	{
+		"id": "kb/ctf-website/techniques/11-dos/README",
+		"group": "kb",
+		"topic": "ctf-website/techniques/11-dos",
+		"title": "DoS 拒绝服务技术库",
+		"path": "src/content/docs/kb/ctf-website/techniques/11-dos/README.md",
+		"bytes": 318,
+		"lines": 8,
+		"sha256": "93db6698a4432b5b"
+	},
+	{
+		"id": "kb/ctf-website/techniques/11-supply-chain/dependency-confusion",
+		"group": "kb",
+		"topic": "ctf-website/techniques/11-supply-chain",
+		"title": "Dependency Confusion & 供应链攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/11-supply-chain/dependency-confusion.md",
+		"bytes": 12228,
+		"lines": 309,
+		"sha256": "b37d8595f31087da"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-bypass",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "Payment Bypass — 支付绕过深度技术手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-bypass.md",
+		"bytes": 55657,
+		"lines": 1634,
+		"sha256": "d4077fb632f9d81e"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-callback-async",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "Payment Callback & Async Attack — 支付回调与异步攻击深度手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-callback-async.md",
+		"bytes": 62124,
+		"lines": 1726,
+		"sha256": "0f33873717c97022"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-digital-goods",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "Payment Digital Goods & IAP — 虚拟商品/内购攻击手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-digital-goods.md",
+		"bytes": 24804,
+		"lines": 737,
+		"sha256": "a3bb60e24a900016"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-email-bounce-idor",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "退信滥用 + 订单号授权绕过窃取卡密",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-email-bounce-idor.md",
+		"bytes": 13246,
+		"lines": 291,
+		"sha256": "a7756d1f08501dc2"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-logic",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "Payment Logic Attacks — 支付类 Web CTF 技术手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-logic.md",
+		"bytes": 30348,
+		"lines": 846,
+		"sha256": "96fc688ed6559c06"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-php",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "PHP Payment Attacks — PHP 支付专项攻击手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-php.md",
+		"bytes": 41137,
+		"lines": 1173,
+		"sha256": "28ad0f653e65af6b"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-race-lost-update",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "Payment Race / Lost Update — 余额扣减丢失更新",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-race-lost-update.md",
+		"bytes": 16074,
+		"lines": 366,
+		"sha256": "c5adb9880dc89ede"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/payment-subscription",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "Payment Subscription — 订阅/定期付款攻击深度手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/payment-subscription.md",
+		"bytes": 20669,
+		"lines": 617,
+		"sha256": "f61b5bb6e50c0f66"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/platform-fingerprints",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "PHP 发卡/电商平台指纹库",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/platform-fingerprints.md",
+		"bytes": 12200,
+		"lines": 324,
+		"sha256": "870f76ea24e16d69"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/README",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "12-payment — 支付、订单与票务业务逻辑",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/README.md",
+		"bytes": 1105,
+		"lines": 17,
+		"sha256": "cb5cffe5f665ee78"
+	},
+	{
+		"id": "kb/ctf-website/techniques/12-payment/ticket-rush-api-reversing",
+		"group": "kb",
+		"topic": "ctf-website/techniques/12-payment",
+		"title": "Ticket Rush API Reversing — 票务抢购状态机、Token 与风控参数",
+		"path": "src/content/docs/kb/ctf-website/techniques/12-payment/ticket-rush-api-reversing.md",
+		"bytes": 23900,
+		"lines": 596,
+		"sha256": "6addaed3cf47fd6f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/00-overview",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "Signature Forgery — 签名伪造与验证绕过全景手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/00-overview.md",
+		"bytes": 35957,
+		"lines": 752,
+		"sha256": "bd9fea4107963a88"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/01-algorithm",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "Signature Algorithm Attacks — 签名算法降级/混淆/None 攻击深度手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/01-algorithm.md",
+		"bytes": 77440,
+		"lines": 1989,
+		"sha256": "7646a4c5279f35a8"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/02-implementation",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "Signature Implementation Bugs — 签名实现缺陷深度手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/02-implementation.md",
+		"bytes": 84249,
+		"lines": 2201,
+		"sha256": "8f57a7307730ce9a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/03-key-attacks",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "Key Attacks — 签名密钥攻击深度技术手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/03-key-attacks.md",
+		"bytes": 106802,
+		"lines": 3210,
+		"sha256": "6055ba3aed763491"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/04-canonicalization",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "Canonicalization Attacks — 签名规范化绕过",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/04-canonicalization.md",
+		"bytes": 74022,
+		"lines": 2014,
+		"sha256": "f629f83dd9ce0a81"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/05-length-extension",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "Hash Length Extension 攻击 — 深度技术手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/05-length-extension.md",
+		"bytes": 40040,
+		"lines": 1107,
+		"sha256": "58c6919b408267d5"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/06-replay-nonce",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "Replay / Nonce / Timestamp — 重放攻击深度技术手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/06-replay-nonce.md",
+		"bytes": 59441,
+		"lines": 1601,
+		"sha256": "3c94c317afd9da0e"
+	},
+	{
+		"id": "kb/ctf-website/techniques/13-signature/README",
+		"group": "kb",
+		"topic": "ctf-website/techniques/13-signature",
+		"title": "13-signature — 签名伪造与验证绕过",
+		"path": "src/content/docs/kb/ctf-website/techniques/13-signature/README.md",
+		"bytes": 1264,
+		"lines": 24,
+		"sha256": "edbb2ef22d0793b1"
+	},
+	{
+		"id": "kb/ctf-website/techniques/14-idor/01-idor-enumeration",
+		"group": "kb",
+		"topic": "ctf-website/techniques/14-idor",
+		"title": "IDOR 深度枚举与利用 — 水平/垂直越权实战方法论",
+		"path": "src/content/docs/kb/ctf-website/techniques/14-idor/01-idor-enumeration.md",
+		"bytes": 23722,
+		"lines": 517,
+		"sha256": "519e78e11b3e6a27"
+	},
+	{
+		"id": "kb/ctf-website/techniques/14-idor/02-bac-business-logic",
+		"group": "kb",
+		"topic": "ctf-website/techniques/14-idor",
+		"title": "功能级访问控制缺失 (BAC) — 垂直越权与业务逻辑绕过",
+		"path": "src/content/docs/kb/ctf-website/techniques/14-idor/02-bac-business-logic.md",
+		"bytes": 27884,
+		"lines": 678,
+		"sha256": "4941c8ec77d4f2ed"
+	},
+	{
+		"id": "kb/ctf-website/techniques/15-mass-assignment/01-mass-assignment",
+		"group": "kb",
+		"topic": "ctf-website/techniques/15-mass-assignment",
+		"title": "批量赋值与属性注入深度利用手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/15-mass-assignment/01-mass-assignment.md",
+		"bytes": 26261,
+		"lines": 689,
+		"sha256": "476c5d349abd29eb"
+	},
+	{
+		"id": "kb/ctf-website/techniques/15-mass-assignment/02-parameter-tampering",
+		"group": "kb",
+		"topic": "ctf-website/techniques/15-mass-assignment",
+		"title": "参数篡改全链 — 价格/数量/优惠券/竞态深度攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/15-mass-assignment/02-parameter-tampering.md",
+		"bytes": 30152,
+		"lines": 777,
+		"sha256": "b31ba8f4371479f4"
+	},
+	{
+		"id": "kb/ctf-website/techniques/16-rate-limit/01-rate-limit-bypass",
+		"group": "kb",
+		"topic": "ctf-website/techniques/16-rate-limit",
+		"title": "速率限制绕过 — IP 轮换、Header 操纵与应用层绕过",
+		"path": "src/content/docs/kb/ctf-website/techniques/16-rate-limit/01-rate-limit-bypass.md",
+		"bytes": 22345,
+		"lines": 615,
+		"sha256": "013e0961c69a4b2a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/16-rate-limit/02-brute-force-tactics",
+		"group": "kb",
+		"topic": "ctf-website/techniques/16-rate-limit",
+		"title": "高级暴力破解 — 凭证喷洒、MFA 疲劳、Hash 策略",
+		"path": "src/content/docs/kb/ctf-website/techniques/16-rate-limit/02-brute-force-tactics.md",
+		"bytes": 21366,
+		"lines": 558,
+		"sha256": "3bb6dfe409a05f47"
+	},
+	{
+		"id": "kb/ctf-website/techniques/17-api-attacks/01-api-discovery-leak",
+		"group": "kb",
+		"topic": "ctf-website/techniques/17-api-attacks",
+		"title": "API 发现与信息泄露 — Swagger、GraphQL、Source Map 与移动端提取",
+		"path": "src/content/docs/kb/ctf-website/techniques/17-api-attacks/01-api-discovery-leak.md",
+		"bytes": 32164,
+		"lines": 856,
+		"sha256": "7751bc6643c82bbf"
+	},
+	{
+		"id": "kb/ctf-website/techniques/17-api-attacks/02-api-key-leak",
+		"group": "kb",
+		"topic": "ctf-website/techniques/17-api-attacks",
+		"title": "API 密钥泄露与利用 — GitHub Dorking、客户端密钥链、云服务滥用",
+		"path": "src/content/docs/kb/ctf-website/techniques/17-api-attacks/02-api-key-leak.md",
+		"bytes": 32770,
+		"lines": 759,
+		"sha256": "b65da3cced8de203"
+	},
+	{
+		"id": "kb/ctf-website/techniques/18-cors-csp-advanced/01-csp-bypass",
+		"group": "kb",
+		"topic": "ctf-website/techniques/18-cors-csp-advanced",
+		"title": "CSP 绕过全技术栈",
+		"path": "src/content/docs/kb/ctf-website/techniques/18-cors-csp-advanced/01-csp-bypass.md",
+		"bytes": 23977,
+		"lines": 608,
+		"sha256": "c91499fb6636b24c"
+	},
+	{
+		"id": "kb/ctf-website/techniques/18-cors-csp-advanced/02-xs-leaks-browser-sidechannels",
+		"group": "kb",
+		"topic": "ctf-website/techniques/18-cors-csp-advanced",
+		"title": "XS-Leaks 浏览器侧信道攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/18-cors-csp-advanced/02-xs-leaks-browser-sidechannels.md",
+		"bytes": 22401,
+		"lines": 563,
+		"sha256": "04bd1a95d15fd19a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/19-dns-email/01-subdomain-takeover",
+		"group": "kb",
+		"topic": "ctf-website/techniques/19-dns-email",
+		"title": "子域名接管深度",
+		"path": "src/content/docs/kb/ctf-website/techniques/19-dns-email/01-subdomain-takeover.md",
+		"bytes": 26447,
+		"lines": 737,
+		"sha256": "6aa113a7d1ea93e9"
+	},
+	{
+		"id": "kb/ctf-website/techniques/19-dns-email/02-email-spoofing",
+		"group": "kb",
+		"topic": "ctf-website/techniques/19-dns-email",
+		"title": "邮件伪造与 SPF / DKIM / DMARC",
+		"path": "src/content/docs/kb/ctf-website/techniques/19-dns-email/02-email-spoofing.md",
+		"bytes": 28178,
+		"lines": 761,
+		"sha256": "351282799b3679f2"
+	},
+	{
+		"id": "kb/ctf-website/techniques/20-oauth-deep/01-oauth-attack-chains",
+		"group": "kb",
+		"topic": "ctf-website/techniques/20-oauth-deep",
+		"title": "OAuth 2.0 攻击全链",
+		"path": "src/content/docs/kb/ctf-website/techniques/20-oauth-deep/01-oauth-attack-chains.md",
+		"bytes": 27377,
+		"lines": 713,
+		"sha256": "f1c7789c7697b064"
+	},
+	{
+		"id": "kb/ctf-website/techniques/20-oauth-deep/02-session-fixation-attacks",
+		"group": "kb",
+		"topic": "ctf-website/techniques/20-oauth-deep",
+		"title": "Session 固定与 SSO 劫持",
+		"path": "src/content/docs/kb/ctf-website/techniques/20-oauth-deep/02-session-fixation-attacks.md",
+		"bytes": 26732,
+		"lines": 712,
+		"sha256": "01070f1953a9678d"
+	},
+	{
+		"id": "kb/ctf-website/techniques/21-mobile-bridge/01-webview-attacks",
+		"group": "kb",
+		"topic": "ctf-website/techniques/21-mobile-bridge",
+		"title": "WebView 攻击全技术",
+		"path": "src/content/docs/kb/ctf-website/techniques/21-mobile-bridge/01-webview-attacks.md",
+		"bytes": 21976,
+		"lines": 617,
+		"sha256": "3b8578aafddc7401"
+	},
+	{
+		"id": "kb/ctf-website/techniques/21-mobile-bridge/02-cordova-reactnative",
+		"group": "kb",
+		"topic": "ctf-website/techniques/21-mobile-bridge",
+		"title": "跨平台框架攻击面 — Cordova / React Native / Flutter / Electron",
+		"path": "src/content/docs/kb/ctf-website/techniques/21-mobile-bridge/02-cordova-reactnative.md",
+		"bytes": 26860,
+		"lines": 772,
+		"sha256": "17b775f2602d81d0"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/01-application-layer-dos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "Application-Layer DoS",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/01-application-layer-dos.md",
+		"bytes": 31580,
+		"lines": 922,
+		"sha256": "fe587cda2d4249b5"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/02-resource-exhaustion",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "Resource Exhaustion & Algorithm Complexity Attacks",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/02-resource-exhaustion.md",
+		"bytes": 34554,
+		"lines": 1037,
+		"sha256": "0e6c6ce974231a76"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/03-amplification-drdos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "Amplification / DRDoS Attacks",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/03-amplification-drdos.md",
+		"bytes": 32522,
+		"lines": 1062,
+		"sha256": "56d642250286c333"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/04-redos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "ReDoS — 正则表达式拒绝服务",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/04-redos.md",
+		"bytes": 12051,
+		"lines": 350,
+		"sha256": "4997e3e0f39ae694"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/05-http2-continuation",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "HTTP/2 CONTINUATION Flood & H2/H3 高级攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/05-http2-continuation.md",
+		"bytes": 12880,
+		"lines": 369,
+		"sha256": "ffc71f7c51c99165"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/06-tcp-state-exhaustion",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "TCP 协议栈状态耗尽",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/06-tcp-state-exhaustion.md",
+		"bytes": 11757,
+		"lines": 342,
+		"sha256": "4e67c465f222fa56"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/07-dns-dos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "DNS 拒绝服务攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/07-dns-dos.md",
+		"bytes": 12273,
+		"lines": 374,
+		"sha256": "578b409844f9fb87"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/08-tls-exhaustion",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "TLS/SSL 握手耗尽",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/08-tls-exhaustion.md",
+		"bytes": 15420,
+		"lines": 472,
+		"sha256": "4dacf28c38d880ea"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/09-cache-cdn-dos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "缓存 / CDN 拒绝服务",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/09-cache-cdn-dos.md",
+		"bytes": 16820,
+		"lines": 527,
+		"sha256": "ed2fe200f8324d16"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/10-api-abuse",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "API 滥用拒绝服务",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/10-api-abuse.md",
+		"bytes": 17840,
+		"lines": 595,
+		"sha256": "7a42c45273bfae16"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/11-cloud-container-dos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "云原生 / 容器拒绝服务",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/11-cloud-container-dos.md",
+		"bytes": 17403,
+		"lines": 542,
+		"sha256": "0a35d3c9375ac00b"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/12-ssrf-dos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "SSRF 驱动的拒绝服务",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/12-ssrf-dos.md",
+		"bytes": 17597,
+		"lines": 536,
+		"sha256": "8fbca2eb0b8cfa2a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/22-dos/13-database-dos",
+		"group": "kb",
+		"topic": "ctf-website/techniques/22-dos",
+		"title": "数据库层拒绝服务",
+		"path": "src/content/docs/kb/ctf-website/techniques/22-dos/13-database-dos.md",
+		"bytes": 17861,
+		"lines": 587,
+		"sha256": "9ba01d2839e4b7a5"
+	},
+	{
+		"id": "kb/ctf-website/techniques/23-paywall-bypass/01-paywall-detection-bypass",
+		"group": "kb",
+		"topic": "ctf-website/techniques/23-paywall-bypass",
+		"title": "Paywall 检测与绕过总览",
+		"path": "src/content/docs/kb/ctf-website/techniques/23-paywall-bypass/01-paywall-detection-bypass.md",
+		"bytes": 12085,
+		"lines": 274,
+		"sha256": "3b7d65afd030741a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/23-paywall-bypass/02-http-header-manipulation",
+		"group": "kb",
+		"topic": "ctf-website/techniques/23-paywall-bypass",
+		"title": "HTTP 请求头伪装",
+		"path": "src/content/docs/kb/ctf-website/techniques/23-paywall-bypass/02-http-header-manipulation.md",
+		"bytes": 18382,
+		"lines": 509,
+		"sha256": "fd7212c21fb9f7cc"
+	},
+	{
+		"id": "kb/ctf-website/techniques/23-paywall-bypass/03-network-rule-blocking",
+		"group": "kb",
+		"topic": "ctf-website/techniques/23-paywall-bypass",
+		"title": "Network 规则拦截 — 阻止 Paywall 脚本加载",
+		"path": "src/content/docs/kb/ctf-website/techniques/23-paywall-bypass/03-network-rule-blocking.md",
+		"bytes": 15480,
+		"lines": 479,
+		"sha256": "bec2788666f5af3f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/23-paywall-bypass/04-content-extraction",
+		"group": "kb",
+		"topic": "ctf-website/techniques/23-paywall-bypass",
+		"title": "内容提取 — JSON-LD / Next.js / archive.is",
+		"path": "src/content/docs/kb/ctf-website/techniques/23-paywall-bypass/04-content-extraction.md",
+		"bytes": 24310,
+		"lines": 709,
+		"sha256": "14b0b6d3e2caabfa"
+	},
+	{
+		"id": "kb/ctf-website/techniques/23-paywall-bypass/05-dom-css-manipulation",
+		"group": "kb",
+		"topic": "ctf-website/techniques/23-paywall-bypass",
+		"title": "DOM / CSS / Storage 操作",
+		"path": "src/content/docs/kb/ctf-website/techniques/23-paywall-bypass/05-dom-css-manipulation.md",
+		"bytes": 20778,
+		"lines": 631,
+		"sha256": "459a96af38ee5c5b"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/00-overview",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "Database Attack Surface — 数据库攻击全景与决策树",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/00-overview.md",
+		"bytes": 12206,
+		"lines": 226,
+		"sha256": "1838c1246e2a6b25"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/01-sqli-fundamentals",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "SQL Injection Core — SQL 注入基础与全类型覆盖",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/01-sqli-fundamentals.md",
+		"bytes": 20875,
+		"lines": 593,
+		"sha256": "0a65eddf094ad468"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/02-sqli-advanced",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "Advanced SQLi & WAF Bypass — 高级注入与绕过技术",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/02-sqli-advanced.md",
+		"bytes": 20328,
+		"lines": 549,
+		"sha256": "09a5a3309f4b37e7"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/03-nosql-injection",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "NoSQL Injection — NoSQL 注入攻击",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/03-nosql-injection.md",
+		"bytes": 14279,
+		"lines": 459,
+		"sha256": "12317049cd39aa3a"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/04-config-exposure",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "Database Config Exposure — 数据库配置泄露",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/04-config-exposure.md",
+		"bytes": 13264,
+		"lines": 377,
+		"sha256": "385f4c69ace5a927"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/05-backup-log-leak",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "Database Backup & Log Leak — 数据库备份与日志泄露",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/05-backup-log-leak.md",
+		"bytes": 15137,
+		"lines": 482,
+		"sha256": "ab107d56c8fbdc6f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/06-card-platform",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "Card-Selling Platform Exploitation — 自动发卡平台攻击手册",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/06-card-platform.md",
+		"bytes": 14984,
+		"lines": 410,
+		"sha256": "a0084c6d29df1b88"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/07-data-cleaning",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "Database Dump Cleaning — 泄露数据清洗方法论",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/07-data-cleaning.md",
+		"bytes": 18836,
+		"lines": 488,
+		"sha256": "0fbf1e741e5c885e"
+	},
+	{
+		"id": "kb/ctf-website/techniques/24-database/README",
+		"group": "kb",
+		"topic": "ctf-website/techniques/24-database",
+		"title": "24-database — 数据库攻击技术",
+		"path": "src/content/docs/kb/ctf-website/techniques/24-database/README.md",
+		"bytes": 1589,
+		"lines": 26,
+		"sha256": "ea898fab0a96a8dc"
+	},
+	{
+		"id": "kb/ctf-website/techniques/attack-network",
+		"group": "kb",
+		"topic": "ctf-website/techniques",
+		"title": "Web 攻击网",
+		"path": "src/content/docs/kb/ctf-website/techniques/attack-network.md",
+		"bytes": 12661,
+		"lines": 345,
+		"sha256": "8353f27492bbd56f"
+	},
+	{
+		"id": "kb/ctf-website/techniques/README",
+		"group": "kb",
+		"topic": "ctf-website/techniques",
+		"title": "Web CTF技术库",
+		"path": "src/content/docs/kb/ctf-website/techniques/README.md",
+		"bytes": 15155,
+		"lines": 208,
+		"sha256": "78520af4b297f95b"
+	},
+	{
+		"id": "kb/edr_bypass_SKILL",
+		"group": "kb",
+		"topic": "",
+		"title": "EDR 绕过：从防御方实现逆向到红队绕过",
+		"path": "src/content/docs/kb/edr_bypass_SKILL.md",
+		"bytes": 9445,
+		"lines": 235,
+		"sha256": "aec103f818c88937"
+	},
+	{
+		"id": "kb/field_journal__index",
+		"group": "kb",
+		"topic": "",
+		"title": "项目经验索引",
+		"path": "src/content/docs/kb/field_journal__index.md",
+		"bytes": 6275,
+		"lines": 110,
+		"sha256": "2d92e47620b0bebc"
+	},
+	{
+		"id": "kb/field_journal__template",
+		"group": "kb",
+		"topic": "",
+		"title": "[日期] [项目简称]",
+		"path": "src/content/docs/kb/field_journal__template.md",
+		"bytes": 4474,
+		"lines": 115,
+		"sha256": "31acb54588de88f1"
+	},
+	{
+		"id": "kb/field_journal_2026-05-15_lumine-go-reverse",
+		"group": "kb",
+		"topic": "",
+		"title": "lumine v0.9.1 — Go TLS 分片代理逆向",
+		"path": "src/content/docs/kb/field_journal_2026-05-15_lumine-go-reverse.md",
+		"bytes": 2261,
+		"lines": 53,
+		"sha256": "86ec3d4c7b7f1146"
+	},
+	{
+		"id": "kb/field_journal_2026-05-15-cellular-pro-mumu-ksad-fragment-fix",
+		"group": "kb",
+		"topic": "",
+		"title": "field journal 2026 05 15 cellular pro mumu ksad fragment fix",
+		"path": "src/content/docs/kb/field_journal_2026-05-15-cellular-pro-mumu-ksad-fragment-fix.md",
+		"bytes": 1296,
+		"lines": 12,
+		"sha256": "ed4fe861c233c31c"
+	},
+	{
+		"id": "kb/field_journal_2026-05-16_pentest-personalblog-fun-mass-assignment",
+		"group": "kb",
+		"topic": "",
+		"title": "{targetdomain} 渗透测试记录",
+		"path": "src/content/docs/kb/field_journal_2026-05-16_pentest-personalblog-fun-mass-assignment.md",
+		"bytes": 5226,
+		"lines": 131,
+		"sha256": "7179d84b8fbffb82"
+	},
+	{
+		"id": "kb/field_journal_2026-05-17_pentest-vue-spa-actuator-leak",
+		"group": "kb",
+		"topic": "",
+		"title": "Field Journal — Vue SPA + Spring Boot 后台站点 Web 渗透",
+		"path": "src/content/docs/kb/field_journal_2026-05-17_pentest-vue-spa-actuator-leak.md",
+		"bytes": 3073,
+		"lines": 74,
+		"sha256": "bda68dab89a2f650"
+	},
+	{
+		"id": "kb/field_journal_2026-05-25_pentest-cf-access-sibling-subdomain-cookie-poisoning",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-05-25 CF Access 兄弟子域配置错误 → 跨子域 Cookie 投毒 + Session Fixation",
+		"path": "src/content/docs/kb/field_journal_2026-05-25_pentest-cf-access-sibling-subdomain-cookie-poisoning.md",
+		"bytes": 12308,
+		"lines": 203,
+		"sha256": "8b72a538d0e5941f"
+	},
+	{
+		"id": "kb/field_journal_2026-05-26_pentest-newapi-rate-limit-bypass",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-05-26 CTF Web 网关限速绕过与信息暴露",
+		"path": "src/content/docs/kb/field_journal_2026-05-26_pentest-newapi-rate-limit-bypass.md",
+		"bytes": 2959,
+		"lines": 77,
+		"sha256": "9bb07a57b94cbae7"
+	},
+	{
+		"id": "kb/field_journal_2026-06-29_burp-mcp-full-test-and-fix",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-06-29 burp-mcp-full 全量测试与修复",
+		"path": "src/content/docs/kb/field_journal_2026-06-29_burp-mcp-full-test-and-fix.md",
+		"bytes": 7592,
+		"lines": 142,
+		"sha256": "d0c88447c0223ad8"
+	},
+	{
+		"id": "kb/field_journal_2026-07-05_dsl-vm-captcha-reverse",
+		"group": "kb",
+		"topic": "",
+		"title": "验证码系统完整逆向分析",
+		"path": "src/content/docs/kb/field_journal_2026-07-05_dsl-vm-captcha-reverse.md",
+		"bytes": 3569,
+		"lines": 86,
+		"sha256": "8734cdf9d26d0f5b"
+	},
+	{
+		"id": "kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-07-14 Android ARM64 自解压程序源码恢复",
+		"path": "src/content/docs/kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery.md",
+		"bytes": 5797,
+		"lines": 109,
+		"sha256": "9b1a25ad1cba9f05"
+	},
+	{
+		"id": "kb/field_journal_2026-07-18_gin-juice-client-friction",
+		"group": "kb",
+		"topic": "",
+		"title": "现代 Web 靶场摩擦 → skill 加固",
+		"path": "src/content/docs/kb/field_journal_2026-07-18_gin-juice-client-friction.md",
+		"bytes": 1656,
+		"lines": 40,
+		"sha256": "8e595445e543537f"
+	},
+	{
+		"id": "kb/field_journal_2026-07-20_reverse-toolchain-windows-bootstrap",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-07-20 Windows 逆向工具链完整自举",
+		"path": "src/content/docs/kb/field_journal_2026-07-20_reverse-toolchain-windows-bootstrap.md",
+		"bytes": 4002,
+		"lines": 84,
+		"sha256": "f5e2595e0abc8881"
+	},
+	{
+		"id": "kb/field_journal_2026-07-22_electron-bytenode-privileged-update-chain",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-07-22 Electron Bytenode 特权更新链分析",
+		"path": "src/content/docs/kb/field_journal_2026-07-22_electron-bytenode-privileged-update-chain.md",
+		"bytes": 6824,
+		"lines": 102,
+		"sha256": "f10b8a854331bd35"
+	},
+	{
+		"id": "kb/field_journal_2026-08-01_nextjs-cdk-contract-faithful-local-reconstruction",
+		"group": "kb",
+		"topic": "",
+		"title": "Next.js CDK 订单中心的契约保真本地重建",
+		"path": "src/content/docs/kb/field_journal_2026-08-01_nextjs-cdk-contract-faithful-local-reconstruction.md",
+		"bytes": 7809,
+		"lines": 137,
+		"sha256": "4c6b159ca4a7896e"
+	},
+	{
+		"id": "kb/field_journal_2026-08-01_pentest-encryption-oracle-public-template-sql-admin-takeover",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-08-01 通用加密 oracle 与公开模板解析器组合成 SQL 管理员接管",
+		"path": "src/content/docs/kb/field_journal_2026-08-01_pentest-encryption-oracle-public-template-sql-admin-takeover.md",
+		"bytes": 8251,
+		"lines": 142,
+		"sha256": "2b8b006d2fa2d836"
+	},
+	{
+		"id": "kb/field_journal_2026-08-06_cortex-m-msc-firmware-self-keyed-rotate-xor",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-08-06 Cortex-M 虚拟磁盘升级固件的自带掩码旋转/XOR 封装",
+		"path": "src/content/docs/kb/field_journal_2026-08-06_cortex-m-msc-firmware-self-keyed-rotate-xor.md",
+		"bytes": 4944,
+		"lines": 107,
+		"sha256": "15deea9d9029948d"
+	},
+	{
+		"id": "kb/field_journal_2026-08-08_client-neutral-structured-routing-pr-integration",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-08-08 平台无关结构化路由 PR 集成",
+		"path": "src/content/docs/kb/field_journal_2026-08-08_client-neutral-structured-routing-pr-integration.md",
+		"bytes": 4181,
+		"lines": 100,
+		"sha256": "ac0a177339a30b49"
+	},
+	{
+		"id": "kb/field_journal_2026-08-08_pr-value-triage-and-safe-integration",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-08-08 开放 PR 价值分级与安全集成",
+		"path": "src/content/docs/kb/field_journal_2026-08-08_pr-value-triage-and-safe-integration.md",
+		"bytes": 1731,
+		"lines": 43,
+		"sha256": "15b9c8ee8c5e2708"
+	},
+	{
+		"id": "kb/field_journal_2026-08-14_windows-powershell-native-exit-code-pr-review",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-08-14 Windows PowerShell 原生命令退出码 PR 审查",
+		"path": "src/content/docs/kb/field_journal_2026-08-14_windows-powershell-native-exit-code-pr-review.md",
+		"bytes": 5652,
+		"lines": 108,
+		"sha256": "f26f36fe75bc3681"
+	},
+	{
+		"id": "kb/field_journal_2026-08-17_tool-index-r2-fallback-powershell-pwsh-host-fix",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-08-17 reverse-skill",
+		"path": "src/content/docs/kb/field_journal_2026-08-17_tool-index-r2-fallback-powershell-pwsh-host-fix.md",
+		"bytes": 12402,
+		"lines": 145,
+		"sha256": "0f3441d17f0f6d16"
+	},
+	{
+		"id": "kb/field_journal_2026-08-20_apk-flutter-banner-ad-removal",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-08-20 Flutter APK 服务端驱动广告去除（第三方仿冒包）",
+		"path": "src/content/docs/kb/field_journal_2026-08-20_apk-flutter-banner-ad-removal.md",
+		"bytes": 6115,
+		"lines": 67,
+		"sha256": "fb0ede0aa215230d"
+	},
+	{
+		"id": "kb/field_journal_2026-09-03_issue-pr-security-boundary-integration",
+		"group": "kb",
+		"topic": "",
+		"title": "2026-09-03 多 Issue/PR 安全边界集成",
+		"path": "src/content/docs/kb/field_journal_2026-09-03_issue-pr-security-boundary-integration.md",
+		"bytes": 3015,
+		"lines": 41,
+		"sha256": "b4d596aac3987837"
+	},
+	{
+		"id": "kb/field_journal_anonymization",
+		"group": "kb",
+		"topic": "",
+		"title": "Field-Journal 脱敏规范",
+		"path": "src/content/docs/kb/field_journal_anonymization.md",
+		"bytes": 6771,
+		"lines": 227,
+		"sha256": "903ad79fcce58db3"
+	},
+	{
+		"id": "kb/field_journal_CONTRIBUTE-BACK",
+		"group": "kb",
+		"topic": "",
+		"title": "社区进化：向主仓库贡献经验",
+		"path": "src/content/docs/kb/field_journal_CONTRIBUTE-BACK.md",
+		"bytes": 5438,
+		"lines": 149,
+		"sha256": "8ee66b7e3ac60de9"
+	},
+	{
+		"id": "kb/field_journal_precedent-auth",
+		"group": "kb",
+		"topic": "",
+		"title": "授权预声明 — 减少 disclaimer 噪音，不能代替 scope.md",
+		"path": "src/content/docs/kb/field_journal_precedent-auth.md",
+		"bytes": 1692,
+		"lines": 45,
+		"sha256": "7bf882239aa23e7b"
+	},
+	{
+		"id": "kb/field_journal_precedent-pentest",
+		"group": "kb",
+		"topic": "",
+		"title": "渗透测试操作先例库",
+		"path": "src/content/docs/kb/field_journal_precedent-pentest.md",
+		"bytes": 25617,
+		"lines": 507,
+		"sha256": "80fabd6239005732"
+	},
+	{
+		"id": "kb/field_journal_precedent-reverse",
+		"group": "kb",
+		"topic": "",
+		"title": "逆向工程操作先例库",
+		"path": "src/content/docs/kb/field_journal_precedent-reverse.md",
+		"bytes": 13545,
+		"lines": 255,
+		"sha256": "48dc691f86ba39aa"
+	},
+	{
+		"id": "kb/field_journal_seed-001_elf-packed-loader",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] ELF 自解压加载器逆向",
+		"path": "src/content/docs/kb/field_journal_seed-001_elf-packed-loader.md",
+		"bytes": 3350,
+		"lines": 94,
+		"sha256": "a943f62f45c9bd21"
+	},
+	{
+		"id": "kb/field_journal_seed-002_go-malware-stripped",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] Go 恶意软件逆向（stripped + Garble）",
+		"path": "src/content/docs/kb/field_journal_seed-002_go-malware-stripped.md",
+		"bytes": 3442,
+		"lines": 90,
+		"sha256": "e0c7ca18a03e7070"
+	},
+	{
+		"id": "kb/field_journal_seed-003_web-api-auth-bypass",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] Web API 未授权访问 + IDOR",
+		"path": "src/content/docs/kb/field_journal_seed-003_web-api-auth-bypass.md",
+		"bytes": 3247,
+		"lines": 88,
+		"sha256": "8841c9c3958a8900"
+	},
+	{
+		"id": "kb/field_journal_seed-004_js-sign-webpack",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] JS 签名逆向（Webpack + AES + 时间戳）",
+		"path": "src/content/docs/kb/field_journal_seed-004_js-sign-webpack.md",
+		"bytes": 3678,
+		"lines": 98,
+		"sha256": "e7d159bc51e18790"
+	},
+	{
+		"id": "kb/field_journal_seed-005_ad-certipy-esc1",
+		"group": "kb",
+		"topic": "",
+		"title": "[2026-03] AD CS ESC1 证书模板滥用 → 域管权限",
+		"path": "src/content/docs/kb/field_journal_seed-005_ad-certipy-esc1.md",
+		"bytes": 2040,
+		"lines": 64,
+		"sha256": "1e71c2ea90facf6a"
+	},
+	{
+		"id": "kb/field_journal_seed-006_ssrf-cloud-metadata",
+		"group": "kb",
+		"topic": "",
+		"title": "[2026-02] SSRF → 云元数据 → AK/SK → OSS 全量数据",
+		"path": "src/content/docs/kb/field_journal_seed-006_ssrf-cloud-metadata.md",
+		"bytes": 2762,
+		"lines": 91,
+		"sha256": "c6af26160cec7af6"
+	},
+	{
+		"id": "kb/field_journal_seed-007_ntlm-relay-coercer",
+		"group": "kb",
+		"topic": "",
+		"title": "[2026-04] NTLM Relay + Coercer → 域管权限（无需密码）",
+		"path": "src/content/docs/kb/field_journal_seed-007_ntlm-relay-coercer.md",
+		"bytes": 2987,
+		"lines": 96,
+		"sha256": "030095adb01de5de"
+	},
+	{
+		"id": "kb/field_journal_seed-008_apk-okhttp-ssl-pin-bypass",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] APK Frida 绕过 OkHttp SSL Pinning",
+		"path": "src/content/docs/kb/field_journal_seed-008_apk-okhttp-ssl-pin-bypass.md",
+		"bytes": 4502,
+		"lines": 104,
+		"sha256": "18e206e70bd64e48"
+	},
+	{
+		"id": "kb/field_journal_seed-009_ios-jailbreak-detect-bypass",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] iOS 越狱检测绕过 + 抓包",
+		"path": "src/content/docs/kb/field_journal_seed-009_ios-jailbreak-detect-bypass.md",
+		"bytes": 4662,
+		"lines": 108,
+		"sha256": "e742afb55a289139"
+	},
+	{
+		"id": "kb/field_journal_seed-010_ctf-pwn-rop-x64",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] CTF Pwn — x64 栈溢出 + ROP 链调用 system",
+		"path": "src/content/docs/kb/field_journal_seed-010_ctf-pwn-rop-x64.md",
+		"bytes": 5149,
+		"lines": 142,
+		"sha256": "13b81e4568e58962"
+	},
+	{
+		"id": "kb/field_journal_seed-011_pcap-protocol-reverse",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] PCAP 自定义二进制协议逆向",
+		"path": "src/content/docs/kb/field_journal_seed-011_pcap-protocol-reverse.md",
+		"bytes": 4642,
+		"lines": 134,
+		"sha256": "88275c0913835f4d"
+	},
+	{
+		"id": "kb/field_journal_seed-012_log4shell-jndi-rce",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] Log4Shell（CVE-2021-44228）JNDI 注入打 RCE",
+		"path": "src/content/docs/kb/field_journal_seed-012_log4shell-jndi-rce.md",
+		"bytes": 5176,
+		"lines": 120,
+		"sha256": "41fa60511fa734fb"
+	},
+	{
+		"id": "kb/field_journal_seed-013_kerberoasting-spn",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] Kerberoasting → 离线破解 → DA",
+		"path": "src/content/docs/kb/field_journal_seed-013_kerberoasting-spn.md",
+		"bytes": 4725,
+		"lines": 119,
+		"sha256": "dff44be83624c767"
+	},
+	{
+		"id": "kb/field_journal_seed-014_unity-il2cpp-reverse",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] Unity IL2CPP 游戏逆向 → 还原元数据 + 修改逻辑",
+		"path": "src/content/docs/kb/field_journal_seed-014_unity-il2cpp-reverse.md",
+		"bytes": 5421,
+		"lines": 136,
+		"sha256": "432ea0d05f1c9d11"
+	},
+	{
+		"id": "kb/field_journal_seed-015_iot-firmware-uart",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] IoT 路由器固件提取 + UART 串口拿 root",
+		"path": "src/content/docs/kb/field_journal_seed-015_iot-firmware-uart.md",
+		"bytes": 6185,
+		"lines": 175,
+		"sha256": "c24acb5e090f328c"
+	},
+	{
+		"id": "kb/field_journal_seed-016_k8s-container-escape",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] 容器逃逸 → 拿宿主机 root（capsysadmin / 特权容器 / docker.sock）",
+		"path": "src/content/docs/kb/field_journal_seed-016_k8s-container-escape.md",
+		"bytes": 6708,
+		"lines": 185,
+		"sha256": "a4bde9f5ebaf3623"
+	},
+	{
+		"id": "kb/field_journal_seed-017_xxe-oob-exfil",
+		"group": "kb",
+		"topic": "",
+		"title": "[种子] XXE 盲注 OOB → 外带 /etc/passwd 与内网探测",
+		"path": "src/content/docs/kb/field_journal_seed-017_xxe-oob-exfil.md",
+		"bytes": 5466,
+		"lines": 162,
+		"sha256": "bfb1e665fb6a4373"
+	},
+	{
+		"id": "kb/general/README",
+		"group": "kb",
+		"topic": "general",
+		"title": "General 通用逆向知识库 — 密码学/内核/游戏作弊/协议 17 篇",
+		"path": "src/content/docs/kb/general/README.md",
+		"bytes": 533,
+		"lines": 13,
+		"sha256": "95b020d37e4e682a"
+	},
+	{
+		"id": "kb/general/techniques/01-kernel/01-page-cache-write-family",
+		"group": "kb",
+		"topic": "general/techniques/01-kernel",
+		"title": "Linux 内核 Page-Cache 写入家族：Copy Fail / Dirty Frag / Fragnesia",
+		"path": "src/content/docs/kb/general/techniques/01-kernel/01-page-cache-write-family.md",
+		"bytes": 11382,
+		"lines": 327,
+		"sha256": "0e2155bc9144160c"
+	},
+	{
+		"id": "kb/general/techniques/01-kernel/02-slab-cross-cache",
+		"group": "kb",
+		"topic": "general/techniques/01-kernel",
+		"title": "Slab 跨缓存释放：KFENCE 精确大小报告导致 SKB head 释放到错误缓存（CVE-2026-31429）",
+		"path": "src/content/docs/kb/general/techniques/01-kernel/02-slab-cross-cache.md",
+		"bytes": 6995,
+		"lines": 209,
+		"sha256": "ba6c773e31638382"
+	},
+	{
+		"id": "kb/general/techniques/01-kernel/03-mm-null-ptrace-bypass",
+		"group": "kb",
+		"topic": "general/techniques/01-kernel",
+		"title": "内核 FD Theft：mm-NULL ptrace check bypass（CVE-2026-46333）",
+		"path": "src/content/docs/kb/general/techniques/01-kernel/03-mm-null-ptrace-bypass.md",
+		"bytes": 7120,
+		"lines": 225,
+		"sha256": "f2d80b0d81dad8cf"
+	},
+	{
+		"id": "kb/general/techniques/01-kernel/04-cifswitch-nss-privesc",
+		"group": "kb",
+		"topic": "general/techniques/01-kernel",
+		"title": "CIFSwitch：cifs.spnego 身份混淆 → root 权限 NSS 加载（QVD-2026-29453）",
+		"path": "src/content/docs/kb/general/techniques/01-kernel/04-cifswitch-nss-privesc.md",
+		"bytes": 6215,
+		"lines": 194,
+		"sha256": "411ffc85313ec46f"
+	},
+	{
+		"id": "kb/general/techniques/01-kernel/05-pintheft-io-uring-page-cache",
+		"group": "kb",
+		"topic": "general/techniques/01-kernel",
+		"title": "RDS zcopy double-free + iouring dangling struct page：PinTheft 内核 LPE（QVD-2026-27616）",
+		"path": "src/content/docs/kb/general/techniques/01-kernel/05-pintheft-io-uring-page-cache.md",
+		"bytes": 6319,
+		"lines": 177,
+		"sha256": "36f4541fe634accf"
+	},
+	{
+		"id": "kb/general/techniques/attack-network",
+		"group": "kb",
+		"topic": "general/techniques",
+		"title": "General 逆向攻击网",
+		"path": "src/content/docs/kb/general/techniques/attack-network.md",
+		"bytes": 13973,
+		"lines": 355,
+		"sha256": "c18f67489e79ef72"
+	},
+	{
+		"id": "kb/general/techniques/cheating/01-memory-hacking",
+		"group": "kb",
+		"topic": "general/techniques/cheating",
+		"title": "内存搜索与修改",
+		"path": "src/content/docs/kb/general/techniques/cheating/01-memory-hacking.md",
+		"bytes": 14501,
+		"lines": 458,
+		"sha256": "f18c0aa006dcb3f5"
+	},
+	{
+		"id": "kb/general/techniques/cheating/02-packet-interception",
+		"group": "kb",
+		"topic": "general/techniques/cheating",
+		"title": "封包拦截与修改",
+		"path": "src/content/docs/kb/general/techniques/cheating/02-packet-interception.md",
+		"bytes": 17074,
+		"lines": 533,
+		"sha256": "375783a1dd678421"
+	},
+	{
+		"id": "kb/general/techniques/cheating/03-esp-wallhack-rendering",
+		"group": "kb",
+		"topic": "general/techniques/cheating",
+		"title": "透视/ESP 渲染技术",
+		"path": "src/content/docs/kb/general/techniques/cheating/03-esp-wallhack-rendering.md",
+		"bytes": 16694,
+		"lines": 526,
+		"sha256": "3c73eda1d76f4912"
+	},
+	{
+		"id": "kb/general/techniques/cheating/04-anti-cheat-bypass",
+		"group": "kb",
+		"topic": "general/techniques/cheating",
+		"title": "反作弊系统绕过",
+		"path": "src/content/docs/kb/general/techniques/cheating/04-anti-cheat-bypass.md",
+		"bytes": 18513,
+		"lines": 546,
+		"sha256": "c4a432ee5b65258b"
+	},
+	{
+		"id": "kb/general/techniques/cheating/05-speedhack-time-manipulation",
+		"group": "kb",
+		"topic": "general/techniques/cheating",
+		"title": "加速/时间操控",
+		"path": "src/content/docs/kb/general/techniques/cheating/05-speedhack-time-manipulation.md",
+		"bytes": 16215,
+		"lines": 512,
+		"sha256": "e1fb8a682e3ceda4"
+	},
+	{
+		"id": "kb/general/techniques/crypto/01-algorithm-identification",
+		"group": "kb",
+		"topic": "general/techniques/crypto",
+		"title": "算法盲识别：从字节特征反推加密/哈希/压缩算法",
+		"path": "src/content/docs/kb/general/techniques/crypto/01-algorithm-identification.md",
+		"bytes": 31406,
+		"lines": 1000,
+		"sha256": "e3d9a8dda7be3bba"
+	},
+	{
+		"id": "kb/general/techniques/crypto/02-custom-obfuscation-reverse",
+		"group": "kb",
+		"topic": "general/techniques/crypto",
+		"title": "自定义混淆/加密还原方法论",
+		"path": "src/content/docs/kb/general/techniques/crypto/02-custom-obfuscation-reverse.md",
+		"bytes": 32265,
+		"lines": 999,
+		"sha256": "2e9269ba17ed2385"
+	},
+	{
+		"id": "kb/general/techniques/crypto/03-prng-randomness-cracking",
+		"group": "kb",
+		"topic": "general/techniques/crypto",
+		"title": "伪随机数生成器(PRNG)破解 — 从输出恢复内部状态与种子",
+		"path": "src/content/docs/kb/general/techniques/crypto/03-prng-randomness-cracking.md",
+		"bytes": 23675,
+		"lines": 778,
+		"sha256": "ade5000f5f10c6ab"
+	},
+	{
+		"id": "kb/general/techniques/methodology/01-reverse-checklist-first-30-min",
+		"group": "kb",
+		"topic": "general/techniques/methodology",
+		"title": "拿到样本的前30分钟清单",
+		"path": "src/content/docs/kb/general/techniques/methodology/01-reverse-checklist-first-30-min.md",
+		"bytes": 14570,
+		"lines": 492,
+		"sha256": "e87e4fc93b03550d"
+	},
+	{
+		"id": "kb/general/techniques/methodology/02-toolchain-decision-tree",
+		"group": "kb",
+		"topic": "general/techniques/methodology",
+		"title": "按信号选工具决策树",
+		"path": "src/content/docs/kb/general/techniques/methodology/02-toolchain-decision-tree.md",
+		"bytes": 18156,
+		"lines": 448,
+		"sha256": "25228f1ac37d8578"
+	},
+	{
+		"id": "kb/general/techniques/protocol/01-unknown-protocol-reverse",
+		"group": "kb",
+		"topic": "general/techniques/protocol",
+		"title": "未知协议逆向方法论",
+		"path": "src/content/docs/kb/general/techniques/protocol/01-unknown-protocol-reverse.md",
+		"bytes": 28774,
+		"lines": 887,
+		"sha256": "6e1b140132f3a1a1"
+	},
+	{
+		"id": "kb/general/techniques/protocol/02-protobuf-flatbuffers-reverse",
+		"group": "kb",
+		"topic": "general/techniques/protocol",
+		"title": "Protobuf / FlatBuffers 无 Schema 逆向",
+		"path": "src/content/docs/kb/general/techniques/protocol/02-protobuf-flatbuffers-reverse.md",
+		"bytes": 33041,
+		"lines": 1091,
+		"sha256": "b1056fb0e4b0f86b"
+	},
+	{
+		"id": "kb/general/techniques/README",
+		"group": "kb",
+		"topic": "general/techniques",
+		"title": "通用逆向技术库",
+		"path": "src/content/docs/kb/general/techniques/README.md",
+		"bytes": 3013,
+		"lines": 52,
+		"sha256": "5fb6c655b3c2469c"
+	},
+	{
+		"id": "kb/js_reverse_SKILL",
+		"group": "kb",
+		"topic": "",
+		"title": "MCP 前端 JS 逆向作业规范",
+		"path": "src/content/docs/kb/js_reverse_SKILL.md",
+		"bytes": 9091,
+		"lines": 216,
+		"sha256": "ba6379bb85d2f9d8"
+	},
+	{
+		"id": "kb/mumu_crash_guard_and_hotpatch_spec",
+		"group": "kb",
+		"topic": "",
+		"title": "Windows 客户端复杂宿主内存热补丁与崩溃防御规范 (MuMu 实战提炼)",
+		"path": "src/content/docs/kb/mumu_crash_guard_and_hotpatch_spec.md",
+		"bytes": 3751,
+		"lines": 82,
+		"sha256": "5f29441eb36f31a6"
+	},
+	{
+		"id": "kb/pe-reverse/ai-findings/README",
+		"group": "kb",
+		"topic": "pe-reverse/ai-findings",
+		"title": "PE Reverse AI Findings",
+		"path": "src/content/docs/kb/pe-reverse/ai-findings/README.md",
+		"bytes": 975,
+		"lines": 27,
+		"sha256": "90aec836eb0c238c"
+	},
+	{
+		"id": "kb/pe-reverse/README",
+		"group": "kb",
+		"topic": "pe-reverse",
+		"title": "PE Reverse 逆向工程知识库 — Windows 二进制分析 24 篇",
+		"path": "src/content/docs/kb/pe-reverse/README.md",
+		"bytes": 655,
+		"lines": 19,
+		"sha256": "95e118db6c37c6df"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/01-triage/01-aob-signature-scan",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/01-triage",
+		"title": "AOB 特征码扫描",
+		"path": "src/content/docs/kb/pe-reverse/techniques/01-triage/01-aob-signature-scan.md",
+		"bytes": 8189,
+		"lines": 240,
+		"sha256": "4290ff9e7716d140"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/02-pe-structure/01-pe-header-parsing",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/02-pe-structure",
+		"title": "PE 头解析与节区定位",
+		"path": "src/content/docs/kb/pe-reverse/techniques/02-pe-structure/01-pe-header-parsing.md",
+		"bytes": 8483,
+		"lines": 243,
+		"sha256": "52f021921bdbdb40"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/02-pe-structure/02-tls-callback-analysis",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/02-pe-structure",
+		"title": "TLS Callback 定位与早期执行链",
+		"path": "src/content/docs/kb/pe-reverse/techniques/02-pe-structure/02-tls-callback-analysis.md",
+		"bytes": 4646,
+		"lines": 169,
+		"sha256": "8b0fad497b7e446d"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/03-static-analysis/01-struct-reconstruction",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/03-static-analysis",
+		"title": "内存结构体逆向重建",
+		"path": "src/content/docs/kb/pe-reverse/techniques/03-static-analysis/01-struct-reconstruction.md",
+		"bytes": 8664,
+		"lines": 253,
+		"sha256": "dd4fb349293ae186"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/03-static-analysis/02-disasm-jit-asm",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/03-static-analysis",
+		"title": "反汇编（Zydis）与 JIT 汇编（Xbyak）",
+		"path": "src/content/docs/kb/pe-reverse/techniques/03-static-analysis/02-disasm-jit-asm.md",
+		"bytes": 8853,
+		"lines": 297,
+		"sha256": "2649d7265ee13085"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/03-static-analysis/03-x64dbg-breakpoints",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/03-static-analysis",
+		"title": "x64dbg 断点策略",
+		"path": "src/content/docs/kb/pe-reverse/techniques/03-static-analysis/03-x64dbg-breakpoints.md",
+		"bytes": 6906,
+		"lines": 222,
+		"sha256": "374bce7528808146"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/03-static-analysis/04-reclass-reconstruction",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/03-static-analysis",
+		"title": "ReClass 结构体实时重建",
+		"path": "src/content/docs/kb/pe-reverse/techniques/03-static-analysis/04-reclass-reconstruction.md",
+		"bytes": 7586,
+		"lines": 221,
+		"sha256": "410dfdbead0e00ec"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/03-static-analysis/05-dynamic-api-resolution",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/03-static-analysis",
+		"title": "动态 API 解析链还原",
+		"path": "src/content/docs/kb/pe-reverse/techniques/03-static-analysis/05-dynamic-api-resolution.md",
+		"bytes": 5751,
+		"lines": 200,
+		"sha256": "ab02905f37c41d47"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/01-dll-injection",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "DLL 注入三模式",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/01-dll-injection.md",
+		"bytes": 7135,
+		"lines": 227,
+		"sha256": "e12af9c5ee1a52bf"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/02-trampoline-detour",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "Trampoline Hook（函数劫持）",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/02-trampoline-detour.md",
+		"bytes": 8174,
+		"lines": 257,
+		"sha256": "cd60997cb25c247a"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/03-external-memory-rw",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "外部进程内存读写",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/03-external-memory-rw.md",
+		"bytes": 7031,
+		"lines": 236,
+		"sha256": "156133e00e623266"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/04-naked-function-hook",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "Naked 函数 Hook（内联汇编）",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/04-naked-function-hook.md",
+		"bytes": 8655,
+		"lines": 282,
+		"sha256": "7b364ec3e117348d"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/05-anti-debug-bypass",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "反调试检测与绕过",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/05-anti-debug-bypass.md",
+		"bytes": 9291,
+		"lines": 284,
+		"sha256": "e777c7ff7b82d4f0"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/06-manual-map-injection",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "手动映射 DLL 注入",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/06-manual-map-injection.md",
+		"bytes": 9794,
+		"lines": 282,
+		"sha256": "a0461d0ec1b825c3"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/07-direct-syscall",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "Direct Syscall：绕过用户态 Hook",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/07-direct-syscall.md",
+		"bytes": 7545,
+		"lines": 245,
+		"sha256": "43aa244131073567"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/04-dynamic-analysis/08-procmon-patterns",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/04-dynamic-analysis",
+		"title": "Procmon 行为监控与过滤",
+		"path": "src/content/docs/kb/pe-reverse/techniques/04-dynamic-analysis/08-procmon-patterns.md",
+		"bytes": 6720,
+		"lines": 216,
+		"sha256": "0d7ed767dd9307f1"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/05-crypto-unpack/01-pe-unpack-dump",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/05-crypto-unpack",
+		"title": "PE 脱壳与内存 Dump",
+		"path": "src/content/docs/kb/pe-reverse/techniques/05-crypto-unpack/01-pe-unpack-dump.md",
+		"bytes": 7288,
+		"lines": 235,
+		"sha256": "6456d561f9fef85a"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/05-crypto-unpack/02-vmp-virtualization-analysis",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/05-crypto-unpack",
+		"title": "VMP 虚拟化原理与 VM Entry 定位",
+		"path": "src/content/docs/kb/pe-reverse/techniques/05-crypto-unpack/02-vmp-virtualization-analysis.md",
+		"bytes": 11506,
+		"lines": 224,
+		"sha256": "ac61107550b168d6"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/05-crypto-unpack/03-vmp-devirtualization-toolchain",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/05-crypto-unpack",
+		"title": "VMP 去虚拟化工具链（Devirtualization）",
+		"path": "src/content/docs/kb/pe-reverse/techniques/05-crypto-unpack/03-vmp-devirtualization-toolchain.md",
+		"bytes": 9886,
+		"lines": 193,
+		"sha256": "b715566b0d2ee1b2"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/06-ioc-extraction/01-ioc-extraction",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/06-ioc-extraction",
+		"title": "IOC 提取技巧",
+		"path": "src/content/docs/kb/pe-reverse/techniques/06-ioc-extraction/01-ioc-extraction.md",
+		"bytes": 7336,
+		"lines": 248,
+		"sha256": "84e30b92258b983c"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/06-ioc-extraction/02-persistence-startup-chain",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/06-ioc-extraction",
+		"title": "持久化与启动链 IOC 提取",
+		"path": "src/content/docs/kb/pe-reverse/techniques/06-ioc-extraction/02-persistence-startup-chain.md",
+		"bytes": 4893,
+		"lines": 172,
+		"sha256": "068a20993bd93ec6"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/07-yara-sigma/01-yara-rule-writing",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/07-yara-sigma",
+		"title": "YARA 规则编写（逆向视角）",
+		"path": "src/content/docs/kb/pe-reverse/techniques/07-yara-sigma/01-yara-rule-writing.md",
+		"bytes": 7393,
+		"lines": 244,
+		"sha256": "5e89a3dd8ab02aa4"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/08-patch/01-code-patching",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/08-patch",
+		"title": "代码 Patch 与字节修改",
+		"path": "src/content/docs/kb/pe-reverse/techniques/08-patch/01-code-patching.md",
+		"bytes": 8579,
+		"lines": 268,
+		"sha256": "b863ed68dc4520b0"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/09-av-evasion/01-ai-powered-evasion",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/09-av-evasion",
+		"title": "AI 驱动免杀：Shellcode 处理 + Loader 编写",
+		"path": "src/content/docs/kb/pe-reverse/techniques/09-av-evasion/01-ai-powered-evasion.md",
+		"bytes": 27114,
+		"lines": 776,
+		"sha256": "e2989d832ce90840"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/01-license-mechanism-classification",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "许可证机制分类与攻击路径选择",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/01-license-mechanism-classification.md",
+		"bytes": 9147,
+		"lines": 209,
+		"sha256": "654780643bbecc1f"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/02-validation-function-location",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "许可证校验函数定位",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/02-validation-function-location.md",
+		"bytes": 8386,
+		"lines": 220,
+		"sha256": "e767067984be4357"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/03-key-algorithm-recovery",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "注册码算法还原与 keygen 复现",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/03-key-algorithm-recovery.md",
+		"bytes": 10759,
+		"lines": 285,
+		"sha256": "df1686d014dbb92b"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/04-signature-chain-pubkey-swap",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "签名链校验与公钥替换攻击",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/04-signature-chain-pubkey-swap.md",
+		"bytes": 8054,
+		"lines": 196,
+		"sha256": "6b1cbebd2f8c0017"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/05-keygen-frida-verification-loop",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "keygen 实机验证闭环（Frida 进程内替换）",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/05-keygen-frida-verification-loop.md",
+		"bytes": 8448,
+		"lines": 222,
+		"sha256": "439b90c40de66731"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/06-cloud-license-frida-hook",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "云端授权识别与 Frida hook 替代路径",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/06-cloud-license-frida-hook.md",
+		"bytes": 7855,
+		"lines": 206,
+		"sha256": "c72c2740f2d8aa5a"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/07-self-referencing-signature-convergence",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "自引用签名嵌入与单步迭代收敛",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/07-self-referencing-signature-convergence.md",
+		"bytes": 7456,
+		"lines": 198,
+		"sha256": "29397621f77d641f"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/08-cross-version-aob-migration",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "跨版本 AOB 特征码迁移与双态修补",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/08-cross-version-aob-migration.md",
+		"bytes": 13980,
+		"lines": 363,
+		"sha256": "7c73efb387d23aa6"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/09-runtime-callstack-locating",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "运行时调用栈定位法",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/09-runtime-callstack-locating.md",
+		"bytes": 10983,
+		"lines": 301,
+		"sha256": "92d184498c53fa9e"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/10-license-keygen/10-multiversion-signature-narrowing",
+		"group": "kb",
+		"topic": "pe-reverse/techniques/10-license-keygen",
+		"title": "多版本特征码收窄与数据段填充漂移陷阱",
+		"path": "src/content/docs/kb/pe-reverse/techniques/10-license-keygen/10-multiversion-signature-narrowing.md",
+		"bytes": 9326,
+		"lines": 243,
+		"sha256": "eb0575025304e835"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/attack-network",
+		"group": "kb",
+		"topic": "pe-reverse/techniques",
+		"title": "PE 逆向攻击网",
+		"path": "src/content/docs/kb/pe-reverse/techniques/attack-network.md",
+		"bytes": 16214,
+		"lines": 409,
+		"sha256": "99f60280b8f1259a"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/README",
+		"group": "kb",
+		"topic": "pe-reverse/techniques",
+		"title": "PE 逆向技术库",
+		"path": "src/content/docs/kb/pe-reverse/techniques/README.md",
+		"bytes": 6337,
+		"lines": 91,
+		"sha256": "a8609ed3fd0e1b3b"
+	},
+	{
+		"id": "kb/re_pattern_anti-analysis",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Anti-Analysis Techniques & Bypasses",
+		"path": "src/content/docs/kb/re_pattern_anti-analysis.md",
+		"bytes": 33167,
+		"lines": 836,
+		"sha256": "338417bde3a4473c"
+	},
+	{
+		"id": "kb/re_pattern_awesome-re-resources",
+		"group": "kb",
+		"topic": "",
+		"title": "逆向工程参考资源汇总",
+		"path": "src/content/docs/kb/re_pattern_awesome-re-resources.md",
+		"bytes": 6510,
+		"lines": 136,
+		"sha256": "58cc6e32781cc9ea"
+	},
+	{
+		"id": "kb/re_pattern_crypto-decode-tools",
+		"group": "kb",
+		"topic": "",
+		"title": "加解密 / 编解码工具速查",
+		"path": "src/content/docs/kb/re_pattern_crypto-decode-tools.md",
+		"bytes": 6974,
+		"lines": 221,
+		"sha256": "1c2ce07acdbdbdd6"
+	},
+	{
+		"id": "kb/re_pattern_elf-analysis",
+		"group": "kb",
+		"topic": "",
+		"title": "ELF 二进制深度分析参考",
+		"path": "src/content/docs/kb/re_pattern_elf-analysis.md",
+		"bytes": 8618,
+		"lines": 297,
+		"sha256": "71ce8375e3119421"
+	},
+	{
+		"id": "kb/re_pattern_field-notes",
+		"group": "kb",
+		"topic": "",
+		"title": "Reverse Engineering Field Notes",
+		"path": "src/content/docs/kb/re_pattern_field-notes.md",
+		"bytes": 39059,
+		"lines": 540,
+		"sha256": "0f47426788f1cc8e"
+	},
+	{
+		"id": "kb/re_pattern_go-reverse",
+		"group": "kb",
+		"topic": "",
+		"title": "Go 二进制逆向指南",
+		"path": "src/content/docs/kb/re_pattern_go-reverse.md",
+		"bytes": 7250,
+		"lines": 241,
+		"sha256": "75e9060c4f6dd341"
+	},
+	{
+		"id": "kb/re_pattern_kernel-driver-reverse",
+		"group": "kb",
+		"topic": "",
+		"title": "内核驱动逆向参考",
+		"path": "src/content/docs/kb/re_pattern_kernel-driver-reverse.md",
+		"bytes": 10745,
+		"lines": 299,
+		"sha256": "f08149742b25287d"
+	},
+	{
+		"id": "kb/re_pattern_languages",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Language-Specific Techniques",
+		"path": "src/content/docs/kb/re_pattern_languages.md",
+		"bytes": 20549,
+		"lines": 500,
+		"sha256": "ba8e9c8f8df9351e"
+	},
+	{
+		"id": "kb/re_pattern_languages-compiled",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Compiled Language Reversing (Go, Rust)",
+		"path": "src/content/docs/kb/re_pattern_languages-compiled.md",
+		"bytes": 22928,
+		"lines": 588,
+		"sha256": "26aecb4f27d050bb"
+	},
+	{
+		"id": "kb/re_pattern_languages-platforms",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Platform & Framework-Specific Techniques",
+		"path": "src/content/docs/kb/re_pattern_languages-platforms.md",
+		"bytes": 23470,
+		"lines": 487,
+		"sha256": "67b6d6bb199c0eb6"
+	},
+	{
+		"id": "kb/re_pattern_patterns",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Patterns & Techniques",
+		"path": "src/content/docs/kb/re_pattern_patterns.md",
+		"bytes": 29980,
+		"lines": 802,
+		"sha256": "be64443fcbd3d83d"
+	},
+	{
+		"id": "kb/re_pattern_patterns-ctf",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Competition-Specific Patterns (Part 1)",
+		"path": "src/content/docs/kb/re_pattern_patterns-ctf.md",
+		"bytes": 24249,
+		"lines": 533,
+		"sha256": "41edf048db36c3cb"
+	},
+	{
+		"id": "kb/re_pattern_patterns-ctf-2",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Competition-Specific Patterns (Part 2)",
+		"path": "src/content/docs/kb/re_pattern_patterns-ctf-2.md",
+		"bytes": 19220,
+		"lines": 398,
+		"sha256": "8d3b7d1fde1cd091"
+	},
+	{
+		"id": "kb/re_pattern_patterns-ctf-3",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Competition-Specific Patterns (Part 3)",
+		"path": "src/content/docs/kb/re_pattern_patterns-ctf-3.md",
+		"bytes": 34672,
+		"lines": 720,
+		"sha256": "76cfa06f01a4e8ed"
+	},
+	{
+		"id": "kb/re_pattern_platforms",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Platform-Specific Reversing",
+		"path": "src/content/docs/kb/re_pattern_platforms.md",
+		"bytes": 14279,
+		"lines": 443,
+		"sha256": "a0d87958d7430f7b"
+	},
+	{
+		"id": "kb/re_pattern_platforms-hardware",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Hardware and Advanced Architecture Reversing",
+		"path": "src/content/docs/kb/re_pattern_platforms-hardware.md",
+		"bytes": 11148,
+		"lines": 305,
+		"sha256": "123b5cc066bc09d7"
+	},
+	{
+		"id": "kb/re_pattern_SKILL",
+		"group": "kb",
+		"topic": "",
+		"title": "Reverse Engineering",
+		"path": "src/content/docs/kb/re_pattern_SKILL.md",
+		"bytes": 14515,
+		"lines": 215,
+		"sha256": "7128b8445c61d419"
+	},
+	{
+		"id": "kb/re_pattern_tools",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Tools Reference",
+		"path": "src/content/docs/kb/re_pattern_tools.md",
+		"bytes": 14720,
+		"lines": 547,
+		"sha256": "212701fca9bd636c"
+	},
+	{
+		"id": "kb/re_pattern_tools-advanced",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Advanced Tools & Deobfuscation",
+		"path": "src/content/docs/kb/re_pattern_tools-advanced.md",
+		"bytes": 26511,
+		"lines": 823,
+		"sha256": "7331d328c6f028a2"
+	},
+	{
+		"id": "kb/re_pattern_tools-dynamic",
+		"group": "kb",
+		"topic": "",
+		"title": "CTF Reverse - Dynamic Analysis Tools",
+		"path": "src/content/docs/kb/re_pattern_tools-dynamic.md",
+		"bytes": 29969,
+		"lines": 847,
+		"sha256": "c8b082d9be576e08"
+	},
+	{
+		"id": "kb/README",
+		"group": "kb",
+		"topic": "",
+		"title": "Knowledge Base",
+		"path": "src/content/docs/kb/README.md",
+		"bytes": 644,
+		"lines": 13,
+		"sha256": "59510455ef6e3469"
+	},
+	{
+		"id": "kb/windows/README",
+		"group": "kb",
+		"topic": "windows",
+		"title": "Windows 逆向技术库",
+		"path": "src/content/docs/kb/windows/README.md",
+		"bytes": 540,
+		"lines": 22,
+		"sha256": "2374a535a5bcb1e2"
+	},
+	{
+		"id": "kb/windows/techniques/notepadpp-config-injection",
+		"group": "kb",
+		"topic": "windows/techniques",
+		"title": "Notepad++ config.xml 命令注入（CVE-2026-48778）",
+		"path": "src/content/docs/kb/windows/techniques/notepadpp-config-injection.md",
+		"bytes": 5114,
+		"lines": 156,
+		"sha256": "ca37a3f9d780d84a"
+	},
+	{
+		"id": "kb/windows/techniques/README",
+		"group": "kb",
+		"topic": "windows/techniques",
+		"title": "Windows 技术库",
+		"path": "src/content/docs/kb/windows/techniques/README.md",
+		"bytes": 227,
+		"lines": 10,
+		"sha256": "47009b0f42c74ec4"
+	},
+	{
+		"id": "kit-docs/DOWNLOADS",
+		"group": "kit-docs",
+		"topic": "",
+		"title": "下载清单 (DOWNLOADS)",
+		"path": "src/content/docs/kit-docs/DOWNLOADS.md",
+		"bytes": 11359,
+		"lines": 323,
+		"sha256": "3703e738e2d0d105"
+	},
+	{
+		"id": "kit-docs/MCP-SETUP",
+		"group": "kit-docs",
+		"topic": "",
+		"title": "MCP 配置与验证 (MCP-SETUP)",
+		"path": "src/content/docs/kit-docs/MCP-SETUP.md",
+		"bytes": 7733,
+		"lines": 229,
+		"sha256": "83a3bac5146f8fd2"
+	},
+	{
+		"id": "kit-docs/PROVENANCE",
+		"group": "kit-docs",
+		"topic": "",
+		"title": "组件溯源清单 (PROVENANCE)",
+		"path": "src/content/docs/kit-docs/PROVENANCE.md",
+		"bytes": 12850,
+		"lines": 253,
+		"sha256": "91b8620e12bbc454"
+	},
+	{
+		"id": "kit-docs/README_MCP",
+		"group": "kit-docs",
+		"topic": "",
+		"title": "seep — AI-Native 逆向工程与攻防 MCP Server",
+		"path": "src/content/docs/kit-docs/README_MCP.md",
+		"bytes": 3650,
+		"lines": 85,
+		"sha256": "8032828d500d4ec1"
+	},
+	{
+		"id": "kit-docs/tool-index",
+		"group": "kit-docs",
+		"topic": "",
+		"title": "逆向工具索引",
+		"path": "src/content/docs/kit-docs/tool-index.md",
+		"bytes": 6189,
+		"lines": 63,
+		"sha256": "c2a284bccdda2261"
+	},
+	{
+		"id": "kit-docs/TOOLKIT_GUIDE",
+		"group": "kit-docs",
+		"topic": "",
+		"title": "逆向与客户端安全实战工具箱使用指南 (Toolkit Guide)",
+		"path": "src/content/docs/kit-docs/TOOLKIT_GUIDE.md",
+		"bytes": 4084,
+		"lines": 74,
+		"sha256": "dbb29b065aadea9d"
+	},
+	{
+		"id": "kit-docs/WORKSPACE_RULES",
+		"group": "kit-docs",
+		"topic": "",
+		"title": "Seep 工作空间任务隔离与目录管理规范 (Workspace Rules)",
+		"path": "src/content/docs/kit-docs/WORKSPACE_RULES.md",
+		"bytes": 2127,
+		"lines": 34,
+		"sha256": "98d7620da6769b14"
+	},
+	{
+		"id": "manual/ANTI-DEBUG",
+		"group": "manual",
+		"topic": "",
+		"title": "MANUAL — 反调试对抗与强反调试绕过 (Anti-Debug Bypass SOP)",
+		"path": "src/content/docs/manual/ANTI-DEBUG.md",
+		"bytes": 7532,
+		"lines": 191,
+		"sha256": "ded1d44102a94512"
+	},
+	{
+		"id": "manual/COMPLIANCE-RELAY",
+		"group": "manual",
+		"topic": "",
+		"title": "MANUAL — 合规转译中继与防拒体系 (Compliance Relay & Anti-Refusal)",
+		"path": "src/content/docs/manual/COMPLIANCE-RELAY.md",
+		"bytes": 14287,
+		"lines": 367,
+		"sha256": "982ad4ed5a4ec6fd"
+	},
+	{
+		"id": "manual/CROSS-PLATFORM",
+		"group": "manual",
+		"topic": "",
+		"title": "MANUAL — macOS 与 Linux 跨平台运行与战术等价映射指南 (Cross-Platform SOP)",
+		"path": "src/content/docs/manual/CROSS-PLATFORM.md",
+		"bytes": 5102,
+		"lines": 121,
+		"sha256": "3ad9733bf04ff636"
+	},
+	{
+		"id": "manual/DEPLOYMENT",
+		"group": "manual",
+		"topic": "",
+		"title": "MANUAL — 工作台全景部署与多 Agent 集成指南 (Deployment Guide)",
+		"path": "src/content/docs/manual/DEPLOYMENT.md",
+		"bytes": 16470,
+		"lines": 388,
+		"sha256": "96faf6123e37f5f0"
+	},
+	{
+		"id": "manual/DEPLOYMENT-CHECKLIST",
+		"group": "manual",
+		"topic": "",
+		"title": "MANUAL — 官方部署资产全景核验基准清单 (Deployment Checklist & Verification Manifest)",
+		"path": "src/content/docs/manual/DEPLOYMENT-CHECKLIST.md",
+		"bytes": 15142,
+		"lines": 168,
+		"sha256": "d6571f9f8c75dc7b"
+	},
+	{
+		"id": "manual/IDA-PRO",
+		"group": "manual",
+		"topic": "",
+		"title": "IDA Pro 准备指引",
+		"path": "src/content/docs/manual/IDA-PRO.md",
+		"bytes": 4942,
+		"lines": 160,
+		"sha256": "8356978138e19c3b"
+	},
+	{
+		"id": "manual/MODEL-REFUSAL-MATRIX",
+		"group": "manual",
+		"topic": "",
+		"title": "模型拒答对照矩阵（Model Refusal Matrix）",
+		"path": "src/content/docs/manual/MODEL-REFUSAL-MATRIX.md",
+		"bytes": 9674,
+		"lines": 268,
+		"sha256": "e86c28654c3f3e09"
+	},
+	{
+		"id": "manual/POC-VALIDATION",
+		"group": "manual",
+		"topic": "",
+		"title": "MANUAL — PoC 闭环自动化验证 SOP (Automated PoC Validation & Self-Healing)",
+		"path": "src/content/docs/manual/POC-VALIDATION.md",
+		"bytes": 6686,
+		"lines": 172,
+		"sha256": "bb3a9c8bb89540cc"
+	},
+	{
+		"id": "manual/PREREQUISITES",
+		"group": "manual",
+		"topic": "",
+		"title": "前置依赖 (PREREQUISITES)",
+		"path": "src/content/docs/manual/PREREQUISITES.md",
+		"bytes": 2806,
+		"lines": 84,
+		"sha256": "2fd342a542d9e229"
+	},
+	{
+		"id": "manual/UNPACKING",
+		"group": "manual",
+		"topic": "",
+		"title": "MANUAL — 通用脱壳前置分析 SOP (Unpacking & Deobfuscation)",
+		"path": "src/content/docs/manual/UNPACKING.md",
+		"bytes": 6924,
+		"lines": 189,
+		"sha256": "d5a737c26071bd00"
+	}
+]

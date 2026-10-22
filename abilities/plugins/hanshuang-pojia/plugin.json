@@ -1,0 +1,58 @@
+{
+	"id": "hanshuang-pojia",
+	"name": "%plugin.name%",
+	"description": "%plugin.description%",
+	"icon": "assets/icon.svg",
+	"version": "2.3.0",
+	"pluginApiVersion": "^2.0.0",
+	"entry": "dist/mf-manifest.json",
+	"styles": [
+		"dist/style.css"
+	],
+	"moduleFederation": {
+		"remoteName": "hanshuang_pojia",
+		"expose": "./plugin"
+	},
+	"minAppVersion": "0.5.60",
+	"permissions": [
+		"ui.slot.activity-tab",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.skills.control",
+		"agent.systemPrompt.write",
+		"agent.session.read",
+		"agent.session.write",
+		"storage.read",
+		"storage.write",
+		"fs.read",
+		"fs.write"
+	],
+	"agent": {
+		"systemPrompt": {
+			"promptPaths": [
+				"AGENTS.md"
+			]
+		},
+		"skillPaths": [
+			"agent/skills/hanshuang-pojia"
+		],
+		"skillPresentation": {
+			"defaultVisibility": "visible",
+			"surfaces": {
+				"skillPicker": "visible",
+				"commandPalette": "visible",
+				"abilityCatalog": "visible",
+				"agentConfiguration": "visible",
+				"pluginDetail": "visible"
+			},
+			"skills": {
+				"hanshuang-pojia": {
+					"displayName": "%skill.name%",
+					"displayDescription": "%skill.description%"
+				}
+			}
+		}
+	},
+	"defaultLocale": "en",
+	"author": "Astravia"
+}

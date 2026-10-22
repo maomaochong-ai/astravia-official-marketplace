@@ -891,10 +891,10 @@
     },
     {
       "type": "plugin",
-      "slug": "frostbreak",
+      "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, byte-range disassembly and a 0-100 risk score.",
-      "version": "1.5.3",
+      "version": "2.3.0",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -932,7 +932,7 @@
         }
       },
       "source": {
-        "path": "abilities/plugins/frostbreak"
+        "path": "abilities/plugins/hanshuang-pojia"
       },
       "minAppVersion": "0.5.60"
     },
@@ -993,5 +993,5 @@
       }
     }
   ],
-  "version": "0.4.81"
+  "version": "0.4.82"
 }

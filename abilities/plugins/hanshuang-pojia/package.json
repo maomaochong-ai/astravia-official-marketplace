@@ -1,0 +1,29 @@
+{
+  "name": "@astravia-marketplace/hanshuang-pojia",
+  "version": "2.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "vite build",
+    "sync:agent": "node scripts/sync-agent-doc.mjs"
+  },
+  "devDependencies": {
+    "@astravia-org/plugin-sdk": "^0.3.10",
+    "@astravia-org/plugin-vite": "^0.2.4",
+    "@tailwindcss/vite": "^4.1.12",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.1.1",
+    "@types/react-dom": "^19.1.1",
+    "jsdom": "^26.1.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,66 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { DOC_ENTRIES, DOC_TOTALS, docById, docGroups, loadDoc, searchTitles } from "../features/workbench/services/docs";
+
+const manifest = readFileSync(new URL("../content/docs/docs.sha256", import.meta.url), "utf8")
+	.split("\n")
+	.filter(line => line.trim().length > 0);
+
+describe("document library index", () => {
+	it("covers the three shipped collections", () => {
+		const counts = new Map<string, number>();
+		for (const entry of DOC_ENTRIES) counts.set(entry.group, (counts.get(entry.group) ?? 0) + 1);
+		expect(counts.get("kb")).toBe(292);
+		expect(counts.get("manual")).toBe(10);
+		expect(counts.get("kit-docs")).toBe(7);
+		expect(DOC_ENTRIES.length).toBe(309);
+	});
+
+	it("matches the committed checksum manifest entry for entry", () => {
+		expect(manifest.length).toBe(DOC_ENTRIES.length);
+		for (const entry of DOC_ENTRIES) expect(manifest).toContain(`${entry.sha256}  ${entry.id}.md`);
+	});
+
+	it("gives every document a title and a non-empty body path", () => {
+		for (const entry of DOC_ENTRIES) {
+			expect(entry.title.length, entry.id).toBeGreaterThan(0);
+			expect(entry.path.startsWith("src/content/docs/"), entry.id).toBe(true);
+			expect(entry.bytes, entry.id).toBeGreaterThan(0);
+		}
+		expect(DOC_TOTALS.bytes).toBeGreaterThan(3_000_000);
+	});
+
+	it("builds the navigation tree without empty groups", () => {
+		const groups = docGroups();
+		expect(groups.map(group => group.id)).toEqual(["kb", "manual", "kit-docs"]);
+		for (const group of groups) {
+			expect(group.topics.length).toBeGreaterThan(0);
+			for (const topic of group.topics) expect(topic.entries.length).toBeGreaterThan(0);
+		}
+	});
+});
+
+describe("document loading", () => {
+	it("loads a bundled body through the lazy glob", async () => {
+		const entry = docById("kb/README");
+		expect(entry).toBeDefined();
+		const text = await loadDoc("kb/README");
+		expect(text.startsWith("# Knowledge Base")).toBe(true);
+	});
+
+	it("rejects an id that is not in the index", async () => {
+		await expect(loadDoc("kb/does-not-exist")).rejects.toThrow(/unknown document/);
+	});
+});
+
+describe("title search", () => {
+	it("finds documents by title and path", () => {
+		expect(searchTitles("payment").length).toBeGreaterThan(0);
+		expect(searchTitles("12-payment").length).toBeGreaterThan(0);
+		expect(searchTitles("   ").length).toBe(0);
+	});
+
+	it("respects the result limit", () => {
+		expect(searchTitles("a", 5).length).toBeLessThanOrEqual(5);
+	});
+});
