@@ -82,9 +82,9 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 | `seep_r2_info` `_strings` `_functions` `_disasm` `_decompile` `_xrefs` `_asm` `_diff` `_cmd` | `run_radare` | 一个 `operation` 枚举，`output_mode: full/fold/summary` |
 | `seep_apk_decompile` `_unpack` `_smali_search` | `decompile_android` | jadx / apktool / fs 搜索 |
 | `seep_task_init` + `seep_gen_security_report` | `init_task` | 工作区骨架 + 报告骨架 |
-| `seep_kb_search` `_read` `_checklist` | 既有 `search_docs` / `read_doc` | 随包 309 篇文档，无需进程 |
+| `seep_kb_search` `_read` `_checklist` | 既有 `search_docs` / `read_doc` | 随包 309 篇文档，无需进程；六类清单按 `read_doc` id 直取（id 映射见 `plugin-handbook` §7.5.1） |
 | `seep_auto_triage` | 既有 `triage_directory` | 纯字节，无进程 |
-| `seep_kb_payloads` | **不做** | 见 D7：不分发可用载荷 |
+| `seep_kb_payloads` | **不做** | 见 ADR 0001 D7：不做 `category` 切片、不拼装面向目标的载荷；种子清单原文本身随包，可当阅读材料 |
 
 **D16** `run_radare` 的 `cmd` 走只读守卫 `assertReadOnly`：拒绝 `w*`（写字节/写内存）、`!`/`#!`（shell）、
 `oo*`、`o`（打开另一个文件：命令通道不过宿主 fs，`o /etc/passwd` 会绕出项目根）、`d*`（调试，`dr` 只读寄存器除外）、
@@ -96,12 +96,19 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 **D17** `init_task` 不建 `patches/`。上游该目录的说明是"验证 PoC 代码、代理 DLL 跳板工程、热补丁"，
 属于制品产出；本插件只产证据与报告（`samples/` `exports/` `reports/`）。
 
-**D18** 探针必须区分"未安装"与"宿主拒绝"。`/permission|not declared|denied|disabled|unauthorised/`
-命中即 `blocked: true`，不显示安装提示——否则会让用户去装一个其实已经装好的工具。
+**D18** 探针必须区分"未安装"与"宿主拒绝"。判据是宿主拒绝话术的正则
+`BLOCKED_PATTERN = /permission|not (?:declared|allowed|enabled)|denied|disabled|unauthori[sz]ed/i`，
+比初稿多了 `not allowed` / `not enabled` / `not declared` 的同构变体——宿主实际的拒绝文案不止一种写法。
+命中即 `blocked: true`，不显示安装提示——否则会让用户去装一个其实已经装好的工具；
+反之 `spawn … ENOENT` 才是"没装"，此时才给安装提示。
+
+**D18a** `frida` 之所以在 `commands` 里，是因为 `probe_environment` 会真跑 `frida --version`。
+插件自己从不启动 frida 会话（`generate_hook` 只产出脚本与命令行提示，观测由用户在自己的终端做）。
+若将来去掉这一项探测，`commands` 里的 `frida` 必须同时删除——声明却不执行等于白要权限。
 
 ## 4. 后果
 
-- 工具数 14 → 18；`EXPECTED_TOOL_COUNT = 18`；四语言标签（en/zh）同步。
+- 工具数 14 → 18；`EXPECTED_TOOL_COUNT = 18`；新增工具的中英双语标签同步。
 - 新增权限 `agent.command.run` 属于配置契约变更 → `configVersion` +1，版本 2.4.1 → 2.4.2。
 - 用户会看到"命令授权"提示；拒绝时工具返回明确说明而不是崩。面板离线能力不受影响。
 - 未安装工具时，`probe_environment` 给出逐项安装提示（`brew install radare2` / `winget …` /

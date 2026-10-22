@@ -136,13 +136,6 @@ export async function probeToolchain(
 	};
 }
 
-/** Names the tools that must be installed before `capability` works, for error text. */
-export function remedyFor(capability: Capability): string {
-	const specs = specsForCapability(capability);
-	if (specs.length === 0) return `the ${capability} capability is not part of this plugin`;
-	return specs.map(spec => `${spec.binary} (${spec.install})`).join(", ");
-}
-
 export function renderToolchain(report: ToolchainReport): string {
 	const width = Math.max(...report.tools.map(tool => tool.binary.length));
 	const rows = report.tools.map(tool => {
@@ -162,7 +155,16 @@ export function renderToolchain(report: ToolchainReport): string {
 	];
 
 	if (missing.length > 0) {
-		lines.push(`Missing: ${missing.map(capability => `${capability} → ${remedyFor(capability)}`).join("; ")}`);
+		// java is required by java, jadx and apktool alike, so a per-capability list names it three times.
+		const absent = report.tools.filter(tool => !tool.available && !tool.blocked);
+		const needs = missing.map(
+			capability => `${capability} needs ${specsForCapability(capability).map(spec => spec.binary).join("+")}`,
+		);
+		// Not quite "not installed": java can be present as a stub that refuses to start.
+		if (absent.length > 0) lines.push(`Missing: ${absent.map(tool => tool.binary).join(" · ")}`);
+		lines.push(`Blocked capabilities: ${needs.join("; ")}`);
+		const installs = absent.flatMap(tool => (tool.install ? [`${tool.binary} → ${tool.install}`] : []));
+		if (installs.length > 0) lines.push(`Install: ${installs.join("; ")}`);
 	}
 	const blocked = report.tools.filter(tool => tool.blocked);
 	if (blocked.length > 0) {
