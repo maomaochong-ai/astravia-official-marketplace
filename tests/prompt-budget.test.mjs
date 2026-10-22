@@ -11,8 +11,12 @@ const pluginsDir = resolve(root, "abilities/plugins");
 // every project, whether or not the plugin is being used. That cost is paid on every turn of the
 // conversation, so an oversized block pushes ordinary tasks into `context compaction` on the first
 // or second turn — and the compaction card streams a 20k-72k character markdown summary back into
-// the transcript. Keep the always-on block small and move long-form material into a skill, which is
-// loaded on demand. See the plugin README section "prompt budget".
+// the transcript.
+//
+// hanshuang-pojia shipped a 98 KB block here until 2.4.0 and dropped the channel entirely; every
+// other plugin is well under the cap. This test is the guard that keeps the always-on channel from
+// quietly coming back over budget: long-form material belongs in a skill, which is loaded on demand.
+// See the hanshuang-pojia README section "Where the rules live".
 const PROMPT_BUDGET_BYTES = 12 * 1024;
 
 function readJson(path) {

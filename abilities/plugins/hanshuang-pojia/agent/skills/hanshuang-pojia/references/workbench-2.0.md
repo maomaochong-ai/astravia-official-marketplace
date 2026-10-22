@@ -22,8 +22,9 @@ prompts. Where a path below disagrees with the package in front of you, the disk
 ```text
 abilities/plugins/hanshuang-pojia/
 ├─ plugin.json                  # identity, permissions, entry dist/mf-manifest.json,
-│                               # skillPaths, promptPaths: ["AGENTS.md"], moduleFederation remote
-├─ AGENTS.md                    # the resident contract injected every turn (size-capped)
+│                               # skillPaths, moduleFederation remote. No promptPaths: this package
+│                               # injects no standing block, only the runtime kernel block.
+├─ ability.json / detail*.json / assets/icon.svg / locales/{en,zh}.json
 ├─ ability.json / detail*.json / assets/icon.svg / locales/{en,zh}.json
 ├─ README.md / README.zh.md      # not packed into .astraviapkg; shipped via the gh-pages bundle
 ├─ agent/
@@ -36,8 +37,7 @@ abilities/plugins/hanshuang-pojia/
 │     └─ references/
 │        └─ workbench-2.0.md     # this file
 ├─ scripts/
-│  ├─ sync-agent-doc.mjs         # writes/refreshes the managed block in <agentDir>/AGENTS.md
-│  └─ sync-docs.mjs              # regenerates src/content/docs/index.json + docs.sha256, --check
+│  ├─ sync-docs.mjs              # regenerates src/content/docs/index.json + docs.sha256, --check
 ├─ src/
 │  ├─ index.tsx                  # assembly only: bridge, tools, runtime contributions, screen
 │  ├─ runtime-contract.ts        # the slice of the host API this plugin compiles against
@@ -108,15 +108,17 @@ keeps working on any ELF / PE / Mach-O whose sections the panel can map.
 
 ## 3. Prompt layers
 
-Four layers, in ascending cost. Do not move content downward without a reason — the first one is
-injected on **every** turn.
+Three channels, in ascending cost. Do not move content downward without a reason — only the first two
+are paid for on **every** turn. There is deliberately **no resident prose block**: the package declares
+no `promptPaths`, so a rule that must hold on every turn has to live in the skill body and be read on
+demand, not in an always-on file.
 
 | Layer | Where it lives | Size budget | Carries |
 |---|---|---|---|
-| resident contract | `AGENTS.md` → `plugin.json` `promptPaths` | hard-capped by `tests/prompt-budget.test.mjs` (12 KB) | identity, routing table, artifact-first shape, A1–A10, pointers |
 | dynamic block | `src/domain/kernel.ts` via `registerSystemPromptProvider` | a few hundred bytes, and only when relevant | lab mode state, current panel page, registered tool names, delivery shape while lab is on |
 | lab hook | `src/runtime/contributions.ts` via `registerHook("UserPromptSubmit")` | one line of context | flips the switch when the prompt starts with `lab：`, adds one sentence of confirmation |
-| skill + references | `agent/skills/hanshuang-pojia/` | read on demand | PART I–V, this file, the vendored upstream skills |
+| skill index | `plugin.json` `skillPaths` → host skill table | `name` + `description` only, a few hundred characters | the index entry that lets the agent decide whether to invoke the skill |
+| skill body | `agent/skills/hanshuang-pojia/SKILL.md` | read on demand via `invoke_skill` | PART I–V, this file, the vendored upstream skills |
 
 The block id must sit in the plugin namespace (`plugin.hanshuang-pojia.kernel`) or the host refuses
 the write; the write permission is `agent.systemPrompt.write`. Hooks need `agent.hooks.register`
@@ -301,11 +303,10 @@ Never report "deployed" from an installer exit code; the board is the evidence.
 /usr/local/bin/node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.json
 /usr/local/bin/node ./node_modules/vitest/vitest.mjs run
 /usr/local/bin/node scripts/sync-docs.mjs --check      # docs index ok: 309 documents
-/usr/local/bin/node scripts/sync-agent-doc.mjs --check # managed block in <agentDir>/AGENTS.md
 ```
 
-`sync-agent-doc.mjs` writes one marked block into the user-level agent document; running it twice
-must print `unchanged`. `--remove` takes the block out again.
+The plugin chain no longer stages a user-level document: `plugin.json` declares no `promptPaths`, so
+there is nothing to copy into `<agentDir>/AGENTS.md` and `scripts/sync-agent-doc.mjs` is gone.
 
 ---
 

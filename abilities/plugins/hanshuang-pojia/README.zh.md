@@ -60,51 +60,26 @@
 | `storage.read`、`storage.write` | 样本架与设置能跨重启保留；没有授权时面板退化为会话内存 |
 | `fs.read` | 列目录与读取样本 |
 | `fs.write` | `fs.saveAs` 导出报告（路径由用户选择） |
-| `agent.systemPrompt.write` | 把插件根目录的 `AGENTS.md` 注入每个会话的系统提示 |
+| `agent.systemPrompt.write` | 运行时生成的 kernel 块：实验室开关、用户正在看的页面、可用工具表 |
 
-## 智能体文档
+## 规则放在哪里
 
-插件根目录的 `AGENTS.md` 是智能体在被提问之前先看到的那段话。`plugin.json` 用
-`agent.systemPrompt.promptPaths` 声明它，宿主会把它作为一个系统提示块，对**所有项目**的
-每个会话生效——作用面等同于用户级的 `~/.claude/CLAUDE.md`，只是范围限定在这个插件内。
-它刻意写得很短：这一段每一轮对话都要付 token。
+本包**不再向系统提示注入常驻块**。每一轮都必须生效的规则住在技能里
+（`agent/skills/hanshuang-pojia/SKILL.md`），而宿主为一个技能付的代价只有它的索引项——`name`
+加 `description`，约 380 字符；97 KB 正文只在智能体真正为当前任务调用它时才进上下文。
 
-## 提示体积预算
+插件唯一每轮注入的是 `src/domain/kernel.ts` 在运行时拼出的 kernel 块（`agent.systemPrompt.write`）：
+实验室开没开、用户在看面板的哪一页、哪些工具可达。那是状态，不是文案，所以它不可能是静态文件。
 
-常驻块只放「每一轮都必须生效」的规则：身份与授权、artifact-first 开场、证据三态、copy-first
-与四件套、路由表、回执格式、激活词、压缩后的反退缩清单。长文全部搬进技能
-（`agent/skills/hanshuang-pojia/SKILL.md`），由宿主按需加载——逐轨交付模板、few-shot 回归集、
-JIT 五阶段、PART V 与 MCP 工具矩阵都在那里。
+2.3.2 之前包根还有一份 `AGENTS.md`，由 `agent.systemPrompt.promptPaths` 追加到每个会话，外加
+`scripts/sync-agent-doc.mjs` 把同一段文字复制进 `<agentDir>/AGENTS.md` 当作用户级指令文件。
+两份都已删除：它们在每一轮开头放大约 3.5k token 的同一段文字，而且第一次同步之后，同一份契约
+会经由两条互不相关的注入路径到达模型两次。如果早前版本在本机写过那份用户级副本，
+`<agentDir>/AGENTS.md` 里会残留 `<!-- hanshuang-pojia:begin -->` 到
+`<!-- hanshuang-pojia:end -->` 之间的块——删掉该块；文件里没有别的内容就把文件一并删除。
 
-这条拆不是为了好看：96 KB 的常驻块约等于 30k token，用户还没开口就先占满上下文，普通任务
-一两轮就撞上 `context compaction`，而压缩卡片会把 20k–72k 字符的 markdown 摘要重新走一遍流式
-渲染——宿主正是这条路径上反复抛 `React error #185`（Maximum update depth exceeded）并弹回重试
-界面。市场仓库的 `tests/prompt-budget.test.mjs` 会在任一插件的注入块超过 12 KB 时失败，所以这条
-拆分不会被悄悄改回去。
-
-字面意义上的用户级副本在 `<agentDir>/AGENTS.md`。**插件自己写不进去**：它发出的每一次 `fs` 调用
-都要先过“打开的项目根”白名单，而宿主没有提供“包裹落地时执行代码”的安装钩子。智能体的 shell
-没有这层限制，所以 `AGENTS.md` 末尾只留一条命令，请智能体在每台机器上写一次用户级副本：
-
-```bash
-node scripts/sync-agent-doc.mjs                      # 写 <agentDir>/AGENTS.md
-node scripts/sync-agent-doc.mjs --print              # 两份副本分别在哪
-node scripts/sync-agent-doc.mjs --check              # 任一份不新鲜就 exit 1
-node scripts/sync-agent-doc.mjs --from README.md     # 用另一个 md 替换包内的 AGENTS.md
-node scripts/sync-agent-doc.mjs --remove             # 再把托管的块删掉
-```
-
-脚本随包分发（放在 `scripts/` 下），所以跑的就是安装后的那一份。它只**编辑**不覆盖：文本夹在
-`<!-- hanshuang-pojia:begin -->` 与 `<!-- hanshuang-pojia:end -->` 之间，用户自己写过的 `AGENTS.md`
-上下文全部保留，第二次执行会打印 `unchanged`。它解析 `<agentDir>` 的顺序与宿主一致——先是
-`ASTRAVIA_CODING_AGENT_DIR`，然后是 `ASTRAVIA_HOME` / `ASTRAVIA_CONFIG_DIR`，最后才是
-`~/.astravia/agent`。
-
-为什么两份都要：清单声明那条路不依赖磁盘上任何文件、也不依赖智能体配合，即使副本从未写成功，
-插件依然被认识；用户级那份是给人看的、可编辑的副本，权限被收回后也仍然有效。
-
-升级到本版本时，宿主**不会自动授予**新增的 `agent.systemPrompt.write` 权限（旧授权与新声明
-取交集），需要在确认界面勾选一次；不勾选时插件的其余功能照常，只是这段文档不会被注入。
+市场仓库的 `tests/prompt-budget.test.mjs` 仍会在任何插件声明 `promptPaths` 且注入块超过 12 KB 时
+失败，所以这条常驻通道不会被悄悄恢复。
 
 ## 工作台工具包 2.0
 
@@ -128,12 +103,12 @@ node scripts/sync-agent-doc.mjs --remove             # 再把托管的块删掉
 没有注册成 `skillPaths`：上游 frontmatter 用了 YAML 块标量、描述超上限，而且 `ida-reverse` 重名。
 
 提示词本体不该背的细节放在 `agent/skills/hanshuang-pojia/references/workbench-2.0.md`：实测的工具包目录结构、
-MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中继与记忆机制。提示词每一轮都要付费，所以保持精简。
+MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中继与记忆机制。每轮付费的只有技能索引项，
+所以正文可以写全。
 
 ## 目录
 
 ```text
-AGENTS.md                             # 经 promptPaths 注入每个会话
 agent/
 └── skills/hanshuang-pojia/          # 宿主在对话区列出的技能
     ├── SKILL.md                     # 智能体文档全文（PART I–V，含工具包协议）
@@ -142,8 +117,6 @@ agent/docs/
 ├── SKILL-LIBRARY.md                 # 随包技能库：清单、来源、为何不注册成技能
 ├── skill-library.sha256             # 165 条逐文件哈希；测试会重算它
 └── skill-library/                   # seep-kit/Tool/skill 的逐字节副本（165 文件 / 2.4 MB）
-scripts/
-└── sync-agent-doc.mjs               # 用本包内容写用户级副本
 src/
 ├── index.tsx                        # 只做装配：bridge、标签卡、工具、清理
 ├── runtime-contract.ts              # 标签卡读取的 PluginContext 句柄

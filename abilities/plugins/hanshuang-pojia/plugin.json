@@ -3,7 +3,7 @@
 	"name": "%plugin.name%",
 	"description": "%plugin.description%",
 	"icon": "assets/icon.svg",
-	"version": "2.3.2",
+	"version": "2.4.0",
 	"pluginApiVersion": "^2.0.0",
 	"entry": "dist/mf-manifest.json",
 	"styles": [
@@ -30,11 +30,6 @@
 		"fs.write"
 	],
 	"agent": {
-		"systemPrompt": {
-			"promptPaths": [
-				"AGENTS.md"
-			]
-		},
 		"skillPaths": [
 			"agent/skills/hanshuang-pojia"
 		],

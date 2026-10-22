@@ -67,6 +67,14 @@ describe("buildKernelBlock", () => {
 		expect(text).not.toContain("Current panel page");
 	});
 
+	it("keeps the per-turn block inside a budget the host can afford", () => {
+		const off = buildKernelBlock({ lab: LAB_OFF, page: null, tools: TOOL_IDS });
+		const on = buildKernelBlock({ lab: { enabled: true, since: "2026-01-02T03:04:05.000Z" }, page: "disasm", tools: TOOL_IDS });
+		// 2.4.0 取消了包内常驻块，每轮只付这一份；超预算就是静默吃掉上下文。
+		expect(off.length).toBeLessThan(600);
+		expect(on.length).toBeLessThan(1400);
+	});
+
 	it("keeps the block id inside the plugin namespace", () => {
 		expect(KERNEL_BLOCK_ID.startsWith("plugin.hanshuang-pojia.")).toBe(true);
 		expect(KERNEL_PRIORITY).toBeGreaterThan(0);

@@ -894,7 +894,7 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 309 bundled field documents the agent can search mid-investigation.",
-      "version": "2.3.2",
+      "version": "2.4.0",
       "configVersion": 1,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -993,5 +993,5 @@
       }
     }
   ],
-  "version": "0.4.84"
+  "version": "0.4.85"
 }
