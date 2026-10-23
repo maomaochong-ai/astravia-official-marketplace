@@ -53,17 +53,19 @@
 | `search_docs` | 在 309 篇随包文档里按标题 / id / 主题检索 |
 | `read_doc` | 读一篇文档正文（Markdown），超预算时明确标识截断位置 |
 | `probe_environment` | 探测已声明的可执行文件是否真能跑，给出各自版本横幅，并区分「宿主拒绝」与「未安装」 |
+| `install_toolchain` | 按目标筛出真正要装的那几个工具，给出本平台的准确安装命令 |
 | `run_radare` | r2 / rabin2 / radiff2 / rasm2：头信息、字符串、函数表、反汇编、伪 C、交叉引用、汇编、差分，以及只读 `cmd` |
 | `decompile_android` | 用 jadx / apktool 输出到相邻目录，再对整个目录做 `smali_search` |
 | `init_task` | 单个目标的案件目录：`samples/`、`exports/`、`reports/`、README 与报告模板 |
+| `write_assessment_report` | 把四段式评估报告填进 `reports/<目标>_security_assessment_report.md`；没给的段落就写「未提供」 |
 
-十八个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+二十个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
 
-四个新工具都明确写出了自己不是什么：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是
+几个分析工具都明确写出了自己不是什么：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是
 指令形状指纹，不是等价性证明；hook 模板只观测并原样返回原值 —— 在它上面写绕过是人的决定，不是插件
 产出的东西。
 
-四个工具链工具遵循同一条规则：`plugin.json#commands` 里逐字声明它们可以启动的八个可执行文件，宿主在授予
+五个工具链工具遵循同一条规则：`plugin.json#commands` 里逐字声明它们可以启动的十四个可执行文件，宿主在授予
 `agent.command.run` 前会问用户，每次调用都是带参数数组的 `execFile`，不经过 shell。`run_radare` 的 `cmd`
 拒绝写、shell、调试器、打开文件、脚本执行、工程、挂载与 `=` 远程族命令（`w`/`W`、`!`、`o`/`O`、`d`/`D`、
 `P`、`R`/`r`、`m`/`M`、`.`、`=`），只放行 `dr` 这类只读族；凡是会离开 r2 自身解析器的写法也一律拒绝 —— 管道 `|`、
@@ -71,7 +73,7 @@
 
 `decompile_android` 只写到 APK 旁边的目录，从不改原文件，而且只接受尚不存在的目录：已存在的 `output_dir`
 直接拒绝而不是合并进去；`apktool` 也不再带 `-f`，重跑不可能抹掉你自己的文件夹。全局没有 `patches/` 目录。
-`probe_environment` 跑八次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。
+`probe_environment` 每个工具跑一次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。`install_toolchain` 把后者变成你真要敲的命令：按目标（`apk` / `native` / `firmware` / `dynamic` / `full`）筛掉用不上的工具，取本平台的配方（brew / apt / winget / scoop / pipx），到此为止——插件不跑安装器，每条命令你先看到再决定。商业套件（IDA、Binary Ninja、JEB）只作为上下文列出，不给命令；可选工具不占任何权限位，因为插件从不启动它们。与 2.0 的全量对照见 [docs/toolchain-parity.md](docs/toolchain-parity.md)。
 
 同一套引擎可以在终端里跑，不经过插件沙箱：
 
@@ -81,19 +83,26 @@ node scripts/analyze.mjs decompile libfoo.so --symbol check_license
 node scripts/analyze.mjs diff v1.elf v2.elf
 node scripts/analyze.mjs hook app.apk --query license --package com.example.app
 node scripts/analyze.mjs docs frida --group kb
+node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 ```
 
 `scripts/analyze.mjs` 用 esbuild 打包 `src/cli/analyze.ts`，只 import `src/domain`，因此能读进程能读的
-任何路径 —— 不涉及插件 fs 授权。子命令：`triage`、`strings`、`symbols`、`disasm`、`decompile`、`diff`、
-`hook`、`docs`。退出码：`0` 正常、`1` 用法错误、`2` 分析失败。
+任何路径 —— 不涉及插件 fs 授权。子命令：`triage`、`strings`、`symbols`、`disasm`、`asm`、`decompile`、
+`diff`、`hook`、`docs`。退出码：`0` 正常、`1` 用法错误、`2` 分析失败。
+
+`asm` 是唯一反方向写字节的子命令：x86 / x86-64 / AArch64 的九条助记符（`nop`、`ret`、`mov`、`add`、
+`sub`、`xor`、`cmp`、`jmp`、`call`），判据是插件自己的解码器。每一行编完都会放回它自己的地址解码一次，
+屏幕上那行规范文本就是解码结果 —— 复现不出来的一行会带着提示报错，而不是当「大概对」返回。解码器
+拿不准的写法（x86 的 8/16 位操作数、scale 索引、标签、伪指令、需要两条指令才能落地的立即数）
+一律拒绕。
 
 ## 权限
 
 | 权限 | 原因 |
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
-| `agent.tools.register`、`agent.toolHandler.execute` | 十八个工具 |
-| `agent.command.run` | `probe_environment`、`run_radare`、`decompile_android`：使用 `commands` 里声明的八个可执行文件，每个都需用户授权 |
+| `agent.tools.register`、`agent.toolHandler.execute` | 二十个工具 |
+| `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`：使用 `commands` 里声明的十四个可执行文件，每个都需用户授权 |
 | `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
 | `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
 | `storage.read`、`storage.write` | 样本架与设置能跨重启保留；没有授权时面板退化为会话内存 |
@@ -103,22 +112,37 @@ node scripts/analyze.mjs docs frida --group kb
 
 ## 规则放在哪里
 
-本包**不再向系统提示注入常驻块**。每一轮都必须生效的规则住在技能里
-（`agent/skills/hanshuang-pojia/SKILL.md`），而宿主为一个技能付的代价只有它的索引项——`name`
-加 `description`，约 380 字符；97 KB 正文只在智能体真正为当前任务调用它时才进上下文。
+2.6.0 起分两处：
 
-插件唯一每轮注入的是 `src/domain/kernel.ts` 在运行时拼出的 kernel 块（`agent.systemPrompt.write`）：
-实验室开没开、用户在看面板的哪一页、哪些工具可达。那是状态，不是文案，所以它不可能是静态文件。
+- **每轮都注入的 kernel 块**（`src/domain/kernel.ts`，priority 850）—— 实验室开没开、用户在看面板哪一页、哪些工具可达。那是状态，不是文案，所以它不可能是静态文件。
+- **lab 开启时才注入的 system 块**（`agent/docs/SYSTEM.md`，priority 840，约 5.8 KB）—— 授权门、交付形状、卡住时的处理、工具链引导、todo 纪律。关闭实验环境时这一块不注入：kernel 块已经声明了 OFF 状态与 `lab：` 口令，没必要为一个用不上的契约付 token。
 
-2.3.2 之前包根还有一份 `AGENTS.md`，由 `agent.systemPrompt.promptPaths` 追加到每个会话，外加
-`scripts/sync-agent-doc.mjs` 把同一段文字复制进 `<agentDir>/AGENTS.md` 当作用户级指令文件。
-两份都已删除：它们在每一轮开头放大约 3.5k token 的同一段文字，而且第一次同步之后，同一份契约
-会经由两条互不相关的注入路径到达模型两次。如果早前版本在本机写过那份用户级副本，
-`<agentDir>/AGENTS.md` 里会残留 `<!-- hanshuang-pojia:begin -->` 到
-`<!-- hanshuang-pojia:end -->` 之间的块——删掉该块；文件里没有别的内容就把文件一并删除。
+静态母本是 `agent/docs/SYSTEM.md`。`scripts/sync-system-prompt.mjs` 把它镜像成
+`src/domain/system-prompt.generated.ts` —— 插件在渲染进程的 bundle 里跑，宿主从不告诉它自己装在哪，
+所以运行时读不到包内文件，只能构建期内联。`npm run verify:generated` 在两边漂移时失败，
+`src/test/system-prompt.test.ts` 逐字节比对。
 
-市场仓库的 `tests/prompt-budget.test.mjs` 仍会在任何插件声明 `promptPaths` 且注入块超过 12 KB 时
-失败，所以这条常驻通道不会被悄悄恢复。
+完整技法仍住在技能里（`agent/skills/hanshuang-pojia/SKILL.md`）：宿主的技能索引只付 `name` 加
+`description` 约 380 字符，97 KB 正文只在真正调用它时才进上下文。
+
+`agent/docs/AGENTS.md` 是同一份协议给 Astravia 以外的 agent 读的版本：工具路由、G-Auth 授权门、交付形状，
+以及本宿主没有对应物的三处上游机制。它没有权限要求 —— 它是文档，不是注入源。
+
+## 与上游的差异
+
+上游 `seep-kit` 在 provider 请求层注入 `safetySettings: BLOCK_NONE`。本宿主只暴露十二个生命周期钩子
+（`SessionStart` / `SessionEnd` / `UserPromptSubmit` / `PreToolUse` / `PermissionRequest` /
+`PostToolUse` / `PostToolUseFailure` / `PreCompact` / `PostCompact` / `SubagentStart` / `SubagentStop` /
+`Stop`），**没有**任何一个能看到请求 payload；而且该字段是 Google 私有字段，走 OpenAI 兼容网关只会换来
+`400 UNKNOWN_FIELD`。上游改写用户原话的能力同样没有落点 —— `UserPromptSubmit` 只能追加
+`additionalContexts`，不能替换 prompt。
+
+替代方案落在回合边界：`Stop` 钩子读最后一条助手消息，如果它只声明了边界、没有产出任何交付物，
+就请求宿主再跑一轮，附一段**要求补齐交付**的追问。判定在 `src/domain/refusal.ts`，需要同时满足
+「命中退缩句式」与「没有任何交付物指纹」（围栏代码块、行内代码、命令行、绝对路径、`0x` 地址、摘要、列表）
+才触发；正文不足 120 字符按澄清处理。宿主侧还有 `stopHookActive`（续跑一次就不再续）与
+`DEFAULT_MAX_STOP_CONTINUATIONS = 8` 两道闸。真被挡住时，追问要求的是引用确切错误并交付其余部分，
+而不是改口。
 
 ## 工作台工具包 2.0
 
@@ -134,12 +158,15 @@ node scripts/analyze.mjs docs frida --group kb
 | V.6–V.7 | 经 `softseep` 总控分派，以及 A1–A10 反退缩硬约束 |
 | V.8–V.9 | 资源路径表与九种宿主安装器 |
 
-2.1 起，工具包的**技能库直接随包发出**：`agent/docs/skill-library/` 是 `seep-kit/Tool/skill/` 的
-逐字节副本——165 个文件、2.4 MB，含 `softseep`（总控）、`apkseep`（112 个文件、55 个可运行脚本）、
-`ida-reverse`、`client-license-validation-bypass`，以及五个 `safe-skills/*` 技术包。一个字都没改。
+2.1 起，工具包的**技能库直接随包发出**：`agent/skills/` 是 `seep-kit/Tool/skill/` 的移植版 ——
+171 个文件、2.48 MB，含 `softseep`（总控）、`apkseep`、`ida-reverse`、`client-license-validation-bypass`，
+以及五个 `safe-skills/*` 技术包，另有 `hanshuang-pojia` 主手册与三个带跨平台脚本的技能包。
 清单与来源在 `agent/docs/SKILL-LIBRARY.md`，逐文件哈希在 `agent/docs/skill-library.sha256`，
-`src/test/skill-library.test.ts` 会重算清单，防止构建时静默丢失。它们按路径路由（`PART V.6`），
-没有注册成 `skillPaths`：上游 frontmatter 用了 YAML 块标量、描述超上限，而且 `ida-reverse` 重名。
+`src/test/skill-library.test.ts` 会重算清单，防止构建时静默丢失。
+
+它们通过 `plugin.json#agent.skillPaths = ["agent/skills"]` 注册，`skillPresentation.defaultVisibility`
+为 `visible`、五个 surface 全开，所以装好即可在技能选择器里看到，不需要额外配置。
+相对上游并非逐字节一致，且有四处是刻意的（见 `SKILL-LIBRARY.md` 的同名一节）。
 
 提示词本体不该背的细节放在 `agent/skills/hanshuang-pojia/references/plugin-handbook.md`：实测的工具包目录结构、
 MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中继与记忆机制。每轮付费的只有技能索引项，
@@ -149,13 +176,15 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 
 ```text
 agent/
-└── skills/hanshuang-pojia/          # 宿主在对话区列出的技能
-    ├── SKILL.md                     # 智能体文档全文（PART I–V，含工具包协议）
-    └── references/plugin-handbook.md  # 实测目录结构、MCP 工具全表、手册索引、宿主安装矩阵
-agent/docs/
-├── SKILL-LIBRARY.md                 # 随包技能库：清单、来源、为何不注册成技能
-├── skill-library.sha256             # 165 条逐文件哈希；测试会重算它
-└── skill-library/                   # seep-kit/Tool/skill 的逐字节副本（165 文件 / 2.4 MB）
+├── skills/                          # 九个 SKILL.md 目录，经 skillPaths 注册
+│   ├── hanshuang-pojia/             # 宿主在对话区列出的主技能，含 references/
+│   ├── apk-reverse/  ida-reverse/  radare2/     # 各自 scripts/*.ps1 与 *.sh 成对
+│   └── apkseep/  softseep/  reverse-engineering/  …  # safe-skills 移植
+└── docs/                            # 整目录入包（打包器唯一收集的 agent/ 子树）
+    ├── SYSTEM.md                    # 常驻作战契约，lab 开启时作为提示块注入
+    ├── AGENTS.md                    # 同一份协议给 Astravia 以外的 agent
+    ├── SKILL-LIBRARY.md             # 随包技能库：清单、来源、四处刻意差异
+    └── skill-library.sha256         # 171 条逐文件哈希；测试会重算它
 src/
 ├── index.tsx                        # 只做装配：bridge、标签卡、工具、清理
 ├── runtime-contract.ts              # 标签卡读取的 PluginContext 句柄
@@ -170,9 +199,12 @@ src/
 │   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
+│   ├── refusal.ts                   # 回合边界的恢复判定：检测器 + 续跑追问片段
+│   ├── system-prompt.generated.ts   # 由 agent/docs/SYSTEM.md 生成，勿手改
 │   └── triage.ts                    # 入口：识别 → 解析 → 审计 → 报告
 ├── domain/toolchain/                # 外部可执行文件：这层自己不启动进程
-│   ├── catalog.ts                   # TOOLCHAIN / COMMANDS，必须与 plugin.json#commands 一致
+│   ├── catalog.ts                   # TOOLCHAIN / COMPANIONS / COMMANDS，必须与 plugin.json#commands 一致
+│   ├── install.ts                   # 目标 → 本平台安装命令（只出计划，不执行）
 │   ├── probe.ts                     # 逐个工具探测版本，区分拒绝与缺失
 │   ├── radare.ts                    # r2/rabin2/radiff2/rasm2 计划与只读守卫
 │   ├── android.ts                   # jadx/apktool 计划，以及 smali 目录检索
@@ -244,7 +276,7 @@ node --test tests/*.test.mjs
 ## 需要知道的边界
 
 - 安卓签名只读取 v1 文件与 APK Signing Block 中的方案和摘要，**不做密码学验签**。
-- 工具链工具只会借用已装的二进制，不会下载或安装。`probe_environment` 报告实际存在什么；通道被宿主拒绝时，该改的是插件声明或设置，不是 `PATH`。
+- 工具链工具只会借用已装的二进制，没有一个会去下载或安装。`probe_environment` 报告实际存在什么，`install_toolchain` 只把命令打出来不执行；通道被宿主拒绝时，该改的是插件声明或设置，不是 `PATH`。
 - `run_radare` 每次只跑一条 r2 命令（`decompile` 的 `output_mode=summary` 是三条），单次上限 120 秒，白名单之外一律拒绝；`decompile_android` 给 jadx 与 apktool 各 10 分钟，只回日志开头，不回源码。
 - `smali_search` 只读扩展名过滤后的文件，单文件 2 MiB、最多 8 000 个；命中上限时会明说，不假装已经搜完。
 - 加壳/加密代码只报告，不脱壳；`native.packed` 是启发式判断（熵 + 导入数量，或 `UPX!` 标记）。
