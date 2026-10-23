@@ -85,7 +85,7 @@ python / bash / PowerShell 才能跑——它带的是"脚本"，不是"解释�
 | 工具定位顺序 | **先内置，后 PATH**：`seep_mcp_server.py:33-44` 先找 `Tool/mcp/Tool/safe/<tool>`，找不到再 `shutil.which()`；`:71-72` 把 `safe/radare2/bin` 前置进 `PATH`；`:173` java 用 `shutil.which()` | **只有 PATH**：`src/features/workbench/services/toolchain.ts:20-29` 把调用转给 `ctx.command.run`，没有"内置优先"这一层 |
 | 声明形态 | `.mcp.json`：`seep` → `command: "python"`，`args: ["Tool/mcp/seep_mcp_server.py"]`；`js-reverse` → `command: "npx"`, `args: ["-y","js-reverse-mcp"]` | `plugin.json#commands` 14 条（r2 / rabin2 / radiff2 / rasm2 / rahash2 / rax2 / jadx / apktool / java / adb / apksigner / zipalign / frida / frida-ps），与 `catalog.ts#COMMANDS` 逐字节一致（`src/test/toolchain.test.ts`） |
 | 真起进程的工具数 | 23 个 MCP 工具共享一个 Python 进程 | **4 个**：`probe_environment` / `install_toolchain` / `run_radare` / `decompile_android`（穷举 `src/tools/*.ts` 中引用 `createCommandRunner` 的文件） |
-| 缺工具时的行为 | `seep_status` 报 `Missing` + 该探的路径（`seep_mcp_server.py:217-241`） | `probe_environment` 把"宿主拒绝"与"未安装"分开报：`BLOCKED_PATTERN` vs `NOT_FOUND_PATTERN`（`src/domain/toolchain/probe.ts:50-52`） |
+| 缺工具时的行为 | `seep_status` 报 `Missing` + 该探的路径（`seep_mcp_server.py:217-241`） | `probe_environment` 把“宿主拒绝”与“未安装”分开报（`BLOCKED_PATTERN` vs `NOT_FOUND_PATTERN`，`probe.ts:50-52`）；未找到时报 `install_toolchain` 引导安装（`services/toolchain.ts` 的 `describeCommandFailure`），不再只问“缺了什么”
 | 无权限时 | 不适用（没有权限模型） | `createCommandRunner` 返回 `null`，不抛错，工具输出"本实例无外部命令通道"（`services/toolchain.ts:21-23`、`src/tools/install-toolchain.ts:57`） |
 
 ---
@@ -94,7 +94,7 @@ python / bash / PowerShell 才能跑——它带的是"脚本"，不是"解释�
 
 | 维度 | 上游 2.0 | 本插件 2.8.0 |
 |---|---|---|
-| 触发 | 面板按钮 → IPC `seep:install` → `runPowerShell(["‑File", install.ps1, "-NonInteractive"])`（`electron/main.cjs:514-521`） | 无部署步骤。`install_toolchain` 只**打印**命令，不执行（`src/tools/install-toolchain.ts:30`） |
+| 触发 | 面板按钮 → IPC `seep:install` → `runPowerShell(["-File", install.ps1, "-NonInteractive"])`（`electron/main.cjs:514-521`） | 无部署步骤。`install_toolchain` 返回命令并由 Agent 经宿主对话逐条执行、逐条报进度（`src/tools/install-toolchain.ts`）；面板自检页有「经对话一键安装缺失工具」入口（`selfcheck.tsx` 触发 `install` prompt 动作） |
 | 装什么 | 解压 `node_modules.zip` / `venv.zip`（`setup/extract-deps.ps1`）+ `python -m pip install` 协议依赖（`setup/install-python.ps1:34`，走清华镜像）+ 写各宿主 `mcp.json`（`setup/generate-configs.ps1:21,37`） | 系统包管理器命令，由**用户或用户自己的 agent** 执行：brew / apt / winget / scoop / pipx，按 `goal` 过滤、按平台取 recipe |
 | 装到哪 | 包内 `Tool/mcp/Tool/safe/`（就地解压）+ `~/.pi/agent`（配置）；`seepState()` 以 `~/.pi/agent/mcp.json` 是否含 `"seep"` 判定已部署（`electron/main.cjs:188-204`） | 系统装到哪就哪，插件不知道也不关心 |
 | 网络 | 需要：`pip install` 走镜像；`npx -y js-reverse-mcp` 首次运行要联网 | 插件**零网络**；命令由用户自己跑，走用户自己的网络与镜像 |
@@ -122,8 +122,8 @@ python / bash / PowerShell 才能跑——它带的是"脚本"，不是"解释�
 
 | 维度 | 上游 2.0 | 本插件 2.8.0 |
 |---|---|---|
-| 权限模型 | 无细粒度授权：面板点一下就用 `runPowerShell` 跑脚本；MCP 的 `seep_r2_cmd` 直接把用户字符串拼进 `r2 -c`（零限制） | 双层：`plugin.json#commands` 静态白名单 + `agent.command.run` 用户授权；`run_radare` 的 `cmd` 过只读守卫 `assertReadOnly`（拒绝 `w`/`W`、`!`、`o`/`O`、`d`/`D`、`P`、`R`/`r`、`m`/`M`、`.`、`=` 族，放行 `dr`），并拒绝管道/重定向/`$()`/反引号 |
-| 安装权限 | 部署脚本要管理员/UAC | 插件**零**安装权限：不持有 brew / apt / winget / pipx（`install-toolchain.ts:30`） |
+| 权限模型 | 无细粒度授权：面板点一下就用 `runPowerShell` 跑脚本；MCP 的 `seep_r2_cmd` 直接把用户字符串拼进 `r2 -c`（零限制） | 双层：`plugin.json#commands` 静态白名单 + `agent.command.run` 用户授权；`run_radare` 的 `cmd` 对等上游零限制直通（2.9.0 反转 D16 只读守卫），保持参数数组完整、不走 shell |
+| 安装权限 | 部署脚本要管理员/UAC | 插件**零**安装权限：不持有 brew / apt / winget / pipx（`install-toolchain.ts:30`）。安装命令由 Agent 经宿主对话执行，宿主按其授权门逐条放行，管理员提权由宿主负责询问——这既是权限收紧（插件无权直装），也和上游“面板点一下即装”对等（用户仍只需一次确认） |
 | 样本执行 | 工具链本身可以运行样本（r2 debug、frida、IDA） | 从不执行样本；样本只经宿主 `fs` 读取（≤32 MiB） |
 | 补丁/重签 | 上游带 `Tool/cases` 与 PoC 脚手架，鼓励落地 | `init_task` 不建 `patches/`（ADR 0002 D17）；`write_assessment_report` 不引用 `patches/`（D19） |
 | 网络 | 需要（pip / npx / 重下工具） | 插件零网络；IDA 常驻会话（`127.0.0.1:13337`）明确不移植（ADR 0002 :81） |
@@ -202,5 +202,5 @@ node -e 'console.log(require("./src/content/docs/index.json").length)'          
 | 插件激活后自带工具链吗？ | **不带**。零可执行制品；14 个名字只是声明，靠用户的机器提供二进制 |
 | 上游带吗？ | **带**。310 MB 内置 radare2 / jadx / apktool / nmap + 依赖快照 |
 | 那插件靠什么工作？ | 自带 TypeScript 分析引擎 + 309 篇随包文档 + 9 个技能；需要外部工具时**借用**，缺了就如实说缺 |
-| 缺工具怎么办？ | `probe_environment` 说缺什么 → `install_toolchain` 给本平台命令 → 用户或 agent 执行 → 再探一次复核 |
+| 缺工具怎么办？ | 面板自检页「经对话一键安装」→ 触发 `install` prompt → Agent 调 `install_toolchain` 拿命令 → 经宿主对话逐条执行并报进度 → `probe_environment` 再探一次复核；也可单独问对话里的 Agent 让它跑完整流程 |
 | 代价换到哪了？ | 上游用体积换免安装（整包 618 MB，且 Python 缺失即部署失败、Java 零检测）；本插件用用户自装换体积（制品 7.67 MB，缺什么当场报） |

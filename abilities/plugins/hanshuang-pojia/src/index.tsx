@@ -12,6 +12,7 @@ import { getRuntime, setRuntime } from "./runtime-contract";
 import { registerTools } from "./tools/register-tools";
 import { loadSample } from "./tools/read-sample";
 import { isPluginTool } from "./tools/ids";
+import { publishTaskEvent } from "./runtime/panel-channel";
 import type { LabState } from "./domain/lab-mode";
 import { LAB_STATE_PATH } from "./features/workbench/hooks/use-lab";
 import { registerRuntimeContributions } from "./runtime/contributions";
@@ -109,20 +110,26 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 					switch (event.type) {
 						case "conversation-changed":
 							hasSession = event.conversation.id !== null;
+							activeSession = event.conversation.id;
+							publishTaskEvent({ phase: "conversation", sessionId: event.conversation.id, streaming: event.conversation.isStreaming, cwd: event.conversation.cwd });
 							push(chatStateOf(event.conversation));
 							return;
 						case "turn-start":
+							publishTaskEvent({ phase: "turn-start", sessionId: activeSession ?? null, streaming: true });
 							settle("streaming", null);
 							return;
 						case "turn-end":
+							publishTaskEvent({ phase: "turn-end", sessionId: activeSession ?? null, streaming: false });
 							settle("idle", null);
 							return;
 						case "tool-call-start":
 							if (!isPluginTool(event.toolName)) return;
+							publishTaskEvent({ phase: "tool-start", sessionId: activeSession ?? null, toolName: event.toolName, streaming: true });
 							settle("streaming", event.toolName);
 							return;
 						case "tool-call-end":
 							if (!isPluginTool(event.toolName)) return;
+							publishTaskEvent({ phase: "tool-end", sessionId: activeSession ?? null, toolName: event.toolName, isError: event.isError, streaming: false });
 							settle("idle", null);
 							return;
 						default:

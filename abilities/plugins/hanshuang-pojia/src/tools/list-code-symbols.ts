@@ -2,6 +2,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { readNativeFacts } from "../domain/native/detect";
 import { listSymbols, type CodeSymbol } from "../domain/native/symbols";
 import { loadSample } from "./read-sample";
+import { publishToolResult } from "../runtime/panel-channel";
 
 interface ListCodeSymbolsInput {
 	path?: string;
@@ -80,6 +81,25 @@ export function registerListCodeSymbolsTool(ctx: PluginContext): Disposable {
 					if (a.kind === "import" && b.kind !== "import") return 1;
 					if (b.kind === "import" && a.kind !== "import") return -1;
 					return a.address - b.address;
+				});
+				publishToolResult({
+					toolId: "list_code_symbols",
+					kind: "symbols",
+					target: sample.path,
+					summary: `${sorted.length} symbol(s)${needle ? ` for "${needle}"` : ""} in ${sample.name} (${surface.functions} fn, ${surface.exports} exported, ${surface.imports} imported)`,
+					payload: {
+						name: sample.name,
+						format: facts.format,
+						arch: facts.arch,
+						bits: facts.bits,
+						total: surface.total,
+						functions: surface.functions,
+						exports: surface.exports,
+						imports: surface.imports,
+						matched: sorted.length,
+						query: needle || null,
+						first: sorted.slice(0, 20).map(s => ({ address: addressText(s), kind: s.kind, name: s.name })),
+					},
 				});
 
 				const lines = [

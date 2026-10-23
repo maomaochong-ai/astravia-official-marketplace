@@ -40,7 +40,8 @@ export type PromptAction =
 	| "compare"
 	| "report"
 	| "harden"
-	| "toolchain";
+	| "toolchain"
+	| "install";
 
 function subject(context: PromptContext): string {
 	const target = context.target;
@@ -125,7 +126,18 @@ export function buildPrompt(action: PromptAction, context: PromptContext = {}): 
 				"Then check the kit: whether its seep MCP server answers seep_status, whether the ida MCP server is connected, and what each reports for radare2 / jadx / apktool / IDA and its knowledge base.",
 				"Say which engine you would use for what and what it buys me over the panel, and go through radare2 or the seep path when IDA is absent instead of stopping.",
 				"Do not install anything without asking me first.",
-			].join("\n");
+		].join("\n");
+	case "install":
+		return [
+			`Set up the external reversing toolchain for ${subject(context)} on this machine.`,
+			"Call install_toolchain with the goal this sample needs, then take every install command it returns and run",
+			"them yourself, one at a time, so the host can authorise each and you can report progress per command.",
+			"Run each command with your own shell when the host grants it; when an install needs sudo or a package manager",
+			"that needs interactive confirmation, ask the user before running it.",
+			"After each install, call probe_environment with refresh=true. Only stop when the tool the goal needs answers a",
+			"version probe, or when an install genuinely fails and needs the user's decision — then say exactly what failed",
+			"and what to do next.",
+		].join("\n");
 		case "disasm":
 			return [
 				`Read the function the Hanshuang Pojia panel is disassembling in ${subject(context)}${context.other ? ` (${context.other})` : ""}.`,

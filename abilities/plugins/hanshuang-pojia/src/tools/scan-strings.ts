@@ -1,6 +1,7 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { compilePattern, extractStrings } from "../domain/strings";
 import { loadSample } from "./read-sample";
+import { publishToolResult } from "../runtime/panel-channel";
 
 interface ScanStringsInput {
 	path?: string;
@@ -71,6 +72,22 @@ export function registerScanStringsTool(ctx: PluginContext): Disposable {
 				const query = (input.query ?? "").trim();
 				const matcher = query.length > 0 ? compilePattern(query) : null;
 				const hits = (matcher ? scanned.filter(item => matcher.test(item.value)) : scanned).slice(0, maxResults);
+				publishToolResult({
+					toolId: "scan_binary_strings",
+					kind: "strings",
+					target: sample.path,
+					summary:
+						hits.length > 0
+							? `${hits.length} string(s)${query ? ` for "${query}"` : ""} in ${sample.name} (${scanned.length} scanned)`
+							: `No strings matched${query ? ` "${query}"` : ""} in ${sample.name} (${scanned.length} scanned)`,
+					payload: {
+						name: sample.name,
+						query: query || null,
+						scanned: scanned.length,
+						hits: hits.slice(0, 30).map(hit => ({ offset: `0x${hit.offset.toString(16)}`, encoding: hit.encoding, value: hit.value.slice(0, 80) })),
+						total: hits.length,
+					},
+				});
 				if (hits.length === 0) {
 					return `No strings matched ${query ? `"${query}"` : "the scan"} in ${sample.name} (${scanned.length} candidate strings scanned).`;
 				}

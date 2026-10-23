@@ -97,9 +97,10 @@ export function SelfCheckPage({ model }: PageProps) {
 
 				<Card title={t("selfcheck.tools.title")} bodyClassName="p-3.5">
 					<p className="text-[10.5px] leading-relaxed text-text-3">{t("selfcheck.tools.body")}</p>
-					<div className="mt-2 flex items-center gap-2">
+					<div className="mt-2 flex flex-wrap items-center gap-2">
 						<AiButton label={t("ai.toolchain")} onClick={() => model.ask("toolchain")} busy={model.chat.sending} />
-						<span className="text-[10px] text-text-4">{t("selfcheck.tools.hint")}</span>
+						<AiButton label={t("selfcheck.tools.installAll")} onClick={() => model.ask("install")} busy={model.chat.sending} />
+						<span className="text-[10px] text-text-4">{model.chat.sending ? t("selfcheck.tools.running") : t("selfcheck.tools.hint")}</span>
 					</div>
 				</Card>
 			</div>

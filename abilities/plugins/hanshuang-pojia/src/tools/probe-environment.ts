@@ -1,6 +1,7 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { renderToolchain } from "../domain/toolchain/probe";
 import { createCommandRunner, probeOnce } from "../features/workbench/services/toolchain";
+import { publishToolResult } from "../runtime/panel-channel";
 
 interface ProbeEnvironmentInput {
 	refresh?: boolean;
@@ -48,6 +49,22 @@ export function registerProbeEnvironmentTool(ctx: PluginContext): Disposable {
 			}
 			try {
 				const report = await probeOnce(run, { refresh: context.trigger.input.refresh === true });
+				const available = report.tools.filter(tool => tool.available);
+				const blocked = report.tools.filter(tool => tool.blocked);
+				const missing = report.tools.filter(tool => !tool.available && !tool.blocked);
+				publishToolResult({
+					toolId: "probe_environment",
+					kind: "probe",
+					summary: `${available.length} tool(s) ready · ${blocked.length} blocked · ${missing.length} missing`,
+					payload: {
+						refresh: context.trigger.input.refresh === true,
+						available: available.map(tool => tool.id),
+						blocked: blocked.map(tool => ({ id: tool.id, detail: tool.detail })),
+						missing: missing.map(tool => ({ id: tool.id, detail: tool.detail })),
+						total: report.tools.length,
+					},
+				});
+				return renderToolchain(report);
 				return renderToolchain(report);
 			} catch (error) {
 				return `Probe failed: ${error instanceof Error ? error.message : String(error)}`;

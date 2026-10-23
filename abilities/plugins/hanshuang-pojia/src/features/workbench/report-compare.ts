@@ -88,3 +88,125 @@ export function compareReports(left: TriageReport, right: TriageReport): ReportD
 		},
 	};
 }
+
+/**
+ * 家族基线（G3）：当前样本 vs 家族内其它样本的聚合，输出三列归属。
+ *
+ * 「家族」没有全局 shape 指纹，所以这里以共享的清单事实为锚：把 family 里每份报告的
+ * 发现规则集与事实表归并，得出三列——
+ * - common      当前样本与家族都观察到
+ * - left-only   仅当前样本有
+ * - family-only 家族有而当前样本没有
+ * 对每个发现规则给出它在家族内出现的次数，方便判断这是样本独有还是家族通病。
+ * 纯静态聚合，不重读样本字节。
+ */
+export interface FamilyFinding {
+	ruleId: string;
+	title: string;
+	severity: Severity;
+	side: "common" | "left-only" | "family-only";
+	/** 家族（不含当前样本）内出现该规则的报告份数。 */
+	familyCount: number;
+}
+
+export interface FamilyBaseline {
+	leftName: string;
+	/** family 的大小（不含当前样本）。0 表示没有可比对对象。 */
+	familySize: number;
+	score: { left: number; familyAvg: number; familyMax: number };
+	facts: Array<{ label: string; left: string; family: string; changed: boolean }>;
+	findings: FamilyFinding[];
+	commonFindings: number;
+	leftOnlyFindings: number;
+	familyOnlyFindings: number;
+}
+
+export function familyBaseline(left: TriageReport, family: readonly TriageReport[]): FamilyBaseline {
+	const leftRules = new Set(left.findings.map(finding => finding.ruleId));
+	const familyRules: Map<string, number> = new Map();
+	for (const member of family) {
+		for (const finding of member.findings) {
+			familyRules.set(finding.ruleId, (familyRules.get(finding.ruleId) ?? 0) + 1);
+		}
+	}
+
+	const seen = new Set<string>();
+	const findings: FamilyFinding[] = [];
+	for (const finding of left.findings) {
+		if (seen.has(finding.ruleId)) continue;
+		seen.add(finding.ruleId);
+		const familyCount = familyRules.get(finding.ruleId) ?? 0;
+		findings.push({
+			ruleId: finding.ruleId,
+			title: finding.title,
+			severity: finding.severity,
+			side: familyCount > 0 ? "common" : "left-only",
+			familyCount,
+		});
+	}
+	for (const [ruleId, count] of familyRules) {
+		if (leftRules.has(ruleId) || seen.has(ruleId)) continue;
+		const sample = family.find(report => report.findings.some(f => f.ruleId === ruleId));
+		seen.add(ruleId);
+		findings.push({
+			ruleId,
+			title: sample?.findings.find(f => f.ruleId === ruleId)?.title ?? ruleId,
+			severity: sample?.findings.find(f => f.ruleId === ruleId)?.severity ?? ("info" as Severity),
+			side: "family-only",
+			familyCount: count,
+		});
+	}
+
+	const familyScores = family.map(member => member.risk.score);
+	const familyAvg = familyScores.length ? familyScores.reduce((sum, score) => sum + score, 0) / familyScores.length : left.risk.score;
+	const familyMax = familyScores.length ? Math.max(...familyScores) : left.risk.score;
+
+	const leftFacts = factMap(left);
+	const familyFactValues = new Map<string, string[]>();
+	for (const member of family) {
+		for (const fact of member.facts) {
+			const bucket = familyFactValues.get(fact.label) ?? [];
+			bucket.push(fact.value);
+			familyFactValues.set(fact.label, bucket);
+		}
+	}
+	const labels = new Set([...leftFacts.keys(), ...familyFactValues.keys()]);
+	const facts: FamilyBaseline["facts"] = [];
+	for (const label of labels) {
+		const leftValue = leftFacts.get(label) ?? "—";
+		const familyValues = familyFactValues.get(label) ?? [];
+		const familyValue = familyValues.length ? mostCommon(familyValues) : "—";
+		facts.push({ label, left: leftValue, family: familyValue, changed: leftValue !== familyValue });
+	}
+	facts.sort((a, b) => Number(b.changed) - Number(a.changed) || a.label.localeCompare(b.label));
+
+	const commonFindings = findings.filter(f => f.side === "common").length;
+	const leftOnlyFindings = findings.filter(f => f.side === "left-only").length;
+	const familyOnlyFindings = findings.filter(f => f.side === "family-only").length;
+
+	return {
+		leftName: left.target.name,
+		familySize: family.length,
+		score: { left: left.risk.score, familyAvg, familyMax },
+		facts,
+		findings,
+		commonFindings,
+		leftOnlyFindings,
+		familyOnlyFindings,
+	};
+}
+
+function mostCommon(values: readonly string[]): string {
+	const counts = new Map<string, number>();
+	let best = "";
+	let bestCount = 0;
+	for (const value of values) {
+		const next = (counts.get(value) ?? 0) + 1;
+		counts.set(value, next);
+		if (next > bestCount) {
+			bestCount = next;
+			best = value;
+		}
+	}
+	return best;
+}

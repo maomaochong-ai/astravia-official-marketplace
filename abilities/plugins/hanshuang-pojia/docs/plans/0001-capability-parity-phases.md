@@ -115,7 +115,7 @@
 2. `src/domain/toolchain/probe.ts`：`probeToolchain` → `ToolStatus[]` + 能力布尔表；区分「宿主拒绝」与
    「未安装」；`renderToolchain` 输出逐行对齐的可用性表。
 3. `src/domain/toolchain/radare.ts`：9 个 operation 的纯函数 `planRadare`（返回 invocations + render），
-   `assertReadOnly` 只读守卫，`stripNoise`/`paginate`/`branchSkeleton`/`foldStatements`/`truncateChars`。
+	   `stripNoise`/`paginate`/`branchSkeleton`/`foldStatements`/`truncateChars`；`cmd` 对等上游零限制直通（2.9.0 反转 D16 只读守卫）。
 4. `src/domain/toolchain/android.ts`：`planAndroid`（jadx / apktool）+ `searchSourceTree`（走插件 `fs`，
    不经进程）。`src/domain/toolchain/workspace.ts`：`initTaskWorkspace`（**不含 `patches/`**）。
 5. `src/features/workbench/services/toolchain.ts`：把 `ctx.command.run` 适配为 `CommandRunner`，探针 60s 缓存。

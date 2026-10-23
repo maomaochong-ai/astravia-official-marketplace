@@ -2,6 +2,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { CHECKLIST_TYPES, checklistById, checklistMenu } from "../domain/playbooks";
 import { docById, loadDoc } from "../features/workbench/services/docs";
 import { kitProvenance, truncationNote } from "./doc-header";
+import { publishToolResult } from "../runtime/panel-channel";
 
 const DEFAULT_CHARS = 12_000;
 const MAX_CHARS = 60_000;
@@ -65,6 +66,18 @@ export function registerKbChecklistTool(ctx: PluginContext): Disposable {
 			}
 
 			const budget = Math.max(500, Math.min(MAX_CHARS, Math.trunc(input.maxChars ?? DEFAULT_CHARS)));
+			publishToolResult({
+				toolId: "kb_checklist",
+				kind: "checklist",
+				target: type.id,
+				summary: `${entry.title} (${entry.lines} lines) opened`,
+				payload: {
+					id: type.id,
+					doc: type.doc,
+					lines: entry.lines,
+					bytes: entry.bytes,
+				},
+			});
 			const header = [
 				`# ${entry.title}`,
 				kitProvenance,

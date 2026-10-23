@@ -15,6 +15,7 @@ const ACTIONS: PromptAction[] = [
 	"report",
 	"harden",
 	"toolchain",
+	"install",
 ];
 
 describe("buildPrompt", () => {
@@ -54,5 +55,13 @@ describe("buildPrompt", () => {
 		for (const action of ACTIONS) {
 			expect(buildPrompt(action), action).not.toMatch(/<[A-Z_]+>/);
 		}
+	});
+
+	it("asks the agent to run install_toolchain and execute every command, then re-probe", () => {
+		const prompt = buildPrompt("install");
+		expect(prompt).toContain("install_toolchain");
+		expect(prompt.toLowerCase()).toContain("run");
+		expect(prompt).toContain("probe_environment with refresh=true");
+		expect(prompt.toLowerCase()).toContain("ask the user");
 	});
 });

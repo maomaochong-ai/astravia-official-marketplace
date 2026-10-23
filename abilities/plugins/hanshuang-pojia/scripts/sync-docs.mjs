@@ -20,9 +20,9 @@ const indexPath = join(contentDir, "index.json");
 const shaPath = join(contentDir, "docs.sha256");
 
 const GROUPS = [
-	{ id: "kb", label: "Knowledge base", source: "Tool/mcp/Tool/reverselab/kb" },
-	{ id: "manual", label: "Manuals", source: "MANUAL" },
-	{ id: "kit-docs", label: "Tool docs", source: "Tool/docs" },
+	{ id: "kb", label: "Knowledge base", source: "Tool/mcp/Tool/reverselab/kb", minFiles: 292 },
+	{ id: "manual", label: "Manuals", source: "MANUAL", minFiles: 10 },
+	{ id: "kit-docs", label: "Tool docs", source: "Tool/docs", minFiles: 7 },
 ];
 
 function walk(dir, base = dir) {
@@ -135,8 +135,46 @@ function manifest(entries) {
 	return entries.map(entry => `${entry.sha256}  ${entry.id}.md`).join("\n") + "\n";
 }
 
+function fromArg() {
+	const index = process.argv.indexOf("--from");
+	return index >= 0 && process.argv[index + 1] ? process.argv[index + 1] : null;
+}
+
+/**
+ * 源目录校验锚（G4）：当调用方显式给出 seep-kit 2.0 根目录时，断言每个分组的源
+ * 都真实存在，且正文数量不低于各自下限（kb≥299、kit-docs≥18）。这是为了尽早发现
+ * 同步读到的不是预期里的 2.0 库（比如误指到旧目录或空壳），而不是等到索引写完才发现数目不对。
+ */
+function verifySource(from) {
+	const missing = [];
+	for (const group of GROUPS) {
+		const sourceDir = join(from, group.source);
+		if (!existsSync(sourceDir)) {
+			missing.push(`${group.id}: ${group.source} (missing)`);
+			continue;
+		}
+		if (group.minFiles <= 0) continue;
+		const count = walk(sourceDir).length;
+		if (count < group.minFiles) missing.push(`${group.id}: ${group.source} has ${count} docs, expected ≥ ${group.minFiles}`);
+	}
+	if (missing.length > 0) {
+		console.error(`source verification failed under ${from}:`);
+		for (const line of missing) console.error(`  - ${line}`);
+		process.exit(1);
+	}
+	console.log(`source ok: ${from}`);
+}
+
 function main() {
 	const checkOnly = process.argv.includes("--check");
+	const from = fromArg();
+	if (from) {
+		if (!existsSync(from)) {
+			console.error(`--from path not found: ${from}`);
+			process.exit(1);
+		}
+		verifySource(from);
+	}
 	const entries = buildIndex();
 	const nextIndex = JSON.stringify(entries, null, "\t") + "\n";
 	const nextSha = manifest(entries);

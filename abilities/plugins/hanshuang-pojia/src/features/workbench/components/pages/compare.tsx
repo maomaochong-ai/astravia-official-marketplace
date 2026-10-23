@@ -1,7 +1,7 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useMemo } from "react";
 import { formatBytes } from "../../../../domain/report/report";
-import { compareReports } from "../../report-compare";
+import { compareReports, familyBaseline } from "../../report-compare";
 import { SEVERITY_TEXT } from "../../severity";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
@@ -20,6 +20,10 @@ export function ComparePage({ model }: PageProps) {
 	const right = model.compareB ? model.reports[model.compareB] : null;
 
 	const diff = useMemo(() => (left && right ? compareReports(left, right) : null), [left, right]);
+
+	// 家族基线（G3）：以左侧报告为锚，把库里其它报告当作家族聚合出三列。
+	const family = useMemo(() => (left ? available.map(entry => model.reports[entry.id]).filter(report => report && report !== left) : []), [available, left, model.reports]);
+	const baseline = useMemo(() => (left && family.length > 0 ? familyBaseline(left, family) : null), [family, left]);
 
 	if (available.length < 2) {
 		return (
@@ -129,6 +133,32 @@ export function ComparePage({ model }: PageProps) {
 								empty={t("compare.sameFacts")}
 							/>
 						</Card>
+
+						{baseline ? (
+							<Card title={t("compare.family.title")} bodyClassName="divide-y divide-line-subtle">
+								<div className="flex items-center gap-2 px-3.5 py-1.5 text-[10.5px] text-text-3">
+									<span className="font-mono text-risk-high">{(baseline as { commonFindings: number }).commonFindings}</span>
+									<span>{t("compare.family.common")}</span>
+									<span className="ml-1 font-mono text-risk-medium">{(baseline as { leftOnlyFindings: number }).leftOnlyFindings}</span>
+									<span>{t("compare.family.leftOnly")}</span>
+									<span className="ml-1 font-mono text-risk-low">{(baseline as { familyOnlyFindings: number }).familyOnlyFindings}</span>
+									<span>{t("compare.family.familyOnly")}</span>
+									<span className="ml-auto truncate font-mono text-[10px] text-text-4">avg {baseline.score.familyAvg.toFixed(1)} · max {baseline.score.familyMax}</span>
+								</div>
+								{baseline.findings.map(finding => (
+									<div key={`${finding.side}-${finding.ruleId}`} className="flex items-center gap-2 px-3.5 py-1.5">
+										<span className={`font-mono shrink-0 text-[10px] ${finding.side === "common" ? "text-risk-low" : finding.side === "left-only" ? "text-risk-high" : "text-risk-medium"}`}>
+											{finding.side === "common" ? "·" : finding.side === "left-only" ? "+" : "◊"}
+										</span>
+										<span className={`font-mono shrink-0 text-[10px] ${SEVERITY_TEXT[finding.severity]}`}>{finding.severity}</span>
+										<span className={`min-w-0 flex-1 truncate text-[11.5px] ${finding.side === "left-only" ? "text-text" : "text-text-3"}`}>{finding.title}</span>
+										{finding.familyCount > 0 && (
+											<span className="shrink-0 rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[9.5px] text-text-4">{finding.familyCount}×</span>
+										)}
+									</div>
+								))}
+							</Card>
+						) : null}
 					</>
 				) : (
 					<EmptyState icon="compare" title={t("compare.pickTwo.title")} body={t("compare.pickTwo.body")} />

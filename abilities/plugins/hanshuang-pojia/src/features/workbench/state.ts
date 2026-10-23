@@ -5,7 +5,7 @@
 
 import type { ReportMode, TriageReport } from "../../domain/report/report";
 
-export type PageId = "overview" | "guide" | "docs" | "samples" | "findings" | "strings" | "disasm" | "manifest" | "entropy" | "signature" | "compare" | "selfcheck" | "reports" | "settings";
+export type PageId = "overview" | "guide" | "docs" | "samples" | "findings" | "strings" | "disasm" | "manifest" | "entropy" | "signature" | "compare" | "selfcheck" | "reports" | "settings" | "activity" | "stream";
 
 export interface NavItem {
 	id: PageId;
@@ -20,7 +20,7 @@ export interface NavGroup {
 }
 
 export const NAV: readonly NavGroup[] = [
-	{ id: "workflow", items: [{ id: "overview", icon: "nav-overview" }, { id: "guide", icon: "nav-guide" }, { id: "docs", icon: "nav-docs" }] },
+	{ id: "workflow", items: [{ id: "overview", icon: "nav-overview" }, { id: "guide", icon: "nav-guide" }, { id: "docs", icon: "nav-docs" }, { id: "activity", icon: "nav-activity" }, { id: "stream", icon: "nav-stream" }] },
 	{ id: "analysis", items: [{ id: "samples", icon: "nav-samples" }, { id: "findings", icon: "nav-findings" }, { id: "strings", icon: "nav-strings" }, { id: "disasm", icon: "nav-disasm" }] },
 	{
 		id: "forensics",
@@ -114,3 +114,40 @@ export function entryFromReport(report: TriageReport): LibraryEntry {
 
 export const LIBRARY_STATE_PATH = "workbench/library.json";
 export const SETTINGS_STATE_PATH = "workbench/settings.json";
+
+/** 一条工具结果在面板里的展示条目：由 publishToolResult / triage 报告收敛而来。 */
+export interface ActivityEntry {
+	/** 稳定 id，用来在持久化里去重、在列表里定位。 */
+	id: string;
+	/** 工具名，如 scan_strings / run_radare。 */
+	toolId: string;
+	/** 结果种类。 */
+	kind: "report" | "strings" | "symbols" | "disasm" | "decompile" | "diff" | "signature" | "checklist" | "probe" | "docs" | "hook" | "protocol" | "other";
+	/** 目标样本 / 主题。 */
+	target?: string;
+	/** 一行可读摘要。 */
+	summary: string;
+	/** 结构化载荷，面板按 kind 决定渲染方式。 */
+	payload?: Record<string, unknown>;
+	/** 触发时间。 */
+	at: string;
+}
+
+export const ACTIVITY_STATE_PATH = "workbench/activity.json";
+/** 活动流最多保留多少条；环形截断，保留最近的。 */
+export const MAX_ACTIVITY = 200;
+
+/** 一条任务实时流事件（会话 / turn / 工具调用生命周期），由宿主方向 publish 而来。 */
+export interface TaskStreamEntry {
+	id: string;
+	phase: "conversation" | "turn-start" | "turn-end" | "tool-start" | "tool-end";
+	sessionId: string | null;
+	toolName?: string;
+	isError?: boolean;
+	streaming?: boolean;
+	summary: string;
+	at: string;
+}
+
+/** 实时流保留的事件条数；它比结果流轻、更“当下”，同样环形截断。 */
+export const MAX_TASKS = 80;

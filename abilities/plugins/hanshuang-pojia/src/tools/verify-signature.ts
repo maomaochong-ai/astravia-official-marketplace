@@ -6,6 +6,7 @@ import { sha256Hex } from "../domain/digest";
 import { specFor, type CommandRunner } from "../domain/toolchain/catalog";
 import { createCommandRunner, describeCommandFailure, probeOnce } from "../features/workbench/services/toolchain";
 import { loadSample } from "./read-sample";
+import { publishToolResult } from "../runtime/panel-channel";
 
 const MAX_CHARS = 12_000;
 const MAX_V1_BLOCKS = 6;
@@ -109,6 +110,23 @@ export function registerVerifySignatureTool(ctx: PluginContext): Disposable {
 				}
 
 				const expected = input.expected_digest ? normaliseExpectedDigest(input.expected_digest) : "";
+				publishToolResult({
+					toolId: "verify_signature",
+					kind: "signature",
+					target: sample.path,
+					summary: verdict
+						? `${verdict.verifies === true ? "Verifies" : verdict.verifies === false ? "DOES NOT VERIFY" : "unresolved"}${verdict.signerCount ? ` · ${verdict.signerCount} signer(s)` : ""} in ${sample.name}`
+						: `Structural only in ${sample.name}${apksignerNote ? " · apksigner not run" : ""}`,
+					payload: {
+						name: sample.name,
+						mode,
+						schemes: facts.schemes,
+						verifies: verdict?.verifies ?? null,
+						signerCount: verdict?.signerCount,
+						signers: verdict?.signers.map(s => ({ dn: s.dn, certificateSha256: s.certificateSha256, algorithm: s.keyAlgorithm })),
+						expected,
+					},
+				});
 				const body = renderReport({ name: sample.name, facts, v1Blocks, verdict, apksignerNote, mode, expected });
 				if (body.length <= budget) return body;
 				return `${body.slice(0, budget)}\n... [TRUNCATED at ${budget} chars — raise max_chars for the rest]`;

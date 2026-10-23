@@ -16,6 +16,7 @@ export const TOOL_IDS = [
 	"disassemble_range",
 	"search_dex_symbols",
 	"diff_binaries",
+	"disassemble_dex_method",
 	"decompile_function",
 	"diff_functions",
 	"generate_hook",
@@ -33,7 +34,9 @@ export const TOOL_IDS = [
 	"ida_status",
 	"verify_signature",
 	"frida_dump",
-] as const;
+	"generate_artifact",
+	"install_astravia",
+]
 
 export type ToolId = (typeof TOOL_IDS)[number];
 
@@ -41,7 +44,7 @@ export type ToolId = (typeof TOOL_IDS)[number];
  * 工具总数的防漂移锚点。自检页用它断言注册表没有在重构里悄悄少一项：
  * 只比 `TOOL_IDS` 自己永远不会失败，必须有一个外部数字。
  */
-export const EXPECTED_TOOL_COUNT = 25;
+export const EXPECTED_TOOL_COUNT = 28;
 
 /** 宿主可能给工具名加前缀，所以按后缀 / 包含判定。 */
 export function isPluginTool(toolName: string): boolean {

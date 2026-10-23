@@ -23,7 +23,10 @@ import { registerKbChecklistTool } from "./kb-checklist";
 import { registerKbPayloadsTool } from "./kb-payloads";
 import { registerIdaStatusTool } from "./ida-status";
 import { registerVerifySignatureTool } from "./verify-signature";
+import { registerGenerateArtifactTool } from "./generate-artifact";
+import { registerInstallAstraviaTool } from "./install-astravia";
 import { registerFridaDumpTool } from "./frida-dump";
+import { registerDisassembleDexMethodTool } from "./disassemble-dex-method";
 
 /**
  * 工具注册总入口。每个工具单独 try：
@@ -57,7 +60,10 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerKbPayloadsTool,
 		registerIdaStatusTool,
 		registerVerifySignatureTool,
+		registerGenerateArtifactTool,
+		registerInstallAstraviaTool,
 		registerFridaDumpTool,
+		registerDisassembleDexMethodTool,
 	]) {
 		try {
 			disposables.push(register(ctx));

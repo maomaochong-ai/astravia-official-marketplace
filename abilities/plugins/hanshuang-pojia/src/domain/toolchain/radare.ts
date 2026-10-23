@@ -75,69 +75,12 @@ const FOLD_KEYWORDS = [
 	"break", "continue", "call ", "(", "->",
 ];
 
-/**
- * Commands that change the sample, the file system or the process. A read-only
- * command channel is the only form of `r2 -c` passthrough this plugin will run:
- * patching bytes or dropping to a shell is not analysis.
- */
-// r2 spells several write/open families in both cases, so every letter that can patch, open or
-// restart is listed twice. `P` stays uppercase-only: lowercase `p` is the print family, and a
-// case-insensitive rule would refuse `pdf`, `pdc` and `px`. `dr` stays allowed below.
-const BLOCKED_COMMAND = /^(?:[wWoOdDmMrR]|P|!|#!|=|\.)/;
-
-/**
- * Sequences that leave r2's own parser: pipes and redirects hand the command to a shell,
- * `$(…)`, backticks and `.script` run something else, `=!` reaches a local shell.
- * `~!` is the negated grep filter and stays allowed. The rest of the `=` family is
- * blocked as a command (remote connections and `=h`, which serves an r2 console over
- * a socket) — that is network exposure, not analysis of a file.
- */
-const DISALLOWED_SEQUENCES: readonly { pattern: RegExp; why: string }[] = [
-	{ pattern: /\|/, why: "a pipe hands the command to a shell" },
-	{ pattern: /[<>]/, why: "a redirect writes to the file system" },
-	{ pattern: /\$\(/, why: "command substitution runs a nested command" },
-	{ pattern: /`/, why: "backticks run a nested command" },
-	{ pattern: /(^|[^~])=!/, why: "`=!` runs a local shell command" },
-];
-
-/** Read-only members of the `d` (debug) family that never execute the sample. Matched as typed: `DR` is refused, not normalised. */
-const ALLOWED_COMMAND = /^dr\b/;
 
 function normalizeLimit(value: number | undefined, fallback: number, max: number): number {
 	if (value === undefined || !Number.isFinite(value)) return fallback;
 	return Math.max(1, Math.min(max, Math.trunc(value)));
 }
 
-function segmentOf(segment: string): string {
-	const trimmed = segment.trim();
-	// `aaa` style prefixes are harmless; the guard only looks at what follows.
-	return trimmed.replace(/^a{2,}[a-z]*\s*;\s*/i, "");
-}
-
-/** Throws when any segment of a semicolon-chained command mutates state. */
-export function assertReadOnly(command: string): void {
-	const segments = command
-		.split(/[;\n]/)
-		.map(segmentOf)
-		.filter(segment => segment.length > 0);
-	if (segments.length === 0) throw new Error("empty radare2 command");
-	for (const segment of segments) {
-		const nested = DISALLOWED_SEQUENCES.find(entry => entry.pattern.test(segment));
-		if (nested) {
-			throw new Error(
-				`refused "${segment}": ${nested.why}, which is outside read-only analysis. ` +
-					"Run r2 by hand outside the plugin if you need it.",
-			);
-		}
-		if (!ALLOWED_COMMAND.test(segment) && BLOCKED_COMMAND.test(segment)) {
-			throw new Error(
-				`refused "${segment}": this channel runs read-only radare2 commands. Writing bytes, ` +
-					"patching the sample, opening a debugger or dropping to a shell is out of scope; " +
-					"use r2 by hand outside the plugin if you need it.",
-			);
-		}
-	}
-}
 
 export function r2Invocation(command: string, path: string, timeoutMs = R2_TIMEOUT): Invocation {
 	return { file: "r2", args: ["-q", "-e", "scr.color=0", "-c", command, path], timeoutMs };
@@ -387,7 +330,7 @@ export function planRadare(request: RadareRequest): RadarePlan {
 
 		case "cmd": {
 			const command = (request.command ?? "").trim();
-			assertReadOnly(command);
+			if (command === "") throw new Error("empty radare2 command");
 			const full = request.analyze === false ? command : analyzed(command);
 			return {
 				operation: request.operation,

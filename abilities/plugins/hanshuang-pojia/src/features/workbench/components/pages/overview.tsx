@@ -8,6 +8,8 @@ import { BlockedPanel } from "../workbench/blocked-panel";
 import { FindingList } from "../workbench/finding-list";
 import { RiskScore } from "../workbench/risk-score";
 import { SampleDropzone } from "../workbench/sample-dropzone";
+import { WorkflowBar } from "../workbench/workflow-bar";
+import { PipelineBar } from "../workbench/pipeline-bar";
 import { SampleMeta } from "../workbench/sample-meta";
 
 export interface PageProps {
@@ -30,6 +32,8 @@ export function OverviewPage({ model }: PageProps) {
 				actions={<AiButton label={t("ai.summary")} onClick={() => model.ask("findings-summary")} busy={busy} disabled={!report} />}
 			/>
 			<div className="space-y-3 p-4">
+			<PipelineBar model={model} />
+			<WorkflowBar model={model} />
 				{error ? <BlockedPanel failure={error} root={model.cwd} busy={busy} onHandOff={model.handOff} onClear={model.reset} /> : null}
 
 				<SampleDropzone report={report} busy={phase === "loading"} fromAgent={model.fromAgent} onClear={model.reset} onReanalyse={model.reanalyse} />

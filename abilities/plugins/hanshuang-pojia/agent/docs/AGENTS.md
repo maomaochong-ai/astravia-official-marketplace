@@ -172,5 +172,6 @@ Astravia 之外没有插件运行时，也就没有 `probe_environment` 这类�
 1. 读本文件 + `SYSTEM.md`，把 §三、§四、§五 当作硬契约；
 2. 用 `agent/skills/<name>/scripts/` 下的脚本代替工具调用，参数以 `-h` 输出为准；
 3. 缺依赖时读 `skills/*/SKILL.md` 里的安装段，按平台执行，不要跨平台混用 `.ps1` / `.sh`；
-4. 需要把协议变成你的用户级全局指令时，由**用户**把 `SYSTEM.md` 内容并入
-   `~/.claude/CLAUDE.md` 或 `~/.astravia/agent/AGENTS.md` —— 本工作台不主动写用户目录。
+	4. 需要把协议变成你的用户级全局指令时，用工具 `install_astravia` 把带标记块的注入内容交给
+	   **用户**经原生保存对话框确认后落入 `~/.astravia/agent/AGENTS.md`（对齐上游注入器，但不静默写用户目录）；
+	   其它宿主可让用户自行把 `SYSTEM.md` 内容并入 `~/.claude/CLAUDE.md` 等 —— 本工作台不主动写用户目录。

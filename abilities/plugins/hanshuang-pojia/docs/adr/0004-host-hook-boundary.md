@@ -162,5 +162,10 @@
 
 - 上游 `SYSTEM.md` 的动态话术库与 CTF 沙箱规范留在 `agent/skills/hanshuang-pojia/SKILL.md`
   （按需加载），没有进常驻块；
-- 7 个注入器（claude / cursor / doubao / dsh / opencode / workbuddy / zcode）尚无对应需求，
-  未实现；若要落地，落点应是 `~/.astravia/agent/AGENTS.md`，但那需要用户手动授权写入。
+- 7 个注入器（claude / cursor / doubao / dsh / opencode / workbuddy / zcode）尚无对应需求。
+  Astravia 侧的对应物是 **`install_astravia` 注入器**（落点 `~/.astravia/agent/AGENTS.md`，见
+  plan 0002 §1.6），
+  但插件 fs 只能写项目内路径（`writeFilesystemFile` 有 `assertFilesystemPathWithinProject`）。
+  因此**不静默写用户目录**，改为经 `saveAs` 原生保存对话框把「带标记块 + 还原备份」的注入内容交给用户亲自确认落盘
+  （`fs.saveAs` 不受项目根限制，用户点保存 = 显式授权，对齐上游 `restore` / 备份语义）。
+  上文的 `agent/docs/AGENTS.md`「本工作台不主动写用户目录」立场保留——插件自己不写，由用户确认落盘。
