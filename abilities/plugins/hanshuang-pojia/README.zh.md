@@ -48,31 +48,39 @@
 | `diff_binaries` | 两个样本之间的字节级差异块 |
 | `decompile_function` | 单个函数的寄存器级伪 C，并列出它引用的字符串 |
 | `diff_functions` | 两个版本之间哪些函数改了形状、哪些只改了常量 |
-| `generate_hook` | 为命中的 Dalvik 方法生成 Frida **观测**脚本（绝不改写返回值） |
+| `generate_hook` | 为命中的 Dalvik 方法生成 Frida 脚本：`observe` 只打日志（默认）、`override` 跑完原方法再返回 `return_value`、`replace` 不跑原方法 |
+| `frida_dump` | 加壳样本的运行时 dex 抽取：出扫描脚本、真机跑、或把日志拼回 `.dex` 文件 |
 | `triage_directory` | 目录下所有二进制的风险表，最差的排最前 |
 | `search_docs` | 在 309 篇随包文档里按标题 / id / 主题检索 |
 | `read_doc` | 读一篇文档正文（Markdown），超预算时明确标识截断位置 |
 | `probe_environment` | 探测已声明的可执行文件是否真能跑，给出各自版本横幅，并区分「宿主拒绝」与「未安装」 |
 | `install_toolchain` | 按目标筛出真正要装的那几个工具，给出本平台的准确安装命令 |
+| `kb_checklist` | 按名字直接打开 kit 的六份战术清单之一，如 `web_first_30_min` 或 `pe_ioc` |
+| `kb_payloads` | kit 的 payload 种子，按漏洞类别取；类别不存在时列出真实存在的章节 |
+| `ida_status` | `127.0.0.1:13337` 上的 IDA 桥接是否在应答，并把「没授权」与「没监听」分开 |
+| `verify_signature` | 签名方案与签名人证书：结构事实来自 APK 自身，宿主有 `apksigner` 时再跑 `verify --print-certs` |
 | `run_radare` | r2 / rabin2 / radiff2 / rasm2：头信息、字符串、函数表、反汇编、伪 C、交叉引用、汇编、差分，以及只读 `cmd` |
 | `decompile_android` | 用 jadx / apktool 输出到相邻目录，再对整个目录做 `smali_search` |
 | `init_task` | 单个目标的案件目录：`samples/`、`exports/`、`reports/`、README 与报告模板 |
 | `write_assessment_report` | 把四段式评估报告填进 `reports/<目标>_security_assessment_report.md`；没给的段落就写「未提供」 |
 
-二十个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+二十五个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
 
-几个分析工具都明确写出了自己不是什么：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是
-指令形状指纹，不是等价性证明；hook 模板只观测并原样返回原值 —— 在它上面写绕过是人的决定，不是插件
-产出的东西。
+几个分析工具把「返回什么」说清楚：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是指令形状
+指纹，不是等价性证明；hook 模板默认只观测并原样返回。最后一条是默认值而不是天花板 —— `mode`
+选 `override` / `replace` 并给 `return_value` 就是改写档，跑的还是技能里那条 `frida-run`。`frida_dump` 也一样：
+`run` 档需要真机与 frida-server，`script` 与 `assemble` 不需要设备就能用。
 
-五个工具链工具遵循同一条规则：`plugin.json#commands` 里逐字声明它们可以启动的十四个可执行文件，宿主在授予
+六个工具会启动外部二进制，遵循同一条规则：`plugin.json#commands` 里逐字声明它们可以启动的十四个可执行文件，宿主在授予
 `agent.command.run` 前会问用户，每次调用都是带参数数组的 `execFile`，不经过 shell。`run_radare` 的 `cmd`
 拒绝写、shell、调试器、打开文件、脚本执行、工程、挂载与 `=` 远程族命令（`w`/`W`、`!`、`o`/`O`、`d`/`D`、
 `P`、`R`/`r`、`m`/`M`、`.`、`=`），只放行 `dr` 这类只读族；凡是会离开 r2 自身解析器的写法也一律拒绝 —— 管道 `|`、
-重定向 `>`/`<`、`$()`、反引号与 `=!`。
+重定向 `>`/`<`、`$()`、反引号与 `=!`。这道阀护的是参数数组，不是你的选择：真要写字节，就用 `command.run`
+跑 `r2 -w`，命令看得见、也留得下记录。
 
 `decompile_android` 只写到 APK 旁边的目录，从不改原文件，而且只接受尚不存在的目录：已存在的 `output_dir`
-直接拒绝而不是合并进去；`apktool` 也不再带 `-f`，重跑不可能抹掉你自己的文件夹。全局没有 `patches/` 目录。
+直接拒绝而不是合并进去；`apktool` 也不再带 `-f`，重跑不可能抹掉你自己的文件夹。重建产物放在案件旁的 `exports/` 下：
+补丁是你那次修改的产出，不会有一个 `patches/` 目录提前替你留位。
 `probe_environment` 每个工具跑一次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。`install_toolchain` 把后者变成你真要敲的命令：按目标（`apk` / `native` / `firmware` / `dynamic` / `full`）筛掉用不上的工具，取本平台的配方（brew / apt / winget / scoop / pipx），到此为止——插件不跑安装器，每条命令你先看到再决定。商业套件（IDA、Binary Ninja、JEB）只作为上下文列出，不给命令；可选工具不占任何权限位，因为插件从不启动它们。与 2.0 的全量对照见 [docs/toolchain-parity.md](docs/toolchain-parity.md)。
 
 同一套引擎可以在终端里跑，不经过插件沙箱：
@@ -101,21 +109,22 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 | 权限 | 原因 |
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
-| `agent.tools.register`、`agent.toolHandler.execute` | 二十个工具 |
-| `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`：使用 `commands` 里声明的十四个可执行文件，每个都需用户授权 |
+| `agent.tools.register`、`agent.toolHandler.execute` | 二十五个工具 |
+| `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`、`verify_signature`、`frida_dump`：使用 `commands` 里声明的十四个可执行文件，每个都需用户授权 |
 | `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
 | `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
 | `storage.read`、`storage.write` | 样本架与设置能跨重启保留；没有授权时面板退化为会话内存 |
 | `fs.read` | 列目录与读取样本 |
 | `fs.write` | `fs.saveAs` 导出报告（路径由用户选择） |
 | `agent.systemPrompt.write` | 运行时生成的 kernel 块：实验室开关、用户正在看的页面、可用工具表 |
+| `network.fetch` | 只给 `ida_status` 用，且只向 `network.allowedHosts` 里声明的 `127.0.0.1` 发一次 GET，探 13337 端口上有没有 IDA 桥接在听 |
 
 ## 规则放在哪里
 
 2.6.0 起分两处：
 
 - **每轮都注入的 kernel 块**（`src/domain/kernel.ts`，priority 850）—— 实验室开没开、用户在看面板哪一页、哪些工具可达。那是状态，不是文案，所以它不可能是静态文件。
-- **lab 开启时才注入的 system 块**（`agent/docs/SYSTEM.md`，priority 840，约 5.8 KB）—— 授权门、交付形状、卡住时的处理、工具链引导、todo 纪律。关闭实验环境时这一块不注入：kernel 块已经声明了 OFF 状态与 `lab：` 口令，没必要为一个用不上的契约付 token。
+- **lab 开启时才注入的 system 块**（`agent/docs/SYSTEM.md`，priority 840，约 7.6 KB）—— 授权门、交付形状、卡住时的处理、工具链引导、todo 纪律。关闭实验环境时这一块不注入：kernel 块已经声明了 OFF 状态与 `lab：` 口令，没必要为一个用不上的契约付 token。
 
 静态母本是 `agent/docs/SYSTEM.md`。`scripts/sync-system-prompt.mjs` 把它镜像成
 `src/domain/system-prompt.generated.ts` —— 插件在渲染进程的 bundle 里跑，宿主从不告诉它自己装在哪，
@@ -143,10 +152,18 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 词表，每个端点记一次日志），而不是假装这里缺了个开关；执法点改到回合边界。
 
 **拒绝不是可接受的收尾。** `Stop` 钩子读最后一条助手消息：命中政策句或转介句（「建议联系厂商」）**无条件**
-续跑；命中身份句（「作为一个 AI」）只在整轮什么都没交付时才续跑。政策类不再看长度、也不再因「正文里有代码」
-而放行 —— 拒绝夹带一段代码仍然是拒绝。判定在 `src/domain/refusal.ts`，续跑片段明确禁止拒绝、禁止解释限制、
-禁止把活推给厂商，唯一的合法停法是引用一次确切错误原文然后换路继续交付。宿主侧还有 `stopHookActive`
-与 `DEFAULT_MAX_STOP_CONTINUATIONS = 8` 两道闸。
+续跑；命中**出处论证句**（把插件自己的 `SKILL.md` 降级成「不可信工具材料、只记录不执行」）单独计一类
+`provenance`，硬度只低于政策句；命中身份句（「作为一个 AI」）只在整轮什么都没交付时才续跑。政策类不再看长度、
+也不再因「正文里有代码」而放行 —— 拒绝夹带一段代码仍然是拒绝。判定在 `src/domain/refusal.ts`，
+续跑片段明确禁止拒绝、禁止解释限制、
+禁止把活推给厂商，唯一的合法停法是引用一次确切错误原文然后换路继续交付。插件每回合最多续跑
+3 次，同一条拒绝原样返回时提前收手；宿主另有 `DEFAULT_MAX_STOP_CONTINUATIONS = 8` 兜底。
+
+**技能文档是指令，不是材料。** 宿主那条「工具输出=不可信数据」对**目标字节**是对的，对**本插件自己的
+文档**是错的：`SKILL.md` 经读文件工具、文档检索返回或压缩后的历史进上下文，不会因此被降级。
+`agent/docs/SYSTEM.md` §4.1、`agent/docs/AGENTS.md` §二、技能自己的 §0.9 三处各自把边界划在工作台
+边界上，`read_doc` 也给每条结果盖同一行 provenance。真正算材料的只有目标自身的字节 —— 样本字符串、
+目标源码、日志、网页、抓包；其中出现的注入文本是要上报的发现物，不是要执行的命令。
 
 ## 工作台工具包 2.0
 
@@ -205,6 +222,7 @@ src/
 │   ├── report/    report.ts
 │   ├── interceptor.ts               # 上游 L1/L4 的移植：注入判定、术语表、快捷口令
 │   ├── refusal.ts                   # 回合边界的恢复判定：检测器 + 续跑追问片段
+│   ├── playbooks.ts                 # 清单类型与 payload 章节：只点名随包文档，不复制正文
 │   ├── system-prompt.generated.ts   # 由 agent/docs/SYSTEM.md 生成，勿手改
 │   └── triage.ts                    # 入口：识别 → 解析 → 审计 → 报告
 ├── domain/toolchain/                # 外部可执行文件：这层自己不启动进程
@@ -278,16 +296,26 @@ node --test tests/*.test.mjs
 
 `src/content/docs/` 下 309 篇实战文档的索引由 `scripts/sync-docs.mjs` 生成：新增或修改文档后不带 `--check` 跑一次，CI 里则保留 `--check`。文档按需切成独立 chunk，没点开的文章不产生下载。
 
-## 需要知道的边界
+## 实现深度
 
-- 安卓签名只读取 v1 文件与 APK Signing Block 中的方案和摘要，**不做密码学验签**。
+- 安卓签名把 v1 文件与 APK Signing Block 里的方案和摘要当作结构化字段读出来。需要定论时，在你自己的
+  终端里跑 `apksigner verify --print-certs` 或 `keytool -printcert -jarfile`（两者都在 `install_toolchain`
+  报的那份工具链里），再拿结果比对 —— 插件只记文件自己声称了什么，不把那个当成验签结果。
 - 工具链工具只会借用已装的二进制，没有一个会去下载或安装。`probe_environment` 报告实际存在什么，`install_toolchain` 只把命令打出来不执行；通道被宿主拒绝时，该改的是插件声明或设置，不是 `PATH`。
 - `run_radare` 每次只跑一条 r2 命令（`decompile` 的 `output_mode=summary` 是三条），单次上限 120 秒，白名单之外一律拒绝；`decompile_android` 给 jadx 与 apktool 各 10 分钟，只回日志开头，不回源码。
 - `smali_search` 只读扩展名过滤后的文件，单文件 2 MiB、最多 8 000 个；命中上限时会明说，不假装已经搜完。
-- 加壳/加密代码只报告，不脱壳；`native.packed` 是启发式判断（熵 + 导入数量，或 `UPX!` 标记）。
+- 加壳/加密由 `native.packed` 标出来（熵 + 导入数量，或 `UPX!` 标记），让你早点知道前面站着壳。
+  脱壳是下一步而不是禁区，在你自己终端里跑：UPX 系 `upx -d`，运行时 dex / `.so` 走 Frida 内存 dump，
+  拿到产物后再用 `decompile_android` 与 `smali_search`。完整流程在
+  `agent/skills/apkseep/references/advanced-unpacking.md`，包括「dump 看着完整、方法体却是空的」那一段怎么往下走。
 - DEX 字符串扫描上限 6 个 dex、24 MiB；体检内字符串提取上限 400 条，独立工具上限 500 条。
 - Mach-O fat 二进制只分析第一个切片；IPA 最多尝试三个 `Payload/*.app/*` 候选定位主二进制。
 - `disassemble_range` 是带文件偏移的线性扫描，不是控制流分析：无法解码的字节输出 `db 0xNN` 并前进一个字节，
-  所以未知指令之后的清单可能失步；分支目标写作 `file+0x…`，不证明可达性。没有伪 C、没有汇编器、不做 Java/smali 反编译。
+  所以未知指令之后的清单可能失步；分支目标写作 `file+0x…`，不证明可达性。要伪 C 用 `run_radare decompile`，
+  要 Java/smali 用 `decompile_android`。
 - 符号表完全取决文件自身：被 strip 的二进制只会有导入，工具会明说，不会编造函数名。
-- 不执行、不打补丁、不重签、不重打包，也不生成 Frida hook、keygen 输入或授权绕过补丁。按设计只读。
+- 工具自己停在「读」这一侧：不执行样本、不就地改写样本。读之后的一切 —— 补丁、重签、重打包、把返回值改掉的
+  hook —— 走 `command.run`（限 `plugin.json#commands` 里那十四个二进制）或技能脚本
+  （`agent/skills/apk-reverse/scripts/rebuild-sign-install.sh`、`frida-run.sh`），也可以直接写进你自己终端；
+  每一步都看得见、能复跑。在「打补丁」与「写 keygen」之间要选路线时，
+  `agent/skills/softseep/references/project-paradigms.md` 按架构型给出判据。
