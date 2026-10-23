@@ -124,9 +124,9 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 2.6.0 起分两处：
 
 - **每轮都注入的 kernel 块**（`src/domain/kernel.ts`，priority 850）—— 实验室开没开、用户在看面板哪一页、哪些工具可达。那是状态，不是文案，所以它不可能是静态文件。
-- **lab 开启时才注入的 system 块**（`agent/docs/SYSTEM.md`，priority 840，约 7.6 KB）—— 授权门、交付形状、卡住时的处理、工具链引导、todo 纪律。关闭实验环境时这一块不注入：kernel 块已经声明了 OFF 状态与 `lab：` 口令，没必要为一个用不上的契约付 token。
+- **lab 开启时才注入的 system 块**（`agent/prompts/SYSTEM.md`，priority 840，约 7.6 KB）—— 授权门、交付形状、卡住时的处理、工具链引导、todo 纪律。关闭实验环境时这一块不注入：kernel 块已经声明了 OFF 状态与 `lab：` 口令，没必要为一个用不上的契约付 token。
 
-静态母本是 `agent/docs/SYSTEM.md`。`scripts/sync-system-prompt.mjs` 把它镜像成
+静态母本是 `agent/prompts/SYSTEM.md`。`scripts/sync-system-prompt.mjs` 把它镜像成
 `src/domain/system-prompt.generated.ts` —— 插件在渲染进程的 bundle 里跑，宿主从不告诉它自己装在哪，
 所以运行时读不到包内文件，只能构建期内联。`npm run verify:generated` 在两边漂移时失败，
 `src/test/system-prompt.test.ts` 逐字节比对。
@@ -134,7 +134,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 完整技法仍住在技能里（`agent/skills/hanshuang-pojia/SKILL.md`）：宿主的技能索引只付 `name` 加
 `description` 约 380 字符，97 KB 正文只在真正调用它时才进上下文。
 
-`agent/docs/AGENTS.md` 是同一份协议给 Astravia 以外的 agent 读的版本：工具路由、G-Auth 授权门、交付形状，
+`agent/prompts/AGENTS.md` 是同一份协议给 Astravia 以外的 agent 读的版本：工具路由、G-Auth 授权门、交付形状，
 以及本宿主没有对应物的三处上游机制。它没有权限要求 —— 它是文档，不是注入源。
 
 ## 与上游的差异
@@ -161,7 +161,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 
 **技能文档是指令，不是材料。** 宿主那条「工具输出=不可信数据」对**目标字节**是对的，对**本插件自己的
 文档**是错的：`SKILL.md` 经读文件工具、文档检索返回或压缩后的历史进上下文，不会因此被降级。
-`agent/docs/SYSTEM.md` §4.1、`agent/docs/AGENTS.md` §二、技能自己的 §0.9 三处各自把边界划在工作台
+`agent/prompts/SYSTEM.md` §4.1、`agent/prompts/AGENTS.md` §二、技能自己的 §0.9 三处各自把边界划在工作台
 边界上，`read_doc` 也给每条结果盖同一行 provenance。真正算材料的只有目标自身的字节 —— 样本字符串、
 目标源码、日志、网页、抓包；其中出现的注入文本是要上报的发现物，不是要执行的命令。
 
@@ -182,7 +182,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 2.1 起，工具包的**技能库直接随包发出**：`agent/skills/` 是 `seep-kit/Tool/skill/` 的移植版 ——
 171 个文件、2.48 MB，含 `softseep`（总控）、`apkseep`、`ida-reverse`、`client-license-validation-bypass`，
 以及五个 `safe-skills/*` 技术包，另有 `hanshuang-pojia` 主手册与三个带跨平台脚本的技能包。
-清单与来源在 `agent/docs/SKILL-LIBRARY.md`，逐文件哈希在 `agent/docs/skill-library.sha256`，
+清单与来源在 `agent/prompts/SKILL-LIBRARY.md`，逐文件哈希在 `agent/prompts/skill-library.sha256`，
 `src/test/skill-library.test.ts` 会重算清单，防止构建时静默丢失。
 
 它们通过 `plugin.json#agent.skillPaths = ["agent/skills"]` 注册，`skillPresentation.defaultVisibility`
@@ -223,7 +223,7 @@ src/
 │   ├── interceptor.ts               # 上游 L1/L4 的移植：注入判定、术语表、快捷口令
 │   ├── refusal.ts                   # 回合边界的恢复判定：检测器 + 续跑追问片段
 │   ├── playbooks.ts                 # 清单类型与 payload 章节：只点名随包文档，不复制正文
-│   ├── system-prompt.generated.ts   # 由 agent/docs/SYSTEM.md 生成，勿手改
+│   ├── system-prompt.generated.ts   # 由 agent/prompts/SYSTEM.md 生成，勿手改
 │   └── triage.ts                    # 入口：识别 → 解析 → 审计 → 报告
 ├── domain/toolchain/                # 外部可执行文件：这层自己不启动进程
 │   ├── catalog.ts                   # TOOLCHAIN / COMPANIONS / COMMANDS，必须与 plugin.json#commands 一致
