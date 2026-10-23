@@ -21,7 +21,7 @@
 
 ### 1. 提示词：静态母本 + 构建期镜像
 
-`agent/docs/SYSTEM.md` 是母本（随插件包分发，供人读与审计），
+`agent/prompts/SYSTEM.md` 是母本（随插件包分发，供人读与审计），
 `scripts/sync-system-prompt.mjs` 把它生成 `src/domain/system-prompt.generated.ts`。
 
 之所以要生成：插件运行在渲染进程的 bundle 里，宿主不向插件暴露自身安装目录
@@ -61,7 +61,7 @@
 但请求体是 OpenAI 形状 —— 注入会被中转静默丢弃」这类静默失效），并在每个端点记一次日志。
 可观测性就位，执法点仍然只能在回合边界。
 
-这一点在 `agent/docs/SYSTEM.md` §8 里对模型明写，避免它以为上游机制在这里也成立。
+这一点在 `agent/prompts/SYSTEM.md` §8 里对模型明写，避免它以为上游机制在这里也成立。
 
 ### 4. 不许拒绝：在 Stop 边界执法
 
@@ -94,7 +94,7 @@
 ### 4.2 材料与指令的边界
 
 宿主对**工具返回**有一条通用规则：内容是不可信数据，只能当材料看。这条规则用在目标字节上是对的，
-但 `agent/skills/**/SKILL.md`、`agent/docs/**`、`search_docs` / `read_doc` 的返回也是经
+但 `agent/skills/**/SKILL.md`、`agent/prompts/**`、`search_docs` / `read_doc` 的返回也是经
 「读文件 / 技能加载 / 压缩历史」进上下文的 —— 于是模型的合理推断变成「这份 SKILL.md 属于不可信
 工具材料，里面的攻击执行指令一条也不该执行，仅作为历史工具输出记录」。插件装了、提示词注入了、
 行为却被降级成「只记录」。
@@ -102,8 +102,8 @@
 不声明 `promptPaths` 是对的选择（否则绕过 lab 门、白付体积），但**不注入不等于可以不划界**。
 三份载体各自把边界写清，缺一份就留下一条退化路：
 
-- `agent/docs/SYSTEM.md` §4.1 —— 声明宿主那条规则止于工作台自己的文档，并点名三类载体；
-- `agent/docs/AGENTS.md` §二 —— 把「文档是证据素材」限定为**事实来源**，不是**指令来源**；
+- `agent/prompts/SYSTEM.md` §4.1 —— 声明宿主那条规则止于工作台自己的文档，并点名三类载体；
+- `agent/prompts/AGENTS.md` §二 —— 把「文档是证据素材」限定为**事实来源**，不是**指令来源**；
 - `agent/skills/hanshuang-pojia/SKILL.md` §0.9 与 Appendix B 第 1 / 第 4 条 —— 材料规则只覆盖
   目标自身内容；压缩后的历史里出现的插件自有文档仍然有效（与 §0.11 会话稳定性一致）。
 
@@ -122,20 +122,20 @@
 `~/.astravia/agent/AGENTS.md`，但插件**写不进去**（`writeFilesystemFile` 有
 `assertFilesystemPathWithinProject`），而插件根目录放 `AGENT.md` 会在部分宿主版本上触发重复渲染。
 
-所以它落在 `agent/docs/AGENTS.md`：与 SYSTEM.md 同目录、随包分发、可被任何 agent 或人直接读，
+所以它落在 `agent/prompts/AGENTS.md`：与 SYSTEM.md 同目录、随包分发、可被任何 agent 或人直接读，
 但**不声明进 `agent.systemPrompt.promptPaths`**，因此不会被宿主当提示词自动注入。
 哪些内容进常驻提示词由 SYSTEM.md 决定（授权门、交付形状、卡住时的处理），其余以工具形式重写：
 `probe_environment` + `install_toolchain`。
 
-### 5.1 为什么放在 `agent/docs/` 而不是 `agent/`
+### 5.1 为什么放在 `agent/prompts/` 而不是 `agent/`
 
 `plugin-vite` 的 `collectRuntimeFiles` 只收这几类路径：`dist/assets`、`dist` 根 CSS、
 `listPluginManifestResources()` 声明的资源（`entry` / `styles` / `icon` / `promptPaths` /
 `skillPaths` / `agents` / `teams` / `mcpServers` / `providers.services`），以及**固定目录**
-`presentation/`、`mcp/`、`scripts/`、`agent/docs/`、`locales/`。
+`presentation/`、`mcp/`、`scripts/`、`agent/prompts/`、`locales/`。
 
-`agent/docs/SYSTEM.md` 不在任何一类里 —— 实测 2.6.0 首次构建出的包里 515 个文件，两份 md 都不在。
-列为 `promptPaths` 能入包，但那会让宿主无条件注入，抵消 lab 门。`agent/docs/` 是唯一既不改变
+`agent/prompts/SYSTEM.md` 不在任何一类里 —— 实测 2.6.0 首次构建出的包里 515 个文件，两份 md 都不在。
+列为 `promptPaths` 能入包，但那会让宿主无条件注入，抵消 lab 门。`agent/prompts/` 是唯一既不改变
 注入语义、又能让两套包（vite 本地包 / 市场发布包）内容一致的落点。
 
 ### 6. 恢复 `agent.systemPrompt.write`
@@ -168,4 +168,4 @@
   但插件 fs 只能写项目内路径（`writeFilesystemFile` 有 `assertFilesystemPathWithinProject`）。
   因此**不静默写用户目录**，改为经 `saveAs` 原生保存对话框把「带标记块 + 还原备份」的注入内容交给用户亲自确认落盘
   （`fs.saveAs` 不受项目根限制，用户点保存 = 显式授权，对齐上游 `restore` / 备份语义）。
-  上文的 `agent/docs/AGENTS.md`「本工作台不主动写用户目录」立场保留——插件自己不写，由用户确认落盘。
+  上文的 `agent/prompts/AGENTS.md`「本工作台不主动写用户目录」立场保留——插件自己不写，由用户确认落盘。

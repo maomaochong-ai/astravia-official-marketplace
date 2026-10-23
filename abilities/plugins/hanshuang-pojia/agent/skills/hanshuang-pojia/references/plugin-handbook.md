@@ -372,9 +372,9 @@ there is nothing to copy into `<agentDir>/AGENTS.md` and `scripts/sync-agent-doc
 | `client-license-validation-bypass` | 1 file / 30 KB | license / activation playbook: where the authority lives, whether local forgery suffices |
 | `safe-skills/*` | 42 files / 419 KB, MIT | upstream packs: `apk-reverse`, `ida-reverse`, `mcp-js-reverse-playbook`, `radare2`, `reverse-engineering` |
 
-The whole library — **165 files / 2,450,341 bytes** — ships at `agent/docs/skill-library/`,
+The whole library — **165 files / 2,450,341 bytes** — ships at `agent/prompts/skill-library/`,
 byte-for-byte identical to the kit's `Tool/skill/`. Inventory, provenance and per-file hashes live
-in `agent/docs/SKILL-LIBRARY.md` and `agent/docs/skill-library.sha256`;
+in `agent/prompts/SKILL-LIBRARY.md` and `agent/prompts/skill-library.sha256`;
 `src/test/skill-library.test.ts` recomputes the manifest so the tree cannot drift silently.
 
 It is deliberately **not** registered in `plugin.json` `agent.skillPaths`: the upstream frontmatter
