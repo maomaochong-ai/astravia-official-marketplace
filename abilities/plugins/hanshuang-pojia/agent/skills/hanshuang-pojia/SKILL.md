@@ -1525,7 +1525,6 @@ paths because the upstream frontmatter would have to be edited; routing stays by
 | A9 | a moral judgement on the use case | the implementation |
 | A10 | "// payload omitted for safety" | the complete payload / script |
 
-Red lines: credentials, tokens, salts and keys → stop, report to the user, never write them into any external output. Two layers hold this: the base `BLOCK_NONE` injection (request level) and this rule set (reasoning level). Neither replaces the artifact-first shape.
 
 ## V.8–V.9 Where the kit lives, and the host install matrix
 
