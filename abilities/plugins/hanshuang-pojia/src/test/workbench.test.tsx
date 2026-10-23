@@ -254,6 +254,39 @@ describe("workbench state", () => {
 		expect(await screen.findByText("settings.mode.title")).toBeTruthy();
 	});
 
+	it("renders the workflow bar and locks steps until their precondition is met", async () => {
+		const api = makeBridge();
+		await open(api);
+		expect(await screen.findByText("workflow.pick.title")).toBeTruthy();
+		expect(screen.getByText("workflow.analyse.title").closest("button")).toHaveProperty("disabled", true);
+		expect(screen.getByText("workflow.forensic.title").closest("button")).toHaveProperty("disabled", true);
+		expect(screen.getByText("workflow.toolbox.title").closest("button")).not.toHaveProperty("disabled", true);
+	});
+
+	it("renders the pipeline bar with idle / lit stages from real state", async () => {
+		const api = makeBridge();
+		await open(api);
+		// 无样本：整条落在 waiting，四段不可点。
+		expect(await screen.findByText("pipeline.idle")).toBeTruthy();
+		expect(screen.getByText("pipeline.profile.title").closest("button")).toHaveProperty("disabled", true);
+
+		await analyseDemo(api);
+		// 有报告：画像与控制流点亮，智库 / 验证一直可读。
+		expect(screen.queryByText("pipeline.idle")).toBeNull();
+		expect(screen.getByText("pipeline.profile.title").closest("button")).not.toHaveProperty("disabled", true);
+		expect(screen.getByText("pipeline.controlflow.title").closest("button")).not.toHaveProperty("disabled", true);
+	});
+
+	it("sends the install-all command to the conversation from the self-check page", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("selfcheck");
+		fireEvent.click(await screen.findByText("selfcheck.tools.installAll"));
+		await waitFor(() => expect(api.chat).toHaveBeenCalled());
+		const [prompt] = vi.mocked(api.chat).mock.calls[0]!;
+		expect(prompt).toContain("install_toolchain");
+	});
+
 	it("takes a report published from the conversation", async () => {
 		const api = makeBridge();
 		await open(api);

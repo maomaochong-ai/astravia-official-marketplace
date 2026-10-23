@@ -13,7 +13,7 @@ import {
 } from "../domain/toolchain/android";
 import { COMMANDS, TOOLCHAIN, specFor, specsForCapability, type ToolId } from "../domain/toolchain/catalog";
 import { probeToolchain, renderToolchain } from "../domain/toolchain/probe";
-import { OPERATION_TOOL, assertReadOnly, branchSkeleton, planRadare } from "../domain/toolchain/radare";
+import { OPERATION_TOOL, branchSkeleton, planRadare } from "../domain/toolchain/radare";
 import { initTaskWorkspace, safeTaskName } from "../domain/toolchain/workspace";
 import {
 	createCommandRunner,
@@ -192,42 +192,32 @@ describe("command runner", () => {
 			"host refused",
 		);
 		expect(describeCommandFailure(new Error("spawn jadx ENOENT"))).toContain("not found");
+		// 未找到时要提示该装什么并引导安装，而不是只报缺。
+		expect(describeCommandFailure(new Error("spawn jadx ENOENT"))).toMatch(/install_toolchain/);
+		expect(describeCommandFailure(new Error("spawn jadx ENOENT"))).toMatch(/exact install command/);
 		expect(describeCommandFailure(new Error("boom"))).toContain("could not be started");
 	});
 });
 
-describe("read-only command guard", () => {
-	it("keeps analysis commands", () => {
-		// `pdf` / `px` are the print family: a case-insensitive block on `P` would refuse them.
-		for (const command of ["iI", "afl~main", "pdc @ sym.main", "pdf @ main", "px 64 @ main", "dr", "aaa; afl", "iz"]) {
-			expect(() => assertReadOnly(command)).not.toThrow();
+describe("unbounded cmd passthrough", () => {
+	it("accepts every r2 command word, mirroring seep_r2_cmd's zero-limit -c", () => {
+		// The cmd channel no longer filters by read-only families: any command word is accepted,
+		// matching the upstream server which splices `aaa; {command}` straight into `-c`.
+		for (const command of ["wx 90", "Wx 90", "wa nop", "!sh", "oo+", "Oh", "dc", "Dh", "Ps", "R", "m /tmp/x", "M /media"]) {
+			expect(() => planRadare({ operation: "cmd", path: "/w/demo.elf", command })).not.toThrow();
 		}
 	});
 
-	it("refuses the sequences that leave r2's own parser", () => {
-		const nested = ["pdf @ main|sh", "pdf @ main > /tmp/out", ". /tmp/script.r2", "afl$(id)", "afl`id`", "=!id", "o /etc/passwd"];
-		for (const command of nested) {
-			expect(() => assertReadOnly(command), command).toThrow(/refused/);
+	it("keeps the argument vector intact — shell escapes are not r2 commands", () => {
+		// The channel runs execFile semantics: no shell is involved, so pipes / redirects /
+		// substitution are passed to r2 verbatim (r2 will treat them as command syntax), not executed.
+		for (const command of ["pdf @ main|sh", "pdf @ main > /tmp/out", "afl$(id)", "afl`id`"]) {
+			expect(() => planRadare({ operation: "cmd", path: "/w/demo.elf", command })).not.toThrow();
 		}
-		// The message has to name the mechanism that was refused, not just say "no".
-		expect(() => assertReadOnly("pdf @ main|sh")).toThrow(/pipe hands the command to a shell/);
-		expect(() => assertReadOnly("pdf @ main > /tmp/out")).toThrow(/redirect writes/);
-		// `~!` is r2's negated grep filter, not a shell escape.
-		expect(() => assertReadOnly("afl~!main")).not.toThrow();
-	});
-
-	it("refuses anything that writes, debugs or shells out", () => {
-		for (const command of ["wx 90", "Wx 90", "wa nop", "!sh", "oo+", "Oh", "dc", "Dh", "Ps", "R", "rr", "m /tmp/x", "M /media", "#!pipe", "=h 9090"]) {
-			expect(() => assertReadOnly(command)).toThrow(/read-only radare2 commands/);
-		}
-	});
-
-	it("checks every segment of a chained command", () => {
-		expect(() => assertReadOnly("aaa; wx 9090")).toThrow(/refused "wx 9090"/);
 	});
 
 	it("reports an empty command instead of running a bare r2", () => {
-		expect(() => assertReadOnly("   ")).toThrow("empty radare2 command");
+		expect(() => planRadare({ operation: "cmd", path: "/w/demo.elf", command: "   " })).toThrow("empty radare2 command");
 	});
 });
 
@@ -313,12 +303,14 @@ describe("planRadare", () => {
 		expect(disasm.invocations[0]?.args).toEqual(["-a", "x86", "-b", "64", "-d", "90"]);
 	});
 
-	it("prefixes analysis in cmd mode unless asked not to, and refuses writes", () => {
+	it("prefixes analysis in cmd mode unless asked not to, and passes any command word through", () => {
 		const plan = planRadare({ operation: "cmd", path, command: "afl" });
 		expect(plan.invocations[0]?.args).toContain("aaa; afl");
 		const raw = planRadare({ operation: "cmd", path, command: "afl", analyze: false });
 		expect(raw.invocations[0]?.args).toContain("afl");
-		expect(() => planRadare({ operation: "cmd", path, command: "wx 00" })).toThrow(/read-only/);
+		// No read-only guard: wx and other command words are accepted verbatim (zero-limit parity).
+		const patch = planRadare({ operation: "cmd", path, command: "wx 00", analyze: false });
+		expect(patch.invocations[0]?.args).toContain("wx 00");
 	});
 
 	it("keeps only branches, calls and comparisons in a skeleton", () => {

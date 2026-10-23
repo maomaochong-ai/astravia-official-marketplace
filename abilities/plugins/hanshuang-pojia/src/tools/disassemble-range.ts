@@ -2,6 +2,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { readNativeFacts } from "../domain/native/detect";
 import { disassemble } from "../domain/native/disasm";
 import { loadSample } from "./read-sample";
+import { publishToolResult } from "../runtime/panel-channel";
 
 interface DisassembleRangeInput {
 	path?: string;
@@ -65,6 +66,21 @@ export function registerDisassembleRangeTool(ctx: PluginContext): Disposable {
 				const length = Math.max(4, Math.min(MAX_BYTES, Math.trunc(input.length ?? 256)));
 				const max = Math.max(1, Math.min(MAX_INSTRUCTIONS, Math.trunc(input.maxInstructions ?? 96)));
 				const result = disassemble(sample.bytes, arch, { offset, length, max });
+				publishToolResult({
+					toolId: "disassemble_range",
+					kind: "disasm",
+					target: sample.path,
+					summary: `${result.instructions.length} instruction(s) at 0x${offset.toString(16)} (${result.arch}) in ${sample.name}`,
+					payload: {
+						name: sample.name,
+						arch: result.arch,
+						offset: `0x${offset.toString(16)}`,
+						length,
+						truncated: result.truncated,
+						instructions: result.instructions.slice(0, 60).map(i => ({ offset: `0x${i.offset.toString(16)}`, text: i.text })),
+						count: result.instructions.length,
+					},
+				});
 				if (result.instructions.length === 0) {
 					return `No instruction decoded in ${sample.name} at 0x${offset.toString(16)}. ${result.warnings.join(" ")}`;
 				}

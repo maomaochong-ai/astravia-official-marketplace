@@ -56,7 +56,10 @@ export function describeCommandFailure(error: unknown): string {
 		);
 	}
 	if (NOT_FOUND_PATTERN.test(message)) {
-		return `The executable was not found (${message}). Run probe_environment to see what is installed.`;
+		return (
+			`The executable was not found (${message}). It is not installed on this machine. Run probe_environment to see ` +
+			"what is installed, then run install_toolchain to get and execute the exact install command for this platform."
+		);
 	}
 	return `The command could not be started: ${message}`;
 }

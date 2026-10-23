@@ -11,6 +11,7 @@ import { readDexString, readUleb128 } from "./dex";
 export interface DexMethodEntry {
 	name: string;
 	params: string;
+	codeOff: number;
 	returns: string;
 	access: number | null;
 }
@@ -153,14 +154,15 @@ function readClassMethods(tables: Tables, classDataOffset: number, limit: number
 		methodIndex += delta.value;
 		const access = readUleb128(bytes, cursor);
 		cursor = access.next;
-		cursor = readUleb128(bytes, cursor).next;
+		const codeOff = readUleb128(bytes, cursor);
+		cursor = codeOff.next;
 		if (methods.length >= limit) break;
 		if (methodIndex >= tables.methodCount) break;
 		const base = tables.methodOffsets + methodIndex * 8;
 		const protoIndex = (u32(bytes, base) >>> 16) & 0xffff;
 		const nameIndex = u32(bytes, base + 4);
 		const proto = protoAt(tables, protoIndex);
-		methods.push({ name: stringAt(tables, nameIndex), params: proto.params, returns: proto.returns, access: access.value });
+		methods.push({ name: stringAt(tables, nameIndex), params: proto.params, returns: proto.returns, access: access.value, codeOff: codeOff.value });
 	}
 	return methods;
 }

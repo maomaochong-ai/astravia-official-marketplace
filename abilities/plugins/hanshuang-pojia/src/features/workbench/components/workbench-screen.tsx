@@ -3,6 +3,8 @@ import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
 import { Sidebar } from "./shell/sidebar";
 import { TopBar } from "./shell/top-bar";
+import { ActivityPage } from "./pages/activity";
+import { TaskStreamPage } from "./pages/stream";
 import { ComparePage } from "./pages/compare";
 import { DisasmPage } from "./pages/disasm";
 import { DocsPage } from "./pages/docs";
@@ -20,6 +22,8 @@ import { StringsPage } from "./pages/strings";
 
 const PAGES: Record<string, (props: PageProps) => ReactElement> = {
 	overview: OverviewPage,
+	activity: ActivityPage,
+	stream: TaskStreamPage,
 	guide: GuidePage,
 	samples: SamplesPage,
 	findings: FindingsPage,

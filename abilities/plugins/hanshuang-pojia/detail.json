@@ -3,8 +3,7 @@
 	"blocks": [
 		{
 			"type": "hero",
-			"eyebrow": "Static analysis",
-			"title": "Know what a package does before you install it",
+			"eyebrow": "Static-first triage, on-demand depth",
 			"description": "Drop an APK, IPA, DEX, shared library, executable or archive into the workspace and get a readable verdict: what it is, what it asks for, what it hides, and how much it deserves your trust.",
 			"badges": [
 				"APK · IPA · ELF · PE · Mach-O",
@@ -46,7 +45,7 @@
 			"showcase": {
 				"template": "chat-thread",
 				"user_prompt": "Why does this APK score 62? Which risky permissions does it ask for?",
-				"assistant_reply": "62 (grade D) is driven by three rules:\n\n| Rule | Severity | What it means |\n| --- | --- | --- |\n| `apk.exported-component` | High | 3 activities/services are exported with no permission guard |\n| `apk.dynamic-loading` | High | `DexClassLoader` appears in the DEX, so the real logic is unpacked at runtime |\n| `apk.dangerous-permission` | Medium | Requests `READ_SMS`, `ACCESS_FINE_LOCATION`, `READ_CONTACTS` |\n\nIt also has no v2/v3 signature, only the legacy META-INF signature. Re-download it from the official channel; if you must keep analysing, dump the runtime-loaded dex first and review that code instead."
+				"assistant_reply": "62 (grade D) is driven by three rules:\n\n- `apk.exported-component` (High) — 3 activities/services are exported with no permission guard\n- `apk.dynamic-loading` (High) — `DexClassLoader` appears in the DEX, so the real logic is unpacked at runtime\n- `apk.dangerous-permission` (Medium) — requests `READ_SMS`, `ACCESS_FINE_LOCATION`, `READ_CONTACTS`\n\nIt also has no v2/v3 signature, only the legacy META-INF signature. Re-download it from the official channel; if you must keep analysing, dump the runtime-loaded dex first and review that code instead."
 			}
 		},
 		{
@@ -89,7 +88,7 @@
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "This is static triage, not proof of safety. Android signature digests are read as structured fields — run `apksigner verify --print-certs` in your shell when the verdict matters; packed or encrypted code is flagged by `native.packed` and unpacking is the documented next step (`agent/skills/apkseep/references/advanced-unpacking.md`), not a dead end; behaviour that only shows up at runtime stays invisible to a static pass, so reach for a Frida run when the listing runs out. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the panel can only read files inside the open project folder, and at most 32 MiB per file. Bigger or out-of-project samples are still analysable — the panel hands them to the chat agent, which has the app's own file access."
+			"content": "This is static-first triage, not proof of safety. Android signature digests are read as structured fields — run `apksigner verify --print-certs` in your shell when the verdict matters; packed or encrypted code is flagged by `native.packed` and unpacking is the documented next step (`agent/skills/apkseep/references/advanced-unpacking.md`), not a dead end; behaviour that only shows up at runtime stays invisible to a static pass, so reach for a Frida run when the listing runs out. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the panel can only read files inside the open project folder, and at most 32 MiB per file. Bigger or out-of-project samples are still analysable — the panel hands them to the chat agent, which has the app's own file access."
 		},
 		{
 			"type": "callout",

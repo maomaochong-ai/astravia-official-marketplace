@@ -90,12 +90,11 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 | `seep_auto_triage` | 既有 `triage_directory` | 纯字节，无进程 |
 | `seep_kb_payloads` | `kb_payloads`（2.9.0，原 D7 拒绝） | 按类别切片，`all` 全文，未命中列真实章节；与上游差异：不回退前 60 行。切片不生成新载荷（见 ADR 0001 row 20 的决策反转） |
 
-**D16** `run_radare` 的 `cmd` 走只读守卫 `assertReadOnly`：拒绝 `w*`（写字节/写内存）、`!`/`#!`（shell）、
-`oo*`、`o`（打开另一个文件：命令通道不过宿主 fs，`o /etc/passwd` 会绕出项目根）、`d*`（调试，`dr` 只读寄存器除外）、
-`P`（工程保存）、`R`（重启）、`m`（挂载）、`.`（执行脚本文件）、`=` 族（远程连接与 `=h` 的 r2 控制台服务 —— 网络暴露，不属于对文件的分析）。
-此外拒绝所有“离开 r2 自身解析器”的写法：管道 `|`、重定向 `>`/`<`、`$(`、反引号、`=!`（`~!` 是取反过滤，仍放行）。
-`P` 必须只匹配大写：小写 `p` 是打印族（`pdf` / `pdc` / `px`），大小写不敏感会误杀它们；
-`dr` 由 `ALLOWED_COMMAND` 先于黑名单放行。保住 `seep_r2_cmd` 的表达力，同时不给“改样本、掉 shell、开任意文件、起调试器”留口子。
+**D16**（已反转，2.9.0）`run_radare` 的 `cmd` 原先走只读守卫 `assertReadOnly`（拒绝写/打开/调试/工程/重启/挂载/网络族
+与管道、重定向、`$(`、反引号、`=!` 等）。**决策反转**：`cmd` 改为对等上游零限制直通，`aaa; {command}` 拼接进 `r2 -q -c`，
+任意 r2 命令词一律接受，移除了 `assertReadOnly` 及全部守卫正则/函数。保留的仅是一项 UX 检查：空命令报错，
+不执行裸 `r2`。命令通道仍是 `execFile` 语义 + 参数数组，管道、重定向、`$()`、反引号不会经由 shell 执行，而是作为
+r2 命令语法原文传给 `-c`。写字节等操作（`wx`）现可在 `cmd` 里直发（对等上游，由 lab 授权操作者决策反转）。
 
 **D17** `init_task` 不建 `patches/`。上游该目录的说明是"验证 PoC 代码、代理 DLL 跳板工程、热补丁"，
 属于制品产出；本插件只产证据与报告（`samples/` `exports/` `reports/`）。
@@ -134,7 +133,7 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 ## 5. 验证
 
 - `src/test/toolchain.test.ts`：`COMMANDS` ↔ `plugin.json` 一致、探针版本解析、拒绝/缺失区分、
-  只读守卫、fold/branch/summary/截断文案、jadx/apktool 参数、smali 搜索与工作区骨架。
+  `cmd` 无界直通、fold/branch/summary/截断文案、jadx/apktool 参数、smali 搜索与工作区骨架。
 - `tsc --noEmit`、`vitest run`、`vite build`、`sync-docs.mjs --check`、根 `marketplace.mjs check`。
 - 真机（本机实跑一次探针，runner 用 `execFile` 并复刻宿主「spawn 失败即抛错」的语义）：
   `frida ✓ 17.24.1`；`r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` 均为

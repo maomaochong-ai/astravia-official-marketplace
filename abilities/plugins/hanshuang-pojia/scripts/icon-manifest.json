@@ -14,7 +14,9 @@
     "nav-selfcheck": "solar:clipboard-check-bold",
     "nav-reports": "solar:document-text-bold",
     "nav-settings": "solar:settings-bold",
+    "nav-activity": "lucide:activity",
 
+    "nav-stream": "lucide:radio",
     "layout": "lucide:layout-dashboard",
     "book": "lucide:book-open",
     "boxes": "lucide:boxes",
@@ -48,6 +50,8 @@
     "chip": "lucide:cpu",
     "folderSearch": "lucide:folder-search",
     "eye": "lucide:eye",
-    "library": "lucide:library"
+    "library": "lucide:library",
+    "radio": "lucide:radio",
+    "error": "lucide:circle-x"
   }
 }

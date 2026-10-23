@@ -1,6 +1,7 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { diffBytes } from "../domain/diff";
 import { loadSample } from "./read-sample";
+import { publishToolResult } from "../runtime/panel-channel";
 
 interface DiffBinariesInput {
 	path?: string;
@@ -46,6 +47,23 @@ export function registerDiffBinariesTool(ctx: PluginContext): Disposable {
 				const left = await loadSample(context.host.fs, context.session.cwd, input.path ?? "");
 				const right = await loadSample(context.host.fs, context.session.cwd, input.otherPath ?? "");
 				const result = diffBytes(left.bytes, right.bytes, { maxHunks: Math.trunc(input.maxHunks ?? 40) });
+				publishToolResult({
+					toolId: "diff_binaries",
+					kind: "diff",
+					target: `${left.path} ↔ ${right.path}`,
+					summary: result.identical
+						? `Byte-identical: ${left.name} == ${right.name} (${result.leftSize} bytes)`
+						: `${result.changedBytes} byte(s) differ between ${left.name} and ${right.name} (${result.hunks.length} hunk(s))`,
+					payload: {
+						left: { name: left.name, size: result.leftSize, path: left.path },
+						right: { name: right.name, size: result.rightSize, path: right.path },
+						identical: result.identical,
+						changedBytes: result.changedBytes,
+						hunks: result.hunks.length,
+						truncated: result.truncated,
+						topHunks: result.hunks.slice(0, 8).map(h => ({ offset: `0x${h.offset.toString(16)}`, length: h.length })),
+					},
+				});
 
 				if (result.identical) {
 					return [`# ${left.name} vs ${right.name}`, "", `Byte-identical: ${result.leftSize} bytes, same SHA-256 input length and no differing byte.`].join("\n");

@@ -1,6 +1,6 @@
 import type { PluginFsEntry } from "@astravia-org/plugin-sdk";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatBytes } from "../../../../domain/report/report";
 import { Icon } from "../shell/icon";
 import { Spinner } from "../shell/spinner";
@@ -24,6 +24,7 @@ export interface SamplePickerProps {
 export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefresh, onAnalyse }: SamplePickerProps) {
 	const { t } = useTranslation();
 	const [path, setPath] = useState("");
+	const inputRef = useRef<HTMLInputElement>(null);
 
 	const submit = () => {
 		const trimmed = path.trim();
@@ -33,6 +34,18 @@ export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefres
 
 	return (
 		<div className="flex min-h-0 flex-col">
+
+			<div className="flex items-center px-3 pb-1">
+				<button
+					type="button"
+					onClick={() => inputRef.current?.focus()}
+					title={t("panel.upload.hint")}
+					className="flex items-center gap-1.5 rounded border border-line px-2 py-1 text-[10.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+				>
+					<Icon name="folder" className="size-3.5 text-text-3" />
+					{t("panel.upload.button")}
+				</button>
+			</div>
 			<div className="flex items-center gap-1 px-3 pb-2">
 				<form
 					className="flex min-w-0 flex-1 items-center gap-1 rounded-md border border-line bg-surface px-2 py-1"
@@ -42,7 +55,7 @@ export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefres
 					}}
 				>
 					<Icon name="search" className="size-3 shrink-0 text-text-4" />
-					<input
+					<input ref={inputRef}
 						value={path}
 						onChange={event => setPath(event.target.value)}
 						placeholder={t("panel.path.placeholder")}

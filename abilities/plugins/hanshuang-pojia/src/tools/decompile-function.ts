@@ -6,6 +6,7 @@ import { symbolBoundFor, trimTrailingData } from "../domain/native/deep";
 import { decompileFunction, DEFAULT_PSEUDO_BUDGET, type PseudoMode } from "../domain/native/pseudo";
 import { listSymbols } from "../domain/native/symbols";
 import { loadSample } from "./read-sample";
+import { publishToolResult } from "../runtime/panel-channel";
 
 interface DecompileFunctionInput {
 	path?: string;
@@ -94,6 +95,25 @@ export function registerDecompileFunctionTool(ctx: PluginContext): Disposable {
 					mode: input.mode ?? "full",
 					budget: input.budget,
 					names,
+				});
+				publishToolResult({
+					toolId: "decompile_function",
+					kind: "decompile",
+					target: sample.path,
+					summary: `${result.name || `file+0x${start.toString(16)}`} · ${result.instructions} instr, ${result.blocks} block(s), ${result.calls} call(s) (${result.mode})`,
+					payload: {
+						name: result.name || null,
+						file: sample.name,
+						start: `0x${result.start.toString(16)}`,
+						arch,
+						mode: result.mode,
+						instructions: result.instructions,
+						blocks: result.blocks,
+						calls: result.calls,
+						truncated: result.truncated,
+						strings: result.strings.slice(0, 8).map(s => ({ offset: `0x${s.offset.toString(16)}`, text: s.text })),
+						warnings: result.warnings,
+					},
 				});
 
 				const head = [

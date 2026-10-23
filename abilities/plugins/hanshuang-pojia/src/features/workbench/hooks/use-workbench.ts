@@ -21,6 +21,9 @@ import { useDocs, type DocsModel } from "./use-docs";
 import { useLab, type LabModel } from "./use-lab";
 import { setAgentPage } from "../../../runtime/panel-channel";
 import { useLibrary } from "./use-library";
+import { useActivity, type ActivityModel } from "./use-activity";
+import { useTaskStream, type TaskStreamModel } from "./use-task-stream";
+
 
 const SAMPLE_EXTENSIONS = [".apk", ".aab", ".ipa", ".jar", ".zip", ".dex", ".so", ".dll", ".exe", ".dylib", ".elf", ".bin", ".node", ".wasm", ".app"];
 
@@ -72,6 +75,9 @@ export interface WorkbenchModel {
 
 	chat: ChatModel;
 	lab: LabModel;
+	activity: ActivityModel;
+	stream: TaskStreamModel;
+
 
 	strings: StringHit[] | null;
 	entropy: EntropyBucket[] | null;
@@ -118,6 +124,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 
 	const requestId = useRef(0);
 	const { settings, remember } = library;
+	const activity = useActivity(bridge);
+	const stream = useTaskStream(bridge);
 
 	const refreshFiles = useCallback(() => {
 		if (!cwd) {
@@ -410,6 +418,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 		setCompare,
 		chat,
 		lab,
+		activity,
+		stream,
 		strings,
 		entropy,
 		disasm,
