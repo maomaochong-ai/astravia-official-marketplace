@@ -24,8 +24,8 @@ describe("system prompt mirror", () => {
 	});
 
 	it("stays small enough to inject every turn while lab mode is on", () => {
-		// lab 开启时才注入，但每一轮都付这份钱；超过 8 KB 就该拆成按需技能。
-		expect(SYSTEM_PROMPT_BODY.length).toBeLessThan(8000);
+		// lab 开启时才注入，但每一轮都付这份钱；上限 12 KB（含反退缩十项硬约束）。
+		expect(SYSTEM_PROMPT_BODY.length).toBeLessThan(12000);
 	});
 
 	it("covers the sections the upstream SYSTEM.md was ported for", () => {
