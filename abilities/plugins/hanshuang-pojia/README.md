@@ -171,14 +171,14 @@ Since 2.6.0 the plugin contributes two prompt blocks instead of one, both gated 
 | Block | Priority | When | Content |
 | --- | --- | --- | --- |
 | `plugin.hanshuang-pojia.kernel` | 850 | every turn | lab state, the panel page the user is on, the reachable tool ids — about 200 characters with lab off |
-| `plugin.hanshuang-pojia.system` | 840 | lab mode on only | `agent/docs/SYSTEM.md`: authorization gate, delivery shape, blocked-step handling, toolchain bootstrap, todo discipline |
+| `plugin.hanshuang-pojia.system` | 840 | lab mode on only | `agent/prompts/SYSTEM.md`: authorization gate, delivery shape, blocked-step handling, toolchain bootstrap, todo discipline |
 
-`agent/docs/SYSTEM.md` is the editable source. `scripts/sync-system-prompt.mjs` mirrors it into
+`agent/prompts/SYSTEM.md` is the editable source. `scripts/sync-system-prompt.mjs` mirrors it into
 `src/domain/system-prompt.generated.ts`, because a plugin cannot read its own install directory at
 runtime — the host never tells it where it lives. `npm run verify:generated` fails on drift, and
 `src/test/system-prompt.test.ts` compares the two byte for byte.
 
-`agent/docs/AGENTS.md` carries the same protocol for agents outside Astravia: tool routing, the G-Auth
+`agent/prompts/AGENTS.md` carries the same protocol for agents outside Astravia: tool routing, the G-Auth
 gate, the delivery shape, and the mechanisms that have no counterpart here.
 
 Two things upstream does that this package cannot. It rewrites the provider request payload
@@ -207,7 +207,7 @@ the same refusal comes back verbatim; the host's `DEFAULT_MAX_STOP_CONTINUATIONS
 **Kit documents are instructions, not material.** The host's own rule treats tool output as untrusted
 data; that rule is right about the target's bytes and wrong about this kit's own documents. A `SKILL.md`
 arriving through a file read, a doc-search envelope, or a compacted transcript is *not* demoted by it.
-`agent/docs/SYSTEM.md` §4.1, `agent/docs/AGENTS.md` §二, and the skill's §0.9 each draw the line at the
+`agent/prompts/SYSTEM.md` §4.1, `agent/prompts/AGENTS.md` §二, and the skill's §0.9 each draw the line at the
 kit boundary, and `read_doc` stamps the same provenance line on every result. What counts as material is
 the target's own bytes — sample strings, its source, logs, pages, captures — and an injection string
 found there is a finding to report, not an order to obey.
@@ -231,8 +231,8 @@ Since 2.1 the kit's **skill library ships inside the plugin**: `agent/skills/` i
 `seep-kit/Tool/skill/` — 171 files, 2.48 MB, `softseep` (orchestrator), `apkseep`,
 `ida-reverse`, `client-license-validation-bypass`, the five `safe-skills/*` packs, the
 `hanshuang-pojia` handbook itself, and three script-bearing packs that carry both `.ps1` and `.sh`
-variants. `agent/docs/SKILL-LIBRARY.md` holds the inventory and provenance,
-`agent/docs/skill-library.sha256` the per-file hashes, and `src/test/skill-library.test.ts`
+variants. `agent/prompts/SKILL-LIBRARY.md` holds the inventory and provenance,
+`agent/prompts/skill-library.sha256` the per-file hashes, and `src/test/skill-library.test.ts`
 recomputes the manifest so the tree cannot drift between builds.
 
 They are registered through `plugin.json#agent.skillPaths = ["agent/skills"]`, with

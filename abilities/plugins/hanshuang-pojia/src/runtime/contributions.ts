@@ -123,7 +123,7 @@ function promptContexts(prompt: string): string[] {
  *
  * 提示词分两块：
  *   kernel  — 每轮都注入，只放会变的运行时状态（很短）
- *   system  — 只在 lab 开启时注入，放不随回合变化的作战契约（`agent/docs/SYSTEM.md`）
+ *   system  — 只在 lab 开启时注入，放不随回合变化的作战契约（`agent/prompts/SYSTEM.md`）
  * 分开的理由是预算：关闭实验环境时不该为一个用不上的契约付 token。
  *
  * 每个贡献单独 try：旧宿主没有这些 API，或用户没授予对应权限时只跳过它。

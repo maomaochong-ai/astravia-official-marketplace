@@ -30,7 +30,7 @@ radare2 全套 14 个 exe、jadx 1.5.6、apktool.jar、nmap），再由 PowerShe
 |---|---|---|---|
 | A. 引擎二进制 | 第三方可执行文件（r2 / jadx / apktool / nmap …） | **自带**，310 MB 随包 | **零**，一个都不带 |
 | B. 随包脚本 | 仓库自带的 `.py` / `.ps1` / `.sh` 辅助脚本 | 自带（`setup/` 15 个脚本 + `Tool/scripts`） | 自带（包内 50 个 `.py`、7 个 `.ps1`、7 个 `.sh`，均在技能目录下） |
-| C. 随包知识 | 手册、清单、案例、技能 | 自带（`MANUAL` 10 篇、`Tool/docs` 8 份、`Tool/skill` 5 套、`Tool/cases` 14 个项目） | 自带（309 篇文档、9 个技能、`agent/docs/skill-library.sha256`） |
+| C. 随包知识 | 手册、清单、案例、技能 | 自带（`MANUAL` 10 篇、`Tool/docs` 8 份、`Tool/skill` 5 套、`Tool/cases` 14 个项目） | 自带（309 篇文档、9 个技能、`agent/prompts/skill-library.sha256`） |
 
 只有 A 层是"自带工具链"的争议点。**B、C 两层两边都自带**，但 B 层脚本自身仍要靠用户机器上的
 python / bash / PowerShell 才能跑——它带的是"脚本"，不是"解释器"。

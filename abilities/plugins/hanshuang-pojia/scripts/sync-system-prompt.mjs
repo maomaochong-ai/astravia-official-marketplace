@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * 把包内常驻提示词 `agent/docs/SYSTEM.md` 编译成运行时常量。
+ * 把包内常驻提示词 `agent/prompts/SYSTEM.md` 编译成运行时常量。
  *
  * 为什么要生成而不是运行时读盘：插件的运行时代码活在渲染进程的 bundle 里，
  * 拿不到自己的安装目录（宿主不暴露 InstalledPlugin.path），所以包内文件只能
  * 在**构建期**内联。`agent/` 仍随市场包分发 —— 那是给人读、给审计看的母本。
  *
- * 单一真相是 `agent/docs/SYSTEM.md`；`--check` 比对生成物与母本，防止两边漂移。
+ * 单一真相是 `agent/prompts/SYSTEM.md`；`--check` 比对生成物与母本，防止两边漂移。
  *
  * 用法：
  *   node scripts/sync-system-prompt.mjs            重新生成
@@ -17,11 +17,11 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const sourcePath = join(root, "agent/docs/SYSTEM.md");
+const sourcePath = join(root, "agent/prompts/SYSTEM.md");
 const targetPath = join(root, "src/domain/system-prompt.generated.ts");
 
 const BANNER = [
-	"// 本文件由 scripts/sync-system-prompt.mjs 从 agent/docs/SYSTEM.md 生成，不要手改。",
+	"// 本文件由 scripts/sync-system-prompt.mjs 从 agent/prompts/SYSTEM.md 生成，不要手改。",
 	"// 改提示词请改母本，然后跑 `node scripts/sync-system-prompt.mjs`。",
 	"",
 ].join("\n");

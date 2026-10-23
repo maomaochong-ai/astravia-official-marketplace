@@ -64,7 +64,7 @@ TypeScript 面板 + Agent 工具，运行在宿主渲染进程内；kit 是用�
 
 | kit 单元 | 文件数 / 体积 | 插件处理 | 结论 |
 |---|---|---|---|
-| `softseep` | 9 / 123 KB | 已逐字节随包于 `agent/docs/skill-library/` | 文档化（不注册为 skill，理由见 ADR D9） |
+| `softseep` | 9 / 123 KB | 已逐字节随包于 `agent/prompts/skill-library/` | 文档化（不注册为 skill，理由见 ADR D9） |
 | `apkseep` | 112 / 1.8 MB | 同上 | 文档化 |
 | `ida-reverse` | 1 / 4 KB | 同上 | 文档化 |
 | `client-license-validation-bypass` | 1 / 30 KB | 同上 | 文档化：阅读用；插件不生成绕过补丁 |
