@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DOC_ENTRIES, DOC_TOTALS, docById, docGroups, loadDoc, searchTitles } from "../features/workbench/services/docs";
+import { ASSET_ENTRIES, DOC_ENTRIES, DOC_TOTALS, docById, docGroups, loadDoc, searchTitles } from "../features/workbench/services/docs";
 
 const manifest = readFileSync(new URL("../content/docs/docs.sha256", import.meta.url), "utf8")
 	.split("\n")
@@ -30,6 +30,23 @@ describe("document library index", () => {
 		expect(DOC_TOTALS.bytes).toBeGreaterThan(3_000_000);
 	});
 
+	it("indexes the machine-readable attachments beside the articles", () => {
+		expect(DOC_TOTALS.assets).toBe(5);
+		expect(ASSET_ENTRIES.map(entry => entry.id).sort()).toEqual([
+			"kb/apk-reverse/techniques/kb-index.json",
+			"kb/ctf-website/techniques/kb-index.json",
+			"kb/general/techniques/kb-index.json",
+			"kb/pe-reverse/techniques/kb-index.json",
+			"kit-docs/tool-index.json",
+		]);
+		for (const entry of ASSET_ENTRIES) {
+			expect(entry.kind, entry.id).toBe("asset");
+			expect(entry.bytes, entry.id).toBeGreaterThan(0);
+			/** 附件不进导航树，避免 292 篇文章里混进五张表。 */
+			expect(docGroups().flatMap(group => group.topics.flatMap(topic => topic.entries)).some(item => item.id === entry.id)).toBe(false);
+		}
+	});
+
 	it("builds the navigation tree without empty groups", () => {
 		const groups = docGroups();
 		expect(groups.map(group => group.id)).toEqual(["kb", "manual", "kit-docs"]);
@@ -46,6 +63,11 @@ describe("document loading", () => {
 		expect(entry).toBeDefined();
 		const text = await loadDoc("kb/README");
 		expect(text.startsWith("# Knowledge Base")).toBe(true);
+	});
+
+	it("loads an attachment body through the same glob", async () => {
+		const text = await loadDoc("kit-docs/tool-index.json");
+		expect(JSON.parse(text).counts.total).toBe(42);
 	});
 
 	it("rejects an id that is not in the index", async () => {

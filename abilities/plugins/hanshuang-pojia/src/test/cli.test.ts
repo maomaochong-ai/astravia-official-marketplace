@@ -155,6 +155,29 @@ describe("cli commands", () => {
 		expect(body.out.join("\n").length).toBeGreaterThan(200);
 	});
 
+	it("assembles instructions and refuses the ones it cannot encode", async () => {
+		const ok = capture();
+		expect(await runCli(["asm", "x86-64", "mov rax, rbx", "ret", "--address", "0x1000"], ok.sink)).toBe(0);
+		const text = ok.out.join("\n");
+		expect(text).toContain("48 8b c3");
+		expect(text).toContain("round-trip through the plugin decoder");
+		expect(text).toContain("bytes: 48 8b c3 c3");
+
+		const mixed = capture();
+		expect(await runCli(["asm", "x86-64", "nop", "mov al, bl"], mixed.sink)).toBe(2);
+		expect(mixed.out.join("\n")).toContain("8-bit operands are not encodable");
+
+		const wide = capture();
+		expect(await runCli(["asm", "aarch64", "nop", "mov x0, #0x12345678"], wide.sink)).toBe(2);
+		expect(wide.out.join("\n")).toContain("more than one instruction");
+	});
+
+	it("rejects an architecture it has no encoder for", async () => {
+		const { err, sink } = capture();
+		expect(await runCli(["asm", "mips", "nop"], sink)).toBe(1);
+		expect(err.join("\n")).toContain("asm cannot encode for mips");
+	});
+
 	it("reports an unknown document id as a usage error", async () => {
 		const { err, sink } = capture();
 		expect(await runCli(["docs", "--read", "kb/does-not-exist"], sink)).toBe(1);

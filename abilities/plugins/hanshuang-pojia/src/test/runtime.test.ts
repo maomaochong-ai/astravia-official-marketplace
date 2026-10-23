@@ -71,7 +71,9 @@ describe("buildKernelBlock", () => {
 		const off = buildKernelBlock({ lab: LAB_OFF, page: null, tools: TOOL_IDS });
 		const on = buildKernelBlock({ lab: { enabled: true, since: "2026-01-02T03:04:05.000Z" }, page: "disasm", tools: TOOL_IDS });
 		// 2.4.0 取消了包内常驻块，每轮只付这一份；超预算就是静默吃掉上下文。
-		expect(off.length).toBeLessThan(600);
+		// 2.5.0 工具数从 19 到 20（install_toolchain），预算随之上调 20 字符：
+		// 数字只在“失控”时才该收紧，而不该因为合理新增就永久钉死。
+		expect(off.length).toBeLessThan(620);
 		expect(on.length).toBeLessThan(1400);
 	});
 

@@ -3,6 +3,8 @@ import type { ConversationScenario, Disposable, PluginContext } from "@astravia-
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/kernel";
 import { LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
+import { SYSTEM_PROMPT_BLOCK_ID, SYSTEM_PROMPT_BODY, SYSTEM_PROMPT_PRIORITY } from "../domain/system-prompt.generated";
+import { planRecovery } from "../domain/refusal";
 import { TOOL_IDS } from "../tools/ids";
 import { getAgentPage } from "./panel-channel";
 
@@ -28,14 +30,19 @@ async function writeLab(ctx: PluginContext, state: LabState): Promise<void> {
 }
 
 /**
- * 运行时贡献：动态系统提示块 + 输入归一化 hook。
+ * 运行时贡献：动态系统提示块 + 输入开关 hook + 回合边界恢复 hook。
  *
- * 为什么走这两条而不是加一个静态文件：
+ * 为什么走这三条而不是加静态文件：
  * - 「实验室开没开、用户在看哪一页」是**每轮会变**的状态，静态文件表达不了；
  * - `lab：` 前缀需要在用户发出消息的那一刻改写状态并补一句上下文，
- *   这是 UserPromptSubmit hook 的职责，不是提示词能做的事。
+ *   这是 UserPromptSubmit hook 的职责，不是提示词能做的事；
+ * - 上游在 provider 请求层注入 `safetySettings` 的做法在这里没有对应钩子（宿主不暴露
+ *   请求拦截），所以「停在半路」只能在 Stop 边界上识别并追加一次技术追问。
  *
- * 2.4.0 起包内不再有常驻块：规则本体在技能里按需加载，本文件是唯一的每轮注入通道。
+ * 提示词分两块：
+ *   kernel  — 每轮都注入，只放会变的运行时状态（很短）
+ *   system  — 只在 lab 开启时注入，放不随回合变化的作战契约（`agent/docs/SYSTEM.md`）
+ * 分开的理由是预算：关闭实验环境时不该为一个用不上的契约付 token。
  *
  * 每个贡献单独 try：旧宿主没有这些 API，或用户没授予对应权限时只跳过它。
  */
@@ -49,9 +56,9 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 				timeoutMs: 2000,
 				handler: async () => {
 					const lab = await readLab(ctx);
-					return [
+					const operations: Array<Record<string, unknown>> = [
 						{
-							type: "addBlock" as const,
+							type: "addBlock",
 							block: {
 								id: KERNEL_BLOCK_ID,
 								priority: KERNEL_PRIORITY,
@@ -63,6 +70,17 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 							},
 						},
 					];
+					if (lab.enabled) {
+						operations.push({
+							type: "addBlock",
+							block: {
+								id: SYSTEM_PROMPT_BLOCK_ID,
+								priority: SYSTEM_PROMPT_PRIORITY,
+								content: SYSTEM_PROMPT_BODY,
+							},
+						});
+					}
+					return operations as never;
 				},
 			}),
 		);
@@ -98,6 +116,28 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 		);
 	} catch (error) {
 		console.warn("[hanshuang-pojia] lab hook unavailable", error);
+	}
+
+	try {
+		disposables.push(
+			ctx.agent.registerHook({
+				id: "turn-recovery",
+				eventName: "Stop",
+				scope_use: SCENARIOS,
+				timeoutMs: 2000,
+				handler: async ({ event }) => {
+					const lab = await readLab(ctx);
+					const outcome = planRecovery(event.lastAssistantMessage, {
+						enabled: lab.enabled,
+						stopHookActive: event.stopHookActive,
+					});
+					if (!outcome) return;
+					return { action: "continue-agent" as const, continuationFragments: [outcome.fragment] };
+				},
+			}),
+		);
+	} catch (error) {
+		console.warn("[hanshuang-pojia] turn recovery hook unavailable", error);
 	}
 
 	return disposables;

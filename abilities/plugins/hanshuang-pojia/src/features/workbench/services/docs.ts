@@ -4,6 +4,7 @@
  * 正文不进首屏 bundle —— vite 把每个 Markdown 拆成独立 chunk，
  * 只有点开某一篇时才会加载那一篇的文本。
  */
+import assets from "../../../content/docs/assets.json";
 import index from "../../../content/docs/index.json";
 
 export interface DocEntry {
@@ -15,9 +16,43 @@ export interface DocEntry {
 	bytes: number;
 	lines: number;
 	sha256: string;
+	/** `asset` 是机器可读附件（signal 索引、工具索引），不是文章。 */
+	kind?: "doc" | "asset";
 }
 
 export const DOC_ENTRIES = index as DocEntry[];
+
+interface AssetEntry {
+	id: string;
+	group: string;
+	topic: string;
+	label: string;
+	path: string;
+	bytes: number;
+	lines: number;
+	sha256: string;
+}
+
+/**
+ * 附件：`kb/<分类>/techniques/kb-index.json`（信号 → 技术文件）与
+ * `kit-docs/tool-index.json`（42 项工具清单）。
+ *
+ * 它们不进全文索引 —— 否则全文检索会把 292 篇正文扫一遍，命中的却是一张映射表 ——
+ * 但 `read_doc` 能按 id 直接打开，agent 想精确路由时读它比全文搜索快得多。
+ */
+export const ASSET_ENTRIES: DocEntry[] = (assets as AssetEntry[]).map(asset => ({
+	id: asset.id,
+	group: asset.group,
+	topic: asset.topic,
+	title: asset.label,
+	path: asset.path,
+	bytes: asset.bytes,
+	lines: asset.lines,
+	sha256: asset.sha256,
+	kind: "asset",
+}));
+
+const ALL_ENTRIES: DocEntry[] = [...DOC_ENTRIES, ...ASSET_ENTRIES];
 
 export const DOC_GROUPS = [
 	{ id: "kb", labelKey: "docs.group.kb" },
@@ -25,12 +60,15 @@ export const DOC_GROUPS = [
 	{ id: "kit-docs", labelKey: "docs.group.kitDocs" },
 ] as const;
 
-const LOADERS = import.meta.glob("/src/content/docs/**/*.md", { query: "?raw", import: "default" }) as Record<string, () => Promise<string>>;
+const LOADERS = import.meta.glob(["/src/content/docs/**/*.md", "/src/content/docs/**/*.json"], { query: "?raw", import: "default" }) as Record<
+	string,
+	() => Promise<string>
+>;
 
 const CACHE = new Map<string, string>();
 
 export function docById(id: string): DocEntry | undefined {
-	return DOC_ENTRIES.find(entry => entry.id === id);
+	return ALL_ENTRIES.find(entry => entry.id === id);
 }
 
 export function docGroups(): Array<{ id: string; topics: Array<{ id: string; entries: DocEntry[] }> }> {
@@ -108,6 +146,8 @@ export async function searchFullText(query: string, limit = 60): Promise<DocHit[
 
 export const DOC_TOTALS = {
 	documents: DOC_ENTRIES.length,
+	/** 机器可读附件数；自检页用它确认索引没掉。 */
+	assets: ASSET_ENTRIES.length,
 	bytes: DOC_ENTRIES.reduce((total, entry) => total + entry.bytes, 0),
 	lines: DOC_ENTRIES.reduce((total, entry) => total + entry.lines, 0),
 	/** 按分组统计；自检页拿它核对三组都没掉。 */

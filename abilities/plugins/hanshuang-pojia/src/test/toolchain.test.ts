@@ -130,6 +130,21 @@ describe("probeToolchain", () => {
 		const report = await probeToolchain(async () => ok(""));
 		expect(report.tools.every(tool => tool.available && tool.detail === "present")).toBe(true);
 	});
+
+	it("does not call a tool available when it exits non-zero with a banner", async () => {
+		// `jadx --version` without a JDK prints an error and exits 1: available: true would send the
+		// user to reinstall jadx instead of installing Java.
+		const report = await probeToolchain(async () => ({
+			stdout: "",
+			stderr: "Error: JAVA_HOME is not set",
+			exitCode: 1,
+		}));
+		for (const tool of report.tools) {
+			expect(tool.available).toBe(false);
+			expect(tool.blocked).toBe(false);
+			expect(tool.detail).toContain("exited with 1");
+		}
+	});
 });
 
 describe("command runner", () => {

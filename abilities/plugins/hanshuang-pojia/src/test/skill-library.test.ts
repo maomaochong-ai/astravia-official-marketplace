@@ -5,26 +5,32 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const pluginRoot = fileURLToPath(new URL("../../", import.meta.url));
-const libraryRoot = join(pluginRoot, "agent/docs/skill-library");
+const libraryRoot = join(pluginRoot, "agent/skills");
 const manifestPath = join(pluginRoot, "agent/docs/skill-library.sha256");
 
-/** 上游 seep-kit 1.6.0 的 Tool/skill 树，逐字节打包；数字一变就说明有人改过上游文档。 */
-const EXPECTED_FILES = 165;
-const EXPECTED_BYTES = 2450341;
+/**
+ * 上游 seep-kit 1.6.0 的 Tool/skill 树，加上 7 个跨平台 .sh 兄弟脚本。
+ * 数字一变就说明有人改过上游文档或增删了 .sh。
+ */
+const EXPECTED_FILES = 171;
+const EXPECTED_BYTES = 2481035;
 /** `shasum -a 256 agent/docs/skill-library.sha256` */
-const EXPECTED_MANIFEST_SHA256 = "9527d6b7a46af565911c4d861ca93154b3a6c30509891b813da1f936fefaaff9";
+const EXPECTED_MANIFEST_SHA256 = "a0b03be3040fdd72fc1f05e55f7ad409f3a9787c1a1590ca0e944a9a262e6560";
 
-const TIER_ONE = [
-	"softseep",
+/** 上游 seep-kit 原样搬运的八个技能目录（旧版 ida-reverse 已被 safe-skills 版本取代）。 */
+const LIBRARY_SKILLS = [
 	"apkseep",
-	"ida-reverse",
+	"apk-reverse",
 	"client-license-validation-bypass",
-	"safe-skills/apk-reverse",
-	"safe-skills/ida-reverse",
-	"safe-skills/mcp-js-reverse-playbook",
-	"safe-skills/radare2",
-	"safe-skills/reverse-engineering",
+	"ida-reverse",
+	"mcp-js-reverse-playbook",
+	"radare2",
+	"reverse-engineering",
+	"softseep",
 ];
+
+/** 宿主要能加载到的全部技能目录，含本插件自己写的主技能。 */
+const ALL_SKILLS = ["hanshuang-pojia", ...LIBRARY_SKILLS];
 
 function walk(directory: string): string[] {
 	const found: string[] = [];
@@ -38,7 +44,7 @@ function walk(directory: string): string[] {
 
 describe("bundled skill library", () => {
 	it("ships the whole upstream tree and matches its integrity manifest", () => {
-		const files = walk(libraryRoot).sort();
+		const files = LIBRARY_SKILLS.flatMap((name) => walk(join(libraryRoot, name))).sort();
 		expect(files.length).toBe(EXPECTED_FILES);
 
 		let bytes = 0;
@@ -58,7 +64,7 @@ describe("bundled skill library", () => {
 	});
 
 	it("keeps every skill loadable by path", () => {
-		for (const skill of TIER_ONE) {
+		for (const skill of ALL_SKILLS) {
 			const entry = join(libraryRoot, skill, "SKILL.md");
 			expect(statSync(entry).isFile()).toBe(true);
 			const raw = readFileSync(entry, "utf8");

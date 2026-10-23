@@ -165,6 +165,7 @@ export function renderToolchain(report: ToolchainReport): string {
 		lines.push(`Blocked capabilities: ${needs.join("; ")}`);
 		const installs = absent.flatMap(tool => (tool.install ? [`${tool.binary} → ${tool.install}`] : []));
 		if (installs.length > 0) lines.push(`Install: ${installs.join("; ")}`);
+		lines.push("For the exact command on this platform, call install_toolchain with the goal you are working on.");
 	}
 	const blocked = report.tools.filter(tool => tool.blocked);
 	if (blocked.length > 0) {

@@ -894,7 +894,7 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 309 bundled field documents the agent can search mid-investigation.",
-      "version": "2.4.4",
+      "version": "2.7.0",
       "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -950,13 +950,25 @@
         "zh": "自动化",
         "en": "Automation"
       },
-      "tags": ["browser", "automation", "web", "ego-lite", "scraping"],
+      "tags": [
+        "browser",
+        "automation",
+        "web",
+        "ego-lite",
+        "scraping"
+      ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "ego-browser",
             "description": "通过 ego lite 浏览器驱动网页与浏览器自动化，沿用你自己的登录态，且不抢你标签页的控制权。",
-            "tags": ["浏览器", "自动化", "网页", "ego-lite", "抓取"]
+            "tags": [
+              "浏览器",
+              "自动化",
+              "网页",
+              "ego-lite",
+              "抓取"
+            ]
           }
         }
       },
@@ -978,13 +990,33 @@
         "zh": "安全",
         "en": "Security"
       },
-      "tags": ["kali", "linux", "security", "pentest", "nmap", "wsl", "docker", "playbook", "methodology"],
+      "tags": [
+        "kali",
+        "linux",
+        "security",
+        "pentest",
+        "nmap",
+        "wsl",
+        "docker",
+        "playbook",
+        "methodology"
+      ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "Kali Linux",
             "description": "不用虚拟机就能在本机跑 Kali 工具：技能按系统自动部署 Kali（Windows 用 WSL2，macOS 与 Linux 用官方滚动容器），每条命令都走同一个带审计的命令行，并自带 16 份场景 playbook 与 270 份单工具参考，覆盖信息收集、Web 与 API 测试、活动目录、口令、无线、云原生、取证与报告。驱动不分类目标、也不过滤命令：范围与破坏性操作在对话中定，每条命令都留痕。",
-            "tags": ["Kali", "Linux", "安全", "渗透测试", "nmap", "WSL", "Docker", "场景手册", "方法论"]
+            "tags": [
+              "Kali",
+              "Linux",
+              "安全",
+              "渗透测试",
+              "nmap",
+              "WSL",
+              "Docker",
+              "场景手册",
+              "方法论"
+            ]
           }
         }
       },

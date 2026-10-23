@@ -1,0 +1,677 @@
+{
+	"purpose": "Tool index: which of the 42 upstream tools this plugin probes, recommends, or declines, and why",
+	"generated_by": "scripts/sync-tool-index.mjs",
+	"source": "src/domain/toolchain/catalog.ts",
+	"upstream": {
+		"artifact": "hanshuang-pojia-2.0 · seep-kit/Tool/docs/tool-index.json",
+		"schema": "Tool/docs/refresh-tool-index.ps1",
+		"total": 42
+	},
+	"availability": "runtime — call probe_environment; this file never claims a tool is installed",
+	"counts": {
+		"total": 42,
+		"probed": 14,
+		"advisory": 11,
+		"unsupported": 17
+	},
+	"groups": [
+		{
+			"id": "radare2",
+			"count": 11
+		},
+		{
+			"id": "apk-reverse",
+			"count": 9
+		},
+		{
+			"id": "ida-reverse",
+			"count": 3
+		},
+		{
+			"id": "binary-ninja-reverse",
+			"count": 1
+		},
+		{
+			"id": "reverse-engineering",
+			"count": 5
+		},
+		{
+			"id": "js-reverse",
+			"count": 3
+		},
+		{
+			"id": "firmware-pentest",
+			"count": 1
+		},
+		{
+			"id": "malware-analysis",
+			"count": 1
+		},
+		{
+			"id": "pentest-tools",
+			"count": 5
+		},
+		{
+			"id": "threat-intelligence",
+			"count": 1
+		},
+		{
+			"id": "browser-automation",
+			"count": 2
+		}
+	],
+	"tools": [
+		{
+			"name": "r2",
+			"kind": "probed",
+			"group": "radare2",
+			"skill": "hanshuang-pojia",
+			"purpose": "radare2 disassembly, analysis and pseudo-C",
+			"tool_id": "r2",
+			"provides": [
+				"radare"
+			],
+			"goals": [
+				"native",
+				"firmware",
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"-v"
+			],
+			"recipe": {
+				"darwin": "brew install radare2",
+				"linux": "sudo apt-get install -y radare2",
+				"windows": "winget install --id radare.radare2 -e"
+			},
+			"install": "brew install radare2 | winget install radare.radare2"
+		},
+		{
+			"name": "rabin2",
+			"kind": "probed",
+			"group": "radare2",
+			"skill": "hanshuang-pojia",
+			"purpose": "binary metadata, imports, sections",
+			"tool_id": "rabin2",
+			"provides": [
+				"radare"
+			],
+			"goals": [
+				"native",
+				"firmware",
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"-v"
+			],
+			"recipe": null,
+			"install": "ships with radare2"
+		},
+		{
+			"name": "radiff2",
+			"kind": "probed",
+			"group": "radare2",
+			"skill": "hanshuang-pojia",
+			"purpose": "binary and function-level diff",
+			"tool_id": "radiff2",
+			"provides": [
+				"radiff"
+			],
+			"goals": [
+				"native",
+				"full"
+			],
+			"version_args": [
+				"-v"
+			],
+			"recipe": null,
+			"install": "ships with radare2"
+		},
+		{
+			"name": "rasm2",
+			"kind": "probed",
+			"group": "radare2",
+			"skill": "hanshuang-pojia",
+			"purpose": "assemble / disassemble one instruction",
+			"tool_id": "rasm2",
+			"provides": [
+				"rasm"
+			],
+			"goals": [
+				"native",
+				"full"
+			],
+			"version_args": [
+				"-v"
+			],
+			"recipe": null,
+			"install": "ships with radare2"
+		},
+		{
+			"name": "rahash2",
+			"kind": "probed",
+			"group": "radare2",
+			"skill": "hanshuang-pojia",
+			"purpose": "hashes, entropy and byte-pattern search",
+			"tool_id": "rahash2",
+			"provides": [
+				"rahash"
+			],
+			"goals": [
+				"native",
+				"firmware",
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"-v"
+			],
+			"recipe": null,
+			"install": "ships with radare2"
+		},
+		{
+			"name": "rax2",
+			"kind": "probed",
+			"group": "radare2",
+			"skill": "hanshuang-pojia",
+			"purpose": "number base and string conversion",
+			"tool_id": "rax2",
+			"provides": [
+				"rax"
+			],
+			"goals": [
+				"native",
+				"full"
+			],
+			"version_args": [
+				"-v"
+			],
+			"recipe": null,
+			"install": "ships with radare2"
+		},
+		{
+			"name": "jadx",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "DEX to Java decompilation",
+			"tool_id": "jadx",
+			"provides": [
+				"jadx"
+			],
+			"goals": [
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"--version"
+			],
+			"recipe": {
+				"darwin": "brew install jadx",
+				"linux": "sudo apt-get install -y jadx",
+				"windows": "winget install --id skylot.jadx -e"
+			},
+			"install": "brew install jadx | winget install skylot.jadx"
+		},
+		{
+			"name": "apktool",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "APK unpack and smali extraction",
+			"tool_id": "apktool",
+			"provides": [
+				"apktool"
+			],
+			"goals": [
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"--version"
+			],
+			"recipe": {
+				"darwin": "brew install apktool",
+				"linux": "sudo apt-get install -y apktool",
+				"windows": "scoop install apktool"
+			},
+			"install": "brew install apktool | scoop install apktool"
+		},
+		{
+			"name": "java",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "JDK 17+, required by jadx and apktool",
+			"tool_id": "java",
+			"provides": [
+				"java"
+			],
+			"goals": [
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"-version"
+			],
+			"recipe": {
+				"darwin": "brew install --cask temurin@17",
+				"linux": "sudo apt-get install -y openjdk-17-jdk-headless",
+				"windows": "winget install --id EclipseAdoptium.Temurin.17.JDK -e"
+			},
+			"install": "JDK 17 or newer; jadx and apktool refuse to start without it"
+		},
+		{
+			"name": "adb",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "pull an installed APK off a device",
+			"tool_id": "adb",
+			"provides": [
+				"adb"
+			],
+			"goals": [
+				"apk",
+				"dynamic",
+				"full"
+			],
+			"version_args": [
+				"version"
+			],
+			"recipe": {
+				"darwin": "brew install --cask android-platform-tools",
+				"linux": "sudo apt-get install -y adb",
+				"windows": "winget install --id Google.PlatformTools -e"
+			},
+			"install": "brew install --cask android-platform-tools | winget install Google.PlatformTools"
+		},
+		{
+			"name": "apksigner",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "verify an APK signature before trusting it",
+			"tool_id": "apksigner",
+			"provides": [
+				"apksigner"
+			],
+			"goals": [
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"--version"
+			],
+			"recipe": {
+				"darwin": "brew install android-commandlinetools && sdkmanager 'build-tools;35.0.0'",
+				"linux": "sudo apt-get install -y android-sdk-build-tools",
+				"windows": "sdkmanager \"build-tools;35.0.0\""
+			},
+			"install": "Android build-tools; sdkmanager 'build-tools;35.0.0'"
+		},
+		{
+			"name": "zipalign",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "4-byte alignment check on a rebuilt APK",
+			"tool_id": "zipalign",
+			"provides": [
+				"zipalign"
+			],
+			"goals": [
+				"apk",
+				"full"
+			],
+			"version_args": [
+				"-h"
+			],
+			"recipe": {
+				"darwin": "brew install android-commandlinetools && sdkmanager 'build-tools;35.0.0'",
+				"linux": "sudo apt-get install -y android-sdk-build-tools",
+				"windows": "sdkmanager \"build-tools;35.0.0\""
+			},
+			"install": "Android build-tools; sdkmanager 'build-tools;35.0.0'"
+		},
+		{
+			"name": "frida",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "runtime hooking and observation",
+			"tool_id": "frida",
+			"provides": [
+				"frida"
+			],
+			"goals": [
+				"dynamic",
+				"full"
+			],
+			"version_args": [
+				"--version"
+			],
+			"recipe": {
+				"darwin": "pipx install frida-tools",
+				"linux": "pipx install frida-tools",
+				"windows": "pip install --user frida-tools"
+			},
+			"install": "pipx install frida-tools"
+		},
+		{
+			"name": "frida-ps",
+			"kind": "probed",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "list processes on a device or host before attaching",
+			"tool_id": "frida-ps",
+			"provides": [
+				"frida"
+			],
+			"goals": [
+				"dynamic",
+				"full"
+			],
+			"version_args": [
+				"--version"
+			],
+			"recipe": {
+				"darwin": "pipx install frida-tools",
+				"linux": "pipx install frida-tools",
+				"windows": "pip install --user frida-tools"
+			},
+			"install": "pipx install frida-tools"
+		},
+		{
+			"name": "python3",
+			"kind": "advisory",
+			"group": "reverse-engineering",
+			"skill": "hanshuang-pojia",
+			"purpose": "run the bundled helper scripts that prefer a real interpreter",
+			"commercial": false,
+			"goals": [
+				"full"
+			],
+			"recipe": {
+				"darwin": "brew install python@3.12",
+				"linux": "sudo apt-get install -y python3",
+				"windows": "winget install --id Python.Python.3.12 -e"
+			},
+			"install": "brew install python@3.12 | winget install Python.Python.3.12"
+		},
+		{
+			"name": "node",
+			"kind": "advisory",
+			"group": "js-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "Frida gadget scripts and the JS-side helpers",
+			"commercial": false,
+			"goals": [
+				"dynamic",
+				"full"
+			],
+			"recipe": {
+				"darwin": "brew install node",
+				"linux": "sudo apt-get install -y nodejs",
+				"windows": "winget install --id OpenJS.NodeJS.LTS -e"
+			},
+			"install": "brew install node | winget install OpenJS.NodeJS.LTS"
+		},
+		{
+			"name": "binwalk",
+			"kind": "advisory",
+			"group": "firmware-pentest",
+			"skill": "hanshuang-pojia",
+			"purpose": "carve embedded filesystems and signatures out of firmware",
+			"commercial": false,
+			"goals": [
+				"firmware",
+				"full"
+			],
+			"recipe": {
+				"darwin": "brew install binwalk",
+				"linux": "sudo apt-get install -y binwalk",
+				"windows": "pip install binwalk"
+			},
+			"install": "brew install binwalk | pip install binwalk"
+		},
+		{
+			"name": "yara",
+			"kind": "advisory",
+			"group": "malware-analysis",
+			"skill": "hanshuang-pojia",
+			"purpose": "match known malware families against a sample",
+			"commercial": false,
+			"goals": [
+				"full"
+			],
+			"recipe": {
+				"darwin": "brew install yara",
+				"linux": "sudo apt-get install -y yara",
+				"windows": "winget install --id VirusTotal.YARA -e"
+			},
+			"install": "brew install yara | winget install VirusTotal.YARA"
+		},
+		{
+			"name": "nmap",
+			"kind": "advisory",
+			"group": "pentest-tools",
+			"skill": "hanshuang-pojia",
+			"purpose": "inventory the services a device exposes before auditing an app",
+			"commercial": false,
+			"goals": [],
+			"recipe": {
+				"darwin": "brew install nmap",
+				"linux": "sudo apt-get install -y nmap",
+				"windows": "winget install --id Insecure.Nmap -e"
+			},
+			"install": "brew install nmap | winget install Insecure.Nmap"
+		},
+		{
+			"name": "ida",
+			"kind": "advisory",
+			"group": "ida-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "commercial decompiler; the plugin uses radare2 when it is absent",
+			"commercial": true,
+			"goals": [],
+			"recipe": null,
+			"install": "IDA Pro / IDA Free from hex-rays.com — licence required, never installed by the plugin"
+		},
+		{
+			"name": "binaryninja",
+			"kind": "advisory",
+			"group": "binary-ninja-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "commercial decompiler with a strong headless API",
+			"commercial": true,
+			"goals": [],
+			"recipe": null,
+			"install": "Binary Ninja from binary.ninja — licence required, never installed by the plugin"
+		},
+		{
+			"name": "jeb-pro",
+			"kind": "advisory",
+			"group": "apk-reverse",
+			"skill": "hanshuang-pojia",
+			"purpose": "commercial Android / ARM decompiler with a stronger DEX-to-Java accuracy",
+			"commercial": true,
+			"goals": [],
+			"recipe": null,
+			"install": "JEB Pro from pentest-ground.com — licence required, never installed by the plugin"
+		},
+		{
+			"name": "analyzeHeadless",
+			"kind": "advisory",
+			"group": "reverse-engineering",
+			"skill": "hanshuang-pojia",
+			"purpose": "Ghidra headless analysis, the free alternative when IDA is not available",
+			"commercial": false,
+			"goals": [
+				"native",
+				"full"
+			],
+			"recipe": {
+				"darwin": "brew install --cask ghidra",
+				"linux": "sudo apt-get install -y ghidra",
+				"windows": "winget install --id NSA.Ghidra -e"
+			},
+			"install": "brew install --cask ghidra | winget install NSA.Ghidra"
+		},
+		{
+			"name": "pip",
+			"kind": "advisory",
+			"group": "reverse-engineering",
+			"skill": "hanshuang-pojia",
+			"purpose": "install the Python-side helpers (frida-tools, binwalk, pwntools)",
+			"commercial": false,
+			"goals": [
+				"dynamic",
+				"firmware",
+				"full"
+			],
+			"recipe": {
+				"darwin": "python3 -m ensurepip --upgrade",
+				"linux": "sudo apt-get install -y python3-pip",
+				"windows": "python -m ensurepip --upgrade"
+			},
+			"install": "ships with python3 (ensurepip)"
+		},
+		{
+			"name": "pwntools",
+			"kind": "advisory",
+			"group": "reverse-engineering",
+			"skill": "hanshuang-pojia",
+			"purpose": "CTF exploit development and ELF interaction",
+			"commercial": false,
+			"goals": [],
+			"recipe": {
+				"darwin": "pipx install pwntools",
+				"linux": "pipx install pwntools",
+				"windows": "pip install --user pwntools"
+			},
+			"install": "pipx install pwntools"
+		},
+		{
+			"name": "idalib-mcp",
+			"kind": "unsupported",
+			"group": "ida-reverse",
+			"skill": "ida-reverse",
+			"reason": "MCP server registered by the client, not an executable file"
+		},
+		{
+			"name": "ida-pro-mcp",
+			"kind": "unsupported",
+			"group": "ida-reverse",
+			"skill": "ida-reverse",
+			"reason": "MCP server registered by the client, not an executable file"
+		},
+		{
+			"name": "r2mcp",
+			"kind": "unsupported",
+			"group": "radare2",
+			"skill": "apk-reverse",
+			"reason": "MCP server; the plugin calls r2 directly instead"
+		},
+		{
+			"name": "r2xsql",
+			"kind": "unsupported",
+			"group": "radare2",
+			"skill": "native-reverse",
+			"reason": "r2 plugin installed through r2pm — a second permission surface"
+		},
+		{
+			"name": "r2xsql-full",
+			"kind": "unsupported",
+			"group": "radare2",
+			"skill": "native-reverse",
+			"reason": "same r2 plugin, full build"
+		},
+		{
+			"name": "radius2",
+			"kind": "unsupported",
+			"group": "radare2",
+			"skill": "native-reverse",
+			"reason": "symbolic execution; same r2pm surface"
+		},
+		{
+			"name": "r2pm",
+			"kind": "unsupported",
+			"group": "radare2",
+			"skill": "native-reverse",
+			"reason": "package manager: the plugin plans installs, it never runs them (ADR 0003 §2)"
+		},
+		{
+			"name": "jshookmcp",
+			"kind": "unsupported",
+			"group": "js-reverse",
+			"skill": "js-reverse",
+			"reason": "MCP server"
+		},
+		{
+			"name": "reqable-mcp",
+			"kind": "unsupported",
+			"group": "pentest-tools",
+			"skill": "js-reverse",
+			"reason": "MCP server"
+		},
+		{
+			"name": "xquik-mcp",
+			"kind": "unsupported",
+			"group": "threat-intelligence",
+			"skill": "threat-intelligence",
+			"reason": "remote MCP server with OAuth"
+		},
+		{
+			"name": "pentestswarm",
+			"kind": "unsupported",
+			"group": "pentest-tools",
+			"skill": "pentest-tools",
+			"reason": "MCP server"
+		},
+		{
+			"name": "agent-browser",
+			"kind": "unsupported",
+			"group": "browser-automation",
+			"skill": "js-reverse",
+			"reason": "browser automation, outside binary auditing"
+		},
+		{
+			"name": "playwright",
+			"kind": "unsupported",
+			"group": "browser-automation",
+			"skill": "js-reverse",
+			"reason": "browser automation, outside binary auditing"
+		},
+		{
+			"name": "proxycat",
+			"kind": "unsupported",
+			"group": "pentest-tools",
+			"skill": "pentest-tools",
+			"reason": "proxy pool, not needed for local auditing"
+		},
+		{
+			"name": "seclists",
+			"kind": "unsupported",
+			"group": "pentest-tools",
+			"skill": "pentest-tools",
+			"reason": "wordlists belong to a pentest engagement, not file auditing"
+		},
+		{
+			"name": "bkcrack",
+			"kind": "unsupported",
+			"group": "reverse-engineering",
+			"skill": "reverse-engineering",
+			"reason": "known-plaintext attack, specialised; the user supplies it when needed"
+		},
+		{
+			"name": "npx",
+			"kind": "unsupported",
+			"group": "js-reverse",
+			"skill": "js-reverse",
+			"reason": "2.0 uses npx to launch MCP servers; this plugin runs none"
+		}
+	]
+}

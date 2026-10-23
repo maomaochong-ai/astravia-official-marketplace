@@ -67,6 +67,10 @@ describe("sample paths", () => {
 	it("does not climb above the workspace root", () => {
 		expect(resolveSamplePath("/work", "../sibling.apk")).toBe("/work/sibling.apk");
 		expect(resolveSamplePath("/work", "../../etc/passwd")).toBe("/work/etc/passwd");
+		// The floor is the project root, not `/`: a nested cwd cannot be climbed out of either.
+		// Entry points refuse such a path before it gets here (`isOutsideProject`), this is the backstop.
+		expect(resolveSamplePath("/work/case-1", "../sibling.apk")).toBe("/work/case-1/sibling.apk");
+		expect(resolveSamplePath("/work/case-1", "sub/../../x.apk")).toBe("/work/case-1/x.apk");
 	});
 
 	it("keeps absolute paths and reads both separators", () => {
@@ -112,6 +116,7 @@ describe("agent tools", () => {
 			"export_triage_report",
 			"generate_hook",
 			"init_task",
+			"install_toolchain",
 			"list_code_symbols",
 			"probe_environment",
 			"read_doc",
@@ -121,6 +126,7 @@ describe("agent tools", () => {
 			"search_docs",
 			"triage_binary",
 			"triage_directory",
+			"write_assessment_report",
 		]);
 	});
 

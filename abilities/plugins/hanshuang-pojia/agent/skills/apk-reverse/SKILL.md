@@ -34,6 +34,19 @@ description: 在 CLI 环境下做 Android APK 逆向时使用。适用于 APK �
 - 重建、对齐、签名、安装 APK：`scripts/rebuild-sign-install.ps1`
 - 快速抽取 Manifest 关键组件与权限：`scripts/manifest-summary.ps1`
 
+**每个脚本都有 PowerShell 与 POSIX shell 两个版本，选当前平台的那一个：**
+
+| 用途 | Windows | macOS / Linux |
+|---|---|---|
+| 解码 APK | `scripts/decode.ps1` | `scripts/decode.sh` |
+| Frida 注入 | `scripts/frida-run.ps1` | `scripts/frida-run.sh` |
+| 重建签名安装 | `scripts/rebuild-sign-install.ps1` | `scripts/rebuild-sign-install.sh` |
+| Manifest 摘要 | `scripts/manifest-summary.ps1` | `scripts/manifest-summary.sh` |
+
+两个版本输出同一套 `key=value` 摘要（`task_root=`、`package=`、`java_files=` …），
+参数名也一一对应（PowerShell 的 `-ApkPath` 对应 shell 的 `--apk-path` 之外只有位置参数差异，见各脚本 `--help`）。
+例外：PowerShell 用 `-Switch` 表示布尔开关，shell 用同名的 `--kebab-case` 开关。
+
 以下一行命令保持直接调用，不单独封装：
 
 - `adb devices`

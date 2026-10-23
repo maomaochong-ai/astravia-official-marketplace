@@ -1,13 +1,16 @@
 {
   "name": "@astravia-marketplace/hanshuang-pojia",
-  "version": "2.4.4",
+  "version": "2.7.0",
   "private": true,
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
     "test": "vitest run",
     "build": "vite build",
-    "analyze": "node scripts/analyze.mjs"
+    "analyze": "node scripts/analyze.mjs",
+    "sync:system-prompt": "node scripts/sync-system-prompt.mjs",
+    "sync:tool-index": "node scripts/sync-tool-index.mjs",
+    "verify:generated": "node scripts/sync-system-prompt.mjs --check && node scripts/sync-tool-index.mjs --check"
   },
   "devDependencies": {
     "@astravia-org/plugin-sdk": "^0.3.10",

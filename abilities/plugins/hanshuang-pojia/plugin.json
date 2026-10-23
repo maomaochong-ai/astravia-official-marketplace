@@ -1,66 +1,104 @@
 {
-	"id": "hanshuang-pojia",
-	"name": "%plugin.name%",
-	"description": "%plugin.description%",
-	"icon": "assets/icon.svg",
-	"version": "2.4.4",
-	"pluginApiVersion": "^2.0.0",
-	"entry": "dist/mf-manifest.json",
-	"styles": [
-		"dist/style.css"
-	],
-	"moduleFederation": {
-		"remoteName": "hanshuang_pojia",
-		"expose": "./plugin"
-	},
-	"minAppVersion": "0.5.60",
-	"permissions": [
-		"ui.slot.activity-tab",
-		"agent.tools.register",
-		"agent.toolHandler.execute",
-		"agent.skills.control",
-		"agent.systemPrompt.write",
-		"agent.hooks.register",
-		"agent.hookHandler.execute",
-		"agent.session.read",
-		"agent.session.write",
-		"storage.read",
-		"storage.write",
-		"fs.read",
-		"fs.write",
-		"agent.command.run"
-	],
-	"commands": [
-		"r2",
-		"rabin2",
-		"radiff2",
-		"rasm2",
-		"jadx",
-		"apktool",
-		"java",
-		"frida"
-	],
-	"agent": {
-		"skillPaths": [
-			"agent/skills/hanshuang-pojia"
-		],
-		"skillPresentation": {
-			"defaultVisibility": "visible",
-			"surfaces": {
-				"skillPicker": "visible",
-				"commandPalette": "visible",
-				"abilityCatalog": "visible",
-				"agentConfiguration": "visible",
-				"pluginDetail": "visible"
-			},
-			"skills": {
-				"hanshuang-pojia": {
-					"displayName": "%skill.name%",
-					"displayDescription": "%skill.description%"
-				}
-			}
-		}
-	},
-	"defaultLocale": "en",
-	"author": "Astravia"
+  "id": "hanshuang-pojia",
+  "name": "%plugin.name%",
+  "description": "%plugin.description%",
+  "icon": "assets/icon.svg",
+  "version": "2.7.0",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "styles": [
+    "dist/style.css"
+  ],
+  "moduleFederation": {
+    "remoteName": "hanshuang_pojia",
+    "expose": "./plugin"
+  },
+  "minAppVersion": "0.5.60",
+  "permissions": [
+    "ui.slot.activity-tab",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control",
+    "agent.systemPrompt.write",
+    "agent.hooks.register",
+    "agent.hookHandler.execute",
+    "agent.session.read",
+    "agent.session.write",
+    "storage.read",
+    "storage.write",
+    "fs.read",
+    "fs.write",
+    "agent.command.run"
+  ],
+  "commands": [
+    "r2",
+    "rabin2",
+    "radiff2",
+    "rasm2",
+    "rahash2",
+    "rax2",
+    "jadx",
+    "apktool",
+    "java",
+    "adb",
+    "apksigner",
+    "zipalign",
+    "frida",
+    "frida-ps"
+  ],
+  "agent": {
+    "skillPaths": [
+      "agent/skills"
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "skillPicker": "visible",
+        "commandPalette": "visible",
+        "abilityCatalog": "visible",
+        "agentConfiguration": "visible",
+        "pluginDetail": "visible"
+      },
+      "skills": {
+        "hanshuang-pojia": {
+          "displayName": "%skill.name%",
+          "displayDescription": "%skill.description%"
+        },
+        "apkseep": {
+          "displayName": "%skill.apkseep.name%",
+          "displayDescription": "%skill.apkseep.description%"
+        },
+        "client-license-validation-bypass": {
+          "displayName": "%skill.licenseBypass.name%",
+          "displayDescription": "%skill.licenseBypass.description%"
+        },
+        "softseep": {
+          "displayName": "%skill.softseep.name%",
+          "displayDescription": "%skill.softseep.description%"
+        },
+        "apk-reverse": {
+          "displayName": "%skill.apkReverse.name%",
+          "displayDescription": "%skill.apkReverse.description%"
+        },
+        "ida-reverse": {
+          "displayName": "%skill.idaReverse.name%",
+          "displayDescription": "%skill.idaReverse.description%"
+        },
+        "mcp-js-reverse-playbook": {
+          "displayName": "%skill.jsPlaybook.name%",
+          "displayDescription": "%skill.jsPlaybook.description%"
+        },
+        "radare2": {
+          "displayName": "%skill.radare2.name%",
+          "displayDescription": "%skill.radare2.description%"
+        },
+        "reverse-engineering": {
+          "displayName": "%skill.reverseEngineering.name%",
+          "displayDescription": "%skill.reverseEngineering.description%"
+        }
+      }
+    }
+  },
+  "defaultLocale": "en",
+  "author": "Astravia"
 }

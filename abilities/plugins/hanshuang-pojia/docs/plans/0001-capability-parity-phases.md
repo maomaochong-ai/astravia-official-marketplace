@@ -13,8 +13,8 @@
 | P1 | 伪代码恢复、语义 diff、hook 模板、目录批量 triage、CLI | 2.4.1 | 已完成 |
 | P2 | 外部进程桥（`commands` + `ctx.command.run`）：`probe_environment`、`run_radare`、`decompile_android`、`init_task` | 2.4.2 | 已完成 |
 | P2-fix | 2.4.2 上线后审查修正：相对路径不再被判越界、apktool 不再强删输出目录、已存在的输出目录先拒、守卫不再误杀 `p*` 打印命令 | 2.4.3 | 本次完成 |
-| P3 | 指令编码器（asm ↔ bytes）、Overview 流水线状态条、DEX code-item 视图 | 2.4.4 | 规划 |
-| P4 | 跨样本基线（同一家族的重复样本聚合）、报告三列对比 | 2.4.5 | 规划 |
+| P3 | 指令编码器（asm ↔ bytes）、Overview 流水线状态条、DEX code-item 视图 | 2.4.4 | 进行中：编码器与 CLI `asm` 已落地，另两项未开始 |
+| P4 | 跨样本基线（同一家族的重复样本聚合）、报告三列对比 | 2.4.6 | 规划（2.4.5 已被第 19 个工具占用） |
 
 每个阶段都必须同时完成：领域实现 → 工具注册 → 面板呈现（若该阶段有 UI）→ 测试 → 双语文案 →
 版本与文档同步 → CI 发布。
@@ -125,7 +125,7 @@
 8. 验收：`toolchain.test.ts` 全绿；未装 r2 时 `probe_environment` 报 `✗ not installed` 而非权限错；
    装 r2 后 `run_radare` 对自编 aarch64 样本取 `info`/`functions`/`disasm` 有真实输出。
 
-## P3：编码器、流水线状态条与 DEX 指令视图（2.4.3）
+## P3：编码器、流水线状态条与 DEX 指令视图（2.4.4）
 
 1. `src/domain/native/encode.ts`：x86 / x86-64 / AArch64 常见指令编码子集（`mov`/`add`/`sub`/`xor`/
    `cmp`/`jmp`/`call`/`ret`/`nop`），双向 `asm → bytes`；无法编码时明确报错并给出最接近的候选，
@@ -136,7 +136,27 @@
    指令文本；上限 2 000 条指令，超出显式截断。
 4. 验收：编码后用 `disassemble_range` 回转得到同一文本；流水线在无样本时显示「等待样本」。
 
-## P4：跨样本基线（2.4.4）
+## P3 落地记录（编码器部分）
+
+写入时点：`encode.ts` 与 `src/test/native-encode.test.ts` 完成，`tsc --noEmit` 无输出，
+`native-encode.test.ts` 74 条用例全绿（含逐条回转断言），`cli.test.ts` 17 条全绿。
+
+| 项 | 结果 |
+|---|---|
+| `src/domain/native/encode.ts` | x86 / x86-64 / AArch64；`encodeInstruction` 单条、`encodeProgram` 逐行容错、`verifyEncoding` 回转自检 |
+| 助记符 | `nop` / `ret` / `mov` / `add` / `sub` / `xor` / `cmp` / `jmp` / `call`；aarch64 另收 `b` / `bl` / `eor` / `movz`，并把 `jmp`/`call`/`xor` 映射到解码器真正会印的写法 |
+| 判据 | 编码结果的 `text` 必须与 `decodeAt(bytes, arch, address)` 逐字相等；对不上即 `EncodeError` + hints，不输出「大概对」 |
+| 分支 | 绝对目标按 `address` + `size` 算相对位移；回转时把字节放到 `address` 再解码，超出 16 MiB 填充上限则只比对长度并标 `exact: false` |
+| CLI | `analyze.mjs asm <arch> <指令…> [--address] [--file] [--json]`；逐行打印 `file+0x… / hex / 规范文本`，有无法编码的行时退出码 2 |
+| 明确不做 | 8/16 位 x86 操作数、scale 索引、标签与伪指令、需两条指令才能落地的立即数（`mov x64, #0x12345678`）、`B8` 无法忠实渲染的 `2^31…2^40-1`；一律报错并给替代写法 |
+
+已知边界：`mov rax, <0x100000000…0xfffffffff>` 会被拒——解码器对 `B8+r` 渲染成
+`hex(high)+hex(low, 8)`，high 小于 `0x10` 时前导零丢失，回转不可能逐字相等。这是解码器渲染
+缺陷导致的诚实拒绝，不是编码器缺功能；`0x1000000000` 及以上与负值走同一助记符仍然可用。
+
+下一步（未开始）：Overview 流水线状态条、`src/domain/android/dex-code.ts` + `disassemble_dex_method`。
+
+## P4：跨样本基线（2.4.5）
 
 1. 样本库增加「家族」分组：同一 `shape` 指纹集合的样本归并，报告里给出共同函数数与差异函数数。
 2. `reports` 页支持两份报告并排对比（既有 `report-compare.ts` 扩展为三列：共同 / 左有 / 右有）。
@@ -209,6 +229,34 @@
 5. `capabilities` 的语义定死为“该能力所需的可执行文件全部可用”并有测试守护：r2 被拒时
    `radare` 必为 false，不能因为 rabin2 还能跑 `info` 就声称反汇编可用。
 
+### 2.4.3 上线后修正
+
+2.4.2 发布后审查又发现四处问题，均已修复并做为 2.4.3 重新发布（市场版本 0.4.88，CI run
+`39834441506` 通过）：
+
+1. `isOutsideProject` 把相对路径当绝对路径比对，`run_radare` / `decompile_android` 的
+   相对样本路径全部被判越界；改为先按 `cwd` 解析再判，`scopeForSample` 在无工作区时保持宽松。
+2. 只读守卫补上离开 r2 解析器的写法（管道、重定向、`$(`、反引号、`=!`）与 `o`（打开文件）、
+   `.`（执行脚本）；同时保持大小写敏感，避免 `P` 误杀 `pdf` / `pdc` / `px`。
+3. `decompile_android` 先用 `stat` 拒掉已存在的输出目录与包含样本本身的目录；apktool 不再
+   传 `-f`，绝不删用户目录。
+4. `pdc` 缺失时说清是构建不支持，而不是“符号不存在”。
+
+另外 `probe.ts` 与 `services/toolchain.ts` 的两份“宿主拒绝 / 未安装”正则已经统一，改为
+probe 导出、service 复用。
+
+### 第 19 个工具（2.4.5）
+
+能力对账的最后一个真缺口：上游 `seep_gen_security_report` 在本地只有 `init_task report=true`
+的报告骨架，没有"按参数填模板并落盘"这一步 —— ADR 0001 row 23 因此长期标着「部分具备」。
+
+| 项 | 结果 |
+|---|---|
+| 工具注册 | 19，`EXPECTED_TOOL_COUNT = 19`；`write_assessment_report` 有 10 条用例（渲染 5 + 工具 5） |
+| 契约 | 落 `reports/<target>_security_assessment_report.md`；`case_dir` 越出项目根拒绝；已存在不覆盖（`overwrite=true` 才覆盖）；`zh`/`en` 双模板 |
+| 与上游的差异 | 缺参段落写「未提供」而不是默认给出 CWE-602 结论；不印示例汇编；不引用 `patches/`（同 D17 口径） |
+| 版本 | 2.4.4 → 2.4.5；`configVersion` 保持 2（只是新增工具，不改配置契约） |
+| 文档 | ADR 0001 row 23 由「部分具备」改「已具备」；ADR 0002 新增 D19 并把 D15 的 `seep_task_init` / `seep_gen_security_report` 拆成两行 |
 
 ---
 

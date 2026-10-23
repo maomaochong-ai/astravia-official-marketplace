@@ -45,7 +45,7 @@ export function buildKernelBlock(input: KernelInput): string {
 		: "Lab mode: OFF. Answer ordinary questions normally; do not expand shorthand into patch/keygen plans until the operator turns lab mode on with `lab：`.");
 
 	if (input.tools.length > 0) {
-		lines.push(`Plugin tools registered in this session: ${input.tools.join(", ")}. They read the workspace directly, so prefer them over re-deriving the same bytes by hand.`);
+		lines.push(`Plugin tools available: ${input.tools.join(", ")}. They read the workspace directly; prefer them over re-deriving bytes by hand.`);
 	}
 
 	const hint = input.page ? PAGE_HINT[input.page] : undefined;

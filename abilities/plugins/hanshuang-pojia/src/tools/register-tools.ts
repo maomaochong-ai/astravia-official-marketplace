@@ -17,6 +17,8 @@ import { registerProbeEnvironmentTool } from "./probe-environment";
 import { registerRunRadareTool } from "./run-radare";
 import { registerDecompileAndroidTool } from "./decompile-android";
 import { registerInitTaskTool } from "./init-task";
+import { registerWriteAssessmentTool } from "./write-assessment-report";
+import { registerInstallToolchainTool } from "./install-toolchain";
 
 /**
  * 工具注册总入口。每个工具单独 try：
@@ -44,6 +46,8 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerRunRadareTool,
 		registerDecompileAndroidTool,
 		registerInitTaskTool,
+		registerWriteAssessmentTool,
+		registerInstallToolchainTool,
 	]) {
 		try {
 			disposables.push(register(ctx));

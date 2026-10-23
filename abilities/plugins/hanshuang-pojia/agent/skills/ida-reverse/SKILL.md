@@ -64,6 +64,17 @@ description: |
 | 3 | 使用所有 72 个 MCP 工具 | 直接调用 `idapro_*` 工具 |
 | 4 | 分析完毕 | 工具自动可用 |
 
+**跨平台脚本对应**（输出契约一致，选当前系统的那一列）：
+
+| 用途 | Windows | macOS / Linux |
+|---|---|---|
+| 启动 MCP 服务器 | `scripts/start.ps1` → `OK:<n>` / `ERR:timeout` | `scripts/start.sh` → 同一行契约 |
+| 打开二进制 | `scripts/open.ps1 -Path x.exe` | `scripts/open.sh x` |
+
+macOS 上 `start.sh` 会在 `/Applications/IDA Professional 9.x.app` 中自动定位 IDA，并设置 `DYLD_FALLBACK_LIBRARY_PATH`；`open.sh` 把“旧库被锁 / 系统路径只读”这两种情况都降级为 `$TMPDIR/nx-ida` 临时副本，成功行会带 ` (temp copy)` 标记。
+
+限制：两套脚本都只负责启动与打开。IDA GUI 本身的授权（许可证）仍需在本机先完成一次，脚本不处理授权。
+
 ## 脚本资源
 
 ### start.ps1 — 启动 MCP HTTP 服务器

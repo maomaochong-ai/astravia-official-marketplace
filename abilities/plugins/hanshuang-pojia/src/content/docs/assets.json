@@ -1,0 +1,52 @@
+[
+	{
+		"id": "kb/apk-reverse/techniques/kb-index.json",
+		"group": "kb",
+		"topic": "apk-reverse/techniques",
+		"label": "Signal → technique file mapping for APK reverse analysis",
+		"path": "src/content/docs/kb/apk-reverse/techniques/kb-index.json",
+		"bytes": 3894,
+		"lines": 84,
+		"sha256": "62529ddd59146916"
+	},
+	{
+		"id": "kb/ctf-website/techniques/kb-index.json",
+		"group": "kb",
+		"topic": "ctf-website/techniques",
+		"label": "Signal → technique file mapping for kb_router.py",
+		"path": "src/content/docs/kb/ctf-website/techniques/kb-index.json",
+		"bytes": 35768,
+		"lines": 1685,
+		"sha256": "53ab93b4b09aaf16"
+	},
+	{
+		"id": "kb/general/techniques/kb-index.json",
+		"group": "kb",
+		"topic": "general/techniques",
+		"label": "Signal → technique file mapping for general security/reversing knowledge base",
+		"path": "src/content/docs/kb/general/techniques/kb-index.json",
+		"bytes": 3847,
+		"lines": 76,
+		"sha256": "a65f98a57f2c09aa"
+	},
+	{
+		"id": "kb/pe-reverse/techniques/kb-index.json",
+		"group": "kb",
+		"topic": "pe-reverse/techniques",
+		"label": "Signal → technique file mapping for PE reverse analysis",
+		"path": "src/content/docs/kb/pe-reverse/techniques/kb-index.json",
+		"bytes": 7456,
+		"lines": 320,
+		"sha256": "8ab3baf2c73530d6"
+	},
+	{
+		"id": "kit-docs/tool-index.json",
+		"group": "kit-docs",
+		"topic": "",
+		"label": "Tool index: which of the 42 upstream tools this plugin probes, recommends, or declines, and why",
+		"path": "src/content/docs/kit-docs/tool-index.json",
+		"bytes": 15740,
+		"lines": 678,
+		"sha256": "e73d8c0c5696fc5e"
+	}
+]

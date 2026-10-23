@@ -29,35 +29,36 @@ TypeScript 面板 + Agent 工具，运行在宿主渲染进程内；kit 是用�
 ## 2. 能力矩阵
 
 图例：`已具备` = 插件内可离线运行；`本期补齐` = 本 ADR 落地（P1）；`规划` = 后续阶段；
-`文档化` = 只作为资料/说明，不在插件内执行；`拒绝` = 明确不做，附理由。
+`文档化` = 只作为资料/说明，不在插件内执行；`拒绝` = 明确不做，附理由；`部分具备` = 只覆盖上游的一部分，
+差额写明落在谁身上。P2（外部进程桥，ADR 0002）补齐的行在结论里标 `P2 补齐`。
 
 ### 2.1 MCP `seep` 23 个工具
 
 | # | kit 工具 | kit 机制 | 插件现状 | 结论 |
 |---|---|---|---|---|
-| 1 | `seep_status` | 探测 r2/jadx/apktool 是否在 PATH | Self-check 页跑引擎自检并报告宿主能力 | 已具备（目标不同：插件报自己的能力，不猜 kit 的） |
+| 1 | `seep_status` | 探测 r2/jadx/apktool 是否在 PATH | `probe_environment`：八条 `--version` 探针（r2/rabin2/radiff2/rasm2/jadx/apktool/java/frida），逐项区分「宿主拒绝」与「未安装」 | 已具备（P2 补齐） |
 | 2 | `seep_ida_status` | 探测 IDA 授权与端口 | 无 | 文档化：面板不持有 IDA 会话 |
 | 3 | `seep_r2_info` | `rabin2 -I/-S/-z` | `triage_binary` + Manifest / Entropy 页 | 已具备 |
-| 4 | `seep_r2_cmd` | 任意 r2 命令 | 无 | 拒绝：需要 r2 进程；等价物是下面这些有界工具 |
+| 4 | `seep_r2_cmd` | 任意 r2 命令（`aaa; {command}` 直接进 `-c`，零限制） | `run_radare operation=cmd`：同样进 `r2 -q -c`，但命令先过只读守卫（写/open/调试/工程/重启/挂载/网络族与管道、重定向、`$(`、反引号一律拒绝） | 已具备（P2 补齐，有界：不复刻零限制） |
 | 5 | `seep_r2_strings` | 按节区抽字符串 | `scan_binary_strings`，带偏移与过滤 | 已具备 |
 | 6 | `seep_r2_functions` | 函数列表 | `list_code_symbols` + CFG 视图 + 候选函数发现 | 已具备 |
 | 7 | `seep_r2_disasm` | 反汇编区间 | `disassemble_range` + 三档深度视图（`deep.ts`） | 已具备 |
 | 8 | `seep_r2_decompile` | r2 `pdc` 伪 C，`full/fold/summary` 三档 | 无（`handbook` 记为最大缺口） | **本期补齐**：`decompile_function` |
 | 9 | `seep_r2_diff` | `radiff2 -C` 函数级语义 diff | `diff_binaries` 只有原始字节 hunk | **本期补齐**：`diff_functions` |
-| 10 | `seep_r2_asm` | `rasm2`：asm ↔ hex 双向 | 无 | 规划 P2：常见指令编码器（有界子集，不假装完整汇编器） |
+| 10 | `seep_r2_asm` | `rasm2`：asm ↔ hex 双向 | `encode.ts`：x86 / x86-64 / AArch64 九条助记符，编码后用插件自己的解码器回转校验，CLI 有 `asm` 子命令 | **本期补齐**：自研编码器（有界子集，不假装完整汇编器）；装了 r2 时 `rasm2` 仍是全量汇编的路径 |
 | 11 | `seep_r2_xrefs` | 交叉引用、分页 | `xref.ts`：调用者/被调用者/引用者，面板内 | 已具备 |
 | 12 | `seep_apk_info` | `aapt`/`apkanalyzer` 事实 | `triage_binary` 解析 AXML + DEX + 签名摘要 | 已具备 |
-| 13 | `seep_apk_decompile` | jadx / apktool 产物落盘 | 无 | 文档化：需要 jadx + 进程；插件用 DEX 索引给出符号面 |
-| 14 | `seep_apk_unpack` | apktool 解包 | 无 | 文档化：同上 |
+| 13 | `seep_apk_decompile` | jadx / apktool 产物落盘 | `decompile_android operation=decompile`（jadx，`--deobf` 默认开） | 已具备（P2 补齐；需用户自装 jadx） |
+| 14 | `seep_apk_unpack` | apktool 解包 | `decompile_android operation=unpack`（apktool，**不带 `-f`**，输出目录已存在时先拒） | 已具备（P2 补齐；需用户自装 apktool） |
 | 15 | `seep_apk_smali_search` | 在 smali 目录里 grep | `search_dex_symbols` 直接读 `class_defs` / `method_ids` / `string_ids` | 已具备（表级）；P3 增补 code-item 级指令视图 |
 | 16 | `seep_apk_gen_hook` | 生成 Frida hook 模板 | 无 | **本期补齐**：`generate_hook`（只生成插桩模板，不生成绕过逻辑） |
 | 17 | `seep_kb_search` | 289 篇战术笔记检索 | `search_docs`（309 篇，按标题/id/主题） | 已具备 |
 | 18 | `seep_kb_read` | 读单篇，带预算 | `read_doc`（`maxChars` 可见截断） | 已具备 |
-| 19 | `seep_kb_checklist` | 结构化检查清单 | 无（清单藏在正文里） | 规划 P3：从随包文档派生结构化 checklist |
-| 20 | `seep_kb_payloads` | 结构化 payload 库 | 无 | 拒绝：按场景拼装攻击载荷超出本插件的"分析 + 授权验证"边界；原文仍可检索阅读 |
-| 21 | `seep_task_init` | 建 case 目录骨架 | 无 | 规划 P3：`init_case`（写报告骨架 + 哈希清单） |
+| 19 | `seep_kb_checklist` | 6 类清单，每次读 kit kb 里对应的一篇 | 那六篇原文全部随包，按 id 用 `read_doc` 读：`kb/ctf-website/checklists/{web-ctf-first-30-min,attack-matrix,evidence}`、`kb/pe-reverse/techniques/06-ioc-extraction/{01-ioc-extraction,02-persistence-startup-chain}`、`kb/pe-reverse/techniques/07-yara-sigma/01-yara-rule-writing` | 文档化：内容 1:1 齐备，无参数化 checklist 工具 |
+| 20 | `seep_kb_payloads` | 结构化 payload 库，按 `jwt/ssrf/sqli/ssti/prototype` 分节 | 原文随包：`kb/ctf-website/payloads/web-payload-seeds`（`read_doc` 可读全文）；无按类别切片的工具 | 拒绝：按场景拼装攻击载荷超出本插件的「分析 + 授权验证」边界；原文仍可检索阅读 |
+| 21 | `seep_task_init` | 建 case 目录骨架 | `init_task`：`<root>/<name>/{samples,exports,reports}` + `README.md`，`report=true` 时写 `reports/security-report.md` 骨架；**不建 `patches/`** | 已具备（P2 补齐） |
 | 22 | `seep_auto_triage` | 遍历目录逐个分诊 | 单文件 `triage_binary` | **本期补齐**：`triage_directory` |
-| 23 | `seep_gen_security_report` | 生成报告 | `export_triage_report`（Markdown / JSON，走保存对话框） | 已具备 |
+| 23 | `seep_gen_security_report` | 七参数白盒评估报告模板（`vuln_type`/`branch_location`/PoC/加固建议），直接落 `reports/` | `write_assessment_report`（2.4.5）：同一套四段式契约，落 `reports/<target>_security_assessment_report.md`；`init_task` 建骨架，`export_triage_report` 导出分诊结论 | **已具备**：参数化填充已实现；与上游的差异是有意为之 —— 未提供的段落写「未提供」而不虚构结论、不印示例汇编、不引用 `patches/`，支持 `zh`/`en` |
 
 ### 2.2 技能包（9 组件 / 165 文件）
 

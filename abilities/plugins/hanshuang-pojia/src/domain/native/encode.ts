@@ -5,13 +5,16 @@
  * （判定点那几条指令长什么样、跳转偏移算得对不对）只能去外面找汇编器。这里给出自带的
  * 一个子集，覆盖定位判定点后最常手改的九条指令。
  *
- * 承诺的边界写在类型上而不是注释里：
- * - 编码器返回的 `text` 是它自己认可的规范写法，必须与 `decodeAt(bytes)` 逐字相等；
- *   两边不一致说明字节错了，宁可报错也不返回「大概对」的结果。测试就是这么断言的。
- * - 不支持 8 / 16 位操作数、memory 的 scale 索引、符号与标签、伪指令。这些一律抛
- *   `EncodeError`，并给出最接近的候选写法，而不是悄悄编成别的意思。
- * - 不做指令选择优化：`mov rax, 0x10` 固定编成 `C7 /0`，不会替你挑更短的编码，
- *   因为「最短编码」与「这段字节是什么」是两个问题。
+ * 承诺的边界写进类型与返回值，而不是只写在注释里：
+ * - 返回的 `text` 是编码器认可的规范写法，必须与 `decodeAt(bytes)` 的文本逐字相等。
+ *   `verifyEncoding` 与测试都按这条断言；对不上就是字节错了，宁可不输出。
+ * - 不支持 8 / 16 位操作数、memory 的 scale 索引、符号与标签、伪指令、多指令序列。
+ *   这些一律抛 `EncodeError` 并给出最接近的候选写法，不悄悄编成别的意思。
+ * - 不做指令选择优化：`mov rax, 0x10` 固定编成 `C7 /0`，不会替你挑更短的编码。
+ *
+ * 一处由解码器决定的取舍：64 位立即数的 `B8+r` 形态在插件自己的反汇编里渲染成
+ * `0x${hex(high)}${hex(low, 8)}`，当 high < 0x10 时会丢掉前导零（与真实意图不符）。
+ * 因此 2^31…2^40-1 之间的立即数这里直接拒绝并说明原因，而不是输出一段读不回来的字节。
  */
 
 import { decodeAt, disasmArchFor, x86Register, type DisasmArch } from "./insn";
@@ -23,6 +26,8 @@ export const ENCODE_MNEMONICS = ["nop", "ret", "mov", "add", "sub", "xor", "cmp"
 
 export const MAX_TEXT_CHARS = 200;
 export const MAX_PROGRAM_LINES = 500;
+/** 回转自检愿意为「把指令放到 address 上」付出的缓冲上限（16 MiB）。 */
+const VERIFY_PAD_LIMIT = 0x1000000;
 
 export class EncodeError extends Error {
 	/** 最接近的候选写法。空数组表示「没有更像的」。 */
@@ -36,21 +41,22 @@ export class EncodeError extends Error {
 }
 
 export interface EncodeRequest {
-	/** 任何 `disasmArchFor` 认得的拼法都会先归一，`arm` 与未知架构返回错误。 */
+	/** 任何 `disasmArchFor` 认得的拼法都会先归一；`arm` 与未知架构直接报错。 */
 	arch: string;
 	text: string;
-	/** 指令将来落在哪个文件偏移。只有分支需要；缺省 0。 */
+	/** 指令将来落在哪个文件偏移。分支按它算相对位移；缺省 0。 */
 	address?: number;
 }
 
 export interface Encoded {
 	arch: EncodeArch;
-	/** 规范写法。与 `decodeAt(bytes, arch, address)` 的 text 必须一致。 */
+	/** 规范写法。放在 `address` 上解码时必须逐字还原。 */
 	text: string;
 	bytes: Uint8Array;
 	/** 小写、空格分隔，与面板里 `hex` 列的写法一致。 */
 	hex: string;
 	size: number;
+	address: number;
 }
 
 export interface ProgramItem {
@@ -65,7 +71,7 @@ export interface ProgramItem {
 export interface ProgramResult {
 	arch: EncodeArch;
 	items: ProgramItem[];
-	/** 把编码成功的条目串联起来，可直接喂给 `disassemble_range` 的十六进制视图。 */
+	/** 只把编码成功的条目串起来，可直接对照 `disassemble_range` 的输出。 */
 	bytes: Uint8Array;
 	failed: number;
 }
@@ -94,35 +100,24 @@ export function encodeInstruction(request: EncodeRequest): Encoded {
 	const body = space === -1 ? "" : source.slice(space + 1);
 	const rawOperands = splitOperands(body);
 
-	const bytes =
-		arch === "aarch64"
-			? encodeAarch64Bytes(mnemonic, rawOperands, address)
-			: encodeX86Bytes(arch, mnemonic, rawOperands, address);
+	const plan =
+		arch === "aarch64" ? encodeAarch64(mnemonic, rawOperands, address) : encodeX86(arch, mnemonic, rawOperands, address);
 
-	return {
-		arch,
-		text: "",
-		bytes,
-		hex: hexOf(bytes),
-		size: bytes.byteLength,
-	};
+	return { arch, text: plan.text, bytes: plan.bytes, hex: hexOf(plan.bytes), size: plan.bytes.byteLength, address };
 }
 
 /**
- * 逐行编码。单条失败不终止整段：把错误留在该行上，其余行照常编码，调用方（CLI / 面板）
- * 才能一次讲完所有写不通的地方。地址按已成功条目的长度自动前进。
+ * 逐行编码。单条失败不终止整段：错误留在该行上，其余行照常编码，调用方才能一次讲完
+ * 所有写不通的地方。地址按已成功条目的长度自动前进。
  */
 export function encodeProgram(input: { arch: string; lines: readonly string[]; address?: number }): ProgramResult {
 	const arch = encodeArchFor(input.arch);
 	if (arch === null) {
 		throw new EncodeError(`no encoder for architecture ${input.arch}`, ["supported: aarch64, x86-64, x86"]);
 	}
-	const lines = input.lines.filter(line => {
-		const text = stripComment(line).trim();
-		return text !== "";
-	});
+	const lines = input.lines.filter(line => stripComment(line).trim() !== "");
 	if (lines.length > MAX_PROGRAM_LINES) {
-		throw new EncodeError(`refusing to encode more than ${MAX_PROGRAM_LINES} lines at once`, [`split the listing and encode it in batches`]);
+		throw new EncodeError(`refusing to encode more than ${MAX_PROGRAM_LINES} lines at once`, ["split the listing and encode it in batches"]);
 	}
 
 	let cursor = input.address ?? 0;
@@ -131,9 +126,9 @@ export function encodeProgram(input: { arch: string; lines: readonly string[]; a
 	lines.forEach((line, index) => {
 		try {
 			const encoded = encodeInstruction({ arch, text: line, address: cursor });
+			items.push({ index, input: line.trim(), address: cursor, encoded });
 			cursor += encoded.size;
 			chunks.push(encoded.bytes);
-			items.push({ index, input: line.trim(), address: encoded.arch === arch ? cursor - encoded.size : cursor, encoded });
 		} catch (error) {
 			const item: ProgramItem = { index, input: line.trim(), address: cursor, error: messageOf(error) };
 			if (error instanceof EncodeError && error.hints.length > 0) item.hints = error.hints;
@@ -154,15 +149,33 @@ export function encodeProgram(input: { arch: string; lines: readonly string[]; a
 /**
  * 回转自检：把编码结果交给插件自己的解码器，比较文本与长度。
  *
- * 为什么不留到调用方：编码器的错误最常见的形式不是「抛了异常」，而是「安静地编成了
- * 另一条指令」。只有让另一个实现读回来，才能把这种错误挡在输出之前。
+ * 编码器最难发现的错误不是抛异常，而是安静地编成了另一条指令；只有让另一个实现读回来，
+ * 才能把这种错误挡在输出之前。分支的目标是绝对偏移，所以要先把字节摆到 `address` 上再解码。
  */
-export function verifyEncoding(encoded: Encoded, address = 0): { ok: boolean; decoded: string; expected: string } {
+export function verifyEncoding(encoded: Encoded): { ok: boolean; decoded: string; expected: string; exact: boolean } {
+	const decodeAtBuffer = (buffer: Uint8Array, offset: number): { ok: boolean; decoded: string; expected: string; exact: boolean } => {
+		const decoded = decodeAt(buffer, encoded.arch, offset);
+		const ok = decoded !== null && decoded.size === encoded.size && decoded.text === encoded.text;
+		return { ok, decoded: decoded?.text ?? "<none>", expected: encoded.text, exact: true };
+	};
+	if (encoded.address === 0) return decodeAtBuffer(encoded.bytes, 0);
+	if (encoded.address + encoded.size <= VERIFY_PAD_LIMIT) {
+		const padded = new Uint8Array(encoded.address + encoded.size);
+		padded.set(encoded.bytes, encoded.address);
+		return decodeAtBuffer(padded, encoded.address);
+	}
+	// 地址太大时只比长度与助记符：分支目标按偏移 0 渲染必然对不上，那不是编码器的错。
 	const decoded = decodeAt(encoded.bytes, encoded.arch, 0);
-	return { ok: decoded !== null && decoded.size === encoded.size && decoded.text === encoded.text, decoded: decoded?.text ?? "<none>", expected: encoded.text };
+	const mnemonic = encoded.text.split(" ")[0]!;
+	return {
+		ok: decoded !== null && decoded.size === encoded.size && decoded.text.startsWith(mnemonic),
+		decoded: decoded?.text ?? "<none>",
+		expected: encoded.text,
+		exact: false,
+	};
 }
 
-/* ------------------------------------------------------------------ parsing */
+/* ---------------------------------------------------------------- utilities */
 
 function messageOf(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -170,7 +183,9 @@ function messageOf(error: unknown): string {
 
 /** `;` / `//` 之后是注释。`#` 不能当注释：AArch64 的立即数就长这样。 */
 function stripComment(text: string): string {
-	const cut = Math.min(...[text.indexOf(";"), text.indexOf("//")].filter(index => index !== -1).concat([text.length]));
+	const semicolon = text.indexOf(";");
+	const slashes = text.indexOf("//");
+	const cut = [semicolon, slashes].filter(index => index !== -1).reduce((lowest, index) => Math.min(lowest, index), text.length);
 	return text.slice(0, cut);
 }
 
@@ -199,8 +214,7 @@ function parseImmediate(token: string): number | null {
 	if (text === "") return null;
 	if (/^[+-]?0x[0-9a-f]+$/i.test(text)) {
 		const negative = text.startsWith("-");
-		const digits = text.replace(/^[+-]/, "");
-		const value = Number.parseInt(digits.slice(2), 16);
+		const value = Number.parseInt(text.replace(/^[+-]/, "").slice(2), 16);
 		if (!Number.isSafeInteger(value)) return null;
 		return negative ? -value : value;
 	}
@@ -211,15 +225,14 @@ function parseImmediate(token: string): number | null {
 	return null;
 }
 
-/** 编辑距离，只用来把「拼错的助记符」映射回候选，不做模糊匹配。 */
+/** 编辑距离，只用来把拼错的助记符映射回候选，不做模糊匹配。 */
 function distance(a: string, b: string): number {
-	const rows = a.length + 1;
 	const columns = b.length + 1;
-	const table: number[] = new Array(rows * columns).fill(0);
-	for (let row = 0; row < rows; row += 1) table[row * columns] = row;
-	for (let column = 0; column < columns; column += 1) table[column] = column;
-	for (let row = 1; row < rows; row += 1) {
-		for (let column = 1; column < columns; column += 1) {
+	const table: number[] = new Array((a.length + 1) * columns).fill(0);
+	for (let row = 0; row <= a.length; row += 1) table[row * columns] = row;
+	for (let column = 0; column <= b.length; column += 1) table[column] = column;
+	for (let row = 1; row <= a.length; row += 1) {
+		for (let column = 1; column <= b.length; column += 1) {
 			const cost = a[row - 1] === b[column - 1] ? 0 : 1;
 			table[row * columns + column] = Math.min(
 				table[(row - 1) * columns + column]! + 1,
@@ -228,7 +241,7 @@ function distance(a: string, b: string): number {
 			);
 		}
 	}
-	return table[rows * columns - 1]!;
+	return table[a.length * columns + b.length]!;
 }
 
 function nearest(word: string, candidates: readonly string[], limit = 3): string[] {
@@ -247,29 +260,37 @@ function unknownMnemonic(arch: EncodeArch, mnemonic: string, accepted: readonly 
 
 function requireOperands(mnemonic: string, operands: readonly string[], count: number): void {
 	if (operands.length !== count) {
-		throw new EncodeError(`${mnemonic} expects ${count} operand(s), got ${operands.length}`, count === 0 ? ["drop the operands"] : [`write it as: ${exampleFor(mnemonic)}`]);
+		throw new EncodeError(
+			`${mnemonic} expects ${count} operand(s), got ${operands.length}`,
+			count === 0 ? ["drop the operands"] : [exampleFor(mnemonic)],
+		);
 	}
 }
 
 function exampleFor(mnemonic: string): string {
-	switch (mnemonic) {
-		case "nop":
-			return "nop";
-		case "ret":
-			return "ret";
-		case "jmp":
-			return "jmp 0x1000";
-		case "call":
-			return "call 0x1000";
-		default:
-			return `${mnemonic} <dst>, <src>`;
-	}
+	if (mnemonic === "nop" || mnemonic === "ret") return mnemonic;
+	if (mnemonic === "jmp" || mnemonic === "call") return `${mnemonic} 0x1000`;
+	if (mnemonic === "cmp") return `${mnemonic} <left>, <right>`;
+	return `${mnemonic} <dst>, <src>`;
 }
 
 function le(value: number, width: number): number[] {
 	const bytes: number[] = [];
 	for (let index = 0; index < width; index += 1) bytes.push((value >>> (index * 8)) & 0xff);
 	return bytes;
+}
+
+/** 64 位小端：`le` 的 `>>>` 只有 32 位，宽立即数必须走 BigInt，否则高 32 位会被抹掉。 */
+function le64(value: number): number[] {
+	const pattern = BigInt(value) & 0xffffffffffffffffn;
+	const bytes: number[] = [];
+	for (let index = 0; index < 8; index += 1) bytes.push(Number((pattern >> BigInt(index * 8)) & 0xffn));
+	return bytes;
+}
+
+function unsignedHex(value: number, bits: 32 | 64): string {
+	const pattern = bits === 32 ? BigInt(value >>> 0) : BigInt(value) & 0xffffffffffffffffn;
+	return `0x${pattern.toString(16)}`;
 }
 
 function hexOf(bytes: Uint8Array): string {
@@ -300,32 +321,19 @@ interface X86Mem {
 	disp: number;
 }
 
-interface X86Target {
-	kind: "target";
-	value: number;
-}
-
-type X86Operand = X86Reg | X86Imm | X86Mem | X86Target;
+type X86Operand = X86Reg | X86Imm | X86Mem;
 
 /** 解码器画内存操作数的方式：`[base]` / `[base + 0x8]` / `[base - 0x8]` / `[rip + 0x8]`。 */
 function renderMem(operand: X86Mem): string {
 	const head = operand.rip ? "rip" : operand.base;
 	if (operand.disp === 0) return `[${head}]`;
-	const sign = operand.disp < 0 ? "-" : "+";
-	return `[${head} ${sign} 0x${Math.abs(operand.disp).toString(16)}]`;
+	return `[${head} ${operand.disp < 0 ? "-" : "+"} 0x${Math.abs(operand.disp).toString(16)}]`;
 }
 
 function renderX86Operand(operand: X86Operand): string {
-	switch (operand.kind) {
-		case "reg":
-			return operand.name;
-		case "imm":
-			return operand.value < 0 ? `-0x${(-operand.value).toString(16)}` : `0x${operand.value.toString(16)}`;
-		case "mem":
-			return renderMem(operand);
-		case "target":
-			return `file+0x${operand.value.toString(16)}`;
-	}
+	if (operand.kind === "reg") return operand.name;
+	if (operand.kind === "imm") return operand.value < 0 ? `-0x${(-operand.value).toString(16)}` : `0x${operand.value.toString(16)}`;
+	return renderMem(operand);
 }
 
 function parseX86Register(token: string, mode64: boolean): X86Reg | null {
@@ -362,7 +370,9 @@ function parseX86Memory(token: string, mode64: boolean): X86Mem {
 		}
 		const register = x86Register(body);
 		if (register !== null) {
-			if (base !== "" || rip) throw new EncodeError(`memory operand has more than one base register: ${token}`, ["[base] or [base + disp], one register only"]);
+			if (base !== "" || rip) {
+				throw new EncodeError(`memory operand has more than one base register: ${token}`, ["[base] or [base + disp], one register only"]);
+			}
 			if (register.size !== 64) throw new EncodeError(`memory base must be a 64-bit register: ${token}`, ["use rax…r15 as the base"]);
 			if (!mode64) throw new EncodeError(`64-bit addressing needs architecture x86-64: ${token}`, ["x86 uses 32-bit addressing, which this encoder does not cover"]);
 			base = body.toLowerCase();
@@ -375,7 +385,6 @@ function parseX86Memory(token: string, mode64: boolean): X86Mem {
 	}
 	if (rip) return { kind: "mem", rip: true, base: "rip", baseIndex: 0, disp };
 	if (base === "") throw new EncodeError(`memory operand needs a base register: ${token}`, ["[rax] / [rbp - 0x8]"]);
-	if (disp < -0x80000000 || disp > 0x7fffffff) throw new EncodeError(`displacement does not fit 32 bits: ${disp}`);
 	return { kind: "mem", rip: false, base, baseIndex, disp };
 }
 
@@ -403,6 +412,7 @@ function modRmForMem(mem: X86Mem, regField: number): X86ModRm {
 	if (mem.rip) return { bytes: [regBits | 0x05, ...le(mem.disp, 4)], extB: 0, extX: 0 };
 	const lowBase = mem.baseIndex & 7;
 	const needsSib = lowBase === 4;
+	// rbp / r13 在 mod=00 里表示「没有基址、只有 disp32」，所以 disp=0 也要用 mod=01 的 0 偏移。
 	let mod: number;
 	if (mem.disp === 0 && lowBase !== 5) mod = 0x00;
 	else if (mem.disp >= -0x80 && mem.disp <= 0x7f) mod = 0x40;
@@ -424,7 +434,7 @@ function emitRex(mode64: boolean, wide: boolean, regField: number, extB: number,
 	return rex === 0x40 ? [] : [rex];
 }
 
-/** ALU 的两种方向：`0x03` 家族把 rm 读进 reg（`add rax, rbx`），`0x01` 家族把 reg 写进 rm。 */
+/** ALU 的两种方向：`load`（`0x03` 家族，把 rm 读进 reg）与 `store`（`0x01` 家族，把 reg 写进 rm）。 */
 const ALU: Record<string, { load: number; store: number; group: number }> = {
 	add: { load: 0x03, store: 0x01, group: 0 },
 	sub: { load: 0x2b, store: 0x29, group: 5 },
@@ -434,24 +444,20 @@ const ALU: Record<string, { load: number; store: number; group: number }> = {
 
 const BRANCH: Record<string, number> = { call: 0xe8, jmp: 0xe9 };
 
-function x86Target(operand: X86Operand, mnemonic: string): number {
-	if (operand.kind !== "target") {
-		const hint = operand.kind === "imm" ? [`write the absolute target: ${mnemonic} 0x1000`] : [];
-		throw new EncodeError(`${mnemonic} needs an absolute target address`, hint);
-	}
-	return operand.value;
+interface EncodedPlan {
+	bytes: Uint8Array;
+	text: string;
 }
 
-function encodeX86Bytes(arch: EncodeArch, mnemonic: string, rawOperands: readonly string[], address: number): Uint8Array {
+function encodeX86(arch: EncodeArch, mnemonic: string, rawOperands: readonly string[], address: number): EncodedPlan {
 	const mode64 = arch === "x86-64";
-	const accepted = [...ENCODE_MNEMONICS];
 	if (mnemonic === "nop") {
 		requireOperands(mnemonic, rawOperands, 0);
-		return new Uint8Array([0x90]);
+		return { bytes: new Uint8Array([0x90]), text: "nop" };
 	}
 	if (mnemonic === "ret") {
 		requireOperands(mnemonic, rawOperands, 0);
-		return new Uint8Array([0xc3]);
+		return { bytes: new Uint8Array([0xc3]), text: "ret" };
 	}
 	if (mnemonic === "jmp" || mnemonic === "call") {
 		requireOperands(mnemonic, rawOperands, 1);
@@ -462,18 +468,20 @@ function encodeX86Bytes(arch: EncodeArch, mnemonic: string, rawOperands: readonl
 		const size = 5;
 		const relative = target - (address + size);
 		if (relative < -0x80000000 || relative > 0x7fffffff) {
-			throw new EncodeError(`branch target is out of rel32 range: 0x${target.toString(16)} from 0x${address.toString(16)}`, ["pick a nearer target"]);
+			throw new EncodeError(
+				`branch target is out of rel32 range: 0x${target.toString(16)} from 0x${address.toString(16)}`,
+				["pick a nearer target"],
+			);
 		}
-		return new Uint8Array([BRANCH[mnemonic]!, ...le(relative, 4)]);
+		return { bytes: new Uint8Array([BRANCH[mnemonic]!, ...le(relative, 4)]), text: `${mnemonic} file+0x${target.toString(16)}` };
 	}
 	if (mnemonic === "mov" || mnemonic in ALU) {
 		requireOperands(mnemonic, rawOperands, 2);
 		const destination = parseX86Operand(rawOperands[0]!, mode64);
 		const source = parseX86Operand(rawOperands[1]!, mode64);
-		const alu = ALU[mnemonic];
-		return encodeX86Data(mnemonic, alu, destination, source, mode64);
+		return encodeX86Data(mnemonic, ALU[mnemonic], destination, source, mode64);
 	}
-	throw unknownMnemonic(arch, mnemonic, accepted);
+	throw unknownMnemonic(arch, mnemonic, ENCODE_MNEMONICS);
 }
 
 function encodeX86Data(
@@ -482,77 +490,91 @@ function encodeX86Data(
 	destination: X86Operand,
 	source: X86Operand,
 	mode64: boolean,
-): Uint8Array {
-	if (source.kind === "target") throw new EncodeError(`${mnemonic} does not take a branch target here`, ["use jmp / call for control flow"]);
-	if (destination.kind === "target") throw new EncodeError(`${mnemonic} cannot write to a branch target`);
-
-	// 目标寄存器 + 源内存 / 源寄存器：走「读进 reg」方向，解码器读回来就是 `mnem xxx, src`。
+): EncodedPlan {
 	if (destination.kind === "reg") {
 		const size = destination.size;
-		if (source.kind === "reg") {
-			if (source.size !== size) {
+		const text = `${mnemonic} ${destination.name}, ${renderX86Operand(source)}`;
+		if (source.kind === "reg" || source.kind === "mem") {
+			if (source.kind === "reg" && source.size !== size) {
 				throw new EncodeError(`operand size mismatch: ${destination.name} / ${source.name}`, [`both operands must be ${size}-bit`]);
 			}
 			const opcode = mnemonic === "mov" ? 0x8b : alu?.load;
-			if (opcode === undefined) throw new EncodeError(`mov is the only reg-reg form supported here`);
-			const modrm = modRmForReg(source.index, destination.index);
+			if (opcode === undefined) throw new EncodeError(`${mnemonic}: only mov is supported for this operand shape`);
+			const modrm = source.kind === "reg" ? modRmForReg(source.index, destination.index) : modRmForMem(source, destination.index);
 			const rex = emitRex(mode64, size === 64, destination.index, modrm.extB, modrm.extX);
-			return new Uint8Array([...rex, opcode, ...modrm.bytes]);
+			return { bytes: new Uint8Array([...rex, opcode, ...modrm.bytes]), text };
 		}
-		if (source.kind === "mem") {
-			const opcode = mnemonic === "mov" ? 0x8b : alu?.load;
-			if (opcode === undefined) throw new EncodeError(`mov is the only mem-source form supported here`);
-			const modrm = modRmForMem(source, destination.index);
-			const rex = emitRex(mode64, size === 64, destination.index, modrm.extB, modrm.extX);
-			return new Uint8Array([...rex, opcode, ...modrm.bytes]);
-		}
-		// 目标寄存器 + 立即数。
-		const modrm = modRmForReg(destination.index, mnemonic === "mov" ? 0 : alu!.group);
-		const rex = emitRex(mode64, size === 64, mnemonic === "mov" ? 0 : alu!.group, modrm.extB, modrm.extX);
+		// 目标寄存器 + 立即数。文本按解码器口径给出，而不是按输入原样回显。
 		if (mnemonic === "mov") {
 			if (size === 64 && (source.value < -0x80000000 || source.value > 0x7fffffff)) {
-				// C7 的立即数是被符号扩展的 imm32，塞不进 64 位值；B8+r 才是「真的 64 位立即数」。
-				if (source.value > 0x7fffffff && source.value < 0x100000000) {
+				// C7 的立即数是被符号扩展的 imm32，装不下 64 位值，只有 B8+r 是真 64 位立即数。
+				const wide = unsignedHex(source.value, 64);
+				const value = Number(BigInt(source.value) & 0xffffffffffffffffn);
+				if (source.value > 0 && value < 0x1000000000) {
 					throw new EncodeError(
-						`0x${source.value.toString(16)} is not encodable as mov ${destination.name}, imm`,
-						["C7 sign-extends imm32 and B8 only round-trips values above 2^32", `use mov ${destination.name.replace("r", "e")}, 0x${source.value.toString(16)} (zero-extends)`],
+						`${wide} has no faithful encoding here`,
+						[
+							"C7 sign-extends imm32, and this decoder renders B8 as hex(high)+hex(low) — below 2^40 it loses a digit",
+							`use a 32-bit register to zero-extend: mov ${destination.name.replace(/^r/, "e")}, ${unsignedHex(source.value, 32)}`,
+							`or use a value at 0x1000000000 and above, which B8 renders as plain hex`,
+						],
 					);
 				}
-				const value = source.value < 0 ? source.value + 0x10000000000000000 : source.value;
-				return new Uint8Array([0x48 | ((destination.index >= 8 ? 1 : 0)), 0xb8 + (destination.index & 7), ...le(value, 8)]);
+				const bytes = [0x48 | (destination.index >= 8 ? 0x01 : 0x00), 0xb8 + (destination.index & 7), ...le64(source.value)];
+				return { bytes: new Uint8Array(bytes), text: `${mnemonic} ${destination.name}, ${wide}` };
 			}
 			if (size === 32 && (source.value < -0x80000000 || source.value > 0xffffffff)) {
-				throw new EncodeError(`immediate does not fit 32 bits: ${source.value}`, ["use mov with a 64-bit register to hold a wider value"]);
+				throw new EncodeError(`immediate does not fit 32 bits: ${source.value}`, ["use a 64-bit register to hold a wider value"]);
 			}
-			return new Uint8Array([...rex, 0xc7, ...modrm.bytes, ...le(source.value, 4)]);
+			const modrm = modRmForReg(destination.index, 0);
+			const rex = emitRex(mode64, size === 64, 0, modrm.extB, modrm.extX);
+			// 64 位 C7 的立即数符号扩展后按有符号渲染，32 位则按无符号 imm32 渲染。
+			const immediate =
+				size === 64
+					? source.value < 0
+						? `-0x${(-source.value).toString(16)}`
+						: `0x${source.value.toString(16)}`
+					: unsignedHex(source.value, 32);
+			return { bytes: new Uint8Array([...rex, 0xc7, ...modrm.bytes, ...le(source.value, 4)]), text: `${mnemonic} ${destination.name}, ${immediate}` };
 		}
 		if (source.value < -0x80000000 || source.value > 0xffffffff) {
 			throw new EncodeError(`immediate does not fit imm32: ${source.value}`, [`${mnemonic} ${destination.name}, <value within ±2^31>`]);
 		}
-		return new Uint8Array([...rex, 0x81, ...modrm.bytes, ...le(source.value, 4)]);
+		const group = alu!.group;
+		const modrm = modRmForReg(destination.index, group);
+		const rex = emitRex(mode64, size === 64, group, modrm.extB, modrm.extX);
+		return {
+			bytes: new Uint8Array([...rex, 0x81, ...modrm.bytes, ...le(source.value, 4)]),
+			text: `${mnemonic} ${destination.name}, ${unsignedHex(source.value, 32)}`,
+		};
 	}
 
-	// 目标是内存：源寄存器走「写进 rm」方向，源立即数则退化成 32 位存储（没有 REX.W 就只能是 32 位）。
-	if (destination.kind === "mem") {
-		if (source.kind === "reg") {
-			const opcode = mnemonic === "mov" ? 0x89 : alu?.store;
-			if (opcode === undefined) throw new EncodeError(`mov is the only mem-destination form supported here`);
-			const modrm = modRmForMem(destination, source.index);
-			const rex = emitRex(mode64, source.size === 64, source.index, modrm.extB, modrm.extX);
-			return new Uint8Array([...rex, opcode, ...modrm.bytes]);
-		}
-		if (source.kind === "imm") {
-			const opcode = mnemonic === "mov" ? 0xc7 : 0x81;
-			const regField = mnemonic === "mov" ? 0 : alu!.group;
-			const modrm = modRmForMem(destination, regField);
-			const rex = emitRex(mode64, false, regField, modrm.extB, modrm.extX);
-			if (source.value < -0x80000000 || source.value > 0xffffffff) {
-				throw new EncodeError(`immediate does not fit imm32: ${source.value}`, ["memory stores without REX.W are 32-bit here"]);
-			}
-			return new Uint8Array([...rex, opcode, ...modrm.bytes, ...le(source.value, 4)]);
-		}
+	// 目标是内存：源寄存器走「写进 rm」方向；源立即数只能是 32 位存储，因为这里不输出 REX.W。
+	if (destination.kind !== "mem") {
+		throw new EncodeError(`${mnemonic}: unsupported operand combination`, ["reaching this means a form slipped past the parser"]);
 	}
-	throw new EncodeError(`${mnemonic}: unsupported operand combination`, ["reaching this means a form slipped past the parser; report it"]);
+	const memory = destination;
+	if (source.kind === "reg") {
+		const opcode = mnemonic === "mov" ? 0x89 : alu?.store;
+		if (opcode === undefined) throw new EncodeError(`${mnemonic}: only mov is supported for this operand shape`);
+		const modrm = modRmForMem(memory, source.index);
+		const rex = emitRex(mode64, source.size === 64, source.index, modrm.extB, modrm.extX);
+		return { bytes: new Uint8Array([...rex, opcode, ...modrm.bytes]), text: `${mnemonic} ${renderMem(memory)}, ${source.name}` };
+	}
+	if (source.kind === "imm") {
+		if (source.value < -0x80000000 || source.value > 0xffffffff) {
+			throw new EncodeError(`immediate does not fit imm32: ${source.value}`, ["memory stores without REX.W are 32-bit"]);
+		}
+		const regField = mnemonic === "mov" ? 0 : alu!.group;
+		const modrm = modRmForMem(memory, regField);
+		const rex = emitRex(mode64, false, regField, modrm.extB, modrm.extX);
+		const opcode = mnemonic === "mov" ? 0xc7 : 0x81;
+		return {
+			bytes: new Uint8Array([...rex, opcode, ...modrm.bytes, ...le(source.value, 4)]),
+			text: `${mnemonic} ${renderMem(memory)}, ${unsignedHex(source.value, 32)}`,
+		};
+	}
+	throw new EncodeError(`${mnemonic}: unsupported operand combination`, ["reaching this means a form slipped past the parser"]);
 }
 
 /* ---------------------------------------------------------------- aarch64 */
@@ -561,7 +583,7 @@ interface A64Reg {
 	kind: "reg";
 	index: number;
 	wide: boolean;
-	/** sp / xzr 都编成 31，语义差异由具体指令决定。 */
+	/** sp / xzr / wzr 都编成 31，语义差异由具体指令决定。 */
 	special: "sp" | "zr" | "none";
 }
 
@@ -572,7 +594,7 @@ interface A64Imm {
 
 type A64Operand = A64Reg | A64Imm;
 
-const A64_MNEMONICS = [...ENCODE_MNEMONICS, "b", "bl", "eor", "movz", "csinc"];
+const A64_MNEMONICS = [...ENCODE_MNEMONICS, "b", "bl", "eor", "movz"];
 
 function parseA64Register(token: string): A64Reg | null {
 	const text = token.trim().toLowerCase();
@@ -601,18 +623,51 @@ function a64RegText(operand: A64Reg): string {
 }
 
 function a64Register(operand: A64Operand, mnemonic: string): A64Reg {
-	if (operand.kind !== "reg") throw new EncodeError(`${mnemonic} needs a register here, got an immediate`, [`${mnemonic} <reg>, …`]);
+	if (operand.kind !== "reg") throw new EncodeError(`${mnemonic} needs a register here, got an immediate`, [exampleFor(mnemonic)]);
 	return operand;
 }
 
-function a64Immediate(operand: A64Operand, mnemonic: string): number {
-	if (operand.kind !== "imm") throw new EncodeError(`${mnemonic} needs an immediate here, got a register`, [`${mnemonic} …, #0x10`]);
-	return operand.value;
+/** 只有 add/sub/cmp 的立即数形态能把 31 当作 sp；其余形态里 31 是零寄存器。 */
+function rejectSp(register: A64Reg, mnemonic: string, role: string): void {
+	if (register.special === "sp") {
+		throw new EncodeError(`${mnemonic} cannot use sp as the ${role}`, ["sp only appears in the add/sub immediate form and in ldr/str; use a general register"]);
+	}
 }
 
-function encodeAarch64Bytes(mnemonic: string, rawOperands: readonly string[], address: number): Uint8Array {
-	const word = encodeAarch64Word(mnemonic, rawOperands, address);
-	return new Uint8Array(le(word >>> 0, 4));
+function rejectZero(register: A64Reg, mnemonic: string, role: string): void {
+	if (register.special === "zr") {
+		throw new EncodeError(`${mnemonic} cannot use the zero register as the ${role}`, ["31 means sp in this encoding; write a general register"]);
+	}
+}
+
+const SHIFT_OPERAND = /^lsl\s+#?(0x[0-9a-f]+|\d+)$/i;
+
+/**
+ * 把 `…, #0x1, lsl #12` 合并成一个立即数。合并后仍走普通的 imm12 / 16 位分支，
+ * 于是规范文本会自己还原成 `lsl #12` / `lsl #16` 的写法，不会出现两种来源两种输出。
+ */
+function mergeShiftOperands(operands: readonly string[]): string[] {
+	if (operands.length < 2) return [...operands];
+	const last = operands[operands.length - 1]!.trim();
+	const match = SHIFT_OPERAND.exec(last);
+	if (match === null) return [...operands];
+	const digits = match[1]!;
+	const shift = Number.parseInt(digits.startsWith("0x") || digits.startsWith("0X") ? digits.slice(2) : digits, digits.startsWith("0x") || digits.startsWith("0X") ? 16 : 10);
+	if (shift !== 12 && shift !== 16) {
+		throw new EncodeError(`unsupported shift for a single instruction: lsl #${shift}`, ["this encoder emits the lsl #12 / lsl #16 forms only"]);
+	}
+	const previous = operands[operands.length - 2]!;
+	const immediate = parseImmediate(previous);
+	if (immediate === null) {
+		throw new EncodeError(`lsl needs an immediate before it: ${previous}, ${last}`, ["add x0, x1, #0x1, lsl #12"]);
+	}
+	return [...operands.slice(0, -2), String(immediate * 2 ** shift)];
+}
+
+function encodeAarch64(mnemonic: string, rawOperands: readonly string[], address: number): EncodedPlan {
+	const operands = mergeShiftOperands(rawOperands);
+	const word = encodeAarch64Word(mnemonic, operands, address);
+	return { bytes: new Uint8Array(le(word >>> 0, 4)), text: aarch64Text(mnemonic, operands, address) };
 }
 
 function encodeAarch64Word(mnemonic: string, rawOperands: readonly string[], address: number): number {
@@ -622,7 +677,8 @@ function encodeAarch64Word(mnemonic: string, rawOperands: readonly string[], add
 	}
 	if (mnemonic === "ret") {
 		if (rawOperands.length > 1) requireOperands(mnemonic, rawOperands, 1);
-		const link = rawOperands.length === 0 ? { kind: "reg", index: 30, wide: true, special: "none" } as A64Reg : a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
+		const link: A64Reg =
+			rawOperands.length === 0 ? { kind: "reg", index: 30, wide: true, special: "none" } : a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
 		if (!link.wide || link.special !== "none") throw new EncodeError("ret takes a 64-bit general register", ["ret / ret x30"]);
 		return (0xd65f0000 | (link.index << 5)) >>> 0;
 	}
@@ -631,7 +687,7 @@ function encodeAarch64Word(mnemonic: string, rawOperands: readonly string[], add
 		const target = parseImmediate(rawOperands[0]!);
 		if (target === null) throw new EncodeError(`${mnemonic} needs a numeric target, got ${rawOperands[0]}`, ["labels are not resolvable here; write 0x1000"]);
 		const delta = target - address;
-		if (delta % 4 !== 0) throw new EncodeError(`branch target is not 4-byte aligned: 0x${target.toString(16)}`, ["AArch64 branches are in units of 4 bytes"]);
+		if (delta % 4 !== 0) throw new EncodeError(`branch target is not 4-byte aligned: 0x${target.toString(16)}`, ["AArch64 branches count in 4-byte units"]);
 		const units = delta / 4;
 		if (units < -0x2000000 || units > 0x1ffffff) {
 			throw new EncodeError(`branch target is out of range: 0x${target.toString(16)}`, ["b / bl reach ±128 MiB"]);
@@ -642,22 +698,26 @@ function encodeAarch64Word(mnemonic: string, rawOperands: readonly string[], add
 	if (mnemonic === "movz") {
 		requireOperands(mnemonic, rawOperands, 2);
 		const destination = a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
-		const immediate = a64Immediate(parseA64Operand(rawOperands[1]!), mnemonic);
-		if (destination.special !== "none") throw new EncodeError("movz cannot write sp or the zero register", ["use a general register"]);
-		return moveWide(destination, immediate, 2);
+		const value = parseA64Immediate(rawOperands[1]!, mnemonic);
+		rejectZero(destination, mnemonic, "destination");
+		if (destination.special === "sp") throw new EncodeError("movz cannot write sp", ["use a general register"]);
+		return moveWide(destination, value);
 	}
 	if (mnemonic === "mov") {
 		requireOperands(mnemonic, rawOperands, 2);
 		const destination = a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
 		const source = parseA64Operand(rawOperands[1]!);
-		if (destination.special !== "none") throw new EncodeError("mov cannot write sp or the zero register", ["use add <reg>, sp, #0x0 to move the stack pointer"]);
-		if (source.kind === "imm") return moveWide(destination, source.value, 2);
-		const register = source;
-		if (register.wide !== destination.wide) {
-			throw new EncodeError(`operand size mismatch: ${a64RegText(destination)} / ${a64RegText(register)}`, ["both operands must be x or both w"]);
+		if (destination.special === "sp") {
+			throw new EncodeError("mov cannot write sp", ["the sp forms are add-imm aliases: add sp, sp, #0x0"]);
 		}
-		if (register.special !== "none") throw new EncodeError("mov between sp and a general register is an add-immediate alias", [`add ${a64RegText(destination)}, sp, #0x0`]);
-		return ((destination.wide ? 0xaa000000 : 0x2a000000) | (register.index << 16) | (31 << 5) | destination.index) >>> 0;
+		if (source.kind === "imm") return moveWide(destination, source.value);
+		if (source.wide !== destination.wide) {
+			throw new EncodeError(`operand size mismatch: ${a64RegText(destination)} / ${a64RegText(source)}`, ["both operands must be x or both w"]);
+		}
+		if (source.special === "sp") {
+			throw new EncodeError("mov cannot read sp", [`the sp forms are add-imm aliases: add ${a64RegText(destination)}, sp, #0x0`]);
+		}
+		return ((destination.wide ? 0xaa000000 : 0x2a000000) | (source.index << 16) | (31 << 5) | destination.index) >>> 0;
 	}
 	if (mnemonic === "add" || mnemonic === "sub") {
 		requireOperands(mnemonic, rawOperands, 3);
@@ -667,23 +727,18 @@ function encodeAarch64Word(mnemonic: string, rawOperands: readonly string[], add
 		const isSub = mnemonic === "sub";
 		if (destination.wide !== left.wide) throw new EncodeError("operand size mismatch", ["both operands must be x or both w"]);
 		if (right.kind === "imm") {
-			if (destination.special !== "none") throw new EncodeError(`${mnemonic} cannot write sp here`, ["the immediate form writes a general register"]);
-			const value = right.value;
-			const lsl12 = value % 0x1000 === 0 && value > 0 && value / 0x1000 <= 0xfff;
-			const imm12 = lsl12 ? value / 0x1000 : value;
-			if (imm12 < 0 || imm12 > 0xfff) {
-				throw new EncodeError(`immediate out of range for ${mnemonic}: ${value}`, [`use an imm12 (0…0xfff) or a multiple of 0x1000 up to 0xfff000`]);
-			}
+			rejectZero(destination, mnemonic, "destination");
+			rejectZero(left, mnemonic, "source");
+			const { imm12, lsl12 } = splitImm12(right.value, mnemonic);
 			const base = destination.wide ? (isSub ? 0xd1000000 : 0x91000000) : isSub ? 0x51000000 : 0x11000000;
 			return (base | (lsl12 ? 1 << 22 : 0) | (imm12 << 10) | (left.index << 5) | destination.index) >>> 0;
 		}
-		const register = right;
-		if (register.wide !== destination.wide) throw new EncodeError("operand size mismatch", ["both operands must be x or both w"]);
-		if (destination.special !== "none" || register.special !== "none") {
-			throw new EncodeError("shifted-register form cannot use sp or the zero register", ["use the immediate form, or another scratch register"]);
-		}
+		if (right.wide !== destination.wide) throw new EncodeError("operand size mismatch", ["all three operands must be x or w"]);
+		rejectSp(destination, mnemonic, "destination");
+		rejectSp(left, mnemonic, "source");
+		rejectSp(right, mnemonic, "addend");
 		const base = destination.wide ? (isSub ? 0xcb000000 : 0x8b000000) : isSub ? 0x4b000000 : 0x0b000000;
-		return (base | (register.index << 16) | (left.index << 5) | destination.index) >>> 0;
+		return (base | (right.index << 16) | (left.index << 5) | destination.index) >>> 0;
 	}
 	if (mnemonic === "xor" || mnemonic === "eor") {
 		requireOperands(mnemonic, rawOperands, 3);
@@ -691,32 +746,44 @@ function encodeAarch64Word(mnemonic: string, rawOperands: readonly string[], add
 		const left = a64Register(parseA64Operand(rawOperands[1]!), mnemonic);
 		const right = a64Register(parseA64Operand(rawOperands[2]!), mnemonic);
 		if (destination.wide !== left.wide || destination.wide !== right.wide) throw new EncodeError("operand size mismatch", ["all three operands must be x or w"]);
-		if (destination.special !== "none" || left.special !== "none" || right.special !== "none") {
-			throw new EncodeError("eor cannot use sp here", ["the zero register is allowed, sp is not"]);
-		}
+		rejectSp(destination, mnemonic, "destination");
+		rejectSp(left, mnemonic, "first source");
+		rejectSp(right, mnemonic, "second source");
 		return ((destination.wide ? 0xca000000 : 0x4a000000) | (right.index << 16) | (left.index << 5) | destination.index) >>> 0;
 	}
 	if (mnemonic === "cmp") {
 		requireOperands(mnemonic, rawOperands, 2);
 		const left = a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
 		const right = parseA64Operand(rawOperands[1]!);
+		rejectSp(left, mnemonic, "first operand");
 		if (right.kind === "imm") {
-			const value = right.value;
-			const lsl12 = value % 0x1000 === 0 && value > 0 && value / 0x1000 <= 0xfff;
-			const imm12 = lsl12 ? value / 0x1000 : value;
-			if (imm12 < 0 || imm12 > 0xfff) throw new EncodeError(`immediate out of range for cmp: ${value}`, ["imm12 (0…0xfff), or a multiple of 0x1000 up to 0xfff000"]);
+			const { imm12, lsl12 } = splitImm12(right.value, mnemonic);
 			const base = left.wide ? 0xf1000000 : 0x71000000;
 			return (base | (lsl12 ? 1 << 22 : 0) | (imm12 << 10) | (left.index << 5) | 31) >>> 0;
 		}
 		if (right.wide !== left.wide) throw new EncodeError("operand size mismatch", ["both operands must be x or both w"]);
+		rejectSp(right, mnemonic, "second operand");
 		const base = left.wide ? 0xeb000000 : 0x6b000000;
 		return (base | (right.index << 16) | (left.index << 5) | 31) >>> 0;
 	}
 	throw unknownMnemonic("aarch64", mnemonic, A64_MNEMONICS);
 }
 
+function parseA64Immediate(token: string, mnemonic: string): number {
+	const operand = parseA64Operand(token);
+	if (operand.kind !== "imm") throw new EncodeError(`${mnemonic} needs an immediate here, got a register`, [`${mnemonic} …, #0x10`]);
+	return operand.value;
+}
+
+/** imm12，或 0x1000 的整数倍（走 `lsl #12`）。两者都装不下就报错，不拆分多指令。 */
+function splitImm12(value: number, mnemonic: string): { imm12: number; lsl12: boolean } {
+	if (value >= 0 && value <= 0xfff) return { imm12: value, lsl12: false };
+	if (value > 0 && value % 0x1000 === 0 && value / 0x1000 <= 0xfff) return { imm12: value / 0x1000, lsl12: true };
+	throw new EncodeError(`immediate out of range for ${mnemonic}: ${value}`, ["imm12 (0…0xfff), or a multiple of 0x1000 up to 0xfff000"]);
+}
+
 /** MOVZ：`mov <rd>, #imm` 的规范形式。只认 16 位立即数（含 lsl #16），更宽的值要 movz+movk 两条。 */
-function moveWide(destination: A64Reg, value: number, opc: number): number {
+function moveWide(destination: A64Reg, value: number): number {
 	if (value < 0) throw new EncodeError(`movz only takes unsigned immediates: ${value}`, ["movn / movk sequences are not encoded here"]);
 	let half = 0;
 	let immediate = value;
@@ -728,5 +795,47 @@ function moveWide(destination: A64Reg, value: number, opc: number): number {
 		immediate = value / 0x10000;
 	}
 	const base = destination.wide ? 0xd2800000 : 0x52800000;
-	return ((base | (half << 21) | (immediate << 5) | destination.index) | (opc === 2 ? 0 : 0)) >>> 0;
+	return (base | (half << 21) | (immediate << 5) | destination.index) >>> 0;
+}
+
+/** 规范文本：与 `decodeAt` 在同一份字节上给出的写法逐字一致，别名与立即数格式都按解码器的口径。 */
+function aarch64Text(mnemonic: string, rawOperands: readonly string[], address: number): string {
+	if (mnemonic === "nop") return "nop";
+	if (mnemonic === "ret") {
+		if (rawOperands.length === 0) return "ret";
+		const register = a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
+		return register.index === 30 && register.special === "none" ? "ret" : `ret ${a64RegText(register)}`;
+	}
+	if (mnemonic === "jmp" || mnemonic === "b" || mnemonic === "call" || mnemonic === "bl") {
+		const target = parseImmediate(rawOperands[0]!) ?? address;
+		return `${mnemonic === "call" || mnemonic === "bl" ? "bl" : "b"} file+0x${target.toString(16)}`;
+	}
+	if (mnemonic === "mov" || mnemonic === "movz") {
+		const destination = a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
+		const source = parseA64Operand(rawOperands[1]!);
+		if (source.kind === "reg") return `mov ${a64RegText(destination)}, ${a64RegText(source)}`;
+		const half = source.value > 0xffff ? 1 : 0;
+		const immediate = half === 1 ? source.value / 0x10000 : source.value;
+		return `movz ${a64RegText(destination)}, #0x${immediate.toString(16)}${half === 1 ? ", lsl #16" : ""}`;
+	}
+	if (mnemonic === "cmp") {
+		const left = a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
+		const right = parseA64Operand(rawOperands[1]!);
+		if (right.kind === "reg") return `cmp ${a64RegText(left)}, ${a64RegText(right)}`;
+		const { imm12, lsl12 } = splitImm12(right.value, mnemonic);
+		return `cmp ${a64RegText(left)}, #0x${imm12.toString(16)}${lsl12 ? ", lsl #12" : ""}`;
+	}
+	if (mnemonic === "xor" || mnemonic === "eor") {
+		const operands = rawOperands.map(token => a64Register(parseA64Operand(token), mnemonic));
+		return `eor ${operands.map(a64RegText).join(", ")}`;
+	}
+	if (mnemonic === "add" || mnemonic === "sub") {
+		const destination = a64Register(parseA64Operand(rawOperands[0]!), mnemonic);
+		const left = a64Register(parseA64Operand(rawOperands[1]!), mnemonic);
+		const right = parseA64Operand(rawOperands[2]!);
+		if (right.kind === "reg") return `${mnemonic} ${a64RegText(destination)}, ${a64RegText(left)}, ${a64RegText(right)}`;
+		const { imm12, lsl12 } = splitImm12(right.value, mnemonic);
+		return `${mnemonic} ${a64RegText(destination)}, ${a64RegText(left)}, #0x${imm12.toString(16)}${lsl12 ? ", lsl #12" : ""}`;
+	}
+	return mnemonic;
 }

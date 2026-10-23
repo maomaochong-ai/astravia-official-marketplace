@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -23,18 +23,38 @@ function parseFrontmatter(raw: string): Record<string, string> {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---/.exec(raw);
 	if (!match) throw new Error("missing frontmatter block");
 	const fields: Record<string, string> = {};
-	for (const line of match[1].split(/\r?\n/)) {
+	const lines = match[1].split(/\r?\n/);
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index];
 		if (line.trim().length === 0) continue;
+		// 注释块不是字段（上游技能在 frontmatter 里写了整段 ATTRIBUTION）。
+		if (line.startsWith("#")) continue;
+		// 缩进行是上一个键的嵌套内容（`metadata:` 之类）或块标量正文，已在下面整段吃掉。
+		if (/^[ \t]/.test(line)) continue;
 		const separator = line.indexOf(":");
 		if (separator < 1) throw new Error(`not a mapping line: ${line}`);
 		const key = line.slice(0, separator).trim();
 		const value = line.slice(separator + 1).trim();
+		// `description: >` / `|`（以及带裁剪指示符的写法）和空值都接缩进块。
+		// 空值后面跟缩进内容时是嵌套映射或嵌套列表，真 YAML 里合法，这里只记录被折平后的文本。
+		if (value === "" || /^[>|][+-]?$/.test(value)) {
+			const block: string[] = [];
+			for (let next = index + 1; next < lines.length; next += 1) {
+				const candidate = lines[next];
+				if (candidate.trim().length === 0) continue;
+				if (!/^[ \t]/.test(candidate)) break;
+				block.push(candidate.trim());
+				index = next;
+			}
+			if (key === "description" && block.length === 0) throw new Error(`${key} is empty`);
+			fields[key] = block.join(" ").trim();
+			continue;
+		}
 		if (value.startsWith('"')) {
 			fields[key] = JSON.parse(value) as string;
 			continue;
 		}
 		if (value.includes(": ")) throw new Error(`${key} has an unquoted ": " and would break YAML parsing`);
-		if (value.length === 0) throw new Error(`${key} is empty`);
 		fields[key] = value;
 	}
 	return fields;
@@ -48,14 +68,36 @@ const manifest = readJson<PluginManifest>("plugin.json");
 const skillPaths = manifest.agent?.skillPaths ?? [];
 const presentation = manifest.agent?.skillPresentation?.skills ?? {};
 
+/**
+ * 宿主把每条 skillPath 当资源登记，目录可递归；技能身份取 SKILL.md 所在目录名。
+ * 所以这里也按目录递归收集，而不是假设 skillPaths 每条都直接指向一个技能。
+ */
+function collectSkillDirectories(relative: string): string[] {
+	const root = join(pluginRoot, relative);
+	const found: string[] = [];
+	const visit = (directory: string): void => {
+		if (existsSync(join(directory, "SKILL.md"))) {
+			found.push(directory);
+			return;
+		}
+		for (const entry of readdirSync(directory, { withFileTypes: true })) {
+			if (entry.isDirectory()) visit(join(directory, entry.name));
+		}
+	};
+	visit(root);
+	return found;
+}
+
+const skillDirectories = skillPaths.flatMap(collectSkillDirectories);
+
 describe("plugin skills", () => {
 	it("declares at least one skill path", () => {
 		expect(skillPaths.length).toBeGreaterThan(0);
 	});
 
 	it("keeps every declared skill directory loadable", () => {
-		for (const relative of skillPaths) {
-			const directory = join(pluginRoot, relative);
+		expect(skillDirectories.length).toBeGreaterThan(0);
+		for (const directory of skillDirectories) {
 			expect(statSync(directory).isDirectory()).toBe(true);
 
 			const frontmatter = parseFrontmatter(readFileSync(join(directory, "SKILL.md"), "utf8"));
@@ -68,7 +110,7 @@ describe("plugin skills", () => {
 
 	it("presents every skill with resolved placeholders", () => {
 		const catalogs = ["locales/en.json", "locales/zh.json"].map(file => readJson<Record<string, string>>(file));
-		const names = skillPaths.map(relative => basename(relative));
+		const names = skillDirectories.map(directory => basename(directory));
 
 		expect(Object.keys(presentation).sort()).toEqual(names.slice().sort());
 

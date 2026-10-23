@@ -12,7 +12,7 @@ import type { CommandResult, CommandRunner } from "../../../domain/toolchain/cat
 import { BLOCKED_PATTERN, NOT_FOUND_PATTERN, probeToolchain, type ToolchainReport } from "../../../domain/toolchain/probe";
 import { R2_TIMEOUT } from "../../../domain/toolchain/radare";
 
-/** Re-probing on every tool call would spawn eight processes per turn. */
+/** Re-probing on every tool call would spawn one process per catalog entry per turn. */
 const PROBE_TTL_MS = 60_000;
 
 let probeCache: { at: number; report: ToolchainReport } | null = null;

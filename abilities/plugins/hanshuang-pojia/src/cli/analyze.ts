@@ -20,6 +20,7 @@ import { readNativeFacts } from "../domain/native/detect";
 import { addressMapFor, vaddrToOffset } from "../domain/native/image";
 import { disasmArchFor, isDecodable } from "../domain/native/insn";
 import { disassemble } from "../domain/native/disasm";
+import { encodeArchFor, encodeProgram, verifyEncoding } from "../domain/native/encode";
 import { decompileFunction, type PseudoMode } from "../domain/native/pseudo";
 import { symbolBoundFor, trimTrailingData } from "../domain/native/deep";
 import { semanticDiff, renderSemanticDiff } from "../domain/native/semantic-diff";
@@ -29,7 +30,7 @@ import { dexStrings, indexDex, searchDex } from "../domain/android/dex-index";
 import { buildHookScript, hookRunHint, hookTargetsFromHits } from "../domain/android/hook-template";
 import { findZipEntries, looksLikeZip, readZipEntry, readZipIndex } from "../domain/archive/zip";
 
-export const COMMANDS = ["triage", "strings", "symbols", "disasm", "decompile", "diff", "hook", "docs"] as const;
+export const COMMANDS = ["triage", "strings", "symbols", "disasm", "asm", "decompile", "diff", "hook", "docs"] as const;
 export type Command = (typeof COMMANDS)[number];
 
 export interface CliOutput {
@@ -45,6 +46,7 @@ export const USAGE = [
 	"  strings <file> [--query <text>] [--min 6] [--json]   printable strings, optionally grepped",
 	"  symbols <file> [--query <text>] [--kind all|function|export|import] [--json]",
 	"  disasm <file> [--offset <n> | --symbol <name>] [--length 256] [--json]",
+	"  asm <arch> <instruction ...> [--address <n>] [--file <listing>] [--json]",
 	"  decompile <file> [--offset <n> | --symbol <name>] [--mode full|fold|summary] [--budget 6000]",
 	"  diff <file> <other> [--json]                        function-level semantic diff",
 	"  hook <file> --query <text> [--backtrace] [--package <name>]",
@@ -234,6 +236,73 @@ async function commandDisasm(args: Args, out: CliOutput): Promise<number> {
 	return 0;
 }
 
+/**
+ * `asm` 是 `disasm` 的反方向：把判定点那几条指令换成字节，并立即用自己的解码器回转一次。
+ * 回转对不上时把差异打出来，而不是把「看起来像」的字节交给用户贴进补丁。
+ */
+async function commandAsm(args: Args, out: CliOutput): Promise<number> {
+	const archText = requirePositional(args, 0, "an architecture (aarch64, x86-64, x86)");
+	if (encodeArchFor(archText) === null) throw new UsageError(`asm cannot encode for ${archText}; supported: aarch64, x86-64, x86`);
+	const address = numberFlag(args, "address", 0);
+	const listingPath = textFlag(args, "file");
+	const source = listingPath !== null ? (await readFile(listingPath, "utf8")).split("\n") : args.positional.slice(1);
+	if (source.every(line => line.trim() === "")) throw new UsageError("asm needs at least one instruction");
+
+	const program = encodeProgram({ arch: archText, lines: source, address });
+	const hexAt = (bytes: Uint8Array): string => Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join(" ");
+	const checks = program.items.map(item => (item.encoded ? verifyEncoding(item.encoded) : null));
+
+	if (boolFlag(args, "json")) {
+		out.write(
+			JSON.stringify(
+				{
+					arch: program.arch,
+					address,
+					failed: program.failed,
+					bytes: hexAt(program.bytes),
+					items: program.items.map((item, index) => ({
+						index: item.index,
+						input: item.input,
+						address: item.address,
+						hex: item.encoded?.hex,
+						text: item.encoded?.text,
+						size: item.encoded?.size,
+						verified: checks[index]?.ok,
+						decoded: checks[index]?.decoded,
+						error: item.error,
+						hints: item.hints,
+					})),
+				},
+				null,
+				2,
+			),
+		);
+		return program.failed > 0 ? 2 : 0;
+	}
+
+	const rows = [
+		`# asm — ${program.arch} · ${program.items.length} line(s), ${program.bytes.byteLength} byte(s) from file+0x${address.toString(16)}`,
+		"",
+	];
+	program.items.forEach((item, index) => {
+		const head = `file+0x${item.address.toString(16).padEnd(6)}`;
+		if (!item.encoded) {
+			rows.push(`${head}  ${"".padEnd(20)}  ${item.input}`);
+			rows.push(`        ${item.error}`);
+			for (const hint of item.hints ?? []) rows.push(`        hint: ${hint}`);
+			return;
+		}
+		const check = checks[index]!;
+		rows.push(`${head}  ${item.encoded.hex.padEnd(20)}  ${item.encoded.text}${check.ok ? "" : `   [round-trip mismatch: ${check.decoded}]`}`);
+	});
+	rows.push("", `bytes: ${hexAt(program.bytes) || "(none)"}`);
+	const verified = checks.filter(check => check?.ok).length;
+	rows.push(`${verified}/${program.items.length - program.failed} encoded line(s) round-trip through the plugin decoder.`);
+	if (program.failed > 0) rows.push(`${program.failed} line(s) could not be encoded — fix the hint above rather than pasting partial bytes.`);
+	out.write(rows.join("\n"));
+	return program.failed > 0 ? 2 : 0;
+}
+
 async function commandDecompile(args: Args, out: CliOutput): Promise<number> {
 	const path = requirePositional(args, 0, "a file path");
 	const context = await nativeContext(path);
@@ -346,6 +415,7 @@ const HANDLERS: Record<Command, (args: Args, out: CliOutput) => Promise<number>>
 	strings: commandStrings,
 	symbols: commandSymbols,
 	disasm: commandDisasm,
+	asm: commandAsm,
 	decompile: commandDecompile,
 	diff: commandDiff,
 	hook: commandHook,

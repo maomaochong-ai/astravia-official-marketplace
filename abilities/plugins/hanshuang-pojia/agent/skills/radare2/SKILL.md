@@ -67,6 +67,16 @@ powershell -File "<WORKSPACE>\\Tool\\skills\radare2\scripts\recon.ps1" -TargetPa
 powershell -File "<WORKSPACE>\\Tool\\skills\radare2\scripts\recon.ps1" -TargetPath "C:\path\to\sample.exe" -RunAnalysis
 ```
 
+macOS / Linux 用同目录的 `scripts/recon.sh`，输出分段与字段完全一致：
+
+```bash
+./scripts/recon.sh ./sample.bin                      # 基础侦察
+./scripts/recon.sh ./sample.bin --strings 80 --imports 120
+./scripts/recon.sh ./sample.bin --analyze            # 附带 r2 -A 分析
+```
+
+先跑 `rabin2 -v` / `r2 -v` 确认工具已装；缺失时脚本会直接报 `缺少命令：rabin2` 并退出，不会跑一半。
+
 ### `references/cheatsheet.md`
 
 当需要更多命令细节、常见场景模板、或要快速回忆语法时，读取这个速查表，而不是凭记忆硬猜。

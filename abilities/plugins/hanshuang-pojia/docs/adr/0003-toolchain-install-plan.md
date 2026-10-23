@@ -1,0 +1,86 @@
+# ADR 0003：按目标补齐工具链——插件出计划，agent 执行
+
+- 状态：已接受（2026-10-23）
+- 决策对象：`abilities/plugins/hanshuang-pojia`（2.4.5 → 2.5.0）
+- 参照对象：`hanshuang-pojia` 2.0 便携版的 `seep-kit/setup/repair-tools.ps1` + `Tool/docs/tool-index.json`（42 项工具）
+- 关联文档：[ADR 0002](./0002-external-process-bridge.md)、[工具链对照表](../toolchain-parity.md)
+
+## 1. 问题
+
+2.4.x 的工具链是这样工作的：`catalog.ts` 声明 8 个可执行文件，`probe_environment` 逐个跑 `--version`，
+报告里给一行人类可读的 `install` 提示（`brew install radare2 | winget install radare.radare2`）。用户拿到的是
+"缺什么"，不是"怎么补"。
+
+2.0 便携版有完整的三件套：42 项工具的索引（`tool-index.json`）、内置离线二进制、以及 `repair-tools.ps1`
+按需从 GitHub Release 重下并带三个镜像回退。它的"安装"是一次性部署脚本 —— 装完 300 MB 才能在 Electron 里
+启动 —— 而不是对话中的按需补齐。
+
+用户的诉求是后者：**对话过程中，根据目标自动安装必要的工具**。
+
+## 2. 为什么插件不自己装
+
+四条约束，逐条都足以否决"插件直接跑安装器"：
+
+1. **`plugin.json#commands` 是静态白名单。** 宿主 `command-runner.ts` 依次校验 `declaredCommands.includes(file)`
+   与 `grantedCommandNames.includes(file)`。要装工具就得声明 `brew` / `apt-get` / `winget` / `pipx` / `scoop`
+   各一个授权位 —— 五个"什么都能干"的权限，换一个"装个 jadx"的能力，权限面换得不划算。
+2. **安装需要交互。** `sudo` 要密码，winget 要 UAC，Homebrew 首次装 cask 要 `--cask` 确认。`ctx.command.run`
+   是 `execFile` 语义：无 shell、无 TTY，跑 `sudo apt-get install` 只会挂到超时。
+3. **平台差异无法统一。** 同一个 jadx 在三个平台是三个包名、三种命令、三种失败形态（§3 的 recipe 表就是证据）。
+   插件里的分支越细，越容易在某台机器上跑出半成品状态。
+4. **不可审计。** 一段自动执行的安装脚本，用户看不到它装了什么、从哪来。2.0 的 `repair-tools.ps1` 恰恰把
+   来源写死在脚本里并要求 `-Force` —— 那是脚本该有的样子，不是插件的。
+
+对照 ADR 0002 已确立的 `agent.command.run` 模型：**每个能力配一个语义化工具，不设通用执行器**。装工具不是
+插件的能力，是 agent 已经有 shell 之后的本职工作。
+
+## 3. 决定：计划即交付物
+
+新增工具 `install_toolchain`，签名：
+
+```
+install_toolchain({ goal?: "apk" | "native" | "firmware" | "dynamic" | "full", sample?: string, refresh?: boolean })
+```
+
+handler 做三件事，然后返回文本：
+
+1. **探。** 有 `agent.command.run` 授权就复用 `probeOnce`（带一分钟缓存，`refresh` 绕过）；没有授权就把报告
+   当作"全部缺失" —— 这仍然是有用的答案，因为计划本身不依赖探测结果。
+2. **筛。** `goal` 决定候选集（`spec.goals` 含该 goal 的工具）；`sample` 的扩展名在省略 `goal` 时推断目标。
+   APK-only 的任务不会看到反汇编器 —— 少一次密码提示，多一次信任。
+3. **映射平台。** `detectPlatform(navigator.userAgent)` → `darwin` / `linux` / `windows`，取 `spec.recipe[platform]`。
+   SDK 不暴露平台字段，`build-apple-apps` 已有同样的做法。
+
+返回的是编号命令列表，末尾固定一句：跑完 `probe_environment { refresh: true }` 复核。
+
+关键区分被写进输出而不仅是注释：**`blocked` 不是 `missing`**。宿主拒绝调用（命令被用户禁用、或没授
+`agent.command.run`）时，计划只写一条说明让用户去设置里开权限，**不打印安装命令** —— 否则用户会为一个
+已经装好的工具反复跑包管理器，然后对下一次建议失去信任。
+
+## 4. 工具面：探什么，建议什么
+
+`catalog.ts` 分成两张表：
+
+- `TOOLCHAIN`（14 项，进 `plugin.json#commands`）：r2 / rabin2 / radiff2 / rasm2 / rahash2 / rax2 / jadx /
+  apktool / java / adb / apksigner / zipalign / frida / frida-ps。每一项都真的会被探测或驱动。
+- `COMPANIONS`（11 项，不进 commands，零权限）：python3 / node / binwalk / yara / nmap / ida / binaryninja /
+  jeb-pro / analyzeHeadless / pip / pwntools。它们只出现在安装计划的建议段，因为插件从不 spawn 它们。
+  一笔声明换一个用户永远点不到的勾选框，不值得。
+
+2.0 的 42 项里，MCP 类（`ida-pro-mcp` / `r2mcp` / `jshookmcp` / `reqable-mcp` / `xquik-mcp` / `pentestswarm` /
+`agent-browser` / `playwright`）不在插件的能力范围内：它们要 MCP 注册，不是可执行文件。逐项对照见
+[工具链对照表](../toolchain-parity.md)。
+
+`TOOLCHAIN` 一扩，`COMMANDS` 自动跟着变，`plugin.json#commands` 由 `toolchain.test.ts:56` 的
+`expect(manifest.commands).toEqual([...COMMANDS])` 强制同步 —— 这是扩表的唯一"代价"，也是护住声明与使用
+不漂移的唯一手段。
+
+## 5. 代价与已知限制
+
+- **升级要多勾权限。** `commands` 从 8 项增到 14 项，`agent.command.run` 的细粒度勾选界面会多出 6 行；
+  老用户升级后需要在设置里逐项启用新命令（`plugin-package.ts:170-177` 的旧授权与新声明取交集，不会自动授予）。
+- **`goal` 的正确性依赖调用方。** 传 `full` 会列出全部 14 项；这是给"用户说要全套"准备的，不该是默认。
+- **recipe 是写死的知识，不是探测结果。** 包名会随上游改名而失效（winget 的 `skylot.jadx` 尤其可能）。
+  失败由 `probe_environment` 兜底：装完没生效，报告立刻说没有，不会假装成功。
+- **没做的：** 不做镜像回退（2.0 的 `ghproxy.net` / `gh-proxy.com`）—— 那需要插件自己下载文件，正是本文
+  第 2 节否决的路径。国内网络下用户可能要自己换源。

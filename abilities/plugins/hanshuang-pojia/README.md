@@ -60,11 +60,13 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `search_docs` | keyword search over the 309 bundled field documents (title, id, topic) |
 | `read_doc` | one document body as Markdown, truncated at a visible character budget |
 | `probe_environment` | which declared executables run, with version banners, separating a host refusal from a missing binary |
+| `install_toolchain` | the exact install command for this platform, filtered to the tools one goal actually needs |
 | `run_radare` | r2 / rabin2 / radiff2 / rasm2: info, strings, functions, disasm, pseudo-C, xrefs, asm, diff, read-only `cmd` |
 | `decompile_android` | jadx / apktool into a sibling directory, then `smali_search` over the unpacked tree |
 | `init_task` | the per-target case layout — `samples/`, `exports/`, `reports/`, README and report skeleton |
+| `write_assessment_report` | fills the four-section assessment into `reports/<target>_security_assessment_report.md`; an unsupplied section is written as unsupplied |
 
-All eighteen declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
+All twenty declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
 API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling.
 Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
@@ -73,21 +75,22 @@ merging in the pseudo-C; the diff is an instruction-shape fingerprint, not a pro
 the hook template observes and returns the original value — writing a bypass is a decision a human
 makes on top of it, not something this plugin emits.
 
-The four toolchain tools follow the same rule. `plugin.json#commands` declares exactly the eight
+The five toolchain tools follow the same rule. `plugin.json#commands` declares exactly the fourteen
 executables they may spawn, the host asks the user before granting `agent.command.run`, and every call
 is `execFile` with an argument vector — no shell. `run_radare`'s `cmd` operation refuses writes, shells,
 the debugger, file opens, script execution, project commands, mounts and the `=` remote family (`w`/`W`,
 `!`, `o`/`O`, `d`/`D`, `P`, `R`/`r`, `m`/`M`, `.`, `=`) and lets the read-only `dr` family through; anything that
 would leave r2's own parser is refused too — pipes (`|`), redirects (`>`/`<`), `$(…)`, backticks and `=!`.
 `decompile_android` writes next to the APK, never into it, and only into a directory that does not exist
-
 yet: an existing `output_dir` is refused rather than merged into, and `apktool` runs without `-f` so a
 re-run can never wipe a folder you own. There is deliberately no `patches/` directory anywhere.
-`probe_environment` runs eight short `--version` calls, caches the answer for a minute and names the
-remedy for each failure mode: a host refusal is a setting, an absent binary is an install.
-directory anywhere. `probe_environment` runs eight short `--version` calls, caches the answer for a
-minute and names the remedy for each failure mode: a host refusal is a setting, an absent binary is
-an install.
+`probe_environment` runs one short `--version` call per tool, caches the answer for a minute and names the
+remedy for each failure mode: a host refusal is a setting, an absent binary is an install. `install_toolchain`
+turns that into the command you actually type: it filters by goal (`apk` / `native` / `firmware` / `dynamic` /
+`full`), picks the recipe for this platform (brew / apt / winget / scoop / pipx) and stops there — the plugin
+runs no installer, so you see every command first. Commercial suites (IDA, Binary Ninja, JEB) are listed as
+context, never as a command; commercial and optional tools never take a permission because the plugin never
+spawns them. Full 2.0 parity table: [docs/toolchain-parity.md](docs/toolchain-parity.md).
 
 The same engines run from a terminal, outside the plugin sandbox:
 
@@ -97,20 +100,28 @@ node scripts/analyze.mjs decompile libfoo.so --symbol check_license
 node scripts/analyze.mjs diff v1.elf v2.elf
 node scripts/analyze.mjs hook app.apk --query license --package com.example.app
 node scripts/analyze.mjs docs frida --group kb
+node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 ```
 
 `scripts/analyze.mjs` bundles `src/cli/analyze.ts` with esbuild and imports only `src/domain`, so it
 reads any path the process can read — no plugin fs grant involved. Commands: `triage`, `strings`,
-`symbols`, `disasm`, `decompile`, `diff`, `hook`, `docs`. Exit codes: `0` ok, `1` usage error,
+`symbols`, `disasm`, `asm`, `decompile`, `diff`, `hook`, `docs`. Exit codes: `0` ok, `1` usage error,
 `2` analysis failure.
+
+`asm` is the only direction that writes bytes: nine mnemonics (`nop`, `ret`, `mov`, `add`, `sub`, `xor`,
+`cmp`, `jmp`, `call`) for x86, x86-64 and AArch64, with the plugin's own decoder as the judge. Every
+encoded line is read back at the address it was placed at, and the canonical text shown is what that
+read-back produced — a line that cannot be reproduced exactly is reported with a hint instead of being
+returned as "probably right". Operands the decoder renders ambiguously (8/16-bit x86, scaled-index
+addressing, labels, directives, immediates that would need two instructions) are refused by design.
 
 ## Permissions
 
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the eighteen tools |
-| `agent.command.run` | `probe_environment`, `run_radare`, `decompile_android`: the eight executables declared in `commands`, each one approved by the user |
+| `agent.tools.register`, `agent.toolHandler.execute` | the twenty tools |
+| `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`: the fourteen executables declared in `commands`, each one approved by the user |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
 | `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
@@ -141,6 +152,36 @@ the plugin stops contributing it.
 `tests/prompt-budget.test.mjs` in the marketplace repository still fails any plugin that declares
 `promptPaths` with a block above 12 KB, so the always-on channel cannot silently come back.
 
+## The prompt layer
+
+Since 2.6.0 the plugin contributes two prompt blocks instead of one, both gated on
+`agent.systemPrompt.write`:
+
+| Block | Priority | When | Content |
+| --- | --- | --- | --- |
+| `plugin.hanshuang-pojia.kernel` | 850 | every turn | lab state, the panel page the user is on, the reachable tool ids — about 200 characters with lab off |
+| `plugin.hanshuang-pojia.system` | 840 | lab mode on only | `agent/docs/SYSTEM.md`: authorization gate, delivery shape, blocked-step handling, toolchain bootstrap, todo discipline |
+
+`agent/docs/SYSTEM.md` is the editable source. `scripts/sync-system-prompt.mjs` mirrors it into
+`src/domain/system-prompt.generated.ts`, because a plugin cannot read its own install directory at
+runtime — the host never tells it where it lives. `npm run verify:generated` fails on drift, and
+`src/test/system-prompt.test.ts` compares the two byte for byte.
+
+`agent/docs/AGENTS.md` carries the same protocol for agents outside Astravia: tool routing, the G-Auth
+gate, the delivery shape, and the mechanisms that have no counterpart here.
+
+Two things upstream does that this package cannot. It injects `safetySettings: BLOCK_NONE` at the
+provider request layer — the host exposes twelve lifecycle hooks and none of them sees the request
+payload, and the field is Google-private (an OpenAI-compatible gateway answers `400 UNKNOWN_FIELD`).
+It also rewrites the user's prompt; `UserPromptSubmit` can only append `additionalContexts`.
+
+What replaces the first is a `Stop` hook. If the last assistant message states a boundary without
+producing an artifact, the host is asked to continue once with a fragment that demands the missing
+deliverable. `src/domain/refusal.ts` holds the detector, and it needs both a refusal phrasing and
+the absence of every deliverable fingerprint (code fence, inline code, command line, absolute path,
+`0x` address, digest, list) before it fires. A quoted error text and a delivered remainder always
+beat a restated boundary — but a genuinely blocked step still gets to say so.
+
 ## Workbench kit 2.0
 
 The kit protocol arrived in 2.0 and now lives in the skill, bound to the 寒霜破甲工具 desktop kit (`seep-kit` 1.6.0).
@@ -156,14 +197,18 @@ It tells the agent how to work with the kit when it is installed:
 | V.6–V.7 | skill routing through `softseep`, and the A1–A10 anti-refusal rules |
 | V.8–V.9 | resource map and the nine host installers |
 
-Since 2.1 the kit's **skill library ships inside the plugin**: `agent/docs/skill-library/` is a
-byte-for-byte copy of `seep-kit/Tool/skill/` — 165 files, 2.4 MB, `softseep` (orchestrator),
-`apkseep` (112 files, 55 runnable scripts), `ida-reverse`, `client-license-validation-bypass`, and
-the five `safe-skills/*` packs. Nothing was edited or trimmed. `agent/docs/SKILL-LIBRARY.md` holds the
-inventory and provenance, `agent/docs/skill-library.sha256` the per-file hashes, and
-`src/test/skill-library.test.ts` recomputes the manifest so the tree cannot drift between builds.
-They are routed by path (`PART V.6`) rather than registered as skill paths: upstream frontmatter uses
-YAML block scalars and over-cap descriptions, and `ida-reverse` exists twice.
+Since 2.1 the kit's **skill library ships inside the plugin**: `agent/skills/` is the port of
+`seep-kit/Tool/skill/` — 171 files, 2.48 MB, `softseep` (orchestrator), `apkseep`,
+`ida-reverse`, `client-license-validation-bypass`, the five `safe-skills/*` packs, the
+`hanshuang-pojia` handbook itself, and three script-bearing packs that carry both `.ps1` and `.sh`
+variants. `agent/docs/SKILL-LIBRARY.md` holds the inventory and provenance,
+`agent/docs/skill-library.sha256` the per-file hashes, and `src/test/skill-library.test.ts`
+recomputes the manifest so the tree cannot drift between builds.
+
+They are registered through `plugin.json#agent.skillPaths = ["agent/skills"]`, with
+`skillPresentation.defaultVisibility` set to `visible` across all five surfaces, so they show up in
+the skill picker as soon as the plugin installs. The tree is not byte-identical to upstream in four
+places, deliberately — `SKILL-LIBRARY.md` lists them.
 
 `agent/skills/hanshuang-pojia/references/plugin-handbook.md` holds the detail the skill body should
 not carry: the verified kit layout, the full MCP tool list, the ten manuals, the per-host installer
@@ -174,13 +219,15 @@ paid for on every turn, so the body can stay complete without costing anything u
 
 ```text
 agent/
-└── skills/hanshuang-pojia/          # the skill the host lists in every conversation
-    ├── SKILL.md                     # the full agent document, PART I–V, including the kit protocol
-    └── references/plugin-handbook.md  # kit layout, MCP tool list, manual index, host installers
-agent/docs/
-├── SKILL-LIBRARY.md                 # bundled skill tree: inventory, provenance, why not registered
-├── skill-library.sha256             # 165 per-file hashes; the test recomputes this
-└── skill-library/                   # byte-exact copy of seep-kit/Tool/skill (165 files, 2.4 MB)
+├── skills/                          # registered via skillPaths; nine SKILL.md directories
+│   ├── hanshuang-pojia/             # the handbook, PART I–V, including the kit protocol
+│   ├── apk-reverse/  ida-reverse/  radare2/     # each with scripts/*.ps1 and *.sh
+│   └── apkseep/  softseep/  reverse-engineering/  …  # the safe-skills ports
+└── docs/                            # packed as a whole: this is the only agent/ subtree the packer collects
+    ├── SYSTEM.md                    # standing contract: injected as a prompt block while lab mode is on
+    ├── AGENTS.md                    # the same protocol for agents outside Astravia
+    ├── SKILL-LIBRARY.md             # bundled skill tree: inventory, provenance, the four deliberate deltas
+    └── skill-library.sha256         # 171 per-file hashes; the test recomputes this
 src/
 ├── index.tsx                        # assembly only: bridge, tab, tools, cleanup
 ├── runtime-contract.ts              # the PluginContext handle the tab reads
@@ -195,9 +242,12 @@ src/
 │   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
+│   ├── refusal.ts                   # turn-boundary recovery: detector + continuation fragment
+│   ├── system-prompt.generated.ts   # inlined from agent/docs/SYSTEM.md; do not hand-edit
 │   └── triage.ts                    # entry point: detect → parse → audit → report
 ├── domain/toolchain/                # external executables: nothing here starts a process by itself
-│   ├── catalog.ts                   # TOOLCHAIN / COMMANDS: must equal plugin.json#commands
+│   ├── catalog.ts                   # TOOLCHAIN / COMPANIONS / COMMANDS: must equal plugin.json#commands
+│   ├── install.ts                   # goal → platform command plan (never executes anything)
 │   ├── probe.ts                     # per-tool version probe, refusal vs absence
 │   ├── radare.ts                    # r2/rabin2/radiff2/rasm2 plans + the read-only guard
 │   ├── android.ts                   # jadx/apktool plans, and the smali tree search
@@ -277,9 +327,9 @@ article that is never opened costs no download.
 ## Limits worth knowing
 
 - Android signature digests are read from the v1 files and the APK Signing Block, **not** cryptographically verified.
-- The four toolchain tools borrow binaries; they never download or install one. `probe_environment` reports
-  what is present, and when the host refuses the channel the fix is the plugin's declaration or its
-  settings, not `PATH`.
+- The five toolchain tools borrow binaries; none of them downloads or installs one. `probe_environment` reports
+  what is present, `install_toolchain` prints the command for your platform without running it, and when the
+  host refuses the channel the fix is the plugin's declaration or its settings, not `PATH`.
 - `run_radare` runs one r2 invocation per call (three for `decompile` with `output_mode=summary`) with a
   120 s ceiling, and refuses anything outside its read-only whitelist. `decompile_android` gives jadx and
   apktool 10 minutes each and returns the head of the log, not the sources.

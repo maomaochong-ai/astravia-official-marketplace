@@ -76,7 +76,7 @@ abilities/plugins/hanshuang-pojia/
 │  │  └─ panel-channel.ts        # report events with a 40-event replay backlog + current page signal
 │  ├─ tools/                     # one file per agent tool, plus ids.ts and register-tools.ts
 │  └─ content/docs/              # bundled field documents: kb/ manual/ kit-docs/ + index.json
-└─ src/test/                     # 26 spec files; every feature lands with a test
+└─ src/test/                     # 30 spec files; every feature lands with a test
 ```
 
 Fourteen pages, in `NAV` order: `overview`, `guide`, `docs`, `samples`, `findings`, `strings`,
@@ -179,17 +179,25 @@ outside them.
 | `run_radare` | 9 r2 / rabin2 / radiff2 / rasm2 operations, shaped by `full` / `fold` / `summary`; the tenth, `cmd`, is read-only only — write, shell, debugger, project, mount and `=` remote commands are refused | `domain/toolchain/radare.ts` |
 | `decompile_android` | jadx / apktool output beside the sample, plus `smali_search` over the unpacked tree | `domain/toolchain/android.ts` |
 | `init_task` | the per-target case layout (`samples/`, `exports/`, `reports/`, README, report skeleton) | `domain/toolchain/workspace.ts` |
+| `write_assessment_report` | the four-section assessment into `reports/<target>_security_assessment_report.md`; an unsupplied section is rendered as unsupplied, never as a default finding | `domain/report/assessment.ts` |
 
 Adding a tool means touching four places: the tool file, `register-tools.ts`, `ids.ts`, and both
 locale files — plus `EXPECTED_TOOL_COUNT` in `ids.ts`, which is the one number the health page and
 `src/test/tools.test.ts` both compare against. A missed step fails the suite instead of shipping
-quietly, and the self-check page shows `n of 18` when the registry drifts.
+quietly, and the self-check page shows `n of 19` when the registry drifts.
 
 The same engines are reachable outside the panel through `scripts/analyze.mjs` (bundled with
 esbuild, `src/cli/analyze.ts`, imports only `src/domain`): `triage`, `strings`, `symbols`,
-`disasm`, `decompile`, `diff`, `hook`, `docs`. It reads arbitrary paths — the fs grant only
+`disasm`, `asm`, `decompile`, `diff`, `hook`, `docs`. It reads arbitrary paths — the fs grant only
 applies to the plugin sandbox — so it is the way to reproduce a panel number in a terminal or
 in CI.
+
+`asm` is the write direction and the only command that produces bytes: nine mnemonics for x86,
+x86-64 and AArch64, judged by the plugin's own decoder. Each line is decoded again at the address
+it was placed at (`verifyEncoding`), and the canonical text printed is that read-back; a line that
+cannot be reproduced exactly exits 2 with a hint rather than returning bytes that are only nearly
+right. Its refusals are deliberate: 8/16-bit x86 operands, scaled-index memory, labels, directives,
+and immediates that need a second instruction.
 
 The panel cannot call MCP tools. It never could: MCP lives in the host's agent runtime, not in a
 plugin's renderer. Everything the panel shows is computed from bytes it read itself.
@@ -269,6 +277,25 @@ deliverable. Never abort the task; never drop the "no decompiler" caveat silentl
 | method, payloads, checklist | `seep_kb_search`, `seep_kb_read`, `seep_kb_payloads`, `seep_kb_checklist` |
 | case scaffold / triage / report | `seep_task_init`, `seep_auto_triage`, `seep_gen_security_report` |
 
+### 7.5.1 `seep_kb_checklist` / `seep_kb_payloads` without the kit
+
+Both are reads of documents the plugin already ships — no MCP server, no kit, no network. The
+toolkit's `checklist_type` values map one-to-one onto `read_doc` ids:
+
+| `checklist_type` | `read_doc` id |
+|---|---|
+| `web_first_30_min` | `kb/ctf-website/checklists/web-ctf-first-30-min` |
+| `attack_matrix` | `kb/ctf-website/checklists/attack-matrix` |
+| `evidence` | `kb/ctf-website/checklists/evidence` |
+| `pe_ioc` | `kb/pe-reverse/techniques/06-ioc-extraction/01-ioc-extraction` |
+| `pe_persistence` | `kb/pe-reverse/techniques/06-ioc-extraction/02-persistence-startup-chain` |
+| `yara_rules` | `kb/pe-reverse/techniques/07-yara-sigma/01-yara-rule-writing` |
+
+The payload seed list is one document, `kb/ctf-website/payloads/web-payload-seeds`; read it whole.
+The toolkit's `category` slicing is not reproduced on purpose, and nothing here assembles a payload
+for a target — read the file to understand a technique you are auditing, not to build one
+(ADR 0001 row 20).
+
 ### 7.6 Coverage: what runs without the kit, what needs the machine's tools, what only the kit adds
 
 Three columns now, because 2.4.2 added a real command bridge: `plugin.json#commands` declares eight
@@ -277,7 +304,7 @@ bundled and nothing is installed for you.
 
 | Need | In the plugin, no external tool | Needs `r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` | Only the kit adds |
 |---|---|---|---|
-| file type, arch, sections, entropy, imports | `triage_binary`, Manifest / Entropy pages | `run_radare operation=info` cross-checks the same fields | `mcp_ida_*` (rename / retype / structs) |
+| method lookup, documents | `search_docs` / `read_doc` over the 309 bundled documents (the payload-seed list is one of them) | — | `seep_kb_payloads` as a tool: no `category` slicing, never an assembled payload |
 | strings, wide strings, secret patterns | `scan_binary_strings`, Strings page | `run_radare operation=strings all_sections=true` (`rabin2 -zz`) | — |
 | symbols, exports, entry point | `list_code_symbols` (in-process ELF/PE/Mach-O / DEX tables) | `run_radare operation=functions` (r2 function list; `info` for the header fields) | `mcp_ida_*` |
 | disassembly, function list, CFG, xrefs | `disassemble_range` + the self-built engine | `run_radare operation=disasm/functions/xrefs`, `full`/`fold`/`summary` | — |
@@ -287,7 +314,7 @@ bundled and nothing is installed for you.
 | APK facts, decompile, unpack, smali | `search_dex_symbols`, `decompile_android operation=smali_search` | `decompile_android operation=decompile/unpack` (jadx / apktool into a sibling directory) | — |
 | Frida hook scaffold | `generate_hook` (observation only) | — | `seep_apk_gen_hook` (kit's own variant) |
 | method lookup, documents | `search_docs` / `read_doc` over the 309 bundled documents | — | `seep_kb_payloads` — deliberately not ported |
-| case scaffold, risk score, report | `init_task`, `triage_binary`, `triage_directory`, `explain_triage_finding`, `export_triage_report` | — | `seep_auto_triage` (kit's Python walker) |
+| case scaffold, risk score, report | `init_task`, `triage_binary`, `triage_directory`, `explain_triage_finding`, `export_triage_report`, `write_assessment_report` | — | `seep_auto_triage` (kit's Python walker), `seep_gen_security_report` |
 | which tools are even present | `probe_environment` (`✓` / `✗` / `!` per binary, with install hints) | — | — |
 
 What this means in practice: the first pass never blocks. A missing radare2 or JDK narrows **depth**
@@ -296,7 +323,9 @@ problems you have: the binary is absent, or the host refused the call (`!`, fix 
 not by installing more software).
 
 What is left for the kit is exactly what a plugin cannot own: an IDA session, the kit's Python
-orchestration, and the payload library. `seep_kb_payloads` stays out on purpose.
+orchestration, and payload *assembly*. The seed list itself ships as a document — read it with
+`read_doc` to understand a technique you are already auditing; nothing here builds a payload for a
+target.
 
 
 ---

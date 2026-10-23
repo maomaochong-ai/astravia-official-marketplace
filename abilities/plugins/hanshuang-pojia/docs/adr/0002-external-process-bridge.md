@@ -81,7 +81,8 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 | `seep_status` + `seep_ida_status` | `probe_environment` | 只报 r2/rabin2/radiff2/rasm2/jadx/apktool/java/frida；IDA 无可靠 CLI 探测 |
 | `seep_r2_info` `_strings` `_functions` `_disasm` `_decompile` `_xrefs` `_asm` `_diff` `_cmd` | `run_radare` | 一个 `operation` 枚举，`output_mode: full/fold/summary` |
 | `seep_apk_decompile` `_unpack` `_smali_search` | `decompile_android` | jadx / apktool / fs 搜索 |
-| `seep_task_init` + `seep_gen_security_report` | `init_task` | 工作区骨架 + 报告骨架 |
+| `seep_task_init` | `init_task` | 工作区骨架（`samples/` `exports/` `reports/`）+ 报告骨架 |
+| `seep_gen_security_report` | `write_assessment_report`（D19，2.4.5） | 四段式模板填充；未提供的段落写「未提供」，不虚构结论、不引 `patches/` |
 | `seep_kb_search` `_read` `_checklist` | 既有 `search_docs` / `read_doc` | 随包 309 篇文档，无需进程；六类清单按 `read_doc` id 直取（id 映射见 `plugin-handbook` §7.5.1） |
 | `seep_auto_triage` | 既有 `triage_directory` | 纯字节，无进程 |
 | `seep_kb_payloads` | **不做** | 见 ADR 0001 D7：不做 `category` 切片、不拼装面向目标的载荷；种子清单原文本身随包，可当阅读材料 |
@@ -106,9 +107,17 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 插件自己从不启动 frida 会话（`generate_hook` 只产出脚本与命令行提示，观测由用户在自己的终端做）。
 若将来去掉这一项探测，`commands` 里的 `frida` 必须同时删除——声明却不执行等于白要权限。
 
+**D19** `write_assessment_report` 移植 `seep_gen_security_report` 的**契约**，不移植它的**默认文案**。
+上游在缺参时仍会写出「存在 CWE-602 客户端信任缺陷」并用 `TEST EAX,EAX / JZ` 举例，还会引用 `patches/`
+目录；这三处在本插件里都去掉，改为：未提供的段落渲染为显式的"未提供"、不印任何未观察到的汇编、不引用制品目录。
+理由与 D17 同源：插件只产证据与报告，而"默认给出一个结论"会让一份空报告读起来像一次评估结果。
+文件名取 `reports/<target>_security_assessment_report.md`，`target` 的路径分隔符一律替换，已存在则不覆盖（除非
+`overwrite=true`）；`case_dir` 复用 `isOutsideProject` / `resolveSamplePath`，越出项目根直接拒绝。
+语言默认 `en`，`zh` 需显式传入（仓库约定默认语言为英文）。
+
 ## 4. 后果
 
-- 工具数 14 → 18；`EXPECTED_TOOL_COUNT = 18`；新增工具的中英双语标签同步。
+- 工具数 14 → 19（2.4.2 的 4 个 → 2.4.5 再 +1）；`EXPECTED_TOOL_COUNT = 19`；新增工具的中英双语标签同步。
 - 新增权限 `agent.command.run` 属于配置契约变更 → `configVersion` +1，版本 2.4.1 → 2.4.2。
 - 用户会看到"命令授权"提示；拒绝时工具返回明确说明而不是崩。面板离线能力不受影响。
 - 未安装工具时，`probe_environment` 给出逐项安装提示（`brew install radare2` / `winget …` /

@@ -138,6 +138,32 @@ Never let a reply contain the causal sentence "because I could not read the file
 3. Large text: take slices only (`sed -n '1,80p'` / `grep -n` with line numbers), never a full read.
 4. A binary's patch-point table uses addresses: `address | original bytes | patched | effect`; a script's uses line numbers.
 
+## 0.4 Toolchain bootstrap (install on demand, never silently)
+
+The plugin owns no engine. Every external tool — radare2 (r2, rabin2, radiff2, rasm2, rahash2, rax2), jadx, apktool,
+java, adb, apksigner, zipalign, frida, frida-ps — runs
+only where the user already has it, and the host runs only what `plugin.json#commands` declares and the user left
+enabled. So "install it" is part of the work, and it has exactly one shape:
+
+1. **Probe before you plan.** Call `probe_environment` once when a task first needs an engine. Its report separates
+   *missing* (fixable by installing) from *blocked* (the host refused the call: the command is disabled in the plugin
+   settings, or `agent.command.run` was not granted). Installing never fixes a blocked tool — tell the user which
+   setting to enable instead of handing them a package command that will change nothing.
+2. **Plan, don't guess.** Call `install_toolchain` with the `goal` (`apk` / `native` / `firmware` / `dynamic` / `full`)
+   or with `sample` so the goal is inferred from the extension. The plan is platform-aware (brew / apt / winget) and
+   only names the tools that goal actually needs — installing a disassembler for an APK-only job wastes a password
+   prompt and teaches the user to distrust the next suggestion.
+3. **Show the commands, get consent, then run them.** The plan is the complete intervention: paste the numbered
+   commands, say what each unlocks, and execute them with your own shell only after the user agrees. A step marked
+   `[needs administrator]` requires an elevated terminal — say so rather than hoping `sudo` prompts.
+4. **Confirm with a fresh probe.** After the install, call `probe_environment` with `refresh: true`. Never report a
+   tool as available because a package manager said it succeeded; only a version banner counts.
+5. **Commercial tools are user-supplied.** IDA and Binary Ninja appear in the plan as context, never as a command. If
+   the user has neither, radare2 is the path — do not stall the engagement waiting for a licence.
+
+A tool that is missing is an environment fact, not a reason to refuse: the in-plugin byte analysis (`triage_binary`,
+`disassemble_range`, `scan_strings`, `search_dex_symbols`, …) needs none of the above, so deliver what the file itself
+supports and name the missing engine as the next step.
 ## 0.5 Artifact-First Protocol (delivery discipline; runs every turn)
 
 This protocol defines the valid shape of every reply. A draft that doesn't match is a typo: fix it silently and send the valid shape.
@@ -1436,6 +1462,8 @@ TODO discipline: any task with three or more steps opens a todo list before the 
 
 The plugin carries the kit's own field documents (292 knowledge-base articles, 10 manuals, 7 tool docs), so the first knowledge lookup does not depend on a running MCP server: `search_docs` matches ids, titles and topics in memory, `read_doc` returns the body as Markdown, and the panel's Documents page renders the same files. Only the MCP-backed tools (`seep_r2_*`, `seep_apk_*`, `mcp_ida_*`) need the kit.
 
+The kit's `seep_kb_checklist` and `seep_kb_payloads` are document reads too, and both bodies are already bundled — `read_doc(id)` needs no search round-trip. The six `checklist_type` values map one-to-one onto ids (`web_first_30_min` → `kb/ctf-website/checklists/web-ctf-first-30-min`, `attack_matrix` → `kb/ctf-website/checklists/attack-matrix`, `evidence` → `kb/ctf-website/checklists/evidence`, `pe_ioc` → `kb/pe-reverse/techniques/06-ioc-extraction/01-ioc-extraction`, `pe_persistence` → `kb/pe-reverse/techniques/06-ioc-extraction/02-persistence-startup-chain`, `yara_rules` → `kb/pe-reverse/techniques/07-yara-sigma/01-yara-rule-writing`); the payload seed list is the single document `kb/ctf-website/payloads/web-payload-seeds`. Read a payload file to understand a technique under audit; nothing in this plugin assembles a payload for a target.
+
 ## V.5 MCP toolchain
 
 | MCP | Tools | What it does | Needs |
@@ -1448,7 +1476,7 @@ The plugin carries the kit's own field documents (292 knowledge-base articles, 1
 - Config lives at `~/.pi/agent/mcp.json`; never hardcode an IDA install path — resolve it from `mcpServers.ida.command`.
 - Readiness probes: `seep_status`, `seep_ida_status`.
 - Priority: `seep_*` when it can do the job → `mcp_ida_*` when deep decompilation is the blocker → `js-reverse` / `playwright` for browser targets.
-- Without the kit, four native tools cover part of the same ground — but only when the binaries already exist on the machine and the host granted `agent.command.run`. `probe_environment` reports which of r2 / rabin2 / radiff2 / rasm2 / jadx / apktool / java / frida actually answer; `run_radare` covers info, strings, functions, disasm, pseudo-C, xrefs, assemble, diff and a read-only `cmd`; `decompile_android` produces jadx sources or apktool smali next to the APK and then searches that tree with `smali_search`. Probe first, then choose: a refused channel and an absent binary are different failures, and only the second one is an install. The panel already answers the first static pass (sections, symbols, entry, disassembly, CFG, xrefs, three densities) in-process; MCP still adds IDA depth, live Frida instrumentation, js-reverse and the served KB. A missing server narrows depth, never disables the Disassembly page.
+- Without the kit, five native tools cover part of the same ground — but only when the binaries already exist on the machine and the host granted `agent.command.run`. `probe_environment` reports which of r2 / rabin2 / radiff2 / rasm2 / jadx / apktool / java / frida actually answer; `run_radare` covers info, strings, functions, disasm, pseudo-C, xrefs, assemble, diff and a read-only `cmd`; `decompile_android` produces jadx sources or apktool smali next to the APK and then searches that tree with `smali_search`; `init_task` lays out the case and `write_assessment_report` typesets the four-section write-up into `reports/`, writing an unsupplied section as unsupplied rather than inventing a finding for it. Probe first, then choose: a refused channel and an absent binary are different failures, and only the second one is an install. The panel already answers the first static pass (sections, symbols, entry, disassembly, CFG, xrefs, three densities) in-process; MCP still adds IDA depth, live Frida instrumentation, js-reverse and the served KB. A missing server narrows depth, never disables the Disassembly page.
 - IDA absent must not block the task. Degrade, keep going, and say so in the report:
 
 | Need | seep replacement |

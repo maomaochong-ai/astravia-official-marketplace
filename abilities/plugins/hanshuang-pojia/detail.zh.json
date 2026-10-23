@@ -79,7 +79,7 @@
 		{
 			"type": "callout",
 			"tone": "info",
-			"content": "如果你机器上已经装了 radare2、jadx 或 apktool，Agent 可以直接借用，而不是靠近似推断：`probe_environment` 报告 r2、rabin2、radiff2、rasm2、jadx、apktool、java、frida 里哪些真的能跑、版本是多少；`run_radare` 覆盖头信息、全量字符串、分析后的函数表、反汇编、伪 C、交叉引用、汇编/反汇编以及二进制差分；`decompile_android` 把 APK 解成 Java 源码或 smali 放在旁边，再在整棵目录上检索而不必整文件读入。不会下载或安装任何东西，每次调用都是单个可执行文件加参数数组，命令通道只读——写入、shell、调试器、工程命令一律拒绝。缺哪个二进制就报哪个以及怎么装；通道被宿主拒绝时也如实说，不会假装引擎答过了。"
+			"content": "如果你机器上已经装了 radare2、jadx 或 apktool，Agent 可以直接借用，而不是靠近似推断：`probe_environment` 报告 r2、rabin2、radiff2、rasm2、rahash2、rax2、jadx、apktool、java、adb、apksigner、zipalign、frida、frida-ps 这十四个已声明的可执行文件里哪些真的能跑、版本是多少；`install_toolchain` 把缺口换算成本平台的准确安装命令，并按目标（apk / native / firmware / dynamic / full）筛掉用不上的工具——插件不执行它，执行的是你；`run_radare` 覆盖头信息、全量字符串、分析后的函数表、反汇编、伪 C、交叉引用、汇编/反汇编以及二进制差分；`decompile_android` 把 APK 解成 Java 源码或 smali 放在旁边，再在整棵目录上检索而不必整文件读入。不会下载或安装任何东西，每次调用都是单个可执行文件加参数数组，命令通道只读——写入、shell、调试器、工程命令一律拒绝。缺哪个二进制就报哪个以及怎么装；通道被宿主拒绝时也如实说，不会假装引擎答过了。报告落在案件目录里：`init_task` 铺好 `samples/`、`exports/`、`reports/`，`write_assessment_report` 把四段式评估写进 `reports/`；你没提供的段落就明确写成「未提供」，而不是替你编一个结论。"
 		},
 		{
 			"type": "callout",
