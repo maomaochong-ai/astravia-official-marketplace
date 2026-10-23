@@ -3,7 +3,7 @@
   "name": "%plugin.name%",
   "description": "%plugin.description%",
   "icon": "assets/icon.svg",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -28,7 +28,8 @@
     "storage.write",
     "fs.read",
     "fs.write",
-    "agent.command.run"
+    "agent.command.run",
+    "network.fetch"
   ],
   "commands": [
     "r2",
@@ -46,6 +47,11 @@
     "frida",
     "frida-ps"
   ],
+  "network": {
+    "allowedHosts": [
+      "127.0.0.1"
+    ]
+  },
   "agent": {
     "skillPaths": [
       "agent/skills"

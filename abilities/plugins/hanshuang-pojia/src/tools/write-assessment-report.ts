@@ -34,9 +34,9 @@ export function registerWriteAssessmentTool(ctx: PluginContext): Disposable {
 			"nothing is claimed about the sample unless you supply it, and no example branch snippet is fabricated.",
 			"",
 			"case_dir defaults to the conversation working directory and must stay inside the open project. The",
-			"plugin creates reports/ if missing, never overwrites an existing report unless overwrite=true, and",
-			"produces no patch: evidence (decompiler output, disassembly, string dumps) belongs in exports/ and is",
-			"cited in section 3. For a triage summary of one sample use export_triage_report instead.",
+			"plugin creates reports/ if missing and never overwrites an existing report unless overwrite=true. Evidence",
+			"(decompiler output, disassembly, string dumps, and any patch or rebuilt build you produced) is cited from",
+			"exports/ in section 3. For a triage summary of one sample use export_triage_report instead.",
 		].join("\n"),
 		parameters: {
 			type: "object",

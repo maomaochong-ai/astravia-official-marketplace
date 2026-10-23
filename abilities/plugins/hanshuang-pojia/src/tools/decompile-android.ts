@@ -46,7 +46,8 @@ export function registerDecompileAndroidTool(ctx: PluginContext): Disposable {
 			"directory afterwards with smali_search, then open only the few files that matter.",
 			"",
 			"Requires jadx or apktool on PATH plus a JDK; probe_environment tells you which are present. The tool",
-			"extracts and reads code — it does not rebuild, sign or repackage the app.",
+			"extracts and reads code; rebuilding, signing and repacking are follow-on steps through `command.run`",
+			"(apktool b / apksigner sign / zipalign) once the smali is edited.",
 		].join("\n"),
 		parameters: {
 			type: "object",

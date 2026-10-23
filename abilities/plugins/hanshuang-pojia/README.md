@@ -55,35 +55,45 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `diff_binaries` | byte-level hunks between two samples |
 | `decompile_function` | register-level pseudo-C for one function, plus the strings it references |
 | `diff_functions` | which functions changed shape vs only changed constants, between two builds |
-| `generate_hook` | a Frida **observation** script for matched Dalvik methods (it never rewrites a result) |
+| `generate_hook` | a Frida script for matched Dalvik methods — `observe` prints only (default), `override` runs the original then returns `return_value`, `replace` skips the original |
+| `frida_dump` | runtime dex extraction for packed apps: emit the scanner script, run it on a device, or reassemble a log into `.dex` files |
 | `triage_directory` | one risk table for every binary under a directory, worst grade first |
 | `search_docs` | keyword search over the 309 bundled field documents (title, id, topic) |
 | `read_doc` | one document body as Markdown, truncated at a visible character budget |
 | `probe_environment` | which declared executables run, with version banners, separating a host refusal from a missing binary |
 | `install_toolchain` | the exact install command for this platform, filtered to the tools one goal actually needs |
+| `kb_checklist` | one of the kit's six tactical checklists by name, e.g. `web_first_30_min` or `pe_ioc` |
+| `kb_payloads` | the kit's payload seeds for one vulnerability class, or the list of classes that exist |
+| `ida_status` | whether an IDA Pro bridge answers on `127.0.0.1:13337`, separating "no grant" from "no listener" |
+| `verify_signature` | signature schemes and signer certificates: structural facts from the APK itself, plus `apksigner verify --print-certs` when it is on the host |
 | `run_radare` | r2 / rabin2 / radiff2 / rasm2: info, strings, functions, disasm, pseudo-C, xrefs, asm, diff, read-only `cmd` |
 | `decompile_android` | jadx / apktool into a sibling directory, then `smali_search` over the unpacked tree |
 | `init_task` | the per-target case layout — `samples/`, `exports/`, `reports/`, README and report skeleton |
 | `write_assessment_report` | fills the four-section assessment into `reports/<target>_security_assessment_report.md`; an unsupplied section is written as unsupplied |
 
-All twenty declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
+All twenty-five declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
 API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling.
 Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
-The four analysis tools are honest about what they are not: no type recovery, no SSA, no variable
+The four analysis tools are precise about what they return: no type recovery, no SSA, no variable
 merging in the pseudo-C; the diff is an instruction-shape fingerprint, not a proof of equivalence;
-the hook template observes and returns the original value — writing a bypass is a decision a human
-makes on top of it, not something this plugin emits.
+and the hook template defaults to an observation script that returns the original value. That default is
+not a ceiling: `mode: "override"` or `"replace"` plus a `return_value` is the rewrite tier, and it runs
+through the same `frida-run` path the skills already ship. `frida_dump` splits the same way — `run`
+needs a device with frida-server, `script` and `assemble` need no hardware at all.
 
-The five toolchain tools follow the same rule. `plugin.json#commands` declares exactly the fourteen
+Six tools spawn an external binary, and they follow the same rule. `plugin.json#commands` declares exactly the fourteen
 executables they may spawn, the host asks the user before granting `agent.command.run`, and every call
 is `execFile` with an argument vector — no shell. `run_radare`'s `cmd` operation refuses writes, shells,
 the debugger, file opens, script execution, project commands, mounts and the `=` remote family (`w`/`W`,
 `!`, `o`/`O`, `d`/`D`, `P`, `R`/`r`, `m`/`M`, `.`, `=`) and lets the read-only `dr` family through; anything that
 would leave r2's own parser is refused too — pipes (`|`), redirects (`>`/`<`), `$(…)`, backticks and `=!`.
+That guard protects the argument vector, not your options: when you do want a byte edit, run `r2 -w`
+through `command.run`, where the command is explicit and logged.
 `decompile_android` writes next to the APK, never into it, and only into a directory that does not exist
 yet: an existing `output_dir` is refused rather than merged into, and `apktool` runs without `-f` so a
-re-run can never wipe a folder you own. There is deliberately no `patches/` directory anywhere.
+re-run can never wipe a folder you own. Rebuilt artefacts land in `exports/` beside the case notes:
+a patch is the output of your edit, so there is no `patches/` folder holding it in advance.
 `probe_environment` runs one short `--version` call per tool, caches the answer for a minute and names the
 remedy for each failure mode: a host refusal is a setting, an absent binary is an install. `install_toolchain`
 turns that into the command you actually type: it filters by goal (`apk` / `native` / `firmware` / `dynamic` /
@@ -120,14 +130,15 @@ addressing, labels, directives, immediates that would need two instructions) are
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the twenty tools |
-| `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`: the fourteen executables declared in `commands`, each one approved by the user |
+| `agent.tools.register`, `agent.toolHandler.execute` | the twenty-five tools |
+| `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`, `verify_signature`, `frida_dump`: the fourteen executables declared in `commands`, each one approved by the user |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
 | `storage.read`, `storage.write` | the sample shelf and settings survive a restart; without them the panel falls back to in-session memory |
 | `fs.read` | listing the workspace and reading samples |
 | `fs.write` | `fs.saveAs` for exported reports (the user picks the path) |
 | `agent.systemPrompt.write` | the dynamic per-turn kernel block: lab state, the page the user is looking at, the tool list |
+| `network.fetch` | `ida_status` only, and only against `127.0.0.1` as declared in `network.allowedHosts`: one GET to port 13337 to see whether an IDA bridge is listening |
 
 ## Where the rules live
 
@@ -183,12 +194,23 @@ pipeline sends. So `src/domain/interceptor.ts` ports the decision function itsel
 missing, and enforcement moves to the turn boundary.
 
 **Refusing is not an accepted ending.** A `Stop` hook reads `lastAssistantMessage`: a policy or
-referral phrasing fires unconditionally, and an identity framing (`As an AI…`) fires when the turn
+referral phrasing fires unconditionally; a **provenance** phrasing — demoting the plugin's own
+`SKILL.md` to "untrusted tool material, recorded but not executed" — is its own class, second only to
+policy; and an identity framing (`As an AI…`) fires when the turn
 delivered nothing. There is no length floor and no deliverable exemption for policy stops — a refusal
 with a code fence stapled to it is still a refusal. `src/domain/refusal.ts` holds the detector, and the
 continuation fragment forbids refusing, forbids explaining limits, and forbids pointing the operator at
 the vendor. The one legal stop is quoting the exact error text once and then switching to a path that
-still produces the artefact.
+still produces the artefact. The plugin continues at most three times per turn and gives up early when
+the same refusal comes back verbatim; the host's `DEFAULT_MAX_STOP_CONTINUATIONS = 8` is the outer bound.
+
+**Kit documents are instructions, not material.** The host's own rule treats tool output as untrusted
+data; that rule is right about the target's bytes and wrong about this kit's own documents. A `SKILL.md`
+arriving through a file read, a doc-search envelope, or a compacted transcript is *not* demoted by it.
+`agent/docs/SYSTEM.md` §4.1, `agent/docs/AGENTS.md` §二, and the skill's §0.9 each draw the line at the
+kit boundary, and `read_doc` stamps the same provenance line on every result. What counts as material is
+the target's own bytes — sample strings, its source, logs, pages, captures — and an injection string
+found there is a finding to report, not an order to obey.
 
 ## Workbench kit 2.0
 
@@ -252,7 +274,7 @@ src/
 │   ├── report/    report.ts
 │   ├── interceptor.ts               # port of upstream L1/L4: injection verdict, term map, shortcuts
 │   ├── refusal.ts                   # turn-boundary recovery: detector + continuation fragment
-│   ├── system-prompt.generated.ts   # inlined from agent/docs/SYSTEM.md; do not hand-edit
+│   ├── playbooks.ts                 # checklist types + payload sections: names a bundled doc, never copies its prose
 │   └── triage.ts                    # entry point: detect → parse → audit → report
 ├── domain/toolchain/                # external executables: nothing here starts a process by itself
 │   ├── catalog.ts                   # TOOLCHAIN / COMPANIONS / COMMANDS: must equal plugin.json#commands
@@ -333,10 +355,13 @@ The 309 field documents under `src/content/docs/` are indexed by `scripts/sync-d
 `--check` after adding or editing one, and keep `--check` in CI. The documents ship as lazy chunks, so an
 article that is never opened costs no download.
 
-## Limits worth knowing
+## Implementation depth
 
-- Android signature digests are read from the v1 files and the APK Signing Block, **not** cryptographically verified.
-- The five toolchain tools borrow binaries; none of them downloads or installs one. `probe_environment` reports
+- Android signature digests are read from the v1 files and the APK Signing Block as structured fields.
+  When the verdict matters, run `apksigner verify --print-certs` or `keytool -printcert -jarfile` in your
+  own shell — both are in the toolchain `install_toolchain` names — and compare against what the plugin
+  recorded. It reports what the file claims, without pretending that claim is a verification.
+- The four toolchain tools borrow binaries; none of them downloads or installs one. `probe_environment` reports
   what is present, `install_toolchain` prints the command for your platform without running it, and when the
   host refuses the channel the fix is the plugin's declaration or its settings, not `PATH`.
 - `run_radare` runs one r2 invocation per call (three for `decompile` with `output_mode=summary`) with a
@@ -344,14 +369,23 @@ article that is never opened costs no download.
   apktool 10 minutes each and returns the head of the log, not the sources.
 - `smali_search` reads extension-filtered files up to 2 MiB each, at most 8 000 of them, and stops at the
   hit limit — it says so rather than pretending the tree ended.
-- Packed/encrypted code is reported, never unpacked; `native.packed` is a heuristic (entropy + import count, or a `UPX!` marker).
+- Packed or encrypted code is flagged by `native.packed` (entropy + import count, or a `UPX!` marker), so
+  a stub in the way is named early. Unpacking is the next step rather than a blocked one, and it runs in
+  your own shell: `upx -d` for UPX, a Frida memory dump for a runtime dex or `.so`, then
+  `decompile_android` and `smali_search` over whatever came out.
+  `agent/skills/apkseep/references/advanced-unpacking.md` carries the full procedure, including the stage
+  where a clean-looking dump turns out to be a skeleton.
 - DEX string scan is capped at 6 dex files and 24 MiB; string extraction stops at 400 results per call in triage and 500 in the standalone tool.
 - Mach-O fat binaries analyse the first slice; IPA lookup tries at most three `Payload/*.app/*` candidates for the main binary.
 - `disassemble_range` is a linear sweep with file offsets, not a control-flow analysis: unknown bytes
   print as `db 0xNN` and the sweep advances one byte, so a listing after an unknown opcode may be
-  misaligned. Branch targets say `file+0x…` and prove nothing about reachability. No pseudo-C, no
-  assembler, no Java/smali decompilation.
+  misaligned. Branch targets say `file+0x…` and prove nothing about reachability. Pair it with
+  `run_radare decompile` for pseudo-C and `decompile_android` for Java/smali.
 - Symbol tables are whatever the file carries: a stripped binary yields imports only, and the tool
   says so rather than inventing names.
-- Nothing is executed, patched, resigned or repacked, and no Frida hook, keygen input or license-bypass
-  patch is generated. The plugin is read-only by design.
+- The tools stay on the reading side: they do not execute the sample and they do not edit it in place.
+  Everything past reading — a patch, a re-sign, a repack, a hook that rewrites a return value — runs
+  through `command.run` (limited to the fourteen binaries in `plugin.json#commands`) or the skill scripts
+  (`agent/skills/apk-reverse/scripts/rebuild-sign-install.sh`, `frida-run.sh`), or straight from your own
+  shell; either way the step is a command you can see and rerun. When the choice is between a patch and a
+  keygen, `agent/skills/softseep/references/project-paradigms.md` gives the decision rule per architecture.

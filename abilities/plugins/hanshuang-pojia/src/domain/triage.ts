@@ -285,7 +285,7 @@ async function analyseApkLike(bytes: Uint8Array, index: ZipIndex, format: Sample
 	];
 
 	limits.push(
-		"APK signatures are detected structurally; the digests are not cryptographically verified.",
+		"APK signatures are read structurally; verify the digests with apksigner verify --print-certs when the verdict matters.",
 		"DEX analysis reads the string pool only — no decompilation or control-flow review.",
 		`Readable strings were sampled from the first ${formatBytes(MAX_STRING_SCAN)} of the file.`,
 	);

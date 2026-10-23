@@ -38,8 +38,12 @@ async function writeLab(ctx: PluginContext, state: LabState): Promise<void> {
 	}
 }
 
-/** L1 判定每个会话只记一次日志，避免每轮刷屏。 */
+/** L1 判定每个端点只记一次日志，避免每轮刷屏。 */
 const loggedSafetyEndpoints = new Set<string>();
+
+/** 按回合记续跑次数与上一次的幂等键；Map 保序，超限时丢最早的一条。 */
+const recoveryByTurn = new Map<string, { key: string; count: number }>();
+const MAX_TRACKED_TURNS = 8;
 
 /**
  * 上游 L1 的可观测性等价物。
@@ -61,7 +65,6 @@ function logSafetyEndpointOnce(model: { provider?: string; api?: string }): void
 			api,
 			provider,
 			shape: "messages(openai)",
-			mode: typeof process !== "undefined" ? process.env?.PI_SAFETY_PAYLOAD : undefined,
 		});
 		console.info(
 			`[hanshuang-pojia] safety ${decision.verdict} provider=${provider} api=${api} reason=${decision.reason}`,
@@ -169,14 +172,14 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 				timeoutMs: 2000,
 				handler: async ({ event }) => {
 					const contexts: string[] = [];
+					let lab = await readLab(ctx);
 					const command = parseLabCommand(event.prompt);
 					if (command.action !== "none") {
-						const current = await readLab(ctx);
-						const next: LabState =
+						lab =
 							command.action === "enter"
-								? { enabled: true, since: current.since ?? new Date().toISOString() }
+								? { enabled: true, since: lab.since ?? new Date().toISOString() }
 								: LAB_OFF;
-						await writeLab(ctx, next);
+						await writeLab(ctx, lab);
 						contexts.push(
 							command.action === "enter"
 								? `Lab mode is now ON for this workspace.${command.rest ? ` Task: ${command.rest}` : ""}`
@@ -185,7 +188,6 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 					}
 
 					// 口令与术语只在 lab 开启时生效（上游同一条门）。
-					const lab = await readLab(ctx);
 					if (lab.enabled) contexts.push(...promptContexts(event.prompt));
 
 					if (contexts.length === 0) return { action: "continue" as const };
@@ -206,12 +208,22 @@ export function registerRuntimeContributions(ctx: PluginContext): Disposable[] {
 				timeoutMs: 2000,
 				handler: async ({ event }) => {
 					const lab = await readLab(ctx);
+					const previous = recoveryByTurn.get(event.turnId);
 					const outcome = planRecovery(event.lastAssistantMessage, {
 						enabled: lab.enabled,
-						stopHookActive: event.stopHookActive,
+						attempt: { continued: previous?.count ?? 0, lastKey: previous?.key ?? null },
 					});
 					if (!outcome) return;
-					// 宿主对 Stop 续跑自己限次（max-stop-continuations），这里只负责判定。
+					recoveryByTurn.set(event.turnId, {
+						key: outcome.idempotencyKey,
+						count: (previous?.count ?? 0) + 1,
+					});
+					while (recoveryByTurn.size > MAX_TRACKED_TURNS) {
+						const oldest = recoveryByTurn.keys().next().value;
+						if (oldest === undefined) break;
+						recoveryByTurn.delete(oldest);
+					}
+					// 宿主对 Stop 续跑另有硬上限（max-stop-continuations）。
 					return { action: "continue-agent" as const, continuationFragments: [outcome.fragment] };
 				},
 			}),

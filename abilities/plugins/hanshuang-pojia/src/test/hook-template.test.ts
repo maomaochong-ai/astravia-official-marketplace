@@ -60,12 +60,46 @@ describe("hook script", () => {
 		expect(script).toContain("return result;");
 	});
 
-	it("never rewrites the result or forces a bypass", () => {
-		// 这是整个模板的合规底线：观测，不改写。
-		for (const banned of ["return true", "return 1;", "return \"", "Java.choose", "setReturnValueForce"]) {
+	it("keeps the default observation script free of rewrites", () => {
+		// 默认档的底线：只观测。改写要显式选 override / replace 并给 return_value。
+		for (const banned of ["return true", "return 1;", 'return "', "Java.choose", "setReturnValueForce"]) {
 			expect(script).not.toContain(banned);
 		}
 		expect(script).toContain("OBSERVATION ONLY");
+	});
+
+	it("runs the original and replaces its result in override mode", () => {
+		const overridden = buildHookScript(targets, [], { source: "app.apk", query: "license", mode: "override", returnValue: "true" });
+		expect(overridden).toContain("overload.implementation");
+		// 原方法仍被调用：override 是「跑完再改」，不是短路。
+		expect(overridden).toContain("original0.apply(this, arguments)");
+		expect(overridden).toContain("return true;");
+		expect(overridden).toContain("// OVERRIDE:");
+		expect(overridden).not.toContain("OBSERVATION ONLY");
+		// 改写前后都记录，否则一次 run 看不出改了什么。
+		expect(overridden).toContain('event: "override"');
+	});
+
+	it("skips the original entirely in replace mode", () => {
+		const replaced = buildHookScript(targets, [], { source: "app.apk", query: "license", mode: "replace", returnValue: 'Java.use("java.lang.Boolean").TRUE' });
+		expect(replaced).toContain("// REPLACE:");
+		expect(replaced).not.toContain("original0.apply(this, arguments)");
+		expect(replaced).toContain('return Java.use("java.lang.Boolean").TRUE;');
+	});
+
+	it("refuses a return_value that would break the generated script", () => {
+		const build = (returnValue: string): string => buildHookScript(targets, [], { mode: "override", returnValue });
+		// 缺表达式：空串与只带空白都不行，否则会生成 `return ;`。
+		expect(() => buildHookScript(targets, [], { mode: "override" })).toThrow("return_value is required");
+		expect(() => buildHookScript(targets, [], { mode: "replace", returnValue: "   " })).toThrow("return_value is required");
+		// 多行 / 分号 / 注释会把单条 return 变成一段代码，任一处越界就拒绝。
+		expect(() => build("true;\nlog({})")).toThrow("single expression");
+		expect(() => build("1; 2")).toThrow("single expression");
+		expect(() => build("true // always")).toThrow("must not contain comments");
+		expect(() => build("(1")).toThrow("unbalanced brackets");
+		expect(() => build("a".repeat(201))).toThrow("keep it under");
+		// observe 忽略 return_value，不让它影响默认档。
+		expect(buildHookScript(targets, [], { mode: "observe", returnValue: "true" })).not.toContain("return true;");
 	});
 
 	it("includes a Java backtrace only when asked", () => {

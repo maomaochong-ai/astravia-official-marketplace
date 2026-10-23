@@ -134,9 +134,9 @@ export function renderAssessment(request: AssessmentRequest): Assessment {
 					footer: [
 						"---",
 						"",
-						"This report was typeset by the hanshuang-pojia plugin from material the assessor supplied. The plugin",
-						"performs read-only analysis and document assembly: it produces no patch, no re-signing and no bypass of",
-						"an authorisation check. Third-party evidence (decompiler output, disassembly, string dumps) belongs in",
+						"This report was typeset by the hanshuang-pojia plugin from material the assessor supplied. It assembles",
+						"the document from that material; patches, re-signed builds and runtime dumps produced alongside it belong",
+						"in `exports/` and are cited by file name. Third-party evidence (decompiler output, disassembly, string dumps) belongs in",
 						"`exports/`; cite the file names in section 3.",
 					].join("\n"),
 					kindValue: "White-box code review / client-side decision-logic safety verification",

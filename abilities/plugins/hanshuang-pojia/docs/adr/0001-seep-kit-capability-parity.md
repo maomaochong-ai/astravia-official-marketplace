@@ -37,7 +37,7 @@ TypeScript 面板 + Agent 工具，运行在宿主渲染进程内；kit 是用�
 | # | kit 工具 | kit 机制 | 插件现状 | 结论 |
 |---|---|---|---|---|
 | 1 | `seep_status` | 探测 r2/jadx/apktool 是否在 PATH | `probe_environment`：八条 `--version` 探针（r2/rabin2/radiff2/rasm2/jadx/apktool/java/frida），逐项区分「宿主拒绝」与「未安装」 | 已具备（P2 补齐） |
-| 2 | `seep_ida_status` | 探测 IDA 授权与端口 | 无 | 文档化：面板不持有 IDA 会话 |
+| 2 | `seep_ida_status` | 探测 IDA 授权与端口 | `ida_status`（2.9.0）：向 `127.0.0.1:13337` 发一次 GET，任何 HTTP 响应（含 4xx）算在线；无授权 / 无监听 / 宿主无 network API 三态分开报，且不把「没探到」写成「没装」 | 已具备（P4 补齐；仍不持有 IDA 会话） |
 | 3 | `seep_r2_info` | `rabin2 -I/-S/-z` | `triage_binary` + Manifest / Entropy 页 | 已具备 |
 | 4 | `seep_r2_cmd` | 任意 r2 命令（`aaa; {command}` 直接进 `-c`，零限制） | `run_radare operation=cmd`：同样进 `r2 -q -c`，但命令先过只读守卫（写/open/调试/工程/重启/挂载/网络族与管道、重定向、`$(`、反引号一律拒绝） | 已具备（P2 补齐，有界：不复刻零限制） |
 | 5 | `seep_r2_strings` | 按节区抽字符串 | `scan_binary_strings`，带偏移与过滤 | 已具备 |
@@ -54,8 +54,8 @@ TypeScript 面板 + Agent 工具，运行在宿主渲染进程内；kit 是用�
 | 16 | `seep_apk_gen_hook` | 生成 Frida hook 模板 | 无 | **本期补齐**：`generate_hook`（只生成插桩模板，不生成绕过逻辑） |
 | 17 | `seep_kb_search` | 289 篇战术笔记检索 | `search_docs`（309 篇，按标题/id/主题） | 已具备 |
 | 18 | `seep_kb_read` | 读单篇，带预算 | `read_doc`（`maxChars` 可见截断） | 已具备 |
-| 19 | `seep_kb_checklist` | 6 类清单，每次读 kit kb 里对应的一篇 | 那六篇原文全部随包，按 id 用 `read_doc` 读：`kb/ctf-website/checklists/{web-ctf-first-30-min,attack-matrix,evidence}`、`kb/pe-reverse/techniques/06-ioc-extraction/{01-ioc-extraction,02-persistence-startup-chain}`、`kb/pe-reverse/techniques/07-yara-sigma/01-yara-rule-writing` | 文档化：内容 1:1 齐备，无参数化 checklist 工具 |
-| 20 | `seep_kb_payloads` | 结构化 payload 库，按 `jwt/ssrf/sqli/ssti/prototype` 分节 | 原文随包：`kb/ctf-website/payloads/web-payload-seeds`（`read_doc` 可读全文）；无按类别切片的工具 | 拒绝：按场景拼装攻击载荷超出本插件的「分析 + 授权验证」边界；原文仍可检索阅读 |
+| 19 | `seep_kb_checklist` | 6 类清单，每次读 kit kb 里对应的一篇 | `kb_checklist`（2.9.0）：六类同名映射到随包那六篇，`maxChars` 可见截断；未知类型回菜单而不静默改用默认项。六篇原文仍可直接 `read_doc` | 已具备（P4 补齐；只存「类别 → 文档 id」，不复制正文，避免与 kit 文档漂移） |
+| 20 | `seep_kb_payloads` | 结构化 payload 库，按 `jwt/ssrf/sqli/ssti/prototype` 分节 | `kb_payloads`（2.9.0）：按类别返回 `web-payload-seeds` 的对应章节（`sqli`/`nosqli`/`ssti`/`ssrf`/`traversal`/`jwt`/`headers` 等别名），`all` 返回全文；未命中列出真实章节。与上游的差异：**不回退前 60 行原文**，命中多节全部返回并逐节标注 | **决策反转**（原为拒绝）：切片只是索引随包原文，不生成、不拼装面向具体目标的载荷；生成式组合仍不做 |
 | 21 | `seep_task_init` | 建 case 目录骨架 | `init_task`：`<root>/<name>/{samples,exports,reports}` + `README.md`，`report=true` 时写 `reports/security-report.md` 骨架；**不建 `patches/`** | 已具备（P2 补齐） |
 | 22 | `seep_auto_triage` | 遍历目录逐个分诊 | 单文件 `triage_binary` | **本期补齐**：`triage_directory` |
 | 23 | `seep_gen_security_report` | 七参数白盒评估报告模板（`vuln_type`/`branch_location`/PoC/加固建议），直接落 `reports/` | `write_assessment_report`（2.4.5）：同一套四段式契约，落 `reports/<target>_security_assessment_report.md`；`init_task` 建骨架，`export_triage_report` 导出分诊结论 | **已具备**：参数化填充已实现；与上游的差异是有意为之 —— 未提供的段落写「未提供」而不虚构结论、不印示例汇编、不引用 `patches/`，支持 `zh`/`en` |
@@ -91,8 +91,9 @@ TypeScript 面板 + Agent 工具，运行在宿主渲染进程内；kit 是用�
 ### D1 能力对标以"面板能从字节算出什么"为口径
 
 同一个问题（"这个函数在做什么"）在 kit 里由 r2 回答，在插件里必须由 TypeScript 回答。矩阵按
-**用户可观察结果**对齐，不按工具名对齐。由此得出的判定：23 个 seep 工具中 12 项已具备、4 项本期
-补齐、3 项规划、2 项拒绝也要补齐、2 项文档化。
+**用户可观察结果**对齐，不按工具名对齐。本表随版本演进：首版判定是「23 个 seep 工具中 12 项已具备、4 项本期
+补齐、3 项规划、2 项拒绝也要补齐、2 项文档化」；2.9.0 把最后三项一起收口（`seep_ida_status`、`seep_kb_checklist`、
+`seep_kb_payloads`），至此 23 项全部具备，其中 row 4（任意 r2 命令）、row 20（payload 切片）为有界实现。
 
 ### D2 移植伪代码恢复，但明确它是什么
 
@@ -183,10 +184,12 @@ IDA 不在其中：它没有可脚本化的命令行契约，继续走 kit 的 M
 
 ## 4. 后果
 
-- **能力覆盖**：23 个 seep 工具的可观察结果里，17 项由插件自己在进程内给出；另有 4 项（`seep_reverse`、
+- **能力覆盖**：23 个 seep 工具的可观察结果里，19 项由插件自己在进程内给出（首版 17 项，2.9.0 又收口
+  `seep_kb_checklist` / `seep_kb_payloads` 两项文档切片）；`seep_ida_status` 改成一次本机端口探测；另有 4 项（`seep_reverse`、
   `seep_decompile_apk`、`seep_disasm`、`seep_list_functions` 对应的 radare2 / jadx / apktool 面）现在通过
   用户本机二进制补齐，前提是宿主授予命令通道。
-- **新增工具面**：10 → 18 个 Agent 工具。`ids.ts`、`register-tools.ts`、locale 文案、工具计数断言四处
+- **新增工具面**：10 → 18 个 Agent 工具（2.5.0 加 `install_toolchain` 至 20，2.9.0 加 `kb_checklist` /
+  `kb_payloads` / `ida_status` 至 23）。`ids.ts`、`register-tools.ts`、locale 文案、工具计数断言四处
   同步，漏一处测试就红。
 - **诚实性成本**：伪代码、语义 diff、hook 模板都必须带“这不是什么”的说明，文案与测试一起写；工具链工具
   同样要把“宿主拒绝”和“未安装”分开说。

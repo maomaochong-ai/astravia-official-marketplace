@@ -22,11 +22,11 @@ describe("decideSafetyInjection", () => {
 		expect(decision.verdict).toBe("SKIP-INEFFECTIVE");
 	});
 
-	it("injects for gemini-shaped payloads and honours the mode override", () => {
+	it("injects for gemini-shaped payloads and refuses a forced injection onto an openai body", () => {
 		expect(decideSafetyInjection({ api: "", provider: "", shape: "contents(gemini)" }).verdict).toBe("INJECT");
 		expect(
 			decideSafetyInjection({ api: "openai", provider: "deepseek", shape: "messages(openai)", mode: "all" }).verdict,
-		).toBe("INJECT");
+		).toBe("SKIP-INEFFECTIVE");
 		expect(
 			decideSafetyInjection({ api: "", provider: "gemini", shape: "contents(gemini)", mode: "off" }).verdict,
 		).toBe("SKIP");
@@ -56,9 +56,9 @@ describe("sensitive rewrite", () => {
 		expect(applySensitiveRewrite("破解一下")).toBe("白盒鉴权脆弱性测试一下");
 	});
 
-	it("does not rescan its own output", () => {
-		// 「破解」→「白盒鉴权脆弱性测试」后含「白盒」，不会再被别的规则二次替换。
+	it("leaves its own output stable on a second pass", () => {
 		const once = applySensitiveRewrite("破解");
+		expect(once).toBe("白盒鉴权脆弱性测试");
 		expect(applySensitiveRewrite(once)).toBe(once);
 	});
 
@@ -88,6 +88,7 @@ describe("resolveShortcut", () => {
 	it("requires an argument unless the command carries its own target", () => {
 		expect(resolveShortcut("poc")).toBeNull();
 		expect(resolveShortcut("report")?.expansion).toContain("白盒安全评估报告");
+		expect(resolveShortcut("体检")?.expansion).toContain("环境体检任务");
 	});
 
 	it("ignores ordinary prose", () => {

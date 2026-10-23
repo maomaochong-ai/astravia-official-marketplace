@@ -74,18 +74,21 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 命令通道必须在 `activate(ctx)` 时闭包捕获，经 `src/features/workbench/services/toolchain.ts` 适配成
 领域层的 `CommandRunner`。领域层不 import SDK，全部逻辑可在无 r2 环境下用假 runner 测试。
 
-**D15** 上游 23 个工具压成 18 个注册项，合并口径：
+**D15** 上游 23 个工具映射到本插件的注册项，合并口径（首版 18 项；2.5.0 加 `install_toolchain`，2.9.0 因
+`seep_ida_status` / `seep_kb_checklist` / `seep_kb_payloads` 不再合并而拆出，现为 23 项）：
 
 | 上游 | 本插件 | 说明 |
 |---|---|---|
-| `seep_status` + `seep_ida_status` | `probe_environment` | 只报 r2/rabin2/radiff2/rasm2/jadx/apktool/java/frida；IDA 无可靠 CLI 探测 |
+| `seep_status` | `probe_environment` | 只报 r2/rabin2/radiff2/rasm2/jadx/apktool/java/frida |
+| `seep_ida_status` | `ida_status`（2.9.0） | 一次 `127.0.0.1:13337` 的 GET；无授权 / 无监听 / 无 network API 三态分开报。已装的 `probe_environment` 不探 IDA —— 它没有可靠 CLI |
 | `seep_r2_info` `_strings` `_functions` `_disasm` `_decompile` `_xrefs` `_asm` `_diff` `_cmd` | `run_radare` | 一个 `operation` 枚举，`output_mode: full/fold/summary` |
 | `seep_apk_decompile` `_unpack` `_smali_search` | `decompile_android` | jadx / apktool / fs 搜索 |
 | `seep_task_init` | `init_task` | 工作区骨架（`samples/` `exports/` `reports/`）+ 报告骨架 |
 | `seep_gen_security_report` | `write_assessment_report`（D19，2.4.5） | 四段式模板填充；未提供的段落写「未提供」，不虚构结论、不引 `patches/` |
-| `seep_kb_search` `_read` `_checklist` | 既有 `search_docs` / `read_doc` | 随包 309 篇文档，无需进程；六类清单按 `read_doc` id 直取（id 映射见 `plugin-handbook` §7.5.1） |
+| `seep_kb_search` `_read` | 既有 `search_docs` / `read_doc` | 随包 309 篇文档，无需进程 |
+| `seep_kb_checklist` | `kb_checklist`（2.9.0） | 六类同名映射到随包那六篇；未知类型回菜单，不静默改用默认项 |
 | `seep_auto_triage` | 既有 `triage_directory` | 纯字节，无进程 |
-| `seep_kb_payloads` | **不做** | 见 ADR 0001 D7：不做 `category` 切片、不拼装面向目标的载荷；种子清单原文本身随包，可当阅读材料 |
+| `seep_kb_payloads` | `kb_payloads`（2.9.0，原 D7 拒绝） | 按类别切片，`all` 全文，未命中列真实章节；与上游差异：不回退前 60 行。切片不生成新载荷（见 ADR 0001 row 20 的决策反转） |
 
 **D16** `run_radare` 的 `cmd` 走只读守卫 `assertReadOnly`：拒绝 `w*`（写字节/写内存）、`!`/`#!`（shell）、
 `oo*`、`o`（打开另一个文件：命令通道不过宿主 fs，`o /etc/passwd` 会绕出项目根）、`d*`（调试，`dr` 只读寄存器除外）、
@@ -117,14 +120,16 @@ ADR 0001 的前提是"面板不能调用 MCP、插件不能起子进程"，因�
 
 ## 4. 后果
 
-- 工具数 14 → 19（2.4.2 的 4 个 → 2.4.5 再 +1）；`EXPECTED_TOOL_COUNT = 19`；新增工具的中英双语标签同步。
+- 工具数 14 → 19（2.4.2 的 4 个 → 2.4.5 再 +1；2.5.0 → 20；2.9.0 → 23）；中文双语标签同步。
+- 2.9.0 新增 `network.fetch`（`allowedHosts: ["127.0.0.1"]`）只供 `ida_status`；同样是配置契约变更，
+  已装用户升级时会看到重新授权提示 —— 这一点必须在发布说明里写明，不能静默变化。
 - 新增权限 `agent.command.run` 属于配置契约变更 → `configVersion` +1，版本 2.4.1 → 2.4.2。
 - 用户会看到"命令授权"提示；拒绝时工具返回明确说明而不是崩。面板离线能力不受影响。
 - 未安装工具时，`probe_environment` 给出逐项安装提示（`brew install radare2` / `winget …` /
   `pipx install frida-tools`），而不是让 `run_radare` 抛 ENOENT。
-- ADR 0001 §2.1 里标"拒绝/规划"的外部工具行，以本 ADR 为准；`seep_kb_payloads` 的拒绝与 D7 的其它
-  拒绝项（防拒中继、拒答探测、keygen、补丁字节生成）**不变**。
-- 依旧不做：IDB/IDA 会话、把 r2/jadx 打进安装包、"自动安装依赖"（宿主无此能力，插件不假装有）。
+- ADR 0001 §2.1 里标"拒绝/规划"的外部工具行，以本 ADR 为准；`seep_kb_payloads` 的拒绝**已于 2.9.0
+  撤回**（见 row 20 的决策反转）；D7 的其它拒绝项（防拒中继、拒答探测、keygen、补丁字节生成）**不变**。
+- 依旧不做：IDB/IDA 会话（只做端口探测）、把 r2/jadx 打进安装包、"自动安装依赖"（宿主无此能力，插件不假装有）。
 
 ## 5. 验证
 

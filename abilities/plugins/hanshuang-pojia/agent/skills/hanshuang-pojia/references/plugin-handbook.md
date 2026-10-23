@@ -134,7 +134,7 @@ resident file is the part that must be true on every turn; everything else is fe
 
 The switch is real state, not a conversation mood:
 
-- Stored in plugin private storage (`workbench/lab.json`), so it survives a reload, a model switch
+- Stored in plugin private storage (`workbench/lab-mode.json`), so it survives a reload, a model switch
   and a fresh session.
 - Enter with `lab：` / `lab:` / `进入实验：` / `实验环境：` followed by the task; leave with
   `退出实验` / `退出工作环境` / `exit lab`. Parsing is `domain/lab-mode.ts`, matching only at the

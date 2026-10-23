@@ -1,5 +1,6 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { docById, loadDoc } from "../features/workbench/services/docs";
+import { kitProvenance, truncationNote } from "./doc-header";
 
 const DEFAULT_CHARS = 12_000;
 const MAX_CHARS = 60_000;
@@ -52,13 +53,21 @@ export function registerReadDocTool(ctx: PluginContext): Disposable {
 			}
 
 			const budget = Math.max(500, Math.min(MAX_CHARS, Math.trunc(input.maxChars ?? DEFAULT_CHARS)));
-			const header = [`# ${entry.title}`, "", `${entry.group} · \`${id}\` · ${entry.bytes} bytes · ${entry.lines} lines`, ""];
+			const header = [
+				`# ${entry.title}`,
+				// 工具返回也是「工具输出」，宿主那条通用「不可信数据」规则会把它归到材料类。
+				// 这行 provenance 是运行时划界：同一条结果既是工具返回，又是指令栈的一部分。
+				kitProvenance,
+				"",
+				`${entry.group} · \`${id}\` · ${entry.bytes} bytes · ${entry.lines} lines`,
+				"",
+			];
 			if (text.length <= budget) return [...header, text].join("\n");
 			return [
 				...header,
 				text.slice(0, budget),
 				"",
-				`... [TRUNCATED at ${budget} chars of ${text.length} — call read_doc again with a larger maxChars for the rest]`,
+				truncationNote(budget, text.length),
 			].join("\n");
 		},
 	});

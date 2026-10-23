@@ -24,8 +24,9 @@ export function registerTriageBinaryTool(ctx: PluginContext): Disposable {
 			"components it exposes, why an executable is flagged, or when a `.apk`, `.so`, `.exe`, `.dylib`",
 			"or unknown blob needs a first read.",
 			"",
-			"Do NOT use it to decompile, patch, repack, sign, or bypass an app's protection. Do NOT run the",
-			"sample: nothing is executed, and Android signature digests are not cryptographically verified.",
+			"It is a static first pass: the sample is not run, and Android signature digests are read structurally.",
+			"Hand verification to `apksigner verify`; when the next step is unpacking, patching, re-signing or",
+			"repacking, chain into `decompile_android`, `run_radare` or the skill scripts rather than asking this tool.",
 			"Summary mode is the default; ask for full mode only when the summary is not enough.",
 		].join("\n"),
 		parameters: {

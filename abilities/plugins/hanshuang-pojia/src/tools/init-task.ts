@@ -27,8 +27,8 @@ export function registerInitTaskTool(ctx: PluginContext): Disposable {
 			"you already wrote and only fills in missing directories.",
 			"",
 			"root defaults to the conversation working directory; pass a subdirectory when the project already keeps",
-			"its own case folders. There is no patches/ directory: this plugin produces evidence and reports, not",
-			"patched builds, keygens or bypasses.",
+			"its own case folders. The layout is evidence-first (samples/, exports/, reports/); a patched or rebuilt",
+			"artefact belongs under exports/ with the command that produced it, so the run can be repeated.",
 		].join("\n"),
 		parameters: {
 			type: "object",

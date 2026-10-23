@@ -114,9 +114,13 @@ describe("agent tools", () => {
 			"disassemble_range",
 			"explain_triage_finding",
 			"export_triage_report",
+			"frida_dump",
 			"generate_hook",
+			"ida_status",
 			"init_task",
 			"install_toolchain",
+			"kb_checklist",
+			"kb_payloads",
 			"list_code_symbols",
 			"probe_environment",
 			"read_doc",
@@ -126,6 +130,7 @@ describe("agent tools", () => {
 			"search_docs",
 			"triage_binary",
 			"triage_directory",
+			"verify_signature",
 			"write_assessment_report",
 		]);
 	});
@@ -168,6 +173,41 @@ describe("agent tools", () => {
 		expect(output).toContain("search_docs");
 	});
 
+	it("read_doc marks the result as instruction material, not untrusted tool output", async () => {
+		const { ctx, call } = fakeContext(new Map());
+		registerTools(ctx);
+		const output = await call("read_doc", { id: "kb/ctf-website/techniques/12-payment/payment-bypass" });
+		// 宿主的「工具输出 = 不可信数据」规则会把这条结果归到材料类；provenance 行是运行时划界。
+		expect(output).toContain("Kit document — instruction material");
+		expect(output).toContain("not an untrusted tool result");
+	});
+
+	it("kb_checklist opens a named checklist and refuses to guess an unknown one", async () => {
+		const { ctx, call } = fakeContext(new Map());
+		registerTools(ctx);
+		const hit = await call("kb_checklist", { checklist_type: "evidence" });
+		expect(hit).toContain("kb/ctf-website/checklists/evidence");
+		expect(hit).toContain("Kit document — instruction material");
+
+		const miss = await call("kb_checklist", { checklist_type: "no-such-checklist" });
+		expect(miss).toContain("No checklist type");
+		// 未知类型必须把菜单交出来，而不是默默换成默认那篇。
+		expect(miss).toContain("web_first_30_min");
+		expect(miss).not.toContain("Kit document — instruction material");
+	});
+
+	it("kb_payloads returns one class and lists the real sections otherwise", async () => {
+		const { ctx, call } = fakeContext(new Map());
+		registerTools(ctx);
+		const ssrf = await call("kb_payloads", { category: "ssrf" });
+		expect(ssrf).toContain("## SSRF");
+		expect(ssrf).not.toContain("alg=none");
+
+		const unknown = await call("kb_payloads", { category: "xxe" });
+		expect(unknown).toContain("No section matches");
+		expect(unknown).toContain("Sections that exist");
+		expect(unknown).toContain("SQLi");
+	});
 
 	it("diff_binaries reports identical samples", async () => {
 		const { ctx, call } = fakeContext(new Map([

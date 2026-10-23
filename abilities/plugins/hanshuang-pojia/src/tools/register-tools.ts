@@ -19,6 +19,11 @@ import { registerDecompileAndroidTool } from "./decompile-android";
 import { registerInitTaskTool } from "./init-task";
 import { registerWriteAssessmentTool } from "./write-assessment-report";
 import { registerInstallToolchainTool } from "./install-toolchain";
+import { registerKbChecklistTool } from "./kb-checklist";
+import { registerKbPayloadsTool } from "./kb-payloads";
+import { registerIdaStatusTool } from "./ida-status";
+import { registerVerifySignatureTool } from "./verify-signature";
+import { registerFridaDumpTool } from "./frida-dump";
 
 /**
  * 工具注册总入口。每个工具单独 try：
@@ -48,6 +53,11 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerInitTaskTool,
 		registerWriteAssessmentTool,
 		registerInstallToolchainTool,
+		registerKbChecklistTool,
+		registerKbPayloadsTool,
+		registerIdaStatusTool,
+		registerVerifySignatureTool,
+		registerFridaDumpTool,
 	]) {
 		try {
 			disposables.push(register(ctx));

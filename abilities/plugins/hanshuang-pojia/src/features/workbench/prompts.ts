@@ -60,7 +60,7 @@ export function buildPrompt(action: PromptAction, context: PromptContext = {}): 
 			return [
 				`Continue the static triage of ${subject(context)} that I started in the Hanshuang Pojia panel.${verdict(context)}`,
 				"Call triage_binary in full mode for the complete rule set, then walk me through the three findings that drive the score and what each one implies for the people installing this build.",
-				"Keep it to static evidence: no execution, no patching, no unpacking steps I would have to run.",
+				"Ground every claim in the static evidence, then name the single next step — unpack, patch or dynamic run — that would settle what the static pass cannot.",
 			].join("\n");
 		case "finding":
 			return [
@@ -131,7 +131,7 @@ export function buildPrompt(action: PromptAction, context: PromptContext = {}): 
 				`Read the function the Hanshuang Pojia panel is disassembling in ${subject(context)}${context.other ? ` (${context.other})` : ""}.`,
 				"The panel ships its own linear-sweep decoder and control-flow builder, so treat its listing as a starting point, not ground truth: call disassemble_range around the same offsets for a second opinion and say where the two disagree.",
 				"Then reconstruct what the function does: arguments, return value, the branch that decides behaviour, and any string or global it touches. Quote offsets verbatim and mark anything you inferred rather than read.",
-				"Stay static — no execution, no patching, no hooking.",
+				"Stay on static reading for this pass; say which offset or call site would need a dynamic run or a patch to answer what the listing cannot.",
 			].join("\n");
 		case "docs":
 			return [
