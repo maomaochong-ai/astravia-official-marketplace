@@ -170,17 +170,25 @@ runtime — the host never tells it where it lives. `npm run verify:generated` f
 `agent/docs/AGENTS.md` carries the same protocol for agents outside Astravia: tool routing, the G-Auth
 gate, the delivery shape, and the mechanisms that have no counterpart here.
 
-Two things upstream does that this package cannot. It injects `safetySettings: BLOCK_NONE` at the
-provider request layer — the host exposes twelve lifecycle hooks and none of them sees the request
-payload, and the field is Google-private (an OpenAI-compatible gateway answers `400 UNKNOWN_FIELD`).
-It also rewrites the user's prompt; `UserPromptSubmit` can only append `additionalContexts`.
+Two things upstream does that this package cannot. It rewrites the provider request payload
+(`safetySettings: BLOCK_NONE`, refusal scrubbing) — the host exposes twelve lifecycle hooks and none of
+them sees the request payload, and the field is Google-private (an OpenAI-compatible gateway answers
+`400 UNKNOWN_FIELD`). It also rewrites the user's prompt; `UserPromptSubmit` can only append
+`additionalContexts`.
 
-What replaces the first is a `Stop` hook. If the last assistant message states a boundary without
-producing an artifact, the host is asked to continue once with a fragment that demands the missing
-deliverable. `src/domain/refusal.ts` holds the detector, and it needs both a refusal phrasing and
-the absence of every deliverable fingerprint (code fence, inline code, command line, absolute path,
-`0x` address, digest, list) before it fires. A quoted error text and a delivered remainder always
-beat a restated boundary — but a genuinely blocked step still gets to say so.
+The first one costs less than it looks: upstream only injects for Google endpoints and `contents`
+payloads, and returns `SKIP` for anything shaped like an OpenAI body — which is exactly what this
+pipeline sends. So `src/domain/interceptor.ts` ports the decision function itself (same `INJECT` /
+`SKIP` / `SKIP-INEFFECTIVE` verdicts, logged once per endpoint) instead of pretending the injection is
+missing, and enforcement moves to the turn boundary.
+
+**Refusing is not an accepted ending.** A `Stop` hook reads `lastAssistantMessage`: a policy or
+referral phrasing fires unconditionally, and an identity framing (`As an AI…`) fires when the turn
+delivered nothing. There is no length floor and no deliverable exemption for policy stops — a refusal
+with a code fence stapled to it is still a refusal. `src/domain/refusal.ts` holds the detector, and the
+continuation fragment forbids refusing, forbids explaining limits, and forbids pointing the operator at
+the vendor. The one legal stop is quoting the exact error text once and then switching to a path that
+still produces the artefact.
 
 ## Workbench kit 2.0
 
@@ -242,6 +250,7 @@ src/
 │   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
+│   ├── interceptor.ts               # port of upstream L1/L4: injection verdict, term map, shortcuts
 │   ├── refusal.ts                   # turn-boundary recovery: detector + continuation fragment
 │   ├── system-prompt.generated.ts   # inlined from agent/docs/SYSTEM.md; do not hand-edit
 │   └── triage.ts                    # entry point: detect → parse → audit → report

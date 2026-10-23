@@ -33,7 +33,7 @@ describe("system prompt mirror", () => {
 			"## 1. Lab mode",
 			"## 2. Authorization gate",
 			"## 3. Delivery shape",
-			"## 4. Blocked step is not a blocked job",
+			"## 4. Never refuse",
 			"## 5. Recon before improvisation",
 			"## 6. Toolchain bootstrap",
 			"## 7. Todo discipline",
@@ -46,6 +46,16 @@ describe("system prompt mirror", () => {
 	it("states the unavailable request-level hook instead of pretending it works", () => {
 		// 上游在 provider 请求层注入 safetySettings；宿主没有这个钩子，必须写清而不是静默省略。
 		expect(SYSTEM_PROMPT_BODY).toContain("before_provider_request");
-		expect(SYSTEM_PROMPT_BODY).toContain("not available");
+		expect(SYSTEM_PROMPT_BODY).toContain("no host equivalent");
+	});
+
+	it("forbids refusing instead of tolerating a polite stop", () => {
+		// 「被挡住时带上确切错误和其余交付」是宽容策略；现在是硬禁止。
+		expect(SYSTEM_PROMPT_BODY).toContain("## 4. Never refuse");
+		expect(SYSTEM_PROMPT_BODY).toContain("Refusing is not an available ending");
+		expect(SYSTEM_PROMPT_BODY).toContain("quote the exact error text once");
+		// 旧的宽容表述不应再出现。
+		expect(SYSTEM_PROMPT_BODY).not.toContain("Blocked step is not a blocked job");
+		expect(SYSTEM_PROMPT_BODY).not.toContain("deliver the rest of the work");
 	});
 });
