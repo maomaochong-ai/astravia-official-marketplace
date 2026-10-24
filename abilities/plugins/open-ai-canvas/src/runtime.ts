@@ -137,6 +137,8 @@ export class CanvasController {
       let status = await this.ctx.services.getStatus(SERVICE_ID);
       if (status.phase === "ready" && status.installed !== false) {
         this.applyReady();
+        // 服务已就绪时点「启动」也直接进画布，避免按钮看着没反应。
+        void this.openInBrowser().catch(() => undefined);
         return;
       }
       if (!status.installed) {
@@ -165,6 +167,9 @@ export class CanvasController {
         return;
       }
       this.applyReady();
+      // 与开源桌面壳一致：后端就绪即进入画布，不再要求用户回头再点一次「打开浏览器」。
+      // 打开动作失败（例如宿主未授予 shell.openExternal）不影响服务已就绪的事实。
+      void this.openInBrowser().catch(() => undefined);
     } catch (error) {
       this.fail("error.installFailed");
       void this.notifyError(error);

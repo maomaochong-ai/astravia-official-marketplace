@@ -4,7 +4,7 @@
 
 已接受（草案）。修订 [ADR-0001](./0001-open-ai-canvas-as-plugin.md) 决策 1 与决策 8 中关于制品分发与平台绑定的部分；不改变 ADR-0001 的 `host-node + Node wrapper` 架构与 ADR-0002 的 MCP 工具集。
 
-本文回答六个问题，顺序与结论一一对应：
+本文回答七个问题，顺序与结论一一对应：
 
 | # | 问题 | 决策 |
 |---|---|---|
@@ -14,6 +14,7 @@
 | 4 | 插件首次下载超过宿主 120 s 健康检查窗口，宿主反复 stop→retry 把整个界面拖崩 | **先监听、后准备**：准备期由插件自己应答健康检查（恒 200 + `phase`），失败也不让宿主判死（决策 5） |
 | 5 | shim 为什么是一个 zip 去做下载/校验/解包？不应该是脚本吗？ | zip 只是宿主的分发容器；**改为 `archive: "file"` 直接分发 `boot.mjs`**（决策 3） |
 | 6 | 点了停止/重装后进程赖着不退，宿主反复重试 | **shim 收到信号必须自己退**，不能只转发给后端（决策 6） |
+| 7 | 服务进程拿不到端口和数据目录，宿主报 `Service exited before becoming ready` | **宿主不注入环境变量，只做 `${ASTRAVIA_SERVICE_*}` 模板替换**；`plugin.json` 必须显式声明 `process.env`（决策 7） |
 
 > 用户引用的 `@skill:grill-with-docs` 在本机技能清单中不存在（清单只有 `grilling`）。本文按该技能的意图执行：先拷问结论、保留反方论证，再落决策；「拷问记录」一节记录被驳回的方案与答复。
 
@@ -299,6 +300,45 @@ payload-<ver>-<platform>.zip             仅 yingce-backend              压缩�
 
 两次都不再需要 `kill -9`。
 
+### 7. 服务进程的环境变量必须由 `plugin.json` 显式声明
+
+这是 0.0.5 上线后的第一个致命回归：装好后点「启动画布」直接弹「启动画布服务失败」，主进程日志里只有 `Plugin service failed to start` / `Service exited before becoming ready`，看不出缺的是什么。
+
+**原来的假设（错的）**：宿主会像容器编排那样把 `ASTRAVIA_SERVICE_PORT`、`ASTRAVIA_SERVICE_DATA_DIR` 注入服务进程 —— 毕竟 `boot.mjs` 就是按这些名字读 `process.env` 的。
+
+**实测推翻（Observed，反编译 `app.asar` 主进程 bundle 得到）**：
+
+| 环节 | 真实行为 |
+|---|---|
+| `createPluginCommandEnvironment(overrides)` | 只组装 `INHERITED_ENV_KEYS` 白名单（`PATH`、`HOME`、`TMPDIR`、`npm_config_*` 等）再展开 `overrides`，**不继承任意 `process.env`** |
+| `overrides` 来源 | 唯一来源是 `plugin.json` 的 `providers.services[n].process.env` |
+| 注入方式 | **模板替换**：`TOKEN_PATTERN` 匹配 `${ASTRAVIA_SERVICE_(PORT|RUNTIME_DIR|DATA_DIR|CACHE_DIR|SECRET_<NAME>)}`，命中值先过 `replaceTokens(value, values)` 再进环境 |
+| 同一套 `values` 的另一个用途 | `materializeTemplates()` —— 替换插件自带模板文件**内容**里的同名占位符 |
+
+在 60 MB 的 bundle 里按纯文本搜 `ASTRAVIA_SERVICE_DATA_DIR` 命中 0 次，原因就是它只以 `${...}` 形式出现，宿主从不拼这个裸名字。
+
+**失效链路**：`plugin.json` 的 `process` 只有 `{ "args": [] }`、没有 `env` → `env` 为空对象 → 白名单里没有 `ASTRAVIA_SERVICE_*` → `boot.mjs` 第 31–32 行读到 `undefined` → `process.exit(1)` → 宿主 `child.once("exit")` 把 `record.child` 置空 → `waitUntilReady` 抛 `Service exited before becoming ready`。三次重试各一秒，全部同因。
+
+**旁证**：同一个 `boot.mjs` 手工带上这四个变量直跑，进程存活、`/api/health/ready` 正常返回 `200 {"status":"preparing","phase":"downloading"}` —— 脚本没问题，缺的只是环境。
+
+**决策**：
+
+1. `providers.services[0].process.env` 显式声明四个变量，值就是对应的模板：`ASTRAVIA_SERVICE_PORT`、`ASTRAVIA_SERVICE_DATA_DIR`、`ASTRAVIA_SERVICE_RUNTIME_DIR`、`ASTRAVIA_SERVICE_CACHE_DIR`；
+2. `boot.mjs` 继续直接读 `process.env.ASTRAVIA_SERVICE_*` —— **不去改脚本去猜宿主约定**，也不引入第二套变量名；
+3. 需要凭据时用 `${ASTRAVIA_SERVICE_SECRET_<NAME>}`，宿主会创建并持久化（`data/service-secrets.json`）；
+4. 这类缺失只在真机才暴露：本地 `npm run build`、市场构建与全部内容测试都不会启动服务进程，所以 0.0.5 一路绿灯。
+
+**验收（Observed，两步对照）**：
+
+| 场景 | 结果 |
+|---|---|
+| `env -i` 模拟白名单、不带变量（0.0.5 现状） | 立即退出，`exit=1`，stderr 为 `Missing ASTRAVIA_SERVICE_PORT or ASTRAVIA_SERVICE_DATA_DIR` |
+| 按 `plugin.json` 声明的四个模板展开后再启动 | 进程存活，`/api/health/ready` 返回 `200 {"status":"preparing","phase":"downloading"}`，代理监听在分配的端口 |
+
+第一个实验复现了宿主日志里的失败，第二个证明声明补上即可，无需改宿主、无需改 shim。
+
+**同批修复：就绪后自动进画布。** 服务能起来之后用户又碰到第二个问题 —— 点「启动画布」后什么都没发生，还得自己再回头点一次「打开浏览器」。原实现只把 `baseUrl` 写进状态，从不主动唤起浏览器。对照上游桌面壳（`apps/desktop/src-tauri/src/server.rs:161`：`wait_ready` 成功后直接 `navigate(app, &base_url)`，没有「请再点一下」这一步），`ensureRunning()` 在 `applyReady()` 之后直接 `openExternal(baseUrl + "/")`；就绪早返回分支同样打开，避开「服务已在跑、点启动没反应」。唤起失败被 `catch` 吞掉，不影响已就绪的事实。
+
 
 ## 兼容和迁移
 
@@ -309,10 +349,11 @@ payload-<ver>-<platform>.zip             仅 yingce-backend              压缩�
 | 1 | `boot.mjs`：先监听后准备的启动编排（决策 5）、**收到 SIGTERM/SIGINT 时自己退出**（决策 6）、分片 `.partN` 续传、删除重试 `rmSync`、流式解包 | 回退 `boot.mjs` 文件；`data/runtime/` 不受影响 |
 | 2 | `scripts/build-service-zip.mjs`：`--shim` 产 `public/assets/boot.mjs` 并校验 `sha256`/`archive`/`destination` 三项；新增 `--clean` | 保留旧 zip 产物即可回退 |
 | 3 | `plugin.json`：`archive: "file"` + `destination: "server/boot.mjs"`；`runtime.version` → `0.1.0`；`platforms` 增 `win32-x64`（Windows payload 就绪后再加，避免清单先于制品） | 改回 `0.0.4` 的清单字段；`isReadyRuntime` 会因 marker 不匹配自动重装 |
-| 4 | `src/runtime.ts`：`ARTIFACT_PATH = "dist/assets/boot.mjs"`；`ensureRunning()` 改为一次会话只装一次 | 与 3 同步回退 |
-| 5 | 发布 `payload-0.0.1-win32-x64.zip` 到 `plugin-open-ai-canvas` Release | 删资产 + 回退清单 platforms |
+| 4 | `src/runtime.ts`：`ARTIFACT_PATH = "dist/assets/boot.mjs"`；`ensureRunning()` 改为一次会话只装一次；**就绪后自动打开画布**（决策 7 旁的同批修复） | 与 3 同步回退 |
+| 5 | `plugin.json` 的 `providers.services[0].process.env`：声明四个 `${ASTRAVIA_SERVICE_*}` 模板（决策 7） | 删 `env` 即回到 0.0.5 的失败态；无数据迁移 |
+| 6 | 发布 `payload-0.0.1-win32-x64.zip` 到 `plugin-open-ai-canvas` Release | 删资产 + 回退清单 platforms |
 
-**版本号**：插件 `0.0.4 → 0.0.5`；`runtime.version` `0.0.1 → 0.1.0`；`PAYLOAD_VERSION` **保持 `0.0.1` 不变**。
+**版本号**：插件 `0.0.4 → 0.0.5`（本 ADR 落地），`0.0.5 → 0.0.6`（决策 7 与自动打开修复）；`runtime.version` `0.0.1 → 0.1.0`；`PAYLOAD_VERSION` **保持 `0.0.1` 不变**。
 
 **关键不变量**：老用户升级后不得触发 207 MB 重下。验证方式：升级前记录 `data/runtime/0.0.1/.ready`（或目录 mtime），升级后点「启动」应在数秒内进入 running。
 
@@ -402,6 +443,18 @@ PY
 就绪场景的日志尾巴：`[fake] backend got SIGTERM` → `Backend exited: code=0 signal=null`。
 
 修复前同一个 shim 实例 `kill` 三次无效，存活 30 分钟后只能 `kill -9`。
+
+**3e. 服务进程环境（决策 7 的验收）—— 已用 `env -i` 沙箱实测（Observed）**
+
+两次实验用同一个 `boot.mjs`，变量由 `plugin.json` 的 `process.env` 模板派生：
+
+| 场景 | 命令要点 | 结果 |
+|---|---|---|
+| 不带声明（0.0.5 现状） | `env -i PATH HOME TMPDIR node server/boot.mjs` | `exit=1`，stderr 为 `Missing ASTRAVIA_SERVICE_PORT or ASTRAVIA_SERVICE_DATA_DIR` |
+| 按声明展开四个模板 | 同上 + `ASTRAVIA_SERVICE_{PORT,DATA_DIR,RUNTIME_DIR,CACHE_DIR}` | 进程存活，`/api/health/ready` 返 `200 {"status":"preparing","phase":"downloading"}`，日志出现 `Proxy listening on http://127.0.0.1:19691` |
+
+第一个结果是宿主日志里 `Service exited before becoming ready` 的直接复现；第二个证明宿主 `waitUntilReady` 会看到 200 并立即就绪，首次启动剩下的只是那 216 MB 下载。
+
 
 **3d. 真机验收步骤（NOT RUN，待界面复验）**
 

@@ -2,7 +2,7 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
@@ -42,7 +42,13 @@
           }
         },
         "process": {
-          "args": []
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+          }
         },
         "health": {
           "path": "/api/health/ready",
