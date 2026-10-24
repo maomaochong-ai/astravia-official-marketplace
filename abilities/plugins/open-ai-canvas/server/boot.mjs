@@ -1411,7 +1411,7 @@ const MCP_TOOLS = [
   },
   {
     name: "create_canvas_project",
-    description: "Create a new canvas project. If canvas_id is omitted, a UUID is generated.",
+    description: "Create a new canvas project and return its id, title, revision and the browser URL to open it. Requires a captured browser session: open the canvas in a browser and log in once first. If canvas_id is omitted, a UUID is generated.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1609,6 +1609,27 @@ function errorResult(message) {
   return { isError: true, content: [{ type: "text", text: message }] };
 }
 
+// 画布在浏览器里的地址。端口由宿主每次启动分配，所以只能运行时拼；
+// 新建成功后直接把它返回给调用方，省得人在端口号上打转。
+function canvasUrl(canvasId) {
+  return `http://127.0.0.1:${HOST_PORT}/canvas/${canvasId}`;
+}
+
+// 把后端返回的 {"code":0,"data":{...},"msg":"ok"} 展开，并把画布地址一并给出。
+function withCanvasUrl(result, canvasId) {
+  if (!result || result.isError) return result;
+  const raw = result.content?.[0]?.text;
+  if (typeof raw !== "string") return result;
+  try {
+    const parsed = JSON.parse(raw);
+    const payload = parsed.data && typeof parsed.data === "object" ? parsed.data : parsed;
+    payload.url = canvasUrl(canvasId);
+    return jsonResult(parsed.data ? parsed : payload);
+  } catch {
+    return result;
+  }
+}
+
 async function callCanvasApi(method, pathname, body) {
   if (!SESSION_TOKEN) {
     return errorResult("No active session. Please open the canvas in a browser and log in first. The session is captured automatically after login.");
@@ -1698,9 +1719,12 @@ async function handleMcpToolCall(name, args) {
     case "create_canvas_project": {
       const canvasId = args.canvas_id || crypto.randomUUID();
       const title = args.title || "Untitled";
-      return applyCanvasOperations(canvasId, [
-        { type: "create_canvas", id: "canvas", patch: { title } },
+      // create_canvas 操作的 id 必须等于 URL 里的画布 id，后端会做一致性校验
+      // （写成固定的 "canvas" 会被拒绝：画布创建操作的 ID 与请求路径不一致）。
+      const created = await applyCanvasOperations(canvasId, [
+        { type: "create_canvas", id: canvasId, patch: { title } },
       ]);
+      return withCanvasUrl(created, canvasId);
     }
 
     case "delete_canvas_project":
