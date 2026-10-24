@@ -6025,7 +6025,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video and more, with MCP tools for project/canvas/task management.",
-      "version": "0.0.3",
+      "version": "0.0.4",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6109,6 +6109,23 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas/open-ai-canvas-0.0.3.astraviapkg",
             "sha256": "303f144e0fc6c4af944b63e258551cfb07397c6573f3367f356dbcfb0c43bf7b"
+          }
+        },
+        {
+          "version": "0.0.4",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "agent.mcp.control",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas/open-ai-canvas-0.0.4.astraviapkg",
+            "sha256": "bd459f02b13a415a82db6850ed41753279ce13f9bfdf94c7660fa866e285e836"
           }
         }
       ]
@@ -7692,5 +7709,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.24-6"
+  "marketplaceVersion": "2026.10.24-7"
 }
