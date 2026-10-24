@@ -2,7 +2,7 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
@@ -33,7 +33,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "89a1ee1b47fc675f1b7ee690b052d780a8b49129af651340b16eb7c2f4283f5c",
+                  "sha256": "99b224327e3ae8cde8c16ca2bc929847ae9437e6ea36a986ac6b876e957f28bc",
                   "archive": "zip",
                   "destination": "server"
                 }

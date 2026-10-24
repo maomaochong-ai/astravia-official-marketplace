@@ -19,8 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import https from "node:https";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -123,6 +122,147 @@ function extractZip(buffer, destDir) {
   }
 }
 
+// 实测：undici 的连接超时在弱网下会随机 UND_ERR_CONNECT_TIMEOUT，而 node:https 可用；
+// 同时 GitHub 的 Release 资产对单连接限速，因此这里用 https 分片并发 Range 下载。
+const DOWNLOAD_CHUNKS = 8;
+const CHUNK_ATTEMPTS = 3;
+
+function httpRequest(url, { method = "GET", headers = {}, redirects = 5, timeout = 60000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, { method, headers, timeout }, (res) => {
+      const location = res.headers.location;
+      if (location && [301, 302, 303, 307, 308].includes(res.statusCode) && redirects > 0) {
+        res.resume();
+        resolve(httpRequest(new URL(location, url).toString(), { method, headers, redirects: redirects - 1 }));
+        return;
+      }
+      resolve(res);
+    });
+    req.on("timeout", () => req.destroy(new Error("连接超时")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+// HEAD 经由 GitHub 的下载跳转时会被丢弃，取 1 字节 Range 读 Content-Range 更可靠。
+async function payloadSize(url) {
+  // 这里的网络到 GitHub 的连接建立经常要几十秒甚至直接超时，探测要肯重试。
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      const res = await httpRequest(url, { headers: { Range: "bytes=0-0" }, timeout: 30000 });
+      res.destroy();
+      const total = /\/(\d+)$/.exec(res.headers["content-range"] || "");
+      if (total) return Number(total[1]);
+      const length = Number(res.headers["content-length"]) || 0;
+      if (res.statusCode === 200 && length > 0) return length;
+    } catch {
+      /* 继续重试 */
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+  }
+  return 0;
+}
+
+async function downloadChunk(url, handle, start, end) {
+  let lastError;
+  for (let attempt = 1; attempt <= CHUNK_ATTEMPTS; attempt += 1) {
+    let response;
+    let watchdog;
+    try {
+      response = await httpRequest(url, { headers: { Range: `bytes=${start}-${end}` }, timeout: 45000 });
+      if (response.statusCode !== 206) {
+        response.resume();
+        throw new Error(`HTTP ${response.statusCode}`);
+      }
+      let position = start;
+      let lastActivity = Date.now();
+      // 有的连接会写满后仍不关流，或者干脆停在那里；45 秒没有新数据就判死重试。
+      watchdog = setInterval(() => {
+        if (Date.now() - lastActivity > 45000) response.destroy(new Error("分片停滞"));
+      }, 5000);
+      for await (const part of response) {
+        const usable = Math.min(part.length, end + 1 - position);
+        if (usable > 0) {
+          await handle.write(part, 0, usable, position);
+          position += usable;
+          lastActivity = Date.now();
+        }
+        if (position === end + 1) break;
+      }
+      if (position !== end + 1) throw new Error(`字节不足 ${position}/${end + 1}`);
+      if (process.env.CANVAS_DOWNLOAD_DEBUG) note(`分片 ${start}-${end} 完成（第 ${attempt} 次）`);
+      return;
+    } catch (err) {
+      lastError = err;
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    } finally {
+      if (watchdog) clearInterval(watchdog);
+      if (response) response.destroy();
+    }
+  }
+  throw lastError;
+}
+
+async function downloadPayload(url, archive) {
+  const size = await payloadSize(url);
+  if (process.env.CANVAS_DOWNLOAD_DEBUG) note(`载荷字节数 ${size}，分 ${DOWNLOAD_CHUNKS} 片`);
+  if (size > 0) {
+    try {
+      const handle = await fs.promises.open(archive, "w");
+      try {
+        const chunk = Math.ceil(size / DOWNLOAD_CHUNKS);
+        await Promise.all(
+          Array.from({ length: DOWNLOAD_CHUNKS }, (_, index) => {
+            const start = index * chunk;
+            const end = Math.min(size - 1, start + chunk - 1);
+            return start > end ? null : downloadChunk(url, handle, start, end);
+          }),
+        );
+      } finally {
+        await handle.close();
+      }
+      if (fs.statSync(archive).size === size) return;
+      throw new Error("分片下载长度不符");
+    } catch (err) {
+      note(`分片下载失败（${err.message}），改用单连接重试`);
+      fs.rmSync(archive, { force: true });
+    }
+  }
+
+  note("改用单连接下载");
+  // 单连接拿不到总长度时也要能续下：已有字节用 Range 接着取，并同样装停滞看门狗。
+  const existing = fs.existsSync(archive) ? fs.statSync(archive).size : 0;
+  const res = await httpRequest(
+    url,
+    existing > 0 ? { headers: { Range: `bytes=${existing}-` } } : {},
+  );
+  if (res.statusCode !== 200 && res.statusCode !== 206) {
+    res.resume();
+    throw new Error(`运行时载荷下载失败：HTTP ${res.statusCode}（${url}）`);
+  }
+  const offset = res.statusCode === 206 ? existing : 0;
+  const out = fs.createWriteStream(archive, { flags: offset > 0 ? "r+" : "w", start: offset });
+  let lastActivity = Date.now();
+  const watchdog = setInterval(() => {
+    if (Date.now() - lastActivity > 60000) res.destroy(new Error("下载停滞"));
+  }, 5000);
+  res.on("data", () => {
+    lastActivity = Date.now();
+  });
+  try {
+    res.pipe(out);
+    await new Promise((resolve, reject) => {
+      out.on("finish", resolve);
+      out.on("error", reject);
+      res.on("error", reject);
+      res.on("aborted", () => reject(new Error("连接中断")));
+    });
+  } finally {
+    clearInterval(watchdog);
+    res.destroy();
+  }
+}
+
 async function provisionPayload(spec) {
   const url = `${PAYLOAD_BASE_URL}/${spec.file}`;
   const staging = `${PROVISION_DIR}.partial`;
@@ -131,12 +271,19 @@ async function provisionPayload(spec) {
   note(`首次启动，正在下载运行时载荷（约 200 MB）：${url}`);
 
   const startedAt = Date.now();
-  const response = await fetch(url, { redirect: "follow" });
-  if (!response.ok || !response.body) {
-    throw new Error(`运行时载荷下载失败：HTTP ${response.status}（${url}）`);
-  }
   fs.mkdirSync(path.dirname(archive), { recursive: true });
-  await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(archive));
+  // 弱网下整段下载也可能中断，允许整体重来，已下载的部分会被覆盖。
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await downloadPayload(url, archive);
+      break;
+    } catch (err) {
+      fs.rmSync(archive, { force: true });
+      if (attempt >= 3) throw err;
+      note(`下载中断（${err.message}），第 ${attempt} 次重试`);
+      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+    }
+  }
 
   const digest = await hashFile(archive);
   if (digest !== spec.sha256) {
