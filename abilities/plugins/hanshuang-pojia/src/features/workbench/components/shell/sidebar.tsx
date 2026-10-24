@@ -1,10 +1,12 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import type { LabState } from "../../../../domain/lab-mode";
 import { NAV, type PageId } from "../../state";
 import { Icon } from "./icon";
 
 export interface SidebarProps {
 	page: PageId;
 	onNavigate(page: PageId): void;
+	lab: LabState;
 }
 
 /**
@@ -13,7 +15,7 @@ export interface SidebarProps {
  * 面板挂在宿主活动栏里，宽度由用户拖拽决定：默认收成 48px 图标轨，
  * 容器宽度过 720px 才展开成 224px 的文字侧栏。
  */
-export function Sidebar({ page, onNavigate }: SidebarProps) {
+export function Sidebar({ page, onNavigate, lab }: SidebarProps) {
 	const { t } = useTranslation();
 	return (
 		<aside className="flex w-12 shrink-0 flex-col border-r border-line bg-surface-2 @min-[720px]:w-56">
@@ -57,11 +59,11 @@ export function Sidebar({ page, onNavigate }: SidebarProps) {
 			</nav>
 
 			<div className="border-t border-line-subtle p-1.5 @min-[720px]:p-3">
-				<div className="flex items-center gap-2 rounded-md bg-surface-3 px-1.5 py-2 @min-[720px]:px-2.5">
-					<span className="size-2 shrink-0 rounded-full bg-risk-low" />
+				<div className={`flex items-center gap-2 rounded-md px-1.5 py-2 @min-[720px]:px-2.5 ${lab.enabled ? "bg-risk-low/10" : "bg-surface-3"}`}>
+					<span className={`size-2 shrink-0 rounded-full ${lab.enabled ? "bg-risk-low fb-pulse" : "bg-text-4"}`} />
 					<div className="hidden min-w-0 leading-tight @min-[720px]:block">
-						<div className="truncate text-[11.5px] text-text">{t("panel.offline.title")}</div>
-						<div className="truncate text-[10px] text-text-4">{t("panel.offline.body")}</div>
+						<div className="truncate text-[11.5px] text-text">{lab.enabled ? t("lab.on") : t("panel.offline.title")}</div>
+						<div className="truncate text-[10px] text-text-4">{lab.enabled ? t("lab.onHint") : t("panel.offline.body")}</div>
 					</div>
 				</div>
 			</div>

@@ -3,6 +3,7 @@ import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
 import { Sidebar } from "./shell/sidebar";
 import { TopBar } from "./shell/top-bar";
+import { InjectStatusBar } from "./shell/inject-status-bar";
 import { ActivityPage } from "./pages/activity";
 import { TaskStreamPage } from "./pages/stream";
 import { ComparePage } from "./pages/compare";
@@ -19,6 +20,7 @@ import { SelfCheckPage } from "./pages/selfcheck";
 import { SettingsPage } from "./pages/settings";
 import { SignaturePage } from "./pages/signature";
 import { StringsPage } from "./pages/strings";
+import { PromptsPage } from "./pages/prompts";
 
 const PAGES: Record<string, (props: PageProps) => ReactElement> = {
 	overview: OverviewPage,
@@ -28,6 +30,7 @@ const PAGES: Record<string, (props: PageProps) => ReactElement> = {
 	samples: SamplesPage,
 	findings: FindingsPage,
 	strings: StringsPage,
+	prompts: PromptsPage,
 	disasm: DisasmPage,
 	docs: DocsPage,
 	manifest: ManifestPage,
@@ -61,8 +64,9 @@ export function WorkbenchScreen({ bridge, cwd }: WorkbenchScreenProps) {
 				lab={model.lab.state}
 				onToggleLab={() => model.lab.set(!model.lab.state.enabled)}
 			/>
+			<InjectStatusBar lab={model.lab.state} library={model.promptLibrary} />
 			<div className="flex min-h-0 flex-1">
-				<Sidebar page={model.page} onNavigate={model.go} />
+				<Sidebar page={model.page} onNavigate={model.go} lab={model.lab.state} />
 				<main className="fb-scroll min-w-0 flex-1 overflow-y-auto">
 					<Page {...props} />
 				</main>

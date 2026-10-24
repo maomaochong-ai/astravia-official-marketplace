@@ -23,6 +23,7 @@ import { setAgentPage } from "../../../runtime/panel-channel";
 import { useLibrary } from "./use-library";
 import { useActivity, type ActivityModel } from "./use-activity";
 import { useTaskStream, type TaskStreamModel } from "./use-task-stream";
+import { usePromptLibrary, type PromptLibraryModel } from "./use-prompt-library";
 
 
 const SAMPLE_EXTENSIONS = [".apk", ".aab", ".ipa", ".jar", ".zip", ".dex", ".so", ".dll", ".exe", ".dylib", ".elf", ".bin", ".node", ".wasm", ".app"];
@@ -78,6 +79,16 @@ export interface WorkbenchModel {
 	activity: ActivityModel;
 	stream: TaskStreamModel;
 
+	promptLibrary: PromptLibraryModel["library"];
+	promptBackups: PromptLibraryModel["backups"];
+	createPrompt: PromptLibraryModel["createPrompt"];
+	updatePrompt: PromptLibraryModel["updatePrompt"];
+	deletePrompt: PromptLibraryModel["deletePrompt"];
+	activatePrompt: PromptLibraryModel["activatePrompt"];
+	deactivatePrompt: PromptLibraryModel["deactivatePrompt"];
+	restorePromptFromBackup: PromptLibraryModel["restorePromptFromBackup"];
+	deleteBackup: PromptLibraryModel["deleteBackup"];
+
 
 	strings: StringHit[] | null;
 	entropy: EntropyBucket[] | null;
@@ -108,6 +119,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 	const library = useLibrary(bridge);
 	const chat = useChat(bridge, cwd);
 	const lab = useLab(bridge);
+	const promptLib = usePromptLibrary(bridge);
 
 	const [page, setPage] = useState<PageId>("overview");
 	const [files, setFiles] = useState<PluginFsEntry[]>([]);
@@ -420,6 +432,15 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 		lab,
 		activity,
 		stream,
+		promptLibrary: promptLib.library,
+		promptBackups: promptLib.backups,
+		createPrompt: promptLib.createPrompt,
+		updatePrompt: promptLib.updatePrompt,
+		deletePrompt: promptLib.deletePrompt,
+		activatePrompt: promptLib.activatePrompt,
+		deactivatePrompt: promptLib.deactivatePrompt,
+		restorePromptFromBackup: promptLib.restorePromptFromBackup,
+		deleteBackup: promptLib.deleteBackup,
 		strings,
 		entropy,
 		disasm,

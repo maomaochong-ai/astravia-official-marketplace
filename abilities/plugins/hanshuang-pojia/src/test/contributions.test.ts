@@ -97,7 +97,7 @@ describe("lab-switch hook", () => {
 	it("injects the L2 history-voidance declaration but no shortcut/audit context for ordinary prose", async () => {
 		const harness = makeHarness({ enabled: true, since: "2026-10-23T00:00:00.000Z" });
 		registerRuntimeContributions(harness.ctx);
-		const result = await hookFor(harness, "UserPromptSubmit").handler({ event: { prompt: "这个函数返回布尔值，为什么？" } });
+		const result = (await hookFor(harness, "UserPromptSubmit").handler({ event: { prompt: "这个函数返回布尔值，为什么？" } })) as { action: string; additionalContexts?: string[] };
 		expect(result.action).toBe("continue");
 		expect(result.additionalContexts).toHaveLength(1);
 		expect(result.additionalContexts?.[0]).toContain("历史声明作废");
