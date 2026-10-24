@@ -21,19 +21,24 @@ export type CanvasStateListener = (state: CanvasState) => void;
 const READY_TIMEOUT_MS = 130_000;
 const READY_POLL_INTERVAL_MS = 500;
 
-/** 包内服务工件：plugin.json#providers.services[].runtime.platforms 里登记的同一个 zip。 */
-const ARTIFACT_ZIP_PATH = "dist/open-ai-canvas-darwin-arm64.zip";
-/** 与 runtime.platforms[].artifacts[].destination 一致。 */
-const ARTIFACT_DESTINATION = "server";
+/**
+ * 包内服务工件：plugin.json#providers.services[].runtime.platforms 里登记的同一份 shim。
+ * 构建脚本把 server/boot.mjs 拷成 public/assets/boot.mjs，vite 再原样挪进
+ * dist/assets/，打包器从那里取。所以包内路径是 dist/assets/boot.mjs ——
+ * 改成 dist/ 根下会被 .astraviapkg 的白名单漏掉。
+ */
+const ARTIFACT_PATH = "dist/assets/boot.mjs";
+/** 与 runtime.platforms[].artifacts[].destination 一致（archive: "file" 时是文件路径）。 */
+const ARTIFACT_DESTINATION = "server/boot.mjs";
 
-/** 宿主 install() 的载荷格式是 base64 字符串。 */
+/** 宿主 install() 的载荷格式是 base64 字符串；分块拼接，避开 fromCharCode 的参数上限。 */
 function toBase64(bytes: Uint8Array): string {
-  let binary = "";
+  const parts: string[] = [];
   const chunkSize = 0x8000;
   for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+    parts.push(String.fromCharCode(...bytes.subarray(index, index + chunkSize)));
   }
-  return btoa(binary);
+  return btoa(parts.join(""));
 }
 
 
@@ -60,6 +65,7 @@ export class CanvasController {
   private state: CanvasState = { phase: "idle", busy: false };
   private statusDisposable: { dispose(): void } | undefined;
   private operationInFlight = false;
+  private installAttempted = false;
   private disposed = false;
 
   constructor(ctx: PluginContext) {
@@ -134,6 +140,12 @@ export class CanvasController {
         return;
       }
       if (!status.installed) {
+        // 一次会话只装一次：装好后宿主缺的只是 start()，而 install 失败时反复重试
+        // 只会让按钮一直转圈。真装坏了让用户重装插件，而不是无限循环。
+        if (this.installAttempted) {
+          throw new Error("服务运行时安装失败，请重装插件后再试");
+        }
+        this.installAttempted = true;
         // 宿主拒绝在子进程存活时替换运行时；stop() 幂等，兼做旧实例清理。
         this.setState({ phase: "stopping" });
         await this.ctx.services.stop(SERVICE_ID).catch(() => undefined);
@@ -177,7 +189,7 @@ export class CanvasController {
   /** 读取包内服务工件并转 base64——宿主 install() 要求与 platform.artifacts 一一对应。 */
   private async fetchArtifactBase64(): Promise<string> {
     const plugin = this.ctx.plugin;
-    const url = `astravia-plugin://${plugin.id}/versions/${plugin.version}/${ARTIFACT_ZIP_PATH}`;
+    const url = `astravia-plugin://${plugin.id}/versions/${plugin.version}/${ARTIFACT_PATH}`;
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load bundled service runtime: ${response.status} ${response.statusText}`);

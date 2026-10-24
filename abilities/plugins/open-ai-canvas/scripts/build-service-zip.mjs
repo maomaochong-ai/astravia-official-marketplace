@@ -1,15 +1,18 @@
 // open-ai-canvas 服务制品构建脚本（两层产物）
 //
 // 为什么分两层：
-//   微型 shim（public/open-ai-canvas-<platform>.zip，仅含 boot.mjs）随 .astraviapkg 分发，
+//   微型 shim（public/boot.mjs，就是 server/boot.mjs 的副本）随 .astraviapkg 分发，
 //   满足 plugin.json 的 artifacts 声明；重型载荷（Go 二进制 + web-dist + 官方插件包）压缩后
 //   远超 Desktop 的 50 MB 单包上限，因此改为首次启动时由 boot.mjs 下载、校验、解包。
 //
+// shim 用 archive: "file" 交付：宿主直接 writeFile 落地，不值得为一个 40 KB 的 .mjs
+// 再造一层 zip，也因此不再需要平台后缀文件名。
+//
 // 用法：
-//   node scripts/build-service-zip.mjs --shim [--platform <platform>] [--check]
-//       产物：public/open-ai-canvas-<platform>.zip（vite build 会把它拷进 dist/）
-//       --check 会核对 plugin.json 里声明的 sha256，不一致即失败
-//   node scripts/build-service-zip.mjs --payload --canvas-dir <path> [--platform <platform>]
+//   node scripts/build-service-zip.mjs --shim [--check] [--clean]
+//       产物：public/boot.mjs（vite build 会把它拷进 dist/）
+//       --check 会核对 plugin.json 里声明的 sha256、archive 与 destination，不一致即失败
+//       --clean 顺手删掉旧版留下的 public/open-ai-canvas-*.zip
 //       产物：.payload/payload-<version>-<platform>.zip（上传到 GitHub Release，不进仓库）
 //
 // 载荷内容：yingce-backend（Go）+ web-dist/ + plugin-packages/*.yingce-plugin
@@ -17,7 +20,7 @@
 // 不联网下载，因此画布内的本地 copilot 会提示缺失；宿主侧 MCP 操控不受影响。
 
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,7 +29,10 @@ const require = createRequire(import.meta.url);
 const AdmZip = require("adm-zip");
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const shimOutputDir = path.join(pluginRoot, "public");
+// 必须落在 public/assets/：vite 把它原样拷到 dist/assets/，而 .astraviapkg 打包器
+// 对 dist/assets/ 下的文件是全量收的（dist 根下只收 .css）。放错位置会让包装到
+// 用户机器上时读不到 shim，install 直接 404。
+const shimOutputDir = path.join(pluginRoot, "public", "assets");
 const payloadOutputDir = path.join(pluginRoot, ".payload");
 
 // 固定时间戳保证字节级确定性，sha256 才能钉在 plugin.json 里
@@ -41,11 +47,12 @@ const PLATFORM_MAP = {
 };
 
 function parseArgs(argv) {
-  const args = { canvasDir: "", platform: "", check: false, payload: false };
+  const args = { canvasDir: "", platform: "", check: false, clean: false, payload: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--canvas-dir") args.canvasDir = argv[++i];
     else if (argv[i] === "--platform") args.platform = argv[++i];
     else if (argv[i] === "--check") args.check = true;
+    else if (argv[i] === "--clean") args.clean = true;
     else if (argv[i] === "--payload") args.payload = true;
   }
   return args;
@@ -83,37 +90,58 @@ function zipFrom(files) {
   return zip.toBuffer();
 }
 
-// --- shim：包内唯一制品，只装 boot.mjs ---
+// --- shim：包内唯一制品，就是 server/boot.mjs 本身 ---
+// 产物直接取源文件字节，所以 plugin.json 里钉的 sha256 与仓库里的 boot.mjs 一一对应，
+// 没有 zip 包装、没有平台后缀，也就不会再有"bag 里放着一个平台专属小包"的错位。
+const SHIM_ARTIFACT_DESTINATION = "server/boot.mjs";
+
+async function cleanLegacyShims() {
+  let removed = 0;
+  for (const dir of [shimOutputDir, path.join(pluginRoot, "public")]) {
+    for (const entry of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+      if (!entry.isFile() || !/^open-ai-canvas-.+\.zip$/.test(entry.name)) continue;
+      const target = path.join(dir, entry.name);
+      await rm(target, { force: true });
+      console.log(`[clean] 删除旧制品 ${path.relative(pluginRoot, target)}`);
+      removed += 1;
+    }
+  }
+  if (!removed) console.log("[clean] 没有需要清理的旧 zip 制品");
+}
+
 async function buildShim({ platform, check }) {
   const bootPath = path.join(pluginRoot, "server", "boot.mjs");
   await stat(bootPath);
-  const files = [{ rel: "boot.mjs", full: bootPath, buffer: await readFile(bootPath) }];
+  const buffer = await readFile(bootPath);
 
   await mkdir(shimOutputDir, { recursive: true });
-  const outputFile = path.join(shimOutputDir, `open-ai-canvas-${platform}.zip`);
-  const buffer = zipFrom(files);
+  const outputFile = path.join(shimOutputDir, "boot.mjs");
   await writeFile(outputFile, buffer);
   const digest = sha256(buffer);
   console.log(
-    `[shim] ${path.relative(pluginRoot, outputFile)}  entries=${files.length}  bytes=${buffer.length}  sha256=${digest}`,
+    `[shim] ${path.relative(pluginRoot, outputFile)}  bytes=${buffer.length}  sha256=${digest}`,
   );
 
   const manifest = await readManifest();
   const platformEntry = manifest.providers?.services?.[0]?.runtime?.platforms?.[platform];
-  const declared = (platformEntry?.artifacts ?? []).map((artifact) => artifact.sha256);
+  const declared = platformEntry?.artifacts ?? [];
+  const [artifact] = declared;
+  const problems = [];
+  if (declared.length !== 1) problems.push(`artifacts 应为 1 项，实际 ${declared.length} 项`);
+  if (artifact && artifact.sha256 !== digest) problems.push(`sha256 应为 ${digest}，实际 ${artifact.sha256}`);
+  if (artifact && artifact.archive !== "file") problems.push(`archive 应为 file，实际 ${artifact.archive}`);
+  if (artifact && artifact.destination !== SHIM_ARTIFACT_DESTINATION)
+    problems.push(`destination 应为 ${SHIM_ARTIFACT_DESTINATION}，实际 ${artifact.destination}`);
 
   if (check) {
-    if (declared.length !== 1 || declared[0] !== digest) {
-      console.error(
-        `plugin.json platforms.${platform}.artifacts[0].sha256 = ${declared.join(",") || "(none)"}\n` +
-          `实际产物 = ${digest}\n请更新 plugin.json 后重新构建。`,
-      );
+    if (problems.length > 0) {
+      console.error(`plugin.json platforms.${platform} 与实际产物不一致：\n  ${problems.join("\n  ")}`);
       process.exitCode = 1;
       return;
     }
-    console.log(`[shim] sha256 与 plugin.json 一致`);
-  } else if (declared.length === 1 && declared[0] !== digest) {
-    console.log(`[shim] 提示：plugin.json 记录的 sha256 已过期，请改为 ${digest}`);
+    console.log(`[shim] plugin.json 声明与产物一致（sha256 / archive / destination）`);
+  } else if (problems.length > 0) {
+    console.log(`[shim] 提示：plugin.json 需要更新：\n  ${problems.join("\n  ")}`);
   }
 }
 
@@ -168,6 +196,7 @@ async function main() {
   const platform = args.platform || currentPlatform();
   const mode = args.payload ? "payload" : "shim";
   console.log(`[${mode}] platform=${platform}`);
+  if (mode === "shim" && args.clean) await cleanLegacyShims();
   if (mode === "payload") await buildPayload({ canvasDir: args.canvasDir, platform });
   else await buildShim({ platform, check: args.check });
 }

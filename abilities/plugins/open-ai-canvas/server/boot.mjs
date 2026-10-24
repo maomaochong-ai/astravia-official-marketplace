@@ -38,6 +38,7 @@ if (!HOST_PORT || !DATA_DIR) {
 // 远超 Desktop 的 50 MB 单包上限，因此首次启动时下载到 DATA_DIR/runtime/<version>/ 并校验 sha256。
 const PAYLOAD_VERSION = "0.0.1";
 const PAYLOAD_BASE_URL =
+  process.env.CANVAS_PAYLOAD_BASE_URL ||
   "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas";
 const PAYLOADS = {
   "darwin-arm64": { file: "payload-0.0.1-darwin-arm64.zip", sha256: "fb46396533b5b0c82b533f06141918bfaa2fb1a984b9a5bec123d642d545c0c7" },
@@ -50,6 +51,104 @@ const PROVISION_DIR = path.join(DATA_DIR, "runtime", PAYLOAD_VERSION);
 
 function note(message) {
   console.log(`[open-ai-canvas] ${message}`);
+}
+
+// --- 准备阶段的可见状态 ---
+// 宿主用 /api/health/ready 判定服务就绪，而首次启动要下载约 200 MB 载荷。
+// 监听因此先就位、把下载放到监听之后：健康检查立刻通过，准备进度由 /__canvas/progress
+// 暴露给下面这张准备页，而不是让整段下载卡在宿主的健康超时里被反复中止。
+const STATE = {
+  phase: "starting",
+  message: "正在检查运行时",
+  receivedBytes: 0,
+  totalBytes: 0,
+  error: null,
+};
+
+function progressSnapshot() {
+  const percent =
+    STATE.totalBytes > 0 ? Math.min(100, Math.round((STATE.receivedBytes / STATE.totalBytes) * 100)) : 0;
+  return {
+    phase: STATE.phase,
+    message: STATE.message,
+    receivedBytes: STATE.receivedBytes,
+    totalBytes: STATE.totalBytes,
+    percent,
+    error: STATE.error,
+  };
+}
+
+function progressPage() {
+  const failed = STATE.phase === "failed";
+  const title = failed ? "运行时准备失败" : "正在准备 Open AI Canvas";
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+:root{color-scheme:light dark}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fafafa;color:#18181b}
+.card{width:min(520px,calc(100vw - 48px));padding:28px 30px;border:1px solid #e4e4e7;border-radius:14px;
+background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+h1{margin:0 0 4px;font-size:16px;font-weight:600}
+.sub{margin:0;color:#a1a1aa;font-size:12px}
+#msg{margin:14px 0 0;color:#71717a;font-size:13px}
+.track{margin:10px 0 8px;height:6px;border-radius:999px;overflow:hidden;background:#f4f4f5}
+.bar{height:100%;width:0;background:#18181b;transition:width .3s ease}
+.meta{display:flex;justify-content:space-between;color:#a1a1aa;font-size:12px;
+font-variant-numeric:tabular-nums}
+pre{margin:14px 0 0;padding:10px 12px;border-radius:8px;background:#fef2f2;color:#b91c1c;
+font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
+button{margin-top:16px;padding:8px 16px;border:0;border-radius:8px;background:#18181b;color:#fff;
+font:inherit;font-size:13px;cursor:pointer}
+button[disabled]{opacity:.5;cursor:default}
+.pending .track,.pending .meta{visibility:hidden}
+@media (prefers-color-scheme:dark){
+body{background:#09090b;color:#fafafa}
+.card{background:#18181b;border-color:#27272a}
+.track{background:#27272a}.bar{background:#fafafa}
+pre{background:#2a1215}
+button{background:#fafafa;color:#18181b}
+}
+</style>
+</head>
+<body>
+<div class="card${failed ? "" : " pending"}">
+  <h1>${title}</h1>
+  <p class="sub">Preparing the Open AI Canvas runtime</p>
+  <p id="msg">${STATE.message}</p>
+  <div class="track"><div class="bar" id="bar"></div></div>
+  <div class="meta"><span id="pct"></span><span id="bytes"></span></div>
+  ${failed ? `<pre>${STATE.error ?? ""}</pre><button id="retry">重试 / Retry</button>` : ""}
+</div>
+<script>
+const bar=document.getElementById('bar'),pct=document.getElementById('pct'),
+bytes=document.getElementById('bytes'),msg=document.getElementById('msg');
+function fmt(n){return n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(1)+' MB'}
+async function tick(){
+  try{
+    const r=await fetch('/__canvas/progress',{cache:'no-store'});
+    const p=await r.json();
+    if(p.phase==='ready'){location.replace('/');return}
+    if(p.phase==='failed'){location.reload();return}
+    if(p.message)msg.textContent=p.message;
+    if(p.totalBytes>0){
+      bar.style.width=p.percent+'%';
+      pct.textContent=p.percent+'%';
+      bytes.textContent=fmt(p.receivedBytes)+' / '+fmt(p.totalBytes);
+    }
+  }catch(e){}
+  setTimeout(tick,1000);
+}
+const retry=document.getElementById('retry');
+if(retry)retry.onclick=async()=>{retry.disabled=true;try{await fetch('/__canvas/retry',{method:'POST'})}catch(e){}location.reload()};
+tick();
+</script>
+</body>
+</html>`;
 }
 
 function hasPayload(dir) {
@@ -79,24 +178,73 @@ function findEndOfCentralDirectory(buffer) {
 }
 
 // 只用 node:zlib 解 ZIP：载荷由本仓库脚本以 store/deflate 生成，不需要打包器依赖。
-function extractZip(buffer, destDir) {
-  const eocd = findEndOfCentralDirectory(buffer);
-  if (eocd < 0) throw new Error("载荷不是有效的 ZIP：找不到中央目录");
-  const total = buffer.readUInt16LE(eocd + 10);
-  let cursor = buffer.readUInt32LE(eocd + 16);
-  if (total === 0xffff || cursor === 0xffffffff) throw new Error("暂不支持 ZIP64 格式的载荷");
+// 逐条流式解压：载荷解压后远大于 200 MB，整包读入 Buffer 会把主进程内存顶到峰值。
+function readExactly(fd, position, length) {
+  const buffer = Buffer.allocUnsafe(length);
+  let filled = 0;
+  while (filled < length) {
+    const bytes = fs.readSync(fd, buffer, filled, length - filled, position + filled);
+    if (bytes <= 0) throw new Error(`载荷文件意外结束（offset ${position + filled}）`);
+    filled += bytes;
+  }
+  return buffer;
+}
+
+function copyRangeInto(archive, start, length, target) {
+  return new Promise((resolve, reject) => {
+    const source = fs.createReadStream(archive, { start, end: start + length - 1 });
+    const sink = fs.createWriteStream(target);
+    sink.on("finish", resolve);
+    sink.on("error", reject);
+    source.on("error", reject);
+    source.pipe(sink);
+  });
+}
+
+function inflateRangeInto(archive, start, length, target) {
+  return new Promise((resolve, reject) => {
+    const source = fs.createReadStream(archive, { start, end: start + length - 1 });
+    const inflate = zlib.createInflateRaw();
+    const sink = fs.createWriteStream(target);
+    sink.on("finish", resolve);
+    sink.on("error", reject);
+    inflate.on("error", reject);
+    source.on("error", reject);
+    source.pipe(inflate).pipe(sink);
+  });
+}
+
+async function extractZip(archive, destDir) {
+  const fd = fs.openSync(archive, "r");
+  let directory;
+  let total;
+  try {
+    const size = fs.fstatSync(fd).size;
+    const tailLength = Math.min(size, 66 * 1024);
+    const tail = readExactly(fd, size - tailLength, tailLength);
+    const eocd = findEndOfCentralDirectory(tail);
+    if (eocd < 0) throw new Error("载荷不是有效的 ZIP：找不到中央目录");
+    total = tail.readUInt16LE(eocd + 10);
+    const directorySize = tail.readUInt32LE(eocd + 12);
+    const directoryOffset = tail.readUInt32LE(eocd + 16);
+    if (total === 0xffff || directoryOffset === 0xffffffff) throw new Error("暂不支持 ZIP64 格式的载荷");
+    directory = readExactly(fd, directoryOffset, directorySize);
+  } finally {
+    fs.closeSync(fd);
+  }
 
   const root = path.resolve(destDir);
+  let cursor = 0;
   for (let index = 0; index < total; index++) {
-    if (buffer.readUInt32LE(cursor) !== 0x02014b50) throw new Error("载荷 ZIP 中央目录损坏");
-    const method = buffer.readUInt16LE(cursor + 10);
-    const compressedSize = buffer.readUInt32LE(cursor + 20);
-    const uncompressedSize = buffer.readUInt32LE(cursor + 24);
-    const nameLength = buffer.readUInt16LE(cursor + 28);
-    const extraLength = buffer.readUInt16LE(cursor + 30);
-    const commentLength = buffer.readUInt16LE(cursor + 32);
-    const localOffset = buffer.readUInt32LE(cursor + 42);
-    const name = buffer.toString("utf8", cursor + 46, cursor + 46 + nameLength);
+    if (directory.readUInt32LE(cursor) !== 0x02014b50) throw new Error("载荷 ZIP 中央目录损坏");
+    const method = directory.readUInt16LE(cursor + 10);
+    const compressedSize = directory.readUInt32LE(cursor + 20);
+    const uncompressedSize = directory.readUInt32LE(cursor + 24);
+    const nameLength = directory.readUInt16LE(cursor + 28);
+    const extraLength = directory.readUInt16LE(cursor + 30);
+    const commentLength = directory.readUInt16LE(cursor + 32);
+    const localOffset = directory.readUInt32LE(cursor + 42);
+    const name = directory.toString("utf8", cursor + 46, cursor + 46 + nameLength);
     cursor += 46 + nameLength + extraLength + commentLength;
 
     if (name.endsWith("/")) continue;
@@ -105,31 +253,41 @@ function extractZip(buffer, destDir) {
       throw new Error(`载荷条目越出目标目录：${name}`);
     }
 
-    const localNameLength = buffer.readUInt16LE(localOffset + 26);
-    const localExtraLength = buffer.readUInt16LE(localOffset + 28);
-    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
-    const raw = buffer.subarray(dataStart, dataStart + compressedSize);
-    let data;
-    if (method === 0) data = raw;
-    else if (method === 8) data = zlib.inflateRawSync(raw);
-    else throw new Error(`不支持的 ZIP 压缩方式：${method}`);
-    if (uncompressedSize && data.length !== uncompressedSize) {
-      throw new Error(`载荷条目大小不符：${name}`);
+    const localFd = fs.openSync(archive, "r");
+    let dataStart;
+    try {
+      const localNameLength = readExactly(localFd, localOffset + 26, 2).readUInt16LE(0);
+      const localExtraLength = readExactly(localFd, localOffset + 28, 2).readUInt16LE(0);
+      dataStart = localOffset + 30 + localNameLength + localExtraLength;
+    } finally {
+      fs.closeSync(localFd);
     }
 
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, data);
+    if (method === 0) {
+      await copyRangeInto(archive, dataStart, compressedSize, target);
+    } else if (method === 8) {
+      await inflateRangeInto(archive, dataStart, compressedSize, target);
+    } else {
+      throw new Error(`不支持的 ZIP 压缩方式：${method}`);
+    }
+    if (uncompressedSize && fs.statSync(target).size !== uncompressedSize) {
+      throw new Error(`载荷条目大小不符：${name}`);
+    }
   }
 }
 
 // 实测：undici 的连接超时在弱网下会随机 UND_ERR_CONNECT_TIMEOUT，而 node:https 可用；
 // 同时 GitHub 的 Release 资产对单连接限速，因此这里用 https 分片并发 Range 下载。
+// CANVAS_PAYLOAD_BASE_URL 只用于离线自测（本地 http 源），生产默认值不变。
 const DOWNLOAD_CHUNKS = 8;
 const CHUNK_ATTEMPTS = 3;
 
 function httpRequest(url, { method = "GET", headers = {}, redirects = 5, timeout = 60000 } = {}) {
+  // 默认走 https；CANVAS_PAYLOAD_BASE_URL 指向本地 http 时（离线自测）也能用。
+  const client = new URL(url).protocol === "http:" ? http : https;
   return new Promise((resolve, reject) => {
-    const req = https.request(url, { method, headers, timeout }, (res) => {
+    const req = client.request(url, { method, headers, timeout }, (res) => {
       const location = res.headers.location;
       if (location && [301, 302, 303, 307, 308].includes(res.statusCode) && redirects > 0) {
         res.resume();
@@ -163,37 +321,74 @@ async function payloadSize(url) {
   return 0;
 }
 
-async function downloadChunk(url, handle, start, end) {
+function partPath(archive, index) {
+  return `${archive}.part${index}`;
+}
+
+function statSize(file) {
+  try {
+    return fs.statSync(file).size;
+  } catch {
+    return 0;
+  }
+}
+
+function partsBytes(archive, count) {
+  let total = 0;
+  for (let index = 0; index < count; index += 1) total += statSize(partPath(archive, index));
+  return total;
+}
+
+// 每个分片写进自己的 .partN 文件：进程被杀、宿主重启、连接断掉都能从已有字节接着取。
+// 旧实现把八个分片写进同一个 filehandle，并且失败时删整个归档，续传收益会被路径本身抵消。
+async function downloadChunk(url, file, start, end) {
+  const expected = end - start + 1;
+  let have = statSize(file);
+  if (have === expected) return;
+  if (have > expected) {
+    fs.rmSync(file, { force: true });
+    have = 0;
+  }
+
   let lastError;
   for (let attempt = 1; attempt <= CHUNK_ATTEMPTS; attempt += 1) {
     let response;
     let watchdog;
+    const from = start + have;
     try {
-      response = await httpRequest(url, { headers: { Range: `bytes=${start}-${end}` }, timeout: 45000 });
+      response = await httpRequest(url, { headers: { Range: `bytes=${from}-${end}` }, timeout: 45000 });
       if (response.statusCode !== 206) {
         response.resume();
         throw new Error(`HTTP ${response.statusCode}`);
       }
-      let position = start;
       let lastActivity = Date.now();
       // 有的连接会写满后仍不关流，或者干脆停在那里；45 秒没有新数据就判死重试。
       watchdog = setInterval(() => {
         if (Date.now() - lastActivity > 45000) response.destroy(new Error("分片停滞"));
       }, 5000);
-      for await (const part of response) {
-        const usable = Math.min(part.length, end + 1 - position);
-        if (usable > 0) {
-          await handle.write(part, 0, usable, position);
-          position += usable;
-          lastActivity = Date.now();
-        }
-        if (position === end + 1) break;
-      }
-      if (position !== end + 1) throw new Error(`字节不足 ${position}/${end + 1}`);
+      response.on("data", () => {
+        lastActivity = Date.now();
+      });
+      const sink = fs.createWriteStream(file, { flags: have > 0 ? "a" : "w" });
+      await new Promise((resolve, reject) => {
+        sink.on("finish", resolve);
+        sink.on("error", reject);
+        response.on("error", reject);
+        response.on("aborted", () => reject(new Error("连接中断")));
+        response.pipe(sink);
+      });
+      const written = statSize(file);
+      if (written !== expected) throw new Error(`字节不足 ${written}/${expected}`);
       if (process.env.CANVAS_DOWNLOAD_DEBUG) note(`分片 ${start}-${end} 完成（第 ${attempt} 次）`);
       return;
     } catch (err) {
       lastError = err;
+      // 已落盘的部分留作下次续传的基线。
+      have = statSize(file);
+      if (have > expected) {
+        fs.rmSync(file, { force: true });
+        have = 0;
+      }
       await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
     } finally {
       if (watchdog) clearInterval(watchdog);
@@ -203,35 +398,70 @@ async function downloadChunk(url, handle, start, end) {
   throw lastError;
 }
 
+async function mergeParts(archive, parts) {
+  const sink = fs.createWriteStream(archive);
+  const finished = new Promise((resolve, reject) => {
+    sink.on("finish", resolve);
+    sink.on("error", reject);
+  });
+  try {
+    for (const part of parts) {
+      await new Promise((resolve, reject) => {
+        const source = fs.createReadStream(part);
+        source.on("error", reject);
+        source.on("end", resolve);
+        source.pipe(sink, { end: false });
+      });
+    }
+  } finally {
+    sink.end();
+  }
+  await finished;
+}
+
+function downloadChunked(url, archive, size) {
+  const chunk = Math.ceil(size / DOWNLOAD_CHUNKS);
+  const ranges = [];
+  for (let index = 0; index < DOWNLOAD_CHUNKS; index += 1) {
+    const start = index * chunk;
+    const end = Math.min(size - 1, start + chunk - 1);
+    if (start <= end) ranges.push({ index, start, end });
+  }
+
+  STATE.totalBytes = size;
+  const tick = setInterval(() => {
+    STATE.receivedBytes = partsBytes(archive, DOWNLOAD_CHUNKS);
+  }, 300);
+  const settled = Promise.all(ranges.map((range) => downloadChunk(url, partPath(archive, range.index), range.start, range.end))).finally(
+    () => clearInterval(tick),
+  );
+  return settled.then(async () => {
+    STATE.receivedBytes = size;
+    await mergeParts(
+      archive,
+      ranges.map((range) => partPath(archive, range.index)),
+    );
+    for (const range of ranges) fs.rmSync(partPath(archive, range.index), { force: true });
+  });
+}
+
 async function downloadPayload(url, archive) {
   const size = await payloadSize(url);
   if (process.env.CANVAS_DOWNLOAD_DEBUG) note(`载荷字节数 ${size}，分 ${DOWNLOAD_CHUNKS} 片`);
   if (size > 0) {
     try {
-      const handle = await fs.promises.open(archive, "w");
-      try {
-        const chunk = Math.ceil(size / DOWNLOAD_CHUNKS);
-        await Promise.all(
-          Array.from({ length: DOWNLOAD_CHUNKS }, (_, index) => {
-            const start = index * chunk;
-            const end = Math.min(size - 1, start + chunk - 1);
-            return start > end ? null : downloadChunk(url, handle, start, end);
-          }),
-        );
-      } finally {
-        await handle.close();
-      }
+      await downloadChunked(url, archive, size);
       if (fs.statSync(archive).size === size) return;
       throw new Error("分片下载长度不符");
     } catch (err) {
+      // 不清空已有字节：合并包与 .partN 都还能作为单连接续传的基线。
       note(`分片下载失败（${err.message}），改用单连接重试`);
-      fs.rmSync(archive, { force: true });
     }
   }
 
   note("改用单连接下载");
   // 单连接拿不到总长度时也要能续下：已有字节用 Range 接着取，并同样装停滞看门狗。
-  const existing = fs.existsSync(archive) ? fs.statSync(archive).size : 0;
+  const existing = statSize(archive);
   const res = await httpRequest(
     url,
     existing > 0 ? { headers: { Range: `bytes=${existing}-` } } : {},
@@ -248,6 +478,7 @@ async function downloadPayload(url, archive) {
   }, 5000);
   res.on("data", () => {
     lastActivity = Date.now();
+    if (size > 0) STATE.receivedBytes = Math.min(size, offset + res.bytesRead);
   });
   try {
     res.pipe(out);
@@ -268,39 +499,48 @@ async function provisionPayload(spec) {
   const staging = `${PROVISION_DIR}.partial`;
   const archive = `${staging}.zip`;
   fs.mkdirSync(path.dirname(staging), { recursive: true });
+  STATE.phase = "downloading";
+  STATE.message = "首次启动，正在下载运行时载荷（约 200 MB）";
+  STATE.error = null;
   note(`首次启动，正在下载运行时载荷（约 200 MB）：${url}`);
 
   const startedAt = Date.now();
   fs.mkdirSync(path.dirname(archive), { recursive: true });
-  // 弱网下整段下载也可能中断，允许整体重来，已下载的部分会被覆盖。
+  // 弱网下整段下载也可能中断：重试时不清归档，已落盘的字节与 .partN 分片会接着用。
   for (let attempt = 1; ; attempt += 1) {
     try {
       await downloadPayload(url, archive);
       break;
     } catch (err) {
-      fs.rmSync(archive, { force: true });
       if (attempt >= 3) throw err;
       note(`下载中断（${err.message}），第 ${attempt} 次重试`);
       await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
     }
   }
 
+  STATE.phase = "verifying";
+  STATE.message = "正在校验运行时完整性";
   const digest = await hashFile(archive);
   if (digest !== spec.sha256) {
+    // 只有"文件确实坏了"才值得丢掉续传基线。
     fs.rmSync(archive, { force: true });
+    for (let index = 0; index < DOWNLOAD_CHUNKS; index += 1) fs.rmSync(partPath(archive, index), { force: true });
     throw new Error(`运行时载荷 sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
   }
 
   const megabytes = (fs.statSync(archive).size / 1048576).toFixed(1);
   note(`下载完成（${megabytes} MB，用时 ${Math.round((Date.now() - startedAt) / 1000)}s），开始解包`);
 
+  STATE.phase = "extracting";
+  STATE.message = "正在解包运行时";
+  const extractStartedAt = Date.now();
   fs.rmSync(staging, { recursive: true, force: true });
-  extractZip(fs.readFileSync(archive), staging);
+  await extractZip(archive, staging);
   fs.chmodSync(path.join(staging, BINARY_NAME), 0o755);
   fs.rmSync(PROVISION_DIR, { recursive: true, force: true });
   fs.renameSync(staging, PROVISION_DIR);
   fs.rmSync(archive, { force: true });
-  note(`运行时已就绪：${PROVISION_DIR}`);
+  note(`运行时已就绪：${PROVISION_DIR}（解包 ${Math.round((Date.now() - extractStartedAt) / 1000)}s）`);
 }
 
 async function resolveRuntimeDir() {
@@ -320,18 +560,44 @@ async function resolveRuntimeDir() {
   return PROVISION_DIR;
 }
 
-let SERVER_DIR;
-try {
-  SERVER_DIR = await resolveRuntimeDir();
-} catch (error) {
-  console.error(`[open-ai-canvas] 运行时准备失败：${error.message}`);
-  process.exit(1);
+let preparing = false;
+
+// 监听之后才走到这里：解析（或下载）运行时 → 分配端口 → 拉起后端。
+// 失败不再 process.exit，而是把原因留在 STATE 里让界面显示并允许手动重试。
+async function prepareRuntime() {
+  if (preparing || STATE.phase === "ready") return;
+  preparing = true;
+  try {
+    STATE.phase = "starting";
+    STATE.message = "正在检查运行时";
+    STATE.error = null;
+    SERVER_DIR = await resolveRuntimeDir();
+    GO_BINARY = path.join(SERVER_DIR, BINARY_NAME);
+    WEB_DIST = path.join(SERVER_DIR, "web-dist");
+    PI_RUNTIME = path.join(SERVER_DIR, "pi-runtime");
+    PLUGIN_PACKAGES = path.join(SERVER_DIR, "plugin-packages");
+
+    STATE.phase = "starting-backend";
+    STATE.message = "正在启动后端";
+    await reserveBackendPort();
+    startBackend();
+  } catch (error) {
+    STATE.phase = "failed";
+    STATE.error = error?.message ?? String(error);
+    STATE.message = "运行时准备失败";
+    console.error(`[open-ai-canvas] 运行时准备失败：${STATE.error}`);
+  } finally {
+    preparing = false;
+  }
 }
 
-const GO_BINARY = path.join(SERVER_DIR, BINARY_NAME);
-const WEB_DIST = path.join(SERVER_DIR, "web-dist");
-const PI_RUNTIME = path.join(SERVER_DIR, "pi-runtime");
-const PLUGIN_PACKAGES = path.join(SERVER_DIR, "plugin-packages");
+// 运行时目录在监听之后才解析（首次启动要下载 200 MB），所以这些路径先占位。
+let SERVER_DIR = null;
+let GO_BINARY = null;
+let WEB_DIST = null;
+let PI_RUNTIME = null;
+let PLUGIN_PACKAGES = null;
+let goProcess = null;
 
 // --- session 存储 ---
 const SESSION_FILE = path.join(DATA_DIR, "session.json");
@@ -357,41 +623,37 @@ function saveSession(token) {
 let SESSION_TOKEN = loadSession();
 let BACKEND_PORT = 0;
 
-// Go 在 :0 模式下只把配置值写进日志，不回报真实端口，所以这里先占一个空闲端口再交给它。
-await new Promise((resolve, reject) => {
-  const probe = net.createServer();
-  probe.once("error", reject);
-  probe.listen(0, "127.0.0.1", () => {
-    BACKEND_PORT = probe.address().port;
-    probe.close(resolve);
+
+// --- Go 后端环境变量与启动 ---
+function backendEnv() {
+  return {
+    ...process.env,
+    CANVAS_BACKEND_ADDR: `127.0.0.1:${BACKEND_PORT}`,
+    CANVAS_BACKEND_DATA_DIR: DATA_DIR,
+    CANVAS_STATIC_DIR: WEB_DIST,
+    CANVAS_CORS_ORIGINS: `http://127.0.0.1:${HOST_PORT},http://localhost:${HOST_PORT}`,
+    CANVAS_EXIT_WITH_PARENT: "true",
+    CANVAS_PARENT_PID: String(process.pid),
+    GIN_MODE: "release",
+    CANVAS_NODE_BIN: process.execPath,
+    ...(fs.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {}),
+    CANVAS_RUNTIME_AUTO_INSTALL: "false",
+    CANVAS_OFFICIAL_PLUGIN_DIR: PLUGIN_PACKAGES,
+    CANVAS_REGISTRATION_ENABLED: "false",
+  };
+}
+
+// 分配一个固定端口交给 Go：它自己在 :0 模式下不回报真实端口。
+async function reserveBackendPort() {
+  await new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      BACKEND_PORT = probe.address().port;
+      probe.close(resolve);
+    });
   });
-});
-
-// --- Go 后端环境变量 ---
-const GO_ENV = {
-  ...process.env,
-  CANVAS_BACKEND_ADDR: `127.0.0.1:${BACKEND_PORT}`,
-  CANVAS_BACKEND_DATA_DIR: DATA_DIR,
-  CANVAS_STATIC_DIR: WEB_DIST,
-  CANVAS_CORS_ORIGINS: `http://127.0.0.1:${HOST_PORT},http://localhost:${HOST_PORT}`,
-  CANVAS_EXIT_WITH_PARENT: "true",
-  CANVAS_PARENT_PID: String(process.pid),
-  GIN_MODE: "release",
-  CANVAS_NODE_BIN: process.execPath,
-  ...(fs.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {}),
-  CANVAS_RUNTIME_AUTO_INSTALL: "false",
-  CANVAS_OFFICIAL_PLUGIN_DIR: PLUGIN_PACKAGES,
-  CANVAS_REGISTRATION_ENABLED: "false",
-};
-
-// --- 拉起 Go 后端 ---
-console.log(`[open-ai-canvas] Starting backend: ${GO_BINARY}`);
-const goProcess = spawn(GO_BINARY, [], {
-  env: GO_ENV,
-  stdio: ["ignore", "pipe", "pipe"],
-});
-
-let goPort = null;
+}
 
 // Go 用 log/slog 写 stderr，启动监听地址不会出现在 stdout，两条流都要解析。
 function watchBackendOutput(chunk, sink) {
@@ -402,22 +664,77 @@ function watchBackendOutput(chunk, sink) {
   if (!match || Number(match[1]) === 0) return;
   goPort = Number(match[1]);
   console.log(`[open-ai-canvas] Backend listening on port ${goPort}`);
-  startProxy();
+  STATE.phase = "ready";
+  STATE.message = "运行时已就绪";
+  onBackendReady();
 }
 
-goProcess.stdout.on("data", (chunk) => watchBackendOutput(chunk, process.stdout));
-goProcess.stderr.on("data", (chunk) => watchBackendOutput(chunk, process.stderr));
+function startBackend() {
+  console.log(`[open-ai-canvas] Starting backend: ${GO_BINARY}`);
+  goProcess = spawn(GO_BINARY, [], {
+    env: backendEnv(),
+    cwd: SERVER_DIR,
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
+  });
 
-goProcess.on("exit", (code, signal) => {
-  console.log(`[open-ai-canvas] Backend exited: code=${code} signal=${signal}`);
-  process.exit(code ?? 1);
+  goProcess.stdout.on("data", (chunk) => watchBackendOutput(chunk, process.stdout));
+  goProcess.stderr.on("data", (chunk) => watchBackendOutput(chunk, process.stderr));
+  goProcess.on("error", (error) => {
+    STATE.phase = "failed";
+    STATE.error = `后端子进程拉起失败：${error.message}`;
+    STATE.message = "后端启动失败";
+    console.error(`[open-ai-canvas] Failed to spawn backend: ${error.message}`);
+  });
+  goProcess.on("exit", (code, signal) => {
+    console.log(`[open-ai-canvas] Backend exited: code=${code} signal=${signal}`);
+    // 主动停止（宿主发了信号）不是故障，直接跟着退，不要把 failed 写进状态。
+    if (shuttingDown) {
+      process.exit(0);
+    }
+    // 准备阶段就退出说明后端根本起不来；把原因留给界面，而不是直接杀掉 shim。
+    if (!goPort) {
+      STATE.phase = "failed";
+      STATE.error = `后端在启动阶段退出（code=${code} signal=${signal}）`;
+      STATE.message = "后端启动失败";
+      return;
+    }
+    process.exit(code ?? 1);
+  });
+}
+
+let goPort = null;
+let backendReadyResolve = null;
+const backendReady = new Promise((resolve) => {
+  backendReadyResolve = resolve;
 });
 
+function onBackendReady() {
+  if (backendReadyResolve) backendReadyResolve();
+  backendReadyResolve = null;
+}
+
 // --- 信号转发 ---
+// 收到停止信号必须让 shim 自己退出：准备阶段子进程可能还没 spawn，
+// 转发是空操作；已 spawn 的后端也不保证响应。shim 赖着不退，宿主会认为 stop 没生效，
+// 反复重试并累积多个僵尸进程——这是「界面反复重试甚至崩溃」的一半成因。
+let shuttingDown = false;
+
 function forwardSignal(signal) {
-  if (goProcess && !goProcess.killed) {
-    goProcess.kill(signal);
+  if (shuttingDown) return;
+  shuttingDown = true;
+  // 准备阶段还没有后端子进程，没有需要优雅关闭的东西，立刻退。
+  if (!goProcess || goProcess.killed) {
+    process.exit(0);
   }
+  try {
+    goProcess.kill(signal);
+  } catch {
+    process.exit(0);
+  }
+  // 给后端 3 s 优雅退出；下载中途退出留下的 .partN 正是续传要用的。
+  const force = setTimeout(() => process.exit(0), 3_000);
+  force.unref?.();
 }
 process.on("SIGTERM", () => forwardSignal("SIGTERM"));
 process.on("SIGINT", () => forwardSignal("SIGINT"));
@@ -1002,9 +1319,79 @@ function handleMcpRequest(req, res) {
   });
 }
 
-// --- 反向代理 ---
+// --- 反向代理壳 ---
+// 先监听、再准备：宿主的 /api/health/ready 一连接就能拿到 200，首次启动那 200 MB
+// 下载与解包因此不再卡在宿主的健康超时里被反复中止。准备完成前，界面拿到的是
+// 插件自己画的进度页，MCP 请求则等后端就绪（最多 90 秒）再交给真实处理器。
+const MCP_WAIT_MS = 90_000;
+
+function waitForBackend(timeoutMs) {
+  if (goPort) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    backendReady.then(() => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+}
+
+function servePreparation(req, res) {
+  if (req.method === "GET" && req.url === "/api/health/ready") {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ status: STATE.phase === "failed" ? "error" : "preparing", ...progressSnapshot() }));
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/__canvas/progress") {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify(progressSnapshot()));
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/__canvas/retry") {
+    STATE.phase = "starting";
+    STATE.message = "正在重试";
+    STATE.error = null;
+    STATE.receivedBytes = 0;
+    STATE.totalBytes = 0;
+    res.writeHead(202, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+    void prepareRuntime();
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/mcp") {
+    // 后端还没就绪时把 MCP 握手挂住，而不是立刻回 503。多数客户端愿意等，
+    // 直接报错会被当成"该服务不支持 MCP"并缓存下来。
+    void waitForBackend(MCP_WAIT_MS).then((ready) => {
+      if (ready) {
+        handleMcpRequest(req, res);
+        return;
+      }
+      res.writeHead(503, { "Content-Type": "application/json", "Retry-After": "10" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32000, message: "Runtime is still preparing" },
+        }),
+      );
+    });
+    return;
+  }
+
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(progressPage());
+}
+
 function startProxy() {
   const server = http.createServer((req, res) => {
+    if (!goPort) {
+      servePreparation(req, res);
+      return;
+    }
+
     // MCP 路由
     if (req.method === "POST" && req.url === "/mcp") {
       handleMcpRequest(req, res);
@@ -1037,7 +1424,7 @@ function startProxy() {
 
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
         proxyRes.pipe(res);
-      }
+      },
     );
 
     proxyReq.on("error", (err) => {
@@ -1050,6 +1437,11 @@ function startProxy() {
 
   // WebSocket upgrade 转发
   server.on("upgrade", (req, socket, head) => {
+    if (!goPort) {
+      socket.destroy();
+      return;
+    }
+
     const targetSocket = net.connect(goPort, "127.0.0.1", () => {
       let upgradeReq = `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`;
       for (const [key, value] of Object.entries(req.headers)) {
@@ -1074,4 +1466,9 @@ function startProxy() {
   server.listen(HOST_PORT, "127.0.0.1", () => {
     console.log(`[open-ai-canvas] Proxy listening on http://127.0.0.1:${HOST_PORT}`);
   });
+  return server;
 }
+
+// --- 启动序列：监听先就位，运行时随后准备 ---
+startProxy();
+void prepareRuntime();

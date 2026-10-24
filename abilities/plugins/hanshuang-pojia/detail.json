@@ -4,6 +4,7 @@
 		{
 			"type": "hero",
 			"eyebrow": "Static-first triage, on-demand depth",
+			"title": "Know what a package does before you install it",
 			"description": "Drop an APK, IPA, DEX, shared library, executable or archive into the workspace and get a readable verdict: what it is, what it asks for, what it hides, and how much it deserves your trust.",
 			"badges": [
 				"APK · IPA · ELF · PE · Mach-O",

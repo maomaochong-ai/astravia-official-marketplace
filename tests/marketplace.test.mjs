@@ -22,9 +22,167 @@ function assertTrackedPresentationResource(path) {
 const detailBlockTypes = new Set(["hero", "feature-grid", "steps", "showcase", "image", "gallery", "stats", "comparison", "callout", "markdown", "links"]);
 const presentationAssetKeys = new Set(["icon", "image", "src", "brand_icon_url"]);
 
+const heroLayouts = new Set(["split", "stacked"]);
+const showcaseTemplates = new Set(["chat-over-canvas", "chat-thread", "canvas-hero", "prompt-result", "spotlight", "workbench"]);
+const showcaseCanvases = new Set(["design", "code", "docs", "generic", "browser", "terminal", "board"]);
+const calloutTones = new Set(["info", "success", "warning"]);
+const comparisonTones = new Set(["neutral", "accent"]);
+
+function assertOptionalText(holder, where, field) {
+  if (holder[field] === undefined) return;
+  assert.equal(typeof holder[field], "string", `${where}: ${field} must be a string`);
+}
+
+function assertRequiredText(holder, where, field) {
+  assert.equal(typeof holder[field], "string", `${where}: ${field} is required and must be a string`);
+  assert.ok(holder[field].trim().length > 0, `${where}: ${field} must not be empty`);
+}
+
+function assertItemList(where, items, { max = Infinity } = {}) {
+  assert.ok(Array.isArray(items), `${where}: items must be an array`);
+  assert.ok(items.length > 0, `${where}: items must not be empty`);
+  assert.ok(items.length <= max, `${where}: items must have at most ${max} entries`);
+  for (const [index, item] of items.entries()) {
+    assert.equal(typeof item, "object", `${where}: items[${index}] must be an object`);
+    assert.ok(item !== null && !Array.isArray(item), `${where}: items[${index}] must be an object`);
+  }
+  return items;
+}
+
+// The desktop rejects the whole marketplace source when one block fails its schema, so every
+// field the host validates has to be checked here as well.
+function assertDetailBlockContract(block, where) {
+  switch (block.type) {
+    case "hero": {
+      assertRequiredText(block, where, "title");
+      for (const field of ["eyebrow", "description", "image", "image_alt"]) assertOptionalText(block, where, field);
+      if (block.layout !== undefined) {
+        assert.ok(heroLayouts.has(block.layout), `${where}: unsupported hero layout ${block.layout}`);
+      }
+      if (block.badges !== undefined) {
+        assert.ok(Array.isArray(block.badges), `${where}: hero badges must be an array of strings`);
+        assert.ok(block.badges.length <= 8, `${where}: hero badges must have at most 8 entries`);
+        for (const [index, badge] of block.badges.entries()) {
+          assert.equal(typeof badge, "string", `${where}: badges[${index}] must be a string`);
+          assert.ok(badge.trim().length > 0, `${where}: badges[${index}] must not be empty`);
+        }
+      }
+      break;
+    }
+    case "feature-grid": {
+      assertOptionalText(block, where, "title");
+      for (const [index, item] of assertItemList(where, block.items).entries()) {
+        const itemWhere = `${where}: items[${index}]`;
+        assertRequiredText(item, itemWhere, "title");
+        assert.equal(typeof item.description, "string", `${itemWhere}: description is required and must be a string`);
+        assertOptionalText(item, itemWhere, "icon");
+      }
+      break;
+    }
+    case "steps": {
+      assertOptionalText(block, where, "title");
+      for (const [index, item] of assertItemList(where, block.items).entries()) {
+        const itemWhere = `${where}: items[${index}]`;
+        assertRequiredText(item, itemWhere, "title");
+        assertOptionalText(item, itemWhere, "description");
+      }
+      break;
+    }
+    case "showcase": {
+      const showcase = block.showcase;
+      assert.equal(typeof showcase, "object", `${where}: showcase is required`);
+      assert.ok(showcase !== null && !Array.isArray(showcase), `${where}: showcase must be an object`);
+      assert.ok(showcaseTemplates.has(showcase.template), `${where}: unsupported showcase template ${showcase.template}`);
+      if (showcase.canvas !== undefined) {
+        assert.ok(showcaseCanvases.has(showcase.canvas), `${where}: unsupported showcase canvas ${showcase.canvas}`);
+      }
+      assert.equal(typeof showcase.user_prompt, "string", `${where}: showcase.user_prompt is required`);
+      assert.equal(typeof showcase.assistant_reply, "string", `${where}: showcase.assistant_reply is required`);
+      assertOptionalText(showcase, `${where}: showcase`, "brand_name");
+      // brand_icon_url resolves with allowIconify disabled in the host.
+      assertOptionalText(showcase, `${where}: showcase`, "brand_icon_url");
+      if (typeof showcase.brand_icon_url === "string") {
+        assert.ok(!showcase.brand_icon_url.startsWith("solar:"), `${where}: showcase.brand_icon_url must not be an iconify name`);
+      }
+      break;
+    }
+    case "image": {
+      assertRequiredText(block, where, "src");
+      assertOptionalText(block, where, "alt");
+      assertOptionalText(block, where, "caption");
+      break;
+    }
+    case "gallery": {
+      assertOptionalText(block, where, "title");
+      for (const [index, item] of assertItemList(where, block.items, { max: 8 }).entries()) {
+        const itemWhere = `${where}: items[${index}]`;
+        assertRequiredText(item, itemWhere, "src");
+        assertOptionalText(item, itemWhere, "alt");
+        assertOptionalText(item, itemWhere, "caption");
+      }
+      break;
+    }
+    case "stats": {
+      assertOptionalText(block, where, "title");
+      for (const [index, item] of assertItemList(where, block.items, { max: 6 }).entries()) {
+        const itemWhere = `${where}: items[${index}]`;
+        assertRequiredText(item, itemWhere, "value");
+        assertRequiredText(item, itemWhere, "label");
+        assertOptionalText(item, itemWhere, "description");
+      }
+      break;
+    }
+    case "comparison": {
+      assertOptionalText(block, where, "title");
+      for (const side of ["left", "right"]) {
+        const column = block[side];
+        const columnWhere = `${where}: ${side}`;
+        assert.ok(column !== null && typeof column === "object", `${columnWhere} is required`);
+        assertRequiredText(column, columnWhere, "title");
+        assert.ok(Array.isArray(column.items), `${columnWhere}: items must be an array`);
+        assert.ok(column.items.length > 0 && column.items.length <= 8, `${columnWhere}: items must have 1 to 8 entries`);
+        for (const [index, item] of column.items.entries()) {
+          assert.equal(typeof item, "string", `${columnWhere}: items[${index}] must be a string`);
+        }
+        if (column.tone !== undefined) {
+          assert.ok(comparisonTones.has(column.tone), `${columnWhere}: unsupported tone ${column.tone}`);
+        }
+      }
+      break;
+    }
+    case "callout": {
+      if (block.tone !== undefined) assert.ok(calloutTones.has(block.tone), `${where}: unsupported callout tone ${block.tone}`);
+      assert.equal(typeof block.content, "string", `${where}: callout content is required`);
+      assertOptionalText(block, where, "title");
+      break;
+    }
+    case "markdown": {
+      const hasContent = typeof block.content === "string";
+      const hasPath = typeof block.path === "string";
+      assert.ok(hasContent !== hasPath, `${where}: markdown block needs exactly one of content or path`);
+      break;
+    }
+    case "links": {
+      assertOptionalText(block, where, "title");
+      for (const [index, item] of assertItemList(where, block.items).entries()) {
+        const itemWhere = `${where}: items[${index}]`;
+        assertRequiredText(item, itemWhere, "label");
+        assert.equal(typeof item.href, "string", `${itemWhere}: href is required`);
+        assert.match(item.href, /^https?:\/\//, `${itemWhere}: href must be http or https`);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 function assertDetailBlocks(directory, blocks, path) {
-  for (const block of blocks) {
+  for (const [index, block] of blocks.entries()) {
+    const where = `${relative(root, path)} blocks[${index}]`;
+    assert.ok(block !== null && typeof block === "object", `${where}: block must be an object`);
     assert.ok(detailBlockTypes.has(block.type), `Unsupported detail block type: ${block.type} (${relative(root, path)})`);
+    assertDetailBlockContract(block, where);
   }
   assertPresentationAssets(directory, blocks);
 }
@@ -666,3 +824,28 @@ for (const slug of ["zhihu-research", "zhihu-search", "zhihu-search-mcp"]) {
     }
   });
 }
+
+// The desktop rejects the entire source when one block fails validation, so these guards must
+// fail loudly here instead of surfacing as a silent `sync-failed` in the app.
+test("detail block contract rejects shapes the desktop refuses", () => {
+  const cases = [
+    { type: "hero", title: "x", badges: [{ label: "Self-hosted", tone: "info" }] },
+    { type: "hero", eyebrow: "no title" },
+    { type: "hero", title: "x", layout: "wide" },
+    { type: "feature-grid", items: [{ title: "x" }] },
+    { type: "callout", tone: "danger", content: "x" },
+    { type: "comparison", left: { title: "x", items: ["a"] } },
+    { type: "links", items: [{ label: "x", href: "ftp://example.com" }] },
+    { type: "markdown", content: "x", path: "README.md" },
+    { type: "showcase", showcase: { template: "chat-over-canvas", canvas: "design", user_prompt: "p" } }
+  ];
+  for (const block of cases) {
+    assert.throws(
+      () => assertDetailBlockContract(block, "fixture"),
+      `Expected the contract check to reject ${JSON.stringify(block)}`
+    );
+  }
+  assert.doesNotThrow(() =>
+    assertDetailBlockContract({ type: "hero", title: "x", badges: ["Self-hosted", "MCP-integrated"] }, "fixture")
+  );
+});

@@ -4,6 +4,8 @@
 
 已接受（草案）。为将开源画布项目 open-ai-canvas 接入 Astravia 桌面端宿主制定技术路线。
 
+> 部分修订：决策 1（运行时制品形态）与决策 8（产物打包与版本钉住）已由 [ADR-0003](./0003-service-runtime-distribution-and-cross-platform.md) 更新——shim 改为 `archive: "file"` 直接分发、全平台共用一份、载荷下载补断点续传。架构与 MCP 部分不变。
+
 ## 背景
 
 open-ai-canvas（影策）是面向 AI 影视与短剧创作的工作台，由两部分组成：
