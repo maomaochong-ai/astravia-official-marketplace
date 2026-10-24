@@ -6949,7 +6949,7 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 309 bundled field documents the agent can search mid-investigation.",
-      "version": "2.9.5",
+      "version": "2.9.6",
       "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -6964,7 +6964,7 @@
         "android",
         "apk",
         "security",
-        "malware",
+        "static-analysis",
         "elf",
         "pe"
       ],
@@ -6979,7 +6979,7 @@
               "安卓",
               "APK",
               "安全",
-              "恶意软件",
+              "静态分析",
               "ELF",
               "PE"
             ]
@@ -7633,6 +7633,48 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.9.5.astraviapkg",
             "sha256": "33e23c2b7d1d492baa9ceb74731e38520d40d81a6813dd7eec8dcf73151d3993"
           }
+        },
+        {
+          "version": "2.9.6",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.hooks.register",
+            "agent.hookHandler.execute",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "fs.write",
+            "agent.command.run",
+            "network.fetch"
+          ],
+          "commands": [
+            "r2",
+            "rabin2",
+            "radiff2",
+            "rasm2",
+            "rahash2",
+            "rax2",
+            "jadx",
+            "apktool",
+            "java",
+            "adb",
+            "apksigner",
+            "zipalign",
+            "frida",
+            "frida-ps"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.9.6.astraviapkg",
+            "sha256": "f9d44c2352c83c9339c24ab06ea1e0a0ac4257ae731a220334248fc6bdcc34e7"
+          }
         }
       ]
     },
@@ -7726,5 +7768,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.24-8"
+  "marketplaceVersion": "2026.10.24-9"
 }
