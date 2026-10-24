@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "hanshuang-pojia",
-  "version": "2.9.7",
+  "version": "2.9.8",
   "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",

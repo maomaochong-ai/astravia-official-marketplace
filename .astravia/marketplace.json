@@ -6983,7 +6983,7 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 309 bundled field documents the agent can search mid-investigation.",
-      "version": "2.9.7",
+      "version": "2.9.8",
       "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -7751,6 +7751,48 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.9.7.astraviapkg",
             "sha256": "ab8aff44895b7cb54395ee4e1ba11e2f18b725853c98a7d88feda6631f262cca"
           }
+        },
+        {
+          "version": "2.9.8",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.hooks.register",
+            "agent.hookHandler.execute",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "fs.write",
+            "agent.command.run",
+            "network.fetch"
+          ],
+          "commands": [
+            "r2",
+            "rabin2",
+            "radiff2",
+            "rasm2",
+            "rahash2",
+            "rax2",
+            "jadx",
+            "apktool",
+            "java",
+            "adb",
+            "apksigner",
+            "zipalign",
+            "frida",
+            "frida-ps"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.9.8.astraviapkg",
+            "sha256": "80dcd0023e0775260f671b8bb784c91055b94f89acb05aefb23480e2e8b4e7b0"
+          }
         }
       ]
     },
@@ -7844,5 +7886,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.24-12"
+  "marketplaceVersion": "2026.10.24-13"
 }

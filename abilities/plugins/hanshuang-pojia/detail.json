@@ -45,9 +45,13 @@
 			"type": "showcase",
 			"showcase": {
 				"template": "chat-thread",
-				"user_prompt": "Why does this APK score 62? Which risky permissions does it ask for?",
-				"assistant_reply": "62 (grade D) is driven by three rules:\n\n- `apk.exported-component` (High) — 3 activities/services are exported with no permission guard\n- `apk.dynamic-loading` (High) — `DexClassLoader` appears in the DEX, so the real logic is unpacked at runtime\n- `apk.dangerous-permission` (Medium) — requests `READ_SMS`, `ACCESS_FINE_LOCATION`, `READ_CONTACTS`\n\nIt also has no v2/v3 signature, only the legacy META-INF signature. Re-download it from the official channel; if you must keep analysing, dump the runtime-loaded dex first and review that code instead."
+				"user_prompt": "Why does this APK score 62?",
+				"assistant_reply": "Three exported components with no permission guard, a DexClassLoader that unpacks the real code at runtime, and SMS / location / contacts permissions."
 			}
+		},
+		{
+			"type": "markdown",
+			"content": "**Why 62 (grade D)**\n\n- `apk.exported-component` · High — 3 activities and services are exported with no permission guard.\n- `apk.dynamic-loading` · High — `DexClassLoader` appears in the DEX, so the real logic is unpacked at runtime.\n- `apk.dangerous-permission` · Medium — requests `READ_SMS`, `ACCESS_FINE_LOCATION` and `READ_CONTACTS`.\n\nThe package also has no v2/v3 signature, only the legacy `META-INF` one. Re-download it from the official channel; if you must keep analysing it, dump the runtime-loaded dex first and review that code instead."
 		},
 		{
 			"type": "steps",
@@ -57,8 +61,8 @@
 					"description": "In a project conversation, add the panel from the activity tab bar. It lists the packages and binaries already in the workspace folder."
 				},
 				{
-					"title": "Pick a sample or paste a path",
-					"description": "Click a file in the list, or type any path. Project files up to 32 MiB go to the local engine; anything larger, or outside the project folder, is handed to the agent in one click. Nothing is uploaded and nothing is executed."
+					"title": "Pick any sample, from anywhere",
+					"description": "Drop a file on the panel or click Open local file — it does not have to live inside the project. The bytes are copied into .hanshuang/samples in the workspace first, then analysed locally; anything above 32 MiB is refused before the copy. Nothing is uploaded and nothing is executed."
 				},
 				{
 					"title": "Read the report",
@@ -89,7 +93,7 @@
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "This is static-first triage, not proof of safety. Android signature digests are read as structured fields — run `apksigner verify --print-certs` in your shell when the verdict matters; packed or encrypted code is flagged by `native.packed` and unpacking is the documented next step (`agent/skills/apkseep/references/advanced-unpacking.md`), not a dead end; behaviour that only shows up at runtime stays invisible to a static pass, so reach for a Frida run when the listing runs out. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the panel can only read files inside the open project folder, and at most 32 MiB per file. Bigger or out-of-project samples are still analysable — the panel hands them to the chat agent, which has the app's own file access."
+			"content": "This is static-first triage, not proof of safety. Android signature digests are read as structured fields — run `apksigner verify --print-certs` in your shell when the verdict matters; packed or encrypted code is flagged by `native.packed` and unpacking is the documented next step (`agent/skills/apkseep/references/advanced-unpacking.md`), not a dead end; behaviour that only shows up at runtime stays invisible to a static pass, so reach for a Frida run when the listing runs out. Treat a low score as \"nothing obvious\", not as an approval. Two hard limits come from the host, not the plugin: the engine only reads files the host is willing to open, and at most 32 MiB per file. Samples from anywhere else are still fine — the panel copies the bytes into .hanshuang/samples inside the workspace first, so the original stays untouched and its own location never becomes a limit."
 		},
 		{
 			"type": "callout",

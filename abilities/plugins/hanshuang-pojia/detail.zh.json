@@ -45,9 +45,13 @@
 			"type": "showcase",
 			"showcase": {
 				"template": "chat-thread",
-				"user_prompt": "这个 APK 为什么风险分 62？申请了哪些危险权限？",
-				"assistant_reply": "风险 62（D 级）主要由三条规则推高：\n\n- `apk.exported-component`（高）— 3 个 Activity/Service 对外导出且没有权限保护\n- `apk.dynamic-loading`（高）— DEX 中出现 DexClassLoader，真实逻辑在运行期解出\n- `apk.dangerous-permission`（中）— 申请了 READ_SMS、ACCESS_FINE_LOCATION、READ_CONTACTS\n\n另外没有任何 v2/v3 签名，只有旧的 META-INF 签名。建议从官方渠道重新下载；如果必须继续分析，先 dump 运行期解出的 dex 再看代码。"
+				"user_prompt": "这个 APK 为什么风险分 62？",
+				"assistant_reply": "三个组件对外导出且没有权限保护，DEX 里出现 DexClassLoader，说明真实逻辑在运行期才解出，另外还申请了短信、定位和联系人权限。"
 			}
+		},
+		{
+			"type": "markdown",
+			"content": "**62 分（D 级）是怎么来的**\n\n- `apk.exported-component` · 高 — 3 个 Activity/Service 对外导出且没有权限保护\n- `apk.dynamic-loading` · 高 — DEX 中出现 `DexClassLoader`，真实逻辑在运行期解出\n- `apk.dangerous-permission` · 中 — 申请了 `READ_SMS`、`ACCESS_FINE_LOCATION` 和 `READ_CONTACTS`\n\n另外没有任何 v2/v3 签名，只有旧的 `META-INF` 签名。建议从官方渠道重新下载；如果必须继续分析，先 dump 运行期解出的 dex 再看代码。"
 		},
 		{
 			"type": "steps",
@@ -57,8 +61,8 @@
 					"description": "在项目对话的活动面板里添加这个标签卡，它会列出工作区目录中已有的安装包与二进制文件。"
 				},
 				{
-					"title": "选样本或粘贴路径",
-					"description": "点列表里的文件，或粘贴任意路径。项目内 32 MiB 以内的文件走本地引擎；更大、或不在项目目录里的样本，一键交给 Agent 接手。文件不会被上传，也不会被执行。"
+					"title": "样本放在哪都行",
+					"description": "把文件拖进面板，或点「打开本机文件」——它不必在项目目录里。字节会先复制到工作区的 .hanshuang/samples，再本地分析；超过 32 MiB 的会在复制前被拒。文件不会被上传，也不会被执行。"
 				},
 				{
 					"title": "读报告",
@@ -89,7 +93,7 @@
 		{
 			"type": "callout",
 			"tone": "warning",
-			"content": "这是静态优先的体检，不是安全证明。安卓签名把方案与摘要当结构化字段读出来——要定论就在你自己的终端跑 `apksigner verify --print-certs` 比对；加壳或加密的代码由 `native.packed` 标出来，脱壳是有文档的下一步（`agent/skills/apkseep/references/advanced-unpacking.md`），不是死路；只有运行期才暴露的行为静态看不到，清单走到头时该上 Frida。低分只代表「没有明显问题」，不等于批准安装。另有两条硬限制来自宿主而不是插件：面板只能读打开的项目目录内的文件，且单个文件不超过 32 MiB；更大或项目外的样本照样能查——面板会把它交给对话里的 Agent，用的是应用自己的文件权限。"
+			"content": "这是静态优先的体检，不是安全证明。安卓签名把方案与摘要当结构化字段读出来——要定论就在你自己的终端跑 `apksigner verify --print-certs` 比对；加壳或加密的代码由 `native.packed` 标出来，脱壳是有文档的下一步（`agent/skills/apkseep/references/advanced-unpacking.md`），不是死路；只有运行期才暴露的行为静态看不到，清单走到头时该上 Frida。低分只代表「没有明显问题」，不等于批准安装。另有两条硬限制来自宿主而不是插件：引擎只读宿主肯打开的文件，且单个文件不超过 32 MiB。放到别处的样本照样能查——面板先把字节复制进工作区的 .hanshuang/samples，原文件不动，它原先在哪也不再是限制。"
 		},
 		{
 			"type": "callout",
