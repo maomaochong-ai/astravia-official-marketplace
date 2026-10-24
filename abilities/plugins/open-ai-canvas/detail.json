@@ -7,8 +7,14 @@
       "eyebrow": "AI Canvas",
       "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video, and more — all from your workspace.",
       "badges": [
-        { "label": "Self-hosted", "tone": "info" },
-        { "label": "MCP-integrated", "tone": "success" }
+        {
+          "label": "Self-hosted",
+          "tone": "info"
+        },
+        {
+          "label": "MCP-integrated",
+          "tone": "success"
+        }
       ]
     },
     {
@@ -72,6 +78,11 @@
       "type": "callout",
       "tone": "info",
       "content": "The canvas requires model API keys (OpenAI, Stability AI, etc.) to generate content. Configure them in the canvas UI under model channel settings. Keys are stored locally in the plugin's SQLite database."
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "First launch downloads a ~207 MB runtime (backend + web app) from GitHub Releases and verifies its checksum before starting. Expect several minutes on a slow connection; later launches start immediately. The runtime is stored under the plugin's data directory."
     }
   ]
 }

@@ -7,8 +7,14 @@
       "eyebrow": "AI 画布",
       "description": "在本地运行开源 AI 画布，通过宿主智能体与之交互。文生图、图生视频等功能——全部在你的工作区中完成。",
       "badges": [
-        { "label": "本地托管", "tone": "info" },
-        { "label": "MCP 集成", "tone": "success" }
+        {
+          "label": "本地托管",
+          "tone": "info"
+        },
+        {
+          "label": "MCP 集成",
+          "tone": "success"
+        }
       ]
     },
     {
@@ -72,6 +78,11 @@
       "type": "callout",
       "tone": "info",
       "content": "画布需要模型 API Key（OpenAI、Stability AI 等）才能生成内容。在画布 UI 的模型渠道设置中配置。密钥存储在插件的本地 SQLite 数据库中。"
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "首次启动会从 GitHub Releases 下载约 207 MB 运行时（后端与前端），校验通过后才启动。网络较慢时可能需要数分钟，之后启动无需再次下载。运行时会解包到插件的数据目录。"
     }
   ]
 }
