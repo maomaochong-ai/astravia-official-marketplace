@@ -807,6 +807,47 @@
     },
     {
       "type": "plugin",
+      "slug": "open-ai-canvas",
+      "name": "Open AI Canvas",
+      "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video and more, with MCP tools for project/canvas/task management.",
+      "version": "0.1.0",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia Community",
+      "category": "Creative",
+      "categoryI18n": {
+        "zh": "创意",
+        "en": "Creative"
+      },
+      "tags": [
+        "canvas",
+        "image-generation",
+        "video-generation",
+        "mcp",
+        "local"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Open AI Canvas",
+            "description": "在本地运行开源 AI 画布，通过宿主智能体与之交互。文生图、图生视频等功能，提供项目/画布/任务管理的 MCP 工具。",
+            "tags": [
+              "画布",
+              "文生图",
+              "图生视频",
+              "MCP",
+              "本地"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/open-ai-canvas"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
       "slug": "rea",
       "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",

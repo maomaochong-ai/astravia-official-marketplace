@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Astravia 内的 Open AI Canvas",
+      "eyebrow": "AI 画布",
+      "description": "在本地运行开源 AI 画布，通过宿主智能体与之交互。文生图、图生视频等功能——全部在你的工作区中完成。",
+      "badges": [
+        { "label": "本地托管", "tone": "info" },
+        { "label": "MCP 集成", "tone": "success" }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "列出我的画布项目，并为产品发布视频创建一个新项目。",
+        "assistant_reply": "找到 3 个项目。已创建项目「产品发布视频」。现在可以在画布中打开它并添加节点。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "功能特性",
+      "items": [
+        {
+          "title": "完整画布，本地托管",
+          "description": "完整的 open-ai-canvas 后端和前端在你的机器上运行。所有数据保存在插件数据目录中。",
+          "icon": "solar:box-linear"
+        },
+        {
+          "title": "宿主智能体通过 MCP 控制",
+          "description": "通过 MCP 工具直接用宿主智能体管理项目、画布、节点和生成任务。",
+          "icon": "solar:widget-5-linear"
+        },
+        {
+          "title": "一键生命周期管理",
+          "description": "在工作区视图中启动和停止画布。宿主管理 Go 后端、Node 运行时和 agent 进程。",
+          "icon": "solar:play-circle-linear"
+        },
+        {
+          "title": "外部浏览器访问",
+          "description": "在默认浏览器中打开完整画布 UI，享受完整体验，包括实时协作。",
+          "icon": "solar:global-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "开始使用",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "从市场安装。插件捆绑了 Go 后端、前端、agent 运行时和模型渠道插件。"
+        },
+        {
+          "title": "启动画布",
+          "description": "打开工作区视图，点击「启动画布」。等待健康检查通过（首次启动可能需要一分钟）。"
+        },
+        {
+          "title": "打开并登录",
+          "description": "点击「在浏览器中打开」打开画布 UI。首用户可自动注册。"
+        },
+        {
+          "title": "使用智能体",
+          "description": "登录后，宿主智能体可通过 MCP 工具管理你的项目和画布。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "画布需要模型 API Key（OpenAI、Stability AI 等）才能生成内容。在画布 UI 的模型渠道设置中配置。密钥存储在插件的本地 SQLite 数据库中。"
+    }
+  ]
+}

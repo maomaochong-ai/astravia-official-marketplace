@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Open AI Canvas in Astravia",
+      "eyebrow": "AI Canvas",
+      "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video, and more — all from your workspace.",
+      "badges": [
+        { "label": "Self-hosted", "tone": "info" },
+        { "label": "MCP-integrated", "tone": "success" }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "List my canvas projects and create a new one for the product launch video.",
+        "assistant_reply": "I found 3 projects. Created project 'Product Launch Video'. You can now open it in the canvas to add nodes."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What you get",
+      "items": [
+        {
+          "title": "Full canvas, locally hosted",
+          "description": "The complete open-ai-canvas backend and frontend run on your machine. All data stays in the plugin's data directory.",
+          "icon": "solar:box-linear"
+        },
+        {
+          "title": "Host agent control via MCP",
+          "description": "Manage projects, canvases, nodes and generation tasks directly through the host agent using MCP tools.",
+          "icon": "solar:widget-5-linear"
+        },
+        {
+          "title": "One-click lifecycle",
+          "description": "Start and stop the canvas from the workspace view. The host manages the Go backend, Node runtime, and agent process.",
+          "icon": "solar:play-circle-linear"
+        },
+        {
+          "title": "External browser access",
+          "description": "Open the full canvas UI in your default browser for the complete experience, including real-time collaboration.",
+          "icon": "solar:global-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Getting started",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "Install from the marketplace. The plugin bundles the Go backend, frontend, agent runtime, and model channel plugins."
+        },
+        {
+          "title": "Start the canvas",
+          "description": "Open the workspace view and click 'Start Canvas'. Wait for the health check to pass (first start may take a minute)."
+        },
+        {
+          "title": "Open and log in",
+          "description": "Click 'Open in Browser' to open the canvas UI. The first user can register automatically."
+        },
+        {
+          "title": "Use the agent",
+          "description": "After logging in, the host agent can manage your projects and canvases via MCP tools."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The canvas requires model API keys (OpenAI, Stability AI, etc.) to generate content. Configure them in the canvas UI under model channel settings. Keys are stored locally in the plugin's SQLite database."
+    }
+  ]
+}

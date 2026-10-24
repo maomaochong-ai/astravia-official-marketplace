@@ -1,0 +1,106 @@
+{
+  "id": "open-ai-canvas",
+  "name": "Open AI Canvas",
+  "icon": "assets/icon.png",
+  "version": "0.1.0",
+  "defaultLocale": "zh",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "openAiCanvas",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.workspace-view",
+    "storage.read",
+    "storage.write",
+    "shell.openExternal"
+  ],
+  "providers": {
+    "services": [
+      {
+        "id": "open-ai-canvas",
+        "runtime": {
+          "kind": "host-node",
+          "version": "2.1.0",
+          "entry": "server/boot.mjs",
+          "platforms": {
+            "win32-x64": {
+              "executable": "server/boot.mjs",
+              "artifacts": [
+                {
+                  "sha256": "PLACEHOLDER_WIN32_X64",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/boot.mjs",
+              "artifacts": [
+                {
+                  "sha256": "PLACEHOLDER_DARWIN_X64",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "server/boot.mjs",
+              "artifacts": [
+                {
+                  "sha256": "68b1aa494de479f0dadc267d4dddb070a53899542e83458f99e9a1ee61c6521a",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/boot.mjs",
+              "artifacts": [
+                {
+                  "sha256": "PLACEHOLDER_LINUX_X64",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/boot.mjs",
+              "artifacts": [
+                {
+                  "sha256": "PLACEHOLDER_LINUX_ARM64",
+                  "archive": "zip",
+                  "destination": "server"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": []
+        },
+        "health": {
+          "path": "/api/health/ready",
+          "timeoutMs": 120000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "mcpServers": {
+      "open-ai-canvas": {
+        "type": "service",
+        "serviceId": "open-ai-canvas",
+        "path": "/mcp",
+        "displayName": "Open AI Canvas tools",
+        "description": "Manage canvas projects, canvases, nodes and generation tasks through the host agent."
+      }
+    }
+  },
+  "description": "Open-source AI canvas for text-to-image, image-to-video and more, integrated into Astravia as a plugin.",
+  "author": "Astravia Community"
+}

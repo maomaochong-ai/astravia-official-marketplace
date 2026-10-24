@@ -1,0 +1,31 @@
+{
+  "view": {
+    "description": "Open-source AI canvas for text-to-image, image-to-video and more."
+  },
+  "status": {
+    "idle": "Stopped",
+    "installing": "Installing…",
+    "starting": "Starting…",
+    "running": "Running",
+    "stopping": "Stopping…",
+    "error": "Error"
+  },
+  "action": {
+    "start": "Start Canvas",
+    "stop": "Stop",
+    "openBrowser": "Open in Browser"
+  },
+  "tips": {
+    "title": "Getting Started",
+    "login": "Open the canvas in your browser and log in (first user can register automatically).",
+    "mcp": "After logging in, the host agent can manage projects, canvases and tasks via MCP tools.",
+    "dataDir": "All data is stored locally in the plugin's data directory."
+  },
+  "error": {
+    "serviceFailed": "Canvas service failed to start",
+    "startFailed": "Failed to start canvas service",
+    "installFailed": "Failed to install canvas service",
+    "stopFailed": "Failed to stop canvas service",
+    "toast": "Operation failed"
+  }
+}
