@@ -6,16 +6,7 @@
       "title": "Astravia 内的 Open AI Canvas",
       "eyebrow": "AI 画布",
       "description": "在本地运行开源 AI 画布，通过宿主智能体与之交互。文生图、图生视频等功能——全部在你的工作区中完成。",
-      "badges": [
-        {
-          "label": "本地托管",
-          "tone": "info"
-        },
-        {
-          "label": "MCP 集成",
-          "tone": "success"
-        }
-      ]
+      "badges": ["本地托管", "MCP 集成"]
     },
     {
       "type": "showcase",
@@ -62,7 +53,7 @@
         },
         {
           "title": "启动画布",
-          "description": "打开工作区视图，点击「启动画布」。等待健康检查通过（首次启动可能需要一分钟）。"
+          "description": "打开工作区视图，点击「启动画布」。插件自带的进度页会显示首次运行时下载进度，后端就绪后自动进入画布。"
         },
         {
           "title": "打开并登录",

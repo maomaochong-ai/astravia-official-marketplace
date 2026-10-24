@@ -6,16 +6,7 @@
       "title": "Open AI Canvas in Astravia",
       "eyebrow": "AI Canvas",
       "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video, and more — all from your workspace.",
-      "badges": [
-        {
-          "label": "Self-hosted",
-          "tone": "info"
-        },
-        {
-          "label": "MCP-integrated",
-          "tone": "success"
-        }
-      ]
+      "badges": ["Self-hosted", "MCP-integrated"]
     },
     {
       "type": "showcase",
@@ -62,7 +53,7 @@
         },
         {
           "title": "Start the canvas",
-          "description": "Open the workspace view and click 'Start Canvas'. Wait for the health check to pass (first start may take a minute)."
+          "description": "Open the workspace view and click 'Start Canvas'. A built-in progress page tracks the first-time runtime download; the canvas opens automatically once the backend is ready."
         },
         {
           "title": "Open and log in",
