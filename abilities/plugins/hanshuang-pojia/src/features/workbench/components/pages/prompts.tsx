@@ -7,6 +7,7 @@ import type { PromptFormData } from "../prompts/prompt-editor-dialog";
 import { PromptEditorDialog } from "../prompts/prompt-editor-dialog";
 import { PromptCard } from "../prompts/prompt-card";
 import { BackupRestoreDialog } from "../prompts/backup-restore-dialog";
+import { InjectBlockCard } from "../prompts/inject-block-card";
 import type { PageProps } from "./overview";
 
 /**
@@ -139,6 +140,8 @@ export function PromptsPage({ model }: PageProps) {
 						</div>
 					</Card>
 				)}
+
+				<InjectBlockCard library={library} notify={model.notify} />
 			</div>
 
 			<PromptEditorDialog

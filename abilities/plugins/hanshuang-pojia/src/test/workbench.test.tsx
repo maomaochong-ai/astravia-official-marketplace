@@ -6,7 +6,7 @@ import { buildReport } from "../domain/report/report";
 import type { TriageSample } from "../domain/triage";
 import type { WorkbenchBridge } from "../features/workbench/bridge";
 import { WorkbenchScreen } from "../features/workbench/components/workbench-screen";
-import { publishPanelEvent } from "../runtime/panel-channel";
+import { publishPanelEvent, publishTaskEvent } from "../runtime/panel-channel";
 
 vi.mock("@astravia-org/plugin-sdk", () => ({
 	useTranslation: () => ({ t: (key: string) => key }),
@@ -62,6 +62,7 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 		]),
 		stat: vi.fn(async () => ({ size: 4_194_304 })),
 		loadSample: vi.fn(async () => SAMPLE),
+		importSample: vi.fn(async () => "/work/.hanshuang/samples/picked.apk"),
 		analyse: vi.fn(async () => REPORT),
 		notify: vi.fn(),
 		saveReport: vi.fn(async () => "/work/demo-triage.md"),
@@ -134,6 +135,22 @@ describe("workbench shell", () => {
 		expect(await screen.findByTitle("/work/demo.apk")).toBeTruthy();
 		expect(screen.queryByText("notes.txt")).toBeNull();
 		expect(screen.queryByText("lib")).toBeNull();
+	});
+
+	it("copies a picked local file into the workspace and analyses it", async () => {
+		const api = makeBridge();
+		await open(api);
+		await go("samples");
+
+		// 宿主的 fs 只授权到项目根，所以选中文件必须经 importSample 先落进工作区。
+		const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+		expect(picker).toBeTruthy();
+		const picked = new File([new Uint8Array([1, 2, 3])], "../evil.apk");
+		fireEvent.change(picker, { target: { files: [picked] } });
+
+		// 渲染进程只负责交字节；名字的净化和落盘路径由 bridge 侧的 importRelativePath 决定。
+		await waitFor(() => expect(api.importSample).toHaveBeenCalledWith({ name: "../evil.apk", base64: "AQID" }, "/work"));
+		await waitFor(() => expect(api.loadSample).toHaveBeenCalledWith("/work/.hanshuang/samples/picked.apk", "/work"));
 	});
 
 	it("runs a triage from a click and shows the score and findings", async () => {
@@ -252,6 +269,10 @@ describe("workbench state", () => {
 		expect(await screen.findByText("selfcheck.item.engine.digest")).toBeTruthy();
 		await go("settings");
 		expect(await screen.findByText("settings.mode.title")).toBeTruthy();
+		await go("prompts");
+		// 注入块预览不依赖已保存的提示词：没有激活的就展示默认契约。
+		expect(await screen.findByText("prompt.inject.title")).toBeTruthy();
+		expect(screen.getByText("prompt.inject.sourceDefault")).toBeTruthy();
 	});
 
 	it("renders the workflow bar and locks steps until their precondition is met", async () => {
@@ -353,5 +374,30 @@ describe("workbench state", () => {
 		await analyseDemo(api);
 		expect((await screen.findAllByText("Application is debuggable")).length).toBeGreaterThan(0);
 		warn.mockRestore();
+	});
+
+	it("keeps the sidebar live area in step with the agent session", async () => {
+		const api = makeBridge();
+		await open(api);
+
+		const status = screen.getByTestId("sidebar-status");
+		expect(status).toBeTruthy();
+		expect(screen.getByText("status.sample.none")).toBeTruthy();
+
+		// 侧栏只消费已有事件：turn / tool 生命周期进「本轮」，报告进「当前样本」。
+		act(() => {
+			publishTaskEvent({ phase: "turn-start", sessionId: "s1" });
+			publishTaskEvent({ phase: "tool-start", sessionId: "s1", toolName: "triage_binary" });
+		});
+		expect(await screen.findByText("status.run.active")).toBeTruthy();
+		expect(screen.getAllByText("triage_binary").length).toBeGreaterThan(0);
+
+		act(() => {
+			publishTaskEvent({ phase: "tool-end", sessionId: "s1", toolName: "triage_binary", isError: true });
+		});
+		expect(await screen.findByText("status.run.failed")).toBeTruthy();
+
+		act(() => publishPanelEvent({ type: "report", report: REPORT, source: "agent" }));
+		await waitFor(() => expect(status.querySelector('[data-row="sample"]')?.textContent).toContain("demo.apk"));
 	});
 });

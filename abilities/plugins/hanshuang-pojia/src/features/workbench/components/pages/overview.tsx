@@ -36,7 +36,14 @@ export function OverviewPage({ model }: PageProps) {
 			<WorkflowBar model={model} />
 				{error ? <BlockedPanel failure={error} root={model.cwd} busy={busy} onHandOff={model.handOff} onClear={model.reset} /> : null}
 
-				<SampleDropzone report={report} busy={phase === "loading"} fromAgent={model.fromAgent} onClear={model.reset} onReanalyse={model.reanalyse} />
+				<SampleDropzone
+					report={report}
+					busy={phase === "loading"}
+					fromAgent={model.fromAgent}
+					onClear={model.reset}
+					onReanalyse={model.reanalyse}
+					onImport={files => model.importFile(files[0])}
+				/>
 
 				{report ? (
 					<div className="grid gap-3 @min-[900px]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">

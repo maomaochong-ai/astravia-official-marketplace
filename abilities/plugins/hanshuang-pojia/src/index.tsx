@@ -5,6 +5,7 @@ import { resolveSamplePath } from "./domain/sample-path";
 import { triage } from "./domain/triage";
 import type { WorkbenchBridge } from "./features/workbench/bridge";
 import { deliverPrompt } from "./features/workbench/services/chat";
+import { IMPORT_DIRECTORY, importRelativePath } from "./features/workbench/services/import-file";
 import { PanelBoundary } from "./features/workbench/components/shell/panel-boundary";
 import { WorkbenchScreen } from "./features/workbench/components/workbench-screen";
 import { LIBRARY_STATE_PATH, SETTINGS_STATE_PATH, type ChatState, type LibraryEntry, type WorkbenchSettings } from "./features/workbench/state";
@@ -95,6 +96,15 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 			}
 		},
 		loadSample: (path, cwd) => loadSample(ctx.fs, cwd ?? "", path),
+		importSample: async (file, cwd) => {
+			if (!cwd) throw new Error("No workspace folder is attached to this panel.");
+			// resolveSamplePath 负责分隔符与 `..`；文件名已由 importName 压成纯文件名。
+			const directory = resolveSamplePath(cwd, IMPORT_DIRECTORY);
+			const target = resolveSamplePath(cwd, importRelativePath(file.name));
+			await ctx.fs.createDirectory(directory);
+			await ctx.fs.writeFile(target, file.base64, "base64");
+			return target;
+		},
 		analyse: (sample, options) => triage(sample, { mode: options.mode, disabledRules: options.disabledRules }),
 		saveReport: async (report, mode, format) => {
 			const stem = report.target.name.replace(/\.[^.]+$/, "") || "sample";

@@ -1,12 +1,15 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { LabState } from "../../../../domain/lab-mode";
+import type { LiveStatus } from "../../live-status";
 import { NAV, type PageId } from "../../state";
 import { Icon } from "./icon";
+import { SidebarStatus } from "./sidebar-status";
 
 export interface SidebarProps {
 	page: PageId;
 	onNavigate(page: PageId): void;
 	lab: LabState;
+	status: LiveStatus;
 }
 
 /**
@@ -15,7 +18,7 @@ export interface SidebarProps {
  * 面板挂在宿主活动栏里，宽度由用户拖拽决定：默认收成 48px 图标轨，
  * 容器宽度过 720px 才展开成 224px 的文字侧栏。
  */
-export function Sidebar({ page, onNavigate, lab }: SidebarProps) {
+export function Sidebar({ page, onNavigate, lab, status }: SidebarProps) {
 	const { t } = useTranslation();
 	return (
 		<aside className="flex w-12 shrink-0 flex-col border-r border-line bg-surface-2 @min-[720px]:w-56">
@@ -57,6 +60,8 @@ export function Sidebar({ page, onNavigate, lab }: SidebarProps) {
 					</div>
 				))}
 			</nav>
+
+			<SidebarStatus status={status} />
 
 			<div className="border-t border-line-subtle p-1.5 @min-[720px]:p-3">
 				<div className={`flex items-center gap-2 rounded-md px-1.5 py-2 @min-[720px]:px-2.5 ${lab.enabled ? "bg-risk-low/10" : "bg-surface-3"}`}>

@@ -26,7 +26,7 @@ description: |
 
 3. **启动服务器命令阻塞对话**
    - `idalib-mcp` 启动后会持续输出 INFO 日志到控制台
-   - **解决办法**：使用 `scripts/start.ps1`（`-WindowStyle Hidden` 后台静默启动）
+   - **解决办法**：使用 `scripts/start.ps1`（后台启动，输出重定向到 `%TEMP%\idalib-mcp\*.log`）
    - 脚本会等待服务就绪后自动退出，不阻塞对话
 
 4. **MCP 服务器名不能用横线**

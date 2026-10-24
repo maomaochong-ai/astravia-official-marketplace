@@ -28,6 +28,7 @@ export function SamplesPage({ model }: PageProps) {
 						selectedPath={model.selectedPath}
 						onRefresh={model.refreshFiles}
 						onAnalyse={model.analyse}
+						onImport={files => model.importFile(files[0])}
 					/>
 				</Card>
 

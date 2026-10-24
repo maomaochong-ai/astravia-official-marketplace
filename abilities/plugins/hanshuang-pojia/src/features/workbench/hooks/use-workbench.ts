@@ -6,13 +6,15 @@ import { entropyProfile, type EntropyBucket } from "../../../domain/entropy";
 import { stringKind, type StringKind } from "../../../domain/string-kinds";
 import { formatBytes, renderMarkdown, reportToJson, type TriageReport } from "../../../domain/report/report";
 import { scopeForSample } from "../../../domain/sample-scope";
+import { resolveSamplePath } from "../../../domain/sample-path";
 import { readNativeFacts } from "../../../domain/native/detect";
 import { addressMapFor } from "../../../domain/native/image";
 import type { TriageSample } from "../../../domain/triage";
 import { subscribePanel } from "../../../runtime/panel-channel";
-import type { WorkbenchBridge } from "../bridge";
+import type { NotifyVariant, WorkbenchBridge } from "../bridge";
 import { buildPrompt, type PromptAction, type PromptContext } from "../prompts";
 import type { SampleFailure } from "../sample-error";
+import { IMPORT_DIRECTORY, isTooLarge, readFileAsBase64 } from "../services/import-file";
 import { classifySampleFailure } from "../sample-error";
 import type { LibraryEntry, PageId, WorkbenchSettings } from "../state";
 import { useChat, type ChatModel } from "./use-chat";
@@ -58,6 +60,8 @@ export interface WorkbenchModel {
 	fromAgent: boolean;
 
 	analyse(path: string): void;
+	/** 本机文件先复制进工作区再分析；宿主的读取通道不认项目外路径。 */
+	importFile(file: File): void;
 	reanalyse(): void;
 	reset(): void;
 
@@ -99,6 +103,8 @@ export interface WorkbenchModel {
 	copyReport(format: "markdown" | "json"): void;
 	handOff(): void;
 	ask(action: PromptAction, extra?: Partial<PromptContext>): void;
+	/** 面板气泡提示；下发给需要自报结果的子组件（注入块复制等）。 */
+	notify(message: string, variant?: NotifyVariant): void;
 }
 
 function isSampleName(name: string): boolean {
@@ -146,10 +152,17 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 			return;
 		}
 		setFilesLoading(true);
-		bridge
-			.listFiles(cwd)
-			.then(entries => setFiles(toSamples(entries)))
-			.catch(() => setFiles([]))
+		// 导入的本机样本落在工作区子目录里，而目录列举只给一层，所以两边形各列一次再合起来。
+		Promise.all([
+			bridge.listFiles(cwd).catch(() => [] as PluginFsEntry[]),
+			bridge
+				.listFiles(resolveSamplePath(cwd, IMPORT_DIRECTORY))
+				.catch(() => [] as PluginFsEntry[]),
+		])
+			.then(([root, imported]) => {
+				const byPath = new Map([...imported, ...root].map(entry => [entry.path, entry] as const));
+				setFiles(toSamples([...byPath.values()]));
+			})
 			.finally(() => setFilesLoading(false));
 	}, [bridge, cwd]);
 
@@ -390,6 +403,45 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		if (changed && sample && phase === "ready") run(sample);
 	}, [phase, run, sample, settings]);
 
+	const importFile = useCallback(
+		(file: File) => {
+			if (!cwd) {
+				setPhase("error");
+				setError({ kind: "other", detail: "No workspace folder is attached to this panel." });
+				return;
+			}
+			if (isTooLarge(file.size)) {
+				setPhase("error");
+				setError({ kind: "too-large", detail: file.name, size: file.size });
+				return;
+			}
+			const current = (requestId.current += 1);
+			setPage("overview");
+			setPhase("loading");
+			setError(null);
+			setFromAgent(false);
+			readFileAsBase64(file)
+				.then(base64 => {
+					if (current !== requestId.current) return null;
+					return bridge.importSample({ name: file.name, base64 }, cwd);
+				})
+				.then(path => {
+					if (!path || current !== requestId.current) return;
+					// 复制完就当成工作区里的普通样本：沿用同一条 stat → 读取 → 引擎的链路。
+					analyse(path);
+					refreshFiles();
+				})
+				.catch((failure: unknown) => {
+					if (current !== requestId.current) return;
+					setSample(null);
+					setReport(null);
+					setPhase("error");
+					setError({ kind: "other", detail: failure instanceof Error ? failure.message : String(failure) });
+				});
+		},
+		[analyse, bridge, cwd, refreshFiles],
+	);
+
 	const setCompare = useCallback((slot: "a" | "b", id: string | null) => {
 		if (slot === "a") setCompareA(id);
 		else setCompareB(id);
@@ -419,6 +471,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		error,
 		fromAgent,
 		analyse,
+		importFile,
 		reanalyse,
 		reset,
 		settings,
@@ -452,5 +505,6 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		copyReport,
 		handOff,
 		ask,
+		notify: bridge.notify,
 	};
 }

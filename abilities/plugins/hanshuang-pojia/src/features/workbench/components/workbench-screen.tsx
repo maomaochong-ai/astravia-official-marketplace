@@ -1,6 +1,8 @@
 import type { ReactElement } from "react";
 import type { WorkbenchBridge } from "../bridge";
 import { useWorkbench } from "../hooks/use-workbench";
+import { getActivePrompt } from "../../../domain/prompt-library";
+import { deriveLiveStatus } from "../live-status";
 import { Sidebar } from "./shell/sidebar";
 import { TopBar } from "./shell/top-bar";
 import { InjectStatusBar } from "./shell/inject-status-bar";
@@ -54,6 +56,13 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 	const model = useWorkbench(bridge, cwd, { active });
 	const Page = PAGES[model.page] ?? OverviewPage;
 	const props: PageProps = { model };
+	// 侧栏实时区的状态点全部由已有模型推导，不额外订阅宿主事件。
+	const live = deriveLiveStatus({
+		chat: model.chat.state,
+		stream: { entries: model.stream.entries, active: model.stream.active },
+		report: model.report,
+		activePrompt: getActivePrompt(model.promptLibrary),
+	});
 
 	return (
 		<div className="fb-root @container flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface text-text">
@@ -68,7 +77,7 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 			/>
 			<InjectStatusBar lab={model.lab.state} library={model.promptLibrary} />
 			<div className="flex min-h-0 flex-1">
-				<Sidebar page={model.page} onNavigate={model.go} lab={model.lab.state} />
+				<Sidebar page={model.page} onNavigate={model.go} lab={model.lab.state} status={live} />
 				<main className="fb-scroll min-w-0 flex-1 overflow-y-auto">
 					<Page {...props} />
 				</main>

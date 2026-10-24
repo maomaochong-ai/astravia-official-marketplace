@@ -72,10 +72,15 @@ async function readBody(path: string): Promise<string> {
 	const rel = path.startsWith(DOC_PREFIX) ? path.slice(DOC_PREFIX.length) : path;
 	// 单元测试跑在 Node 里，import.meta.url 是 file: —— 直接读源目录，
 	// 这样测试看的就是构建真正会发布的那份字节，而不是另一份拷贝。
+	//
+	// 拼接必须写成二元表达式：`new URL(\`../../../../${path}\`, …)` 会被 Vite 静态分析成
+	// 遍目录根的资源映射，把 CONTEXT.md / package-lock.json / tsconfig.json 等全部
+	// 以 base64 data URI 嵌进 bundle（多出几百 KB，也把 lockfile 拖进可执行脚本）。
 	if (import.meta.url.startsWith("file:")) {
 		const specifier = "node:fs/promises";
 		const { readFile } = (await import(/* @vite-ignore */ specifier)) as typeof import("node:fs/promises");
-		return readFile(new URL(`../../../../${path}`, import.meta.url), "utf8");
+		const root = "../../../../";
+		return readFile(new URL(root + path, import.meta.url), "utf8");
 	}
 	// 运行期：astravia-plugin:// 直接提供包内文件，无需经过宿主 fs 授权。
 	// 开发服务器下路径不同，回退到直接抓源目录。

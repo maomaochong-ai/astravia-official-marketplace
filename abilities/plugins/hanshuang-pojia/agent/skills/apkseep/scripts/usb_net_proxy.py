@@ -9,7 +9,7 @@ every request the app makes fails.
 Why this works: it does not need a network interface on the device at all. `adb reverse`
 opens a listener on the **device's own loopback**, which exists regardless:
 
-    1) run this proxy on the host        (0.0.0.0:8080)
+    1) run this proxy on the host        (127.0.0.1:8080, loopback only)
     2) adb -s <serial> reverse tcp:8080 tcp:8080
     3) on the device: settings put global http_proxy 127.0.0.1:8080
     4) the app's HTTP/HTTPS traffic travels over USB and is sent by the host
@@ -159,11 +159,13 @@ def handle(client, addr):
 
 
 def main():
+    # 只绑回环：`adb reverse` 是从主机本地回环接入的，绑 0.0.0.0 只会把
+    # 代理顺手暴露给局域网，不带来任何可用性。
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(('0.0.0.0', PORT))
+    srv.bind(('127.0.0.1', PORT))
     srv.listen(128)
-    log('proxy listening on 0.0.0.0:%d' % PORT)
+    log('proxy listening on 127.0.0.1:%d' % PORT)
     while True:
         c, a = srv.accept()
         threading.Thread(target=handle, args=(c, a), daemon=True).start()

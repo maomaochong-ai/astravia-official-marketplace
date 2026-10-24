@@ -3,7 +3,7 @@
   "name": "%plugin.name%",
   "description": "%plugin.description%",
   "icon": "assets/icon.svg",
-  "version": "2.9.7",
+  "version": "2.9.8",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -57,18 +57,22 @@
       "agent/skills"
     ],
     "skillPresentation": {
-      "defaultVisibility": "visible",
+      "defaultVisibility": "hidden",
       "surfaces": {
-        "skillPicker": "visible",
-        "commandPalette": "visible",
-        "abilityCatalog": "visible",
-        "agentConfiguration": "visible",
         "pluginDetail": "visible"
       },
       "skills": {
         "hanshuang-pojia": {
           "displayName": "%skill.name%",
-          "displayDescription": "%skill.description%"
+          "displayDescription": "%skill.description%",
+          "defaultVisibility": "visible",
+          "surfaces": {
+            "skillPicker": "visible",
+            "commandPalette": "visible",
+            "abilityCatalog": "visible",
+            "agentConfiguration": "visible",
+            "pluginDetail": "visible"
+          }
         },
         "apkseep": {
           "displayName": "%skill.apkseep.name%",

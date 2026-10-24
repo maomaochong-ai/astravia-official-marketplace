@@ -4,7 +4,7 @@ Start IDA Pro MCP HTTP server (background, non-blocking)
 
 .DESCRIPTION
 1. Kill old process
-2. Start idalib-mcp HTTP server in hidden window mode
+2. Start idalib-mcp HTTP server as a background process (stdout/stderr -> local log)
 3. Wait for service ready (max 15 seconds)
 4. Output result
 
@@ -46,12 +46,17 @@ if (-not $env:IDADIR -or -not (Test-Path $env:IDADIR)) {
     exit 1
 }
 
-# 清理旧进程（杀进程树，包括 worker 子进程）
+# 清理旧进程（连同 worker 子进程）
 $old = Get-Process -Name "idalib-mcp" -ErrorAction SilentlyContinue
-if ($old) { taskkill /F /T /PID $old.Id 2>$null | Out-Null; Start-Sleep 2 }
+if ($old) { $old | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep 2 }
 
-# 后台启动
-Start-Process -WindowStyle Hidden -FilePath $ServerPath -ArgumentList "--host 127.0.0.1 --port $Port"
+# 后台启动：最小化窗口，输出重定向到日志文件
+$LogDir = Join-Path $env:TEMP 'idalib-mcp'
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+Start-Process -FilePath $ServerPath -WindowStyle Minimized `
+    -ArgumentList "--host 127.0.0.1 --port $Port" `
+    -RedirectStandardOutput (Join-Path $LogDir 'stdout.log') `
+    -RedirectStandardError (Join-Path $LogDir 'stderr.log')
 
 # 等待就绪
 $ready = $false

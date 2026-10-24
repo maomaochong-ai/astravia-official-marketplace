@@ -9,7 +9,17 @@ interface PluginManifest {
 	agent?: {
 		skillPaths?: string[];
 		skillPresentation?: {
-			skills?: Record<string, { displayName?: string; displayDescription?: string }>;
+			defaultVisibility?: "visible" | "hidden";
+			surfaces?: Record<string, "visible" | "hidden">;
+			skills?: Record<
+				string,
+				{
+					displayName?: string;
+					displayDescription?: string;
+					defaultVisibility?: "visible" | "hidden";
+					surfaces?: Record<string, "visible" | "hidden">;
+				}
+			>;
 		};
 	};
 }
@@ -125,5 +135,19 @@ describe("plugin skills", () => {
 				for (const catalog of catalogs) expect(catalog[key!]).toBeTruthy();
 			}
 		}
+	});
+
+	it("exposes exactly one entry in the conversation skill picker", () => {
+		const provider = manifest.agent?.skillPresentation ?? {};
+		const visibleInPicker = Object.entries(presentation)
+			.filter(([, rule]) => (rule.surfaces?.skillPicker ?? rule.defaultVisibility ?? provider.defaultVisibility) === "visible")
+			.map(([name]) => name);
+
+		// 对话里的技能/场景列表只留一个入口：其余技能仍落在 agent/skills 下，由 Agent 按需读取，
+		// 不该在每个用户的技能选择器里各占一行。
+		expect(visibleInPicker).toEqual(["hanshuang-pojia"]);
+		expect(provider.defaultVisibility).toBe("hidden");
+		// 插件详情页仍然要把全部技能列出来，否则用户看不到插件到底带什么。
+		expect(provider.surfaces?.pluginDetail).toBe("visible");
 	});
 });

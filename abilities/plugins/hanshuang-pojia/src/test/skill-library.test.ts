@@ -13,9 +13,9 @@ const manifestPath = join(pluginRoot, "agent/prompts/skill-library.sha256");
  * 数字一变就说明有人改过上游文档或增删了 .sh。
  */
 const EXPECTED_FILES = 171;
-const EXPECTED_BYTES = 2481035;
+const EXPECTED_BYTES = 2481555;
 /** `shasum -a 256 agent/prompts/skill-library.sha256` */
-const EXPECTED_MANIFEST_SHA256 = "a0b03be3040fdd72fc1f05e55f7ad409f3a9787c1a1590ca0e944a9a262e6560";
+const EXPECTED_MANIFEST_SHA256 = "bc7bf2c71dbc9e7b15e5ded014c50ca42f97509387c119b3f31b17291fa2e742";
 
 /** 上游 seep-kit 原样搬运的八个技能目录（旧版 ida-reverse 已被 safe-skills 版本取代）。 */
 const LIBRARY_SKILLS = [

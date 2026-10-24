@@ -1,4 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useState } from "react";
 import { formatBytes, type TriageReport } from "../../../../domain/report/report";
 import { Icon } from "../shell/icon";
 import { Tag } from "../shell/tag";
@@ -10,6 +11,8 @@ export interface SampleDropzoneProps {
 	fromAgent: boolean;
 	onClear(): void;
 	onReanalyse(): void;
+	/** 拖进来的文件与选择器走同一条路：先复制进工作区再分析。 */
+	onImport(files: readonly File[]): void;
 }
 
 function factValue(report: TriageReport | null, labels: readonly string[]): string | null {
@@ -23,15 +26,31 @@ function factValue(report: TriageReport | null, labels: readonly string[]): stri
 
 /**
  * 当前样本卡：文件名、格式、大小、架构、SHA-256，以及一句「不会被执行或上传」。
- * 没有样本时它就是投递口 —— 只接受路径或工作区里的文件，不接受拖拽上传，
- * 因为宿主的文件能力以项目根为边界，拖拽拿到的是无法读取的临时路径。
+ * 没有样本时它就是投递口：拖进来的文件先复制进工作区再分析 —— 宿主的读取通道以
+ * 项目根为边界，项目外的临时路径读不到，但渲染进程的 `File` 对象能拿到字节。
  */
-export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse }: SampleDropzoneProps) {
+export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, onImport }: SampleDropzoneProps) {
 	const { t } = useTranslation();
+	const [dragging, setDragging] = useState(false);
 
 	if (!report) {
 		return (
-			<div className="rounded-lg border border-dashed border-line-strong bg-surface-2 px-4 py-5">
+			<div
+				data-testid="sample-dropzone"
+				// 拖拽是拿到项目外字节的第二条路：<input type="file"> 之外不需要额外权限。
+				onDragOver={event => {
+					event.preventDefault();
+					setDragging(true);
+				}}
+				onDragLeave={() => setDragging(false)}
+				onDrop={event => {
+					event.preventDefault();
+					setDragging(false);
+					const dropped = [...event.dataTransfer.files];
+					if (dropped.length > 0) onImport(dropped);
+				}}
+				className={`rounded-lg border border-dashed px-4 py-5 ${dragging ? "border-purple bg-surface-active" : "border-line-strong bg-surface-2"}`}
+			>
 				<div className="flex items-start gap-3">
 					<div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-4 text-text-2">
 						<Icon name="folderSearch" className="size-5" />

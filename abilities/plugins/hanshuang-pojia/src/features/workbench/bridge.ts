@@ -15,6 +15,11 @@ export interface WorkbenchBridge {
 	/** 只取元信息，用来在读取之前判断大小是否超过宿主上限。 */
 	stat(path: string, cwd: string | null): Promise<{ size: number } | null>;
 	loadSample(path: string, cwd: string | null): Promise<TriageSample>;
+	/**
+	 * 把用户选中的本机文件复制进工作区，返回复制后的路径。
+	 * 项目外的字节只能经渲染进程 `File` 拿到，宿主的读取通道不认越界路径。
+	 */
+	importSample(file: { name: string; base64: string }, cwd: string | null): Promise<string>;
 	analyse(sample: TriageSample, options: { mode: ReportMode; disabledRules: readonly string[] }): Promise<TriageReport>;
 	notify(message: string, variant?: NotifyVariant): void;
 	/** 实验环境开关的状态；对话里的 `lab：` 与面板开关写同一份。 */
