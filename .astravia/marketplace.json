@@ -6022,6 +6022,65 @@
     },
     {
       "type": "plugin",
+      "slug": "open-ai-canvas",
+      "name": "Open AI Canvas",
+      "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video and more, with MCP tools for project/canvas/task management.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia Community",
+      "category": "Creative",
+      "categoryI18n": {
+        "zh": "创意",
+        "en": "Creative"
+      },
+      "tags": [
+        "canvas",
+        "image-generation",
+        "video-generation",
+        "mcp",
+        "local"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Open AI Canvas",
+            "description": "在本地运行开源 AI 画布，通过宿主智能体与之交互。文生图、图生视频等功能，提供项目/画布/任务管理的 MCP 工具。",
+            "tags": [
+              "画布",
+              "文生图",
+              "图生视频",
+              "MCP",
+              "本地"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/open-ai-canvas"
+      },
+      "releases": [
+        {
+          "version": "0.0.1",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "agent.mcp.control",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas/open-ai-canvas-0.0.1.astraviapkg",
+            "sha256": "c571aea815e524a3d7f58718370b2d1809e5484623fa6c832fd5ae7895ca9965"
+          }
+        }
+      ]
+    },
+    {
+      "type": "plugin",
       "slug": "rea",
       "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
@@ -6822,7 +6881,7 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 309 bundled field documents the agent can search mid-investigation.",
-      "version": "2.9.4",
+      "version": "2.9.5",
       "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -7464,6 +7523,48 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.9.4.astraviapkg",
             "sha256": "19a0b477af2d8caef07735cc0eba27ab7e5ec6b7cc6f750d2b8e368baaab6c8f"
           }
+        },
+        {
+          "version": "2.9.5",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.hooks.register",
+            "agent.hookHandler.execute",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "fs.write",
+            "agent.command.run",
+            "network.fetch"
+          ],
+          "commands": [
+            "r2",
+            "rabin2",
+            "radiff2",
+            "rasm2",
+            "rahash2",
+            "rax2",
+            "jadx",
+            "apktool",
+            "java",
+            "adb",
+            "apksigner",
+            "zipalign",
+            "frida",
+            "frida-ps"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.9.5.astraviapkg",
+            "sha256": "33e23c2b7d1d492baa9ceb74731e38520d40d81a6813dd7eec8dcf73151d3993"
+          }
         }
       ]
     },
@@ -7557,5 +7658,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.24-2"
+  "marketplaceVersion": "2026.10.24-3"
 }
