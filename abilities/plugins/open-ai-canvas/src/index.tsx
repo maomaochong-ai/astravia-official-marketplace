@@ -1,3 +1,4 @@
+import "./style.css";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { CanvasController } from "./runtime";

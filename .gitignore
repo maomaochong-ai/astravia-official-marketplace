@@ -6,6 +6,7 @@
 .gh-pages-wt/
 abilities/plugins/*/dist/
 abilities/plugins/*/release/
+abilities/plugins/*/.payload/
 dbx-pro.astravia-design
 design-resources/
 __pycache__/

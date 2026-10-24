@@ -2,7 +2,7 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
@@ -15,6 +15,7 @@
   ],
   "permissions": [
     "ui.slot.workspace-view",
+    "agent.mcp.control",
     "storage.read",
     "storage.write",
     "shell.openExternal"
@@ -28,51 +29,11 @@
           "version": "2.1.0",
           "entry": "server/boot.mjs",
           "platforms": {
-            "win32-x64": {
-              "executable": "server/boot.mjs",
-              "artifacts": [
-                {
-                  "sha256": "PLACEHOLDER_WIN32_X64",
-                  "archive": "zip",
-                  "destination": "server"
-                }
-              ]
-            },
-            "darwin-x64": {
-              "executable": "server/boot.mjs",
-              "artifacts": [
-                {
-                  "sha256": "PLACEHOLDER_DARWIN_X64",
-                  "archive": "zip",
-                  "destination": "server"
-                }
-              ]
-            },
             "darwin-arm64": {
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "68b1aa494de479f0dadc267d4dddb070a53899542e83458f99e9a1ee61c6521a",
-                  "archive": "zip",
-                  "destination": "server"
-                }
-              ]
-            },
-            "linux-x64": {
-              "executable": "server/boot.mjs",
-              "artifacts": [
-                {
-                  "sha256": "PLACEHOLDER_LINUX_X64",
-                  "archive": "zip",
-                  "destination": "server"
-                }
-              ]
-            },
-            "linux-arm64": {
-              "executable": "server/boot.mjs",
-              "artifacts": [
-                {
-                  "sha256": "PLACEHOLDER_LINUX_ARM64",
+                  "sha256": "8eb2cc0383557c0df654fb3bcc1322d784315913516a937c65bbcb5275ff52c6",
                   "archive": "zip",
                   "destination": "server"
                 }

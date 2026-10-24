@@ -18,6 +18,9 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import zlib from "node:zlib";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,9 +34,154 @@ if (!HOST_PORT || !DATA_DIR) {
   process.exit(1);
 }
 
-// --- 路径解析 ---
-const SERVER_DIR = RUNTIME_DIR;
-const GO_BINARY = path.join(SERVER_DIR, "yingce-backend");
+// --- 运行时载荷 ---
+// 包内只装 boot.mjs（几十 KB 的 shim）；Go 二进制 + web-dist + 官方插件包压缩后约 200 MB，
+// 远超 Desktop 的 50 MB 单包上限，因此首次启动时下载到 DATA_DIR/runtime/<version>/ 并校验 sha256。
+const PAYLOAD_VERSION = "0.0.1";
+const PAYLOAD_BASE_URL =
+  "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas";
+const PAYLOADS = {
+  "darwin-arm64": { file: "payload-0.0.1-darwin-arm64.zip", sha256: "fb46396533b5b0c82b533f06141918bfaa2fb1a984b9a5bec123d642d545c0c7" },
+};
+
+const PLATFORM = `${process.platform}-${process.arch}`;
+const BINARY_NAME = `yingce-backend${process.platform === "win32" ? ".exe" : ""}`;
+const BUNDLED_DIR = RUNTIME_DIR;
+const PROVISION_DIR = path.join(DATA_DIR, "runtime", PAYLOAD_VERSION);
+
+function note(message) {
+  console.log(`[open-ai-canvas] ${message}`);
+}
+
+function hasPayload(dir) {
+  try {
+    return fs.statSync(path.join(dir, BINARY_NAME)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function hashFile(file) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    fs.createReadStream(file)
+      .on("data", (chunk) => hash.update(chunk))
+      .on("error", reject)
+      .on("end", () => resolve(hash.digest("hex")));
+  });
+}
+
+function findEndOfCentralDirectory(buffer) {
+  const floor = Math.max(0, buffer.length - 66 * 1024);
+  for (let offset = buffer.length - 22; offset >= floor; offset--) {
+    if (buffer.readUInt32LE(offset) === 0x06054b50) return offset;
+  }
+  return -1;
+}
+
+// 只用 node:zlib 解 ZIP：载荷由本仓库脚本以 store/deflate 生成，不需要打包器依赖。
+function extractZip(buffer, destDir) {
+  const eocd = findEndOfCentralDirectory(buffer);
+  if (eocd < 0) throw new Error("载荷不是有效的 ZIP：找不到中央目录");
+  const total = buffer.readUInt16LE(eocd + 10);
+  let cursor = buffer.readUInt32LE(eocd + 16);
+  if (total === 0xffff || cursor === 0xffffffff) throw new Error("暂不支持 ZIP64 格式的载荷");
+
+  const root = path.resolve(destDir);
+  for (let index = 0; index < total; index++) {
+    if (buffer.readUInt32LE(cursor) !== 0x02014b50) throw new Error("载荷 ZIP 中央目录损坏");
+    const method = buffer.readUInt16LE(cursor + 10);
+    const compressedSize = buffer.readUInt32LE(cursor + 20);
+    const uncompressedSize = buffer.readUInt32LE(cursor + 24);
+    const nameLength = buffer.readUInt16LE(cursor + 28);
+    const extraLength = buffer.readUInt16LE(cursor + 30);
+    const commentLength = buffer.readUInt16LE(cursor + 32);
+    const localOffset = buffer.readUInt32LE(cursor + 42);
+    const name = buffer.toString("utf8", cursor + 46, cursor + 46 + nameLength);
+    cursor += 46 + nameLength + extraLength + commentLength;
+
+    if (name.endsWith("/")) continue;
+    const target = path.resolve(root, name);
+    if (target !== root && !target.startsWith(root + path.sep)) {
+      throw new Error(`载荷条目越出目标目录：${name}`);
+    }
+
+    const localNameLength = buffer.readUInt16LE(localOffset + 26);
+    const localExtraLength = buffer.readUInt16LE(localOffset + 28);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+    const raw = buffer.subarray(dataStart, dataStart + compressedSize);
+    let data;
+    if (method === 0) data = raw;
+    else if (method === 8) data = zlib.inflateRawSync(raw);
+    else throw new Error(`不支持的 ZIP 压缩方式：${method}`);
+    if (uncompressedSize && data.length !== uncompressedSize) {
+      throw new Error(`载荷条目大小不符：${name}`);
+    }
+
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, data);
+  }
+}
+
+async function provisionPayload(spec) {
+  const url = `${PAYLOAD_BASE_URL}/${spec.file}`;
+  const staging = `${PROVISION_DIR}.partial`;
+  const archive = `${staging}.zip`;
+  fs.mkdirSync(path.dirname(staging), { recursive: true });
+  note(`首次启动，正在下载运行时载荷（约 200 MB）：${url}`);
+
+  const startedAt = Date.now();
+  const response = await fetch(url, { redirect: "follow" });
+  if (!response.ok || !response.body) {
+    throw new Error(`运行时载荷下载失败：HTTP ${response.status}（${url}）`);
+  }
+  fs.mkdirSync(path.dirname(archive), { recursive: true });
+  await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(archive));
+
+  const digest = await hashFile(archive);
+  if (digest !== spec.sha256) {
+    fs.rmSync(archive, { force: true });
+    throw new Error(`运行时载荷 sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
+  }
+
+  const megabytes = (fs.statSync(archive).size / 1048576).toFixed(1);
+  note(`下载完成（${megabytes} MB，用时 ${Math.round((Date.now() - startedAt) / 1000)}s），开始解包`);
+
+  fs.rmSync(staging, { recursive: true, force: true });
+  extractZip(fs.readFileSync(archive), staging);
+  fs.chmodSync(path.join(staging, BINARY_NAME), 0o755);
+  fs.rmSync(PROVISION_DIR, { recursive: true, force: true });
+  fs.renameSync(staging, PROVISION_DIR);
+  fs.rmSync(archive, { force: true });
+  note(`运行时已就绪：${PROVISION_DIR}`);
+}
+
+async function resolveRuntimeDir() {
+  if (hasPayload(BUNDLED_DIR)) {
+    note("使用包内自带运行时");
+    return BUNDLED_DIR;
+  }
+  if (hasPayload(PROVISION_DIR)) {
+    note(`复用已就绪的运行时 ${PROVISION_DIR}`);
+    return PROVISION_DIR;
+  }
+  const spec = PAYLOADS[PLATFORM];
+  if (!spec || !/^[a-f0-9]{64}$/.test(spec.sha256)) {
+    throw new Error(`当前平台 ${PLATFORM} 暂无可用运行时载荷，请等待对应平台发布`);
+  }
+  await provisionPayload(spec);
+  return PROVISION_DIR;
+}
+
+let SERVER_DIR;
+try {
+  SERVER_DIR = await resolveRuntimeDir();
+} catch (error) {
+  console.error(`[open-ai-canvas] 运行时准备失败：${error.message}`);
+  process.exit(1);
+}
+
+const GO_BINARY = path.join(SERVER_DIR, BINARY_NAME);
 const WEB_DIST = path.join(SERVER_DIR, "web-dist");
 const PI_RUNTIME = path.join(SERVER_DIR, "pi-runtime");
 const PLUGIN_PACKAGES = path.join(SERVER_DIR, "plugin-packages");
@@ -72,7 +220,7 @@ const GO_ENV = {
   CANVAS_PARENT_PID: String(process.pid),
   GIN_MODE: "release",
   CANVAS_NODE_BIN: process.execPath,
-  CANVAS_PI_RUNTIME_DIR: PI_RUNTIME,
+  ...(fs.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {}),
   CANVAS_RUNTIME_AUTO_INSTALL: "false",
   CANVAS_OFFICIAL_PLUGIN_DIR: PLUGIN_PACKAGES,
   CANVAS_REGISTRATION_ENABLED: "false",
