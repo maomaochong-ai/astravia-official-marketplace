@@ -119,6 +119,23 @@ describe("panel channel", () => {
 		stop();
 		expect(count).toBe(40);
 	});
+
+	it("does not queue events that were already delivered to a live listener", () => {
+		clearPanelBacklog();
+		const first: string[] = [];
+		const stop = subscribePanel(event => first.push(event.type));
+		publishPanelEvent({ type: "report", source: "agent", report: { sample: { path: "live.apk" } } as never });
+		stop();
+
+		// 重挂载（新订阅）不应该再拿到已经投给上一个订阅者的事件。
+		const second: string[] = [];
+		const stopAgain = subscribePanel(event => second.push(event.type));
+		stopAgain();
+
+		expect(first).toEqual(["report"]);
+		expect(second).toEqual([]);
+	});
+
 });
 
 describe("buildHealthReport", () => {

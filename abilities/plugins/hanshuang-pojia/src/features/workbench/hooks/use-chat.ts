@@ -13,18 +13,34 @@ export interface ChatModel {
 
 const INITIAL: ChatState = { status: "disconnected", tool: null, cwd: null };
 
-export function useChat(bridge: WorkbenchBridge, cwd: string | null): ChatModel {
+export function useChat(bridge: WorkbenchBridge, cwd: string | null, enabled = true): ChatModel {
 	const { t } = useTranslation();
 	const [state, setState] = useState<ChatState>(INITIAL);
 	const [sending, setSending] = useState(false);
 	const alive = useRef(true);
 
+	// 订阅只建一次（bridge 不进依赖），并在同值时不产生新引用：宿主在订阅时会立刻 replay
+	// 一次 conversation-changed，如果每次都 setState 一个新对象，面板就会被无休止地重渲染。
+	const bridgeRef = useRef(bridge);
+	bridgeRef.current = bridge;
+	const latest = useRef<ChatState>(INITIAL);
 	useEffect(() => {
 		alive.current = true;
+		// 面板不在前台时不订阅宿主会话：宿主每发一条 turn/tool 事件都会进来一次，
+		// 没人看的界面不该跟着它重渲染。切到前台时宿主会 replay 一次当前状态。
+		if (!enabled) {
+			return () => {
+				alive.current = false;
+			};
+		}
 		let unsubscribe = () => {};
 		try {
-			unsubscribe = bridge.subscribeChat(next => {
-				if (alive.current) setState(next);
+			unsubscribe = bridgeRef.current.subscribeChat(next => {
+				if (!alive.current) return;
+				const previous = latest.current;
+				if (previous.status === next.status && previous.tool === next.tool && previous.cwd === next.cwd) return;
+				latest.current = next;
+				setState(next);
 			});
 		} catch (error) {
 			// 订阅被权限拒绕时只能看到「未连接」，但面板本身必须活下来。
@@ -34,7 +50,7 @@ export function useChat(bridge: WorkbenchBridge, cwd: string | null): ChatModel 
 			alive.current = false;
 			unsubscribe();
 		};
-	}, [bridge]);
+	}, [enabled]);
 
 	const ask = useCallback(
 		(prompt: string) => {

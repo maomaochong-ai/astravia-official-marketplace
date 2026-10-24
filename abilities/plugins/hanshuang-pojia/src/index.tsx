@@ -44,20 +44,41 @@ async function writeJson(storage: PluginStorageApi, path: string, value: unknown
 	}
 }
 
-/** 面板一挂载就会读它，所以 bridge 必须身份稳定（否则目录列表 effect 会反复触发）。 */
-const bridges = new WeakMap<PluginContext, WorkbenchBridge>();
+/**
+ * 面板一挂载就会读它，所以 bridge 必须身份稳定（否则目录列表 effect 会反复触发）。
+ *
+ * 但 ctx 一旦被宿主换掉就必须重建：重建时**先释放上一条 conversation 订阅**，
+ * 否则每多一次重建就多一个永不 dispose 的监听器，它们会继续往面板投事件。
+ */
+let bridgeCache: { ctx: PluginContext; bridge: WorkbenchBridge } | null = null;
+let detachBridge: (() => void) | null = null;
+
+/** activate 时调用：让下一个 bridgeFor 用新的 ctx 重建并释放旧订阅。 */
+export function resetBridge(): void {
+	bridgeCache = null;
+	if (detachBridge) {
+		try {
+			detachBridge();
+		} catch (error) {
+			console.warn("[hanshuang-pojia] bridge detach failed", error);
+		}
+		detachBridge = null;
+	}
+}
 
 function bridgeFor(ctx: PluginContext): WorkbenchBridge {
-	const cached = bridges.get(ctx);
-	if (cached) return cached;
+	const cached = bridgeCache;
+	if (cached && cached.ctx === ctx) return cached.bridge;
+	if (cached) resetBridge();
 
 	// 权威的「当前有没有活跃会话」：订阅后宿主会立刻 replay 一次 conversation-changed，
 	// 比从 sendPrompt 的报错文案里猜可靠。undefined 表示还没收到。
 	let activeSession: string | null | undefined;
 	try {
-		ctx.conversation.on(event => {
+		const handle = ctx.conversation.on(event => {
 			if (event.type === "conversation-changed") activeSession = event.conversation.id;
 		});
+		detachBridge = () => handle.dispose();
 	} catch {
 		// 缺 agent.session.read 时保持未知，chat() 退回「先发再兜底」。
 	}
@@ -152,18 +173,18 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 		labMode: () => readJson<LabState>(ctx.storage, LAB_STATE_PATH),
 		saveLabMode: state => writeJson(ctx.storage, LAB_STATE_PATH, state),
 	};
-	bridges.set(ctx, bridge);
+	bridgeCache = { ctx, bridge };
 	return bridge;
 }
 
 /** 活动面板组件：cwd 由宿主 tab 上下文给出，而不是活跃会话。 */
 function WorkbenchTab() {
-	const { cwd } = useActivityTab();
+	const { cwd, active } = useActivityTab();
 	const ctx = getRuntime();
 	if (!ctx) return null;
 	return (
 		<PanelBoundary>
-			<WorkbenchScreen bridge={bridgeFor(ctx)} cwd={cwd} />
+			<WorkbenchScreen bridge={bridgeFor(ctx)} cwd={cwd} active={active} />
 		</PanelBoundary>
 	);
 }
@@ -171,6 +192,8 @@ function WorkbenchTab() {
 export default definePlugin({
 	activate(ctx) {
 		setRuntime(ctx);
+		// 新 ctx 意味着上一条既有订阅已经失效：先释放，避免监听器越积越多。
+		resetBridge();
 		const disposables = registerTools(ctx);
 		disposables.push(...registerRuntimeContributions(ctx));
 
@@ -188,6 +211,7 @@ export default definePlugin({
 		}
 
 		return () => {
+			resetBridge();
 			for (const disposable of disposables) {
 				try {
 					disposable.dispose();

@@ -51,12 +51,17 @@ function isActive(acc: boolean, event: PanelTaskEvent): boolean {
  * 任务实时流：宿主方向会话来的一条「正在发生什么」。轻量、当下、可清空。
  * 与 activity 的分工：activity 收「已完成的工具结果」，stream 收「运行中的生命周期」。
  */
-export function useTaskStream(bridge: WorkbenchBridge): TaskStreamModel {
+export function useTaskStream(bridge: WorkbenchBridge, enabled = true): TaskStreamModel {
+	// 同 useActivity：参数只用于调用点表意，订阅不依赖它。
+	void bridge;
 	const [entries, setEntries] = useState<TaskStreamEntry[]>([]);
 	const [active, setActive] = useState(false);
 	const alive = useRef(true);
 
+	// 同 useActivity：订阅只建一次，bridge 不进依赖，避免重订阅重放积压。
 	useEffect(() => {
+		if (!enabled) return;
+		alive.current = true;
 		alive.current = true;
 		const stop = subscribePanel(event => {
 			if (!alive.current || event.type !== "task") return;
@@ -67,9 +72,7 @@ export function useTaskStream(bridge: WorkbenchBridge): TaskStreamModel {
 			alive.current = false;
 			stop();
 		};
-		// bridge 用于保持与其它 hook 一致的生命周期语义；事件源是模块级 channel。
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [bridge]);
+	}, [enabled]);
 
 	const clear = useCallback(() => {
 		setEntries([]);

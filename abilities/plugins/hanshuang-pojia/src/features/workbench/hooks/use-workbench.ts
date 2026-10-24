@@ -114,10 +114,11 @@ function toSamples(entries: PluginFsEntry[]): PluginFsEntry[] {
 		.slice(0, MAX_LISTED);
 }
 
-export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): WorkbenchModel {
+export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, options: { active?: boolean } = {}): WorkbenchModel {
 	const { t } = useTranslation();
+	const active = options.active !== false;
 	const library = useLibrary(bridge);
-	const chat = useChat(bridge, cwd);
+	const chat = useChat(bridge, cwd, active);
 	const lab = useLab(bridge);
 	const promptLib = usePromptLibrary(bridge);
 
@@ -136,8 +137,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 
 	const requestId = useRef(0);
 	const { settings, remember } = library;
-	const activity = useActivity(bridge);
-	const stream = useTaskStream(bridge);
+	const activity = useActivity(bridge, active);
+	const stream = useTaskStream(bridge, active);
 
 	const refreshFiles = useCallback(() => {
 		if (!cwd) {
@@ -258,23 +259,25 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null): Workb
 	}, []);
 
 	// 对话里的 Agent 跑完 triage_binary 后把报告推回面板：样本库与当前视图都跟着更新。
-	useEffect(
-		() =>
-			subscribePanel(event => {
-				if (event.type !== "report") return;
-				requestId.current += 1;
-				setReport(event.report);
-				setSample(null);
-				setSelectedPath(event.report.target.path);
-				setPathInput(event.report.target.path);
-				setError(null);
-				setPhase("ready");
-				setFromAgent(true);
-				remember(event.report);
-				setPage("overview");
-			}),
-		[remember],
-	);
+	useEffect(() => {
+		// 与活动流同一个开关：面板不在前台时不收事件，让它们留在 channel 的积压里，
+		// 切回前台时一次性重放。这样「聊天在跑、面板关着」时插件侧零渲染。
+		if (!active) return;
+		return subscribePanel(event => {
+			if (event.type !== "report") return;
+			requestId.current += 1;
+			setReport(event.report);
+			setSample(null);
+			setSelectedPath(event.report.target.path);
+			setPathInput(event.report.target.path);
+			setError(null);
+			setPhase("ready");
+			setFromAgent(true);
+			remember(event.report);
+			setPage("overview");
+		});
+	}, [active, remember]);
+
 
 	const openEntry = useCallback(
 		(id: string) => {

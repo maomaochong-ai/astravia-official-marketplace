@@ -35,6 +35,24 @@ export function normalizeSettings(input: WorkbenchSettings | null | undefined): 
 	};
 }
 
+/** 设置都是平铺值，逐字段比较比引用比较可靠：归一化恒返新对象，靠引用会让同值也算变。 */
+function sameSettings(a: WorkbenchSettings, b: WorkbenchSettings): boolean {
+	return (
+		a.mode === b.mode &&
+		a.stringsMinLength === b.stringsMinLength &&
+		a.stringsLimit === b.stringsLimit &&
+		a.entropyBuckets === b.entropyBuckets &&
+		a.persistLibrary === b.persistLibrary &&
+		a.disabledRules.length === b.disabledRules.length &&
+		a.disabledRules.every((rule, index) => rule === b.disabledRules[index])
+	);
+}
+
+/** 同一批条目（同 id 同序）就不换新数组，避免下游 memo 白跑。 */
+function sameEntries(a: readonly LibraryEntry[], b: readonly LibraryEntry[]): boolean {
+	return a.length === b.length && a.every((entry, index) => entry.id === b[index]?.id);
+}
+
 function normalizeEntry(value: LibraryEntry): LibraryEntry | null {
 	if (!value || typeof value.id !== "string" || typeof value.path !== "string") return null;
 	if (typeof value.score !== "number" || typeof value.sha256 !== "string") return null;
@@ -48,15 +66,27 @@ export function useLibrary(bridge: WorkbenchBridge): LibraryModel {
 	const [persisted, setPersisted] = useState(false);
 	const [loaded, setLoaded] = useState(false);
 	const firstWrite = useRef(true);
+	/** 上一次写盘的参数签名：只换了引用、值没变时不再重复写。 */
+	const lastWrite = useRef<string | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
 		Promise.all([bridge.settings(), bridge.library()])
 			.then(([storedSettings, storedLibrary]) => {
 				if (cancelled) return;
-				setSettings(normalizeSettings(storedSettings));
+				setSettings(current => {
+					const next = normalizeSettings(storedSettings);
+					// 同值不换引用：归一化恒返新对象，直接 setState 会让依赖 settings 的 effect 成环。
+					return sameSettings(current, next) ? current : next;
+				});
 				if (storedLibrary) {
-					setEntries(storedLibrary.map(normalizeEntry).filter((entry): entry is LibraryEntry => entry !== null).slice(0, MAX_LIBRARY));
+					setEntries(current => {
+						const next = storedLibrary
+							.map(normalizeEntry)
+							.filter((entry): entry is LibraryEntry => entry !== null)
+							.slice(0, MAX_LIBRARY);
+						return sameEntries(current, next) ? current : next;
+					});
 					setPersisted(true);
 				}
 			})
@@ -77,6 +107,9 @@ export function useLibrary(bridge: WorkbenchBridge): LibraryModel {
 			firstWrite.current = false;
 			return;
 		}
+		const signature = JSON.stringify([settings, settings.persistLibrary ? entries : null]);
+		if (signature === lastWrite.current) return;
+		lastWrite.current = signature;
 		Promise.all([bridge.saveSettings(settings), settings.persistLibrary ? bridge.saveLibrary(entries) : Promise.resolve(true)])
 			.then(([settingsSaved, librarySaved]) => setPersisted(settingsSaved && librarySaved))
 			.catch(() => setPersisted(false));

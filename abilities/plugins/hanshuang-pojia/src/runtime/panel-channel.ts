@@ -8,8 +8,8 @@ import type { TriageReport } from "../domain/report/report";
  * 的分析」推回面板。但订阅表只在面板挂载期间存在 —— 用户正在对话页看着 Agent
  * 分析时，插件 tab 往往是**没挂载**的，事件会直接丢掉，切回来只看到空库。
  *
- * 所以每个事件同时压进一个容量固定的队列：面板挂载时先把积压的事件重放一遍，
- * 再开始接新的。这是「双向交互」里最容易漏掉的一环。
+ * 所以**没有订阅者时**事件会落进一个容量固定的队列：面板挂载时先把积压的事件重放一遍，
+ * 再开始接新的。已有订阅者时不再入队——否则每次重挂载都会把同一条事件再投一遍。
  */
 
 export interface PanelReportEvent {
@@ -111,8 +111,13 @@ const backlog: PanelEvent[] = [];
 
 /** 工具里调用；没有面板在听时事件进积压队列，等面板挂载后重放。 */
 export function publishPanelEvent(event: PanelEvent): void {
-	backlog.push(event);
-	if (backlog.length > MAX_BACKLOG) backlog.splice(0, backlog.length - MAX_BACKLOG);
+	// 只有当**没有订阅者**时才排队。已经有面板在听时事件已经送达，再压一份进积压队列
+	// 就等于让下一次订阅把同一条事件重投一遍：一次重挂载投一遍，面板据此 setState，
+	// 叠到几十条就会把渲染推成嵌套更新循环（React #185）。
+	if (listeners.size === 0) {
+		backlog.push(event);
+		if (backlog.length > MAX_BACKLOG) backlog.splice(0, backlog.length - MAX_BACKLOG);
+	}
 
 	for (const listener of listeners) {
 		try {

@@ -35,11 +35,16 @@ function fromPartial(entry: Omit<ActivityEntry, "id" | "at"> & { at?: string }):
  * strings / disasm / diff，切回插件 tab 时这些结果会按顺序补进来。内存态即可——它本质是
  * 本次会话的复核轨迹，不需要跨会话持久化（样本库 / 报告已经落盘）。
  */
-export function useActivity(bridge: WorkbenchBridge): ActivityModel {
+export function useActivity(bridge: WorkbenchBridge, enabled = true): ActivityModel {
+	// 参数保留：调用点靠它表明自己绑定哪个 bridge；订阅本身不依赖它（见下方 enabled 依赖）。
+	void bridge;
 	const [entries, setEntries] = useState<ActivityEntry[]>([]);
 	const alive = useRef(true);
 
+	// 订阅只建一次：bridge 只用于生命周期对齐，不能当 effect 依赖——它一旦换成新对象，
+	// 每次重渲染都会重新订阅并重放积压事件（React #185 的成圆路径）。
 	useEffect(() => {
+		if (!enabled) return;
 		alive.current = true;
 		const stop = subscribePanel(event => {
 			if (alive.current && event.type === "tool-result") {
@@ -50,9 +55,7 @@ export function useActivity(bridge: WorkbenchBridge): ActivityModel {
 			alive.current = false;
 			stop();
 		};
-		// 只订阅一次；bridge 用于保持与其它 hook 一致的生命周期语义。
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [bridge]);
+	}, [enabled]);
 
 	const record = useCallback((entry: Omit<ActivityEntry, "id" | "at"> & { at?: string }) => {
 		setEntries(current => [fromPartial(entry), ...current].slice(0, MAX_ACTIVITY));

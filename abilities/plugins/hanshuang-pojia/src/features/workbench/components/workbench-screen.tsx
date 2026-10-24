@@ -45,11 +45,13 @@ const PAGES: Record<string, (props: PageProps) => ReactElement> = {
 export interface WorkbenchScreenProps {
 	bridge: WorkbenchBridge;
 	cwd: string | null;
+	/** 宿主的 tab 激活态：不在前台就不订阅宿主事件（默认按前台处理，方便直接渲染）。 */
+	active?: boolean;
 }
 
 /** 插件面板的唯一装配点：顶栏 + 侧栏 + 当前页面。 */
-export function WorkbenchScreen({ bridge, cwd }: WorkbenchScreenProps) {
-	const model = useWorkbench(bridge, cwd);
+export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenProps) {
+	const model = useWorkbench(bridge, cwd, { active });
 	const Page = PAGES[model.page] ?? OverviewPage;
 	const props: PageProps = { model };
 
