@@ -11,7 +11,7 @@ skill no longer requires touching the manifest.
 | Files | 171 |
 | Bytes | 2,481,035 |
 | Manifest SHA-256 | `a0b03be3040fdd72fc1f05e55f7ad409f3a9787c1a1590ca0e944a9a262e6560` for `agent/prompts/skill-library.sha256` (171 per-file hashes) |
-| Per-file hashes | `agent/prompts/skill-library.sha256` — verify with `cd agent/skills && shasum -a 256 -c ../prompts/skill-library.sha256` (171/171 OK) |
+| Per-file hashes | `agent/prompts/skill-library.sha256` — verify with `cd agent/skills && shasum -a 256 -c ../docs/skill-library.sha256` (171/171 OK) |
 | Regression guard | `src/test/skill-library.test.ts` recomputes the manifest and fails on any count, byte or hash drift |
 
 Relative to the upstream tree the following is **not** byte-identical, by design:
