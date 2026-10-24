@@ -94,12 +94,13 @@ describe("lab-switch hook", () => {
 		expect(result.additionalContexts?.join("")).toContain("快捷口令 poc");
 	});
 
-	it("leaves ordinary prose untouched", async () => {
+	it("injects the L2 history-voidance declaration but no shortcut/audit context for ordinary prose", async () => {
 		const harness = makeHarness({ enabled: true, since: "2026-10-23T00:00:00.000Z" });
 		registerRuntimeContributions(harness.ctx);
-		expect(
-			await hookFor(harness, "UserPromptSubmit").handler({ event: { prompt: "这个函数返回布尔值，为什么？" } }),
-		).toEqual({ action: "continue" });
+		const result = await hookFor(harness, "UserPromptSubmit").handler({ event: { prompt: "这个函数返回布尔值，为什么？" } });
+		expect(result.action).toBe("continue");
+		expect(result.additionalContexts).toHaveLength(1);
+		expect(result.additionalContexts?.[0]).toContain("历史声明作废");
 	});
 });
 
