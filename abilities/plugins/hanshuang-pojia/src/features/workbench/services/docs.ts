@@ -1,8 +1,9 @@
 /**
  * 随插件发布的工具包文档：索引、惰性正文加载与检索。
  *
- * 正文不进首屏 bundle —— vite 把每个 Markdown 拆成独立 chunk，
- * 只有点开某一篇时才会加载那一篇的文本。
+ * 正文不进任何 JS 分块 —— 全部文档以纯文本随包发布到 dist/assets/docs/，
+ * 点开哪一篇才读哪篇。已编译成脚本的工具链语料既拖慢安装，也会被系统杀毒
+ * 当成可执行样本；纯文本没有这个风险。
  */
 import assets from "../../../content/docs/assets.json";
 import index from "../../../content/docs/index.json";
@@ -60,10 +61,31 @@ export const DOC_GROUPS = [
 	{ id: "kit-docs", labelKey: "docs.group.kitDocs" },
 ] as const;
 
-const LOADERS = import.meta.glob(["/src/content/docs/**/*.md", "/src/content/docs/**/*.json"], { query: "?raw", import: "default" }) as Record<
-	string,
-	() => Promise<string>
->;
+/** 文档目录在包内的相对位置：构建时整棵拷到 dist/docs/，与 dist/assets/ 平级。 */
+const DOC_PREFIX = "src/content/docs/";
+
+/**
+ * 正文不进 JS 分块，而是作为纯文本资源随包发布，点开哪篇才读哪篇。
+ * 构建期见 vite.config.ts 的 runtime-resources 插件。
+ */
+async function readBody(path: string): Promise<string> {
+	const rel = path.startsWith(DOC_PREFIX) ? path.slice(DOC_PREFIX.length) : path;
+	// 单元测试跑在 Node 里，import.meta.url 是 file: —— 直接读源目录，
+	// 这样测试看的就是构建真正会发布的那份字节，而不是另一份拷贝。
+	if (import.meta.url.startsWith("file:")) {
+		const specifier = "node:fs/promises";
+		const { readFile } = (await import(/* @vite-ignore */ specifier)) as typeof import("node:fs/promises");
+		return readFile(new URL(`../../../../${path}`, import.meta.url), "utf8");
+	}
+	// 运行期：astravia-plugin:// 直接提供包内文件，无需经过宿主 fs 授权。
+	// 开发服务器下路径不同，回退到直接抓源目录。
+	const url = new URL(import.meta.url);
+	url.pathname =
+		url.protocol === "astravia-plugin:" ? url.pathname.replace(/\/assets\/[^/]*$/, `/assets/docs/${rel}`) : `/${path}`;
+	const response = await fetch(url.toString());
+	if (!response.ok) throw new Error(`document body unavailable (${response.status}): ${rel}`);
+	return response.text();
+}
 
 const CACHE = new Map<string, string>();
 
@@ -93,9 +115,7 @@ export async function loadDoc(id: string): Promise<string> {
 	if (cached !== undefined) return cached;
 	const entry = docById(id);
 	if (!entry) throw new Error(`unknown document: ${id}`);
-	const loader = LOADERS[`/${entry.path}`];
-	if (!loader) throw new Error(`document body missing from build: ${entry.path}`);
-	const text = await loader();
+	const text = await readBody(entry.path);
 	CACHE.set(id, text);
 	return text;
 }
