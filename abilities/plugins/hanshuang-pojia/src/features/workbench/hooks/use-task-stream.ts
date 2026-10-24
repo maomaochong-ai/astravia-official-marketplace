@@ -62,7 +62,6 @@ export function useTaskStream(bridge: WorkbenchBridge, enabled = true): TaskStre
 	useEffect(() => {
 		if (!enabled) return;
 		alive.current = true;
-		alive.current = true;
 		const stop = subscribePanel(event => {
 			if (!alive.current || event.type !== "task") return;
 			setEntries(current => [toEntry(event), ...current].slice(0, MAX_TASKS));

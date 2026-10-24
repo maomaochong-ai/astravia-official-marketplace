@@ -115,6 +115,8 @@
 | B3 | 低 | `contributions.ts` L53-72 | `logSafetyEndpointOnce` 每端点只记一次，排障时无法看到每轮判定 | 可加计数器，超过阈值后降级为只记变化 |
 | B4 | 低 | `interceptor.ts` L157-158 | `AUDIT_SIGNAL_RE` 60 词正则，每次 `needsAuditContext` 都编译执行 | 无性能问题（正则字面量只编译一次），但可考虑拆分为常量表 |
 
+> B1 / B2 已在 2.9.4 关闭：`INJECTED_PREFIXES` 收为模块私有常量（`interceptor.ts:96`，唯一消费者 `:142`），`GEMINI_SAFETY_SETTINGS` 已注释并注明「宿主不支持注入」。
+
 ### 5.2 设计决策标记（非 bug）
 
 - **D1**：敏感词映射从代码层回归 SYSTEM.md — 用户明确要求，但模型自行映射的精确度低于代码 `applySensitiveRewrite` 的单趟最长优先算法

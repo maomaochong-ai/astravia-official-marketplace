@@ -95,7 +95,6 @@ export interface WorkbenchModel {
 	restorePromptFromBackup: PromptLibraryModel["restorePromptFromBackup"];
 	deleteBackup: PromptLibraryModel["deleteBackup"];
 
-
 	strings: StringHit[] | null;
 	entropy: EntropyBucket[] | null;
 	disasm: DisasmModel;
