@@ -1,0 +1,8 @@
+node_modules/
+dist/
+release/
+.DS_Store
+
+# public/open-ai-canvas-darwin-arm64.zip 必须随源码提交：CI 只跑 vite build，
+# 由 vite 把 public/ 拷进 dist/，再随 .astraviapkg 分发；漏提交则安装时取不到运行时。
+# 重新生成：npm run build:service

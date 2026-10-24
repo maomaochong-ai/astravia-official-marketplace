@@ -34,7 +34,7 @@ export function CanvasView({ controller }: { controller: CanvasController }): JS
           <div className="flex items-center gap-3">
             <span
               className={cn(
-                "icon-[solar--canvas-2-linear] h-5 w-5 shrink-0",
+                "icon-[solar--palette-2-linear] h-5 w-5 shrink-0",
                 PHASE_TONE[state.phase],
               )}
             />

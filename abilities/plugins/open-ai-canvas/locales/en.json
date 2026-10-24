@@ -1,31 +1,21 @@
 {
-  "view": {
-    "description": "Open-source AI canvas for text-to-image, image-to-video and more."
-  },
-  "status": {
-    "idle": "Stopped",
-    "installing": "Installing…",
-    "starting": "Starting…",
-    "running": "Running",
-    "stopping": "Stopping…",
-    "error": "Error"
-  },
-  "action": {
-    "start": "Start Canvas",
-    "stop": "Stop",
-    "openBrowser": "Open in Browser"
-  },
-  "tips": {
-    "title": "Getting Started",
-    "login": "Open the canvas in your browser and log in (first user can register automatically).",
-    "mcp": "After logging in, the host agent can manage projects, canvases and tasks via MCP tools.",
-    "dataDir": "All data is stored locally in the plugin's data directory."
-  },
-  "error": {
-    "serviceFailed": "Canvas service failed to start",
-    "startFailed": "Failed to start canvas service",
-    "installFailed": "Failed to install canvas service",
-    "stopFailed": "Failed to stop canvas service",
-    "toast": "Operation failed"
-  }
+  "view.description": "Open-source AI canvas with text-to-image, image-to-video and more, integrated into Astravia.",
+  "status.idle": "Stopped",
+  "status.installing": "Installing…",
+  "status.starting": "Starting…",
+  "status.running": "Running",
+  "status.stopping": "Stopping…",
+  "status.error": "Error",
+  "action.start": "Start canvas",
+  "action.stop": "Stop",
+  "action.openBrowser": "Open in browser",
+  "tips.title": "Getting started",
+  "tips.login": "Open the canvas in your browser and sign in (the first user can register automatically).",
+  "tips.mcp": "After signing in, the host agent can manage projects, canvases and generation tasks through MCP tools.",
+  "tips.dataDir": "All data is stored in the plugin data directory.",
+  "error.serviceFailed": "The canvas service failed",
+  "error.startFailed": "Failed to start the canvas service",
+  "error.installFailed": "Failed to install the canvas service",
+  "error.stopFailed": "Failed to stop the canvas service",
+  "error.toast": "Operation failed"
 }

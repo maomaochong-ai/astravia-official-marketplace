@@ -1,31 +1,21 @@
 {
-  "view": {
-    "description": "开源 AI 画布，支持文生图、图生视频等，已集成到 Astravia。"
-  },
-  "status": {
-    "idle": "已停止",
-    "installing": "安装中…",
-    "starting": "启动中…",
-    "running": "运行中",
-    "stopping": "停止中…",
-    "error": "错误"
-  },
-  "action": {
-    "start": "启动画布",
-    "stop": "停止",
-    "openBrowser": "在浏览器中打开"
-  },
-  "tips": {
-    "title": "开始使用",
-    "login": "在浏览器中打开画布并登录（首用户可自动注册）。",
-    "mcp": "登录后，宿主智能体可通过 MCP 工具管理项目、画布和生成任务。",
-    "dataDir": "所有数据均存储在插件数据目录中。"
-  },
-  "error": {
-    "serviceFailed": "画布服务启动失败",
-    "startFailed": "启动画布服务失败",
-    "installFailed": "安装画布服务失败",
-    "stopFailed": "停止画布服务失败",
-    "toast": "操作失败"
-  }
+  "view.description": "开源 AI 画布，支持文生图、图生视频等，已集成到 Astravia。",
+  "status.idle": "已停止",
+  "status.installing": "安装中…",
+  "status.starting": "启动中…",
+  "status.running": "运行中",
+  "status.stopping": "停止中…",
+  "status.error": "错误",
+  "action.start": "启动画布",
+  "action.stop": "停止",
+  "action.openBrowser": "在浏览器中打开",
+  "tips.title": "开始使用",
+  "tips.login": "在浏览器中打开画布并登录（首用户可自动注册）。",
+  "tips.mcp": "登录后，宿主智能体可通过 MCP 工具管理项目、画布和生成任务。",
+  "tips.dataDir": "所有数据均存储在插件数据目录中。",
+  "error.serviceFailed": "画布服务启动失败",
+  "error.startFailed": "启动画布服务失败",
+  "error.installFailed": "安装画布服务失败",
+  "error.stopFailed": "停止画布服务失败",
+  "error.toast": "操作失败"
 }

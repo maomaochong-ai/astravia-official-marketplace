@@ -16,7 +16,7 @@ export default definePlugin({
     ctx.ui.registerWorkspaceView({
       id: VIEW_ID,
       label: "Open AI Canvas",
-      icon: "icon-[solar--canvas-2-linear]",
+      icon: "icon-[solar--palette-2-linear]",
       description: "Open-source AI canvas integrated into Astravia",
       badge: { kind: "beta" },
       component: function CanvasWorkspaceView(): JSX.Element {

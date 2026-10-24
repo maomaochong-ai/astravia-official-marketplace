@@ -21,6 +21,22 @@ export type CanvasStateListener = (state: CanvasState) => void;
 const READY_TIMEOUT_MS = 130_000;
 const READY_POLL_INTERVAL_MS = 500;
 
+/** 包内服务工件：plugin.json#providers.services[].runtime.platforms 里登记的同一个 zip。 */
+const ARTIFACT_ZIP_PATH = "dist/open-ai-canvas-darwin-arm64.zip";
+/** 与 runtime.platforms[].artifacts[].destination 一致。 */
+const ARTIFACT_DESTINATION = "server";
+
+/** 宿主 install() 的载荷格式是 base64 字符串。 */
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+
 function phaseFromServiceStatus(status: PluginServiceStatus): CanvasPhase {
   switch (status.phase as string) {
     case "ready":
@@ -118,8 +134,14 @@ export class CanvasController {
         return;
       }
       if (!status.installed) {
+        // 宿主拒绝在子进程存活时替换运行时；stop() 幂等，兼做旧实例清理。
+        this.setState({ phase: "stopping" });
+        await this.ctx.services.stop(SERVICE_ID).catch(() => undefined);
         this.setState({ phase: "installing" });
-        await this.ctx.services.install(SERVICE_ID, []);
+        const data = await this.fetchArtifactBase64();
+        status = await this.ctx.services.install(SERVICE_ID, [
+          { destination: ARTIFACT_DESTINATION, data },
+        ]);
       }
       if (status.phase !== "ready") {
         this.setState({ phase: "starting" });
@@ -150,6 +172,17 @@ export class CanvasController {
       if (Date.now() >= deadline) return status;
       await new Promise((resolve) => setTimeout(resolve, READY_POLL_INTERVAL_MS));
     }
+  }
+
+  /** 读取包内服务工件并转 base64——宿主 install() 要求与 platform.artifacts 一一对应。 */
+  private async fetchArtifactBase64(): Promise<string> {
+    const plugin = this.ctx.plugin;
+    const url = `astravia-plugin://${plugin.id}/versions/${plugin.version}/${ARTIFACT_ZIP_PATH}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to load bundled service runtime: ${response.status} ${response.statusText}`);
+    }
+    return toBase64(new Uint8Array(await response.arrayBuffer()));
   }
 
   async stop(): Promise<void> {
