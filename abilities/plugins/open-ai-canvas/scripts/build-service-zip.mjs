@@ -13,14 +13,20 @@
 //       产物：public/boot.mjs（vite build 会把它拷进 dist/）
 //       --check 会核对 plugin.json 里声明的 sha256、archive 与 destination，不一致即失败
 //       --clean 顺手删掉旧版留下的 public/open-ai-canvas-*.zip
+//   node scripts/build-service-zip.mjs --payload --canvas-dir <上游仓库>
 //       产物：.payload/payload-<version>-<platform>.zip（上传到 GitHub Release，不进仓库）
+//   node scripts/build-service-zip.mjs --agent-runtime --canvas-dir <上游仓库> [--node-bin <node>]
+//       产物：.payload/agent-runtime-<agentVersion>-<platform>.zip
 //
-// 载荷内容：yingce-backend（Go）+ web-dist/ + plugin-packages/*.yingce-plugin
-// 刻意不含 pi-runtime：上游 provision.go 按「显式指定 → 已解包 → 随包压缩资源」解析本地文件，
-// 不联网下载，因此画布内的本地 copilot 会提示缺失；宿主侧 MCP 操控不受影响。
+// 主载荷内容：yingce-backend（Go）+ web-dist/ + plugin-packages/*.yingce-plugin
+// Agent 载荷内容：pi-runtime/ + node/bin/node
+// 两者分开是因为 pi 解压后 242 MB / 2.5 万文件：并进主载荷会让每次升级都重下整包，
+// 而 node 必须随包发 —— 宿主进程可能跑在 Electron 内置的 node 20 上，pi 需要 22.19.0+。
+
 
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -47,13 +53,15 @@ const PLATFORM_MAP = {
 };
 
 function parseArgs(argv) {
-  const args = { canvasDir: "", platform: "", check: false, clean: false, payload: false };
+  const args = { canvasDir: "", platform: "", check: false, clean: false, payload: false, agentRuntime: false, nodeBin: "" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--canvas-dir") args.canvasDir = argv[++i];
     else if (argv[i] === "--platform") args.platform = argv[++i];
+    else if (argv[i] === "--node-bin") args.nodeBin = argv[++i];
     else if (argv[i] === "--check") args.check = true;
     else if (argv[i] === "--clean") args.clean = true;
     else if (argv[i] === "--payload") args.payload = true;
+    else if (argv[i] === "--agent-runtime") args.agentRuntime = true;
   }
   return args;
 }
@@ -189,15 +197,97 @@ async function buildPayload({ canvasDir, platform }) {
     `[payload] ${path.relative(pluginRoot, outputFile)}  entries=${files.length}  bytes=${buffer.length}  sha256=${sha256(buffer)}`,
   );
   console.log(`[payload] 把上面的 sha256 写进 server/boot.mjs 的 PAYLOADS["${platform}"].sha256`);
+
+}
+// --- agent payload：创作 Agent（pi）+ 它要用的 node ---
+// 上游把 pi 打成 pi-runtime.tar.gz 交给 Go 后端自行解包；这里换成解压后的目录树，
+// 因为 boot.mjs 只有 node:zlib，没有 tar 解析器，写一个不如不发压缩包。
+const AGENT_PAYLOAD_VERSION = "0.0.1";
+const NODE_MIN_MAJOR = 22;
+const NODE_MIN_MINOR = 19;
+
+// node 不随上游仓库走，得单独挑一个：宿主的 ~/.astravia/runtimes/node/<ver>/bin/node
+// 就是官方分发包，版本对得上 pi 的 engines（>=22.19.0）。
+async function pickNodeBin(explicit) {
+  if (explicit) return explicit;
+  const runtimes = path.join(os.homedir(), ".astravia", "runtimes", "node");
+  let names = [];
+  try {
+    names = await readdir(runtimes);
+  } catch {
+    return "";
+  }
+  const versions = names
+    .filter((name) => /^v?\d+\.\d+\.\d+$/.test(name))
+    .sort((a, b) => {
+      const pa = a.replace(/^v/, "").split(".").map(Number);
+      const pb = b.replace(/^v/, "").split(".").map(Number);
+      for (let i = 0; i < 3; i += 1) if (pa[i] !== pb[i]) return pb[i] - pa[i];
+      return 0;
+    });
+  for (const name of versions) {
+    const [major, minor] = name.replace(/^v/, "").split(".").map(Number);
+    if (major < NODE_MIN_MAJOR || (major === NODE_MIN_MAJOR && minor < NODE_MIN_MINOR)) continue;
+    const candidate = path.join(runtimes, name, "bin", process.platform === "win32" ? "node.exe" : "node");
+    try {
+      await stat(candidate);
+      return candidate;
+    } catch {
+      /* 继续找下一个 */
+    }
+  }
+  return "";
+}
+
+async function buildAgentPayload({ canvasDir, platform, nodeBin }) {
+  if (!canvasDir) {
+    console.error("Error: --canvas-dir is required for --agent-runtime");
+    process.exit(1);
+  }
+  const config = PLATFORM_MAP[platform];
+  if (!config) {
+    console.error(`Error: unsupported platform ${platform}`);
+    process.exit(1);
+  }
+
+  const piDir = path.join(canvasDir, "backend", "agent-runtime", "pi");
+  await stat(path.join(piDir, "agent-runtime.mjs"));
+
+  const chosenNode = await pickNodeBin(nodeBin);
+  if (!chosenNode) {
+    console.error(
+      `Error: 找不到 node ${NODE_MIN_MAJOR}.${NODE_MIN_MINOR}+ ：用 --node-bin 指定，或先让 Astravia 下载官方 node 运行时`,
+    );
+    process.exit(1);
+  }
+
+  console.log(`[agent] 收集 pi 运行时（${piDir}）与 node（${chosenNode}）`);
+  const files = await collectFiles(piDir, "pi-runtime");
+  files.push({ rel: `node/bin/${process.platform === "win32" ? "node.exe" : "node"}`, full: chosenNode });
+  for (const file of files) {
+    if (!file.buffer) file.buffer = await readFile(file.full);
+    delete file.full;
+  }
+
+  await mkdir(payloadOutputDir, { recursive: true });
+  const outputFile = path.join(payloadOutputDir, `agent-runtime-${AGENT_PAYLOAD_VERSION}-${platform}.zip`);
+  const buffer = zipFrom(files);
+  await writeFile(outputFile, buffer);
+
+  console.log(
+    `[agent] ${path.relative(pluginRoot, outputFile)}  entries=${files.length}  bytes=${buffer.length}  sha256=${sha256(buffer)}`,
+  );
+  console.log(`[agent] 把上面的 sha256 写进 server/boot.mjs 的 AGENT_PAYLOADS["${platform}"].sha256`);
 }
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const platform = args.platform || currentPlatform();
-  const mode = args.payload ? "payload" : "shim";
+  const mode = args.payload ? "payload" : args.agentRuntime ? "agent" : "shim";
   console.log(`[${mode}] platform=${platform}`);
   if (mode === "shim" && args.clean) await cleanLegacyShims();
   if (mode === "payload") await buildPayload({ canvasDir: args.canvasDir, platform });
+  else if (mode === "agent") await buildAgentPayload({ canvasDir: args.canvasDir, platform, nodeBin: args.nodeBin });
   else await buildShim({ platform, check: args.check });
 }
 

@@ -4,7 +4,7 @@
 
 已接受（草案）。修订 [ADR-0001](./0001-open-ai-canvas-as-plugin.md) 决策 1 与决策 8 中关于制品分发与平台绑定的部分；不改变 ADR-0001 的 `host-node + Node wrapper` 架构与 ADR-0002 的 MCP 工具集。
 
-本文回答七个问题，顺序与结论一一对应：
+本文回答八个问题，顺序与结论一一对应：
 
 | # | 问题 | 决策 |
 |---|---|---|
@@ -15,6 +15,7 @@
 | 5 | shim 为什么是一个 zip 去做下载/校验/解包？不应该是脚本吗？ | zip 只是宿主的分发容器；**改为 `archive: "file"` 直接分发 `boot.mjs`**（决策 3） |
 | 6 | 点了停止/重装后进程赖着不退，宿主反复重试 | **shim 收到信号必须自己退**，不能只转发给后端（决策 6） |
 | 7 | 服务进程拿不到端口和数据目录，宿主报 `Service exited before becoming ready` | **宿主不注入环境变量，只做 `${ASTRAVIA_SERVICE_*}` 模板替换**；`plugin.json` 必须显式声明 `process.env`（决策 7） |
+| 8 | 浏览器里的画布缺创作 Agent（生成任务失败）与本地资源地址，能否「一个不落下」？ | **补第二个载荷**：`pi-runtime` + 它需要的 node 单独发布，由 shim 解包后注入 `CANVAS_PI_RUNTIME_DIR` / `CANVAS_NODE_BIN`，并补上 `CANVAS_PUBLIC_BASE_URL`（决策 8） |
 
 > 用户引用的 `@skill:grill-with-docs` 在本机技能清单中不存在（清单只有 `grilling`）。本文按该技能的意图执行：先拷问结论、保留反方论证，再落决策；「拷问记录」一节记录被驳回的方案与答复。
 
@@ -338,6 +339,39 @@ payload-<ver>-<platform>.zip             仅 yingce-backend              压缩�
 第一个实验复现了宿主日志里的失败，第二个证明声明补上即可，无需改宿主、无需改 shim。
 
 **同批修复：就绪后自动进画布。** 服务能起来之后用户又碰到第二个问题 —— 点「启动画布」后什么都没发生，还得自己再回头点一次「打开浏览器」。原实现只把 `baseUrl` 写进状态，从不主动唤起浏览器。对照上游桌面壳（`apps/desktop/src-tauri/src/server.rs:161`：`wait_ready` 成功后直接 `navigate(app, &base_url)`，没有「请再点一下」这一步），`ensureRunning()` 在 `applyReady()` 之后直接 `openExternal(baseUrl + "/")`；就绪早返回分支同样打开，避开「服务已在跑、点启动没反应」。唤起失败被 `catch` 吞掉，不影响已就绪的事实。
+### 8. 创作 Agent 与它要用的 node 单独发载荷，不再靠宿主进程碰运气
+
+0.0.6 之后服务能起来、画布能打开，但**生成任务仍然失败**。原因不在 shim，在供给链：
+
+- 主载荷只有三件（`yingce-backend` / `web-dist` / `plugin-packages`）。`provision.go` 的 `resolvePi` 按「`CANVAS_PI_RUNTIME_DIR` → 已解包目录 → `CANVAS_PI_ARCHIVE` → 报错」解析，**没有联网下载分支**（`node` 有，`pi` 没有）。所以缺就是永久缺，只会得到一句「Agent 运行时文件缺失」。
+- `Ensure` 唯一的调用点是 `runtime.go:69`，它在 `runtime.Run` 里；而 `runtime.Run` 只被云 Agent 的生成链路调用（`cloud_agent_pi_runtime.go:48`）。这解释了「服务正常、画布能开、AI 生成报错」这个组合，也说明它不能靠调大超时缓解。
+
+补它有两个陷阱：
+
+1. **`pi` 要 node 22**。实测 `@yingce/pi-agent-runtime` 的 `engines` 是 `>=22.19.0`；宿主 Astravia 用 Electron 内置的 node 启动 shim，那个 node 是 **20.19.1**，跑 `agent-runtime.mjs` 直接 `SyntaxError: The requested module 'node:fs' does not provide an export named 'globSync'`。因此「用 `process.execPath` 当 `CANVAS_NODE_BIN`」对 pi 不成立。
+2. **不能塞进主载荷**。pi 解压后 242 MB / 24,965 文件，并进去会让每次插件升级都重下整包，也会把 2,195 条目的主载荷推到 2.7 万条目。
+
+因此：`agent-runtime-0.0.1-darwin-arm64.zip` 独立发布（解压后 94,861,028 B / 24,966 条目），内含 `pi-runtime/**` 与 `node/bin/node`（取宿主已装的官方分发 `~/.astravia/runtimes/node/22.22.2`，版本与 `pinnedNodeVersion` 一致）。shim 解包到 `DATA_DIR/runtime/agent-<ver>/` 后注入两个变量：
+
+```js
+CANVAS_PI_RUNTIME_DIR: path.join(AGENT_DIR, "pi-runtime")
+CANVAS_NODE_BIN:       path.join(AGENT_DIR, "node", "bin", "node")
+```
+
+**分层思路**：node 解析是三层 —— 载荷自带的 node（版本确定）→ `process.execPath`（若 `process.versions.node` ≥ 22.19.0）→ 不设变量，让后端自己走 `installedNode()` / `lookPath`。自带那层存在时永远命中第一层。
+
+**同批补 `CANVAS_PUBLIC_BASE_URL`。** `resource.go:73` 的 `publicResourceBaseURL()` 先看设置项，再看这个环境变量，两者都空就直接 `BadAuthRequest`（「服务器本地存储尚未配置服务器访问地址」）。上游桌面殼在 `server.rs:117` 注入它；插件侧原来只注了 6 个变量，上传/预览本地资源会报错。值是 `http://127.0.0.1:${HOST_PORT}` —— 端口由宿主分配、每次启动都可能变，所以只能运行时算，不能写进配置。
+
+**降级原则**：Agent 载荷失败不拦画布。上游把 pi 当必需（失败即报错）；这里把它当可选能力 —— `resolveAgentDir()` 就地吞掉异常并返回 `null`，画布、MCP、项目管理照常，只有 Agent 任务不可用。这是有意的不对称：主载荷缺失依然让整体 `phase: failed`，因为那是真的没东西可跑。
+
+**顺带修两处 shim 缺陷**（由 24,966 条目才暴露）：
+
+| 缺陷 | 现象 | 修法 |
+|---|---|---|
+| 每条目重新 `openSync` 归档读本地头 | 2.5 万条目 ≈ 5 万次 open/close | 循环外开一个只读 fd，`try/finally` 关闭 |
+| 空文件条目 `compressedSize === 0` | `createReadStream({start, end: start - 1})` 抛 `start is out of range` | 直接落空文件 |
+
+两处都先被实测打到（`The value of "start" is out of range. It must be <= "end"`），不是预判。
 
 
 ## 兼容和迁移
@@ -352,8 +386,12 @@ payload-<ver>-<platform>.zip             仅 yingce-backend              压缩�
 | 4 | `src/runtime.ts`：`ARTIFACT_PATH = "dist/assets/boot.mjs"`；`ensureRunning()` 改为一次会话只装一次；**就绪后自动打开画布**（决策 7 旁的同批修复） | 与 3 同步回退 |
 | 5 | `plugin.json` 的 `providers.services[0].process.env`：声明四个 `${ASTRAVIA_SERVICE_*}` 模板（决策 7） | 删 `env` 即回到 0.0.5 的失败态；无数据迁移 |
 | 6 | 发布 `payload-0.0.1-win32-x64.zip` 到 `plugin-open-ai-canvas` Release | 删资产 + 回退清单 platforms |
+| 7 | 发布 `agent-runtime-0.0.1-darwin-arm64.zip`（`pi-runtime/**` + `node/bin/node`）到同一 Release，并把 sha256 写进 `boot.mjs` 的 `AGENT_PAYLOADS` | 删资产 + 把 `AGENT_PAYLOADS` 置空；`resolveAgentDir()` 会直接返回 `null`，画布不受影响 |
+| 8 | `boot.mjs` 注入 `CANVAS_PUBLIC_BASE_URL` 与自带的 `CANVAS_NODE_BIN`（决策 8） | 删这两行即回到 0.0.6 行为；主载荷与已解包的 agent 目录都无需迁移 |
 
-**版本号**：插件 `0.0.4 → 0.0.5`（本 ADR 落地），`0.0.5 → 0.0.6`（决策 7 与自动打开修复）；`runtime.version` `0.0.1 → 0.1.0`；`PAYLOAD_VERSION` **保持 `0.0.1` 不变**。
+**版本号**：插件 `0.0.4 → 0.0.5`（本 ADR 落地），`0.0.5 → 0.0.6`（决策 7 与自动打开修复），`0.0.6 → 0.0.7`（决策 8）；`runtime.version` `0.0.1 → 0.1.0`；`PAYLOAD_VERSION` **保持 `0.0.1` 不变**；新增独立的 `AGENT_PAYLOAD_VERSION = "0.0.1"`。
+
+两个载荷的版本号分开管：主载荷 sha256 `fb463965…d545c0c7` 在 0.0.7 里**一字未改**，已下过 216 MB 的用户只多付 90.5 MB；下次只改 agent 内容时也不连累主载荷。
 
 **关键不变量**：老用户升级后不得触发 207 MB 重下。验证方式：升级前记录 `data/runtime/0.0.1/.ready`（或目录 mtime），升级后点「启动」应在数秒内进入 running。
 
@@ -454,6 +492,49 @@ PY
 | 按声明展开四个模板 | 同上 + `ASTRAVIA_SERVICE_{PORT,DATA_DIR,RUNTIME_DIR,CACHE_DIR}` | 进程存活，`/api/health/ready` 返 `200 {"status":"preparing","phase":"downloading"}`，日志出现 `Proxy listening on http://127.0.0.1:19691` |
 
 第一个结果是宿主日志里 `Service exited before becoming ready` 的直接复现；第二个证明宿主 `waitUntilReady` 会看到 200 并立即就绪，首次启动剩下的只是那 216 MB 下载。
+
+**3f. 完整链路实测（决策 8 的验收）—— 本地回环起载荷服务实跑（Observed）**
+
+环境：`python3 -m http.server 8901` 指向两个真实载荷（sha256 与 Release 一致），全新空 `DATA_DIR`，四个 `ASTRAVIA_SERVICE_*` + `CANVAS_PAYLOAD_BASE_URL`，宿主端口 8919。
+
+| 阶段 | 日志 | 耗时 |
+|---|---|---|
+| 主载荷下载 | `下载完成（206.9 MB，用时 9s）` | 9 s |
+| 主载荷解包 | `运行时载荷已解包到 …/runtime/0.0.1.partial（4s）` | 4 s |
+| Agent 载荷下载 | `下载完成（90.5 MB，用时 9s）` | 9 s |
+| Agent 载荷解包 | `创作 Agent 运行时已解包到 …/agent-0.0.1.partial（17s）`（24,966 条目） | 17 s |
+| 后端起 | `backend listening addr=127.0.0.1:50901` / `serving frontend static assets` | 即时 |
+
+两个载荷都在本地回环，所以下载耗时不可外推（真实网络按 1.34 MB/s 约 3 min + 1.1 min）；**解包耗时可以外推**，因为它们只与条目数和磁盘 IO 有关。
+
+四路探针全部命中（Observed）：
+
+```
+GET  /                  → 200, 3586 bytes
+GET  /api/health/ready  → 200 {"ready":true,"checks":{"database":true,"runtime":true,"schema":true}}
+POST /mcp initialize    → 200 {"serverInfo":{"name":"open-ai-canvas","version":"0.1.0"}}
+```
+
+后端进程的实际环境（`ps -E` 读回，不是看代码推测）：
+
+```
+CANVAS_STATIC_DIR      = …/runtime/0.0.1/web-dist
+CANVAS_PUBLIC_BASE_URL = http://127.0.0.1:8919
+CANVAS_NODE_BIN        = …/runtime/agent-0.0.1/node/bin/node
+CANVAS_PI_RUNTIME_DIR  = …/runtime/agent-0.0.1/pi-runtime
+```
+
+pi 在自带 node 下确实能起（这层不实测就不知道）：
+
+```
+$ node/bin/node -v                          → v22.22.2
+$ echo | node/bin/node pi-runtime/agent-runtime.mjs
+  → {"event":"runtime_error","message":"Agent runtime input is empty"}
+```
+
+对照宿主 Electron 的 node（`20.19.1`）跑同一个入口，得到的是 `SyntaxError: The requested module 'node:fs' does not provide an export named 'globSync'`（来自 `pi-coding-agent/dist/core/package-manager.js:2`）—— 这就是「必须自带 node」的根据。
+
+**未测到的**：用真实模型触发一次生成任务。它需要画布项目 + 模型凭据，属于用户侧验收；本文只证到「后端拿得到 pi 目录与 node 可执行文件，pi 本身能加载」。
 
 
 **3d. 真机验收步骤（NOT RUN，待界面复验）**

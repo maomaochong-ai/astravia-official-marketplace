@@ -44,10 +44,21 @@ const PAYLOADS = {
   "darwin-arm64": { file: "payload-0.0.1-darwin-arm64.zip", sha256: "fb46396533b5b0c82b533f06141918bfaa2fb1a984b9a5bec123d642d545c0c7" },
 };
 
+// 创作 Agent（pi）与它要用的 node 是第二个载荷。上游把它单独打成 pi-runtime.tar.gz 交给
+// 后端解包，我们照做：242 MB / 2.5 万文件塞进主载荷会让每次升级都重下整包。
+// node 也从这里发：宿主进程的 node 可能是 Electron 内置的 20.x，而 pi 用到了 22 才有的
+// node:fs globSync，跑在 20 上会直接 SyntaxError。
+const AGENT_PAYLOAD_VERSION = "0.0.1";
+const AGENT_PAYLOADS = {
+  "darwin-arm64": { file: "agent-runtime-0.0.1-darwin-arm64.zip", sha256: "06e62d951cf711a0489adde5303c2cfd3448868dbfabc6ed1a7d1671daa93ad6" },
+};
+
 const PLATFORM = `${process.platform}-${process.arch}`;
 const BINARY_NAME = `yingce-backend${process.platform === "win32" ? ".exe" : ""}`;
+const NODE_BINARY_NAME = process.platform === "win32" ? "node.exe" : "node";
 const BUNDLED_DIR = RUNTIME_DIR;
 const PROVISION_DIR = path.join(DATA_DIR, "runtime", PAYLOAD_VERSION);
+const AGENT_DIR = path.join(DATA_DIR, "runtime", `agent-${AGENT_PAYLOAD_VERSION}`);
 
 function note(message) {
   console.log(`[open-ai-canvas] ${message}`);
@@ -234,7 +245,11 @@ async function extractZip(archive, destDir) {
   }
 
   const root = path.resolve(destDir);
+  // 创作 Agent 载荷有 2.5 万条目。逐条 open/close 归档读本地头会多出十几万次系统调用，
+  // 在机械盘或文件监控开机时会明显变慢，所以全部条目复用一个只读 fd。
+  const archiveFd = fs.openSync(archive, "r");
   let cursor = 0;
+  try {
   for (let index = 0; index < total; index++) {
     if (directory.readUInt32LE(cursor) !== 0x02014b50) throw new Error("载荷 ZIP 中央目录损坏");
     const method = directory.readUInt16LE(cursor + 10);
@@ -253,18 +268,16 @@ async function extractZip(archive, destDir) {
       throw new Error(`载荷条目越出目标目录：${name}`);
     }
 
-    const localFd = fs.openSync(archive, "r");
-    let dataStart;
-    try {
-      const localNameLength = readExactly(localFd, localOffset + 26, 2).readUInt16LE(0);
-      const localExtraLength = readExactly(localFd, localOffset + 28, 2).readUInt16LE(0);
-      dataStart = localOffset + 30 + localNameLength + localExtraLength;
-    } finally {
-      fs.closeSync(localFd);
-    }
+    const localNameLength = readExactly(archiveFd, localOffset + 26, 2).readUInt16LE(0);
+    const localExtraLength = readExactly(archiveFd, localOffset + 28, 2).readUInt16LE(0);
+    const dataStart = localOffset + 30 + localNameLength + localExtraLength;
 
     fs.mkdirSync(path.dirname(target), { recursive: true });
-    if (method === 0) {
+    // 空文件（node 的 include/ 里有几个）压缩后长度为 0，createReadStream 的 end 会小于 start，
+    // 直接落一个空文件即可。
+    if (compressedSize === 0) {
+      fs.writeFileSync(target, Buffer.alloc(0));
+    } else if (method === 0) {
       await copyRangeInto(archive, dataStart, compressedSize, target);
     } else if (method === 8) {
       await inflateRangeInto(archive, dataStart, compressedSize, target);
@@ -274,6 +287,9 @@ async function extractZip(archive, destDir) {
     if (uncompressedSize && fs.statSync(target).size !== uncompressedSize) {
       throw new Error(`载荷条目大小不符：${name}`);
     }
+  }
+  } finally {
+    fs.closeSync(archiveFd);
   }
 }
 
@@ -494,18 +510,20 @@ async function downloadPayload(url, archive) {
   }
 }
 
-async function provisionPayload(spec) {
+// 载荷下载只在首次安装后发生一次：校验通过就解到 staging，由调用方决定最终落点。
+// 两个载荷共用这一段，区别只在 label 与文案里的体积。
+async function stageArchive(spec, staging, label, approximateMB) {
   const url = `${PAYLOAD_BASE_URL}/${spec.file}`;
-  const staging = `${PROVISION_DIR}.partial`;
   const archive = `${staging}.zip`;
   fs.mkdirSync(path.dirname(staging), { recursive: true });
   STATE.phase = "downloading";
-  STATE.message = "首次启动，正在下载运行时载荷（约 200 MB）";
+  STATE.message = `首次启动，正在下载${label}（约 ${approximateMB} MB）`;
   STATE.error = null;
-  note(`首次启动，正在下载运行时载荷（约 200 MB）：${url}`);
+  STATE.receivedBytes = 0;
+  STATE.totalBytes = 0;
+  note(`首次启动，正在下载${label}（约 ${approximateMB} MB）：${url}`);
 
   const startedAt = Date.now();
-  fs.mkdirSync(path.dirname(archive), { recursive: true });
   // 弱网下整段下载也可能中断：重试时不清归档，已落盘的字节与 .partN 分片会接着用。
   for (let attempt = 1; ; attempt += 1) {
     try {
@@ -519,28 +537,81 @@ async function provisionPayload(spec) {
   }
 
   STATE.phase = "verifying";
-  STATE.message = "正在校验运行时完整性";
+  STATE.message = `正在校验${label}完整性`;
   const digest = await hashFile(archive);
   if (digest !== spec.sha256) {
     // 只有"文件确实坏了"才值得丢掉续传基线。
     fs.rmSync(archive, { force: true });
     for (let index = 0; index < DOWNLOAD_CHUNKS; index += 1) fs.rmSync(partPath(archive, index), { force: true });
-    throw new Error(`运行时载荷 sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
+    throw new Error(`${label} sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
   }
 
   const megabytes = (fs.statSync(archive).size / 1048576).toFixed(1);
   note(`下载完成（${megabytes} MB，用时 ${Math.round((Date.now() - startedAt) / 1000)}s），开始解包`);
 
   STATE.phase = "extracting";
-  STATE.message = "正在解包运行时";
+  STATE.message = `正在解包${label}`;
   const extractStartedAt = Date.now();
   fs.rmSync(staging, { recursive: true, force: true });
   await extractZip(archive, staging);
+  fs.rmSync(archive, { force: true });
+  note(`${label}已解包到 ${staging}（${Math.round((Date.now() - extractStartedAt) / 1000)}s）`);
+}
+
+async function provisionPayload(spec) {
+  const staging = `${PROVISION_DIR}.partial`;
+  await stageArchive(spec, staging, "运行时载荷", 200);
   fs.chmodSync(path.join(staging, BINARY_NAME), 0o755);
   fs.rmSync(PROVISION_DIR, { recursive: true, force: true });
   fs.renameSync(staging, PROVISION_DIR);
-  fs.rmSync(archive, { force: true });
-  note(`运行时已就绪：${PROVISION_DIR}（解包 ${Math.round((Date.now() - extractStartedAt) / 1000)}s）`);
+  note(`运行时已就绪：${PROVISION_DIR}`);
+}
+
+function hasAgentRuntime(dir) {
+  return fs.existsSync(path.join(dir, "pi-runtime", "agent-runtime.mjs"));
+}
+
+// 创作 Agent 是可降级的：它缺席只会让 Agent 任务起不来，不该拦住整个画布，
+// 所以准备失败在 resolveAgentDir 里就地吞掉，不往上抛。
+async function provisionAgentRuntime(spec) {
+  const staging = `${AGENT_DIR}.partial`;
+  await stageArchive(spec, staging, "创作 Agent 运行时", 80);
+  const nodeBin = path.join(staging, "node", "bin", NODE_BINARY_NAME);
+  if (fs.existsSync(nodeBin)) fs.chmodSync(nodeBin, 0o755);
+  fs.rmSync(AGENT_DIR, { recursive: true, force: true });
+  fs.renameSync(staging, AGENT_DIR);
+  note(`创作 Agent 运行时已就绪：${AGENT_DIR}`);
+}
+
+async function resolveAgentDir() {
+  if (hasAgentRuntime(AGENT_DIR)) {
+    note(`复用已就绪的创作 Agent 运行时 ${AGENT_DIR}`);
+    return AGENT_DIR;
+  }
+  const spec = AGENT_PAYLOADS[PLATFORM];
+  if (!spec || !/^[a-f0-9]{64}$/.test(spec.sha256)) {
+    note(`当前平台 ${PLATFORM} 暂无创作 Agent 载荷，Agent 功能不可用`);
+    return null;
+  }
+  try {
+    await provisionAgentRuntime(spec);
+    return AGENT_DIR;
+  } catch (err) {
+    note(`创作 Agent 运行时准备失败（Agent 功能将不可用）：${err.message}`);
+    return null;
+  }
+}
+
+// pi 用到了 node 22 才有的 node:fs globSync，而宿主可能用 Electron 内置的 20.x 启动本进程，
+// 那个 node 跑 pi 会直接 SyntaxError。所以优先用载荷自带的 node，其次才看宿主进程。
+function resolveNodeBin(agentDir) {
+  const bundled = path.join(agentDir, "node", "bin", NODE_BINARY_NAME);
+  if (fs.existsSync(bundled)) return bundled;
+  const version = process.versions.node ?? "0.0.0";
+  const [major = 0, minor = 0] = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  if (major > 22 || (major === 22 && minor >= 19)) return process.execPath;
+  note(`宿主 node ${version} 低于 pi 要求的 22.19.0，载荷又未提供 node；Agent 任务可能起不来`);
+  return "";
 }
 
 async function resolveRuntimeDir() {
@@ -577,6 +648,14 @@ async function prepareRuntime() {
     PI_RUNTIME = path.join(SERVER_DIR, "pi-runtime");
     PLUGIN_PACKAGES = path.join(SERVER_DIR, "plugin-packages");
 
+    // 创作 Agent 与它要用的 node 是独立载荷。上游把 pi 打包给后端自行解包；我们多做一步，
+    // 把 node 也一并发，因为宿主进程的 node 可能不满足 pi 的 22.19.0 下限。
+    const agentDir = await resolveAgentDir();
+    if (agentDir) {
+      PI_RUNTIME = path.join(agentDir, "pi-runtime");
+      NODE_BIN = resolveNodeBin(agentDir);
+    }
+
     STATE.phase = "starting-backend";
     STATE.message = "正在启动后端";
     await reserveBackendPort();
@@ -596,6 +675,7 @@ let SERVER_DIR = null;
 let GO_BINARY = null;
 let WEB_DIST = null;
 let PI_RUNTIME = null;
+let NODE_BIN = "";
 let PLUGIN_PACKAGES = null;
 let goProcess = null;
 
@@ -635,7 +715,11 @@ function backendEnv() {
     CANVAS_EXIT_WITH_PARENT: "true",
     CANVAS_PARENT_PID: String(process.pid),
     GIN_MODE: "release",
-    CANVAS_NODE_BIN: process.execPath,
+    // 公开资源基址：上传到本地存储的文件要拼出一个浏览器能取回的绝对地址，
+    // 后端在它为空时直接拒绝（资源接口返回「尚未配置服务器访问地址」）。端口由宿主分配、
+    // 每次启动都可能变，所以只能在这里算，不能写成固定配置。
+    CANVAS_PUBLIC_BASE_URL: `http://127.0.0.1:${HOST_PORT}`,
+    ...(NODE_BIN ? { CANVAS_NODE_BIN: NODE_BIN } : {}),
     ...(fs.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {}),
     CANVAS_RUNTIME_AUTO_INSTALL: "false",
     CANVAS_OFFICIAL_PLUGIN_DIR: PLUGIN_PACKAGES,
