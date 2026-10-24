@@ -14,7 +14,9 @@
 import http from "node:http";
 import net from "node:net";
 import crypto from "node:crypto";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
+import tls from "node:tls";
+import { PassThrough } from "node:stream";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,6 +42,11 @@ const PAYLOAD_VERSION = "0.0.1";
 const PAYLOAD_BASE_URL =
   process.env.CANVAS_PAYLOAD_BASE_URL ||
   "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas";
+// 部分网络里 github.com 的 TCP 连接直接超时，但 api.github.com 与它 302 到的
+// release-assets.githubusercontent.com 都可达。所以下载前先用 API 把资产名解析成
+// https://api.github.com/repos/<repo>/releases/assets/<id>，由它重定向到真实对象存储。
+const GITHUB_REPO = "maomaochong-ai/astravia-official-marketplace";
+const RELEASE_TAG = "plugin-open-ai-canvas";
 const PAYLOADS = {
   "darwin-arm64": { file: "payload-0.0.1-darwin-arm64.zip", sha256: "fb46396533b5b0c82b533f06141918bfaa2fb1a984b9a5bec123d642d545c0c7" },
 };
@@ -62,31 +69,101 @@ const AGENT_DIR = path.join(DATA_DIR, "runtime", `agent-${AGENT_PAYLOAD_VERSION}
 
 function note(message) {
   console.log(`[open-ai-canvas] ${message}`);
+  pushLog(message);
 }
 
 // --- 准备阶段的可见状态 ---
 // 宿主用 /api/health/ready 判定服务就绪，而首次启动要下载约 200 MB 载荷。
 // 监听因此先就位、把下载放到监听之后：健康检查立刻通过，准备进度由 /__canvas/progress
 // 暴露给下面这张准备页，而不是让整段下载卡在宿主的健康超时里被反复中止。
+const STATE_LOG_LIMIT = 10;
 const STATE = {
   phase: "starting",
+  stage: "启动",
   message: "正在检查运行时",
+  fileName: "",
+  source: "",
+  endpoint: "",
   receivedBytes: 0,
   totalBytes: 0,
+  speed: 0,
+  attempts: 0,
+  retries: 0,
+  startedAt: Date.now(),
+  sampledAt: 0,
+  sampledBytes: 0,
+  log: [],
   error: null,
 };
 
+function pushLog(text) {
+  const trimmed = String(text ?? "").trim();
+  if (!trimmed) return;
+  if (STATE.log[STATE.log.length - 1]?.text === trimmed) return;
+  STATE.log.push({ at: Date.now(), text: trimmed });
+  if (STATE.log.length > STATE_LOG_LIMIT) STATE.log.splice(0, STATE.log.length - STATE_LOG_LIMIT);
+}
+
+function setStage(phase, stage, message) {
+  STATE.phase = phase;
+  STATE.stage = stage;
+  if (message) STATE.message = message;
+  pushLog(message || stage);
+}
+
+// 每次开始传新的文件就把计数清零，避免主载荷的 216 MB 和 Agent 载荷的 90 MB 混在一起。
+function resetTransfer(fileName, approximateBytes) {
+  STATE.fileName = fileName;
+  STATE.receivedBytes = 0;
+  STATE.totalBytes = approximateBytes || 0;
+  STATE.speed = 0;
+  STATE.sampledAt = 0;
+  STATE.sampledBytes = 0;
+  STATE.attempts = 0;
+}
+
+function transferSpeed() {
+  const now = Date.now();
+  if (!STATE.sampledAt) {
+    STATE.sampledAt = now;
+    STATE.sampledBytes = STATE.receivedBytes;
+    return STATE.speed;
+  }
+  const seconds = (now - STATE.sampledAt) / 1000;
+  if (seconds < 0.5) return STATE.speed;
+  const delta = STATE.receivedBytes - STATE.sampledBytes;
+  if (delta >= 0) STATE.speed = delta / seconds;
+  STATE.sampledAt = now;
+  STATE.sampledBytes = STATE.receivedBytes;
+  return STATE.speed;
+}
+
 function progressSnapshot() {
-  const percent =
-    STATE.totalBytes > 0 ? Math.min(100, Math.round((STATE.receivedBytes / STATE.totalBytes) * 100)) : 0;
+  transferSpeed();
+  const percent = STATE.totalBytes > 0 ? Math.min(100, (STATE.receivedBytes / STATE.totalBytes) * 100) : 0;
+  const remaining = STATE.totalBytes > 0 ? Math.max(0, STATE.totalBytes - STATE.receivedBytes) : 0;
   return {
     phase: STATE.phase,
+    stage: STATE.stage,
     message: STATE.message,
+    fileName: STATE.fileName,
+    source: ACTIVE_PROXY ? `${ACTIVE_PROXY.host}:${ACTIVE_PROXY.port}` : "直连",
+    endpoint: STATE.endpoint,
     receivedBytes: STATE.receivedBytes,
     totalBytes: STATE.totalBytes,
-    percent,
+    percent: Math.round(percent * 10) / 10,
+    speed: Math.round(STATE.speed),
+    etaSeconds: STATE.speed > 0 ? Math.round(remaining / STATE.speed) : 0,
+    elapsedSeconds: Math.max(0, Math.round((Date.now() - STATE.startedAt) / 1000)),
+    attempts: STATE.attempts,
+    retries: STATE.retries,
+    log: STATE.log.map((entry) => ({ at: entry.at, text: entry.text })),
     error: STATE.error,
   };
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
 
 function progressPage() {
@@ -100,62 +177,128 @@ function progressPage() {
 <title>${title}</title>
 <style>
 :root{color-scheme:light dark}
+*{box-sizing:border-box}
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
-font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#fafafa;color:#18181b}
-.card{width:min(520px,calc(100vw - 48px));padding:28px 30px;border:1px solid #e4e4e7;border-radius:14px;
-background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-h1{margin:0 0 4px;font-size:16px;font-weight:600}
-.sub{margin:0;color:#a1a1aa;font-size:12px}
-#msg{margin:14px 0 0;color:#71717a;font-size:13px}
-.track{margin:10px 0 8px;height:6px;border-radius:999px;overflow:hidden;background:#f4f4f5}
-.bar{height:100%;width:0;background:#18181b;transition:width .3s ease}
-.meta{display:flex;justify-content:space-between;color:#a1a1aa;font-size:12px;
+background:#fafafa;color:#18181b;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{width:min(560px,calc(100vw - 64px))}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.sub{margin:0;color:#a1a1aa;font-size:12.5px;line-height:1.5}
+.status{margin:28px 0 0;display:flex;align-items:baseline;justify-content:space-between;
+font-size:12px;color:#52525b;gap:16px}
+#stage{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{margin:9px 0 0;height:4px;border-radius:999px;background:#ececee;overflow:hidden}
+.bar{height:100%;width:0;background:#18181b;transition:width .4s cubic-bezier(.4,0,.2,1)}
+.bar.idle{animation:breathe 1.8s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.2}50%{opacity:.65}}
+.facts{margin:11px 0 0;display:flex;flex-wrap:wrap;gap:18px;color:#a1a1aa;font-size:12px;
 font-variant-numeric:tabular-nums}
-pre{margin:14px 0 0;padding:10px 12px;border-radius:8px;background:#fef2f2;color:#b91c1c;
-font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
-button{margin-top:16px;padding:8px 16px;border:0;border-radius:8px;background:#18181b;color:#fff;
+.facts span:empty{display:none}
+.msg{margin:7px 0 0;color:#52525b;font-size:12px;line-height:1.55;word-break:break-word}
+.actions{margin:24px 0 0;display:flex;gap:10px}
+.log{margin:32px 0 0;color:#a1a1aa;font:11.5px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;
+max-height:160px;overflow:hidden}
+.log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.err{margin:28px 0 0;color:#b91c1c;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;
+white-space:pre-wrap;word-break:break-word}
+button{margin:0;padding:8px 18px;border:0;border-radius:8px;background:#18181b;color:#fff;
 font:inherit;font-size:13px;cursor:pointer}
-button[disabled]{opacity:.5;cursor:default}
-.pending .track,.pending .meta{visibility:hidden}
+button.ghost{background:transparent;color:#71717a;box-shadow:inset 0 0 0 1px #e4e4e7}
+button[disabled]{opacity:.45;cursor:default}
 @media (prefers-color-scheme:dark){
 body{background:#09090b;color:#fafafa}
-.card{background:#18181b;border-color:#27272a}
 .track{background:#27272a}.bar{background:#fafafa}
-pre{background:#2a1215}
 button{background:#fafafa;color:#18181b}
+button.ghost{background:transparent;color:#a1a1aa;box-shadow:inset 0 0 0 1px #3f3f46}
+.err{color:#f87171}
 }
 </style>
 </head>
 <body>
-<div class="card${failed ? "" : " pending"}">
-  <h1>${title}</h1>
-  <p class="sub">Preparing the Open AI Canvas runtime</p>
-  <p id="msg">${STATE.message}</p>
-  <div class="track"><div class="bar" id="bar"></div></div>
-  <div class="meta"><span id="pct"></span><span id="bytes"></span></div>
-  ${failed ? `<pre>${STATE.error ?? ""}</pre><button id="retry">重试 / Retry</button>` : ""}
+<div class="wrap">
+  <h1 id="title">${title}</h1>
+  <p class="sub" id="sub">首次启动需要下载运行时载荷，完成后自动打开画布</p>
+  <div class="status"><span id="stage">${escapeHtml(STATE.stage)}</span><span id="pct"></span></div>
+  <div class="track"><div class="bar${STATE.totalBytes > 0 ? "" : " idle"}" id="bar"></div></div>
+  <p class="msg" id="msg">${escapeHtml(STATE.message)}</p>
+  <div class="facts">
+    <span id="file"></span><span id="bytes"></span><span id="speed"></span>
+    <span id="eta"></span><span id="elapsed"></span><span id="retries"></span><span id="host"></span>
+  </div>
+  <div class="log" id="log"></div>
+  <pre class="err" id="err"${failed ? "" : " hidden"}>${escapeHtml(STATE.error ?? "")}</pre>
+  <div class="actions"><button id="retry"${failed ? "" : " hidden"}>重试 / Retry</button><button id="copy" class="ghost">复制诊断信息</button></div>
 </div>
 <script>
 const bar=document.getElementById('bar'),pct=document.getElementById('pct'),
-bytes=document.getElementById('bytes'),msg=document.getElementById('msg');
-function fmt(n){return n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(1)+' MB'}
+stageEl=document.getElementById('stage'),bytesEl=document.getElementById('bytes'),
+speedEl=document.getElementById('speed'),etaEl=document.getElementById('eta'),
+fileEl=document.getElementById('file'),elapsedEl=document.getElementById('elapsed'),
+retriesEl=document.getElementById('retries'),hostEl=document.getElementById('host'),
+msgEl=document.getElementById('msg'),subEl=document.getElementById('sub'),
+logEl=document.getElementById('log'),errEl=document.getElementById('err'),
+titleEl=document.getElementById('title'),retry=document.getElementById('retry'),
+copy=document.getElementById('copy');
+let last=null;
+function fmt(n){if(!n)return '0 B';if(n<1024)return n+' B';
+if(n<1048576)return (n/1024).toFixed(0)+' KB';
+if(n<1073741824)return (n/1048576).toFixed(1)+' MB';
+return (n/1073741824).toFixed(2)+' GB'}
+function dur(s){if(!s||s<1)return '';if(s<60)return s+' 秒';
+const m=Math.floor(s/60),r=s%60;return r?m+' 分 '+r+' 秒':m+' 分'}
+function render(p){
+  last=p;
+  stageEl.textContent=p.stage||'';
+  msgEl.textContent=p.message||'';
+  fileEl.textContent=p.fileName||'';
+  if(p.totalBytes>0){
+    bar.classList.remove('idle');
+    bar.style.width=p.percent+'%';
+    pct.textContent=Math.round(p.percent)+'%';
+    bytesEl.textContent=fmt(p.receivedBytes)+' / '+fmt(p.totalBytes);
+  }else{
+    // 总长度还不知道时也不能看着像死机：条动起来，右侧给出已收到的字节。
+    bar.classList.add('idle');bar.style.width='100%';
+    pct.textContent=p.receivedBytes?fmt(p.receivedBytes):'';
+    bytesEl.textContent=p.receivedBytes?fmt(p.receivedBytes)+' 已接收':'';
+  }
+  speedEl.textContent=p.speed>0?fmt(p.speed)+'/s':'';
+  etaEl.textContent=p.etaSeconds>0?'剩余约 '+dur(p.etaSeconds):'';
+  elapsedEl.textContent=p.elapsedSeconds?'已用 '+dur(p.elapsedSeconds):'';
+  retriesEl.textContent=p.attempts>1||p.retries?'尝试 '+p.attempts+' 次 / 重试 '+p.retries+' 次':'';
+  hostEl.textContent=p.endpoint?(p.endpoint+(p.source&&p.source!=='直连'?' · 代理 '+p.source:'')):'';
+  logEl.innerHTML='';
+  (p.log||[]).forEach(function(e){const d=document.createElement('div');d.textContent=e.text;logEl.appendChild(d)});
+}
 async function tick(){
   try{
     const r=await fetch('/__canvas/progress',{cache:'no-store'});
+    // 就绪那一刻代理会把所有路径交给上游应用，这里再拿到的是 HTML 而不是进度 JSON：
+    // 这本身就是「可以进画布了」的信号，直接跳转，别把人留在进度页上。
+    const type=r.headers.get('content-type')||'';
+    if(!r.ok||!type.includes('json')){location.replace('/');return}
     const p=await r.json();
     if(p.phase==='ready'){location.replace('/');return}
-    if(p.phase==='failed'){location.reload();return}
-    if(p.message)msg.textContent=p.message;
-    if(p.totalBytes>0){
-      bar.style.width=p.percent+'%';
-      pct.textContent=p.percent+'%';
-      bytes.textContent=fmt(p.receivedBytes)+' / '+fmt(p.totalBytes);
+    render(p);
+    if(p.phase==='failed'){
+      titleEl.textContent='运行时准备失败';
+      errEl.hidden=false;errEl.textContent=p.error||'未知错误';
+      retry.hidden=false;retry.disabled=false;
+      return;
     }
+    retry.hidden=true;
   }catch(e){}
   setTimeout(tick,1000);
 }
-const retry=document.getElementById('retry');
-if(retry)retry.onclick=async()=>{retry.disabled=true;try{await fetch('/__canvas/retry',{method:'POST'})}catch(e){}location.reload()};
+retry.onclick=async function(){
+  retry.disabled=true;
+  try{await fetch('/__canvas/retry',{method:'POST'})}catch(e){}
+  location.reload();
+};
+copy.onclick=async function(){
+  const text=JSON.stringify(last||{},null,2);
+  try{await navigator.clipboard.writeText(text);copy.textContent='已复制'}catch(e){copy.textContent='复制失败'}
+  setTimeout(function(){copy.textContent='复制诊断信息'},1600);
+};
 tick();
 </script>
 </body>
@@ -293,46 +436,340 @@ async function extractZip(archive, destDir) {
   }
 }
 
-// 实测：undici 的连接超时在弱网下会随机 UND_ERR_CONNECT_TIMEOUT，而 node:https 可用；
-// 同时 GitHub 的 Release 资产对单连接限速，因此这里用 https 分片并发 Range 下载。
-// CANVAS_PAYLOAD_BASE_URL 只用于离线自测（本地 http 源），生产默认值不变。
+// 宿主不向插件进程注入任何代理变量。实测直连 github.com:443 会在 30 秒连接超时后失败，
+// 而本机系统代理是通的：所以这里自己探测系统代理并走 CONNECT 隧道，探测不到或隧道不可用
+// 时回退直连，行为与旧版一致。CANVAS_PAYLOAD_BASE_URL 指向本地 http 源（离线自测）时直连。
 const DOWNLOAD_CHUNKS = 8;
 const CHUNK_ATTEMPTS = 3;
+const PLUGIN_USER_AGENT = "open-ai-canvas-plugin";
+const REDIRECT_CODES = [301, 302, 303, 307, 308];
 
-function httpRequest(url, { method = "GET", headers = {}, redirects = 5, timeout = 60000 } = {}) {
-  // 默认走 https；CANVAS_PAYLOAD_BASE_URL 指向本地 http 时（离线自测）也能用。
-  const client = new URL(url).protocol === "http:" ? http : https;
+function parseProxySpec(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value.includes("://") ? value : `http://${value}`);
+    const port = Number(url.port) || 8080;
+    return url.hostname && port ? { host: url.hostname, port } : null;
+  } catch {
+    return null;
+  }
+}
+
+// macOS 的代理只存在于 scutil，Windows 在注册表，Linux 一般只有环境变量。
+function detectSystemProxy() {
+  const fromEnv =
+    parseProxySpec(process.env.HTTPS_PROXY) ||
+    parseProxySpec(process.env.https_proxy) ||
+    parseProxySpec(process.env.HTTP_PROXY) ||
+    parseProxySpec(process.env.http_proxy) ||
+    parseProxySpec(process.env.ALL_PROXY) ||
+    parseProxySpec(process.env.all_proxy);
+  if (fromEnv) return { ...fromEnv, source: "env" };
+
+  if (process.platform === "darwin") {
+    try {
+      const out = execFileSync("scutil", ["--proxy"], { encoding: "utf8", timeout: 3000 });
+      const host = /HTTPSProxy\s*:\s*(\S+)/.exec(out)?.[1];
+      const port = Number(/HTTPSPort\s*:\s*(\d+)/.exec(out)?.[1] || 0);
+      if (/HTTPSEnable\s*:\s*1/.test(out) && host && port) return { host, port, source: "scutil" };
+    } catch {
+      /* 没有 scutil 或超时：当作无代理 */
+    }
+  }
+
+  if (process.platform === "win32") {
+    try {
+      const key = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings";
+      const out = execFileSync("reg", ["query", key], { encoding: "utf8", timeout: 3000 });
+      if (/ProxyEnable\s+REG_DWORD\s+0x1/.test(out)) {
+        const server = /ProxyServer\s+REG_SZ\s+(\S+)/.exec(out)?.[1] || "";
+        const parsed = parseProxySpec(/https=([^;\s]+)/.exec(server)?.[1] || server);
+        if (parsed) return { ...parsed, source: "registry" };
+      }
+    } catch {
+      /* 读不到注册表就直连 */
+    }
+  }
+
+  return null;
+}
+
+let PROXY_RESOLVED = false;
+let ACTIVE_PROXY = null;
+
+function systemProxy() {
+  if (!PROXY_RESOLVED) {
+    PROXY_RESOLVED = true;
+    ACTIVE_PROXY = detectSystemProxy();
+    if (ACTIVE_PROXY) note(`检测到系统代理 ${ACTIVE_PROXY.host}:${ACTIVE_PROXY.port}（来源 ${ACTIVE_PROXY.source}）`);
+    else note("未检测到系统代理，下载直连");
+  }
+  return ACTIVE_PROXY;
+}
+
+function dropProxy(reason) {
+  if (!ACTIVE_PROXY) return;
+  note(`系统代理不可用（${reason}），改为直连`);
+  ACTIVE_PROXY = null;
+}
+
+function connectDirect(hostname, port, isTls) {
   return new Promise((resolve, reject) => {
-    const req = client.request(url, { method, headers, timeout }, (res) => {
-      const location = res.headers.location;
-      if (location && [301, 302, 303, 307, 308].includes(res.statusCode) && redirects > 0) {
-        res.resume();
-        resolve(httpRequest(new URL(location, url).toString(), { method, headers, redirects: redirects - 1 }));
+    const socket = isTls
+      ? tls.connect({ host: hostname, port, servername: hostname, ALPNProtocols: ["http/1.1"] })
+      : net.connect({ host: hostname, port });
+    // 12 秒足够完成 DNS + TCP + TLS；不可达的域名不应该让首启页面干等 20 秒。
+    socket.setTimeout(12000, () => socket.destroy(new Error("连接超时")));
+    socket.once(isTls ? "secureConnect" : "connect", () => resolve(socket));
+    socket.once("error", reject);
+  });
+}
+
+function connectTunnel(proxy, hostname, port) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      host: proxy.host,
+      port: proxy.port,
+      method: "CONNECT",
+      path: `${hostname}:${port}`,
+      timeout: 12000,
+    });
+    req.on("connect", (res, socket, head) => {
+      if (res.statusCode !== 200) {
+        socket.destroy();
+        dropProxy(`CONNECT ${res.statusCode}`);
+        reject(new Error(`代理 CONNECT ${res.statusCode}`));
         return;
       }
-      resolve(res);
+      if (head && head.length) socket.unshift(head);
+      const secure = tls.connect({ socket, servername: hostname, ALPNProtocols: ["http/1.1"] });
+      secure.setTimeout(20000, () => secure.destroy(new Error("TLS 握手超时")));
+      secure.once("secureConnect", () => resolve(secure));
+      secure.once("error", reject);
     });
-    req.on("timeout", () => req.destroy(new Error("连接超时")));
-    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      dropProxy("连接超时");
+      reject(new Error("代理连接超时"));
+    });
+    req.on("error", (err) => {
+      dropProxy(err.message);
+      reject(err);
+    });
     req.end();
   });
 }
 
-// HEAD 经由 GitHub 的下载跳转时会被丢弃，取 1 字节 Range 读 Content-Range 更可靠。
-async function payloadSize(url) {
-  // 这里的网络到 GitHub 的连接建立经常要几十秒甚至直接超时，探测要肯重试。
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
+function openSocket(hostname, port, isTls) {
+  const proxy = isTls ? systemProxy() : null;
+  return proxy ? connectTunnel(proxy, hostname, port) : connectDirect(hostname, port, isTls);
+}
+
+// 读到 \\r\\n\\r\\n 为止（含），返回 { statusCode, headers, rest }。
+function readHead(socket) {
+  return new Promise((resolve, reject) => {
+    let buffer = Buffer.alloc(0);
+    const finish = () => {
+      const end = buffer.indexOf("\r\n\r\n");
+      if (end === -1) {
+        if (buffer.length > 65536) reject(new Error("响应头过长"));
+        return false;
+      }
+      const lines = buffer.subarray(0, end).toString("latin1").split("\r\n");
+      const status = Number(/^HTTP\/\d(?:\.\d)?\s+(\d{3})/.exec(lines[0])?.[1] || 0);
+      const headers = {};
+      for (const line of lines.slice(1)) {
+        const at = line.indexOf(":");
+        if (at > 0) headers[line.slice(0, at).trim().toLowerCase()] = line.slice(at + 1).trim();
+      }
+      cleanup();
+      resolve({ statusCode: status, headers, rest: buffer.subarray(end + 4) });
+      return true;
+    };
+    const onData = (chunk) => {
+      buffer = buffer.length ? Buffer.concat([buffer, chunk]) : chunk;
+      finish();
+    };
+    const onError = (err) => {
+      cleanup();
+      reject(err);
+    };
+    const cleanup = () => {
+      socket.off("data", onData);
+      socket.off("error", onError);
+    };
+    socket.on("data", onData);
+    socket.on("error", onError);
+  });
+}
+
+// 把响应体泵进一个 PassThrough，并让它的 destroy() 连带断开底层 socket。
+function pumpBody(socket, head) {
+  const body = new PassThrough();
+  const originalDestroy = body.destroy.bind(body);
+  body.statusCode = head.statusCode;
+  body.headers = head.headers;
+  body.bytesRead = 0;
+  body.destroy = (err) => {
+    socket.destroy();
+    originalDestroy(err);
+    return body;
+  };
+  // 计数不能靠 body.on("data")：那会把 PassThrough 切到 flowing 模式，在读正文的调用方
+  // 挂上监听之前就把前几块冲掉（API 返回的 JSON 就是这么被截头导致解析失败的）。
+  const originalPush = body.push.bind(body);
+  body.push = (chunk, encoding) => {
+    if (chunk) body.bytesRead += chunk.length;
+    return originalPush(chunk, encoding);
+  };
+
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    body.end();
+    socket.destroy();
+  };
+  socket.on("close", () => {
+    if (finished) return;
+    finished = true;
+    // 只在「声明了长度却没读满」时算中断；无长度响应以读到 EOF 为准，不是异常。
+    if (Number.isFinite(declared) && body.bytesRead < declared) body.emit("aborted");
+    body.end();
+  });
+  socket.on("error", () => {
+    if (finished) return;
+    finished = true;
+    body.destroy();
+  });
+
+  const declared = Number(head.headers["content-length"]);
+  const chunked = /chunked/i.test(head.headers["transfer-encoding"] || "");
+
+  if (chunked) {
+    let buffer = head.rest;
+    let remaining = null;
+    socket.on("data", (chunk) => {
+      buffer = buffer.length ? Buffer.concat([buffer, chunk]) : chunk;
+      for (;;) {
+        if (remaining === null) {
+          const lineEnd = buffer.indexOf("\r\n");
+          if (lineEnd === -1) return;
+          const size = parseInt(buffer.subarray(0, lineEnd).toString("latin1").split(";")[0], 16);
+          buffer = buffer.subarray(lineEnd + 2);
+          if (!Number.isFinite(size)) {
+            body.emit("aborted");
+            done();
+            return;
+          }
+          if (size === 0) {
+            done();
+            return;
+          }
+          remaining = size;
+        }
+        if (buffer.length < remaining + 2) return;
+        body.write(buffer.subarray(0, remaining));
+        buffer = buffer.subarray(remaining + 2);
+        remaining = null;
+      }
+    });
+    return body;
+  }
+
+  if (Number.isFinite(declared) && declared >= 0) {
+    let sent = 0;
+    const push = (chunk) => {
+      if (finished) return;
+      const room = declared - sent;
+      if (room <= 0) return;
+      const slice = chunk.length > room ? chunk.subarray(0, room) : chunk;
+      sent += slice.length;
+      if (!body.write(slice)) socket.pause();
+      if (sent >= declared) done();
+    };
+    body.on("drain", () => socket.resume());
+    if (head.rest.length) push(head.rest);
+    socket.on("data", push);
+    return body;
+  }
+
+  // 没有长度也没有分块：读到哪里算哪里。
+  if (head.rest.length) body.write(head.rest);
+  body.on("drain", () => socket.resume());
+  socket.on("data", (chunk) => {
+    if (finished) return;
+    if (!body.write(chunk)) socket.pause();
+  });
+  return body;
+}
+
+// 一次请求：负责建连、写请求行、解析响应头，返回带 statusCode/headers 的可读流。
+async function requestStream(url, { headers = {}, timeout = 45000 } = {}) {
+  const target = new URL(url);
+  const isTls = target.protocol !== "http:";
+  const port = Number(target.port) || (isTls ? 443 : 80);
+  const socket = await openSocket(target.hostname, port, isTls);
+  const merged = {
+    Host: target.host,
+    "User-Agent": PLUGIN_USER_AGENT,
+    Accept: "*/*",
+    "Accept-Encoding": "identity",
+    Connection: "close",
+    ...headers,
+  };
+  const lines = [`GET ${target.pathname}${target.search} HTTP/1.1`];
+  for (const [key, value] of Object.entries(merged)) lines.push(`${key}: ${value}`);
+  socket.write(`${lines.join("\r\n")}\r\n\r\n`);
+
+  let timer;
+  const guard = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      socket.destroy();
+      reject(new Error(`请求超时（${timeout} ms）`));
+    }, timeout);
+  });
+  try {
+    const head = await Promise.race([readHead(socket), guard]);
+    return pumpBody(socket, head);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 旧签名保留：调用方只关心状态码、头和可读流。
+async function httpRequest(url, { headers = {}, redirects = 5, timeout = 60000 } = {}) {
+  let current = url;
+  let response = await requestStream(current, { headers, timeout });
+  for (let hop = 0; hop < redirects; hop += 1) {
+    const location = response.headers.location;
+    if (!REDIRECT_CODES.includes(response.statusCode) || !location) break;
+    response.destroy();
+    current = new URL(location, current).toString();
+    response = await requestStream(current, { headers, timeout });
+  }
+  return response;
+}
+
+// 取载荷总字节：HEAD 会被 GitHub 的下载跳转丢掉，用 1 字节 Range 读 Content-Range 更可靠。
+// 只试两次、每次 10 秒：下载源不可达时要尽快失败并给出可读提示，不能让人对着 0% 干等。
+async function payloadSize(url, { attempts = 2, timeout = 10000 } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      const res = await httpRequest(url, { headers: { Range: "bytes=0-0" }, timeout: 30000 });
-      res.destroy();
+      const res = await httpRequest(url, {
+        headers: { Range: "bytes=0-0", Accept: "application/octet-stream" },
+        timeout,
+      });
       const total = /\/(\d+)$/.exec(res.headers["content-range"] || "");
-      if (total) return Number(total[1]);
       const length = Number(res.headers["content-length"]) || 0;
-      if (res.statusCode === 200 && length > 0) return length;
+      const status = res.statusCode;
+      res.destroy();
+      if (total) return Number(total[1]);
+      if (status === 200 && length > 0) return length;
     } catch {
       /* 继续重试 */
     }
-    await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+    await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
   }
   return 0;
 }
@@ -372,7 +809,10 @@ async function downloadChunk(url, file, start, end) {
     let watchdog;
     const from = start + have;
     try {
-      response = await httpRequest(url, { headers: { Range: `bytes=${from}-${end}` }, timeout: 45000 });
+      response = await httpRequest(url, {
+        headers: { Range: `bytes=${from}-${end}`, Accept: "application/octet-stream" },
+        timeout: 45000,
+      });
       if (response.statusCode !== 206) {
         response.resume();
         throw new Error(`HTTP ${response.statusCode}`);
@@ -445,6 +885,7 @@ function downloadChunked(url, archive, size) {
   }
 
   STATE.totalBytes = size;
+  setStage("downloading", "下载中", `正在下载 ${STATE.fileName}（${(size / 1048576).toFixed(0)} MB）`);
   const tick = setInterval(() => {
     STATE.receivedBytes = partsBytes(archive, DOWNLOAD_CHUNKS);
   }, 300);
@@ -462,7 +903,16 @@ function downloadChunked(url, archive, size) {
 }
 
 async function downloadPayload(url, archive) {
+  STATE.attempts += 1;
+  setStage("connecting", "连接下载源", `正在查询 ${STATE.fileName || path.basename(archive)} 的大小（第 ${STATE.attempts} 次）`);
   const size = await payloadSize(url);
+  // 上一次在「校验/解包」阶段断掉时归档已经在盘上且长度正确：不必再花一个 200 MB 的下载。
+  // 若内容其实已损坏，校验会失败并删档，下一次重试就会重新下载。
+  if (size > 0 && statSize(archive) === size) {
+    note(`归档已在本地（${size} 字节），跳过下载`);
+    STATE.receivedBytes = size;
+    return;
+  }
   if (process.env.CANVAS_DOWNLOAD_DEBUG) note(`载荷字节数 ${size}，分 ${DOWNLOAD_CHUNKS} 片`);
   if (size > 0) {
     try {
@@ -510,34 +960,135 @@ async function downloadPayload(url, archive) {
   }
 }
 
+// --- 下载来源解析 ---
+// Releases 的固定下载链接会 302 到 objects.githubusercontent.com，而在部分网络里连
+// github.com 的 TCP 都建不起来。api.github.com 与它 302 到的
+// release-assets.githubusercontent.com 通常可达，所以先问 API 要资产地址，作为首选来源。
+const ASSET_CACHE = new Map();
+
+const NETWORK_FAILURE = /超时|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|EPIPE|socket hang up|TLS|停滞|连接中断/i;
+
+function endpointOf(url) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+function readTextResponse(res, limit = 512 * 1024) {
+  return new Promise((resolve, reject) => {
+    let text = "";
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve(text);
+    };
+    res.setEncoding("utf8");
+    res.on("data", (chunk) => {
+      text += chunk;
+      if (text.length > limit) {
+        res.destroy();
+        finish();
+      }
+    });
+    res.on("end", finish);
+    res.on("close", finish);
+    res.on("error", reject);
+    res.on("aborted", finish);
+  });
+}
+
+async function resolveAssetUrl(fileName) {
+  if (ASSET_CACHE.has(fileName)) return ASSET_CACHE.get(fileName);
+  let resolved = null;
+  const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/releases/tags/${RELEASE_TAG}`;
+  try {
+    const res = await httpRequest(apiUrl, {
+      headers: { Accept: "application/vnd.github+json" },
+      timeout: 12000,
+    });
+    if (res.statusCode === 200) {
+      const payload = JSON.parse(await readTextResponse(res));
+      const asset = (payload.assets || []).find((item) => item?.name === fileName);
+      if (asset?.id) {
+        resolved = `https://api.github.com/repos/${GITHUB_REPO}/releases/assets/${asset.id}`;
+      } else {
+        note(`Release ${RELEASE_TAG} 中没有 ${fileName}`);
+      }
+    } else {
+      res.destroy();
+      note(`解析下载地址失败：HTTP ${res.statusCode}`);
+    }
+  } catch (err) {
+    note(`解析下载地址失败：${err.message}`);
+  }
+  ASSET_CACHE.set(fileName, resolved);
+  return resolved;
+}
+
+// 候选顺序：显式镜像（CANVAS_PAYLOAD_BASE_URL）→ API 解析出的资产地址 → Release 固定链接。
+// 前一个失败就换下一个；全都失败时把最后一次错误连同可操作提示交给页面。
+async function candidateUrls(fileName) {
+  const urls = [];
+  const override = process.env.CANVAS_PAYLOAD_BASE_URL;
+  if (override) urls.push(`${override.replace(/\/+$/, "")}/${fileName}`);
+  const asset = await resolveAssetUrl(fileName);
+  if (asset) urls.push(asset);
+  const direct = `${PAYLOAD_BASE_URL.replace(/\/+$/, "")}/${fileName}`;
+  if (!urls.includes(direct)) urls.push(direct);
+  return urls;
+}
+
+function describeFailure(err) {
+  const text = err?.message || String(err);
+  if (!NETWORK_FAILURE.test(text)) return err instanceof Error ? err : new Error(text);
+  const wrapped = new Error(
+    `${text}\n所有下载来源都不可用。请确认当前网络能访问 GitHub；如果使用代理，` +
+      `请在系统设置里开启后点「重试」。也可以设置 CANVAS_PAYLOAD_BASE_URL 指向可达的镜像目录。`,
+  );
+  wrapped.cause = err;
+  return wrapped;
+}
+
 // 载荷下载只在首次安装后发生一次：校验通过就解到 staging，由调用方决定最终落点。
+
 // 两个载荷共用这一段，区别只在 label 与文案里的体积。
 async function stageArchive(spec, staging, label, approximateMB) {
-  const url = `${PAYLOAD_BASE_URL}/${spec.file}`;
+  const candidates = await candidateUrls(spec.file);
   const archive = `${staging}.zip`;
   fs.mkdirSync(path.dirname(staging), { recursive: true });
-  STATE.phase = "downloading";
-  STATE.message = `首次启动，正在下载${label}（约 ${approximateMB} MB）`;
+  resetTransfer(spec.file, approximateMB * 1024 * 1024);
   STATE.error = null;
-  STATE.receivedBytes = 0;
-  STATE.totalBytes = 0;
-  note(`首次启动，正在下载${label}（约 ${approximateMB} MB）：${url}`);
+  STATE.retries = 0;
+  setStage("downloading", `下载${label}`, `首次启动，正在下载${label}（约 ${approximateMB} MB）`);
+  note(`候选下载来源 ${candidates.length} 个`);
 
   const startedAt = Date.now();
   // 弱网下整段下载也可能中断：重试时不清归档，已落盘的字节与 .partN 分片会接着用。
-  for (let attempt = 1; ; attempt += 1) {
-    try {
-      await downloadPayload(url, archive);
-      break;
-    } catch (err) {
-      if (attempt >= 3) throw err;
-      note(`下载中断（${err.message}），第 ${attempt} 次重试`);
-      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+  let lastError;
+  for (const [index, candidate] of candidates.entries()) {
+    STATE.endpoint = endpointOf(candidate);
+    note(`下载来源 ${index + 1}/${candidates.length}：${STATE.endpoint}`);
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        await downloadPayload(candidate, archive);
+        lastError = undefined;
+        break;
+      } catch (err) {
+        lastError = err;
+        STATE.retries += 1;
+        note(`下载中断（${err.message}），第 ${attempt}/2 次`);
+        if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
     }
+    if (!lastError) break;
   }
 
-  STATE.phase = "verifying";
-  STATE.message = `正在校验${label}完整性`;
+  if (lastError) throw describeFailure(lastError);
+
+  setStage("verifying", "校验完整性", `正在校验${label}完整性`);
   const digest = await hashFile(archive);
   if (digest !== spec.sha256) {
     // 只有"文件确实坏了"才值得丢掉续传基线。
@@ -549,8 +1100,7 @@ async function stageArchive(spec, staging, label, approximateMB) {
   const megabytes = (fs.statSync(archive).size / 1048576).toFixed(1);
   note(`下载完成（${megabytes} MB，用时 ${Math.round((Date.now() - startedAt) / 1000)}s），开始解包`);
 
-  STATE.phase = "extracting";
-  STATE.message = `正在解包${label}`;
+  setStage("extracting", `解包${label}`, `正在解包${label}（${megabytes} MB）`);
   const extractStartedAt = Date.now();
   fs.rmSync(staging, { recursive: true, force: true });
   await extractZip(archive, staging);

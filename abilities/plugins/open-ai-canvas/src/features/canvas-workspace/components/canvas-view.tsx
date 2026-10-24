@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Button, cn } from "@astravia-org/ui";
-import { useEffect, useState, type JSX } from "react";
+import { useCallback, useEffect, useSyncExternalStore, type JSX } from "react";
 import type { CanvasController, CanvasState } from "../../../runtime";
 
 const PHASE_TONE: Record<CanvasState["phase"], string> = {
@@ -14,11 +14,23 @@ const PHASE_TONE: Record<CanvasState["phase"], string> = {
 
 export function CanvasView({ controller }: { controller: CanvasController }): JSX.Element {
   const { t } = useTranslation();
-  const [state, setState] = useState<CanvasState>(controller.getState());
+  // useSyncExternalStore 要求订阅函数稳定，否则每次渲染都会重订阅。
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const subscription = controller.subscribe(() => onChange());
+      return () => subscription.dispose();
+    },
+    [controller],
+  );
+  const getSnapshot = useCallback(() => controller.getState(), [controller]);
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
+  // 补一次拉取，但不与渲染同相：同步触发的状态广播会让宿主在同一轮里再次入口。
   useEffect(() => {
-    const subscription = controller.subscribe(setState);
-    return () => subscription.dispose();
+    const timer = setTimeout(() => {
+      void controller.ensureLoaded();
+    }, 0);
+    return () => clearTimeout(timer);
   }, [controller]);
 
   const busy = state.busy;

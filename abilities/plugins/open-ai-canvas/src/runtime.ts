@@ -64,6 +64,8 @@ export class CanvasController {
   private readonly listeners = new Set<CanvasStateListener>();
   private state: CanvasState = { phase: "idle", busy: false };
   private statusDisposable: { dispose(): void } | undefined;
+  private subscribed = false;
+  private pendingNotify = false;
   private operationInFlight = false;
   private installAttempted = false;
   private disposed = false;
@@ -81,9 +83,33 @@ export class CanvasController {
     return { dispose: () => this.listeners.delete(listener) };
   }
 
+  /**
+   * 状态只推进不抖动。宿主每次服务状态变化都会回调进来，而 setState 以前无条件新建
+   * 对象并同步通知，视图着就会重渲染——同一个 phase 反复到达时尤其明显。
+   * 现在：值没变就不通知；同一微任务里的多次 patch 合并成一次广播。
+   */
   private setState(patch: Partial<CanvasState>): void {
+    let changed = false;
+    for (const key of Object.keys(patch) as Array<keyof CanvasState>) {
+      if (this.state[key] !== patch[key]) {
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) return;
     this.state = { ...this.state, ...patch };
-    for (const listener of this.listeners) listener(this.state);
+    this.scheduleNotify();
+  }
+
+  private scheduleNotify(): void {
+    if (this.pendingNotify || this.disposed) return;
+    this.pendingNotify = true;
+    queueMicrotask(() => {
+      this.pendingNotify = false;
+      if (this.disposed) return;
+      const snapshot = this.state;
+      for (const listener of Array.from(this.listeners)) listener(snapshot);
+    });
   }
 
   private fail(messageKey: string): void {
@@ -92,10 +118,13 @@ export class CanvasController {
 
   async ensureLoaded(): Promise<void> {
     if (this.disposed) return;
-    this.statusDisposable?.dispose();
-    this.statusDisposable = this.ctx.services.onStatusChange((status) => {
-      void this.handleStatusChange(status);
-    });
+    // 订阅只建一次：以前每次激活都卸了重建，旧句柄不清就会叠加回调。
+    if (!this.subscribed) {
+      this.subscribed = true;
+      this.statusDisposable = this.ctx.services.onStatusChange((status) => {
+        void this.handleStatusChange(status);
+      });
+    }
     const status = await this.ctx.services.getStatus(SERVICE_ID).catch(() => undefined);
     if (status) {
       const phase = phaseFromServiceStatus(status);
@@ -256,6 +285,8 @@ export class CanvasController {
 
   async dispose(): Promise<void> {
     this.disposed = true;
+    this.pendingNotify = false;
+    this.subscribed = false;
     this.statusDisposable?.dispose();
     this.statusDisposable = undefined;
     this.listeners.clear();
