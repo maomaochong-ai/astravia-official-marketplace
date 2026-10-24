@@ -208,11 +208,22 @@ function saveSession(token) {
 }
 
 let SESSION_TOKEN = loadSession();
+let BACKEND_PORT = 0;
+
+// Go 在 :0 模式下只把配置值写进日志，不回报真实端口，所以这里先占一个空闲端口再交给它。
+await new Promise((resolve, reject) => {
+  const probe = net.createServer();
+  probe.once("error", reject);
+  probe.listen(0, "127.0.0.1", () => {
+    BACKEND_PORT = probe.address().port;
+    probe.close(resolve);
+  });
+});
 
 // --- Go 后端环境变量 ---
 const GO_ENV = {
   ...process.env,
-  CANVAS_BACKEND_ADDR: "127.0.0.1:0",
+  CANVAS_BACKEND_ADDR: `127.0.0.1:${BACKEND_PORT}`,
   CANVAS_BACKEND_DATA_DIR: DATA_DIR,
   CANVAS_STATIC_DIR: WEB_DIST,
   CANVAS_CORS_ORIGINS: `http://127.0.0.1:${HOST_PORT},http://localhost:${HOST_PORT}`,
@@ -235,20 +246,20 @@ const goProcess = spawn(GO_BINARY, [], {
 
 let goPort = null;
 
-goProcess.stdout.on("data", (chunk) => {
+// Go 用 log/slog 写 stderr，启动监听地址不会出现在 stdout，两条流都要解析。
+function watchBackendOutput(chunk, sink) {
   const text = chunk.toString();
-  process.stdout.write(text);
-  const match = text.match(/addr=127\.0\.0\.1:(\d+)/);
-  if (match && !goPort) {
-    goPort = Number(match[1]);
-    console.log(`[open-ai-canvas] Backend listening on port ${goPort}`);
-    startProxy();
-  }
-});
+  sink.write(text);
+  if (goPort) return;
+  const match = text.match(/addr=(?:127\.0\.0\.1|\[::1\]|localhost):(\d+)/);
+  if (!match || Number(match[1]) === 0) return;
+  goPort = Number(match[1]);
+  console.log(`[open-ai-canvas] Backend listening on port ${goPort}`);
+  startProxy();
+}
 
-goProcess.stderr.on("data", (chunk) => {
-  process.stderr.write(chunk);
-});
+goProcess.stdout.on("data", (chunk) => watchBackendOutput(chunk, process.stdout));
+goProcess.stderr.on("data", (chunk) => watchBackendOutput(chunk, process.stderr));
 
 goProcess.on("exit", (code, signal) => {
   console.log(`[open-ai-canvas] Backend exited: code=${code} signal=${signal}`);
