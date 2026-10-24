@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TriageReport } from "../domain/report/report";
 import { buildReport } from "../domain/report/report";
@@ -149,7 +149,9 @@ describe("workbench shell", () => {
 		fireEvent.change(picker, { target: { files: [picked] } });
 
 		// 渲染进程只负责交字节；名字的净化和落盘路径由 bridge 侧的 importRelativePath 决定。
-		await waitFor(() => expect(api.importSample).toHaveBeenCalledWith({ name: "../evil.apk", base64: "AQID" }, "/work"));
+		await waitFor(() =>
+			expect(api.importSample).toHaveBeenCalledWith({ name: "../evil.apk", base64: "AQID", index: 0, last: true }, "/work"),
+		);
 		await waitFor(() => expect(api.loadSample).toHaveBeenCalledWith("/work/.hanshuang/samples/picked.apk", "/work"));
 	});
 
@@ -237,6 +239,10 @@ describe("workbench handoff", () => {
 		await open(api);
 		await analyseDemo(api);
 		fireEvent.click(await screen.findByText("blocked.handoff"));
+		// 先开对话框（默认中文、可改），再点发送才真正到对话。
+		const dialog = await screen.findByTestId("handoff-dialog");
+		expect((dialog.querySelector("textarea") as HTMLTextAreaElement).value).toContain("/work/demo.apk");
+		fireEvent.click(within(dialog).getByText("handoff.send"));
 		await waitFor(() => expect(api.chat).toHaveBeenCalled());
 		const [prompt] = vi.mocked(api.chat).mock.calls[0]!;
 		expect(prompt.length).toBeGreaterThan(0);

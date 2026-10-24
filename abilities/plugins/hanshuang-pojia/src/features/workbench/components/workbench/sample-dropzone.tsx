@@ -13,6 +13,10 @@ export interface SampleDropzoneProps {
 	onReanalyse(): void;
 	/** 拖进来的文件与选择器走同一条路：先复制进工作区再分析。 */
 	onImport(files: readonly File[]): void;
+	/** 导入进度 0–1；大文件分块上传时给百分比，不让人对着转圈等。 */
+	importProgress?: number | null;
+	/** 交给宿主对话里的 Agent；引擎读不动的样本走这条路。 */
+	onHandOff?(): void;
 }
 
 function factValue(report: TriageReport | null, labels: readonly string[]): string | null {
@@ -29,7 +33,7 @@ function factValue(report: TriageReport | null, labels: readonly string[]): stri
  * 没有样本时它就是投递口：拖进来的文件先复制进工作区再分析 —— 宿主的读取通道以
  * 项目根为边界，项目外的临时路径读不到，但渲染进程的 `File` 对象能拿到字节。
  */
-export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, onImport }: SampleDropzoneProps) {
+export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, onImport, importProgress = null, onHandOff }: SampleDropzoneProps) {
 	const { t } = useTranslation();
 	const [dragging, setDragging] = useState(false);
 
@@ -60,6 +64,14 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 						<div className="mt-1 text-[11px] leading-relaxed text-text-3">{t("dropzone.empty.body")}</div>
 					</div>
 				</div>
+				{importProgress !== null ? (
+					<div className="mt-3">
+						<div className="h-1 overflow-hidden rounded-full bg-surface-4">
+							<div className="h-full rounded-full bg-purple" style={{ width: `${Math.round(importProgress * 100)}%` }} />
+						</div>
+						<div className="mt-1 text-[10.5px] text-text-3">{t("dropzone.importing", { percent: String(Math.round(importProgress * 100)) })}</div>
+					</div>
+				) : null}
 				<div className="mt-3 flex items-center gap-2 text-[10.5px] text-text-4">
 					<Icon name="ban" className="size-3" />
 					<span>{t("dropzone.empty.guarantee")}</span>
@@ -98,6 +110,16 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 					)}
 				</div>
 				<div className="flex shrink-0 items-center gap-0.5">
+					{onHandOff ? (
+						<button
+							type="button"
+							onClick={onHandOff}
+							title={t("dropzone.handoff")}
+							className="rounded p-1 text-purple transition-colors hover:bg-surface-hover"
+						>
+							<Icon name="sparkle" className="size-3.5" />
+						</button>
+					) : null}
 					<button
 						type="button"
 						onClick={onReanalyse}
@@ -117,6 +139,14 @@ export function SampleDropzone({ report, busy, fromAgent, onClear, onReanalyse, 
 				</div>
 			</div>
 
+			{importProgress !== null ? (
+				<div className="mt-2">
+					<div className="h-1 overflow-hidden rounded-full bg-surface-4">
+						<div className="h-full rounded-full bg-purple" style={{ width: `${Math.round(importProgress * 100)}%` }} />
+					</div>
+					<div className="mt-1 text-[10.5px] text-text-3">{t("dropzone.importing", { percent: String(Math.round(importProgress * 100)) })}</div>
+				</div>
+			) : null}
 			<div className="mt-2.5 flex items-center gap-2 text-[10.5px] text-text-4">
 				<Icon name="ban" className="size-3" />
 				<span>{t("dropzone.guarantee")}</span>

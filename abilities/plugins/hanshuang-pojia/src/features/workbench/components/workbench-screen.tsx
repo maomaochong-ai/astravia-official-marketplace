@@ -7,7 +7,6 @@ import { Sidebar } from "./shell/sidebar";
 import { TopBar } from "./shell/top-bar";
 import { InjectStatusBar } from "./shell/inject-status-bar";
 import { ActivityPage } from "./pages/activity";
-import { TaskStreamPage } from "./pages/stream";
 import { ComparePage } from "./pages/compare";
 import { DisasmPage } from "./pages/disasm";
 import { DocsPage } from "./pages/docs";
@@ -23,11 +22,11 @@ import { SettingsPage } from "./pages/settings";
 import { SignaturePage } from "./pages/signature";
 import { StringsPage } from "./pages/strings";
 import { PromptsPage } from "./pages/prompts";
+import { HandoffDialog } from "./workbench/handoff-dialog";
 
 const PAGES: Record<string, (props: PageProps) => ReactElement> = {
 	overview: OverviewPage,
 	activity: ActivityPage,
-	stream: TaskStreamPage,
 	guide: GuidePage,
 	samples: SamplesPage,
 	findings: FindingsPage,
@@ -82,6 +81,13 @@ export function WorkbenchScreen({ bridge, cwd, active = true }: WorkbenchScreenP
 					<Page {...props} />
 				</main>
 			</div>
+			<HandoffDialog
+				open={model.handoff.open}
+				target={model.handoff.target}
+				busy={model.chat.sending}
+				onClose={model.closeHandoff}
+				onSend={model.sendHandoff}
+			/>
 		</div>
 	);
 }

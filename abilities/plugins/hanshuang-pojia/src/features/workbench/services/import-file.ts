@@ -1,5 +1,3 @@
-import { READ_LIMIT_BYTES } from "../../../domain/sample-scope";
-
 /**
  * 用户选中的本机样本先落到工作区，再由宿主的读取通道分析。
  *
@@ -29,9 +27,11 @@ export function importName(raw: string): string {
 	return cleaned;
 }
 
-export function isTooLarge(size: number): boolean {
-	return size > READ_LIMIT_BYTES;
-}
+/**
+ * 单次 IPC 的字节数。导入本身不设上限（文件来自用户自己的磁盘），
+ * 但不能把整个文件塞进一个 base64 字符串：分块传、插件侧累积再写盘。
+ */
+export const IMPORT_CHUNK_BYTES = 4 * 1024 * 1024;
 
 /** 大样本分块拼串：一次性 `String.fromCharCode(...bytes)` 在几 MB 上就会爆栈。 */
 export function bytesToBase64(bytes: Uint8Array): string {
@@ -54,8 +54,16 @@ function readBytes(file: Blob): Promise<ArrayBuffer> {
 	});
 }
 
-export async function readFileAsBase64(file: File): Promise<string> {
-	return bytesToBase64(new Uint8Array(await readBytes(file)));
+/** 读第 `index` 块并转 base64；`slice` 不会把整个文件读进内存。 */
+export async function readChunkAsBase64(file: File, index: number, chunkBytes = IMPORT_CHUNK_BYTES): Promise<string> {
+	const start = index * chunkBytes;
+	const blob = file.slice(start, Math.min(start + chunkBytes, file.size));
+	return bytesToBase64(new Uint8Array(await readBytes(blob)));
+}
+
+export function chunkCount(size: number, chunkBytes = IMPORT_CHUNK_BYTES): number {
+	if (size <= 0) return 1;
+	return Math.ceil(size / chunkBytes);
 }
 
 export function fileList(files: FileList | null | undefined): File[] {

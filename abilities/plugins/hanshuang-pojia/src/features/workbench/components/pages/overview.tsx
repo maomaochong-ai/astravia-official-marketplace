@@ -43,6 +43,8 @@ export function OverviewPage({ model }: PageProps) {
 					onClear={model.reset}
 					onReanalyse={model.reanalyse}
 					onImport={files => model.importFile(files[0])}
+					importProgress={model.importProgress}
+					onHandOff={model.report ? model.handOff : undefined}
 				/>
 
 				{report ? (

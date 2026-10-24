@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { READ_LIMIT_BYTES } from "../domain/sample-scope";
 import {
+	IMPORT_CHUNK_BYTES,
 	IMPORT_DIRECTORY,
 	bytesToBase64,
+	chunkCount,
 	fileList,
 	importName,
 	importRelativePath,
-	isTooLarge,
-	readFileAsBase64,
+	readChunkAsBase64,
 } from "../features/workbench/services/import-file";
 
 describe("sample import", () => {
@@ -25,9 +25,18 @@ describe("sample import", () => {
 		expect(importName(".")).toMatch(/^sample-\d+$/);
 	});
 
-	it("refuses anything above the host's per-file read cap", () => {
-		expect(isTooLarge(READ_LIMIT_BYTES)).toBe(false);
-		expect(isTooLarge(READ_LIMIT_BYTES + 1)).toBe(true);
+	it("splits any size into chunks instead of refusing it", async () => {
+		// 导入不设上限：超过宿主 32 MiB 读取上限的文件也要能完整复制进工作区。
+		expect(chunkCount(0)).toBe(1);
+		expect(chunkCount(IMPORT_CHUNK_BYTES)).toBe(1);
+		expect(chunkCount(IMPORT_CHUNK_BYTES + 1)).toBe(2);
+		expect(chunkCount(40 * 1024 * 1024)).toBe(10);
+
+		const bytes = new Uint8Array(5);
+		bytes.set([1, 2, 3, 4, 5]);
+		const file = new File([bytes], "tiny.bin");
+		expect(await readChunkAsBase64(file, 0)).toBe(bytesToBase64(bytes));
+		expect(await readChunkAsBase64(file, 1)).toBe("");
 	});
 
 	it("encodes multi-chunk payloads and reads a File back", async () => {
@@ -37,7 +46,7 @@ describe("sample import", () => {
 		expect(bytesToBase64(bytes)).toBe(Buffer.from(bytes).toString("base64"));
 
 		const file = new File([bytes], "sample.apk");
-		expect(await readFileAsBase64(file)).toBe(bytesToBase64(bytes));
+		expect(await readChunkAsBase64(file, 0)).toBe(bytesToBase64(bytes));
 	});
 
 	it("turns a FileList into a plain array", () => {

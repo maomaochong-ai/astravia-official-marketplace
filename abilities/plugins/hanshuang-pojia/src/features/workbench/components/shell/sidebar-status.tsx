@@ -68,7 +68,7 @@ export function SidebarStatus({ status }: SidebarStatusProps) {
 						title={`${row.label} · ${row.value}${row.detail ? ` · ${row.detail}` : ""}`}
 						data-tone={row.tone}
 						data-row={row.id}
-						className="flex items-center gap-2 rounded-md px-2 py-1"
+						className="flex items-center justify-center gap-2 rounded-md px-0 py-1 @min-[720px]:justify-start @min-[720px]:px-2"
 					>
 						<span className={`size-1.5 shrink-0 rounded-full ${DOT[row.tone]}`} />
 						<div className="hidden min-w-0 flex-1 leading-tight @min-[720px]:block">

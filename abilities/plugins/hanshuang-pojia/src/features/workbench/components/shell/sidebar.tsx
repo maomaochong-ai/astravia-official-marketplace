@@ -18,6 +18,22 @@ export interface SidebarProps {
  * 面板挂在宿主活动栏里，宽度由用户拖拽决定：默认收成 48px 图标轨，
  * 容器宽度过 720px 才展开成 224px 的文字侧栏。
  */
+
+/** 导航项的小圆点：只在「有东西在动」或「有东西要看」时出现。 */
+function navDot(id: PageId, status: LiveStatus): "live" | "alert" | null {
+	if (id === "activity") {
+		if (status.run.tone === "alert") return "alert";
+		if (status.session.streaming || status.run.active) return "live";
+		return null;
+	}
+	if (id === "samples" && status.sample?.tone === "alert") return "alert";
+	return null;
+}
+
+const DOT_TONE: Record<"live" | "alert", string> = {
+	live: "bg-risk-low",
+	alert: "bg-risk-high",
+};
 export function Sidebar({ page, onNavigate, lab, status }: SidebarProps) {
 	const { t } = useTranslation();
 	return (
@@ -40,19 +56,25 @@ export function Sidebar({ page, onNavigate, lab, status }: SidebarProps) {
 							{group.items.map(item => {
 								const active = item.id === page;
 								const label = t(`nav.${item.id}`);
+								const dot = navDot(item.id, status);
 								return (
 									<button
 										key={item.id}
 										type="button"
 										onClick={() => onNavigate(item.id)}
 										title={label}
+										aria-label={dot ? `${label} · ${t(`nav.dot.${dot}`)}` : undefined}
 										aria-current={active ? "page" : undefined}
-										className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-[12.5px] transition-colors ${
+										data-dot={dot ?? undefined}
+										className={`relative flex w-full items-center justify-center gap-2.5 rounded-md px-0 py-1.5 text-[12.5px] transition-colors @min-[720px]:justify-start @min-[720px]:px-2 ${
 											active ? "bg-surface-active text-text" : "text-text-2 hover:bg-surface-hover hover:text-text"
 										}`}
 									>
 										<Icon name={item.icon} className={`size-4 shrink-0 ${active ? "text-text" : "text-text-3"}`} />
 										<span className="hidden min-w-0 truncate text-left @min-[720px]:block">{label}</span>
+										{dot ? (
+											<span aria-hidden className={`absolute end-1 top-1 size-1.5 rounded-full ${DOT_TONE[dot]} ${dot === "live" ? "fb-pulse" : ""}`} />
+										) : null}
 									</button>
 								);
 							})}
@@ -64,7 +86,7 @@ export function Sidebar({ page, onNavigate, lab, status }: SidebarProps) {
 			<SidebarStatus status={status} />
 
 			<div className="border-t border-line-subtle p-1.5 @min-[720px]:p-3">
-				<div className={`flex items-center gap-2 rounded-md px-1.5 py-2 @min-[720px]:px-2.5 ${lab.enabled ? "bg-risk-low/10" : "bg-surface-3"}`}>
+				<div className={`flex items-center justify-center gap-2 rounded-md px-0 py-2 @min-[720px]:justify-start @min-[720px]:px-2.5 ${lab.enabled ? "bg-risk-low/10" : "bg-surface-3"}`}>
 					<span className={`size-2 shrink-0 rounded-full ${lab.enabled ? "bg-risk-low fb-pulse" : "bg-text-4"}`} />
 					<div className="hidden min-w-0 leading-tight @min-[720px]:block">
 						<div className="truncate text-[11.5px] text-text">{lab.enabled ? t("lab.on") : t("panel.offline.title")}</div>

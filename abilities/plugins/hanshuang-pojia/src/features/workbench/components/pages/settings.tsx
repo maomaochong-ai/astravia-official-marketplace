@@ -1,5 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { RULES, type Severity } from "../../../../domain/audit/rules";
+import { getActivePrompt } from "../../../../domain/prompt-library";
 import { DEFAULT_SETTINGS, type WorkbenchSettings } from "../../state";
 import { SEVERITY_DOT, SEVERITY_TEXT } from "../../severity";
 import { Card } from "../shell/card";
@@ -15,7 +16,29 @@ const ORDER: readonly Severity[] = ["critical", "high", "medium", "low", "info"]
 /** 设置页：模式、规则开关、扫描参数、持久化。规则开关会真的改变评分。 */
 export function SettingsPage({ model }: PageProps) {
 	const { t } = useTranslation();
-	const { settings, updateSettings } = model;
+	const { settings, updateSettings, lab, promptLibrary, cwd } = model;
+	const activePrompt = getActivePrompt(promptLibrary);
+
+	const runtimeRows = [
+		{
+			key: "lab",
+			label: t("settings.runtime.lab"),
+			value: lab.state.enabled ? t("lab.on") : t("panel.offline.title"),
+			tone: lab.state.enabled ? "text-risk-low" : "text-text-4",
+		},
+		{
+			key: "prompt",
+			label: t("settings.runtime.prompt"),
+			value: activePrompt?.name ?? t("settings.runtime.none"),
+			tone: activePrompt ? "text-purple" : "text-text-4",
+		},
+		{
+			key: "workspace",
+			label: t("settings.runtime.workspace"),
+			value: cwd ?? t("settings.runtime.none"),
+			tone: cwd ? "text-text-2" : "text-risk-medium",
+		},
+	];
 
 	const toggleRule = (id: string) => {
 		const disabled = settings.disabledRules.includes(id);
@@ -44,6 +67,19 @@ export function SettingsPage({ model }: PageProps) {
 				}
 			/>
 			<div className="space-y-3 p-4">
+				<div className="px-1 text-[9.5px] font-medium uppercase tracking-wider text-text-4">{t("settings.group.runtime")}</div>
+				<Card title={t("settings.runtime.title")} bodyClassName="divide-y divide-line-subtle">
+					{runtimeRows.map(row => (
+						<div key={row.key} className="flex items-baseline gap-2 px-3.5 py-2">
+							<span className="w-16 shrink-0 text-[10.5px] text-text-4">{row.label}</span>
+							<span className={`min-w-0 flex-1 truncate text-[11.5px] ${row.tone}`} title={row.value}>
+								{row.value}
+							</span>
+						</div>
+					))}
+				</Card>
+
+				<div className="px-1 pt-1 text-[9.5px] font-medium uppercase tracking-wider text-text-4">{t("settings.group.analysis")}</div>
 				<Card title={t("settings.mode.title")} bodyClassName="p-3.5">
 					<div className="flex gap-2">
 						{MODES.map(mode => {
@@ -127,6 +163,7 @@ export function SettingsPage({ model }: PageProps) {
 					/>
 				</Card>
 
+				<div className="px-1 pt-1 text-[9.5px] font-medium uppercase tracking-wider text-text-4">{t("settings.group.storage")}</div>
 				<Card title={t("settings.storage.title")} bodyClassName="divide-y divide-line-subtle">
 					<Toggle
 						checked={settings.persistLibrary}

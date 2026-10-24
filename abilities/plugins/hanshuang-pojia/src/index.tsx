@@ -67,6 +67,9 @@ export function resetBridge(): void {
 	}
 }
 
+/** 正在分块导入的文件：键是 `cwd\0文件名`，值是已收到的 base64 段。 */
+const pendingImports = new Map<string, string[]>();
+
 function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 	const cached = bridgeCache;
 	if (cached && cached.ctx === ctx) return cached.bridge;
@@ -101,8 +104,19 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 			// resolveSamplePath 负责分隔符与 `..`；文件名已由 importName 压成纯文件名。
 			const directory = resolveSamplePath(cwd, IMPORT_DIRECTORY);
 			const target = resolveSamplePath(cwd, importRelativePath(file.name));
+			const index = file.index ?? 0;
+			// ctx.fs.writeFile 只有覆盖写，没有 append：分块只能在这里攒起来，最后一次性落盘。
+			// 攒的是 base64 文本，峰值约 1.33× 文件大小，换来的是单次 IPC 体积受控。
+			const key = `${cwd}\u0000${file.name}`;
+			const parts = index === 0 ? [] : pendingImports.get(key) ?? [];
+			parts.push(file.base64);
+			if (file.last === false) {
+				pendingImports.set(key, parts);
+				return target;
+			}
+			pendingImports.delete(key);
 			await ctx.fs.createDirectory(directory);
-			await ctx.fs.writeFile(target, file.base64, "base64");
+			await ctx.fs.writeFile(target, index === 0 ? file.base64 : parts.join(""), "base64");
 			return target;
 		},
 		analyse: (sample, options) => triage(sample, { mode: options.mode, disabledRules: options.disabledRules }),

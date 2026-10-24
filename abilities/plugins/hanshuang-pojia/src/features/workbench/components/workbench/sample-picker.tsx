@@ -15,6 +15,8 @@ export interface SamplePickerProps {
 	onRefresh(): void;
 	onImport(files: readonly File[]): void;
 	onAnalyse(path: string): void;
+	/** 把当前选中的样本交给宿主对话里的 Agent；没选中时不出手。 */
+	onHandOff(path: string): void;
 }
 
 /**
@@ -23,7 +25,7 @@ export interface SamplePickerProps {
  * 手动路径是必要的：宿主的目录列举只给一层，样本常放在子目录里，
  * 用户知道路径时不该被迫先刷新目录。
  */
-export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefresh, onAnalyse, onImport }: SamplePickerProps) {
+export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefresh, onAnalyse, onImport, onHandOff }: SamplePickerProps) {
 	const { t } = useTranslation();
 	const [path, setPath] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -132,8 +134,18 @@ export function SamplePicker({ cwd, files, loading, busy, selectedPath, onRefres
 				})}
 			</div>
 
-			<div className="border-t border-line-subtle px-3 py-2">
+			<div className="space-y-1.5 border-t border-line-subtle px-3 py-2">
 				<p className="text-[10px] leading-relaxed text-text-4">{t("panel.rail.scope", { limit: "32 MiB" })}</p>
+				{selectedPath ? (
+					<button
+						type="button"
+						onClick={() => onHandOff(selectedPath)}
+						className="flex items-center gap-1 text-[10.5px] font-medium text-purple hover:underline"
+					>
+						<Icon name="sparkle" className="size-3" />
+						{t("panel.rail.handoff")}
+					</button>
+				) : null}
 			</div>
 		</div>
 	);

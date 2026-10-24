@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { extractStrings } from "../../../domain/strings";
 import { entropyProfile, type EntropyBucket } from "../../../domain/entropy";
 import { stringKind, type StringKind } from "../../../domain/string-kinds";
-import { formatBytes, renderMarkdown, reportToJson, type TriageReport } from "../../../domain/report/report";
+import { renderMarkdown, reportToJson, type TriageReport } from "../../../domain/report/report";
 import { scopeForSample } from "../../../domain/sample-scope";
 import { resolveSamplePath } from "../../../domain/sample-path";
 import { readNativeFacts } from "../../../domain/native/detect";
@@ -14,7 +14,8 @@ import { subscribePanel } from "../../../runtime/panel-channel";
 import type { NotifyVariant, WorkbenchBridge } from "../bridge";
 import { buildPrompt, type PromptAction, type PromptContext } from "../prompts";
 import type { SampleFailure } from "../sample-error";
-import { IMPORT_DIRECTORY, isTooLarge, readFileAsBase64 } from "../services/import-file";
+import { chunkCount, IMPORT_DIRECTORY, importRelativePath, readChunkAsBase64 } from "../services/import-file";
+import type { HandoffReason, HandoffTarget } from "../services/sample-handoff";
 import { classifySampleFailure } from "../sample-error";
 import type { LibraryEntry, PageId, WorkbenchSettings } from "../state";
 import { useChat, type ChatModel } from "./use-chat";
@@ -86,6 +87,7 @@ export interface WorkbenchModel {
 	promptLibrary: PromptLibraryModel["library"];
 	promptBackups: PromptLibraryModel["backups"];
 	createPrompt: PromptLibraryModel["createPrompt"];
+	importPrompts: PromptLibraryModel["importPrompts"];
 	updatePrompt: PromptLibraryModel["updatePrompt"];
 	deletePrompt: PromptLibraryModel["deletePrompt"];
 	activatePrompt: PromptLibraryModel["activatePrompt"];
@@ -101,7 +103,15 @@ export interface WorkbenchModel {
 
 	exportReport(format: "markdown" | "json"): void;
 	copyReport(format: "markdown" | "json"): void;
+	/** 用当前样本或读取失败开「交给宿主 Agent」确认框；提示词可改。 */
 	handOff(): void;
+	/** 指定路径开确认框；样本页/选择器用它。 */
+	openHandoff(path: string, size?: number | null, reason?: HandoffReason): void;
+	closeHandoff(): void;
+	sendHandoff(prompt: string): void;
+	handoff: { open: boolean; target: HandoffTarget | null };
+	/** 导入进度 0–1；null 表示没在导入。 */
+	importProgress: number | null;
 	ask(action: PromptAction, extra?: Partial<PromptContext>): void;
 	/** 面板气泡提示；下发给需要自报结果的子组件（注入块复制等）。 */
 	notify(message: string, variant?: NotifyVariant): void;
@@ -378,13 +388,41 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		[bridge, report, settings.mode, t],
 	);
 
-	/** 引擎读不到的样本：把「为什么」和「接着查什么」一并交给对话里的 Agent。 */
+	const [handoffTarget, setHandoffTarget] = useState<HandoffTarget | null>(null);
+	const [importProgress, setImportProgress] = useState<number | null>(null);
+
+	const openHandoff = useCallback(
+		(path: string, size: number | null = null, reason: HandoffReason = null) => {
+			if (path.trim().length === 0) {
+				bridge.notify(t("handoff.noPath"), "warning");
+				return;
+			}
+			setHandoffTarget({ path, size, reason });
+		},
+		[bridge, t],
+	);
+
+	/** 引擎读不到的样本：把「为什么」先写进提示词，用户改完再交给对话里的 Agent。 */
 	const handOff = useCallback(() => {
-		if (!error) return;
-		const reason = t(error.kind === "too-large" ? "panel.blocked.reason.tooLarge" : "panel.blocked.reason.outside");
-		const size = error.size ? formatBytes(error.size) : undefined;
-		chat.ask(t("panel.handoff.prompt", { path: error.detail, reason, size: size ?? "" }));
-	}, [chat, error, t]);
+		if (error) {
+			const reason: HandoffReason =
+				error.kind === "too-large" ? "too-large" : error.kind === "outside-project" || error.kind === "host-blocked" ? "outside-project" : "other";
+			openHandoff(error.detail, error.size ?? null, reason);
+			return;
+		}
+		const path = report?.target.path ?? selectedPath;
+		if (path) openHandoff(path, report?.target.size ?? null, "other");
+	}, [error, openHandoff, report, selectedPath]);
+
+	const closeHandoff = useCallback(() => setHandoffTarget(null), []);
+
+	const sendHandoff = useCallback(
+		(prompt: string) => {
+			setHandoffTarget(null);
+			chat.ask(prompt);
+		},
+		[chat],
+	);
 
 	const updateSettings = useCallback(
 		(patch: Partial<WorkbenchSettings>) => {
@@ -410,25 +448,34 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 				setError({ kind: "other", detail: "No workspace folder is attached to this panel." });
 				return;
 			}
-			if (isTooLarge(file.size)) {
-				setPhase("error");
-				setError({ kind: "too-large", detail: file.name, size: file.size });
-				return;
-			}
 			const current = (requestId.current += 1);
 			setPage("overview");
 			setPhase("loading");
 			setError(null);
 			setFromAgent(false);
-			readFileAsBase64(file)
-				.then(base64 => {
-					if (current !== requestId.current) return null;
-					return bridge.importSample({ name: file.name, base64 }, cwd);
-				})
-				.then(path => {
-					if (!path || current !== requestId.current) return;
-					// 复制完就当成工作区里的普通样本：沿用同一条 stat → 读取 → 引擎的链路。
-					analyse(path);
+			setImportProgress(0);
+
+			// 导入不设大小上限：文件来自用户自己的磁盘。分块只压低单次 IPC 体积，
+			// 插件侧攒完最后一次写盘（宿主 fs 没有 append）。
+			const total = chunkCount(file.size);
+			let written: string | null = null;
+			const upload = async () => {
+				for (let index = 0; index < total; index += 1) {
+					if (current !== requestId.current) return false;
+					const base64 = await readChunkAsBase64(file, index);
+					if (current !== requestId.current) return false;
+					const target = await bridge.importSample({ name: file.name, base64, index, last: index === total - 1 }, cwd);
+					if (index === total - 1) written = target;
+					setImportProgress((index + 1) / total);
+				}
+				return true;
+			};
+
+			upload()
+				.then(done => {
+					if (!done || current !== requestId.current) return;
+					// 落盘名由主进程净化，路径以它返回的为准；复制完就当成工作区里的普通样本读。
+					analyse(written ?? resolveSamplePath(cwd, importRelativePath(file.name)));
 					refreshFiles();
 				})
 				.catch((failure: unknown) => {
@@ -437,6 +484,9 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 					setReport(null);
 					setPhase("error");
 					setError({ kind: "other", detail: failure instanceof Error ? failure.message : String(failure) });
+				})
+				.finally(() => {
+					if (current === requestId.current) setImportProgress(null);
 				});
 		},
 		[analyse, bridge, cwd, refreshFiles],
@@ -491,6 +541,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		promptLibrary: promptLib.library,
 		promptBackups: promptLib.backups,
 		createPrompt: promptLib.createPrompt,
+		importPrompts: promptLib.importPrompts,
 		updatePrompt: promptLib.updatePrompt,
 		deletePrompt: promptLib.deletePrompt,
 		activatePrompt: promptLib.activatePrompt,
@@ -504,6 +555,11 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		exportReport,
 		copyReport,
 		handOff,
+		openHandoff,
+		closeHandoff,
+		sendHandoff,
+		handoff: { open: handoffTarget !== null, target: handoffTarget },
+		importProgress,
 		ask,
 		notify: bridge.notify,
 	};

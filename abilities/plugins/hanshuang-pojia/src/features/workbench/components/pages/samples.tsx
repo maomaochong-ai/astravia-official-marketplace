@@ -29,6 +29,7 @@ export function SamplesPage({ model }: PageProps) {
 						onRefresh={model.refreshFiles}
 						onAnalyse={model.analyse}
 						onImport={files => model.importFile(files[0])}
+						onHandOff={model.openHandoff}
 					/>
 				</Card>
 

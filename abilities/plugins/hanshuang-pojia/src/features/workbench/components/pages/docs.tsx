@@ -141,7 +141,7 @@ export function DocsPage({ model }: PageProps) {
 									<button
 										type="button"
 										onClick={docs.showList}
-										className="inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover @min-[900px]:hidden"
+										className={`inline-flex items-center gap-1 rounded border border-line px-1.5 py-0.5 text-[10.5px] text-text-2 transition-colors hover:bg-surface-hover hover:text-text ${showList ? "hidden" : ""}`}
 									>
 										<Icon name="chevron" className="size-3 rotate-180" />
 										<span>{t("docs.reader.back")}</span>

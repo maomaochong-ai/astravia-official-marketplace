@@ -11,12 +11,15 @@ import {
 	updatePrompt as doUpdate,
 } from "../../../domain/prompt-library";
 import type { WorkbenchBridge } from "../bridge";
+import { nameDrafts, type PromptDraft } from "../services/prompt-import";
 
 export interface PromptLibraryModel {
 	library: PromptLibrary;
 	backups: PromptBackup[];
 	loaded: boolean;
 	createPrompt(data: { name: string; description: string; content: string; mode: InjectMode }): void;
+	/** 导入的草稿批量写库；同名自动加序号。 */
+	importPrompts(drafts: readonly PromptDraft[]): void;
 	updatePrompt(id: string, data: { name: string; description: string; content: string; mode: InjectMode }, backup?: PromptBackup): void;
 	deletePrompt(id: string): void;
 	activatePrompt(id: string): void;
@@ -103,15 +106,23 @@ export function usePromptLibrary(bridge: WorkbenchBridge): PromptLibraryModel {
 		}));
 	}, []);
 
+	const importPrompts = useCallback((drafts: readonly PromptDraft[]) => {
+		setLibrary(prev => ({
+			...prev,
+			items: [...prev.items, ...nameDrafts(drafts, prev.items.map(item => item.name)).map(draft => doCreate(draft))],
+		}));
+	}, []);
+
 	const deleteBackup = useCallback((backupId: string) => {
 		setBackups(prev => prev.filter(b => b.id !== backupId));
 	}, []);
 
 	return {
+		createPrompt,
+		importPrompts,
 		library,
 		backups,
 		loaded,
-		createPrompt,
 		updatePrompt,
 		deletePrompt,
 		activatePrompt,

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Card } from "../shell/card";
 import { PageHeader } from "../shell/page-header";
@@ -7,6 +7,8 @@ import type { PromptFormData } from "../prompts/prompt-editor-dialog";
 import { PromptEditorDialog } from "../prompts/prompt-editor-dialog";
 import { PromptCard } from "../prompts/prompt-card";
 import { BackupRestoreDialog } from "../prompts/backup-restore-dialog";
+import { findSimilar, parsePromptFile, PromptImportError } from "../../services/prompt-import";
+import { Icon } from "../shell/icon";
 import { InjectBlockCard } from "../prompts/inject-block-card";
 import type { PageProps } from "./overview";
 
@@ -22,6 +24,7 @@ export function PromptsPage({ model }: PageProps) {
 	const [editorOpen, setEditorOpen] = useState(false);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [backupPromptId, setBackupPromptId] = useState<string | null>(null);
+	const importRef = useRef<HTMLInputElement>(null);
 
 	const library = model.promptLibrary;
 	const backups = model.promptBackups;
@@ -49,6 +52,38 @@ export function PromptsPage({ model }: PageProps) {
 		[backups, backupPromptId],
 	);
 
+	function readFile(file: File): Promise<string> {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onerror = () => reject(reader.error ?? new Error("read-failed"));
+			reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+			reader.readAsText(file);
+		});
+	}
+
+	async function handleImport(files: readonly File[]) {
+		const drafts: ReturnType<typeof parsePromptFile> = [];
+		let failed = 0;
+		for (const file of files) {
+			try {
+				drafts.push(...parsePromptFile(file.name, await readFile(file)));
+			} catch (error) {
+				if (error instanceof PromptImportError) failed += 1;
+				else throw error;
+			}
+		}
+		if (drafts.length === 0) {
+			model.notify(t("prompt.import.empty"), "warning");
+			return;
+		}
+		// 内容几乎一致时先提一句，但不拦：用户可能就是要覆盖一版新的。
+		const duplicate = findSimilar(library.items, drafts[0]!.content);
+		if (duplicate) model.notify(t("prompt.import.similar", { name: duplicate.name }), "info");
+		model.importPrompts(drafts);
+		model.notify(t("prompt.import.done", { count: drafts.length }), "success");
+		if (failed > 0) model.notify(t("prompt.import.skipped", { count: failed }), "warning");
+	}
+
 	function handleSubmit(data: PromptFormData) {
 		if (editingId) {
 			const original = library.items.find(p => p.id === editingId);
@@ -75,16 +110,42 @@ export function PromptsPage({ model }: PageProps) {
 				title={t("page.prompts.title")}
 				description={t("page.prompts.lead")}
 				actions={
-					<button
-						type="button"
-						onClick={() => {
-							setEditingId(null);
-							setEditorOpen(true);
-						}}
-						className="flex items-center gap-1 rounded-md bg-text px-2.5 py-1.5 text-[11.5px] font-medium text-surface"
-					>
-						+ {t("prompt.editor.create")}
-					</button>
+					<>
+						<button
+							type="button"
+							onClick={() => importRef.current?.click()}
+							title={t("prompt.import.hint")}
+							className="flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text"
+						>
+							<Icon name="file" className="size-3.5" />
+							{t("prompt.import.button")}
+						</button>
+						{/* 导入只读一次文本：.md/.txt 单条，.json 备份文件批量。 */}
+						<input
+							ref={importRef}
+							type="file"
+							multiple
+							accept=".md,.markdown,.txt,.json"
+							className="hidden"
+							tabIndex={-1}
+							aria-hidden
+							onChange={event => {
+								const picked = [...(event.target.files ?? [])];
+								event.target.value = "";
+								if (picked.length > 0) void handleImport(picked);
+							}}
+						/>
+						<button
+							type="button"
+							onClick={() => {
+								setEditingId(null);
+								setEditorOpen(true);
+							}}
+							className="flex items-center gap-1 rounded-md bg-text px-2.5 py-1.5 text-[11.5px] font-medium text-surface"
+						>
+							+ {t("prompt.editor.create")}
+						</button>
+					</>
 				}
 			/>
 
