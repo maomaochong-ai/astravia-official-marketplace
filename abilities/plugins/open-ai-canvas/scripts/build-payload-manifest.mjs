@@ -63,7 +63,9 @@ let entries = [];
 try {
   entries = readdirSync(args.dir);
 } catch (error) {
-  console.error(`无法读取 ${relative(ROOT, args.dir)}：${error.message}`);
+  // 打给定的绝对路径：相对路径在 CI 里会变成 `../../../../dist`，看不出是哪个目录。
+  console.error(`无法读取 ${args.dir}：${error.message}`);
+  console.error(`（--dir 指向下载下来的 zip 所在目录；本地手动跑时要先手动放 10 个 zip 进去）`);
   process.exit(1);
 }
 

@@ -273,6 +273,9 @@ jobs:
         with:
           name: payload-${{ matrix.platform }}
           path: plugin/abilities/plugins/open-ai-canvas/.payload/*.zip
+          # .payload 是隐藏目录，upload-artifact v4 默认不扫隐藏文件：
+          # 第五轮五平台全部 success，publish 里却是 0 artifact。
+          include-hidden-files: true
           retention-days: 3
 
   publish:
@@ -289,6 +292,17 @@ jobs:
           pattern: payload-*
           path: dist
           merge-multiple: true
+
+      - name: Verify artifacts arrived
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 5 个 payload + 5 个 agent。数量不对就在这里挂，
+          # 而不是等到上传 release 时才发现少平台（或根本没有文件）。
+          count=$(ls -1 dist/*.zip 2>/dev/null | wc -l | tr -d ' ')
+          echo "zips=$count"
+          ls -la dist || true
+          [ "$count" = "10" ] || { echo "::error::期望 10 个 zip（5 payload + 5 agent），实际 $count"; exit 1; }
 
       - name: Assemble payload manifest
         working-directory: plugin/abilities/plugins/open-ai-canvas
