@@ -17,6 +17,16 @@
 //       产物：.payload/payload-<version>-<platform>.zip（上传到 GitHub Release，不进仓库）
 //   node scripts/build-service-zip.mjs --agent-runtime --canvas-dir <上游仓库> [--node-bin <node>]
 //       产物：.payload/agent-runtime-<agentVersion>-<platform>.zip
+//   node scripts/build-service-zip.mjs --web --canvas-dir <上游仓库>
+//       产物：<canvas-dir>/web/dist（五平台共用同一份，CI 里只跑一次）
+//   node scripts/build-service-zip.mjs --backend --canvas-dir <上游仓库> [--platform <p>] [--commit <sha>]
+//       产物：<canvas-dir>/backend/yingce-backend[.exe]（CGO 必须开，编译器随 runner 走）
+//
+// 为什么 --web / --backend 也在这个脚本里，而不是写在 workflow 的 run: 里：
+// 上游的目录布局（web/ 在根下一层、Go 模块叫 yingce/backend、二进制要带 .exe）是构建
+// 配方，属于插件；写进 YAML 就会和这里的 PLATFORM_MAP、manifest 版本号各自演进。上一次
+// 把 `working-directory: upstream` 写成了 `upstream`，报错是 "Bun could not find a
+// package.json"，跟 web 一个字都不沾。YAML 现在只负责挑 runner、装工具链、调这几个模式。
 //
 // 主载荷内容：yingce-backend（Go）+ web-dist/ + plugin-packages/*.yingce-plugin
 // Agent 载荷内容：pi-runtime/ + node/bin/node
@@ -25,6 +35,7 @@
 
 
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import { createRequire } from "node:module";
@@ -34,7 +45,13 @@ import { fileURLToPath } from "node:url";
 import { syncShim } from "./sync-shim.mjs";
 
 const require = createRequire(import.meta.url);
-const AdmZip = require("adm-zip");
+// adm-zip 只在真正打 zip 时才加载：--web / --backend 只是调 bun 和 go，
+// 不该因为还没装 node_modules 就先死在 import 上（CI 里这两步跑在装依赖之前）。
+let AdmZipCtor = null;
+function admZip() {
+  if (!AdmZipCtor) AdmZipCtor = require("adm-zip");
+  return AdmZipCtor;
+}
 
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // 必须落在 public/assets/：vite 把它原样拷到 dist/assets/，而 .astraviapkg 打包器
@@ -55,7 +72,7 @@ const PLATFORM_MAP = {
 };
 
 function parseArgs(argv) {
-  const args = { canvasDir: "", platform: "", binary: "", check: false, clean: false, payload: false, agentRuntime: false, nodeBin: "" };
+  const args = { canvasDir: "", platform: "", binary: "", check: false, clean: false, payload: false, agentRuntime: false, web: false, backend: false, commit: "", nodeBin: "" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--canvas-dir") args.canvasDir = argv[++i];
     else if (argv[i] === "--platform") args.platform = argv[++i];
@@ -65,6 +82,9 @@ function parseArgs(argv) {
     else if (argv[i] === "--clean") args.clean = true;
     else if (argv[i] === "--payload") args.payload = true;
     else if (argv[i] === "--agent-runtime") args.agentRuntime = true;
+    else if (argv[i] === "--web") args.web = true;
+    else if (argv[i] === "--backend") args.backend = true;
+    else if (argv[i] === "--commit") args.commit = argv[++i];
   }
   return args;
 }
@@ -94,8 +114,106 @@ async function collectFiles(dir, prefix = "") {
   return files;
 }
 
+function die(message) {
+  console.error(`Error: ${message}`);
+  process.exit(1);
+}
+
+// 子进程输出直接接到当前 stdio：CI 日志里 go / bun 自己的报错比任何包装都清楚。
+function runStep(command, argv, cwd, env = {}) {
+  console.log(`[run] ${command} ${argv.join(" ")}`);
+  console.log(`[run] cwd=${cwd}`);
+  const result = spawnSync(command, argv, { cwd, stdio: "inherit", env: { ...process.env, ...env } });
+  if (result.error) die(`无法执行 ${command}：${result.error.message}`);
+  if (result.status !== 0) die(`${command} ${argv[0]} 退出码 ${result.status}`);
+}
+
+async function readVersion(canvasDir) {
+  const versionFile = path.join(canvasDir, "VERSION");
+  let version = "";
+  try {
+    version = (await readFile(versionFile, "utf8")).trim();
+  } catch {
+    die(`找不到 ${versionFile}：上游用这个文件给后端注入版本号，缺了就只能构建出 \"dev\"`);
+  }
+  if (!version) die(`${versionFile} 是空的`);
+  return version;
+}
+
+// --- web：上游前端只构建一次，五个平台共用同一份 dist ---
+// 目录布局的知识留在这里：上游把前端放在 <仓库>/web，锁文件是 bun.lock，packageManager 是 bun。
+async function buildWeb({ canvasDir }) {
+  if (!canvasDir) die("--web 需要 --canvas-dir（上游仓库根目录）");
+  const webDir = path.join(canvasDir, "web");
+  const pkgFile = path.join(webDir, "package.json");
+  try {
+    await stat(pkgFile);
+  } catch {
+    die(`找不到 ${pkgFile}。--web 认为前端在 <canvas-dir>/web；上游如果改了布局，改这里，不要改 YAML。`);
+  }
+
+  const pkg = JSON.parse(await readFile(pkgFile, "utf8"));
+  const pm = String(pkg.packageManager || "").split("@")[0] || "npm";
+  console.log(`[web] ${webDir}  包管理器=${pm}  构建命令=${pkg.scripts?.build ?? "(缺失)"}`);
+  if (!pkg.scripts?.build) die(`${pkgFile} 里没有 build 脚本`);
+
+  if (pm === "bun") runStep("bun", ["install", "--frozen-lockfile"], webDir);
+  else runStep("npm", ["ci"], webDir);
+  // 构建里带 tsc --noEmit，前台跑不到 --frozen-lockfile 的时候也只会在这一步就失败，不会拖到打包。
+  runStep(pm, ["run", "build"], webDir);
+
+  const distDir = path.join(webDir, "dist");
+  try {
+    await stat(path.join(distDir, "index.html"));
+  } catch {
+    die(`${distDir}/index.html 不存在：构建成功但产物不对，载荷里会缺前端入口`);
+  }
+  const files = await collectFiles(distDir, "web-dist");
+  let bytes = 0;
+  for (const file of files) bytes += (await stat(file.full)).size;
+  console.log(`[web] ${distDir}  entries=${files.length}  bytes=${bytes}`);
+}
+
+// --- backend：每个平台在自己的 runner 上原生编译（CGO 必需，交叉编译已验证不可行）---
+// 配方取自上游 backend/Dockerfile 的 backend-build 阶段：模块名 yingce/backend，
+// 入口 ./cmd/server，版本号从仓库根的 VERSION 注入 buildinfo.Version。
+async function buildBackend({ canvasDir, platform, commit }) {
+  if (!canvasDir) die("--backend 需要 --canvas-dir（上游仓库根目录）");
+  const config = PLATFORM_MAP[platform];
+  if (!config) die(`unsupported platform ${platform}`);
+
+  const backendDir = path.join(canvasDir, "backend");
+  try {
+    await stat(path.join(backendDir, "go.mod"));
+  } catch {
+    die(`找不到 ${backendDir}/go.mod。--backend 认为 Go 模块在 <canvas-dir>/backend。`);
+  }
+  const version = await readVersion(canvasDir);
+  const output = path.join(backendDir, `yingce-backend${config.ext}`);
+
+  const ldflags = [
+    "-s",
+    "-w",
+    `-X yingce/backend/internal/buildinfo.Version=${version}`,
+    commit ? `-X yingce/backend/internal/buildinfo.Commit=${commit}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  // GOOS/GOARCH 显式写死：它们必须等于 runner 自己，写错的话 CGO 会当场报链接失败，
+  // 而不是默默产出一个同架构之外跑不起来的二进制。
+  runStep("go", ["build", "-trimpath", "-ldflags", ldflags, "-o", output, "./cmd/server"], backendDir, {
+    CGO_ENABLED: "1",
+    GOOS: config.goos,
+    GOARCH: config.goarch,
+  });
+
+  const { size } = await stat(output);
+  console.log(`[backend] ${output}  bytes=${size}  version=${version}  goos=${config.goos}  goarch=${config.goarch}`);
+}
+
 function zipFrom(files) {
-  const zip = new AdmZip();
+  const zip = new (admZip())();
   for (const file of files) zip.addFile(file.rel, file.buffer);
   for (const entry of zip.getEntries()) entry.header.time = FIXED_DATE;
   return zip.toBuffer();
@@ -152,16 +270,33 @@ async function buildPayload({ canvasDir, platform, binary }) {
   // web 只在上游 web/ 构一次（CI 里由 web job 产出并下发），这里只负责收进载荷。
   const webDistDir = path.join(canvasDir, "web", "dist");
 
-  await stat(binaryPath);
-  await stat(webDistDir);
+  // 缺什么就说什么：这两个文件分别在 --backend 与 --web 里生成，报 ENOENT 而不说去哪拿，
+  // 排查时只能去翻 workflow。
+  try {
+    await stat(binaryPath);
+  } catch {
+    die(`找不到 ${binaryPath}：先跑 --backend --platform ${platform}`);
+  }
+  try {
+    await stat(webDistDir);
+  } catch {
+    die(`找不到 ${webDistDir}：先跑 --web（五个平台共用这一份 dist）`);
+  }
 
   console.log(`[payload] 收集 ${platform} 载荷：${binaryName} + web/dist + plugin-packages`);
   const files = [{ rel: binaryName, full: binaryPath, buffer: await readFile(binaryPath) }];
   files.push(...(await collectFiles(webDistDir, "web-dist")));
+  let paymentPackages = 0;
   for (const entry of await readdir(pluginPackagesDir, { withFileTypes: true })) {
     if (!entry.isFile() || !entry.name.endsWith(".yingce-plugin")) continue;
     const full = path.join(pluginPackagesDir, entry.name);
+    paymentPackages += 1;
     files.push({ rel: `plugin-packages/${entry.name}`, full, buffer: await readFile(full) });
+  }
+  // 零个支付插件包时，上游的 build-packages.sh 没能跑成功：载荷看着正常，后台却拿不到
+  // 任何支付通道。宁可在这里失败。
+  if (!paymentPackages) {
+    die(`${pluginPackagesDir} 里没有任何 .yingce-plugin：先跑 sh ./plugin-packages/build-packages.sh --payments-only`);
   }
   for (const file of files) {
     if (!file.buffer) file.buffer = await readFile(file.full);
@@ -265,12 +400,14 @@ async function buildAgentPayload({ canvasDir, platform, nodeBin }) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const platform = args.platform || currentPlatform();
-  const mode = args.payload ? "payload" : args.agentRuntime ? "agent" : "shim";
+  const mode = args.payload ? "payload" : args.agentRuntime ? "agent" : args.web ? "web" : args.backend ? "backend" : "shim";
   console.log(`[${mode}] platform=${platform}`);
   if (mode === "shim" && args.clean) await cleanLegacyShims();
   if (mode === "payload")
     await buildPayload({ canvasDir: args.canvasDir, platform, binary: args.binary });
   else if (mode === "agent") await buildAgentPayload({ canvasDir: args.canvasDir, platform, nodeBin: args.nodeBin });
+  else if (mode === "web") await buildWeb({ canvasDir: args.canvasDir });
+  else if (mode === "backend") await buildBackend({ canvasDir: args.canvasDir, platform, commit: args.commit });
   else await buildShim({ check: args.check });
 }
 

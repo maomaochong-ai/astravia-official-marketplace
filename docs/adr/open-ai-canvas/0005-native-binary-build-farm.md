@@ -154,7 +154,6 @@ shim 是一份纯 JS，与平台无关，五个键指向**同一份字节**、�
 这不是为了凑数：宿主只有在键命中时才会安装并启动服务，键缺席等于该平台不存在。真正的平台差异发生在 shim 内部——它读清单、取自己平台那一条。
 
 ### 8. macOS 签名与隔离属性
-
 不在本决策里做代码签名（没有可用的 Developer ID），但要区分两件事：
 
 - **arm64 的 ad-hoc 签名是硬要求**：Apple Silicon 上未签名的 arm64 Mach-O 根本不会被执行（`killed: 9`）。Go 链接器对 `darwin/arm64` 会自动附加 ad-hoc 签名，所以本方案在 arm64 上不需要额外步骤（Inferred：来自 Go 链接器行为，未在干净机器上实测）。
@@ -162,6 +161,22 @@ shim 是一份纯 JS，与平台无关，五个键指向**同一份字节**、�
 - 一旦要上 Apple Developer ID + notarization，就变成「重签每一个载荷」的流水线改造，`plugin.json` 的摘要也要跟着变——这是另一件事，不在本文范围。
 
 **隔离属性**：载荷 zip 由 shim 用 node 的 `fs` 落盘，**不是浏览器下载**，因此不会带上 `com.apple.quarantine` 扩展属性，解包出的 `yingce-backend` 不会触发 Gatekeeper 首次运行拦截（Inferred：依据是 node 写文件不设置该 xattr；未在干净系统上实测，列为待验证项）。若实测被拦，退路是 shim 解包后 `xattr -d com.apple.quarantine`——需要在 ADR 里补一条，但这属于运行期修补，不影响本决策。
+
+### 9. 构建配方在插件里，workflow 只挑 runner
+
+上游的目录与构建知识——前端在 `<repo>/web` 且锁文件是 `bun.lock`、Go 模块叫 `yingce/backend`、入口是 `./cmd/server`、版本号从仓库根的 `VERSION` 注入 `buildinfo.Version`、Windows 二进制要带 `.exe`——**全部属于插件**，写在 `abilities/plugins/open-ai-canvas/scripts/build-service-zip.mjs` 里：
+
+| workflow 调用 | 插件侧实现 | 产物 |
+| --- | --- | --- |
+| `--web` | `buildWeb()`：`cd <canvas-dir>/web` → `bun install --frozen-lockfile` → `bun run build` | `<canvas-dir>/web/dist` |
+| `--backend` | `buildBackend()`：`go build -trimpath -ldflags "-s -w -X …buildinfo.Version=…" -o yingce-backend<ext> ./cmd/server` | 平台二进制 |
+| `--payload` / `--agent-runtime` | `buildPayload()` / `buildAgentPayload()` | 两类 zip |
+
+workflow 只剩三件事：挑 runner、装工具链（bun / go / node / mingw）、按 `--platform` 调上面的模式。
+
+**为什么不是风格问题**：第一版把 `bun install` 直接写在 YAML 里，`working-directory` 写成 `upstream`（正确值是 `upstream/web`），2026-10-25 的真实失败信息是 `error: Bun could not find a package.json file to install from`——与 web 毫无字面关联，而 workflow 只在 dispatch 之后才跑，一次错误就是一整轮 CI 加一次人工回读。同一天还发现 `--payload` 对 `plugin-packages/*.yingce-plugin` 零命中时**不报错**（载荷看着正常、后台拿不到任何支付通道），已改为直接失败。
+
+`scripts/check-build-workflow.mjs` 守住这条边界（Observed：对新工作流 exit 0，对旧工作流 exit 1）：解析 YAML，要求四个模式都被调用，禁止 `run:` 里出现 `bun install` / `bun run build` / `go build`，`working-directory` 只允许插件目录或 `upstream` 检出根。它跑在 `npm run verify`、`npm test` 与 `npm run build` 里，所以漂移在源码树里就会被拦下，不用等 CI。
 
 ## 发布顺序（必须遵守）
 

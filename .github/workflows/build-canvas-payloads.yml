@@ -91,6 +91,14 @@ jobs:
     if: needs.resolve.outputs.should_build == 'true'
     runs-on: ubuntu-24.04
     steps:
+      # 构建配方在插件里（scripts/build-service-zip.mjs --web），这里只负责挑 runner、
+      # 装 bun、把上游检出到 upstream/。把 upstream/web 这种目录知识写在 YAML 里，
+      # 写错时的报错是 "Bun could not find a package.json"，跟 web 一个字都不沾。
+      - name: Checkout plugin (build recipes live here)
+        uses: actions/checkout@v4
+        with:
+          path: plugin
+
       - name: Checkout upstream at pinned commit
         uses: actions/checkout@v4
         with:
@@ -103,11 +111,10 @@ jobs:
           bun-version: "1.3.9"
 
       - name: Build web
-        working-directory: upstream
+        working-directory: plugin/abilities/plugins/open-ai-canvas
         run: |
           set -euo pipefail
-          bun install --frozen-lockfile
-          bun run build
+          node scripts/build-service-zip.mjs --web --canvas-dir "${{ github.workspace }}/upstream"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -202,18 +209,16 @@ jobs:
           sh ./plugin-packages/build-packages.sh --payments-only
           sh ./plugin-packages/verify-payment-packages.sh "$PAYMENT_PLUGIN_GOOS" "$PAYMENT_PLUGIN_GOARCH"
 
+      # 编译配方（模块名、入口、ldflags 注入的 buildinfo 字段）也在插件里。
+      # 这里传 --platform 是因为二进制名要跟目标平台走（windows 带 .exe）。
       - name: Build backend binary
-        shell: bash
-        working-directory: upstream/backend
-        env:
-          CGO_ENABLED: "1"
+        working-directory: plugin/abilities/plugins/open-ai-canvas
         run: |
           set -euo pipefail
-          version="$(tr -d '\r\n' < ../VERSION)"
-          go build -trimpath \
-            -ldflags "-s -w -X yingce/backend/internal/buildinfo.Version=${version}" \
-            -o "yingce-backend${{ matrix.ext }}" ./cmd/server
-          ls -l "yingce-backend${{ matrix.ext }}"
+          node scripts/build-service-zip.mjs --backend \
+            --canvas-dir "${{ github.workspace }}/upstream" \
+            --platform "${{ matrix.platform }}" \
+            --commit "${{ needs.resolve.outputs.commit }}"
 
       - name: Build pi runtime dependencies
         shell: bash
