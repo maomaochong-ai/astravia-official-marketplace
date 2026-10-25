@@ -24,7 +24,7 @@ export function ReaUsageExamples({ target, targetKind, onClose }: UsageExamplesP
 	const value = target.trim().length > 0 ? target.trim() : placeholder;
 
 	return (
-		<div className="mt-2 rounded-[min(var(--radius-md),8px)] border border-border bg-background/60 px-2 py-1.5">
+		<div className="mt-2 rounded-control border border-border bg-background/60 px-2 py-1.5">
 			<div className="flex min-w-0 items-center gap-1.5">
 				<span aria-hidden className="icon-[lucide--book-open] size-3 shrink-0 text-primary" />
 				<span className="min-w-0 flex-1 truncate text-[10.5px] font-medium text-foreground/90" title={t("tab.examples.title")}>
@@ -50,7 +50,7 @@ export function ReaUsageExamples({ target, targetKind, onClose }: UsageExamplesP
 					return (
 						<li
 							key={example.id}
-							className={`rounded-[min(var(--radius-md),6px)] border px-1.5 py-1 ${
+							className={`rounded-control border px-1.5 py-1 ${
 								active ? "border-primary/40 bg-primary/5" : "border-border/70 bg-card/40"
 							}`}
 						>

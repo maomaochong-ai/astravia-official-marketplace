@@ -1,32 +1,24 @@
 /**
- * 逆向工作台（展示层）：目标类型 → 目标路径/URL → 交给 Agent。
+ * 交接作曲器（展示层）：目标路径/URL → 交给 Agent。
  *
- * 不再手工跑 CLI：阶段详情会说明 Agent 会自动执行哪些 REA 工具，这里只负责
- * 「选定目标并把任务真正发进对话」。发送回执占一行固定高度，避免按钮下方内容上下跳。
+ * 它钉在内容区底部：阶段详情再长也不会把「怎么把任务发出去」推到视野之外。
+ * 目标类型选择不在这里（在主区顶部），工具就绪也不在这里（在右栏），
+ * 这个区块只回答一个问题：这段任务怎么真正发进对话。
+ *
+ * 回执占一行固定高度，出现/消失不再顶动上方内容。
  */
 
 import { useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import type { PluginCommandRunResult, PluginCommandSpawnHandle } from "@astravia-org/plugin-sdk";
 import type { TargetKind } from "../data/targets";
-import type { DoctorReport } from "../hooks/use-doctor-report";
 import type { Workbench } from "../hooks/use-workbench";
-import type { ReaLiveCall } from "../live/session-store";
 import { copyText } from "../../../shared/services/clipboard";
-import { ReaWorkflowTargetRouting } from "./rea-workflow-target-routing";
+import { Eyebrow } from "../../../shared/components/eyebrow";
 import { ReaUsageExamples } from "./rea-usage-examples";
 
 interface WorkbenchProps {
 	readonly workbench: Workbench;
 	readonly detected: TargetKind | null;
-	readonly calls: readonly ReaLiveCall[];
-	readonly running: readonly string[];
-	readonly report: DoctorReport;
-	readonly run: (args: readonly string[], options: { cwd?: string; timeoutMs: number }) => Promise<PluginCommandRunResult>;
-	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
-	readonly spawnRea: ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
-	readonly spawnCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandSpawnHandle>) | null;
-	readonly cwd: string | null;
 }
 
 const FEEDBACK_TEXT: Record<Exclude<Workbench["handoff"], "idle">, string> = {
@@ -42,18 +34,7 @@ const BLOCK_TEXT: Record<Exclude<NonNullable<Workbench["blockReason"]>, "sending
 	noKind: "tab.workbench.kindUnknown",
 };
 
-export function ReaWorkbench({
-	workbench,
-	detected,
-	calls,
-	running,
-	report,
-	run,
-	runCommand,
-	spawnRea,
-	spawnCommand,
-	cwd,
-}: WorkbenchProps): JSX.Element {
+export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Element {
 	const { t } = useTranslation();
 	const [examplesOpen, setExamplesOpen] = useState(false);
 	const canHandoff = workbench.blockReason === null;
@@ -61,64 +42,19 @@ export function ReaWorkbench({
 	const feedback = workbench.handoff;
 	const tone =
 		feedback === "sent" || feedback === "inserted"
-			? "text-emerald-600 dark:text-emerald-400"
+			? "text-sage-dark"
 			: feedback === "queued"
 				? "text-primary"
 				: feedback === "failed"
-					? "text-amber-600 dark:text-amber-400"
-					: "text-muted-foreground";
+					? "text-danger"
+					: "text-faint";
 
 	return (
-		<section
-			className="border-b border-border bg-card/25 px-3 py-2.5"
-			style={{
-				backgroundImage:
-					"radial-gradient(140% 90% at 0% 0%, color-mix(in oklab, var(--primary) 7%, transparent) 0%, transparent 62%)",
-			}}
-		>
-			<header className="mb-2 flex min-w-0 items-baseline justify-between gap-2">
-				<h2 className="shrink-0 whitespace-nowrap text-[12px] font-semibold leading-tight text-foreground">
-					{t("tab.workbench.title")}
-				</h2>
-				<span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground @max-[340px]:hidden">
-					{t("tab.workbench.subtitle")}
-				</span>
-				<button
-					type="button"
-					onClick={() => setExamplesOpen((prev) => !prev)}
-					aria-expanded={examplesOpen}
-					title={t(examplesOpen ? "tab.examples.close" : "tab.examples.openHint")}
-					className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-border px-1.5 text-[10px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-				>
-					<span aria-hidden className="icon-[lucide--sparkles] size-2.5" />
-					{t("tab.examples.button")}
-				</button>
-			</header>
-
-			<ReaWorkflowTargetRouting
-				active={workbench.active}
-				picked={workbench.picked}
-				detected={detected}
-				calls={calls}
-				running={running}
-				report={report}
-				run={run}
-				runCommand={runCommand}
-				spawnRea={spawnRea}
-				spawnCommand={spawnCommand}
-				cwd={cwd}
-				onPick={workbench.pick}
-				onClear={workbench.clearPick}
-				onFollowDetected={workbench.clearPick}
-			/>
-
-			<div className="mt-2 flex items-center gap-1.5">
-				<span
-					className="hidden shrink-0 font-mono text-[9px] uppercase leading-none tracking-[0.14em] text-muted-foreground/80 @min-[380px]:inline"
-					title={t("tab.workbench.targetLabel")}
-				>
+		<section className="rea-root sticky bottom-0 z-10 border-t border-border bg-background/95 px-4 py-2.5 backdrop-blur">
+			<div className="flex min-w-0 items-center gap-1.5">
+				<Eyebrow className="hidden shrink-0 font-mono @min-[380px]:inline" title={t("tab.workbench.targetLabel")}>
 					{t("tab.workbench.targetTag")}
-				</span>
+				</Eyebrow>
 				<label className="sr-only" htmlFor="rea-target-input">
 					{t("tab.workbench.targetLabel")}
 				</label>
@@ -136,17 +72,17 @@ export function ReaWorkbench({
 					spellCheck={false}
 					autoComplete="off"
 					title={workbench.target}
-					className="h-7 min-w-0 flex-1 rounded-[min(var(--radius-md),8px)] border border-border bg-background px-2 font-mono text-[11px] text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+					className="h-8 min-w-0 flex-1 rounded-control border border-border bg-background px-2.5 font-mono text-caption text-foreground transition-colors placeholder:text-faint focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 				/>
 				<button
 					type="button"
 					onClick={() => workbench.insertToChat()}
 					disabled={!canHandoff}
 					title={t("tab.workbench.insertHint")}
-					className="inline-flex h-7 shrink-0 items-center gap-1 rounded-[min(var(--radius-md),8px)] border border-border px-2 text-[11px] font-medium text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+					className="inline-flex h-8 shrink-0 items-center gap-1 rounded-control border border-border px-2 text-caption font-medium text-foreground/85 transition-colors hover:border-border-strong hover:bg-mist hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-faint"
 				>
-					<span aria-hidden className="icon-[lucide--text-cursor-input] size-3" />
-					{t("tab.workbench.insert")}
+					<span aria-hidden className="icon-[lucide--text-cursor-input] size-3.5" />
+					<span className="@max-[360px]:hidden">{t("tab.workbench.insert")}</span>
 				</button>
 				<button
 					type="button"
@@ -159,26 +95,36 @@ export function ReaWorkbench({
 								? t("tab.workbench.targetRequired")
 								: t("tab.workbench.handoffHint")
 					}
-					className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 text-[11px] font-medium text-primary shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-muted-foreground disabled:shadow-none"
+					className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill bg-primary px-3 text-caption font-semibold text-primary-foreground shadow-card transition-[filter,opacity] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:bg-mist disabled:text-faint disabled:shadow-none"
 				>
 					{feedback === "sending" ? (
-						<span aria-hidden className="icon-[lucide--loader-circle] size-3 motion-safe:animate-spin" />
+						<span aria-hidden className="icon-[lucide--loader-circle] size-3.5 motion-safe:animate-spin" />
 					) : (
-						<span aria-hidden className="icon-[lucide--send] size-3" />
+						<span aria-hidden className="icon-[lucide--send] size-3.5" />
 					)}
-					{t("tab.workbench.handoff")}
+					<span className="@max-[400px]:hidden">{t("tab.workbench.handoff")}</span>
+				</button>
+				<button
+					type="button"
+					onClick={() => setExamplesOpen((prev) => !prev)}
+					aria-expanded={examplesOpen}
+					title={t(examplesOpen ? "tab.examples.close" : "tab.examples.openHint")}
+					className="inline-flex size-8 shrink-0 items-center justify-center rounded-control border border-border text-foreground/80 transition-colors hover:border-border-strong hover:bg-mist hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+				>
+					<span aria-hidden className="icon-[lucide--sparkles] size-3.5" />
+					<span className="sr-only">{t("tab.examples.button")}</span>
 				</button>
 			</div>
 
-			{/* 固定高度：回执出现/消失不再顶走下面的阶段条。 */}
+			{/* 固定高度：回执出现/消失不再顶走上面的内容。 */}
 			<div className="mt-1 flex h-4 min-w-0 items-center gap-1.5">
 				{feedback !== "idle" ? (
-					<span className={`min-w-0 truncate text-[10.5px] leading-none ${tone}`} title={t(FEEDBACK_TEXT[feedback])}>
+					<span className={`min-w-0 truncate text-micro-up leading-none ${tone}`} title={t(FEEDBACK_TEXT[feedback])}>
 						{t(FEEDBACK_TEXT[feedback])}
 					</span>
 				) : (
 					<span
-						className={`min-w-0 truncate text-[10.5px] leading-none ${blockReason === null ? "text-muted-foreground" : "text-amber-600 dark:text-amber-400"}`}
+						className={`min-w-0 truncate text-micro-up leading-none ${blockReason === null ? "text-faint" : "text-ochre"}`}
 						title={blockReason === null ? undefined : t(BLOCK_TEXT[blockReason as keyof typeof BLOCK_TEXT])}
 					>
 						{blockReason === null ? t("tab.workbench.ready") : t(BLOCK_TEXT[blockReason as keyof typeof BLOCK_TEXT])}
@@ -188,13 +134,12 @@ export function ReaWorkbench({
 					<button
 						type="button"
 						onClick={() => void copyText(workbench.promptText)}
-						className="inline-flex shrink-0 items-center gap-1 rounded border border-border px-1 text-[10px] text-foreground/85 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+						className="inline-flex shrink-0 items-center gap-1 rounded-pill border border-border px-1.5 text-micro-up text-foreground/85 transition-colors hover:border-border-strong hover:bg-mist focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 					>
 						<span aria-hidden className="icon-[lucide--copy] size-2.5" />
 						{t("tab.workbench.copyPrompt")}
 					</button>
 				) : null}
-
 			</div>
 
 			{examplesOpen ? (

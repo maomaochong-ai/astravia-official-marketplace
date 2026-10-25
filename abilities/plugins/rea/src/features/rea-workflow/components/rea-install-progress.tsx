@@ -45,9 +45,9 @@ export function ReaInstallProgress({ progress, label, onCancel, onDismiss }: Ins
 	const lines = progress.log.length === 0 ? 0 : progress.log.split(/\r?\n/).length;
 	const tone =
 		progress.phase === "success"
-			? "border-emerald-500/40 bg-emerald-500/5"
+			? "border-sage-dark/40 bg-sage-light"
 			: progress.phase === "failed"
-				? "border-amber-500/40 bg-amber-500/5"
+				? "border-honey bg-apricot-light"
 				: "border-primary/30 bg-primary/5";
 	const statusText = running
 		? progress.cancelling
@@ -66,7 +66,7 @@ export function ReaInstallProgress({ progress, label, onCancel, onDismiss }: Ins
 	const stageText = t(STAGE_KEY[progress.stage]);
 
 	return (
-		<div className={`mt-1.5 rounded-[min(var(--radius-md),8px)] border px-2 py-1.5 ${tone}`}>
+		<div className={`mt-1.5 rounded-control border px-2 py-1.5 ${tone}`}>
 			<div className="flex min-w-0 items-center gap-1.5">
 				<span
 					aria-hidden
@@ -74,8 +74,8 @@ export function ReaInstallProgress({ progress, label, onCancel, onDismiss }: Ins
 						running
 							? "icon-[lucide--loader-circle] size-3 shrink-0 text-primary motion-safe:animate-spin"
 							: progress.phase === "success"
-								? "icon-[lucide--circle-check] size-3 shrink-0 text-emerald-600 dark:text-emerald-400"
-								: "icon-[lucide--circle-slash] size-3 shrink-0 text-amber-600 dark:text-amber-400"
+								? "icon-[lucide--circle-check] size-3 shrink-0 text-sage-dark"
+								: "icon-[lucide--circle-slash] size-3 shrink-0 text-ochre"
 					}
 				/>
 				<span className="min-w-0 flex-1 truncate text-[10.5px] font-medium text-foreground/90" title={statusText}>
@@ -88,7 +88,7 @@ export function ReaInstallProgress({ progress, label, onCancel, onDismiss }: Ins
 						onClick={onCancel}
 						disabled={progress.cancelling}
 						title={t("tab.install.cancelHint")}
-						className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/85 transition-colors hover:border-amber-500/50 hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+						className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/85 transition-colors hover:border-honey hover:bg-apricot-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
 					>
 						<span aria-hidden className="icon-[lucide--square] size-2.5" />
 						{t("tab.install.cancel")}
@@ -163,7 +163,7 @@ export function ReaInstallProgress({ progress, label, onCancel, onDismiss }: Ins
 
 			{progress.failure !== null ? (
 				<p
-					className="mt-0.5 pl-[18px] text-[10px] leading-snug text-amber-600 dark:text-amber-400"
+					className="mt-0.5 pl-[18px] text-[10px] leading-snug text-ochre"
 					title={progress.failure.detail.length > 0 ? progress.failure.detail : undefined}
 				>
 					<span className="line-clamp-2">

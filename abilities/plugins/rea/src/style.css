@@ -9,15 +9,20 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* lucide / solar 图标按需生成（面板内用 lucide，详情页用 solar）。 */
+@plugin "@iconify/tailwind4";
+
 /*
  * 宿主 CSS variables → Tailwind theme token 映射。
  *
  * 插件 CSS 被 plugin-vite 包进 @scope ([data-astravia-plugin-root="rea"])，
  * Tailwind 的 :root dark: 变体穿不过这个边界；只有宿主 CSS variables 能继承进来。
- * 把它们映射成 Tailwind 语义色（bg-card / text-foreground / border-border …），
- * 让活动栏 Tab 里的工具类正确读到宿主主题。
+ * 所以这里一律指向裸 var()，不写死任何品牌色 —— 明暗切换时宿主换变量，
+ * 插件里的 bg-card / text-foreground / border-border 自动跟着换，无需第二份色值。
  *
- * warning 不是所有主题都暴露，自带主题兜底色；缺值时 Tailwind 走 fallback 链。
+ * 右侧一组（success / warning / danger / faint / mist / stone / sage / apricot /
+ * honey / ochre / agent / border-strong）是设计稿的语义词表。它们同样不写死色值：
+ * 具体取值在 .rea-root 里由宿主变量 color-mix 派生，见下方。
  */
 @theme inline {
 	--color-background: var(--background);
@@ -27,6 +32,9 @@
 	--color-popover: var(--popover);
 	--color-popover-foreground: var(--popover-foreground);
 	--color-border: var(--border);
+	--color-border-strong: var(--rea-border-strong);
+	--color-input: var(--input, var(--border));
+	--color-ring: var(--ring, var(--primary));
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
 	--color-accent: var(--accent);
@@ -37,11 +45,87 @@
 	--color-secondary-foreground: var(--secondary-foreground);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
-	--color-warning: var(--warning, #d97706);
+
+	--color-success: var(--rea-success);
+	--color-warning: var(--rea-warning);
+	--color-danger: var(--rea-danger);
+	--color-faint: var(--rea-faint);
+	--color-mist: var(--rea-mist);
+	--color-stone: var(--rea-stone);
+	--color-sage-light: var(--rea-sage-light);
+	--color-sage-dark: var(--rea-sage-dark);
+	--color-apricot: var(--rea-apricot);
+	--color-apricot-light: var(--rea-apricot-light);
+	--color-honey: var(--rea-honey);
+	--color-ochre: var(--rea-ochre);
+	--color-agent: var(--rea-agent);
+
+	/* 形状与层次：值写在这里，组件只管用 rounded-tile / shadow-card。 */
+	--radius-pill: 9999px;
+	--radius-tile: 10px;
+	--radius-control: 8px;
+	--radius-card: 12px;
+
+	--shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.05);
+	--shadow-popover: 0 12px 32px rgb(0 0 0 / 0.12);
+	--shadow-inset-line: inset 0 1px 0 rgb(255 255 255 / 0.04);
+
+	/* 字号阶梯：面板里信息密度高，用得多的是 10.5 / 11 / 12 / 13。 */
+	--text-micro-up: 10.5px;
+	--text-micro-up--line-height: 1.3;
+	--text-micro: 11px;
+	--text-micro--line-height: 1.35;
+	--text-caption: 12px;
+	--text-caption--line-height: 1.4;
+	--text-body-sm: 13px;
+	--text-body-sm--line-height: 1.5;
+	--text-body: 14px;
+	--text-body--line-height: 1.55;
+	--text-section: 15px;
+	--text-section--line-height: 1.35;
+	--text-heading: 19px;
+	--text-heading--line-height: 1.25;
+	--text-title: 23px;
+	--text-title--line-height: 1.2;
+	--text-display: 28px;
+	--text-display--line-height: 1.15;
 }
 
-/* lucide / solar 图标按需生成（面板内用 lucide，详情页用 solar）。 */
-@plugin "@iconify/tailwind4";
+/*
+ * REA 语义令牌层。
+ *
+ * 分两类：
+ *   1. 状态色 —— 取宿主终端 ANSI 令牌（--term-green / --term-yellow），
+ *      与宿主里「成功 / 警告」的观感一致；宿主没暴露时退回通用色。
+ *   2. 层次色 —— 用 color-mix 从 foreground / background 派生。
+ *      这样浅色主题下它们是「淡墨」，深色主题下是「淡白」，不需要两份取值。
+ *
+ * 放在 .rea-root 而不是 :root：宿主同时可能开着多个插件面板，
+ * 变量只应作用于本插件的根节点。
+ */
+.rea-root {
+	--rea-success: var(--term-green, #15803d);
+	--rea-warning: var(--term-yellow, #b45309);
+	--rea-danger: var(--destructive, #b91c1c);
+
+	/* 三级弱化的文字/底色：faint 最淡（辅助文字），mist 是再深一点的块，stone 是分隔块。 */
+	--rea-faint: color-mix(in srgb, var(--muted-foreground) 62%, var(--background));
+	--rea-mist: color-mix(in srgb, var(--foreground) 6%, var(--background));
+	--rea-stone: color-mix(in srgb, var(--foreground) 11%, var(--background));
+
+	/* 设计稿的 sage / apricot / honey / ochre 在宿主里对应「成功」与「琥珀」两族。 */
+	--rea-sage-light: color-mix(in srgb, var(--rea-success) 14%, var(--background));
+	--rea-sage-dark: color-mix(in srgb, var(--rea-success) 72%, var(--foreground));
+	--rea-apricot: color-mix(in srgb, var(--rea-warning) 20%, var(--background));
+	--rea-apricot-light: color-mix(in srgb, var(--rea-warning) 11%, var(--background));
+	--rea-honey: color-mix(in srgb, var(--rea-warning) 52%, var(--background));
+	--rea-ochre: color-mix(in srgb, var(--rea-warning) 78%, var(--foreground));
+
+	/* 「Agent 侧」标识色：宿主上下文分段色板的第一格，和对话里的引用色同一族。 */
+	--rea-agent: var(--context-segment-1, var(--primary));
+
+	--rea-border-strong: color-mix(in srgb, var(--foreground) 14%, var(--border));
+}
 
 /*
  * 流程图实时态动画。
@@ -138,4 +222,3 @@
 		}
 	}
 }
-

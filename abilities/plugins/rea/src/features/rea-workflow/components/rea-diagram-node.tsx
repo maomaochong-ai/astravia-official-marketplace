@@ -17,7 +17,7 @@ export type DiagramTone = "primary" | "neutral" | "warning" | "quiet";
 const TONE: Record<DiagramTone, { readonly box: string; readonly title: string }> = {
 	primary: { box: "border-primary/50 bg-primary/10", title: "text-foreground" },
 	neutral: { box: "border-border bg-card", title: "text-foreground" },
-	warning: { box: "border-amber-500/50 bg-amber-500/10", title: "text-amber-700 dark:text-amber-400" },
+	warning: { box: "border-honey bg-apricot-light", title: "text-ochre" },
 	quiet: { box: "border-dashed border-border bg-transparent", title: "text-foreground" },
 };
 
@@ -54,14 +54,14 @@ export function ReaDiagramNode({
 		state === "active"
 			? "border-primary/80 bg-primary/10 motion-safe:animate-rea-ring"
 			: state === "failed"
-				? "border-red-500/60 bg-red-500/5"
+				? "border-danger/60 bg-danger/5"
 				: state === "hit"
 					? "border-primary/45"
 					: "";
 	const selectedBox = selected && state === "idle" ? "border-dashed border-primary/60 bg-primary/5" : "";
 	return (
 		<div
-			className={`min-w-0 rounded-[min(var(--radius-md),8px)] border px-2.5 py-2 text-center transition-colors duration-200 ${style.box} ${selectedBox} ${stateBox}`}
+			className={`min-w-0 rounded-control border px-2.5 py-2 text-center transition-colors duration-200 ${style.box} ${selectedBox} ${stateBox}`}
 			data-rea-node-state={state}
 		>
 			<div
@@ -86,8 +86,8 @@ export function ReaDiagramNode({
 						</>
 					) : state === "failed" ? (
 						<>
-							<span aria-hidden className="icon-[lucide--triangle-alert] size-2.5 shrink-0 text-red-500" />
-							<span className="shrink-0 font-medium tabular-nums text-red-600 dark:text-red-400">
+							<span aria-hidden className="icon-[lucide--triangle-alert] size-2.5 shrink-0 text-danger" />
+							<span className="shrink-0 font-medium tabular-nums text-danger">
 								{t("tab.live.diagram.failed", { count: live?.errors ?? 0 })}
 							</span>
 						</>

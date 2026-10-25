@@ -1,17 +1,19 @@
 /**
- * 6 节点水平流程图：每个 stage 一个圆点 + label，连接线为进度光带。
+ * 窄面板用的横向阶段条：六个编号 + 一条分段进度轨。
  *
- * 主题跟随：
- *   - 当前/已通过节点 stroke + text 用 var(--primary)
- *   - 被越过的节点用虚线边（没有独立调用，但流程确实已经往后走了）
- *   - 未来节点 stroke + text 用 var(--muted-foreground)
- *   - 进度光带用 var(--primary)/10 半透明底 + var(--primary) 高亮
- *   - 当前节点用 motion-safe:animate-pulse，真实调用在跑时改用扩散环
+ * 宽面板会在左栏用竖向编号轨道（ReaStageRail）表达同一件事，
+ * 这个条只在 <880px 出现，避免窄面板里同时看到两套导航。
+ *
+ * 进度轨是一条整体：六段首尾相接、内部不留缝（留缝时相邻两段颜色不同，
+ * 交界会显出一道豁口），圆角只给外层容器。
+ *
+ * 段色全部来自语义 token：active→primary、done→sage-dark、
+ * bypassed→honey（越过，不是完成）、todo→mist。
  */
 
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { STAGES, TOTAL_STAGES } from "../data/stages";
+import { STAGES } from "../data/stages";
 
 interface StripProps {
 	readonly currentStage: number;
@@ -26,80 +28,74 @@ interface StripProps {
 
 type StripStatus = "done" | "active" | "bypassed" | "todo";
 
+const SEGMENT_CLASS: Record<StripStatus, string> = {
+	active: "bg-primary",
+	done: "bg-sage-dark",
+	bypassed: "bg-honey/60",
+	todo: "bg-mist",
+};
+
 export function ReaWorkflowStageStrip({ currentStage, onSelect, completedStages, liveStage, bypassedStages }: StripProps): JSX.Element {
 	const { t } = useTranslation();
+
+	const statuses = STAGES.map((stage): StripStatus => {
+		const visited = completedStages?.includes(stage.index) ?? false;
+		const passed = bypassedStages?.includes(stage.index) ?? false;
+		if (currentStage === stage.index) return "active";
+		if (visited) return "done";
+		if (passed) return "bypassed";
+		return "todo";
+	});
+
 	return (
-		<div className="border-b border-border bg-card/30 px-2 py-2.5 @min-[400px]:px-3">
-			<ol
-				className="flex items-center gap-1 @min-[420px]:gap-1.5 @max-[419px]:grid @max-[419px]:grid-cols-3 @max-[419px]:gap-1"
-				aria-label={t("tab.strip.aria")}
-			>
+		<div className="shrink-0 border-b border-border px-4 py-2.5">
+			<ol className="flex items-stretch gap-1" aria-label={t("tab.strip.aria")}>
 				{STAGES.map((stage, idx) => {
-					const visited = completedStages?.includes(stage.index) ?? false;
+					const status = statuses[idx];
 					const live = liveStage === stage.index;
-					const passed = bypassedStages?.includes(stage.index) ?? false;
-					const status: StripStatus =
-						currentStage === stage.index ? "active" : visited ? "done" : passed ? "bypassed" : "todo";
-					const dotFill =
-						status === "active" ? "rgb(from var(--primary) r g b / 0.18)" : status === "done" ? "rgb(from var(--primary) r g b / 0.10)" : "var(--muted)";
-					const dotStroke = status === "todo" || status === "bypassed" ? "var(--border)" : "var(--primary)";
-					const textCls =
-						status === "active"
-							? "font-semibold text-foreground"
-							: status === "done"
-								? "font-medium text-foreground/80"
-								: "text-muted-foreground";
 					const bypassedHint = status === "bypassed" ? t("tab.strip.bypassedHint") : undefined;
+					const label = t(stage.labelKey);
 					return (
-						<li
-							key={stage.index}
-							className="flex min-w-0 flex-1 items-center gap-1 last:flex-none @min-[420px]:gap-1.5 @max-[419px]:justify-center"
-						>
+						<li key={stage.index} className="flex min-w-0 flex-1 flex-col gap-1.5">
 							<button
 								type="button"
-								className="group flex min-w-0 w-full flex-col items-center gap-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-md px-1 py-1"
+								className="group flex min-w-0 flex-col gap-1 rounded-control px-0.5 pb-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 								aria-current={status === "active" ? "step" : undefined}
-								aria-label={bypassedHint ? `${t(stage.labelKey)} — ${bypassedHint}` : t(stage.labelKey)}
-								title={bypassedHint ?? t(stage.labelKey)}
+								aria-label={bypassedHint ? `${label} — ${bypassedHint}` : label}
+								title={bypassedHint ?? label}
 								onClick={() => onSelect(stage.index)}
 							>
-								<span
-									className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold ${
-										status === "active" ? (live ? "motion-safe:animate-rea-ring" : "motion-safe:animate-pulse") : ""
-									}`}
-									style={{
-										backgroundColor: dotFill,
-										color: status === "todo" || status === "bypassed" ? "var(--muted-foreground)" : "var(--primary)",
-										border: status === "bypassed" ? `1px dashed ${dotStroke}` : `1px solid ${dotStroke}`,
-									}}
-								>
-									{String(stage.index).padStart(2, "0")}
-								</span>
-								<span className={`block w-full truncate text-[10px] leading-tight ${textCls}`} title={bypassedHint ?? t(stage.labelKey)}>
-									{t(stage.labelKey)}
-								</span>
-								{live ? (
+								<span className="flex min-w-0 items-center gap-1">
+									{live ? <span aria-hidden className="size-1.5 shrink-0 rounded-pill bg-agent motion-safe:animate-pulse" /> : null}
 									<span
-										className="size-1 rounded-full bg-primary motion-safe:animate-ping"
-										title={t("tab.live.diagram.live")}
-										aria-hidden
-									/>
-								) : null}
+										className={`font-mono text-micro-up tabular-nums ${
+											status === "active" ? "text-primary" : status === "todo" ? "text-faint" : "text-foreground/60"
+										}`}
+									>
+										{String(stage.index).padStart(2, "0")}
+									</span>
+									<span
+										className={`truncate text-micro-up ${
+											status === "active"
+												? "font-semibold text-foreground"
+												: status === "todo"
+													? "text-faint"
+													: "font-medium text-foreground/75"
+										}`}
+									>
+										{label}
+									</span>
+								</span>
 							</button>
-							{idx < TOTAL_STAGES - 1 ? (
-								<span
-									className="h-px w-2 shrink-0 @min-[520px]:w-5 @max-[419px]:hidden"
-									style={{
-										backgroundColor: status === "done" ? "var(--primary)" : "var(--border)",
-										opacity: status === "done" ? 0.55 : 1,
-									}}
-									aria-hidden
-								/>
-							) : null}
 						</li>
 					);
 				})}
 			</ol>
+			<div aria-hidden className="mt-1.5 flex h-1 overflow-hidden rounded-pill">
+				{statuses.map((status, idx) => (
+					<span key={STAGES[idx].index} className={`h-full flex-1 ${SEGMENT_CLASS[status]}`} />
+				))}
+			</div>
 		</div>
 	);
 }

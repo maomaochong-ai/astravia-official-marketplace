@@ -17,7 +17,7 @@ interface RowProps {
 const STATE_CLASS: Record<AgentAction["state"], string> = {
 	active: "border-primary/60 text-primary",
 	hit: "border-border text-foreground/80",
-	failed: "border-red-500/50 text-red-600 dark:text-red-400",
+	failed: "border-danger/50 text-danger",
 	idle: "border-border/70 text-muted-foreground",
 };
 

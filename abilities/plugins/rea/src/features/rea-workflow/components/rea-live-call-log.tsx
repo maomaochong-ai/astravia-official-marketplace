@@ -86,14 +86,14 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 	return (
 		<div className="flex flex-col">
 			{errors.length > 0 ? (
-				<div className="flex flex-col gap-1 border-b border-border bg-red-500/5 px-3 py-2">
-					<span className="text-[10px] font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
+				<div className="flex flex-col gap-1 border-b border-border bg-danger/5 px-3 py-2">
+					<span className="text-[10px] font-semibold uppercase tracking-wide text-danger">
 						{t("live.errors.title")}
 					</span>
 					{errors.slice(0, 3).map((error) => (
 						<div key={`${error.toolName}-${error.at}`} className="flex items-start gap-1.5 text-[11px]">
 							<span className="shrink-0 tabular-nums text-muted-foreground">{timeLabel(error.at)}</span>
-							<span className="shrink-0 font-medium text-red-600 dark:text-red-400">{error.toolName}</span>
+							<span className="shrink-0 font-medium text-danger">{error.toolName}</span>
 							<span className="min-w-0 line-clamp-2 break-all text-muted-foreground" title={error.message}>
 								{error.message}
 							</span>
@@ -105,7 +105,7 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 			<div className="flex min-w-0 items-center gap-1.5 border-b border-border bg-card/60 px-3 py-1">
 				<span
 					aria-hidden
-					className={`size-1.5 shrink-0 rounded-full ${running > 0 ? "bg-primary motion-safe:animate-pulse" : "bg-muted-foreground/40"}`}
+					className={`size-1.5 shrink-0 rounded-full ${running > 0 ? "bg-primary motion-safe:animate-pulse" : "bg-stone"}`}
 				/>
 				<span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("live.calls.title")}</span>
 				<span
@@ -178,7 +178,7 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 													className={`shrink-0 text-muted-foreground ${expanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]"} size-3`}
 												/>
 												<span
-													className={`min-w-0 truncate text-[11px] font-medium ${call.isError ? "text-red-600 dark:text-red-400" : "text-foreground"}`}
+													className={`min-w-0 truncate text-[11px] font-medium ${call.isError ? "text-danger" : "text-foreground"}`}
 													title={call.rawToolName}
 												>
 													{call.toolName}
