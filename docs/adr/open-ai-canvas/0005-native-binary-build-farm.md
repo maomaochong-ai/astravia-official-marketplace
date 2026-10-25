@@ -114,6 +114,8 @@ agent-runtime-<payloadVersion>-<platform>.zip     # node/bin/node + pi-runtime/
 2. `api.github.com/repos/<repo>/releases/tags/<tag>` 里名为 `payload-manifest.json` 的资产（避开 `github.com` 的 TCP 超时）；
 3. `https://github.com/<repo>/releases/download/<tag>/payload-manifest.json`（固定链接）。
 
+> **部分推翻（2026-10-25，见 [0009](./0009-payload-source-chain.md)）**：上面三步都以「GitHub 可达」为前提。当前实现（4 步）是：本地目录（`CANVAS_PAYLOAD_DIR` / `<DATA_DIR>/payload` / 包内 `payload/`，零网络）→ 镜像前缀（`ghfast.top`、`gh-proxy.com`）→ 配置基址/官方 Release（并发探测，先到先得）→ `api.github.com` 资产地址（最后一搏；显式 `CANVAS_PAYLOAD_BASE_URL` 下不执行）。
+
 清单本身**不做签名校验**：它是 HTTPS 取回的声明，真正的内容完整性由它声明的每个 zip 的 sha256 保证。这一点必须诚实：能改我们 release 的攻击者早就能改载荷本体，清单签名不会增加实质阻力，只增加一套密钥管理。
 
 平台不在清单里 → `platform-unsupported`（ADR-0004 决策 2 的错误码不变），并把清单里的平台列表写进 `supported`。

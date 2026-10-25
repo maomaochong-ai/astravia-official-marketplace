@@ -34,7 +34,7 @@
   "error.installFailed": "Failed to install the canvas service",
   "error.stopFailed": "Failed to stop the canvas service",
   "error.platformUnsupported": "No canvas runtime is published for this platform yet",
-  "error.payloadUnreachable": "Failed to download the canvas runtime. Check your network or proxy and try again.",
+  "error.payloadUnreachable": "Failed to download the canvas runtime: none of the mirrors or GitHub worked. Retry, or open the progress page to see which sources were tried.",
   "error.payloadCorrupt": "The canvas runtime failed its integrity check. Please try again.",
   "error.payloadExtract": "Failed to unpack the canvas runtime. Please try again.",
   "error.backendFailed": "The canvas backend did not start",

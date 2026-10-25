@@ -44,15 +44,27 @@ if (!HOST_PORT || !DATA_DIR) {
 // ADR-0005 决策 4：sha256 不再写死在本文件里。插件包一旦发布就不可变，而载荷随上游版本变化——
 // 把 5 个平台、2 类载荷的 sha256 抄进源码，等于每发一次上游都要重发一次插件。改为启动时取
 // payload-manifest.json，由它决定「下哪个文件、校验什么值」。
-const PAYLOAD_BASE_URL =
-  process.env.CANVAS_PAYLOAD_BASE_URL ||
+// ADR-0009 部分推翻 ADR-0005 决策 4：来源不再以 GitHub 可达为前提。改成一条链——本地目录
+// （本地构建或离线搬运，零网络）→ 镜像前缀（ghfast.top / gh-proxy.com，可换可关）→ 配置基址
+// 或官方 Release（并发探测，先到先得）→ api.github.com 资产地址（最后一搏）。国内直连
+// github.com 常常 30 秒建不起 TCP，普通用户首启只会看到「请开启代理」——那正是要拆掉的墙。
+// 但“本地”不等于“打进包里”：单平台载荷约 215 MB，市场包解压上限 100 MB，装不下。
+const OFFICIAL_BASE =
   "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas-payloads";
-// 部分网络里 github.com 的 TCP 连接直接超时，但 api.github.com 与它 302 到的
-// release-assets.githubusercontent.com 都可达。所以下载前先用 API 把资产名解析成
-// https://api.github.com/repos/<repo>/releases/assets/<id>，由它重定向到真实对象存储。
+// 镜像把当前基址原样包一层（`<prefix><基址>`），由境内 CDN 回源；包的是基址而不是写死的
+// github.com，所以把 CANVAS_PAYLOAD_BASE_URL 指向自建目录时，镜像链依旧成立。
+// 2026-10-25 实测：这两个前缀对 130 MB 载荷都回 206 + Content-Range，续传可用；
+// 不可达的镜像只白等一次并发探测，不会挡住排在后面的来源。
+const DEFAULT_MIRROR_PREFIXES = ["https://ghfast.top/", "https://gh-proxy.com/"];
+// 显式基址（自建镜像、离线自测）优先级高于所有远程来源，语义与改造前一致。
+const PAYLOAD_BASE_URL = process.env.CANVAS_PAYLOAD_BASE_URL || OFFICIAL_BASE;
+// 部分网络里 github.com 的 TCP 建不起来，但 api.github.com 与它 302 到的
+// release-assets.githubusercontent.com 可达。API 解析降级为兜底来源，不再每次先花 12 秒。
 const GITHUB_REPO = "maomaochong-ai/astravia-official-marketplace";
 const RELEASE_TAG = "plugin-open-ai-canvas-payloads";
 const MANIFEST_ASSET = "payload-manifest.json";
+// 清单探测成功后记住这条基址，归档优先从同一条来源取：能列出清单的地方通常也能下文件。
+let PREFERRED_BASE = null;
 
 // 申报平台集合（ADR-0005 决策 7）。宿主按 `${platform}-${arch}` 精确查
 // plugin.json#providers.services[0].runtime.platforms，查不到就等于该平台没有运行时，
@@ -296,7 +308,7 @@ function render(p){
   etaEl.textContent=p.etaSeconds>0?'剩余约 '+dur(p.etaSeconds):'';
   elapsedEl.textContent=p.elapsedSeconds?'已用 '+dur(p.elapsedSeconds):'';
   retriesEl.textContent=p.attempts>1||p.retries?'尝试 '+p.attempts+' 次 / 重试 '+p.retries+' 次':'';
-  hostEl.textContent=p.endpoint?(p.endpoint+(p.source&&p.source!=='直连'?' · 代理 '+p.source:'')):'';
+  hostEl.textContent=p.endpoint?(p.endpoint+(p.source&&p.source!=='直连'?' · '+p.source:'')):'';
   logEl.innerHTML='';
   (p.log||[]).forEach(function(e){const d=document.createElement('div');d.textContent=e.text;logEl.appendChild(d)});
 }
@@ -994,7 +1006,7 @@ async function downloadPayload(url, archive) {
 // --- 下载来源解析 ---
 // Releases 的固定下载链接会 302 到 objects.githubusercontent.com，而在部分网络里连
 // github.com 的 TCP 都建不起来。api.github.com 与它 302 到的
-// release-assets.githubusercontent.com 通常可达，所以先问 API 要资产地址，作为首选来源。
+// release-assets.githubusercontent.com 通常可达，所以把它留作最后一搏的兜底来源（ADR-0009）。
 const ASSET_CACHE = new Map();
 
 const NETWORK_FAILURE = /超时|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|EPIPE|socket hang up|TLS|停滞|连接中断/i;
@@ -1059,25 +1071,113 @@ async function resolveAssetUrl(fileName) {
   return resolved;
 }
 
-// 候选顺序：显式镜像（CANVAS_PAYLOAD_BASE_URL）→ API 解析出的资产地址 → Release 固定链接。
-// 前一个失败就换下一个；全都失败时把最后一次错误连同可操作提示交给页面。
-async function candidateUrls(fileName) {
-  const urls = [];
-  const override = process.env.CANVAS_PAYLOAD_BASE_URL;
-  if (override) urls.push(`${override.replace(/\/+$/, "")}/${fileName}`);
-  const asset = await resolveAssetUrl(fileName);
-  if (asset) urls.push(asset);
-  const direct = `${PAYLOAD_BASE_URL.replace(/\/+$/, "")}/${fileName}`;
-  if (!urls.includes(direct)) urls.push(direct);
-  return urls;
+// 镜像前缀：默认两个境内可公共镜像；`CANVAS_PAYLOAD_MIRRORS` 整体替换（逗号分隔，
+// 写 none/off 关掉）。前缀只接在 github.com 链接前面，文件名与清单格式都不变。
+function mirrorPrefixes() {
+  const raw = process.env.CANVAS_PAYLOAD_MIRRORS;
+  if (raw === undefined) return DEFAULT_MIRROR_PREFIXES;
+  const text = raw.trim();
+  if (!text || /^(none|off|0|false)$/i.test(text)) return [];
+  return text
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => (item.endsWith("/") ? item : `${item}/`));
+}
+
+// 本地载荷目录：本地构建的归档放这里就完全不联网（ADR-0009 决策 2）。
+// 顺序是「显式指定 → 数据目录 → 插件安装目录」，便于把包与载荷放在一起分发。
+function localPayloadDirs() {
+  const dirs = [];
+  const explicit = (process.env.CANVAS_PAYLOAD_DIR || "").trim();
+  if (explicit) dirs.push(explicit);
+  dirs.push(path.join(DATA_DIR, "payload"));
+  dirs.push(path.join(BUNDLED_DIR, "payload"));
+  return dirs;
+}
+
+function findLocalFile(fileName) {
+  for (const dir of localPayloadDirs()) {
+    const file = path.join(dir, fileName);
+    if (statSize(file) > 0) return file;
+  }
+  return null;
+}
+
+// 基址候选：清单探测胜出的那条 → 镜像前缀 × 当前基址 → 当前基址。
+// 镜像包的是「当前基址」而不是写死的 github.com，于是把 CANVAS_PAYLOAD_BASE_URL 指到
+// 自建目录（或测试里的本地 http 服务）时，镜像行为可以完整验证而不依赖外网。
+// 同时：显式基址一旦给定，就不再回落到 api.github.com（见 apiFallbackAllowed）。
+function payloadBases(preferred) {
+  const bases = [];
+  const push = (base) => {
+    const clean = String(base || "").replace(/\/+$/, "");
+    if (clean && !bases.includes(clean)) bases.push(clean);
+  };
+  push(preferred);
+  for (const prefix of mirrorPrefixes()) push(`${prefix}${PAYLOAD_BASE_URL}`);
+  push(PAYLOAD_BASE_URL);
+  return bases;
+}
+
+// 显式基址意味着「只用我指定的来源」：不再去碰 GitHub 的 API，否则离线/内网部署会
+// 因为一次隐形的 api.github.com 请求而变慢或直接失败。
+function apiFallbackAllowed() {
+  return !process.env.CANVAS_PAYLOAD_BASE_URL;
+}
+
+// 并发探测：谁先回 200 用谁。逐个串行试在弱网里等于「来源数 × 超时」，用户只能干等进度条。
+function probeFirst(urls, { timeout = 12000 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (!urls.length) {
+      reject(new Error("没有可用的来源"));
+      return;
+    }
+    let pending = urls.length;
+    let lastError = null;
+    let settled = false;
+    const fail = (url) => (err) => {
+      if (settled) return;
+      lastError = new Error(`${endpointOf(url)}：${err.message}`);
+      pending -= 1;
+      if (pending === 0) reject(lastError);
+    };
+    for (const url of urls) {
+      httpRequest(url, { headers: { Accept: "application/vnd.github+json" }, timeout })
+        .then(async (res) => {
+          if (res.statusCode !== 200) {
+            res.resume();
+            throw new Error(`HTTP ${res.statusCode}`);
+          }
+          const text = await readTextResponse(res);
+          if (settled) return;
+          settled = true;
+          resolve({ url, text });
+        })
+        .catch(fail(url));
+    }
+  });
+}
+
+// 归档来源：清单胜出的基址在前，其次镜像、官方；API 解析放到最后一搏（见 stageArchive）。
+function candidateUrls(fileName) {
+  return payloadBases(PREFERRED_BASE).map((base) => `${base}/${fileName}`);
 }
 
 function describeFailure(err) {
   const text = err?.message || String(err);
   if (!NETWORK_FAILURE.test(text)) return err instanceof Error ? err : new Error(text);
+  // 文案只说真的试过的来源：镜像被关掉时写「镜像（已关闭）」，用户会以为自己漏配了什么。
+  const prefixes = mirrorPrefixes();
+  const tried = prefixes.length
+    ? `镜像（${prefixes.map((prefix) => endpointOf(prefix)).join("、")}）与 ${endpointOf(PAYLOAD_BASE_URL)}`
+    : endpointOf(PAYLOAD_BASE_URL);
   const wrapped = new Error(
-    `${text}\n所有下载来源都不可用。请确认当前网络能访问 GitHub；如果使用代理，` +
-      `请在系统设置里开启后点「重试」。也可以设置 CANVAS_PAYLOAD_BASE_URL 指向可达的镜像目录。`,
+    `${text}\n` +
+      `已尝试的来源都不可用：${tried}。以下任一方式可以继续：\n` +
+      `  1. 点「重试」——下载支持续传，已落盘的字节不会丢；\n` +
+      `  2. 把载荷文件放到 ${localPayloadDirs()[0]}（本地构建/离线搬运，放好后点「重试」）；\n` +
+      `  3. 设置 CANVAS_PAYLOAD_MIRRORS 指向你自己的镜像前缀。`,
   );
   wrapped.cause = err;
   return wrapped;
@@ -1125,13 +1225,35 @@ async function fetchManifestText() {
       throw wrapped;
     }
   }
-  const candidates = await candidateUrls(MANIFEST_ASSET);
+  // 本地目录里的清单次之：本地构建把清单与载荷一起放进去，就能完全不联网。
+  const localManifest = findLocalFile(MANIFEST_ASSET);
+  if (localManifest) {
+    note(`清单来自本地目录：${localManifest}`);
+    return { text: fs.readFileSync(localManifest, "utf8"), url: localManifest };
+  }
+
+  // 远程来源并发探测：镜像通常 1-3 秒就回，官方在受限网络里 12 秒也未必建得起连接。
+  // 串行会让一个不可达的高优先级来源拖死全部后续尝试，这正是旧版在 Windows 上慢的原因。
+  const candidates = candidateUrls(MANIFEST_ASSET);
+  note(`清单来源 ${candidates.length} 个（并发探测）：${candidates.map(endpointOf).join("、")}`);
   let lastError;
-  for (const [index, candidate] of candidates.entries()) {
-    STATE.endpoint = endpointOf(candidate);
+  try {
+    const { url, text } = await probeFirst(candidates);
+    STATE.endpoint = endpointOf(url);
+    PREFERRED_BASE = url.slice(0, -(MANIFEST_ASSET.length + 1));
+    note(`清单来自 ${STATE.endpoint}`);
+    return { text, url };
+  } catch (err) {
+    lastError = err;
+    note(`清单探测全部失败：${err.message}`);
+  }
+
+  // 兜底：部分网络里只有 api.github.com 可达，用它把资产名换成重定向地址。
+  // 显式基址下不碰 GitHub（apiFallbackAllowed）。
+  const asset = apiFallbackAllowed() ? await resolveAssetUrl(MANIFEST_ASSET) : null;
+  if (asset) {
     try {
-      note(`清单来源 ${index + 1}/${candidates.length}：${STATE.endpoint}`);
-      const res = await httpRequest(candidate, {
+      const res = await httpRequest(asset, {
         headers: { Accept: "application/vnd.github+json" },
         timeout: 20000,
       });
@@ -1139,10 +1261,12 @@ async function fetchManifestText() {
         res.resume();
         throw new Error(`HTTP ${res.statusCode}`);
       }
-      return { text: await readTextResponse(res), url: candidate };
+      STATE.endpoint = "api.github.com";
+      note("清单来自 api.github.com 资产地址");
+      return { text: await readTextResponse(res), url: asset };
     } catch (err) {
       lastError = err;
-      note(`清单来源不可用：${err.message}`);
+      note(`API 资产地址不可用：${err.message}`);
     }
   }
   const wrapped = describeFailure(lastError ?? new Error("没有可用的清单来源"));
@@ -1219,19 +1343,8 @@ async function loadManifest() {
   }
 }
 
-// 两个载荷共用这一段，区别只在 label 与文案里的体积。
-async function stageArchive(spec, staging, label, approximateMB) {
-  const candidates = await candidateUrls(spec.file);
-  const archive = `${staging}.zip`;
-  fs.mkdirSync(path.dirname(staging), { recursive: true });
-  resetTransfer(spec.file, approximateMB * 1024 * 1024);
-  STATE.error = null;
-  STATE.retries = 0;
-  setStage("downloading", `下载${label}`, `首次启动，正在下载${label}（约 ${approximateMB} MB）`);
-  note(`候选下载来源 ${candidates.length} 个`);
-
-  const startedAt = Date.now();
-  // 弱网下整段下载也可能中断：重试时不清归档，已落盘的字节与 .partN 分片会接着用。
+// 逐个候选来源下载，每个给两次机会（弱网下第一次常断在 TLS 或半途）。返回最后一次错误。
+async function downloadFromCandidates(candidates, archive) {
   let lastError;
   for (const [index, candidate] of candidates.entries()) {
     STATE.endpoint = endpointOf(candidate);
@@ -1239,8 +1352,7 @@ async function stageArchive(spec, staging, label, approximateMB) {
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
         await downloadPayload(candidate, archive);
-        lastError = undefined;
-        break;
+        return undefined;
       } catch (err) {
         lastError = err;
         STATE.retries += 1;
@@ -1248,14 +1360,57 @@ async function stageArchive(spec, staging, label, approximateMB) {
         if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
       }
     }
-    if (!lastError) break;
+  }
+  return lastError ?? new Error("没有可用的下载来源");
+}
+
+// 两个载荷共用这一段，区别只在 label 与文案里的体积。
+async function stageArchive(spec, staging, label, approximateMB) {
+  const archive = `${staging}.zip`;
+  fs.mkdirSync(path.dirname(staging), { recursive: true });
+  resetTransfer(spec.file, approximateMB * 1024 * 1024);
+  STATE.error = null;
+  STATE.retries = 0;
+
+  // 本地归档最优先：本地构建或离线搬进来的 zip 直接校验，全程零网络（ADR-0009 决策 2）。
+  const local = findLocalFile(spec.file);
+  let localReady = false;
+  if (local) {
+    setStage("verifying", `使用本地${label}`, `正在校验本地${label}完整性`);
+    note(`发现本地${label}：${local}`);
+    fs.copyFileSync(local, archive);
+    STATE.receivedBytes = statSize(archive);
+    STATE.totalBytes = STATE.receivedBytes;
+    if ((await hashFile(archive)) === spec.sha256) {
+      // 校验通过不等于可用：解包、检查可执行文件都还在后面，所以这里只跳过下载。
+      note(`本地${label}校验通过，不再联网`);
+      localReady = true;
+    } else {
+      fs.rmSync(archive, { force: true });
+      note(`本地${label} sha256 不匹配，改为从远程来源下载`);
+    }
   }
 
-  if (lastError) {
-    const wrapped = describeFailure(lastError);
-    // 所有候选源都失败：网络/代理/镜像问题，与机器平台无关。
-    wrapped.code = "payload-unreachable";
-    throw wrapped;
+  const startedAt = Date.now();
+  if (!localReady) {
+    const candidates = candidateUrls(spec.file);
+    setStage("downloading", `下载${label}`, `首次启动，正在下载${label}（约 ${approximateMB} MB）`);
+    note(`候选下载来源 ${candidates.length} 个`);
+
+    // 弱网下整段下载也可能中断：重试时不清归档，已落盘的字节与 .partN 分片会接着用。
+    let lastError = await downloadFromCandidates(candidates, archive);
+    // API 资产地址放到最后一搏：它要多一次请求，只有直连与镜像全挂时才值得付。
+    if (lastError && apiFallbackAllowed()) {
+      const asset = await resolveAssetUrl(spec.file);
+      if (asset) lastError = await downloadFromCandidates([asset], archive);
+    }
+
+    if (lastError) {
+      const wrapped = describeFailure(lastError);
+      // 所有候选源都失败：网络/镜像问题，与机器平台无关。
+      wrapped.code = "payload-unreachable";
+      throw wrapped;
+    }
   }
 
   setStage("verifying", "校验完整性", `正在校验${label}完整性`);

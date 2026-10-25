@@ -34,7 +34,7 @@
   "error.installFailed": "安装画布服务失败",
   "error.stopFailed": "停止画布服务失败",
   "error.platformUnsupported": "当前平台还没有可用的画布运行时",
-  "error.payloadUnreachable": "下载画布运行时失败，请检查网络或代理后重试",
+  "error.payloadUnreachable": "画布运行时下载失败，镜像与 GitHub 官方均不可用。请点重试，或在进度页查看已尝试的来源",
   "error.payloadCorrupt": "画布运行时校验不通过，请重试",
   "error.payloadExtract": "画布运行时解包失败，请重试",
   "error.backendFailed": "画布后端未能启动",
