@@ -65,7 +65,7 @@ GitHub Actions 用**目标平台自己的 runner** 编译，`CGO_ENABLED=1` 交�
 | `plugin.json#platforms` 键 | runner | C 工具链 | 备注 |
 | --- | --- | --- | --- |
 | `darwin-arm64` | `macos-14` | Xcode clang | 现有唯一在售组合，作为基准 |
-| `darwin-x64` | `macos-13` | Xcode clang | Intel Mac |
+| `darwin-x64` | `macos-15-intel` | Xcode clang | Intel Mac。**`macos-13` 已退役**：2026-10-25 实测该 job 排队 20 分钟拿不到 runner，文档里只剩 `macos-14` / `macos-15` / `macos-15-intel` |
 | `win32-x64` | `windows-2022` | mingw-w64（`choco install mingw`） | `go-sqlite3` 官方支持 mingw |
 | `linux-x64` | `ubuntu-22.04` | gcc | **刻意不选 24.04**：glibc 2.35 的产物能跑在更多发行版上 |
 | `linux-arm64` | `ubuntu-24.04-arm` | gcc | 公开 arm64 runner |
@@ -224,7 +224,7 @@ npm run build                                 # 产出 release/open-ai-canvas-<v
 
 CI 侧（`build-canvas-payloads.yml`）：
 
-- 五个原生 runner（`windows-2022` / `macos-13` / `macos-14` / `ubuntu-22.04` / `ubuntu-24.04-arm`）各自 `CGO_ENABLED=1` 本地编译，web 只在上游 `web/` 构一次并作为 artifact 下发；
+- 五个原生 runner（`windows-2022` / `macos-15-intel` / `macos-14` / `ubuntu-22.04` / `ubuntu-24.04-arm`）各自 `CGO_ENABLED=1` 本地编译，web 只在上游 `web/` 构一次并作为 artifact 下发；
 - Windows runner 装 mingw 提供 gcc（`mattn/go-sqlite3` 需要 C 编译器）；
 - zip 先传、`payload-manifest.json` 最后覆盖上传作为提交点；
 - 载荷文件名由 `build-service-zip.mjs` 决定，清单由它在 `.payload/` 里扫描得到，两者不各写一份命名规则。
