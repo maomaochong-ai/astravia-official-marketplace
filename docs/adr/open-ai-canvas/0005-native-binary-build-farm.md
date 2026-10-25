@@ -227,9 +227,23 @@ CI 侧（`build-canvas-payloads.yml`）：
 - 五个原生 runner（`windows-2022` / `macos-15-intel` / `macos-14` / `ubuntu-22.04` / `ubuntu-24.04-arm`）各自 `CGO_ENABLED=1` 本地编译，web 只在上游 `web/` 构一次并作为 artifact 下发；
 - Windows runner 装 mingw 提供 gcc（`mattn/go-sqlite3` 需要 C 编译器）；
 - zip 先传、`payload-manifest.json` 最后覆盖上传作为提交点；
+- 上传 `.payload/*.zip` 必须 `include-hidden-files: true`：`upload-artifact` v4 默认不扫隐藏目录，`if-no-files-found` 又是 `warn`，于是五个 job 全绿、publish 拿到 0 个 zip；publish 里另加「10 个 zip 才继续」的硬校验；
 - 载荷文件名由 `build-service-zip.mjs` 决定，清单由它在 `.payload/` 里扫描得到，两者不各写一份命名规则。
 
-**NOT RUN**：`win32-x64` / `darwin-x64` / `linux-x64` / `linux-arm64` 四个平台的构建与运行，在本机无法验证——本机只有 darwin/arm64。这四个组合在 CI 首次跑通前是 **Assumed**，不是 Observed。上面那条 `archive: "file"` 的安装链路同理：`ctx.services.install` 的 base64 通道来自 SDK 类型与主进程实现（Observed），端到端安装属于 **Assumed**。
+**Observed（2026-10-25，run `40189644193`，五平台全绿后 publish 成功）**：
+
+| 事实 | 证据 |
+| --- | --- |
+| 5 个平台各自 `CGO_ENABLED=1` 原生编出 `yingce-backend` + 载荷 | 矩阵 5 个 job 均 `completed success` |
+| web 只构建一次并作为 artifact 下发 | `web-dist` 81,149,241 B，只在 `web` job 上传 |
+| 载荷体量 | payload 129–135 MB；agent runtime 85–96 MB |
+| Windows 用上了 `.exe` | `[agent] … 与 node（C:\hostedtoolcache\windows\node\22.19.0\x64\node.exe）` |
+| Release 11 份资产齐全 | 5 × `payload-1.6.9.2.1-*.zip` + 5 × `agent-runtime-0.0.1-*.zip` + `payload-manifest.json` |
+| 清单是最后上传的提交点 | 10 个 zip 均 `11:43:19Z`，manifest `11:43:31Z` |
+| 清单值与构建日志一致 | 抽查 6 项 `sha256`：linux-x64/linux-arm64/win32 的 payload 与 agent 全部逐字相等，`bytes` 与发布资产逐字相等 |
+| 插件实际用的那条 URL 现在能拿到清单 | `GET https://github.com/…/releases/download/plugin-open-ai-canvas-payloads/payload-manifest.json` → `http=200 bytes=2324`，`payloadVersion=1.6.9.2.1`、5 平台 |
+
+**NOT RUN**：五个平台的**实际启动**仍未验证——载荷只是被构建和发布出来，没有任何一台 Windows/Linux/Intel Mac 跑过「装插件 → 点启动 → 弹出画布」。`ctx.services.install` 的 base64 通道来自 SDK 类型与主进程实现（Observed），端到端安装仍是 **Assumed**。上表关掉的是“载荷不存在”这个窗口，不是“载荷能跑”。
 
 ## 后续（不在本文范围）
 
