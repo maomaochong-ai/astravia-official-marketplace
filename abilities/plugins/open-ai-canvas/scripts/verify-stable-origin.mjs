@@ -172,6 +172,24 @@ async function get(base, path, headers = {}) {
   return { status: res.status, headers: res.headers, text };
 }
 
+/** 同上：文件不存在就返回 null，让「落盘」那条断言自己变红。 */
+function readOriginFile(dataDir) {
+  try {
+    return JSON.parse(readFileSync(join(dataDir, "browser-origin.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/** 老 shim 的 state 里没有 origin；这时故意返回「拿不到」而不是抛错，
+ *  让依赖它的断言自然地变红——改前/改后对比要看的是失败列表，不是一条异常。 */
+function getOrNone(base, path, headers = {}) {
+  if (typeof base !== "string" || !/^https?:\/\//.test(base)) {
+    return Promise.resolve({ status: 0, headers: new Headers(), text: "" });
+  }
+  return get(base, path, headers);
+}
+
 async function main() {
   const layoutA = buildRuntime();
   const portsA = [await freePort(), await freePort()];
@@ -205,7 +223,7 @@ async function main() {
       String(nav.headers.get("cache-control")),
     );
 
-    const deep = await get(shimA.base, "/canvas/abc?tab=chat", { Accept: "text/html" });
+    const deep = await getOrNone(shimA.base, "/canvas/abc?tab=chat", { Accept: "text/html" });
     check(
       "深链连 query 一起带过去",
       deep.status === 302 && deep.headers.get("location") === `${originA}/canvas/abc?tab=chat`,
@@ -229,32 +247,33 @@ async function main() {
       `status=${api.status}`,
     );
 
-    const pinnedIndex = await get(originA, "/", { Accept: "text/html" });
+    const pinnedIndex = await getOrNone(originA, "/", { Accept: "text/html" });
     check(
       "固定 origin 上取得到画布首页",
       pinnedIndex.status === 200 && pinnedIndex.text.includes("<!doctype html"),
       `status=${pinnedIndex.status}`,
     );
 
-    const pinnedAsset = await get(originA, "/assets/app-abc123.js");
+    const pinnedAsset = await getOrNone(originA, "/assets/app-abc123.js");
     check(
       "固定 origin 上取得到带 hash 的资源",
       pinnedAsset.status === 200 && pinnedAsset.text.includes("canvas bundle"),
       `status=${pinnedAsset.status}`,
     );
 
-    const pinnedApi = await get(originA, "/api/canvas-projects/xyz");
+    const pinnedApi = await getOrNone(originA, "/api/canvas-projects/xyz");
     check(
       "固定 origin 上的 /api 也透传给后端",
       pinnedApi.status === 200 && pinnedApi.text.includes('"path":"/api/canvas-projects/xyz"'),
       `status=${pinnedApi.status}`,
     );
 
-    const file = JSON.parse(readFileSync(join(layoutA.dataDir, "browser-origin.json"), "utf8"));
+    const file = readOriginFile(layoutA.dataDir);
+    // （文件不存在 = 老 shim，不抛错，让断言直接变红。）
     check(
       "选中端口落到 browser-origin.json",
-      file.port === portsA[0] && file.origin === originA,
-      JSON.stringify(file.port),
+      file?.port === portsA[0] && file?.origin === originA,
+      JSON.stringify(file?.port ?? null),
     );
   } finally {
     await stopShim(shimA);
@@ -268,7 +287,7 @@ async function main() {
     check("重启后宿主端口确实变了（前提成立）", shimB.port !== shimA.port, `${shimA.port} → ${shimB.port}`);
     check("重启后 origin 不变（localStorage 不丢）", state.origin === originA, `${state.origin} vs ${originA}`);
 
-    const bookmark = await get(originA, "/", { Accept: "text/html" });
+    const bookmark = await getOrNone(originA, "/", { Accept: "text/html" });
     check(
       "旧书签（上次的 origin）重启后仍打开画布",
       bookmark.status === 200 && bookmark.text.includes("<!doctype html"),
