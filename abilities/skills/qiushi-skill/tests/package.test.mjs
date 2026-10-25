@@ -86,6 +86,12 @@ test("入口 SKILL.md 的身份与包一致", () => {
   assert.equal(fields.name, SLUG, "frontmatter name 必须等于包 slug");
   assert.equal(fields.version, ability.version, "frontmatter version 必须等于 ability.json 的 version");
   assert.ok(fields.description && fields.description.length > 20, "description 不能空");
+  // 命令面板与技能胶囊显示的是 alias；缺省时用户看到的是英文 slug 或市场英文名。
+  assert.ok(fields.alias && fields.alias.trim().length > 0, "frontmatter 必须声明 alias，否则命令区显示英文名");
+  assert.ok(
+    read("SKILL.md").includes("metadata:\n  astravia:\n    presentation:\n      icon:"),
+    "必须声明 metadata.astravia.presentation.icon，否则宿主显示默认方块图",
+  );
 });
 
 test("ability.json 身份与展示字段自洽", () => {
@@ -195,13 +201,19 @@ test("showcase 文案不超过 chat-thread 容器的可见高度", () => {
   }
 });
 
-test("详情页给宣传页留了可见入口", () => {
+test("详情页不再内嵌宣传页截图，改由图文导览入口打开", () => {
+  // 截图会随页面改版变旧，也让详情页把一份 76 KB 的页面压缩成一张首屏图。
+  // 入口改由 qiushi-guide 插件提供，skill 侧只保证页面文件本身还在。
+  const page = path.join(ROOT, "assets/preview/index.html");
+  assert.ok(statSync(page).size > 1024, "assets/preview/index.html 不存在或过小");
+
   for (const file of ["detail.json", "detail.zh.json"]) {
     const detail = JSON.parse(read(file));
-    const images = detail.blocks.filter((block) => block.type === "image");
-    const shot = images.find((block) => (block.src ?? "").includes("preview-hero"));
-    assert.ok(shot, `${file} 没有宣传页首屏截图`);
-    assert.ok(statSync(path.join(ROOT, shot.src)).size > 1024, `${shot.src} 不存在或过小`);
+    const screenshots = detail.blocks.filter(
+      (block) => block.type === "image" && (block.src ?? "").includes("preview"),
+    );
+    assert.deepStrictEqual(screenshots, [], `${file} 又把宣传页截图放回详情了`);
+
     const steps = detail.blocks.filter((block) => block.type === "steps").flatMap((block) => block.items ?? []);
     assert.ok(
       steps.some((item) => (item.description ?? "").includes("assets/preview/index.html")),

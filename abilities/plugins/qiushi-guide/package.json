@@ -1,0 +1,29 @@
+{
+  "name": "@astravia-marketplace/qiushi-guide",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc --noEmit",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "sync:preview": "node scripts/sync-preview-page.mjs"
+  },
+  "devDependencies": {
+    "@astravia-org/plugin-cli": "file:../../../.tooling/open-astravia/packages/plugins/plugin-cli",
+    "@astravia-org/plugin-sdk": "file:../../../.tooling/open-astravia/packages/plugins/plugin-sdk",
+    "@astravia-org/plugin-vite": "file:../../../.tooling/open-astravia/packages/plugins/plugin-vite",
+    "@tailwindcss/vite": "^4.1.12",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.1.1",
+    "@types/react-dom": "^19.1.1",
+    "jsdom": "^26.1.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.6"
+  }
+}

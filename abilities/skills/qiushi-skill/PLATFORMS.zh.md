@@ -24,7 +24,7 @@ node scripts/install-platforms.mjs --target all --dry-run        # 只打印计�
 |---|---|---|
 | `claude-code` | 入口、规程、命令、角色简报、hook | `~/.claude/plugins/qiushi-skill` |
 | `cursor` | 入口、规程、命令、角色简报、hook | `~/.cursor/plugins/qiushi-skill` |
-| `codex` | 入口、规程、命令 | `~/.codex/skills/qiushi-skill`（认 `$CODEX_HOME`） |
+| `codex` | 入口、规程、命令 | `~/.codex/skills/qiushi-skill`；设了 `$CODEX_HOME` 就是 `$CODEX_HOME/skills/qiushi-skill` |
 | `opencode` | 入口、规程、命令 | `~/.config/opencode/skills/qiushi-skill` + `~/.config/opencode/commands` |
 | `openclaw` | 入口、规程 | `~/.openclaw/skills/qiushi-skill` |
 | `hermes` | 入口、规程 | `~/.hermes/skills/qiushi-skill` |
@@ -32,6 +32,8 @@ node scripts/install-platforms.mjs --target all --dry-run        # 只打印计�
 | `astravia` | 入口、规程、命令 | `~/.astravia/skills/qiushi-skill`（通常不需要，市场安装已经做了这件事） |
 
 `--scope project` 改为写到当前目录下（`.claude/`、`.cursor/`、`.codex/`、`.opencode/`、`.hermes/`、`.nanobot/`、`skills/`）。
+
+每个目标还会带上 `references/cases/`——一份第三方案例和它的出处说明。它是引证用的阅读材料，不是规程，不会在任何宿主里多出一个面板条目。
 
 每次写入都会在目标根目录留一份 `.qiushi-skill-install.json`。因此有两条行为要先知道：
 
@@ -42,9 +44,9 @@ node scripts/install-platforms.mjs --target all --dry-run        # 只打印计�
 
 ## 各宿主补充
 
-- **Claude Code** —— bundle 自带 `hooks/hooks.json`，会话启动注入是原生的：第一轮对话前入口正文就在上下文里。`commands/` 里的文件成为斜杠命令，不需要额外配置。
+- **Claude Code** —— 副本里带 `.claude-plugin/marketplace.json`，这才是「能装」而不只是「放那里」的原因。复制完脚本会直接打印在 Claude Code 里要跑的两条命令：`/plugin marketplace add <安装目录>`，然后 `/plugin install qiushi-skill@qiushi-skill`。bundle 也自带 `hooks/hooks.json`，会话启动注入是原生的：第一轮对话前入口正文就在上下文里。`commands/` 里的文件成为斜杠命令。
 - **Cursor** —— 同样的 bundle 布局，用自己的插件目录。若你把插件目录改到了别处，用 `--dest` 指过去。
-- **Codex** —— 递归读技能目录，所以 `~/.codex/skills/qiushi-skill/` 会被识别成一组。但 hook **不**从技能目录读：Codex 认配置旁边的 `hooks.json`，想要注入就自己把 `hooks/hooks.json` 复制过去，并把 `${CLAUDE_PLUGIN_ROOT}` 改成实际安装路径。
+- **Codex** —— 递归读技能目录，所以复制过去的目录会被识别成一组。设了 `CODEX_HOME` 时落到 `$CODEX_HOME/skills/qiushi-skill`，否则落到 `~/.codex/skills/qiushi-skill`——和 Codex 自己的选择一致。但 hook **不**从技能目录读：Codex 认配置旁边的 `hooks.json`，想要注入就自己把 `hooks/hooks.json` 复制过去，并把 `${CLAUDE_PLUGIN_ROOT}` 改成实际安装路径。
 - **OpenCode** —— 规程加 Markdown 命令；命令落在共享的 `commands/` 目录，清单也写在那里。
 - **OpenClaw / Hermes / nanobot** —— 只放规程。Hermes 的 project 级复制需要在配置里加 `external_dirs` 才会被扫到。
 

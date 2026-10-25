@@ -1,9 +1,14 @@
 ---
 name: qiushi-skill
-version: 2.4.0
+alias: 求是方法论
+version: 2.5.0
 description: |
   求是方法论：先用「实事求是」约束全部判断，再按任务类型调用十件方法论武器之一——调查研究、矛盾分析、实践认识、群众路线、批评与自我批评、持久战略、集中兵力、星火燎原、统筹兼顾、工作流组合。当用户要求先把事实摸清再下判断、理清多头牵制的复杂局面、在多件事里定主攻、复盘已完成工作的质量、规划短期不可能速胜的长期任务，或直接点名其中某件方法论时使用。具体操作规程不在本文件里，按路由表读 references/skills/<name>/SKILL.md，不要凭记忆复述方法论。
-  English: Qiushi methodology — the governing principle of seeking truth from facts plus ten methodology playbooks (investigation, contradiction analysis, practice and cognition, mass line, criticism and self-criticism, protracted strategy, concentration of forces, spark and prairie fire, overall planning, workflow composition). Use when facts must be gathered before a judgment, a many-sided situation untangled, a main direction chosen among competing tasks, finished work reviewed honestly, or a long-horizon task planned — or when the user names one of these methods. The procedures live in references/skills/<name>/SKILL.md; read the one that fits instead of paraphrasing from memory.
+   English: Qiushi methodology — the governing principle of seeking truth from facts plus ten methodology playbooks (investigation, contradiction analysis, practice and cognition, mass line, criticism and self-criticism, protracted strategy, concentration of forces, spark and prairie fire, overall planning, workflow composition). Use when facts must be gathered before a judgment, a many-sided situation untangled, a main direction chosen among competing tasks, finished work reviewed honestly, or a long-horizon task planned — or when the user names one of these methods. The procedures live in references/skills/<name>/SKILL.md; read the one that fits instead of paraphrasing from memory.
+metadata:
+  astravia:
+    presentation:
+      icon: assets/icon.png
 ---
 
 # 求是方法论
@@ -73,6 +78,8 @@ description: |
 5. **要角色就派遣。** 需要并行摸清多个方面时，把 `$SKILL/agents/investigator.md` 当任务简报交给只读子 agent；交付前需要独立审查时，把 `$SKILL/agents/self-critic.md` 交给一个新的子任务。这两份是简报，不是宿主自动注册的 agent。
 
 自检：确认上述路径在本机都成立，跑 `node $SKILL/scripts/verify-package.mjs`。要看图文介绍页，跑 `$SKILL/scripts/open-preview.sh`（Windows 用 `open-preview.ps1`），会用默认浏览器打开包内页面。
+
+装到别的宿主：`node $SKILL/scripts/install-platforms.mjs --list` 列出探测到的宿主与落点，`--target claude-code|codex|cursor|opencode|openclaw|hermes|nanobot|astravia` 装其中一个（`--scope project` 写当前目录，`--dest <目录>` 指到别处，`--dry-run` 只看不写），`--uninstall --target <id>` 只删自己写过的东西。用户说「装到 Codex / Claude Code」时就用它，不要手工 `cp`。
 
 ## 指令优先级
 

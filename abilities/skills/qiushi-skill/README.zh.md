@@ -194,8 +194,20 @@ qiushi-skill/
 1. 市场页搜索「求是方法论」并安装
 2. 包落在 `~/.astravia/skills/qiushi-skill/`，技能面板里多出一条「求是方法论」，不需要逐个配置
 3. 断网也能用：十份规程是安装目录里的纯 Markdown，不发起任何网络请求
-2. 技能面板里多出一条「求是方法论」，不需要逐个配置
-3. 断网也能用：十份规程是安装目录里的纯 Markdown，不发起任何网络请求
+
+### 其他宿主，一条命令
+
+Astravia 不是唯一宿主。包里的布局每种文件型智能体都认，一个脚本就能放到各自会看的位置：
+
+```bash
+node scripts/install-platforms.mjs --list                  # 探测到了谁，会落到哪
+node scripts/install-platforms.mjs --target claude-code    # Claude Code
+node scripts/install-platforms.mjs --target codex          # Codex（~/.codex，或 $CODEX_HOME）
+node scripts/install-platforms.mjs --target cursor --dest <目录>
+node scripts/install-platforms.mjs --uninstall --target codex
+```
+
+Claude Code 的副本里还会带 `.claude-plugin/marketplace.json`；脚本会把收尾的两条斜杠命令直接打印出来（`/plugin marketplace add <目录>`、`/plugin install qiushi-skill@qiushi-skill`）。全程只复制本机上已有的文件，不走 `npx`、不走包仓库、不联网。完整目标表见 [PLATFORMS.zh.md](PLATFORMS.zh.md)。
 
 ## ✅ 本地自检
 

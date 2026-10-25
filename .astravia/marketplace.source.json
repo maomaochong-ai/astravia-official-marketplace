@@ -810,7 +810,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video and more, with MCP tools for project/canvas/task management.",
-      "version": "0.0.9",
+      "version": "0.0.10",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -1070,7 +1070,7 @@
       "slug": "qiushi-skill",
       "name": "Qiushi Methodology",
       "description": "Ten playbooks for framing, focus, iteration and review, shipped as one skill that picks the one that fits and works offline.",
-      "version": "2.4.0",
+      "version": "2.5.0",
       "configVersion": 1,
       "license": "MIT",
       "author": "HughYau / Astravia",
@@ -1104,6 +1104,45 @@
       "source": {
         "path": "abilities/skills/qiushi-skill"
       }
+    },
+    {
+      "type": "plugin",
+      "slug": "qiushi-guide",
+      "name": "Qiushi Illustrated Guide",
+      "description": "Open the illustrated Qiushi page right from its card: the ten methods as one scrollable overview, readable offline and without the methodology skill installed.",
+      "version": "0.1.0",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia / HughYau",
+      "category": "Productivity",
+      "categoryI18n": {
+        "zh": "效率",
+        "en": "Productivity"
+      },
+      "tags": [
+        "methodology",
+        "visual-guide",
+        "reading",
+        "offline"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "求是图文导览",
+            "description": "在求是方法论的卡片上直接打开那页图文介绍：十件方法一页看完，离线可用，没装方法论技能也能看。",
+            "tags": [
+              "方法论",
+              "图文",
+              "阅读",
+              "离线"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/qiushi-guide"
+      },
+      "minAppVersion": "0.5.59"
     }
   ],
   "version": "0.4.88"

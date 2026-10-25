@@ -368,6 +368,48 @@ if (!existsSync(catalogPath)) {
     }
   }
 
+  // 文档与落点表必须互相认账：声称认某个环境变量，就得真在 rootFor 里实现；
+  // 实现了就得写进文档，否则用户不知道那个变量可以把包装到别处。
+  const platformDocs = (
+    await Promise.all(
+      ["PLATFORMS.md", "PLATFORMS.zh.md"].map((doc) =>
+        existsSync(path.join(root, doc)) ? readFile(path.join(root, doc), "utf8") : "",
+      ),
+    )
+  ).join("\n");
+
+  const declaredEnvRoots = new Set();
+
+  for (const target of catalog?.targets ?? []) {
+    const envRoot = target.root?.envRoot;
+    if (!envRoot) continue;
+    if (typeof envRoot !== "object" || Array.isArray(envRoot)) {
+      fail("scripts/platforms.json", `${target.id} 的 root.envRoot 必须是 { 变量名: 后缀 }`);
+      continue;
+    }
+
+    for (const [name, suffix] of Object.entries(envRoot)) {
+      if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+        fail("scripts/platforms.json", `${target.id} 的 envRoot 键 ${name} 不是环境变量名`);
+      }
+      if (typeof suffix !== "string" || !suffix || path.isAbsolute(suffix) || suffix.includes("..")) {
+        fail("scripts/platforms.json", `${target.id} 的 envRoot.${name} 必须是包内相对后缀`);
+      }
+      declaredEnvRoots.add(name);
+      if (!platformDocs.includes(name)) {
+        fail("PLATFORMS.md", `${target.id} 认 ${name}，但两份落点文档都没写`);
+      }
+    }
+  }
+
+  // 宿主自己提供的变量（写进 hook 脚本里用的），不是落点表该实现的。
+  const hostProvided = new Set(["CLAUDE_PLUGIN_ROOT", "CLAUDE_PROJECT_DIR"]);
+
+  for (const [, name] of platformDocs.matchAll(/\$\{?([A-Z][A-Z0-9_]{2,})\}?/g)) {
+    if (hostProvided.has(name) || declaredEnvRoots.has(name)) continue;
+    fail("PLATFORMS.md", `文档声称认 $${name}，但落点表没有任何 envRoot 实现它`);
+  }
+
   if (!existsSync(path.join(root, "scripts", "install-platforms.mjs"))) {
     fail("scripts/install-platforms.mjs", "缺失：落点表没有执行者");
   }

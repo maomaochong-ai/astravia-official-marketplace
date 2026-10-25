@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Companion for the Qiushi Methodology",
+      "title": "Read the illustrated introduction inside Astravia",
+      "description": "The Qiushi Methodology skill ships a one-page illustrated introduction. This companion opens that page — the shipped file itself, not a screenshot — from the ability detail page, and keeps it one click away in the sidebar."
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "One click from the ability page",
+          "description": "A card sits directly under the install header of the Qiushi Methodology detail page; its button opens the page.",
+          "icon": "solar:cursor-bold"
+        },
+        {
+          "title": "The page, not a picture",
+          "description": "It renders the package's own assets/preview/index.html, so nothing goes stale when the package is updated."
+        },
+        {
+          "title": "Never drifts from the skill",
+          "description": "The copy of the page that ships in this plugin is compared byte for byte with the skill package on every build."
+        },
+        {
+          "title": "No setup, no network",
+          "description": "No file paths to configure, no browser to launch, and nothing downloaded at view time."
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "Install this plugin",
+          "description": "The Qiushi Methodology skill on its own keeps the page closed; this plugin is what adds the entry that opens it."
+        },
+        {
+          "title": "Open the Qiushi Methodology detail page",
+          "description": "The illustrated-introduction card appears under the install button."
+        },
+        {
+          "title": "Click Open the page",
+          "description": "The introduction opens at full width inside Astravia, and stays reachable from the sidebar afterwards."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Requires Astravia 0.5.59 or newer. The page is bundled with this plugin, so it opens offline even before the Qiushi Methodology skill is installed; install that skill to get the workflows the page describes."
+    }
+  ]
+}

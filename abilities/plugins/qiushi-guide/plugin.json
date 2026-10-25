@@ -1,0 +1,22 @@
+{
+  "id": "qiushi-guide",
+  "name": "%name%",
+  "version": "0.1.0",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "qiushi_guide",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.ability-detail",
+    "ui.slot.workspace-view"
+  ],
+  "description": "%description%",
+  "author": "Astravia",
+  "icon": "solar:gallery-wide-bold",
+  "defaultLocale": "en"
+}

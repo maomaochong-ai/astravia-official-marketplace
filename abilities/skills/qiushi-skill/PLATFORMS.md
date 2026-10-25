@@ -24,7 +24,7 @@ node scripts/install-platforms.mjs --target all --dry-run        # print the pla
 |---|---|---|
 | `claude-code` | entry, skills, commands, agents, hooks | `~/.claude/plugins/qiushi-skill` |
 | `cursor` | entry, skills, commands, agents, hooks | `~/.cursor/plugins/qiushi-skill` |
-| `codex` | entry, skills, commands | `~/.codex/skills/qiushi-skill` (`$CODEX_HOME` respected) |
+| `codex` | entry, skills, commands | `~/.codex/skills/qiushi-skill`, or `$CODEX_HOME/skills/qiushi-skill` when that variable is set |
 | `opencode` | entry, skills, commands | `~/.config/opencode/skills/qiushi-skill` + `~/.config/opencode/commands` |
 | `openclaw` | entry, skills | `~/.openclaw/skills/qiushi-skill` |
 | `hermes` | entry, skills | `~/.hermes/skills/qiushi-skill` |
@@ -32,6 +32,8 @@ node scripts/install-platforms.mjs --target all --dry-run        # print the pla
 | `astravia` | entry, skills, commands | `~/.astravia/skills/qiushi-skill` (usually unnecessary: the market already does this) |
 
 `--scope project` writes under the current directory instead (`.claude/`, `.cursor/`, `.codex/`, `.opencode/`, `.hermes/`, `.nanobot/`, `skills/`).
+
+Every target also carries `references/cases/` — one third-party case study plus its provenance note. It is reading material for citation, not a playbook, so it does not add a panel entry anywhere.
 
 Every write is recorded in `.qiushi-skill-install.json` inside the target root. Two consequences worth knowing before you run it:
 
@@ -42,9 +44,9 @@ Copying the ten playbooks means a host that walks skill folders recursively (Ast
 
 ## Per-host notes
 
-- **Claude Code** — the bundle carries `hooks/hooks.json`, so the SessionStart injection is native: the entry text is in context before your first turn. Commands in `commands/` become slash commands. Nothing else to configure.
+- **Claude Code** — the copy carries `.claude-plugin/marketplace.json`, which is what makes the folder installable rather than merely present. After copying, the script prints the two commands to run inside Claude Code: `/plugin marketplace add <installed folder>`, then `/plugin install qiushi-skill@qiushi-skill`. The bundle also carries `hooks/hooks.json`, so the SessionStart injection is native: the entry text is in context before your first turn. Commands in `commands/` become slash commands.
 - **Cursor** — same bundle layout, own plugin directory. If you point Cursor at a custom plugin folder, use `--dest`.
-- **Codex** — reads skills recursively, so `~/.codex/skills/qiushi-skill/` is found as one group. Hooks are **not** read from a skill folder: Codex takes them from `hooks.json` beside its config, so copy `hooks/hooks.json` there yourself if you want the injection, and fix the `${CLAUDE_PLUGIN_ROOT}` path to the installed folder.
+- **Codex** — reads skills recursively, so the copied folder is found as one group. If `CODEX_HOME` is set, the copy goes to `$CODEX_HOME/skills/qiushi-skill` instead of `~/.codex/skills/qiushi-skill` — the same choice Codex itself makes. Hooks are **not** read from a skill folder: Codex takes them from `hooks.json` beside its config, so copy `hooks/hooks.json` there yourself if you want the injection, and fix the `${CLAUDE_PLUGIN_ROOT}` path to the installed folder.
 - **OpenCode** — skills plus Markdown commands; commands land in the shared `commands/` directory and are recorded in a ledger there.
 - **OpenClaw / Hermes / nanobot** — skills only. Hermes needs an `external_dirs` entry in its config before a project-scope copy is scanned.
 
