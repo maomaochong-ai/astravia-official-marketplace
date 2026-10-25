@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "open-ai-canvas",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "icon": "assets/icon.png",
   "detail": {
     "format": "blocks",
@@ -10,7 +10,7 @@
     "meta": [
       {
         "key": "repository",
-        "value": "https://github.com/maomaochong-ai/open-ai-canvas"
+        "value": "https://github.com/ddcat-ai/open-ai-canvas"
       },
       {
         "key": "license",
