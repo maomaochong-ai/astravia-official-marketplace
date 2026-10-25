@@ -7985,7 +7985,7 @@
       "slug": "qiushi-skill",
       "name": "Qiushi Methodology",
       "description": "Ten playbooks for framing, focus, iteration and review, shipped as one skill that picks the one that fits and works offline.",
-      "version": "2.5.0",
+      "version": "2.5.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "HughYau / Astravia",
@@ -8019,62 +8019,8 @@
       "source": {
         "path": "abilities/skills/qiushi-skill"
       }
-    },
-    {
-      "type": "plugin",
-      "slug": "qiushi-guide",
-      "name": "Qiushi Illustrated Guide",
-      "description": "Open the illustrated Qiushi page right from its card: the ten methods as one scrollable overview, readable offline and without the methodology skill installed.",
-      "version": "0.1.0",
-      "configVersion": 1,
-      "license": "MIT",
-      "author": "Astravia / HughYau",
-      "category": "Productivity",
-      "categoryI18n": {
-        "zh": "效率",
-        "en": "Productivity"
-      },
-      "tags": [
-        "methodology",
-        "visual-guide",
-        "reading",
-        "offline"
-      ],
-      "detail": {
-        "i18n": {
-          "zh": {
-            "name": "求是图文导览",
-            "description": "在求是方法论的卡片上直接打开那页图文介绍：十件方法一页看完，离线可用，没装方法论技能也能看。",
-            "tags": [
-              "方法论",
-              "图文",
-              "阅读",
-              "离线"
-            ]
-          }
-        }
-      },
-      "source": {
-        "path": "abilities/plugins/qiushi-guide"
-      },
-      "releases": [
-        {
-          "version": "0.1.0",
-          "minAppVersion": "0.5.59",
-          "pluginApiVersion": "^2.0.0",
-          "permissions": [
-            "ui.slot.ability-detail",
-            "ui.slot.workspace-view"
-          ],
-          "commands": [],
-          "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-qiushi-guide/qiushi-guide-0.1.0.astraviapkg",
-            "sha256": "67ce44c949ea9926e79eb6e3734717334a845fbba214dc8fe91b1bc78f1b9b39"
-          }
-        }
-      ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.25-3"
+  "marketplaceVersion": "2026.10.25-4"
 }
