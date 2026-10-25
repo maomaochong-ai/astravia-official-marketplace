@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "type": "skill",
+  "slug": "qiushi-skill",
+  "version": "2.4.0",
+  "name": "Qiushi Methodology",
+  "description": "Arm Astravia with ten playbooks to think before acting: settle the facts first, then judge the contradiction, pick the main effort and test the plan instead of guessing.",
+  "configVersion": 1,
+  "license": "MIT",
+  "author": "HughYau / Astravia",
+  "category": "Productivity",
+  "categoryI18n": {
+    "zh": "效率",
+    "en": "Productivity"
+  },
+  "tags": [
+    "methodology",
+    "reasoning",
+    "planning",
+    "review",
+    "workflow"
+  ],
+  "icon": "assets/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/HughYau/qiushi-skill"
+      },
+      {
+        "key": "docs",
+        "value": "https://github.com/maomaochong-ai/astravia-official-marketplace/blob/main/abilities/skills/qiushi-skill/README.md"
+      },
+      {
+        "key": "license",
+        "value": "https://github.com/HughYau/qiushi-skill/blob/5ace7173b2d71fa7848c56a29f74b39d611c6cb3/LICENSE"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json",
+        "name": "求是方法论",
+        "description": "十份方法论规程：先弄清事实，再判断矛盾、选择主攻、检验方案，让 Astravia 的长任务推进有据可依。",
+        "tags": [
+          "方法论",
+          "判断",
+          "规划",
+          "复盘",
+          "工作流"
+        ]
+      }
+    }
+  }
+}

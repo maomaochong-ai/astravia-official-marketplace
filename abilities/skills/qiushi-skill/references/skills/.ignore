@@ -1,0 +1,11 @@
+# 让宿主装好这个包后，只多出一条技能。
+#
+# 宿主发现技能的方式是递归扫目录，凡是叫 SKILL.md 的文件都会被当成一条独立技能
+# （~/.astravia/skills/<name>/SKILL.md 与任意深度的 SKILL.md 同等对待）。
+# 这里这十份 SKILL.md 是入口 SKILL.md 的分派目标，必须与上游同名，但又不能在
+# 面板里各自注册一次，所以在它们所在目录放这份忽略清单。
+#
+# 宿主读取 .gitignore / .ignore / .fdignore 三种名字（每层目录都会读，规则自动
+# 加上本目录前缀）。选 .ignore 而不是 .gitignore，是因为 .gitignore 在这里会连
+# 带让 git 不再追踪这些正文文件。
+*/SKILL.md

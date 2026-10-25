@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Qiushi Methodology",
+      "title": "Ten playbooks for thinking before you build",
+      "description": "A connected set of working methods for the moments where the answer is not obvious: state the facts first, find the contradiction that governs the rest, concentrate on one target, test the plan in practice, and review the result honestly. One skill carries the entry rule and all ten playbooks, and reads only the method that fits — text only, works offline.",
+      "badges": [
+        "10 playbooks",
+        "Text only, works offline",
+        "MIT"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "assets/logo.png",
+      "alt": "The qiushi-skill project mark",
+      "caption": "Official mark of the upstream project (assets/logo_main.png), unmodified apart from format."
+    },
+    {
+      "type": "image",
+      "src": "assets/preview/preview-hero.png",
+      "alt": "First screen of the offline intro page that ships with the package",
+      "caption": "The page itself, not a mock-up: hero, three quick facts and the index of methods. It opens from the skill folder with no network — see the last step below."
+    },
+    {
+      "type": "feature-grid",
+      "title": "The entry rule and ten playbooks",
+      "items": [
+        {
+          "title": "Arm the Thinking",
+          "description": "The entry principle: facts first, then one downstream method when it clearly fits.",
+          "icon": "solar:eye-bold"
+        },
+        {
+          "title": "Investigate First",
+          "description": "Gather first-hand evidence and return a fact / inference / unknown ledger.",
+          "icon": "solar:magnifer-zoom-in-bold"
+        },
+        {
+          "title": "Contradiction Analysis",
+          "description": "Split a tangled problem into opposing forces and name the principal contradiction.",
+          "icon": "solar:layers-bold"
+        },
+        {
+          "title": "Concentrate Forces",
+          "description": "List everything, lock onto one main target, finish and verify it before switching.",
+          "icon": "solar:target-bold"
+        },
+        {
+          "title": "Practice and Cognition",
+          "description": "Run the plan, read the real result, iterate in a spiral with a declared stop condition.",
+          "icon": "solar:play-circle-bold"
+        },
+        {
+          "title": "Overall Planning",
+          "description": "Map every trade-off, set today's emphasis and floor, and define what counts as imbalance.",
+          "icon": "solar:shield-warning-bold"
+        },
+        {
+          "title": "Mass Line",
+          "description": "Collect input from everyone holding ground truth, synthesize it, then take it back to them.",
+          "icon": "solar:global-linear"
+        },
+        {
+          "title": "Criticism and Self-Criticism",
+          "description": "Review finished work concretely and turn findings into fixes with owners.",
+          "icon": "solar:document-text-bold"
+        },
+        {
+          "title": "Protracted Strategy",
+          "description": "For long work: name the stage, write its exit condition, keep one local offensive going.",
+          "icon": "solar:map-bold"
+        },
+        {
+          "title": "Spark a Prairie Fire",
+          "description": "Start from nothing by taking one foothold that can hold, be reused and grow.",
+          "icon": "solar:box-linear"
+        },
+        {
+          "title": "Workflow Patterns",
+          "description": "Four fixed chains for kickoff, hard problems, iteration and retrospectives, with handoffs.",
+          "icon": "solar:route-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Start using it",
+      "items": [
+        {
+          "title": "Install it once",
+          "description": "Add it from the marketplace. A single entry appears in your skill panel and carries the entry rule plus all ten playbooks — no per-method setup."
+        },
+        {
+          "title": "Describe the situation",
+          "description": "Ask normally, or name a method. The skill applies the four ground rules, then reads the playbook that fits straight out of its own reference folder."
+        },
+        {
+          "title": "Work through it in the conversation",
+          "description": "Each method asks for a concrete artefact: a ledger, a principal contradiction, a main target, a review report."
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "Two extras worth knowing",
+      "items": [
+        {
+          "title": "Open the illustrated intro",
+          "description": "The package ships a self-contained page at assets/preview/index.html. After installing, run open ~/.astravia/skills/qiushi-skill/assets/preview/index.html (or bash scripts/open-preview.sh inside the package). It works offline, with every image inlined."
+        },
+        {
+          "title": "Dispatch a role when one is needed",
+          "description": "agents/ holds two briefs: a read-only investigator that returns facts / inferences / unknowns, and a fresh-context reviewer that reads the artefacts rather than the author's story. Hand one to a sub-task instead of reviewing your own work in place."
+        }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "The migration is half done and everything is behind. Where do I even start?",
+        "assistant_reply": "Facts first: which slice migrates cleanly, and why. Then the contradiction holding the rest back. Then one path end to end this week; the rest gets a date."
+      }
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Upstream injects its entry method at session start through a Claude Code hook and registers eleven separate skills. Astravia has a SessionStart engine too, so the hook ships with this package, but whether it fires depends on the host treating the installed folder as a hook source. Nothing is lost if it does not: the entry text loads when the skill is opened or matched, and each method is read from its own file only when actually needed. Method texts are shipped unmodified from upstream 2.0.0 under the MIT license."
+    }
+  ]
+}

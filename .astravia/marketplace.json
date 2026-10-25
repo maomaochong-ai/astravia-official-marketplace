@@ -7959,8 +7959,48 @@
       "source": {
         "path": "abilities/skills/kali-linux"
       }
+    },
+    {
+      "type": "skill",
+      "slug": "qiushi-skill",
+      "name": "Qiushi Methodology",
+      "description": "Ten playbooks for framing, focus, iteration and review, shipped as one skill that picks the one that fits and works offline.",
+      "version": "2.4.0",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "HughYau / Astravia",
+      "category": "Productivity",
+      "categoryI18n": {
+        "zh": "效率",
+        "en": "Productivity"
+      },
+      "tags": [
+        "methodology",
+        "reasoning",
+        "planning",
+        "review",
+        "workflow"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "求是方法论",
+            "description": "十份方法论规程：先弄清事实，再判断矛盾、选择主攻、检验方案，让长任务推进有据可依；装一次、用到哪件读哪件。",
+            "tags": [
+              "方法论",
+              "判断",
+              "规划",
+              "复盘",
+              "工作流"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/skills/qiushi-skill"
+      }
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.24-16"
+  "marketplaceVersion": "2026.10.25-1"
 }
