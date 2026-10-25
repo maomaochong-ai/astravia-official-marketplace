@@ -810,7 +810,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video and more, with MCP tools for project/canvas/task management.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",

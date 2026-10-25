@@ -134,6 +134,9 @@ async function startShim({ withWeb = true } = {}) {
       ASTRAVIA_SERVICE_RUNTIME_DIR: layout.runtimeDir,
       CANVAS_PAYLOAD_MANIFEST: layout.manifestPath,
       CANVAS_PAYLOAD_BASE_URL: "",
+      // 本脚本验的是「静态文件能不能从宿主端口取到」（ADR-0008）；
+      // 固定 origin 重定向是 ADR-0010 的事，关掉它，断言才只指向一个变量。
+      CANVAS_STABLE_PORTS: "off",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
