@@ -38,6 +38,7 @@
   "error.payloadCorrupt": "画布运行时校验不通过，请重试",
   "error.payloadExtract": "画布运行时解包失败，请重试",
   "error.backendFailed": "画布后端未能启动",
+  "error.webBundleMissing": "画布运行时缺少前端文件，请重新安装",
   "error.toast": "操作失败",
   "workflow.title": "最近一次工作流",
   "workflow.summary": "{{nodes}} 个节点 · {{edges}} 条连线 · 第 {{revision}} 版",

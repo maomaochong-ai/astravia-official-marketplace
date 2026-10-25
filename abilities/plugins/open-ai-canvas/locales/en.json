@@ -38,6 +38,7 @@
   "error.payloadCorrupt": "The canvas runtime failed its integrity check. Please try again.",
   "error.payloadExtract": "Failed to unpack the canvas runtime. Please try again.",
   "error.backendFailed": "The canvas backend did not start",
+  "error.webBundleMissing": "The canvas runtime is missing its frontend files. Please reinstall.",
   "error.toast": "Operation failed",
   "workflow.title": "Last workflow",
   "workflow.summary": "{{nodes}} nodes · {{edges}} edges · revision {{revision}}",
