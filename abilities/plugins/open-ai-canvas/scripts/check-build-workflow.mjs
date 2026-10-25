@@ -35,6 +35,10 @@ const FORBIDDEN = [
   { pattern: /^\s*bun\s+install\b/m, why: "bun install 应该由 --web 在 <canvas-dir>/web 里执行" },
   { pattern: /^\s*bun\s+run\s+build\b/m, why: "bun run build 应该由 --web 执行" },
   { pattern: /^\s*go\s+build\b/m, why: "go build 应该由 --backend 执行（否则 ldflags 与输出名各写一份）" },
+  {
+    pattern: /--node-bin\s+"?\$\(command -v node\)/,
+    why: "Git Bash 给的路径可能不带 .exe；不传 --node-bin，脚本默认用当前 node",
+  },
 ];
 
 // working-directory 只允许落到插件自己的目录；指向上游仓库的相对路径意味着在 YAML 里猜目录。

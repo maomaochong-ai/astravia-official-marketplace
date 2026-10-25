@@ -261,10 +261,11 @@ jobs:
         working-directory: plugin/abilities/plugins/open-ai-canvas
         run: |
           set -euo pipefail
+          # 不传 --node-bin：脚本默认用正在跑它的 node（setup-node 装的 22.19.0）。
+          # `command -v node` 在 Git Bash 下会给出不带 .exe 的原生路径，白掉一轮 CI。
           node scripts/build-service-zip.mjs --agent-runtime \
             --canvas-dir "${{ github.workspace }}/upstream" \
-            --platform "${{ matrix.platform }}" \
-            --node-bin "$(command -v node)"
+            --platform "${{ matrix.platform }}"
 
       - uses: actions/upload-artifact@v4
         with:

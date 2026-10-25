@@ -324,13 +324,31 @@ const NODE_MIN_MINOR = 19;
 // node 不随上游仓库走，得单独挑一个：宿主的 ~/.astravia/runtimes/node/<ver>/bin/node
 // 就是官方分发包，版本对得上 pi 的 engines（>=22.19.0）。
 async function pickNodeBin(explicit) {
-  if (explicit) return explicit;
+  if (explicit) {
+    // 显式传入时校验它真的存在。Git Bash 的 `command -v node` 会给出不带 `.exe` 的
+    // 原生路径（2026-10-25 的 Windows 失败：open 'C:\…\x64\node' ENOENT），
+    // 所以补一次 `.exe` 再判定，不要直接把一个字符串当成文件。
+    const candidates = [explicit, `${explicit}.exe`];
+    for (const candidate of candidates) {
+      try {
+        await stat(candidate);
+        return path.resolve(candidate);
+      } catch {
+        /* 试下一个 */
+      }
+    }
+    console.error(
+      `Error: --node-bin "${explicit}" 不是一个存在的文件。不给 --node-bin 时默认用当前进程的 node（${process.execPath}）。`,
+    );
+    process.exit(1);
+  }
+  // 其次找宿主自带的官方 node 分发包（本地手动构建时常见）。
   const runtimes = path.join(os.homedir(), ".astravia", "runtimes", "node");
   let names = [];
   try {
     names = await readdir(runtimes);
   } catch {
-    return "";
+    names = [];
   }
   const versions = names
     .filter((name) => /^v?\d+\.\d+\.\d+$/.test(name))
@@ -351,7 +369,9 @@ async function pickNodeBin(explicit) {
       /* 继续找下一个 */
     }
   }
-  return "";
+  // 最后用正在跑这个脚本的 node：CI 里它就是 setup-node 装的那个。
+  // 比 `command -v node` 稳 —— 那条路在 Windows 上要经过 Git Bash 的路径翻译。
+  return process.execPath;
 }
 
 async function buildAgentPayload({ canvasDir, platform, nodeBin }) {
