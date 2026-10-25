@@ -111,6 +111,9 @@ const FAILURE_MESSAGE_KEYS: Record<string, string> = {
   "payload-extract-failed": "error.payloadExtract",
   "backend-spawn-failed": "error.backendFailed",
   "backend-exited": "error.backendFailed",
+  // 载荷缺前端产物：后端能起、健康门也过，但打开画布只会看到一段 404。
+  // 必须在准备阶段就带着 code 停下来（ADR-0008）。
+  "web-bundle-missing": "error.webBundleMissing",
 };
 
 /** 宿主 install() 的载荷格式是 base64 字符串；分块拼接，避开 fromCharCode 的参数上限。 */
