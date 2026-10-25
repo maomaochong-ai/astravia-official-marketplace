@@ -1,0 +1,10 @@
+{
+  "name": "Qiushi Illustrated Guide",
+  "description": "Read the illustrated introduction to the Qiushi Methodology inside Astravia: one click from its ability page, or open it any time from the sidebar.",
+  "guide.view.title": "Qiushi Illustrated Guide",
+  "guide.view.subtitle": "The governing principle and the ten playbooks on one page, exactly as the package introduces them.",
+  "guide.slot.title": "Illustrated introduction",
+  "guide.slot.subtitle": "One page shows the governing principle, the ten playbooks and where each one applies — no screenshot, no external browser.",
+  "guide.slot.open": "Open the page",
+  "guide.frame.title": "Illustrated introduction to the Qiushi Methodology"
+}

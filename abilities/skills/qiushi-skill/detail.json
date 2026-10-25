@@ -19,12 +19,6 @@
       "caption": "Official mark of the upstream project (assets/logo_main.png), unmodified apart from format."
     },
     {
-      "type": "image",
-      "src": "assets/preview/preview-hero.png",
-      "alt": "First screen of the offline intro page that ships with the package",
-      "caption": "The page itself, not a mock-up: hero, three quick facts and the index of methods. It opens from the skill folder with no network — see the last step below."
-    },
-    {
       "type": "feature-grid",
       "title": "The entry rule and ten playbooks",
       "items": [
@@ -109,7 +103,7 @@
       "items": [
         {
           "title": "Open the illustrated intro",
-          "description": "The package ships a self-contained page at assets/preview/index.html. After installing, run open ~/.astravia/skills/qiushi-skill/assets/preview/index.html (or bash scripts/open-preview.sh inside the package). It works offline, with every image inlined."
+          "description": "The package ships a self-contained page at assets/preview/index.html. Install the companion Qiushi Illustrated Guide from the marketplace and a card appears right here on this page — one click opens that file. Without the companion, open it directly: open ~/.astravia/skills/qiushi-skill/assets/preview/index.html, or bash scripts/open-preview.sh inside the package. Every image is inlined, so it works offline."
         },
         {
           "title": "Dispatch a role when one is needed",

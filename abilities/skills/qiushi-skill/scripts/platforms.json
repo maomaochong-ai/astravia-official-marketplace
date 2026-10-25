@@ -7,7 +7,8 @@
     "skills": { "from": "references/skills", "to": "skills", "kind": "children", "required": true },
     "commands": { "from": "commands", "to": "commands", "kind": "files", "extension": ".md" },
     "agents": { "from": "agents", "to": "agents", "kind": "files", "extension": ".md" },
-    "hooks": { "from": "hooks", "to": "hooks", "kind": "children" }
+    "hooks": { "from": "hooks", "to": "hooks", "kind": "children" },
+    "cases": { "from": "references/cases", "to": "references/cases", "kind": "files", "extension": ".md" }
   },
   "targets": [
     {
@@ -16,12 +17,23 @@
       "kind": "bundle",
       "detect": ["~/.claude", "<project>/.claude"],
       "root": { "user": "~/.claude/plugins/qiushi-skill", "project": ".claude/plugins/qiushi-skill" },
-      "assets": ["entry", "skills", "commands", "agents", "hooks"],
+      "assets": ["entry", "skills", "commands", "agents", "hooks", "cases"],
       "pluginManifest": {
         "path": ".claude-plugin/plugin.json",
         "name": "qiushi-skill",
         "description": "Qiushi methodology: ten working methods under one governing principle"
       },
+      "marketplaceManifest": {
+        "path": ".claude-plugin/marketplace.json",
+        "name": "qiushi-skill",
+        "owner": { "name": "HughYau", "url": "https://github.com/HughYau" },
+        "plugin": {
+          "name": "qiushi-skill",
+          "source": "./",
+          "description": "Methodology skills, a SessionStart hook and slash commands"
+        }
+      },
+      "nextSteps": ["/plugin marketplace add {root}", "/plugin install qiushi-skill@qiushi-skill"],
       "hooksNote": "hooks/hooks.json is a native SessionStart source here; the host picks it up without extra configuration."
     },
     {
@@ -30,16 +42,20 @@
       "kind": "bundle",
       "detect": ["~/.cursor", "<project>/.cursor"],
       "root": { "user": "~/.cursor/plugins/qiushi-skill", "project": ".cursor/plugins/qiushi-skill" },
-      "assets": ["entry", "skills", "commands", "agents", "hooks"],
+      "assets": ["entry", "skills", "commands", "agents", "hooks", "cases"],
       "note": "Cursor reads plugins from its own plugin directory; if yours is customised, point --dest at it."
     },
     {
       "id": "codex",
       "label": "Codex",
       "kind": "skills",
-      "detect": ["~/.codex", "<project>/.codex"],
-      "root": { "user": "~/.codex/skills/qiushi-skill", "project": ".codex/skills/qiushi-skill" },
-      "assets": ["entry", "skills", "commands"],
+      "detect": ["$CODEX_HOME", "~/.codex", "<project>/.codex"],
+      "root": {
+        "user": "~/.codex/skills/qiushi-skill",
+        "project": ".codex/skills/qiushi-skill",
+        "envRoot": { "CODEX_HOME": "skills/qiushi-skill" }
+      },
+      "assets": ["entry", "skills", "commands", "cases"],
       "hooksNote": "Codex takes hooks from hooks.json beside its config, not from a skill folder. Copy hooks/hooks.json yourself if you want the injection."
     },
     {
@@ -49,7 +65,7 @@
       "detect": ["~/.config/opencode", "<project>/.opencode"],
       "root": { "user": "~/.config/opencode/skills/qiushi-skill", "project": ".opencode/skills/qiushi-skill" },
       "commandRoot": { "user": "~/.config/opencode/commands", "project": ".opencode/commands" },
-      "assets": ["entry", "skills", "commands"]
+      "assets": ["entry", "skills", "commands", "cases"]
     },
     {
       "id": "openclaw",
@@ -57,7 +73,7 @@
       "kind": "skills",
       "detect": ["~/.openclaw", "<project>/.openclaw"],
       "root": { "user": "~/.openclaw/skills/qiushi-skill", "project": "skills/qiushi-skill" },
-      "assets": ["entry", "skills"]
+      "assets": ["entry", "skills", "cases"]
     },
     {
       "id": "hermes",
@@ -65,7 +81,7 @@
       "kind": "skills",
       "detect": ["~/.hermes", "<project>/.hermes"],
       "root": { "user": "~/.hermes/skills/qiushi-skill", "project": ".hermes/skills/qiushi-skill" },
-      "assets": ["entry", "skills"],
+      "assets": ["entry", "skills", "cases"],
       "note": "Project scope needs an external_dirs entry in the Hermes config before it is scanned."
     },
     {
@@ -74,7 +90,7 @@
       "kind": "skills",
       "detect": ["~/.nanobot", "<project>/.nanobot"],
       "root": { "user": "~/.nanobot/workspace/skills/qiushi-skill", "project": ".nanobot/workspace/skills/qiushi-skill" },
-      "assets": ["entry", "skills"]
+      "assets": ["entry", "skills", "cases"]
     },
     {
       "id": "astravia",
@@ -82,7 +98,7 @@
       "kind": "skills",
       "detect": ["~/.astravia/skills"],
       "root": { "user": "~/.astravia/skills/qiushi-skill" },
-      "assets": ["entry", "skills", "commands"],
+      "assets": ["entry", "skills", "commands", "cases"],
       "note": "Usually unnecessary: installing from the market already writes this folder. Kept for a manual copy without the market. skills/.ignore travels along, so the ten playbooks do not each become a panel entry."
     }
   ]

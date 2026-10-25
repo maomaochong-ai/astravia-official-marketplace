@@ -80,22 +80,57 @@ function fail(message) {
   process.exitCode = 1;
 }
 
-function expandPath(value, { home, cwd }) {
+/**
+ * `~`, `<project>/` and `$NAME` / `${NAME}/…` are the only forms the catalog may use.
+ * An unset variable resolves to null: for a detect marker that means "this host is not
+ * here", and for a root it means the caller must fall back.
+ */
+function expandPath(value, { home, cwd, env = process.env }) {
   if (value === "~") return home;
   if (value.startsWith("~/")) return path.join(home, value.slice(2));
   if (value.startsWith("<project>/")) return path.join(cwd, value.slice(10));
   if (value === "<project>") return cwd;
+
+  const fromEnv = /^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?(?:\/(.*))?$/.exec(value);
+  if (fromEnv) {
+    const base = env[fromEnv[1]];
+    if (!base) return null;
+    const rest = fromEnv[2] ?? "";
+    return rest ? path.join(path.resolve(base), rest) : path.resolve(base);
+  }
+
   return path.resolve(cwd, value);
 }
 
-function rootFor(target, scope, { home, cwd }) {
+/**
+ * A host may relocate its own directory (Codex does, through CODEX_HOME). `envRoot`
+ * maps that variable to the suffix this package lives under, and wins over `user`
+ * when the variable is set — the same choice the host itself makes.
+ */
+function rootFor(target, scope, { home, cwd, env = process.env }) {
+  if (scope === "user" && target.root?.envRoot) {
+    for (const [name, suffix] of Object.entries(target.root.envRoot)) {
+      const base = env[name];
+      if (base) return path.join(path.resolve(expandPath(base, { home, cwd, env }) ?? base), suffix);
+    }
+  }
+
   const spec = target.root?.[scope];
-  return spec ? expandPath(spec, { home, cwd }) : null;
+  return spec ? expandPath(spec, { home, cwd, env }) : null;
 }
 
-function commandRootFor(target, scope, { home, cwd }) {
+function commandRootFor(target, scope, { home, cwd, env = process.env }) {
   const spec = target.commandRoot?.[scope];
-  return spec ? expandPath(spec, { home, cwd }) : null;
+  return spec ? expandPath(spec, { home, cwd, env }) : null;
+}
+
+/** Every base an envRoot variable may point at, so the safety check can allow it. */
+function envRootBases(target, scope, env = process.env) {
+  if (scope !== "user") return [];
+  return Object.keys(target.root?.envRoot ?? {})
+    .map((name) => env[name])
+    .filter(Boolean)
+    .map((base) => path.resolve(base));
 }
 
 async function isDirectory(target) {
@@ -106,8 +141,10 @@ async function isDirectory(target) {
   }
 }
 
-async function detect(target, { home, cwd }) {
-  const markers = (target.detect ?? []).map((marker) => expandPath(marker, { home, cwd }));
+async function detect(target, { home, cwd, env = process.env }) {
+  const markers = (target.detect ?? [])
+    .map((marker) => expandPath(marker, { home, cwd, env }))
+    .filter(Boolean);
   if (markers.length === 0) return false;
 
   for (const marker of markers) {
@@ -116,18 +153,20 @@ async function detect(target, { home, cwd }) {
   return false;
 }
 
-function assertSafeRoot(root, { home, cwd, dest }) {
+function assertSafeRoot(root, { home, cwd, dest, extra = [] }) {
   const resolved = path.resolve(root);
 
   if (resolved === path.parse(resolved).root) {
     throw new Error(`refusing to use a filesystem root as a target: ${resolved}`);
   }
 
-  const allowed = [home, cwd].map((base) => path.resolve(base));
+  // `extra` carries envRoot bases: a host that was relocated on purpose (CODEX_HOME)
+  // is somewhere the user asked for, so it is inside the boundary by consent.
+  const allowed = [home, cwd, ...extra].map((base) => path.resolve(base));
   const inside = allowed.some((base) => resolved === base || resolved.startsWith(`${base}${path.sep}`));
 
   if (!inside) {
-    throw new Error(`refusing to write outside the home directory or the current project: ${resolved}`);
+    throw new Error(`refusing to write outside the home directory, the current project or a declared $VAR root: ${resolved}`);
   }
 
   if (!dest && path.basename(resolved) !== "qiushi-skill") {
@@ -159,13 +198,13 @@ async function writeManifest(root, entries) {
 }
 
 /** One copy job: put `from` at `<root>/<to>`. */
-function planFor(target, catalog, scope, { home, cwd, dest }) {
+function planFor(target, catalog, scope, { home, cwd, dest, env = process.env }) {
   const jobs = [];
-  const root = dest ? path.resolve(cwd, dest) : rootFor(target, scope, { home, cwd });
+  const root = dest ? path.resolve(cwd, dest) : rootFor(target, scope, { home, cwd, env });
 
   if (!root) throw new Error(`target '${target.id}' has no ${scope} root`);
 
-  const commandRoot = commandRootFor(target, scope, { home, cwd });
+  const commandRoot = commandRootFor(target, scope, { home, cwd, env });
 
   for (const assetName of target.assets ?? []) {
     const asset = catalog.assets?.[assetName];
@@ -271,26 +310,57 @@ async function chmodExecutable(target) {
   }
 }
 
-async function writePluginManifest(plan, { dryRun }) {
-  const spec = plan.target.pluginManifest;
-  if (!spec) return null;
-
-  const destination = path.join(plan.root, spec.path);
-  const payload = { name: spec.name, description: spec.description };
-
-  if (dryRun) return path.relative(plan.root, destination);
+async function writeManifestFile(plan, destination, payload, asset, { dryRun }) {
+  const rel = path.relative(plan.root, destination);
+  if (dryRun) return rel;
 
   await mkdir(path.dirname(destination), { recursive: true });
   await writeFile(destination, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 
   const entries = await readManifest(plan.root);
-  const rel = path.relative(plan.root, destination);
   if (!entries.some((entry) => entry.path === rel)) {
-    entries.push({ path: rel, type: "file", asset: "pluginManifest" });
+    entries.push({ path: rel, type: "file", asset });
     await writeManifest(plan.root, entries);
   }
 
   return rel;
+}
+
+async function writePluginManifest(plan, options) {
+  const spec = plan.target.pluginManifest;
+  if (!spec) return null;
+
+  return writeManifestFile(
+    plan,
+    path.join(plan.root, spec.path),
+    { name: spec.name, description: spec.description },
+    "pluginManifest",
+    options,
+  );
+}
+
+/**
+ * Claude Code does not load a directory just because it sits in `~/.claude/plugins`:
+ * it needs a marketplace that names the folder as a plugin source. Writing
+ * `.claude-plugin/marketplace.json` inside the copy is what turns `cp -r` into
+ * something `/plugin marketplace add <root>` can actually install.
+ */
+async function writeMarketplaceManifest(plan, options) {
+  const spec = plan.target.marketplaceManifest;
+  if (!spec) return null;
+
+  return writeManifestFile(
+    plan,
+    path.join(plan.root, spec.path),
+    {
+      name: spec.name,
+      owner: spec.owner,
+      metadata: { description: spec.plugin?.description },
+      plugins: [spec.plugin],
+    },
+    "marketplaceManifest",
+    options,
+  );
 }
 
 async function uninstallPlan(plan, { dryRun }) {
@@ -304,8 +374,10 @@ async function uninstallPlan(plan, { dryRun }) {
     for (const entry of entries) {
       if (!entry.path || entry.path.includes("..")) continue;
       const destination = path.join(root, entry.path);
-      const [top] = entry.path.split("/");
-      if (entry.path.includes("/")) parents.add(top);
+      // Every ancestor, deepest last, so an emptied references/cases does not leave a
+      // references/ behind after removing the files inside it.
+      const parts = entry.path.split("/").slice(0, -1);
+      for (let depth = 1; depth <= parts.length; depth += 1) parents.add(parts.slice(0, depth).join("/"));
 
       if (dryRun) {
         removed.push(path.relative(root, destination));
@@ -321,7 +393,7 @@ async function uninstallPlan(plan, { dryRun }) {
     }
 
     // Only folders this script created are candidates; rmdir fails harmlessly on anything else.
-    for (const parent of parents) {
+    for (const parent of [...parents].sort((left, right) => right.length - left.length)) {
       try {
         const { rmdir } = await import("node:fs/promises");
         await rmdir(path.join(root, parent));
@@ -331,6 +403,17 @@ async function uninstallPlan(plan, { dryRun }) {
     }
 
     await rm(path.join(root, MANIFEST_NAME), { force: true });
+
+    // The package root itself is ours too. Only the primary root is a candidate: a
+    // shared commandRoot belongs to the host, so an empty one stays where it is.
+    if (root === plan.root) {
+      try {
+        const { rmdir } = await import("node:fs/promises");
+        await rmdir(root);
+      } catch {
+        /* not empty, or never created by us */
+      }
+    }
   }
 
   return removed;
@@ -362,6 +445,7 @@ async function main() {
 
   const catalog = JSON.parse(await readFile(CATALOG_PATH, "utf8"));
   const home = os.homedir();
+  const env = process.env;
   const cwd = process.cwd();
   const targets = catalog.targets ?? [];
 
@@ -369,10 +453,10 @@ async function main() {
     const rows = [];
 
     for (const target of targets) {
-      const detected = await detect(target, { home, cwd });
+      const detected = await detect(target, { home, cwd, env });
       let plan = null;
       try {
-        plan = planFor(target, catalog, options.scope, { home, cwd, dest: null });
+        plan = planFor(target, catalog, options.scope, { home, cwd, dest: null, env });
       } catch {
         plan = null;
       }
@@ -419,15 +503,23 @@ async function main() {
 
   for (const id of wanted) {
     const target = targets.find((candidate) => candidate.id === id);
-    const plan = planFor(target, catalog, options.scope, { home, cwd, dest: options.dest });
-    plan.root = assertSafeRoot(plan.root, { home, cwd, dest: Boolean(options.dest) });
+    const plan = planFor(target, catalog, options.scope, { home, cwd, dest: options.dest, env });
+    plan.root = assertSafeRoot(plan.root, {
+      home,
+      cwd,
+      dest: Boolean(options.dest),
+      extra: envRootBases(target, options.scope, env),
+    });
 
     if (!options.uninstall) {
       const pluginRel = await writePluginManifest(plan, { dryRun: options.dryRun });
+      const marketplaceRel = await writeMarketplaceManifest(plan, { dryRun: options.dryRun });
       const { written, logs } = await copyPlan(plan, catalog, { dryRun: options.dryRun, force: options.force });
       if (pluginRel) logs.unshift(`file  ${pluginRel}`);
+      if (marketplaceRel) logs.unshift(`file  ${marketplaceRel}`);
 
-      results.push({ id, action: "install", root: plan.root, written, logs, dryRun: options.dryRun });
+      const nextSteps = (target.nextSteps ?? []).map((step) => step.replaceAll("{root}", plan.root));
+      results.push({ id, action: "install", root: plan.root, written, logs, nextSteps, dryRun: options.dryRun });
       continue;
     }
 
@@ -449,6 +541,9 @@ async function main() {
 
     if (result.action === "install" && result.written.length === 0) {
       process.stdout.write("  (nothing written)\n");
+    }
+    for (const step of result.nextSteps ?? []) {
+      process.stdout.write(`  next  ${step}\n`);
     }
   }
 

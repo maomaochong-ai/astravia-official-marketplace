@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "求是方法论的配套入口",
+      "title": "在 Astravia 里直接读那份图文介绍",
+      "description": "求是方法论这个 skill 自带一份一页式的图文介绍。这个配套插件把那一页打开给你看——用的是包裹里的原文件，不是截图——入口在能力详情页，侧边栏也留了一个。"
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "详情页一次点击",
+          "description": "求是方法论的详情页里，安装按钮下面多出一张卡片，点按钮就打开。",
+          "icon": "solar:cursor-bold"
+        },
+        {
+          "title": "是页面本身，不是截图",
+          "description": "渲染的是包裹里的 assets/preview/index.html，包裹更新时这一页跟着更新，不会停在旧样子。"
+        },
+        {
+          "title": "和 skill 不会走散",
+          "description": "插件里带的那份页面，每次构建都和 skill 包裹里的原文件逐字节比对，不一致就失败。"
+        },
+        {
+          "title": "不配置、不联网",
+          "description": "不用填路径、不用拉起浏览器，看的时候也不下载任何东西。"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "安装这个插件",
+          "description": "只装求是方法论 skill 的话，那一页仍然没有入口；入口由这个插件提供。"
+        },
+        {
+          "title": "打开求是方法论的详情页",
+          "description": "安装按钮下面会出现一张「图文介绍页」卡片。"
+        },
+        {
+          "title": "点「打开这一页」",
+          "description": "图文介绍在 Astravia 里整幅展开，之后也可以从侧边栏再进。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "需要 Astravia 0.5.59 或更新的版本。页面随本插件一起分发，所以还没装求是方法论 skill 时也能离线打开；要拿到那一页描述的十件方法论，请再安装该 skill。"
+    }
+  ]
+}

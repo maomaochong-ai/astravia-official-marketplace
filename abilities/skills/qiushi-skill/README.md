@@ -194,8 +194,20 @@ Add this marketplace in Astravia (Skills → Add source), then install the card:
 1. search for "Qiushi Methodology" in the market and install it
 2. the package lands in `~/.astravia/skills/qiushi-skill/` and one entry appears in the skill panel; nothing to configure per method
 3. it works offline — the playbooks are plain Markdown inside the installed folder and never call the network
-2. one entry appears in the skill panel; nothing to configure per method
-3. it works offline — the playbooks are plain Markdown inside the installed folder and never call the network
+
+### Other hosts, one command
+
+Astravia is not the only host. The package carries the same layout every file-based agent understands, so one script places it where each one looks:
+
+```bash
+node scripts/install-platforms.mjs --list                  # what is detected, and where it would go
+node scripts/install-platforms.mjs --target claude-code    # Claude Code
+node scripts/install-platforms.mjs --target codex          # Codex (~/.codex, or $CODEX_HOME)
+node scripts/install-platforms.mjs --target cursor --dest <folder>
+node scripts/install-platforms.mjs --uninstall --target codex
+```
+
+For Claude Code the copy also carries `.claude-plugin/marketplace.json`; the script prints the two slash commands that finish the install (`/plugin marketplace add <folder>`, `/plugin install qiushi-skill@qiushi-skill`). Everything is copied from what is already on disk — no `npx`, no registry, no network. See [PLATFORMS.md](PLATFORMS.md) for the full target table.
 
 ## Checking It Locally
 
