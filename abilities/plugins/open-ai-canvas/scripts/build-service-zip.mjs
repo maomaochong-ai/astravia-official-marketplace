@@ -1,7 +1,7 @@
 // open-ai-canvas 服务制品构建脚本（两层产物）
 //
 // 为什么分两层：
-//   微型 shim（public/boot.mjs，就是 server/boot.mjs 的副本）随 .astraviapkg 分发，
+//   微型 shim（public/assets/boot.mjs，就是 server/boot.mjs 的副本）随 .astraviapkg 分发，
 //   满足 plugin.json 的 artifacts 声明；重型载荷（Go 二进制 + web-dist + 官方插件包）压缩后
 //   远超 Desktop 的 50 MB 单包上限，因此改为首次启动时由 boot.mjs 下载、校验、解包。
 //
@@ -9,9 +9,9 @@
 // 再造一层 zip，也因此不再需要平台后缀文件名。
 //
 // 用法：
-//   node scripts/build-service-zip.mjs --shim [--check] [--clean]
-//       产物：public/boot.mjs（vite build 会把它拷进 dist/）
-//       --check 会核对 plugin.json 里声明的 sha256、archive 与 destination，不一致即失败
+//   node scripts/build-service-zip.mjs --shim [--check] [--clean]   （实现委托给 sync-shim.mjs）
+//       产物：public/assets/boot.mjs（vite build 会把它拷进 dist/assets/）
+//       --check 交给 sync-shim.mjs：核对五平台摘要、archive 与 destination，不一致即失败
 //       --clean 顺手删掉旧版留下的 public/open-ai-canvas-*.zip
 //   node scripts/build-service-zip.mjs --payload --canvas-dir <上游仓库>
 //       产物：.payload/payload-<version>-<platform>.zip（上传到 GitHub Release，不进仓库）
@@ -30,6 +30,8 @@ import os from "node:os";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { syncShim } from "./sync-shim.mjs";
 
 const require = createRequire(import.meta.url);
 const AdmZip = require("adm-zip");
@@ -53,11 +55,12 @@ const PLATFORM_MAP = {
 };
 
 function parseArgs(argv) {
-  const args = { canvasDir: "", platform: "", check: false, clean: false, payload: false, agentRuntime: false, nodeBin: "" };
+  const args = { canvasDir: "", platform: "", binary: "", check: false, clean: false, payload: false, agentRuntime: false, nodeBin: "" };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--canvas-dir") args.canvasDir = argv[++i];
     else if (argv[i] === "--platform") args.platform = argv[++i];
     else if (argv[i] === "--node-bin") args.nodeBin = argv[++i];
+    else if (argv[i] === "--binary") args.binary = argv[++i];
     else if (argv[i] === "--check") args.check = true;
     else if (argv[i] === "--clean") args.clean = true;
     else if (argv[i] === "--payload") args.payload = true;
@@ -117,44 +120,15 @@ async function cleanLegacyShims() {
   if (!removed) console.log("[clean] 没有需要清理的旧 zip 制品");
 }
 
-async function buildShim({ platform, check }) {
-  const bootPath = path.join(pluginRoot, "server", "boot.mjs");
-  await stat(bootPath);
-  const buffer = await readFile(bootPath);
-
-  await mkdir(shimOutputDir, { recursive: true });
-  const outputFile = path.join(shimOutputDir, "boot.mjs");
-  await writeFile(outputFile, buffer);
-  const digest = sha256(buffer);
-  console.log(
-    `[shim] ${path.relative(pluginRoot, outputFile)}  bytes=${buffer.length}  sha256=${digest}`,
-  );
-
-  const manifest = await readManifest();
-  const platformEntry = manifest.providers?.services?.[0]?.runtime?.platforms?.[platform];
-  const declared = platformEntry?.artifacts ?? [];
-  const [artifact] = declared;
-  const problems = [];
-  if (declared.length !== 1) problems.push(`artifacts 应为 1 项，实际 ${declared.length} 项`);
-  if (artifact && artifact.sha256 !== digest) problems.push(`sha256 应为 ${digest}，实际 ${artifact.sha256}`);
-  if (artifact && artifact.archive !== "file") problems.push(`archive 应为 file，实际 ${artifact.archive}`);
-  if (artifact && artifact.destination !== SHIM_ARTIFACT_DESTINATION)
-    problems.push(`destination 应为 ${SHIM_ARTIFACT_DESTINATION}，实际 ${artifact.destination}`);
-
-  if (check) {
-    if (problems.length > 0) {
-      console.error(`plugin.json platforms.${platform} 与实际产物不一致：\n  ${problems.join("\n  ")}`);
-      process.exitCode = 1;
-      return;
-    }
-    console.log(`[shim] plugin.json 声明与产物一致（sha256 / archive / destination）`);
-  } else if (problems.length > 0) {
-    console.log(`[shim] 提示：plugin.json 需要更新：\n  ${problems.join("\n  ")}`);
-  }
+async function buildShim({ check }) {
+  // 单一实现：sync-shim 负责「镜像到 public/assets + 五平台摘要」，这里只调用它，
+  // 免得两处各算一遍 sha256 然后互相不一致。
+  const { sha256: digest } = syncShim({ check });
+  if (!check) console.log(`[shim] 五平台摘要已按 ${digest} 同步（plugin.json + public/assets/boot.mjs）`);
 }
 
 // --- payload：上传到 Release 的重型载荷 ---
-async function buildPayload({ canvasDir, platform }) {
+async function buildPayload({ canvasDir, platform, binary }) {
   if (!canvasDir) {
     console.error("Error: --canvas-dir is required for --payload");
     process.exit(1);
@@ -165,12 +139,18 @@ async function buildPayload({ canvasDir, platform }) {
     process.exit(1);
   }
 
+  // 载荷版本与插件版本解耦（ADR-0005 决策 5）：文件名跟 PAYLOAD_VERSION 走，
+  // 不跟 plugin.json 走。否则插件每升一个小版本，同样的载荷就要换个名字重传一遍，
+  // 用户的 300 MB 也就白下了。
   const manifest = await readManifest();
-  const version = manifest.version;
+  const version = process.env.PAYLOAD_VERSION?.trim() || manifest.version;
+  console.log(`[payload] payloadVersion=${version}${process.env.PAYLOAD_VERSION ? " (PAYLOAD_VERSION)" : " (plugin.json 兜底)"}`);
   const binaryName = `yingce-backend${config.ext}`;
-  const binaryPath = path.join(canvasDir, "backend", binaryName);
-  const webDistDir = path.join(canvasDir, "web", "dist");
+  // 交叉编译时产物不在 backend/ 下（不能污染上游仓库），用 --binary 指过来。
+  const binaryPath = binary || path.join(canvasDir, "backend", binaryName);
   const pluginPackagesDir = path.join(canvasDir, "plugin-packages");
+  // web 只在上游 web/ 构一次（CI 里由 web job 产出并下发），这里只负责收进载荷。
+  const webDistDir = path.join(canvasDir, "web", "dist");
 
   await stat(binaryPath);
   await stat(webDistDir);
@@ -196,7 +176,7 @@ async function buildPayload({ canvasDir, platform }) {
   console.log(
     `[payload] ${path.relative(pluginRoot, outputFile)}  entries=${files.length}  bytes=${buffer.length}  sha256=${sha256(buffer)}`,
   );
-  console.log(`[payload] 把上面的 sha256 写进 server/boot.mjs 的 PAYLOADS["${platform}"].sha256`);
+  console.log(`[payload] 把上面的 sha256 写进 payload-manifest.json 的 platforms["${platform}"].payload`);
 
 }
 // --- agent payload：创作 Agent（pi）+ 它要用的 node ---
@@ -263,7 +243,9 @@ async function buildAgentPayload({ canvasDir, platform, nodeBin }) {
 
   console.log(`[agent] 收集 pi 运行时（${piDir}）与 node（${chosenNode}）`);
   const files = await collectFiles(piDir, "pi-runtime");
-  files.push({ rel: `node/bin/${process.platform === "win32" ? "node.exe" : "node"}`, full: chosenNode });
+  // 文件名跟目标平台走，不能跟构建机走：在 Apple Silicon 上打 win32 包时
+  // process.platform 仍是 darwin，照它命名会把 node 写成 bin/node，Windows 上找不到 node.exe。
+  files.push({ rel: `node/bin/${config.ext === ".exe" ? "node.exe" : "node"}`, full: chosenNode });
   for (const file of files) {
     if (!file.buffer) file.buffer = await readFile(file.full);
     delete file.full;
@@ -277,7 +259,7 @@ async function buildAgentPayload({ canvasDir, platform, nodeBin }) {
   console.log(
     `[agent] ${path.relative(pluginRoot, outputFile)}  entries=${files.length}  bytes=${buffer.length}  sha256=${sha256(buffer)}`,
   );
-  console.log(`[agent] 把上面的 sha256 写进 server/boot.mjs 的 AGENT_PAYLOADS["${platform}"].sha256`);
+  console.log(`[agent] 把上面的 sha256 写进 payload-manifest.json 的 platforms["${platform}"].agent`);
 }
 
 async function main() {
@@ -286,9 +268,10 @@ async function main() {
   const mode = args.payload ? "payload" : args.agentRuntime ? "agent" : "shim";
   console.log(`[${mode}] platform=${platform}`);
   if (mode === "shim" && args.clean) await cleanLegacyShims();
-  if (mode === "payload") await buildPayload({ canvasDir: args.canvasDir, platform });
+  if (mode === "payload")
+    await buildPayload({ canvasDir: args.canvasDir, platform, binary: args.binary });
   else if (mode === "agent") await buildAgentPayload({ canvasDir: args.canvasDir, platform, nodeBin: args.nodeBin });
-  else await buildShim({ platform, check: args.check });
+  else await buildShim({ check: args.check });
 }
 
 main().catch((error) => {

@@ -1,0 +1,307 @@
+name: build-canvas-payloads
+
+# 原生载荷构建场（ADR-0005）。
+#
+# 为什么是五个原生 runner 而不是交叉编译：后端强制 CGO（gorm + mattn/go-sqlite3），
+# `zig cc` / `osxcross` 能编出来但跑不起来，而用户第一次点「启动」就撞上段错误，
+# 比晚几分钟发布糟得多。web 只构一次，五个平台共用同一份 dist。
+#
+# 发布顺序是硬约束：先上传 zip，最后上传 payload-manifest.json。清单是提交点——
+# 插件读到新清单时，它引用的每个文件都已经在 Release 上了。
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: "上游 tag（例如 v1.6.9.2）"
+        required: true
+      payload_version:
+        description: "载荷版本（例如 1.6.9.2.1；同一 tag 重发时递增最后一段）"
+        required: true
+  schedule:
+    # 每天检查一次上游是否有新 tag。没有新 tag 时除 web 外的所有任务都在
+    # resolve 步骤里提前退出，不会消耗发布额。
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canvas-payloads
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.pick.outputs.tag }}
+      commit: ${{ steps.pick.outputs.commit }}
+      payload_version: ${{ steps.pick.outputs.payload_version }}
+      should_build: ${{ steps.pick.outputs.should_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve upstream tag and commit
+        id: pick
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.upstream_tag }}
+          INPUT_VERSION: ${{ inputs.payload_version }}
+        run: |
+          set -euo pipefail
+          TAG="${INPUT_TAG}"
+          if [ -z "${TAG}" ]; then
+            TAG=$(gh api repos/ddcat-ai/open-ai-canvas/releases/latest --jq .tag_name)
+          fi
+          # 40 位不可变 commit：清单里钉 tag 会随上游移动，钉 commit 不会。
+          SHA=$(gh api "repos/ddcat-ai/open-ai-canvas/commits/${TAG}" --jq .sha)
+          if [ -z "${SHA}" ] || [ "${#SHA}" -ne 40 ]; then
+            echo "::error::cannot resolve commit for ${TAG}"
+            exit 1
+          fi
+
+          VERSION="${INPUT_VERSION}"
+          if [ -z "${VERSION}" ]; then
+            VERSION="${TAG#v}"
+          fi
+
+          SHOULD_BUILD=true
+          if [ -z "${INPUT_TAG}" ] && [ -z "${INPUT_VERSION}" ]; then
+            # 定时任务：已发布的清单里已经是这个 commit 就什么都不做。
+            EXISTING=$(gh release download plugin-open-ai-canvas-payloads \
+              --repo "${GITHUB_REPOSITORY}" --pattern payload-manifest.json --dir /tmp/m 2>/dev/null || true)
+            if [ -n "${EXISTING}" ]; then
+              CURRENT=$(jq -r '.upstream.commit // ""' /tmp/m/payload-manifest.json)
+              if [ "${CURRENT}" = "${SHA}" ]; then
+                SHOULD_BUILD=false
+                echo "upstream ${TAG} (${SHA}) already published"
+              fi
+            fi
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "commit=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "payload_version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "should_build=${SHOULD_BUILD}" >> "$GITHUB_OUTPUT"
+
+  web:
+    needs: resolve
+    if: needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout upstream at pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ddcat-ai/open-ai-canvas
+          ref: ${{ needs.resolve.outputs.commit }}
+          path: upstream
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.9"
+
+      - name: Build web
+        working-directory: upstream
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          bun run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: upstream/web/dist
+          retention-days: 3
+
+  payload:
+    needs: [resolve, web]
+    if: needs.resolve.outputs.should_build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: win32-x64
+            runner: windows-2022
+            goos: windows
+            goarch: amd64
+            ext: ".exe"
+          - platform: darwin-x64
+            runner: macos-13
+            goos: darwin
+            goarch: amd64
+            ext: ""
+          - platform: darwin-arm64
+            runner: macos-14
+            goos: darwin
+            goarch: arm64
+            ext: ""
+          - platform: linux-x64
+            runner: ubuntu-22.04
+            goos: linux
+            goarch: amd64
+            ext: ""
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+            goos: linux
+            goarch: arm64
+            ext: ""
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - name: Checkout upstream at pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ddcat-ai/open-ai-canvas
+          ref: ${{ needs.resolve.outputs.commit }}
+          path: upstream
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: upstream/web/dist
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: upstream/backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.19.0"
+
+      - name: Prepare C toolchain (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # mattn/go-sqlite3 需要 C 编译器：CGO_ENABLED=1 没有 gcc 就只能生成一个跑不起来的包。
+
+          choco install mingw --no-progress -y
+          $candidates = @(
+            "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin",
+            "C:\ProgramData\chocolatey\bin"
+          )
+          foreach ($dir in $candidates) { if (Test-Path $dir) { $dir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append } }
+          gcc --version
+
+      - name: Build payment plugin packages
+        shell: bash
+        working-directory: upstream
+        env:
+          PAYMENT_PLUGIN_GOOS: ${{ matrix.goos }}
+          PAYMENT_PLUGIN_GOARCH: ${{ matrix.goarch }}
+          PAYMENT_PLUGIN_CGO_ENABLED: "0"
+        run: |
+          set -euo pipefail
+          # 与上游 backend/Dockerfile 的 payment-package-build 阶段同一命令：
+          # 载荷里的 plugin-packages/*.yingce-plugin 是构建产物，不在源码里。
+          sh ./plugin-packages/build-packages.sh --payments-only
+          sh ./plugin-packages/verify-payment-packages.sh "$PAYMENT_PLUGIN_GOOS" "$PAYMENT_PLUGIN_GOARCH"
+
+      - name: Build backend binary
+        shell: bash
+        working-directory: upstream/backend
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < ../VERSION)"
+          go build -trimpath \
+            -ldflags "-s -w -X yingce/backend/internal/buildinfo.Version=${version}" \
+            -o "yingce-backend${{ matrix.ext }}" ./cmd/server
+          ls -l "yingce-backend${{ matrix.ext }}"
+
+      - name: Build pi runtime dependencies
+        shell: bash
+        working-directory: upstream/backend/agent-runtime/pi
+        run: |
+          set -euo pipefail
+          npm ci --omit=dev --ignore-scripts
+
+      - name: Install plugin build dependencies
+        shell: bash
+        working-directory: plugin/abilities/plugins/open-ai-canvas
+        run: |
+          set -euo pipefail
+          # 只需要 adm-zip：装了完整 devDependencies 就得依赖未发布的 @astravia-org/*。
+          npm install --no-save --no-audit --no-fund adm-zip@0.5.18
+
+      - name: Build payload zip
+        shell: bash
+        working-directory: plugin/abilities/plugins/open-ai-canvas
+        env:
+          CGO_ENABLED: "1"
+          PAYLOAD_VERSION: ${{ needs.resolve.outputs.payload_version }}
+        run: |
+          set -euo pipefail
+          node scripts/build-service-zip.mjs --payload \
+            --canvas-dir "${{ github.workspace }}/upstream" \
+            --platform "${{ matrix.platform }}"
+
+      - name: Build agent runtime zip
+        shell: bash
+        working-directory: plugin/abilities/plugins/open-ai-canvas
+        run: |
+          set -euo pipefail
+          node scripts/build-service-zip.mjs --agent-runtime \
+            --canvas-dir "${{ github.workspace }}/upstream" \
+            --platform "${{ matrix.platform }}" \
+            --node-bin "$(command -v node)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: payload-${{ matrix.platform }}
+          path: plugin/abilities/plugins/open-ai-canvas/.payload/*.zip
+          retention-days: 3
+
+  publish:
+    needs: [resolve, payload]
+    if: needs.resolve.outputs.should_build == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: payload-*
+          path: dist
+          merge-multiple: true
+
+      - name: Assemble payload manifest
+        working-directory: plugin/abilities/plugins/open-ai-canvas
+        run: |
+          set -euo pipefail
+          node scripts/build-payload-manifest.mjs \
+            --dir "${{ github.workspace }}/dist" \
+            --out "${{ github.workspace }}/dist/payload-manifest.json" \
+            --payload-version "${{ needs.resolve.outputs.payload_version }}" \
+            --upstream-tag "${{ needs.resolve.outputs.tag }}" \
+            --upstream-commit "${{ needs.resolve.outputs.commit }}"
+
+      - name: Upload zips to the payload release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: plugin-open-ai-canvas-payloads
+          name: open-ai-canvas payloads
+          body: |
+            Native payloads for the open-ai-canvas plugin.
+            Latest: ${{ needs.resolve.outputs.tag }} (${{ needs.resolve.outputs.commit }})
+            payloadVersion: ${{ needs.resolve.outputs.payload_version }}
+          files: |
+            dist/payload-*.zip
+            dist/agent-runtime-*.zip
+          fail_on_unmatched_files: true
+          overwrite_files: false
+
+      - name: Upload manifest last (commit point)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: plugin-open-ai-canvas-payloads
+          files: dist/payload-manifest.json
+          overwrite_files: true

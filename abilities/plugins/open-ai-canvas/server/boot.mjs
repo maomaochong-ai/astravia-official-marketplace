@@ -36,36 +36,42 @@ if (!HOST_PORT || !DATA_DIR) {
 }
 
 // --- 运行时载荷 ---
-// 包内只装 boot.mjs（几十 KB 的 shim）；Go 二进制 + web-dist + 官方插件包压缩后约 200 MB，
-// 远超 Desktop 的 50 MB 单包上限，因此首次启动时下载到 DATA_DIR/runtime/<version>/ 并校验 sha256。
-const PAYLOAD_VERSION = "0.0.1";
+// 包内只装 boot.mjs（几十 KB 的 shim）；原生后端 + web-dist + 官方插件包压缩后约 200 MB，
+// 远超 Desktop 的单包上限，所以首次启动时下载到 DATA_DIR/runtime/<payloadVersion>/ 并校验 sha256。
+//
+// ADR-0005 决策 4：sha256 不再写死在本文件里。插件包一旦发布就不可变，而载荷随上游版本变化——
+// 把 5 个平台、2 类载荷的 sha256 抄进源码，等于每发一次上游都要重发一次插件。改为启动时取
+// payload-manifest.json，由它决定「下哪个文件、校验什么值」。
 const PAYLOAD_BASE_URL =
   process.env.CANVAS_PAYLOAD_BASE_URL ||
-  "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas";
+  "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas-payloads";
 // 部分网络里 github.com 的 TCP 连接直接超时，但 api.github.com 与它 302 到的
 // release-assets.githubusercontent.com 都可达。所以下载前先用 API 把资产名解析成
 // https://api.github.com/repos/<repo>/releases/assets/<id>，由它重定向到真实对象存储。
 const GITHUB_REPO = "maomaochong-ai/astravia-official-marketplace";
-const RELEASE_TAG = "plugin-open-ai-canvas";
-const PAYLOADS = {
-  "darwin-arm64": { file: "payload-0.0.1-darwin-arm64.zip", sha256: "fb46396533b5b0c82b533f06141918bfaa2fb1a984b9a5bec123d642d545c0c7" },
-};
+const RELEASE_TAG = "plugin-open-ai-canvas-payloads";
+const MANIFEST_ASSET = "payload-manifest.json";
 
-// 创作 Agent（pi）与它要用的 node 是第二个载荷。上游把它单独打成 pi-runtime.tar.gz 交给
-// 后端解包，我们照做：242 MB / 2.5 万文件塞进主载荷会让每次升级都重下整包。
-// node 也从这里发：宿主进程的 node 可能是 Electron 内置的 20.x，而 pi 用到了 22 才有的
-// node:fs globSync，跑在 20 上会直接 SyntaxError。
-const AGENT_PAYLOAD_VERSION = "0.0.1";
-const AGENT_PAYLOADS = {
-  "darwin-arm64": { file: "agent-runtime-0.0.1-darwin-arm64.zip", sha256: "06e62d951cf711a0489adde5303c2cfd3448868dbfabc6ed1a7d1671daa93ad6" },
-};
+// 申报平台集合（ADR-0005 决策 7）。宿主按 `${platform}-${arch}` 精确查
+// plugin.json#providers.services[0].runtime.platforms，查不到就等于该平台没有运行时，
+// 所以这份键集必须与清单一致：scripts/check-service-platforms.mjs 在构建期比对两处。
+// 真正的载荷差异在清单里——这里只回答「这个平台有没有被发布」。
+const TARGET_PLATFORMS = ["win32-x64", "darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
 
 const PLATFORM = `${process.platform}-${process.arch}`;
 const BINARY_NAME = `yingce-backend${process.platform === "win32" ? ".exe" : ""}`;
 const NODE_BINARY_NAME = process.platform === "win32" ? "node.exe" : "node";
 const BUNDLED_DIR = RUNTIME_DIR;
-const PROVISION_DIR = path.join(DATA_DIR, "runtime", PAYLOAD_VERSION);
-const AGENT_DIR = path.join(DATA_DIR, "runtime", `agent-${AGENT_PAYLOAD_VERSION}`);
+
+// 清单解析结果。落盘目录由清单里的 payloadVersion 决定，所以这三个量要等 loadManifest 之后才有值。
+const MANIFEST = { payloadVersion: "", upstream: null, platforms: {}, source: "" };
+let PROVISION_DIR = null;
+let AGENT_DIR = null;
+
+function supportedPlatforms() {
+  const fromManifest = Object.keys(MANIFEST.platforms);
+  return (fromManifest.length > 0 ? fromManifest : TARGET_PLATFORMS).sort();
+}
 
 function note(message) {
   console.log(`[open-ai-canvas] ${message}`);
@@ -94,6 +100,9 @@ const STATE = {
   sampledBytes: 0,
   log: [],
   error: null,
+  // 机器可读的失败原因（/__canvas/state 的 code）。文案会变，code 不变：
+  // 界面据此选提示、构建期据此断言，不要靠中文子串匹配。
+  code: null,
 };
 
 function pushLog(text) {
@@ -109,6 +118,21 @@ function setStage(phase, stage, message) {
   STATE.stage = stage;
   if (message) STATE.message = message;
   pushLog(message || stage);
+}
+
+// 失败统一走这里：phase + code + 一句可复制的话。code 是契约，文案只是展示。
+function fail(code, message, stage = "启动") {
+  STATE.phase = "failed";
+  STATE.code = code;
+  STATE.stage = stage;
+  STATE.message = message;
+  STATE.error = message;
+  pushLog(message);
+}
+
+function clearFailure() {
+  STATE.code = null;
+  STATE.error = null;
 }
 
 // 每次开始传新的文件就把计数清零，避免主载荷的 216 MB 和 Agent 载荷的 90 MB 混在一起。
@@ -144,6 +168,11 @@ function progressSnapshot() {
   const remaining = STATE.totalBytes > 0 ? Math.max(0, STATE.totalBytes - STATE.receivedBytes) : 0;
   return {
     phase: STATE.phase,
+    code: STATE.code,
+    platform: PLATFORM,
+    supported: supportedPlatforms(),
+    payloadVersion: MANIFEST.payloadVersion || null,
+    upstream: MANIFEST.upstream?.tag ?? null,
     stage: STATE.stage,
     message: STATE.message,
     fileName: STATE.fileName,
@@ -1054,6 +1083,140 @@ function describeFailure(err) {
 
 // 载荷下载只在首次安装后发生一次：校验通过就解到 staging，由调用方决定最终落点。
 
+// --- 发布清单（ADR-0005 决策 4）---
+// 清单是载荷的唯一事实源：平台 → 文件名 → sha256。它本身不做签名校验——
+// 能改我们 release 的攻击者早就能改载荷本体，签名只多一套密钥管理，不增加实质阻力。
+const SHA256_RE = /^[a-f0-9]{64}$/;
+let manifestPromise = null;
+
+function codedError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+/** 平台没有载荷时统一走这里：文案给用户，code 给界面（ADR-0004 决策 2）。 */
+function unsupportedPlatformError() {
+  const published = supportedPlatforms();
+  const upstream = MANIFEST.upstream?.tag ? `（对应上游 ${MANIFEST.upstream.tag}）` : "";
+  return codedError(
+    "platform-unsupported",
+    `当前平台 ${PLATFORM} 暂无可用运行时载荷${upstream}。已发布：${published.join(", ")}。` +
+      `这不是安装出错，是该平台还没构建：请在已发布平台上使用，或设置 CANVAS_PAYLOAD_MANIFEST 指向自建清单。`,
+  );
+}
+
+async function fetchManifestText() {
+  // 显式清单优先（决策 3 的顺序）：本地文件路径或 http(s) 直链。自建镜像与离线自测
+  // 靠它，也让「这个平台的载荷坏了」能在不发布新插件的情况下用一个清单切回去。
+  const override = (process.env.CANVAS_PAYLOAD_MANIFEST || "").trim();
+  if (override) {
+    const local = !/^https?:\/\//i.test(override);
+    try {
+      const text = local ? fs.readFileSync(override, "utf8") : await readTextResponse(await httpRequest(override, { timeout: 20000 }));
+      note(`清单来自 CANVAS_PAYLOAD_MANIFEST：${override}`);
+      return { text, url: override };
+    } catch (err) {
+      const wrapped = describeFailure(err);
+      wrapped.code = "payload-manifest-unreadable";
+      wrapped.message = `CANVAS_PAYLOAD_MANIFEST 不可读（${override}）：${err.message}`;
+      throw wrapped;
+    }
+  }
+  const candidates = await candidateUrls(MANIFEST_ASSET);
+  let lastError;
+  for (const [index, candidate] of candidates.entries()) {
+    STATE.endpoint = endpointOf(candidate);
+    try {
+      note(`清单来源 ${index + 1}/${candidates.length}：${STATE.endpoint}`);
+      const res = await httpRequest(candidate, {
+        headers: { Accept: "application/vnd.github+json" },
+        timeout: 20000,
+      });
+      if (res.statusCode !== 200) {
+        res.resume();
+        throw new Error(`HTTP ${res.statusCode}`);
+      }
+      return { text: await readTextResponse(res), url: candidate };
+    } catch (err) {
+      lastError = err;
+      note(`清单来源不可用：${err.message}`);
+    }
+  }
+  const wrapped = describeFailure(lastError ?? new Error("没有可用的清单来源"));
+  wrapped.code = "payload-unreachable";
+  throw wrapped;
+}
+
+/** 把发布清单压成内部形态；任何一处不合规都带 code 失败，绝不猜。 */
+function parseManifest(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw codedError("payload-manifest-invalid", "发布清单不是合法 JSON");
+  }
+  if (data?.schemaVersion !== 1) {
+    throw codedError("payload-manifest-invalid", `发布清单 schemaVersion 应为 1，实际 ${data?.schemaVersion}`);
+  }
+  const payloadVersion = String(data.payloadVersion ?? "");
+  if (!/^[0-9A-Za-z._-]{1,32}$/.test(payloadVersion)) {
+    throw codedError("payload-manifest-invalid", `发布清单 payloadVersion 非法：${payloadVersion || "（空）"}`);
+  }
+
+  const platforms = {};
+  for (const [platform, entry] of Object.entries(data.platforms ?? {})) {
+    if (!TARGET_PLATFORMS.includes(platform)) {
+      note(`清单里的平台 ${platform} 不在申报集合内，忽略`);
+      continue;
+    }
+    // 每类载荷都必须有 file + sha256；agent 可缺（可降级），payload 不可缺。
+    const read = (kind, required) => {
+      const spec = entry?.[kind];
+      if (!spec) {
+        if (required) throw codedError("payload-manifest-invalid", `${platform} 缺少 ${kind} 条目`);
+        return null;
+      }
+      const file = String(spec.file ?? "");
+      const sha256 = String(spec.sha256 ?? "");
+      if (!file || file.includes("/") || file.includes("\\")) {
+        throw codedError("payload-manifest-invalid", `${platform}.${kind}.file 必须是纯文件名：${file}`);
+      }
+      if (!SHA256_RE.test(sha256)) {
+        throw codedError("payload-manifest-invalid", `${platform}.${kind}.sha256 不是 64 位小写十六进制`);
+      }
+      return { file, sha256, bytes: Number(spec.bytes) || 0 };
+    };
+    platforms[platform] = { payload: read("payload", true), agent: read("agent", false) };
+  }
+
+  return { payloadVersion, upstream: data.upstream ?? null, platforms, source: MANIFEST.source };
+}
+
+async function loadManifest() {
+  if (manifestPromise) return manifestPromise;
+  manifestPromise = (async () => {
+    const { text, url } = await fetchManifestText();
+    const parsed = parseManifest(text);
+    MANIFEST.payloadVersion = parsed.payloadVersion;
+    MANIFEST.upstream = parsed.upstream;
+    MANIFEST.platforms = parsed.platforms;
+    MANIFEST.source = endpointOf(url);
+    PROVISION_DIR = path.join(DATA_DIR, "runtime", MANIFEST.payloadVersion);
+    AGENT_DIR = path.join(DATA_DIR, "runtime", `agent-${MANIFEST.payloadVersion}`);
+    const upstream = MANIFEST.upstream?.tag ? `，上游 ${MANIFEST.upstream.tag}` : "";
+    note(`发布清单 ${MANIFEST.payloadVersion}${upstream}，平台 ${Object.keys(MANIFEST.platforms).join(", ")}`);
+    return MANIFEST;
+  })();
+  // 失败不缓存：用户点「重试」时要能重新取。
+  try {
+    return await manifestPromise;
+  } catch (err) {
+    manifestPromise = null;
+    throw err;
+  }
+}
+
 // 两个载荷共用这一段，区别只在 label 与文案里的体积。
 async function stageArchive(spec, staging, label, approximateMB) {
   const candidates = await candidateUrls(spec.file);
@@ -1086,7 +1249,12 @@ async function stageArchive(spec, staging, label, approximateMB) {
     if (!lastError) break;
   }
 
-  if (lastError) throw describeFailure(lastError);
+  if (lastError) {
+    const wrapped = describeFailure(lastError);
+    // 所有候选源都失败：网络/代理/镜像问题，与机器平台无关。
+    wrapped.code = "payload-unreachable";
+    throw wrapped;
+  }
 
   setStage("verifying", "校验完整性", `正在校验${label}完整性`);
   const digest = await hashFile(archive);
@@ -1094,7 +1262,9 @@ async function stageArchive(spec, staging, label, approximateMB) {
     // 只有"文件确实坏了"才值得丢掉续传基线。
     fs.rmSync(archive, { force: true });
     for (let index = 0; index < DOWNLOAD_CHUNKS; index += 1) fs.rmSync(partPath(archive, index), { force: true });
-    throw new Error(`${label} sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
+    const mismatch = new Error(`${label} sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
+    mismatch.code = "payload-checksum-mismatch";
+    throw mismatch;
   }
 
   const megabytes = (fs.statSync(archive).size / 1048576).toFixed(1);
@@ -1103,15 +1273,29 @@ async function stageArchive(spec, staging, label, approximateMB) {
   setStage("extracting", `解包${label}`, `正在解包${label}（${megabytes} MB）`);
   const extractStartedAt = Date.now();
   fs.rmSync(staging, { recursive: true, force: true });
-  await extractZip(archive, staging);
+  try {
+    await extractZip(archive, staging);
+  } catch (err) {
+    err.code = "payload-extract-failed";
+    throw err;
+  }
   fs.rmSync(archive, { force: true });
   note(`${label}已解包到 ${staging}（${Math.round((Date.now() - extractStartedAt) / 1000)}s）`);
 }
 
+// 体积用清单里的 bytes 提示进度条；缺失时按 200 MB 估，只影响“剩余时间”的展示。
+function megabytesOf(spec, fallback) {
+  return spec.bytes > 0 ? Math.round(spec.bytes / (1024 * 1024)) : fallback;
+}
+
 async function provisionPayload(spec) {
   const staging = `${PROVISION_DIR}.partial`;
-  await stageArchive(spec, staging, "运行时载荷", 200);
-  fs.chmodSync(path.join(staging, BINARY_NAME), 0o755);
+  await stageArchive(spec, staging, "运行时载荷", megabytesOf(spec, 200));
+  const binary = path.join(staging, BINARY_NAME);
+  if (!fs.existsSync(binary)) {
+    throw codedError("payload-extract-failed", `载荷里没有后端可执行文件 ${BINARY_NAME}`);
+  }
+  fs.chmodSync(binary, 0o755);
   fs.rmSync(PROVISION_DIR, { recursive: true, force: true });
   fs.renameSync(staging, PROVISION_DIR);
   note(`运行时已就绪：${PROVISION_DIR}`);
@@ -1125,7 +1309,7 @@ function hasAgentRuntime(dir) {
 // 所以准备失败在 resolveAgentDir 里就地吞掉，不往上抛。
 async function provisionAgentRuntime(spec) {
   const staging = `${AGENT_DIR}.partial`;
-  await stageArchive(spec, staging, "创作 Agent 运行时", 80);
+  await stageArchive(spec, staging, "创作 Agent 运行时", megabytesOf(spec, 80));
   const nodeBin = path.join(staging, "node", "bin", NODE_BINARY_NAME);
   if (fs.existsSync(nodeBin)) fs.chmodSync(nodeBin, 0o755);
   fs.rmSync(AGENT_DIR, { recursive: true, force: true });
@@ -1134,12 +1318,22 @@ async function provisionAgentRuntime(spec) {
 }
 
 async function resolveAgentDir() {
-  if (hasAgentRuntime(AGENT_DIR)) {
+  if (AGENT_DIR && hasAgentRuntime(AGENT_DIR)) {
     note(`复用已就绪的创作 Agent 运行时 ${AGENT_DIR}`);
     return AGENT_DIR;
   }
-  const spec = AGENT_PAYLOADS[PLATFORM];
-  if (!spec || !/^[a-f0-9]{64}$/.test(spec.sha256)) {
+  // 包自带运行时（BUNDLED_DIR）时不经过 resolveRuntimeDir，清单还没取；Agent 载荷在清单里，补取一次。
+  // 取不到就降级：创作 Agent 缺席不该拦住画布。
+  if (Object.keys(MANIFEST.platforms).length === 0) {
+    try {
+      await loadManifest();
+    } catch (err) {
+      note(`发布清单不可用，创作 Agent 功能不可用：${err.message}`);
+      return null;
+    }
+  }
+  const spec = MANIFEST.platforms[PLATFORM]?.agent;
+  if (!spec || !SHA256_RE.test(spec.sha256)) {
     note(`当前平台 ${PLATFORM} 暂无创作 Agent 载荷，Agent 功能不可用`);
     return null;
   }
@@ -1169,13 +1363,15 @@ async function resolveRuntimeDir() {
     note("使用包内自带运行时");
     return BUNDLED_DIR;
   }
+  // 平台门禁先离线判一次：未申报的平台不该跑一趟网络请求才失败（ADR-0004 决策 2）。
+  if (!TARGET_PLATFORMS.includes(PLATFORM)) throw unsupportedPlatformError();
+
+  await loadManifest();
+  const spec = MANIFEST.platforms[PLATFORM]?.payload;
+  if (!spec) throw unsupportedPlatformError();
   if (hasPayload(PROVISION_DIR)) {
     note(`复用已就绪的运行时 ${PROVISION_DIR}`);
     return PROVISION_DIR;
-  }
-  const spec = PAYLOADS[PLATFORM];
-  if (!spec || !/^[a-f0-9]{64}$/.test(spec.sha256)) {
-    throw new Error(`当前平台 ${PLATFORM} 暂无可用运行时载荷，请等待对应平台发布`);
   }
   await provisionPayload(spec);
   return PROVISION_DIR;
@@ -1191,7 +1387,7 @@ async function prepareRuntime() {
   try {
     STATE.phase = "starting";
     STATE.message = "正在检查运行时";
-    STATE.error = null;
+    clearFailure();
     SERVER_DIR = await resolveRuntimeDir();
     GO_BINARY = path.join(SERVER_DIR, BINARY_NAME);
     WEB_DIST = path.join(SERVER_DIR, "web-dist");
@@ -1211,10 +1407,9 @@ async function prepareRuntime() {
     await reserveBackendPort();
     startBackend();
   } catch (error) {
-    STATE.phase = "failed";
-    STATE.error = error?.message ?? String(error);
-    STATE.message = "运行时准备失败";
-    console.error(`[open-ai-canvas] 运行时准备失败：${STATE.error}`);
+    // code 是契约：解析/下载/解包/守卫各自带过来，缺失时退到 prepare-failed。
+    fail(error?.code ?? "prepare-failed", error?.message ?? String(error), "运行时准备");
+    console.error(`[open-ai-canvas] 运行时准备失败（${STATE.code}）：${STATE.error}`);
   } finally {
     preparing = false;
   }
@@ -1272,6 +1467,9 @@ function backendEnv() {
     ...(NODE_BIN ? { CANVAS_NODE_BIN: NODE_BIN } : {}),
     ...(fs.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {}),
     CANVAS_RUNTIME_AUTO_INSTALL: "false",
+    // ADR-0006 决策 2：画布渠道要指回本机回环上的模型桥（/bridge/v1），而后端默认把
+    // 回环/私网地址当作 SSRF 风险拒掉。只放行回环字面量，不放宽成整段私网。
+    CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS: "127.0.0.1,localhost",
     CANVAS_OFFICIAL_PLUGIN_DIR: PLUGIN_PACKAGES,
     CANVAS_REGISTRATION_ENABLED: "false",
   };
@@ -1299,6 +1497,7 @@ function watchBackendOutput(chunk, sink) {
   goPort = Number(match[1]);
   console.log(`[open-ai-canvas] Backend listening on port ${goPort}`);
   STATE.phase = "ready";
+  clearFailure();
   STATE.message = "运行时已就绪";
   onBackendReady();
 }
@@ -1315,9 +1514,7 @@ function startBackend() {
   goProcess.stdout.on("data", (chunk) => watchBackendOutput(chunk, process.stdout));
   goProcess.stderr.on("data", (chunk) => watchBackendOutput(chunk, process.stderr));
   goProcess.on("error", (error) => {
-    STATE.phase = "failed";
-    STATE.error = `后端子进程拉起失败：${error.message}`;
-    STATE.message = "后端启动失败";
+    fail("backend-spawn-failed", `后端子进程拉起失败：${error.message}`, "后端启动");
     console.error(`[open-ai-canvas] Failed to spawn backend: ${error.message}`);
   });
   goProcess.on("exit", (code, signal) => {
@@ -1328,9 +1525,7 @@ function startBackend() {
     }
     // 准备阶段就退出说明后端根本起不来；把原因留给界面，而不是直接杀掉 shim。
     if (!goPort) {
-      STATE.phase = "failed";
-      STATE.error = `后端在启动阶段退出（code=${code} signal=${signal}）`;
-      STATE.message = "后端启动失败";
+      fail("backend-exited", `后端在启动阶段退出（code=${code} signal=${signal}）`, "后端启动");
       return;
     }
     process.exit(code ?? 1);
@@ -1374,8 +1569,8 @@ process.on("SIGTERM", () => forwardSignal("SIGTERM"));
 process.on("SIGINT", () => forwardSignal("SIGINT"));
 
 // ============================================================
-// MCP Server —— 16 个工具，覆盖画布完整操控能力
-// 参考 ADR-0002：画布 MCP 工具集、鉴权与操控能力边界
+// MCP Server —— 18 个工具，覆盖画布完整操控能力
+// 参考 ADR-0002（工具集与鉴权）与 ADR-0007（声明式编排）
 // ============================================================
 
 // 画布内置 18 种节点类型
@@ -1385,6 +1580,147 @@ const BUILTIN_NODE_TYPES = [
   "panorama", "compare", "chart", "colorgrade", "media-conversion", "batch-table",
 ];
 
+
+// 节点 metadata 的已知字段。只用来在提交前拦住「类型不存在」这类一眼能看出的错误，
+// 不做严格校验：插件节点与上游新增字段都在这里之外，后端才是权威。
+const NODE_SCHEMAS = {
+  image: { fields: ["content", "storageKey", "prompt", "model", "parameters", "generationTaskId"], description: "Image generation node." },
+  text: { fields: ["content", "prompt", "model"], description: "Text generation node." },
+  config: { fields: ["model", "parameters", "provider"], description: "Generation configuration node. Connect to image/text/video nodes to set their model." },
+  video: { fields: ["content", "storageKey", "prompt", "model", "referenceImages"], description: "Video generation node." },
+  audio: { fields: ["content", "storageKey", "prompt", "model"], description: "Audio generation node." },
+  script: { fields: ["shots", "title"], description: "Storyboard script node." },
+  frame: { fields: ["image", "duration"], description: "Timeline frame node." },
+  markdown: { fields: ["content"], description: "Markdown text node." },
+  svg: { fields: ["content"], description: "SVG vector node." },
+  html: { fields: ["content"], description: "HTML embed node." },
+  drawing: { fields: ["content", "storageKey"], description: "Drawing canvas node." },
+  skill: { fields: ["skillId", "config"], description: "Skill node." },
+  panorama: { fields: ["content", "storageKey"], description: "Panorama image node." },
+  compare: { fields: ["images"], description: "Image comparison node." },
+  chart: { fields: ["config", "data"], description: "Chart node." },
+  colorgrade: { fields: ["lut", "intensity"], description: "Color grading node." },
+  "media-conversion": { fields: ["format", "input"], description: "Media format conversion node." },
+  "batch-table": { fields: ["rows", "columns"], description: "Batch processing table node." },
+};
+
+// ADR-0007：自动布局的网格尺寸。改这里只影响没给 position 的节点。
+let LAST_WORKFLOW = null;
+
+const LAYOUT_STEP_X = 400;
+const LAYOUT_STEP_Y = 280;
+
+/**
+ * 把声明式 workflow 编译成一批 operations（ADR-0007 决策 2）。
+ * 不做的事：不猜节点语义、不补默认 metadata、不代跑生成。
+ * 做的事：校验类型、按依赖分层布局、按 __key 幂等。
+ *
+ * @param workflow    { nodes, edges }
+ * @param existing    { nodes, connections }，来自当前画布（可为空）
+ */
+function compileWorkflow(workflow, existing) {
+  const nodes = Array.isArray(workflow?.nodes) ? workflow.nodes : [];
+  if (nodes.length === 0) throw codedError("workflow-empty", "workflow.nodes 不能为空");
+
+  const byKey = new Map();
+  for (const node of nodes) {
+    const key = String(node?.key ?? "");
+    if (!key) throw codedError("workflow-invalid-node", "每个节点都需要 key（用于连线与幂等）");
+    if (byKey.has(key)) throw codedError("workflow-invalid-node", `节点 key 重复：${key}`);
+    if (!BUILTIN_NODE_TYPES.includes(node.type)) {
+      throw codedError(
+        "unknown_node_type",
+        `unknown_node_type: ${node.type}（内置类型：${BUILTIN_NODE_TYPES.join(", ")}；插件节点请先用 add_node 确认）`,
+      );
+    }
+    byKey.set(key, node);
+  }
+
+  // 深度 = 依赖链长度。edges 里的两端必须在 nodes 里，否则拼出来的图是断的。
+  const parents = new Map(nodes.map((node) => [node.key, [...(node.depends_on ?? [])]]));
+  for (const edge of workflow?.edges ?? []) {
+    if (!byKey.has(edge?.from) || !byKey.has(edge?.to)) {
+      throw codedError("workflow-invalid-edge", `连线引用了不存在的节点：${edge?.from} → ${edge?.to}`);
+    }
+    if (edge.to === edge.from) throw codedError("workflow-cycle", "节点不能连自己");
+    parents.get(edge.to).push(edge.from);
+  }
+
+  const depth = new Map();
+  const visiting = new Set();
+  const depthOf = (key) => {
+    if (depth.has(key)) return depth.get(key);
+    if (visiting.has(key)) throw codedError("workflow-cycle", `依赖成环：${[...visiting, key].join(" → ")}`);
+    visiting.add(key);
+    let value = 0;
+    for (const parent of parents.get(key) ?? []) value = Math.max(value, depthOf(parent) + 1);
+    visiting.delete(key);
+    depth.set(key, value);
+    return value;
+  };
+
+  const existingNodes = Array.isArray(existing?.nodes) ? existing.nodes : [];
+  const priorByKey = new Map(
+    existingNodes.filter((node) => node?.metadata?.__key).map((node) => [node.metadata.__key, node]),
+  );
+  // 已存在的连线按「起点→终点节点 id」去重，否则重试一次就会多一层重复连线。
+  const priorEdges = new Set(
+    (existing?.connections ?? []).map((conn) => `${conn.fromNodeId}->${conn.toNodeId}`),
+  );
+
+  const rows = new Map();
+  const operations = [];
+  const mapping = {};
+
+  for (const node of nodes) {
+    const column = depthOf(node.key);
+    const row = rows.get(column) ?? 0;
+    rows.set(column, row + 1);
+    const position = node.position ?? { x: column * LAYOUT_STEP_X, y: row * LAYOUT_STEP_Y };
+    const metadata = { ...(node.metadata ?? {}), __key: node.key };
+    const prior = priorByKey.get(node.key);
+
+    if (prior) {
+      // 幂等：同一个 key 再来一次是改，不是再造一份。
+      mapping[node.key] = prior.id;
+      operations.push({
+        type: "patch_node",
+        id: prior.id,
+        patch: { title: node.title ?? prior.title, position, metadata },
+      });
+      continue;
+    }
+
+    const id = crypto.randomUUID();
+    mapping[node.key] = id;
+    operations.push({
+      type: "create_node",
+      id,
+      node: {
+        id,
+        type: node.type,
+        title: node.title || node.type,
+        position,
+        ...(node.width !== undefined && { width: node.width }),
+        ...(node.height !== undefined && { height: node.height }),
+        metadata,
+      },
+    });
+  }
+
+  for (const edge of workflow?.edges ?? []) {
+    const signature = `${mapping[edge.from]}->${mapping[edge.to]}`;
+    if (priorEdges.has(signature)) continue;
+    const id = crypto.randomUUID();
+    operations.push({
+      type: "create_connection",
+      id,
+      connection: { id, fromNodeId: mapping[edge.from], toNodeId: mapping[edge.to] },
+    });
+  }
+
+  return { operations, mapping, depth: Object.fromEntries(depth) };
+}
 const MCP_TOOLS = [
   // --- 画布项目管理 ---
   {
@@ -1593,6 +1929,42 @@ const MCP_TOOLS = [
       required: ["canvas_id", "operations"],
     },
   },
+  // --- 声明式编排（ADR-0007）---
+  {
+    name: "apply_workflow",
+    description:
+      "Apply a whole workflow in ONE request: nodes + edges described declaratively, laid out automatically, validated before submit, and idempotent by node key. Use this instead of many add_node/connect_nodes calls when building a multi-step workflow. Returns the key→node_id mapping and the canvas URL. Generation does NOT run unless run is true, and even then only for nodes marked {\"run\": true}.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        canvas_id: { type: "string", description: "Canvas project ID" },
+        base_revision: { type: "number", description: "Expected canvas revision; mismatches return revision_conflict instead of overwriting" },
+        run: { type: "boolean", description: "Run generation for nodes marked {run:true} after applying (default false — generating costs money)" },
+        workflow: {
+          type: "object",
+          description: "{ nodes: [{key, type, title?, position?, width?, height?, metadata?, depends_on?, run?}], edges: [{from, to, kind?}] }",
+          properties: {
+            nodes: { type: "array", items: { type: "object" } },
+            edges: { type: "array", items: { type: "object" } },
+          },
+          required: ["nodes"],
+        },
+      },
+      required: ["canvas_id", "workflow"],
+    },
+  },
+  {
+    name: "export_workflow",
+    description:
+      "Read a canvas back as the same declarative structure apply_workflow accepts, so an existing layout can be reused as a template.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        canvas_id: { type: "string", description: "Canvas project ID" },
+      },
+      required: ["canvas_id"],
+    },
+  },
 ];
 
 // --- MCP 工具实现 ---
@@ -1670,6 +2042,64 @@ async function callCanvasApi(method, pathname, body) {
     if (body) req.write(JSON.stringify(body));
     req.end();
   });
+}
+/**
+ * 和 callCanvasApi 同样带会话，但把状态码原样交回来。
+ *
+ * 渠道管理要区分「没登录」和「写失败」：前者该引导用户登录，后者该把画布的原话
+ * 报给用户。callCanvasApi 把所有错误压成一句话，这里不够用。
+ */
+async function rawCanvasApi(method, pathname, body) {
+  if (!SESSION_TOKEN) return { status: 401, body: { code: "canvas-login-required" } };
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        hostname: "127.0.0.1",
+        port: goPort,
+        path: pathname,
+        method,
+        headers: { "Content-Type": "application/json", Cookie: `open_ai_canvas_session=${SESSION_TOKEN}` },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          if (res.statusCode === 401) {
+            SESSION_TOKEN = null;
+            try { fs.unlinkSync(SESSION_FILE); } catch {}
+            resolve({ status: 401, body: { code: "canvas-login-required" } });
+            return;
+          }
+          let parsed;
+          try { parsed = data ? JSON.parse(data) : {}; } catch { parsed = { raw: data }; }
+          resolve({ status: res.statusCode || 500, body: parsed });
+        });
+      }
+    );
+    req.on("error", (err) => resolve({ status: 502, body: { code: "canvas-unreachable", message: err.message } }));
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+/**
+ * 画布渠道的创建/更新（ADR-0006 决策 2）。
+ *
+ * 渠道是 system scope，密钥入库后不可再读回（publicChannel 对 system scope 只返回
+ * "system" 占位），所以更新时把同一个 token 再写一次——它本来就是本地随机串，重写无害。
+ */
+async function bridgeAdminChannels(method, channelId, payload) {
+  if (method === "GET") {
+    const result = await rawCanvasApi("GET", "/api/admin/channels?page=1&limit=100");
+    return { status: result.status, body: result.body };
+  }
+  if (method === "POST") {
+    return rawCanvasApi("POST", "/api/admin/channels", payload);
+  }
+  if (method === "PATCH" && channelId) {
+    return rawCanvasApi("PATCH", `/api/admin/channels/${channelId}`, payload);
+  }
+  return { status: 400, body: { code: "bridge-bad-request", message: "unsupported channel operation" } };
 }
 
 // 发送画布操作（PATCH /canvas-projects/:id/operations）
@@ -1768,32 +2198,111 @@ async function handleMcpToolCall(name, args) {
       return jsonResult({ builtin: BUILTIN_NODE_TYPES, note: "Plugin node types are discovered at runtime via get_node_schema." });
 
     case "get_node_schema": {
-      // 内置节点的静态 schema（fallback，若后端提供端点则优先用后端）
-      const schemas = {
-        image: { fields: ["content", "storageKey", "prompt", "model", "parameters", "generationTaskId"], description: "Image generation node." },
-        text: { fields: ["content", "prompt", "model"], description: "Text generation node." },
-        config: { fields: ["model", "parameters", "provider"], description: "Generation configuration node. Connect to image/text/video nodes to set their model." },
-        video: { fields: ["content", "storageKey", "prompt", "model", "referenceImages"], description: "Video generation node." },
-        audio: { fields: ["content", "storageKey", "prompt", "model"], description: "Audio generation node." },
-        script: { fields: ["shots", "title"], description: "Storyboard script node." },
-        frame: { fields: ["image", "duration"], description: "Timeline frame node." },
-        markdown: { fields: ["content"], description: "Markdown text node." },
-        svg: { fields: ["content"], description: "SVG vector node." },
-        html: { fields: ["content"], description: "HTML embed node." },
-        drawing: { fields: ["content", "storageKey"], description: "Drawing canvas node." },
-        skill: { fields: ["skillId", "config"], description: "Skill node." },
-        panorama: { fields: ["content", "storageKey"], description: "Panorama image node." },
-        compare: { fields: ["images"], description: "Image comparison node." },
-        chart: { fields: ["config", "data"], description: "Chart node." },
-        colorgrade: { fields: ["lut", "intensity"], description: "Color grading node." },
-        "media-conversion": { fields: ["format", "input"], description: "Media format conversion node." },
-        "batch-table": { fields: ["rows", "columns"], description: "Batch processing table node." },
-      };
-      const schema = schemas[args.node_type];
+      const schema = NODE_SCHEMAS[args.node_type];
       if (!schema) {
         return jsonResult({ node_type: args.node_type, available: false, note: "Unknown node type. It may be a plugin-registered node; check the canvas UI for its schema." });
       }
       return jsonResult({ node_type: args.node_type, ...schema });
+    }
+
+    // --- 声明式编排（ADR-0007）---
+    case "apply_workflow": {
+      // 先读当前图：幂等（按 __key）与连线去重都依赖它。读不到就直报错——
+      // 在不知道现有节点的情况下提交 create_node 会把节点再造一份。
+      const doc = await fetchCanvasDocument(args.canvas_id);
+      if (doc.isError) return doc;
+      const payload = doc.project?.payload || doc;
+      const existing = { nodes: payload.nodes || [], connections: payload.connections || [] };
+
+      let compiled;
+      try {
+        compiled = compileWorkflow(args.workflow, existing);
+      } catch (err) {
+        return errorResult(`${err.code || "workflow-invalid"}: ${err.message}`);
+      }
+
+      if (compiled.operations.length === 0) {
+        return jsonResult({ applied: false, reason: "nothing-to-do", mapping: compiled.mapping, depth: compiled.depth });
+      }
+
+      const baseRevision = args.base_revision ?? payload.revision;
+      const applied = await applyCanvasOperations(args.canvas_id, compiled.operations, baseRevision);
+      if (applied.isError) {
+        // 409 是 revision 冲突：把当前 revision 一起告诉调用方，方便它读完重试。
+        const text = applied.content?.[0]?.text ?? "";
+        if (/\b409\b|revision/i.test(text)) {
+          return errorResult(`revision_conflict: ${text}（当前 revision ${payload.revision}，请重新读取后再提交）`);
+        }
+        return applied;
+      }
+
+      // 生成需要显式开启：一句「搭 20 镜分镜」不该把 20 次付费生成打出去。
+      const runTargets = args.run
+        ? (args.workflow.nodes ?? []).filter((node) => node?.run === true)
+        : [];
+      const results = [];
+      for (const node of runTargets) {
+        const nodeId = compiled.mapping[node.key];
+        if (!nodeId) continue;
+        const result = await handleMcpToolCall("run_generation", {
+          canvas_id: args.canvas_id,
+          node_id: nodeId,
+          prompt: node.metadata?.prompt || node.metadata?.content || node.title || "",
+        });
+        results.push({ key: node.key, node_id: nodeId, ...(result.isError ? { error: result.content[0].text } : {}) });
+      }
+
+      // 记一笔最近一次应用，供插件视图显示（ADR-0007 决策 5）：用户点不点、agent 做了什么，
+      // 应当在界面里能看到，而不是只能靠读会话记录。
+      LAST_WORKFLOW = {
+        at: Date.now(),
+        canvasId: args.canvas_id,
+        revision: baseRevision + 1,
+        nodes: (args.workflow.nodes ?? []).length,
+        edges: (args.workflow.edges ?? []).length,
+        operations: compiled.operations.length,
+        generationCount: results.length,
+        idempotent: compiled.operations.every((operation) => operation.type !== "create_node"),
+      };
+
+      return withCanvasUrl(
+        jsonResult({
+          applied: true,
+          revision: baseRevision + 1,
+          nodes: (args.workflow.nodes ?? []).length,
+          edges: (args.workflow.edges ?? []).length,
+          operations: compiled.operations.length,
+          mapping: compiled.mapping,
+          depth: compiled.depth,
+          ...(results.length > 0 && { generations: results }),
+        }),
+        args.canvas_id,
+      );
+    }
+
+    case "export_workflow": {
+      const doc = await fetchCanvasDocument(args.canvas_id);
+      if (doc.isError) return doc;
+      const payload = doc.project?.payload || doc;
+      const nodes = payload.nodes || [];
+      const connections = payload.connections || [];
+      const keyOf = (node) => node?.metadata?.__key || node.id;
+      const workflow = {
+        nodes: nodes.map((node) => ({
+          key: keyOf(node),
+          type: node.type,
+          title: node.title,
+          position: node.position,
+          ...(node.width !== undefined && { width: node.width }),
+          ...(node.height !== undefined && { height: node.height }),
+          metadata: Object.fromEntries(Object.entries(node.metadata ?? {}).filter(([name]) => name !== "__key")),
+        })),
+        edges: connections.map((conn) => ({
+          from: keyOf(nodes.find((node) => node.id === conn.fromNodeId) ?? { id: conn.fromNodeId }),
+          to: keyOf(nodes.find((node) => node.id === conn.toNodeId) ?? { id: conn.toNodeId }),
+        })),
+      };
+      return jsonResult({ revision: payload.revision, workflow });
     }
 
     // --- 连接操作 ---
@@ -1994,6 +2503,30 @@ function waitForBackend(timeoutMs) {
   });
 }
 
+// 本机运维状态都用同一份响应头：不缓存，且允许宿主渲染进程（另一个 origin）读。
+// 里面只有准备进度与失败原因，不含会话 token。
+function sendJson(res, body, status = 200) {
+  res.writeHead(status, {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(JSON.stringify(body));
+}
+
+// /__canvas/state 是插件侧真正的就绪判据：ready 只在后端子进程已报告监听地址时为真。
+// 宿主看到的 /api/health/ready 恒 200（ADR-0003 决策 5），不能用来判断画布能不能用。
+function stateSnapshot() {
+  return {
+    ...progressSnapshot(),
+    ready: Boolean(goPort) && STATE.phase === "ready",
+    backend: Boolean(goPort),
+    // 插件视图用它显示「桥在线 / 离线」，没这个字段就只能猜。
+    bridge: { executorOnline: bridgeExecutorOnline(), models: BRIDGE.models.length },
+    workflow: LAST_WORKFLOW,
+  };
+}
+
 function servePreparation(req, res) {
   if (req.method === "GET" && req.url === "/api/health/ready") {
     res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -2002,15 +2535,14 @@ function servePreparation(req, res) {
   }
 
   if (req.method === "GET" && req.url === "/__canvas/progress") {
-    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify(progressSnapshot()));
+    sendJson(res, progressSnapshot());
     return;
   }
 
   if (req.method === "POST" && req.url === "/__canvas/retry") {
     STATE.phase = "starting";
     STATE.message = "正在重试";
-    STATE.error = null;
+    clearFailure();
     STATE.receivedBytes = 0;
     STATE.totalBytes = 0;
     res.writeHead(202, { "Content-Type": "application/json" });
@@ -2043,8 +2575,430 @@ function servePreparation(req, res) {
   res.end(progressPage());
 }
 
+// --- 模型桥（ADR-0006）---
+// 画布只看见一个 OpenAI 兼容端点；真正的推理在插件运行时里用 ctx.ai 执行。
+// 为什么是接力而不是直连：这个 shim 能监听端口但没有 ctx，插件运行时反过来。
+// 两端各缺一半，队列拼起来才成立。宿主密钥始终不进这个文件、也不进画布配置。
+const BRIDGE_FILE = path.join(DATA_DIR, "bridge.json");
+const BRIDGE_JOB_TTL_MS = 5 * 60_000;
+const BRIDGE_IDLE_MS = 180_000;
+const BRIDGE_LONGPOLL_MS = 25_000;
+const BRIDGE_EXECUTOR_STALE_MS = 45_000;
+
+function loadBridgeState() {
+  try {
+    return JSON.parse(fs.readFileSync(BRIDGE_FILE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveBridgeState(state) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(BRIDGE_FILE, JSON.stringify(state, null, 2), { mode: 0o600 });
+}
+
+// token 只存在本机数据目录，画布渠道里那一份是它自己的渠道密钥，两边不共用。
+function bridgeToken() {
+  const state = loadBridgeState();
+  if (typeof state.token === "string" && state.token.length >= 32) return state.token;
+  const token = crypto.randomBytes(24).toString("hex");
+  saveBridgeState({ ...state, token, createdAt: new Date().toISOString() });
+  return token;
+}
+
+const BRIDGE = {
+  models: [],
+  modelsAt: 0,
+  lastPollAt: 0,
+  jobs: new Map(),
+  waiters: [],
+};
+
+// 「执行者在线」= 最近一次长轮询还在窗口内。插件视图被关掉时它会自然过期，
+// 于是画布拿到的是明确的 503 而不是无限等下去。
+function bridgeExecutorOnline() {
+  return BRIDGE.lastPollAt > 0 && Date.now() - BRIDGE.lastPollAt < BRIDGE_EXECUTOR_STALE_MS;
+}
+
+function bridgeJson(res, status, body) {
+  sendJson(res, body, status);
+}
+
+function bridgeUnauthorized(res) {
+  res.writeHead(401, { "Content-Type": "application/json", "WWW-Authenticate": "Bearer" });
+  res.end(JSON.stringify({ error: { message: "Invalid bridge token", code: "bridge-unauthorized" } }));
+}
+
+function bridgeAuthorized(req) {
+  const header = String(req.headers.authorization ?? "");
+  const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  return token.length > 0 && token === bridgeToken();
+}
+
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > 4 * 1024 * 1024) reject(new Error("request body too large"));
+    });
+    req.on("end", () => {
+      if (!body) return resolve({});
+      try {
+        resolve(JSON.parse(body));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function sweepBridgeJobs() {
+  const now = Date.now();
+  for (const [id, job] of BRIDGE.jobs) {
+    if (now - job.createdAt < BRIDGE_JOB_TTL_MS) continue;
+    job.finished = true;
+    BRIDGE.jobs.delete(id);
+    try {
+      job.res.destroy();
+    } catch {}
+  }
+}
+
+/** 把一条排队中的 chat 请求转成 SSE；首次写之前不锁状态码，错能报成 502。 */
+function bridgeWriteChunk(job, delta) {
+  if (job.finished) return;
+  if (!job.headersSent) {
+    job.res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-store",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    job.headersSent = true;
+  }
+  job.text += delta;
+  job.res.write(
+    `data: ${JSON.stringify({
+      id: job.id,
+      object: "chat.completion.chunk",
+      created: job.created,
+      model: job.model || "astravia-host",
+      choices: [{ index: 0, delta: { content: delta }, finish_reason: null }],
+    })}\n\n`,
+  );
+}
+
+function bridgeFinishJob(job, error) {
+  if (job.finished) return;
+  job.finished = true;
+  BRIDGE.jobs.delete(job.id);
+  clearTimeout(job.idleTimer);
+  if (error) {
+    if (!job.headersSent) {
+      bridgeJson(job.res, 502, {
+        error: { message: error.message || String(error), code: error.code || "bridge-executor-error" },
+      });
+      return;
+    }
+    job.res.write(
+      `data: ${JSON.stringify({ error: { message: error.message || String(error), code: error.code || "bridge-executor-error" } })}\n\n`,
+    );
+    job.res.write("data: [DONE]\n\n");
+    job.res.end();
+    return;
+  }
+
+  if (job.stream) {
+    if (!job.headersSent) {
+      job.res.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-store" });
+      job.headersSent = true;
+    }
+    job.res.write(
+      `data: ${JSON.stringify({
+        id: job.id,
+        object: "chat.completion.chunk",
+        created: job.created,
+        model: job.model || "astravia-host",
+        choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+      })}\n\n`,
+    );
+    job.res.write("data: [DONE]\n\n");
+    job.res.end();
+    return;
+  }
+
+  bridgeJson(job.res, 200, {
+    id: job.id,
+    object: "chat.completion",
+    created: Math.floor(job.created / 1000),
+    model: job.model || "astravia-host",
+    choices: [{ index: 0, message: { role: "assistant", content: job.text }, finish_reason: "stop" }],
+    usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+  });
+}
+
+/** 给最近一条长轮询立刻回话；没有挂在里面的请求就只能等下一次轮询。 */
+function bridgeWakeWaiter() {
+  const waiter = BRIDGE.waiters.shift();
+  if (!waiter) return;
+  clearTimeout(waiter.timer);
+  const jobs = [...BRIDGE.jobs.values()].filter((job) => !job.assigned).slice(0, 4);
+  for (const job of jobs) job.assigned = true;
+  bridgeJson(waiter.res, 200, { jobs: jobs.map(bridgeJobEnvelope) });
+}
+
+function bridgeJobEnvelope(job) {
+  return {
+    id: job.id,
+    kind: "chat",
+    stream: job.stream,
+    model: job.model,
+    messages: job.messages,
+    ...(job.temperature !== undefined && { temperature: job.temperature }),
+    ...(job.max_tokens !== undefined && { max_tokens: job.max_tokens }),
+  };
+}
+
+function bridgeCollectJobs(res) {
+  const jobs = [...BRIDGE.jobs.values()].filter((job) => !job.assigned).slice(0, 4);
+  for (const job of jobs) job.assigned = true;
+  bridgeJson(res, 200, { jobs: jobs.map(bridgeJobEnvelope) });
+}
+
+function bridgeServeModels(res) {
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+    "X-Bridge-Executor": bridgeExecutorOnline() ? "online" : "offline",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(
+    JSON.stringify({
+      object: "list",
+      data: BRIDGE.models.map((model) => ({ id: model.id, object: "model", owned_by: "astravia" })),
+    }),
+  );
+}
+
+function bridgeServeChat(req, res) {
+  void readJsonBody(req)
+    .then((body) => {
+      if (!bridgeExecutorOnline()) {
+        // 明确告诉画布「执行者不在」，别让它把这当成模型推理失败。
+        bridgeJson(res, 503, {
+          error: {
+            message:
+              "Astravia is not currently relaying model calls. Open the Open AI Canvas view in Astravia and try again.",
+            code: "bridge-executor-offline",
+          },
+        });
+        return;
+      }
+      const messages = Array.isArray(body.messages) ? body.messages : [];
+      if (messages.length === 0) {
+        bridgeJson(res, 400, { error: { message: "messages is required", code: "bridge-bad-request" } });
+        return;
+      }
+      // 视觉输入没有接口可用：`ctx.ai` 的请求体只接受文本。画布带图过来时直接告知
+      // 不支持，不默默截断——截断后模型会以为自己看过了图。
+      if (messages.some((message) => Array.isArray(message?.content))) {
+        bridgeJson(res, 422, {
+          error: {
+            message:
+              "Image input is not bridged: the host text API accepts text only. Remove the image parts or configure a vision channel inside the canvas.",
+            code: "bridge-vision-unsupported",
+          },
+        });
+        return;
+      }
+      sweepBridgeJobs();
+      const job = {
+        id: `job_${crypto.randomUUID()}`,
+        createdAt: Date.now(),
+        created: Date.now(),
+        model: body.model,
+        messages,
+        temperature: body.temperature,
+        max_tokens: body.max_tokens,
+        stream: body.stream !== false,
+        text: "",
+        headersSent: false,
+        finished: false,
+        assigned: false,
+        res,
+      };
+      job.idleTimer = setTimeout(() => {
+        bridgeFinishJob(job, Object.assign(new Error("Bridge job timed out"), { code: "bridge-timeout" }));
+      }, BRIDGE_IDLE_MS);
+      job.idleTimer.unref?.();
+      BRIDGE.jobs.set(job.id, job);
+      // 画布那头断开了就丢掉这条任务，不要让插件运行时去跑一个没人听的结果。
+      req.on("close", () => {
+        if (!job.finished) {
+          job.finished = true;
+          BRIDGE.jobs.delete(job.id);
+          clearTimeout(job.idleTimer);
+        }
+      });
+      bridgeWakeWaiter();
+    })
+    .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+}
+
+/** 媒体：宿主不开放密钥级生成接口，只能回一个可读的 501（ADR-0006 决策 4）。 */
+function bridgeServeMedia(res) {
+  bridgeJson(res, 501, {
+    error: {
+      message:
+      "Text is bridged to Astravia. Image and video generation are not: the host does not expose " +
+        "key-level media generation to plugins. Configure an image/video channel inside the canvas instead.",
+      code: "host-media-not-exposed",
+    },
+  });
+}
+
+/** 桥的全部分流。返回 true 表示这个请求已经处理完。 */
+function serveBridge(req, res, pathname) {
+  if (!pathname.startsWith("/bridge/")) return false;
+
+  // 模型清单是唯一允许匿名读的：画布加载渠道时会先探测，而探测失败会被显示成
+  // 「渠道不可用」，比把这个端点锁起来更难排查。它只含模型 id，不含密钥。
+  if (req.method === "GET" && pathname === "/bridge/v1/models") {
+    bridgeServeModels(res);
+    return true;
+  }
+
+  if (!bridgeAuthorized(req)) {
+    bridgeUnauthorized(res);
+    return true;
+  }
+
+  if (req.method === "POST" && pathname === "/bridge/v1/chat/completions") {
+    bridgeServeChat(req, res);
+    return true;
+  }
+  if (req.method === "POST" && /^\/bridge\/v1\/(images|videos)\/generations$/.test(pathname)) {
+    bridgeServeMedia(res);
+    return true;
+  }
+
+  // --- 以下给插件运行时用 ---
+  if (req.method === "GET" && pathname === "/bridge/jobs") {
+    BRIDGE.lastPollAt = Date.now();
+    const hasPending = [...BRIDGE.jobs.values()].some((job) => !job.assigned);
+    if (hasPending) {
+      bridgeCollectJobs(res);
+      return true;
+    }
+    const waiter = { res, timer: null };
+    waiter.timer = setTimeout(() => {
+      const index = BRIDGE.waiters.indexOf(waiter);
+      if (index >= 0) BRIDGE.waiters.splice(index, 1);
+      bridgeJson(res, 200, { jobs: [] });
+    }, BRIDGE_LONGPOLL_MS);
+    waiter.timer.unref?.();
+    BRIDGE.waiters.push(waiter);
+    req.on("close", () => {
+      const index = BRIDGE.waiters.indexOf(waiter);
+      if (index >= 0) BRIDGE.waiters.splice(index, 1);
+      clearTimeout(waiter.timer);
+    });
+    return true;
+  }
+
+  const chunkMatch = pathname.match(/^\/bridge\/jobs\/([^/]+)\/(chunk|done)$/);
+  if (req.method === "POST" && chunkMatch) {
+    const [, jobId, action] = chunkMatch;
+    const job = BRIDGE.jobs.get(jobId);
+    if (!job) {
+      bridgeJson(res, 404, { error: { message: "Unknown job", code: "bridge-job-missing" } });
+      return true;
+    }
+    void readJsonBody(req)
+      .then((body) => {
+        if (action === "chunk") {
+          if (typeof body.delta === "string" && body.delta.length > 0) bridgeWriteChunk(job, body.delta);
+        } else {
+          const error = body.error ? Object.assign(new Error(body.error), { code: "bridge-executor-error" }) : null;
+          bridgeFinishJob(job, error);
+        }
+        bridgeJson(res, 200, { ok: true });
+      })
+      .catch((err) => bridgeJson(res, 400, { error: { message: err.message } }));
+    return true;
+  }
+
+  if (req.method === "POST" && pathname === "/bridge/models") {
+    void readJsonBody(req)
+      .then((body) => {
+        const models = Array.isArray(body.models) ? body.models : [];
+        BRIDGE.models = models.filter((model) => model && typeof model.id === "string");
+        BRIDGE.modelsAt = Date.now();
+        bridgeJson(res, 200, { ok: true, count: BRIDGE.models.length });
+      })
+      .catch((err) => bridgeJson(res, 400, { error: { message: err.message } }));
+    return true;
+  }
+
+  if (req.method === "GET" && pathname === "/bridge/status") {
+    bridgeJson(res, 200, {
+      executorOnline: bridgeExecutorOnline(),
+      models: BRIDGE.models.length,
+      pending: BRIDGE.jobs.size,
+      tokenConfigured: Boolean(loadBridgeState().token),
+    });
+    return true;
+  }
+
+  // --- 以下给插件运行时管理画布渠道用（ADR-0006 决策 2）---
+  if (req.method === "GET" && pathname === "/bridge/admin/channels") {
+    void bridgeAdminChannels("GET", null, null).then((result) => bridgeJson(res, result.status, result.body));
+    return true;
+  }
+  if (req.method === "POST" && pathname === "/bridge/admin/channels") {
+    void readJsonBody(req)
+      .then((body) => bridgeAdminChannels("POST", null, body))
+      .then((result) => bridgeJson(res, result.status, result.body))
+      .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+  const adminChannelMatch = pathname.match(/^\/bridge\/admin\/channels\/([^/]+)$/);
+  if (req.method === "PATCH" && adminChannelMatch) {
+    void readJsonBody(req)
+      .then((body) => bridgeAdminChannels("PATCH", adminChannelMatch[1], body))
+      .then((result) => bridgeJson(res, result.status, result.body))
+      .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+
+  bridgeJson(res, 404, { error: { message: `Unknown bridge route ${pathname}`, code: "bridge-not-found" } });
+  return true;
+}
+
 function startProxy() {
+  // 一开始就把 token 落盘：插件运行时靠它才能长轮询取任务，晚创建就代表
+  // 桥在启动后头几秒是哑的。（bridge.json 里只有本地随机串，不含任何密钥。）
+  try {
+    bridgeToken();
+  } catch (err) {
+    console.error("[open-ai-canvas] Failed to initialise bridge token:", err.message);
+  }
   const server = http.createServer((req, res) => {
+    // 准备中、失败后、就绪后都要能回答：这个端点永远由 shim 自己处理，不经 Go。
+    if (req.method === "GET" && req.url === "/__canvas/state") {
+      sendJson(res, stateSnapshot());
+      return;
+    }
+
+    // 模型桥不依赖 Go 后端：它得与后端就绪状态解耦，才能在重试/重启后接着用。
+    {
+      const pathname = (req.url || "/").split("?")[0];
+      if (serveBridge(req, res, pathname)) return;
+    }
+
     if (!goPort) {
       servePreparation(req, res);
       return;

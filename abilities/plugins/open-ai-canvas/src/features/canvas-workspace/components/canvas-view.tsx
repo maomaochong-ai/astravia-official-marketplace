@@ -57,6 +57,12 @@ export function CanvasView({ controller }: { controller: CanvasController }): JS
               <span className="truncate text-[12px] text-destructive/80">{t(state.messageKey)}</span>
             ) : null}
           </div>
+          {/* 具体到这台机器的原因或进度：平台名、已发布平台、下载百分比、后端原文。 */}
+          {state.detail ? (
+            <p className="mt-2 break-words font-mono text-[12px] leading-relaxed text-muted-foreground">
+              {state.detail}
+            </p>
+          ) : null}
           <p className="mt-2 text-[13px] text-muted-foreground">
             {t("view.description")}
           </p>
@@ -79,6 +85,89 @@ export function CanvasView({ controller }: { controller: CanvasController }): JS
             </>
           )}
         </section>
+
+        {/* 模型桥（ADR-0006）：两个方向都是显式动作，不做启动副作用。 */}
+        {running && (
+          <section className="rounded-xl border border-border/70 bg-card/40 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[14px] font-medium">{t("bridge.title")}</h2>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px]",
+                  state.bridge.executorOnline
+                    ? "bg-emerald-500/10 text-emerald-600"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {state.bridge.executorOnline ? t("bridge.online") : t("bridge.offline")}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {t("bridge.modelCount", { count: state.bridge.models })}
+              </span>
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+              {t("bridge.description")}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void controller.connectHostModelsToCanvas()}
+                disabled={state.bridge.busy}
+              >
+                {t("bridge.connectHost")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void controller.publishCanvasChannelsToHost()}
+                disabled={state.bridge.busy}
+              >
+                {t("bridge.publishCanvas")}
+              </Button>
+            </div>
+            {state.bridge.noticeKey ? (
+              <p className="mt-2 text-[12px] text-emerald-600">{t(state.bridge.noticeKey)}</p>
+            ) : null}
+            {state.bridge.detail ? (
+              <p className="mt-1 break-words font-mono text-[11px] text-muted-foreground">
+                {state.bridge.detail}
+              </p>
+            ) : null}
+            <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+              {t("bridge.caveat")}
+            </p>
+          </section>
+        )}
+
+        {/* 最近一次工作流（ADR-0007 决策 5）：agent 建完图，用户要能在这里确认发生了什么。 */}
+        {running && state.workflow ? (
+          <section className="rounded-xl border border-border/70 bg-card/40 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[14px] font-medium">{t("workflow.title")}</h2>
+              <span className="text-[11px] text-muted-foreground">
+                {t("workflow.summary", {
+                  nodes: state.workflow.nodes,
+                  edges: state.workflow.edges,
+                  revision: state.workflow.revision,
+                })}
+              </span>
+              {state.workflow.idempotent ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                  {t("workflow.replay")}
+                </span>
+              ) : null}
+              {state.workflow.generationCount > 0 ? (
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-600">
+                  {t("workflow.generations", { count: state.workflow.generationCount })}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-2 break-words font-mono text-[11px] text-muted-foreground">
+              {state.workflow.canvasId}
+            </p>
+          </section>
+        ) : null}
 
         {/* 使用提示 */}
         {running && (

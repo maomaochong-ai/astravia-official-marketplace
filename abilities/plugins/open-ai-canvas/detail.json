@@ -6,7 +6,10 @@
       "title": "Open AI Canvas in Astravia",
       "eyebrow": "AI Canvas",
       "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video, and more — all from your workspace.",
-      "badges": ["Self-hosted", "MCP-integrated"]
+      "badges": [
+        "Self-hosted",
+        "MCP-integrated"
+      ]
     },
     {
       "type": "showcase",
@@ -23,23 +26,23 @@
       "items": [
         {
           "title": "Full canvas, locally hosted",
-          "description": "The complete open-ai-canvas backend and frontend run on your machine. All data stays in the plugin's data directory.",
+          "description": "The complete open-ai-canvas backend and frontend run on this machine, built as native binaries for your OS. All canvas data stays in the plugin's data directory.",
           "icon": "solar:box-linear"
         },
         {
+          "title": "Use Astravia's models inside the canvas",
+          "description": "Astravia forwards its text models to the canvas over a local bridge, so you don't have to enter the same API key twice. Canvas channels you already filled in can also be registered back into Astravia.",
+          "icon": "solar:routing-2-linear"
+        },
+        {
           "title": "Host agent control via MCP",
-          "description": "Manage projects, canvases, nodes and generation tasks directly through the host agent using MCP tools.",
+          "description": "Manage projects, canvases, nodes and generation tasks through the host agent. 18 MCP tools, including building a whole workflow in a single request.",
           "icon": "solar:widget-5-linear"
         },
         {
           "title": "One-click lifecycle",
-          "description": "Start and stop the canvas from the workspace view. The host manages the Go backend, Node runtime, and agent process.",
+          "description": "Start and stop the canvas from the workspace view. The host manages the backend, the Node runtime and the agent process.",
           "icon": "solar:play-circle-linear"
-        },
-        {
-          "title": "External browser access",
-          "description": "Open the full canvas UI in your default browser for the complete experience, including real-time collaboration.",
-          "icon": "solar:global-linear"
         }
       ]
     },
@@ -49,31 +52,35 @@
       "items": [
         {
           "title": "Install the plugin",
-          "description": "Install from the marketplace. The plugin bundles the Go backend, frontend, agent runtime, and model channel plugins."
+          "description": "Install from the marketplace. The plugin ships a small launcher; the 300+ MB native runtime (backend, web app, agent) is downloaded for your platform on first start."
         },
         {
           "title": "Start the canvas",
-          "description": "Open the workspace view and click 'Start Canvas'. A built-in progress page tracks the first-time runtime download; the canvas opens automatically once the backend is ready."
+          "description": "Open the workspace view and click 'Start Canvas'. A built-in progress page tracks the first-time download; the canvas opens automatically once the backend is ready."
         },
         {
           "title": "Open and log in",
           "description": "Click 'Open in Browser' to open the canvas UI. The first user can register automatically."
         },
         {
+          "title": "Connect models",
+          "description": "In the workspace view, press 'Use Astravia's text models in the canvas' to add a bridge channel — no second key needed for text. Image and video channels still go in the canvas's own settings."
+        },
+        {
           "title": "Use the agent",
-          "description": "After logging in, the host agent can manage your projects and canvases via MCP tools."
+          "description": "After logging in, the host agent can build and edit workflows on the open canvas, and reports each apply back in the plugin view."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "The canvas requires model API keys (OpenAI, Stability AI, etc.) to generate content. Configure them in the canvas UI under model channel settings. Keys are stored locally in the plugin's SQLite database."
+      "content": "Text generation can reuse Astravia's own models through the bridge. Image and video generation still need API keys configured inside the canvas's channel settings; those keys stay in the plugin's local database."
     },
     {
       "type": "callout",
       "tone": "warning",
-      "content": "First launch downloads a ~207 MB runtime (backend + web app) from GitHub Releases and verifies its checksum before starting. Expect several minutes on a slow connection; later launches start immediately. The runtime is stored under the plugin's data directory."
+      "content": "First launch downloads the native runtime for your platform from GitHub Releases and verifies its checksum before starting. Expect several minutes on a slow connection; later launches start immediately. Image and video channels are not bridged — they run inside the canvas."
     }
   ]
 }

@@ -20,6 +20,9 @@ export default definePlugin({
 
     const controller = new CanvasController(ctx);
     activeController = controller;
+    // 模型桥的执行侧必须早于视图存在：用户只要装了插件并启动过服务，画布的请求
+    // 就该有人接。它自己会一直重试，shim 没起也不算错。
+    controller.startBridge();
 
     activeView = ctx.ui.registerWorkspaceView({
       id: VIEW_ID,

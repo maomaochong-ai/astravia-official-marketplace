@@ -1,11 +1,18 @@
 {
   "name": "@astravia/plugin-open-ai-canvas",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "shim": "node scripts/sync-shim.mjs",
+    "check:platforms": "node scripts/check-service-platforms.mjs",
+    "manifest": "node scripts/build-payload-manifest.mjs",
+    "verify:bridge": "node scripts/verify-bridge.mjs",
+    "verify:workflow": "node scripts/verify-workflow.mjs",
+    "verify": "npm run check && npm run verify:workflow && npm run verify:bridge",
+    "test": "node scripts/verify-workflow.mjs && node scripts/verify-bridge.mjs",
     "build:service": "node scripts/build-service-zip.mjs",
-    "build": "vite build",
+    "build": "npm run shim && npm run check:platforms && tsc --noEmit && vite build",
     "check": "tsc --noEmit"
   },
   "devDependencies": {

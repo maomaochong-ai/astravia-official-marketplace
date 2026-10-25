@@ -6,7 +6,10 @@
       "title": "Astravia 内的 Open AI Canvas",
       "eyebrow": "AI 画布",
       "description": "在本地运行开源 AI 画布，通过宿主智能体与之交互。文生图、图生视频等功能——全部在你的工作区中完成。",
-      "badges": ["本地托管", "MCP 集成"]
+      "badges": [
+        "本地托管",
+        "MCP 集成"
+      ]
     },
     {
       "type": "showcase",
@@ -23,23 +26,23 @@
       "items": [
         {
           "title": "完整画布，本地托管",
-          "description": "完整的 open-ai-canvas 后端和前端在你的机器上运行。所有数据保存在插件数据目录中。",
+          "description": "完整的 open-ai-canvas 后端与前端跑在这台机器上，按你的系统编译成原生二进制。所有画布数据保存在插件数据目录。",
           "icon": "solar:box-linear"
         },
         {
+          "title": "在画布里用 Astravia 的模型",
+          "description": "Astravia 通过本地模型桥把自己的文本模型转发给画布，不用把同一个 API Key 填两遍。你在画布里已经填好的渠道也能反过来登记进 Astravia。",
+          "icon": "solar:routing-2-linear"
+        },
+        {
           "title": "宿主智能体通过 MCP 控制",
-          "description": "通过 MCP 工具直接用宿主智能体管理项目、画布、节点和生成任务。",
+          "description": "用宿主智能体管理项目、画布、节点和生成任务。18 个 MCP 工具，包含「一次请求搭出整套工作流」。",
           "icon": "solar:widget-5-linear"
         },
         {
           "title": "一键生命周期管理",
-          "description": "在工作区视图中启动和停止画布。宿主管理 Go 后端、Node 运行时和 agent 进程。",
+          "description": "在工作区视图里启动和停止画布。宿主负责后端、Node 运行时与 agent 进程。",
           "icon": "solar:play-circle-linear"
-        },
-        {
-          "title": "外部浏览器访问",
-          "description": "在默认浏览器中打开完整画布 UI，享受完整体验，包括实时协作。",
-          "icon": "solar:global-linear"
         }
       ]
     },
@@ -49,31 +52,35 @@
       "items": [
         {
           "title": "安装插件",
-          "description": "从市场安装。插件捆绑了 Go 后端、前端、agent 运行时和模型渠道插件。"
+          "description": "从市场安装。插件只带一个很小的启动器；300+ MB 的原生运行时（后端、前端、agent）会在首次启动时按你的平台下载。"
         },
         {
           "title": "启动画布",
-          "description": "打开工作区视图，点击「启动画布」。插件自带的进度页会显示首次运行时下载进度，后端就绪后自动进入画布。"
+          "description": "打开工作区视图，点击「启动画布」。自带进度页显示首次下载进度，后端就绪后自动进入画布。"
         },
         {
           "title": "打开并登录",
           "description": "点击「在浏览器中打开」打开画布 UI。首用户可自动注册。"
         },
         {
+          "title": "接上模型",
+          "description": "在工作区视图点「在画布里使用 Astravia 的文本模型」，会创建一条桥渠道——文本生成不需要再填一次密钥。图片与视频渠道仍在画布自己的设置里配。"
+        },
+        {
           "title": "使用智能体",
-          "description": "登录后，宿主智能体可通过 MCP 工具管理你的项目和画布。"
+          "description": "登录后，宿主智能体可以在已打开的画布上搭建和修改工作流，每次应用都会回报到插件视图。"
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "画布需要模型 API Key（OpenAI、Stability AI 等）才能生成内容。在画布 UI 的模型渠道设置中配置。密钥存储在插件的本地 SQLite 数据库中。"
+      "content": "文本生成可以经模型桥复用 Astravia 自己的模型。图片与视频生成仍然需要在画布的渠道设置里填 API Key，那些密钥保存在插件的本地数据库中。"
     },
     {
       "type": "callout",
       "tone": "warning",
-      "content": "首次启动会从 GitHub Releases 下载约 207 MB 运行时（后端与前端），校验通过后才启动。网络较慢时可能需要数分钟，之后启动无需再次下载。运行时会解包到插件的数据目录。"
+      "content": "首次启动会从 GitHub Releases 下载适配本平台的原生运行时，校验通过后才启动。网络较慢时可能需要数分钟，之后启动无需再次下载。图片与视频渠道不经过模型桥，仍在画布内部运行。"
     }
   ]
 }
