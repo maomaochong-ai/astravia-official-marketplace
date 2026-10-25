@@ -1,11 +1,11 @@
 /**
- * 交接作曲器（展示层）：目标路径/URL → 交给 Agent。
+ * 交接作曲器（展示层）：目标路径 / URL → 交给 Agent。
  *
- * 它钉在内容区底部：阶段详情再长也不会把「怎么把任务发出去」推到视野之外。
- * 目标类型选择不在这里（在主区顶部），工具就绪也不在这里（在右栏），
- * 这个区块只回答一个问题：这段任务怎么真正发进对话。
+ * 现在它是左栏卡片里的正文，不再自己吸在底部 —— 外壳把「发送」提到了顶栏，
+ * 页内再钉一条 sticky 只会让窄面板同时出现两条几乎一样的动作区。
  *
- * 回执占一行固定高度，出现/消失不再顶动上方内容。
+ * 回执占一行固定高度，出现 / 消失不顶动上方内容。
+ * 目标类型选择不在这里（在同一页的目标卡里），工具就绪也不在这里（在「工具就绪」页）。
  */
 
 import { useState, type JSX } from "react";
@@ -13,7 +13,6 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { TargetKind } from "../data/targets";
 import type { Workbench } from "../hooks/use-workbench";
 import { copyText } from "../../../shared/services/clipboard";
-import { Eyebrow } from "../../../shared/components/eyebrow";
 import { ReaUsageExamples } from "./rea-usage-examples";
 
 interface WorkbenchProps {
@@ -42,22 +41,19 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 	const feedback = workbench.handoff;
 	const tone =
 		feedback === "sent" || feedback === "inserted"
-			? "text-sage-dark"
+			? "text-risk-low"
 			: feedback === "queued"
-				? "text-primary"
+				? "text-purple-ink"
 				: feedback === "failed"
-					? "text-danger"
-					: "text-faint";
+					? "text-risk-high"
+					: "text-text-4";
 
 	return (
-		<section className="rea-root sticky bottom-0 z-10 border-t border-border bg-background/95 px-4 py-2.5 backdrop-blur">
+		<div className="flex flex-col px-4 py-3">
+			<label className="mb-1 block text-micro font-medium text-text-3" htmlFor="rea-target-input">
+				{t("tab.workbench.targetLabel")}
+			</label>
 			<div className="flex min-w-0 items-center gap-1.5">
-				<Eyebrow className="hidden shrink-0 font-mono @min-[380px]:inline" title={t("tab.workbench.targetLabel")}>
-					{t("tab.workbench.targetTag")}
-				</Eyebrow>
-				<label className="sr-only" htmlFor="rea-target-input">
-					{t("tab.workbench.targetLabel")}
-				</label>
 				<input
 					id="rea-target-input"
 					type="text"
@@ -72,59 +68,56 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 					spellCheck={false}
 					autoComplete="off"
 					title={workbench.target}
-					className="h-8 min-w-0 flex-1 rounded-control border border-border bg-background px-2.5 font-mono text-caption text-foreground transition-colors placeholder:text-faint focus-visible:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+					className="h-8 min-w-0 flex-1 rounded-md border border-border bg-surface-3 px-2.5 font-mono text-caption text-text transition-colors placeholder:text-text-4 focus-visible:border-purple/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 				/>
-				<button
-					type="button"
-					onClick={() => workbench.insertToChat()}
-					disabled={!canHandoff}
-					title={t("tab.workbench.insertHint")}
-					className="inline-flex h-8 shrink-0 items-center gap-1 rounded-control border border-border px-2 text-caption font-medium text-foreground/85 transition-colors hover:border-border-strong hover:bg-mist hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-border disabled:bg-transparent disabled:text-faint"
-				>
-					<span aria-hidden className="icon-[lucide--text-cursor-input] size-3.5" />
-					<span className="@max-[360px]:hidden">{t("tab.workbench.insert")}</span>
-				</button>
-				<button
-					type="button"
-					onClick={() => workbench.handoffToAgent()}
-					disabled={!canHandoff || feedback === "sending"}
-					title={
-						blockReason === "noKind"
-							? t("tab.workbench.kindUnknown")
-							: blockReason === "empty"
-								? t("tab.workbench.targetRequired")
-								: t("tab.workbench.handoffHint")
-					}
-					className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-pill bg-primary px-3 text-caption font-semibold text-primary-foreground shadow-card transition-[filter,opacity] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:bg-mist disabled:text-faint disabled:shadow-none"
-				>
-					{feedback === "sending" ? (
-						<span aria-hidden className="icon-[lucide--loader-circle] size-3.5 motion-safe:animate-spin" />
-					) : (
-						<span aria-hidden className="icon-[lucide--send] size-3.5" />
-					)}
-					<span className="@max-[400px]:hidden">{t("tab.workbench.handoff")}</span>
-				</button>
 				<button
 					type="button"
 					onClick={() => setExamplesOpen((prev) => !prev)}
 					aria-expanded={examplesOpen}
 					title={t(examplesOpen ? "tab.examples.close" : "tab.examples.openHint")}
-					className="inline-flex size-8 shrink-0 items-center justify-center rounded-control border border-border text-foreground/80 transition-colors hover:border-border-strong hover:bg-mist hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-3 text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 				>
 					<span aria-hidden className="icon-[lucide--sparkles] size-3.5" />
 					<span className="sr-only">{t("tab.examples.button")}</span>
 				</button>
 			</div>
 
-			{/* 固定高度：回执出现/消失不再顶走上面的内容。 */}
-			<div className="mt-1 flex h-4 min-w-0 items-center gap-1.5">
+			<div className="mt-2 flex min-w-0 items-center gap-1.5">
+				<button
+					type="button"
+					onClick={() => workbench.handoffToAgent()}
+					disabled={!canHandoff || feedback === "sending"}
+					title={t("tab.workbench.handoffHint")}
+					className="inline-flex h-8 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md bg-accent px-3 text-caption font-medium text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
+				>
+					{feedback === "sending" ? (
+						<span aria-hidden className="icon-[lucide--loader-circle] size-3.5 motion-safe:animate-spin" />
+					) : (
+						<span aria-hidden className="icon-[lucide--send] size-3.5" />
+					)}
+					<span className="truncate">{t("tab.workbench.handoff")}</span>
+				</button>
+				<button
+					type="button"
+					onClick={() => workbench.insertToChat()}
+					disabled={!canHandoff}
+					title={t("tab.workbench.insertHint")}
+					className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-border bg-surface-3 px-2.5 text-caption font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
+				>
+					<span aria-hidden className="icon-[lucide--text-cursor-input] size-3.5" />
+					<span className="@max-[400px]:hidden">{t("tab.workbench.insert")}</span>
+				</button>
+			</div>
+
+			{/* 固定高度：回执出现 / 消失不再顶走上面的内容。 */}
+			<div className="mt-1.5 flex h-4 min-w-0 items-center gap-1.5">
 				{feedback !== "idle" ? (
-					<span className={`min-w-0 truncate text-micro-up leading-none ${tone}`} title={t(FEEDBACK_TEXT[feedback])}>
+					<span className={`min-w-0 truncate text-micro leading-none ${tone}`} title={t(FEEDBACK_TEXT[feedback])}>
 						{t(FEEDBACK_TEXT[feedback])}
 					</span>
 				) : (
 					<span
-						className={`min-w-0 truncate text-micro-up leading-none ${blockReason === null ? "text-faint" : "text-ochre"}`}
+						className={`min-w-0 truncate text-micro leading-none ${blockReason === null ? "text-text-4" : "text-risk-medium"}`}
 						title={blockReason === null ? undefined : t(BLOCK_TEXT[blockReason as keyof typeof BLOCK_TEXT])}
 					>
 						{blockReason === null ? t("tab.workbench.ready") : t(BLOCK_TEXT[blockReason as keyof typeof BLOCK_TEXT])}
@@ -134,7 +127,7 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 					<button
 						type="button"
 						onClick={() => void copyText(workbench.promptText)}
-						className="inline-flex shrink-0 items-center gap-1 rounded-pill border border-border px-1.5 text-micro-up text-foreground/85 transition-colors hover:border-border-strong hover:bg-mist focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+						className="inline-flex h-4 shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 text-micro leading-none text-text-2 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 					>
 						<span aria-hidden className="icon-[lucide--copy] size-2.5" />
 						{t("tab.workbench.copyPrompt")}
@@ -149,6 +142,6 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 					onClose={() => setExamplesOpen(false)}
 				/>
 			) : null}
-		</section>
+		</div>
 	);
 }

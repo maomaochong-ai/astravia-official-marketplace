@@ -1,20 +1,18 @@
 /**
- * 目标类型选择：一排 6 个 chip（JavaScript / .NET / Native / Firmware / Web / Mobile）。
+ * 目标类型选择：6 个按钮，两列。
  *
  * 两种高亮同时存在，用户不能只看到其中一个：
- *   实线实底   = 用户手动选定（active 就是它）
+ *   实线 + 紫底 = 用户手动选定
  *   虚线 + 圆点 = 宿主对话里由真实工具调用识别出来的目标类型
- * 二者不一致时，chip 行下方给出「会话识别到 X，你选的是 Y」并提供「跟随识别」。
+ * 二者不一致时，下方给出「会话识别到 X，你选的是 Y」并提供「跟随识别」。
  *
- * 工具就绪矩阵不在这里：它是「这台机器缺什么」的全局事实，不随目标类型切换，
- * 放在面板右栏（窄屏落到内容下方）可以一直看到。这里只留该目标的入口提示。
+ * 这里只做选择；每个目标「为什么这样排查、第一步跑什么」在「目标」页展开，
+ * 因为那是一段要读的说明，塞进两列的窄卡片会挤成一行行折行文本。
  */
 
 import type { JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { TARGETS, getTarget, type TargetKind } from "../data/targets";
-import { Eyebrow } from "../../../shared/components/eyebrow";
-import { StatusDot } from "../../../shared/components/status-dot";
 
 export interface ReaWorkflowTargetRoutingProps {
 	/** 当前生效的目标类型（工作台选择 + 会话检测的合并结果）。 */
@@ -41,33 +39,33 @@ export function ReaWorkflowTargetRouting({
 	const conflict = picked && detected !== null && detected !== undefined && active !== detected;
 
 	return (
-		<div aria-label={t("tab.target.sectionAria")} className="px-4 py-3">
-			<header className="mb-2 flex min-w-0 items-center justify-between gap-2">
-				<Eyebrow tone="strong">{t("tab.target.sectionTitle")}</Eyebrow>
+		<div aria-label={t("tab.target.sectionAria")} className="flex flex-col gap-2 px-4 py-3">
+			<div className="flex min-w-0 items-center justify-between gap-2">
+				<span className="text-micro font-medium text-text-3">{t("tab.target.sectionTitle")}</span>
 				{picked ? (
 					<button
 						type="button"
-						className="inline-flex h-5 shrink-0 items-center rounded px-0.5 text-micro-up text-faint transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+						className="inline-flex h-5 shrink-0 items-center rounded-sm px-1 text-micro text-text-4 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 						onClick={onClear}
 					>
 						{t("tab.target.clear")}
 					</button>
 				) : detected ? (
-					<span className="shrink-0 whitespace-nowrap text-micro-up text-faint">{t("tab.target.autoDetected")}</span>
+					<span className="shrink-0 whitespace-nowrap text-micro text-text-4">{t("tab.target.autoDetected")}</span>
 				) : null}
-			</header>
+			</div>
 
-			<div className="flex flex-wrap gap-1.5">
+			<div className="grid grid-cols-2 gap-1.5">
 				{TARGETS.map((target) => {
 					const isActive = active === target.kind;
 					const isDetected = detected === target.kind;
 					const cls = [
-						"inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-pill border px-2.5 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+						"inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md border px-2 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
 						isActive
-							? "border-primary/50 bg-primary/12 text-primary"
+							? "border-purple/50 bg-purple/10 text-purple-ink"
 							: isDetected
-								? "border-dashed border-honey bg-apricot-light text-foreground/85"
-								: "border-border bg-transparent text-foreground/80 hover:border-border-strong hover:bg-mist hover:text-foreground",
+								? "border-dashed border-risk-medium/60 bg-risk-medium/10 text-text"
+								: "border-border bg-surface-3 text-text-2 hover:bg-surface-hover hover:text-text",
 					].join(" ");
 					return (
 						<button
@@ -76,51 +74,45 @@ export function ReaWorkflowTargetRouting({
 							onClick={() => onPick(target.kind)}
 							className={cls}
 							aria-pressed={isActive}
-							title={
-								isActive
-									? t("tab.target.pickedTitle")
-									: isDetected
-										? t("tab.target.detectedTitle")
-										: t(target.hintKey)
-							}
+							title={isActive ? t("tab.target.pickedTitle") : isDetected ? t("tab.target.detectedTitle") : t(target.hintKey)}
 						>
-							<span aria-hidden className={`${iconFor(target.kind)} shrink-0 text-caption leading-none`} />
-							<span>{t(target.labelKey)}</span>
-							{isDetected ? <StatusDot tone="warning" pulse /> : null}
+							<span aria-hidden className={`${iconFor(target.kind)} size-3.5 shrink-0`} />
+							<span className="truncate">{t(target.labelKey)}</span>
+							{isDetected ? (
+								<span aria-hidden className="ml-auto size-1.5 shrink-0 rounded-full bg-risk-medium motion-safe:animate-pulse" />
+							) : null}
 						</button>
 					);
 				})}
 			</div>
 
-			<div className="mt-1.5 flex min-w-0 items-center gap-2">
-				{conflict && detected ? (
-					<>
-						<span className="min-w-0 flex-1 truncate text-micro text-ochre" title={t("tab.target.conflictTitle")}>
-							{t("tab.target.conflict", {
-								detected: t(`tab.target.${detected}.label`),
-								picked: active ? t(`tab.target.${active}.label`) : "",
-							})}
-						</span>
-						<button
-							type="button"
-							onClick={onFollowDetected}
-							className="inline-flex h-5 shrink-0 items-center gap-1 rounded-pill border border-border px-1.5 text-micro-up font-medium text-foreground/85 transition-colors hover:border-border-strong hover:bg-mist focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-						>
-							<span aria-hidden className="icon-[lucide--corner-down-right] size-2.5" />
-							{t("tab.target.followDetected")}
-						</button>
-					</>
-				) : detected ? (
-					<span className="min-w-0 truncate text-micro text-faint" title={t("tab.target.legendDetected")}>
-						{t("tab.target.legendDetected")}
+			{conflict && detected ? (
+				<div className="flex min-w-0 items-center gap-2">
+					<span className="min-w-0 flex-1 truncate text-micro text-risk-medium" title={t("tab.target.conflictTitle")}>
+						{t("tab.target.conflict", {
+							detected: t(`tab.target.${detected}.label`),
+							picked: active ? t(`tab.target.${active}.label`) : "",
+						})}
 					</span>
-				) : null}
-			</div>
+					<button
+						type="button"
+						onClick={onFollowDetected}
+						className="inline-flex h-5 shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 text-micro font-medium text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					>
+						<span aria-hidden className="icon-[lucide--corner-down-right] size-2.5" />
+						{t("tab.target.followDetected")}
+					</button>
+				</div>
+			) : detected ? (
+				<span className="min-w-0 truncate text-micro text-text-4" title={t("tab.target.legendDetected")}>
+					{t("tab.target.legendDetected")}
+				</span>
+			) : null}
 
 			{active ? (
-				<p className="mt-2 text-pretty text-micro leading-relaxed text-foreground/85">{t(getTarget(active).hintKey)}</p>
+				<p className="text-pretty text-micro leading-relaxed text-text-3">{t(getTarget(active).hintKey)}</p>
 			) : (
-				<p className="mt-2 text-pretty text-micro leading-relaxed text-faint" title={t("tab.target.noSignalHint")}>
+				<p className="text-pretty text-micro leading-relaxed text-text-4" title={t("tab.target.noSignalHint")}>
 					{t("tab.target.noSignalHint")}
 				</p>
 			)}

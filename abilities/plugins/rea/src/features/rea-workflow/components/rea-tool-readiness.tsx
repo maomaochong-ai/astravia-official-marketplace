@@ -23,7 +23,6 @@ import type { TargetKind } from "../data/targets";
 import type { DoctorReport } from "../hooks/use-doctor-report";
 import { useToolInstall } from "../hooks/use-tool-install";
 import { ReaInstallProgress } from "./rea-install-progress";
-import { Eyebrow } from "../../../shared/components/eyebrow";
 import { useToolProbes } from "../hooks/use-tool-probes";
 import {
 	resolveReadiness,
@@ -137,23 +136,23 @@ export function ReaToolReadiness({
 		const installable = item.state !== "ready" && install.canInstall(item.requirement.id);
 		const isRunning = runningIds.has(item.requirement.id);
 		return (
-			<li key={item.requirement.id} className="rounded-control border border-border/70 bg-card/40 px-2 py-1">
+			<li key={item.requirement.id} className="rounded-md border border-border-subtle bg-surface-3/60 px-2.5 py-1.5">
 				<div className="flex min-w-0 items-center gap-1.5">
 					<span
 						aria-hidden
 						className={`size-1.5 shrink-0 rounded-full ${
 							isRunning
-								? "bg-primary motion-safe:animate-pulse"
+								? "bg-purple motion-safe:animate-pulse"
 								: item.state === "ready"
-									? "bg-sage-dark"
+									? "bg-risk-low"
 									: item.state === "missing"
-										? "bg-honey"
-										: "bg-stone"
+										? "bg-risk-medium"
+										: "bg-text-4/40"
 						}`}
 					/>
-					<span className="shrink-0 text-[11px] font-medium text-foreground/90">{item.requirement.label}</span>
+					<span className="shrink-0 text-micro font-medium text-text">{item.requirement.label}</span>
 					<span
-						className="min-w-0 flex-1 truncate text-[10.5px] text-muted-foreground"
+						className="min-w-0 flex-1 truncate text-micro-up text-text-3"
 						title={item.detail ?? t(item.requirement.purposeKey)}
 					>
 						{item.detail ?? t(item.requirement.purposeKey)}
@@ -180,7 +179,7 @@ export function ReaToolReadiness({
 									? "tab.tools.installHint"
 									: "tab.tools.commandHint",
 							)}
-							className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-primary/40 bg-primary/10 px-1.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+							className="inline-flex h-5 shrink-0 items-center gap-1 rounded-sm border border-purple/40 bg-purple/10 px-1.5 text-micro-up font-medium text-purple-ink transition-colors hover:bg-purple/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
 						>
 							{install.installingId === item.requirement.id ? (
 								<span aria-hidden className="icon-[lucide--loader-circle] size-2.5 motion-safe:animate-spin" />
@@ -195,7 +194,7 @@ export function ReaToolReadiness({
 							type="button"
 							onClick={() => void copyText(hint)}
 							title={hint}
-							className="inline-flex h-5 shrink-0 items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+							className="inline-flex h-5 shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 text-micro-up text-text-2 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 						>
 							<span aria-hidden className="icon-[lucide--copy] size-2.5" />
 							{t("tab.tools.copy")}
@@ -203,12 +202,12 @@ export function ReaToolReadiness({
 					) : null}
 				</div>
 				{hint !== null && !installable ? (
-					<p className="mt-0.5 pl-3 text-[10px] leading-snug text-muted-foreground" title={hint}>
+					<p className="mt-1 pl-3 text-micro-up leading-snug text-text-4" title={hint}>
 						<span className="line-clamp-2">{hint}</span>
 					</p>
 				) : null}
 				{needsConfigAfterInstall(installRecipeFor(item.requirement.id)) ? (
-					<p className="mt-0.5 pl-3 text-[10px] leading-snug text-ochre">
+					<p className="mt-1 pl-3 text-micro-up leading-snug text-risk-medium">
 						<span className="line-clamp-2">{t(installRecipeFor(item.requirement.id)?.noteKey ?? "tab.tools.note.generic")}</span>
 					</p>
 				) : null}
@@ -218,8 +217,8 @@ export function ReaToolReadiness({
 
 	const section = (labelKey: string, list: readonly ToolReadiness[]): JSX.Element | null =>
 		list.length === 0 ? null : (
-			<div className="mt-1 flex flex-col gap-1">
-				<span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+			<div className="mt-2 flex flex-col gap-1">
+				<span className="text-micro-up font-medium uppercase tracking-[0.08em] text-text-4">
 					{t(labelKey, { count: list.length })}
 				</span>
 				<ul className="flex flex-col gap-1">{list.map(renderRow)}</ul>
@@ -229,14 +228,13 @@ export function ReaToolReadiness({
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex min-w-0 items-center justify-between gap-2">
-				<Eyebrow tone="strong">{t("tab.tools.title")}</Eyebrow>
 				{report.status === "checking" || probeState.probing ? (
 					<StatusChip tone="progress">
 						<span aria-hidden className="icon-[lucide--loader-circle] size-3 motion-safe:animate-spin" />
 						{t("tab.tools.checking")}
 					</StatusChip>
 				) : summary.total === 0 ? (
-					<span className="shrink-0 text-[10.5px] text-muted-foreground">{t("tab.tools.empty")}</span>
+					<span className="shrink-0 text-micro-up text-text-4">{t("tab.tools.empty")}</span>
 				) : (
 					<StatusChip
 						tone={summary.missing > 0 ? "warning" : "success"}
@@ -270,7 +268,7 @@ export function ReaToolReadiness({
 					type="button"
 					onClick={() => setExpanded((prev) => !prev)}
 					title={t(expanded ? "tab.tools.collapseAll" : "tab.tools.expandAll")}
-					className="mt-1 inline-flex h-5 w-fit items-center gap-1 rounded text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					className="mt-1 inline-flex h-5 w-fit items-center gap-1 rounded-sm text-micro-up text-text-4 transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 				>
 					<span aria-hidden className={`icon-[lucide--chevron-down] size-3 ${expanded ? "rotate-180" : ""}`} />
 					{expanded
@@ -282,7 +280,7 @@ export function ReaToolReadiness({
 			) : null}
 
 			<div className="mt-1 flex min-w-0 items-center justify-between gap-2">
-				<span className="min-w-0 truncate text-[10px] text-muted-foreground" title={failureText ?? report.message ?? undefined}>
+				<span className="min-w-0 truncate text-micro-up text-text-4" title={failureText ?? report.message ?? undefined}>
 					{install.tone === "success"
 						? t("tab.tools.installSuccess")
 						: install.tone === "danger"
@@ -296,7 +294,7 @@ export function ReaToolReadiness({
 				<button
 					type="button"
 					onClick={recheckAll}
-					className="inline-flex h-5 shrink-0 items-center gap-1 rounded px-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					className="inline-flex h-6 shrink-0 items-center gap-1 rounded-sm border border-border bg-surface-3 px-2 text-micro text-text-2 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 				>
 					<span aria-hidden className="icon-[lucide--refresh-cw] size-2.5" />
 					{t("tab.tools.recheck")}

@@ -1,5 +1,5 @@
 /**
- * 实时调用流水：最新的在最上面，自带滚动区与「回到底部」提示。
+ * 实时调用流水：最新的在最上面，自带滚动区与「回到最新」提示。
  *
  * 三个体验点来自实际反馈：
  *   1. 默认就是展开的 —— 想看的时候不用先点一次「展开」；
@@ -8,6 +8,9 @@
  *
  * 「运行中」不靠推断：`endedAt === null` 就是宿主还没回这次调用。
  * 数据来自宿主会话事件，只读。
+ *
+ * `compact` 是同一份数据的「最近几条」形态，给工作台右栏用：不重复栏头、只留 6 行，
+ * 完整历史在「实时调用」页看 —— 两处渲染同一组件，避免两份格式逐渐走偏。
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +26,8 @@ interface LiveCallLogProps {
 	readonly calls: readonly ReaLiveCall[];
 	readonly errors: readonly ReaLiveError[];
 	readonly onSelectStage: (stage: number) => void;
+	/** 只显示最近几条，不渲染栏头；用于卡片内的摘要视图。 */
+	readonly compact?: boolean;
 }
 
 function prefersReducedMotion(): boolean {
@@ -41,7 +46,7 @@ function timeLabel(at: number): string {
 	return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}:${String(date.getSeconds()).padStart(2, "0")}`;
 }
 
-export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProps): JSX.Element {
+export function ReaLiveCallLog({ calls, errors, onSelectStage, compact = false }: LiveCallLogProps): JSX.Element {
 	const { t } = useTranslation();
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [pinned, setPinned] = useState(true);
@@ -49,7 +54,7 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 	const listRef = useRef<HTMLDivElement | null>(null);
 	const pinnedRef = useRef(true);
 	const countRef = useRef(calls.length);
-	const visible = calls.slice(-24).reverse();
+	const visible = calls.slice(compact ? -6 : -24).reverse();
 	const running = calls.filter((call) => call.endedAt === null).length;
 
 	// 跟随规则：用户停在最新位置时自动滚到顶部；翻过之后只累加「新调用」计数，
@@ -86,15 +91,13 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 	return (
 		<div className="flex flex-col">
 			{errors.length > 0 ? (
-				<div className="flex flex-col gap-1 border-b border-border bg-danger/5 px-3 py-2">
-					<span className="text-[10px] font-semibold uppercase tracking-wide text-danger">
-						{t("live.errors.title")}
-					</span>
+				<div className="flex flex-col gap-1 border-b border-border-subtle bg-risk-high/8 px-4 py-2">
+					<span className="text-micro-up font-medium uppercase tracking-[0.08em] text-risk-high">{t("live.errors.title")}</span>
 					{errors.slice(0, 3).map((error) => (
-						<div key={`${error.toolName}-${error.at}`} className="flex items-start gap-1.5 text-[11px]">
-							<span className="shrink-0 tabular-nums text-muted-foreground">{timeLabel(error.at)}</span>
-							<span className="shrink-0 font-medium text-danger">{error.toolName}</span>
-							<span className="min-w-0 line-clamp-2 break-all text-muted-foreground" title={error.message}>
+						<div key={`${error.toolName}-${error.at}`} className="flex items-start gap-1.5 text-micro">
+							<span className="shrink-0 tabular-nums text-text-4">{timeLabel(error.at)}</span>
+							<span className="shrink-0 font-medium text-risk-high">{error.toolName}</span>
+							<span className="min-w-0 line-clamp-2 break-all text-text-3" title={error.message}>
 								{error.message}
 							</span>
 						</div>
@@ -102,35 +105,41 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 				</div>
 			) : null}
 
-			<div className="flex min-w-0 items-center gap-1.5 border-b border-border bg-card/60 px-3 py-1">
-				<span
-					aria-hidden
-					className={`size-1.5 shrink-0 rounded-full ${running > 0 ? "bg-primary motion-safe:animate-pulse" : "bg-stone"}`}
-				/>
-				<span className="shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t("live.calls.title")}</span>
-				<span
-					className="min-w-0 truncate text-[10px] tabular-nums text-muted-foreground"
-					title={t("live.counts.calls", { calls: calls.length, errors: errors.length })}
-				>
-					{t("live.calls.total", { count: calls.length })}
-				</span>
-				<button
-					type="button"
-					onClick={jumpToLatest}
-					title={t("live.calls.jumpTop")}
-					className="ml-auto shrink-0 rounded px-1 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-				>
-					{pinned ? t("live.calls.live") : t("live.calls.jumpTop")}
-				</button>
-			</div>
+			{compact ? null : (
+				<div className="flex min-w-0 items-center gap-1.5 border-b border-border-subtle px-4 py-1.5">
+					<span
+						aria-hidden
+						className={`size-1.5 shrink-0 rounded-full ${running > 0 ? "bg-purple motion-safe:animate-pulse" : "bg-text-4/40"}`}
+					/>
+					<span className="shrink-0 text-micro font-medium text-text-3">{t("live.calls.title")}</span>
+					<span
+						className="min-w-0 truncate text-micro tabular-nums text-text-4"
+						title={t("live.counts.calls", { calls: calls.length, errors: errors.length })}
+					>
+						{t("live.calls.total", { count: calls.length })}
+					</span>
+					<button
+						type="button"
+						onClick={jumpToLatest}
+						title={t("live.calls.jumpTop")}
+						className="ml-auto shrink-0 rounded-sm px-1 text-micro font-medium text-purple-ink transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+					>
+						{pinned ? t("live.calls.live") : t("live.calls.jumpTop")}
+					</button>
+				</div>
+			)}
 
-			<div ref={listRef} onScroll={handleScroll} className="relative max-h-[42vh] overflow-y-auto overscroll-contain">
+			<div
+				ref={listRef}
+				onScroll={handleScroll}
+				className={`relative overflow-y-auto overscroll-contain ${compact ? "" : "max-h-[52vh]"}`}
+			>
 				{!pinned && pending > 0 ? (
 					<div className="sticky top-1 z-10 flex justify-center">
 						<button
 							type="button"
 							onClick={jumpToLatest}
-							className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-card px-2 py-0.5 text-[10px] font-medium text-primary shadow-sm motion-safe:animate-rea-rise focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+							className="inline-flex items-center gap-1 rounded-full border border-purple/40 bg-surface-2 px-2 py-0.5 text-micro font-medium text-purple-ink shadow-card motion-safe:animate-rea-rise focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 						>
 							<span aria-hidden className="icon-[lucide--arrow-up] size-2.5" />
 							{t("live.calls.newItems", { count: pending })}
@@ -139,20 +148,20 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 				) : null}
 
 				{visible.length === 0 ? (
-					<p className="px-3 py-4 text-[11px] text-muted-foreground">{t("live.calls.empty")}</p>
+					<p className="px-4 py-4 text-micro text-text-4">{t("live.calls.empty")}</p>
 				) : (
-					<ul className="divide-y divide-border/60">
+					<ul className="divide-y divide-border-subtle">
 						{visible.map((call) => {
 							const stageIndex = call.stage ? STAGE_INDEX[call.stage] : null;
 							const expanded = expandedId === call.id;
 							const isRunning = call.endedAt === null;
 							return (
 								<li key={call.id} className="flex flex-col motion-safe:animate-rea-row-in">
-									<div className="flex items-start gap-2 px-3 py-1.5">
+									<div className="flex items-start gap-2 px-4 py-2 transition-colors hover:bg-surface-hover">
 										{stageIndex !== null ? (
 											<button
 												type="button"
-												className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+												className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 												onClick={() => onSelectStage(stageIndex)}
 												title={t(`tab.stage.${call.stage}.label`)}
 											>
@@ -170,15 +179,15 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 											aria-expanded={expanded}
 											onClick={() => setExpandedId(expanded ? null : call.id)}
 											title={`${call.rawToolName} — ${t(expanded ? "live.calls.collapse" : "live.calls.expand")}`}
-											className="flex min-w-0 flex-1 flex-col rounded text-left transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+											className="flex min-w-0 flex-1 flex-col rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 										>
 											<div className="flex min-w-0 items-center gap-1.5">
 												<span
 													aria-hidden
-													className={`shrink-0 text-muted-foreground ${expanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]"} size-3`}
+													className={`shrink-0 text-text-4 ${expanded ? "icon-[lucide--chevron-down]" : "icon-[lucide--chevron-right]"} size-3`}
 												/>
 												<span
-													className={`min-w-0 truncate text-[11px] font-medium ${call.isError ? "text-danger" : "text-foreground"}`}
+													className={`min-w-0 truncate font-mono text-micro font-medium ${call.isError ? "text-risk-high" : "text-text"}`}
 													title={call.rawToolName}
 												>
 													{call.toolName}
@@ -189,45 +198,45 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 													</StatusChip>
 												))}
 												<span
-													className={`ml-auto shrink-0 text-[10px] tabular-nums ${isRunning ? "text-primary" : "text-muted-foreground"}`}
+													className={`ml-auto shrink-0 text-micro tabular-nums ${isRunning ? "text-purple-ink" : "text-text-4"}`}
 													title={new Date(call.startedAt).toISOString()}
 												>
 													{isRunning ? t("live.calls.running") : durationLabel(call)}
 												</span>
 											</div>
 											{call.argsPreview && !expanded ? (
-												<span className="mt-0.5 truncate pl-4 font-mono text-[10px] text-muted-foreground" title={call.argsPreview}>
+												<span className="mt-0.5 truncate pl-4 font-mono text-micro-up text-text-4" title={call.argsPreview}>
 													{call.argsPreview}
 												</span>
 											) : null}
 										</button>
 									</div>
 									{expanded ? (
-										<div className="flex flex-col gap-1 px-3 pb-2 pl-8">
-											<dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[10px]">
-												<dt className="text-muted-foreground">tool</dt>
-												<dd className="min-w-0 break-all font-mono text-foreground/85">{call.rawToolName}</dd>
-												<dt className="text-muted-foreground">time</dt>
-												<dd className="min-w-0 break-all font-mono tabular-nums text-foreground/85">
+										<div className="flex flex-col gap-1.5 px-4 pb-2.5 pl-9">
+											<dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-micro">
+												<dt className="text-text-4">tool</dt>
+												<dd className="min-w-0 break-all font-mono text-text-2">{call.rawToolName}</dd>
+												<dt className="text-text-4">time</dt>
+												<dd className="min-w-0 break-all font-mono tabular-nums text-text-2">
 													{new Date(call.startedAt).toLocaleString()}
 												</dd>
 												{call.targetPath !== null ? (
 													<>
-														<dt className="text-muted-foreground">target</dt>
-														<dd className="min-w-0 break-all font-mono text-foreground/85">{call.targetPath}</dd>
+														<dt className="text-text-4">target</dt>
+														<dd className="min-w-0 break-all font-mono text-text-2">{call.targetPath}</dd>
 													</>
 												) : null}
 												{call.cwd !== null ? (
 													<>
-														<dt className="text-muted-foreground">cwd</dt>
-														<dd className="min-w-0 break-all font-mono text-foreground/85">{call.cwd}</dd>
+														<dt className="text-text-4">cwd</dt>
+														<dd className="min-w-0 break-all font-mono text-text-2">{call.cwd}</dd>
 													</>
 												) : null}
 											</dl>
 											{call.argsPreview ? (
 												<div className="flex flex-col gap-0.5">
-													<span className="text-[10px] text-muted-foreground">args</span>
-													<pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded border border-border/70 bg-background/60 px-1.5 py-1 font-mono text-[10px] leading-relaxed text-foreground/85">
+													<span className="text-micro text-text-4">args</span>
+													<pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border-subtle bg-surface-3 px-2 py-1 font-mono text-micro leading-relaxed text-text-2">
 														{call.argsPreview}
 													</pre>
 												</div>
@@ -235,7 +244,7 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage }: LiveCallLogProp
 											<button
 												type="button"
 												onClick={() => void copyText(call.argsPreview || call.rawToolName)}
-												className="inline-flex h-5 w-fit items-center gap-1 rounded border border-border px-1.5 text-[10px] text-foreground/80 transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+												className="inline-flex h-5 w-fit items-center gap-1 rounded-sm border border-border px-1.5 text-micro text-text-2 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 											>
 												<span aria-hidden className="icon-[lucide--copy] size-2.5" />
 												{t("live.calls.copy")}

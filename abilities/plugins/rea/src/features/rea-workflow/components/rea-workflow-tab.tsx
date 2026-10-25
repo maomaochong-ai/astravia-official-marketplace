@@ -1,23 +1,15 @@
 /**
- * REA 活动栏 tab 容器。
+ * REA 活动栏 tab 容器 —— 外壳 + 六个分节。
  *
- * 结构自上而下三层，中间一层在三档宽度下重排：
- *   1. 标题条（品牌 + 一句话定位 + 铺满面板）
- *   2. 引擎条（真实 CLI phase + retry）与实时摘要条（目标 / 计数 / 最近目标）
- *   3. 内容网格
- *        < 880px   单列：阶段条 → 目标选择 → 阶段详情 → 工具就绪 → 执行环 → 调用日志
- *        880-1179  两列：左栏阶段轨道 + 主列；右栏内容落到主列下方
- *        ≥ 1180px  三列：左栏阶段轨道 + 主列 + 右栏（工具就绪 / 执行环 / 调用日志）
- *   底部：翻页控制条；主列底部的 sticky 作曲器负责「交给 Agent」。
+ * 布局：侧栏（固定 w-56）| 顶栏（h-11）+ 可滚动主区。三层都是 flex 兄弟节点，
+ * 没有绝对定位，也没有把侧栏塞进内容栅格，因此面板拖到任何宽度都不会出现
+ * 「侧栏压在正文上」。侧栏在主区之外，主区拿 `min-w-0 flex-1` 自己滚动。
  *
- * 为什么用 grid 显式定位而不是按宽度渲染两套 DOM：
- * 每块内容都挂了 hook（订阅、探测、安装状态），重复挂载会让同一份事实跑两遍，
- * 也会在切换宽度时丢掉展开状态。所以每块只渲染一次，位置交给栅格。
+ * 状态只在这里持有一次（分节 / 当前阶段 / 工作台 / 实时快照 / doctor / 全屏），
+ * 六个分节页共用同一批数据，切页不重跑探测、不丢安装进度。
  *
  * 职责边界：执行逆向的是 Agent。插件只做三件事 —— 看清目标、看清进度、看清缺什么工具。
- * doctor 自动检测与「一键安装」都在插件侧只读/官方通道里完成，不手工跑分析命令。
- *
- * Tab chrome（标签条 / 关闭按钮 / resize handle）由宿主 ActivityPanel 提供。
+ * doctor 自动检测与一键安装都走只读 / 官方通道，不手工跑分析命令。
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
@@ -28,28 +20,25 @@ import type {
 	PluginCommandSpawnHandle,
 	SendPromptResult,
 } from "@astravia-org/plugin-sdk";
-import { ReaProviderStatusBar } from "./rea-provider-status-bar";
-import { ReaLiveStatus } from "./rea-live-status";
-import { ReaLiveCallLog } from "./rea-live-call-log";
-import { ReaWorkbench } from "./rea-workbench";
-import { ReaWorkflowStageStrip } from "./rea-workflow-strip";
-import { ReaWorkflowStageDetail } from "./rea-workflow-stage-detail";
-import { ReaWorkflowControls } from "./rea-workflow-controls";
-import { ReaWorkflowHeader } from "./rea-workflow-header";
-import { ReaWorkflowRail } from "./rea-workflow-rail";
-import { ReaWorkflowTargetRouting } from "./rea-workflow-target-routing";
-import { ReaToolReadiness } from "./rea-tool-readiness";
-import { ReaLoopConsole } from "./rea-loop-console";
 import { STAGES, TOTAL_STAGES } from "../data/stages";
 import { useDoctorReport } from "../hooks/use-doctor-report";
 import { usePanelFullscreen } from "../hooks/use-panel-fullscreen";
+import { useProviderStatus, providerEngineTone, providerLabelKey } from "../hooks/use-provider-status";
 import { useWorkbench } from "../hooks/use-workbench";
-import { useStageRail } from "../hooks/use-stage-rail";
 import { useReaLiveSnapshot } from "../live/use-live-snapshot";
 import { scopeLiveCalls, type ReaLiveStore } from "../live/session-store";
 import { buildStageDigest, bypassedStageIds } from "../live/diagram-live";
 import { STAGE_INDEX } from "../live/tool-taxonomy";
-import { Eyebrow } from "../../../shared/components/eyebrow";
+import { ReaAppShell } from "./rea-app-shell";
+import { ReaSidebar } from "./rea-sidebar";
+import { ReaTopbar } from "./rea-topbar";
+import { sectionDefinition, type ReaSection } from "./rea-sections";
+import { WorkbenchPage } from "./rea-page-workbench";
+import { GuidePage } from "./rea-page-guide";
+import { TargetsPage } from "./rea-page-targets";
+import { CallsPage } from "./rea-page-calls";
+import { ToolchainPage } from "./rea-page-toolchain";
+import { EnginePage } from "./rea-page-engine";
 
 export interface ReaProviderBridge {
 	getStatus(): Promise<PluginCliProviderStatus>;
@@ -58,7 +47,7 @@ export interface ReaProviderBridge {
 	/** 运行 `npx -y rea-agents@latest <args>`；args 不含包名前缀。 */
 	run(args: readonly string[], options: { cwd?: string; timeoutMs: number }): Promise<PluginCommandRunResult>;
 	/** 同一个 provider 的长驻进程（安装用；可看输出、可停止）。 */
-	spawn: ((args: readonly string[], options: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
+	spawn: ((args: readonly string[], options?: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
 }
 
 export interface ReaWorkflowTabProps {
@@ -88,11 +77,13 @@ export function ReaWorkflowTab({
 }: ReaWorkflowTabProps): JSX.Element {
 	const { t } = useTranslation();
 	const { active, cwd } = useActivityTab();
+	const [section, setSection] = useState<ReaSection>("workbench");
 	const [currentStage, setCurrentStage] = useState<number>(1);
-	const [showLog, setShowLog] = useState<boolean>(true);
 	const snapshot = useReaLiveSnapshot(store);
-	// 会话里推进到新阶段时自动翻页；用户手动点选后就停在那，直到下一次真实推进。
+	const providerStatus = useProviderStatus(provider);
+
 	const liveStage = snapshot.activeStage ? STAGE_INDEX[snapshot.activeStage] : null;
+	// 会话里推进到新阶段时自动翻页；用户手动点选后就停在那，直到下一次真实推进。
 	const followedStage = useRef<number | null>(null);
 	useEffect(() => {
 		if (liveStage === null || liveStage === followedStage.current) return;
@@ -100,7 +91,7 @@ export function ReaWorkflowTab({
 		setCurrentStage(liveStage);
 	}, [liveStage]);
 
-	const stage = useMemo(() => STAGES.find((s) => s.index === currentStage) ?? STAGES[0]!, [currentStage]);
+	const stage = useMemo(() => STAGES.find((item) => item.index === currentStage) ?? STAGES[0]!, [currentStage]);
 
 	const handleSelect = useCallback((next: number): void => {
 		setCurrentStage(Math.max(1, Math.min(TOTAL_STAGES, next)));
@@ -123,149 +114,142 @@ export function ReaWorkflowTab({
 		cwd: cwd ?? null,
 		providerPhase: snapshot.providerPhase,
 	});
+
 	const panelRef = useRef<HTMLDivElement | null>(null);
 	const panelFullscreen = usePanelFullscreen(panelRef, setPanelWidth);
 
 	const calls = useMemo(() => scopeLiveCalls(snapshot, cwd), [snapshot, cwd]);
-	// 被流程越过的阶段（自身没有调用、下游已有调用）：流程条要如实区分「没开始」和「跳过」。
+	// 被流程越过的阶段（自身没有调用、下游已有调用）：进度条要如实区分「没开始」和「跳过」。
 	const bypassed = useMemo(() => bypassedStageIds(calls).map((id) => STAGE_INDEX[id]), [calls]);
-	// 示意图与阶段标题用的是同一份真实信号：当前阶段的调用数 / 正在跑的工具。
 	const stageLive = useMemo(
-		() => ({ calls, running: snapshot.runningToolNames, digest: buildStageDigest(currentStage, calls, snapshot.runningToolNames) }),
+		() => ({
+			calls,
+			running: snapshot.runningToolNames,
+			digest: buildStageDigest(currentStage, calls, snapshot.runningToolNames),
+		}),
 		[calls, currentStage, snapshot.runningToolNames],
 	);
+
+	const checks = report.checks ?? [];
+	const definition = sectionDefinition(section);
 	const activeTarget = workbench.active ?? snapshot.detectedTarget;
-	// 左栏轨道与执行环摘要：阶段怎么画、覆盖到哪，都由这个 hook 一次算清。
-	const stageRail = useStageRail({ currentStage, snapshot, bypassedStages: bypassed });
+	const canSend = workbench.blockReason === null;
+
+	const handleUseTarget = useCallback(
+		(path: string): void => {
+			// 同时落到插件侧输入框和宿主对话草稿：用户点「填入对话」就该在对话框里看到它。
+			workbench.setTarget(path);
+			workbench.insertToChat(path);
+			setCurrentStage(2);
+			setSection("workbench");
+		},
+		[workbench],
+	);
 
 	const animateClass = active ? "motion-safe:animate-in motion-safe:fade-in-0" : "";
 
 	return (
 		<div
 			ref={panelRef}
-			className={`rea-root @container flex h-full w-full flex-col overflow-hidden bg-background text-foreground ${animateClass}`}
+			className={`rea-root @container flex h-full w-full flex-col overflow-hidden bg-surface text-text ${animateClass}`}
 		>
-			<ReaWorkflowHeader>
-				{panelFullscreen.available ? (
-					<button
-						type="button"
-						onClick={panelFullscreen.toggle}
-						aria-pressed={panelFullscreen.fullscreen}
-						title={t(panelFullscreen.fullscreen ? "tab.panel.restoreHint" : "tab.panel.fullscreenHint")}
-						className="inline-flex size-7 items-center justify-center rounded-control text-faint transition-colors hover:bg-mist hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-					>
-						<span
-							aria-hidden
-							className={`size-3.5 ${panelFullscreen.fullscreen ? "icon-[lucide--minimize]" : "icon-[lucide--maximize]"}`}
-						/>
-						<span className="sr-only">
-							{t(panelFullscreen.fullscreen ? "tab.panel.restore" : "tab.panel.fullscreen")}
-						</span>
-					</button>
-				) : null}
-			</ReaWorkflowHeader>
-
-			<ReaProviderStatusBar getStatus={provider.getStatus} onStatusChanged={provider.onStatusChanged} retry={provider.retry} />
-			<ReaLiveStatus
-				snapshot={snapshot}
-				onSelectStage={handleSelect}
-				onUseTarget={(path) => {
-					// 同时落到插件侧输入框和宿主对话草稿：用户点「填入对话」就该在对话框里看到它。
-					workbench.setTarget(path);
-					workbench.insertToChat(path);
-					handleSelect(2);
-				}}
-			/>
-
-			{/* 三档宽度：窄屏整页滚动；880 起左栏轨道 + 主列（轨道 sticky）；1180 起三列各自滚动。 */}
-			<div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto @min-[880px]:grid-cols-[13.5rem_minmax(0,1fr)] @min-[1180px]:grid-cols-[13.5rem_minmax(0,1fr)_20rem] @min-[1180px]:grid-rows-[minmax(0,1fr)] @min-[1180px]:overflow-hidden">
-				<ReaWorkflowRail
+			<ReaAppShell
+				sidebar={
+					<ReaSidebar
+						section={section}
+						onSelect={setSection}
+						engineTone={providerEngineTone(providerStatus.phase)}
+						engineLabel={t("ui.sidebar.engine")}
+						engineDetail={t(providerLabelKey(providerStatus.phase))}
+						enginePulse={providerStatus.busy}
+					/>
+				}
+				topbar={
+					<ReaTopbar
+						sectionLabel={t(definition.labelKey)}
+						cwd={cwd ?? null}
+						canSend={canSend}
+						sending={workbench.handoff === "sending"}
+						onSend={() => workbench.handoffToAgent()}
+						sendHint={canSend ? t("tab.workbench.handoffHint") : t("tab.workbench.targetRequired")}
+						fullscreenAvailable={panelFullscreen.available}
+						fullscreen={panelFullscreen.fullscreen}
+						onToggleFullscreen={panelFullscreen.toggle}
+					/>
+				}
+			>
+				<WorkbenchPage
+					active={section === "workbench"}
+					workbench={workbench}
+					snapshot={snapshot}
+					stage={stage}
 					currentStage={currentStage}
-					total={TOTAL_STAGES}
-					heading={t(stage.headingKey)}
-					subtitle={t(stage.subtitleKey)}
-					items={stageRail.items}
-					onSelect={handleSelect}
-					ariaLabel={t("tab.strip.aria")}
-					passPercent={stageRail.passPercent}
-
+					calls={calls}
+					bypassed={bypassed}
+					stageLive={stageLive}
+					doctor={report.status}
+					onSelectStage={handleSelect}
+					onGoTo={setSection}
+					onUseTarget={handleUseTarget}
 				/>
 
-				<main className="flex min-w-0 flex-col @min-[1180px]:min-h-0 @min-[1180px]:overflow-y-auto">
-					{/* 窄面板用顶部横向阶段条；宽面板由左栏轨道接管，避免两套导航并存。 */}
-					<div className="@min-[880px]:hidden">
-						<ReaWorkflowStageStrip
-							currentStage={currentStage}
-							onSelect={handleSelect}
-							completedStages={snapshot.visitedStages.map((id) => STAGE_INDEX[id])}
-							liveStage={liveStage}
-							bypassedStages={bypassed}
-						/>
-					</div>
-					<div className="border-b border-border">
-						<ReaWorkflowTargetRouting
-							active={workbench.active}
-							picked={workbench.picked}
-							detected={snapshot.detectedTarget}
-							onPick={workbench.pick}
-							onClear={workbench.clearPick}
-							onFollowDetected={workbench.clearPick}
-						/>
-					</div>
-					<ReaWorkflowStageDetail
-						stage={stage}
-						total={TOTAL_STAGES}
-						live={stageLive}
-						doctor={report.status}
-						target={activeTarget}
-					/>
-					<ReaWorkbench workbench={workbench} detected={snapshot.detectedTarget ?? snapshot.hintedTarget} />
-				</main>
+				<GuidePage
+					active={section === "guide"}
+					currentStage={currentStage}
+					onSelectStage={handleSelect}
+					stage={stage}
+					stageLive={stageLive}
+					doctor={report.status}
+					target={activeTarget}
+					targetPath={snapshot.lastTargetPath ?? workbench.target ?? null}
+				/>
 
-				<aside className="col-span-full flex min-w-0 flex-col gap-3 border-t border-border px-3 py-3 @min-[880px]:col-span-2 @min-[880px]:border-t @min-[1180px]:col-span-1 @min-[1180px]:col-start-3 @min-[1180px]:row-start-1 @min-[1180px]:min-h-0 @min-[1180px]:overflow-y-auto @min-[1180px]:border-l @min-[1180px]:border-t-0 @min-[1180px]:py-0 @min-[1180px]:pr-0">
-					<section className="flex flex-col gap-2">
-						<ReaToolReadiness
-							target={activeTarget}
-							calls={calls}
-							running={snapshot.runningToolNames}
-							report={report}
-							run={provider.run}
-							runCommand={runCommand}
-							spawnRea={provider.spawn}
-							spawnCommand={spawnCommand}
-							cwd={cwd ?? null}
-						/>
-					</section>
+				<TargetsPage
+					active={section === "targets"}
+					current={workbench.active}
+					picked={workbench.picked}
+					detected={snapshot.detectedTarget}
+					detectedPath={snapshot.lastTargetPath}
+					onPick={workbench.pick}
+					onClear={workbench.clearPick}
+					onFollowDetected={workbench.clearPick}
+					onUseTarget={handleUseTarget}
+				/>
 
-					<section className="flex flex-col">
-						<ReaLoopConsole snapshot={snapshot} />
-					</section>
+				<CallsPage
+					active={section === "calls"}
+					calls={calls}
+					errors={snapshot.errors}
+					callCount={snapshot.callCount}
+					onSelectStage={handleSelect}
+				/>
 
-					<section className="flex min-h-0 flex-col">
-						<div className="flex items-center justify-between gap-2">
-							<Eyebrow tone="strong">{t("live.calls.title")}</Eyebrow>
-							<div className="flex items-center gap-1.5">
-								<span className="truncate text-micro text-faint">{t("live.calls.count", { count: calls.length })}</span>
-								<button
-									type="button"
-									className="inline-flex h-5 items-center rounded-control px-1 text-micro-up font-medium text-faint transition-colors hover:bg-mist hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-									aria-expanded={showLog}
-									onClick={() => setShowLog((prev) => !prev)}
-								>
-									{showLog ? t("live.calls.hide") : t("live.calls.show")}
-								</button>
-							</div>
-						</div>
-						{showLog ? (
-							<div className="min-h-0">
-								<ReaLiveCallLog calls={calls} errors={snapshot.errors} onSelectStage={handleSelect} />
-							</div>
-						) : null}
-					</section>
-				</aside>
-			</div>
+				<ToolchainPage
+					active={section === "toolchain"}
+					target={activeTarget}
+					calls={calls}
+					running={snapshot.runningToolNames}
+					report={report}
+					run={provider.run}
+					runCommand={runCommand}
+					spawnRea={provider.spawn}
+					spawnCommand={spawnCommand}
+					cwd={cwd ?? null}
+					checks={checks}
+				/>
 
-			<ReaWorkflowControls currentStage={currentStage} onChange={handleSelect} />
+				<EnginePage
+					active={section === "engine"}
+					provider={providerStatus}
+					checks={checks}
+					doctorStatus={report.status}
+					doctorMessage={report.message}
+					lastRunAt={report.lastRunAt}
+					onRecheck={report.recheck}
+					rechecking={report.status === "checking"}
+					blocked={runCommand === null}
+				/>
+			</ReaAppShell>
 		</div>
 	);
 }

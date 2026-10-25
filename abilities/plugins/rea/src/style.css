@@ -18,11 +18,11 @@
  * 插件 CSS 被 plugin-vite 包进 @scope ([data-astravia-plugin-root="rea"])，
  * Tailwind 的 :root dark: 变体穿不过这个边界；只有宿主 CSS variables 能继承进来。
  * 所以这里一律指向裸 var()，不写死任何品牌色 —— 明暗切换时宿主换变量，
- * 插件里的 bg-card / text-foreground / border-border 自动跟着换，无需第二份色值。
+ * 插件里的 bg-surface / text-text / border-border 自动跟着换，无需第二份色值。
  *
- * 右侧一组（success / warning / danger / faint / mist / stone / sage / apricot /
- * honey / ochre / agent / border-strong）是设计稿的语义词表。它们同样不写死色值：
- * 具体取值在 .rea-root 里由宿主变量 color-mix 派生，见下方。
+ * 命名对齐设计稿（surface / text / border / accent / purple / risk），
+ * 右侧一组（faint / mist / stone / sage / apricot / honey / ochre / agent）
+ * 是上一版留下的兼容别名，取值同样由宿主变量派生，见下方 .rea-root。
  */
 @theme inline {
 	--color-background: var(--background);
@@ -33,12 +33,13 @@
 	--color-popover-foreground: var(--popover-foreground);
 	--color-border: var(--border);
 	--color-border-strong: var(--rea-border-strong);
+	--color-border-subtle: var(--rea-border-subtle);
 	--color-input: var(--input, var(--border));
 	--color-ring: var(--ring, var(--primary));
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
-	--color-accent: var(--accent);
-	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--rea-accent);
+	--color-accent-foreground: var(--rea-accent-foreground);
 	--color-primary: var(--primary);
 	--color-primary-foreground: var(--primary-foreground);
 	--color-secondary: var(--secondary);
@@ -46,9 +47,34 @@
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
 
+	/* 三级表面：页面底 → 侧栏/卡片 → 卡片内的块 → 抬起的块。 */
+	--color-surface: var(--rea-surface);
+	--color-surface-2: var(--rea-surface-2);
+	--color-surface-3: var(--rea-surface-3);
+	--color-surface-4: var(--rea-surface-4);
+	--color-surface-hover: var(--rea-surface-hover);
+	--color-surface-active: var(--rea-surface-active);
+	--color-surface-chip: var(--rea-surface-chip);
+
+	/* 四级文字：主文 / 次文 / 弱文 / 极弱。 */
+	--color-text: var(--rea-text);
+	--color-text-2: var(--rea-text-2);
+	--color-text-3: var(--rea-text-3);
+	--color-text-4: var(--rea-text-4);
+
+	/* 状态色：与宿主的成功 / 警告 / 危险观感一致。 */
 	--color-success: var(--rea-success);
 	--color-warning: var(--rea-warning);
 	--color-danger: var(--rea-danger);
+	--color-risk-low: var(--rea-risk-low);
+	--color-risk-medium: var(--rea-risk-medium);
+	--color-risk-high: var(--rea-risk-high);
+
+	/* 「Agent 侧」标识色：宿主上下文分段色板的第一格，和对话里的引用色同族。 */
+	--color-purple: var(--rea-purple);
+	--color-purple-ink: var(--rea-purple-ink);
+
+	/* 兼容别名（上一版组件仍在用）。 */
 	--color-faint: var(--rea-faint);
 	--color-mist: var(--rea-mist);
 	--color-stone: var(--rea-stone);
@@ -60,34 +86,38 @@
 	--color-ochre: var(--rea-ochre);
 	--color-agent: var(--rea-agent);
 
-	/* 形状与层次：值写在这里，组件只管用 rounded-tile / shadow-card。 */
+	/* 圆角：宿主用很收紧的一档（4 / 6 / 10 / 14）。 */
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 10px;
+	--radius-xl: 14px;
 	--radius-pill: 9999px;
+	--radius-control: 6px;
 	--radius-tile: 10px;
-	--radius-control: 8px;
-	--radius-card: 12px;
+	--radius-card: 10px;
 
-	--shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.05);
-	--shadow-popover: 0 12px 32px rgb(0 0 0 / 0.12);
+	--shadow-card: 0 1px 2px rgb(0 0 0 / 0.05);
+	--shadow-popover: 0 12px 32px rgb(0 0 0 / 0.14);
 	--shadow-inset-line: inset 0 1px 0 rgb(255 255 255 / 0.04);
 
-	/* 字号阶梯：面板里信息密度高，用得多的是 10.5 / 11 / 12 / 13。 */
-	--text-micro-up: 10.5px;
-	--text-micro-up--line-height: 1.3;
+	/* 字号阶梯：面板里信息密度高，用得多的是 10 / 11 / 12 / 13。 */
+	--text-micro-up: 10px;
+	--text-micro-up--line-height: 1.35;
 	--text-micro: 11px;
-	--text-micro--line-height: 1.35;
+	--text-micro--line-height: 1.4;
 	--text-caption: 12px;
-	--text-caption--line-height: 1.4;
+	--text-caption--line-height: 1.45;
 	--text-body-sm: 13px;
 	--text-body-sm--line-height: 1.5;
-	--text-body: 14px;
+	--text-body: 13px;
 	--text-body--line-height: 1.55;
-	--text-section: 15px;
-	--text-section--line-height: 1.35;
-	--text-heading: 19px;
-	--text-heading--line-height: 1.25;
-	--text-title: 23px;
-	--text-title--line-height: 1.2;
-	--text-display: 28px;
+	--text-section: 14px;
+	--text-section--line-height: 1.4;
+	--text-heading: 15px;
+	--text-heading--line-height: 1.35;
+	--text-title: 18px;
+	--text-title--line-height: 1.25;
+	--text-display: 24px;
 	--text-display--line-height: 1.15;
 }
 
@@ -102,29 +132,59 @@
  *
  * 放在 .rea-root 而不是 :root：宿主同时可能开着多个插件面板，
  * 变量只应作用于本插件的根节点。
+ *
+ * 表面色优先读宿主 --ds-bg-* （设计稿的对齐目标），没有时退回 shadcn 那一套
+ * --background / --card，两套都缺失也不会让面板变成透明。
  */
 .rea-root {
-	--rea-success: var(--term-green, #15803d);
-	--rea-warning: var(--term-yellow, #b45309);
-	--rea-danger: var(--destructive, #b91c1c);
+	--rea-surface: var(--ds-bg-primary, var(--background));
+	--rea-surface-2: var(--ds-bg-sidebar, var(--card, var(--background)));
+	--rea-surface-3: var(--ds-bg-secondary, var(--muted, var(--card)));
+	--rea-surface-4: var(--ds-bg-tertiary, var(--secondary, var(--card)));
 
-	/* 三级弱化的文字/底色：faint 最淡（辅助文字），mist 是再深一点的块，stone 是分隔块。 */
-	--rea-faint: color-mix(in srgb, var(--muted-foreground) 62%, var(--background));
-	--rea-mist: color-mix(in srgb, var(--foreground) 6%, var(--background));
-	--rea-stone: color-mix(in srgb, var(--foreground) 11%, var(--background));
+	/* 悬停 / 选中 / 芯片：用前景色叠透明度，深浅主题都成立。 */
+	--rea-surface-hover: color-mix(in srgb, var(--foreground) 7%, transparent);
+	--rea-surface-active: color-mix(in srgb, var(--foreground) 11%, transparent);
+	--rea-surface-chip: color-mix(in srgb, var(--foreground) 7%, transparent);
 
-	/* 设计稿的 sage / apricot / honey / ochre 在宿主里对应「成功」与「琥珀」两族。 */
-	--rea-sage-light: color-mix(in srgb, var(--rea-success) 14%, var(--background));
-	--rea-sage-dark: color-mix(in srgb, var(--rea-success) 72%, var(--foreground));
-	--rea-apricot: color-mix(in srgb, var(--rea-warning) 20%, var(--background));
-	--rea-apricot-light: color-mix(in srgb, var(--rea-warning) 11%, var(--background));
-	--rea-honey: color-mix(in srgb, var(--rea-warning) 52%, var(--background));
-	--rea-ochre: color-mix(in srgb, var(--rea-warning) 78%, var(--foreground));
+	--rea-text: var(--ds-text-primary, var(--foreground));
+	--rea-text-2: color-mix(in srgb, var(--foreground) 74%, var(--background));
+	--rea-text-3: color-mix(in srgb, var(--foreground) 56%, var(--background));
+	--rea-text-4: color-mix(in srgb, var(--foreground) 40%, var(--background));
 
-	/* 「Agent 侧」标识色：宿主上下文分段色板的第一格，和对话里的引用色同一族。 */
-	--rea-agent: var(--context-segment-1, var(--primary));
+	--rea-border-subtle: color-mix(in srgb, var(--foreground) 7%, transparent);
+	--rea-border-strong: color-mix(in srgb, var(--foreground) 16%, var(--border));
 
-	--rea-border-strong: color-mix(in srgb, var(--foreground) 14%, var(--border));
+	--rea-success: var(--term-green, #40c977);
+	--rea-warning: var(--term-yellow, #ff8549);
+	--rea-danger: var(--destructive, #ff6764);
+	--rea-risk-low: var(--rea-success);
+	--rea-risk-medium: var(--rea-warning);
+	--rea-risk-high: var(--rea-danger);
+
+	/* 主按钮：浅色主题下是深底浅字，深色主题下是浅底深字——都由宿主决定。 */
+	--rea-accent: var(--primary);
+	--rea-accent-foreground: var(--primary-foreground);
+
+	/* 紫色只做「AI / Agent 侧」标识：填充用原色，文字用与前景混合后的墨色，
+	   否则浅色主题下 #c27aff 放在白底上读不清。 */
+	--rea-purple: var(--context-segment-1, #c27aff);
+	--rea-purple-ink: color-mix(in srgb, var(--rea-purple) 72%, var(--foreground));
+
+	/* 兼容别名。 */
+	--rea-faint: var(--rea-text-4);
+	--rea-mist: color-mix(in srgb, var(--foreground) 7%, var(--background));
+	--rea-stone: color-mix(in srgb, var(--foreground) 12%, var(--background));
+
+	--rea-sage-light: color-mix(in srgb, var(--rea-success) 16%, var(--background));
+	--rea-sage-dark: color-mix(in srgb, var(--rea-success) 70%, var(--foreground));
+	--rea-apricot: color-mix(in srgb, var(--rea-warning) 22%, var(--background));
+	--rea-apricot-light: color-mix(in srgb, var(--rea-warning) 12%, var(--background));
+	--rea-honey: color-mix(in srgb, var(--rea-warning) 55%, var(--background));
+	--rea-ochre: color-mix(in srgb, var(--rea-warning) 76%, var(--foreground));
+	--rea-agent: var(--rea-purple);
+
+	color: var(--rea-text);
 }
 
 /*
