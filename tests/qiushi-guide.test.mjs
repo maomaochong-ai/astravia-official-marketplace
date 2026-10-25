@@ -60,6 +60,25 @@ test("SKILL.md 声明了图标，且指向包内真实图片", () => {
   assert.ok(statSync(iconPath).size <= 8 * 1024 * 1024, "图标超过 8 MB 上限");
 });
 
+// scripts/marketplace.mjs 的本地构建会临时把 @astravia-org/* 改写成 file: 路径再还原。
+// 还原这一步在构建抛错时会被跳过，于是 file: 路径会留在源码里被一起提交——
+// 那不是插件该有的声明形态，也会让任何没有 .tooling 的环境 npm ci 直接失败。
+test("插件依赖一律写版本号，不能留下构建期的 file: 路径", () => {
+  const dir = resolve(root, "abilities/plugins/qiushi-guide");
+  for (const file of ["package.json", "package-lock.json"]) {
+    const manifest = readJson(resolve(dir, file));
+    const declared =
+      file === "package.json" ? manifest.devDependencies ?? {} : manifest.packages?.[""]?.devDependencies ?? {};
+    for (const [name, range] of Object.entries(declared)) {
+      if (!name.startsWith("@astravia-org/")) continue;
+      assert.ok(
+        !String(range).startsWith("file:"),
+        `${file} 里 ${name} 写成了 ${range}；构建副作用泄漏进了源码，改回带版本号的范围`,
+      );
+    }
+  }
+});
+
 test("市场索引里两件能力各自登记，版本与包内清单一致", () => {
   const catalog = readJson(resolve(root, ".astravia/marketplace.source.json"));
   const bySlug = new Map(catalog.abilities.map((ability) => [ability.slug, ability]));
