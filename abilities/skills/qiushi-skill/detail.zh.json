@@ -103,7 +103,7 @@
       "items": [
         {
           "title": "看图文介绍页",
-          "description": "包里带一份离线页面 assets/preview/index.html。在能力市场里装上「求是图文导览」，这一页的安装按钮下面就会出现一张卡片，点一下打开的就是这份文件。不装它也能自己看：让助手跑 scripts/open-preview.sh（Windows 用 open-preview.ps1），会用默认浏览器打开。图片全部内联，不需要联网。"
+          "description": "包里带一份离线页面 assets/preview/index.html。自己看就行：让助手跑 scripts/open-preview.sh（Windows 用 open-preview.ps1），会用默认浏览器打开；也可以直接打开 ~/.astravia/skills/qiushi-skill/assets/preview/index.html。图片全部内联，不需要联网。"
         },
         {
           "title": "需要角色时派一个",

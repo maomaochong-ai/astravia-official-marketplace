@@ -74,7 +74,7 @@ cd astravia-official-marketplace/abilities/skills/qiushi-skill
 # 1) 两条声明存在且指向真实文件（仓库级测试同时断言）
 node scripts/verify-package.mjs
 node --test tests/package.test.mjs
-cd ../.. && node --test tests/qiushi-guide.test.mjs
+cd ../.. && node --test tests/qiushi-skill.test.mjs
 
 # 2) 构建产物里带上了这两条
 node scripts/marketplace.mjs check

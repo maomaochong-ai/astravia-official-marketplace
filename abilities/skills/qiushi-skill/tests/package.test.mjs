@@ -201,9 +201,9 @@ test("showcase 文案不超过 chat-thread 容器的可见高度", () => {
   }
 });
 
-test("详情页不再内嵌宣传页截图，改由图文导览入口打开", () => {
+test("详情页不再内嵌宣传页截图，只说明页面文件本身", () => {
   // 截图会随页面改版变旧，也让详情页把一份 76 KB 的页面压缩成一张首屏图。
-  // 入口改由 qiushi-guide 插件提供，skill 侧只保证页面文件本身还在。
+  // 页面文件随包分发，详情只交代怎么打开它。
   const page = path.join(ROOT, "assets/preview/index.html");
   assert.ok(statSync(page).size > 1024, "assets/preview/index.html 不存在或过小");
 

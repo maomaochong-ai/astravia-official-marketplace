@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "skill",
   "slug": "qiushi-skill",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "name": "Qiushi Methodology",
   "description": "Arm Astravia with ten playbooks to think before acting: settle the facts first, then judge the contradiction, pick the main effort and test the plan instead of guessing.",
   "configVersion": 1,

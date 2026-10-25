@@ -1,7 +1,7 @@
 ---
 name: qiushi-skill
 alias: 求是方法论
-version: 2.5.0
+version: 2.5.1
 description: |
   求是方法论：先用「实事求是」约束全部判断，再按任务类型调用十件方法论武器之一——调查研究、矛盾分析、实践认识、群众路线、批评与自我批评、持久战略、集中兵力、星火燎原、统筹兼顾、工作流组合。当用户要求先把事实摸清再下判断、理清多头牵制的复杂局面、在多件事里定主攻、复盘已完成工作的质量、规划短期不可能速胜的长期任务，或直接点名其中某件方法论时使用。具体操作规程不在本文件里，按路由表读 references/skills/<name>/SKILL.md，不要凭记忆复述方法论。
    English: Qiushi methodology — the governing principle of seeking truth from facts plus ten methodology playbooks (investigation, contradiction analysis, practice and cognition, mass line, criticism and self-criticism, protracted strategy, concentration of forces, spark and prairie fire, overall planning, workflow composition). Use when facts must be gathered before a judgment, a many-sided situation untangled, a main direction chosen among competing tasks, finished work reviewed honestly, or a long-horizon task planned — or when the user names one of these methods. The procedures live in references/skills/<name>/SKILL.md; read the one that fits instead of paraphrasing from memory.

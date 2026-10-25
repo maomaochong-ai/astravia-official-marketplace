@@ -103,7 +103,7 @@
       "items": [
         {
           "title": "Open the illustrated intro",
-          "description": "The package ships a self-contained page at assets/preview/index.html. Install the companion Qiushi Illustrated Guide from the marketplace and a card appears right here on this page — one click opens that file. Without the companion, open it directly: open ~/.astravia/skills/qiushi-skill/assets/preview/index.html, or bash scripts/open-preview.sh inside the package. Every image is inlined, so it works offline."
+          "description": "The package ships a self-contained page at assets/preview/index.html: open ~/.astravia/skills/qiushi-skill/assets/preview/index.html, or run bash scripts/open-preview.sh inside the package to have the default browser open it. Every image is inlined, so it works offline."
         },
         {
           "title": "Dispatch a role when one is needed",
