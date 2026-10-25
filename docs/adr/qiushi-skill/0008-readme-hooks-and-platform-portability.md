@@ -196,3 +196,6 @@ Astravia 内这十份不生效（宿主不扫 `commands/`，Observed）。它们
 9. **版本**：`2.3.0` → `2.4.0`（`ability.json`、`SKILL.md` frontmatter、`.astravia/marketplace.source.json` 三处同步），`configVersion` 保持 1。
 10. **验证链**：`marketplace.mjs check` 通过 → `build` 产出含新增目录的包 → 根测试 69/69 → 包内 `verify-package.mjs` 0 问题（台账新增「27 条逐字节 + 16 条已改造」双计数）→ 包内测试 30/30（新增 hooks、commands、落点表、案例、README 插图五条）。
 11. **宿主 hook 的边界已写进文档**：`PLATFORMS.md` 明确「注入是否发生取决于宿主是否把技能包当插件来源扫描」，`SKILL.md` 不作「安装即注入」的承诺。
+
+12. **发布**：提交 `33951f4d` 推送后，`Publish ability marketplace` 运行 `40169265511` 的 build 与 publish 两个 job 均 success；gh-pages 生成 `chore(marketplace): 发布 2026.10.25-1`（`d0f9debd`），索引里 `qiushi-skill` 为 `2.4.0`、`category` 为 `Productivity`，`assets/diagram/`、`hooks/`（四件，含 `run-hook.cmd` 与两个 `session-start`）、`references/cases/` 均已落到分发目录。
+13. **本地整链 build 未跑完**：该命令会在每个 plugin 上依次 `npm ci`/`build`/`test`，本次在本机跑到第 13 个插件时被人未提交改动拖慢而中止（`dbx-pro` 的 `vite build` 产出 100 MB，`rea` 单次打包数分钟），与本次改动无耦合；`check`、根测试、包内自检与包内测试均独立通过，站点侧的权威构建由 CI 的 build job 完成并通过。
