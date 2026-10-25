@@ -181,19 +181,25 @@ jobs:
         with:
           node-version: "22.19.0"
 
-      - name: Prepare C toolchain (Windows)
+      - name: Prepare build tools (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # mattn/go-sqlite3 需要 C 编译器：CGO_ENABLED=1 没有 gcc 就只能生成一个跑不起来的包。
-
-          choco install mingw --no-progress -y
+          # 两件事：
+          #   1. mattn/go-sqlite3 需要 C 编译器 —— CGO_ENABLED=1 没有 gcc 只能产出跑不起来的包；
+          #   2. 上游 plugin-packages/build-packages.sh 第 133 行直接调 `zip`，Git Bash 不带它
+          #      （2026-10-25 的真实失败：`zip: command not found` 退出码 127）。
+          # 两者都大声校验：静默缺一个是又一个 25 分钟的往返。
+          choco install mingw zip --no-progress -y
           $candidates = @(
             "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin",
             "C:\ProgramData\chocolatey\bin"
           )
           foreach ($dir in $candidates) { if (Test-Path $dir) { $dir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append } }
+          $extra = ($candidates | Where-Object { Test-Path $_ }) -join ";"
+          $env:Path = "$extra;$env:Path"
           gcc --version
+          zip -v
 
       - name: Build payment plugin packages
         shell: bash
