@@ -67,6 +67,16 @@ function main(argv) {
       if (!WORKDIR_ALLOWED.test(dir)) fail(`working-directory: ${dir} 不在白名单里`);
     }
 
+    // 调插件脚本的 step 必须显式 `shell: bash`。Windows runner 的默认 shell 是 pwsh，
+    // `\` 续行在那里不是续行而是「缺表达式」的语法错误（2026-10-25 第二轮失败）。
+    const steps = text.split(/\n(?=      - )/);
+    for (const step of steps) {
+      // 只看真实调用（`node scripts/…`），注释里提到文件名不算。
+      if (!step.includes(`node ${SCRIPT}`)) continue;
+      const name = step.match(/- name:\s*(.+)/)?.[1]?.trim() ?? "(未命名 step)";
+      if (!/^\s*shell:\s*bash\s*$/m.test(step)) fail(`step "${name}" 调了插件脚本却没有 shell: bash`);
+    }
+
     // 只报告数量，方便人眼扫一眼；真正的结论在上面的 fail()。
     const calls = [...text.matchAll(new RegExp(`node ${SCRIPT.replace(/\./g, "\\.")} (--[a-z-]+)`, "g"))].map(
       (match) => match[1],

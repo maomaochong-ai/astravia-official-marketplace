@@ -111,6 +111,7 @@ jobs:
           bun-version: "1.3.9"
 
       - name: Build web
+        shell: bash
         working-directory: plugin/abilities/plugins/open-ai-canvas
         run: |
           set -euo pipefail
@@ -218,6 +219,8 @@ jobs:
       # 编译配方（模块名、入口、ldflags 注入的 buildinfo 字段）也在插件里。
       # 这里传 --platform 是因为二进制名要跟目标平台走（windows 带 .exe）。
       - name: Build backend binary
+        # 必须显式声明 bash：Windows 默认是 pwsh，`\` 续行在那里是 ParserError。
+        shell: bash
         working-directory: plugin/abilities/plugins/open-ai-canvas
         run: |
           set -euo pipefail
