@@ -18,9 +18,9 @@ function tokenClass(phase: LoopPhaseLive, active: boolean): string {
 	// retry 的红色优先于当前环节高亮：失败时不能只看成「正在跑」。
 	const retryFailed = phase.id === "retry" && phase.errors > 0;
 	if (active) {
-		return retryFailed ? "border-primary text-red-600 dark:text-red-400" : "border-primary text-primary";
+		return retryFailed ? "border-primary text-danger" : "border-primary text-primary";
 	}
-	if (retryFailed) return "border-transparent text-red-600 dark:text-red-400";
+	if (retryFailed) return "border-transparent text-danger";
 	if (phase.observed) return "border-transparent text-foreground/75";
 	return "border-transparent text-muted-foreground/45";
 }

@@ -186,7 +186,7 @@ function SummaryFiveFields({ calls, running }: DiagramProps): JSX.Element {
 					<div
 						key={field}
 						title={field}
-						className="min-w-0 truncate rounded-[min(var(--radius-md),6px)] border border-border bg-card px-2 py-1 font-mono text-[10px] text-foreground"
+						className="min-w-0 truncate rounded-control border border-border bg-card px-2 py-1 font-mono text-[10px] text-foreground"
 					>
 						{field}
 					</div>
@@ -231,7 +231,7 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 	];
 	const toneClass = {
 		primary: "border-primary/50 bg-primary/10 text-foreground",
-		warning: "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+		warning: "border-honey bg-apricot-light text-ochre",
 		neutral: "border-border bg-card text-foreground",
 	} as const;
 	return (
@@ -241,7 +241,7 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 					<div
 						key={step.key}
 						data-rea-node-state={step.live?.state ?? "idle"}
-						className={`flex min-w-0 items-center gap-1.5 rounded-[min(var(--radius-md),8px)] border px-2 py-1.5 ${toneClass[step.tone]} ${
+						className={`flex min-w-0 items-center gap-1.5 rounded-control border px-2 py-1.5 ${toneClass[step.tone]} ${
 							step.live?.state === "active" ? "border-primary/80 motion-safe:animate-rea-ring" : ""
 						}`}
 					>
@@ -253,7 +253,7 @@ function PlanEightSteps({ calls, running }: DiagramProps): JSX.Element {
 							<span
 								className={`ml-auto shrink-0 text-[9px] tabular-nums ${
 									step.live.state === "failed"
-										? "text-red-600 dark:text-red-400"
+										? "text-danger"
 										: step.live.state === "idle"
 											? "text-muted-foreground"
 											: "text-primary"
@@ -332,7 +332,7 @@ function ReadReferencesRouting({ calls, running, target }: DiagramProps): JSX.El
 						<div
 							key={ref.name}
 							data-rea-node-state={ref.live.state}
-							className={`min-w-0 rounded-[min(var(--radius-md),8px)] border bg-card px-2 py-1.5 ${
+							className={`min-w-0 rounded-control border bg-card px-2 py-1.5 ${
 								ref.live.state === "active"
 									? "border-primary/80 motion-safe:animate-rea-ring"
 									: ref.live.state === "idle"
@@ -412,7 +412,7 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 									state === "idle"
 										? "border-primary/50 bg-primary/10 text-primary"
 										: state === "failed"
-											? "border-red-500/60 bg-red-500/10 text-red-600 dark:text-red-400"
+											? "border-danger/60 bg-danger/10 text-danger"
 											: "border-primary bg-primary/20 text-primary"
 								}`}
 								aria-hidden="true"

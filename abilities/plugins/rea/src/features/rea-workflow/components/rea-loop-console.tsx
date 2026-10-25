@@ -15,6 +15,7 @@ import type { ReaLiveState } from "../live/session-store";
 import { buildLoopLive, type LoopPhaseLive } from "../live/loop-phases";
 import { ReaLoopRail } from "./rea-loop-rail";
 import { ReaLoopStepLine } from "./rea-loop-step-line";
+import { Eyebrow } from "../../../shared/components/eyebrow";
 
 interface LoopConsoleProps {
 	readonly snapshot: ReaLiveState;
@@ -23,7 +24,7 @@ interface LoopConsoleProps {
 function segmentClass(phase: LoopPhaseLive, active: boolean): string {
 	if (active) return "bg-primary motion-safe:animate-pulse";
 	if (phase.observed) return "bg-primary/60";
-	return "bg-muted-foreground/20";
+	return "bg-stone";
 }
 
 export function ReaLoopConsole({ snapshot }: LoopConsoleProps): JSX.Element {
@@ -31,17 +32,17 @@ export function ReaLoopConsole({ snapshot }: LoopConsoleProps): JSX.Element {
 	const loop = buildLoopLive(snapshot.calls, snapshot.callCount);
 
 	return (
-		<div className="flex flex-col gap-1 rounded-md border border-border/70 bg-background/60 px-2 py-1.5">
+		<div className="flex flex-col gap-1 rounded-tile border border-border bg-card/60 px-2.5 py-2">
 			<div className="flex min-w-0 items-center gap-2">
-				<span className="min-w-0 truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+				<Eyebrow tone="strong" className="min-w-0 truncate">
 					{t("live.loop.title")}
-				</span>
+				</Eyebrow>
 				<span className="ml-auto flex shrink-0 items-center gap-1.5">
 					<span className="flex items-center gap-[2px]" aria-hidden>
 						{loop.progressPhases.map((phase) => (
 							<span
 								key={phase.id}
-								className={`h-2 w-2 rounded-[1px] transition-colors duration-300 ${segmentClass(
+								className={`size-2 rounded-[2px] transition-colors duration-300 ${segmentClass(
 									phase,
 									phase.id === loop.activePhase,
 								)}`}
@@ -49,7 +50,7 @@ export function ReaLoopConsole({ snapshot }: LoopConsoleProps): JSX.Element {
 						))}
 					</span>
 					<span
-						className="font-mono text-[10px] tabular-nums text-foreground/80"
+						className="font-mono text-micro tabular-nums text-foreground/80"
 						title={t("live.loop.passHint", {
 							observed: loop.observedPhases,
 							total: loop.progressPhases.length,

@@ -23,6 +23,7 @@ import type { TargetKind } from "../data/targets";
 import type { DoctorReport } from "../hooks/use-doctor-report";
 import { useToolInstall } from "../hooks/use-tool-install";
 import { ReaInstallProgress } from "./rea-install-progress";
+import { Eyebrow } from "../../../shared/components/eyebrow";
 import { useToolProbes } from "../hooks/use-tool-probes";
 import {
 	resolveReadiness,
@@ -136,7 +137,7 @@ export function ReaToolReadiness({
 		const installable = item.state !== "ready" && install.canInstall(item.requirement.id);
 		const isRunning = runningIds.has(item.requirement.id);
 		return (
-			<li key={item.requirement.id} className="rounded-[min(var(--radius-md),6px)] border border-border/70 bg-card/40 px-2 py-1">
+			<li key={item.requirement.id} className="rounded-control border border-border/70 bg-card/40 px-2 py-1">
 				<div className="flex min-w-0 items-center gap-1.5">
 					<span
 						aria-hidden
@@ -144,10 +145,10 @@ export function ReaToolReadiness({
 							isRunning
 								? "bg-primary motion-safe:animate-pulse"
 								: item.state === "ready"
-									? "bg-emerald-500"
+									? "bg-sage-dark"
 									: item.state === "missing"
-										? "bg-amber-500"
-										: "bg-muted-foreground/50"
+										? "bg-honey"
+										: "bg-stone"
 						}`}
 					/>
 					<span className="shrink-0 text-[11px] font-medium text-foreground/90">{item.requirement.label}</span>
@@ -207,7 +208,7 @@ export function ReaToolReadiness({
 					</p>
 				) : null}
 				{needsConfigAfterInstall(installRecipeFor(item.requirement.id)) ? (
-					<p className="mt-0.5 pl-3 text-[10px] leading-snug text-amber-700 dark:text-amber-400">
+					<p className="mt-0.5 pl-3 text-[10px] leading-snug text-ochre">
 						<span className="line-clamp-2">{t(installRecipeFor(item.requirement.id)?.noteKey ?? "tab.tools.note.generic")}</span>
 					</p>
 				) : null}
@@ -226,11 +227,9 @@ export function ReaToolReadiness({
 		);
 
 	return (
-		<div className="mt-1.5 rounded-[min(var(--radius-md),8px)] border border-border bg-background/50 px-2.5 py-1.5">
+		<div className="flex flex-col gap-1">
 			<div className="flex min-w-0 items-center justify-between gap-2">
-				<span className="min-w-0 truncate text-[10.5px] uppercase tracking-wide text-muted-foreground">
-					{t("tab.tools.title")}
-				</span>
+				<Eyebrow tone="strong">{t("tab.tools.title")}</Eyebrow>
 				{report.status === "checking" || probeState.probing ? (
 					<StatusChip tone="progress">
 						<span aria-hidden className="icon-[lucide--loader-circle] size-3 motion-safe:animate-spin" />

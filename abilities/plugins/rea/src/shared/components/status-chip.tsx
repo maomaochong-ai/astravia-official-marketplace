@@ -3,6 +3,10 @@
  * 不直接用纯红/绿/黄填底，而是 `bg-色/15 text-色` 半透明叠文字色，
  * 让底色随宿主主题的 card / muted 透出。
  *
+ * 五档 tone 全部指向 style.css 里派生自宿主的语义 token
+ * （sage / apricot / danger / primary / mist），因此浅色与深色主题下
+ * 都不需要 `dark:` 双写。
+ *
  * 不引入 `@astravia-org/ui/utils`（as-ocr / tihu 都没引），用 className 拼接。
  */
 
@@ -11,15 +15,14 @@ import type { JSX, ReactNode } from "react";
 export type StatusTone = "neutral" | "progress" | "success" | "warning" | "danger";
 
 const TONE_CLASS: Record<StatusTone, string> = {
-	neutral: "bg-muted text-muted-foreground",
-	progress: "bg-primary/10 text-primary",
-	success: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-	warning: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-	danger: "bg-red-500/15 text-red-600 dark:text-red-400",
+	neutral: "bg-mist text-muted-foreground",
+	progress: "bg-primary/12 text-primary",
+	success: "bg-sage-light text-sage-dark",
+	warning: "bg-apricot-light text-ochre",
+	danger: "bg-danger/12 text-danger",
 };
 
-const BASE =
-	"inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium";
+const BASE = "inline-flex items-center gap-1 whitespace-nowrap rounded-pill px-2 py-0.5 text-micro font-medium";
 
 export interface StatusChipProps {
 	readonly tone: StatusTone;

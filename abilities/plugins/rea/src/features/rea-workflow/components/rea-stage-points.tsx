@@ -59,7 +59,7 @@ export function ReaStagePoints({ points, calls, running, doctor }: StagePointsPr
 					return (
 						<li
 							key={point.i18nKey}
-							className={`flex items-start gap-1.5 rounded-[min(var(--radius-md),6px)] px-1 py-0.5 ${
+							className={`flex items-start gap-1.5 rounded-control px-1 py-0.5 ${
 								state === "active" ? "bg-primary/5" : ""
 							}`}
 						>
@@ -69,10 +69,10 @@ export function ReaStagePoints({ points, calls, running, doctor }: StagePointsPr
 									state === "active"
 										? "bg-primary motion-safe:animate-pulse"
 										: state === "hit"
-											? "bg-emerald-500"
+											? "bg-sage-dark"
 											: state === "failed"
-												? "bg-red-500"
-												: "bg-muted-foreground/40"
+												? "bg-danger"
+												: "bg-stone"
 								}`}
 							/>
 							<div className="flex min-w-0 flex-1 flex-col">

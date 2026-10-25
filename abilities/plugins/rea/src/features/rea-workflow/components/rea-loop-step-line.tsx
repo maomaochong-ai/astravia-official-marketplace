@@ -39,7 +39,7 @@ export function ReaLoopStepLine({ step }: LoopStepProps): JSX.Element {
 		step.status === "running"
 			? "text-primary motion-safe:animate-pulse"
 			: step.status === "failed"
-				? "text-red-500"
+				? "text-danger"
 				: "text-muted-foreground/60";
 
 	return (
@@ -53,7 +53,7 @@ export function ReaLoopStepLine({ step }: LoopStepProps): JSX.Element {
 			<span className="shrink-0 tabular-nums text-muted-foreground">{ordinalLabel(step.ordinal)}</span>
 			<span
 				className={`min-w-0 shrink-0 max-w-[60%] truncate font-medium ${
-					step.status === "failed" ? "text-red-600 dark:text-red-400" : "text-foreground"
+					step.status === "failed" ? "text-danger" : "text-foreground"
 				}`}
 				title={step.toolName}
 			>

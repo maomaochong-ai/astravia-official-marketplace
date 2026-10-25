@@ -62,8 +62,8 @@ export function ReaErrorExplainer({ error }: ReaErrorExplainerProps): JSX.Elemen
 		<div
 			className={
 				tone === "danger"
-					? "mt-1.5 rounded-[min(var(--radius-md),8px)] border border-red-500/40 bg-red-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-red-600 dark:text-red-400"
-					: "mt-1.5 rounded-[min(var(--radius-md),8px)] border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-400"
+					? "mt-1.5 rounded-control border border-danger/40 bg-danger/10 px-2 py-1.5 text-micro leading-relaxed text-danger"
+					: "mt-1.5 rounded-control border border-honey bg-apricot-light px-2 py-1.5 text-micro leading-relaxed text-ochre"
 			}
 			role="alert"
 		>
@@ -77,8 +77,8 @@ export function ReaErrorExplainer({ error }: ReaErrorExplainerProps): JSX.Elemen
 				<span
 					className={
 						retryable
-							? "inline-flex h-5 items-center rounded-full border border-amber-500/40 bg-amber-500/15 px-1.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
-							: "inline-flex h-5 items-center rounded-full border border-red-500/40 bg-red-500/15 px-1.5 text-[10px] font-medium text-red-600 dark:text-red-300"
+							? "inline-flex h-5 items-center rounded-full border border-honey bg-apricot px-1.5 text-micro-up font-medium text-ochre"
+							: "inline-flex h-5 items-center rounded-full border border-danger/40 bg-danger/12 px-1.5 text-micro-up font-medium text-danger"
 					}
 				>
 					{retryable ? t("setup.error.retryable") : t("setup.error.fatal")}
