@@ -11,6 +11,7 @@
 open-ai-canvas（影策）是面向 AI 影视与短剧创作的工作台，由两部分组成：
 
 - 后端：Go 1.25 + Gin + GORM，单进程可同时提供 API 与前端静态资源（通过 `CANVAS_STATIC_DIR` 环境变量），默认 SQLite 存储，健康端点 `/api/health/ready`，内置 `watchParentProcess` 孤儿看门狗。
+  > 更正（2026-10-25）：静态承载只存在于 fork 分支，上游发布 tag 里没有。实际构建载荷用的是 tag，所以前端产物一直由 shim 自己发。见 [0008](./0008-frontend-hosting-in-shim.md)。
 - 前端：Vite + React 19 SPA，构建产物为静态文件。
 
 参考同仓库 `abilities/plugins/free-model-gateway` 的「自包含外置插件」模式：插件将上游服务运行时打包进 `public/*.zip`，通过 `plugin.json` 的 `providers.services[0]` 声明为 `host-node` 运行时；宿主以托管 Node 拉起服务，注入 `ASTRAVIA_SERVICE_PORT` 与 `ASTRAVIA_SERVICE_DATA_DIR`，健康检查通过即 ready；插件通过 `ctx.services.connection(SERVICE_ID)` 获取服务地址，再用 `ctx.ui.openExternal(baseUrl)` 在外部浏览器打开。

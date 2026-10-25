@@ -6,7 +6,9 @@
  * 2. 拉起 Go 后端子进程（监听 127.0.0.1:0 随机端口）
  * 3. 解析 Go 后端 stdout 拿到实际监听端口
  * 4. 启动反向代理，监听宿主分配的 ASTRAVIA_SERVICE_PORT
- *    - POST /mcp → MCP Server（手写 JSON-RPC，16 个工具）
+ *    - POST /mcp → MCP Server（手写 JSON-RPC，18 个工具）
+ *    - 非 /api 的 GET/HEAD → 载荷里的 web-dist 静态产物（ADR-0008）
+ *    - 其余普通 HTTP → 透传到 Go 后端
  *    - 普通 HTTP → 透传到 Go 后端
  *    - WebSocket upgrade → TCP 双向 pipe 到 Go 后端
  * 5. 捕获登录响应中的 open_ai_canvas_session cookie，加密存储供 MCP 调用
@@ -1391,6 +1393,11 @@ async function prepareRuntime() {
     SERVER_DIR = await resolveRuntimeDir();
     GO_BINARY = path.join(SERVER_DIR, BINARY_NAME);
     WEB_DIST = path.join(SERVER_DIR, "web-dist");
+    // 载荷里的前端产物由 shim 自己发（ADR-0008）。缺失时立刻带 code 失败：
+    // 否则后端照常就绪、健康门照常通过，用户只会看到一个 404 JSON。
+    if (!hasWebBundle()) {
+      throw codedError("web-bundle-missing", `载荷里没有前端产物 ${path.join(WEB_DIST, "index.html")}`);
+    }
     PI_RUNTIME = path.join(SERVER_DIR, "pi-runtime");
     PLUGIN_PACKAGES = path.join(SERVER_DIR, "plugin-packages");
 
@@ -1455,6 +1462,8 @@ function backendEnv() {
     ...process.env,
     CANVAS_BACKEND_ADDR: `127.0.0.1:${BACKEND_PORT}`,
     CANVAS_BACKEND_DATA_DIR: DATA_DIR,
+    // 上游发布 tag 的后端没有静态承载代码，这个变量会被忽略；留着是为了将来载荷换成
+    // 带 CANVAS_STATIC_DIR 支持的构建时不用再改这里。静态文件始终由 shim 先服务（ADR-0008）。
     CANVAS_STATIC_DIR: WEB_DIST,
     CANVAS_CORS_ORIGINS: `http://127.0.0.1:${HOST_PORT},http://localhost:${HOST_PORT}`,
     CANVAS_EXIT_WITH_PARENT: "true",
@@ -2978,6 +2987,164 @@ function serveBridge(req, res, pathname) {
   return true;
 }
 
+// --- 前端产物承载（ADR-0008）---
+// 为什么静态文件由 shim 发，而不是交给后端：构建农场钉的是上游发布 tag，而那些 tag 的
+// NoRoute 只有 SystemProxyNoRouteHandler——任何非 /api 路径都回 404「请求不存在」
+// （backend/internal/handler/auth.go 的 fail 信封）。载荷里的 web-dist 于是没人服务，
+// 宿主的健康门照样通过，用户点开画布只看见一段 404 JSON。
+//
+// 在 shim 里补这一层是成本最低的正确位置：它本来就把载荷解到本地、本来就站在对外端口上、
+// 且与平台无关。换成让后端支持 CANVAS_STATIC_DIR，就得把载荷重新钉到一个 fork 分支并重发
+// 五个平台各约 200 MB，还丢掉「跟随上游 tag」这条自动化。
+const WEB_MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".wasm": "application/wasm",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mp3": "audio/mpeg",
+  ".pdf": "application/pdf",
+};
+
+function webIndexPath() {
+  return WEB_DIST ? path.join(WEB_DIST, "index.html") : null;
+}
+
+// 载荷里没有前端产物就等于装了个只有 API 的空壳。放在这里判而不是等用户撞见 404：
+// 同一类决定 ADR-0004 已经做过一次——失败要在准备阶段就带 code 落到界面上。
+function hasWebBundle() {
+  const index = webIndexPath();
+  return Boolean(index) && fs.existsSync(index);
+}
+
+// 资源名里带内容哈希，可以长缓存；index.html 是入口，必须每次回源，否则更新后仍是旧壳。
+function webCacheControl(relativePath) {
+  return /^\/assets\//.test(relativePath) ? "public, max-age=31536000, immutable" : "no-cache";
+}
+
+function contentTypeOf(filePath) {
+  return WEB_MIME[path.extname(filePath).toLowerCase()] ?? "application/octet-stream";
+}
+
+function sendWebFile(req, res, filePath, relativePath) {
+  let stat = null;
+  try {
+    stat = fs.statSync(filePath);
+  } catch {
+    stat = null;
+  }
+  if (!stat || !stat.isFile()) {
+    sendWebNotFound(res, relativePath);
+    return;
+  }
+  res.writeHead(200, {
+    "Content-Type": contentTypeOf(filePath),
+    "Content-Length": stat.size,
+    "Cache-Control": webCacheControl(relativePath),
+    "X-Content-Type-Options": "nosniff",
+  });
+  if (req.method === "HEAD") {
+    res.end();
+    return;
+  }
+  const stream = fs.createReadStream(filePath);
+  stream.on("error", () => res.destroy());
+  stream.pipe(res);
+}
+
+function sendWebNotFound(res, pathname) {
+  if (res.headersSent) {
+    res.destroy();
+    return;
+  }
+  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(`Not found: ${pathname}`);
+}
+
+// 与后端 static_site.go 的 resolve 保持同一套拒绝理由：反斜杠、NUL、越界一律不碰磁盘。
+function resolveWebAsset(pathname) {
+  let decoded = "";
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  if (decoded.includes("\u0000") || decoded.includes("\\")) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  // 逐段检查 `..`：normalize 会把根之上的 `..` 静默吃掉，于是 `/assets/../../../etc`
+  // 看起来只是一个普通路径，再被建导航规则回退成 index.html。想要的是明确拒绝。
+  if (decoded.split(/[\\/]+/).some((segment) => segment === "..")) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  const normalized = path.posix.normalize(decoded);
+  if (normalized.includes("..")) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  const root = path.resolve(WEB_DIST);
+  const target = path.resolve(root, `.${normalized}`);
+  if (target !== root && !target.startsWith(root + path.sep)) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  const candidate = fs.existsSync(target) && fs.statSync(target).isDirectory() ? path.join(target, "index.html") : target;
+  if (!fs.existsSync(candidate)) {
+    return { file: null, relative: normalized, reason: "missing" };
+  }
+  return { file: candidate, relative: candidate === target ? normalized : `${normalized.replace(/\/$/, "")}/index.html` };
+}
+
+// 沿用上游 navigationRequest 的判定：Accept 里有 text/html 或路径没有扩展名都算导航。
+// 两条都要保留——只按扩展名判会把不带 Accept 的直链打回 404，只按 Accept 判则会把
+// 坏掉的 .js 当 HTML 喂给模块加载器。
+function isNavigationRequest(req, pathname) {
+  const accept = String(req.headers.accept ?? "");
+  if (accept.includes("text/html")) return true;
+  return path.posix.extname(pathname) === "";
+}
+
+function isApiPath(pathname) {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+// 返回 true 表示这个请求已经由静态层回答，调用方不要再往下透传。
+function serveWebAsset(req, res, pathname) {
+  if (req.method !== "GET" && req.method !== "HEAD") return false;
+  if (!hasWebBundle()) return false;
+
+  const resolved = resolveWebAsset(pathname);
+  if (resolved.reason === "bad-path") {
+    sendWebNotFound(res, pathname);
+    return true;
+  }
+  if (resolved.file) {
+    sendWebFile(req, res, resolved.file, resolved.relative);
+    return true;
+  }
+  if (isNavigationRequest(req, pathname)) {
+    sendWebFile(req, res, webIndexPath(), "/index.html");
+    return true;
+  }
+  sendWebNotFound(res, pathname);
+  return true;
+}
+
 function startProxy() {
   // 一开始就把 token 落盘：插件运行时靠它才能长轮询取任务，晚创建就代表
   // 桥在启动后头几秒是哑的。（bridge.json 里只有本地随机串，不含任何密钥。）
@@ -2987,17 +3154,16 @@ function startProxy() {
     console.error("[open-ai-canvas] Failed to initialise bridge token:", err.message);
   }
   const server = http.createServer((req, res) => {
+    const pathname = (req.url || "/").split("?")[0];
+
     // 准备中、失败后、就绪后都要能回答：这个端点永远由 shim 自己处理，不经 Go。
-    if (req.method === "GET" && req.url === "/__canvas/state") {
+    if (req.method === "GET" && pathname === "/__canvas/state") {
       sendJson(res, stateSnapshot());
       return;
     }
 
     // 模型桥不依赖 Go 后端：它得与后端就绪状态解耦，才能在重试/重启后接着用。
-    {
-      const pathname = (req.url || "/").split("?")[0];
-      if (serveBridge(req, res, pathname)) return;
-    }
+    if (serveBridge(req, res, pathname)) return;
 
     if (!goPort) {
       servePreparation(req, res);
@@ -3005,10 +3171,21 @@ function startProxy() {
     }
 
     // MCP 路由
-    if (req.method === "POST" && req.url === "/mcp") {
+    if (req.method === "POST" && pathname === "/mcp") {
       handleMcpRequest(req, res);
       return;
     }
+
+    // /mcp 归 MCP 层所有：GET 不该被静态层回退成 index.html，否则一个路径写错的
+    // MCP 客户端拿到的是前端页面，而不是一个说得清楚的方法不允许。
+    if (pathname === "/mcp") {
+      res.writeHead(405, { Allow: "POST", "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Method Not Allowed");
+      return;
+    }
+
+    // 前端产物（ADR-0008）。/api 是后端自己的路由空间，一律透传——shim 不猜路由。
+    if (!isApiPath(pathname) && serveWebAsset(req, res, pathname)) return;
 
     // 透传到 Go 后端
     const proxyReq = http.request(

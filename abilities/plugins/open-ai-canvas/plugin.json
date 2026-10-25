@@ -2,7 +2,7 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
@@ -36,7 +36,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "6b1b7c8daf3a07c2a2042e556c4b46eb317919d62cbd571c5ea7d66483cb4673",
+                  "sha256": "b40ce86242744147057629f8c1ec9e41e3eb1bc3787ab597e5999d793d99364a",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -46,7 +46,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "6b1b7c8daf3a07c2a2042e556c4b46eb317919d62cbd571c5ea7d66483cb4673",
+                  "sha256": "b40ce86242744147057629f8c1ec9e41e3eb1bc3787ab597e5999d793d99364a",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -56,7 +56,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "6b1b7c8daf3a07c2a2042e556c4b46eb317919d62cbd571c5ea7d66483cb4673",
+                  "sha256": "b40ce86242744147057629f8c1ec9e41e3eb1bc3787ab597e5999d793d99364a",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -66,7 +66,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "6b1b7c8daf3a07c2a2042e556c4b46eb317919d62cbd571c5ea7d66483cb4673",
+                  "sha256": "b40ce86242744147057629f8c1ec9e41e3eb1bc3787ab597e5999d793d99364a",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -76,7 +76,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "6b1b7c8daf3a07c2a2042e556c4b46eb317919d62cbd571c5ea7d66483cb4673",
+                  "sha256": "b40ce86242744147057629f8c1ec9e41e3eb1bc3787ab597e5999d793d99364a",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
