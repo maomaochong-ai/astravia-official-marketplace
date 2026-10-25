@@ -6025,7 +6025,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video and more, with MCP tools for project/canvas/task management.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6252,6 +6252,26 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas/open-ai-canvas-0.1.1.astraviapkg",
             "sha256": "ff70bcf448a909352985dfbba04a766fd3f7042b68f69ebf287994c16b6a48c7"
           }
+        },
+        {
+          "version": "0.1.2",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "agent.mcp.control",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal",
+            "ai.models.list",
+            "ai.complete",
+            "models.manage"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas/open-ai-canvas-0.1.2.astraviapkg",
+            "sha256": "c0bd34da5577a5494b7e4e1f09bbdc7ac347e4270a89623e11fe7bedeeef5610"
+          }
         }
       ]
     },
@@ -6260,7 +6280,7 @@
       "slug": "rea",
       "name": "REA Reverse Engineering",
       "description": "Connect Astravia to REA so the agent can reverse engineer native binaries, JavaScript and Electron apps, .NET assemblies, firmware and website traffic — with evidence for every conclusion.",
-      "version": "0.4.6",
+      "version": "0.4.7",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6872,6 +6892,50 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.4.6.astraviapkg",
             "sha256": "f67e6395dbfde0f75287bde7837a894688ff5802b28364c1e9f2cd51bd2f0752"
+          }
+        },
+        {
+          "version": "0.4.7",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "agent.skills.control",
+            "agent.mcp.control",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.systemPrompt.write",
+            "agent.continuation.register",
+            "agent.session.read",
+            "agent.session.write",
+            "agent.command.run",
+            "agent.command.spawn"
+          ],
+          "commands": [
+            "node",
+            "java",
+            "frida",
+            "adb",
+            "apktool",
+            "binwalk",
+            "objdump",
+            "gdb",
+            "rizin",
+            "cutter",
+            "jadx",
+            "unblob",
+            "tshark",
+            "capinfos",
+            "sigrok-cli",
+            "wasm-validate",
+            "mitmdump",
+            "brew",
+            "pipx"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-rea/rea-0.4.7.astraviapkg",
+            "sha256": "ffa254a209f850f66dc96148679e437a0a97d7b437fabffec83250f3cbfd6c18"
           }
         }
       ]
@@ -8086,5 +8150,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.25-6"
+  "marketplaceVersion": "2026.10.25-7"
 }
