@@ -37,6 +37,21 @@ if (!HOST_PORT || !DATA_DIR) {
   process.exit(1);
 }
 
+// --- 浏览器 origin（ADR-0010）---
+// 宿主用 listen(0) 分配服务端口（plugin-service-provider-service.ts 的 allocateLoopbackPort，
+// 且服务声明 additionalProperties:false，没有 port 字段可声明），所以每次启动的 origin 都不同。
+// 画布把渠道/模型/面板布局写在浏览器 localStorage（zustand persist，键名带 :user:<id>），
+// 而 localStorage 按 origin 隔离 → origin 一变，用户配好的模型看起来就“消失”。
+// 对策：除宿主端口外，再抢一个固定回环端口作为**浏览器 origin**；宿主端口只负责健康检查
+// 与模型桥，导航请求 302 过去。抢不到时退回宿主端口（与改造前一致，只是状态仍会丢）。
+const STABLE_ORIGIN_PORTS = [47810, 47811, 47812, 47813];
+const ORIGIN_FILE = path.join(DATA_DIR, "browser-origin.json");
+let PUBLIC_ORIGIN = `http://127.0.0.1:${HOST_PORT}`;
+let STABLE_PORT = 0;
+let STABLE_SERVER = null;
+// 两个 server 共用一个 handler；startProxy 接管前先回 503。
+let REQUEST_HANDLER = null;
+
 // --- 运行时载荷 ---
 // 包内只装 boot.mjs（几十 KB 的 shim）；原生后端 + web-dist + 官方插件包压缩后约 200 MB，
 // 远超 Desktop 的单包上限，所以首次启动时下载到 DATA_DIR/runtime/<payloadVersion>/ 并校验 sha256。
@@ -1612,6 +1627,13 @@ let BACKEND_PORT = 0;
 
 
 // --- Go 后端环境变量与启动 ---
+// `/api` 上的跨源白名单只有这几项：页面来源是 PUBLIC_ORIGIN，插件侧探针走宿主端口。
+// `localhost` 与 `127.0.0.1` 是两个不同的 origin，两个都得给（ADR-0010）。
+function corsOrigins() {
+  const ports = [...new Set([STABLE_PORT || HOST_PORT, HOST_PORT])];
+  return [...new Set(ports.flatMap((port) => [`http://127.0.0.1:${port}`, `http://localhost:${port}`]))].join(",");
+}
+
 function backendEnv() {
   return {
     ...process.env,
@@ -1620,14 +1642,16 @@ function backendEnv() {
     // 上游发布 tag 的后端没有静态承载代码，这个变量会被忽略；留着是为了将来载荷换成
     // 带 CANVAS_STATIC_DIR 支持的构建时不用再改这里。静态文件始终由 shim 先服务（ADR-0008）。
     CANVAS_STATIC_DIR: WEB_DIST,
-    CANVAS_CORS_ORIGINS: `http://127.0.0.1:${HOST_PORT},http://localhost:${HOST_PORT}`,
+    // 两个 origin 都要放行：稳定 origin 是页面真正的来源，宿主端口留给探针与旧标签页（ADR-0010）。
+    CANVAS_CORS_ORIGINS: corsOrigins(),
     CANVAS_EXIT_WITH_PARENT: "true",
     CANVAS_PARENT_PID: String(process.pid),
     GIN_MODE: "release",
     // 公开资源基址：上传到本地存储的文件要拼出一个浏览器能取回的绝对地址，
-    // 后端在它为空时直接拒绝（资源接口返回「尚未配置服务器访问地址」）。端口由宿主分配、
-    // 每次启动都可能变，所以只能在这里算，不能写成固定配置。
-    CANVAS_PUBLIC_BASE_URL: `http://127.0.0.1:${HOST_PORT}`,
+    // 后端在它为空时直接拒绝（资源接口返回「尚未配置服务器访问地址」）。
+    // ADR-0010 之前这里写的是宿主端口，于是落库的图片地址在下次启动就全部失活；
+    // 现在用固定 origin，旧资源地址也不会跟着端口漂。
+    CANVAS_PUBLIC_BASE_URL: PUBLIC_ORIGIN,
     ...(NODE_BIN ? { CANVAS_NODE_BIN: NODE_BIN } : {}),
     ...(fs.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {}),
     CANVAS_RUNTIME_AUTO_INSTALL: "false",
@@ -2145,10 +2169,10 @@ function errorResult(message) {
   return { isError: true, content: [{ type: "text", text: message }] };
 }
 
-// 画布在浏览器里的地址。端口由宿主每次启动分配，所以只能运行时拼；
-// 新建成功后直接把它返回给调用方，省得人在端口号上打转。
+// 画布在浏览器里的地址。宿主端口每次都变，所以用它拼出来的链接写进对话、写进收藏
+// 之后就会准时失效；改用固定 origin（搬不到时自动退回宿主端口）。ADR-0010。
 function canvasUrl(canvasId) {
-  return `http://127.0.0.1:${HOST_PORT}/canvas/${canvasId}`;
+  return `${PUBLIC_ORIGIN}/canvas/${canvasId}`;
 }
 
 // 把后端返回的 {"code":0,"data":{...},"msg":"ok"} 展开，并把画布地址一并给出。
@@ -2688,6 +2712,9 @@ function stateSnapshot() {
     // 插件视图用它显示「桥在线 / 离线」，没这个字段就只能猜。
     bridge: { executorOnline: bridgeExecutorOnline(), models: BRIDGE.models.length },
     workflow: LAST_WORKFLOW,
+    // 地址栏该用的 origin（ADR-0010）。插件据此打开画布，两个端口不一致时才不用依赖 302。
+    origin: PUBLIC_ORIGIN,
+    originPinned: Boolean(STABLE_PORT),
   };
 }
 
@@ -3300,6 +3327,100 @@ function serveWebAsset(req, res, pathname) {
   return true;
 }
 
+
+// --- 浏览器 origin 绑定（ADR-0010）---
+function loadRememberedPort() {
+  try {
+    const port = Number(JSON.parse(fs.readFileSync(ORIGIN_FILE, "utf8"))?.port);
+    return Number.isInteger(port) && port > 0 ? port : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function rememberPort(port) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const body = { port, origin: `http://127.0.0.1:${port}`, savedAt: new Date().toISOString() };
+    fs.writeFileSync(ORIGIN_FILE, `${JSON.stringify(body, null, 2)}\n`);
+  } catch (err) {
+    console.error("[open-ai-canvas] Failed to remember browser origin:", err.message);
+  }
+}
+
+// 顺序：显式给定的优先（人既然写了就是意图），否则先试上次抢到的那个，最后才是默认区间。
+// 上次那个放前面的理由：同时装两个 Astravia、或同一台机器有两套配置时，两边各自稳定。
+function stablePortCandidates() {
+  const raw = process.env.CANVAS_STABLE_PORTS;
+  const override = typeof raw === "string" ? raw.trim() : "";
+  if (/^(off|none|false|0)$/i.test(override)) return [];
+  const explicit = override
+    ? override
+        .split(",")
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isInteger(value) && value > 0)
+    : [];
+  const remembered = loadRememberedPort();
+  const list = explicit.length
+    ? [...explicit, remembered]
+    : [...(remembered ? [remembered] : []), ...STABLE_ORIGIN_PORTS];
+  // 宿主端口不能当稳定端口（它每次启动都变）；0 也要滤掉——listen(0) 会让 OS 再分配一个
+  // 临时端口，那恰好是本次要避免的事。
+  return [...new Set(list)].filter((port) => port > 0 && port !== HOST_PORT && port < 65536);
+}
+
+function listenStable(port) {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      if (!REQUEST_HANDLER) {
+        res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+        res.end("starting");
+        return;
+      }
+      REQUEST_HANDLER(req, res);
+    });
+    server.once("error", (err) => resolve({ server: null, error: err }));
+    server.listen(port, "127.0.0.1", () => resolve({ server, error: null }));
+  });
+}
+
+/** 抢一个固定回环端口当浏览器 origin；抢不到就退回宿主端口。 */
+async function bindStableOrigin() {
+  for (const port of stablePortCandidates()) {
+    const { server, error } = await listenStable(port);
+    if (!server) {
+      console.error(`[open-ai-canvas] Port ${port} unavailable (${error?.code || error?.message}); trying next`);
+      continue;
+    }
+    STABLE_SERVER = server;
+    STABLE_PORT = port;
+    PUBLIC_ORIGIN = `http://127.0.0.1:${port}`;
+    rememberPort(port);
+    console.log(`[open-ai-canvas] Browser origin ${PUBLIC_ORIGIN}`);
+    return;
+  }
+  console.error("[open-ai-canvas] No stable origin port available; browser state will not survive a restart");
+}
+
+/**
+ * 只把「地址栏里打开页面」这类请求送到稳定 origin。
+ *
+ * `/api`、`/bridge`、`/__canvas`、`/mcp` 一律不跳：它们是宿主健康检查、模型桥与 MCP 的通道，
+ * 跳了会让宿主拿到 302 并判成服务没起来。fetch/XHR 的 Accept 默认是通配（星号斜杠星号），
+ * 因此也不会被跳走——只有真的声明要 HTML 的请求才算导航。
+ */
+function shouldPinOrigin(req, pathname) {
+  if (!STABLE_PORT) return false;
+  if (req.socket?.localPort !== HOST_PORT) return false; // 已经在稳定 origin 上了
+  if (req.method !== "GET" && req.method !== "HEAD") return false;
+  if (/^\/(api|bridge|__canvas|mcp)(\/|$)/.test(pathname)) return false;
+  return String(req.headers.accept || "").includes("text/html");
+}
+
+function redirectToPinnedOrigin(req, res) {
+  res.writeHead(302, { Location: `${PUBLIC_ORIGIN}${req.url || "/"}`, "Cache-Control": "no-store" });
+  res.end();
+}
 function startProxy() {
   // 一开始就把 token 落盘：插件运行时靠它才能长轮询取任务，晚创建就代表
   // 桥在启动后头几秒是哑的。（bridge.json 里只有本地随机串，不含任何密钥。）
@@ -3310,6 +3431,13 @@ function startProxy() {
   }
   const server = http.createServer((req, res) => {
     const pathname = (req.url || "/").split("?")[0];
+
+    // ADR-0010：先把页面请求钉到稳定 origin，再谈路由。它必须排在 /__canvas/state 之前
+    // 也没关系——那条路径在 shouldPinOrigin 里已被排除，探针永远拿到 JSON 而不是 302。
+    if (shouldPinOrigin(req, pathname)) {
+      redirectToPinnedOrigin(req, res);
+      return;
+    }
 
     // 准备中、失败后、就绪后都要能回答：这个端点永远由 shim 自己处理，不经 Go。
     if (req.method === "GET" && pathname === "/__canvas/state") {
@@ -3379,6 +3507,10 @@ function startProxy() {
     req.pipe(proxyReq);
   });
 
+  // 稳定 origin 的 server 复用同一个 handler：直接转发到宿主端口 server 上，
+  // 两边路由、状态、会话捕捉只有一份实现（ADR-0010）。必须在 listen 之前就位。
+  REQUEST_HANDLER = (req, res) => server.emit("request", req, res);
+
   // WebSocket upgrade 转发
   server.on("upgrade", (req, socket, head) => {
     if (!goPort) {
@@ -3407,12 +3539,20 @@ function startProxy() {
     socket.on("error", () => targetSocket.destroy());
   });
 
+  // 稳定 origin 上也可能开 WebSocket（实时协作类能力），同样转给宿主端口那份实现。
+  if (STABLE_SERVER) {
+    STABLE_SERVER.on("upgrade", (req, socket, head) => server.emit("upgrade", req, socket, head));
+  }
+
   server.listen(HOST_PORT, "127.0.0.1", () => {
     console.log(`[open-ai-canvas] Proxy listening on http://127.0.0.1:${HOST_PORT}`);
   });
   return server;
 }
 
-// --- 启动序列：监听先就位，运行时随后准备 ---
+// --- 启动序列 ---
+// 先钉住浏览器 origin：backendEnv() 要拿 PUBLIC_ORIGIN 算「公开基址」（上传资源拼的绝对地址）
+// 与 CORS 白名单，晚于 startBackend 就晚了。监听随后就位，运行时最后准备。
+await bindStableOrigin();
 startProxy();
 void prepareRuntime();

@@ -101,6 +101,10 @@ interface ServiceProbe {
   backend?: boolean;
   bridge?: { executorOnline?: boolean; models?: number };
   workflow?: WorkflowState | null;
+  // ADR-0010：shim 争到固定回环端口时会给出该 origin；插件用它开画布，
+  // 让浏览器标签页落在稳定 origin 上（localStorage 不会因端口漂移而丢失）。
+  origin?: string;
+  originPinned?: boolean;
 }
 
 /** 失败码 → i18n key。文案会变，code 不变，不要靠中文子串匹配。 */
@@ -173,6 +177,8 @@ export class CanvasController {
   private disposed = false;
   /** 服务基址随宿主分配的端口变化，每次启动都重新解析。 */
   private baseUrl: string | undefined;
+  /** ADR-0010：浏览器该落在的 origin（shim 抢到固定端口时才有），与宿主端口分开记。 */
+  private origin: string | undefined;
 
   constructor(ctx: PluginContext) {
     this.ctx = ctx;
@@ -298,6 +304,11 @@ export class CanvasController {
           models: typeof data.bridge.models === "number" ? data.bridge.models : 0,
         });
       }
+      // ADR-0010：shim 自述的 origin 才是「该放进地址栏的地址」。旧 shim 没这个字段，
+      // 此时保持 undefined，openInBrowser 自然回退到宿主端口。
+      if (typeof data?.origin === "string" && /^http:\/\/127\.0\.0\.1:\d+$/.test(data.origin)) {
+        this.origin = data.origin;
+      }
       return data && typeof data.phase === "string" ? data : undefined;
     } catch {
       return undefined;
@@ -384,6 +395,8 @@ export class CanvasController {
     this.operationInFlight = true;
     // 端口可能已经变了：每次启动都重新解析基址。
     this.baseUrl = undefined;
+    // 固定 origin 兜要重新问：旧实例抢到的端口，新实例未必还能拿到。
+    this.origin = undefined;
     this.setState({ busy: true });
     try {
       // 必须在 install() 之前：宿主在那里抛英文异常，用户只会看到「安装失败」。
@@ -494,6 +507,7 @@ export class CanvasController {
     if (this.disposed || this.operationInFlight) return;
     this.operationInFlight = true;
     this.baseUrl = undefined;
+    this.origin = undefined;
     this.setState({ phase: "stopping", busy: true });
     try {
       await this.ctx.services.stop(SERVICE_ID);
@@ -510,7 +524,9 @@ export class CanvasController {
   async openInBrowser(): Promise<boolean> {
     const baseUrl = await this.resolveBaseUrl();
     if (!baseUrl) return false;
-    await this.ctx.ui.openExternal(`${baseUrl}/`);
+    // 优先用 shim 自述的固定 origin：直接落到 localStorage 长期所在的那个地址，
+    // 不依赖 302 到到位（旧 shim 没这个字段，就还是宿主端口）。ADR-0010。
+    await this.ctx.ui.openExternal(`${this.origin ?? baseUrl}/`);
     return true;
   }
 
