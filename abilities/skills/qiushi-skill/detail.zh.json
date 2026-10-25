@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "求是方法论",
+      "title": "动手之前，先用十份规程想清楚",
+      "description": "面向「答案并不明显」的那些时刻：先把事实摆清，再找出规定全局的那对矛盾，集中力量打一个主攻点，把方案放回实践里检验，最后诚实地复盘。一个技能装下入口纪律与十份规程，用到哪件才读哪件，纯文本、离线可用。",
+      "badges": [
+        "10 份规程",
+        "纯文本，离线可用",
+        "MIT"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "assets/logo.png",
+      "alt": "qiushi-skill 项目标识",
+      "caption": "上游项目官方标识（assets/logo_main.png），除文件格式外未作改动。"
+    },
+    {
+      "type": "image",
+      "src": "assets/preview/preview-hero.png",
+      "alt": "随包分发的离线介绍页首屏",
+      "caption": "不是示意图，就是那份页面本身：首屏标题、三条速览与方法索引。它从技能目录直接打开，全程离线 —— 打开方式见本节最后一步。"
+    },
+    {
+      "type": "feature-grid",
+      "title": "入口纪律与十份规程",
+      "items": [
+        {
+          "title": "武装思想",
+          "description": "入口原则：先看事实，只有在下游方法明显适用时才交出去。",
+          "icon": "solar:eye-bold"
+        },
+        {
+          "title": "调查研究",
+          "description": "先取一手材料，交付「事实 / 推断 / 未知」三栏清单。",
+          "icon": "solar:magnifer-zoom-in-bold"
+        },
+        {
+          "title": "矛盾分析",
+          "description": "把纠缠的问题拆成对立面，指出主要矛盾及其主要方面。",
+          "icon": "solar:layers-bold"
+        },
+        {
+          "title": "集中兵力",
+          "description": "把待办全列出来，只锁定一个主攻目标，做完验证再转下一个。",
+          "icon": "solar:target-bold"
+        },
+        {
+          "title": "实践认识",
+          "description": "把方案跑一遍，看真实结果，按事先写好的终止条件螺旋迭代。",
+          "icon": "solar:play-circle-bold"
+        },
+        {
+          "title": "统筹兼顾",
+          "description": "列出全部取舍关系，定出当前侧重与底线，写明什么算失衡。",
+          "icon": "solar:shield-warning-bold"
+        },
+        {
+          "title": "群众路线",
+          "description": "把掌握真实情况的多方意见收上来综合成方案，再带回去确认。",
+          "icon": "solar:global-linear"
+        },
+        {
+          "title": "批评与自我批评",
+          "description": "对已完成的工作做具体审视，把问题变成有着落的改进项。",
+          "icon": "solar:document-text-bold"
+        },
+        {
+          "title": "持久战略",
+          "description": "长期任务先判阶段，写清转换条件，每个阶段都留一个局部进攻点。",
+          "icon": "solar:map-bold"
+        },
+        {
+          "title": "星火燎原",
+          "description": "从近乎零起步，先占住一个能站稳、能复用、能扩张的根据地。",
+          "icon": "solar:box-linear"
+        },
+        {
+          "title": "工作流组合",
+          "description": "启动、攻坚、迭代、复盘四类任务的固定方法链，每步都有交接物。",
+          "icon": "solar:route-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "开始使用",
+      "items": [
+        {
+          "title": "安装一次",
+          "description": "在市场里安装，技能面板里只多出一条，入口纪律与十份规程都在里面，不需要逐个配置。"
+        },
+        {
+          "title": "直接说处境",
+          "description": "按平时的说法描述问题，或者点名某件方法。技能先套用四条硬规则，再从自己的参考目录里读出适用的那份规程。"
+        },
+        {
+          "title": "在对话里走完流程",
+          "description": "每件方法都要求一份具体产物：调查清单、主要矛盾、主攻目标、复盘结论。"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "两个值得知道的附加件",
+      "items": [
+        {
+          "title": "看图文介绍页",
+          "description": "包里带一份离线页面 assets/preview/index.html。让助手跑 scripts/open-preview.sh（Windows 用 open-preview.ps1），会用默认浏览器打开，不需要联网。"
+        },
+        {
+          "title": "需要角色时派一个",
+          "description": "agents/ 里有两份简报：只读的调查员，交付「事实 / 推断 / 未知」；换上下文的审查者，只看产物不看作者的说辞。需要时把它交给一个子任务，而不是在带着实现思路的上下文里就地审查。"
+        }
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "brand_name": "Astravia",
+        "user_prompt": "迁移做到一半，什么都落后了，我该从哪儿开始？",
+        "assistant_reply": "先摸事实：哪一段能干净迁完，卡的是数据还是依赖。再找牵制其余部分的那个矛盾。本周只打通一条端到端路径，其余排期。"
+      }
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "上游靠 Claude Code 的会话启动钩子注入入口方法，并把入口与十份规程注册成十一个独立技能。Astravia 也有 SessionStart 引擎，钩子随包收录，但注入是否发生取决于宿主是否把这个目录当作钩子来源。没有也不影响使用：入口正文在技能被打开或命中时加载，具体规程只在用到时才读。规程正文按上游 2.0.0 原样分发，MIT 许可。"
+    }
+  ]
+}

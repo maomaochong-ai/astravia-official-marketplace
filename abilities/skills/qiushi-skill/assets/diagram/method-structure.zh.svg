@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 440" width="560" height="440" role="img" aria-label="方法结构：一条总原则统摄三层方法">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8c8375"/>
+    </marker>
+  </defs>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif" text-anchor="middle">
+
+    <rect x="50" y="20" width="460" height="58" rx="10" fill="#f3f1ea" stroke="#cfc6b4" stroke-width="1.2"/>
+    <text x="280" y="44" font-size="14" font-weight="600" fill="#3a352d">精神底色</text>
+    <text x="280" y="64" font-size="12" fill="#6d6558">精益求精 · 坚持到底</text>
+
+    <line x1="280" y1="78" x2="280" y2="100" stroke="#8c8375" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+    <rect x="50" y="104" width="460" height="58" rx="10" fill="#8a1f1f" stroke="#6f1616" stroke-width="1.2"/>
+    <text x="280" y="128" font-size="14" font-weight="600" fill="#ffffff">总原则 · 实事求是</text>
+    <text x="280" y="148" font-size="12" fill="#f2dede">约束全部判断过程</text>
+
+    <line x1="280" y1="162" x2="280" y2="184" stroke="#8c8375" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+    <rect x="50" y="188" width="460" height="58" rx="10" fill="#f7e9e9" stroke="#d9b3b3" stroke-width="1.2"/>
+    <text x="280" y="212" font-size="14" font-weight="600" fill="#6f1616">第一层 · 哲学基座</text>
+    <text x="280" y="232" font-size="12" fill="#5c4b4b">矛盾分析法 · 实践认识论</text>
+
+    <line x1="280" y1="246" x2="280" y2="268" stroke="#8c8375" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+    <rect x="50" y="272" width="460" height="58" rx="10" fill="#faf3e4" stroke="#ddc9a3" stroke-width="1.2"/>
+    <text x="280" y="296" font-size="14" font-weight="600" fill="#6b5327">第二层 · 工作方法</text>
+    <text x="280" y="316" font-size="12" fill="#5c5343">调查研究 · 群众路线 · 批评与自我批评</text>
+
+    <line x1="280" y1="330" x2="280" y2="352" stroke="#8c8375" stroke-width="1.4" marker-end="url(#arrow)"/>
+
+    <rect x="50" y="356" width="460" height="58" rx="10" fill="#eef2ea" stroke="#c2cfba" stroke-width="1.2"/>
+    <text x="280" y="380" font-size="14" font-weight="600" fill="#3f5236">第三层 · 战略战术</text>
+    <text x="280" y="400" font-size="12" fill="#4f5a48">持久战略 · 集中兵力 · 星火燎原 · 统筹兼顾</text>
+
+    <text x="280" y="432" font-size="11" fill="#8c8375">三层方法都服从总原则，而不是反过来。</text>
+  </g>
+</svg>

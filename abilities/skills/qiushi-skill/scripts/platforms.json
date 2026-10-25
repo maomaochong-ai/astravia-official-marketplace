@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "package": "qiushi-skill",
+  "description": "Where this package can be copied, per host. Consumed by scripts/install-platforms.mjs. No network, no package manager.",
+  "assets": {
+    "entry": { "from": "SKILL.md", "to": "SKILL.md", "kind": "file", "required": true },
+    "skills": { "from": "references/skills", "to": "skills", "kind": "children", "required": true },
+    "commands": { "from": "commands", "to": "commands", "kind": "files", "extension": ".md" },
+    "agents": { "from": "agents", "to": "agents", "kind": "files", "extension": ".md" },
+    "hooks": { "from": "hooks", "to": "hooks", "kind": "children" }
+  },
+  "targets": [
+    {
+      "id": "claude-code",
+      "label": "Claude Code",
+      "kind": "bundle",
+      "detect": ["~/.claude", "<project>/.claude"],
+      "root": { "user": "~/.claude/plugins/qiushi-skill", "project": ".claude/plugins/qiushi-skill" },
+      "assets": ["entry", "skills", "commands", "agents", "hooks"],
+      "pluginManifest": {
+        "path": ".claude-plugin/plugin.json",
+        "name": "qiushi-skill",
+        "description": "Qiushi methodology: ten working methods under one governing principle"
+      },
+      "hooksNote": "hooks/hooks.json is a native SessionStart source here; the host picks it up without extra configuration."
+    },
+    {
+      "id": "cursor",
+      "label": "Cursor",
+      "kind": "bundle",
+      "detect": ["~/.cursor", "<project>/.cursor"],
+      "root": { "user": "~/.cursor/plugins/qiushi-skill", "project": ".cursor/plugins/qiushi-skill" },
+      "assets": ["entry", "skills", "commands", "agents", "hooks"],
+      "note": "Cursor reads plugins from its own plugin directory; if yours is customised, point --dest at it."
+    },
+    {
+      "id": "codex",
+      "label": "Codex",
+      "kind": "skills",
+      "detect": ["~/.codex", "<project>/.codex"],
+      "root": { "user": "~/.codex/skills/qiushi-skill", "project": ".codex/skills/qiushi-skill" },
+      "assets": ["entry", "skills", "commands"],
+      "hooksNote": "Codex takes hooks from hooks.json beside its config, not from a skill folder. Copy hooks/hooks.json yourself if you want the injection."
+    },
+    {
+      "id": "opencode",
+      "label": "OpenCode",
+      "kind": "skills-commands",
+      "detect": ["~/.config/opencode", "<project>/.opencode"],
+      "root": { "user": "~/.config/opencode/skills/qiushi-skill", "project": ".opencode/skills/qiushi-skill" },
+      "commandRoot": { "user": "~/.config/opencode/commands", "project": ".opencode/commands" },
+      "assets": ["entry", "skills", "commands"]
+    },
+    {
+      "id": "openclaw",
+      "label": "OpenClaw",
+      "kind": "skills",
+      "detect": ["~/.openclaw", "<project>/.openclaw"],
+      "root": { "user": "~/.openclaw/skills/qiushi-skill", "project": "skills/qiushi-skill" },
+      "assets": ["entry", "skills"]
+    },
+    {
+      "id": "hermes",
+      "label": "Hermes",
+      "kind": "skills",
+      "detect": ["~/.hermes", "<project>/.hermes"],
+      "root": { "user": "~/.hermes/skills/qiushi-skill", "project": ".hermes/skills/qiushi-skill" },
+      "assets": ["entry", "skills"],
+      "note": "Project scope needs an external_dirs entry in the Hermes config before it is scanned."
+    },
+    {
+      "id": "nanobot",
+      "label": "nanobot",
+      "kind": "skills",
+      "detect": ["~/.nanobot", "<project>/.nanobot"],
+      "root": { "user": "~/.nanobot/workspace/skills/qiushi-skill", "project": ".nanobot/workspace/skills/qiushi-skill" },
+      "assets": ["entry", "skills"]
+    },
+    {
+      "id": "astravia",
+      "label": "Astravia",
+      "kind": "skills",
+      "detect": ["~/.astravia/skills"],
+      "root": { "user": "~/.astravia/skills/qiushi-skill" },
+      "assets": ["entry", "skills", "commands"],
+      "note": "Usually unnecessary: installing from the market already writes this folder. Kept for a manual copy without the market. skills/.ignore travels along, so the ten playbooks do not each become a panel entry."
+    }
+  ]
+}
