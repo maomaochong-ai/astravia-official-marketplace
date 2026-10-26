@@ -1,6 +1,6 @@
 # open-ai-canvas 插件 ADR 索引
 
-这十四份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
+这十五份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
 
 | ADR | 主题 | 状态 |
 | --- | --- | --- |
@@ -18,6 +18,7 @@
 | [0012](./0012-service-module-layout.md) | 服务端按职责分文件，运行时仍是单个 bundle | 已接受（现行） |
 | [0013](./0013-canvas-media-models-as-host-providers.md) | 画布媒体模型登记为宿主媒体 Provider | 已接受（现行） |
 | [0014](./0014-activation-ownership-and-runtime-version-key.md) | 激活的资源归属于激活，运行时目录键归属于字节 | 已接受（现行） |
+| [0015](./0015-creator-catalog-projection.md) | 画布创作目录是渠道模型的投影，连接以读回为准 | 已接受（现行） |
 
 ## 落实与偏差
 
@@ -38,8 +39,9 @@
 | 0012 | `server/src/*.ts` 分模块、esbuild 单 bundle、`check:service-fresh` 守同源 | `service.ts` 迁移期带工程 `@ts-nocheck`；ZIP 与节点契约已拆出，MCP/桥/路由尚未拆 |
 | 0013 | 目录读 `GET /api/models`、`ctx.media.registerProvider`、`/bridge/media/:id` 转发、注册显式且随 `dispose()` 释放 | **参考图模式未打通**（缺 `POST /api/resources` 的 multipart 转发），故只声明 text→image/video；画布文本模型登记不进宿主；宿主侧端到端生成未跑 |
 | 0014 | `src/index.tsx` 闭包局部 + 幂等释放；`sync-shim` 字节变就 bump `runtime.version`；`check-service-platforms` 固定 `version` / `entry` 与平台声明一致 | 2026-10-27 修复侧栏入口消失与运行时目录键不随字节变；端到端装包未跑 |
+| 0015 | 渠道 / 渠道模型 / 免费价格档三级投影，写完读回 `/api/model-catalog` 分类报告；`verify-channel-projection.mjs` 断言 payload 形状与五类分类，`verify-canvas-catalog.mjs` 断言四条新路由可达 | 只投影文本能力；`chat-completion` 与 0 元档是硬编码假设；端到端未跑（本机无登录会话），画布对 `available: false` 的呈现仍为推断 |
 
-守住这些的脚本：`verify-mcp-tools.mjs`（MCP 契约 41 条）、`verify-stable-origin.mjs`（origin 24 条）、`verify-web-hosting.mjs`、`verify-payload-sources.mjs`、`verify-bridge.mjs`（桥 26 条）、`verify-canvas-catalog.mjs`（目录与媒体注册 48 条）、`verify-workflow.mjs`——全部在 `npm test` 里。
+守住这些的脚本：`verify-mcp-tools.mjs`（MCP 契约 41 条）、`verify-stable-origin.mjs`（origin 24 条）、`verify-web-hosting.mjs`、`verify-payload-sources.mjs`、`verify-bridge.mjs`（桥 26 条）、`verify-canvas-catalog.mjs`（目录、媒体注册与桥路由 55 条）、`verify-channel-projection.mjs`（渠道投影 payload 与读回分类 29 条）、`verify-workflow.mjs`——全部在 `npm test` 里。
 
 ## 八个「为什么不是看上去那样」
 

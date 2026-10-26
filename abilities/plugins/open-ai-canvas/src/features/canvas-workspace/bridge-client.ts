@@ -15,6 +15,7 @@ export type BridgeCode =
   | "canvas-login-required"
   | "canvas-unreachable"
   | "canvas-channel-write-failed"
+  | "canvas-models-invisible"
   | "canvas-task-rejected"
   | "no-text-models"
   | "no-media-models";
@@ -50,7 +51,7 @@ export async function serviceBaseUrl(ctx: PluginContext): Promise<string | undef
 
 interface BridgeRequestInit {
   path: string;
-  method: "GET" | "POST" | "PATCH";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   body?: unknown;
 }
 
@@ -81,6 +82,7 @@ export function bridgeFailure(status: number, body: unknown): BridgeError {
   if (code === "canvas-unreachable") return new BridgeError("canvas-unreachable", message);
   if (code === "canvas-task-rejected") return new BridgeError("canvas-task-rejected", message);
   if (code === "canvas-channel-write-failed") return new BridgeError("canvas-channel-write-failed", message);
+  if (code === "canvas-models-invisible") return new BridgeError("canvas-models-invisible", message);
   return new BridgeError("canvas-unreachable", message);
 }
 

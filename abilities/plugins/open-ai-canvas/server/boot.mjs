@@ -1718,6 +1718,20 @@ async function bridgeAdminChannels(method, channelId, payload) {
   }
   return { status: 400, body: { code: "bridge-bad-request", message: "unsupported channel operation" } };
 }
+async function bridgeAdminChannelModels(method, channelId, modelId, payload) {
+  if (!channelId) {
+    return { status: 400, body: { code: "bridge-bad-request", message: "channel id is required" } };
+  }
+  const base = `/api/admin/channels/${channelId}/models`;
+  if (method === "GET") return rawCanvasApi("GET", base);
+  if (method === "POST") return rawCanvasApi("POST", base, payload);
+  if (method === "PATCH" && modelId) return rawCanvasApi("PATCH", `${base}/${modelId}`, payload);
+  if (method === "DELETE" && modelId) return rawCanvasApi("DELETE", `${base}/${modelId}`);
+  return { status: 400, body: { code: "bridge-bad-request", message: "unsupported channel model operation" } };
+}
+async function readCanvasModelCatalog() {
+  return rawCanvasApi("GET", "/api/model-catalog");
+}
 async function applyCanvasOperations(canvasId, operations, baseRevision) {
   const body = { operations };
   if (baseRevision !== void 0) body.baseRevision = baseRevision;
@@ -3114,6 +3128,28 @@ function bridgeCanvasFailure(res, status, body) {
   }
   bridgeJson(res, 422, { error: { message: String(canvasMessage), code: "canvas-task-rejected" } });
 }
+function bridgeAdminFailure(res, status, body) {
+  const canvasMessage = body && (body.msg || body.message || body.error?.message);
+  if (status === 401) {
+    bridgeJson(res, 401, { error: { message: "Canvas session expired. Log in to the canvas again.", code: "canvas-login-required" } });
+    return;
+  }
+  if (status === 502) {
+    bridgeJson(res, 502, { error: { message: String(canvasMessage || "canvas is not reachable"), code: "canvas-unreachable" } });
+    return;
+  }
+  const code = status >= 500 ? "canvas-unreachable" : "canvas-channel-write-failed";
+  bridgeJson(res, status >= 500 ? 502 : 422, {
+    error: { message: String(canvasMessage || `Canvas returned ${status}`), code }
+  });
+}
+function bridgeWriteResult(res, result) {
+  if (result.status >= 200 && result.status < 300) {
+    bridgeJson(res, result.status, result.body);
+    return;
+  }
+  bridgeAdminFailure(res, result.status, result.body);
+}
 var CANVAS_KINDS = ["text", "image", "video", "audio"];
 function readCanvasTaskRequest(body) {
   const logicalModelId = typeof body?.logicalModelId === "string" ? body.logicalModelId.trim() : "";
@@ -3208,16 +3244,48 @@ function serveBridge(req, res, pathname) {
     return true;
   }
   if (req.method === "GET" && pathname === "/bridge/admin/channels") {
-    void bridgeAdminChannels("GET", null, null).then((result) => bridgeJson(res, result.status, result.body));
+    void bridgeAdminChannels("GET", null, null).then((result) => bridgeWriteResult(res, result));
     return true;
   }
   if (req.method === "POST" && pathname === "/bridge/admin/channels") {
-    void readJsonBody(req).then((body) => bridgeAdminChannels("POST", null, body)).then((result) => bridgeJson(res, result.status, result.body)).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    void readJsonBody(req).then((body) => bridgeAdminChannels("POST", null, body)).then((result) => bridgeWriteResult(res, result)).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
     return true;
   }
   const adminChannelMatch = pathname.match(/^\/bridge\/admin\/channels\/([^/]+)$/);
   if (req.method === "PATCH" && adminChannelMatch) {
-    void readJsonBody(req).then((body) => bridgeAdminChannels("PATCH", adminChannelMatch[1], body)).then((result) => bridgeJson(res, result.status, result.body)).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    void readJsonBody(req).then((body) => bridgeAdminChannels("PATCH", adminChannelMatch[1], body)).then((result) => bridgeWriteResult(res, result)).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+  const adminChannelModelsMatch = pathname.match(/^\/bridge\/admin\/channels\/([^/]+)\/models$/);
+  if (adminChannelModelsMatch && (req.method === "GET" || req.method === "POST")) {
+    const method = req.method;
+    const channelId = adminChannelModelsMatch[1];
+    if (method === "GET") {
+      void bridgeAdminChannelModels("GET", channelId).then((result) => bridgeWriteResult(res, result));
+      return true;
+    }
+    void readJsonBody(req).then((body) => bridgeAdminChannelModels("POST", channelId, null, body)).then((result) => bridgeWriteResult(res, result)).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+  const adminChannelModelMatch = pathname.match(/^\/bridge\/admin\/channels\/([^/]+)\/models\/([^/]+)$/);
+  if (adminChannelModelMatch && (req.method === "PATCH" || req.method === "DELETE")) {
+    const method = req.method;
+    const [, channelId, modelId] = adminChannelModelMatch;
+    if (method === "DELETE") {
+      void bridgeAdminChannelModels("DELETE", channelId, modelId).then((result) => bridgeWriteResult(res, result));
+      return true;
+    }
+    void readJsonBody(req).then((body) => bridgeAdminChannelModels("PATCH", channelId, modelId, body)).then((result) => bridgeWriteResult(res, result)).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+  if (req.method === "GET" && pathname === "/bridge/canvas/model-catalog") {
+    void readCanvasModelCatalog().then((result) => {
+      if (result.status !== 200) {
+        bridgeCanvasFailure(res, result.status, result.body);
+        return;
+      }
+      bridgeJson(res, 200, result.body);
+    });
     return true;
   }
   if (req.method === "GET" && pathname === "/bridge/canvas/models") {

@@ -153,7 +153,8 @@ if channel.Scope == model.ChannelScopeSystem {
 | --- | --- | --- |
 | `bridge-executor-offline` | 桥在，但没有插件运行时接手 | 打开 Astravia 的画布视图后重试 |
 | `canvas-login-required` | 没有有效的画布管理员会话 | 打开画布登录页 |
-| `canvas-channel-write-failed` | 建/改渠道被后端拒绝（权限或校验） | 展示后端原始 message |
+| `canvas-channel-write-failed` | 建/改渠道或渠道模型被后端拒绝（权限、校验、重名） | 展示后端原始 message；全写失败就停，不要把「已同步」说出口 |
+| `canvas-models-invisible` | 模型写进去了，但读回目录后 0 条可用（ADR-0015 决策 4） | 报可用条数与 blocked/missing 分解，先查能力参数与价格档 |
 | `bridge-vision-unsupported` | 请求里带图片内容（422） | 在画布里改用纯文本模型 |
 | `no-text-models` | 宿主没有声明文本能力的模型 | 先在 Astravia 里配置一个文本模型 |
 | `host-media-not-exposed` | 方向 A 的媒体请求打到桥（501） | 提示「宿主不开放媒体生成」，不是错误重试 |

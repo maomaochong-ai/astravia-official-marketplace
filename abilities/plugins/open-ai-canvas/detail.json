@@ -64,7 +64,7 @@
         },
         {
           "title": "Connect models",
-          "description": "Text: press 'Use Astravia's text models in the canvas'. Media: press 'Use these models in Astravia' — the image and video models you configured in the canvas then appear in Astravia's own generate entry. You can unregister them at any time."
+          "description": "Text: press 'Use Astravia's text models in the canvas'. Each model is written into the canvas's \"Astravia\" channel together with its capability parameters and one free price tier; the plugin then reads the canvas catalog back and tells you how many models are actually usable — not just that something was sent. Media: press 'Use these models in Astravia' — the image and video models you configured in the canvas then appear in Astravia's own generate entry. You can unregister them at any time."
         },
         {
           "title": "Use the agent",

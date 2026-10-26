@@ -91,6 +91,8 @@ export interface BridgeState {
   catalog?: CanvasCatalogEntry[];
   /** 已经接进宿主的媒体模型数；undefined 表示本次会话还没注册。 */
   mediaRegistered?: number;
+  /** 上一次「让画布用上 Astravia 的模型」的读回结果（ADR-0015）：只算画布目录确认可用的。 */
+  projection?: { requested: number; usable: number; blocked: number; missing: number; removed: number };
 }
 
 export type CanvasStateListener = (state: CanvasState) => void;
@@ -720,14 +722,28 @@ export class CanvasController {
     this.bridgeExecutor.start();
   }
 
-  /** 把宿主的文本模型写成画布里的一个渠道（ADR-0006 决策 2）。 */
+  /**
+   * 把宿主的文本模型投影成画布渠道模型（ADR-0015）。
+   *
+   * 「投影」不是建一条渠道：画布创作页读 `GET /api/model-catalog`，只有启用的渠道 +
+   * 启用的渠道模型 + 可解析的能力配置 + 有效价格档同时成立，模型才会被算成可用。
+   * 所以 `provisionBridgeChannel` 写完后会读回同一张目录，这里报的是**目录确认的条数**，
+   * 不是自己发出去的条数。
+   */
   async connectHostModelsToCanvas(): Promise<void> {
     await this.runBridgeAction(async () => {
       const baseUrl = await this.resolveBaseUrl();
       const result = await provisionBridgeChannel(this.ctx, baseUrl);
       this.patchBridge({
         noticeKey: result.created ? "bridge.channelCreated" : "bridge.channelUpdated",
-        detail: `${result.channelId} · ${result.models.length} models`,
+        detail: `${result.usable.length}/${result.requested.length} usable · ${result.blocked.length} blocked · ${result.missing.length} missing`,
+        projection: {
+          requested: result.requested.length,
+          usable: result.usable.length,
+          blocked: result.blocked.length,
+          missing: result.missing.length,
+          removed: result.removed,
+        },
       });
     });
   }

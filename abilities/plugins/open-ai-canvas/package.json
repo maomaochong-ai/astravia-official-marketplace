@@ -1,6 +1,6 @@
 {
   "name": "@astravia/plugin-open-ai-canvas",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,8 +16,9 @@
     "verify:workflow": "node scripts/verify-workflow.mjs",
     "verify:mcp-tools": "node scripts/verify-mcp-tools.mjs",
     "verify:canvas-catalog": "node scripts/verify-canvas-catalog.mjs",
-    "verify": "npm run check && npm run check:lifecycle && npm run check:build-workflow && npm run verify:workflow && npm run verify:bridge && npm run verify:web && npm run verify:payload-sources && npm run verify:origin && npm run verify:mcp-tools && npm run verify:canvas-catalog",
-    "test": "npm run check:service-layout && npm run check:service-fresh && npm run check:service-types && node scripts/check-plugin-lifecycle.mjs && node scripts/check-build-workflow.mjs && node scripts/verify-workflow.mjs && node scripts/verify-bridge.mjs && node scripts/verify-web-hosting.mjs && node scripts/verify-payload-sources.mjs && node scripts/verify-stable-origin.mjs && node scripts/verify-mcp-tools.mjs && node scripts/verify-canvas-catalog.mjs",
+    "verify:channel-projection": "node scripts/verify-channel-projection.mjs",
+    "verify": "npm run check && npm run check:lifecycle && npm run check:build-workflow && npm run verify:workflow && npm run verify:bridge && npm run verify:web && npm run verify:payload-sources && npm run verify:origin && npm run verify:mcp-tools && npm run verify:canvas-catalog && npm run verify:channel-projection",
+    "test": "npm run check:service-layout && npm run check:service-fresh && npm run check:service-types && node scripts/check-plugin-lifecycle.mjs && node scripts/check-build-workflow.mjs && node scripts/verify-workflow.mjs && node scripts/verify-bridge.mjs && node scripts/verify-web-hosting.mjs && node scripts/verify-payload-sources.mjs && node scripts/verify-stable-origin.mjs && node scripts/verify-mcp-tools.mjs && node scripts/verify-canvas-catalog.mjs && node scripts/verify-channel-projection.mjs",
     "build:service": "node scripts/build-service-zip.mjs",
     "build": "npm run build:boot && npm run shim && npm run check:service-layout && npm run check:lifecycle && npm run check:platforms && npm run check:build-workflow && npm run check:service-types && npm run check:service-fresh && tsc --noEmit && vite build",
     "check": "tsc --noEmit",

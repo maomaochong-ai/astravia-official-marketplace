@@ -173,6 +173,36 @@ export async function bridgeAdminChannels(method, channelId, payload) {
   return { status: 400, body: { code: "bridge-bad-request", message: "unsupported channel operation" } };
 }
 
+/**
+ * 画布渠道模型（ADR-0015）。
+ *
+ * 为什么不建渠道时一并传 `models`：那条路径落到 `syncInitialChannelModels`，建出来的行是
+ * `Enabled: false` / `PriceConfigured: false` / 无能力配置，创作目录直接把它过滤掉。
+ * 逐条写 `SaveAdminChannelModel` 才会拿到 `Enabled: true` 的默认值。
+ */
+export async function bridgeAdminChannelModels(method: string, channelId?: string, modelId?: string, payload?: any) {
+  if (!channelId) {
+    return { status: 400, body: { code: "bridge-bad-request", message: "channel id is required" } };
+  }
+  const base = `/api/admin/channels/${channelId}/models`;
+  if (method === "GET") return rawCanvasApi("GET", base);
+  if (method === "POST") return rawCanvasApi("POST", base, payload);
+  if (method === "PATCH" && modelId) return rawCanvasApi("PATCH", `${base}/${modelId}`, payload);
+  if (method === "DELETE" && modelId) return rawCanvasApi("DELETE", `${base}/${modelId}`);
+  return { status: 400, body: { code: "bridge-bad-request", message: "unsupported channel model operation" } };
+}
+
+/**
+ * 创作目录读回（ADR-0015 决策 4）。
+ *
+ * 走的是画布 UI 自己那条 `GET /api/model-catalog`：只有这张响应能回答「用户看得见吗」。
+ * shim 不在这里判断可不可用——分类留给调用方（`channel-projection.ts`），免得把上游的
+ * 过滤规则抄一份到 shim。
+ */
+export async function readCanvasModelCatalog() {
+  return rawCanvasApi("GET", "/api/model-catalog");
+}
+
 // 发送画布操作（PATCH /canvas-projects/:id/operations）
 export async function applyCanvasOperations(canvasId: string, operations: any[], baseRevision?: any) {
   const body: any = { operations };

@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "./service-config.ts";
-import { bridgeAdminChannels } from "./mcp-protocol-server.ts";
+import { bridgeAdminChannelModels, bridgeAdminChannels, readCanvasModelCatalog } from "./mcp-protocol-server.ts";
 import {
   createCanvasTask,
   readCanvasCatalog,
@@ -345,6 +345,38 @@ export function bridgeCanvasFailure(res, status, body) {
   bridgeJson(res, 422, { error: { message: String(canvasMessage), code: "canvas-task-rejected" } });
 }
 
+/**
+ * 渠道写入的失败映射（ADR-0015）。
+ *
+ * 与任务路径刻意分开：这里的 4xx 意味着「画布拒了这条渠道或这个模型」，而
+ * `bridgeCanvasFailure` 会把任何 4xx 压成 `canvas-task-rejected`——那会把用户引到
+ * 「参数不被支持」的错误方向去查。写入失败就说写入失败，并把画布原话带回去。
+ */
+export function bridgeAdminFailure(res, status, body) {
+  const canvasMessage = body && (body.msg || body.message || body.error?.message);
+  if (status === 401) {
+    bridgeJson(res, 401, { error: { message: "Canvas session expired. Log in to the canvas again.", code: "canvas-login-required" } });
+    return;
+  }
+  if (status === 502) {
+    bridgeJson(res, 502, { error: { message: String(canvasMessage || "canvas is not reachable"), code: "canvas-unreachable" } });
+    return;
+  }
+  const code = status >= 500 ? "canvas-unreachable" : "canvas-channel-write-failed";
+  bridgeJson(res, status >= 500 ? 502 : 422, {
+    error: { message: String(canvasMessage || `Canvas returned ${status}`), code },
+  });
+}
+
+/** 2xx 原样给回，其余走渠道写入的失败映射。 */
+function bridgeWriteResult(res, result) {
+  if (result.status >= 200 && result.status < 300) {
+    bridgeJson(res, result.status, result.body);
+    return;
+  }
+  bridgeAdminFailure(res, result.status, result.body);
+}
+
 const CANVAS_KINDS: CanvasModelKind[] = ["text", "image", "video", "audio"];
 
 /**
@@ -464,13 +496,13 @@ export function serveBridge(req, res, pathname) {
 
   // --- 以下给插件运行时管理画布渠道用（ADR-0006 决策 2）---
   if (req.method === "GET" && pathname === "/bridge/admin/channels") {
-    void bridgeAdminChannels("GET", null, null).then((result) => bridgeJson(res, result.status, result.body));
+    void bridgeAdminChannels("GET", null, null).then((result) => bridgeWriteResult(res, result));
     return true;
   }
   if (req.method === "POST" && pathname === "/bridge/admin/channels") {
     void readJsonBody(req)
       .then((body) => bridgeAdminChannels("POST", null, body))
-      .then((result) => bridgeJson(res, result.status, result.body))
+      .then((result) => bridgeWriteResult(res, result))
       .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
     return true;
   }
@@ -478,8 +510,48 @@ export function serveBridge(req, res, pathname) {
   if (req.method === "PATCH" && adminChannelMatch) {
     void readJsonBody(req)
       .then((body) => bridgeAdminChannels("PATCH", adminChannelMatch[1], body))
-      .then((result) => bridgeJson(res, result.status, result.body))
+      .then((result) => bridgeWriteResult(res, result))
       .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+
+  // 渠道模型与目录读回（ADR-0015）：模型的启用位、能力配置与价格档只能逐条写。
+  const adminChannelModelsMatch = pathname.match(/^\/bridge\/admin\/channels\/([^/]+)\/models$/);
+  if (adminChannelModelsMatch && (req.method === "GET" || req.method === "POST")) {
+    const method = req.method;
+    const channelId = adminChannelModelsMatch[1];
+    if (method === "GET") {
+      void bridgeAdminChannelModels("GET", channelId).then((result) => bridgeWriteResult(res, result));
+      return true;
+    }
+    void readJsonBody(req)
+      .then((body) => bridgeAdminChannelModels("POST", channelId, null, body))
+      .then((result) => bridgeWriteResult(res, result))
+      .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+  const adminChannelModelMatch = pathname.match(/^\/bridge\/admin\/channels\/([^/]+)\/models\/([^/]+)$/);
+  if (adminChannelModelMatch && (req.method === "PATCH" || req.method === "DELETE")) {
+    const method = req.method;
+    const [, channelId, modelId] = adminChannelModelMatch;
+    if (method === "DELETE") {
+      void bridgeAdminChannelModels("DELETE", channelId, modelId).then((result) => bridgeWriteResult(res, result));
+      return true;
+    }
+    void readJsonBody(req)
+      .then((body) => bridgeAdminChannelModels("PATCH", channelId, modelId, body))
+      .then((result) => bridgeWriteResult(res, result))
+      .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+  if (req.method === "GET" && pathname === "/bridge/canvas/model-catalog") {
+    void readCanvasModelCatalog().then((result) => {
+      if (result.status !== 200) {
+        bridgeCanvasFailure(res, result.status, result.body);
+        return;
+      }
+      bridgeJson(res, 200, result.body);
+    });
     return true;
   }
 

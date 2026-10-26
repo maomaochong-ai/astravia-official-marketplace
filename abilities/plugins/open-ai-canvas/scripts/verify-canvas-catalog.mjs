@@ -368,6 +368,21 @@ async function main() {
       check("失败码透传 canvas-login-required", res.json?.error?.code === "canvas-login-required", res.json?.error?.code);
     }
     {
+      // ADR-0015 的四条渠道模型路由：能到 401 就说明路由存在（写错路径会被 shim 回 404）。
+      const list = await call(base, "/bridge/admin/channels/ch-1/models", token);
+      check("GET 渠道模型 无画布会话时 401", list.status === 401, `status=${list.status}`);
+      check("渠道模型读失败码是 canvas-login-required", list.json?.error?.code === "canvas-login-required", list.json?.error?.code);
+      const create = await call(base, "/bridge/admin/channels/ch-1/models", token, { method: "POST", body: { modelKey: "m" } });
+      check("POST 渠道模型 无画布会话时 401", create.status === 401, `status=${create.status}`);
+      const patch = await call(base, "/bridge/admin/channels/ch-1/models/m-1", token, { method: "PATCH", body: { modelKey: "m" } });
+      check("PATCH 渠道模型 无画布会话时 401", patch.status === 401, `status=${patch.status}`);
+      const remove = await call(base, "/bridge/admin/channels/ch-1/models/m-1", token, { method: "DELETE" });
+      check("DELETE 渠道模型 无画布会话时 401", remove.status === 401, `status=${remove.status}`);
+      const catalog = await call(base, "/bridge/canvas/model-catalog", token);
+      check("GET 创作目录 无画布会话时 401", catalog.status === 401, `status=${catalog.status}`);
+      check("创作目录读失败码是 canvas-login-required", catalog.json?.error?.code === "canvas-login-required", catalog.json?.error?.code);
+    }
+    {
       const res = await call(base, "/bridge/canvas/tasks", token, {
         method: "POST",
         body: { kind: "image", operation: "text_to_image" },

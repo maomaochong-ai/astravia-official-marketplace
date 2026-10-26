@@ -810,7 +810,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and use the image and video models you configured there from the host. Text bridges one way, media models register as a host provider, and MCP tools cover projects, canvases and tasks.",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",

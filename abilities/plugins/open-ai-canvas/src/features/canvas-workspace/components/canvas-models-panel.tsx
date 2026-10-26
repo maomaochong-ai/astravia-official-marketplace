@@ -28,6 +28,7 @@ export function CanvasModelsPanel({
   const catalog = state.bridge.catalog;
   const media = (counts?.image ?? 0) + (counts?.video ?? 0);
   const registered = state.bridge.mediaRegistered;
+  const projection = state.bridge.projection;
 
   // 目录是只读的，进这一屏就自己读一次：用户不该为了「看一眼有哪些模型」先点刷新。
   useEffect(() => {
@@ -146,7 +147,32 @@ export function CanvasModelsPanel({
             {t("bridge.connectHost")}
           </Button>
         }
-      />
+      >
+        {/* 报的是画布目录确认的条数，不是插件发出去的条数（ADR-0015 决策 4）。 */}
+        {projection ? (
+          <p
+            className={cn(
+              "mt-1 text-[12px]",
+              projection.usable > 0 ? "text-emerald-600" : "text-amber-600",
+            )}
+          >
+            {t("bridge.projected", {
+              usable: projection.usable,
+              requested: projection.requested,
+              blocked: projection.blocked,
+              missing: projection.missing,
+            })}
+          </p>
+        ) : (
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("bridge.projectionIdle")}</p>
+        )}
+        {projection && projection.removed > 0 ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t("bridge.projectionRemoved", { count: projection.removed })}
+          </p>
+        ) : null}
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{t("bridge.projectionScope")}</p>
+      </SectionCard>
 
       <SectionCard>
         <p className="text-[11px] leading-relaxed text-muted-foreground">{t("bridge.caveat")}</p>
