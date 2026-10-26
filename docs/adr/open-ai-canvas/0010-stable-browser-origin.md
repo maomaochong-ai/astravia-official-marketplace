@@ -34,7 +34,9 @@
 
 **除宿主端口外，shim 再抢一个固定回环端口，专门当「浏览器 origin」。宿主端口只负责健康检查与模型桥。**
 
-1. **候选与记忆** —— 依次试 `DATA_DIR/browser-origin.json` 里记下的端口、`47810–47813`（`CANVAS_STABLE_PORTS` 可覆盖，`off` 可关闭）。抢到就写回该文件，下次优先复用它。
+1. **候选与记忆** —— 依次试 `DATA_DIR/browser-origin.json` 里记下的端口、`47810–47813`（`CANVAS_STABLE_PORTS` 可覆盖，`off` 可关闭，已过时，见下方修订）。抢到就写回该文件，下次优先复用它。
+
+   > 修订（2026-10-26，0.1.4）：这个逃生门在宿主下**根本不可达**。宿主只组 `INHERITED_ENV_KEYS` 白名单加 `plugin.json#process.env` 两个来源，而它只替换 `${ASTRAVIA_SERVICE_(PORT|RUNTIME_DIR|DATA_DIR|CACHE_DIR|SECRET_<NAME>)}` 这几种 token；把 `CANVAS_STABLE_PORTS` 写进 `plugin.json` 反而更糟——变量不存在时模板给空串，`""` 会被 `mirrorPrefixes()` 同型逻辑读成「关闭」。所以运行期逃生门改成数据目录里的哨兵文件：`DATA_DIR/no-stable-origin` 存在就不抢固定端口。环境变量在处理层继续保留，因为验证脚本和手工直跑 shim 靠它；宿主路径不再依赖它。
 2. **导航请求 302** —— 宿主端口上收到 `GET`/`HEAD`、`Accept` 含 `text/html`、路径不在 `/api`、`/bridge`、`/__canvas`、`/mcp` 之下时，302 到固定 origin（连 query 一起带过去）。
 3. **一个 handler，两个 server** —— 固定 origin 的 server 把请求 `emit` 给宿主端口那份实现，路由、状态机、session 捕捉只有一份代码。用 `req.socket.localPort === HOST_PORT` 判断请求来自哪个口，避免自我重定向。
 4. **面向浏览器的地址改用固定 origin** —— `CANVAS_PUBLIC_BASE_URL`、`CANVAS_CORS_ORIGINS`、`canvasUrl()` 全部换成 `PUBLIC_ORIGIN`；CORS 白名单同时保留宿主端口（探针与旧标签页）。
@@ -75,7 +77,7 @@ Service Worker 也不行：它的作用域同样绑定 origin，origin 变了，
 | A 首次启动 | 两个临时端口 | `originPinned=true`；`origin` 等于给定端口；宿主端口上的导航请求 302 且 Location 精确到 `origin/`；深链连 query 一起带；通配 Accept 不跳；`/__canvas/state` 与 `/api/*` 即使声称要 HTML 也不跳；固定 origin 上首页、带 hash 资源、`/api` 全部正常；`browser-origin.json` 落盘 |
 | B 重启 | 同数据目录、宿主端口重分配 | 宿主端口确实变了**而 origin 不变**；上次的 origin（旧书签）仍能打开画布 |
 | C 首选被占 | 先占住候选第一项 | 退到次选且 `originPinned=true`；日志有 `trying next` |
-| D 关闭 | `CANVAS_STABLE_PORTS=off` | `originPinned=false`、`origin` 退回宿主端口、导航直接 200 无重定向 |
+| D 关闭 | `CANVAS_STABLE_PORTS=off`（进程内）或 `DATA_DIR/no-stable-origin`（宿主可达） | `originPinned=false`、`origin` 退回宿主端口、导航直接 200 无重定向 |
 | E 全被占 | 占住全部候选 | 降级到宿主端口、日志写明后果、画布仍可打开 |
 
 结果：**24/24 通过**（**Observed**）。B 场景是这次问题的直接复现——把「重启后 origin 是否相同」当成断言，而不是靠人眼比对端口号。

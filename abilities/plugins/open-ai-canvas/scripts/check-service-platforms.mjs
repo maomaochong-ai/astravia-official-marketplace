@@ -87,7 +87,8 @@ if (mirrorDigest && mirrorDigest !== shimDigest) {
 // shim 源码里的平台矩阵：运行时用它拒绝未知平台，和 plugin.json 对不上就会出现
 // 「宿主说支持、shim 说不支持」这种自相矛盾的组合。
 const shimSource = shimBytes.toString("utf8");
-const matrixMatch = shimSource.match(/const TARGET_PLATFORMS = \[([^\]]*)\]/);
+// 容忍打包器：源里是 `const`，esbuild 会输出 `var`（ADR-0012 决策 3）。
+const matrixMatch = shimSource.match(/(?:const|let|var) TARGET_PLATFORMS = \[([^\]]*)\]/);
 if (!matrixMatch) {
   problems.push("server/boot.mjs 里找不到 TARGET_PLATFORMS 常量");
 } else {

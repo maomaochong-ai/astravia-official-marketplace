@@ -4,6 +4,8 @@
 
 已接受。在 [ADR-0001](./0001-open-ai-canvas-as-plugin.md) 确定的「Node wrapper 暴露 MCP Server」架构之上，细化 MCP 工具集的覆盖范围、鉴权生命周期、节点操作模型与生成任务触发方式。
 
+> 落实核对（2026-10-26）：决策 1/3/5/7 早已实现；决策 2、4、6 的实现与文本有出入，已在各决策下补「落实」块；工具集从 16 增到 18（ADR-0007 增 `apply_workflow` / `export_workflow`）、再到 20（本次补 `list_workspace_projects` / `get_task`）。工具契约现在有脚本守住：`scripts/verify-mcp-tools.mjs`。
+
 ## 背景
 
 ADR-0001 决策 7 确定了通过 `boot.mjs` 内的 MCP Server 封装画布 REST API，但未定义工具集的具体粒度、鉴权如何处理用户 session、节点 metadata 如何表达、生成任务如何异步返回。这些问题直接决定宿主智能体能在多大程度上「操控画布」而非仅「查看画布」。
@@ -57,6 +59,8 @@ ADR-0001 决策 7 确定了通过 `boot.mjs` 内的 MCP Server 封装画布 REST
 
 理由：画布节点类型会随版本变化，插件节点是动态注册的，硬编码所有 metadata schema 到 MCP 层会导致每次画布升级都要同步 MCP 代码。`get_node_schema` 运行时从画布后端的节点注册表读取 schema，MCP 核心逻辑保持稳定。
 
+> 落实（2026-10-26，0.1.4）：上游 `GET /api/agent/capabilities` 只回 `nodeTypes` 名单（`CloudAgentCapabilitySet{Nodes []string}`），**没有 per-type schema 接口**。所以 `list_node_types` 改成「内置清单 ∪ 后端自报清单」，并回 `discovered` 标记；`get_node_schema` 对内建类型给 `source: "builtin"`，对运行时节点诚实回 `available: false, registered: true, source: "runtime"`——“运行时发现”落实成了“运行时发现**存在**”，不是凭空造 schema。旧实现只读内置表却把 note 写成“运行时发现”，是自相矛盾的。
+
 ### 3. 画布 ID 生成：服务端默认 + 智能体可指定
 
 `create_canvas_project` 接受可选 `canvas_id` 参数。若不指定，服务端用 `crypto.randomUUID()` 生成。智能体后续操作都用此 ID。
@@ -74,6 +78,8 @@ ADR-0001 决策 7 确定了通过 `boot.mjs` 内的 MCP Server 封装画布 REST
 - session 过期后无 refresh token 机制（画布是 session cookie 模式），只能重新登录。
 
 **用户切换：** 支持多用户/多 session。session 文件按用户 ID 分档存储，插件 UI 提供切换入口。切换用户时加载对应用户的 session，MCP 调用随之切换数据归属。
+
+> 落实（2026-10-26，0.1.4）：加密这一半落地了，分档这一半**未做**。密钥走宿主的服务凭据机制（`plugin.json#providers.services[0].credentials: [{ id: "session-key", bytes: 32 }]` → 宿主生成 key 并以 `${ASTRAVIA_SERVICE_SECRET_SESSION_KEY}` 注入），`session.json` 用 AES-256-GCM 写（`{v:2, alg, iv, tag, data}`，0600），旧 `{v:1, token}` 明文读到就就地升级；没有密钥时（手工直跑 shim、验证脚本）退回 0600 明文，并在 `/__canvas/state` 的 `session.storage` 里如实标成 `plaintext`。401 会清 session，视图出现“需要登录画布 + 打开画布登录”一块。**多用户分档与切换入口有意未做**：上游是单 session cookie 模型，按用户分档需要产品决策（多账号在同一台机器上共享一个 SQLite，数据归属会变）。
 
 ### 5. 生成任务：同步等待 + 双结果返回
 
@@ -95,6 +101,8 @@ ADR-0001 决策 7 确定了通过 `boot.mjs` 内的 MCP Server 封装画布 REST
 
 不采用「完整复刻前端 `backendGenerationTaskInput` 逻辑」——该逻辑涉及 provider channel、workflow、cost calculation 等，复制到 boot.mjs 成本过高且易随上游变化失效。
 
+> 落实（2026-10-26，0.1.4）：超时分支以前让调用方 “Use get_task to check later”，而那个工具根本不存在；现在补上了 `get_task`（`GET /api/tasks/:id`，缺 `task_id` 直接拒）。`run_generation` 默认 120s、`timeout_seconds` 可配，其余同本文。
+
 ### 6. API 路径修正
 
 画布项目 API 路径为 `/api/canvas-projects`，不是 `/api/canvases`。`list_canvases`（原指向 `/api/projects/:id/canvases`）不存在——画布项目是独立实体，不隶属于工作区项目。修正后：
@@ -104,6 +112,8 @@ ADR-0001 决策 7 确定了通过 `boot.mjs` 内的 MCP Server 封装画布 REST
 - `delete_canvas_project` → `DELETE /api/canvas-projects/:id`
 
 原 `list_projects`/`get_project`/`create_project` 指向工作区项目（`/api/projects`），与画布项目是两个独立概念，保留但重命名为 `list_workspace_projects` 等以避免混淆。
+
+> 落实（2026-10-26，0.1.4）：只落了 `list_workspace_projects`（`GET /api/projects`）。上游没有单条项目详情路由（`project_core_routes.go` 只有 `GET /api/projects` 与 `POST /api/projects`），所以没有 `get_workspace_project`；也不造 `create_project`——建项目在当前交互里始终发生在画布内。
 
 ### 7. MCP 工具的冲突检测
 
@@ -125,7 +135,7 @@ ADR-0001 决策 7 确定了通过 `boot.mjs` 内的 MCP Server 封装画布 REST
 
 ## 验证
 
-- 工具契约验证：16 个 MCP 工具的 inputSchema 与画布 REST API 实际请求体一一对应，`tools/list` 返回完整工具列表；
+- 工具契约验证：**已经脚本化**为 `scripts/verify-mcp-tools.mjs`（41 条断言，接入 `npm test`；把 `CANVAS_SHIM_UNDER_TEST` 指向旧 shim，它会 23/41 红而不是崩）：`initialize` 握手、`tools/list` 形状（20 个、名字唯一、`inputSchema.type === "object"`、`required` 键必须在 `properties` 里）、**每个工具都有 dispatch 分支**（空参数会死在真实校验上，但只要出现 `Unknown tool` 就说明清单和 switch 脱节）、未知工具/未知方法（-32601）/坏 JSON（-32700）的失败形状、无会话时工具拒绝调上游、v1 明文 session 升级为 v2 且解出的 token 真的进了上游 Cookie；
 - 端到端验证：宿主智能体通过 MCP 工具完成「创建画布项目 → 添加 image 节点 → 连接 config 节点 → 触发生成 → 查询结果」闭环；
 - 鉴权验证：未登录时 MCP 调用返回明确提示，登录后 session 被捕获，过期后自动引导重新登录；
 - 冲突检测验证：并发修改同一画布时，revision 不匹配的操作返回冲突错误。

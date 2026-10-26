@@ -22,6 +22,14 @@ export interface CanvasState {
   /** 具体到这台机器的补充信息：当前平台 / 已发布平台、下载进度、后端报错原文。 */
   detail?: string;
   busy: boolean;
+  /** 地址栏该用的地址：稳定 origin（ADR-0010），旧 shim 下是宿主端口。 */
+  origin?: string;
+  /** 画布上游版本（ADR-0001 兼容节），来自发布清单的 upstream.tag。 */
+  canvasVersion?: string;
+  /** 会话没了（从未登录或后端回401）。视图据此提示去浏览器重新登录，而不是把 401 显成普通错误。 */
+  loginRequired?: boolean;
+  /** 服务输出尾部（ADR-0001 决策 5）：启动失败时用户不必去翻日志文件。 */
+  log?: string;
   bridge: BridgeState;
   workflow?: WorkflowState;
 }
@@ -105,6 +113,10 @@ interface ServiceProbe {
   // 让浏览器标签页落在稳定 origin 上（localStorage 不会因端口漂移而丢失）。
   origin?: string;
   originPinned?: boolean;
+  // ADR-0001 兼容节 + ADR-0002 决策 4：上游版本与登录态。旧 shim 没这些字段，一律可选。
+  canvasVersion?: string | null;
+  payloadVersion?: string | null;
+  session?: { present?: boolean; storage?: string };
 }
 
 /** 失败码 → i18n key。文案会变，code 不变，不要靠中文子串匹配。 */
@@ -158,6 +170,19 @@ function progressDetail(probe: ServiceProbe): string | undefined {
   const percent = typeof probe.percent === "number" ? probe.percent : 0;
   if (percent > 0 && percent < 100) parts.push(`${Math.round(percent)}%`);
   return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
+/**
+ * 取服务输出尾部（ADR-0001 决策 5）。
+ *
+ * 宿主把进程 stdout/stderr 记在 PluginServiceStatus.recentOutput 里，界面本来就拿得到，
+ * 以前没接上，启动失败时用户只能看到一句错误码。只留最后 40 行：块头是准备阶段的进度日志，
+ * 真正有用的错误通常在末尾，全量贴上去反而找不到。
+ */
+function tailLog(output: string | undefined, lines = 40): string | undefined {
+  if (!output) return undefined;
+  const kept = output.trimEnd().split("\n").slice(-lines).join("\n");
+  return kept || undefined;
 }
 
 export class CanvasController {
@@ -309,6 +334,15 @@ export class CanvasController {
       if (typeof data?.origin === "string" && /^http:\/\/127\.0\.0\.1:\d+$/.test(data.origin)) {
         this.origin = data.origin;
       }
+      // ADR-0001 兼容节与 ADR-0002 决策 4：版本、登录态随状态一起下发，视图不必再发一次请求。
+      // 后端回 401 时 shim 会把 session.present 置回 false，所以这里不需要另开探测。
+      const version = typeof data?.canvasVersion === "string" ? data.canvasVersion : undefined;
+      const loginRequired = data?.session ? !data.session.present : undefined;
+      this.setState({
+        origin: this.origin,
+        canvasVersion: version,
+        loginRequired,
+      });
       return data && typeof data.phase === "string" ? data : undefined;
     } catch {
       return undefined;
@@ -354,6 +388,9 @@ export class CanvasController {
     }
     const status = await this.ctx.services.getStatus(SERVICE_ID).catch(() => undefined);
     if (!status) return;
+    // ADR-0001 决策 5：宿主已把进程输出交到手上（PluginServiceStatus.recentOutput），
+    // 不接就只能让用户去翻日志文件。
+    this.setState({ log: tailLog(status.recentOutput) });
     const phase = phaseFromServiceStatus(status);
     if (phase === "running") {
       // 不再直接 applyReady()：宿主 ready 是「端口通了」，准备失败时它也是 ready。
@@ -366,7 +403,14 @@ export class CanvasController {
     });
   }
 
-  private async handleStatusChange(status: { serviceId: string; phase: string; message?: string }): Promise<void> {
+  private async handleStatusChange(status: {
+    serviceId: string;
+    phase: string;
+    message?: string;
+    recentOutput?: string;
+  }): Promise<void> {
+    if (this.disposed || status.serviceId !== SERVICE_ID) return;
+    if (status.recentOutput) this.setState({ log: tailLog(status.recentOutput) });
     if (this.disposed || status.serviceId !== SERVICE_ID) return;
     const phase = phaseFromServiceStatus(status as never);
     if (phase === "running") {
@@ -528,6 +572,26 @@ export class CanvasController {
     // 不依赖 302 到到位（旧 shim 没这个字段，就还是宿主端口）。ADR-0010。
     await this.ctx.ui.openExternal(`${this.origin ?? baseUrl}/`);
     return true;
+  }
+
+  /**
+   * 清掉下载残留并让下一次启动从头拉（ADR-0011）。
+   *
+   * 失败后 data/runtime 里会留下整个 `.partial.zip` 与 `.partN`，为续传保留基线；
+   * 但如果分片本身已经不可信（陈旧字节、半途停机），续传就是反复撞同一面墙。
+   * 这里只删中间产物，不碰已安装的运行时目录。
+   */
+  async clearPayloadResidue(): Promise<{ removed: number; freedBytes: number } | undefined> {
+    const baseUrl = await this.resolveBaseUrl();
+    if (!baseUrl) return undefined;
+    try {
+      const response = await fetch(`${baseUrl}/__canvas/payload/reset`, { method: "POST" });
+      if (!response.ok) return undefined;
+      const body = (await response.json()) as { removed?: string[]; freedBytes?: number };
+      return { removed: body.removed?.length ?? 0, freedBytes: body.freedBytes ?? 0 };
+    } catch {
+      return undefined;
+    }
   }
 
   getBaseUrl(): string | undefined {
