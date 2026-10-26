@@ -26,6 +26,7 @@ import { usePanelFullscreen } from "../hooks/use-panel-fullscreen";
 import { useProviderStatus, providerEngineTone, providerLabelKey } from "../hooks/use-provider-status";
 import { useWorkbench } from "../hooks/use-workbench";
 import { useReaLiveSnapshot } from "../live/use-live-snapshot";
+import type { DeliveryOutcome } from "../live/handoff-delivery";
 import { scopeLiveCalls, type ReaLiveStore } from "../live/session-store";
 import { buildStageDigest, bypassedStageIds } from "../live/diagram-live";
 import { STAGE_INDEX } from "../live/tool-taxonomy";
@@ -52,6 +53,10 @@ export interface ReaWorkflowTabProps {
 	readonly sendPrompt: (prompt: string) => Promise<SendPromptResult>;
 	/** 只填入输入框；不可用时返回 false。 */
 	readonly insertPrompt: (prompt: string) => boolean;
+	/** 没有活跃会话时先建一个（cwd 由宿主给）；旧宿主为 null。 */
+	readonly createSession?: ((cwd: string) => Promise<string | null>) | null;
+	/** 发出后验证送达：只认对话事件，不认回执。旧宿主为 null。 */
+	readonly watchDelivery?: ((prompt: string) => Promise<DeliveryOutcome>) | null;
 	/** 直接执行外部命令（工具探测 / brew 安装）；无 `agent.command.run` 时为 null。 */
 	readonly runCommand: ((file: string, args: readonly string[]) => Promise<PluginCommandRunResult>) | null;
 	/** 长驻进程：brew 安装要能看过程、能中途取消；无 `agent.command.spawn` 时为 null。 */
@@ -65,6 +70,8 @@ export function ReaWorkflowTab({
 	store,
 	sendPrompt,
 	insertPrompt,
+	createSession = null,
+	watchDelivery = null,
 	runCommand,
 	spawnCommand,
 	setPanelWidth,
@@ -91,10 +98,29 @@ export function ReaWorkflowTab({
 		setCurrentStage(Math.max(1, Math.min(TOTAL_STAGES, next)));
 	}, []);
 
+	const ensureSession = useMemo(
+		() =>
+			createSession === null
+				? null
+				: async (): Promise<string | null> => {
+						if (cwd === null) return null;
+						try {
+							return await createSession(cwd);
+						} catch (error) {
+							console.warn("[rea] createSession failed", error);
+							return null;
+						}
+					},
+		[createSession, cwd],
+	);
+
 	const workbench = useWorkbench({
 		sendPrompt,
 		insertPrompt,
 		cwd: cwd ?? null,
+		conversationId: snapshot.sessionId,
+		ensureSession,
+		watchDelivery,
 		detected: snapshot.detectedTarget,
 		detectedPath: snapshot.lastTargetPath,
 		hinted: snapshot.hintedTarget,
@@ -136,7 +162,17 @@ export function ReaWorkflowTab({
 		const prompt = t("ui.engine.askAgentPrompt");
 		void (async () => {
 			try {
-				await sendPrompt(prompt);
+				const result = await sendPrompt(prompt);
+				// 回执不当作证据：同样等对话里真的出现这条消息。
+				if (result.status === "sent" && watchDelivery !== null) {
+					const outcome = await watchDelivery(prompt);
+					if (outcome === "timeout") {
+						// 没等到就把它放进输入框：宁可多一行可删的草稿，也不要让按钮看起来
+						// 发过了而对话里什么都没有。
+						console.warn("[rea] engine prompt not observed in conversation, inserting instead");
+						insertPrompt(prompt);
+					}
+				}
 			} catch (error) {
 				console.warn("[rea] sendPrompt failed, inserting instead", error);
 				insertPrompt(prompt);
@@ -144,7 +180,7 @@ export function ReaWorkflowTab({
 				setAskingAgent(false);
 			}
 		})();
-	}, [askingAgent, insertPrompt, sendPrompt, t]);
+	}, [askingAgent, insertPrompt, sendPrompt, t, watchDelivery]);
 
 	const handleUseTarget = useCallback(
 		(path: string): void => {

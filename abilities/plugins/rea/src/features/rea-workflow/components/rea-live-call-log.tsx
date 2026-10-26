@@ -9,7 +9,8 @@
  * 「运行中」不靠推断：`endedAt === null` 就是宿主还没回这次调用。
  * 数据来自宿主会话事件，只读。
  *
- * `compact` 是同一份数据的「最近几条」形态，给工作台右栏用：不重复栏头、只留 6 行，
+ * `compact` 是同一份数据的「工作台右栏」形态：不重复栏头，行数与完整页一致（最近 24 条），
+ * 多出来的在面板内部滚动 —— 面板高就给更多行，矮就自己滚，不再固定只留 6 行、把下方拖出一块空白。
  * 完整历史在「实时调用」页看 —— 两处渲染同一组件，避免两份格式逐渐走偏。
  */
 
@@ -54,7 +55,8 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage, compact = false }
 	const listRef = useRef<HTMLDivElement | null>(null);
 	const pinnedRef = useRef(true);
 	const countRef = useRef(calls.length);
-	const visible = calls.slice(compact ? -6 : -24).reverse();
+	// 与完整页同一份截断：面板矮的时候靠内部滚动，而不是少报几条。
+	const visible = calls.slice(-24).reverse();
 	const running = calls.filter((call) => call.endedAt === null).length;
 
 	// 跟随规则：用户停在最新位置时自动滚到顶部；翻过之后只累加「新调用」计数，
@@ -89,7 +91,7 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage, compact = false }
 	};
 
 	return (
-		<div className="flex flex-col">
+		<div className={compact ? "flex min-h-0 flex-1 flex-col" : "flex flex-col"}>
 			{errors.length > 0 ? (
 				<div className="flex flex-col gap-1 border-b border-border-subtle bg-risk-high/8 px-4 py-2">
 					<span className="text-micro-up font-medium uppercase tracking-[0.08em] text-risk-high">{t("live.errors.title")}</span>
@@ -132,7 +134,7 @@ export function ReaLiveCallLog({ calls, errors, onSelectStage, compact = false }
 			<div
 				ref={listRef}
 				onScroll={handleScroll}
-				className={`relative overflow-y-auto overscroll-contain ${compact ? "" : "max-h-[52vh]"}`}
+				className={`relative overflow-y-auto overscroll-contain ${compact ? "min-h-0 flex-1" : "max-h-[52vh]"}`}
 			>
 				{!pinned && pending > 0 ? (
 					<div className="sticky top-1 z-10 flex justify-center">
