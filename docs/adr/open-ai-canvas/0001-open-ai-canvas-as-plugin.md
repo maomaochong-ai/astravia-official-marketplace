@@ -6,6 +6,8 @@
 
 > 部分修订：决策 1（运行时制品形态）与决策 8（产物打包与版本钉住）已由 [ADR-0003](./0003-service-runtime-distribution-and-cross-platform.md) 更新——shim 改为 `archive: "file"` 直接分发、全平台共用一份、载荷下载补断点续传。架构与 MCP 部分不变。
 
+> 部分修订（之二）：决策 2（前端由 Go 后端托管）由 [ADR-0008](./0008-frontend-hosting-in-shim.md) 修订——上游发布 tag 里没有静态承载，前端改由 shim 自己发。其余决策的落实情况与有意偏差见 [README 的「落实与偏差」](./README.md#落实与偏差)；其中决策 6 的内置 webview 至今**未实现**。
+
 ## 背景
 
 open-ai-canvas（影策）是面向 AI 影视与短剧创作的工作台，由两部分组成：
@@ -93,6 +95,8 @@ open-ai-canvas（影策）是面向 AI 影视与短剧创作的工作台，由�
 - 默认 `autoStart: true`，激活后自动 `install → start → 等健康检查`；
 - ready 后通过 `ctx.services.connection(SERVICE_ID).baseUrl` 拿到真实地址，在视图中展示「在浏览器中打开画布」按钮，调用 `ctx.ui.openExternal(baseUrl)`；
 - 生命周期处理与 free-model-gateway 一致：模块级 `activeController` 防热重载误杀，`deactivate()` 空实现，cleanup 逐 activation 释放。
+
+> 落实（2026-10-26）：列表里五件已经四件。“日志”这一条以前只靠视图里几个状态字，现在拿的是宿主真的 stdout 尾部：`ctx.services.status()` 的 `recentOutput`，滚在后端执行日志的末 40 行（可折叠），服务阶段变化时也追加。上游版本、登录态、固定 origin 同时上屏，都是从 `/__canvas/state` 读的，不在前端猜。此外插件的 `process.env` 只声明宿主真的会注入的四个 `ASTRAVIA_SERVICE_*` 变量，`CANVAS_*` 一律由 shim 自己组。
 
 需要的权限：`ui.slot.workspace-view`、`storage.read`、`storage.write`、`shell.openExternal`。若后续要让宿主智能体直接调用画布 API，再加 `agent.mcp.control` 或注册 Agent 工具。
 
@@ -208,6 +212,8 @@ MCP 工具的覆盖范围（按优先级）：
 - 本插件是 open-ai-canvas 的新分发形态，不修改上游仓库的任何代码。MCP 适配层完全在插件侧的 Node wrapper 中实现，不向上游 Go 后端添加路由；
 - 画布数据目录格式与上游完全一致，用户可以在插件模式与独立部署模式之间迁移（复制 `data/` 目录）；
 - 插件版本与画布上游版本解耦：`plugin.json` 的 `version` 是插件自身版本，画布上游版本通过 zip 内的 `VERSION` 文件记录并在视图中展示；
+
+> 偏差（2026-10-26，有意）：载荷里**没有** `VERSION` 文件。上游版本改从发布清单读（`payload-manifest.json` 的 `upstream.tag/commit`），因为清单是发布时唯一有权成文的地方，再在 zip 里写一份会多出一处可能对不上的副本。`/__canvas/state` 同时给 `canvasVersion`/`canvasCommit`/`payloadVersion`，视图的 `meta.upstream` 也是这一源。
 - 宿主停止服务时发 SIGTERM 给 `boot.mjs`，`boot.mjs` 转发给 Go 子进程（`child.kill('SIGTERM')`），不设额外超时；Go 执行优雅关闭（HTTP Shutdown 30s + worker 等待 `CANVAS_SHUTDOWN_TIMEOUT`，生成任务中断后由持久化对账恢复）。Go 退出后 `boot.mjs` 随之退出。若宿主有自身的停止超时并强杀 `boot.mjs`，Go 进程因 `CANVAS_EXIT_WITH_PARENT` 检测到父进程死亡而自行退出，agent-runtime 由 Go 清理。
 
 ## 备选方案

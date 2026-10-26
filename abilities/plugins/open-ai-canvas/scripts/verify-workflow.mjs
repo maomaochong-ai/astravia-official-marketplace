@@ -16,7 +16,11 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const source = readFileSync(join(ROOT, "server", "boot.mjs"), "utf8");
+// 从 **源** 读，不从 server/boot.mjs 读：后者是 esbuild 的产物，标识符可能被重写。
+// 这里测的是 compileWorkflow 的纯逻辑，与打包方式无关（ADR-0012 决策 3）。
+const source = ["server/src/contract.ts", "server/src/service.ts"]
+  .map((rel) => readFileSync(join(ROOT, rel), "utf8"))
+  .join("\n");
 
 const results = [];
 function check(name, condition, detail) {
@@ -26,9 +30,11 @@ function check(name, condition, detail) {
 
 /** 取出一个 `const NAME = …;` 或 `function NAME(…) {…}` 的完整源码块（按括号配平）。 */
 function sliceBlock(name, { isFunction = false } = {}) {
-  const anchor = isFunction ? `function ${name}(` : `const ${name} =`;
-  const start = source.indexOf(anchor);
-  if (start < 0) throw new Error(`cannot find ${anchor} in server/boot.mjs`);
+  // 锚点要容忍打包器：源里写 `const X =`，esbuild 可能输出 `var X =`（ADR-0012 决策 3）。
+  const start = isFunction
+    ? source.indexOf(`function ${name}(`)
+    : source.search(new RegExp(`(?:const|let|var) ${name}(?:\\s*:[^=\\n]*)?\\s*=`));
+  if (start < 0) throw new Error(`cannot find ${name} declaration in server source`);
 
   // 定位值的第一个字符：函数体或对象/数组字面量按括号配平，标量取到分号。
   const scanFrom = isFunction ? source.indexOf("{", source.indexOf(")", start)) : source.indexOf("=", start) + 1;
@@ -68,13 +74,18 @@ function sliceBlock(name, { isFunction = false } = {}) {
   throw new Error(`unbalanced block for ${name}`);
 }
 
+// 切片来自 .ts，而 vm 只吃 JS：把顶层声明的类型标注去掉（`const X: T =` → `const X =`）。
+// 只处理声明行本身，函数体里的标注这里本来就没有。
+const stripTypeAnnotation = (code) =>
+  code.replace(/^((?:export\s+)?(?:const|let|var)\s+[A-Za-z0-9_$]+)\s*:\s*[^=\n]+=/, "$1 =");
+
 const pieces = [
   sliceBlock("LAYOUT_STEP_X"),
   sliceBlock("LAYOUT_STEP_Y"),
   sliceBlock("codedError", { isFunction: true }),
   sliceBlock("BUILTIN_NODE_TYPES"),
   sliceBlock("compileWorkflow", { isFunction: true }),
-];
+].map(stripTypeAnnotation);
 
 const context = vm.createContext({ crypto: globalThis.crypto, console });
 vm.runInContext(`${pieces.join("\n")}\nthis.compileWorkflow = compileWorkflow; this.TYPES = BUILTIN_NODE_TYPES;`, context);
@@ -219,7 +230,9 @@ const secondType = TYPES[1] ?? TYPES[0];
   const handler = source.slice(source.indexOf("apply_workflow"), source.length);
   const runIndex = handler.indexOf("node?.run === true");
   check("执行侧只认 node.run === true，不认其它写法", runIndex > 0, runIndex > 0 ? "found" : "not found");
-  check("工具数量为 18（16 + apply_workflow + export_workflow）", (source.match(/\n    name: "/g) ?? []).length === 18, String((source.match(/\n    name: "/g) ?? []).length));
+  // 精确计数交给 verify-mcp-tools.mjs（它跟真实 tools/list 对账）；这里只问“ADR-0007 那两个在不在”。
+  const toolCount = (source.match(/\n    name: "/g) ?? []).length;
+  check("工具数量 ≥ 18（16 + apply_workflow + export_workflow）", toolCount >= 18, String(toolCount));
 }
 
 const failed = results.filter((result) => !result.ok);
