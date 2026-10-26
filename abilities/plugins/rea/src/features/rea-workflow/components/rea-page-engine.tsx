@@ -9,6 +9,7 @@
 import { useState, type JSX } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { DoctorCheck } from "../live/doctor-readiness";
+import type { DoctorSummary } from "../live/doctor-summary";
 import type { DoctorStatus } from "../hooks/use-doctor-report";
 import { providerLabelKey, providerTone, type ProviderStatusState } from "../hooks/use-provider-status";
 import { Panel, PanelHeader } from "../../../shared/components/panel";
@@ -17,16 +18,20 @@ import { StatusDot } from "../../../shared/components/status-dot";
 import { ReaPage, ReaPageHeader } from "./rea-app-shell";
 import { ReaDoctorChecks } from "./rea-doctor-checks";
 import { ReaErrorExplainer, tryParseReaError } from "./rea-error-explainer";
+import { ReaEngineIdentity } from "./rea-engine-identity";
 
 interface EnginePageProps {
 	readonly active: boolean;
 	readonly provider: ProviderStatusState;
 	readonly checks: readonly DoctorCheck[];
+	readonly summary: DoctorSummary | null;
 	readonly doctorStatus: DoctorStatus;
 	readonly doctorMessage: string | null;
 	readonly lastRunAt: number | null;
 	readonly onRecheck: () => void;
+	readonly onAskAgent: () => void;
 	readonly rechecking: boolean;
+	readonly askingAgent: boolean;
 	readonly blocked: boolean;
 }
 
@@ -42,11 +47,14 @@ export function EnginePage({
 	active,
 	provider,
 	checks,
+	summary,
 	doctorStatus,
 	doctorMessage,
 	lastRunAt,
 	onRecheck,
+	onAskAgent,
 	rechecking,
+	askingAgent,
 	blocked,
 }: EnginePageProps): JSX.Element {
 	const { t } = useTranslation();
@@ -118,6 +126,8 @@ export function EnginePage({
 					) : null}
 				</div>
 			</Panel>
+
+			<ReaEngineIdentity summary={summary} onAskAgent={onAskAgent} askingAgent={askingAgent} />
 
 			<ReaDoctorChecks
 				checks={checks}

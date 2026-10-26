@@ -1,8 +1,13 @@
 /**
- * 顶栏：面包屑（工作区 / 当前目录 / 分节）+ 「宿主 AI 已连接」+ 主行动按钮。
+ * 顶栏：面包屑（工作区 / 当前目录 / 分节）+ 「宿主 AI 已连接」+ 面板全屏开关。
  *
- * 主按钮不自己做交接逻辑，只把意图抛回容器：交接涉及 sendPrompt / insertPrompt
- * 两条回退通道和状态回执，全部在 useWorkbench 里，顶栏拿不到也不该拿。
+ * 这里刻意没有「发送到对话」：顶栏不知道用户在做什么，一按下去发的是同一段文本。
+ * 真正需要交接的地方各自有入口 —— 工作台卡片里有（带目标与目标类型），引擎自检页有
+ * 「让 Agent 自检」（带的是引擎状态）。顶栏只承担导航与全局开关。
+ *
+ * 全屏是宿主能力 `setActivityPanelWidth("max")`：把活动面板拉到整个窗口宽，而不是
+ * 浏览器全屏。按钮做成带文字、可 `aria-pressed` 的开关，按下后保持激活态，
+ * 用户能看出「现在处于全屏」以及「再按一次会退出」。
  *
  * 面包屑里的目录用等宽字体并截断（`min-w-0` + `truncate`）：macOS 深层路径很长，
  * 不截断会把右侧按钮挤出可视区。
@@ -14,25 +19,17 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 interface ReaTopbarProps {
 	readonly sectionLabel: string;
 	readonly cwd: string | null;
-	readonly canSend: boolean;
-	readonly sending: boolean;
-	readonly onSend: () => void;
 	readonly fullscreenAvailable: boolean;
 	readonly fullscreen: boolean;
 	readonly onToggleFullscreen: () => void;
-	readonly sendHint: string;
 }
 
 export function ReaTopbar({
 	sectionLabel,
 	cwd,
-	canSend,
-	sending,
-	onSend,
 	fullscreenAvailable,
 	fullscreen,
 	onToggleFullscreen,
-	sendHint,
 }: ReaTopbarProps): JSX.Element {
 	const { t } = useTranslation();
 
@@ -61,34 +58,25 @@ export function ReaTopbar({
 					<span className="whitespace-nowrap text-micro text-purple-ink">{t("ui.topbar.aiConnected")}</span>
 				</span>
 
-				<button
-					type="button"
-					onClick={onSend}
-					disabled={!canSend || sending}
-					title={sendHint}
-					className="inline-flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-caption font-medium text-accent-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
-				>
-					{sending ? (
-						<span aria-hidden className="icon-[lucide--loader-circle] size-3.5 motion-safe:animate-spin" />
-					) : (
-						<span aria-hidden className="icon-[lucide--send] size-3.5" />
-					)}
-					<span className="@max-[420px]:sr-only">{t("ui.topbar.send")}</span>
-				</button>
-
 				{fullscreenAvailable ? (
 					<button
 						type="button"
 						onClick={onToggleFullscreen}
 						aria-pressed={fullscreen}
 						title={t(fullscreen ? "tab.panel.restoreHint" : "tab.panel.fullscreenHint")}
-						className="inline-flex size-7 items-center justify-center rounded-md text-text-3 transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+						className={`inline-flex size-7 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 @min-[600px]:h-7 @min-[600px]:w-auto @min-[600px]:gap-1.5 @min-[600px]:px-2 ${
+							fullscreen
+								? "bg-surface-active text-text"
+								: "text-text-3 hover:bg-surface-hover hover:text-text"
+						}`}
 					>
 						<span
 							aria-hidden
-							className={`size-3.5 ${fullscreen ? "icon-[lucide--minimize]" : "icon-[lucide--maximize]"}`}
+							className={`size-3.5 shrink-0 ${fullscreen ? "icon-[lucide--minimize]" : "icon-[lucide--maximize]"}`}
 						/>
-						<span className="sr-only">{t(fullscreen ? "tab.panel.restore" : "tab.panel.fullscreen")}</span>
+						<span className="whitespace-nowrap text-micro @max-[599px]:sr-only">
+							{t(fullscreen ? "tab.panel.restore" : "tab.panel.fullscreen")}
+						</span>
 					</button>
 				) : null}
 			</div>

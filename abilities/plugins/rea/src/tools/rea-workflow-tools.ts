@@ -11,6 +11,7 @@
 
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { STAGE_INDEX } from "../features/rea-workflow/live/tool-taxonomy";
+import { doctorArgs, reaPackageArgs } from "../features/rea-workflow/live/engine-bridge";
 import type { ReaLiveStore } from "../features/rea-workflow/live/session-store";
 
 /** 只在会话/项目场景出现（scope_use 是 fail-closed 的）。 */
@@ -117,8 +118,8 @@ export function registerReaWorkflowTools(
 		timeoutMs: DOCTOR_TIMEOUT_MS + 10_000,
 		handler: async (context) => {
 			const refresh = context.trigger.input?.refresh === true;
-			const args = ["-y", "rea-agents@latest", "doctor", "--json"];
-			if (refresh) args.push("--refresh");
+			// 工具直连宿主 API（不经过 tab 的桥接层），所以这里显式带上包名前缀。
+			const args = reaPackageArgs(doctorArgs(refresh));
 			try {
 				const result = await ctx.cliProviders.run(providerId, args, {
 					timeoutMs: DOCTOR_TIMEOUT_MS,

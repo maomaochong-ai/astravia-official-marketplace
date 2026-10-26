@@ -61,9 +61,12 @@ const PWNDBG_SETUP = "git clone https://github.com/pwndbg/pwndbg && cd pwndbg &&
 
 export const INSTALL_RECIPES: Readonly<Record<string, InstallRecipe>> = {
 	hopper: {
-		command: "rea setup --yes --installHopper",
-		steps: [{ channel: "rea", args: ["setup", "--yes", "--installHopper"] }],
-		note: "ready",
+		// CLI 6.8.0 实测的开关是 kebab-case 的 `--install-hopper`（`rea setup --help`）。
+		// 以前写成 `--installHopper`，CLI 不认这个拼写、静默忽略，于是只跑了 setup，没有装 Hopper。
+		command: "rea setup --yes --install-hopper",
+		steps: [{ channel: "rea", args: ["setup", "--yes", "--install-hopper"] }],
+		note: "mayNeedConfig",
+		noteKey: "tab.tools.note.hopperLicense",
 	},
 	apktool: { command: "brew install apktool", steps: [brew("install", "apktool")], note: "ready" },
 	binwalk: { command: "brew install binwalk", steps: [brew("install", "binwalk")], note: "ready" },
@@ -220,6 +223,7 @@ export type InstallFailureKey =
 	| "tab.install.error.noPackage"
 	| "tab.install.error.externallyManaged"
 	| "tab.install.error.network"
+	| "tab.install.error.precondition"
 	| "tab.install.error.generic";
 
 export interface InstallFailure {
@@ -236,6 +240,12 @@ const FAILURE_RULES: readonly { readonly key: InstallFailureKey; readonly test: 
 	{ key: "tab.install.error.noPackage", test: /no available formula|no cask with this name|is unavailable|no formulae or casks/i },
 	{ key: "tab.install.error.externallyManaged", test: /externally-managed-environment/i },
 	{ key: "tab.install.error.network", test: /could not resolve|connection refused|network is unreachable|temporary failure|timed out|ssl/i },
+	// CLI 自己拒绝执行（例：Node 版本不足、macOS 太旧）。这类输出里带着 `remediation`，
+	// 比宿主的 exit code 有用得多，所以单独一类，不归到 generic。
+	{
+		key: "tab.install.error.precondition",
+		test: /Install Node\.js|rerun setup|Upgrade to macOS|needs_human|requires macOS \d+/i,
+	},
 ];
 
 function lastLine(text: string): string {
@@ -247,6 +257,14 @@ function lastLine(text: string): string {
 	return (line ?? "").slice(0, 240);
 }
 
+/** 从 CLI 的 JSON 输出里取它自己给的 `remediation`（doctor / setup 的拒绝都会带）。 */
+function cliRemediation(raw: string): string | null {
+	const match = /"remediation"\s*:\s*"((?:[^"\\]|\\.)*)"/u.exec(raw);
+	if (match === null) return null;
+	const text = (match[1] ?? "").replace(/\\"/g, '"').replace(/\\\\/g, "\\").trim();
+	return text.length === 0 ? null : text.slice(0, 240);
+}
+
 /**
  * 把宿主的错误翻成「该怎么办」，原文照旧带在 detail 里。
  *
@@ -254,7 +272,8 @@ function lastLine(text: string): string {
  * 对用户是两句完全不同的话——一句要去插件设置里授权，一句是配方本身错了。
  */
 export function explainInstallError(raw: string): InstallFailure {
-	const detail = lastLine(raw);
+	// CLI 的结构化输出自带「该怎么办」那一句，比取最后一行靠谱：JSON 的最后一行通常只是 `}`。
+	const detail = cliRemediation(raw) ?? lastLine(raw);
 	for (const rule of FAILURE_RULES) {
 		if (rule.test.test(raw)) return { key: rule.key, detail };
 	}

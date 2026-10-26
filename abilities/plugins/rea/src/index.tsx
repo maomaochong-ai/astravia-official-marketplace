@@ -25,6 +25,7 @@ import {
 	type ReaProviderBridge,
 } from "./features/rea-workflow";
 import { activateLiveWatch } from "./features/rea-workflow/live/activate-live-watch";
+import { createReaProviderBridge } from "./features/rea-workflow/live/engine-bridge";
 import { activateReaAgentIntegration } from "./features/rea-workflow/live/agent-integration";
 import { activateProviderRecovery } from "./features/rea-workflow/live/provider-recovery";
 import { ReaLiveStore } from "./features/rea-workflow/live/session-store";
@@ -37,20 +38,10 @@ const REA_ACTION_ID = "rea.openTab";
 // 两个槽位的图标都不内联：省略 `icon` 时宿主回落到 plugin.json#icon（同一张官方 R 徽标），
 // tab 与能力页因此是同一套标识，不会多出一套自绘图形。
 
+// 参数前缀（`-y rea-agents@latest`）在桥接层统一补齐：provider 命令是 `npx`，
+// 宿主只做 command + args，调用方只写子命令。见 live/engine-bridge.ts 的说明。
 function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
-	// 旧宿主可能还没有 spawn（长驻进程通道）：探测不到就整条通道为 null，
-	// 面板退回只给可复制命令，而不是给一个点了报错的按钮。
-	const spawnCli = typeof ctx.cliProviders.spawn === "function" ? ctx.cliProviders.spawn.bind(ctx.cliProviders) : null;
-	return {
-		getStatus: () => ctx.cliProviders.getStatus(REA_PROVIDER_ID),
-		onStatusChanged: (listener) =>
-			ctx.cliProviders.onStatusChanged((status) => {
-				if (status.providerId === REA_PROVIDER_ID) listener(status);
-			}),
-		retry: () => ctx.cliProviders.retry(REA_PROVIDER_ID),
-		run: (args, options) => ctx.cliProviders.run(REA_PROVIDER_ID, [...args], options),
-		spawn: spawnCli === null ? null : (args, options) => spawnCli(REA_PROVIDER_ID, [...args], options),
-	};
+	return createReaProviderBridge(ctx.cliProviders, REA_PROVIDER_ID);
 }
 
 /**

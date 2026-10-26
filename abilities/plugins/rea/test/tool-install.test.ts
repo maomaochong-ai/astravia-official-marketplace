@@ -133,8 +133,21 @@ describe("文案与真实步骤一致", () => {
 	});
 
 	it("REA 通道的配方文案带 rea 前缀", () => {
-		expect(describeRecipe(installRecipeFor("hopper") as InstallRecipe)).toBe("rea setup --yes --installHopper");
+		expect(describeRecipe(installRecipeFor("hopper") as InstallRecipe)).toBe("rea setup --yes --install-hopper");
 		expect(firstChannel(installRecipeFor("hopper"))).toBe("rea");
+	});
+
+	// CLI 6.8.0 的开关是 kebab-case（`rea setup --help`）；写成 camelCase 时它不报错、直接忽略，
+	// 于是只跑了 setup 而没装 Hopper——把拼写钉在测试里，避免再改回去。
+	it("REA 通道的参数只用 CLI 声明过的拼写", () => {
+		for (const [id, recipe] of recipes) {
+			for (const step of recipe.steps) {
+				if (step.channel !== "rea") continue;
+				for (const arg of step.args) {
+					expect(arg, `${id}: ${arg}`).not.toMatch(/[a-z][A-Z]/);
+				}
+			}
+		}
 	});
 
 	it("mayNeedConfig 一定带 noteKey，ready 一定不带", () => {

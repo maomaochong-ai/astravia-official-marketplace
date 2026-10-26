@@ -59,6 +59,12 @@ describe("explainInstallError", () => {
 		["PEP 668 拒绝系统级安装", "error: externally-managed-environment", "tab.install.error.externallyManaged"],
 		["网络失败", "fatal: unable to access: Could not resolve host: github.com", "tab.install.error.network"],
 		["对不上的错误", "Error: something odd happened", "tab.install.error.generic"],
+		// 本机实测：Node 版本不满足时 `rea setup` 直接拒绝执行，并在 JSON 里给出 remediation。
+		[
+			"CLI 拒绝执行：Node 版本不足",
+			'{"status":"needs_human","code":"precondition","remediation":"Install Node.js 22.x (>=22.23.4) and rerun setup."}',
+			"tab.install.error.precondition",
+		],
 	];
 
 	it.each(cases)("%s", (_label, raw, key) => {
@@ -76,6 +82,15 @@ describe("explainInstallError", () => {
 	it("detail 截到 240 字符，不把整段日志塞进 UI", () => {
 		const raw = `Error: ${"x".repeat(400)}`;
 		expect(explainInstallError(raw).detail).toHaveLength(240);
+	});
+
+	it("CLI 自带 remediation 时优先用它，而不是 JSON 的最后一行", () => {
+		const raw =
+			'{\n  "status": "needs_human",\n  "remediation": "Upgrade to macOS 12 or newer."\n}';
+		expect(explainInstallError(raw)).toEqual({
+			key: "tab.install.error.precondition",
+			detail: "Upgrade to macOS 12 or newer.",
+		});
 	});
 
 	it("空输出也能给出结论，不会抛异常", () => {

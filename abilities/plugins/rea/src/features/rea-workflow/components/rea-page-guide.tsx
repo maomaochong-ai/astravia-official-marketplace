@@ -48,10 +48,13 @@ export function GuidePage({
 		<ReaPage active={active}>
 			<ReaPageHeader title={t("ui.page.guide.title")} subtitle={t("ui.page.guide.subtitle")} />
 
-			<div className="grid min-w-0 grid-cols-1 gap-4 @min-[880px]:grid-cols-[14rem_minmax(0,1fr)]">
-				<Panel className="@min-[880px]:sticky @min-[880px]:top-0 @min-[880px]:self-start">
+			{/* 填满主区高度：底部不再留一大块空白，内部各自滚动。 */}
+			<div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-4 @min-[880px]:grid-cols-[14rem_minmax(0,1fr)]">
+				{/* 列表只有六行，不撑满高度：拉伸后卡片下半截是空的，看起来像内容没加载。
+				    max-h-full 保证行很短时才生效，内容长时仍然在图内滚动。 */}
+				<Panel className="min-h-0 max-h-full self-start">
 					<PanelHeader title={t("ui.nav.guide")} badge={STAGES.length} />
-					<nav className="flex flex-col divide-y divide-border-subtle">
+					<nav className="flex min-h-0 flex-col divide-y divide-border-subtle overflow-y-auto overscroll-contain">
 						{STAGES.map((item) => {
 							const isCurrent = item.index === currentStage;
 							return (
@@ -86,8 +89,8 @@ export function GuidePage({
 					</nav>
 				</Panel>
 
-				<div className="flex min-w-0 flex-col gap-4">
-					<Panel>
+				<div className="flex min-h-0 min-w-0 flex-col gap-4">
+					<Panel className="min-h-0 flex-1">
 						<PanelHeader
 							title={t(stage.headingKey)}
 							hint={t(stage.subtitleKey)}
@@ -103,22 +106,24 @@ export function GuidePage({
 								</button>
 							}
 						/>
-						<ReaWorkflowStageDetail
-							stage={stage}
-							total={STAGES.length}
-							live={stageLive}
-							doctor={doctor}
-							target={target}
-						/>
-						{examplesOpen ? (
-							<div className="px-4 pb-3">
-								<ReaUsageExamples
-									target={targetPath ?? ""}
-									targetKind={target}
-									onClose={() => setExamplesOpen(false)}
-								/>
-							</div>
-						) : null}
+						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+							<ReaWorkflowStageDetail
+								stage={stage}
+								total={STAGES.length}
+								live={stageLive}
+								doctor={doctor}
+								target={target}
+							/>
+							{examplesOpen ? (
+								<div className="border-t border-border-subtle px-4 py-3">
+									<ReaUsageExamples
+										target={targetPath ?? ""}
+										targetKind={target}
+										onClose={() => setExamplesOpen(false)}
+									/>
+								</div>
+							) : null}
+						</div>
 						<div className="border-t border-border-subtle px-4 py-2">
 							<ReaWorkflowControls currentStage={currentStage} onChange={onSelectStage} />
 						</div>

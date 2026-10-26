@@ -40,15 +40,9 @@ import { CallsPage } from "./rea-page-calls";
 import { ToolchainPage } from "./rea-page-toolchain";
 import { EnginePage } from "./rea-page-engine";
 
-export interface ReaProviderBridge {
-	getStatus(): Promise<PluginCliProviderStatus>;
-	onStatusChanged(listener: (status: PluginCliProviderStatus) => void): { dispose: () => void };
-	retry(): Promise<void>;
-	/** 运行 `npx -y rea-agents@latest <args>`；args 不含包名前缀。 */
-	run(args: readonly string[], options: { cwd?: string; timeoutMs: number }): Promise<PluginCommandRunResult>;
-	/** 同一个 provider 的长驻进程（安装用；可看输出、可停止）。 */
-	spawn: ((args: readonly string[], options?: { cwd?: string }) => Promise<PluginCommandSpawnHandle>) | null;
-}
+// 桥接类型与实现都在 live/engine-bridge.ts：包名前缀在那里统一补齐。
+import type { ReaProviderBridge } from "../live/engine-bridge";
+export type { ReaProviderBridge };
 
 export interface ReaWorkflowTabProps {
 	readonly provider: ReaProviderBridge;
@@ -133,7 +127,24 @@ export function ReaWorkflowTab({
 	const checks = report.checks ?? [];
 	const definition = sectionDefinition(section);
 	const activeTarget = workbench.active ?? snapshot.detectedTarget;
-	const canSend = workbench.blockReason === null;
+	// 引擎页的「让 Agent 自检」：把引擎现状交给 Agent，让它调 rea_engine_doctor 而不是
+	// 自己读一段静态说明。发送不可用时退回填入输入框，与工作台交接同一套回退。
+	const [askingAgent, setAskingAgent] = useState(false);
+	const askEngineAgent = useCallback((): void => {
+		if (askingAgent) return;
+		setAskingAgent(true);
+		const prompt = t("ui.engine.askAgentPrompt");
+		void (async () => {
+			try {
+				await sendPrompt(prompt);
+			} catch (error) {
+				console.warn("[rea] sendPrompt failed, inserting instead", error);
+				insertPrompt(prompt);
+			} finally {
+				setAskingAgent(false);
+			}
+		})();
+	}, [askingAgent, insertPrompt, sendPrompt, t]);
 
 	const handleUseTarget = useCallback(
 		(path: string): void => {
@@ -168,10 +179,6 @@ export function ReaWorkflowTab({
 					<ReaTopbar
 						sectionLabel={t(definition.labelKey)}
 						cwd={cwd ?? null}
-						canSend={canSend}
-						sending={workbench.handoff === "sending"}
-						onSend={() => workbench.handoffToAgent()}
-						sendHint={canSend ? t("tab.workbench.handoffHint") : t("tab.workbench.targetRequired")}
 						fullscreenAvailable={panelFullscreen.available}
 						fullscreen={panelFullscreen.fullscreen}
 						onToggleFullscreen={panelFullscreen.toggle}
@@ -248,6 +255,9 @@ export function ReaWorkflowTab({
 					onRecheck={report.recheck}
 					rechecking={report.status === "checking"}
 					blocked={runCommand === null}
+					summary={report.summary}
+					onAskAgent={askEngineAgent}
+					askingAgent={askingAgent}
 				/>
 			</ReaAppShell>
 		</div>

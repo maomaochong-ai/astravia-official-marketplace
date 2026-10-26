@@ -38,7 +38,7 @@ interface ReaPageProps {
 /** 一页内容：未激活时从布局与无障碍树里同时移除，避免隐藏内容被读屏念出来。 */
 export function ReaPage({ active, children }: ReaPageProps): JSX.Element {
 	return (
-		<div hidden={!active} aria-hidden={!active} className="flex flex-col gap-4 p-5 @max-[720px]:p-3">
+		<div hidden={!active} aria-hidden={!active} className="flex min-h-full flex-col gap-4 p-5 @max-[720px]:p-3">
 			{children}
 		</div>
 	);

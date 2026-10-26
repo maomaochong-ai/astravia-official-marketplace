@@ -34,6 +34,7 @@ const CHECKS: readonly DoctorCheck[] = [
 
 const report: DoctorReport = {
 	checks: CHECKS,
+	summary: null,
 	status: "ready",
 	message: null,
 	lastRunAt: 1,

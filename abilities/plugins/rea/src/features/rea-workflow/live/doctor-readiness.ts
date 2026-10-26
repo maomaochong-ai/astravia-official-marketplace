@@ -52,7 +52,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : null;
 }
 
-function asCheck(value: unknown): DoctorCheck | null {
+export function asDoctorCheck(value: unknown): DoctorCheck | null {
 	const record = asRecord(value);
 	if (!record) return null;
 	const name = typeof record.name === "string" ? record.name : null;
@@ -66,8 +66,8 @@ function asCheck(value: unknown): DoctorCheck | null {
 	};
 }
 
-/** 从 doctor 的 stdout 里取出 checks。容忍前后混有日志行。 */
-export function parseDoctorChecks(stdout: string): readonly DoctorCheck[] | null {
+/** 从 doctor 的 stdout 里取出顶层文档。容忍前后混有日志行。 */
+export function parseDoctorDocument(stdout: string): Record<string, unknown> | null {
 	const start = stdout.indexOf("{");
 	const end = stdout.lastIndexOf("}");
 	if (start < 0 || end <= start) return null;
@@ -79,12 +79,19 @@ export function parseDoctorChecks(stdout: string): readonly DoctorCheck[] | null
 	}
 	const root = asRecord(parsed);
 	if (!root) return null;
+	// 上游把同一份报告包在 report / data 里也能出：顺着包装找到真正带 checks 的那层。
 	for (const candidate of [root, asRecord(root.report), asRecord(root.data)]) {
-		const checks = candidate?.checks;
-		if (!Array.isArray(checks)) continue;
-		return checks.map(asCheck).filter((check): check is DoctorCheck => check !== null);
+		if (candidate !== null && Array.isArray(candidate.checks)) return candidate;
 	}
 	return null;
+}
+
+/** 从 doctor 的 stdout 里取出 checks。 */
+export function parseDoctorChecks(stdout: string): readonly DoctorCheck[] | null {
+	const document = parseDoctorDocument(stdout);
+	const checks = document?.checks;
+	if (!Array.isArray(checks)) return null;
+	return checks.map(asDoctorCheck).filter((check): check is DoctorCheck => check !== null);
 }
 
 function matchesProvider(requirement: ToolRequirement, name: string): boolean {

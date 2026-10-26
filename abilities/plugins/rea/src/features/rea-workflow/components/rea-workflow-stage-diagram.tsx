@@ -376,9 +376,11 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 	const finish = node({ kind: "stage", stage: "finish" });
 	// 每条清单绑定**产出它的工具族**：不要求必须是某一个冷门工具，否则正常分析里几乎永远不会亮。
 	// 一个都没命中的条目不假装完成，下面会标成「未执行」。
-	const checks = [
+	// tools 只为「未执行」提供可操作提示：看到具体工具名，才知道让 Agent 调哪一个。
+	const checks: { label: string; tools: readonly string[]; live: DiagramNodeLive }[] = [
 		{
 			label: t("tab.diagram.finish.check1"),
+			tools: ["verify_reconstruction", "evaluate_reconstruction_coverage", "build_reconstruction_obligation_ledger"],
 			live: node({
 				kind: "any",
 				of: [
@@ -387,14 +389,20 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 				],
 			}),
 		},
-		{ label: t("tab.diagram.finish.check2"), live: node({ kind: "tools", tools: RUNTIME_TOOLS }) },
-		{ label: t("tab.diagram.finish.check3"), live: node({ kind: "tools", tools: ["list_unknowns", "record_unknown", "update_unknown"] }) },
+		{ label: t("tab.diagram.finish.check2"), tools: RUNTIME_TOOLS, live: node({ kind: "tools", tools: RUNTIME_TOOLS }) },
+		{
+			label: t("tab.diagram.finish.check3"),
+			tools: ["list_unknowns", "record_unknown", "update_unknown"],
+			live: node({ kind: "tools", tools: ["list_unknowns", "record_unknown", "update_unknown"] }),
+		},
 		{
 			label: t("tab.diagram.finish.check4"),
+			tools: ["export_evidence_bundle", "import_evidence_bundle", "get_evidence_bundle"],
 			live: node({ kind: "tools", tools: ["export_evidence_bundle", "import_evidence_bundle", "get_evidence_bundle"] }),
 		},
 		{
 			label: t("tab.diagram.finish.check5"),
+			tools: ["verify_unknown_resolution", "update_unknown", "verify_reconstruction"],
 			live: node({ kind: "tools", tools: ["verify_unknown_resolution", "update_unknown", "verify_reconstruction"] }),
 		},
 	];
@@ -423,7 +431,11 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 							{state !== "idle" || started ? (
 								<span
 									className={`ml-auto shrink-0 text-[9px] tabular-nums ${state === "idle" ? "text-muted-foreground" : "text-primary"}`}
-									title={state === "idle" ? t("tab.live.diagram.unmetHint") : undefined}
+									title={
+										state === "idle"
+											? `${t("tab.live.diagram.unmetHint")} ${t("tab.diagram.finish.unmetTools", { tools: check.tools.join(" / ") })}`
+											: undefined
+									}
 								>
 									{state === "active"
 										? t("tab.live.diagram.running")
@@ -438,13 +450,19 @@ function FinishChecklist({ calls, running }: DiagramProps): JSX.Element {
 					);
 				})}
 			</ul>
-			{/* 清单与收尾节点之间不画箭头：清单不是会话节点，连线会让人以为 finish 之前还有一步。 */}
-			<ReaDiagramNode
-				tone="primary"
-				title="finish"
-				hint={t("tab.diagram.finish.deliverable")}
-				live={finish}
-			/>
+			{started ? null : (
+				<p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">{t("tab.diagram.finish.unmetPre")}</p>
+			)}
+			{/* 与上面的清单之间画一条分隔线、留出固定距离：清单是文本项，finish 是节点卡片，
+			    两者紧贴的时候看起来像被卡片吃进去了一行。这里仍然不画箭头（清单不是会话节点）。 */}
+			<div className="mt-3 border-t border-border/60 pt-3">
+				<ReaDiagramNode
+					tone="primary"
+					title="finish"
+					hint={t("tab.diagram.finish.deliverable")}
+					live={finish}
+				/>
+			</div>
 			<p className="mt-1 break-words text-center text-[10px] leading-snug text-muted-foreground">
 				{t("tab.diagram.finish.handoff")}
 			</p>
