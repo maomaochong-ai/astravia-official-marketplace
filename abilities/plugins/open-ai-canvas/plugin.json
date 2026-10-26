@@ -2,7 +2,7 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -29,7 +29,7 @@
         "id": "open-ai-canvas",
         "runtime": {
           "kind": "host-node",
-          "version": "0.2.0",
+          "version": "0.2.2",
           "entry": "server/boot.mjs",
           "platforms": {
             "win32-x64": {

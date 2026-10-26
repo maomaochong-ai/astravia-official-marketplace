@@ -22,6 +22,21 @@ const DESTINATION = "server/boot.mjs";
 const PLATFORMS = ["win32-x64", "darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
 
 /**
+ * runtime.version 是宿主的**目录键**（plugin-services/<id>/<service>/runtime/versions/<version>/），
+ * 不是给人看的版本号：宿主的 isReadyRuntime 拿 .runtime.json 与 plugin.json 逐字段比对，
+ * 摘要变了而键没变，旧目录就永远对不上新声明，服务再也起不来（ADR-0014）。
+ * 所以字节一变就换键——这件事交给脚本做，比要求每个改 shim 的人记得手动 bump 可靠。
+ */
+function bumpPatch(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(typeof version === "string" ? version : "");
+  if (!match) {
+    console.error(`plugin.json 的 runtime.version 不是 <major>.<minor>.<patch>：${JSON.stringify(version)}`);
+    process.exit(1);
+  }
+  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+}
+
+/**
  * @param {{ check?: boolean }} [options]
  * @returns {{ sha256: string, synced: boolean }}
  */
@@ -67,6 +82,13 @@ export function syncShim({ check = false } = {}) {
     console.error("plugin.json has no providers.services[0].runtime to update");
     process.exit(1);
   }
+  // 只在摘要真的变了时换目录键：同一次构建重跑不该无限涨版本。
+  const recorded = Object.values(runtime.platforms ?? {})[0]?.artifacts?.[0]?.sha256;
+  const previousVersion = runtime.version;
+  if (recorded !== undefined && recorded !== sha256) {
+    runtime.version = bumpPatch(previousVersion);
+  }
+
   runtime.platforms = Object.fromEntries(
     PLATFORMS.map((platform) => [
       platform,
@@ -74,6 +96,9 @@ export function syncShim({ check = false } = {}) {
     ]),
   );
   writeFileSync(MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
+  if (runtime.version !== previousVersion) {
+    console.log(`sync-shim: runtime.version ${previousVersion} → ${runtime.version}（shim 字节已变）`);
+  }
   console.log(`sync-shim: ${sha256} → ${PLATFORMS.length} platforms`);
   return { sha256, synced: true };
 }

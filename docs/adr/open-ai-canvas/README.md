@@ -1,6 +1,6 @@
 # open-ai-canvas 插件 ADR 索引
 
-这十三份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
+这十四份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
 
 | ADR | 主题 | 状态 |
 | --- | --- | --- |
@@ -17,6 +17,7 @@
 | [0011](./0011-payload-transfer-resilience.md) | 载荷下载卡 88%：分片停滞必须自己退出且可见 | 已接受（现行） |
 | [0012](./0012-service-module-layout.md) | 服务端按职责分文件，运行时仍是单个 bundle | 已接受（现行） |
 | [0013](./0013-canvas-media-models-as-host-providers.md) | 画布媒体模型登记为宿主媒体 Provider | 已接受（现行） |
+| [0014](./0014-activation-ownership-and-runtime-version-key.md) | 激活的资源归属于激活，运行时目录键归属于字节 | 已接受（现行） |
 
 ## 落实与偏差
 
@@ -36,12 +37,14 @@
 | 0010 | 固定 origin、302、双保险 | 逃生门从 `CANVAS_STABLE_PORTS` 改成 `DATA_DIR/no-stable-origin` 哨兵文件（宿主不传递该变量） |
 | 0012 | `server/src/*.ts` 分模块、esbuild 单 bundle、`check:service-fresh` 守同源 | `service.ts` 迁移期带工程 `@ts-nocheck`；ZIP 与节点契约已拆出，MCP/桥/路由尚未拆 |
 | 0013 | 目录读 `GET /api/models`、`ctx.media.registerProvider`、`/bridge/media/:id` 转发、注册显式且随 `dispose()` 释放 | **参考图模式未打通**（缺 `POST /api/resources` 的 multipart 转发），故只声明 text→image/video；画布文本模型登记不进宿主；宿主侧端到端生成未跑 |
+| 0014 | `src/index.tsx` 闭包局部 + 幂等释放；`sync-shim` 字节变就 bump `runtime.version`；`check-service-platforms` 固定 `version` / `entry` 与平台声明一致 | 2026-10-27 修复侧栏入口消失与运行时目录键不随字节变；端到端装包未跑 |
 
 守住这些的脚本：`verify-mcp-tools.mjs`（MCP 契约 41 条）、`verify-stable-origin.mjs`（origin 24 条）、`verify-web-hosting.mjs`、`verify-payload-sources.mjs`、`verify-bridge.mjs`（桥 26 条）、`verify-canvas-catalog.mjs`（目录与媒体注册 48 条）、`verify-workflow.mjs`——全部在 `npm test` 里。
 
-## 七个「为什么不是看上去那样」
+## 八个「为什么不是看上去那样」
 
 - **包里只有一个 40 KB 的 shim**：`plugin.json` 的 `providers.services[].runtime` 只有一个制品，就是 `server/boot.mjs` 这份纯 JS。它按平台从 Release 取载荷（`payload-manifest.json`），所以不存在「Windows 用户的包里没有后端」这种状态。见 0005。
+- **包里从来没有 `server/` 目录，这不是打包缺陷**：shim 在包内的位置是 `dist/assets/boot.mjs`（打包器对 `dist/assets/**` 全量收），`server/boot.mjs` 是它在**运行时目录**里的落点，两者刻意不同，中间由插件自己 `ctx.services.install(SERVICE_ID, [{destination, data}])` 搬运。把它当成路径写错去“修”，会把本来正确的契约改坏。见 0014。
 - **模型桥是中继，不是网关，但媒体另有出口**：方向 A（宿主 → 画布）只有文本——`ctx.ai` 没有图片输入字段（视觉请求 422），也没有密钥级生成调用（媒体请求 501）。方向 B（画布 → 宿主）不是抄渠道密钥（画布根本不下发），而是把画布的图片/视频模型登记成**宿主媒体 Provider**，生成仍由画布执行。见 0006、0013。
 - **工作流编排只发一次请求**：`apply_workflow` 把整图编译成一批 operations，靠 `metadata.__key` 幂等；不逐个节点打命令，避免半成品工作流。见 0007。
 - **前端页面不是后端发的**：载荷里的 `web-dist/` 由 shim 读盘返回；上游发布 tag 的后端只有 `/api` 路由，非 `/api` 一律回 404「请求不存在」。见 0008。

@@ -43,6 +43,15 @@ const manifest = JSON.parse(readFileSync(join(ROOT, "plugin.json"), "utf8"));
 const runtime = manifest.providers?.services?.[0]?.runtime;
 if (!runtime) problems.push("plugin.json 缺少 providers.services[0].runtime");
 
+// runtime.version 是宿主的运行时目录键（ADR-0014）：宿主的 isReadyRuntime 拿
+// .runtime.json 与 plugin.json 逐字段比对，字节变了却沿用旧键，旧目录永远对不上。
+if (!/^\d+\.\d+\.\d+$/.test(runtime?.version ?? "")) {
+  problems.push(`runtime.version 应为 <major>.<minor>.<patch>，实际 ${JSON.stringify(runtime?.version)}`);
+}
+if (runtime?.kind === "host-node" && runtime?.entry !== DESTINATION) {
+  problems.push(`runtime.entry 应为 ${DESTINATION}，实际 ${runtime?.entry}`);
+}
+
 const declared = Object.keys(runtime?.platforms ?? {});
 for (const platform of PLATFORMS) {
   if (!declared.includes(platform)) problems.push(`plugin.json 缺少平台 ${platform}`);
@@ -148,5 +157,5 @@ if (problems.length > 0) {
   process.exit(1);
 }
 console.log(
-  `[check-service-platforms] ok: ${PLATFORMS.length} platforms, shim sha256 ${shimDigest.slice(0, 12)}, archive=file`,
+  `[check-service-platforms] ok: ${PLATFORMS.length} platforms, runtime ${runtime.version}, shim sha256 ${shimDigest.slice(0, 12)}, archive=file`,
 );
