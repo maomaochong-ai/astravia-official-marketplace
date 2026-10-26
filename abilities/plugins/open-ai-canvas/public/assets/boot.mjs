@@ -1,173 +1,16 @@
 // 生成物：不要直接编辑。源在 server/src/，构建命令 `npm run build:boot`。
 // 单文件是硬约束——宿主只下载并执行这一个 entry（见 docs/adr/open-ai-canvas/0012-service-module-layout.md）。
 
-// server/src/service.ts
-import http from "node:http";
-import net from "node:net";
-import crypto2 from "node:crypto";
-import { spawn, execFileSync } from "node:child_process";
-import tls from "node:tls";
-import { PassThrough } from "node:stream";
-import fs2 from "node:fs";
-import path2 from "node:path";
-import { fileURLToPath } from "node:url";
+// server/src/origin.ts
+import http3 from "node:http";
+import net3 from "node:net";
+import fs12 from "node:fs";
+import path12 from "node:path";
 
-// server/src/archive.ts
-import fs from "node:fs";
+// server/src/config.ts
 import path from "node:path";
-import zlib from "node:zlib";
-import crypto from "node:crypto";
-function hashFile(file) {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash("sha256");
-    fs.createReadStream(file).on("data", (chunk) => hash.update(chunk)).on("error", reject).on("end", () => resolve(hash.digest("hex")));
-  });
-}
-function findEndOfCentralDirectory(buffer) {
-  const floor = Math.max(0, buffer.length - 66 * 1024);
-  for (let offset = buffer.length - 22; offset >= floor; offset--) {
-    if (buffer.readUInt32LE(offset) === 101010256) return offset;
-  }
-  return -1;
-}
-function readExactly(fd, position, length) {
-  const buffer = Buffer.allocUnsafe(length);
-  let filled = 0;
-  while (filled < length) {
-    const bytes = fs.readSync(fd, buffer, filled, length - filled, position + filled);
-    if (bytes <= 0) throw new Error(`载荷文件意外结束（offset ${position + filled}）`);
-    filled += bytes;
-  }
-  return buffer;
-}
-function copyRangeInto(archive, start, length, target) {
-  return new Promise((resolve, reject) => {
-    const source = fs.createReadStream(archive, { start, end: start + length - 1 });
-    const sink = fs.createWriteStream(target);
-    sink.on("finish", () => resolve());
-    sink.on("error", reject);
-    source.on("error", reject);
-    source.pipe(sink);
-  });
-}
-function inflateRangeInto(archive, start, length, target) {
-  return new Promise((resolve, reject) => {
-    const source = fs.createReadStream(archive, { start, end: start + length - 1 });
-    const inflate = zlib.createInflateRaw();
-    const sink = fs.createWriteStream(target);
-    sink.on("finish", () => resolve());
-    sink.on("error", reject);
-    inflate.on("error", reject);
-    source.on("error", reject);
-    source.pipe(inflate).pipe(sink);
-  });
-}
-async function extractZip(archive, destDir) {
-  const fd = fs.openSync(archive, "r");
-  let directory;
-  let total;
-  try {
-    const size = fs.fstatSync(fd).size;
-    const tailLength = Math.min(size, 66 * 1024);
-    const tail = readExactly(fd, size - tailLength, tailLength);
-    const eocd = findEndOfCentralDirectory(tail);
-    if (eocd < 0) throw new Error("载荷不是有效的 ZIP：找不到中央目录");
-    total = tail.readUInt16LE(eocd + 10);
-    const directorySize = tail.readUInt32LE(eocd + 12);
-    const directoryOffset = tail.readUInt32LE(eocd + 16);
-    if (total === 65535 || directoryOffset === 4294967295) throw new Error("暂不支持 ZIP64 格式的载荷");
-    directory = readExactly(fd, directoryOffset, directorySize);
-  } finally {
-    fs.closeSync(fd);
-  }
-  const root = path.resolve(destDir);
-  const archiveFd = fs.openSync(archive, "r");
-  let cursor = 0;
-  try {
-    for (let index = 0; index < total; index++) {
-      if (directory.readUInt32LE(cursor) !== 33639248) throw new Error("载荷 ZIP 中央目录损坏");
-      const method = directory.readUInt16LE(cursor + 10);
-      const compressedSize = directory.readUInt32LE(cursor + 20);
-      const uncompressedSize = directory.readUInt32LE(cursor + 24);
-      const nameLength = directory.readUInt16LE(cursor + 28);
-      const extraLength = directory.readUInt16LE(cursor + 30);
-      const commentLength = directory.readUInt16LE(cursor + 32);
-      const localOffset = directory.readUInt32LE(cursor + 42);
-      const name = directory.toString("utf8", cursor + 46, cursor + 46 + nameLength);
-      cursor += 46 + nameLength + extraLength + commentLength;
-      if (name.endsWith("/")) continue;
-      const target = path.resolve(root, name);
-      if (target !== root && !target.startsWith(root + path.sep)) {
-        throw new Error(`载荷条目越出目标目录：${name}`);
-      }
-      const localNameLength = readExactly(archiveFd, localOffset + 26, 2).readUInt16LE(0);
-      const localExtraLength = readExactly(archiveFd, localOffset + 28, 2).readUInt16LE(0);
-      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      if (compressedSize === 0) {
-        fs.writeFileSync(target, Buffer.alloc(0));
-      } else if (method === 0) {
-        await copyRangeInto(archive, dataStart, compressedSize, target);
-      } else if (method === 8) {
-        await inflateRangeInto(archive, dataStart, compressedSize, target);
-      } else {
-        throw new Error(`不支持的 ZIP 压缩方式：${method}`);
-      }
-      if (uncompressedSize && fs.statSync(target).size !== uncompressedSize) {
-        throw new Error(`载荷条目大小不符：${name}`);
-      }
-    }
-  } finally {
-    fs.closeSync(archiveFd);
-  }
-}
-
-// server/src/contract.ts
-var BUILTIN_NODE_TYPES = [
-  "image",
-  "text",
-  "drawing",
-  "script",
-  "skill",
-  "config",
-  "video",
-  "audio",
-  "frame",
-  "markdown",
-  "svg",
-  "html",
-  "panorama",
-  "compare",
-  "chart",
-  "colorgrade",
-  "media-conversion",
-  "batch-table"
-];
-var NODE_SCHEMAS = {
-  image: { fields: ["content", "storageKey", "prompt", "model", "parameters", "generationTaskId"], description: "Image generation node." },
-  text: { fields: ["content", "prompt", "model"], description: "Text generation node." },
-  config: { fields: ["model", "parameters", "provider"], description: "Generation configuration node. Connect to image/text/video nodes to set their model." },
-  video: { fields: ["content", "storageKey", "prompt", "model", "referenceImages"], description: "Video generation node." },
-  audio: { fields: ["content", "storageKey", "prompt", "model"], description: "Audio generation node." },
-  script: { fields: ["shots", "title"], description: "Storyboard script node." },
-  frame: { fields: ["image", "duration"], description: "Timeline frame node." },
-  markdown: { fields: ["content"], description: "Markdown text node." },
-  svg: { fields: ["content"], description: "SVG vector node." },
-  html: { fields: ["content"], description: "HTML embed node." },
-  drawing: { fields: ["content", "storageKey"], description: "Drawing canvas node." },
-  skill: { fields: ["skillId", "config"], description: "Skill node." },
-  panorama: { fields: ["content", "storageKey"], description: "Panorama image node." },
-  compare: { fields: ["images"], description: "Image comparison node." },
-  chart: { fields: ["config", "data"], description: "Chart node." },
-  colorgrade: { fields: ["lut", "intensity"], description: "Color grading node." },
-  "media-conversion": { fields: ["format", "input"], description: "Media format conversion node." },
-  "batch-table": { fields: ["rows", "columns"], description: "Batch processing table node." }
-};
-var LAYOUT_STEP_X = 400;
-var LAYOUT_STEP_Y = 280;
-
-// server/src/service.ts
-var __dirname = path2.dirname(fileURLToPath(import.meta.url));
+import { fileURLToPath } from "node:url";
+var __dirname = path.dirname(fileURLToPath(import.meta.url));
 var HOST_PORT = Number(process.env.ASTRAVIA_SERVICE_PORT);
 var DATA_DIR = process.env.ASTRAVIA_SERVICE_DATA_DIR;
 var RUNTIME_DIR = process.env.ASTRAVIA_SERVICE_RUNTIME_DIR || __dirname;
@@ -176,281 +19,107 @@ if (!HOST_PORT || !DATA_DIR) {
   process.exit(1);
 }
 var STABLE_ORIGIN_PORTS = [47810, 47811, 47812, 47813];
-var ORIGIN_FILE = path2.join(DATA_DIR, "browser-origin.json");
-var PUBLIC_ORIGIN = `http://127.0.0.1:${HOST_PORT}`;
-var STABLE_PORT = 0;
-var STABLE_SERVER = null;
-var REQUEST_HANDLER = null;
+var ORIGIN_FILE = path.join(DATA_DIR, "browser-origin.json");
 var OFFICIAL_BASE = "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas-payloads";
 var DEFAULT_MIRROR_PREFIXES = ["https://ghfast.top/", "https://gh-proxy.com/"];
 var PAYLOAD_BASE_URL = process.env.CANVAS_PAYLOAD_BASE_URL || OFFICIAL_BASE;
 var GITHUB_REPO = "maomaochong-ai/astravia-official-marketplace";
 var RELEASE_TAG = "plugin-open-ai-canvas-payloads";
 var MANIFEST_ASSET = "payload-manifest.json";
-var PREFERRED_BASE = null;
 var TARGET_PLATFORMS = ["win32-x64", "darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
 var PLATFORM = `${process.platform}-${process.arch}`;
 var BINARY_NAME = `yingce-backend${process.platform === "win32" ? ".exe" : ""}`;
 var NODE_BINARY_NAME = process.platform === "win32" ? "node.exe" : "node";
 var BUNDLED_DIR = RUNTIME_DIR;
 var MANIFEST = { payloadVersion: "", upstream: null, platforms: {}, source: "" };
-var PROVISION_DIR = null;
-var AGENT_DIR = null;
 function supportedPlatforms() {
   const fromManifest = Object.keys(MANIFEST.platforms);
   return (fromManifest.length > 0 ? fromManifest : TARGET_PLATFORMS).sort();
 }
-function note(message) {
-  console.log(`[open-ai-canvas] ${message}`);
-  pushLog(message);
-}
-var STATE_LOG_LIMIT = 10;
-var STATE = {
-  phase: "starting",
-  stage: "启动",
-  message: "正在检查运行时",
-  fileName: "",
-  source: "",
-  endpoint: "",
-  receivedBytes: 0,
-  totalBytes: 0,
-  speed: 0,
-  attempts: 0,
-  retries: 0,
-  startedAt: Date.now(),
-  sampledAt: 0,
-  sampledBytes: 0,
-  log: [],
-  // 逐片进度（ADR-0011）：卡住时要能定位到具体分片，而不是只看到一个总百分比。
-  chunks: [],
-  error: null,
-  // 机器可读的失败原因（/__canvas/state 的 code）。文案会变，code 不变：
-  // 界面据此选提示、构建期据此断言，不要靠中文子串匹配。
-  code: null
-};
-function pushLog(text) {
-  const trimmed = String(text ?? "").trim();
-  if (!trimmed) return;
-  if (STATE.log[STATE.log.length - 1]?.text === trimmed) return;
-  STATE.log.push({ at: Date.now(), text: trimmed });
-  if (STATE.log.length > STATE_LOG_LIMIT) STATE.log.splice(0, STATE.log.length - STATE_LOG_LIMIT);
-}
-function setStage(phase, stage, message) {
-  STATE.phase = phase;
-  STATE.stage = stage;
-  if (message) STATE.message = message;
-  pushLog(message || stage);
-}
-function fail(code, message, stage = "启动") {
-  STATE.phase = "failed";
-  STATE.code = code;
-  STATE.stage = stage;
-  STATE.message = message;
-  STATE.error = message;
-  pushLog(message);
-}
-function clearFailure() {
-  STATE.code = null;
-  STATE.error = null;
-}
-function resetTransfer(fileName, approximateBytes) {
-  STATE.fileName = fileName;
-  STATE.receivedBytes = 0;
-  STATE.totalBytes = approximateBytes || 0;
-  STATE.speed = 0;
-  STATE.sampledAt = 0;
-  STATE.sampledBytes = 0;
-  STATE.attempts = 0;
-  STATE.chunks = [];
-}
-function transferSpeed() {
-  const now = Date.now();
-  if (!STATE.sampledAt) {
-    STATE.sampledAt = now;
-    STATE.sampledBytes = STATE.receivedBytes;
-    return STATE.speed;
+
+// server/src/session.ts
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path2 from "node:path";
+var SESSION_FILE = path2.join(DATA_DIR, "session.json");
+var SESSION_KEY = (() => {
+  const raw = process.env.ASTRAVIA_SERVICE_SECRET_SESSION_KEY;
+  if (!raw) return null;
+  try {
+    const key = Buffer.from(raw, "base64url");
+    return key.length === 32 ? key : null;
+  } catch {
+    return null;
   }
-  const seconds = (now - STATE.sampledAt) / 1e3;
-  if (seconds < 0.5) return STATE.speed;
-  const delta = STATE.receivedBytes - STATE.sampledBytes;
-  if (delta >= 0) STATE.speed = delta / seconds;
-  STATE.sampledAt = now;
-  STATE.sampledBytes = STATE.receivedBytes;
-  return STATE.speed;
+})();
+function sealSession(token) {
+  if (!SESSION_KEY) return JSON.stringify({ v: 1, token });
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", SESSION_KEY, iv);
+  const data = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+  return JSON.stringify({
+    v: 2,
+    alg: "aes-256-gcm",
+    iv: iv.toString("base64"),
+    tag: cipher.getAuthTag().toString("base64"),
+    data: data.toString("base64")
+  });
 }
-function progressSnapshot() {
-  transferSpeed();
-  const percent = STATE.totalBytes > 0 ? Math.min(100, STATE.receivedBytes / STATE.totalBytes * 100) : 0;
-  const remaining = STATE.totalBytes > 0 ? Math.max(0, STATE.totalBytes - STATE.receivedBytes) : 0;
-  return {
-    phase: STATE.phase,
-    code: STATE.code,
-    platform: PLATFORM,
-    supported: supportedPlatforms(),
-    payloadVersion: MANIFEST.payloadVersion || null,
-    upstream: MANIFEST.upstream?.tag ?? null,
-    stage: STATE.stage,
-    message: STATE.message,
-    fileName: STATE.fileName,
-    source: ACTIVE_PROXY ? `${ACTIVE_PROXY.host}:${ACTIVE_PROXY.port}` : "直连",
-    endpoint: STATE.endpoint,
-    receivedBytes: STATE.receivedBytes,
-    totalBytes: STATE.totalBytes,
-    percent: Math.round(percent * 10) / 10,
-    speed: Math.round(STATE.speed),
-    etaSeconds: STATE.speed > 0 ? Math.round(remaining / STATE.speed) : 0,
-    elapsedSeconds: Math.max(0, Math.round((Date.now() - STATE.startedAt) / 1e3)),
-    attempts: STATE.attempts,
-    retries: STATE.retries,
-    log: STATE.log.map((entry) => ({ at: entry.at, text: entry.text })),
-    chunks: STATE.chunks.map((item) => ({ index: item.index, received: item.received, expected: item.expected })),
-    error: STATE.error
-  };
-}
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
-}
-function progressPage() {
-  const failed = STATE.phase === "failed";
-  const title = failed ? "运行时准备失败" : "正在准备 Open AI Canvas";
-  return `<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title>
-<style>
-:root{color-scheme:light dark}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
-background:#fafafa;color:#18181b;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.wrap{width:min(560px,calc(100vw - 64px))}
-h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
-.sub{margin:0;color:#a1a1aa;font-size:12.5px;line-height:1.5}
-.status{margin:28px 0 0;display:flex;align-items:baseline;justify-content:space-between;
-font-size:12px;color:#52525b;gap:16px}
-#stage{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.track{margin:9px 0 0;height:4px;border-radius:999px;background:#ececee;overflow:hidden}
-.bar{height:100%;width:0;background:#18181b;transition:width .4s cubic-bezier(.4,0,.2,1)}
-.bar.idle{animation:breathe 1.8s ease-in-out infinite}
-@keyframes breathe{0%,100%{opacity:.2}50%{opacity:.65}}
-.facts{margin:11px 0 0;display:flex;flex-wrap:wrap;gap:18px;color:#a1a1aa;font-size:12px;
-font-variant-numeric:tabular-nums}
-.facts span:empty{display:none}
-.msg{margin:7px 0 0;color:#52525b;font-size:12px;line-height:1.55;word-break:break-word}
-.actions{margin:24px 0 0;display:flex;gap:10px}
-.log{margin:32px 0 0;color:#a1a1aa;font:11.5px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;
-max-height:160px;overflow:hidden}
-.log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.err{margin:28px 0 0;color:#b91c1c;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;
-white-space:pre-wrap;word-break:break-word}
-button{margin:0;padding:8px 18px;border:0;border-radius:8px;background:#18181b;color:#fff;
-font:inherit;font-size:13px;cursor:pointer}
-button.ghost{background:transparent;color:#71717a;box-shadow:inset 0 0 0 1px #e4e4e7}
-button[disabled]{opacity:.45;cursor:default}
-@media (prefers-color-scheme:dark){
-body{background:#09090b;color:#fafafa}
-.track{background:#27272a}.bar{background:#fafafa}
-button{background:#fafafa;color:#18181b}
-button.ghost{background:transparent;color:#a1a1aa;box-shadow:inset 0 0 0 1px #3f3f46}
-.err{color:#f87171}
-}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1 id="title">${title}</h1>
-  <p class="sub" id="sub">首次启动需要下载运行时载荷，完成后自动打开画布</p>
-  <div class="status"><span id="stage">${escapeHtml(STATE.stage)}</span><span id="pct"></span></div>
-  <div class="track"><div class="bar${STATE.totalBytes > 0 ? "" : " idle"}" id="bar"></div></div>
-  <p class="msg" id="msg">${escapeHtml(STATE.message)}</p>
-  <div class="facts">
-    <span id="file"></span><span id="bytes"></span><span id="speed"></span>
-    <span id="eta"></span><span id="elapsed"></span><span id="retries"></span><span id="host"></span>
-  </div>
-  <div class="log" id="log"></div>
-  <pre class="err" id="err"${failed ? "" : " hidden"}>${escapeHtml(STATE.error ?? "")}</pre>
-  <div class="actions"><button id="retry"${failed ? "" : " hidden"}>重试 / Retry</button><button id="copy" class="ghost">复制诊断信息</button></div>
-</div>
-<script>
-const bar=document.getElementById('bar'),pct=document.getElementById('pct'),
-stageEl=document.getElementById('stage'),bytesEl=document.getElementById('bytes'),
-speedEl=document.getElementById('speed'),etaEl=document.getElementById('eta'),
-fileEl=document.getElementById('file'),elapsedEl=document.getElementById('elapsed'),
-retriesEl=document.getElementById('retries'),hostEl=document.getElementById('host'),
-msgEl=document.getElementById('msg'),subEl=document.getElementById('sub'),
-logEl=document.getElementById('log'),errEl=document.getElementById('err'),
-titleEl=document.getElementById('title'),retry=document.getElementById('retry'),
-copy=document.getElementById('copy');
-let last=null;
-function fmt(n){if(!n)return '0 B';if(n<1024)return n+' B';
-if(n<1048576)return (n/1024).toFixed(0)+' KB';
-if(n<1073741824)return (n/1048576).toFixed(1)+' MB';
-return (n/1073741824).toFixed(2)+' GB'}
-function dur(s){if(!s||s<1)return '';if(s<60)return s+' 秒';
-const m=Math.floor(s/60),r=s%60;return r?m+' 分 '+r+' 秒':m+' 分'}
-function render(p){
-  last=p;
-  stageEl.textContent=p.stage||'';
-  msgEl.textContent=p.message||'';
-  fileEl.textContent=p.fileName||'';
-  if(p.totalBytes>0){
-    bar.classList.remove('idle');
-    bar.style.width=p.percent+'%';
-    pct.textContent=Math.round(p.percent)+'%';
-    bytesEl.textContent=fmt(p.receivedBytes)+' / '+fmt(p.totalBytes);
-  }else{
-    // 总长度还不知道时也不能看着像死机：条动起来，右侧给出已收到的字节。
-    bar.classList.add('idle');bar.style.width='100%';
-    pct.textContent=p.receivedBytes?fmt(p.receivedBytes):'';
-    bytesEl.textContent=p.receivedBytes?fmt(p.receivedBytes)+' 已接收':'';
+function openSession(raw) {
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    return null;
   }
-  speedEl.textContent=p.speed>0?fmt(p.speed)+'/s':'';
-  etaEl.textContent=p.etaSeconds>0?'剩余约 '+dur(p.etaSeconds):'';
-  elapsedEl.textContent=p.elapsedSeconds?'已用 '+dur(p.elapsedSeconds):'';
-  retriesEl.textContent=p.attempts>1||p.retries?'尝试 '+p.attempts+' 次 / 重试 '+p.retries+' 次':'';
-  hostEl.textContent=p.endpoint?(p.endpoint+(p.source&&p.source!=='直连'?' · '+p.source:'')):'';
-  logEl.innerHTML='';
-  (p.log||[]).forEach(function(e){const d=document.createElement('div');d.textContent=e.text;logEl.appendChild(d)});
+  if (typeof data?.token === "string") return data.token;
+  if (data?.v !== 2 || !SESSION_KEY) return null;
+  try {
+    const decipher = crypto.createDecipheriv("aes-256-gcm", SESSION_KEY, Buffer.from(data.iv, "base64"));
+    decipher.setAuthTag(Buffer.from(data.tag, "base64"));
+    return Buffer.concat([decipher.update(Buffer.from(data.data, "base64")), decipher.final()]).toString("utf8");
+  } catch (err) {
+    console.error("[open-ai-canvas] Failed to decrypt session:", err.message);
+    return null;
+  }
 }
-async function tick(){
-  try{
-    const r=await fetch('/__canvas/progress',{cache:'no-store'});
-    // 就绪那一刻代理会把所有路径交给上游应用，这里再拿到的是 HTML 而不是进度 JSON：
-    // 这本身就是「可以进画布了」的信号，直接跳转，别把人留在进度页上。
-    const type=r.headers.get('content-type')||'';
-    if(!r.ok||!type.includes('json')){location.replace('/');return}
-    const p=await r.json();
-    if(p.phase==='ready'){location.replace('/');return}
-    render(p);
-    if(p.phase==='failed'){
-      titleEl.textContent='运行时准备失败';
-      errEl.hidden=false;errEl.textContent=p.error||'未知错误';
-      retry.hidden=false;retry.disabled=false;
-      return;
-    }
-    retry.hidden=true;
-  }catch(e){}
-  setTimeout(tick,1000);
+function loadSession() {
+  try {
+    const token = openSession(fs.readFileSync(SESSION_FILE, "utf8"));
+    if (token && SESSION_KEY) saveSession(token);
+    return token;
+  } catch {
+    return null;
+  }
 }
-retry.onclick=async function(){
-  retry.disabled=true;
-  try{await fetch('/__canvas/retry',{method:'POST'})}catch(e){}
-  location.reload();
-};
-copy.onclick=async function(){
-  const text=JSON.stringify(last||{},null,2);
-  try{await navigator.clipboard.writeText(text);copy.textContent='已复制'}catch(e){copy.textContent='复制失败'}
-  setTimeout(function(){copy.textContent='复制诊断信息'},1600);
-};
-tick();
-</script>
-</body>
-</html>`;
+function saveSession(token) {
+  try {
+    fs.writeFileSync(SESSION_FILE, sealSession(token), { mode: 384 });
+  } catch (err) {
+    console.error("[open-ai-canvas] Failed to save session:", err.message);
+  }
 }
+var SESSION_TOKEN = loadSession();
+function setSessionToken(token) {
+  SESSION_TOKEN = token;
+}
+
+// server/src/backend.ts
+import net2 from "node:net";
+import fs3 from "node:fs";
+import { spawn as spawn2 } from "node:child_process";
+
+// server/src/net.ts
+import http from "node:http";
+import net from "node:net";
+import tls from "node:tls";
+import fs2 from "node:fs";
+import path3 from "node:path";
+import { execFileSync } from "node:child_process";
+import { PassThrough } from "node:stream";
 function hasPayload(dir) {
   try {
-    return fs2.statSync(path2.join(dir, BINARY_NAME)).isFile();
+    return fs2.statSync(path3.join(dir, BINARY_NAME)).isFile();
   } catch {
     return false;
   }
@@ -756,6 +425,258 @@ function statSize(file) {
     return 0;
   }
 }
+
+// server/src/state.ts
+function note(message) {
+  console.log(`[open-ai-canvas] ${message}`);
+  pushLog(message);
+}
+var STATE_LOG_LIMIT = 10;
+var STATE = {
+  phase: "starting",
+  stage: "启动",
+  message: "正在检查运行时",
+  fileName: "",
+  source: "",
+  endpoint: "",
+  receivedBytes: 0,
+  totalBytes: 0,
+  speed: 0,
+  attempts: 0,
+  retries: 0,
+  startedAt: Date.now(),
+  sampledAt: 0,
+  sampledBytes: 0,
+  log: [],
+  // 逐片进度（ADR-0011）：卡住时要能定位到具体分片，而不是只看到一个总百分比。
+  chunks: [],
+  error: null,
+  // 机器可读的失败原因（/__canvas/state 的 code）。文案会变，code 不变：
+  // 界面据此选提示、构建期据此断言，不要靠中文子串匹配。
+  code: null
+};
+function pushLog(text) {
+  const trimmed = String(text ?? "").trim();
+  if (!trimmed) return;
+  if (STATE.log[STATE.log.length - 1]?.text === trimmed) return;
+  STATE.log.push({ at: Date.now(), text: trimmed });
+  if (STATE.log.length > STATE_LOG_LIMIT) STATE.log.splice(0, STATE.log.length - STATE_LOG_LIMIT);
+}
+function setStage(phase, stage, message) {
+  STATE.phase = phase;
+  STATE.stage = stage;
+  if (message) STATE.message = message;
+  pushLog(message || stage);
+}
+function fail(code, message, stage = "启动") {
+  STATE.phase = "failed";
+  STATE.code = code;
+  STATE.stage = stage;
+  STATE.message = message;
+  STATE.error = message;
+  pushLog(message);
+}
+function clearFailure() {
+  STATE.code = null;
+  STATE.error = null;
+}
+function resetTransfer(fileName, approximateBytes) {
+  STATE.fileName = fileName;
+  STATE.receivedBytes = 0;
+  STATE.totalBytes = approximateBytes || 0;
+  STATE.speed = 0;
+  STATE.sampledAt = 0;
+  STATE.sampledBytes = 0;
+  STATE.attempts = 0;
+  STATE.chunks = [];
+}
+function transferSpeed() {
+  const now = Date.now();
+  if (!STATE.sampledAt) {
+    STATE.sampledAt = now;
+    STATE.sampledBytes = STATE.receivedBytes;
+    return STATE.speed;
+  }
+  const seconds = (now - STATE.sampledAt) / 1e3;
+  if (seconds < 0.5) return STATE.speed;
+  const delta = STATE.receivedBytes - STATE.sampledBytes;
+  if (delta >= 0) STATE.speed = delta / seconds;
+  STATE.sampledAt = now;
+  STATE.sampledBytes = STATE.receivedBytes;
+  return STATE.speed;
+}
+function progressSnapshot() {
+  transferSpeed();
+  const percent = STATE.totalBytes > 0 ? Math.min(100, STATE.receivedBytes / STATE.totalBytes * 100) : 0;
+  const remaining = STATE.totalBytes > 0 ? Math.max(0, STATE.totalBytes - STATE.receivedBytes) : 0;
+  return {
+    phase: STATE.phase,
+    code: STATE.code,
+    platform: PLATFORM,
+    supported: supportedPlatforms(),
+    payloadVersion: MANIFEST.payloadVersion || null,
+    upstream: MANIFEST.upstream?.tag ?? null,
+    stage: STATE.stage,
+    message: STATE.message,
+    fileName: STATE.fileName,
+    source: ACTIVE_PROXY ? `${ACTIVE_PROXY.host}:${ACTIVE_PROXY.port}` : "直连",
+    endpoint: STATE.endpoint,
+    receivedBytes: STATE.receivedBytes,
+    totalBytes: STATE.totalBytes,
+    percent: Math.round(percent * 10) / 10,
+    speed: Math.round(STATE.speed),
+    etaSeconds: STATE.speed > 0 ? Math.round(remaining / STATE.speed) : 0,
+    elapsedSeconds: Math.max(0, Math.round((Date.now() - STATE.startedAt) / 1e3)),
+    attempts: STATE.attempts,
+    retries: STATE.retries,
+    log: STATE.log.map((entry) => ({ at: entry.at, text: entry.text })),
+    chunks: STATE.chunks.map((item) => ({ index: item.index, received: item.received, expected: item.expected })),
+    error: STATE.error
+  };
+}
+
+// server/src/paths.ts
+var SERVER_DIR = null;
+var GO_BINARY = null;
+var WEB_DIST = null;
+var PI_RUNTIME = null;
+var NODE_BIN = "";
+var PLUGIN_PACKAGES = null;
+function setRuntimePaths(next) {
+  if (next.serverDir !== void 0) SERVER_DIR = next.serverDir;
+  if (next.goBinary !== void 0) GO_BINARY = next.goBinary;
+  if (next.webDist !== void 0) WEB_DIST = next.webDist;
+  if (next.piRuntime !== void 0) PI_RUNTIME = next.piRuntime;
+  if (next.nodeBin !== void 0) NODE_BIN = next.nodeBin;
+  if (next.pluginPackages !== void 0) PLUGIN_PACKAGES = next.pluginPackages;
+}
+
+// server/src/backend.ts
+var BACKEND_PORT = 0;
+var goProcess = null;
+function corsOrigins() {
+  const ports = [.../* @__PURE__ */ new Set([STABLE_PORT || HOST_PORT, HOST_PORT])];
+  return [...new Set(ports.flatMap((port) => [`http://127.0.0.1:${port}`, `http://localhost:${port}`]))].join(",");
+}
+function backendEnv() {
+  return {
+    ...process.env,
+    CANVAS_BACKEND_ADDR: `127.0.0.1:${BACKEND_PORT}`,
+    CANVAS_BACKEND_DATA_DIR: DATA_DIR,
+    // 上游发布 tag 的后端没有静态承载代码，这个变量会被忽略；留着是为了将来载荷换成
+    // 带 CANVAS_STATIC_DIR 支持的构建时不用再改这里。静态文件始终由 shim 先服务（ADR-0008）。
+    CANVAS_STATIC_DIR: WEB_DIST,
+    // 两个 origin 都要放行：稳定 origin 是页面真正的来源，宿主端口留给探针与旧标签页（ADR-0010）。
+    CANVAS_CORS_ORIGINS: corsOrigins(),
+    CANVAS_EXIT_WITH_PARENT: "true",
+    CANVAS_PARENT_PID: String(process.pid),
+    GIN_MODE: "release",
+    // 公开资源基址：上传到本地存储的文件要拼出一个浏览器能取回的绝对地址，
+    // 后端在它为空时直接拒绝（资源接口返回「尚未配置服务器访问地址」）。
+    // ADR-0010 之前这里写的是宿主端口，于是落库的图片地址在下次启动就全部失活；
+    // 现在用固定 origin，旧资源地址也不会跟着端口漂。
+    CANVAS_PUBLIC_BASE_URL: PUBLIC_ORIGIN,
+    ...NODE_BIN ? { CANVAS_NODE_BIN: NODE_BIN } : {},
+    ...fs3.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {},
+    CANVAS_RUNTIME_AUTO_INSTALL: "false",
+    // ADR-0006 决策 2：画布渠道要指回本机回环上的模型桥（/bridge/v1），而后端默认把
+    // 回环/私网地址当作 SSRF 风险拒掉。只放行回环字面量，不放宽成整段私网。
+    CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS: "127.0.0.1,localhost",
+    CANVAS_OFFICIAL_PLUGIN_DIR: PLUGIN_PACKAGES,
+    CANVAS_REGISTRATION_ENABLED: "false"
+  };
+}
+async function reserveBackendPort() {
+  await new Promise((resolve, reject) => {
+    const probe = net2.createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      BACKEND_PORT = probe.address().port;
+      probe.close(resolve);
+    });
+  });
+}
+function watchBackendOutput(chunk, sink) {
+  const text = chunk.toString();
+  sink.write(text);
+  if (goPort) return;
+  const match = text.match(/addr=(?:127\.0\.0\.1|\[::1\]|localhost):(\d+)/);
+  if (!match || Number(match[1]) === 0) return;
+  goPort = Number(match[1]);
+  console.log(`[open-ai-canvas] Backend listening on port ${goPort}`);
+  STATE.phase = "ready";
+  clearFailure();
+  STATE.message = "运行时已就绪";
+  onBackendReady();
+}
+function startBackend() {
+  console.log(`[open-ai-canvas] Starting backend: ${GO_BINARY}`);
+  goProcess = spawn2(GO_BINARY, [], {
+    env: backendEnv(),
+    cwd: SERVER_DIR,
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true
+  });
+  goProcess.stdout.on("data", (chunk) => watchBackendOutput(chunk, process.stdout));
+  goProcess.stderr.on("data", (chunk) => watchBackendOutput(chunk, process.stderr));
+  goProcess.on("error", (error) => {
+    fail("backend-spawn-failed", `后端子进程拉起失败：${error.message}`, "后端启动");
+    console.error(`[open-ai-canvas] Failed to spawn backend: ${error.message}`);
+  });
+  goProcess.on("exit", (code, signal) => {
+    console.log(`[open-ai-canvas] Backend exited: code=${code} signal=${signal}`);
+    if (shuttingDown) {
+      process.exit(0);
+    }
+    if (!goPort) {
+      fail("backend-exited", `后端在启动阶段退出（code=${code} signal=${signal}）`, "后端启动");
+      return;
+    }
+    process.exit(code ?? 1);
+  });
+}
+var goPort = null;
+var backendReadyResolve = null;
+var backendReady = new Promise((resolve) => {
+  backendReadyResolve = resolve;
+});
+function onBackendReady() {
+  if (backendReadyResolve) backendReadyResolve();
+  backendReadyResolve = null;
+}
+var shuttingDown = false;
+function forwardSignal(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  if (!goProcess || goProcess.killed) {
+    process.exit(0);
+  }
+  try {
+    goProcess.kill(signal);
+  } catch {
+    process.exit(0);
+  }
+  const force = setTimeout(() => process.exit(0), 3e3);
+  force.unref?.();
+}
+process.on("SIGTERM", () => forwardSignal("SIGTERM"));
+process.on("SIGINT", () => forwardSignal("SIGINT"));
+
+// server/src/mcp.ts
+import http2 from "node:http";
+import crypto3 from "node:crypto";
+import fs6 from "node:fs";
+
+// server/src/workflow.ts
+import crypto2 from "node:crypto";
+
+// server/src/sources.ts
+import fs5 from "node:fs";
+import path5 from "node:path";
+
+// server/src/download.ts
+import fs4 from "node:fs";
+import path4 from "node:path";
 var CHUNK_STALL_MS = 3e4;
 var TRANSFER_DEADLINE_MS = 20 * 6e4;
 async function downloadChunk(url, file, start, end) {
@@ -763,7 +684,7 @@ async function downloadChunk(url, file, start, end) {
   let have = statSize(file);
   if (have === expected) return;
   if (have > expected) {
-    fs2.rmSync(file, { force: true });
+    fs4.rmSync(file, { force: true });
     have = 0;
   }
   let lastError;
@@ -782,7 +703,7 @@ async function downloadChunk(url, file, start, end) {
         response.resume();
         throw new Error(`HTTP ${response.statusCode}（不支持分段或链接已失效）`);
       }
-      sink = fs2.createWriteStream(file, { flags: have > 0 ? "a" : "w" });
+      sink = fs4.createWriteStream(file, { flags: have > 0 ? "a" : "w" });
       await new Promise((resolve, reject) => {
         const arm = () => {
           if (stallTimer) clearTimeout(stallTimer);
@@ -810,7 +731,7 @@ async function downloadChunk(url, file, start, end) {
       if (sink && !sink.closed) sink.destroy();
       have = statSize(file);
       if (have > expected) {
-        fs2.rmSync(file, { force: true });
+        fs4.rmSync(file, { force: true });
         have = 0;
       }
       note(`分片 ${start}-${end} 失败：${err.message}（已落盘 ${have}/${expected}）`);
@@ -825,7 +746,7 @@ async function downloadChunk(url, file, start, end) {
   throw lastError;
 }
 async function mergeParts(archive, parts) {
-  const sink = fs2.createWriteStream(archive);
+  const sink = fs4.createWriteStream(archive);
   const finished = new Promise((resolve, reject) => {
     sink.on("finish", resolve);
     sink.on("error", reject);
@@ -833,7 +754,7 @@ async function mergeParts(archive, parts) {
   try {
     for (const part of parts) {
       await new Promise((resolve, reject) => {
-        const source = fs2.createReadStream(part);
+        const source = fs4.createReadStream(part);
         source.on("error", reject);
         source.on("end", resolve);
         source.pipe(sink, { end: false });
@@ -885,12 +806,12 @@ function downloadChunked(url, archive, size) {
       archive,
       ranges.map((range) => partPath(archive, range.index))
     );
-    for (const range of ranges) fs2.rmSync(partPath(archive, range.index), { force: true });
+    for (const range of ranges) fs4.rmSync(partPath(archive, range.index), { force: true });
   });
 }
 async function downloadPayload(url, archive) {
   STATE.attempts += 1;
-  setStage("connecting", "连接下载源", `正在查询 ${STATE.fileName || path2.basename(archive)} 的大小（第 ${STATE.attempts} 次）`);
+  setStage("connecting", "连接下载源", `正在查询 ${STATE.fileName || path4.basename(archive)} 的大小（第 ${STATE.attempts} 次）`);
   const size = await payloadSize(url);
   if (size > 0 && statSize(archive) === size) {
     note(`归档已在本地（${size} 字节），跳过下载`);
@@ -901,7 +822,7 @@ async function downloadPayload(url, archive) {
   if (size > 0) {
     try {
       await downloadChunked(url, archive, size);
-      if (fs2.statSync(archive).size === size) return;
+      if (fs4.statSync(archive).size === size) return;
       throw new Error("分片下载长度不符");
     } catch (err) {
       note(`分片下载失败（${err.message}），改用单连接重试`);
@@ -918,7 +839,7 @@ async function downloadPayload(url, archive) {
     throw new Error(`运行时载荷下载失败：HTTP ${res.statusCode}（${url}）`);
   }
   const offset = res.statusCode === 206 ? existing : 0;
-  const out = fs2.createWriteStream(archive, { flags: offset > 0 ? "r+" : "w", start: offset });
+  const out = fs4.createWriteStream(archive, { flags: offset > 0 ? "r+" : "w", start: offset });
   let lastActivity = Date.now();
   const watchdog = setInterval(() => {
     if (Date.now() - lastActivity > 6e4) res.destroy(new Error("下载停滞"));
@@ -940,6 +861,11 @@ async function downloadPayload(url, archive) {
     res.destroy();
   }
 }
+
+// server/src/sources.ts
+var PREFERRED_BASE = null;
+var PROVISION_DIR = null;
+var AGENT_DIR = null;
 var ASSET_CACHE = /* @__PURE__ */ new Map();
 var NETWORK_FAILURE = /超时|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|EPIPE|socket hang up|TLS|停滞|连接中断/i;
 function endpointOf(url) {
@@ -1010,13 +936,13 @@ function localPayloadDirs() {
   const dirs = [];
   const explicit = (process.env.CANVAS_PAYLOAD_DIR || "").trim();
   if (explicit) dirs.push(explicit);
-  dirs.push(path2.join(DATA_DIR, "payload"));
-  dirs.push(path2.join(BUNDLED_DIR, "payload"));
+  dirs.push(path5.join(DATA_DIR, "payload"));
+  dirs.push(path5.join(BUNDLED_DIR, "payload"));
   return dirs;
 }
 function findLocalFile(fileName) {
   for (const dir of localPayloadDirs()) {
-    const file = path2.join(dir, fileName);
+    const file = path5.join(dir, fileName);
     if (statSize(file) > 0) return file;
   }
   return null;
@@ -1044,7 +970,7 @@ function probeFirst(urls, { timeout = 12e3 } = {}) {
     let pending = urls.length;
     let lastError = null;
     let settled = false;
-    const fail2 = (url) => (err) => {
+    const fail3 = (url) => (err) => {
       if (settled) return;
       lastError = new Error(`${endpointOf(url)}：${err.message}`);
       pending -= 1;
@@ -1060,7 +986,7 @@ function probeFirst(urls, { timeout = 12e3 } = {}) {
         if (settled) return;
         settled = true;
         resolve({ url, text });
-      }).catch(fail2(url));
+      }).catch(fail3(url));
     }
   });
 }
@@ -1102,7 +1028,7 @@ async function fetchManifestText() {
   if (override) {
     const local = !/^https?:\/\//i.test(override);
     try {
-      const text = local ? fs2.readFileSync(override, "utf8") : await readTextResponse(await httpRequest(override, { timeout: 2e4 }));
+      const text = local ? fs5.readFileSync(override, "utf8") : await readTextResponse(await httpRequest(override, { timeout: 2e4 }));
       note(`清单来自 CANVAS_PAYLOAD_MANIFEST：${override}`);
       return { text, url: override };
     } catch (err) {
@@ -1115,7 +1041,7 @@ async function fetchManifestText() {
   const localManifest = findLocalFile(MANIFEST_ASSET);
   if (localManifest) {
     note(`清单来自本地目录：${localManifest}`);
-    return { text: fs2.readFileSync(localManifest, "utf8"), url: localManifest };
+    return { text: fs5.readFileSync(localManifest, "utf8"), url: localManifest };
   }
   const candidates = candidateUrls(MANIFEST_ASSET);
   note(`清单来源 ${candidates.length} 个（并发探测）：${candidates.map(endpointOf).join("、")}`);
@@ -1202,8 +1128,8 @@ async function loadManifest() {
     MANIFEST.upstream = parsed.upstream;
     MANIFEST.platforms = parsed.platforms;
     MANIFEST.source = endpointOf(url);
-    PROVISION_DIR = path2.join(DATA_DIR, "runtime", MANIFEST.payloadVersion);
-    AGENT_DIR = path2.join(DATA_DIR, "runtime", `agent-${MANIFEST.payloadVersion}`);
+    PROVISION_DIR = path5.join(DATA_DIR, "runtime", MANIFEST.payloadVersion);
+    AGENT_DIR = path5.join(DATA_DIR, "runtime", `agent-${MANIFEST.payloadVersion}`);
     const upstream = MANIFEST.upstream?.tag ? `，上游 ${MANIFEST.upstream.tag}` : "";
     note(`发布清单 ${MANIFEST.payloadVersion}${upstream}，平台 ${Object.keys(MANIFEST.platforms).join(", ")}`);
     return MANIFEST;
@@ -1234,352 +1160,56 @@ async function downloadFromCandidates(candidates, archive) {
   }
   return lastError ?? new Error("没有可用的下载来源");
 }
-async function stageArchive(spec, staging, label, approximateMB) {
-  const archive = `${staging}.zip`;
-  fs2.mkdirSync(path2.dirname(staging), { recursive: true });
-  resetTransfer(spec.file, approximateMB * 1024 * 1024);
-  STATE.error = null;
-  STATE.retries = 0;
-  const local = findLocalFile(spec.file);
-  let localReady = false;
-  if (local) {
-    setStage("verifying", `使用本地${label}`, `正在校验本地${label}完整性`);
-    note(`发现本地${label}：${local}`);
-    fs2.copyFileSync(local, archive);
-    STATE.receivedBytes = statSize(archive);
-    STATE.totalBytes = STATE.receivedBytes;
-    if (await hashFile(archive) === spec.sha256) {
-      note(`本地${label}校验通过，不再联网`);
-      localReady = true;
-    } else {
-      fs2.rmSync(archive, { force: true });
-      note(`本地${label} sha256 不匹配，改为从远程来源下载`);
-    }
-  }
-  const startedAt = Date.now();
-  if (!localReady) {
-    const candidates = candidateUrls(spec.file);
-    setStage("downloading", `下载${label}`, `首次启动，正在下载${label}（约 ${approximateMB} MB）`);
-    note(`候选下载来源 ${candidates.length} 个`);
-    let lastError = await downloadFromCandidates(candidates, archive);
-    if (lastError && apiFallbackAllowed()) {
-      const asset = await resolveAssetUrl(spec.file);
-      if (asset) lastError = await downloadFromCandidates([asset], archive);
-    }
-    if (lastError) {
-      const wrapped = describeFailure(lastError);
-      wrapped.code = "payload-unreachable";
-      throw wrapped;
-    }
-  }
-  setStage("verifying", "校验完整性", `正在校验${label}完整性`);
-  const digest = await hashFile(archive);
-  if (digest !== spec.sha256) {
-    fs2.rmSync(archive, { force: true });
-    for (let index = 0; index < DOWNLOAD_CHUNKS; index += 1) fs2.rmSync(partPath(archive, index), { force: true });
-    const mismatch = new Error(`${label} sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
-    mismatch.code = "payload-checksum-mismatch";
-    throw mismatch;
-  }
-  const megabytes = (fs2.statSync(archive).size / 1048576).toFixed(1);
-  note(`下载完成（${megabytes} MB，用时 ${Math.round((Date.now() - startedAt) / 1e3)}s），开始解包`);
-  setStage("extracting", `解包${label}`, `正在解包${label}（${megabytes} MB）`);
-  const extractStartedAt = Date.now();
-  fs2.rmSync(staging, { recursive: true, force: true });
-  try {
-    await extractZip(archive, staging);
-  } catch (err) {
-    err.code = "payload-extract-failed";
-    throw err;
-  }
-  fs2.rmSync(archive, { force: true });
-  note(`${label}已解包到 ${staging}（${Math.round((Date.now() - extractStartedAt) / 1e3)}s）`);
-}
-function megabytesOf(spec, fallback) {
-  return spec.bytes > 0 ? Math.round(spec.bytes / (1024 * 1024)) : fallback;
-}
-async function provisionPayload(spec) {
-  const staging = `${PROVISION_DIR}.partial`;
-  await stageArchive(spec, staging, "运行时载荷", megabytesOf(spec, 200));
-  const binary = path2.join(staging, BINARY_NAME);
-  if (!fs2.existsSync(binary)) {
-    throw codedError("payload-extract-failed", `载荷里没有后端可执行文件 ${BINARY_NAME}`);
-  }
-  fs2.chmodSync(binary, 493);
-  fs2.rmSync(PROVISION_DIR, { recursive: true, force: true });
-  fs2.renameSync(staging, PROVISION_DIR);
-  note(`运行时已就绪：${PROVISION_DIR}`);
-}
-function hasAgentRuntime(dir) {
-  return fs2.existsSync(path2.join(dir, "pi-runtime", "agent-runtime.mjs"));
-}
-async function provisionAgentRuntime(spec) {
-  const staging = `${AGENT_DIR}.partial`;
-  await stageArchive(spec, staging, "创作 Agent 运行时", megabytesOf(spec, 80));
-  const nodeBin = path2.join(staging, "node", "bin", NODE_BINARY_NAME);
-  if (fs2.existsSync(nodeBin)) fs2.chmodSync(nodeBin, 493);
-  fs2.rmSync(AGENT_DIR, { recursive: true, force: true });
-  fs2.renameSync(staging, AGENT_DIR);
-  note(`创作 Agent 运行时已就绪：${AGENT_DIR}`);
-}
-async function resolveAgentDir() {
-  if (AGENT_DIR && hasAgentRuntime(AGENT_DIR)) {
-    note(`复用已就绪的创作 Agent 运行时 ${AGENT_DIR}`);
-    return AGENT_DIR;
-  }
-  if (Object.keys(MANIFEST.platforms).length === 0) {
-    try {
-      await loadManifest();
-    } catch (err) {
-      note(`发布清单不可用，创作 Agent 功能不可用：${err.message}`);
-      return null;
-    }
-  }
-  const spec = MANIFEST.platforms[PLATFORM]?.agent;
-  if (!spec || !SHA256_RE.test(spec.sha256)) {
-    note(`当前平台 ${PLATFORM} 暂无创作 Agent 载荷，Agent 功能不可用`);
-    return null;
-  }
-  try {
-    await provisionAgentRuntime(spec);
-    return AGENT_DIR;
-  } catch (err) {
-    note(`创作 Agent 运行时准备失败（Agent 功能将不可用）：${err.message}`);
-    return null;
-  }
-}
-function resolveNodeBin(agentDir) {
-  const bundled = path2.join(agentDir, "node", "bin", NODE_BINARY_NAME);
-  if (fs2.existsSync(bundled)) return bundled;
-  const version = process.versions.node ?? "0.0.0";
-  const [major = 0, minor = 0] = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
-  if (major > 22 || major === 22 && minor >= 19) return process.execPath;
-  note(`宿主 node ${version} 低于 pi 要求的 22.19.0，载荷又未提供 node；Agent 任务可能起不来`);
-  return "";
-}
-async function resolveRuntimeDir() {
-  if (hasPayload(BUNDLED_DIR)) {
-    note("使用包内自带运行时");
-    return BUNDLED_DIR;
-  }
-  if (!TARGET_PLATFORMS.includes(PLATFORM)) throw unsupportedPlatformError();
-  await loadManifest();
-  const spec = MANIFEST.platforms[PLATFORM]?.payload;
-  if (!spec) throw unsupportedPlatformError();
-  if (hasPayload(PROVISION_DIR)) {
-    note(`复用已就绪的运行时 ${PROVISION_DIR}`);
-    return PROVISION_DIR;
-  }
-  await provisionPayload(spec);
-  return PROVISION_DIR;
-}
-var preparing = false;
-async function prepareRuntime() {
-  if (preparing || STATE.phase === "ready") return;
-  preparing = true;
-  try {
-    STATE.phase = "starting";
-    STATE.message = "正在检查运行时";
-    clearFailure();
-    SERVER_DIR = await resolveRuntimeDir();
-    GO_BINARY = path2.join(SERVER_DIR, BINARY_NAME);
-    WEB_DIST = path2.join(SERVER_DIR, "web-dist");
-    if (!hasWebBundle()) {
-      throw codedError("web-bundle-missing", `载荷里没有前端产物 ${path2.join(WEB_DIST, "index.html")}`);
-    }
-    PI_RUNTIME = path2.join(SERVER_DIR, "pi-runtime");
-    PLUGIN_PACKAGES = path2.join(SERVER_DIR, "plugin-packages");
-    const agentDir = await resolveAgentDir();
-    if (agentDir) {
-      PI_RUNTIME = path2.join(agentDir, "pi-runtime");
-      NODE_BIN = resolveNodeBin(agentDir);
-    }
-    STATE.phase = "starting-backend";
-    STATE.message = "正在启动后端";
-    await reserveBackendPort();
-    startBackend();
-  } catch (error) {
-    fail(error?.code ?? "prepare-failed", error?.message ?? String(error), "运行时准备");
-    console.error(`[open-ai-canvas] 运行时准备失败（${STATE.code}）：${STATE.error}`);
-  } finally {
-    preparing = false;
-  }
-}
-var SERVER_DIR = null;
-var GO_BINARY = null;
-var WEB_DIST = null;
-var PI_RUNTIME = null;
-var NODE_BIN = "";
-var PLUGIN_PACKAGES = null;
-var goProcess = null;
-var SESSION_FILE = path2.join(DATA_DIR, "session.json");
-var SESSION_KEY = (() => {
-  const raw = process.env.ASTRAVIA_SERVICE_SECRET_SESSION_KEY;
-  if (!raw) return null;
-  try {
-    const key = Buffer.from(raw, "base64url");
-    return key.length === 32 ? key : null;
-  } catch {
-    return null;
-  }
-})();
-function sealSession(token) {
-  if (!SESSION_KEY) return JSON.stringify({ v: 1, token });
-  const iv = crypto2.randomBytes(12);
-  const cipher = crypto2.createCipheriv("aes-256-gcm", SESSION_KEY, iv);
-  const data = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
-  return JSON.stringify({
-    v: 2,
-    alg: "aes-256-gcm",
-    iv: iv.toString("base64"),
-    tag: cipher.getAuthTag().toString("base64"),
-    data: data.toString("base64")
-  });
-}
-function openSession(raw) {
-  let data;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  if (typeof data?.token === "string") return data.token;
-  if (data?.v !== 2 || !SESSION_KEY) return null;
-  try {
-    const decipher = crypto2.createDecipheriv("aes-256-gcm", SESSION_KEY, Buffer.from(data.iv, "base64"));
-    decipher.setAuthTag(Buffer.from(data.tag, "base64"));
-    return Buffer.concat([decipher.update(Buffer.from(data.data, "base64")), decipher.final()]).toString("utf8");
-  } catch (err) {
-    console.error("[open-ai-canvas] Failed to decrypt session:", err.message);
-    return null;
-  }
-}
-function loadSession() {
-  try {
-    const token = openSession(fs2.readFileSync(SESSION_FILE, "utf8"));
-    if (token && SESSION_KEY) saveSession(token);
-    return token;
-  } catch {
-    return null;
-  }
-}
-function saveSession(token) {
-  try {
-    fs2.writeFileSync(SESSION_FILE, sealSession(token), { mode: 384 });
-  } catch (err) {
-    console.error("[open-ai-canvas] Failed to save session:", err.message);
-  }
-}
-var SESSION_TOKEN = loadSession();
-var BACKEND_PORT = 0;
-function corsOrigins() {
-  const ports = [.../* @__PURE__ */ new Set([STABLE_PORT || HOST_PORT, HOST_PORT])];
-  return [...new Set(ports.flatMap((port) => [`http://127.0.0.1:${port}`, `http://localhost:${port}`]))].join(",");
-}
-function backendEnv() {
-  return {
-    ...process.env,
-    CANVAS_BACKEND_ADDR: `127.0.0.1:${BACKEND_PORT}`,
-    CANVAS_BACKEND_DATA_DIR: DATA_DIR,
-    // 上游发布 tag 的后端没有静态承载代码，这个变量会被忽略；留着是为了将来载荷换成
-    // 带 CANVAS_STATIC_DIR 支持的构建时不用再改这里。静态文件始终由 shim 先服务（ADR-0008）。
-    CANVAS_STATIC_DIR: WEB_DIST,
-    // 两个 origin 都要放行：稳定 origin 是页面真正的来源，宿主端口留给探针与旧标签页（ADR-0010）。
-    CANVAS_CORS_ORIGINS: corsOrigins(),
-    CANVAS_EXIT_WITH_PARENT: "true",
-    CANVAS_PARENT_PID: String(process.pid),
-    GIN_MODE: "release",
-    // 公开资源基址：上传到本地存储的文件要拼出一个浏览器能取回的绝对地址，
-    // 后端在它为空时直接拒绝（资源接口返回「尚未配置服务器访问地址」）。
-    // ADR-0010 之前这里写的是宿主端口，于是落库的图片地址在下次启动就全部失活；
-    // 现在用固定 origin，旧资源地址也不会跟着端口漂。
-    CANVAS_PUBLIC_BASE_URL: PUBLIC_ORIGIN,
-    ...NODE_BIN ? { CANVAS_NODE_BIN: NODE_BIN } : {},
-    ...fs2.existsSync(PI_RUNTIME) ? { CANVAS_PI_RUNTIME_DIR: PI_RUNTIME } : {},
-    CANVAS_RUNTIME_AUTO_INSTALL: "false",
-    // ADR-0006 决策 2：画布渠道要指回本机回环上的模型桥（/bridge/v1），而后端默认把
-    // 回环/私网地址当作 SSRF 风险拒掉。只放行回环字面量，不放宽成整段私网。
-    CANVAS_ALLOWED_PRIVATE_UPSTREAM_HOSTS: "127.0.0.1,localhost",
-    CANVAS_OFFICIAL_PLUGIN_DIR: PLUGIN_PACKAGES,
-    CANVAS_REGISTRATION_ENABLED: "false"
-  };
-}
-async function reserveBackendPort() {
-  await new Promise((resolve, reject) => {
-    const probe = net.createServer();
-    probe.once("error", reject);
-    probe.listen(0, "127.0.0.1", () => {
-      BACKEND_PORT = probe.address().port;
-      probe.close(resolve);
-    });
-  });
-}
-function watchBackendOutput(chunk, sink) {
-  const text = chunk.toString();
-  sink.write(text);
-  if (goPort) return;
-  const match = text.match(/addr=(?:127\.0\.0\.1|\[::1\]|localhost):(\d+)/);
-  if (!match || Number(match[1]) === 0) return;
-  goPort = Number(match[1]);
-  console.log(`[open-ai-canvas] Backend listening on port ${goPort}`);
-  STATE.phase = "ready";
-  clearFailure();
-  STATE.message = "运行时已就绪";
-  onBackendReady();
-}
-function startBackend() {
-  console.log(`[open-ai-canvas] Starting backend: ${GO_BINARY}`);
-  goProcess = spawn(GO_BINARY, [], {
-    env: backendEnv(),
-    cwd: SERVER_DIR,
-    stdio: ["ignore", "pipe", "pipe"],
-    windowsHide: true
-  });
-  goProcess.stdout.on("data", (chunk) => watchBackendOutput(chunk, process.stdout));
-  goProcess.stderr.on("data", (chunk) => watchBackendOutput(chunk, process.stderr));
-  goProcess.on("error", (error) => {
-    fail("backend-spawn-failed", `后端子进程拉起失败：${error.message}`, "后端启动");
-    console.error(`[open-ai-canvas] Failed to spawn backend: ${error.message}`);
-  });
-  goProcess.on("exit", (code, signal) => {
-    console.log(`[open-ai-canvas] Backend exited: code=${code} signal=${signal}`);
-    if (shuttingDown) {
-      process.exit(0);
-    }
-    if (!goPort) {
-      fail("backend-exited", `后端在启动阶段退出（code=${code} signal=${signal}）`, "后端启动");
-      return;
-    }
-    process.exit(code ?? 1);
-  });
-}
-var goPort = null;
-var backendReadyResolve = null;
-var backendReady = new Promise((resolve) => {
-  backendReadyResolve = resolve;
-});
-function onBackendReady() {
-  if (backendReadyResolve) backendReadyResolve();
-  backendReadyResolve = null;
-}
-var shuttingDown = false;
-function forwardSignal(signal) {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  if (!goProcess || goProcess.killed) {
-    process.exit(0);
-  }
-  try {
-    goProcess.kill(signal);
-  } catch {
-    process.exit(0);
-  }
-  const force = setTimeout(() => process.exit(0), 3e3);
-  force.unref?.();
-}
-process.on("SIGTERM", () => forwardSignal("SIGTERM"));
-process.on("SIGINT", () => forwardSignal("SIGINT"));
+
+// server/src/contract.ts
+var BUILTIN_NODE_TYPES = [
+  "image",
+  "text",
+  "drawing",
+  "script",
+  "skill",
+  "config",
+  "video",
+  "audio",
+  "frame",
+  "markdown",
+  "svg",
+  "html",
+  "panorama",
+  "compare",
+  "chart",
+  "colorgrade",
+  "media-conversion",
+  "batch-table"
+];
+var NODE_SCHEMAS = {
+  image: { fields: ["content", "storageKey", "prompt", "model", "parameters", "generationTaskId"], description: "Image generation node." },
+  text: { fields: ["content", "prompt", "model"], description: "Text generation node." },
+  config: { fields: ["model", "parameters", "provider"], description: "Generation configuration node. Connect to image/text/video nodes to set their model." },
+  video: { fields: ["content", "storageKey", "prompt", "model", "referenceImages"], description: "Video generation node." },
+  audio: { fields: ["content", "storageKey", "prompt", "model"], description: "Audio generation node." },
+  script: { fields: ["shots", "title"], description: "Storyboard script node." },
+  frame: { fields: ["image", "duration"], description: "Timeline frame node." },
+  markdown: { fields: ["content"], description: "Markdown text node." },
+  svg: { fields: ["content"], description: "SVG vector node." },
+  html: { fields: ["content"], description: "HTML embed node." },
+  drawing: { fields: ["content", "storageKey"], description: "Drawing canvas node." },
+  skill: { fields: ["skillId", "config"], description: "Skill node." },
+  panorama: { fields: ["content", "storageKey"], description: "Panorama image node." },
+  compare: { fields: ["images"], description: "Image comparison node." },
+  chart: { fields: ["config", "data"], description: "Chart node." },
+  colorgrade: { fields: ["lut", "intensity"], description: "Color grading node." },
+  "media-conversion": { fields: ["format", "input"], description: "Media format conversion node." },
+  "batch-table": { fields: ["rows", "columns"], description: "Batch processing table node." }
+};
+var LAYOUT_STEP_X = 400;
+var LAYOUT_STEP_Y = 280;
+
+// server/src/workflow.ts
 var LAST_WORKFLOW = null;
+function setLastWorkflow(value) {
+  LAST_WORKFLOW = value;
+}
 function compileWorkflow(workflow, existing) {
   const nodes = Array.isArray(workflow?.nodes) ? workflow.nodes : [];
   if (nodes.length === 0) throw codedError("workflow-empty", "workflow.nodes 不能为空");
@@ -1596,7 +1226,9 @@ function compileWorkflow(workflow, existing) {
     }
     byKey.set(key, node);
   }
-  const parents = new Map(nodes.map((node) => [node.key, [...node.depends_on ?? []]]));
+  const parents = new Map(
+    nodes.map((node) => [node.key, [...node.depends_on ?? []]])
+  );
   for (const edge of workflow?.edges ?? []) {
     if (!byKey.has(edge?.from) || !byKey.has(edge?.to)) {
       throw codedError("workflow-invalid-edge", `连线引用了不存在的节点：${edge?.from} → ${edge?.to}`);
@@ -1670,6 +1302,8 @@ function compileWorkflow(workflow, existing) {
   }
   return { operations, mapping, depth: Object.fromEntries(depth) };
 }
+
+// server/src/mcp-tools.ts
 var MCP_TOOLS = [
   // --- 画布项目管理 ---
   {
@@ -1935,6 +1569,8 @@ var MCP_TOOLS = [
     }
   }
 ];
+
+// server/src/mcp.ts
 function jsonResult(data) {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
 }
@@ -1962,7 +1598,7 @@ async function callCanvasApi(method, pathname, body) {
     return errorResult("No active session. Please open the canvas in a browser and log in first. The session is captured automatically after login.");
   }
   return new Promise((resolve) => {
-    const req = http.request(
+    const req = http2.request(
       {
         hostname: "127.0.0.1",
         port: goPort,
@@ -1978,9 +1614,9 @@ async function callCanvasApi(method, pathname, body) {
         res.on("data", (chunk) => data += chunk);
         res.on("end", () => {
           if (res.statusCode === 401) {
-            SESSION_TOKEN = null;
+            setSessionToken(null);
             try {
-              fs2.unlinkSync(SESSION_FILE);
+              fs6.unlinkSync(SESSION_FILE);
             } catch {
             }
             resolve(errorResult("Session expired. Please open the canvas in a browser and log in again."));
@@ -2004,7 +1640,7 @@ async function callCanvasApi(method, pathname, body) {
 async function rawCanvasApi(method, pathname, body) {
   if (!SESSION_TOKEN) return { status: 401, body: { code: "canvas-login-required" } };
   return new Promise((resolve) => {
-    const req = http.request(
+    const req = http2.request(
       {
         hostname: "127.0.0.1",
         port: goPort,
@@ -2017,9 +1653,9 @@ async function rawCanvasApi(method, pathname, body) {
         res.on("data", (chunk) => data += chunk);
         res.on("end", () => {
           if (res.statusCode === 401) {
-            SESSION_TOKEN = null;
+            setSessionToken(null);
             try {
-              fs2.unlinkSync(SESSION_FILE);
+              fs6.unlinkSync(SESSION_FILE);
             } catch {
             }
             resolve({ status: 401, body: { code: "canvas-login-required" } });
@@ -2063,7 +1699,7 @@ async function bridgeAdminChannels(method, channelId, payload) {
 async function applyCanvasOperations(canvasId, operations, baseRevision) {
   const body = { operations };
   if (baseRevision !== void 0) body.baseRevision = baseRevision;
-  body.mutationId = crypto2.randomUUID();
+  body.mutationId = crypto3.randomUUID();
   return callCanvasApi("PATCH", `/api/canvas-projects/${canvasId}/operations`, body);
 }
 async function fetchCanvasDocument(canvasId) {
@@ -2102,7 +1738,7 @@ async function handleMcpToolCall(name, args) {
     case "get_canvas_project":
       return callCanvasApi("GET", `/api/canvas-projects/${args.canvas_id}`);
     case "create_canvas_project": {
-      const canvasId = args.canvas_id || crypto2.randomUUID();
+      const canvasId = args.canvas_id || crypto3.randomUUID();
       const title = args.title || "Untitled";
       const created = await applyCanvasOperations(canvasId, [
         { type: "create_canvas", id: canvasId, patch: { title } }
@@ -2113,7 +1749,7 @@ async function handleMcpToolCall(name, args) {
       return callCanvasApi("DELETE", `/api/canvas-projects/${args.canvas_id}`);
     // --- 节点操作 ---
     case "add_node": {
-      const nodeId = crypto2.randomUUID();
+      const nodeId = crypto3.randomUUID();
       const operation = {
         type: "create_node",
         id: nodeId,
@@ -2203,7 +1839,7 @@ async function handleMcpToolCall(name, args) {
         });
         results.push({ key: node.key, node_id: nodeId, ...result.isError ? { error: result.content[0].text } : {} });
       }
-      LAST_WORKFLOW = {
+      setLastWorkflow({
         at: Date.now(),
         canvasId: args.canvas_id,
         revision: baseRevision + 1,
@@ -2212,7 +1848,7 @@ async function handleMcpToolCall(name, args) {
         operations: compiled.operations.length,
         generationCount: results.length,
         idempotent: compiled.operations.every((operation) => operation.type !== "create_node")
-      };
+      });
       return withCanvasUrl(
         jsonResult({
           applied: true,
@@ -2253,7 +1889,7 @@ async function handleMcpToolCall(name, args) {
     }
     // --- 连接操作 ---
     case "connect_nodes": {
-      const connectionId = crypto2.randomUUID();
+      const connectionId = crypto3.randomUUID();
       return applyCanvasOperations(args.canvas_id, [
         {
           type: "create_connection",
@@ -2428,130 +2064,605 @@ function waitForBackend(timeoutMs) {
     });
   });
 }
-function sendJson(res, body, status = 200) {
-  res.writeHead(status, {
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-    "Access-Control-Allow-Origin": "*"
-  });
-  res.end(JSON.stringify(body));
+
+// server/src/routes.ts
+import fs11 from "node:fs";
+import path11 from "node:path";
+
+// server/src/progress-page.ts
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
-function handlePayloadReset(res) {
-  const removed = [];
-  let freedBytes = 0;
-  const roots = [PROVISION_DIR, AGENT_DIR].filter((dir) => typeof dir === "string" && dir.length > 0);
-  for (const dir of roots) {
-    let entries = [];
+function progressPage() {
+  const failed = STATE.phase === "failed";
+  const title = failed ? "运行时准备失败" : "正在准备 Open AI Canvas";
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:#fafafa;color:#18181b;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{width:min(560px,calc(100vw - 64px))}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.sub{margin:0;color:#a1a1aa;font-size:12.5px;line-height:1.5}
+.status{margin:28px 0 0;display:flex;align-items:baseline;justify-content:space-between;
+font-size:12px;color:#52525b;gap:16px}
+#stage{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track{margin:9px 0 0;height:4px;border-radius:999px;background:#ececee;overflow:hidden}
+.bar{height:100%;width:0;background:#18181b;transition:width .4s cubic-bezier(.4,0,.2,1)}
+.bar.idle{animation:breathe 1.8s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.2}50%{opacity:.65}}
+.facts{margin:11px 0 0;display:flex;flex-wrap:wrap;gap:18px;color:#a1a1aa;font-size:12px;
+font-variant-numeric:tabular-nums}
+.facts span:empty{display:none}
+.msg{margin:7px 0 0;color:#52525b;font-size:12px;line-height:1.55;word-break:break-word}
+.actions{margin:24px 0 0;display:flex;gap:10px}
+.log{margin:32px 0 0;color:#a1a1aa;font:11.5px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;
+max-height:160px;overflow:hidden}
+.log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.err{margin:28px 0 0;color:#b91c1c;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace;
+white-space:pre-wrap;word-break:break-word}
+button{margin:0;padding:8px 18px;border:0;border-radius:8px;background:#18181b;color:#fff;
+font:inherit;font-size:13px;cursor:pointer}
+button.ghost{background:transparent;color:#71717a;box-shadow:inset 0 0 0 1px #e4e4e7}
+button[disabled]{opacity:.45;cursor:default}
+@media (prefers-color-scheme:dark){
+body{background:#09090b;color:#fafafa}
+.track{background:#27272a}.bar{background:#fafafa}
+button{background:#fafafa;color:#18181b}
+button.ghost{background:transparent;color:#a1a1aa;box-shadow:inset 0 0 0 1px #3f3f46}
+.err{color:#f87171}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">${title}</h1>
+  <p class="sub" id="sub">首次启动需要下载运行时载荷，完成后自动打开画布</p>
+  <div class="status"><span id="stage">${escapeHtml(STATE.stage)}</span><span id="pct"></span></div>
+  <div class="track"><div class="bar${STATE.totalBytes > 0 ? "" : " idle"}" id="bar"></div></div>
+  <p class="msg" id="msg">${escapeHtml(STATE.message)}</p>
+  <div class="facts">
+    <span id="file"></span><span id="bytes"></span><span id="speed"></span>
+    <span id="eta"></span><span id="elapsed"></span><span id="retries"></span><span id="host"></span>
+  </div>
+  <div class="log" id="log"></div>
+  <pre class="err" id="err"${failed ? "" : " hidden"}>${escapeHtml(STATE.error ?? "")}</pre>
+  <div class="actions"><button id="retry"${failed ? "" : " hidden"}>重试 / Retry</button><button id="copy" class="ghost">复制诊断信息</button></div>
+</div>
+<script>
+const bar=document.getElementById('bar'),pct=document.getElementById('pct'),
+stageEl=document.getElementById('stage'),bytesEl=document.getElementById('bytes'),
+speedEl=document.getElementById('speed'),etaEl=document.getElementById('eta'),
+fileEl=document.getElementById('file'),elapsedEl=document.getElementById('elapsed'),
+retriesEl=document.getElementById('retries'),hostEl=document.getElementById('host'),
+msgEl=document.getElementById('msg'),subEl=document.getElementById('sub'),
+logEl=document.getElementById('log'),errEl=document.getElementById('err'),
+titleEl=document.getElementById('title'),retry=document.getElementById('retry'),
+copy=document.getElementById('copy');
+let last=null;
+function fmt(n){if(!n)return '0 B';if(n<1024)return n+' B';
+if(n<1048576)return (n/1024).toFixed(0)+' KB';
+if(n<1073741824)return (n/1048576).toFixed(1)+' MB';
+return (n/1073741824).toFixed(2)+' GB'}
+function dur(s){if(!s||s<1)return '';if(s<60)return s+' 秒';
+const m=Math.floor(s/60),r=s%60;return r?m+' 分 '+r+' 秒':m+' 分'}
+function render(p){
+  last=p;
+  stageEl.textContent=p.stage||'';
+  msgEl.textContent=p.message||'';
+  fileEl.textContent=p.fileName||'';
+  if(p.totalBytes>0){
+    bar.classList.remove('idle');
+    bar.style.width=p.percent+'%';
+    pct.textContent=Math.round(p.percent)+'%';
+    bytesEl.textContent=fmt(p.receivedBytes)+' / '+fmt(p.totalBytes);
+  }else{
+    // 总长度还不知道时也不能看着像死机：条动起来，右侧给出已收到的字节。
+    bar.classList.add('idle');bar.style.width='100%';
+    pct.textContent=p.receivedBytes?fmt(p.receivedBytes):'';
+    bytesEl.textContent=p.receivedBytes?fmt(p.receivedBytes)+' 已接收':'';
+  }
+  speedEl.textContent=p.speed>0?fmt(p.speed)+'/s':'';
+  etaEl.textContent=p.etaSeconds>0?'剩余约 '+dur(p.etaSeconds):'';
+  elapsedEl.textContent=p.elapsedSeconds?'已用 '+dur(p.elapsedSeconds):'';
+  retriesEl.textContent=p.attempts>1||p.retries?'尝试 '+p.attempts+' 次 / 重试 '+p.retries+' 次':'';
+  hostEl.textContent=p.endpoint?(p.endpoint+(p.source&&p.source!=='直连'?' · '+p.source:'')):'';
+  logEl.innerHTML='';
+  (p.log||[]).forEach(function(e){const d=document.createElement('div');d.textContent=e.text;logEl.appendChild(d)});
+}
+async function tick(){
+  try{
+    const r=await fetch('/__canvas/progress',{cache:'no-store'});
+    // 就绪那一刻代理会把所有路径交给上游应用，这里再拿到的是 HTML 而不是进度 JSON：
+    // 这本身就是「可以进画布了」的信号，直接跳转，别把人留在进度页上。
+    const type=r.headers.get('content-type')||'';
+    if(!r.ok||!type.includes('json')){location.replace('/');return}
+    const p=await r.json();
+    if(p.phase==='ready'){location.replace('/');return}
+    render(p);
+    if(p.phase==='failed'){
+      titleEl.textContent='运行时准备失败';
+      errEl.hidden=false;errEl.textContent=p.error||'未知错误';
+      retry.hidden=false;retry.disabled=false;
+      return;
+    }
+    retry.hidden=true;
+  }catch(e){}
+  setTimeout(tick,1000);
+}
+retry.onclick=async function(){
+  retry.disabled=true;
+  try{await fetch('/__canvas/retry',{method:'POST'})}catch(e){}
+  location.reload();
+};
+copy.onclick=async function(){
+  const text=JSON.stringify(last||{},null,2);
+  try{await navigator.clipboard.writeText(text);copy.textContent='已复制'}catch(e){copy.textContent='复制失败'}
+  setTimeout(function(){copy.textContent='复制诊断信息'},1600);
+};
+tick();
+</script>
+</body>
+</html>`;
+}
+
+// server/src/prepare.ts
+import path9 from "node:path";
+
+// server/src/payload.ts
+import fs8 from "node:fs";
+import path7 from "node:path";
+
+// server/src/archive.ts
+import fs7 from "node:fs";
+import path6 from "node:path";
+import zlib from "node:zlib";
+import crypto4 from "node:crypto";
+function hashFile(file) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto4.createHash("sha256");
+    fs7.createReadStream(file).on("data", (chunk) => hash.update(chunk)).on("error", reject).on("end", () => resolve(hash.digest("hex")));
+  });
+}
+function findEndOfCentralDirectory(buffer) {
+  const floor = Math.max(0, buffer.length - 66 * 1024);
+  for (let offset = buffer.length - 22; offset >= floor; offset--) {
+    if (buffer.readUInt32LE(offset) === 101010256) return offset;
+  }
+  return -1;
+}
+function readExactly(fd, position, length) {
+  const buffer = Buffer.allocUnsafe(length);
+  let filled = 0;
+  while (filled < length) {
+    const bytes = fs7.readSync(fd, buffer, filled, length - filled, position + filled);
+    if (bytes <= 0) throw new Error(`载荷文件意外结束（offset ${position + filled}）`);
+    filled += bytes;
+  }
+  return buffer;
+}
+function copyRangeInto(archive, start, length, target) {
+  return new Promise((resolve, reject) => {
+    const source = fs7.createReadStream(archive, { start, end: start + length - 1 });
+    const sink = fs7.createWriteStream(target);
+    sink.on("finish", () => resolve());
+    sink.on("error", reject);
+    source.on("error", reject);
+    source.pipe(sink);
+  });
+}
+function inflateRangeInto(archive, start, length, target) {
+  return new Promise((resolve, reject) => {
+    const source = fs7.createReadStream(archive, { start, end: start + length - 1 });
+    const inflate = zlib.createInflateRaw();
+    const sink = fs7.createWriteStream(target);
+    sink.on("finish", () => resolve());
+    sink.on("error", reject);
+    inflate.on("error", reject);
+    source.on("error", reject);
+    source.pipe(inflate).pipe(sink);
+  });
+}
+async function extractZip(archive, destDir) {
+  const fd = fs7.openSync(archive, "r");
+  let directory;
+  let total;
+  try {
+    const size = fs7.fstatSync(fd).size;
+    const tailLength = Math.min(size, 66 * 1024);
+    const tail = readExactly(fd, size - tailLength, tailLength);
+    const eocd = findEndOfCentralDirectory(tail);
+    if (eocd < 0) throw new Error("载荷不是有效的 ZIP：找不到中央目录");
+    total = tail.readUInt16LE(eocd + 10);
+    const directorySize = tail.readUInt32LE(eocd + 12);
+    const directoryOffset = tail.readUInt32LE(eocd + 16);
+    if (total === 65535 || directoryOffset === 4294967295) throw new Error("暂不支持 ZIP64 格式的载荷");
+    directory = readExactly(fd, directoryOffset, directorySize);
+  } finally {
+    fs7.closeSync(fd);
+  }
+  const root = path6.resolve(destDir);
+  const archiveFd = fs7.openSync(archive, "r");
+  let cursor = 0;
+  try {
+    for (let index = 0; index < total; index++) {
+      if (directory.readUInt32LE(cursor) !== 33639248) throw new Error("载荷 ZIP 中央目录损坏");
+      const method = directory.readUInt16LE(cursor + 10);
+      const compressedSize = directory.readUInt32LE(cursor + 20);
+      const uncompressedSize = directory.readUInt32LE(cursor + 24);
+      const nameLength = directory.readUInt16LE(cursor + 28);
+      const extraLength = directory.readUInt16LE(cursor + 30);
+      const commentLength = directory.readUInt16LE(cursor + 32);
+      const localOffset = directory.readUInt32LE(cursor + 42);
+      const name = directory.toString("utf8", cursor + 46, cursor + 46 + nameLength);
+      cursor += 46 + nameLength + extraLength + commentLength;
+      if (name.endsWith("/")) continue;
+      const target = path6.resolve(root, name);
+      if (target !== root && !target.startsWith(root + path6.sep)) {
+        throw new Error(`载荷条目越出目标目录：${name}`);
+      }
+      const localNameLength = readExactly(archiveFd, localOffset + 26, 2).readUInt16LE(0);
+      const localExtraLength = readExactly(archiveFd, localOffset + 28, 2).readUInt16LE(0);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+      fs7.mkdirSync(path6.dirname(target), { recursive: true });
+      if (compressedSize === 0) {
+        fs7.writeFileSync(target, Buffer.alloc(0));
+      } else if (method === 0) {
+        await copyRangeInto(archive, dataStart, compressedSize, target);
+      } else if (method === 8) {
+        await inflateRangeInto(archive, dataStart, compressedSize, target);
+      } else {
+        throw new Error(`不支持的 ZIP 压缩方式：${method}`);
+      }
+      if (uncompressedSize && fs7.statSync(target).size !== uncompressedSize) {
+        throw new Error(`载荷条目大小不符：${name}`);
+      }
+    }
+  } finally {
+    fs7.closeSync(archiveFd);
+  }
+}
+
+// server/src/payload.ts
+async function stageArchive(spec, staging, label, approximateMB) {
+  const archive = `${staging}.zip`;
+  fs8.mkdirSync(path7.dirname(staging), { recursive: true });
+  resetTransfer(spec.file, approximateMB * 1024 * 1024);
+  STATE.error = null;
+  STATE.retries = 0;
+  const local = findLocalFile(spec.file);
+  let localReady = false;
+  if (local) {
+    setStage("verifying", `使用本地${label}`, `正在校验本地${label}完整性`);
+    note(`发现本地${label}：${local}`);
+    fs8.copyFileSync(local, archive);
+    STATE.receivedBytes = statSize(archive);
+    STATE.totalBytes = STATE.receivedBytes;
+    if (await hashFile(archive) === spec.sha256) {
+      note(`本地${label}校验通过，不再联网`);
+      localReady = true;
+    } else {
+      fs8.rmSync(archive, { force: true });
+      note(`本地${label} sha256 不匹配，改为从远程来源下载`);
+    }
+  }
+  const startedAt = Date.now();
+  if (!localReady) {
+    const candidates = candidateUrls(spec.file);
+    setStage("downloading", `下载${label}`, `首次启动，正在下载${label}（约 ${approximateMB} MB）`);
+    note(`候选下载来源 ${candidates.length} 个`);
+    let lastError = await downloadFromCandidates(candidates, archive);
+    if (lastError && apiFallbackAllowed()) {
+      const asset = await resolveAssetUrl(spec.file);
+      if (asset) lastError = await downloadFromCandidates([asset], archive);
+    }
+    if (lastError) {
+      const wrapped = describeFailure(lastError);
+      wrapped.code = "payload-unreachable";
+      throw wrapped;
+    }
+  }
+  setStage("verifying", "校验完整性", `正在校验${label}完整性`);
+  const digest = await hashFile(archive);
+  if (digest !== spec.sha256) {
+    fs8.rmSync(archive, { force: true });
+    for (let index = 0; index < DOWNLOAD_CHUNKS; index += 1) fs8.rmSync(partPath(archive, index), { force: true });
+    const mismatch = new Error(`${label} sha256 不匹配：期望 ${spec.sha256}，实际 ${digest}`);
+    mismatch.code = "payload-checksum-mismatch";
+    throw mismatch;
+  }
+  const megabytes = (fs8.statSync(archive).size / 1048576).toFixed(1);
+  note(`下载完成（${megabytes} MB，用时 ${Math.round((Date.now() - startedAt) / 1e3)}s），开始解包`);
+  setStage("extracting", `解包${label}`, `正在解包${label}（${megabytes} MB）`);
+  const extractStartedAt = Date.now();
+  fs8.rmSync(staging, { recursive: true, force: true });
+  try {
+    await extractZip(archive, staging);
+  } catch (err) {
+    err.code = "payload-extract-failed";
+    throw err;
+  }
+  fs8.rmSync(archive, { force: true });
+  note(`${label}已解包到 ${staging}（${Math.round((Date.now() - extractStartedAt) / 1e3)}s）`);
+}
+function megabytesOf(spec, fallback) {
+  return spec.bytes > 0 ? Math.round(spec.bytes / (1024 * 1024)) : fallback;
+}
+async function provisionPayload(spec) {
+  const staging = `${PROVISION_DIR}.partial`;
+  await stageArchive(spec, staging, "运行时载荷", megabytesOf(spec, 200));
+  const binary = path7.join(staging, BINARY_NAME);
+  if (!fs8.existsSync(binary)) {
+    throw codedError("payload-extract-failed", `载荷里没有后端可执行文件 ${BINARY_NAME}`);
+  }
+  fs8.chmodSync(binary, 493);
+  fs8.rmSync(PROVISION_DIR, { recursive: true, force: true });
+  fs8.renameSync(staging, PROVISION_DIR);
+  note(`运行时已就绪：${PROVISION_DIR}`);
+}
+function hasAgentRuntime(dir) {
+  return fs8.existsSync(path7.join(dir, "pi-runtime", "agent-runtime.mjs"));
+}
+async function provisionAgentRuntime(spec) {
+  const staging = `${AGENT_DIR}.partial`;
+  await stageArchive(spec, staging, "创作 Agent 运行时", megabytesOf(spec, 80));
+  const nodeBin = path7.join(staging, "node", "bin", NODE_BINARY_NAME);
+  if (fs8.existsSync(nodeBin)) fs8.chmodSync(nodeBin, 493);
+  fs8.rmSync(AGENT_DIR, { recursive: true, force: true });
+  fs8.renameSync(staging, AGENT_DIR);
+  note(`创作 Agent 运行时已就绪：${AGENT_DIR}`);
+}
+async function resolveAgentDir() {
+  if (AGENT_DIR && hasAgentRuntime(AGENT_DIR)) {
+    note(`复用已就绪的创作 Agent 运行时 ${AGENT_DIR}`);
+    return AGENT_DIR;
+  }
+  if (Object.keys(MANIFEST.platforms).length === 0) {
     try {
-      entries = fs2.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isFile() || !/\.(partial\.zip|zip\.tmp)(\.part\d+)?$/.test(entry.name)) continue;
-      const target = path2.join(dir, entry.name);
-      try {
-        freedBytes += statSize(target);
-        fs2.rmSync(target, { force: true });
-        removed.push(entry.name);
-      } catch {
-      }
+      await loadManifest();
+    } catch (err) {
+      note(`发布清单不可用，创作 Agent 功能不可用：${err.message}`);
+      return null;
     }
   }
-  if (removed.length > 0) {
-    STATE.receivedBytes = 0;
-    STATE.totalBytes = 0;
-    STATE.chunks = [];
-    note(`已清理下载残留 ${removed.length} 个文件（${(freedBytes / 1048576).toFixed(1)} MB）`);
+  const spec = MANIFEST.platforms[PLATFORM]?.agent;
+  if (!spec || !SHA256_RE.test(spec.sha256)) {
+    note(`当前平台 ${PLATFORM} 暂无创作 Agent 载荷，Agent 功能不可用`);
+    return null;
   }
-  sendJson(res, {
-    ok: true,
-    removed,
-    freedBytes,
-    message: removed.length > 0 ? `已清理 ${(freedBytes / 1048576).toFixed(1)} MB 下载残留` : "没有需要清理的分片"
+  try {
+    await provisionAgentRuntime(spec);
+    return AGENT_DIR;
+  } catch (err) {
+    note(`创作 Agent 运行时准备失败（Agent 功能将不可用）：${err.message}`);
+    return null;
+  }
+}
+function resolveNodeBin(agentDir) {
+  const bundled = path7.join(agentDir, "node", "bin", NODE_BINARY_NAME);
+  if (fs8.existsSync(bundled)) return bundled;
+  const version = process.versions.node ?? "0.0.0";
+  const [major = 0, minor = 0] = version.split(".").map((part) => Number.parseInt(part, 10) || 0);
+  if (major > 22 || major === 22 && minor >= 19) return process.execPath;
+  note(`宿主 node ${version} 低于 pi 要求的 22.19.0，载荷又未提供 node；Agent 任务可能起不来`);
+  return "";
+}
+async function resolveRuntimeDir() {
+  if (hasPayload(BUNDLED_DIR)) {
+    note("使用包内自带运行时");
+    return BUNDLED_DIR;
+  }
+  if (!TARGET_PLATFORMS.includes(PLATFORM)) throw unsupportedPlatformError();
+  await loadManifest();
+  const spec = MANIFEST.platforms[PLATFORM]?.payload;
+  if (!spec) throw unsupportedPlatformError();
+  if (hasPayload(PROVISION_DIR)) {
+    note(`复用已就绪的运行时 ${PROVISION_DIR}`);
+    return PROVISION_DIR;
+  }
+  await provisionPayload(spec);
+  return PROVISION_DIR;
+}
+
+// server/src/web.ts
+import fs9 from "node:fs";
+import path8 from "node:path";
+var WEB_MIME = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".txt": "text/plain; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".otf": "font/otf",
+  ".wasm": "application/wasm",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mp3": "audio/mpeg",
+  ".pdf": "application/pdf"
+};
+function webIndexPath() {
+  return WEB_DIST ? path8.join(WEB_DIST, "index.html") : null;
+}
+function hasWebBundle() {
+  const index = webIndexPath();
+  return Boolean(index) && fs9.existsSync(index);
+}
+function webCacheControl(relativePath) {
+  return /^\/assets\//.test(relativePath) ? "public, max-age=31536000, immutable" : "no-cache";
+}
+function contentTypeOf(filePath) {
+  return WEB_MIME[path8.extname(filePath).toLowerCase()] ?? "application/octet-stream";
+}
+function sendWebFile(req, res, filePath, relativePath) {
+  let stat = null;
+  try {
+    stat = fs9.statSync(filePath);
+  } catch {
+    stat = null;
+  }
+  if (!stat || !stat.isFile()) {
+    sendWebNotFound(res, relativePath);
+    return;
+  }
+  res.writeHead(200, {
+    "Content-Type": contentTypeOf(filePath),
+    "Content-Length": stat.size,
+    "Cache-Control": webCacheControl(relativePath),
+    "X-Content-Type-Options": "nosniff"
   });
-}
-function stateSnapshot() {
-  return {
-    ...progressSnapshot(),
-    ready: Boolean(goPort) && STATE.phase === "ready",
-    backend: Boolean(goPort),
-    // 插件视图用它显示「桥在线 / 离线」，没这个字段就只能猜。
-    bridge: { executorOnline: bridgeExecutorOnline(), models: BRIDGE.models.length },
-    workflow: LAST_WORKFLOW,
-    // 地址栏该用的 origin（ADR-0010）。插件据此打开画布，两个端口不一致时才不用依赖 302。
-    origin: PUBLIC_ORIGIN,
-    originPinned: Boolean(STABLE_PORT),
-    // ADR-0001 兼容节：画布上游版本。载荷里没有 VERSION 文件，发布清单里倒是一直带着
-    // upstream.tag/commit，所以说真话的成本为零（MANIFEST 在 resolveRuntimeDir 里总会取一次）。
-    canvasVersion: MANIFEST.upstream?.tag || null,
-    canvasCommit: MANIFEST.upstream?.commit || null,
-    payloadVersion: MANIFEST.payloadVersion || null,
-    // ADR-0002 决策 4：登录态。required 给视图提示「要重新登录」，storage 让「是否真的加密」可验证。
-    session: { present: Boolean(SESSION_TOKEN), storage: SESSION_KEY ? "aes-256-gcm" : "plaintext" }
-  };
-}
-function servePreparation(req, res) {
-  if (req.method === "GET" && req.url === "/api/health/ready") {
-    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    res.end(JSON.stringify({ status: STATE.phase === "failed" ? "error" : "preparing", ...progressSnapshot() }));
+  if (req.method === "HEAD") {
+    res.end();
     return;
   }
-  if (req.method === "GET" && req.url === "/__canvas/progress") {
-    sendJson(res, progressSnapshot());
+  const stream = fs9.createReadStream(filePath);
+  stream.on("error", () => res.destroy());
+  stream.pipe(res);
+}
+function sendWebNotFound(res, pathname) {
+  if (res.headersSent) {
+    res.destroy();
     return;
   }
-  if (req.method === "POST" && req.url === "/__canvas/retry") {
+  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(`Not found: ${pathname}`);
+}
+function resolveWebAsset(pathname) {
+  let decoded = "";
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  if (decoded.includes("\0") || decoded.includes("\\")) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  if (decoded.split(/[\\/]+/).some((segment) => segment === "..")) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  const normalized = path8.posix.normalize(decoded);
+  if (normalized.includes("..")) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  const root = path8.resolve(WEB_DIST);
+  const target = path8.resolve(root, `.${normalized}`);
+  if (target !== root && !target.startsWith(root + path8.sep)) {
+    return { file: null, relative: pathname, reason: "bad-path" };
+  }
+  const candidate = fs9.existsSync(target) && fs9.statSync(target).isDirectory() ? path8.join(target, "index.html") : target;
+  if (!fs9.existsSync(candidate)) {
+    return { file: null, relative: normalized, reason: "missing" };
+  }
+  return { file: candidate, relative: candidate === target ? normalized : `${normalized.replace(/\/$/, "")}/index.html` };
+}
+function isNavigationRequest(req, pathname) {
+  const accept = String(req.headers.accept ?? "");
+  if (accept.includes("text/html")) return true;
+  return path8.posix.extname(pathname) === "";
+}
+function isApiPath(pathname) {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+function serveWebAsset(req, res, pathname) {
+  if (req.method !== "GET" && req.method !== "HEAD") return false;
+  if (!hasWebBundle()) return false;
+  const resolved = resolveWebAsset(pathname);
+  if (resolved.reason === "bad-path") {
+    sendWebNotFound(res, pathname);
+    return true;
+  }
+  if (resolved.file) {
+    sendWebFile(req, res, resolved.file, resolved.relative);
+    return true;
+  }
+  if (isNavigationRequest(req, pathname)) {
+    sendWebFile(req, res, webIndexPath(), "/index.html");
+    return true;
+  }
+  sendWebNotFound(res, pathname);
+  return true;
+}
+
+// server/src/prepare.ts
+var preparing = false;
+async function prepareRuntime() {
+  if (preparing || STATE.phase === "ready") return;
+  preparing = true;
+  try {
     STATE.phase = "starting";
-    STATE.message = "正在重试";
+    STATE.message = "正在检查运行时";
     clearFailure();
-    STATE.receivedBytes = 0;
-    STATE.totalBytes = 0;
-    res.writeHead(202, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true }));
-    void prepareRuntime();
-    return;
-  }
-  if (req.method === "POST" && req.url === "/mcp") {
-    void waitForBackend(MCP_WAIT_MS).then((ready) => {
-      if (ready) {
-        handleMcpRequest(req, res);
-        return;
-      }
-      res.writeHead(503, { "Content-Type": "application/json", "Retry-After": "10" });
-      res.end(
-        JSON.stringify({
-          jsonrpc: "2.0",
-          id: null,
-          error: { code: -32e3, message: "Runtime is still preparing" }
-        })
-      );
+    const serverDir = await resolveRuntimeDir();
+    setRuntimePaths({
+      serverDir,
+      goBinary: path9.join(serverDir, BINARY_NAME),
+      webDist: path9.join(serverDir, "web-dist")
     });
-    return;
+    if (!hasWebBundle()) {
+      throw codedError("web-bundle-missing", `载荷里没有前端产物 ${path9.join(serverDir, "web-dist", "index.html")}`);
+    }
+    setRuntimePaths({
+      piRuntime: path9.join(serverDir, "pi-runtime"),
+      pluginPackages: path9.join(serverDir, "plugin-packages")
+    });
+    const agentDir = await resolveAgentDir();
+    if (agentDir) {
+      setRuntimePaths({ piRuntime: path9.join(agentDir, "pi-runtime"), nodeBin: resolveNodeBin(agentDir) });
+    }
+    STATE.phase = "starting-backend";
+    STATE.message = "正在启动后端";
+    await reserveBackendPort();
+    startBackend();
+  } catch (error) {
+    fail(error?.code ?? "prepare-failed", error?.message ?? String(error), "运行时准备");
+    console.error(`[open-ai-canvas] 运行时准备失败（${STATE.code}）：${STATE.error}`);
+  } finally {
+    preparing = false;
   }
-  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
-  res.end(progressPage());
 }
-var BRIDGE_FILE = path2.join(DATA_DIR, "bridge.json");
+
+// server/src/bridge.ts
+import crypto5 from "node:crypto";
+import fs10 from "node:fs";
+import path10 from "node:path";
+var BRIDGE_FILE = path10.join(DATA_DIR, "bridge.json");
 var BRIDGE_JOB_TTL_MS = 5 * 6e4;
 var BRIDGE_IDLE_MS = 18e4;
 var BRIDGE_LONGPOLL_MS = 25e3;
 var BRIDGE_EXECUTOR_STALE_MS = 45e3;
 function loadBridgeState() {
   try {
-    return JSON.parse(fs2.readFileSync(BRIDGE_FILE, "utf8"));
+    return JSON.parse(fs10.readFileSync(BRIDGE_FILE, "utf8"));
   } catch {
     return {};
   }
 }
 function saveBridgeState(state) {
-  fs2.mkdirSync(DATA_DIR, { recursive: true });
-  fs2.writeFileSync(BRIDGE_FILE, JSON.stringify(state, null, 2), { mode: 384 });
+  fs10.mkdirSync(DATA_DIR, { recursive: true });
+  fs10.writeFileSync(BRIDGE_FILE, JSON.stringify(state, null, 2), { mode: 384 });
 }
 function bridgeToken() {
   const state = loadBridgeState();
   if (typeof state.token === "string" && state.token.length >= 32) return state.token;
-  const token = crypto2.randomBytes(24).toString("hex");
+  const token = crypto5.randomBytes(24).toString("hex");
   saveBridgeState({ ...state, token, createdAt: (/* @__PURE__ */ new Date()).toISOString() });
   return token;
 }
@@ -2746,7 +2857,7 @@ function bridgeServeChat(req, res) {
     }
     sweepBridgeJobs();
     const job = {
-      id: `job_${crypto2.randomUUID()}`,
+      id: `job_${crypto5.randomUUID()}`,
       createdAt: Date.now(),
       created: Date.now(),
       model: body.model,
@@ -2876,136 +2987,121 @@ function serveBridge(req, res, pathname) {
   bridgeJson(res, 404, { error: { message: `Unknown bridge route ${pathname}`, code: "bridge-not-found" } });
   return true;
 }
-var WEB_MIME = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".map": "application/json; charset=utf-8",
-  ".txt": "text/plain; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".gif": "image/gif",
-  ".webp": "image/webp",
-  ".avif": "image/avif",
-  ".ico": "image/x-icon",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-  ".ttf": "font/ttf",
-  ".otf": "font/otf",
-  ".wasm": "application/wasm",
-  ".mp4": "video/mp4",
-  ".webm": "video/webm",
-  ".mp3": "audio/mpeg",
-  ".pdf": "application/pdf"
-};
-function webIndexPath() {
-  return WEB_DIST ? path2.join(WEB_DIST, "index.html") : null;
-}
-function hasWebBundle() {
-  const index = webIndexPath();
-  return Boolean(index) && fs2.existsSync(index);
-}
-function webCacheControl(relativePath) {
-  return /^\/assets\//.test(relativePath) ? "public, max-age=31536000, immutable" : "no-cache";
-}
-function contentTypeOf(filePath) {
-  return WEB_MIME[path2.extname(filePath).toLowerCase()] ?? "application/octet-stream";
-}
-function sendWebFile(req, res, filePath, relativePath) {
-  let stat = null;
-  try {
-    stat = fs2.statSync(filePath);
-  } catch {
-    stat = null;
-  }
-  if (!stat || !stat.isFile()) {
-    sendWebNotFound(res, relativePath);
-    return;
-  }
-  res.writeHead(200, {
-    "Content-Type": contentTypeOf(filePath),
-    "Content-Length": stat.size,
-    "Cache-Control": webCacheControl(relativePath),
-    "X-Content-Type-Options": "nosniff"
+
+// server/src/routes.ts
+function sendJson(res, body, status = 200) {
+  res.writeHead(status, {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*"
   });
-  if (req.method === "HEAD") {
-    res.end();
+  res.end(JSON.stringify(body));
+}
+function handlePayloadReset(res) {
+  const removed = [];
+  let freedBytes = 0;
+  const roots = [PROVISION_DIR, AGENT_DIR].filter((dir) => typeof dir === "string" && dir.length > 0);
+  for (const dir of roots) {
+    let entries = [];
+    try {
+      entries = fs11.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !/\.(partial\.zip|zip\.tmp)(\.part\d+)?$/.test(entry.name)) continue;
+      const target = path11.join(dir, entry.name);
+      try {
+        freedBytes += statSize(target);
+        fs11.rmSync(target, { force: true });
+        removed.push(entry.name);
+      } catch {
+      }
+    }
+  }
+  if (removed.length > 0) {
+    STATE.receivedBytes = 0;
+    STATE.totalBytes = 0;
+    STATE.chunks = [];
+    note(`已清理下载残留 ${removed.length} 个文件（${(freedBytes / 1048576).toFixed(1)} MB）`);
+  }
+  sendJson(res, {
+    ok: true,
+    removed,
+    freedBytes,
+    message: removed.length > 0 ? `已清理 ${(freedBytes / 1048576).toFixed(1)} MB 下载残留` : "没有需要清理的分片"
+  });
+}
+function stateSnapshot(runtime = {}) {
+  return {
+    ...progressSnapshot(),
+    ready: Boolean(goPort) && STATE.phase === "ready",
+    backend: Boolean(goPort),
+    // 插件视图用它显示「桥在线 / 离线」，没这个字段就只能猜。
+    bridge: { executorOnline: bridgeExecutorOnline(), models: BRIDGE.models.length },
+    workflow: LAST_WORKFLOW,
+    // 地址栏该用的 origin（ADR-0010）。插件据此打开画布，两个端口不一致时才不用依赖 302。
+    origin: runtime.origin ?? null,
+    originPinned: Boolean(runtime.originPinned),
+    // ADR-0001 兼容节：画布上游版本。载荷里没有 VERSION 文件，发布清单里倒是一直带着
+    // upstream.tag/commit，所以说真话的成本为零（MANIFEST 在 resolveRuntimeDir 里总会取一次）。
+    canvasVersion: MANIFEST.upstream?.tag || null,
+    canvasCommit: MANIFEST.upstream?.commit || null,
+    payloadVersion: MANIFEST.payloadVersion || null,
+    // ADR-0002 决策 4：登录态。required 给视图提示「要重新登录」，storage 让「是否真的加密」可验证。
+    session: { present: Boolean(SESSION_TOKEN), storage: SESSION_KEY ? "aes-256-gcm" : "plaintext" }
+  };
+}
+function servePreparation(req, res) {
+  if (req.method === "GET" && req.url === "/api/health/ready") {
+    res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    res.end(JSON.stringify({ status: STATE.phase === "failed" ? "error" : "preparing", ...progressSnapshot() }));
     return;
   }
-  const stream = fs2.createReadStream(filePath);
-  stream.on("error", () => res.destroy());
-  stream.pipe(res);
-}
-function sendWebNotFound(res, pathname) {
-  if (res.headersSent) {
-    res.destroy();
+  if (req.method === "GET" && req.url === "/__canvas/progress") {
+    sendJson(res, progressSnapshot());
     return;
   }
-  res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
-  res.end(`Not found: ${pathname}`);
+  if (req.method === "POST" && req.url === "/__canvas/retry") {
+    STATE.phase = "starting";
+    STATE.message = "正在重试";
+    clearFailure();
+    STATE.receivedBytes = 0;
+    STATE.totalBytes = 0;
+    res.writeHead(202, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true }));
+    void prepareRuntime();
+    return;
+  }
+  if (req.method === "POST" && req.url === "/mcp") {
+    void waitForBackend(MCP_WAIT_MS).then((ready) => {
+      if (ready) {
+        handleMcpRequest(req, res);
+        return;
+      }
+      res.writeHead(503, { "Content-Type": "application/json", "Retry-After": "10" });
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32e3, message: "Runtime is still preparing" }
+        })
+      );
+    });
+    return;
+  }
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(progressPage());
 }
-function resolveWebAsset(pathname) {
-  let decoded = "";
-  try {
-    decoded = decodeURIComponent(pathname);
-  } catch {
-    return { file: null, relative: pathname, reason: "bad-path" };
-  }
-  if (decoded.includes("\0") || decoded.includes("\\")) {
-    return { file: null, relative: pathname, reason: "bad-path" };
-  }
-  if (decoded.split(/[\\/]+/).some((segment) => segment === "..")) {
-    return { file: null, relative: pathname, reason: "bad-path" };
-  }
-  const normalized = path2.posix.normalize(decoded);
-  if (normalized.includes("..")) {
-    return { file: null, relative: pathname, reason: "bad-path" };
-  }
-  const root = path2.resolve(WEB_DIST);
-  const target = path2.resolve(root, `.${normalized}`);
-  if (target !== root && !target.startsWith(root + path2.sep)) {
-    return { file: null, relative: pathname, reason: "bad-path" };
-  }
-  const candidate = fs2.existsSync(target) && fs2.statSync(target).isDirectory() ? path2.join(target, "index.html") : target;
-  if (!fs2.existsSync(candidate)) {
-    return { file: null, relative: normalized, reason: "missing" };
-  }
-  return { file: candidate, relative: candidate === target ? normalized : `${normalized.replace(/\/$/, "")}/index.html` };
-}
-function isNavigationRequest(req, pathname) {
-  const accept = String(req.headers.accept ?? "");
-  if (accept.includes("text/html")) return true;
-  return path2.posix.extname(pathname) === "";
-}
-function isApiPath(pathname) {
-  return pathname === "/api" || pathname.startsWith("/api/");
-}
-function serveWebAsset(req, res, pathname) {
-  if (req.method !== "GET" && req.method !== "HEAD") return false;
-  if (!hasWebBundle()) return false;
-  const resolved = resolveWebAsset(pathname);
-  if (resolved.reason === "bad-path") {
-    sendWebNotFound(res, pathname);
-    return true;
-  }
-  if (resolved.file) {
-    sendWebFile(req, res, resolved.file, resolved.relative);
-    return true;
-  }
-  if (isNavigationRequest(req, pathname)) {
-    sendWebFile(req, res, webIndexPath(), "/index.html");
-    return true;
-  }
-  sendWebNotFound(res, pathname);
-  return true;
-}
+
+// server/src/origin.ts
+var PUBLIC_ORIGIN = `http://127.0.0.1:${HOST_PORT}`;
+var STABLE_PORT = 0;
+var STABLE_SERVER = null;
+var REQUEST_HANDLER = null;
 function loadRememberedPort() {
   try {
-    const port = Number(JSON.parse(fs2.readFileSync(ORIGIN_FILE, "utf8"))?.port);
+    const port = Number(JSON.parse(fs12.readFileSync(ORIGIN_FILE, "utf8"))?.port);
     return Number.isInteger(port) && port > 0 ? port : 0;
   } catch {
     return 0;
@@ -3013,9 +3109,9 @@ function loadRememberedPort() {
 }
 function rememberPort(port) {
   try {
-    fs2.mkdirSync(DATA_DIR, { recursive: true });
+    fs12.mkdirSync(DATA_DIR, { recursive: true });
     const body = { port, origin: `http://127.0.0.1:${port}`, savedAt: (/* @__PURE__ */ new Date()).toISOString() };
-    fs2.writeFileSync(ORIGIN_FILE, `${JSON.stringify(body, null, 2)}
+    fs12.writeFileSync(ORIGIN_FILE, `${JSON.stringify(body, null, 2)}
 `);
   } catch (err) {
     console.error("[open-ai-canvas] Failed to remember browser origin:", err.message);
@@ -3032,7 +3128,7 @@ function stablePortCandidates() {
 }
 function listenStable(port) {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
+    const server = http3.createServer((req, res) => {
       if (!REQUEST_HANDLER) {
         res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
         res.end("starting");
@@ -3045,7 +3141,7 @@ function listenStable(port) {
   });
 }
 async function bindStableOrigin() {
-  if (fs2.existsSync(path2.join(DATA_DIR, "no-stable-origin"))) {
+  if (fs12.existsSync(path12.join(DATA_DIR, "no-stable-origin"))) {
     console.log("[open-ai-canvas] no-stable-origin present; keeping the host port as browser origin");
     return;
   }
@@ -3081,14 +3177,14 @@ function startProxy() {
   } catch (err) {
     console.error("[open-ai-canvas] Failed to initialise bridge token:", err.message);
   }
-  const server = http.createServer((req, res) => {
+  const server = http3.createServer((req, res) => {
     const pathname = (req.url || "/").split("?")[0];
     if (shouldPinOrigin(req, pathname)) {
       redirectToPinnedOrigin(req, res);
       return;
     }
     if (req.method === "GET" && pathname === "/__canvas/state") {
-      sendJson(res, stateSnapshot());
+      sendJson(res, stateSnapshot({ origin: PUBLIC_ORIGIN, originPinned: Boolean(STABLE_PORT) }));
       return;
     }
     if (req.method === "POST" && pathname === "/__canvas/payload/reset") {
@@ -3110,7 +3206,7 @@ function startProxy() {
       return;
     }
     if (!isApiPath(pathname) && serveWebAsset(req, res, pathname)) return;
-    const proxyReq = http.request(
+    const proxyReq = http3.request(
       {
         hostname: "127.0.0.1",
         port: goPort,
@@ -3125,8 +3221,8 @@ function startProxy() {
           for (const cookie of cookies) {
             const match = cookie.match(/open_ai_canvas_session=([^;]+)/);
             if (match) {
-              SESSION_TOKEN = match[1];
-              saveSession(SESSION_TOKEN);
+              setSessionToken(match[1]);
+              saveSession(match[1]);
               console.log("[open-ai-canvas] Session captured");
             }
           }
@@ -3147,7 +3243,7 @@ function startProxy() {
       socket.destroy();
       return;
     }
-    const targetSocket = net.connect(goPort, "127.0.0.1", () => {
+    const targetSocket = net3.connect(goPort, "127.0.0.1", () => {
       let upgradeReq = `${req.method} ${req.url} HTTP/${req.httpVersion}\r
 `;
       for (const [key, value] of Object.entries(req.headers)) {
@@ -3176,6 +3272,8 @@ function startProxy() {
   });
   return server;
 }
+
+// server/src/service.ts
 await bindStableOrigin();
 startProxy();
 void prepareRuntime();
