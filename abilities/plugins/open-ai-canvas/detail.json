@@ -31,7 +31,7 @@
         },
         {
           "title": "Use Astravia's models inside the canvas",
-          "description": "Astravia forwards its text models to the canvas over a local bridge, so you don't have to enter the same API key twice. Canvas channels you already filled in can also be registered back into Astravia.",
+          "description": "Astravia lends the canvas its text models over a local bridge, so one key is enough. In the other direction the canvas's own image and video models are registered as an Astravia media provider — keys stay in the canvas, generation still runs there.",
           "icon": "solar:routing-2-linear"
         },
         {
@@ -64,7 +64,7 @@
         },
         {
           "title": "Connect models",
-          "description": "In the workspace view, press 'Use Astravia's text models in the canvas' to add a bridge channel — no second key needed for text. Image and video channels still go in the canvas's own settings."
+          "description": "Text: press 'Use Astravia's text models in the canvas'. Media: press 'Use these models in Astravia' — the image and video models you configured in the canvas then appear in Astravia's own generate entry. You can unregister them at any time."
         },
         {
           "title": "Use the agent",
@@ -75,12 +75,12 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Text generation can reuse Astravia's own models through the bridge. Image and video generation still need API keys configured inside the canvas's channel settings; those keys stay in the plugin's local database."
+      "content": "Text is bridged one way (Astravia → canvas). Image and video models travel the other way: their names and capabilities are registered with Astravia, while the API keys stay inside the canvas and every generation still runs there. Reference-image modes (image-to-image, image-to-video) are not bridged yet."
     },
     {
       "type": "callout",
       "tone": "warning",
-      "content": "First launch downloads the native runtime for your platform from GitHub Releases and verifies its checksum before starting. Expect several minutes on a slow connection; later launches start immediately. Image and video channels are not bridged — they run inside the canvas."
+      "content": "First launch downloads the native runtime for your platform from GitHub Releases and verifies its checksum before starting. Expect several minutes on a slow connection; later launches start immediately. The host does not hold the canvas's API keys, so revoking access means removing the registration in the workspace view."
     }
   ]
 }
