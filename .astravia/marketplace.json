@@ -6025,7 +6025,7 @@
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
       "description": "Run the open-source AI canvas locally and use the image and video models you configured there from the host. Text bridges one way, media models register as a host provider, and MCP tools cover projects, canvases and tasks.",
-      "version": "0.1.8",
+      "version": "0.1.9",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -6371,6 +6371,26 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas/open-ai-canvas-0.1.8.astraviapkg",
             "sha256": "19501dafbaa7fcda28974f0ce5b411079cc232122536e69ee1577dcb8cdc24f5"
+          }
+        },
+        {
+          "version": "0.1.9",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.workspace-view",
+            "agent.mcp.control",
+            "storage.read",
+            "storage.write",
+            "shell.openExternal",
+            "ai.models.list",
+            "ai.complete",
+            "media.provider.register"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-open-ai-canvas/open-ai-canvas-0.1.9.astraviapkg",
+            "sha256": "32eb69e754e683a57510250ea5c9a2721a529d452e5107c5a839c1446de9f9ee"
           }
         }
       ]
@@ -8382,5 +8402,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.26-7"
+  "marketplaceVersion": "2026.10.26-8"
 }
