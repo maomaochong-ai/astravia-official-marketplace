@@ -1,19 +1,19 @@
 /**
  * MCP 协议层与工具实现（手写 JSON-RPC 2.0）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import http from "node:http";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { PUBLIC_ORIGIN } from "./origin.ts";
-import { note } from "./state.ts";
-import { SESSION_FILE, SESSION_TOKEN, setSessionToken } from "./session.ts";
-import { backendReady, goPort } from "./backend.ts";
-import { LAST_WORKFLOW, compileWorkflow, setLastWorkflow } from "./workflow.ts";
-import { MCP_TOOLS } from "./mcp-tools.ts";
-import { BUILTIN_NODE_TYPES, NODE_SCHEMAS } from "./contract.ts";
+import { PUBLIC_ORIGIN } from "./stable-origin-binding.ts";
+import { note } from "./preparation-state.ts";
+import { SESSION_FILE, SESSION_TOKEN, setSessionToken } from "./canvas-session-store.ts";
+import { backendReady, goPort } from "./backend-process.ts";
+import { LAST_WORKFLOW, compileWorkflow, setLastWorkflow } from "./workflow-compiler.ts";
+import { MCP_TOOLS } from "./mcp-tool-catalog.ts";
+import { BUILTIN_NODE_TYPES, NODE_SCHEMAS } from "./canvas-node-contract.ts";
 
 // MCP 工具返回体的最小形状：成功只有 content，失败额外带 isError。
 export type ToolResult = {

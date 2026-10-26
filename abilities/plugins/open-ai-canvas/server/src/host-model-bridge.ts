@@ -1,14 +1,21 @@
 /**
  * 宿主智能体 ↔ 画布的作业通道
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { DATA_DIR } from "./config.ts";
-import { bridgeAdminChannels } from "./mcp.ts";
-import { sendJson } from "./routes.ts";
+import { DATA_DIR } from "./service-config.ts";
+import { bridgeAdminChannels } from "./mcp-protocol-server.ts";
+import {
+  createCanvasTask,
+  readCanvasCatalog,
+  readCanvasTask,
+  streamCanvasResource,
+  type CanvasModelKind,
+} from "./canvas-catalog.ts";
+import { sendJson } from "./service-routes.ts";
 
 export const BRIDGE_FILE = path.join(DATA_DIR, "bridge.json");
 export const BRIDGE_JOB_TTL_MS = 5 * 60_000;
@@ -314,6 +321,54 @@ export function bridgeServeMedia(res) {
   });
 }
 
+/**
+ * 画布侧失败码的统一出口（ADR-0013）。
+ *
+ * 画布把「没登录」「后端没起」「参数被拒」放在不同状态码上，插件侧不该靠猜状态码分支，
+ * 所以这里压成四个稳定 code：会话失效、连不上、上游拒绝、任务不存在。
+ */
+export function bridgeCanvasFailure(res, status, body) {
+  const canvasMessage =
+    (body && (body.msg || body.message || body.error?.message)) || `Canvas returned ${status}`;
+  if (status === 401) {
+    bridgeJson(res, 401, { error: { message: "Canvas session expired. Log in to the canvas again.", code: "canvas-login-required" } });
+    return;
+  }
+  if (status === 502) {
+    bridgeJson(res, 502, { error: { message: String(canvasMessage), code: "canvas-unreachable" } });
+    return;
+  }
+  if (status === 404) {
+    bridgeJson(res, 404, { error: { message: String(canvasMessage), code: "canvas-task-missing" } });
+    return;
+  }
+  bridgeJson(res, 422, { error: { message: String(canvasMessage), code: "canvas-task-rejected" } });
+}
+
+const CANVAS_KINDS: CanvasModelKind[] = ["text", "image", "video", "audio"];
+
+/**
+ * `POST /bridge/canvas/tasks` 的入参校验；语义判定（能力/参数是否支持）留给画布。
+ *
+ * 用可选字段而不是 `ok` 判别式：server 的 tsconfig 是 `strict: false`，没有
+ * strictNullChecks 时布尔字面量判别式不参与收窄，`if (!checked.ok)` 拿不到 `message`。
+ */
+function readCanvasTaskRequest(body: any): { request?: any; message?: string } {
+  const logicalModelId = typeof body?.logicalModelId === "string" ? body.logicalModelId.trim() : "";
+  const kind = typeof body?.kind === "string" ? body.kind.trim().toLowerCase() : "";
+  const operation = typeof body?.operation === "string" ? body.operation.trim() : "";
+  const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+  if (!logicalModelId) return { message: "logicalModelId is required" };
+  if (!prompt) return { message: "prompt is required" };
+  if (!CANVAS_KINDS.includes(kind as CanvasModelKind)) return { message: `Unsupported kind ${kind}` };
+  if (!operation) return { message: "operation is required" };
+  const options = body?.options && typeof body.options === "object" && !Array.isArray(body.options) ? body.options : {};
+  const projectId = typeof body?.projectId === "string" ? body.projectId.trim() : "";
+  return {
+    request: { logicalModelId, kind: kind as CanvasModelKind, operation, prompt, options, ...(projectId ? { projectId } : {}) },
+  };
+}
+
 /** 桥的全部分流。返回 true 表示这个请求已经处理完。 */
 export function serveBridge(req, res, pathname) {
   if (!pathname.startsWith("/bridge/")) return false;
@@ -425,6 +480,57 @@ export function serveBridge(req, res, pathname) {
       .then((body) => bridgeAdminChannels("PATCH", adminChannelMatch[1], body))
       .then((result) => bridgeJson(res, result.status, result.body))
       .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+
+  // --- 以下给画布模型目录与媒体任务用（ADR-0013）---
+  if (req.method === "GET" && pathname === "/bridge/canvas/models") {
+    void readCanvasCatalog().then((result) => {
+      if (result.status !== 200) {
+        bridgeCanvasFailure(res, result.status, result.body);
+        return;
+      }
+      bridgeJson(res, 200, result.body);
+    });
+    return true;
+  }
+
+  if (req.method === "POST" && pathname === "/bridge/canvas/tasks") {
+    void readJsonBody(req)
+      .then((body) => {
+        const checked = readCanvasTaskRequest(body);
+        if (!checked.request) {
+          bridgeJson(res, 400, { error: { message: checked.message ?? "bad request", code: "bridge-bad-request" } });
+          return;
+        }
+        return createCanvasTask(checked.request).then((result) => {
+          if (result.status < 200 || result.status >= 300) {
+            bridgeCanvasFailure(res, result.status, result.body);
+            return;
+          }
+          bridgeJson(res, 200, result.body);
+        });
+      })
+      .catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+
+  const canvasTaskMatch = pathname.match(/^\/bridge\/canvas\/tasks\/([^/]+)$/);
+  if (req.method === "GET" && canvasTaskMatch) {
+    void readCanvasTask(canvasTaskMatch[1]).then((result) => {
+      if (result.status !== 200) {
+        bridgeCanvasFailure(res, result.status, result.body);
+        return;
+      }
+      bridgeJson(res, 200, result.body);
+    });
+    return true;
+  }
+
+  // 画布资源取件：宿主主进程没有画布会话 Cookie，所以由 shim 带着会话转发。
+  const mediaMatch = pathname.match(/^\/bridge\/media\/([^/]+)$/);
+  if (req.method === "GET" && mediaMatch) {
+    streamCanvasResource(decodeURIComponent(mediaMatch[1]), res);
     return true;
   }
 

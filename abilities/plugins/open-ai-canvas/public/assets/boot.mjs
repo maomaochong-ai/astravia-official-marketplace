@@ -1,13 +1,13 @@
 // 生成物：不要直接编辑。源在 server/src/，构建命令 `npm run build:boot`。
 // 单文件是硬约束——宿主只下载并执行这一个 entry（见 docs/adr/open-ai-canvas/0012-service-module-layout.md）。
 
-// server/src/origin.ts
-import http3 from "node:http";
+// server/src/stable-origin-binding.ts
+import http4 from "node:http";
 import net3 from "node:net";
 import fs12 from "node:fs";
 import path12 from "node:path";
 
-// server/src/config.ts
+// server/src/service-config.ts
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 var __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,7 +37,7 @@ function supportedPlatforms() {
   return (fromManifest.length > 0 ? fromManifest : TARGET_PLATFORMS).sort();
 }
 
-// server/src/session.ts
+// server/src/canvas-session-store.ts
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path2 from "node:path";
@@ -104,12 +104,12 @@ function setSessionToken(token) {
   SESSION_TOKEN = token;
 }
 
-// server/src/backend.ts
+// server/src/backend-process.ts
 import net2 from "node:net";
 import fs3 from "node:fs";
 import { spawn as spawn2 } from "node:child_process";
 
-// server/src/net.ts
+// server/src/http-transport.ts
 import http from "node:http";
 import net from "node:net";
 import tls from "node:tls";
@@ -426,7 +426,7 @@ function statSize(file) {
   }
 }
 
-// server/src/state.ts
+// server/src/preparation-state.ts
 function note(message) {
   console.log(`[open-ai-canvas] ${message}`);
   pushLog(message);
@@ -455,8 +455,8 @@ var STATE = {
   // 界面据此选提示、构建期据此断言，不要靠中文子串匹配。
   code: null
 };
-function pushLog(text) {
-  const trimmed = String(text ?? "").trim();
+function pushLog(text2) {
+  const trimmed = String(text2 ?? "").trim();
   if (!trimmed) return;
   if (STATE.log[STATE.log.length - 1]?.text === trimmed) return;
   STATE.log.push({ at: Date.now(), text: trimmed });
@@ -535,7 +535,7 @@ function progressSnapshot() {
   };
 }
 
-// server/src/paths.ts
+// server/src/runtime-paths.ts
 var SERVER_DIR = null;
 var GO_BINARY = null;
 var WEB_DIST = null;
@@ -551,7 +551,7 @@ function setRuntimePaths(next) {
   if (next.pluginPackages !== void 0) PLUGIN_PACKAGES = next.pluginPackages;
 }
 
-// server/src/backend.ts
+// server/src/backend-process.ts
 var BACKEND_PORT = 0;
 var goProcess = null;
 function corsOrigins() {
@@ -597,10 +597,10 @@ async function reserveBackendPort() {
   });
 }
 function watchBackendOutput(chunk, sink) {
-  const text = chunk.toString();
-  sink.write(text);
+  const text2 = chunk.toString();
+  sink.write(text2);
   if (goPort) return;
-  const match = text.match(/addr=(?:127\.0\.0\.1|\[::1\]|localhost):(\d+)/);
+  const match = text2.match(/addr=(?:127\.0\.0\.1|\[::1\]|localhost):(\d+)/);
   if (!match || Number(match[1]) === 0) return;
   goPort = Number(match[1]);
   console.log(`[open-ai-canvas] Backend listening on port ${goPort}`);
@@ -662,19 +662,19 @@ function forwardSignal(signal) {
 process.on("SIGTERM", () => forwardSignal("SIGTERM"));
 process.on("SIGINT", () => forwardSignal("SIGINT"));
 
-// server/src/mcp.ts
+// server/src/mcp-protocol-server.ts
 import http2 from "node:http";
 import crypto3 from "node:crypto";
 import fs6 from "node:fs";
 
-// server/src/workflow.ts
+// server/src/workflow-compiler.ts
 import crypto2 from "node:crypto";
 
-// server/src/sources.ts
+// server/src/payload-source-resolution.ts
 import fs5 from "node:fs";
 import path5 from "node:path";
 
-// server/src/download.ts
+// server/src/payload-download.ts
 import fs4 from "node:fs";
 import path4 from "node:path";
 var CHUNK_STALL_MS = 3e4;
@@ -862,7 +862,7 @@ async function downloadPayload(url, archive) {
   }
 }
 
-// server/src/sources.ts
+// server/src/payload-source-resolution.ts
 var PREFERRED_BASE = null;
 var PROVISION_DIR = null;
 var AGENT_DIR = null;
@@ -877,17 +877,17 @@ function endpointOf(url) {
 }
 function readTextResponse(res, limit = 512 * 1024) {
   return new Promise((resolve, reject) => {
-    let text = "";
+    let text2 = "";
     let settled = false;
     const finish = () => {
       if (settled) return;
       settled = true;
-      resolve(text);
+      resolve(text2);
     };
     res.setEncoding("utf8");
     res.on("data", (chunk) => {
-      text += chunk;
-      if (text.length > limit) {
+      text2 += chunk;
+      if (text2.length > limit) {
         res.destroy();
         finish();
       }
@@ -928,9 +928,9 @@ async function resolveAssetUrl(fileName) {
 function mirrorPrefixes() {
   const raw = process.env.CANVAS_PAYLOAD_MIRRORS;
   if (raw === void 0) return DEFAULT_MIRROR_PREFIXES;
-  const text = raw.trim();
-  if (!text || /^(none|off|0|false)$/i.test(text)) return [];
-  return text.split(",").map((item) => item.trim()).filter(Boolean).map((item) => item.endsWith("/") ? item : `${item}/`);
+  const text2 = raw.trim();
+  if (!text2 || /^(none|off|0|false)$/i.test(text2)) return [];
+  return text2.split(",").map((item) => item.trim()).filter(Boolean).map((item) => item.endsWith("/") ? item : `${item}/`);
 }
 function localPayloadDirs() {
   const dirs = [];
@@ -982,10 +982,10 @@ function probeFirst(urls, { timeout = 12e3 } = {}) {
           res.resume();
           throw new Error(`HTTP ${res.statusCode}`);
         }
-        const text = await readTextResponse(res);
+        const text2 = await readTextResponse(res);
         if (settled) return;
         settled = true;
-        resolve({ url, text });
+        resolve({ url, text: text2 });
       }).catch(fail3(url));
     }
   });
@@ -994,12 +994,12 @@ function candidateUrls(fileName) {
   return payloadBases(PREFERRED_BASE).map((base) => `${base}/${fileName}`);
 }
 function describeFailure(err) {
-  const text = err?.message || String(err);
-  if (!NETWORK_FAILURE.test(text)) return err instanceof Error ? err : new Error(text);
+  const text2 = err?.message || String(err);
+  if (!NETWORK_FAILURE.test(text2)) return err instanceof Error ? err : new Error(text2);
   const prefixes = mirrorPrefixes();
   const tried = prefixes.length ? `镜像（${prefixes.map((prefix) => endpointOf(prefix)).join("、")}）与 ${endpointOf(PAYLOAD_BASE_URL)}` : endpointOf(PAYLOAD_BASE_URL);
   const wrapped = new Error(
-    `${text}
+    `${text2}
 已尝试的来源都不可用：${tried}。以下任一方式可以继续：
   1. 点「重试」——下载支持续传，已落盘的字节不会丢；
   2. 把载荷文件放到 ${localPayloadDirs()[0]}（本地构建/离线搬运，放好后点「重试」）；
@@ -1028,9 +1028,9 @@ async function fetchManifestText() {
   if (override) {
     const local = !/^https?:\/\//i.test(override);
     try {
-      const text = local ? fs5.readFileSync(override, "utf8") : await readTextResponse(await httpRequest(override, { timeout: 2e4 }));
+      const text2 = local ? fs5.readFileSync(override, "utf8") : await readTextResponse(await httpRequest(override, { timeout: 2e4 }));
       note(`清单来自 CANVAS_PAYLOAD_MANIFEST：${override}`);
-      return { text, url: override };
+      return { text: text2, url: override };
     } catch (err) {
       const wrapped2 = describeFailure(err);
       wrapped2.code = "payload-manifest-unreadable";
@@ -1047,11 +1047,11 @@ async function fetchManifestText() {
   note(`清单来源 ${candidates.length} 个（并发探测）：${candidates.map(endpointOf).join("、")}`);
   let lastError;
   try {
-    const { url, text } = await probeFirst(candidates);
+    const { url, text: text2 } = await probeFirst(candidates);
     STATE.endpoint = endpointOf(url);
     PREFERRED_BASE = url.slice(0, -(MANIFEST_ASSET.length + 1));
     note(`清单来自 ${STATE.endpoint}`);
-    return { text, url };
+    return { text: text2, url };
   } catch (err) {
     lastError = err;
     note(`清单探测全部失败：${err.message}`);
@@ -1079,10 +1079,10 @@ async function fetchManifestText() {
   wrapped.code = "payload-unreachable";
   throw wrapped;
 }
-function parseManifest(text) {
+function parseManifest(text2) {
   let data;
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(text2);
   } catch {
     throw codedError("payload-manifest-invalid", "发布清单不是合法 JSON");
   }
@@ -1122,8 +1122,8 @@ function parseManifest(text) {
 async function loadManifest() {
   if (manifestPromise) return manifestPromise;
   manifestPromise = (async () => {
-    const { text, url } = await fetchManifestText();
-    const parsed = parseManifest(text);
+    const { text: text2, url } = await fetchManifestText();
+    const parsed = parseManifest(text2);
     MANIFEST.payloadVersion = parsed.payloadVersion;
     MANIFEST.upstream = parsed.upstream;
     MANIFEST.platforms = parsed.platforms;
@@ -1161,7 +1161,7 @@ async function downloadFromCandidates(candidates, archive) {
   return lastError ?? new Error("没有可用的下载来源");
 }
 
-// server/src/contract.ts
+// server/src/canvas-node-contract.ts
 var BUILTIN_NODE_TYPES = [
   "image",
   "text",
@@ -1205,7 +1205,7 @@ var NODE_SCHEMAS = {
 var LAYOUT_STEP_X = 400;
 var LAYOUT_STEP_Y = 280;
 
-// server/src/workflow.ts
+// server/src/workflow-compiler.ts
 var LAST_WORKFLOW = null;
 function setLastWorkflow(value) {
   LAST_WORKFLOW = value;
@@ -1303,7 +1303,7 @@ function compileWorkflow(workflow, existing) {
   return { operations, mapping, depth: Object.fromEntries(depth) };
 }
 
-// server/src/mcp-tools.ts
+// server/src/mcp-tool-catalog.ts
 var MCP_TOOLS = [
   // --- 画布项目管理 ---
   {
@@ -1569,8 +1569,30 @@ var MCP_TOOLS = [
     }
   }
 ];
+var MCP_TOOL_GROUPS = {
+  list_canvas_projects: "projects",
+  get_canvas_project: "projects",
+  create_canvas_project: "projects",
+  delete_canvas_project: "projects",
+  add_node: "nodes",
+  update_node: "nodes",
+  delete_node: "nodes",
+  list_node_types: "nodes",
+  get_node_schema: "nodes",
+  connect_nodes: "connections",
+  delete_connection: "connections",
+  list_connections: "connections",
+  run_generation: "generation",
+  list_assets: "generation",
+  get_canvas_state: "generation",
+  apply_operations: "batch",
+  apply_workflow: "batch",
+  export_workflow: "batch",
+  list_workspace_projects: "workspace",
+  get_task: "workspace"
+};
 
-// server/src/mcp.ts
+// server/src/mcp-protocol-server.ts
 function jsonResult(data) {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
 }
@@ -1821,9 +1843,9 @@ async function handleMcpToolCall(name, args) {
       const baseRevision = args.base_revision ?? payload.revision;
       const applied = await applyCanvasOperations(args.canvas_id, compiled.operations, baseRevision);
       if (applied.isError) {
-        const text = applied.content?.[0]?.text ?? "";
-        if (/\b409\b|revision/i.test(text)) {
-          return errorResult(`revision_conflict: ${text}（当前 revision ${payload.revision}，请重新读取后再提交）`);
+        const text2 = applied.content?.[0]?.text ?? "";
+        if (/\b409\b|revision/i.test(text2)) {
+          return errorResult(`revision_conflict: ${text2}（当前 revision ${payload.revision}，请重新读取后再提交）`);
         }
         return applied;
       }
@@ -2065,11 +2087,11 @@ function waitForBackend(timeoutMs) {
   });
 }
 
-// server/src/routes.ts
+// server/src/service-routes.ts
 import fs11 from "node:fs";
 import path11 from "node:path";
 
-// server/src/progress-page.ts
+// server/src/preparation-progress-page.ts
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 }
@@ -2212,14 +2234,14 @@ tick();
 </html>`;
 }
 
-// server/src/prepare.ts
+// server/src/preparation-orchestrator.ts
 import path9 from "node:path";
 
-// server/src/payload.ts
+// server/src/payload-installation.ts
 import fs8 from "node:fs";
 import path7 from "node:path";
 
-// server/src/archive.ts
+// server/src/payload-archive.ts
 import fs7 from "node:fs";
 import path6 from "node:path";
 import zlib from "node:zlib";
@@ -2329,7 +2351,7 @@ async function extractZip(archive, destDir) {
   }
 }
 
-// server/src/payload.ts
+// server/src/payload-installation.ts
 async function stageArchive(spec, staging, label, approximateMB) {
   const archive = `${staging}.zip`;
   fs8.mkdirSync(path7.dirname(staging), { recursive: true });
@@ -2470,7 +2492,7 @@ async function resolveRuntimeDir() {
   return PROVISION_DIR;
 }
 
-// server/src/web.ts
+// server/src/web-dist-hosting.ts
 import fs9 from "node:fs";
 import path8 from "node:path";
 var WEB_MIME = {
@@ -2601,7 +2623,7 @@ function serveWebAsset(req, res, pathname) {
   return true;
 }
 
-// server/src/prepare.ts
+// server/src/preparation-orchestrator.ts
 var preparing = false;
 async function prepareRuntime() {
   if (preparing || STATE.phase === "ready") return;
@@ -2639,10 +2661,192 @@ async function prepareRuntime() {
   }
 }
 
-// server/src/bridge.ts
+// server/src/host-model-bridge.ts
 import crypto5 from "node:crypto";
 import fs10 from "node:fs";
 import path10 from "node:path";
+
+// server/src/canvas-catalog.ts
+import http3 from "node:http";
+var KINDS = ["text", "image", "video", "audio"];
+var RATIO = /^\d+\s*:\s*\d+$/;
+var TASK_TYPE = {
+  text: "canvas_text",
+  image: "canvas_image",
+  video: "canvas_video",
+  audio: "canvas_audio"
+};
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") {
+    const record = value;
+    for (const key of ["data", "items", "models", "list"]) {
+      if (Array.isArray(record[key])) return record[key];
+    }
+  }
+  return [];
+}
+function asRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+function text(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+function stringList(value) {
+  return asArray(value).map((item) => typeof item === "string" ? item.trim() : "").filter((item) => item.length > 0);
+}
+function numberList(value) {
+  return asArray(value).map((item) => typeof item === "number" ? item : Number(text(item))).filter((item) => Number.isFinite(item) && item > 0);
+}
+function uniq(items) {
+  return [...new Set(items)];
+}
+function kindOf(raw) {
+  const capability = text(raw.capability).toLowerCase();
+  if (capability === "chat") return "text";
+  return KINDS.includes(capability) ? capability : null;
+}
+function optionValues(spec, name) {
+  const options = asRecord(spec.options);
+  return stringList(asRecord(options[name]).values);
+}
+function normalizeCanvasCatalog(raw) {
+  const models = [];
+  for (const entry of asArray(raw)) {
+    const record = asRecord(entry);
+    const id = text(record.id);
+    const kind = kindOf(record);
+    if (!id || !kind) continue;
+    const spec = asRecord(record.capabilitySpec);
+    const profiles = asArray(record.capabilityProfiles).map(asRecord);
+    const operations = uniq([...stringList(spec.operations), ...profiles.flatMap((profile) => stringList(profile.operations))]);
+    const tiers = asArray(record.priceTiers).map(asRecord);
+    const selectors = tiers.map((tier) => asRecord(tier.selector));
+    const resolutions = uniq([
+      ...selectors.flatMap((selector) => [
+        text(selector.quality),
+        text(selector.vquality),
+        text(selector.imageResolution),
+        text(selector.resolution)
+      ]),
+      ...optionValues(spec, "quality"),
+      ...optionValues(spec, "vquality"),
+      ...optionValues(spec, "imageResolution")
+    ]).filter((value) => value && value !== "auto" && value !== "any");
+    const aspectRatios = uniq([
+      ...selectors.map((selector) => text(selector.aspectRatio)),
+      ...selectors.map((selector) => text(selector.size)),
+      ...optionValues(spec, "aspectRatio"),
+      ...optionValues(spec, "size")
+    ]).filter((value) => RATIO.test(value));
+    const videoSeconds = uniq([
+      ...tiers.map((tier) => typeof tier.videoSeconds === "number" ? tier.videoSeconds : Number(text(tier.videoSeconds))),
+      ...selectors.map((selector) => Number(text(selector.videoSeconds))),
+      ...numberList(asRecord(asRecord(spec.options).videoSeconds).values)
+    ]).filter((seconds) => Number.isFinite(seconds) && seconds > 0).sort((a, b) => a - b);
+    models.push({
+      id,
+      code: text(record.code) || id,
+      name: text(record.name) || text(record.code) || id,
+      description: text(record.description),
+      kind,
+      operations,
+      available: record.available === true,
+      resolutions,
+      videoSeconds,
+      aspectRatios
+    });
+  }
+  models.sort((a, b) => a.name.localeCompare(b.name));
+  const counts = { text: 0, image: 0, video: 0, audio: 0 };
+  for (const model of models) counts[model.kind] += 1;
+  return { models, counts };
+}
+async function readCanvasCatalog() {
+  const result = await rawCanvasApi("GET", "/api/models");
+  if (result.status !== 200) return result;
+  return { status: 200, body: normalizeCanvasCatalog(result.body) };
+}
+function buildCanvasTaskBody(request) {
+  const options = request.options && typeof request.options === "object" ? request.options : {};
+  const body = {
+    type: TASK_TYPE[request.kind],
+    operation: request.operation,
+    prompt: request.prompt,
+    logicalModelId: request.logicalModelId,
+    input: { mode: request.kind, prompt: request.prompt, config: options }
+  };
+  if (request.projectId) body.projectId = request.projectId;
+  return body;
+}
+async function createCanvasTask(request) {
+  const result = await rawCanvasApi("POST", "/api/tasks", buildCanvasTaskBody(request));
+  return result;
+}
+var RESOURCE_FILE = /^\/api\/resources\/([^/]+)\/file/;
+function normalizeCanvasTask(raw) {
+  const record = asRecord(raw);
+  const task = asRecord(record.data) && Object.keys(asRecord(record.data)).length > 0 ? asRecord(record.data) : record;
+  const previewUrl = text(task.previewUrl) || text(task.previewURL);
+  const previewKind = text(task.previewKind) || "image";
+  const artifacts = [];
+  if (previewUrl) {
+    const match = previewUrl.match(RESOURCE_FILE);
+    if (match) {
+      artifacts.push({ resourceId: match[1], url: `/bridge/media/${match[1]}`, kind: previewKind });
+    } else if (/^https?:\/\//.test(previewUrl)) {
+      artifacts.push({ url: previewUrl, kind: previewKind });
+    }
+  }
+  const progress = typeof task.progress === "number" ? task.progress : Number(text(task.progress)) || 0;
+  return {
+    id: text(task.id),
+    kind: text(task.type).replace(/^canvas_/, ""),
+    status: text(task.status).toLowerCase(),
+    progress: Number.isFinite(progress) ? progress : 0,
+    stage: text(task.stage),
+    ...text(task.error) ? { error: text(task.error) } : {},
+    artifacts
+  };
+}
+async function readCanvasTask(taskId) {
+  const result = await rawCanvasApi("GET", `/api/tasks/${encodeURIComponent(taskId)}`);
+  if (result.status !== 200) return result;
+  return { status: 200, body: normalizeCanvasTask(result.body) };
+}
+function streamCanvasResource(resourceId, res) {
+  if (!SESSION_TOKEN || !goPort) {
+    res.writeHead(503, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: { message: "Canvas is not ready", code: "canvas-unreachable" } }));
+    return;
+  }
+  const upstream = http3.request(
+    {
+      hostname: "127.0.0.1",
+      port: goPort,
+      path: `/api/resources/${encodeURIComponent(resourceId)}/file`,
+      method: "GET",
+      headers: { Cookie: `open_ai_canvas_session=${SESSION_TOKEN}` }
+    },
+    (source) => {
+      const headers = { "Content-Type": source.headers["content-type"] || "application/octet-stream" };
+      for (const key of ["content-length", "etag", "last-modified"]) {
+        const value = source.headers[key];
+        if (typeof value === "string") headers[key] = value;
+      }
+      res.writeHead(source.statusCode || 502, headers);
+      source.pipe(res);
+    }
+  );
+  upstream.on("error", () => {
+    if (!res.headersSent) res.writeHead(502, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: { message: "Canvas resource unavailable", code: "canvas-unreachable" } }));
+  });
+  res.on("close", () => upstream.destroy());
+  upstream.end();
+}
+
+// server/src/host-model-bridge.ts
 var BRIDGE_FILE = path10.join(DATA_DIR, "bridge.json");
 var BRIDGE_JOB_TTL_MS = 5 * 6e4;
 var BRIDGE_IDLE_MS = 18e4;
@@ -2894,6 +3098,38 @@ function bridgeServeMedia(res) {
     }
   });
 }
+function bridgeCanvasFailure(res, status, body) {
+  const canvasMessage = body && (body.msg || body.message || body.error?.message) || `Canvas returned ${status}`;
+  if (status === 401) {
+    bridgeJson(res, 401, { error: { message: "Canvas session expired. Log in to the canvas again.", code: "canvas-login-required" } });
+    return;
+  }
+  if (status === 502) {
+    bridgeJson(res, 502, { error: { message: String(canvasMessage), code: "canvas-unreachable" } });
+    return;
+  }
+  if (status === 404) {
+    bridgeJson(res, 404, { error: { message: String(canvasMessage), code: "canvas-task-missing" } });
+    return;
+  }
+  bridgeJson(res, 422, { error: { message: String(canvasMessage), code: "canvas-task-rejected" } });
+}
+var CANVAS_KINDS = ["text", "image", "video", "audio"];
+function readCanvasTaskRequest(body) {
+  const logicalModelId = typeof body?.logicalModelId === "string" ? body.logicalModelId.trim() : "";
+  const kind = typeof body?.kind === "string" ? body.kind.trim().toLowerCase() : "";
+  const operation = typeof body?.operation === "string" ? body.operation.trim() : "";
+  const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+  if (!logicalModelId) return { message: "logicalModelId is required" };
+  if (!prompt) return { message: "prompt is required" };
+  if (!CANVAS_KINDS.includes(kind)) return { message: `Unsupported kind ${kind}` };
+  if (!operation) return { message: "operation is required" };
+  const options = body?.options && typeof body.options === "object" && !Array.isArray(body.options) ? body.options : {};
+  const projectId = typeof body?.projectId === "string" ? body.projectId.trim() : "";
+  return {
+    request: { logicalModelId, kind, operation, prompt, options, ...projectId ? { projectId } : {} }
+  };
+}
 function serveBridge(req, res, pathname) {
   if (!pathname.startsWith("/bridge/")) return false;
   if (req.method === "GET" && pathname === "/bridge/v1/models") {
@@ -2984,11 +3220,54 @@ function serveBridge(req, res, pathname) {
     void readJsonBody(req).then((body) => bridgeAdminChannels("PATCH", adminChannelMatch[1], body)).then((result) => bridgeJson(res, result.status, result.body)).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
     return true;
   }
+  if (req.method === "GET" && pathname === "/bridge/canvas/models") {
+    void readCanvasCatalog().then((result) => {
+      if (result.status !== 200) {
+        bridgeCanvasFailure(res, result.status, result.body);
+        return;
+      }
+      bridgeJson(res, 200, result.body);
+    });
+    return true;
+  }
+  if (req.method === "POST" && pathname === "/bridge/canvas/tasks") {
+    void readJsonBody(req).then((body) => {
+      const checked = readCanvasTaskRequest(body);
+      if (!checked.request) {
+        bridgeJson(res, 400, { error: { message: checked.message ?? "bad request", code: "bridge-bad-request" } });
+        return;
+      }
+      return createCanvasTask(checked.request).then((result) => {
+        if (result.status < 200 || result.status >= 300) {
+          bridgeCanvasFailure(res, result.status, result.body);
+          return;
+        }
+        bridgeJson(res, 200, result.body);
+      });
+    }).catch((err) => bridgeJson(res, 400, { error: { message: err.message, code: "bridge-bad-request" } }));
+    return true;
+  }
+  const canvasTaskMatch = pathname.match(/^\/bridge\/canvas\/tasks\/([^/]+)$/);
+  if (req.method === "GET" && canvasTaskMatch) {
+    void readCanvasTask(canvasTaskMatch[1]).then((result) => {
+      if (result.status !== 200) {
+        bridgeCanvasFailure(res, result.status, result.body);
+        return;
+      }
+      bridgeJson(res, 200, result.body);
+    });
+    return true;
+  }
+  const mediaMatch = pathname.match(/^\/bridge\/media\/([^/]+)$/);
+  if (req.method === "GET" && mediaMatch) {
+    streamCanvasResource(decodeURIComponent(mediaMatch[1]), res);
+    return true;
+  }
   bridgeJson(res, 404, { error: { message: `Unknown bridge route ${pathname}`, code: "bridge-not-found" } });
   return true;
 }
 
-// server/src/routes.ts
+// server/src/service-routes.ts
 function sendJson(res, body, status = 200) {
   res.writeHead(status, {
     "Content-Type": "application/json",
@@ -3062,6 +3341,16 @@ function servePreparation(req, res) {
     sendJson(res, progressSnapshot());
     return;
   }
+  if (req.method === "GET" && req.url === "/__canvas/tools") {
+    sendJson(res, {
+      tools: MCP_TOOLS.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        group: MCP_TOOL_GROUPS[tool.name] ?? "other"
+      }))
+    });
+    return;
+  }
   if (req.method === "POST" && req.url === "/__canvas/retry") {
     STATE.phase = "starting";
     STATE.message = "正在重试";
@@ -3094,7 +3383,7 @@ function servePreparation(req, res) {
   res.end(progressPage());
 }
 
-// server/src/origin.ts
+// server/src/stable-origin-binding.ts
 var PUBLIC_ORIGIN = `http://127.0.0.1:${HOST_PORT}`;
 var STABLE_PORT = 0;
 var STABLE_SERVER = null;
@@ -3128,7 +3417,7 @@ function stablePortCandidates() {
 }
 function listenStable(port) {
   return new Promise((resolve) => {
-    const server = http3.createServer((req, res) => {
+    const server = http4.createServer((req, res) => {
       if (!REQUEST_HANDLER) {
         res.writeHead(503, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
         res.end("starting");
@@ -3177,7 +3466,7 @@ function startProxy() {
   } catch (err) {
     console.error("[open-ai-canvas] Failed to initialise bridge token:", err.message);
   }
-  const server = http3.createServer((req, res) => {
+  const server = http4.createServer((req, res) => {
     const pathname = (req.url || "/").split("?")[0];
     if (shouldPinOrigin(req, pathname)) {
       redirectToPinnedOrigin(req, res);
@@ -3206,7 +3495,7 @@ function startProxy() {
       return;
     }
     if (!isApiPath(pathname) && serveWebAsset(req, res, pathname)) return;
-    const proxyReq = http3.request(
+    const proxyReq = http4.request(
       {
         hostname: "127.0.0.1",
         port: goPort,
@@ -3273,7 +3562,7 @@ function startProxy() {
   return server;
 }
 
-// server/src/service.ts
+// server/src/boot.ts
 await bindStableOrigin();
 startProxy();
 void prepareRuntime();

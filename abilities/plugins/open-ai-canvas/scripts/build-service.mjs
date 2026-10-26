@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const entry = path.join(root, "server/src/service.ts");
+const entry = path.join(root, "server/src/boot.ts");
 const target = path.join(root, "server/boot.mjs");
 
 const result = await build({

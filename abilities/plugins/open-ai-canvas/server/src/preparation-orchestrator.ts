@@ -1,16 +1,16 @@
 /**
  * 准备流程编排（幂等、失败留状态）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import path from "node:path";
-import { BINARY_NAME } from "./config.ts";
-import { STATE, clearFailure, fail } from "./state.ts";
-import { codedError } from "./sources.ts";
-import { resolveAgentDir, resolveNodeBin, resolveRuntimeDir } from "./payload.ts";
-import { setRuntimePaths } from "./paths.ts";
-import { reserveBackendPort, startBackend } from "./backend.ts";
-import { hasWebBundle } from "./web.ts";
+import { BINARY_NAME } from "./service-config.ts";
+import { STATE, clearFailure, fail } from "./preparation-state.ts";
+import { codedError } from "./payload-source-resolution.ts";
+import { resolveAgentDir, resolveNodeBin, resolveRuntimeDir } from "./payload-installation.ts";
+import { setRuntimePaths } from "./runtime-paths.ts";
+import { reserveBackendPort, startBackend } from "./backend-process.ts";
+import { hasWebBundle } from "./web-dist-hosting.ts";
 
 export let preparing = false;
 

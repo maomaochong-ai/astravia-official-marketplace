@@ -1,9 +1,9 @@
 /**
  * 准备页（自包含 HTML，轮询 /__canvas/progress）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
-import { STATE } from "./state.ts";
+import { STATE } from "./preparation-state.ts";
 
 export function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);

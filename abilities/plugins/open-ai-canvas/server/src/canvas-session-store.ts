@@ -1,12 +1,12 @@
 /**
  * 会话令牌加密落盘与读取
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { DATA_DIR } from "./config.ts";
+import { DATA_DIR } from "./service-config.ts";
 
 // --- session 存储 ---
 // ADR-0002 决策 4：登录令牌必须加密落盘。密钥来自宿主自己的服务凭据机制——

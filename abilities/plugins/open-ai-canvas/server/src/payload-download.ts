@@ -1,12 +1,12 @@
 /**
  * 载荷分片下载、停滞看门狗、合并
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import fs from "node:fs";
 import path from "node:path";
-import { STATE, note, setStage } from "./state.ts";
-import { CHUNK_ATTEMPTS, DOWNLOAD_CHUNKS, httpRequest, partPath, payloadSize, statSize } from "./net.ts";
+import { STATE, note, setStage } from "./preparation-state.ts";
+import { CHUNK_ATTEMPTS, DOWNLOAD_CHUNKS, httpRequest, partPath, payloadSize, statSize } from "./http-transport.ts";
 
 export const CHUNK_STALL_MS = 30_000;
 export const TRANSFER_DEADLINE_MS = 20 * 60_000;

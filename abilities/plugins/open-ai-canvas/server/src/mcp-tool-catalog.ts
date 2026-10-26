@@ -1,7 +1,7 @@
 /**
  * MCP 工具清单（纯数据，20 个工具）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 export const MCP_TOOLS = [
   // --- 画布项目管理 ---
@@ -272,5 +272,34 @@ export const MCP_TOOLS = [
     },
   },
 ];
+
+/**
+ * 工具 → 展示分组的映射。
+ *
+ * 为什么单独一张表，不给每个工具加 group 字段：`MCP_TOOLS` 是 MCP 协议直接下发的
+ * 声明，多塞一个字段就等于向所有客户端多广播一份非协议元数据。分组只服务插件视图。
+ */
+export const MCP_TOOL_GROUPS: Record<string, string> = {
+  list_canvas_projects: "projects",
+  get_canvas_project: "projects",
+  create_canvas_project: "projects",
+  delete_canvas_project: "projects",
+  add_node: "nodes",
+  update_node: "nodes",
+  delete_node: "nodes",
+  list_node_types: "nodes",
+  get_node_schema: "nodes",
+  connect_nodes: "connections",
+  delete_connection: "connections",
+  list_connections: "connections",
+  run_generation: "generation",
+  list_assets: "generation",
+  get_canvas_state: "generation",
+  apply_operations: "batch",
+  apply_workflow: "batch",
+  export_workflow: "batch",
+  list_workspace_projects: "workspace",
+  get_task: "workspace",
+};
 
 // --- MCP 工具实现 ---

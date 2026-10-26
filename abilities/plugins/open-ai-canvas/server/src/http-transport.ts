@@ -1,7 +1,7 @@
 /**
  * 代理探测、TLS/隧道 socket、HTTP 客户端与分片文件尺寸
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import http from "node:http";
 import https from "node:https";
@@ -19,8 +19,8 @@ export type Sink = PassThrough & {
   headers: Record<string, string | undefined>;
   bytesRead: number;
 };
-import { BINARY_NAME } from "./config.ts";
-import { note } from "./state.ts";
+import { BINARY_NAME } from "./service-config.ts";
+import { note } from "./preparation-state.ts";
 
 export function hasPayload(dir) {
   try {

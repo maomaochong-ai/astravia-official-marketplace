@@ -1,21 +1,22 @@
 /**
  * 本机运维路由：状态快照、准备页、载荷残留清理
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import fs from "node:fs";
 import path from "node:path";
-import { MANIFEST } from "./config.ts";
-import { STATE, clearFailure, note, progressSnapshot } from "./state.ts";
-import { progressPage } from "./progress-page.ts";
-import { statSize } from "./net.ts";
-import { prepareRuntime } from "./prepare.ts";
-import { SESSION_KEY, SESSION_TOKEN } from "./session.ts";
-import { goPort } from "./backend.ts";
-import { LAST_WORKFLOW } from "./workflow.ts";
-import { MCP_WAIT_MS, handleMcpRequest, waitForBackend } from "./mcp.ts";
-import { AGENT_DIR, PROVISION_DIR } from "./sources.ts";
-import { BRIDGE, bridgeExecutorOnline } from "./bridge.ts";
+import { MANIFEST } from "./service-config.ts";
+import { STATE, clearFailure, note, progressSnapshot } from "./preparation-state.ts";
+import { progressPage } from "./preparation-progress-page.ts";
+import { statSize } from "./http-transport.ts";
+import { prepareRuntime } from "./preparation-orchestrator.ts";
+import { SESSION_KEY, SESSION_TOKEN } from "./canvas-session-store.ts";
+import { goPort } from "./backend-process.ts";
+import { LAST_WORKFLOW } from "./workflow-compiler.ts";
+import { MCP_WAIT_MS, handleMcpRequest, waitForBackend } from "./mcp-protocol-server.ts";
+import { MCP_TOOLS, MCP_TOOL_GROUPS } from "./mcp-tool-catalog.ts";
+import { AGENT_DIR, PROVISION_DIR } from "./payload-source-resolution.ts";
+import { BRIDGE, bridgeExecutorOnline } from "./host-model-bridge.ts";
 
 export function sendJson(res, body, status = 200) {
   res.writeHead(status, {
@@ -104,6 +105,19 @@ export function servePreparation(req, res) {
 
   if (req.method === "GET" && req.url === "/__canvas/progress") {
     sendJson(res, progressSnapshot());
+    return;
+  }
+
+  // 插件视图的工具目录：只给名称、说明和分组，不给 inputSchema。
+  // 视图只需要回答「这画布能做什么」，协议声明是 /mcp 的事。
+  if (req.method === "GET" && req.url === "/__canvas/tools") {
+    sendJson(res, {
+      tools: MCP_TOOLS.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        group: MCP_TOOL_GROUPS[tool.name] ?? "other",
+      })),
+    });
     return;
   }
 

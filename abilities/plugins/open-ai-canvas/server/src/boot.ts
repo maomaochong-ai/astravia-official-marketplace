@@ -11,8 +11,8 @@
  * 2. 监听随后就位，否则 prepareRuntime() 的进度页没有出口；
  * 3. 运行时准备放最后，并且不 await —— 宿主在 readiness 通过前不该被下载拖住。
  */
-import { bindStableOrigin, startProxy } from "./origin.ts";
-import { prepareRuntime } from "./prepare.ts";
+import { bindStableOrigin, startProxy } from "./stable-origin-binding.ts";
+import { prepareRuntime } from "./preparation-orchestrator.ts";
 
 // --- 启动序列 ---
 await bindStableOrigin();

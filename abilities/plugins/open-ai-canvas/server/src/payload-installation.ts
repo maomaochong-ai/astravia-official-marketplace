@@ -1,16 +1,16 @@
 /**
  * 暂存、校验、解包、上游运行时与 agent 运行时落位
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import fs from "node:fs";
 import path from "node:path";
-import { BINARY_NAME, BUNDLED_DIR, MANIFEST, NODE_BINARY_NAME, PLATFORM, TARGET_PLATFORMS } from "./config.ts";
-import { STATE, note, resetTransfer, setStage } from "./state.ts";
-import { DOWNLOAD_CHUNKS, hasPayload, partPath, statSize } from "./net.ts";
-import { AGENT_DIR, PROVISION_DIR, SHA256_RE, apiFallbackAllowed, candidateUrls, codedError, describeFailure, downloadFromCandidates, findLocalFile, loadManifest, resolveAssetUrl, unsupportedPlatformError } from "./sources.ts";
-import type { CodedError } from "./sources.ts";
-import { extractZip, hashFile } from "./archive.ts";
+import { BINARY_NAME, BUNDLED_DIR, MANIFEST, NODE_BINARY_NAME, PLATFORM, TARGET_PLATFORMS } from "./service-config.ts";
+import { STATE, note, resetTransfer, setStage } from "./preparation-state.ts";
+import { DOWNLOAD_CHUNKS, hasPayload, partPath, statSize } from "./http-transport.ts";
+import { AGENT_DIR, PROVISION_DIR, SHA256_RE, apiFallbackAllowed, candidateUrls, codedError, describeFailure, downloadFromCandidates, findLocalFile, loadManifest, resolveAssetUrl, unsupportedPlatformError } from "./payload-source-resolution.ts";
+import type { CodedError } from "./payload-source-resolution.ts";
+import { extractZip, hashFile } from "./payload-archive.ts";
 
 export async function stageArchive(spec, staging, label, approximateMB) {
   const archive = `${staging}.zip`;

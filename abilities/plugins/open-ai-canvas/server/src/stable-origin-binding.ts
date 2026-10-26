@@ -1,17 +1,17 @@
 /**
  * 稳定浏览器 origin 绑定与跳转（ADR-0010）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import http from "node:http";
 import net from "node:net";
 import fs from "node:fs";
 import path from "node:path";
-import { DATA_DIR, HOST_PORT, ORIGIN_FILE, STABLE_ORIGIN_PORTS } from "./config.ts";
-import { SESSION_TOKEN, saveSession, setSessionToken } from "./session.ts";
-import { goPort } from "./backend.ts";
-import { handleMcpRequest } from "./mcp.ts";
-import { handlePayloadReset, sendJson, servePreparation, stateSnapshot } from "./routes.ts";
+import { DATA_DIR, HOST_PORT, ORIGIN_FILE, STABLE_ORIGIN_PORTS } from "./service-config.ts";
+import { SESSION_TOKEN, saveSession, setSessionToken } from "./canvas-session-store.ts";
+import { goPort } from "./backend-process.ts";
+import { handleMcpRequest } from "./mcp-protocol-server.ts";
+import { handlePayloadReset, sendJson, servePreparation, stateSnapshot } from "./service-routes.ts";
 
 // 稳定 origin 的产物：只有本模块写，其他模块只读。
 export let PUBLIC_ORIGIN = `http://127.0.0.1:${HOST_PORT}`;
@@ -27,8 +27,8 @@ export function setRequestHandler(handler) {
 export function setPublicOrigin(origin) {
   PUBLIC_ORIGIN = origin;
 }
-import { bridgeToken, serveBridge } from "./bridge.ts";
-import { isApiPath, serveWebAsset } from "./web.ts";
+import { bridgeToken, serveBridge } from "./host-model-bridge.ts";
+import { isApiPath, serveWebAsset } from "./web-dist-hosting.ts";
 
 
 // --- 浏览器 origin 绑定（ADR-0010）---

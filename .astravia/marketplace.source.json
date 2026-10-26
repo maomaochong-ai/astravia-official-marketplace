@@ -809,8 +809,8 @@
       "type": "plugin",
       "slug": "open-ai-canvas",
       "name": "Open AI Canvas",
-      "description": "Run the open-source AI canvas locally and interact with it through the host agent. Text-to-image, image-to-video and more, with MCP tools for project/canvas/task management.",
-      "version": "0.1.6",
+      "description": "Run the open-source AI canvas locally and use the image and video models you configured there from the host. Text bridges one way, media models register as a host provider, and MCP tools cover projects, canvases and tasks.",
+      "version": "0.1.7",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia Community",
@@ -830,7 +830,7 @@
         "i18n": {
           "zh": {
             "name": "Open AI Canvas",
-            "description": "在本地运行开源 AI 画布，通过宿主智能体与之交互。文生图、图生视频等功能，提供项目/画布/任务管理的 MCP 工具。",
+            "description": "在本地运行开源 AI 画布，并让宿主直接使用你在画布里配好的图片与视频模型。文本单向桥接，媒体模型注册为宿主 Provider，附项目/画布/任务管理的 MCP 工具。",
             "tags": [
               "画布",
               "文生图",

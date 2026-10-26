@@ -1,6 +1,6 @@
 # open-ai-canvas 插件 ADR 索引
 
-这十二份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
+这十三份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
 
 | ADR | 主题 | 状态 |
 | --- | --- | --- |
@@ -9,13 +9,14 @@
 | [0003](./0003-service-runtime-distribution-and-cross-platform.md) | 服务运行时如何分发到各平台 | 已接受，制品形态与平台矩阵被 0005 取代 |
 | [0004](./0004-startup-readiness-contract-and-platform-gating.md) | 启动就绪契约与平台门禁 | 已接受 |
 | [0005](./0005-native-binary-build-farm.md) | 原生二进制构建农场：CI 原生矩阵 + 载荷清单 | 已接受，决策 4 的下载源顺序被 0009 部分推翻 |
-| [0006](./0006-host-canvas-model-bridge.md) | 宿主 ↔ 画布模型桥 | 已接受（现行） |
+| [0006](./0006-host-canvas-model-bridge.md) | 宿主 ↔ 画布模型桥 | 已接受，决策 3 / 4 由 0013 改写 |
 | [0007](./0007-host-driven-workflow-authoring.md) | 宿主驱动的整图工作流编排 | 已接受（现行） |
 | [0008](./0008-frontend-hosting-in-shim.md) | 前端产物由 shim 承载，不依赖后端静态路由 | 已接受（现行） |
 | [0009](./0009-payload-source-chain.md) | 载荷来源改为本地 / 镜像 / 官方链路 | 已接受（现行） |
 | [0010](./0010-stable-browser-origin.md) | 固定浏览器 origin，让画布配置活过重启 | 已接受（现行） |
 | [0011](./0011-payload-transfer-resilience.md) | 载荷下载卡 88%：分片停滞必须自己退出且可见 | 已接受（现行） |
 | [0012](./0012-service-module-layout.md) | 服务端按职责分文件，运行时仍是单个 bundle | 已接受（现行） |
+| [0013](./0013-canvas-media-models-as-host-providers.md) | 画布媒体模型登记为宿主媒体 Provider | 已接受（现行） |
 
 ## 落实与偏差
 
@@ -28,19 +29,20 @@
 | 0003 | `archive: "file"` 单制品 + 载荷下载 | — |
 | 0004 | 就绪契约、平台门禁、`minAppVersion` | — |
 | 0005 | CI 原生矩阵 + 清单 | 下载源顺序被 0009 改写 |
-| 0006 | 模型桥中继、`501 host-media-not-exposed` | — |
+| 0006 | 模型桥中继、`501 host-media-not-exposed` | 决策 3 的「导出渠道密钥」**已作废**：`publicChannel` 的 `apiKey` 只在 `admin=true` 时填，普通会话恒空；改向 0013 的媒体 Provider 注册，`models.manage` 权限随之删除 |
 | 0007 | `apply_workflow` / `export_workflow` 单次编译 | — |
 | 0008 | 前端由 shim 读盘返回 | — |
 | 0009 | 本地 → 镜像 → 官方 → API 兜底链 | — |
 | 0010 | 固定 origin、302、双保险 | 逃生门从 `CANVAS_STABLE_PORTS` 改成 `DATA_DIR/no-stable-origin` 哨兵文件（宿主不传递该变量） |
 | 0012 | `server/src/*.ts` 分模块、esbuild 单 bundle、`check:service-fresh` 守同源 | `service.ts` 迁移期带工程 `@ts-nocheck`；ZIP 与节点契约已拆出，MCP/桥/路由尚未拆 |
+| 0013 | 目录读 `GET /api/models`、`ctx.media.registerProvider`、`/bridge/media/:id` 转发、注册显式且随 `dispose()` 释放 | **参考图模式未打通**（缺 `POST /api/resources` 的 multipart 转发），故只声明 text→image/video；画布文本模型登记不进宿主；宿主侧端到端生成未跑 |
 
-守住这些的脚本：`verify-mcp-tools.mjs`（MCP 契约 41 条）、`verify-stable-origin.mjs`（origin 24 条）、`verify-web-hosting.mjs`、`verify-payload-sources.mjs`、`verify-bridge.mjs`、`verify-workflow.mjs`——全部在 `npm test` 里。
+守住这些的脚本：`verify-mcp-tools.mjs`（MCP 契约 41 条）、`verify-stable-origin.mjs`（origin 24 条）、`verify-web-hosting.mjs`、`verify-payload-sources.mjs`、`verify-bridge.mjs`（桥 26 条）、`verify-canvas-catalog.mjs`（目录与媒体注册 48 条）、`verify-workflow.mjs`——全部在 `npm test` 里。
 
 ## 七个「为什么不是看上去那样」
 
 - **包里只有一个 40 KB 的 shim**：`plugin.json` 的 `providers.services[].runtime` 只有一个制品，就是 `server/boot.mjs` 这份纯 JS。它按平台从 Release 取载荷（`payload-manifest.json`），所以不存在「Windows 用户的包里没有后端」这种状态。见 0005。
-- **模型桥是中继，不是网关**：宿主侧只有文本；图片/视频不做桥接（`501 host-media-not-exposed`），视觉输入直接 422，理由是 `ctx.ai` 没有图片输入字段。见 0006。
+- **模型桥是中继，不是网关，但媒体另有出口**：方向 A（宿主 → 画布）只有文本——`ctx.ai` 没有图片输入字段（视觉请求 422），也没有密钥级生成调用（媒体请求 501）。方向 B（画布 → 宿主）不是抄渠道密钥（画布根本不下发），而是把画布的图片/视频模型登记成**宿主媒体 Provider**，生成仍由画布执行。见 0006、0013。
 - **工作流编排只发一次请求**：`apply_workflow` 把整图编译成一批 operations，靠 `metadata.__key` 幂等；不逐个节点打命令，避免半成品工作流。见 0007。
 - **前端页面不是后端发的**：载荷里的 `web-dist/` 由 shim 读盘返回；上游发布 tag 的后端只有 `/api` 路由，非 `/api` 一律回 404「请求不存在」。见 0008。
 - **受限网络不需要用户自备代理**：载荷来源是一条链（本地目录 → 镜像前缀 → 官方 → API 兜底），不是一条 GitHub URL。但“本地”不等于“打进包里”——市场包解压上限 100 MB，五平台载荷合计约 1.1 GB。见 0009。

@@ -1,11 +1,11 @@
 /**
  * 声明式 workflow 编译成 operations（ADR-0007）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import crypto from "node:crypto";
-import { codedError } from "./sources.ts";
-import { BUILTIN_NODE_TYPES, LAYOUT_STEP_X, LAYOUT_STEP_Y } from "./contract.ts";
+import { codedError } from "./payload-source-resolution.ts";
+import { BUILTIN_NODE_TYPES, LAYOUT_STEP_X, LAYOUT_STEP_Y } from "./canvas-node-contract.ts";
 
 export let LAST_WORKFLOW: any = null;
 

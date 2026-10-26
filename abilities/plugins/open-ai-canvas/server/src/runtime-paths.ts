@@ -1,7 +1,7 @@
 /**
  * 运行时目录解析结果（监听之后才有值）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 // 运行时目录在监听之后才解析（首次启动要下载 200 MB），所以这些路径先占位。
 // 唯一的写入方是 prepareRuntime()：ESM 的 import 绑定只读，跨模块赋值只能走 setRuntimePaths()。

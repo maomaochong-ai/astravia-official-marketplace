@@ -7,11 +7,12 @@
 import type { PluginContext, PluginServiceStatus } from "./runtime-contract";
 import { SERVICE_ID } from "./runtime-contract";
 import { BridgeExecutor } from "./features/canvas-workspace/bridge-executor";
+import { BridgeChannelError, provisionBridgeChannel } from "./features/canvas-workspace/bridge-channel";
 import {
-  BridgeChannelError,
-  exportCanvasChannelsToHost,
-  provisionBridgeChannel,
-} from "./features/canvas-workspace/bridge-channel";
+  readCanvasCatalog,
+  registerCanvasMediaProvider,
+  type CanvasCatalogEntry,
+} from "./features/canvas-workspace/canvas-media-provider";
 
 export type CanvasPhase = "idle" | "installing" | "starting" | "running" | "stopping" | "error";
 
@@ -28,10 +29,39 @@ export interface CanvasState {
   canvasVersion?: string;
   /** 会话没了（从未登录或后端回401）。视图据此提示去浏览器重新登录，而不是把 401 显成普通错误。 */
   loginRequired?: boolean;
+  /** 本机平台标识（darwin-arm64 等）。报障时它比任何描述都有用。 */
+  platform?: string;
+  /** 已发布运行时载荷的平台列表，来自探针；旧 shim 不给。 */
+  supportedPlatforms?: string[];
   /** 服务输出尾部（ADR-0001 决策 5）：启动失败时用户不必去翻日志文件。 */
   log?: string;
   bridge: BridgeState;
   workflow?: WorkflowState;
+  /** 载荷传输进度（ADR-0011）。只在准备期有值，ready 后清掉。 */
+  progress?: TransferProgress;
+  /** 载荷版本，来自发布清单。能回答「这台机器装的是哪一版画布运行时」。 */
+  payloadVersion?: string;
+  /** 工具目录（/__canvas/tools）。首次打开工具页才拉，不拖慢首屏。 */
+  tools?: ToolSummary[];
+  toolsError?: string;
+}
+
+/** 下载/解包阶段的可观测进度。0 字节是常态，不能当成「没在动」。 */
+export interface TransferProgress {
+  stage?: string;
+  percent: number;
+  receivedBytes: number;
+  totalBytes: number;
+  speed: number;
+  etaSeconds: number;
+  fileName?: string;
+}
+
+/** MCP 工具目录项：视图只展示名称/说明/分组，不消费 inputSchema。 */
+export interface ToolSummary {
+  name: string;
+  description: string;
+  group: string;
 }
 
 /** shim 记下的「最近一次 apply_workflow」（ADR-0007 决策 5）。 */
@@ -55,6 +85,12 @@ export interface BridgeState {
   busy: boolean;
   noticeKey?: string;
   detail?: string;
+  /** 画布模型目录里各类模型的数量（ADR-0013）。undefined 表示还没读。 */
+  counts?: { text: number; image: number; video: number; audio: number };
+  /** 目录里的模型本体。界面要按名字列出来，光有计数说服不了用户「已经读到你的模型」。 */
+  catalog?: CanvasCatalogEntry[];
+  /** 已经接进宿主的媒体模型数；undefined 表示本次会话还没注册。 */
+  mediaRegistered?: number;
 }
 
 export type CanvasStateListener = (state: CanvasState) => void;
@@ -117,6 +153,12 @@ interface ServiceProbe {
   canvasVersion?: string | null;
   payloadVersion?: string | null;
   session?: { present?: boolean; storage?: string };
+  // ADR-0011：准备期的可观测进度。旧 shim 没这些字段，一律可选。
+  receivedBytes?: number;
+  totalBytes?: number;
+  speed?: number;
+  etaSeconds?: number;
+  fileName?: string | null;
 }
 
 /** 失败码 → i18n key。文案会变，code 不变，不要靠中文子串匹配。 */
@@ -170,6 +212,30 @@ function progressDetail(probe: ServiceProbe): string | undefined {
   const percent = typeof probe.percent === "number" ? probe.percent : 0;
   if (percent > 0 && percent < 100) parts.push(`${Math.round(percent)}%`);
   return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
+/**
+ * 把探针里的字节数收成进度对象。
+ *
+ * ready 时返回 undefined：画布已经在跑，进度条再留着只会让人以为还有事没做完。
+ * 旧 shim 不带这些字段时也返回 undefined（而不是 0%），视图据此不画进度条——
+ * 「不知道」和「0%」在界面上必须长得不一样。
+ */
+function transferProgress(probe: ServiceProbe): TransferProgress | undefined {
+  if (probe.phase === "ready") return undefined;
+  const receivedBytes = typeof probe.receivedBytes === "number" ? probe.receivedBytes : 0;
+  const totalBytes = typeof probe.totalBytes === "number" ? probe.totalBytes : 0;
+  const percent = typeof probe.percent === "number" ? probe.percent : 0;
+  if (receivedBytes === 0 && totalBytes === 0 && percent === 0 && !probe.stage) return undefined;
+  return {
+    stage: probe.stage,
+    percent,
+    receivedBytes,
+    totalBytes,
+    speed: typeof probe.speed === "number" ? probe.speed : 0,
+    etaSeconds: typeof probe.etaSeconds === "number" ? probe.etaSeconds : 0,
+    fileName: probe.fileName ?? undefined,
+  };
 }
 
 /**
@@ -342,6 +408,10 @@ export class CanvasController {
         origin: this.origin,
         canvasVersion: version,
         loginRequired,
+        platform: typeof data?.platform === "string" ? data.platform : undefined,
+        supportedPlatforms: Array.isArray(data?.supported) ? data.supported : undefined,
+        payloadVersion: typeof data?.payloadVersion === "string" ? data.payloadVersion : undefined,
+        progress: transferProgress(data),
       });
       return data && typeof data.phase === "string" ? data : undefined;
     } catch {
@@ -431,7 +501,7 @@ export class CanvasController {
 
   private applyReady(): void {
     if (this.disposed) return;
-    this.setState({ phase: "running", messageKey: undefined, detail: undefined, busy: false });
+    this.setState({ phase: "running", messageKey: undefined, detail: undefined, progress: undefined, busy: false });
   }
 
   async ensureRunning(): Promise<void> {
@@ -565,6 +635,19 @@ export class CanvasController {
     }
   }
 
+  /**
+   * 重启：先停再启。
+   *
+   * 为什么需要单独一个动作：界面上以前只有「停止」和「启动」，而用户遇到的多是
+   * 「进程还在、后端僵了」——它既不是停止也不是首次启动，只能靠两次点击碰运气。
+   * stop() 是幂等的，所以无论当前什么状态都是「停干净再起」。
+   */
+  async restart(): Promise<void> {
+    if (this.disposed || this.operationInFlight) return;
+    await this.stop();
+    await this.ensureRunning();
+  }
+
   async openInBrowser(): Promise<boolean> {
     const baseUrl = await this.resolveBaseUrl();
     if (!baseUrl) return false;
@@ -599,6 +682,35 @@ export class CanvasController {
   }
 
   /**
+   * 拉一次工具目录（/__canvas/tools）。
+   *
+   * 工具清单是插件相对上游的增量价值，不拉到界面上，用户只能从 agent 的回复里猜它能干什么。
+   * 只拉一次：工具集随 shim 版本变，而 shim 在插件生命周期内不会换。失败不报错，
+   * 只置 toolsError——「服务没起」本来就是这个页面的常态。
+   */
+  async loadToolCatalog(): Promise<void> {
+    if (this.disposed || this.state.tools || this.state.toolsError === "pending") return;
+    this.setState({ toolsError: "pending" });
+    const baseUrl = await this.resolveBaseUrl();
+    if (!baseUrl) {
+      this.setState({ toolsError: "unreachable" });
+      return;
+    }
+    try {
+      const response = await fetch(`${baseUrl}/__canvas/tools`, { cache: "no-store" });
+      if (!response.ok) {
+        this.setState({ toolsError: "unreachable" });
+        return;
+      }
+      const body = (await response.json()) as { tools?: ToolSummary[] };
+      const tools = Array.isArray(body.tools) ? body.tools : [];
+      this.setState({ tools, toolsError: tools.length > 0 ? undefined : "unreachable" });
+    } catch {
+      this.setState({ toolsError: "unreachable" });
+    }
+  }
+
+  /**
    * 启动模型桥的执行侧（ADR-0006 决策 1）。它只负责长轮询取任务，不关心画布是否
    * 已经启动——shim 不在时自然重试，宿主也不会因此报错。
    */
@@ -620,20 +732,59 @@ export class CanvasController {
     });
   }
 
-  /** 把画布里已配好的自定义渠道登记成宿主的模型来源（ADR-0006 决策 3）。 */
-  async publishCanvasChannelsToHost(): Promise<void> {
+  /** 读画布模型目录，只更新界面计数，不注册任何东西（ADR-0013）。 */
+  async refreshCanvasCatalog(): Promise<void> {
     await this.runBridgeAction(async () => {
-      const result = await exportCanvasChannelsToHost(this.ctx);
-      const exported = result.exported.length;
+      const catalog = await readCanvasCatalog(this.ctx);
       this.patchBridge({
-        noticeKey: exported > 0 ? "bridge.exported" : "bridge.exportedNone",
-        detail:
-          result.skipped > 0
-            ? `exported ${exported}, skipped ${result.skipped}（画布未下发密钥）`
-            : `exported ${exported}`,
+        counts: catalog.counts,
+        catalog: catalog.models,
+        detail: `${catalog.models.length} models`,
       });
     });
   }
+
+  /**
+   * 把画布里的图片/视频模型注册成宿主的媒体 Provider（ADR-0013）。
+   *
+   * 显式动作、可重复执行：重复点击先 dispose 上一份注册，宿主不会留下多份同名 Provider。
+   */
+  async connectCanvasMediaToHost(): Promise<void> {
+    await this.runBridgeAction(async () => {
+      this.canvasMediaRegistration?.dispose();
+      this.canvasMediaRegistration = undefined;
+      const { result, dispose, view } = await registerCanvasMediaProvider(this.ctx);
+      this.canvasMediaRegistration = { dispose };
+      this.patchBridge({
+        counts: result.counts,
+        catalog: view.models,
+        mediaRegistered: result.supported,
+        noticeKey: "bridge.mediaRegistered",
+        detail:
+          result.unsupported > 0
+            ? `image ${result.counts.image}, video ${result.counts.video} · ${result.unsupported} unsupported`
+            : `image ${result.counts.image}, video ${result.counts.video}`,
+      });
+    });
+  }
+
+  /**
+   * 撤销媒体注册（ADR-0013 决策 4：生命周期归插件，用户能自己收回）。
+   *
+   * 只删宿主里的 Provider，不动画布里的任何配置。
+   */
+  async disconnectCanvasMediaFromHost(): Promise<void> {
+    await this.runBridgeAction(async () => {
+      this.canvasMediaRegistration?.dispose();
+      this.canvasMediaRegistration = undefined;
+      this.patchBridge({
+        mediaRegistered: undefined,
+        noticeKey: "bridge.mediaDisconnected",
+      });
+    });
+  }
+
+  private canvasMediaRegistration: { dispose(): void } | undefined;
 
   private async runBridgeAction(action: () => Promise<void>): Promise<void> {
     if (this.state.bridge.busy) return;
@@ -680,6 +831,9 @@ export class CanvasController {
     this.subscribed = false;
     this.bridgeExecutor?.stop();
     this.bridgeExecutor = undefined;
+    // 插件卸载后宿主不该继续拿到已失效的媒体 Provider（ADR-0013）。
+    this.canvasMediaRegistration?.dispose();
+    this.canvasMediaRegistration = undefined;
     this.statusDisposable?.dispose();
     this.statusDisposable = undefined;
     this.listeners.clear();

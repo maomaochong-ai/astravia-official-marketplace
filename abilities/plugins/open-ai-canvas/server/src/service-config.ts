@@ -1,7 +1,7 @@
 /**
  * 宿主环境变量、平台矩阵、载荷来源常量
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";

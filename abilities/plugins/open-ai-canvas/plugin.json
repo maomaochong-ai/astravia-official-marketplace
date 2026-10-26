@@ -2,9 +2,9 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "defaultLocale": "zh",
-  "pluginApiVersion": "^2.0.0",
+  "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
     "remoteName": "openAiCanvas",
@@ -21,7 +21,7 @@
     "shell.openExternal",
     "ai.models.list",
     "ai.complete",
-    "models.manage"
+    "media.provider.register"
   ],
   "providers": {
     "services": [
@@ -36,7 +36,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "f5cc6bd019360924f7f97b0d6947b0fc76c84ee829d7b83d5c18b62a06e99316",
+                  "sha256": "03f8803342439c9debdc162e593c6009e4895514dfe8ac72e60a5ee27ad1aa82",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -46,7 +46,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "f5cc6bd019360924f7f97b0d6947b0fc76c84ee829d7b83d5c18b62a06e99316",
+                  "sha256": "03f8803342439c9debdc162e593c6009e4895514dfe8ac72e60a5ee27ad1aa82",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -56,7 +56,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "f5cc6bd019360924f7f97b0d6947b0fc76c84ee829d7b83d5c18b62a06e99316",
+                  "sha256": "03f8803342439c9debdc162e593c6009e4895514dfe8ac72e60a5ee27ad1aa82",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -66,7 +66,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "f5cc6bd019360924f7f97b0d6947b0fc76c84ee829d7b83d5c18b62a06e99316",
+                  "sha256": "03f8803342439c9debdc162e593c6009e4895514dfe8ac72e60a5ee27ad1aa82",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }
@@ -76,7 +76,7 @@
               "executable": "server/boot.mjs",
               "artifacts": [
                 {
-                  "sha256": "f5cc6bd019360924f7f97b0d6947b0fc76c84ee829d7b83d5c18b62a06e99316",
+                  "sha256": "03f8803342439c9debdc162e593c6009e4895514dfe8ac72e60a5ee27ad1aa82",
                   "archive": "file",
                   "destination": "server/boot.mjs"
                 }

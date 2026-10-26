@@ -1,10 +1,10 @@
 /**
  * 准备阶段的可观测状态：阶段、失败、进度快照
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
-import { MANIFEST, PLATFORM, supportedPlatforms } from "./config.ts";
-import { ACTIVE_PROXY } from "./net.ts";
+import { MANIFEST, PLATFORM, supportedPlatforms } from "./service-config.ts";
+import { ACTIVE_PROXY } from "./http-transport.ts";
 
 export function note(message) {
   console.log(`[open-ai-canvas] ${message}`);

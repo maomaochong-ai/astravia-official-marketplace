@@ -1,16 +1,16 @@
 /**
  * 清单解析、镜像前缀、本地命中、候选 URL 探测
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import https from "node:https";
 import fs from "node:fs";
 import path from "node:path";
-import { BUNDLED_DIR, DATA_DIR, DEFAULT_MIRROR_PREFIXES, GITHUB_REPO, MANIFEST, MANIFEST_ASSET, PAYLOAD_BASE_URL, PLATFORM, RELEASE_TAG, TARGET_PLATFORMS, supportedPlatforms } from "./config.ts";
-import { STATE, fail, note } from "./state.ts";
-import { httpRequest, statSize } from "./net.ts";
-import type { Sink } from "./net.ts";
-import { downloadPayload } from "./download.ts";
+import { BUNDLED_DIR, DATA_DIR, DEFAULT_MIRROR_PREFIXES, GITHUB_REPO, MANIFEST, MANIFEST_ASSET, PAYLOAD_BASE_URL, PLATFORM, RELEASE_TAG, TARGET_PLATFORMS, supportedPlatforms } from "./service-config.ts";
+import { STATE, fail, note } from "./preparation-state.ts";
+import { httpRequest, statSize } from "./http-transport.ts";
+import type { Sink } from "./http-transport.ts";
+import { downloadPayload } from "./payload-download.ts";
 
 // 清单探测成功后记住这条基址，归档优先从同一条来源取。只有本模块回写。
 export let PREFERRED_BASE = null;

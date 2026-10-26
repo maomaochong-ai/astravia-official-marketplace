@@ -1,16 +1,16 @@
 /**
  * Go 后端子进程、端口预留、就绪信号、信号转发
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import net from "node:net";
 import fs from "node:fs";
 import { execFileSync, spawn } from "node:child_process";
-import { DATA_DIR, HOST_PORT } from "./config.ts";
-import { PUBLIC_ORIGIN, STABLE_PORT } from "./origin.ts";
+import { DATA_DIR, HOST_PORT } from "./service-config.ts";
+import { PUBLIC_ORIGIN, STABLE_PORT } from "./stable-origin-binding.ts";
 import type { AddressInfo } from "node:net";
-import { STATE, clearFailure, fail } from "./state.ts";
-import { GO_BINARY, NODE_BIN, PI_RUNTIME, PLUGIN_PACKAGES, SERVER_DIR, WEB_DIST } from "./paths.ts";
+import { STATE, clearFailure, fail } from "./preparation-state.ts";
+import { GO_BINARY, NODE_BIN, PI_RUNTIME, PLUGIN_PACKAGES, SERVER_DIR, WEB_DIST } from "./runtime-paths.ts";
 
 export let BACKEND_PORT = 0;
 export let goProcess = null;

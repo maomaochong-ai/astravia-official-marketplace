@@ -1,11 +1,11 @@
 /**
  * 载荷 web-dist 静态托管（ADR-0008）
  *
- * 由 server/src/service.ts 按职责切出（ADR-0012）。
+ * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import fs from "node:fs";
 import path from "node:path";
-import { WEB_DIST } from "./paths.ts";
+import { WEB_DIST } from "./runtime-paths.ts";
 
 export const WEB_MIME = {
   ".html": "text/html; charset=utf-8",

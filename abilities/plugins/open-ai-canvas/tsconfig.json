@@ -16,6 +16,8 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "react",
 		"noEmit": true,
+		// 源码用显式 .ts/.tsx 后缀（esbuild 打包与 Node 直跑都靠它）；tsc 需要这个开关才不报 TS5097。
+		"allowImportingTsExtensions": true,
 		"types": [
 			"node"
 		]
