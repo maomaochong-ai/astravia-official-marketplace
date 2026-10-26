@@ -24,8 +24,6 @@ const FEEDBACK_TEXT: Record<Exclude<Workbench["handoff"], "idle">, string> = {
 	sending: "tab.workbench.sending",
 	sent: "tab.workbench.sent",
 	queued: "tab.workbench.queued",
-	unverified: "tab.workbench.unverified",
-	noConversation: "tab.workbench.noConversation",
 	inserted: "tab.workbench.inserted",
 	failed: "tab.workbench.handoffFailed",
 };
@@ -46,11 +44,9 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 			? "text-risk-low"
 			: feedback === "queued"
 				? "text-purple-ink"
-				: feedback === "failed" || feedback === "noConversation"
+				: feedback === "failed"
 					? "text-risk-high"
-					: feedback === "unverified"
-						? "text-risk-medium"
-						: "text-text-4";
+					: "text-text-4";
 
 	return (
 		<div className="flex flex-col px-4 py-3">
@@ -127,38 +123,15 @@ export function ReaWorkbench({ workbench, detected }: WorkbenchProps): JSX.Eleme
 						{blockReason === null ? t("tab.workbench.ready") : t(BLOCK_TEXT[blockReason as keyof typeof BLOCK_TEXT])}
 					</span>
 				)}
-				{/* 回执不可信时给两条真人可用的退路：重新发一次，或自己决定何时发。 */}
-				{feedback === "noConversation" ? (
+				{feedback === "failed" && workbench.promptText.length > 0 ? (
 					<button
 						type="button"
-						onClick={() => workbench.handoffToAgent()}
+						onClick={() => void copyText(workbench.promptText)}
 						className="inline-flex h-4 shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 text-micro leading-none text-text-2 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
 					>
-						<span aria-hidden className="icon-[lucide--rotate-cw] size-2.5" />
-						{t("tab.workbench.retry")}
+						<span aria-hidden className="icon-[lucide--copy] size-2.5" />
+						{t("tab.workbench.copyPrompt")}
 					</button>
-				) : null}
-				{feedback === "unverified" ? (
-					<button
-						type="button"
-						onClick={() => workbench.insertToChat()}
-						className="inline-flex h-4 shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 text-micro leading-none text-text-2 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-					>
-						<span aria-hidden className="icon-[lucide--text-cursor-input] size-2.5" />
-						{t("tab.workbench.insert")}
-					</button>
-				) : null}
-				{feedback === "failed" || feedback === "unverified" || feedback === "noConversation" ? (
-					workbench.promptText.length > 0 ? (
-						<button
-							type="button"
-							onClick={() => void copyText(workbench.promptText)}
-							className="inline-flex h-4 shrink-0 items-center gap-1 rounded-sm border border-border px-1.5 text-micro leading-none text-text-2 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-						>
-							<span aria-hidden className="icon-[lucide--copy] size-2.5" />
-							{t("tab.workbench.copyPrompt")}
-						</button>
-					) : null
 				) : null}
 			</div>
 

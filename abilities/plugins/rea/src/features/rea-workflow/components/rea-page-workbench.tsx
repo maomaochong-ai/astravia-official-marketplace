@@ -119,10 +119,8 @@ export function WorkbenchPage({
 				bypassedStages={bypassed}
 			/>
 
-			{/* 三段栅格：窄面板两列（4+8），宽面板三列（3+5+4）。尾部证据列才有高度约束，
-			    窄的时候仍是内容高度，不会被拉成空盒子。 */}
-			<div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 @min-[1040px]:grid-cols-12">
-				<div className="flex min-w-0 flex-col gap-3 self-start @min-[1040px]:col-span-4 @min-[1440px]:col-span-3">
+			<div className="grid min-w-0 grid-cols-1 gap-4 @min-[1040px]:grid-cols-12">
+				<div className="flex min-w-0 flex-col gap-4 @min-[1040px]:col-span-4">
 					<Panel>
 						<PanelHeader title={t("ui.panel.compose")} hint={t("ui.panel.composeHint")} />
 						<ReaWorkbench workbench={workbench} detected={snapshot.detectedTarget ?? snapshot.hintedTarget} />
@@ -182,7 +180,7 @@ export function WorkbenchPage({
 					</Panel>
 				</div>
 
-				<div className="flex min-w-0 flex-col gap-3 self-start @min-[1040px]:col-span-8 @min-[1440px]:col-span-5">
+				<div className="flex min-w-0 flex-col gap-4 @min-[1040px]:col-span-8">
 					<Panel>
 						<PanelHeader
 							title={t("ui.panel.stage")}
@@ -197,15 +195,12 @@ export function WorkbenchPage({
 							target={workbench.active ?? snapshot.detectedTarget}
 						/>
 					</Panel>
-				</div>
 
-				{/* 右：实时证据。宽面板下它独占一列，把剩下的高度全给调用日志。 */}
-				<div className="flex min-h-0 min-w-0 flex-col gap-3 @min-[1040px]:col-span-12 @min-[1440px]:col-span-4">
-					<div className="grid min-h-0 min-w-0 items-start gap-3 @min-[1040px]:grid-cols-2 @min-[1440px]:flex-1 @min-[1440px]:grid-cols-1 @min-[1440px]:items-stretch">
+					<div className="grid min-w-0 grid-cols-1 gap-4 @min-[1280px]:grid-cols-2">
 						<Panel>
 							<ReaLoopConsole snapshot={snapshot} />
 						</Panel>
-						<Panel className="min-h-0 overflow-hidden">
+						<Panel>
 							<PanelHeader
 								title={t("ui.panel.recentCalls")}
 								badge={calls.length}
@@ -220,7 +215,7 @@ export function WorkbenchPage({
 									</button>
 								}
 							/>
-							<ReaLiveCallLog calls={calls.slice(-16)} errors={snapshot.errors} onSelectStage={onSelectStage} compact />
+							<ReaLiveCallLog calls={calls.slice(-6)} errors={snapshot.errors} onSelectStage={onSelectStage} compact />
 						</Panel>
 					</div>
 
