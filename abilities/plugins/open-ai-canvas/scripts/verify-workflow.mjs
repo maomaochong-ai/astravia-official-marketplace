@@ -10,7 +10,8 @@
  * 覆盖：一次成图、未知类型立即失败、成环、按 __key 幂等、连线去重、布局分层、
  * `run` 默认不触发生成。
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import ts from "typescript";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
@@ -18,8 +19,13 @@ import vm from "node:vm";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 // 从 **源** 读，不从 server/boot.mjs 读：后者是 esbuild 的产物，标识符可能被重写。
 // 这里测的是 compileWorkflow 的纯逻辑，与打包方式无关（ADR-0012 决策 3）。
-const source = ["server/src/contract.ts", "server/src/service.ts"]
-  .map((rel) => readFileSync(join(ROOT, rel), "utf8"))
+// 按目录读全部源码：切分后（ADR-0012）符号散落在多个模块，写死文件列表会在
+// 下一次拆分时静默失效。读取顺序固定，保证断言里的 indexOf 行为稳定。
+const SRC_DIR = join(ROOT, "server/src");
+const source = readdirSync(SRC_DIR)
+  .filter((name) => name.endsWith(".ts"))
+  .sort()
+  .map((name) => readFileSync(join(SRC_DIR, name), "utf8"))
   .join("\n");
 
 const results = [];
@@ -74,10 +80,17 @@ function sliceBlock(name, { isFunction = false } = {}) {
   throw new Error(`unbalanced block for ${name}`);
 }
 
-// 切片来自 .ts，而 vm 只吃 JS：把顶层声明的类型标注去掉（`const X: T =` → `const X =`）。
-// 只处理声明行本身，函数体里的标注这里本来就没有。
-const stripTypeAnnotation = (code) =>
-  code.replace(/^((?:export\s+)?(?:const|let|var)\s+[A-Za-z0-9_$]+)\s*:\s*[^=\n]+=/, "$1 =");
+// 切片来自 .ts，而 vm 只吃 JS。手写正则剥类型（`const X: T =`、函数返回类型、参数类型）
+// 注定漏一种写法，所以直接用仓库里已有的 typescript 做语法擦除：转换是结构化的，
+// 新增标注不会让这个脚本静默坏掉。
+const toJs = (code) =>
+  ts
+    .transpileModule(code, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+    })
+    .outputText.replace(/^export\s+/gm, "")
+    .trim();
+
 
 const pieces = [
   sliceBlock("LAYOUT_STEP_X"),
@@ -85,7 +98,7 @@ const pieces = [
   sliceBlock("codedError", { isFunction: true }),
   sliceBlock("BUILTIN_NODE_TYPES"),
   sliceBlock("compileWorkflow", { isFunction: true }),
-].map(stripTypeAnnotation);
+].map(toJs);
 
 const context = vm.createContext({ crypto: globalThis.crypto, console });
 vm.runInContext(`${pieces.join("\n")}\nthis.compileWorkflow = compileWorkflow; this.TYPES = BUILTIN_NODE_TYPES;`, context);
