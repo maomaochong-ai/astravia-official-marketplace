@@ -18,6 +18,7 @@
 - 不执行向 `main` 回写生成索引、先发包后提目录 PR 或逐提交版本递增的旧流程。
 - 完成时依次运行 node scripts/marketplace.mjs check、node scripts/marketplace.mjs build 与 node --test tests/*.test.mjs；内容测试同时检查生成后的插件资源，不能放在构建前。Windows Python shim 环境可将 ASTRAVIA_PYTHON 指向真实解释器。
 - 本地构建使用 node scripts/marketplace.mjs build；正式发布由 publish-marketplace.yml 执行。
+- 改了插件的运行内容（`src/`、`plugin.json`、`package.json`、`locales/`、`agent/`、`cases/`、`assets/`、`scripts/`）就必须抬版本：CI 与本地 build 用 `--strict`，以 gh-pages 提交信息里的源码 sha 为基线，发现运行内容变了而版本号还停在已发布的那一版就直接失败。抬版本用 `node scripts/marketplace.mjs bump --slug <slug> --apply`（五份身份文件一起改，默认 dry-run）。只改 README、`detail.json`、`ability.json`、`docs/` 或测试不需要抬版本。
 - Desktop 使用分支 `gh-pages`。生成索引只写在 `gh-pages`。
 
 ## 添加一个能力的流程

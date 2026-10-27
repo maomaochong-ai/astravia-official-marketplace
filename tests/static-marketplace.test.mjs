@@ -4,9 +4,16 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve, sep } from 'node:path';
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { missingPackagedResources, prepareMarketplace } from '../scripts/static-marketplace.mjs';
+import { applyVersionBump, missingPackagedResources, planVersionBumps, prepareMarketplace, reviewedSourceCommitMessage, reviewedSourceSha, runtimeSourcesChanged } from '../scripts/static-marketplace.mjs';
 import { publishMarketplace } from '../scripts/publish-marketplace.mjs';
 import { publicationSettings } from '../scripts/marketplace.mjs';
+
+// 基线是从发布提交信息里读回来的：写端和读端共用一份契约，改措辞不会只改一半。
+test('the published commit message round-trips its source sha', () => {
+  const message = reviewedSourceCommitMessage('2026.10.27-2', 'a'.repeat(40));
+  assert.equal(reviewedSourceSha(message), 'a'.repeat(40));
+  assert.equal(reviewedSourceSha('chore(marketplace): 发布 2026.10.27-2'), null);
+});
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'vetta-static-'));
@@ -113,6 +120,79 @@ test('same-version Skill edits remain unpublished until its version advances', a
   assert.match(readFileSync(join(next.site, 'abilities/skills/guide/SKILL.md'), 'utf8'), /Future guide/);
 });
 
+
+test('strict mode refuses a same-version runtime change that would never be published', async (t) => {
+  const f = fixture(t);
+  const first = await f.run('first');
+  // 没有插件被动过：严格检查是空集，什么也不发生。
+  const clean = await prepareMarketplace({ root: f.root, output: join(f.root, 'clean'), previous: first.site, sourceSha: 'a'.repeat(40), buildPlugin: () => {}, date: '2026.09.19', strictSlugs: new Set() });
+  assert.equal(clean.packages.length, 0);
+  assert.equal(clean.changed, false);
+  // 运行内容动了却没抬版本：已发布版本不重建，这笔改动永远上不了市场，只能拒绝。
+  await assert.rejects(
+    prepareMarketplace({ root: f.root, output: join(f.root, 'dirty'), previous: first.site, sourceSha: 'a'.repeat(40), buildPlugin: () => {}, date: '2026.09.19', strictSlugs: new Set(['demo']) }),
+    /marketplace\.mjs bump --slug demo --apply/,
+  );
+});
+
+test('runtime path filter separates shipped bytes from presentation edits', () => {
+  const paths = [
+    'abilities/plugins/demo/src/index.ts',
+    'abilities/plugins/demo/src/test/index.test.ts',
+    'abilities/plugins/demo/plugin.json',
+    'abilities/plugins/demo/locales/zh.json',
+    'abilities/plugins/demo/README.md',
+    'abilities/plugins/demo/detail.json',
+    'abilities/plugins/demo/ability.json',
+    'abilities/plugins/demo/package-lock.json',
+    'abilities/plugins/demo/docs/notes.md',
+    'abilities/plugins/other/src/index.ts',
+  ];
+  assert.deepEqual(runtimeSourcesChanged(paths, 'abilities/plugins/demo'), [
+    'src/index.ts',
+    'plugin.json',
+    'locales/zh.json',
+  ]);
+});
+
+test('bump plans and applies the next patch version in every identity file', async (t) => {
+  const f = fixture(t);
+  const first = await f.run('first');
+  const published = JSON.parse(readFileSync(join(first.site, '.astravia/marketplace.json')));
+  f.put('abilities/plugins/demo/package.json', { name: 'demo-plugin', version: '1.0.0', private: true });
+  f.put('abilities/plugins/demo/package-lock.json', { name: 'demo-plugin', version: '1.0.0', lockfileVersion: 3, requires: true, packages: { '': { name: 'demo-plugin', version: '1.0.0' } } });
+  assert.deepEqual(planVersionBumps({ root: f.root, published }), [{ slug: 'demo', from: '1.0.0', published: '1.0.0', to: '1.0.1' }]);
+  assert.deepEqual(applyVersionBump({ root: f.root, slug: 'demo', to: '1.0.1' }), [
+    'abilities/plugins/demo/plugin.json',
+    'abilities/plugins/demo/ability.json',
+    'abilities/plugins/demo/package.json',
+    'abilities/plugins/demo/package-lock.json',
+    '.astravia/marketplace.source.json',
+  ]);
+  const lock = JSON.parse(readFileSync(join(f.root, 'abilities/plugins/demo/package-lock.json')));
+  assert.deepEqual([lock.version, lock.packages[''].version], ['1.0.1', '1.0.1']);
+  for (const path of ['abilities/plugins/demo/plugin.json', 'abilities/plugins/demo/ability.json', 'abilities/plugins/demo/package.json']) {
+    assert.equal(JSON.parse(readFileSync(join(f.root, path))).version, '1.0.1');
+  }
+  assert.equal(JSON.parse(readFileSync(join(f.root, '.astravia/marketplace.source.json'))).abilities[0].version, '1.0.1');
+  // 抬完就不再重复抬：下一次运行计划为空。
+  assert.deepEqual(planVersionBumps({ root: f.root, published }), []);
+});
+
+// 同一 slug 既顶层注册、又被 bundle 引用时 `entries()` 会返回两次；只改一份会让索引自我矛盾。
+test('bump updates every catalog occurrence of the same plugin', async (t) => {
+  const f = fixture(t);
+  f.catalog.abilities.push({ type: 'bundle', slug: 'starter', name: 'Starter', description: 'Starter', version: '1.0.0', configVersion: 1, config: { members: [{ type: 'plugin', slug: 'demo', version: '1.0.0', source: { path: 'abilities/plugins/demo' } }] } });
+  f.put('.astravia/marketplace.source.json', f.catalog);
+  f.put('abilities/plugins/demo/plugin.json', { id: 'demo', name: 'Demo', version: '1.0.0', entry: 'dist/index.js', pluginApiVersion: '^2.0.0', permissions: [] });
+  f.put('abilities/plugins/demo/ability.json', { schemaVersion: 1, type: 'plugin', slug: 'demo', version: '1.0.0' });
+
+  applyVersionBump({ root: f.root, slug: 'demo', to: '1.0.1' });
+
+  const catalog = JSON.parse(readFileSync(join(f.root, '.astravia/marketplace.source.json')));
+  assert.equal(catalog.abilities[0].version, '1.0.1');
+  assert.equal(catalog.abilities.at(-1).config.members[0].version, '1.0.1');
+});
 test('rejects path traversal and a changed release declaration for an existing version', async (t) => {
   const f = fixture(t);
   const first = await f.run('first');

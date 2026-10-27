@@ -4,6 +4,8 @@
 
 - 能力版本通过普通源码 PR 审核，合并后 CI 自动发布不可变安装包与 gh-pages 市场索引。
 - 普通源码开发和文档提交无需修改市场版本，未提高版本的运行内容保持原有发布内容。
+- 同版本号下改过运行内容（源码、`plugin.json`、`locales` 等）会让 PR 与发布构建直接失败，并提示用
+  `node scripts/marketplace.mjs bump --slug <slug> --apply` 抬版本——这种改动本来永远不会出现在市场上。
 - 上传失败可以重跑，已发布制品校验一致后复用；索引仅在制品检查通过后更新。
 - 新模型源码改由 `marketplace-source` 分支维护，`main` 继续为旧版 Desktop 提供 schema v2 市场，首次发布和迁移期间不会出现来源不可用窗口。
 - 首次联调可以把尚未正式发布的 Desktop 版本钉到不可变 OpenAstravia 提交，真实发布 `gh-pages` 与插件安装包；正式 Desktop Release 存在后自动恢复稳定版门禁。

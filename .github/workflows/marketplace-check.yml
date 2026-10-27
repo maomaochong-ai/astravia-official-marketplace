@@ -42,9 +42,9 @@ jobs:
         run: |
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
             git worktree add --detach "$RUNNER_TEMP/marketplace-previous" origin/gh-pages
-            node scripts/marketplace.mjs build --previous "$RUNNER_TEMP/marketplace-previous"
+            node scripts/marketplace.mjs build --previous "$RUNNER_TEMP/marketplace-previous" --strict
           else
-            node scripts/marketplace.mjs build
+            node scripts/marketplace.mjs build --strict
           fi
       - name: Check source and built package contracts
         run: node --test tests/*.test.mjs
