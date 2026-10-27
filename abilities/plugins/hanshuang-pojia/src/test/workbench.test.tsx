@@ -60,6 +60,7 @@ function makeBridge(overrides: Partial<WorkbenchBridge> = {}): WorkbenchBridge {
 			{ name: "notes.txt", path: "/work/notes.txt", size: 128, isDirectory: false, modifiedAt: 0 },
 			{ name: "lib", path: "/work/lib", size: 0, isDirectory: true, modifiedAt: 0 },
 		]),
+		readTextFile: vi.fn(async () => null),
 		stat: vi.fn(async () => ({ size: 4_194_304 })),
 		loadSample: vi.fn(async () => SAMPLE),
 		importSample: vi.fn(async () => "/work/.hanshuang/samples/picked.apk"),
@@ -192,6 +193,54 @@ describe("workbench shell", () => {
 		expect(screen.getByText("boom")).toBeTruthy();
 		fireEvent.click(screen.getByText("blocked.retry"));
 		await waitFor(() => expect(screen.queryByText("blocked.other.title")).toBeNull());
+	});
+
+	it("indexes the cases in the project and shows which are gated", async () => {
+		// 面板不写盘，只把 cases/ 下的声明读出来：与 search_cases 共用同一个扫描器。
+		const scope = [
+			"## auth",
+			"- status: granted",
+			"",
+			"## in_scope",
+			"- assets:",
+			"  - demo.apk",
+			"",
+			"## network_profile",
+			"- mode: offline",
+			"- offline_sample: samples/demo.apk",
+			"",
+		].join("\n");
+		const workitems =
+			"| ID | title | role | targets | surface | status | evidence | notes |\n|----|-------|------|---------|---------|--------|----------|-------|\n| WI-001 | Baseline | lead | demo.apk | android | done | E-001 | |\n";
+		const entries = (paths: [string, boolean][]) =>
+			paths.map(([path, isDirectory]) => ({ name: path.split("/").pop()!, path, size: 0, isDirectory, modifiedAt: 0 }));
+		const api = makeBridge({
+			listFiles: vi.fn(async (path: string) => {
+				if (path === "/work") return entries([["/work/cases", true]]);
+				if (path === "/work/cases") return entries([["/work/cases/demo", true]]);
+				if (path === "/work/cases/demo/evidence") return entries([["/work/cases/demo/evidence/E-001-entry.md", false]]);
+				return Promise.reject(new Error("ENOENT"));
+			}),
+			readTextFile: vi.fn(async (path: string) => {
+				if (path.endsWith("scope.md")) return scope;
+				if (path.endsWith("workitems.md")) return workitems;
+				return null;
+			}),
+		});
+		await open(api);
+		await go("cases");
+
+		expect(await screen.findByText("page.cases.title")).toBeTruthy();
+		// 目录名就是案例名；资产列只给计数，资产名在详情里。
+		const row = await screen.findByTitle("/work/cases/demo");
+		expect(screen.getByText("cases.ready.yes")).toBeTruthy();
+		expect(screen.getByText("cases.count", { exact: false })).toBeTruthy();
+		fireEvent.click(row);
+		expect(await screen.findByText("cases.detail.inScope")).toBeTruthy();
+		expect(screen.getByText("demo.apk")).toBeTruthy();
+		// 先例库与本地案例同页但不同源：包名来自随包语料，而它自己的 scope 仍是待定。
+		expect(screen.getByText("cases.precedent.title")).toBeTruthy();
+		expect(screen.getByText("cases/elf-packed-loader/")).toBeTruthy();
 	});
 });
 

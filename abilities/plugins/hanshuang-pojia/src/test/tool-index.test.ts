@@ -7,7 +7,7 @@ import { COMPANIONS, TOOLCHAIN } from "../domain/toolchain/catalog";
  * `catalog.ts` 生成。这三个来源必须始终一致，否则 agent 拿到的清单和实际能力会分叉：
  *
  * - `catalog.ts` 决定探测谁、建议谁；
- * - `docs/toolchain-parity.md` 是对 2.0 的 42 项逐条判定（人读）；
+ * - `docs/reference/toolchain-parity.md` 是对 2.0 的 42 项逐条判定（人读）；
  * - `tool-index.json` 是把同一份判定变成机器可读（agent 读）。
  */
 const index = JSON.parse(readFileSync(new URL("../content/docs/kit-docs/tool-index.json", import.meta.url), "utf8")) as {
@@ -17,7 +17,7 @@ const index = JSON.parse(readFileSync(new URL("../content/docs/kit-docs/tool-ind
 	tools: Array<{ name: string; kind: string; group: string; purpose?: string; reason?: string }>;
 };
 
-const parity = readFileSync(new URL("../../docs/toolchain-parity.md", import.meta.url), "utf8");
+const parity = readFileSync(new URL("../../docs/reference/toolchain-parity.md", import.meta.url), "utf8");
 
 /** 从对照表里数出三档的行数，而不是再抄一遍数字。 */
 function parityCount(status: string): number {

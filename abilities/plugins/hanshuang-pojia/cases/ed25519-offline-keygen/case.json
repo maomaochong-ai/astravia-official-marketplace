@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "ed25519-offline-keygen",
+	"title": "Offline activation signed by an embedded Ed25519 key that can be replaced",
+	"summary": "An activation code is a gzip JSON blob signed with Ed25519, and the verifying public key sits in the binary as a reversible XOR blob — so the shortest route is not forging a signature but swapping the key, then signing with the matching private half.",
+	"signals": [
+		"ed25519",
+		"cryptopp",
+		"blake2s",
+		"gzip",
+		"base64",
+		"qt6",
+		"machineguid",
+		"offline activation",
+		"public key patch",
+		"激活码",
+		"机器码",
+		"frida"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/ed25519-offline-keygen/reverse-engineering",
+		"cases/ed25519-offline-keygen/algorithm"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目H" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/algorithm.md"
+	]
+}

@@ -23,6 +23,8 @@ const GROUPS = [
 	{ id: "kb", label: "Knowledge base", source: "Tool/mcp/Tool/reverselab/kb", minFiles: 292 },
 	{ id: "manual", label: "Manuals", source: "MANUAL", minFiles: 10 },
 	{ id: "kit-docs", label: "Tool docs", source: "Tool/docs", minFiles: 7 },
+	// 案例原文：先例包（cases/<slug>/）只写方法摘要，走查细节、补丁全表与算法在这里。
+	{ id: "cases", label: "Case studies", source: "Tool/cases", minFiles: 14 },
 ];
 
 function walk(dir, base = dir) {

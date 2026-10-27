@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "aob-signature-cross-version",
+	"title": "Keeping one patch table alive across five builds of a signed binary",
+	"summary": "Absolute offsets rot at every recompile. Two-state AOB signatures anchored on three or more builds, plus a dynamic PE gate, replace a hard-coded offset table that silently corrupted its output.",
+	"signals": [
+		"aob signature",
+		"双态特征码",
+		"滑动汉明距离",
+		"capstone",
+		"pe32",
+		"comdat folding",
+		"authenticode strip",
+		"pe checksum",
+		"trial period",
+		"serial",
+		"fail-closed"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/aob-signature-cross-version/reverse-engineering",
+		"cases/aob-signature-cross-version/patch-table"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目D" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/signatures.md",
+		"docs/patch-table.md"
+	]
+}

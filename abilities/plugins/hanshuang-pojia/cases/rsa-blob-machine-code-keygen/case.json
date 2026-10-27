@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "rsa-blob-machine-code-keygen",
+	"title": "A 1016-bit CNG blob and a sliding-window check: why the keygen route dies",
+	"summary": "The activation data is an RSA signature over a machine-derived request string, verified with a sliding window inside a CNG public blob — and the weak 1016-bit modulus still cannot be factored, so the honest deliverable is the local reproduction plus a patch at the verify export.",
+	"signals": [
+		"rsa",
+		"cng",
+		"rsapublicblob",
+		"bcrypt",
+		"md5",
+		"smbios",
+		"smart",
+		"ghidra",
+		"ordinal export",
+		"激活数据",
+		"滑动窗口",
+		"模数分解"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/rsa-blob-machine-code-keygen/reverse-engineering",
+		"cases/rsa-blob-machine-code-keygen/algorithm"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目I" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/algorithm.md"
+	]
+}

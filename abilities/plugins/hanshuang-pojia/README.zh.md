@@ -51,7 +51,7 @@
 | `generate_hook` | 为命中的 Dalvik 方法生成 Frida 脚本：`observe` 只打日志（默认）、`override` 跑完原方法再返回 `return_value`、`replace` 不跑原方法 |
 | `frida_dump` | 加壳样本的运行时 dex 抽取：出扫描脚本、真机跑、或把日志拼回 `.dex` 文件 |
 | `triage_directory` | 目录下所有二进制的风险表，最差的排最前 |
-| `search_docs` | 在 309 篇随包文档里按标题 / id / 主题检索 |
+| `search_docs` | 在 334 篇随包文档里按标题 / id / 主题检索 |
 | `read_doc` | 读一篇文档正文（Markdown），超预算时明确标识截断位置 |
 | `probe_environment` | 探测已声明的可执行文件是否真能跑，给出各自版本横幅，并区分「宿主拒绝」与「未安装」 |
 | `install_toolchain` | 按目标筛出真正要装的那几个工具，给出本平台的准确安装命令 |
@@ -61,10 +61,15 @@
 | `verify_signature` | 签名方案与签名人证书：结构事实来自 APK 自身，宿主有 `apksigner` 时再跑 `verify --print-certs` |
 | `run_radare` | r2 / rabin2 / radiff2 / rasm2：头信息、字符串、函数表、反汇编、伪 C、交叉引用、汇编、差分，以及只读 `cmd` |
 | `decompile_android` | 用 jadx / apktool 输出到相邻目录，再对整个目录做 `smali_search` |
+| `disassemble_dex_method` | 单个 Dalvik 方法的 `code_item`，解成 `offset: op operands` 清单 |
 | `init_task` | 单个目标的案件目录：`samples/`、`exports/`、`reports/`、README 与报告模板 |
+| `search_cases` | 19 个随包先例包与你自己的案例，两条道分开排名：可以复制的方法，不是可以继承的授权 |
+| `record_case_note` | 往当前案件追加决策、blocker 或交付物记录 |
 | `write_assessment_report` | 把四段式评估报告填进 `reports/<目标>_security_assessment_report.md`；没给的段落就写「未提供」 |
+| `generate_artifact` | 针对你定位到的裁决点，出补丁 / keygen / 代理 DLL / 验证工装的骨架 |
+| `install_astravia` | 生成注入全局 `AGENTS.md` 的指令块，交给保存对话框 |
 
-二十五个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+三十个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
 
 几个分析工具把「返回什么」说清楚：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是指令形状
 指纹，不是等价性证明；hook 模板默认只观测并原样返回。最后一条是默认值而不是天花板 —— `mode`
@@ -81,7 +86,7 @@
 `decompile_android` 只写到 APK 旁边的目录，从不改原文件，而且只接受尚不存在的目录：已存在的 `output_dir`
 直接拒绝而不是合并进去；`apktool` 也不再带 `-f`，重跑不可能抹掉你自己的文件夹。重建产物放在案件旁的 `exports/` 下：
 补丁是你那次修改的产出，不会有一个 `patches/` 目录提前替你留位。
-`probe_environment` 每个工具跑一次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。`install_toolchain` 把后者变成你真要敲的命令：按目标（`apk` / `native` / `firmware` / `dynamic` / `full`）筛掉用不上的工具，取本平台的配方（brew / apt / winget / scoop / pipx），到此为止——插件不跑安装器，每条命令你先看到再决定。商业套件（IDA、Binary Ninja、JEB）只作为上下文列出，不给命令；可选工具不占任何权限位，因为插件从不启动它们。与 2.0 的全量对照见 [docs/toolchain-parity.md](docs/toolchain-parity.md)。
+`probe_environment` 每个工具跑一次短 `--version`，结果缓存一分钟，并把两种失败分清楚：被拒绝是设置问题，找不到才是装的问题。`install_toolchain` 把后者变成你真要敲的命令：按目标（`apk` / `native` / `firmware` / `dynamic` / `full`）筛掉用不上的工具，取本平台的配方（brew / apt / winget / scoop / pipx），到此为止——插件不跑安装器，每条命令你先看到再决定。商业套件（IDA、Binary Ninja、JEB）只作为上下文列出，不给命令；可选工具不占任何权限位，因为插件从不启动它们。与 2.0 的全量对照见 [docs/reference/toolchain-parity.md](docs/reference/toolchain-parity.md)。
 
 同一套引擎可以在终端里跑，不经过插件沙箱：
 
@@ -109,7 +114,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 | 权限 | 原因 |
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
-| `agent.tools.register`、`agent.toolHandler.execute` | 二十五个工具 |
+| `agent.tools.register`、`agent.toolHandler.execute` | 三十个工具 |
 | `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`、`verify_signature`、`frida_dump`：使用 `commands` 里声明的十四个可执行文件，每个都需用户授权 |
 | `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
 | `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
@@ -193,9 +198,33 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中继与记忆机制。每轮付费的只有技能索引项，
 所以正文可以写全。
 
+## 案例与先例
+
+`Cases` 页与 `search_cases` 共用一个前提：案例是可以复制的方法，不是可以继承的授权。`scope.md` 永远
+从 `status: pending` / `ready_for_act: false` 开头，文件里写什么都撑不了就绪状态——就绪度由范围、blocker
+和工作项算出来。
+
+| 层 | 位置 | 是什么 |
+| --- | --- | --- |
+| 你自己的案例 | 工作区 `cases/<slug>/`，由 `init_task` 建 | 一个目标的样本、导出、报告，加上决策日记 |
+| 随包先例 | 本仓库 `cases/<slug>/`，构建期内联 | 19 个方法级包：闸门在哪、怎么确认、什么被证伪 |
+| 完整战例 | `src/content/docs/cases/<slug>/` | 24 篇长文：补丁表、RVA 地图、协议字段布局 |
+
+一个先例包是四份规范文档加可选补充：`scope.md`（范围内外）、`workitems.md`（8–12 项，第一项恒为
+“Establish scope and auth”）、`docs/method.md`（手法）、`README.md`。`docs/patches.md` 这类补充文档装
+那些会把 method 撑爆的表。`scripts/sync-precedents.mjs` 把全部内容内联进
+`src/domain/case/precedents.generated.ts`，所以 `.astraviapkg` 从不带 `cases/` 目录——挡在构建前的
+是 `node scripts/check-precedent-package.mjs --all`。
+
+语料派生自上游 `seep-kit` 2.0 的 `Tool/cases/`。过线的是：偏移、RVA、AOB 特征码、补丁字节、协议
+字段、算法常量；不过线的是：样本字节、二进制、密钥、盐、端点、真实产品名。规则与理由在 ADR 006 与
+007。
+
 ## 目录
 
 ```text
+cases/                             # 19 个先例包：只有源码，构建期内联，从不随包
+docs/                              # 工程文档：README.md 索引 + adr/ contract/ reference/ audits/ plans/
 agent/
 ├── skills/                          # 九个 SKILL.md 目录，经 skillPaths 注册
 │   ├── hanshuang-pojia/             # 宿主在对话区列出的主技能，含 references/
@@ -220,6 +249,7 @@ src/
 │   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
+│   ├── case/      contract.ts journal.ts library.ts precedents.ts（含生成表）
 │   ├── interceptor.ts               # 上游 L1/L4 的移植：注入判定、术语表、快捷口令
 │   ├── refusal.ts                   # 回合边界的恢复判定：检测器 + 续跑追问片段
 │   ├── playbooks.ts                 # 清单类型与 payload 章节：只点名随包文档，不复制正文
@@ -243,7 +273,7 @@ src/
 │       ├── workbench-screen.tsx     # 导航与外壳
 │       ├── shell/                   # 侧栏、顶栏、表格、标签、图标
 │       ├── workbench/               # 投放区、风险环、发现行、拦截页
-│       └── pages/                   # 十二个页面
+│       └── pages/                   # 十七个页面
 └── test/                            # 夹具与测试
 ```
 
@@ -251,18 +281,22 @@ src/
 
 ## 工作台面板
 
-活动栏标签卡现在是一个十四页的工作台，而不是单页报告：工作台、使用指南、文档、样本、发现、字符串、
-反汇编、清单、熵分布、签名、对比、自检、报告、设置。只有在样本被读进来之后才会出现分析结果，
-每个页面读的都是同一份报告 —— 除了那两个不需要报告的页。
+活动栏标签卡现在是一个十七页的工作台，而不是单页报告：工作台、动态、提示词、使用指南、样本、发现、
+字符串、反汇编、文档、案例、清单、熵分布、签名、对比、自检、报告、设置。只有在样本被读进来之后
+才会出现分析结果，每个页面读的都是同一份报告 —— 除了不需要报告的那几个页。
 
 反汇编页是唯一不读报告的一页：它直接走样本自己的字节，扫可执行节区、给候选函数排序（入口 >
 符号 > 调用目标），再逐个展开成带控制流的清单，分摘要 / 仅分支 / 全部三档，并按字符预算截断。
 更深的二次核验仍然交给 `disassemble_range` 工具；这一页的意义是不用花一个回合就能看到清单。
 
-文档页把工具包自带的实战资料直接放进面板：随插件逐字节发布的 292 篇知识库文章、10 篇手册和 7 篇
-工具文档，标题检索在内存里即时完成，正文检索按需跨 309 篇文件扫描。每篇正文都是一个独立的构建
-chunk，所以打开文档页的代价是一篇，而不是 4 MB。同一批文档在对话里也能通过 `search_docs` 与
-`read_doc` 拿到 —— Agent 引用的那一篇和屏幕上显示的那一篇是同一个文件。
+文档页把工具包自带的实战资料直接放进面板：随插件逐字节发布的 292 篇知识库文章、11 篇手册、
+7 篇工具文档和 24 篇案例原文，标题检索在内存里即时完成，正文检索按需跨 334 篇文件扫描。每篇正文
+都是一个独立的构建 chunk，所以打开文档页的代价是一篇，而不是 4 MB。同一批文档在对话里也能通过
+`search_docs` 与 `read_doc` 拿到 —— Agent 引用的那一篇和屏幕上显示的那一篇是同一个文件。
+
+案例页是 `init_task` 的只读对照：上面一张是你自己 `cases/` 与 `work/` 里的案例（目标、预设、授权状态、
+就绪度、资产与证据条数、工作项进度），下面一张是 19 个随包先例，每行标「范围待定」。复制一行重新跑
+`init_task`，是让先例变成你案例的唯一途径 —— 包替代不了你去做授权。
 
 刻意分成两条车道：
 
@@ -294,7 +328,7 @@ node scripts/marketplace.mjs build
 node --test tests/*.test.mjs
 ```
 
-`src/content/docs/` 下 309 篇实战文档的索引由 `scripts/sync-docs.mjs` 生成：新增或修改文档后不带 `--check` 跑一次，CI 里则保留 `--check`。文档按需切成独立 chunk，没点开的文章不产生下载。
+`src/content/docs/` 下 334 篇随包文档的索引由 `scripts/sync-docs.mjs` 生成：新增或修改文档后不带 `--check` 跑一次，CI 里则保留 `--check`。文档按需切成独立 chunk，没点开的文章不产生下载。
 
 ## 实现深度
 

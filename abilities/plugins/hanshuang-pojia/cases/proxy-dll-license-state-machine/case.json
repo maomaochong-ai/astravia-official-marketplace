@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "proxy-dll-license-state-machine",
+	"title": "The trial banner was never the gate: an activation state word behind it",
+	"summary": "A twinBASIC x64 desktop tool with no network stack decides everything from one 16-bit word in .data. Five earlier cosmetic patches looked successful and changed nothing, because they edited what the UI reads instead of what the startup path writes.",
+	"signals": [
+		"twinbasic",
+		"thunderrt6formdc",
+		"bstr",
+		"oleaut32",
+		"sysallocstring",
+		"peb",
+		"virtualprotect",
+		"widestring",
+		"entitlement",
+		"activation state word",
+		"dll search order",
+		"堆损坏"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/proxy-dll-license-state-machine/authorisation-state-machine",
+		"cases/proxy-dll-license-state-machine/crack-payload-and-hardening"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目A" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/state-machine.md"
+	]
+}

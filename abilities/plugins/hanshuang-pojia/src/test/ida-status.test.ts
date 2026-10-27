@@ -1,6 +1,6 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
-import { registerIdaStatusTool } from "../tools/ida-status";
+import { registerIdaStatusTool } from "../tools/env/ida-status";
 
 interface HarnessOptions {
 	fetchGranted?: boolean;

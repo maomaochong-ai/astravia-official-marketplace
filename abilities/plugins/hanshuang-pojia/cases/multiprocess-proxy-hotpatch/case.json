@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"slug": "multiprocess-proxy-hotpatch",
+	"title": "One DLL the host already imports, patching fifty-two sites across four processes",
+	"summary": "A desktop suite spreads its entitlement checks over a UI process, a daemon, a push service and an updater. Renaming a dependency and shipping two forwarders worked once and broke on the next build; a single native stub behind an API the binaries already import survives the rebuild, with per-site byte comparison before every write.",
+	"signals": [
+		"proxy dll",
+		"winhttp",
+		"naked asm",
+		"rust",
+		"多进程",
+		"inline patch",
+		"byte comparison",
+		"rva shift",
+		"qt",
+		"updater",
+		"service restart"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/multiprocess-proxy-hotpatch/points-and-naked-proxy",
+		"cases/multiprocess-proxy-hotpatch/version-drift-and-guards"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目B" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/points-and-proxy.md"
+	]
+}

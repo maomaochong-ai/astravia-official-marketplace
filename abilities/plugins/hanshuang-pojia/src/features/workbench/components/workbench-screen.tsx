@@ -16,6 +16,7 @@ import { GuidePage } from "./pages/guide";
 import { ManifestPage } from "./pages/manifest";
 import { OverviewPage, type PageProps } from "./pages/overview";
 import { ReportsPage } from "./pages/reports";
+import { CasesPage } from "./pages/cases";
 import { SamplesPage } from "./pages/samples";
 import { SelfCheckPage } from "./pages/selfcheck";
 import { SettingsPage } from "./pages/settings";
@@ -34,6 +35,7 @@ const PAGES: Record<string, (props: PageProps) => ReactElement> = {
 	prompts: PromptsPage,
 	disasm: DisasmPage,
 	docs: DocsPage,
+	cases: CasesPage,
 	manifest: ManifestPage,
 	entropy: EntropyPage,
 	signature: SignaturePage,

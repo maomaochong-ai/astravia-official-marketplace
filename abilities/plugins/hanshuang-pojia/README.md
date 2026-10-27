@@ -58,7 +58,7 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `generate_hook` | a Frida script for matched Dalvik methods — `observe` prints only (default), `override` runs the original then returns `return_value`, `replace` skips the original |
 | `frida_dump` | runtime dex extraction for packed apps: emit the scanner script, run it on a device, or reassemble a log into `.dex` files |
 | `triage_directory` | one risk table for every binary under a directory, worst grade first |
-| `search_docs` | keyword search over the 309 bundled field documents (title, id, topic) |
+| `search_docs` | keyword search over the 334 bundled field documents (title, id, topic) |
 | `read_doc` | one document body as Markdown, truncated at a visible character budget |
 | `probe_environment` | which declared executables run, with version banners, separating a host refusal from a missing binary |
 | `install_toolchain` | the exact install command for this platform, filtered to the tools one goal actually needs |
@@ -68,10 +68,15 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `verify_signature` | signature schemes and signer certificates: structural facts from the APK itself, plus `apksigner verify --print-certs` when it is on the host |
 | `run_radare` | r2 / rabin2 / radiff2 / rasm2: info, strings, functions, disasm, pseudo-C, xrefs, asm, diff, read-only `cmd` |
 | `decompile_android` | jadx / apktool into a sibling directory, then `smali_search` over the unpacked tree |
+| `disassemble_dex_method` | one Dalvik method's `code_item`, decoded to `offset: op operands` |
 | `init_task` | the per-target case layout — `samples/`, `exports/`, `reports/`, README and report skeleton |
+| `search_cases` | the 19 shipped precedent packages and your own cases, ranked separately: a method you can copy, never an authorisation you inherit |
+| `record_case_note` | append a decision, blocker or artefact note to the open case |
 | `write_assessment_report` | fills the four-section assessment into `reports/<target>_security_assessment_report.md`; an unsupplied section is written as unsupplied |
+| `generate_artifact` | a patch / keygen / proxy-DLL / verification-harness skeleton scoped to the decision point you located |
+| `install_astravia` | the instruction block for a global `AGENTS.md`, handed to the save dialog |
 
-All twenty-five declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
+All thirty declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
 API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling.
 Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
@@ -100,7 +105,7 @@ turns that into the command you actually type: it filters by goal (`apk` / `nati
 `full`), picks the recipe for this platform (brew / apt / winget / scoop / pipx) and stops there — the plugin
 runs no installer, so you see every command first. Commercial suites (IDA, Binary Ninja, JEB) are listed as
 context, never as a command; commercial and optional tools never take a permission because the plugin never
-spawns them. Full 2.0 parity table: [docs/toolchain-parity.md](docs/toolchain-parity.md).
+spawns them. Full 2.0 parity table: [docs/reference/toolchain-parity.md](docs/reference/toolchain-parity.md).
 
 The same engines run from a terminal, outside the plugin sandbox:
 
@@ -130,7 +135,7 @@ addressing, labels, directives, immediates that would need two instructions) are
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the twenty-five tools |
+| `agent.tools.register`, `agent.toolHandler.execute` | the thirty tools |
 | `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`, `verify_signature`, `frida_dump`: the fourteen executables declared in `commands`, each one approved by the user |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
@@ -245,9 +250,34 @@ not carry: the verified kit layout, the full MCP tool list, the ten manuals, the
 table, the deployment-check baseline, and the relay / memory mechanics. Only the skill's index entry is
 paid for on every turn, so the body can stay complete without costing anything until it is invoked.
 
+## Cases and precedents
+
+The `Cases` page and `search_cases` share one idea: a case is a method you can copy, never an
+authorisation you inherit. `scope.md` always starts at `status: pending` / `ready_for_act: false`, and
+nothing in a file can flip that — readiness is computed from the scope, the blockers and the workitems.
+
+| Layer | Where it lives | What it is |
+| --- | --- | --- |
+| Your own cases | `cases/<slug>/` in the workspace, created by `init_task` | samples, exports and reports for one target, plus the decision journal |
+| Shipped precedents | `cases/<slug>/` in this repo, inlined at build time | 19 method-level packages: where the gate sits, how it was confirmed, what was disproved |
+| Full case studies | `src/content/docs/cases/<slug>/` | the long form behind 24 of those write-ups — patch tables, RVA maps, protocol layouts |
+
+A precedent package is four canonical documents plus optional case-specific ones: `scope.md`
+(what is in range, and what is not), `workitems.md` (8–12 items, always opening with “Establish scope
+and auth”), `docs/method.md` (the technique), and `README.md`. Extra documents such as `docs/patches.md`
+carry the tables that would bloat the method. `scripts/sync-precedents.mjs` inlines all of it into
+`src/domain/case/precedents.generated.ts`, so the `.astraviapkg` never ships a `cases/` directory —
+`node scripts/check-precedent-package.mjs --all` is what keeps each package honest before a build.
+
+The corpus is derived from upstream `seep-kit` 2.0, `Tool/cases/`. What crossed the line: offsets,
+RVAs, AOB patterns, patch bytes, protocol fields and algorithm constants. What did not: sample bytes,
+binaries, keys, salts, endpoints, real product names. ADRs 006 and 007 record the rule and the reasoning.
+
 ## Layout
 
 ```text
+cases/                             # 19 precedent packages: source only, inlined at build time, never shipped
+docs/                              # engineering docs: README.md index + adr/ contract/ reference/ audits/ plans/
 agent/
 ├── skills/                          # registered via skillPaths; nine SKILL.md directories
 │   ├── hanshuang-pojia/             # the handbook, PART I–V, including the kit protocol
@@ -272,6 +302,7 @@ src/
 │   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
 │   ├── report/    report.ts
+│   ├── case/      contract.ts journal.ts library.ts precedents.ts (+ the generated table)
 │   ├── interceptor.ts               # port of upstream L1/L4: injection verdict, term map, shortcuts
 │   ├── refusal.ts                   # turn-boundary recovery: detector + continuation fragment
 │   ├── playbooks.ts                 # checklist types + payload sections: names a bundled doc, never copies its prose
@@ -294,7 +325,7 @@ src/
 │       ├── workbench-screen.tsx     # navigation + shell
 │       ├── shell/                   # sidebar, top bar, tables, chips, icons
 │       ├── workbench/               # dropzone, risk ring, findings, blocked panel
-│       └── pages/                   # the twelve screens
+│       └── pages/                   # the seventeen screens
 └── test/                            # fixtures and tests
 ```
 
@@ -302,10 +333,11 @@ src/
 
 ## The workbench panel
 
-The activity-bar tab is a fourteen-page workbench rather than a single report view: `Workbench`,
-`Guide`, `Documents`, `Samples`, `Findings`, `Strings`, `Disassembly`, `Manifest`, `Entropy`,
-`Signature`, `Compare`, `Self check`, `Reports` and `Settings`. Analysis results only appear once a
-sample has been read, and every page reads from the same report — except the two that do not need one.
+The activity-bar tab is a seventeen-page workbench rather than a single report view: `Workbench`,
+`Activity`, `Prompts`, `Guide`, `Samples`, `Findings`, `Strings`, `Disassembly`, `Documents`, `Cases`,
+`Manifest`, `Entropy`, `Signature`, `Compare`, `Self check`, `Reports` and `Settings`. Analysis results
+only appear once a sample has been read, and every page reads from the same report — except the few
+that do not need one.
 
 `Disassembly` is the one page that does not read the report: it walks the executable sections of
 the sample's own bytes, ranks candidate functions (entry, then symbol, then call target) and renders
@@ -313,11 +345,16 @@ one at a time as a control-flow listing in three densities — summary, branches
 at a character budget. Deeper analysis is still the `disassemble_range` tool's job; the page
 is there so the listing is reachable without spending a turn on it.
 
-`Documents` renders the kit's own field library inside the panel: 292 knowledge-base articles, the 10
-manuals and 7 tool docs the plugin ships byte for byte, searched by title in memory and — on demand —
-by body text across all 309 files. Each body is a separate build chunk, so opening the page costs one
-document, not four megabytes. The same library is reachable from the conversation as `search_docs` and
+`Documents` renders the kit's own field library inside the panel: 292 knowledge-base articles, 11
+manuals, 7 tool docs and 24 case studies the plugin ships byte for byte, searched by title in memory
+and — on demand — by body text across all 334 files. Each body is a separate build chunk, so opening
+the page costs one document, not four megabytes. The same library is reachable from the conversation as
 `read_doc`, which means a citation from the agent and the text on screen are the same file.
+
+`Cases` is the read-only counterpart of `init_task`: the top table is your own `cases/` and `work/`
+(target, preset, auth state, readiness, asset and evidence counts, workitem progress), the bottom table
+is the 19 shipped precedents, each row marked `awaiting scope`. Copying a row and re-running `init_task`
+is the only way a precedent becomes your case — the package cannot lend you its authorisation.
 
 Two lanes, deliberately:
 
@@ -351,7 +388,7 @@ node scripts/marketplace.mjs build
 node --test tests/*.test.mjs
 ```
 
-The 309 field documents under `src/content/docs/` are indexed by `scripts/sync-docs.mjs`; run it without
+The 334 field documents under `src/content/docs/` are indexed by `scripts/sync-docs.mjs`; run it without
 `--check` after adding or editing one, and keep `--check` in CI. The documents ship as lazy chunks, so an
 article that is never opened costs no download.
 

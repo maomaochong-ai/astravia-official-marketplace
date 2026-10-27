@@ -1,32 +1,34 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { registerDecompileFunctionTool } from "./decompile-function";
-import { registerDiffBinariesTool } from "./diff-binaries";
-import { registerDiffFunctionsTool } from "./diff-functions";
-import { registerDisassembleRangeTool } from "./disassemble-range";
-import { registerSearchDocsTool } from "./search-docs";
-import { registerExplainFindingTool } from "./explain-finding";
-import { registerExportReportTool } from "./export-triage-report";
-import { registerListCodeSymbolsTool } from "./list-code-symbols";
-import { registerScanStringsTool } from "./scan-strings";
-import { registerReadDocTool } from "./read-doc";
-import { registerGenerateHookTool } from "./generate-hook";
-import { registerSearchDexSymbolsTool } from "./search-dex-symbols";
-import { registerTriageDirectoryTool } from "./triage-directory";
-import { registerTriageBinaryTool } from "./triage-binary";
-import { registerProbeEnvironmentTool } from "./probe-environment";
-import { registerRunRadareTool } from "./run-radare";
-import { registerDecompileAndroidTool } from "./decompile-android";
-import { registerInitTaskTool } from "./init-task";
-import { registerWriteAssessmentTool } from "./write-assessment-report";
-import { registerInstallToolchainTool } from "./install-toolchain";
-import { registerKbChecklistTool } from "./kb-checklist";
-import { registerKbPayloadsTool } from "./kb-payloads";
-import { registerIdaStatusTool } from "./ida-status";
-import { registerVerifySignatureTool } from "./verify-signature";
-import { registerGenerateArtifactTool } from "./generate-artifact";
-import { registerInstallAstraviaTool } from "./install-astravia";
-import { registerFridaDumpTool } from "./frida-dump";
-import { registerDisassembleDexMethodTool } from "./disassemble-dex-method";
+import { registerDecompileFunctionTool } from "./native/decompile-function";
+import { registerDiffBinariesTool } from "./native/diff-binaries";
+import { registerDiffFunctionsTool } from "./native/diff-functions";
+import { registerDisassembleRangeTool } from "./native/disassemble-range";
+import { registerSearchDocsTool } from "./knowledge/search-docs";
+import { registerExplainFindingTool } from "./knowledge/explain-finding";
+import { registerExportReportTool } from "./report/export-triage-report";
+import { registerListCodeSymbolsTool } from "./native/list-code-symbols";
+import { registerScanStringsTool } from "./native/scan-strings";
+import { registerReadDocTool } from "./knowledge/read-doc";
+import { registerGenerateHookTool } from "./apk/generate-hook";
+import { registerSearchDexSymbolsTool } from "./apk/search-dex-symbols";
+import { registerTriageDirectoryTool } from "./native/triage-directory";
+import { registerTriageBinaryTool } from "./native/triage-binary";
+import { registerProbeEnvironmentTool } from "./env/probe-environment";
+import { registerRunRadareTool } from "./native/run-radare";
+import { registerDecompileAndroidTool } from "./apk/decompile-android";
+import { registerInitTaskTool } from "./case/init-task";
+import { registerWriteAssessmentTool } from "./report/write-assessment-report";
+import { registerInstallToolchainTool } from "./env/install-toolchain";
+import { registerKbChecklistTool } from "./knowledge/kb-checklist";
+import { registerKbPayloadsTool } from "./knowledge/kb-payloads";
+import { registerIdaStatusTool } from "./env/ida-status";
+import { registerVerifySignatureTool } from "./apk/verify-signature";
+import { registerGenerateArtifactTool } from "./native/generate-artifact";
+import { registerInstallAstraviaTool } from "./env/install-astravia";
+import { registerFridaDumpTool } from "./apk/frida-dump";
+import { registerDisassembleDexMethodTool } from "./apk/disassemble-dex-method";
+import { registerSearchCasesTool } from "./case/search-cases";
+import { registerRecordCaseNoteTool } from "./case/record-case-note";
 
 /**
  * 工具注册总入口。每个工具单独 try：
@@ -64,6 +66,8 @@ export function registerTools(ctx: PluginContext): Disposable[] {
 		registerInstallAstraviaTool,
 		registerFridaDumpTool,
 		registerDisassembleDexMethodTool,
+		registerSearchCasesTool,
+		registerRecordCaseNoteTool,
 	]) {
 		try {
 			disposables.push(register(ctx));

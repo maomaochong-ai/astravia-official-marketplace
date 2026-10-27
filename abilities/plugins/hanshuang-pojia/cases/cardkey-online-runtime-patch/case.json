@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "cardkey-online-runtime-patch",
+	"title": "Online card-key gate bypassed in memory, without unpacking",
+	"summary": "A fully encrypted shell, a plaintext TCP card-key check, and a local compare that decides everything: keep the packed image on disk and rewrite three runtime sites instead.",
+	"signals": [
+		"cardkey",
+		"卡密",
+		"online activation",
+		"ws2_32",
+		"recv",
+		"e-language",
+		"易语言",
+		"packed",
+		"rwx",
+		"no aslr",
+		"heartbeat",
+		"returnAddress"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/cardkey-online-runtime-patch/reverse-engineering",
+		"cases/cardkey-online-runtime-patch/protocol-and-patch"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目J" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/patches.md"
+	]
+}

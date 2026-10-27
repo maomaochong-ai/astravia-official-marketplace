@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "native-islicensed-patch",
+	"title": "One bool-returning symbol is the whole entitlement decision",
+	"summary": "A large Qt desktop application funnels every startup path through a single C++ symbol that returns bool after reading an INI file; nothing checks the code's own bytes, so a five-byte stub at the symbol entry settles it — and the work that matters is proving there is no second gate.",
+	"signals": [
+		"qt",
+		"x64",
+		"bool return",
+		"startup check",
+		"ini",
+		"symbol patch",
+		"符号补丁",
+		"frida",
+		"aes-cbc",
+		"sha384",
+		"防回退",
+		"pe offset"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/native-islicensed-patch/reverse-engineering",
+		"cases/native-islicensed-patch/patch-and-guard"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目G" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/patch-and-guard.md"
+	]
+}

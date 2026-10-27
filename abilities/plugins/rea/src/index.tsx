@@ -29,6 +29,7 @@ import { createReaProviderBridge } from "./features/rea-workflow/live/engine-bri
 import { activateReaAgentIntegration } from "./features/rea-workflow/live/agent-integration";
 import { activateProviderRecovery } from "./features/rea-workflow/live/provider-recovery";
 import { ReaLiveStore } from "./features/rea-workflow/live/session-store";
+import { watchDelivery, type DeliveryOutcome } from "./features/rea-workflow/live/handoff-delivery";
 import { registerReaWorkflowTools } from "./tools/rea-workflow-tools";
 
 const REA_PROVIDER_ID = "rea-agents";
@@ -53,6 +54,32 @@ function createProviderBridge(ctx: PluginContext): ReaProviderBridge {
  */
 function createPromptSender(ctx: PluginContext): (prompt: string) => Promise<SendPromptResult> {
 	return (prompt: string) => ctx.conversation.sendPrompt(prompt);
+}
+
+/**
+ * 会话开场通道：宿主没活跃会话时，sendPrompt 根本没地方可发。
+ * 宿主文档给的正路是「先 createSession(cwd)，再 sendPrompt」——这里只暴露这一步。
+ * 旧宿主没有该方法时返回 null，工作台会如实报「没有活跃对话」而不是假装发出。
+ */
+function createSessionOpener(ctx: PluginContext): ((cwd: string) => Promise<string | null>) | null {
+	const api = ctx.conversation as { createSession?: unknown };
+	if (typeof api.createSession !== "function") return null;
+	const create = ctx.conversation.createSession.bind(ctx.conversation);
+	return async (cwd) => {
+		const state = await create(cwd);
+		return state.id;
+	};
+}
+
+/**
+ * 送达观察通道：订阅一次会话事件，等我们那条用户消息上屏。
+ * 旧宿主没有 `conversation.on` 时返回 null，回执退化为「未经核实」。
+ */
+function createDeliveryWatcher(ctx: PluginContext): ((prompt: string) => Promise<DeliveryOutcome>) | null {
+	const api = ctx.conversation as { on?: unknown };
+	if (typeof api.on !== "function") return null;
+	const subscribe = ctx.conversation.on.bind(ctx.conversation);
+	return (prompt) => watchDelivery(subscribe, prompt);
 }
 
 function createPromptWriter(ctx: PluginContext): (prompt: string) => boolean {
@@ -133,6 +160,8 @@ export default definePlugin({
 		const provider = createProviderBridge(ctx);
 		const sendPrompt = createPromptSender(ctx);
 		const insertPrompt = createPromptWriter(ctx);
+		const createSession = createSessionOpener(ctx);
+		const watchDeliveryFor = createDeliveryWatcher(ctx);
 		const runCommand = createCommandRunner(ctx);
 		const spawnCommand = createCommandSpawner(ctx);
 		const setPanelWidth = createPanelWidthSetter(ctx);
@@ -151,8 +180,10 @@ export default definePlugin({
 					store={store}
 					sendPrompt={sendPrompt}
 					insertPrompt={insertPrompt}
-					runCommand={runCommand}
+					createSession={createSession}
+					watchDelivery={watchDeliveryFor}
 					spawnCommand={spawnCommand}
+					runCommand={runCommand}
 					setPanelWidth={setPanelWidth}
 				/>
 			),

@@ -13,10 +13,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { SendPromptResult } from "@astravia-org/plugin-sdk";
+import type { DeliveryOutcome } from "../live/handoff-delivery";
 import { getTarget, type TargetKind } from "../data/targets";
 import { detectTargetFromMessage } from "../live/target-inference";
 
-export type HandoffState = "idle" | "sending" | "sent" | "queued" | "inserted" | "failed";
+export type HandoffState =
+	| "idle"
+	| "sending"
+	| "sent"
+	| "queued"
+	/* 宿主回了 sent，但对话里等不到这条消息 —— 不能当成成功。 */
+	| "unverified"
+	/* 宿主此刻没有活跃会话，消息无处可发。 */
+	| "noConversation"
+	| "inserted"
+	| "failed";
 
 /** 目标类型的来源，用于 UI 说明「为什么自动选中了这个」。 */
 export type KindSource = "picked" | "detected" | "hinted" | "typed";
@@ -30,6 +41,12 @@ export interface WorkbenchDeps {
 	/** 只填入输入框、不发送；返回 false 表示当前会话不可写。 */
 	readonly insertPrompt: (prompt: string) => boolean;
 	readonly cwd: string | null;
+	/** 当前活跃会话 id；null 表示宿主此刻没有会话，sendPrompt 必然不会真的发出。 */
+	readonly conversationId: string | null;
+	/** 没有活跃会话时先建一个（宿主文档里的正路）；返回新会话 id，失败返回 null。 */
+	readonly ensureSession: (() => Promise<string | null>) | null;
+	/** 发出后等对话里出现这条消息；null 表示宿主不支持订阅，只能信回执。 */
+	readonly watchDelivery: ((prompt: string) => Promise<DeliveryOutcome>) | null;
 	/** 会话里真实工具调用指向的目标类型。 */
 	readonly detected: TargetKind | null;
 	/** 会话里最近一次带路径的工具参数；仅在目标输入框为空时自动回填。 */
@@ -169,10 +186,31 @@ const kindSource: KindSource | null =
 			setHandoff("sending");
 
 			void (async () => {
+				const current = depsRef.current;
 				try {
-					const result = await depsRef.current.sendPrompt(prompt);
-					if (result.status === "sent" || result.status === "queued") {
-						setHandoff(result.status);
+					// 没有活跃会话时先建：宿主的 sendPrompt 在这种情况下要么抛错，要么
+					// 在内部提前 return 却被桥接层兜底成 sent。先建会话两条都绕开了。
+					if (current.conversationId === null) {
+						const created = current.ensureSession === null ? null : await current.ensureSession();
+						if (created === null) {
+							setHandoff("noConversation");
+							return;
+						}
+					}
+
+					const result = await current.sendPrompt(prompt);
+					if (result.status === "queued") {
+						setHandoff("queued");
+						return;
+					}
+					if (result.status === "sent") {
+						// 回执不当作证据：等对话里真的出现这条消息。
+						if (current.watchDelivery === null) {
+							setHandoff("sent");
+							return;
+						}
+						const outcome = await current.watchDelivery(prompt);
+						setHandoff(outcome === "timeout" ? "unverified" : "sent");
 						return;
 					}
 				} catch (error) {
@@ -180,7 +218,7 @@ const kindSource: KindSource | null =
 				} finally {
 					sending.current = false;
 				}
-				// 发送通道不可用（没有活跃会话 / 权限被拒）：退回只填入，仍让用户能一键发送。
+				// 发送通道不可用（权限被拒 / 宿主拒绝）：退回只填入，仍让用户能一键发送。
 				const inserted = depsRef.current.insertPrompt(prompt);
 				setHandoff(inserted ? "inserted" : "failed");
 			})();

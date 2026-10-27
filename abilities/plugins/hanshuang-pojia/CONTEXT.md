@@ -268,7 +268,7 @@ Android 一线作战：解包、反编译、微创补丁、Frida 插桩、脱壳
 带厂商侧加固清单。
 
 ## 知识库 (Knowledge Base / kb)
-面板里可读的战术文档：292 篇 kb + 10 篇手册 + 7 篇工具文档 = 309 篇。
+面板里可读的文档：292 篇 kb + 11 篇手册 + 7 篇工具文档 + 24 篇案例原文 = 334 篇。
 它们是**静态文本资源**，运行时按需读取，不编进 JS。
 
 ## 信号路由 (Signal Routing / kb-index)
@@ -278,7 +278,64 @@ Android 一线作战：解包、反编译、微创补丁、Frida 插桩、脱壳
 ## 上游对照 (Upstream Parity)
 本项目的技能、提示词、知识库来自 `hanshuang-pojia-2.0/resources/seep-kit`；目录名与文件位置按宿主约定重排
 （`Tool/skill/` → `agent/skills/`，`Tool/prompts/` → `agent/prompts/`，`Tool/docs/` → `src/content/docs/`）。
-内容等价优先于路径一致；差异写在 `docs/upstream-parity-audit-*.md` 里。
+内容等价优先于路径一致；差异写在 `docs/audits/upstream-parity-audit-*.md` 里。
+
+`docs/` 按「拿它干什么」分类，只放工程侧文档；使用者读的东西在随包文档库里：
+
+| 目录 | 放什么 | 谁读 |
+|---|---|---|
+| `docs/contract/` | 必须遵守的契约：案件机制、语料编写 | 改代码/写案例的人 |
+| `docs/reference/` | 当前事实的权威表（`toolchain-parity.md`，测试直接读它） | 代码与测试 |
+| `docs/audits/` | 带版本与时点的一次性对等/排查报告，结论可能已过期 | 人读 |
+| `docs/adr/` | 已采纳的决策，一条一个文件，不改写 | 改代码的人 |
+| `docs/plans/` | 历史施工计划，已被 ADR 取代，只作追溯 | 人读 |
+| `src/content/docs/{manual,kit-docs,kb,cases}/` | 随包文档库正文，面板「文档」页按需 fetch | 使用者 |
+
+---
+
+## 案件与先例
+
+## 案件 (Case)
+操作者自己的一个可复现工作单元。它是一个目录，里面至少有一份 `scope.md`——**有声明才算案件**，
+只有样本没有声明的目录不算。索引只看 `cases/` 与 `work/` 的直接子目录，不深度递归。
+
+## 案件契约 v2 (Case Contract v2)
+`init_task` 一次写齐的东西：五个目录（`samples/ exports/ reports/ evidence/ notes/`）、四份文件
+（`scope.md` / `timeline.md` / `workitems.md` / `README.md`）与 `evidence/README.md` 的编号约定。
+契约是为了让下一次接管的人（或模型）不靠口述就能重建上下文。
+
+## 声明 (Declaration / scope.md)
+七节固定：授权、范围、范围外、网络姿态、交付物、约束、签署。**写一次不改**；没提供的节写
+`(not provided)`，不省略、不留空。改范围＝开新案件，而不是在旧文件上改。
+
+## 就绪门 (ready_for_act)
+由声明推导，**不接受入参**：授权已记录 ∧ 范围非空 ∧（非公网 ∨ 有授权依据）。
+它回答「现在能不能动」，与「能不能做」是两件事；结论写成一句带理由的话，不是裸布尔。
+
+## 预设 (Preset)
+`offline-sample` / `ctf-public` / `own-system` 三档（带 `own-sample`、`CTF`、`lab-only` 别名）。
+预设只填范围内模板与默认网络姿态，**绝不填授权**——授权是操作者的声明，不是模板。未知预设硬失败。
+
+## 工作项 (Work Item / WI-###)
+`workitems.md` 固定表头 `| WI | Item | State | Evidence |`，按范围内资产播种。
+它是「这个案件还剩什么没做」的唯一台账；`State` 只有 todo / doing / done / dropped（否掉的方案也留下来，
+因为它比做完的更能止损）。
+
+## 证据条目 (Evidence Entry / E-###)
+`evidence/E-###-<slug>.md`，编号不复用、不重排。索引只数条数，不读正文——正文给 `read` 看。
+
+## 决策记录 (Decision Note)
+`.agents/notes/{implemented,rejected}/<分类>/<日期>-<slug>.md`：做过什么、否掉什么、为什么。
+已存在就拒绝覆盖，`overwrite` 才放开——先例的价值在于不被悄悄改写。
+
+## 先例 (Precedent)
+已完成的案件可被后续案件引用。检索只返回 id、路径与命中理由，正文仍用文件工具读——
+索引负责「找到」，不负责「读给你听」。
+
+## 战例索引 (Case Index)
+`search_cases` 的输出与面板「战例库」页共用的视图：名称、预设、授权、是否就绪、资产数、
+证据数、工作项进度。排序权重 name 6 / 范围内资产 3 / 元信息 1 / 就绪 +1；有查询时**只返回命中项**，
+就绪加分不会把不相关的案件拉回来。
 
 ---
 
