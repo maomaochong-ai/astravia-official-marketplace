@@ -15,16 +15,17 @@ import { COMMANDS, TOOLCHAIN, specFor, specsForCapability, type ToolId } from ".
 import { probeToolchain, renderToolchain } from "../domain/toolchain/probe";
 import { OPERATION_TOOL, branchSkeleton, planRadare } from "../domain/toolchain/radare";
 import { initTaskWorkspace, safeTaskName } from "../domain/toolchain/workspace";
+import { resolvePreset } from "../domain/case/contract";
 import {
 	createCommandRunner,
 	describeCommandFailure,
 	probeOnce,
 	resetProbeCache,
 } from "../features/workbench/services/toolchain";
-import { registerDecompileAndroidTool } from "../tools/decompile-android";
-import { registerInitTaskTool } from "../tools/init-task";
-import { registerProbeEnvironmentTool } from "../tools/probe-environment";
-import { registerRunRadareTool } from "../tools/run-radare";
+import { registerDecompileAndroidTool } from "../tools/apk/decompile-android";
+import { registerInitTaskTool } from "../tools/case/init-task";
+import { registerProbeEnvironmentTool } from "../tools/env/probe-environment";
+import { registerRunRadareTool } from "../tools/native/run-radare";
 
 const pluginRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -420,23 +421,58 @@ describe("initTaskWorkspace", () => {
 		expect(safeTaskName("case-2024_01")).toBe("case-2024_01");
 	});
 
-	it("creates the fixed layout, a README and an optional report", async () => {
+	it("creates the fixed layout, the declarations and an optional report", async () => {
 		const { fs, directories, writes } = fakeWorkspaceFs();
 		const result = await initTaskWorkspace(fs, { root: "/cases", name: "demo", description: "authorised", report: true });
-		expect(directories).toEqual(["/cases/demo", "/cases/demo/samples", "/cases/demo/exports", "/cases/demo/reports"]);
+		expect(directories).toEqual([
+			"/cases/demo",
+			"/cases/demo/samples",
+			"/cases/demo/exports",
+			"/cases/demo/report",
+			"/cases/demo/evidence",
+			"/cases/demo/notes",
+		]);
 		expect(writes.get("/cases/demo/README.md")).toContain("Scope: authorised");
-		expect(writes.get("/cases/demo/reports/security-report.md")).toContain("Security assessment — demo");
+		expect(writes.get("/cases/demo/report/security-report.md")).toContain("Security assessment — demo");
+		// 没有声明档案的目录无法被索引，所以旧式调用也一律写出 scope.md（授权待定）。
+		expect(writes.get("/cases/demo/scope.md")).toContain("## auth");
+		expect(writes.get("/cases/demo/scope.md")).toContain("(not provided)");
+		expect(writes.get("/cases/demo/timeline.md")).toContain("created");
+		expect(writes.get("/cases/demo/workitems.md")).toContain("| ID | title | role | targets | surface | status | evidence | notes |");
+		expect(writes.get("/cases/demo/evidence/README.md")).toContain("E-###");
+		expect(result.readiness.ready).toBe(false);
+		expect(result.created).toHaveLength(6);
 		expect(result.keptExistingReadme).toBe(false);
-		expect(result.created).toHaveLength(4);
 
 		const again = await initTaskWorkspace(fs, { root: "/cases", name: "demo", description: "authorised" });
 		expect(again.keptExistingReadme).toBe(true);
-		expect(writes.size).toBe(2);
+		// scope.md / timeline.md 也只写一次：重跑不得改写已记录的声明与事件流。
+		expect(writes.size).toBe(6);
+	});
+
+	it("records the declaration it is given, and derives the gate from it", async () => {
+		const { fs, writes } = fakeWorkspaceFs();
+		const brief = {
+			name: "demo",
+			preset: resolvePreset("ctf-public"),
+			authStatus: "granted" as const,
+			authBasis: "CTF rules of engagement, 2026-10",
+			inScope: ["challenge.case-one"],
+			outOfScope: [],
+			networkProfile: "authorized_target_only" as const,
+			deliverables: ["flag"],
+			constraints: [],
+			at: "2026-10-27T00:00:00.000Z",
+		};
+		const result = await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief });
+		expect(result.readiness.ready).toBe(true);
+		expect(writes.get("/cases/demo/scope.md")).toContain("CTF rules of engagement");
+		expect(writes.get("/cases/demo/workitems.md")).toContain("challenge.case-one");
 	});
 
 	it("refuses a name that sanitises to nothing", async () => {
 		const { fs } = fakeWorkspaceFs();
-		await expect(initTaskWorkspace(fs, { root: "/cases", name: "  " })).rejects.toThrow("name is empty");
+		await expect(initTaskWorkspace(fs, { root: "/cases", name: "  " })).rejects.toThrow("case name is required");
 	});
 });
 
@@ -636,9 +672,15 @@ describe("toolchain tools", () => {
 		const output = await call("init_task", { name: "demo", description: "authorised scope", report: true });
 		expect(output).toContain("Workspace ready: /work/demo");
 		expect(written.get("/work/demo/README.md")).toContain("authorised scope");
-		expect(written.get("/work/demo/reports/security-report.md")).toContain("Security assessment");
+		expect(written.get("/work/demo/report/security-report.md")).toContain("Security assessment");
 
 		const again = await call("init_task", { name: "demo" });
 		expect(again).toContain("already existed");
+
+		// 「scope.md 写一次」是工具描述与 ADR 的承诺：第二次换了 in_scope 也不能改写它。
+		const declared = written.get("/work/demo/scope.md");
+		await call("init_task", { name: "demo", auth_status: "pending", in_scope: ["second.apk"] });
+		expect(written.get("/work/demo/scope.md")).toBe(declared);
+		expect(declared).not.toContain("second.apk");
 	});
 });

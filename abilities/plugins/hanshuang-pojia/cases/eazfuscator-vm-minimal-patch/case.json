@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"slug": "eazfuscator-vm-minimal-patch",
+	"title": "Minimal patch under full obfuscation: entitlement is four flag writes, not a VM break",
+	"summary": "A .NET client under commercial obfuscation with assembly encryption and a virtualised interpreter. The whole protection stack was reproducible, yet the cheapest route to the entitlement was four IL flag writes plus one constant-returning predicate, applied through a decrypt-edit-reencrypt cycle that leaves every other byte identical.",
+	"signals": [
+		"eazfuscator",
+		"code virtualization",
+		"assembly encryption",
+		"string encryption",
+		"rsa-2048 pkcs#1",
+		"ascii85",
+		"custom tea",
+		"registry state",
+		"fail-open",
+		"cwe-602"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": ["cases/eazfuscator-vm-minimal-patch/reverse-engineering"],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目N" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/protection-layers.md"
+	]
+}

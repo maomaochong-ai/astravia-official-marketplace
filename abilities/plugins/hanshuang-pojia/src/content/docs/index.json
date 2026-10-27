@@ -1,5 +1,245 @@
 [
 	{
+		"id": "cases/aob-signature-cross-version/patch-table",
+		"group": "cases",
+		"topic": "aob-signature-cross-version",
+		"title": "位点全表与特征码：五个 build 的偏移、期望字节与验证结果",
+		"path": "src/content/docs/cases/aob-signature-cross-version/patch-table.md",
+		"bytes": 11839,
+		"lines": 250,
+		"sha256": "67f411991f1dadcb"
+	},
+	{
+		"id": "cases/aob-signature-cross-version/reverse-engineering",
+		"group": "cases",
+		"topic": "aob-signature-cross-version",
+		"title": "跨版本补丁引擎：五个 build、十六个位点、一套双态特征码",
+		"path": "src/content/docs/cases/aob-signature-cross-version/reverse-engineering.md",
+		"bytes": 15325,
+		"lines": 294,
+		"sha256": "cfc2049475a61a3c"
+	},
+	{
+		"id": "cases/cardkey-online-runtime-patch/protocol-and-patch",
+		"group": "cases",
+		"topic": "cardkey-online-runtime-patch",
+		"title": "在线卡密鉴权协议结构与补丁点全表",
+		"path": "src/content/docs/cases/cardkey-online-runtime-patch/protocol-and-patch.md",
+		"bytes": 7024,
+		"lines": 187,
+		"sha256": "bf6960ec2f634b0a"
+	},
+	{
+		"id": "cases/cardkey-online-runtime-patch/reverse-engineering",
+		"group": "cases",
+		"topic": "cardkey-online-runtime-patch",
+		"title": "在线卡密客户端：全量加密壳下的免脱壳运行期旁路（CWE-602）",
+		"path": "src/content/docs/cases/cardkey-online-runtime-patch/reverse-engineering.md",
+		"bytes": 14838,
+		"lines": 275,
+		"sha256": "5e1819bfaaf0a39e"
+	},
+	{
+		"id": "cases/dotnet-license-keygen/algorithm",
+		"group": "cases",
+		"topic": "dotnet-license-keygen",
+		"title": "算法全解：三段哈希、19 个五比特组与 192 字符的结构",
+		"path": "src/content/docs/cases/dotnet-license-keygen/algorithm.md",
+		"bytes": 8009,
+		"lines": 239,
+		"sha256": "67320b81a7dc1a22"
+	},
+	{
+		"id": "cases/dotnet-license-keygen/reverse-engineering",
+		"group": "cases",
+		"topic": "dotnet-license-keygen",
+		"title": "定制混淆器下的 .NET 授权校验还原：从壳到算法",
+		"path": "src/content/docs/cases/dotnet-license-keygen/reverse-engineering.md",
+		"bytes": 12440,
+		"lines": 280,
+		"sha256": "d48acf6ec9b46d1d"
+	},
+	{
+		"id": "cases/eazfuscator-vm-minimal-patch/reverse-engineering",
+		"group": "cases",
+		"topic": "eazfuscator-vm-minimal-patch",
+		"title": "商业级混淆 + 代码虚拟化之下，真正该打的是四处 IL 常量",
+		"path": "src/content/docs/cases/eazfuscator-vm-minimal-patch/reverse-engineering.md",
+		"bytes": 14294,
+		"lines": 275,
+		"sha256": "275106783878f695"
+	},
+	{
+		"id": "cases/ed25519-offline-keygen/algorithm",
+		"group": "cases",
+		"topic": "ed25519-offline-keygen",
+		"title": "项目H —— 授权算法原理：激活码结构、设备码与公钥替换",
+		"path": "src/content/docs/cases/ed25519-offline-keygen/algorithm.md",
+		"bytes": 8866,
+		"lines": 187,
+		"sha256": "274ba6d87e8237bd"
+	},
+	{
+		"id": "cases/ed25519-offline-keygen/reverse-engineering",
+		"group": "cases",
+		"topic": "ed25519-offline-keygen",
+		"title": "项目H —— 离线授权码与现代签名的可替换公钥（逆向全链路）",
+		"path": "src/content/docs/cases/ed25519-offline-keygen/reverse-engineering.md",
+		"bytes": 9659,
+		"lines": 176,
+		"sha256": "9b28486aaffa2036"
+	},
+	{
+		"id": "cases/execryptor-vm-activation/activation-path",
+		"group": "cases",
+		"topic": "execryptor-vm-activation",
+		"title": "激活路径与补丁闭环：状态码、stub、副作用与两条入口",
+		"path": "src/content/docs/cases/execryptor-vm-activation/activation-path.md",
+		"bytes": 7278,
+		"lines": 184,
+		"sha256": "992bf4a66312e03b"
+	},
+	{
+		"id": "cases/execryptor-vm-activation/reverse-engineering",
+		"group": "cases",
+		"topic": "execryptor-vm-activation",
+		"title": "虚拟化验签下的授权审计：为什么这里不存在算号器",
+		"path": "src/content/docs/cases/execryptor-vm-activation/reverse-engineering.md",
+		"bytes": 14076,
+		"lines": 298,
+		"sha256": "b1b33ccfe1ba1530"
+	},
+	{
+		"id": "cases/java-agent-dll-hijack/reverse-engineering",
+		"group": "cases",
+		"topic": "java-agent-dll-hijack",
+		"title": "单一 JAR 客户端的两个入口：javaagent 改判定，DLL 劫持改启动",
+		"path": "src/content/docs/cases/java-agent-dll-hijack/reverse-engineering.md",
+		"bytes": 13249,
+		"lines": 252,
+		"sha256": "125964c8e63fc3b4"
+	},
+	{
+		"id": "cases/multiprocess-proxy-hotpatch/points-and-naked-proxy",
+		"group": "cases",
+		"topic": "multiprocess-proxy-hotpatch",
+		"title": "跨进程 52 点位与裸桩代理（项目B，v6.8.1）",
+		"path": "src/content/docs/cases/multiprocess-proxy-hotpatch/points-and-naked-proxy.md",
+		"bytes": 11241,
+		"lines": 214,
+		"sha256": "2dc76504afe4fceb"
+	},
+	{
+		"id": "cases/multiprocess-proxy-hotpatch/version-drift-and-guards",
+		"group": "cases",
+		"topic": "multiprocess-proxy-hotpatch",
+		"title": "跨版本攻防演进与护栏（项目B，v12.0 → v6.8.1）",
+		"path": "src/content/docs/cases/multiprocess-proxy-hotpatch/version-drift-and-guards.md",
+		"bytes": 8053,
+		"lines": 146,
+		"sha256": "f1f1f77b9039f137"
+	},
+	{
+		"id": "cases/native-islicensed-patch/patch-and-guard",
+		"group": "cases",
+		"topic": "native-islicensed-patch",
+		"title": "项目G —— 补丁常量、防回退与回滚",
+		"path": "src/content/docs/cases/native-islicensed-patch/patch-and-guard.md",
+		"bytes": 6914,
+		"lines": 146,
+		"sha256": "f9ba8370bf164bbd"
+	},
+	{
+		"id": "cases/native-islicensed-patch/reverse-engineering",
+		"group": "cases",
+		"topic": "native-islicensed-patch",
+		"title": "项目G —— 单个布尔符号即全部授权判定（逆向证据链）",
+		"path": "src/content/docs/cases/native-islicensed-patch/reverse-engineering.md",
+		"bytes": 9686,
+		"lines": 177,
+		"sha256": "e76badaba4a0cce4"
+	},
+	{
+		"id": "cases/proxy-dll-license-state-machine/authorisation-state-machine",
+		"group": "cases",
+		"topic": "proxy-dll-license-state-machine",
+		"title": "授权状态机：试用横幅不是开关（项目A，28.40.0100）",
+		"path": "src/content/docs/cases/proxy-dll-license-state-machine/authorisation-state-machine.md",
+		"bytes": 10352,
+		"lines": 200,
+		"sha256": "6bb68f6c2809baea"
+	},
+	{
+		"id": "cases/proxy-dll-license-state-machine/crack-payload-and-hardening",
+		"group": "cases",
+		"topic": "proxy-dll-license-state-machine",
+		"title": "第三方破解件载荷解剖与加固规范（项目A，28.30 参考样本）",
+		"path": "src/content/docs/cases/proxy-dll-license-state-machine/crack-payload-and-hardening.md",
+		"bytes": 9478,
+		"lines": 202,
+		"sha256": "bbf3743b34c32b91"
+	},
+	{
+		"id": "cases/qt-proxy-dll-gateway/reverse-engineering",
+		"group": "cases",
+		"topic": "qt-proxy-dll-gateway",
+		"title": "Qt5 客户端：用一个代理 DLL 同时拿下鉴权、算力与云控",
+		"path": "src/content/docs/cases/qt-proxy-dll-gateway/reverse-engineering.md",
+		"bytes": 14344,
+		"lines": 257,
+		"sha256": "687493ef87b4d852"
+	},
+	{
+		"id": "cases/rsa-blob-machine-code-keygen/algorithm",
+		"group": "cases",
+		"topic": "rsa-blob-machine-code-keygen",
+		"title": "项目I —— 授权算法原理：CNG blob、请求串、滑窗验签与试用时钟",
+		"path": "src/content/docs/cases/rsa-blob-machine-code-keygen/algorithm.md",
+		"bytes": 7640,
+		"lines": 173,
+		"sha256": "ba054c236e8e919e"
+	},
+	{
+		"id": "cases/rsa-blob-machine-code-keygen/reverse-engineering",
+		"group": "cases",
+		"topic": "rsa-blob-machine-code-keygen",
+		"title": "项目I —— RSA 签名 blob + 机器码请求串：一条走不通的算号器路线",
+		"path": "src/content/docs/cases/rsa-blob-machine-code-keygen/reverse-engineering.md",
+		"bytes": 9035,
+		"lines": 177,
+		"sha256": "f876a4f1df97cc3b"
+	},
+	{
+		"id": "cases/themida-dotnet-delegate-recovery/reverse-engineering",
+		"group": "cases",
+		"topic": "themida-dotnet-delegate-recovery",
+		"title": "Themida 加固的 .NET 客户端：四层对抗与单字段判据",
+		"path": "src/content/docs/cases/themida-dotnet-delegate-recovery/reverse-engineering.md",
+		"bytes": 13774,
+		"lines": 229,
+		"sha256": "06fbce43eb513c12"
+	},
+	{
+		"id": "cases/version-dll-proxy-iat-hook/dialog-rewrite-and-traps",
+		"group": "cases",
+		"topic": "version-dll-proxy-iat-hook",
+		"title": "从 IAT 重写对话框：五个攻克点与七个坑（项目C）",
+		"path": "src/content/docs/cases/version-dll-proxy-iat-hook/dialog-rewrite-and-traps.md",
+		"bytes": 7460,
+		"lines": 162,
+		"sha256": "333450dc7b2881cf"
+	},
+	{
+		"id": "cases/version-dll-proxy-iat-hook/edition-mask-and-hotpatch",
+		"group": "cases",
+		"topic": "version-dll-proxy-iat-hook",
+		"title": "版本号掩码、离线鉴权链与三处热补丁（项目C，7.46 / 71822）",
+		"path": "src/content/docs/cases/version-dll-proxy-iat-hook/edition-mask-and-hotpatch.md",
+		"bytes": 8957,
+		"lines": 203,
+		"sha256": "86cf347e4c95d4ce"
+	},
+	{
 		"id": "kb/ai-findings/README",
 		"group": "kb",
 		"topic": "ai-findings",
@@ -3058,6 +3298,16 @@
 		"bytes": 9674,
 		"lines": 268,
 		"sha256": "e86c28654c3f3e09"
+	},
+	{
+		"id": "manual/PANEL-HANDBOOK",
+		"group": "manual",
+		"topic": "",
+		"title": "面板界面实战手册",
+		"path": "src/content/docs/manual/PANEL-HANDBOOK.md",
+		"bytes": 11782,
+		"lines": 237,
+		"sha256": "e8cd384c747ffd17"
 	},
 	{
 		"id": "manual/POC-VALIDATION",

@@ -22,7 +22,7 @@ export default defineConfig({
 		{
 			// 两件事都发生在插件运行期，安装后不依赖市场源：
 			// 1. 能力详情页读取的两份正文；
-			// 2. 309 篇工具包文档以纯文本随包发布，由 docs.ts 按需 fetch。
+			// 2. 334 篇工具包文档以纯文本随包发布，由 docs.ts 按需 fetch。
 			//    放进 JS 分块会把整片攻击工具链语料编译成可执行脚本，既拖慢安装，
 			//    也让系统杀毒把插件包当成工具集样本。
 			name: "hanshuang-pojia-runtime-resources",

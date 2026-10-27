@@ -2,7 +2,7 @@
 
 - 依据：[ADR 0001](../adr/0001-seep-kit-capability-parity.md)、[ADR 0002](../adr/0002-external-process-bridge.md)、
   [ADR 0003](../adr/0003-toolchain-install-plan.md)、[ADR 0004](../adr/0004-host-hook-boundary.md)、
-  [工具链对照](../toolchain-parity.md)、[自带工具链对照](../toolchain-bundling.md)
+  [工具链对照](../reference/toolchain-parity.md)、[自带工具链对照](../audits/toolchain-bundling.md)
 - 参照对象：`/Users/zhugeyue/Desktop/tmp/hanshuang-pojia-2.0`（Electron 便携版，内置 `resources/seep-kit`，`VERSION 1.6.0`）
 - 被测对象：`abilities/plugins/hanshuang-pojia`，`plugin.json` **2.8.2**（盘点于 2026-10-24）
 - 承接并取代已过时的 [0001](./0001-capability-parity-phases.md)：那篇停在 2.4.x、若干「规划 / 进行中」项在 2.8.2 已落地。
@@ -54,7 +54,7 @@
 ### 0.3 关键账（哪些「缺」其实是已经决策的差异，不是缺口）
 
 - **离线内置二进制**：2.0 自带 251 MB 工具链，装完即用；插件靠 `install_toolchain` + 用户本机包管理器，
-  零内嵌二进制。这是分发形态差异，`ADR 0003` + `toolchain-parity.md` + `toolchain-bundling.md` 已逐项定性。
+  零内嵌二进制。这是分发形态差异，`ADR 0003` + `reference/toolchain-parity.md` + `audits/toolchain-bundling.md` 已逐项定性。
   **不做成缺口**。
 - **请求层 BLOCK_NONE 注入 / 上下文清洗 / 改写用户输入**：宿主 hook 面只有 12 个生命周期事件，没有
   provider request / context 钩子；判定函数 `decideSafetyInjection` 已移植用于审计。**宿主边界，不可实现**

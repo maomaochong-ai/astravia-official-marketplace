@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "dotnet-license-keygen",
+	"title": "A 192-character key that carries 95 unverified bits",
+	"summary": "Three 32-bit string hashes decide 19 of 192 characters and nothing is signed; recover the transform and the key constructor is arithmetic — provided you notice the 96-bit concatenation a 64-bit type cannot hold.",
+	"signals": [
+		"dotnet",
+		"csharp",
+		"md5",
+		"custom obfuscator",
+		"dynamic method",
+		"il dump",
+		"harmony",
+		"charset",
+		"checksum segment",
+		"activation",
+		"offline entitlement"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/dotnet-license-keygen/reverse-engineering",
+		"cases/dotnet-license-keygen/algorithm"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目F" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/algorithm.md",
+		"docs/verification.md"
+	]
+}

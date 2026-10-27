@@ -1,19 +1,26 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ASSET_ENTRIES, DOC_ENTRIES, DOC_TOTALS, docById, docGroups, loadDoc, searchTitles } from "../features/workbench/services/docs";
+import { SHIPPED_PRECEDENTS } from "../domain/case/precedents";
 
 const manifest = readFileSync(new URL("../content/docs/docs.sha256", import.meta.url), "utf8")
 	.split("\n")
 	.filter(line => line.trim().length > 0);
 
 describe("document library index", () => {
-	it("covers the three shipped collections", () => {
+	it("covers the four shipped collections", () => {
 		const counts = new Map<string, number>();
 		for (const entry of DOC_ENTRIES) counts.set(entry.group, (counts.get(entry.group) ?? 0) + 1);
 		expect(counts.get("kb")).toBe(292);
-		expect(counts.get("manual")).toBe(10);
+		expect(counts.get("manual")).toBe(11);
 		expect(counts.get("kit-docs")).toBe(7);
-		expect(DOC_ENTRIES.length).toBe(309);
+		// 案例原文按先例包归档：正文组不能为空，且先例包声明的 caseDocs 必须在索引里真实存在。
+		const caseCount = counts.get("cases") ?? 0;
+		expect(caseCount).toBeGreaterThan(0);
+		for (const id of SHIPPED_PRECEDENTS.flatMap(precedent => precedent.caseDocs)) {
+			expect(DOC_ENTRIES.some(entry => entry.id === id), id).toBe(true);
+		}
+		expect(DOC_ENTRIES.length).toBe(310 + caseCount);
 	});
 
 	it("matches the committed checksum manifest entry for entry", () => {
@@ -49,7 +56,7 @@ describe("document library index", () => {
 
 	it("builds the navigation tree without empty groups", () => {
 		const groups = docGroups();
-		expect(groups.map(group => group.id)).toEqual(["kb", "manual", "kit-docs"]);
+		expect(groups.map(group => group.id)).toEqual(["kb", "manual", "kit-docs", "cases"]);
 		for (const group of groups) {
 			expect(group.topics.length).toBeGreaterThan(0);
 			for (const topic of group.topics) expect(topic.entries.length).toBeGreaterThan(0);

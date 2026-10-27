@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"slug": "java-agent-dll-hijack",
+	"title": "Two ways into one JVM client: a javaagent for the gate, a hijacked DLL for the launch",
+	"summary": "The entitlement decision is one null check on a licence object, so a javaagent that rewrites three methods opens every paid module without touching the jar. The same jar is also reachable earlier: the JVM's native dependencies are imported from a user-writable directory, so a forwarded proxy DLL injects the agent without any configuration at all.",
+	"signals": [
+		"java agent",
+		"bytecode instrumentation",
+		"jvm args",
+		"iat hook",
+		"dll hijack",
+		"version.dll",
+		"install4j",
+		"classfile api",
+		"guice",
+		"cwe-427"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": ["cases/java-agent-dll-hijack/reverse-engineering"],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目M" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/loader-chain.md"
+	]
+}

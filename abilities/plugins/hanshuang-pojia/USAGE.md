@@ -12,7 +12,7 @@
 4. **读报告**：顶部有风险分与等级，下面分节给出清单事实、权限、发现。可在「摘要 / 完整」间切换，
    然后复制或另存为 markdown / JSON。
 
-面板共十六个页面，底部有「样本→分析→取证→工具箱」主线导航；顶部 `PipelineBar` 用
+面板共十七个页面，底部有「样本→分析→取证→工具箱」主线导航；顶部 `PipelineBar` 用
 「画像 / 控制流 / 智库 / 验证」四段显示当前样本走到了哪。
 
 ## 二、Lab 模式：开 / 关 / 判状态
@@ -52,8 +52,15 @@ Lab 是插件与「对话 Agent」共存的一套工作方式开关。开启后�
 - Agent 在对话里跑 `triage_binary` 出的报告会推回面板，并标「来自对话」。
 - 需要本机外部逆向工具时，先 `probe_environment` 看哪些装了，再 `install_toolchain` 拿本平台
   安装命令（插件不替你装，命令由你/宿主执行）。
-- 一个多产物的案件用 `init_task` 建 `samples/ exports/ reports/`，`write_assessment_report`
-  写四段式评估报告。
+- 一个多产物的案件用 `init_task` 建完整契约：`samples/ exports/ report/ evidence/ notes/` 五个目录
+  加 `scope.md`、`timeline.md`、`workitems.md`、`README.md`。传 `preset`（`offline-sample` / `ctf-public` /
+  `own-system`）、`auth_status`、`target` / `sample`、`in_scope` 才能把就绪门点亮；不传就是 `pending` +
+  `offline`，门关着并列出阻断项。之后 `search_cases` 查已有战例与随包先例、`record_case_note` 记决策、
+  `write_assessment_report` 写四段式评估报告。案件能不能动由门禁推导，不是问 Agent，也不是靠手改
+  `scope.md` 里的那行 `ready_for_act`。
+- 面板「案例」页只读：上面一张表是你自己 `cases/` `work/` 里的案例（名字 / 预设 / 授权 / 就绪 /
+  资产数 / 证据数 / 工作项 / 更新时间），下面一张表是随包的方法级先例库（每行标 `范围待定`）。
+  先例不替你授权：复制一份重跑 `init_task` 才是你的案例。
 
 ## 四、高级案例（示例对话）
 

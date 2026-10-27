@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"slug": "execryptor-vm-activation",
+	"title": "When the verifier is virtualised: patch the one verdict instead of building a keygen",
+	"summary": "A virtualised authorisation runtime makes static recovery of the signature check impossible; the recoverable surface is a single status value that the main program alone turns into a decision.",
+	"signals": [
+		"execryptor",
+		"vm stub",
+		"virtualisation",
+		"shared memory ipc",
+		"named event",
+		"x64",
+		"msvc",
+		"serial",
+		"activation",
+		"trial",
+		"clock rollback"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": [
+		"cases/execryptor-vm-activation/reverse-engineering",
+		"cases/execryptor-vm-activation/activation-path"
+	],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目E" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/ipc.md",
+		"docs/verdict.md"
+	]
+}

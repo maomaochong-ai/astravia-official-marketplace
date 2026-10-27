@@ -3,7 +3,7 @@
 - 状态：已接受（2026-10-23）
 - 决策对象：`abilities/plugins/hanshuang-pojia`（2.4.5 → 2.5.0）
 - 参照对象：`hanshuang-pojia` 2.0 便携版的 `seep-kit/setup/repair-tools.ps1` + `Tool/docs/tool-index.json`（42 项工具）
-- 关联文档：[ADR 0002](./0002-external-process-bridge.md)、[工具链对照表](../toolchain-parity.md)
+- 关联文档：[ADR 0002](./0002-external-process-bridge.md)、[工具链对照表](../reference/toolchain-parity.md)
 
 ## 1. 问题
 
@@ -74,7 +74,7 @@ handler 做三件事，然后返回文本：
 
 2.0 的 42 项里，MCP 类（`ida-pro-mcp` / `r2mcp` / `jshookmcp` / `reqable-mcp` / `xquik-mcp` / `pentestswarm` /
 `agent-browser` / `playwright`）不在插件的能力范围内：它们要 MCP 注册，不是可执行文件。逐项对照见
-[工具链对照表](../toolchain-parity.md)。
+[工具链对照表](../reference/toolchain-parity.md)。
 
 `TOOLCHAIN` 一扩，`COMMANDS` 自动跟着变，`plugin.json#commands` 由 `toolchain.test.ts:56` 的
 `expect(manifest.commands).toEqual([...COMMANDS])` 强制同步 —— 这是扩表的唯一"代价"，也是护住声明与使用

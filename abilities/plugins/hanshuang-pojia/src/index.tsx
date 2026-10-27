@@ -11,7 +11,7 @@ import { WorkbenchScreen } from "./features/workbench/components/workbench-scree
 import { LIBRARY_STATE_PATH, SETTINGS_STATE_PATH, type ChatState, type LibraryEntry, type WorkbenchSettings } from "./features/workbench/state";
 import { getRuntime, setRuntime } from "./runtime-contract";
 import { registerTools } from "./tools/register-tools";
-import { loadSample } from "./tools/read-sample";
+import { loadSample } from "./tools/lib/read-sample";
 import { isPluginTool } from "./tools/ids";
 import { publishTaskEvent } from "./runtime/panel-channel";
 import type { LabState } from "./domain/lab-mode";
@@ -89,6 +89,16 @@ function bridgeFor(ctx: PluginContext): WorkbenchBridge {
 
 	const bridge: WorkbenchBridge = {
 		listFiles: directory => ctx.fs.readDir(directory),
+		readTextFile: async path => {
+			try {
+				const file = await ctx.fs.readFile(path);
+				// 非 UTF-8 编码拿到的是 base64 片段，对 Markdown 解析没有意义，按「读不到」处理。
+				return file.encoding === "utf8" ? file.content : null;
+			} catch {
+				// 越界、超限、不存在在战例页是同一个意思：这篇文档没有内容可展示。
+				return null;
+			}
+		},
 		stat: async (path, cwd) => {
 			try {
 				const entry = await ctx.fs.stat(resolveSamplePath(cwd ?? "", path));

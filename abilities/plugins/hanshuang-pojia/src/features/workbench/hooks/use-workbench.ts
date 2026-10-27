@@ -21,6 +21,7 @@ import type { LibraryEntry, PageId, WorkbenchSettings } from "../state";
 import { useChat, type ChatModel } from "./use-chat";
 import { useDisasm, type DisasmModel } from "./use-disasm";
 import { useDocs, type DocsModel } from "./use-docs";
+import { useCases, type CasesModel } from "./use-cases";
 import { useLab, type LabModel } from "./use-lab";
 import { setAgentPage } from "../../../runtime/panel-channel";
 import { useLibrary } from "./use-library";
@@ -99,6 +100,7 @@ export interface WorkbenchModel {
 	entropy: EntropyBucket[] | null;
 	disasm: DisasmModel;
 	docs: DocsModel;
+	cases: CasesModel;
 
 	exportReport(format: "markdown" | "json"): void;
 	copyReport(format: "markdown" | "json"): void;
@@ -335,6 +337,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const nativeMap = useMemo(() => (nativeFacts ? addressMapFor(nativeFacts) : null), [nativeFacts]);
 	const disasm = useDisasm({ bytes: sample?.bytes ?? null, facts: nativeFacts, map: nativeMap, bridge, enabled: page === "disasm" });
 	const docs = useDocs(bridge, page === "docs");
+	const cases = useCases(bridge, cwd, page === "cases");
 
 	const entropy = useMemo<EntropyBucket[] | null>(() => {
 		if (!sample) return null;
@@ -551,6 +554,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		entropy,
 		disasm,
 		docs,
+		cases,
 		exportReport,
 		copyReport,
 		handOff,

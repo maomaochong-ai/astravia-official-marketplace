@@ -10,7 +10,7 @@
  * 只出现在安装计划里的建议项、谁被明确判定为不做以及为什么。有没有装、装的是哪个版本，
  * 由运行时的 `probe_environment` 回答，永远不在这份文件里猜测。
  *
- * 42 项总数与 `docs/toolchain-parity.md` 一一对应；测试 `src/test/tool-index.test.ts`
+ * 42 项总数与 `docs/reference/toolchain-parity.md` 一一对应；测试 `src/test/tool-index.test.ts`
  * 会同时校验 json 与 catalog / parity 文档三者一致，改了一处忘了另一处会失败。
  *
  * 用法（catalog.ts 是纯数据文件，可以用 Node 的类型剥离直接加载）：

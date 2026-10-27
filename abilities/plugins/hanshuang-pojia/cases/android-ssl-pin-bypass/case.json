@@ -1,0 +1,13 @@
+{
+	"schemaVersion": 1,
+	"slug": "android-ssl-pin-bypass",
+	"title": "Android TLS pinning review",
+	"summary": "An app pins its backend and rejects the proxy: determine what is pinned, verify it at runtime, and record the residual risk.",
+	"signals": ["ssl pinning", "okhttp", "certificate pinner", "trust manager", "network security config", "frida", "mitm"],
+	"preset": "offline-sample",
+	"fieldNotes": [
+		"kb/field_journal_seed-008_apk-okhttp-ssl-pin-bypass",
+		"kb/field_journal_2026-08-01_pentest-encryption-oracle-public-template-sql-admin-takeover"
+	],
+	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
+}

@@ -151,7 +151,7 @@ install_toolchain
 | 许可/激活/卡密校验手册 | `agent/skills/softseep/references/license-validation.md` |
 | Android 逆向全链路 | `agent/skills/apkseep/SKILL.md` |
 | IDA Pro 自动化联动 | `agent/skills/ida-reverse/SKILL.md` |
-| 逆向知识库 | 通过 `search_docs` / `read_doc` 访问（309 篇文档） |
+| 逆向知识库 | 通过 `search_docs` / `read_doc` 访问（334 篇文档） |
 | 常驻提示词母本 | `agent/prompts/SYSTEM.md` |
 | 跨 Agent 协议（本文件） | `agent/prompts/AGENTS.md` |
 | 完整作战手册 | `agent/skills/hanshuang-pojia/SKILL.md` |

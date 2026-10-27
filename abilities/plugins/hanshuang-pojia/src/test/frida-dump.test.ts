@@ -2,7 +2,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { buildDexDumpScript, parseDexDumpLog } from "../domain/android/frida-dump";
 import { toBase64 } from "../domain/base64";
-import { registerFridaDumpTool } from "../tools/frida-dump";
+import { registerFridaDumpTool } from "../tools/apk/frida-dump";
 
 const DEX_BYTES = Uint8Array.from({ length: 200 }, (_, index) => index & 0xff);
 

@@ -1,7 +1,7 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
 import { assessmentFileName, renderAssessment } from "../domain/report/assessment";
-import { registerWriteAssessmentTool } from "../tools/write-assessment-report";
+import { registerWriteAssessmentTool } from "../tools/report/write-assessment-report";
 
 /** Only the four host calls this tool touches; writes are recorded, not persisted. */
 function fakeContext(cwd: string | null, existing: string[] = []) {

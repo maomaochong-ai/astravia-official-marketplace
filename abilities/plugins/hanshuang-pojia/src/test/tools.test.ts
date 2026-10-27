@@ -1,14 +1,14 @@
 import type { Disposable, PluginContext, PluginFsApi } from "@astravia-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { toBase64 } from "../domain/base64";
-import { registerExplainFindingTool } from "../tools/explain-finding";
-import { registerExportReportTool } from "../tools/export-triage-report";
+import { registerExplainFindingTool } from "../tools/knowledge/explain-finding";
+import { registerExportReportTool } from "../tools/report/export-triage-report";
 import { EXPECTED_TOOL_COUNT } from "../tools/ids";
 import { registerTools } from "../tools/register-tools";
 import { baseName, isAbsolutePath, resolveSamplePath } from "../domain/sample-path";
-import { MAX_SAMPLE_BYTES, loadSample } from "../tools/read-sample";
-import { registerScanStringsTool } from "../tools/scan-strings";
-import { registerTriageBinaryTool } from "../tools/triage-binary";
+import { MAX_SAMPLE_BYTES, loadSample } from "../tools/lib/read-sample";
+import { registerScanStringsTool } from "../tools/native/scan-strings";
+import { registerTriageBinaryTool } from "../tools/native/triage-binary";
 import { buildApk, buildElf, utf8 } from "./fixtures";
 
 /** 只实现被测工具真正用到的宿主接口，其余留空。 */
@@ -127,8 +127,10 @@ describe("agent tools", () => {
 			"list_code_symbols",
 			"probe_environment",
 			"read_doc",
+			"record_case_note",
 			"run_radare",
 			"scan_binary_strings",
+			"search_cases",
 			"search_dex_symbols",
 			"search_docs",
 			"triage_binary",

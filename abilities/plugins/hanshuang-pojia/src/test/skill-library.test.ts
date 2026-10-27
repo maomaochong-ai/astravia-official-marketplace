@@ -15,21 +15,24 @@ const manifestPath = join(pluginRoot, "agent/prompts/skill-library.sha256");
 const EXPECTED_FILES = 171;
 const EXPECTED_BYTES = 2481555;
 /** `shasum -a 256 agent/prompts/skill-library.sha256` */
-const EXPECTED_MANIFEST_SHA256 = "bc7bf2c71dbc9e7b15e5ded014c50ca42f97509387c119b3f31b17291fa2e742";
+const EXPECTED_MANIFEST_SHA256 = "e0b8530a33ff3e7f2f852fa306ab5934ce175ee9bc54d54649804dcb6b9c803e";
 
-/** 上游 seep-kit 原样搬运的八个技能目录（旧版 ida-reverse 已被 safe-skills 版本取代）。 */
+/**
+ * 上游 `Tool/skill` 的两层归类：根层是作战台技能（含本插件自己的主技能），
+ * `safe-skills/` 下是通用逆向战术包。旧版 ida-reverse 已被 safe-skills 版本取代。
+ */
 const LIBRARY_SKILLS = [
 	"apkseep",
-	"apk-reverse",
 	"client-license-validation-bypass",
-	"ida-reverse",
-	"mcp-js-reverse-playbook",
-	"radare2",
-	"reverse-engineering",
+	"safe-skills/apk-reverse",
+	"safe-skills/ida-reverse",
+	"safe-skills/mcp-js-reverse-playbook",
+	"safe-skills/radare2",
+	"safe-skills/reverse-engineering",
 	"softseep",
 ];
 
-/** 宿主要能加载到的全部技能目录，含本插件自己写的主技能。 */
+/** 宿主要能加载到的全部技能目录（宿主对 skillPaths 递归扫描），含本插件自己写的主技能。 */
 const ALL_SKILLS = ["hanshuang-pojia", ...LIBRARY_SKILLS];
 
 function walk(directory: string): string[] {

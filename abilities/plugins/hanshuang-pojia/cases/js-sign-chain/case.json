@@ -1,0 +1,10 @@
+{
+	"schemaVersion": 1,
+	"slug": "js-sign-chain",
+	"title": "Web request signature chain",
+	"summary": "A signed API request whose parameters come from obfuscated JavaScript: find the signer, prove it locally, and stop guessing at the header.",
+	"signals": ["sign", "signature header", "webpack", "obfuscated js", "x-sign", "nonce", "timestamp", "crypto-js"],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_seed-004_js-sign-webpack", "kb/js_reverse_SKILL"],
+	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
+}

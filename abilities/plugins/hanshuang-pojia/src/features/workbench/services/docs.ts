@@ -59,6 +59,7 @@ export const DOC_GROUPS = [
 	{ id: "kb", labelKey: "docs.group.kb" },
 	{ id: "manual", labelKey: "docs.group.manual" },
 	{ id: "kit-docs", labelKey: "docs.group.kitDocs" },
+	{ id: "cases", labelKey: "docs.group.cases" },
 ] as const;
 
 /** 文档目录在包内的相对位置：构建时整棵拷到 dist/docs/，与 dist/assets/ 平级。 */

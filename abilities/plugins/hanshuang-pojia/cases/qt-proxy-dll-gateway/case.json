@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"slug": "qt-proxy-dll-gateway",
+	"title": "A proxy DLL as a whole-client lever: privilege constants, endpoint rewrite, local model gateway",
+	"summary": "A Qt5 host imports 282 C++ symbols by name, so the auth library can be replaced by a forwarder proxy that stays inside the process. Eleven constant-folding patches open 14 features; four memory patches point the cloud endpoint at a local gateway that speaks OpenAI, Gemini and Anthropic.",
+	"signals": [
+		"qt5",
+		"proxy dll",
+		"iat import",
+		"pe forwarder",
+		"inline hook",
+		"rel32 overflow",
+		"qcombobox",
+		"llm gateway",
+		"云控",
+		"cwe-602"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": ["cases/qt-proxy-dll-gateway/reverse-engineering"],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目L" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/pitfalls.md"
+	]
+}

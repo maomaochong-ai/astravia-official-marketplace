@@ -1,0 +1,29 @@
+{
+	"schemaVersion": 1,
+	"slug": "themida-dotnet-delegate-recovery",
+	"title": "Themida on a .NET client: recover the real IL, then find the one field that decides",
+	"summary": "Four protection layers, one ordinary managed module underneath. Hook the JIT Themida already hooked, resolve 858 delegate stubs by reflection, dump the assembly loaded from bytes, and the whole authorisation model reduces to one public static int.",
+	"signals": [
+		"themida",
+		"method body stubbing",
+		"clr jit hook",
+		"il recovery",
+		"delegate field",
+		"appdomainmanager",
+		"aes-128-cbc",
+		"machine code",
+		"云控",
+		"wpf"
+	],
+	"preset": "offline-sample",
+	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"caseDocs": ["cases/themida-dotnet-delegate-recovery/reverse-engineering"],
+	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目K" },
+	"docs": [
+		"README.md",
+		"scope.md",
+		"workitems.md",
+		"docs/method.md",
+		"docs/protection-layers.md"
+	]
+}
