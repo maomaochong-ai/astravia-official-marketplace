@@ -1,8 +1,8 @@
 # ADR 0004 — 把上游四件套映射到宿主的钩子边界
 
-- 状态：已采纳
+- 状态：已采纳（2026-10-23）
 - 日期：2026-10-23
-- 版本：2.8.0
+- 版本：2.8.0（当前 2.11.0，见文末「实现核对」）
 
 ## 背景
 
@@ -169,3 +169,39 @@
   因此**不静默写用户目录**，改为经 `saveAs` 原生保存对话框把「带标记块 + 还原备份」的注入内容交给用户亲自确认落盘
   （`fs.saveAs` 不受项目根限制，用户点保存 = 显式授权，对齐上游 `restore` / 备份语义）。
   上文的 `agent/prompts/AGENTS.md`「本工作台不主动写用户目录」立场保留——插件自己不写，由用户确认落盘。
+
+## 实现核对（2026-10-27，版本 2.11.0）
+
+四件映射里，§1–§2（提示词）与 §4（不许拒绝）在 2.11.0 仍有直接落点且被测试钉住；§3 的三件“做不到”结论
+没有变，但“只做一次可查日志”的部分已接线（下文第三行）。
+
+重跑：
+
+```bash
+cd abilities/plugins/hanshuang-pojia
+npm run verify:generated        # sync-system-prompt.mjs --check 逐字节比 SYSTEM.md
+npm run test                    # 含 src/test/system-prompt.test.ts、contributions.test.ts、refusal.test.ts
+```
+
+| 决策 | 当前落点（Observed） | 结论 |
+| --- | --- | --- |
+| §1 提示词静态母本 + 生成物（运行时读不到包内文件） | `src/domain/system-prompt.generated.ts`（`SYSTEM_PROMPT_BLOCK_ID` 在 `:316`）由 `scripts/sync-system-prompt.mjs` 从 `agent/prompts/SYSTEM.md` 生成；`src/test/system-prompt.test.ts:15` 断言逐字节一致（换行归一后） | 成立 |
+| §2 两块注入：kernel 每轮 / system 仅 lab | `KERNEL_PRIORITY = 850`（`src/domain/kernel.ts:75`）、`SYSTEM_PROMPT_PRIORITY = 840`（`system-prompt.generated.ts:319`），注册处 `src/runtime/contributions.ts:137` / `:151` | 成立 |
+| §2 kernel 块 200–700 字符 | 现由 `buildKernelBlock()`（`kernel.ts:40`）拼：lab 状态行 + 工具清单 + 页提示 + （仅 lab）交付五段；工具满编时输出会明显超过 700 字符 | 量级已变，结构未变 |
+| §2 system 块约 7.6 KB | `SYSTEM_PROMPT_BODY` 现 10,671 字符（文件 20,408 字节） | 内容增长了，仍是单块整文 |
+| §3 provider / context 钩子不存在→三件不可实现 | 未变：`plugin.json#agent` 无 `systemPrompt.promptPaths`（`systemPrompt` 为 `null`）；改写用户输入改为 `promptContexts()` 追加等价上下文（`contributions.ts:84`） | 成立 |
+| §3 判定函数移植、每端点记一次日志 | `src/domain/interceptor.ts:55` `decideSafetyInjection` / `:47` `payloadShapeOf`；**已接线**：`contributions.ts:62` 在 kernel provider 里调一次，`logSafetyEndpointOnce`（`:54`，去重集合 `:40`）写 `console.info` | 成立（比本文又走前一步） |
+| 同上，形态判定依据 | 日志里 `shape` 是硬写的 `"messages(openai)"`（`contributions.ts:65`），注释明说“宿主没有 payload 引用”；所以 INJECT / SKIP / SKIP-INEFFECTIVE 是**按 provider/api 推的**，不是对实际载荷的观测 | 偏差：结论是 Inferred，不是 Observed |
+| §4 `Stop` + `continue-agent` | `src/runtime/contributions.ts:208` 注册 `eventName: "Stop"`；`MAX_CONTINUATIONS_PER_TURN = 3`（`src/domain/refusal.ts:125`）；测试 `src/test/contributions.test.ts:117` | 成立 |
+| §4 四类规则（政策/转介、出处、身份、纯问句） | `RefusalKind = "identity" \| "policy" \| "deflection" \| "provenance"`（`refusal.ts:21`），带排序 `:24`；本文写的“转介句”在代码里叫 `deflection` | 成立，术语多一个 |
+| §4.2 材料 vs 指令的三载体 | `src/test/system-prompt.test.ts:71` `describe("instruction authority across carriers")` 三项断言 | 成立 |
+| §5 `AGENTS.md` 放 `agent/prompts/`，不声明 `promptPaths` | `agent/prompts/AGENTS.md` 存在；`plugin.json#agent.systemPrompt` 为 `null` | 成立 |
+| §5.1 `collectRuntimeFiles` 固定目录含 `agent/prompts/` | 该函数在宿主侧，本仓库无同名实现，**未核** | Assumed（原文引的是宿主行为） |
+| §6 权限 13 → 14 项，恢复 `agent.systemPrompt.write` | 现 **15** 项：`agent.systemPrompt.write` 在列，另有 2.9.0 加的 `network.fetch`（`plugin.json`，`network.allowedHosts = ["127.0.0.1"]`，见 ADR 0002 §4） | 计数已变 |
+| 「未决」`install_astravia` 经 `saveAs` 交用户确认 | `src/tools/env/install-astravia.ts:71` `await context.host.fs.saveAs(fileName \|\| ASTRAVIA_AGENTS_FILE, block, "utf8", {…})`；块用 `<!-- 寒霜破甲注入开始 … 注入结束 -->` 围栏（`:34`） | 已落地，不再是未决 |
+| 版本 2.8.0 | 现 2.11.0 | 已变 |
+
+两个可查的小缺口：`PAGE_HINT` 只覆盖 11 个页签（`kernel.ts:70` 起），而 `PageId` 有 17 个（`src/features/workbench/state.ts:8`），
+`cases` / `samples` / `guide` / `activity` / `settings` / `prompts` 不出页提示；`system-prompt.test.ts:26` 只断言 system 块
+“stays small enough”，没有对 kernel 块定上限，所以上表第二行那项漂移不会被测试报红。
+

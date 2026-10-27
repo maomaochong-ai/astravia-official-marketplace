@@ -1,5 +1,15 @@
 [
 	{
+		"id": "cases/android-ssl-pin-bypass/pinning-layers",
+		"group": "cases",
+		"topic": "android-ssl-pin-bypass",
+		"title": "证书固定：先判层，再动手，最后证明解密（CWE-602 的传输面）",
+		"path": "src/content/docs/cases/android-ssl-pin-bypass/pinning-layers.md",
+		"bytes": 8052,
+		"lines": 99,
+		"sha256": "f6fc7fc06df717bb"
+	},
+	{
 		"id": "cases/aob-signature-cross-version/patch-table",
 		"group": "cases",
 		"topic": "aob-signature-cross-version",
@@ -20,6 +30,26 @@
 		"sha256": "cfc2049475a61a3c"
 	},
 	{
+		"id": "cases/apk-dex-unpack/dex-shell-detection",
+		"group": "cases",
+		"topic": "apk-dex-unpack",
+		"title": "壳与多 dex：为什么「扫到 dex magic」等于没扫",
+		"path": "src/content/docs/cases/apk-dex-unpack/dex-shell-detection.md",
+		"bytes": 4472,
+		"lines": 62,
+		"sha256": "f5de082e751c2183"
+	},
+	{
+		"id": "cases/apk-dex-unpack/missing-code-or-failed-tool",
+		"group": "cases",
+		"topic": "apk-dex-unpack",
+		"title": "APK 取不到源码：分清「工具失败」与「代码不在文件里」",
+		"path": "src/content/docs/cases/apk-dex-unpack/missing-code-or-failed-tool.md",
+		"bytes": 8635,
+		"lines": 112,
+		"sha256": "a84025f912d7f6a8"
+	},
+	{
 		"id": "cases/cardkey-online-runtime-patch/protocol-and-patch",
 		"group": "cases",
 		"topic": "cardkey-online-runtime-patch",
@@ -38,6 +68,16 @@
 		"bytes": 14838,
 		"lines": 275,
 		"sha256": "5e1819bfaaf0a39e"
+	},
+	{
+		"id": "cases/client-auth-gate/entitlement-decision",
+		"group": "cases",
+		"topic": "client-auth-gate",
+		"title": "客户端特权判定：从候选门到可复现的裁决点（CWE-602）",
+		"path": "src/content/docs/cases/client-auth-gate/entitlement-decision.md",
+		"bytes": 10230,
+		"lines": 134,
+		"sha256": "f92de4bc1879c691"
 	},
 	{
 		"id": "cases/dotnet-license-keygen/algorithm",
@@ -90,6 +130,16 @@
 		"sha256": "9b28486aaffa2036"
 	},
 	{
+		"id": "cases/elf-packed-loader/loader-or-programme",
+		"group": "cases",
+		"topic": "elf-packed-loader",
+		"title": "加壳 ELF：分清壳与程序，并为每个地址标上来源（CWE-602 语境下的取证纪律）",
+		"path": "src/content/docs/cases/elf-packed-loader/loader-or-programme.md",
+		"bytes": 8599,
+		"lines": 107,
+		"sha256": "ab2f2c72778c6991"
+	},
+	{
 		"id": "cases/execryptor-vm-activation/activation-path",
 		"group": "cases",
 		"topic": "execryptor-vm-activation",
@@ -118,6 +168,16 @@
 		"bytes": 13249,
 		"lines": 252,
 		"sha256": "125964c8e63fc3b4"
+	},
+	{
+		"id": "cases/js-sign-chain/signing-order",
+		"group": "cases",
+		"topic": "js-sign-chain",
+		"title": "网页签名链：顺序、覆盖集与一次只改一个字段",
+		"path": "src/content/docs/cases/js-sign-chain/signing-order.md",
+		"bytes": 8606,
+		"lines": 102,
+		"sha256": "9ef79625f8c51ef9"
 	},
 	{
 		"id": "cases/multiprocess-proxy-hotpatch/points-and-naked-proxy",
@@ -3307,7 +3367,7 @@
 		"path": "src/content/docs/manual/PANEL-HANDBOOK.md",
 		"bytes": 11782,
 		"lines": 237,
-		"sha256": "e8cd384c747ffd17"
+		"sha256": "afd357b3d4a0b417"
 	},
 	{
 		"id": "manual/POC-VALIDATION",

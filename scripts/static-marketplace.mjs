@@ -130,6 +130,52 @@ function needsPluginReleaseMigration(existing, expectedUrl) {
   return !existing.artifact.url.startsWith('https://api.github.com/repos/') && existing.artifact.url !== expectedUrl;
 }
 
+/** 把插件按当前源码打包到 `output-dir`，返回 release 记录（与发布时同一个打包器）。 */
+function stagePackage({ root, slug, minAppVersion, outputDir }) {
+  const python = process.env.ASTRAVIA_PYTHON || process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+  const packager = fileURLToPath(new URL('./stage-plugin-release.py', import.meta.url));
+  return JSON.parse(execFileSync(python, [packager, slug, '--root', root, '--min-app-version', minAppVersion, '--output-dir', outputDir], { encoding: 'utf8' }));
+}
+
+/**
+ * 插件目录下哪些改动真的会改变运行内容（也就是会改变 `.astraviapkg` 的字节）。
+ *
+ * 白名单而不是黑名单：目录里还挤着 README、detail.json、ability.json 与测试，
+ * 它们随分发目录更新，不需要（也不应该）因此抬版本。反过来，一旦这些白名单路径
+ * 动过而版本号又已经发布过，这次改动就永远不会出现在市场上——因为 `prepareMarketplace`
+ * 不会为已发布过的版本重建包。
+ */
+
+/**
+ * 发布提交信息里记录已审核源码的那一句。它同时是 `bump`/`--strict` 的基线来源：
+ * 读端（`marketplace.mjs`）与写端（`publish-marketplace.mjs`）都从这里取，改措辞不会只改一半。
+ */
+export function reviewedSourceCommitMessage(marketplaceVersion, sourceSha) {
+  return `chore(marketplace): 发布 ${marketplaceVersion}\n\n从已审核源码 ${sourceSha} 生成市场索引。`;
+}
+
+const REVIEWED_SOURCE_PATTERN = /从已审核源码 ([a-f0-9]{40})/;
+
+/** 从发布提交信息里取回源码 sha；格式对不上就是 `null`（不知道，而不是「都没改」）。 */
+export function reviewedSourceSha(message) {
+  return REVIEWED_SOURCE_PATTERN.exec(message ?? '')?.[1] ?? null;
+}
+const RUNTIME_PATTERNS = [
+  /^plugin\.json$/,
+  /^package\.json$/,
+  /^(?:src|agent|cases|locales|assets|scripts)\//,
+];
+const PRESENTATION_ONLY = [/^src\/test\//, /^docs\//];
+
+export function runtimeSourcesChanged(paths, sourcePath) {
+  const prefix = `${sourcePath}/`;
+  return paths
+    .filter(path => path.startsWith(prefix))
+    .map(path => path.slice(prefix.length))
+    .filter(path => !PRESENTATION_ONLY.some(pattern => pattern.test(path)))
+    .filter(path => RUNTIME_PATTERNS.some(pattern => pattern.test(path)));
+}
+
 function treeDigest(root, manifest) {
   const { marketplaceVersion, ...content } = manifest;
   const hash = createHash('sha256').update(JSON.stringify(content));
@@ -144,8 +190,70 @@ function nextVersion(current, date) {
 }
 
 
+/** 版本号只承接三个数字；`level` 就是抬高哪一位。 */
+function raiseVersion(version, level) {
+  const [major, minor, patch] = version.split('.').map(Number);
+  if (level === 'major') return `${major + 1}.0.0`;
+  if (level === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}
 
-export async function prepareMarketplace({ root, output, previous, sourceSha, buildPlugin, date = new Date().toISOString().slice(0, 10).replaceAll('-', '.') }) {
+/**
+ * 源里的插件版本已经发布过了，但内容变了：算一下该抬到哪一版。
+ *
+ * 只看「已发布最高版」而不看「源码版本是否落后」，因为分发索引是真相；源码版本低于它时
+ * 从已发布版继续抬，抬出来的版本依然单调递增。纯函数，不写盘。
+ */
+export function planVersionBumps({ root, published, level = 'patch', slugs }) {
+  const catalog = sourceCatalog(root);
+  const publishedEntries = new Map(published ? entries(published).map(x => [x.slug, x]) : []);
+  const bumps = [];
+  for (const entry of entries(catalog)) {
+    if (entry.type !== 'plugin' || !entry.source) continue;
+    if (slugs && !slugs.has(entry.slug)) continue;
+    const descriptor = readJson(join(inside(root, entry.source.path), 'plugin.json'));
+    const releases = publishedEntries.get(entry.slug)?.releases ?? [];
+    const highest = releases.map(x => x.version).sort(compareVersion).at(-1);
+    if (!highest || compareVersion(descriptor.version, highest) > 0) continue;
+    bumps.push({ slug: entry.slug, from: descriptor.version, published: highest, to: raiseVersion(highest, level) });
+  }
+  return bumps;
+}
+
+/** 把新版本写进五份身份文件；不碰任何运行内容。 */
+export function applyVersionBump({ root, slug, to }) {
+  const catalogPath = join(root, '.astravia/marketplace.source.json');
+  const catalog = readJson(catalogPath);
+  // 同一个插件可以既在顶层注册、又被 bundle 以成员路径引用：`entries()` 会把它返回两次。
+  // 只改第一份会让另一份留着旧版本，下一次 `sourceCatalog` 直接报身份不一致。
+  const matches = entries(catalog).filter(x => x.slug === slug && x.type === 'plugin' && x.source);
+  if (!matches.length) throw new Error(`Unknown plugin entry: ${slug}`);
+  const directory = inside(root, matches[0].source.path);
+  const written = [];
+  for (const name of ['plugin.json', 'ability.json', 'package.json']) {
+    const path = join(directory, name);
+    if (!existsSync(path)) continue;
+    const value = readJson(path);
+    value.version = to;
+    writeJson(path, value);
+    written.push(relative(root, path));
+  }
+  const lockPath = join(directory, 'package-lock.json');
+  if (existsSync(lockPath)) {
+    const lock = readJson(lockPath);
+    lock.version = to;
+    if (lock.packages?.['']) lock.packages[''].version = to;
+    writeJson(lockPath, lock);
+    written.push(relative(root, lockPath));
+  }
+  for (const match of matches) if ('version' in match) match.version = to;
+  writeJson(catalogPath, catalog);
+  written.push(relative(root, catalogPath));
+  return written.map(x => x.split(sep).join('/'));
+}
+
+
+export async function prepareMarketplace({ root, output, previous, sourceSha, buildPlugin, date = new Date().toISOString().slice(0, 10).replaceAll('-', '.'), strictSlugs }) {
   if (existsSync(output)) throw new Error(`Output already exists: ${output}`);
   if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('A fixed source commit is required');
   const catalog = sourceCatalog(root);
@@ -170,13 +278,19 @@ export async function prepareMarketplace({ root, output, previous, sourceSha, bu
       const artifact = publishedPluginArtifact(catalog.repository, entry.slug, descriptor.version);
       if (existing && (existing.minAppVersion !== entry.minAppVersion || existing.pluginApiVersion !== descriptor.pluginApiVersion || JSON.stringify(existing.permissions) !== JSON.stringify(descriptor.permissions ?? []) || JSON.stringify(existing.commands) !== JSON.stringify(descriptor.commands ?? []))) throw new Error(`Changed release declaration for ${entry.slug}; publish a new version`);
       const migrate = needsPluginReleaseMigration(existing, artifact.url);
+      // `strictSlugs`：这些插件的运行内容自上次发布后动过（路径判定见 `runtimeSourcesChanged`）。
+      // 版本号还停在已发布的那一版时，这里既不重建也不发布，那笔改动就永远上不了市场，
+      // 所以直接在构建阶段拒绝，并指向抬版本的命令。
+      // 不用「重打包比摘要」做判据：依赖范围是浮动的，同一份源码重装后字节会变，
+      // 那种误报会把无关的发布全部卡住（已在 open-ai-canvas 上实测）。
+      if (existing && !migrate && strictSlugs?.has(entry.slug)) {
+        throw new Error(`Runtime files changed under published version ${entry.slug} ${descriptor.version}: this change would never reach the marketplace, because a published version is not rebuilt. Run \`node scripts/marketplace.mjs bump --slug ${entry.slug} --apply\` — it rewrites plugin.json, ability.json, package.json, package-lock.json and .astravia/marketplace.source.json — then commit the new version.`);
+      }
       if (!existing || migrate) {
         if (!existing && releases.some(x => compareVersion(x.version, descriptor.version) >= 0)) throw new Error(`New version must advance: ${entry.slug}`);
         if (migrate) releases.splice(releases.indexOf(existing), 1);
         await buildPlugin(source);
-        const python = process.env.ASTRAVIA_PYTHON || process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
-        const packager = fileURLToPath(new URL('./stage-plugin-release.py', import.meta.url));
-        const release = JSON.parse(execFileSync(python, [packager, entry.slug, '--root', root, '--min-app-version', entry.minAppVersion, '--output-dir', artifacts], { encoding: 'utf8' }));
+        const release = stagePackage({ root, slug: entry.slug, minAppVersion: entry.minAppVersion, outputDir: artifacts });
         if (release.artifact.url !== artifact.url) throw new Error(`Unexpected artifact URL for ${entry.slug}`);
         if (migrate && release.artifact.sha256 !== existing.artifact.sha256) throw new Error(`Published bytes differ for ${entry.slug}; use a new version`);
         releases.push(release);

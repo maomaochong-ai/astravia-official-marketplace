@@ -1,7 +1,8 @@
-# ADR 006：案例契约 v2 与战例库
+# ADR 0006：案例契约 v2 与战例库
 
 - 日期：2026-10-27
-- 状态：已采纳
+- 状态：已采纳（2026-10-27）
+- 核对：2026-10-27（版本 2.11.0），见文末「实现核对」
 - 关联：[0001](./0001-seep-kit-capability-parity.md)、[0002](./0002-external-process-bridge.md)、
   [0005](./0005-workbench-completion-and-lab-state.md)
 
@@ -243,3 +244,43 @@ cases/<slug>/
 | 把先例包做成「可开工的案例」 | 随包语料不是操作者的授权；`scope.md` 一律 `pending`，复制后重跑 `init_task` |
 | 先例命中与本地案例混在同一个列表里 | 两者证明力不同：「方法适用」与「本项目做过」混排会让人把先例读成自有经验 |
 | 让 `cases/` 目录直接随 `.astraviapkg` 发布 | 打包只含 `dist`；且先例要在没有文件系统的读端展示，正文必须内联 |
+
+## 实现核对（2026-10-27，版本 2.11.0）
+
+本篇是当前案例层的基准文档：下面每行都能在代码里找到落点，且没有一条被后来的 ADR 取代——ADR 0007 改的是
+D10 的表述（文本可以搬），ADR 0008 加的是 `tools/` 与 `scaffold_case`，两者都不推翻本篇的门禁与命名。
+
+重跑：
+
+```bash
+cd abilities/plugins/hanshuang-pojia
+npm run test              # 含 case-contract / case-library / case-tools / case-precedents
+npm run verify:generated  # 报 "precedents ok: 19 packages"
+node scripts/check-precedent-package.mjs --all
+```
+
+| 决策 | 当前落点（Observed） | 结论 |
+| --- | --- | --- |
+| D1 目录逐字对齐 `case-init.ps1`（`report/` 单数） | `src/tools/case/init-task.ts:51-58` 写死 `samples/exports/report/evidence/notes` + `scope.md`/`timeline.md`/`workitems.md` | 成立 |
+| D2 `scope.md` 九节 + `- offline_sample:` | `src/domain/case/contract.ts` 按顺序输出 `## meta` / `## auth` / `## in_scope` / `## out_of_scope` / `## network_profile` / `## deliverables` / `## constraints` / `## signoff` / `## ops_refs`（`:244`–`:307`）；`- offline_sample:` 在 `:277` | 成立 |
+| D3 三档预设自带授权 | `CASE_PRESETS`（`contract.ts:114` 起）：`own-system` / `ctf-public` 与 `offline-sample` 均 `authStatus: "granted"`，其余字段各自不同 | 成立 |
+| D4 `ready_for_act` 只能是推导值 | `AUTHORISED_STATUSES = ["granted"]`（`contract.ts:200`）；就绪对象 `ready: boolean` + `blockers`（`:182`/`:221`）；`init_task` 入参无 `ready_for_act`，只有 `auth_status` / `preset` 等 | 成立 |
+| D5 `MAX_NAME_CHARS = 64`（上游 80） | `contract.ts:23`，超长在 `:30` 处 `trim`/`slice` 后报错，不静默截断 | 成立 |
+| D6 `timeline.md` 只追加 + `workitems.md` 表 | `journal.ts` 的条目头为 `## <iso> \| <role> \| <kind>`（`contract.ts:318`）；`library.ts:146` 只读表格行、`cells.length < 6` 跳过、第六列为 `status` | 成立；代码只要求 ≥6 列，不校验“八列”这个模板细节 |
+| D7 `search_cases` 只扫 `cases/` 与 `work/` | `CASE_NAMESPACE_DIRS = ["cases", "work"]`（`library.ts:55`）、`MAX_CASE_DIRECTORIES = 200`（`:56`）、截断计数 `:245` | 成立 |
+| D8 先例三源 | `src/domain/case/precedents.ts:1` 引 `SHIPPED_PRECEDENTS`（`precedents.generated.ts`），本地案例与随包先例分开排名，不混一个列表 | 成立 |
+| D9 决策记录落在 `.agents/notes/{implemented,rejected}/<分类>/<日期>-<slug>.md` | `journal.ts:3-6` 注释写死路径；`DecisionStatus = "implemented" \| "rejected"`（`:19`）、`DECISION_STATUSES`（`:20`）、标题无字母数字时报 `:41` | 成立 |
+| D10 语料不随包 | **已被 ADR 0007 D2 改写**：不搬制品，但文本（方法摘要 + 原文走查）随包 | 已取代 |
+| D11 面板 Cases 页只读 | `src/features/workbench/components/pages/cases.tsx`；`PageId` 含 `"cases"`（`state.ts:8`），`hooks/use-workbench.ts:340` 只在当前页是 cases 时拉数据 | 成立 |
+| D12 随包先例包只发方法、`scope.md` 恒 `pending`（当时 5 个） | 现 **19** 个（`npm run verify:generated` → `precedents ok: 19 packages`；`precedents.generated.ts` 446 KB）；`check-precedent-package.mjs --all` 19 包全过 | 成立，计数已变 |
+| D13 编译进 `precedents.generated.ts` | `scripts/sync-precedents.mjs`；`npm run verify:generated` 的第三条 `--check` 就是它 | 成立 |
+| D14 两个结果段（先例 / 本地） | `search-cases.ts:18` `library?: boolean`、`:20` `precedent?: string`；权重 `SIGNAL_WEIGHT = 6` / `TITLE_WEIGHT = 3`（`precedents.ts:21-22`） | 成立 |
+| 后果：工具 28 → 30 | 现 **31**（`src/tools/ids.ts:50`） | 计数已变 |
+| 后果：页面 16 → 17 | `PageId` 17 项（`state.ts:8`） | 成立 |
+| 后果：`src/domain/case/` 四文件 | 现 **6** 个：`contract.ts` / `journal.ts` / `library.ts` / `precedents.ts` / `precedents.generated.ts` / `scaffold.ts` | 多两个 |
+| 后果：`src/tools/` 拆七类 | 现七个分类目录：`apk` / `case` / `env` / `knowledge` / `lib` / `native` / `report`（+ `ids.ts` / `register-tools.ts`） | 成立 |
+| 背景：文档 309 篇 | 现 340 篇（`kb` 292 / `manual` 11 / `kit-docs` 7 / `cases` 30） | 计数已变 |
+
+一处表达上的坑：本篇 D6 把 `workitems.md` 写成“八列”，而解析器只依赖“≥6 列、第六列是状态”。改模板列顺序会静默
+把 `surface` 读成 `status`，而不会报错——这一条值得将来补一条断言，现在没人守。
+

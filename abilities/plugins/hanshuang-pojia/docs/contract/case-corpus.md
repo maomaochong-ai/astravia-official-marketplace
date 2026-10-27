@@ -1,6 +1,6 @@
 # 案例语料编写契约
 
-面向在本仓库补齐先例语料的人与 AI。规则来自 [ADR 007](../adr/0007-case-corpus-layer.md)；
+面向在本仓库补齐先例语料的人与 AI。规则来自 [ADR 0007](../../../../../docs/adr/hanshuang-pojia/0007-case-corpus-layer.md)；
 [case-library.md](./case-library.md) 讲机制，本文只讲**怎么交一个合格的包**。
 
 一个案例落地成**两份东西**：
@@ -74,7 +74,35 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
 **`docs/<topic>.md` — 案例专属**
 
 补丁纪律与补丁表、协议字段表、算法结构、脱敏后的工具链。**这里放偏移和特征码**
-（ADR 007 D2），但地址必须是「教学值 + 现场重新定位的方法」，不要让人照抄偏移。
+（ADR 0007 D2），但地址必须是「教学值 + 现场重新定位的方法」，不要让人照抄偏移。
+
+## 2.1 `tools/` — 可执行层
+
+包里的 `tools/manifest.json` + `tools/*.py` 是「再来一次」的部分：文本回答该看什么，脚本把能机检的
+那几步真的算一遍。每包至少一个工具，ADR 0008 D4 要求它用代码生成的合成样本自证可跑。
+
+`manifest.json`（校验器逐字段查）：
+
+| 字段 | 约束 |
+| :--- | :--- |
+| `schemaVersion` | `1` |
+| `slug` | 与包目录名逐字一致 |
+| `runtime` | `python`（默认）或 `node` |
+| `platforms` | `["any"]`；只在真调 Win32 时才写 `["win32"]` |
+| `tools[]` | `id` 匹配 `^[a-z][a-z0-9_]*$` 且唯一；`entry` 扩展名与 `runtime` 对应 |
+| `tools[].purpose` | ≥ 20 字符，说清楚它产出什么事实 |
+| `tools[].args` | 示例参数，用 `<value>` 占位 |
+| `tools[].selfTest` | 必含 `--self-test` |
+
+脚本纪律：
+
+- Python 3.9+ 标准库，零第三方依赖，纯 ASCII；解释器由 `ASTRAVIA_PYTHON` 覆盖。
+- `import hpkit` 取共享原语（`cli` `pe` `scan` `patch` `dex` `fixtures`）；源码树布局下用
+  `cases/_shared` 回退，scaffold 布局下命中同目录的 `tools/hpkit/`。
+- 入口 `sys.exit(cli.run(main, self_test))`，`--self-test` 走合成样本，退出码 0。
+- 必须真算：打印写死的示例结论、或断言恒真是缺陷。
+- 不写绝对路径、不连网、不碰真实样本；工具只读输入，只输出报告与（显式要求时）补丁副本。
+
 
 ## 3. 案例原文写什么
 
@@ -98,7 +126,7 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
 | 样本哈希 / SHA256 | `<实测哈希>` |
 | 制品与样本字节（`.dll` `.jar` `.exe` `.zip` `.png` `.db`） | 不收；说明"归档里有、本仓库不带" |
 | 补丁偏移 / RVA / AOB / 补丁字节 / 协议字段 / 算法常量 | **保留** |
-| 上游自带的免责声明 | 不必搬；我们的边界由 `scope.md` 与 ADR 007 表达 |
+| 上游自带的免责声明 | 不必搬；我们的边界由 `scope.md` 与 ADR 0007 表达 |
 
 上游 14 案已做过一轮脱敏，但**不能假定干净**：项目 M 的标题就直写真实产品名，并给出
 `D:\Data\<Product>\<Product>.exe` 与 `<product>.jar` 的构建号。逐案复核。
@@ -115,9 +143,12 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
 ## 6. 自检
 
 ```bash
-node scripts/check-precedent-package.mjs <slug>   # 单包：结构、长度、脱敏、禁扩展名、指针
+node scripts/check-precedent-package.mjs <slug>   # 单包：结构、长度、caseDocs、禁扩展名、指针、tools 静态校验
+python3 cases/<slug>/tools/<entry> --self-test    # 单工具：合成样本自证，退出码 0
+node scripts/check-precedent-package.mjs --all    # 全量 + 逐工具真跑（发布前必跑）
 node --test src/test/case-precedents.test.ts      # 排名与契约
 ```
+
 
 `✓ cases/<slug> docs=N (+M) caseDocs=K` 说明结构与指针都过了；正文质量它管不了。
 
@@ -130,5 +161,6 @@ node --test src/test/case-precedents.test.ts      # 排名与契约
   并发写会互相覆盖）；
 - **不要运行** `node scripts/sync-precedents.mjs`（同上）；
 - **不要改**共享文件：`src/test/*.test.ts` 的计数、`cases/README.md` 的表、
-  `docs/adr/*`、`scripts/*`、`locales/*`。
+  `docs/adr/hanshuang-pojia/*`（仓库根，不在插件内）、`scripts/*`、`locales/*`；`cases/_shared/**` 也是共享的，新原语由集成者加，
+  不自己往里面塞。
 - 整树生成与集成由一个人在全部包落地后统一执行。

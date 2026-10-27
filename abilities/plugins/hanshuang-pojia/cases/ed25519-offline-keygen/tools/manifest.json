@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "ed25519-offline-keygen",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "ed25519_verify",
+      "entry": "ed25519_verify.py",
+      "purpose": "Verify a 64-byte Ed25519 signature against an embedded public key with a pure RFC 8032 implementation, or derive the public key and sign from a seed in memory.",
+      "args": ["--pubkey <64-hex>", "--message <text>", "--message-file <path>", "--sample <file>", "--offset <hex>", "--seed <64-hex>"],
+      "expect": "verified/not-verified with the failing reason, plus the RFC 8032 vector table under --self-test",
+      "selfTest": "python3 ed25519_verify.py --self-test"
+    }
+  ],
+  "notes": "Curve arithmetic is pure Python (RFC 8032 section 5.1); the three section 7.1 vectors reproduce byte-identical public keys and signatures. Seeds stay in memory: the tool never writes key material."
+}

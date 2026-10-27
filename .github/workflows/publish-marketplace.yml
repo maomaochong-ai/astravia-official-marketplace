@@ -43,13 +43,16 @@ jobs:
           bun install --frozen-lockfile 2>&1 | tail -5
           bun run build 2>&1 | tail -10
           find packages -name "dist/index.js" -maxdepth 4 2>/dev/null | head -10
+      # `--strict`：自上次发布后动过**运行内容**（源码、plugin.json、locales 等）却还停在已发布版本号上的插件，
+      # 在这里直接红，而不是默默发不出去。详见 scripts/static-marketplace.mjs 的 runtimeSourcesChanged。
+      # 判据是路径而不是重打包摘要：依赖范围浮动，同一份源码重装会得到不同字节，比摘要会误伤。
       - name: Build unpublished versions
         run: |
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
             git worktree add --detach "$RUNNER_TEMP/marketplace-previous" origin/gh-pages
-            node scripts/marketplace.mjs build --previous "$RUNNER_TEMP/marketplace-previous"
+            node scripts/marketplace.mjs build --previous "$RUNNER_TEMP/marketplace-previous" --strict
           else
-            node scripts/marketplace.mjs build
+            node scripts/marketplace.mjs build --strict
           fi
       - name: Check source and built package contracts
         run: node --test tests/*.test.mjs

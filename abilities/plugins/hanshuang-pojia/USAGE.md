@@ -55,7 +55,10 @@ Lab 是插件与「对话 Agent」共存的一套工作方式开关。开启后�
 - 一个多产物的案件用 `init_task` 建完整契约：`samples/ exports/ report/ evidence/ notes/` 五个目录
   加 `scope.md`、`timeline.md`、`workitems.md`、`README.md`。传 `preset`（`offline-sample` / `ctf-public` /
   `own-system`）、`auth_status`、`target` / `sample`、`in_scope` 才能把就绪门点亮；不传就是 `pending` +
-  `offline`，门关着并列出阻断项。之后 `search_cases` 查已有战例与随包先例、`record_case_note` 记决策、
+  `offline`，门关着并列出阻断项。之后 `search_cases` 查已有战例与随包先例、`scaffold_case`
+  把命中包的 `tools/` 与共享 `hpkit` 落盘并给出命令行（只写文件不执行，先跑 `--self-test`）、
+  `record_case_note` 记决策、`write_assessment_report` 写四段式评估报告。案件能不能动由门禁推导，
+  不是问 Agent，也不是靠手改 `scope.md` 里的那行 `ready_for_act`。
   `write_assessment_report` 写四段式评估报告。案件能不能动由门禁推导，不是问 Agent，也不是靠手改
   `scope.md` 里的那行 `ready_for_act`。
 - 面板「案例」页只读：上面一张表是你自己 `cases/` `work/` 里的案例（名字 / 预设 / 授权 / 就绪 /

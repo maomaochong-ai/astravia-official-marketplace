@@ -70,3 +70,27 @@ code entirely and nothing is observable, use
 - [docs/ipc.md](docs/ipc.md) — the shared-memory channel and how to observe it.
 - [docs/verdict.md](docs/verdict.md) — the status values, the stub, and the side-effect matrix.
 - Document library `cases/execryptor-vm-activation/` — full narrative and the activation path.
+
+## Tools
+
+`tools/section_entropy.py` measures the layout facts this case actually turned on: section
+flags, Shannon entropy per section, and whether the entry point sits in the last section.
+
+```bash
+python3 tools/section_entropy.py --sample target.exe
+python3 tools/section_entropy.py --sample target.exe --threshold 7.2 --out findings/
+python3 tools/section_entropy.py --self-test
+```
+
+It prints one row per section (`name | raw size | entropy | flags | notes`) followed by a
+`reading (heuristic)` block. Every line in that block is derived from the numbers above it:
+an RWX section, sections above the threshold, an entry point in the last section, missing
+ASLR, DEP and RWX together. It never names a packer, because layout is evidence and
+attribution is a separate claim.
+
+`--out` writes `sections.json` with the sample hash, format, entry point, threshold and the
+full section table, so a report can cite numbers instead of screenshots.
+
+`--self-test` builds synthetic images in a temporary directory and asserts the entropy of a
+filled section (8.0 bits/byte), the entropy of a zero-filled one (0.0), the flag decoding,
+and the entry-in-last-section rule. No sample bytes ship with this package.

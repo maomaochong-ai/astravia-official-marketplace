@@ -218,12 +218,20 @@ describe("workbench shell", () => {
 			listFiles: vi.fn(async (path: string) => {
 				if (path === "/work") return entries([["/work/cases", true]]);
 				if (path === "/work/cases") return entries([["/work/cases/demo", true]]);
+				if (path === "/work/cases/demo")
+					return entries([
+						["/work/cases/demo/scope.md", false],
+						["/work/cases/demo/workitems.md", false],
+						["/work/cases/demo/README.md", false],
+						["/work/cases/demo/evidence", true],
+					]);
 				if (path === "/work/cases/demo/evidence") return entries([["/work/cases/demo/evidence/E-001-entry.md", false]]);
 				return Promise.reject(new Error("ENOENT"));
 			}),
 			readTextFile: vi.fn(async (path: string) => {
 				if (path.endsWith("scope.md")) return scope;
 				if (path.endsWith("workitems.md")) return workitems;
+				if (path.endsWith("E-001-entry.md")) return "# E-001 — baseline\n\nObserved: the stub jumps to a computed address.\n";
 				return null;
 			}),
 		});
@@ -231,16 +239,51 @@ describe("workbench shell", () => {
 		await go("cases");
 
 		expect(await screen.findByText("page.cases.title")).toBeTruthy();
-		// 目录名就是案例名；资产列只给计数，资产名在详情里。
+		// 目录名就是案例名；计数在行里，正文在右侧阅读区。
 		const row = await screen.findByTitle("/work/cases/demo");
 		expect(screen.getByText("cases.ready.yes")).toBeTruthy();
 		expect(screen.getByText("cases.count", { exact: false })).toBeTruthy();
+		expect(screen.getByText("cases.reader.empty.title")).toBeTruthy();
 		fireEvent.click(row);
 		expect(await screen.findByText("cases.detail.inScope")).toBeTruthy();
-		expect(screen.getByText("demo.apk")).toBeTruthy();
+
+		// 「预览」不是再给一条路径：案例目录里的 Markdown 直接读出来。
+		const reader = screen.getByTestId("cases-reader");
+		expect(await within(reader).findByText("in_scope")).toBeTruthy();
+		expect(within(reader).getAllByText("demo.apk").length).toBeGreaterThan(0);
+		expect(screen.getByTestId("case-doc-tabs")).toBeTruthy();
+		expect(screen.getByText("README.md")).toBeTruthy();
+
+		// 标签条能换篇：证据条目有自己的正文。
+		const evidenceTab = document.querySelector('[data-doc-id="evidence/E-001-entry.md"]');
+		expect(evidenceTab).not.toBeNull();
+		fireEvent.click(evidenceTab!);
+		expect(await within(reader).findByText(/the stub jumps to a computed address/)).toBeTruthy();
 		// 先例库与本地案例同页但不同源：包名来自随包语料，而它自己的 scope 仍是待定。
 		expect(screen.getByText("cases.precedent.title")).toBeTruthy();
 		expect(screen.getByText("cases/elf-packed-loader/")).toBeTruthy();
+	});
+
+	it("reads a shipped precedent in place, without touching the disk", async () => {
+		// 先例正文在编译期内联，预览它不需要任何文件通道。
+		const api = makeBridge();
+		await open(api);
+		await go("cases");
+
+		fireEvent.click(await screen.findByTitle("cases/elf-packed-loader/"));
+
+		const reader = screen.getByTestId("cases-reader");
+		expect(within(reader).getByText("Packed ELF loader — precedent")).toBeTruthy();
+		expect(screen.getByTestId("precedent-doc-tabs")).toBeTruthy();
+		const methodTab = document.querySelector('[data-doc-id="docs/method.md"]');
+		expect(methodTab).not.toBeNull();
+		fireEvent.click(methodTab!);
+		expect(within(reader).getByText("Method — recovering a packed ELF")).toBeTruthy();
+		// 一份先例都没碰过文件通道：命中它的路径既没被列过，也没被读过。
+		const touched = [...vi.mocked(api.listFiles).mock.calls, ...vi.mocked(api.readTextFile).mock.calls]
+			.map(call => call[0])
+			.filter(path => path.includes("elf-packed-loader"));
+		expect(touched).toEqual([]);
 	});
 });
 

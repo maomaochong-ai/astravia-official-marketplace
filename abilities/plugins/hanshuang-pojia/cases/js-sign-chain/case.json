@@ -6,5 +6,6 @@
 	"signals": ["sign", "signature header", "webpack", "obfuscated js", "x-sign", "nonce", "timestamp", "crypto-js"],
 	"preset": "offline-sample",
 	"fieldNotes": ["kb/field_journal_seed-004_js-sign-webpack", "kb/js_reverse_SKILL"],
+	"caseDocs": ["cases/js-sign-chain/signing-order"],
 	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
 }

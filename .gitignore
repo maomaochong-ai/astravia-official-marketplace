@@ -21,3 +21,6 @@ ui-mock
 # 上游参考源码（逆向与调研用，不参与发布）
 tmp/
 ui-mock
+
+# 日报生成物与模板（本地排版用，不进仓库）
+docs/daily-reports/

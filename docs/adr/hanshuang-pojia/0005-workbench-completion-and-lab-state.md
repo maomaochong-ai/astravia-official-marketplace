@@ -1,9 +1,10 @@
 # ADR 0005：工作台能力补齐与 Lab 状态落点
 
 - 日期：2026-10-24
-- 状态：已采纳
+- 状态：已采纳（2026-10-24）
+- 核对：2026-10-27（版本 2.11.0），见文末「实现核对」
 - 关联：[0001](./0001-seep-kit-capability-parity.md)、[0004](./0004-host-hook-boundary.md)、
-  [plan 0002](../plans/0002-capability-parity-2.0-rebase.md)
+  [plan 0002](../../../abilities/plugins/hanshuang-pojia/docs/plans/0002-capability-parity-2.0-rebase.md)
 
 ## 背景
 
@@ -52,3 +53,30 @@
 - Lab 状态跨会话保留、与对话侧一致；不写用户主目录，符合宿主授权边界。
 - 四个补齐点均有单测覆盖（code-item 4、report-compare 4、workbench 25、全量 527）。
 - G3 的 familyBaseline 是报告层聚合；将来若面板后端具备统一样本字节库，可再在 native 层加指纹聚合，不互相排斥。
+
+## 实现核对（2026-10-27，版本 2.11.0）
+
+四个补齐点全部仍在，且都有测试覆盖；下面只记计数与位置的漂移。
+
+重跑：
+
+```bash
+cd abilities/plugins/hanshuang-pojia
+npm run test                                                 # 全量 54 文件 / 621 例
+npx vitest run src/test/code-item.test.ts src/test/report-compare.test.ts
+npm run verify:generated
+```
+
+| 决策 | 当前落点（Observed） | 结论 |
+| --- | --- | --- |
+| Lab 状态存插件存储键 `workbench/lab-mode.json` | `LAB_STATE_PATH` 在 `src/features/workbench/hooks/use-lab.ts:6`；运行时写入在 `src/runtime/contributions.ts:33`（`writeJsonFile(ctx.storage, LAB_STATE_PATH, state)`），失败只 `console.warn` 不退会话（`:34-36`） | 成立 |
+| 面板开关与对话侧 `lab：` / `退出实验` 同一份状态 | 两边读同一个键；kernel 块首行由 `buildKernelBlock`（`src/domain/kernel.ts:40`）根据该状态渲染 | 成立 |
+| G1 `code_item` 解析 + 未知 opcode 记 `raw/<op>` | `src/domain/android/code-item.ts`：`decodeDalvikInstructions:82`、`readCodeItem:500`、`insnsByteOffset:548`；工具 `disassemble_dex_method` 在 `TOOL_IDS` 内 | 成立 |
+| G1 工具计数 25 → 28 | 现 **31**（`src/tools/ids.ts:50` `EXPECTED_TOOL_COUNT = 31`） | 计数已变，断言机制未变 |
+| G2 `PipelineBar` 四段不造假进度 | `src/features/workbench/components/workbench/pipeline-bar.tsx:34` 四个 stage：`profile` / `controlflow` / `knowledge` / `verify`；无样本时 `lit` 为 false，不编造完成态（`:14`） | 成立 |
+| G3 `familyBaseline` 三列 + `familyCount` | `src/features/workbench/report-compare.ts:124` `familyBaseline(left, family)` | 成立 |
+| G4 `verifySource` 阈值按实测 | `scripts/sync-docs.mjs:150` `verifySource`；`GROUPS`（`:23-26`）的 `minFiles` 为 `kb 292` / `manual 10` / `kit-docs 7` / `cases 14`（`cases` 是 ADR 0007 之后加的组） | 成立；阈值多一组 |
+| 后果：测试 `code-item 4 / report-compare 4 / workbench 25 / 全量 527` | `code-item.test.ts` 4 例、`report-compare.test.ts` 4 例仍对；`workbench.test.tsx` 已 **28** 例；全量 **621** 例 / 54 文件 | 前两项不变，后两项已增长 |
+
+一处值得知道的口径变化：`GROUPS` 里的 `cases` 组是 ADR 0007 才出现的，所以 `verifySource` 现在还会
+要求 `src/content/docs/cases/` 下至少有 14 份源——本篇写“kb/manual/docs 三组”时还没有这一层。

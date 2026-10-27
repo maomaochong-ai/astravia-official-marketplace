@@ -32,3 +32,26 @@ loader, not the programme.
 
 A hash for the original and for the dump, the command that produced the dump, and the same
 analysis run on both files with the difference stated.
+
+## Tools
+
+- [docs/method.md](docs/method.md) - the three signals in the order worth checking them (segment
+  entropy, import surface, entry neighbourhood), and the point at which a dump is the cheaper move.
+
+[`tools/elf_pack_scan.py`](tools/elf_pack_scan.py) turns those signals into numbers. It parses the
+ELF and PE headers itself, prints each load segment with its entropy and W/X flags, finds packer
+marker bytes with their offsets, and scores five signals: a stub marker, a write+execute segment, an
+executable segment at or above an entropy floor, an import surface that names no libc function, and
+an entry point outside every load segment. Every signal prints the evidence that fired it, because
+the score is a reading aid - a stripped static binary can score without being packed.
+
+```bash
+cd tools
+python3 elf_pack_scan.py --self-test
+python3 elf_pack_scan.py --sample suspect.bin
+python3 elf_pack_scan.py --sample a.bin,b.bin --min-entropy 7.0
+```
+
+Nothing is executed and nothing is written. Addresses in the report belong to the packed file, which
+is the whole point of the case: an offset from the loader is not an offset in the recovered image.
+[`tools/manifest.json`](tools/manifest.json) registers the tool for the scaffolder.

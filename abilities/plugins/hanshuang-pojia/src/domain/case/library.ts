@@ -9,7 +9,7 @@
  * the scope text, and ranks them against a query.
  */
 import { joinPath } from "../toolchain/paths";
-import { assessReadiness } from "./contract";
+import { CASE_DOCUMENTS, assessReadiness } from "./contract";
 
 export interface CaseDirEntry {
 	name: string;
@@ -139,6 +139,40 @@ export function parseScope(markdown: string): ParsedScope {
 	};
 }
 
+export interface ParsedAuthRecord {
+	/** ISO timestamp of the winning record, when the block carried one. */
+	at?: string;
+	status?: string;
+	basis?: string;
+	evidence?: string;
+}
+
+/**
+ * `auth-log.md` is append-only and the last block stands (ADR 0009). A block without a status
+ * token is skipped rather than guessed: an unreadable record must never open the gate.
+ */
+export function parseAuthLog(markdown: string): ParsedAuthRecord {
+	if (!markdown) return {};
+	const blocks = markdown.split(/^## /m).slice(1);
+	for (let index = blocks.length - 1; index >= 0; index -= 1) {
+		const [heading = "", ...rest] = (blocks[index] ?? "").split(/\r?\n/);
+		const [at = "", status = ""] = heading.split("|").map(cell => cell.trim());
+		if (!status) continue;
+		const fields = pairs(rest);
+		return { at: at || undefined, status, basis: fields.basis, evidence: fields.evidence };
+	}
+	return {};
+}
+
+/**
+ * The one place the log/scope precedence is decided (ADR 0009): the log wins whenever it carries
+ * a status, because it is the later record. Both readers — `readCase` for `search_cases` and
+ * `init_task`'s gate — must agree, so they call this instead of repeating `log.status ?? …`.
+ */
+export function effectiveAuthStatus(scopeStatus: string | undefined, log: ParsedAuthRecord): string {
+	return log.status ?? scopeStatus ?? "";
+}
+
 /**
  * Table rows only; the prose and the coverage list are not work items. The status cell is
  * the sixth column, so the row is split rather than matched left to right.
@@ -192,9 +226,12 @@ async function readCase(port: CaseReadPort, entry: CaseDirEntry): Promise<CaseRe
 	const scope = await port.readText(joinPath(entry.path, "scope.md"));
 	if (scope === null) return null;
 	const parsed = parseScope(scope);
+	// 授权晚到是常态：日志里的最后一条盖过 scope.md 的 `## auth`，字段口径本身不变。
+	const log = parseAuthLog((await port.readText(joinPath(entry.path, CASE_DOCUMENTS.authLog))) ?? "");
+	const authStatus = effectiveAuthStatus(parsed.authStatus, log);
 	const readiness = assessReadiness({
 		// 原文直送：契约就读原始字符串，认不出的词由它报 blocker，不在这里二次解释。
-		authStatus: parsed.authStatus ?? "",
+		authStatus: authStatus ?? "",
 		inScope: parsed.inScope,
 		networkProfile: parsed.networkProfile ?? "",
 		sample: parsed.sample,
@@ -204,7 +241,7 @@ async function readCase(port: CaseReadPort, entry: CaseDirEntry): Promise<CaseRe
 		name: entry.name,
 		path: entry.path,
 		preset: parsed.preset,
-		authStatus: parsed.authStatus,
+		authStatus: authStatus,
 		networkProfile: parsed.networkProfile,
 		sample: parsed.sample,
 		ready: readiness.ready,

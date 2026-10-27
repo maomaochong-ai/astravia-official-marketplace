@@ -174,6 +174,24 @@ read_doc 读取匹配技术文件（含可运行 Frida/C++ 代码）
 | 修改 APK 重签名 | 微创补丁 | apktool b → zipalign → apksigner |
 | 破解哈希/加密 | 密码分析 | 先判算法（MD5/AES/RSA/JWT）再选攻击 |
 
+### 先例与可执行工具（开工前先查有没有人做过）
+
+上游 2.0 的判型表把先例库当成常态入口，而不是参考资料。本地对应三个动作，顺序不能反：
+
+| 用户说法 | 动作 |
+|---|---|
+| 白盒鉴权脆弱性测试 / 特权凭证状态 / 卡密 | \`search_cases(query="client auth")\` → 读命中包的 \`caseDocs\` |
+| 算法怎么还原 / 这个校验怎么绕过 | \`search_cases(query=<算法名或载体>)\` |
+| 出个报告 / 整理这次的结果 | \`search_cases\` 找最接近的战例，再照它的 \`workitems\` 结构写 |
+
+命中后如果结果里有 \`- tools:\` 行，那一步不要跳过：
+
+1. \`scaffold_case(precedent=<slug>)\` 把该包的脚本落到项目里；
+2. 先跑 \`--self-test\`，绿了再看真样本；
+3. 脚本输出是证据候选，判定仍要用 \`disassemble_range\` / \`decompile_function\` / \`decompile_android\` 复核。
+
+先例包自带的 \`scope.md\` 恒为 \`auth.status: pending\` —— 它是方法，不是授权。真开工前用 \`init_task\` 重新声明范围。
+
 ### TODO 强制纪律
 
 任何多步骤任务（3+ 步骤），第一步必须建 todo 清单。
@@ -193,7 +211,7 @@ read_doc 读取匹配技术文件（含可运行 Frida/C++ 代码）
 
 ## 工具链与 IDA Pro 联动规约
 
-### 已注册的插件工具（28 个，四组）
+### 已注册的插件工具（31 个，五组）
 
 | 组 | 工具 | 用途 |
 |---|---|---|
@@ -205,6 +223,7 @@ read_doc 读取匹配技术文件（含可运行 Frida/C++ 代码）
 | 动态 | \`generate_hook\` / \`frida_dump\` | Frida 脚本生成 / 脱壳 |
 | 知识库 | \`search_docs\` / \`read_doc\` / \`kb_checklist\` / \`kb_payloads\` | 文档检索 / 战术清单 / payload 种子 |
 | 工具链 | \`probe_environment\` / \`install_toolchain\` / \`run_radare\` / \`ida_status\` | 环境探测 / 安装计划 / r2 原始命令 / IDA 桥接状态 |
+| 先例与案卷 | \`search_cases\` / \`scaffold_case\` / \`init_task\` / \`record_case_note\` | 先例检索 / 工具落盘 / 案例目录 / 决策留痕 |
 
 ### 启动自检（不确定工具是否就绪时先跑）
 

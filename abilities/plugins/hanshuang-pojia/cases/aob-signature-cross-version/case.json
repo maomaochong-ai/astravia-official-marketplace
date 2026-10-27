@@ -29,6 +29,7 @@
 		"workitems.md",
 		"docs/method.md",
 		"docs/signatures.md",
-		"docs/patch-table.md"
+		"docs/patch-table.md",
+		"docs/pipeline.md"
 	]
 }

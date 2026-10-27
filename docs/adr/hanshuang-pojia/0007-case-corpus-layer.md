@@ -1,9 +1,10 @@
-# ADR 007：案例语料层——上游 14 案以「先例 + 原文」双层落地
+# ADR 0007：案例语料层——上游 14 案以「先例 + 原文」双层落地
 
 - 日期：2026-10-27
-- 状态：已采纳
+- 状态：已采纳（2026-10-27）
+- 核对：2026-10-27（版本 2.11.0），见文末「实现核对」
 - 关联：[0001](./0001-seep-kit-capability-parity.md)、[0006](./0006-case-contract-v2-and-precedent-library.md)、
-  [../contract/case-corpus.md](../contract/case-corpus.md)
+  [../contract/case-corpus.md](../../../abilities/plugins/hanshuang-pojia/docs/contract/case-corpus.md)
 
 ## 背景
 
@@ -34,6 +35,10 @@ src/content/docs/cases/<slug>/<topic>.md     案例原文（随包，纯文本�
 （gzip 后约 120 KB），而文档库本来就是分离文件、按需 fetch、零 JS。所以正文走文档库，
 先例包只留方法与指针。新增 `cases` 文档组不需要改构建（`vite.config.ts` 的
 `hanshuang-pojia-runtime-resources` 对 `src/content/docs/**` 做通用 `walk`）。
+
+> **2026-10-27 补记（ADR 0008，初拟编号 ADR 001）**：`cases/<slug>/tools/` 是可执行层，**不内联**。它由
+> `vite.config.ts` 另行 `emitFile` 到 `dist/assets/cases/**` 以真实文件发布，再由 `scaffold_case`
+> 落盘后执行——脚本不在磁盘上就无法运行。两层分工不变：正文讲当时怎么判断，工具跑当时算了什么。
 
 ### D2 修正 D10：搬文本，不搬制品
 
@@ -113,3 +118,35 @@ node scripts/check-precedent-package.mjs --all      # 全部
 - 不搬上游 `src/`、`dist/`、`build.ps1`、`SHA256SUMS.txt`。
 - 不把先例包做成可开工的案例（授权仍是操作者的事）。
 - 不为语料新增运行时依赖、不改 `search_docs` 的检索路径。
+
+## 实现核对（2026-10-27，版本 2.11.0）
+
+本篇的两层结构（包内契约 + 文档库原文）在 2.11.0 原样成立，校验器、断言与计数均可重跑。
+ADR 0008 随后在包内加了 `tools/` 可执行层，但它不动本篇的文档契约。
+
+重跑：
+
+```bash
+cd abilities/plugins/hanshuang-pojia
+node scripts/check-precedent-package.mjs --all   # 19 包 + 每个工具的 --self-test
+npm run verify:generated                       # precedents ok: 19 packages
+npm run test                                   # 含 src/test/case-precedents.test.ts
+find src/content/docs/cases -name '*.md' | wc -l  # 30
+```
+
+| 决策 | 当前落点（Observed） | 结论 |
+| --- | --- | --- |
+| D1 语料两层：包内契约文档 + 文档库原文 | 包内四份：`README.md` / `scope.md` / `workitems.md` / `docs/method.md`；深读原文在 `src/content/docs/cases/<slug>/` | 成立 |
+| D2 不搬制品，但文本收 | `cases/<slug>/` 下只有 `.md` / `case.json` / `tools/*.py`，无 `.dll`/`.exe`/`.ps1`；`docs/contract/case-library.md:177` 「**但文本收**」 | 成立 |
+| D3 `docs` 契约 = 四份固定前缀 + 可追加 | `scripts/lib/precedent-package.mjs:19` `CANONICAL_DOCS`，`:201` 按序前缀比对，`:204` 去重 | 成立（用“前缀比对”而非 `slice(0,4)`） |
+| D4 `source` 与 `caseDocs` 强联动 | `precedent-package.mjs:240-248`：有 `source` 就必须有非空 `caseDocs`，否则报 `a derived package must point at its caseDocs` | 成立 |
+| D5 单一校验器 | `npm run check:cases` → `node scripts/check-precedent-package.mjs --all`；阈值 `CASE_DOC_MIN_CHARS:33` / `TOOL_MIN_BYTES:36` | 成立 |
+| D6 `signals` 不得抢占既有排名断言 | 四条断言仍钉在 `src/test/case-precedents.test.ts:128-131`（pinning / license / upx / webpack）；`case-tools.test.ts:166` 仍要求 `android-ssl-pin-bypass` 入选 | 成立 |
+| D7 摘要是英文、原文保留中文 | `cases/client-auth-gate/docs/method.md` 英文；`src/content/docs/cases/client-auth-gate/entitlement-decision.md` 中文，4,463 字符（> 3,000 阈值） | 成立 |
+| 影响：先例包 5 → 19 | 19（`verify:generated` 输出） | 成立 |
+| 影响：文档 309 → 约 339 | 现 **340**（14 案 × 2 篇的估算偏低，实际多出 1 篇） | 成立，数字略差 |
+
+一个值得记下的实现细节：`caseDocs` 的 id 是**相对 `src/content/docs` 的路径**（如 `cases/client-auth-gate/entitlement-decision`），
+而 `docs` 的 id 是**包内相对路径**。两者基准不同，写错时校验器分别报 `caseDocs id has no document`（`:230`）
+与 `doc listed but missing`（`:212`），不会混。
+

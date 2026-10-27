@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "multiprocess-proxy-hotpatch",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "proxy_forward_plan",
+      "entry": "proxy_forward_plan.py",
+      "purpose": "Read a DLL's export table and emit the .def that forwards every export to the original module, including ordinal-only exports, and diff two builds to show which forwarders a new version breaks.",
+      "args": ["--target <dll>", "--previous <older dll>", "--module <forward target>", "--out <dir>"],
+      "expect": "export table, forwarder .def, and a drift table of added / removed / moved ordinals",
+      "selfTest": "python3 proxy_forward_plan.py --self-test"
+    }
+  ],
+  "notes": "Read-only. Ordinals are read from AddressOfNameOrdinals, so ordinal-only exports are reported as NONAME rather than silently dropped; a proxy that misses them fails at load time."
+}

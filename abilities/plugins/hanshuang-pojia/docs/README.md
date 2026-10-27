@@ -9,7 +9,7 @@
 写在某一天的排查记录、给使用者看的操作手册。名字又都像「某主题的报告」，于是谁也不比谁显眼。
 
 分类轴是**拿它干什么**，不是主题。「工具链」这一个主题就横跨三类：`toolchain-parity.md` 是当前事实表
-（测试读它），`toolchain-bundling.md` 是 2.8.0 那个时点的观察，`adr/0003` 是当时怎么决定的。
+（测试读它），`toolchain-bundling.md` 是 2.8.0 那个时点的观察，ADR 0003（仓库根 `docs/adr/hanshuang-pojia/`）是当时怎么决定的。
 三者过期方式不同，混在一个目录里就会在改代码时误信旧报告。
 
 | 目录 | 收什么 | 谁读 | 会不会过期 |
@@ -17,7 +17,7 @@
 | `contract/` | 必须遵守的规则 | 改代码、写案例的人 | 改规则时同步改这里 |
 | `reference/` | 当前事实的权威表 | **代码与测试直接读** | 事实变了就必须改 |
 | `audits/` | 带版本与时点的一次性报告 | 人 | 会，标题里写着版本 |
-| `adr/` | 已采纳的决策 | 改代码的人 | 不改写，只用新 ADR 取代 |
+| 仓库根 `docs/adr/hanshuang-pojia/` | 已采纳的决策 | 改代码的人 | 正文不改写；现状由文末「实现核对」节追加 |
 | `plans/` | 历史施工计划 | 人 | 已被 ADR 取代，只作追溯 |
 
 ## `contract/` — 必须遵守的
@@ -40,7 +40,7 @@
 - [toolchain-bundling.md](audits/toolchain-bundling.md) — 2.8.0 时点：插件到底带不带工具链，与 2.0 便携版
   逐项对照（含体积、安装形态）。
 - [upstream-parity-audit-2.9.3.md](audits/upstream-parity-audit-2.9.3.md) — 2.9.3 时点：能力对等的全量审计。
-  部分结论已被 [adr/0006](adr/0006-case-contract-v2-and-precedent-library.md) 补正。
+  部分结论已被 [ADR 0006](../../../../docs/adr/hanshuang-pojia/0006-case-contract-v2-and-precedent-library.md) 补正。
 - [upstream-ui-parity-2.9.8.md](audits/upstream-ui-parity-2.9.8.md) — 2.9.8 时点：界面与实时面板对等审计。
 - [win-defender-triage-2.9.8.md](audits/win-defender-triage-2.9.8.md) — 2.9.8 时点：Defender 报毒的定性排查。
   顺带记了 2.9.6 文档加载机制的返工（`import.meta.glob` → 纯文本静态资源）。
@@ -48,9 +48,12 @@
 新增一篇照同样写法：**文件名或首行带版本，正文第一段写清时点、被测对象、对比对象**。别写成「当前状态」——
 那种东西属于 `reference/`。
 
-## `adr/` 与 `plans/`
+## ADR 与 `plans/`
 
-`adr/` 一条决策一个文件，编号递增，已采纳的不改写；要推翻就新写一条并注明取代关系。
+ADR **不在这个目录里**：2026-10-27 起统一放在仓库根 `docs/adr/hanshuang-pojia/`，与 `open-ai-canvas`、`qiushi-skill` 的 ADR 并列，一个插件一个子目录。一条决策一个文件，编号递增，已采纳的**正文不改写**；要推翻就新写一条并注明取代关系。与当前实现对齐的部分写在每篇文末的「实现核对」节，带核对版本与可重跑命令——这样「当时怎么定的」和「现在是什么样」不会互相冒充。
+索引在 [`docs/adr/hanshuang-pojia/README.md`](../../../../docs/adr/hanshuang-pojia/README.md)：九篇的主题、状态、落实与偏差都在那里，别靠编号猜。
+2026-10-27 已按 **2.11.0** 逐篇核过一轮，偏差记在索引的「落实与偏差」表里；其中 ADR 0001 的 D4、D9
+被实现反转且尚无新 ADR，看那两篇时以文末核对节为准。同日新增 ADR 0009（授权晚到与门禁落盘），已按 **2.12.0** 落实。
 `plans/` 是 2.0 对标时期的施工计划，工作完成即失效，保留只为追溯当时怎么排的；**不要在这里加新计划**。
 
 ## 不在 `docs/` 里的东西
@@ -68,7 +71,7 @@
 
 1. 它是**必须遵守的规则**，还是**在某个版本上观察到的结果**？规则 → `contract/`；观察 → `audits/`（带版本号）。
 2. **代码或测试会读它吗？** 会 → `reference/`，并且必须贴着解析它的那段代码写，改动要一起改。
-3. 只有**做决定的时候**才需要看？→ `adr/`。
+3. 只有**做决定的时候**才需要看？→ 仓库根 `docs/adr/hanshuang-pojia/`（不在本目录）。
 4. 都不像，而且读者是「装了插件不知道怎么用」的人 → 它属于 `src/content/docs/manual/`，不属于这里。
 
 ## 迁移记录
@@ -85,3 +88,5 @@
 | `docs/upstream-ui-parity-2.9.8.md` | `docs/audits/upstream-ui-parity-2.9.8.md` |
 | `docs/win-defender-triage-2.9.8.md` | `docs/audits/win-defender-triage-2.9.8.md` |
 | `docs/ui-handbook.md` | `src/content/docs/manual/PANEL-HANDBOOK.md`（随包发布） |
+| `docs/adr/0001…0007-*.md` | `docs/adr/hanshuang-pojia/0001…0007-*.md`（仓库根，2026-10-27 搬家） |
+| （插件内无对应文件） | `docs/adr/hanshuang-pojia/0008-runnable-case-corpus.md`（初拟编号 ADR 001，搬家时统一为 0008） |

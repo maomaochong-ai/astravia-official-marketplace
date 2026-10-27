@@ -1,6 +1,6 @@
 # 实施方案 0001：插件对标 seep-kit 的分阶段落地
 
-- 依据：[ADR 0001](../adr/0001-seep-kit-capability-parity.md)
+- 依据：[ADR 0001](../../../../../docs/adr/hanshuang-pojia/0001-seep-kit-capability-parity.md)
 - 起点版本：2.4.0（10 个 Agent 工具、14 个工作台页面、309 篇随包文档）
 - 目标：把矩阵里标为"本期补齐 / 规划"的项目按阶段实现，每一阶段可独立发布
 - 纪律：改动只在 `src/domain`（纯逻辑）、`src/tools`（注册项）、`src/features/<feature>`、
@@ -107,7 +107,7 @@
 
 ## P2：外部进程桥（2.4.2）
 
-依据 [ADR 0002](../adr/0002-external-process-bridge.md)。三条 MCP 通道里，自建 `host-node` 服务与
+依据 [ADR 0002](../../../../../docs/adr/hanshuang-pojia/0002-external-process-bridge.md)。三条 MCP 通道里，自建 `host-node` 服务与
 `npx` stdio 都被否决，选 `plugin.json#commands` + `ctx.command.run`。
 
 1. `src/domain/toolchain/catalog.ts`：`TOOLCHAIN`（8 项，含版本参数与安装提示）、`COMMANDS`、

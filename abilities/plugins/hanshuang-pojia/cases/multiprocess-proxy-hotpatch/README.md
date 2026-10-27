@@ -75,3 +75,21 @@ covers a single loader-hijack delivery.
   naked-stub technique, logging states, deployment and rollback.
 - Document library `cases/multiprocess-proxy-hotpatch/` — the full walkthrough plus the
   cross-version drift study and the guard rails.
+
+## Tools
+
+[`tools/proxy_forward_plan.py`](tools/proxy_forward_plan.py) reads a DLL's export table by ordinal,
+not by name, and emits the `.def` a proxy needs: named exports as `Name=module.Name @ord`, ordinal-only
+exports as `@ord=module.#ord @ord NONAME`. With `--previous` it reports the drift between two builds,
+which is the only reliable way to know whether an existing forwarder table still resolves.
+
+```bash
+cd tools
+python3 proxy_forward_plan.py --self-test
+python3 proxy_forward_plan.py --target version.dll --previous version-1.dll --out plan/
+```
+
+Why it matters: a proxy rebuilt from the name list silently drops ordinal-only exports and compresses
+the rest, so the host binds a neighbouring function instead of failing to start. The drift table makes
+that visible before deployment.
+[`tools/manifest.json`](tools/manifest.json) registers the tool for the scaffolder.

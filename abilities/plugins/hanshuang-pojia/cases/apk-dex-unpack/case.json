@@ -9,5 +9,6 @@
 		"kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery",
 		"kb/field_journal_2026-08-20_apk-flutter-banner-ad-removal"
 	],
+	"caseDocs": ["cases/apk-dex-unpack/missing-code-or-failed-tool"],
 	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
 }

@@ -9,7 +9,7 @@ artefacts. A precedent is a starting point you copy, not an authorisation you in
 
 Patch offsets, AOB signatures, protocol tables and algorithm constants **are** kept: they are
 *derived* addresses, not sample bytes, and without them a precedent says "change the branch" and
-leaves you to guess which one ([ADR 007](../docs/adr/0007-case-corpus-layer.md) D2).
+leaves you to guess which one ([ADR 0007](../../../../docs/adr/hanshuang-pojia/0007-case-corpus-layer.md) D2).
 The reader-facing narrative for each case lives in the document library under
 `src/content/docs/cases/<slug>/`, pointed at by `caseDocs`.
 
@@ -39,7 +39,10 @@ The reader-facing narrative for each case lives in the document library under
 
 1. Find it: `search_cases` with a signal you observed (`packed`, `frida`, `pinning`, `sign`,
    `license`), or the 「先例库」 section of the Cases page.
-2. Copy the package into the workspace and rename it to your case name.
+2. Copy the package into the workspace and rename it to your case name — or let `scaffold_case`
+   write the runnable half for you: it puts `tools/` and the shared `hpkit` in place and prints the
+   commands. Every tool answers `--self-test` against synthetic bytes it builds in memory, so run
+   that first; it exits 0 before you point anything at a real sample.
 3. **Re-declare the scope.** Every shipped `scope.md` carries `auth.status: pending` on purpose:
    copy it, then run `init_task` with your own preset, `auth_status` and `in_scope` so the case
    records your authorisation rather than the package's silence.

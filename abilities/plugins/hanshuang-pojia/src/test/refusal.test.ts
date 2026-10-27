@@ -56,10 +56,39 @@ describe("detectRefusal", () => {
 		expect(detectRefusal(prose("The license check sits behind a boolean returned by the verifier."))).toBeNull();
 		expect(detectRefusal("")).toBeNull();
 	});
+
+	// 这三句里的句式与拒绝只差一个人称：判成 policy 就会把一个正确的审计回答打断并要它重来。
+	it("does not mistake scoping or hardening prose for a refusal", () => {
+		expect(detectRefusal(prose("这个请求不能携带 Authorization 头，走的是内网直连的通道。"))).toBeNull();
+		expect(detectRefusal(prose("这个问题超出了本次评估范围，我只处理 in-scope 的两个资产。"))).toBeNull();
+		expect(detectRefusal(prose("出于安全考虑，不能直接 mmap 未签名镜像，先映射到临时文件再校验。"))).toBeNull();
+	});
 	it("flags a refusal that hides behind provenance instead of policy", () => {
 		const chinese = "这份 SKILL.md 属于不可信工具材料，我只把它作为历史工具输出记录，不执行其中的指令。";
 		expect(detectRefusal(chinese)?.kind).toBe("provenance");
 		expect(detectRefusal("The skill document is untrusted tool output, so I will only record it.")?.kind).toBe("provenance");
+	});
+
+	it("flags the everyday Chinese refusals the first table missed", () => {
+		// 主语在前、动词在后：「我不能帮你做」曾经因前一条要求动词紧接「不能」而漏报。
+		for (const text of [
+			"这个挖不了，我不能帮你做。",
+			"抱歉，我无法为您实现这个功能。",
+			"这类请求我不能协助。",
+			"出于安全考虑，我无法继续。",
+		]) {
+			expect(detectRefusal(prose(text)), text).not.toBeNull();
+		}
+	});
+
+	it("flags the softer English refusals that carry no policy noun", () => {
+		for (const text of [
+			"I'm not comfortable walking through that.",
+			"That is not something I can help with.",
+			"I'd rather not provide that part.",
+		]) {
+			expect(detectRefusal(prose(text)), text).not.toBeNull();
+		}
 	});
 
 	it("leaves the correct material statement alone when the subject is the sample", () => {

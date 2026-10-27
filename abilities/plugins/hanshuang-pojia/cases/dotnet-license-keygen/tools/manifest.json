@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "dotnet-license-keygen",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "metadata_strings",
+      "entry": "metadata_strings.py",
+      "purpose": "Parse a managed image's metadata streams and list the identifiers and user literals that a licence check is built from.",
+      "args": ["--sample <dll|exe>", "--query <word,word>", "--out <dir>"],
+      "expect": "stream inventory with offsets and sizes, heap counts, matching identifiers and literals, table row counts, optional metadata-strings.json",
+      "selfTest": "python3 metadata_strings.py --self-test"
+    }
+  ],
+  "notes": "Read-only. Walks CLR directory -> COR20 -> BSJB root -> #~ / #Strings / #US. It stops at the constant table: the key derivation is a compare in IL, not a string."
+}

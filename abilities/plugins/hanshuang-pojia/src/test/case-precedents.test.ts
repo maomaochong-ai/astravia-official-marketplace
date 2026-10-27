@@ -18,15 +18,23 @@ const docsDir = join(pluginRoot, "src/content/docs");
 const walk = (dir: string, base = dir): string[] =>
 	readdirSync(dir).flatMap(entry => {
 		const full = join(dir, entry);
+		// 解释器缓存不是语料：跑一次 --self-test 就会出现在 cases/_shared/hpkit 下。
+		if (entry === "__pycache__" || entry === ".pytest_cache") return [];
 		if (statSync(full).isDirectory()) return walk(full, base);
 		return [full.slice(base.length + 1)];
 	});
 
+/** `cases/_shared` 是工具运行时依赖，不是先例包，不参与包目录对比。 */
+const packageDirs = () =>
+	readdirSync(casesDir)
+		.filter(entry => !entry.startsWith("_"))
+		.filter(entry => statSync(join(casesDir, entry)).isDirectory())
+		.sort();
+
 describe("shipped precedent packages", () => {
 	it("ships one entry per directory under cases/", () => {
-		const dirs = readdirSync(casesDir)
-			.filter(entry => statSync(join(casesDir, entry)).isDirectory())
-			.sort();
+		// `cases/_shared` 是工具运行时依赖，不是包
+		const dirs = packageDirs();
 		// 这条只会在一种情况下红：目录写好了，生成物没跟上。直接把差额和补救命令说出来。
 		const shipped = SHIPPED_PRECEDENTS.map(precedent => precedent.slug);
 		const ungenerated = dirs.filter(slug => !shipped.includes(slug));

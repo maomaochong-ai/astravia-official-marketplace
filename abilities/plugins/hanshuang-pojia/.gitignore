@@ -5,3 +5,7 @@ release
 .DS_Store
 *.bak
 .cache
+
+# Python bytecode from running the shipped case tools
+__pycache__/
+*.pyc

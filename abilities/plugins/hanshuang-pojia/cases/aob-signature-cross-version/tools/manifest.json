@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "aob-signature-cross-version",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "sig_forge",
+      "entry": "sig_forge.py",
+      "purpose": "Forge an array-of-bytes signature that survives several builds: anchor on the baseline, align the same site in every other build, turn differing bytes into wildcards, and refuse to emit a pattern that is not unique per build.",
+      "args": ["--baseline <build>", "--builds <b,c,...>", "--at <rva> | --pattern <bytes>", "--before <n>", "--size <n>", "--seed <n>", "--out <dir>"],
+      "expect": "signature string with wildcard count, per-build file offset and RVA drift, widening attempts, and a unique-in-every-build verdict",
+      "selfTest": "python3 sig_forge.py --self-test"
+    }
+  ],
+  "notes": "Read-only and fail-closed: an ambiguous or non-unique signature exits non-zero instead of printing a pattern that would hit the wrong site. Wildcards over opcode bytes mean the pattern describes two different instructions."
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "client-auth-gate",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "gate_scan",
+      "entry": "gate_scan.py",
+      "purpose": "List client-side entitlement decisions in a DEX or APK next to the strings that show whether a server authority is reachable.",
+      "args": ["--sample <apk|dex>", "--query <word,word>", "--out <dir>"],
+      "expect": "candidate gate table, authority-surface table, and an optional patch-table skeleton",
+      "selfTest": "python3 gate_scan.py --self-test"
+    }
+  ],
+  "notes": "Read-only. --query narrows the entitlement words; the default set covers licence, vip, premium, subscription, purchase, entitlement, unlock, trial, activation, card key, redeem, quota, upgrade."
+}

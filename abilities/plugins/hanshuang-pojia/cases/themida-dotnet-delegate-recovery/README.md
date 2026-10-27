@@ -74,3 +74,27 @@ If the target is native and encrypted throughout, this is the wrong package:
 - [docs/protection-layers.md](docs/protection-layers.md) — the four layers, what each one actually
   protects, and which single observation defeats it.
 - Document library `cases/themida-dotnet-delegate-recovery/` — the full walkthrough this digest came from.
+
+## Tools
+
+`tools/metadata_inventory.py` answers the question that comes before any recovery attempt:
+how much metadata survived? It lists the streams and their sizes, the row count of every
+populated table, and how many compiler-generated delegate and closure artefacts are still
+readable.
+
+```bash
+python3 tools/metadata_inventory.py --sample packed.exe
+python3 tools/metadata_inventory.py --sample packed.exe --out findings/
+python3 tools/metadata_inventory.py --self-test
+```
+
+The distinction it makes is the one that changes the plan: a populated table stream with a
+healthy `#Strings` heap means the names were mangled and recovery is a rename pass; a large
+table stream next to a tiny `#Strings` heap means the names were stripped and the image has
+to be reconstructed. Both cases print as counts, not adjectives.
+
+Delegate artefacts are counted by shape (`<>9__`, `b__`, `<>c`, `d__`, `MoveNext`, `Func\``,
+`Action\``, `Invoke`). The `reading (heuristic)` block is explicitly heuristic: it reports
+what the counts imply and states that no delegate is proven resolvable from metadata alone.
+
+`--out` writes `metadata-inventory.json` for the evidence folder.

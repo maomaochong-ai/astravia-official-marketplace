@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "java-agent-dll-hijack",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "jar_agent_audit",
+      "entry": "jar_agent_audit.py",
+      "purpose": "Decide whether a JAR is a Java agent, verify the declared class really declares premain with the right descriptor, and list the bootstrap load-path entries.",
+      "args": ["--jar <agent.jar>", "--class <com.example.Agent>"],
+      "expect": "manifest attributes, per-class presence and premain check, Boot-Class-Path rows, verdict",
+      "selfTest": "python3 jar_agent_audit.py --self-test"
+    }
+  ],
+  "notes": "Read-only and offline. Manifest values are re-joined using the 72-byte continuation rule, which is where hand-edited agents usually break. A Boot-Class-Path entry outside the JAR is called out because the JVM loads it before application code runs."
+}

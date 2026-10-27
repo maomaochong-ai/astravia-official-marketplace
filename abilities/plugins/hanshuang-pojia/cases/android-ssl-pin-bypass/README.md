@@ -37,3 +37,26 @@ that does and does not protect.
 The pinning layer (class/method/config file), the baseline failure, the same request succeeding
 under instrumentation, and the endpoint content that proves the session was decrypted rather
 than merely unblocked.
+
+## Tools
+
+- [docs/method.md](docs/method.md) - the five pinning layers, how each one fails, and why
+  instrumenting the layer you guessed first produces a bypass report with nothing behind it.
+
+[`tools/pin_surface.py`](tools/pin_surface.py) reads the package and prints which layers it declares:
+network security config (a `res/xml/...network_security...` entry or the attribute in the string
+pool), OkHttp `CertificatePinner` / `pin-sha256`, a custom `X509TrustManager` /
+`checkServerTrusted`, a bundled `.cer` / `.pem` / `.p12` / `.bks` anchor, and native BoringSSL verify
+symbols next to a `lib/<abi>/*.so`. Each row carries the string or entry that proves it, plus the
+symptom that layer produces - so the failure mode names the layer instead of the other way round.
+
+```bash
+cd tools
+python3 pin_surface.py --self-test
+python3 pin_surface.py --sample app.apk
+python3 pin_surface.py --sample a.apk,b.apk
+```
+
+Read-only: no device, no hook, no certificate store edited. Absence of a layer is absence from this
+package, not proof that a connection is unprotected. [`tools/manifest.json`](tools/manifest.json)
+registers the tool for the scaffolder.

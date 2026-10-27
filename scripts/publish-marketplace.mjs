@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { digest, files, inside, readJson, writeJson } from './static-marketplace.mjs';
+import { digest, files, inside, readJson, reviewedSourceCommitMessage, writeJson } from './static-marketplace.mjs';
 import { publicationSettings } from './marketplace.mjs';
 
 export function assertExistingRelease(item, bytes) {
@@ -101,7 +101,7 @@ export async function publishMarketplace({ root, directory, gh = (...args) => ex
     indexedGit('update-index', '--add', '--cacheinfo', '100644', object, path);
   }
   const tree = indexedGit('write-tree');
-  const commit = git('commit-tree', tree, ...(remote ? ['-p', remote] : []), '-m', `chore(marketplace): 发布 ${catalog.marketplaceVersion}\n\n从已审核源码 ${publication.sourceSha} 生成市场索引。`);
+  const commit = git('commit-tree', tree, ...(remote ? ['-p', remote] : []), '-m', reviewedSourceCommitMessage(catalog.marketplaceVersion, publication.sourceSha));
   try { push(commit); } finally { rmSync(resolve(index, '..'), { recursive: true, force: true }); }
   return { published: true, commit };
 }

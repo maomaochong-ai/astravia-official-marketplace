@@ -71,3 +71,26 @@ address drift. If the target hides its code behind a packer, start with
 - [docs/patch-table.md](docs/patch-table.md) — the site table with per-build offsets and bytes.
 - Document library `cases/aob-signature-cross-version/` — full narrative and the tables this
   digest was written from.
+
+## Tools
+
+- [docs/pipeline.md](docs/pipeline.md) — the eight-step pipeline (fingerprint, seed, align, merge,
+  widen, patch table, re-verify, roll back) with the acceptance criterion and the failure mode of each
+  step, and the three ways the pipeline lies to you.
+
+[`tools/sig_forge.py`](tools/sig_forge.py) automates the middle of that pipeline. Given a baseline build
+and one or more other builds, it anchors on the site you name, aligns the same site in each build,
+turns differing bytes into `??`, and widens the window until the pattern is unique in *every* build. If
+no window is unique it exits non-zero rather than printing a pattern that would hit the wrong site.
+
+```bash
+cd tools
+python3 sig_forge.py --self-test
+python3 sig_forge.py --baseline a.exe --builds b.exe,c.exe --at 0x1010
+python3 sig_forge.py --baseline a.exe --builds b.exe --pattern "0F 85 ?? ?? ?? ??" --out sig/
+```
+
+The tool prints the signature, the wildcard count, the per-build offset and RVA drift, and every
+widening attempt it rejected. It does not disassemble, so deciding whether a wildcard landed on an
+operand or on an opcode stays with the operator - which is exactly the judgement step 4 of the
+pipeline describes. [`tools/manifest.json`](tools/manifest.json) registers the tool for the scaffolder.

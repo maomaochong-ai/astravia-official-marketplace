@@ -1,9 +1,9 @@
 # ADR 0002：外部进程桥——用 `commands` + `ctx.command.run` 对等 kit 的 MCP 工具
 
 - 状态：已接受（2026-10-23）
-- 决策对象：`abilities/plugins/hanshuang-pojia`（2.4.1 → 2.4.2）
+- 决策对象：`abilities/plugins/hanshuang-pojia`（2.4.1 → 2.4.2；当前 2.11.0，见文末「实现核对」）
 - 参照对象：`seep-kit` 1.6.0 的 `Tool/mcp/seep_mcp_server.py`（23 个 MCP 工具）
-- 关联文档：[ADR 0001](./0001-seep-kit-capability-parity.md)、[实施方案 0001](../plans/0001-capability-parity-phases.md)
+- 关联文档：[ADR 0001](./0001-seep-kit-capability-parity.md)、[实施方案 0001](../../../abilities/plugins/hanshuang-pojia/docs/plans/0001-capability-parity-phases.md)
 
 ## 1. 背景
 
@@ -142,3 +142,37 @@ r2 命令语法原文传给 `-c`。写字节等操作（`wx`）现可在 `cmd` �
   验收项在本机仍未验证**：不装 r2 就报不出 `info`/`functions`/`disasm`，而插件不会替用户装。
 - 待验：装好 radare2（并给 jadx/apktool 配一个可用 JRE）后，`run_radare` 对自编 aarch64 样本取
   `info`/`functions`/`disasm`，`decompile_android` 对真实 APK 出 smali。
+
+## 实现核对（2026-10-27，版本 2.11.0）
+
+本文的分道选型（A / B 否决、C 选定）在 2.11.0 未被重开：插件仍不自己起进程，仍不依赖 `npx`。下面只记
+“当时定的数字／形态”与现状的差。
+
+重跑：
+
+```bash
+cd abilities/plugins/hanshuang-pojia
+npm run check && npm run test        # 54 文件 / 621 例
+npm run verify:generated
+node -e "console.log(require('./plugin.json').commands)"
+```
+
+| 决策 | 当前落点（Observed） | 结论 |
+| --- | --- | --- |
+| §1 A 通道（`host-node` + `mcpServers type:"service"`）否决 | 未重新评估；`plugin.json` 仍无 `mcpServers` | 成立 |
+| §1 B 通道（`npx -y … mcp`）否决 | 未重开；插件仍不分发 / 不拉起 npm 包 | 成立 |
+| §1 C 通道（`commands` + `ctx.command.run`）选定 | `plugin.json#permissions` 含 `agent.command.run`；`src/features/workbench/services/toolchain.ts:20` `createCommandRunner` 把宿主命令通道适配成领域层的 `CommandRunner`（无权限时返回 `null`，工具报“不可用”） | 成立 |
+| D13 `commands` 唯一来源 `catalog.ts#COMMANDS` | `src/domain/toolchain/catalog.ts:415` `TOOLCHAIN.map(spec => spec.binary)`；`src/test/toolchain.test.ts:57` 断言 `manifest.commands` 与 `COMMANDS` 逐项相等 | 成立；但 **`commands` 已从本文的 8 项涨到 14 项**（`r2`/`rabin2`/`radiff2`/`rasm2`/`rahash2`/`rax2`/`jadx`/`apktool`/`java`/`adb`/`apksigner`/`zipalign`/`frida`/`frida-ps`），数量由 [ADR 0003](./0003-toolchain-install-plan.md) §4 改定 |
+| D14 tool handler 不持有 `ctx.command`，靠 `activate(ctx)` 闭包捕获 | 同上一条的 `createCommandRunner` 仍是唯一适配点 | 成立 |
+| D15 上游 23 工具的对等映射 | §2.1 的 23 行仍有落点；当前工具面 **31** 项（`src/tools/ids.ts:50`），多出的是本文之后的工具（ADR 0003 / 0005 / 0006 / 0008 与 D7 反转） | 映射仍成立，计数已变 |
+| D16 `run_radare` 的 `cmd` 零限制直通（`aaa; <command>`） | 全仓库无 `assertReadOnly` 残留；参数仍以数组交给 `-c`（`run-radare.ts:63` 的工具文案仍写 passthrough）。2.9.0 已做此反转，本文已记 | 成立 |
+| D17 `init_task` 不建 `patches/` | `src/tools/case/init-task.ts:70` 明写「There is no patches/ directory… belongs under exports/」；目录固定为 `samples/exports/report/evidence/notes` + `scope.md`/`timeline.md`/`workitems.md`/`README.md` | 成立 |
+| D18 `BLOCKED_PATTERN` 区分“宿主拒绝”与“未安装” | 正则现在 `src/domain/toolchain/probe.ts:50`（本文写在业务层时的位置已变），并新增 `NOT_FOUND_PATTERN`（`:52`），用于把 `ENOENT` 从 blocked 里拉回来（`:105`） | 成立，且修了一个曾漂移的误判 |
+| D18a `frida` 只为 `probe_environment` 探版本而声明 | `frida` / `frida-ps` 仍在 `commands`；另已增 `frida_dump` 工具（`TOOL_IDS` 内），它走“生成脚本 + 用户自己跑”的形态 | 声明前提已变：`frida` 不再只为探版本服务 |
+| D19 `write_assessment_report` 移植契约、不移植默认文案 | `src/tools/report/write-assessment-report.ts:32` 仍为 `reports/<target>_security_assessment_report.md`，未提供的节渲染成显式“not supplied”，不编造示例汇编，`overwrite` 默认关 | 成立 |
+| §4 `network.fetch` 仅 `127.0.0.1` | `plugin.json#network.allowedHosts = ["127.0.0.1"]`（供 `ida_status` 探 `13337`） | 成立 |
+| §5 真机探针（frida ✓，r2/jadx/apktool ✗ ENOENT，java 有二进制无 JRE） | 记录的是当时本机环境，不可重跑复现；同一命令仍是 `probe_environment`（`refresh=true` 绕过一分钟缓存） | 仍可当样本，不当常量 |
+
+一个仍悬着的验收项：本文 §5 “待验”列的 `run_radare` 对真实样本取 `info`/`functions`/`disasm`、`decompile_android`
+对真实 APK 出 smali，本机没有 radare2 / JRE 就无法重跑，**仍是 NOT RUN**——不是失败，是未验。
+

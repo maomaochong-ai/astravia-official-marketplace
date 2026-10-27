@@ -68,3 +68,28 @@ only path is recovering the authority, not the transform.
 - [docs/verification.md](docs/verification.md) — cross-implementation, reflective acceptance, and
   the persistence trap.
 - Document library `cases/dotnet-license-keygen/` — full walkthrough and the algorithm write-up.
+
+## Tools
+
+`tools/metadata_strings.py` walks the CLR directory to the metadata root and reads the two
+heaps a licence check leaves fingerprints in: `#Strings` (type and member names) and `#US`
+(user-visible literals). Both are uncompressed, so this needs no decompiler on the machine.
+
+```bash
+python3 tools/metadata_strings.py --sample app.dll
+python3 tools/metadata_strings.py --sample app.dll --query licen,serial,hardware --out findings/
+python3 tools/metadata_strings.py --self-test
+```
+
+Output: the runtime version, every metadata stream with its offset and size, the entry counts
+of both heaps, the identifiers and literals that match the query, and the row counts of the
+table stream (`Module`, `TypeRef`, `TypeDef`, `MethodDef`, `MemberRef`, ...). With `--out` it
+also writes `metadata-strings.json`, which is the file to cite in a report.
+
+It stops at the constant table. The key derivation is a comparison in IL; a string dump
+cannot produce a key, and this tool does not pretend otherwise. What it gives you is the
+vocabulary the assembly was built from, which is what the algorithm write-up then follows.
+
+`--self-test` assembles a managed image with a real BSJB metadata root in a temporary
+directory and asserts the version string, the three stream names and their sizes, the
+`#Strings` and `#US` contents, and the parsed row counts.

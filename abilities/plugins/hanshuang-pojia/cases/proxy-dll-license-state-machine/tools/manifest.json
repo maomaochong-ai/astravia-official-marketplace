@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "proxy-dll-license-state-machine",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "state_word_audit",
+      "entry": "state_word_audit.py",
+      "purpose": "Group RIP-relative global references in a PE by target and separate write sites from read sites, so the writer of an activation state word can be found instead of its readers.",
+      "args": ["--sample <exe|dll>", "--word", "--json <path>"],
+      "expect": "one row per global with write/read counts and a single-writer / read-only / multi-writer verdict",
+      "selfTest": "python3 state_word_audit.py --self-test"
+    }
+  ],
+  "notes": "Read-only; x86-64 canonical RIP-relative forms only. A hit is a place to look, not a conclusion: confirm with a disassembler before writing a patch table."
+}
