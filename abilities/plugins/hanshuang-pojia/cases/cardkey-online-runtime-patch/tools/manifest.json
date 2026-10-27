@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "cardkey-online-runtime-patch",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "cardkey_audit",
+      "entry": "cardkey_audit.py",
+      "purpose": "Describe a card key's structure, test named checksum and expiry hypotheses against a corpus, locate the key or its numeric form inside a client binary, and emit a patch-table skeleton.",
+      "args": ["--key <key>", "--corpus <file>", "--alphabet <base36|base32|digits|hex>", "--group <n>", "--sample <file>", "--out <dir>"],
+      "expect": "shape table, per-hypothesis pass counts with consistent/rejected verdicts, expiry windows, embedded-form offsets, optional patch skeleton",
+      "selfTest": "python3 cardkey_audit.py --self-test"
+    }
+  ],
+  "notes": "Hypotheses are tested against the operator's own corpus and reported as consistent only when every key passes. The tool never claims the vendor's scheme, and no key from any engagement is embedded in it."
+}

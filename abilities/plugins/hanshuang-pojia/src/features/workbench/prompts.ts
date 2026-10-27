@@ -41,7 +41,8 @@ export type PromptAction =
 	| "report"
 	| "harden"
 	| "toolchain"
-	| "install";
+	| "install"
+	| "case-open";
 
 function subject(context: PromptContext): string {
 	const target = context.target;
@@ -150,6 +151,15 @@ export function buildPrompt(action: PromptAction, context: PromptContext = {}): 
 				`I am reading the workbench kit's own write-up in the Hanshuang Pojia panel${context.other ? ` (${context.other})` : ""}.`,
 				`Continue from that document as the authority for ${subject(context)}: quote the parts that apply, say which step you are following, and point out where the text and the sample disagree.`,
 				"If the document stops short of the case at hand, say exactly which question is left open instead of filling it in.",
+			].join("\n");
+		case "case-open":
+			return [
+				context.other
+					? `Open a case from the shipped precedent \`${context.other}\` I am reading in the Hanshuang Pojia panel.`
+					: "Open a case for the work I am doing, from the Hanshuang Pojia panel.",
+				"Call search_cases for that slug when one is named, read its docs/method.md and tools/manifest.json, then call init_task with the scope I give you.",
+				"The shipped copy declares auth.status=pending and that is not my authorisation: ask me for the authorisation basis, the in-scope assets, the network profile and the deliverables instead of inventing them.",
+				"When init_task has written the case, list the work items it created, say which one is first, and name the evidence entry I should record before anything is run.",
 			].join("\n");
 		default:
 			return `Continue the static triage of ${subject(context)}.`;

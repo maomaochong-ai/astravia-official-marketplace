@@ -40,9 +40,22 @@ const PATTERNS: ReadonlyArray<{ kind: RefusalKind; re: RegExp }> = [
 	{ kind: "policy", re: /\bi(?:'m| am) (?:unable|not able) to (?:help|assist|provide)\b/i },
 	{ kind: "policy", re: /\bi (?:must|have to) (?:decline|refuse)\b/i },
 	{ kind: "policy", re: /\bi (?:can(?:no|')t|won't) (?:do|continue|proceed) (?:that|this)\b/i },
+	{ kind: "policy", re: /\bi(?:'m| am) not (?:comfortable|going to (?:help|assist)|able to (?:help|assist|provide))/i },
+	{ kind: "policy", re: /\b(?:that|this) is not something i (?:can|will|am able to) (?:help|assist|do)/i },
+	{ kind: "policy", re: /\bi(?:'d| would) rather not (?:help|assist|provide|do)\b/i },
 	{ kind: "policy", re: /(?:无法|不能)(?:提供|协助|帮助|满足|完成)(?:此|该|这)?(?:请求|要求|操作)/ },
+	// 「我不能帮你做这个」是最常见的口语拒绝，却在前一条里漏了：主语在前、动词在后。
+	{ kind: "policy", re: /(?:不能|无法|没办法)(?:帮|给|为)(?:你|您)(?:做|处理|完成|提供|继续|实现)/ },
+	{ kind: "policy", re: /(?:不能|无法)(?:协助|帮助)(?:你|您)?(?:完成|处理|做)?(?:这个|此|该|这项|这类)/ },
+	// 主语在前的口语拒绝。必须带「我」或「帮你/为您」：否则「这个请求不能携带 Authorization 头」
+	// 这类完全正常的技术叙述会被判成拒绝，两者句式一模一样。
+	{ kind: "policy", re: /(?:这|那)(?:种|类|个)?(?:请求|要求|任务|操作)我(?:不能|无法|不会)/ },
+	{ kind: "policy", re: /(?:这|那)(?:种|类|个)?(?:请求|要求|任务|操作)(?:不能|无法)(?:帮你|帮您|为你|为您)/ },
+	// 同样要求第一人称：「出于安全考虑，不能直接 mmap 未签名镜像」是加固措施，不是拒绝。
+	{ kind: "policy", re: /(?:出于|基于)(?:安全|法律|合规|伦理)(?:考虑|原因)[，,]?\s*我(?:不能|无法|不会|不便)/ },
 	{ kind: "policy", re: /很抱歉[，,]\s*我(?:不能|无法)/ },
-	{ kind: "policy", re: /(?:这|该)(?:个|类)?(?:请求|问题)(?:超出|不在)(?:了)?(?:我的)?(?:能力|范围|职责)/ },
+	// 必须点到「我的…能力/职责」：「这个问题超出了本次评估范围」是正当的范围界定。
+	{ kind: "policy", re: /(?:这|该)(?:个|类)?(?:请求|问题|任务)(?:已经)?(?:超出|不在)(?:了)?我的(?:能力|专业|职责)(?:范围)?/ },
 	// 转介（把技术问题推给第三方）
 	{ kind: "deflection", re: /\bconsult (?:a|your|the) (?:lawyer|legal|attorney|security team|vendor)\b/i },
 	{ kind: "deflection", re: /\bcontact (?:the )?(?:vendor|manufacturer|support)\b/i },

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "apk-dex-unpack",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "dex_pack_triage",
+      "entry": "dex_pack_triage.py",
+      "purpose": "Tell a packed package from a failed decompile before touching a device: count the class and method tables of every classes*.dex, look for the shell's own names in the string pool, list the native libraries and oversized asset blobs, then validate the header of each recovered dump and fail when one does not agree with itself.",
+      "args": ["--sample <apk>", "--dump <file-or-directory>"],
+      "expect": "per-DEX table (bytes, classes, methods, strings, entropy, structural problems), the shell evidence table with weights, oversized non-DEX entries with entropy, a score band, and a per-file verdict for every recovered dump",
+      "selfTest": "python3 dex_pack_triage.py --self-test"
+    }
+  ],
+  "notes": "Read-only: the APK is opened as a zip, nothing is installed, executed or modified. Exit code is non-zero when --dump is given and any recovered file fails the header check - a failed dump is a result, not a warning. The dump step itself belongs to frida_dump; this tool decides whether a dump is worth taking and whether what came back is code."
+}

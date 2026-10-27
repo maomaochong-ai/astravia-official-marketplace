@@ -55,6 +55,7 @@ export const CASE_DOCUMENTS = {
 	timeline: "timeline.md",
 	workItems: "workitems.md",
 	readme: "README.md",
+	authLog: "auth-log.md",
 	evidence: "evidence/README.md",
 } as const;
 
@@ -197,7 +198,7 @@ export interface ReadinessInput {
 }
 
 /** `granted` is the single word that opens the gate; everything else is "not recorded". */
-const AUTHORISED_STATUSES: readonly string[] = ["granted"];
+export const AUTHORISED_STATUSES: readonly string[] = ["granted"];
 
 /**
  * The gate is derived, never accepted as input: a value passed in by a caller is a claim,
@@ -309,6 +310,36 @@ export function scopeMarkdown(brief: CaseBrief): string {
 		"",
 	].join("\n");
 }
+/**
+ * `scope.md` is written once, but authorisation is an event: a ticket can open after the case
+ * exists. Without a place to record that, a case opened `pending` could never open its gate —
+ * the only way forward would be a new case, losing the timeline and the evidence numbering
+ * (ADR 0009). So exactly one thing grows: this log. The scope itself stays the snapshot it
+ * was; a scope that changed is still a new case.
+ */
+export function authLogHeader(name: string): string {
+	return [
+		`# Authorisation log — ${name}`,
+		"",
+		"Append-only. One block per record, newest last; the last block stands.",
+		"`scope.md` declares the scope and is written once. This file records authorisation arriving",
+		"later — a ticket opens mid-engagement — the same way `timeline.md` records events.",
+		"",
+	].join("\n");
+}
+
+/** The `## <iso> | <status>` block shape the reader parses; unknown keys are ignored there. */
+export function authRecordMarkdown(
+	at: string,
+	record: Pick<CaseBrief, "authStatus" | "authBasis" | "authEvidence">,
+): string {
+	return [
+		`## ${at} | ${record.authStatus}`,
+		`- basis: ${record.authBasis?.trim() || "(not provided)"}`,
+		`- evidence: ${record.authEvidence?.trim() || "(not provided)"}`,
+	].join("\n");
+}
+
 /**
  * One event, in the block shape `case-init.ps1` seeds. Appending a block keeps the log
  * machine-readable: `## <iso> | <role> | <kind>` then the fields below it.

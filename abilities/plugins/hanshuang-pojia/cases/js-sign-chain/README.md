@@ -35,3 +35,42 @@ browser — or to prove where it is computed and what it covers.
 
 The captured request with secrets redacted, the signer's source location, the local
 reproduction with matching output, and the varied-input result with the server's own response.
+
+## Tools
+
+- [docs/method.md](docs/method.md) - how to find the signer from the outside in, and why the set of
+  fields inside the signature matters more than the algorithm.
+
+[`tools/sign_chain_scan.py`](tools/sign_chain_scan.py) reads the bundle as text and reports the six
+stages of the chain: collect (`Object.keys`, `URLSearchParams`), order (`.sort()`, `join('&')`,
+`qs.stringify`), secret (a hex or base64 constant of key length), digest (`md5`, `sha256`, `hmac`,
+`createHash`, `subtle.digest`), attach (`x-sign`, `signature`, `authorization`), and replay guard
+(`nonce`, `timestamp`, `Date.now()`). The four positional stages are checked for ascending source
+order, and the field-like literals around the ordering call are listed, because that set is the
+boundary a server can actually enforce.
+
+```bash
+cd tools
+python3 sign_chain_scan.py --self-test
+python3 sign_chain_scan.py --sample app.min.js
+python3 sign_chain_scan.py --sample a.js,b.js --query x-sign
+```
+
+The bundle is never executed and no request is made. A missing digest means WebAssembly or a fetched
+signer; a missing secret means it arrives at run time.
+
+[`tools/sign_chain_probe.py`](tools/sign_chain_probe.py) answers the other half: given one captured
+request, its params, a candidate secret and the observed signature, it enumerates the constructions that
+actually ship - sorted or body order, four joins, secret prefixed / suffixed / omitted, lower- or
+upper-cased before hashing, MD5 / SHA-1 / SHA-256 / HMAC-SHA256 - and reports which one reproduces the
+value. A match is evidence for one request, not yet a rule; the next request is what makes it one. Exit
+code 1 means no construction matched.
+
+```bash
+python3 sign_chain_probe.py --self-test
+python3 sign_chain_probe.py --request req.json --secret demo --algo sha256
+python3 sign_chain_probe.py --request req.json --secret demo --sign-field sign --exclude sign,timestamp
+```
+
+Both directions are offline: the bundle is never executed and no request leaves the machine.
+[`tools/manifest.json`](tools/manifest.json) registers both tools for the scaffolder.

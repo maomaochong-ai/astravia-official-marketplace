@@ -35,7 +35,7 @@
 「本机文件 / 网关注入」之间切换。
 
 宿主的边界是硬的：插件只能写项目内路径，`~/.astravia/agent/AGENTS.md` 必须由用户在保存对话框里点一次
-（见 `docs/adr/0004-host-hook-boundary.md` 与 `src/domain/inject/astravia-block.ts` 的模块注释）。
+（见 `docs/adr/hanshuang-pojia/0004-host-hook-boundary.md`（仓库根） 与 `src/domain/inject/astravia-block.ts` 的模块注释）。
 因此对等物是「把块摊开 + 给落盘路径」而不是一个会静默写主目录的按钮：
 
 - 新增 `components/prompts/inject-block-card.tsx`，挂在提示词页：显示目标路径、块来源（激活提示词或默认契约）、

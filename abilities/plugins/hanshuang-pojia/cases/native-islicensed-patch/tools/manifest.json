@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "native-islicensed-patch",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "bool_stub_scan",
+      "entry": "bool_stub_scan.py",
+      "purpose": "Find constant-return stubs that stand in for a boolean licence check and emit an equal-length patch table for the false ones.",
+      "args": ["--sample <pe>", "--table <dir>"],
+      "expect": "stub table with section and RVA, architecture warnings, patch rows and an optional patch-table.txt",
+      "selfTest": "python3 bool_stub_scan.py --self-test"
+    }
+  ],
+  "notes": "Read-only; the emitted table is text, applying it is a separate deliberate step. Patterns cover x86/x64 mov eax,imm32;ret and AArch64 mov w0,#imm;ret, including the alternate xor eax,eax;ret encodings which are reported but not patchable in place."
+}

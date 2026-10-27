@@ -75,3 +75,22 @@ simpler route. If authorisation happens online and the client decides on a bare 
   hook mechanics, the CRLF defect, the runtime enumeration harness.
 - Document library `cases/version-dll-proxy-iat-hook/` — the full walkthrough and the pitfall log
   with the hardening recommendations.
+
+## Tools
+
+[`tools/iat_slot_plan.py`](tools/iat_slot_plan.py) does the two arithmetic checks this case kept getting
+wrong by hand: the IAT slot for one imported function (`FirstThunk + index * ptr`, where the index is
+the position inside that DLL's own thunk array) and whether a store of a given width fits inside a
+single writable section.
+
+```bash
+cd tools
+python3 iat_slot_plan.py --self-test
+python3 iat_slot_plan.py --sample app.exe --dll user32.dll --function SetDlgItemTextW
+python3 iat_slot_plan.py --sample app.exe --stores 0x1234:10,0x1240:10
+python3 iat_slot_plan.py --sample app.exe --dll version.dll --proxy
+```
+
+The store check is the one that saves an engagement: a 10-byte stub that crosses a section end by two
+bytes faults exactly when the licence path runs, which reads as a logic bug rather than a memory bug.
+[`tools/manifest.json`](tools/manifest.json) registers the tool for the scaffolder.

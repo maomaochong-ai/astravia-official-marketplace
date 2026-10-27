@@ -22,6 +22,7 @@ import { useChat, type ChatModel } from "./use-chat";
 import { useDisasm, type DisasmModel } from "./use-disasm";
 import { useDocs, type DocsModel } from "./use-docs";
 import { useCases, type CasesModel } from "./use-cases";
+import { useCaseDocs, type CaseDocsModel } from "./use-case-docs";
 import { useLab, type LabModel } from "./use-lab";
 import { setAgentPage } from "../../../runtime/panel-channel";
 import { useLibrary } from "./use-library";
@@ -101,6 +102,7 @@ export interface WorkbenchModel {
 	disasm: DisasmModel;
 	docs: DocsModel;
 	cases: CasesModel;
+	caseDocs: CaseDocsModel;
 
 	exportReport(format: "markdown" | "json"): void;
 	copyReport(format: "markdown" | "json"): void;
@@ -338,6 +340,8 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 	const disasm = useDisasm({ bytes: sample?.bytes ?? null, facts: nativeFacts, map: nativeMap, bridge, enabled: page === "disasm" });
 	const docs = useDocs(bridge, page === "docs");
 	const cases = useCases(bridge, cwd, page === "cases");
+	// 案例正文只在案例页读：选中的案例一变就重新列目录，切走再回来不影响已选的案例。
+	const caseDocs = useCaseDocs(bridge, cases.selected?.path ?? null);
 
 	const entropy = useMemo<EntropyBucket[] | null>(() => {
 		if (!sample) return null;
@@ -555,6 +559,7 @@ export function useWorkbench(bridge: WorkbenchBridge, cwd: string | null, option
 		disasm,
 		docs,
 		cases,
+		caseDocs,
 		exportReport,
 		copyReport,
 		handOff,

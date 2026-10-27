@@ -58,6 +58,22 @@ export interface PrecedentSource {
 \treadonly entry: string;
 }
 
+export interface PrecedentTool {
+	readonly id: string;
+	/** File name inside the package's tools/ directory. */
+	readonly entry: string;
+	readonly purpose: string;
+	readonly args: readonly string[];
+	readonly expect: string;
+}
+
+export interface PrecedentToolkit {
+	/** Interpreter family: python, powershell or node. */
+	readonly runtime: string;
+	readonly platforms: readonly string[];
+	readonly tools: readonly PrecedentTool[];
+}
+
 export interface ShippedPrecedent {
 \treadonly slug: string;
 \treadonly title: string;
@@ -71,7 +87,9 @@ export interface ShippedPrecedent {
 \t/** Document-library ids holding the full case study, read with read_doc. */
 \treadonly caseDocs: readonly string[];
 \t/** Present when the package was derived from an upstream case library. */
-\treadonly source?: PrecedentSource;
+	readonly source?: PrecedentSource;
+	/** Runnable tools the package ships; empty only if the package is text-only. */
+	readonly tools: PrecedentToolkit;
 \treadonly docs: readonly PrecedentDoc[];
 }
 

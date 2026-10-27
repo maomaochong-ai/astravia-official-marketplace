@@ -411,9 +411,27 @@ describe("initTaskWorkspace", () => {
 				writes.set(path, content);
 			},
 			stat: async (path: string) => (writes.has(path) ? {} : null),
+			readFile: async (path: string) => (writes.has(path) ? { content: writes.get(path) as string } : null),
 		};
 		return { fs, directories, writes };
 	}
+
+	/** 与 scope 契约对齐的最小声明，具体断言各自覆盖 authStatus / inScope。 */
+	function declared() {
+		return {
+			name: "demo",
+			preset: resolvePreset(undefined),
+			authStatus: "pending" as const,
+			authBasis: "",
+			inScope: [] as string[],
+			outOfScope: [] as string[],
+			networkProfile: "offline" as const,
+			deliverables: [] as string[],
+			constraints: [] as string[],
+			at: "2026-10-27T00:00:00.000Z",
+		};
+	}
+
 
 	it("sanitises the name so it cannot leave the root", () => {
 		expect(safeTaskName("../../etc/passwd")).toBe("etc_passwd");
@@ -468,6 +486,64 @@ describe("initTaskWorkspace", () => {
 		expect(result.readiness.ready).toBe(true);
 		expect(writes.get("/cases/demo/scope.md")).toContain("CTF rules of engagement");
 		expect(writes.get("/cases/demo/workitems.md")).toContain("challenge.case-one");
+	});
+
+	it("records later authorisation in the log instead of rewriting the scope", async () => {
+		const { fs, writes } = fakeWorkspaceFs();
+		const pending = await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "pending", authBasis: "" } });
+		expect(pending.readiness.ready).toBe(false);
+		expect(pending.authRecorded).toBe(false);
+		const scopeBefore = writes.get("/cases/demo/scope.md");
+
+		const granted = await initTaskWorkspace(fs, {
+			root: "/cases",
+			name: "demo",
+			brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "granted", authBasis: "ticket SEC-1042" },
+		});
+
+		expect(granted.authRecorded).toBe(true);
+		expect(granted.readiness.ready).toBe(true);
+		// scope 仍是原来那份快照，授权变更只进日志与事件流。
+		expect(writes.get("/cases/demo/scope.md")).toBe(scopeBefore);
+		expect(writes.get("/cases/demo/auth-log.md")).toContain("| granted");
+		expect(writes.get("/cases/demo/auth-log.md")).toContain("ticket SEC-1042");
+		expect(writes.get("/cases/demo/timeline.md")).toContain("authorisation recorded as granted");
+	});
+
+	it("reports the gate on disk, not the one the caller asked for", async () => {
+		const { fs, writes } = fakeWorkspaceFs();
+		await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "pending", authBasis: "" } });
+
+		// 下一次调用什么都没变：不得凭空报 ready，也不得重复追加同一份授权。
+		const same = await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "pending", authBasis: "" } });
+		expect(same.authRecorded).toBe(false);
+		expect(same.readiness.ready).toBe(false);
+		expect(writes.has("/cases/demo/auth-log.md")).toBe(false);
+	});
+
+	it("does not let a stale pending call withdraw a granted case", async () => {
+		const { fs, writes } = fakeWorkspaceFs();
+		await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "pending", authBasis: "" } });
+		await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "granted", authBasis: "ticket SEC-1042" } });
+		const logAfterGrant = writes.get("/cases/demo/auth-log.md");
+
+		// 调用方带着旧事实重跑，不能把已开的门又关上：日志 append-only，后来的就是最后的。
+		const stale = await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "pending", authBasis: "" } });
+		expect(stale.authRecorded).toBe(false);
+		expect(stale.readiness.ready).toBe(true);
+		expect(stale.authNote).toContain("already records granted");
+		expect(writes.get("/cases/demo/auth-log.md")).toBe(logAfterGrant);
+	});
+
+	it("refuses to rewrite an authorisation log it could not read", async () => {
+		const { fs, writes } = fakeWorkspaceFs();
+		await initTaskWorkspace(fs, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "pending", authBasis: "" } });
+		const broken = { ...fs, readFile: async (path: string) => { if (path.endsWith("auth-log.md")) throw new Error("EACCES"); return fs.readFile(path); }, stat: async (path: string) => (path.endsWith("auth-log.md") ? { isFile: true } as never : fs.stat(path)) };
+
+		const result = await initTaskWorkspace(broken, { root: "/cases", name: "demo", brief: { ...declared(), sample: "sample.apk", inScope: ["sample.apk"], preset: resolvePreset(undefined), authStatus: "granted", authBasis: "ticket SEC-1042" } });
+		expect(result.authRecorded).toBe(false);
+		expect(result.authNote).toContain("could not be read");
+		expect(writes.has("/cases/demo/auth-log.md")).toBe(false);
 	});
 
 	it("refuses a name that sanitises to nothing", async () => {

@@ -58,7 +58,7 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `generate_hook` | a Frida script for matched Dalvik methods — `observe` prints only (default), `override` runs the original then returns `return_value`, `replace` skips the original |
 | `frida_dump` | runtime dex extraction for packed apps: emit the scanner script, run it on a device, or reassemble a log into `.dex` files |
 | `triage_directory` | one risk table for every binary under a directory, worst grade first |
-| `search_docs` | keyword search over the 334 bundled field documents (title, id, topic) |
+| `search_docs` | keyword search over the 340 bundled field documents (title, id, topic) |
 | `read_doc` | one document body as Markdown, truncated at a visible character budget |
 | `probe_environment` | which declared executables run, with version banners, separating a host refusal from a missing binary |
 | `install_toolchain` | the exact install command for this platform, filtered to the tools one goal actually needs |
@@ -72,11 +72,12 @@ Registered from `src/tools/register-tools.ts`, one file per tool:
 | `init_task` | the per-target case layout — `samples/`, `exports/`, `reports/`, README and report skeleton |
 | `search_cases` | the 19 shipped precedent packages and your own cases, ranked separately: a method you can copy, never an authorisation you inherit |
 | `record_case_note` | append a decision, blocker or artefact note to the open case |
+| `scaffold_case` | writes a precedent's `tools/` and the shared `hpkit` into the project and returns the exact commands — files only, nothing executed |
 | `write_assessment_report` | fills the four-section assessment into `reports/<target>_security_assessment_report.md`; an unsupplied section is written as unsupplied |
 | `generate_artifact` | a patch / keygen / proxy-DLL / verification-harness skeleton scoped to the decision point you located |
 | `install_astravia` | the instruction block for a global `AGENTS.md`, handed to the save dialog |
 
-All thirty declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
+All thirty-one declare `scope_use` explicitly (fail-closed) and only touch the workspace through the host `fs`
 API. Samples are read with `fs.readBinaryFile`, capped at the host's own 32 MiB binary-read ceiling.
 Bigger or out-of-project samples are handed to the chat agent, which runs with the app's file access.
 
@@ -135,7 +136,7 @@ addressing, labels, directives, immediates that would need two instructions) are
 | Permission | Why |
 | --- | --- |
 | `ui.slot.activity-tab` | the workbench panel |
-| `agent.tools.register`, `agent.toolHandler.execute` | the thirty tools |
+| `agent.tools.register`, `agent.toolHandler.execute` | the thirty-one tools |
 | `agent.command.run` | `probe_environment`, `install_toolchain`, `run_radare`, `decompile_android`, `verify_signature`, `frida_dump`: the fourteen executables declared in `commands`, each one approved by the user |
 | `agent.session.write` | tool results in the conversation, the panel's send-to-chat button |
 | `agent.session.read` | the panel's live conversation status (turn running, tool in flight) |
@@ -266,8 +267,15 @@ A precedent package is four canonical documents plus optional case-specific ones
 (what is in range, and what is not), `workitems.md` (8–12 items, always opening with “Establish scope
 and auth”), `docs/method.md` (the technique), and `README.md`. Extra documents such as `docs/patches.md`
 carry the tables that would bloat the method. `scripts/sync-precedents.mjs` inlines all of it into
-`src/domain/case/precedents.generated.ts`, so the `.astraviapkg` never ships a `cases/` directory —
-`node scripts/check-precedent-package.mjs --all` is what keeps each package honest before a build.
+`src/domain/case/precedents.generated.ts`, so the `.astraviapkg` ships no `cases/` source tree — only the
+published tool files under `dist/assets/cases/` — and
+`npm run check:cases` is what keeps each package honest before a build.
+
+Each package also carries `tools/` — `manifest.json` plus Python scripts that re-run the mechanical half
+of the case. They are published as real files under `dist/assets/cases/` (a script that is not on disk
+cannot run), and `scaffold_case` copies one package's `tools/` and the shared `hpkit` into your workspace,
+then prints the command lines. Every tool answers `--self-test` against synthetic bytes it builds in
+memory, so it proves itself before it is pointed at a real sample. `npm run check:cases` runs all of them.
 
 The corpus is derived from upstream `seep-kit` 2.0, `Tool/cases/`. What crossed the line: offsets,
 RVAs, AOB patterns, patch bytes, protocol fields and algorithm constants. What did not: sample bytes,
@@ -277,7 +285,8 @@ binaries, keys, salts, endpoints, real product names. ADRs 006 and 007 record th
 
 ```text
 cases/                             # 19 precedent packages: source only, inlined at build time, never shipped
-docs/                              # engineering docs: README.md index + adr/ contract/ reference/ audits/ plans/
+docs/                              # engineering docs: README.md index + contract/ reference/ audits/ plans/
+                                   # ADRs live at the repo root: docs/adr/hanshuang-pojia/
 agent/
 ├── skills/                          # registered via skillPaths; nine SKILL.md directories
 │   ├── hanshuang-pojia/             # the handbook, PART I–V, including the kit protocol
@@ -346,8 +355,8 @@ at a character budget. Deeper analysis is still the `disassemble_range` tool's j
 is there so the listing is reachable without spending a turn on it.
 
 `Documents` renders the kit's own field library inside the panel: 292 knowledge-base articles, 11
-manuals, 7 tool docs and 24 case studies the plugin ships byte for byte, searched by title in memory
-and — on demand — by body text across all 334 files. Each body is a separate build chunk, so opening
+manuals, 7 tool docs and 30 case studies the plugin ships byte for byte, searched by title in memory
+and — on demand — by body text across all 340 files. Each body is a separate build chunk, so opening
 the page costs one document, not four megabytes. The same library is reachable from the conversation as
 `read_doc`, which means a citation from the agent and the text on screen are the same file.
 
@@ -388,7 +397,7 @@ node scripts/marketplace.mjs build
 node --test tests/*.test.mjs
 ```
 
-The 334 field documents under `src/content/docs/` are indexed by `scripts/sync-docs.mjs`; run it without
+The 340 field documents under `src/content/docs/` are indexed by `scripts/sync-docs.mjs`; run it without
 `--check` after adding or editing one, and keep `--check` in CI. The documents ship as lazy chunks, so an
 article that is never opened costs no download.
 

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "eazfuscator-vm-minimal-patch",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "branch_density",
+      "entry": "branch_density.py",
+      "purpose": "Rank executable windows by control-flow density to find the dispatcher a virtualising obfuscator runs the real code through.",
+      "args": ["--sample <pe>", "--window <bytes>", "--top <n>", "--max-bytes <bytes>"],
+      "expect": "per-section totals, densest windows with conditional/call/indirect counts and heuristic reading lines",
+      "selfTest": "python3 branch_density.py --self-test"
+    }
+  ],
+  "notes": "Read-only. Byte scanning counts opcodes that sit inside immediates, so the numbers rank candidates; they do not census branches. The reading lines are heuristic and never claim an obfuscator identity."
+}

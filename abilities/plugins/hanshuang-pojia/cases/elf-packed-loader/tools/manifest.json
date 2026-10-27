@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "elf-packed-loader",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "elf_pack_scan",
+      "entry": "elf_pack_scan.py",
+      "purpose": "Decide from the bytes alone whether a sample is a loader rather than the programme: packer markers, a write+execute segment, executable-segment entropy, an import surface with no libc symbols, and an entry point outside every load segment - each printed with the evidence that fired it.",
+      "args": ["--sample <file>[,<file>...]", "--min-entropy <bits>"],
+      "expect": "per-file segment table with entropy and W/X flags, packer markers with offsets, the signal table with weights, and a score band (unpacked / suspicious / packed)",
+      "selfTest": "python3 elf_pack_scan.py --self-test"
+    }
+  ],
+  "notes": "Read-only and static: nothing is executed and no file is written. The weights are a reading aid, not a verdict - a stripped static binary can score without being packed, which is why every signal prints its own evidence line. Addresses are reported as the packed file's own offsets and RVAs, never as if they were in the recovered image."
+}

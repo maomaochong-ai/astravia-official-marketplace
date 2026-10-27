@@ -96,6 +96,7 @@ export function renderPrecedentHit(hit: PrecedentHit): string {
 		...(precedent.caseDocs.length > 0
 			? [`- full case study: ${precedent.caseDocs.map(id => `${id} (read_doc)`).join(", ")}`]
 			: []),
+		...renderToolLine(precedent),
 		`- why: ${hit.reasons.join("; ")}`,
 		`- scope: the shipped copy declares auth.status=pending — copy it, then re-declare scope with init_task`,
 	].join("\n");
@@ -121,4 +122,15 @@ export function renderPrecedentIndex(hits: readonly PrecedentHit[], query?: stri
 export function renderPrecedentPackage(precedent: ShippedPrecedent): string {
 	const head = [...renderPrecedentHit({ precedent, score: 0, matched: 0, reasons: ["requested by slug"] })];
 	return [head, "", ...precedent.docs.flatMap(doc => [`#### ${doc.id}`, "", doc.text, ""])].join("\n");
+}
+
+/**
+ * 工具行：先例包里能直接跑的东西。这一行是「方法摘要」与「工程现场」的分界，
+ * 没有它，读到先例的 Agent 只会照着写字，不会去跑。
+ */
+function renderToolLine(precedent: ShippedPrecedent): string[] {
+	const toolList = precedent.tools?.tools ?? [];
+	if (toolList.length === 0) return [];
+	const entries = toolList.map(tool => `${tool.id} (${tool.entry})`).join(", ");
+	return [`- tools: ${entries} — write them with scaffold_case, then run \`--self-test\` before trusting them`];
 }

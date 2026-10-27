@@ -1,7 +1,7 @@
 # 实施方案 0002：对标 hanshuang-pojia-2.0（kit 1.6.0）的全量逐项补齐
 
-- 依据：[ADR 0001](../adr/0001-seep-kit-capability-parity.md)、[ADR 0002](../adr/0002-external-process-bridge.md)、
-  [ADR 0003](../adr/0003-toolchain-install-plan.md)、[ADR 0004](../adr/0004-host-hook-boundary.md)、
+- 依据：[ADR 0001](../../../../../docs/adr/hanshuang-pojia/0001-seep-kit-capability-parity.md)、[ADR 0002](../../../../../docs/adr/hanshuang-pojia/0002-external-process-bridge.md)、
+  [ADR 0003](../../../../../docs/adr/hanshuang-pojia/0003-toolchain-install-plan.md)、[ADR 0004](../../../../../docs/adr/hanshuang-pojia/0004-host-hook-boundary.md)、
   [工具链对照](../reference/toolchain-parity.md)、[自带工具链对照](../audits/toolchain-bundling.md)
 - 参照对象：`/Users/zhugeyue/Desktop/tmp/hanshuang-pojia-2.0`（Electron 便携版，内置 `resources/seep-kit`，`VERSION 1.6.0`）
 - 被测对象：`abilities/plugins/hanshuang-pojia`，`plugin.json` **2.8.2**（盘点于 2026-10-24）

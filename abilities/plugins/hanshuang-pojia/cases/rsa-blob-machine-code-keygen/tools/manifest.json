@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "rsa-blob-machine-code-keygen",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "rsa_blob_verify",
+      "entry": "rsa_blob_verify.py",
+      "purpose": "Parse a CryptoAPI PUBLICKEYBLOB (bitlen, exponent, little-endian modulus), then verify a PKCS#1 v1.5 signature over the machine-code payload by real modular exponentiation.",
+      "args": ["--sample <file>", "--blob <hex|file|base64>", "--signature <hex>", "--machine-code <text>", "--message <text>", "--message-file <path>", "--hash <md5|sha1|sha256|sha384|sha512>", "--raw"],
+      "expect": "key fields plus a per-encoding table naming the single payload encoding that verifies",
+      "selfTest": "python3 rsa_blob_verify.py --self-test"
+    }
+  ],
+  "notes": "Verification is pow(signature, exponent, modulus) with an exact PKCS#1 v1.5 EM comparison, so a passing row is a real signature check. --raw switches to a bare digest compare for clients that skip DigestInfo. The self test generates a throwaway 512-bit key in memory."
+}

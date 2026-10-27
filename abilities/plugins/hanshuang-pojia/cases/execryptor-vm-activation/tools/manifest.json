@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "execryptor-vm-activation",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "section_entropy",
+      "entry": "section_entropy.py",
+      "purpose": "Measure Shannon entropy per section and report the layout facts a self-unpacking stub leaves behind (RWX section, entry in the last section, no ASLR).",
+      "args": ["--sample <pe>", "--threshold <bits>", "--out <dir>"],
+      "expect": "one row per section with flags and entropy, then heuristic judgement lines and an optional sections.json",
+      "selfTest": "python3 section_entropy.py --self-test"
+    }
+  ],
+  "notes": "Read-only. Entropy is computed over the raw bytes of each section. The judgement lines are measurements, not a packer identification; attribution needs the stub constants."
+}

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "slug": "js-sign-chain",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "sign_chain_scan",
+      "entry": "sign_chain_scan.py",
+      "purpose": "Map the six stages of a browser signing chain from the bundle itself - collect, order, secret, digest, attach, replay guard - and report whether the four positional stages already ascend, plus the field literals inside the ordering region, since that set is the boundary the server can enforce.",
+      "args": ["--sample <js>[,<js>...]", "--query <header-name>"],
+      "expect": "a stage table with positional flag, hit counts, first offset and matched tokens; the ordering verdict; the candidate field list; and a reading that names the missing stage",
+      "selfTest": "python3 sign_chain_scan.py --self-test"
+    },
+    {
+      "id": "sign_chain_probe",
+      "entry": "sign_chain_probe.py",
+      "purpose": "Given one captured request and a candidate secret, find which join, case and hash reproduce the observed signature value.",
+      "args": ["--request <req.json>", "--secret <value>", "--algo <md5|sha1|sha256|hmac-sha256>", "--sign-field <name>", "--exclude <f1,f2>"],
+      "expect": "match table (algorithm, recipe, pre-image length) or the ordered list of reasons a request does not reproduce",
+      "selfTest": "python3 sign_chain_probe.py --self-test"
+    }
+  ],
+  "notes": "Two directions on the same chain: sign_chain_scan reads the bundle statically and never executes it, sign_chain_probe replays one captured request offline against enumerated constructions. Offsets from the scan are byte offsets into the decoded text. A missing stage is missing from this file - a fetched module or a WebAssembly digest is the usual reason. Several probe recipes can collapse to one pre-image on a given input, so that report counts distinct pre-images rather than recipes; its exit code 1 means no construction matched."
+}

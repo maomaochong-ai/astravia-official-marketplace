@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "qt-proxy-dll-gateway",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "qt_export_diff",
+      "entry": "qt_export_diff.py",
+      "purpose": "Compare a proxy DLL's forwarding list against the original's export directory and the host's import list, so a missing forwarder is found before the load fails.",
+      "args": ["--dll <original dll>", "--def <proxy .def>", "--need <import list>"],
+      "expect": "missing-forwarder table, stale forwards, ordinal drift, renames, and the Qt plugin entry points",
+      "selfTest": "python3 qt_export_diff.py --self-test"
+    }
+  ],
+  "notes": "Read-only and offline. Exit code 1 means at least one required name is not forwarded. A passing name does not prove the forward is correct at runtime: data exports and calling conventions still need a live load."
+}

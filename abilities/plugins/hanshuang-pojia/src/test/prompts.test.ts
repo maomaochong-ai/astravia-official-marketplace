@@ -16,6 +16,7 @@ const ACTIONS: PromptAction[] = [
 	"harden",
 	"toolchain",
 	"install",
+	"case-open",
 ];
 
 describe("buildPrompt", () => {
@@ -63,5 +64,14 @@ describe("buildPrompt", () => {
 		expect(prompt.toLowerCase()).toContain("run");
 		expect(prompt).toContain("probe_environment with refresh=true");
 		expect(prompt.toLowerCase()).toContain("ask the user");
+	});
+
+	it("opens a case from a precedent without treating its pending scope as authorisation", () => {
+		const prompt = buildPrompt("case-open", { other: "elf-packed-loader" });
+		expect(prompt).toContain("elf-packed-loader");
+		expect(prompt).toContain("init_task");
+		expect(prompt).toContain("search_cases");
+		expect(prompt).toContain("auth.status=pending");
+		expect(prompt.toLowerCase()).toContain("ask me");
 	});
 });

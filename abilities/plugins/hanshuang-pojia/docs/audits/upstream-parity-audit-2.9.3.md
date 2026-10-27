@@ -183,7 +183,7 @@
 | 面板无案例视图 | 「战例库」页（第 17 页），只读，与 `search_cases` 共用 `scanCases` |
 
 工具数 28 → **30**；页面 16 → **17**。详细契约见 [case-library.md](../contract/case-library.md)，
-决策依据见 [ADR 006](../adr/0006-case-contract-v2-and-precedent-library.md)。
+决策依据见 [ADR 006](../../../../../docs/adr/hanshuang-pojia/0006-case-contract-v2-and-precedent-library.md)。
 
 ### 8.4 仍然不做的
 

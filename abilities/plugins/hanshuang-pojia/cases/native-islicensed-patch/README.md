@@ -72,3 +72,28 @@ Not this shape:
   detection, persistence guard, revert.
 - Document library `cases/native-islicensed-patch/` — the evidence chain and the patch plan this
   digest was written from.
+
+## Tools
+
+`tools/bool_stub_scan.py` finds the shapes a boolean gate returns with: `mov eax, 0; ret`,
+`xor eax, eax; ret`, and on AArch64 `mov w0, #0; ret`, together with their true-return
+counterparts so a hit can be classified instead of assumed.
+
+```bash
+python3 tools/bool_stub_scan.py --sample target.exe
+python3 tools/bool_stub_scan.py --sample target.exe --table findings/
+python3 tools/bool_stub_scan.py --self-test
+```
+
+It prints a hit table with section, RVA and file offset, then a patch row per false-return
+stub. The patch is equal-length by construction: the immediate inside `mov eax, imm32` is
+flipped from `00 00 00 00` to `01 00 00 00`, so the file keeps its size and nothing shifts.
+`xor eax, eax; ret` is reported but not patchable in place, and the report says so rather
+than inventing a longer stub that would not fit.
+
+Rows are emitted only for the image's own architecture. A patch row that cannot apply is
+worse than no row, because it looks like a plan.
+
+`--table` writes `patch-table.txt` in the `address | original | patched | note` form that
+`hpkit.patch.parse_table` reads back, so the table can be checked, applied and rolled back by
+the same primitives that produced it.

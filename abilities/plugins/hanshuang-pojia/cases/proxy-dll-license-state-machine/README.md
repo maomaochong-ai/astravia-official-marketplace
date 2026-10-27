@@ -75,3 +75,26 @@ timing discipline there also applies here.
   builds, registration-code structure, injection timing.
 - Document library `cases/proxy-dll-license-state-machine/` — the full walkthrough and the
   third-party crack anatomy with the hardening spec derived from it.
+
+## Tools
+
+- [docs/version-evolution.md](docs/version-evolution.md) — the four generations of this proxy (forward, own
+  the state word, funnel through one predicate, survive integrity checks) and how the acceptance
+  criterion changes at each one.
+
+[`tools/state_word_audit.py`](tools/state_word_audit.py) answers the generation-2 question from the
+file instead of from a disassembler: every RIP-relative reference in the code section, grouped by
+target, with the 16-bit writes separated from the reads. One writer means there is a single place to
+intervene; zero means the value is copied from somewhere else; more than one means a single patch is
+a race with the re-validation path.
+
+```bash
+cd tools
+python3 state_word_audit.py --self-test        # builds its own PE, asserts the census
+python3 state_word_audit.py --sample target.exe --word
+```
+
+A hit is a place to look, not a conclusion: the scanner knows instruction shapes, not semantics.
+[`tools/manifest.json`](tools/manifest.json) registers the tool for the scaffolder, and `--self-test`
+needs no sample - it constructs a synthetic PE and checks the parser, the scanner and the patch
+round-trip before anything touches your file.

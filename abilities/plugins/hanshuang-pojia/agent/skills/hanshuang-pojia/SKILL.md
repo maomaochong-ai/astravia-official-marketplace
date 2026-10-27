@@ -1457,8 +1457,17 @@ signal (JWT / SQLi / SSRF / 壳 / 混淆 / native / 加密 ...)
 | 分析这个 PE / APK | whole-sample triage | triage → decompile → IOC → YARA |
 | 修改 APK 重签名 | minimal patch | `apktool b` → `zipalign` → `apksigner` |
 | 破解哈希 / 加密 | cryptanalysis | identify the algorithm first (MD5 / AES / RSA / JWT) |
+| 有人做过吗 / this shape again / 白盒鉴权从哪下手 | precedent lookup | `search_cases(query=…)` → `scaffold_case(precedent=…)` → `--self-test` → run it |
 
 TODO discipline: any task with three or more steps opens a todo list before the first command, and a new case starts by clearing the old one. No list, no start.
+
+Precedent lookup is the first route for a familiar shape, not a last resort. `search_cases` ranks the 19
+shipped packages — a hit prints `- tools:` when the package ships scripts and `- full case study:` with the
+doc ids for `read_doc`. `scaffold_case` then writes those scripts plus the shared `hpkit` into the project
+and returns the exact command lines; every script answers `--self-test` against synthetic bytes it builds
+in memory, so it proves itself before anyone points it at a real sample. A precedent carries a method,
+never an authorisation — its `scope.md` still says `auth.status: pending`, and `init_task` declares the
+real scope before work starts.
 
 The plugin carries the kit's own field documents (292 knowledge-base articles, 10 manuals, 7 tool docs), so the first knowledge lookup does not depend on a running MCP server: `search_docs` matches ids, titles and topics in memory, `read_doc` returns the body as Markdown, and the panel's Documents page renders the same files. Only the MCP-backed tools (`seep_r2_*`, `seep_apk_*`, `mcp_ida_*`) need the kit.
 

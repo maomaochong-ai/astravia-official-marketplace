@@ -29,6 +29,7 @@
 		"scope.md",
 		"workitems.md",
 		"docs/method.md",
-		"docs/state-machine.md"
+		"docs/state-machine.md",
+		"docs/version-evolution.md"
 	]
 }

@@ -6,8 +6,8 @@
 被测对象：`abilities/plugins/hanshuang-pojia`，`plugin.json` **2.8.0**（实测于 2026-10-23）。
 
 相关文档：[工具链对照表（42 项逐条判定）](../reference/toolchain-parity.md)、
-[ADR 0002 外部进程桥](../adr/0002-external-process-bridge.md)、
-[ADR 0003 插件出计划、agent 执行](../adr/0003-toolchain-install-plan.md)。
+[ADR 0002 外部进程桥](../../../../../docs/adr/hanshuang-pojia/0002-external-process-bridge.md)、
+[ADR 0003 插件出计划、agent 执行](../../../../../docs/adr/hanshuang-pojia/0003-toolchain-install-plan.md)。
 
 ---
 

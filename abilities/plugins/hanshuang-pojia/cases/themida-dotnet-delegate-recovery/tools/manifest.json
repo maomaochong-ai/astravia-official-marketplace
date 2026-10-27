@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "themida-dotnet-delegate-recovery",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "metadata_inventory",
+      "entry": "metadata_inventory.py",
+      "purpose": "Inventory a managed image's metadata streams, heap sizes, table rows and compiler-generated delegate names before attempting recovery.",
+      "args": ["--sample <dll|exe>", "--out <dir>"],
+      "expect": "stream table, table row counts, delegate artefact list and heuristic reading lines, optional metadata-inventory.json",
+      "selfTest": "python3 metadata_inventory.py --self-test"
+    }
+  ],
+  "notes": "Read-only. Counts describe the metadata as shipped; a populated table stream with a tiny #Strings heap means names were stripped rather than mangled, which changes the recovery plan."
+}

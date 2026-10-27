@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	MAX_CASE_DIRECTORIES,
 	countEvidence,
+	parseAuthLog,
 	parseScope,
 	parseWorkItems,
 	rankCases,
@@ -98,6 +99,27 @@ describe("scope parsing", () => {
 	});
 });
 
+describe("authorisation log", () => {
+	it("takes the last block, and ignores a block without a status", () => {
+		const log = [
+			"# Authorisation log — demo",
+			"",
+			"## 2026-10-27T00:00:00.000Z | pending",
+			"- basis: (not provided)",
+			"",
+			"## 2026-10-27T09:00:00.000Z | granted",
+			"- basis: ticket SEC-1042",
+			"- evidence: jira/SEC-1042",
+			"",
+		].join("\n");
+		expect(parseAuthLog(log)).toMatchObject({ status: "granted", basis: "ticket SEC-1042", evidence: "jira/SEC-1042" });
+
+		// 尾部一个没有 status 的块不得把前面的授权“盖”成未授权。
+		expect(parseAuthLog(`${log}\n## 2026-10-28T00:00:00.000Z\n- basis: typo\n`).status).toBe("granted");
+		expect(parseAuthLog("")).toEqual({});
+	});
+});
+
 describe("work items and evidence counting", () => {
 	it("counts only table rows, not the prose above them", () => {
 		const items = parseWorkItems(workItemsMarkdown("demo", brief({ inScope: ["a", "b"] })));
@@ -162,6 +184,32 @@ describe("scanCases", () => {
 		expect(byName.get("stale")!.blockers).toContain("authorisation not recorded (auth_status=pending)");
 		expect(byName.get("no-sample")!.ready).toBe(false);
 		expect(byName.get("no-sample")!.blockers).toContain("offline profile needs an explicit sample");
+	});
+
+	it("opens a pending case once authorisation is appended to the log", async () => {
+		const scope = scopeMarkdown(
+			brief({ name: "late", authStatus: "pending", authBasis: undefined, networkProfile: "offline", sample: "samples/app.apk" }),
+		);
+		const pending = await scanCases(memoryPort({ "/work/cases/late/scope.md": scope }), "/work");
+		expect(pending.cases[0]!.ready).toBe(false);
+		expect(pending.cases[0]!.authStatus).toBe("pending");
+
+		// scope.md 没被重写，只有日志新增了一条；读端以日志最后一条为准。
+		const port = memoryPort({
+			"/work/cases/late/scope.md": scope,
+			"/work/cases/late/auth-log.md": [
+				"# Authorisation log — late",
+				"",
+				"## 2026-10-27T12:00:00.000Z | granted",
+				"- basis: ticket SEC-1042",
+				"",
+			].join("\n"),
+		});
+		const granted = await scanCases(port, "/work");
+		expect(granted.cases[0]!.authStatus).toBe("granted");
+		expect(granted.cases[0]!.ready).toBe(true);
+		// 范围仍来自 scope.md：授权变了，范围标签没有跟着变。
+		expect(granted.cases[0]!.inScope).toEqual(["challenge.case-one"]);
 	});
 
 	it("opens the gate again once the offline sample is written back", async () => {

@@ -33,3 +33,25 @@ from a native library or an asset blob and loaded as a DEX that never touches th
 
 SHA-256 of the APK, SHA-256 of every dumped DEX, the dump command with its wait and delay, and
 the class count you recovered versus what the loader's imports imply.
+
+## Tools
+
+- [docs/method.md](docs/method.md) - why "jadx returned a stub" is not a finding, the header check
+  that separates a real dump from a string constant, and when to stop escalating.
+
+[`tools/dex_pack_triage.py`](tools/dex_pack_triage.py) does the two readings the decision needs. It
+opens the APK as a zip, counts class and method tables in every `classes*.dex`, looks for the shell's
+own names in the string pool (`StubApp`, `libjiagu`, `AppComponentFactory`, ...), lists the native
+libraries and the oversized non-DEX entries with their entropy, and prints a band. Given `--dump`, it
+then validates the header of every recovered file - magic, `header_size`, `endian_tag`, declared
+`file_size` - and exits non-zero if one of them does not agree with itself.
+
+```bash
+cd tools
+python3 dex_pack_triage.py --self-test
+python3 dex_pack_triage.py --sample app.apk
+python3 dex_pack_triage.py --sample app.apk --dump exports/frida-dump/
+```
+
+The dump itself belongs to `frida_dump`; this tool decides whether a dump is worth taking and whether
+what came back is code. [`tools/manifest.json`](tools/manifest.json) registers it for the scaffolder.

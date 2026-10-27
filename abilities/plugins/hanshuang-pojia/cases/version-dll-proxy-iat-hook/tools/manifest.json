@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "version-dll-proxy-iat-hook",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "iat_slot_plan",
+      "entry": "iat_slot_plan.py",
+      "purpose": "Resolve the IAT slot RVA and file offset for one imported function, check whether that slot is writable, and test whether a store site of a given width fits inside a single section.",
+      "args": ["--sample <exe|dll>", "--dll <name>", "--function <name>", "--stores <rva:bytes,...>", "--proxy"],
+      "expect": "slot RVA + file offset + current value, per-store feasibility table, and proxy viability when --proxy is given",
+      "selfTest": "python3 iat_slot_plan.py --self-test"
+    }
+  ],
+  "notes": "Read-only. The index used for the slot RVA is the position inside that DLL's own thunk array, not the global import order; getting this wrong lands the hook on a neighbouring import and looks like a logic bug."
+}

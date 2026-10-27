@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "slug": "android-ssl-pin-bypass",
+  "runtime": "python",
+  "platforms": ["any"],
+  "tools": [
+    {
+      "id": "pin_surface",
+      "entry": "pin_surface.py",
+      "purpose": "Enumerate which of the five Android pinning layers a package actually declares, so a bypass targets a layer that is present instead of one that was assumed.",
+      "args": ["--sample <apk[,apk...]>"],
+      "expect": "one row per pinning layer with the entry or string that proves it, plus which layers are absent",
+      "selfTest": "python3 pin_surface.py --self-test"
+    }
+  ],
+  "notes": "Read-only and offline: it reads zip entries and manifest text, never instrumenting anything. Absent layers are reported as absent rather than guessed, because 'the bypass did nothing' is usually 'the layer was never there'."
+}

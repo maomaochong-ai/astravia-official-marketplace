@@ -1,9 +1,9 @@
 # ADR 0001：对标 seep-kit 的能力矩阵与取舍
 
 - 状态：已接受（2026-10-22）
-- 决策对象：`abilities/plugins/hanshuang-pojia`（插件，当前 2.4.0）
+- 决策对象：`abilities/plugins/hanshuang-pojia`（插件；决策时点 2.4.0，当前 2.11.0，见文末「实现核对」）
 - 参照对象：`seep-kit` 1.6.0（外部工具箱，随 `寒霜破甲工具` 分发）
-- 关联文档：[实施方案](../plans/0001-capability-parity-phases.md)、[ADR 0002](./0002-external-process-bridge.md)
+- 关联文档：[实施方案](../../../abilities/plugins/hanshuang-pojia/docs/plans/0001-capability-parity-phases.md)、[ADR 0002](./0002-external-process-bridge.md)
 
 > 后续变更：本 ADR 依据「插件不能起子进程」这一个当时未被核实的前提，把 `seep_r2_*` / `seep_apk_*`
 > 一族判为拒绝或规划。宿主实际提供了被授权的 `plugin.json#commands` + `ctx.command.run` 通道，
@@ -218,4 +218,45 @@ IDA 不在其中：它没有可脚本化的命令行契约，继续走 kit 的 M
 - `node scripts/sync-docs.mjs --check`：文档索引与磁盘一致。
 - `node scripts/analyze.mjs triage <真实样本>`：CLI 在终端跑通同一条链路。
 - 安装到桌面端后，在对话里各调一次新工具，确认工具描述、参数 schema、输出形状符合预期；
+
+## 实现核对（2026-10-27，版本 2.11.0）
+
+本文写于 2.4.0，矩阵与结论按当时的工具面记数。以下每条都从当前源码或实跑命令读出，不转抄本文自述。
+核对时点四处身份文件一致：`package.json` / `plugin.json` / `ability.json` 为 2.11.0，`.astravia/marketplace.source.json`
+的条目为 `version 2.11.0` / `configVersion 2` / `minAppVersion 0.5.60`。
+
+重跑：
+
+```bash
+cd abilities/plugins/hanshuang-pojia
+npm run check                                    # tsc --noEmit，退 0
+npm run test                                     # vitest：54 文件 / 621 例全绿
+npm run verify:generated                         # 三份生成物与源目录一致
+node scripts/check-precedent-package.mjs --all    # 19 个先例包 + 每个工具的 --self-test
+python3 -m hpkit.selftest                        # 在 cases/_shared 下跑，47/47 断言通过
+```
+
+| 决策 | 当前落点（Observed） | 结论 |
+| --- | --- | --- |
+| D1 以「面板能从字节算出什么」为口径 | §2.1 的 23 行逐行有工具落点；工具面已是 **31** 项（`src/tools/ids.ts:50` `EXPECTED_TOOL_COUNT = 31`，`src/test/tools.test.ts:108` 断言注册数与之一致）。§2.1 表外另有 `install_toolchain`（ADR 0003）、`generate_artifact`（D7 反转）、`disassemble_dex_method`（ADR 0005 G1）、`search_cases` / `scaffold_case` / `record_case_note`（ADR 0006 / 0008）、`install_astravia`、`verify_signature`、`frida_dump`、`explain_triage_finding`、`export_triage_report` | 仍成立；计数从 23 变 31 |
+| D2 移植伪代码并写明它不是什么 | `src/domain/native/pseudo.ts` 存在；`decompile_function` 的 `mode` 仍是 `full` / `fold` / `summary` 三档 | 成立 |
+| D3 语义 diff 用函数指纹 | `src/domain/native/semantic-diff.ts`；匹配状态实为四级 `same` / `constants-only` / `changed` / `renamed`（`:43`），增删单列 | 成立，分类比本文的四类更细 |
+| D4 hook 模板只做观测、不做绕过 | **已被实现反转**：`generate_hook` 现提供 `observe`（默认）/ `override`（等同上游 after）/ `replace`（等同上游 before 短路），见 `src/domain/android/hook-template.ts:4-11`；改写需显式给 `return_value` 并过 `assertReturnExpression` 窄校验。**无 ADR 记录这次反转** | 不成立（缺口：需一条新 ADR 或明确撤回） |
+| D5 目录级批量 triage 走宿主文件 API | `src/domain/batch.ts:105` 调 `fs.listFilesRecursive(root, { ignoredDirectories: ["build", "release"] })`；工具入口 `src/tools/native/triage-directory.ts` 只做参数与文案 | 成立（实现下沉到 `domain/batch.ts`） |
+| D6 一个真能跑的 CLI | `src/cli/analyze.ts:33` `COMMANDS` 为 9 项：`triage` / `strings` / `symbols` / `disasm` / `asm` / `decompile` / `diff` / `hook` / `docs` | 成立；比本文多一个 `asm` |
+| D7 防拒中继拒绝、脚手架接受（0.3.11 反转） | `generate_artifact` 在 `TOOL_IDS` 内；`scripts/compliance-relay`、`probe-refusal.py` 仍不随包 | 成立 |
+| D8 不内置 jadx / apktool / IDA，声明式外挂 | `plugin.json#commands` 已 **14** 项（不是本文写的八个）：`r2`/`rabin2`/`radiff2`/`rasm2`/`rahash2`/`rax2`/`jadx`/`apktool`/`java`/`adb`/`apksigner`/`zipalign`/`frida`/`frida-ps`；单一来源 `src/domain/toolchain/catalog.ts:415` | 成立；数量由 [ADR 0003](./0003-toolchain-install-plan.md) §4 扩到 14 |
+| D9 技能库保持为文档资产、不注册进 `skillPaths` | **已被实现反转**：`plugin.json` 声明 `agent.skillPaths = ["agent/skills"]`，9 个 `SKILL.md` 目录随宿主扫描，`skillPresentation` 逐个给可见面；守卫 `src/test/skill-library.test.ts:20-41`（171 文件 / 2,481,555 字节、清单 `agent/prompts/skill-library.sha256`）。库位置也从本文写的 `agent/prompts/skill-library/` 移到 `agent/skills/`。**无 ADR 记录这次反转** | 不成立（缺口） |
+| D10 参考文档改名，`SKILL.md` 不删 | `agent/skills/hanshuang-pojia/references/plugin-handbook.md` 存在 | 成立；但该文件 `:410` 仍写「deliberately not registered in skillPaths」，与 D9 的现状相反，属文档漂移 |
+| D11 自检对齐结构不抄检查项 | `src/features/workbench/services/health.ts:103-104` 用 `EXPECTED_TOOL_COUNT` 判注册表完整性 | 成立 |
+| D12 版本按 patch 递增、发布走 CI | 2.4.0 → 2.11.0；`configVersion` 2；`dist/` 未跟踪 | 成立 |
+| §2.1 row 1 八条 `--version` 探针 | 探针实为 **14** 项（`src/domain/toolchain/catalog.ts:119` `TOOLCHAIN`，与 `commands` 逐项一致） | 计数已变 |
+| §2.1 row 17 文档 309 篇 | 实测 340 篇：`kb` 292 / `manual` 11 / `kit-docs` 7 / `cases` 30（按 `src/content/docs/<group>/**/*.md` 计） | 计数已变 |
+| §2.2 技能库 9 组件 / 165 文件 | 现 171 文件 / 2,481,555 字节（`src/test/skill-library.test.ts:20-21`），上游 `ida-reverse` 已由 `safe-skills/ida-reverse` 取代 | 计数已变 |
+| §2.3 `Tool/cases/` 14 案不随包 | 仍不搬二进制；但**文本**已由 ADR 0006 / 0007 / 0008 落地为 19 个先例包 + 30 篇案例原文 | 部分反转（文本收、制品不收），见 ADR 0007 D2 |
+| §4 新增工具面 10 → 18 → 20 → 23 | 现 31（见 D1 行） | 计数已变 |
+| §5 验证项 | `npm run check` / `npm run test` / `npm run build` / `node scripts/sync-docs.mjs --check` 均仍可跑；`sync-docs.mjs --check` 已并入 `npm run verify:generated`（该校验的是语言包，不是文档索引；文档索引由 `check:cases` 与 `verify:generated` 分头守） | 成立，命令入口有调整 |
+
+两个需要处理的缺口：D4 与 D9 的现状与本文相反，且都由实现单方面推进、没有留下决策记录。按本目录的约定，反转应另立 ADR 并在此注明取代关系；补写之前，读到 D4 / D9 的人应以下表的现状为准，而不是按本文执行。
+
   另需在没有安装 r2 / jadx 的机器上确认 `probe_environment` 给出的是安装提示，而不是泛化错误。

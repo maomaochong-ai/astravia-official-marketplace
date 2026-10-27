@@ -86,3 +86,28 @@ for a JVM target ([`java-agent-dll-hijack`](../java-agent-dll-hijack/README.md))
 - [docs/protection-layers.md](docs/protection-layers.md) — the algorithms: section keystream, the RSA/positional
   two-layer VM container, the name-as-offset tokenisation, the custom cipher.
 - Document library `cases/eazfuscator-vm-minimal-patch/` — the full walkthrough this digest came from.
+
+## Tools
+
+`tools/branch_density.py` ranks executable windows by control-flow density. The two-byte patch
+this case ends with is only findable after the dispatcher is located, and the dispatcher is
+whichever region carries the most branches per byte.
+
+```bash
+python3 tools/branch_density.py --sample packed.exe
+python3 tools/branch_density.py --sample packed.exe --window 512 --top 20
+python3 tools/branch_density.py --self-test
+```
+
+Per section it reports window count, branch count and branches per 100 bytes; then the
+densest windows with their RVA and a breakdown of conditional jumps, direct calls and
+indirect jumps. The `reading (heuristic)` block says what a cluster *could* be and refuses to
+name the obfuscator.
+
+The measurement is a byte scan, not an instruction-aligned sweep, so opcodes that sit inside
+immediates are counted too. That inflates data-heavy regions, which is why raw counts are
+printed beside the density and why the output is a ranking rather than a branch census.
+
+`--self-test` plants a dense block of conditional jumps at a known RVA in a synthetic image
+and asserts the winning window covers it, that a sparse image scores far lower, and that the
+opcode counters agree on hand-written byte strings.

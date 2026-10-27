@@ -129,6 +129,7 @@ describe("agent tools", () => {
 			"read_doc",
 			"record_case_note",
 			"run_radare",
+			"scaffold_case",
 			"scan_binary_strings",
 			"search_cases",
 			"search_dex_symbols",

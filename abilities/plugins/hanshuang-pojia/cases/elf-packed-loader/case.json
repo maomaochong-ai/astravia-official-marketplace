@@ -6,5 +6,6 @@
 	"signals": ["high entropy .text", "upx", "packed", "stub", "mmap RWX", "stripped elf", "self-extract"],
 	"preset": "offline-sample",
 	"fieldNotes": ["kb/field_journal_seed-001_elf-packed-loader", "kb/re_pattern_elf-analysis"],
+	"caseDocs": ["cases/elf-packed-loader/loader-or-programme"],
 	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
 }

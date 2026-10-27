@@ -1,9 +1,9 @@
 # ADR 0003：按目标补齐工具链——插件出计划，agent 执行
 
 - 状态：已接受（2026-10-23）
-- 决策对象：`abilities/plugins/hanshuang-pojia`（2.4.5 → 2.5.0）
+- 决策对象：`abilities/plugins/hanshuang-pojia`（2.4.5 → 2.5.0；当前 2.11.0，见文末「实现核对」）
 - 参照对象：`hanshuang-pojia` 2.0 便携版的 `seep-kit/setup/repair-tools.ps1` + `Tool/docs/tool-index.json`（42 项工具）
-- 关联文档：[ADR 0002](./0002-external-process-bridge.md)、[工具链对照表](../reference/toolchain-parity.md)
+- 关联文档：[ADR 0002](./0002-external-process-bridge.md)、[工具链对照表](../../../abilities/plugins/hanshuang-pojia/docs/reference/toolchain-parity.md)
 
 ## 1. 问题
 
@@ -74,7 +74,7 @@ handler 做三件事，然后返回文本：
 
 2.0 的 42 项里，MCP 类（`ida-pro-mcp` / `r2mcp` / `jshookmcp` / `reqable-mcp` / `xquik-mcp` / `pentestswarm` /
 `agent-browser` / `playwright`）不在插件的能力范围内：它们要 MCP 注册，不是可执行文件。逐项对照见
-[工具链对照表](../reference/toolchain-parity.md)。
+[工具链对照表](../../../abilities/plugins/hanshuang-pojia/docs/reference/toolchain-parity.md)。
 
 `TOOLCHAIN` 一扩，`COMMANDS` 自动跟着变，`plugin.json#commands` 由 `toolchain.test.ts:56` 的
 `expect(manifest.commands).toEqual([...COMMANDS])` 强制同步 —— 这是扩表的唯一"代价"，也是护住声明与使用
@@ -89,3 +89,35 @@ handler 做三件事，然后返回文本：
   失败由 `probe_environment` 兜底：装完没生效，报告立刻说没有，不会假装成功。
 - **没做的：** 不做镜像回退（2.0 的 `ghproxy.net` / `gh-proxy.com`）—— 那需要插件自己下载文件，正是本文
   第 2 节否决的路径。国内网络下用户可能要自己换源。
+
+## 实现核对（2026-10-27，版本 2.11.0）
+
+“插件出计划、agent 执行”的边界在 2.11.0 原封未动：插件仍不下载、不解包、不起安装进程，`install_toolchain`
+只回命令表。
+
+重跑：
+
+```bash
+cd abilities/plugins/hanshuang-pojia
+npm run test                                       # 含 src/test/toolchain.test.ts
+npm run check
+grep -n "export const TOOLCHAIN\|export const COMPANIONS\|export const COMMANDS" src/domain/toolchain/catalog.ts
+node -e "console.log(require('./plugin.json').commands.length)"   # 14
+```
+
+| 决策 | 当前落点（Observed） | 结论 |
+| --- | --- | --- |
+| §2 四条否决（插件自己下载 / 自己解包 / 自己起安装器 / 拿镜像回退） | `src/tools/env/install-toolchain.ts` 只返回 `commands` 字符串数组；仓库内无 download / unzip / `spawn` 安装路径 | 成立 |
+| 三步：探 → 筛 → 映射平台 | `probe_environment`（`refresh` 绕一分钟缓存，见 `src/domain/toolchain/probe.ts`）→ `TOOLCHAIN` 按 `goal` 筛 → 每条 `recipe` 给三平台命令 | 成立 |
+| `blocked ≠ missing` | `probe.ts:105` `BLOCKED_PATTERN.test(msg) && !NOT_FOUND_PATTERN.test(msg)`；两个正则分别在 `:50` / `:52` | 成立，且把 `ENOENT` 归回“未安装” |
+| `TOOLCHAIN` **14 项**进 `commands` | `src/domain/toolchain/catalog.ts:119` 起，14 个条目：`r2`/`rabin2`/`radiff2`/`rasm2`/`rahash2`/`rax2`/`jadx`/`apktool`/`java`/`adb`/`apksigner`/`zipalign`/`frida`/`frida-ps` | 成立，与本文一致 |
+| `install_toolchain({ goal, sample, refresh })` 入参 | `Goal = "apk" \| "native" \| "firmware" \| "dynamic" \| "full"`（`catalog.ts:66`），`sample` 只用于推导 `goal` | 成立 |
+| `commands` 由 `TOOLCHAIN` 派生 | `catalog.ts:415` `TOOLCHAIN.map(spec => spec.binary)`；`src/test/toolchain.test.ts:57` 与 `plugin.json` 对账 | 成立 |
+| 对话侧 “install” 动作把执行责任交给 agent | `src/features/workbench/prompts.ts:133` 起的 install 文案：逐条跑、遇 sudo 先问、装完用 `refresh=true` 复探 | 成立 |
+| 42 项上游工具、8 个 MCP 类不在范围 | `docs/reference/toolchain-parity.md` 仍在（5 KB）；42 这个数字属于上游工具目录，可直接对照 `agent/prompts` 下的 `tool-index.json`（`verify:generated` 报 `tool index ok: 42 entries`） | 成立 |
+| §5 “老用户需逐项勾权限” | 引的是宿主侧 `plugin-package.ts:170-177`（不在本仓库，**未核**） | Assumed，保留原文 |
+| §5 “不做镜像回退” | 仓库内无 `ghproxy` / 镜像源常量 | 成立 |
+
+补充一个从代码读出的入参细节：`goal` 与 `sample` 两个都是可选，`input.goal ?? inferGoal(input.sample)`（`src/tools/env/install-toolchain.ts:52`），
+所以“只给样本路径”也能出计划；两个都不给时 `inferGoal` 返回 `"full"`（`src/domain/toolchain/install.ts:73`），即列全 14 项。
+

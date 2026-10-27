@@ -95,7 +95,7 @@ A new page must be registered in four places or it silently degrades: `state.ts`
 | container facts, symbols, entry point, linear disassembly | the panel, in-process | `src/domain/native/` parses the sample bytes directly — no MCP, no IPC, no kit |
 | per-function CFG, xref index, three-density listing | the panel, in-process | `cfg.ts` / `xref.ts` / `deep.ts` built on the same decoder |
 | rules, secrets, entropy, strings, report export | the panel, in-process | pure functions in `src/domain/` |
-| bundled field documents (334) | the panel, in-process | `import.meta.glob` over `src/content/docs/` |
+| bundled field documents (340) | the panel, in-process | `import.meta.glob` over `src/content/docs/` |
 | C-like pseudocode | the kit, through MCP | `seep_r2_decompile` — deliberately not reimplemented |
 | APK / DEX decompile, unpack, smali search, hook scaffold | the kit, through MCP | `seep_apk_*` |
 | binary diff against another build | the panel for byte diff; the kit for semantic diff | `diff.ts` versus `seep_r2_diff` |
@@ -211,9 +211,9 @@ plugin's renderer. Everything the panel shows is computed from bytes it read its
 | `kb` | 292 | the kit's `Tool/mcp/Tool/reverselab/kb/` — technique articles |
 | `manual` | 11 | the kit's `MANUAL/` — deployment, unpacking, anti-debug, PoC validation, cross-platform, panel handbook |
 | `kit-docs` | 7 | the kit's `Tool/docs/` — toolkit guide, MCP setup, provenance, workspace rules |
-| `cases` | 24 | the kit's `Tool/cases/` — the full case studies behind the precedent packages |
+| `cases` | 30 | the kit's `Tool/cases/` — the full case studies behind the precedent packages |
 
-334 files total. `scripts/sync-docs.mjs` regenerates `index.json` (id, title, group, topic, size)
+340 files total. `scripts/sync-docs.mjs` regenerates `index.json` (id, title, group, topic, size)
 and `docs.sha256`; `--check` verifies both, and it is part of the release chain. The renderer is
 `services/markdown.ts` — about 200 lines, no third-party markdown dependency, no HTML passthrough,
 `SAFE_HREF` limited to `http(s)://`, `mailto:`, `#`, `/`, `./`, `../`.
@@ -224,6 +224,35 @@ agent tools (`search_docs` matches titles/ids/topics only; `read_doc` reads a bo
 
 `Tool/docs/tool-index.json` from the kit is intentionally not bundled: it indexes the kit's own
 tool installation, which the panel cannot verify.
+
+### 6.1 Precedent packages and their runnable tools
+
+`cases/<slug>/` at the plugin root is not documentation: it is the package a case is recorded in, and —
+since each one carries `tools/` — it is also the part that runs.
+
+| Part | Answers |
+|---|---|
+| `case.json`, `scope.md`, `workitems.md`, `docs/method.md` | what was decided, and why |
+| `tools/manifest.json` + `tools/*.py` | how to run the same checks against a new target |
+| `src/content/docs/cases/<slug>/*.md` | the full write-up, one file per source case |
+
+Discovery is explicit, not incidental. Three routes live in `SYSTEM.md` and `SKILL.md`:
+
+1. `search_cases(query=…)` ranks the 19 shipped packages. A hit prints `- tools:` when the package
+   ships scripts and `- full case study:` with the doc ids to `read_doc`.
+2. `scaffold_case(precedent=<slug>)` writes `tools/` plus the shared `hpkit` into the project and
+   returns the exact command lines. It writes files only — nothing is executed.
+3. Every tool answers `--self-test` against synthetic bytes built in memory, so
+   `python3 tools/<entry>.py --self-test` exits 0 before anyone points it at a real sample.
+
+The scripts are Python 3 standard library only (3.9+, ASCII, `ASTRAVIA_PYTHON` overrides the
+interpreter), because they have to run where nothing is installed. `cases/_shared/hpkit/` holds the six
+primitives they share: `cli` (option parsing, report rendering, exit codes), `pe` (PE/ELF sections and
+data directories), `scan` (AOB patterns), `patch` (patch tables, apply, restore, range diff), `dex`
+(DEX/APK string and method tables) and `fixtures` (the synthetic samples the self tests use).
+
+`scripts/check-precedent-package.mjs --all` runs every tool's self test and fails the release chain if
+one is red; `--no-tools` skips that step for generator runs, which must stay pure.
 
 ---
 
@@ -305,7 +334,7 @@ bundled and nothing is installed for you.
 
 | Need | In the plugin, no external tool | Needs `r2` / `rabin2` / `radiff2` / `rasm2` / `jadx` / `apktool` | Only the kit adds |
 |---|---|---|---|
-| method lookup, documents | `search_docs` / `read_doc` over the 334 bundled documents (the payload-seed list is one of them) | — | `seep_kb_payloads` as a tool: no `category` slicing, never an assembled payload |
+| method lookup, documents | `search_docs` / `read_doc` over the 340 bundled documents (the payload-seed list is one of them) | — | `seep_kb_payloads` as a tool: no `category` slicing, never an assembled payload |
 | strings, wide strings, secret patterns | `scan_binary_strings`, Strings page | `run_radare operation=strings all_sections=true` (`rabin2 -zz`) | — |
 | symbols, exports, entry point | `list_code_symbols` (in-process ELF/PE/Mach-O / DEX tables) | `run_radare operation=functions` (r2 function list; `info` for the header fields) | `mcp_ida_*` |
 | disassembly, function list, CFG, xrefs | `disassemble_range` + the self-built engine | `run_radare operation=disasm/functions/xrefs`, `full`/`fold`/`summary` | — |
@@ -314,7 +343,7 @@ bundled and nothing is installed for you.
 | two builds compared | `diff_binaries` (bytes), `diff_functions` (instruction shape) | `run_radare operation=diff` (`radiff2 -C` code / `-x` hex / `-s` stats via `diff_mode`) | — |
 | APK facts, decompile, unpack, smali | `search_dex_symbols`, `decompile_android operation=smali_search` | `decompile_android operation=decompile/unpack` (jadx / apktool into a sibling directory) | — |
 | Frida hook scaffold | `generate_hook` (observation only) | — | `seep_apk_gen_hook` (kit's own variant) |
-| method lookup, documents | `search_docs` / `read_doc` over the 334 bundled documents | — | `seep_kb_payloads` — deliberately not ported |
+| method lookup, documents | `search_docs` / `read_doc` over the 340 bundled documents | — | `seep_kb_payloads` — deliberately not ported |
 | case scaffold, risk score, report | `init_task`, `triage_binary`, `triage_directory`, `explain_triage_finding`, `export_triage_report`, `write_assessment_report` | — | `seep_auto_triage` (kit's Python walker), `seep_gen_security_report` |
 | which tools are even present | `probe_environment` (`✓` / `✗` / `!` per binary, with install hints) | — | — |
 
@@ -355,7 +384,7 @@ Never report "deployed" from an installer exit code; the board is the evidence.
 ```bash
 /usr/local/bin/node ./node_modules/typescript/bin/tsc --noEmit -p tsconfig.json
 /usr/local/bin/node ./node_modules/vitest/vitest.mjs run
-/usr/local/bin/node scripts/sync-docs.mjs --check      # docs index ok: 334 documents
+/usr/local/bin/node scripts/sync-docs.mjs --check      # docs index ok: 340 documents
 ```
 
 The plugin chain no longer stages a user-level document: `plugin.json` declares no `promptPaths`, so

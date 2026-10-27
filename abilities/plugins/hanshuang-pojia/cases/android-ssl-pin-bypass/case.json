@@ -9,5 +9,6 @@
 		"kb/field_journal_seed-008_apk-okhttp-ssl-pin-bypass",
 		"kb/field_journal_2026-08-01_pentest-encryption-oracle-public-template-sql-admin-takeover"
 	],
+	"caseDocs": ["cases/android-ssl-pin-bypass/pinning-layers"],
 	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
 }
