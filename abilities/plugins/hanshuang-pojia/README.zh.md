@@ -51,7 +51,7 @@
 | `generate_hook` | 为命中的 Dalvik 方法生成 Frida 脚本：`observe` 只打日志（默认）、`override` 跑完原方法再返回 `return_value`、`replace` 不跑原方法 |
 | `frida_dump` | 加壳样本的运行时 dex 抽取：出扫描脚本、真机跑、或把日志拼回 `.dex` 文件 |
 | `triage_directory` | 目录下所有二进制的风险表，最差的排最前 |
-| `search_docs` | 在 334 篇随包文档里按标题 / id / 主题检索 |
+| `search_docs` | 在 340 篇随包文档里按标题 / id / 主题检索 |
 | `read_doc` | 读一篇文档正文（Markdown），超预算时明确标识截断位置 |
 | `probe_environment` | 探测已声明的可执行文件是否真能跑，给出各自版本横幅，并区分「宿主拒绝」与「未安装」 |
 | `install_toolchain` | 按目标筛出真正要装的那几个工具，给出本平台的准确安装命令 |
@@ -65,11 +65,12 @@
 | `init_task` | 单个目标的案件目录：`samples/`、`exports/`、`reports/`、README 与报告模板 |
 | `search_cases` | 19 个随包先例包与你自己的案例，两条道分开排名：可以复制的方法，不是可以继承的授权 |
 | `record_case_note` | 往当前案件追加决策、blocker 或交付物记录 |
+| `scaffold_case` | 把先例包的 `tools/` 与共享 `hpkit` 落盘到项目里，并给出确切命令行——只写文件，不执行 |
 | `write_assessment_report` | 把四段式评估报告填进 `reports/<目标>_security_assessment_report.md`；没给的段落就写「未提供」 |
 | `generate_artifact` | 针对你定位到的裁决点，出补丁 / keygen / 代理 DLL / 验证工装的骨架 |
 | `install_astravia` | 生成注入全局 `AGENTS.md` 的指令块，交给保存对话框 |
 
-三十个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
+三十一个工具都显式声明 `scope_use`（fail-closed），并且只通过宿主 `fs` 访问工作区。样本用 `fs.readBinaryFile` 读取，上限对齐宿主自己的 32 MiB 二进制读取天花板。更大或位于项目外的样本交给对话里的 Agent，它用的是应用自身的文件权限。
 
 几个分析工具把「返回什么」说清楚：伪代码没有类型恢复、没有 SSA、不做变量合并；函数级比对是指令形状
 指纹，不是等价性证明；hook 模板默认只观测并原样返回。最后一条是默认值而不是天花板 —— `mode`
@@ -114,7 +115,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 | 权限 | 原因 |
 | --- | --- |
 | `ui.slot.activity-tab` | 工作台面板 |
-| `agent.tools.register`、`agent.toolHandler.execute` | 三十个工具 |
+| `agent.tools.register`、`agent.toolHandler.execute` | 三十一个工具 |
 | `agent.command.run` | `probe_environment`、`install_toolchain`、`run_radare`、`decompile_android`、`verify_signature`、`frida_dump`：使用 `commands` 里声明的十四个可执行文件，每个都需用户授权 |
 | `agent.session.write` | 工具结果写回对话、面板的「发给对话」按钮 |
 | `agent.session.read` | 面板显示对话实时状态（本轮是否在跑、哪个工具在跑） |
@@ -208,23 +209,29 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 | --- | --- | --- |
 | 你自己的案例 | 工作区 `cases/<slug>/`，由 `init_task` 建 | 一个目标的样本、导出、报告，加上决策日记 |
 | 随包先例 | 本仓库 `cases/<slug>/`，构建期内联 | 19 个方法级包：闸门在哪、怎么确认、什么被证伪 |
-| 完整战例 | `src/content/docs/cases/<slug>/` | 24 篇长文：补丁表、RVA 地图、协议字段布局 |
+| 完整战例 | `src/content/docs/cases/<slug>/` | 30 篇长文：补丁表、RVA 地图、协议字段布局 |
 
 一个先例包是四份规范文档加可选补充：`scope.md`（范围内外）、`workitems.md`（8–12 项，第一项恒为
 “Establish scope and auth”）、`docs/method.md`（手法）、`README.md`。`docs/patches.md` 这类补充文档装
 那些会把 method 撑爆的表。`scripts/sync-precedents.mjs` 把全部内容内联进
-`src/domain/case/precedents.generated.ts`，所以 `.astraviapkg` 从不带 `cases/` 目录——挡在构建前的
-是 `node scripts/check-precedent-package.mjs --all`。
+`src/domain/case/precedents.generated.ts`，所以 `.astraviapkg` 不带 `cases/` 源码目录——只带发布出去的
+工具文件（`dist/assets/cases/`）——挡在构建前的是 `npm run check:cases`。
+
+每个包还带一个 `tools/`：`manifest.json` 加若干 Python 脚本，把当时機检得出来的环节真的再算一遍。
+脚本不在磁盘上就跑不了，所以它们以真实文件发布（而非内联），`scaffold_case` 把一个包的 `tools/`
+连同共享 `hpkit` 拷进你的工作区并给出命令行。每个工具都能 `--self-test`：用内存里现造的合成样本来
+自证，退出码 0 之后才值得指上真样本。
 
 语料派生自上游 `seep-kit` 2.0 的 `Tool/cases/`。过线的是：偏移、RVA、AOB 特征码、补丁字节、协议
-字段、算法常量；不过线的是：样本字节、二进制、密钥、盐、端点、真实产品名。规则与理由在 ADR 006 与
-007。
+字段、算法常量；不过线的是：样本字节、二进制、密钥、盐、端点、真实产品名。规则与理由在 ADR 0006 与
+0007。
 
 ## 目录
 
 ```text
 cases/                             # 19 个先例包：只有源码，构建期内联，从不随包
-docs/                              # 工程文档：README.md 索引 + adr/ contract/ reference/ audits/ plans/
+docs/                              # 工程文档：README.md 索引 + contract/ reference/ audits/ plans/
+                                   # ADR 在仓库根：docs/adr/hanshuang-pojia/
 agent/
 ├── skills/                          # 九个 SKILL.md 目录，经 skillPaths 注册
 │   ├── hanshuang-pojia/             # 宿主在对话区列出的主技能，含 references/
@@ -290,7 +297,7 @@ src/
 更深的二次核验仍然交给 `disassemble_range` 工具；这一页的意义是不用花一个回合就能看到清单。
 
 文档页把工具包自带的实战资料直接放进面板：随插件逐字节发布的 292 篇知识库文章、11 篇手册、
-7 篇工具文档和 24 篇案例原文，标题检索在内存里即时完成，正文检索按需跨 334 篇文件扫描。每篇正文
+7 篇工具文档和 30 篇案例原文，标题检索在内存里即时完成，正文检索按需跨 340 篇文件扫描。每篇正文
 都是一个独立的构建 chunk，所以打开文档页的代价是一篇，而不是 4 MB。同一批文档在对话里也能通过
 `search_docs` 与 `read_doc` 拿到 —— Agent 引用的那一篇和屏幕上显示的那一篇是同一个文件。
 
@@ -328,7 +335,7 @@ node scripts/marketplace.mjs build
 node --test tests/*.test.mjs
 ```
 
-`src/content/docs/` 下 334 篇随包文档的索引由 `scripts/sync-docs.mjs` 生成：新增或修改文档后不带 `--check` 跑一次，CI 里则保留 `--check`。文档按需切成独立 chunk，没点开的文章不产生下载。
+`src/content/docs/` 下 340 篇随包文档的索引由 `scripts/sync-docs.mjs` 生成：新增或修改文档后不带 `--check` 跑一次，CI 里则保留 `--check`。文档按需切成独立 chunk，没点开的文章不产生下载。
 
 ## 实现深度
 
