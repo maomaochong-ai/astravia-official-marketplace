@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { readJsonFile, writeJsonFile } from "@astravia-org/plugin-sdk";
 import type { ConversationScenario, Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { KERNEL_BLOCK_ID, KERNEL_PRIORITY, buildKernelBlock } from "../domain/kernel";
@@ -149,9 +148,11 @@ function promptContexts(prompt: string): string[] {
 	// 第 0 级：先看对象能不能被用户持有。命中就整轮改道，不再走改写 ——
 	// 对一个不属于用户的账号改句型，改的是包装，不是目标。
 	//
-	// `pathExists` 把「点了自有文件」这条否决项交给磁盘：字符串像路径不算数，
-	// 否则任何请求加一个文件名就能从 OUT 翻回 IN（`./aa` 以前就够用）。
-	const decision = routeScope(prompt, { pathExists: existsSync });
+	// 判定只用字符串形状，不读盘：插件跑在浏览器沙箱里，`node:fs` 会被 vite 外置成
+	// `__vite-browser-external`，构建期直接失败（PR #44 的 CI 就卡在这里）。
+	// 代价是「磁盘上真的存在」退化成「形状像自有制品」——`isHoldablePath` 仍要求已知
+	// 后缀或 ≥ 3 段路径，`./aa` 这种靠加文件名翻回 IN 的写法依然过不去。
+	const decision = routeScope(prompt);
 	const scope = buildScopeContext(decision);
 	if (decision.evidence.length > 0) logScopeDecision(decision, prompt);
 	if (scope) {
