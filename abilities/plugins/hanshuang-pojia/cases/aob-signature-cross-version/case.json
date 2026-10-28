@@ -17,17 +17,23 @@
 		"fail-closed"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/aob-signature-cross-version/reverse-engineering",
 		"cases/aob-signature-cross-version/patch-table"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目D" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目D"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/signatures.md",
 		"docs/patch-table.md",
 		"docs/pipeline.md"

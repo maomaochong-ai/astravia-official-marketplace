@@ -1,3 +1,10 @@
+/**
+ * 原生镜像的审计指标：节区熵、最热节区、整文件熵。
+ *
+ * `overallEntropy()` 是唯一实现：曾经在三处内联同一表达式，改一处就漂一份。
+ * 新增指标也放这里，不要回到调用点再写一遍。
+ */
+
 import { finding, type Finding } from "../audit/findings";
 import { indexOfAscii } from "../bytes";
 import { entropyOfRange } from "../entropy";

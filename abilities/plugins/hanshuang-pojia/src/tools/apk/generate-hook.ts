@@ -1,3 +1,10 @@
+/**
+ * generate_hook：从 DEX 索引生成可跑的 Frida 脚本。
+ *
+ * 三档 mode 的语义固定：observe 只打印、override 跑完替换返回值、replace 不跑原方法。
+ * 脚本来自磁盘上的索引，不加载到设备、不做语法预检——命令写在返回值里。
+ */
+
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { looksLikeDex } from "../../domain/android/dex";
 import { dexStrings, indexDex, searchDex, type DexSearchKind } from "../../domain/android/dex-index";

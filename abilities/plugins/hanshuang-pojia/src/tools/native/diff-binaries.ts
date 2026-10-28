@@ -1,3 +1,10 @@
+/**
+ * `diff_binaries`：原始字节比对，回答「这两个构建差在哪」。
+ *
+ * 只比字节：不做节区感知、重定位感知或语义比对，也不解释某个字节变了意味着什么。
+ * 相同字节的连续段会折叠成 hunk，所以 20 MiB 安装包里改一处校验只会出一两个块。
+ * 不写盘、不打补丁、不执行样本。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { diffBytes } from "../../domain/diff";
 import { loadSample } from "../lib/read-sample";

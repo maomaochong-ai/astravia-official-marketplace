@@ -13,10 +13,13 @@ export const CASE_PRESETS = ["offline-sample", "ctf-public", "own-system"];
 
 /**
  * 每份先例都必须能被人按顺序读完的四份文档。
+ * `README.md` / `scope.md` 说这个包打过什么仗，`docs/method.md` 是做法，
+ * `docs/defense.md` 是同一件事在防守侧要改成什么样 —— 一份只讲怎么打的先例，
+ * 读到的人只会照抄，不会判断该不该照抄。
  * 之后的文档是案例专属的深读材料（补丁全表、算法、脚本说明），
  * 允许追加，但只追加在第四份之后 —— 顺序本身是阅读协议的一部分。
  */
-export const CANONICAL_DOCS = ["README.md", "scope.md", "workitems.md", "docs/method.md"];
+export const CANONICAL_DOCS = ["README.md", "scope.md", "docs/method.md", "docs/defense.md"];
 
 /** 先例包不得携带样本与制品；只收文本。 */
 const FORBIDDEN_FILE = /\.(exe|dll|so|dylib|bin|apk|apks|aab|ipa|zip|7z|rar|pkg|jar|class|pyc|db|img|sys|o|a|lib|msi|scr|png|jpg|jpeg|gif|webp|ico|pdf)$/i;

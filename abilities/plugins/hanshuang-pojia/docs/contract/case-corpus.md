@@ -10,7 +10,6 @@ cases/<slug>/                              先例包：方法摘要（英文）
 ├── case.json
 ├── README.md
 ├── scope.md
-├── workitems.md
 ├── docs/method.md
 └── docs/<topic>.md                        可选，案例专属
 
@@ -32,7 +31,7 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
 	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
 	"caseDocs": ["cases/<slug>/<topic>"],
 	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目X" },
-	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md", "docs/<topic>.md"]
+	"docs": ["README.md", "scope.md", "docs/method.md", "docs/<topic>.md"]
 }
 ```
 
@@ -41,7 +40,7 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
   `kb/field_journal_precedent-reverse` 是最常用的两条）。
 - `caseDocs`：文档库 id，**必须**与 `src/content/docs/cases/<slug>/` 下的文件名对应。
 - `source.entry` 用上游目录名（`项目A`…`项目N`），这是溯源，不是展示名。
-- `docs`：前四项固定且顺序不变，之后可追加本案例专属文档。
+- `docs`：前三项固定且顺序不变，之后可追加本案例专属文档。
 
 ## 2. 四份规范文档写什么
 
@@ -53,18 +52,20 @@ src/content/docs/cases/<slug>/<topic>.md   案例原文（中文，1–3 篇）
 - `## Evidence this package expects you to produce`：读者最后必须拿得出的东西。
 - 末尾 `## Reading further` 指回 `docs/` 与 `caseDocs`。
 
-**`scope.md` — 九节模板，授权恒为 pending**
+**`scope.md` — 八节模板，授权恒为 pending**
 
 照抄 `cases/cardkey-online-runtime-patch/scope.md` 的结构（`## meta` `## auth` `## in_scope`
 `## out_of_scope` `## network_profile` `## deliverables` `## constraints` `## signoff` `## ops_refs`），
-必含 `- status: pending` 与 `- ready_for_act: false`。`hint` 一行写清这个形状的关键判据。
+必含 `- status: pending`。**不要写任何门禁字段**（`ready_for_act`、`MUST NOT proceed`、`blockers`）：
+它们对应的代码已经删除，照抄进工作区只会让读的人以为还有一道门。`hint` 一行写清这个形状的关键判据。
 `network_profile.mode` 按 preset 取 `offline`（`offline-sample`）/ `unrestricted_lab`（`ctf-public`）/
 `offline`（`own-system`）。
 
-**`workitems.md` — 八列 WI 表 + 覆盖清单**
+**`workitems.md` — 历史语料，新包不必再写**
 
-`| ID | title | role | targets | surface | status | evidence | notes |`，8–12 行，`WI-001` 恒为
-「Establish scope and auth」。`## Coverage` 与 `## Refs` 照模板保留。
+早期包带着上游那张八列 WI 表（`| ID | title | role | targets | surface | status | evidence | notes |`）。
+2.14.0 起 `init_task` 不再生成这张表，也不再读它：一份要人手工维护的台账只会变成第二份过期记录，
+进度由 `timeline.md` 和助手的计划工具承担。已有包保留原文件作历史，**新包不要写**。
 
 **`docs/method.md` — 顺序、判据、不该做什么**
 

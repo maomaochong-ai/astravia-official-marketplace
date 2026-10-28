@@ -1,3 +1,10 @@
+/**
+ * ZIP / APK 容器的只读索引：中央目录、条目查找、按需解出单个条目。
+ *
+ * 不整包解压。条目名用 decodeUtf8 归一，路径穿越在读取阶段就被拒绝——
+ * 上层拿到的一定是「包内相对路径 + 字节」，不是任意的文件系统位置。
+ */
+
 import { decodeUtf8, u16, u32, u64 } from "../bytes";
 
 export interface ZipEntry {

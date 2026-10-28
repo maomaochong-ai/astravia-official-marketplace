@@ -1,3 +1,10 @@
+/**
+ * PE（exe / dll / sys）头与节区解析。
+ *
+ * 只读文件里的结构，不加载、不重定位、不执行。异常输入一律返回 failed(...)，
+ * 不用异常中断整轮体检——一个坏文件不该让目录体检整批失败。
+ */
+
 import { cstring, u16, u32, u64 } from "../bytes";
 import { entropyOfRange } from "../entropy";
 import { describeError, failed, parsed, PE_MACHINES, type NativeFacts, type NativeImportGroup, type NativeSection, type Parsed } from "./types";

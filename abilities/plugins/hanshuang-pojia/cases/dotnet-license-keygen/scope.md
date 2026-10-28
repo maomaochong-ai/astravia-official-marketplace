@@ -1,9 +1,9 @@
 # Case Scope — dotnet-license-keygen (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: the work ends with a key
-that unlocks a paid capability, so authorisation has to be recorded before any of it happens.
-Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and
-`## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: dotnet-license-keygen
@@ -21,7 +21,6 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -41,7 +40,7 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
     offline | lab_only | authorized_target_only | unrestricted_lab
     The whole point of this shape is that no network is involved: the check is local and the
     activation path can complete offline. Keep `offline`.
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -49,7 +48,7 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (recovered IL, constants, worked example, cross-implementation diff)
   - evidence/E-###-<slug>.md
 
@@ -62,20 +61,6 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
   - Never use a real customer identity string
   - Test only against a copy of the application, and only for the acceptance run
   - Redact the salt and any identity string before publishing notes
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - the acceptance run must target a copy, declared in in_scope
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

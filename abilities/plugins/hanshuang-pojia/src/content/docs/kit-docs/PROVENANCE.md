@@ -39,7 +39,7 @@
 | 项目 | 上游仓库 | 许可协议 | 本包镜像位置 | 核心集成与贡献 |
 | :--- | :--- | :--- | :--- | :--- |
 | **apk-reverse** | https://github.com/newliver666/apk-reverse | MIT License | `Tool/upstream/apk-reverse/` | 移动端 G1-G4 硬性门禁、DEX 微创修补、离线测试套件与能力自检 |
-| **Open-tgtylab** | https://github.com/GeniusHu-tgty/Open-tgtylab | GPL-3.0 License | `Tool/upstream/open-tgtylab/` | 攻防实验室架构、Zero-Waste Recon 信号路由、反退缩指令与 G-Auth 协议 |
+| **Open-tgtylab** | https://github.com/GeniusHu-tgty/Open-tgtylab | GPL-3.0 License | `Tool/upstream/open-tgtylab/` | 攻防实验室架构、Zero-Waste Recon 信号路由、反退缩指令与范围记录协议（上游称 G-Auth，本移植版已去门禁语义） |
 | **open-reverselab** | https://github.com/LING71671/open-reverselab | GPL-3.0 License | `Tool/upstream/open-reverselab/` | 289+ 篇实战笔记知识库、boards 攻击网拓扑、MCP 自动化工具组件 |
 
 **上游比衍生组件保留的完整价值**：
@@ -54,7 +54,7 @@
 
 ```
 softseep/
-├── SKILL.md                    ← 总控（253 行）：G-Auth 门 + 自动判型 + 路由矩阵
+├── SKILL.md                    ← 总控（253 行）：范围记录 + 自动判型 + 路由矩阵
 └── references/                 ← 按需加载，不预先全读
     ├── windows-sop.md          6 步标准化流水线
     ├── patching-dictionary.md  汇编打桩速查字典

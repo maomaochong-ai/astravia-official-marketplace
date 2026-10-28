@@ -1,4 +1,11 @@
-import { ANDROID_NS, attr, childrenNamed, type AxmlNode } from "../archive/axml";
+/**
+ * 二进制 AndroidManifest 的模型层：把 AXML 节点折成组件、权限、SDK 版本。
+ *
+ * 与 `axml.ts` 分工：那边解二进制格式，这边只做语义归并。
+ * 组件是否导出、权限属于哪个保护级别，都在这里定，UI 不再二次推断。
+ */
+
+import { attr, childrenNamed, type AxmlNode } from "../archive/axml";
 
 export type ComponentType = "activity" | "activity-alias" | "service" | "receiver" | "provider";
 
@@ -111,8 +118,4 @@ export function buildManifestFacts(root: AxmlNode): AndroidManifestFacts {
 		components,
 		queriesPackages,
 	};
-}
-
-export function hasAndroidNamespace(namespace: string | null): boolean {
-	return namespace === ANDROID_NS;
 }

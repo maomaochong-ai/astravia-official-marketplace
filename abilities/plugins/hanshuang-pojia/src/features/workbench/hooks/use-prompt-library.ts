@@ -1,3 +1,10 @@
+/**
+ * 提示词库的面板状态：列表、筛选、当前生效项、备份的增删。
+ *
+ * 数据与排序在 `domain/prompt-library`，这里只包一层 React 状态与副作用，
+ * 页面不得再写第二份筛选或备份逻辑。
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import type { PromptBackup } from "../../../domain/prompt-backup";
 import { pruneBackups, restoreFromBackup } from "../../../domain/prompt-backup";

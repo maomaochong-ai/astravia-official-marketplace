@@ -1,3 +1,9 @@
+/**
+ * 面板「报告」页：工作区里已产出的报告列表与导出入口。
+ *
+ * 只列已有的东西，不在页面里生成报告——生成走 `write_assessment_report` / `export_triage_report`。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { formatBytes } from "../../../../domain/report/report";
 import { Card } from "../shell/card";

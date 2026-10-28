@@ -3,9 +3,29 @@
 	"slug": "client-auth-gate",
 	"title": "Client-side entitlement gate",
 	"summary": "A paid capability whose decision lives in the client: locate the branch, prove it is reachable, and show what the server never re-checks.",
-	"signals": ["license", "vip", "subscription", "entitlement", "isPro", "purchase", "card key", "activation", "cwe-602"],
+	"signals": [
+		"license",
+		"vip",
+		"subscription",
+		"entitlement",
+		"isPro",
+		"purchase",
+		"card key",
+		"activation",
+		"cwe-602"
+	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
-	"caseDocs": ["cases/client-auth-gate/entitlement-decision"],
-	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
+	"caseDocs": [
+		"cases/client-auth-gate/entitlement-decision"
+	],
+	"docs": [
+		"README.md",
+		"scope.md",
+		"docs/method.md",
+		"docs/defense.md"
+	]
 }

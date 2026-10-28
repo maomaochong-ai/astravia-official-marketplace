@@ -17,17 +17,23 @@
 		"service restart"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/multiprocess-proxy-hotpatch/points-and-naked-proxy",
 		"cases/multiprocess-proxy-hotpatch/version-drift-and-guards"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目B" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目B"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/points-and-proxy.md"
 	]
 }

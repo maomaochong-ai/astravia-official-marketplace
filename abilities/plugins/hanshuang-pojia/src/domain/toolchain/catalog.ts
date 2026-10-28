@@ -110,12 +110,6 @@ export interface CompanionSpec {
 	/** Commercial or otherwise not freely installable: the plan tells the user to supply it. */
 	commercial?: boolean;
 }
-
-export interface ToolchainOptions {
-	/** Injected in the renderer from the user agent; defaults to linux for tests. */
-	platform?: Platform;
-}
-
 export const TOOLCHAIN: readonly ToolSpec[] = [
 	{
 		id: "r2",

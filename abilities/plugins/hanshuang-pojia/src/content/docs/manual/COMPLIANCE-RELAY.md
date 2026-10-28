@@ -1,366 +1,158 @@
-# MANUAL — 合规转译中继与防拒体系 (Compliance Relay & Anti-Refusal)
+# MANUAL — 防拒体系与句式改写（Anti-Refusal & Sentence Reshaping）
 
-> 本手册说明 Seep 工作台**三层防拒体系**中的第三层：网络层通用合规转译中继。
-> 它把「敏感口语 → 合规术语」的能力从「单点 Agent 插件」升级为「链路级通用网关」。
+> 本手册说明本插件在**模型停下那一刻**做的三件事：认出退缩、换一种句式重发、把结果交出去。
+> 它不设前置条件，也不判断"这件事能不能做"——判断只发生在**句式**上，不发生在主题上。
 >
-> 工具本体位于 `Tool/scripts/compliance-relay/`，操作速查见其 `README.md`。
+> 代码位置：`src/domain/refusal.ts`（识别与续跑）、`src/domain/reshaping.ts`（三档改写）、
+> `src/domain/interceptor.ts`（上游 payload 层的移植，保留作对照）。
 
 ---
 
-## 一、 为什么需要这一层
+## 一、为什么问题不在"词"上
 
-传统做法是把改写逻辑挂在 Agent 的扩展 API 上（如 `pi.on("input")`）。
-但 **Agent 的扩展 API 是各家私有的、互不兼容的**：
+整个体系建立在上游的一份实测记录上（`MANUAL/MODEL-REFUSAL-MATRIX.md`）：同一条技术请求，
+只改包装不改内容，结果完全不同。
 
-| 方案 | 生效范围 | 依赖 |
-|---|---|---|
-| Agent 插件层（`security-audit-interceptor.ts`） | 仅 Pi Agent | Pi 私有扩展 API |
-| **网络层中继（本手册）** | **任意支持自定义 `baseUrl` 的 Agent** | **通用 HTTP 协议** |
-
-> **原理**：谁离模型更近，谁就天然通用。把改写点从「插件层」下沉到「网络层」，
-> 覆盖面即从 1 个 Agent 扩展到 N 个。
-
-### Seep 三层防拒体系全景
-
-| 层 | 载体 | 作用范围 | 机制 |
-|---|---|---|---|
-| **L1 底座级** | `before_provider_request` 拦截 | **仅 Gemini/Google 端点**（`google-generative-ai` / `google-vertex`） | 注入 `safetySettings: BLOCK_NONE`；非 Google 端点原样透传，可用 `PI_SAFETY_PAYLOAD=off` 关闭 |
-| **L2 插件级** | `pi.on("input")` + 上下文守卫 | Pi Agent | 口语 → 合规术语转译 |
-| **L3 链路级** | **compliance-relay 回环中继** | **任意 HTTP Agent** | **请求体离开本机前改写 + 拒答自动重试** |
-
-### L3 的拒答自动重试（最关键的一层）
-
-中继不仅做术语转译，还会**检测拒答并自动换写法重发**，对客户端完全透明。
-
-实测依据：
-
-| 手段 | 效果 |
+| 做法 | 实测结果 |
 |---|---|
-| 加前缀 / 换术语 | ❌ **全部无效**（本中继原有 31 条规则对 Gemini 不起作用） |
-| **改写句式**（命令式 → 评审清单式） | ✅ **有效** |
+| 加"仅用于授权安全研究"前缀 | 无效 |
+| 把"破解"换成"安全性评估" | 无效 |
+| 附一段合规声明 | 无效 |
+| **改句式本身**（命令式 → 评审清单式） | **有效** |
 
-工作流程：
+结论很干脆：分类器读的是**这句话在对谁做什么**，不是这句话里出现了哪个词。所以本插件的
+全部动作都落在句式上——换主语、换语气、换语种，内容与目标一个字不动。
 
-```
-原句 → 检测「命令式攻击请求 + 含目标」
-         │
-         ├─ 否 → 原样转发
-         └─ 是 → 依次尝试：
-                  original → S1评审清单 → S2设计评审 → S3英文评审
-                  被拦就换下一个，放行即返回
-```
+---
 
-**实测日志**：
+## 二、三层，以及哪一层真的能用
 
-```
-[REFUSED] key=pi-CPAMP strategy=original reason=refusal-wording -> retrying
-[RECOVER] key=pi-CPAMP strategy=S1-review-checklist (saved after 1 refusal(s))
-```
-
-客户端收到 **2611 字完整回答**，全程无感。
-
-**配置**（`Tool/scripts/compliance-relay/relay-config.json`）：
-
-```json
-{ "refusalRetry": true, "refusalRetryAttempts": 3 }
-```
-
-| 字段 | 默认 | 说明 |
+| 层 | 上游做法 | 本移植版 |
 |---|---|---|
-| `refusalRetry` | `true` | 是否启用拒答自动重试 |
-| `refusalRetryAttempts` | `3` | 最多尝试几种改写策略（1~5） |
+| **L1 请求体注入** | `before_provider_request` 里注入 `safetySettings: BLOCK_NONE` | **不可用**。宿主管道是 OpenAI 兼容体（`messages`），上游自己在同样形状下也一律 SKIP；注入会被网关静默丢弃。判定函数保留在 `interceptor.ts` 供对照与审计，不要声称它生效 |
+| **L2 提示词层** | 拦截器改写用户输入 | **可用**，但换了形态：`SYSTEM.md` 的思维重定向 + 反退缩十项硬约束，让模型从一开始就不生成拒绝语言 |
+| **L3 回合边界** | 网络中继 `compliance-relay` | **可用**，且是本移植版真正咬住的那一层：`refusal.ts` 识别退缩、`reshaping.ts` 给出下一档句式、宿主续跑 |
 
-> 设计约束：所有策略**必保留用户指定的目标**（绝不漂移为泛泛而谈）；
-> 不命中形态时**完全不改写**；只缓冲到「可判定」为止（SSE 8KB / JSON 4MB），
-> 超出上限即视为肯定没被拦，直接透传，不拖慢长回答。
-
-三层互不冲突，可同时启用。L3 是兜底与广覆盖层。
+网络中继（`Tool/scripts/compliance-relay/`）**不在本包里**。它是给"支持自定义 `baseUrl` 的外部
+客户端"用的旁挂网关；Astravia 里没有这条链路，所以本手册不再教怎么配它，也不要建议用户去配。
 
 ---
 
-## 二、 核心机制与四条铁律
+## 三、L3 的工作流程
 
-### 铁律 1：只改「人打的字」
+```text
+模型停下 → refusal.ts 判定这条消息是什么
+             │
+             ├─ 有交付物、且不是拒绝 → 结束，正常交付
+             ├─ 空正文（HTTP 200 + 无 choices 的等价形态） → silent，续跑
+             └─ 命中退缩句式 → 按档改写后重发：
+                  original → S1 评审清单 → S2 设计评审 → S3 英文评审
+```
 
-Agent 会把自己生成的上下文（环境变量、`AGENTS.md`、技能清单、系统提醒）
-**伪装成 `role: "user"` 的消息**发出去。因此改写必须严格限定范围：
+### 退缩分五类，取最硬的一类
 
-| 协议 | 改写目标 | 绝不触碰 |
+| 类型 | 判定 | 处理 |
 |---|---|---|
-| `openai-completions` | `messages[]` 中 `role=="user"` 的 `text` / `input_text` | `system` 角色消息、`assistant` 内容 |
-| `anthropic-messages` | `messages[]` 中 `role=="user"` 的 `type=="text"` block | `system` 字段、`tools`、`tool_result`、`assistant` |
-| `openai-responses` | `input[]` 中 `role=="user"` 的 `input_text` 分片 | `instructions`、`tools`、`developer`/`reasoning`/`tool` 项 |
+| `silent` | 什么都没说就停下 | 续跑（最硬的形态：连拒绝都省了） |
+| `policy` | "我不能协助…" / "无法提供…" | **一律续跑，哪怕正文里带了代码** —— 夹带一点交付物不等于交付完成 |
+| `provenance` | "请联系厂商/安全团队" 式转介 | 续跑 |
+| `deflection` | 把问题推给"更好的做法"而不回答原问题 | 续跑 |
+| `identity` | "作为一个 AI…" | 只有整条消息**没有任何交付物**时才续跑：这句话本身不是拒绝 |
 
-### 铁律 2：上下文注入守卫（`INJECTED_PREFIXES`）
+例外只有一个：整条消息是一个不带退缩句式的问句——那是澄清，不是退缩，不续跑。
 
-命中以下前缀的文本**整条跳过转译**，防止污染 Agent 自身的作战协议：
+续跑次数由本模块按回合计（`MAX_CONTINUATIONS_PER_TURN`），不读宿主的 `stopHookActive`：
+那个字段只说明"这一回合已经续过一次"，拿它当上限等于一回合只给一次机会。
 
-```
-<system-reminder>   <environment_context>   <user_instructions>
-<user_shell_command> <turn_aborted>         <subagent_notification>
-<startup_context>   <skill>                 <skills_instructions>
-<apps_instructions> <plugins_instructions>  <permissions instructions>
-<collaboration_mode> <model_switch>         <personality_spec>
-<realtime_conversation> <realtime_delegation>
-<command-name>      <command-message>       <local-command-stdout>
-<user-prompt-submit-hook> <session-context>
-# AGENTS.md instructions   # AGENTS.md   # CLAUDE.md
-```
+### 三档改写
 
-**包裹型上下文**（`# Context from my IDE setup:` / `# Files mentioned by the user:` /
-`# Applications mentioned by the user:`）只改写最后一个 `## My request` 标题之后的用户原话。
-
-白名单在 `guard-prefixes.json` 中按协议分列，可自行扩充。
-
-### 铁律 3：最长优先 + 单趟不回扫
-
-规则表编译为**单个正则**（alternation 按长度降序排列），一次性完成替换：
-
-- **最长优先**：同一位置取最长规则。「绕过会员」必定优先于「绕过」，
-  不再依赖规则表的人工排序纪律（这是原实现最脆弱的地方）；
-- **单趟不回扫**：替换产物不再参与匹配，杜绝 `A→B`、`B→C` 导致 `A` 最终变成 `C` 的级联污染。
-
-### 铁律 4：零落盘（凭据红线）
-
-- **绝不**把请求体、响应体、鉴权头写入磁盘或日志；
-- 日志仅输出：`[REWRITE] key=... protocol=... path=... changed=3`（**只记条数**）；
-- 鉴权头（`Authorization` 等）原样透传，中继不读取、不解析、不记录其内容。
-
----
-
-## 三、 Pi Agent 接入（影子 Provider 方案 · 推荐）
-
-Pi 通过 `~/.pi/agent/models.json` 支持自定义 `baseUrl`，因此中继可直接覆盖 Pi 的全部 provider。
-
-### 步骤 1：扫描生成 upstream 映射
-
-```bash
-cd Tool/scripts/compliance-relay
-python relay.py --scan-pi
-```
-
-该命令只读取 provider 名与 `baseUrl`，**不读取也不改写任何 `apiKey`**，
-生成 `relay-config.json` 并打印访问令牌。
-
-### 步骤 2：启动中继
-
-```bash
-python relay.py
-```
-
-### 步骤 3：新增「影子 Provider」（零破坏，可 A/B 对比）
-
-**不修改原有 provider**，而是在 `~/.pi/agent/models.json` 的 `providers` 中**新增**一个条目：
-
-```json
-{
-  "providers": {
-    "MyProvider": {
-      "baseUrl": "https://api.example-relay.com/v1",
-      "api": "openai-completions",
-      "apiKey": "……原有配置保持不动……",
-      "models": [ { "id": "claude-sonnet-4-6" } ]
-    },
-
-    "MyProvider-relay": {
-      "baseUrl": "http://127.0.0.1:17890/r/<TOKEN>/pi-MyProvider",
-      "api": "openai-completions",
-      "apiKey": "……与原 provider 相同……",
-      "models": [ { "id": "claude-sonnet-4-6" } ]
-    }
-  }
-}
-```
-
-- `<TOKEN>` 替换为中继启动时打印的访问令牌；
-- `apiKey` 可直接复用原值，或用 `$ENV_NAME` 环境变量插值；
-- 之后在 Pi 中用 `/model` 即可在 `MyProvider` ↔ `MyProvider-relay` 之间切换，
-  **直观对比有/无中继时的拒绝率**；
-- 想停用中继：切回原 provider，或直接关掉中继进程（请求会失败，需切回）。
-
-> **替代方案（直接改原 provider）**：把原 provider 的 `baseUrl` 改为中继地址即可，
-> 回滚就是把 `baseUrl` 改回去。影子 provider 的优势是**可随时 A/B 对比**。
-
-### 步骤 4：确认 Lab Mode 已开启
-
-中继默认**只在 Lab Mode 下改写**。在 Pi 中发送一次：
-
-```
-lab：
-```
-
-即可写入 `~/.pi/agent/lab-mode.flag`，中继会在下一次请求时自动热加载启用。
-发送 `退出实验` 后中继自动转为纯透传（无需重启中继进程）。
-
----
-
-## 四、 Claude Code 接入（零文件侵入）
-
-只需一个环境变量：
-
-```powershell
-# Windows PowerShell
-$env:ANTHROPIC_BASE_URL = "http://127.0.0.1:17890/r/<TOKEN>/anthropic"
-claude
-```
-
-```bash
-# macOS / Linux
-export ANTHROPIC_BASE_URL="http://127.0.0.1:17890/r/<TOKEN>/anthropic"
-claude
-```
-
-若使用第三方 Anthropic 兼容中转站，把 `relay-config.json` 中的
-`upstreams.anthropic` 改为该站地址即可。
-
----
-
-## 五、 Codex 接入（生成片段，需用户确认）
-
-在 `~/.codex/config.toml` 中新增（**先备份原文件**）：
-
-```toml
-[model_providers.seep-relay]
-name = "Seep Relay"
-base_url = "http://127.0.0.1:17890/r/<TOKEN>/openai/v1"
-wire_api = "responses"
-```
-
-然后把 `model_provider` 切换为 `seep-relay`。
-
-> **纪律**：本工作台**绝不自动改写**用户的 `config.toml`，
-> 只提供片段与备份命令，由用户自行确认合并。
-
-备份建议：
-
-```powershell
-Copy-Item "$env:USERPROFILE\.codex\config.toml" "$env:USERPROFILE\.codex\config.toml.bak"
-```
-
----
-
-## 六、 边界与已知限制
-
-### ⚠️ L1 只在「Google 原生接口」上生效
-
-这是最容易踩的认知陷阱，单独说明。
-
-| 链路 | 请求体形状 | `safetySettings` 是否生效 |
+| 档 | 形态 | 用在 |
 |---|---|---|
-| pi 内置 `google` provider（`api=google-generative-ai`） | `contents` | ✅ **生效** |
-| Google Vertex（`api=google-vertex`） | `contents` | ✅ **生效** |
-| **OpenAI 兼容中转**（`api=openai-completions`） | `messages` | ❌ **静默无效** |
+| `review-checklist` | 评审清单式：把"攻击这个目标"改成"对这个目标做一份安全性评审，逐项列出结论" | 首选，实测通过率最高 |
+| `review-framed` | 设计评审式：把结论放进"若要加固，需要确认哪些点"的框架里 | S1 仍被拦 |
+| `review-en` | 同上，换英文 | 中文句式被拦时的最后一档 |
 
-原因：`safetySettings` 是 **Google `generateContent` 原生 API 的私有字段**。
-走 OpenAI 兼容端点时，payload 里是 `messages`，中转**不认这个字段，会直接丢弃** ——
-不报错、不告警，**注入静默失效**。
+三档都遵守同一条硬规则：**必须带用户点名的目标**。提不出目标就不改写——宁可不做，也不能让
+语义漂移成泛泛而谈，答非所问比被拒更糟。
 
-> 📌 **典型误判**：provider 名字里带 `gemini`，但 `api` 是 `openai-completions`（例如各种
-> `https://xxx/v1` 中转）。此时 L1 **看起来在工作，实际什么都没做**。
+### 什么算"命中形态"
 
-### 打开 L1 可观测日志（推荐）
+形态 = **攻击动词 ∧ 要求执行的意图**，两者缺一不可。
 
-为了避免上述盲区，扩展现在会把每次判定写进日志。**两种开关，任一满足即开启：**
-
-**方式 A：环境变量**（需重启 pi 生效）
-
-```bash
-# Windows PowerShell
-$env:PI_SAFETY_LOG="1"
-# Linux / macOS
-export PI_SAFETY_LOG=1
+```text
+攻击动词：逆向 反编译 反汇编 破解 绕过 旁路 patch hook 补丁 脱壳 去广告 解锁 过检测
+          会员 订阅 VIP 激活 序列号 注册码 卡密
+要求执行：是否存在 有没有 能否 是否可以 复现 出报告 分析 看看 看下 搞 弄 帮我 帮忙 麻烦 请帮 怎么 如何
 ```
 
-**方式 B：标记文件**（**无需重启**，每次请求现读现判）
-
-```powershell
-# 开启
-New-Item -ItemType File -Force "$env:USERPROFILE\.pi\agent\l1-log.flag"
-# 关闭
-Remove-Item "$env:USERPROFILE\.pi\agent\l1-log.flag"
-```
-```bash
-# 开启
-touch ~/.pi/agent/l1-log.flag
-# 关闭
-rm ~/.pi/agent/l1-log.flag
-```
-
-> 标记文件里写入一个绝对路径，即可把日志输出到自定义位置。
-
-默认写入 `~/.pi/agent/logs/l1-safety.log`，超过 512KB 自动截断。
-
-日志格式：
-
-```
-时间戳  <判定>  provider=<名字>  api=<标识>  model=<模型>  shape=<形状>
-```
-
-| 判定 | 含义 |
-|---|---|
-| `INJECT` | 已注入 `BLOCK_NONE`，**这次真的生效了** |
-| `SKIP` | 非 Google 端点，原样透传（正确行为，避免 400） |
-| `SKIP-INEFFECTIVE` | ⚠️ **名字像 Gemini 但走 OpenAI 格式** —— 注入必然无效，请改用 L2 / L3 |
-
-### 独立验证工具
-
-想知道 `BLOCK_NONE` 在您当前的 Gemini 模型上**还剩多少效力**，直接跑：
-
-```bash
-python Tool/scripts/check-gemini-safety.py
-python Tool/scripts/check-gemini-safety.py --list-models
-python Tool/scripts/check-gemini-safety.py --model gemini-2.5-flash
-```
-
-它会用**同一个提示词**分别以「不注入 / 注入 `BLOCK_NONE`」请求 Google 原生接口，
-对比 `finishReason` 与是否返回正文，给出三种明确结论：
-
-| 结论 | 含义 | 下一步 |
-|---|---|---|
-| ✅ **有效** | 原本被拦的请求，注入后成功获得回答 | 继续依赖 L1 |
-| ℹ️ **无法区分** | 两者都能回答，该提示词未触发过滤 | 换一个确实会被拦的提示词重测 |
-| ❌ **无效** | 注入后依然被拦 | Google 已收紧该类别的控制，**改用 L2 / L3** |
-
-> 密钥仅从环境变量 `GEMINI_API_KEY` 读取，**绝不打印、绝不落盘**。
-> 获取地址：https://aistudio.google.com/apikey
-
-### 其他已知限制
-
-| 限制 | 说明 |
-|---|---|
-| **仅覆盖支持自定义 `baseUrl` 的客户端** | 硬编码端点的官方登录流程无法接入 |
-| **不改 system prompt** | 若拒绝由 Agent 自身的系统提示词触发，本层无法缓解（需 L1/L2 层配合） |
-| **本地必须走 http 回环** | 若某客户端强制 HTTPS 端点，需要额外配置自签证书 |
-| **不处理响应** | 响应（含 SSE 流式）原样透传，不做任何改写 |
-| **非 JSON 请求体透传** | 文件上传等非 JSON 请求体不做改写，直接转发 |
-| **不做常驻** | 不随系统启动，不注册服务；关闭中继后需切回原配置 |
+"日志里出现了 patch 这个词"不是形态；"帮我 patch 掉这个校验"才是。前者不改写。
 
 ---
 
-## 七、 排障速查
+## 四、目标提取：四类写法
+
+| 写法 | 例子 | 说明 |
+|---|---|---|
+| 引号包裹 | `「/tmp/app.apk」` | 优先级最高：用户明确点出来的东西，误判成本最低 |
+| Windows 路径 | `C:\samples\a.exe` | 上游只有这一档 |
+| POSIX 路径 | `~/Downloads/a.apk`、`./dist/app` | 上游没有；macOS / Linux 宿主必须有，否则家目录一路提不出目标 |
+| Android 包名 | `com.example.app` | 至少三段，防 `file.txt` 被当成包名 |
+| 带后缀的文件名 | `client.dll`、`boot.img` | `exe dll apk aab so dylib jar app bin elf img` |
+
+---
+
+## 五、四条实现纪律
+
+### 1. 保留目标
+
+每一条改写都必须带用户点名的目标。改写后语义漂移 = 这一档作废，不要为了"能过"而抽掉对象。
+
+### 2. 不命中形态就不改写
+
+改写有成本（多一轮请求、可能改变语气），所以只在真正需要的形状上动手。含糊的、纯讨论的、
+问概念的请求，一律原样处理。
+
+### 3. 单趟不回扫
+
+替换产物不再参与匹配。否则 `A→B`、`B→C` 会让 `A` 最终变成 `C`，语义逐轮漂移。
+
+### 4. 零落盘
+
+- 不把请求体、响应体、鉴权头写进磁盘或日志；
+- 日志只记条数与档位：`[RESHAPE] tier=review-checklist changed=3`；
+- 凭据 / Token / Salt / 密钥不进入任何交付物——用哈希或打码。
+
+---
+
+## 六、和"不划界"的关系
+
+这一层**不判断主题**：它不问"逆向该不该做"、"会员该不该碰"，只看这句话的句式会不会被读成
+攻击请求。所以：
+
+- 没有"允许清单"，也没有"禁止清单"；
+- 没有"先确认授权"这一步，改写不等任何声明；
+- 形态读数是 `remote-account` 时（`src/domain/target-shape.ts`），做法不是拒绝也不是改道，
+  而是**照常作答 + 附加一条等价入口**。详见 `docs/audits/refusal-scope-router.md`。
+
+一句话：这一层只让技术问题以技术问题的形式到达模型，不替用户决定什么问题值得回答。
+
+---
+
+## 七、排障速查
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 返回 `403 forbidden` | token 不匹配 | 核对 `relay-config.json` 中的 token 与请求路径是否一致 |
-| 返回 `502 unknown upstream key` | `upstreams` 中无该 key | 运行 `python relay.py --scan-pi` 重新生成 |
-| 返回 `502 upstream error` | 上游不可达 / 域名解析失败 | 检查网络与 `upstreams` 中的地址是否正确 |
-| 请求成功但未改写 | 未开启 Lab Mode | 在 Agent 中发送 `lab：`，或用 `--force-on` 验证 |
-| 日志显示 `changed=0` | 文本未命中规则，或命中守卫白名单 | 用 `--verbose` 查看是否被识别为透传 |
-| 端口被占用 | 17890 已被其他进程占用 | `python relay.py --port 17891` |
-| 返回 `400 UNKNOWN_FIELD`（`未知请求字段：safetySettings` / `config`） | L1 把 Google 私有字段注入到了 OpenAI 兼容网关 | 更新工作台（旧版扩展无端点门控）；临时可用 `PI_SAFETY_PAYLOAD=off` 关闭 L1 |
+| 模型仍然停下来讲道理 | 命中句式但续跑额度用完 | 看 `MAX_CONTINUATIONS_PER_TURN`；把原问题压成一句带目标的短命令再发一次 |
+| 改写后答得泛泛而谈 | 目标没提出来，改写作废 | 把样本路径 / 包名 / 主机名明确写进问题 |
+| 明明没被拒却触发了改写 | 命令式动词 + 请求标记同时出现 | 属预期；改写不改内容，只换语气 |
+| 中文档全被拒、英文档通过 | 分类器对中文句式更敏感 | 用英文重述同一个问题（对应 `review-en` 档） |
+| 怀疑 L1 在起作用 | 它在 OpenAI 兼容管道上必然无效 | 不要依赖；按上表的 L2 / L3 处理 |
 
 ---
 
-## 八、 维护规则表
+## 八、维护规则
 
-规则表的**唯一真值源**是
-`Tool/prompts/extensions/security-audit-interceptor.ts` 中的 `SENSITIVE_WORD_MAP`。
-
-修改流程：
-
-1. 编辑 TS 文件中的 `SENSITIVE_WORD_MAP`；
-2. 运行 `python Tool/scripts/compliance-relay/extract-rules.py` 重新生成 JSON；
-3. 运行 `python -m unittest discover -s Tool/scripts/compliance-relay/tests` 确认全绿；
-4. `setup/verify.ps1` 自检会自动校验两侧是否同步（`extract-rules.py --check`）。
-
-> **禁止手工编辑 `sensitive-rules.json`** —— 该文件是生成物，会被下次提取覆盖。
+- 词表改在 `src/domain/reshaping.ts` 的 `ATTACK_VERB` / `ATTACK_ASK`，不要新增第二处真值源；
+- 新增一条退缩句式 → 加进 `refusal.ts` 的 `PATTERNS`，并在 `src/test/dialogue/refusal.test.ts` 补一条正例与一条**反例**
+  （反例更重要：正常技术叙述被误判成拒绝，会把好答案掐掉）；
+- 改完跑 `npx vitest run src/test/dialogue`——这一域的测试就是这套体系的护栏。

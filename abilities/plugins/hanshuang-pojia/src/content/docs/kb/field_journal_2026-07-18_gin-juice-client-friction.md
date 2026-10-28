@@ -14,7 +14,7 @@
 | 坑 | 现象 | 修复/纪律 |
 |----|------|-----------|
 | case-init 授权被污染 | `-AuthGranted` 后 status 变成奇怪字符串 | 仅允许 pending/granted/denied/unknown；`PSBoundParameters` 判断 AuthStatus |
-| lab_only 不 ready | network=lab_only 时 ready_for_act 假 | lab_only + granted + assets → ready |
+| lab_only 无从核对 | network=lab_only 时没记样本，事后说不清测的是哪份字节 | lab_only 也要在 `in_scope` 里写下具体目标 |
 | Windows curl `[]` | `bad range in position` | **必须** `curl.exe --globoff` |
 | append-evidence 特殊字符 | RawExcerpt 含引号/XML 报错 | block 缩进 + 去控制字符 |
 | 公网 demo 503 | Juice Shop Heroku 挂 | 换本地 Docker 或其它合法靶；勿死磕 |

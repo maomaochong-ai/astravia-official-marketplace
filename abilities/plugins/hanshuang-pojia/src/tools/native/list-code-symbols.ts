@@ -1,3 +1,9 @@
+/**
+ * `list_code_symbols`：列出原生镜像里带名字的代码面（函数 / 导出 / 导入）。
+ *
+ * 读 ELF `.symtab` / `.dynsym` 与 PE / Mach-O 的等价结构；地址 0 打印成 `—`，
+ * 不冒充「地址就是 0」。`limit` 有上限，截断时会说明总数，避免把「前 400 条」当成全部。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { readNativeFacts } from "../../domain/native/detect";
 import { listSymbols, type CodeSymbol } from "../../domain/native/symbols";

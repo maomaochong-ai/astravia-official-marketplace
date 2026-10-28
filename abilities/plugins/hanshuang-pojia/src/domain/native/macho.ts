@@ -1,3 +1,10 @@
+/**
+ * Mach-O（dylib / bundle / 可执行）的解析：fat 头、load commands、节区与导出。
+ *
+ * 多架构 fat 文件按架构逐个解析，不合并——合并会让地址空间对不上，
+ * 上层要看哪一段就取哪一段。
+ */
+
 import { cstring, u32, i32, u64 } from "../bytes";
 import { entropyOfRange } from "../entropy";
 import { describeError, failed, MACHO_CPUS, parsed, type NativeFacts, type NativeImportGroup, type NativeSection, type Parsed } from "./types";

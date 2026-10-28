@@ -1,3 +1,9 @@
+/**
+ * 提示词备份与恢复对话框：列出备份、预览、恢复。
+ *
+ * 恢复是**覆盖式**动作，所以必须先选中一项再确认；空库时给空态，不给「恢复全部」这种批量口子。
+ */
+
 import { useMemo } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PromptBackup } from "../../../../domain/prompt-backup";

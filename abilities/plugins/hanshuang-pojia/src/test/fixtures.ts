@@ -36,12 +36,6 @@ export function u64le(value: number): Uint8Array {
 	return out;
 }
 
-export function u32be(value: number): Uint8Array {
-	const out = new Uint8Array(4);
-	new DataView(out.buffer).setUint32(0, value >>> 0, false);
-	return out;
-}
-
 function padTo(value: number, alignment: number): number {
 	return (alignment - (value % alignment)) % alignment;
 }

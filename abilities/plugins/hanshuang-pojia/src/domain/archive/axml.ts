@@ -181,15 +181,3 @@ export function attr(node: AxmlNode, name: string, namespace: string | null = AN
 export function childrenNamed(node: AxmlNode, name: string): AxmlNode[] {
 	return node.children.filter(child => child.name === name);
 }
-
-export function descendantsNamed(node: AxmlNode, name: string): AxmlNode[] {
-	const out: AxmlNode[] = [];
-	const walk = (current: AxmlNode): void => {
-		for (const child of current.children) {
-			if (child.name === name) out.push(child);
-			walk(child);
-		}
-	};
-	walk(node);
-	return out;
-}

@@ -1,3 +1,14 @@
+/**
+ * `triage_directory`：把一个目录里的候选样本跑一遍判级，输出「先开哪个」的排序表。
+ *
+ * 三条不能丢的性质：
+ *   1. 候选来自扩展名白名单，纯文本不会被当二进制解析；
+ *   2. 单个文件读不了只产出一行 failed，不中断整批；
+ *   3. 两层上限（宿主 10000 条目 / 本工具的 `limit`）都必须**报出来**，不能静默截断——
+ *      悄悄少扫一批文件，结论就成了「这批是干净的」。
+ *
+ * 逐文件规则与 `triage_binary` 同一套，只是走 summary 模式：批量的用途是排优先级，不是给每份写报告。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { renderBatch, triageDirectory, type BatchOptions } from "../../domain/batch";
 import { resolveSamplePath } from "../../domain/sample-path";

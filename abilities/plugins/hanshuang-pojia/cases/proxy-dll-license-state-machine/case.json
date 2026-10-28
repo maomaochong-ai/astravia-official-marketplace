@@ -18,17 +18,23 @@
 		"堆损坏"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/proxy-dll-license-state-machine/authorisation-state-machine",
 		"cases/proxy-dll-license-state-machine/crack-payload-and-hardening"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目A" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目A"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/state-machine.md",
 		"docs/version-evolution.md"
 	]

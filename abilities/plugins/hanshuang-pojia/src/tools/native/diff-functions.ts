@@ -1,3 +1,12 @@
+/**
+ * `diff_functions`：按函数比对同一程序的两个构建，而不是按字节。
+ *
+ * 指纹取自解码后的指令序列，先按符号名匹配，再按指令形状兜底匹配——这一步是「改了名/重链接后
+ * 还能对上」的原因。四档结论的语义要分清：`constants-only` 才是「门禁被补了」的形态，
+ * `same` 只表示指令字节相等。
+ *
+ * 地址被刻意归一化掉：要原始字节差异用 `diff_binaries`，两者不互相替代。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { renderSemanticDiff, semanticDiff } from "../../domain/native/semantic-diff";
 import { loadSample } from "../lib/read-sample";

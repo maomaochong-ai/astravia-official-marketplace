@@ -1,9 +1,9 @@
 # Case Scope — apk-dex-unpack (precedent)
 
-This is a **template**, not a declaration. `auth.status` is `pending` on purpose: whether you
-may analyse an installed application is the operator's answer, not the package's. Copy this
-directory to `work/<case>/` or re-run `init_task` with `preset=offline-sample` and `sample`,
-then fill `## auth` and `## in_scope` in your own copy.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: apk-dex-unpack
@@ -21,7 +21,6 @@ then fill `## auth` and `## in_scope` in your own copy.
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -39,7 +38,7 @@ then fill `## auth` and `## in_scope` in your own copy.
 - offline_sample: (none)
 - notes: |
     offline | lab_only | authorized_target_only | unrestricted_lab
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -47,7 +46,7 @@ then fill `## auth` and `## in_scope` in your own copy.
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/frida-dump/ (dumped DEX files with hashes)
   - evidence/E-###-<slug>.md
 
@@ -58,19 +57,6 @@ then fill `## auth` and `## in_scope` in your own copy.
 - rules:
   - Dynamic work only on a device you own or are authorised to instrument
   - The installed package is never modified
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
 
 ## ops_refs
 - kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery.md

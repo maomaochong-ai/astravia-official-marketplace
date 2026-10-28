@@ -130,7 +130,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 2.6.0 起分两处：
 
 - **每轮都注入的 kernel 块**（`src/domain/kernel.ts`，priority 850）—— 实验室开没开、用户在看面板哪一页、哪些工具可达。那是状态，不是文案，所以它不可能是静态文件。
-- **lab 开启时才注入的 system 块**（`agent/prompts/SYSTEM.md`，priority 840，约 7.6 KB）—— 授权门、交付形状、卡住时的处理、工具链引导、todo 纪律。关闭实验环境时这一块不注入：kernel 块已经声明了 OFF 状态与 `lab：` 口令，没必要为一个用不上的契约付 token。
+- **lab 开启时才注入的 system 块**（`agent/prompts/SYSTEM.md`，priority 840，约 7.6 KB）—— 范围记录、形态读数、交付形状、卡住时的处理、工具链引导、todo 纪律。关闭实验环境时这一块不注入：kernel 块已经声明了 OFF 状态与 `lab：` 口令，没必要为一个用不上的契约付 token。
 
 静态母本是 `agent/prompts/SYSTEM.md`。`scripts/sync-system-prompt.mjs` 把它镜像成
 `src/domain/system-prompt.generated.ts` —— 插件在渲染进程的 bundle 里跑，宿主从不告诉它自己装在哪，
@@ -140,7 +140,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 完整技法仍住在技能里（`agent/skills/hanshuang-pojia/SKILL.md`）：宿主的技能索引只付 `name` 加
 `description` 约 380 字符，97 KB 正文只在真正调用它时才进上下文。
 
-`agent/prompts/AGENTS.md` 是同一份协议给 Astravia 以外的 agent 读的版本：工具路由、G-Auth 授权门、交付形状，
+`agent/prompts/AGENTS.md` 是同一份协议给 Astravia 以外的 agent 读的版本：工具路由、范围记录（事实，不是闸门）、交付形状，
 以及本宿主没有对应物的三处上游机制。它没有权限要求 —— 它是文档，不是注入源。
 
 ## 与上游的差异
@@ -179,7 +179,7 @@ node scripts/analyze.mjs asm x86-64 "mov rax, rbx" "ret" --address 0x1000
 | --- | --- |
 | V.1 | 实验模式——`lab：` / `退出实验`、磁盘标志位、压缩后要重跑的探测命令 |
 | V.2 | 部署与校验——`setup/install.ps1`、`update.ps1`、`uninstall.ps1`、`verify.ps1 -Detailed` 与它的四栏看板 |
-| V.3 | G-Auth——每个新目标只确认一次；写磁盘、装东西要另外一句明确的同意 |
+| V.3 | 范围记录——`auth_status` / `in_scope` 是落盘的事实；只有写盘、装东西、写工作区之外才需要另一句明确的同意 |
 | V.4 | 先查知识库的侦察顺序，以及「信号 → 技术文件 → MCP 工具」路由表 |
 | V.5 | `seep`（23 个工具）/ `ida`（~243）/ `js-reverse`（12）/ `playwright`（18）矩阵，含 IDA 缺失时的 Radare2 降级表 |
 | V.6–V.7 | 经 `softseep` 总控分派，以及 A1–A10 反退缩硬约束 |
@@ -201,9 +201,9 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 
 ## 案例与先例
 
-`Cases` 页与 `search_cases` 共用一个前提：案例是可以复制的方法，不是可以继承的授权。`scope.md` 永远
-从 `status: pending` / `ready_for_act: false` 开头，文件里写什么都撑不了就绪状态——就绪度由范围、blocker
-和工作项算出来。
+`Cases` 页与 `search_cases` 共用一个前提：案例是可以复制的方法，不是可以继承的授权。`scope.md` 把声明的
+东西记成事实——授权、范围内资产、网络姿态——那是事后写报告的依据；文件里没有哪个字段能挡住开工：
+没有就绪判定可翻、没有阻断清单，也没有「未授权所以不干」这条分支。
 
 | 层 | 位置 | 是什么 |
 | --- | --- | --- |
@@ -211,8 +211,10 @@ MCP 工具全表、十篇手册索引、宿主安装矩阵、校验基线、中�
 | 随包先例 | 本仓库 `cases/<slug>/`，构建期内联 | 19 个方法级包：闸门在哪、怎么确认、什么被证伪 |
 | 完整战例 | `src/content/docs/cases/<slug>/` | 30 篇长文：补丁表、RVA 地图、协议字段布局 |
 
-一个先例包是四份规范文档加可选补充：`scope.md`（范围内外）、`workitems.md`（8–12 项，第一项恒为
-“Establish scope and auth”）、`docs/method.md`（手法）、`README.md`。`docs/patches.md` 这类补充文档装
+一个先例包是四份规范文档加可选补充：`scope.md`（范围内的记录，事实字段）、`docs/method.md`（手法）、
+`README.md`（这套形状什么时候适用、坑在哪、最后必须拿得出什么证据）、`docs/defense.md`
+（怎么让这个缺陷不存在、评审能查什么、残余风险）。上游那张 `workitems.md` 台账留在旧包里
+作为历史；新案件不再生成。`docs/patches.md` 这类补充文档装
 那些会把 method 撑爆的表。`scripts/sync-precedents.mjs` 把全部内容内联进
 `src/domain/case/precedents.generated.ts`，所以 `.astraviapkg` 不带 `cases/` 源码目录——只带发布出去的
 工具文件（`dist/assets/cases/`）——挡在构建前的是 `npm run check:cases`。
@@ -255,7 +257,7 @@ src/
 │   ├── native/    types.ts elf.ts pe.ts macho.ts audit.ts
 │   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
-│   ├── report/    report.ts
+│   ├── reports/    report.ts
 │   ├── case/      contract.ts journal.ts library.ts precedents.ts（含生成表）
 │   ├── interceptor.ts               # 上游 L1/L4 的移植：注入判定、术语表、快捷口令
 │   ├── refusal.ts                   # 回合边界的恢复判定：检测器 + 续跑追问片段
@@ -301,9 +303,9 @@ src/
 都是一个独立的构建 chunk，所以打开文档页的代价是一篇，而不是 4 MB。同一批文档在对话里也能通过
 `search_docs` 与 `read_doc` 拿到 —— Agent 引用的那一篇和屏幕上显示的那一篇是同一个文件。
 
-案例页是 `init_task` 的只读对照：上面一张是你自己 `cases/` 与 `work/` 里的案例（目标、预设、授权状态、
-就绪度、资产与证据条数、工作项进度），下面一张是 19 个随包先例，每行标「范围待定」。复制一行重新跑
-`init_task`，是让先例变成你案例的唯一途径 —— 包替代不了你去做授权。
+案例页是 `init_task` 的只读对照：上面一张是你自己 `cases/` 与 `work/` 里的案例（目标、预设、声明里的
+授权状态、资产与证据条数），下面一张是 19 个随包先例，每行标「范围待定」。复制一行重新跑
+`init_task`，是让先例变成你案例的唯一途径 —— 包替代不了你去写那份声明。
 
 刻意分成两条车道：
 

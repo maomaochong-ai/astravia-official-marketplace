@@ -1,3 +1,10 @@
+/**
+ * record_case_note：把一次决策写进案卷的 `.agents/notes/<status>/<category>/` 并追加时间线。
+ *
+ * 已存在的同名笔记不覆盖（除非显式要求）。被否决的路子与做成的同样重要——
+ * 它们挡住下一次重试。
+ */
+
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { categorySegment, parseDecisionStatus, writeDecisionNote, type CaseWritePort } from "../../domain/case/journal";
 import { baseName, isOutsideProject, resolveSamplePath } from "../../domain/sample-path";

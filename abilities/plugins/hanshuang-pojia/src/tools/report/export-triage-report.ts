@@ -1,3 +1,10 @@
+/**
+ * `export_triage_report`：把一份完整体检报告交给宿主的保存对话框。
+ *
+ * 写盘的唯一路径是 `host.fs.saveAs`——用户选目标、用户点确认，插件自己不开文件。
+ * 因此取消也是一种正常结果（返回取消提示，不写空文件、不报错）。
+ * 报告一律 full 模式生成：屏幕上看到的是摘要，交出去的那份不能也是摘要。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { renderMarkdown, reportToJson } from "../../domain/report/report";
 import { triage } from "../../domain/triage";

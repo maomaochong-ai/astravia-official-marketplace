@@ -1,3 +1,9 @@
+/**
+ * 面板「概览」页：当前样本的一句话结论、风险分与跳转入口。
+ *
+ * 它同时定义 `PageProps`——其他页面复用它拿模型与动作，不要再各自声明一份。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { WorkbenchModel } from "../../hooks/use-workbench";
 import { AiButton } from "../shell/ai-button";

@@ -1,3 +1,10 @@
+/**
+ * `probe_environment`：报告「哪些外部工具允许跑」与「哪些真的装了」。
+ *
+ * 这个工具存在的意义是把两种看起来一样的失败分开：宿主拒绝执行（未声明命令 / 用户禁用 /
+ * 未授予 `agent.command.run`）与可执行文件不在 PATH。只有后者能靠装软件解决。
+ * 结果同时推给面板（`publishToolResult`），所以界面和对话看到的是同一份探测结果。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { renderToolchain } from "../../domain/toolchain/probe";
 import { createCommandRunner, probeOnce } from "../../features/workbench/services/toolchain";
@@ -64,7 +71,6 @@ export function registerProbeEnvironmentTool(ctx: PluginContext): Disposable {
 						total: report.tools.length,
 					},
 				});
-				return renderToolchain(report);
 				return renderToolchain(report);
 			} catch (error) {
 				return `Probe failed: ${error instanceof Error ? error.message : String(error)}`;

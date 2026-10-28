@@ -1,3 +1,9 @@
+/**
+ * 面板「样本」页：工作区里已加入的样本与切换入口。
+ *
+ * 宿主拒绝读取时交给 `blocked-panel` 给替代路径，页面本身不重试、不探测文件系统。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Card } from "../shell/card";
 import { DataTable, type DataTableRow } from "../shell/data-table";

@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Card } from "../shell/card";
 import { PageHeader } from "../shell/page-header";
-import { createBackup } from "../../../../domain/prompt-backup";
+import { backupsForPrompt, createBackup } from "../../../../domain/prompt-backup";
+import { searchPrompts, sortPrompts } from "../../../../domain/prompt-library";
 import type { PromptFormData } from "../prompts/prompt-editor-dialog";
 import { PromptEditorDialog } from "../prompts/prompt-editor-dialog";
 import { PromptCard } from "../prompts/prompt-card";
@@ -31,24 +32,12 @@ export function PromptsPage({ model }: PageProps) {
 
 	const editing = editingId ? library.items.find(p => p.id === editingId) ?? null : null;
 
-	const filtered = useMemo(() => {
-		const q = query.trim().toLowerCase();
-		const items = q
-			? library.items.filter(
-					p =>
-						p.name.toLowerCase().includes(q) ||
-						p.description.toLowerCase().includes(q) ||
-						p.content.toLowerCase().includes(q),
-				)
-			: library.items;
-		return [...items].sort((a, b) => {
-			if (a.active !== b.active) return a.active ? -1 : 1;
-			return b.updatedAt - a.updatedAt;
-		});
-	}, [library.items, query]);
+	// 过滤与排序都在 domain/prompt-library 里，页面只做编排：以前这里内联了一份同样的
+	// 逻辑，和 searchPrompts/sortPrompts 各改各的，属于重复实现。
+	const filtered = useMemo(() => sortPrompts(searchPrompts(library, query)), [library, query]);
 
 	const promptBackups = useMemo(
-		() => backups.filter(b => b.promptId === backupPromptId),
+		() => (backupPromptId ? backupsForPrompt(backups, backupPromptId) : []),
 		[backups, backupPromptId],
 	);
 

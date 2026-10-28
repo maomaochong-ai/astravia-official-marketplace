@@ -12,7 +12,6 @@ import { isOutsideProject, resolveSamplePath } from "../../domain/sample-path";
 interface SearchCasesInput {
 	query?: string;
 	root?: string;
-	ready_only?: boolean;
 	limit?: number;
 	/** 先例库：默认 true，与项目里的 cases/ 命中一起返回。 */
 	library?: boolean;
@@ -32,18 +31,17 @@ export function registerSearchCasesTool(ctx: PluginContext): Disposable {
 		label: "%tool.cases.label%",
 		description: [
 			"Search the case folders in this project for precedent: <root>/cases/*/scope.md and <root>/work/*/scope.md.",
-			"Each hit reports the preset, authorisation status, the derived ready_for_act gate, in-scope asset count,",
-			"evidence count, work-item progress and decision-note counts, plus why it matched.",
+			"Each hit reports the preset, the recorded auth status, network profile, in-scope asset count, evidence",
+			"count and decision-note counts, plus why it matched.",
 			"",
 			"Use it before starting a target that resembles something already analysed: a matching precedent carries a",
-			"known technique chain, a known dead end and a citation you can quote. With no query it lists the index;",
-			"ready_only=true keeps only cases whose authorisation and scope are recorded.",
+			"known technique chain, a known dead end and a citation you can quote. With no query it lists the whole index.",
 			"",
 			"The shipped precedent library is appended (method-level packages under cases/<slug>/); library=false",
 			"restricts the search to this project. A shipped precedent is a starting point, not an authorisation:",
 			"its scope.md says auth.status=pending so the operator declares their own scope.",
 			"",
-			"The result carries paths and reasons, not document bodies: open scope.md / workitems.md / docs/ with the",
+			"The result carries paths and reasons, not document bodies: open scope.md / evidence/ / docs/ with the",
 			"file tools. Cases only live under cases/ and work/ — a project-wide walk for scope.md is not performed.",
 		].join("\n"),
 		parameters: {
@@ -51,7 +49,6 @@ export function registerSearchCasesTool(ctx: PluginContext): Disposable {
 			properties: {
 				query: { type: "string", description: "Keyword(s): a product, protocol, defect class or technique." },
 				root: { type: "string", description: "Directory holding cases/ and work/; defaults to the working directory." },
-				ready_only: { type: "boolean", description: "Only cases that pass the ready_for_act gate (default false)." },
 				limit: { type: "integer", description: `Maximum hits to render (default 8, max ${MAX_HITS}).` },
 				library: {
 					type: "boolean",
@@ -104,7 +101,7 @@ export function registerSearchCasesTool(ctx: PluginContext): Disposable {
 			try {
 				const scan = await scanCases(port, root);
 				const limit = Math.min(MAX_HITS, Math.max(1, Math.round(input.limit ?? 8)));
-				const hits = rankCases(scan.cases, input.query, { readyOnly: input.ready_only === true, limit });
+				const hits = rankCases(scan.cases, input.query, { limit });
 				const body = renderCaseIndex(scan, hits, input.query);
 				if (input.library === false) return body;
 				// 先例与本地案例分开报告：先例是方法，不是「你打过这个目标」的证据。

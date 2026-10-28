@@ -1,3 +1,10 @@
+/**
+ * `write_assessment_report`：把四节安全评估写进案件目录的 `reports/`（与 `init_task` 铺的目录同名）。
+ *
+ * 四节结构（结论与根因 / 判定点 / 验证证据 / 纵深防御与修复）是硬约定：少一节，
+ * 报告就从「可复核」退化成「结论」。
+ * 目标路径必须落在项目内（`isOutsideProject`），且默认不覆盖已有报告——覆盖会毁掉上一轮证据。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { isOutsideProject, resolveSamplePath } from "../../domain/sample-path";
 import { renderAssessment, type AssessmentLanguage } from "../../domain/report/assessment";

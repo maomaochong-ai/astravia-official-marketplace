@@ -18,17 +18,23 @@
 		"pe offset"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/native-islicensed-patch/reverse-engineering",
 		"cases/native-islicensed-patch/patch-and-guard"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目G" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目G"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/patch-and-guard.md"
 	]
 }

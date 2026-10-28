@@ -52,17 +52,15 @@ Lab 是插件与「对话 Agent」共存的一套工作方式开关。开启后�
 - Agent 在对话里跑 `triage_binary` 出的报告会推回面板，并标「来自对话」。
 - 需要本机外部逆向工具时，先 `probe_environment` 看哪些装了，再 `install_toolchain` 拿本平台
   安装命令（插件不替你装，命令由你/宿主执行）。
-- 一个多产物的案件用 `init_task` 建完整契约：`samples/ exports/ report/ evidence/ notes/` 五个目录
-  加 `scope.md`、`timeline.md`、`workitems.md`、`README.md`。传 `preset`（`offline-sample` / `ctf-public` /
-  `own-system`）、`auth_status`、`target` / `sample`、`in_scope` 才能把就绪门点亮；不传就是 `pending` +
-  `offline`，门关着并列出阻断项。之后 `search_cases` 查已有战例与随包先例、`scaffold_case`
+- 一个多产物的案件用 `init_task` 建完整契约：`samples/ exports/ reports/ evidence/ notes/` 五个目录
+  加 `scope.md`、`timeline.md`、`README.md` 与 `reports/<case>_security_assessment_report.md`。
+  `preset`（`offline-sample` / `ctf-public` / `own-system`）、`auth_status`、`target` / `sample`、
+  `in_scope` 都是**记录**：写进 `scope.md` 供事后报告引用，不传就是 `pending` + `offline`，
+  一样能开工——没有任何字段会挡住执行。之后 `search_cases` 查已有战例与随包先例、`scaffold_case`
   把命中包的 `tools/` 与共享 `hpkit` 落盘并给出命令行（只写文件不执行，先跑 `--self-test`）、
-  `record_case_note` 记决策、`write_assessment_report` 写四段式评估报告。案件能不能动由门禁推导，
-  不是问 Agent，也不是靠手改 `scope.md` 里的那行 `ready_for_act`。
-  `write_assessment_report` 写四段式评估报告。案件能不能动由门禁推导，不是问 Agent，也不是靠手改
-  `scope.md` 里的那行 `ready_for_act`。
-- 面板「案例」页只读：上面一张表是你自己 `cases/` `work/` 里的案例（名字 / 预设 / 授权 / 就绪 /
-  资产数 / 证据数 / 工作项 / 更新时间），下面一张表是随包的方法级先例库（每行标 `范围待定`）。
+  `record_case_note` 记决策、`write_assessment_report` 写四段式评估报告。
+- 面板「案例」页只读：上面一张表是你自己 `cases/` `work/` 里的案例（名字 / 预设 / 授权 /
+  资产数 / 证据数 / 更新时间），下面一张表是随包的方法级先例库（每行标 `范围待定`）。
   先例不替你授权：复制一份重跑 `init_task` 才是你的案例。
 
 ## 四、高级案例（示例对话）

@@ -17,17 +17,23 @@
 		"跨进程枚举"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/version-dll-proxy-iat-hook/edition-mask-and-hotpatch",
 		"cases/version-dll-proxy-iat-hook/dialog-rewrite-and-traps"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目C" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目C"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/edition-and-dialog.md"
 	]
 }

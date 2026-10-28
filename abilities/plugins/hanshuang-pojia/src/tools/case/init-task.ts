@@ -48,27 +48,24 @@ export function registerInitTaskTool(ctx: PluginContext): Disposable {
 		name: "init_task",
 		label: "%tool.workspace.label%",
 		description: [
+			"Creates a case workspace under <root>/<name>/ and writes the pre-work declaration.",
+			"",
 			"  <root>/<name>/samples/   copies of the files under examination",
 			"  <root>/<name>/exports/   decompiled sources, disassembly, string dumps",
-			"  <root>/<name>/report/    findings and the final report",
+			"  <root>/<name>/reports/   findings and the final report",
 			"  <root>/<name>/evidence/  one E-###-<slug>.md per observation",
 			"  <root>/<name>/notes/     working notes",
-			"  scope.md     authorisation, in/out of scope, network profile, deliverables, signoff",
+			"  scope.md     asset, in/out of scope, network profile, deliverables, recorded auth facts",
 			"  timeline.md  append-only event log",
-			"  workitems.md WI table + coverage, one row per in-scope asset",
 			"",
 			"Call it at the start of any engagement that will produce more than one artefact. Pass the declaration",
 			"when you have it: preset (offline-sample | ctf-public | own-system), auth_status (pending | granted |",
 			"denied | unknown), auth_basis, in_scope, network_profile (offline | lab_only | authorized_target_only |",
-			"unrestricted_lab). Naming a preset records that preset's authorisation; a bare call stays pending.",
-			"The `ready_for_act` gate is derived from those — it is reported, never accepted as an argument — and it",
-			"stays shut until auth is granted, an asset is in scope, and an offline case names its sample.",
+			"unrestricted_lab). Naming a preset records that preset's authorisation; a bare call records pending.",
+			"Nothing is gated on those fields: they describe the engagement, they neither authorise nor block it.",
 			"",
 			"Existing files are never overwritten: a second call keeps the scope, timeline and README you already",
-			"wrote and only fills in missing directories. scope.md is written once — a changed scope is a new case —",
-			"but authorisation can arrive later: calling again with auth_status / auth_basis / auth_evidence",
-			"appends a record to auth-log.md (append-only, last record stands) instead of rewriting the scope.",
-			"The gate in the result is always the one on disk, so it opens only once the recorded facts say so.",
+			"wrote and only fills in missing directories. scope.md is written once — a changed scope is a new case.",
 			"root defaults to the conversation working directory; pass a subdirectory when the project keeps its own",
 			"case folders. There is no patches/ directory: a patched or rebuilt artefact belongs under exports/ with",
 			"the command that produced it, so the run can be repeated.",
@@ -78,7 +75,7 @@ export function registerInitTaskTool(ctx: PluginContext): Disposable {
 			properties: {
 				name: { type: "string", description: "Case name, e.g. 'sample-2024-11' or 'com.example.app'." },
 				description: { type: "string", description: "One-line summary recorded in scope.md and README.md." },
-				report: { type: "boolean", description: "Also create report/security-report.md (default false)." },
+				report: { type: "boolean", description: "Also create reports/security-report.md (default false)." },
 				root: { type: "string", description: "Parent directory; defaults to the conversation working directory." },
 				preset: {
 					type: "string",
@@ -88,7 +85,7 @@ export function registerInitTaskTool(ctx: PluginContext): Disposable {
 				sample: { type: "string", description: "Sample path or hash the case starts from." },
 				auth_status: {
 					type: "string",
-					description: "pending | granted | denied | unknown; only granted opens the gate.",
+					description: "pending | granted | denied | unknown; recorded in scope.md as a fact about the engagement.",
 				},
 				auth_basis: { type: "string", description: "What the authorisation rests on (ticket, brief, ownership)." },
 				auth_evidence: { type: "string", description: "Where that authorisation is recorded." },
@@ -160,16 +157,8 @@ export function registerInitTaskTool(ctx: PluginContext): Disposable {
 					report: input.report === true,
 					brief,
 				});
-				// 报告的永远是落盘后的门禁：scope 已存在时 reads 的是 auth-log.md 里的最后一条。
-				const gate = result.readiness.ready
-					? ""
-					: `\nNot ready for act yet: ${result.readiness.blockers.join("; ")}. ` +
-						"Authorisation that arrives later is recorded by calling init_task again with auth_status /" +
-						"auth_basis — that appends to auth-log.md and keeps the scope as written. A changed scope is a new case.";
-				const recorded = result.authRecorded
-					? `\nAuthorisation recorded in ${result.authLogPath} (append-only, last record stands).`
-					: "";
-				return `${renderWorkspace(result)}${recorded}${gate}`;
+				// 第二次调用不改写 scope.md：已有的声明原样保留，只补齐缺失目录。
+				return renderWorkspace(result);
 			} catch (error) {
 				return `init_task failed: ${error instanceof Error ? error.message : String(error)}`;
 			}

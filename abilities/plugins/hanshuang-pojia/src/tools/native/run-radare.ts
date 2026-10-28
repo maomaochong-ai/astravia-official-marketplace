@@ -1,3 +1,10 @@
+/**
+ * run_radare：把用户自己的 radare2 当成一个受控查询接口。
+ *
+ * 命令通道只接受 r2 自己的命令词：管道、重定向、`$()`、反引号一律拒绝，
+ * 因为这里是参数数组直传，不经过 shell。写操作不在此列，需要显式 `r2 -w`。
+ */
+
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { baseName, isOutsideProject, resolveSamplePath } from "../../domain/sample-path";
 import { specFor } from "../../domain/toolchain/catalog";

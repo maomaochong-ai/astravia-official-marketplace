@@ -20,7 +20,7 @@ const LIMIT = 200;
  * 案例库：左栏是「我的案例」与「随包先例」两张单子，右栏把选中的那份读出来。
  *
  * 改造前这一页只列元数据、选中才给几行摘要，正文得自己拿编辑器去翻；现在案例的
- * scope/timeline/workitems/证据与先例的四份文档都在这页读，仍然不写盘。
+ * scope/timeline/证据与先例的几份文档都在这页读，仍然不写盘。
  * 案例身份是路径（cases/ 与 work/ 可能同名），先例身份是 slug，两者互斥选中。
  */
 export function CasesPage({ model }: PageProps) {
@@ -86,10 +86,10 @@ export function CasesPage({ model }: PageProps) {
 						hint={t("cases.stat.casesHint")}
 					/>
 					<StatTile
-						label={t("cases.stat.ready")}
-						value={cases.readyCount}
-						tone={cases.readyCount > 0 ? "low" : "default"}
-						hint={t("cases.stat.readyHint")}
+						label={t("cases.stat.evidence")}
+						value={cases.evidenceCount}
+						tone={cases.evidenceCount > 0 ? "low" : "default"}
+						hint={t("cases.stat.evidenceHint")}
 					/>
 					<StatTile label={t("cases.stat.precedents")} value={SHIPPED_PRECEDENTS.length} hint={t("cases.stat.precedentsHint")} />
 				</div>
@@ -118,7 +118,7 @@ export function CasesPage({ model }: PageProps) {
 							title={t("cases.list.title")}
 							actions={
 								<span className="font-mono text-[10px] text-text-4">
-									{cases.scanning ? t("cases.scanning") : t("cases.count", { ready: cases.readyCount, total: cases.cases.length })}
+									{cases.scanning ? t("cases.scanning") : t("cases.count", { total: cases.cases.length })}
 								</span>
 							}
 							bodyClassName="px-1 py-1"
@@ -131,7 +131,6 @@ export function CasesPage({ model }: PageProps) {
 								<ul className="fb-scroll max-h-[300px] overflow-y-auto">
 									{found.map(item => {
 										const active = item.path === record?.path;
-										const done = item.workItems.filter(entry => entry.status === "done").length;
 										return (
 											<li key={item.path}>
 												<button
@@ -143,12 +142,12 @@ export function CasesPage({ model }: PageProps) {
 												>
 													<span className="flex w-full min-w-0 items-center gap-1.5">
 														<span className="min-w-0 flex-1 truncate text-[11.5px] text-text">{item.name}</span>
-														<Tag tone={item.ready ? "low" : "neutral"}>{item.ready ? t("cases.ready.yes") : t("cases.ready.no")}</Tag>
+										<Tag tone="neutral">{item.preset ?? t("cases.row.case")}</Tag>
 													</span>
 													<span className="flex w-full min-w-0 items-center gap-1.5">
 														<span className="min-w-0 flex-1 truncate font-mono text-[10px] text-text-4">{item.path}</span>
 														<span className="shrink-0 font-mono text-[9.5px] text-text-4">
-															{t("cases.row.counts", { assets: item.inScope.length, evidence: item.evidenceCount, done, total: item.workItems.length })}
+											{t("cases.row.counts", { assets: item.inScope.length, evidence: item.evidenceCount })}
 														</span>
 													</span>
 												</button>
@@ -252,7 +251,7 @@ export function CasesPage({ model }: PageProps) {
 
 				<Card title={t("cases.contract.title")} bodyClassName="px-3.5 py-2.5">
 					<ul className="space-y-1.5">
-						{["declaration", "gate", "precedent"].map(key => (
+						{["declaration", "facts", "precedent"].map(key => (
 							<li key={key} className="flex items-start gap-2">
 								<Icon name="check" className="mt-0.5 size-3 shrink-0 text-text-4" />
 								<p className="text-[10.5px] leading-relaxed text-text-3">{t(`cases.contract.${key}`)}</p>

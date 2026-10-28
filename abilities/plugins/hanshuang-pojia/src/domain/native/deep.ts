@@ -13,11 +13,11 @@
 
 import { buildFunctionView, isControlRelevant } from "./cfg";
 import type { FunctionView } from "./cfg";
-import { isExecutableOffset, vaddrToOffset } from "./image";
+import { executableRangeAt, isExecutableOffset, offsetToVaddr, vaddrToOffset } from "./image";
 import type { AddressMap } from "./image";
-import { decodeAt, decodeRange } from "./insn";
+import { decodeRange } from "./insn";
 import type { DisasmArch } from "./insn";
-import { callersOf } from "./xref";
+import { callersOf, refsTo } from "./xref";
 import type { XrefIndex } from "./xref";
 import type { CodeSymbol } from "./symbols";
 import type { NativeFacts } from "./types";
@@ -47,6 +47,8 @@ export interface DeepOptions {
 	index?: XrefIndex;
 	names?: Map<number, string>;
 	maxInstructions?: number;
+	/** 段表：有它才能把文件偏移翻成虚拟地址，并标出所属可执行段。 */
+	map?: AddressMap;
 }
 
 export interface DeepResult {
@@ -63,6 +65,10 @@ export interface DeepResult {
 	calls: number;
 	stackFrame: number | null;
 	callers: RefHit[];
+	/** 指向函数入口但不算调用的引用（跳转、数据指针）；有索引时才非空。 */
+	refs: RefHit[];
+	/** 函数入口的虚拟地址；没有段表时为 null。 */
+	vaddr: number | null;
 	callees: RefHit[];
 	stringRefs: StringHit[];
 	warnings: string[];
@@ -100,7 +106,7 @@ function nameOf(names: Map<number, string> | undefined, offset: number): string 
 	return names?.get(offset) ?? null;
 }
 
-function renderHeader(view: FunctionView, arch: DisasmArch, name: string | null): string[] {
+function renderHeader(view: FunctionView, arch: DisasmArch, name: string | null, map?: AddressMap): string[] {
 	const title = name ? `${name} @ 0x${view.start.toString(16)}` : `function @ 0x${view.start.toString(16)}`;
 	const stats = [
 		`arch ${arch}`,
@@ -108,6 +114,10 @@ function renderHeader(view: FunctionView, arch: DisasmArch, name: string | null)
 		`${view.stats.blocks} blocks`,
 		`${view.stats.calls} calls`,
 		view.stats.stackFrame === null ? null : `frame 0x${view.stats.stackFrame.toString(16)}`,
+		// 同一函数在两个工具里用两套地址：反汇编用文件偏移，IDA / Ghidra 用虚拟地址。
+		// 两个都给，人才能把这里的行贴回另一边的窗口。
+		map ? vaddrLabel(view.start, map) : null,
+		map ? segmentLabel(view.start, map) : null,
 	].filter((item): item is string => item !== null);
 	return [`; ${title}`, `; ${stats.join(" | ")}`];
 }
@@ -129,6 +139,18 @@ function renderInsnLines(view: FunctionView, filter: boolean): string[] {
 	return lines;
 }
 
+/** 文件偏移 → 虚拟地址；跨不进段的偏移（例如尾巴上的补丁区）不编造，直接省略。 */
+function vaddrLabel(offset: number, map: AddressMap): string | null {
+	const vaddr = offsetToVaddr(map, offset);
+	return vaddr === null ? null : `vaddr 0x${vaddr.toString(16)}`;
+}
+
+/** 这个偏移落在哪个可执行段的哪个区间：决定「后面还能读多远」。 */
+function segmentLabel(offset: number, map: AddressMap): string | null {
+	const range = executableRangeAt(map, offset);
+	return range === null ? null : `exec 0x${range.start.toString(16)}-0x${range.end.toString(16)}`;
+}
+
 function renderRefList(title: string, hits: RefHit[], names: Map<number, string> | undefined): string[] {
 	if (hits.length === 0) return [];
 	const lines = [`; ${title} (${hits.length})`];
@@ -139,15 +161,28 @@ function renderRefList(title: string, hits: RefHit[], names: Map<number, string>
 	return lines;
 }
 
-function renderSummary(view: FunctionView, arch: DisasmArch, name: string | null, callers: RefHit[], callees: RefHit[], stringRefs: StringHit[], names: Map<number, string> | undefined): string[] {
-	const lines = renderHeader(view, arch, name);
+function renderSummary(
+	view: FunctionView,
+	arch: DisasmArch,
+	name: string | null,
+	callers: RefHit[],
+	refs: RefHit[],
+	callees: RefHit[],
+	stringRefs: StringHit[],
+	names: Map<number, string> | undefined,
+	map?: AddressMap,
+): string[] {
+	const lines = renderHeader(view, arch, name, map);
 	lines.push(...renderRefList("callers", callers, names));
+	lines.push(...renderRefList("references", refs, names));
 	lines.push(...renderRefList("callees", callees, names));
 	if (stringRefs.length > 0) {
 		lines.push(`; string references (${stringRefs.length})`);
 		for (const hit of stringRefs) lines.push(`  0x${hit.offset.toString(16)}  "${hit.text}"`);
 	}
-	if (callers.length === 0 && callees.length === 0 && stringRefs.length === 0) lines.push("; no callers, callees or string references found in the indexed ranges");
+	if (callers.length === 0 && refs.length === 0 && callees.length === 0 && stringRefs.length === 0) {
+		lines.push("; no callers, references, callees or string references found in the indexed ranges");
+	}
 	return lines;
 }
 
@@ -174,6 +209,14 @@ export function deepAnalyse(bytes: Uint8Array, arch: DisasmArch, target: DeepTar
 	const callers: RefHit[] = options.index
 		? callersOf(options.index, view.start).map(offset => ({ offset, name: nameOf(names, offset) }))
 		: [];
+	// 指向入口但没被识别成调用的引用（跳转、数据指针）：就是 IDA 里「谁引用了我」中的非 call 部分。
+	const callerSet = new Set(callers.map(hit => hit.offset));
+	const refs: RefHit[] = options.index
+		? refsTo(options.index, view.start)
+				.filter(offset => !callerSet.has(offset))
+				.map(offset => ({ offset, name: nameOf(names, offset) }))
+		: [];
+	const vaddr = options.map ? offsetToVaddr(options.map, view.start) : null;
 
 	const seenCallees = new Set<number>();
 	const callees: RefHit[] = [];
@@ -206,9 +249,9 @@ export function deepAnalyse(bytes: Uint8Array, arch: DisasmArch, target: DeepTar
 
 	let lines: string[];
 	if (mode === "summary") {
-		lines = renderSummary(view, arch, name, callers, callees, stringRefs, names);
+		lines = renderSummary(view, arch, name, callers, refs, callees, stringRefs, names, options.map);
 	} else {
-		lines = renderHeader(view, arch, name);
+		lines = renderHeader(view, arch, name, options.map);
 		if (mode === "full") {
 			lines.push(...renderInsnLines(view, false));
 		} else {
@@ -236,6 +279,8 @@ export function deepAnalyse(bytes: Uint8Array, arch: DisasmArch, target: DeepTar
 		calls: view.stats.calls,
 		stackFrame: view.stats.stackFrame,
 		callers,
+		refs,
+		vaddr,
 		callees,
 		stringRefs,
 		warnings,
@@ -351,9 +396,4 @@ export function symbolBoundFor(start: number, offsets: Iterable<number>, map: Ad
 	const range = map.executable.find(item => start >= item.start && start < item.end);
 	if (range && range.end < bound) bound = range.end;
 	return Number.isFinite(bound) ? bound : start + fallbackSpan;
-}
-
-/** 确认 `offset` 处确实能解码出指令（页面上点击前做一次守卫）。 */
-export function isCodeOffset(bytes: Uint8Array, arch: DisasmArch, offset: number): boolean {
-	return decodeAt(bytes, arch, offset) !== null;
 }

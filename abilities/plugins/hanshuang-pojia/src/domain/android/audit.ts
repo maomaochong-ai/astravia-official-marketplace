@@ -1,3 +1,10 @@
+/**
+ * Android 体检：把清单模型、DEX 事实与签名事实折成发现项。
+ *
+ * 只做「规则 → 发现」的映射，不重新解析字节。规则的严重级别与文案在
+ * `domain/audit/rules.ts`，这里只引用，不复制。
+ */
+
 import type { ArchiveFacts, SignatureFacts } from "../archive/archive-facts";
 import { finding, type Finding } from "../audit/findings";
 import { scanSecrets } from "../audit/secrets";

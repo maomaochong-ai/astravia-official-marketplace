@@ -14,7 +14,7 @@ export interface WorkbenchBridge {
 	listFiles(directory: string): Promise<PluginFsEntry[]>;
 	/**
 	 * 读一篇 UTF-8 文本；缺文件、越界、非文本一律返回 null。
-	 * 战例页用它读 scope.md / workitems.md，不负责解释失败原因。
+	 * 战例页用它读 scope.md 与 evidence/，不负责解释失败原因。
 	 */
 	readTextFile(path: string): Promise<string | null>;
 	/** 只取元信息，用来在读取之前判断大小是否超过宿主上限。 */

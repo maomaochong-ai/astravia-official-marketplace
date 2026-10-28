@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LAB_OFF, labAfter, parseLabCommand, type LabState } from "../../../domain/lab-mode";
+import { LAB_OFF, type LabState } from "../../../domain/lab-mode";
 import type { WorkbenchBridge } from "../bridge";
 
 /** 与 settings / library 同一套存储约定：读写失败就退化成会话内状态。 */
@@ -54,9 +54,4 @@ export function useLab(bridge: WorkbenchBridge): LabModel {
 	);
 
 	return { state, set, refresh: load };
-}
-
-/** 供对话侧复用：把一条用户输入解析成新的 lab 状态。 */
-export function nextLabState(current: LabState, prompt: string, now = new Date().toISOString()): LabState {
-	return labAfter(current, parseLabCommand(prompt), now);
 }

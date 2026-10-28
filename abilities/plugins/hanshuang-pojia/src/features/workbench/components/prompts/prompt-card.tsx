@@ -1,3 +1,9 @@
+/**
+ * 提示词卡片：名称、摘要、当前生效标记与操作入口。
+ *
+ * 纯展示 + 回调，不自己读写存储；状态与副作用都在 `use-prompt-library`。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { PromptItem } from "../../../../domain/prompt-library";
 import { estimateTokens } from "../../../../domain/prompt-library";

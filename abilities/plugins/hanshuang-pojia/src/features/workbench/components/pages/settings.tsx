@@ -1,7 +1,13 @@
+/**
+ * 面板「设置」页：规则级别、当前生效提示词、默认项与实验环境开关。
+ *
+ * 显示的是**真实状态**（含存储读失败时的回退），不缓存出一份「看起来开着」的副本。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { RULES, type Severity } from "../../../../domain/audit/rules";
 import { getActivePrompt } from "../../../../domain/prompt-library";
-import { DEFAULT_SETTINGS, type WorkbenchSettings } from "../../state";
+import { DEFAULT_SETTINGS } from "../../state";
 import { SEVERITY_DOT, SEVERITY_TEXT } from "../../severity";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";
@@ -189,9 +195,4 @@ export function SettingsPage({ model }: PageProps) {
 			</div>
 		</>
 	);
-}
-
-/** 供测试与页面复用的设置摘要。 */
-export function settingsSummary(settings: WorkbenchSettings): string {
-	return `${settings.mode} · ${settings.disabledRules.length} disabled`;
 }

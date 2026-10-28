@@ -1,23 +1,26 @@
 /**
- * Case contract v2 — the pre-work declaration that makes a case citable.
+ * Case contract — the pre-work declaration that makes a case citable.
  *
- * Upstream `case-init.ps1` writes a scope before any analysis: what is authorised, what is
- * in and out of scope, which network profile applies, what will be delivered, and a
- * `ready_for_act` gate that stays shut until authorisation is recorded. `Tool/cases/` then
- * stores 14 finished packages whose README/docs/src/build files are the precedent corpus.
+ * Upstream `case-init.ps1` writes a scope before any analysis: what is being examined, what is
+ * in and out of scope, which network profile applies, and what will be delivered. `Tool/cases/`
+ * then stores 14 finished packages whose README/docs/src/build files are the precedent corpus.
  *
- * This module owns the declaration half: presets, the gate, and the three documents
- * (`scope.md`, `timeline.md`, `workitems.md`). Pure functions only — no fs, no clock.
+ * This module owns the declaration half: the preset table and the two documents `scope.md` and
+ * `timeline.md`, plus the `evidence/README.md` numbering contract. Pure functions only — no fs,
+ * no clock.
  *
- * Section names, key names, the preset table and the gate formula are copied from
- * `Tool/scripts/case-init.ps1` so a case written by either tool reads the same. Two
- * deliberate departures, both documented in ADR 0006: the name limit is 64 instead of 80
- * (a `E-###-<slug>.md` under `evidence/` must still fit a Windows path), and unknown words
- * fail closed instead of being warned past.
+ * Section names, key names and the preset table are copied from `Tool/scripts/case-init.ps1` so
+ * a case written by either tool reads the same. Two deliberate departures, both documented in
+ * ADR 0006: the name limit is 64 instead of 80 (an `E-###-<slug>.md` under `evidence/` must
+ * still fit a Windows path), and unknown words fail closed instead of being warned past.
  *
  * - `scope.md` is written once and never rewritten; a changed scope is a new case.
  * - `timeline.md` is append-only, one timestamped block per event.
- * - `workitems.md` keeps a fixed table so "how much is done" stays countable.
+ *
+ * `auth_status` is recorded as a fact about the engagement, next to the assets and the network
+ * profile. It is not a gate: nothing here derives a "may proceed" verdict from it, and no tool
+ * refuses to run because the field is not `granted`. A workbench that locks its own door only
+ * teaches people to fill in the form.
  */
 
 export const MAX_NAME_CHARS = 64;
@@ -48,20 +51,19 @@ export function assertCaseName(raw: string): string {
 }
 
 /** Upstream creates `evidence`, `notes`, `report`; `samples` and `exports` are the local additions. */
-export const CASE_DIRECTORY_NAMES = ["samples", "exports", "report", "evidence", "notes"] as const;
+export const CASE_DIRECTORY_NAMES = ["samples", "exports", "reports", "evidence", "notes"] as const;
 
 export const CASE_DOCUMENTS = {
 	scope: "scope.md",
 	timeline: "timeline.md",
-	workItems: "workitems.md",
 	readme: "README.md",
-	authLog: "auth-log.md",
 	evidence: "evidence/README.md",
 } as const;
 
 /**
- * Upstream's `-AuthStatus` accepts exactly these four words. `granted` is the only one that
- * opens the gate; `pending`, `denied` and `unknown` all read as "not recorded".
+ * Upstream's `-AuthStatus` accepts exactly these four words. The value is written into
+ * `scope.md` for the reader; no code path branches on it, so an unusual word is a description
+ * of the engagement rather than a blocked start.
  */
 export type AuthStatus = "pending" | "granted" | "denied" | "unknown";
 
@@ -114,7 +116,7 @@ export interface CasePreset {
 /**
  * The three upstream presets. They carry authorisation because upstream sets
  * `-AuthGranted` from the preset; they carry no assets, because an invented asset would
- * light the gate without anything being in scope.
+ * describe a case nobody declared.
  */
 export const CASE_PRESETS: readonly CasePreset[] = [
 	{
@@ -124,7 +126,7 @@ export const CASE_PRESETS: readonly CasePreset[] = [
 		authBasis: "own_system",
 		evidenceOfAuth: "preset:offline-sample (owner-operated local file)",
 		networkProfile: "offline",
-		deliverables: ["report/<case>_security_assessment_report.md", "exports/ (decompiler output, dumps, scripts)"],
+		deliverables: ["reports/<case>_security_assessment_report.md", "exports/ (decompiler output, dumps, scripts)"],
 		constraints: ["Static analysis only; no network calls, no live service touched"],
 	},
 	{
@@ -134,7 +136,7 @@ export const CASE_PRESETS: readonly CasePreset[] = [
 		authBasis: "ctf_public",
 		evidenceOfAuth: "preset:ctf-public",
 		networkProfile: "authorized_target_only",
-		deliverables: ["report/<case>_security_assessment_report.md", "exports/<case>_poc/ (reproduction script + output)"],
+		deliverables: ["reports/<case>_security_assessment_report.md", "exports/<case>_poc/ (reproduction script + output)"],
 		constraints: ["Only the published challenge surface; no adjacent hosts", "Stop at flag / demonstrated impact"],
 	},
 	{
@@ -144,12 +146,10 @@ export const CASE_PRESETS: readonly CasePreset[] = [
 		authBasis: "own_system",
 		evidenceOfAuth: "preset:own-system/lab",
 		networkProfile: "lab_only",
-		deliverables: ["report/<case>_security_assessment_report.md", "exports/ (reproduction script + captured output)"],
+		deliverables: ["reports/<case>_security_assessment_report.md", "exports/ (reproduction script + captured output)"],
 		constraints: ["No production data; restore snapshots after testing"],
 	},
 ];
-
-export const DEFAULT_PRESET_ID = "offline-sample";
 
 export function resolvePreset(raw: string | undefined): CasePreset {
 	const value = (raw ?? "").trim().toLowerCase();
@@ -179,51 +179,12 @@ export interface CaseBrief {
 	at: string;
 }
 
-export interface Readiness {
-	ready: boolean;
-	blockers: string[];
-}
-
 /**
- * What the gate looks at. The vocabularies are `string` on purpose: this reads a declaration
- * someone typed, so an unrecognised word is an answer the gate has to handle, not a compile
- * error.
+ * 每条资产/约束占一行。条目里夹带的换行必须压成空格：`  - line\nbreak` 会让 `break`
+ * 落到下一行且没有项目符号，读回来时被当成新的键，声明静默错位。
  */
-export interface ReadinessInput {
-	authStatus: string;
-	inScope: readonly string[];
-	networkProfile: string;
-	/** Upstream: offline mode only becomes actionable with an explicit local sample. */
-	sample?: string;
-}
-
-/** `granted` is the single word that opens the gate; everything else is "not recorded". */
-export const AUTHORISED_STATUSES: readonly string[] = ["granted"];
-
-/**
- * The gate is derived, never accepted as input: a value passed in by a caller is a claim,
- * not a check, and a claimed gate is the same as no gate.
- *
- * Formula (upstream `case-init.ps1`): `granted` AND assets non-empty AND (mode is not
- * `offline` OR an explicit sample is recorded). Both vocabularies are enumerated forwards,
- * so an unknown word blocks instead of slipping through an inequality.
- */
-export function assessReadiness(brief: ReadinessInput): Readiness {
-	const blockers: string[] = [];
-	if (!AUTHORISED_STATUSES.includes(brief.authStatus)) {
-		blockers.push(`authorisation not recorded (auth_status=${brief.authStatus})`);
-	}
-	if (brief.inScope.length === 0) blockers.push("no in-scope assets declared");
-	if (!(NETWORK_PROFILES as readonly string[]).includes(brief.networkProfile)) {
-		blockers.push(`network profile not recognised (profile=${brief.networkProfile})`);
-	} else if (brief.networkProfile === "offline" && !(brief.sample ?? "").trim().length) {
-		blockers.push("offline profile needs an explicit sample");
-	}
-	return { ready: blockers.length === 0, blockers };
-}
-
 function indentedList(items: readonly string[]): string[] {
-	return items.length > 0 ? items.map(item => `  - ${item}`) : ["  []"];
+	return items.length > 0 ? items.map(item => `  - ${item.replace(/\s+/g, " ").trim()}`) : ["  []"];
 }
 
 /** Where the operator reads the upstream ops contract, in the form this package can open. */
@@ -237,8 +198,6 @@ export const CASE_OPS_REFS: readonly string[] = [
 
 /** Renders the declaration. Heading and key names mirror `case-init.ps1`. */
 export function scopeMarkdown(brief: CaseBrief): string {
-	const readiness = assessReadiness(brief);
-	const check = (ok: boolean): string => (ok ? "[x]" : "[ ]");
 	return [
 		"# Case Scope",
 		"",
@@ -258,7 +217,6 @@ export function scopeMarkdown(brief: CaseBrief): string {
 		`- status: ${brief.authStatus}`,
 		`- basis: ${brief.authBasis?.trim() || "(not provided)"}`,
 		`- evidence_of_auth: ${brief.authEvidence?.trim() || "(not provided)"}`,
-		"- MUST NOT proceed if status != granted",
 		"",
 		"## in_scope",
 		"- assets:",
@@ -276,7 +234,6 @@ export function scopeMarkdown(brief: CaseBrief): string {
 		`- offline_sample: ${brief.sample?.trim() || "(none)"}`,
 		"- notes: |",
 		"    offline | lab_only | authorized_target_only | unrestricted_lab",
-		"    Change mode only after auth.status = granted.",
 		"",
 		"## deliverables",
 		"- report: true",
@@ -293,50 +250,9 @@ export function scopeMarkdown(brief: CaseBrief): string {
 		"- rules:",
 		...indentedList(brief.constraints),
 		"",
-		"## signoff",
-		`- ready_for_act: ${readiness.ready ? "true" : "false"}`,
-		"- checklist:",
-		`  - ${check(brief.authStatus === "granted")} auth.status = granted`,
-		`  - ${check(brief.inScope.length > 0 || Boolean(brief.sample?.trim()))} in_scope.assets non-empty OR offline sample path set`,
-		`  - ${check(readiness.blockers.every(blocker => !blocker.startsWith("network profile")))} network_profile.mode chosen`,
-		"  - [ ] out_of_scope reviewed",
-		"  - [ ] roles assigned",
-		...(readiness.blockers.length > 0
-			? ["- blockers:", ...readiness.blockers.map(blocker => `  - ${blocker}`)]
-			: ["- blockers: []"]),
-		"",
 		"## ops_refs",
 		...CASE_OPS_REFS.map(ref => `- ${ref}`),
 		"",
-	].join("\n");
-}
-/**
- * `scope.md` is written once, but authorisation is an event: a ticket can open after the case
- * exists. Without a place to record that, a case opened `pending` could never open its gate —
- * the only way forward would be a new case, losing the timeline and the evidence numbering
- * (ADR 0009). So exactly one thing grows: this log. The scope itself stays the snapshot it
- * was; a scope that changed is still a new case.
- */
-export function authLogHeader(name: string): string {
-	return [
-		`# Authorisation log — ${name}`,
-		"",
-		"Append-only. One block per record, newest last; the last block stands.",
-		"`scope.md` declares the scope and is written once. This file records authorisation arriving",
-		"later — a ticket opens mid-engagement — the same way `timeline.md` records events.",
-		"",
-	].join("\n");
-}
-
-/** The `## <iso> | <status>` block shape the reader parses; unknown keys are ignored there. */
-export function authRecordMarkdown(
-	at: string,
-	record: Pick<CaseBrief, "authStatus" | "authBasis" | "authEvidence">,
-): string {
-	return [
-		`## ${at} | ${record.authStatus}`,
-		`- basis: ${record.authBasis?.trim() || "(not provided)"}`,
-		`- evidence: ${record.authEvidence?.trim() || "(not provided)"}`,
 	].join("\n");
 }
 
@@ -357,7 +273,6 @@ export function timelineEntry(at: string, text: string, kind = "note", role = "l
 
 /** Append-only event log; a header is written once at creation. */
 export function timelineHeader(name: string, at: string, brief: CaseBrief): string {
-	const readiness = assessReadiness(brief);
 	return [
 		`# Timeline — ${name}`,
 		"",
@@ -365,88 +280,9 @@ export function timelineHeader(name: string, at: string, brief: CaseBrief): stri
 		"",
 		timelineEntry(
 			at,
-			readiness.ready
-				? "case directory created; scope ready_for_act=true"
-				: `case directory created; scope pending (${readiness.blockers.join("; ")})`,
+			`case directory created; preset ${brief.preset.id}, ${brief.inScope.length} in-scope asset(s)`,
 			"init",
 		),
-		"",
-	].join("\n");
-}
-
-export interface WorkItemSeed {
-	id: string;
-	title: string;
-	target: string;
-	surface: string;
-	status: "todo" | "in_progress" | "done" | "dropped";
-}
-
-/** What kind of thing an asset looks like — only ever a hint for the `surface` column. */
-function surfaceHint(asset: string): string {
-	if (/^https?:\/\//i.test(asset)) return "web";
-	if (/\.(apk|aab|xapk)$/i.test(asset)) return "android";
-	if (/\.(exe|dll|sys|so|dylib|elf|bin|ipa)$/i.test(asset)) return "binary";
-	if (/\.(js|ts)$/i.test(asset)) return "js";
-	return "process";
-}
-
-/**
- * One work item per in-scope asset, plus the upstream bootstrap row. That is the honest
- * seed: every asset someone declared in scope needs at least one unit of work, and an empty
- * table would hide the gap.
- */
-export function seedWorkItems(brief: Pick<CaseBrief, "inScope">): WorkItemSeed[] {
-	const bootstrap: WorkItemSeed = {
-		id: "WI-001",
-		title: "Establish scope and auth",
-		target: "case",
-		surface: "process",
-		status: "in_progress",
-	};
-	return [
-		bootstrap,
-		...brief.inScope.map((asset, index) => ({
-			id: `WI-${String(index + 2).padStart(3, "0")}`,
-			title: `Baseline and analyse ${asset}`,
-			target: asset,
-			surface: surfaceHint(asset),
-			status: "todo" as const,
-		})),
-	];
-}
-
-/** 八列是机器读的：单元格里再出现 `|` 会多一列，换行会多一行，状态列就被读成资产名的一部分。 */
-function tableCell(text: string): string {
-	return text.replace(/[\r\n]+/g, " ").replace(/\|/g, "/").replace(/\s+/g, " ").trim();
-}
-
-export const WORK_ITEM_STATUSES: readonly string[] = ["todo", "in_progress", "done", "dropped"];
-
-export function workItemsMarkdown(name: string, brief: CaseBrief): string {
-	const rows = seedWorkItems(brief).map(
-		row => `| ${row.id} | ${tableCell(row.title)} | lead | ${tableCell(row.target)} | ${row.surface} | ${row.status} | | |`,
-	);
-	return [
-		`# Work Items — ${name}`,
-		"",
-		"Status is one of `todo` / `in_progress` / `done` / `dropped`. The evidence column takes an `E-###` id.",
-		"",
-		"| ID | title | role | targets | surface | status | evidence | notes |",
-		"|----|-------|------|---------|---------|--------|----------|-------|",
-		...rows,
-		"",
-		"## Coverage",
-		"- [ ] Recon/analysis complete for in-scope assets",
-		"- [ ] Critical/High candidates triaged (or N/A for pure RE)",
-		"- [ ] Validated findings have Evidence (E-*)",
-		"- [ ] Path documented (attack/call/solve)",
-		"- [ ] Timeline continuous across major phases",
-		"- [ ] Report written under report/",
-		"- [ ] field-journal entry anonymized",
-		"",
-		"## Refs",
-		...CASE_OPS_REFS.map(ref => `- ${ref}`),
 		"",
 	].join("\n");
 }
@@ -464,7 +300,6 @@ export function evidenceMarkdown(name: string): string {
 		"- `status:` observed | candidate | validated | false_positive | accepted_risk",
 		"- `repro_command:` the command that reproduces it (offline work states that instead)",
 		"- `content_hash:` sha256 of the artefact, or `n/a`; with sha256 also record `artifact_path:`",
-		"- `linked_workitem:` a WI-### that exists in `workitems.md`",
 		"- `grade:` Observed | Inferred | Assumed",
 		"",
 		"The body records what was run, what came back verbatim, and where the artefact is kept",
@@ -475,11 +310,4 @@ export function evidenceMarkdown(name: string): string {
 		"- (none yet — add `E-001-<slug>.md` and list it here)",
 		"",
 	].join("\n");
-}
-
-/** One-line gate summary for tool output and the panel: never a bare boolean. */
-export function readinessLine(readiness: Readiness): string {
-	return readiness.ready
-		? "ready_for_act: yes (authorisation recorded, in-scope assets declared)"
-		: `ready_for_act: no — ${readiness.blockers.join("; ")}`;
 }
