@@ -1,7 +1,7 @@
 # hanshuang-pojia 插件 ADR 索引
 
-这九份 ADR 记录 `abilities/plugins/hanshuang-pojia` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事：
-0006 是案例层的地基，0007 与 0008 是在它上面继续加的两层，0009 补它的门禁边界；0001–0005 各自独立。
+这十份 ADR 记录 `abilities/plugins/hanshuang-pojia` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事：
+0006 是案例层的地基，0007 与 0008 是在它上面继续加的两层，0009 补它的门禁边界；0010 修订 0004 §4 的执法手段；0001–0005 各自独立。
 
 源文件原先放在插件自己的 `docs/adr/`，2026-10-27 迁到仓库根与其他插件并列。正文保持迁移前的原样，
 2026-10-27 按 **2.11.0** 逐条对照源码核过一轮，结论追加在每篇文末的「实现核对」节里——**事实以核对节为准**，
@@ -18,6 +18,7 @@
 | [0007](./0007-case-corpus-layer.md) | 案例语料层：先例 + 原文双层落地 | 已接受（现行） |
 | [0008](./0008-runnable-case-corpus.md) | 案例语料从方法摘要升级为可执行先例 | 已接受（2026-10-27 已落地；初拟编号 ADR 001） |
 | [0009](./0009-late-authorisation-log.md) | 授权晚到：`auth-log.md` 与「回报落盘门禁」 | 已接受（2026-10-27 已落地于 2.12.0；补充 0006 D2/D4） |
+| [0010](./0010-refusal-cascade-sentence-reshaping.md) | 拒答恢复改为句式级联：禁令重申换成评审式重塑 | 已接受（2026-10-28 已落地于 2.13.0；修订 0004 §4 的执法手段） |
 
 ## 落实与偏差
 
@@ -35,13 +36,14 @@
 | 0007 | 包内四份契约文档 + 文档库原文双层；`source` ⇒ `caseDocs` 强制 | 「309 → 约 339 篇」实为 340 篇 |
 | 0008 | 19 包都有可跑工具，`--all` 逐工具跑 `--self-test`；`hpkit` 自检 47/47 | `precedents.generated.ts` 446 KB（正文估 401 KB）；`manifest.json` 的 `runtime` 写错不会被校验器拦住 |
 | 0009 | `auth-log.md` 最后一块生效（`library.ts#parseAuthLog`）；`init_task` 回读磁盘再报门禁（`workspace.ts#recordAuthAmendment`） | **旧缺陷已修**：曾按内存 brief 回报门禁，第二次带 `auth_status=granted` 时报 ready 而磁盘仍 pending；`scope.md` 仍只写一次 |
+| 0010 | 静默拦截入判（`refusal.ts:105`）、三档句式级联（`reshaping.ts`）、复合幂等键（`refusal.ts:183`）、`turnId` 缓存原话（`contributions.ts:49-84`）；55 文件 / 659 例 | **三处偏离上游**：`ATTACK_ASK` 必须放宽（上游那 8 条不命中「帮我逆向 X」）；目标提取补 POSIX 路径与 Android 包名；拒答识别补「这件事我不做」（上游 `REFUSAL_MARKERS` 同样漏，但上游有 L1 兜底）。宿主对 `lastAssistantMessage` 的 nullable 行为仍为 **Assumed**，待发布后看日志 |
 
 守住这些的命令（全部在插件目录下跑）：
 
 ```bash
 cd abilities/plugins/hanshuang-pojia
 npm run check                                          # tsc
-npm run test                                           # 54 文件 / 621 例
+npm run test                                           # 55 文件 / 659 例
 npm run verify:generated                               # 提示词 / 工具索引 / 先例三处 --check
 node scripts/check-precedent-package.mjs --all         # 19 包 + 逐工具自检
 cd cases/_shared && python3 -m hpkit.selftest          # 47/47

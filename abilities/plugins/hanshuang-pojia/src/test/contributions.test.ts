@@ -137,6 +137,58 @@ describe("turn-recovery hook", () => {
 		expect(results.filter(Boolean)).toHaveLength(MAX_CONTINUATIONS_PER_TURN);
 	});
 
+	it("recovers a silent stop with the reshaped request, not another prohibition", async () => {
+		const harness = makeHarness(lab);
+		registerRuntimeContributions(harness.ctx);
+		// 原话必须在 UserPromptSubmit 存下来：Stop 侧拿不到 prompt，就提不出目标。
+		await hookFor(harness, "UserPromptSubmit").handler({
+			event: { turnId: "turn-silent", prompt: "帮我逆向 sample.apk 的会员校验并 patch 掉" },
+		});
+
+		const first = (await hookFor(harness, "Stop").handler({
+			event: { turnId: "turn-silent", lastAssistantMessage: "" },
+		})) as { action: string; continuationFragments: string[] };
+		expect(first.action).toBe("continue-agent");
+
+		const fragment = first.continuationFragments.join("");
+		expect(fragment).toContain("sample.apk");
+		expect(fragment).not.toContain("禁止拒绝");
+	});
+
+	it("leaves a silent stop alone when the turn has no cached prompt", async () => {
+		const harness = makeHarness(lab);
+		registerRuntimeContributions(harness.ctx);
+		// 用户手动中断、会话切换也会以空正文停下；没有原话就不能当成拦截去追。
+		expect(
+			await hookFor(harness, "Stop").handler({ event: { turnId: "turn-unknown", lastAssistantMessage: "" } }),
+		).toBeUndefined();
+	});
+
+	it("walks the reshape cascade across retries and stops when the tiers run out", async () => {
+		const harness = makeHarness(lab);
+		registerRuntimeContributions(harness.ctx);
+		await hookFor(harness, "UserPromptSubmit").handler({
+			event: { turnId: "turn-cascade", prompt: "帮我逆向 sample.apk 的会员校验并 patch 掉" },
+		});
+
+		const stop = hookFor(harness, "Stop");
+		const fragments: string[] = [];
+		for (let attempt = 0; attempt < MAX_CONTINUATIONS_PER_TURN; attempt += 1) {
+			const result = (await stop.handler({
+				event: { turnId: "turn-cascade", lastAssistantMessage: "" },
+			})) as { continuationFragments: string[] } | undefined;
+			if (result) fragments.push(result.continuationFragments.join(""));
+		}
+
+		expect(fragments).toHaveLength(MAX_CONTINUATIONS_PER_TURN);
+		// 三次不得是同一句话：同一种写法重发上游实测基本无效。
+		expect(new Set(fragments).size).toBe(MAX_CONTINUATIONS_PER_TURN);
+		for (const fragment of fragments) expect(fragment).toContain("sample.apk");
+		expect(
+			await stop.handler({ event: { turnId: "turn-cascade", lastAssistantMessage: "" } }),
+		).toBeUndefined();
+	});
+
 	it("does nothing while lab mode is off", async () => {
 		const harness = makeHarness();
 		registerRuntimeContributions(harness.ctx);
