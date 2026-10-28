@@ -177,8 +177,3 @@ export function buildScriptFor(project: CaseProject, os: OsKey): string {
 	].join("\n");
 }
 
-/** 展示用：把命令序列渲染成可复制的文本块。 */
-export function renderCommands(project: CaseProject, os: OsKey): string {
-	const lines = commandsFor(project, os).map(entry => `# ${entry.title.en}\n${entry.command}`);
-	return lines.join("\n\n");
-}

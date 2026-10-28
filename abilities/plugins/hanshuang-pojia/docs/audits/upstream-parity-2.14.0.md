@@ -176,3 +176,27 @@
 3. **唯一形态性升级是脚本**：上游 `.ps1` 只在 Windows 能跑，插件把命令与构建脚本按语言 × OS 生成，
    Linux/macOS 得到 `build.sh`。这是从「抄一份」变成「人人可跑」的那一步。
 4. **仍欠的两件小事**均 P2（`manifest-summary` 独立入口、截图 OCR），不影响发布。
+
+## 11. 2.14.0 收口：本轮再清的四项偏差
+
+§9 修的是「机制上自己加的门」，这一轮清的是**同一类问题的残留**：判定删了但缓存/回退路径还在，
+文档按权威性堆放，测试平铺难定位。四项均已收敛，且每项都有可执行断言。
+
+| 项 | 修前 | 修后 | 证据 |
+| --- | --- | --- | --- |
+| `lab` 状态回退 | 模块级缓存 + 读盘失败即 `LAB_OFF`：存储被清、写盘失败、两个会话并行，任一情形都会把用户开过的环境静默关掉 | 缓存改为按 `ctx.storage` 的 `WeakMap`；读失败/文件消失沿用缓存；写盘失败先落内存；同轮口令用 `command.rest` 取目标；零命中补 `[交付形状]` | `src/test/workbench/lab-chain.test.ts` 四例（读坏、文件消失、写坏、两会话隔离）+ `dialogue/contributions.test.ts` |
+| 文档结构 | `docs/modules/*.md` 9 篇按「权威性」堆在根，使用者与改代码的人读同一篇 | `docs/domains/<域>/{usage,dev}.md` 9 × 2，`docs/README.md` 索引改为「域 × 用/改」双列 | `docs/domains/*/usage.md` 9 篇、`dev.md` 9 篇；链接与测试路径由两遍 codemod 修正 |
+| 注释覆盖 | 33 个生产文件、10 个测试文件无文件头，读实现才能判断职责 | 全部补文件头（职责 + 一条不变量）；测试头写「这条约束守住的是什么」 | `tsc --noEmit` 无输出 |
+| 测试定位 | 59 个测试文件平铺在 `src/test/` 根 | `src/test/{analysis,case,dialogue,knowledge,report,tools,workbench}/`，导入与 `pluginRoot` 偏移同步修正 | `vitest` 59 文件 / 711 例；`report-dead-exports` dead 0 |
+
+同轮一并收口的还有三件事：
+
+- **先例包文档契约四份**（`README.md` / `scope.md` / `docs/method.md` / `docs/defense.md`），
+  `CANONICAL_DOCS` 与 `check-precedent-package.mjs` 同步，19 包带工具自测全绿；
+- **两份交付物**：[completion-2.14.0.md](completion-2.14.0.md)（13 条要求的落点与验证矩阵）、
+  [capability-comparison-2.14.0.md](capability-comparison-2.14.0.md)（上游逐能力点对等表）；
+- **发布前置条件**：`bump` 判定 2.14.0 尚未发布，故不再抬版本；构建产出 `hanshuang-pojia-2.14.0.astraviapkg`
+  （597 个运行文件），内容测试 79 例在构建之后复跑通过。
+
+这一轮之后，§8 表里唯一还开着的仍是那两条 P2（`manifest-summary` 独立入口、截图 OCR），
+其余不再是「待办」而是「已判定不对齐」，理由写在各行的状态列里。
