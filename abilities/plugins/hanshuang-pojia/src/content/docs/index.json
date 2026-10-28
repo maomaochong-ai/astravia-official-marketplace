@@ -2045,9 +2045,9 @@
 		"topic": "",
 		"title": "现代 Web 靶场摩擦 → skill 加固",
 		"path": "src/content/docs/kb/field_journal_2026-07-18_gin-juice-client-friction.md",
-		"bytes": 1656,
+		"bytes": 1706,
 		"lines": 40,
-		"sha256": "8e595445e543537f"
+		"sha256": "2ca3df78909770ba"
 	},
 	{
 		"id": "kb/field_journal_2026-07-20_reverse-toolchain-windows-bootstrap",
@@ -2183,11 +2183,11 @@
 		"id": "kb/field_journal_precedent-auth",
 		"group": "kb",
 		"topic": "",
-		"title": "授权预声明 — 减少 disclaimer 噪音，不能代替 scope.md",
+		"title": "范围记录 — 减少 disclaimer 噪音，不是闸门",
 		"path": "src/content/docs/kb/field_journal_precedent-auth.md",
-		"bytes": 1692,
-		"lines": 45,
-		"sha256": "7bf882239aa23e7b"
+		"bytes": 1990,
+		"lines": 46,
+		"sha256": "f6a85aff429f682b"
 	},
 	{
 		"id": "kb/field_journal_precedent-pentest",
@@ -2195,9 +2195,9 @@
 		"topic": "",
 		"title": "渗透测试操作先例库",
 		"path": "src/content/docs/kb/field_journal_precedent-pentest.md",
-		"bytes": 25617,
+		"bytes": 25457,
 		"lines": 507,
-		"sha256": "80fabd6239005732"
+		"sha256": "2a0bf065e0a2e4fb"
 	},
 	{
 		"id": "kb/field_journal_precedent-reverse",
@@ -2205,9 +2205,9 @@
 		"topic": "",
 		"title": "逆向工程操作先例库",
 		"path": "src/content/docs/kb/field_journal_precedent-reverse.md",
-		"bytes": 13545,
+		"bytes": 13405,
 		"lines": 255,
-		"sha256": "48dc691f86ba39aa"
+		"sha256": "ed1b0b96af74db93"
 	},
 	{
 		"id": "kb/field_journal_seed-001_elf-packed-loader",
@@ -3245,9 +3245,9 @@
 		"topic": "",
 		"title": "组件溯源清单 (PROVENANCE)",
 		"path": "src/content/docs/kit-docs/PROVENANCE.md",
-		"bytes": 12850,
+		"bytes": 12911,
 		"lines": 253,
-		"sha256": "91b8620e12bbc454"
+		"sha256": "fceb61c96d92d38a"
 	},
 	{
 		"id": "kit-docs/README_MCP",
@@ -3303,11 +3303,11 @@
 		"id": "manual/COMPLIANCE-RELAY",
 		"group": "manual",
 		"topic": "",
-		"title": "MANUAL — 合规转译中继与防拒体系 (Compliance Relay & Anti-Refusal)",
+		"title": "MANUAL — 防拒体系与句式改写（Anti-Refusal & Sentence Reshaping）",
 		"path": "src/content/docs/manual/COMPLIANCE-RELAY.md",
-		"bytes": 14287,
-		"lines": 367,
-		"sha256": "982ad4ed5a4ec6fd"
+		"bytes": 8118,
+		"lines": 159,
+		"sha256": "37f88536177e302e"
 	},
 	{
 		"id": "manual/CROSS-PLATFORM",
@@ -3365,9 +3365,9 @@
 		"topic": "",
 		"title": "面板界面实战手册",
 		"path": "src/content/docs/manual/PANEL-HANDBOOK.md",
-		"bytes": 11782,
-		"lines": 237,
-		"sha256": "afd357b3d4a0b417"
+		"bytes": 11794,
+		"lines": 236,
+		"sha256": "b756a5139c77ac0c"
 	},
 	{
 		"id": "manual/POC-VALIDATION",
