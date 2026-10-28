@@ -92,6 +92,38 @@ export function megabytesOf(spec, fallback) {
   return spec.bytes > 0 ? Math.round(spec.bytes / (1024 * 1024)) : fallback;
 }
 
+// 安装标记随目录走：它回答「这台机器上这一版是什么时候、从哪装上的」，
+// 删除目录时一起消失，不会留下对不上的孤儿记录（ADR-0017）。
+export const PAYLOAD_MARKER = ".payload.json";
+
+export function writePayloadMarker(directory, spec) {
+  const marker = {
+    payloadVersion: MANIFEST.payloadVersion,
+    upstream: MANIFEST.upstream ?? null,
+    platform: PLATFORM,
+    file: spec?.file ?? "",
+    sha256: spec?.sha256 ?? "",
+    source: MANIFEST.source,
+    installedAt: new Date().toISOString(),
+  };
+  try {
+    fs.writeFileSync(path.join(directory, PAYLOAD_MARKER), `${JSON.stringify(marker, null, 2)}\n`);
+  } catch (err) {
+    // 标记只是可观测性：写不进去不该让一次成功的安装变失败。
+    note(`安装标记写入失败（不影响运行）：${err.message}`);
+  }
+  return marker;
+}
+
+export function readPayloadMarker(directory) {
+  if (!directory) return null;
+  try {
+    return JSON.parse(fs.readFileSync(path.join(directory, PAYLOAD_MARKER), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 export async function provisionPayload(spec) {
   const staging = `${PROVISION_DIR}.partial`;
   await stageArchive(spec, staging, "运行时载荷", megabytesOf(spec, 200));
@@ -100,6 +132,7 @@ export async function provisionPayload(spec) {
     throw codedError("payload-extract-failed", `载荷里没有后端可执行文件 ${BINARY_NAME}`);
   }
   fs.chmodSync(binary, 0o755);
+  writePayloadMarker(staging, spec);
   fs.rmSync(PROVISION_DIR, { recursive: true, force: true });
   fs.renameSync(staging, PROVISION_DIR);
   note(`运行时已就绪：${PROVISION_DIR}`);

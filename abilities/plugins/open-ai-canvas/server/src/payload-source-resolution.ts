@@ -336,17 +336,34 @@ export function parseManifest(text) {
   return { payloadVersion, upstream: data.upstream ?? null, platforms, source: MANIFEST.source };
 }
 
+/**
+ * 把一份解析好的清单设为生效清单，并按它重算两个落盘目录。
+ *
+ * 全仓库只有本模块写这三个量：探测（peekManifest）不改任何全局状态，
+ * 只有真要把新版本装上时才 applyManifest，否则「检查更新」会连带改掉当前运行的版本。
+ */
+export function applyManifest(parsed, source) {
+  MANIFEST.payloadVersion = parsed.payloadVersion;
+  MANIFEST.upstream = parsed.upstream ?? null;
+  MANIFEST.platforms = parsed.platforms;
+  MANIFEST.source = source;
+  PROVISION_DIR = path.join(DATA_DIR, "runtime", parsed.payloadVersion);
+  AGENT_DIR = path.join(DATA_DIR, "runtime", `agent-${parsed.payloadVersion}`);
+  return MANIFEST;
+}
+
+/** 取一份清单并解析，但不让它生效。检查更新用：失败就是失败，当前运行的版本不受影响。 */
+export async function peekManifest() {
+  const { text, url } = await fetchManifestText();
+  const parsed = parseManifest(text);
+  return { ...parsed, source: endpointOf(url) };
+}
+
 export async function loadManifest() {
   if (manifestPromise) return manifestPromise;
   manifestPromise = (async () => {
-    const { text, url } = await fetchManifestText();
-    const parsed = parseManifest(text);
-    MANIFEST.payloadVersion = parsed.payloadVersion;
-    MANIFEST.upstream = parsed.upstream;
-    MANIFEST.platforms = parsed.platforms;
-    MANIFEST.source = endpointOf(url);
-    PROVISION_DIR = path.join(DATA_DIR, "runtime", MANIFEST.payloadVersion);
-    AGENT_DIR = path.join(DATA_DIR, "runtime", `agent-${MANIFEST.payloadVersion}`);
+    const parsed = await peekManifest();
+    applyManifest(parsed, parsed.source);
     const upstream = MANIFEST.upstream?.tag ? `，上游 ${MANIFEST.upstream.tag}` : "";
     note(`发布清单 ${MANIFEST.payloadVersion}${upstream}，平台 ${Object.keys(MANIFEST.platforms).join(", ")}`);
     return MANIFEST;

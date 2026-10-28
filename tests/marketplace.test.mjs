@@ -825,6 +825,27 @@ for (const slug of ["zhihu-research", "zhihu-search", "zhihu-search-mcp"]) {
   });
 }
 
+test("Open Canvas ships its skill-library guidance inside the plugin package", () => {
+  const ability = bySlug.get("open-ai-canvas");
+  assert.equal(ability?.type, "plugin");
+  const directory = packageFile(root, ability.source.path);
+  const plugin = readJson(packageFile(directory, "plugin.json"));
+  assert.equal(plugin.permissions.includes("agent.skills.control"), true);
+  assert.deepEqual(plugin.agent?.skillPaths, ["agent/skills/open-ai-canvas"]);
+  assert.equal(plugin.agent?.mcpServers?.["open-ai-canvas"]?.path, "/mcp");
+  const skill = packageFile(directory, "agent/skills/open-ai-canvas/SKILL.md");
+  const text = readFileSync(skill, "utf8");
+  assert.match(text, /^---\nname: open-ai-canvas\n/u);
+  for (const tool of ["list_skills", "get_skill", "read_skill_file", "set_skill_added"]) {
+    assert.match(text, new RegExp(`\\b${tool}\\b`, "u"), `The skill must name ${tool}`);
+  }
+  assert.match(text, /401/u, "The skill must separate a signed-out canvas from a missing skill");
+  // The index is the offline answer to "what does this library contain"; 73 rows are the
+  // published catalogue and any other count means it drifted from /api/skills.
+  const index = readFileSync(packageFile(directory, "agent/skills/open-ai-canvas/references/builtin-skills.md"), "utf8");
+  assert.equal(index.match(/^\| .*?`[a-z0-9-]+` \| \d+\.\d+\.\d+ \|/gmu)?.length, 73);
+});
+
 // The desktop rejects the entire source when one block fails validation, so these guards must
 // fail loudly here instead of surfacing as a silent `sync-failed` in the app.
 test("detail block contract rejects shapes the desktop refuses", () => {

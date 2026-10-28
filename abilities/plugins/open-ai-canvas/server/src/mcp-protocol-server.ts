@@ -14,12 +14,16 @@ import { backendReady, goPort } from "./backend-process.ts";
 import { LAST_WORKFLOW, compileWorkflow, setLastWorkflow } from "./workflow-compiler.ts";
 import { MCP_TOOLS } from "./mcp-tool-catalog.ts";
 import { BUILTIN_NODE_TYPES, NODE_SCHEMAS } from "./canvas-node-contract.ts";
+import { callSkillTool } from "./canvas-skill-library.ts";
 
 // MCP 工具返回体的最小形状：成功只有 content，失败额外带 isError。
 export type ToolResult = {
   content: Array<{ type: string; text: string }>;
   isError?: true;
 };
+
+/** 技能库工具的传输端口：技能模块只要求「发一个带会话的请求」（ADR-0016）。 */
+const SKILL_API_PORT = { request: rawCanvasApi };
 
 export function textResult(text: string): ToolResult {
   return { content: [{ type: "text", text }] };
@@ -568,6 +572,19 @@ export async function handleMcpToolCall(name, args) {
       if (!args.task_id) return errorResult("task_id is required");
       return callCanvasApi("GET", `/api/tasks/${encodeURIComponent(args.task_id)}`);
     }
+
+    // --- 技能库（ADR-0016）---
+    // 语义全在 canvas-skill-library.ts：这里只把「这个名字归它」和带会话的传输函数交出去，
+    // 免得协议层再长出一套自己的裁剪与报错规则。
+    case "list_skills":
+    case "get_skill":
+    case "list_skill_files":
+    case "read_skill_file":
+    case "search_skill_files":
+    case "list_added_skills":
+    case "set_skill_added":
+    case "list_skill_presets":
+      return callSkillTool(name, args, SKILL_API_PORT);
 
     // --- 批量操作 ---
     case "apply_operations":

@@ -1,5 +1,5 @@
 /**
- * 本机运维路由：状态快照、准备页、载荷残留清理
+ * 本机运维路由：状态快照、准备页、载荷残留清理、检查更新
  *
  * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
@@ -10,6 +10,7 @@ import { STATE, clearFailure, note, progressSnapshot } from "./preparation-state
 import { progressPage } from "./preparation-progress-page.ts";
 import { statSize } from "./http-transport.ts";
 import { prepareRuntime } from "./preparation-orchestrator.ts";
+import { checkPayloadUpdate, upgradePayload } from "./payload-update.ts";
 import { SESSION_KEY, SESSION_TOKEN } from "./canvas-session-store.ts";
 import { goPort } from "./backend-process.ts";
 import { LAST_WORKFLOW } from "./workflow-compiler.ts";
@@ -118,6 +119,26 @@ export function servePreparation(req, res) {
         group: MCP_TOOL_GROUPS[tool.name] ?? "other",
       })),
     });
+    return;
+  }
+
+  // 检查更新（ADR-0017）：只探测不安装，失败也回 200——「查不到」是常态，不是错误。
+  if (req.method === "GET" && req.url === "/__canvas/update-check") {
+    void checkPayloadUpdate()
+      .then((result) => sendJson(res, { ok: true, ...result }))
+      .catch((error) => {
+        sendJson(res, { ok: false, code: error?.code ?? "update-check-failed", message: error?.message ?? String(error) });
+      });
+    return;
+  }
+
+  // 升级跑完才回响应：下载 + 校验 + 重启都是分钟级，前端据此把它当成一个长请求。
+  if (req.method === "POST" && req.url === "/__canvas/upgrade") {
+    void upgradePayload()
+      .then((result) => sendJson(res, { ok: true, ...result }))
+      .catch((error) => {
+        sendJson(res, { ok: false, code: error?.code ?? "payload-upgrade-failed", message: error?.message ?? String(error) });
+      });
     return;
   }
 
