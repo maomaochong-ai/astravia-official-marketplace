@@ -1,5 +1,5 @@
 /**
- * MCP 工具清单（纯数据，20 个工具）
+ * MCP 工具清单（纯数据，28 个工具）
  *
  * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
@@ -271,6 +271,107 @@ export const MCP_TOOLS = [
       required: ["task_id"],
     },
   },
+  // --- 技能库（ADR-0016）---
+  {
+    name: "list_skills",
+    description:
+      "List skills in the canvas skill library. Each item is a skill package (SKILL.md plus optional cards) that tells the agent how to execute one kind of creative task — short drama, ads, product visuals, story structure, shot grammar and so on. Filter with search or tag, then call get_skill for the instructions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        page: { type: "number", description: "Page number (default 1)" },
+        page_size: { type: "number", description: "Items per page (default 20, max 80)" },
+        scope: {
+          type: "string",
+          enum: ["public", "mine", "created", "favorites"],
+          description: "Whose skills: public catalogue (default), added to my library, created by me, or favourited",
+        },
+        tag: {
+          type: "string",
+          enum: ["drama", "ecommerce", "creative", "social", "others"],
+          description: "Category filter. Any other value is silently dropped by the canvas, not an error",
+        },
+        sort: { type: "string", enum: ["popular", "new", "updated"], description: "Sort order (default popular)" },
+        search: { type: "string", description: "Free-text search over name and description" },
+      },
+    },
+  },
+  {
+    name: "get_skill",
+    description:
+      "Read one skill: metadata plus its SKILL.md instructions, which is the actual procedure the agent should follow. Long instructions are truncated and flagged; fetch the rest with read_skill_file.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills (the database key, not the readable folder name)" },
+        max_chars: { type: "number", description: "Instruction characters to return (default 20000, 0 = whole file)" },
+      },
+      required: ["skill_id"],
+    },
+  },
+  {
+    name: "list_skill_files",
+    description:
+      "List the files inside one skill package: SKILL.md, its reference cards under cards/, and any assets. Use it before read_skill_file when you do not know the path.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" },
+      },
+      required: ["skill_id"],
+    },
+  },
+  {
+    name: "read_skill_file",
+    description:
+      "Read one text file from a skill package, for example SKILL.md or cards/shot-grammar.md. Binary files come back as metadata only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" },
+        path: { type: "string", description: "Package-relative path, e.g. SKILL.md or cards/example.md" },
+      },
+      required: ["skill_id", "path"],
+    },
+  },
+  {
+    name: "search_skill_files",
+    description:
+      "Full-text search inside one skill package and get path + line + snippet hits. Use it on the large skills (dozens of cards) instead of reading every file.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" },
+        query: { type: "string", description: "Search text, 1-120 characters" },
+      },
+      required: ["skill_id", "query"],
+    },
+  },
+  {
+    name: "list_added_skills",
+    description:
+      "List the skills this account has added to its own library — the set the canvas offers while working.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "set_skill_added",
+    description:
+      "Add a skill to the account library or remove it. Adding changes what the user sees in the canvas, so ask before calling it unless the user already said to.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" },
+        added: { type: "boolean", description: "true to add (default), false to remove" },
+      },
+      required: ["skill_id"],
+    },
+  },
+  {
+    name: "list_skill_presets",
+    description:
+      "List scene presets: a plain-language task (e.g. a 15-second product film) mapped to the skill IDs that cover it, with a rationale. Good first call when the user describes a goal instead of naming a skill.",
+    inputSchema: { type: "object", properties: {} },
+  },
 ];
 
 /**
@@ -300,6 +401,14 @@ export const MCP_TOOL_GROUPS: Record<string, string> = {
   export_workflow: "batch",
   list_workspace_projects: "workspace",
   get_task: "workspace",
+  list_skills: "skills",
+  get_skill: "skills",
+  list_skill_files: "skills",
+  read_skill_file: "skills",
+  search_skill_files: "skills",
+  list_added_skills: "skills",
+  set_skill_added: "skills",
+  list_skill_presets: "skills",
 };
 
 // --- MCP 工具实现 ---

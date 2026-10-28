@@ -158,15 +158,28 @@ const ARCHIVE = makeZip([
 ]);
 const ARCHIVE_SHA = sha256(ARCHIVE);
 
-function manifestText() {
+// 场景 D 的第二个版本：内容不同，所以 sha256 也不同，能真正走一遍下载校验。
+const UPGRADE_VERSION = "verify-payload-sources-v2";
+const UPGRADE_ARCHIVE_NAME = `payload-${UPGRADE_VERSION}-${PLATFORM}.zip`;
+const UPGRADE_ARCHIVE = makeZip([
+  { name: "yingce-backend", data: FAKE_BACKEND },
+  { name: "web-dist/index.html", data: "<!doctype html><title>canvas v2</title><div id=root></div>\n" },
+]);
+const UPGRADE_ARCHIVE_SHA = sha256(UPGRADE_ARCHIVE);
+
+function manifestText(overrides = {}) {
+  const version = overrides.version ?? PAYLOAD_VERSION;
+  const archiveName = overrides.archiveName ?? ARCHIVE_NAME;
+  const sha = overrides.sha ?? ARCHIVE_SHA;
+  const bytes = overrides.bytes ?? ARCHIVE.length;
   return `${JSON.stringify(
     {
       schemaVersion: 1,
-      payloadVersion: PAYLOAD_VERSION,
-      upstream: { repository: "ddcat-ai/open-ai-canvas", tag: "v0.0.0", commit: "0".repeat(40) },
+      payloadVersion: version,
+      upstream: { repository: "ddcat-ai/open-ai-canvas", tag: overrides.tag ?? "v0.0.0", commit: "0".repeat(40) },
       platforms: {
         [PLATFORM]: {
-          payload: { file: ARCHIVE_NAME, sha256: ARCHIVE_SHA, bytes: ARCHIVE.length },
+          payload: { file: archiveName, sha256: sha, bytes },
         },
       },
     },
@@ -345,6 +358,102 @@ async function main() {
     check("失败时不谎报就绪", state.ready === false && state.backend === false);
   } finally {
     await broken.stop();
+  }
+
+  // 场景 D：进程活着时上游出了新版（ADR-0017）。
+  // 重点是「进程不重启也能换上」——以前只有完整 stop→start 才会重新取清单。
+  const upgradeDir = mkdtempSync(join(tmpdir(), "payload-upgrade-"));
+  writeFileSync(join(upgradeDir, ARCHIVE_NAME), ARCHIVE);
+  writeFileSync(join(upgradeDir, "payload-manifest.json"), manifestText());
+  const upgradable = await runShim({
+    CANVAS_PAYLOAD_DIR: upgradeDir,
+    CANVAS_PAYLOAD_MIRRORS: "none",
+    CANVAS_PAYLOAD_BASE_URL: "http://127.0.0.1:1/unreachable",
+  });
+  try {
+    const baseline = await settle(upgradable, "upgrade baseline ready");
+    check(
+      "升级前基线就绪",
+      baseline.ready === true && baseline.payloadVersion === PAYLOAD_VERSION,
+      `phase=${baseline.phase} version=${baseline.payloadVersion}`,
+    );
+
+    const before = await (await fetch(`${upgradable.base}/__canvas/update-check`)).json();
+    check(
+      "同版本时 update-check 不谎报可更新",
+      before.ok === true && before.upgradeAvailable === false,
+      `upgradeAvailable=${before.upgradeAvailable}`,
+    );
+
+    // 上游出新版：同一个本地目录换上新的清单与归档，模拟镜像上的内容变了。
+    writeFileSync(join(upgradeDir, UPGRADE_ARCHIVE_NAME), UPGRADE_ARCHIVE);
+    writeFileSync(
+      join(upgradeDir, "payload-manifest.json"),
+      manifestText({
+        version: UPGRADE_VERSION,
+        archiveName: UPGRADE_ARCHIVE_NAME,
+        sha: UPGRADE_ARCHIVE_SHA,
+        bytes: UPGRADE_ARCHIVE.length,
+        tag: "v9.9.9",
+      }),
+    );
+
+    const probe = await (await fetch(`${upgradable.base}/__canvas/update-check`)).json();
+    check(
+      "清单前进后 update-check 报出新版本",
+      probe.ok === true && probe.upgradeAvailable === true && probe.available === UPGRADE_VERSION,
+      `available=${probe.available}`,
+    );
+    check(
+      "检查新版本不影响当前运行版本",
+      (await upgradable.read()).payloadVersion === PAYLOAD_VERSION,
+      `version=${(await upgradable.read()).payloadVersion}`,
+    );
+
+    // 并发发两次：同时只允许一轮升级（界面双击、页面重试都会重发 POST）。
+    // 第一轮一进函数就置位，所以第二个请求必然拿到 payload-upgrade-busy。
+    const [upgradeRes, secondRes] = await Promise.all([
+      fetch(`${upgradable.base}/__canvas/upgrade`, { method: "POST" }),
+      fetch(`${upgradable.base}/__canvas/upgrade`, { method: "POST" }),
+    ]);
+    const upgraded = await upgradeRes.json();
+    const second = await secondRes.json();
+    check(
+      "第二轮并发升级被拒绝",
+      secondRes.status === 200 && second.ok === false && second.code === "payload-upgrade-busy",
+      `status=${secondRes.status} body=${JSON.stringify(second).slice(0, 160)}`,
+    );
+    check(
+      "POST /__canvas/upgrade 切到新载荷",
+      upgradeRes.status === 200 &&
+        upgraded.ok === true &&
+        upgraded.upgraded === true &&
+        upgraded.payloadVersion === UPGRADE_VERSION,
+      `status=${upgradeRes.status} body=${JSON.stringify(upgraded).slice(0, 180)}`,
+    );
+
+    const settled = await waitFor(async () => {
+      const state = await upgradable.read();
+      return state && state.phase === "ready" && state.payloadVersion === UPGRADE_VERSION ? state : null;
+    }, "upgrade settled");
+    check(
+      "升级后回到就用新载荷",
+      settled.ready === true && settled.payloadVersion === UPGRADE_VERSION,
+      `phase=${settled.phase} version=${settled.payloadVersion}`,
+    );
+
+    const home = await fetch(`${upgradable.base}/`);
+    const html = await home.text();
+    check("升级后的前端产物来自新载荷", home.status === 200 && html.includes("canvas v2"), `status=${home.status}`);
+
+    const after = await (await fetch(`${upgradable.base}/__canvas/update-check`)).json();
+    check(
+      "升级完成后不再提示可更新",
+      after.ok === true && after.upgradeAvailable === false && after.current === UPGRADE_VERSION,
+      `current=${after.current} upgradeAvailable=${after.upgradeAvailable}`,
+    );
+  } finally {
+    await upgradable.stop();
   }
 
   const failed = results.filter((result) => !result.ok);

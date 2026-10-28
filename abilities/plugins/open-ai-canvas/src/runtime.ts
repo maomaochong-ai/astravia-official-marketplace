@@ -44,6 +44,8 @@ export interface CanvasState {
   /** 工具目录（/__canvas/tools）。首次打开工具页才拉，不拖慢首屏。 */
   tools?: ToolSummary[];
   toolsError?: string;
+  /** 载荷更新状态（ADR-0017）。undefined 表示还没查过。 */
+  update?: UpdateState;
 }
 
 /** 下载/解包阶段的可观测进度。0 字节是常态，不能当成「没在动」。 */
@@ -77,6 +79,31 @@ export interface WorkflowState {
   idempotent: boolean;
 }
 
+/** shim 的 GET /__canvas/update-check 回执（归一后的子集）。 */
+export interface UpdateState {
+  /** 正在发请求；界面据此把按钮转圈，而不是把旧结果当成最新。 */
+  checking?: boolean;
+  /** 正在下载 + 切版本 + 重启，分钟级。 */
+  upgrading?: boolean;
+  /** 运行时随插件发布（bundled）：没有可升级的东西，按钮应置灰。 */
+  bundled?: boolean;
+  /** 当前生效的载荷版本。 */
+  current?: string;
+  /** 发布清单里的版本；查不到时为空。 */
+  available?: string;
+  upgradeAvailable?: boolean;
+  /** 安装时间与来源（来自载荷目录里的 .payload.json），用于回答「这版是什么时候装的」。 */
+  installedAt?: string;
+  installedSource?: string;
+  upstreamCurrent?: string | null;
+  upstreamAvailable?: string | null;
+  checkedAt?: number;
+  /** i18n 键：成功、无更新、失败各自不同，不拼中文。 */
+  noticeKey?: string;
+  detail?: string;
+  errorCode?: string;
+}
+
 export interface BridgeState {
   /** 执行器在跑，画布发来的 chat 请求才会真正被宿住模型处理。 */
   executorOnline: boolean;
@@ -101,6 +128,11 @@ const READY_TIMEOUT_MS = 130_000;
 const READY_POLL_INTERVAL_MS = 500;
 /** 单次状态探测的超时。端口没监听时 fetch 会立刻失败，这个值只兜住半开连接。 */
 const PROBE_TIMEOUT_MS = 2_500;
+/**
+ * 检查更新的超时。shim 那一侧要先去取一次清单，离线或 CDN 卡住时它会挂很久；
+ * 没有上限的话界面会永远停在「正在检查」，按钮也一直置灰。升级请求刻意不给超时——它本来就慢。
+ */
+const UPDATE_CHECK_TIMEOUT_MS = 20_000;
 
 /**
  * 包内服务工件：plugin.json#providers.services[].runtime.platforms 里登记的同一份 shim。
@@ -336,6 +368,15 @@ export class CanvasController {
     this.setState({ bridge: next });
   }
 
+  /** 与 patchBridge 同理：只写真正变了的字段，避免每次轮询都触发一次视图重渲染。 */
+  private patchUpdate(patch: Partial<UpdateState>): void {
+    const next: UpdateState = { ...(this.state.update ?? {}), ...patch };
+    const keys = Object.keys(next) as Array<keyof UpdateState>;
+    const current = this.state.update ?? {};
+    if (keys.every((key) => next[key] === current[key])) return;
+    this.setState({ update: next });
+  }
+
   private fail(messageKey: string, detail?: string): void {
     this.setState({ phase: "error", messageKey, detail, busy: false });
   }
@@ -504,6 +545,8 @@ export class CanvasController {
   private applyReady(): void {
     if (this.disposed) return;
     this.setState({ phase: "running", messageKey: undefined, detail: undefined, progress: undefined, busy: false });
+    // 就绪即自动双向同步一次（ADR-0017）。幂等，且带单次守卫，重复进画布不会重复写渠道。
+    void this.autoSyncModels();
   }
 
   async ensureRunning(): Promise<void> {
@@ -624,6 +667,8 @@ export class CanvasController {
     this.operationInFlight = true;
     this.baseUrl = undefined;
     this.origin = undefined;
+    // 停掉以后下一次就绪要重同步：渠道与媒体注册都绑在旧端口上。
+    this.autoSyncDone = false;
     this.setState({ phase: "stopping", busy: true });
     try {
       await this.ctx.services.stop(SERVICE_ID);
@@ -679,6 +724,158 @@ export class CanvasController {
     }
   }
 
+  /**
+   * 问一次「上游有没有新版运行时」（ADR-0017）。
+   *
+   * 只读探测：不改运行态，也不自动下载——自动拉起 200 MB 下载应当由用户点。
+   * 失败回 noticeKey + detail，不当成致命错误：查不到更新是常态。
+   */
+  async checkForUpdates(): Promise<void> {
+    if (this.disposed || this.state.update?.checking) return;
+    const baseUrl = await this.resolveBaseUrl();
+    if (!baseUrl) {
+      this.patchUpdate({ checking: false, noticeKey: "update.unreachable" });
+      return;
+    }
+    this.patchUpdate({ checking: true, noticeKey: undefined, detail: undefined, errorCode: undefined });
+    try {
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(), UPDATE_CHECK_TIMEOUT_MS);
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}/__canvas/update-check`, { cache: "no-store", signal: abort.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+      const body = (await response.json()) as {
+        ok?: boolean;
+        code?: string;
+        message?: string;
+        bundled?: boolean;
+        current?: string;
+        available?: string;
+        upgradeAvailable?: boolean;
+        checkedAt?: number;
+        note?: string;
+        upstream?: { current?: string | null; available?: string | null };
+        installed?: { installedAt?: string; source?: string } | null;
+      };
+      if (!body?.ok) {
+        this.patchUpdate({
+          checking: false,
+          noticeKey: "update.checkFailed",
+          errorCode: body?.code,
+          detail: body?.message,
+          checkedAt: Date.now(),
+        });
+        return;
+      }
+      this.patchUpdate({
+        checking: false,
+        bundled: Boolean(body.bundled),
+        current: body.current,
+        available: body.available,
+        upgradeAvailable: Boolean(body.upgradeAvailable),
+        checkedAt: body.checkedAt ?? Date.now(),
+        installedAt: body.installed?.installedAt,
+        installedSource: body.installed?.source,
+        upstreamCurrent: body.upstream?.current ?? null,
+        upstreamAvailable: body.upstream?.available ?? null,
+        noticeKey: body.upgradeAvailable ? "update.available" : body.note ? "update.upToDate" : undefined,
+        detail: body.note,
+        errorCode: undefined,
+      });
+    } catch (error) {
+      this.patchUpdate({
+        checking: false,
+        noticeKey: "update.unreachable",
+        errorCode: "update-unreachable",
+        detail: error instanceof Error ? error.message : String(error),
+        checkedAt: Date.now(),
+      });
+    }
+  }
+
+  /**
+   * 下载并切到清单里的新版运行时（ADR-0017）。
+   *
+   * 不调 stop()：shim 进程本身要留着——它手里有会话 cookie、模型桥和运维路由，
+   * 而且重启一个后端比重新 install 一个服务快得多。重启用 shim 内部完成。
+   */
+  async upgradeRuntime(): Promise<boolean> {
+    if (this.disposed || this.operationInFlight || this.state.update?.upgrading) return false;
+    const baseUrl = await this.resolveBaseUrl();
+    if (!baseUrl) {
+      this.patchUpdate({ noticeKey: "update.unreachable" });
+      return false;
+    }
+    this.operationInFlight = true;
+    this.setState({ busy: true });
+    this.patchUpdate({ upgrading: true, noticeKey: undefined, detail: undefined, errorCode: undefined });
+    try {
+      const response = await fetch(`${baseUrl}/__canvas/upgrade`, { method: "POST" });
+      const body = (await response.json()) as {
+        ok?: boolean;
+        upgraded?: boolean;
+        rolledBack?: boolean;
+        code?: string;
+        message?: string;
+        error?: string;
+        to?: string;
+        upstream?: string | null;
+      };
+      if (!body?.ok || !body.upgraded) {
+        // 回滚成功也算「服务还能用」，所以回到 running 而不是 error：任务失败不等于画布挂了。
+        this.patchUpdate({
+          upgrading: false,
+          errorCode: body?.code ?? "payload-upgrade-failed",
+          detail: body?.message ?? body?.error,
+          noticeKey: body?.rolledBack ? "update.rolledBack" : "update.upgradeFailed",
+          checkedAt: Date.now(),
+        });
+        await this.probeState();
+        return false;
+      }
+      await this.probeState();
+      this.patchUpdate({
+        upgrading: false,
+        current: body.to,
+        available: body.to,
+        upgradeAvailable: false,
+        upstreamCurrent: body.upstream ?? null,
+        upstreamAvailable: body.upstream ?? null,
+        installedAt: new Date().toISOString(),
+        checkedAt: Date.now(),
+        noticeKey: "update.upgraded",
+        detail: undefined,
+        errorCode: undefined,
+      });
+      // 运行时换了：模型桥与媒体注册都指向旧后端，重同步一次（ADR-0017）。
+      this.autoSyncDone = false;
+      await this.autoSyncModels();
+      return true;
+    } catch (error) {
+      this.patchUpdate({
+        upgrading: false,
+        noticeKey: "update.upgradeFailed",
+        errorCode: "payload-upgrade-failed",
+        detail: error instanceof Error ? error.message : String(error),
+        checkedAt: Date.now(),
+      });
+      return false;
+    } finally {
+      this.operationInFlight = false;
+      this.setState({ busy: false });
+      this.patchUpdate({ upgrading: false });
+    }
+  }
+
+  /** 用户手动重同步：把单次守卫放回未完成态再走一遍（界面上的「重新同步」按钮）。 */
+  async resyncModels(): Promise<void> {
+    if (this.disposed) return;
+    this.autoSyncDone = false;
+    await this.autoSyncModels();
+  }
   getBaseUrl(): string | undefined {
     return this.baseUrl;
   }
@@ -801,6 +998,82 @@ export class CanvasController {
   }
 
   private canvasMediaRegistration: { dispose(): void } | undefined;
+  /** 自动同步只跑一次（每次就绪/升级后重置）：两个方向都是幂等的，重复跑只是白耗请求。 */
+  private autoSyncDone = false;
+  /** 同步进行中：界面的「重新同步」会被连点，并发跑会重复 dispose/注册媒体。 */
+  private syncing = false;
+
+  /**
+   * 就绪后自动双向同步模型（ADR-0017）。
+   *
+   * 为什么自动：用户配好模型再打开画布，发现画布看不到宿主模型、宿主也看不到画布模型，
+   * 这是最容易被当成「插件坏了」的现象。两个方向都幂等（渠道 upsert、媒体先 dispose
+   * 再注册），所以不需要开关。
+   *
+   * 失败只写 noticeKey，不弹 toast：画布未登录时这些请求全是 401，弹一堆提示只会盖住真正的原因。
+   */
+  private async autoSyncModels(): Promise<void> {
+    if (this.disposed || this.autoSyncDone || this.syncing) return;
+    this.autoSyncDone = true;
+    this.syncing = true;
+    try {
+      this.startBridge();
+      const baseUrl = await this.resolveBaseUrl();
+      if (!baseUrl) return;
+      await this.syncBothWays(baseUrl);
+    } finally {
+      this.syncing = false;
+    }
+  }
+
+  /** 真正的双向同步：两个方向各自 try/catch，一个方向失败不影响另一个。 */
+  private async syncBothWays(baseUrl: string): Promise<void> {
+    const patch: Partial<BridgeState> = {};
+    const notes: string[] = [];
+    let failure: unknown;
+
+    // 宿主文本模型 → 画布渠道
+    try {
+      const projection = await provisionBridgeChannel(this.ctx, baseUrl);
+      patch.projection = {
+        requested: projection.requested.length,
+        usable: projection.usable.length,
+        blocked: projection.blocked.length,
+        missing: projection.missing.length,
+        removed: projection.removed,
+      };
+      notes.push(`${projection.usable.length}/${projection.requested.length} host→canvas`);
+    } catch (error) {
+      failure = error;
+    }
+
+    // 画布图片/视频模型 → 宿主媒体 Provider
+    try {
+      this.canvasMediaRegistration?.dispose();
+      this.canvasMediaRegistration = undefined;
+      const { result, dispose, view } = await registerCanvasMediaProvider(this.ctx);
+      this.canvasMediaRegistration = { dispose };
+      patch.counts = result.counts;
+      patch.catalog = view.models;
+      patch.mediaRegistered = result.supported;
+      notes.push(`${result.supported} canvas→host`);
+    } catch (error) {
+      failure ??= error;
+    }
+
+    if (notes.length > 0) {
+      patch.detail = notes.join(" · ");
+      if (failure === undefined) patch.noticeKey = "bridge.autoSynced";
+    }
+    if (failure !== undefined) {
+      const code = failure instanceof BridgeChannelError ? failure.code : "canvas-channel-write-failed";
+      patch.noticeKey = `bridge.error.${code}`;
+      patch.detail = notes.length > 0 ? notes.join(" · ") : patch.detail;
+    }
+    this.patchBridge(patch);
+    // 顺手查一次版本：清单在准备阶段已经取过，peek 走的是同一份缓存，不会多一次网络往返。
+    void this.checkForUpdates();
+  }
 
   private async runBridgeAction(action: () => Promise<void>): Promise<void> {
     if (this.state.bridge.busy) return;

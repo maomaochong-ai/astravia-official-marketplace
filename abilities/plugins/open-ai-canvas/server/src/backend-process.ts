@@ -73,8 +73,93 @@ export function watchBackendOutput(chunk, sink) {
   clearFailure();
   STATE.message = "运行时已就绪";
   onBackendReady();
+  flushBackendPortWaiters(true);
 }
 
+/**
+ * 重启期间的特殊语义（ADR-0017）。
+ *
+ * 升级载荷后要换一个后端进程，但「子进程退了」在原有语义里等于「后端崩了」：
+ * 未就绪就退会写 failed，已就绪就退会带走 shim。两条都不成立，所以用一个标志把 exit 区分开。
+ */
+export let restarting = false;
+
+/** 等后端报出监听端口。与准备阶段那个一次性 promise 分开：重启要的是新鲜的一次等待。 */
+const backendPortWaiters = new Set<(ready: boolean) => void>();
+
+function flushBackendPortWaiters(ready) {
+  for (const waiter of [...backendPortWaiters]) waiter(ready);
+  backendPortWaiters.clear();
+}
+
+export function waitForBackendPort(timeoutMs: number): Promise<boolean> {
+  if (goPort) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const finish = (ready: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      backendPortWaiters.delete(finish);
+      resolve(ready);
+    };
+    timer = setTimeout(() => finish(Boolean(goPort)), timeoutMs);
+    timer.unref?.();
+    backendPortWaiters.add(finish);
+  });
+}
+
+/** 停掉当前后端并等它真退。端口同时清掉：留着旧值会让新进程的就绪日志被忽略。 */
+export function stopBackend(timeoutMs = 5_000) {
+  const child = goProcess;
+  goProcess = null;
+  goPort = null;
+  if (!child || child.exitCode !== null) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+        // 进程已经没了，强杀失败也算停完。
+      }
+      finish();
+    }, timeoutMs);
+    child.once("exit", finish);
+    try {
+      child.kill("SIGTERM");
+    } catch {
+      finish();
+    }
+  });
+}
+
+/** 用当前 runtime-paths 拉起一个新后端（载荷升级后调用）。 */
+export async function restartBackend() {
+  restarting = true;
+  try {
+    await stopBackend();
+    clearFailure();
+    STATE.phase = "starting-backend";
+    STATE.message = "正在启动新运行时";
+    await reserveBackendPort();
+    startBackend();
+  } catch (error) {
+    fail("backend-spawn-failed", `后端重启失败：${error?.message ?? String(error)}`, "后端重启");
+    throw error;
+  } finally {
+    restarting = false;
+  }
+}
+
+// 起一个后端子进程。spawn 与 watchBackendOutput 的失败语义见下面的 exit 分支。
 export function startBackend() {
   console.log(`[open-ai-canvas] Starting backend: ${GO_BINARY}`);
   goProcess = spawn(GO_BINARY, [], {
@@ -92,6 +177,8 @@ export function startBackend() {
   });
   goProcess.on("exit", (code, signal) => {
     console.log(`[open-ai-canvas] Backend exited: code=${code} signal=${signal}`);
+    // 升级重启：这次退出是我们要的，既不算故障，也不能带走 shim。
+    if (restarting) return;
     // 主动停止（宿主发了信号）不是故障，直接跟着退，不要把 failed 写进状态。
     if (shuttingDown) {
       process.exit(0);
@@ -99,6 +186,7 @@ export function startBackend() {
     // 准备阶段就退出说明后端根本起不来；把原因留给界面，而不是直接杀掉 shim。
     if (!goPort) {
       fail("backend-exited", `后端在启动阶段退出（code=${code} signal=${signal}）`, "后端启动");
+      flushBackendPortWaiters(false);
       return;
     }
     process.exit(code ?? 1);
@@ -142,7 +230,7 @@ process.on("SIGTERM", () => forwardSignal("SIGTERM"));
 process.on("SIGINT", () => forwardSignal("SIGINT"));
 
 // ============================================================
-// MCP Server —— 18 个工具，覆盖画布完整操控能力
+// MCP Server —— 28 个工具，覆盖画布完整操控能力（含 8 个内置技能库工具，ADR-0016）
 // 参考 ADR-0002（工具集与鉴权）与 ADR-0007（声明式编排）
 // ============================================================
 

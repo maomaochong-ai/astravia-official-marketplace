@@ -5,7 +5,7 @@
 import http4 from "node:http";
 import net3 from "node:net";
 import fs12 from "node:fs";
-import path12 from "node:path";
+import path14 from "node:path";
 
 // server/src/service-config.ts
 import path from "node:path";
@@ -608,6 +608,74 @@ function watchBackendOutput(chunk, sink) {
   clearFailure();
   STATE.message = "运行时已就绪";
   onBackendReady();
+  flushBackendPortWaiters(true);
+}
+var restarting = false;
+var backendPortWaiters = /* @__PURE__ */ new Set();
+function flushBackendPortWaiters(ready) {
+  for (const waiter of [...backendPortWaiters]) waiter(ready);
+  backendPortWaiters.clear();
+}
+function waitForBackendPort(timeoutMs) {
+  if (goPort) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    let settled = false;
+    let timer = null;
+    const finish = (ready) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      backendPortWaiters.delete(finish);
+      resolve(ready);
+    };
+    timer = setTimeout(() => finish(Boolean(goPort)), timeoutMs);
+    timer.unref?.();
+    backendPortWaiters.add(finish);
+  });
+}
+function stopBackend(timeoutMs = 5e3) {
+  const child = goProcess;
+  goProcess = null;
+  goPort = null;
+  if (!child || child.exitCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+      }
+      finish();
+    }, timeoutMs);
+    child.once("exit", finish);
+    try {
+      child.kill("SIGTERM");
+    } catch {
+      finish();
+    }
+  });
+}
+async function restartBackend() {
+  restarting = true;
+  try {
+    await stopBackend();
+    clearFailure();
+    STATE.phase = "starting-backend";
+    STATE.message = "正在启动新运行时";
+    await reserveBackendPort();
+    startBackend();
+  } catch (error) {
+    fail("backend-spawn-failed", `后端重启失败：${error?.message ?? String(error)}`, "后端重启");
+    throw error;
+  } finally {
+    restarting = false;
+  }
 }
 function startBackend() {
   console.log(`[open-ai-canvas] Starting backend: ${GO_BINARY}`);
@@ -625,11 +693,13 @@ function startBackend() {
   });
   goProcess.on("exit", (code, signal) => {
     console.log(`[open-ai-canvas] Backend exited: code=${code} signal=${signal}`);
+    if (restarting) return;
     if (shuttingDown) {
       process.exit(0);
     }
     if (!goPort) {
       fail("backend-exited", `后端在启动阶段退出（code=${code} signal=${signal}）`, "后端启动");
+      flushBackendPortWaiters(false);
       return;
     }
     process.exit(code ?? 1);
@@ -1119,17 +1189,25 @@ function parseManifest(text2) {
   }
   return { payloadVersion, upstream: data.upstream ?? null, platforms, source: MANIFEST.source };
 }
+function applyManifest(parsed, source) {
+  MANIFEST.payloadVersion = parsed.payloadVersion;
+  MANIFEST.upstream = parsed.upstream ?? null;
+  MANIFEST.platforms = parsed.platforms;
+  MANIFEST.source = source;
+  PROVISION_DIR = path5.join(DATA_DIR, "runtime", parsed.payloadVersion);
+  AGENT_DIR = path5.join(DATA_DIR, "runtime", `agent-${parsed.payloadVersion}`);
+  return MANIFEST;
+}
+async function peekManifest() {
+  const { text: text2, url } = await fetchManifestText();
+  const parsed = parseManifest(text2);
+  return { ...parsed, source: endpointOf(url) };
+}
 async function loadManifest() {
   if (manifestPromise) return manifestPromise;
   manifestPromise = (async () => {
-    const { text: text2, url } = await fetchManifestText();
-    const parsed = parseManifest(text2);
-    MANIFEST.payloadVersion = parsed.payloadVersion;
-    MANIFEST.upstream = parsed.upstream;
-    MANIFEST.platforms = parsed.platforms;
-    MANIFEST.source = endpointOf(url);
-    PROVISION_DIR = path5.join(DATA_DIR, "runtime", MANIFEST.payloadVersion);
-    AGENT_DIR = path5.join(DATA_DIR, "runtime", `agent-${MANIFEST.payloadVersion}`);
+    const parsed = await peekManifest();
+    applyManifest(parsed, parsed.source);
     const upstream = MANIFEST.upstream?.tag ? `，上游 ${MANIFEST.upstream.tag}` : "";
     note(`发布清单 ${MANIFEST.payloadVersion}${upstream}，平台 ${Object.keys(MANIFEST.platforms).join(", ")}`);
     return MANIFEST;
@@ -1567,6 +1645,99 @@ var MCP_TOOLS = [
       },
       required: ["task_id"]
     }
+  },
+  // --- 技能库（ADR-0016）---
+  {
+    name: "list_skills",
+    description: "List skills in the canvas skill library. Each item is a skill package (SKILL.md plus optional cards) that tells the agent how to execute one kind of creative task — short drama, ads, product visuals, story structure, shot grammar and so on. Filter with search or tag, then call get_skill for the instructions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        page: { type: "number", description: "Page number (default 1)" },
+        page_size: { type: "number", description: "Items per page (default 20, max 80)" },
+        scope: {
+          type: "string",
+          enum: ["public", "mine", "created", "favorites"],
+          description: "Whose skills: public catalogue (default), added to my library, created by me, or favourited"
+        },
+        tag: {
+          type: "string",
+          enum: ["drama", "ecommerce", "creative", "social", "others"],
+          description: "Category filter. Any other value is silently dropped by the canvas, not an error"
+        },
+        sort: { type: "string", enum: ["popular", "new", "updated"], description: "Sort order (default popular)" },
+        search: { type: "string", description: "Free-text search over name and description" }
+      }
+    }
+  },
+  {
+    name: "get_skill",
+    description: "Read one skill: metadata plus its SKILL.md instructions, which is the actual procedure the agent should follow. Long instructions are truncated and flagged; fetch the rest with read_skill_file.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills (the database key, not the readable folder name)" },
+        max_chars: { type: "number", description: "Instruction characters to return (default 20000, 0 = whole file)" }
+      },
+      required: ["skill_id"]
+    }
+  },
+  {
+    name: "list_skill_files",
+    description: "List the files inside one skill package: SKILL.md, its reference cards under cards/, and any assets. Use it before read_skill_file when you do not know the path.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" }
+      },
+      required: ["skill_id"]
+    }
+  },
+  {
+    name: "read_skill_file",
+    description: "Read one text file from a skill package, for example SKILL.md or cards/shot-grammar.md. Binary files come back as metadata only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" },
+        path: { type: "string", description: "Package-relative path, e.g. SKILL.md or cards/example.md" }
+      },
+      required: ["skill_id", "path"]
+    }
+  },
+  {
+    name: "search_skill_files",
+    description: "Full-text search inside one skill package and get path + line + snippet hits. Use it on the large skills (dozens of cards) instead of reading every file.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" },
+        query: { type: "string", description: "Search text, 1-120 characters" }
+      },
+      required: ["skill_id", "query"]
+    }
+  },
+  {
+    name: "list_added_skills",
+    description: "List the skills this account has added to its own library — the set the canvas offers while working.",
+    inputSchema: { type: "object", properties: {} }
+  },
+  {
+    name: "set_skill_added",
+    description: "Add a skill to the account library or remove it. Adding changes what the user sees in the canvas, so ask before calling it unless the user already said to.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        skill_id: { type: "string", description: "Skill ID from list_skills" },
+        added: { type: "boolean", description: "true to add (default), false to remove" }
+      },
+      required: ["skill_id"]
+    }
+  },
+  {
+    name: "list_skill_presets",
+    description: "List scene presets: a plain-language task (e.g. a 15-second product film) mapped to the skill IDs that cover it, with a rationale. Good first call when the user describes a goal instead of naming a skill.",
+    inputSchema: { type: "object", properties: {} }
   }
 ];
 var MCP_TOOL_GROUPS = {
@@ -1589,10 +1760,281 @@ var MCP_TOOL_GROUPS = {
   apply_workflow: "batch",
   export_workflow: "batch",
   list_workspace_projects: "workspace",
-  get_task: "workspace"
+  get_task: "workspace",
+  list_skills: "skills",
+  get_skill: "skills",
+  list_skill_files: "skills",
+  read_skill_file: "skills",
+  search_skill_files: "skills",
+  list_added_skills: "skills",
+  set_skill_added: "skills",
+  list_skill_presets: "skills"
 };
 
+// server/src/canvas-skill-library.ts
+var SKILL_LIBRARY_TOOL_NAMES = [
+  "list_skills",
+  "get_skill",
+  "list_skill_files",
+  "read_skill_file",
+  "search_skill_files",
+  "list_added_skills",
+  "set_skill_added",
+  "list_skill_presets"
+];
+var MAX_PAGE_SIZE = 80;
+var DEFAULT_INSTRUCTION_CHARS = 2e4;
+function isSkillTool(name) {
+  return SKILL_LIBRARY_TOOL_NAMES.includes(name);
+}
+function unwrap(body) {
+  if (body && typeof body === "object" && "data" in body) return body.data;
+  return body;
+}
+function failure(result) {
+  const message = typeof result.body?.msg === "string" ? result.body.msg : "";
+  if (result.status === 401 || result.body?.code === "canvas-login-required") {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "No canvas session. Open the canvas in a browser and log in first — the plugin captures the session automatically. Skill library data belongs to that account."
+        }
+      ]
+    };
+  }
+  if (result.status === 502 || result.body?.code === "canvas-unreachable") {
+    return {
+      isError: true,
+      content: [{ type: "text", text: `Canvas backend is not reachable: ${message || "connection failed"}` }]
+    };
+  }
+  if (result.status >= 400) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: `Canvas rejected the request (HTTP ${result.status}): ${message || "no message"}` }]
+    };
+  }
+  return null;
+}
+function ok(data) {
+  return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+}
+function projectSkill(item) {
+  if (!item || typeof item !== "object") return item;
+  return {
+    skillId: item.skillId,
+    name: item.skillName,
+    description: item.description,
+    tag: item.tag,
+    version: item.version,
+    versionId: item.versionId,
+    fileCount: item.fileCount,
+    totalBytes: item.totalBytes,
+    likeCount: item.likeCount,
+    addedCount: item.addedCount,
+    isAdded: item.isAdded,
+    isLike: item.isLike,
+    isOwner: item.isOwner,
+    isPrivate: item.isPrivate,
+    markdownUrl: item.markdownUrl,
+    libraryCategoryId: item.libraryCategoryId
+  };
+}
+function positiveInt(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.floor(parsed);
+}
+function requireString(args, key) {
+  const value = args?.[key];
+  if (typeof value !== "string" || value.trim() === "") return null;
+  return value.trim();
+}
+function skillPath(skillId, suffix = "") {
+  return `/api/skills/${encodeURIComponent(skillId)}${suffix}`;
+}
+async function listSkills(port, args) {
+  const params = new URLSearchParams();
+  params.set("page", String(positiveInt(args.page, 1)));
+  params.set("pageSize", String(Math.min(positiveInt(args.page_size, 20), MAX_PAGE_SIZE)));
+  if (typeof args.scope === "string" && args.scope) params.set("scope", args.scope);
+  if (typeof args.sort === "string" && args.sort) params.set("sort", args.sort);
+  if (typeof args.tag === "string" && args.tag) params.set("tag", args.tag);
+  if (typeof args.search === "string" && args.search.trim()) params.set("search", args.search.trim());
+  const result = await port.request("GET", `/api/skills?${params.toString()}`);
+  const failed = failure(result);
+  if (failed) return failed;
+  const data = unwrap(result.body) ?? {};
+  const skills = Array.isArray(data.skills) ? data.skills.map(projectSkill) : [];
+  return ok({
+    skills,
+    totalCount: data.totalCount,
+    hasMore: data.hasMore,
+    nextOffset: data.nextOffset,
+    page: data.page,
+    pageSize: data.pageSize,
+    categories: data.categories,
+    note: "List items carry metadata only. Call get_skill for the SKILL.md body, list_skill_files for the cards, and search_skill_files to look inside one package. An unknown tag is silently cleared by the canvas, so an empty result with an unusual tag means the filter was dropped."
+  });
+}
+async function getSkill(port, args) {
+  const skillId = requireString(args, "skill_id");
+  if (!skillId) {
+    return { isError: true, content: [{ type: "text", text: "skill_id is required (take it from list_skills; it is not the readable folder name)." }] };
+  }
+  const result = await port.request("GET", skillPath(skillId));
+  const failed = failure(result);
+  if (failed) return failed;
+  const data = unwrap(result.body);
+  if (!data || typeof data !== "object") {
+    return { isError: true, content: [{ type: "text", text: `Skill ${skillId} came back empty.` }] };
+  }
+  const instruction = typeof data.instruction === "string" ? data.instruction : "";
+  const maxChars = Number.isFinite(Number(args.max_chars)) && Number(args.max_chars) >= 0 ? Math.floor(Number(args.max_chars)) : DEFAULT_INSTRUCTION_CHARS;
+  const truncated = maxChars > 0 && instruction.length > maxChars;
+  return ok({
+    skillId: data.skillId,
+    name: data.skillName,
+    description: data.description,
+    tag: data.tag,
+    version: data.version,
+    fileCount: data.fileCount,
+    totalBytes: data.totalBytes,
+    isAdded: data.isAdded,
+    isLike: data.isLike,
+    likeCount: data.likeCount,
+    addedCount: data.addedCount,
+    instruction: truncated ? instruction.slice(0, maxChars) : instruction,
+    instructionChars: instruction.length,
+    instructionTruncated: truncated,
+    ...truncated ? {
+      note: `Instruction truncated at ${maxChars} of ${instruction.length} characters. Call read_skill_file with path "SKILL.md" for the rest, and list_skill_files to see the cards.`
+    } : {}
+  });
+}
+async function listSkillFiles(port, args) {
+  const skillId = requireString(args, "skill_id");
+  if (!skillId) return { isError: true, content: [{ type: "text", text: "skill_id is required." }] };
+  const result = await port.request("GET", skillPath(skillId, "/files"));
+  const failed = failure(result);
+  if (failed) return failed;
+  const data = unwrap(result.body) ?? {};
+  const files = Array.isArray(data.files) ? data.files : [];
+  return ok({
+    skillId,
+    files,
+    note: "Paths are package-relative; pass them verbatim to read_skill_file. SKILL.md is the entry point, cards/*.md are the reference cards."
+  });
+}
+async function readSkillFile(port, args) {
+  const skillId = requireString(args, "skill_id");
+  const filePath = requireString(args, "path");
+  if (!skillId) return { isError: true, content: [{ type: "text", text: "skill_id is required." }] };
+  if (!filePath) {
+    return { isError: true, content: [{ type: "text", text: "path is required (package-relative, e.g. SKILL.md or cards/shot-grammar.md)." }] };
+  }
+  const result = await port.request("GET", skillPath(skillId, `/file?path=${encodeURIComponent(filePath)}`));
+  const failed = failure(result);
+  if (failed) return failed;
+  const data = unwrap(result.body) ?? {};
+  const file = data.file ?? {};
+  if (file.binary) {
+    return ok({
+      skillId,
+      path: file.file?.path ?? filePath,
+      binary: true,
+      file: file.file,
+      note: "This file is binary; the canvas returns metadata only. Skills are Markdown, so this is usually an asset."
+    });
+  }
+  return ok({
+    skillId,
+    path: file.file?.path ?? filePath,
+    mimeType: file.file?.mimeType,
+    size: file.file?.size,
+    content: file.content ?? ""
+  });
+}
+async function searchSkillFiles(port, args) {
+  const skillId = requireString(args, "skill_id");
+  const query = requireString(args, "query");
+  if (!skillId) return { isError: true, content: [{ type: "text", text: "skill_id is required." }] };
+  if (!query) {
+    return { isError: true, content: [{ type: "text", text: "query is required (1-120 characters; the canvas rejects anything else)." }] };
+  }
+  const result = await port.request("GET", skillPath(skillId, `/search?q=${encodeURIComponent(query)}`));
+  const failed = failure(result);
+  if (failed) return failed;
+  const data = unwrap(result.body) ?? {};
+  const results = Array.isArray(data.results) ? data.results : [];
+  return ok({
+    skillId,
+    query,
+    results,
+    note: "Each hit is path + line + snippet. Read the whole file with read_skill_file when the snippet is not enough."
+  });
+}
+async function listAddedSkills(port) {
+  const result = await port.request("GET", "/api/skills/added");
+  const failed = failure(result);
+  if (failed) return failed;
+  const data = unwrap(result.body) ?? {};
+  const skills = Array.isArray(data.skills) ? data.skills.map(projectSkill) : [];
+  return ok({
+    skills,
+    note: "These are the skills this account has added to its library — the ones the canvas offers during a task."
+  });
+}
+async function setSkillAdded(port, args) {
+  const skillId = requireString(args, "skill_id");
+  if (!skillId) return { isError: true, content: [{ type: "text", text: "skill_id is required." }] };
+  const added = args.added === void 0 ? true : Boolean(args.added);
+  const result = await port.request(added ? "POST" : "DELETE", skillPath(skillId, "/add"));
+  const failed = failure(result);
+  if (failed) return failed;
+  return ok({ skillId, added, skill: projectSkill(unwrap(result.body)) });
+}
+async function listSkillPresets(port) {
+  const result = await port.request("GET", "/api/skills/presets");
+  const failed = failure(result);
+  if (failed) return failed;
+  const data = unwrap(result.body) ?? {};
+  const presets = Array.isArray(data.presets) ? data.presets : [];
+  return ok({
+    presets,
+    note: "A preset maps a plain-language scene to a set of skillIds with a rationale. It is read-only catalogue metadata and needs no login, but the skills it names still do."
+  });
+}
+async function callSkillTool(name, args, port) {
+  if (!isSkillTool(name)) {
+    return { isError: true, content: [{ type: "text", text: `Unknown tool: ${name}` }] };
+  }
+  switch (name) {
+    case "list_skills":
+      return listSkills(port, args);
+    case "get_skill":
+      return getSkill(port, args);
+    case "list_skill_files":
+      return listSkillFiles(port, args);
+    case "read_skill_file":
+      return readSkillFile(port, args);
+    case "search_skill_files":
+      return searchSkillFiles(port, args);
+    case "list_added_skills":
+      return listAddedSkills(port);
+    case "set_skill_added":
+      return setSkillAdded(port, args);
+    case "list_skill_presets":
+      return listSkillPresets(port);
+    default:
+      return { isError: true, content: [{ type: "text", text: `Unknown tool: ${name}` }] };
+  }
+}
+
 // server/src/mcp-protocol-server.ts
+var SKILL_API_PORT = { request: rawCanvasApi };
 function jsonResult(data) {
   return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
 }
@@ -2038,6 +2480,18 @@ async function handleMcpToolCall(name, args) {
       if (!args.task_id) return errorResult("task_id is required");
       return callCanvasApi("GET", `/api/tasks/${encodeURIComponent(args.task_id)}`);
     }
+    // --- 技能库（ADR-0016）---
+    // 语义全在 canvas-skill-library.ts：这里只把「这个名字归它」和带会话的传输函数交出去，
+    // 免得协议层再长出一套自己的裁剪与报错规则。
+    case "list_skills":
+    case "get_skill":
+    case "list_skill_files":
+    case "read_skill_file":
+    case "search_skill_files":
+    case "list_added_skills":
+    case "set_skill_added":
+    case "list_skill_presets":
+      return callSkillTool(name, args, SKILL_API_PORT);
     // --- 批量操作 ---
     case "apply_operations":
       return applyCanvasOperations(args.canvas_id, args.operations, args.base_revision);
@@ -2103,7 +2557,7 @@ function waitForBackend(timeoutMs) {
 
 // server/src/service-routes.ts
 import fs11 from "node:fs";
-import path11 from "node:path";
+import path13 from "node:path";
 
 // server/src/preparation-progress-page.ts
 function escapeHtml(value) {
@@ -2249,7 +2703,7 @@ tick();
 }
 
 // server/src/preparation-orchestrator.ts
-import path9 from "node:path";
+import path10 from "node:path";
 
 // server/src/payload-installation.ts
 import fs8 from "node:fs";
@@ -2430,6 +2884,33 @@ async function stageArchive(spec, staging, label, approximateMB) {
 function megabytesOf(spec, fallback) {
   return spec.bytes > 0 ? Math.round(spec.bytes / (1024 * 1024)) : fallback;
 }
+var PAYLOAD_MARKER = ".payload.json";
+function writePayloadMarker(directory, spec) {
+  const marker = {
+    payloadVersion: MANIFEST.payloadVersion,
+    upstream: MANIFEST.upstream ?? null,
+    platform: PLATFORM,
+    file: spec?.file ?? "",
+    sha256: spec?.sha256 ?? "",
+    source: MANIFEST.source,
+    installedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  try {
+    fs8.writeFileSync(path7.join(directory, PAYLOAD_MARKER), `${JSON.stringify(marker, null, 2)}
+`);
+  } catch (err) {
+    note(`安装标记写入失败（不影响运行）：${err.message}`);
+  }
+  return marker;
+}
+function readPayloadMarker(directory) {
+  if (!directory) return null;
+  try {
+    return JSON.parse(fs8.readFileSync(path7.join(directory, PAYLOAD_MARKER), "utf8"));
+  } catch {
+    return null;
+  }
+}
 async function provisionPayload(spec) {
   const staging = `${PROVISION_DIR}.partial`;
   await stageArchive(spec, staging, "运行时载荷", megabytesOf(spec, 200));
@@ -2438,6 +2919,7 @@ async function provisionPayload(spec) {
     throw codedError("payload-extract-failed", `载荷里没有后端可执行文件 ${BINARY_NAME}`);
   }
   fs8.chmodSync(binary, 493);
+  writePayloadMarker(staging, spec);
   fs8.rmSync(PROVISION_DIR, { recursive: true, force: true });
   fs8.renameSync(staging, PROVISION_DIR);
   note(`运行时已就绪：${PROVISION_DIR}`);
@@ -2505,6 +2987,9 @@ async function resolveRuntimeDir() {
   await provisionPayload(spec);
   return PROVISION_DIR;
 }
+
+// server/src/runtime-pointing.ts
+import path9 from "node:path";
 
 // server/src/web-dist-hosting.ts
 import fs9 from "node:fs";
@@ -2637,6 +3122,22 @@ function serveWebAsset(req, res, pathname) {
   return true;
 }
 
+// server/src/runtime-pointing.ts
+function pointRuntimeAt(serverDir) {
+  setRuntimePaths({
+    serverDir,
+    goBinary: path9.join(serverDir, BINARY_NAME),
+    webDist: path9.join(serverDir, "web-dist")
+  });
+  if (!hasWebBundle()) {
+    throw codedError("web-bundle-missing", `载荷里没有前端产物 ${path9.join(serverDir, "web-dist", "index.html")}`);
+  }
+  setRuntimePaths({
+    piRuntime: path9.join(serverDir, "pi-runtime"),
+    pluginPackages: path9.join(serverDir, "plugin-packages")
+  });
+}
+
 // server/src/preparation-orchestrator.ts
 var preparing = false;
 async function prepareRuntime() {
@@ -2647,21 +3148,10 @@ async function prepareRuntime() {
     STATE.message = "正在检查运行时";
     clearFailure();
     const serverDir = await resolveRuntimeDir();
-    setRuntimePaths({
-      serverDir,
-      goBinary: path9.join(serverDir, BINARY_NAME),
-      webDist: path9.join(serverDir, "web-dist")
-    });
-    if (!hasWebBundle()) {
-      throw codedError("web-bundle-missing", `载荷里没有前端产物 ${path9.join(serverDir, "web-dist", "index.html")}`);
-    }
-    setRuntimePaths({
-      piRuntime: path9.join(serverDir, "pi-runtime"),
-      pluginPackages: path9.join(serverDir, "plugin-packages")
-    });
+    pointRuntimeAt(serverDir);
     const agentDir = await resolveAgentDir();
     if (agentDir) {
-      setRuntimePaths({ piRuntime: path9.join(agentDir, "pi-runtime"), nodeBin: resolveNodeBin(agentDir) });
+      setRuntimePaths({ piRuntime: path10.join(agentDir, "pi-runtime"), nodeBin: resolveNodeBin(agentDir) });
     }
     STATE.phase = "starting-backend";
     STATE.message = "正在启动后端";
@@ -2675,10 +3165,146 @@ async function prepareRuntime() {
   }
 }
 
+// server/src/payload-update.ts
+import path11 from "node:path";
+var UPGRADE_READY_TIMEOUT_MS = 12e4;
+var ROLLBACK_READY_TIMEOUT_MS = 6e4;
+var upgrading = false;
+function assertIdleForUpgrade() {
+  if (upgrading) throw codedError("payload-upgrade-busy", "已有一轮升级在进行，等它结束再试");
+  if (STATE.phase === "installing" || STATE.phase === "starting" || STATE.phase === "starting-backend") {
+    throw codedError("payload-upgrade-busy", "运行时正在准备，稍后再试");
+  }
+}
+function installedDir() {
+  return PROVISION_DIR && hasPayload(PROVISION_DIR) ? PROVISION_DIR : null;
+}
+async function checkPayloadUpdate() {
+  const bundled = hasPayload(BUNDLED_DIR);
+  const installed = readPayloadMarker(installedDir()) ?? readPayloadMarker(BUNDLED_DIR);
+  const base = {
+    bundled,
+    platform: PLATFORM,
+    current: MANIFEST.payloadVersion || "",
+    installed,
+    checkedAt: Date.now()
+  };
+  if (bundled) {
+    return {
+      ...base,
+      available: base.current,
+      upstream: { current: MANIFEST.upstream?.tag ?? null, available: MANIFEST.upstream?.tag ?? null },
+      upgradeAvailable: false,
+      note: "运行时随插件发布，更新插件即更新画布"
+    };
+  }
+  if (!TARGET_PLATFORMS.includes(PLATFORM)) throw unsupportedPlatformError();
+  const peeked = await peekManifest();
+  const spec = peeked.platforms[PLATFORM]?.payload;
+  const available = spec ? peeked.payloadVersion : "";
+  const running = installedDir();
+  return {
+    ...base,
+    available,
+    upstream: { current: MANIFEST.upstream?.tag ?? null, available: peeked.upstream?.tag ?? null },
+    // 版本号不同要升；版本号相同但目录不在（上次没装成）也要升，否则会一直停在「可更新」之外。
+    upgradeAvailable: Boolean(available) && (available !== base.current || !running),
+    note: spec ? void 0 : `发布清单里没有 ${PLATFORM} 的载荷`
+  };
+}
+async function runUpgradePayload() {
+  if (hasPayload(BUNDLED_DIR)) {
+    throw codedError("payload-bundled", "运行时随插件发布，请更新插件后再试");
+  }
+  if (!TARGET_PLATFORMS.includes(PLATFORM)) throw unsupportedPlatformError();
+  const peeked = await peekManifest();
+  const spec = peeked.platforms[PLATFORM]?.payload;
+  if (!spec) throw unsupportedPlatformError();
+  const previous = {
+    payloadVersion: MANIFEST.payloadVersion,
+    upstream: MANIFEST.upstream ?? null,
+    platforms: MANIFEST.platforms,
+    source: MANIFEST.source,
+    dir: installedDir()
+  };
+  if (peeked.payloadVersion === previous.payloadVersion && previous.dir) {
+    return { upgraded: false, payloadVersion: previous.payloadVersion, note: "当前已是最新版本" };
+  }
+  clearFailure();
+  setStage("downloading", "更新运行时", `发现新运行时 ${peeked.payloadVersion}，正在准备`);
+  note(`检查到新运行时 ${peeked.payloadVersion}（当前 ${previous.payloadVersion || "未安装"}）`);
+  applyManifest(peeked, peeked.source);
+  let restarted = false;
+  try {
+    if (!hasPayload(PROVISION_DIR)) await provisionPayload(spec);
+    pointRuntimeAt(PROVISION_DIR);
+    const agentDir = await resolveAgentDir();
+    if (agentDir) {
+      setRuntimePaths({ piRuntime: path11.join(agentDir, "pi-runtime"), nodeBin: resolveNodeBin(agentDir) });
+    }
+    restarted = true;
+    await restartBackend();
+    if (!await waitForBackendPort(UPGRADE_READY_TIMEOUT_MS)) {
+      throw codedError("payload-upgrade-timeout", `新运行时后端未在 ${UPGRADE_READY_TIMEOUT_MS / 1e3} 秒内就绪`);
+    }
+    note(`运行时已切换到 ${peeked.payloadVersion}${peeked.upstream?.tag ? `（上游 ${peeked.upstream.tag}）` : ""}`);
+    return {
+      upgraded: true,
+      from: previous.payloadVersion,
+      to: peeked.payloadVersion,
+      upstream: peeked.upstream?.tag ?? null,
+      payloadVersion: peeked.payloadVersion
+    };
+  } catch (error) {
+    const code = error?.code ?? "payload-upgrade-failed";
+    const detail = error?.message ?? String(error);
+    note(`运行时升级失败：${detail}`);
+    if (!previous.payloadVersion) {
+      fail(code, detail, "运行时升级");
+      throw error;
+    }
+    applyManifest(
+      { payloadVersion: previous.payloadVersion, upstream: previous.upstream, platforms: previous.platforms },
+      previous.source
+    );
+    if (!previous.dir) {
+      fail(code, detail, "运行时升级");
+      throw error;
+    }
+    pointRuntimeAt(previous.dir);
+    let rolledBack = false;
+    if (restarted) {
+      try {
+        await restartBackend();
+        rolledBack = await waitForBackendPort(ROLLBACK_READY_TIMEOUT_MS);
+      } catch (rollbackError) {
+        note(`回滚重启失败：${rollbackError?.message ?? String(rollbackError)}`);
+      }
+    }
+    if (!rolledBack) fail(code, detail, "运行时升级");
+    return {
+      upgraded: false,
+      rolledBack,
+      code,
+      error: detail,
+      payloadVersion: previous.payloadVersion
+    };
+  }
+}
+async function upgradePayload() {
+  assertIdleForUpgrade();
+  upgrading = true;
+  try {
+    return await runUpgradePayload();
+  } finally {
+    upgrading = false;
+  }
+}
+
 // server/src/host-model-bridge.ts
 import crypto5 from "node:crypto";
 import fs10 from "node:fs";
-import path10 from "node:path";
+import path12 from "node:path";
 
 // server/src/canvas-catalog.ts
 import http3 from "node:http";
@@ -2861,7 +3487,7 @@ function streamCanvasResource(resourceId, res) {
 }
 
 // server/src/host-model-bridge.ts
-var BRIDGE_FILE = path10.join(DATA_DIR, "bridge.json");
+var BRIDGE_FILE = path12.join(DATA_DIR, "bridge.json");
 var BRIDGE_JOB_TTL_MS = 5 * 6e4;
 var BRIDGE_IDLE_MS = 18e4;
 var BRIDGE_LONGPOLL_MS = 25e3;
@@ -3357,7 +3983,7 @@ function handlePayloadReset(res) {
     }
     for (const entry of entries) {
       if (!entry.isFile() || !/\.(partial\.zip|zip\.tmp)(\.part\d+)?$/.test(entry.name)) continue;
-      const target = path11.join(dir, entry.name);
+      const target = path13.join(dir, entry.name);
       try {
         freedBytes += statSize(target);
         fs11.rmSync(target, { force: true });
@@ -3416,6 +4042,18 @@ function servePreparation(req, res) {
         description: tool.description,
         group: MCP_TOOL_GROUPS[tool.name] ?? "other"
       }))
+    });
+    return;
+  }
+  if (req.method === "GET" && req.url === "/__canvas/update-check") {
+    void checkPayloadUpdate().then((result) => sendJson(res, { ok: true, ...result })).catch((error) => {
+      sendJson(res, { ok: false, code: error?.code ?? "update-check-failed", message: error?.message ?? String(error) });
+    });
+    return;
+  }
+  if (req.method === "POST" && req.url === "/__canvas/upgrade") {
+    void upgradePayload().then((result) => sendJson(res, { ok: true, ...result })).catch((error) => {
+      sendJson(res, { ok: false, code: error?.code ?? "payload-upgrade-failed", message: error?.message ?? String(error) });
     });
     return;
   }
@@ -3498,7 +4136,7 @@ function listenStable(port) {
   });
 }
 async function bindStableOrigin() {
-  if (fs12.existsSync(path12.join(DATA_DIR, "no-stable-origin"))) {
+  if (fs12.existsSync(path14.join(DATA_DIR, "no-stable-origin"))) {
     console.log("[open-ai-canvas] no-stable-origin present; keeping the host port as browser origin");
     return;
   }
@@ -3549,7 +4187,8 @@ function startProxy() {
       return;
     }
     if (serveBridge(req, res, pathname)) return;
-    if (!goPort) {
+    const ownsCanvasRoute = pathname === "/__canvas" || pathname.startsWith("/__canvas/");
+    if (!goPort || ownsCanvasRoute) {
       servePreparation(req, res);
       return;
     }

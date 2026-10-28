@@ -4,16 +4,13 @@
  * 由 server/src/boot.ts 按职责切出（ADR-0012）。
  */
 import path from "node:path";
-import { BINARY_NAME } from "./service-config.ts";
 import { STATE, clearFailure, fail } from "./preparation-state.ts";
-import { codedError } from "./payload-source-resolution.ts";
 import { resolveAgentDir, resolveNodeBin, resolveRuntimeDir } from "./payload-installation.ts";
 import { setRuntimePaths } from "./runtime-paths.ts";
 import { reserveBackendPort, startBackend } from "./backend-process.ts";
-import { hasWebBundle } from "./web-dist-hosting.ts";
+import { pointRuntimeAt } from "./runtime-pointing.ts";
 
 export let preparing = false;
-
 // 监听之后才走到这里：解析（或下载）运行时 → 分配端口 → 拉起后端。
 // 失败不再 process.exit，而是把原因留在 STATE 里让界面显示并允许手动重试。
 export async function prepareRuntime() {
@@ -24,20 +21,7 @@ export async function prepareRuntime() {
     STATE.message = "正在检查运行时";
     clearFailure();
     const serverDir = await resolveRuntimeDir();
-    setRuntimePaths({
-      serverDir,
-      goBinary: path.join(serverDir, BINARY_NAME),
-      webDist: path.join(serverDir, "web-dist"),
-    });
-    // 载荷里的前端产物由 shim 自己发（ADR-0008）。缺失时立刻带 code 失败：
-    // 否则后端照常就绪、健康门照常通过，用户只会看到一个 404 JSON。
-    if (!hasWebBundle()) {
-      throw codedError("web-bundle-missing", `载荷里没有前端产物 ${path.join(serverDir, "web-dist", "index.html")}`);
-    }
-    setRuntimePaths({
-      piRuntime: path.join(serverDir, "pi-runtime"),
-      pluginPackages: path.join(serverDir, "plugin-packages"),
-    });
+    pointRuntimeAt(serverDir);
 
     // 创作 Agent 与它要用的 node 是独立载荷。上游把 pi 打包给后端自行解包；我们多做一步，
     // 把 node 也一并发，因为宿主进程的 node 可能不满足 pi 的 22.19.0 下限。

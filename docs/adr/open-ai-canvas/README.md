@@ -1,6 +1,6 @@
 # open-ai-canvas 插件 ADR 索引
 
-这十五份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
+这十七份 ADR 记录 `abilities/plugins/open-ai-canvas` 为什么长成现在这样。按「谁被谁取代」读，比按编号读更省事。
 
 | ADR | 主题 | 状态 |
 | --- | --- | --- |
@@ -19,6 +19,8 @@
 | [0013](./0013-canvas-media-models-as-host-providers.md) | 画布媒体模型登记为宿主媒体 Provider | 已接受（现行） |
 | [0014](./0014-activation-ownership-and-runtime-version-key.md) | 激活的资源归属于激活，运行时目录键归属于字节 | 已接受（现行） |
 | [0015](./0015-creator-catalog-projection.md) | 画布创作目录是渠道模型的投影，连接以读回为准 | 已接受（现行） |
+| [0016](./0016-canvas-skill-library-toolset.md) | 技能库以上游 `/api/skills*` 为源，用 MCP 工具代理而不复制文档 | 已接受（现行） |
+| [0017](./0017-payload-hot-update-and-model-autosync.md) | 载荷显式探测 / 就地升级 / 就绪即双向同步模型 | 已接受（现行） |
 
 ## 落实与偏差
 
@@ -27,7 +29,7 @@
 | ADR | 落实 | 偏差 / 说明 |
 | --- | --- | --- |
 | 0001 | shim 拉起 Go 二进制、视图、MCP、外部浏览器 | **内置 webview 未实现**（决策 6 只落了外部浏览器）；上游版本改从载荷清单读，载荷里没有 `VERSION` 文件 |
-| 0002 | 20 个 MCP 工具、`PATCH …/operations`、冲突检测、鉴权捕获 | 节点“schema 发现”只能是“发现存在”（上游只回名单）；session 加密但不做多用户分档；工作区项目只有 `list` |
+| 0002 | 20 个 MCP 工具（0016 起 28 个）、`PATCH …/operations`、冲突检测、鉴权捕获 | 节点“schema 发现”只能是“发现存在”（上游只回名单）；session 加密但不做多用户分档；工作区项目只有 `list` |
 | 0003 | `archive: "file"` 单制品 + 载荷下载 | — |
 | 0004 | 就绪契约、平台门禁、`minAppVersion` | — |
 | 0005 | CI 原生矩阵 + 清单 | 下载源顺序被 0009 改写 |
@@ -40,8 +42,10 @@
 | 0013 | 目录读 `GET /api/models`、`ctx.media.registerProvider`、`/bridge/media/:id` 转发、注册显式且随 `dispose()` 释放 | **参考图模式未打通**（缺 `POST /api/resources` 的 multipart 转发），故只声明 text→image/video；画布文本模型登记不进宿主；宿主侧端到端生成未跑 |
 | 0014 | `src/index.tsx` 闭包局部 + 幂等释放；`sync-shim` 字节变就 bump `runtime.version`；`check-service-platforms` 固定 `version` / `entry` 与平台声明一致 | 2026-10-27 修复侧栏入口消失与运行时目录键不随字节变；端到端装包未跑 |
 | 0015 | 渠道 / 渠道模型 / 免费价格档三级投影，写完读回 `/api/model-catalog` 分类报告；`verify-channel-projection.mjs` 断言 payload 形状与五类分类，`verify-canvas-catalog.mjs` 断言四条新路由可达 | 只投影文本能力；`chat-completion` 与 0 元档是硬编码假设；端到端未跑（本机无登录会话），画布对 `available: false` 的呈现仍为推断 |
+| 0016 | 8 个技能库工具投影 `/api/skills*`；`canvas-skill-library.ts` 只依赖注入的 `CanvasApiPort`；顺手修复运行时就绪后 `/__canvas/tools` 被静态回退吃掉 | 只做读 + 加入/移出；技能正文超过 20000 字符默认截断；未与 `skill` 节点的 `skillId` 交叉校验；真实画布端到端未跑 |
+| 0017 | `peekManifest` 只读探测 + 两条 `/__canvas/*` 路由；`.payload.json` 记录安装来源；失败按旧目录回滚；就绪后自动双向同步模型（`autoSyncDone` 单次守卫）与升级后重同步 | 自动探测/升级只在宿主真实网络下验证过本地目录与镜像两种来源；真实画布点「升级」的端到端与升级中途关面板的状态一致性未跑 |
 
-守住这些的脚本：`verify-mcp-tools.mjs`（MCP 契约 41 条）、`verify-stable-origin.mjs`（origin 24 条）、`verify-web-hosting.mjs`、`verify-payload-sources.mjs`、`verify-bridge.mjs`（桥 26 条）、`verify-canvas-catalog.mjs`（目录、媒体注册与桥路由 55 条）、`verify-channel-projection.mjs`（渠道投影 payload 与读回分类 29 条）、`verify-workflow.mjs`——全部在 `npm test` 里。
+守住这些的脚本：`verify-mcp-tools.mjs`（MCP 契约 65 条，含 8 个技能工具与分组断言）、`verify-stable-origin.mjs`（origin 24 条）、`verify-web-hosting.mjs`、`verify-payload-sources.mjs`、`verify-bridge.mjs`（桥 26 条）、`verify-canvas-catalog.mjs`（目录、媒体注册与桥路由 55 条）、`verify-channel-projection.mjs`（渠道投影 payload 与读回分类 29 条）、`verify-workflow.mjs`——全部在 `npm test` 里。
 
 ## 八个「为什么不是看上去那样」
 

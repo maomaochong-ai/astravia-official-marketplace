@@ -36,12 +36,17 @@
         },
         {
           "title": "Host agent control via MCP",
-          "description": "Manage projects, canvases, nodes and generation tasks through the host agent. 18 MCP tools, including building a whole workflow in a single request.",
+          "description": "Manage projects, canvases, nodes and generation tasks through the host agent. 28 MCP tools, including building a whole workflow in a single request.",
           "icon": "solar:widget-5-linear"
         },
         {
+          "title": "73 built-in skills",
+          "description": "The canvas ships a skill library — story structure, storyboards, prompt engineering, product and social video playbooks. The agent can list them by category, read one, search its cards and add what you use.",
+          "icon": "solar:notebook-bookmark-linear"
+        },
+        {
           "title": "One-click lifecycle",
-          "description": "Start and stop the canvas from the workspace view. The host manages the backend, the Node runtime and the agent process.",
+          "description": "Start and stop the canvas from the workspace view. The host manages the backend, the Node runtime and the agent process, and can pull the latest upstream build in place without reinstalling the plugin.",
           "icon": "solar:play-circle-linear"
         }
       ]
@@ -64,7 +69,7 @@
         },
         {
           "title": "Connect models",
-          "description": "Text: press 'Use Astravia's text models in the canvas'. Each model is written into the canvas's \"Astravia\" channel together with its capability parameters and one free price tier; the plugin then reads the canvas catalog back and tells you how many models are actually usable — not just that something was sent. Media: press 'Use these models in Astravia' — the image and video models you configured in the canvas then appear in Astravia's own generate entry. You can unregister them at any time."
+          "description": "Syncing happens by itself once the canvas is ready — both directions at once, and the overview tab shows how many models went each way. Text: your Astravia models are written into the canvas's \"Astravia\" channel together with their capability parameters and one free price tier; the plugin then reads the canvas catalog back and tells you how many models are actually usable — not just that something was sent. Media: the image and video models you configured in the canvas appear in Astravia's own generate entry. You can re-sync or unregister them at any time."
         },
         {
           "title": "Use the agent",
@@ -75,7 +80,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Text is bridged one way (Astravia → canvas). Image and video models travel the other way: their names and capabilities are registered with Astravia, while the API keys stay inside the canvas and every generation still runs there. Reference-image modes (image-to-image, image-to-video) are not bridged yet."
+      "content": "Text is bridged one way (Astravia → canvas). Image and video models travel the other way: their names and capabilities are registered with Astravia, while the API keys stay inside the canvas and every generation still runs there. Reference-image modes (image-to-image, image-to-video) are not bridged yet, and a generated image cannot be pushed back into the canvas as an input."
     },
     {
       "type": "callout",

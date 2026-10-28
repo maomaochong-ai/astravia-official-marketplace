@@ -69,18 +69,110 @@ async function waitFor(predicate, label, timeoutMs = TIMEOUT_MS) {
 /**
  * 假后端：按路径回答本脚本关心的事实。
  * `/api/agent/capabilities` 故意只给类型名（真实上游就是这样），用来验证插件不会编 schema；
- * `/api/projects` 把收到的 Cookie 回显出来，用来证明「解出来的会话真的进了上游请求」。
+ * `/api/projects` 把收到的 Cookie 回显出来，用来证明「解出来的会话真的进了上游请求」；
+ * `/api/skills*` 把收到的路径与查询串写进技能名里，于是「参数有没有真的映射到上游
+ * 查询串」可以只靠工具返回的 JSON 判定，不必给被测实现加测试专用字段。
  */
 const FAKE_BACKEND = `#!/usr/bin/env node
 const http = require("node:http");
 const addr = process.env.CANVAS_BACKEND_ADDR || "127.0.0.1:0";
 const port = Number(addr.split(":").pop());
+const skillItem = (name, extra) =>
+  Object.assign(
+    {
+      skillId: "yingce-shot-grammar",
+      skillName: name,
+      description: "镜头语言与分镜卡片",
+      instruction: "",
+      versionId: "v-1",
+      version: "1.0.0",
+      fileCount: 29,
+      totalBytes: 91000,
+      tag: "drama",
+      status: 1,
+      sortWeight: 10,
+      isPrivate: false,
+      likeCount: 7,
+      addedCount: 31,
+      isAdded: false,
+      isLike: false,
+      isOwner: false,
+      markdownUrl: "/api/skills/yingce-shot-grammar/file/raw?path=SKILL.md",
+      libraryCategoryId: "",
+    },
+    extra || {},
+  );
 const server = http.createServer((req, res) => {
   const url = req.url || "/";
   const send = (code, body) => {
     res.writeHead(code, { "Content-Type": "application/json" });
     res.end(JSON.stringify(body));
   };
+  if (url.startsWith("/api/skills")) {
+    const [pathPart, queryPart] = url.split("?");
+    const rest = pathPart.split("/").filter(Boolean).slice(2);
+    const query = new URLSearchParams(queryPart || "");
+    if (rest.length === 0 && req.method === "GET") {
+      return send(200, { code: 0, msg: "ok", data: {
+        skills: [skillItem(url)],
+        totalCount: 73,
+        hasMore: true,
+        nextOffset: 20,
+        page: 1,
+        pageSize: 20,
+        categories: [{ key: "drama", label: "短剧影视", count: 26 }],
+      } });
+    }
+    if (rest.length === 1 && rest[0] === "presets") {
+      return send(200, { code: 0, msg: "ok", data: { presets: [{
+        presetId: "product-film",
+        name: "产品短片",
+        scene: "ecommerce",
+        skillIds: ["yingce-product-ad"],
+        rationale: "15 秒产品片需要分镜 + 广告打法",
+        source: "seed",
+        evidence: ["E1"],
+        upgrade: "",
+      }] } });
+    }
+    if (rest.length === 1 && rest[0] === "added") {
+      return send(200, { code: 0, msg: "ok", data: { skills: [skillItem(url, { isAdded: true })] } });
+    }
+    const id = decodeURIComponent(rest[0]);
+    if (rest.length === 1 && req.method === "GET") {
+      if (id === "gone") return send(404, { code: 404, msg: "技能不存在或已删除" });
+      return send(200, { code: 0, msg: "ok", data: skillItem("分镜语法", {
+        skillId: id,
+        instruction: "# " + id + String.fromCharCode(10) + "x".repeat(400),
+      }) });
+    }
+    if (rest[1] === "files") {
+      return send(200, { code: 0, msg: "ok", data: { files: [
+        { path: "SKILL.md", kind: "markdown", mimeType: "text/markdown", size: 120, sha256: "a" },
+        { path: "cards/shot-grammar.md", kind: "markdown", mimeType: "text/markdown", size: 200, sha256: "b" },
+      ] } });
+    }
+    if (rest[1] === "file") {
+      const wantPath = query.get("path") || "";
+      return send(200, { code: 0, msg: "ok", data: { file: {
+        file: { path: wantPath, kind: "markdown", mimeType: "text/markdown", size: 12, sha256: "c" },
+        content: "content of " + wantPath,
+        binary: false,
+      } } });
+    }
+    if (rest[1] === "search") {
+      return send(200, { code: 0, msg: "ok", data: { results: [
+        { path: "cards/shot-grammar.md", line: 12, snippet: "snippet for " + (query.get("q") || "") },
+      ] } });
+    }
+    if (rest[1] === "add") {
+      return send(200, { code: 0, msg: "ok", data: skillItem(req.method + " " + pathPart, {
+        skillId: id,
+        isAdded: req.method === "POST",
+      }) });
+    }
+    return send(200, { code: 0, msg: "ok", data: {} });
+  }
   if (url.startsWith("/api/agent/capabilities")) {
     return send(200, { nodeTypes: ["runtime_only_node"], version: "v-fake", hash: "h" });
   }
@@ -161,12 +253,21 @@ async function startShim(layout) {
 
   const base = `http://127.0.0.1:${port}`;
   // 后端没起来时 /mcp 会挂住最多 90 秒，所以先等到 state.ready。
-  await waitFor(async () => {
-    const res = await fetch(`${base}/__canvas/state`);
-    if (!res.ok) return null;
-    const state = await res.json();
-    return state.ready ? state : null;
-  }, "shim ready");
+  // 等不到时必须把 shim 自己的日志打出来并收掉子进程：否则失败现场只剩一句「fetch failed」，
+  // 而挂着的子进程还会把测试进程的 event loop 留住，让人看到的是超时而不是失败。
+  try {
+    await waitFor(async () => {
+      const res = await fetch(`${base}/__canvas/state`);
+      if (!res.ok) return null;
+      const state = await res.json();
+      return state.ready ? state : null;
+    }, "shim ready");
+  } catch (error) {
+    child.kill("SIGTERM");
+    console.error("--- shim log ---");
+    console.error(log.join("").slice(-4000));
+    throw error;
+  }
 
   return { port, base, child, log };
 }
@@ -249,14 +350,43 @@ async function protocolChecks(base) {
     );
     check("required 的键都在 properties 里", dangling.length === 0, dangling.join(","));
 
-    for (const expected of ["list_workspace_projects", "get_task", "list_node_types", "get_node_schema", "run_generation"]) {
+    for (const expected of [
+      "list_workspace_projects",
+      "get_task",
+      "list_node_types",
+      "get_node_schema",
+      "run_generation",
+      "list_skills",
+      "get_skill",
+      "read_skill_file",
+    ]) {
       check(`工具清单包含 ${expected}`, names.includes(expected), `count=${names.length}`);
     }
     check(
-      "工具总数符合预期（ADR-0002 十六 + ADR-0007 二 + 本次补的 workspace/task）",
-      tools.length === 20,
+      "工具总数符合预期（ADR-0002 十六 + ADR-0007 二 + workspace/task + ADR-0016 技能库八）",
+      tools.length === 28,
       `count=${tools.length}`,
     );
+  }
+
+  {
+    // 分组落错地方不会让任何工具失败——只会在插件视图里静默变成「其他」，或者干脆不显示。
+    const listed = await (await fetch(`${base}/__canvas/tools`)).json();
+    const groups = new Map((listed.tools ?? []).map((tool) => [tool.name, tool.group]));
+    const skillTools = [
+      "list_skills",
+      "get_skill",
+      "list_skill_files",
+      "read_skill_file",
+      "search_skill_files",
+      "list_added_skills",
+      "set_skill_added",
+      "list_skill_presets",
+    ];
+    const ungrouped = skillTools.filter((name) => groups.get(name) !== "skills");
+    check("技能库工具都登记到 skills 分组", ungrouped.length === 0, ungrouped.join(","));
+    const orphaned = [...groups.entries()].filter(([, group]) => !group || group === "other").map(([name]) => name);
+    check("没有工具落到 other 分组", orphaned.length === 0, orphaned.join(","));
   }
 
   {
@@ -320,6 +450,13 @@ async function main() {
       "无会话时 MCP 工具拒绝调上游",
       anonymous.isError === true && /session/i.test(anonymous.text),
       anonymous.text.slice(0, 120),
+    );
+
+    const anonymousSkills = await callTool(shim.base, "list_skills");
+    check(
+      "无会话时 list_skills 说清是会话问题而不是没数据",
+      anonymousSkills.isError === true && /session/i.test(anonymousSkills.text),
+      anonymousSkills.text.slice(0, 120),
     );
 
     const anonymousNodes = await callTool(shim.base, "list_node_types");
@@ -415,6 +552,103 @@ async function main() {
 
       const missing = await callTool(shim.base, "get_task", {});
       check("get_task 缺 task_id 时直接拒绝", missing.isError === true && /task_id/.test(missing.text), missing.text.slice(0, 120));
+    }
+
+    // ADR-0016：技能库投影。这一整块只断言「参数真的到了上游」与「返回只带该带的
+    // 东西」两件事，不重复断言上游的业务规则。
+    {
+      const listed = textJson(await callTool(shim.base, "list_skills", { page: 2, page_size: 500, scope: "mine", tag: "drama", sort: "new" })) ?? {};
+      const echo = String(listed.skills?.[0]?.name ?? "");
+      check("list_skills 走 GET /api/skills", echo.startsWith("/api/skills?"), echo.slice(0, 120));
+      check(
+        "list_skills 把分页与筛选映射成上游查询串（pageSize 封顶 80）",
+        ["page=2", "pageSize=80", "scope=mine", "tag=drama", "sort=new"].every((part) => echo.includes(part)),
+        echo,
+      );
+      check("list_skills 保留分类表", listed.categories?.[0]?.key === "drama", JSON.stringify(listed.categories ?? []).slice(0, 120));
+      check(
+        "list_skills 只回元数据，不带 instruction",
+        Boolean(listed.skills?.[0]) && !("instruction" in listed.skills[0]),
+        Object.keys(listed.skills?.[0] ?? {}).join(","),
+      );
+      check("list_skills 带回分页状态", listed.totalCount === 73 && listed.hasMore === true, JSON.stringify({ total: listed.totalCount, hasMore: listed.hasMore }));
+
+      const detail = textJson(await callTool(shim.base, "get_skill", { skill_id: "yingce-shot-grammar" })) ?? {};
+      check(
+        "get_skill 取回 SKILL.md 正文",
+        typeof detail.instruction === "string" && detail.instruction.startsWith("# yingce-shot-grammar"),
+        String(detail.instruction ?? "").slice(0, 40),
+      );
+      check(
+        "get_skill 不截断时如实报长度",
+        detail.instructionChars > 400 && detail.instructionTruncated === false,
+        JSON.stringify({ chars: detail.instructionChars, truncated: detail.instructionTruncated }),
+      );
+
+      const clamped = textJson(await callTool(shim.base, "get_skill", { skill_id: "yingce-shot-grammar", max_chars: 10 })) ?? {};
+      check(
+        "get_skill 按 max_chars 截断并指向 read_skill_file",
+        clamped.instructionTruncated === true && clamped.instruction?.length === 10 && /read_skill_file/.test(clamped.note ?? ""),
+        JSON.stringify({ len: clamped.instruction?.length, note: String(clamped.note ?? "").slice(0, 48) }),
+      );
+
+      const missingId = await callTool(shim.base, "get_skill", {});
+      check("get_skill 缺 skill_id 时直接拒绝", missingId.isError === true && /skill_id/.test(missingId.text), missingId.text.slice(0, 120));
+
+      const gone = await callTool(shim.base, "get_skill", { skill_id: "gone" });
+      check("get_skill 把上游 404 转成可读错误", gone.isError === true && /技能不存在/.test(gone.text), gone.text.slice(0, 120));
+
+      const files = textJson(await callTool(shim.base, "list_skill_files", { skill_id: "yingce-shot-grammar" })) ?? {};
+      check(
+        "list_skill_files 列出包内文件",
+        files.files?.length === 2 && files.files[1]?.path === "cards/shot-grammar.md",
+        JSON.stringify((files.files ?? []).map((file) => file.path)),
+      );
+
+      const file = textJson(await callTool(shim.base, "read_skill_file", { skill_id: "yingce-shot-grammar", path: "cards/shot-grammar.md" })) ?? {};
+      check(
+        "read_skill_file 把 path 带进上游查询串",
+        file.path === "cards/shot-grammar.md" && file.content === "content of cards/shot-grammar.md",
+        JSON.stringify(file).slice(0, 160),
+      );
+
+      const noPath = await callTool(shim.base, "read_skill_file", { skill_id: "yingce-shot-grammar" });
+      check("read_skill_file 缺 path 时直接拒绝", noPath.isError === true && /path/.test(noPath.text), noPath.text.slice(0, 120));
+
+      const found = textJson(await callTool(shim.base, "search_skill_files", { skill_id: "yingce-shot-grammar", query: "轴线" })) ?? {};
+      check(
+        "search_skill_files 回 path/line/snippet",
+        found.results?.[0]?.line === 12 && /轴线/.test(found.results?.[0]?.snippet ?? ""),
+        JSON.stringify(found.results ?? []).slice(0, 160),
+      );
+
+      const added = textJson(await callTool(shim.base, "list_added_skills")) ?? {};
+      check(
+        "list_added_skills 走 GET /api/skills/added",
+        added.skills?.[0]?.isAdded === true && String(added.skills?.[0]?.name ?? "").includes("/api/skills/added"),
+        JSON.stringify(added.skills?.[0] ?? {}).slice(0, 140),
+      );
+
+      const removed = textJson(await callTool(shim.base, "set_skill_added", { skill_id: "yingce-shot-grammar", added: false })) ?? {};
+      check(
+        "set_skill_added false → DELETE /api/skills/:id/add",
+        removed.added === false && String(removed.skill?.name ?? "").startsWith("DELETE "),
+        JSON.stringify({ added: removed.added, name: removed.skill?.name }),
+      );
+
+      const kept = textJson(await callTool(shim.base, "set_skill_added", { skill_id: "yingce-shot-grammar" })) ?? {};
+      check(
+        "set_skill_added 默认是添加",
+        kept.added === true && String(kept.skill?.name ?? "").startsWith("POST "),
+        JSON.stringify({ added: kept.added, name: kept.skill?.name }),
+      );
+
+      const presets = textJson(await callTool(shim.base, "list_skill_presets")) ?? {};
+      check(
+        "list_skill_presets 带回场景预设",
+        presets.presets?.[0]?.presetId === "product-film" && Array.isArray(presets.presets?.[0]?.skillIds),
+        JSON.stringify(presets.presets?.[0] ?? {}).slice(0, 140),
+      );
     }
 
     {

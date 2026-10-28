@@ -170,7 +170,11 @@ export function startProxy() {
     // 模型桥不依赖 Go 后端：它得与后端就绪状态解耦，才能在重试/重启后接着用。
     if (serveBridge(req, res, pathname)) return;
 
-    if (!goPort) {
+    // 整个 /__canvas/* 前缀都是 shim 的运维接口（后端就绪后也是）：准备页、进度、工具目录、
+    // 检查更新与升级。逐条枚举漏一个，那条路径就会被下面的静态回退接走，返回 index.html
+    // 而不是 JSON（ADR-0016 决策 6、ADR-0017）。
+    const ownsCanvasRoute = pathname === "/__canvas" || pathname.startsWith("/__canvas/");
+    if (!goPort || ownsCanvasRoute) {
       servePreparation(req, res);
       return;
     }

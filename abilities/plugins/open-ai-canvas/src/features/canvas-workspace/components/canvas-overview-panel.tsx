@@ -23,6 +23,12 @@ function formatEta(seconds: number): string | undefined {
   return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
 }
 
+/** 安装时间只用来定位「这是哪一版」，不需要秒级精度。 */
+function formatWhen(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
 /**
  * 概览：这台机器现在能不能用、卡在哪、下一步该按什么。
  *
@@ -54,6 +60,7 @@ export function CanvasOverviewPanel({
 }): JSX.Element {
   const { t } = useTranslation();
   const running = state.phase === "running";
+  const update = state.update;
   const progress = state.progress;
   const eta = progress ? formatEta(progress.etaSeconds) : undefined;
 
@@ -172,6 +179,116 @@ export function CanvasOverviewPanel({
           ) : null}
         </div>
       </SectionCard>
+
+      <SectionCard
+        title={t("update.title")}
+        badge={
+          update?.upgradeAvailable ? (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+              {t("update.available", { version: update.available ?? "" })}
+            </span>
+          ) : null
+        }
+      >
+        <p className="mt-2 text-[13px]">
+          <span className="text-muted-foreground">{t("update.current")}: </span>
+          <span className="font-mono">{update?.current ?? state.payloadVersion ?? "—"}</span>
+        </p>
+        {update?.upstreamAvailable ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t("update.upstreamTag", { tag: update.upstreamAvailable })}
+          </p>
+        ) : null}
+        {update?.installedAt ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t("update.installedAt", { time: formatWhen(update.installedAt) })}
+          </p>
+        ) : null}
+        {update?.noticeKey ? (
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">
+            {t(update.noticeKey, { version: update.available ?? "" })}
+          </p>
+        ) : (
+          <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{t("overview.updateHint")}</p>
+        )}
+        {update?.detail ? (
+          <p className="mt-1 break-words text-[11px] text-muted-foreground/80">{update.detail}</p>
+        ) : null}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy || !running || update?.checking || update?.upgrading}
+            onClick={() => void controller.checkForUpdates()}
+          >
+            {update?.checking ? t("update.checking") : t("update.check")}
+          </Button>
+          {update?.upgradeAvailable ? (
+            <Button
+              size="sm"
+              disabled={busy || !running || update?.upgrading}
+              onClick={() => void controller.upgradeRuntime()}
+            >
+              {update?.upgrading ? t("update.upgrading") : t("update.upgrade")}
+            </Button>
+          ) : null}
+        </div>
+        {update?.bundled ? <p className="mt-2 text-[11px] text-muted-foreground">{t("update.bundled")}</p> : null}
+        {!update?.checkedAt ? (
+          <p className="mt-1 text-[11px] text-muted-foreground">{t("update.neverChecked")}</p>
+        ) : null}
+      </SectionCard>
+
+      {/* 两个方向分开列：以前只说「桥在线」，用户没法判断是宿主模型没过去，还是画布模型没回来。 */}
+      {running ? (
+        <SectionCard
+          title={t("overview.syncTitle")}
+          actions={
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || state.bridge.busy}
+              onClick={() => void controller.resyncModels()}
+            >
+              {t("overview.syncResync")}
+            </Button>
+          }
+        >
+          <ul className="mt-2 space-y-1.5 text-[12px]">
+            <li className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">{t("overview.syncToCanvas")}</span>
+              <span className="shrink-0 font-medium">
+                {state.bridge.projection
+                  ? t("overview.syncUsable", {
+                      usable: state.bridge.projection.usable,
+                      requested: state.bridge.projection.requested,
+                    })
+                  : t("overview.syncPending")}
+              </span>
+            </li>
+            <li className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">{t("overview.syncToHost")}</span>
+              <span className="shrink-0 font-medium">
+                {typeof state.bridge.mediaRegistered === "number"
+                  ? t("overview.syncRegistered", { count: state.bridge.mediaRegistered })
+                  : t("overview.syncPending")}
+              </span>
+            </li>
+          </ul>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{t("overview.syncHint")}</p>
+        </SectionCard>
+      ) : null}
+
+      {!running ? (
+        <SectionCard title={t("overview.checkTitle")}>
+          <ol className="mt-2 list-decimal space-y-1 pl-4 text-[12px] leading-relaxed text-muted-foreground">
+            <li>{t("overview.checkStart")}</li>
+            <li>{t("overview.checkLogin")}</li>
+            <li>{t("overview.checkModels")}</li>
+            <li>{t("overview.checkAgent")}</li>
+          </ol>
+        </SectionCard>
+      ) : null}
 
       {running && state.workflow ? (
         <SectionCard

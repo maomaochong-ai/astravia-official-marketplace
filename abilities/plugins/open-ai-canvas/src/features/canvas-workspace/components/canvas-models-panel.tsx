@@ -174,8 +174,11 @@ export function CanvasModelsPanel({
         <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{t("bridge.projectionScope")}</p>
       </SectionCard>
 
-      <SectionCard>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{t("bridge.caveat")}</p>
+      <SectionCard title={t("bridge.title")}>
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{t("bridge.caveat")}</p>
+        {/* 两个方向分别把边界说清楚：用户最容易在这里预期落空，而不是在功能明明坏掉时。 */}
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{t("bridge.limitNoHostMedia")}</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("bridge.limitNoReference")}</p>
       </SectionCard>
     </div>
   );

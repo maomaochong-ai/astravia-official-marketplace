@@ -7,7 +7,7 @@ import { CopyButton } from "../../../shared/components/copy-button.tsx";
 import { SectionCard } from "../../../shared/components/section-card.tsx";
 
 // 展示顺序 = 使用顺序：先找到项目，再摆节点，接起来，跑生成，最后才是批量与工作区。
-const GROUP_ORDER = ["projects", "nodes", "connections", "generation", "batch", "workspace", "other"];
+const GROUP_ORDER = ["projects", "nodes", "connections", "generation", "skills", "batch", "workspace", "other"];
 
 /** 拼一段可以直接粘给智能体的说明：它比让用户自己念工具名有用得多。 */
 function briefText(tools: ToolSummary[], header: string): string {
@@ -23,7 +23,7 @@ function briefText(tools: ToolSummary[], header: string): string {
 }
 
 /**
- * 工具页：把插件相对上游多出来的那 20 个 MCP 工具摆到界面上。
+ * 工具页：把插件相对上游多出来的那 28 个 MCP 工具摆到界面上。
  *
  * 为什么值得占一个 Tab：这些工具是插件唯一真正的增量能力，改版前用户只会在
  * agent 偶尔调对一次时才知道画布能被操作。这里给出清单和一句可直接粘贴的说明。
