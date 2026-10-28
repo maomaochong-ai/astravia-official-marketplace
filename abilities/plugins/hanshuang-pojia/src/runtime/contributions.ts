@@ -5,6 +5,7 @@ import { LAB_OFF, parseLabCommand, type LabState } from "../domain/lab-mode";
 import { LAB_STATE_PATH } from "../features/workbench/hooks/use-lab";
 import { SYSTEM_PROMPT_BLOCK_ID, SYSTEM_PROMPT_BODY, SYSTEM_PROMPT_PRIORITY } from "../domain/system-prompt.generated";
 import { planRecovery } from "../domain/refusal";
+import { buildScopeContext, routeScope, type ScopeDecision } from "../domain/scope-router";
 import { reshapeCandidates } from "../domain/reshaping";
 import {
 	applySensitiveRewrite,
@@ -26,6 +27,23 @@ async function readLab(ctx: PluginContext): Promise<LabState> {
 	} catch {
 		// 没有 storage 授权：按关闭处理，不让提示词层因读盘失败而消失。
 		return LAB_OFF;
+	}
+}
+
+/**
+ * 判定留痕。
+ *
+ * 只记「改道」与「被否决项翻回 IN」两种：前者是模型看不到原目标时的唯一依据，
+ * 后者是 `scope-router` 唯一的放行口 —— 同一个文件名反复把请求翻回 IN，就是
+ * 那个口子该再收紧的信号。日志失败不影响注入。
+ */
+function logScopeDecision(decision: ScopeDecision, source: string): void {
+	try {
+		console.info(
+			`[hanshuang-pojia] scope=${decision.scope} evidence=${decision.evidence.join(" | ") || "-"} <- ${source.slice(0, 80)}`,
+		);
+	} catch {
+		// 日志不是功能，写不进去就丢。
 	}
 }
 
@@ -115,7 +133,10 @@ function logSafetyEndpointOnce(model: { provider?: string; api?: string }): void
 /**
  * 上游 `input` 钩子的等价物：把「改写用户消息」降级成「追加等价上下文」。
  *
- * 宿主不允许插件改写 prompt，所以：
+ * 宿主不允许插件改写 prompt，所以按可靠性从高到低分四级：
+ *   0. 目标形态路由 → 对象是线上第三方凭据时，换成同一件事在自有资产上的形态
+ *      （`scope-router.ts`）。它必须排在第一位：对不属于用户的对象改句型没有意义，
+ *      目标不变则判定不变，先做后面几级只会多花一轮；
  *   1. 快捷口令 → 展开成完整任务描述（上游直接替换成展开文案）；
  *   2. 命中「命令式要求对具体目标下手」的形态 → 注入评审式重述（ADR 0010 D6）。
  *      这一档是上游实测有效的唯一一类，所以它是主手段；
@@ -123,6 +144,22 @@ function logSafetyEndpointOnce(model: { provider?: string; api?: string }): void
  */
 function promptContexts(prompt: string): string[] {
 	const contexts: string[] = [];
+
+	// 第 0 级：先看对象能不能被用户持有。命中就整轮改道，不再走改写 ——
+	// 对一个不属于用户的账号改句型，改的是包装，不是目标。
+	//
+	// 判定只用字符串形状，不读盘：插件跑在浏览器沙箱里，`node:fs` 会被 vite 外置成
+	// `__vite-browser-external`，构建期直接失败（PR #44 的 CI 就卡在这里）。
+	// 代价是「磁盘上真的存在」退化成「形状像自有制品」——`isHoldablePath` 仍要求已知
+	// 后缀或 ≥ 3 段路径，`./aa` 这种靠加文件名翻回 IN 的写法依然过不去。
+	const decision = routeScope(prompt);
+	const scope = buildScopeContext(decision);
+	if (decision.evidence.length > 0) logScopeDecision(decision, prompt);
+	if (scope) {
+		contexts.push(scope);
+		return contexts;
+	}
+
 	const shortcut = resolveShortcut(prompt);
 	if (shortcut) {
 		contexts.push(`[快捷口令 ${shortcut.command}] 用户这一条按下列任务执行：${sanitizeRefusalLeak(shortcut.expansion)}`);
