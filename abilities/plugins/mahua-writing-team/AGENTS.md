@@ -51,7 +51,7 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 ## 对话桥
 
 视图里**没有输入框**。工作台只显示状态与下一步；真正写小说发生在宿主对话里（ADR 0008）。
-视图内分四层（ADR 0013 / 0020）：书架（封面网格）→ 书库（筛选 + 排序 + 分页的横版卡列表）→ 书页（书头 + 成员 + 指令 + 目录）→ 阅读页（正文 + 翻页 + 字号），
+视图内分五层（ADR 0013 / 0020 / 0026）：书架（封面网格）→ 书库（文字台账，列按宽度收起）→ 书页（页头 + 弧带 + 指令 + 目录 + 账本入口）→ 阅读页（工具条 + 正文 + 评审栏 + 底栏）→ 伏笔账本（台账 + 决策日志 + 一致性），
 路由是 `src/features/library/hooks/use-library-route.ts` 里的视图内 state，不写宿主路由、不写存储。
 
 - 唯一允许调用 `ctx.conversation` 的文件是 `src/features/studio/hooks/use-agent-handoff.ts`，
@@ -66,16 +66,23 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 不引用任何别的插件的实体：团队成员只写本清单里声明的 `mahua-*` id，工具 id 只带 `mahua_`
 前缀，`permissions` 精确等于实际用到的那 10 项。三份断言在 `test/manifest-guards.test.ts`。
 
-## 视图可见性
+## 入口形状（ADR 0025 §2）
 
-`studio`（`sidebar: true`）只在凭证有效时注册；`activation` 的 `sidebar` 跟凭证状态**相反**——
-未激活时它自己占导航位，否则两个视图都不可达，凭证一过期插件就等于消失。改 `src/index.tsx`
-时别把这条改成常量 `false`，`test/manifest-guards.test.ts` 会拦。
+工作台是**活动面板的一枚标签**（`ctx.ui.registerActivityTab`，`ui.slot.activity-tab`），不是侧边栏
+入口。不再调 `registerWorkspaceView` / `setWorkspaceViewHeader`：标签没有宿主页头，标题与动作
+都在组件自己身上。
+
+- `scope_use: ["conversation", "project"]` 是 fail-closed 的，与 `novel-tools.ts` 的 `SCENARIOS` 同一口径。
+- `initiallyVisible: false`：入池不上栏，用户从「+ → 可添加插件面板」自己加。
+- 凭证判断不在注册处：未激活时同一个组件渲染 `ActivationPanel`，所以标签从装上开始就一直在池子里。
+
+`test/manifest-guards.test.ts` 钉住这三条（无 `registerWorkspaceView`、有 `scope_use`、`initiallyVisible: false`）。
 
 ## 已知的宿主约束
 
 - 面板类 slot 不能用 `fixed`、超大 z-index、`createPortal(..., document.body)`。
-- 视图 `icon` 必须是 iconify class（`icon-[solar--…]`），靠 `@plugin "@iconify/tailwind4";` 生成 CSS，否则侧栏是空格子且无报错。
+- 标签 `icon` 用 React 节点（`createElement("span", { className: STUDIO_TAB_ICON })`），因为 `iconUrl` 只对图片图标有值；
+  iconify class 靠 `@plugin "@iconify/tailwind4";` 生成 CSS，写错了标签栏是空格子且无报错。
 - `src/style.css` 只导 `tailwindcss/theme.css` + `utilities.css`，**不写 `@theme`**：`plugin-vite` 会注入 `@astravia-org/plugin-sdk/tailwind-theme.css`。
 - 菜单/视图 `label`、`description` 用 `%catalogKey%`；React 与工具侧用裸 key。
 - 清单未知字段 fail-closed：用到 `members[].instructionsPath` 就必须 `pluginApiVersion: ^2.3.0`。

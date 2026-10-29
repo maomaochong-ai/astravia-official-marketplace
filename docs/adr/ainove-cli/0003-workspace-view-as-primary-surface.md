@@ -13,14 +13,17 @@
 
 | 入口 | 形态 | 适配度 |
 | --- | --- | --- |
-| `registerActivityTab` | 绑定当前对话的侧边面板，宽约 400–600px | 不适合：作品是跨会话、跨项目的 |
+| `registerActivityTab` | 绑定当前对话的侧边面板，宽约 400–600px | 不适合：作品是跨会话、跨项目的（**已被 ADR 0025 §2.2 反转**：「跨会话」是数据要求，不是路由形状） |
 | `registerGlobalSlot` | 全局浮层，用于悬浮球、引导 | 不适合：会被当成遮罩 |
-| `registerWorkspaceView` | 独立路由 `/workspace/<pluginId>/<viewId>`，占满内容区，侧边栏导航项（用户可 pin 到置顶区，最多 5 个） | **采用** |
+| `registerWorkspaceView` | 独立路由 `/workspace/<pluginId>/<viewId>`，占满内容区，侧边栏导航项（用户可 pin 到置顶区，最多 5 个） | **采用**（**已由 ADR 0025 §2.2 改选 `registerActivityTab`**：侧边栏格是用户的导航位） |
 
 `ui-slots.md` 对工作区视图的定位原话是「跨会话、跨项目的工作台（看板、控制台、仪表盘）」——
 一本书的卷弧看板、章节状态、评审历史全都是这个形状。
 
 ## 2. 决策
+
+> **本节已由 ADR 0025 §2.2 / §2.3 取代**：工作台改为活动面板的一枚标签（`initiallyVisible: false`，
+> 从「+ → 可添加插件面板」自己加），`activation` 视图删除，未激活时同一枚标签渲染激活面板。以下保留原文。
 
 1. 注册**一个侧边栏入口**：`studio`，`sidebar: true`（默认），`navOrder: 0`。图标用
    `icon-[solar--book-2-linear]`，必须在 `style.css` 里通过 `@plugin "@iconify/tailwind4";`
@@ -29,6 +32,10 @@
    实现上还有一个 `activation` 视图，**可见性随凭证状态翻转**：未激活时它 `sidebar: true`（否则
    它 `sidebar: false`、`studio` 又没注册，用户没有任何入口能打开它——凭证过期后整个插件等于消失），
    激活后 `studio` 占用那一个导航位，`activation` 沉到 `sidebar: false` 作为设置页保留。
+
+> **§2.2 的页头桥接已废弃、§2.3 已被反转（ADR 0025 §2.3）**：标签没有宿主页头，
+> `setWorkspaceViewHeader` 整块删除，「复制稿件」搬进书页顶栏。以下保留原文。
+
 2. **不重复画页头。** 视图挂载后用 `ctx.ui.setWorkspaceViewHeader(...)` 接管宿主页头（标题 +
    作品切换 + 阶段徽章），卸载时清空。宿主页头持有窗口拖拽区与 macOS 红绿灯让位，自己再画一条
    会双头并存。

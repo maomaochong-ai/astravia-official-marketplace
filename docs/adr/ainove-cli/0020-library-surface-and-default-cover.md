@@ -56,6 +56,9 @@ ADR 0013 复刻的是番茄**书架**（`/bookshelf`）：封面网格 + 最近�
 
 面板宽度只有番茄内容区的 1/3 左右，直接搬 328×130 会挤成两行字。取同样的**比例关系**：
 
+> 本节的具体做法（有边框卡片、72×94 封面）已由 **ADR 0024 §4** 取代：卡片改为无边框自由长条，
+> 封面 100×130。保留原文作为当时的决策记录。
+
 - 封面 `w-[72px] h-[94px]`（≈10:13），`rounded`，`shrink-0`；
 - 右侧单列：书名（`text-sm font-medium`，单行截断）→ 元信息行（`text-xs text-muted-foreground`：题材 · 阶段 · N 章）→
   简介（`text-xs text-muted-foreground`，**3 行 clamp**，取 `premise`）→ 页脚（`text-xs`，更新日期 + 进度条）；
@@ -65,6 +68,10 @@ ADR 0013 复刻的是番茄**书架**（`/bookshelf`）：封面网格 + 最近�
 ### 4. 默认封面
 
 每本书都有一张确定的默认封面，不是占位符：
+
+> 本节的具体做法已由 **ADR 0024 §5** 取代：默认封面改成 6 张 Cleveland Museum of Art 的 CC0 水墨底版
+> （base64 内联、240×312、先灰度再 multiply 到 `accent`），不再用 SVG 母题；
+> `coverVariant()` 的输出也从 `motif/layer` 变成 `plate/layer`。保留原文作为当时的决策记录。
 
 - `DefaultCover.tsx` 内联 SVG（**不引入位图、不发网络请求、不用 `#hex`**），
   底色 `currentColor` 的 6% 叠层、主字用 `currentColor`、三种几何母题（横纹 / 圆点 / 弧线）；

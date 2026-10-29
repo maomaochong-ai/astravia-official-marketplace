@@ -93,9 +93,9 @@ describe("paragraph split", () => {
 });
 
 describe("reader scale", () => {
-	it("offers five stops defaulting to the middle one", () => {
-		expect(READER_SCALES).toHaveLength(5);
-		expect(DEFAULT_READER_SCALE).toBe(2);
+	it("offers the five fanqie stops, defaulting to the smallest", () => {
+		expect(READER_SCALES).toEqual([16, 20, 24, 28, 32]);
+		expect(DEFAULT_READER_SCALE).toBe(0);
 	});
 });
 

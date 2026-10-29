@@ -15,20 +15,20 @@ interface BookCoverProps {
 
 const SHAPE = {
 	grid: "aspect-[3/4] w-full px-2.5 py-2.5",
-	// 书库卡片的封面按番茄的 10:13 取整（ADR 0020 §3），不参与栅格拉伸。
-	list: "h-[94px] w-[72px] shrink-0 px-2 py-2",
+	// 书库卡片的封面按番茄的 100×130 取整（ADR 0024 §2），不参与栅格拉伸。
+	list: "h-[130px] w-[100px] shrink-0 px-2.5 py-2.5",
 	headline: "h-32 w-24 px-2 py-2",
 } as const;
 
 const MARK = {
 	grid: "text-2xl",
-	list: "text-lg",
+	list: "text-xl",
 	headline: "text-xl",
 } as const;
 
 /**
- * 排版型封面（ADR 0013 §2.2 / 0020 §4）：没有封面资源，就用书名首字 + 底纹 + 进度条。
- * 不塞占位插画，也不上色卡——颜色全部来自宿主 token。
+ * 排版型封面（ADR 0013 §2.2 / 0020 §4 / 0024 §3）：书名首字 + 水墨底版 + 进度条。
+ * 不塞占位插画，也不上色卡——底版先灰度再 multiply 到 `accent`，颜色仍只来自宿主 token。
  */
 export function BookCover({ seed, title, caption, progress, variant = "grid" }: BookCoverProps) {
 	// 书库卡片已经把题材、阶段写在右侧，封面里再来一行小字就是重复。

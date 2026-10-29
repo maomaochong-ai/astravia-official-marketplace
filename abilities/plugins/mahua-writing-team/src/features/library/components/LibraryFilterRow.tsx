@@ -15,9 +15,9 @@ interface LibraryFilterRowProps {
 export function LibraryFilterRow({ label, options, value, onSelect }: LibraryFilterRowProps) {
 	const { t } = useTranslation();
 	return (
-		<div className="flex items-start gap-2">
-			<span className="mt-0.5 w-8 shrink-0 text-xs text-muted-foreground">{label}</span>
-			<div className="flex min-w-0 flex-wrap gap-1">
+		<div className="flex items-start gap-3">
+			<span className="mt-1 w-8 shrink-0 text-xs leading-[17px] text-muted-foreground">{label}</span>
+			<div className="flex min-w-0 flex-wrap gap-1.5">
 				{options.map((option) => {
 					const selected = option.value === value;
 					return (

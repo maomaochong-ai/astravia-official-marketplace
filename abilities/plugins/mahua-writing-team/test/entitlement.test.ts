@@ -100,6 +100,38 @@ describe("EntitlementGate", () => {
 		expect((await second.load()).status).toBe("active");
 	});
 
+	it("records a rejected paste instead of pretending it worked", async () => {
+		const gate = new EntitlementGate(new MemoryManuscriptStorage(), gateClock);
+		await gate.load();
+		await gate.activate("nw1.bogus.bogus");
+		expect(gate.credentialSource).toBe("bundled");
+		expect(gate.rejectedStored?.status).toBe("invalid");
+	});
+
+	it("reports a stored credential that was dropped, not just an active studio", async () => {
+		const storage = new MemoryManuscriptStorage();
+		await storage.commit([
+			{ type: "write", path: "entitlement.json", data: JSON.stringify({ token: "nw1.bogus.bogus" }), encoding: "utf8" },
+		]);
+		const gate = new EntitlementGate(storage, gateClock);
+		expect((await gate.load()).status).toBe("active");
+		expect(gate.credentialSource).toBe("bundled");
+		expect(gate.rejectedStored?.status).toBe("invalid");
+	});
+
+	it("lets the user drop their own credential and fall back to the bundled one", async () => {
+		const storage = new MemoryManuscriptStorage();
+		const gate = new EntitlementGate(storage, gateClock);
+		await gate.load();
+		await gate.activate(COMMUNITY_CREDENTIAL);
+		expect(gate.credentialSource).toBe("stored");
+		const next = await gate.clearStored();
+		expect(next.status).toBe("active");
+		expect(gate.credentialSource).toBe("bundled");
+		expect(gate.rejectedStored).toBeNull();
+		expect(await storage.list("entitlement")).toEqual([]);
+	});
+
 	it("exposes the accepted key ids for the activation page", () => {
 		const gate = new EntitlementGate(new MemoryManuscriptStorage(), gateClock);
 		expect(gate.trustedKeys().map((key) => key.keyId)).toEqual(TRUSTED_KEYS.map((key) => key.keyId));

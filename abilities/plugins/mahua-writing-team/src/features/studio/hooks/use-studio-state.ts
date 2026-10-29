@@ -5,6 +5,7 @@ import type { NovelBook, ReviewReport } from "../../../domain/novel-types.js";
 import { routeNovel } from "../../../domain/novel-flow.js";
 import type { TrustedKey } from "../../../entitlement/verify-entitlement.js";
 import type { EntitlementState } from "../../../entitlement/verify-entitlement.js";
+import type { CredentialSource } from "../../../entitlement/entitlement-gate.js";
 import { getStudioRuntime } from "../../../plugin-context.js";
 import type { BookIndexEntry } from "../../../repository/manuscript-repository.js";
 
@@ -17,6 +18,10 @@ export interface StudioState {
 	chapterText: string;
 	selectedChapter: number | null;
 	entitlement: EntitlementState;
+	/** 生效凭证从哪来：自己填的还是随包的。 */
+	credentialSource: CredentialSource;
+	/** 自己那份被拒时的结果，用于说清「为什么我填的没用」。 */
+	rejectedCredential: EntitlementState | null;
 	selectBook(id: string): void;
 	selectChapter(n: number): void;
 	refresh(): void;
@@ -33,6 +38,8 @@ export interface StudioState {
 	}): Promise<boolean>;
 	copyManuscript(): Promise<boolean>;
 	activate(token: string): Promise<EntitlementState>;
+	/** 丢掉自己那份，回到随包社区凭证。 */
+	clearCredential(): Promise<EntitlementState>;
 	trustedKeys(): readonly TrustedKey[];
 }
 
@@ -51,6 +58,10 @@ export function useStudioState(): StudioState {
 	const [review, setReview] = useState<ReviewReport | null>(null);
 	const [chapterText, setChapterText] = useState("");
 	const [entitlement, setEntitlement] = useState<EntitlementState>(runtime.service.entitlementState);
+	const [credentialSource, setCredentialSource] = useState<CredentialSource>(runtime.service.credentialSource);
+	const [rejectedCredential, setRejectedCredential] = useState<EntitlementState | null>(
+		runtime.service.rejectedCredential,
+	);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [version, setVersion] = useState(0);
@@ -82,6 +93,8 @@ export function useStudioState(): StudioState {
 				setReview(null);
 			}
 			setEntitlement(service.entitlementState);
+			setCredentialSource(service.credentialSource);
+			setRejectedCredential(service.rejectedCredential);
 		} catch (cause) {
 			setError(cause instanceof Error ? cause.message : String(cause));
 		} finally {
@@ -154,9 +167,22 @@ export function useStudioState(): StudioState {
 		finalize: () => mutate(() => service.finalize(book?.id)),
 		createBook: (input) => mutate(() => service.createBook(input)),
 		copyManuscript,
+		credentialSource,
+		rejectedCredential,
 		activate: async (token) => {
 			const next = await service.activate(token);
+			// 激活成功或失败都会改变来源/拒绝原因：失败时要立刻能说清「你填的那份为什么没用」。
 			setEntitlement(next);
+			setCredentialSource(service.credentialSource);
+			setRejectedCredential(service.rejectedCredential);
+			setVersion((value) => value + 1);
+			return next;
+		},
+		clearCredential: async () => {
+			const next = await service.clearCredential();
+			setEntitlement(next);
+			setCredentialSource(service.credentialSource);
+			setRejectedCredential(service.rejectedCredential);
 			setVersion((value) => value + 1);
 			return next;
 		},

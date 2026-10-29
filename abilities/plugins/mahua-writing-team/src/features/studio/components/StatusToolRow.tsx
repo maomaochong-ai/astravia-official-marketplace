@@ -66,7 +66,7 @@ export function StatusToolRow({ toolCall }: PluginToolCallSlotProps) {
 					{t("studio.header.progress", { progress: `${committed}/${target}` })}
 				</span>
 				<span className="text-xs tabular-nums text-muted-foreground">
-					{t("board.words", { words: payload.currentChapterWords ?? 0 })}
+					{t("board.words", { count: payload.currentChapterWords ?? 0 })}
 				</span>
 			</div>
 		</div>

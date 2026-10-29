@@ -7,6 +7,7 @@
  */
 
 import type { BookIndexEntry } from "../../repository/manuscript-repository.js";
+import { COVER_PLATES } from "./covers.generated.js";
 
 export const LIBRARY_PAGE_SIZE = 9;
 /** 题材选项上限：上限之外不列，但多出来的题材仍会被「全部」筛到。 */
@@ -121,18 +122,18 @@ export function paginate(
 }
 
 export interface CoverVariant {
-	/** 0 横纹、1 圆点、2 弧线。 */
-	motif: 0 | 1 | 2;
-	/** 叠层深浅档，0 最淡。 */
+	/** 底版索引，落围 `0..COVER_PLATES.length - 1`。 */
+	plate: number;
+	/** 墨迹浓淡档，0 最淡。 */
 	layer: 0 | 1 | 2;
 }
 
 /** 稳定哈希：同一本书每次看到的封面一样，不同的书看起来不一样（ADR 0020 §4）。 */
 export function coverVariant(id: string): CoverVariant {
 	let hash = 0;
-	for (const char of id) hash = (hash * 31 + char.codePointAt(0)!) % 100_000;
+	for (const char of id) hash = (hash * 31 + char.codePointAt(0)!) % 1_000_000;
 	return {
-		motif: (hash % 3) as 0 | 1 | 2,
-		layer: (Math.floor(hash / 3) % 3) as 0 | 1 | 2,
+		plate: hash % COVER_PLATES.length,
+		layer: (Math.floor(hash / COVER_PLATES.length) % 3) as 0 | 1 | 2,
 	};
 }

@@ -300,16 +300,45 @@ describe("visual language stays on host tokens", () => {
 		expect(violations).toEqual([]);
 	});
 
-	it("keeps an entry point when the credential is not active", () => {
+	it("registers a tab, not a sidebar entry (ADR 0025 §2)", () => {
 		const entry = read("src/index.tsx");
-		// 未激活时激活页必须自己占导航位，否则它 sidebar:false 且 studio 未注册 = 无路可走。
-		expect(entry).toContain("sidebar: !gate.active");
-		expect(entry).toContain("if (gate.active) ensureStudioView(ctx);");
+		const tab = read("src/studio-tab.ts");
+		// 侧边栏是用户自己的导航位；工作台必须从活动面板的「+」里加，不能常驻侧栏。
+		expect(entry).not.toContain("registerWorkspaceView");
+		expect(entry).not.toContain("setWorkspaceViewHeader");
+		expect(entry).toContain("registerStudioTab(ctx)");
+		expect(tab).toContain("ctx.ui.registerActivityTab(");
+		// fail-closed：没声明的场景下一个标签都不出现。
+		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
+		// 入池不上栏：加不加由用户决定。
+		expect(tab).toContain("initiallyVisible: false");
 	});
 
-	it("uses an iconify class for the sidebar entry, not a bare icon name", () => {
-		const ids = read("src/view-ids.ts");
-		expect(ids).toMatch(/STUDIO_VIEW_ICON = "icon-\[solar--[a-z0-9-]+\]"/);
+	it("only asks for the slot permissions it actually uses", () => {
+		const permissions = (json<{ permissions: string[] }>("plugin.json")).permissions;
+		expect(permissions).toContain("ui.slot.activity-tab");
+		expect(permissions).toEqual([...permissions].sort());
+		const sources = SOURCE_FILES.map(read).join("\n");
+		for (const slot of ["workspace-view", "activity-tab"]) {
+			const declared = permissions.includes(`ui.slot.${slot}`);
+			const used = sources.includes(`register${slot === "workspace-view" ? "WorkspaceView" : "ActivityTab"}(`);
+			expect(used, `${slot} used but not declared`).toBe(declared);
+		}
+	});
+
+	it("uses an iconify class for the tab icon, not a bare icon name", () => {
+		const tab = read("src/studio-tab.ts");
+		expect(tab).toMatch(/STUDIO_TAB_ICON = "icon-\[solar--[a-z0-9-]+\]"/);
+	});
+
+	it("opens the reader from the book page's primary button instead of sending a prompt", () => {
+		const detail = read("src/features/library/components/BookDetail.tsx");
+		const callSite = read("src/features/studio/components/StudioWorkspaceView.tsx");
+		// 主按钮 = 翻页读，不是 `sendPrompt`：它曾经排在一起，点「继续阅读」会往对话发消息。
+		expect(detail).toContain('{t("book.continueAt", { chapter: current })}');
+		expect(detail).toMatch(/onClick=\{\(\) => onOpenChapter\(current\)\}/);
+		expect(detail).toMatch(/onClick=\{onContinue\}[\s\S]{0,400}t\("action\.handoffContinue"\)/);
+		expect(callSite).toContain("onContinue={() => void startHandoff()}");
 	});
 });
 
@@ -400,9 +429,9 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.tools.register",
 				"storage.read",
 				"storage.write",
+				"ui.slot.activity-tab",
 				"ui.slot.new-session-context",
 				"ui.slot.tool-call",
-				"ui.slot.workspace-view",
 				"workspace.read",
 			].sort(),
 		);

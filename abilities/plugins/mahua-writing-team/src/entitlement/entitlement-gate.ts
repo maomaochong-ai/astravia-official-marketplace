@@ -50,8 +50,17 @@ export function isGatedTool(toolId: string): boolean {
 	return GATED_TOOL_IDS.includes(toolId);
 }
 
+/** 当前生效的凭证是从哪来的：用户自己填的、随包社区凭证，或者一个都没验过。 */
+export type CredentialSource = "stored" | "bundled" | "none";
+
 export class EntitlementGate {
 	private state: EntitlementState = { status: "missing" };
+	private source: CredentialSource = "none";
+	/**
+	 * 用户那份凭证被拒时的验签结果。存下来才说得清「你自己填的那份为什么没用」——
+	 * 只说「已激活」而不说「你那份过期了」，用户会以为自己的付费凭证生效了（ADR 0024 §5）。
+	 */
+	private rejection: EntitlementState | null = null;
 
 	constructor(
 		private readonly storage: ManuscriptStorage,
@@ -62,6 +71,16 @@ export class EntitlementGate {
 		return this.state;
 	}
 
+	/** 当前生效凭证的来源。视图靠它区分「你自己的凭证」与「随包社区凭证」。 */
+	get credentialSource(): CredentialSource {
+		return this.source;
+	}
+
+	/** 用户凭证被拒的原因；没存过凭证或它验签通过时为 null。 */
+	get rejectedStored(): EntitlementState | null {
+		return this.rejection;
+	}
+
 	get active(): boolean {
 		return this.state.status === "active";
 	}
@@ -69,20 +88,28 @@ export class EntitlementGate {
 	/**
 	 * 读状态：用户凭证优先，其次随包社区凭证。
 	 *
-	 * 注意这条顺序的后果——新装即 `active`，因为社区凭证本身验签通过。这是刻意的
-	 * （开箱能写），代价是"未授权"这条路只有凭证损坏或过期时才出现。ADR 0004 记录了
-	 * 这个取舍：它是本插件自己的礼貌性门禁，不是付费墙。
+	 * 这条顺序的后果是——新装即 `active`，因为社区凭证本身验签通过。这是刻意的
+	 * （开箱能写），代价是「未授权」只有凭证损坏或过期时才出现。ADR 0004 记录了这个取舍：
+	 * 它是本插件自己的礼貌性门禁，不是付费墙。
+	 *
+	 * 但「回退」不等于「无事发生」：回退时把用户那份的验签结果留在 `rejection` 里，
+	 * 界面才能说「你填的那份过期了，现在用的是社区凭证」（ADR 0024 §5）。
 	 */
 	async load(): Promise<EntitlementState> {
 		const stored = await this.readStoredToken();
 		const fromStorage = stored ? this.verify(stored) : null;
 		if (fromStorage?.status === "active") {
 			this.state = fromStorage;
+			this.source = "stored";
+			this.rejection = null;
 			return this.state;
 		}
+		// 走到这里时 fromStorage 只可能是 null / missing / invalid / expired——它非空就是「被拒了」。
+		this.rejection = fromStorage;
 
 		const bundled = this.verify(COMMUNITY_CREDENTIAL);
 		this.state = bundled;
+		this.source = bundled.status === "active" ? "bundled" : "none";
 		return this.state;
 	}
 
@@ -90,13 +117,30 @@ export class EntitlementGate {
 		const next = this.verify(token);
 		if (next.status !== "active") {
 			// 失败不落盘：用户填错的凭证不该覆盖掉手上仍然有效的那一份。
+			// 但要把“这次填的被拒了”记下来，否则回退到社区凭证后看起来像激活成功。
+			this.rejection = next;
 			return next;
 		}
 		await this.storage.commit([
 			{ type: "write", path: ENTITLEMENT_PATH, data: JSON.stringify({ token: token.trim() }), encoding: "utf8" },
 		]);
 		this.state = next;
+		this.source = "stored";
+		this.rejection = null;
 		return next;
+	}
+
+	/**
+	 * 丢掉用户凭证，回到随包社区凭证。
+	 *
+	 * 「回退」必须是用户可主动做的事：手上那份坏了又不能换回默认，只能看着门禁报错。
+	 * 它走同一个 commit 入口，删完立即重读，不留下“删了但状态没变”的中间态。
+	 */
+	async clearStored(): Promise<EntitlementState> {
+		const stored = await this.readStoredToken();
+		if (stored) await this.storage.commit([{ type: "remove", path: ENTITLEMENT_PATH }]);
+		this.rejection = null;
+		return this.load();
 	}
 
 	/** 激活页要展示当前信任锚的 keyId，方便认出「凭证不是给这个版本签的」。 */

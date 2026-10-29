@@ -57,7 +57,7 @@ import type {
 	StoryThread,
 } from "../domain/novel-types.js";
 import type { BookIndexEntry, ManuscriptRepository } from "../repository/manuscript-repository.js";
-import type { EntitlementGate } from "../entitlement/entitlement-gate.js";
+import type { CredentialSource, EntitlementGate } from "../entitlement/entitlement-gate.js";
 import type { EntitlementState } from "../entitlement/verify-entitlement.js";
 
 export type ServiceResult<T> =
@@ -467,9 +467,24 @@ export class StudioService {
 		return this.gate.activate(token);
 	}
 
+	/** 丢掉用户凭证，回到随包社区凭证。凭证变更也只走服务层（与 `activate` 同一条规矩）。 */
+	async clearCredential(): Promise<EntitlementState> {
+		return this.gate.clearStored();
+	}
+
 	/** 当前凭证状态。视图渲染徽章用它，避免自己读门禁。 */
 	get entitlementState(): EntitlementState {
 		return this.gate.current;
+	}
+
+	/** 当前生效凭证的来源：`stored` 是用户自己填的，`bundled` 是随包社区凭证。 */
+	get credentialSource(): CredentialSource {
+		return this.gate.credentialSource;
+	}
+
+	/** 用户那份凭证被拒的原因（没存过或验签通过时为 null）。 */
+	get rejectedCredential(): EntitlementState | null {
+		return this.gate.rejectedStored;
 	}
 
 	/** 可接受的签发密钥，激活页要显示"信任谁签的"。 */
@@ -714,6 +729,30 @@ export class StudioService {
 		const book = await this.resolveBook(bookId);
 		if (!book) return failure("book-not-found");
 		return { ok: true, data: await this.repository.readThreads(book.id) };
+	}
+
+	/**
+	 * 决策日志读取（ADR 0026 §6）。只读，不进门禁。
+	 *
+	 * 落盘形式是 JSONL：一次裁定追加一行。所以这里逐行解析、坏行跳过——
+	 * 一行写坏不该让整份日志打不开，也不能让历史上已经作数的裁定消失。
+	 */
+	async decisions(bookId?: string): Promise<ServiceResult<ArbitrationRecord[]>> {
+		const book = await this.resolveBook(bookId);
+		if (!book) return failure("book-not-found");
+		const lines = await this.repository.readDecisions(book.id);
+		const records: ArbitrationRecord[] = [];
+		for (const line of lines) {
+			try {
+				const parsed = JSON.parse(line) as ArbitrationRecord;
+				if (parsed && typeof parsed === "object" && typeof parsed.scenario === "string") {
+					records.push(parsed);
+				}
+			} catch {
+				continue;
+			}
+		}
+		return { ok: true, data: records };
 	}
 
 	/** 记一笔伏笔。台账与书同一次 commit，不会出现「书推进了、台账没跟上」。 */

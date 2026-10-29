@@ -1,7 +1,7 @@
 {
   "id": "mahua-writing-team",
   "name": "%plugin.name%",
-  "version": "0.2.0",
+  "version": "0.4.1",
   "icon": "solar:book-2-bold",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.3.0",
@@ -22,9 +22,9 @@
     "agent.tools.register",
     "storage.read",
     "storage.write",
+    "ui.slot.activity-tab",
     "ui.slot.new-session-context",
     "ui.slot.tool-call",
-    "ui.slot.workspace-view",
     "workspace.read"
   ],
   "agent": {

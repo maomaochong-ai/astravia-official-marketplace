@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BookIndexEntry } from "../src/repository/manuscript-repository.js";
+import { COVER_PLATES } from "../src/features/library/covers.generated.js";
 import {
 	coverVariant,
 	genreOptions,
@@ -121,18 +122,19 @@ describe("paging", () => {
 });
 
 describe("cover variant", () => {
-	it("is stable per id and spreads ids across motifs", () => {
+	it("is stable per id and spreads ids across every plate", () => {
 		expect(coverVariant("salt")).toEqual(coverVariant("salt"));
-		const motifs = new Set(
-			Array.from({ length: 30 }, (_, index) => coverVariant(`book-${index}`).motif),
+		const plates = new Set(
+			Array.from({ length: 40 }, (_, index) => coverVariant(`book-${index}`).plate),
 		);
-		expect(motifs.size).toBe(3);
+		expect(plates.size).toBe(COVER_PLATES.length);
 	});
 
 	it("keeps both axes inside their ranges", () => {
 		for (const seed of ["", "a", "salt-and-ink", "0".repeat(64)]) {
 			const variant = coverVariant(seed);
-			expect([0, 1, 2]).toContain(variant.motif);
+			expect(variant.plate).toBeGreaterThanOrEqual(0);
+			expect(variant.plate).toBeLessThan(COVER_PLATES.length);
 			expect([0, 1, 2]).toContain(variant.layer);
 		}
 	});
