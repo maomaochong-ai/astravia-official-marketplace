@@ -1,3 +1,9 @@
+/**
+ * 面板「指引」页：从零开始的下一步做什么。
+ *
+ * 内容全部来自随包文档与当前状态，不写死版本号；页面只读，不触发工具调用。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Card } from "../shell/card";
 import { Icon } from "../shell/icon";

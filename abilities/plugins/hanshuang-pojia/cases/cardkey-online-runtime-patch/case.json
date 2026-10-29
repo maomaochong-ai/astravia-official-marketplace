@@ -18,17 +18,23 @@
 		"returnAddress"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/cardkey-online-runtime-patch/reverse-engineering",
 		"cases/cardkey-online-runtime-patch/protocol-and-patch"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目J" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目J"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/patches.md"
 	]
 }

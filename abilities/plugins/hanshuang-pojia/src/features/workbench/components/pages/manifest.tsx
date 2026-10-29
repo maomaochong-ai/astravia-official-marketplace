@@ -1,3 +1,9 @@
+/**
+ * 面板「清单」页：组件（导出与否）、权限（保护级别）与 SDK 版本。
+ *
+ * 归并逻辑在 `domain/android/manifest-model.ts`，这一页只排表格与给权限分色。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useMemo } from "react";
 import { permissionLevel } from "../../../../domain/android/permission-risk";

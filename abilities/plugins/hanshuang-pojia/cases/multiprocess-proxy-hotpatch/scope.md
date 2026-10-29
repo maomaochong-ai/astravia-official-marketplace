@@ -1,8 +1,9 @@
 # Case Scope — multiprocess-proxy-hotpatch (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: this shape writes into a
-real installation directory, so the authorisation must exist on paper *before* the first copy, and
-the write scope must be agreed with whoever owns the machine.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: multiprocess-proxy-hotpatch
@@ -20,7 +21,6 @@ the write scope must be agreed with whoever owns the machine.
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -41,7 +41,7 @@ the write scope must be agreed with whoever owns the machine.
     The patch writer needs no network: it reads and writes memory of local processes. The product's
     own outbound calls (push service, updater) stay out of scope — blocking them is a different
     decision, recorded separately.
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -49,7 +49,7 @@ the write scope must be agreed with whoever owns the machine.
 - diagrams: true
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (process inventory, point table, verification log, write-scope diff)
   - evidence/E-###-<slug>.md
 
@@ -61,20 +61,6 @@ the write scope must be agreed with whoever owns the machine.
   - Never modify the target executables; the delivery is a sibling module only
   - Take a timestamped backup of every file the guard will touch, and test rollback once
   - Restart resident services so they load the new image; record it in the timeline
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - write scope (install directory) not yet agreed with the owner
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

@@ -1,3 +1,10 @@
+/**
+ * decompile_android：jedx / apktool 的受控封装，外加一个不依赖外部工具的 smali 搜索。
+ *
+ * 三个 operation 的产出形状固定：decompile / unpack **只回目录名**（日志会截断，
+ * 贴几千个文件没有意义），smali_search 回 `path:line: text`。
+ */
+
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { baseName, containsPath, isOutsideProject, resolveSamplePath } from "../../domain/sample-path";
 import { specFor } from "../../domain/toolchain/catalog";

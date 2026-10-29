@@ -1,4 +1,4 @@
-import { u32, u8 } from "../bytes";
+import { u32 } from "../bytes";
 
 export interface DexFacts {
 	version: string;
@@ -114,10 +114,4 @@ export function mergeDexFacts(list: readonly DexFacts[], options: { maxStrings?:
 		strings,
 		truncated,
 	};
-}
-
-export function dexSignature(bytes: Uint8Array): string {
-	let out = "";
-	for (let index = 12; index < 32; index += 1) out += u8(bytes, index).toString(16).padStart(2, "0");
-	return out;
 }

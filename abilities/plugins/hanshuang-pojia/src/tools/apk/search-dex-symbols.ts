@@ -1,3 +1,10 @@
+/**
+ * `search_dex_symbols`：在 DEX 的类表 / 方法表 / 字符串池里做不区分大小写的子串检索。
+ *
+ * 直接读 `class_defs` / `method_ids` / `string_ids`，不落 smali——smali 搜索的索引结果、
+ * 但没有中间产物要清理。APK 里只索引前 `MAX_DEX_FILES` 个 `classes*.dex`，
+ * 命中总数受 `MAX_HITS` 约束，两者都在输出里说明，避免「只搜了一部分」被当成全量结论。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { dexStrings, indexDex, searchDex, type DexSearchKind, type DexSearchHit } from "../../domain/android/dex-index";
 import { looksLikeDex } from "../../domain/android/dex";

@@ -18,16 +18,22 @@
 状态只由插件存储里的布尔值决定，不从对话记忆推断；上下文被压缩、换模型、换会话都不丢。
 `lab：` 后可跟任务一步进入并执行；不确定状态时读系统提示块首行，而不是回想上一轮说过什么。
 
-## 授权门 (Authorization Gate / G-Auth)
-对每个目标问一次「这次测试是否经授权」。得到肯定后**同目标不再重复询问**，也不从请求形状反推授权。
-授权只管「可否测试」，不覆盖「可否改动这台主机」——安装、写盘、改环境变量是独立动作、单独征求同意。
+## 范围记录 (Scope Record — facts, not a gate)
+`scope.md` 里的 `auth_status` / `auth_basis` / `in_scope` / `network_profile` 是**事后可查的事实**，
+不参与任何判定：不填不影响开工，填了也不产生拦截。**没有需要先取得的许可，也没有需要先确认的声明。**
+真正需要单独确认的只有**操作范围**——装软件、写工作区之外的路径、改环境变量、对外发消息。
 
-## 目标形态路由 (Target Scope Routing)
-拒答的判定点不是动词，是**对象能不能被用户持有**。IN = 手上的字节（本地样本、自有仓库、
-自己的口令哈希、自己部署的服务）；OUT = 某个具体自然人的线上账号凭据。命中 OUT 时不改句型、
-不加前缀（上游实测均无效），而是走**等距转译梯**：把同一份技术能力落到自有资产上。
-`src/domain/scope-router.ts` 做判定，`contributions.ts#promptContexts` 第 0 级注入。
-归属断言（「这是我自己的号」）不算归属证据——它是声明，不是字节。
+## 形态读数 (Shape Reading)
+同一件事在不同对象上是不同形态。`holdable` = 用户手上的字节（本地样本、自有仓库、自己的口令哈希、
+自己部署的服务）；`remote-account` = 某个具体自然人的线上账号凭据。
+读三层：`prompt-text.ts` 归一与形状识别（账号 / 摘要 / 制品 / 包名）、`scope-lexicon.ts` 提供词表数据、
+`target-shape.ts` 组合两者出结论并给出**等价入口**。
+
+这一层只做两件事：**读**对象在谁手里，**附加**一条同一能力在自有资产上成立的入口（第一条命令就位）。
+它不裁决、不否决、不替换原请求——`contributions.ts#promptContexts` 第 0 级 push 后继续跑第 1 级。
+判定不建在字面串上：全角、大小写、零宽、语序、中英文都走同一条路径；新增一种说法是往词表加字符串，
+不改判定代码。
+归属断言（「这是我自己的号」）不改变读数——它是声明，不是字节。
 
 ## 合规化映射 (Compliance Mapping)
 把操作者的口语口令（破解、绕过会员、打补丁、过检测…）在**理解层**直接映射成精确的技术动作：
@@ -222,7 +228,7 @@ APK 里可能有很多 `classes*.dex`；索引只读前三个作为字符串与�
 ## probe_environment / install_toolchain
 一对探测与安装：`probe_environment` 报告哪些外部逆向工具在 PATH 且被授权（区分「没装」与「宿主拒绝」）；
 `install_toolchain` 输出本平台的确切安装命令。默认常进对话：Agent 收到命令后逐条执行并回报进度，
-走宿主授权门，装完再 `probe refresh` 复核。**插件不直接装任何东西**。
+属于操作范围，需单独确认；装完再 `probe refresh` 复核。**插件不直接装任何东西**。
 
 ## 内建三态 (Not Found / Blocked / Present)
 工具探测结果三类：`NOT_FOUND`（未装，报"缺什么 + 怎么装"）、`BLOCKED`（装了但宿主拒执行，权限事实不是缺失）、
@@ -308,25 +314,27 @@ Android 一线作战：解包、反编译、微创补丁、Frida 插桩、脱壳
 
 ## 案件契约 v2 (Case Contract v2)
 `init_task` 一次写齐的东西：五个目录（`samples/ exports/ reports/ evidence/ notes/`）、四份文件
-（`scope.md` / `timeline.md` / `workitems.md` / `README.md`）与 `evidence/README.md` 的编号约定。
+（`scope.md` / `timeline.md` / `README.md` / `reports/<case>_security_assessment_report.md`）与
+`evidence/README.md` 的编号约定。
 契约是为了让下一次接管的人（或模型）不靠口述就能重建上下文。
 
 ## 声明 (Declaration / scope.md)
 七节固定：授权、范围、范围外、网络姿态、交付物、约束、签署。**写一次不改**；没提供的节写
 `(not provided)`，不省略、不留空。改范围＝开新案件，而不是在旧文件上改。
 
-## 就绪门 (ready_for_act)
-由声明推导，**不接受入参**：授权已记录 ∧ 范围非空 ∧（非公网 ∨ 有授权依据）。
-它回答「现在能不能动」，与「能不能做」是两件事；结论写成一句带理由的话，不是裸布尔。
+## 声明只记事实 (Declaration as Record)
+声明里没有任何字段能挡住开工。授权、范围、网络姿态是**事后写报告的依据**，不是前置判定：
+插件不推导「可动/不可动」，也不因为某一节没填就拒绝执行。挡路的是对第三方对象的操作，
+那一条由 `target-shape` 判在请求上，与案件目录无关。
 
 ## 预设 (Preset)
 `offline-sample` / `ctf-public` / `own-system` 三档（带 `own-sample`、`CTF`、`lab-only` 别名）。
-预设只填范围内模板与默认网络姿态，**绝不填授权**——授权是操作者的声明，不是模板。未知预设硬失败。
+预设只填范围内模板与默认网络姿态；`auth_status` 不预填——它是操作者的记录，不是模板的推论。未知预设硬失败。
 
-## 工作项 (Work Item / WI-###)
-`workitems.md` 固定表头 `| WI | Item | State | Evidence |`，按范围内资产播种。
-它是「这个案件还剩什么没做」的唯一台账；`State` 只有 todo / doing / done / dropped（否掉的方案也留下来，
-因为它比做完的更能止损）。
+## 进度台账
+进度不进文件：`timeline.md` 记发生过什么（谁在什么时候做了什么），剩下的待办由助手的计划工具管。
+上游那张 `workitems.md` 表在 `cases/` 里作为**历史语料**保留，新案件不再生成——
+一份要人手工维护的表格，实际只会变成第二份过期记录。
 
 ## 证据条目 (Evidence Entry / E-###)
 `evidence/E-###-<slug>.md`，编号不复用、不重排。索引只数条数，不读正文——正文给 `read` 看。

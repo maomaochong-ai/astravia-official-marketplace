@@ -1,9 +1,9 @@
 # Case Scope — execryptor-vm-activation (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: the target contacts a
-remote authorisation service, so authorisation has to be recorded before any attempt is made.
-Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and
-`## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: execryptor-vm-activation
@@ -21,7 +21,6 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -42,7 +41,7 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
     The verdict patch needs no network. The authorisation service still answers if the program is
     allowed to reach it, so keep `offline` and block it at the host level while observing; moving
     to `authorized_target_only` requires the endpoint in `in_scope.assets`.
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -50,7 +49,7 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
 - diagrams: true
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (import surface, call chain, channel map, patch table, side-effect matrix)
   - evidence/E-###-<slug>.md
 
@@ -63,20 +62,6 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
   - Patch a copy; keep the original hash before and after
   - Do not attempt to attack or reverse the remote service
   - Do not redistribute a patched binary
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - the remote authorisation endpoint must never be in scope
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

@@ -3,12 +3,27 @@
 	"slug": "apk-dex-unpack",
 	"title": "Packed APK source recovery",
 	"summary": "A shell whose real DEX only exists in memory: dump the loaded classes at runtime, then decompile the dump instead of the installed file.",
-	"signals": ["packed apk", "shell", "jadx skeleton", "few classes", "dex header missing", "frida dump", "application class replaced"],
+	"signals": [
+		"packed apk",
+		"shell",
+		"jadx skeleton",
+		"few classes",
+		"dex header missing",
+		"frida dump",
+		"application class replaced"
+	],
 	"preset": "offline-sample",
 	"fieldNotes": [
 		"kb/field_journal_2026-07-14_android-arm64-self-extract-source-recovery",
 		"kb/field_journal_2026-08-20_apk-flutter-banner-ad-removal"
 	],
-	"caseDocs": ["cases/apk-dex-unpack/missing-code-or-failed-tool"],
-	"docs": ["README.md", "scope.md", "workitems.md", "docs/method.md"]
+	"caseDocs": [
+		"cases/apk-dex-unpack/missing-code-or-failed-tool"
+	],
+	"docs": [
+		"README.md",
+		"scope.md",
+		"docs/method.md",
+		"docs/defense.md"
+	]
 }

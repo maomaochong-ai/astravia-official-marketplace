@@ -16,14 +16,22 @@
 		"cwe-602"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
-	"caseDocs": ["cases/qt-proxy-dll-gateway/reverse-engineering"],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目L" },
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
+	"caseDocs": [
+		"cases/qt-proxy-dll-gateway/reverse-engineering"
+	],
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目L"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/pitfalls.md"
 	]
 }

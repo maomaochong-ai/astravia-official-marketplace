@@ -1,3 +1,10 @@
+/**
+ * 静态体检的编排层：一个样本进来，按容器 / 格式分派到各解析器，汇总成一份报告。
+ *
+ * 不执行样本、不写盘。所有「读字节」的工作在 arch.`archive/`、`native/`、`android/` 里完成，
+ * 这里只负责顺序、去重与风险分。新增格式时，分派点只有 `triage()` 一处。
+ */
+
 import { finding, type Finding } from "./audit/findings";
 import { parseAxml } from "./archive/axml";
 import { readSignatureFacts, summarizeArchive, type ArchiveFacts, type SignatureFacts } from "./archive/archive-facts";
@@ -6,8 +13,8 @@ import { auditAndroid } from "./android/audit";
 import { looksLikeDex, mergeDexFacts, parseDex, type DexFacts } from "./android/dex";
 import { buildManifestFacts, type AndroidManifestFacts } from "./android/manifest-model";
 import { sha256Hex } from "./digest";
-import { entropyOfRange, highEntropyBands } from "./entropy";
-import { auditNative, hottestSections } from "./native/audit";
+import { highEntropyBands } from "./entropy";
+import { auditNative, hottestSections, overallEntropy } from "./native/audit";
 import { looksLikeElf, parseElf } from "./native/elf";
 import { looksLikeMacho, parseMacho } from "./native/macho";
 import { looksLikePe, parsePe } from "./native/pe";
@@ -379,7 +386,7 @@ function analyseNative(bytes: Uint8Array, format: "elf" | "pe" | "macho"): Draft
 	if (!parsed.value) {
 		return {
 			findings: [finding("format.unknown", parsed.warnings[0] ?? "The header could not be parsed.")],
-			facts: compact([row("Format", format.toUpperCase()), row("Overall entropy", entropyOfRange(bytes, 0, bytes.byteLength, 1024 * 1024).toFixed(2))]),
+			facts: compact([row("Format", format.toUpperCase()), row("Overall entropy", overallEntropy(bytes).toFixed(2))]),
 			sections: [],
 			limits: parsed.warnings,
 			summary: [],
@@ -395,7 +402,7 @@ function analyseNative(bytes: Uint8Array, format: "elf" | "pe" | "macho"): Draft
 		findings,
 		facts: compact([
 			...nativeFactsRows(facts),
-			row("Overall entropy", entropyOfRange(bytes, 0, bytes.byteLength, 1024 * 1024).toFixed(2)),
+			row("Overall entropy", overallEntropy(bytes).toFixed(2)),
 			row("High-entropy regions", bands.length > 0 ? `${bands.length} ≥ 7.4 bit/byte blocks` : "none"),
 		]),
 		sections: nativeSections(facts),
@@ -437,7 +444,7 @@ function analyseDex(bytes: Uint8Array, mode: ReportMode): Draft {
 }
 
 function analyseUnknown(bytes: Uint8Array): Draft {
-	const entropy = entropyOfRange(bytes, 0, bytes.byteLength, 1024 * 1024);
+	const entropy = overallEntropy(bytes);
 	const bands = highEntropyBands(bytes, { maxBands: 5 });
 	const strings = extractStrings(bytes, { maxResults: 60 });
 	const findings: Finding[] = [finding("format.unknown", "No known container signature matched (ZIP, ELF, PE, Mach-O, DEX).")];

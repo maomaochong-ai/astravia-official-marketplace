@@ -232,7 +232,7 @@ since each one carries `tools/` — it is also the part that runs.
 
 | Part | Answers |
 |---|---|
-| `case.json`, `scope.md`, `workitems.md`, `docs/method.md` | what was decided, and why |
+| `case.json`, `scope.md`, `docs/method.md` | what was decided, and why |
 | `tools/manifest.json` + `tools/*.py` | how to run the same checks against a new target |
 | `src/content/docs/cases/<slug>/*.md` | the full write-up, one file per source case |
 

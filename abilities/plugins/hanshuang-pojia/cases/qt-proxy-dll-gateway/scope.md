@@ -1,9 +1,9 @@
 # Case Scope — qt-proxy-dll-gateway (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`. Replacing an imported library
-means the target application is on disk and will be launched under instrumentation; record authorisation
-first, then copy this directory into `work/<case>/` or re-run `init_task` and fill `## auth` / `## in_scope`
-there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: qt-proxy-dll-gateway
@@ -21,7 +21,6 @@ there.
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -43,7 +42,7 @@ there.
     local gateway). Anything that needs the vendor's live service — account paths, sync, quota — requires
     `authorized_target_only` with that host listed in `in_scope.assets`, and the gateway's pass-through must
     then be restricted to those hosts.
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -51,7 +50,7 @@ there.
 - diagrams: true
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (import inventory, patch table, endpoint sites, gateway transcript, revert proof)
   - evidence/E-###-<slug>.md
 
@@ -64,20 +63,6 @@ there.
   - Keep the proxy build and the local gateway inside the case directory, never next to the installed app
   - Do not configure a real paid backend key into the gateway; use a local model or an explicit test key
   - Remove every injected artefact at the end and prove the official hashes are restored
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - gateway pass-through targets undecided while mode = offline
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { scanCases, type CaseReadPort, type CaseRecord } from "../../../domain/case/library";
-import { joinPath } from "../../../domain/toolchain/paths";
 import type { WorkbenchBridge } from "../bridge";
 
 export interface CasesModel {
@@ -11,7 +10,8 @@ export interface CasesModel {
 	scanning: boolean;
 	error: string | null;
 	selected: CaseRecord | null;
-	readyCount: number;
+	/** 已有至少一份 E-### 证据的案例数，仅用于页面计数。 */
+	evidenceCount: number;
 	/** 按**路径**选中：cases/ 与 work/ 可能各有一个同名目录，名字不是身份。 */
 	select(path: string | null): void;
 	select(name: string | null): void;
@@ -69,15 +69,10 @@ export function useCases(bridge: WorkbenchBridge, cwd: string | null, enabled: b
 	}, [bridge, cwd, enabled, tick]);
 
 	const selected = useMemo(() => cases.find(record => record.path === selectedPath) ?? null, [cases, selectedPath]);
-	const readyCount = useMemo(() => cases.filter(record => record.ready).length, [cases]);
+	const evidenceCount = useMemo(() => cases.filter(record => record.evidenceCount > 0).length, [cases]);
 
 	const select = useCallback((path: string | null) => setSelectedPath(path), []);
 
-	return { cases, truncated, scanning, error, selected, readyCount, select, refresh };
-}
-
-/** 面板上不可点击的「案例在哪」提示：路径由调用方拼好，避免组件里再算一次。 */
-export function caseScopePath(record: CaseRecord): string {
-	return joinPath(record.path, "scope.md");
+	return { cases, truncated, scanning, error, selected, evidenceCount, select, refresh };
 }
 

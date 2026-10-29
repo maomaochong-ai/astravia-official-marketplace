@@ -1,3 +1,10 @@
+/**
+ * decompile_function：用 r2 的 pdc 层重建单个函数的寄存器级伪 C。
+ *
+ * 输出的是「能跟的控制流」，没有类型恢复、没有 SSA、不猜有符号性。
+ * `mode` 只影响保留多少语句，不改变语义——三档之间不得出现结论差异。
+ */
+
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { readNativeFacts } from "../../domain/native/detect";
 import { addressMapFor, vaddrToOffset } from "../../domain/native/image";

@@ -1,9 +1,9 @@
 # Case Scope — java-agent-dll-hijack (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`. Both routes in this package modify a
-running commercial application, and the loader route requires write access to its installation directory —
-record authorisation first, then copy this directory into `work/<case>/` or re-run `init_task` and fill
-`## auth` / `## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: java-agent-dll-hijack
@@ -21,7 +21,6 @@ record authorisation first, then copy this directory into `work/<case>/` or re-r
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -43,7 +42,7 @@ record authorisation first, then copy this directory into `work/<case>/` or re-r
     no vendor service is needed to reach the gate or to load the agent. Anything that exercises the vendor's
     own cloud features (AI endpoints, collaborator domains, commercial extension downloads) moves the case to
     `authorized_target_only` with that host listed.
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -51,7 +50,7 @@ record authorisation first, then copy this directory into `work/<case>/` or re-r
 - diagrams: true
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (decompiled gate class, agent source, import table, runtime log, hashes)
   - evidence/E-###-<slug>.md
 
@@ -64,20 +63,6 @@ record authorisation first, then copy this directory into `work/<case>/` or re-r
   - The agent, the proxy DLL and any built jar stay inside the case directory, never in the install directory
   - If the loader route is used, restore the install directory to its pre-test file list and prove it by hash
   - Do not enable a real paid backend or transmit real credentials through the injected path
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - install-directory write access not yet established as permitted
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

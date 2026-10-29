@@ -1,3 +1,9 @@
+/**
+ * 面板「对比」页：两份报告的差异与家族基线。
+ *
+ * 差异算法在 `features/workbench/report-compare`，这一页只渲染结果与提供对 AiButton 的入口。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useMemo } from "react";
 import { formatBytes } from "../../../../domain/report/report";

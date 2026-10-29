@@ -133,7 +133,6 @@ export interface ActivityEntry {
 	at: string;
 }
 
-export const ACTIVITY_STATE_PATH = "workbench/activity.json";
 /** 活动流最多保留多少条；环形截断，保留最近的。 */
 export const MAX_ACTIVITY = 200;
 

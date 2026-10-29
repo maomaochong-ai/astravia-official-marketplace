@@ -1,3 +1,9 @@
+/**
+ * `scan_binary_strings`：抽取可打印字符串并按需过滤，保留偏移以便回查。
+ *
+ * 偏移是这个工具的主要价值：拿到一条命中后要能回到节区或压缩包条目，否则只是文本墙。
+ * 结果同时推给面板；表格里的 `|` 必须转义，否则一行命中会把整张表撑坏。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { compilePattern, extractStrings } from "../../domain/strings";
 import { loadSample } from "../lib/read-sample";

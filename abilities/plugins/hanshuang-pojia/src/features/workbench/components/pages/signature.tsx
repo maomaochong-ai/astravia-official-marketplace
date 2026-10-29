@@ -1,3 +1,10 @@
+/**
+ * 面板「签名」页：签名方案、证书摘要与结构层 / 裁决层的区分。
+ *
+ * 两层必须分开显示：结构层只证明文件里有什么，`apksigner` 才是密码学裁决。
+ * 页面上把两者混成一句「签名通过」是这一页最容易犯的错。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";

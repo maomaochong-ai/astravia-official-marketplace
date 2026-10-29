@@ -1,3 +1,10 @@
+/**
+ * generate_artifact：按补丁点生成可运行的骨架源码（patch / keygen / proxy-dll / verify）。
+ *
+ * 只生成文本，不落盘、不执行，也不编造偏移与哈希：`locate` 与补丁表来自调用方的实测值，
+ * 空着就留空，让操作者填。
+ */
+
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import {
 	ARTIFACT_KINDS,

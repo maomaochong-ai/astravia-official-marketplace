@@ -43,11 +43,9 @@ The reader-facing narrative for each case lives in the document library under
    write the runnable half for you: it puts `tools/` and the shared `hpkit` in place and prints the
    commands. Every tool answers `--self-test` against synthetic bytes it builds in memory, so run
    that first; it exits 0 before you point anything at a real sample.
-3. **Re-declare the scope.** Every shipped `scope.md` carries `auth.status: pending` on purpose:
-   copy it, then run `init_task` with your own preset, `auth_status` and `in_scope` so the case
-   records your authorisation rather than the package's silence.
-4. Work the checklist in `workitems.md`; the order in `docs/method.md` is the part that was
-   learned the hard way.
+3. **Open your own case.** The shipped `scope.md` is a template: copy the package, then run
+   `init_task` with your preset, target and `in_scope` so the case records your assets instead of
+   the package's empty lists. Nothing is gated on those fields — they describe the engagement.
 
 ## Editing
 

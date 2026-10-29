@@ -11,8 +11,8 @@ export interface CaseDocFile {
 	group: string;
 }
 
-/** 案例根下这几份按阅读顺序排在最前，其余按名字；`auth-log.md` 只在授权晚到时才存在。 */
-const ROOT_ORDER = ["scope.md", "workitems.md", "README.md", "timeline.md", "auth-log.md"];
+/** 案例根下这几份按阅读顺序排在最前，其余按名字。 */
+const ROOT_ORDER = ["scope.md", "README.md", "timeline.md"];
 /** 只列这三类子目录：samples/ 与 exports/ 是字节与产物，不是给人读的正文。 */
 const SUBDIRS = ["docs", "report", "evidence"] as const;
 /** 证据条目会到几十份，超出就不再往标签条里塞。 */

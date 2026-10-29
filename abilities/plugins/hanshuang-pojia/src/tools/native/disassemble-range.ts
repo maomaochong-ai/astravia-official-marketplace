@@ -1,3 +1,10 @@
+/**
+ * `disassemble_range`：对一段有界区间做线性扫描反汇编。
+ *
+ * AArch64 按固定 4 字节编码解码；x86 / x86-64 只覆盖一个实用子集，子集外的字节输出成
+ * `.byte` / `.word` 占位——这样一处未知编码不会把后面的列全部错位。
+ * 地址是文件偏移，跳转目标写成 `file+0x…`，偏移与虚拟地址的换算不在这里做。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { readNativeFacts } from "../../domain/native/detect";
 import { disassemble } from "../../domain/native/disasm";

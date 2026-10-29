@@ -5,7 +5,7 @@
 ```
 agent/
 ├── prompts/     长期硬契约（注入给每轮的规则）
-│   ├── SYSTEM.md              standing system contract（lab 开关、授权门、交付形状、工具链、todo）
+│   ├── SYSTEM.md              standing system contract（lab 开关、范围记录、交付形状、工具链、todo）
 │   ├── AGENTS.md              操作协议（工具路由、技能用法、终端与写盘边界）
 │   └── SKILL-LIBRARY.md       随包技能库清单 + sha256
 └── skills/      技法（专项 SKILL，按需加载）

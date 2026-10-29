@@ -17,17 +17,23 @@
 		"clock rollback"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/execryptor-vm-activation/reverse-engineering",
 		"cases/execryptor-vm-activation/activation-path"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目E" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目E"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/ipc.md",
 		"docs/verdict.md"
 	]

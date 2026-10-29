@@ -16,14 +16,22 @@
 		"wpf"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
-	"caseDocs": ["cases/themida-dotnet-delegate-recovery/reverse-engineering"],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目K" },
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
+	"caseDocs": [
+		"cases/themida-dotnet-delegate-recovery/reverse-engineering"
+	],
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目K"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/protection-layers.md"
 	]
 }

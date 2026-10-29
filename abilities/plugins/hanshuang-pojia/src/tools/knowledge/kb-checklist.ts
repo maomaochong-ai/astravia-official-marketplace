@@ -1,3 +1,10 @@
+/**
+ * `kb_checklist`：按名字直接打开工具箱里的一份战术清单。
+ *
+ * 输入是**已分类**的任务形态（web 目标、PE 取证、持久化链、YARA 编写），不是关键词；
+ * 尚未分类时应改用 `search_docs`。未知类型返回菜单，绝不静默替换成默认那份——
+ * 「打开错了清单还照它做」比「没打开」更糟。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { CHECKLIST_TYPES, checklistById, checklistMenu } from "../../domain/playbooks";
 import { docById, loadDoc } from "../../features/workbench/services/docs";

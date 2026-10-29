@@ -9,7 +9,9 @@
 import { runEngineSelfCheck } from "../../../domain/selfcheck";
 import type { LabState } from "../../../domain/lab-mode";
 import { EXPECTED_TOOL_COUNT, TOOL_IDS } from "../../../tools/ids";
+import { ROUTING_ROUTES, routingCoverage } from "../../../domain/routing-table";
 import { DOC_ENTRIES, DOC_TOTALS } from "./docs";
+import { CASE_PROJECTS, capabilityCount } from "../../../domain/case-projects/catalog";
 
 export type HealthStatus = "pass" | "warn" | "fail";
 
@@ -68,6 +70,13 @@ function assetGroup(): HealthGroup {
 	const declared = DOC_TOTALS.documents;
 	const groups = DOC_TOTALS.byGroup;
 
+	// 路由表只是数据：它不说「能不能做」，只说「这条路由指向的技能在不在包里」。
+	const coverage = routingCoverage();
+	const shipped = ROUTING_ROUTES.filter(route => route.present).map(route => route.target);
+
+	// 14 条战例工程：对齐的是工程契约（阶段、证据门、跳系统构建），不是搬源码。
+	const linuxReady = CASE_PROJECTS.filter(project => project.platforms.includes("linux")).length;
+
 	return {
 		id: "assets",
 		items: [
@@ -82,6 +91,16 @@ function assetGroup(): HealthGroup {
 				"assets.groups",
 				(groups.kb ?? 0) > 0 && (groups.manual ?? 0) > 0 && (groups["kit-docs"] ?? 0) > 0 ? "pass" : "warn",
 				`kb ${groups.kb ?? 0} · manual ${groups.manual ?? 0} · kit docs ${groups["kit-docs"] ?? 0}.`,
+			),
+			item(
+				"assets.routing",
+				coverage.present === coverage.routes ? "pass" : "warn",
+				`${coverage.routes} routes (table ${coverage.sourceSha8}, fallback ${coverage.fallbackId}) → ${coverage.targets} skill targets, ${coverage.present} shipped (${shipped.join(", ") || "none"}); ${coverage.missing.length} route target(s) have no skill in this package.`,
+			),
+			item(
+				"assets.cases",
+				linuxReady === CASE_PROJECTS.length ? "pass" : "warn",
+				`${CASE_PROJECTS.length} case archetypes across ${capabilityCount()} capability families; ${linuxReady} generate a Linux/macOS build path (build.sh) instead of a Windows-only .ps1.`,
 			),
 		],
 	};

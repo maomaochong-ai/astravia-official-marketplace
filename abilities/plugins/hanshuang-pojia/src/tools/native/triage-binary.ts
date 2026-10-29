@@ -1,3 +1,10 @@
+/**
+ * triage_binary：单样本体检工具入口。
+ *
+ * 只做入参归一与结果渲染，判定全部在 `domain/triage.ts`；
+ * 这样面板、CLI 与工具三条入口拿到的是同一份结论。
+ */
+
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { renderMarkdown } from "../../domain/report/report";
 import { triage } from "../../domain/triage";

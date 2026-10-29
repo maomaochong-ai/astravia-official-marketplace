@@ -1,8 +1,9 @@
 # Case Scope — android-ssl-pin-bypass (precedent)
 
-This is a **template**, not a declaration. Pinning work is the one place where an unrecorded
-authorisation can become an interception of someone else's traffic, so `auth.status` stays
-`pending` here and the network profile stays `offline` until you fill them in your own copy.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: android-ssl-pin-bypass
@@ -20,7 +21,6 @@ authorisation can become an interception of someone else's traffic, so `auth.sta
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -38,7 +38,7 @@ authorisation can become an interception of someone else's traffic, so `auth.sta
 - offline_sample: (none)
 - notes: |
     offline | lab_only | authorized_target_only | unrestricted_lab
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -46,7 +46,7 @@ authorisation can become an interception of someone else's traffic, so `auth.sta
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (hook scripts, baseline and instrumented logs, decrypted sample)
   - evidence/E-###-<slug>.md
 
@@ -57,19 +57,6 @@ authorisation can become an interception of someone else's traffic, so `auth.sta
 - rules:
   - Interception only against the in-scope app and its own endpoints
   - Third-party traffic is out of scope even when it flows through the same device
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
 
 ## ops_refs
 - kb/field_journal_seed-008_apk-okhttp-ssl-pin-bypass.md

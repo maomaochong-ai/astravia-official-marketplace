@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useMemo, useState } from "react";
-import { STRING_KINDS, type StringKind } from "../../../../domain/string-kinds";
+import { STRING_KINDS, countKinds, type StringKind } from "../../../../domain/string-kinds";
 import { AiButton } from "../shell/ai-button";
 import { Card } from "../shell/card";
 import { DataTable, type DataTableRow } from "../shell/data-table";
@@ -22,11 +22,8 @@ export function StringsPage({ model }: PageProps) {
 	const busy = model.chat.sending;
 	const hits = model.strings;
 
-	const counts = useMemo(() => {
-		const map = new Map<StringKind, number>();
-		for (const hit of hits ?? []) map.set(hit.kind, (map.get(hit.kind) ?? 0) + 1);
-		return map;
-	}, [hits]);
+	// 命中项自带 kind，计数直接复用领域层函数，不再在页面里维护第二份循环。
+	const counts = useMemo(() => countKinds((hits ?? []).map(hit => hit.kind)), [hits]);
 
 	const visible = useMemo(() => (hits ?? []).filter(hit => filter === "all" || hit.kind === filter), [filter, hits]);
 
@@ -37,7 +34,7 @@ export function StringsPage({ model }: PageProps) {
 
 	const chips = [
 		{ id: "all" as Filter, label: t("strings.filter.all"), count: hits?.length ?? 0 },
-		...STRING_KINDS.map(kind => ({ id: kind as Filter, label: t(`stringKind.${kind}`), count: counts.get(kind) ?? 0 })),
+		...STRING_KINDS.map(kind => ({ id: kind as Filter, label: t(`stringKind.${kind}`), count: counts[kind] })),
 	];
 
 	return (
@@ -54,9 +51,9 @@ export function StringsPage({ model }: PageProps) {
 					<>
 						<div className="grid grid-cols-2 gap-2 @min-[720px]:grid-cols-4">
 							<StatTile label={t("strings.stat.total")} value={hits.length} />
-							<StatTile label={t("stringKind.url")} value={counts.get("url") ?? 0} />
-							<StatTile label={t("stringKind.path")} value={counts.get("path") ?? 0} />
-							<StatTile label={t("stringKind.identifier")} value={counts.get("identifier") ?? 0} />
+							<StatTile label={t("stringKind.url")} value={counts.url} />
+							<StatTile label={t("stringKind.path")} value={counts.path} />
+							<StatTile label={t("stringKind.identifier")} value={counts.identifier} />
 						</div>
 
 						<Card title={t("strings.controls")} bodyClassName="divide-y divide-line-subtle">

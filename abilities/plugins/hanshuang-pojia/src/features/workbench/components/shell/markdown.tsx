@@ -1,3 +1,9 @@
+/**
+ * 极简 Markdown 渲染：只支持随包文档与实际用到的子集。
+ *
+ * 不解析 HTML、不执行脚本、不加载远程资源——文档来自包内，任何可执行能力都是多余的攻击面。
+ */
+
 import { useMemo } from "react";
 import { parseMarkdown, type MdBlock, type MdInline } from "../../services/markdown";
 

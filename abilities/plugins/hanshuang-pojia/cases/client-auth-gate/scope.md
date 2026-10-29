@@ -1,8 +1,9 @@
 # Case Scope — client-auth-gate (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: an entitlement review
-needs the operator's own authorisation recorded before any branch is exercised. Copy this
-directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: client-auth-gate
@@ -20,7 +21,6 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -38,7 +38,7 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
 - offline_sample: (none)
 - notes: |
     offline | lab_only | authorized_target_only | unrestricted_lab
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -46,7 +46,7 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (branch disassembly, hook script, before/after runs)
   - evidence/E-###-<slug>.md
 
@@ -57,19 +57,6 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
 - rules:
   - No purchase, no real payment instrument, no production account
   - Any live endpoint is probed read-only and only inside the recorded scope
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

@@ -1,3 +1,9 @@
+/**
+ * 面板「熵」页：逐节区熵图与阈值筛选。
+ *
+ * 数值来自体检结果，页面不重新算熵；阈值只影响显示，不影响报告里的结论。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { formatBytes } from "../../../../domain/report/report";
 import { AiButton } from "../shell/ai-button";

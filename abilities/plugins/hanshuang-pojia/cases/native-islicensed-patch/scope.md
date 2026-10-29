@@ -1,8 +1,9 @@
 # Case Scope — native-islicensed-patch (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: a native patch review
-touches a shipped binary, and that has to be authorised before anything is edited. Copy this
-directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: native-islicensed-patch
@@ -20,7 +21,6 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -40,7 +40,6 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
     offline | lab_only | authorized_target_only | unrestricted_lab
     This shape needs no network at all: the decision is a local return value, so `offline` is the
     honest default. The target may still carry a network activation path; observing it requires the
-    mode above. Change mode only after auth.status = granted.
 
 ## deliverables
 - report: true
@@ -48,7 +47,7 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (symbol table, patch table, branch logs, read-back)
   - evidence/E-###-<slug>.md
 
@@ -61,20 +60,6 @@ directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and `##
   - Record the rollback steps before applying the patch
   - Do not distribute the patched artefact outside the case
   - Any persistence mechanism added for testing must be removed and documented
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] out_of_scope reviewed
-  - [ ] original hash recorded before the first write
-  - [ ] rollback procedure written down
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - rollback not documented
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

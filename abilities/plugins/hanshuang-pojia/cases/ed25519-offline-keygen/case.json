@@ -18,17 +18,23 @@
 		"frida"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
 	"caseDocs": [
 		"cases/ed25519-offline-keygen/reverse-engineering",
 		"cases/ed25519-offline-keygen/algorithm"
 	],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目H" },
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目H"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/algorithm.md"
 	]
 }

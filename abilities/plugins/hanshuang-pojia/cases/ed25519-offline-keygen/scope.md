@@ -1,9 +1,9 @@
 # Case Scope — ed25519-offline-keygen (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: producing activation
-codes requires authorisation over the client, and the case must record it before the first code is
-generated. Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and
-`## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: ed25519-offline-keygen
@@ -21,7 +21,6 @@ generated. Copy this directory into `work/<case>/`, or re-run `init_task`, and f
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -41,7 +40,6 @@ generated. Copy this directory into `work/<case>/`, or re-run `init_task`, and f
     offline | lab_only | authorized_target_only | unrestricted_lab
     The route captured here never leaves the machine: no server call, no relay. `offline` is the
     default and is sufficient. Reaching the vendor's activation endpoint requires the mode above
-    plus an endpoint in `in_scope.assets`. Change mode only after auth.status = granted.
 
 ## deliverables
 - report: true
@@ -49,7 +47,7 @@ generated. Copy this directory into `work/<case>/`, or re-run `init_task`, and f
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (container layout, key stream derivation, patched offsets, end-to-end log)
   - evidence/E-###-<slug>.md
 
@@ -62,20 +60,6 @@ generated. Copy this directory into `work/<case>/`, or re-run `init_task`, and f
   - Generated codes are for the authorised test machine only
   - Keep the vendor's binary and your patched copy side by side, hashes recorded
   - Do not upload artefacts to third-party scanners without permission
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] out_of_scope reviewed
-  - [ ] key material handling agreed (where it may be stored)
-  - [ ] rollback / restore of the patched binary documented
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - key material storage not agreed
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

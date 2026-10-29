@@ -16,14 +16,22 @@
 		"cwe-427"
 	],
 	"preset": "offline-sample",
-	"fieldNotes": ["kb/field_journal_precedent-auth", "kb/field_journal_precedent-reverse"],
-	"caseDocs": ["cases/java-agent-dll-hijack/reverse-engineering"],
-	"source": { "library": "seep-kit 2.0", "entry": "Tool/cases/项目M" },
+	"fieldNotes": [
+		"kb/field_journal_precedent-auth",
+		"kb/field_journal_precedent-reverse"
+	],
+	"caseDocs": [
+		"cases/java-agent-dll-hijack/reverse-engineering"
+	],
+	"source": {
+		"library": "seep-kit 2.0",
+		"entry": "Tool/cases/项目M"
+	},
 	"docs": [
 		"README.md",
 		"scope.md",
-		"workitems.md",
 		"docs/method.md",
+		"docs/defense.md",
 		"docs/loader-chain.md"
 	]
 }

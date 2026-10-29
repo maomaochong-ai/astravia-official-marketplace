@@ -1,6 +1,6 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { formatBytes } from "../../../../domain/report/report";
-import type { SampleFailure } from "../../sample-error";
+import { isHandoffFailure, type SampleFailure } from "../../sample-error";
 import { AiButton } from "../shell/ai-button";
 import { Icon } from "../shell/icon";
 
@@ -24,7 +24,8 @@ export function BlockedPanel({ failure, root, busy, onHandOff, onClear }: Blocke
 	const tooLarge = failure.kind === "too-large";
 	// host-blocked 是宿主按 allowedRoots 拒掉的结果，与本地预检的 outside-project 是同一条出路。
 	const outside = failure.kind === "outside-project" || failure.kind === "host-blocked";
-	const handoff = tooLarge || outside;
+	// 「能不能交给会话继续」只在领域层判一次，页面不自拼组合。
+	const handoff = isHandoffFailure(failure.kind);
 
 	const title = tooLarge ? t("blocked.tooLarge.title") : outside ? t("blocked.outside.title") : t("blocked.other.title");
 	const body = tooLarge

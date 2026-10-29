@@ -543,8 +543,3 @@ export function readCodeItem(bytes: Uint8Array, codeOff: number, budget = INSN_B
 		notes: notes,
 	};
 }
-
-/** 共享的求解：给定 insns 起始 uint16 索引，返回它对应的绝对字节偏移（供越界检查 / 其它解析模板用）。 */
-export function insnsByteOffset(insOffsetWords: number): number {
-	return insOffsetWords * 2;
-}

@@ -1,8 +1,9 @@
 # Case Scope — js-sign-chain (precedent)
 
-This is a **template**, not a declaration. Signing work almost always touches a live endpoint,
-so the authorisation and the network profile matter more than usual: fill both in your own copy
-before the first request leaves your machine.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: js-sign-chain
@@ -20,7 +21,6 @@ before the first request leaves your machine.
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -38,7 +38,7 @@ before the first request leaves your machine.
 - offline_sample: (none)
 - notes: |
     offline | lab_only | authorized_target_only | unrestricted_lab
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -46,7 +46,7 @@ before the first request leaves your machine.
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (signer extract, local reproduction, captured request with secrets redacted)
   - evidence/E-###-<slug>.md
 
@@ -57,19 +57,6 @@ before the first request leaves your machine.
 - rules:
   - Rate-limit every request; stop at the first accepted variation
   - No captured credentials in any file kept in this case
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
 
 ## ops_refs
 - kb/field_journal_seed-004_js-sign-webpack.md

@@ -1,3 +1,10 @@
+/**
+ * `explain_triage_finding`：解释规则本身，不重新分析文件。
+ *
+ * 两条边界写在描述里也写在实现里：只读插件自己的规则目录（`domain/audit/rules`），
+ * 不做 CVE 查询、不联网。不给 id 就是目录清单，给错 id 由 `ruleFor` 负责给出可读结果。
+ * 一次最多解释 `MAX_IDS` 条，超出的部分显式说明省略了多少条。
+ */
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { RULES, ruleFor, SEVERITY_ORDER, SEVERITY_WEIGHT } from "../../domain/audit/rules";
 

@@ -1,3 +1,10 @@
+/**
+ * ELF（so / elf）头、节区与动态段的解析。
+ *
+ * 与 PE 同构：只读结构、不加载。符号表被剥时如实返回空表并让上层给出提示，
+ * 而不是用启发式猜函数名。
+ */
+
 import { cstring, u16, u32, u64, u8 } from "../bytes";
 import { entropyOfRange } from "../entropy";
 import { describeError, ELF_MACHINES, failed, parsed, type NativeFacts, type NativeSection, type Parsed } from "./types";

@@ -1,14 +1,12 @@
-import type { Severity } from "../../domain/audit/rules";
-import type { TagTone } from "./components/shell/tag";
+/**
+ * 严重级别的显示映射：圆点颜色与文字色。
+ *
+ * 只放映射，不放判定。级别的来源永远在 `domain/audit/rules.ts`；
+ * 这里加一个键就够，不要在页面里写 `severity === "critical" ? ...`。
+ */
 
-/** 五级严重度到颜色的唯一映射；页面与行组件都读这里，避免各写一份。 */
-export const SEVERITY_TONE: Record<Severity, TagTone> = {
-	critical: "high",
-	high: "high",
-	medium: "medium",
-	low: "low",
-	info: "neutral",
-};
+import type { Severity } from "../../domain/audit/rules";
+
 
 export const SEVERITY_DOT: Record<Severity, string> = {
 	critical: "bg-risk-high",
@@ -26,6 +24,3 @@ export const SEVERITY_TEXT: Record<Severity, string> = {
 	info: "text-text-4",
 };
 
-export function severityTone(severity: Severity): TagTone {
-	return SEVERITY_TONE[severity];
-}

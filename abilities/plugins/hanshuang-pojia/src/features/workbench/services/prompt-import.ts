@@ -15,8 +15,6 @@ export interface PromptDraft {
 	mode: InjectMode;
 }
 
-const TEXT_EXTENSIONS = [".md", ".markdown", ".markdownx", ".txt", ".text", ".prompt"];
-
 /** 文件名去掉扩展名后的基名；全空时退回 `prompt`。 */
 export function baseNameOf(fileName: string): string {
 	const base = fileName.split(/[\\/]+/).filter(Boolean).pop() ?? fileName;
@@ -155,9 +153,4 @@ export function nameDrafts(drafts: readonly PromptDraft[], taken: readonly strin
 		used.push(name);
 		return { ...draft, name };
 	});
-}
-
-export function isTextPromptFile(name: string): boolean {
-	const lower = name.toLowerCase();
-	return lower.endsWith(".json") || TEXT_EXTENSIONS.some(extension => lower.endsWith(extension)) || !lower.includes(".");
 }

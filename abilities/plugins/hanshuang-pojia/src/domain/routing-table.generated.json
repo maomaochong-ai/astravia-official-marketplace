@@ -1,0 +1,456 @@
+{
+	"schemaVersion": 1,
+	"fallbackId": "R0",
+	"sourceSha256": "bfc208b66a99c541f47c5e893f6e7115c5fa3c51575dcf1bd7c7e14c868f43d9",
+	"routes": [
+		{
+			"id": "R0",
+			"label": "General reverse-engineering",
+			"skill": "reverse-engineering/SKILL.md",
+			"target": "reverse-engineering",
+			"present": true,
+			"keywords": [
+				"ollvm|anti-?debug|unicorn|angr|gdb|deobfuscat|控制流平坦|反调试|unity|il2cpp|游戏.?逆向|game.?reverse|anti-?cheat|反作弊",
+				"frida",
+				"reverse|逆向"
+			]
+		},
+		{
+			"id": "R1",
+			"label": "APK reverse",
+			"skill": "apk-reverse/SKILL.md",
+			"target": "apk-reverse",
+			"present": true,
+			"keywords": [
+				"\\bapk\\b|smali|jadx|apktool|\\bandroid\\b|android.?reverse|安卓|反编译.?apk|apk.?加固|重打包|root.?detect|root.?检测|证书.?校验|certificate.?pinning|pinning.?绕过|签名.?校验"
+			]
+		},
+		{
+			"id": "R2",
+			"label": "Mobile reverse (Android+iOS)",
+			"skill": "mobile-reverse/SKILL.md",
+			"target": "mobile-reverse",
+			"present": false,
+			"keywords": [
+				"\\bipa\\b|ios.?reverse|objection|mobsf|mobile.?reverse|ios.?逆向",
+				"越狱",
+				"jailbreak"
+			]
+		},
+		{
+			"id": "R3",
+			"label": "JS / frontend reverse",
+			"skill": "js-reverse/SKILL.md",
+			"target": "js-reverse",
+			"present": true,
+			"keywords": [
+				"js.?reverse|webpack|cryptojs|frontend.?sign|jshook|cdp|encrypted.?param|前端.?签名|js.?逆向|加密.?参数|webpack.?逆向|抓包|http.?capture|请求.?重放|request.?replay|js.?加密|js.?解密|前端.?加密"
+			]
+		},
+		{
+			"id": "R4",
+			"label": "DSL VM reverse",
+			"skill": "reverse-engineering/dsl-vm-reverse/SKILL.md",
+			"target": "reverse-engineering/dsl-vm-reverse",
+			"present": false,
+			"keywords": [
+				"dsl.?vm|fireye|opcode.?vm|custom.?vm|自定义.?虚拟机"
+			]
+		},
+		{
+			"id": "R5",
+			"label": ".NET reverse",
+			"skill": "dotnet-reverse/SKILL.md",
+			"target": "dotnet-reverse",
+			"present": false,
+			"keywords": [
+				"\\.net|dnspy|de4dot|confuserex|csharp|dotnet|c#"
+			]
+		},
+		{
+			"id": "R6",
+			"label": "IDA reverse",
+			"skill": "ida-reverse/SKILL.md",
+			"target": "ida-reverse",
+			"present": true,
+			"keywords": [
+				"\\bida\\b|decompile|disassembl|反编译|反汇编|静态.?分析.?二进制|\\.so\\b|\\.elf\\b|so.?文件|native.?分析|jni"
+			]
+		},
+		{
+			"id": "R7",
+			"label": "radare2",
+			"skill": "radare2/SKILL.md",
+			"target": "radare2",
+			"present": true,
+			"keywords": [
+				"radare|\\br2\\b",
+				"r2xsql|r2mcp|r2http|radius2|r2pm|rabin2|rasm2|radiff2|rahash2|rax2"
+			]
+		},
+		{
+			"id": "R8",
+			"label": "Firmware pentest",
+			"skill": "firmware-pentest/SKILL.md",
+			"target": "firmware-pentest",
+			"present": false,
+			"keywords": [
+				"firmware|binwalk|iot|emba|firmadyne|固件|路由器.?固件|嵌入式"
+			]
+		},
+		{
+			"id": "R9",
+			"label": "Malware analysis",
+			"skill": "malware-analysis/SKILL.md",
+			"target": "malware-analysis",
+			"present": false,
+			"keywords": [
+				"malware|yara|virus.?sample|pe-?sieve|cape.?sandbox|恶意.?软件|病毒.?样本|木马.?分析|恶意.?样本|样本.?分析|ransomware|勒索|webshell|后门|backdoor",
+				"sandbox"
+			]
+		},
+		{
+			"id": "R10",
+			"label": "Attack chain",
+			"skill": "attack-chain/SKILL.md",
+			"target": "attack-chain",
+			"present": false,
+			"keywords": [
+				"attack.?chain|red.?team|lateral|domain.?pentest|internal.?network|full.?pentest|完整.?渗透|从外网|打到域控|红队|横向.?移动|内网.?渗透"
+			]
+		},
+		{
+			"id": "R11",
+			"label": "Pentest tools",
+			"skill": "pentest-tools/SKILL.md",
+			"target": "pentest-tools",
+			"present": false,
+			"keywords": [
+				"nmap|nuclei|sqlmap|ffuf|pentest|src.?hunt|bug.?bounty|waf.?bypass|渗透.?测试|端口.?扫描|漏洞.?扫描|目录.?爆破|sql.?注入|众测|burp|burpsuite|intruder|repeater|metasploit|hashcat|hydra|gobuster|dirsearch|提权|privilege.?escalat|安全.?评估|security.?assess|风险.?评估|risk.?assess"
+			]
+		},
+		{
+			"id": "R12",
+			"label": "API security",
+			"skill": "api-security/SKILL.md",
+			"target": "api-security",
+			"present": false,
+			"keywords": [
+				"graphql|bola|bfla|api.?secur|接口.?安全|越权|未授权.?访问|rest.?api.?secur",
+				"\\boauth\\b"
+			]
+		},
+		{
+			"id": "R13",
+			"label": "Supply chain",
+			"skill": "supply-chain-security/SKILL.md",
+			"target": "supply-chain-security",
+			"present": false,
+			"keywords": [
+				"sbom|supply.?chain|trivy|gitleaks|syft|供应链|依赖.?扫描"
+			]
+		},
+		{
+			"id": "R14",
+			"label": "LLM / Agent security",
+			"skill": "llm-security/SKILL.md",
+			"target": "llm-security",
+			"present": false,
+			"keywords": [
+				"llm|prompt.?inject|jailbreak|agent.?secur|garak|owasp.?llm|提示词.?注入|模型.?红队|模型.?越狱|llm.?越狱|提示词.?越狱|ai.?红队"
+			]
+		},
+		{
+			"id": "R15",
+			"label": "Binary diff / symbol migrate",
+			"skill": "binary-diff/SKILL.md",
+			"target": "binary-diff",
+			"present": false,
+			"keywords": [
+				"bindiff|symbol.?migrat|pdb|符号.?迁移|版本.?对比"
+			]
+		},
+		{
+			"id": "R16",
+			"label": "Patch-diff / N-day",
+			"skill": "patch-diff-exploit/SKILL.md",
+			"target": "patch-diff-exploit",
+			"present": false,
+			"keywords": [
+				"n-?day|patch.?diff|patch.?tuesday|补丁.?差分|补丁.?分析"
+			]
+		},
+		{
+			"id": "R17",
+			"label": "Pwn chain",
+			"skill": "pwn-chain/SKILL.md",
+			"target": "pwn-chain",
+			"present": false,
+			"keywords": [
+				"\\bpwn\\b|rop|ret2libc|heap.?overflow|stack.?overflow|buffer.?overflow|kernel.?pwn|exploit.?dev|pwntools|栈溢出|堆溢出|格式化.?字符串"
+			]
+		},
+		{
+			"id": "R18",
+			"label": "EDR bypass RE",
+			"skill": "edr-bypass-re/SKILL.md",
+			"target": "edr-bypass-re",
+			"present": false,
+			"keywords": [
+				"edr|av.?bypass|syscall|amsi|etw.?patch|hell.?s.?gate|免杀|反病毒"
+			]
+		},
+		{
+			"id": "R19",
+			"label": "Browser / desktop automation",
+			"skill": "browser-automation/SKILL.md",
+			"target": "browser-automation",
+			"present": false,
+			"keywords": [
+				"playwright|browser.?auto|desktop.?auto|openreverse|fill.?form|浏览器.?自动化|桌面.?自动化|自动.?填表"
+			]
+		},
+		{
+			"id": "R20",
+			"label": "Docs generator",
+			"skill": "docs-generator/SKILL.md",
+			"target": "docs-generator",
+			"present": false,
+			"keywords": [
+				"writeup|write.?report|generate.?report|\\breport\\b|写.?报告|出.?报告|渗透.?报告|逆向.?报告"
+			]
+		},
+		{
+			"id": "R21",
+			"label": "Protocol reverse",
+			"skill": "protocol-reverse/SKILL.md",
+			"target": "protocol-reverse",
+			"present": false,
+			"keywords": [
+				"protocol.?reverse|custom.?protocol|protobuf|grpc|pcap|wireshark|pcap.?protocol|wireshark.?dissector|协议.?逆向|自定义.?协议|流量.?逆向|流量.?分析"
+			]
+		},
+		{
+			"id": "R22",
+			"label": "Ghidra reverse",
+			"skill": "ghidra-reverse/SKILL.md",
+			"target": "ghidra-reverse",
+			"present": false,
+			"keywords": [
+				"ghidra|ghidra.?mcp|analyzeheadless|无.?ida|开源.?反编译"
+			]
+		},
+		{
+			"id": "R23",
+			"label": "Cloud / K8s",
+			"skill": "cloud-k8s/SKILL.md",
+			"target": "cloud-k8s",
+			"present": false,
+			"keywords": [
+				"kubernetes|\\bk8s\\b|container.?escape|docker.?escape|kube-?bench|cloud.?secur|imds|169\\.254\\.169\\.254|容器.?逃逸|云.?安全|k8s.?渗透|s3|对象存储|存储桶"
+			]
+		},
+		{
+			"id": "R24",
+			"label": "Windows / AD",
+			"skill": "windows-ad/SKILL.md",
+			"target": "windows-ad",
+			"present": false,
+			"keywords": [
+				"active.?directory|\\bad\\b.?cs|bloodhound|kerberoast|as-?rep|certipy|ntlm.?relay|dc.?sync|kerberos.?攻击|ad.?证书|impacket|mimikatz|secretsdump",
+				"域.?渗透|域控"
+			]
+		},
+		{
+			"id": "R25",
+			"label": "Digital forensics",
+			"skill": "digital-forensics/SKILL.md",
+			"target": "digital-forensics",
+			"present": false,
+			"keywords": [
+				"forensic|volatility|memory.?dump|plaso|timeline.?explorer|取证|内存.?转储|应急.?响应.?取证|手机.?取证|磁盘.?取证|autopsy|sleuth|encase|dump.?内存|内存.?dump|应急.?响应|incident.?response"
+			]
+		},
+		{
+			"id": "R26",
+			"label": "Code audit / SAST",
+			"skill": "code-audit/SKILL.md",
+			"target": "code-audit",
+			"present": false,
+			"keywords": [
+				"code.?audit|sast|semgrep|codeql|source.?review|白盒|代码.?审计|静态.?应用.?安全"
+			]
+		},
+		{
+			"id": "R27",
+			"label": "Threat hunting",
+			"skill": "threat-hunting/SKILL.md",
+			"target": "threat-hunting",
+			"present": false,
+			"keywords": [
+				"threat.?hunt|detection.?engineer|blue.?team|sigma.?rule|\\bsigma\\b|威胁.?狩猎|检测.?工程|蓝队.?狩猎|检测.?规则"
+			]
+		},
+		{
+			"id": "R28",
+			"label": "OT / ICS",
+			"skill": "ot-ics/SKILL.md",
+			"target": "ot-ics",
+			"present": false,
+			"keywords": [
+				"\\bot\\b|\\bics\\b|scada|plc\\b|modbus|dnp3|s7comm|purdue|工控|工业.?控制|ot/?ics"
+			]
+		},
+		{
+			"id": "R29",
+			"label": "Wi-Fi / wireless",
+			"skill": "wifi-wireless/SKILL.md",
+			"target": "wifi-wireless",
+			"present": false,
+			"keywords": [
+				"wifi|wi-?fi|aircrack|airmon|wpa.?handshake|wireless.?pentest|无线.?渗透|wifi.?攻击"
+			]
+		},
+		{
+			"id": "R30",
+			"label": "Browser extension reverse",
+			"skill": "browser-extension-reverse/SKILL.md",
+			"target": "browser-extension-reverse",
+			"present": false,
+			"keywords": [
+				"browser.?extension|chrome.?extension|\\bcrx\\b|\\bxpi\\b|mv3.?extension|浏览器.?扩展|chrome.?扩展"
+			]
+		},
+		{
+			"id": "R31",
+			"label": "macOS / Mach-O reverse",
+			"skill": "macos-reverse/SKILL.md",
+			"target": "macos-reverse",
+			"present": false,
+			"keywords": [
+				"macos|mach-?o|codesign|objective-?c|swift.?reverse|xpc|mac.?逆向|苹果.?桌面"
+			]
+		},
+		{
+			"id": "R32",
+			"label": "Thick client security",
+			"skill": "thick-client/SKILL.md",
+			"target": "thick-client",
+			"present": false,
+			"keywords": [
+				"thick.?client|desktop.?client|electron.?app|winforms|wpf|厚客户端|桌面.?客户端"
+			]
+		},
+		{
+			"id": "R33",
+			"label": "Go / Rust reverse",
+			"skill": "go-rust-reverse/SKILL.md",
+			"target": "go-rust-reverse",
+			"present": false,
+			"keywords": [
+				"\\bgolang\\b|\\brustc\\b|go.?binary|go.?二进|go.?语言|go.?程序|stripped.?go|gore.?sym|go.?malware|rust.?binary|go.?逆向|rust.?逆向"
+			]
+		},
+		{
+			"id": "R34",
+			"label": "Hardware / debug interfaces",
+			"skill": "hardware-security/SKILL.md",
+			"target": "hardware-security",
+			"present": false,
+			"keywords": [
+				"uart|jtag|swd|debug.?pad|flashrom|硬件.?调试|串口.?shell|芯片.?提取|usb.?逆向|usb.?设备"
+			]
+		},
+		{
+			"id": "R35",
+			"label": "Database security",
+			"skill": "database-security/SKILL.md",
+			"target": "database-security",
+			"present": false,
+			"keywords": [
+				"database.?secur|\\bmysql\\b|\\bpostgres|mongodb|redis.?secur|mssql|数据库.?安全|数据库.?渗透"
+			]
+		},
+		{
+			"id": "R36",
+			"label": "Email / phishing analysis",
+			"skill": "email-security/SKILL.md",
+			"target": "email-security",
+			"present": false,
+			"keywords": [
+				"phish|spf|dkim|dmarc|bec\\b|email.?secur|钓鱼.?邮件|邮件.?安全"
+			]
+		},
+		{
+			"id": "R37",
+			"label": "Identity federation (SAML/OIDC)",
+			"skill": "identity-federation/SKILL.md",
+			"target": "identity-federation",
+			"present": false,
+			"keywords": [
+				"saml|oidc|openid.?connect|oauth2|sso\\b|联邦.?身份|单点.?登录"
+			]
+		},
+		{
+			"id": "R38",
+			"label": "RF / SDR research",
+			"skill": "radio-sdr/SKILL.md",
+			"target": "radio-sdr",
+			"present": false,
+			"keywords": [
+				"\\bsdr\\b|hackrf|rtl-?sdr|gnu.?radio|\\burh\\b|射频|软件.?无线电|蓝牙|bluetooth|\\bble\\b"
+			]
+		},
+		{
+			"id": "R39",
+			"label": "Diagram generation",
+			"skill": "diagram-generator/SKILL.md",
+			"target": "diagram-generator",
+			"present": false,
+			"keywords": [
+				"diagram|mermaid|graphviz|plantuml|flowchart|流程图|架构图|时序图|状态图|数据流图|攻击路径图|er.?图|画图|图表"
+			]
+		},
+		{
+			"id": "R40",
+			"label": "Case evidence review",
+			"skill": "case-review/SKILL.md",
+			"target": "case-review",
+			"present": false,
+			"keywords": [
+				"case.?review|case.?audit|evidence.?chain|evidence.?graph|traceability|fixity.?check|证据.?链|证据.?图|可追溯性|案件.?审查|案例.?审计"
+			]
+		},
+		{
+			"id": "R41",
+			"label": "CTF sandbox orchestrator",
+			"skill": "ctf-sandbox/SKILL.md",
+			"target": "ctf-sandbox",
+			"present": false,
+			"keywords": [
+				"\\bctf\\b|awd|靶场|比赛.?题"
+			]
+		},
+		{
+			"id": "R44",
+			"label": "Threat intelligence / OSINT",
+			"skill": "threat-intelligence/SKILL.md",
+			"target": "threat-intelligence",
+			"present": false,
+			"keywords": [
+				"\\bosint\\b|open.?source.?intelligence|threat.?intelligence|\\bcti\\b|ioc.?enrichment|indicator.?enrichment|威胁.?情报|开源.?情报|ioc.?扩充|ioc.?富化",
+				"twitter|tweet|x\\.com|x.?post|推文|社交.?媒体"
+			]
+		},
+		{
+			"id": "R45",
+			"label": "Binary Ninja reverse",
+			"skill": "binary-ninja-reverse/SKILL.md",
+			"target": "binary-ninja-reverse",
+			"present": false,
+			"keywords": [
+				"binary.?ninja|binaryninja|\\bbinja\\b|binary[_-]ninja[_-]mcp|hlil|mlil"
+			]
+		}
+	]
+}

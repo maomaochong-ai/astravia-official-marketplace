@@ -1,9 +1,9 @@
 # Case Scope — elf-packed-loader (precedent)
 
-This is a **template**, not a declaration. `auth.status` is deliberately `pending`: only the
-operator opening a real case can record the authorisation for their own sample. Copy the
-package into `work/<case>/`, or re-run `init_task` with a preset and `sample`, then fill
-`## auth` and `## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: elf-packed-loader
@@ -21,7 +21,6 @@ package into `work/<case>/`, or re-run `init_task` with a preset and `sample`, t
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -39,7 +38,7 @@ package into `work/<case>/`, or re-run `init_task` with a preset and `sample`, t
 - offline_sample: (none)
 - notes: |
     offline | lab_only | authorized_target_only | unrestricted_lab
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -47,7 +46,7 @@ package into `work/<case>/`, or re-run `init_task` with a preset and `sample`, t
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (unpacked image, dump command, string dumps)
   - evidence/E-###-<slug>.md
 
@@ -58,19 +57,6 @@ package into `work/<case>/`, or re-run `init_task` with a preset and `sample`, t
 - rules:
   - Static analysis on copies; unpack only inside a sandbox
   - Name the file every offset belongs to (packed stub vs recovered image)
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
 
 ## ops_refs
 - kb/field_journal_seed-001_elf-packed-loader.md

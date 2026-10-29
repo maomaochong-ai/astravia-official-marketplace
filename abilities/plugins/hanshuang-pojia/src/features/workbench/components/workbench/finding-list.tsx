@@ -1,3 +1,9 @@
+/**
+ * 发现列表：把 `Finding[]` 渲染成可点的行，并给出空态。
+ *
+ * 不排序、不再判级别——入参已经是排好序的结论；加排序会与「发现」页的筛选次序打架。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { Finding } from "../../../../domain/audit/findings";
 import { EmptyState } from "../shell/empty-state";

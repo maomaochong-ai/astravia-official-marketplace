@@ -110,7 +110,8 @@ export function useDisasm(request: DisasmRequest): DisasmModel {
 		if (!bytes || !arch || arch === "unknown" || selected === null || !map) return null;
 		const candidate = candidates.find(item => item.offset === selected);
 		const end = functionBoundFor(selected, candidates, map);
-		return deepAnalyse(bytes, arch, { start: selected, end, name: candidate?.name ?? undefined }, { mode, budget, index: index ?? undefined });
+		// 带上段表：同一段输出里同时给出文件偏移与虚拟地址，方便和 IDA / Ghidra 对照。
+		return deepAnalyse(bytes, arch, { start: selected, end, name: candidate?.name ?? undefined }, { mode, budget, index: index ?? undefined, map });
 	}, [arch, budget, bytes, candidates, index, map, mode, selected]);
 
 	const select = useCallback((offset: number | null) => setSelected(offset), []);

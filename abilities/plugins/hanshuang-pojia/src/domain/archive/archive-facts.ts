@@ -1,3 +1,10 @@
+/**
+ * 容器层的体检事实：条目统计、嵌入的原生库、签名块的结构性读取。
+ *
+ * 这里**不做密码学校验**：v2/v3 只记 APK Signing Block 里出现了哪些 id，
+ * 真正的裁决在宿主的 apksigner，报告里两层必须分开写。
+ */
+
 import type { ZipIndex } from "./zip";
 
 export interface NativeLibrary {

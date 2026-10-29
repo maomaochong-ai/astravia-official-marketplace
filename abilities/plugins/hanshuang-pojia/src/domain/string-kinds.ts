@@ -33,8 +33,12 @@ export function stringKind(value: string): StringKind {
 	return "text";
 }
 
-export function countKinds(values: readonly string[]): Record<StringKind, number> {
+/**
+ * 按类型计数。入参是**已分类**的类型：面板上的命中项本来就带着 `kind`，
+ * 再传回原文让这里重新分类一次，等于把同一份判定跑两遍。
+ */
+export function countKinds(kinds: readonly StringKind[]): Record<StringKind, number> {
 	const counts: Record<StringKind, number> = { url: 0, ip: 0, email: 0, path: 0, identifier: 0, text: 0 };
-	for (const value of values) counts[stringKind(value)] += 1;
+	for (const kind of kinds) counts[kind] += 1;
 	return counts;
 }

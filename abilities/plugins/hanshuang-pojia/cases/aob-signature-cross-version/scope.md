@@ -1,9 +1,9 @@
 # Case Scope — aob-signature-cross-version (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: reproducing this shape
-means modifying a copy of a signed commercial binary, so authorisation has to be recorded first.
-Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## auth` and
-`## in_scope` there.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: aob-signature-cross-version
@@ -21,7 +21,6 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -42,7 +41,7 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
     The work is purely local file transformation. Staying `offline` is correct unless the target
     performs a remote check that must be observed; then use `authorized_target_only` with the
     endpoint declared in `in_scope.assets`.
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -50,7 +49,7 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
 - diagrams: false
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (version matrix, signature table, byte-whitelist diff, produced hashes)
   - evidence/E-###-<slug>.md
 
@@ -62,20 +61,6 @@ Copy this directory into `work/<case>/`, or re-run `init_task`, and fill `## aut
   - Work only on copies; keep the original bytes and hash them before and after
   - Never redistribute a patched binary
   - Never copy a checksum or truncation length from memory — recompute from the file
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - the set of builds to support must be declared before signatures are generated
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md

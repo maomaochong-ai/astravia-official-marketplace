@@ -1,6 +1,3 @@
-import { formatBytes } from "../../domain/report/report";
-import { READ_LIMIT_LABEL } from "../../domain/sample-scope";
-
 /**
  * 宿主把插件的文件访问限制在已打开项目的根目录内（filesystem-service 的 allowedRoots），
  * 越界的路径不会返回 "not found"，而是抛一个被包住的 CapabilityError。IPC 会丢掉 cause，
@@ -22,9 +19,12 @@ export interface SampleFailure {
 	size?: number;
 }
 
-/** 本地引擎读不到、只能交给宿主 Agent 的两类：项目外、超出宿主读取上限。 */
+/**
+ * 面板自己解决不了、只能交给宿主会话继续的情况：项目外、超出读取上限、宿主按 allowedRoots 拒掉。
+ * 判定留在领域层：页面只问「能不能就地重试」，不再自己拼三个 kind 的组合。
+ */
 export function isHandoffFailure(kind: SampleFailureKind): boolean {
-	return kind === "outside-project" || kind === "too-large";
+	return kind === "outside-project" || kind === "too-large" || kind === "host-blocked";
 }
 
 export function isHostPathRejection(message: string): boolean {
@@ -37,21 +37,3 @@ export function classifySampleFailure(message: string): SampleFailureKind {
 	return isHostPathRejection(message) ? "host-blocked" : "other";
 }
 
-export function describeSampleFailure(
-	failure: SampleFailure,
-	t: (key: string, params?: Record<string, string | number>) => string,
-	root: string | null,
-): string {
-	if (failure.kind === "outside-project") {
-		return t("panel.error.outsideProjectDetail", { path: failure.detail, root: root ?? "" });
-	}
-	if (failure.kind === "too-large") {
-		return t("panel.error.tooLargeDetail", {
-			path: failure.detail,
-			size: failure.size ? formatBytes(failure.size) : t("panel.error.unknownSize"),
-			limit: READ_LIMIT_LABEL,
-		});
-	}
-	if (failure.kind === "host-blocked") return t("panel.error.outsideProject");
-	return failure.detail;
-}

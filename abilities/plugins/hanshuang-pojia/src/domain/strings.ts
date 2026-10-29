@@ -95,18 +95,6 @@ export function compilePattern(pattern: string, caseSensitive = false): { test: 
 	}
 }
 
-export function findStrings(bytes: Uint8Array, pattern: string, options: StringScanOptions & { caseSensitive?: boolean } = {}): ExtractedString[] {
-	const matcher = compilePattern(pattern, options.caseSensitive);
-	const pool = extractStrings(bytes, { ...options, maxResults: (options.maxResults ?? DEFAULT_MAX_RESULTS) * 4 });
-	const out: ExtractedString[] = [];
-	for (const item of pool) {
-		if (!matcher.test(item.value)) continue;
-		out.push(item);
-		if (out.length >= (options.maxResults ?? DEFAULT_MAX_RESULTS)) break;
-	}
-	return out;
-}
-
 export interface ApiFingerprint {
 	pattern: RegExp;
 	/** 规则 id；文案由 rules 注册表统一提供，领域层不写死某种语言。 */

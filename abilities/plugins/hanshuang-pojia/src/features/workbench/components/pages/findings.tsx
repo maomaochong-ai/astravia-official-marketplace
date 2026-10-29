@@ -1,3 +1,10 @@
+/**
+ * 面板「发现」页：按规则与严重级别筛选体检结论。
+ *
+ * 排序键来自 `domain/audit/rules`（`SEVERITY_ORDER` / `severityRank`），
+ * 页面不得自排一套顺序，否则与报告里的次序对不上。
+ */
+
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
 import { SEVERITY_ORDER, severityRank, type Severity } from "../../../../domain/audit/rules";

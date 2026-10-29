@@ -1,3 +1,10 @@
+/**
+ * 提示词编辑对话框：改正文、看字数、保存。
+ *
+ * 保存前不改动原文件：真正的写入由 hook 的 `createBackup` / 保存动作完成，
+ * 这样「编辑到一半关掉」不会留下半份内容。
+ */
+
 import { useEffect, useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { InjectMode, PromptItem } from "../../../../domain/prompt-library";

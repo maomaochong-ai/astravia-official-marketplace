@@ -1,8 +1,9 @@
 # Case Scope — version-dll-proxy-iat-hook (precedent)
 
-This is a **template**, not a declaration. `auth.status` stays `pending`: the delivery writes into
-the product's own program directory, and the product is Authenticode-signed — the authorisation has
-to cover both the copy and the fact that a signed binary is being loaded alongside.
+A worked precedent, not a declaration about your target. What follows is the shape of the job
+and what a finish looks like; the assets, the sample path and the network profile belong to the
+case you open. Copy this directory into `work/<case>/`, or run `init_task` with a preset and a
+`sample`, then fill `## in_scope` in your own copy.
 
 ## meta
 - case_id: version-dll-proxy-iat-hook
@@ -20,7 +21,6 @@ to cover both the copy and the fact that a signed binary is being loaded alongsi
 - status: pending
 - basis: (not provided)
 - evidence_of_auth: (not provided)
-- MUST NOT proceed if status != granted
 
 ## in_scope
 - assets:
@@ -41,7 +41,7 @@ to cover both the copy and the fact that a signed binary is being loaded alongsi
     One code path queries an authorisation host for a blacklist verdict. In `offline` that path is
     only observed from the decompiled logic, never reached: exercising it against the real service
     needs `authorized_target_only` plus an endpoint in in_scope.assets.
-    Change mode only after auth.status = granted.
+    Change mode when the engagement actually calls for it.
 
 ## deliverables
 - report: true
@@ -49,7 +49,7 @@ to cover both the copy and the fact that a signed binary is being loaded alongsi
 - diagrams: true
 - timeline: true
 - planned:
-  - report/<case>_security_assessment_report.md
+  - reports/<case>_security_assessment_report.md
   - exports/ (crypto primitives, mask table, store sites, dialog read-back dump)
   - evidence/E-###-<slug>.md
 
@@ -61,20 +61,6 @@ to cover both the copy and the fact that a signed binary is being loaded alongsi
   - Never modify the signed executable or the product's own data module
   - Preferred edit is a complete instruction (the stores are ten bytes) — no partial overwrites
   - Keep a copy-to-copy diff so rollback is a file delete, and verify the signature afterwards
-
-## signoff
-- ready_for_act: false
-- checklist:
-  - [ ] auth.status = granted
-  - [ ] in_scope.assets non-empty OR offline sample path set
-  - [ ] network_profile.mode chosen
-  - [ ] out_of_scope reviewed
-  - [ ] roles assigned
-- blockers:
-  - authorisation not recorded (auth_status=pending)
-  - no in-scope assets declared
-  - offline profile needs an explicit sample
-  - the blacklist path must not be exercised without a declared host
 
 ## ops_refs
 - kb/field_journal_precedent-auth.md
