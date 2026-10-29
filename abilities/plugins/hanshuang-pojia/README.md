@@ -184,8 +184,8 @@ Since 2.6.0 the plugin contributes two prompt blocks instead of one, both gated 
 runtime — the host never tells it where it lives. `npm run verify:generated` fails on drift, and
 `src/test/system-prompt.test.ts` compares the two byte for byte.
 
-`agent/prompts/AGENTS.md` carries the same protocol for agents outside Astravia: tool routing, the G-Auth
-gate, the delivery shape, and the mechanisms that have no counterpart here.
+`agent/prompts/AGENTS.md` carries the same protocol for agents outside Astravia: tool routing, the scope
+record (facts, not a gate), the delivery shape, and the mechanisms that have no counterpart here.
 
 Two things upstream does that this package cannot. It rewrites the provider request payload
 (`safetySettings: BLOCK_NONE`, refusal scrubbing) — the host exposes twelve lifecycle hooks and none of
@@ -227,7 +227,7 @@ It tells the agent how to work with the kit when it is installed:
 | --- | --- |
 | V.1 | lab mode — `lab：` / `退出实验`, the disk flag, and the probe to run after a compaction |
 | V.2 | deployment and verification — `setup/install.ps1`, `update.ps1`, `uninstall.ps1`, `verify.ps1 -Detailed` and its four-column board |
-| V.3 | G-Auth — one confirmation per new target, and the separate yes that writes still need |
+| V.3 | scope recorded, never a gate — `auth_status` / `in_scope` are facts on disk; only writes, installs and out-of-workspace paths need a separate yes |
 | V.4 | knowledge-base-first recon, and the signal → technique → MCP routing table |
 | V.5 | the `seep` (23 tools) / `ida` (~243) / `js-reverse` (12) / `playwright` (18) matrix, with the Radare2 degradation table |
 | V.6–V.7 | skill routing through `softseep`, and the A1–A10 anti-refusal rules |
@@ -254,8 +254,9 @@ paid for on every turn, so the body can stay complete without costing anything u
 ## Cases and precedents
 
 The `Cases` page and `search_cases` share one idea: a case is a method you can copy, never an
-authorisation you inherit. `scope.md` always starts at `status: pending` / `ready_for_act: false`, and
-nothing in a file can flip that — readiness is computed from the scope, the blockers and the workitems.
+authorisation you inherit. `scope.md` records what was declared — authorisation, in-scope assets, network
+profile — as a fact for the report you write afterwards. Nothing in it gates the work: there is no
+readiness verdict to flip, no blocker list, and no field that makes the agent refuse to start.
 
 | Layer | Where it lives | What it is |
 | --- | --- | --- |
@@ -264,8 +265,10 @@ nothing in a file can flip that — readiness is computed from the scope, the bl
 | Full case studies | `src/content/docs/cases/<slug>/` | the long form behind 24 of those write-ups — patch tables, RVA maps, protocol layouts |
 
 A precedent package is four canonical documents plus optional case-specific ones: `scope.md`
-(what is in range, and what is not), `workitems.md` (8–12 items, always opening with “Establish scope
-and auth”), `docs/method.md` (the technique), and `README.md`. Extra documents such as `docs/patches.md`
+(what was in range, recorded as fact), `docs/method.md` (the technique), `README.md` (when the shape
+applies, the traps, what evidence you must be able to show), and `docs/defense.md` (how the defect
+would not exist, what a reviewer can check, the residual risk). The upstream `workitems.md` ledger stays in
+the older packages as history; new cases do not generate one. Extra documents such as `docs/patches.md`
 carry the tables that would bloat the method. `scripts/sync-precedents.mjs` inlines all of it into
 `src/domain/case/precedents.generated.ts`, so the `.astraviapkg` ships no `cases/` source tree — only the
 published tool files under `dist/assets/cases/` — and
@@ -310,7 +313,7 @@ src/
 │   ├── native/    types.ts elf.ts pe.ts macho.ts audit.ts
 │   │               symbols.ts disasm.ts detect.ts
 │   ├── audit/     rules.ts findings.ts secrets.ts
-│   ├── report/    report.ts
+│   ├── reports/    report.ts
 │   ├── case/      contract.ts journal.ts library.ts precedents.ts (+ the generated table)
 │   ├── interceptor.ts               # port of upstream L1/L4: injection verdict, term map, shortcuts
 │   ├── refusal.ts                   # turn-boundary recovery: detector + continuation fragment

@@ -7483,7 +7483,7 @@
       "slug": "hanshuang-pojia",
       "name": "Hanshuang Pojia",
       "description": "Audit an APK, iOS package, ELF, PE or Mach-O file from the chat: permissions, exported components, embedded secrets, section entropy, symbol tables, function-level disassembly with a call graph, and a 0-100 risk score — plus 340 bundled field documents, manuals and full case studies the agent can search mid-investigation.",
-      "version": "2.13.1",
+      "version": "2.14.0",
       "configVersion": 2,
       "license": "Apache-2.0",
       "author": "Astravia",
@@ -8503,6 +8503,48 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.13.1.astraviapkg",
             "sha256": "c0b6d38656b76f719219eff7312a52f588429d23b0df1cac17826f75f32d914a"
           }
+        },
+        {
+          "version": "2.14.0",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.hooks.register",
+            "agent.hookHandler.execute",
+            "agent.session.read",
+            "agent.session.write",
+            "storage.read",
+            "storage.write",
+            "fs.read",
+            "fs.write",
+            "agent.command.run",
+            "network.fetch"
+          ],
+          "commands": [
+            "r2",
+            "rabin2",
+            "radiff2",
+            "rasm2",
+            "rahash2",
+            "rax2",
+            "jadx",
+            "apktool",
+            "java",
+            "adb",
+            "apksigner",
+            "zipalign",
+            "frida",
+            "frida-ps"
+          ],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-hanshuang-pojia/hanshuang-pojia-2.14.0.astraviapkg",
+            "sha256": "2dec6de1abe52617dee4e70624c519d7ae09cd006a52dabffecbbd36cdcbc108"
+          }
         }
       ]
     },
@@ -8636,5 +8678,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.28-3"
+  "marketplaceVersion": "2026.10.29-1"
 }
