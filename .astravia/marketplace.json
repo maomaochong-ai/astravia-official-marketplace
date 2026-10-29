@@ -8675,8 +8675,76 @@
       "source": {
         "path": "abilities/skills/qiushi-skill"
       }
+    },
+    {
+      "type": "plugin",
+      "slug": "mahua-writing-team",
+      "name": "Mahua Novels",
+      "description": "A multi-agent novel studio: a deterministic engine holds the schedule while an architect plans, a writer drafts, an editor judges and an arbiter rules — with a shelf, a reader, a foreshadowing ledger and continuity auditing behind them.",
+      "version": "0.2.0",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Writing",
+      "categoryI18n": {
+        "zh": "写作",
+        "en": "Writing"
+      },
+      "tags": [
+        "novel",
+        "writing",
+        "multi-agent",
+        "manuscript",
+        "creative-writing",
+        "continuity"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "麻花小说网",
+            "description": "多智能体小说工作室：确定性引擎守住进度，架构师规划、写作者起草、编辑评审、裁定者定夺；底层有书架与阅读器、伏笔台账、可执行的写作规则与一致性审计。",
+            "tags": [
+              "小说",
+              "写作",
+              "多智能体",
+              "稿件",
+              "文学创作",
+              "一致性"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/mahua-writing-team"
+      },
+      "releases": [
+        {
+          "version": "0.2.0",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.3.0",
+          "permissions": [
+            "agent.session.read",
+            "agent.session.write",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.toolHandler.execute",
+            "agent.tools.register",
+            "storage.read",
+            "storage.write",
+            "ui.slot.new-session-context",
+            "ui.slot.tool-call",
+            "ui.slot.workspace-view",
+            "workspace.read"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-mahua-writing-team/mahua-writing-team-0.2.0.astraviapkg",
+            "sha256": "1c53f1b42f444fa5fd9a253a76639bceb4ef24a8d7ed58b1a1a492a762361d5d"
+          }
+        }
+      ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.29-1"
+  "marketplaceVersion": "2026.10.29-2"
 }

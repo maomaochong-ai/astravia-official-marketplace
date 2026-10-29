@@ -1,0 +1,116 @@
+{
+	"schemaVersion": 1,
+	"blocks": [
+		{
+			"type": "hero",
+			"eyebrow": "Novel studio",
+			"title": "Write a novel with four agents who cannot skip steps",
+			"description": "Mahua Novels keeps the schedule. You keep the story. An architect plans volumes and arcs, a writer drafts one chapter at a time, an editor scores seven dimensions and blocks anything unfit to commit, and an arbiter rules when the book contradicts itself. Progress is computed, not claimed.",
+			"badges": [
+				"Multi-agent",
+				"Deterministic progress",
+				"Chinese & English"
+			]
+		},
+		{
+			"type": "showcase",
+			"showcase": {
+				"template": "chat-thread",
+				"user_prompt": "Chapter 12 is at 68 — the editor says the funeral scene contradicts chapter 4. Sort it out and keep going.",
+				"assistant_reply": "Chapter 12 is blocked, score 68, one must-fix item: the funeral contradicts chapter 4 on who was in the room.\n\nArbiter ruling: the room held four people, not three — chapter 4 stands, chapter 12 is rewritten around the fourth witness.\n\nThe writer is revising chapter 12 against that ruling. Nothing is committed yet; the count stays at 11 of 40."
+			}
+		},
+		{
+			"type": "feature-grid",
+			"items": [
+				{
+					"title": "The schedule is code, not opinion",
+					"description": "A router reads the book's actual state and returns the next owner, task and reason. It never improvises an order, and it never says a chapter is done because prose exists."
+				},
+				{
+					"title": "Four roles, four boundaries",
+					"description": "The architect plans, the writer drafts, the editor judges, the arbiter rules. The writer cannot commit. The editor cannot rewrite. The arbiter cannot plan."
+				},
+				{
+					"title": "Seven-dimension review",
+					"description": "Plot, character, pacing, prose, dialogue, continuity and hook, weighted and scored. A chapter commits at 72 with no must-fix items — a number, not a mood."
+				},
+				{
+					"title": "A manuscript ledger you can read",
+					"description": "Each book is an index plus chapter files plus review records plus an append-only decision log. One advance is one commit, so a half-written chapter never lands."
+				},
+				{
+					"title": "Committed means frozen",
+					"description": "Once a chapter is committed, outlines and prose cannot be written over it. Changes go through a recorded ruling so the book stays auditable."
+				},
+				{
+					"title": "Works in the sidebar and in chat",
+					"description": "The studio view shows the board, the review and the next step; the same tools drive the agents in conversation. Both paths share one service, so they cannot disagree."
+				},
+				{
+					"title": "A foundation before page one",
+					"description": "Theme, core conflict, protagonist, ending, taboo, hook and a cast whitelist. The studio audits it and tells you which of the six you have not actually decided yet."
+				},
+				{
+					"title": "Rules it can check without a model",
+					"description": "Banned words, person and word budget are stored rules, not hints. Every chapter is linted against them before anyone spends a review on it."
+				},
+				{
+					"title": "Continuity it can prove",
+					"description": "Chapters outside every arc, names the cast never approved, overlapping ranges, rewrites queued on frozen chapters — all reported as findings, none of them silently fixed."
+				},
+				{
+					"title": "The context a writer actually needs",
+					"description": "One call returns the fact pack: phase, foundation, cast, current arc goal, the previous chapter's closing line and open feedback. The board and the model read the same state."
+				},
+				{
+					"title": "You can always interrupt",
+					"description": "Nothing runs away in the background. Each advance is one tool call in the host's own conversation, so you can cut in, change the premise, or stop halfway."
+				},
+				{
+					"title": "The craft library travels with it",
+					"description": "Twenty-five ported writing guides — chapter craft, hooks, prose styles, genre arcs, voice — are compiled into the plugin and read on demand, so the writer cites a method instead of improvising one."
+				},
+				{
+					"title": "A shelf and a catalogue that look like a library",
+					"description": "Every book gets a real cover generated from its own id — same book, same cover, two books never alike. The catalogue filters by genre, status and length, sorts by recency, chapters or title, nine cards a page. Finished books open into a table of contents and a full-width reader with chapter paging and five text sizes."
+				},
+				{
+					"title": "A foreshadowing ledger, not a memory",
+					"description": "A planted thread records the chapter it was planted in, the chapter it promised to pay off, and its weight. The audit reports overdue, premature and duplicate threads, plus an unresolved rate — so a long book cannot quietly forget what it promised."
+				}
+			]
+		},
+		{
+			"type": "steps",
+			"items": [
+				{
+					"title": "Install Mahua Novels from the marketplace",
+					"description": "It appears in the sidebar once activated. No API key is needed to start; the bundled community credential unlocks the studio."
+				},
+				{
+					"title": "Open the studio and create a book",
+					"description": "Give it a title, genre, one-line premise and a target chapter count. The board starts empty because nothing has been planned yet."
+				},
+				{
+					"title": "Ask the studio to plan the first volume",
+					"description": "In chat, ask the Mahua Writing Team team to plan. The architect writes the volume, its arcs and the chapter outlines."
+				},
+				{
+					"title": "Run the loop: draft, review, commit",
+					"description": "Follow the instruction card. Each round the router names the next owner; the studio view shows the score, the must-fix list and what is left."
+				}
+			]
+		},
+		{
+			"type": "callout",
+			"tone": "info",
+			"content": "Mahua Novels writes with whichever model your conversation is using, and it stores manuscripts inside the plugin's own storage on this machine. It does not upload your manuscript anywhere, and it does not call a paid service of its own."
+		},
+		{
+			"type": "callout",
+			"tone": "warning",
+			"content": "The credential check is offline. A valid signature proves the credential was issued by this plugin's key — not that this copy was purchased. It gates this plugin's own writing tools only; treat it as a courtesy gate, not as licence enforcement."
+		}
+	]
+}
