@@ -149,3 +149,7 @@ Desktop 里打开标签页时仍需要人工看一眼：文字有没有溢出、
 - 新增文案 54 键 ×2（`ledger.*`、`dimension.*`、`reader.family/serif/sans/review/mustFix/book`、
   `library.column.*`、`book.activity*`、`book.arc*`、`book.ledger*`、`shelf.openBook`、`strip.now`）。
 - 版本 0.4.1。设计稿留在 `ui-mock/`，不参与构建，也不作为插件运行时资源。
+
+> 0.4.2 修正：书页目录曾同时有 `Panel` 表头与 `ChapterIndex` 自带的「目录 + 章数」表头，
+> 叠成两层。现去掉 `Panel` 的 `title` / `meta`，只保留目录自己的表头。面板不带标题行时
+> `Panel` 只画边框，所以这次修正不引入新的形状。

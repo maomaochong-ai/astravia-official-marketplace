@@ -202,11 +202,8 @@ export function BookDetail({
 					</div>
 
 					<div className="flex w-full shrink-0 flex-col gap-4 xl:w-[340px]">
-						<Panel
-							title={t("book.index")}
-							meta={t("book.indexCount", { count: book.chapters.length })}
-							bodyClassName="px-2 py-2"
-						>
+						{/* 目录自带表头（章数与「目录」），Panel 不再挂重复的一层。 */}
+						<Panel bodyClassName="px-2 py-2">
 							<ChapterIndex
 								chapters={book.chapters}
 								currentChapter={current}
