@@ -1,0 +1,37 @@
+{
+	"name": "@astravia-marketplace/mahua-writing-team",
+	"version": "0.2.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "node scripts/build-reference-library.mjs && vite build",
+		"references": "node scripts/build-reference-library.mjs",
+		"check": "tsc --noEmit",
+		"test": "vitest run",
+		"dev": "astravia-plugin dev",
+		"pack": "astravia-plugin pack",
+		"validate": "astravia-plugin validate",
+		"docs": "astravia-plugin-cli docs",
+		"install:astravia": "node scripts/build-reference-library.mjs && vite build && astravia-plugin pack && astravia-plugin-cli add ."
+	},
+	"dependencies": {
+		"@noble/curves": "^1.9.7"
+	},
+	"devDependencies": {
+		"@astravia-org/plugin-cli": "^0.1.7",
+		"@astravia-org/plugin-sdk": "^0.3.10",
+		"@astravia-org/plugin-vite": "^0.2.4",
+		"@iconify-json/solar": "^1.2.2",
+		"@iconify/tailwind4": "^1.0.6",
+		"@tailwindcss/vite": "^4.1.12",
+		"@types/node": "^22.10.5",
+		"@types/react": "^19.1.1",
+		"@types/react-dom": "^19.1.1",
+		"react": "19.1.1",
+		"react-dom": "19.1.1",
+		"tailwindcss": "^4.1.12",
+		"typescript": "^5.9.2",
+		"vite": "^7.1.7",
+		"vitest": "^3.2.4"
+	}
+}
