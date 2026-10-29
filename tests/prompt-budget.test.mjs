@@ -45,14 +45,12 @@ test("plugins keep the always-on system prompt block inside the prompt budget", 
 		if (paths.length === 0) continue;
 		let total = 0;
 		for (const path of paths) {
-			// Bare file names only: the packaged resource is validated at install time, and a
-			// directory here would silently inject everything underneath it.
-			assert.equal(
-				path.includes("/") || path.includes("\\"),
-				false,
-				`${plugin.id}: promptPaths must name a file in the plugin root (${path})`,
-			);
-			const bytes = statSync(join(directory, path)).size;
+			// 一个条目只能是一个文件：写成目录会把下面所有内容悄悄注入常驻提示词。
+			// 不按「有没有斜杠」判定——`agent/prompts/x.md` 同样是单文件，宿主按插件根解析，
+			// 打包器也会把它当 manifest 资源收进包里。
+			const promptPath = join(directory, path);
+			assert.equal(statSync(promptPath).isFile(), true, `${plugin.id}: promptPaths must name a file (${path})`);
+			const bytes = statSync(promptPath).size;
 			assert.ok(bytes > 0, `${plugin.id}: injected prompt ${path} is empty`);
 			total += bytes;
 		}

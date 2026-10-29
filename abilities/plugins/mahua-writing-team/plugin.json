@@ -1,0 +1,119 @@
+{
+  "id": "mahua-writing-team",
+  "name": "%plugin.name%",
+  "version": "0.2.0",
+  "icon": "solar:book-2-bold",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.3.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "mahua_writing_team",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "agent.session.read",
+    "agent.session.write",
+    "agent.skills.control",
+    "agent.systemPrompt.write",
+    "agent.toolHandler.execute",
+    "agent.tools.register",
+    "storage.read",
+    "storage.write",
+    "ui.slot.new-session-context",
+    "ui.slot.tool-call",
+    "ui.slot.workspace-view",
+    "workspace.read"
+  ],
+  "agent": {
+    "systemPrompt": {
+      "promptPaths": [
+        "agent/prompts/routing.md"
+      ]
+    },
+    "skillPaths": [
+      "agent/skills"
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "hidden"
+    },
+    "agents": [
+      {
+        "id": "mahua-architect",
+        "name": "%agent.architect.name%",
+        "description": "%agent.architect.description%",
+        "mentionHandle": "architect",
+        "systemPromptPath": "agent/agents/architect.md",
+        "abilities": "own",
+        "roles": [
+          "planner"
+        ]
+      },
+      {
+        "id": "mahua-writer",
+        "name": "%agent.writer.name%",
+        "description": "%agent.writer.description%",
+        "mentionHandle": "writer",
+        "systemPromptPath": "agent/agents/writer.md",
+        "abilities": "own",
+        "roles": [
+          "writer"
+        ]
+      },
+      {
+        "id": "mahua-editor",
+        "name": "%agent.editor.name%",
+        "description": "%agent.editor.description%",
+        "mentionHandle": "editor",
+        "systemPromptPath": "agent/agents/editor.md",
+        "abilities": "own",
+        "roles": [
+          "auditor"
+        ]
+      },
+      {
+        "id": "mahua-arbiter",
+        "name": "%agent.arbiter.name%",
+        "description": "%agent.arbiter.description%",
+        "mentionHandle": "arbiter",
+        "systemPromptPath": "agent/agents/arbiter.md",
+        "abilities": "own",
+        "roles": [
+          "steward"
+        ]
+      }
+    ],
+    "teams": [
+      {
+        "id": "mahua-studio",
+        "name": "%team.studio.name%",
+        "description": "%team.studio.description%",
+        "members": [
+          {
+            "agent": "mahua-architect",
+            "responsibility": "%team.studio.architect%"
+          },
+          {
+            "agent": "mahua-writer",
+            "responsibility": "%team.studio.writer%",
+            "instructionsPath": "agent/prompts/briefs/writer.md"
+          },
+          {
+            "agent": "mahua-editor",
+            "responsibility": "%team.studio.editor%",
+            "instructionsPath": "agent/prompts/briefs/editor.md"
+          },
+          {
+            "agent": "mahua-arbiter",
+            "responsibility": "%team.studio.arbiter%"
+          }
+        ],
+        "workflowPath": "agent/prompts/team-workflow.md"
+      }
+    ]
+  },
+  "description": "%plugin.description%",
+  "author": "Astravia"
+}
