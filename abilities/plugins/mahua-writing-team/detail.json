@@ -44,7 +44,7 @@
 					"description": "Once a chapter is committed, outlines and prose cannot be written over it. Changes go through a recorded ruling so the book stays auditable."
 				},
 				{
-					"title": "Works in the sidebar and in chat",
+					"title": "A tab in the activity panel, and the same tools in chat",
 					"description": "The studio view shows the board, the review and the next step; the same tools drive the agents in conversation. Both paths share one service, so they cannot disagree."
 				},
 				{
@@ -86,7 +86,7 @@
 			"items": [
 				{
 					"title": "Install Mahua Novels from the marketplace",
-					"description": "It appears in the sidebar once activated. No API key is needed to start; the bundled community credential unlocks the studio."
+					"description": "It does not take a sidebar slot: open the activity panel's + menu and add Mahua Novels as a tab. No API key is needed to start — the bundled community credential unlocks the studio."
 				},
 				{
 					"title": "Open the studio and create a book",
