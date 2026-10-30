@@ -3,12 +3,12 @@ import { useMemo, useState } from "react";
 
 import type { BookIndexEntry } from "../../../repository/manuscript-repository.js";
 import { MeterBar } from "../../shared/components/MeterBar.js";
-import { PageBar } from "../../shared/components/PageBar.js";
-import { Panel } from "../../shared/components/Panel.js";
+import { PageBar, PAGE_META, PAGE_TITLE } from "../../shared/components/PageBar.js";
 import { PhaseBadge } from "../../shared/components/PhaseBadge.js";
 import { dateOf, progressPercent } from "../bookshelf-model.js";
 import {
 	DEFAULT_QUERY,
+	LIBRARY_PAGE_SIZE,
 	genreOptions,
 	paginate,
 	selectBooks,
@@ -17,6 +17,7 @@ import {
 	type LibrarySort,
 	type LibraryStatus,
 } from "../library-model.js";
+import { BookCover } from "./BookCover.js";
 import { LibraryFilterRow } from "./LibraryFilterRow.js";
 
 interface LibraryCatalogProps {
@@ -43,24 +44,34 @@ const SORTS: { value: LibrarySort; key: string }[] = [
 	{ value: "title", key: "library.sort.title" },
 ];
 
-/** 台账六列的宽度约定：书名吃掉剩余宽度，其余按数字长度定宽，窄面板下逐个隐藏而不是挤压。 */
-const COL_CHAPTERS = "hidden w-12 shrink-0 text-right tabular-nums sm:block";
-const COL_WORDS = "hidden w-16 shrink-0 text-right tabular-nums md:block";
-const COL_UPDATED = "hidden w-20 shrink-0 text-right tabular-nums sm:block";
-const COL_PROGRESS = "w-20 shrink-0";
+/**
+ * 台账的列网格（设计稿 `library` 帧的 `grid-cols-[1fr_86px_68px_88px_104px_108px]`）。
+ *
+ * 标签页可能只有 400px：六列硬塞进来每列只剩三十几像素，书名会被截成三个字。
+ * 所以列随宽度增开——两列（书名 + 进度）→ 四列（+ 章数、更新）→ 六列（+ 阶段、字数）。
+ * 收起的是**列**，书名与「进得去」这件事永远在。
+ */
+const GRID =
+	"grid items-center gap-x-3 grid-cols-[1fr_64px] min-[620px]:grid-cols-[1fr_60px_76px_88px] min-[880px]:grid-cols-[1fr_64px_56px_72px_80px_88px]";
+const COL_STAGE = "hidden min-[880px]:block";
+const COL_CHAPTERS = "hidden min-[620px]:block text-right";
+const COL_WORDS = "hidden min-[880px]:block text-right";
+const COL_UPDATED = "hidden min-[620px]:block text-right";
 
 const QUIET_BUTTON =
-	"rounded-lg border border-border/60 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent";
+	"rounded-[9px] border border-border px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent";
+
+const CARD = "rounded-[13px] border border-border/60 bg-card shadow-sm";
 
 /**
- * 书库页（ADR 0020 §1，版面见 ADR 0026 §2）：左侧条件列 + 右侧台账。
+ * 书库页（ADR 0020 §1 / 0026 §2 / 0027 §7）。
  *
- * 设计稿是「左 188px 筛选栏 + 六列台账」。标签页可能只有 400px 宽，所以条件列在
- * `min-[880px]` 才独立成栏，其余宽度下变成列表上方的一组横条；台账的六个列也按可用宽度
- * 逐个收起（章数 → 更新时间 → 字数 → 进度），收起的只是「列」，书名与操作永远在。
+ * 设计稿是「左 188px 条件栏 + 六列台账 + 一条页脚」：条件选中是深底白字，
+ * 台账行是 64px 高的纸行、书名带微缩封面，页脚把「第几页 / 共几页」与每页容量一起写清。
  *
- * 页内仍然没有搜索框——宿主的对话就是搜索入口（ADR 0011 §2.4）。
- * 筛选、排序、分页都在 `library-model.ts` 里，本组件只持有当前查询与页码。
+ * 条件栏在 `min-[880px]` 才独立成栏，其余宽度落到列表上方；页内仍然没有搜索框——
+ * 宿主的对话就是搜索入口（ADR 0011 §2.4）。筛选、排序、分页都在 `library-model.ts` 里，
+ * 本组件只持有当前查询与页码。
  */
 export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 	const { t } = useTranslation();
@@ -77,16 +88,18 @@ export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 	return (
 		<div className="flex h-full min-h-0 flex-col">
 			<PageBar back={{ label: t("library.back"), onClick: onBack }}>
-				<h1 className="text-lg font-medium text-foreground">{t("library.title")}</h1>
-				<p className="text-xs tabular-nums text-muted-foreground">
-					{t("library.count", { count: page.total })}
+				<h1 className={PAGE_TITLE}>{t("library.title")}</h1>
+				<p className={PAGE_META}>
+					<span className="tabular-nums">{t("library.count", { count: page.total })}</span>
+					<span aria-hidden="true">·</span>
+					<span className="tabular-nums">{t("library.page", { page: page.page, pages: page.pages })}</span>
 				</p>
 			</PageBar>
 
-			<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-				<div className="flex flex-col gap-4 min-[880px]:flex-row min-[880px]:items-start">
-					<aside className="flex w-full shrink-0 flex-col gap-2.5 min-[880px]:w-[188px]">
-						<Panel bodyClassName="flex flex-col gap-2.5 px-3 py-3">
+			<div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+				<div className="flex flex-col gap-3 min-[880px]:flex-row min-[880px]:items-start">
+					<aside className="flex w-full shrink-0 flex-col gap-2.5 min-[880px]:w-[176px]">
+						<section className={`${CARD} flex flex-col gap-2.5 p-2.5`}>
 							<LibraryFilterRow
 								label={t("library.filter.genre")}
 								value={query.genre}
@@ -120,86 +133,101 @@ export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 								onSelect={(sort) => update({ sort: sort as LibrarySort })}
 								options={SORTS.map((sort) => ({ value: sort.value, label: t(sort.key) }))}
 							/>
-						</Panel>
+						</section>
+						<p className="rounded-[11px] bg-muted/60 px-2.5 py-2 text-[10px] leading-relaxed text-primary">
+							{t("library.hint")}
+						</p>
 					</aside>
 
-					<div className="flex min-w-0 flex-1 flex-col">
-						<div className="flex items-center gap-3 border-b border-border/40 px-3 pb-1.5 text-xs text-muted-foreground">
-							<span className="min-w-0 flex-1">{t("library.column.book")}</span>
+					<section className={`${CARD} flex min-w-0 flex-1 flex-col`}>
+						<div className={`${GRID} border-b border-border/50 px-4 pb-2 pt-3 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground`}>
+							<span className="min-w-0">{t("library.column.book")}</span>
+							<span className={COL_STAGE}>{t("library.column.stage")}</span>
 							<span className={COL_CHAPTERS}>{t("library.column.chapters")}</span>
 							<span className={COL_WORDS}>{t("library.column.words")}</span>
 							<span className={COL_UPDATED}>{t("library.column.updated")}</span>
-							<span className={`hidden text-right min-[520px]:block ${COL_PROGRESS}`}>
-								{t("library.column.progress")}
-							</span>
+							<span className="text-right">{t("library.column.progress")}</span>
 						</div>
 
 						{page.items.length === 0 ? (
-							<p className="px-3 py-6 text-sm text-muted-foreground">{t("library.empty")}</p>
+							<p className="px-4 py-8 text-center text-[12px] text-muted-foreground">{t("library.empty")}</p>
 						) : (
-							<ul className="flex flex-col divide-y divide-border/40">
-								{page.items.map((entry) => (
-									<li key={entry.id}>
-										<button
-											type="button"
-											onClick={() => onOpen(entry.id)}
-											className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/60"
-										>
-											<span className="flex min-w-0 flex-1 flex-col gap-1">
-												<span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-													<span className="min-w-0 max-w-full truncate text-sm text-foreground">
-														{entry.title}
+							<ul className="flex flex-col">
+								{page.items.map((entry) => {
+									const percent = progressPercent(entry);
+									return (
+										<li key={entry.id} className="border-b border-border/30 last:border-b-0">
+											<button
+												type="button"
+												onClick={() => onOpen(entry.id)}
+												className={`${GRID} w-full px-4 py-2.5 text-left transition-colors hover:bg-muted/50 min-[880px]:h-16`}
+											>
+												<span className="flex min-w-0 items-center gap-2.5">
+													<BookCover seed={entry.id} title={entry.title} size="thumb" />
+													<span className="flex min-w-0 flex-col gap-0.5">
+														<span className="min-w-0 truncate text-[12.5px] font-medium text-foreground">
+															{entry.title}
+														</span>
+														<span className="line-clamp-1 text-[10px] text-muted-foreground">
+															{entry.genre?.trim() || t("library.card.noGenre")}
+															{entry.premise?.trim() ? ` · ${entry.premise.trim()}` : ""}
+														</span>
 													</span>
+												</span>
+												<span className={COL_STAGE}>
 													<PhaseBadge phase={entry.phase} />
 												</span>
-												<span className="line-clamp-1 text-xs text-muted-foreground">
-													{entry.genre?.trim() || t("library.card.noGenre")}
-													{entry.premise?.trim() ? ` · ${entry.premise.trim()}` : ""}
+												<span className={`${COL_CHAPTERS} font-mono text-[10px] tabular-nums text-muted-foreground`}>
+													{entry.committedCount}/{entry.targetChapters}
 												</span>
-											</span>
-											<span className={`${COL_CHAPTERS} text-xs text-muted-foreground`}>
-												{entry.committedCount}/{entry.targetChapters}
-											</span>
-											<span className={`${COL_WORDS} text-xs text-muted-foreground`}>
-												{entry.words ?? 0}
-											</span>
-											<span className={`${COL_UPDATED} text-xs text-muted-foreground`}>
-												{dateOf(entry.updatedAt)}
-											</span>
-											<span className={`hidden min-[520px]:flex min-[520px]:flex-col gap-1 ${COL_PROGRESS}`}>
-												<MeterBar value={progressPercent(entry)} className="h-0.5" />
-												<span className="text-right text-[11px] tabular-nums text-muted-foreground">
-													{Math.round(progressPercent(entry))}%
+												<span className={`${COL_WORDS} font-mono text-[10px] tabular-nums text-muted-foreground`}>
+													{entry.words ?? 0}
 												</span>
-											</span>
-										</button>
-									</li>
-								))}
+												<span className={`${COL_UPDATED} font-mono text-[10px] tabular-nums text-muted-foreground`}>
+													{dateOf(entry.updatedAt)}
+												</span>
+												<span className="flex flex-col gap-1">
+													<MeterBar value={percent} className="h-[2px]" />
+													<span className="text-right font-mono text-[9px] tabular-nums text-muted-foreground">
+														{Math.round(percent)}%
+													</span>
+												</span>
+											</button>
+										</li>
+									);
+								})}
 							</ul>
 						)}
 
-						{page.pages > 1 ? (
-							<div className="mt-2 flex items-center justify-center gap-3 border-t border-border/40 px-3 py-2 text-xs text-muted-foreground">
+						<div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 px-4 py-2">
+							<span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+								{page.page} / {page.pages}
+							</span>
+							<span className="hidden flex-1 text-[10px] text-muted-foreground/70 sm:block">
+								{t("library.footer", { size: LIBRARY_PAGE_SIZE })}
+							</span>
+							<span className="ml-auto flex items-center gap-1.5">
 								<button
 									type="button"
 									disabled={page.page <= 1}
 									onClick={() => goPage(page.page - 1)}
+									aria-label={t("library.prev")}
 									className={QUIET_BUTTON}
 								>
-									{t("library.prev")}
+									<span aria-hidden="true" className="icon-[solar--alt-arrow-left-linear] size-3" />
 								</button>
-								<span className="tabular-nums">{t("library.page", { page: page.page, pages: page.pages })}</span>
 								<button
 									type="button"
 									disabled={page.page >= page.pages}
 									onClick={() => goPage(page.page + 1)}
+									aria-label={t("library.next")}
 									className={QUIET_BUTTON}
 								>
-									{t("library.next")}
+									<span aria-hidden="true" className="icon-[solar--alt-arrow-right-linear] size-3" />
 								</button>
-							</div>
-						) : null}
-					</div>
+							</span>
+						</div>
+					</section>
 				</div>
 			</div>
 		</div>

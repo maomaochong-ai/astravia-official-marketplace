@@ -17,7 +17,7 @@ export function StudioStrip({ book }: { book: NovelBook }) {
 	const drafting = chapter?.status === "drafting";
 
 	return (
-		<div className="flex h-8 shrink-0 items-center gap-2 border-b border-border/40 px-4 text-xs text-muted-foreground">
+		<div className="flex h-8 shrink-0 items-center gap-2 border-b border-border/50 px-4 text-[10.5px] text-muted-foreground">
 			<span
 				aria-hidden="true"
 				className={`size-1.5 shrink-0 rounded-full ${drafting ? "bg-primary" : "bg-muted-foreground/40"}`}
@@ -32,7 +32,9 @@ export function StudioStrip({ book }: { book: NovelBook }) {
 				{chapter && chapter.words > 0 ? (
 					<span className="shrink-0 tabular-nums">{t("board.words", { count: chapter.words })}</span>
 				) : null}
-				<span className="shrink-0 tabular-nums">{t("reader.updatedAt", { date: dateOf(book.updatedAt) })}</span>
+				<span className="shrink-0 font-mono text-[10px] tabular-nums">
+					{t("reader.updatedAt", { date: dateOf(book.updatedAt) })}
+				</span>
 			</span>
 		</div>
 	);

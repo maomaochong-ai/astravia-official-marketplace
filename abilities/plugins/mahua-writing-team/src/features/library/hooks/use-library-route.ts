@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-export type LibrarySurface = "shelf" | "catalog" | "book" | "reader" | "ledger";
+export type LibrarySurface = "shelf" | "catalog" | "book" | "reader" | "ledger" | "console";
 
 export interface LibraryRoute {
 	surface: LibrarySurface;
@@ -13,7 +13,7 @@ export interface LibraryRoute {
 const AT_SHELF: LibraryRoute = { surface: "shelf", bookId: null, chapter: null };
 
 /**
- * 视图内的五层导航（ADR 0013 §2.1 / 0020 §1 / 0026 §1）。不写宿主路由，也不写存储：
+ * 视图内的六层导航（ADR 0013 §2.1 / 0020 §1 / 0026 §1 / 0027 §1）。不写宿主路由，也不写存储：
  * 侧栏位置不该随「上次读到哪」漂移，阅读位置是会话内的事。
  */
 export function useLibraryRoute() {
@@ -39,6 +39,10 @@ export function useLibraryRoute() {
 		setRoute({ surface: "ledger", bookId, chapter: null });
 	}, []);
 
+	/** 运行台：同样是某本书的一页（脊柱、落盘、评审都按 bookId 读）。 */
+	const openConsole = useCallback((bookId: string) => {
+		setRoute({ surface: "console", bookId, chapter: null });
+	}, []);
 	/** 回目录：只退一层，书还是那本书。 */
 	const backToBook = useCallback(() => {
 		setRoute((previous) =>
@@ -48,5 +52,5 @@ export function useLibraryRoute() {
 		);
 	}, []);
 
-	return { route, openShelf, openCatalog, openBook, openChapter, openLedger, backToBook };
+	return { route, openShelf, openCatalog, openBook, openChapter, openLedger, openConsole, backToBook };
 }

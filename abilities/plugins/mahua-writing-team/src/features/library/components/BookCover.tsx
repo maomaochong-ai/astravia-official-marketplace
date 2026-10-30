@@ -1,61 +1,71 @@
 import { coverMark } from "../bookshelf-model.js";
 import { DefaultCover } from "./DefaultCover.js";
 
+/** 五档尺寸照设计稿 `Cover`：书架大封、书库行封、书页详封、侧栏小封、台账微封。 */
+export type CoverSize = "shelf" | "row" | "detail" | "mini" | "thumb";
+
 interface BookCoverProps {
-	/** 封面哈希种子：书 id，缺省时退回书名（书页的大封面只拿到 title）。 */
+	/** 哈希种子：书 id，缺省时退回书名。改名不该换底纹。 */
 	seed?: string;
 	title: string;
 	/** 封面下沿的说明行：架子上显示阶段，书页显示题材。不给就不占位。 */
 	caption?: string;
-	/** 0–100，只画一条进度，不写数字（数字在名字旁边）。不给就不画——书库卡片自己有一条。 */
-	progress?: number;
-	/** grid：架子上的一格；list：书库卡左侧；headline：书页左上的大封面。 */
-	variant?: "grid" | "list" | "headline";
+	size?: CoverSize;
 }
 
-const SHAPE = {
-	grid: "aspect-[3/4] w-full px-2.5 py-2.5",
-	// 书库卡片的封面按番茄的 100×130 取整（ADR 0024 §2），不参与栅格拉伸。
-	list: "h-[130px] w-[100px] shrink-0 px-2.5 py-2.5",
-	headline: "h-32 w-24 px-2 py-2",
-} as const;
+const SHAPE: Record<CoverSize, string> = {
+	shelf: "h-[212px] w-[150px] gap-3 px-3 py-3",
+	row: "h-[124px] w-[88px] gap-2 px-2 py-2",
+	detail: "h-[184px] w-[132px] gap-2 px-2.5 py-2.5 sm:h-[262px] sm:w-[186px] sm:gap-3 sm:px-3.5 sm:py-3.5",
+	mini: "h-[62px] w-[44px] gap-1 px-1 py-1",
+	thumb: "h-[46px] w-[33px] px-0.5 py-0.5",
+};
 
-const MARK = {
-	grid: "text-2xl",
-	list: "text-xl",
-	headline: "text-xl",
-} as const;
+/** 首字的字号：设计稿 mark 62 / 34 / 76 / 17 / 12，按容器宽度档位缩放。 */
+const MARK: Record<CoverSize, string> = {
+	shelf: "text-[38px] sm:text-[48px]",
+	row: "text-[24px]",
+	detail: "text-[34px] sm:text-[52px]",
+	mini: "text-[17px]",
+	thumb: "text-[12px]",
+};
 
 /**
- * 排版型封面（ADR 0013 §2.2 / 0020 §4 / 0024 §3）：书名首字 + 水墨底版 + 进度条。
- * 不塞占位插画，也不上色卡——底版先灰度再 multiply 到 `accent`，颜色仍只来自宿主 token。
+ * 排版型封面（ADR 0020 §4 / 0024 §3 / 0027 §3）。
+ *
+ * 设计稿的封面是「三层纸 + 一枚首字 + 一行说明」：不带插画，靠纸色与字重拉开层次。
+ * 这里保留那个结构，只把设计稿的 `canvas / surface / card` 三级纸色换成宿主的中性档
+ * （`bg-muted` → `bg-background`），底纹仍是 `COVER_PLATES` 里的公有领域水墨，
+ * 用 `multiply` 压到很低的浓度——它提供纸纤维的质感，不抢首字。
  */
-export function BookCover({ seed, title, caption, progress, variant = "grid" }: BookCoverProps) {
-	// 书库卡片已经把题材、阶段写在右侧，封面里再来一行小字就是重复。
-	const showCaption = variant !== "list" && Boolean(caption);
-	const showProgress = typeof progress === "number";
+export function BookCover({ seed, title, caption, size = "row" }: BookCoverProps) {
+	const showCaption = Boolean(caption) && size !== "thumb";
 	return (
 		<div
 			aria-hidden="true"
-			className={`relative flex flex-col justify-between overflow-hidden rounded-lg border border-border/60 bg-accent text-accent-foreground ${SHAPE[variant]}`}
+			className={`relative flex shrink-0 flex-col overflow-hidden rounded-[3px] border border-border/70 bg-muted shadow-sm ${SHAPE[size]}`}
 		>
-			<DefaultCover seed={seed ?? title} />
-			<span className={`relative font-semibold leading-none ${MARK[variant]}`}>{coverMark(title)}</span>
-			<div className="relative flex min-w-0 flex-col gap-1">
-				{showCaption ? (
-					<span className="truncate text-[0.625rem] uppercase tracking-wide text-accent-foreground/60">
-						{caption}
-					</span>
-				) : null}
-				{showProgress ? (
-					<span className="block h-0.5 w-full overflow-hidden rounded-full bg-foreground/15">
-						<span
-							className="block h-full rounded-full bg-foreground/40"
-							style={{ width: `${progress}%` }}
-						/>
-					</span>
-				) : null}
-			</div>
+			<span aria-hidden="true" className="absolute inset-0 opacity-[0.18]">
+				<DefaultCover seed={seed ?? title} />
+			</span>
+			{size === "thumb" ? null : (
+				<span
+					aria-hidden="true"
+					className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-background/40 to-transparent"
+				/>
+			)}
+			<span
+				className={`relative font-serif font-semibold leading-none text-foreground ${
+					size === "thumb" ? "m-auto" : ""
+				} ${size === "shelf" || size === "detail" ? "mt-auto" : ""} ${MARK[size]}`}
+			>
+				{coverMark(title)}
+			</span>
+			{showCaption ? (
+				<span className="relative truncate font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground">
+					{caption}
+				</span>
+			) : null}
 		</div>
 	);
 }

@@ -10,26 +10,33 @@ interface PageBarProps {
 }
 
 /**
- * 每个 surface 共用的一条页头（ADR 0026）。
+ * 每个 surface 共用的一条页头（ADR 0026 §2 / 0027 §4）。
  *
- * 设计稿的 `PageHeader` 是 `items-end` 的一行；这里多一层 `flex-wrap`：标签页实宽只有
- * 400–1000px，标题长了、操作多了就必须折行，而不是把右端按钮挤出可视区。
- * 折行只发生在一条页头内部，不改变阅读顺序。
+ * 照设计稿 `PageHeader` 的比例：标题是 26–30px 的衬线大字，元信息压在它下面一行、
+ * 用 11px 的等宽数字；右端操作与标题**基线对齐**。设计稿那枚返回箭头是纯图标，
+ * 这里带上文字——标签页里图标按钮太小，认不出来就是坏的。
  */
 export function PageBar({ back, actions, children }: PageBarProps) {
 	return (
-		<header className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 border-b border-border/40 px-5 pb-3 pt-4">
+		<header className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 border-b border-border/50 px-4 pb-3 pt-4 sm:px-6">
 			{back ? (
 				<button
 					type="button"
 					onClick={back.onClick}
-					className="mb-0.5 shrink-0 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					className="mb-1 flex shrink-0 items-center gap-1 rounded-[9px] px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 				>
-					← {back.label}
+					<span aria-hidden="true" className="icon-[solar--alt-arrow-left-linear] size-3.5" />
+					{back.label}
 				</button>
 			) : null}
 			<div className="flex min-w-0 flex-1 flex-col gap-1">{children}</div>
-			{actions ? <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div> : null}
+			{actions ? <div className="flex min-w-0 flex-wrap items-center gap-2 pb-0.5">{actions}</div> : null}
 		</header>
 	);
 }
+
+/** 页头标题：唯一一处 26/30px 的衬线大字，别在页面里再写一遍。 */
+export const PAGE_TITLE = "font-serif text-[24px] font-semibold leading-tight tracking-tight text-foreground sm:text-[28px]";
+
+/** 页头元信息：等宽数字，跟标题同基线。 */
+export const PAGE_META = "flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground";
