@@ -15,13 +15,18 @@ interface MemberRosterProps {
  *
  * 与宿主的一处刻意差异：点胶囊不是「打开该成员的会话」（SDK 不提供成员级会话绑定），
  * 而是把这位叫进当前会话。无障碍标签把这件事说清楚，免得被当成导航。
+ *
+ * 尺寸按设计稿的元信息层收：标签是 9px 等宽小字，胶囊高 24px、11px 正文，
+ * 这样它与旁边的章号、字数处在同一层，不会把书页的标题层压过去。
  */
 export function MemberRoster({ members, busy, onInvite }: MemberRosterProps) {
 	const { t } = useTranslation();
 
 	return (
-		<div className="flex items-center gap-1.5">
-			<span className="text-xs font-medium text-muted-foreground">{t("roster.label")}</span>
+		<div className="flex items-center gap-2">
+			<span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">
+				{t("roster.label")}
+			</span>
 			<ul className="flex flex-wrap items-center gap-1.5">
 				{members.map((member) => {
 					const name = t(member.nameKey);
@@ -33,14 +38,18 @@ export function MemberRoster({ members, busy, onInvite }: MemberRosterProps) {
 								title={t(member.dutyKey)}
 								aria-label={t("roster.invite", { member: name })}
 								onClick={() => onInvite(member)}
-								className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+								className="flex h-6 items-center gap-1.5 rounded-full border border-border/60 bg-card px-2 text-[11px] text-foreground transition-colors hover:border-border hover:bg-muted/60 disabled:opacity-40"
 							>
 								<span
 									aria-hidden="true"
-									className={`size-1.5 rounded-full ${member.lead ? "bg-primary" : "bg-muted-foreground/60"}`}
+									className={`size-1.5 rounded-full ${member.lead ? "bg-primary" : "bg-muted-foreground/50"}`}
 								/>
-								<span className="font-medium">{name}</span>
-								{member.lead ? <span className="text-[0.65rem] text-muted-foreground">{t("roster.lead")}</span> : null}
+								<span className={member.lead ? "font-semibold" : "font-normal"}>{name}</span>
+								{member.lead ? (
+									<span className="font-mono text-[9px] uppercase tracking-[0.08em] text-muted-foreground/70">
+										{t("roster.lead")}
+									</span>
+								) : null}
 							</button>
 						</li>
 					);

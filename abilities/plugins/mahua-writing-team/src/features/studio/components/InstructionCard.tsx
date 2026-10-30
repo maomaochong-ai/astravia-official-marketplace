@@ -15,6 +15,14 @@ interface InstructionCardProps {
 	busy: boolean;
 }
 
+/** 主按钮取设计稿的「墨底」：`bg-ink` → `bg-foreground`，文字用纸色 `text-background`。 */
+const PRIMARY =
+	"flex h-8 items-center gap-1.5 rounded-[9px] bg-foreground px-3 text-[11px] font-medium text-background transition-opacity disabled:opacity-40";
+
+/** 次按钮是描边款，同高对齐，避免两个高度并排时的错位。 */
+const SECONDARY =
+	"flex h-8 items-center gap-1.5 rounded-[9px] border border-border px-3 text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-40";
+
 /**
  * "下一步"卡片：内容与模型通过 `mahua_next_instruction` 看到的是同一条路由结果，
  * 行内渲染也复用同一个 {@link InstructionSummary}，两处措辞不会分叉。
@@ -37,7 +45,7 @@ export function InstructionCard({
 
 	if (!instruction) {
 		return (
-			<div className="rounded-lg border border-border/60 bg-muted/40 p-4 text-sm text-muted-foreground">
+			<div className="rounded-[13px] border border-dashed border-border bg-muted/30 px-3.5 py-3 text-[11px] text-muted-foreground">
 				{t("instruction.none")}
 			</div>
 		);
@@ -52,41 +60,30 @@ export function InstructionCard({
 						type="button"
 						disabled={busy}
 						onClick={() => instruction.chapter && onCommit(instruction.chapter)}
-						className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+						className={PRIMARY}
 					>
+						<span className="icon-[solar--check-circle-linear] size-3.5" />
 						{t("action.commit", { chapter: instruction.chapter ?? 0 })}
 					</button>
 				);
 			case "close-arc":
 				return (
-					<button
-						type="button"
-						disabled={busy}
-						onClick={onCloseArc}
-						className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
-					>
+					<button type="button" disabled={busy} onClick={onCloseArc} className={PRIMARY}>
+						<span className="icon-[solar--checklist-minimalistic-linear] size-3.5" />
 						{t("action.closeArc")}
 					</button>
 				);
 			case "finalize":
 				return (
-					<button
-						type="button"
-						disabled={busy}
-						onClick={onFinalize}
-						className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
-					>
+					<button type="button" disabled={busy} onClick={onFinalize} className={PRIMARY}>
+						<span className="icon-[solar--flag-2-linear] size-3.5" />
 						{t("action.finalize")}
 					</button>
 				);
 			case "outline-chapter":
 				return (
-					<button
-						type="button"
-						disabled={busy}
-						onClick={onStartDrafting}
-						className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/60 disabled:opacity-50"
-					>
+					<button type="button" disabled={busy} onClick={onStartDrafting} className={SECONDARY}>
+						<span className="icon-[solar--document-add-linear] size-3.5" />
 						{t("action.startDrafting")}
 					</button>
 				);
@@ -101,23 +98,28 @@ export function InstructionCard({
 				type="button"
 				disabled={busy || !book.title || !book.genre || !book.premise}
 				onClick={onAcceptBrief}
-				className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+				className={PRIMARY}
 			>
+				<span className="icon-[solar--check-circle-linear] size-3.5" />
 				{t("action.acceptBrief")}
 			</button>
 		) : deterministic ? null : (
-			<button
-				type="button"
-				disabled={busy}
-				onClick={onContinue}
-				className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
-			>
+			<button type="button" disabled={busy} onClick={onContinue} className={PRIMARY}>
+				<span className="icon-[solar--arrow-right-linear] size-3.5" />
 				{t("action.continue")}
 			</button>
 		);
 
 	return (
-		<div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card p-4">
+		<div className="flex flex-col gap-2.5 rounded-[13px] border border-border/60 bg-card p-3.5 shadow-sm">
+			<div className="flex items-baseline justify-between gap-2">
+				<span className="font-serif text-[15px] font-semibold leading-tight text-foreground">
+					{t("instruction.title")}
+				</span>
+				<span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">
+					{t("board.step")}
+				</span>
+			</div>
 			<InstructionSummary
 				worker={instruction.worker}
 				task={instruction.task}

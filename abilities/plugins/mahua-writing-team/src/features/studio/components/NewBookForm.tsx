@@ -14,9 +14,11 @@ interface NewBookFormProps {
 /** 目标章数的常用档位：点一下就填好，想写冷门长度仍可在数字框里手填。 */
 const TARGET_PRESETS = [60, 120, 200] as const;
 
-const FIELD_LABEL = "text-xs font-medium text-muted-foreground";
+/** 字段标签走设计稿的元信息层：9px 等宽小字，与卡片里的其它小字同层。 */
+const FIELD_LABEL = "font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70";
+
 const FIELD_INPUT =
-	"w-full rounded-lg border border-border/70 bg-transparent px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-ring focus:ring-2 focus:ring-ring/30";
+	"w-full rounded-[9px] border border-border bg-card px-2.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-foreground/40 focus:ring-2 focus:ring-ring/20";
 
 /**
  * 开书表单（ADR 0024 §4）：空状态引导的第三步，其余步骤交给架构师智能体在对话里完成。
@@ -24,6 +26,9 @@ const FIELD_INPUT =
  * 版面按「一页纸」重排：没有卡片边框，只有一组上下留白的字段；书名是唯一的大输入，
  * 题材与前提各占一行，目标章数用三个档位芯片 + 一个数字框，主按钮占满宽度。
  * 这样在窄侧栏里不会出现「四个小格子挤在框里」的观感。
+ *
+ * 控件尺寸按设计稿收：输入 36px 高、圆角 9px、纸色底（`bg-card` 对 `bg-muted` 画布），
+ * 档位芯片 24px 高、选中时墨底反白——与书页和激活页的按钮同一套语言。
  */
 export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 	const { t } = useTranslation();
@@ -36,7 +41,7 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 
 	return (
 		<form
-			className="mx-auto flex w-full max-w-md flex-col gap-6"
+			className="mx-auto flex w-full max-w-md flex-col gap-5"
 			onSubmit={async (event) => {
 				event.preventDefault();
 				if (!ready || busy) return;
@@ -49,8 +54,10 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 			}}
 		>
 			<div className="flex flex-col gap-1">
-				<h2 className="text-base font-medium">{t("newBook.title")}</h2>
-				<p className="text-xs leading-[17px] text-muted-foreground">{t("newBook.genreHint")}</p>
+				<h2 className="font-serif text-[19px] font-semibold leading-tight text-foreground">
+					{t("newBook.title")}
+				</h2>
+				<p className="text-[11px] leading-4 text-muted-foreground">{t("newBook.genreHint")}</p>
 			</div>
 
 			<label className="flex flex-col gap-1.5">
@@ -58,7 +65,7 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 				<input
 					value={title}
 					onChange={(event) => setTitle(event.target.value)}
-					className={`${FIELD_INPUT} h-11 text-[15px]`}
+					className={`${FIELD_INPUT} h-10 font-serif text-[15px]`}
 					autoFocus
 				/>
 			</label>
@@ -68,7 +75,7 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 				<input
 					value={genre}
 					onChange={(event) => setGenre(event.target.value)}
-					className={`${FIELD_INPUT} h-10`}
+					className={`${FIELD_INPUT} h-9`}
 				/>
 			</label>
 
@@ -78,13 +85,13 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 					value={premise}
 					onChange={(event) => setPremise(event.target.value)}
 					rows={3}
-					className={`${FIELD_INPUT} resize-none py-2 leading-6`}
+					className={`${FIELD_INPUT} resize-none py-2 leading-5`}
 				/>
 			</label>
 
-			<div className="flex flex-col gap-2">
+			<div className="flex flex-col gap-1.5">
 				<span className={FIELD_LABEL}>{t("newBook.target")}</span>
-				<div className="flex flex-wrap items-center gap-2">
+				<div className="flex flex-wrap items-center gap-1.5">
 					{TARGET_PRESETS.map((preset) => {
 						const selected = Number(target) === preset;
 						return (
@@ -93,10 +100,10 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 								type="button"
 								aria-pressed={selected}
 								onClick={() => setTarget(String(preset))}
-								className={`rounded-full border px-3 py-1 text-xs tabular-nums transition-colors ${
+								className={`flex h-6 items-center rounded-[6px] border px-2 font-mono text-[10px] tabular-nums transition-colors ${
 									selected
-										? "border-transparent bg-primary text-primary-foreground"
-										: "border-border/70 text-muted-foreground hover:border-border hover:text-foreground"
+										? "border-transparent bg-foreground font-medium text-background"
+										: "border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground"
 								}`}
 							>
 								{preset}
@@ -108,7 +115,7 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 						min={1}
 						value={target}
 						onChange={(event) => setTarget(event.target.value)}
-						className={`${FIELD_INPUT} h-8 w-20 px-2 text-xs tabular-nums`}
+						className={`${FIELD_INPUT} h-6 w-16 px-1.5 font-mono text-[10px] tabular-nums`}
 					/>
 				</div>
 			</div>
@@ -116,8 +123,9 @@ export function NewBookForm({ busy, onCreate }: NewBookFormProps) {
 			<button
 				type="submit"
 				disabled={!ready || busy}
-				className="h-10 w-full rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+				className="flex h-9 w-full items-center justify-center gap-1.5 rounded-[9px] bg-foreground text-[12px] font-medium text-background transition-opacity disabled:opacity-40"
 			>
+				<span className="icon-[solar--add-circle-linear] size-3.5" />
 				{t("newBook.submit")}
 			</button>
 		</form>

@@ -40,14 +40,27 @@ export function StudioWorkspaceView() {
 	// 凭证失效（过期/换机）时退回激活页；凭证面板从成员条的最右一格打开。
 	if (state.entitlement.status !== "active" || credentialOpen) {
 		return (
-			<div className="mahua-root relative h-full overflow-y-auto bg-background text-foreground">
+			<div className="mahua-root flex h-full min-h-0 flex-col overflow-hidden bg-muted/40 text-foreground">
+				<StudioChrome
+					crumb={[t("view.studio.label"), t("activation.title")]}
+					right={
+						<span className="shrink-0 font-mono text-[10px] text-muted-foreground/70">
+							{t(
+								state.entitlement.status === "active"
+									? "activation.statusActive"
+									: "activation.statusIdle",
+							)}
+						</span>
+					}
+				/>
 				{credentialOpen ? (
-					<div className="mx-auto flex w-full max-w-lg justify-start px-6 pt-4">
+					<div className="shrink-0 px-3 pt-2 sm:px-4">
 						<button
 							type="button"
 							onClick={() => setCredentialOpen(false)}
-							className="rounded-[9px] border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+							className="flex h-7 items-center gap-1.5 rounded-[9px] border border-border px-2.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 						>
+							<span className="icon-[solar--alt-arrow-left-linear] size-3" />
 							{t("roster.credentialBack")}
 						</button>
 					</div>
