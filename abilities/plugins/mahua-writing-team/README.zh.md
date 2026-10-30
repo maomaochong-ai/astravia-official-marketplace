@@ -14,9 +14,9 @@ Astravia 里的多智能体写作工作区插件。对话留在宿主，书留�
 
 ## 装完看到什么
 
-侧栏不新增任何入口。工作台是**活动面板里的一枚标签**：打开面板的 **+** 菜单，在「可添加插件面板」
-里选 **麻花小说网**，它就停成一张标签页。标签一直在——凭证无效时它显示激活面板而不是书架，
-所以同一枚标签既是入口也是回退。
+侧栏不新增任何入口。工作台是**活动面板里的一枚标签**，装完就已经停在标签栏上：直接点 **麻花小说网**
+就打开工作区。想收起就点它的减号（标签会回到面板的 **+** 菜单里，随时再加回来）。标签一直在——
+凭证无效时它显示激活面板而不是书架，所以同一枚标签既是入口也是回退。
 
 工作区有五层，全部在面板内，没有一层是聊天框：
 
@@ -173,7 +173,7 @@ npm install
 npm run references # 从 agent/ 重新生成 src/reference/library.generated.ts
 npm run check      # tsc --noEmit
 npm test           # vitest：路由、状态机、凭证、服务层、书库、台账、守卫
-npm run build      # dist/ + release/mahua-writing-team-0.4.6.astraviapkg
+npm run build      # dist/ + release/mahua-writing-team-0.4.7.astraviapkg
 npm run validate   # 用宿主自己的 manifest 解析器校验 plugin.json
 ```
 

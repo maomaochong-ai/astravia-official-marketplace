@@ -88,3 +88,36 @@
   `setWorkspaceViewHeader`、`scope_use` 与 `initiallyVisible: false`、图标是 iconify class、
   主按钮打开阅读页）；权限集合断言由 `ui.slot.workspace-view` 改为 `ui.slot.activity-tab`。
 - **版本**：运行内容变化 → `0.3.0` → `0.4.0`（五份身份文件同步）。
+
+> **补注（默认上栏，2026-10-30）**：§2.2 的 `initiallyVisible: false` 已改为 `true`。§2.2 自己写明
+> 「想让它默认出现，把这一行改成 `true` 即可」，所以这是行使该条给出的开关，不是推翻决策本身。
+>
+> 触发它的是真实反馈：宿主活动面板的「+」不出现，标签既加不进来也看不见。读宿主 0.5.65 的代码
+> 得到的是一组条件，任一条成立插件标签就没有入口：
+>
+> 1. `domains/activity-panel/hooks/useActivityPanelModel.ts:422-425` ——
+>    `showTabPicker = !knowledgeHistory && cwd !== null && (restorableTabs.length > 0 ||
+>    overflowTabs.length > 0 || availablePluginTabs.length > 0)`。三类全空时整枚按钮都不渲染；
+>    「+」与向下箭头是两个图标，取决于 `availablePluginTabs` 是否为空
+>    （`packages/theme-ui/src/activity/PluginTabPickerView.tsx:88-90`）。
+> 2. `domains/activity-panel/registry/useActivityTabDefinitions.tsx:111-113` ——
+>    `if (!enablePluginTabs || pluginScenario === undefined) return [...builtins]`。`pluginScenario`
+>    由 `currentScenarioAtom` 供，该原子为 `null` 表示「新建会话页 / 尚未加载」
+>    （`shared/store/plugin-atoms.ts:401-406`）。
+> 3. 同一文件 `:115-120` —— `tab.scope_use?.includes(pluginScenario)`，即 §2.2 的 fail-closed 过滤。
+> 4. `domains/conversation/components/SessionViewerPage.tsx:119 / :123` —— 只读历史会话页传
+>    `enablePluginTabs={false}`。
+>
+> 顺手排除了三个先前怀疑的方向：`plugin.json#permissions` 确有 `ui.slot.activity-tab`；
+> `src/` 里没有任何 `openActivityTab` 调用（不存在「被自动上栏、池子因此为空」）；
+> `resolve-activity-tabs.ts:39-41` 的
+> `isPluginTabOnBar = explicitTabVisibility(...) ?? def.initiallyVisible !== false` 说明缺省本来就上栏，
+> 是我们主动把它压进了条件化的池子。
+>
+> 结论：入口不押在宿主条件化的「+」上。默认上栏，`removable: true` 保留——用户点减号收起时会写下
+> 显式 `false`，标签回到池子，那时「+」必定出现。图标仍由插件自己的
+> `<span className="icon-[…]">` 提供（宿主 `apps/desktop/src/renderer/styles.css:15-28` 明写插件声明的
+> icon class 不在宿主 Tailwind 扫描范围，省略会得到不可见图标）。
+>
+> 同步修改：`src/studio-tab.ts`、`src/index.tsx` 注释、`AGENTS.md`、两份 README、`detail.json` /
+> `detail.zh.json` 的安装步骤、`test/manifest-guards.test.ts` 的守卫断言。版本 `0.4.6` → `0.4.7`。

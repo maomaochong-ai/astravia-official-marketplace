@@ -73,10 +73,13 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 都在组件自己身上。
 
 - `scope_use: ["conversation", "project"]` 是 fail-closed 的，与 `novel-tools.ts` 的 `SCENARIOS` 同一口径。
-- `initiallyVisible: false`：入池不上栏，用户从「+ → 可添加插件面板」自己加。
-- 凭证判断不在注册处：未激活时同一个组件渲染 `ActivationPanel`，所以标签从装上开始就一直在池子里。
+- `initiallyVisible: true`：默认就上栏。宿主 0.5.65 的「+ → 可添加插件面板」对插件标签是
+  条件化的（`showTabPicker` 要 `cwd` 非空且三类之一非空；`pluginScenario === undefined` 时整个
+  插件段被短路），把入口押在那上面会出现「看不到加号、也加不进来」。用户点减号收起来后会留下
+  显式 `false`，标签回到池子，这时「+」必定出现。取证与完整四条件见 ADR 0025 末尾补注。
+- 凭证判断不在注册处：未激活时同一个组件渲染 `ActivationPanel`，所以标签从装上开始就一直在栏上。
 
-`test/manifest-guards.test.ts` 钉住这三条（无 `registerWorkspaceView`、有 `scope_use`、`initiallyVisible: false`）。
+`test/manifest-guards.test.ts` 钉住这三条（无 `registerWorkspaceView`、有 `scope_use`、`initiallyVisible: true`）。
 
 ## 已知的宿主约束
 

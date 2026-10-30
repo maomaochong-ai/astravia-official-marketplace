@@ -303,15 +303,15 @@ describe("visual language stays on host tokens", () => {
 	it("registers a tab, not a sidebar entry (ADR 0025 §2)", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		// 侧边栏是用户自己的导航位；工作台必须从活动面板的「+」里加，不能常驻侧栏。
+		// 侧边栏是用户自己的导航位；工作台只能是一枚活动面板标签，不能常驻侧栏。
 		expect(entry).not.toContain("registerWorkspaceView");
 		expect(entry).not.toContain("setWorkspaceViewHeader");
 		expect(entry).toContain("registerStudioTab(ctx)");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
 		// fail-closed：没声明的场景下一个标签都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
-		// 入池不上栏：加不加由用户决定。
-		expect(tab).toContain("initiallyVisible: false");
+		// 默认就上栏：入口不再押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
+		expect(tab).toContain("initiallyVisible: true");
 	});
 
 	it("only asks for the slot permissions it actually uses", () => {

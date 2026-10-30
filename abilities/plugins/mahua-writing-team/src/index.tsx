@@ -24,8 +24,9 @@ export default definePlugin({
 		// 它们不依赖工作台标签，所以未激活、或用户只想要对话时依然存在。
 		const surfaces = registerStudioSurfaces(ctx);
 
-		// 标签页而非侧边栏入口（ADR 0025 §2）：先入池，用户从「+」里自己加。
-		// 未激活时同一枚标签显示激活面板，所以凭证过期不会让它从池子里消失。
+		// 标签页而非侧边栏入口（ADR 0025 §2）：默认直接上栏，不把入口押在
+		// 活动面板条件化的「+」池上（见 studio-tab.ts 与 ADR 0025 末尾补注）。
+		// 未激活时同一枚标签显示激活面板，所以凭证过期不会让它消失。
 		const tab = registerStudioTab(ctx);
 
 		return () => {
