@@ -111,3 +111,17 @@
   加依赖要联网。所以「去掉发丝线后纸面仍然分得开」是从设计稿令牌推出来的，不是看见的。
 - 深色主题下 `shadow-xs` 几乎不可见，卡片只能靠 `--card` 与 `--background` 的色差分层。
   这与 ADR 0026 §7 记过的是同一件事：纸面层次无法在深浅两种模式下同时正确，本轮选了忠于设计稿的一侧。
+
+> **补注（账本与运行台两帧）**：本文 §1 说「设计稿几乎无发丝边框」，对书架、书库、书页成立，
+> 但 `frames/ledger.tsx` 与 `frames/console.tsx` 不是这样，两帧内部也与前几帧不同。本轮按下列口径补齐，
+> 不改本文原文：
+>
+> - `ledger` 的统计格、台账卡、决策日志每条都是 `rounded-card border border-line`（**有边界**），
+>   台账表头是 `bg-inset` 色带，逾期行 `bg-danger-soft/40`；
+> - `console` 是「凹槽—纸面—凹槽」三栏：左右两栏 `rounded-sheet bg-inset`（无阴影），中栏
+>   `rounded-sheet bg-card shadow-card`。插件对应为左右 `bg-muted/40`、中栏 `bg-card shadow-xs`；
+> - 两帧的栏目标题都是 `text-[10px] tracking-[0.08em] text-faint` 微标签，不是 `font-serif` 标题；
+>   页头那个大标题才是 `font-serif`。账本页的小节标题则是 `font-display text-section`，两页不一致，各依所在帧。
+>
+> 因此「纸面只靠阴影分层」的适用范围是列表与卡片，不适用于台账这类强结构表格；
+> 表格用边界与色带划分，比阴影更可靠（深色主题下尤其）。

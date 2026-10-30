@@ -18,7 +18,11 @@ interface ConsolePaneProps {
 
 const CARD = "rounded-[18px] bg-card shadow-xs";
 
-const PANEL_HEAD = "flex shrink-0 items-baseline justify-between gap-2 border-b border-border/50 px-3 pb-2 pt-2.5";
+/** 设计稿里运行台四栏的标题都是微标签，不是衬线标题——这一页的标题只有页头那一个。 */
+const MICRO = "text-[10px] tracking-[0.08em] text-muted-foreground/70";
+
+/** 左右两栏是凹槽：没有阴影，靠内联的浅底把自己压到纸面下方。 */
+const TROUGH = "flex flex-col overflow-hidden rounded-[18px] bg-muted/40";
 
 /**
  * 运行台（ADR 0027 §1）。
@@ -57,12 +61,14 @@ export function ConsolePane({ book, review, onBack, onOpenChapter }: ConsolePane
 			</PageBar>
 
 			<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 sm:px-6 xl:flex-row xl:items-stretch xl:overflow-hidden">
-				<section className={`${CARD} flex min-h-0 w-full flex-col xl:w-[196px] xl:shrink-0`}>
-					<header className={PANEL_HEAD}>
-						<h2 className="font-serif text-[13px] font-semibold text-foreground">{t("console.spine")}</h2>
-						<span className="font-mono text-[9px] tabular-nums text-muted-foreground">{book.chapters.length}</span>
+				<aside className={`${TROUGH} min-h-0 w-full xl:w-[196px] xl:shrink-0`}>
+					<header className="flex shrink-0 items-baseline justify-between gap-2 px-3.5 pb-1.5 pt-2.5">
+						<h2 className={MICRO}>{t("console.spine")}</h2>
+						<span className="font-mono text-[9px] tabular-nums text-muted-foreground/70">
+							{book.chapters.length}
+						</span>
 					</header>
-					<ul className="flex min-h-0 flex-1 flex-col overflow-y-auto p-1">
+					<ul className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1.5">
 						{book.chapters.length === 0 ? (
 							<li className="px-2 py-1.5 text-[10px] text-muted-foreground">{t("board.empty")}</li>
 						) : (
@@ -72,18 +78,24 @@ export function ConsolePane({ book, review, onBack, onOpenChapter }: ConsolePane
 										type="button"
 										onClick={() => onOpenChapter(chapter.n)}
 										aria-current={chapter.n === current ? "true" : undefined}
-										className={`flex w-full items-center gap-1.5 rounded-[5px] px-1.5 py-1 text-left transition-colors ${
-											chapter.n === current ? "bg-muted" : "hover:bg-muted/50"
+										className={`flex w-full items-center gap-1.5 rounded-[6px] px-1.5 py-1.5 text-left transition-colors ${
+											chapter.n === current
+												? "bg-card font-medium shadow-xs"
+												: "hover:bg-card/60"
 										}`}
 									>
 										<ChapterDot status={chapter.status} />
-										<span className="w-5 shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">
+										<span
+											className={`w-5 shrink-0 font-mono text-[10px] tabular-nums ${
+												chapter.n === current ? "text-primary" : "text-muted-foreground/70"
+											}`}
+										>
 											{chapter.n}
 										</span>
-										<span className="min-w-0 flex-1 truncate text-[10.5px] text-foreground">
+										<span className="min-w-0 flex-1 truncate text-[11px] text-foreground">
 											{chapter.title || t("board.untitled")}
 										</span>
-										<span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground">
+										<span className="shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground/70">
 											{chapter.words > 0 ? chapter.words : ""}
 										</span>
 									</button>
@@ -91,21 +103,33 @@ export function ConsolePane({ book, review, onBack, onOpenChapter }: ConsolePane
 							))
 						)}
 					</ul>
-				</section>
+					<div className="shrink-0 border-t border-border/50 px-3.5 pb-3 pt-2.5">
+						<div className="flex items-baseline justify-between gap-2">
+							<span className="text-[10px] text-muted-foreground/70">{t("console.progress")}</span>
+							<span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+								{Math.round(percent)}%
+							</span>
+						</div>
+						<MeterBar value={percent} className="mt-1.5 h-[3px]" />
+						<p className="mt-2 text-[9px] leading-[14px] text-muted-foreground/60">{t("console.spineNote")}</p>
+					</div>
+				</aside>
 
-				<section className={`${CARD} flex min-h-0 min-w-0 flex-1 flex-col`}>
-					<header className={PANEL_HEAD}>
-						<h2 className="font-serif text-[13px] font-semibold text-foreground">{t("console.checkpoints")}</h2>
-						<span className="font-mono text-[9px] tabular-nums text-muted-foreground">{checkpoints.length}</span>
+				<section className={`${CARD} flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden`}>
+					<header className="flex shrink-0 items-baseline justify-between gap-2 border-b border-border/50 px-4 pb-2 pt-2.5">
+						<h2 className={MICRO}>{t("console.checkpoints")}</h2>
+						<span className="font-mono text-[9px] tabular-nums text-muted-foreground/70">
+							{checkpoints.length}
+						</span>
 					</header>
 					{checkpoints.length === 0 ? (
-						<p className="px-3 py-3 text-[10.5px] text-muted-foreground">{t("console.checkpointsEmpty")}</p>
+						<p className="px-4 py-3 text-[10.5px] text-muted-foreground">{t("console.checkpointsEmpty")}</p>
 					) : (
 						<ol className="flex min-h-0 flex-1 flex-col overflow-y-auto">
 							{checkpoints.map((checkpoint, index) => (
 								<li
 									key={`${checkpoint.at}-${index}`}
-									className="flex min-w-0 items-baseline gap-2 border-b border-border/30 px-3 py-1.5 last:border-b-0"
+									className="flex min-w-0 items-baseline gap-2 border-b border-border/30 px-4 py-1.5 last:border-b-0"
 								>
 									<span className="w-[74px] shrink-0 font-mono text-[9px] tabular-nums text-muted-foreground/70">
 										{dateOf(checkpoint.at)}
@@ -123,18 +147,20 @@ export function ConsolePane({ book, review, onBack, onOpenChapter }: ConsolePane
 							))}
 						</ol>
 					)}
+					<div className="flex h-8 shrink-0 items-center gap-2 border-t border-border/40 px-4 font-mono text-[10px] text-muted-foreground/70">
+						<span aria-hidden="true" className="icon-[solar--info-circle-linear] size-3 shrink-0" />
+						<span className="truncate">{t("console.readOnly")}</span>
+					</div>
 				</section>
 
-				<div className="flex w-full shrink-0 flex-col gap-3 xl:w-[264px] xl:overflow-y-auto">
-					<section className={`${CARD} flex flex-col gap-2 p-3`}>
+				<aside className="flex w-full shrink-0 flex-col rounded-[18px] bg-muted/40 px-4 py-4 xl:w-[264px] xl:overflow-y-auto">
+					<section className="flex flex-col gap-2">
 						<header className="flex items-baseline justify-between gap-2">
-							<h2 className="font-serif text-[13px] font-semibold text-foreground">{t("console.overview")}</h2>
+							<h2 className={MICRO}>{t("console.overview")}</h2>
 							<PhaseBadge phase={book.phase} />
 						</header>
 						<div className="flex items-baseline justify-between gap-2">
-							<span className="font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">
-								{t("console.progress")}
-							</span>
+							<span className="text-[10px] text-muted-foreground/70">{t("console.progress")}</span>
 							<span className="font-mono text-[11px] tabular-nums text-foreground">{Math.round(percent)}%</span>
 						</div>
 						<MeterBar value={percent} className="h-[3px]" />
@@ -144,26 +170,30 @@ export function ConsolePane({ book, review, onBack, onOpenChapter }: ConsolePane
 						</div>
 					</section>
 
-					<section className={`${CARD} flex flex-col p-3`}>
-						<header className="flex items-baseline justify-between gap-2 pb-1.5">
-							<h2 className="font-serif text-[13px] font-semibold text-foreground">{t("console.team")}</h2>
-							<span className="font-mono text-[9px] tabular-nums text-muted-foreground">{STUDIO_MEMBERS.length}</span>
+					<section className="mt-3 flex flex-col border-t border-border/50 pt-3">
+						<header className="flex items-baseline justify-between gap-2 pb-1">
+							<h2 className={MICRO}>{t("console.team")}</h2>
+							<span className="font-mono text-[9px] tabular-nums text-muted-foreground/70">
+								{STUDIO_MEMBERS.length}
+							</span>
 						</header>
 						<ul className="flex flex-col">
 							{STUDIO_MEMBERS.map((member) => (
 								<li key={member.agentId} className="flex min-w-0 items-baseline gap-2 py-1">
-									<span className="min-w-0 flex-1 truncate text-[10.5px] text-foreground">{t(member.nameKey)}</span>
-									<span className="shrink-0 font-mono text-[9px] text-muted-foreground">{t(member.dutyKey)}</span>
+									<span className="min-w-0 flex-1 truncate text-[11px] text-foreground">{t(member.nameKey)}</span>
+									<span className="shrink-0 font-mono text-[9px] text-muted-foreground/70">{t(member.dutyKey)}</span>
 								</li>
 							))}
 						</ul>
 					</section>
 
-					<section className={`${CARD} flex flex-col gap-1.5 p-3`}>
+					<section className="mt-3 flex flex-col gap-1.5 border-t border-border/50 pt-3">
 						<header className="flex items-baseline justify-between gap-2">
-							<h2 className="font-serif text-[13px] font-semibold text-foreground">{t("console.review")}</h2>
+							<h2 className={MICRO}>{t("console.review")}</h2>
 							{review ? (
-								<span className="font-mono text-[11px] tabular-nums text-foreground">{review.score}</span>
+								<span className="font-serif text-[19px] font-semibold leading-none tabular-nums text-foreground">
+									{review.score}
+								</span>
 							) : null}
 						</header>
 						{review ? (
@@ -181,7 +211,7 @@ export function ConsolePane({ book, review, onBack, onOpenChapter }: ConsolePane
 							<p className="text-[10.5px] text-muted-foreground">{t("console.reviewEmpty")}</p>
 						)}
 					</section>
-				</div>
+				</aside>
 			</div>
 		</div>
 	);
