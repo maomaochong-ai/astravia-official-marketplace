@@ -18,6 +18,10 @@ export function StudioStrip({ book }: { book: NovelBook }) {
 
 	return (
 		<div className="flex h-8 shrink-0 items-center gap-2 border-b border-border/50 px-4 text-[10.5px] text-muted-foreground">
+			<span className="hidden min-w-0 shrink-0 items-center gap-1 md:flex">
+				<span className="truncate">{t("strip.from")}</span>
+				<span aria-hidden="true" className="icon-[solar--alt-arrow-right-linear] size-2.5 text-muted-foreground/60" />
+			</span>
 			<span
 				aria-hidden="true"
 				className={`size-1.5 shrink-0 rounded-full ${drafting ? "bg-primary" : "bg-muted-foreground/40"}`}

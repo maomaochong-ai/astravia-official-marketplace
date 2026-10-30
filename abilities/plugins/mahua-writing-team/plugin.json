@@ -1,9 +1,9 @@
 {
   "id": "mahua-writing-team",
   "name": "%plugin.name%",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "icon": "solar:book-2-bold",
-  "defaultLocale": "en",
+  "defaultLocale": "zh",
   "pluginApiVersion": "^2.3.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
@@ -93,21 +93,21 @@
         "members": [
           {
             "agent": "mahua-architect",
-            "responsibility": "%team.studio.architect%"
+            "responsibility": "Turns the brief into volumes, arcs and one-line chapter outlines."
           },
           {
             "agent": "mahua-writer",
-            "responsibility": "%team.studio.writer%",
+            "responsibility": "Writes one chapter at a time from the stored outline and revises against must-fix items.",
             "instructionsPath": "agent/prompts/briefs/writer.md"
           },
           {
             "agent": "mahua-editor",
-            "responsibility": "%team.studio.editor%",
+            "responsibility": "Scores seven dimensions and blocks any chapter that is not fit to commit.",
             "instructionsPath": "agent/prompts/briefs/editor.md"
           },
           {
             "agent": "mahua-arbiter",
-            "responsibility": "%team.studio.arbiter%"
+            "responsibility": "Resolves premise conflicts, deadlocks and author overrides with a recorded ruling."
           }
         ],
         "workflowPath": "agent/prompts/team-workflow.md"
