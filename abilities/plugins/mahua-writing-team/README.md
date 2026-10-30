@@ -17,9 +17,10 @@ one-sentence premise with the team, and the architect lays out volumes and arcs 
 
 ## What you see after installing
 
-Nothing is added to your sidebar. The studio lives in **one tab of the activity panel**: open the
-panel's **+** menu, pick **Mahua Novels** (麻花小说网) under *addable plugin panels*, and it docks as
-a tab. The tab always exists — when the credential is not active it shows the activation panel
+Nothing is added to your sidebar. The studio is **one tab of the activity panel**, already docked on
+the tab bar after install: click **Mahua Novels** (麻花小说网) to open the workspace. Use the tab's
+minus button to put it away — it moves back into the panel's **+** menu and can be added again at
+any time. The tab always exists: when the credential is not active it shows the activation panel
 instead of the shelf, so the same tab is both the way in and the way back.
 
 The workspace has five layers, all inside the panel, none of them a chatbot:
@@ -195,7 +196,7 @@ npm install
 npm run references # regenerate src/reference/library.generated.ts from agent/
 npm run check      # tsc --noEmit
 npm test           # vitest: router, state machine, entitlement, service, library, threads, guards
-npm run build      # dist/ + release/mahua-writing-team-0.4.6.astraviapkg
+npm run build      # dist/ + release/mahua-writing-team-0.4.7.astraviapkg
 npm run validate   # parse plugin.json with the host's own manifest parser
 ```
 

@@ -86,7 +86,7 @@
 			"items": [
 				{
 					"title": "Install Mahua Novels from the marketplace",
-					"description": "It does not take a sidebar slot: open the activity panel's + menu and add Mahua Novels as a tab. No API key is needed to start — the bundled community credential unlocks the studio."
+					"description": "It does not take a sidebar slot: the activity panel's tab bar already carries Mahua Novels once installed — one click opens the studio. No API key is needed to start — the bundled community credential unlocks it."
 				},
 				{
 					"title": "Open the studio and create a book",
