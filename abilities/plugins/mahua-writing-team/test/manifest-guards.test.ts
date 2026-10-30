@@ -178,6 +178,27 @@ describe("manifest", () => {
 		// `members[].instructionsPath` needs ^2.3.0 or an older host rejects the whole manifest.
 		expect(manifest.pluginApiVersion).toBe("^2.3.0");
 	});
+	it("keeps defaultLocale on a catalog that ships with the pack", () => {
+		// 宿主把档案的 name/description 按 defaultLocale 解析成字面量落库（ADR-0033），
+		// 所以这个语言必须真有一份语言包；写错了落库与回退都会变成裸 key。
+		const locale = String(manifest.defaultLocale);
+		expect(["en", "zh"]).toContain(locale);
+		expect(Object.keys(json<Record<string, string>>(`locales/${locale}.json`)).length).toBeGreaterThan(0);
+	});
+
+	it("gives every team member a literal responsibility, not a catalog key", () => {
+		// 宿主只对 agent/team 的 name 与 description 走 nameKey 查表，成员职责是原样写进
+		// team.json 的（含发给队长的 operating context）。写成 %key% 就会把占位符本身
+		// 发给模型，界面上也只剩 %…%。
+		const agent = manifest.agent as { teams: { members: { responsibility?: string }[] }[] };
+		for (const team of agent.teams) {
+			for (const member of team.members) {
+				const responsibility = member.responsibility ?? "";
+				expect(responsibility.length, responsibility).toBeGreaterThan(0);
+				expect(/^%.*%$/.test(responsibility), responsibility).toBe(false);
+			}
+		}
+	});
 
 	it("points every promised file at a real one", () => {
 		const paths: string[] = [String(manifest.entry), ...((manifest.styles as string[]) ?? [])];
