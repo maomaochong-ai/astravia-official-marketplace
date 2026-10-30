@@ -24,6 +24,12 @@ function walk(dir: string, out: string[] = []): string[] {
 const SOURCE_FILES = walk("src").filter((path) => /\.(ts|tsx|css)$/.test(path));
 
 /**
+ * 工具注册分散在 `src/tools/` 的五个弧段文件里，守卫按目录扫：
+ * 增一个文件不用回来改断言，漏一个文件也不会被漏掉。
+ */
+const TOOL_SOURCE = SOURCE_FILES.filter((path) => path.startsWith("src/tools/")).map(read).join("\n");
+
+/**
  * 路由器实际能产出的 task 集合：扫 `novel-flow.ts` 里 `task: "..."` 的字面量。
  * 这样删一个分支时文案跟着退场，不需要另一份清单同步。
  */
@@ -278,7 +284,7 @@ describe("the agent directory is a real package, not loose files (ADR 0019)", ()
 	});
 
 	it("prefixes every registered tool with the plugin's own namespace", () => {
-		const ids = [...read("src/tools/novel-tools.ts").matchAll(/id: "([a-z_]+)"/g)].map((match) => match[1]);
+		const ids = [...TOOL_SOURCE.matchAll(/id: "([a-z_]+)"/g)].map((match) => match[1]);
 		expect(ids.length).toBeGreaterThan(0);
 		expect(ids.filter((id) => !id.startsWith("mahua_"))).toEqual([]);
 	});
@@ -321,17 +327,21 @@ describe("visual language stays on host tokens", () => {
 		expect(violations).toEqual([]);
 	});
 
-	it("registers a tab, not a sidebar entry (ADR 0025 §2)", () => {
+	it("registers both an activity tab and a workspace view (ADR 0025 补注)", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		// 侧边栏是用户自己的导航位；工作台只能是一枚活动面板标签，不能常驻侧栏。
-		expect(entry).not.toContain("registerWorkspaceView");
-		expect(entry).not.toContain("setWorkspaceViewHeader");
+		const view = read("src/studio-workspace-view.ts");
+		// 侧边栏节点仍然是宿主自己的导航位，工作区视图走插件自己的 nav 入口；
+		// 但只注册标签不够：宿主里「已在栏上」（initiallyVisible）与「在 + 可添加池」互斥，
+		// 用户在面板菜单里就永远找不到它。所以两处都注册，并在 chrome 上给双向跳转。
 		expect(entry).toContain("registerStudioTab(ctx)");
+		expect(entry).toContain("registerStudioWorkspaceView(ctx)");
+		expect(entry).not.toContain("setWorkspaceViewHeader");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
-		// fail-closed：没声明的场景下一个标签都不出现。
+		expect(view).toContain("ctx.ui.registerWorkspaceView(");
+		// fail-closed：没声明的场景下一个都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
-		// 默认就上栏：入口不再押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
+		// 默认就上栏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
 	});
 
@@ -342,7 +352,9 @@ describe("visual language stays on host tokens", () => {
 		const sources = SOURCE_FILES.map(read).join("\n");
 		for (const slot of ["workspace-view", "activity-tab"]) {
 			const declared = permissions.includes(`ui.slot.${slot}`);
-			const used = sources.includes(`register${slot === "workspace-view" ? "WorkspaceView" : "ActivityTab"}(`);
+			// 往宿主注册的实际方法名：`ctx.ui.` 后面那一串，插件的封装函数叫别的名字。
+			const method = slot === "workspace-view" ? ".registerWorkspaceView(" : ".registerActivityTab(";
+			const used = sources.includes(method);
 			expect(used, `${slot} used but not declared`).toBe(declared);
 		}
 	});
@@ -389,8 +401,7 @@ describe("capability parity with ainovel-cli (ADR 0009)", () => {
 	};
 
 	it("exposes every upstream capability as a registered tool", () => {
-		const source = read("src/tools/novel-tools.ts");
-		const registered = new Set([...source.matchAll(/id: "mahua_([a-z_]+)"/g)].map((match) => match[1]));
+		const registered = new Set([...TOOL_SOURCE.matchAll(/id: "mahua_([a-z_]+)"/g)].map((match) => match[1]));
 		const missing = Object.entries(PARITY).flatMap(([upstream, ours]) =>
 			ours.filter((tool) => !registered.has(tool)).map((tool) => `${upstream} -> ${tool}`),
 		);
@@ -398,14 +409,13 @@ describe("capability parity with ainovel-cli (ADR 0009)", () => {
 	});
 
 	it("registers no tool id twice", () => {
-		const ids = [...read("src/tools/novel-tools.ts").matchAll(/id: "mahua_([a-z_]+)"/g)].map((m) => m[1]);
+		const ids = [...TOOL_SOURCE.matchAll(/id: "mahua_([a-z_]+)"/g)].map((m) => m[1]);
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
 	it("gives every tool a scope_use so the host does not fail closed", () => {
-		const source = read("src/tools/novel-tools.ts");
-		const registrations = source.match(/registerTool</g) ?? [];
-		const scopes = source.match(/scope_use: \[\.\.\.SCENARIOS\]/g) ?? [];
+		const registrations = TOOL_SOURCE.match(/registerTool</g) ?? [];
+		const scopes = TOOL_SOURCE.match(/scope_use: \[\.\.\.SCENARIOS\]/g) ?? [];
 		expect(scopes.length).toBe(registrations.length);
 	});
 });
@@ -441,6 +451,8 @@ describe("the plugin stands alone (ADR 0010)", () => {
 		const permissions = (manifest.permissions as string[]).slice().sort();
 		expect(permissions).toEqual(
 			[
+				"agent.hookHandler.execute",
+				"agent.hooks.register",
 				"agent.session.read",
 				"agent.session.write",
 				// ADR 0019：提示词块与技能目录各自需要一项权限，缺了宿主会静默跳过。
@@ -453,6 +465,8 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"ui.slot.activity-tab",
 				"ui.slot.new-session-context",
 				"ui.slot.tool-call",
+				// 工作区视图与活动面板标签双注册（见上一条入口形状守卫）。
+				"ui.slot.workspace-view",
 				"workspace.read",
 			].sort(),
 		);
@@ -477,9 +491,7 @@ describe("the gate covers exactly the write tools", () => {
 	]);
 
 	it("lists every tool that writes and nothing that only reads", () => {
-		const registered = [...read("src/tools/novel-tools.ts").matchAll(/id: "(mahua_[a-z_]+)"/g)].map(
-			(match) => match[1],
-		);
+		const registered = [...TOOL_SOURCE.matchAll(/id: "(mahua_[a-z_]+)"/g)].map((match) => match[1]);
 		const gated = [...read("src/entitlement/entitlement-gate.ts").matchAll(/"(mahua_[a-z_]+)"/g)].map(
 			(match) => match[1],
 		);

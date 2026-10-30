@@ -25,7 +25,7 @@ export const STUDIO_TAB_ICON = "icon-[solar--book-2-linear]";
  * 那时「+」反而一定会出现——加号只在「确实有东西可加」时才该出现。
  *
  * `scope_use` 是 fail-closed 的：不声明场景，标签在任何会话里都不会出现，所以这里写全
- * 本插件工具实际服务的两种场景（与 `novel-tools.ts` 的 `SCENARIOS` 同一口径）。
+ * 本插件工具实际服务的两种场景（口径见 `src/scenarios.ts`）。
  *
  * 凭证判断不在这里做：未激活时视图自己渲染激活面板（同一块面板，ADR 0024 §6），
  * 所以标签从装上那天起就在栏上，不会因为凭证过期而消失。

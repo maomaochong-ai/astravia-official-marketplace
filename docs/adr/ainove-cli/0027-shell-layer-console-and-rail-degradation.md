@@ -5,7 +5,7 @@
   `shared/components/StudioChrome.tsx`、`studio/components/StudioRail.tsx`、
   `studio/components/ConsolePane.tsx`；重写 `library/components/{BookCover,LibraryShelf,BookDetail,ChapterIndex,LibraryCatalog,LibraryFilterRow,ReaderPane,ThreadLedger}.tsx`、
   `shared/components/PageBar.tsx`、`studio/components/{BookHead,StudioWorkspaceView}.tsx`）、
-  `src/features/library/hooks/use-library-route.ts`、`locales/{en,zh}.json`（244 → 284 键）
+  `src/features/library/hooks/use-library-route.ts`、`locales/{en,zh}.json`（244 → 284 键；0.4.9 时 351，见 §8）
 - 依据：`ui-mock/mahua-novel-studio.astravia-design` 的 `theme.css` / `components/*` / `frames/*`
   逐帧实读；宿主 `.tooling/open-astravia/apps/desktop/src/renderer/styles.css` 令牌实测；
   `node_modules/@astravia-org/plugin-sdk/src/tailwind-theme.css` 的 24 个别名
@@ -15,8 +15,11 @@
 ## 1. 运行台（`console`）只呈现落盘事实，不呈现运行时
 
 设计稿的 `console` 帧是一块实时监控板：工具调用事件流、上下文占用百分比（「上下文 67%」）、
-模型名（`mimo-v2.5-pro`）、编辑队列深度、「裁定者空闲」。这些数据**没有一项**能从标签页拿到：
-宿主的 agent 运行时不在插件 API 里，队列与上下文占用只存在于会话进程内。
+模型名（`mimo-v2.5-pro`）、编辑队列深度、「裁定者空闲」。当初的判断是这些数据**没有一项**能从
+标签页拿到：宿主的 agent 运行时不在插件 API 里，队列与上下文占用只存在于会话进程内。
+
+该前提的一半已被 SDK 推翻（§9 与本节末尾的修订）：工具调用与子智能体的生命周期**有**官方钩子，
+事件流因此是真事件。上下文占用、模型名、队列深度仍然拿不到——那三块数字继续不做。
 
 照抄这四块等于在界面里写死一组假数——它们会一直显示「67%」，永远不动，读者却会当真。
 所以运行台改为三列，每列都用仓储里能查到的数据：
@@ -27,7 +30,30 @@
 | 落盘时间线 | `book.checkpoints` | 时间、章号、`noteKey`（已翻译）、当时的阶段 |
 | 概览 / 团队 / 最近评审 | `progress`、`STUDIO_MEMBERS`、`reviews/<n>.json` | 进度与总字数、四位的职责、七维分数 |
 
-结论：**设计稿的字段名可以借，数据不能编**。这一页没有任何写操作，也没有输入框。
+结论：**设计稿的字段名可以借，数据不能编**。这一页没有输入框；唯一的写操作是清空活动流，
+它只动观感层的内存与一份缓存，不动账本。
+
+### 修订（2026-10-31，0.4.9）：事件流是真事件，另三块仍然不做
+
+`@astravia-org/plugin-sdk` 的 `ctx.agent.registerHook` 提供五个事件：`PreToolUse`、`PostToolUse`、
+`PostToolUseFailure`、`SubagentStart`、`SubagentStop`；每个注册项必须声明 `scope_use`，否则宿主
+fail-closed。团队协作（派活、发消息、等任务、继续/重试/取消）本身就是一组工具调用，团队成员会话在
+`resolve-session-config` 之后落到 `"project"` 场景，所以它与插件自己的 `mahua_*` 工具走同一条钩子。
+
+中栏因此拆成两层，数据源都是真的：
+
+| 层 | 数据源 | 说明 |
+| --- | --- | --- |
+| 活动流（上，占满剩余高度） | `feedStore`（内存总线）+ `console/feed.json`（环形 200 条） | 时刻、状态点、一句话事实、章号 chip；失败行原样附错误文本 |
+| 落盘时间线（下，`max-h-[42%]`） | `book.checkpoints` | 时间、章号、`noteKey`、当时的阶段 |
+
+钩子只读：handler 一律返回 `undefined`，不改工具入参、不拦调用；一条事件渲染失败被 `try/catch` 吞掉，
+不让这一轮工具调用跟着挂。归属只写钩子能证明的东西——插件工具不推断「是哪位成员在写」，
+团队工具自带 `target` / `recipients` 才写出真名。
+
+仍不做的三块及其原因：**上下文占用**与**模型名**不在钩子载荷里（`PluginCodingAgentHookHandlerContext`
+只有 `event` 与 `scope`，不带 `ctx`/`storage`）；**编辑队列深度**没有对应事件。宁可少三格，
+不在界面上摆三个永远不动的数。
 
 ## 2. 左侧导航在 400px 面板里降级成图标栏
 
@@ -92,15 +118,26 @@
 `shelf.live` / `shelf.others` / `shelf.openConsole`；`book.brief*` 六个 + `book.legend*` 四个 +
 `book.volume`；`console.*` 九个；`library.column.stage` / `library.hint` / `library.footer`；
 `nav.works` / `nav.craft` / `nav.shelf` / `nav.library` / `nav.book` / `nav.reader` /
-`nav.console` / `nav.ledger`。中英同步，键数各 284。
+`nav.console` / `nav.ledger`。中英同步，0.4.9 时键数各 351。
+
+0.4.9 又追加 44 键（307 → 351，即 §1 修订里的事件流）：`console.feed*` 5、`feed.status.*` 3、
+`feed.agent.*` 2、`feed.team.*` 6、`feed.tool.*` 24（与 `tool-catalog.ts` 的两张表逐项对账），
+外加 `studio.openWorkspace` / `studio.openPanel` 与 `workspace.studio.label` / `workspace.studio.description`
+（双注册面板的标签与交叉跳转）。`feed.tool.*` 是拼出来的键（`feed.tool.<工具名>`），
+通用扫描看不见，由 `test/feed-describe.test.ts` 守。
 
 ## 9. 未做的事（明确记录，不静默）
 
 - `StudioStrip` 不复刻设计稿的「团队正在写 · 2m 14s」「编辑排队 · 裁定者空闲」——没有计时与队列数据；
-- 运行台不做事件流、不做上下文占用百分比、不显示模型名——同上；
+- ~~运行台不做事件流~~、不做上下文占用百分比、不显示模型名。**前半句已推翻**（2026-10-31）：
+  `ctx.agent.registerHook` 让工具与子智能体事件真的能拿到，运行台中上栏就是这条真事件流
+  （详见 §1 的修订）。后两项仍然不做：钩子载荷里没有上下文占用，也没有模型名，
+  不拿落盘字段拄一个看起来像监控的数字。
+- 不把历史事件流当账本：`console/feed.json` 是观感层的环形缓存（200 条），可以在运行台里一键清空；
+  可恢复的事实仍然只有 `book.checkpoints`。两者分栏显示，不混排。
 - 不做应用内视觉验证：本仓库的 `vitest.config.ts` 固定 `environment: "node"`，
   守卫测试依赖 `import.meta.url`，加 `jsdom`/`happy-dom` 会破坏它们。本轮验证为
-  `tsc --noEmit` + 182 例单测 + `npm run build` + 市场 `check` + 仓库级 `tests/*.test.mjs`，
+  `tsc --noEmit` + 209 例单测 + `npm run build` + 市场 `check` + 仓库级 `tests/*.test.mjs`，
   真机观感仍需在桌面端手动确认。
 - 设计稿目录本身不在版本库里（`git log -- ui-mock/mahua-novel-studio.astravia-design` 为空），
   本轮比对只能逐帧实读，无法给出 diff。

@@ -1,5 +1,8 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { useState } from "react";
+import { tryGetStudioRuntime } from "../../../plugin-context.js";
+import { STUDIO_TAB_ID } from "../../../studio-tab.js";
+import { STUDIO_VIEW_ID } from "../../../studio-workspace-view.js";
 import { BookDetail } from "../../library/components/BookDetail.js";
 import { LibraryCatalog } from "../../library/components/LibraryCatalog.js";
 import { LibraryShelf } from "../../library/components/LibraryShelf.js";
@@ -7,6 +10,7 @@ import { ReaderPane } from "../../library/components/ReaderPane.js";
 import { ThreadLedger } from "../../library/components/ThreadLedger.js";
 import { useLibraryRoute, type LibrarySurface } from "../../library/hooks/use-library-route.js";
 import { ActivationPanel } from "../../shared/components/ActivationPanel.js";
+import { ChromeButton } from "../../shared/components/ChromeButton.js";
 import { StudioChrome } from "../../shared/components/StudioChrome.js";
 import { useAgentHandoff } from "../hooks/use-agent-handoff.js";
 import { instructionOf, useStudioState } from "../hooks/use-studio-state.js";
@@ -27,7 +31,15 @@ import { StudioStrip } from "./StudioStrip.js";
  * 设计帧是 1440×900 的整窗（左 208px 固定栏 + 主纸 + 右侧固定宽栏），标签页实宽 400–1000px，
  * 固定宽栏一律带断点降级（ADR 0026 §2 / 0027 §2）。红绿灯窗口控件不复刻——标签页没有窗口边框。
  */
-export function StudioWorkspaceView() {
+interface StudioWorkspaceViewProps {
+	/**
+	 * 宿主只在工作区视图里传这个值；作为活动面板标签挂载时是空的。
+	 * 它是「我现在挂在哪个入口上」的唯一依据——没有就是标签页。
+	 */
+	viewId?: string;
+}
+
+export function StudioWorkspaceView({ viewId }: StudioWorkspaceViewProps) {
 	const { t } = useTranslation();
 	const state = useStudioState();
 	const { book, copyManuscript } = state;
@@ -161,18 +173,38 @@ export function StudioWorkspaceView() {
 							? t("nav.console")
 							: t("nav.ledger");
 
+	// 两个入口互为退路：标签页里给「全屏打开」，整页里给「回到右栏」。
+	// 运行时未就绪时两枚都不画——宁可少一枚按钮，也不画一枚点了没用的。
+	const runtime = tryGetStudioRuntime();
+	const entrySwitch = runtime
+		? viewId
+			? {
+					icon: "icon-[solar--sidebar-minimalistic-linear]",
+					label: t("studio.openPanel"),
+					onClick: () => runtime.ctx.ui.openActivityTab(STUDIO_TAB_ID),
+				}
+			: {
+					icon: "icon-[solar--maximize-square-linear]",
+					label: t("studio.openWorkspace"),
+					onClick: () => runtime.ctx.ui.openWorkspaceView(STUDIO_VIEW_ID),
+				}
+		: null;
+
 	return (
 		<div className="mahua-root flex h-full min-h-0 flex-col overflow-hidden bg-muted/40 text-foreground">
 			<StudioChrome
 				crumb={book && route.surface !== "shelf" && route.surface !== "catalog" ? [t("view.studio.label"), book.title, surfaceLabel] : [t("view.studio.label"), surfaceLabel]}
 				right={
-					book ? (
-						<span className="font-mono text-[10px] tabular-nums text-muted-foreground/70">
-							{t("studio.header.progress", {
-								progress: `${book.progress.committedCount}/${book.targetChapters}`,
-							})}
-						</span>
-					) : undefined
+					<>
+						{book ? (
+							<span className="font-mono text-[10px] tabular-nums text-muted-foreground/70">
+								{t("studio.header.progress", {
+									progress: `${book.progress.committedCount}/${book.targetChapters}`,
+								})}
+							</span>
+						) : null}
+						{entrySwitch ? <ChromeButton {...entrySwitch} /> : null}
+					</>
 				}
 			/>
 

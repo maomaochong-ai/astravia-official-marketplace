@@ -121,3 +121,22 @@
 >
 > 同步修改：`src/studio-tab.ts`、`src/index.tsx` 注释、`AGENTS.md`、两份 README、`detail.json` /
 > `detail.zh.json` 的安装步骤、`test/manifest-guards.test.ts` 的守卫断言。版本 `0.4.6` → `0.4.7`。
+>
+> **补注二（双注册，2026-10-31，0.4.9）**：§2 的「只注册活动标签」已改为双注册——
+> `registerActivityTab` 与 `registerWorkspaceView` 各一份，并在 `StudioChrome` 上给双向跳转。
+>
+> §1 的关切是「不占宿主侧边栏的导航位」，这一条仍然成立：工作区视图是插件自己的 nav 节点
+> （`navOrder: 0`、`STUDIO_TAB_ICON`），不是宿主侧栏的用户内容区，也没有接管页头
+> （`setWorkspaceViewHeader` 依旧不调）。翻转的理由是上一条补注没覆盖到的一段：
+> `isPluginTabOnBar = explicitTabVisibility(...) ?? def.initiallyVisible !== false` 与「+ → 可添加池」
+> 是**互斥**的两侧——`initiallyVisible: true` 一旦生效，`availablePluginTabs` 里就永远不会出现它。
+> 于是「默认上栏」直接换来「面板菜单里找不到麻花」，真实反馈就是这一句。两条同时要，只能双注册。
+>
+> 选择这个形状而不是另造机制，是因为 `dbx-pro` 已经是这个形状：`ctx.ui.registerActivityTab`
+> ＋ `ctx.ui.registerWorkspaceView` 两处注册，`openActivityTab(id)` 打通
+> （`abilities/plugins/dbx-pro/src/index.tsx:135 / :147 / :168`）。同一份宿主 API、同一套权限粒度
+> （`ui.slot.activity-tab` / `ui.slot.workspace-view`），没有新概念。
+>
+> 同步修改：新增 `src/studio-workspace-view.ts` 与 `src/features/shared/components/ChromeButton.tsx`、
+> `plugin.json#permissions` 加 `ui.slot.workspace-view`、`AGENTS.md` 的「入口形状」段、
+> `test/manifest-guards.test.ts` 的入口形状与权限清单两条断言。版本 `0.4.8` → `0.4.9`。

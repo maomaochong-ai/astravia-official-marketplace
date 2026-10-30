@@ -33,7 +33,9 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 | `src/repository/` | 稿件账本，一次推进一次 `commit()` | 业务校验 |
 | `src/entitlement/` | 离线验签与门禁 | 网络请求、身份绑定 |
 | `src/application/` | `StudioService`：唯一写入口 | JSX、工具注册 |
-| `src/tools/` | 36 个 Agent 工具的薄适配器（读 12 / 写 24） | 状态转移逻辑 |
+| `src/tools/` | 36 个 Agent 工具的薄适配器（读 12 / 写 24），按弧分文件：`reading-` / `foundation-` / `outline-` / `chapter-` / `ledger-tools.ts`，`register-novel-tools.ts` 只做总装 | 状态转移逻辑 |
+| `src/application/tool-*.ts` | 工具共用的 schema 片段与输出整形 | 具体工具注册 |
+| `src/scenarios.ts` | `scope_use` 的唯一口径 | 场景判断逻辑 |
 | `src/features/<feature>/` | 视图、hooks、`components/` | 直接读写存储 |
 | `src/features/shared/components/` | 跨 feature 的基础组件，一文件一组件 | 万能容器文件 |
 
@@ -61,25 +63,54 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 - 没有工作区根目录时不发消息，直接提示 `studio.handoffNoWorkspace`——会话没有 cwd 等于把账本写到
   用户找不到的地方。
 
+## 运行台事件流（ADR 0027 §1 修订）
+
+运行台中上栏是真事件，来源只有一处：`src/live-feed-hooks.ts` 的 `ctx.agent.registerHook`
+（`PreToolUse` / `PostToolUse` / `PostToolUseFailure` / `SubagentStart` / `SubagentStop`，权限
+`agent.hooks.register` 与 `agent.hookHandler.execute`）。
+
+- **钩子只读**：handler 一律返回 `undefined`，不改工具入参、不拦调用。想改变行为就去改工具，别改流。
+- **不写 `toolNames`**：插件工具的 hostName 会被宿主加命名空间，猜错就是静默永不触发。
+  所有工具事件都进来，在 `describe-tool-event.ts` 里按 `tool-catalog.ts` 过滤。
+- **不推测归属**：插件工具不写「是哪位成员在写」；只有团队工具自带 `target` / `recipients` 才写其名。
+- **流不是账本**：`console/feed.json` 是环形缓存（200 条），可一键清空；可恢复的事实只有
+  `book.checkpoints`。两者在界面上分栏，不混排。
+- **不编监控数据**：上下文占用、模型名、队列深度不在钩子载荷里，界面就不显示——不拿落盘字段充数。
+- 文案 key 是拼出来的（`feed.tool.<name>`），通用 locale 守卫扫不到；
+  `test/feed-describe.test.ts` 负责对账 `feedCatalogKeys()` 与两侧语言文件。
+
 ## 插件必须自足（ADR 0010）
 
 不引用任何别的插件的实体：团队成员只写本清单里声明的 `mahua-*` id，工具 id 只带 `mahua_`
-前缀，`permissions` 精确等于实际用到的那 10 项。三份断言在 `test/manifest-guards.test.ts`。
+前缀，`permissions` 精确等于实际用到的那 15 项（含 hook 两项与两个面板 slot）。三份断言在
+`test/manifest-guards.test.ts`。
 
 ## 入口形状（ADR 0025 §2）
 
-工作台是**活动面板的一枚标签**（`ctx.ui.registerActivityTab`，`ui.slot.activity-tab`），不是侧边栏
-入口。不再调 `registerWorkspaceView` / `setWorkspaceViewHeader`：标签没有宿主页头，标题与动作
-都在组件自己身上。
+工作台同时注册两处，形状与 `dbx-pro` 一致（ADR 0025 补注二）：
 
-- `scope_use: ["conversation", "project"]` 是 fail-closed 的，与 `novel-tools.ts` 的 `SCENARIOS` 同一口径。
-- `initiallyVisible: true`：默认就上栏。宿主 0.5.65 的「+ → 可添加插件面板」对插件标签是
-  条件化的（`showTabPicker` 要 `cwd` 非空且三类之一非空；`pluginScenario === undefined` 时整个
-  插件段被短路），把入口押在那上面会出现「看不到加号、也加不进来」。用户点减号收起来后会留下
-  显式 `false`，标签回到池子，这时「+」必定出现。取证与完整四条件见 ADR 0025 末尾补注。
-- 凭证判断不在注册处：未激活时同一个组件渲染 `ActivationPanel`，所以标签从装上开始就一直在栏上。
+| 注册 | id | 权限 | 在宿主里长什么样 |
+| --- | --- | --- | --- |
+| `ctx.ui.registerActivityTab` | `mahua-studio` | `ui.slot.activity-tab` | 活动面板上的一枚标签 |
+| `ctx.ui.registerWorkspaceView` | `mahua-studio` | `ui.slot.workspace-view` | 侧边栏插件 nav 里的一项 |
 
-`test/manifest-guards.test.ts` 钉住这三条（无 `registerWorkspaceView`、有 `scope_use`、`initiallyVisible: true`）。
+两处都在 `src/index.tsx` 装配，`StudioChrome` 右上角按 `viewId` 给双向跳转按钮
+（`studio.openWorkspace` / `studio.openPanel`）。`setWorkspaceViewHeader` 仍然不调：工作区视图不接管
+宿主页头，标题与动作都在组件自己身上。
+
+- 为什么不能只注册标签：宿主里「已在栏上」与「在 + 可添加池」是互斥的两侧——
+  `isPluginTabOnBar = explicitTabVisibility(...) ?? def.initiallyVisible !== false`，而 `availablePluginTabs`
+  只收不在栏上的标签。`initiallyVisible: true` 一旦生效，用户在面板菜单里就永远找不到它。
+  两条都要，只能双注册。
+- 两个 `id` 与 `STUDIO_VIEW_ID` 保持一致，同一套 `scope_use: ["conversation", "project"]`（fail-closed，
+  与 `src/scenarios.ts` 的 `SCENARIOS` 同一口径）。
+- `initiallyVisible: true`：默认就上栏。用户点减号收起来后会留下显式 `false`，标签回到池子，
+  这时「+」必定出现。取证与完整四条件见 ADR 0025 末尾补注。
+- 凭证判断不在注册处：未激活时同一个组件渲染 `ActivationPanel`，所以两个入口从装上开始就一直在。
+
+`test/manifest-guards.test.ts` 钉住入口形状（两处注册都在、无 `setWorkspaceViewHeader`、
+有 `scope_use`、`initiallyVisible: true`）与权限集合（`ui.slot.workspace-view` 与
+`ui.slot.activity-tab` 必须同时出现在 `plugin.json#permissions` 且已排序）。
 
 ## 已知的宿主约束
 

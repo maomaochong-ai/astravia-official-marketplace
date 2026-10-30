@@ -22,3 +22,8 @@ export function getStudioRuntime(): StudioRuntime {
 	if (!runtime) throw new Error("mahua-writing-team: studio runtime is not ready");
 	return runtime;
 }
+
+/** 给「拿不到就算了」的调用点用：顶栏里的入口按钮没有运行时就不画。 */
+export function tryGetStudioRuntime(): StudioRuntime | null {
+	return runtime;
+}
