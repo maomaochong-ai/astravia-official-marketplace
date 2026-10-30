@@ -111,7 +111,7 @@ export function InstructionCard({
 		);
 
 	return (
-		<div className="flex flex-col gap-2.5 rounded-[13px] border border-border/60 bg-card p-3.5 shadow-sm">
+		<div className="flex flex-col gap-2.5 rounded-[13px] bg-card p-3.5 shadow-xs">
 			<div className="flex items-baseline justify-between gap-2">
 				<span className="font-serif text-[15px] font-semibold leading-tight text-foreground">
 					{t("instruction.title")}

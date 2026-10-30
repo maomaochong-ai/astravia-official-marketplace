@@ -173,7 +173,7 @@ npm install
 npm run references # 从 agent/ 重新生成 src/reference/library.generated.ts
 npm run check      # tsc --noEmit
 npm test           # vitest：路由、状态机、凭证、服务层、书库、台账、守卫
-npm run build      # dist/ + release/mahua-writing-team-0.4.4.astraviapkg
+npm run build      # dist/ + release/mahua-writing-team-0.4.5.astraviapkg
 npm run validate   # 用宿主自己的 manifest 解析器校验 plugin.json
 ```
 

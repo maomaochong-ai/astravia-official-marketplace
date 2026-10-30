@@ -103,7 +103,7 @@ export function ActivationPanel({
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 lg:flex-row">
-			<aside className="hidden w-[300px] shrink-0 flex-col justify-between rounded-[18px] border border-border/60 bg-muted px-7 py-7 lg:flex">
+			<aside className="hidden w-[300px] shrink-0 flex-col justify-between rounded-[18px] bg-muted px-7 py-7 lg:flex">
 				<div>
 					<div className="flex size-11 items-center justify-center rounded-[6px] bg-primary font-serif text-[20px] leading-none text-primary-foreground">
 						{t("activation.mark")}

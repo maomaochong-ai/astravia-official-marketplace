@@ -16,7 +16,7 @@ interface ConsolePaneProps {
 	onOpenChapter: (n: number) => void;
 }
 
-const CARD = "rounded-[13px] border border-border/60 bg-card shadow-sm";
+const CARD = "rounded-[18px] bg-card shadow-xs";
 
 const PANEL_HEAD = "flex shrink-0 items-baseline justify-between gap-2 border-b border-border/50 px-3 pb-2 pt-2.5";
 

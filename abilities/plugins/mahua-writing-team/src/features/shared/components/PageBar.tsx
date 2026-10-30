@@ -18,25 +18,27 @@ interface PageBarProps {
  */
 export function PageBar({ back, actions, children }: PageBarProps) {
 	return (
-		<header className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-2 border-b border-border/50 px-4 pb-3 pt-4 sm:px-6">
+		<header className="flex shrink-0 flex-col gap-1.5 px-4 pb-4 pt-4 sm:px-6">
 			{back ? (
 				<button
 					type="button"
 					onClick={back.onClick}
-					className="mb-1 flex shrink-0 items-center gap-1 rounded-[9px] px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					className="mb-0.5 flex shrink-0 items-center gap-1 self-start rounded-[6px] py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
 				>
-					<span aria-hidden="true" className="icon-[solar--alt-arrow-left-linear] size-3.5" />
+					<span aria-hidden="true" className="icon-[solar--alt-arrow-left-linear] size-3" />
 					{back.label}
 				</button>
 			) : null}
-			<div className="flex min-w-0 flex-1 flex-col gap-1">{children}</div>
-			{actions ? <div className="flex min-w-0 flex-wrap items-center gap-2 pb-0.5">{actions}</div> : null}
+			<div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+				<div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">{children}</div>
+				{actions ? <div className="flex min-w-0 flex-wrap items-center gap-2 pb-0.5">{actions}</div> : null}
+			</div>
 		</header>
 	);
 }
 
 /** 页头标题：唯一一处 26/30px 的衬线大字，别在页面里再写一遍。 */
-export const PAGE_TITLE = "font-serif text-[24px] font-semibold leading-tight tracking-tight text-foreground sm:text-[28px]";
+export const PAGE_TITLE = "font-serif text-[26px] font-semibold leading-tight tracking-tight text-foreground sm:text-[30px]";
 
 /** 页头元信息：等宽数字，跟标题同基线。 */
-export const PAGE_META = "flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground";
+export const PAGE_META = "flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[11px] text-muted-foreground";

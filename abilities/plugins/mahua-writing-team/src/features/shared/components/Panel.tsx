@@ -30,7 +30,7 @@ export function Panel({
 }: PanelProps) {
 	const headed = title !== undefined || meta !== undefined || actions !== undefined;
 	return (
-		<section className={`min-w-0 rounded-xl border border-border/60 bg-card ${className}`}>
+		<section className={`min-w-0 rounded-[18px] bg-card shadow-xs ${className}`}>
 			{headed ? (
 				<header className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-border/40 px-4 py-2.5">
 					{title !== undefined ? (

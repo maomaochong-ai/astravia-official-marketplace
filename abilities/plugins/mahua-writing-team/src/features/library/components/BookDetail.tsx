@@ -46,7 +46,7 @@ const TICK: Record<ChapterStatus, string> = {
 	blocked: "bg-destructive",
 };
 
-const CARD = "rounded-[13px] border border-border/60 bg-card shadow-sm";
+const CARD = "rounded-[18px] bg-card shadow-xs";
 const LEGEND: { status: ChapterStatus; key: string }[] = [
 	{ status: "committed", key: "book.legendCommitted" },
 	{ status: "reviewed", key: "book.legendReviewed" },
@@ -119,7 +119,7 @@ export function BookDetail({
 						<button
 							type="button"
 							onClick={() => onOpenChapter(current)}
-							className="rounded-[9px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
+							className="rounded-[9px] bg-foreground px-3 py-1.5 text-[11px] font-medium text-background transition-opacity hover:opacity-90"
 						>
 							{t("book.continueAt", { chapter: current })}
 						</button>

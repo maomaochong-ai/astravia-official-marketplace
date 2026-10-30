@@ -38,7 +38,7 @@ export function InstructionToolRow({ toolCall }: PluginToolCallSlotProps) {
 	}
 
 	return (
-		<div className="rounded-lg border border-border/60 bg-card px-3 py-2.5">
+		<div className="rounded-[13px] bg-card px-3 py-2.5 shadow-xs">
 			<InstructionSummary
 				worker={instruction.worker}
 				task={instruction.task}

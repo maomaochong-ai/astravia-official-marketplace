@@ -43,7 +43,7 @@ export function BookCover({ seed, title, caption, size = "row" }: BookCoverProps
 	return (
 		<div
 			aria-hidden="true"
-			className={`relative flex shrink-0 flex-col overflow-hidden rounded-[3px] border border-border/70 bg-muted shadow-sm ${SHAPE[size]}`}
+			className={`relative flex shrink-0 flex-col overflow-hidden rounded-[3px] border border-border/70 bg-muted shadow-xs ${SHAPE[size]}`}
 		>
 			<span aria-hidden="true" className="absolute inset-0 opacity-[0.18]">
 				<DefaultCover seed={seed ?? title} />

@@ -27,7 +27,7 @@ export function NextStepContextCard({ insert }: NextStepContextCardProps) {
 
 	if (!book) {
 		return (
-			<div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card p-3">
+			<div className="flex flex-col gap-2 rounded-[13px] bg-card p-3 shadow-xs">
 				<div className="flex flex-col gap-1">
 					<p className="text-sm font-medium">{t("composer.empty.title")}</p>
 					<p className="text-xs text-muted-foreground">{t("composer.empty.body")}</p>
@@ -35,7 +35,7 @@ export function NextStepContextCard({ insert }: NextStepContextCardProps) {
 				<button
 					type="button"
 					onClick={() => insert(newBookPrompt(runtime.ctx.i18n.t))}
-					className="self-start rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted/60"
+					className="flex h-8 items-center self-start rounded-[9px] border border-border px-3 text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
 				>
 					{t("composer.insert")}
 				</button>
@@ -44,7 +44,7 @@ export function NextStepContextCard({ insert }: NextStepContextCardProps) {
 	}
 
 	return (
-		<div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card p-3">
+		<div className="flex flex-col gap-2 rounded-[13px] bg-card p-3 shadow-xs">
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="max-w-[20rem] truncate text-sm font-medium">{book.title}</span>
 				<span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">

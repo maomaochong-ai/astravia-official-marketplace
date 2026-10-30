@@ -11,19 +11,22 @@ interface ReaderControlsProps {
 }
 
 /**
- * 阅读页底栏（ADR 0013 §2.4，样式按 ADR 0024 §1 收紧）：上一章 · 字号 · 下一章。
+ * 阅读页底栏（ADR 0013 §2.4，样式按设计稿 `reader` 帧的页头条再收一版）。
  *
- * 翻页按钮做成番茄那种「贴着正文列两侧的宽按钮」，字号组留在中间：
- * A− / 五个档位圆点 / A+ / 复位。圆点数跟着 `READER_SCALES` 走，改档不用改这里。
- * 番茄的夜间开关不复刻——明暗归宿主主题管（ADR 0006）。
+ * 设计稿的字号组是一块「槽里嵌纸片」的分段控件：`bg-inset p-px` 的槽，选中那格是
+ * `bg-card shadow-card` 的纸片，中间夹一个等宽数字读数——不是五个圆点。
+ * 圆点只能看出「到第几档」，看不出「正文现在几号字」，所以这里换成读数。
+ * 翻页按钮仍贴着正文列两侧；番茄的夜间开关不复刻，明暗归宿主主题管（ADR 0006）。
  */
 export function ReaderControls({ scale, canPrev, canNext, onScale, onPrev, onNext }: ReaderControlsProps) {
 	const { t } = useTranslation();
 
 	const moveClass =
-		"flex-1 rounded-md border border-border/60 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40";
+		"flex-1 rounded-[9px] border border-border/60 px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
 	const stepClass =
-		"rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-40";
+		"flex size-7 items-center justify-center rounded-[7px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground";
+	const resetClass =
+		"flex h-7 items-center rounded-[7px] px-2 text-[10px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground";
 
 	return (
 		<div className="flex shrink-0 items-center gap-3 border-t border-border/60 bg-background px-3 py-2">
@@ -32,37 +35,34 @@ export function ReaderControls({ scale, canPrev, canNext, onScale, onPrev, onNex
 			</button>
 
 			<div className="flex shrink-0 items-center gap-1.5" role="group" aria-label={t("reader.font")}>
-				<button
-					type="button"
-					onClick={() => onScale(scale - 1)}
-					disabled={scale <= 0}
-					className={stepClass}
-					aria-label={t("reader.fontSmaller")}
-				>
-					A−
-				</button>
-				<span className="flex items-center gap-1" aria-hidden="true">
-					{READER_SCALES.map((_, index) => (
-						<span
-							key={index}
-							className={`h-1 w-1 rounded-full ${index === scale ? "bg-foreground/70" : "bg-foreground/20"}`}
-						/>
-					))}
-				</span>
-				<button
-					type="button"
-					onClick={() => onScale(scale + 1)}
-					disabled={scale >= READER_SCALES.length - 1}
-					className={stepClass}
-					aria-label={t("reader.fontLarger")}
-				>
-					A+
-				</button>
+				<div className="flex h-7 items-center rounded-[9px] bg-muted p-px">
+					<button
+						type="button"
+						onClick={() => onScale(scale - 1)}
+						disabled={scale <= 0}
+						className={stepClass}
+						aria-label={t("reader.fontSmaller")}
+					>
+						<span aria-hidden="true" className="icon-[solar--minus-linear] size-3" />
+					</button>
+					<span className="w-9 text-center font-mono text-[10px] tabular-nums text-foreground" aria-live="polite">
+						{READER_SCALES[scale] ?? READER_SCALES[DEFAULT_READER_SCALE]}
+					</span>
+					<button
+						type="button"
+						onClick={() => onScale(scale + 1)}
+						disabled={scale >= READER_SCALES.length - 1}
+						className={stepClass}
+						aria-label={t("reader.fontLarger")}
+					>
+						<span aria-hidden="true" className="icon-[solar--add-linear] size-3" />
+					</button>
+				</div>
 				<button
 					type="button"
 					onClick={() => onScale(DEFAULT_READER_SCALE)}
 					disabled={scale === DEFAULT_READER_SCALE}
-					className={stepClass}
+					className={resetClass}
 				>
 					{t("reader.fontReset")}
 				</button>

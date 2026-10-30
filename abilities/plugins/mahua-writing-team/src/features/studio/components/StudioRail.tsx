@@ -41,7 +41,7 @@ export function StudioRail({ items, book, credentialActive }: StudioRailProps) {
 	return (
 		<aside className="hidden w-11 shrink-0 flex-col gap-1 pb-1 sm:flex lg:w-[188px]">
 			{book ? (
-				<div className="hidden flex-col gap-2 rounded-[11px] border border-border/60 bg-card p-2 shadow-sm lg:flex">
+				<div className="hidden flex-col gap-2 rounded-[13px] bg-card p-2 shadow-xs lg:flex">
 					<div className="flex items-center gap-2.5">
 						<BookCover seed={book.id} title={book.title} size="mini" />
 						<span className="flex min-w-0 flex-col gap-0.5">
@@ -52,7 +52,7 @@ export function StudioRail({ items, book, credentialActive }: StudioRailProps) {
 						</span>
 					</div>
 					<span className="block h-[3px] w-full overflow-hidden rounded-full bg-muted">
-						<span className="block h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+						<span className="block h-full rounded-full bg-foreground/70" style={{ width: `${percent}%` }} />
 					</span>
 				</div>
 			) : null}
@@ -63,7 +63,7 @@ export function StudioRail({ items, book, credentialActive }: StudioRailProps) {
 					return (
 						<div key={item.key} className="flex flex-col">
 							{head ? (
-								<span className="hidden px-2.5 pb-1 pt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/60 lg:block">
+								<span className="hidden px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70 lg:block">
 									{head}
 								</span>
 							) : null}
@@ -74,7 +74,7 @@ export function StudioRail({ items, book, credentialActive }: StudioRailProps) {
 								onClick={item.onSelect}
 								className={`${ROW} ${
 									item.active
-										? "bg-card font-semibold text-foreground shadow-sm"
+										? "bg-card font-semibold text-foreground shadow-xs"
 										: "text-muted-foreground hover:bg-card/70 hover:text-foreground"
 								}`}
 							>

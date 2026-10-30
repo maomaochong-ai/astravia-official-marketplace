@@ -26,11 +26,11 @@ interface LibraryShelfProps {
 }
 
 const PRIMARY_BUTTON =
-	"rounded-[9px] bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40";
+	"rounded-[9px] bg-foreground px-3 py-1.5 text-[11px] font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-40";
 const QUIET_BUTTON =
 	"rounded-[9px] border border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40";
 
-const CARD = "rounded-[13px] border border-border/60 bg-card shadow-sm";
+const CARD = "rounded-[18px] bg-card shadow-xs";
 
 /**
  * 书架（ADR 0013 §2.2 / 0020 §1，版面见设计稿 `shelf` 帧，ADR 0027 §5）。
@@ -161,7 +161,7 @@ export function LibraryShelf({
 
 							<div className="rounded-[11px] bg-muted/60 p-3">
 								<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-									<span className="text-[11px] font-medium text-foreground">{t("shelf.progressTitle")}</span>
+									<span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">{t("shelf.progressTitle")}</span>
 									<span className="font-mono text-[11px] tabular-nums text-muted-foreground">
 										{primary.committedCount} / {primary.targetChapters}
 									</span>
@@ -176,7 +176,7 @@ export function LibraryShelf({
 						<div className="flex w-full shrink-0 flex-col gap-3 xl:w-[330px]">
 							<section className={`${CARD} p-2`}>
 								<header className="flex items-baseline justify-between gap-2 px-2 pb-1.5 pt-1">
-									<span className="text-[11px] font-medium text-foreground">
+									<span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
 										{t("shelf.live")}
 									</span>
 									<span className="font-mono text-[10px] text-muted-foreground">{recent.length}</span>
@@ -205,7 +205,7 @@ export function LibraryShelf({
 							{others.length > 0 ? (
 								<section className={`${CARD} p-2`}>
 									<header className="flex items-baseline justify-between gap-2 px-2 pb-1.5 pt-1">
-										<span className="text-[11px] font-medium text-foreground">
+										<span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
 											{t("shelf.others", { count: others.length })}
 										</span>
 										<button
@@ -229,7 +229,7 @@ export function LibraryShelf({
 														<BookCover seed={entry.id} title={entry.title} size="mini" />
 														<span className="flex min-w-0 flex-1 flex-col gap-1">
 															<span className="flex min-w-0 items-baseline gap-1.5">
-																<span className="min-w-0 truncate text-[12px] font-semibold text-foreground">
+															<span className="min-w-0 truncate font-serif text-[13px] font-semibold text-foreground">
 																	{entry.title}
 																</span>
 																<PhaseBadge phase={entry.phase} />

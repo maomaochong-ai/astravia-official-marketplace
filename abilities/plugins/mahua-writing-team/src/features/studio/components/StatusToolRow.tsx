@@ -37,11 +37,11 @@ export function StatusToolRow({ toolCall }: PluginToolCallSlotProps) {
 	const ratio = target > 0 ? Math.min(1, committed / target) : 0;
 
 	return (
-		<div className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card px-3 py-2.5">
+		<div className="flex flex-col gap-2 rounded-[13px] bg-card px-3 py-2.5 shadow-xs">
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="max-w-[18rem] truncate text-sm font-medium">{payload.title}</span>
 				{payload.phase ? (
-					<span className="rounded-md bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+					<span className="rounded-[6px] bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
 						{t(`phase.${payload.phase}`)}
 					</span>
 				) : null}

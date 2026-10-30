@@ -177,7 +177,7 @@ export function StudioWorkspaceView() {
 			/>
 
 			{state.credentialSource === "bundled" && state.rejectedCredential ? (
-				<div className="mx-3 mb-2 shrink-0 rounded-[9px] border border-border/60 bg-muted/50 px-3 py-2 text-[11px] leading-relaxed">
+				<div className="mx-3 mb-2 shrink-0 rounded-[9px] bg-muted/70 px-3 py-2 text-[11px] leading-relaxed">
 					<p className="font-medium">{t("activation.fallbackTitle")}</p>
 					<p className="mt-1 text-muted-foreground">{t("activation.fallbackInline")}</p>
 				</div>
@@ -195,7 +195,7 @@ export function StudioWorkspaceView() {
 			<div className="flex min-h-0 flex-1 gap-1 px-1 pb-1 sm:gap-2 sm:px-2 sm:pb-2">
 				<StudioRail items={railItems} book={book} credentialActive />
 
-				<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-border/60 bg-background shadow-sm sm:rounded-[18px]">
+				<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[18px] bg-background shadow-xs">
 					{/* 同步带只说「这一页是上一次落盘的样子」；它挂在有书的三层上，书架与书库没有主语。 */}
 					{book && route.surface !== "shelf" && route.surface !== "catalog" ? <StudioStrip book={book} /> : null}
 

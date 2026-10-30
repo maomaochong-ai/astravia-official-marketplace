@@ -140,7 +140,7 @@ export function ReaderPane({ book, chapter, text, review, loading, onBack, onOpe
 			<div className="flex min-h-0 flex-1">
 				<div className="min-h-0 flex-1 overflow-y-auto bg-muted/40 px-3 py-4 sm:px-6 sm:py-6">
 					<article
-						className={`mx-auto w-full max-w-[648px] rounded-[13px] border border-border/60 bg-card px-5 pb-12 pt-7 shadow-sm sm:px-10 sm:pt-9 ${
+						className={`mx-auto w-full max-w-[648px] rounded-[13px] bg-card px-5 pb-12 pt-7 shadow-xs sm:px-10 sm:pt-9 ${
 							serif ? "font-serif" : ""
 						}`}
 					>

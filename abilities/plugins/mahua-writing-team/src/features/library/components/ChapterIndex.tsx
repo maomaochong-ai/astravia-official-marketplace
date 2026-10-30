@@ -52,7 +52,7 @@ export function ChapterIndex({ chapters, volumes, currentChapter, selectedChapte
 					aria-current={active ? "true" : undefined}
 					className={`${ROW} ${
 						active
-							? "bg-card shadow-sm"
+							? "bg-card shadow-xs"
 							: isCurrent
 								? "bg-muted/60"
 								: "hover:bg-muted/40"

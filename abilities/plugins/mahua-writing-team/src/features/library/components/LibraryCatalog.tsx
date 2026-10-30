@@ -58,10 +58,8 @@ const COL_CHAPTERS = "hidden min-[620px]:block text-right";
 const COL_WORDS = "hidden min-[880px]:block text-right";
 const COL_UPDATED = "hidden min-[620px]:block text-right";
 
-const QUIET_BUTTON =
-	"rounded-[9px] border border-border px-2.5 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent";
 
-const CARD = "rounded-[13px] border border-border/60 bg-card shadow-sm";
+const CARD = "rounded-[18px] bg-card shadow-xs";
 
 /**
  * 书库页（ADR 0020 §1 / 0026 §2 / 0027 §7）。
@@ -134,13 +132,13 @@ export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 								options={SORTS.map((sort) => ({ value: sort.value, label: t(sort.key) }))}
 							/>
 						</section>
-						<p className="rounded-[11px] bg-muted/60 px-2.5 py-2 text-[10px] leading-relaxed text-primary">
+						<p className="mt-auto rounded-[13px] bg-muted/70 px-2.5 py-2 text-[10px] leading-relaxed text-primary">
 							{t("library.hint")}
 						</p>
 					</aside>
 
 					<section className={`${CARD} flex min-w-0 flex-1 flex-col`}>
-						<div className={`${GRID} border-b border-border/50 px-4 pb-2 pt-3 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground`}>
+						<div className={`${GRID} px-4 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/70`}>
 							<span className="min-w-0">{t("library.column.book")}</span>
 							<span className={COL_STAGE}>{t("library.column.stage")}</span>
 							<span className={COL_CHAPTERS}>{t("library.column.chapters")}</span>
@@ -152,20 +150,20 @@ export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 						{page.items.length === 0 ? (
 							<p className="px-4 py-8 text-center text-[12px] text-muted-foreground">{t("library.empty")}</p>
 						) : (
-							<ul className="flex flex-col">
+							<ul className="flex min-h-0 flex-1 flex-col divide-y divide-border/40 overflow-y-auto px-2 pb-2">
 								{page.items.map((entry) => {
 									const percent = progressPercent(entry);
 									return (
-										<li key={entry.id} className="border-b border-border/30 last:border-b-0">
+										<li key={entry.id}>
 											<button
 												type="button"
 												onClick={() => onOpen(entry.id)}
-												className={`${GRID} w-full px-4 py-2.5 text-left transition-colors hover:bg-muted/50 min-[880px]:h-16`}
+											className={`${GRID} w-full rounded-[9px] px-2 py-2.5 text-left transition-colors hover:bg-muted/40 min-[880px]:h-16`}
 											>
 												<span className="flex min-w-0 items-center gap-2.5">
 													<BookCover seed={entry.id} title={entry.title} size="thumb" />
 													<span className="flex min-w-0 flex-col gap-0.5">
-														<span className="min-w-0 truncate text-[12.5px] font-medium text-foreground">
+														<span className="min-w-0 truncate font-serif text-[13px] font-semibold text-foreground">
 															{entry.title}
 														</span>
 														<span className="line-clamp-1 text-[10px] text-muted-foreground">
@@ -186,9 +184,9 @@ export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 												<span className={`${COL_UPDATED} font-mono text-[10px] tabular-nums text-muted-foreground`}>
 													{dateOf(entry.updatedAt)}
 												</span>
-												<span className="flex flex-col gap-1">
-													<MeterBar value={percent} className="h-[2px]" />
-													<span className="text-right font-mono text-[9px] tabular-nums text-muted-foreground">
+												<span className="flex items-center gap-2">
+													<MeterBar value={percent} className="h-[3px] flex-1" />
+													<span className="w-6 shrink-0 text-right font-mono text-[9px] tabular-nums text-muted-foreground">
 														{Math.round(percent)}%
 													</span>
 												</span>
@@ -212,7 +210,7 @@ export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 									disabled={page.page <= 1}
 									onClick={() => goPage(page.page - 1)}
 									aria-label={t("library.prev")}
-									className={QUIET_BUTTON}
+									className="flex size-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-25"
 								>
 									<span aria-hidden="true" className="icon-[solar--alt-arrow-left-linear] size-3" />
 								</button>
@@ -221,7 +219,7 @@ export function LibraryCatalog({ books, onOpen, onBack }: LibraryCatalogProps) {
 									disabled={page.page >= page.pages}
 									onClick={() => goPage(page.page + 1)}
 									aria-label={t("library.next")}
-									className={QUIET_BUTTON}
+									className="flex size-6 items-center justify-center rounded-[6px] text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-25"
 								>
 									<span aria-hidden="true" className="icon-[solar--alt-arrow-right-linear] size-3" />
 								</button>

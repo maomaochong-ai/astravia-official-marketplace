@@ -18,7 +18,7 @@ export function LibraryFilterRow({ label, options, value, onSelect }: LibraryFil
 	const { t } = useTranslation();
 	return (
 		<div className="flex flex-col gap-1">
-			<span className="px-1 font-mono text-[9px] uppercase tracking-[0.12em] text-muted-foreground/70">{label}</span>
+			<span className="px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">{label}</span>
 			<div className="flex flex-col">
 				{options.map((option) => {
 					const selected = option.value === value;

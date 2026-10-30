@@ -18,7 +18,7 @@ const WEIGHT_TONE: Record<ThreadWeight, string> = {
 
 const SCENARIOS: ArbitrationScenario[] = ["premise-conflict", "deadlock", "user-intervention"];
 
-const CARD = "rounded-[13px] border border-border/60 bg-card shadow-sm";
+const CARD = "rounded-[18px] bg-card shadow-xs";
 
 /**
  * 伏笔账本（ADR 0021 §2 / 0026 §6 / 0027 §9）：台账 + 决策日志 + 一致性体检，一页只读。
