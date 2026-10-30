@@ -195,7 +195,7 @@ npm install
 npm run references # regenerate src/reference/library.generated.ts from agent/
 npm run check      # tsc --noEmit
 npm test           # vitest: router, state machine, entitlement, service, library, threads, guards
-npm run build      # dist/ + release/mahua-writing-team-0.4.5.astraviapkg
+npm run build      # dist/ + release/mahua-writing-team-0.4.6.astraviapkg
 npm run validate   # parse plugin.json with the host's own manifest parser
 ```
 
