@@ -18,7 +18,7 @@ import { ReaderPage } from "./pages/ReaderPage";
 import { ShelfPage } from "./pages/ShelfPage";
 
 /** 宿主的窄面板默认只有几百像素，第一次挂进标签页时把它拉满，之后由用户决定。 */
-let stretched = false;
+let preferredWidth: number | "max" = "max";
 
 const NARROW_WIDTH = 760;
 
@@ -39,13 +39,13 @@ export function WorkbenchSurface() {
 	const { route, navigate } = useWorkbenchRoute();
 	const reveal = useTeamReveal();
 	const events = useLiveFeed();
-	const [full, setFull] = useState(true);
+	// 面板宽度是宿主上的持续状态，跨挂载有效；这里的状态必须跟着它走，
+	// 否则第二次打开标签时按钮显示「还原」、面板却是窄的。
+	const [full, setFull] = useState(preferredWidth === "max");
 	const now = Date.now();
 
 	useEffect(() => {
-		if (stretched) return;
-		stretched = true;
-		ctx.ui.setActivityPanelWidth("max");
+		ctx.ui.setActivityPanelWidth(preferredWidth);
 	}, [ctx]);
 
 	const landed = lastLandedStudioEvent(events);
@@ -72,8 +72,9 @@ export function WorkbenchSurface() {
 
 	const toggleFull = () => {
 		const next = !full;
+		preferredWidth = next ? "max" : NARROW_WIDTH;
 		setFull(next);
-		ctx.ui.setActivityPanelWidth(next ? "max" : NARROW_WIDTH);
+		ctx.ui.setActivityPanelWidth(preferredWidth);
 	};
 
 	const chromeRight = (
