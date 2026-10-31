@@ -156,6 +156,20 @@ describe("layer boundaries", () => {
 		expect(violations).toEqual([]);
 	});
 
+	it("keeps the views free of literal natural language", () => {
+		const violations: string[] = [];
+		for (const path of SOURCE_FILES.filter((file) => file.startsWith("src/features"))) {
+			const text = read(path)
+				.replace(/\/\*[\s\S]*?\*\//g, "")
+				.replace(/\/\/.*$/gm, "");
+			// 界面上出现的中文/全角标点必须来自 locales/*.json；写死在视图里，英文界面就会露馅。
+			if (/[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]/.test(text)) {
+				violations.push(`${path}: literal natural language in a view`);
+			}
+		}
+		expect(violations).toEqual([]);
+	});
+
 	it("keeps every view behind StudioService instead of touching storage or the gate", () => {
 		const violations: string[] = [];
 		for (const path of SOURCE_FILES.filter((file) => file.startsWith("src/features"))) {

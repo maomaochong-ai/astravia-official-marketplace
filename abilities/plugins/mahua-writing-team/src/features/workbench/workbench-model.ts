@@ -11,7 +11,7 @@ import type { Arc, NovelBook, StoryThread, Volume } from "../../domain/novel-typ
 export type ChapterState = "committed" | "reviewed" | "drafting" | "planned" | "blocked";
 
 export interface CoverSeed {
-	/** 封面上的那一个字：书名首字，没有书名时是「稿」。 */
+	/** 封面上的那一个字：书名首字；书名空着就不印字，只留纸纹。 */
 	mark: string;
 	motif: number;
 	layer: number;
@@ -19,7 +19,7 @@ export interface CoverSeed {
 
 /** 书名 → 封面。同一个书名永远得到同一个图案，换书才换样子。 */
 export function coverSeed(title: string): CoverSeed {
-	const mark = Array.from(title.trim())[0] ?? "稿";
+	const mark = Array.from(title.trim())[0] ?? "";
 	let hash = 0;
 	for (const char of title) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 100_003;
 	return { mark, motif: hash % 3, layer: Math.floor(hash / 3) % 3 };
