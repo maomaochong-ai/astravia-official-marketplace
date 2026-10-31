@@ -140,3 +140,22 @@
 > 同步修改：新增 `src/studio-workspace-view.ts` 与 `src/features/shared/components/ChromeButton.tsx`、
 > `plugin.json#permissions` 加 `ui.slot.workspace-view`、`AGENTS.md` 的「入口形状」段、
 > `test/manifest-guards.test.ts` 的入口形状与权限清单两条断言。版本 `0.4.8` → `0.4.9`。
+
+> **补注三（撤掉双注册，2026-10-31，0.4.10）**：补注二的「双注册」已被推翻，回到**只注册活动标签**，
+> 并把 `registerToolCallSlot` / `registerNewSessionContext` 一并撤掉（ADR 0011 的对话侧两块界面同时作废）。
+>
+> 推翻的理由不是宿主行为变了，而是产品判断变了：用户要的是「标签页菜单里那一个麻花界面」。
+> 同一个工作台在两处注册，用户在导航位上看到两枚同名入口，在「+ 可添加池」里又看到一份，
+> 而两份渲染的是同一套七帧——这不是多一个便利入口，是同一件事说两遍。补注二解决的是
+> 「面板菜单里找不到它」（`initiallyVisible: true` 让标签永远不进池），代价是工作区视图变成
+> 第二块同构界面；正确解法是**只留一枚入口**，而不是再造一块界面去补它的可见性。
+>
+> 权限随之从 15 项降到 12 项：去掉 `ui.slot.workspace-view`、`ui.slot.tool-call`、
+> `ui.slot.new-session-context`。`ui.slot.*` 现在恰好只有 `ui.slot.activity-tab` 一项，
+> 守卫 `test/manifest-guards.test.ts` 断言这个「声明 == 实际注册」的等式。
+>
+> 同步修改：删除 `src/studio-workspace-view.ts`、`src/studio-surfaces.ts` 与整个旧视图树
+> （`src/features/library/`、`src/features/shared/`、`src/features/studio/components|hooks/`），
+> 新工作台落在 `src/features/workbench/`；`src/index.tsx` 只装配 `registerNovelTools` +
+> `registerStudioTab` + 事件流钩子；`AGENTS.md` 的「入口形状」段改写为补注三；
+> ADR 0011 的对话侧 slot 一并作废。版本 `0.4.9` → `0.4.10`。

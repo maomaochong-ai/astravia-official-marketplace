@@ -16,8 +16,8 @@
 			"type": "showcase",
 			"showcase": {
 				"template": "chat-thread",
-				"user_prompt": "Chapter 12 is at 68 — the editor says the funeral scene contradicts chapter 4. Sort it out and keep going.",
-				"assistant_reply": "Chapter 12 is blocked, score 68, one must-fix item: the funeral contradicts chapter 4 on who was in the room.\n\nArbiter ruling: the room held four people, not three — chapter 4 stands, chapter 12 is rewritten around the fourth witness.\n\nThe writer is revising chapter 12 against that ruling. Nothing is committed yet; the count stays at 11 of 40."
+				"user_prompt": "Chapter 12 scored 68 — the funeral contradicts chapter 4. Sort it out, then keep going.",
+				"assistant_reply": "Blocked at 68, one must-fix: the funeral contradicts chapter 4 on who was in the room. Arbiter ruling: four people, chapter 4 stands, chapter 12 is rewritten around the fourth witness. Count stays at 11 of 40 until it passes."
 			}
 		},
 		{

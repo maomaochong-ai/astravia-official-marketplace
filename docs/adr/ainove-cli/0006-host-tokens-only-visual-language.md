@@ -36,3 +36,23 @@ CSS 变量，用户随时可能换主题。插件如果自带十六进制色板�
 - 换任何宿主主题（含深色、Xianxia）都不需要改插件 CSS。
 - 代码审查有一条可机械检查的规则：`src/**/*.tsx` 里出现 `#` 开头的颜色字面量即视为缺陷，
   由 `test/manifest-guards.test.ts` 的 `visual language stays on host tokens` 一组扫描。
+> **补注（`@theme inline`，2026-10-31，0.4.10）**：§2 第 2 条的「不写 `@theme`」收窄为
+> 「不写**裸** `@theme`」。工作台改用设计稿的纸面配色（`ui-mock/mahua-novel-studio.astravia-design/theme.css`），
+> 需要一个 token 层把取值映射成工具类（`bg-raised`、`text-ink-soft`、`rounded-sheet`…）。
+>
+> 做法是 `@theme inline { … }`：
+>
+> - `inline` 只把取值内联进本插件的工具类，**不向 `:root` 发射变量**，宿主那边看不到任何新增定义，
+>   §2 第 2 条要防的「和宿主抢定义」因此不成立；
+> - 不重声明宿主已占用的名字：`card→raised`、`muted→ink-soft`、`faint→ink-faint`、`accent→cinnabar`、
+>   `success/warning/danger→pass/wait/fail`、`rounded-card→rounded-panel`、`shadow-card→shadow-raise`；
+>   改名表写在 `src/style.css` 文件头，守卫另有一条正则专门挡宿主同名 token。
+> - `font-sans` / `font-serif` / `font-mono` 不重声明，`--font-display` 只做降级栈
+>   （`"Fraunces Variable", ui-serif, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif`），
+>   不新增字体依赖。
+>
+> §4 的机械检查因此换了形状：颜色字面量仍然不许出现在 `src/features/**`（`Cover` 的调色板走
+> `style.css` 的 `.mahua-cover[data-layer]`）；`@theme` 的断言改成「不许裸 `@theme {`、必须 `@theme inline`、
+> 不许重声明宿主 `--color-*` 名」。同理，纯 CSS 段不能用 `var(--color-*)`（`inline` 不发射变量），
+> 只能用字面值——这一条写在 `style.css` 注释里。
+

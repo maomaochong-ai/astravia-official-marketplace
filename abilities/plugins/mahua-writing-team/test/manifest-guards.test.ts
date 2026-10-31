@@ -312,7 +312,14 @@ describe("visual language stays on host tokens", () => {
 		expect(css).toContain('@import "tailwindcss/theme.css"');
 		expect(css).toContain('@import "tailwindcss/utilities.css"');
 		expect(css).not.toMatch(/@import\s+"tailwindcss";/);
-		expect(css).not.toMatch(/(^|\n)\s*@theme\b/);
+		// `@theme inline` 只把取值内联进本插件的工具类，不向 :root 发射宿主同名变量；
+		// 裸 `@theme` 会写出一份真的 token，那才是要挡的东西。
+		expect(css).not.toMatch(/(^|\n)\s*@theme\s*(?:static|default)?\s*\{/);
+		expect(css).toMatch(/(^|\n)\s*@theme\s+inline\s*\{/);
+		// 已占用的宿主 token 名一个都不许重声明（改名表见 style.css 文件头）。
+		expect(css).not.toMatch(
+			/--color-(?:background|foreground|card|muted|accent|border|primary|secondary|popover|ring|input)\s*:/,
+		);
 		expect(css).toContain('@plugin "@iconify/tailwind4"');
 	});
 
@@ -327,22 +334,22 @@ describe("visual language stays on host tokens", () => {
 		expect(violations).toEqual([]);
 	});
 
-	it("registers both an activity tab and a workspace view (ADR 0025 补注)", () => {
+	it("registers exactly one studio surface: the activity tab (ADR 0025 补注三)", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		const view = read("src/studio-workspace-view.ts");
-		// 侧边栏节点仍然是宿主自己的导航位，工作区视图走插件自己的 nav 入口；
-		// 但只注册标签不够：宿主里「已在栏上」（initiallyVisible）与「在 + 可添加池」互斥，
-		// 用户在面板菜单里就永远找不到它。所以两处都注册，并在 chrome 上给双向跳转。
+		// 宿主里「已在栏上」（initiallyVisible）与「在 + 可添加池」互斥：同一个界面注册两处，
+		// 用户就会在面板菜单里找不到它。所以工作区视图整条撤掉，只留标签。
 		expect(entry).toContain("registerStudioTab(ctx)");
-		expect(entry).toContain("registerStudioWorkspaceView(ctx)");
-		expect(entry).not.toContain("setWorkspaceViewHeader");
+		expect(entry).not.toContain("registerStudioWorkspaceView");
+		expect(entry).not.toContain("registerWorkspaceView");
+		expect(entry).not.toContain("registerStudioSurfaces");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
-		expect(view).toContain("ctx.ui.registerWorkspaceView(");
 		// fail-closed：没声明的场景下一个都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
 		// 默认就上栏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
+		// 标签就是工作台本身；没有第二块同构界面。
+		expect(tab).toContain("component: WorkbenchScreen");
 	});
 
 	it("only asks for the slot permissions it actually uses", () => {
@@ -350,13 +357,14 @@ describe("visual language stays on host tokens", () => {
 		expect(permissions).toContain("ui.slot.activity-tab");
 		expect(permissions).toEqual([...permissions].sort());
 		const sources = SOURCE_FILES.map(read).join("\n");
-		for (const slot of ["workspace-view", "activity-tab"]) {
-			const declared = permissions.includes(`ui.slot.${slot}`);
-			// 往宿主注册的实际方法名：`ctx.ui.` 后面那一串，插件的封装函数叫别的名字。
-			const method = slot === "workspace-view" ? ".registerWorkspaceView(" : ".registerActivityTab(";
-			const used = sources.includes(method);
-			expect(used, `${slot} used but not declared`).toBe(declared);
-		}
+		expect(sources).toContain(".registerActivityTab(");
+		// 工作区视图与对话侧两块界面（ADR 0011 / 0025 补注三）都已撤掉，
+		// 「声明的 slot 权限」必须等于「真的注册过的那几个」。
+		const declared = permissions.filter((item) => item.startsWith("ui.slot."));
+		expect(declared).toEqual(["ui.slot.activity-tab"]);
+		expect(sources).not.toContain(".registerWorkspaceView(");
+		expect(sources).not.toContain(".registerToolCallSlot(");
+		expect(sources).not.toContain(".registerNewSessionContext(");
 	});
 
 	it("uses an iconify class for the tab icon, not a bare icon name", () => {
@@ -364,14 +372,25 @@ describe("visual language stays on host tokens", () => {
 		expect(tab).toMatch(/STUDIO_TAB_ICON = "icon-\[solar--[a-z0-9-]+\]"/);
 	});
 
-	it("opens the reader from the book page's primary button instead of sending a prompt", () => {
-		const detail = read("src/features/library/components/BookDetail.tsx");
-		const callSite = read("src/features/studio/components/StudioWorkspaceView.tsx");
-		// 主按钮 = 翻页读，不是 `sendPrompt`：它曾经排在一起，点「继续阅读」会往对话发消息。
-		expect(detail).toContain('{t("book.continueAt", { chapter: current })}');
-		expect(detail).toMatch(/onClick=\{\(\) => onOpenChapter\(current\)\}/);
-		expect(detail).toMatch(/onClick=\{onContinue\}[\s\S]{0,400}t\("action\.handoffContinue"\)/);
-		expect(callSite).toContain("onContinue={() => void startHandoff()}");
+	it("navigates to the reader from the book page instead of sending a prompt", () => {
+		const book = read("src/features/workbench/components/pages/BookPage.tsx");
+		// 章号只做局部导航：`onNavigate("reader", n)`，点目录不会往对话发任何东西。
+		expect(book).toMatch(/onNavigate\("reader", n\)/);
+		expect(book).not.toContain("sendPrompt");
+		// 设计稿第一条边界：七帧里没有派活按钮，也没有「开始写作 / 提交本章」。
+		for (const page of [
+			"shelf",
+			"library",
+			"book",
+			"reader",
+			"ledger",
+			"console",
+			"activation",
+		]) {
+			const text = read(`src/features/workbench/components/pages/${page[0].toUpperCase()}${page.slice(1)}Page.tsx`);
+			expect(text, page).not.toMatch(/action\.(startDrafting|commitChapter|runCheck)/);
+			expect(text, page).not.toContain("sendPrompt");
+		}
 	});
 });
 
@@ -443,8 +462,10 @@ describe("the plugin stands alone (ADR 0010)", () => {
 	});
 
 	it("routes the conversation bridge through one hook instead of ad-hoc session calls", () => {
-		const callers = SOURCE_FILES.filter((path) => read(path).includes("conversation.createSession"));
-		expect(callers).toEqual(["src/features/studio/hooks/use-agent-handoff.ts"]);
+		// 「跳到侧栏对话」只点亮输入条，不建会话、不发指令——宿主里没有「聚焦侧栏」的 API，
+		// 能做的两件事都在 use-team-reveal 里，别处不许直接碰 conversation。
+		const callers = SOURCE_FILES.filter((path) => /ctx\.conversation\.|conversation\.(?:createSession|sendPrompt)/.test(read(path)));
+		expect(callers).toEqual(["src/features/workbench/hooks/use-team-reveal.ts"]);
 	});
 
 	it("asks for exactly the permissions the surfaces need", () => {
@@ -462,11 +483,8 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.tools.register",
 				"storage.read",
 				"storage.write",
+				// 只剩标签一枚界面（见上一条入口形状守卫）。
 				"ui.slot.activity-tab",
-				"ui.slot.new-session-context",
-				"ui.slot.tool-call",
-				// 工作区视图与活动面板标签双注册（见上一条入口形状守卫）。
-				"ui.slot.workspace-view",
 				"workspace.read",
 			].sort(),
 		);

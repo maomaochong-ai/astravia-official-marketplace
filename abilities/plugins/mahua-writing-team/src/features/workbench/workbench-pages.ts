@@ -1,0 +1,44 @@
+/**
+ * 七帧的标识与窄栏结构。
+ *
+ * 帧的清单来自设计稿（ui-mock/mahua-novel-studio）：书架、书库、书页、阅读、伏笔与决策、
+ * 运行台、激活。这里只放"哪一帧叫什么、在哪一组里"，不放任何界面代码——窄栏与页头都从
+ * 这份表读，改一处两处一起变。
+ */
+
+export type WorkbenchPage = "shelf" | "library" | "book" | "reader" | "ledger" | "console" | "activation";
+
+/** 当前在哪一帧，以及阅读页要读哪一章。 */
+export interface WorkbenchRoute {
+	page: WorkbenchPage;
+	chapter?: number;
+}
+
+export interface RailItem {
+	page: WorkbenchPage;
+	labelKey: string;
+	icon: string;
+}
+
+/** 「在写的这本」下面的一组：看书用的四条路径。 */
+export const RAIL_WORKS: readonly RailItem[] = [
+	{ page: "shelf", labelKey: "nav.shelf", icon: "icon-[lucide--library-big]" },
+	{ page: "library", labelKey: "nav.library", icon: "icon-[lucide--layers]" },
+	{ page: "book", labelKey: "nav.book", icon: "icon-[lucide--book-open]" },
+	{ page: "reader", labelKey: "nav.reader", icon: "icon-[lucide--scroll-text]" },
+];
+
+/** 「写作台」那一组：只看不写的两张纸。 */
+export const RAIL_CRAFT: readonly RailItem[] = [
+	{ page: "console", labelKey: "nav.console", icon: "icon-[lucide--activity]" },
+	{ page: "ledger", labelKey: "nav.ledger", icon: "icon-[lucide--git-branch]" },
+];
+
+export function pageTitleKey(page: WorkbenchPage): string {
+	return `page.${page}.title`;
+}
+
+/** 激活页与运行台要脱离窄栏——它们自己就是整张纸。 */
+export function isBarePage(page: WorkbenchPage): boolean {
+	return page === "activation" || page === "console";
+}

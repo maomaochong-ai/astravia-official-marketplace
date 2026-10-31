@@ -5,7 +5,7 @@
   `shared/components/StudioChrome.tsx`、`studio/components/StudioRail.tsx`、
   `studio/components/ConsolePane.tsx`；重写 `library/components/{BookCover,LibraryShelf,BookDetail,ChapterIndex,LibraryCatalog,LibraryFilterRow,ReaderPane,ThreadLedger}.tsx`、
   `shared/components/PageBar.tsx`、`studio/components/{BookHead,StudioWorkspaceView}.tsx`）、
-  `src/features/library/hooks/use-library-route.ts`、`locales/{en,zh}.json`（244 → 284 键；0.4.9 时 351，见 §8）
+  `src/features/library/hooks/use-library-route.ts`（0.4.10 起为 `src/features/workbench/hooks/use-workbench-route.ts`）、`locales/{en,zh}.json`（244 → 284 键；0.4.9 时 351，0.4.10 时 473，见 §8）
 - 依据：`ui-mock/mahua-novel-studio.astravia-design` 的 `theme.css` / `components/*` / `frames/*`
   逐帧实读；宿主 `.tooling/open-astravia/apps/desktop/src/renderer/styles.css` 令牌实测；
   `node_modules/@astravia-org/plugin-sdk/src/tailwind-theme.css` 的 24 个别名
@@ -118,7 +118,7 @@ fail-closed。团队协作（派活、发消息、等任务、继续/重试/取�
 `shelf.live` / `shelf.others` / `shelf.openConsole`；`book.brief*` 六个 + `book.legend*` 四个 +
 `book.volume`；`console.*` 九个；`library.column.stage` / `library.hint` / `library.footer`；
 `nav.works` / `nav.craft` / `nav.shelf` / `nav.library` / `nav.book` / `nav.reader` /
-`nav.console` / `nav.ledger`。中英同步，0.4.9 时键数各 351。
+`nav.console` / `nav.ledger`。中英同步，0.4.9 时键数各 351，0.4.10 时各 473。
 
 0.4.9 又追加 44 键（307 → 351，即 §1 修订里的事件流）：`console.feed*` 5、`feed.status.*` 3、
 `feed.agent.*` 2、`feed.team.*` 6、`feed.tool.*` 24（与 `tool-catalog.ts` 的两张表逐项对账），
@@ -128,11 +128,12 @@ fail-closed。团队协作（派活、发消息、等任务、继续/重试/取�
 
 ## 9. 未做的事（明确记录，不静默）
 
-- `StudioStrip` 不复刻设计稿的「团队正在写 · 2m 14s」「编辑排队 · 裁定者空闲」——没有计时与队列数据；
-- ~~运行台不做事件流~~、不做上下文占用百分比、不显示模型名。**前半句已推翻**（2026-10-31）：
+- `StudioStrip` 不复刻设计稿的「编辑排队 · 裁定者空闲」——没有队列数据；
+- ~~运行台不做事件流~~、~~不显示模型名~~、不做上下文占用百分比。**前两项已推翻**（2026-10-31）：
   `ctx.agent.registerHook` 让工具与子智能体事件真的能拿到，运行台中上栏就是这条真事件流
-  （详见 §1 的修订）。后两项仍然不做：钩子载荷里没有上下文占用，也没有模型名，
-  不拿落盘字段拄一个看起来像监控的数字。
+  （详见 §1 的修订）；`PluginCodingAgentHookEventBase.model` 是宿主交付的真实字段，所以模型名可显示，
+  耗时也能用 `PreToolUse` / `PostToolUse` 的 `toolUseId` 配对出来。上下文占用仍不做：
+  钩子载荷里就没有这一项，不拿落盘字段拄一个看起来像监控的数字。
 - 不把历史事件流当账本：`console/feed.json` 是观感层的环形缓存（200 条），可以在运行台里一键清空；
   可恢复的事实仍然只有 `book.checkpoints`。两者分栏显示，不混排。
 - 不做应用内视觉验证：本仓库的 `vitest.config.ts` 固定 `environment: "node"`，

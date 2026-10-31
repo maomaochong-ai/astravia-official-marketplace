@@ -36,11 +36,13 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 | `src/tools/` | 36 个 Agent 工具的薄适配器（读 12 / 写 24），按弧分文件：`reading-` / `foundation-` / `outline-` / `chapter-` / `ledger-tools.ts`，`register-novel-tools.ts` 只做总装 | 状态转移逻辑 |
 | `src/application/tool-*.ts` | 工具共用的 schema 片段与输出整形 | 具体工具注册 |
 | `src/scenarios.ts` | `scope_use` 的唯一口径 | 场景判断逻辑 |
-| `src/features/<feature>/` | 视图、hooks、`components/` | 直接读写存储 |
-| `src/features/shared/components/` | 跨 feature 的基础组件，一文件一组件 | 万能容器文件 |
+| `src/features/workbench/components/` | 工作台七帧（`pages/`）与外壳（`shell/`），一文件一组件 | 直接读写存储、发指令 |
+| `src/features/workbench/hooks/` | `use-studio-state`（只读快照）、`use-workbench-route`（帧内 state）、`use-team-reveal`、`use-translator`、`register-live-feed` | 业务规则 |
+| `src/features/studio/live-feed/` | 事件流的文案与取值（`tool-catalog` / `describe-tool-event` / `use-live-feed`） | 状态、持久化 |
+| `src/application/live-feed/` | `feed-types` / `feed-store`（环形 200 条）/ `feed-persistence` | JSX |
 
-封面是算出来的，不是画出来的：`features/library/components/DefaultCover.tsx` 用 `coverVariant(book.id)`
-挑母题与层次，同一本书每次一样、不同的书不一样（ADR 0020 §4）。不要换成位图或网络图片。
+封面是算出来的，不是画出来的：`features/workbench/components/shell/Cover.tsx` 用 `coverSeed(seed)`
+挑层次与母题，同一本书每次一样、不同的书不一样（ADR 0020 §4）。不要换成位图或网络图片。
 
 `agent/` 是**包**而不是散文件（ADR 0019）：`prompts/`（`routing.md` 路由提示 + `team-workflow.md` 团队
 流水线 + `briefs/` 两份成员任务书）、`skills/novel-craft/` 与 `skills/longform-continuity/`（各带一份
@@ -52,20 +54,23 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 
 ## 对话桥
 
-视图里**没有输入框**。工作台只显示状态与下一步；真正写小说发生在宿主对话里（ADR 0008）。
-视图内分五层（ADR 0013 / 0020 / 0026）：书架（封面网格）→ 书库（文字台账，列按宽度收起）→ 书页（页头 + 弧带 + 指令 + 目录 + 账本入口）→ 阅读页（工具条 + 正文 + 评审栏 + 底栏）→ 伏笔账本（台账 + 决策日志 + 一致性），
-路由是 `src/features/library/hooks/use-library-route.ts` 里的视图内 state，不写宿主路由、不写存储。
+视图里**没有输入框**，也没有派活按钮。工作台只显示状态与下一步；真正写小说发生在宿主对话里（ADR 0008）。
+七帧（`src/features/workbench/workbench-pages.ts`）：书架 `shelf` → 书库 `library` → 书页 `book` →
+阅读 `reader` → 伏笔账本 `ledger` → 运行台 `console` → 激活 `activation`；
+路由是 `src/features/workbench/hooks/use-workbench-route.ts` 里的帧内 state，不写宿主路由、不写存储。
+`console` / `activation` 是 bare 帧：收起左栏、不渲染同步带。
 
-- 唯一允许调用 `ctx.conversation` 的文件是 `src/features/studio/hooks/use-agent-handoff.ts`，
-  守卫 `test/manifest-guards.test.ts` 钉死这一点。别在别的组件里另开一个会话。
-- 投进对话的话术必须来自 catalog（`studio.handoff`），参数取自同一个 `routeNovel(book)`：
-  界面上写的下一步和模型看到的必须是同一条。
-- 没有工作区根目录时不发消息，直接提示 `studio.handoffNoWorkspace`——会话没有 cwd 等于把账本写到
-  用户找不到的地方。
+- 唯一允许碰 `ctx.conversation` 的文件是 `src/features/workbench/hooks/use-team-reveal.ts`，
+  守卫 `test/manifest-guards.test.ts` 钉死这一点。宿主没有「聚焦侧栏对话」的 API，所以这里只能
+  `insertText("")` 点亮输入条 + 一条 `team.hint` 提示：**只把视线送过去，不带指令**。
+- 单向同步：侧栏对话 → 落盘 → 工作台读到新状态。`WorkbenchScreen` 只订阅事件流里的落盘事件，
+  到了就 `refresh()` 重读仓储；界面从不反向写信箱，也没有「提交本章」这类按钮。
+- 卡片上写的下一步来自 `routeNovel(book)` 的 key（`reason.*`），与模型看到的是同一条判断。
 
 ## 运行台事件流（ADR 0027 §1 修订）
 
-运行台中上栏是真事件，来源只有一处：`src/live-feed-hooks.ts` 的 `ctx.agent.registerHook`
+运行台中上栏是真事件，来源只有一处：`src/features/workbench/hooks/register-live-feed.ts` 的
+`ctx.agent.registerHook`
 （`PreToolUse` / `PostToolUse` / `PostToolUseFailure` / `SubagentStart` / `SubagentStop`，权限
 `agent.hooks.register` 与 `agent.hookHandler.execute`）。
 
@@ -75,49 +80,47 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 - **不推测归属**：插件工具不写「是哪位成员在写」；只有团队工具自带 `target` / `recipients` 才写其名。
 - **流不是账本**：`console/feed.json` 是环形缓存（200 条），可一键清空；可恢复的事实只有
   `book.checkpoints`。两者在界面上分栏，不混排。
-- **不编监控数据**：上下文占用、模型名、队列深度不在钩子载荷里，界面就不显示——不拿落盘字段充数。
+- **不编监控数据**：上下文占用与队列深度不在钩子载荷里，界面就不显示——不拿落盘字段充数。
+  模型名与耗时是宿主真实交付的字段（`event.model`、`toolUseId` 配对出的 `ms`），可以显示。
 - 文案 key 是拼出来的（`feed.tool.<name>`），通用 locale 守卫扫不到；
   `test/feed-describe.test.ts` 负责对账 `feedCatalogKeys()` 与两侧语言文件。
 
 ## 插件必须自足（ADR 0010）
 
 不引用任何别的插件的实体：团队成员只写本清单里声明的 `mahua-*` id，工具 id 只带 `mahua_`
-前缀，`permissions` 精确等于实际用到的那 15 项（含 hook 两项与两个面板 slot）。三份断言在
+前缀，`permissions` 精确等于实际用到的那 12 项（含 hook 两项与标签一枚 slot）。三份断言在
 `test/manifest-guards.test.ts`。
 
-## 入口形状（ADR 0025 §2）
+## 入口形状（ADR 0025 补注三）
 
-工作台同时注册两处，形状与 `dbx-pro` 一致（ADR 0025 补注二）：
+工作台**只注册一处**：活动面板上的一枚标签。
 
 | 注册 | id | 权限 | 在宿主里长什么样 |
 | --- | --- | --- | --- |
-| `ctx.ui.registerActivityTab` | `mahua-studio` | `ui.slot.activity-tab` | 活动面板上的一枚标签 |
-| `ctx.ui.registerWorkspaceView` | `mahua-studio` | `ui.slot.workspace-view` | 侧边栏插件 nav 里的一项 |
+| `ctx.ui.registerActivityTab` | `mahua-studio` | `ui.slot.activity-tab` | 活动面板上的一枚标签，就是工作台本体 |
 
-两处都在 `src/index.tsx` 装配，`StudioChrome` 右上角按 `viewId` 给双向跳转按钮
-（`studio.openWorkspace` / `studio.openPanel`）。`setWorkspaceViewHeader` 仍然不调：工作区视图不接管
-宿主页头，标题与动作都在组件自己身上。
-
-- 为什么不能只注册标签：宿主里「已在栏上」与「在 + 可添加池」是互斥的两侧——
-  `isPluginTabOnBar = explicitTabVisibility(...) ?? def.initiallyVisible !== false`，而 `availablePluginTabs`
-  只收不在栏上的标签。`initiallyVisible: true` 一旦生效，用户在面板菜单里就永远找不到它。
-  两条都要，只能双注册。
-- 两个 `id` 与 `STUDIO_VIEW_ID` 保持一致，同一套 `scope_use: ["conversation", "project"]`（fail-closed，
-  与 `src/scenarios.ts` 的 `SCENARIOS` 同一口径）。
+- **为什么撤掉工作区视图**：用户要的是「标签页菜单里那一个麻花界面」。宿主里「已在栏上」
+  （`initiallyVisible: true`）与「在 + 可添加池」互斥，同一套界面注册两处，用户反而会在菜单里
+  看到两个同名入口、或在「+」里再找到一份。一个界面只留一枚入口。
+- `registerToolCallSlot` / `registerNewSessionContext` 也一并撤掉（ADR 0011 作废）：对话里不再插入
+  插件自己的卡片，团队的时间流统一进运行台。
+- `scope_use: ["conversation", "project"]`，与 `src/scenarios.ts` 的 `SCENARIOS` 同一口径（fail-closed）。
 - `initiallyVisible: true`：默认就上栏。用户点减号收起来后会留下显式 `false`，标签回到池子，
   这时「+」必定出现。取证与完整四条件见 ADR 0025 末尾补注。
-- 凭证判断不在注册处：未激活时同一个组件渲染 `ActivationPanel`，所以两个入口从装上开始就一直在。
+- 全屏形态走 `ctx.ui.setActivityPanelWidth("max")`，首次挂载时拉满一次；窗口条上的按钮可来回切
+  回 760px。不做 `fixed`、不 `createPortal`。
+- 凭证判断不在注册处：未激活时同一枚标签渲染 `ActivationPage`，所以入口从装上开始就一直在。
 
-`test/manifest-guards.test.ts` 钉住入口形状（两处注册都在、无 `setWorkspaceViewHeader`、
-有 `scope_use`、`initiallyVisible: true`）与权限集合（`ui.slot.workspace-view` 与
-`ui.slot.activity-tab` 必须同时出现在 `plugin.json#permissions` 且已排序）。
+`test/manifest-guards.test.ts` 钉住入口形状（只有标签一处注册、无 `setWorkspaceViewHeader`、
+有 `scope_use`、`initiallyVisible: true`、`component: WorkbenchScreen`）与权限集合
+（`ui.slot.*` 恰好只有 `ui.slot.activity-tab` 一项，且 `permissions` 已排序）。
 
 ## 已知的宿主约束
 
 - 面板类 slot 不能用 `fixed`、超大 z-index、`createPortal(..., document.body)`。
 - 标签 `icon` 用 React 节点（`createElement("span", { className: STUDIO_TAB_ICON })`），因为 `iconUrl` 只对图片图标有值；
   iconify class 靠 `@plugin "@iconify/tailwind4";` 生成 CSS，写错了标签栏是空格子且无报错。
-- `src/style.css` 只导 `tailwindcss/theme.css` + `utilities.css`，**不写 `@theme`**：`plugin-vite` 会注入 `@astravia-org/plugin-sdk/tailwind-theme.css`。
+- `src/style.css` 只导 `tailwindcss/theme.css` + `utilities.css`，**不写裸 `@theme`**：`plugin-vite` 会注入 `@astravia-org/plugin-sdk/tailwind-theme.css`。工作台另有一段 `@theme inline { … }`（ADR 0006 补注）：它只把取值内联成本插件的工具类、不向 `:root` 发射变量，并且**不重声明宿主占用的 `--color-*` 名**（改名表写在文件头：`card→raised`、`muted→ink-soft`、`accent→cinnabar`、`success→pass`、`danger→fail`）。
 - 菜单/视图 `label`、`description` 用 `%catalogKey%`；React 与工具侧用裸 key。
 - 清单未知字段 fail-closed：用到 `members[].instructionsPath` 就必须 `pluginApiVersion: ^2.3.0`。
 - 改了代码不 bump `version`，宿主不会重新加载。

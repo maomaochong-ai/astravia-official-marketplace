@@ -5,14 +5,14 @@ import {
 	describeToolEvent,
 	normalizeToolName,
 } from "../src/features/studio/live-feed/describe-tool-event.js";
-import { feedStore } from "../src/features/studio/live-feed/feed-store.js";
+import { feedStore } from "../src/application/live-feed/feed-store.js";
 import {
 	FEED_FIXED_KEYS,
 	STUDIO_TOOL_FEED_LABELS,
 	TEAM_TOOL_FEED_LABELS,
 	feedCatalogKeys,
 } from "../src/features/studio/live-feed/tool-catalog.js";
-import type { ToolEventFacts } from "../src/features/studio/live-feed/feed-types.js";
+import type { ToolEventFacts } from "../src/application/live-feed/feed-types.js";
 
 const AT = "2026-10-31T09:01:02.000Z";
 
@@ -223,7 +223,7 @@ describe("feedStore", () => {
 });
 
 describe("live-feed hook registration", () => {
-	const source = readFileSync(new URL("../src/live-feed-hooks.ts", import.meta.url), "utf8");
+	const source = readFileSync(new URL("../src/features/workbench/hooks/register-live-feed.ts", import.meta.url), "utf8");
 
 	it("declares scope_use on every hook, because the host fails closed", () => {
 		const registrations = source.match(/registerHook\(/g) ?? [];

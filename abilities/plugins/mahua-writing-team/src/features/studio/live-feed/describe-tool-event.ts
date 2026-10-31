@@ -1,8 +1,5 @@
-import type { FeedEvent, FeedStatus, ToolEventFacts } from "./feed-types.js";
+import type { FeedDraft, FeedStatus, ToolEventFacts } from "../../../application/live-feed/feed-types.js";
 import { FEED_FIXED_KEYS, STUDIO_TOOL_FEED_LABELS, TEAM_TOOL_FEED_LABELS } from "./tool-catalog.js";
-
-/** 描述器产出的草稿：id 由 store 分配。 */
-export type FeedDraft = Omit<FeedEvent, "id">;
 
 const PREVIEW_LIMIT = 80;
 
@@ -57,6 +54,9 @@ function describeTeamTool(
 		at: facts.at,
 		origin: "team",
 		status,
+		tool: name,
+		model: facts.model,
+		ms: facts.ms,
 		detail: facts.error,
 	};
 
@@ -104,9 +104,12 @@ function describeStudioTool(
 		at: facts.at,
 		origin: "studio",
 		status: statusOf(facts.eventName),
+		tool: name,
 		textKey: labelKey,
 		textParams: chapter === undefined ? undefined : { chapter },
 		chapter,
+		model: facts.model,
+		ms: facts.ms,
 		detail: facts.error,
 	};
 }

@@ -1,30 +1,200 @@
-/* 只导入 theme/utilities 两层：不要 preflight，避免 reset 污染宿主。
-   @astravia-org/plugin-vite 会在 tailwind 导入之后自动注入
-   `@astravia-org/plugin-sdk/tailwind-theme.css` 的 token 契约，所以这里不写 @theme、
-   也不导入 Desktop 样式，配色全部继承宿主当前主题（ADR 0006）。 */
+/* 麻花小说网工作台的纸面。
+ *
+ * 两条不能动的约束：
+ * 1. 不导 preflight——全局重置会污染宿主侧边栏与主题色，插件只重置自己这棵树（见下方 @layer base）；
+ * 2. `@theme inline` 不向 :root 发射变量，只把取值内联进本插件的工具类，因此不会改写宿主的 token。
+ *    `@astravia-org/plugin-vite` 会在 tailwind 导入之后自动注入 `@astravia-org/plugin-sdk/tailwind-theme.css`，
+ *    那份桥上已经占了 accent / background / border / card / foreground / muted / primary / ring 等名字，
+ *    所以这里刻意避开它们：抬起的纸叫 `raised`，朱砂叫 `cinnabar`，墨的深浅叫 `ink-soft` / `ink-faint`。
+ */
+
 @layer theme, base, components, utilities;
+
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
-
-/* 工作区视图图标是 iconify class 字符串，必须由插件自己的 CSS 生成，
-   否则侧边栏导航项是空格子且没有任何报错。 */
 @plugin "@iconify/tailwind4";
 
-.mahua-root {
-	height: 100%;
-	min-height: 0;
-	background: var(--background);
-	color: var(--foreground);
+@theme inline {
+	/* 标题字体：Fraunces 缺位时退到宋体，仍然是大字书的味道；界面字与等宽字沿用宿主/系统栈。 */
+	--font-display: "Fraunces Variable", ui-serif, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+
+	/* 一张纸的五个明度：相邻两档只差 3–4%，抬起的卡与压下去的槽靠这点差分开。 */
+	--color-canvas: #efe7d7;
+	--color-chrome: #f2ebdc;
+	--color-surface: #fbf7ee;
+	--color-raised: #fffdf8;
+	--color-inset: #f4edde;
+
+	/* 墨的三档，加三种线的粗细。 */
+	--color-ink: #221e17;
+	--color-ink-soft: #6f6757;
+	--color-ink-faint: #a19682;
+	--color-line-soft: #eee7d7;
+	--color-line: #e4dbc6;
+	--color-line-strong: #ccc1a6;
+
+	/* 朱砂：落款、当前章、正在写的那一笔。 */
+	--color-cinnabar: #a8402b;
+	--color-cinnabar-foreground: #fff8f2;
+	--color-cinnabar-soft: #f6e6df;
+	--color-cinnabar-ink: #8c3323;
+
+	/* 三档状态：已提交、等交稿、必改。 */
+	--color-pass: #4f6b4a;
+	--color-pass-soft: #e7ede3;
+	--color-wait: #97662a;
+	--color-wait-soft: #f4eadb;
+	--color-fail: #7e3223;
+	--color-fail-soft: #f2e2dc;
+
+	/* 字号阶梯。行高与字距跟着字号走，正文一档从 20 起（阅读页）。 */
+	--text-hero: 46px;
+	--text-hero--line-height: 54px;
+	--text-hero--letter-spacing: -0.5px;
+	--text-display: 34px;
+	--text-display--line-height: 42px;
+	--text-display--letter-spacing: -0.3px;
+	--text-title: 28px;
+	--text-title--line-height: 36px;
+	--text-title--letter-spacing: -0.2px;
+	--text-heading: 22px;
+	--text-heading--line-height: 30px;
+	--text-section: 18px;
+	--text-section--line-height: 26px;
+	--text-body: 15px;
+	--text-body--line-height: 24px;
+	--text-body-sm: 13px;
+	--text-body-sm--line-height: 20px;
+	--text-caption: 12px;
+	--text-caption--line-height: 18px;
+	--text-micro: 11px;
+	--text-micro--line-height: 16px;
+	--text-micro-up: 10.5px;
+	--text-micro-up--line-height: 14px;
+	--text-micro-up--letter-spacing: 0.08em;
+	--text-reader: 20px;
+	--text-reader--line-height: 36px;
+	--text-reader--letter-spacing: 0.01em;
+
+	/* 圆角比常见后台放大一档：tile < control < panel < sheet < window。 */
+	--radius-tile: 6px;
+	--radius-control: 9px;
+	--radius-panel: 13px;
+	--radius-sheet: 18px;
+	--radius-window: 14px;
+	--radius-pill: 9999px;
+
+	/* 投影只做「纸比纸高 1px」，不做悬浮卡片。 */
+	--shadow-raise: 0 1px 2px rgb(34 30 23 / 0.05);
+	--shadow-pop: 0 10px 28px -12px rgb(34 30 23 / 0.32);
+	--shadow-sheet: 0 24px 60px -28px rgb(34 30 23 / 0.4);
 }
 
-/* 章节正文用阅读排版：行宽、行高、首行缩进按中文小说习惯，不跟随 UI 的紧凑网格。 */
-.mahua-prose {
-	max-width: 34rem;
-	line-height: 1.9;
-	letter-spacing: 0.01em;
+/* 只重置工作台这棵树。放在 base 层，任何 utility 仍然压得住它。 */
+@layer base {
+	.mahua-root {
+		color-scheme: light;
+	}
+
+	.mahua-root button,
+	.mahua-root input,
+	.mahua-root textarea,
+	.mahua-root select {
+		margin: 0;
+		border: 0;
+		padding: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		letter-spacing: inherit;
+		text-align: inherit;
+	}
+
+	.mahua-root button {
+		cursor: pointer;
+	}
+
+	.mahua-root h1,
+	.mahua-root h2,
+	.mahua-root h3,
+	.mahua-root h4,
+	.mahua-root p,
+	.mahua-root figure,
+	.mahua-root blockquote {
+		margin: 0;
+		font-size: inherit;
+		font-weight: inherit;
+	}
+
+	.mahua-root ul,
+	.mahua-root ol {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.mahua-root table {
+		border-collapse: collapse;
+		border-spacing: 0;
+	}
+
+	.mahua-root svg {
+		display: block;
+	}
+
+	.mahua-root :focus-visible {
+		outline: 1px solid #ccc1a6;
+		outline-offset: 1px;
+	}
 }
 
+/* 稿纸正文：段落首行缩进两字，行距按纸的密度给。 */
 .mahua-prose p {
-	margin-block: 0.85em;
+	margin-block: 0 0.7em;
 	text-indent: 2em;
+}
+
+.mahua-prose p:last-child {
+	margin-block-end: 0;
+}
+
+/* 封面：纸的三种底色、三种纹样，全都放在这里——
+ * 视图层（src/features/**）不许写死颜色，图案只能靠 data-layer / data-motif 选。 */
+.mahua-cover {
+	--cover-bg: #efe7d6;
+	--cover-ink: #3b3428;
+	--cover-band: #c9b98f;
+	background-color: var(--cover-bg);
+	color: var(--cover-ink);
+	box-shadow: inset 0 0 0 1px rgb(34 30 23 / 0.12);
+}
+
+.mahua-cover[data-layer="1"] {
+	--cover-bg: #e3d9c2;
+	--cover-ink: #2c2a22;
+	--cover-band: #a9b49a;
+}
+
+.mahua-cover[data-layer="2"] {
+	--cover-bg: #e9dcd2;
+	--cover-ink: #33291f;
+	--cover-band: #c79b86;
+}
+
+.mahua-cover .cover-line {
+	stroke: var(--cover-band);
+	opacity: 0.5;
+}
+
+.mahua-cover .cover-dot {
+	fill: var(--cover-band);
+}
+
+.mahua-cover .cover-glyph {
+	font-family: var(--font-display);
+}
+
+.mahua-scroll {
+	scrollbar-width: thin;
+	scrollbar-color: #ccc1a6 transparent;
 }
