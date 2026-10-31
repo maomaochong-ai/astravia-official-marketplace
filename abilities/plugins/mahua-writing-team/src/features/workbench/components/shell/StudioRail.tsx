@@ -106,8 +106,8 @@ export function StudioRail({
 					<div className="min-w-0 flex-1">
 						<div className="truncate font-display text-body-sm font-semibold text-ink">{bookTitle}</div>
 						<div className="mt-0.5 truncate text-[10px] text-ink-soft">{stage}</div>
-						<div className="mt-1.5 h-[3px] overflow-hidden rounded-pill bg-inset">
-							<div className="h-full rounded-pill bg-ink/70" style={{ width: `${percent}%` }} />
+						<div className="mt-1.5 h-[3px] overflow-hidden rounded-pill bg-wash-strong">
+							<div className="h-full rounded-pill bg-cinnabar/70" style={{ width: `${percent}%` }} />
 						</div>
 					</div>
 				</button>
@@ -152,7 +152,7 @@ export function StudioRail({
 				>
 					<span className={`size-1 shrink-0 rounded-pill ${credential.ok ? "bg-pass" : "bg-fail"}`} />
 					<span className="mahua-rail-label min-w-0 flex-1 truncate">{credential.label}</span>
-					<span className="mahua-rail-label icon-[solar--alt-arrow-right-linear] ml-auto size-3 shrink-0" />
+					<span className="mahua-rail-label icon-[solar--alt-arrow-right-bold] ml-auto size-3 shrink-0" />
 				</button>
 
 				{autoCollapsed ? null : (

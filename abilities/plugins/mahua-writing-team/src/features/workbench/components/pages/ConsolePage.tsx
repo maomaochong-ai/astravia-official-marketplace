@@ -72,9 +72,9 @@ export function ConsolePage({
 				right={
 					<div className="flex items-center gap-2">
 						{model && (
-							<span className="flex h-6 items-center gap-1.5 rounded-pill bg-well px-2 font-mono text-[10px] text-ink-soft">
-								<span className="icon-[solar--cpu-bolt-linear] size-3" />
-								{model}
+							<span className="flex h-6 min-w-0 items-center gap-1.5 rounded-pill bg-well px-2 font-mono text-[10px] text-ink-soft">
+								<span className="icon-[solar--cpu-bolt-linear] size-3 shrink-0" />
+								<span className="max-w-[18ch] truncate">{model}</span>
 							</span>
 						)}
 						<span className="flex h-6 items-center gap-1.5 rounded-pill bg-raised px-2 text-[10px] text-ink-soft shadow-raise">
@@ -158,7 +158,7 @@ export function ConsolePage({
 									key={key}
 									type="button"
 									onClick={() => setFilter(key)}
-									className={`h-6 rounded-control px-2 text-[10px] ${
+									className={`h-6 shrink-0 whitespace-nowrap rounded-control px-2 text-[10px] ${
 										filter === key ? "bg-raised font-semibold text-ink shadow-raise" : "text-ink-soft hover:bg-wash"
 									}`}
 								>
@@ -233,11 +233,11 @@ export function ConsolePage({
 							<dt className="text-ink-faint">{t("console.field.phase")}</dt>
 							<dd>{book ? <PhaseBadge phase={book.phase} /> : "—"}</dd>
 							<dt className="text-ink-faint">{t("console.field.chapter")}</dt>
-							<dd className="truncate text-ink">
+							<dd className="min-w-0 truncate text-ink">
 								{chapter > 0 ? `${chapter} · ${record?.title ?? t("board.untitled")}` : "—"}
 							</dd>
 							<dt className="text-ink-faint">{t("console.field.arc")}</dt>
-							<dd className="truncate text-ink">{arc?.title ?? t("book.arcGoalNone")}</dd>
+							<dd className="min-w-0 truncate text-ink">{arc?.title ?? t("book.arcGoalNone")}</dd>
 							<dt className="text-ink-faint">{t("console.field.committed")}</dt>
 							<dd className="font-mono text-ink">
 								{book ? `${committedCount(book)} / ${book.targetChapters}` : "—"}
@@ -248,7 +248,7 @@ export function ConsolePage({
 							<dd className="flex items-center gap-2">
 								<span className="h-[3px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
 									<span
-										className="block h-full rounded-pill bg-ink/60"
+										className="block h-full rounded-pill bg-cinnabar/60"
 										style={{
 											width: `${book ? percent(book.progress.committedCount, book.targetChapters) : 0}%`,
 										}}

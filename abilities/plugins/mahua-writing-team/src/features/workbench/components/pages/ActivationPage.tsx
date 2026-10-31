@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { tryGetStudioRuntime } from "../../../../plugin-context.js";
 import { TOKEN_PREFIX } from "../../../../entitlement/credential-token.js";
+import { subjectLabel } from "../../../../entitlement/subject-label.js";
 import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
 import type { WorkbenchPage } from "../../workbench-pages";
@@ -113,7 +114,7 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 			 * 900px 以下改成上下堆叠，且**只保留外层这一条滚动条**——从前右栏自己还滚一层，
 			 * 面板一窄就变成两个互相独立的滚动区，光标滚哪个全凭运气。 */}
 			<div className="mt-3 flex flex-col gap-3 @min-[900px]:flex-row @min-[900px]:items-start">
-				<aside className="mahua-card flex w-full shrink-0 flex-col gap-4 p-5 @min-[900px]:w-[360px] @min-[900px]:p-6">
+				<aside className="mahua-card flex w-full shrink-0 flex-col gap-4 p-4 @min-[900px]:w-[360px] @min-[900px]:p-5">
 					<div>
 						<div className="flex size-11 items-center justify-center rounded-tile bg-cinnabar font-display text-title text-cinnabar-foreground">
 							{t("activation.mark")}
@@ -126,12 +127,12 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 						{POINTS.map((point) => (
 							<li key={point.key} className="flex items-start gap-2 px-2 py-1">
 								<span className={`${point.icon} mt-0.5 size-3.5 shrink-0 text-cinnabar`} />
-								<span className="min-w-0 text-micro leading-4 text-ink/75">{t(`activation.point.${point.key}`)}</span>
+								<span className="min-w-0 text-micro leading-4 text-ink-soft">{t(`activation.point.${point.key}`)}</span>
 							</li>
 						))}
 					</ul>
 
-					<p className="rounded-panel bg-well p-3 font-display text-body leading-7 text-ink/85">
+					<p className="rounded-panel bg-well p-3 font-display text-body leading-7 text-ink">
 						{t("activation.quote")}
 					</p>
 
@@ -233,7 +234,7 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 							type="button"
 							disabled={busy || draft.trim().length === 0}
 							onClick={() => void run(() => data.activate(draft.trim()))}
-							className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3.5 text-micro font-medium text-surface transition-colors hover:bg-ink/90 disabled:opacity-40"
+							className="flex h-8 items-center gap-1.5 rounded-control bg-cinnabar px-3.5 text-micro font-medium text-cinnabar-foreground transition-colors hover:bg-cinnabar/88 disabled:opacity-40"
 						>
 							<span className="icon-[solar--key-bold] size-3.5" />
 							{t("activation.submit")}
@@ -283,7 +284,7 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 					{claims ? (
 						<dl className="grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5 rounded-panel bg-well p-3 text-[11px]">
 							<dt className="text-ink-faint">{t("activation.fact.subject")}</dt>
-							<dd className="min-w-0 truncate text-ink">{claims.subject}</dd>
+							<dd className="min-w-0 truncate text-ink">{subjectLabel(claims.subject)}</dd>
 							<dt className="text-ink-faint">{t("activation.fact.plan")}</dt>
 							<dd className="min-w-0 truncate text-ink">{claims.plan}</dd>
 							<dt className="text-ink-faint">{t("activation.fact.entitlements")}</dt>

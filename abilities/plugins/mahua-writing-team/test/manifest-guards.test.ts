@@ -338,46 +338,41 @@ describe("visual language stays on host tokens", () => {
 		expect(css).toContain('@plugin "@iconify/tailwind4"');
 	});
 
-	it("keeps the full screen in exactly one place, mounted on body", () => {
-		// 宿主的路由把工作区视图渲染在应用外壳里（侧栏与页头都在），SDK 也没有隐藏侧栏或全屏
-		// 窗口的 API，所以「只有插件」只能由界面自己铺满视口。铺的方式被钉死在 `WorkbenchSurface`：
-		// `createPortal` 到 `document.body`，根节点 `fixed inset-0`，由 `data-fullscreen` 开关。
+	it("widens through the host's panel width, never through an overlay", () => {
+		// 「越大」这条需求只有一条正路：把**宿主的活动面板**拉到最宽（`setActivityPanelWidth("max")`）。
+		// 宿主自己的宽度模型在面板超过「窗口宽 - 384」时会自动收起左侧栏，退出时再把用户的意愿位
+		// 还原——「全屏时侧栏该让位」由宿主实现，插件不碰宿主的 DOM。
 		//
-		// 为什么非 portal 不可：宿主的挂载点自己处在层叠上下文里（壳层 `z-10`/`z-20`），
-		// `fixed` 只在该上下文内部生效，标签条与侧栏照样画在上面（截图里就是这么叠着的）。
-		// 插件 CSS 编成 `@scope ([data-astravia-plugin-root=<id>])`，portal 出去后得自己补一层
-		// 作用域根——但那是 `display: contents` 的属性包裹层，不是把 Tailwind 类写在它上面，
-		// 所以样式不会被丢弃。这两条一起钉住。
+		// 从前走的是 `createPortal` 到 `document.body` 的 `fixed inset-0` 覆盖层。那条路只是把画面蒙住：
+		// 宿主的标签条与侧栏仍在原地（用户看到的「标签菜单残留」），可用宽度也不是真的变宽，只是被盖住；
+		// 而它必须给自己一个极大的 z-index 才能压住宿主壳层，宿主改一次层叠上下文就翻车。
+		// 现在把这三条都钉成禁区：面板类 slot 不许 `fixed`、不许超大 z-index、不许 portal 到 body。
 		const violations: string[] = [];
 		for (const path of SOURCE_FILES) {
-			// 只看代码，不看注释：注释里写「为什么用 portal」并不等于真的用了。
+			// 只看代码，不看注释：注释里解释「当年为什么用 portal」并不等于真的用了。
 			const text = read(path)
 				.replace(/\/\*[\s\S]*?\*\//g, "")
 				.replace(/\/\/.*$/gm, "");
-			if (/\bfixed\b/.test(text) && !path.endsWith("WorkbenchSurface.tsx")) {
-				violations.push(`${path}: fixed`);
-			}
-			if (text.includes("createPortal") && !path.endsWith("WorkbenchSurface.tsx")) {
-				violations.push(`${path}: createPortal`);
-			}
+			if (/\bfixed\b/.test(text)) violations.push(`${path}: fixed`);
+			if (text.includes("createPortal")) violations.push(`${path}: createPortal`);
+			if (/z-\[(\d{7,})\]/.test(text)) violations.push(`${path}: overlay z-index`);
 			if (text.includes("data-mahua-overlay")) violations.push(`${path}: overlay marker`);
 		}
 		expect(violations).toEqual([]);
 
 		const surface = read("src/features/workbench/components/WorkbenchSurface.tsx");
-		// 同一份 JSX 在两种形态之间只换渲染出口与定位，不另写一份：页面里的局部状态只在切档时丢。
-		expect(surface).toContain('fullscreen ? "fixed inset-0 z-[2147483000] bg-canvas" : "h-full"');
-		expect(surface).toContain("data-fullscreen={fullscreen ? \"true\" : \"false\"}");
-		// 搬到 body 之后必须自己补一层作用域根，否则 CSS 的 @scope 匹配不到，全屏就是一张裸页。
-		expect(surface).toContain("createPortal(");
-		expect(surface).toContain("data-astravia-plugin-root={STUDIO_PLUGIN_ID}");
-		expect(surface).toContain('style={{ display: "contents" }}');
-		expect(surface).toContain("document.body,");
-		// 覆盖整窗后宿主的窗口控制键被盖住，所以必须有一条键盘退路，且背后不能再跟着滚。
-		expect(surface).toContain('event.key === "Escape"');
-		expect(surface).toContain('document.body.style.overflow = "hidden"');
-		// 宿主自己的位置 API 一个都不用：它们做不到「只有插件」（注释里的名字不算）。
 		const code = surface.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+		// 一份 JSX，两种宽度；不另写一份，也不搬 DOM。
+		expect(code).toContain("ctx.ui.setActivityPanelWidth(");
+		expect(code).toContain('setPanelWidth("max")');
+		expect(code).toContain('className="mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden"');
+		expect(code).toContain('data-expanded={expanded ? "true" : "false"}');
+		// 收回时把展开前量到的宽度还回去，而不是塞一个写死的值：否则用户的手工宽度会被吞掉。
+		expect(code).toContain("restoreRef.current ?? RESTORE_FALLBACK_PX");
+		// 拉宽之后 Esc 收回：这是模态化的唯一残留，键盘用户得有一条退路。
+		expect(code).toContain('event.key === "Escape"');
+		expect(code).not.toContain("document.body.style.overflow");
+		// 宿主的位置 API 一个都不用：它们做不到「只有插件」（注释里的名字不算）。
 		expect(code).not.toContain("openWorkspaceView");
 		expect(code).not.toContain("openActivityTab");
 	});
@@ -641,17 +636,20 @@ describe("the workbench frames stay honest about the domain", () => {
 		expect(skeleton).not.toContain("getStudioRuntime()");
 	});
 
-	it("puts the fullscreen door in the masthead, where every page can reach it", () => {
-		// 全屏现在是外壳级能力，所以门必须挂在报头右槽：它不随页面变，bare 页（运行台 / 激活页）
+	it("puts the widen door in the masthead, where every page can reach it", () => {
+		// 拉宽现在是外壳级能力，所以门必须挂在报头右槽：它不随页面变，bare 页（运行台 / 激活页）
 		// 没有竖栏也能到。竖栏底部则一律不带描边按钮（收纳态尤其碎）。
+		//
+		// 报头**不是**窗口标题栏：宿主页头在它上面，拖拽区与红黄绿也不归它管，所以这里一个
+		// `mahua-drag` / `mahua-traffic-lights` 都不该有——那是覆盖层时代的残留。
 		const masthead = read("src/features/workbench/components/shell/StudioMasthead.tsx");
-		expect(masthead).toContain('t("window.fullscreen")');
-		expect(masthead).toContain('t("window.exitFullscreen")');
-		// 报头兼作标题栏：少一个 no-drag，里面的键就点不动。
-		expect(masthead).toContain("mahua-drag");
-		const css = read("src/style.css");
-		expect(css).toMatch(/\.mahua-drag[\s\S]*?-webkit-app-region: drag;/);
-		expect(css).toMatch(/\.mahua-drag :where\(button[\s\S]*?-webkit-app-region: no-drag;/);
+		expect(masthead).toContain('t("window.expandPanel")');
+		expect(masthead).toContain('t("window.collapsePanel")');
+		expect(masthead).toContain("icon-[solar--maximize-square-minimalistic-bold]");
+		expect(masthead).toContain("icon-[solar--minimize-square-minimalistic-bold]");
+		const mastheadCode = masthead.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+		expect(mastheadCode).not.toContain("mahua-drag");
+		expect(mastheadCode).not.toContain("mahua-traffic-lights");
 		// 窄栏底部不再有「换位置」与「跳对话」两扇门。
 		const rail = read("src/features/workbench/components/shell/StudioRail.tsx");
 		expect(rail).not.toContain("revealTeam");
@@ -771,11 +769,14 @@ describe("one paper language across the workbench (ADR 0033)", () => {
 		expect(missingCard).toEqual([]);
 	});
 
-	it("draws pages with containers instead of hairlines", () => {
+	it("draws the whole workbench with containers instead of hairlines", () => {
 		// 分隔只用底色与间距。剩下的描边只能是“空心的点”或“选中圈”，
 		// 这两种用 `border-pass` / `border-line-strong` 画小圆点，不算分隔线。
+		//
+		// 从前这条只扫 `pages/`，于是重试键的表框、骨架屏报头的下划线一直留在原地——
+		// 页面里干净、壳层里有线条，同一屏里两种语言。现在整棵树都在这条规则下。
 		const dividers: string[] = [];
-		for (const path of SOURCE_FILES.filter((file) => file.startsWith("src/features/workbench/components/pages/"))) {
+		for (const path of UI_FILES) {
 			const text = bare(path);
 			// 长名写在前：`border-line` 会先命中 `border-line-strong` 的前缀。
 			for (const match of text.matchAll(/border-(?:line-strong|line-soft|line|dashed)|divide-[xy]/g)) {
@@ -785,4 +786,17 @@ describe("one paper language across the workbench (ADR 0033)", () => {
 		}
 		expect(dividers).toEqual([]);
 	});
+
+	it("never lets the filter strip wrap, whatever width the panel is dragged to", () => {
+		// 面板能拖到 260，也能拉到窗口减 384。筛选带若允许折行，chip 会在凹槽里折成两三行，
+		// 凹槽跟着长高，台账被挤到只剩两条——这就是「导航项文字被挤成两行」的来路。
+		// 现在的契约是：整条横向滚动、每组 `shrink-0`、每枚 chip 不换行。
+		const code = bare("src/features/workbench/components/pages/LibraryPage.tsx");
+		expect(code).toContain("mahua-strip");
+		expect(code).not.toMatch(/\bflex-wrap\b/);
+		expect(code).toContain("whitespace-nowrap");
+		// 样式得真在：类名挂上了，CSS 里没有滚动规则照样会把内容顶出去。
+		expect(read("src/style.css")).toContain(".mahua-strip");
+	});
+
 });

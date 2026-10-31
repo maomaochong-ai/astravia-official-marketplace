@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { STUDIO_PLUGIN_ID } from "../../../studio-ids.js";
+import { useEffect, useRef, useState } from "react";
+import { getStudioRuntime } from "../../../plugin-context.js";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
 import { useNarrowSurface } from "../hooks/use-narrow-surface";
 import { useRailCollapsed } from "../hooks/use-rail-collapsed";
@@ -34,40 +33,45 @@ const REFRESH_DEBOUNCE_MS = 300;
 const CLOCK_MS = 30_000;
 
 /**
+ * 收回时用的宽度：量不到当前宽度（首帧、宿主隐藏）才用它。
+ * 取 560 是因为工作台的两栏版面在这个宽度上刚好都不塌。
+ */
+const RESTORE_FALLBACK_PX = 560;
+
+/**
  * 工作台的装配层：七帧只在这里被选一次。运行时一定在（入口已经挡过一道）。
  *
  * 它自己不做任何事——路由在 `use-workbench-route`，事实在 `use-studio-state`，
  * 事件流在 `use-console-timeline`。这里只把几样东西接起来，唯一的行为是「有新的落盘事件就
  * 重读一次」：同步只有这一个方向。
  *
- * 「全屏」是**同一棵组件树换个渲染出口**，不是第二个实例：平时根节点长在面板里（`h-full`），
- * 点全屏后同一份 JSX 经 `createPortal` 挂到 `document.body`，根节点变成 `fixed inset-0`。三条理由：
+ * 「铺满」= 让**宿主**把活动面板拉到最宽，而不是插件自己盖一层覆盖层。
  *
- * 1. 宿主工作区视图（`openWorkspaceView`）做不到「只有插件」——宿主把它渲染在应用外壳里，
- *    侧栏与页头都在，SDK 也没有隐藏侧栏或全屏窗口的 API；
- * 2. 插件 CSS 活在 `@scope ([data-astravia-plugin-root=<id>])` 里，`:root` 级别的选择器碰不到
- *    宿主 chrome，所以唯一能覆盖整窗的办法就是让自己变成一块固定定位的画布；
- * 3. 光把根节点改成 `fixed` 不够：宿主的挂载点自己处在层叠上下文里（壳层 `z-10`/`z-20`），
- *    `fixed` 只在那个上下文内部生效，标签条与侧栏照样画在上面——截图里就是这么叠着的。
- *    搬到 `body` 才能压过宿主的全部壳层，所以这里用 `createPortal`，并在外面补一层
- *    `[data-astravia-plugin-root]`（`display: contents`，不参与布局），让 `@scope` 仍能命中。
- *    宿主的界面设计 preset 插件也是这个写法（`plugin-portal.tsx`）。
+ * 从前这里是 `createPortal` 到 `document.body` 的 `fixed inset-0` 覆盖层，理由是「宿主工作区
+ * 视图做不到只有插件」。那条路有三个治不好的毛病，用户两个都撞上了：
  *
- * 代价写在明处：覆盖整窗后宿主的窗口控制键被盖住，所以报头在全屏时是拖拽区，Esc 与报头上的
- * 按钮都能退出；另外切换出口会让这棵子树卸载重挂，页内临时 state（筛选、草稿）会重置——
- * 阅读字号一类偏好本来就走存储，不受影响。这是「模态全屏」的常规取舍（VS Code 也是这样）。
+ * 1. 覆盖层盖住的只是**画面**，宿主的标签条与侧栏仍在原地——视觉上是「标签菜单残留在工作台
+ *    上」，交互上侧栏并没有真的收起，只是被蒙住；
+ * 2. 想把整窗铺满就得给自己一个极大的 `z-index`，而插件 CSS 编在 `@scope` 里，压不压得住宿主
+ *    壳层取决于宿主的层叠上下文，宿主改一次外壳就可能翻车；
+ * 3. 它违反本仓库的版面纪律：面板类 slot 不许 `fixed`、不许超大 `z-index`、不许 portal 到 body。
+ *
+ * 现在走宿主自己的宽度通道：`ctx.ui.setActivityPanelWidth("max")`。宿主的面板宽度模型在面板
+ * 超过 `窗口宽 - 384` 时**自动收起左侧栏**（`useActivityPanelModel` 的 `reconcileSidebarForWidth`），
+ * 退出时再把用户原来的意愿位还原——这正是「全屏时侧栏该让位」的正确实现点，由宿主做，
+ * 插件不碰宿主的 DOM，也不需要额外权限。收回时把展开前量到的宽度原样还回去。
  */
 export function WorkbenchSurface() {
 	const t = useTranslator();
 	const data = useStudioState();
 	const { route, navigate } = useWorkbenchRoute();
 	const rail = useRailCollapsed();
-	const { ref: surfaceRef, narrow } = useNarrowSurface();
+	const { ref: surfaceRef, narrow, width } = useNarrowSurface();
 	const events = useConsoleTimeline();
 	const [now, setNow] = useState(() => Date.now());
-	const [fullscreen, setFullscreen] = useState(false);
-	// mac 的红绿灯由系统画在网页内容之上，全屏时得给报头让出左侧那一段。
-	const [mac] = useState(() => document.documentElement.dataset.platform === "mac");
+	const [expanded, setExpanded] = useState(false);
+	/** 展开前的面板宽度；收回时还回去，而不是塞一个写死的值。 */
+	const restoreRef = useRef<number | null>(null);
 
 	const landed = lastLandedStudioEvent(events);
 	const landedId = landed?.id ?? null;
@@ -86,20 +90,33 @@ export function WorkbenchSurface() {
 		return () => clearTimeout(timer);
 	}, [landedId, refresh]);
 
+	const setPanelWidth = (next: number | "max") => {
+		// 权限或宿主版本不满足时 SDK 只是 warn + noop：这里不该为此抛错，
+		// 面板宽度是锦上添花，不是这张工作台能画出来的前提。
+		getStudioRuntime().ctx.ui.setActivityPanelWidth(next);
+	};
+
+	const collapse = () => {
+		setPanelWidth(restoreRef.current ?? RESTORE_FALLBACK_PX);
+		restoreRef.current = null;
+		setExpanded(false);
+	};
+
+	const expand = () => {
+		restoreRef.current = width > 0 ? width : null;
+		setPanelWidth("max");
+		setExpanded(true);
+	};
+
+	// 铺满之后 Esc 收回：这是模态化的唯一残留，键盘用户得有一条退路。
 	useEffect(() => {
-		if (!fullscreen) return;
+		if (!expanded) return;
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") setFullscreen(false);
+			if (event.key === "Escape") collapse();
 		};
 		window.addEventListener("keydown", onKey);
-		// 覆盖层之下还留着宿主的滚动容器：不锁住的话滚轮会带着背后的侧栏一起动。
-		const previousOverflow = document.body.style.overflow;
-		document.body.style.overflow = "hidden";
-		return () => {
-			window.removeEventListener("keydown", onKey);
-			document.body.style.overflow = previousOverflow;
-		};
-	}, [fullscreen]);
+		return () => window.removeEventListener("keydown", onKey);
+	});
 
 	const book = data.book;
 	const chapter = book?.progress.currentChapter ?? 0;
@@ -115,19 +132,13 @@ export function WorkbenchSurface() {
 	const surface = (
 		<div
 			ref={surfaceRef}
-			className={`mahua-root flex min-h-0 w-full flex-col overflow-hidden ${
-				fullscreen ? "fixed inset-0 z-[2147483000] bg-canvas" : "h-full"
-			}`}
-			data-fullscreen={fullscreen ? "true" : "false"}
-			role={fullscreen ? "dialog" : undefined}
-			aria-modal={fullscreen ? true : undefined}
-			aria-label={fullscreen ? t("window.fullscreen") : undefined}
+			className="mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden"
+			data-expanded={expanded ? "true" : "false"}
 		>
 			<StudioShell
 				active={route.page}
-				fullscreen={fullscreen}
-				onToggleFullscreen={() => setFullscreen((value) => !value)}
-				trafficLights={fullscreen && mac}
+				expanded={expanded}
+				onToggleExpanded={expanded ? collapse : expand}
 				bare={isBarePage(route.page)}
 				sync={
 					isBarePage(route.page)
@@ -182,7 +193,7 @@ export function WorkbenchSurface() {
 						<button
 							type="button"
 							onClick={data.refresh}
-							className="mt-2 flex h-7 items-center rounded-control border border-line px-3 text-[10px] text-ink"
+							className="mt-2 flex h-7 items-center rounded-control bg-well px-3 text-[10px] text-ink transition-colors hover:bg-wash-strong"
 						>
 							{t("window.retry")}
 						</button>
@@ -202,12 +213,5 @@ export function WorkbenchSurface() {
 		</div>
 	);
 
-	if (!fullscreen) return surface;
-
-	return createPortal(
-		<div data-astravia-plugin-root={STUDIO_PLUGIN_ID} style={{ display: "contents" }}>
-			{surface}
-		</div>,
-		document.body,
-	);
+	return surface;
 }

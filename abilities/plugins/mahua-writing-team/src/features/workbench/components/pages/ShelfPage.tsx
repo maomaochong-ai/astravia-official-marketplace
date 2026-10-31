@@ -153,7 +153,7 @@ export function ShelfPage({
 								<div className="flex-1">
 									<div className="h-[3px] overflow-hidden rounded-pill bg-wash">
 										<div
-											className="h-full rounded-pill bg-ink/70"
+											className="h-full rounded-pill bg-cinnabar/60"
 											style={{ width: `${percent(committedCount(book), book.targetChapters)}%` }}
 										/>
 									</div>
@@ -178,7 +178,7 @@ export function ShelfPage({
 									<button
 										type="button"
 										onClick={() => onNavigate("console")}
-										className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3 text-micro font-medium text-surface transition-colors hover:bg-ink/90"
+										className="flex h-8 items-center gap-1.5 rounded-control bg-cinnabar px-3 text-micro font-medium text-cinnabar-foreground transition-colors hover:bg-cinnabar/88"
 									>
 										<span className="icon-[solar--pulse-linear] size-3" />
 										{t("shelf.openConsole")}
@@ -241,7 +241,7 @@ export function ShelfPage({
 												data.selectBook(entry.id);
 												onNavigate("book");
 											}}
-											className="flex min-h-[54px] w-full items-center gap-3 rounded-panel px-2 py-1 text-left transition-colors hover:bg-wash"
+											className="flex min-h-[54px] w-full items-center gap-3 rounded-control px-2 py-1 text-left transition-colors hover:bg-wash-strong"
 										>
 											<Cover {...coverSeed(entry.title)} size="mini" />
 											<div className="min-w-0 flex-1">
@@ -257,7 +257,7 @@ export function ShelfPage({
 												<div className="mt-1 flex items-center gap-2">
 													<div className="h-[2px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
 														<div
-															className="h-full rounded-pill bg-ink/60"
+															className="h-full rounded-pill bg-cinnabar/45"
 															style={{ width: `${percent(entry.committedCount, entry.targetChapters)}%` }}
 														/>
 													</div>
