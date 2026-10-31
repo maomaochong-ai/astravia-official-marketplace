@@ -5,6 +5,7 @@ import type { WorkbenchPage } from "../../workbench-pages";
 import {
 	arcOf,
 	chapterStateOf,
+	committedFrontier,
 	committedWords,
 	elapsedSince,
 	openThreadCount,
@@ -15,7 +16,8 @@ import {
 } from "../../workbench-model";
 import { isWriting } from "../../workbench-feed";
 import { ChapterBrief } from "../shell/ChapterBrief";
-import { ChapterMark, CHAPTER_STATES, PhaseBadge } from "../shell/PhaseBadge";
+import { ChapterMark } from "../shell/ChapterMark";
+import { CHAPTER_STATES, PhaseBadge } from "../shell/PhaseBadge";
 import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
 
@@ -68,7 +70,7 @@ export function BookPage({
 	const arcCommitted = arcChapters.filter(
 		(n) => book.chapters.find((item) => item.n === n)?.status === "committed",
 	).length;
-	const committedMax = book.chapters.reduce((max, item) => (item.status === "committed" ? Math.max(max, item.n) : max), 0);
+	const committedMax = committedFrontier(book);
 	const threads = data.threads;
 	const soonest = soonestOpenThread(threads, committedMax);
 	const openCount = openThreadCount(threads);
@@ -95,7 +97,7 @@ export function BookPage({
 
 				<section className="rounded-sheet bg-raised p-4 shadow-raise">
 					<div className="flex items-baseline gap-2">
-						<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("book.arcProgress")}
 						</span>
 						<span className="text-micro text-ink">
@@ -148,7 +150,7 @@ export function BookPage({
 
 					<div className="mt-4 rounded-panel bg-inset/70 p-3">
 						<div className="flex items-baseline gap-2">
-							<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+							<span className="text-micro-up font-semibold uppercase text-ink-faint">
 								{t("book.activity")}
 							</span>
 							<span className="text-[10px] text-ink-faint">
@@ -187,7 +189,7 @@ export function BookPage({
 			<aside className="flex w-[366px] shrink-0 flex-col gap-3">
 				<section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
 					<div className="flex items-baseline gap-2 px-4 pb-2 pt-3">
-						<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("book.index")}
 						</span>
 						<span className="ml-auto font-mono text-[10px] text-ink-faint">

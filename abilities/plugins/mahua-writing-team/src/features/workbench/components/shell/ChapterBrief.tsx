@@ -37,7 +37,9 @@ export function ChapterBrief({
 		<section className="overflow-hidden rounded-sheet bg-raised shadow-raise">
 			<div className="flex items-start gap-4 px-4 pb-3.5 pt-4">
 				<div className="w-12 shrink-0 text-right">
-					<div className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-faint">Chapter</div>
+					<div className="font-mono text-[10px] uppercase tracking-[0.1em] text-ink-faint">
+						{t("brief.chapterLabel")}
+					</div>
 					<div className="font-display text-title font-semibold leading-none text-ink">{number}</div>
 				</div>
 				<div className="min-w-0 flex-1">

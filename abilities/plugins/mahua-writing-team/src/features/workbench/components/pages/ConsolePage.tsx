@@ -90,7 +90,7 @@ export function ConsolePage({
 			<div className="mt-1 flex min-h-0 flex-1 gap-4">
 				<aside className="flex w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
 					<div className="border-b border-line-soft px-3 pb-2 pt-2.5">
-						<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.spine")}
 						</div>
 					</div>
@@ -151,7 +151,7 @@ export function ConsolePage({
 
 				<section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
 					<div className="flex items-center gap-1 border-b border-line-soft px-3 pb-2 pt-2.5">
-						<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.feed")}
 						</span>
 						<div className="ml-3 flex items-center gap-0.5">
@@ -228,7 +228,7 @@ export function ConsolePage({
 
 				<aside className="flex w-[288px] shrink-0 flex-col gap-3 overflow-y-auto">
 					<section className="rounded-sheet bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.overview")}
 						</div>
 						<dl className="mt-2 grid grid-cols-[64px_1fr] gap-y-1 text-[11px]">
@@ -264,7 +264,7 @@ export function ConsolePage({
 					</section>
 
 					<section className="rounded-sheet bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.team")}
 						</div>
 						<ul className="mt-2 space-y-1.5">
@@ -291,7 +291,7 @@ export function ConsolePage({
 					</section>
 
 					<section className="rounded-sheet bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.review")}
 						</div>
 						{data.review ? (
@@ -315,7 +315,7 @@ export function ConsolePage({
 					</section>
 
 					<section className="rounded-sheet bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.checkpoints")}
 						</div>
 						{book && book.checkpoints.length > 0 ? (

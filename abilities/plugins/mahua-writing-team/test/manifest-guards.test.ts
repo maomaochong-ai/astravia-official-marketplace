@@ -517,3 +517,60 @@ describe("the gate covers exactly the write tools", () => {
 		expect(gated.slice().sort()).toEqual(expected.slice().sort());
 	});
 });
+
+describe("the workbench frames stay honest about the domain", () => {
+	it("ships a screen for every frame the rail can reach", () => {
+		const pages = read("src/features/workbench/workbench-pages.ts");
+		const ids = [...pages.matchAll(/"([a-z]+)"/g)].map((match) => match[1] as string);
+		const RAILS = new Set(["shelf", "library", "book", "reader", "ledger", "console", "activation"]);
+		const reached = [...new Set(ids.filter((id) => RAILS.has(id)))].sort();
+		expect(reached).toEqual([...RAILS].sort());
+		for (const id of reached) {
+			const file = `src/features/workbench/components/pages/${id[0]?.toUpperCase()}${id.slice(1)}Page.tsx`;
+			expect(read(file), file).toContain(`export function ${id[0]?.toUpperCase()}${id.slice(1)}Page`);
+		}
+	});
+
+	it("filters by every phase the domain can store", () => {
+		// 左栏的筛选清单是手写的；漏一个阶段，那一阶段的书就只能在「全部」里出现。
+		const domain = read("src/domain/novel-types.ts");
+		const union = /type NovelPhase\s*=\s*([\s\S]*?);/.exec(domain)?.[1] ?? "";
+		const phases = [...union.matchAll(/"([a-z_]+)"/g)].map((match) => match[1] as string);
+		expect(phases.length).toBeGreaterThan(3);
+		const filter = read("src/features/workbench/components/pages/LibraryPage.tsx");
+		const listed = /const PHASES = \[([\s\S]*?)\]/.exec(filter)?.[1] ?? "";
+		const missing = phases.filter((phase) => !listed.includes(`"${phase}"`));
+		expect(missing).toEqual([]);
+	});
+
+	it("survives being rendered before the plugin runtime exists", () => {
+		// 运行时只在 activate 里建。宿主若先渲染标签（热重载 / 停用后再点开），
+		// 入口组件必须自己挡一道，而不是抛错把整块面板留白。
+		const screen = read("src/features/workbench/components/WorkbenchScreen.tsx");
+		expect(screen).toContain("tryGetStudioRuntime()");
+		expect(screen).not.toContain("getStudioRuntime()");
+		expect(read("src/features/workbench/components/WorkbenchSurface.tsx")).toContain(
+			"export function WorkbenchSurface",
+		);
+	});
+
+	it("keeps every dynamic locale family resolvable", () => {
+		// `t(\`status.${...}\`)` 这类键是拼出来的，通用扫描看不见。
+		// 取值直接取自领域的联合类型，避免这份清单自己先漂。
+		const unions: Array<[string, string, string]> = [
+			["src/domain/novel-types.ts", "ChapterStatus", "status"],
+			["src/domain/novel-types.ts", "NovelPhase", "phase"],
+			["src/application/live-feed/feed-types.ts", "FeedOrigin", "console.origin"],
+			["src/application/live-feed/feed-types.ts", "FeedStatus", "feed.status"],
+		];
+		const missing: string[] = [];
+		for (const [file, name, prefix] of unions) {
+			const union = new RegExp(`type ${name}\\s*=\\s*([\\s\\S]*?);`).exec(read(file))?.[1] ?? "";
+			for (const match of union.matchAll(/"([^"]+)"/g)) {
+				const key = `${prefix}.${match[1]}`;
+				if (!(key in en) || !(key in zh)) missing.push(key);
+			}
+		}
+		expect(missing).toEqual([]);
+	});
+});

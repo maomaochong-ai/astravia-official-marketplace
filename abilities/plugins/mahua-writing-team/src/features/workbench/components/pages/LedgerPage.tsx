@@ -2,8 +2,9 @@ import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
 import { auditThreads } from "../../../../domain/threads.js";
 import type { WorkbenchPage } from "../../workbench-pages";
-import { elapsedSince, threadStateOf } from "../../workbench-model";
-import { lastEvent } from "../../workbench-feed";
+import { committedFrontier, elapsedSince, threadStateOf } from "../../workbench-model";
+import type { ThreadState } from "../../workbench-model";
+import { elapsedText, lastEvent } from "../../workbench-feed";
 import { useLiveFeed } from "../../../studio/live-feed/use-live-feed.js";
 import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
@@ -16,7 +17,7 @@ const CHECKS = [
 	"consistency.rewriteOnCommitted",
 ] as const;
 
-const THREAD_TONE: Record<string, string> = {
+const THREAD_TONE: Record<ThreadState, string> = {
 	closed: "text-ink-faint",
 	overdue: "text-fail",
 	open: "text-ink",
@@ -39,9 +40,7 @@ export function LedgerPage({
 	const events = useLiveFeed();
 	const now = Date.now();
 	const book = data.book;
-	const committedMax = book
-		? book.chapters.reduce((max, item) => (item.status === "committed" ? Math.max(max, item.n) : max), 0)
-		: 0;
+	const committedMax = book ? committedFrontier(book) : 0;
 	const audit = auditThreads(data.threads, committedMax);
 	const lastRun = lastEvent(events);
 
@@ -65,7 +64,7 @@ export function LedgerPage({
 						{ label: t("ledger.stat.unresolved"), value: `${Math.round(audit.unresolvedRate * 100)}%` },
 					].map((tile) => (
 						<div key={tile.label} className="rounded-panel bg-raised px-3 py-2.5 shadow-raise">
-							<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+							<div className="text-micro-up font-semibold uppercase text-ink-faint">
 								{tile.label}
 							</div>
 							<div className="mt-1 font-mono text-heading tabular-nums leading-none text-ink">{tile.value}</div>
@@ -74,7 +73,7 @@ export function LedgerPage({
 				</div>
 
 				<section className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
-					<div className="grid shrink-0 grid-cols-[38px_1fr_84px_84px_56px] items-center gap-2 border-b border-line px-4 pb-2 pt-3 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+					<div className="grid shrink-0 grid-cols-[38px_1fr_84px_84px_56px] items-center gap-2 border-b border-line px-4 pb-2 pt-3 text-micro-up font-semibold uppercase text-ink-faint">
 						<span />
 						<span>{t("ledger.threads")}</span>
 						<span>{t("ledger.plantedShort")}</span>
@@ -127,7 +126,7 @@ export function LedgerPage({
 
 				<section className="mt-3 shrink-0 rounded-sheet bg-raised p-3 shadow-raise">
 					<div className="flex items-baseline gap-2">
-						<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("ledger.decisions")}
 						</span>
 						<span className="text-[10px] text-ink-faint">{t("ledger.decisionsMeta")}</span>
@@ -161,17 +160,12 @@ export function LedgerPage({
 			<aside className="flex w-[366px] shrink-0 flex-col gap-3">
 				<section className="rounded-sheet bg-raised p-3.5 shadow-raise">
 					<div className="flex items-baseline gap-2">
-						<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("ledger.consistency")}
 						</span>
 						<span className="ml-auto font-mono text-[10px] text-ink-faint">
 							{lastRun
-								? t("ledger.checkedAt", {
-										ago: (() => {
-											const elapsed = elapsedSince(lastRun.at, now);
-											return elapsed ? t(elapsed.key, { count: elapsed.count }) : "";
-										})(),
-									})
+								? t("ledger.checkedAt", { ago: elapsedText(elapsedSince(lastRun.at, now), t) })
 								: t("ledger.checkedNever")}
 						</span>
 					</div>
@@ -197,7 +191,7 @@ export function LedgerPage({
 				</section>
 
 				<section className="rounded-sheet bg-raised p-3.5 shadow-raise">
-					<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+					<div className="text-micro-up font-semibold uppercase text-ink-faint">
 						{t("ledger.audit")}
 					</div>
 					{audit.findings.length === 0 ? (

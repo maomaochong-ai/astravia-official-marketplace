@@ -10,7 +10,9 @@ import { PhaseBadge } from "../shell/PhaseBadge";
 
 const PAGE_SIZE = 9;
 
-const PHASES = ["drafting", "revising", "planning", "completed", "briefing"] as const;
+// 与 `NovelPhase` 同序：落库的阶段一个都不能漏，否则左栏的筛选会对某些书静默失灵
+// （`arc_close` 曾经漏在这里）。
+const PHASES = ["briefing", "planning", "drafting", "revising", "arc_close", "completed"] as const;
 
 /**
  * 书库：左边两列筛选，右边一本一行。
@@ -69,7 +71,7 @@ export function LibraryPage({
 			<div className="mt-1 flex min-h-0 flex-1 gap-5">
 				<aside className="flex w-[188px] shrink-0 flex-col gap-4">
 					<div>
-						<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("library.filter.genre")}
 						</div>
 						<div className="mt-2 space-y-0.5">
@@ -100,7 +102,7 @@ export function LibraryPage({
 					</div>
 
 					<div>
-						<div className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("library.filter.status")}
 						</div>
 						<div className="mt-2 space-y-0.5">
@@ -128,7 +130,7 @@ export function LibraryPage({
 				</aside>
 
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-					<div className="grid shrink-0 grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 border-b border-line px-2 pb-2 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+					<div className="grid shrink-0 grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 border-b border-line px-2 pb-2 text-micro-up font-semibold uppercase text-ink-faint">
 						<span>{t("library.column.book")}</span>
 						<span>{t("library.column.stage")}</span>
 						<span className="text-right">{t("library.column.chapters")}</span>

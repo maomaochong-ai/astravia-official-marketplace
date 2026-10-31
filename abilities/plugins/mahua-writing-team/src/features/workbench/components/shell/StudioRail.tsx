@@ -58,7 +58,7 @@ export function StudioRail({
 
 	return (
 		<aside className="flex w-[208px] shrink-0 flex-col pb-1 pr-1">
-			<span className="px-2 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+			<span className="px-2 text-micro-up font-semibold uppercase text-ink-faint">
 				{t("rail.current")}
 			</span>
 			<button
@@ -80,7 +80,7 @@ export function StudioRail({
 				{RAIL_WORKS.map((entry) => item(entry.page, t(entry.labelKey), entry.icon))}
 			</nav>
 
-			<span className="mt-4 px-2.5 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+			<span className="mt-4 px-2.5 text-micro-up font-semibold uppercase text-ink-faint">
 				{t("rail.craft")}
 			</span>
 			<nav className="mt-2 space-y-1">
@@ -96,7 +96,7 @@ export function StudioRail({
 					>
 						<div className="flex items-center gap-1.5">
 							<span className="size-1.5 rounded-pill bg-cinnabar" />
-							<span className="text-[10px] font-semibold tracking-[0.08em] text-cinnabar-ink">
+							<span className="text-micro-up font-semibold text-cinnabar-ink">
 								{t("rail.writing", { writer: writing.writer })}
 							</span>
 							<span className="ml-auto font-mono text-[10px] text-ink-faint">{writing.elapsed}</span>

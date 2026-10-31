@@ -62,6 +62,15 @@ export function committedWords(book: NovelBook): number {
 	return book.chapters.reduce((sum, chapter) => (chapter.status === "committed" ? sum + chapter.words : sum), 0);
 }
 
+/**
+ * 已提交的最高章号——「正文写到哪儿」的唯一口径。
+ *
+ * 弧带、伏笔审计与「距收弧还有几章」都从这一个数往回算，别再各写一遍 reduce。
+ */
+export function committedFrontier(book: NovelBook): number {
+	return book.chapters.reduce((max, chapter) => (chapter.status === "committed" ? Math.max(max, chapter.n) : max), 0);
+}
+
 export function percent(part: number, whole: number): number {
 	if (whole <= 0) return 0;
 	return Math.min(100, Math.round((part / whole) * 100));

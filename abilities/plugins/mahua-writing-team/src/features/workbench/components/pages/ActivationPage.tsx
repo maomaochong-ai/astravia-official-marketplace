@@ -73,7 +73,7 @@ export function ActivationPage({ data }: { data: StudioState }) {
 						</ul>
 					</div>
 					<div className="mt-6 border-t border-line pt-3">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("activation.signingKeys")}
 						</div>
 						<ul className="mt-1.5 space-y-1">
@@ -147,7 +147,7 @@ export function ActivationPage({ data }: { data: StudioState }) {
 					)}
 
 					<label className="mt-4 block">
-						<span className="flex items-baseline gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="flex items-baseline gap-2 text-micro-up font-semibold uppercase text-ink-faint">
 							{t("activation.tokenLabel")}
 							<button type="button" onClick={paste} className="ml-auto normal-case tracking-normal text-ink-soft">
 								{t("activation.paste")}
@@ -185,7 +185,7 @@ export function ActivationPage({ data }: { data: StudioState }) {
 					</div>
 
 					<div className="mt-5 border-t border-line-soft pt-3">
-						<div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("activation.rejectCodes")}
 						</div>
 						<ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">

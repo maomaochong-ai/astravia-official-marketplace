@@ -44,8 +44,8 @@
 					"description": "Once a chapter is committed, outlines and prose cannot be written over it. Changes go through a recorded ruling so the book stays auditable."
 				},
 				{
-					"title": "A tab in the activity panel, and the same tools in chat",
-					"description": "The studio view shows the board, the review and the next step; the same tools drive the agents in conversation. Both paths share one service, so they cannot disagree."
+					"title": "One tab in the activity panel, and the same tools in chat",
+					"description": "The workbench is a single activity-panel tab: seven read-only frames — shelf, library, book, reader, ledger, console, activation — fed straight from disk. The team itself runs in the sidebar chat on the same tools, so the two cannot disagree."
 				},
 				{
 					"title": "A foundation before page one",
@@ -86,19 +86,19 @@
 			"items": [
 				{
 					"title": "Install Mahua Novels from the marketplace",
-					"description": "It does not take a sidebar slot: the activity panel's tab bar already carries Mahua Novels once installed — one click opens the studio. No API key is needed to start — the bundled community credential unlocks it."
+					"description": "It does not take a sidebar slot: the activity panel's tab bar already carries Mahua Novels once installed — one click opens the workbench, which also fills the panel when you want it full screen. No API key is needed to start — the bundled community credential unlocks it."
 				},
 				{
-					"title": "Open the studio and create a book",
-					"description": "Give it a title, genre, one-line premise and a target chapter count. The board starts empty because nothing has been planned yet."
+					"title": "Open the workbench and say what you want to write",
+					"description": "There is no form to fill: describe the book in the sidebar chat and settle the one-sentence premise with the architect. The shelf stays empty until the first volume plan lands on disk."
 				},
 				{
 					"title": "Ask the studio to plan the first volume",
-					"description": "In chat, ask the Mahua Writing Team team to plan. The architect writes the volume, its arcs and the chapter outlines."
+					"description": "In chat, ask the Mahua Writing Team to plan. The architect writes the volume, its arcs and the chapter outlines, and the workbench picks the new state up from disk."
 				},
 				{
 					"title": "Run the loop: draft, review, commit",
-					"description": "Follow the instruction card. Each round the router names the next owner; the studio view shows the score, the must-fix list and what is left."
+					"description": "Each round the router names the next owner in the chat. The workbench only shows what landed — the score, the must-fix list, the open threads and the ledger. It never sends instructions for you."
 				}
 			]
 		},

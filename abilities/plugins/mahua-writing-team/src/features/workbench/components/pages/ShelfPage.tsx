@@ -3,7 +3,7 @@ import { useTranslator } from "../../hooks/use-translator";
 import { useLiveFeed } from "../../../studio/live-feed/use-live-feed.js";
 import type { WorkbenchPage } from "../../workbench-pages";
 import { arcOf, chapterStateOf, committedCount, committedWords, coverSeed, elapsedSince, percent, wanWords } from "../../workbench-model";
-import { clockOf, isWriting, lastLandedStudioEvent, newestFirst } from "../../workbench-feed";
+import { clockOf, elapsedText, isWriting, lastLandedStudioEvent, newestFirst } from "../../workbench-feed";
 import { Cover } from "../shell/Cover";
 import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
@@ -112,7 +112,7 @@ export function ShelfPage({
 
 							<div className="mt-4 rounded-panel bg-canvas p-3">
 								<div className="flex items-baseline gap-2">
-									<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+									<span className="text-micro-up font-semibold uppercase text-ink-faint">
 										{t("shelf.nowWriting")}
 									</span>
 									<span className="min-w-0 truncate text-body-sm font-medium text-ink">
@@ -182,7 +182,7 @@ export function ShelfPage({
 
 					<div className="mt-5 flex min-h-0 flex-1 flex-col rounded-panel bg-inset/70 p-3">
 						<div className="flex items-baseline gap-2">
-							<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+							<span className="text-micro-up font-semibold uppercase text-ink-faint">
 								{t("shelf.recent")}
 							</span>
 							<span className="text-[10px] text-ink-faint">{t("shelf.recentNote")}</span>
@@ -218,7 +218,7 @@ export function ShelfPage({
 
 				<section className="flex w-[430px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised p-2 shadow-raise">
 					<div className="flex items-baseline justify-between px-2 pb-2 pt-1.5">
-						<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("shelf.others", { count: others.length })}
 						</span>
 						<button
@@ -255,9 +255,7 @@ export function ShelfPage({
 													<PhaseBadge phase={entry.phase} />
 												</div>
 												<div className="truncate text-[10px] text-ink-soft">
-													{ago
-														? t("shelf.touched", { ago: t(ago.key, { count: ago.count }) })
-														: (entry.genre ?? t("board.untitled"))}
+													{ago ? elapsedText(ago, t) : (entry.genre ?? t("board.untitled"))}
 												</div>
 												<div className="mt-1 flex items-center gap-2">
 													<div className="h-[2px] flex-1 overflow-hidden rounded-pill bg-inset">

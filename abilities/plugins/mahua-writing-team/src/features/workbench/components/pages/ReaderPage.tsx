@@ -140,7 +140,7 @@ export function ReaderPage({
 
 				<aside className="flex w-[318px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
 					<div className="flex items-baseline gap-2 border-b border-line-soft px-4 pb-2.5 pt-3">
-						<span className="text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("reader.review")}
 						</span>
 						{review && (
@@ -175,7 +175,7 @@ export function ReaderPage({
 							</div>
 
 							<div className="mt-4 border-t border-line-soft pt-2.5">
-								<div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+								<div className="text-micro-up font-semibold uppercase text-ink-faint">
 									{t("reader.mustFix")}
 								</div>
 								{review.mustFix.length === 0 ? (

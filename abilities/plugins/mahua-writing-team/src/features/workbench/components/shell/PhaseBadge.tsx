@@ -11,30 +11,12 @@ const PHASE_TONES: Record<string, string> = {
 	completed: "bg-pass-soft text-pass",
 };
 
-const CHAPTER_DOTS: Record<ChapterState, string> = {
-	committed: "bg-pass",
-	reviewed: "border border-pass bg-pass-soft",
-	drafting: "bg-ink/45",
-	planned: "border border-line-strong",
-	blocked: "bg-fail",
-};
-
 export function PhaseBadge({ phase }: { phase: string }) {
 	const t = useTranslator();
 	const tone = PHASE_TONES[phase] ?? PHASE_TONES["planning"];
 	return (
 		<span className={`inline-flex h-[19px] items-center rounded-tile px-1.5 text-micro font-medium ${tone}`}>
 			{t(`phase.${phase}`)}
-		</span>
-	);
-}
-
-export function ChapterMark({ state, showLabel = true }: { state: ChapterState; showLabel?: boolean }) {
-	const t = useTranslator();
-	return (
-		<span className="inline-flex items-center gap-1.5 text-micro text-ink-soft">
-			<span className={`size-1.5 rounded-pill ${CHAPTER_DOTS[state]}`} />
-			{showLabel && t(`status.${state}`)}
 		</span>
 	);
 }
