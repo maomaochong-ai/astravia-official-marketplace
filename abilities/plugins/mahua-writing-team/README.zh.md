@@ -164,7 +164,7 @@ entitlement.json        已激活的凭证
 `agent/skills/**` 是第五处（`skillPaths`），只在任务需要时按需加载。`agent/styles/*.md` 与
 `agent/voice.md` 根本不是提示词：`scripts/build-reference-library.mjs` 把它们和技能参考一起编进
 `src/reference/library.generated.ts`，也就是 `mahua_reference` 返回的东西。
-`agent/references/ATTRIBUTION.md` 没有任何地方加载，它只是出处说明，也带着上游提示词到这四个文件
+`agent/ATTRIBUTION.md` 没有任何地方加载，它只是出处说明，也带着上游提示词到这四个文件
 的对照表。
 
 ## 开发
@@ -207,5 +207,5 @@ npm run validate   # 用宿主自己的 manifest 解析器校验 plugin.json
 ## 许可与来源
 
 MIT。`agent/` 下的工艺库移植自 [ainovel-cli](https://github.com/voocel/ainovel-cli)（Apache-2.0），并改编自
-novel-master（MIT）；逐文件的归属与改动见 `agent/references/ATTRIBUTION.md`。架构上的每个决定都在
+novel-master（MIT）；逐文件的归属与改动见 `agent/ATTRIBUTION.md`。架构上的每个决定都在
 `../../docs/adr/ainove-cli/` 里逐条记录。
