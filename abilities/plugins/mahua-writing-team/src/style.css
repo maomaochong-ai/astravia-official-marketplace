@@ -99,6 +99,9 @@
 	--shadow-sheet: 0 24px 60px -28px light-dark(rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.6));
 }
 
+@layer base {
+	/* 不导 preflight：下面这些只重置工作台这棵树，不碰宿主。 */
+
 	/* 纸的取值：**一套算式，深浅两支**，全部从宿主 token 派生。
 	 *
 	 * 插件 CSS 活在 `@scope ([data-astravia-plugin-root=<id>])` 里，`:root[data-mode="dark"]` 这类

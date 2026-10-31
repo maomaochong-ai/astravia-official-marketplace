@@ -657,6 +657,26 @@ describe("the workbench frames stay honest about the domain", () => {
 		expect(wells.length).toBeGreaterThanOrEqual(2);
 	});
 
+	it("keeps the style sheet balanced and layered", () => {
+		// tsc 与 vitest 都不解 CSS：少了一个 `@layer base {` 开工行时，全仓测试仍然绿，
+		// 只有 vite build 里的 tailwind 解析器会报 "Missing opening {"。这一条就是那道亏。
+		const css = read("src/style.css");
+		const stripped = css.replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "));
+		const opens: number[] = [];
+		for (const [index, line] of stripped.split("\n").entries()) {
+			for (const char of line) {
+				if (char === "{") opens.push(index + 1);
+				else if (char === "}") expect(opens.pop(), `unexpected } on line ${index + 1}`).toBeDefined();
+			}
+		}
+		expect(opens).toEqual([]);
+
+		// 取值必须落在 base 层里：放在顶层会以层外样式的身份压过 utility。
+		const base = stripped.slice(stripped.indexOf("@layer base {"));
+		expect(base).toContain("--mahua-canvas:");
+		expect(base.split("\n").findIndex((line) => line === "}")).toBeGreaterThan(0);
+	});
+
 	it("keeps every dynamic locale family resolvable", () => {
 		// `t(\`status.${...}\`)` 这类键是拼出来的，通用扫描看不见。
 		// 取值直接取自领域的联合类型，避免这份清单自己先漂。
