@@ -56,7 +56,6 @@ export function ShelfPage({
 
 	const total = data.books.length;
 	const writingCount = data.books.filter((entry) => entry.phase === "drafting" || entry.phase === "revising").length;
-	const words = data.books.reduce((sum, entry) => sum + (entry.words ?? 0), 0);
 	const chapter = book.progress.currentChapter;
 	const plan = book.plans.find((item) => item.n === chapter);
 	const chapterRecord = book.chapters.find((item) => item.n === chapter);
@@ -73,12 +72,12 @@ export function ShelfPage({
 	);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6">
+		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
 			<PageHeader
 				title={t("page.shelf.title")}
 				meta={
 					<span className="text-body-sm text-ink-soft">
-						{t("shelf.meta", { writing: writingCount, total, words: wanWords(words) })}
+						{t("shelf.meta", { active: writingCount, total })}
 					</span>
 				}
 			/>
@@ -107,7 +106,7 @@ export function ShelfPage({
 							<div className="mt-1 truncate text-body-sm text-ink-soft">
 								{book.genre}
 								{volume ? ` · ${volume.title}` : ""}
-								{arc ? ` · ${t("shelf.arcCount", { from: arc.from, to: arc.to })}` : ""}
+								{arc ? ` · ${t("shelf.arcCount", { count: arc.to - arc.from + 1 })}` : ""}
 							</div>
 
 							<div className="mt-4 rounded-panel bg-canvas p-3">
@@ -168,14 +167,32 @@ export function ShelfPage({
 										/>
 									</div>
 								</div>
-								<button
-									type="button"
-									onClick={() => onNavigate("console")}
-									className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3 text-micro font-medium text-surface"
-								>
-									<span className="icon-[lucide--activity] size-3" />
-									{t("shelf.openConsole")}
-								</button>
+								<div className="flex flex-wrap items-center gap-1.5">
+									<button
+										type="button"
+										onClick={() => onNavigate("reader", chapter)}
+										className="flex h-8 items-center gap-1.5 rounded-control border border-line px-3 text-micro text-ink transition-colors hover:bg-canvas"
+									>
+										<span className="icon-[lucide--book-open] size-3" />
+										{t("shelf.continueAt", { chapter })}
+									</button>
+									<button
+										type="button"
+										onClick={() => onNavigate("ledger")}
+										className="flex h-8 items-center gap-1.5 rounded-control border border-line px-3 text-micro text-ink transition-colors hover:bg-canvas"
+									>
+										<span className="icon-[lucide--git-branch] size-3" />
+										{t("shelf.openLedger")}
+									</button>
+									<button
+										type="button"
+										onClick={() => onNavigate("console")}
+										className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3 text-micro font-medium text-surface"
+									>
+										<span className="icon-[lucide--activity] size-3" />
+										{t("shelf.openConsole")}
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>

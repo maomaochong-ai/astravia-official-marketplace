@@ -15,14 +15,19 @@ export interface CoverSeed {
 	mark: string;
 	motif: number;
 	layer: number;
+	/** 纸纹底片的下标。与图案分开取，免得四张底片和三套图案同频对应。 */
+	art: number;
 }
+
+/** 底片张数。改这个数要同时改 `cover-art.ts` 的清单，否则封面会挑到空位。 */
+const COVER_ART_COUNT = 4;
 
 /** 书名 → 封面。同一个书名永远得到同一个图案，换书才换样子。 */
 export function coverSeed(title: string): CoverSeed {
 	const mark = Array.from(title.trim())[0] ?? "";
 	let hash = 0;
 	for (const char of title) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 100_003;
-	return { mark, motif: hash % 3, layer: Math.floor(hash / 3) % 3 };
+	return { mark, motif: hash % 3, layer: Math.floor(hash / 3) % 3, art: Math.floor(hash / 7) % COVER_ART_COUNT };
 }
 
 export function chapterStateOf(status: string | undefined): ChapterState {

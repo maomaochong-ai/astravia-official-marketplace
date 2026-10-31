@@ -1,3 +1,5 @@
+import { COVER_ART } from "../../cover-art";
+
 const SIZES = {
 	shelf: { box: "h-[212px] w-[150px]", mark: 62 },
 	row: { box: "h-[124px] w-[88px]", mark: 34 },
@@ -19,16 +21,20 @@ export function Cover({
 	mark,
 	motif,
 	layer,
+	art = 0,
 	size = "shelf",
 }: {
 	mark: string;
 	motif: number;
 	layer: number;
+	/** 纸纹底片的下标；越界时退回第一张。 */
+	art?: number;
 	size?: CoverSize;
 }) {
 	const tone = ((layer % 3) + 3) % 3;
 	const grain = ((motif % 3) + 3) % 3;
 	const dims = SIZES[size];
+	const texture = COVER_ART[((art % COVER_ART.length) + COVER_ART.length) % COVER_ART.length] ?? COVER_ART[0];
 
 	return (
 		<div
@@ -37,6 +43,12 @@ export function Cover({
 			data-motif={grain}
 			aria-hidden="true"
 		>
+			<img
+				className="cover-texture absolute inset-0 size-full object-cover"
+				src={texture}
+				alt=""
+				draggable={false}
+			/>
 			<svg className="absolute inset-0 size-full" viewBox="0 0 100 140" preserveAspectRatio="none">
 				{grain === 0 && (
 					<g className="cover-line" strokeWidth="0.7">

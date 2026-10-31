@@ -337,41 +337,50 @@ describe("visual language stays on host tokens", () => {
 		expect(css).toContain('@plugin "@iconify/tailwind4"');
 	});
 
-	it("keeps panel views inside the panel — one full-screen overlay, no other escape hatch", () => {
-		// 全屏是插件自己的覆盖层：`expanded` 时把同一张界面 portal 到 body 并 `fixed inset-0`。
-		// 只允许这一处；别的视图再铺满就等于抢整块宿主窗口。
-		const OVERLAY = "src/features/workbench/components/WorkbenchSurface.tsx";
+	it("keeps panel views inside the panel — no overlay, and the full page is a host view", () => {
+		// SDK 合同：面板类 slot 里不许 `fixed`/`sticky` 贴视口、不许超高 z-index、不许
+		// `createPortal(..., document.body)`。0.4.15 曾用一层 `fixed inset-0 z-[90]` 撑满宿主窗口，
+		// 结果是抢了宿主的 chrome 还留下一块退不出去的黑边。整页改成注册宿主 workspace view，
+		// 于是这里不再有「唯一的例外」——一面都不能铺。
 		const violations: string[] = [];
 		for (const path of SOURCE_FILES.filter((file) => file.startsWith("src/features"))) {
 			const text = read(path);
-			if (/\bfixed\b/.test(text) && path !== OVERLAY) violations.push(`${path}: fixed`);
-			if (text.includes("createPortal") && path !== OVERLAY) violations.push(`${path}: createPortal`);
+			if (/\bfixed\b/.test(text)) violations.push(`${path}: fixed`);
+			if (text.includes("createPortal")) violations.push(`${path}: createPortal`);
 			if (/z-\[2147483647\]/.test(text)) violations.push(`${path}: max z-index`);
+			if (text.includes("data-mahua-overlay")) violations.push(`${path}: overlay marker`);
 		}
 		expect(violations).toEqual([]);
-		// 覆盖层本身也只有这一种写法：带标记、90 层、铺满一屏。
-		const overlay = read(OVERLAY);
-		expect(overlay.match(/fixed inset-0/g) ?? []).toHaveLength(1);
-		expect(overlay).toContain('data-mahua-overlay="workbench"');
-		expect(overlay).toContain("z-[90]");
+		// 整页那条路必须真的存在，且是宿主给的：面板态的按钮打开 workspace view。
+		const surface = read("src/features/workbench/components/WorkbenchSurface.tsx");
+		expect(surface).toContain("openWorkspaceView");
+		expect(surface).toContain("openActivityTab");
 	});
 
-	it("registers one surface over one interface: the activity tab (ADR 0025 补注四)", () => {
+	it("registers two shapes of one interface: an activity tab and a host workspace view", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		// 一个入口一张界面：活动面板里的标签页。全屏由插件自己的覆盖层负责，
-		// 不再注册宿主 workspace view——`sidebar: false` 的视图只会被塞进「设置 → 更多」。
+		const view = read("src/studio-view.ts");
+		// 同一张界面注册两次形态，互为目的地：面板里点「满屏」去 workspace view，
+		// 整页里点「收回」回活动面板。两个 id 相同、都在 studio-ids 里定死。
 		expect(entry).toContain("registerStudioTab(ctx)");
-		expect(entry).not.toContain("registerWorkspaceView");
+		expect(entry).toContain("registerStudioView(ctx)");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
+		expect(view).toContain("ctx.ui.registerWorkspaceView(");
 		// fail-closed：没声明的场景下一个都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
 		// 默认就上栏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
 		expect(tab).toContain("component: WorkbenchScreen");
-		// 整页视图已经退场；留着它的文件就是留着第二条入口。
-		expect(SOURCE_FILES).not.toContain("src/studio-view.ts");
-		expect(SOURCE_FILES.map(read).join("\n")).not.toContain(".registerWorkspaceView(");
+		// `sidebar: false`：整页入口只由工作台自己的按钮程序化打开。侧栏留给对话，
+		// 也顺手绕开宿主不解析 `%…%` 的那条 workspace view 描述串。
+		expect(view).toContain("sidebar: false");
+		expect(view).toMatch(/id: STUDIO_VIEW_ID/);
+		expect(view).toMatch(/surface: "page"/);
+		// 两个形态共用一个 id，切换时落在同一张界面上。
+		const ids = read("src/studio-ids.ts");
+		expect(ids).toContain("STUDIO_TAB_ID = \"studio\"");
+		expect(ids).toContain("STUDIO_VIEW_ID = \"studio\"");
 	});
 
 	it("only asks for the slot permissions it actually uses", () => {
@@ -381,9 +390,10 @@ describe("visual language stays on host tokens", () => {
 		expect(sources).toContain(".registerActivityTab(");
 		// 「声明的 slot 权限」必须等于「真的注册过的那几个」：多一个就是白要，
 		// 少一个则在宿主里静默 noop（缺权限 = warn+noop）。
+		expect(sources).toContain(".registerWorkspaceView(");
+		expect(sources).toContain(".registerTurnCard(");
 		const declared = permissions.filter((item) => item.startsWith("ui.slot."));
-		expect(declared).toEqual(["ui.slot.activity-tab"]);
-		expect(sources).not.toContain(".registerWorkspaceView(");
+		expect(declared).toEqual(["ui.slot.activity-tab", "ui.slot.turn-card", "ui.slot.workspace-view"]);
 		expect(sources).not.toContain(".registerToolCallSlot(");
 		expect(sources).not.toContain(".registerNewSessionContext(");
 	});
@@ -513,8 +523,10 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.tools.register",
 				"storage.read",
 				"storage.write",
-				// 一个入口：活动面板标签；全屏是插件自己的覆盖层，不占宿主 slot。
+				// 两种形态一张界面：活动面板标签 + 宿主 workspace view；落章卡片读对话的 turn 槽。
 				"ui.slot.activity-tab",
+				"ui.slot.turn-card",
+				"ui.slot.workspace-view",
 				"workspace.read",
 			].sort(),
 		);

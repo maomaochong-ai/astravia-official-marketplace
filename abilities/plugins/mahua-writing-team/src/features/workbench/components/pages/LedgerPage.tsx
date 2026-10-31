@@ -45,7 +45,7 @@ export function LedgerPage({
 	const lastRun = lastEvent(events);
 
 	return (
-		<div className="flex min-h-0 flex-1 gap-5 px-7 pb-5 pt-6">
+		<div className="flex min-h-0 flex-1 gap-5 px-7 pb-5 pt-6 @max-[720px]:px-4 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<PageHeader
 					title={t("page.ledger.title")}
@@ -157,7 +157,7 @@ export function LedgerPage({
 				</section>
 			</div>
 
-			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3 overflow-y-auto">
+			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3 overflow-y-auto @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink">
 				<section className="rounded-sheet bg-raised p-3.5 shadow-raise">
 					<div className="flex items-baseline gap-2">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
@@ -192,7 +192,7 @@ export function LedgerPage({
 
 				<section className="rounded-sheet bg-raised p-3.5 shadow-raise">
 					<div className="text-micro-up font-semibold uppercase text-ink-faint">
-						{t("ledger.audit")}
+						{t("ledger.audit", { count: audit.findings.length })}
 					</div>
 					{audit.findings.length === 0 ? (
 						<p className="mt-2 text-[11px] leading-5 text-ink-soft">{t("ledger.auditOk")}</p>

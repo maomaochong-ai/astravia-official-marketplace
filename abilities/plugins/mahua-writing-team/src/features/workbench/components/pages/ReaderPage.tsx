@@ -38,7 +38,7 @@ export function ReaderPage({
 
 	if (!book) {
 		return (
-			<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6">
+			<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6 @max-[720px]:px-4">
 				<PageHeader title={t("page.reader.title")} back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }} />
 				<EmptySheet icon="icon-[lucide--scroll-text]" title={t("reader.empty")} />
 			</div>
@@ -51,7 +51,7 @@ export function ReaderPage({
 	};
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6">
+		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
 			<PageHeader
 				back={{ label: t("reader.back"), onBack: () => onNavigate("book") }}
 				title={t("reader.title", { chapter })}
@@ -93,7 +93,7 @@ export function ReaderPage({
 				}
 			/>
 
-			<div className="mt-4 flex min-h-0 flex-1 gap-5">
+			<div className="mt-4 flex min-h-0 flex-1 gap-5 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<div className="min-h-0 flex-1 overflow-y-auto">
 						{paragraphs.length === 0 ? (
@@ -138,7 +138,7 @@ export function ReaderPage({
 					</div>
 				</div>
 
-				<aside className="flex min-h-0 w-[318px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
+				<aside className="flex min-h-0 w-[318px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise @max-[1180px]:w-[278px] @max-[980px]:w-full @max-[980px]:shrink">
 					<div className="flex items-baseline gap-2 border-b border-line-soft px-4 pb-2.5 pt-3">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("reader.review")}

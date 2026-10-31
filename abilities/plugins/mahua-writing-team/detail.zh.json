@@ -111,6 +111,25 @@
 			"type": "callout",
 			"tone": "warning",
 			"content": "凭证校验是离线的：签名有效只证明凭证由本插件的密钥签发，不证明这份副本是购买的。它只约束本插件自己的写作工具，是礼貌性门禁，不是授权强制。"
+		},
+		{
+			"type": "callout",
+			"tone": "info",
+			"content": "工作台的形态、四名写作者的分工与章节/弧结构参考开源项目 ainovel-cli。这里是独立的桌面端实现，不是分支：读写的是插件自己的存储，调用的是本编辑器的工具。"
+		},
+		{
+			"type": "links",
+			"title": "参考来源",
+			"items": [
+				{
+					"label": "ainovel-cli · GitHub",
+					"href": "https://github.com/voocel/ainovel-cli"
+				},
+				{
+					"label": "Apache-2.0 许可证",
+					"href": "https://github.com/voocel/ainovel-cli/blob/main/LICENSE"
+				}
+			]
 		}
 	]
 }

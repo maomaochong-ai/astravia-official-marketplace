@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { WorkbenchPage, WorkbenchRoute } from "../workbench-pages.js";
 
 /**
@@ -13,13 +13,33 @@ export interface WorkbenchRouteState {
 }
 
 /**
- * 路由记在模块里而不是组件里：全屏是覆盖层，切进切出会把整棵工作台重新挂载，
- * 状态跟着组件走就会把你从第 26 章弹回书架。这里只存一个页面名，代价可以忽略。
+ * 路由记在模块里而不是组件里：标签页与工作区视图是同一个界面的两个宿主位置，
+ * 来回切一次会把整棵工作台重新挂载，状态跟着组件走就会把你从第 26 章弹回书架。
+ * 这里只存一个页面名，代价可以忽略。
+ *
+ * 两个导出函数给「工作台之外」的调用点用：对话里的落章卡片先记住去哪儿，再打开标签页——
+ * 它自己没有组件实例可以调 `navigate`。订阅让已经挂着的实例跟上这次外部改动。
  */
 let memory: WorkbenchRoute = { page: "shelf" };
 
+const listeners = new Set<(route: WorkbenchRoute) => void>();
+
+export function rememberRoute(page: WorkbenchPage, chapter?: number): void {
+	memory = { page, chapter };
+	for (const listener of listeners) listener(memory);
+}
+
 export function useWorkbenchRoute(initial: WorkbenchPage = "shelf"): WorkbenchRouteState {
 	const [route, setRoute] = useState<WorkbenchRoute>(() => (memory.page === "shelf" ? { page: initial } : memory));
+
+	useEffect(() => {
+		listeners.add(setRoute);
+		// 挂载的这一刻别人可能刚改过，补一次。
+		setRoute(memory);
+		return () => {
+			listeners.delete(setRoute);
+		};
+	}, []);
 
 	const navigate = useCallback((page: WorkbenchPage, chapter?: number) => {
 		memory = { page, chapter };

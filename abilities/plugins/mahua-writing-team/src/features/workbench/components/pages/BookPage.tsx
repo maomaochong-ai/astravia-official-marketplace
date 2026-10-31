@@ -52,7 +52,7 @@ export function BookPage({
 
 	if (!book) {
 		return (
-			<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6">
+			<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6 @max-[720px]:px-4">
 				<PageHeader title={t("page.book.title")} back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }} />
 				<EmptySheet icon="icon-[lucide--book-open]" title={t("library.empty")} />
 			</div>
@@ -78,7 +78,7 @@ export function BookPage({
 	const recent = [...book.checkpoints].slice(-5).reverse();
 
 	return (
-		<div className="flex min-h-0 flex-1 gap-5 px-7 pb-5 pt-6">
+		<div className="flex min-h-0 flex-1 gap-5 px-7 pb-5 pt-6 @max-[720px]:px-4 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<PageHeader
 					back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }}
@@ -186,7 +186,7 @@ export function BookPage({
 				</div>
 			</div>
 
-			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3">
+			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3 @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink">
 				<section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
 					<div className="flex items-baseline gap-2 px-4 pb-2 pt-3">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">

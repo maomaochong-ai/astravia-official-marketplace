@@ -18,34 +18,40 @@
 	/* 标题字体：Fraunces 缺位时退到宋体，仍然是大字书的味道；界面字与等宽字沿用宿主/系统栈。 */
 	--font-display: "Fraunces Variable", ui-serif, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif;
 
+	/* 颜色一律经由 `--mahua-*` 间接：这一层只负责把变量内联进本插件的工具类，
+	 * 真正的取值在下面 `.mahua-root`（浅纸）与 `[data-mode="dark"] .mahua-root`（深纸）两处，
+	 * 宿主切主题时工具类不用重生成，取值自己换。fallback 是浅色字面量：即便某天有人把工作台
+	 * 挂到 `.mahua-root` 之外，也只会退回设计稿的颜色，不会变成透明。 */
+
 	/* 一张纸的五个明度：相邻两档只差 3–4%，抬起的卡与压下去的槽靠这点差分开。 */
-	--color-canvas: #efe7d7;
-	--color-chrome: #f2ebdc;
-	--color-surface: #fbf7ee;
-	--color-raised: #fffdf8;
-	--color-inset: #f4edde;
+	--color-canvas: var(--mahua-canvas, #efe7d7);
+	--color-chrome: var(--mahua-chrome, #f2ebdc);
+	--color-surface: var(--mahua-surface, #fbf7ee);
+	--color-raised: var(--mahua-raised, #fffdf8);
+	--color-inset: var(--mahua-inset, #f4edde);
 
 	/* 墨的三档，加三种线的粗细。 */
-	--color-ink: #221e17;
-	--color-ink-soft: #6f6757;
-	--color-ink-faint: #a19682;
-	--color-line-soft: #eee7d7;
-	--color-line: #e4dbc6;
-	--color-line-strong: #ccc1a6;
+	--color-ink: var(--mahua-ink, #221e17);
+	--color-ink-soft: var(--mahua-ink-soft, #6f6757);
+	--color-ink-faint: var(--mahua-ink-faint, #a19682);
+	--color-line-soft: var(--mahua-line-soft, #eee7d7);
+	--color-line: var(--mahua-line, #e4dbc6);
+	--color-line-strong: var(--mahua-line-strong, #ccc1a6);
 
 	/* 朱砂：落款、当前章、正在写的那一笔。 */
-	--color-cinnabar: #a8402b;
-	--color-cinnabar-foreground: #fff8f2;
-	--color-cinnabar-soft: #f6e6df;
-	--color-cinnabar-ink: #8c3323;
+	--color-cinnabar: var(--mahua-cinnabar, #a8402b);
+	--color-cinnabar-foreground: var(--mahua-cinnabar-foreground, #fff8f2);
+	--color-cinnabar-soft: var(--mahua-cinnabar-soft, #f6e6df);
+	--color-cinnabar-ink: var(--mahua-cinnabar-ink, #8c3323);
 
 	/* 三档状态：已提交、等交稿、必改。 */
-	--color-pass: #4f6b4a;
-	--color-pass-soft: #e7ede3;
-	--color-wait: #97662a;
-	--color-wait-soft: #f4eadb;
-	--color-fail: #7e3223;
-	--color-fail-soft: #f2e2dc;
+	--color-pass: var(--mahua-pass, #4f6b4a);
+	--color-pass-soft: var(--mahua-pass-soft, #e7ede3);
+	--color-wait: var(--mahua-wait, #97662a);
+	--color-wait-soft: var(--mahua-wait-soft, #f4eadb);
+	--color-fail: var(--mahua-fail, #7e3223);
+	--color-fail-soft: var(--mahua-fail-soft, #f2e2dc);
+
 
 	/* 字号阶梯。行高与字距跟着字号走，正文一档从 20 起（阅读页）。 */
 	--text-hero: 46px;
@@ -90,12 +96,72 @@
 	--shadow-sheet: 0 24px 60px -28px rgb(34 30 23 / 0.4);
 }
 
-/* 只重置工作台这棵树。放在 base 层，任何 utility 仍然压得住它。 */
+/* 纸的取值：浅色是设计稿那一叠米纸，深色由宿主 token 派生。
+ *
+ * 深色不是「把米纸压暗」——那在纯深色的宿主里仍然是一块发白的板子。宿主给了
+ * `--background` / `--card` / `--border` / `--foreground` / `--primary`，就按纸的层级关系
+ * 重新排一次：canvas 最深（衬底）、surface 是纸面、raised 比纸面抬一点。朱砂跟随宿主主色，
+ * 深色下不再保留品牌红：宿主默认就是深色，这里跟随才是「协同」。 */
 @layer base {
 	.mahua-root {
 		color-scheme: light;
+
+		--mahua-canvas: #efe7d7;
+		--mahua-chrome: #f2ebdc;
+		--mahua-surface: #fbf7ee;
+		--mahua-raised: #fffdf8;
+		--mahua-inset: #f4edde;
+
+		--mahua-ink: #221e17;
+		--mahua-ink-soft: #6f6757;
+		--mahua-ink-faint: #a19682;
+		--mahua-line-soft: #eee7d7;
+		--mahua-line: #e4dbc6;
+		--mahua-line-strong: #ccc1a6;
+
+		--mahua-cinnabar: #a8402b;
+		--mahua-cinnabar-foreground: #fff8f2;
+		--mahua-cinnabar-soft: #f6e6df;
+		--mahua-cinnabar-ink: #8c3323;
+
+		--mahua-pass: #4f6b4a;
+		--mahua-pass-soft: #e7ede3;
+		--mahua-wait: #97662a;
+		--mahua-wait-soft: #f4eadb;
+		--mahua-fail: #7e3223;
+		--mahua-fail-soft: #f2e2dc;
 	}
 
+	[data-mode="dark"] .mahua-root {
+		color-scheme: dark;
+
+		--mahua-canvas: var(--background, #14161e);
+		--mahua-chrome: color-mix(in oklab, var(--card, #1a1c24) 94%, var(--foreground, #dce0ea));
+		--mahua-surface: var(--card, #1a1c24);
+		--mahua-raised: color-mix(in oklab, var(--card, #1a1c24) 88%, var(--foreground, #dce0ea));
+		--mahua-inset: color-mix(in oklab, var(--card, #1a1c24) 80%, var(--background, #14161e));
+
+		--mahua-ink: var(--foreground, #dce0ea);
+		--mahua-ink-soft: color-mix(in oklab, var(--foreground, #dce0ea) 74%, var(--card, #1a1c24));
+		--mahua-ink-faint: var(--muted-foreground, #8a90a0);
+		--mahua-line-soft: color-mix(in oklab, var(--border, #2a2d38) 60%, var(--card, #1a1c24));
+		--mahua-line: var(--border, #2a2d38);
+		--mahua-line-strong: color-mix(in oklab, var(--border, #2a2d38) 62%, var(--foreground, #dce0ea));
+
+		--mahua-cinnabar: var(--primary, #8184f8);
+		--mahua-cinnabar-foreground: var(--primary-foreground, #ffffff);
+		--mahua-cinnabar-soft: color-mix(in oklab, var(--primary, #8184f8) 20%, var(--card, #1a1c24));
+		--mahua-cinnabar-ink: color-mix(in oklab, var(--primary, #8184f8) 74%, var(--foreground, #dce0ea));
+
+		--mahua-pass: #8fbd86;
+		--mahua-pass-soft: color-mix(in oklab, #8fbd86 22%, var(--card, #1a1c24));
+		--mahua-wait: #e0b072;
+		--mahua-wait-soft: color-mix(in oklab, #e0b072 22%, var(--card, #1a1c24));
+		--mahua-fail: #ec9a86;
+		--mahua-fail-soft: color-mix(in oklab, #ec9a86 22%, var(--card, #1a1c24));
+	}
+
+	/* 只重置工作台这棵树。放在 base 层，任何 utility 仍然压得住它。 */
 	.mahua-root button,
 	.mahua-root input,
 	.mahua-root textarea,
@@ -143,10 +209,34 @@
 	}
 
 	.mahua-root :focus-visible {
-		outline: 1px solid #ccc1a6;
+		outline: 1px solid var(--mahua-line-strong, #ccc1a6);
 		outline-offset: 1px;
 	}
 }
+
+/* 窄栏收起成图标列：宽度与「藏起文字」由父级的 data 属性驱动，
+ * 这样手动收起与容器变窄（@max-[640px]）走的是同一套视觉，不必两处维护。
+ *
+ * 必须留在 utilities 这一层：`w-[208px]` 也是 utility，跨层时层序优先于 specificity，
+ * 放进 components 会被它盖掉；同一层里 0,2,0 才压得住 0,1,0。 */
+@layer utilities {
+	.mahua-rail[data-collapsed="true"] {
+		width: 44px;
+		padding-inline-end: 0;
+	}
+
+	.mahua-rail[data-collapsed="true"] .mahua-rail-item {
+		justify-content: center;
+		gap: 0;
+		padding-inline: 0;
+	}
+
+	.mahua-rail[data-collapsed="true"] .mahua-rail-label,
+	.mahua-rail[data-collapsed="true"] .mahua-rail-block {
+		display: none;
+	}
+}
+
 
 /* 稿纸正文：段落首行缩进两字，行距按纸的密度给。 */
 .mahua-prose p {
@@ -194,7 +284,22 @@
 	font-family: var(--font-display);
 }
 
+/* 纸纹底片：乘在纸底色上，只留纤维感。透明度与混合模式写在这里，
+ * 视图就不必知道那也是张照片。 */
+.mahua-cover .cover-texture {
+	opacity: 0.18;
+	mix-blend-mode: multiply;
+	filter: saturate(0);
+}
+/* 纸纹底片：乘在纸底色上，只留纤维感。透明度与混合模式写在这里，
+ * 视图就不必知道那也是张照片。 */
+.mahua-cover .cover-texture {
+	opacity: 0.18;
+	mix-blend-mode: multiply;
+	filter: saturate(0);
+}
+
 .mahua-scroll {
 	scrollbar-width: thin;
-	scrollbar-color: #ccc1a6 transparent;
+	scrollbar-color: var(--mahua-line-strong, #ccc1a6) transparent;
 }

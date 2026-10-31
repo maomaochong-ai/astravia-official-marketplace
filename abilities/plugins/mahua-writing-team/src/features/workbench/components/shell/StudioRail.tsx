@@ -15,6 +15,9 @@ export interface StudioRailProps {
 	/** 运行台有没有还没读的事件，用来点那个小红点。 */
 	live: boolean;
 	credential: { ok: boolean; label: string };
+	/** 用户手动收成了图标列；与容器变窄是两件事，视觉走同一套。 */
+	collapsed: boolean;
+	onToggleCollapsed(): void;
 	onNavigate(page: WorkbenchPage): void;
 	onRevealTeam(): void;
 }
@@ -29,9 +32,12 @@ export interface StudioRailProps {
  * 中段可滚、底部不可滚：内容多到放不下时收缩的是导航，不是那扇门与凭证行——
  * 一条 208px 的竖栏滚起来，用户最先丢的就是最下面的入口。
  *
- * 容器窄到 640px 以下时**仍然竖着**，只是收成 44px 的图标栏。曾经试过折成顶上一条
- * 横向导航，结果是六个条目在窄行里换行、书卡与团队卡全被压扁——竖栏是这条界面的
- * 骨架，换个方向就不是它了。收窄时丢的是文字与书卡，留下的图标仍然一一点得到。
+ * 收成图标列有两条路：容器窄到 640px 以下自动收（`@max-[640px]`），或者用户自己按底部的
+ * 折叠键。两条路必须长得一样，所以文字的隐藏交给父级的 `data-collapsed`（见 style.css），
+ * 宽度也由它接管；`@max-[640px]` 只管自动那一路。丢的只有文字与书卡，图标一个不丢。
+ *
+ * 凭证那一行是可点的：它不只是「当前有没有激活」的读数，也是进激活页的入口。
+ * 收起时它只剩那颗圆点，但仍然是同一枚按钮——否则窄栏里就再也走不到那一页。
  */
 export function StudioRail({
 	active,
@@ -42,6 +48,8 @@ export function StudioRail({
 	writing,
 	live,
 	credential,
+	collapsed,
+	onToggleCollapsed,
 	onNavigate,
 	onRevealTeam,
 }: StudioRailProps) {
@@ -56,23 +64,26 @@ export function StudioRail({
 				onClick={() => onNavigate(page)}
 				aria-current={isActive ? "page" : undefined}
 				title={label}
-				className={`relative flex h-9 w-full shrink-0 items-center gap-2.5 rounded-control px-2.5 text-left text-body-sm @max-[640px]:justify-center @max-[640px]:gap-0 @max-[640px]:px-0 ${
+				className={`mahua-rail-item relative flex h-9 w-full shrink-0 items-center gap-2.5 rounded-control px-2.5 text-left text-body-sm @max-[640px]:justify-center @max-[640px]:gap-0 @max-[640px]:px-0 ${
 					isActive ? "bg-raised font-semibold text-ink shadow-raise" : "text-ink-soft hover:bg-raised/70"
 				}`}
 			>
 				<span className={`${icon} size-3.5 shrink-0 ${isActive ? "text-cinnabar" : "text-ink-faint"}`} />
-				<span className="truncate @max-[640px]:hidden">{label}</span>
+				<span className="mahua-rail-label truncate @max-[640px]:hidden">{label}</span>
 				{dot && live ? (
-					<span className="ml-auto size-1.5 shrink-0 rounded-pill bg-cinnabar @max-[640px]:absolute @max-[640px]:right-1 @max-[640px]:top-1.5 @max-[640px]:ml-0" />
+					<span className="ml-auto size-1.5 shrink-0 rounded-pill bg-cinnabar" />
 				) : null}
 			</button>
 		);
 	};
 
 	return (
-		<aside className="flex w-[208px] shrink-0 flex-col overflow-hidden pb-1 pr-1 @max-[640px]:w-11 @max-[640px]:pr-0">
+		<aside
+			className="mahua-rail flex w-[208px] shrink-0 flex-col overflow-hidden pb-1 pr-1 @max-[640px]:w-11 @max-[640px]:pr-0"
+			data-collapsed={collapsed ? "true" : "false"}
+		>
 			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-				<span className="px-2 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint @max-[640px]:hidden">
+				<span className="mahua-rail-block px-2 text-micro-up @max-[640px]:hidden font-semibold uppercase tracking-[0.08em] text-ink-faint">
 					{t("rail.current")}
 				</span>
 
@@ -80,9 +91,9 @@ export function StudioRail({
 					type="button"
 					onClick={() => onNavigate("book")}
 					title={bookTitle}
-					className="mt-2 flex w-full shrink-0 items-center gap-2.5 rounded-panel bg-raised p-2 text-left shadow-raise @max-[640px]:hidden"
+					className="mahua-rail-block mt-2 flex w-full shrink-0 items-center gap-2.5 rounded-panel bg-raised p-2 text-left shadow-raise @max-[640px]:hidden"
 				>
-					<Cover mark={cover.mark} motif={cover.motif} layer={cover.layer} size="mini" />
+					<Cover mark={cover.mark} motif={cover.motif} layer={cover.layer} art={cover.art} size="mini" />
 					<div className="min-w-0 flex-1">
 						<div className="truncate font-display text-body-sm font-semibold text-ink">{bookTitle}</div>
 						<div className="mt-0.5 truncate text-[10px] text-ink-soft">{stage}</div>
@@ -92,11 +103,11 @@ export function StudioRail({
 					</div>
 				</button>
 
-				<nav className="mt-4 space-y-1 @max-[640px]:mt-2">
+				<nav className="mt-4 space-y-1">
 					{RAIL_WORKS.map((entry) => item(entry.page, t(entry.labelKey), entry.icon))}
 				</nav>
 
-				<span className="mt-4 px-2.5 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint @max-[640px]:hidden">
+				<span className="mahua-rail-block mt-4 px-2.5 text-micro-up @max-[640px]:hidden font-semibold uppercase tracking-[0.08em] text-ink-faint">
 					{t("rail.craft")}
 				</span>
 				<nav className="mt-2 space-y-1">
@@ -109,7 +120,7 @@ export function StudioRail({
 					<button
 						type="button"
 						onClick={() => onNavigate("console")}
-						className="block w-full rounded-panel bg-raised p-2.5 text-left shadow-raise @max-[640px]:hidden"
+						className="mahua-rail-block block w-full rounded-panel bg-raised p-2.5 text-left shadow-raise @max-[640px]:hidden"
 					>
 						<div className="flex items-center gap-1.5">
 							<span className="size-1.5 rounded-pill bg-cinnabar" />
@@ -127,16 +138,39 @@ export function StudioRail({
 					type="button"
 					onClick={onRevealTeam}
 					title={t("rail.revealTeam")}
-					className="flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-control border border-line-strong text-[10px] font-medium text-ink transition-colors hover:bg-raised @max-[640px]:px-0"
+					className="mahua-rail-item flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-control border border-line-strong text-[10px] font-medium text-ink transition-colors hover:bg-raised @max-[640px]:px-0"
 				>
 					<span className="icon-[lucide--panel-right-open] size-3 shrink-0" />
-					<span className="truncate @max-[640px]:hidden">{t("rail.revealTeam")}</span>
+					<span className="mahua-rail-label truncate @max-[640px]:hidden">{t("rail.revealTeam")}</span>
 				</button>
 
-				<div className="flex items-center gap-2 px-1 text-[10px] text-ink-faint @max-[640px]:hidden">
+				<button
+					type="button"
+					onClick={() => onNavigate("activation")}
+					title={`${credential.label} · ${t("rail.credentialOpen")}`}
+					aria-label={`${credential.label} · ${t("rail.credentialOpen")}`}
+					className="mahua-rail-item flex h-7 w-full shrink-0 items-center gap-2 rounded-control px-1 text-[10px] text-ink-faint transition-colors hover:bg-raised hover:text-ink @max-[640px]:justify-center @max-[640px]:px-0"
+				>
 					<span className={`size-1 shrink-0 rounded-pill ${credential.ok ? "bg-pass" : "bg-fail"}`} />
-					<span className="truncate">{credential.label}</span>
-				</div>
+					<span className="mahua-rail-label truncate @max-[640px]:hidden">{credential.label}</span>
+					<span className="mahua-rail-label icon-[lucide--chevron-right] ml-auto size-3 shrink-0 @max-[640px]:hidden" />
+				</button>
+
+				<button
+					type="button"
+					onClick={onToggleCollapsed}
+					title={collapsed ? t("rail.expandRail") : t("rail.collapseRail")}
+					aria-label={collapsed ? t("rail.expandRail") : t("rail.collapseRail")}
+					aria-expanded={!collapsed}
+					className="mahua-rail-item flex h-7 w-full shrink-0 items-center gap-2 rounded-control px-1 text-[10px] text-ink-faint transition-colors hover:bg-raised hover:text-ink @max-[640px]:justify-center @max-[640px]:px-0"
+				>
+					<span
+						className={`${
+							collapsed ? "icon-[lucide--panel-left-open]" : "icon-[lucide--panel-left-close]"
+						} size-3 shrink-0`}
+					/>
+					<span className="mahua-rail-label truncate @max-[640px]:hidden">{t("rail.collapseRail")}</span>
+				</button>
 			</div>
 		</aside>
 	);
