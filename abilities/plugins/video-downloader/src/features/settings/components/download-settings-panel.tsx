@@ -92,12 +92,14 @@ export function DownloadSettingsPanel({
   const { t } = useTranslation();
   const [directory, setDirectory] = useState(settings.downloadDirectory);
   const [cookie, setCookie] = useState(settings.cookie);
+  const [proxy, setProxy] = useState(settings.proxy);
   const cookieField = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setDirectory(settings.downloadDirectory);
     setCookie(settings.cookie);
-  }, [settings.downloadDirectory, settings.cookie]);
+    setProxy(settings.proxy);
+  }, [settings.downloadDirectory, settings.cookie, settings.proxy]);
 
   useEffect(() => {
     if (!focusCookie) return;
@@ -188,6 +190,21 @@ export function DownloadSettingsPanel({
           }}
           rows={2}
           className="w-64 resize-none rounded-md border border-border bg-background px-2 py-1 font-mono text-[11px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
+        />
+      </Field>
+
+      <div className="border-t border-border" />
+
+      <Field label={t("settings.proxy")} hint={t("settings.proxyHint")}>
+        <input
+          value={proxy}
+          spellCheck={false}
+          placeholder={t("settings.proxyPlaceholder")}
+          onChange={(event) => setProxy(event.target.value)}
+          onBlur={() => {
+            if (proxy !== settings.proxy) onSave({ proxy });
+          }}
+          className="h-7 w-64 rounded-md border border-border bg-background px-2 font-mono text-[11px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
         />
       </Field>
 

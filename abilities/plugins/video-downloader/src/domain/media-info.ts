@@ -90,6 +90,8 @@ export interface ServiceSettings {
   downloadDirectory: string;
   maxConcurrent: number;
   cookie: string;
+  /** Proxy URL handed to the engine; empty means the machine's own egress. */
+  proxy: string;
   multiThread: boolean;
   keepPartialFiles: boolean;
 }

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,7 +13,13 @@ import {
   removeCookieFile,
   writeCookieFile,
 } from "../ytdlp/cookies.js";
-import { codeOfYtdlpFailure, describeYtdlpFailure, firstYtdlpErrorLine } from "../ytdlp/diagnostics.js";
+import {
+  codeOfYtdlpFailure,
+  describeYtdlpFailure,
+  firstActionableYtdlpLine,
+  firstYtdlpErrorLine,
+} from "../ytdlp/diagnostics.js";
+import { jsRuntimeArgs, proxyArgs } from "../ytdlp/engine-args.js";
 import { flattenYtdlpEntries, normalizeYtdlpInfo } from "../ytdlp/normalize.js";
 import { YTDLP_VERSION, ytdlpBinaryName, ytdlpReleaseFor, ytdlpReleasePath } from "../ytdlp/ytdlp-release.js";
 import { YtdlpInstaller } from "../ytdlp/ytdlp-installer.js";
@@ -103,6 +109,36 @@ describe("yt-dlp diagnostics", () => {
     expect(describeYtdlpFailure("  ")).toBe("yt-dlp 未能解析该链接");
     expect(describeYtdlpFailure("x".repeat(400))).toHaveLength(240);
   });
+
+  it("surfaces a warning that explains an empty result", () => {
+    // `--no-warnings` used to hide exactly this line, leaving only "No video formats found!".
+    const stderr = [
+      "[youtube] Extracting URL: https://www.youtube.com/watch?v=x",
+      "WARNING: [youtube] No supported JavaScript runtime could be found. Some formats may be missing.",
+    ].join("\n");
+    expect(firstActionableYtdlpLine(stderr)).toBe(
+      "[youtube] No supported JavaScript runtime could be found. Some formats may be missing.",
+    );
+    // An ERROR still outranks any warning, and incidental noise never becomes the message.
+    expect(firstActionableYtdlpLine("WARNING: nsig extraction failed\nERROR: [x] Failed to parse JSON")).toBe(
+      "[x] Failed to parse JSON",
+    );
+    expect(firstActionableYtdlpLine("WARNING: [generic] Falling back to generic extractor")).toBeNull();
+  });
+});
+
+describe("yt-dlp engine arguments", () => {
+  it("advertises a JS runtime so signature solving works", () => {
+    expect(jsRuntimeArgs("/opt/astravia/node")).toEqual(["--js-runtimes", "node:/opt/astravia"]);
+    // An embedded host is not node, so resolution is left to yt-dlp's own PATH lookup.
+    expect(jsRuntimeArgs("/usr/bin/electron")).toEqual(["--js-runtimes", "node"]);
+  });
+
+  it("passes the proxy only when one is configured", () => {
+    expect(proxyArgs("")).toEqual([]);
+    expect(proxyArgs("   ")).toEqual([]);
+    expect(proxyArgs("socks5://127.0.0.1:1080")).toEqual(["--proxy", "socks5://127.0.0.1:1080"]);
+  });
 });
 
 describe("yt-dlp normalisation", () => {
@@ -154,7 +190,11 @@ describe("yt-dlp normalisation", () => {
 describe("yt-dlp release pinning", () => {
   it("pins an exact version instead of following latest", () => {
     expect(YTDLP_VERSION).toMatch(/^\d{4}\.\d{2}\.\d{2}$/u);
-    expect(ytdlpReleaseFor("darwin", "arm64")?.url).toContain(`/download/${YTDLP_VERSION}/`);
+    const pinned = ytdlpReleaseFor("darwin", "arm64");
+    expect(pinned?.sources[0]).toContain(`/download/${YTDLP_VERSION}/`);
+    // Mirrors are tried in order and every one must point at the same asset name.
+    expect(pinned?.sources.length).toBeGreaterThan(1);
+    for (const source of pinned?.sources ?? []) expect(source.endsWith("/yt-dlp_macos")).toBe(true);
   });
 
   it("uses a native Windows ARM64 asset rather than the x64 one", () => {
@@ -195,7 +235,7 @@ describe("YtdlpInstaller", () => {
   const release = {
     version: YTDLP_VERSION,
     asset: "yt-dlp_macos",
-    url: "https://example.test/yt-dlp_macos",
+    sources: ["https://first.test/yt-dlp_macos", "https://second.test/yt-dlp_macos"],
     sha256: digest,
     bytes: payload.byteLength,
   };
@@ -261,14 +301,55 @@ describe("YtdlpInstaller", () => {
     vi.stubGlobal("fetch", async () => new Response(payload.subarray(0, 100), { status: 200 }));
 
     try {
-      const installer = new YtdlpInstaller(root, release);
+      const installer = new YtdlpInstaller(root, release, 0);
       const state = await installer.install();
       expect(state.phase).toBe("failed");
       expect(state.error).toContain(`100/${release.bytes}`);
+      // The partial file survives so the next attempt resumes instead of restarting from zero.
+      expect(await readFile(`${installer.targetPath}.part`)).toHaveLength(100);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
   }, 30_000);
+
+  it("rotates to the next mirror when an attempt fails", async () => {
+    const root = await mkdtemp(join(tmpdir(), "vd-ytdlp-"));
+    const hosts: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: { headers?: Record<string, string> }) => {
+      hosts.push(new URL(url).host);
+      if (hosts.length === 1) throw new Error("connect timeout");
+      const range = init?.headers?.range;
+      const from = range ? Number(range.replace(/\D+/gu, "")) : 0;
+      return new Response(payload.subarray(from), { status: from > 0 ? 206 : 200 });
+    });
+
+    try {
+      const installer = new YtdlpInstaller(root, release, 0);
+      expect((await installer.install()).phase).toBe("ready");
+      expect(hosts).toEqual(["first.test", "second.test"]);
+      expect(await readFile(installer.targetPath)).toEqual(payload);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps a partial file from a previous run instead of discarding it", async () => {
+    const root = await mkdtemp(join(tmpdir(), "vd-ytdlp-"));
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("socket hang up");
+    });
+
+    try {
+      const installer = new YtdlpInstaller(root, release, 0);
+      await mkdir(join(root, "bin"), { recursive: true });
+      await writeFile(`${installer.targetPath}.part`, payload.subarray(0, 100));
+      expect((await installer.install()).phase).toBe("failed");
+      // Resuming from these bytes is the whole point of not deleting them.
+      expect(await readFile(`${installer.targetPath}.part`)).toEqual(payload.subarray(0, 100));
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 
   it("reuses an already verified binary and replaces a truncated one", async () => {
     const root = await mkdtemp(join(tmpdir(), "vd-ytdlp-"));

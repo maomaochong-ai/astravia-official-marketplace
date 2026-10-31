@@ -1,11 +1,19 @@
 import { runCommand } from "../process/run-command.js";
 import type { MediaItem, MediaProbeResult } from "../media/types.js";
-import { codeOfYtdlpFailure, describeYtdlpFailure, firstYtdlpErrorLine, type EngineFailureCode } from "./diagnostics.js";
+import {
+  codeOfYtdlpFailure,
+  describeYtdlpFailure,
+  firstActionableYtdlpLine,
+  type EngineFailureCode,
+} from "./diagnostics.js";
+import { jsRuntimeArgs, proxyArgs } from "./engine-args.js";
 import { flattenYtdlpEntries, normalizeYtdlpInfo, type YtdlpRawInfo } from "./normalize.js";
 
 export interface YtdlpProbeOptions {
   /** Path to a prepared Netscape cookie file, when the user configured a session. */
   cookieFile?: string | null;
+  /** Normalised proxy URL; empty or absent means direct egress. */
+  proxy?: string;
   timeoutMs?: number;
   signal?: AbortSignal;
 }
@@ -44,7 +52,10 @@ export async function probeWithYtdlp(
   options: YtdlpProbeOptions = {},
 ): Promise<YtdlpProbeOutcome> {
   const startedAt = Date.now();
-  const args = ["--dump-single-json", "--no-warnings", "--no-playlist", "--no-progress", "--socket-timeout", "25"];
+  // Warnings stay enabled on purpose: they carry the only actionable explanation for a page that
+  // yields no usable rendition (missing session, unsupported client, blocked player response).
+  const args = ["--dump-single-json", "--no-playlist", "--no-progress", "--socket-timeout", "25"];
+  args.push(...jsRuntimeArgs(), ...proxyArgs(options.proxy ?? ""));
   if (options.cookieFile) args.push("--cookies", options.cookieFile);
   args.push(url);
 
@@ -59,7 +70,7 @@ export async function probeWithYtdlp(
     if (result.timedOut) {
       return { items: [], failure: "解析超时，请稍后重试", failureCode: "network_timeout", elapsedMs };
     }
-    const line = firstYtdlpErrorLine(result.stderr) ?? "";
+    const line = firstActionableYtdlpLine(result.stderr) ?? "";
     return {
       items: [],
       failure: line ? describeYtdlpFailure(line) : "没有从该链接解析出可下载的媒体",
@@ -77,7 +88,7 @@ export async function probeWithYtdlp(
   if (items.length > 0) return { items, failure: null, failureCode: null, elapsedMs };
 
   // yt-dlp found the page but no rendition: report the engine's own reason when it has one.
-  const line = firstYtdlpErrorLine(result.stderr) ?? "";
+  const line = firstActionableYtdlpLine(result.stderr) ?? "";
   return {
     items,
     failure: line ? describeYtdlpFailure(line) : "该链接没有可下载的音视频流",

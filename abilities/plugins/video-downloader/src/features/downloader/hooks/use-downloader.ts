@@ -15,7 +15,11 @@ import { ensureServiceStarted, serviceStartupFailure } from "../../../runtime";
 
 const POLL_INTERVAL_MS = 900;
 const INSTALL_POLL_MS = 600;
-const INSTALL_TIMEOUT_MS = 20 * 60_000;
+/**
+ * The engine is 17–40 MB and comes from GitHub or a mirror, so a slow link spends several attempts
+ * resuming before it finishes. This deadline covers roughly ten of them and still ends the wait.
+ */
+const INSTALL_TIMEOUT_MS = 45 * 60_000;
 
 /** Tool the service provisions on its own; the panel only ever reads progress for it. */
 type ProvisionedTool = "ffmpeg" | "ytdlp";

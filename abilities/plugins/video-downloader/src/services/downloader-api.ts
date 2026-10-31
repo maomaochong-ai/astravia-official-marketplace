@@ -86,7 +86,8 @@ export function createDownloaderApi(ctx: ManagedPluginContext): DownloaderApi {
     installYtdlp: () =>
       call<{ install: ToolInstall }>("/api/v1/ytdlp", { method: "POST", timeoutMs: 30_000 }).then((body) => body.install),
 
-    probe: (url) => call<ProbeResult>("/api/v1/probe", { method: "POST", body: { url }, timeoutMs: 90_000 }),
+    // Longer than the service's own 90 s probe so its localised reason wins the race.
+    probe: (url) => call<ProbeResult>("/api/v1/probe", { method: "POST", body: { url }, timeoutMs: 120_000 }),
 
     tasks: () => call<{ tasks: DownloadTask[] }>("/api/v1/tasks").then((body) => body.tasks),
 

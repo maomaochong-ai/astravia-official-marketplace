@@ -6,6 +6,7 @@ import { measureDirectory } from "../fs/directory-usage.js";
 import { ensureDirectory, moveProducedFiles } from "../fs/files.js";
 import { withToolPath } from "../tools/tool-paths.js";
 import { codeOfYtdlpFailure, firstYtdlpErrorLine } from "../ytdlp/diagnostics.js";
+import { jsRuntimeArgs, proxyArgs } from "../ytdlp/engine-args.js";
 import { removeCookieFile, writeCookieFile } from "../ytdlp/cookies.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { TaskStore } from "./task-store.js";
@@ -202,6 +203,8 @@ export class DownloadRunner {
     cookieFile: string | null,
   ): string[] {
     const args = ["--no-warnings", "--no-playlist", "--no-progress"];
+    // Same engine flags as the probe: the stream id it resolved has to stay fetchable here.
+    args.push(...jsRuntimeArgs(), ...proxyArgs(settings.proxy));
     if (settings.multiThread) args.push("--concurrent-fragments", CONCURRENT_FRAGMENTS);
     if (cookieFile) args.push("--cookies", cookieFile);
     // The template lets the engine name the file; `moveProducedFiles` works on the directory.

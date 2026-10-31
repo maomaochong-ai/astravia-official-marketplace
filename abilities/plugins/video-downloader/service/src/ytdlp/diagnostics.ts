@@ -9,6 +9,10 @@ export type EngineFailureCode =
 
 const ERROR_PREFIX = /^ERROR:\s*/iu;
 
+/** Warnings that explain why a page yielded nothing usable, rather than incidental noise. */
+const ACTIONABLE_WARNING =
+  /no supported javascript runtime|js[- ]runtime|some formats may be missing|nsig|n-?sig|sign in to confirm|not a bot|cookies? (?:are )?(?:needed|required)|requested format is not available|unable to (?:extract|download)|player response|only available (?:in|to|for)/iu;
+
 /**
  * Reduce yt-dlp's stderr to the first real error.
  *
@@ -25,6 +29,24 @@ export function firstYtdlpErrorLine(stderr: string): string | null {
     const text = line.trim();
     if (!text || text.startsWith("WARNING:") || text.startsWith("[")) continue;
     return text;
+  }
+  return null;
+}
+
+/**
+ * Reason line for a page that produced no usable rendition.
+ *
+ * An `ERROR:` line always wins. When the engine only warned — it can exit 0 with storyboards but
+ * no real stream — the first *actionable* warning is the reason: `No supported JavaScript runtime
+ * could be found` explains the empty result, the incidental warnings around it do not.
+ */
+export function firstActionableYtdlpLine(stderr: string): string | null {
+  const error = firstYtdlpErrorLine(stderr);
+  if (error && !/^WARNING:/iu.test(error)) return error;
+  for (const line of stderr.split(/\r?\n/u)) {
+    const text = line.trim();
+    if (!ACTIONABLE_WARNING.test(text)) continue;
+    return text.replace(/^WARNING:\s*/iu, "").trim();
   }
   return null;
 }

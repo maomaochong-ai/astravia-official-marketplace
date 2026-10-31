@@ -167,7 +167,7 @@ export class ServiceContext {
       () => null,
     );
     try {
-      const outcome = await probeWithYtdlp(ytdlpPath, url, { cookieFile });
+      const outcome = await probeWithYtdlp(ytdlpPath, url, { cookieFile, proxy: this.settings().proxy });
       return {
         items: outcome.items,
         failure: outcome.failure,

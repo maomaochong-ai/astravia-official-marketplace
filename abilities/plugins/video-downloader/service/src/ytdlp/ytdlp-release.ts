@@ -12,10 +12,21 @@ export const YTDLP_VERSION = "2026.08.19";
 
 const BASE = `https://github.com/yt-dlp/yt-dlp/releases/download/${YTDLP_VERSION}`;
 
+/**
+ * Public GitHub accelerators, used as a path prefix in front of the release URL.
+ *
+ * Direct access to `github.com` measures around 17 KB/s from mainland China against roughly
+ * 370 KB/s through `ghfast.top` — the difference between a 40-minute install and a two-minute
+ * one. A mirror can only affect availability, never the bytes: every download is checked
+ * against the pinned `sha256` before it is moved into place.
+ */
+const ACCELERATORS = ["https://ghfast.top/", "https://gh-proxy.com/"];
+
 export interface YtdlpRelease {
   version: string;
   asset: string;
-  url: string;
+  /** Same bytes from several hosts, tried in order; the digest decides what gets installed. */
+  sources: string[];
   sha256: string;
   bytes: number;
 }
@@ -47,10 +58,11 @@ export function ytdlpReleasePath(dataRoot: string): string {
 export function ytdlpReleaseFor(platform: string = process.platform, arch: string = process.arch): YtdlpRelease | null {
   const record = ASSETS[`${platform}-${arch}`];
   if (!record) return null;
+  const origin = `${BASE}/${record.asset}`;
   return {
     version: YTDLP_VERSION,
     asset: record.asset,
-    url: `${BASE}/${record.asset}`,
+    sources: [origin, ...ACCELERATORS.map((accelerator) => `${accelerator}${origin}`)],
     sha256: record.sha256,
     bytes: record.bytes,
   };

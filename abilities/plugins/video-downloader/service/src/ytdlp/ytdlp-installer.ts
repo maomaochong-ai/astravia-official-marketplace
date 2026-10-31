@@ -19,8 +19,12 @@ export interface YtdlpInstallState {
 
 /** One connection attempt is bounded so a stalled socket cannot hang the install forever. */
 const ATTEMPT_TIMEOUT_MS = 4 * 60_000;
-/** GitHub release downloads are frequently cut mid-stream; each retry resumes from the last byte. */
-const MAX_ATTEMPTS = 5;
+/**
+ * GitHub release downloads are frequently cut mid-stream and often crawl. Each attempt resumes
+ * from the last byte and moves to the next mirror, so the budget buys real progress instead of
+ * re-fetching the same prefix: at 20 KB/s a 37 MB asset needs around ten attempts.
+ */
+const MAX_ATTEMPTS = 10;
 const RETRY_DELAY_MS = 1_500;
 const MAX_RESTARTS = 1;
 
@@ -57,6 +61,8 @@ export class YtdlpInstaller {
     private readonly dataRoot: string,
     // Injected so a test can exercise the resume path without a 37 MB release download.
     private readonly release: YtdlpRelease | null = ytdlpReleaseFor(),
+    // Same reason: the retry backoff would otherwise put a ten-attempt test past its timeout.
+    private readonly retryDelayMs: number = RETRY_DELAY_MS,
   ) {
     this.state = {
       phase: "idle",
@@ -108,13 +114,14 @@ export class YtdlpInstaller {
     await ensureDirectory(dirname(this.targetPath));
 
     for (let restart = 0; restart <= MAX_RESTARTS; restart += 1) {
-      await rm(partPath, { force: true }).catch(() => undefined);
-      this.set({ phase: "downloading", receivedBytes: 0, error: null });
+      // The partial file survives a failed attempt. Keeping it is what lets a slow link converge:
+      // the next install (or the retry button) continues from the bytes already on disk instead
+      // of restarting a 37 MB transfer that the network will cut again.
+      this.set({ phase: "downloading", error: null });
       try {
         await this.transfer(release, partPath);
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
-        await rm(partPath, { force: true }).catch(() => undefined);
         this.set({ phase: "failed", error: reason });
         return this.snapshot();
       }
@@ -140,29 +147,32 @@ export class YtdlpInstaller {
   }
 
   private async transfer(release: YtdlpRelease, partPath: string): Promise<void> {
+    let lastReason = "";
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       const received = await sizeOf(partPath);
       this.set({ receivedBytes: Math.min(received, release.bytes) });
       if (received >= release.bytes) break;
+      // Rotate hosts: a stalled mirror keeps failing the same way, while the next one may be fast.
+      const url = release.sources[(attempt - 1) % release.sources.length] ?? release.sources[0]!;
       try {
-        await this.fetchInto(release, partPath, received);
+        await this.fetchInto(url, release, partPath, received);
       } catch (error) {
-        if (attempt === MAX_ATTEMPTS) {
-          const reason = error instanceof Error ? error.message : String(error);
-          throw new Error(`yt-dlp 下载失败（已下载 ${await sizeOf(partPath)}/${release.bytes} 字节）：${reason}`);
-        }
-        await delay(RETRY_DELAY_MS * attempt);
+        lastReason = error instanceof Error ? error.message : String(error);
+        if (attempt === MAX_ATTEMPTS) break;
+        await delay(this.retryDelayMs * attempt);
       }
     }
     const received = await sizeOf(partPath);
-    if (received !== release.bytes) throw new Error(`下载不完整（${received}/${release.bytes} 字节），请重试`);
+    if (received === release.bytes) return;
+    const kept = received > 0 ? `，已保留 ${received} 字节以便续传` : "";
+    throw new Error(`yt-dlp 下载未完成（${received}/${release.bytes} 字节${kept}）：${lastReason || "连接中断"}`);
   }
 
-  private async fetchInto(release: YtdlpRelease, partPath: string, offset: number): Promise<void> {
+  private async fetchInto(url: string, release: YtdlpRelease, partPath: string, offset: number): Promise<void> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
     try {
-      const response = await fetch(release.url, {
+      const response = await fetch(url, {
         // A resumed request is answered with the remaining bytes, which keeps the retry cheap.
         headers: offset > 0 ? { range: `bytes=${offset}-` } : {},
         redirect: "follow",

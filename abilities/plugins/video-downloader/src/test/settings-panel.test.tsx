@@ -24,6 +24,7 @@ const settings = {
   downloadDirectory: "/Users/me/Downloads",
   maxConcurrent: 2,
   cookie: "",
+  proxy: "",
   multiThread: true,
   keepPartialFiles: false,
 };

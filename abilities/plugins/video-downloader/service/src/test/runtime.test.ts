@@ -81,6 +81,18 @@ describe("normalizeSettings", () => {
     expect(settings.downloadDirectory.length).toBeGreaterThan(0);
     expect(normalizeSettings({ maxConcurrent: 0 }).maxConcurrent).toBe(1);
   });
+
+  it("accepts a proxy address and rejects anything that is not one", () => {
+    expect(normalizeSettings({}).proxy).toBe("");
+    // A bare host:port is what people copy out of a proxy client, so it is completed for them.
+    expect(normalizeSettings({ proxy: " 127.0.0.1:7890 " }).proxy).toBe("http://127.0.0.1:7890");
+    expect(normalizeSettings({ proxy: "socks5://127.0.0.1:1080" }).proxy).toBe("socks5://127.0.0.1:1080");
+    expect(normalizeSettings({ proxy: "http://user:pass@10.0.0.2:8080" }).proxy).toBe("http://user:pass@10.0.0.2:8080");
+    // Forwarding an unparseable value would make every request fail for an unrelated reason.
+    expect(normalizeSettings({ proxy: "http://127.0.0.1:7890/extra" }).proxy).toBe("");
+    expect(normalizeSettings({ proxy: "http://" }).proxy).toBe("");
+    expect(normalizeSettings({ proxy: 42 }).proxy).toBe("");
+  });
 });
 
 describe("summarizeFailure", () => {
