@@ -74,14 +74,14 @@ describe("studio masthead", () => {
 		expect(screen.getByText("2 queued")).toBeTruthy();
 	});
 
-	it("drops the middle line when there is nothing to report, and still offers the full-screen door", () => {
+	it("drops the middle line when there is nothing to report, and still offers the widen door", () => {
 		useCatalog(en as Catalog);
-		render(<StudioMasthead section="Ledger" onToggleFullscreen={() => {}} />);
+		render(<StudioMasthead section="Ledger" onToggleExpanded={() => {}} />);
 
 		expect(screen.queryByText("Drafting")).toBeNull();
 		expect(screen.getByText("Ledger")).toBeTruthy();
-		// 全屏键不靠页面传入：它是外壳的能力，在每一页上都得在（含没有竖栏的 bare 页）。
-		expect(screen.getByRole("button", { name: "Show the workbench full screen" })).toBeTruthy();
+		// 拉宽键不靠页面传入：它是外壳的能力，在每一页上都得在（含没有竖栏的 bare 页）。
+		expect(screen.getByRole("button", { name: "Widen the workbench panel" })).toBeTruthy();
 	});
 
 	it("speaks Chinese when the catalog is Chinese", () => {

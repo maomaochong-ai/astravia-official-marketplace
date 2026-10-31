@@ -10,7 +10,7 @@
 export function StudioBootSkeleton() {
 	return (
 		<div className="@container mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden bg-canvas">
-			<div className="flex h-12 shrink-0 items-center gap-3 border-b border-line-soft px-4">
+			<div className="flex h-12 shrink-0 items-center gap-3 px-4">
 				<div className="h-4 w-24 rounded-control bg-inset" />
 				<div className="ml-5 h-3 w-40 rounded-control bg-inset/70" />
 			</div>

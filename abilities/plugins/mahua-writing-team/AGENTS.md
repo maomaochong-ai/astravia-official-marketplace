@@ -63,7 +63,7 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 - 唯一允许碰 `ctx.conversation` 的文件是 `src/features/workbench/hooks/use-team-reveal.ts`，
   守卫 `test/manifest-guards.test.ts` 钉死这一点。宿主没有「聚焦侧栏对话」的 API，所以这里只能
   `insertText("")` 点亮输入条 + 一条 `team.hint` 提示：**只把视线送过去，不带指令**。
-- 单向同步：侧栏对话 → 落盘 → 工作台读到新状态。`WorkbenchScreen` 只订阅事件流里的落盘事件，
+- 单向同步：侧栏对话 → 落盘 → 工作台读到新状态。`WorkbenchSurface` 只订阅事件流里的落盘事件，
   到了就 `refresh()` 重读仓储；界面从不反向写信箱，也没有「提交本章」这类按钮。
 - 卡片上写的下一步来自 `routeNovel(book)` 的 key（`reason.*`），与模型看到的是同一条判断。
 
@@ -88,37 +88,41 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 ## 插件必须自足（ADR 0010）
 
 不引用任何别的插件的实体：团队成员只写本清单里声明的 `mahua-*` id，工具 id 只带 `mahua_`
-前缀，`permissions` 精确等于实际用到的那 13 项（含 hook 两项、标签与整页两枚 slot）。三份断言在
+前缀，`permissions` 精确等于实际用到的那 13 项（含 hook 两项、`ui.slot` 两枚：标签与回合卡片）。三份断言在
 `test/manifest-guards.test.ts`。
 
-## 入口形状（ADR 0025 补注四）
+## 入口形状（ADR 0025 补注四，2026-10 修订）
 
-工作台**注册两枚入口、渲染一套界面**（ADR 0025 补注四）：
+工作台**只注册一枚入口**：
 
 | 注册 | id | 权限 | 在宿主里长什么样 |
 | --- | --- | --- | --- |
 | `ctx.ui.registerActivityTab` | `studio` | `ui.slot.activity-tab` | 活动面板上的一枚标签，日常就在这里写 |
-| `ctx.ui.registerWorkspaceView` | `workbench` | `ui.slot.workspace-view` | 宿主真整页路由，`sidebar: false`，只在放大时进 |
-- **两枚入口不是重复**：标签页跟着会话走，宽度由面板决定；整页视图是宿主的整页路由，用来在面板写不下
-  时候看全书。宿主没有面向插件的 `requestFullscreen`，`openWorkspaceView` 是唯一能拿到整页宽度的入口，
-  所以全屏必须落在这里，不能拿 CSS 假全屏。两处渲染同一份 `WorkbenchSurface`，区别只在外壳与 `mode`。
+
+- 从前还有第二枚 `registerWorkspaceView`（宿主整页路由，`ui.slot.workspace-view`），2026-10 拆掉了。
+  那条路拿不到它承诺的东西：整页路由仍带宿主侧栏（`RootLayoutView` 的
+  `showSidebar = pageLayout !== "app"`），且 `DOMAIN_NAVIGATION_CAPABILITIES` 只有
+  `OPEN_HOSTED_ROUTE`——进得去、没有返回，用户只能自己摸到侧栏退出。
+- **「铺满」的正确实现点是宿主的面板宽度，不是盖一层蒙层。** 报头的放大键调
+  `ctx.ui.setActivityPanelWidth("max")`，收回时调回之前量到的 `offsetWidth`（量不到退
+  `560`）；宿主自己会在面板占满时收起侧栏。插件不该、也不需要碰宿主 DOM。
+- 不做 `fixed`、不 `createPortal`、不写七位以上 `z-index`：面板类 slot 里盖不住标签条，
+  只会把宿主的菜单和侧栏留在原地，看起来更像没铺满。这几条现在是守卫断言。
 - `registerToolCallSlot` / `registerNewSessionContext` 仍为作废（ADR 0011）：对话里不再插入
   插件自己的卡片，团队的时间流统一进运行台。
 - `scope_use: ["conversation", "project"]`，与 `src/scenarios.ts` 的 `SCENARIOS` 同一口径（fail-closed）。
 - `initiallyVisible: true`：默认就上栏。用户点减号收起来后会留下显式 `false`，标签回到池子，
   这时「+」必定出现。取证与完整四条件见 ADR 0025 末尾补注。
-- 整页视图挂载时在 effect 里调 `ctx.ui.setWorkspaceViewHeader("workbench", { immersive: true, hideTitle: true })`，
-  卸载传 `null` 清空：宿主的页头从来不会被移除，不清就会污染下一块视图。整页根加 `pt-11` 给宿主横带让位。
-  面板内不做 `fixed`、不 `createPortal`。
 - 凭证判断不在注册处：未激活时同一枚标签渲染 `ActivationPage`，所以入口从装上开始就一直在。
 
-`test/manifest-guards.test.ts` 钉住入口形状（两个入口各一次注册、两个入口都经 `useStudioRuntimeReady` 闸门、
-有 `scope_use`、`initiallyVisible: true`、`component: WorkbenchScreen`）与权限集合
-（`ui.slot.*` 恰好 `ui.slot.activity-tab` 与 `ui.slot.workspace-view` 两项，且 `permissions` 已排序）。
+`test/manifest-guards.test.ts` 钉住入口形状（恰好一次 `registerActivityTab`、有 `scope_use`、
+`initiallyVisible: true`、走 `useStudioRuntimeReady` 闸门）与权限集合（`ui.slot.*` 恰好
+`ui.slot.activity-tab` 与 `ui.slot.turn-card` 两项）。
 
 ## 已知的宿主约束
 
-- 面板类 slot 不能用 `fixed`、超大 z-index、`createPortal(..., document.body)`。
+- 面板类 slot 不能用 `fixed`、超大 z-index、`createPortal(..., document.body)`——
+  宿主没有面向插件的全屏 API，编一个出来只会把标签条和侧栏留在原地。
 - 标签 `icon` 用 React 节点（`createElement("span", { className: STUDIO_TAB_ICON })`），因为 `iconUrl` 只对图片图标有值；
   iconify class 靠 `@plugin "@iconify/tailwind4";` 生成 CSS，写错了标签栏是空格子且无报错。
 - `src/style.css` 只导 `tailwindcss/theme.css` + `utilities.css`，**不写裸 `@theme`**：`plugin-vite` 会注入 `@astravia-org/plugin-sdk/tailwind-theme.css`。工作台另有一段 `@theme inline { … }`（ADR 0006 补注）：它只把取值内联成本插件的工具类、不向 `:root` 发射变量，并且**不重声明宿主占用的 `--color-*` 名**（改名表写在文件头：`card→raised`、`muted→ink-soft`、`accent→cinnabar`、`success→pass`、`danger→fail`）。

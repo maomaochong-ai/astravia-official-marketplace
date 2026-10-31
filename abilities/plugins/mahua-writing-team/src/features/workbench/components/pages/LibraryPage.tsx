@@ -10,13 +10,13 @@ import { Cover } from "../shell/Cover";
 import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
 import { PhaseBadge } from "../shell/PhaseBadge";
-import { COLUMNS, columnClassName, HEADER_CELLS, HIDE_CHAPTERS, HIDE_GENRE, HIDE_UPDATED } from "./library-columns";
+import { COLUMNS, columnClassName, HEADER_CELLS } from "./library-columns";
 
 const PAGE_SIZE = 9;
 
-/** 六列表头：书名 / 题材·篇幅 / 阶段 / 章·进度 / 字数 / 更新。
+/** 六列表头：书名 / 题材·篇幅 / 阶段 / 章数 / 字数 / 更新。
  *
- * 宽度不够时**丢列**（题材篇幅与字数 → 章进度 → 更新），而不是把六列一起压到叠字。
+ * 宽度不够时**丢列**（题材篇幅与字数 → 章数 → 更新），而不是把六列一起压到叠字。
  * 列模板、每格的隐藏档位都写在 `library-columns.ts`：表头与行共用同一组，守卫测试逐档
  * 核对「轨道数 = 可见单元格数」——多出来的子项会被 grid 塞进隐式第二行，那正是列错位的根因。 */
 
@@ -48,10 +48,18 @@ const SORT_LABELS: Record<SortKey, string> = {
 /**
  * 书库：一条筛选带，一张满宽台账。
  *
- * 这一版的排版语言换过一次（ADR 0033）：筛选带不再是一张带投影的横条 + 三根竖杠，
- * 而是三组凹槽（每组一个维度）加一组排序；台账不再是「卡头 / 表头 / 行 / 卡尾」四段
- * 各画一根分隔线，而是「表头是一条凹槽、页脚是另一条凹槽，中间的行自己浮在卡片上」。
- * 分隔交给底色与间距，不交给线。
+ * 两条版面纪律，都是被窄宽度逼出来的：
+ *
+ * 1. **筛选带只有一行**。三组凹槽 + 排序在 400px 的面板里放不下，从前的做法是让它们各自
+ *    `flex-wrap`——结果每组的 chip 在凹槽里折成两三行，凹槽跟着长高，台账被挤到只剩两条。
+ *    现在的做法是整条带子横向滚动（`.mahua-strip`），每一组 `shrink-0`、每枚 chip
+ *    `whitespace-nowrap`：**宁可横向滚动，也不让文字换行**。宽度够时它一样是原来那一条。
+ * 2. **行里不设固定高度**。行内容用 `py-2` 撑出来，字体或封面一旦变大只会把行撑高，
+ *    不会把第三行的字裁在圆角容器外面。
+ *
+ * 台账仍是四段（状态行 / 表头凹槽 / 行 / 页脚凹槽），段与段之间没有一根 `border-*`：
+ * 分隔交给底色与间距。进度不再单独占一列 168px 的轨道，而是缩成书名下面一根 3px 的发丝，
+ * 与竖栏里那张书卡用的是同一种说法——省下来的宽度留给书名，那是「哪本」。
  *
  * 筛选与排序都是本页的瞬时状态——工作台不改任何书的事实，只改「现在看哪几本」。
  * 因此这里没有成书、也没有编辑入口：一行只是一个通往书页的门。
@@ -108,12 +116,20 @@ export function LibraryPage({
 	const current = Math.min(page, pages - 1);
 	const rows = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
 	const words = filtered.reduce((sum, entry) => sum + (entry.words ?? 0), 0);
+	const filtering = genre !== null || phase !== null || size !== null;
 
 	/** 改筛选/排序就回到第一页：否则当前页可能已经不存在。 */
 	const pick = (next: () => void) => {
 		setPage(0);
 		next();
 	};
+
+	const resetFilters = () =>
+		pick(() => {
+			setGenre(null);
+			setPhase(null);
+			setSize(null);
+		});
 
 	// 页头的「上一本 / 下一本」：在**当前筛选结果**里逐本走，不跳页、不离开书库——
 	// 换书之后还能接着比。当前作品不在筛选结果里时从第一个开始走。
@@ -126,17 +142,20 @@ export function LibraryPage({
 
 	/** 一枚筛选片：选中的从凹槽里浮起来，没选中的只在悬停时沾一点墨。
 	 *  从前选中态是黑底反白，一排看下来像一排按钮；纸面语言里「选中」应该是
-	 * 这一格被抬起来，而不是被涂黑。 */
+	 * 这一格被抬起来，而不是被涂黑。
+	 *  `whitespace-nowrap` 是硬要求：带子是横向滚动的，chip 一旦允许换行，
+	 *  外层再窄也会把「全部 12」折成两行。 */
 	const chip = (active: boolean) =>
-		`flex h-6 shrink-0 items-center gap-1 rounded-pill px-2 text-[10px] transition-colors ${
+		`flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-pill px-2 text-[10px] transition-colors ${
 			active ? "bg-raised font-medium text-ink shadow-raise" : "text-ink-soft hover:bg-wash"
 		}`;
 
 	/* 计数不跟着选中态变颜色：同一列数字忽深忽浅反而更难比对。 */
 	const chipCount = "font-mono text-ink-faint";
 
+	/** 一组筛选：一个凹槽装一个维度。组自己不换行，也不允许被压缩——压缩就是折字。 */
 	const group = (label: string, children: ReactNode) => (
-		<div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-panel bg-well px-2 py-1.5">
+		<div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-panel bg-well px-2 py-1.5">
 			<span className="shrink-0 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
 				{label}
 			</span>
@@ -175,10 +194,8 @@ export function LibraryPage({
 				}
 			/>
 
-			{/* 筛选带：三个维度各占一格凹槽，排序钉在右端。它不锁高也不再 `overflow-hidden`：
-			 * 面板拖到 500px 时三个分组放不下，从前会被硬生生裁掉半个 chip（看着像渲染错位）。
-			 * 宁可让带子长成两行，也不让某一项只剩一半。 */}
-			<div className="mt-3 flex shrink-0 flex-wrap items-center gap-2">
+			{/* 筛选带：整条横向滚动，一组都不换行。见本文件头部第 1 条纪律。 */}
+			<div className="mahua-strip mt-3 flex shrink-0 items-center gap-2 overflow-x-auto pb-1">
 				{group(
 					t("library.filter.genre"),
 					<>
@@ -236,7 +253,18 @@ export function LibraryPage({
 					</>,
 				)}
 
-				<div className="ml-auto flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-panel bg-well px-2 py-1.5">
+				{filtering ? (
+					<button
+						type="button"
+						onClick={resetFilters}
+						className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-control bg-well px-2.5 text-[10px] text-ink-soft transition-colors hover:bg-wash-strong hover:text-ink"
+					>
+						<span className="icon-[solar--close-circle-linear] size-3" />
+						{t("library.filter.clear")}
+					</button>
+				) : null}
+
+				<div className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-panel bg-well px-2 py-1.5">
 					<span className="shrink-0 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
 						{t("library.filter.sort")}
 					</span>
@@ -256,7 +284,7 @@ export function LibraryPage({
 
 			{/* 满宽台账：状态行只读，表头是一条凹槽，行内部滚，页脚是另一条凹槽。
 			 * 四段之间没有一根 `border-*`——分隔靠底色与 8px 间距。 */}
-			<section className="mahua-card mt-3 flex min-h-0 flex-1 flex-col">
+			<section className="mahua-card mt-2 flex min-h-0 flex-1 flex-col">
 				<div className="flex shrink-0 items-center gap-2 px-4 pt-3">
 					{writing ? (
 						<>
@@ -275,7 +303,7 @@ export function LibraryPage({
 					className={`mx-2 mt-2 grid ${COLUMNS} shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint`}
 				>
 					{HEADER_CELLS.map((cell) => (
-						<span key={cell.key} className={`min-w-0 truncate ${columnClassName(cell)}`}>
+						<span key={cell.key} className={`min-w-0 truncate whitespace-nowrap ${columnClassName(cell)}`}>
 							{t(cell.key)}
 						</span>
 					))}
@@ -292,7 +320,7 @@ export function LibraryPage({
 							const done = percent(entry.committedCount, entry.targetChapters);
 							const isCurrent = entry.id === data.book?.id;
 							return (
-								<li key={entry.id} className="h-14">
+								<li key={entry.id}>
 									<button
 										type="button"
 										onClick={() => {
@@ -300,13 +328,13 @@ export function LibraryPage({
 											onNavigate("book");
 										}}
 										aria-current={isCurrent ? "true" : undefined}
-										className={`group grid h-full w-full ${COLUMNS} items-center gap-3 rounded-control px-3 text-left transition-colors ${
+										className={`group grid w-full ${COLUMNS} items-center gap-3 rounded-control px-3 py-2 text-left transition-colors ${
 											isCurrent ? "bg-cinnabar-soft hover:bg-wash" : "hover:bg-wash"
 										}`}
 									>
 										<span className="flex min-w-0 items-center gap-2.5">
 											<Cover {...coverSeed(entry.title)} size="thumb" />
-											<span className="min-w-0">
+											<span className="flex min-w-0 flex-1 flex-col gap-1">
 												<span
 													className={`block truncate font-display text-body-sm font-semibold ${
 														isCurrent ? "text-cinnabar-ink" : "text-ink"
@@ -314,13 +342,18 @@ export function LibraryPage({
 												>
 													{entry.title}
 												</span>
-												<span className="flex items-center gap-1 truncate text-[10px] text-ink-faint">
-													<span className="icon-[solar--arrow-right-up-linear] size-2.5" />
-													{t("library.open")}
+												{/* 进度缩成书名下一根发丝：与竖栏书卡同一说法，数目字在「章数」列里。 */}
+												<span className="flex min-w-0 items-center">
+													<span className="h-[3px] min-w-0 max-w-[132px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
+														<span
+															className={`block h-full rounded-pill ${isCurrent ? "bg-cinnabar" : "bg-cinnabar/40"}`}
+															style={{ width: `${done}%` }}
+														/>
+													</span>
 												</span>
 											</span>
 										</span>
-										<span className={`flex min-w-0 flex-col ${HIDE_GENRE}`}>
+										<span className={`flex min-w-0 flex-col gap-0.5 ${columnClassName(HEADER_CELLS[1])}`}>
 											<span className="truncate text-micro text-ink-soft">
 												{entry.genre ?? t("library.card.noGenre")}
 											</span>
@@ -328,25 +361,23 @@ export function LibraryPage({
 												{t(`library.size.${sizeOf(entry.targetChapters)}`)}
 											</span>
 										</span>
-										<span className="min-w-0">
+										<span className="min-w-0 truncate">
 											<PhaseBadge phase={entry.phase} />
 										</span>
-										<span className={`flex min-w-0 items-center gap-2.5 ${HIDE_CHAPTERS}`}>
-											<span className="w-[46px] shrink-0 font-mono text-[11px] tabular-nums text-ink">
-												{entry.committedCount}
-												<span className="text-ink-faint">/{entry.targetChapters}</span>
-											</span>
-											<span className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-pill bg-wash-strong">
-												<span className="block h-full rounded-pill bg-ink/60" style={{ width: `${done}%` }} />
-											</span>
-											<span className="w-[30px] shrink-0 text-right font-mono text-[10px] tabular-nums text-ink-faint">
-												{done}%
-											</span>
+										<span
+											className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink ${columnClassName(HEADER_CELLS[3])}`}
+										>
+											{entry.committedCount}
+											<span className="text-ink-faint">/{entry.targetChapters}</span>
 										</span>
-										<span className={`text-right font-mono text-[11px] tabular-nums text-ink-soft ${HIDE_GENRE}`}>
+										<span
+											className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink-soft ${columnClassName(HEADER_CELLS[4])}`}
+										>
 											{entry.words ? formatCount(entry.words) : "—"}
 										</span>
-										<span className={`text-right text-[10px] text-ink-faint ${HIDE_UPDATED}`}>
+										<span
+											className={`shrink-0 truncate whitespace-nowrap text-right text-[10px] text-ink-faint ${columnClassName(HEADER_CELLS[5])}`}
+										>
 											{ago ? t(ago.key, { count: ago.count }) : "—"}
 										</span>
 									</button>
@@ -357,7 +388,7 @@ export function LibraryPage({
 				)}
 
 				<div className="m-2 mt-0 flex shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-micro text-ink-soft">
-					<div className="flex items-center gap-1">
+					<div className="flex shrink-0 items-center gap-1 whitespace-nowrap">
 						<button
 							type="button"
 							onClick={() => setPage(Math.max(0, current - 1))}
@@ -386,4 +417,3 @@ export function LibraryPage({
 		</div>
 	);
 }
-

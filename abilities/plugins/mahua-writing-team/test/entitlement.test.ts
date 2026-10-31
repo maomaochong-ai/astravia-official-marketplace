@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { COMMUNITY_CREDENTIAL } from "../src/entitlement/default-credential.js";
 import { decodeToken } from "../src/entitlement/credential-token.js";
 import { EntitlementGate, GATED_TOOL_IDS, isGatedTool } from "../src/entitlement/entitlement-gate.js";
+import { subjectLabel } from "../src/entitlement/subject-label.js";
 import { TRUSTED_KEYS } from "../src/entitlement/trusted-keys.js";
 import { verifyEntitlement } from "../src/entitlement/verify-entitlement.js";
 import { MemoryManuscriptStorage } from "../src/repository/manuscript-storage.js";
@@ -76,12 +77,23 @@ describe("bundled community credential", () => {
 	});
 
 	it("carries the studio's own name, not the pre-rename one", () => {
-		// 激活页把 `subject` 原样当「签发主体」显示（ActivationPage 的 fact 表）。
-		// 凭证里一旦带回旧产品名，界面上就会冒出一个本插件已不再使用的名字，
-		// 而这不是 UI 能遮掉的——只能保证签发的 payload 里没有它。
+		// 激活页把 `subject` 当「签发主体」显示（ActivationPage 的 fact 表）。随包凭证必须自带
+		// 当前产品名；旧名字另有一层展示映射兜底（`subjectLabel`），但它只能救已经发出去的
+		// token，救不了我们自己的签发。两层都要钉住。
 		const claims = decodeToken(COMMUNITY_CREDENTIAL)?.claims;
 		expect(claims?.subject.startsWith("mahua")).toBe(true);
 		expect(COMMUNITY_CREDENTIAL.toLowerCase()).not.toContain("novelwright");
+	});
+
+	it("folds pre-rename subject names at the display layer only", () => {
+		// 旧凭证已经在用户机器上，签名覆盖 claims，改不得——只能展示层折回来。
+		expect(subjectLabel("novelwright-community")).toBe("mahua-community");
+		expect(subjectLabel("novelwright")).toBe("mahua-community");
+		// 认识的才折；不认识的一字不改，也不去猜它是谁的旧名。
+		expect(subjectLabel("someone-else")).toBe("someone-else");
+		expect(subjectLabel("  spaced ")).toBe("spaced");
+		expect(subjectLabel(null)).toBe("—");
+		expect(subjectLabel("   ")).toBe("—");
 	});
 });
 

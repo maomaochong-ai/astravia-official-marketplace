@@ -39,7 +39,10 @@ export function PageHeader({
 					{meta ? <span className="min-w-0 flex-1 basis-[12ch]">{meta}</span> : null}
 				</div>
 			</div>
-			<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">{right}</div>
+			{/* 右侧动作**自己不许折行**：一枚键被折到下一行、另一半还留在上一行，
+			 * 是窄面板里最常见的「错位」。放不下时整簇落到标题下面一行（外层 wrap），
+			 * 那一行里它仍然是完整的一排。 */}
+			<div className="ml-auto flex shrink-0 flex-nowrap items-center justify-end gap-2">{right}</div>
 		</div>
 	);
 }

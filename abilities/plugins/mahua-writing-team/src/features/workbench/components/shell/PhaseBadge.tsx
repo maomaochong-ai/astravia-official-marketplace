@@ -1,13 +1,17 @@
 import type { ChapterState } from "../../workbench-model";
 import { useTranslator } from "../../hooks/use-translator";
 
-/** 阶段徽章的六种底色：立项/规划/收弧用纸槽，写作中朱砂，修订赭黄，完本墨绿。 */
+/** 阶段徽章的六种底色：立项/规划/收弧用半透明墨，写作中朱砂，修订赭黄，完本墨绿。
+ *
+ * 中性三态从前是 `bg-inset`（实色凹槽）。实色一旦落在 well 里就比容器更深一层，
+ * 一枚小胶囊看着像贴上去的补丁；半透明的 wash 会跟当前所在的那层纸一起明暗，
+ * 在 raised、well、hover 三种底上都只「压暗一点」，不会出现第二种灰。 */
 const PHASE_TONES: Record<string, string> = {
-	briefing: "bg-inset text-ink-soft",
-	planning: "bg-inset text-ink-soft",
+	briefing: "bg-wash text-ink-soft",
+	planning: "bg-wash text-ink-soft",
 	drafting: "bg-cinnabar-soft text-cinnabar-ink",
 	revising: "bg-wait-soft text-wait",
-	arc_close: "bg-inset text-ink-soft",
+	arc_close: "bg-wash text-ink-soft",
 	completed: "bg-pass-soft text-pass",
 };
 

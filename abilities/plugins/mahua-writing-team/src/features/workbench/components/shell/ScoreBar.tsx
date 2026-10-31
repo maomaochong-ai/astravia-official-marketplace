@@ -7,9 +7,9 @@ export function ScoreBar({ label, value, pass = 72 }: { label: string; value: nu
 	return (
 		<div className="flex items-center gap-2.5">
 			<span className="w-[5.5rem] shrink-0 truncate text-micro text-ink-soft">{label}</span>
-			<div className="relative h-[5px] flex-1 overflow-hidden rounded-pill bg-inset">
+			<div className="relative h-[5px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
 				<div
-					className={`h-full rounded-pill ${weak ? "bg-fail" : "bg-ink"}`}
+					className={`h-full rounded-pill ${weak ? "bg-fail" : "bg-ink/70"}`}
 					style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
 				/>
 				<span className="absolute top-[-2px] h-[9px] w-px bg-line-strong" style={{ left: `${pass}%` }} />

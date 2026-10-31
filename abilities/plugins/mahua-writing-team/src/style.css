@@ -264,6 +264,12 @@
  * - `.mahua-well` 管「纸面里的坑」：分组、进度槽、空态都往里坐，不带描边。
  * - 容器之间的间距统一为 `--mahua-gap`；卡内 padding 统一 16px（`p-4`）。
  *
+ * 嵌套圆角只有一条规矩：**内层半径不大于外层半径减掉内边距**。
+ * 18 的卡里贴边（内缩 8）的行用 9，内缩 16 的分组用 13；同级并排的容器用同一个半径。
+ * 这条不是审美偏好——内层圆角大于外层的可用弧度时，内层的角会从外层的弧上戳出来，
+ * 看起来就是「圆角容器里的字歪出去了」。`overflow: hidden` 只是把戳出来的部分裁掉，
+ * 裁掉的那一角正是字上方的留白。
+ *
  * 放 components 层是因为 utilities 能压过它：某一页真的需要例外时，写一行工具类就行，
  * 不必回来改这里。 */
 @layer components {
@@ -271,6 +277,11 @@
 		display: flex;
 		flex: 1 1 0%;
 		flex-direction: column;
+		/* `min-width: 0` 是 flex 子项的通行证：少了它，页里最宽的那个不换行子项
+		 * （表头、筛选带、一行代码）会把整页撑得比面板宽，`overflow: hidden`
+		 * 于是把右边几列直接裁掉——看起来就是「字被圆角容器压住」。
+		 * 页面要能缩，缩不下的部分交给各自的横向滚动条。 */
+		min-width: 0;
 		min-height: 0;
 		overflow: hidden;
 		padding: var(--mahua-page-pad);
@@ -331,27 +342,10 @@
 	}
 }
 
-/* 全屏时的报头兼作窗口标题栏。
- * `-webkit-app-region` 不是标准属性，Tailwind 没有对应 utility（宿主的 `.drag-region` /
- * `.no-drag` 是 unlayered 全局类，插件能用但不该依赖它的名字），所以写在插件自己的样式里，
- * 与颜色、窄栏一样只作用于 `.mahua-root` 这棵树。
- *
- * 注意反着标：可拖的是整条报头，里面每一个能点的东西都得 `no-drag`——少标一个，那个按钮就
- * 只会在拖窗口，点多少下都没反应。 */
-@layer utilities {
-	.mahua-drag {
-		-webkit-app-region: drag;
-	}
-
-	.mahua-drag :where(button, a, input, select, textarea, [role="button"]) {
-		-webkit-app-region: no-drag;
-	}
-
-	/* mac 的红绿灯由系统画在网页内容之上，全屏时给左侧让出那一段，否则方印恰好压在关闵上。 */
-	.mahua-traffic-lights {
-		padding-left: 5.25rem;
-	}
-}
+/* 从前这里有一套「报头兼作窗口标题栏」的 `-webkit-app-region` 规则，只服务于已经拆掉的
+ * 全屏蒙层：那是插件自己在 `document.body` 上盖一层、顺便自己画标题栏的做法。
+ * 现在「铺满」走宿主的面板宽度通道，面板报头从来不是窗口标题栏，没有可拖区，
+ * 也就不需要给红绿灯让位——留着这两条只会让人以为报头可以拖。 */
 
 
 /* 稿纸正文：段落首行缩进两字，行距按纸的密度给。 */
@@ -410,6 +404,17 @@
 	opacity: 0.18;
 	mix-blend-mode: multiply;
 	filter: saturate(0);
+}
+
+/* 横向筛选带：宽屏时它就是原来那一条；窄到放不下时整条横向滚动，
+ * 而不是让每一组凹槽各自折行——`flex-wrap` 会让 chip 在凹槽里折成两三行，
+ * 凹槽跟着长高，台账被挤掉一半。滚动条只在真的需要时才出现（窄屏），
+ * 宽屏下 `overflow-x: auto` 不占位。 */
+.mahua-strip {
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	scrollbar-width: thin;
+	scrollbar-color: var(--mahua-line-strong, #ccc1a6) transparent;
 }
 
 .mahua-scroll {

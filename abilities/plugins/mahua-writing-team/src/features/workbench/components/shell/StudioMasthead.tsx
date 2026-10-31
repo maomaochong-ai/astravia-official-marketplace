@@ -10,9 +10,9 @@ import { useTranslator } from "../../hooks/use-translator";
  * 三站是单向的：侧栏里的团队写，工作台读。所以线上一枚箭头都没有——方向由站点的大小与
  * 实心度说出来，不必再提醒。
  *
- * 右槽最右端常驻一枚全屏键：它不随页面变，因为「把工作台铺满整窗」是外壳的能力，不是某一页的
- * 动作。全屏后同一条报头就是窗口标题栏——`mahua-drag` 让它可拖，里面每个可点的东西再由
- * `mahua-drag` 的 CSS 反向标记 `no-drag`，否则按钮会被当成拖拽把手点不动。
+ * 右槽最右端常驻一枚「铺满」键：它不随页面变，因为「把工作台拉宽」是外壳的能力，不是某一页的
+ * 动作。它做的不是给插件盖一层覆盖层，而是把**宿主的活动面板**拉到最宽——宿主会因此自动
+ * 收起左侧栏，收回时再把宽度还原。所以报头不是窗口标题栏，也没有拖拽区：宿主的页头仍在上面。
  */
 export interface MastheadSync {
 	writer: string;
@@ -26,26 +26,19 @@ export interface MastheadSync {
 export function StudioMasthead({
 	section,
 	sync,
-	fullscreen = false,
-	onToggleFullscreen,
-	trafficLights = false,
+	expanded = false,
+	onToggleExpanded,
 }: {
 	section?: string;
 	sync?: MastheadSync;
-	/** 已铺满整窗：报头兼作拖拽区，右侧的键换成「退出全屏」。 */
-	fullscreen?: boolean;
-	onToggleFullscreen?: () => void;
-	/** 需要给系统窗口按钮让出左侧空间（mac 全屏）。 */
-	trafficLights?: boolean;
+	/** 面板已拉到最宽：右侧的键换成「收回」。 */
+	expanded?: boolean;
+	onToggleExpanded?: () => void;
 }) {
 	const t = useTranslator();
 
 	return (
-		<header
-			className={`mahua-masthead flex h-12 shrink-0 items-center gap-3 px-4 ${
-				fullscreen ? "mahua-drag" : ""
-			} ${trafficLights ? "mahua-traffic-lights" : ""}`}
-		>
+		<header className="mahua-masthead flex h-12 shrink-0 items-center gap-3 px-4">
 			<div className="flex w-[216px] min-w-0 shrink-0 items-center gap-2.5 @max-[640px]:w-auto">
 				<span className="size-[7px] shrink-0 rounded-tile bg-cinnabar" />
 				<span className="shrink-0 text-micro-up font-semibold tracking-[0.2em] text-ink-faint">{t("masthead.brand")}</span>
@@ -76,22 +69,24 @@ export function StudioMasthead({
 
 			<div className="flex shrink-0 items-center gap-2 text-[10px] text-ink-faint">
 				{sync ? sync.queue : null}
-				{onToggleFullscreen ? (
+				{onToggleExpanded ? (
 					<button
 						type="button"
-						onClick={onToggleFullscreen}
-						title={fullscreen ? t("window.exitFullscreen") : t("window.fullscreen")}
-						aria-label={fullscreen ? t("window.exitFullscreen") : t("window.fullscreen")}
-						aria-pressed={fullscreen}
+						onClick={onToggleExpanded}
+						title={expanded ? t("window.collapsePanel") : t("window.expandPanel")}
+						aria-label={expanded ? t("window.collapsePanel") : t("window.expandPanel")}
+						aria-pressed={expanded}
 						className="flex h-6 shrink-0 items-center gap-1.5 rounded-control px-1.5 text-[10px] text-ink-soft transition-colors hover:bg-wash hover:text-ink"
 					>
 						<span
 							className={`${
-								fullscreen ? "icon-[solar--minimize-square-2-bold]" : "icon-[solar--maximize-square-2-bold]"
+								expanded
+									? "icon-[solar--minimize-square-minimalistic-bold]"
+									: "icon-[solar--maximize-square-minimalistic-bold]"
 							} size-3.5 shrink-0`}
 						/>
 						<span className="hidden whitespace-nowrap @[760px]:inline">
-							{fullscreen ? t("window.exitFullscreen") : t("window.fullscreen")}
+							{expanded ? t("window.collapsePanel") : t("window.expandPanel")}
 						</span>
 					</button>
 				) : null}
