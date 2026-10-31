@@ -19,7 +19,7 @@
 	--font-display: "Fraunces Variable", ui-serif, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif;
 
 	/* 颜色一律经由 `--mahua-*` 间接：这一层只负责把变量内联进本插件的工具类，
-	 * 真正的取值在下面 `.mahua-root`（浅纸）与 `[data-mode="dark"] .mahua-root`（深纸）两处，
+	 * 真正的取值在下面 `.mahua-root`（浅纸）与 `.mahua-root[data-mahua-mode="dark"]`（深纸）两处，
 	 * 宿主切主题时工具类不用重生成，取值自己换。fallback 是浅色字面量：即便某天有人把工作台
 	 * 挂到 `.mahua-root` 之外，也只会退回设计稿的颜色，不会变成透明。 */
 
@@ -101,7 +101,11 @@
  * 深色不是「把米纸压暗」——那在纯深色的宿主里仍然是一块发白的板子。宿主给了
  * `--background` / `--card` / `--border` / `--foreground` / `--primary`，就按纸的层级关系
  * 重新排一次：canvas 最深（衬底）、surface 是纸面、raised 比纸面抬一点。朱砂跟随宿主主色，
- * 深色下不再保留品牌红：宿主默认就是深色，这里跟随才是「协同」。 */
+ * 深色下不再保留品牌红：宿主默认就是深色，这里跟随才是「协同」。
+ *
+ * 选择器只认工作台自己的根。宿主把 `data-mode` 挂在 `<html>`，而插件 CSS 活在
+ * `@scope ([data-astravia-plugin-root=<id>])` 里，`:root[data-mode]` 之类的祖先条件永远落不到
+ * scope 内；模式由 `useHostMode` 读出来写到这个根上。 */
 @layer base {
 	.mahua-root {
 		color-scheme: light;
@@ -132,7 +136,7 @@
 		--mahua-fail-soft: #f2e2dc;
 	}
 
-	[data-mode="dark"] .mahua-root {
+	.mahua-root[data-mahua-mode="dark"] {
 		color-scheme: dark;
 
 		--mahua-canvas: var(--background, #14161e);
@@ -206,6 +210,20 @@
 
 	.mahua-root svg {
 		display: block;
+	}
+
+	/* 自给自足的两条兜底：宿主假如某天不再导 preflight，这里的盒子也不会按 content-box 算；
+	 * 而 `border: 0 solid` 会把边线色留成 currentColor —— 那是墨色，一行发丝线就成了一条黑带。
+	 * 零特异度的 `:where()` 只当缺省值，`border-line` / `border-line-strong` 这类 utility 一律压得住。 */
+	.mahua-root,
+	.mahua-root *,
+	.mahua-root ::before,
+	.mahua-root ::after {
+		box-sizing: border-box;
+	}
+
+	.mahua-root :where(*) {
+		border-color: var(--mahua-line, #e4dbc6);
 	}
 
 	.mahua-root :focus-visible {
@@ -284,13 +302,6 @@
 	font-family: var(--font-display);
 }
 
-/* 纸纹底片：乘在纸底色上，只留纤维感。透明度与混合模式写在这里，
- * 视图就不必知道那也是张照片。 */
-.mahua-cover .cover-texture {
-	opacity: 0.18;
-	mix-blend-mode: multiply;
-	filter: saturate(0);
-}
 /* 纸纹底片：乘在纸底色上，只留纤维感。透明度与混合模式写在这里，
  * 视图就不必知道那也是张照片。 */
 .mahua-cover .cover-texture {

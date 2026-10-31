@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getStudioRuntime } from "../../../plugin-context.js";
 import { STUDIO_TAB_ID, STUDIO_VIEW_ID } from "../../../studio-ids.js";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
+import { useHostMode } from "../hooks/use-host-mode";
 import { useRailCollapsed } from "../hooks/use-rail-collapsed";
 import { useStudioState } from "../hooks/use-studio-state";
 import { useTeamReveal } from "../hooks/use-team-reveal";
@@ -54,6 +55,7 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 	const data = useStudioState();
 	const { route, navigate } = useWorkbenchRoute();
 	const rail = useRailCollapsed();
+	const hostMode = useHostMode();
 	const reveal = useTeamReveal();
 	const events = useConsoleTimeline();
 	const [now, setNow] = useState(() => Date.now());
@@ -183,5 +185,9 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 		</StudioShell>
 	);
 
-	return <div className="mahua-root h-full w-full">{shell}</div>;
+	return (
+		<div className="mahua-root h-full w-full" data-mahua-mode={hostMode}>
+			{shell}
+		</div>
+	);
 }
