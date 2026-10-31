@@ -6,7 +6,7 @@
  */
 
 /** 本插件工具 → 事实文案 key。只收**有写入或决策后果**的工具，读类工具不进流。 */
-export const STUDIO_TOOL_FEED_LABELS: Readonly<Record<string, string>> = {
+export const STUDIO_TOOL_LABELS: Readonly<Record<string, string>> = {
 	// 立项与基础设定
 	mahua_create_book: "feed.tool.createBook",
 	mahua_accept_brief: "feed.tool.acceptBrief",
@@ -40,7 +40,7 @@ export const STUDIO_TOOL_FEED_LABELS: Readonly<Record<string, string>> = {
 
 /** 宿主团队协作工具 → 事实文案 key。`team_get_task` / `team_list_members` /
  * `team_read_shared_history` 是纯查询，进流只会淹没真事件，故不收。 */
-export const TEAM_TOOL_FEED_LABELS: Readonly<Record<string, string>> = {
+export const TEAM_TOOL_LABELS: Readonly<Record<string, string>> = {
 	team_delegate_task: "feed.team.delegate",
 	team_send_message: "feed.team.message",
 	team_wait_tasks: "feed.team.wait",
@@ -49,8 +49,8 @@ export const TEAM_TOOL_FEED_LABELS: Readonly<Record<string, string>> = {
 	team_cancel_task: "feed.team.cancel",
 };
 
-/** 固定文案：状态词、子智能体、空态与说明。 */
-export const FEED_FIXED_KEYS = {
+/** 固定文案：状态词、子智能体。 */
+export const CONSOLE_LOG_FIXED_KEYS = {
 	statusStart: "feed.status.start",
 	statusDone: "feed.status.done",
 	statusFailed: "feed.status.failed",
@@ -59,10 +59,10 @@ export const FEED_FIXED_KEYS = {
 } as const;
 
 /** 守卫测试用：所有可能被渲染的 key。 */
-export function feedCatalogKeys(): string[] {
+export function consoleLogCatalogKeys(): string[] {
 	return [
-		...Object.values(STUDIO_TOOL_FEED_LABELS),
-		...Object.values(TEAM_TOOL_FEED_LABELS),
-		...Object.values(FEED_FIXED_KEYS),
+		...Object.values(STUDIO_TOOL_LABELS),
+		...Object.values(TEAM_TOOL_LABELS),
+		...Object.values(CONSOLE_LOG_FIXED_KEYS),
 	];
 }

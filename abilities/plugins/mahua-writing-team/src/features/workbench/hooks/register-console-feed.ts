@@ -1,8 +1,11 @@
 import type { Disposable, PluginCodingAgentHookHandler, PluginContext } from "@astravia-org/plugin-sdk";
-import { feedStore } from "../../../application/live-feed/feed-store.js";
-import type { FeedDraft } from "../../../application/live-feed/feed-types.js";
+import type { ConsoleLogDraft } from "../../../application/console-log/console-log-event.js";
+import { consoleLogStore } from "../../../application/console-log/console-log-store.js";
 import { SCENARIOS } from "../../../scenarios.js";
-import { describeSubagentEvent, describeToolEvent } from "../../studio/live-feed/describe-tool-event.js";
+import {
+	describeSubagentEvent,
+	describeToolEvent,
+} from "../console-timeline/tool-event-description.js";
 
 /**
  * 运行台的活动流接在宿主的工具生命周期上。
@@ -18,14 +21,14 @@ import { describeSubagentEvent, describeToolEvent } from "../../studio/live-feed
  * 猜错，hook 就静默地永不触发——那是比多跑几次更坏的失败。这里让所有工具事件都进来，
  * 在 `describeToolEvent` 里按名字过滤：不在目录里的直接丢弃，成本是一次字符串比较。
  */
-export function registerLiveFeedHooks(ctx: PluginContext): Disposable {
+export function registerConsoleFeedHooks(ctx: PluginContext): Disposable {
 	const disposable: Disposable[] = [];
 
 	/** PreToolUse 记下起点，PostToolUse / Failure 取走并算耗时——一次配对只用一次。 */
 	const started = new Map<string, number>();
 
-	const record = (draft: FeedDraft | null): void => {
-		if (draft) feedStore.append(draft);
+	const record = (draft: ConsoleLogDraft | null): void => {
+		if (draft) consoleLogStore.append(draft);
 	};
 
 	const spend = (toolUseId: string): number | undefined => {

@@ -1,5 +1,5 @@
-import type { FeedDraft, FeedStatus, ToolEventFacts } from "../../../application/live-feed/feed-types.js";
-import { FEED_FIXED_KEYS, STUDIO_TOOL_FEED_LABELS, TEAM_TOOL_FEED_LABELS } from "./tool-catalog.js";
+import type { ConsoleLogDraft, ConsoleLogStatus, ToolEventFacts } from "../../../application/console-log/console-log-event.js";
+import { CONSOLE_LOG_FIXED_KEYS, STUDIO_TOOL_LABELS, TEAM_TOOL_LABELS } from "./tool-catalog.js";
 
 const PREVIEW_LIMIT = 80;
 
@@ -30,7 +30,7 @@ export function normalizeToolName(hostName: string): string {
 	return last && last.length > 0 ? last : hostName;
 }
 
-function statusOf(eventName: ToolEventFacts["eventName"]): FeedStatus {
+function statusOf(eventName: ToolEventFacts["eventName"]): ConsoleLogStatus {
 	if (eventName === "PreToolUse") return "start";
 	if (eventName === "PostToolUseFailure") return "failed";
 	return "done";
@@ -45,12 +45,12 @@ function describeTeamTool(
 	name: string,
 	facts: ToolEventFacts,
 	input: Record<string, unknown> | null,
-): FeedDraft | null {
-	const textKey = TEAM_TOOL_FEED_LABELS[name];
+): ConsoleLogDraft | null {
+	const textKey = TEAM_TOOL_LABELS[name];
 	if (!textKey) return null;
 
 	const status = statusOf(facts.eventName);
-	const base: Omit<FeedDraft, "textKey" | "textParams" | "actor"> = {
+	const base: Omit<ConsoleLogDraft, "textKey" | "textParams" | "actor"> = {
 		at: facts.at,
 		origin: "team",
 		status,
@@ -96,8 +96,8 @@ function describeStudioTool(
 	facts: ToolEventFacts,
 	input: Record<string, unknown> | null,
 	response: Record<string, unknown> | null,
-): FeedDraft | null {
-	const labelKey = STUDIO_TOOL_FEED_LABELS[name];
+): ConsoleLogDraft | null {
+	const labelKey = STUDIO_TOOL_LABELS[name];
 	if (!labelKey) return null;
 	const chapter = chapterOf(input, response);
 	return {
@@ -120,13 +120,13 @@ function describeStudioTool(
  * 返回 `null` 表示这类工具不进流（读类工具、团队纯查询），调用方直接跳过。
  * 描述器不读时钟、不读存储、不发网络请求，所以可以在测试里逐条断言。
  */
-export function describeToolEvent(facts: ToolEventFacts): FeedDraft | null {
+export function describeToolEvent(facts: ToolEventFacts): ConsoleLogDraft | null {
 	const name = normalizeToolName(facts.toolName);
 	const input = recordOf(facts.input);
 	const response = recordOf(facts.response);
 
-	if (name in TEAM_TOOL_FEED_LABELS) return describeTeamTool(name, facts, input);
-	if (name in STUDIO_TOOL_FEED_LABELS) return describeStudioTool(name, facts, input, response);
+	if (name in TEAM_TOOL_LABELS) return describeTeamTool(name, facts, input);
+	if (name in STUDIO_TOOL_LABELS) return describeStudioTool(name, facts, input, response);
 	return null;
 }
 
@@ -136,12 +136,12 @@ export function describeSubagentEvent(
 	agentType: string,
 	at: string,
 	lastMessage?: string | null,
-): FeedDraft {
+): ConsoleLogDraft {
 	return {
 		at,
 		origin: "agent",
 		status: kind === "start" ? "start" : "done",
-		textKey: kind === "start" ? FEED_FIXED_KEYS.subagentStart : FEED_FIXED_KEYS.subagentStop,
+		textKey: kind === "start" ? CONSOLE_LOG_FIXED_KEYS.subagentStart : CONSOLE_LOG_FIXED_KEYS.subagentStop,
 		textParams: { agentType },
 		actor: agentType,
 		detail: kind === "stop" && lastMessage ? preview(lastMessage) : undefined,

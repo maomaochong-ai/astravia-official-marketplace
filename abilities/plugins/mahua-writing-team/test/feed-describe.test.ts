@@ -4,15 +4,15 @@ import {
 	describeSubagentEvent,
 	describeToolEvent,
 	normalizeToolName,
-} from "../src/features/studio/live-feed/describe-tool-event.js";
-import { feedStore } from "../src/application/live-feed/feed-store.js";
+} from "../src/features/workbench/console-timeline/tool-event-description.js";
+import { CONSOLE_LOG_LIMIT, consoleLogStore } from "../src/application/console-log/console-log-store.js";
 import {
-	FEED_FIXED_KEYS,
-	STUDIO_TOOL_FEED_LABELS,
-	TEAM_TOOL_FEED_LABELS,
-	feedCatalogKeys,
-} from "../src/features/studio/live-feed/tool-catalog.js";
-import type { ToolEventFacts } from "../src/application/live-feed/feed-types.js";
+	CONSOLE_LOG_FIXED_KEYS,
+	STUDIO_TOOL_LABELS,
+	TEAM_TOOL_LABELS,
+	consoleLogCatalogKeys,
+} from "../src/features/workbench/console-timeline/tool-catalog.js";
+import type { ToolEventFacts } from "../src/application/console-log/console-log-event.js";
 
 const AT = "2026-10-31T09:01:02.000Z";
 
@@ -30,34 +30,34 @@ const locale = (name: string): Record<string, string> =>
 
 const slotsOf = (text: string): string[] => [...text.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
 
-describe("feed catalog keys", () => {
+describe("console log catalog keys", () => {
 	// 通用 locale 守卫只扫得到 `t("…")` 与 `%…%` 字面量。活动流的 key 是按工具名查表拼出来的，
 	// 静态扫描看不见——所以这里独立对账，双向都要对：表里有的两侧都得有，两侧多出来的也必须被表引到。
 	const zh = locale("zh");
 	const en = locale("en");
 
 	it("has a key for every entry in the catalog", () => {
-		const missing = feedCatalogKeys().filter((key) => !(key in zh) || !(key in en));
+		const missing = consoleLogCatalogKeys().filter((key) => !(key in zh) || !(key in en));
 		expect(missing).toEqual([]);
 	});
 
 	it("keeps the interpolation slots identical in both languages", () => {
-		const mismatched = feedCatalogKeys().filter(
+		const mismatched = consoleLogCatalogKeys().filter(
 			(key) => JSON.stringify(slotsOf(zh[key] ?? "")) !== JSON.stringify(slotsOf(en[key] ?? "")),
 		);
 		expect(mismatched).toEqual([]);
 	});
 
 	it("never maps two tools to the same sentence", () => {
-		const studio = Object.values(STUDIO_TOOL_FEED_LABELS);
-		const team = Object.values(TEAM_TOOL_FEED_LABELS);
+		const studio = Object.values(STUDIO_TOOL_LABELS);
+		const team = Object.values(TEAM_TOOL_LABELS);
 		expect(new Set(studio).size).toBe(studio.length);
 		expect(new Set(team).size).toBe(team.length);
 		expect(studio.filter((key) => team.includes(key))).toEqual([]);
 	});
 
 	it("carries the three status words and both subagent verbs", () => {
-		for (const key of Object.values(FEED_FIXED_KEYS)) expect(key in zh && key in en, key).toBe(true);
+		for (const key of Object.values(CONSOLE_LOG_FIXED_KEYS)) expect(key in zh && key in en, key).toBe(true);
 	});
 });
 
@@ -178,52 +178,62 @@ describe("describeSubagentEvent", () => {
 	});
 });
 
-describe("feedStore", () => {
+describe("consoleLogStore", () => {
 	it("appends newest-first-bounded and notifies subscribers only on change", () => {
 		let notifications = 0;
-		const unsubscribe = feedStore.subscribe(() => {
+		const unsubscribe = consoleLogStore.subscribe(() => {
 			notifications += 1;
 		});
-		const before = feedStore.getSnapshot();
+		const before = consoleLogStore.getSnapshot();
 
-		feedStore.append({ at: AT, origin: "studio", status: "done", textKey: "feed.tool.saveChapter" });
+		consoleLogStore.append({ at: AT, origin: "studio", status: "done", textKey: "feed.tool.saveChapter" });
 		expect(notifications).toBe(1);
-		expect(feedStore.getSnapshot()).not.toBe(before);
-		expect(feedStore.getSnapshot()[0].textKey).toBe("feed.tool.saveChapter");
-		expect(feedStore.getSnapshot()[0].id).toBeTruthy();
+		expect(consoleLogStore.getSnapshot()).not.toBe(before);
+		expect(consoleLogStore.getSnapshot()[0]?.textKey).toBe("feed.tool.saveChapter");
+		expect(consoleLogStore.getSnapshot()[0]?.id).toBeTruthy();
 
 		unsubscribe();
-		feedStore.append({ at: AT, origin: "studio", status: "done", textKey: "feed.tool.commitChapter" });
+		consoleLogStore.append({ at: AT, origin: "studio", status: "done", textKey: "feed.tool.commitChapter" });
 		expect(notifications).toBe(1);
-		feedStore.clear();
+		consoleLogStore.clear();
 	});
 
 	it("hydrates only into an empty store, so live events are never pushed below history", () => {
-		feedStore.clear();
-		feedStore.append({ at: AT, origin: "studio", status: "start", textKey: "feed.tool.startDrafting" });
-		feedStore.hydrate([{ id: "old", at: AT, origin: "studio", status: "done", textKey: "feed.tool.saveReview" }]);
-		expect(feedStore.getSnapshot().map((event) => event.id === "old")).toEqual([false]);
-		feedStore.clear();
-		feedStore.hydrate([{ id: "old", at: AT, origin: "studio", status: "done", textKey: "feed.tool.saveReview" }]);
-		expect(feedStore.getSnapshot().map((event) => event.id)).toEqual(["old"]);
-		feedStore.clear();
+		consoleLogStore.clear();
+		consoleLogStore.append({ at: AT, origin: "studio", status: "start", textKey: "feed.tool.startDrafting" });
+		consoleLogStore.hydrate([
+			{ id: "old", at: AT, origin: "studio", status: "done", textKey: "feed.tool.saveReview" },
+		]);
+		expect(consoleLogStore.getSnapshot().map((event) => event.id === "old")).toEqual([false]);
+		consoleLogStore.clear();
+		consoleLogStore.hydrate([
+			{ id: "old", at: AT, origin: "studio", status: "done", textKey: "feed.tool.saveReview" },
+		]);
+		expect(consoleLogStore.getSnapshot().map((event) => event.id)).toEqual(["old"]);
+		consoleLogStore.clear();
 	});
 
 	it("keeps the ring bounded instead of growing for the whole session", () => {
-		feedStore.clear();
-		for (let index = 0; index < 260; index += 1) {
-			feedStore.append({ at: AT, origin: "studio", status: "done", textKey: "feed.tool.saveChapter", textParams: { index } });
+		consoleLogStore.clear();
+		for (let index = 0; index < CONSOLE_LOG_LIMIT + 60; index += 1) {
+			consoleLogStore.append({
+				at: AT,
+				origin: "studio",
+				status: "done",
+				textKey: "feed.tool.saveChapter",
+				textParams: { index },
+			});
 		}
-		const events = feedStore.getSnapshot();
-		expect(events.length).toBe(200);
+		const events = consoleLogStore.getSnapshot();
+		expect(events.length).toBe(CONSOLE_LOG_LIMIT);
 		// 最新的在最前：丢的是老的那一头。
-		expect((events[0].textParams as { index: number }).index).toBe(259);
-		feedStore.clear();
+		expect((events[0]?.textParams as { index: number }).index).toBe(CONSOLE_LOG_LIMIT + 59);
+		consoleLogStore.clear();
 	});
 });
 
-describe("live-feed hook registration", () => {
-	const source = readFileSync(new URL("../src/features/workbench/hooks/register-live-feed.ts", import.meta.url), "utf8");
+describe("console feed hook registration", () => {
+	const source = readFileSync(new URL("../src/features/workbench/hooks/register-console-feed.ts", import.meta.url), "utf8");
 
 	it("declares scope_use on every hook, because the host fails closed", () => {
 		const registrations = source.match(/registerHook\(/g) ?? [];

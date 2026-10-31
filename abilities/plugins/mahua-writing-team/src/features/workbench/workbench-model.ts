@@ -37,20 +37,12 @@ export function chapterStateOf(status: string | undefined): ChapterState {
 	}
 }
 
-export function volumeOf(book: NovelBook, chapter: number): Volume | null {
-	return book.volumes.find((volume) => volume.arcs.some((arc) => chapter >= arc.from && chapter <= arc.to)) ?? null;
-}
-
 export function arcOf(book: NovelBook, chapter: number): Arc | null {
 	for (const volume of book.volumes) {
 		const hit = volume.arcs.find((arc) => chapter >= arc.from && chapter <= arc.to);
 		if (hit) return hit;
 	}
 	return null;
-}
-
-export function chapterNumberOf(book: NovelBook): number {
-	return book.progress.currentChapter;
 }
 
 export function committedCount(book: NovelBook): number {
@@ -85,12 +77,6 @@ export function wanWords(words: number): string {
 
 export function formatCount(value: number): string {
 	return value.toLocaleString("en-US");
-}
-
-/** 章节状态在章节脊柱 / 目录里的顺序，用来判断「本卷写到哪了」。 */
-export function nextChapterToWrite(book: NovelBook): number {
-	const pending = book.chapters.find((chapter) => chapter.status !== "committed");
-	return pending?.n ?? book.progress.currentChapter;
 }
 
 export interface ElapsedLabel {

@@ -185,7 +185,7 @@ is split the same way.
 `agent/skills/**` is a fifth channel (`skillPaths`), loaded on demand when a task needs it.
 `agent/styles/*.md` and `agent/voice.md` are not prompts at all: `scripts/build-reference-library.mjs`
 compiles them, together with the skill references, into `src/reference/library.generated.ts`, which is
-what `mahua_reference` returns. `agent/references/ATTRIBUTION.md` is loaded by nothing — it is
+what `mahua_reference` returns. `agent/ATTRIBUTION.md` is loaded by nothing — it is
 provenance, and it also carries the mapping from upstream's prompts to these files.
 
 ## Develop
@@ -233,6 +233,6 @@ and claiming otherwise would be the more damaging choice:
 ## Licence and provenance
 
 MIT. The craft library under `agent/` is ported from [ainovel-cli](https://github.com/voocel/ainovel-cli)
-(Apache-2.0) and adapted from novel-master (MIT); see `agent/references/ATTRIBUTION.md` for the
+(Apache-2.0) and adapted from novel-master (MIT); see `agent/ATTRIBUTION.md` for the
 file-by-file split and the changes made. The architecture is documented decision by decision in
 `../../docs/adr/ainove-cli/`.

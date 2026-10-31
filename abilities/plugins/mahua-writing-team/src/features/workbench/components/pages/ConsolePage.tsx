@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
-import { useLiveFeed, clearLiveFeed } from "../../../studio/live-feed/use-live-feed.js";
+import { clearConsoleTimeline, useConsoleTimeline } from "../../console-timeline/use-console-timeline.js";
 import { STUDIO_MEMBERS } from "../../../../studio-members.js";
 import type { WorkbenchPage } from "../../workbench-pages";
 import { chapterStateOf, committedCount, committedWords, formatCount, percent, wanWords } from "../../workbench-model";
@@ -44,7 +44,7 @@ export function ConsolePage({
 	onRevealTeam: () => void;
 }) {
 	const t = useTranslator();
-	const events = useLiveFeed();
+	const events = useConsoleTimeline();
 	const [filter, setFilter] = useState<FeedFilter>("all");
 	const book = data.book;
 	const latest = lastEvent(events);
@@ -87,8 +87,8 @@ export function ConsolePage({
 				}
 			/>
 
-			<div className="mt-1 flex min-h-0 flex-1 gap-4">
-				<aside className="flex w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
+			<div className="mt-4 flex min-h-0 flex-1 gap-4">
+				<aside className="flex min-h-0 w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-inset">
 					<div className="border-b border-line-soft px-3 pb-2 pt-2.5">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.spine")}
@@ -176,7 +176,7 @@ export function ConsolePage({
 						</span>
 						<button
 							type="button"
-							onClick={clearLiveFeed}
+							onClick={clearConsoleTimeline}
 							className="ml-2 h-6 rounded-control border border-line px-2 text-[10px] text-ink-soft"
 						>
 							{t("console.feedClear")}
@@ -226,7 +226,7 @@ export function ConsolePage({
 					</div>
 				</section>
 
-				<aside className="flex w-[288px] shrink-0 flex-col gap-3 overflow-y-auto">
+				<aside className="flex min-h-0 w-[288px] shrink-0 flex-col gap-3 overflow-y-auto rounded-sheet bg-inset p-3">
 					<section className="rounded-sheet bg-raised p-3 shadow-raise">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.overview")}

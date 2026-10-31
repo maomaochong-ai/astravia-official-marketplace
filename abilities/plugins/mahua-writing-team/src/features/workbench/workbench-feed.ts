@@ -1,4 +1,4 @@
-import type { FeedEvent } from "../../application/live-feed/feed-types.js";
+import type { ConsoleLogEvent } from "../../application/console-log/console-log-event.js";
 import type { ElapsedLabel } from "./workbench-model";
 
 /** 最后一步落盘距今多久以内，才算「侧栏里还在写」。 */
@@ -13,13 +13,13 @@ export function clockOf(iso: string): string {
 }
 
 /** 流水是追加的，界面要最新的在上面。 */
-export function newestFirst(events: readonly FeedEvent[], limit?: number): FeedEvent[] {
+export function newestFirst(events: readonly ConsoleLogEvent[], limit?: number): ConsoleLogEvent[] {
 	const ordered = [...events].reverse();
 	return limit === undefined ? ordered : ordered.slice(0, limit);
 }
 
 /** 最近一次**真的做完了一步**的插件工具事件。运行中的那一步不算「刚落盘」。 */
-export function lastLandedStudioEvent(events: readonly FeedEvent[]): FeedEvent | null {
+export function lastLandedStudioEvent(events: readonly ConsoleLogEvent[]): ConsoleLogEvent | null {
 	for (let index = events.length - 1; index >= 0; index -= 1) {
 		const event = events[index];
 		if (event && event.origin === "studio" && event.status === "done") return event;
@@ -28,11 +28,11 @@ export function lastLandedStudioEvent(events: readonly FeedEvent[]): FeedEvent |
 }
 
 /** 最近一次任何来源的事件（含团队派活）：开页时用来判断团队是不是刚动过。 */
-export function lastEvent(events: readonly FeedEvent[]): FeedEvent | null {
+export function lastEvent(events: readonly ConsoleLogEvent[]): ConsoleLogEvent | null {
 	return events.length > 0 ? (events[events.length - 1] ?? null) : null;
 }
 
-export function isWriting(events: readonly FeedEvent[], nowMs: number): boolean {
+export function isWriting(events: readonly ConsoleLogEvent[], nowMs: number): boolean {
 	const landed = lastLandedStudioEvent(events);
 	if (!landed) return false;
 	const at = Date.parse(landed.at);
@@ -49,7 +49,7 @@ export function elapsedText(
 }
 
 /** 最近一次事件用的模型；没有事件时返回 null，界面上就不出现这个 chip。 */
-export function modelOf(events: readonly FeedEvent[]): string | null {
+export function modelOf(events: readonly ConsoleLogEvent[]): string | null {
 	const hit = lastEvent(events);
 	return hit?.model ?? null;
 }

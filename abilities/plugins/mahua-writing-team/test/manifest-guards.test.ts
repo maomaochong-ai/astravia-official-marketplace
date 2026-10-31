@@ -334,35 +334,38 @@ describe("visual language stays on host tokens", () => {
 		expect(violations).toEqual([]);
 	});
 
-	it("registers exactly one studio surface: the activity tab (ADR 0025 补注三)", () => {
+	it("registers two surfaces over one interface: the tab and the full page (ADR 0025 补注四)", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		// 宿主里「已在栏上」（initiallyVisible）与「在 + 可添加池」互斥：同一个界面注册两处，
-		// 用户就会在面板菜单里找不到它。所以工作区视图整条撤掉，只留标签。
+		const view = read("src/studio-view.ts");
+		// 标签页是日常入口（默认上栏），整页是它放大后的宿主路由；两块画布同一张界面。
 		expect(entry).toContain("registerStudioTab(ctx)");
-		expect(entry).not.toContain("registerStudioWorkspaceView");
-		expect(entry).not.toContain("registerWorkspaceView");
-		expect(entry).not.toContain("registerStudioSurfaces");
+		expect(entry).toContain("registerStudioView(ctx)");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
+		expect(view).toContain("ctx.ui.registerWorkspaceView(");
 		// fail-closed：没声明的场景下一个都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
 		// 默认就上栏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
-		// 标签就是工作台本身；没有第二块同构界面。
+		// 标签就是工作台本身；整页只是同一块界面的另一种画布。
 		expect(tab).toContain("component: WorkbenchScreen");
+		expect(view).toContain("component: WorkbenchFullPage");
+		// 整页不占侧栏位置：用户点放大时按需进入，宿主把它列在设置里，入口不会丢。
+		expect(view).toContain("sidebar: false");
 	});
 
 	it("only asks for the slot permissions it actually uses", () => {
 		const permissions = (json<{ permissions: string[] }>("plugin.json")).permissions;
 		expect(permissions).toContain("ui.slot.activity-tab");
+		expect(permissions).toContain("ui.slot.workspace-view");
 		expect(permissions).toEqual([...permissions].sort());
 		const sources = SOURCE_FILES.map(read).join("\n");
 		expect(sources).toContain(".registerActivityTab(");
-		// 工作区视图与对话侧两块界面（ADR 0011 / 0025 补注三）都已撤掉，
-		// 「声明的 slot 权限」必须等于「真的注册过的那几个」。
+		expect(sources).toContain(".registerWorkspaceView(");
+		// 「声明的 slot 权限」必须等于「真的注册过的那几个」：多一个就是白要，
+		// 少一个则在宿主里静默 noop（缺权限 = warn+noop）。
 		const declared = permissions.filter((item) => item.startsWith("ui.slot."));
-		expect(declared).toEqual(["ui.slot.activity-tab"]);
-		expect(sources).not.toContain(".registerWorkspaceView(");
+		expect(declared).toEqual(["ui.slot.activity-tab", "ui.slot.workspace-view"]);
 		expect(sources).not.toContain(".registerToolCallSlot(");
 		expect(sources).not.toContain(".registerNewSessionContext(");
 	});
@@ -483,8 +486,9 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.tools.register",
 				"storage.read",
 				"storage.write",
-				// 只剩标签一枚界面（见上一条入口形状守卫）。
+				// 两块画布、一张界面（ADR 0025 补注四）：标签 + 整页视图。
 				"ui.slot.activity-tab",
+				"ui.slot.workspace-view",
 				"workspace.read",
 			].sort(),
 		);
@@ -544,14 +548,39 @@ describe("the workbench frames stay honest about the domain", () => {
 	});
 
 	it("survives being rendered before the plugin runtime exists", () => {
-		// 运行时只在 activate 里建。宿主若先渲染标签（热重载 / 停用后再点开），
-		// 入口组件必须自己挡一道，而不是抛错把整块面板留白。
+		// 运行时只在 activate 里建。宿主若先渲染标签或整页（热重载 / 冷启动 / 停用后再点开），
+		// 入口必须自己挡一道：不能抛错把整块面板留白，也不能永远停在骨架上。
 		const screen = read("src/features/workbench/components/WorkbenchScreen.tsx");
-		expect(screen).toContain("tryGetStudioRuntime()");
-		expect(screen).not.toContain("getStudioRuntime()");
+		const page = read("src/features/workbench/components/WorkbenchFullPage.tsx");
+		for (const entry of [screen, page]) {
+			expect(entry).toContain("useStudioRuntimeReady()");
+			expect(entry).not.toContain("getStudioRuntime()");
+		}
+		// 轮询到就位：只在启动那一刻看一眼，会让「宿主早于 activate 渲染」永久空白。
+		const retry = read("src/features/workbench/hooks/use-studio-runtime-ready.ts");
+		expect(retry).toContain("tryGetStudioRuntime()");
+		expect(retry).toContain("setInterval(");
 		expect(read("src/features/workbench/components/WorkbenchSurface.tsx")).toContain(
 			"export function WorkbenchSurface",
 		);
+	});
+
+	it("folds the rail instead of squeezing the sheet", () => {
+		// 窄面板里 `aside w-full` + `main flex-1` 同行会把主纸区挤成 0 宽。
+		// 两处降级必须同一档：栏自己横过来，行也跟着竖排。
+		const shell = read("src/features/workbench/components/shell/StudioShell.tsx");
+		const rail = read("src/features/workbench/components/shell/StudioRail.tsx");
+		const row = /flex min-h-0 flex-1 gap-2 ([^"]+)/.exec(shell)?.[1] ?? "";
+		expect(row).toContain("@max-[720px]:flex-col");
+		expect(rail).toContain("@max-[720px]:w-full");
+		expect(rail).toContain("@max-[720px]:flex-row");
+	});
+
+	it("renders one sheet per side of the console, not a raised middle", () => {
+		// 设计稿的左右栏是内凹井（`bg-inset`），中栏才是浮起的纸。三栏都浮起就没了主次。
+		const console = read("src/features/workbench/components/pages/ConsolePage.tsx");
+		const wells = console.match(/bg-inset/g) ?? [];
+		expect(wells.length).toBeGreaterThanOrEqual(2);
 	});
 
 	it("keeps every dynamic locale family resolvable", () => {
@@ -560,8 +589,8 @@ describe("the workbench frames stay honest about the domain", () => {
 		const unions: Array<[string, string, string]> = [
 			["src/domain/novel-types.ts", "ChapterStatus", "status"],
 			["src/domain/novel-types.ts", "NovelPhase", "phase"],
-			["src/application/live-feed/feed-types.ts", "FeedOrigin", "console.origin"],
-			["src/application/live-feed/feed-types.ts", "FeedStatus", "feed.status"],
+			["src/application/console-log/console-log-event.ts", "ConsoleLogOrigin", "console.origin"],
+			["src/application/console-log/console-log-event.ts", "ConsoleLogStatus", "feed.status"],
 		];
 		const missing: string[] = [];
 		for (const [file, name, prefix] of unions) {

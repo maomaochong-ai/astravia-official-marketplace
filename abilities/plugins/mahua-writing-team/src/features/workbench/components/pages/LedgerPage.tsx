@@ -5,9 +5,9 @@ import type { WorkbenchPage } from "../../workbench-pages";
 import { committedFrontier, elapsedSince, threadStateOf } from "../../workbench-model";
 import type { ThreadState } from "../../workbench-model";
 import { elapsedText, lastEvent } from "../../workbench-feed";
-import { useLiveFeed } from "../../../studio/live-feed/use-live-feed.js";
 import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
+import { useConsoleTimeline } from "../../console-timeline/use-console-timeline.js";
 
 /** 四条跨章检查：与 `checkConsistency` 的 code 一一对应，顺序固定。 */
 const CHECKS = [
@@ -37,7 +37,7 @@ export function LedgerPage({
 	onNavigate: (page: WorkbenchPage, chapter?: number) => void;
 }) {
 	const t = useTranslator();
-	const events = useLiveFeed();
+	const events = useConsoleTimeline();
 	const now = Date.now();
 	const book = data.book;
 	const committedMax = book ? committedFrontier(book) : 0;
@@ -45,7 +45,7 @@ export function LedgerPage({
 	const lastRun = lastEvent(events);
 
 	return (
-		<div className="flex min-h-0 flex-1 gap-5 px-7 pb-6 pt-6">
+		<div className="flex min-h-0 flex-1 gap-5 px-7 pb-5 pt-6">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<PageHeader
 					title={t("page.ledger.title")}
@@ -157,7 +157,7 @@ export function LedgerPage({
 				</section>
 			</div>
 
-			<aside className="flex w-[366px] shrink-0 flex-col gap-3">
+			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3 overflow-y-auto">
 				<section className="rounded-sheet bg-raised p-3.5 shadow-raise">
 					<div className="flex items-baseline gap-2">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">

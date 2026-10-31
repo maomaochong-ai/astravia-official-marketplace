@@ -1,8 +1,9 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { createElement } from "react";
 import { WorkbenchScreen } from "./features/workbench/components/WorkbenchScreen.js";
+import { STUDIO_TAB_ID } from "./studio-ids.js";
 
-export const STUDIO_TAB_ID = "studio";
+export { STUDIO_TAB_ID };
 
 /** 标签栏图标：iconify class 字符串，由插件自己的 CSS 生成（见 style.css）。 */
 export const STUDIO_TAB_ICON = "icon-[solar--book-2-linear]";

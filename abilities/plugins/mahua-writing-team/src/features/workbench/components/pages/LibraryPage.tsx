@@ -58,7 +58,7 @@ export function LibraryPage({
 	};
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6">
+		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6">
 			<PageHeader
 				title={t("page.library.title")}
 				meta={
@@ -68,8 +68,8 @@ export function LibraryPage({
 				}
 			/>
 
-			<div className="mt-1 flex min-h-0 flex-1 gap-5">
-				<aside className="flex w-[188px] shrink-0 flex-col gap-4">
+			<div className="mt-4 flex min-h-0 flex-1 gap-4">
+				<aside className="flex min-h-0 w-[188px] shrink-0 flex-col gap-4 overflow-y-auto rounded-sheet bg-raised p-2.5 shadow-raise">
 					<div>
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("library.filter.genre")}
@@ -129,8 +129,8 @@ export function LibraryPage({
 					</div>
 				</aside>
 
-				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-					<div className="grid shrink-0 grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 border-b border-line px-2 pb-2 text-micro-up font-semibold uppercase text-ink-faint">
+				<section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
+					<div className="grid shrink-0 grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 border-b border-line-soft px-4 pb-2 pt-3 text-micro-up font-semibold uppercase text-ink-faint">
 						<span>{t("library.column.book")}</span>
 						<span>{t("library.column.stage")}</span>
 						<span className="text-right">{t("library.column.chapters")}</span>
@@ -140,11 +140,11 @@ export function LibraryPage({
 					</div>
 
 					{rows.length === 0 ? (
-						<div className="flex min-h-0 flex-1 pt-4">
+						<div className="flex min-h-0 flex-1 items-start pt-4">
 							<EmptySheet icon="icon-[lucide--layers]" title={t("library.empty")} />
 						</div>
 					) : (
-						<ul className="min-h-0 flex-1 overflow-y-auto">
+						<ul className="min-h-0 flex-1 divide-y divide-line-soft overflow-y-auto px-2 pb-2 pt-1">
 							{rows.map((entry) => {
 								const ago = elapsedSince(entry.updatedAt, now);
 								return (
@@ -155,7 +155,7 @@ export function LibraryPage({
 												data.selectBook(entry.id);
 												onNavigate("book");
 											}}
-											className="grid h-16 w-full grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 border-b border-line-soft px-2 text-left transition-colors hover:bg-raised"
+											className="grid h-16 w-full grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 rounded-control px-2 text-left transition-colors hover:bg-surface"
 										>
 											<span className="flex min-w-0 items-center gap-2.5">
 												<Cover {...coverSeed(entry.title)} size="thumb" />
@@ -203,7 +203,7 @@ export function LibraryPage({
 						</ul>
 					)}
 
-					<div className="flex shrink-0 items-center gap-3 border-t border-line px-2 pt-2 text-[10px] text-ink-faint">
+					<div className="flex shrink-0 items-center gap-3 border-t border-line-soft px-4 py-2.5 text-[10px] text-ink-faint">
 						<button
 							type="button"
 							onClick={() => setPage(Math.max(0, current - 1))}
@@ -227,7 +227,7 @@ export function LibraryPage({
 						</button>
 						<span className="ml-auto">{t("library.footer", { size: PAGE_SIZE })}</span>
 					</div>
-				</div>
+				</section>
 			</div>
 		</div>
 	);

@@ -1,6 +1,6 @@
 import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
-import { useLiveFeed } from "../../../studio/live-feed/use-live-feed.js";
+import { useConsoleTimeline } from "../../console-timeline/use-console-timeline.js";
 import type { WorkbenchPage } from "../../workbench-pages";
 import { arcOf, chapterStateOf, committedCount, committedWords, coverSeed, elapsedSince, percent, wanWords } from "../../workbench-model";
 import { clockOf, elapsedText, isWriting, lastLandedStudioEvent, newestFirst } from "../../workbench-feed";
@@ -25,7 +25,7 @@ export function ShelfPage({
 	onRevealTeam: () => void;
 }) {
 	const t = useTranslator();
-	const events = useLiveFeed();
+	const events = useConsoleTimeline();
 	const now = Date.now();
 	const book = data.book;
 	const landed = lastLandedStudioEvent(events);
@@ -73,7 +73,7 @@ export function ShelfPage({
 	);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6">
+		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6">
 			<PageHeader
 				title={t("page.shelf.title")}
 				meta={
@@ -83,7 +83,7 @@ export function ShelfPage({
 				}
 			/>
 
-			<div className="mt-1 flex min-h-0 flex-1 gap-4">
+			<div className="mt-4 flex min-h-0 flex-1 gap-4">
 				<section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised p-5 shadow-raise">
 					<div className="flex gap-5">
 						<button type="button" onClick={() => onNavigate("book")} className="relative shrink-0 text-left">
@@ -216,7 +216,7 @@ export function ShelfPage({
 					</div>
 				</section>
 
-				<section className="flex w-[430px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised p-2 shadow-raise">
+				<section className="flex min-h-0 w-[430px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised p-2 shadow-raise">
 					<div className="flex items-baseline justify-between px-2 pb-2 pt-1.5">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("shelf.others", { count: others.length })}

@@ -159,3 +159,26 @@
 > 新工作台落在 `src/features/workbench/`；`src/index.tsx` 只装配 `registerNovelTools` +
 > `registerStudioTab` + 事件流钩子；`AGENTS.md` 的「入口形状」段改写为补注三；
 > ADR 0011 的对话侧 slot 一并作废。版本 `0.4.9` → `0.4.10`。
+
+> **补注四（两枚入口，职责分开，2026-10-31，0.4.12）**：补注三的「只留一枚入口」也被推翻了，
+> 但推翻的方式不是回到补注二。补注二的问题是把**同一块界面**注册两次；这轮的解法是
+> **两个入口各管一件事**：
+>
+> - **标签页**（`studio`，`ui.slot.activity-tab`）= 面板里写的常驻编辑面，跟着会话走；
+> - **整页视图**（`workbench`，`ui.slot.workspace-view`，`sidebar: false`）= 宿主给出的**真整页路由**，
+>   用户在面板里写不下时按一下全屏过去，页尾回到标签页。
+>
+> 界面本身仍然只有一套（七帧 + `shell/**`）；两处渲染的是同一份代码，不同在外部壳与尺寸。
+> 宿主的插件 API 没有应用级 `requestFullscreen`，`openWorkspaceView` 是唯一能拿到整页宽度的入口，
+> 所以全屏需求必须落在这里，不能靠 CSS 假全屏。
+>
+> 代价：`plugin.json#permissions` 从 12 项回到 13 项（只加 `ui.slot.workspace-view`，
+> `ui.slot.tool-call` / `ui.slot.new-session-context` 仍为作废）；`sidebar: false` 意味着它不进侧栏，
+> 常驻入口仍只有标签页。守卫断言改为「两块画布、一张界面」：`ui.slot.*` 恰好两条，
+> 每条都对应一次真实注册。版本 `0.4.11` → `0.4.12`。
+>
+> 同时修正补注二的「`setWorkspaceViewHeader` 依旧不调」：整页视图挂载后在 effect 里调
+> `{ immersive: true, hideTitle: true }`，卸载传 `null` 清空。不调的话宿主页头会在 44px 高度上
+> 叠一层我们自己的报头，整页就成了两条横带；所以这一条不是重复补注二的取舍，是它被实测推翻了。
+> 面板内的标签页仍不调页头（面板没有页头），但会在 `mode="panel"` 下不挂 `pt-11`。
+

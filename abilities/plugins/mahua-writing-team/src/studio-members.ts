@@ -46,6 +46,3 @@ export const STUDIO_MEMBERS: readonly StudioMember[] = [
 		lead: false,
 	},
 ];
-
-/** 团队 id 同时也是新会话上下文区的激活条件。 */
-export const STUDIO_TEAM_ID = "mahua-studio";

@@ -112,6 +112,18 @@ fail-closed。团队协作（派活、发消息、等任务、继续/重试/取�
 让「纸」浮起来。设计稿的 `WindowChrome` 三个红黄绿圆点**不复刻**：标签页没有窗口边框，
 那是整窗截图的构图元素，不是应用控件。
 
+> **补注（2026-10-31，0.4.13）**：§7 的「`StudioChrome` 36px 面包屑条 + 主纸区」已被推翻。
+> 0.4.13 把两层横带（`WindowChrome` 44px + `SyncBar` 36px）收成**一条 48px 报头**
+> `shell/StudioMasthead.tsx`：左（朱砂方印 + 站名 + 页名）、中（执笔 → 落盘 → 读到三段，`Thread` 相连）、
+> 右（队列 + 调用方 slot）。面包屑与页名重复，删掉；主纸区改成 `rounded-sheet bg-surface shadow-raise`。
+>
+> 同时修正 §2 的两档降级：窄栏不再在 400px 切成 44px 图标栏，而是整条折成**顶部横条**
+> （`@max-[720px]`，`StudioShell` 同时把行换成 `flex-col`）。理由：图标栏在 400px 面板里只省下
+> 164px，却丢掉了书卡与团队状态两处唯一入口；横条折法在两种宽度下都只用一套标记。
+> §1 里「拿不到团队计时所以不做写作者卡」也随之作废：卡片现在显示的是
+> `lastLandedStudioEvent` 的真时间差（`elapsedSince`），不是团队计时器。
+
+
 ## 8. 新增的 locale 键（40 个 × 2）
 
 `rail.now` / `rail.credential`；`shelf.meta` / `shelf.nowWriting` / `shelf.progressTitle` /

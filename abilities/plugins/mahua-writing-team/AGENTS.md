@@ -37,9 +37,9 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 | `src/application/tool-*.ts` | 工具共用的 schema 片段与输出整形 | 具体工具注册 |
 | `src/scenarios.ts` | `scope_use` 的唯一口径 | 场景判断逻辑 |
 | `src/features/workbench/components/` | 工作台七帧（`pages/`）与外壳（`shell/`），一文件一组件 | 直接读写存储、发指令 |
-| `src/features/workbench/hooks/` | `use-studio-state`（只读快照）、`use-workbench-route`（帧内 state）、`use-team-reveal`、`use-translator`、`register-live-feed` | 业务规则 |
-| `src/features/studio/live-feed/` | 事件流的文案与取值（`tool-catalog` / `describe-tool-event` / `use-live-feed`） | 状态、持久化 |
-| `src/application/live-feed/` | `feed-types` / `feed-store`（环形 200 条）/ `feed-persistence` | JSX |
+| `src/features/workbench/hooks/` | `use-studio-state`（只读快照）、`use-workbench-route`（帧内 state）、`use-studio-runtime-ready`（入口闸）、`use-team-reveal`、`use-translator`、`register-console-feed`（五个 Agent hook） | 业务规则 |
+| `src/features/workbench/console-timeline/` | 事件流的文案与取值（`tool-catalog` / `tool-event-description` / `use-console-timeline`） | 状态、持久化 |
+| `src/application/console-log/` | `console-log-event` / `console-log-store`（环形 200 条）/ `console-log-storage` | JSX |
 
 封面是算出来的，不是画出来的：`features/workbench/components/shell/Cover.tsx` 用 `coverSeed(seed)`
 挑层次与母题，同一本书每次一样、不同的书不一样（ADR 0020 §4）。不要换成位图或网络图片。
@@ -69,51 +69,52 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 
 ## 运行台事件流（ADR 0027 §1 修订）
 
-运行台中上栏是真事件，来源只有一处：`src/features/workbench/hooks/register-live-feed.ts` 的
+运行台中上栏是真事件，来源只有一处：`src/features/workbench/hooks/register-console-feed.ts` 的
 `ctx.agent.registerHook`
 （`PreToolUse` / `PostToolUse` / `PostToolUseFailure` / `SubagentStart` / `SubagentStop`，权限
 `agent.hooks.register` 与 `agent.hookHandler.execute`）。
 
 - **钩子只读**：handler 一律返回 `undefined`，不改工具入参、不拦调用。想改变行为就去改工具，别改流。
 - **不写 `toolNames`**：插件工具的 hostName 会被宿主加命名空间，猜错就是静默永不触发。
-  所有工具事件都进来，在 `describe-tool-event.ts` 里按 `tool-catalog.ts` 过滤。
+  所有工具事件都进来，在 `tool-event-description.ts` 里按 `tool-catalog.ts` 过滤。
 - **不推测归属**：插件工具不写「是哪位成员在写」；只有团队工具自带 `target` / `recipients` 才写其名。
 - **流不是账本**：`console/feed.json` 是环形缓存（200 条），可一键清空；可恢复的事实只有
   `book.checkpoints`。两者在界面上分栏，不混排。
 - **不编监控数据**：上下文占用与队列深度不在钩子载荷里，界面就不显示——不拿落盘字段充数。
   模型名与耗时是宿主真实交付的字段（`event.model`、`toolUseId` 配对出的 `ms`），可以显示。
-- 文案 key 是拼出来的（`feed.tool.<name>`），通用 locale 守卫扫不到；
-  `test/feed-describe.test.ts` 负责对账 `feedCatalogKeys()` 与两侧语言文件。
+- 文案 key 是拼出来的（`console.origin.<origin>`、`phase.<phase>` 这类），通用 locale 守卫扫不到；
+  `test/feed-describe.test.ts` 负责对账 `consoleLogCatalogKeys()` 与两侧语言文件。
 
 ## 插件必须自足（ADR 0010）
 
 不引用任何别的插件的实体：团队成员只写本清单里声明的 `mahua-*` id，工具 id 只带 `mahua_`
-前缀，`permissions` 精确等于实际用到的那 12 项（含 hook 两项与标签一枚 slot）。三份断言在
+前缀，`permissions` 精确等于实际用到的那 13 项（含 hook 两项、标签与整页两枚 slot）。三份断言在
 `test/manifest-guards.test.ts`。
 
-## 入口形状（ADR 0025 补注三）
+## 入口形状（ADR 0025 补注四）
 
-工作台**只注册一处**：活动面板上的一枚标签。
+工作台**注册两枚入口、渲染一套界面**（ADR 0025 补注四）：
 
 | 注册 | id | 权限 | 在宿主里长什么样 |
 | --- | --- | --- | --- |
-| `ctx.ui.registerActivityTab` | `mahua-studio` | `ui.slot.activity-tab` | 活动面板上的一枚标签，就是工作台本体 |
-
-- **为什么撤掉工作区视图**：用户要的是「标签页菜单里那一个麻花界面」。宿主里「已在栏上」
-  （`initiallyVisible: true`）与「在 + 可添加池」互斥，同一套界面注册两处，用户反而会在菜单里
-  看到两个同名入口、或在「+」里再找到一份。一个界面只留一枚入口。
-- `registerToolCallSlot` / `registerNewSessionContext` 也一并撤掉（ADR 0011 作废）：对话里不再插入
+| `ctx.ui.registerActivityTab` | `studio` | `ui.slot.activity-tab` | 活动面板上的一枚标签，日常就在这里写 |
+| `ctx.ui.registerWorkspaceView` | `workbench` | `ui.slot.workspace-view` | 宿主真整页路由，`sidebar: false`，只在放大时进 |
+- **两枚入口不是重复**：标签页跟着会话走，宽度由面板决定；整页视图是宿主的整页路由，用来在面板写不下
+  时候看全书。宿主没有面向插件的 `requestFullscreen`，`openWorkspaceView` 是唯一能拿到整页宽度的入口，
+  所以全屏必须落在这里，不能拿 CSS 假全屏。两处渲染同一份 `WorkbenchSurface`，区别只在外壳与 `mode`。
+- `registerToolCallSlot` / `registerNewSessionContext` 仍为作废（ADR 0011）：对话里不再插入
   插件自己的卡片，团队的时间流统一进运行台。
 - `scope_use: ["conversation", "project"]`，与 `src/scenarios.ts` 的 `SCENARIOS` 同一口径（fail-closed）。
 - `initiallyVisible: true`：默认就上栏。用户点减号收起来后会留下显式 `false`，标签回到池子，
   这时「+」必定出现。取证与完整四条件见 ADR 0025 末尾补注。
-- 全屏形态走 `ctx.ui.setActivityPanelWidth("max")`，首次挂载时拉满一次；窗口条上的按钮可来回切
-  回 760px。不做 `fixed`、不 `createPortal`。
+- 整页视图挂载时在 effect 里调 `ctx.ui.setWorkspaceViewHeader("workbench", { immersive: true, hideTitle: true })`，
+  卸载传 `null` 清空：宿主的页头从来不会被移除，不清就会污染下一块视图。整页根加 `pt-11` 给宿主横带让位。
+  面板内不做 `fixed`、不 `createPortal`。
 - 凭证判断不在注册处：未激活时同一枚标签渲染 `ActivationPage`，所以入口从装上开始就一直在。
 
-`test/manifest-guards.test.ts` 钉住入口形状（只有标签一处注册、无 `setWorkspaceViewHeader`、
+`test/manifest-guards.test.ts` 钉住入口形状（两个入口各一次注册、两个入口都经 `useStudioRuntimeReady` 闸门、
 有 `scope_use`、`initiallyVisible: true`、`component: WorkbenchScreen`）与权限集合
-（`ui.slot.*` 恰好只有 `ui.slot.activity-tab` 一项，且 `permissions` 已排序）。
+（`ui.slot.*` 恰好 `ui.slot.activity-tab` 与 `ui.slot.workspace-view` 两项，且 `permissions` 已排序）。
 
 ## 已知的宿主约束
 
