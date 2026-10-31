@@ -67,9 +67,7 @@ and — only when neither is set — an anonymous `ttwid` registered with ByteDa
 ixigua/douyin. That last one is the only anonymous cookie with a measured effect: without it
 ixigua answers `Cookies (not necessarily logged in) are needed`, with it the page loads.
 
-`service/src/media/site-capabilities.ts` is the machine-readable platform table, and `probe`
-returns `site_unsupported` for a host the engine has no extractor for instead of spending the
-25 s timeout to report the same thing.
+`service/src/media/site-capabilities.ts` is the single machine-readable platform table; `site-catalog.ts` is derived from it and nothing else enumerates sites. Every entry claiming an extractor was checked against `yt-dlp --list-extractors` for the pinned engine version, so the table cannot advertise a platform the engine does not handle. A host the table does not support fails fast with `site_unsupported` (or `site_upstream_broken` / `site_offline` when the table carries a reason) instead of spending the 25 s probe timeout to report the same thing. A link whose path ends in a media extension (`.mp4`, `.m3u8`, …) skips the table entirely: the engine's generic extractor saves it as a file.
 
 ## Service surface
 
@@ -85,6 +83,7 @@ The service is a small `node:http` server built with `tsc` only — no runtime d
 | `POST /api/v1/tasks/:id/{cancel,reveal,retry}` | Task actions |
 | `GET\|PUT /api/v1/settings` | Download folder, concurrency, cookie, cookie browser, proxy and proxy mode, threading, partial files |
 | `GET\|POST /api/v1/{ytdlp,ffmpeg}` | Read provisioning progress, or start it |
+| `GET /api/v1/sites` | Platform coverage: `{ groups: [{ key, sites }], unsupported: [{ label, reason }] }` |
 | `POST /mcp` | Hand-written JSON-RPC for the Agent (`video_probe`, `video_download`, `video_tasks`, `video_cancel`, `video_engine_status`, `video_supported_sites`) |
 
 Downloads run through the engine inside a per-task working directory that is also the process

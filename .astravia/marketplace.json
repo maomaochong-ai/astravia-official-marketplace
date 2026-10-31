@@ -7263,7 +7263,7 @@
       "slug": "video-downloader",
       "name": "Video Downloader",
       "description": "Paste a video link and download the highest quality locally — 1000+ sites supported, with progress, a queue and a shortcut to the finished file. The engine sets itself up, so there is nothing to install.",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "configVersion": 2,
       "license": "MIT",
       "author": "Astravia",
@@ -7510,6 +7510,24 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-video-downloader/video-downloader-2.2.0.astraviapkg",
             "sha256": "b1d3485844109993cb084a4a738c187e7d3435cd901348765e837b06e3843210"
+          }
+        },
+        {
+          "version": "2.3.0",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.0.0",
+          "permissions": [
+            "agent.mcp.control",
+            "ui.slot.ability-detail",
+            "ui.slot.workspace-view",
+            "ui.slot.activity-tab",
+            "ui.slot.input-action",
+            "network.fetch"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-video-downloader/video-downloader-2.3.0.astraviapkg",
+            "sha256": "6f951523a24b372919256a5dfe0650cff0f86d4bf31c72bd463c33b30113a06e"
           }
         }
       ]
@@ -9377,5 +9395,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.31-17"
+  "marketplaceVersion": "2026.10.31-18"
 }
