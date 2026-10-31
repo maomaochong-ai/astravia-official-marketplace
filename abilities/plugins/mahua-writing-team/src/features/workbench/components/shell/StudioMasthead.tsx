@@ -32,9 +32,9 @@ export function StudioMasthead({
 
 	return (
 		<header className="flex h-12 shrink-0 items-center gap-3 border-b border-line-soft px-4">
-			<div className="flex min-w-0 shrink-0 items-center gap-2.5">
+			<div className="flex w-[216px] min-w-0 shrink-0 items-center gap-2.5 @max-[640px]:w-auto">
 				<span className="size-[7px] shrink-0 rounded-tile bg-cinnabar" />
-				<span className="shrink-0 text-micro-up font-semibold text-ink-faint">{t("masthead.brand")}</span>
+				<span className="shrink-0 text-micro-up font-semibold tracking-[0.2em] text-ink-faint">{t("masthead.brand")}</span>
 				{section ? (
 					<>
 						<span className="h-3 w-px shrink-0 bg-line-strong" />
@@ -44,7 +44,7 @@ export function StudioMasthead({
 			</div>
 
 			{sync ? (
-				<div className="ml-4 flex min-w-0 flex-1 items-center gap-2.5">
+				<div className="ml-5 flex min-w-0 flex-1 items-center gap-2.5">
 					<Stop state="now" label={t("masthead.stop.write")} value={sync.doing} note={sync.writer} />
 					<Thread />
 					<Stop state="past" label={t("masthead.stop.land")} value={sync.file} note={sync.words} mono />
@@ -56,8 +56,8 @@ export function StudioMasthead({
 			)}
 
 			<div className="flex shrink-0 items-center gap-2 text-[10px] text-ink-faint">
-				{sync ? <span className="hidden truncate @min-[960px]:inline">{sync.queue}</span> : null}
-				{right}
+				{/* 设计稿只给一个右槽：给了操作就不再排队列文案，两个都排会互相挤掉。 */}
+				{right ?? (sync ? sync.queue : null)}
 			</div>
 		</header>
 	);
@@ -86,7 +86,7 @@ function Stop({
 	return (
 		<span className="flex min-w-0 shrink items-center gap-1.5">
 			<span className={`size-[5px] shrink-0 rounded-pill ${dot}`} />
-			<span className="shrink-0 text-[10px] font-semibold text-ink-faint">{label}</span>
+			<span className="shrink-0 text-[10px] font-semibold tracking-[0.14em] text-ink-faint">{label}</span>
 			<span className={`truncate text-micro text-ink ${mono ? "font-mono" : "font-medium"}`}>{value}</span>
 			{note ? (
 				<span className="hidden shrink-0 items-center gap-1 text-[10px] text-ink-soft @min-[1100px]:flex">

@@ -69,10 +69,21 @@ async function readReviewOf(
 	return result.ok ? result.data : null;
 }
 
+/**
+ * 选中的书与章记在模块里：全屏是覆盖层，切进切出会重新挂载整棵工作台，
+ * 跟着组件走的选择会在展开的一瞬被清掉——读者正读到第 26 章，不该因此回到默认章节。
+ */
+let memorySelection: Selected = { bookId: null, chapter: null };
+
+function rememberSelection(next: Selected): Selected {
+	memorySelection = next;
+	return next;
+}
+
 export function useStudioState(): StudioState {
 	const { service } = getStudioRuntime();
 	const [version, setVersion] = useState(0);
-	const [selected, setSelected] = useState<Selected>({ bookId: null, chapter: null });
+	const [selected, setSelected] = useState<Selected>(() => memorySelection);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -143,11 +154,11 @@ export function useStudioState(): StudioState {
 	}, [service, selected, version]);
 
 	const selectBook = useCallback((bookId: string) => {
-		setSelected({ bookId, chapter: null });
+		setSelected(rememberSelection({ bookId, chapter: null }));
 	}, []);
 
 	const selectChapter = useCallback((chapter: number) => {
-		setSelected((current) => ({ bookId: current.bookId, chapter }));
+		setSelected((current) => rememberSelection({ bookId: current.bookId, chapter }));
 	}, []);
 
 	const activate = useCallback(

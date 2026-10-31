@@ -6,7 +6,6 @@ import { registerConsoleFeedHooks } from "./features/workbench/hooks/register-co
 import { setStudioRuntime } from "./plugin-context.js";
 import { ManuscriptRepository } from "./repository/manuscript-repository.js";
 import { registerStudioTab } from "./studio-tab.js";
-import { registerStudioView } from "./studio-view.js";
 import { registerNovelTools } from "./tools/register-novel-tools.js";
 import "./style.css";
 
@@ -23,13 +22,11 @@ export default definePlugin({
 
 		registerNovelTools(ctx, service);
 
-		// 两块画布，一张界面（ADR 0025 补注四）：
-		// - 标签页是日常入口，默认就在栏上；
-		// - 整页视图是「放大到只有工作台」的那条路——宿主没给插件 requestFullscreen，
-		//   workspace view 是唯一一块没有会话侧栏与输入框的画布。
-		// 两者互相导航，状态不搬家。未激活时同一界面显示激活页，凭证过期不会让入口消失。
+		// 一个入口，一张界面：活动面板里的标签页。全屏是插件自带的覆盖层
+		// （`WorkbenchSurface` 里的 `expanded`），不再注册宿主的 workspace view——
+		// `sidebar: false` 的视图只会出现在「设置 → 更多」，那不是放大该去的地方。
+		// 未激活时同一界面显示激活页，凭证过期不会让入口消失。
 		const tab = registerStudioTab(ctx);
-		const view = registerStudioView(ctx);
 
 		// 运行台的活动流（ADR 0027 §1 修订版）：先把上次落盘的事件灌回内存，再订阅后续写入。
 		// 灌历史放在注册 hook 之前：hook 一旦先到，这一轮的真事件就不该被旧记录压在后面。
@@ -39,7 +36,6 @@ export default definePlugin({
 
 		return () => {
 			tab.dispose();
-			view.dispose();
 			unhook.dispose();
 			detachConsoleLog();
 			setStudioRuntime(null);

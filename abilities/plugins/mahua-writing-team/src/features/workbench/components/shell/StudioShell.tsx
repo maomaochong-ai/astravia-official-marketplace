@@ -36,7 +36,7 @@ export function StudioShell({
 	return (
 		<div className="@container flex h-full w-full flex-col overflow-hidden bg-canvas font-sans text-ink antialiased">
 			<StudioMasthead section={t(pageTitleKey(active))} right={right} sync={sync} />
-			<div className="flex min-h-0 flex-1 gap-2 p-3 @max-[720px]:flex-col">
+			<div className="flex min-h-0 flex-1 items-stretch gap-2 pl-2 pr-3 pb-3 pt-3">
 				{!bare && rail ? <StudioRail {...rail} active={active} /> : null}
 				<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-surface shadow-raise">
 					{children}

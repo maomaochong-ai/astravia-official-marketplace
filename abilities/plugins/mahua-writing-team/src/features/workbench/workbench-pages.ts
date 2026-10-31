@@ -38,7 +38,7 @@ export function pageTitleKey(page: WorkbenchPage): string {
 	return `page.${page}.title`;
 }
 
-/** 激活页与运行台要脱离窄栏——它们自己就是整张纸。 */
+/** 只有激活页脱离窄栏——它自己就是整张纸。运行台不是：设计稿那一帧带着侧栏。 */
 export function isBarePage(page: WorkbenchPage): boolean {
-	return page === "activation" || page === "console";
+	return page === "activation";
 }

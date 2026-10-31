@@ -83,9 +83,9 @@ export function ShelfPage({
 				}
 			/>
 
-			<div className="mt-4 flex min-h-0 flex-1 gap-4">
-				<section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised p-5 shadow-raise">
-					<div className="flex gap-5">
+			<div className="mt-4 flex min-h-0 flex-1 gap-4 @max-[880px]:flex-col @max-[880px]:overflow-y-auto">
+				<section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised p-5 shadow-raise @max-[880px]:shrink-0">
+					<div className="flex gap-5 @max-[700px]:gap-3">
 						<button type="button" onClick={() => onNavigate("book")} className="relative shrink-0 text-left">
 							<Cover {...coverSeed(book.title)} size="shelf" />
 							<span className="absolute left-2 top-2 rounded-pill bg-cinnabar px-1.5 py-0.5 text-[9px] font-medium leading-[13px] text-cinnabar-foreground">
@@ -147,7 +147,7 @@ export function ShelfPage({
 								</div>
 							</div>
 
-							<div className="mt-auto flex items-end gap-6 pt-4">
+							<div className="mt-auto flex flex-wrap items-end gap-x-6 gap-y-3 pt-4">
 								<div>
 									<div className="font-mono text-title tabular-nums leading-none text-ink">
 										{committedCount(book)}
@@ -216,7 +216,7 @@ export function ShelfPage({
 					</div>
 				</section>
 
-				<section className="flex min-h-0 w-[430px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised p-2 shadow-raise">
+				<section className="flex min-h-0 w-[430px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised p-2 shadow-raise @max-[1100px]:w-[300px] @max-[880px]:w-full">
 					<div className="flex items-baseline justify-between px-2 pb-2 pt-1.5">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("shelf.others", { count: others.length })}
@@ -237,14 +237,14 @@ export function ShelfPage({
 							{others.map((entry) => {
 								const ago = elapsedSince(entry.updatedAt, now);
 								return (
-									<li key={entry.id} className="flex-1">
+									<li key={entry.id} className="shrink-0">
 										<button
 											type="button"
 											onClick={() => {
 												data.selectBook(entry.id);
 												onNavigate("book");
 											}}
-											className="flex h-full w-full items-center gap-3 rounded-panel px-2 text-left transition-colors hover:bg-canvas"
+											className="flex min-h-[54px] w-full items-center gap-3 rounded-panel px-2 text-left transition-colors hover:bg-canvas"
 										>
 											<Cover {...coverSeed(entry.title)} size="mini" />
 											<div className="min-w-0 flex-1">

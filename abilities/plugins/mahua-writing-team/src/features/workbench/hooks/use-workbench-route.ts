@@ -12,11 +12,18 @@ export interface WorkbenchRouteState {
 	navigate: (page: WorkbenchPage, chapter?: number) => void;
 }
 
+/**
+ * 路由记在模块里而不是组件里：全屏是覆盖层，切进切出会把整棵工作台重新挂载，
+ * 状态跟着组件走就会把你从第 26 章弹回书架。这里只存一个页面名，代价可以忽略。
+ */
+let memory: WorkbenchRoute = { page: "shelf" };
+
 export function useWorkbenchRoute(initial: WorkbenchPage = "shelf"): WorkbenchRouteState {
-	const [route, setRoute] = useState<WorkbenchRoute>({ page: initial });
+	const [route, setRoute] = useState<WorkbenchRoute>(() => (memory.page === "shelf" ? { page: initial } : memory));
 
 	const navigate = useCallback((page: WorkbenchPage, chapter?: number) => {
-		setRoute({ page, chapter });
+		memory = { page, chapter };
+		setRoute(memory);
 	}, []);
 
 	return { route, navigate };

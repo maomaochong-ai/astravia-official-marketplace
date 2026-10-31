@@ -10,5 +10,5 @@ import { WorkbenchSurface } from "./WorkbenchSurface";
  */
 export function WorkbenchScreen() {
 	const ready = useStudioRuntimeReady();
-	return ready ? <WorkbenchSurface mode="panel" /> : <StudioBootSkeleton />;
+	return ready ? <WorkbenchSurface /> : <StudioBootSkeleton />;
 }

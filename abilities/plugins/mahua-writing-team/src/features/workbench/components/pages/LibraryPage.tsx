@@ -69,7 +69,7 @@ export function LibraryPage({
 			/>
 
 			<div className="mt-4 flex min-h-0 flex-1 gap-4">
-				<aside className="flex min-h-0 w-[188px] shrink-0 flex-col gap-4 overflow-y-auto rounded-sheet bg-raised p-2.5 shadow-raise">
+				<aside className="flex min-h-0 w-[188px] shrink-0 flex-col gap-4 overflow-y-auto rounded-sheet bg-raised p-2.5 shadow-raise @max-[980px]:w-[148px]">
 					<div>
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("library.filter.genre")}
@@ -130,7 +130,8 @@ export function LibraryPage({
 				</aside>
 
 				<section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
-					<div className="grid shrink-0 grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 border-b border-line-soft px-4 pb-2 pt-3 text-micro-up font-semibold uppercase text-ink-faint">
+					<div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
+						<div className="grid min-w-[720px] shrink-0 grid-cols-[1fr_96px_78px_96px_112px_120px] items-center gap-3 border-b border-line-soft px-4 pb-2 pt-3 text-micro-up font-semibold uppercase text-ink-faint">
 						<span>{t("library.column.book")}</span>
 						<span>{t("library.column.stage")}</span>
 						<span className="text-right">{t("library.column.chapters")}</span>
@@ -144,7 +145,7 @@ export function LibraryPage({
 							<EmptySheet icon="icon-[lucide--layers]" title={t("library.empty")} />
 						</div>
 					) : (
-						<ul className="min-h-0 flex-1 divide-y divide-line-soft overflow-y-auto px-2 pb-2 pt-1">
+						<ul className="min-h-0 min-w-[720px] flex-1 divide-y divide-line-soft overflow-y-auto px-2 pb-2 pt-1">
 							{rows.map((entry) => {
 								const ago = elapsedSince(entry.updatedAt, now);
 								return (
@@ -155,7 +156,7 @@ export function LibraryPage({
 												data.selectBook(entry.id);
 												onNavigate("book");
 											}}
-											className="grid h-16 w-full grid-cols-[1fr_86px_68px_88px_104px_108px] items-center gap-2 rounded-control px-2 text-left transition-colors hover:bg-surface"
+											className="grid h-16 w-full grid-cols-[1fr_96px_78px_96px_112px_120px] items-center gap-3 rounded-control px-2 text-left transition-colors hover:bg-surface"
 										>
 											<span className="flex min-w-0 items-center gap-2.5">
 												<Cover {...coverSeed(entry.title)} size="thumb" />
@@ -202,6 +203,7 @@ export function LibraryPage({
 							})}
 						</ul>
 					)}
+					</div>
 
 					<div className="flex shrink-0 items-center gap-3 border-t border-line-soft px-4 py-2.5 text-[10px] text-ink-faint">
 						<button

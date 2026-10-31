@@ -337,49 +337,53 @@ describe("visual language stays on host tokens", () => {
 		expect(css).toContain('@plugin "@iconify/tailwind4"');
 	});
 
-	it("keeps panel views inside the panel — no fixed layers or body portals", () => {
+	it("keeps panel views inside the panel — one full-screen overlay, no other escape hatch", () => {
+		// 全屏是插件自己的覆盖层：`expanded` 时把同一张界面 portal 到 body 并 `fixed inset-0`。
+		// 只允许这一处；别的视图再铺满就等于抢整块宿主窗口。
+		const OVERLAY = "src/features/workbench/components/WorkbenchSurface.tsx";
 		const violations: string[] = [];
 		for (const path of SOURCE_FILES.filter((file) => file.startsWith("src/features"))) {
 			const text = read(path);
-			if (/\bfixed\b/.test(text)) violations.push(`${path}: fixed`);
-			if (text.includes("createPortal")) violations.push(`${path}: createPortal`);
+			if (/\bfixed\b/.test(text) && path !== OVERLAY) violations.push(`${path}: fixed`);
+			if (text.includes("createPortal") && path !== OVERLAY) violations.push(`${path}: createPortal`);
 			if (/z-\[2147483647\]/.test(text)) violations.push(`${path}: max z-index`);
 		}
 		expect(violations).toEqual([]);
+		// 覆盖层本身也只有这一种写法：带标记、90 层、铺满一屏。
+		const overlay = read(OVERLAY);
+		expect(overlay.match(/fixed inset-0/g) ?? []).toHaveLength(1);
+		expect(overlay).toContain('data-mahua-overlay="workbench"');
+		expect(overlay).toContain("z-[90]");
 	});
 
-	it("registers two surfaces over one interface: the tab and the full page (ADR 0025 补注四)", () => {
+	it("registers one surface over one interface: the activity tab (ADR 0025 补注四)", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		const view = read("src/studio-view.ts");
-		// 标签页是日常入口（默认上栏），整页是它放大后的宿主路由；两块画布同一张界面。
+		// 一个入口一张界面：活动面板里的标签页。全屏由插件自己的覆盖层负责，
+		// 不再注册宿主 workspace view——`sidebar: false` 的视图只会被塞进「设置 → 更多」。
 		expect(entry).toContain("registerStudioTab(ctx)");
-		expect(entry).toContain("registerStudioView(ctx)");
+		expect(entry).not.toContain("registerWorkspaceView");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
-		expect(view).toContain("ctx.ui.registerWorkspaceView(");
 		// fail-closed：没声明的场景下一个都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
 		// 默认就上栏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
-		// 标签就是工作台本身；整页只是同一块界面的另一种画布。
 		expect(tab).toContain("component: WorkbenchScreen");
-		expect(view).toContain("component: WorkbenchFullPage");
-		// 整页不占侧栏位置：用户点放大时按需进入，宿主把它列在设置里，入口不会丢。
-		expect(view).toContain("sidebar: false");
+		// 整页视图已经退场；留着它的文件就是留着第二条入口。
+		expect(SOURCE_FILES).not.toContain("src/studio-view.ts");
+		expect(SOURCE_FILES.map(read).join("\n")).not.toContain(".registerWorkspaceView(");
 	});
 
 	it("only asks for the slot permissions it actually uses", () => {
 		const permissions = (json<{ permissions: string[] }>("plugin.json")).permissions;
-		expect(permissions).toContain("ui.slot.activity-tab");
-		expect(permissions).toContain("ui.slot.workspace-view");
 		expect(permissions).toEqual([...permissions].sort());
 		const sources = SOURCE_FILES.map(read).join("\n");
 		expect(sources).toContain(".registerActivityTab(");
-		expect(sources).toContain(".registerWorkspaceView(");
 		// 「声明的 slot 权限」必须等于「真的注册过的那几个」：多一个就是白要，
 		// 少一个则在宿主里静默 noop（缺权限 = warn+noop）。
 		const declared = permissions.filter((item) => item.startsWith("ui.slot."));
-		expect(declared).toEqual(["ui.slot.activity-tab", "ui.slot.workspace-view"]);
+		expect(declared).toEqual(["ui.slot.activity-tab"]);
+		expect(sources).not.toContain(".registerWorkspaceView(");
 		expect(sources).not.toContain(".registerToolCallSlot(");
 		expect(sources).not.toContain(".registerNewSessionContext(");
 	});
@@ -479,10 +483,19 @@ describe("the plugin stands alone (ADR 0010)", () => {
 	});
 
 	it("routes the conversation bridge through one hook instead of ad-hoc session calls", () => {
-		// 「跳到侧栏对话」只点亮输入条，不建会话、不发指令——宿主里没有「聚焦侧栏」的 API，
-		// 能做的两件事都在 use-team-reveal 里，别处不许直接碰 conversation。
-		const callers = SOURCE_FILES.filter((path) => /ctx\.conversation\.|conversation\.(?:createSession|sendPrompt)/.test(read(path)));
-		expect(callers).toEqual(["src/features/workbench/hooks/use-team-reveal.ts"]);
+		// 「跳到侧栏对话」只改焦点。宿主没有「聚焦侧栏」的 API；`insertText("")` 会清掉
+		// 用户刚打的草稿，`createSession` 会另开一段对话——两样都不能做，所以别处不许碰 conversation。
+		const callers = SOURCE_FILES.filter((path) =>
+			/ctx\.conversation\.|conversation\.(?:createSession|sendPrompt|insertText)/.test(read(path)),
+		);
+		expect(callers).toEqual([]);
+		// 只看代码，不看注释：注释里写着「不调 sendPrompt」并不等于真的没调。
+		const reveal = read("src/features/workbench/hooks/use-team-reveal.ts")
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\/\/.*$/gm, "");
+		expect(reveal).toContain('[contenteditable="true"]');
+		expect(reveal).not.toContain("sendPrompt");
+		expect(reveal).not.toContain("insertText");
 	});
 
 	it("asks for exactly the permissions the surfaces need", () => {
@@ -500,9 +513,8 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.tools.register",
 				"storage.read",
 				"storage.write",
-				// 两块画布、一张界面（ADR 0025 补注四）：标签 + 整页视图。
+				// 一个入口：活动面板标签；全屏是插件自己的覆盖层，不占宿主 slot。
 				"ui.slot.activity-tab",
-				"ui.slot.workspace-view",
 				"workspace.read",
 			].sort(),
 		);
@@ -565,11 +577,8 @@ describe("the workbench frames stay honest about the domain", () => {
 		// 运行时只在 activate 里建。宿主若先渲染标签或整页（热重载 / 冷启动 / 停用后再点开），
 		// 入口必须自己挡一道：不能抛错把整块面板留白，也不能永远停在骨架上。
 		const screen = read("src/features/workbench/components/WorkbenchScreen.tsx");
-		const page = read("src/features/workbench/components/WorkbenchFullPage.tsx");
-		for (const entry of [screen, page]) {
-			expect(entry).toContain("useStudioRuntimeReady()");
-			expect(entry).not.toContain("getStudioRuntime()");
-		}
+		expect(screen).toContain("useStudioRuntimeReady()");
+		expect(screen).not.toContain("getStudioRuntime()");
 		// 轮询到就位：只在启动那一刻看一眼，会让「宿主早于 activate 渲染」永久空白。
 		const retry = read("src/features/workbench/hooks/use-studio-runtime-ready.ts");
 		expect(retry).toContain("tryGetStudioRuntime()");
@@ -579,15 +588,15 @@ describe("the workbench frames stay honest about the domain", () => {
 		);
 	});
 
-	it("folds the rail instead of squeezing the sheet", () => {
-		// 窄面板里 `aside w-full` + `main flex-1` 同行会把主纸区挤成 0 宽。
-		// 两处降级必须同一档：栏自己横过来，行也跟着竖排。
+	it("keeps the rail vertical and narrows it instead of folding the sheet", () => {
+		// 上一版把窄面板里的栏横过来、主区跟着竖排：六个条目在一条横带里换行，
+		// 书卡与团队卡被压扁，拖动面板后就是用户看到的那一团。现在只允许一种降级：
+		// 栏收成 44px 图标竖栏，主区永远在右边。
 		const shell = read("src/features/workbench/components/shell/StudioShell.tsx");
 		const rail = read("src/features/workbench/components/shell/StudioRail.tsx");
-		const row = /flex min-h-0 flex-1 gap-2 ([^"]+)/.exec(shell)?.[1] ?? "";
-		expect(row).toContain("@max-[720px]:flex-col");
-		expect(rail).toContain("@max-[720px]:w-full");
-		expect(rail).toContain("@max-[720px]:flex-row");
+		expect(shell).not.toMatch(/@max-\[\d+px\]:flex-col/);
+		expect(rail).not.toContain("@max-[720px]:flex-row");
+		expect(rail).toContain("@max-[640px]:w-11");
 	});
 
 	it("renders one sheet per side of the console, not a raised middle", () => {

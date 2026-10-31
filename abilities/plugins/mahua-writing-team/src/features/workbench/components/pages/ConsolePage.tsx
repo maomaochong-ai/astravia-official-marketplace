@@ -63,7 +63,7 @@ export function ConsolePage({
 	const arc = book?.volumes.flatMap((volume) => volume.arcs).find((item) => chapter >= item.from && chapter <= item.to);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-6 pb-5 pt-5">
+		<div className="flex min-h-0 flex-1 flex-col px-6 pb-5 pt-5 @max-[900px]:px-4">
 			<PageHeader
 				title={t("page.console.title")}
 				meta={
@@ -88,7 +88,7 @@ export function ConsolePage({
 			/>
 
 			<div className="mt-4 flex min-h-0 flex-1 gap-4">
-				<aside className="flex min-h-0 w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-inset">
+				<aside className="flex min-h-0 w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-inset @max-[1100px]:w-[188px] @max-[900px]:hidden">
 					<div className="border-b border-line-soft px-3 pb-2 pt-2.5">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.spine")}
@@ -226,7 +226,7 @@ export function ConsolePage({
 					</div>
 				</section>
 
-				<aside className="flex min-h-0 w-[288px] shrink-0 flex-col gap-3 overflow-y-auto rounded-sheet bg-inset p-3">
+				<aside className="flex min-h-0 w-[288px] shrink-0 flex-col gap-3 overflow-y-auto rounded-sheet bg-inset p-3 @max-[1180px]:hidden">
 					<section className="rounded-sheet bg-raised p-3 shadow-raise">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.overview")}
