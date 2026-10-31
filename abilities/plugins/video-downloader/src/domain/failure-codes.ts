@@ -11,6 +11,8 @@ const FAILURE_MESSAGE_KEYS: Record<string, string> = {
   auth_required: "error.authRequired",
   site_blocked: "error.siteBlocked",
   site_unsupported: "error.siteUnsupported",
+  site_upstream_broken: "error.siteUpstreamBroken",
+  site_offline: "error.siteOffline",
 };
 
 export function failureMessageKey(code: string | null | undefined): string | null {

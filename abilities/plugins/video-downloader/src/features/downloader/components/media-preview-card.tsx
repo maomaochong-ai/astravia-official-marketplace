@@ -1,5 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
-import { formatBytes } from "../../../domain/format-bytes";
+import { formatBytes, formatDuration } from "../../../domain/format-bytes";
 import type { MediaItem, ToolInstall } from "../../../domain/media-info";
 import { siteLabel } from "../../../domain/site-catalog";
 import { SiteMonogram } from "../../../shared/components/site-monogram";
@@ -41,16 +41,30 @@ export function MediaPreviewCard({
     ffmpegInstall && ffmpegInstall.totalBytes > 0
       ? Math.min(100, Math.max(0, Math.round((ffmpegInstall.receivedBytes / ffmpegInstall.totalBytes) * 100)))
       : 0;
+  const duration = formatDuration(item.durationSeconds > 0 ? item.durationSeconds : null);
 
   return (
     <section className="mt-4 rounded-xl border border-border bg-card p-4">
       <div className="flex items-start gap-3">
-        <SiteMonogram site={item.site} url={item.sourceUrl} />
+        {item.thumbnailUrl ? (
+          <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+            <img src={item.thumbnailUrl} alt="" loading="lazy" className="size-full object-cover" />
+            {duration ? (
+              <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-px text-[10px] font-medium leading-tight text-white">
+                {duration}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <SiteMonogram site={item.site} url={item.sourceUrl} />
+        )}
         <div className="min-w-0 flex-1">
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{item.title}</h3>
           <p className="mt-1 truncate text-[11px] text-muted-foreground">
             {siteLabel(item.site, item.sourceUrl, t("site.unknown"))} · {t(`kind.${item.kind}`)} ·{" "}
             {t("preview.formatCount", { count: item.formats.length })}
+            {item.uploader ? ` · ${item.uploader}` : ""}
+            {duration && !item.thumbnailUrl ? ` · ${duration}` : ""}
           </p>
         </div>
         {items.length > 1 ? (
@@ -81,8 +95,15 @@ export function MediaPreviewCard({
                 active ? "border-primary/70 bg-primary/10" : "border-border hover:border-muted-foreground/40 hover:bg-accent"
               }`}
             >
-              <span className={`block text-xs font-medium ${active ? "text-primary" : "text-foreground"}`}>
-                {format.quality}
+              <span className="flex items-baseline justify-between gap-1">
+                <span className={`block text-xs font-medium ${active ? "text-primary" : "text-foreground"}`}>
+                  {format.quality}
+                </span>
+                {format.id === item.recommendedFormatId ? (
+                  <span className="shrink-0 rounded bg-primary/15 px-1 text-[9px] font-semibold uppercase tracking-wide text-primary">
+                    {t("preview.best")}
+                  </span>
+                ) : null}
               </span>
               <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
                 {format.ext}

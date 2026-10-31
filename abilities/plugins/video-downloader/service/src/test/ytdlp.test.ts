@@ -166,6 +166,21 @@ describe("yt-dlp normalisation", () => {
     expect(progressive?.partCount).toBe(1);
   });
 
+  it("carries cover art, runtime and uploader through to the panel", () => {
+    const item = normalizeYtdlpInfo(
+      { ...info, thumbnail: " https://img.example/cover.jpg ", duration: 93.6, uploader: "作者" },
+      0,
+    );
+    expect(item?.thumbnailUrl).toBe("https://img.example/cover.jpg");
+    expect(item?.durationSeconds).toBe(94);
+    expect(item?.uploader).toBe("作者");
+    // Sites that expose only a channel keep the name; neither means an empty string, not null.
+    expect(normalizeYtdlpInfo({ ...info, channel: "频道" }, 0)?.uploader).toBe("频道");
+    expect(normalizeYtdlpInfo(info, 0)?.uploader).toBe("");
+    expect(normalizeYtdlpInfo(info, 0)?.thumbnailUrl).toBe("");
+    expect(normalizeYtdlpInfo(info, 0)?.durationSeconds).toBe(0);
+  });
+
   it("ranks the highest rendition first, keeps audio last, and drops storyboards", () => {
     const item = normalizeYtdlpInfo(info, 0);
     expect(item?.formats.map((format) => format.quality)).toEqual(["1080P", "360P", "音频 128k"]);

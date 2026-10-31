@@ -5,6 +5,7 @@ import type {
   MediaItem,
   ProbeResult,
   ServiceSettings,
+  SiteCoverage,
   ToolCapability,
   ToolInstall,
 } from "../../../domain/media-info";
@@ -36,6 +37,8 @@ export interface DownloaderState {
   bootError: string | null;
   capabilities: Capabilities | null;
   settings: ServiceSettings | null;
+  /** Platforms the pinned engine can resolve; null until the service answers. */
+  sites: SiteCoverage | null;
   tasks: DownloadTask[];
   url: string;
   probing: boolean;
@@ -75,6 +78,7 @@ const INITIAL_STATE: DownloaderState = {
   bootError: null,
   capabilities: null,
   settings: null,
+  sites: null,
   tasks: [],
   url: "",
   probing: false,
@@ -127,18 +131,21 @@ export function useDownloader(ctx: ManagedPluginContext, api: DownloaderApi): Do
   async function boot(): Promise<void> {
     patch({ booting: true, bootError: null });
     try {
-      const [capabilities, settings, tasks, ffmpegTool, ytdlpTool] = await Promise.all([
+      const [capabilities, settings, tasks, ffmpegTool, ytdlpTool, sites] = await Promise.all([
         api.capabilities(),
         api.settings(),
         api.tasks(),
         api.ffmpeg(),
         api.ytdlp(),
+        // Coverage is decoration next to the download path, so a failure degrades to a hidden panel.
+        api.sites().catch(() => null),
       ]);
       patch({
         booting: false,
         capabilities: { ...capabilities, ffmpeg: ffmpegTool.ffmpeg, ytdlp: ytdlpTool.ytdlp },
         settings,
         tasks,
+        sites,
         ffmpegInstall: ffmpegTool.install,
         ytdlpInstall: ytdlpTool.install,
       });

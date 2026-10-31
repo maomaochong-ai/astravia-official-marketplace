@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { ServiceError } from "./errors.js";
 import type { MediaItem } from "./media/types.js";
-import { describeSiteGroups } from "./media/site-catalog.js";
+import { describeSiteGroups, describeUnsupportedSites, SITE_GROUPS } from "./media/site-catalog.js";
 import { SettingsStore, type ServiceSettings } from "./settings/settings-store.js";
 import { DownloadRunner } from "./tasks/download-runner.js";
 import { TaskStore } from "./tasks/task-store.js";
@@ -15,7 +15,7 @@ import { inspectYtdlp } from "./ytdlp/ytdlp-binary.js";
 import { probeWithYtdlp } from "./ytdlp/probe.js";
 import { removeCookieFile, writeCookieFile } from "./ytdlp/cookies.js";
 import { YtdlpInstaller, type YtdlpInstallState } from "./ytdlp/ytdlp-installer.js";
-import { capabilityForUrl, type SiteCapability } from "./media/site-capabilities.js";
+import { capabilityForUrl, isDirectMediaUrl, type SiteCapability, type SiteReason } from "./media/site-capabilities.js";
 import { proxyForUrl } from "./network/egress.js";
 import { writeAnonymousCookieFile } from "./ytdlp/cookie-bootstrap.js";
 
@@ -41,7 +41,6 @@ export interface CreateTaskInput {
 export const ENGINE_PREPARING = "engine_preparing";
 
 /**
-/**
  * Add the one instruction the generic engine message cannot carry: which session source to use.
  * A platform that gates its page reports `auth_required` or `site_blocked` whether or not an
  * anonymous client asked, so the site table decides what the user is told to do next.
@@ -50,6 +49,20 @@ function enrichFailure(failure: string | null, code: string | null, capability: 
   if (!failure || !capability || capability.cookie !== "session") return failure;
   if (code !== "auth_required" && code !== "site_blocked") return failure;
   return `${failure}\n${capability.label}需要登录态：请在设置里把「Cookie 来源」选为常用浏览器，或粘贴该站 Cookie 后重试`;
+}
+
+/** Failure codes the panel translates, one per reason the engine cannot resolve a host. */
+export function unsupportedCode(reason: SiteReason | undefined): string {
+  if (reason === "upstream-broken") return "site_upstream_broken";
+  if (reason === "site-offline") return "site_offline";
+  return "site_unsupported";
+}
+
+/** Detail line shown under the translated headline; it is the only place the site name appears. */
+function unsupportedMessage(label: string, reason: SiteReason | undefined): string {
+  if (reason === "upstream-broken") return `${label}的解析器在上游被标记为已知损坏，暂时无法解析`;
+  if (reason === "site-offline") return `${label}的站点服务不可达，暂时无法解析`;
+  return `${label}没有可用的解析器，暂时无法下载`;
 }
 
 /**
@@ -164,13 +177,15 @@ export class ServiceContext {
    * follows the install progress and probes again once the binary is in place.
    */
   async probe(url: string): Promise<ProbeSummary> {
-    const capability = capabilityForUrl(url);
+    // A bare media file needs no extractor: the engine's generic path downloads it as is, so a
+    // platform the table marks unsupported must not block a direct link on the same host.
+    const capability = isDirectMediaUrl(url) ? null : capabilityForUrl(url);
     if (capability && !capability.extractor) {
       // No extractor exists for this host, so a request would only spend the timeout budget.
       return {
         items: [],
-        failure: `${capability.label}没有可用的解析器，暂时无法下载`,
-        failureCode: "site_unsupported",
+        failure: unsupportedMessage(capability.label, capability.reason),
+        failureCode: unsupportedCode(capability.reason),
         elapsedMs: 0,
       };
     }
@@ -259,6 +274,17 @@ export class ServiceContext {
 
   describeSites(): Array<{ name: string; sites: string[] }> {
     return describeSiteGroups();
+  }
+
+  /** The panel's coverage view: groups keep their machine key so the UI can translate the heading. */
+  siteCoverage(): {
+    groups: Array<{ key: string; sites: string[] }>;
+    unsupported: Array<{ label: string; reason: SiteReason }>;
+  } {
+    return {
+      groups: SITE_GROUPS.map((group) => ({ key: group.key, sites: group.sites })),
+      unsupported: describeUnsupportedSites(),
+    };
   }
 
   async shutdown(): Promise<void> {

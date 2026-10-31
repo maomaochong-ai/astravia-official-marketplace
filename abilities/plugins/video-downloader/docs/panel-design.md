@@ -65,3 +65,25 @@ the list scannable while staying theme-correct.
 
 `assets/icon.svg` is drawn with `fill="currentColor"` and a white glyph on the filled
 square, so the host can mask it to the theme foreground where it wants a monochrome icon.
+
+## Preview and coverage (2.3.0)
+
+Two additions follow from the same rule: show the user what they are about to get, and
+never promise a platform the engine cannot open.
+
+- **Preview card** gained the engine's cover art (`thumbnail`), a runtime badge over it,
+  the uploader name, and a `Best` marker on the rendition the service recommends. When a
+  site returns no cover, the monogram stays and the runtime moves into the meta line —
+  the information is never dropped, only relocated. This matches what Seal, Stacher and
+  Downie all surface before the download starts; the cover is the only part of a video
+  page the user can verify at a glance.
+- **Coverage panel** (header, globe icon) lists what the pinned engine resolves, grouped
+  as international / mainland / film & series / audio / live, and names the reason for
+  each platform it cannot handle. The list is served by `GET /api/v1/sites` from the same
+  table `probe` enforces, so the panel and the failure message can never disagree. A
+  failed fetch hides the button rather than blocking the download path.
+
+The panel deliberately lists unsupported platforms. A picker that silently omits them
+reads as "we forgot", while a row saying `engine has no extractor` answers the question
+the user actually has, and the direct-link hint underneath gives them a way forward.
+

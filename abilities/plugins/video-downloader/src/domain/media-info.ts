@@ -19,6 +19,12 @@ export interface MediaItem {
   kind: MediaKind;
   formats: MediaFormat[];
   recommendedFormatId: string | null;
+  /** Cover art advertised by the extractor; empty when the site has none. */
+  thumbnailUrl: string;
+  /** Runtime in seconds, 0 when the extractor does not report one. */
+  durationSeconds: number;
+  /** Uploader or channel name; empty for sites that expose neither. */
+  uploader: string;
 }
 
 export interface ProbeResult {
@@ -27,6 +33,23 @@ export interface ProbeResult {
   /** Machine readable reason for `failure`, when the service could classify it. */
   failureCode: string | null;
   elapsedMs: number;
+}
+
+/** One group of handles the engine can resolve; `key` selects the translated heading. */
+export interface SiteGroupCoverage {
+  key: "global" | "china" | "screen" | "audio" | "live";
+  sites: string[];
+}
+
+/** What the pinned engine cannot resolve, so the panel can explain the failure as a site fact. */
+export interface UnsupportedSite {
+  label: string;
+  reason: "engine-missing" | "upstream-broken" | "site-offline";
+}
+
+export interface SiteCoverage {
+  groups: SiteGroupCoverage[];
+  unsupported: UnsupportedSite[];
 }
 
 export type TaskPhase =

@@ -9,6 +9,8 @@ describe("failureMessageKey", () => {
     expect(failureMessageKey("network_blocked")).toBe("error.networkBlocked");
     expect(failureMessageKey("auth_required")).toBe("error.authRequired");
     expect(failureMessageKey("site_unsupported")).toBe("error.siteUnsupported");
+    expect(failureMessageKey("site_upstream_broken")).toBe("error.siteUpstreamBroken");
+    expect(failureMessageKey("site_offline")).toBe("error.siteOffline");
   });
 
   it("explains a tool that is still being fetched instead of showing a raw failure", () => {
@@ -24,7 +26,7 @@ describe("failureMessageKey", () => {
 
 describe("locale catalogs", () => {
   it("define every message the failure codes point at, in both languages", () => {
-    for (const code of ["engine_preparing", "ffmpeg_required", "engine_unavailable"]) {
+    for (const code of ["engine_preparing", "ffmpeg_required", "engine_unavailable", "site_upstream_broken", "site_offline"]) {
       const key = failureMessageKey(code);
       expect(key).not.toBeNull();
       expect((en as Record<string, string>)[key as string]).toBeTypeOf("string");

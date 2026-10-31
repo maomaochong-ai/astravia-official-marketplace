@@ -4,6 +4,7 @@ import type {
   NewDownloadInput,
   ProbeResult,
   ServiceSettings,
+  SiteCoverage,
   ToolInstall,
 } from "../domain/media-info";
 import { normalizeCapabilities } from "../domain/capabilities";
@@ -39,6 +40,8 @@ export interface DownloaderApi {
   removeTask(id: string): Promise<void>;
   revealTask(id: string): Promise<void>;
   settings(): Promise<ServiceSettings>;
+  /** Coverage table the service derives from the pinned engine's extractor set. */
+  sites(): Promise<SiteCoverage>;
   saveSettings(patch: Partial<ServiceSettings>): Promise<ServiceSettings>;
 }
 
@@ -100,6 +103,8 @@ export function createDownloaderApi(ctx: ManagedPluginContext): DownloaderApi {
     removeTask: (id) => call<{ ok: boolean }>(`/api/v1/tasks/${id}`, { method: "DELETE" }).then(() => undefined),
 
     revealTask: (id) => call<{ ok: boolean }>(`/api/v1/tasks/${id}/reveal`, { method: "POST" }).then(() => undefined),
+
+    sites: () => call<SiteCoverage>("/api/v1/sites", { timeoutMs: 15_000 }),
 
     settings: () => call<{ settings: ServiceSettings }>("/api/v1/settings").then((body) => body.settings),
 

@@ -8,6 +8,7 @@ import { DownloadSettingsPanel } from "../../settings/components/download-settin
 import { DownloadQueue } from "./download-queue";
 import { DownloaderEmptyState } from "./downloader-empty-state";
 import { MediaPreviewCard } from "./media-preview-card";
+import { SiteCoveragePanel } from "./site-coverage-panel";
 import { UrlEntryCard } from "./url-entry-card";
 import { useDownloader } from "../hooks/use-downloader";
 
@@ -31,6 +32,7 @@ export function DownloaderView({
 }) {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [coverageOpen, setCoverageOpen] = useState(false);
   const controller = useDownloader(ctx, apiFor(ctx));
   const { state } = controller;
 
@@ -85,9 +87,28 @@ export function DownloaderView({
             </span>
             <button
               type="button"
+              aria-label={t("action.coverage")}
+              title={t("action.coverage")}
+              aria-pressed={coverageOpen}
+              onClick={() => {
+                setCoverageOpen((open) => !open);
+                setSettingsOpen(false);
+              }}
+              disabled={!state.sites}
+              className={`grid size-7 place-items-center rounded-md transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
+                coverageOpen ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              <span className="icon-[solar--global-linear] size-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
               aria-label={t("action.settings")}
               title={t("action.settings")}
-              onClick={() => setSettingsOpen((open) => !open)}
+              onClick={() => {
+                setSettingsOpen((open) => !open);
+                setCoverageOpen(false);
+              }}
               disabled={!state.settings}
               className={`grid size-7 place-items-center rounded-md transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
                 settingsOpen ? "text-foreground" : "text-muted-foreground"
@@ -149,6 +170,10 @@ export function DownloaderView({
             ) : null}
 
             {!result && state.tasks.length === 0 && !state.bootError ? <DownloaderEmptyState /> : null}
+
+            {coverageOpen && state.sites ? (
+              <SiteCoveragePanel coverage={state.sites} onOpenCookie={() => setSettingsOpen(true)} />
+            ) : null}
 
             <DownloadQueue
               tasks={state.tasks}

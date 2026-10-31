@@ -27,6 +27,10 @@ export interface YtdlpRawInfo {
   _type?: string;
   formats?: YtdlpRawFormat[];
   entries?: YtdlpRawInfo[];
+  thumbnail?: string;
+  duration?: number;
+  uploader?: string;
+  channel?: string;
 }
 
 function asString(value: unknown): string {
@@ -136,5 +140,8 @@ export function normalizeYtdlpInfo(info: YtdlpRawInfo, index: number): MediaItem
     kind: kindOf(formats),
     formats,
     recommendedFormatId: recommended?.id ?? null,
+    thumbnailUrl: asString(info.thumbnail),
+    durationSeconds: Math.round(asFiniteNumber(info.duration)),
+    uploader: asString(info.uploader) || asString(info.channel),
   };
 }

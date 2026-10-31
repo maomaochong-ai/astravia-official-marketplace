@@ -117,6 +117,11 @@ export function createRouter(context: ServiceContext) {
       }
     }
 
+    if (method === "GET" && path === "/api/v1/sites") {
+      sendJson(response, 200, context.siteCoverage());
+      return;
+    }
+
     if (path === "/api/v1/ytdlp") {
       if (method === "GET") {
         sendJson(response, 200, { ytdlp: context.ytdlp, install: context.ytdlpInstallState() });

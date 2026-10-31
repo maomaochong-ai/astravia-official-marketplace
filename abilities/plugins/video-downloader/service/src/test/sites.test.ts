@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { isDomesticHost, isDomesticUrl } from "../network/domestic-hosts.js";
 import { proxyForUrl } from "../network/egress.js";
-import { capabilityForUrl, supportedSiteLabels } from "../media/site-capabilities.js";
+import { capabilityForUrl, isDirectMediaUrl, siteGroups, supportedSiteLabels, unsupportedSites } from "../media/site-capabilities.js";
+import { unsupportedCode } from "../service-context.js";
 import { ttwidSuffixFor, writeAnonymousCookieFile } from "../ytdlp/cookie-bootstrap.js";
 import { normalizeSettings } from "../settings/settings-store.js";
 
@@ -78,7 +79,49 @@ describe("site capabilities", () => {
   it("never advertises a platform without an extractor", () => {
     const labels = supportedSiteLabels();
     expect(labels).toContain("哔哩哔哩");
+    // Qingting FM ships a working extractor; the table used to deny it.
+    expect(labels).toContain("蜻蜓 FM");
     expect(labels).not.toContain("快手");
+  });
+
+  it("keeps an unsupported platform with the reason the engine gives", () => {
+    expect(capabilityForUrl("https://www.mgtv.com/b/1/2.html")?.reason).toBe("engine-missing");
+    expect(capabilityForUrl("https://www.kuwo.cn/play_detail/1")?.reason).toBe("upstream-broken");
+    expect(capabilityForUrl("https://www.miaopai.com/show/x.htm")?.reason).toBe("site-offline");
+    // Mango TV has no extractor in the pinned build, so it must not be advertised either.
+    expect(supportedSiteLabels()).not.toContain("芒果 TV");
+    // Threads has no extractor in the pinned build either; the table used to claim it did.
+    expect(capabilityForUrl("https://www.threads.net/@someone/post/1")?.reason).toBe("engine-missing");
+  });
+
+  it("maps each reason onto its own failure code", () => {
+    expect(unsupportedCode("engine-missing")).toBe("site_unsupported");
+    expect(unsupportedCode("upstream-broken")).toBe("site_upstream_broken");
+    expect(unsupportedCode("site-offline")).toBe("site_offline");
+    expect(unsupportedCode(undefined)).toBe("site_unsupported");
+  });
+
+  it("lets a direct media link bypass the platform table", () => {
+    // The host is unsupported as a page, but the generic extractor downloads a bare file.
+    expect(capabilityForUrl("https://v.kuaishou.com/x")?.extractor).toBe(false);
+    expect(isDirectMediaUrl("https://v.kuaishou.com/x.mp4")).toBe(true);
+    expect(isDirectMediaUrl("https://v.kuaishou.com/x.m3u8?token=1")).toBe(true);
+    expect(isDirectMediaUrl("https://v.kuaishou.com/x")).toBe(false);
+  });
+
+  it("groups every advertised platform exactly once", () => {
+    const groups = siteGroups();
+    expect(groups.map((group) => group.key)).toEqual(["global", "china", "screen", "audio", "live"]);
+    const all = groups.flatMap((group) => group.sites);
+    expect(all).toHaveLength(supportedSiteLabels().length);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("lists the unsupported platforms with their reason", () => {
+    const reasons = new Map(unsupportedSites().map((site) => [site.label, site.reason]));
+    expect(reasons.get("快手")).toBe("engine-missing");
+    expect(reasons.get("酷我音乐")).toBe("upstream-broken");
+    expect(reasons.has("哔哩哔哩")).toBe(false);
   });
 });
 

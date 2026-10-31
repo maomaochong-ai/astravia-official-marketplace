@@ -1,45 +1,34 @@
+import { siteGroups, unsupportedSites, type SiteGroupKey, type SiteReason } from "./site-capabilities.js";
+
+/**
+ * Presentation of the capability table, grouped for the panel and the `video_supported_sites` tool.
+ *
+ * The names below are the Chinese display labels the tool output has always used; the panel reads
+ * the same groups through `/api/v1/sites` and translates `key` itself.
+ */
+const GROUP_NAMES: Record<SiteGroupKey, string> = {
+  global: "国际平台",
+  china: "国内平台",
+  screen: "影视与番剧",
+  audio: "音频",
+  live: "直播",
+};
+
 export interface SiteGroup {
-  key: string;
-  label: string;
+  key: SiteGroupKey;
+  name: string;
   sites: string[];
 }
 
-/**
- * Editorially grouped list of the platforms the pinned engine registers extractors for.
- *
- * The engine reports its own `site` string per extraction; this catalogue only powers the empty
- * state and the `video_supported_sites` tool. It lists what actually has an extractor: a platform
- * without one always ends in "no formats", so advertising it would turn a missing engine feature
- * into a support ticket. `site-capabilities` is the machine-readable form of the same fact.
- */
-export const SITE_GROUPS: SiteGroup[] = [
-  {
-    key: "global-video",
-    label: "国际平台",
-    sites: ["YouTube", "Instagram", "TikTok", "X", "Facebook", "Vimeo", "Reddit", "Tumblr", "Pinterest", "Threads"],
-  },
-  {
-    key: "china-video",
-    label: "国内平台",
-    sites: ["Bilibili", "抖音", "西瓜视频", "微博", "小红书", "知乎"],
-  },
-  {
-    key: "long-form",
-    label: "影视与番剧",
-    sites: ["优酷", "爱奇艺", "腾讯视频", "芒果 TV", "AcFun", "新片场", "搜狐视频"],
-  },
-  {
-    key: "audio",
-    label: "音频",
-    sites: ["网易云音乐", "QQ 音乐", "喜马拉雅", "Zing MP3"],
-  },
-  {
-    key: "live",
-    label: "直播",
-    sites: ["虎牙", "斗鱼"],
-  },
-];
+export const SITE_GROUPS: SiteGroup[] = siteGroups()
+  .filter((group) => group.sites.length > 0)
+  .map((group) => ({ key: group.key, name: GROUP_NAMES[group.key], sites: group.sites }));
 
 export function describeSiteGroups(): Array<{ name: string; sites: string[] }> {
-  return SITE_GROUPS.map((group) => ({ name: group.label, sites: group.sites }));
+  return SITE_GROUPS.map((group) => ({ name: group.name, sites: group.sites }));
+}
+
+/** Platforms the pinned engine cannot resolve, with the machine readable reason. */
+export function describeUnsupportedSites(): Array<{ label: string; reason: SiteReason }> {
+  return unsupportedSites();
 }
