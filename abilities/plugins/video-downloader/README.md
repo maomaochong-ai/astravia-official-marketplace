@@ -9,10 +9,11 @@ the first link out of a message such as `7.97 复制打开抖音，看看【…�
 `https://` to schemeless short links (`b23.tv/BV1xx`), and the field is rewritten with the exact
 URL that is about to be resolved.
 
-A `403` from a site is reported as `site_blocked`, not as a missing login: sites that sign their
-own API requests (douyin, for example) reject any headless client regardless of cookies, so the
-panel says what happened instead of asking for a cookie that cannot help. `auth_required` is
-reserved for `401` and explicit login prompts, where the site cookie in settings is the fix.
+A `403` from a site is reported as `site_blocked`. Sites that sign their own API requests
+(douyin, for example) reject an anonymous client no matter what, so the panel says what happened
+instead of asking for a cookie that cannot help — but a real browser session does get through,
+which is what the `cookieBrowser` setting is for. `auth_required` is reserved for `401` and
+explicit login prompts.
 
 The same panel is exposed through three host surfaces, all registered in `src/index.tsx`:
 the sidebar workspace view (`downloader`), the conversation activity tab (`downloads`, on the
@@ -51,6 +52,25 @@ ffmpeg is fetched on the same terms but only when a rendition actually needs mer
 never touch it. Neither tool is ever installed by hand: the panel shows progress and a retry on
 failure, not an install button.
 
+## Egress and sessions
+
+`proxyMode` decides who sees the proxy. `auto` (default) keeps mainland platforms on the
+machine's own route and sends everything else through `proxy`, because a licensed mainland
+service refuses a foreign exit while a foreign platform is unreachable without one — a single
+global switch fixes one audience by breaking the other. `always` and `off` cover the manual case.
+The mainland list is a suffix table (`service/src/network/domestic-hosts.ts`), not a site table:
+media arrives from hosts such as `*.bilivideo.com` that no extractor names in advance.
+
+Sessions have three sources, checked in order: the pasted `cookie` (written to a per-request
+jar), `cookieBrowser` (`--cookies-from-browser`, the only way to get a real signed-in session),
+and — only when neither is set — an anonymous `ttwid` registered with ByteDance for
+ixigua/douyin. That last one is the only anonymous cookie with a measured effect: without it
+ixigua answers `Cookies (not necessarily logged in) are needed`, with it the page loads.
+
+`service/src/media/site-capabilities.ts` is the machine-readable platform table, and `probe`
+returns `site_unsupported` for a host the engine has no extractor for instead of spending the
+25 s timeout to report the same thing.
+
 ## Service surface
 
 The service is a small `node:http` server built with `tsc` only — no runtime dependencies.
@@ -63,7 +83,7 @@ The service is a small `node:http` server built with `tsc` only — no runtime d
 | `GET\|POST /api/v1/tasks` | List or enqueue downloads |
 | `GET\|DELETE /api/v1/tasks/:id` | Inspect or drop one task |
 | `POST /api/v1/tasks/:id/{cancel,reveal,retry}` | Task actions |
-| `GET\|PUT /api/v1/settings` | Download folder, concurrency, cookie, threading, partial files |
+| `GET\|PUT /api/v1/settings` | Download folder, concurrency, cookie, cookie browser, proxy and proxy mode, threading, partial files |
 | `GET\|POST /api/v1/{ytdlp,ffmpeg}` | Read provisioning progress, or start it |
 | `POST /mcp` | Hand-written JSON-RPC for the Agent (`video_probe`, `video_download`, `video_tasks`, `video_cancel`, `video_engine_status`, `video_supported_sites`) |
 
