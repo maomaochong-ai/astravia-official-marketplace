@@ -15,6 +15,9 @@ import { inspectYtdlp } from "./ytdlp/ytdlp-binary.js";
 import { probeWithYtdlp } from "./ytdlp/probe.js";
 import { removeCookieFile, writeCookieFile } from "./ytdlp/cookies.js";
 import { YtdlpInstaller, type YtdlpInstallState } from "./ytdlp/ytdlp-installer.js";
+import { capabilityForUrl, type SiteCapability } from "./media/site-capabilities.js";
+import { proxyForUrl } from "./network/egress.js";
+import { writeAnonymousCookieFile } from "./ytdlp/cookie-bootstrap.js";
 
 export interface ProbeSummary {
   items: MediaItem[];
@@ -36,6 +39,18 @@ export interface CreateTaskInput {
 
 /** Failure code used while the engine is still being provisioned in the background. */
 export const ENGINE_PREPARING = "engine_preparing";
+
+/**
+/**
+ * Add the one instruction the generic engine message cannot carry: which session source to use.
+ * A platform that gates its page reports `auth_required` or `site_blocked` whether or not an
+ * anonymous client asked, so the site table decides what the user is told to do next.
+ */
+function enrichFailure(failure: string | null, code: string | null, capability: SiteCapability | null): string | null {
+  if (!failure || !capability || capability.cookie !== "session") return failure;
+  if (code !== "auth_required" && code !== "site_blocked") return failure;
+  return `${failure}\n${capability.label}需要登录态：请在设置里把「Cookie 来源」选为常用浏览器，或粘贴该站 Cookie 后重试`;
+}
 
 /**
  * Owns settings, tasks and the two provisioned tools.
@@ -149,6 +164,16 @@ export class ServiceContext {
    * follows the install progress and probes again once the binary is in place.
    */
   async probe(url: string): Promise<ProbeSummary> {
+    const capability = capabilityForUrl(url);
+    if (capability && !capability.extractor) {
+      // No extractor exists for this host, so a request would only spend the timeout budget.
+      return {
+        items: [],
+        failure: `${capability.label}没有可用的解析器，暂时无法下载`,
+        failureCode: "site_unsupported",
+        elapsedMs: 0,
+      };
+    }
     if (!this.ytdlp.available || !this.ytdlp.path) {
       this.provisionEngine();
       return {
@@ -162,21 +187,34 @@ export class ServiceContext {
   }
 
   private async probeWithYtdlp(ytdlpPath: string, url: string): Promise<ProbeSummary> {
+    const settings = this.settings();
     const jarName = `probe-${randomUUID().slice(0, 8)}`;
-    const cookieFile = await writeCookieFile(this.environment.dataRoot, this.settings().cookie, url, jarName).catch(
-      () => null,
-    );
+    const cookieFile = await this.prepareCookieJar(settings, url, jarName);
     try {
-      const outcome = await probeWithYtdlp(ytdlpPath, url, { cookieFile, proxy: this.settings().proxy });
+      const outcome = await probeWithYtdlp(ytdlpPath, url, {
+        cookieFile,
+        cookieBrowser: settings.cookieBrowser,
+        proxy: proxyForUrl(url, settings),
+      });
       return {
         items: outcome.items,
-        failure: outcome.failure,
+        failure: enrichFailure(outcome.failure, outcome.failureCode, capabilityForUrl(url)),
         failureCode: outcome.failureCode,
         elapsedMs: outcome.elapsedMs,
       };
     } finally {
       await removeCookieFile(cookieFile);
     }
+  }
+
+  /**
+   * Prepare a session for one request: a pasted cookie wins, then an anonymous jar where the site
+   * accepts one. A configured browser is left to the engine, which reads it itself.
+   */
+  private async prepareCookieJar(settings: ServiceSettings, url: string, name: string): Promise<string | null> {
+    const manual = await writeCookieFile(this.environment.dataRoot, settings.cookie, url, name).catch(() => null);
+    if (manual || settings.cookieBrowser) return manual;
+    return writeAnonymousCookieFile({ url, dataRoot: this.environment.dataRoot, name }).catch(() => null);
   }
 
   createTask(input: CreateTaskInput): DownloadTask {

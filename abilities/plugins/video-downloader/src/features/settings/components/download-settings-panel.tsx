@@ -3,6 +3,10 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { toolCapability } from "../../../domain/capabilities";
 import type { Capabilities, ServiceSettings, ToolInstall } from "../../../domain/media-info";
 
+/** Mirrors the service's own whitelists; the router drops anything outside them. */
+const COOKIE_BROWSERS = ["chrome", "edge", "safari", "firefox", "brave", "chromium"] as const;
+const PROXY_MODES = ["auto", "always", "off"] as const;
+
 interface DownloadSettingsPanelProps {
   settings: ServiceSettings;
   capabilities: Capabilities | null;
@@ -206,6 +210,45 @@ export function DownloadSettingsPanel({
           }}
           className="h-7 w-64 rounded-md border border-border bg-background px-2 font-mono text-[11px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
         />
+      </Field>
+
+      <div className="border-t border-border" />
+
+      <Field label={t("settings.proxyMode")} hint={t("settings.proxyModeHint")}>
+        <div className="flex gap-1">
+          {PROXY_MODES.map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              disabled={!settings.proxy}
+              onClick={() => onSave({ proxyMode: mode })}
+              className={`h-7 rounded-md border px-2 text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                settings.proxyMode === mode
+                  ? "border-primary/70 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              {t(`settings.proxyMode.${mode}`)}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      <div className="border-t border-border" />
+
+      <Field label={t("settings.cookieBrowser")} hint={t("settings.cookieBrowserHint")}>
+        <select
+          value={settings.cookieBrowser}
+          onChange={(event) => onSave({ cookieBrowser: event.target.value as ServiceSettings["cookieBrowser"] })}
+          className="h-7 w-40 rounded-md border border-border bg-background px-1.5 text-[11px] text-foreground outline-none focus:border-primary/60"
+        >
+          <option value="">{t("settings.cookieBrowserNone")}</option>
+          {COOKIE_BROWSERS.map((browser) => (
+            <option key={browser} value={browser}>
+              {browser}
+            </option>
+          ))}
+        </select>
       </Field>
 
       <div className="border-t border-border" />

@@ -90,8 +90,12 @@ export interface ServiceSettings {
   downloadDirectory: string;
   maxConcurrent: number;
   cookie: string;
+  /** Browser the engine reads a session from; empty when the cookie field is the only source. */
+  cookieBrowser: "" | "chrome" | "edge" | "safari" | "firefox" | "brave" | "chromium";
   /** Proxy URL handed to the engine; empty means the machine's own egress. */
   proxy: string;
+  /** `auto` keeps mainland platforms on the direct route and only proxies foreign ones. */
+  proxyMode: "auto" | "always" | "off";
   multiThread: boolean;
   keepPartialFiles: boolean;
 }

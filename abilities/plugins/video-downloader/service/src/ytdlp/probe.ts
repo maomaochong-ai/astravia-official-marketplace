@@ -6,12 +6,14 @@ import {
   firstActionableYtdlpLine,
   type EngineFailureCode,
 } from "./diagnostics.js";
-import { jsRuntimeArgs, proxyArgs } from "./engine-args.js";
+import { cookieArgs, jsRuntimeArgs, proxyArgs } from "./engine-args.js";
 import { flattenYtdlpEntries, normalizeYtdlpInfo, type YtdlpRawInfo } from "./normalize.js";
 
 export interface YtdlpProbeOptions {
   /** Path to a prepared Netscape cookie file, when the user configured a session. */
   cookieFile?: string | null;
+  /** Browser to read a session out of when no jar was prepared. */
+  cookieBrowser?: string;
   /** Normalised proxy URL; empty or absent means direct egress. */
   proxy?: string;
   timeoutMs?: number;
@@ -56,7 +58,7 @@ export async function probeWithYtdlp(
   // yields no usable rendition (missing session, unsupported client, blocked player response).
   const args = ["--dump-single-json", "--no-playlist", "--no-progress", "--socket-timeout", "25"];
   args.push(...jsRuntimeArgs(), ...proxyArgs(options.proxy ?? ""));
-  if (options.cookieFile) args.push("--cookies", options.cookieFile);
+  args.push(...cookieArgs(options.cookieFile ?? null, options.cookieBrowser ?? ""));
   args.push(url);
 
   const result = await runCommand(ytdlpPath, args, {

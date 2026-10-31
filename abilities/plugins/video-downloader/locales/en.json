@@ -95,5 +95,13 @@
   "error.authRequired": "That site needs a real browser session. Add the site cookie in settings and try again.",
   "error.siteBlocked": "The site refused the request (anti-bot check). Retrying later may help, but this page cannot be fetched today.",
   "error.noLink": "That text does not contain a link. Paste a video link or a share message.",
-  "error.siteUnsupported": "That link is not supported yet. Make sure it points at a video page."
+  "error.siteUnsupported": "That link is not supported yet. Make sure it points at a video page.",
+  "settings.proxyMode": "Proxy routing",
+  "settings.proxyModeHint": "Auto sends mainland platforms (Bilibili, Douyin, Tencent Video…) straight out and only routes the rest through the proxy.",
+  "settings.proxyMode.auto": "Auto",
+  "settings.proxyMode.always": "All traffic",
+  "settings.proxyMode.off": "Off",
+  "settings.cookieBrowser": "Cookie source",
+  "settings.cookieBrowserHint": "Read the signed-in session from a browser you already use. Needed for Douyin, Xiaohongshu, Weibo and QQ Music.",
+  "settings.cookieBrowserNone": "Not set"
 }

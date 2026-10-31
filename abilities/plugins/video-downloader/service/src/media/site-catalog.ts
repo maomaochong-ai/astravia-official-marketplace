@@ -5,10 +5,12 @@ export interface SiteGroup {
 }
 
 /**
- * Editorially grouped list of the sites lux registers extractors for.
+ * Editorially grouped list of the platforms the pinned engine registers extractors for.
  *
- * lux reports its own `site` string per extraction; this catalogue only powers the empty
- * state and the `video_supported_sites` tool, so it never has to match upstream exactly.
+ * The engine reports its own `site` string per extraction; this catalogue only powers the empty
+ * state and the `video_supported_sites` tool. It lists what actually has an extractor: a platform
+ * without one always ends in "no formats", so advertising it would turn a missing engine feature
+ * into a support ticket. `site-capabilities` is the machine-readable form of the same fact.
  */
 export const SITE_GROUPS: SiteGroup[] = [
   {
@@ -19,17 +21,17 @@ export const SITE_GROUPS: SiteGroup[] = [
   {
     key: "china-video",
     label: "国内平台",
-    sites: ["Bilibili", "抖音", "快手", "西瓜视频", "微博", "小红书", "知乎", "好看视频", "秒拍", "糖豆"],
+    sites: ["Bilibili", "抖音", "西瓜视频", "微博", "小红书", "知乎"],
   },
   {
     key: "long-form",
     label: "影视与番剧",
-    sites: ["优酷", "爱奇艺", "腾讯视频", "芒果 TV", "AcFun", "新片场", "虎扑"],
+    sites: ["优酷", "爱奇艺", "腾讯视频", "芒果 TV", "AcFun", "新片场", "搜狐视频"],
   },
   {
     key: "audio",
     label: "音频",
-    sites: ["网易云音乐", "喜马拉雅", "音悦台", "Zing MP3"],
+    sites: ["网易云音乐", "QQ 音乐", "喜马拉雅", "Zing MP3"],
   },
   {
     key: "live",

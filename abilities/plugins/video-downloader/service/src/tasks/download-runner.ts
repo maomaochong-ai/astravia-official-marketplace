@@ -6,8 +6,10 @@ import { measureDirectory } from "../fs/directory-usage.js";
 import { ensureDirectory, moveProducedFiles } from "../fs/files.js";
 import { withToolPath } from "../tools/tool-paths.js";
 import { codeOfYtdlpFailure, firstYtdlpErrorLine } from "../ytdlp/diagnostics.js";
-import { jsRuntimeArgs, proxyArgs } from "../ytdlp/engine-args.js";
+import { cookieArgs, jsRuntimeArgs, proxyArgs } from "../ytdlp/engine-args.js";
+import { writeAnonymousCookieFile } from "../ytdlp/cookie-bootstrap.js";
 import { removeCookieFile, writeCookieFile } from "../ytdlp/cookies.js";
+import { proxyForUrl } from "../network/egress.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { TaskStore } from "./task-store.js";
 import { estimateRemaining, type DownloadTask } from "./types.js";
@@ -128,15 +130,8 @@ export class DownloadRunner {
     this.running.set(task.id, state);
     await ensureDirectory(workDirectory);
 
-    // The engine reads cookies from a jar, and the jar is scoped to this task's host.
-    if (settings.cookie.trim()) {
-      state.cookieFile = await writeCookieFile(
-        this.dependencies.dataRoot,
-        settings.cookie,
-        task.url,
-        `task-${task.id}`,
-      ).catch(() => null);
-    }
+    // The jar is scoped to this task's host; an anonymous one is used when the site accepts it.
+    state.cookieFile = await this.prepareCookieJar(settings, task.url, `task-${task.id}`);
 
     const args = this.argumentsFor(task, settings, workDirectory, state.cookieFile);
 
@@ -204,12 +199,19 @@ export class DownloadRunner {
   ): string[] {
     const args = ["--no-warnings", "--no-playlist", "--no-progress"];
     // Same engine flags as the probe: the stream id it resolved has to stay fetchable here.
-    args.push(...jsRuntimeArgs(), ...proxyArgs(settings.proxy));
+    args.push(...jsRuntimeArgs(), ...proxyArgs(proxyForUrl(task.url, settings)));
     if (settings.multiThread) args.push("--concurrent-fragments", CONCURRENT_FRAGMENTS);
-    if (cookieFile) args.push("--cookies", cookieFile);
+    args.push(...cookieArgs(cookieFile, settings.cookieBrowser));
     // The template lets the engine name the file; `moveProducedFiles` works on the directory.
     args.push("-f", task.streamId, "-o", join(workDirectory, "%(title)s.%(ext)s"), task.url);
     return args;
+  }
+
+  /** Pasted cookie first, then an anonymous jar where the site accepts one. */
+  private async prepareCookieJar(settings: ServiceSettings, url: string, name: string): Promise<string | null> {
+    const manual = await writeCookieFile(this.dependencies.dataRoot, settings.cookie, url, name).catch(() => null);
+    if (manual || settings.cookieBrowser) return manual;
+    return writeAnonymousCookieFile({ url, dataRoot: this.dependencies.dataRoot, name }).catch(() => null);
   }
 
   private async sample(taskId: string): Promise<void> {

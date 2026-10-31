@@ -244,6 +244,8 @@ export function createRouter(context: ServiceContext) {
         if (typeof body.multiThread === "boolean") patch.multiThread = body.multiThread;
         if (typeof body.keepPartialFiles === "boolean") patch.keepPartialFiles = body.keepPartialFiles;
         if (typeof body.proxy === "string") patch.proxy = body.proxy;
+        if (typeof body.proxyMode === "string") patch.proxyMode = body.proxyMode;
+        if (typeof body.cookieBrowser === "string") patch.cookieBrowser = body.cookieBrowser;
         sendJson(response, 200, { settings: await context.updateSettings(patch) });
         return;
       }

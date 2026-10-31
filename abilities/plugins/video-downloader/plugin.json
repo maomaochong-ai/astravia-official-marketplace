@@ -3,7 +3,7 @@
   "name": "%name%",
   "description": "%description%",
   "icon": "assets/icon.svg",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "pluginApiVersion": "^2.0.0",
   "entry": "dist/mf-manifest.json",
   "styles": [
@@ -36,14 +36,14 @@
         "id": "video-downloader",
         "runtime": {
           "kind": "host-node",
-          "version": "2.1.0",
+          "version": "2.2.0",
           "entry": "service/dist/main.js",
           "platforms": {
             "win32-x64": {
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "316752e1def8bfdb29c7a91b6d8c912202c7a7f4e48d531712e7fade48a643aa",
+                  "sha256": "bf03cde5f2149b8880debc7dd7d02660cb19e10a526a39dd32049be4d22e60d4",
                   "archive": "zip",
                   "destination": "service"
                 }
@@ -53,7 +53,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "316752e1def8bfdb29c7a91b6d8c912202c7a7f4e48d531712e7fade48a643aa",
+                  "sha256": "bf03cde5f2149b8880debc7dd7d02660cb19e10a526a39dd32049be4d22e60d4",
                   "archive": "zip",
                   "destination": "service"
                 }
@@ -63,7 +63,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "316752e1def8bfdb29c7a91b6d8c912202c7a7f4e48d531712e7fade48a643aa",
+                  "sha256": "bf03cde5f2149b8880debc7dd7d02660cb19e10a526a39dd32049be4d22e60d4",
                   "archive": "zip",
                   "destination": "service"
                 }
@@ -73,7 +73,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "316752e1def8bfdb29c7a91b6d8c912202c7a7f4e48d531712e7fade48a643aa",
+                  "sha256": "bf03cde5f2149b8880debc7dd7d02660cb19e10a526a39dd32049be4d22e60d4",
                   "archive": "zip",
                   "destination": "service"
                 }
@@ -83,7 +83,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "316752e1def8bfdb29c7a91b6d8c912202c7a7f4e48d531712e7fade48a643aa",
+                  "sha256": "bf03cde5f2149b8880debc7dd7d02660cb19e10a526a39dd32049be4d22e60d4",
                   "archive": "zip",
                   "destination": "service"
                 }
@@ -93,7 +93,7 @@
               "executable": "service/dist/main.js",
               "artifacts": [
                 {
-                  "sha256": "316752e1def8bfdb29c7a91b6d8c912202c7a7f4e48d531712e7fade48a643aa",
+                  "sha256": "bf03cde5f2149b8880debc7dd7d02660cb19e10a526a39dd32049be4d22e60d4",
                   "archive": "zip",
                   "destination": "service"
                 }

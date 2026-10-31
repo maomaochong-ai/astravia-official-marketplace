@@ -2,13 +2,18 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { defaultDownloadDirectory } from "../environment.js";
 import { ensureDirectory } from "../fs/files.js";
+import { COOKIE_BROWSERS, PROXY_MODES, type CookieBrowser, type ProxyMode } from "../network/egress.js";
 
 export interface ServiceSettings {
   downloadDirectory: string;
   maxConcurrent: number;
   cookie: string;
+  /** Browser to read a session cookie from; empty means the cookie field is the only source. */
+  cookieBrowser: CookieBrowser;
   /** Proxy URL handed to the engine; empty means direct egress. */
   proxy: string;
+  /** Whether the proxy covers every host or only the platforms outside the mainland. */
+  proxyMode: ProxyMode;
   multiThread: boolean;
   keepPartialFiles: boolean;
 }
@@ -17,7 +22,9 @@ export const DEFAULT_SETTINGS: ServiceSettings = {
   downloadDirectory: defaultDownloadDirectory(),
   maxConcurrent: 2,
   cookie: "",
+  cookieBrowser: "",
   proxy: "",
+  proxyMode: "auto",
   multiThread: false,
   keepPartialFiles: false,
 };
@@ -66,7 +73,11 @@ export function normalizeSettings(input: Partial<ServiceSettings> | null | undef
     downloadDirectory: directory || DEFAULT_SETTINGS.downloadDirectory,
     maxConcurrent: clampInteger(source.maxConcurrent, 1, 4, DEFAULT_SETTINGS.maxConcurrent),
     cookie: typeof source.cookie === "string" ? source.cookie.trim() : "",
+    cookieBrowser: COOKIE_BROWSERS.includes(source.cookieBrowser as CookieBrowser)
+      ? (source.cookieBrowser as CookieBrowser)
+      : "",
     proxy: normalizeProxy(source.proxy),
+    proxyMode: PROXY_MODES.includes(source.proxyMode as ProxyMode) ? (source.proxyMode as ProxyMode) : "auto",
     multiThread: source.multiThread === true,
     keepPartialFiles: source.keepPartialFiles === true,
   };

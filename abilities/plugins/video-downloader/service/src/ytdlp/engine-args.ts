@@ -30,3 +30,16 @@ export function proxyArgs(proxy: string): string[] {
   const trimmed = proxy.trim();
   return trimmed ? ["--proxy", trimmed] : [];
 }
+
+/**
+ * Where the engine takes its cookies from.
+ *
+ * A pasted header is written to a jar by the caller and wins; a browser is read by the engine
+ * itself, which is the only way to obtain a signed-in session for a site that gates its page. When
+ * both are absent the caller may still supply an anonymous jar (see `cookie-bootstrap`).
+ */
+export function cookieArgs(cookieFile: string | null, cookieBrowser: string): string[] {
+  if (cookieFile) return ["--cookies", cookieFile];
+  const browser = cookieBrowser.trim();
+  return browser ? ["--cookies-from-browser", browser] : [];
+}

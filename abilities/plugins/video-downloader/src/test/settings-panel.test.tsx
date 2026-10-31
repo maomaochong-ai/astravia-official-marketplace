@@ -24,7 +24,9 @@ const settings = {
   downloadDirectory: "/Users/me/Downloads",
   maxConcurrent: 2,
   cookie: "",
+  cookieBrowser: "" as const,
   proxy: "",
+  proxyMode: "auto" as const,
   multiThread: true,
   keepPartialFiles: false,
 };
@@ -70,9 +72,43 @@ describe("DownloadSettingsPanel", () => {
         {...noops}
       />,
     );
-    expect(markup).not.toContain("Auto");
+    // The engine is no longer a per-site choice, so no source picker should render.
+    expect(markup).not.toContain("Automatic install");
     expect(markup).not.toContain("Bundled");
     expect(markup).toContain("yt-dlp 2026.08.19");
+  });
+
+  it("lets the user route the proxy by region and pick a browser session", () => {
+    const withoutProxy = renderToString(
+      <DownloadSettingsPanel
+        settings={settings}
+        capabilities={capabilities}
+        ffmpegInstall={null}
+        ffmpegBusy={false}
+        ytdlpInstall={null}
+        ytdlpBusy={false}
+        {...noops}
+      />,
+    );
+    // Nothing to route until a proxy exists, so the three modes stay inert.
+    expect(withoutProxy).toContain("Proxy routing");
+    expect(withoutProxy).toContain("disabled");
+    expect(withoutProxy).toContain("All traffic");
+    expect(withoutProxy).toContain("Not set");
+
+    const withProxy = renderToString(
+      <DownloadSettingsPanel
+        settings={{ ...settings, proxy: "http://127.0.0.1:7890", cookieBrowser: "edge" }}
+        capabilities={capabilities}
+        ffmpegInstall={null}
+        ffmpegBusy={false}
+        ytdlpInstall={null}
+        ytdlpBusy={false}
+        {...noops}
+      />,
+    );
+    expect(withProxy).not.toContain("disabled=");
+    expect(withProxy).toContain('value="edge" selected=""');
   });
 
   it("offers a retry only after a failed engine download", () => {

@@ -2,7 +2,7 @@ import { chmod, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ensureDirectory } from "../fs/files.js";
 
-const COOKIE_DIRECTORY = "cookies";
+export const COOKIE_DIRECTORY = "cookies";
 export const COOKIE_FILE_HEADER = "# Netscape HTTP Cookie File";
 
 /**

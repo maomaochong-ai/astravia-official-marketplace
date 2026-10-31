@@ -95,5 +95,13 @@
   "error.authRequired": "该站点需要真实浏览器会话，请在设置里填写站点 Cookie 后重试。",
   "error.siteBlocked": "站点拒绝了本次请求（反爬校验），稍后重试可能有效，但当前无法抓取这个页面。",
   "error.noLink": "这段文字里没有链接，请粘贴视频链接或分享文案。",
-  "error.siteUnsupported": "该链接暂不支持解析，请确认它是受支持的视频页面。"
+  "error.siteUnsupported": "该链接暂不支持解析，请确认它是受支持的视频页面。",
+  "settings.proxyMode": "代理分流",
+  "settings.proxyModeHint": "自动：国内平台（B 站、抖音、腾讯视频等）直连，其余走代理。",
+  "settings.proxyMode.auto": "自动",
+  "settings.proxyMode.always": "全部走代理",
+  "settings.proxyMode.off": "关闭",
+  "settings.cookieBrowser": "Cookie 来源",
+  "settings.cookieBrowserHint": "从你已登录的浏览器读取会话。抖音、小红书、微博、QQ 音乐需要它。",
+  "settings.cookieBrowserNone": "不读取"
 }
