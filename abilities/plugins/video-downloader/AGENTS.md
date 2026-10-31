@@ -63,3 +63,19 @@ npm run package:service   # prints the digest to paste into plugin.json + runtim
 
 Version bumps: content changes to the service or panel require a plugin version bump and a
 rebuilt service digest. Display-only changes (README, detail blocks) do not.
+
+Shipping the runtime: `runtime-lock.json` addresses the service zip by release tag and file
+name (`releases/download/video-downloader-<version>/video-downloader-service-<version>.zip`),
+so the asset has to exist before the version goes out — the panel otherwise reports
+`error.runtimeMissing` on a fresh install. Publish it append-only:
+
+```bash
+npm run package:service
+gh release create video-downloader-<version> release/video-downloader-service-<version>.zip \
+  --title "video-downloader service <version>" --latest=false
+curl -sIL https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/\
+  video-downloader-<version>/video-downloader-service-<version>.zip | head -1   # expect 200
+```
+
+The CI publish job only uploads `.astraviapkg` packages, so this step stays manual until a
+workflow step covers it.
