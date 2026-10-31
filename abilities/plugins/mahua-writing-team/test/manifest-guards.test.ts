@@ -337,50 +337,59 @@ describe("visual language stays on host tokens", () => {
 		expect(css).toContain('@plugin "@iconify/tailwind4"');
 	});
 
-	it("keeps panel views inside the panel — no overlay, and the full page is a host view", () => {
-		// SDK 合同：面板类 slot 里不许 `fixed`/`sticky` 贴视口、不许超高 z-index、不许
-		// `createPortal(..., document.body)`。0.4.15 曾用一层 `fixed inset-0 z-[90]` 撑满宿主窗口，
-		// 结果是抢了宿主的 chrome 还留下一块退不出去的黑边。整页改成注册宿主 workspace view，
-		// 于是这里不再有「唯一的例外」——一面都不能铺。
+	it("keeps the full screen in exactly one place, and it is not a portal", () => {
+		// 宿主的路由把工作区视图渲染在应用外壳里（侧栏与页头都在），SDK 也没有隐藏侧栏或全屏
+		// 窗口的 API，所以「只有插件」只能由界面自己铺满视口。铺的方式被钉死在 `WorkbenchSurface`
+		// 的根节点上：`fixed inset-0`，由 `data-fullscreen` 开关。
+		//
+		// 为什么不开 `createPortal(..., document.body)`：插件 CSS 编成
+		// `@scope ([data-astravia-plugin-root=<id>])`，portal 出去的内容就落在作用域外，得再造一个
+		// 作用域根，而把 Tailwind 类写在那个根上会被静默丢弃。`fixed` 不受祖先 `overflow: hidden`
+		// 裁剪（宿主挂载点只有 overflow-hidden，没有 transform / filter / contain），所以换父节点
+		// 并不必要。这条守卫把「不开 portal」和「只有一处 fixed」一起钉住。
 		const violations: string[] = [];
-		for (const path of SOURCE_FILES.filter((file) => file.startsWith("src/features"))) {
-			const text = read(path);
-			if (/\bfixed\b/.test(text)) violations.push(`${path}: fixed`);
+		for (const path of SOURCE_FILES) {
+			// 只看代码，不看注释：注释里写着「为什么不开 portal」并不等于真的开了。
+			const text = read(path)
+				.replace(/\/\*[\s\S]*?\*\//g, "")
+				.replace(/\/\/.*$/gm, "");
+			if (/\bfixed\b/.test(text) && !path.endsWith("WorkbenchSurface.tsx")) {
+				violations.push(`${path}: fixed`);
+			}
 			if (text.includes("createPortal")) violations.push(`${path}: createPortal`);
-			if (/z-\[2147483647\]/.test(text)) violations.push(`${path}: max z-index`);
 			if (text.includes("data-mahua-overlay")) violations.push(`${path}: overlay marker`);
 		}
 		expect(violations).toEqual([]);
-		// 整页那条路必须真的存在，且是宿主给的：面板态的按钮打开 workspace view。
+
 		const surface = read("src/features/workbench/components/WorkbenchSurface.tsx");
-		expect(surface).toContain("openWorkspaceView");
-		expect(surface).toContain("openActivityTab");
+		// 同一个根节点在两种形态之间只换定位：不另挂一份，页面里的局部状态因此不会丢。
+		expect(surface).toContain("fullscreen ? \"fixed inset-0 z-[60]\" : \"h-full\"");
+		expect(surface).toContain("data-fullscreen={fullscreen ? \"true\" : \"false\"}");
+		// 覆盖整窗后宿主的窗口控制键被盖住，所以必须有一条键盘退路。
+		expect(surface).toContain('event.key === "Escape"');
+		// 宿主自己的位置 API 一个都不用：它们做不到「只有插件」（注释里的名字不算）。
+		const code = surface.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+		expect(code).not.toContain("openWorkspaceView");
+		expect(code).not.toContain("openActivityTab");
 	});
 
-	it("registers two shapes of one interface: an activity tab and a host workspace view", () => {
+	it("registers exactly one host shape: an activity tab, and nothing in the sidebar", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		const view = read("src/studio-view.ts");
-		// 同一张界面注册两次形态，互为目的地：面板里点「满屏」去 workspace view，
-		// 整页里点「收回」回活动面板。两个 id 相同、都在 studio-ids 里定死。
+		// 只注册活动面板标签。从前还注册过一个工作区视图，它的副作用是宿主管家侧栏里会多一条
+		// 「麻花小说网」，而它又做不到「只有插件」——两头不讨好，所以整条注册连文件一起删了。
 		expect(entry).toContain("registerStudioTab(ctx)");
-		expect(entry).toContain("registerStudioView(ctx)");
+		expect(entry).not.toContain("registerStudioView");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
-		expect(view).toContain("ctx.ui.registerWorkspaceView(");
 		// fail-closed：没声明的场景下一个都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
-		// 默认就上栏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
+		// 默认就上欏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
 		expect(tab).toContain("component: WorkbenchMount");
-		// `sidebar: true`：宿主会把 `false` 改写成 `/settings/extensions?view=…`，那不是这张界面。
-		// 侧栏条目是进入整页的正规入口。
-		expect(view).toContain("sidebar: true");
-		expect(view).toMatch(/id: STUDIO_VIEW_ID/);
-		expect(view).toMatch(/surface: "page"/);
-		// 两个形态共用一个 id，切换时落在同一张界面上。
+		// 常量只剩一个：没有第二个命名空间，就不必再写两份同串常量。
 		const ids = read("src/studio-ids.ts");
-		expect(ids).toContain("STUDIO_TAB_ID = \"studio\"");
-		expect(ids).toContain("STUDIO_VIEW_ID = \"studio\"");
+		expect(ids).toContain('STUDIO_TAB_ID = "studio"');
+		expect(ids).not.toContain("STUDIO_VIEW_ID");
 	});
 
 	it("only asks for the slot permissions it actually uses", () => {
@@ -388,12 +397,12 @@ describe("visual language stays on host tokens", () => {
 		expect(permissions).toEqual([...permissions].sort());
 		const sources = SOURCE_FILES.map(read).join("\n");
 		expect(sources).toContain(".registerActivityTab(");
-		// 「声明的 slot 权限」必须等于「真的注册过的那几个」：多一个就是白要，
-		// 少一个则在宿主里静默 noop（缺权限 = warn+noop）。
-		expect(sources).toContain(".registerWorkspaceView(");
 		expect(sources).toContain(".registerTurnCard(");
+		// 「声明的 slot 权限」必须等于「真的注册过的那几个」：多一个就是白要，
+		// 少一个则在宿主里静默 noop（缺权限 = warn+noop）。工作区视图删了，权限也一并还回去。
+		expect(sources).not.toContain(".registerWorkspaceView(");
 		const declared = permissions.filter((item) => item.startsWith("ui.slot."));
-		expect(declared).toEqual(["ui.slot.activity-tab", "ui.slot.turn-card", "ui.slot.workspace-view"]);
+		expect(declared).toEqual(["ui.slot.activity-tab", "ui.slot.turn-card"]);
 		expect(sources).not.toContain(".registerToolCallSlot(");
 		expect(sources).not.toContain(".registerNewSessionContext(");
 	});
@@ -492,20 +501,14 @@ describe("the plugin stands alone (ADR 0010)", () => {
 		expect(ids.filter((id) => !id.startsWith("mahua-"))).toEqual([]);
 	});
 
-	it("routes the conversation bridge through one hook instead of ad-hoc session calls", () => {
-		// 「跳到侧栏对话」只改焦点。宿主没有「聚焦侧栏」的 API；`insertText("")` 会清掉
-		// 用户刚打的草稿，`createSession` 会另开一段对话——两样都不能做，所以别处不许碰 conversation。
+	it("never reaches into the conversation from the workbench", () => {
+		// 从前这里守着一个「跳到侧栏对话」的 hook：它只能扫 DOM 找输入框（宿主的“聚焦侧栏”
+		// API 不存在），`insertText("")` 会清掉用户刚打的草稿、`createSession` 会另开一段对话。
+		// hook 已删，但边界还得看着：工作台永远不发指令、不碰对话。
 		const callers = SOURCE_FILES.filter((path) =>
 			/ctx\.conversation\.|conversation\.(?:createSession|sendPrompt|insertText)/.test(read(path)),
 		);
 		expect(callers).toEqual([]);
-		// 只看代码，不看注释：注释里写着「不调 sendPrompt」并不等于真的没调。
-		const reveal = read("src/features/workbench/hooks/use-team-reveal.ts")
-			.replace(/\/\*[\s\S]*?\*\//g, "")
-			.replace(/\/\/.*$/gm, "");
-		expect(reveal).toContain('[contenteditable="true"]');
-		expect(reveal).not.toContain("sendPrompt");
-		expect(reveal).not.toContain("insertText");
 	});
 
 	it("asks for exactly the permissions the surfaces need", () => {
@@ -523,10 +526,9 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.tools.register",
 				"storage.read",
 				"storage.write",
-				// 两种形态一张界面：活动面板标签 + 宿主 workspace view；落章卡片读对话的 turn 槽。
+				// 一个宿主形状：活动面板标签；落章卡片读对话的 turn 槽。
 				"ui.slot.activity-tab",
 				"ui.slot.turn-card",
-				"ui.slot.workspace-view",
 				"workspace.read",
 			].sort(),
 		);
@@ -591,10 +593,8 @@ describe("the workbench frames stay honest about the domain", () => {
 		const mount = read("src/features/workbench/components/WorkbenchMount.tsx");
 		expect(mount).toContain("useStudioRuntimeReady()");
 		expect(mount).not.toContain("getStudioRuntime()");
-		// 两个入口只允许穿过同一道门：各写一份守卫，就必然有一份写错。
+		// 唯一入口穿同一道门：多写一份守卫，就必然有一份写错。
 		expect(read("src/studio-tab.ts")).toContain("component: WorkbenchMount");
-		expect(read("src/studio-view.ts")).toContain("createElement(WorkbenchMount, { surface: \"page\" })");
-		expect(read("src/studio-view.ts")).not.toContain("WorkbenchSurface");
 		// 轮询到就位：只在启动那一刻看一眼，会让「宿主早于 activate 渲染」永久空白。
 		const retry = read("src/features/workbench/hooks/use-studio-runtime-ready.ts");
 		expect(retry).toContain("tryGetStudioRuntime()");
@@ -632,17 +632,21 @@ describe("the workbench frames stay honest about the domain", () => {
 		expect(skeleton).not.toContain("getStudioRuntime()");
 	});
 
-	it("puts the fullscreen door at the rail foot and keeps it reachable when collapsed", () => {
-		// 全屏 / 退出全屏是「换宿主位置」，不是覆盖层。窄面板（<720px）里报头按钮被收起，
-		// 所以竖栏底部那份才是常驻入口；收起成图标列时它仍要占一行。
+	it("puts the fullscreen door in the masthead, where every page can reach it", () => {
+		// 全屏现在是外壳级能力，所以门必须挂在报头右槽：它不随页面变，bare 页（运行台 / 激活页）
+		// 没有竖栏也能到。竖栏底部则一律不带描边按钮（收纳态尤其碎）。
+		const masthead = read("src/features/workbench/components/shell/StudioMasthead.tsx");
+		expect(masthead).toContain('t("window.fullscreen")');
+		expect(masthead).toContain('t("window.exitFullscreen")');
+		// 报头兼作标题栏：少一个 no-drag，里面的键就点不动。
+		expect(masthead).toContain("mahua-drag");
+		const css = read("src/style.css");
+		expect(css).toMatch(/\.mahua-drag[\s\S]*?-webkit-app-region: drag;/);
+		expect(css).toMatch(/\.mahua-drag :where\(button[\s\S]*?-webkit-app-region: no-drag;/);
+		// 窄栏底部不再有「换位置」与「跳对话」两扇门。
 		const rail = read("src/features/workbench/components/shell/StudioRail.tsx");
-		expect(rail).toContain("onSwapSurface");
-		expect(rail).toContain('t("window.fullscreen")');
-		expect(rail).toContain('t("window.toTab")');
-		const surface = read("src/features/workbench/components/WorkbenchSurface.tsx");
-		// 非 bare 页把报头右槽让给同步信息，门在竖栏；bare 页没有竖栏，才回落到报头。
-		expect(surface).toContain("isBarePage(route.page) ? surfaceButton : undefined");
-		expect(surface).toContain("surface,\n\t\t\t\tonSwapSurface,");
+		expect(rail).not.toContain("revealTeam");
+		expect(rail).not.toContain("onSwapSurface");
 	});
 
 

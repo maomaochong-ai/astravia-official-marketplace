@@ -18,17 +18,26 @@ import { StudioRail, type StudioRailProps } from "./StudioRail";
  * 窄到 640px 以下（活动面板拖到最小）时，托底的 12px 四周留白收成 8px、纸面圆角收小一档：
  * 宽度已经很紧，再留一圈装饰性空边，正文就只剩几行。阈值与窄栏自动收起是同一个值，
  * 这样"竖栏收成图标列"与"主区让出宽度"同时发生，不会一半收一半不收。
+ *
+ * 全屏那一档只改外层的定位（由 `WorkbenchSurface` 决定），这里只负责把报头变成可拖拽的
+ * 标题栏、并让左侧让开 mac 的红绿灯——版面结构一点不变，所以两种形态之间不会跳。
  */
 export function StudioShell({
 	active,
-	right,
+	fullscreen = false,
+	onToggleFullscreen,
+	trafficLights = false,
 	bare = false,
 	sync,
 	rail,
 	children,
 }: {
 	active: WorkbenchPage;
-	right?: React.ReactNode;
+	/** 当前是否已经是覆盖整窗的形态。 */
+	fullscreen?: boolean;
+	onToggleFullscreen?: () => void;
+	/** 需要给系统窗口按钮让位（mac 全屏）。 */
+	trafficLights?: boolean;
 	/** 是否收起窄栏：激活页与运行台自己就是整张纸。 */
 	bare?: boolean;
 	sync?: MastheadSync;
@@ -39,7 +48,13 @@ export function StudioShell({
 
 	return (
 		<div className="@container flex h-full w-full flex-col overflow-hidden bg-canvas font-sans text-ink antialiased">
-			<StudioMasthead section={t(pageTitleKey(active))} right={right} sync={sync} />
+			<StudioMasthead
+				section={t(pageTitleKey(active))}
+				sync={sync}
+				fullscreen={fullscreen}
+				onToggleFullscreen={onToggleFullscreen}
+				trafficLights={trafficLights}
+			/>
 			<div className="flex min-h-0 flex-1 items-stretch gap-2 pb-3 pl-2 pr-3 pt-3 @max-[640px]:gap-1.5 @max-[640px]:pb-2 @max-[640px]:pl-1.5 @max-[640px]:pr-2 @max-[640px]:pt-2">
 				{!bare && rail ? <StudioRail {...rail} active={active} /> : null}
 				<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-surface shadow-raise @max-[640px]:rounded-panel">

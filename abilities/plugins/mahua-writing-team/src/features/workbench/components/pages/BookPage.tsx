@@ -39,11 +39,9 @@ const TICK_TONE: Record<string, string> = {
 export function BookPage({
 	data,
 	onNavigate,
-	onRevealTeam,
 }: {
 	data: StudioState;
 	onNavigate: (page: WorkbenchPage, chapter?: number) => void;
-	onRevealTeam: () => void;
 }) {
 	const t = useTranslator();
 	const events = useConsoleTimeline();
@@ -147,7 +145,6 @@ export function BookPage({
 						hook={plan?.hook ?? ""}
 						writing={writing}
 						elapsed={record ? t("book.wordCount", { words: record.words }) : ""}
-						onRevealTeam={onRevealTeam}
 					/>
 
 					<div className="mt-4 rounded-panel bg-inset/70 p-3">
@@ -187,7 +184,6 @@ export function BookPage({
 					</div>
 				</div>
 			</div>
-
 			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3 @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink">
 				<section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
 					<div className="flex items-baseline gap-2 px-4 pb-2 pt-3">
@@ -204,7 +200,7 @@ export function BookPage({
 						) : (
 							book.volumes.map((entry, index) => (
 								<div key={entry.id} className="mb-2">
-									<div className="px-2 py-1 text-[10px] font-semibold tracking-wide text-ink-soft">
+									<div className="truncate px-2 py-1 text-[10px] font-semibold tracking-wide text-ink-soft">
 										{t("book.volume", { index: index + 1 })} · {entry.title}
 									</div>
 									{entry.arcs.map((item) => {

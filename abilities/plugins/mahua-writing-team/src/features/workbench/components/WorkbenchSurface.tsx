@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
-import { getStudioRuntime } from "../../../plugin-context.js";
-import { STUDIO_TAB_ID, STUDIO_VIEW_ID } from "../../../studio-ids.js";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
-import { useHostMode } from "../hooks/use-host-mode";
 import { useNarrowSurface } from "../hooks/use-narrow-surface";
 import { useRailCollapsed } from "../hooks/use-rail-collapsed";
 import { useStudioState } from "../hooks/use-studio-state";
-import { useTeamReveal } from "../hooks/use-team-reveal";
 import { useTranslator } from "../hooks/use-translator";
 import { useWorkbenchRoute } from "../hooks/use-workbench-route";
 import {
@@ -39,34 +35,36 @@ const CLOCK_MS = 30_000;
  * 工作台的装配层：七帧只在这里被选一次。运行时一定在（入口已经挡过一道）。
  *
  * 它自己不做任何事——路由在 `use-workbench-route`，事实在 `use-studio-state`，
- * 团队的门在 `use-team-reveal`，事件流在 `use-console-timeline`。这里只把四样东西接起来，
- * 唯一的行为是「有新的落盘事件就重读一次」：同步只有这一个方向。
+ * 事件流在 `use-console-timeline`。这里只把几样东西接起来，唯一的行为是「有新的落盘事件就
+ * 重读一次」：同步只有这一个方向。
  *
- * 「放大」= 换一个宿主位置，不是盖一层自己的浮层。同一张工作台注册了两次形态：
- * 活动面板里的一张标签页（窄，跟着对话），以及一个工作区视图（宽，占满主内容区）。
- * 两个按钮就在这两者之间来回切，宿主负责排版，插件从不把自己贴到视口上、也不 portal
- * 到 body——那会盖住宿主的侧栏与标题栏，面板宽度一变就撑坏。
+ * 「全屏」是**同一棵树的定位切换**，不是第二个实例、也不是第二个宿主注册：
+ * 平时根节点是面板里的一块（`h-full`），点全屏后同一个根节点换成 `fixed inset-0`，盖住
+ * 宿主窗口。这样做的三条理由，都是实测出来的：
  *
- * 所以「全屏」能做到的上限就是宿主的工作区视图：它是一条与内置页平级的路由，主内容区
- * 归它独占，但**宿主侧边栏仍在**——插件既没有收侧栏的 API，样式表也被 `@scope` 关在
- * 自己子树里，连选择器都碰不到宿主 chrome。这一点不靠插件能绕过去，只能说清楚。
+ * 1. 宿主工作区视图（`openWorkspaceView`）做不到「只有插件」——宿主的路由文件把它渲染在
+ *    应用外壳里，侧栏与页头都在，SDK 也没有隐藏侧栏或全屏窗口的 API；
+ * 2. 插件 CSS 活在 `@scope ([data-astravia-plugin-root=<id>])` 里，`:root` 级别的选择器碰不到
+ *    宿主 chrome，所以唯一能覆盖整窗的办法就是让自己变成一块固定定位的画布；
+ * 3. 为什么不是 `createPortal` 到 `body`：那要自己再造一个作用域根，等于把 `@scope` 的根
+ *    复制一份（Tailwind 类挂在根上会被静默丢弃，另一个插件已经踩过）；而 `fixed` 不受祖先
+ *    `overflow: hidden` 裁剪——宿主的挂载点只有 `overflow-hidden`，没有 `transform` /
+ *    `filter` / `contain`，所以固定定位仍然相对视口，不需要换父节点。
  *
- * `surface` 只决定「从哪儿回哪儿去」：面板形态的按钮是「放大到整页」，整页形态的按钮是
- * 「退出全屏」。后者不是关掉一张卡——工作区视图是一条路由，得真地退回去，否则按下去什么都
- * 不会发生（从前只调 `openActivityTab`，它写的是面板状态，不碰路由，于是点点没反应）。
- * 其余一切两态共用。
+ * 代价写在明处：覆盖整窗后宿主的窗口控制键被盖住，所以报头在全屏时是拖拽区，Esc 与报头上的
+ * 按钮都能退出。这是「模态全屏」的常规取舍（VS Code 也是这样）。
  */
-export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "page" }) {
-	const { ctx } = getStudioRuntime();
+export function WorkbenchSurface() {
 	const t = useTranslator();
-	const hostMode = useHostMode();
 	const data = useStudioState();
 	const { route, navigate } = useWorkbenchRoute();
 	const rail = useRailCollapsed();
 	const { ref: surfaceRef, narrow } = useNarrowSurface();
-	const reveal = useTeamReveal();
 	const events = useConsoleTimeline();
 	const [now, setNow] = useState(() => Date.now());
+	const [fullscreen, setFullscreen] = useState(false);
+	// mac 的红绿灯由系统画在网页内容之上，全屏时得给报头让出左侧那一段。
+	const [mac] = useState(() => document.documentElement.dataset.platform === "mac");
 
 	const landed = lastLandedStudioEvent(events);
 	const landedId = landed?.id ?? null;
@@ -85,6 +83,15 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 		return () => clearTimeout(timer);
 	}, [landedId, refresh]);
 
+	useEffect(() => {
+		if (!fullscreen) return;
+		const onKey = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setFullscreen(false);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [fullscreen]);
+
 	const book = data.book;
 	const chapter = book?.progress.currentChapter ?? 0;
 	const arc = book ? arcOf(book, chapter) : null;
@@ -96,118 +103,90 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 		navigate(page, target);
 	};
 
-	const onSwapSurface = () => {
-		if (surface === "page") {
-			// 先把面板标签挂上（退出后它就在对话右侧），再真的离开这条工作区路由。
-			ctx.ui.openActivityTab(STUDIO_TAB_ID);
-			// 工作区视图是宿主 push 进来的一条路由：`history.length` 数的是整个会话的历史，
-			// 深链直达时它仍然大于 1，退回去会把人送出应用。宿主的 react-router 把栈位置写在
-			// `history.state.idx` 上，只有它明确大于 0 才说明「上一页在本应用里」。
-			const depth = (window.history.state as { idx?: number } | null)?.idx;
-			if (typeof depth === "number" && depth > 0) window.history.back();
-			else ctx.ui.notify({ message: t("window.leftInPanel") });
-			return;
-		}
-		ctx.ui.openWorkspaceView(STUDIO_VIEW_ID);
-	};
-
-	const swapLabel = surface === "page" ? t("window.toTab") : t("window.fullscreen");
-	const swapIcon = surface === "page" ? "icon-[lucide--panel-right-close]" : "icon-[lucide--maximize-2]";
-
-	const surfaceButton = (
-		<button
-			type="button"
-			onClick={onSwapSurface}
-			title={swapLabel}
-			aria-label={swapLabel}
-			className="flex h-6 items-center gap-1.5 rounded-control px-1.5 text-[10px] text-ink-soft hover:bg-raised hover:text-ink"
-		>
-			<span className={`${swapIcon} size-3.5 shrink-0`} />
-			<span className="hidden @[720px]:inline">{swapLabel}</span>
-		</button>
-	);
-
-	const shell = (
-		<StudioShell
-			active={route.page}
-			// 运行台与激活页没有竖栏，换位那扇门只在报头有位置；其余页面把它放在竖栏底部，
-			// 与设计稿「底边放门、中段放导航」的分工一致，也免得窄面板里两面都找不到。
-			right={isBarePage(route.page) ? surfaceButton : undefined}
-			bare={isBarePage(route.page)}
-			sync={
-				isBarePage(route.page)
-					? undefined
-					: {
-							writer: landed?.actor ?? t("sync.team"),
-							doing: landed ? t(landed.textKey, landed.textParams) : t("sync.idle"),
-							// 没提交过任何一章时，磁盘上确实没有 `chapters/0.md`，别显示一个不存在的文件。
-							file: frontier > 0 ? `chapters/${frontier}.md` : "chapters/",
-							words: book ? `${formatCount(committedCount(book))} / ${book.targetChapters}` : "—",
-							ago: landed ? elapsedText(elapsedSince(landed.at, now), t) : t("sync.never"),
-							queue: t("sync.events", { count: events.length }),
-						}
-			}
-			rail={{
-				surface,
-				onSwapSurface,
-				bookTitle: book?.title ?? t("rail.noBook"),
-				cover: coverSeed(book?.title ?? t("rail.noBook")),
-				stage: book && arc ? `${arc.title} · ${t("rail.chapter", { chapter })}` : t("rail.noBook"),
-				percent: book ? percent(committedCount(book), book.targetChapters) : 0,
-				writing: writing
-					? {
-							writer: writing.actor ?? t("sync.team"),
-							elapsed: elapsedText(elapsedSince(writing.at, now), t),
-							line: writing.chapter
-								? `${writing.chapter} · ${t(writing.textKey, writing.textParams)}`
-								: t(writing.textKey, writing.textParams),
-						}
-					: null,
-				live: events.length > 0,
-				credential: {
-					ok: data.entitlement.status === "active",
-					label: t(`activation.status.${data.entitlement.status}`),
-				},
-				collapsed: rail.collapsed || narrow,
-				autoCollapsed: narrow,
-				onToggleCollapsed: rail.toggle,
-				onNavigate: go,
-				onRevealTeam: reveal,
-			}}
-		>
-			{data.loading ? (
-				<div className="flex min-h-0 flex-1 items-center justify-center text-micro text-ink-faint">
-					{t("window.loading")}
-				</div>
-			) : data.error !== null ? (
-				<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-10 text-center">
-					<span className="text-body-sm font-semibold text-ink">{t("window.error")}</span>
-					<span className="max-w-[520px] break-words text-[10px] leading-4 text-ink-soft">{data.error}</span>
-					<button
-						type="button"
-						onClick={data.refresh}
-						className="mt-2 flex h-7 items-center rounded-control border border-line px-3 text-[10px] text-ink"
-					>
-						{t("window.retry")}
-					</button>
-				</div>
-			) : (
-				<>
-					{route.page === "shelf" && <ShelfPage data={data} onNavigate={go} onRevealTeam={reveal} />}
-					{route.page === "library" && <LibraryPage data={data} onNavigate={go} />}
-					{route.page === "book" && <BookPage data={data} onNavigate={go} onRevealTeam={reveal} />}
-					{route.page === "reader" && <ReaderPage data={data} onNavigate={go} />}
-					{route.page === "ledger" && <LedgerPage data={data} onNavigate={go} />}
-					{route.page === "console" && <ConsolePage data={data} onNavigate={go} onRevealTeam={reveal} />}
-					{route.page === "activation" && <ActivationPage data={data} onNavigate={go} />}
-				</>
-			)}
-		</StudioShell>
-	);
-
 	return (
-		<div ref={surfaceRef} className="mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden" data-mahua-mode={hostMode}>
-			{shell}
+		<div
+			ref={surfaceRef}
+			className={`mahua-root flex min-h-0 w-full flex-col overflow-hidden ${
+				fullscreen ? "fixed inset-0 z-[60]" : "h-full"
+			}`}
+			data-fullscreen={fullscreen ? "true" : "false"}
+		>
+			<StudioShell
+				active={route.page}
+				fullscreen={fullscreen}
+				onToggleFullscreen={() => setFullscreen((value) => !value)}
+				trafficLights={fullscreen && mac}
+				bare={isBarePage(route.page)}
+				sync={
+					isBarePage(route.page)
+						? undefined
+						: {
+								writer: landed?.actor ?? t("sync.team"),
+								doing: landed ? t(landed.textKey, landed.textParams) : t("sync.idle"),
+								// 没提交过任何一章时，磁盘上确实没有 `chapters/0.md`，别显示一个不存在的文件。
+								file: frontier > 0 ? `chapters/${frontier}.md` : "chapters/",
+								words: book ? `${formatCount(committedCount(book))} / ${book.targetChapters}` : "—",
+								ago: landed ? elapsedText(elapsedSince(landed.at, now), t) : t("sync.never"),
+								queue: t("sync.events", { count: events.length }),
+							}
+				}
+				rail={
+					isBarePage(route.page)
+						? undefined
+						: {
+								bookTitle: book?.title ?? t("rail.noBook"),
+								cover: coverSeed(book?.title ?? t("rail.noBook")),
+								stage: book && arc ? `${arc.title} · ${t("rail.chapter", { chapter })}` : t("rail.noBook"),
+								percent: book ? percent(committedCount(book), book.targetChapters) : 0,
+								writing: writing
+									? {
+											writer: writing.actor ?? t("sync.team"),
+											elapsed: elapsedText(elapsedSince(writing.at, now), t),
+											line: writing.chapter
+												? `${writing.chapter} · ${t(writing.textKey, writing.textParams)}`
+												: t(writing.textKey, writing.textParams),
+										}
+									: null,
+								live: events.length > 0,
+								credential: {
+									ok: data.entitlement.status === "active",
+									label: t(`activation.status.${data.entitlement.status}`),
+								},
+								collapsed: rail.collapsed || narrow,
+								autoCollapsed: narrow,
+								onToggleCollapsed: rail.toggle,
+								onNavigate: go,
+							}
+				}
+			>
+				{data.loading ? (
+					<div className="flex min-h-0 flex-1 items-center justify-center text-micro text-ink-faint">
+						{t("window.loading")}
+					</div>
+				) : data.error !== null ? (
+					<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1 px-10 text-center">
+						<span className="text-body-sm font-semibold text-ink">{t("window.error")}</span>
+						<span className="max-w-[520px] break-words text-[10px] leading-4 text-ink-soft">{data.error}</span>
+						<button
+							type="button"
+							onClick={data.refresh}
+							className="mt-2 flex h-7 items-center rounded-control border border-line px-3 text-[10px] text-ink"
+						>
+							{t("window.retry")}
+						</button>
+					</div>
+				) : (
+					<>
+						{route.page === "shelf" && <ShelfPage data={data} onNavigate={go} />}
+						{route.page === "library" && <LibraryPage data={data} onNavigate={go} />}
+						{route.page === "book" && <BookPage data={data} onNavigate={go} />}
+						{route.page === "reader" && <ReaderPage data={data} onNavigate={go} />}
+						{route.page === "ledger" && <LedgerPage data={data} onNavigate={go} />}
+						{route.page === "console" && <ConsolePage data={data} onNavigate={go} />}
+						{route.page === "activation" && <ActivationPage data={data} onNavigate={go} />}
+					</>
+				)}
+			</StudioShell>
 		</div>
 	);
 }

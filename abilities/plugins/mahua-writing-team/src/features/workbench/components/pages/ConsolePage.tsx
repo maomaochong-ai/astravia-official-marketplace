@@ -37,11 +37,9 @@ const STATUS_TONE: Record<string, string> = {
 export function ConsolePage({
 	data,
 	onNavigate,
-	onRevealTeam,
 }: {
 	data: StudioState;
 	onNavigate: (page: WorkbenchPage, chapter?: number) => void;
-	onRevealTeam: () => void;
 }) {
 	const t = useTranslator();
 	const events = useConsoleTimeline();
@@ -100,12 +98,12 @@ export function ConsolePage({
 						) : (
 							book.volumes.map((volume, index) => (
 								<div key={volume.id} className="mb-1.5">
-									<div className="px-1 py-1 text-[10px] font-semibold tracking-wide text-ink-soft">
+									<div className="truncate px-1 py-1 text-[10px] font-semibold tracking-wide text-ink-soft">
 										{t("book.volume", { index: index + 1 })} · {volume.title}
 									</div>
 									{volume.arcs.map((item) => (
 										<div key={item.id} className="mb-1">
-											<div className="px-1 text-[9.5px] text-ink-faint">
+											<div className="truncate px-1 text-[9.5px] text-ink-faint">
 												{item.title} · {item.from}–{item.to}
 											</div>
 											<ul className="mt-0.5">
@@ -280,14 +278,6 @@ export function ConsolePage({
 								</li>
 							))}
 						</ul>
-						<button
-							type="button"
-							onClick={onRevealTeam}
-							className="mt-2 flex h-7 w-full items-center justify-center gap-1.5 rounded-control border border-line-strong text-[10px] font-medium text-ink transition-colors hover:bg-inset"
-						>
-							<span className="icon-[lucide--panel-right-open] size-3" />
-							{t("rail.revealTeam")}
-						</button>
 					</section>
 
 					<section className="rounded-sheet bg-raised p-3 shadow-raise">

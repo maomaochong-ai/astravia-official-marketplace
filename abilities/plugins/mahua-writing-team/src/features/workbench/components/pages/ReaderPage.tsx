@@ -56,7 +56,7 @@ export function ReaderPage({
 				back={{ label: t("reader.back"), onBack: () => onNavigate("book") }}
 				title={t("reader.title", { chapter })}
 				meta={
-					<span className="truncate text-body-sm text-ink-soft">
+					<span className="min-w-0 truncate text-body-sm text-ink-soft">
 						{record?.title ?? t("book.briefNoTitle")}
 						{arc ? ` · ${arc.title}` : ""}
 					</span>

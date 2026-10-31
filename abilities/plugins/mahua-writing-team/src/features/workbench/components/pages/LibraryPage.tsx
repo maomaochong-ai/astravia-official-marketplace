@@ -153,8 +153,10 @@ export function LibraryPage({
 				}
 			/>
 
-			{/* 一条筛选带：题材 / 状态 / 篇幅 横着排，排序钉在右端；不占地，不另开一栏 */}
-			<div className="mt-4 flex h-10 shrink-0 items-center gap-2 overflow-hidden rounded-control border border-line bg-raised px-3">
+			{/* 一条筛选带：题材 / 状态 / 篇幅 横着排，排序钉在右端。
+			 * 它不锁高也不再 `overflow-hidden`：面板拖到 500px 时三个分组放不下，从前会被硬生生裁掉
+			 * 半个 chip（看着像渲染错位）。宁可让带子长成两行，也不让某一项只剩一半。 */}
+			<div className="mt-4 flex min-h-10 shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 rounded-control bg-raised px-3 py-2 shadow-raise">
 				<span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
 					{t("library.filter.genre")}
 				</span>
@@ -227,7 +229,7 @@ export function LibraryPage({
 			</div>
 
 			{/* 满宽台账：卡头只读提示，表头钉住，行内部滚，卡尾页码 */}
-			<section className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-line bg-raised">
+			<section className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel bg-raised shadow-raise">
 				<div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-3.5 py-2">
 					{writing ? (
 						<>
@@ -259,7 +261,7 @@ export function LibraryPage({
 								<EmptySheet icon="icon-[lucide--layers]" title={t("library.empty")} />
 							</div>
 						) : (
-							<ul className="mahua-scroll min-h-0 flex-1 divide-y divide-line-soft overflow-y-auto px-2">
+							<ul className="mahua-scroll min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-1.5">
 								{rows.map((entry) => {
 									const ago = elapsedSince(entry.updatedAt, now);
 									const done = percent(entry.committedCount, entry.targetChapters);
@@ -271,7 +273,7 @@ export function LibraryPage({
 													data.selectBook(entry.id);
 													onNavigate("book");
 												}}
-												className={`group grid h-full w-full ${COLUMNS} items-center gap-3 rounded-control px-2 text-left transition-colors hover:bg-inset/60`}
+												className={`group grid h-full w-full ${COLUMNS} items-center gap-3 rounded-control px-3 text-left transition-colors hover:bg-inset/70`}
 											>
 												<span className="flex min-w-0 items-center gap-2.5">
 													<Cover {...coverSeed(entry.title)} size="thumb" />
@@ -319,7 +321,7 @@ export function LibraryPage({
 						)}
 					</div>
 
-				<div className="flex shrink-0 items-center gap-3 border-t border-line px-4 py-2.5 text-micro text-ink-soft">
+				<div className="flex shrink-0 items-center gap-3 border-t border-line-soft px-4 py-2.5 text-micro text-ink-soft">
 					<div className="flex items-center gap-1">
 						<button
 							type="button"
@@ -341,7 +343,9 @@ export function LibraryPage({
 							<span className="icon-[lucide--chevron-right] size-3.5" />
 						</button>
 					</div>
-					<span className="ml-auto text-[10px] text-ink-faint">{t("library.footer", { size: PAGE_SIZE })}</span>
+					<span className="ml-auto min-w-0 truncate text-[10px] text-ink-faint">
+						{t("library.footer", { size: PAGE_SIZE })}
+					</span>
 				</div>
 			</section>
 		</div>

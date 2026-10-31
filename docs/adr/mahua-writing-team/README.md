@@ -1,6 +1,6 @@
 # 麻花小说网（`mahua-writing-team`）决策记录
 
-现行结论是 **十篇**，在 [`current/`](./current/) 下。`0001`–`0029` 原样保留，作为历史档案——不删除、不改名、不重新编号。
+现行结论是 **十篇**，在 [`current/`](./current/) 下。`0001`–`0029` 原样保留，作为历史档案——不删除、不改名、不重新编号；`0030`、`0031` 是这两轮的现行补篇。
 
 ## 怎么读
 
@@ -17,11 +17,11 @@
 | 01 | [引擎与路由](./current/01-engine-and-routing.md) | 进度只由 `routeNovel` 算，写操作只有一个入口 | `domain/novel-flow.ts`、`domain/novel-progress.ts`、`application/studio-service.ts` |
 | 02 | [智能体与团队](./current/02-agents-and-team.md) | 四个角色和一支团队都是清单声明，不是代码分支 | `plugin.json`（`agent` 段）、`src/studio-members.ts`、`agent/**` |
 | 03 | [工具面与能力对照](./current/03-tool-surface-and-parity.md) | 36 个工具，24 个过门禁；对照关系由 `PARITY` 表守 | `tools/**`、`application/tool-{schemas,output}.ts`、`test/manifest-guards.test.ts` |
-| 04 | [对话侧与活动流](./current/04-conversation-bridge-and-feed.md) | 不造聊天界面，只做行内行、上下文区与只读事件流 | `studio-view.ts`、`hooks/use-team-reveal.ts`、`hooks/register-console-feed.ts` |
+| 04 | [对话侧与活动流](./current/04-conversation-bridge-and-feed.md) | 不造聊天界面，只做行内行、上下文区与只读事件流 | `hooks/register-console-feed.ts`、`console-timeline/**` |
 | 05 | [事实层与存储](./current/05-fact-layer-and-storage.md) | 书是文件，一次提交同批发布，`revision` 是并发基线 | `repository/**`、`domain/novel-progress.ts` |
 | 06 | [长篇滚动与上下文](./current/06-rolling-plan-and-context.md) | 上下文包是滚动的锚，伏笔台账只报告不自动改 | `domain/{threads,context-pack,related-chapters}.ts` |
 | 07 | [门禁与凭证](./current/07-entitlement.md) | 离线验签，读永不挡，写全挡 | `entitlement/**` |
-| 08 | [入口与界面结构](./current/08-surfaces-and-entry.md) | 双入口一份代码；报头 + 竖栏 + 一张纸，滚动收进圆角 | `studio-tab.ts`、`studio-view.ts`、`features/workbench/**` |
+| 08 | [入口与界面结构](./current/08-surfaces-and-entry.md) | 单入口一份代码；报头 + 竖栏 + 一张纸，滚动收进圆角 | `studio-tab.ts`、`features/workbench/**` |
 | 09 | [视觉语言](./current/09-visual-language.md) | 纸：五个明度靠阴影分层，朱砂是独立令牌，墨底按钮 | `style.css`、`features/**` 的类名 |
 | 10 | [包、内容与发布](./current/10-package-content-and-release.md) | 自足、身份一套、发布顺序固定 | `plugin.json`、`package.json`、`agent/**`、`scripts/**` |
 
@@ -35,7 +35,7 @@
 | --- | --- | --- | --- |
 | [0001](./0001-port-deterministic-engine-as-plugin-domain.md) | 移植确定性引擎 | 现行 | 01 |
 | [0002](./0002-agents-and-team-as-manifest-declarations.md) | 角色与团队走清单 | 现行 | 02 |
-| [0003](./0003-workspace-view-as-primary-surface.md) | 工作区视图为主面 | 已被取代 | 08（0025 起是双入口） |
+| [0003](./0003-workspace-view-as-primary-surface.md) | 工作区视图为主面 | 已被取代 | 08（0025 起双入口，0031 起只留标签页） |
 | [0004](./0004-offline-entitlement-gate.md) | 离线门禁 | 现行 | 07 |
 | [0005](./0005-storage-as-manuscript-ledger.md) | 存储即台账 | 现行 | 05 |
 | [0006](./0006-host-tokens-only-visual-language.md) | 只用宿主令牌 | 现行 | 09 |
@@ -59,19 +59,28 @@
 | [0024](./0024-ui-round-reader-library-covers-and-activation-facts.md) | 阅读字号、封面、激活事实 | 部分现行 | 07（激活事实）+ 09（界面） |
 | [0025](./0025-continue-reads-and-studio-as-activity-tab.md) | 标签页入口 | 现行（含四次补注，最后一次推翻补注三） | 08 |
 | [0026](./0026-design-round-five-surfaces-and-host-tokens.md) | 五层 surface 与令牌 | 部分现行 | 09（令牌）+ 08（层数与滚动已变，见 0030） |
-| [0027](./0027-shell-layer-console-and-rail-degradation.md) | 外壳层与运行台 | 部分现行 | 04（事件流）；§2 竖栏只做导航、§7 外壳只放同步信息已被 0030 推翻 |
+| [0027](./0027-shell-layer-console-and-rail-degradation.md) | 外壳层与运行台 | 部分现行 | 04（事件流）；§2 竖栏只做导航、§7 外壳只放同步信息已被 0030 推翻；换位门已搬到报头（0031） |
 | [0028](./0028-cards-roster-and-activation-design-language.md) | 卡片与成员行语言 | 现行 | 09 |
 | [0029](./0029-paper-language-no-hairlines.md) | 纸面语言，不描边 | 现行 | 09 |
 
 只有两篇跨两个现行文档：`0024`（激活事实进 07、界面进 09）与 `0027`（布局进 08、事件流进 04）。它们本来就是"一次提交里两件不相关的事"，硬塞进一篇会让读者以为激活页和事件流有关系。
 
+## 现行补篇（`0030`–`0031`）
+
+这两篇是现行结论，不归入 `current/` 的十篇，因为它们只覆盖一个层：0030 是版面与滚动层，0031 是入口、全屏与配色。两者都显式写了自己推翻了哪条旧句子。
+
+| ADR | 一句话 | 现在看这篇 |
+| --- | --- | --- |
+| [0030](./0030-layout-round-two-roll-inside-sheet.md) | 滚动收进圆角、竖栏换位门、装配门只留一处 | 08；§2 换位门已被 0031 推翻 |
+| [0031](./0031-fullscreen-and-host-theme.md) | 全屏就是这同一张纸、配色全部从宿主令牌派生 | 08（入口与全屏）+ 09（配色） |
+
 ## 落实与偏差
 
-文档说的和代码做的不一样时，**以代码为准**，并记在这里。基线：**源码版本 0.4.20**（2026-10-31，与版面第二轮 0.4.19 运行内容一致，仅版本号递增）。
+文档说的和代码做的不一样时，**以代码为准**，并记在这里。基线：**源码版本 0.4.21**（2026-10-31，全屏与配色跟随宿主那一轮）。
 
 | 文档说 | 代码做 | 证据 |
 | --- | --- | --- |
-| 0003：工作区视图是唯一主面 | 0.4.12 起双注册：标签页 + 整页视图（0025 补注四） | `src/studio-tab.ts`、`src/studio-view.ts`、`src/index.tsx` |
+| 0003：工作区视图是唯一主面 | 0.4.12 起双注册（标签页 + 整页视图）；0.4.21 起只留标签页（0031 §2：删注册，宿主管家侧栏不再多一条「麻花小说网」） | `src/studio-ids.ts`、`src/index.tsx` |
 | 0025 §2：`initiallyVisible: false`，入口交给「+」可添加池 | 0.4.7 起 `true` | `src/studio-tab.ts` |
 | 0026 §5：五层 surface，到 `ledger` 为止 | 六层（多 `console`，运行台接真事件流） | `src/features/workbench/workbench-pages.ts` |
 | 0026 §5：阅读纸面 `max-w-[672px]` | `max-w-[648px]` | `ReaderPage.tsx` |
@@ -97,7 +106,7 @@
 | `novelwright-architect` / `-writer` / `-editor` / `-arbiter` | `mahua-architect` / `-writer` / `-editor` / `-arbiter` |
 | `novelwright-studio` | `mahua-studio` |
 | `src/features/{library,studio,shared}/**` | `src/features/workbench/**` |
-| `src/studio-surfaces.ts`、`src/studio-workspace-view.ts`、`src/live-feed-hooks.ts` | `src/studio-tab.ts`、`src/studio-view.ts`、`features/workbench/hooks/register-console-feed.ts` |
+| `src/studio-surfaces.ts`、`src/studio-workspace-view.ts`、`src/live-feed-hooks.ts` | `src/studio-tab.ts`（`studio-view.ts` 与 `hooks/use-team-reveal.ts` 已删，见 0031）、`features/workbench/hooks/register-console-feed.ts` |
 | `src/application/live-feed/`、`src/features/studio/live-feed/` | `src/application/console-log/`、`features/workbench/console-timeline/` |
 | `Shell` + `WindowChrome` + `SyncBar` 两层横带 | 单条 `shell/StudioMasthead.tsx`（0027 §8） |
 
@@ -106,9 +115,9 @@
 0.4.10 → 0.4.12 三轮把界面层整体换掉了（`docs/adr/mahua-writing-team/0025`–`0029` 的补注与本节一致）：
 
 - **规模**：旧 `src/features/{library,studio,shared}/**` 删除，`src/features/workbench/**` 成为唯一界面层——`components/pages/{Shelf,Library,Book,Reader,Ledger,Console,Activation}Page.tsx` 七帧 + `components/shell/**` 外壳 + `workbench-{model,pages,feed}.ts`。
-- **入口两个**：标签页 `registerStudioTab`（`studio`）+ 整页视图 `registerStudioView`（`workbench`）。`plugin.json` 的 `ui.slot.*` 权限为 `ui.slot.activity-tab` 与 `ui.slot.workspace-view` 两条。
+- **入口一个**：只剩活动面板标签 `registerStudioTab`（`studio`）。从前那个整页视图注册已删（0031 §2）——它在宿主管家侧栏里多占一条「麻花小说网」，又做不到「只有插件」。`plugin.json` 的 `ui.slot.*` 只剩 `ui.slot.activity-tab` 与 `ui.slot.turn-card`，`ui.slot.workspace-view` 已还回去。
 - **视觉换底**：`src/style.css` 用 `@theme inline`（纸面 21 色、13 档字号、6 档圆角、3 档投影），`.mahua-cover[data-layer]` 切换纸色。
-- **locale 509 键**（en/zh 各，键集完全一致）。
+- **locale 505 键**（en/zh 各，键集完全一致）。
 - **状态**：`npx tsc --noEmit` 0 错，`vitest run` 12 文件 184 例全过（0.4.13 两条版面守卫，0.4.14 七条组件接线，0.4.18 装配门守卫）。
 - **发行**：0.4.12 `2026.10.31-3`（`20bd6f0d…fbda9768`）→ 0.4.13 `2026.10.31-4`（`240c4025…13623390`）
   → 0.4.14 `2026.10.31-5`（`474c125a…4cacc3c61a`），均为 CI 构建的 `mahua-writing-team-<版本>.astraviapkg`。
@@ -119,7 +128,7 @@
 ```bash
 cd abilities/plugins/mahua-writing-team
 npm run check                        # tsc --noEmit
-npm test                             # vitest run（11 个测试文件 / 180 例）
+npm test                             # vitest run（12 个测试文件 / 184 例）
 npm run build                        # 生成手艺库 + vite build
 npm run validate                     # astravia-plugin validate
 ```

@@ -6,26 +6,33 @@
 > [0020](../0020-library-surface-and-default-cover.md)、[0025](../0025-continue-reads-and-studio-as-activity-tab.md)、
 > [0026](../0026-design-round-five-surfaces-and-host-tokens.md)、[0027](../0027-shell-layer-console-and-rail-degradation.md)。
 > 这是覆盖旧 ADR 最多的一篇：八篇讲的是同一件事——人从哪个门进来、进来看到几层。
-> 2026-10-31 版面第二轮落地，三处旧结论已被改写，见文末「被改写的地方」。
+> 2026-10-31 两轮改写：版面第二轮（0030，三处）与全屏 / 配色轮（0031，两处），见文末「被改写的地方」。
 
 ## 一句话
 
-同一个工作台注册两次；进来先报头 + 竖栏 + 一张纸，纸里的三层各自定高。
+只有一个宿主入口（活动面板标签页）；进来先报头 + 竖栏 + 一张纸，纸里的三层各自定高。全屏是这张纸自己铺满整窗。
 
-## 一、入口：一份代码，两个宿主位置
+## 一、入口：只有一枚活动面板标签页
 
 | 宿主位置 | 注册 | id | 形态 |
 | --- | --- | --- | --- |
-| 活动面板标签页 | `registerActivityTab` | `studio` | `surface="panel"`，有竖栏 |
-| 工作区整页视图 | `registerWorkspaceView` | `studio` | `surface="page"`，同样的界面 |
+| 活动面板标签页 | `registerActivityTab` | `studio` | 有竖栏；全屏时由它自己铺满整窗 |
 
-1. **不 portal、不 `fixed inset-0`**。"全屏"是换宿主位置，不是盖一层遮罩。
-2. **`sidebar: true` 是硬要求**。写 `false` 会被宿主改写成 `/settings/extensions?view=…`，
-   打开的是设置页而不是工作台。
-3. **标签页默认上栏**（`initiallyVisible: true`、`removable: true`、`retention: "warm"`），
+1. **只有一个入口。** 从前还注册过一个 workspace view（`registerStudioView`）：它渲染在应用外壳内
+   （侧栏、页头都在），做不到「只有插件」；副作用是宿主管家侧栏里多一条「麻花小说网」。0031 起
+   整条注册连同文件一起删（`src/studio-view.ts`、`studio-ids.ts` 的 `STUDIO_VIEW_ID`、
+   `plugin.json` 的 `ui.slot.workspace-view` 全部消失）。代价是失去深链路由。
+2. **全屏 = 同一个根节点切 `fixed inset-0 z-[60]`**，既不是换宿主位置，也不是 portal。
+   根节点带 `data-fullscreen="true"`，Esc 与报头那枚键都能退。`z-[60]` 压在宿主壳（`z-10…z-50`）
+   之上、宿主弹窗（`z-[100]+`）之下。
+3. **不 portal**：插件 CSS 编在 `@scope ([data-astravia-plugin-root])` 里，portal 出去就落在
+   作用域外，得再造一个不带 class 的根（`display: contents`），Tailwind 类写上去会被静默丢弃；
+   而 `fixed` 本来就不受祖先 `overflow: hidden` 裁剪。更关键的是搬父节点必然卸载重挂，
+   页内 state（书库筛选、阅读字号）会重置。
+4. **标签页默认上栏**（`initiallyVisible: true`、`removable: true`、`retention: "warm"`），
    `scope_use` 显式写全 `["conversation", "project"]`。
-4. **装配门只留一处**：两个入口都挂 `WorkbenchMount`，它先看运行时是否就绪，未就绪给骨架。
-   冷启动点全屏时运行时还没装好——各入口各写一份守卫，已经实证漏写的那份白屏。
+5. **装配门只留一处**：入口挂 `WorkbenchMount`，它先看运行时是否就绪，未就绪给骨架。
+   冷启动时运行时还没装好——守卫写成两份，已经实证漏写的那份白屏。
 
 ## 二、外壳：报头 + 竖栏 + 一张纸
 
@@ -44,11 +51,12 @@
    卡头卡尾 `shrink-0` 钉在圆角上。外层不许 `overflow-y-auto`——那会让圆角跟着内容跑。
 3. **双栏就都写 `min-h-0`**。一边滚一边不滚，结果就是矮的那边下方露出 canvas 空档。
 4. **同屏滚动区能不并列就不并列**；必须并列时各自被外框限高，不允许两个独立滚动条抢滚轮。
-5. **竖栏底部专放「门」**：写作中卡、换位门（全屏 / 退出全屏）、打开团队对话、凭证行、折叠键。
-   中段是导航，底边是动作——这条分工来自设计稿。
-6. **换位门随形态换位置**：非 bare 页放竖栏底部（报头右槽留给同步信息）；运行台与激活页
-   没有竖栏，回落到报头右槽。窄面板里报头按钮会被 `hidden @[720px]:inline` 收起，
-   所以竖栏那份才是常驻入口。
+5. **竖栏底部只剩写作卡、凭证行、折叠键**，三行都不带描边（收起成 44px 图标列时，描边卡片
+   会碎成一堆短横）；中段是导航，底边是动作。
+6. **全屏键常驻报头右槽**（0031 §5）。它是外壳能力，不随页面变，bare 页（运行台 / 激活页）
+   没有竖栏也能到。全屏时报头兼作窗口标题栏：`.mahua-drag` 给 `-webkit-app-region: drag`，
+   里面每个可点的东西由 `.mahua-drag :where(button, a, …)` 反标 `no-drag`；mac 上再让出左侧
+   5.25rem 避开原生红绿灯。
 
 ## 三、七帧
 
@@ -67,22 +75,28 @@
 
 | 事 | 文件 |
 | --- | --- |
-| 入口 | `src/studio-tab.ts`、`src/studio-view.ts`、`src/studio-ids.ts` |
+| 入口 | `src/studio-tab.ts`、`src/studio-ids.ts` |
 | 装配门与骨架 | `components/WorkbenchMount.tsx`、`components/StudioBootSkeleton.tsx` |
 | 外壳 | `components/shell/{StudioShell,StudioMasthead,StudioRail,PageHeader}.tsx` |
 | 七帧 | `components/pages/*Page.tsx` |
+| 全屏 | `components/WorkbenchSurface.tsx`（根节点切 `fixed inset-0`）、`src/style.css` 的 `.mahua-drag` / `.mahua-traffic-lights` |
 | 路由 | `hooks/use-workbench-route.ts`（模块级状态，切换宿主位置不回到书架） |
 
 ## 被改写的地方
 
-本轮（2026-10-31，0.4.19）修正了三处此前不成立的结论：
+两轮改写。先是本轮（2026-10-31，0.4.19）修正了三处：
 
 - **0027 §2「竖栏只做导航」** → 竖栏底部现在是动作区，含换位门。导航与动作分工不变，
   但「底部只有写作卡」不再成立。
 - **0020 / 0026 的「整页滚动」** → 滚动收进圆角内部，外层不再 `overflow-y-auto`；
   书库表去掉 `min-w-[820px]` 与那层 `overflow-x-auto`。
-- **0025 的单一入口叙述** → 双注册是唯一形态，两份都走 `WorkbenchMount`；
-  `WorkbenchScreen.tsx` 已删除。
+- **0025 的单一入口叙述** → 当时改成双注册，两份都走 `WorkbenchMount`；`WorkbenchScreen.tsx` 已删。
+
+然后 0031（2026-10-31，0.4.21）又推翻了两条：
+
+- **「全屏 = 换宿主位置」与「不 `fixed inset-0`」** → 宿主的路由渲染在外壳内、SDK 也没有窗口
+  全屏 API，所以「只有插件」只能由根节点自己 `fixed inset-0`。
+- **双注册** → 只留标签页。整页视图那条在宿主管家侧栏里多占一条，又做不到只有插件。
 
 ## 怎么验证
 
@@ -90,5 +104,7 @@
 cd abilities/plugins/mahua-writing-team
 npx vitest run test/manifest-guards.test.ts test/component-wiring.test.tsx
 grep -rn "min-w-\[820px\]\|overflow-x-auto" src/features | wc -l   # 期望 0
+grep -rn "\bfixed\b" src --include="*.tsx" | grep -v WorkbenchSurface | wc -l   # 期望 0
+grep -rn "createPortal(\|registerStudioView(\|STUDIO_VIEW_ID" src | wc -l   # 期望 0（带括号，避开注释里的自述）
 grep -n "component: WorkbenchMount" src/studio-tab.ts
 ```

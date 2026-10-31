@@ -4,14 +4,12 @@
  * 不放文字——翻译要走运行时，这时正好没有；一块同形的纸比一句「正在启动」更不会撒谎。
  * 形状必须与真界面逐层对齐：报头 48px、绕一圈 12px 托底、左边一条窄栏、右边一张纸。
  * 少一层，真界面一到纸面就要往下跳一次，那一下比空白更扎眼。
+ *
+ * 深浅两支不需要在这里判断：`.mahua-root` 的取值走 `light-dark()`，`color-scheme` 由宿主继承。
  */
-import { useHostMode } from "../hooks/use-host-mode";
-
 export function StudioBootSkeleton() {
-	const hostMode = useHostMode();
-
 	return (
-		<div className="@container mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden bg-canvas" data-mahua-mode={hostMode}>
+		<div className="@container mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden bg-canvas">
 			<div className="flex h-12 shrink-0 items-center gap-3 border-b border-line-soft px-4">
 				<div className="h-4 w-24 rounded-control bg-inset" />
 				<div className="ml-5 h-3 w-40 rounded-control bg-inset/70" />

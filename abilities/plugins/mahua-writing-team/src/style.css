@@ -1,12 +1,14 @@
 /* 麻花小说网工作台的纸面。
  *
- * 两条不能动的约束：
+ * 三条不能动的约束：
  * 1. 不导 preflight——全局重置会污染宿主侧边栏与主题色，插件只重置自己这棵树（见下方 @layer base）；
  * 2. `@theme inline` 不向 :root 发射变量，只把取值内联进本插件的工具类，因此不会改写宿主的 token。
  *    `@astravia-org/plugin-vite` 会在 tailwind 导入之后自动注入 `@astravia-org/plugin-sdk/tailwind-theme.css`，
  *    那份桥上已经占了 accent / background / border / card / foreground / muted / primary / ring 等名字，
  *    所以这里刻意避开它们：抬起的纸叫 `raised`，朱砂叫 `cinnabar`，墨的深浅叫 `ink-soft` / `ink-faint`。
- */
+ * 3. 取值**全部**从宿主 token 派生（见 `.mahua-root`），深浅两色共用一套算式，靠 `light-dark()` 按
+ *    `color-scheme` 解析——插件不再自己判断模式，也不再挂 `data-mahua-mode`。宿主的浅色是白/灰、
+ *    mono 主题又是另一套中性色，写死的米纸在它们里面都会「发黄、跟不动」。 */
 
 @layer theme, base, components, utilities;
 
@@ -19,9 +21,9 @@
 	--font-display: "Fraunces Variable", ui-serif, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif;
 
 	/* 颜色一律经由 `--mahua-*` 间接：这一层只负责把变量内联进本插件的工具类，
-	 * 真正的取值在下面 `.mahua-root`（浅纸）与 `.mahua-root[data-mahua-mode="dark"]`（深纸）两处，
-	 * 宿主切主题时工具类不用重生成，取值自己换。fallback 是浅色字面量：即便某天有人把工作台
-	 * 挂到 `.mahua-root` 之外，也只会退回设计稿的颜色，不会变成透明。 */
+	 * 真正的取值在下面 `.mahua-root` 一处（深浅两支写在同一个 `light-dark()` 里），
+	 * 宿主切主题时工具类不用重生成，取值自己换。fallback 只是兵底：即便某天有人把工作台
+	 * 挂到 `.mahua-root` 之外，也只会退回设计稿的米纸，不会变成透明。 */
 
 	/* 一张纸的五个明度：相邻两档只差 3–4%，抬起的卡与压下去的槽靠这点差分开。 */
 	--color-canvas: var(--mahua-canvas, #efe7d7);
@@ -90,79 +92,74 @@
 	--radius-window: 14px;
 	--radius-pill: 9999px;
 
-	/* 投影只做「纸比纸高 1px」，不做悬浮卡片。 */
-	--shadow-raise: 0 1px 2px rgb(34 30 23 / 0.05);
-	--shadow-pop: 0 10px 28px -12px rgb(34 30 23 / 0.32);
-	--shadow-sheet: 0 24px 60px -28px rgb(34 30 23 / 0.4);
+	/* 投影只做「纸比纸高 1px」，不做悬浮卡片。颜色走中性黑，不带暖调——宿主换 mono 主题时
+	 * 暖褐投影是第一批暴露「这不是宿主自己的界面」的细节。 */
+	--shadow-raise: 0 1px 2px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.4));
+	--shadow-pop: 0 10px 28px -12px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.5));
+	--shadow-sheet: 0 24px 60px -28px light-dark(rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.6));
 }
 
-/* 纸的取值：浅色是设计稿那一叠米纸，深色由宿主 token 派生。
- *
- * 深色不是「把米纸压暗」——那在纯深色的宿主里仍然是一块发白的板子。宿主给了
- * `--background` / `--card` / `--border` / `--foreground` / `--primary`，就按纸的层级关系
- * 重新排一次：canvas 最深（衬底）、surface 是纸面、raised 比纸面抬一点。朱砂跟随宿主主色，
- * 深色下不再保留品牌红：宿主默认就是深色，这里跟随才是「协同」。
- *
- * 选择器只认工作台自己的根。宿主把 `data-mode` 挂在 `<html>`，而插件 CSS 活在
- * `@scope ([data-astravia-plugin-root=<id>])` 里，`:root[data-mode]` 之类的祖先条件永远落不到
- * scope 内；模式由 `useHostMode` 读出来写到这个根上。 */
-@layer base {
+	/* 纸的取值：**一套算式，深浅两支**，全部从宿主 token 派生。
+	 *
+	 * 插件 CSS 活在 `@scope ([data-astravia-plugin-root=<id>])` 里，`:root[data-mode="dark"]` 这类
+	 * 祖先条件永远落不到 scope 内，所以不能照抄宿主的写法。宿主在 `:root, [data-mode="dark"]` 与
+	 * `[data-mode="light"]` 上都设了 `color-scheme`，它会继承进插件子树，`light-dark()` 于是**知道**
+	 * 当前是哪一色——这就是唯一的模式通道，插件不再用 JS 读 `data-mode`，也不再往根上挂标志。
+	 * 注意根上不能写 `color-scheme: light`（从前那一行让 `light-dark()` 恒取第一支，于是深色宿主
+	 * 里插件永远是米纸）。
+	 *
+	 * 五级明度照设计稿的层级关系重排，但比例改由宿主自己给：canvas 是沟、chrome 是报头与竖栏、
+	 * surface 是纸面、raised 是抬起来的卡、inset 是内嵌槽。浅色宿主里 background 比 card 更亮，
+	 * 所以 raised 取 `--background`；深色正好相反，取 card 往上混一点前景色。相邻两档只差 3–6%，
+	 * 与设计稿一致——层级靠投影和圆角读，不靠色阶堆。
+	 *
+	 * 朱砂跟随宿主主色：宿主默认深色主色是靓蓝、mono 主题是中性灰，写死品牌红在它们里面都很突兀。
+	 * 代价是麻花自己的红不再出现，换来的是任何宿主主题下都协调。 */
 	.mahua-root {
-		color-scheme: light;
+		--mahua-canvas: light-dark(
+			color-mix(in oklab, var(--card, #fafafa) 94%, var(--foreground, #000)),
+			var(--background, #14161e)
+		);
+		--mahua-chrome: light-dark(
+			color-mix(in oklab, var(--background, #ffffff) 97%, var(--foreground, #000)),
+			color-mix(in oklab, var(--card, #1a1c24) 94%, var(--foreground, #dce0ea))
+		);
+		--mahua-surface: var(--card, #fafafa);
+		--mahua-raised: light-dark(
+			var(--background, #ffffff),
+			color-mix(in oklab, var(--card, #1a1c24) 88%, var(--foreground, #dce0ea))
+		);
+		--mahua-inset: light-dark(
+			color-mix(in oklab, var(--card, #fafafa) 92%, var(--foreground, #000)),
+			color-mix(in oklab, var(--card, #1a1c24) 82%, var(--background, #14161e))
+		);
 
-		--mahua-canvas: #efe7d7;
-		--mahua-chrome: #f2ebdc;
-		--mahua-surface: #fbf7ee;
-		--mahua-raised: #fffdf8;
-		--mahua-inset: #f4edde;
+		--mahua-ink: var(--foreground, #000);
+		--mahua-ink-soft: color-mix(in oklab, var(--foreground, #000) 78%, var(--card, #fafafa));
+		--mahua-ink-faint: light-dark(
+			color-mix(in oklab, var(--foreground, #000) 42%, var(--card, #fafafa)),
+			var(--muted-foreground, #8a90a0)
+		);
+		--mahua-line-soft: color-mix(in oklab, var(--border, #e6e6e6) 55%, var(--card, #fafafa));
+		--mahua-line: var(--border, #e6e6e6);
+		--mahua-line-strong: color-mix(in oklab, var(--border, #e6e6e6) 70%, var(--foreground, #000));
 
-		--mahua-ink: #221e17;
-		--mahua-ink-soft: #6f6757;
-		--mahua-ink-faint: #a19682;
-		--mahua-line-soft: #eee7d7;
-		--mahua-line: #e4dbc6;
-		--mahua-line-strong: #ccc1a6;
-
-		--mahua-cinnabar: #a8402b;
-		--mahua-cinnabar-foreground: #fff8f2;
-		--mahua-cinnabar-soft: #f6e6df;
-		--mahua-cinnabar-ink: #8c3323;
-
-		--mahua-pass: #4f6b4a;
-		--mahua-pass-soft: #e7ede3;
-		--mahua-wait: #97662a;
-		--mahua-wait-soft: #f4eadb;
-		--mahua-fail: #7e3223;
-		--mahua-fail-soft: #f2e2dc;
-	}
-
-	.mahua-root[data-mahua-mode="dark"] {
-		color-scheme: dark;
-
-		--mahua-canvas: var(--background, #14161e);
-		--mahua-chrome: color-mix(in oklab, var(--card, #1a1c24) 94%, var(--foreground, #dce0ea));
-		--mahua-surface: var(--card, #1a1c24);
-		--mahua-raised: color-mix(in oklab, var(--card, #1a1c24) 88%, var(--foreground, #dce0ea));
-		--mahua-inset: color-mix(in oklab, var(--card, #1a1c24) 80%, var(--background, #14161e));
-
-		--mahua-ink: var(--foreground, #dce0ea);
-		--mahua-ink-soft: color-mix(in oklab, var(--foreground, #dce0ea) 74%, var(--card, #1a1c24));
-		--mahua-ink-faint: var(--muted-foreground, #8a90a0);
-		--mahua-line-soft: color-mix(in oklab, var(--border, #2a2d38) 60%, var(--card, #1a1c24));
-		--mahua-line: var(--border, #2a2d38);
-		--mahua-line-strong: color-mix(in oklab, var(--border, #2a2d38) 62%, var(--foreground, #dce0ea));
-
-		--mahua-cinnabar: var(--primary, #8184f8);
+		--mahua-cinnabar: var(--primary, #4f46e5);
 		--mahua-cinnabar-foreground: var(--primary-foreground, #ffffff);
-		--mahua-cinnabar-soft: color-mix(in oklab, var(--primary, #8184f8) 20%, var(--card, #1a1c24));
-		--mahua-cinnabar-ink: color-mix(in oklab, var(--primary, #8184f8) 74%, var(--foreground, #dce0ea));
+		--mahua-cinnabar-soft: color-mix(in oklab, var(--primary, #4f46e5) 14%, var(--card, #fafafa));
+		--mahua-cinnabar-ink: light-dark(
+			color-mix(in oklab, var(--primary, #4f46e5) 86%, var(--foreground, #000)),
+			color-mix(in oklab, var(--primary, #4f46e5) 72%, var(--foreground, #dce0ea))
+		);
 
-		--mahua-pass: #8fbd86;
-		--mahua-pass-soft: color-mix(in oklab, #8fbd86 22%, var(--card, #1a1c24));
-		--mahua-wait: #e0b072;
-		--mahua-wait-soft: color-mix(in oklab, #e0b072 22%, var(--card, #1a1c24));
-		--mahua-fail: #ec9a86;
-		--mahua-fail-soft: color-mix(in oklab, #ec9a86 22%, var(--card, #1a1c24));
+		/* 状态色没有宿主对应物（宿主只给 destructive 一支），所以保留语义字面量，只按深浅分开取值：
+		 * 深色下必须提亮，否则在深底上读不出「通过 / 待定 / 不通过」。soft 变体一律从当前纸面混出。 */
+		--mahua-pass: light-dark(#4f6b4a, #8fbd86);
+		--mahua-pass-soft: color-mix(in oklab, var(--mahua-pass) 16%, var(--card, #fafafa));
+		--mahua-wait: light-dark(#97662a, #e0b072);
+		--mahua-wait-soft: color-mix(in oklab, var(--mahua-wait) 16%, var(--card, #fafafa));
+		--mahua-fail: light-dark(#7e3223, #ec9a86);
+		--mahua-fail-soft: color-mix(in oklab, var(--mahua-fail) 16%, var(--card, #fafafa));
 	}
 
 	/* 只重置工作台这棵树。放在 base 层，任何 utility 仍然压得住它。 */
@@ -263,6 +260,28 @@
 		top: 5px;
 		right: 4px;
 		margin-left: 0;
+	}
+}
+
+/* 全屏时的报头兼作窗口标题栏。
+ * `-webkit-app-region` 不是标准属性，Tailwind 没有对应 utility（宿主的 `.drag-region` /
+ * `.no-drag` 是 unlayered 全局类，插件能用但不该依赖它的名字），所以写在插件自己的样式里，
+ * 与颜色、窄栏一样只作用于 `.mahua-root` 这棵树。
+ *
+ * 注意反着标：可拖的是整条报头，里面每一个能点的东西都得 `no-drag`——少标一个，那个按钮就
+ * 只会在拖窗口，点多少下都没反应。 */
+@layer utilities {
+	.mahua-drag {
+		-webkit-app-region: drag;
+	}
+
+	.mahua-drag :where(button, a, input, select, textarea, [role="button"]) {
+		-webkit-app-region: no-drag;
+	}
+
+	/* mac 的红绿灯由系统画在网页内容之上，全屏时给左侧让出那一段，否则方印恰好压在关闵上。 */
+	.mahua-traffic-lights {
+		padding-left: 5.25rem;
 	}
 }
 

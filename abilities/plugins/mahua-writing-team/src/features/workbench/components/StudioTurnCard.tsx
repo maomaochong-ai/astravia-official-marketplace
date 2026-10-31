@@ -1,7 +1,6 @@
 import { tryGetStudioRuntime } from "../../../plugin-context.js";
 import { STUDIO_TAB_ID } from "../../../studio-ids.js";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
-import { useHostMode } from "../hooks/use-host-mode.js";
 import { useTranslator } from "../hooks/use-translator.js";
 import { rememberRoute } from "../hooks/use-workbench-route.js";
 import { elapsedText, lastLandedStudioEvent } from "../workbench-feed.js";
@@ -28,7 +27,6 @@ export function StudioTurnCard() {
 function LandedCard() {
 	const runtime = tryGetStudioRuntime();
 	const t = useTranslator();
-	const hostMode = useHostMode();
 	const events = useConsoleTimeline();
 
 	const landed = lastLandedStudioEvent(events);
@@ -43,7 +41,7 @@ function LandedCard() {
 	};
 
 	return (
-		<div className="mahua-root w-full" data-mahua-mode={hostMode}>
+		<div className="mahua-root w-full">
 			<div className="flex items-center gap-3 rounded-panel border border-line bg-raised px-3 py-2.5 shadow-raise">
 				<span className="icon-[solar--book-2-bold] size-4 shrink-0 text-cinnabar" />
 				<div className="min-w-0 flex-1">

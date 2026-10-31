@@ -7,7 +7,6 @@ import { setStudioRuntime } from "./plugin-context.js";
 import { ManuscriptRepository } from "./repository/manuscript-repository.js";
 import { registerStudioTab } from "./studio-tab.js";
 import { registerStudioTurnCard } from "./studio-turn-card.js";
-import { registerStudioView } from "./studio-view.js";
 import { registerNovelTools } from "./tools/register-novel-tools.js";
 import "./style.css";
 
@@ -24,11 +23,12 @@ export default definePlugin({
 
 		registerNovelTools(ctx, service);
 
-		// 一张界面，两个宿主位置：活动面板里的标签页（窄）与 workspace view（宽）。
-		// 两者互为目的地——面板里的「放大」打开视图，视图里的「收回去」打开标签页。
+		// 只有一张界面、一个宿主入口：活动面板里的「麻花小说网」标签页。
+		// 从前还注册过一个 workspace view，目的是让用户能把它带到整页路由上；那条路做不到
+		// 「只有插件」——宿主把它渲染在应用外壳里，侧栏与页头都在。现在铺满整窗改由界面
+		// 自己的全屏键完成（见 `WorkbenchSurface`），那枚注册连同它带来的侧栏重复入口一起删了。
 		// 未激活时同一界面显示激活页，凭证过期不会让入口消失。
 		const tab = registerStudioTab(ctx);
-		const view = registerStudioView(ctx);
 		const turnCard = registerStudioTurnCard(ctx);
 
 		// 运行台的活动流（ADR 0027 §1 修订版）：先把上次落盘的事件灌回内存，再订阅后续写入。
@@ -39,7 +39,6 @@ export default definePlugin({
 
 		return () => {
 			turnCard.dispose();
-			view.dispose();
 			tab.dispose();
 			unhook.dispose();
 			detachConsoleLog();

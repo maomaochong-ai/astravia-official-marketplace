@@ -4,7 +4,9 @@ import { useTranslator } from "../../hooks/use-translator";
  * 当前章的简报：只把「这一章要干什么」摊开。
  *
  * 没有任何派活按钮——章纲齐了之后，写作者在宿主侧栏里自己接活，正文落盘后这里跟着改。
- * 唯一可点的是「去侧栏看它写」，它只把视线送过去，不携带指令。
+ * 页脚那句「这里只读」从前旁边还挂着一枚「跳到侧栏对话」，现在没了：宿主没有「聚焦侧栏
+ * 对话」的 API，那枚键只能扫 DOM 找输入框，宿主换一次实现就静默失灵（而且侧栏本来就在
+ * 旁边，用户不需要一个新按钮告诉他哪里是侧栏）。
  */
 export function ChapterBrief({
 	number,
@@ -16,7 +18,6 @@ export function ChapterBrief({
 	hook,
 	writing,
 	elapsed,
-	onRevealTeam,
 }: {
 	number: number;
 	arc: string;
@@ -28,7 +29,6 @@ export function ChapterBrief({
 	/** 侧栏团队是否正在写这一章；false 时右上角不假装有人在写。 */
 	writing: boolean;
 	elapsed: string;
-	onRevealTeam(): void;
 }) {
 	const t = useTranslator();
 	const empty = t("brief.empty");
@@ -79,14 +79,6 @@ export function ChapterBrief({
 			<div className="flex items-center gap-2 border-t border-line-soft bg-inset px-4 py-2.5">
 				<span className="icon-[lucide--eye] size-3 shrink-0 text-ink-faint" />
 				<span className="min-w-0 flex-1 truncate text-[10px] text-ink-soft">{t("brief.readonlyNote")}</span>
-				<button
-					type="button"
-					onClick={onRevealTeam}
-					className="flex shrink-0 items-center gap-1 text-[10px] font-medium text-ink transition-colors hover:text-cinnabar-ink"
-				>
-					{t("brief.revealTeam")}
-					<span className="icon-[lucide--arrow-up-right] size-3" />
-				</button>
 			</div>
 		</section>
 	);

@@ -18,11 +18,9 @@ import { PhaseBadge } from "../shell/PhaseBadge";
 export function ShelfPage({
 	data,
 	onNavigate,
-	onRevealTeam,
 }: {
 	data: StudioState;
 	onNavigate: (page: WorkbenchPage, chapter?: number) => void;
-	onRevealTeam: () => void;
 }) {
 	const t = useTranslator();
 	const events = useConsoleTimeline();
@@ -39,16 +37,6 @@ export function ShelfPage({
 					icon="icon-[lucide--library-big]"
 					title={t("shelf.emptyTitle")}
 					note={t("shelf.emptyBody")}
-					action={
-						<button
-							type="button"
-							onClick={onRevealTeam}
-							className="mt-1 flex h-8 items-center gap-1.5 rounded-control border border-line-strong px-3 text-micro font-medium text-ink transition-colors hover:bg-raised"
-						>
-							<span className="icon-[lucide--panel-right-open] size-3" />
-							{t("rail.revealTeam")}
-						</button>
-					}
 				/>
 			</div>
 		);
@@ -93,11 +81,11 @@ export function ShelfPage({
 						</button>
 
 						<div className="flex min-w-0 flex-1 flex-col">
-							<div className="flex items-center gap-2">
+							<div className="flex min-w-0 items-center gap-2">
 								<button
 									type="button"
 									onClick={() => onNavigate("book")}
-									className="truncate font-display text-display font-semibold text-ink"
+									className="min-w-0 truncate font-display text-display font-semibold text-ink"
 								>
 									{book.title}
 								</button>
@@ -202,15 +190,7 @@ export function ShelfPage({
 							<span className="text-micro-up font-semibold uppercase text-ink-faint">
 								{t("shelf.recent")}
 							</span>
-							<span className="text-[10px] text-ink-faint">{t("shelf.recentNote")}</span>
-							<button
-								type="button"
-								onClick={onRevealTeam}
-								className="ml-auto flex items-center gap-1 text-[10px] font-medium text-ink"
-							>
-								{t("rail.revealTeam")}
-								<span className="icon-[lucide--arrow-up-right] size-3" />
-							</button>
+							<span className="min-w-0 truncate text-[10px] text-ink-faint">{t("shelf.recentNote")}</span>
 						</div>
 						{rows.length === 0 ? (
 							<p className="mt-3 text-[11px] leading-5 text-ink-soft">{t("shelf.liveEmpty")}</p>
