@@ -331,6 +331,8 @@
 	"library.sort.chapters": "章节数",
 	"library.sort.recent": "最近更新",
 	"library.sort.title": "书名",
+	"library.stepNext": "下一本",
+	"library.stepPrev": "上一本",
 	"library.status.active": "进行中",
 	"library.status.completed": "已完成",
 	"library.title": "书库",
