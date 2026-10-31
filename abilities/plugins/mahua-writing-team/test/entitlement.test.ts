@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { COMMUNITY_CREDENTIAL } from "../src/entitlement/default-credential.js";
-import { decodeToken } from "../src/entitlement/credential.js";
+import { decodeToken } from "../src/entitlement/credential-token.js";
 import { EntitlementGate, GATED_TOOL_IDS, isGatedTool } from "../src/entitlement/entitlement-gate.js";
 import { TRUSTED_KEYS } from "../src/entitlement/trusted-keys.js";
 import { verifyEntitlement } from "../src/entitlement/verify-entitlement.js";

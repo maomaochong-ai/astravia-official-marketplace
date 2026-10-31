@@ -232,8 +232,10 @@
 	}
 }
 
-/* 窄栏收起成图标列：宽度与「藏起文字」由父级的 data 属性驱动，
- * 这样手动收起与容器变窄（@max-[640px]）走的是同一套视觉，不必两处维护。
+/* 窄栏收起成图标列：宽度与「藏起文字」由父级的 data 属性驱动。
+ * 收起只有一个触发点（调用方算好的 `collapsed = 手动收起 || 容器 < 640px`），
+ * 视觉也只有一个实现，就在这里——从前另有一套 `@max-[640px]` 工具类各写一半，
+ * 两套间距叠加时图标就歪了。
  *
  * 必须留在 utilities 这一层：`w-[208px]` 也是 utility，跨层时层序优先于 specificity，
  * 放进 components 会被它盖掉；同一层里 0,2,0 才压得住 0,1,0。 */
@@ -252,6 +254,15 @@
 	.mahua-rail[data-collapsed="true"] .mahua-rail-label,
 	.mahua-rail[data-collapsed="true"] .mahua-rail-block {
 		display: none;
+	}
+
+	/* 未读小红点：行内时靠 `ml-auto` 靠右，收起时行内布局只剩图标被居中，
+	 * 那半个点宽会把图标顶偏，所以收起后它改成一枚不占位的角标。 */
+	.mahua-rail[data-collapsed="true"] .mahua-rail-dot {
+		position: absolute;
+		top: 5px;
+		right: 4px;
+		margin-left: 0;
 	}
 }
 

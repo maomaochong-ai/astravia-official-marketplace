@@ -78,9 +78,8 @@ export function BookPage({
 	const recent = [...book.checkpoints].slice(-5).reverse();
 
 	return (
-		<div className="flex min-h-0 flex-1 gap-5 px-7 pb-5 pt-6 @max-[720px]:px-4 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
-			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-				<PageHeader
+		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
+			<PageHeader
 					back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }}
 					title={book.title}
 					meta={
@@ -94,6 +93,9 @@ export function BookPage({
 						</span>
 					}
 				/>
+
+			<div className="mt-4 flex min-h-0 flex-1 gap-5 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
+				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 
 				<section className="rounded-sheet bg-raised p-4 shadow-raise">
 					<div className="flex items-baseline gap-2">
@@ -284,7 +286,8 @@ export function BookPage({
 					</span>
 					<span className="icon-[lucide--arrow-right] mt-1 size-3 shrink-0 text-ink-faint" />
 				</button>
-			</aside>
+				</aside>
+			</div>
 		</div>
 	);
 }

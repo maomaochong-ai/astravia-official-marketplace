@@ -70,7 +70,7 @@ ability.json#version
 
 ### 4. 提交与推送
 
-- 只暂存本轮相关路径（插件目录、`.astravia/marketplace.source.json`、`docs/adr/ainove-cli/0018-0023`）；
+- 只暂存本轮相关路径（插件目录、`.astravia/marketplace.source.json`、`docs/adr/mahua-writing-team/0018-0023`）；
   工作树里与本轮无关的改动（`dbx-pro` 的 `file:` 依赖、`ui-mock` 的 design.json）不碰、不提交；
 - 提交信息按仓库习惯：`feat(mahua-writing-team): 0.2.0 — 工程改名、技能化 agent 目录、书库页与伏笔台账`；
 - 推送目标 `main`：CI 的 `publish-marketplace.yml` 只在 `push` 到 `main` 时触发（`branches: [main]`，

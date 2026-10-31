@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { StudioService } from "../src/application/studio-service.js";
 import { buildContext } from "../src/domain/context-pack.js";
 import { relatedChapters } from "../src/domain/related-chapters.js";
-import { addThread, auditThreads, closeThread } from "../src/domain/threads.js";
+import { addThread, auditThreads, closeThread } from "../src/domain/thread-ledger.js";
 import type { NovelBook, StoryThread } from "../src/domain/novel-types.js";
 import { EntitlementGate } from "../src/entitlement/entitlement-gate.js";
 import { ManuscriptRepository } from "../src/repository/manuscript-repository.js";

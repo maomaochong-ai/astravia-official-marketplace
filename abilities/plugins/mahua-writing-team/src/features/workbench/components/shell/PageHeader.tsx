@@ -18,7 +18,7 @@ export function PageHeader({
 	right?: ReactNode;
 }) {
 	return (
-		<div className="flex items-end gap-4 pb-5">
+		<div className="flex flex-wrap items-end gap-x-4 gap-y-2 pb-5">
 			<div className="min-w-0">
 				{back && (
 					<button
@@ -30,12 +30,12 @@ export function PageHeader({
 						{back.label}
 					</button>
 				)}
-				<div className="flex items-baseline gap-3">
+				<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 					<h1 className="font-display text-display font-semibold text-ink">{title}</h1>
 					{meta}
 				</div>
 			</div>
-			<div className="ml-auto flex shrink-0 items-center gap-2 pb-1.5">{right}</div>
+			<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 pb-1.5">{right}</div>
 		</div>
 	);
 }

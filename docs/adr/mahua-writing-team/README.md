@@ -21,8 +21,8 @@
 | 05 | [事实层与存储](./current/05-fact-layer-and-storage.md) | 书是文件，一次提交同批发布，`revision` 是并发基线 | `repository/**`、`domain/novel-progress.ts` |
 | 06 | [长篇滚动与上下文](./current/06-rolling-plan-and-context.md) | 上下文包是滚动的锚，伏笔台账只报告不自动改 | `domain/{threads,context-pack,related-chapters}.ts` |
 | 07 | [门禁与凭证](./current/07-entitlement.md) | 离线验签，读永不挡，写全挡 | `entitlement/**` |
-| 08 | [入口与界面结构](./current/08-surfaces-and-entry.md) | 入口按版本变，界面结构稳定：六层 surface + 左栏降级 | `studio-tab.ts`、`studio-view.ts`、`features/workbench/**` |
-| 09 | [视觉语言](./current/09-visual-language.md) | 纸：靠阴影分层，朱砂即 `primary`，墨底按钮 | `style.css`、`features/**` 的类名 |
+| 08 | [入口与界面结构](./current/08-surfaces-and-entry.md) | 双入口一份代码；报头 + 竖栏 + 一张纸，滚动收进圆角 | `studio-tab.ts`、`studio-view.ts`、`features/workbench/**` |
+| 09 | [视觉语言](./current/09-visual-language.md) | 纸：五个明度靠阴影分层，朱砂是独立令牌，墨底按钮 | `style.css`、`features/**` 的类名 |
 | 10 | [包、内容与发布](./current/10-package-content-and-release.md) | 自足、身份一套、发布顺序固定 | `plugin.json`、`package.json`、`agent/**`、`scripts/**` |
 
 十篇的分界是**一件事的完整边界**，不是目录：谁能推进进度（01）、谁在做（02）、拿什么做（03）、怎么说给人听（04）、事实存哪（05）、长篇怎么滚（06）、什么时候挡人（07）、人从哪进来（08）、看起来什么样（09）、怎么发出去（10）。
@@ -52,14 +52,14 @@
 | [0017](./0017-review-round-one-global-revision-and-total-verify.md) | 全局 revision 与总验收 | 现行 | 01（并发基线）+ 07（凭证解码） |
 | [0018](./0018-project-identity-mahua-writing-team.md) | 工程身份 | 现行 | 10 |
 | [0019](./0019-agent-directory-and-novel-master-skills.md) | agent 目录工程化 | 现行 | 02（清单与权限）+ 10（目录规模） |
-| [0020](./0020-library-surface-and-default-cover.md) | 书库层与默认封面 | 部分现行 | 08（`words`、层级）+ 09（封面） |
+| [0020](./0020-library-surface-and-default-cover.md) | 书库层与默认封面 | 部分现行 | 08（层级）+ 09（封面）；整页滚动已被 0030 推翻 |
 | [0021](./0021-thread-ledger-related-chapters-context.md) | 伏笔台账与上下文包 | 现行 | 06 |
 | [0022](./0022-parity-round-three-and-explicit-non-goals.md) | 第三轮对齐与非目标 | 现行（非目标） | 03 |
 | [0023](./0023-dependency-hygiene-readme-and-release-verification.md) | 依赖与发布验证 | 现行 | 10 |
 | [0024](./0024-ui-round-reader-library-covers-and-activation-facts.md) | 阅读字号、封面、激活事实 | 部分现行 | 07（激活事实）+ 09（界面） |
 | [0025](./0025-continue-reads-and-studio-as-activity-tab.md) | 标签页入口 | 现行（含四次补注，最后一次推翻补注三） | 08 |
-| [0026](./0026-design-round-five-surfaces-and-host-tokens.md) | 五层 surface 与令牌 | 部分现行 | 09（令牌）+ 08（层数已变） |
-| [0027](./0027-shell-layer-console-and-rail-degradation.md) | 外壳层与运行台 | 现行 | 08（布局与降级）+ 04（事件流） |
+| [0026](./0026-design-round-five-surfaces-and-host-tokens.md) | 五层 surface 与令牌 | 部分现行 | 09（令牌）+ 08（层数与滚动已变，见 0030） |
+| [0027](./0027-shell-layer-console-and-rail-degradation.md) | 外壳层与运行台 | 部分现行 | 04（事件流）；§2 竖栏只做导航、§7 外壳只放同步信息已被 0030 推翻 |
 | [0028](./0028-cards-roster-and-activation-design-language.md) | 卡片与成员行语言 | 现行 | 09 |
 | [0029](./0029-paper-language-no-hairlines.md) | 纸面语言，不描边 | 现行 | 09 |
 
@@ -67,7 +67,7 @@
 
 ## 落实与偏差
 
-文档说的和代码做的不一样时，**以代码为准**，并记在这里。基线：**已发布版本 0.4.12**（2026-10-31）。
+文档说的和代码做的不一样时，**以代码为准**，并记在这里。基线：**源码版本 0.4.19**（2026-10-31，本轮版面第二轮已落地）。
 
 | 文档说 | 代码做 | 证据 |
 | --- | --- | --- |
@@ -86,6 +86,7 @@
 
 `0001`–`0017` 里的代码落点、工具 ID、智能体 ID 写成它们当时的样子。0018 改名之后，这些字面量只存在于本目录的档案里——
 `grep -rn novelwright abilities .astravia scripts tests` **0 命中**，活代码里没有旧名。
+本目录自身在 0.4.19 从 `docs/adr/ainove-cli/` 改名为 `docs/adr/mahua-writing-team/`，档案正文里的旧目录名按上表换算。
 
 按 0014 §2.3 与「旧 ADR 一个字都不改」的规矩，档案不回填；读的时候按下表换算：
 
@@ -102,13 +103,13 @@
 
 ## 这版界面重写已经发布
 
-0.4.10 → 0.4.12 三轮把界面层整体换掉了（`docs/adr/ainove-cli/0025`–`0029` 的补注与本节一致）：
+0.4.10 → 0.4.12 三轮把界面层整体换掉了（`docs/adr/mahua-writing-team/0025`–`0029` 的补注与本节一致）：
 
 - **规模**：旧 `src/features/{library,studio,shared}/**` 删除，`src/features/workbench/**` 成为唯一界面层——`components/pages/{Shelf,Library,Book,Reader,Ledger,Console,Activation}Page.tsx` 七帧 + `components/shell/**` 外壳 + `workbench-{model,pages,feed}.ts`。
 - **入口两个**：标签页 `registerStudioTab`（`studio`）+ 整页视图 `registerStudioView`（`workbench`）。`plugin.json` 的 `ui.slot.*` 权限为 `ui.slot.activity-tab` 与 `ui.slot.workspace-view` 两条。
 - **视觉换底**：`src/style.css` 用 `@theme inline`（纸面 21 色、13 档字号、6 档圆角、3 档投影），`.mahua-cover[data-layer]` 切换纸色。
-- **locale 473 键**（en/zh 各）。
-- **状态**：`npx tsc --noEmit` 0 错，`vitest run` 11 文件 180 例全过（0.4.13 两条版面守卫，0.4.14 七条组件接线）。
+- **locale 509 键**（en/zh 各，键集完全一致）。
+- **状态**：`npx tsc --noEmit` 0 错，`vitest run` 12 文件 184 例全过（0.4.13 两条版面守卫，0.4.14 七条组件接线，0.4.18 装配门守卫）。
 - **发行**：0.4.12 `2026.10.31-3`（`20bd6f0d…fbda9768`）→ 0.4.13 `2026.10.31-4`（`240c4025…13623390`）
   → 0.4.14 `2026.10.31-5`（`474c125a…4cacc3c61a`），均为 CI 构建的 `mahua-writing-team-<版本>.astraviapkg`。
 
@@ -154,7 +155,7 @@ node -e "const p=require('./plugin.json');console.log(p.version)"
 | 情况 | 怎么做 |
 | --- | --- |
 | 只是把现行约定写清楚、或修正措辞与数字 | 直接改对应 `current/NN`，在文件头补一行改动日期与依据 |
-| 换了一个做法（会推翻现有结论） | 新开 `docs/adr/ainove-cli/0030-<slug>.md`，从 `0030` 起往后编，**不复用旧号** |
+| 换了一个做法（会推翻现有结论） | 新开 `docs/adr/mahua-writing-team/00NN-<slug>.md`，从已有最大号往后编（下一号 `0031`），**不复用旧号** |
 | 旧 ADR 被新 ADR 取代 | 在新 ADR 里写清取代谁；把本 README 的状态表改成「已被取代」并指向新文档 |
 
 新 ADR 只写四件事：**当时的事实、决定了什么、代价是什么、怎么验证**。不要复述实现细节——那些会过期，代码不会骗人。

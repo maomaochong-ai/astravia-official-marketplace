@@ -9,7 +9,7 @@
 
 import type { Chapter, NovelBook, OutlineFeedback, StoryThread } from "./novel-types.js";
 import { arcForChapter } from "./novel-flow.js";
-import { openThreads } from "./threads.js";
+import { openThreads } from "./thread-ledger.js";
 import { relatedChapters, type RelatedChapter } from "./related-chapters.js";
 
 export interface ContextPack {

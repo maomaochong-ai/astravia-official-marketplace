@@ -30,18 +30,18 @@ import {
 } from "../domain/novel-progress.js";
 import { analyzeStyle } from "../domain/style-analysis.js";
 import { buildContext, type ContextPack } from "../domain/context-pack.js";
-import { checkConsistency } from "../domain/consistency.js";
+import { checkConsistency } from "../domain/consistency-checks.js";
 import { extractChapterFacts } from "../domain/chapter-facts.js";
 import { lintChapter, normalizeRules, type WritingRules } from "../domain/writing-rules.js";
 import { routeNovel } from "../domain/novel-flow.js";
-import { auditPremise, parsePremise, type PremiseParse } from "../domain/premise.js";
+import { auditPremise, parsePremise, type PremiseParse } from "../domain/premise-structure.js";
 import {
 	addThread,
 	auditThreads,
 	closeThread as closeStoryThread,
 	type ThreadAudit,
 	type ThreadInput,
-} from "../domain/threads.js";
+} from "../domain/thread-ledger.js";
 import type {
 	Arc,
 	ArbitrationRecord,

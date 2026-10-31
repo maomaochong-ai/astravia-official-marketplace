@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { analyzeStyle } from "../src/domain/style-analysis.js";
 import { extractChapterFacts } from "../src/domain/chapter-facts.js";
 import { DEFAULT_RULES, lintChapter, normalizeRules } from "../src/domain/writing-rules.js";
-import { checkConsistency } from "../src/domain/consistency.js";
+import { checkConsistency } from "../src/domain/consistency-checks.js";
 import { buildContext } from "../src/domain/context-pack.js";
-import { auditPremise, parsePremise } from "../src/domain/premise.js";
+import { auditPremise, parsePremise } from "../src/domain/premise-structure.js";
 import {
 	acceptBrief,
 	createBook,

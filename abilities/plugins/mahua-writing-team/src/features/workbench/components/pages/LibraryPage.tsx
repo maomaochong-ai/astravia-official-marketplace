@@ -12,8 +12,13 @@ import { PhaseBadge } from "../shell/PhaseBadge";
 
 const PAGE_SIZE = 9;
 
-/** 六列表头：书名 / 题材·篇幅 / 阶段 / 章·进度 / 字数 / 更新。 */
-const COLUMNS = "grid-cols-[1fr_150px_74px_196px_78px_88px]";
+/** 六列表头：书名 / 题材·篇幅 / 阶段 / 章·进度 / 字数 / 更新。
+ *
+ * 宽度不够时**丢列**（题材篇幅 → 字数 → 章进度 → 更新），而不是把六列一起压到叠字：
+ * 台账的意义是横向比对，六列全挤进一行反而什么都比不了。丢列按信息重要度排，
+ * 书名与阶段一直留着——它们是「哪本、到哪了」。 */
+const COLUMNS =
+	"grid-cols-[1fr_150px_74px_196px_78px_88px] @max-[1120px]:grid-cols-[1fr_74px_150px_88px] @max-[880px]:grid-cols-[1fr_74px_88px] @max-[680px]:grid-cols-[1fr_74px]";
 
 // 与 `NovelPhase` 同序：落库的阶段一个都不能漏，否则筛选带会对某些书静默失灵
 // （`arc_close` 曾经漏在这里）。
@@ -97,9 +102,20 @@ export function LibraryPage({
 	const rows = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
 	const words = filtered.reduce((sum, entry) => sum + (entry.words ?? 0), 0);
 
+	/** 改筛选/排序就回到第一页：否则当前页可能已经不存在。 */
 	const pick = (next: () => void) => {
 		setPage(0);
 		next();
+	};
+
+
+	// 顶部「上一本 / 下一本」：在**当前筛选结果**里逐本走，不跳页、不离开书库——
+	// 换书之后还能接着比。当前作品不在筛选结果里时从第一个开始走。
+	const currentIndex = filtered.findIndex((entry) => entry.id === data.book?.id);
+	const stepBook = (delta: number) => {
+		if (filtered.length < 2) return;
+		const from = currentIndex < 0 ? 0 : currentIndex;
+		data.selectBook(filtered[(from + delta + filtered.length) % filtered.length].id);
 	};
 
 	const chip = (active: boolean, variant: "ink" | "inset" = "inset") =>
@@ -110,6 +126,20 @@ export function LibraryPage({
 					: "bg-inset font-medium text-ink"
 				: "text-ink-soft hover:bg-inset/70"
 		}`;
+
+	const bookStep = (delta: number, label: string, icon: string) => (
+		<button
+			type="button"
+			onClick={() => stepBook(delta)}
+			disabled={filtered.length < 2}
+			title={label}
+			aria-label={label}
+			className="flex h-7 shrink-0 items-center gap-1 rounded-control border border-line px-2 text-[10px] text-ink transition-colors hover:bg-raised disabled:opacity-40 disabled:hover:bg-transparent"
+		>
+			<span className={`${icon} size-3 shrink-0`} />
+			<span className="hidden @[560px]:inline">{label}</span>
+		</button>
+	);
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
@@ -197,7 +227,7 @@ export function LibraryPage({
 			</div>
 
 			{/* 满宽台账：卡头只读提示，表头钉住，行内部滚，卡尾页码 */}
-			<section className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-control border border-line bg-raised">
+			<section className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel border border-line bg-raised">
 				<div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-3.5 py-2">
 					{writing ? (
 						<>
@@ -212,11 +242,10 @@ export function LibraryPage({
 					<span className="ml-auto shrink-0 text-[10px] text-ink-faint">{t("library.ledgerNote")}</span>
 				</div>
 
-				<div className="min-h-0 flex-1 overflow-x-auto">
-					<div className="flex h-full min-w-[820px] flex-col">
-						<div
-							className={`grid ${COLUMNS} shrink-0 items-center gap-3 border-b border-line-soft px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint`}
-						>
+				<div className="flex min-h-0 flex-1 flex-col">
+					<div
+						className={`grid ${COLUMNS} shrink-0 items-center gap-3 border-b border-line-soft px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint`}
+					>
 							<span>{t("library.column.book")}</span>
 							<span>{t("library.column.genreLength")}</span>
 							<span>{t("library.column.stage")}</span>
@@ -289,7 +318,6 @@ export function LibraryPage({
 							</ul>
 						)}
 					</div>
-				</div>
 
 				<div className="flex shrink-0 items-center gap-3 border-t border-line px-4 py-2.5 text-micro text-ink-soft">
 					<div className="flex items-center gap-1">

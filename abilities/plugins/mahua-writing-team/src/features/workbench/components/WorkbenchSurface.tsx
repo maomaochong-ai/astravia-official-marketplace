@@ -3,6 +3,7 @@ import { getStudioRuntime } from "../../../plugin-context.js";
 import { STUDIO_TAB_ID, STUDIO_VIEW_ID } from "../../../studio-ids.js";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
 import { useHostMode } from "../hooks/use-host-mode";
+import { useNarrowSurface } from "../hooks/use-narrow-surface";
 import { useRailCollapsed } from "../hooks/use-rail-collapsed";
 import { useStudioState } from "../hooks/use-studio-state";
 import { useTeamReveal } from "../hooks/use-team-reveal";
@@ -42,20 +43,27 @@ const CLOCK_MS = 30_000;
  * 唯一的行为是「有新的落盘事件就重读一次」：同步只有这一个方向。
  *
  * 「放大」= 换一个宿主位置，不是盖一层自己的浮层。同一张工作台注册了两次形态：
- * 活动面板里的一张标签页（窄，跟着对话），以及一个 `sidebar: false` 的工作区视图
- * （宽，占据主内容区）。两个按钮就在这两者之间来回切，宿主负责排版，插件从不
- * 把自己贴到视口上、也不 portal 到 body——那会盖住宿主的侧栏与标题栏，面板宽度一变就撑坏。
+ * 活动面板里的一张标签页（窄，跟着对话），以及一个工作区视图（宽，占满主内容区）。
+ * 两个按钮就在这两者之间来回切，宿主负责排版，插件从不把自己贴到视口上、也不 portal
+ * 到 body——那会盖住宿主的侧栏与标题栏，面板宽度一变就撑坏。
+ *
+ * 所以「全屏」能做到的上限就是宿主的工作区视图：它是一条与内置页平级的路由，主内容区
+ * 归它独占，但**宿主侧边栏仍在**——插件既没有收侧栏的 API，样式表也被 `@scope` 关在
+ * 自己子树里，连选择器都碰不到宿主 chrome。这一点不靠插件能绕过去，只能说清楚。
  *
  * `surface` 只决定「从哪儿回哪儿去」：面板形态的按钮是「放大到整页」，整页形态的按钮是
- * 「收回对话面板」。其余一切两态共用。
+ * 「退出全屏」。后者不是关掉一张卡——工作区视图是一条路由，得真地退回去，否则按下去什么都
+ * 不会发生（从前只调 `openActivityTab`，它写的是面板状态，不碰路由，于是点点没反应）。
+ * 其余一切两态共用。
  */
 export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "page" }) {
 	const { ctx } = getStudioRuntime();
 	const t = useTranslator();
+	const hostMode = useHostMode();
 	const data = useStudioState();
 	const { route, navigate } = useWorkbenchRoute();
 	const rail = useRailCollapsed();
-	const hostMode = useHostMode();
+	const { ref: surfaceRef, narrow } = useNarrowSurface();
 	const reveal = useTeamReveal();
 	const events = useConsoleTimeline();
 	const [now, setNow] = useState(() => Date.now());
@@ -90,7 +98,14 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 
 	const onSwapSurface = () => {
 		if (surface === "page") {
+			// 先把面板标签挂上（退出后它就在对话右侧），再真的离开这条工作区路由。
 			ctx.ui.openActivityTab(STUDIO_TAB_ID);
+			// 工作区视图是宿主 push 进来的一条路由：`history.length` 数的是整个会话的历史，
+			// 深链直达时它仍然大于 1，退回去会把人送出应用。宿主的 react-router 把栈位置写在
+			// `history.state.idx` 上，只有它明确大于 0 才说明「上一页在本应用里」。
+			const depth = (window.history.state as { idx?: number } | null)?.idx;
+			if (typeof depth === "number" && depth > 0) window.history.back();
+			else ctx.ui.notify({ message: t("window.leftInPanel") });
 			return;
 		}
 		ctx.ui.openWorkspaceView(STUDIO_VIEW_ID);
@@ -115,7 +130,9 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 	const shell = (
 		<StudioShell
 			active={route.page}
-			right={surfaceButton}
+			// 运行台与激活页没有竖栏，换位那扇门只在报头有位置；其余页面把它放在竖栏底部，
+			// 与设计稿「底边放门、中段放导航」的分工一致，也免得窄面板里两面都找不到。
+			right={isBarePage(route.page) ? surfaceButton : undefined}
 			bare={isBarePage(route.page)}
 			sync={
 				isBarePage(route.page)
@@ -131,6 +148,8 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 						}
 			}
 			rail={{
+				surface,
+				onSwapSurface,
 				bookTitle: book?.title ?? t("rail.noBook"),
 				cover: coverSeed(book?.title ?? t("rail.noBook")),
 				stage: book && arc ? `${arc.title} · ${t("rail.chapter", { chapter })}` : t("rail.noBook"),
@@ -149,7 +168,8 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 					ok: data.entitlement.status === "active",
 					label: t(`activation.status.${data.entitlement.status}`),
 				},
-				collapsed: rail.collapsed,
+				collapsed: rail.collapsed || narrow,
+				autoCollapsed: narrow,
 				onToggleCollapsed: rail.toggle,
 				onNavigate: go,
 				onRevealTeam: reveal,
@@ -186,7 +206,7 @@ export function WorkbenchSurface({ surface = "panel" }: { surface?: "panel" | "p
 	);
 
 	return (
-		<div className="mahua-root h-full w-full" data-mahua-mode={hostMode}>
+		<div ref={surfaceRef} className="mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden" data-mahua-mode={hostMode}>
 			{shell}
 		</div>
 	);

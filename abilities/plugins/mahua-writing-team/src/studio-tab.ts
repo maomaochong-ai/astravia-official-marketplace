@@ -1,6 +1,6 @@
 import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { createElement } from "react";
-import { WorkbenchScreen } from "./features/workbench/components/WorkbenchScreen.js";
+import { WorkbenchMount } from "./features/workbench/components/WorkbenchMount.js";
 import { STUDIO_TAB_ID } from "./studio-ids.js";
 
 export { STUDIO_TAB_ID };
@@ -39,7 +39,7 @@ export function registerStudioTab(ctx: PluginContext): Disposable {
 			className: `${STUDIO_TAB_ICON} h-4 w-4 shrink-0`,
 			"aria-hidden": true,
 		}),
-		component: WorkbenchScreen,
+		component: WorkbenchMount,
 		scope_use: ["conversation", "project"],
 		initiallyVisible: true,
 		// 切到别的标签再切回来，路由（看到哪本书、读到哪一章）要还在。

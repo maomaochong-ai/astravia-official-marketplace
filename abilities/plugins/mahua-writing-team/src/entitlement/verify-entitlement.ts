@@ -10,7 +10,7 @@ import {
 	decodeToken,
 	REQUIRED_ENTITLEMENT,
 	type EntitlementClaims,
-} from "./credential.js";
+} from "./credential-token.js";
 
 export interface TrustedKey {
 	keyId: string;

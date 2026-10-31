@@ -44,12 +44,17 @@ export function StudioMasthead({
 			</div>
 
 			{sync ? (
+				// 三站串起来的同步带在容器窄到 640px 以下就收起：它需要整条宽度才读得清楚，
+				// 挤到 260px 时每站只剩一个字，比不显示更难读。外层容器仍需占住 `flex-1`，
+				// 否则右槽会跟着跑到报头中间去。
 				<div className="ml-5 flex min-w-0 flex-1 items-center gap-2.5">
-					<Stop state="now" label={t("masthead.stop.write")} value={sync.doing} note={sync.writer} />
-					<Thread />
-					<Stop state="past" label={t("masthead.stop.land")} value={sync.file} note={sync.words} mono />
-					<Thread />
-					<Stop state="next" label={t("masthead.stop.read")} value={sync.ago} />
+					<span className="hidden min-w-0 flex-1 items-center gap-2.5 @min-[640px]:flex">
+						<Stop state="now" label={t("masthead.stop.write")} value={sync.doing} note={sync.writer} />
+						<Thread />
+						<Stop state="past" label={t("masthead.stop.land")} value={sync.file} note={sync.words} mono />
+						<Thread />
+						<Stop state="next" label={t("masthead.stop.read")} value={sync.ago} />
+					</span>
 				</div>
 			) : (
 				<span className="flex-1" />

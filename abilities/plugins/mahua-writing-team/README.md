@@ -235,4 +235,4 @@ and claiming otherwise would be the more damaging choice:
 MIT. The craft library under `agent/` is ported from [ainovel-cli](https://github.com/voocel/ainovel-cli)
 (Apache-2.0) and adapted from novel-master (MIT); see `agent/ATTRIBUTION.md` for the
 file-by-file split and the changes made. The architecture is documented decision by decision in
-`../../docs/adr/ainove-cli/`.
+`../../docs/adr/mahua-writing-team/`.

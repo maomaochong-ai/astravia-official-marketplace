@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { tryGetStudioRuntime } from "../../../../plugin-context.js";
-import { TOKEN_PREFIX } from "../../../../entitlement/credential.js";
+import { TOKEN_PREFIX } from "../../../../entitlement/credential-token.js";
 import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
 import type { WorkbenchPage } from "../../workbench-pages";

@@ -215,7 +215,7 @@ export function ShelfPage({
 						{rows.length === 0 ? (
 							<p className="mt-3 text-[11px] leading-5 text-ink-soft">{t("shelf.liveEmpty")}</p>
 						) : (
-							<ul className="mt-2 min-h-0 space-y-px overflow-y-auto">
+							<ul className="mt-2 min-h-0 flex-1 space-y-px overflow-y-auto">
 								{rows.map((event) => (
 									<li
 										key={event.id}

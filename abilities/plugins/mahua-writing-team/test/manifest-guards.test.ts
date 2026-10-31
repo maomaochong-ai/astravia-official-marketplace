@@ -371,10 +371,10 @@ describe("visual language stays on host tokens", () => {
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
 		// 默认就上栏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
-		expect(tab).toContain("component: WorkbenchScreen");
-		// `sidebar: false`：整页入口只由工作台自己的按钮程序化打开。侧栏留给对话，
-		// 也顺手绕开宿主不解析 `%…%` 的那条 workspace view 描述串。
-		expect(view).toContain("sidebar: false");
+		expect(tab).toContain("component: WorkbenchMount");
+		// `sidebar: true`：宿主会把 `false` 改写成 `/settings/extensions?view=…`，那不是这张界面。
+		// 侧栏条目是进入整页的正规入口。
+		expect(view).toContain("sidebar: true");
 		expect(view).toMatch(/id: STUDIO_VIEW_ID/);
 		expect(view).toMatch(/surface: "page"/);
 		// 两个形态共用一个 id，切换时落在同一张界面上。
@@ -588,9 +588,13 @@ describe("the workbench frames stay honest about the domain", () => {
 	it("survives being rendered before the plugin runtime exists", () => {
 		// 运行时只在 activate 里建。宿主若先渲染标签或整页（热重载 / 冷启动 / 停用后再点开），
 		// 入口必须自己挡一道：不能抛错把整块面板留白，也不能永远停在骨架上。
-		const screen = read("src/features/workbench/components/WorkbenchScreen.tsx");
-		expect(screen).toContain("useStudioRuntimeReady()");
-		expect(screen).not.toContain("getStudioRuntime()");
+		const mount = read("src/features/workbench/components/WorkbenchMount.tsx");
+		expect(mount).toContain("useStudioRuntimeReady()");
+		expect(mount).not.toContain("getStudioRuntime()");
+		// 两个入口只允许穿过同一道门：各写一份守卫，就必然有一份写错。
+		expect(read("src/studio-tab.ts")).toContain("component: WorkbenchMount");
+		expect(read("src/studio-view.ts")).toContain("createElement(WorkbenchMount, { surface: \"page\" })");
+		expect(read("src/studio-view.ts")).not.toContain("WorkbenchSurface");
 		// 轮询到就位：只在启动那一刻看一眼，会让「宿主早于 activate 渲染」永久空白。
 		const retry = read("src/features/workbench/hooks/use-studio-runtime-ready.ts");
 		expect(retry).toContain("tryGetStudioRuntime()");
@@ -606,10 +610,41 @@ describe("the workbench frames stay honest about the domain", () => {
 		// 栏收成 44px 图标竖栏，主区永远在右边。
 		const shell = read("src/features/workbench/components/shell/StudioShell.tsx");
 		const rail = read("src/features/workbench/components/shell/StudioRail.tsx");
+		const css = read("src/style.css");
 		expect(shell).not.toMatch(/@max-\[\d+px\]:flex-col/);
 		expect(rail).not.toContain("@max-[720px]:flex-row");
-		expect(rail).toContain("@max-[640px]:w-11");
+		// 收栏由一个 `data-collapsed` 属性驱动，宽度写在样式表里：容器查询的宽度类
+		// （`@max-[640px]:w-11`）与根节点上的观察者可能在一帧里得出相反结论，
+		// 而 44px 又必须压得住 `w-[208px]`（同层 0,2,0 才赢），所以只剩这一处实现。
+		expect(rail).toContain("data-collapsed=");
+		expect(css).toMatch(/\.mahua-rail\[data-collapsed="true"\] \{[\s\S]*?width: 44px;/);
 	});
+
+	it("keeps the boot skeleton the same shape as the real shell", () => {
+		// 骨架不是装饰：它和真界面差一层，换装时纸面就会往下跳一次。
+		// 那一跳比多等 200ms 扎眼得多，所以逐层对齐（报头 / 12px 托底 / 窄栏 / 纸）。
+		const skeleton = read("src/features/workbench/components/StudioBootSkeleton.tsx");
+		for (const layer of ["bg-canvas", "h-12", "pb-3", "w-[208px]", "rounded-sheet", "bg-surface"]) {
+			expect(skeleton).toContain(layer);
+		}
+		// 骨架里不许出现真界面的数据入口：它必须能在运行时存在之前渲染。
+		expect(skeleton).not.toContain("useStudioState());");
+		expect(skeleton).not.toContain("getStudioRuntime()");
+	});
+
+	it("puts the fullscreen door at the rail foot and keeps it reachable when collapsed", () => {
+		// 全屏 / 退出全屏是「换宿主位置」，不是覆盖层。窄面板（<720px）里报头按钮被收起，
+		// 所以竖栏底部那份才是常驻入口；收起成图标列时它仍要占一行。
+		const rail = read("src/features/workbench/components/shell/StudioRail.tsx");
+		expect(rail).toContain("onSwapSurface");
+		expect(rail).toContain('t("window.fullscreen")');
+		expect(rail).toContain('t("window.toTab")');
+		const surface = read("src/features/workbench/components/WorkbenchSurface.tsx");
+		// 非 bare 页把报头右槽让给同步信息，门在竖栏；bare 页没有竖栏，才回落到报头。
+		expect(surface).toContain("isBarePage(route.page) ? surfaceButton : undefined");
+		expect(surface).toContain("surface,\n\t\t\t\tonSwapSurface,");
+	});
+
 
 	it("renders one sheet per side of the console, not a raised middle", () => {
 		// 设计稿的左右栏是内凹井（`bg-inset`），中栏才是浮起的纸。三栏都浮起就没了主次。

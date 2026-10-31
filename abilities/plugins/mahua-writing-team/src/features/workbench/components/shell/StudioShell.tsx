@@ -14,6 +14,10 @@ import { StudioRail, type StudioRailProps } from "./StudioRail";
  *
  * 纸面与窄栏之间靠 canvas 底透出来分隔，不再用通栏直角边框：主区是一张浮在 canvas
  * 上的圆角纸，四周留 12px 托底。
+ *
+ * 窄到 640px 以下（活动面板拖到最小）时，托底的 12px 四周留白收成 8px、纸面圆角收小一档：
+ * 宽度已经很紧，再留一圈装饰性空边，正文就只剩几行。阈值与窄栏自动收起是同一个值，
+ * 这样"竖栏收成图标列"与"主区让出宽度"同时发生，不会一半收一半不收。
  */
 export function StudioShell({
 	active,
@@ -36,9 +40,9 @@ export function StudioShell({
 	return (
 		<div className="@container flex h-full w-full flex-col overflow-hidden bg-canvas font-sans text-ink antialiased">
 			<StudioMasthead section={t(pageTitleKey(active))} right={right} sync={sync} />
-			<div className="flex min-h-0 flex-1 items-stretch gap-2 pl-2 pr-3 pb-3 pt-3">
+			<div className="flex min-h-0 flex-1 items-stretch gap-2 pb-3 pl-2 pr-3 pt-3 @max-[640px]:gap-1.5 @max-[640px]:pb-2 @max-[640px]:pl-1.5 @max-[640px]:pr-2 @max-[640px]:pt-2">
 				{!bare && rail ? <StudioRail {...rail} active={active} /> : null}
-				<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-surface shadow-raise">
+				<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-surface shadow-raise @max-[640px]:rounded-panel">
 					{children}
 				</main>
 			</div>

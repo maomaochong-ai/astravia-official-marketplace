@@ -8,7 +8,7 @@ import type { PluginContext } from "@astravia-org/plugin-sdk";
 
 import type { StudioService } from "../application/studio-service.js";
 import { bookIdProperty } from "../application/tool-schemas.js";
-import { THREAD_WEIGHTS } from "../domain/threads.js";
+import { THREAD_WEIGHTS } from "../domain/thread-ledger.js";
 import type { ThreadWeight } from "../domain/novel-types.js";
 import { SCENARIOS } from "../scenarios.js";
 
