@@ -108,11 +108,9 @@
 - **入口两个**：标签页 `registerStudioTab`（`studio`）+ 整页视图 `registerStudioView`（`workbench`）。`plugin.json` 的 `ui.slot.*` 权限为 `ui.slot.activity-tab` 与 `ui.slot.workspace-view` 两条。
 - **视觉换底**：`src/style.css` 用 `@theme inline`（纸面 21 色、13 档字号、6 档圆角、3 档投影），`.mahua-cover[data-layer]` 切换纸色。
 - **locale 473 键**（en/zh 各）。
-- **状态**：`npx tsc --noEmit` 0 错，`vitest run` 10 文件 172 例全过（0.4.13 又加两条版面守卫）。
-- **发行**：0.4.12 已上 gh-pages（索引 `2026.10.31-3`，pack `mahua-writing-team-0.4.12.astraviapkg`，
-  `sha256 20bd6f0d…fbda9768`）；0.4.13 把外壳换单条报头、七帧改成容器内滚动、`agent/references` 扁平化，
-  另一版由 CI 发布。
-- **发行**：gh-pages 索引 `2026.10.31-3`，pack `mahua-writing-team-0.4.12.astraviapkg`，`sha256 20bd6f0d…fbda9768`。
+- **状态**：`npx tsc --noEmit` 0 错，`vitest run` 11 文件 180 例全过（0.4.13 两条版面守卫，0.4.14 七条组件接线）。
+- **发行**：0.4.12 `2026.10.31-3`（`20bd6f0d…fbda9768`）→ 0.4.13 `2026.10.31-4`（`240c4025…13623390`）
+  → 0.4.14 `2026.10.31-5`（`474c125a…4cacc3c61a`），均为 CI 构建的 `mahua-writing-team-<版本>.astraviapkg`。
 
 
 ## 守住这些
@@ -120,7 +118,7 @@
 ```bash
 cd abilities/plugins/mahua-writing-team
 npm run check                        # tsc --noEmit
-npm test                             # vitest run（10 个测试文件 / 172 例）
+npm test                             # vitest run（11 个测试文件 / 180 例）
 npm run build                        # 生成手艺库 + vite build
 npm run validate                     # astravia-plugin validate
 ```
