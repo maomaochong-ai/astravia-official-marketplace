@@ -22,13 +22,18 @@
    （侧栏、页头都在），做不到「只有插件」；副作用是宿主管家侧栏里多一条「麻花小说网」。0031 起
    整条注册连同文件一起删（`src/studio-view.ts`、`studio-ids.ts` 的 `STUDIO_VIEW_ID`、
    `plugin.json` 的 `ui.slot.workspace-view` 全部消失）。代价是失去深链路由。
-2. **全屏 = 同一个根节点切 `fixed inset-0 z-[60]`**，既不是换宿主位置，也不是 portal。
-   根节点带 `data-fullscreen="true"`，Esc 与报头那枚键都能退。`z-[60]` 压在宿主壳（`z-10…z-50`）
-   之上、宿主弹窗（`z-[100]+`）之下。
-3. **不 portal**：插件 CSS 编在 `@scope ([data-astravia-plugin-root])` 里，portal 出去就落在
-   作用域外，得再造一个不带 class 的根（`display: contents`），Tailwind 类写上去会被静默丢弃；
-   而 `fixed` 本来就不受祖先 `overflow: hidden` 裁剪。更关键的是搬父节点必然卸载重挂，
-   页内 state（书库筛选、阅读字号）会重置。
+2. **全屏 = 同一个根节点 `createPortal` 到 `document.body`**（0032 §2）。0031 那版只把根节点切成
+   `fixed inset-0 z-[60]`，截图里宿主标签条与侧栏照样看得见——`fixed` 只对**最近的层叠上下文**生效，
+   宿主壳自己有 `z-10`/`z-20`，插件被关在里面。搬到 `body` 才真出去。层级 `z-[2147483000]`，压过
+   宿主壳与它的弹窗；根节点带 `data-fullscreen="true"`，Esc 与报头那枚键都能退，全屏期间
+   `body` 滚动锁起来（退出时原值还原）。
+3. **portal 需要自补作用域层**：插件 CSS 编在 `@scope ([data-astravia-plugin-root=<id>])` 里，搬出去就
+   落在作用域外。所以包裹层写成 `<div data-astravia-plugin-root={STUDIO_PLUGIN_ID} style={{display:"contents"}}>`
+   ——属性选择器命中即恢复全部 Tailwind 类，`display:contents` 不产生盒子、不阻断继承，
+   `@container` 仍按 `StudioShell` 根节点的实宽算。`STUDIO_PLUGIN_ID` 是常量，守卫核对它与
+   `plugin.json` 的 `id` 逐字一致。
+4. **代价是 remount**：`createPortal` 与普通 JSX 的 fiber 类型不同，切换必然卸载重挂，页内 state
+   （书库筛选、阅读字号）重置；字号偏好走存储能读回，筛选重置可接受。把「只有插件」拿到手更值。
 4. **标签页默认上栏**（`initiallyVisible: true`、`removable: true`、`retention: "warm"`），
    `scope_use` 显式写全 `["conversation", "project"]`。
 5. **装配门只留一处**：入口挂 `WorkbenchMount`，它先看运行时是否就绪，未就绪给骨架。
@@ -79,7 +84,7 @@
 | 装配门与骨架 | `components/WorkbenchMount.tsx`、`components/StudioBootSkeleton.tsx` |
 | 外壳 | `components/shell/{StudioShell,StudioMasthead,StudioRail,PageHeader}.tsx` |
 | 七帧 | `components/pages/*Page.tsx` |
-| 全屏 | `components/WorkbenchSurface.tsx`（根节点切 `fixed inset-0`）、`src/style.css` 的 `.mahua-drag` / `.mahua-traffic-lights` |
+| 全屏 | `components/WorkbenchSurface.tsx`（`createPortal` 到 `body` + `fixed inset-0 z-[2147483000]`）、`src/studio-ids.ts` 的 `STUDIO_PLUGIN_ID`、`src/style.css` 的 `.mahua-drag` / `.mahua-traffic-lights` |
 | 路由 | `hooks/use-workbench-route.ts`（模块级状态，切换宿主位置不回到书架） |
 
 ## 被改写的地方
@@ -97,6 +102,13 @@
 - **「全屏 = 换宿主位置」与「不 `fixed inset-0`」** → 宿主的路由渲染在外壳内、SDK 也没有窗口
   全屏 API，所以「只有插件」只能由根节点自己 `fixed inset-0`。
 - **双注册** → 只留标签页。整页视图那条在宿主管家侧栏里多占一条，又做不到只有插件。
+
+最后 0032（2026-11-01，0.4.22）推翻了 0031 的全屏做法：
+
+- **「只切 `fixed inset-0`，不 portal」** → 宿主壳自带层叠上下文，插件被关在里面，截图里标签条与
+  侧栏照样盖在插件上。改为 `createPortal` 到 `body`，作用域层用 `data-astravia-plugin-root` 自补。
+- **「portal 出去 Tailwind 类会被丢弃」** → 不成立：CSS 编在属性选择器作用域里，包裹层写上同一属性
+  加 `display:contents` 就命中。
 
 ## 怎么验证
 

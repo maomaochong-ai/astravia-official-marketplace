@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
+import { COLUMNS_TIERS, HEADER_CELLS, visibleHeaderCells } from "../src/features/workbench/components/pages/library-columns.js";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -337,36 +338,44 @@ describe("visual language stays on host tokens", () => {
 		expect(css).toContain('@plugin "@iconify/tailwind4"');
 	});
 
-	it("keeps the full screen in exactly one place, and it is not a portal", () => {
+	it("keeps the full screen in exactly one place, mounted on body", () => {
 		// 宿主的路由把工作区视图渲染在应用外壳里（侧栏与页头都在），SDK 也没有隐藏侧栏或全屏
-		// 窗口的 API，所以「只有插件」只能由界面自己铺满视口。铺的方式被钉死在 `WorkbenchSurface`
-		// 的根节点上：`fixed inset-0`，由 `data-fullscreen` 开关。
+		// 窗口的 API，所以「只有插件」只能由界面自己铺满视口。铺的方式被钉死在 `WorkbenchSurface`：
+		// `createPortal` 到 `document.body`，根节点 `fixed inset-0`，由 `data-fullscreen` 开关。
 		//
-		// 为什么不开 `createPortal(..., document.body)`：插件 CSS 编成
-		// `@scope ([data-astravia-plugin-root=<id>])`，portal 出去的内容就落在作用域外，得再造一个
-		// 作用域根，而把 Tailwind 类写在那个根上会被静默丢弃。`fixed` 不受祖先 `overflow: hidden`
-		// 裁剪（宿主挂载点只有 overflow-hidden，没有 transform / filter / contain），所以换父节点
-		// 并不必要。这条守卫把「不开 portal」和「只有一处 fixed」一起钉住。
+		// 为什么非 portal 不可：宿主的挂载点自己处在层叠上下文里（壳层 `z-10`/`z-20`），
+		// `fixed` 只在该上下文内部生效，标签条与侧栏照样画在上面（截图里就是这么叠着的）。
+		// 插件 CSS 编成 `@scope ([data-astravia-plugin-root=<id>])`，portal 出去后得自己补一层
+		// 作用域根——但那是 `display: contents` 的属性包裹层，不是把 Tailwind 类写在它上面，
+		// 所以样式不会被丢弃。这两条一起钉住。
 		const violations: string[] = [];
 		for (const path of SOURCE_FILES) {
-			// 只看代码，不看注释：注释里写着「为什么不开 portal」并不等于真的开了。
+			// 只看代码，不看注释：注释里写「为什么用 portal」并不等于真的用了。
 			const text = read(path)
 				.replace(/\/\*[\s\S]*?\*\//g, "")
 				.replace(/\/\/.*$/gm, "");
 			if (/\bfixed\b/.test(text) && !path.endsWith("WorkbenchSurface.tsx")) {
 				violations.push(`${path}: fixed`);
 			}
-			if (text.includes("createPortal")) violations.push(`${path}: createPortal`);
+			if (text.includes("createPortal") && !path.endsWith("WorkbenchSurface.tsx")) {
+				violations.push(`${path}: createPortal`);
+			}
 			if (text.includes("data-mahua-overlay")) violations.push(`${path}: overlay marker`);
 		}
 		expect(violations).toEqual([]);
 
 		const surface = read("src/features/workbench/components/WorkbenchSurface.tsx");
-		// 同一个根节点在两种形态之间只换定位：不另挂一份，页面里的局部状态因此不会丢。
-		expect(surface).toContain("fullscreen ? \"fixed inset-0 z-[60]\" : \"h-full\"");
+		// 同一份 JSX 在两种形态之间只换渲染出口与定位，不另写一份：页面里的局部状态只在切档时丢。
+		expect(surface).toContain('fullscreen ? "fixed inset-0 z-[2147483000] bg-canvas" : "h-full"');
 		expect(surface).toContain("data-fullscreen={fullscreen ? \"true\" : \"false\"}");
-		// 覆盖整窗后宿主的窗口控制键被盖住，所以必须有一条键盘退路。
+		// 搬到 body 之后必须自己补一层作用域根，否则 CSS 的 @scope 匹配不到，全屏就是一张裸页。
+		expect(surface).toContain("createPortal(");
+		expect(surface).toContain("data-astravia-plugin-root={STUDIO_PLUGIN_ID}");
+		expect(surface).toContain('style={{ display: "contents" }}');
+		expect(surface).toContain("document.body,");
+		// 覆盖整窗后宿主的窗口控制键被盖住，所以必须有一条键盘退路，且背后不能再跟着滚。
 		expect(surface).toContain('event.key === "Escape"');
+		expect(surface).toContain('document.body.style.overflow = "hidden"');
 		// 宿主自己的位置 API 一个都不用：它们做不到「只有插件」（注释里的名字不算）。
 		const code = surface.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
 		expect(code).not.toContain("openWorkspaceView");
@@ -695,5 +704,22 @@ describe("the workbench frames stay honest about the domain", () => {
 			}
 		}
 		expect(missing).toEqual([]);
+	});
+
+	it("keeps the library grid tracks equal to the cells it still renders", () => {
+		// 一档模板少了一列、单元格却没少——多出来的子项会被 grid 自动排布塞进隐式第二行：
+		// 行高翻倍、字折成两行、右列错位。这条守卫把「轨道数 = 可见单元格数」钉在四个档位。
+		const mismatched: string[] = [];
+		for (const tier of COLUMNS_TIERS) {
+			const visible = visibleHeaderCells(tier.tracks).length;
+			if (visible !== tier.tracks) mismatched.push(`${tier.tracks} tracks vs ${visible} cells`);
+			// 模板里的轨道数也不能自己说了算：把方括号里那串按 `_` 切开数一下有多少段。
+			const template = /grid-cols-\[([^\]]+)\]/.exec(tier.template)?.[1] ?? "";
+			const tracks = template.split("_").filter(Boolean).length;
+			if (tracks !== tier.tracks) mismatched.push(`${tier.tracks} declared vs ${tracks} in ${tier.template}`);
+		}
+		expect(mismatched).toEqual([]);
+		// 每格都得在语言文件里能查到，不然空表头比错位更难发现。
+		expect(HEADER_CELLS.filter((cell) => !(cell.key in en) || !(cell.key in zh))).toEqual([]);
 	});
 });

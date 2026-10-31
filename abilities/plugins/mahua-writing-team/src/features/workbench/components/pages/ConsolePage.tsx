@@ -65,7 +65,7 @@ export function ConsolePage({
 			<PageHeader
 				title={t("page.console.title")}
 				meta={
-					<span className="truncate text-body-sm text-ink-soft">
+					<span className="min-w-0 truncate text-body-sm text-ink-soft">
 						{book ? `${book.title} · ${book.genre}` : t("console.noBook")}
 					</span>
 				}
@@ -313,7 +313,7 @@ export function ConsolePage({
 								{[...book.checkpoints].slice(-3).reverse().map((checkpoint) => (
 									<li
 										key={`${checkpoint.at}-${checkpoint.noteKey}`}
-										className="flex items-baseline gap-2 text-[10px]"
+										className="flex items-center gap-2 text-[10px]"
 									>
 										<span className="font-mono text-ink-faint">{clockOf(checkpoint.at)}</span>
 										<span className="min-w-0 flex-1 truncate text-ink-soft">

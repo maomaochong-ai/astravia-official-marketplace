@@ -44,12 +44,12 @@ export function ChapterBrief({
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-2">
-						<span className="truncate text-[10px] tracking-wide text-ink-faint">{arc}</span>
+						<span className="min-w-0 truncate text-[10px] tracking-wide text-ink-faint">{arc}</span>
 						<span className="shrink-0 rounded-tile bg-cinnabar-soft px-1.5 text-[10px] leading-[17px] font-medium text-cinnabar-ink">
 							{state}
 						</span>
 					</div>
-					<h2 className="mt-0.5 truncate font-display text-heading font-semibold text-ink">{title}</h2>
+					<h2 className="mt-0.5 min-w-0 truncate font-display text-heading font-semibold text-ink">{title}</h2>
 				</div>
 				<div className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
 					{writing ? (

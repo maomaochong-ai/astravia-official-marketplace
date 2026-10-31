@@ -34,9 +34,9 @@ export function PageHeader({
 						{back.label}
 					</button>
 				)}
-				<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 					<h1 className="min-w-0 truncate font-display text-display font-semibold text-ink">{title}</h1>
-					{meta}
+					{meta ? <span className="min-w-0 flex-1 basis-[12ch]">{meta}</span> : null}
 				</div>
 			</div>
 			<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 pb-1.5">{right}</div>

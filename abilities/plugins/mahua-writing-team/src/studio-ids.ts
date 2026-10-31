@@ -9,3 +9,12 @@
  * 单独成文件只为了把它放在叶子模块里：注册处与界面都要读，谁也别 import 谁。
  */
 export const STUDIO_TAB_ID = "studio";
+
+/**
+ * 插件 id，与 `plugin.json` 的 `id` 逐字一致。
+ *
+ * 只在一个地方用到：全屏时把界面 `createPortal` 到 `body`，得在那里自己再挂一层
+ * `[data-astravia-plugin-root]` —— 插件 CSS 被编译进 `@scope ([data-astravia-plugin-root=<id>])`，
+ * 搬出宿主挂载点之后不补这一层样式就全丢。不写常量就得去 DOM 里猜自己属于哪个作用域。
+ */
+export const STUDIO_PLUGIN_ID = "mahua-writing-team";

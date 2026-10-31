@@ -134,7 +134,7 @@ export function ReaderPage({
 							{t("reader.next")}
 							<span className="icon-[lucide--chevron-right] size-3" />
 						</button>
-						<span className="ml-auto">{t("reader.readonlyNote")}</span>
+						<span className="ml-auto hidden min-w-0 truncate @min-[620px]:inline">{t("reader.readonlyNote")}</span>
 					</div>
 				</div>
 

@@ -52,7 +52,7 @@ export function StudioMasthead({
 				{section ? (
 					<>
 						<span className="h-3 w-px shrink-0 bg-line-strong" />
-						<span className="truncate text-micro font-medium text-ink">{section}</span>
+						<span className="min-w-0 truncate text-micro font-medium text-ink">{section}</span>
 					</>
 				) : null}
 			</div>
@@ -90,7 +90,7 @@ export function StudioMasthead({
 								fullscreen ? "icon-[lucide--minimize-2]" : "icon-[lucide--maximize-2]"
 							} size-3.5 shrink-0`}
 						/>
-						<span className="hidden @[720px]:inline">
+						<span className="hidden whitespace-nowrap @[760px]:inline">
 							{fullscreen ? t("window.exitFullscreen") : t("window.fullscreen")}
 						</span>
 					</button>
@@ -124,7 +124,7 @@ function Stop({
 		<span className="flex min-w-0 shrink items-center gap-1.5">
 			<span className={`size-[5px] shrink-0 rounded-pill ${dot}`} />
 			<span className="shrink-0 text-[10px] font-semibold tracking-[0.14em] text-ink-faint">{label}</span>
-			<span className={`truncate text-micro text-ink ${mono ? "font-mono" : "font-medium"}`}>{value}</span>
+			<span className={`min-w-0 truncate text-micro text-ink ${mono ? "font-mono" : "font-medium"}`}>{value}</span>
 			{note ? (
 				<span className="hidden shrink-0 items-center gap-1 text-[10px] text-ink-soft @min-[1100px]:flex">
 					<span className="text-line-strong">·</span>

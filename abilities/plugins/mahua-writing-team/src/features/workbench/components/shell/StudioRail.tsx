@@ -80,7 +80,7 @@ export function StudioRail({
 				}`}
 			>
 				<span className={`${icon} size-3.5 shrink-0 ${isActive ? "text-cinnabar" : "text-ink-faint"}`} />
-				<span className="mahua-rail-label truncate">{label}</span>
+				<span className="mahua-rail-label min-w-0 flex-1 truncate">{label}</span>
 				{dot && live ? <span className="mahua-rail-dot ml-auto size-1.5 shrink-0 rounded-pill bg-cinnabar" /> : null}
 			</button>
 		);
@@ -133,7 +133,7 @@ export function StudioRail({
 					>
 						<div className="flex items-center gap-1.5">
 							<span className="size-1.5 rounded-pill bg-cinnabar" />
-							<span className="truncate text-micro-up font-semibold tracking-[0.08em] text-cinnabar-ink">
+							<span className="min-w-0 truncate text-micro-up font-semibold tracking-[0.08em] text-cinnabar-ink">
 								{t("rail.writing", { writer: writing.writer })}
 							</span>
 							<span className="ml-auto shrink-0 font-mono text-[10px] text-ink-faint">{writing.elapsed}</span>
@@ -151,7 +151,7 @@ export function StudioRail({
 					className="mahua-rail-item flex h-7 w-full shrink-0 items-center gap-2 rounded-control px-1 text-[10px] text-ink-faint transition-colors hover:bg-raised hover:text-ink"
 				>
 					<span className={`size-1 shrink-0 rounded-pill ${credential.ok ? "bg-pass" : "bg-fail"}`} />
-					<span className="mahua-rail-label truncate">{credential.label}</span>
+					<span className="mahua-rail-label min-w-0 flex-1 truncate">{credential.label}</span>
 					<span className="mahua-rail-label icon-[lucide--chevron-right] ml-auto size-3 shrink-0" />
 				</button>
 
@@ -169,7 +169,7 @@ export function StudioRail({
 								collapsed ? "icon-[lucide--panel-left-open]" : "icon-[lucide--panel-left-close]"
 							} size-3 shrink-0`}
 						/>
-						<span className="mahua-rail-label truncate">
+						<span className="mahua-rail-label min-w-0 flex-1 truncate">
 							{collapsed ? t("rail.expandRail") : t("rail.collapseRail")}
 						</span>
 					</button>

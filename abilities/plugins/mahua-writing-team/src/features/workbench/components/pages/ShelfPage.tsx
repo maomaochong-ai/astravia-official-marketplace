@@ -98,7 +98,7 @@ export function ShelfPage({
 							</div>
 
 							<div className="mt-4 rounded-panel bg-canvas p-3">
-								<div className="flex items-baseline gap-2">
+								<div className="flex items-center gap-2">
 									<span className="text-micro-up font-semibold uppercase text-ink-faint">
 										{t("shelf.nowWriting")}
 									</span>
@@ -186,7 +186,7 @@ export function ShelfPage({
 					</div>
 
 					<div className="mt-5 flex min-h-0 flex-1 flex-col rounded-panel bg-inset/70 p-3">
-						<div className="flex items-baseline gap-2">
+						<div className="flex items-center gap-2">
 							<span className="text-micro-up font-semibold uppercase text-ink-faint">
 								{t("shelf.recent")}
 							</span>
@@ -205,7 +205,7 @@ export function ShelfPage({
 										<span className="w-[132px] shrink-0 truncate font-mono text-[10px] text-ink-soft">
 											{event.tool ?? event.origin}
 										</span>
-										<span className="truncate text-ink">{t(event.textKey, event.textParams)}</span>
+										<span className="min-w-0 truncate text-ink">{t(event.textKey, event.textParams)}</span>
 									</li>
 								))}
 							</ul>
@@ -245,8 +245,8 @@ export function ShelfPage({
 										>
 											<Cover {...coverSeed(entry.title)} size="mini" />
 											<div className="min-w-0 flex-1">
-												<div className="flex items-baseline gap-1.5">
-													<span className="truncate font-display text-body-sm font-semibold text-ink">
+											<div className="flex items-center gap-1.5">
+													<span className="min-w-0 truncate font-display text-body-sm font-semibold text-ink">
 														{entry.title}
 													</span>
 													<PhaseBadge phase={entry.phase} />

@@ -45,10 +45,10 @@ function LandedCard() {
 			<div className="flex items-center gap-3 rounded-panel border border-line bg-raised px-3 py-2.5 shadow-raise">
 				<span className="icon-[solar--book-2-bold] size-4 shrink-0 text-cinnabar" />
 				<div className="min-w-0 flex-1">
-					<div className="flex items-baseline gap-1.5">
+					<div className="flex items-center gap-1.5">
 						<span className="font-display text-body-sm font-semibold text-ink">{t("landed.title")}</span>
 						{landed.chapter ? (
-							<span className="truncate font-mono text-[10px] text-ink-faint">{`chapters/${landed.chapter}.md`}</span>
+							<span className="min-w-0 truncate font-mono text-[10px] text-ink-faint">{`chapters/${landed.chapter}.md`}</span>
 						) : null}
 					</div>
 					<div className="mt-0.5 truncate text-[10px] text-ink-soft">

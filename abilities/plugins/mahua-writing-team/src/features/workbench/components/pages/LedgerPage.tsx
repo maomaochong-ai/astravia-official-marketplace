@@ -98,11 +98,11 @@ export function LedgerPage({
 						<div
 							className={`grid ${THREAD_COLUMNS} shrink-0 items-center gap-2 border-b border-line bg-inset px-3 py-2 text-[10px] font-semibold uppercase text-ink-faint`}
 						>
-							<span>{t("ledger.weight.heavy")}</span>
-							<span>{t("ledger.threads")}</span>
-							<span>{t("ledger.plantedShort")}</span>
-							<span>{t("ledger.dueShort")}</span>
-							<span className="text-right">{t("ledger.stateShort")}</span>
+							<span className="min-w-0 truncate">{t("ledger.weight.heavy")}</span>
+							<span className="min-w-0 truncate">{t("ledger.threads")}</span>
+							<span className="min-w-0 truncate">{t("ledger.plantedShort")}</span>
+							<span className="min-w-0 truncate">{t("ledger.dueShort")}</span>
+							<span className="min-w-0 truncate text-right">{t("ledger.stateShort")}</span>
 						</div>
 						{data.threads.length === 0 ? (
 							<div className="flex min-h-0 flex-1 p-4">
@@ -132,15 +132,15 @@ export function LedgerPage({
 												{t(`ledger.weight.${thread.weight}`)}
 											</span>
 											<span className={`min-w-0 truncate ${THREAD_TONE[state]}`}>{thread.content}</span>
-											<span className="truncate font-mono text-[10px] text-ink-soft">
+											<span className="min-w-0 truncate font-mono text-[10px] text-ink-soft">
 												{t("ledger.planted", { chapter: thread.plantedIn })}
 											</span>
-											<span className={`truncate font-mono text-[10px] ${state === "overdue" ? "text-fail" : "text-ink-soft"}`}>
+											<span className={`min-w-0 truncate font-mono text-[10px] ${state === "overdue" ? "text-fail" : "text-ink-soft"}`}>
 												{closedChapter
 													? t("ledger.closedIn", { chapter: closedChapter })
 													: t("ledger.dueIn", { chapter: thread.dueIn })}
 											</span>
-											<span className={`truncate text-right text-[10px] ${THREAD_TONE[state]}`}>
+											<span className={`min-w-0 truncate text-right text-[10px] ${THREAD_TONE[state]}`}>
 												{t(`ledger.state.${state}`)}
 											</span>
 										</li>

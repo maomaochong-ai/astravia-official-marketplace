@@ -9,16 +9,15 @@ import { Cover } from "../shell/Cover";
 import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
 import { PhaseBadge } from "../shell/PhaseBadge";
+import { COLUMNS, columnClassName, HEADER_CELLS, HIDE_CHAPTERS, HIDE_GENRE, HIDE_UPDATED } from "./library-columns";
 
 const PAGE_SIZE = 9;
 
 /** 六列表头：书名 / 题材·篇幅 / 阶段 / 章·进度 / 字数 / 更新。
  *
- * 宽度不够时**丢列**（题材篇幅 → 字数 → 章进度 → 更新），而不是把六列一起压到叠字：
- * 台账的意义是横向比对，六列全挤进一行反而什么都比不了。丢列按信息重要度排，
- * 书名与阶段一直留着——它们是「哪本、到哪了」。 */
-const COLUMNS =
-	"grid-cols-[1fr_150px_74px_196px_78px_88px] @max-[1120px]:grid-cols-[1fr_74px_150px_88px] @max-[880px]:grid-cols-[1fr_74px_88px] @max-[680px]:grid-cols-[1fr_74px]";
+ * 宽度不够时**丢列**（题材篇幅与字数 → 章进度 → 更新），而不是把六列一起压到叠字。
+ * 列模板、每格的隐藏档位都写在 `library-columns.ts`：表头与行共用同一组，守卫测试逐档
+ * 核对「轨道数 = 可见单元格数」——多出来的子项会被 grid 塞进隐式第二行，那正是列错位的根因。 */
 
 // 与 `NovelPhase` 同序：落库的阶段一个都不能漏，否则筛选带会对某些书静默失灵
 // （`arc_close` 曾经漏在这里）。
@@ -234,26 +233,25 @@ export function LibraryPage({
 					{writing ? (
 						<>
 							<span className="size-1.5 shrink-0 rounded-pill bg-cinnabar" />
-							<span className="truncate text-micro text-ink">
+							<span className="min-w-0 flex-1 truncate text-micro text-ink">
 								{t("library.ledgerWriting", { chapter: writing.chapter ?? 0 })}
 							</span>
 						</>
 					) : (
-						<span className="truncate text-micro text-ink-faint">{t("library.ledgerIdle")}</span>
+						<span className="min-w-0 truncate text-micro text-ink-faint">{t("library.ledgerIdle")}</span>
 					)}
-					<span className="ml-auto shrink-0 text-[10px] text-ink-faint">{t("library.ledgerNote")}</span>
+					<span className="ml-auto min-w-0 truncate text-[10px] text-ink-faint">{t("library.ledgerNote")}</span>
 				</div>
 
 				<div className="flex min-h-0 flex-1 flex-col">
 					<div
 						className={`grid ${COLUMNS} shrink-0 items-center gap-3 border-b border-line-soft px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint`}
 					>
-							<span>{t("library.column.book")}</span>
-							<span>{t("library.column.genreLength")}</span>
-							<span>{t("library.column.stage")}</span>
-							<span>{t("library.column.chapters")}</span>
-							<span className="text-right">{t("library.column.words")}</span>
-							<span className="text-right">{t("library.column.updated")}</span>
+							{HEADER_CELLS.map((cell) => (
+								<span key={cell.key} className={`min-w-0 truncate ${columnClassName(cell)}`}>
+									{t(cell.key)}
+								</span>
+							))}
 						</div>
 
 						{rows.length === 0 ? (
@@ -287,7 +285,7 @@ export function LibraryPage({
 														</span>
 													</span>
 												</span>
-												<span className="truncate text-micro text-ink-soft">
+												<span className={`min-w-0 truncate text-micro text-ink-soft ${HIDE_GENRE}`}>
 													{entry.genre ?? t("library.card.noGenre")}
 													<span className="text-line-strong"> · </span>
 													{t(`library.size.${sizeOf(entry.targetChapters)}`)}
@@ -295,7 +293,7 @@ export function LibraryPage({
 												<span>
 													<PhaseBadge phase={entry.phase} />
 												</span>
-												<span className="flex items-center gap-2.5">
+												<span className={`flex items-center gap-2.5 ${HIDE_CHAPTERS}`}>
 													<span className="w-[46px] shrink-0 font-mono text-[11px] tabular-nums text-ink">
 														{entry.committedCount}
 														<span className="text-ink-faint">/{entry.targetChapters}</span>
@@ -307,10 +305,10 @@ export function LibraryPage({
 														{done}%
 													</span>
 												</span>
-												<span className="text-right font-mono text-[11px] tabular-nums text-ink-soft">
+												<span className={`text-right font-mono text-[11px] tabular-nums text-ink-soft ${HIDE_GENRE}`}>
 													{entry.words ? formatCount(entry.words) : "—"}
 												</span>
-												<span className="text-right text-[10px] text-ink-faint">
+												<span className={`text-right text-[10px] text-ink-faint ${HIDE_UPDATED}`}>
 													{ago ? t(ago.key, { count: ago.count }) : "—"}
 												</span>
 											</button>

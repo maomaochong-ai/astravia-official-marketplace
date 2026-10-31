@@ -6,7 +6,7 @@ export function ScoreBar({ label, value, pass = 72 }: { label: string; value: nu
 	const weak = value < pass - 6;
 	return (
 		<div className="flex items-center gap-2.5">
-			<span className="w-9 shrink-0 text-micro text-ink-soft">{label}</span>
+			<span className="w-[5.5rem] shrink-0 truncate text-micro text-ink-soft">{label}</span>
 			<div className="relative h-[5px] flex-1 overflow-hidden rounded-pill bg-inset">
 				<div
 					className={`h-full rounded-pill ${weak ? "bg-fail" : "bg-ink"}`}

@@ -54,6 +54,14 @@
    插件不再自己判断模式（`data-mahua-mode` 与 `use-host-mode.ts` 已删）。
 10. **图标用 Iconify 类名**（`icon-[lucide--*]` / `icon-[solar--*]`），依赖 `@iconify-json/{lucide,solar}`
     随包离线解析。不引 SVG 组件库。
+11. **文字退让三件套**（0032 §2）：截断写 `truncate`，flex 子项再补 `min-w-0`（`min-width:auto`
+    会让它拒绝收缩，整行溢出后被祖先 `overflow-hidden` 裁切、右侧元素被顶出去——这是「文字被遮住」
+    的系统性根因）；带 `truncate` 的行用 `items-center`，不用 `items-baseline`（`overflow:hidden`
+    子项的基线由 border box 合成，两者一碰就垂直错位）。
+12. **表格丢列，不压字**。表头与行共用一份列定义（`pages/library-columns.ts`），每档模板的轨道数
+    必须等于该档可见单元格数：多出来的子项会被 grid 自动排布塞进隐式第二行。守卫测试逐档核对。
+13. **窄宽堆叠用 `@min-[…]` 正向声明**：基础态就是窄态，避免一层层 `@max-` 向下覆盖；
+    「标签 + 值 + 右注记」一类行靠 `flex-wrap` + `gap-x/gap-y` 兜底。
 
 ## 代码落点
 

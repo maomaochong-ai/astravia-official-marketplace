@@ -81,9 +81,9 @@ export function BookPage({
 					back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }}
 					title={book.title}
 					meta={
-						<span className="flex items-center gap-2 text-body-sm text-ink-soft">
+						<span className="flex min-w-0 items-center gap-2 text-body-sm text-ink-soft">
 							<PhaseBadge phase={book.phase} />
-							<span className="truncate">
+							<span className="min-w-0 truncate">
 								{book.genre}
 								{volume ? ` · ${volume.title}` : ""} · {t("book.indexCount", { count: book.chapters.length })} ·{" "}
 								{t("book.wordsWan", { words: wanWords(committedWords(book)) })}
@@ -96,11 +96,11 @@ export function BookPage({
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 
 				<section className="rounded-sheet bg-raised p-4 shadow-raise">
-					<div className="flex items-baseline gap-2">
+					<div className="flex items-center gap-2">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("book.arcProgress")}
 						</span>
-						<span className="text-micro text-ink">
+						<span className="min-w-0 truncate text-micro text-ink">
 							{arc ? `${arc.title} · ${arcCommitted} / ${arcChapters.length}` : t("book.arcGoalNone")}
 						</span>
 						<span className="ml-auto font-mono text-[10px] text-ink-faint">
@@ -170,7 +170,7 @@ export function BookPage({
 											<span className="w-[52px] shrink-0 font-mono text-[10px] text-ink-faint">
 												{checkpoint.chapter}
 											</span>
-											<span className="truncate text-ink">
+											<span className="min-w-0 flex-1 truncate text-ink">
 												{t(checkpoint.noteKey, checkpoint.noteParams)}
 											</span>
 											<span className="ml-auto shrink-0 text-[10px] text-ink-faint">
@@ -211,7 +211,7 @@ export function BookPage({
 										return (
 											<div key={item.id} className="mb-1">
 												<div className="flex items-center gap-2 px-2 py-1">
-													<span className="truncate text-micro text-ink">{item.title}</span>
+													<span className="min-w-0 flex-1 truncate text-micro text-ink">{item.title}</span>
 													<span className="ml-auto font-mono text-[9.5px] text-ink-faint">
 														{item.from}–{item.to}
 													</span>

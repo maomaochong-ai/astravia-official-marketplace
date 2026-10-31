@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { STUDIO_PLUGIN_ID } from "../../../studio-ids.js";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
 import { useNarrowSurface } from "../hooks/use-narrow-surface";
 import { useRailCollapsed } from "../hooks/use-rail-collapsed";
@@ -38,21 +40,22 @@ const CLOCK_MS = 30_000;
  * 事件流在 `use-console-timeline`。这里只把几样东西接起来，唯一的行为是「有新的落盘事件就
  * 重读一次」：同步只有这一个方向。
  *
- * 「全屏」是**同一棵树的定位切换**，不是第二个实例、也不是第二个宿主注册：
- * 平时根节点是面板里的一块（`h-full`），点全屏后同一个根节点换成 `fixed inset-0`，盖住
- * 宿主窗口。这样做的三条理由，都是实测出来的：
+ * 「全屏」是**同一棵组件树换个渲染出口**，不是第二个实例：平时根节点长在面板里（`h-full`），
+ * 点全屏后同一份 JSX 经 `createPortal` 挂到 `document.body`，根节点变成 `fixed inset-0`。三条理由：
  *
- * 1. 宿主工作区视图（`openWorkspaceView`）做不到「只有插件」——宿主的路由文件把它渲染在
- *    应用外壳里，侧栏与页头都在，SDK 也没有隐藏侧栏或全屏窗口的 API；
+ * 1. 宿主工作区视图（`openWorkspaceView`）做不到「只有插件」——宿主把它渲染在应用外壳里，
+ *    侧栏与页头都在，SDK 也没有隐藏侧栏或全屏窗口的 API；
  * 2. 插件 CSS 活在 `@scope ([data-astravia-plugin-root=<id>])` 里，`:root` 级别的选择器碰不到
  *    宿主 chrome，所以唯一能覆盖整窗的办法就是让自己变成一块固定定位的画布；
- * 3. 为什么不是 `createPortal` 到 `body`：那要自己再造一个作用域根，等于把 `@scope` 的根
- *    复制一份（Tailwind 类挂在根上会被静默丢弃，另一个插件已经踩过）；而 `fixed` 不受祖先
- *    `overflow: hidden` 裁剪——宿主的挂载点只有 `overflow-hidden`，没有 `transform` /
- *    `filter` / `contain`，所以固定定位仍然相对视口，不需要换父节点。
+ * 3. 光把根节点改成 `fixed` 不够：宿主的挂载点自己处在层叠上下文里（壳层 `z-10`/`z-20`），
+ *    `fixed` 只在那个上下文内部生效，标签条与侧栏照样画在上面——截图里就是这么叠着的。
+ *    搬到 `body` 才能压过宿主的全部壳层，所以这里用 `createPortal`，并在外面补一层
+ *    `[data-astravia-plugin-root]`（`display: contents`，不参与布局），让 `@scope` 仍能命中。
+ *    宿主的界面设计 preset 插件也是这个写法（`plugin-portal.tsx`）。
  *
  * 代价写在明处：覆盖整窗后宿主的窗口控制键被盖住，所以报头在全屏时是拖拽区，Esc 与报头上的
- * 按钮都能退出。这是「模态全屏」的常规取舍（VS Code 也是这样）。
+ * 按钮都能退出；另外切换出口会让这棵子树卸载重挂，页内临时 state（筛选、草稿）会重置——
+ * 阅读字号一类偏好本来就走存储，不受影响。这是「模态全屏」的常规取舍（VS Code 也是这样）。
  */
 export function WorkbenchSurface() {
 	const t = useTranslator();
@@ -89,7 +92,13 @@ export function WorkbenchSurface() {
 			if (event.key === "Escape") setFullscreen(false);
 		};
 		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
+		// 覆盖层之下还留着宿主的滚动容器：不锁住的话滚轮会带着背后的侧栏一起动。
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+		return () => {
+			window.removeEventListener("keydown", onKey);
+			document.body.style.overflow = previousOverflow;
+		};
 	}, [fullscreen]);
 
 	const book = data.book;
@@ -103,13 +112,16 @@ export function WorkbenchSurface() {
 		navigate(page, target);
 	};
 
-	return (
+	const surface = (
 		<div
 			ref={surfaceRef}
 			className={`mahua-root flex min-h-0 w-full flex-col overflow-hidden ${
-				fullscreen ? "fixed inset-0 z-[60]" : "h-full"
+				fullscreen ? "fixed inset-0 z-[2147483000] bg-canvas" : "h-full"
 			}`}
 			data-fullscreen={fullscreen ? "true" : "false"}
+			role={fullscreen ? "dialog" : undefined}
+			aria-modal={fullscreen ? true : undefined}
+			aria-label={fullscreen ? t("window.fullscreen") : undefined}
 		>
 			<StudioShell
 				active={route.page}
@@ -188,5 +200,14 @@ export function WorkbenchSurface() {
 				)}
 			</StudioShell>
 		</div>
+	);
+
+	if (!fullscreen) return surface;
+
+	return createPortal(
+		<div data-astravia-plugin-root={STUDIO_PLUGIN_ID} style={{ display: "contents" }}>
+			{surface}
+		</div>,
+		document.body,
 	);
 }

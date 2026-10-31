@@ -83,8 +83,8 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 				{t("activation.back")}
 			</button>
 
-			<div className="flex min-h-0 flex-1 gap-3">
-				<aside className="flex w-[420px] shrink-0 flex-col justify-between rounded-sheet border border-line bg-inset px-9 py-9">
+			<div className="flex min-h-0 flex-1 flex-col gap-3 @min-[900px]:flex-row">
+				<aside className="flex w-full shrink-0 flex-col justify-between overflow-hidden rounded-sheet border border-line bg-inset px-6 py-6 @min-[900px]:w-[420px] @min-[900px]:px-9 @min-[900px]:py-9">
 					<div>
 						<div className="flex size-11 items-center justify-center rounded-[3px] bg-cinnabar font-display text-title text-cinnabar-foreground">
 							{t("activation.mark")}
@@ -117,7 +117,7 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 						</div>
 						<ul className="mt-1.5 space-y-1">
 							{data.trustedKeys().map((key) => (
-								<li key={key.keyId} className="flex items-baseline gap-2 font-mono text-[10px] text-ink-soft">
+								<li key={key.keyId} className="flex items-center gap-2 font-mono text-[10px] text-ink-soft">
 									<span className="text-ink">{key.keyId}</span>
 									<span className="min-w-0 flex-1 truncate">{key.publicKey}</span>
 								</li>
@@ -127,7 +127,7 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 				</aside>
 
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-sheet bg-surface px-8 py-7 shadow-raise">
-					<div className="flex items-baseline justify-between gap-6">
+					<div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
 						<div className="flex items-baseline gap-2">
 							<h2 className="font-display text-heading font-semibold text-ink">{t("activation.title")}</h2>
 							<span
@@ -172,14 +172,14 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 						</div>
 					</div>
 
-					<div className="mt-3 grid grid-cols-[auto_1fr_1fr] divide-x divide-line overflow-hidden rounded-control border border-line bg-raised">
+					<div className="mt-3 grid grid-cols-1 divide-y divide-line overflow-hidden rounded-control border border-line bg-raised @min-[640px]:grid-cols-[auto_1fr_1fr] @min-[640px]:divide-x @min-[640px]:divide-y-0">
 						<div className="flex h-10 items-center gap-2 px-3.5">
 							<span className="text-[10px] text-ink-faint">{t("activation.fact.version")}</span>
 							<span className="font-mono text-micro text-ink/80">{TOKEN_PREFIX}</span>
 						</div>
 						<div className="flex h-10 items-center gap-2 px-3.5">
 							<span className="text-[10px] text-ink-faint">{t("activation.fact.keyId")}</span>
-							<span className="truncate font-mono text-micro text-ink/80">{claims?.keyId ?? "—"}</span>
+							<span className="min-w-0 truncate font-mono text-micro text-ink/80">{claims?.keyId ?? "—"}</span>
 							{claims ? (
 								<span className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-pass">
 									<span className="icon-[lucide--shield-check] size-3" />
@@ -189,7 +189,7 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 						</div>
 						<div className="flex h-10 items-center gap-2 px-3.5">
 							<span className="text-[10px] text-ink-faint">{t("activation.fact.expiresAt")}</span>
-							<span className="truncate font-mono text-micro text-ink/80">
+							<span className="min-w-0 truncate font-mono text-micro text-ink/80">
 								{claims ? claims.expiresAt.slice(0, 10) : "—"}
 							</span>
 							{claims ? (
@@ -274,9 +274,9 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 						</p>
 					)}
 
-					<div className="mt-6 grid grid-cols-2 gap-8 border-t border-line pt-5">
+					<div className="mt-6 grid gap-8 border-t border-line pt-5 @min-[720px]:grid-cols-2">
 						<div>
-							<div className="flex items-baseline justify-between">
+							<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 								<h3 className="text-[10px] font-semibold tracking-[0.08em] text-ink">{t("activation.fail.title")}</h3>
 								<span className="text-[10px] text-ink-faint">{t("activation.fail.note")}</span>
 							</div>
@@ -291,14 +291,14 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 										}`}
 									>
 										<span className="shrink-0 font-mono text-[10px] text-fail">{code}</span>
-										<span className="truncate text-[10px] text-ink-soft">{t(`activation.reject.${code}`)}</span>
+										<span className="min-w-0 truncate text-[10px] text-ink-soft">{t(`activation.reject.${code}`)}</span>
 									</li>
 								))}
 							</ul>
 							<p className="mt-2 text-[9.5px] leading-4 text-ink-faint">{t("activation.rejectNote")}</p>
 						</div>
 						<div>
-							<div className="flex items-baseline justify-between">
+							<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 								<h3 className="text-[10px] font-semibold tracking-[0.08em] text-ink">{t("activation.opens.title")}</h3>
 								<span className="text-[10px] text-ink-faint">{t("activation.opens.note")}</span>
 							</div>
