@@ -111,6 +111,25 @@
 			"type": "callout",
 			"tone": "warning",
 			"content": "The credential check is offline. A valid signature proves the credential was issued by this plugin's key — not that this copy was purchased. It gates this plugin's own writing tools only; treat it as a courtesy gate, not as licence enforcement."
+		},
+		{
+			"type": "callout",
+			"tone": "info",
+			"content": "The studio, its four roles and the chapter/arc mechanics follow the open-source ainovel-cli project. The code here is an independent desktop implementation, not a fork: it reads and writes its own storage and drives this editor's tools."
+		},
+		{
+			"type": "links",
+			"title": "Reference",
+			"items": [
+				{
+					"label": "ainovel-cli · GitHub",
+					"href": "https://github.com/voocel/ainovel-cli"
+				},
+				{
+					"label": "Apache-2.0 licence",
+					"href": "https://github.com/voocel/ainovel-cli/blob/main/LICENSE"
+				}
+			]
 		}
 	]
 }
