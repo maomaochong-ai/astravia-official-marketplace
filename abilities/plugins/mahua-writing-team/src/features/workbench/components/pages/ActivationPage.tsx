@@ -4,6 +4,7 @@ import { TOKEN_PREFIX } from "../../../../entitlement/credential-token.js";
 import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
 import type { WorkbenchPage } from "../../workbench-pages";
+import { PageHeader } from "../shell/PageHeader";
 
 /** 八个拒绝码，与 `verifyEntitlement` 的 `reason` 一一对应。`expired` 单独成一个状态。 */
 const REJECTS = [
@@ -22,6 +23,13 @@ const DAY_MS = 86_400_000;
 /** 凭证输入框的容纳上限；宿主侧没有更短的限额，这里按设计稿的 2,048 收口。 */
 const TOKEN_LIMIT = 2048;
 
+/** 左侧三条卖点：离线可验 / 公钥在包内 / 不要账号。图标与文案一一对应，顺序不可换。 */
+const POINTS = [
+	{ key: "offline", icon: "icon-[solar--cloud-cross-linear]" },
+	{ key: "keys", icon: "icon-[solar--key-minimalistic-square-3-linear]" },
+	{ key: "noAccount", icon: "icon-[solar--user-cross-rounded-linear]" },
+] as const;
+
 /**
  * 激活页：离线验签的现场。
  *
@@ -29,7 +37,12 @@ const TOKEN_LIMIT = 2048;
  * 这里没有「机器指纹」——凭证里就没有这个字段，写上去是假的。验签失败时显示的是真实拒绝码，
  * 不是「网络异常」。
  *
- * 这一页是 `bare`（不画窄栏），所以必须有自己的一扇门退回工作台，否则进来就出不去。
+ * 这一页是 `bare`（不画窄栏），所以必须有自己的一扇门退回工作台，否则进来就出不去——
+ * 门在 `PageHeader` 的 `back` 上，与其他页同一个位置。
+ *
+ * 排版按 ADR 0033 重做：整页只有两张卡，卡内所有分组都是凹槽（`bg-well`），
+ * 凹槽里再抬起来的只有真正可点的东西。原来那批 `border` / `divide-y` / `border-t`
+ * 全部换成底色分层——这一页原本是全插件线条最密的地方。
  */
 export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavigate(page: WorkbenchPage): void }) {
 	const t = useTranslator();
@@ -72,53 +85,70 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 		}
 	};
 
-	return (
-		<div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
-			<button
-				type="button"
-				onClick={() => onNavigate("shelf")}
-				className="mb-2 inline-flex w-fit items-center gap-1 px-1 text-micro text-ink-soft hover:text-ink"
-			>
-				<span className="icon-[lucide--arrow-left] size-3" />
-				{t("activation.back")}
-			</button>
+	const rejectedReason =
+		data.rejectedCredential && data.rejectedCredential.status !== "active" ? data.rejectedCredential : null;
 
-			<div className="flex min-h-0 flex-1 flex-col gap-3 @min-[900px]:flex-row">
-				<aside className="flex w-full shrink-0 flex-col justify-between overflow-hidden rounded-sheet border border-line bg-inset px-6 py-6 @min-[900px]:w-[420px] @min-[900px]:px-9 @min-[900px]:py-9">
+	return (
+		<div className="mahua-page mahua-scroll min-h-0 flex-1 overflow-y-auto">
+			<PageHeader
+				back={{ label: t("activation.back"), onBack: () => onNavigate("shelf") }}
+				title={t("activation.title")}
+				meta={
+					<span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+						<span
+							className={`flex h-6 items-center gap-1.5 rounded-pill px-2 text-[10px] font-medium ${
+								active ? "bg-pass-soft text-pass" : "bg-wait-soft text-wait"
+							}`}
+						>
+							<span className={`size-1.5 rounded-pill ${active ? "bg-pass" : "bg-wait"}`} />
+							{t(`activation.status.${state.status}`)}
+						</span>
+						<span className="text-[10px] text-ink-faint">{t(`activation.source.${data.credentialSource}`)}</span>
+					</span>
+				}
+				right={<span className="max-w-[38ch] text-right text-[10px] leading-4 text-ink-faint">{t("activation.footnote")}</span>}
+			/>
+
+			{/* 两栏：左卡说「这是什么」，右卡做「现在验一次」。
+			 * 900px 以下改成上下堆叠，且**只保留外层这一条滚动条**——从前右栏自己还滚一层，
+			 * 面板一窄就变成两个互相独立的滚动区，光标滚哪个全凭运气。 */}
+			<div className="mt-3 flex flex-col gap-3 @min-[900px]:flex-row @min-[900px]:items-start">
+				<aside className="mahua-card flex w-full shrink-0 flex-col gap-4 p-5 @min-[900px]:w-[360px] @min-[900px]:p-6">
 					<div>
-						<div className="flex size-11 items-center justify-center rounded-[3px] bg-cinnabar font-display text-title text-cinnabar-foreground">
+						<div className="flex size-11 items-center justify-center rounded-tile bg-cinnabar font-display text-title text-cinnabar-foreground">
 							{t("activation.mark")}
 						</div>
-						<h1 className="mt-6 font-display text-title font-semibold text-ink">{t("activation.brand")}</h1>
+						<h2 className="mt-4 font-display text-title font-semibold text-ink">{t("activation.brand")}</h2>
 						<p className="mt-1 text-body-sm text-ink-soft">{t("activation.brandLine")}</p>
-
-						<ul className="mt-7 space-y-3">
-							{["offline", "keys", "noAccount"].map((key, index) => (
-								<li key={key} className="flex items-center gap-2.5">
-									<span
-										className={`${
-											["icon-[lucide--wifi-off]", "icon-[lucide--laptop]", "icon-[lucide--calendar-clock]"][index] ??
-											"icon-[lucide--check]"
-										} size-3.5 shrink-0 text-cinnabar`}
-									/>
-									<span className="text-micro leading-4 text-ink/75">{t(`activation.point.${key}`)}</span>
-								</li>
-							))}
-						</ul>
 					</div>
 
-					<div className="border-t border-line pt-5">
-						<p className="font-display text-body leading-7 text-ink/85">{t("activation.quote")}</p>
-						<div className="mt-3 flex items-baseline justify-between gap-3">
+					<ul className="flex flex-col gap-1 rounded-panel bg-well p-2">
+						{POINTS.map((point) => (
+							<li key={point.key} className="flex items-start gap-2 px-2 py-1">
+								<span className={`${point.icon} mt-0.5 size-3.5 shrink-0 text-cinnabar`} />
+								<span className="min-w-0 text-micro leading-4 text-ink/75">{t(`activation.point.${point.key}`)}</span>
+							</li>
+						))}
+					</ul>
+
+					<p className="rounded-panel bg-well p-3 font-display text-body leading-7 text-ink/85">
+						{t("activation.quote")}
+					</p>
+
+					<div className="rounded-panel bg-well p-3">
+						<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 							<span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
 								{t("activation.signingKeys")}
 							</span>
 							<span className="text-[9.5px] text-ink-faint">{t("activation.keysNote")}</span>
 						</div>
-						<ul className="mt-1.5 space-y-1">
+						<ul className="mt-1.5 flex flex-col gap-1">
 							{data.trustedKeys().map((key) => (
-								<li key={key.keyId} className="flex items-center gap-2 font-mono text-[10px] text-ink-soft">
-									<span className="text-ink">{key.keyId}</span>
+								<li
+									key={key.keyId}
+									className="flex items-center gap-2 rounded-control bg-raised px-2 py-1 font-mono text-[10px] text-ink-soft"
+								>
+									<span className="shrink-0 text-ink">{key.keyId}</span>
 									<span className="min-w-0 flex-1 truncate">{key.publicKey}</span>
 								</li>
 							))}
@@ -126,90 +156,86 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 					</div>
 				</aside>
 
-				<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto rounded-sheet bg-surface px-8 py-7 shadow-raise">
-					<div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
-						<div className="flex items-baseline gap-2">
-							<h2 className="font-display text-heading font-semibold text-ink">{t("activation.title")}</h2>
-							<span
-								className={`flex h-6 items-center gap-1.5 rounded-pill px-2 text-[10px] font-medium ${
-									active ? "bg-pass-soft text-pass" : "bg-wait-soft text-wait"
-								}`}
-							>
-								<span className={`size-1.5 rounded-pill ${active ? "bg-pass" : "bg-wait"}`} />
-								{t(`activation.status.${state.status}`)}
-							</span>
-							<span className="text-[10px] text-ink-faint">{t(`activation.source.${data.credentialSource}`)}</span>
-						</div>
-						<p className="max-w-[42ch] text-right text-[10px] leading-4 text-ink-faint">{t("activation.footnote")}</p>
-					</div>
-
-					<p className="mt-1.5 max-w-[62ch] text-body-sm leading-5 text-ink-soft">
+				<div className="mahua-card flex min-w-0 flex-1 flex-col gap-3 p-4 @min-[900px]:p-5">
+					<p className="max-w-[62ch] text-body-sm leading-5 text-ink-soft">
 						{t("activation.intro", { prefix: `${TOKEN_PREFIX}.…` })}
 					</p>
 
-					<div className="mt-5 flex items-baseline justify-between">
-						<span className="text-[10px] tracking-wide text-ink-faint">{t("activation.tokenLabel")}</span>
-						<button type="button" onClick={paste} className="flex items-center gap-1 py-0.5 text-[10px] text-ink-soft">
-							<span className="icon-[lucide--clipboard] size-3" />
-							{t("activation.paste")}
-						</button>
-					</div>
+					<div>
+						<div className="flex items-baseline justify-between gap-3">
+							<span className="text-[10px] tracking-wide text-ink-faint">{t("activation.tokenLabel")}</span>
+							<button
+								type="button"
+								onClick={paste}
+								className="flex items-center gap-1 rounded-control px-1.5 py-0.5 text-[10px] text-ink-soft transition-colors hover:bg-wash hover:text-ink"
+							>
+								<span className="icon-[solar--clipboard-linear] size-3" />
+								{t("activation.paste")}
+							</button>
+						</div>
 
-					<div className="mt-1.5 flex min-h-[168px] flex-col overflow-hidden rounded-control border border-line-strong bg-inset">
-						<textarea
-							value={draft}
-							onChange={(event) => setDraft(event.target.value)}
-							maxLength={TOKEN_LIMIT}
-							spellCheck={false}
-							placeholder={t("activation.placeholder")}
-							className="min-h-0 flex-1 resize-none break-all bg-transparent px-3.5 py-3 font-mono text-[11px] leading-[1.6] text-ink outline-none placeholder:text-ink-faint"
-						/>
-						<div className="flex items-center justify-between border-t border-line-soft px-3.5 py-2 text-[10px] text-ink-faint">
-							<span>{t("activation.limitNote")}</span>
-							<span className="font-mono">
-								{t("activation.counter", { count: draft.length, limit: TOKEN_LIMIT })}
-							</span>
+						<div className="mt-1.5 flex min-h-[168px] flex-col overflow-hidden rounded-panel bg-well">
+							<textarea
+								value={draft}
+								onChange={(event) => setDraft(event.target.value)}
+								maxLength={TOKEN_LIMIT}
+								spellCheck={false}
+								placeholder={t("activation.placeholder")}
+								className="min-h-0 flex-1 resize-none break-all bg-transparent px-3.5 py-3 font-mono text-[11px] leading-[1.6] text-ink outline-none placeholder:text-ink-faint"
+							/>
+							<div className="flex items-center justify-between px-3.5 pb-2 text-[10px] text-ink-faint">
+								<span>{t("activation.limitNote")}</span>
+								<span className="font-mono">
+									{t("activation.counter", { count: draft.length, limit: TOKEN_LIMIT })}
+								</span>
+							</div>
 						</div>
 					</div>
 
-					<div className="mt-3 grid grid-cols-1 divide-y divide-line overflow-hidden rounded-control border border-line bg-raised @min-[640px]:grid-cols-[auto_1fr_1fr] @min-[640px]:divide-x @min-[640px]:divide-y-0">
-						<div className="flex h-10 items-center gap-2 px-3.5">
+					{/* 三条事实各占一格小凹槽：标签在上、值在下。从前是「标签 · 值 · 徽记」挤在 40px 里，
+					 * 128px 宽时「签发密钥」和密钥本身会互相顶。 */}
+					<div className="grid grid-cols-1 gap-2 @min-[560px]:grid-cols-3">
+						<div className="flex min-w-0 flex-col gap-0.5 rounded-control bg-well px-3 py-2">
 							<span className="text-[10px] text-ink-faint">{t("activation.fact.version")}</span>
-							<span className="font-mono text-micro text-ink/80">{TOKEN_PREFIX}</span>
+							<span className="truncate font-mono text-micro text-ink/80">{TOKEN_PREFIX}</span>
 						</div>
-						<div className="flex h-10 items-center gap-2 px-3.5">
+						<div className="flex min-w-0 flex-col gap-0.5 rounded-control bg-well px-3 py-2">
 							<span className="text-[10px] text-ink-faint">{t("activation.fact.keyId")}</span>
-							<span className="min-w-0 truncate font-mono text-micro text-ink/80">{claims?.keyId ?? "—"}</span>
-							{claims ? (
-								<span className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-pass">
-									<span className="icon-[lucide--shield-check] size-3" />
-									{t("activation.fact.onDevice")}
-								</span>
-							) : null}
-						</div>
-						<div className="flex h-10 items-center gap-2 px-3.5">
-							<span className="text-[10px] text-ink-faint">{t("activation.fact.expiresAt")}</span>
-							<span className="min-w-0 truncate font-mono text-micro text-ink/80">
-								{claims ? claims.expiresAt.slice(0, 10) : "—"}
+							<span className="flex min-w-0 items-center gap-1">
+								<span className="min-w-0 truncate font-mono text-micro text-ink/80">{claims?.keyId ?? "—"}</span>
+								{claims ? (
+									<span className="ml-auto flex shrink-0 items-center gap-1 text-[10px] text-pass">
+										<span className="icon-[solar--shield-check-linear] size-3" />
+										{t("activation.fact.onDevice")}
+									</span>
+								) : null}
 							</span>
-							{claims ? (
-								<span
-									className={`ml-auto shrink-0 text-[10px] ${days <= 0 ? "text-fail" : days <= 30 ? "text-wait" : "text-ink-soft"}`}
-								>
-									{days > 0 ? t("activation.daysLeft", { days }) : t("activation.expiredNote")}
+						</div>
+						<div className="flex min-w-0 flex-col gap-0.5 rounded-control bg-well px-3 py-2">
+							<span className="text-[10px] text-ink-faint">{t("activation.fact.expiresAt")}</span>
+							<span className="flex min-w-0 items-center gap-1">
+								<span className="min-w-0 truncate font-mono text-micro text-ink/80">
+									{claims ? claims.expiresAt.slice(0, 10) : "—"}
 								</span>
-							) : null}
+								{claims ? (
+									<span
+										className={`ml-auto shrink-0 text-[10px] ${days <= 0 ? "text-fail" : days <= 30 ? "text-wait" : "text-ink-soft"}`}
+									>
+										{days > 0 ? t("activation.daysLeft", { days }) : t("activation.expiredNote")}
+									</span>
+								) : null}
+							</span>
 						</div>
 					</div>
 
-					<div className="mt-4 flex items-center gap-2">
+					<div className="flex flex-wrap items-center gap-2">
 						<button
 							type="button"
 							disabled={busy || draft.trim().length === 0}
 							onClick={() => void run(() => data.activate(draft.trim()))}
-							className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3.5 text-micro font-medium text-surface disabled:opacity-40"
+							className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3.5 text-micro font-medium text-surface transition-colors hover:bg-ink/90 disabled:opacity-40"
 						>
-							<span className="icon-[lucide--key-round] size-3.5" />
+							<span className="icon-[solar--key-bold] size-3.5" />
 							{t("activation.submit")}
 						</button>
 						<input
@@ -227,94 +253,93 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 							type="button"
 							disabled={busy}
 							onClick={() => fileRef.current?.click()}
-							className="flex h-8 items-center gap-1.5 rounded-control border border-line-strong px-3 text-micro text-ink disabled:opacity-40"
+							className="flex h-8 items-center gap-1.5 rounded-control bg-well px-3 text-micro text-ink transition-colors hover:bg-wash-strong disabled:opacity-40"
 						>
-							<span className="icon-[lucide--file-input] size-3.5" />
+							<span className="icon-[solar--file-add-linear] size-3.5" />
 							{t("activation.import")}
 						</button>
 						<button
 							type="button"
 							disabled={busy || data.credentialSource === "none"}
 							onClick={() => void run(() => data.clearCredential())}
-							className="flex h-8 items-center gap-1.5 rounded-control border border-line px-3 text-micro text-ink-soft disabled:opacity-40"
+							className="flex h-8 items-center gap-1.5 rounded-control px-2 text-micro text-ink-soft transition-colors hover:bg-wash hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
 						>
 							{t("activation.clear")}
 						</button>
 						<span className="ml-auto text-[10px] text-ink-faint">{t("activation.verifyNote")}</span>
 					</div>
 
-					{data.rejectedCredential && data.rejectedCredential.status !== "active" && (
-						<p className="mt-3 flex items-start gap-2 rounded-panel bg-fail-soft/40 p-2.5 text-[10px] leading-4 text-fail">
-							<span className="icon-[lucide--x-circle] mt-0.5 size-3 shrink-0" />
+					{rejectedReason && (
+						<p className="flex items-start gap-2 rounded-panel bg-fail-soft/40 p-2.5 text-[10px] leading-4 text-fail">
+							<span className="icon-[solar--close-circle-linear] mt-0.5 size-3 shrink-0" />
 							<span className="min-w-0 flex-1">
 								{t("activation.rejected", {
-									reason:
-										data.rejectedCredential.status === "invalid"
-											? data.rejectedCredential.reason
-											: data.rejectedCredential.status,
+									reason: rejectedReason.status === "invalid" ? rejectedReason.reason : rejectedReason.status,
 								})}
 							</span>
 						</p>
 					)}
 
 					{claims ? (
-						<dl className="mt-4 grid grid-cols-[72px_1fr] gap-y-1.5 rounded-panel bg-inset/60 p-3 text-[11px]">
+						<dl className="grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5 rounded-panel bg-well p-3 text-[11px]">
 							<dt className="text-ink-faint">{t("activation.fact.subject")}</dt>
-							<dd className="truncate text-ink">{claims.subject}</dd>
+							<dd className="min-w-0 truncate text-ink">{claims.subject}</dd>
 							<dt className="text-ink-faint">{t("activation.fact.plan")}</dt>
-							<dd className="text-ink">{claims.plan}</dd>
+							<dd className="min-w-0 truncate text-ink">{claims.plan}</dd>
 							<dt className="text-ink-faint">{t("activation.fact.entitlements")}</dt>
-							<dd className="truncate font-mono text-[10px] text-ink-soft">{claims.entitlements.join(" · ")}</dd>
+							<dd className="min-w-0 truncate font-mono text-[10px] text-ink-soft">{claims.entitlements.join(" · ")}</dd>
 							<dt className="text-ink-faint">{t("activation.fact.issuedAt")}</dt>
-							<dd className="font-mono text-[10px] text-ink-soft">{claims.issuedAt}</dd>
+							<dd className="min-w-0 truncate font-mono text-[10px] text-ink-soft">{claims.issuedAt}</dd>
 						</dl>
 					) : (
-						<p className="mt-4 rounded-panel bg-inset/60 p-3 text-[11px] leading-5 text-ink-soft">
-							{t("activation.hint")}
-						</p>
+						<p className="rounded-panel bg-well p-3 text-[11px] leading-5 text-ink-soft">{t("activation.hint")}</p>
 					)}
 
-					<div className="mt-6 grid gap-8 border-t border-line pt-5 @min-[720px]:grid-cols-2">
-						<div>
+					{/* 拒绝码与「能开什么」并排。两块都是凹槽，块内条目抬起来——这样当前命中的
+					 * 那一条（`bg-fail-soft`）在纸面上是最显眼的，不需要再用描边圈它。 */}
+					<div className="grid gap-3 @min-[720px]:grid-cols-2">
+						<div className="rounded-panel bg-well p-3">
 							<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 								<h3 className="text-[10px] font-semibold tracking-[0.08em] text-ink">{t("activation.fail.title")}</h3>
 								<span className="text-[10px] text-ink-faint">{t("activation.fail.note")}</span>
 							</div>
-							<ul className="mt-2 grid gap-1.5">
-								{REJECTS.map((code) => (
-									<li
-										key={code}
-										className={`flex items-center gap-2 rounded-control border border-line px-2.5 py-1.5 ${
-											data.rejectedCredential?.status === "invalid" && data.rejectedCredential.reason === code
-												? "border-fail bg-fail-soft/40"
-												: "bg-raised"
-										}`}
-									>
-										<span className="shrink-0 font-mono text-[10px] text-fail">{code}</span>
-										<span className="min-w-0 truncate text-[10px] text-ink-soft">{t(`activation.reject.${code}`)}</span>
-									</li>
-								))}
+							<ul className="mt-2 flex flex-col gap-1">
+								{REJECTS.map((code) => {
+									const hit = rejectedReason?.status === "invalid" && rejectedReason.reason === code;
+									return (
+										<li
+											key={code}
+											className={`flex items-center gap-2 rounded-control px-2 py-1 ${
+												hit ? "bg-fail-soft" : "bg-raised"
+											}`}
+										>
+											<span className="shrink-0 font-mono text-[10px] text-fail">{code}</span>
+											<span className="min-w-0 truncate text-[10px] text-ink-soft">{t(`activation.reject.${code}`)}</span>
+										</li>
+									);
+								})}
 							</ul>
 							<p className="mt-2 text-[9.5px] leading-4 text-ink-faint">{t("activation.rejectNote")}</p>
 						</div>
-						<div>
+
+						<div className="rounded-panel bg-well p-3">
 							<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 								<h3 className="text-[10px] font-semibold tracking-[0.08em] text-ink">{t("activation.opens.title")}</h3>
 								<span className="text-[10px] text-ink-faint">{t("activation.opens.note")}</span>
 							</div>
-							<ul className="mt-2 space-y-1.5 text-[10px] leading-4 text-ink-soft">
+							<ul className="mt-2 flex flex-col gap-1.5 text-[10px] leading-4 text-ink-soft">
 								{["workspace", "team", "move"].map((key) => (
 									<li key={key} className="flex items-start gap-1.5">
-										<span className="mt-1.5 size-1 shrink-0 rounded-full bg-cinnabar" />
-										{t(`activation.opens.${key}`)}
+										<span className="mt-1.5 size-1 shrink-0 rounded-pill bg-cinnabar" />
+										<span className="min-w-0">{t(`activation.opens.${key}`)}</span>
 									</li>
 								))}
 							</ul>
 						</div>
 					</div>
 
-					<div className="mt-auto flex items-center gap-2 pt-5 text-[10px] text-ink-faint">
-						<span className="icon-[lucide--info] size-3" />
+					<div className="flex items-center gap-2 text-[10px] text-ink-faint">
+						<span className="icon-[solar--info-circle-linear] size-3 shrink-0" />
 						{t("activation.offlineNote")}
 					</div>
 				</div>

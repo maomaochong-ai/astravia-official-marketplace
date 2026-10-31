@@ -148,11 +148,11 @@ export function StudioRail({
 					onClick={() => onNavigate("activation")}
 					title={`${credential.label} · ${t("rail.credentialOpen")}`}
 					aria-label={`${credential.label} · ${t("rail.credentialOpen")}`}
-					className="mahua-rail-item flex h-7 w-full shrink-0 items-center gap-2 rounded-control px-1 text-[10px] text-ink-faint transition-colors hover:bg-raised hover:text-ink"
+					className="mahua-rail-item flex h-7 w-full shrink-0 items-center gap-2 rounded-control px-1 text-[10px] text-ink-faint transition-colors hover:bg-raised/70 hover:text-ink"
 				>
 					<span className={`size-1 shrink-0 rounded-pill ${credential.ok ? "bg-pass" : "bg-fail"}`} />
 					<span className="mahua-rail-label min-w-0 flex-1 truncate">{credential.label}</span>
-					<span className="mahua-rail-label icon-[lucide--chevron-right] ml-auto size-3 shrink-0" />
+					<span className="mahua-rail-label icon-[solar--alt-arrow-right-linear] ml-auto size-3 shrink-0" />
 				</button>
 
 				{autoCollapsed ? null : (
@@ -162,11 +162,11 @@ export function StudioRail({
 						title={collapsed ? t("rail.expandRail") : t("rail.collapseRail")}
 						aria-label={collapsed ? t("rail.expandRail") : t("rail.collapseRail")}
 						aria-expanded={!collapsed}
-						className="mahua-rail-item flex h-7 w-full shrink-0 items-center gap-2 rounded-control px-1 text-[10px] text-ink-faint transition-colors hover:bg-raised hover:text-ink"
+						className="mahua-rail-item flex h-7 w-full shrink-0 items-center gap-2 rounded-control px-1 text-[10px] text-ink-faint transition-colors hover:bg-raised/70 hover:text-ink"
 					>
 						<span
 							className={`${
-								collapsed ? "icon-[lucide--panel-left-open]" : "icon-[lucide--panel-left-close]"
+								collapsed ? "icon-[solar--panel-left-open-bold]" : "icon-[solar--panel-left-close-bold]"
 							} size-3 shrink-0`}
 						/>
 						<span className="mahua-rail-label min-w-0 flex-1 truncate">

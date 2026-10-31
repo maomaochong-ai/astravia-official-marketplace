@@ -53,7 +53,7 @@ export function LedgerPage({
 	const findings = data.findings;
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
+		<div className="mahua-page flex min-h-0 flex-1 flex-col">
 			<PageHeader
 				title={t("page.ledger.title")}
 				meta={
@@ -71,8 +71,8 @@ export function LedgerPage({
 				}
 			/>
 
-			<div className="mt-4 flex min-h-0 flex-1 gap-5 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
-				<section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised px-4 py-4 shadow-raise @max-[980px]:shrink-0">
+			<div className="mt-3 flex min-h-0 flex-1 gap-3 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
+				<section className="mahua-card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 @max-[980px]:shrink-0">
 					<div className="flex shrink-0 items-baseline justify-between gap-3">
 						<h2 className="font-display text-section font-semibold text-ink">{t("ledger.title")}</h2>
 						<span className="shrink-0 text-[10px] text-ink-faint">
@@ -87,16 +87,16 @@ export function LedgerPage({
 							{ label: t("ledger.stat.overdue"), value: String(audit.overdue) },
 							{ label: t("ledger.stat.unresolved"), value: `${Math.round(audit.unresolvedRate * 100)}%` },
 						].map((tile) => (
-							<div key={tile.label} className="rounded-control border border-line-soft bg-inset/50 px-2.5 py-2">
+							<div key={tile.label} className="rounded-control bg-well px-2.5 py-2">
 								<div className="font-display text-heading font-semibold leading-none text-ink">{tile.value}</div>
 								<div className="mt-1 truncate text-[10px] text-ink-faint">{tile.label}</div>
 							</div>
 						))}
 					</div>
 
-					<div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-control border border-line">
+					<div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel bg-well">
 						<div
-							className={`grid ${THREAD_COLUMNS} shrink-0 items-center gap-2 border-b border-line bg-inset px-3 py-2 text-[10px] font-semibold uppercase text-ink-faint`}
+							className={`grid ${THREAD_COLUMNS} shrink-0 items-center gap-2 px-3 py-2 text-[10px] font-semibold uppercase text-ink-faint`}
 						>
 							<span className="min-w-0 truncate">{t("ledger.weight.heavy")}</span>
 							<span className="min-w-0 truncate">{t("ledger.threads")}</span>
@@ -105,18 +105,18 @@ export function LedgerPage({
 							<span className="min-w-0 truncate text-right">{t("ledger.stateShort")}</span>
 						</div>
 						{data.threads.length === 0 ? (
-							<div className="flex min-h-0 flex-1 p-4">
-								<EmptySheet icon="icon-[lucide--git-branch]" title={t("ledger.empty")} />
+							<div className="flex min-h-0 flex-1 p-2">
+								<EmptySheet icon="icon-[solar--branching-paths-up-bold]" title={t("ledger.empty")} />
 							</div>
 						) : (
-							<ul className="min-h-0 flex-1 divide-y divide-line-soft overflow-y-auto">
+							<ul className="mahua-scroll min-h-0 flex-1 space-y-px overflow-y-auto p-1">
 								{data.threads.map((thread) => {
 									const state = threadStateOf(thread, committedMax);
 									const closedChapter = thread.closedIn;
 									return (
 										<li
 											key={thread.id}
-											className={`grid ${THREAD_COLUMNS} items-center gap-2 px-3 py-2 text-[11px] ${
+											className={`grid ${THREAD_COLUMNS} items-center gap-2 rounded-tile px-2 py-[7px] text-[11px] ${
 												state === "overdue" ? "bg-fail-soft/40" : ""
 											}`}
 										>
@@ -126,7 +126,7 @@ export function LedgerPage({
 														? "bg-cinnabar-soft text-cinnabar-ink"
 														: thread.weight === "medium"
 															? "bg-wait-soft text-wait"
-															: "bg-inset text-ink-soft"
+												: "bg-raised text-ink-soft"
 												}`}
 											>
 												{t(`ledger.weight.${thread.weight}`)}
@@ -151,11 +151,11 @@ export function LedgerPage({
 					</div>
 
 					{/* 钉底：一条逾期就是下一章要还的钩子，滚到最后一行也该看见它。 */}
-					<div className="mt-3 shrink-0 rounded-control border border-dashed border-line-strong px-3 py-2.5">
+					<div className="mt-3 shrink-0 rounded-panel bg-well px-3 py-2.5">
 						<div className="flex items-start gap-2">
 							<span
 								className={`mt-0.5 shrink-0 ${
-									audit.findings.length === 0 ? "icon-[lucide--check] text-pass" : "icon-[lucide--alert-triangle] text-wait"
+									audit.findings.length === 0 ? "icon-[solar--check-circle-linear] text-pass" : "icon-[solar--danger-triangle-linear] text-wait"
 								} size-3.5`}
 							/>
 							<div className="min-w-0 flex-1 space-y-1">
@@ -173,7 +173,7 @@ export function LedgerPage({
 					</div>
 				</section>
 
-				<aside className="flex min-h-0 w-[366px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised px-4 py-4 shadow-raise @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink-0">
+				<aside className="mahua-card flex min-h-0 w-[366px] shrink-0 flex-col overflow-hidden p-4 @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink-0">
 					<div className="flex shrink-0 items-baseline justify-between gap-3">
 						<h2 className="font-display text-section font-semibold text-ink">{t("ledger.decisions")}</h2>
 						<span className="shrink-0 font-mono text-[10px] text-ink-faint">{t("ledger.decisionsMeta")}</span>
@@ -191,10 +191,10 @@ export function LedgerPage({
 									return (
 										<li
 											key={`${record.at}-${record.question}`}
-											className="rounded-control border border-line bg-surface px-3 py-2.5"
+											className="rounded-panel bg-well px-3 py-2.5"
 										>
 											<div className="flex items-center gap-1.5">
-												<span className="rounded-tile bg-inset px-1.5 text-[10px] leading-[17px] text-ink-soft">
+												<span className="rounded-tile bg-raised px-1.5 text-[10px] leading-[17px] text-ink-soft">
 													{t(`ledger.scenario.${record.scenario}`)}
 												</span>
 												<span className="ml-auto shrink-0 font-mono text-[10px] text-ink-faint">
@@ -209,7 +209,7 @@ export function LedgerPage({
 						</ul>
 					)}
 
-					<div className="mt-3 shrink-0 border-t border-line pt-3">
+					<div className="mt-3 shrink-0">
 						<div className="flex items-baseline justify-between gap-3">
 							<h3 className="font-display text-body font-semibold text-ink">{t("ledger.consistency")}</h3>
 							<span className={`shrink-0 text-[10px] ${findings.length === 0 ? "text-pass" : "text-fail"}`}>
@@ -223,7 +223,7 @@ export function LedgerPage({
 									<div key={code} className="flex min-w-0 items-center gap-1.5">
 										<span
 											className={`shrink-0 ${
-												hits === 0 ? "icon-[lucide--check] text-pass" : "icon-[lucide--alert-triangle] text-fail"
+												hits === 0 ? "icon-[solar--check-circle-linear] text-pass" : "icon-[solar--danger-triangle-linear] text-fail"
 											} size-3`}
 										/>
 										<span className="min-w-0 flex-1 truncate text-[10px] text-ink-soft">{t(`ledger.check.${code}`)}</span>
@@ -236,9 +236,9 @@ export function LedgerPage({
 						<button
 							type="button"
 							onClick={() => onNavigate("book")}
-							className="mt-2.5 flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-control border border-line-strong text-[10px] font-medium text-ink transition-colors hover:bg-surface"
+							className="mt-2.5 flex h-8 w-full shrink-0 items-center justify-center gap-1.5 rounded-control bg-well text-[10px] font-medium text-ink transition-colors hover:bg-wash-strong"
 						>
-							<span className="icon-[lucide--book-open] size-3" />
+							<span className="icon-[solar--notebook-linear] size-3" />
 							{t("ledger.backToBook")}
 						</button>
 					</div>

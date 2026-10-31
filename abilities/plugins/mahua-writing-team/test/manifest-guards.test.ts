@@ -660,10 +660,14 @@ describe("the workbench frames stay honest about the domain", () => {
 
 
 	it("renders one sheet per side of the console, not a raised middle", () => {
-		// 设计稿的左右栏是内凹井（`bg-inset`），中栏才是浮起的纸。三栏都浮起就没了主次。
+		// 设计稿的左右栏是凹槽，中栏才是浮起的纸。三栏都浮起就没了主次。
+		// ADR 0033 之后凹槽叫 `bg-well`，旧名 `bg-inset` 在页面里不再出现——
+		// 它现在只留给骨架屏与徽记这类“贴在纸上的一小块”。
 		const console = read("src/features/workbench/components/pages/ConsolePage.tsx");
-		const wells = console.match(/bg-inset/g) ?? [];
+		const wells = console.match(/bg-well/g) ?? [];
 		expect(wells.length).toBeGreaterThanOrEqual(2);
+		expect(console).toContain("mahua-card");
+		expect(console).not.toContain("bg-inset");
 	});
 
 	it("keeps the style sheet balanced and layered", () => {
@@ -721,5 +725,64 @@ describe("the workbench frames stay honest about the domain", () => {
 		expect(mismatched).toEqual([]);
 		// 每格都得在语言文件里能查到，不然空表头比错位更难发现。
 		expect(HEADER_CELLS.filter((cell) => !(cell.key in en) || !(cell.key in zh))).toEqual([]);
+	});
+});
+
+describe("one paper language across the workbench (ADR 0033)", () => {
+	/** 扫源码前先把注释剔掉：注释里引一个旧类名是解说，不是用法。
+	 *  换成空格而不是删除，免得行号漂移后报错指向错位置。 */
+	const bare = (path: string) =>
+		read(path)
+			.replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+			.replace(/(^|\n)\s*\/\/[^\n]*/g, (line) => line.replace(/[^\n]/g, " "));
+
+	const UI_FILES = SOURCE_FILES.filter((path) => /\.tsx$/.test(path));
+
+	it("spells every icon in the Solar family", () => {
+		// 一个界面里混两个图标族，字重、圆角、光学尺寸全对不上。从前有两处
+		// `lucide--` 选在没有对应图形的地方——这就是那道亏。
+		const wrongFamily: string[] = [];
+		const wrongShape: string[] = [];
+		for (const path of UI_FILES) {
+			const text = bare(path);
+			if (/lucide--/.test(text)) wrongFamily.push(path);
+			for (const match of text.matchAll(/icon-\[[^\]]+\]/g)) {
+				if (!/^icon-\[solar--[a-z0-9-]+\]$/.test(match[0])) wrongShape.push(`${path}: ${match[0]}`);
+			}
+		}
+		expect(wrongFamily).toEqual([]);
+		expect(wrongShape).toEqual([]);
+	});
+
+	it("puts every page on the shared page and card shells", () => {
+		// 页边距离、卡内留白、容器间距——三项从前每页各写一份，所以页间差 2–4px。
+		// 现在只有一个来源：页面根带 `mahua-page`，纸面容器带 `mahua-card`。
+		const pages = SOURCE_FILES.filter((path) => path.startsWith("src/features/workbench/components/pages/") && /\.tsx$/.test(path));
+		expect(pages.length).toBeGreaterThanOrEqual(7);
+		const missingPage: string[] = [];
+		const missingCard: string[] = [];
+		for (const path of pages) {
+			const text = bare(path);
+			if (!text.includes("mahua-page")) missingPage.push(path);
+			// 激活页整页就两张卡，阅读页正文区也是卡——没有哪一页应该完全无卡。
+			if (!text.includes("mahua-card")) missingCard.push(path);
+		}
+		expect(missingPage).toEqual([]);
+		expect(missingCard).toEqual([]);
+	});
+
+	it("draws pages with containers instead of hairlines", () => {
+		// 分隔只用底色与间距。剩下的描边只能是“空心的点”或“选中圈”，
+		// 这两种用 `border-pass` / `border-line-strong` 画小圆点，不算分隔线。
+		const dividers: string[] = [];
+		for (const path of SOURCE_FILES.filter((file) => file.startsWith("src/features/workbench/components/pages/"))) {
+			const text = bare(path);
+			// 长名写在前：`border-line` 会先命中 `border-line-strong` 的前缀。
+			for (const match of text.matchAll(/border-(?:line-strong|line-soft|line|dashed)|divide-[xy]/g)) {
+				if (match[0] === "border-line-strong") continue;
+				dividers.push(`${path}: ${match[0]}`);
+			}
+		}
+		expect(dividers).toEqual([]);
 	});
 });

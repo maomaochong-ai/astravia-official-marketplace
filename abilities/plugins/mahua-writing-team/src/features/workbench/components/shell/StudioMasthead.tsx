@@ -42,7 +42,7 @@ export function StudioMasthead({
 
 	return (
 		<header
-			className={`mahua-masthead flex h-12 shrink-0 items-center gap-3 border-b border-line-soft px-4 ${
+			className={`mahua-masthead flex h-12 shrink-0 items-center gap-3 px-4 ${
 				fullscreen ? "mahua-drag" : ""
 			} ${trafficLights ? "mahua-traffic-lights" : ""}`}
 		>
@@ -83,11 +83,11 @@ export function StudioMasthead({
 						title={fullscreen ? t("window.exitFullscreen") : t("window.fullscreen")}
 						aria-label={fullscreen ? t("window.exitFullscreen") : t("window.fullscreen")}
 						aria-pressed={fullscreen}
-						className="flex h-6 shrink-0 items-center gap-1.5 rounded-control px-1.5 text-[10px] text-ink-soft transition-colors hover:bg-raised hover:text-ink"
+						className="flex h-6 shrink-0 items-center gap-1.5 rounded-control px-1.5 text-[10px] text-ink-soft transition-colors hover:bg-wash hover:text-ink"
 					>
 						<span
 							className={`${
-								fullscreen ? "icon-[lucide--minimize-2]" : "icon-[lucide--maximize-2]"
+								fullscreen ? "icon-[solar--minimize-square-2-bold]" : "icon-[solar--maximize-square-2-bold]"
 							} size-3.5 shrink-0`}
 						/>
 						<span className="hidden whitespace-nowrap @[760px]:inline">

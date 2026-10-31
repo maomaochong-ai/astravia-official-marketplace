@@ -331,6 +331,8 @@
 	"library.sort.chapters": "Chapters",
 	"library.sort.recent": "Last updated",
 	"library.sort.title": "Title",
+	"library.stepNext": "Next book",
+	"library.stepPrev": "Previous book",
 	"library.status.active": "In progress",
 	"library.status.completed": "Completed",
 	"library.title": "Library",

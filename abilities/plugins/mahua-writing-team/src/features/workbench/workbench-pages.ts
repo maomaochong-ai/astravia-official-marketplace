@@ -22,16 +22,16 @@ export interface RailItem {
 
 /** 「在写的这本」下面的一组：看书用的四条路径。 */
 export const RAIL_WORKS: readonly RailItem[] = [
-	{ page: "shelf", labelKey: "nav.shelf", icon: "icon-[lucide--library-big]" },
-	{ page: "library", labelKey: "nav.library", icon: "icon-[lucide--layers]" },
-	{ page: "book", labelKey: "nav.book", icon: "icon-[lucide--book-open]" },
-	{ page: "reader", labelKey: "nav.reader", icon: "icon-[lucide--scroll-text]" },
+	{ page: "shelf", labelKey: "nav.shelf", icon: "icon-[solar--library-bold]" },
+	{ page: "library", labelKey: "nav.library", icon: "icon-[solar--layers-bold]" },
+	{ page: "book", labelKey: "nav.book", icon: "icon-[solar--book-bold]" },
+	{ page: "reader", labelKey: "nav.reader", icon: "icon-[solar--document-text-bold]" },
 ];
 
 /** 「写作台」那一组：只看不写的两张纸。 */
 export const RAIL_CRAFT: readonly RailItem[] = [
-	{ page: "console", labelKey: "nav.console", icon: "icon-[lucide--activity]" },
-	{ page: "ledger", labelKey: "nav.ledger", icon: "icon-[lucide--git-branch]" },
+	{ page: "console", labelKey: "nav.console", icon: "icon-[solar--pulse-bold]" },
+	{ page: "ledger", labelKey: "nav.ledger", icon: "icon-[solar--branching-paths-up-bold]" },
 ];
 
 export function pageTitleKey(page: WorkbenchPage): string {

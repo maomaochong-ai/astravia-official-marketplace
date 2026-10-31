@@ -66,9 +66,22 @@ describe("bundled community credential", () => {
 	});
 
 	it("reports expiry as expired, not as a generic failure", () => {
-		const later = new Date("2031-01-01T00:00:00.000Z");
-		const state = verifyEntitlement(COMMUNITY_CREDENTIAL, { keys: TRUSTED_KEYS, now: later });
+		// 日期从凭证自己身上取：写死一个日期的话，下一次换发就必须回来改测试，
+		// 而这类「记得改」，漏掉的代价是测试一直在替上一张凭证做保证。
+		const claims = decodeToken(COMMUNITY_CREDENTIAL)?.claims;
+		expect(claims).toBeDefined();
+		const dayAfter = new Date(Date.parse(claims!.expiresAt) + 2 * 86_400_000);
+		const state = verifyEntitlement(COMMUNITY_CREDENTIAL, { keys: TRUSTED_KEYS, now: dayAfter });
 		expect(state.status).toBe("expired");
+	});
+
+	it("carries the studio's own name, not the pre-rename one", () => {
+		// 激活页把 `subject` 原样当「签发主体」显示（ActivationPage 的 fact 表）。
+		// 凭证里一旦带回旧产品名，界面上就会冒出一个本插件已不再使用的名字，
+		// 而这不是 UI 能遮掉的——只能保证签发的 payload 里没有它。
+		const claims = decodeToken(COMMUNITY_CREDENTIAL)?.claims;
+		expect(claims?.subject.startsWith("mahua")).toBe(true);
+		expect(COMMUNITY_CREDENTIAL.toLowerCase()).not.toContain("novelwright");
 	});
 });
 

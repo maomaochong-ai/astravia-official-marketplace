@@ -38,9 +38,9 @@ export function ReaderPage({
 
 	if (!book) {
 		return (
-			<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6 @max-[720px]:px-4">
+			<div className="mahua-page flex min-h-0 flex-1 flex-col">
 				<PageHeader title={t("page.reader.title")} back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }} />
-				<EmptySheet icon="icon-[lucide--scroll-text]" title={t("reader.empty")} />
+				<EmptySheet icon="icon-[solar--document-text-bold]" title={t("reader.empty")} />
 			</div>
 		);
 	}
@@ -51,7 +51,7 @@ export function ReaderPage({
 	};
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
+		<div className="mahua-page flex min-h-0 flex-1 flex-col">
 			<PageHeader
 				back={{ label: t("reader.back"), onBack: () => onNavigate("book") }}
 				title={t("reader.title", { chapter })}
@@ -68,9 +68,9 @@ export function ReaderPage({
 							onClick={() => setStep(Math.max(0, step - 1))}
 							disabled={step === 0}
 							aria-label={t("reader.fontSmaller")}
-							className="flex size-7 items-center justify-center rounded-control border border-line text-ink-soft disabled:opacity-40"
+							className="flex size-7 items-center justify-center rounded-control bg-well text-ink-soft transition-colors hover:bg-wash-strong disabled:opacity-40 disabled:hover:bg-well"
 						>
-							<span className="icon-[lucide--minus] size-3" />
+							<span className="icon-[solar--minus-circle-linear] size-3.5" />
 						</button>
 						<span className="w-8 text-center font-mono text-[10px] text-ink-faint">{size}</span>
 						<button
@@ -78,14 +78,14 @@ export function ReaderPage({
 							onClick={() => setStep(Math.min(READER_SIZES.length - 1, step + 1))}
 							disabled={step >= READER_SIZES.length - 1}
 							aria-label={t("reader.fontLarger")}
-							className="flex size-7 items-center justify-center rounded-control border border-line text-ink-soft disabled:opacity-40"
+							className="flex size-7 items-center justify-center rounded-control bg-well text-ink-soft transition-colors hover:bg-wash-strong disabled:opacity-40 disabled:hover:bg-well"
 						>
-							<span className="icon-[lucide--plus] size-3" />
+							<span className="icon-[solar--add-circle-linear] size-3.5" />
 						</button>
 						<button
 							type="button"
 							onClick={() => setSerif((value) => !value)}
-							className="ml-1 flex h-7 items-center gap-1 rounded-control border border-line px-2 text-[10px] text-ink-soft"
+							className="ml-1 flex h-7 items-center gap-1 rounded-control bg-well px-2 text-[10px] text-ink-soft transition-colors hover:bg-wash-strong"
 						>
 							{serif ? t("reader.serif") : t("reader.sans")}
 						</button>
@@ -93,11 +93,11 @@ export function ReaderPage({
 				}
 			/>
 
-			<div className="mt-4 flex min-h-0 flex-1 gap-5 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
-				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+			<div className="mt-3 flex min-h-0 flex-1 gap-3 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
+				<div className="mahua-card flex min-h-0 min-w-0 flex-1 flex-col p-3">
 					<div className="min-h-0 flex-1 overflow-y-auto">
 						{paragraphs.length === 0 ? (
-							<EmptySheet icon="icon-[lucide--pencil-line]" title={t("reader.empty")} note={t("reader.blank")} />
+							<EmptySheet icon="icon-[solar--pen-linear]" title={t("reader.empty")} note={t("reader.blank")} />
 						) : (
 							<article
 								className={`mahua-prose mx-auto max-w-[648px] ${serif ? "font-display" : "font-sans"}`}
@@ -112,14 +112,14 @@ export function ReaderPage({
 						)}
 					</div>
 
-					<div className="mt-3 flex shrink-0 items-center gap-2 border-t border-line-soft pt-2.5 text-[10px] text-ink-faint">
+					<div className="mt-3 flex shrink-0 items-center gap-2 rounded-control bg-well px-2.5 py-1.5 text-[10px] text-ink-faint">
 						<button
 							type="button"
 							onClick={() => go(chapter - 1)}
 							disabled={chapter <= 1}
-							className="flex h-6 items-center gap-1 rounded-control border border-line px-2 disabled:opacity-40"
+							className="flex h-6 items-center gap-1 rounded-tile bg-raised px-2 transition-colors hover:bg-wash-strong disabled:opacity-40"
 						>
-							<span className="icon-[lucide--chevron-left] size-3" />
+							<span className="icon-[solar--alt-arrow-left-bold] size-3" />
 							{t("reader.prev")}
 						</button>
 						<span className="font-mono">
@@ -129,17 +129,17 @@ export function ReaderPage({
 							type="button"
 							onClick={() => go(chapter + 1)}
 							disabled={chapter >= total}
-							className="flex h-6 items-center gap-1 rounded-control border border-line px-2 disabled:opacity-40"
+							className="flex h-6 items-center gap-1 rounded-tile bg-raised px-2 transition-colors hover:bg-wash-strong disabled:opacity-40"
 						>
 							{t("reader.next")}
-							<span className="icon-[lucide--chevron-right] size-3" />
+							<span className="icon-[solar--alt-arrow-right-bold] size-3" />
 						</button>
 						<span className="ml-auto hidden min-w-0 truncate @min-[620px]:inline">{t("reader.readonlyNote")}</span>
 					</div>
 				</div>
 
-				<aside className="flex min-h-0 w-[318px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise @max-[1180px]:w-[278px] @max-[980px]:w-full @max-[980px]:shrink">
-					<div className="flex items-baseline gap-2 border-b border-line-soft px-4 pb-2.5 pt-3">
+				<aside className="mahua-card flex min-h-0 w-[318px] shrink-0 flex-col overflow-hidden @max-[1180px]:w-[278px] @max-[980px]:w-full @max-[980px]:shrink">
+					<div className="flex items-baseline gap-2 px-4 pb-1 pt-3">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("reader.review")}
 						</span>
@@ -174,7 +174,7 @@ export function ReaderPage({
 								))}
 							</div>
 
-							<div className="mt-4 border-t border-line-soft pt-2.5">
+							<div className="mt-3 rounded-panel bg-well p-3">
 								<div className="text-micro-up font-semibold uppercase text-ink-faint">
 									{t("reader.mustFix")}
 								</div>
@@ -194,7 +194,7 @@ export function ReaderPage({
 						</div>
 					)}
 
-					<div className="border-t border-line-soft bg-inset px-4 py-2.5 text-[10px] text-ink-soft">
+					<div className="mx-2 mb-2 rounded-control bg-well px-2.5 py-2 text-[10px] text-ink-soft">
 						{t("reader.readonlyNote")}
 					</div>
 				</aside>

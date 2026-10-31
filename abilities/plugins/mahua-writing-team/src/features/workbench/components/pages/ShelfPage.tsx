@@ -14,6 +14,11 @@ import { PhaseBadge } from "../shell/PhaseBadge";
  *
  * 这一页回答两件事——「侧栏里的团队刚落下什么」和「其余几本停在哪」。
  * 没有任何派活按钮；下半那张纸的四行只读流水，换行不等谁点刷新。
+ *
+ * 配色只用三档纸（raised 卡 / well 凹槽 / wash 悬停），不叠第四种灰：
+ * 从前「现在在写」是 `bg-canvas`（比卡片还深的第二层灰）、流水块是 `bg-inset/70`
+ * （半透明，透出卡片色变成第四种灰），一张卡里三层深浅又互不相关，看起来像三块拼上来的。
+ * 现在一块卡里最多两层：卡片本身，和里面若干个 well。
  */
 export function ShelfPage({
 	data,
@@ -31,13 +36,11 @@ export function ShelfPage({
 
 	if (!book) {
 		return (
-			<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6">
+			<div className="mahua-page">
 				<PageHeader title={t("page.shelf.title")} />
-				<EmptySheet
-					icon="icon-[lucide--library-big]"
-					title={t("shelf.emptyTitle")}
-					note={t("shelf.emptyBody")}
-				/>
+				<div className="mt-3 flex min-h-0 flex-1 flex-col">
+					<EmptySheet icon="icon-[solar--library-bold]" title={t("shelf.emptyTitle")} note={t("shelf.emptyBody")} />
+				</div>
 			</div>
 		);
 	}
@@ -60,7 +63,7 @@ export function ShelfPage({
 	);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
+		<div className="mahua-page">
 			<PageHeader
 				title={t("page.shelf.title")}
 				meta={
@@ -70,9 +73,9 @@ export function ShelfPage({
 				}
 			/>
 
-			<div className="mt-4 flex min-h-0 flex-1 gap-4 @max-[880px]:flex-col @max-[880px]:overflow-y-auto">
-				<section className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised p-5 shadow-raise @max-[880px]:shrink-0">
-					<div className="flex gap-5 @max-[700px]:gap-3">
+			<div className="mt-3 flex min-h-0 flex-1 gap-3 @max-[880px]:flex-col @max-[880px]:overflow-y-auto">
+				<section className="mahua-card flex min-w-0 flex-1 flex-col p-4 @max-[880px]:shrink-0">
+					<div className="flex gap-4 @max-[700px]:gap-3">
 						<button type="button" onClick={() => onNavigate("book")} className="relative shrink-0 text-left">
 							<Cover {...coverSeed(book.title)} size="shelf" />
 							<span className="absolute left-2 top-2 rounded-pill bg-cinnabar px-1.5 py-0.5 text-[9px] font-medium leading-[13px] text-cinnabar-foreground">
@@ -97,7 +100,7 @@ export function ShelfPage({
 								{arc ? ` · ${t("shelf.arcCount", { count: arc.to - arc.from + 1 })}` : ""}
 							</div>
 
-							<div className="mt-4 rounded-panel bg-canvas p-3">
+							<div className="mt-3 rounded-panel bg-well p-3">
 								<div className="flex items-center gap-2">
 									<span className="text-micro-up font-semibold uppercase text-ink-faint">
 										{t("shelf.nowWriting")}
@@ -122,7 +125,7 @@ export function ShelfPage({
 									{plan?.goal ?? t("brief.empty")}
 								</p>
 								<div className="mt-2 flex items-center gap-2">
-									<div className="h-[5px] flex-1 overflow-hidden rounded-pill bg-inset">
+									<div className="h-[5px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
 										<div
 											className="h-full rounded-pill bg-cinnabar/70"
 											style={{ width: `${percent(arcCommitted, arcLength)}%` }}
@@ -134,7 +137,7 @@ export function ShelfPage({
 								</div>
 							</div>
 
-							<div className="mt-auto flex flex-wrap items-end gap-x-6 gap-y-3 pt-4">
+							<div className="mt-auto flex flex-wrap items-center gap-x-6 gap-y-3 pt-4">
 								<div>
 									<div className="font-mono text-title tabular-nums leading-none text-ink">
 										{committedCount(book)}
@@ -148,7 +151,7 @@ export function ShelfPage({
 									</div>
 								</div>
 								<div className="flex-1">
-									<div className="h-[3px] overflow-hidden rounded-pill bg-inset">
+									<div className="h-[3px] overflow-hidden rounded-pill bg-wash">
 										<div
 											className="h-full rounded-pill bg-ink/70"
 											style={{ width: `${percent(committedCount(book), book.targetChapters)}%` }}
@@ -159,25 +162,25 @@ export function ShelfPage({
 									<button
 										type="button"
 										onClick={() => onNavigate("reader", chapter)}
-										className="flex h-8 items-center gap-1.5 rounded-control border border-line px-3 text-micro text-ink transition-colors hover:bg-canvas"
+										className="flex h-8 items-center gap-1.5 rounded-control bg-well px-3 text-micro text-ink transition-colors hover:bg-wash-strong"
 									>
-										<span className="icon-[lucide--book-open] size-3" />
+										<span className="icon-[solar--book-2-linear] size-3" />
 										{t("shelf.continueAt", { chapter })}
 									</button>
 									<button
 										type="button"
 										onClick={() => onNavigate("ledger")}
-										className="flex h-8 items-center gap-1.5 rounded-control border border-line px-3 text-micro text-ink transition-colors hover:bg-canvas"
+										className="flex h-8 items-center gap-1.5 rounded-control bg-well px-3 text-micro text-ink transition-colors hover:bg-wash-strong"
 									>
-										<span className="icon-[lucide--git-branch] size-3" />
+										<span className="icon-[solar--branching-paths-up-linear] size-3" />
 										{t("shelf.openLedger")}
 									</button>
 									<button
 										type="button"
 										onClick={() => onNavigate("console")}
-										className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3 text-micro font-medium text-surface"
+										className="flex h-8 items-center gap-1.5 rounded-control bg-ink px-3 text-micro font-medium text-surface transition-colors hover:bg-ink/90"
 									>
-										<span className="icon-[lucide--activity] size-3" />
+										<span className="icon-[solar--pulse-linear] size-3" />
 										{t("shelf.openConsole")}
 									</button>
 								</div>
@@ -185,7 +188,7 @@ export function ShelfPage({
 						</div>
 					</div>
 
-					<div className="mt-5 flex min-h-0 flex-1 flex-col rounded-panel bg-inset/70 p-3">
+					<div className="mt-4 flex min-h-0 flex-1 flex-col rounded-panel bg-well p-3">
 						<div className="flex items-center gap-2">
 							<span className="text-micro-up font-semibold uppercase text-ink-faint">
 								{t("shelf.recent")}
@@ -197,10 +200,7 @@ export function ShelfPage({
 						) : (
 							<ul className="mt-2 min-h-0 flex-1 space-y-px overflow-y-auto">
 								{rows.map((event) => (
-									<li
-										key={event.id}
-										className="flex items-center gap-3 rounded-tile px-1.5 py-[7px] text-[11px]"
-									>
+									<li key={event.id} className="flex items-center gap-3 rounded-tile px-1.5 py-[7px] text-[11px]">
 										<span className="font-mono text-[10px] text-ink-faint">{clockOf(event.at)}</span>
 										<span className="w-[132px] shrink-0 truncate font-mono text-[10px] text-ink-soft">
 											{event.tool ?? event.origin}
@@ -213,18 +213,18 @@ export function ShelfPage({
 					</div>
 				</section>
 
-				<section className="flex min-h-0 w-[430px] shrink-0 flex-col overflow-hidden rounded-sheet bg-raised p-2 shadow-raise @max-[1100px]:w-[300px] @max-[880px]:w-full">
-					<div className="flex items-baseline justify-between px-2 pb-2 pt-1.5">
+				<section className="mahua-card flex min-h-0 w-[420px] shrink-0 flex-col p-2 @max-[1100px]:w-[310px] @max-[880px]:w-full">
+					<div className="flex items-center justify-between px-2 pb-2 pt-1.5">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("shelf.others", { count: others.length })}
 						</span>
 						<button
 							type="button"
 							onClick={() => onNavigate("library")}
-							className="flex items-center gap-1 text-[10px] text-ink-soft transition-colors hover:text-ink"
+							className="flex items-center gap-1 rounded-control px-1.5 py-0.5 text-[10px] text-ink-soft transition-colors hover:bg-wash hover:text-ink"
 						>
 							{t("shelf.openCatalog")}
-							<span className="icon-[lucide--arrow-right] size-3" />
+							<span className="icon-[solar--alt-arrow-right-bold] size-3" />
 						</button>
 					</div>
 					{others.length === 0 ? (
@@ -241,11 +241,11 @@ export function ShelfPage({
 												data.selectBook(entry.id);
 												onNavigate("book");
 											}}
-											className="flex min-h-[54px] w-full items-center gap-3 rounded-panel px-2 text-left transition-colors hover:bg-canvas"
+											className="flex min-h-[54px] w-full items-center gap-3 rounded-panel px-2 py-1 text-left transition-colors hover:bg-wash"
 										>
 											<Cover {...coverSeed(entry.title)} size="mini" />
 											<div className="min-w-0 flex-1">
-											<div className="flex items-center gap-1.5">
+												<div className="flex items-center gap-1.5">
 													<span className="min-w-0 truncate font-display text-body-sm font-semibold text-ink">
 														{entry.title}
 													</span>
@@ -255,7 +255,7 @@ export function ShelfPage({
 													{ago ? elapsedText(ago, t) : (entry.genre ?? t("board.untitled"))}
 												</div>
 												<div className="mt-1 flex items-center gap-2">
-													<div className="h-[2px] flex-1 overflow-hidden rounded-pill bg-inset">
+													<div className="h-[2px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
 														<div
 															className="h-full rounded-pill bg-ink/60"
 															style={{ width: `${percent(entry.committedCount, entry.targetChapters)}%` }}

@@ -42,7 +42,7 @@ function LandedCard() {
 
 	return (
 		<div className="mahua-root w-full">
-			<div className="flex items-center gap-3 rounded-panel border border-line bg-raised px-3 py-2.5 shadow-raise">
+			<div className="flex items-center gap-3 rounded-panel bg-raised px-3 py-2.5 shadow-raise">
 				<span className="icon-[solar--book-2-bold] size-4 shrink-0 text-cinnabar" />
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-1.5">
@@ -61,10 +61,10 @@ function LandedCard() {
 				<button
 					type="button"
 					onClick={open}
-					className="flex h-7 shrink-0 items-center gap-1 rounded-control border border-line px-2.5 text-[10px] text-ink transition-colors hover:bg-inset"
+					className="flex h-7 shrink-0 items-center gap-1 rounded-control bg-well px-2.5 text-[10px] text-ink transition-colors hover:bg-wash-strong"
 				>
 					{t("landed.open")}
-					<span className="icon-[lucide--arrow-right] size-3" />
+					<span className="icon-[solar--alt-arrow-right-bold] size-3" />
 				</button>
 			</div>
 		</div>

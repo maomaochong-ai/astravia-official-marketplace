@@ -26,7 +26,7 @@ const TICK_TONE: Record<string, string> = {
 	committed: "bg-pass",
 	reviewed: "bg-pass/40",
 	drafting: "bg-cinnabar",
-	planned: "bg-line",
+	planned: "bg-wash-strong",
 	blocked: "bg-fail",
 };
 
@@ -50,9 +50,9 @@ export function BookPage({
 
 	if (!book) {
 		return (
-			<div className="flex min-h-0 flex-1 flex-col px-7 pb-6 pt-6 @max-[720px]:px-4">
+			<div className="mahua-page flex min-h-0 flex-1 flex-col">
 				<PageHeader title={t("page.book.title")} back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }} />
-				<EmptySheet icon="icon-[lucide--book-open]" title={t("library.empty")} />
+				<EmptySheet icon="icon-[solar--notebook-bold]" title={t("library.empty")} />
 			</div>
 		);
 	}
@@ -76,7 +76,7 @@ export function BookPage({
 	const recent = [...book.checkpoints].slice(-5).reverse();
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
+		<div className="mahua-page flex min-h-0 flex-1 flex-col">
 			<PageHeader
 					back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }}
 					title={book.title}
@@ -92,10 +92,10 @@ export function BookPage({
 					}
 				/>
 
-			<div className="mt-4 flex min-h-0 flex-1 gap-5 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
+			<div className="mt-3 flex min-h-0 flex-1 gap-3 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 
-				<section className="rounded-sheet bg-raised p-4 shadow-raise">
+				<section className="mahua-card p-4">
 					<div className="flex items-center gap-2">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("book.arcProgress")}
@@ -117,7 +117,7 @@ export function BookPage({
 									type="button"
 									onClick={() => onNavigate("reader", n)}
 									title={`${n}`}
-									className={`h-6 flex-1 rounded-tile ${TICK_TONE[state] ?? "bg-line"}`}
+									className={`h-6 flex-1 rounded-tile ${TICK_TONE[state] ?? "bg-wash-strong"}`}
 								/>
 							);
 						})}
@@ -129,12 +129,12 @@ export function BookPage({
 						))}
 					</div>
 
-					<p className="mt-3 border-t border-line-soft pt-2.5 text-micro leading-5 text-ink-soft">
+					<p className="mt-3 rounded-control bg-well px-3 py-2 text-micro leading-5 text-ink-soft">
 						{arc?.goal ?? t("book.arcGoalNone")}
 					</p>
 				</section>
 
-				<div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+				<div className="mt-3 min-h-0 flex-1 overflow-y-auto">
 					<ChapterBrief
 						number={chapter}
 						arc={arc ? arc.title : t("book.arcGoalNone")}
@@ -147,7 +147,7 @@ export function BookPage({
 						elapsed={record ? t("book.wordCount", { words: record.words }) : ""}
 					/>
 
-					<div className="mt-4 rounded-panel bg-inset/70 p-3">
+					<div className="mt-3 rounded-panel bg-well p-3">
 						<div className="flex items-baseline gap-2">
 							<span className="text-micro-up font-semibold uppercase text-ink-faint">
 								{t("book.activity")}
@@ -185,7 +185,7 @@ export function BookPage({
 				</div>
 			</div>
 			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3 @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink">
-				<section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
+				<section className="mahua-card flex min-h-0 flex-1 flex-col overflow-hidden">
 					<div className="flex items-baseline gap-2 px-4 pb-2 pt-3">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("book.index")}
@@ -226,9 +226,9 @@ export function BookPage({
 																<button
 																	type="button"
 																	onClick={() => onNavigate("reader", n)}
-																	className={`flex h-7 w-full items-center gap-2 rounded-tile px-2 text-left text-[11px] transition-colors hover:bg-canvas ${
-																		n === chapter ? "bg-cinnabar-soft text-cinnabar-ink" : "text-ink"
-																	}`}
+																className={`flex h-7 w-full items-center gap-2 rounded-control px-2 text-left text-[11px] transition-colors hover:bg-wash ${
+																	n === chapter ? "bg-cinnabar-soft text-cinnabar-ink" : "text-ink"
+																}`}
 																>
 																	<span className="w-5 shrink-0 font-mono text-[10px] text-ink-faint">{n}</span>
 																	<span className="min-w-0 flex-1 truncate">
@@ -269,9 +269,9 @@ export function BookPage({
 				<button
 					type="button"
 					onClick={() => onNavigate("ledger")}
-					className="flex items-start gap-2 rounded-panel border border-dashed border-line px-3 py-2.5 text-left transition-colors hover:bg-raised"
+					className="flex items-start gap-2 rounded-panel bg-well px-3 py-2.5 text-left transition-colors hover:bg-wash-strong"
 				>
-					<span className="icon-[lucide--git-branch] mt-0.5 size-3 shrink-0 text-ink-faint" />
+					<span className="icon-[solar--branching-paths-up-linear] mt-0.5 size-3 shrink-0 text-ink-faint" />
 					<span className="min-w-0 flex-1 text-[11px] leading-5 text-ink-soft">
 						{openCount === 0
 							? t("book.threadsNone")
@@ -280,7 +280,7 @@ export function BookPage({
 									...(soonest ? { chapter: soonest.dueIn } : {}),
 								})}
 					</span>
-					<span className="icon-[lucide--arrow-right] mt-1 size-3 shrink-0 text-ink-faint" />
+					<span className="icon-[solar--alt-arrow-right-bold] mt-1 size-3 shrink-0 text-ink-faint" />
 				</button>
 				</aside>
 			</div>

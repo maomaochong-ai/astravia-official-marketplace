@@ -32,6 +32,14 @@
 	--color-raised: var(--mahua-raised, #fffdf8);
 	--color-inset: var(--mahua-inset, #f4edde);
 
+	/* 三个「不占层级」的层：不是第五张纸，而是纸面上的呼吸。
+	 * wash 是悬停的水痕（半透明，叠在任何纸上都只加一点点墨），
+	 * well 是压下去的小坑（实色，比纸面低一档）。从前这两件事都拿 inset 顶，
+	 * 于是进度槽、卡片底、悬停态挤在同一档明度上，行与槽分不开。 */
+	--color-wash: var(--mahua-wash, rgb(0 0 0 / 0.05));
+	--color-wash-strong: var(--mahua-wash-strong, rgb(0 0 0 / 0.09));
+	--color-well: var(--mahua-well, #f6f6f6);
+
 	/* 墨的三档，加三种线的粗细。 */
 	--color-ink: var(--mahua-ink, #221e17);
 	--color-ink-soft: var(--mahua-ink-soft, #6f6757);
@@ -133,9 +141,23 @@
 			color-mix(in oklab, var(--card, #1a1c24) 88%, var(--foreground, #dce0ea))
 		);
 		--mahua-inset: light-dark(
-			color-mix(in oklab, var(--card, #fafafa) 92%, var(--foreground, #000)),
-			color-mix(in oklab, var(--card, #1a1c24) 82%, var(--background, #14161e))
+			color-mix(in oklab, var(--card, #fafafa) 93%, var(--foreground, #000)),
+			color-mix(in oklab, var(--card, #1a1c24) 84%, var(--background, #14161e))
 		);
+
+		/* wash 用半透明墨而不是实色：同一枚 hover 落在 raised / surface / well 上都只
+		 * 加深一点，不会因为底不同而出现三种灰。well 反过来必须是实色——它要盖住底下的
+		 * 纹样与分区线，半透明会让下面的东西透上来变成两层。 */
+		--mahua-wash: color-mix(in oklab, var(--foreground, #000) 5%, transparent);
+		--mahua-wash-strong: color-mix(in oklab, var(--foreground, #000) 9%, transparent);
+		--mahua-well: light-dark(
+			color-mix(in oklab, var(--card, #fafafa) 96%, var(--foreground, #000)),
+			color-mix(in oklab, var(--card, #1a1c24) 96%, var(--background, #14161e))
+		);
+
+		/* 页边与卡内节奏：七个页面共用这两个数，禁止各页各写一套 px/pt/mt。 */
+		--mahua-page-pad: 20px 24px 20px;
+		--mahua-gap: 12px;
 
 		--mahua-ink: var(--foreground, #000);
 		--mahua-ink-soft: color-mix(in oklab, var(--foreground, #000) 78%, var(--card, #fafafa));
@@ -232,6 +254,49 @@
 	}
 }
 
+/* 版面节奏：七个页面共用四个语义类，不再每页各写一套 px / pt / mt。
+ *
+ * 为什么必须收在这一层：
+ * - `.mahua-page` 负责「页边」：从前书架与书库是 `px-7 pt-6`、运行台是 `px-6 pt-5`、
+ *   激活页是 `p-3`，同一扇窗里换页时内容会跳一格。
+ * - `.mahua-card` 管「一张纸」：圆角 + 抬起的底色 + 投影 + `overflow-hidden`。
+ *   少了 `overflow-hidden`，卡里的圆角行会在卡角上冒出直角。
+ * - `.mahua-well` 管「纸面里的坑」：分组、进度槽、空态都往里坐，不带描边。
+ * - 容器之间的间距统一为 `--mahua-gap`；卡内 padding 统一 16px（`p-4`）。
+ *
+ * 放 components 层是因为 utilities 能压过它：某一页真的需要例外时，写一行工具类就行，
+ * 不必回来改这里。 */
+@layer components {
+	.mahua-page {
+		display: flex;
+		flex: 1 1 0%;
+		flex-direction: column;
+		min-height: 0;
+		overflow: hidden;
+		padding: var(--mahua-page-pad);
+	}
+
+	.mahua-card {
+		border-radius: var(--radius-sheet);
+		background-color: var(--mahua-raised);
+		box-shadow: var(--shadow-raise);
+		overflow: hidden;
+	}
+
+	.mahua-well {
+		border-radius: var(--radius-panel);
+		background-color: var(--mahua-well);
+	}
+
+	/* 窄过 720 时页边收到 16 / 12：外壳本身已经是 `@container`，这里问的是工作台宽度，
+	 * 不是窗口宽度——面板被拖窄时两个数才一起变。 */
+	@container (max-width: 720px) {
+		.mahua-page {
+			padding: 16px 16px 12px;
+		}
+	}
+}
+
 /* 窄栏收起成图标列：宽度与「藏起文字」由父级的 data 属性驱动。
  * 收起只有一个触发点（调用方算好的 `collapsed = 手动收起 || 容器 < 640px`），
  * 视觉也只有一个实现，就在这里——从前另有一套 `@max-[640px]` 工具类各写一半，
@@ -300,26 +365,30 @@
 }
 
 /* 封面：纸的三种底色、三种纹样，全都放在这里——
- * 视图层（src/features/**）不许写死颜色，图案只能靠 data-layer / data-motif 选。 */
+ * 视图层（src/features/**）不许写死颜色，图案只能靠 data-layer / data-motif 选。
+ *
+ * 底色不再写米色字面量，而是从**已解析的**纸面 token 混出来：宿主换成中性灰或深色时，
+ * 封面跟同一套明度走。从前那三张暖米色在 mono 主题下是整页唯一的黄块，
+ * 书架一列书排开就像贴了张不属于这套界面的图。
+ *
+ * 三支只是「同一张纸的三个深度」，不靠色相区分：深一档、浅一档、带一点主色。 */
 .mahua-cover {
-	--cover-bg: #efe7d6;
-	--cover-ink: #3b3428;
-	--cover-band: #c9b98f;
+	--cover-bg: color-mix(in oklab, var(--mahua-raised, #ffffff) 88%, var(--mahua-ink, #000));
+	--cover-ink: var(--mahua-ink, #000);
+	--cover-band: color-mix(in oklab, var(--mahua-ink, #000) 24%, var(--mahua-raised, #ffffff));
 	background-color: var(--cover-bg);
 	color: var(--cover-ink);
-	box-shadow: inset 0 0 0 1px rgb(34 30 23 / 0.12);
+	box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--mahua-ink, #000) 9%, transparent);
 }
 
 .mahua-cover[data-layer="1"] {
-	--cover-bg: #e3d9c2;
-	--cover-ink: #2c2a22;
-	--cover-band: #a9b49a;
+	--cover-bg: color-mix(in oklab, var(--mahua-raised, #ffffff) 78%, var(--mahua-ink, #000));
+	--cover-band: color-mix(in oklab, var(--mahua-ink, #000) 34%, var(--mahua-raised, #ffffff));
 }
 
 .mahua-cover[data-layer="2"] {
-	--cover-bg: #e9dcd2;
-	--cover-ink: #33291f;
-	--cover-band: #c79b86;
+	--cover-bg: color-mix(in oklab, var(--mahua-cinnabar, #4f46e5) 12%, var(--mahua-raised, #ffffff));
+	--cover-band: color-mix(in oklab, var(--mahua-cinnabar, #4f46e5) 46%, var(--mahua-raised, #ffffff));
 }
 
 .mahua-cover .cover-line {

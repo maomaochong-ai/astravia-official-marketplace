@@ -22,15 +22,15 @@ export function PageHeader({
 	right?: ReactNode;
 }) {
 	return (
-		<div className="flex flex-wrap items-end gap-x-4 gap-y-2 pb-5">
+		<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 			<div className="min-w-0 flex-1">
 				{back && (
 					<button
 						type="button"
 						onClick={back.onBack}
-						className="mb-2.5 inline-flex items-center gap-1 text-micro text-ink-soft transition-colors hover:text-ink"
+						className="mb-2.5 inline-flex items-center gap-1 rounded-control px-1.5 py-0.5 text-micro text-ink-soft transition-colors hover:bg-wash hover:text-ink"
 					>
-						<span className="icon-[lucide--arrow-left] size-3" />
+						<span className="icon-[solar--alt-arrow-left-bold] size-3" />
 						{back.label}
 					</button>
 				)}
@@ -39,7 +39,7 @@ export function PageHeader({
 					{meta ? <span className="min-w-0 flex-1 basis-[12ch]">{meta}</span> : null}
 				</div>
 			</div>
-			<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2 pb-1.5">{right}</div>
+			<div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">{right}</div>
 		</div>
 	);
 }

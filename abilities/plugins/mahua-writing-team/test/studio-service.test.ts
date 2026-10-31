@@ -4,9 +4,21 @@ import { StudioService, countWords } from "../src/application/studio-service.js"
 import { EntitlementGate } from "../src/entitlement/entitlement-gate.js";
 import { MemoryManuscriptStorage } from "../src/repository/manuscript-storage.js";
 import { ManuscriptRepository } from "../src/repository/manuscript-repository.js";
+import { COMMUNITY_CREDENTIAL } from "../src/entitlement/default-credential.js";
+import { decodeToken } from "../src/entitlement/credential-token.js";
 
 const NOW = () => new Date("2026-02-01T00:00:00.000Z");
 const PROSE = "The gate opened twice that night. ".repeat(40);
+
+/** 「凭证已过期」那一刻：从凭证自身的 `expiresAt` 往后推两天。
+ *  写死日期的话，下一次换发凭证就要回来改这个测试——而且改不动时
+ *  它不会报“日期旧了”，只会报“门禁失效了”，把人引到错的地方。
+ *  推两天而不是一天：验签留了 24 小时时钟回拨容忍窗口，临界当日仍算有效。 */
+function theDayAfterExpiry(): Date {
+	const expiresAt = decodeToken(COMMUNITY_CREDENTIAL)?.claims.expiresAt;
+	if (!expiresAt) throw new Error("the community credential no longer decodes");
+	return new Date(Date.parse(expiresAt) + 2 * 86_400_000);
+}
 
 async function studio() {
 	const storage = new MemoryManuscriptStorage();
@@ -199,10 +211,11 @@ describe("StudioService lifecycle", () => {
 
 	it("refuses every write while the gate is inactive", async () => {
 		const storage = new MemoryManuscriptStorage();
-		const gate = new EntitlementGate(storage, () => new Date("2031-01-01T00:00:00.000Z"));
+		const after = () => theDayAfterExpiry();
+		const gate = new EntitlementGate(storage, after);
 		await gate.load();
 		const repository = new ManuscriptRepository(storage, () => new Date().toISOString());
-		const service = new StudioService(repository, gate, () => new Date("2031-01-01T00:00:00.000Z"));
+		const service = new StudioService(repository, gate, after);
 		const created = await service.createBook({ title: "Salt", genre: "SF", premise: "p", targetChapters: 2 });
 		expect(created.ok).toBe(false);
 		if (!created.ok) expect(created.error).toBe("entitlement-required");

@@ -67,7 +67,7 @@ export function ChapterBrief({
 				</div>
 			</div>
 
-			<dl className="grid grid-cols-[52px_1fr] gap-y-1.5 border-t border-line-soft px-4 py-3 text-micro leading-5">
+			<dl className="grid grid-cols-[52px_1fr] gap-y-1.5 px-4 py-3 text-micro leading-5">
 				<dt className="text-ink-faint">{t("brief.goal")}</dt>
 				<dd className="text-ink">{goal || empty}</dd>
 				<dt className="text-ink-faint">{t("brief.conflict")}</dt>
@@ -76,8 +76,8 @@ export function ChapterBrief({
 				<dd className="text-ink">{hook || empty}</dd>
 			</dl>
 
-			<div className="flex items-center gap-2 border-t border-line-soft bg-inset px-4 py-2.5">
-				<span className="icon-[lucide--eye] size-3 shrink-0 text-ink-faint" />
+			<div className="flex items-center gap-2 bg-well px-4 py-2.5">
+				<span className="icon-[solar--eye-linear] size-3 shrink-0 text-ink-faint" />
 				<span className="min-w-0 flex-1 truncate text-[10px] text-ink-soft">{t("brief.readonlyNote")}</span>
 			</div>
 		</section>

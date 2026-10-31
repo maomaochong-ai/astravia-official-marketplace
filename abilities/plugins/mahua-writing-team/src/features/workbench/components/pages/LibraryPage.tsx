@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
 import type { WorkbenchPage } from "../../workbench-pages";
@@ -38,12 +39,19 @@ function sizeOf(targetChapters: number): SizeKey {
 
 const SIZES: readonly SizeKey[] = ["long", "medium", "short"];
 
+const SORT_LABELS: Record<SortKey, string> = {
+	recent: "library.sort.recent",
+	chapters: "library.sort.chapters",
+	title: "library.sort.title",
+};
+
 /**
  * 书库：一条筛选带，一张满宽台账。
  *
- * 曾经的版本把题材与状态摆成左侧一栏，结果书的列只剩 700px，标题与简介挤成两行。
- * 这里照设计稿换过来：三个维度横着排进一条 40px 的带子，台账吃满整个宽度，
- * 一本书一行 56px，扫一眼就能比出「哪本快收尾、哪本刚起步」。
+ * 这一版的排版语言换过一次（ADR 0033）：筛选带不再是一张带投影的横条 + 三根竖杠，
+ * 而是三组凹槽（每组一个维度）加一组排序；台账不再是「卡头 / 表头 / 行 / 卡尾」四段
+ * 各画一根分隔线，而是「表头是一条凹槽、页脚是另一条凹槽，中间的行自己浮在卡片上」。
+ * 分隔交给底色与间距，不交给线。
  *
  * 筛选与排序都是本页的瞬时状态——工作台不改任何书的事实，只改「现在看哪几本」。
  * 因此这里没有成书、也没有编辑入口：一行只是一个通往书页的门。
@@ -107,8 +115,7 @@ export function LibraryPage({
 		next();
 	};
 
-
-	// 顶部「上一本 / 下一本」：在**当前筛选结果**里逐本走，不跳页、不离开书库——
+	// 页头的「上一本 / 下一本」：在**当前筛选结果**里逐本走，不跳页、不离开书库——
 	// 换书之后还能接着比。当前作品不在筛选结果里时从第一个开始走。
 	const currentIndex = filtered.findIndex((entry) => entry.id === data.book?.id);
 	const stepBook = (delta: number) => {
@@ -117,31 +124,41 @@ export function LibraryPage({
 		data.selectBook(filtered[(from + delta + filtered.length) % filtered.length].id);
 	};
 
-	const chip = (active: boolean, variant: "ink" | "inset" = "inset") =>
+	/** 一枚筛选片：选中的从凹槽里浮起来，没选中的只在悬停时沾一点墨。
+	 *  从前选中态是黑底反白，一排看下来像一排按钮；纸面语言里「选中」应该是
+	 * 这一格被抬起来，而不是被涂黑。 */
+	const chip = (active: boolean) =>
 		`flex h-6 shrink-0 items-center gap-1 rounded-pill px-2 text-[10px] transition-colors ${
-			active
-				? variant === "ink"
-					? "bg-ink font-medium text-surface"
-					: "bg-inset font-medium text-ink"
-				: "text-ink-soft hover:bg-inset/70"
+			active ? "bg-raised font-medium text-ink shadow-raise" : "text-ink-soft hover:bg-wash"
 		}`;
 
-	const bookStep = (delta: number, label: string, icon: string) => (
+	/* 计数不跟着选中态变颜色：同一列数字忽深忽浅反而更难比对。 */
+	const chipCount = "font-mono text-ink-faint";
+
+	const group = (label: string, children: ReactNode) => (
+		<div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-panel bg-well px-2 py-1.5">
+			<span className="shrink-0 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+				{label}
+			</span>
+			{children}
+		</div>
+	);
+
+	const stepButton = (delta: number, label: string, icon: string) => (
 		<button
 			type="button"
 			onClick={() => stepBook(delta)}
 			disabled={filtered.length < 2}
 			title={label}
 			aria-label={label}
-			className="flex h-7 shrink-0 items-center gap-1 rounded-control border border-line px-2 text-[10px] text-ink transition-colors hover:bg-raised disabled:opacity-40 disabled:hover:bg-transparent"
+			className="flex size-7 shrink-0 items-center justify-center rounded-control bg-well text-ink-soft transition-colors hover:bg-wash-strong hover:text-ink disabled:opacity-40 disabled:hover:bg-well"
 		>
-			<span className={`${icon} size-3 shrink-0`} />
-			<span className="hidden @[560px]:inline">{label}</span>
+			<span className={`${icon} size-3.5`} />
 		</button>
 	);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-7 pb-5 pt-6 @max-[720px]:px-4">
+		<div className="mahua-page">
 			<PageHeader
 				back={{ label: t("library.back"), onBack: () => onNavigate("shelf") }}
 				title={t("page.library.title")}
@@ -150,86 +167,97 @@ export function LibraryPage({
 						{t("library.meta", { count: filtered.length, words: wanWords(words) })}
 					</span>
 				}
+				right={
+					<>
+						{stepButton(-1, t("library.stepPrev"), "icon-[solar--alt-arrow-left-bold]")}
+						{stepButton(1, t("library.stepNext"), "icon-[solar--alt-arrow-right-bold]")}
+					</>
+				}
 			/>
 
-			{/* 一条筛选带：题材 / 状态 / 篇幅 横着排，排序钉在右端。
-			 * 它不锁高也不再 `overflow-hidden`：面板拖到 500px 时三个分组放不下，从前会被硬生生裁掉
-			 * 半个 chip（看着像渲染错位）。宁可让带子长成两行，也不让某一项只剩一半。 */}
-			<div className="mt-4 flex min-h-10 shrink-0 flex-wrap items-center gap-x-2 gap-y-1.5 rounded-control bg-raised px-3 py-2 shadow-raise">
-				<span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-					{t("library.filter.genre")}
-				</span>
-				<button type="button" onClick={() => pick(() => setGenre(null))} className={chip(genre === null, "ink")}>
-					{t("library.all")}
-					<span className={`font-mono ${genre === null ? "text-surface/60" : "text-ink-faint"}`}>
-						{data.books.length}
+			{/* 筛选带：三个维度各占一格凹槽，排序钉在右端。它不锁高也不再 `overflow-hidden`：
+			 * 面板拖到 500px 时三个分组放不下，从前会被硬生生裁掉半个 chip（看着像渲染错位）。
+			 * 宁可让带子长成两行，也不让某一项只剩一半。 */}
+			<div className="mt-3 flex shrink-0 flex-wrap items-center gap-2">
+				{group(
+					t("library.filter.genre"),
+					<>
+						<button type="button" onClick={() => pick(() => setGenre(null))} className={chip(genre === null)}>
+							{t("library.all")}
+							<span className={chipCount}>{data.books.length}</span>
+						</button>
+						{genres.map(([name, count]) => (
+							<button
+								key={name}
+								type="button"
+								onClick={() => pick(() => setGenre(genre === name ? null : name))}
+								className={chip(genre === name)}
+							>
+								<span className="max-w-[96px] truncate">{name}</span>
+								<span className={chipCount}>{count}</span>
+							</button>
+						))}
+					</>,
+				)}
+
+				{group(
+					t("library.filter.status"),
+					<>
+						{PHASES.map((name) => (
+							<button
+								key={name}
+								type="button"
+								onClick={() => pick(() => setPhase(phase === name ? null : name))}
+								className={chip(phase === name)}
+							>
+								{t(`phase.${name}`)}
+								<span className={chipCount}>
+									{data.books.filter((entry) => entry.phase === name).length}
+								</span>
+							</button>
+						))}
+					</>,
+				)}
+
+				{group(
+					t("library.filter.length"),
+					<>
+						{SIZES.map((key) => (
+							<button
+								key={key}
+								type="button"
+								onClick={() => pick(() => setSize(size === key ? null : key))}
+								className={chip(size === key)}
+							>
+								{t(`library.size.${key}`)}
+								<span className={chipCount}>{sizeCounts[key]}</span>
+							</button>
+						))}
+					</>,
+				)}
+
+				<div className="ml-auto flex shrink-0 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-panel bg-well px-2 py-1.5">
+					<span className="shrink-0 px-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+						{t("library.filter.sort")}
 					</span>
-				</button>
-				{genres.map(([name, count]) => (
-					<button
-						key={name}
-						type="button"
-						onClick={() => pick(() => setGenre(genre === name ? null : name))}
-						className={chip(genre === name, "ink")}
-					>
-						<span className="max-w-[96px] truncate">{name}</span>
-						<span className={`font-mono ${genre === name ? "text-surface/60" : "text-ink-faint"}`}>{count}</span>
-					</button>
-				))}
-
-				<span className="h-3.5 w-px shrink-0 bg-line" />
-				<span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-					{t("library.filter.status")}
-				</span>
-				{PHASES.map((name) => (
-					<button
-						key={name}
-						type="button"
-						onClick={() => pick(() => setPhase(phase === name ? null : name))}
-						className={chip(phase === name)}
-					>
-						{t(`phase.${name}`)}
-						<span className="font-mono text-ink-faint">
-							{data.books.filter((entry) => entry.phase === name).length}
-						</span>
-					</button>
-				))}
-
-				<span className="h-3.5 w-px shrink-0 bg-line" />
-				<span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-					{t("library.filter.length")}
-				</span>
-				{SIZES.map((key) => (
-					<button
-						key={key}
-						type="button"
-						onClick={() => pick(() => setSize(size === key ? null : key))}
-						className={chip(size === key)}
-					>
-						{t(`library.size.${key}`)}
-						<span className="font-mono text-ink-faint">{sizeCounts[key]}</span>
-					</button>
-				))}
-
-				<label className="ml-auto flex h-6 shrink-0 items-center gap-1.5 rounded-control bg-inset px-2 text-[10px] text-ink">
-					<span className="icon-[lucide--arrow-down-up] size-3" />
-					<select
-						value={sort}
-						onChange={(event) => pick(() => setSort(event.target.value as SortKey))}
-						aria-label={t("library.filter.sort")}
-						className="cursor-pointer appearance-none bg-transparent pr-3 outline-none"
-					>
-						<option value="recent">{t("library.sort.recent")}</option>
-						<option value="chapters">{t("library.sort.chapters")}</option>
-						<option value="title">{t("library.sort.title")}</option>
-					</select>
-					<span className="icon-[lucide--chevron-down] size-3 text-ink-faint" />
-				</label>
+					{(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+						<button
+							key={key}
+							type="button"
+							onClick={() => pick(() => setSort(key))}
+							aria-pressed={sort === key}
+							className={chip(sort === key)}
+						>
+							{t(SORT_LABELS[key])}
+						</button>
+					))}
+				</div>
 			</div>
 
-			{/* 满宽台账：卡头只读提示，表头钉住，行内部滚，卡尾页码 */}
-			<section className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel bg-raised shadow-raise">
-				<div className="flex shrink-0 items-center gap-2 border-b border-line-soft px-3.5 py-2">
+			{/* 满宽台账：状态行只读，表头是一条凹槽，行内部滚，页脚是另一条凹槽。
+			 * 四段之间没有一根 `border-*`——分隔靠底色与 8px 间距。 */}
+			<section className="mahua-card mt-3 flex min-h-0 flex-1 flex-col">
+				<div className="flex shrink-0 items-center gap-2 px-4 pt-3">
 					{writing ? (
 						<>
 							<span className="size-1.5 shrink-0 rounded-pill bg-cinnabar" />
@@ -238,97 +266,106 @@ export function LibraryPage({
 							</span>
 						</>
 					) : (
-						<span className="min-w-0 truncate text-micro text-ink-faint">{t("library.ledgerIdle")}</span>
+						<span className="min-w-0 flex-1 truncate text-micro text-ink-faint">{t("library.ledgerIdle")}</span>
 					)}
-					<span className="ml-auto min-w-0 truncate text-[10px] text-ink-faint">{t("library.ledgerNote")}</span>
+					<span className="min-w-0 truncate text-[10px] text-ink-faint">{t("library.ledgerNote")}</span>
 				</div>
 
-				<div className="flex min-h-0 flex-1 flex-col">
-					<div
-						className={`grid ${COLUMNS} shrink-0 items-center gap-3 border-b border-line-soft px-4 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint`}
-					>
-							{HEADER_CELLS.map((cell) => (
-								<span key={cell.key} className={`min-w-0 truncate ${columnClassName(cell)}`}>
-									{t(cell.key)}
-								</span>
-							))}
-						</div>
+				<div
+					className={`mx-2 mt-2 grid ${COLUMNS} shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint`}
+				>
+					{HEADER_CELLS.map((cell) => (
+						<span key={cell.key} className={`min-w-0 truncate ${columnClassName(cell)}`}>
+							{t(cell.key)}
+						</span>
+					))}
+				</div>
 
-						{rows.length === 0 ? (
-							<div className="flex min-h-0 flex-1 items-start pt-4">
-								<EmptySheet icon="icon-[lucide--layers]" title={t("library.empty")} />
-							</div>
-						) : (
-							<ul className="mahua-scroll min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-1.5">
-								{rows.map((entry) => {
-									const ago = elapsedSince(entry.updatedAt, now);
-									const done = percent(entry.committedCount, entry.targetChapters);
-									return (
-										<li key={entry.id} className="h-14">
-											<button
-												type="button"
-												onClick={() => {
-													data.selectBook(entry.id);
-													onNavigate("book");
-												}}
-												className={`group grid h-full w-full ${COLUMNS} items-center gap-3 rounded-control px-3 text-left transition-colors hover:bg-inset/70`}
-											>
-												<span className="flex min-w-0 items-center gap-2.5">
-													<Cover {...coverSeed(entry.title)} size="thumb" />
-													<span className="min-w-0">
-														<span className="block truncate font-display text-body-sm font-semibold text-ink">
-															{entry.title}
-														</span>
-														<span className="flex items-center gap-1 truncate text-[10px] text-ink-faint">
-															<span className="icon-[lucide--arrow-up-right] size-2.5" />
-															{t("library.open")}
-														</span>
-													</span>
-												</span>
-												<span className={`min-w-0 truncate text-micro text-ink-soft ${HIDE_GENRE}`}>
-													{entry.genre ?? t("library.card.noGenre")}
-													<span className="text-line-strong"> · </span>
-													{t(`library.size.${sizeOf(entry.targetChapters)}`)}
-												</span>
-												<span>
-													<PhaseBadge phase={entry.phase} />
-												</span>
-												<span className={`flex items-center gap-2.5 ${HIDE_CHAPTERS}`}>
-													<span className="w-[46px] shrink-0 font-mono text-[11px] tabular-nums text-ink">
-														{entry.committedCount}
-														<span className="text-ink-faint">/{entry.targetChapters}</span>
-													</span>
-													<span className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-pill bg-inset">
-														<span className="block h-full rounded-pill bg-ink/60" style={{ width: `${done}%` }} />
-													</span>
-													<span className="w-[30px] shrink-0 text-right font-mono text-[10px] tabular-nums text-ink-faint">
-														{done}%
-													</span>
-												</span>
-												<span className={`text-right font-mono text-[11px] tabular-nums text-ink-soft ${HIDE_GENRE}`}>
-													{entry.words ? formatCount(entry.words) : "—"}
-												</span>
-												<span className={`text-right text-[10px] text-ink-faint ${HIDE_UPDATED}`}>
-													{ago ? t(ago.key, { count: ago.count }) : "—"}
-												</span>
-											</button>
-										</li>
-									);
-								})}
-							</ul>
-						)}
+				{rows.length === 0 ? (
+					<div className="flex min-h-0 flex-1 flex-col px-2 pb-2 pt-2">
+						<EmptySheet icon="icon-[solar--layers-bold]" title={t("library.empty")} />
 					</div>
+				) : (
+					<ul className="mahua-scroll mt-1 min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-1">
+						{rows.map((entry) => {
+							const ago = elapsedSince(entry.updatedAt, now);
+							const done = percent(entry.committedCount, entry.targetChapters);
+							const isCurrent = entry.id === data.book?.id;
+							return (
+								<li key={entry.id} className="h-14">
+									<button
+										type="button"
+										onClick={() => {
+											data.selectBook(entry.id);
+											onNavigate("book");
+										}}
+										aria-current={isCurrent ? "true" : undefined}
+										className={`group grid h-full w-full ${COLUMNS} items-center gap-3 rounded-control px-3 text-left transition-colors ${
+											isCurrent ? "bg-cinnabar-soft hover:bg-wash" : "hover:bg-wash"
+										}`}
+									>
+										<span className="flex min-w-0 items-center gap-2.5">
+											<Cover {...coverSeed(entry.title)} size="thumb" />
+											<span className="min-w-0">
+												<span
+													className={`block truncate font-display text-body-sm font-semibold ${
+														isCurrent ? "text-cinnabar-ink" : "text-ink"
+													}`}
+												>
+													{entry.title}
+												</span>
+												<span className="flex items-center gap-1 truncate text-[10px] text-ink-faint">
+													<span className="icon-[solar--arrow-right-up-linear] size-2.5" />
+													{t("library.open")}
+												</span>
+											</span>
+										</span>
+										<span className={`flex min-w-0 flex-col ${HIDE_GENRE}`}>
+											<span className="truncate text-micro text-ink-soft">
+												{entry.genre ?? t("library.card.noGenre")}
+											</span>
+											<span className="truncate text-[10px] text-ink-faint">
+												{t(`library.size.${sizeOf(entry.targetChapters)}`)}
+											</span>
+										</span>
+										<span className="min-w-0">
+											<PhaseBadge phase={entry.phase} />
+										</span>
+										<span className={`flex min-w-0 items-center gap-2.5 ${HIDE_CHAPTERS}`}>
+											<span className="w-[46px] shrink-0 font-mono text-[11px] tabular-nums text-ink">
+												{entry.committedCount}
+												<span className="text-ink-faint">/{entry.targetChapters}</span>
+											</span>
+											<span className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-pill bg-wash-strong">
+												<span className="block h-full rounded-pill bg-ink/60" style={{ width: `${done}%` }} />
+											</span>
+											<span className="w-[30px] shrink-0 text-right font-mono text-[10px] tabular-nums text-ink-faint">
+												{done}%
+											</span>
+										</span>
+										<span className={`text-right font-mono text-[11px] tabular-nums text-ink-soft ${HIDE_GENRE}`}>
+											{entry.words ? formatCount(entry.words) : "—"}
+										</span>
+										<span className={`text-right text-[10px] text-ink-faint ${HIDE_UPDATED}`}>
+											{ago ? t(ago.key, { count: ago.count }) : "—"}
+										</span>
+									</button>
+								</li>
+							);
+						})}
+					</ul>
+				)}
 
-				<div className="flex shrink-0 items-center gap-3 border-t border-line-soft px-4 py-2.5 text-micro text-ink-soft">
+				<div className="m-2 mt-0 flex shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-micro text-ink-soft">
 					<div className="flex items-center gap-1">
 						<button
 							type="button"
 							onClick={() => setPage(Math.max(0, current - 1))}
 							disabled={current === 0}
 							aria-label={t("library.prev")}
-							className="flex size-6 items-center justify-center rounded-control text-ink-faint hover:bg-inset hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
+							className="flex size-6 items-center justify-center rounded-control text-ink-faint transition-colors hover:bg-wash-strong hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
 						>
-							<span className="icon-[lucide--chevron-left] size-3.5" />
+							<span className="icon-[solar--alt-arrow-left-bold] size-3.5" />
 						</button>
 						<span className="font-mono tabular-nums">{t("library.page", { page: current + 1, pages })}</span>
 						<button
@@ -336,9 +373,9 @@ export function LibraryPage({
 							onClick={() => setPage(Math.min(pages - 1, current + 1))}
 							disabled={current >= pages - 1}
 							aria-label={t("library.next")}
-							className="flex size-6 items-center justify-center rounded-control text-ink-faint hover:bg-inset hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
+							className="flex size-6 items-center justify-center rounded-control text-ink-faint transition-colors hover:bg-wash-strong hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
 						>
-							<span className="icon-[lucide--chevron-right] size-3.5" />
+							<span className="icon-[solar--alt-arrow-right-bold] size-3.5" />
 						</button>
 					</div>
 					<span className="ml-auto min-w-0 truncate text-[10px] text-ink-faint">
@@ -349,3 +386,4 @@ export function LibraryPage({
 		</div>
 	);
 }
+

@@ -21,10 +21,10 @@ export const HIDE_UPDATED = "@max-[680px]:hidden"; // 更新
  * 改模板就顺手改 `tracks`，守卫会拦住只改一边的那种。
  */
 export const COLUMNS_TIERS = [
-	{ tracks: 6, template: "grid-cols-[1fr_150px_74px_196px_78px_88px]" },
-	{ tracks: 4, template: "@max-[1120px]:grid-cols-[1fr_74px_150px_88px]" },
-	{ tracks: 3, template: "@max-[880px]:grid-cols-[1fr_74px_88px]" },
-	{ tracks: 2, template: "@max-[680px]:grid-cols-[1fr_74px]" },
+	{ tracks: 6, template: "grid-cols-[minmax(0,1fr)_128px_84px_168px_72px_80px]" },
+	{ tracks: 4, template: "@max-[1120px]:grid-cols-[minmax(0,1fr)_84px_168px_80px]" },
+	{ tracks: 3, template: "@max-[880px]:grid-cols-[minmax(0,1fr)_84px_80px]" },
+	{ tracks: 2, template: "@max-[680px]:grid-cols-[minmax(0,1fr)_84px]" },
 ] as const;
 
 /** 表头与行共用的列类串。 */

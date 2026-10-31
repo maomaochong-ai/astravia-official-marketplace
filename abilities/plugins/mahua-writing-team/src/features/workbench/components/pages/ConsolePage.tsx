@@ -61,7 +61,7 @@ export function ConsolePage({
 	const arc = book?.volumes.flatMap((volume) => volume.arcs).find((item) => chapter >= item.from && chapter <= item.to);
 
 	return (
-		<div className="flex min-h-0 flex-1 flex-col px-6 pb-5 pt-5 @max-[900px]:px-4">
+		<div className="mahua-page flex min-h-0 flex-1 flex-col">
 			<PageHeader
 				title={t("page.console.title")}
 				meta={
@@ -72,22 +72,22 @@ export function ConsolePage({
 				right={
 					<div className="flex items-center gap-2">
 						{model && (
-							<span className="flex h-6 items-center gap-1.5 rounded-pill bg-inset px-2 font-mono text-[10px] text-ink-soft">
-								<span className="icon-[lucide--cpu] size-3" />
+							<span className="flex h-6 items-center gap-1.5 rounded-pill bg-well px-2 font-mono text-[10px] text-ink-soft">
+								<span className="icon-[solar--cpu-bolt-linear] size-3" />
 								{model}
 							</span>
 						)}
 						<span className="flex h-6 items-center gap-1.5 rounded-pill bg-raised px-2 text-[10px] text-ink-soft shadow-raise">
-							<span className={`size-1.5 rounded-pill ${events.length > 0 ? "bg-pass" : "bg-line-strong"}`} />
+							<span className={`size-1.5 rounded-pill ${events.length > 0 ? "bg-pass" : "bg-ink-faint"}`} />
 							{t("console.live", { count: events.length })}
 						</span>
 					</div>
 				}
 			/>
 
-			<div className="mt-4 flex min-h-0 flex-1 gap-4">
-				<aside className="flex min-h-0 w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-inset @max-[1100px]:w-[188px] @max-[900px]:hidden">
-					<div className="border-b border-line-soft px-3 pb-2 pt-2.5">
+			<div className="mt-3 flex min-h-0 flex-1 gap-3">
+				<aside className="flex min-h-0 w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-well @max-[1100px]:w-[188px] @max-[900px]:hidden">
+					<div className="px-3 pb-1 pt-2.5">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.spine")}
 						</div>
@@ -117,7 +117,7 @@ export function ConsolePage({
 																	type="button"
 																	onClick={() => onNavigate("reader", n)}
 																	className={`flex h-5 w-full items-center gap-1.5 rounded-tile px-1 text-left text-[10px] ${
-																		n === chapter ? "bg-cinnabar-soft text-cinnabar-ink" : "text-ink-soft hover:bg-canvas"
+																n === chapter ? "bg-cinnabar-soft text-cinnabar-ink" : "text-ink-soft hover:bg-wash"
 																	}`}
 																>
 																	<span className={`size-1 shrink-0 rounded-pill ${SPINE_TONE[state]}`} />
@@ -142,13 +142,13 @@ export function ConsolePage({
 							))
 						)}
 					</div>
-					<p className="border-t border-line-soft px-3 py-2 text-[10px] leading-4 text-ink-faint">
+					<p className="px-3 py-2 text-[10px] leading-4 text-ink-faint">
 						{t("console.spineNote")}
 					</p>
 				</aside>
 
-				<section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-sheet bg-raised shadow-raise">
-					<div className="flex items-center gap-1 border-b border-line-soft px-3 pb-2 pt-2.5">
+				<section className="mahua-card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+					<div className="flex items-center gap-1 px-3 pb-2 pt-2.5">
 						<span className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.feed")}
 						</span>
@@ -159,7 +159,7 @@ export function ConsolePage({
 									type="button"
 									onClick={() => setFilter(key)}
 									className={`h-6 rounded-control px-2 text-[10px] ${
-										filter === key ? "bg-inset font-semibold text-ink" : "text-ink-soft hover:bg-inset/60"
+										filter === key ? "bg-raised font-semibold text-ink shadow-raise" : "text-ink-soft hover:bg-wash"
 									}`}
 								>
 									{t(`console.filter.${key}`)}
@@ -175,7 +175,7 @@ export function ConsolePage({
 						<button
 							type="button"
 							onClick={clearConsoleTimeline}
-							className="ml-2 h-6 rounded-control border border-line px-2 text-[10px] text-ink-soft"
+							className="ml-2 h-6 rounded-control bg-well px-2 text-[10px] text-ink-soft transition-colors hover:bg-wash-strong"
 						>
 							{t("console.feedClear")}
 						</button>
@@ -183,21 +183,21 @@ export function ConsolePage({
 
 					{visible.length === 0 ? (
 						<div className="flex min-h-0 flex-1 p-4">
-							<EmptySheet icon="icon-[lucide--activity]" title={t("console.feedEmpty")} />
+							<EmptySheet icon="icon-[solar--pulse-bold]" title={t("console.feedEmpty")} />
 						</div>
 					) : (
-						<ul className="min-h-0 flex-1 overflow-y-auto">
+						<ul className="mahua-scroll min-h-0 flex-1 space-y-px overflow-y-auto px-2 pb-2">
 							{visible.map((event) => (
 								<li
 									key={event.id}
-									className="flex items-start gap-2.5 border-b border-line-soft px-3 py-[7px] text-[11px]"
+									className="flex items-start gap-2.5 rounded-tile px-1 py-[7px] text-[11px]"
 								>
 									<span className="w-[54px] shrink-0 font-mono text-[10px] text-ink-faint">
 										{clockOf(event.at)}
 									</span>
 									<span
 										className={`mt-0.5 size-1.5 shrink-0 rounded-pill ${
-											event.status === "failed" ? "bg-fail" : event.status === "start" ? "bg-line-strong" : "bg-pass"
+											event.status === "failed" ? "bg-fail" : event.status === "start" ? "bg-ink-faint" : "bg-pass"
 										}`}
 									/>
 									<span className="w-[150px] shrink-0 truncate font-mono text-[10px] text-ink-soft">
@@ -219,13 +219,13 @@ export function ConsolePage({
 						</ul>
 					)}
 
-					<div className="border-t border-line-soft bg-inset px-3 py-2 text-[10px] leading-4 text-ink-soft">
+					<div className="mx-2 mb-2 rounded-control bg-well px-3 py-2 text-[10px] leading-4 text-ink-soft">
 						{t("console.readOnly")} {t("console.feedNote")}
 					</div>
 				</section>
 
-				<aside className="flex min-h-0 w-[288px] shrink-0 flex-col gap-3 overflow-y-auto rounded-sheet bg-inset p-3 @max-[1180px]:hidden">
-					<section className="rounded-sheet bg-raised p-3 shadow-raise">
+				<aside className="flex min-h-0 w-[288px] shrink-0 flex-col gap-3 overflow-y-auto rounded-sheet bg-well p-3 @max-[1180px]:hidden">
+					<section className="rounded-panel bg-raised p-3 shadow-raise">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.overview")}
 						</div>
@@ -246,7 +246,7 @@ export function ConsolePage({
 							<dd className="font-mono text-ink">{book ? wanWords(committedWords(book)) : "—"}</dd>
 							<dt className="text-ink-faint">{t("console.field.progress")}</dt>
 							<dd className="flex items-center gap-2">
-								<span className="h-[3px] flex-1 overflow-hidden rounded-pill bg-inset">
+								<span className="h-[3px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
 									<span
 										className="block h-full rounded-pill bg-ink/60"
 										style={{
@@ -261,14 +261,14 @@ export function ConsolePage({
 						</dl>
 					</section>
 
-					<section className="rounded-sheet bg-raised p-3 shadow-raise">
+					<section className="rounded-panel bg-raised p-3 shadow-raise">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.team")}
 						</div>
 						<ul className="mt-2 space-y-1.5">
 							{STUDIO_MEMBERS.map((member) => (
 								<li key={member.agentId} className="flex items-center gap-2">
-									<span className="flex size-5 shrink-0 items-center justify-center rounded-tile bg-inset font-mono text-[9px] text-ink-soft">
+									<span className="flex size-5 shrink-0 items-center justify-center rounded-tile bg-well font-mono text-[9px] text-ink-soft">
 										{member.lead ? t("console.lead") : ""}
 									</span>
 									<span className="min-w-0 flex-1">
@@ -280,7 +280,7 @@ export function ConsolePage({
 						</ul>
 					</section>
 
-					<section className="rounded-sheet bg-raised p-3 shadow-raise">
+					<section className="rounded-panel bg-raised p-3 shadow-raise">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.review")}
 						</div>
@@ -304,7 +304,7 @@ export function ConsolePage({
 						)}
 					</section>
 
-					<section className="rounded-sheet bg-raised p-3 shadow-raise">
+					<section className="rounded-panel bg-raised p-3 shadow-raise">
 						<div className="text-micro-up font-semibold uppercase text-ink-faint">
 							{t("console.checkpoints")}
 						</div>
@@ -325,7 +325,7 @@ export function ConsolePage({
 						) : (
 							<p className="mt-1.5 text-[11px] text-ink-soft">{t("console.checkpointsEmpty")}</p>
 						)}
-						<p className="mt-2 truncate border-t border-line-soft pt-1.5 font-mono text-[9.5px] text-ink-faint">
+						<p className="mt-2 truncate pt-1.5 font-mono text-[9.5px] text-ink-faint">
 							{t("console.storePath")}
 						</p>
 					</section>
