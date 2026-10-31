@@ -23,27 +23,26 @@ minus button to put it away — it moves back into the panel's **+** menu and ca
 any time. The tab always exists: when the credential is not active it shows the activation panel
 instead of the shelf, so the same tab is both the way in and the way back.
 
-The workspace has five layers, all inside the panel, none of them a chatbot:
+The workbench is **one tab** and **seven frames**, all read-only: the sidebar team writes, the frames
+follow what landed on disk. There is no input box and no button that dispatches work.
 
-| layer | what it is |
+| frame | what it is |
 | --- | --- |
-| shelf | cover grid + recently updated row; empty state explains what this is and how to start |
-| library | the catalogue as a text ledger: one row per book (title, phase, genre, committed/target, words, last update, progress bar), filter by genre / status / length, sort by recency / chapters / title, nine rows per page. Columns drop out as the panel narrows — the title and the row click never do |
-| book | header with title, phase, the routed next step; current-arc tick strip, the instruction card, recent checkpoints on the left; contents, the ledger link and the four-member roster on the right |
-| reader | chapter toolbar (back, chapter, word count, serif/sans, contents menu), a 672px prose column, the seven-dimension review panel on wide panels, previous/next chapter and five text sizes in the bottom bar |
-| ledger | the foreshadowing ledger: open / overdue / unresolved counts, one line per thread, findings, the append-only decision log and the consistency check |
+| shelf | what is open now (cover, chapter, arc progress, whether the team is drafting this minute) and what is waiting next to it |
+| library | the catalogue as a text ledger: one row per book (title, genre, phase, committed/target, words, last update, progress bar), genre and phase filters on the left, nine rows per page |
+| book | header with chapter, arc and phase; the arc tick strip (each chapter is a tick, click to read it), the chapter brief (goal / conflict / hook) and recent checkpoints; volumes → arcs → chapters on the right, plus the open-thread summary |
+| reader | the prose at 648px, six text sizes (16 → 28), serif / sans, previous / next chapter; the seven-dimension review with must-fix items on the right |
+| ledger | open / overdue / unresolved counts, one line per thread with planted and due chapter, the append-only decision log, and the four cross-chapter checks with their findings |
+| console | the live event stream from the host's tool hooks: which tool ran, whether it worked, how long it took and on which model — plus the chapter spine, the roster and the last review |
+| activation | the offline token: accepted signing keys, the decoded claims, days left, and the real rejection codes |
 
-On the book page, **Keep reading** only turns the page: it opens the reader at the chapter the router
-named and has no side effect. The step that belongs in chat is a separate button, **Continue in
-chat** — it is the only place on that page that sends a prompt. Both live in the page header; **Copy
-manuscript** sits next to the roster at the bottom of the contents column, because a tab has no host
-header to put it in.
+The only door to the team is **Go to sidebar chat** (rail, sync bar and page header). The host SDK has
+no "focus the sidebar" call, so it lights up the composer with an empty insert and says where to look —
+it never sends a prompt for you.
 
-Every cover is a real default cover, not a placeholder: six public-domain ink-wash landscapes
-(Cleveland Museum of Art, CC0) ship inside the bundle as base64 bitmaps. Each book picks one plus
-an ink density from its id, so the same book always looks the same and two books never look alike.
-The plate is rendered in grayscale and multiplied into the host `accent` colour, so a cover only
-ever uses the theme's own accent — no second colour, no network request.
+Covers are computed, not drawn: `coverSeed()` picks one of three layers and four motifs from the book
+title, so the same book always looks the same and two books never look alike. The palette lives in
+`style.css` as `.mahua-cover[data-layer]`, uses only theme tokens, and makes no network request.
 
 ## The team
 

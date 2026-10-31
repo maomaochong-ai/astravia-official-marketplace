@@ -8681,7 +8681,7 @@
       "slug": "mahua-writing-team",
       "name": "Mahua Novels",
       "description": "A multi-agent novel studio: a deterministic engine holds the schedule while an architect plans, a writer drafts, an editor judges and an arbiter rules — with a shelf, a reader, a foreshadowing ledger and continuity auditing behind them.",
-      "version": "0.4.10",
+      "version": "0.4.11",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -8984,10 +8984,34 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-mahua-writing-team/mahua-writing-team-0.4.10.astraviapkg",
             "sha256": "497df4c3dd5e8fc1f1c41b2a2b1746c7f7d784ab1387e74a1a60a6f64771a3f9"
           }
+        },
+        {
+          "version": "0.4.11",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.3.0",
+          "permissions": [
+            "agent.hookHandler.execute",
+            "agent.hooks.register",
+            "agent.session.read",
+            "agent.session.write",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.toolHandler.execute",
+            "agent.tools.register",
+            "storage.read",
+            "storage.write",
+            "ui.slot.activity-tab",
+            "workspace.read"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-mahua-writing-team/mahua-writing-team-0.4.11.astraviapkg",
+            "sha256": "fd88aafe25b80bdfff0ddb0d247b6d7213a795ab09cd00a88911d2f37dab8bce"
+          }
         }
       ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.10.31-1"
+  "marketplaceVersion": "2026.10.31-2"
 }
