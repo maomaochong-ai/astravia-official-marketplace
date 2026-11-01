@@ -88,12 +88,12 @@ export function CanvasDiagnosticsPanel({
 
       <SectionCard title={t("diag.actionsTitle")} description={t("diag.actionsDescription")}>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void controller.restart()}>
+          <Button size="sm" variant="secondary" disabled={busy} onClick={() => void controller.restart()}>
             {t("action.restart")}
           </Button>
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             disabled={busy}
             onClick={async () => {
               const result = await controller.clearPayloadResidue();
@@ -113,13 +113,17 @@ export function CanvasDiagnosticsPanel({
           >
             {t("action.clearResidue")}
           </Button>
-          {hint ? <span className="text-[11px] text-muted-foreground">{hint}</span> : null}
+          {hint ? (
+            <span className="rounded-full bg-muted/60 px-2.5 py-1 text-[11px] text-muted-foreground">
+              {hint}
+            </span>
+          ) : null}
         </div>
       </SectionCard>
 
       {state.log ? (
         <SectionCard title={t("log.title")}>
-          <details className="mt-2">
+          <details className="mt-2 rounded-2xl bg-background/55 p-3">
             <summary className="cursor-pointer text-[12px] text-muted-foreground">{t("log.expand")}</summary>
             <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">
               {state.log}

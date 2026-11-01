@@ -3,6 +3,7 @@ import { Button, cn } from "@astravia-org/ui";
 import { useEffect, type JSX } from "react";
 import type { CanvasController, CanvasState } from "../../../runtime.ts";
 import { SectionCard } from "../../../shared/components/section-card.tsx";
+import { StatusPill } from "../../../shared/components/status-pill.tsx";
 import { modesOf, type CanvasCatalogEntry } from "../canvas-media-provider.ts";
 
 /**
@@ -44,14 +45,9 @@ export function CanvasModelsPanel({
       <SectionCard
         title={t("bridge.title")}
         badge={
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[11px]",
-              online ? "bg-emerald-500/10 text-emerald-600" : "bg-muted text-muted-foreground",
-            )}
-          >
+          <StatusPill tone={online ? "success" : "neutral"}>
             {online ? t("bridge.online") : t("bridge.offline")}
-          </span>
+          </StatusPill>
         }
       >
         <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{t("bridge.description")}</p>
@@ -75,7 +71,7 @@ export function CanvasModelsPanel({
         actions={
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             disabled={busy || !running}
             onClick={() => void controller.refreshCanvasCatalog()}
           >
@@ -94,7 +90,7 @@ export function CanvasModelsPanel({
         )}
 
         {catalog && catalog.length > 0 ? (
-          <ul className="mt-3 flex flex-col gap-1.5">
+          <ul className="mt-3 flex flex-col gap-1">
             {catalog.map((model) => (
               <CatalogRow key={model.id} model={model} />
             ))}
@@ -140,7 +136,7 @@ export function CanvasModelsPanel({
         actions={
           <Button
             size="sm"
-            variant="outline"
+            variant="secondary"
             disabled={busy || !running}
             onClick={() => void controller.connectHostModelsToCanvas()}
           >
@@ -197,10 +193,15 @@ function CatalogRow({ model }: { model: CanvasCatalogEntry }): JSX.Element {
   const video = model.kind === "video";
 
   return (
-    <li className={cn("flex items-baseline gap-2 text-[12px]", !model.available && "opacity-60")}>
+    <li
+      className={cn(
+        "flex items-baseline gap-2 rounded-xl bg-background/55 px-3 py-2 text-[12px]",
+        !model.available && "opacity-60",
+      )}
+    >
       <span
         className={cn(
-          "shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide",
+          "shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide",
           video ? "bg-sky-500/10 text-sky-600" : "bg-violet-500/10 text-violet-600",
         )}
       >

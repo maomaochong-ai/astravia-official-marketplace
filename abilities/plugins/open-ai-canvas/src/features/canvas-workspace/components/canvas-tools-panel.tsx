@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import type { CanvasController, CanvasState, ToolSummary } from "../../../runtime.ts";
 import { CopyButton } from "../../../shared/components/copy-button.tsx";
 import { SectionCard } from "../../../shared/components/section-card.tsx";
+import { StatusPill } from "../../../shared/components/status-pill.tsx";
 
 // 展示顺序 = 使用顺序：先找到项目，再摆节点，接起来，跑生成，最后才是批量与工作区。
 const GROUP_ORDER = ["projects", "nodes", "connections", "generation", "skills", "batch", "workspace", "other"];
@@ -55,9 +56,7 @@ export function CanvasToolsPanel({
         description={t("tools.description")}
         badge={
           tools && tools.length > 0 ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              {t("tools.count", { count: tools.length })}
-            </span>
+            <StatusPill>{t("tools.count", { count: tools.length })}</StatusPill>
           ) : null
         }
         actions={
@@ -73,7 +72,7 @@ export function CanvasToolsPanel({
             {!tools && failed ? (
               <Button
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 onClick={() => {
                   // toolsError 不是 tools：清掉才能让控制器再拉一次。
                   void controller.loadToolCatalog();
@@ -93,9 +92,9 @@ export function CanvasToolsPanel({
 
       {groups.map((entry) => (
         <SectionCard key={entry.group} title={t(`tools.group.${entry.group}`)}>
-          <ul className="mt-2 divide-y divide-border/60">
+          <ul className="mt-3 flex flex-col gap-1">
             {entry.items.map((tool) => (
-              <li key={tool.name} className="py-2">
+              <li key={tool.name} className="rounded-xl bg-background/55 px-3 py-2">
                 <code className="font-mono text-[12px] text-foreground">{tool.name}</code>
                 <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{tool.description}</p>
               </li>

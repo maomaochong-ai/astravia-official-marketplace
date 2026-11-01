@@ -66,27 +66,34 @@ export function CanvasView({ controller }: { controller: CanvasController }): JS
         onOpen={() => void controller.openInBrowser()}
       />
 
-      <nav className="mx-auto flex w-full max-w-3xl gap-1 border-b border-border/60 px-6">
-        {TABS.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTab(item)}
-            className={cn(
-              "-mb-px border-b-2 px-2 py-2 text-[12px] transition-colors",
-              tab === item
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t(`tab.${item}`)}
-          </button>
-        ))}
+      {/* 分段控件而不是下划线 Tab：下划线自带一条横贯整屏的线，正是这轮要去掉的东西。 */}
+      <nav className="mx-auto w-full max-w-3xl px-6">
+        <div className="flex w-fit gap-1 rounded-full bg-muted/60 p-1">
+          {TABS.map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setTab(item)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-[12px] transition-colors",
+                tab === item
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t(`tab.${item}`)}
+            </button>
+          ))}
+        </div>
       </nav>
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 py-4 pb-10">
-          {hint ? <p className="text-[11px] text-muted-foreground">{hint}</p> : null}
+          {hint ? (
+            <p className="w-fit rounded-full bg-muted/60 px-3 py-1 text-[11px] text-muted-foreground">
+              {hint}
+            </p>
+          ) : null}
 
           {tab === "overview" ? (
             <CanvasOverviewPanel

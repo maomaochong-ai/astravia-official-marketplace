@@ -34,9 +34,9 @@ export function KeyValueList({
   const rows = items.filter((item) => item.value !== undefined && item.value !== null && item.value !== "");
   if (rows.length === 0) return null;
   return (
-    <dl className={cn("mt-3 divide-y divide-border/60 text-[12px]", className)}>
+    <dl className={cn("mt-3 flex flex-col gap-1 text-[12px]", className)}>
       {rows.map((row) => (
-        <div key={row.label} className="flex items-center gap-3 py-1.5">
+        <div key={row.label} className="flex items-center gap-3 rounded-xl bg-background/55 px-3 py-1.5">
           <dt className="w-24 shrink-0 text-muted-foreground">{row.label}</dt>
           <dd
             className={cn(
