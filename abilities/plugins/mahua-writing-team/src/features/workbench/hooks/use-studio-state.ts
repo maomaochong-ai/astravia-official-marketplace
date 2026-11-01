@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { StudioService } from "../../../application/studio-service.js";
+import type { ServiceResult, StudioService } from "../../../application/studio-service.js";
 import type {
 	ArbitrationRecord,
 	Finding,
@@ -15,8 +15,9 @@ import type { BookIndexEntry } from "../../../repository/manuscript-repository.j
 /**
  * 工作台读到的全部事实，一次取齐。
  *
- * 这里**没有写操作**：七帧里没有一处派活、提交或体检按钮（设计稿四条边界之一）。
- * 唯一会改状态的是激活页的凭证，它走 `activate` / `clearCredential` 两个入口。
+ * 写操作只有两个，且都不在这里发明规则：激活页的凭证（`activate` / `clearCredential`）
+ * 和书页的删除（`deleteBook`）。七帧里没有一处派活、提交或体检按钮——那些是模型的活，
+ * 界面只读它们的产物。
  *
  * 同步只有一个方向：侧栏里的团队把文件落盘 → `refresh()` 重新读 → 界面自己变。
  */
@@ -39,12 +40,24 @@ export interface StudioState {
 	refresh: () => void;
 	activate: (token: string) => Promise<EntitlementState>;
 	clearCredential: () => Promise<EntitlementState>;
+	deleteBook: (bookId: string) => Promise<ServiceResult<{ id: string }>>;
 	trustedKeys: () => readonly TrustedKey[];
 }
 
 interface Selected {
 	bookId: string | null;
 	chapter: number | null;
+}
+
+interface Snapshot {
+	books: BookIndexEntry[];
+	book: NovelBook | null;
+	review: ReviewReport | null;
+	chapterText: string;
+	selectedChapter: number | null;
+	threads: StoryThread[];
+	decisions: ArbitrationRecord[];
+	findings: Finding[];
 }
 
 async function readChapterOf(
@@ -80,21 +93,33 @@ function rememberSelection(next: Selected): Selected {
 	return next;
 }
 
+/**
+ * 上一次读到的内容也记在模块里，用途不同：重新挂载时**不闪**。
+ *
+ * 宿主会在几种时候把这张工作台整个拆掉再装上（切走标签页、重载插件、面板被收起）。
+ * 每次从 `loading: true` 开始，读者看到的是骨架屏再跑一遍，哪怕磁盘上什么都没变。
+ * 带着上次读到的事实起跑，第一帧就和离开时一样，随后那一趟读再把差异补上——数据只有
+ * 一个来源，所以补上的过程本身就是对的。
+ */
+let memorySnapshot: Snapshot | null = null;
+
 export function useStudioState(): StudioState {
 	const { service } = getStudioRuntime();
 	const [version, setVersion] = useState(0);
 	const [selected, setSelected] = useState<Selected>(() => memorySelection);
-	const [loading, setLoading] = useState(true);
+	const [loading, setLoading] = useState(() => memorySnapshot === null);
 	const [error, setError] = useState<string | null>(null);
 
-	const [books, setBooks] = useState<BookIndexEntry[]>([]);
-	const [book, setBook] = useState<NovelBook | null>(null);
-	const [review, setReview] = useState<ReviewReport | null>(null);
-	const [chapterText, setChapterText] = useState("");
-	const [selectedChapter, setSelectedChapter] = useState<number | null>(null);
-	const [threads, setThreads] = useState<StoryThread[]>([]);
-	const [decisions, setDecisions] = useState<ArbitrationRecord[]>([]);
-	const [findings, setFindings] = useState<Finding[]>([]);
+	const [books, setBooks] = useState<BookIndexEntry[]>(() => memorySnapshot?.books ?? []);
+	const [book, setBook] = useState<NovelBook | null>(() => memorySnapshot?.book ?? null);
+	const [review, setReview] = useState<ReviewReport | null>(() => memorySnapshot?.review ?? null);
+	const [chapterText, setChapterText] = useState(() => memorySnapshot?.chapterText ?? "");
+	const [selectedChapter, setSelectedChapter] = useState<number | null>(
+		() => memorySnapshot?.selectedChapter ?? null,
+	);
+	const [threads, setThreads] = useState<StoryThread[]>(() => memorySnapshot?.threads ?? []);
+	const [decisions, setDecisions] = useState<ArbitrationRecord[]>(() => memorySnapshot?.decisions ?? []);
+	const [findings, setFindings] = useState<Finding[]>(() => memorySnapshot?.findings ?? []);
 
 	const [entitlement, setEntitlement] = useState<EntitlementState>(service.entitlementState);
 	const [credentialSource, setCredentialSource] = useState<CredentialSource>(service.credentialSource);
@@ -113,7 +138,8 @@ export function useStudioState(): StudioState {
 		const load = async (): Promise<void> => {
 			const index = await service.listBooks();
 			if (!live) return;
-			setBooks(index.ok ? index.data : []);
+			const nextBooks = index.ok ? index.data : [];
+			setBooks(nextBooks);
 
 			const next = selected.bookId ? await service.resolveBook(selected.bookId) : await service.loadLatestBook();
 			if (!live) return;
@@ -130,15 +156,29 @@ export function useStudioState(): StudioState {
 
 			const threadResult = await service.threads(next?.id);
 			if (!live) return;
-			setThreads(threadResult.ok ? threadResult.data : []);
+			const nextThreads = threadResult.ok ? threadResult.data : [];
+			setThreads(nextThreads);
 
 			const decisionResult = await service.decisions(next?.id);
 			if (!live) return;
-			setDecisions(decisionResult.ok ? decisionResult.data : []);
+			const nextDecisions = decisionResult.ok ? decisionResult.data : [];
+			setDecisions(nextDecisions);
 
 			const consistency = await service.checkConsistency(next?.id);
 			if (!live) return;
-			setFindings(consistency.ok ? consistency.data.findings : []);
+			const nextFindings = consistency.ok ? consistency.data.findings : [];
+			setFindings(nextFindings);
+
+			memorySnapshot = {
+				books: nextBooks,
+				book: next,
+				review: report,
+				chapterText: chapter.text,
+				selectedChapter: chapter.chapter,
+				threads: nextThreads,
+				decisions: nextDecisions,
+				findings: nextFindings,
+			};
 			setLoading(false);
 		};
 
@@ -176,6 +216,24 @@ export function useStudioState(): StudioState {
 		return next;
 	}, [service, refresh]);
 
+	const deleteBook = useCallback(
+		async (bookId: string) => {
+			const result = await service.deleteBook(bookId);
+			if (!result.ok) return result;
+
+			// 缓存里那一行已经作废；下一次挂载老实重读，别把删掉的书端回来。
+			memorySnapshot = null;
+			if (memorySelection.bookId === bookId) {
+				// 清掉选择，读数据的那一趟会自己回落到最新的一本（或一本都没有）。
+				setSelected(rememberSelection({ bookId: null, chapter: null }));
+			} else {
+				refresh();
+			}
+			return result;
+		},
+		[service, refresh],
+	);
+
 	return {
 		loading,
 		error,
@@ -195,6 +253,7 @@ export function useStudioState(): StudioState {
 		refresh,
 		activate,
 		clearCredential,
+		deleteBook,
 		trustedKeys: () => service.trustedKeys(),
 	};
 }

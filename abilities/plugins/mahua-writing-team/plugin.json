@@ -1,7 +1,7 @@
 {
   "id": "mahua-writing-team",
   "name": "%plugin.name%",
-  "version": "0.4.25",
+  "version": "0.4.26",
   "icon": "assets/icon.svg",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.3.0",
@@ -25,9 +25,7 @@
     "storage.read",
     "storage.write",
     "ui.slot.activity-tab",
-    "ui.slot.turn-card",
-    "ui.slot.workspace-view",
-    "workspace.read"
+    "ui.slot.turn-card"
   ],
   "agent": {
     "systemPrompt": {

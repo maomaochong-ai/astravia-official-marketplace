@@ -338,81 +338,100 @@ describe("visual language stays on host tokens", () => {
 		expect(css).toContain('@plugin "@iconify/tailwind4"');
 	});
 
-	it("fills the window through the host's page route, and falls back to the panel width", () => {
-		// 「全屏」只有一条正路：宿主的整页路由。活动面板里有硬底线——面板再宽也要给会话区留
-		// 384px（`ACTIVITY_PANEL_MIN_CHAT_AREA` 在 atom 层夹紧，插件传多大都无效）。
-		// 从前走的是 `createPortal` 到 `document.body` 的 `fixed inset-0` 覆盖层：它只把画面蒙住，
-		// 宿主的标签条与侧栏仍在原地，而它必须给自己一个极大的 z-index 才能压住宿主壳层。
-		// 三条現在都是禁区：面板类 slot 不许 `fixed`、不许超大 z-index、不许 portal 到 body。
-		const violations: string[] = [];
+	it("fills the window with its own overlay, and keeps exactly one z-index", () => {
+		// 「全屏」是本插件自己画满窗口，不是宿主的面板宽度通道：`setActivityPanelWidth("max")`
+		// 的上限是「窗口宽 − 384」（`ACTIVITY_PANEL_MIN_CHAT_AREA` 在 atom 层夹紧），
+		// 会话区永远留在旁边。也不再走宿主的整页路由：那条路带宿主侧栏与页头，还要靠历史回退。
+		//
+		// 覆盖层必须 portal 到 body **并自己带上作用域根**：插件 CSS 全部编译进
+		// `@scope ([data-astravia-plugin-root=mahua-writing-team])`，portal 出去的节点没有这个属性
+		// 就一点样式都没有，连 `fixed` 都不生效（宿主自己的产物里没有这个类）。
+		// 而作用域根上不许挂 class——`@scope` 只匹配根的后代，根自身的 class 静默失效；
+		// 隔壁插件踩过：根上的 `z-[1010]` 无效，弹窗被 z-1000 的层盖住。根还必须 `display: contents`。
+		const overlay = read("src/features/workbench/components/PanelOverlay.tsx");
+		expect(overlay).toContain("createPortal");
+		expect(overlay).toContain('data-astravia-plugin-root="mahua-writing-team"');
+		expect(overlay).toContain('style={{ display: "contents" }}');
+		expect(overlay).not.toContain("className");
+
+		// 作用域根只许由这一处产出：第二份会让样式出现两个作用域，对账时找不到人。
+		const owners = SOURCE_FILES.filter(
+			(path) => path.endsWith(".tsx") && read(path).includes("data-astravia-plugin-root"),
+		);
+		expect(owners).toEqual(["src/features/workbench/components/PanelOverlay.tsx"]);
+
+		// `fixed` / portal / 超大 z-index 只许出现在覆盖层自己身上，且 z-index 只有一个来源常量。
+		const strip = (text: string) =>
+			text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+		const offenders: string[] = [];
+		// 两处合法：覆盖层自己（portal + 作用域根），和拿着覆盖层容器的那个外壳
+		// （`fixed inset-0` 写在它的常量里，只在全屏时才上屏）。
+		const OVERLAY_OWNERS = new Set([
+			"src/features/workbench/components/PanelOverlay.tsx",
+			"src/features/workbench/components/WorkbenchSurface.tsx",
+		]);
 		for (const path of SOURCE_FILES) {
-			// 只看代码，不看注释：注释里解释「当年为什么用 portal」并不等于真的用了。
-			const text = read(path)
-				.replace(/\/\*[\s\S]*?\*\//g, "")
-				.replace(/\/\/.*$/gm, "");
-			if (/\bfixed\b/.test(text)) violations.push(`${path}: fixed`);
-			if (text.includes("createPortal")) violations.push(`${path}: createPortal`);
-			if (/z-\[(\d{7,})\]/.test(text)) violations.push(`${path}: overlay z-index`);
-			if (text.includes("data-mahua-overlay")) violations.push(`${path}: overlay marker`);
+			if (OVERLAY_OWNERS.has(path)) continue;
+			const text = strip(read(path));
+			if (text.includes("createPortal")) offenders.push(`${path}: createPortal`);
+			if (/\bfixed\b/.test(text)) offenders.push(`${path}: fixed`);
+			if (/zIndex:\s*\d/.test(text)) offenders.push(`${path}: z-index literal`);
+			if (/z-\[\d{3,}\]/.test(text)) offenders.push(`${path}: z-[…]`);
 		}
-		expect(violations).toEqual([]);
+		expect(offenders).toEqual([]);
+
+		// 全屏是纯 DOM 薄封装：不碰路由、不碰布局，只报「现在是不是全屏」。
+		const fullscreen = read("src/features/workbench/fullscreen.ts");
+		expect(fullscreen).toContain("export const OVERLAY_Z_INDEX");
+		expect(fullscreen).toContain("requestFullscreen(");
+		expect(fullscreen).toContain("exitFullscreen()");
+		// 真进了窗口全屏之后 Esc 被浏览器收走，页面只收到 fullscreenchange；只听键盘会卡在半路。
+		expect(fullscreen).toContain('addEventListener("fullscreenchange"');
+		expect(fullscreen).not.toContain("history.back");
+		expect(fullscreen).not.toContain("openWorkspaceView");
 
 		const surface = read("src/features/workbench/components/WorkbenchSurface.tsx");
-		const code = surface.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-		// 一份 JSX，两个宿主形态；不另写一份，也不往第二个入口里搬 DOM。
-		// 它自己只描述「面板这一形态」的退路：路径跳转封装在 `fullscreen.ts`。
-		expect(code).toContain("ctx.ui.setActivityPanelWidth(");
-		expect(code).toContain('setPanelWidth("max")');
-		expect(code).toContain('className="mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden"');
+		const code = strip(surface);
+		// 一份 JSX 两个形态：面板里是 `h-full w-full`，全屏时换成 `fixed inset-0` 并交给覆盖层。
+		expect(code).toContain('"mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden"');
+		expect(code).toContain("mahua-root fixed inset-0");
+		expect(code).toContain("zIndex: OVERLAY_Z_INDEX");
 		expect(code).toContain('data-expanded={fullscreen ? "true" : "false"}');
-		// 收回时把展开前量到的宽度还回去，而不是塞一个写死的值：否则用户的手工宽度会被吞掉。
-		expect(code).toContain("restoreRef.current ?? RESTORE_FALLBACK_PX");
-		// 跳不成（缺权限 / 旧宿主）就在原地回到面板宽度通道：键按下去一定要有事发生。
-		expect(code).toContain("enterStudioFullscreen()");
-		expect(code).toContain("if (fullscreenLanded(before)) return;");
-		expect(code).toContain("FULLSCREEN_SETTLE_MS");
-		// 全屏之后 Esc 是第一退路：整页里退回上一路由，面板里把宽度还回去。
+		expect(code).toContain("enterOsFullscreen()");
+		expect(code).toContain("watchOsFullscreenExit(");
+		// 宿主关面板时组件直接消失，退全屏得由卸载负责，否则窗口会卡在全屏里。
+		expect(code).toContain("exitOsFullscreen()");
 		expect(code).toContain('event.key !== "Escape"');
-		expect(code).not.toContain("document.body.style.overflow");
-		// 路由调用只许出现在 fullscreen.ts 一处：界面不直接摸宿主的导航能力。
+		expect(code).toContain("<PanelOverlay>");
+		expect(code).not.toContain("setActivityPanelWidth");
 		expect(code).not.toContain("openWorkspaceView");
-		expect(code).not.toContain("openActivityTab");
-
-		const fullscreen = read("src/features/workbench/fullscreen.ts");
-		expect(fullscreen).toContain("ctx.ui.openWorkspaceView(STUDIO_VIEW_ID)");
-		// 退路是浏览器历史，且只在「从标签页走进来」时才有——从侧栏直接进来时不许乱退。
-		expect(fullscreen).toContain("window.history.back()");
-		expect(fullscreen).toContain("let enteredFromTab = false");
-		expect(fullscreen).toContain("if (!enteredFromTab) return;");
 	});
 
-	it("registers two host shapes over one surface: an activity tab and a full page", () => {
+	it("registers one host shape, and one surface behind it", () => {
 		const entry = read("src/index.tsx");
 		const tab = read("src/studio-tab.ts");
-		const view = read("src/studio-view.ts");
-		// 两个入口，一份界面。整页那一条不是重复：活动面板永远给会话区留 384px，
-		// 真正的全屏只能落在整页路由上。两边都只挂组件，界面本体只有 `WorkbenchSurface`。
+		// 单入口：活动面板标签。整页路由那一面已删——它带着宿主侧栏与页头，
+		// 而用户要的「全屏」是自己画满窗口，那一面于是一个功能也没剩下。
 		expect(entry).toContain("registerStudioTab(ctx)");
-		expect(entry).toContain("registerStudioView(ctx)");
+		expect(entry).not.toContain("registerWorkspaceView");
+		expect(entry).not.toContain("registerStudioView");
 		expect(tab).toContain("ctx.ui.registerActivityTab(");
 		// fail-closed：没声明的场景下一个都不出现。
 		expect(tab).toMatch(/scope_use: \["conversation", "project"\]/);
-		// 默认就上欏：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
+		// 默认就上橱：入口不押在宿主条件化的「+」池上（ADR 0025 末尾补注）。
 		expect(tab).toContain("initiallyVisible: true");
 		expect(tab).toContain("component: WorkbenchMount");
+		expect(SOURCE_FILES.filter((path) => read(path).includes("registerWorkspaceView"))).toEqual([]);
 
-		expect(view).toContain("ctx.ui.registerWorkspaceView(");
-		expect(view).toContain("component: StudioPageMount");
-		// `sidebar: false` 会把宿主改道到「设置 → 扩展」——那条路更差，所以侧栏入口留着。
-		expect(view).not.toContain("sidebar: false");
-		// 整页挂载器必须真的切到 page 形态，否则整页里那枚键会变成「再全屏一次」。
-		const mount = read("src/features/workbench/components/StudioPageMount.tsx");
-		expect(mount).toContain('<WorkbenchSurface mode="page" />');
-
-		// 两个命名空间各一枚常量；同串无坊，但名字不能混用。
 		const ids = read("src/studio-ids.ts");
 		expect(ids).toContain('STUDIO_TAB_ID = "studio"');
-		expect(ids).toContain('STUDIO_VIEW_ID = "studio"');
+		expect(ids).not.toContain("STUDIO_VIEW_ID");
+
+		// 可选注册面各自隔开：一面注册失败不该把标签页那一面一起带走（上一版正是这样消失的）。
+		expect(entry).toContain("optional(");
+		expect(entry).toContain("optionalVoid(");
+		// 渲染炸点交给护栏，而不是让整个标签页空白。
+		expect(read("src/features/workbench/components/WorkbenchMount.tsx")).toContain("WorkbenchBoundary");
 	});
 
 	it("only asks for the slot permissions it actually uses", () => {
@@ -423,9 +442,9 @@ describe("visual language stays on host tokens", () => {
 		expect(sources).toContain(".registerTurnCard(");
 		// 「声明的 slot 权限」必须等于「真的注册过的那几个」：多一个就是白要，
 		// 少一个则在宿主里静默 noop（缺权限 = warn+noop）。
-		expect(sources).toContain(".registerWorkspaceView(");
+		expect(sources).not.toContain(".registerWorkspaceView(");
 		const declared = permissions.filter((item) => item.startsWith("ui.slot."));
-		expect(declared).toEqual(["ui.slot.activity-tab", "ui.slot.turn-card", "ui.slot.workspace-view"]);
+		expect(declared).toEqual(["ui.slot.activity-tab", "ui.slot.turn-card"]);
 		expect(sources).not.toContain(".registerToolCallSlot(");
 		expect(sources).not.toContain(".registerNewSessionContext(");
 	});
@@ -549,11 +568,10 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.tools.register",
 				"storage.read",
 				"storage.write",
-				// 两个宿主形状：活动面板标签 + 同一界面的整页路由；落章卡片读对话的 turn 槽。
+				// 一个宿主形状：活动面板标签；落章卡片读对话的 turn 槽。
+				// `workspace.read` 随整页路由一起退了：没有一处代码读工作区文件。
 				"ui.slot.activity-tab",
 				"ui.slot.turn-card",
-				"ui.slot.workspace-view",
-				"workspace.read",
 			].sort(),
 		);
 	});

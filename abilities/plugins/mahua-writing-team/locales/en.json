@@ -128,6 +128,11 @@
 	"book.briefNoPlan": "This chapter has no one-page plan yet.",
 	"book.briefNoTitle": "Untitled chapter",
 	"book.continueAt": "Keep reading · ch. {{chapter}}",
+	"book.delete": "Delete book",
+	"book.deleteConfirm": "Chapters and reviews go with it, and cannot be recovered",
+	"book.deleteFailed": "Could not delete it",
+	"book.deleteRun": "Delete",
+	"book.deleting": "Deleting…",
 	"book.index": "Contents",
 	"book.indexCount": "{{count}} chapters",
 	"book.ledger": "Threads & decisions",
@@ -498,6 +503,9 @@
 	"time.now": "just now",
 	"time.seconds": "{{count}}s ago",
 	"view.studio.label": "Mahua Novels",
+	"window.crashed": "The workbench broke while drawing this view",
+	"window.crashedHint": "Nothing was written to the manuscript. Reload the workbench; if it happens again, keep the message below.",
+	"window.crashedRetry": "Reload the workbench",
 	"window.error": "The workbench could not read the project",
 	"window.exitFullscreen": "Exit fullscreen",
 	"window.fullscreen": "Fullscreen workbench",
@@ -507,7 +515,5 @@
 	"worker.architect": "Architect",
 	"worker.editor": "Editor",
 	"worker.engine": "Engine",
-	"worker.writer": "Writer",
-	"workspace.studio.description": "Open the writing workbench full page: shelf, outline, reading, console and thread ledger.",
-	"workspace.studio.label": "Mahua Novel Studio"
+	"worker.writer": "Writer"
 }
