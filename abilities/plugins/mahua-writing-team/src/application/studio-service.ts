@@ -188,6 +188,28 @@ export class StudioService {
 		return this.persist(book);
 	}
 
+	/**
+	 * 删掉一本书。
+	 *
+	 * 写入口只有一个，删除也是写：没有凭证不能删，和 `createBook` 同一个门禁。
+	 * 冲突时把全局 revision 清掉——留着旧基线的话，用户点一次重试还是同一个冲突，
+	 * 看起来就会像「这个键坏了」。
+	 */
+	async deleteBook(bookId: string): Promise<ServiceResult<{ id: string }>> {
+		const denied = this.requireEntitlement<{ id: string }>();
+		if (denied) return denied;
+		const id = typeof bookId === "string" ? bookId.trim() : "";
+		if (!id) return failure("invalid-input", "bookId is required");
+
+		const outcome = await this.repository.deleteBook(id, this.revision);
+		if (!outcome.ok) {
+			if (outcome.error === "revision-conflict") this.revision = undefined;
+			return failure(outcome.error, outcome.detail);
+		}
+		this.revision = outcome.revision;
+		return { ok: true, data: { id } };
+	}
+
 	async acceptBrief(bookId?: string): Promise<ServiceResult<NovelBook>> {
 		const denied = this.requireEntitlement<NovelBook>();
 		if (denied) return denied;

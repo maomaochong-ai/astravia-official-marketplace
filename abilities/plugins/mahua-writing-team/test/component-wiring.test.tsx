@@ -84,6 +84,15 @@ describe("studio masthead", () => {
 		expect(screen.getByRole("button", { name: "Fullscreen workbench" })).toBeTruthy();
 	});
 
+	it("turns the same key into the way back once the workbench fills the window", () => {
+		useCatalog(en as Catalog);
+		render(<StudioMasthead section="Shelf" onToggleExpanded={() => {}} expanded />);
+
+		// 一枚键两种身份：铺满之后它必须是「退出」，否则用户找不到回去的路。
+		expect(screen.queryByRole("button", { name: "Fullscreen workbench" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Exit fullscreen" })).toBeTruthy();
+	});
+
 	it("speaks Chinese when the catalog is Chinese", () => {
 		useCatalog(zh as Catalog);
 		render(<StudioMasthead section="书架" sync={{ writer: "聂", doing: "第 41 章", file: "41.md", words: "3,180", ago: "2 分钟", queue: "2 待写" }} />);

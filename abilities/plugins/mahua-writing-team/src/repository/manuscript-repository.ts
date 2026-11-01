@@ -60,6 +60,22 @@ export type SaveOutcome =
 	| { ok: true; revision: string }
 	| { ok: false; error: "revision-conflict" | "write-failed"; detail: string };
 
+export type DeleteOutcome =
+	| { ok: true; revision: string; removedPaths: number }
+	| { ok: false; error: "book-not-found" | "revision-conflict" | "write-failed"; detail: string };
+
+/**
+ * 宿主一次 `commit()` 最多接受 128 条变更（`commitPluginStorage` 的硬上限），且同一路径不许出现两次。
+ * 一本 120 章的书光正文就是 120 个文件，加上评审与目录，一次 commit 装不下——所以删书必须分批。
+ */
+export const MAX_CHANGES_PER_COMMIT = 128;
+
+function chunk<T>(items: readonly T[], size: number): T[][] {
+	const out: T[][] = [];
+	for (let index = 0; index < items.length; index += size) out.push(items.slice(index, index + size));
+	return out;
+}
+
 function toIndexEntry(book: NovelBook): BookIndexEntry {
 	return {
 		id: book.id,
@@ -73,6 +89,12 @@ function toIndexEntry(book: NovelBook): BookIndexEntry {
 		words: book.chapters.reduce((total, chapter) => total + (chapter.status === "committed" ? chapter.words : 0), 0),
 		updatedAt: book.updatedAt,
 	};
+}
+
+function commitFailure(error: unknown): { ok: false; error: "revision-conflict" | "write-failed"; detail: string } {
+	const detail = error instanceof Error ? error.message : String(error);
+	if (detail.includes("revision-conflict")) return { ok: false, error: "revision-conflict", detail };
+	return { ok: false, error: "write-failed", detail };
 }
 
 function parseJson<T>(raw: string | null): T | null {
@@ -181,11 +203,56 @@ export class ManuscriptRepository {
 			});
 			return { ok: true, revision: result.revision };
 		} catch (error) {
-			const detail = error instanceof Error ? error.message : String(error);
-			if (detail.includes("revision-conflict")) {
-				return { ok: false, error: "revision-conflict", detail };
+			return commitFailure(error);
+		}
+	}
+
+	/**
+	 * 删掉一本书：它的全部文件、它的决策流水与伏笔台账，以及索引里的那一行。
+	 *
+	 * 两条顺序是刻意的：
+	 *
+	 * 1. **文件先删，`book.json` 最后删。** 分批写不可能既删完又原子；万一中途失败，
+	 *    只要 `book.json` 还在、索引里还有这一行，这本书就仍然可读、也仍然可以再删一次。
+	 *    反过来先删 `book.json` 会留下一个「索引里有、打开却什么都没有」的空壳。
+	 * 2. **索引最后写。** 它是唯一的人可见真相：索引里的那一行消失，就等于这本书没了。
+	 *
+	 * 每一批都带上一次的 revision，中途有别人写入就整件事失败（用户重来一次即可）。
+	 */
+	async deleteBook(bookId: string, expectedRevision?: string): Promise<DeleteOutcome> {
+		const index = await this.listBooks();
+		if (!index.some((entry) => entry.id === bookId)) {
+			return { ok: false, error: "book-not-found", detail: bookId };
+		}
+
+		const meta = bookMetaPath(bookId);
+		const owned = await this.storage.list(`books/${bookId}/`);
+		const payload = owned.filter((path) => path !== meta);
+		const nextIndex = index.filter((entry) => entry.id !== bookId);
+
+		let revision = expectedRevision;
+		let removed = 0;
+		try {
+			for (const batch of chunk(payload, MAX_CHANGES_PER_COMMIT)) {
+				const result = await this.storage.commit(
+					batch.map((path) => ({ type: "remove" as const, path })),
+					{ expectedRevision: revision },
+				);
+				revision = result.revision;
+				removed += batch.length;
 			}
-			return { ok: false, error: "write-failed", detail };
+
+			// `remove` 对不存在的路径是幂等的（宿主直接 `delete files[path]`），所以不必先探测。
+			const tail: StorageChange[] = [
+				{ type: "remove", path: decisionsPath(bookId) },
+				{ type: "remove", path: threadsPath(bookId) },
+				{ type: "remove", path: meta },
+				{ type: "write", path: BOOK_INDEX_PATH, data: JSON.stringify(nextIndex), encoding: "utf8" },
+			];
+			const result = await this.storage.commit(tail, { expectedRevision: revision });
+			return { ok: true, revision: result.revision, removedPaths: removed + 3 };
+		} catch (error) {
+			return commitFailure(error);
 		}
 	}
 

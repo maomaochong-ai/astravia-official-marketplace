@@ -24,9 +24,10 @@ when the credential is not active it shows the activation panel instead of the s
 is both the way in and the way back.
 
 The activity panel always keeps a chat column beside it, so no panel is ever truly full screen. The
-**fullscreen** button in the workbench header opens the same workbench on its own page instead, where
-the chat column gives its width back — press it again (or **Esc**) to return to the conversation. That
-page also gets a nav entry in your sidebar's **More** list, which you can pin or ignore.
+**fullscreen** button in the workbench header takes the workbench over the whole window instead: it is
+drawn above everything, covering the sidebar and the chat column, and asks the system to put the window
+itself into full screen — so the traffic lights go away too. Press it again, hit **Esc**, or close the
+tab, and you are back in the conversation.
 
 The workbench is **one tab** and **seven frames**, all read-only: the sidebar team writes, the frames
 follow what landed on disk. There is no input box and no button that dispatches work.

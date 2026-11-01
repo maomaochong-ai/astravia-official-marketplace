@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { getStudioRuntime } from "../../../plugin-context.js";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
 import {
-	FULLSCREEN_SETTLE_MS,
-	canLeaveStudioFullscreen,
-	enterStudioFullscreen,
-	forgetStudioFullscreen,
-	fullscreenLanded,
-	leaveStudioFullscreen,
+	OVERLAY_Z_INDEX,
+	enterOsFullscreen,
+	exitOsFullscreen,
+	watchOsFullscreenExit,
 } from "../fullscreen.js";
 import { useNarrowSurface } from "../hooks/use-narrow-surface";
 import { useRailCollapsed } from "../hooks/use-rail-collapsed";
@@ -25,6 +23,7 @@ import {
 } from "../workbench-model";
 import { elapsedText, isWriting, lastLandedStudioEvent } from "../workbench-feed";
 import { isBarePage, type WorkbenchPage } from "../workbench-pages";
+import { PanelOverlay } from "./PanelOverlay";
 import { StudioShell } from "./shell/StudioShell";
 import { ActivationPage } from "./pages/ActivationPage";
 import { BookPage } from "./pages/BookPage";
@@ -40,8 +39,10 @@ const REFRESH_DEBOUNCE_MS = 300;
 /** 相对时间（「1 秒前」）得自己走；没有新数据也每 30 秒重画一次。 */
 const CLOCK_MS = 30_000;
 
-/** 收回时退到的宽度：量不到用户设的宽度时的兜底，也是宿主默认值。 */
-const RESTORE_FALLBACK_PX = 560;
+const PANEL_CLASS = "mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden";
+
+/** 覆盖层：脱离面板的流，相对视口铺满。`zIndex` 走内联，见 `../fullscreen.ts` 的注释。 */
+const OVERLAY_CLASS = "mahua-root fixed inset-0 flex min-h-0 flex-col overflow-hidden bg-canvas";
 
 /**
  * 工作台的装配层：七帧只在这里被选一次。运行时一定在（入口已经挡过一道）。
@@ -50,34 +51,27 @@ const RESTORE_FALLBACK_PX = 560;
  * 事件流在 `use-console-timeline`。这里只把几样东西接起来，唯一的行为是「有新的落盘事件就
  * 重读一次」：同步只有这一个方向。
  *
- * 一张界面，两个宿主形态，`mode` 是唯一的差别：
+ * 宿主形态只有一个：活动面板里的标签页。「全屏」是本插件自己的覆盖层，不是宿主的整页路由，
+ * 也不去动面板宽度——那两条路都走不通：
  *
- * - `"tab"`（默认）——活动面板里的标签页。报头的键是「全屏工作台」，按下去跳整页视图。
- * - `"page"`——整页路由。全屏在这里是**事实**，不是意图；键变成「退出全屏」。
+ * - **拉宽面板换不来全屏。** 宿主给面板宽度留了一条硬底线
+ *   （`ACTIVITY_PANEL_MIN_CHAT_AREA = 384`，在 atom 层统一夹紧），传 `"max"` 拿到的是
+ *   「窗口宽 − 384」，会话区永远在旁边。
+ * - **整页路由也不是全屏。** 那是宿主的页面：侧栏与页头跟着一起来，而且进去之后插件没有
+ *   返回的办法（导航能力里只有「打开」）。
  *
- * 为什么「铺满」不能只靠拉宽面板：宿主的面板宽度模型有一条硬底线，面板再宽也要给会话区留
- * `384px`（`ACTIVITY_PANEL_MIN_CHAT_AREA` 在 atom 层统一夹紧，插件传多大都无效）。所以
- * `setActivityPanelWidth("max")` 拿到的是「窗口宽 − 384」，不是全屏。真正的全屏只有整页视图
- * 这条路（`../fullscreen.ts` 里写着判定与退路）。
- *
- * 三条仍然成立的禁区：不许 `fixed`、不许超大 `z-index`、不许 portal 到 body。它们只把画面
- * 蒙住，盖不住宿主的标签条与侧栏，还得赌宿主的层叠上下文——本条纪律由 `manifest-guards` 钉住。
+ * 所以全屏 = 覆盖层（`PanelOverlay`，portal 到 body）+ 窗口全屏（`../fullscreen.ts`）。
+ * 前者把画面铺满窗口，后者让窗口本身连标题栏一起让位；后者被拒绝也只少一层，覆盖层照旧。
  */
-export function WorkbenchSurface({ mode = "tab" }: { mode?: "tab" | "page" }) {
+export function WorkbenchSurface() {
 	const t = useTranslator();
 	const data = useStudioState();
 	const { route, navigate } = useWorkbenchRoute();
 	const rail = useRailCollapsed();
-	const { ref: surfaceRef, narrow, width } = useNarrowSurface();
+	const { ref: surfaceRef, narrow } = useNarrowSurface();
 	const events = useConsoleTimeline();
 	const [now, setNow] = useState(() => Date.now());
-	// 面板这一形态里 `expanded` 是意图（用户按了全屏，面板已拉到最宽，但会话区仍在）；
-	// 整页这一形态里它是事实。界面不区分这两者的画法，只区分能不能再往外走一步。
-	const [expanded, setExpanded] = useState(false);
-	const page = mode === "page";
-	const fullscreen = page || expanded;
-	/** 退回面板时要还的宽度；只在 `"tab"` 的退路里用得到。 */
-	const restoreRef = useRef<number | null>(null);
+	const [fullscreen, setFullscreen] = useState(false);
 
 	const landed = lastLandedStudioEvent(events);
 	const landedId = landed?.id ?? null;
@@ -96,53 +90,42 @@ export function WorkbenchSurface({ mode = "tab" }: { mode?: "tab" | "page" }) {
 		return () => clearTimeout(timer);
 	}, [landedId, refresh]);
 
-	const setPanelWidth = (next: number | "max") => {
-		// 权限或宿主版本不满足时 SDK 只是 warn + noop：这里不该为此抛错，
-		// 面板宽度是锦上添花，不是这张工作台能画出来的前提。
-		getStudioRuntime().ctx.ui.setActivityPanelWidth(next);
-	};
+	const leaveFullscreen = useCallback(() => {
+		setFullscreen(false);
+		void exitOsFullscreen();
+	}, []);
 
-	const collapse = () => {
-		setPanelWidth(restoreRef.current ?? RESTORE_FALLBACK_PX);
-		restoreRef.current = null;
-		setExpanded(false);
+	const enterFullscreen = () => {
+		setFullscreen(true);
+		void enterOsFullscreen();
 	};
 
 	/**
-	 * 进全屏：先请求宿主的整页路由。
-	 *
-	 * 缺权限时 `openWorkspaceView` 直接抛（`require`），宿主太旧时它干脆不存在；两种情况
-	 * 都不会告诉我们「跳转失败」，所以隔一小段比对 hash：没跳成就在原地把面板拉到最宽——
-	 * 键按下去一定有事发生。
+	 * Esc 有两拨人管。真进了窗口全屏，Esc 被浏览器收走，页面只收到 `fullscreenchange`；
+	 * 没进成（被拒绝）时浏览器不管，才轮到这里的键盘监听。两条路都收口到 `leaveFullscreen`。
 	 */
-	const expand = () => {
-		restoreRef.current = width > 0 ? width : null;
-		const before = enterStudioFullscreen();
-		window.setTimeout(() => {
-			if (fullscreenLanded(before)) return;
-			// 没跳成：把「这次是从标签页进来的」也一并忘掉，否则下一次落到整页视图时
-			// 会多出一枚指向无关页面的退出键。
-			forgetStudioFullscreen();
-			setPanelWidth("max");
-			setExpanded(true);
-		}, FULLSCREEN_SETTLE_MS);
-	};
-
-	// 全屏之后 Esc 是第一退路：整页里退回上一个路由，面板里把宽度还回去。
 	useEffect(() => {
 		if (!fullscreen) return;
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key !== "Escape") return;
-			if (page) leaveStudioFullscreen();
-			else collapse();
+			leaveFullscreen();
 		};
 		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	});
+		const unwatch = watchOsFullscreenExit(leaveFullscreen);
+		return () => {
+			window.removeEventListener("keydown", onKey);
+			unwatch();
+		};
+	}, [fullscreen, leaveFullscreen]);
 
-	// 整页形态没有「退出」可走时（从侧栏直接进来）就不给这枚键：按下历史后退只会
-	// 把人送到别的页面，宿主侧栏才是那种情况下的出口。
-	const toggle = page ? (canLeaveStudioFullscreen() ? leaveStudioFullscreen : undefined) : fullscreen ? collapse : expand;
+	// 宿主把面板关掉时这棵树直接消失：窗口全屏必须还回去，否则用户被留在一个没有插件的全屏里。
+	useEffect(() => {
+		return () => {
+			void exitOsFullscreen();
+		};
+	}, []);
+
+	const toggle = fullscreen ? leaveFullscreen : enterFullscreen;
 
 	const book = data.book;
 	const chapter = book?.progress.currentChapter ?? 0;
@@ -155,10 +138,13 @@ export function WorkbenchSurface({ mode = "tab" }: { mode?: "tab" | "page" }) {
 		navigate(page, target);
 	};
 
+	const surfaceStyle: CSSProperties | undefined = fullscreen ? { zIndex: OVERLAY_Z_INDEX } : undefined;
+
 	const surface = (
 		<div
 			ref={surfaceRef}
-			className="mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden"
+			className={fullscreen ? OVERLAY_CLASS : PANEL_CLASS}
+			style={surfaceStyle}
 			data-expanded={fullscreen ? "true" : "false"}
 		>
 			<StudioShell
@@ -239,5 +225,5 @@ export function WorkbenchSurface({ mode = "tab" }: { mode?: "tab" | "page" }) {
 		</div>
 	);
 
-	return surface;
+	return fullscreen ? <PanelOverlay>{surface}</PanelOverlay> : surface;
 }

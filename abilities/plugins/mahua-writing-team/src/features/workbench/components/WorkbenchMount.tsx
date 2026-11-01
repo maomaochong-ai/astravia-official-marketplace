@@ -1,5 +1,6 @@
 import { useStudioRuntimeReady } from "../hooks/use-studio-runtime-ready";
 import { StudioBootSkeleton } from "./StudioBootSkeleton";
+import { WorkbenchBoundary } from "./WorkbenchBoundary";
 import { WorkbenchSurface } from "./WorkbenchSurface";
 
 /**
@@ -11,5 +12,11 @@ import { WorkbenchSurface } from "./WorkbenchSurface";
  */
 export function WorkbenchMount() {
 	const ready = useStudioRuntimeReady();
-	return ready ? <WorkbenchSurface /> : <StudioBootSkeleton />;
+	if (!ready) return <StudioBootSkeleton />;
+	// 运行时到位之后的炸点交给护栏：白屏面板既没有信息也没有出路，这里至少说清是哪一行。
+	return (
+		<WorkbenchBoundary>
+			<WorkbenchSurface />
+		</WorkbenchBoundary>
+	);
 }

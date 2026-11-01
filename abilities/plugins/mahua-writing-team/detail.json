@@ -44,8 +44,8 @@
 					"description": "Once a chapter is committed, outlines and prose cannot be written over it. Changes go through a recorded ruling so the book stays auditable."
 				},
 				{
-					"title": "One workbench, in the panel or on its own page",
-					"description": "Seven read-only frames — shelf, library, book, reader, ledger, console, activation — fed straight from disk, and one click from the workbench header moves the whole thing onto its own page. The team runs in the sidebar chat on the same tools, so the two cannot disagree."
+					"title": "One workbench, in the panel or over the whole window",
+					"description": "Seven read-only frames — shelf, library, book, reader, ledger, console, activation — fed straight from disk, and one click from the workbench header spreads the whole thing over the entire window, covering the sidebar and the chat column. The team runs in the sidebar chat on the same tools, so the two cannot disagree."
 				},
 				{
 					"title": "A foundation before page one",
@@ -86,7 +86,7 @@
 			"items": [
 				{
 					"title": "Install Mahua Novels from the marketplace",
-					"description": "Once installed, the activity panel's tab bar already carries Mahua Novels — one click opens the workbench. When you want the chat column's width back, the fullscreen button in the workbench header opens the same workbench on its own page. No API key is needed to start — the bundled community credential unlocks it."
+					"description": "Once installed, the activity panel's tab bar already carries Mahua Novels — one click opens the workbench. When you want the chat column's width back, the fullscreen button in the workbench header spreads the same workbench over the entire window. No API key is needed to start — the bundled community credential unlocks it."
 				},
 				{
 					"title": "Open the workbench and say what you want to write",

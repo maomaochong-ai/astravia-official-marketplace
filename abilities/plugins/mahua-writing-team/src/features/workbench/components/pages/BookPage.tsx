@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { StudioState } from "../../hooks/use-studio-state";
 import { useTranslator } from "../../hooks/use-translator";
 import { useConsoleTimeline } from "../../console-timeline/use-console-timeline.js";
@@ -35,6 +36,10 @@ const TICK_TONE: Record<string, string> = {
  *
  * 左半边是「这一章要干什么」，右半边是「这本书写到哪」。中间那张章简报由章纲渲染，
  * 章纲由架构师在侧栏里落盘，这里只读；要动就去侧栏，页面不给按钮。
+ *
+ * **唯一的例外是删除。** 它只能放在这里：书库每一行整体是一个 `<button>`（点行就进书），
+ * 行里再塞一枚删除键既不合语义也点不着；给书库加第七列又会把六列的预算挤爆。
+ * 而删除必须能看得见——写坏的书也得有地方送走，所以进书页，报头右上二次确认。
  */
 export function BookPage({
 	data,
@@ -46,6 +51,22 @@ export function BookPage({
 	const t = useTranslator();
 	const events = useConsoleTimeline();
 	const now = Date.now();
+	const [confirming, setConfirming] = useState(false);
+	const [removing, setRemoving] = useState(false);
+	const [removeError, setRemoveError] = useState<string | null>(null);
+
+	const remove = async (bookId: string) => {
+		setRemoving(true);
+		setRemoveError(null);
+		const result = await data.deleteBook(bookId);
+		setRemoving(false);
+		if (result.ok) {
+			onNavigate("shelf");
+			return;
+		}
+		setConfirming(false);
+		setRemoveError(result.detail ?? result.error);
+	};
 	const book = data.book;
 
 	if (!book) {
@@ -90,7 +111,47 @@ export function BookPage({
 							</span>
 						</span>
 					}
+					right={
+						confirming ? (
+							<div className="flex shrink-0 items-center gap-1.5">
+								<span className="hidden min-w-0 truncate text-[10px] text-ink-faint @min-[760px]:inline">
+									{t("book.deleteConfirm")}
+								</span>
+								<button
+									type="button"
+									onClick={() => setConfirming(false)}
+									className="flex h-7 items-center rounded-control px-2.5 text-micro text-ink-soft transition-colors hover:bg-wash hover:text-ink"
+								>
+									{t("shelf.cancelNew")}
+								</button>
+								<button
+									type="button"
+									disabled={removing}
+									onClick={() => void remove(book.id)}
+									className="flex h-7 items-center rounded-control bg-fail-soft px-2.5 text-micro font-semibold text-fail transition-colors hover:bg-fail/12 disabled:opacity-60"
+								>
+									{removing ? t("book.deleting") : t("book.deleteRun")}
+								</button>
+							</div>
+						) : (
+							<button
+								type="button"
+								onClick={() => setConfirming(true)}
+								title={t("book.deleteConfirm")}
+								className="flex h-7 items-center gap-1.5 rounded-control bg-wash px-2.5 text-micro text-ink-soft transition-colors hover:bg-fail-soft hover:text-fail"
+							>
+								<span className="icon-[solar--trash-bin-trash-linear] size-3.5 shrink-0" />
+								<span className="hidden whitespace-nowrap @min-[760px]:inline">{t("book.delete")}</span>
+							</button>
+						)
+					}
 				/>
+
+			{removeError !== null && (
+				<p className="mt-2 rounded-control bg-fail-soft px-3 py-2 text-[10px] leading-4 text-fail">
+					{t("book.deleteFailed")} · {removeError}
+				</p>
+			)}
 
 			<div className="mt-3 flex min-h-0 flex-1 gap-3 @max-[980px]:flex-col @max-[980px]:overflow-y-auto">
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col">
