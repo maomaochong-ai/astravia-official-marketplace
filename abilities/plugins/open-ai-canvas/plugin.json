@@ -2,7 +2,7 @@
   "id": "open-ai-canvas",
   "name": "Open AI Canvas",
   "icon": "assets/icon.png",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "defaultLocale": "zh",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
