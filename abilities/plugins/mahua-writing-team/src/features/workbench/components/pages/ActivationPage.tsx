@@ -112,8 +112,10 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 
 			{/* 两栏：左卡说「这是什么」，右卡做「现在验一次」。
 			 * 900px 以下改成上下堆叠，且**只保留外层这一条滚动条**——从前右栏自己还滚一层，
-			 * 面板一窄就变成两个互相独立的滚动区，光标滚哪个全凭运气。 */}
-			<div className="mt-3 flex flex-col gap-3 @min-[900px]:flex-row @min-[900px]:items-start">
+			 * 面板一窄就变成两个互相独立的滚动区，光标滚哪个全凭运气。
+			 * 宽屏下两卡等高（`items-stretch`）：右卡有输入框，天然高一截；左卡要是不跟着长，
+			 * 底部就留一块什么都不长的空地——收口办法是让引文块吃掉多出来的高度（见下）。 */}
+			<div className="mt-3 flex flex-col gap-3 @min-[900px]:flex-row @min-[900px]:items-stretch">
 				<aside className="mahua-card flex w-full shrink-0 flex-col gap-4 p-4 @min-[900px]:w-[360px] @min-[900px]:p-5">
 					<div>
 						<div className="flex size-11 items-center justify-center rounded-tile bg-cinnabar font-display text-title text-cinnabar-foreground">
@@ -132,7 +134,9 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 						))}
 					</ul>
 
-					<p className="rounded-panel bg-well p-3 font-display text-body leading-7 text-ink">
+					{/* 引文吃掉左卡多出来的高度：它是这一页唯一天然可伸缩的东西，字少、行高大，
+					 * 变高只显得从容。定高的块一律不动。 */}
+					<p className="flex flex-1 items-center rounded-panel bg-well p-3 font-display text-body leading-7 text-ink">
 						{t("activation.quote")}
 					</p>
 
@@ -154,6 +158,33 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 								</li>
 							))}
 						</ul>
+					</div>
+
+					{/* 这台机器上的这一份凭证：来源、到期、剩余。三行都从验签结果里读，
+					 * 缺字段就是「—」，不猜。页头那枚小胶囊只说状态，这里说它从哪来、还剩多久。 */}
+					<div className="rounded-panel bg-well p-3">
+						<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+							<span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
+								{t("activation.ledger.title")}
+							</span>
+							<span className="text-[9.5px] text-ink-faint">{t("activation.ledger.note")}</span>
+						</div>
+						<dl className="mt-2 grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-1.5 text-[10px] leading-4">
+							<dt className="text-ink-faint">{t("activation.fact.source")}</dt>
+							<dd className="min-w-0 truncate text-ink-soft">{t(`activation.source.${data.credentialSource}`)}</dd>
+							<dt className="text-ink-faint">{t("activation.fact.expiresAt")}</dt>
+							<dd className="min-w-0 truncate font-mono text-ink-soft">
+								{claims ? claims.expiresAt.slice(0, 10) : "—"}
+							</dd>
+							<dt className="text-ink-faint">{t("activation.fact.remaining")}</dt>
+							<dd
+								className={`min-w-0 truncate ${
+									!claims ? "text-ink-soft" : days <= 0 ? "text-fail" : days <= 30 ? "text-wait" : "text-ink"
+								}`}
+							>
+								{claims ? (days > 0 ? t("activation.daysLeft", { days }) : t("activation.expiredNote")) : "—"}
+							</dd>
+						</dl>
 					</div>
 				</aside>
 

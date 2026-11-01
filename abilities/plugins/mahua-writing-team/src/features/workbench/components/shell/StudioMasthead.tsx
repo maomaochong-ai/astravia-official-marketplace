@@ -10,9 +10,10 @@ import { useTranslator } from "../../hooks/use-translator";
  * 三站是单向的：侧栏里的团队写，工作台读。所以线上一枚箭头都没有——方向由站点的大小与
  * 实心度说出来，不必再提醒。
  *
- * 右槽最右端常驻一枚「铺满」键：它不随页面变，因为「把工作台拉宽」是外壳的能力，不是某一页的
- * 动作。它做的不是给插件盖一层覆盖层，而是把**宿主的活动面板**拉到最宽——宿主会因此自动
- * 收起左侧栏，收回时再把宽度还原。所以报头不是窗口标题栏，也没有拖拽区：宿主的页头仍在上面。
+ * 右槽最右端常驻一枚「全屏」键：它不随页面变，因为「把工作台放到整页上」是外壳的能力，不是
+ * 某一页的动作。它不盖覆盖层，也不靠拉宽面板（宿主的面板永远给会话区留 384px），而是跳宿主的
+ * 整页路由；进入后同一枚键变成「退出全屏」，沿浏览器历史回到刚才那一步。报头不是窗口标题栏：
+ * 宿主页头仍在上面，拖拽区与红黄绿也不归它管。
  */
 export interface MastheadSync {
 	writer: string;
@@ -31,7 +32,7 @@ export function StudioMasthead({
 }: {
 	section?: string;
 	sync?: MastheadSync;
-	/** 面板已拉到最宽：右侧的键换成「收回」。 */
+	/** 已在整页视图里：右侧的键换成「退出全屏」。 */
 	expanded?: boolean;
 	onToggleExpanded?: () => void;
 }) {
@@ -73,9 +74,8 @@ export function StudioMasthead({
 					<button
 						type="button"
 						onClick={onToggleExpanded}
-						title={expanded ? t("window.collapsePanel") : t("window.expandPanel")}
-						aria-label={expanded ? t("window.collapsePanel") : t("window.expandPanel")}
-						aria-pressed={expanded}
+						title={expanded ? t("window.exitFullscreen") : t("window.fullscreen")}
+						aria-label={expanded ? t("window.exitFullscreen") : t("window.fullscreen")}
 						className="flex h-6 shrink-0 items-center gap-1.5 rounded-control px-1.5 text-[10px] text-ink-soft transition-colors hover:bg-wash hover:text-ink"
 					>
 						<span
@@ -86,7 +86,7 @@ export function StudioMasthead({
 							} size-3.5 shrink-0`}
 						/>
 						<span className="hidden whitespace-nowrap @[760px]:inline">
-							{expanded ? t("window.collapsePanel") : t("window.expandPanel")}
+							{expanded ? t("window.exitFullscreen") : t("window.fullscreen")}
 						</span>
 					</button>
 				) : null}
