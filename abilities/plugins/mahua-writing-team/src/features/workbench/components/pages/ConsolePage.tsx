@@ -61,7 +61,7 @@ export function ConsolePage({
 	const arc = book?.volumes.flatMap((volume) => volume.arcs).find((item) => chapter >= item.from && chapter <= item.to);
 
 	return (
-		<div className="mahua-page flex min-h-0 flex-1 flex-col">
+		<div className="mahua-page">
 			<PageHeader
 				title={t("page.console.title")}
 				meta={
@@ -88,7 +88,7 @@ export function ConsolePage({
 			<div className="mt-3 flex min-h-0 flex-1 gap-3">
 				<aside className="flex min-h-0 w-[236px] shrink-0 flex-col overflow-hidden rounded-sheet bg-well @max-[1100px]:w-[188px] @max-[900px]:hidden">
 					<div className="px-3 pb-1 pt-2.5">
-						<div className="text-micro-up font-semibold uppercase text-ink-faint">
+						<div className="mahua-eyebrow">
 							{t("console.spine")}
 						</div>
 					</div>
@@ -149,7 +149,7 @@ export function ConsolePage({
 
 				<section className="mahua-card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 					<div className="flex items-center gap-1 px-3 pb-2 pt-2.5">
-						<span className="text-micro-up font-semibold uppercase text-ink-faint">
+						<span className="mahua-eyebrow">
 							{t("console.feed")}
 						</span>
 						<div className="ml-3 flex items-center gap-0.5">
@@ -226,7 +226,7 @@ export function ConsolePage({
 
 				<aside className="flex min-h-0 w-[288px] shrink-0 flex-col gap-3 overflow-y-auto rounded-sheet bg-well p-3 @max-[1180px]:hidden">
 					<section className="rounded-panel bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase text-ink-faint">
+						<div className="mahua-eyebrow">
 							{t("console.overview")}
 						</div>
 						<dl className="mt-2 grid grid-cols-[64px_1fr] gap-y-1 text-[11px]">
@@ -262,7 +262,7 @@ export function ConsolePage({
 					</section>
 
 					<section className="rounded-panel bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase text-ink-faint">
+						<div className="mahua-eyebrow">
 							{t("console.team")}
 						</div>
 						<ul className="mt-2 space-y-1.5">
@@ -281,7 +281,7 @@ export function ConsolePage({
 					</section>
 
 					<section className="rounded-panel bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase text-ink-faint">
+						<div className="mahua-eyebrow">
 							{t("console.review")}
 						</div>
 						{data.review ? (
@@ -305,7 +305,7 @@ export function ConsolePage({
 					</section>
 
 					<section className="rounded-panel bg-raised p-3 shadow-raise">
-						<div className="text-micro-up font-semibold uppercase text-ink-faint">
+						<div className="mahua-eyebrow">
 							{t("console.checkpoints")}
 						</div>
 						{book && book.checkpoints.length > 0 ? (

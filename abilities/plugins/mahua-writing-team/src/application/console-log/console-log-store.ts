@@ -54,8 +54,13 @@ class ConsoleLogStore {
 		this.emit();
 	}
 
-	setSink(sink: Sink | null): void {
+	setSink(sink: Sink): void {
 		this.sink = sink;
+	}
+
+	/** 只放开自己装上的那一个 sink：重复激活时后者已接管，旧的卸载不许把总线断开。 */
+	releaseSink(sink: Sink): void {
+		if (this.sink === sink) this.sink = null;
 	}
 
 	private emit(): void {

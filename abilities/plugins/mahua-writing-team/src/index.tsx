@@ -3,7 +3,7 @@ import { StudioService } from "./application/studio-service.js";
 import { attachConsoleLogStorage, hydrateConsoleLog } from "./application/console-log/console-log-storage.js";
 import { EntitlementGate } from "./entitlement/entitlement-gate.js";
 import { registerConsoleFeedHooks } from "./features/workbench/hooks/register-console-feed.js";
-import { setStudioRuntime } from "./plugin-context.js";
+import { clearStudioRuntime, setStudioRuntime } from "./plugin-context.js";
 import { ManuscriptRepository } from "./repository/manuscript-repository.js";
 import { registerStudioTab } from "./studio-tab.js";
 import { registerStudioTurnCard } from "./studio-turn-card.js";
@@ -46,7 +46,7 @@ export default definePlugin({
 		const gate = new EntitlementGate(ctx.storage, nowOf);
 		const repository = new ManuscriptRepository(ctx.storage, () => nowOf().toISOString());
 		const service = new StudioService(repository, gate, nowOf);
-		setStudioRuntime({ ctx, service, gate });
+		const studioRuntime = setStudioRuntime({ ctx, service, gate });
 
 		await gate.load();
 
@@ -70,7 +70,7 @@ export default definePlugin({
 			tab.dispose();
 			unhook.dispose();
 			detachConsoleLog();
-			setStudioRuntime(null);
+		clearStudioRuntime(studioRuntime);
 		};
 	},
 });

@@ -102,7 +102,7 @@ export function ShelfPage({
 
 							<div className="mt-3 rounded-panel bg-well p-3">
 								<div className="flex items-center gap-2">
-									<span className="text-micro-up font-semibold uppercase text-ink-faint">
+									<span className="mahua-eyebrow">
 										{t("shelf.nowWriting")}
 									</span>
 									<span className="min-w-0 truncate text-body-sm font-medium text-ink">
@@ -190,7 +190,7 @@ export function ShelfPage({
 
 					<div className="mt-4 flex min-h-0 flex-1 flex-col rounded-panel bg-well p-3">
 						<div className="flex items-center gap-2">
-							<span className="text-micro-up font-semibold uppercase text-ink-faint">
+							<span className="mahua-eyebrow">
 								{t("shelf.recent")}
 							</span>
 							<span className="min-w-0 truncate text-[10px] text-ink-faint">{t("shelf.recentNote")}</span>
@@ -215,7 +215,7 @@ export function ShelfPage({
 
 				<section className="mahua-card flex min-h-0 w-[420px] shrink-0 flex-col p-2 @max-[1100px]:w-[310px] @max-[880px]:w-full">
 					<div className="flex items-center justify-between px-2 pb-2 pt-1.5">
-						<span className="text-micro-up font-semibold uppercase text-ink-faint">
+						<span className="mahua-eyebrow">
 							{t("shelf.others", { count: others.length })}
 						</span>
 						<button

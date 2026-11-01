@@ -38,7 +38,7 @@ export function ReaderPage({
 
 	if (!book) {
 		return (
-			<div className="mahua-page flex min-h-0 flex-1 flex-col">
+			<div className="mahua-page">
 				<PageHeader title={t("page.reader.title")} back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }} />
 				<EmptySheet icon="icon-[solar--document-text-bold]" title={t("reader.empty")} />
 			</div>
@@ -51,7 +51,7 @@ export function ReaderPage({
 	};
 
 	return (
-		<div className="mahua-page flex min-h-0 flex-1 flex-col">
+		<div className="mahua-page">
 			<PageHeader
 				back={{ label: t("reader.back"), onBack: () => onNavigate("book") }}
 				title={t("reader.title", { chapter })}
@@ -85,6 +85,7 @@ export function ReaderPage({
 						<button
 							type="button"
 							onClick={() => setSerif((value) => !value)}
+							aria-pressed={serif}
 							className="ml-1 flex h-7 items-center gap-1 rounded-control bg-well px-2 text-[10px] text-ink-soft transition-colors hover:bg-wash-strong"
 						>
 							{serif ? t("reader.serif") : t("reader.sans")}
@@ -138,9 +139,9 @@ export function ReaderPage({
 					</div>
 				</div>
 
-				<aside className="mahua-card flex min-h-0 w-[318px] shrink-0 flex-col overflow-hidden @max-[1180px]:w-[278px] @max-[980px]:w-full @max-[980px]:shrink">
+				<aside className="mahua-card flex min-h-0 w-[318px] shrink-0 flex-col @max-[1180px]:w-[278px] @max-[980px]:w-full @max-[980px]:shrink">
 					<div className="flex items-baseline gap-2 px-4 pb-1 pt-3">
-						<span className="text-micro-up font-semibold uppercase text-ink-faint">
+						<span className="mahua-eyebrow">
 							{t("reader.review")}
 						</span>
 						{review && (
@@ -175,7 +176,7 @@ export function ReaderPage({
 							</div>
 
 							<div className="mt-3 rounded-panel bg-well p-3">
-								<div className="text-micro-up font-semibold uppercase text-ink-faint">
+								<div className="mahua-eyebrow">
 									{t("reader.mustFix")}
 								</div>
 								{review.mustFix.length === 0 ? (
@@ -193,10 +194,6 @@ export function ReaderPage({
 							</div>
 						</div>
 					)}
-
-					<div className="mx-2 mb-2 rounded-control bg-well px-2.5 py-2 text-[10px] text-ink-soft">
-						{t("reader.readonlyNote")}
-					</div>
 				</aside>
 			</div>
 		</div>

@@ -92,7 +92,7 @@ export function StudioRail({
 			data-collapsed={collapsed ? "true" : "false"}
 		>
 			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-				<span className="mahua-rail-block px-2 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+				<span className="mahua-rail-block px-2 mahua-eyebrow">
 					{t("rail.current")}
 				</span>
 
@@ -116,7 +116,7 @@ export function StudioRail({
 					{RAIL_WORKS.map((entry) => item(entry.page, t(entry.labelKey), entry.icon))}
 				</nav>
 
-				<span className="mahua-rail-block mt-4 px-2.5 text-micro-up font-semibold uppercase tracking-[0.08em] text-ink-faint">
+				<span className="mahua-rail-block mt-4 px-2.5 mahua-eyebrow">
 					{t("rail.craft")}
 				</span>
 				<nav className="mt-2 space-y-1">

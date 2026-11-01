@@ -294,6 +294,11 @@
 		overflow: hidden;
 	}
 
+	/* 分节标题：四类组合在十几个地方重复，收成一条。字距由 `text-micro-up` 自带 0.08em。 */
+	.mahua-eyebrow {
+		@apply text-micro-up font-semibold uppercase text-ink-faint;
+	}
+
 	.mahua-well {
 		border-radius: var(--radius-panel);
 		background-color: var(--mahua-well);
