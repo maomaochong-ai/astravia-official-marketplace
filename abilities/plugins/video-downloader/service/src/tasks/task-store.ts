@@ -11,6 +11,10 @@ export interface NewTaskInput {
   site: string;
   title: string;
   streamId: string;
+  /** Playable address an Adapter extracted; empty when the engine resolves `url` itself. */
+  directUrl: string;
+  /** Request headers the extracted address needs. */
+  headers: Record<string, string>;
   quality: string;
   ext: string;
   needsFfmpeg: boolean;
@@ -53,7 +57,8 @@ export class TaskStore {
           });
           continue;
         }
-        this.tasks.set(task.id, task);
+        // Tasks persisted before the Adapter layer have neither field; normalize on read.
+        this.tasks.set(task.id, { ...task, directUrl: task.directUrl ?? "", headers: task.headers ?? {} });
       }
       this.trim();
     } catch {
@@ -76,6 +81,8 @@ export class TaskStore {
       site: input.site,
       title: input.title,
       streamId: input.streamId,
+      directUrl: input.directUrl,
+      headers: input.headers,
       quality: input.quality,
       ext: input.ext,
       needsFfmpeg: input.needsFfmpeg,

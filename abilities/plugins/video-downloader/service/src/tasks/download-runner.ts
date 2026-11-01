@@ -12,7 +12,7 @@ import { removeCookieFile, writeCookieFile } from "../ytdlp/cookies.js";
 import { proxyForUrl } from "../network/egress.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { TaskStore } from "./task-store.js";
-import { estimateRemaining, type DownloadTask } from "./types.js";
+import { ADAPTER_STREAM_ID, estimateRemaining, type DownloadTask } from "./types.js";
 
 const POLL_INTERVAL_MS = 400;
 const TERMINATE_GRACE_MS = 4_000;
@@ -55,6 +55,35 @@ export function summarizeFailure(stderr: string, stdout: string): { message: str
   const line = firstYtdlpErrorLine(stderr) ?? firstYtdlpErrorLine(stdout);
   if (!line) return { message: "下载失败", code: null };
   return { message: line.slice(0, 240), code: codeOfYtdlpFailure(line) };
+}
+
+/**
+ * Command line for the engine. Kept as a pure function so the Adapter branch — a resolved address
+ * with headers and no `-f` selector — is testable without a spawned process.
+ */
+export function engineArguments(
+  task: DownloadTask,
+  settings: ServiceSettings,
+  workDirectory: string,
+  cookieFile: string | null,
+): string[] {
+  // An Adapter already resolved the playable address, so the engine only has to fetch it.
+  const adapter = task.streamId === ADAPTER_STREAM_ID;
+  const target = adapter && task.directUrl ? task.directUrl : task.url;
+  const args = ["--no-warnings", "--no-playlist", "--no-progress"];
+  // Same engine flags as the probe: the stream id it resolved has to stay fetchable here.
+  args.push(...jsRuntimeArgs(), ...proxyArgs(proxyForUrl(target, settings)));
+  if (settings.multiThread) args.push("--concurrent-fragments", CONCURRENT_FRAGMENTS);
+  args.push(...cookieArgs(cookieFile, settings.cookieBrowser));
+  // The template lets the engine name the file; `moveProducedFiles` works on the directory.
+  args.push("-o", join(workDirectory, "%(title)s.%(ext)s"));
+  // `adapter` is not a format selector, so the engine must not be asked to interpret it.
+  if (!adapter) args.push("-f", task.streamId);
+  for (const [name, value] of Object.entries(task.headers ?? {})) {
+    args.push("--add-header", `${name}: ${value}`);
+  }
+  args.push(target);
+  return args;
 }
 
 /**
@@ -197,14 +226,7 @@ export class DownloadRunner {
     workDirectory: string,
     cookieFile: string | null,
   ): string[] {
-    const args = ["--no-warnings", "--no-playlist", "--no-progress"];
-    // Same engine flags as the probe: the stream id it resolved has to stay fetchable here.
-    args.push(...jsRuntimeArgs(), ...proxyArgs(proxyForUrl(task.url, settings)));
-    if (settings.multiThread) args.push("--concurrent-fragments", CONCURRENT_FRAGMENTS);
-    args.push(...cookieArgs(cookieFile, settings.cookieBrowser));
-    // The template lets the engine name the file; `moveProducedFiles` works on the directory.
-    args.push("-f", task.streamId, "-o", join(workDirectory, "%(title)s.%(ext)s"), task.url);
-    return args;
+    return engineArguments(task, settings, workDirectory, cookieFile);
   }
 
   /** Pasted cookie first, then an anonymous jar where the site accepts one. */

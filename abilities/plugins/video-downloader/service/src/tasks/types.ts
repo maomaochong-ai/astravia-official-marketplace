@@ -1,3 +1,4 @@
+export const ADAPTER_STREAM_ID = "adapter";
 export type TaskPhase =
   | "queued"
   | "extracting"
@@ -13,7 +14,12 @@ export interface DownloadTask {
   url: string;
   site: string;
   title: string;
+  /** Stream selector for the engine; `adapter` marks a URL an Adapter resolved instead. */
   streamId: string;
+  /** Playable address an Adapter extracted; empty when the engine resolves `url` itself. */
+  directUrl: string;
+  /** Request headers the extracted address needs (`Referer`, `User-Agent`), forwarded as `--add-header`. */
+  headers: Record<string, string>;
   quality: string;
   ext: string;
   /** Upstream only serves this rendition as separate video and audio streams that yt-dlp merges. */

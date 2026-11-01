@@ -32,8 +32,13 @@ One screen, top to bottom, in the order a download actually happens:
 4. **Empty state** — one line of copy and a hint, because an empty panel otherwise reads
    as a broken panel.
 
-No navigation chrome, no tabs, no settings inside the main view. Settings live in their
-own modal opened from the header, so the primary flow stays a single column.
+Three top-level tabs share one column: **Download** (the flow above), **Adapters**, and
+**Settings**. They exist because the three surfaces answer different questions — what am I
+saving now, what extra pages can this plugin read, and what is the engine allowed to do —
+and 2.4.0's header icons hid two of them behind unlabelled glyphs. The Download tab keeps
+the single-column order above; nothing about the primary flow gained a step. Rationale and
+the rejected alternatives (a left icon rail, a modal) are in
+[ADR 0002](../../../docs/adr/video-downloader/0002-panel-information-architecture.md).
 
 ## Why this shape
 
@@ -77,11 +82,12 @@ never promise a platform the engine cannot open.
   the information is never dropped, only relocated. This matches what Seal, Stacher and
   Downie all surface before the download starts; the cover is the only part of a video
   page the user can verify at a glance.
-- **Coverage panel** (header, globe icon) lists what the pinned engine resolves, grouped
-  as international / mainland / film & series / audio / live, and names the reason for
-  each platform it cannot handle. The list is served by `GET /api/v1/sites` from the same
-  table `probe` enforces, so the panel and the failure message can never disagree. A
-  failed fetch hides the button rather than blocking the download path.
+- **Coverage panel** (Settings tab, collapsed behind a one-line summary) lists what the pinned
+  engine resolves, grouped as international / mainland / film & series / audio / live, and names
+  the reason for each platform it cannot handle. The list is served by `GET /api/v1/sites` from
+  the same table `probe` enforces, so the panel and the failure message can never disagree. A
+  failed fetch hides the section rather than blocking the download path, and a failed probe
+  links straight to it.
 
 The panel deliberately lists unsupported platforms. A picker that silently omits them
 reads as "we forgot", while a row saying `engine has no extractor` answers the question

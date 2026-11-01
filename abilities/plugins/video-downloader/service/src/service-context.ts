@@ -31,6 +31,10 @@ export interface CreateTaskInput {
   site?: string;
   title?: string;
   streamId: string;
+  /** Playable address an Adapter extracted; absent on the engine path. */
+  directUrl?: string;
+  /** Headers the extracted address needs, forwarded to the engine as `--add-header`. */
+  headers?: Record<string, string>;
   quality?: string;
   ext?: string;
   needsFfmpeg?: boolean;
@@ -247,6 +251,8 @@ export class ServiceContext {
       site: input.site?.trim() ?? "",
       title: input.title?.trim() || input.url,
       streamId: input.streamId,
+      directUrl: input.directUrl?.trim() ?? "",
+      headers: input.headers ?? {},
       quality: input.quality?.trim() ?? "",
       ext: (input.ext ?? "mp4").toLowerCase(),
       needsFfmpeg: input.needsFfmpeg === true,

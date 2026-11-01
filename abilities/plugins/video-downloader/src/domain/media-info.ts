@@ -1,5 +1,14 @@
 export type MediaKind = "video" | "audio" | "image";
 
+/**
+ * Which layer produced a Media Item. One item has exactly one path, so a failure can always be
+ * attributed to the layer that produced it.
+ */
+export type ExtractionPath = "engine" | "adapter" | "direct";
+
+/** `adapter` is the reserved stream id for a URL an Adapter resolved; it is not a format selector. */
+export const ADAPTER_STREAM_ID = "adapter";
+
 export interface MediaFormat {
   id: string;
   label: string;
@@ -9,6 +18,10 @@ export interface MediaFormat {
   partCount: number;
   needsFfmpeg: boolean;
   kind: "video" | "audio";
+  /** Playable address an Adapter extracted; when set, the download targets it instead of the page URL. */
+  directUrl?: string;
+  /** Request headers the extracted address needs; the service forwards them as `--add-header`. */
+  headers?: Record<string, string>;
 }
 
 export interface MediaItem {
@@ -25,6 +38,8 @@ export interface MediaItem {
   durationSeconds: number;
   /** Uploader or channel name; empty for sites that expose neither. */
   uploader: string;
+  /** Which layer resolved this item; absent on items produced before the Adapter layer existed. */
+  extractionPath?: ExtractionPath;
 }
 
 export interface ProbeResult {
@@ -132,4 +147,6 @@ export interface NewDownloadInput {
   ext: string;
   needsFfmpeg: boolean;
   totalBytes: number;
+  directUrl?: string;
+  headers?: Record<string, string>;
 }

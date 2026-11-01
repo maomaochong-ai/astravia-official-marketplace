@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import type { ManagedPluginContext } from "../../../runtime-contract";
 import { toolCapability } from "../../../domain/capabilities";
-import { failureMessageKey } from "../../../domain/failure-codes";
+import { isActive } from "../../../domain/task-state";
 import { createDownloaderApi, type DownloaderApi } from "../../../services/downloader-api";
-import { DownloadSettingsPanel } from "../../settings/components/download-settings-panel";
-import { DownloadQueue } from "./download-queue";
-import { DownloaderEmptyState } from "./downloader-empty-state";
-import { MediaPreviewCard } from "./media-preview-card";
-import { SiteCoveragePanel } from "./site-coverage-panel";
-import { UrlEntryCard } from "./url-entry-card";
-import { useDownloader } from "../hooks/use-downloader";
+import { useAdapters } from "../hooks/use-adapters";
+import { useExtract } from "../hooks/use-extract";
+import { useServiceGate } from "../hooks/use-service-gate";
+import { useSettings } from "../hooks/use-settings";
+import { useTasks } from "../hooks/use-tasks";
+import { AdaptersView } from "./adapters-view";
+import { ExtractView } from "./extract-view";
+import { SettingsView, type SettingsSection } from "./settings-view";
 
 const apiByContext = new WeakMap<ManagedPluginContext, DownloaderApi>();
 
@@ -22,6 +23,8 @@ function apiFor(ctx: ManagedPluginContext): DownloaderApi {
   return created;
 }
 
+type ViewKey = "extract" | "adapters" | "settings";
+
 export function DownloaderView({
   ctx,
   variant = "page",
@@ -31,21 +34,44 @@ export function DownloaderView({
   variant?: "page" | "panel";
 }) {
   const { t } = useTranslation();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [coverageOpen, setCoverageOpen] = useState(false);
-  const controller = useDownloader(ctx, apiFor(ctx));
-  const { state } = controller;
+  const api = apiFor(ctx);
+  const gate = useServiceGate(ctx, api);
+  const tasks = useTasks(ctx, api, !gate.booting && !gate.bootError);
+  const settings = useSettings(ctx, api);
+  const adapters = useAdapters(ctx);
+  const [view, setView] = useState<ViewKey>("extract");
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>("preferences");
 
-  const ffmpegAvailable = toolCapability(state.capabilities, "ffmpeg").available;
-  const needsCookie = state.probeErrorCode === "auth_required";
-  const enginePreparing = state.capabilities?.ytdlp.available === false;
-  const engineFailed = state.ytdlpInstall?.phase === "failed";
+  const extract = useExtract(ctx, api, {
+    ensureTool: gate.ensureTool,
+    blocked: adapters.runningId !== null,
+    onTaskCreated: tasks.reload,
+  });
+
+  const ffmpegAvailable = toolCapability(gate.capabilities, "ffmpeg").available;
+  const enginePreparing = gate.capabilities?.ytdlp.available === false;
+  const engineFailed = gate.ytdlpInstall?.phase === "failed";
   const enginePercent =
-    state.ytdlpInstall && state.ytdlpInstall.totalBytes > 0
-      ? Math.min(100, Math.max(0, Math.round((state.ytdlpInstall.receivedBytes / state.ytdlpInstall.totalBytes) * 100)))
+    gate.ytdlpInstall && gate.ytdlpInstall.totalBytes > 0
+      ? Math.min(100, Math.max(0, Math.round((gate.ytdlpInstall.receivedBytes / gate.ytdlpInstall.totalBytes) * 100)))
       : 0;
-  const result = state.result;
-  const probeError = failureMessageKey(state.probeErrorCode);
+  const activeTasks = tasks.tasks.filter(isActive).length;
+
+  const tabs: { key: ViewKey; label: string; badge?: number }[] = [
+    { key: "extract", label: t("view.extract"), badge: activeTasks },
+    ...(adapters.available ? [{ key: "adapters" as const, label: t("view.adapters") }] : []),
+    { key: "settings", label: t("view.settings") },
+  ];
+
+  function openSettings(section: SettingsSection): void {
+    setSettingsSection(section);
+    setView("settings");
+  }
+
+  function openAdapters(): void {
+    if (adapters.available) setView("adapters");
+    else openSettings("coverage");
+  }
 
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
@@ -59,76 +85,67 @@ export function DownloaderView({
               </>
             )}
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <span
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] ${
+              gate.bootError || engineFailed ? "border-destructive/40 text-destructive" : "border-border text-muted-foreground"
+            }`}
+          >
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] ${
-                state.bootError || engineFailed ? "border-destructive/40 text-destructive" : "border-border text-muted-foreground"
-              }`}
-            >
-              <span
-                className={`size-1.5 rounded-full ${
-                  state.bootError || engineFailed
-                    ? "bg-destructive"
-                    : enginePreparing
-                      ? "bg-muted-foreground"
-                      : "bg-primary"
-                }`}
-                aria-hidden="true"
-              />
-              {state.bootError
-                ? t("status.offline")
-                : engineFailed
-                  ? t("status.engineFailed")
+              className={`size-1.5 rounded-full ${
+                gate.bootError || engineFailed
+                  ? "bg-destructive"
                   : enginePreparing
-                    ? t("status.enginePreparing", { percent: enginePercent })
-                    : ffmpegAvailable
-                      ? t("status.ready")
-                      : t("status.noFfmpeg")}
-            </span>
-            <button
-              type="button"
-              aria-label={t("action.coverage")}
-              title={t("action.coverage")}
-              aria-pressed={coverageOpen}
-              onClick={() => {
-                setCoverageOpen((open) => !open);
-                setSettingsOpen(false);
-              }}
-              disabled={!state.sites}
-              className={`grid size-7 place-items-center rounded-md transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
-                coverageOpen ? "text-foreground" : "text-muted-foreground"
+                    ? "bg-muted-foreground"
+                    : "bg-primary"
               }`}
-            >
-              <span className="icon-[solar--global-linear] size-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label={t("action.settings")}
-              title={t("action.settings")}
-              onClick={() => {
-                setSettingsOpen((open) => !open);
-                setCoverageOpen(false);
-              }}
-              disabled={!state.settings}
-              className={`grid size-7 place-items-center rounded-md transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent ${
-                settingsOpen ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              <span className="icon-[solar--settings-linear] size-4" aria-hidden="true" />
-            </button>
-          </div>
+              aria-hidden="true"
+            />
+            {gate.bootError
+              ? t("status.offline")
+              : engineFailed
+                ? t("status.engineFailed")
+                : enginePreparing
+                  ? t("status.enginePreparing", { percent: enginePercent })
+                  : ffmpegAvailable
+                    ? t("status.ready")
+                    : t("status.noFfmpeg")}
+          </span>
         </header>
 
-        {state.booting ? (
-          <p className="mt-8 text-xs text-muted-foreground">{t("status.booting")}</p>
+        <nav className="-mx-1 mt-3 flex items-center gap-1 border-b border-border" role="tablist">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={view === tab.key}
+              onClick={() => setView(tab.key)}
+              className={`-mb-px inline-flex h-8 items-center gap-1.5 border-b-2 px-2 text-xs transition-colors ${
+                view === tab.key
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+              {tab.badge ? (
+                <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] tabular-nums text-primary">
+                  {tab.badge}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
+
+        {gate.booting ? (
+          <p className="mt-6 text-[11px] text-muted-foreground">{t("status.booting")}</p>
         ) : (
           <>
-            {state.bootError ? (
+            {gate.bootError ? (
               <div className="mt-5 rounded-xl border border-destructive/40 bg-card p-4">
-                <p className="text-xs leading-relaxed text-destructive">{state.bootError}</p>
+                <p className="text-xs leading-relaxed text-destructive">{gate.bootError}</p>
                 <button
                   type="button"
-                  onClick={() => void controller.reload()}
+                  onClick={() => void gate.reload()}
                   className="mt-3 inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
                   <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
@@ -137,66 +154,31 @@ export function DownloaderView({
               </div>
             ) : null}
 
-            {/* Keep the surface shaped like the downloader even when it cannot run, instead of
-                collapsing the panel to a single error line. */}
-            <div className="mt-5">
-              <UrlEntryCard
-                url={state.url}
-                probing={state.probing}
-                disabled={Boolean(state.bootError)}
-                error={probeError ? t(probeError) : state.probeError}
-                onUrlChange={controller.setUrl}
-                onPaste={() => void controller.useClipboard()}
-                onAnalyze={() => void controller.analyze()}
-                remedy={
-                  needsCookie ? { label: t("action.fillCookie"), run: () => setSettingsOpen(true) } : undefined
-                }
-              />
-            </div>
-
-            {result ? (
-              <MediaPreviewCard
-                items={result.items}
-                activeIndex={state.activeItemIndex}
-                selectedFormatId={state.selectedFormatId}
-                ffmpegAvailable={ffmpegAvailable}
-                ffmpegInstall={state.ffmpegInstall}
-                ffmpegBusy={state.ffmpegBusy}
-                starting={state.starting}
-                onSelectItem={controller.selectItem}
-                onSelectFormat={controller.selectFormat}
-                onStart={() => void controller.startDownload()}
+            {view === "extract" ? (
+              <ExtractView
+                gate={gate}
+                extract={extract}
+                tasks={tasks}
+                adapters={adapters}
+                onOpenAdapters={openAdapters}
+                onOpenSettings={(section) => openSettings(section)}
               />
             ) : null}
 
-            {!result && state.tasks.length === 0 && !state.bootError ? <DownloaderEmptyState /> : null}
-
-            {coverageOpen && state.sites ? (
-              <SiteCoveragePanel coverage={state.sites} onOpenCookie={() => setSettingsOpen(true)} />
-            ) : null}
-
-            <DownloadQueue
-              tasks={state.tasks}
-              onCancel={(id) => void controller.cancelTask(id)}
-              onRetry={(id) => void controller.retryTask(id)}
-              onRemove={(id) => void controller.removeTask(id)}
-              onReveal={(id) => void controller.revealTask(id)}
-            />
-
-            {settingsOpen && state.settings ? (
-              <DownloadSettingsPanel
-                settings={state.settings}
-                capabilities={state.capabilities}
-                ffmpegInstall={state.ffmpegInstall}
-                ffmpegBusy={state.ffmpegBusy}
-                ytdlpInstall={state.ytdlpInstall}
-                ytdlpBusy={state.ytdlpBusy}
-                onSave={(patch) => void controller.saveSettings(patch)}
-                onRefreshCapabilities={() => void controller.refreshCapabilities()}
-                onRetryPreparation={() => void controller.retryPreparation()}
-                focusCookie={needsCookie}
+            {view === "adapters" && adapters.available ? (
+              <AdaptersView
+                adapters={adapters}
+                pageUrl={extract.url}
+                onPageUrlChange={extract.setUrl}
+                onUseItem={(item) => {
+                  extract.adoptItem(item);
+                  setView("extract");
+                }}
+                busy={extract.probing}
               />
             ) : null}
+
+            {view === "settings" ? <SettingsView gate={gate} settings={settings} section={settingsSection} /> : null}
           </>
         )}
       </div>

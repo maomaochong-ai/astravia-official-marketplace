@@ -56,6 +56,32 @@ function asNumber(value: unknown): number {
   return 0;
 }
 
+/** Headers an extracted media address may carry; anything else is dropped before it reaches argv. */
+const ALLOWED_TASK_HEADERS = new Set([
+  "referer",
+  "user-agent",
+  "origin",
+  "cookie",
+  "accept",
+  "x-requested-with",
+]);
+
+const MAX_HEADER_LENGTH = 2048;
+
+export function asHeaders(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const headers: Record<string, string> = {};
+  for (const [rawName, rawValue] of Object.entries(value as Record<string, unknown>)) {
+    const name = rawName.trim().toLowerCase();
+    if (!ALLOWED_TASK_HEADERS.has(name)) continue;
+    const text = asString(rawValue).replace(/[\r\n]/gu, "");
+    if (!text || text.length > MAX_HEADER_LENGTH) continue;
+    headers[name] = text;
+  }
+  return headers;
+}
+
+
 function mcpEnvelope(id: unknown, result: unknown): unknown {
   return { jsonrpc: "2.0", id: id ?? null, result };
 }
@@ -163,11 +189,18 @@ export function createRouter(context: ServiceContext) {
           sendError(response, 400, "invalid_format", "缺少清晰度标识，请先解析链接");
           return;
         }
+        const directUrl = asString(body.directUrl);
+        if (directUrl && !isHttpUrl(directUrl)) {
+          sendError(response, 400, "invalid_url", "适配器给出的地址不是 http(s) 链接");
+          return;
+        }
         const task = context.createTask({
           url: target,
           site: asString(body.site),
           title: asString(body.title),
           streamId,
+          directUrl,
+          headers: asHeaders(body.headers),
           quality: asString(body.quality),
           ext: asString(body.ext) || "mp4",
           needsFfmpeg: body.needsFfmpeg === true,
@@ -225,6 +258,8 @@ export function createRouter(context: ServiceContext) {
           site: task.site,
           title: task.title,
           streamId: task.streamId,
+          directUrl: task.directUrl,
+          headers: task.headers,
           quality: task.quality,
           ext: task.ext,
           needsFfmpeg: task.needsFfmpeg,
