@@ -27,6 +27,13 @@ export interface CanvasState {
   origin?: string;
   /** 画布上游版本（ADR-0001 兼容节），来自发布清单的 upstream.tag。 */
   canvasVersion?: string;
+  /**
+   * 上游基线提交（来自清单 upstream.commit）。
+   *
+   * 为什么还要 commit：canvasVersion 是发布 tag，而载荷的内容常常领先于 tag
+   * （上游发 tag 慢一拍），只显示 tag 会误导用户以为画布落后。commit 才是内容标识。
+   */
+  canvasCommit?: string;
   /** 会话没了（从未登录或后端回401）。视图据此提示去浏览器重新登录，而不是把 401 显成普通错误。 */
   loginRequired?: boolean;
   /** 本机平台标识（darwin-arm64 等）。报障时它比任何描述都有用。 */
@@ -44,6 +51,9 @@ export interface CanvasState {
   /** 工具目录（/__canvas/tools）。首次打开工具页才拉，不拖慢首屏。 */
   tools?: ToolSummary[];
   toolsError?: string;
+  /** 画布后端的「功能开放」开关（只读），/__canvas/features 归一后的结果。 */
+  features?: FeatureSwitches;
+  featuresError?: string;
   /** 载荷更新状态（ADR-0017）。undefined 表示还没查过。 */
   update?: UpdateState;
 }
@@ -64,6 +74,21 @@ export interface ToolSummary {
   name: string;
   description: string;
   group: string;
+}
+
+/**
+ * 画布后端的「功能开放」状态。
+ *
+ * 侧边栏少哪几项完全由这些布尔值决定（图片生成/视频生成默认关闭），所以「画布看起来
+ * 缺功能」和「画布版本旧」是两回事，视图必须能把两者分开说清楚。
+ */
+export interface FeatureSwitches {
+  /** 开关本体，key 与后端 JSON 名一致。 */
+  items: Record<string, boolean>;
+  /** 后端是否被管理员改过。false 表示全走默认值。 */
+  configured: boolean;
+  /** 画布自己的管理页路径，由 shim 给出，客户端不硬编码。 */
+  settingsPath?: string;
 }
 
 /** shim 记下的「最近一次 apply_workflow」（ADR-0007 决策 5）。 */
@@ -185,6 +210,7 @@ interface ServiceProbe {
   originPinned?: boolean;
   // ADR-0001 兼容节 + ADR-0002 决策 4：上游版本与登录态。旧 shim 没这些字段，一律可选。
   canvasVersion?: string | null;
+  canvasCommit?: string | null;
   payloadVersion?: string | null;
   session?: { present?: boolean; storage?: string };
   // ADR-0011：准备期的可观测进度。旧 shim 没这些字段，一律可选。
@@ -377,6 +403,13 @@ export class CanvasController {
     this.setState({ update: next });
   }
 
+  /** 与 patchUpdate 同理：features 是对象，裸 setState 会每轮探针都广播一次。 */
+  private patchFeatures(patch: Partial<FeatureSwitches>): void {
+    const next: FeatureSwitches = { ...(this.state.features ?? { items: {}, configured: false }), ...patch };
+    if (JSON.stringify(next) === JSON.stringify(this.state.features)) return;
+    this.setState({ features: next });
+  }
+
   private fail(messageKey: string, detail?: string): void {
     this.setState({ phase: "error", messageKey, detail, busy: false });
   }
@@ -401,7 +434,10 @@ export class CanvasController {
       .catch(() => undefined);
     const tag = platform?.tag;
     if (!tag || SUPPORTED_PLATFORMS.includes(tag)) return undefined;
-    return `当前平台 ${tag} 暂无可用的画布运行时（已发布：${SUPPORTED_PLATFORMS.join("、")}）。`;
+    return this.ctx.i18n.t("error.platformUnsupportedDetail", {
+      platform: tag,
+      supported: SUPPORTED_PLATFORMS.join(", "),
+    });
   }
 
   /** 解析当前服务基址；宿主换端口后要能重新取到。 */
@@ -450,6 +486,7 @@ export class CanvasController {
       this.setState({
         origin: this.origin,
         canvasVersion: version,
+        canvasCommit: typeof data?.canvasCommit === "string" ? data.canvasCommit : undefined,
         loginRequired,
         platform: typeof data?.platform === "string" ? data.platform : undefined,
         supportedPlatforms: Array.isArray(data?.supported) ? data.supported : undefined,
@@ -547,6 +584,8 @@ export class CanvasController {
     this.setState({ phase: "running", messageKey: undefined, detail: undefined, progress: undefined, busy: false });
     // 就绪即自动双向同步一次（ADR-0017）。幂等，且带单次守卫，重复进画布不会重复写渠道。
     void this.autoSyncModels();
+    // 功能开关也是「就绪后才读得到」的东西，顺手取一次，概览页不必等用户点。
+    void this.loadFeatures();
   }
 
   async ensureRunning(): Promise<void> {
@@ -582,7 +621,7 @@ export class CanvasController {
         // 一次会话只装一次：装好后宿主缺的只是 start()，而 install 失败时反复重试
         // 只会让按钮一直转圈。真装坏了让用户重装插件，而不是无限循环。
         if (this.installAttempted) {
-          throw new Error("服务运行时安装失败，请重装插件后再试");
+          throw new Error(this.ctx.i18n.t("error.installRetry"));
         }
         this.installAttempted = true;
         // 宿主拒绝在子进程存活时替换运行时；stop() 幂等，兼做旧实例清理。
@@ -702,6 +741,13 @@ export class CanvasController {
     // 不依赖 302 到到位（旧 shim 没这个字段，就还是宿主端口）。ADR-0010。
     await this.ctx.ui.openExternal(`${this.origin ?? baseUrl}/`);
     return true;
+  }
+
+  /** 打开画布自己的某个页面（目前只有管理页）。跳转而不是重建一套 UI。 */
+  async openCanvasPath(pathname: string): Promise<void> {
+    const baseUrl = await this.resolveBaseUrl();
+    if (!baseUrl) return;
+    await this.ctx.ui.openExternal(`${this.origin ?? baseUrl}${pathname}`);
   }
 
   /**
@@ -906,6 +952,52 @@ export class CanvasController {
       this.setState({ tools, toolsError: tools.length > 0 ? undefined : "unreachable" });
     } catch {
       this.setState({ toolsError: "unreachable" });
+    }
+  }
+
+  /**
+   * 读画布后端的「功能开放」开关（shim 的 /__canvas/features，只读代理）。
+   *
+   * 为什么要读：侧边栏少了「图片生成」「视频生成」时用户会直接怀疑版本旧，而真相通常
+   * 是后端这两个开关默认关。把开关状态摆到概览页，并给一条直达管理页的链接，比解释
+   * 「它不是 bug」有用。force 给「重新读取」按钮用。
+   */
+  async loadFeatures(force = false): Promise<void> {
+    if (this.disposed) return;
+    if (!force && (this.state.features || this.state.featuresError === "pending")) return;
+    this.setState({ featuresError: "pending" });
+    const baseUrl = await this.resolveBaseUrl();
+    if (!baseUrl) {
+      this.setState({ featuresError: "unreachable" });
+      return;
+    }
+    try {
+      const response = await fetch(`${baseUrl}/__canvas/features`, { cache: "no-store" });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        code?: string;
+        features?: Record<string, unknown>;
+        settingsPath?: string;
+      } | null;
+      if (!response.ok || !body?.ok || !body.features) {
+        // 401 是「还没登录画布」，不是故障：两者在界面上要给不同的下一步动作。
+        this.setState({
+          featuresError: body?.code === "canvas-login-required" ? "loginRequired" : "unavailable",
+        });
+        return;
+      }
+      const items: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(body.features)) {
+        if (typeof value === "boolean") items[key] = value;
+      }
+      this.patchFeatures({
+        items,
+        configured: body.features.configured === true,
+        settingsPath: typeof body.settingsPath === "string" ? body.settingsPath : undefined,
+      });
+      this.setState({ featuresError: undefined });
+    } catch {
+      this.setState({ featuresError: "unreachable" });
     }
   }
 

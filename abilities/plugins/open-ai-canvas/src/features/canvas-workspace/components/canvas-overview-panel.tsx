@@ -65,6 +65,16 @@ export function CanvasOverviewPanel({
   const update = state.update;
   const progress = state.progress;
   const eta = progress ? formatEta(progress.etaSeconds) : undefined;
+  /** 开关名的翻译：缺条目时退回原始键——界面宁可显示 `fooEnabled`，也不留一行空白。 */
+  const featureLabel = (key: string): string => {
+    const translated = t(`features.name.${key}`);
+    return translated === `features.name.${key}` ? key : translated;
+  };
+  const featureItems = Object.entries(state.features?.items ?? {});
+  const featureOff = featureItems.filter(([, on]) => !on).map(([key]) => key);
+  /** 侧边栏缺的那两项就是这两个开关；单独提一句，否则用户会先去怀疑版本。 */
+  const workbenchOff =
+    state.features?.items.imageWorkbenchEnabled === false || state.features?.items.videoWorkbenchEnabled === false;
 
   const nextStep: { title: string; body: string; actions: NextAction[] } = (() => {
     if (state.phase === "error") {
@@ -241,7 +251,94 @@ export function CanvasOverviewPanel({
         {!update?.checkedAt ? (
           <p className="mt-1 text-[11px] text-muted-foreground">{t("update.neverChecked")}</p>
         ) : null}
+        {/* 载荷版本是目录键，不等于内容新旧。上游真正落地到哪一版，看这个 commit。 */}
+        {state.canvasCommit ? (
+          <p className="mt-1 font-mono text-[11px] text-muted-foreground/80">
+            {t("update.commit", { sha: state.canvasCommit.slice(0, 8) })}
+          </p>
+        ) : null}
       </SectionCard>
+      {/*
+       * 为什么要单独报「功能开放」：侧边栏少了几项时，人第一反应是“版本旧了”，
+       * 然后去升级运行时——可这十二个开关在默认值里就是关的（图片/视频工作台），
+       * 升级再多次也不会打开。把开关状态、关闭项和入口摆在版本卡旁边，误判就没那么便宜了。
+       * 这里只读：写入在画布自己的管理页，插件不替用户改人家的设置。
+       */}
+      {running ? (
+        <SectionCard
+          title={t("features.title")}
+          description={t("features.description")}
+          badge={
+            featureItems.length > 0 ? (
+              <StatusPill tone={featureOff.length > 0 ? "warning" : "success"}>
+                {t("features.count", {
+                  enabled: featureItems.length - featureOff.length,
+                  total: featureItems.length,
+                })}
+              </StatusPill>
+            ) : null
+          }
+          actions={
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || state.featuresError === "pending"}
+              onClick={() => void controller.loadFeatures(true)}
+            >
+              {t("features.retry")}
+            </Button>
+          }
+        >
+          {state.featuresError === "pending" ? (
+            <p className="mt-3 text-[12px] text-muted-foreground">{t("features.loading")}</p>
+          ) : state.featuresError === "loginRequired" ? (
+            <InsetPanel className="mt-3">
+              <p className="text-[12px] leading-relaxed text-muted-foreground">{t("features.loginRequired")}</p>
+            </InsetPanel>
+          ) : state.featuresError ? (
+            <InsetPanel className="mt-3">
+              <p className="text-[12px] leading-relaxed text-muted-foreground">{t("features.unavailable")}</p>
+            </InsetPanel>
+          ) : state.features ? (
+            <>
+              {featureOff.length > 0 ? (
+                <ul className="mt-3 flex flex-col gap-1 text-[12px]">
+                  {featureOff.map((key) => (
+                    <li
+                      key={key}
+                      className="flex items-center justify-between gap-3 rounded-xl bg-background/55 px-3 py-2"
+                    >
+                      <span>{featureLabel(key)}</span>
+                      <StatusPill tone="warning">{t("features.off")}</StatusPill>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {workbenchOff ? (
+                <InsetPanel tone="accent" className="mt-3">
+                  <p className="text-[12px] leading-relaxed">{t("features.workbenchOff")}</p>
+                </InsetPanel>
+              ) : null}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    void controller.openCanvasPath(
+                      state.features?.settingsPath ?? "/admin/settings/features",
+                    )
+                  }
+                >
+                  {t("features.openSettings")}
+                </Button>
+                <span className="text-[11px] text-muted-foreground">{t("features.settingsHint")}</span>
+              </div>
+              {state.features.configured ? null : (
+                <p className="mt-2 text-[11px] text-muted-foreground">{t("features.defaults")}</p>
+              )}
+            </>
+          ) : null}
+        </SectionCard>
+      ) : null}
 
       {/* 两个方向分开列：以前只说「桥在线」，用户没法判断是宿主模型没过去，还是画布模型没回来。 */}
       {running ? (

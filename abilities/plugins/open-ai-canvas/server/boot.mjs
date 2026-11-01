@@ -4045,6 +4045,13 @@ function servePreparation(req, res) {
     });
     return;
   }
+  if (req.method === "GET" && req.url === "/__canvas/features") {
+    void readFeatureSwitches().then(
+      (result) => sendJson(res, result),
+      (error) => sendJson(res, { ok: false, code: error?.code ?? "features-unavailable" })
+    );
+    return;
+  }
   if (req.method === "GET" && req.url === "/__canvas/update-check") {
     void checkPayloadUpdate().then((result) => sendJson(res, { ok: true, ...result })).catch((error) => {
       sendJson(res, { ok: false, code: error?.code ?? "update-check-failed", message: error?.message ?? String(error) });
@@ -4087,6 +4094,16 @@ function servePreparation(req, res) {
   }
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
   res.end(progressPage());
+}
+async function readFeatureSwitches() {
+  const { status, body } = await rawCanvasApi("GET", "/api/features");
+  if (status === 401) return { ok: false, code: "canvas-login-required" };
+  if (status !== 200) {
+    return { ok: false, code: body?.code ?? "canvas-unreachable", message: body?.message ?? null };
+  }
+  const features = body?.data?.features;
+  if (!features || typeof features !== "object") return { ok: false, code: "features-missing" };
+  return { ok: true, features, settingsPath: "/admin/settings/features" };
 }
 
 // server/src/stable-origin-binding.ts

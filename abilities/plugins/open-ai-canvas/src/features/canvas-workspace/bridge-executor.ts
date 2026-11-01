@@ -50,7 +50,8 @@ function toAiRequest(job: BridgeJob): { systemPrompt?: string; prompt: string } 
   }
   const prompt = turns.length > 0 ? turns[turns.length - 1].replace(/^(User|Assistant): /, "") : "";
   const history = turns.slice(0, -1);
-  const systemPrompt = [system.join("\n\n"), history.length > 0 ? `之前对话：\n${history.join("\n")}` : ""]
+  // 历史标记必须语言中立：这句会进模型的 systemPrompt，写死中文会把英文答话带偏。
+  const systemPrompt = [system.join("\n\n"), history.length > 0 ? `Earlier turns:\n${history.join("\n")}` : ""]
     .filter(Boolean)
     .join("\n\n");
   return { ...(systemPrompt ? { systemPrompt } : {}), prompt };

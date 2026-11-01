@@ -2,6 +2,7 @@ import { useTranslation } from "@astravia-org/plugin-sdk";
 import { Button, cn } from "@astravia-org/ui";
 import type { JSX } from "react";
 import type { CanvasState } from "../../../runtime.ts";
+import { ContentColumn } from "../../../shared/components/content-column.tsx";
 import { CopyButton } from "../../../shared/components/copy-button.tsx";
 
 const PHASE_TONE: Record<CanvasState["phase"], { dot: string; text: string }> = {
@@ -44,8 +45,9 @@ export function CanvasStatusBar({
 
   return (
     // 固定的是外层，卡片自己带圆角与底色；不加 border-b，改用渐变遮盖滚动内容。
-    <div className="sticky top-0 z-10 bg-gradient-to-b from-background via-background/92 to-transparent px-6 pb-2">
-      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-card/70 px-4 py-2.5 backdrop-blur">
+    <div className="sticky top-0 z-10 bg-gradient-to-b from-background via-background/92 to-transparent pb-2">
+      <ContentColumn>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-card/70 px-4 py-2.5 backdrop-blur">
         <span className={cn("h-2 w-2 shrink-0 rounded-full", tone.dot)} aria-hidden />
         <span className={cn("text-[13px] font-medium", tone.text)}>{t(`status.${state.phase}`)}</span>
         {state.messageKey ? (
@@ -90,7 +92,8 @@ export function CanvasStatusBar({
             />
           ) : null}
         </div>
-      </div>
+        </div>
+      </ContentColumn>
     </div>
   );
 }

@@ -11,16 +11,32 @@ import { StatusPill } from "../../../shared/components/status-pill.tsx";
 const GROUP_ORDER = ["projects", "nodes", "connections", "generation", "skills", "batch", "workspace", "other"];
 
 /** 拼一段可以直接粘给智能体的说明：它比让用户自己念工具名有用得多。 */
-function briefText(tools: ToolSummary[], header: string): string {
+function briefText(
+  tools: ToolSummary[],
+  header: string,
+  describe: (tool: ToolSummary) => string,
+): string {
   const lines = [header, ""];
   for (const group of GROUP_ORDER) {
     const items = tools.filter((tool) => tool.group === group);
     if (items.length === 0) continue;
     lines.push(`## ${group}`);
-    for (const item of items) lines.push(`- ${item.name}: ${item.description}`);
+    for (const item of items) lines.push(`- ${item.name}: ${describe(item)}`);
     lines.push("");
   }
   return lines.join("\n").trim();
+}
+/**
+ * 工具描述的唯一来源。
+ *
+ * 英文原文是插件自己写在 `mcp-tool-catalog.ts` 里的，由服务端下发；页面和「复制说明」
+ * 必须用同一份文案，否则同一句话在界面上是中文、粘给智能体又变回英文。
+ * SDK 的 `t()` 缺键时原样返回键名，所以判等回退比 try/catch 可靠。
+ */
+function describeTool(translate: (key: string) => string, tool: ToolSummary): string {
+  const key = `tool.${tool.name}.description`;
+  const translated = translate(key);
+  return translated === key ? tool.description : translated;
 }
 
 /**
@@ -39,6 +55,7 @@ export function CanvasToolsPanel({
   const { t } = useTranslation();
   const tools = state.tools;
   const failed = state.toolsError === "unreachable";
+  const describe = (tool: ToolSummary): string => describeTool(t, tool);
 
   useEffect(() => {
     void controller.loadToolCatalog();
@@ -63,7 +80,7 @@ export function CanvasToolsPanel({
           <>
             {tools && tools.length > 0 ? (
               <CopyButton
-                text={() => briefText(tools, t("tools.briefHeader"))}
+                text={() => briefText(tools, t("tools.briefHeader"), describe)}
                 label={t("tools.copyBrief")}
                 copiedLabel={t("action.diagnosticsCopied")}
                 failedLabel={t("action.diagnosticsFailed")}
@@ -96,7 +113,7 @@ export function CanvasToolsPanel({
             {entry.items.map((tool) => (
               <li key={tool.name} className="rounded-xl bg-background/55 px-3 py-2">
                 <code className="font-mono text-[12px] text-foreground">{tool.name}</code>
-                <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{tool.description}</p>
+                <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">{describe(tool)}</p>
               </li>
             ))}
           </ul>

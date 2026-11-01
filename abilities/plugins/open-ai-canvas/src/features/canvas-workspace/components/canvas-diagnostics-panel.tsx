@@ -33,6 +33,7 @@ export function CanvasDiagnosticsPanel({
     `platform: ${state.platform ?? ""}`,
     `supported: ${(state.supportedPlatforms ?? []).join(",")}`,
     `upstream: ${state.canvasVersion ?? ""}`,
+    `commit: ${state.canvasCommit ?? ""}`,
     `payload: ${state.payloadVersion ?? ""}`,
     `loginRequired: ${String(state.loginRequired)}`,
     `bridge: online=${String(state.bridge.executorOnline)} models=${state.bridge.models}`,
@@ -50,6 +51,7 @@ export function CanvasDiagnosticsPanel({
       mono: true,
     },
     { label: t("diag.upstream"), value: state.canvasVersion, mono: true },
+    { label: t("diag.commit"), value: state.canvasCommit?.slice(0, 12), mono: true },
     { label: t("diag.payload"), value: state.payloadVersion, mono: true },
     {
       label: t("diag.session"),

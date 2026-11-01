@@ -14,7 +14,7 @@ import { checkPayloadUpdate, upgradePayload } from "./payload-update.ts";
 import { SESSION_KEY, SESSION_TOKEN } from "./canvas-session-store.ts";
 import { goPort } from "./backend-process.ts";
 import { LAST_WORKFLOW } from "./workflow-compiler.ts";
-import { MCP_WAIT_MS, handleMcpRequest, waitForBackend } from "./mcp-protocol-server.ts";
+import { MCP_WAIT_MS, handleMcpRequest, rawCanvasApi, waitForBackend } from "./mcp-protocol-server.ts";
 import { MCP_TOOLS, MCP_TOOL_GROUPS } from "./mcp-tool-catalog.ts";
 import { AGENT_DIR, PROVISION_DIR } from "./payload-source-resolution.ts";
 import { BRIDGE, bridgeExecutorOnline } from "./host-model-bridge.ts";
@@ -122,6 +122,17 @@ export function servePreparation(req, res) {
     return;
   }
 
+  // 功能开放：只读透传后端 /api/features。侧边栏缺哪几项由这些开关决定，与版本无关，
+  // 所以视图必须能读到它们——否则“画布看起来少功能”只会被误诊成“版本滞后”。
+  // 不提供写入：开关只能由管理员在画布自己的管理页改，插件不替用户写库。
+  if (req.method === "GET" && req.url === "/__canvas/features") {
+    void readFeatureSwitches().then(
+      (result) => sendJson(res, result),
+      (error) => sendJson(res, { ok: false, code: error?.code ?? "features-unavailable" }),
+    );
+    return;
+  }
+
   // 检查更新（ADR-0017）：只探测不安装，失败也回 200——「查不到」是常态，不是错误。
   if (req.method === "GET" && req.url === "/__canvas/update-check") {
     void checkPayloadUpdate()
@@ -176,6 +187,24 @@ export function servePreparation(req, res) {
 
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
   res.end(progressPage());
+}
+
+/**
+ * 读后端的「功能开放」开关，解成视图能直接用的一层。
+ *
+ * 两个坑：① 后端所有响应都包在 {code,data,msg} 信封里，开关本体在 data.features；
+ * ② 这个端点需登录，未登录回 401——那是“还没登录”，不是“读不到”，界面要给不同的下一步。
+ * 画布自己的管理页路径写在回执里，客户端就不必硬编码一个上游路由。
+ */
+async function readFeatureSwitches() {
+  const { status, body } = await rawCanvasApi("GET", "/api/features");
+  if (status === 401) return { ok: false, code: "canvas-login-required" };
+  if (status !== 200) {
+    return { ok: false, code: body?.code ?? "canvas-unreachable", message: body?.message ?? null };
+  }
+  const features = body?.data?.features;
+  if (!features || typeof features !== "object") return { ok: false, code: "features-missing" };
+  return { ok: true, features, settingsPath: "/admin/settings/features" };
 }
 
 // --- 模型桥（ADR-0006）---
