@@ -3,7 +3,9 @@ import { Button } from "@astravia-org/ui";
 import type { JSX } from "react";
 import type { CanvasController, CanvasState } from "../../../runtime.ts";
 import { ProgressBar } from "../../../shared/components/progress-bar.tsx";
+import { InsetPanel } from "../../../shared/components/inset-panel.tsx";
 import { SectionCard } from "../../../shared/components/section-card.tsx";
+import { StatusPill } from "../../../shared/components/status-pill.tsx";
 
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
@@ -111,30 +113,32 @@ export function CanvasOverviewPanel({
         <SectionCard
           title={t("progress.title")}
           badge={
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+            <StatusPill>
               {progress.percent > 0 ? `${Math.round(progress.percent)}%` : t("progress.indeterminate")}
-            </span>
+            </StatusPill>
           }
         >
-          <div className="mt-3">
+          <InsetPanel className="mt-3">
             <ProgressBar percent={progress.percent} />
-          </div>
-          <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-            {progress.stage ? <span>{progress.stage}</span> : null}
-            {progress.totalBytes > 0 ? (
-              <span>
-                {t("progress.bytes", {
-                  done: formatBytes(progress.receivedBytes),
-                  total: formatBytes(progress.totalBytes),
-                })}
-              </span>
+            <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+              {progress.stage ? <span>{progress.stage}</span> : null}
+              {progress.totalBytes > 0 ? (
+                <span>
+                  {t("progress.bytes", {
+                    done: formatBytes(progress.receivedBytes),
+                    total: formatBytes(progress.totalBytes),
+                  })}
+                </span>
+              ) : null}
+              {progress.speed > 0 ? (
+                <span>{t("progress.speed", { speed: formatBytes(progress.speed) })}</span>
+              ) : null}
+              {eta ? <span>{t("progress.eta", { eta })}</span> : null}
+            </p>
+            {progress.fileName ? (
+              <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{progress.fileName}</p>
             ) : null}
-            {progress.speed > 0 ? <span>{t("progress.speed", { speed: formatBytes(progress.speed) })}</span> : null}
-            {eta ? <span>{t("progress.eta", { eta })}</span> : null}
-          </p>
-          {progress.fileName ? (
-            <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{progress.fileName}</p>
-          ) : null}
+          </InsetPanel>
         </SectionCard>
       ) : null}
 
@@ -184,9 +188,9 @@ export function CanvasOverviewPanel({
         title={t("update.title")}
         badge={
           update?.upgradeAvailable ? (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+            <StatusPill tone="accent">
               {t("update.available", { version: update.available ?? "" })}
-            </span>
+            </StatusPill>
           ) : null
         }
       >
@@ -254,8 +258,8 @@ export function CanvasOverviewPanel({
             </Button>
           }
         >
-          <ul className="mt-2 space-y-1.5 text-[12px]">
-            <li className="flex items-center justify-between gap-3">
+          <ul className="mt-3 flex flex-col gap-1 text-[12px]">
+            <li className="flex items-center justify-between gap-3 rounded-xl bg-background/55 px-3 py-2">
               <span className="text-muted-foreground">{t("overview.syncToCanvas")}</span>
               <span className="shrink-0 font-medium">
                 {state.bridge.projection
@@ -266,7 +270,7 @@ export function CanvasOverviewPanel({
                   : t("overview.syncPending")}
               </span>
             </li>
-            <li className="flex items-center justify-between gap-3">
+            <li className="flex items-center justify-between gap-3 rounded-xl bg-background/55 px-3 py-2">
               <span className="text-muted-foreground">{t("overview.syncToHost")}</span>
               <span className="shrink-0 font-medium">
                 {typeof state.bridge.mediaRegistered === "number"
@@ -281,12 +285,14 @@ export function CanvasOverviewPanel({
 
       {!running ? (
         <SectionCard title={t("overview.checkTitle")}>
-          <ol className="mt-2 list-decimal space-y-1 pl-4 text-[12px] leading-relaxed text-muted-foreground">
-            <li>{t("overview.checkStart")}</li>
-            <li>{t("overview.checkLogin")}</li>
-            <li>{t("overview.checkModels")}</li>
-            <li>{t("overview.checkAgent")}</li>
-          </ol>
+          <InsetPanel className="mt-3">
+            <ol className="flex list-decimal flex-col gap-1 pl-4 text-[12px] leading-relaxed text-muted-foreground">
+              <li>{t("overview.checkStart")}</li>
+              <li>{t("overview.checkLogin")}</li>
+              <li>{t("overview.checkModels")}</li>
+              <li>{t("overview.checkAgent")}</li>
+            </ol>
+          </InsetPanel>
         </SectionCard>
       ) : null}
 
@@ -294,37 +300,39 @@ export function CanvasOverviewPanel({
         <SectionCard
           title={t("workflow.title")}
           badge={
-            <span className="text-[11px] text-muted-foreground">
+            <StatusPill>
               {t("workflow.summary", {
                 nodes: state.workflow.nodes,
                 edges: state.workflow.edges,
                 revision: state.workflow.revision,
               })}
-            </span>
+            </StatusPill>
           }
         >
           <p className="mt-2 break-words font-mono text-[11px] text-muted-foreground">{state.workflow.canvasId}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {state.workflow.idempotent ? (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              <StatusPill>
                 {t("workflow.replay")}
-              </span>
+              </StatusPill>
             ) : null}
             {state.workflow.generationCount > 0 ? (
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-600">
+              <StatusPill tone="success">
                 {t("workflow.generations", { count: state.workflow.generationCount })}
-              </span>
+              </StatusPill>
             ) : null}
           </div>
         </SectionCard>
       ) : null}
 
       <SectionCard title={t("tips.title")}>
-        <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-muted-foreground">
-          <li>• {t("tips.login")}</li>
-          <li>• {t("tips.mcp")}</li>
-          <li>• {t("tips.dataDir")}</li>
-        </ul>
+        <InsetPanel className="mt-3">
+          <ul className="flex flex-col gap-1 text-[12px] leading-relaxed text-muted-foreground">
+            <li>{t("tips.login")}</li>
+            <li>{t("tips.mcp")}</li>
+            <li>{t("tips.dataDir")}</li>
+          </ul>
+        </InsetPanel>
       </SectionCard>
     </div>
   );

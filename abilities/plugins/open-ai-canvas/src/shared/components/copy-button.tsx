@@ -45,7 +45,7 @@ export function CopyButton({
     <Button
       type="button"
       size="sm"
-      variant="outline"
+      variant="secondary"
       disabled={disabled}
       onClick={() => void handleClick()}
       className={cn("h-7 px-2 text-[12px]", className)}

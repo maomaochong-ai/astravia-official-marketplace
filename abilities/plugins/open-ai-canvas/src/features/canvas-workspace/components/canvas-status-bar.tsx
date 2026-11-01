@@ -43,8 +43,9 @@ export function CanvasStatusBar({
   const address = state.origin ?? state.baseUrl;
 
   return (
-    <div className="sticky top-0 z-10 border-b border-border/70 bg-background/95 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 px-6 py-2.5">
+    // 固定的是外层，卡片自己带圆角与底色；不加 border-b，改用渐变遮盖滚动内容。
+    <div className="sticky top-0 z-10 bg-gradient-to-b from-background via-background/92 to-transparent px-6 pb-2">
+      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-card/70 px-4 py-2.5 backdrop-blur">
         <span className={cn("h-2 w-2 shrink-0 rounded-full", tone.dot)} aria-hidden />
         <span className={cn("text-[13px] font-medium", tone.text)}>{t(`status.${state.phase}`)}</span>
         {state.messageKey ? (
@@ -60,10 +61,10 @@ export function CanvasStatusBar({
               <Button size="sm" disabled={busy} onClick={onOpen}>
                 {t("action.openBrowser")}
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={onRestart}>
+              <Button size="sm" variant="secondary" disabled={busy} onClick={onRestart}>
                 {t("action.restart")}
               </Button>
-              <Button size="sm" variant="outline" disabled={busy} onClick={onStop}>
+              <Button size="sm" variant="secondary" disabled={busy} onClick={onStop}>
                 {t("action.stop")}
               </Button>
             </>
@@ -73,7 +74,7 @@ export function CanvasStatusBar({
                 {working ? t(`status.${state.phase}`) : t("action.start")}
               </Button>
               {state.phase === "error" ? (
-                <Button size="sm" variant="outline" disabled={busy} onClick={onRestart}>
+                <Button size="sm" variant="secondary" disabled={busy} onClick={onRestart}>
                   {t("action.restart")}
                 </Button>
               ) : null}
