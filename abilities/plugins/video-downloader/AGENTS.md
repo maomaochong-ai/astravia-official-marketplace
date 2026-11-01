@@ -58,24 +58,14 @@ Rules that this project follows:
 npm run check
 npm test
 npm run build
-npm run package:service   # prints the digest to paste into plugin.json + runtime-lock.json
+npm run package:service   # prints the service archive digest (npm run build writes it into plugin.json)
 ```
 
 Version bumps: content changes to the service or panel require a plugin version bump and a
 rebuilt service digest. Display-only changes (README, detail blocks) do not.
 
-Shipping the runtime: `runtime-lock.json` addresses the service zip by release tag and file
-name (`releases/download/video-downloader-<version>/video-downloader-service-<version>.zip`),
-so the asset has to exist before the version goes out — the panel otherwise reports
-`error.runtimeMissing` on a fresh install. Publish it append-only:
-
-```bash
-npm run package:service
-gh release create video-downloader-<version> release/video-downloader-service-<version>.zip \
-  --title "video-downloader service <version>" --latest=false
-curl -sIL https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/\
-  video-downloader-<version>/video-downloader-service-<version>.zip | head -1   # expect 200
-```
-
-The CI publish job only uploads `.astraviapkg` packages, so this step stays manual until a
-workflow step covers it.
+Shipping the runtime: nothing to ship. `npm run build` compiles `service/`, packs it into a
+deterministic zip and inlines it as base64 in the panel bundle, and rewrites the six
+`plugin.json` `sha256` declarations from those bytes. `ctx.services.install` receives the string
+directly, so there is no download URL, no `runtime-lock.json`, and no second release asset to
+create before a version goes out. `release/` only ever holds the `.astraviapkg` that CI publishes.

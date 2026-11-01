@@ -29,11 +29,13 @@ The plugin is a `host-node` managed service. It ships one artifact per platform:
   service/                  # host-node entry: service/dist/main.js
 ```
 
-`plugin.json` declares that artifact for each platform; it carries no `url`, so the renderer
-downloads it in `src/runtime.ts`, verifies the declared SHA-256 with WebCrypto, and hands the
-payload to `ctx.services.install`. The digest lives in both `plugin.json` and
-`runtime-lock.json`, and the host refuses to install the runtime while its previous process is
-still running — so the installer stops the service first, then installs, then starts it.
+`plugin.json` declares that artifact for each platform. The bytes ship inside the plugin
+package itself: `npm run build` zips the compiled service into a deterministic archive and
+inlines it as base64 in a lazily loaded chunk (`scripts/service-payload-plugin.mjs`), and
+`src/runtime.ts` hands that string to `ctx.services.install` after checking it against the
+digest the manifest declares. Nothing is downloaded and no second release has to exist. The host
+refuses to install the runtime while its previous process is still running — so the installer
+stops the service first, then installs, then starts it.
 
 Nothing else is packaged. `yt-dlp` and `ffmpeg` are fetched by the service at run time and are
 never part of the plugin archive.
@@ -117,12 +119,13 @@ storefront. The panel itself is described in `docs/panel-design.md`.
 npm install
 npm run check          # tsc for the panel and the service
 npm test               # panel + service suites
-npm run build          # panel bundle (dist/)
-npm run package:service  # deterministic service zip in release/, prints its sha256
+npm run build          # panel bundle + embedded service runtime (dist/)
+npm run package:service  # prints the service archive digest and its per-platform match state
 ```
 
-After changing anything under `service/`, rebuild the zip, update the digest in both
-`plugin.json` and `runtime-lock.json`, and bump the plugin version. The zip pins entry
-order, timestamps and compression level so CI reproduces the same bytes.
+After changing anything under `service/`, bump the plugin version and rebuild: `npm run build`
+recompiles the service, packs it, and rewrites the `plugin.json` digests from the bytes it just
+produced, so a stale declaration cannot ship. The archive pins entry order, timestamps and
+compression level so CI reproduces the same bytes.
 
 `dist/` and `release/` are not committed; the marketplace CI builds and publishes them.

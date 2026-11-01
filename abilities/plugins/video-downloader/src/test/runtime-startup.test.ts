@@ -5,45 +5,40 @@ const PAYLOAD = Buffer.from("video-downloader runtime payload ".repeat(32));
 const DIGEST = createHash("sha256").update(PAYLOAD).digest("hex");
 const BASE64 = PAYLOAD.toString("base64");
 
-// A one-asset lock keeps the assertions about download attempts readable.
-vi.mock("../../runtime-lock.json", () => ({
-  default: {
-    version: "9.9.9",
-    platforms: {
-      "darwin-arm64": [
-        { destination: "service", url: "https://example.test/video-downloader-service-9.9.9.zip", sha256: DIGEST },
-      ],
-    },
-  },
-}));
-
-const { ensureServiceStarted, serviceStartupFailure } = await import("../runtime");
-
 type Status = Record<string, unknown>;
 
 function status(overrides: Status = {}): Status {
   return { serviceId: "video-downloader", phase: "stopped", version: "9.9.9", installed: false, recentOutput: "", ...overrides };
 }
 
+// The runtime archive is inlined in the bundle, so each test replaces that virtual module with a
+// known payload instead of standing up a network transfer.
+async function loadRuntime(payload: { base64?: string; digest?: string } = {}) {
+  vi.resetModules();
+  vi.doMock("virtual:service-payload", () => ({
+    SERVICE_PAYLOAD: payload.base64 ?? BASE64,
+    SERVICE_PAYLOAD_SHA256: payload.digest ?? DIGEST,
+  }));
+  return import("../runtime");
+}
+
 function createContext(overrides: Record<string, unknown> = {}) {
-  const request = vi.fn(async () => ({ ok: true, status: 200, statusText: "OK", body: BASE64 }));
   const install = vi.fn(async () => status({ installed: true }));
   const start = vi.fn(async () => status({ installed: true, phase: "ready" }));
   const context = {
+    plugin: { id: "video-downloader", version: "9.9.9" },
     services: {
-      getPlatform: vi.fn(async () => ({ tag: "darwin-arm64" })),
       getStatus: vi.fn(async () => status()),
       install,
       start,
-      stop: vi.fn(),
+      stop: vi.fn(async () => status()),
       request: vi.fn(),
       onStatusChange: vi.fn(),
     },
-    network: { request },
     i18n: { locale: "en", t: (key: string, params?: Record<string, string | number>) => `${key}:${JSON.stringify(params ?? {})}` },
     ...overrides,
   };
-  return { context, request, install, start };
+  return { context, install, start };
 }
 
 beforeEach(() => {
@@ -54,23 +49,36 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.doUnmock("virtual:service-payload");
 });
 
 describe("service runtime bootstrap", () => {
-  it("installs and starts the pinned runtime", async () => {
-    const { context, request, install, start } = createContext();
+  it("installs the runtime from the bundled payload and starts it", async () => {
+    const { ensureServiceStarted, serviceStartupFailure } = await loadRuntime();
+    const { context, install, start } = createContext();
 
     await ensureServiceStarted(context as never);
 
-    expect(request).toHaveBeenCalledTimes(1);
     expect(install).toHaveBeenCalledWith("video-downloader", [{ destination: "service", data: BASE64 }]);
     expect(start).toHaveBeenCalledTimes(1);
     expect(serviceStartupFailure()).toBeNull();
   });
 
+  it("skips installation when the host already has the runtime", async () => {
+    const { ensureServiceStarted } = await loadRuntime();
+    const { context, install, start } = createContext();
+    context.services.getStatus = vi.fn(async () => status({ installed: true, phase: "stopped" }));
+
+    await ensureServiceStarted(context as never);
+
+    expect(install).not.toHaveBeenCalled();
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
   // Upgrading a plugin whose previous runtime is still running must stop it first: the host
   // refuses `install` while a child process is alive ("Stop the service before installing").
   it("stops the previous runtime before installing", async () => {
+    const { ensureServiceStarted } = await loadRuntime();
     const calls: string[] = [];
     const { context, install } = createContext();
     context.services.stop = vi.fn(async () => {
@@ -90,6 +98,7 @@ describe("service runtime bootstrap", () => {
   // The host's status can lag the child process, so a stopped-looking service occasionally still
   // rejects the install. One extra stop must recover it instead of failing the whole upgrade.
   it("stops again and retries when the host still sees the previous child", async () => {
+    const { ensureServiceStarted } = await loadRuntime();
     const calls: string[] = [];
     const { context, install } = createContext();
     context.services.stop = vi.fn(async () => {
@@ -111,6 +120,7 @@ describe("service runtime bootstrap", () => {
   });
 
   it("does not retry an install failure it cannot explain", async () => {
+    const { ensureServiceStarted } = await loadRuntime();
     const { context, install } = createContext();
     install.mockRejectedValue(new Error("disk is full"));
 
@@ -118,41 +128,26 @@ describe("service runtime bootstrap", () => {
     expect(install).toHaveBeenCalledTimes(1);
   });
 
-  it("retries a dropped transfer before giving up", async () => {
-    const { context, request } = createContext();
-    request.mockRejectedValueOnce(new Error("socket hang up"));
-
-    await ensureServiceStarted(context as never);
-
-    expect(request).toHaveBeenCalledTimes(2);
-  });
-
-  it("does not retry a missing artifact and names it", async () => {
-    const { context, request } = createContext();
-    request.mockResolvedValue({ ok: false, status: 404, statusText: "Not Found", body: "" });
-
-    await expect(ensureServiceStarted(context as never)).rejects.toThrow(/error\.runtimeMissing/u);
-
-    expect(request).toHaveBeenCalledTimes(1);
-    expect(serviceStartupFailure()).toMatch(/error\.runtimeMissing/u);
-    expect(serviceStartupFailure()).toContain("service");
-  });
-
-  it("rejects a checksum mismatch instead of installing the bytes", async () => {
-    const { context, request, install } = createContext();
-    request.mockResolvedValue({
-      ok: true,
-      status: 200,
-      statusText: "OK",
-      body: Buffer.from("tampered payload").toString("base64"),
-    });
+  it("rejects a payload that does not match the declared digest", async () => {
+    const { ensureServiceStarted } = await loadRuntime({ digest: "0".repeat(64) });
+    const { context, install } = createContext();
 
     await expect(ensureServiceStarted(context as never)).rejects.toThrow(/error\.runtimeChecksum/u);
-
     expect(install).not.toHaveBeenCalled();
   });
 
+  // A dev server cannot compile the service, so the virtual module answers with an empty payload.
+  it("names a missing payload instead of installing nothing", async () => {
+    const { ensureServiceStarted, serviceStartupFailure } = await loadRuntime({ base64: "", digest: "" });
+    const { context, install } = createContext();
+
+    await expect(ensureServiceStarted(context as never)).rejects.toThrow(/error\.runtimeMissing/u);
+    expect(install).not.toHaveBeenCalled();
+    expect(serviceStartupFailure()).toContain("9.9.9");
+  });
+
   it("shares one startup between concurrent calls", async () => {
+    const { ensureServiceStarted } = await loadRuntime();
     const { context, start } = createContext();
 
     await Promise.all([ensureServiceStarted(context as never), ensureServiceStarted(context as never)]);
@@ -160,15 +155,14 @@ describe("service runtime bootstrap", () => {
     expect(start).toHaveBeenCalledTimes(1);
   });
 
-  it("retries a server error once, then recovers on a later start", async () => {
-    const { context, request } = createContext();
-    request.mockResolvedValue({ ok: false, status: 500, statusText: "Server Error", body: "" });
+  it("clears the recorded failure once a later activation succeeds", async () => {
+    const { ensureServiceStarted, serviceStartupFailure } = await loadRuntime();
+    const { context, install } = createContext();
+    install.mockRejectedValueOnce(new Error("runtime directory is locked"));
 
-    await expect(ensureServiceStarted(context as never)).rejects.toThrow(/error\.runtimeDownload/u);
-    expect(request).toHaveBeenCalledTimes(2);
-    expect(serviceStartupFailure()).toContain("500");
+    await expect(ensureServiceStarted(context as never)).rejects.toThrow(/locked/u);
+    expect(serviceStartupFailure()).toContain("locked");
 
-    request.mockResolvedValue({ ok: true, status: 200, statusText: "OK", body: BASE64 });
     await ensureServiceStarted(context as never);
 
     expect(serviceStartupFailure()).toBeNull();

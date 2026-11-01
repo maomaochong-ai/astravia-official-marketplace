@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/video-downloader",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,8 +8,7 @@
     "check": "tsc --noEmit && npm --prefix service run check",
     "test": "node node_modules/vitest/vitest.mjs run && npm --prefix service test",
     "pretest": "npm --prefix service ci --ignore-scripts",
-    "service:build": "npm --prefix service run build",
-    "package:service": "npm run service:build && node scripts/package-service.mjs"
+    "package:service": "node scripts/package-service.mjs"
   },
   "dependencies": {},
   "devDependencies": {

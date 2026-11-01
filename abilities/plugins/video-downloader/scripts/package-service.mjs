@@ -1,68 +1,155 @@
 #!/usr/bin/env node
 /**
- * Builds the managed service and packs it into a deterministic zip.
+ * Compiles the managed service and packs it into a deterministic zip.
  *
  * The archive unpacks into `<runtime>/service`, so its root holds `dist/` and the
- * `package.json` that marks the tree as ESM. `release/` is git-ignored; only the digest is
- * declared in `plugin.json` and `runtime-lock.json`. Entry order, timestamps and compression
- * level are fixed so CI and a local run produce identical bytes.
+ * `package.json` that marks the tree as ESM. The bytes never leave the plugin package: the
+ * Vite build inlines this archive as base64 into a lazily loaded chunk, and the panel hands
+ * that string to `ctx.services.install`. `plugin.json` therefore stays the only place the
+ * digest is declared, and there is no separate service artefact to publish or to keep in
+ * sync with a release.
+ *
+ * Compression level, entry order and timestamps are fixed, so two builds of the same tree
+ * produce the same bytes and the same digest.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cpSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const pluginRoot = resolve(here, "..");
-const manifest = JSON.parse(readFileSync(join(pluginRoot, "plugin.json"), "utf8"));
-const serviceRoot = join(pluginRoot, "service");
-const releaseRoot = join(pluginRoot, "release");
-const staging = join(releaseRoot, ".staging");
-const archive = join(releaseRoot, `video-downloader-service-${manifest.version}.zip`);
+const pluginRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const PLATFORMS = ["win32-x64", "win32-arm64", "darwin-x64", "darwin-arm64", "linux-x64", "linux-arm64"];
 
-// `tsc` never deletes output for a source file that was removed, so a stale module would keep
-// shipping after its source is gone. Build from a clean tree instead.
-rmSync(join(serviceRoot, "dist"), { recursive: true, force: true });
-execFileSync("npm", ["run", "build"], { cwd: serviceRoot, stdio: "inherit" });
+function tscEntry(serviceRoot) {
+  const candidates = [
+    join(serviceRoot, "node_modules", "typescript", "bin", "tsc"),
+    join(pluginRoot, "node_modules", "typescript", "bin", "tsc"),
+  ];
+  const found = candidates.find((candidate) => existsSync(candidate));
+  if (!found) throw new Error("typescript is not installed; run `npm ci` in the plugin root first");
+  return found;
+}
 
-rmSync(staging, { recursive: true, force: true });
-mkdirSync(releaseRoot, { recursive: true });
-cpSync(join(serviceRoot, "dist"), join(staging, "dist"), { recursive: true });
-cpSync(join(serviceRoot, "package.json"), join(staging, "package.json"));
-rmSync(archive, { force: true });
+function compileService(serviceRoot, outDir) {
+  // `tsc` never deletes output for a source file that was removed, so build from a clean
+  // directory instead of reusing `service/dist`.
+  rmSync(outDir, { recursive: true, force: true });
+  execFileSync(process.execPath, [tscEntry(serviceRoot), "-p", join(serviceRoot, "tsconfig.json"), "--outDir", outDir], {
+    stdio: "inherit",
+    cwd: serviceRoot,
+  });
+}
 
-const python = process.env.ASTRAVIA_PYTHON ?? "python3";
-execFileSync(
-  python,
-  [
-    "-c",
+function zipDirectory(sourceDir, outFile) {
+  const python = process.env.ASTRAVIA_PYTHON ?? "python3";
+  execFileSync(
+    python,
     [
-      "import os, sys, zipfile",
-      "root, out = sys.argv[1], sys.argv[2]",
-      "entries = []",
-      "for base, dirs, files in os.walk(root):",
-      "    dirs[:] = sorted(dirs)",
-      "    for name in sorted(files):",
-      "        path = os.path.join(base, name)",
-      "        entries.append((os.path.relpath(path, root).replace(os.sep, '/'), path))",
-      "entries.sort()",
-      "with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:",
-      "    for arcname, path in entries:",
-      "        info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))",
-      "        info.external_attr = 0o644 << 16",
-      "        info.compress_type = zipfile.ZIP_DEFLATED",
-      "        with open(path, 'rb') as handle:",
-      "            zf.writestr(info, handle.read())",
-    ].join("\n"),
-    staging,
-    archive,
-  ],
-  { stdio: "inherit" },
-);
+      "-c",
+      [
+        "import os, sys, zipfile",
+        "root, out = sys.argv[1], sys.argv[2]",
+        "entries = []",
+        "for base, dirs, files in os.walk(root):",
+        "    dirs[:] = sorted(dirs)",
+        "    for name in sorted(files):",
+        "        path = os.path.join(base, name)",
+        "        entries.append((os.path.relpath(path, root).replace(os.sep, '/'), path))",
+        "entries.sort()",
+        "with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:",
+        "    for arcname, path in entries:",
+        "        info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))",
+        "        info.external_attr = 0o644 << 16",
+        "        info.compress_type = zipfile.ZIP_DEFLATED",
+        "        with open(path, 'rb') as handle:",
+        "            zf.writestr(info, handle.read())",
+      ].join("\n"),
+      sourceDir,
+      outFile,
+    ],
+    { stdio: "inherit" },
+  );
+}
 
-rmSync(staging, { recursive: true, force: true });
+/**
+ * Build the payload that ships inside the plugin bundle.
+ *
+ * Returns the raw archive as well as the base64 form the host expects, so a caller can
+ * verify the bytes without decoding them a second time.
+ */
+export function buildServiceArtifact({ root = pluginRoot, workspace } = {}) {
+  const serviceRoot = join(root, "service");
+  const scratch = workspace ?? mkdtempSync(join(tmpdir(), "video-downloader-service-"));
+  const owned = workspace === undefined;
+  const staging = join(scratch, "staging");
+  const archive = join(scratch, "service.zip");
+  try {
+    mkdirSync(staging, { recursive: true });
+    compileService(serviceRoot, join(staging, "dist"));
+    cpSync(join(serviceRoot, "package.json"), join(staging, "package.json"));
+    zipDirectory(staging, archive);
+    const bytes = readFileSync(archive);
+    return {
+      bytes,
+      base64: bytes.toString("base64"),
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    };
+  } finally {
+    if (owned) rmSync(scratch, { recursive: true, force: true });
+  }
+}
 
-const bytes = readFileSync(archive);
-const digest = createHash("sha256").update(bytes).digest("hex");
-process.stdout.write(`${archive}\n${bytes.length} bytes\nsha256 ${digest}\n`);
+/** Every `sha256` the manifest declares for the service runtime, one row per platform. */
+export function readDeclaredDigests(root = pluginRoot) {
+  const manifest = JSON.parse(readFileSync(join(root, "plugin.json"), "utf8"));
+  const digests = [];
+  for (const service of manifest.providers?.services ?? []) {
+    for (const [platform, entry] of Object.entries(service.runtime?.platforms ?? {})) {
+      for (const artifact of entry.artifacts ?? []) {
+        digests.push({ platform, destination: artifact.destination, sha256: artifact.sha256 });
+      }
+    }
+  }
+  return digests;
+}
+
+/**
+ * Rewrite the declared digests to the freshly built one.
+ *
+ * The payload is generated by the same commit that declares the digest, so a hand-maintained
+ * number would only ever be a way to silently ship a mismatched pair. Writing it here keeps
+ * `plugin.json` the single declaration without a manual backfill step.
+ */
+export function syncManifestDigest(sha256, root = pluginRoot) {
+  const path = join(root, "plugin.json");
+  const source = readFileSync(path, "utf8");
+  let replaced = 0;
+  const next = source.replace(/"sha256": "[a-f0-9]{64}"/gu, (match) => {
+    replaced += 1;
+    return `"sha256": "${sha256}"`;
+  });
+  if (replaced !== PLATFORMS.length) {
+    throw new Error(`expected ${PLATFORMS.length} sha256 declarations in plugin.json, found ${replaced}`);
+  }
+  if (next !== source) writeFileSync(path, next);
+  return replaced;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+  const { bytes, sha256 } = buildServiceArtifact();
+  const declared = readDeclaredDigests();
+  const stale = declared.filter((entry) => entry.sha256 !== sha256);
+  if (process.argv.includes("--update")) {
+    const written = syncManifestDigest(sha256);
+    process.stdout.write(`plugin.json: ${written} digest(s) -> ${sha256}\n`);
+  }
+  process.stdout.write(`${bytes.length} bytes\nsha256 ${sha256}\n`);
+  if (stale.length > 0 && !process.argv.includes("--update")) {
+    process.stdout.write(`plugin.json still declares ${stale[0].sha256} (${stale[0].platform}); \`npm run build\` rewrites it.\n`);
+  }
+  for (const entry of declared) {
+    process.stdout.write(`${entry.platform} ${entry.destination} ${entry.sha256 === sha256 ? "matches" : "stale"}\n`);
+  }
+}
