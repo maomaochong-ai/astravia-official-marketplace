@@ -53,7 +53,7 @@ export function LedgerPage({
 	const findings = data.findings;
 
 	return (
-		<div className="mahua-page flex min-h-0 flex-1 flex-col">
+		<div className="mahua-page">
 			<PageHeader
 				title={t("page.ledger.title")}
 				meta={
@@ -96,7 +96,7 @@ export function LedgerPage({
 
 					<div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-panel bg-well">
 						<div
-							className={`grid ${THREAD_COLUMNS} shrink-0 items-center gap-2 px-3 py-2 text-[10px] font-semibold uppercase text-ink-faint`}
+							className={`mahua-eyebrow grid ${THREAD_COLUMNS} shrink-0 items-center gap-2 px-3 py-2`}
 						>
 							<span className="min-w-0 truncate">{t("ledger.weight.heavy")}</span>
 							<span className="min-w-0 truncate">{t("ledger.threads")}</span>
@@ -173,7 +173,7 @@ export function LedgerPage({
 					</div>
 				</section>
 
-				<aside className="mahua-card flex min-h-0 w-[366px] shrink-0 flex-col overflow-hidden p-4 @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink-0">
+				<aside className="mahua-card flex min-h-0 w-[366px] shrink-0 flex-col p-4 @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink-0">
 					<div className="flex shrink-0 items-baseline justify-between gap-3">
 						<h2 className="font-display text-section font-semibold text-ink">{t("ledger.decisions")}</h2>
 						<span className="shrink-0 font-mono text-[10px] text-ink-faint">{t("ledger.decisionsMeta")}</span>
@@ -182,7 +182,7 @@ export function LedgerPage({
 					{data.decisions.length === 0 ? (
 						<p className="mt-3 text-[11px] leading-5 text-ink-soft">{t("ledger.decisionsEmpty")}</p>
 					) : (
-						<ul className="mt-3 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
+						<ul className="mahua-scroll mt-3 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
 							{data.decisions
 								.slice()
 								.reverse()

@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { useTranslator, type Translate } from "../hooks/use-translator";
+import { WorkbenchNotice } from "./WorkbenchNotice";
 
 /**
  * 工作台的最后一道护栏。
@@ -42,23 +43,22 @@ class WorkbenchErrorBoundary extends Component<BoundaryProps, BoundaryState> {
 		if (!error) return this.props.children;
 
 		const t = this.props.translate;
+
 		return (
-			<div className="mahua-root flex h-full min-h-0 w-full flex-col items-center justify-center gap-2 px-8 text-center">
-				<span className="text-body-sm font-semibold text-ink">{t("window.crashed")}</span>
-				<span className="max-w-[520px] break-words text-[10px] leading-4 text-ink-soft">
-					{t("window.crashedHint")}
-				</span>
-				<span className="max-w-[520px] break-words rounded-control bg-well px-3 py-2 font-mono text-[10px] leading-4 text-ink-faint">
-					{error.message || String(error)}
-				</span>
-				<button
-					type="button"
-					onClick={this.retry}
-					className="mt-1 flex h-7 items-center rounded-control bg-cinnabar px-3 text-[10px] font-semibold text-canvas transition-colors hover:bg-cinnabar/88"
-				>
-					{t("window.crashedRetry")}
-				</button>
-			</div>
+			<WorkbenchNotice
+				title={t("window.crashed")}
+				hint={t("window.crashedHint")}
+				detail={error.message || String(error)}
+				action={
+					<button
+						type="button"
+						onClick={this.retry}
+						className="mt-1 flex h-7 items-center rounded-control bg-cinnabar px-3 text-[10px] font-semibold text-canvas transition-colors hover:bg-cinnabar/88"
+					>
+						{t("window.crashedRetry")}
+					</button>
+				}
+			/>
 		);
 	}
 }

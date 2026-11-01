@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { getStudioRuntime } from "../../../plugin-context.js";
+import { getStudioRuntime, type Translate } from "../../../plugin-context.js";
 
-export type Translate = (key: string, params?: Record<string, string | number>) => string;
+export type { Translate };
 
 /**
  * 视图唯一的翻译入口。

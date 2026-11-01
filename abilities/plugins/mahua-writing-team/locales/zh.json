@@ -511,6 +511,8 @@
 	"window.fullscreen": "全屏工作台",
 	"window.loading": "正在读项目…",
 	"window.retry": "重试",
+	"window.starting": "工作台还在启动",
+	"window.startingHint": "后台服务还没有就绪。如果一直停在这里，请到「能力」里重载插件，再重新打开这个面板。",
 	"worker.arbiter": "裁定者",
 	"worker.architect": "架构师",
 	"worker.editor": "编辑",

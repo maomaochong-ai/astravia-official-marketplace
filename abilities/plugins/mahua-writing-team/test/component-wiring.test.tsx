@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import en from "../locales/en.json";
 import zh from "../locales/zh.json";
 import type { StudioRuntime } from "../src/plugin-context.js";
-import { setStudioRuntime } from "../src/plugin-context.js";
+import { resetStudioRuntime, setStudioRuntime } from "../src/plugin-context.js";
 import { Cover } from "../src/features/workbench/components/shell/Cover.js";
 import { PhaseBadge } from "../src/features/workbench/components/shell/PhaseBadge.js";
 import { StudioMasthead } from "../src/features/workbench/components/shell/StudioMasthead.js";
@@ -41,7 +41,7 @@ function useCatalog(catalog: Catalog) {
 
 afterEach(() => {
 	cleanup();
-	setStudioRuntime(null);
+	resetStudioRuntime();
 	// 任何一次渲染都不许去取不存在的键。
 	expect(missing).toEqual([]);
 });

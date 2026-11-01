@@ -90,7 +90,7 @@ export function ActivationPage({ data, onNavigate }: { data: StudioState; onNavi
 		data.rejectedCredential && data.rejectedCredential.status !== "active" ? data.rejectedCredential : null;
 
 	return (
-		<div className="mahua-page mahua-scroll min-h-0 flex-1 overflow-y-auto">
+		<div className="mahua-page mahua-scroll overflow-y-auto">
 			<PageHeader
 				back={{ label: t("activation.back"), onBack: () => onNavigate("shelf") }}
 				title={t("activation.title")}

@@ -3,7 +3,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import en from "../locales/en.json";
 import type { StudioRuntime } from "../src/plugin-context.js";
-import { setStudioRuntime } from "../src/plugin-context.js";
+import { resetStudioRuntime, setStudioRuntime } from "../src/plugin-context.js";
 import { PanelOverlay } from "../src/features/workbench/components/PanelOverlay.js";
 import { WorkbenchBoundary } from "../src/features/workbench/components/WorkbenchBoundary.js";
 
@@ -16,7 +16,7 @@ function useCatalog(catalog: Catalog) {
 
 afterEach(() => {
 	cleanup();
-	setStudioRuntime(null);
+	resetStudioRuntime();
 	document.body.innerHTML = "";
 });
 

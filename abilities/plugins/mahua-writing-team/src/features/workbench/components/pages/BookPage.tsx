@@ -71,7 +71,7 @@ export function BookPage({
 
 	if (!book) {
 		return (
-			<div className="mahua-page flex min-h-0 flex-1 flex-col">
+			<div className="mahua-page">
 				<PageHeader title={t("page.book.title")} back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }} />
 				<EmptySheet icon="icon-[solar--notebook-bold]" title={t("library.empty")} />
 			</div>
@@ -97,7 +97,7 @@ export function BookPage({
 	const recent = [...book.checkpoints].slice(-5).reverse();
 
 	return (
-		<div className="mahua-page flex min-h-0 flex-1 flex-col">
+		<div className="mahua-page">
 			<PageHeader
 					back={{ label: t("book.back"), onBack: () => onNavigate("shelf") }}
 					title={book.title}
@@ -158,7 +158,7 @@ export function BookPage({
 
 				<section className="mahua-card p-4">
 					<div className="flex items-center gap-2">
-						<span className="text-micro-up font-semibold uppercase text-ink-faint">
+						<span className="mahua-eyebrow">
 							{t("book.arcProgress")}
 						</span>
 						<span className="min-w-0 truncate text-micro text-ink">
@@ -210,7 +210,7 @@ export function BookPage({
 
 					<div className="mt-3 rounded-panel bg-well p-3">
 						<div className="flex items-baseline gap-2">
-							<span className="text-micro-up font-semibold uppercase text-ink-faint">
+							<span className="mahua-eyebrow">
 								{t("book.activity")}
 							</span>
 							<span className="text-[10px] text-ink-faint">
@@ -248,7 +248,7 @@ export function BookPage({
 			<aside className="flex min-h-0 w-[366px] shrink-0 flex-col gap-3 @max-[1180px]:w-[300px] @max-[980px]:w-full @max-[980px]:shrink">
 				<section className="mahua-card flex min-h-0 flex-1 flex-col overflow-hidden">
 					<div className="flex items-baseline gap-2 px-4 pb-2 pt-3">
-						<span className="text-micro-up font-semibold uppercase text-ink-faint">
+						<span className="mahua-eyebrow">
 							{t("book.index")}
 						</span>
 						<span className="ml-auto font-mono text-[10px] text-ink-faint">

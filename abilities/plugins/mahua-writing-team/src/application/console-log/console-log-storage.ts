@@ -45,16 +45,17 @@ export function attachConsoleLogStorage(storage: PluginStorageApi): () => void {
 			() => undefined,
 		);
 
-	consoleLogStore.setSink((events) => {
+	const handler = (events: readonly ConsoleLogEvent[]): void => {
 		if (timer) return;
 		timer = setTimeout(() => {
 			timer = null;
 			void write(consoleLogStore.getSnapshot());
 		}, WRITE_DELAY_MS);
-	});
+	};
+	consoleLogStore.setSink(handler);
 
 	return () => {
-		consoleLogStore.setSink(null);
+		consoleLogStore.releaseSink(handler);
 		if (timer) {
 			clearTimeout(timer);
 			timer = null;

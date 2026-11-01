@@ -640,7 +640,16 @@ describe("the workbench frames stay honest about the domain", () => {
 		// 轮询到就位：只在启动那一刻看一眼，会让「宿主早于 activate 渲染」永久空白。
 		const retry = read("src/features/workbench/hooks/use-studio-runtime-ready.ts");
 		expect(retry).toContain("tryGetStudioRuntime()");
-		expect(retry).toContain("setInterval(");
+		expect(retry).toContain("setTimeout(");
+		// 久等不到不许沉默：骨架之后必须换成有字的等待页，而且仍在后台复查。
+		expect(retry).toContain('setStatus("stalled")');
+		expect(mount).toContain("window.starting");
+		// 每个出口各留一枚标记：面板整块空白时，这是唯一能查的证据。
+		expect(mount).toContain("data-mahua-state");
+		// 卸载只能拆自己装的那一份：宿主会给同一插件开多个能力会话，
+		// 先完成的那次 dispose 晚于后一次 activate，无条件清空会把新运行时抹掉。
+		expect(read("src/index.tsx")).toContain("clearStudioRuntime(");
+		expect(read("src/index.tsx")).not.toContain("setStudioRuntime(null)");
 		expect(read("src/features/workbench/components/WorkbenchSurface.tsx")).toContain(
 			"export function WorkbenchSurface",
 		);
