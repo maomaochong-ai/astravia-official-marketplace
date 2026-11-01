@@ -4,6 +4,7 @@ const registrations = {
   workspaceView: [] as Array<Record<string, unknown>>,
   activityTab: [] as Array<Record<string, unknown>>,
   inputAction: [] as Array<Record<string, unknown>>,
+  agentTool: [] as Array<Record<string, unknown>>,
 };
 
 vi.mock("../features/downloader/components/downloader-view", () => ({
@@ -28,6 +29,14 @@ function createContext() {
     permissions: { has: () => true },
     i18n: { t: (key: string) => key },
     services: {},
+    agent: {
+      registerTool: (input: Record<string, unknown>) => {
+        registrations.agentTool.push(input);
+        return { dispose: () => disposed.push("tool") };
+      },
+    },
+    conversation: { sendPrompt: async () => ({ status: "sent" }), insertText: () => undefined },
+    storage: {},
     ui: {
       notify,
       registerAbilityDetailSlot: (input: Record<string, unknown>) => {
@@ -58,6 +67,7 @@ describe("plugin activation surfaces", () => {
     registrations.workspaceView = [];
     registrations.activityTab = [];
     registrations.inputAction = [];
+    registrations.agentTool = [];
   });
 
   it("registers the queue as both a workspace view and an addable activity tab", async () => {
@@ -103,5 +113,16 @@ describe("plugin activation surfaces", () => {
 
     await dispose();
     expect(disposed).toEqual(expect.arrayContaining(["action", "tab", "view", "detail"]));
+  });
+
+  it("registers the reverse-direction resolve tool for the agent", async () => {
+    const { context } = createContext();
+    await plugin.activate(context as never);
+
+    const tool = registrations.agentTool[0];
+    expect(tool?.id).toBe("video_resolve");
+    // fail-closed in the host: an empty scope means the tool never activates.
+    expect(tool?.scope_use).toEqual(["conversation", "project"]);
+    expect((tool?.parameters as { required?: string[] })?.required).toEqual(["url"]);
   });
 });

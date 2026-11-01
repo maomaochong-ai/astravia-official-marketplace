@@ -37,7 +37,7 @@ export function DownloadTaskRow({ task, onCancel, onRetry, onRemove, onReveal }:
       : t(phaseLabelKey(task.phase));
 
   return (
-    <div className="group flex gap-3 py-3">
+    <div className="group flex gap-3 rounded-xl border border-border/60 bg-card px-3 py-2.5">
       <SiteMonogram site={task.site} url={task.url} size="sm" />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">

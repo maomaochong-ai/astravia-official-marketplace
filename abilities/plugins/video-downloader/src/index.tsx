@@ -11,6 +11,7 @@ import { ensureServiceStarted } from "./runtime";
 import type { ManagedPluginContext } from "./runtime-contract";
 import { ServiceStatusSlot } from "./features/connection/components/service-status-slot";
 import { DownloaderView } from "./features/downloader/components/downloader-view";
+import { registerVideoResolveTool } from "./agent/video-resolve-tool";
 import "./style.css";
 
 const ICON_CLASS = "icon-[solar--download-minimalistic-linear]";
@@ -67,6 +68,9 @@ export default definePlugin({
         })
       : null;
 
+    // Reverse direction: the agent resolves a link (and can queue it) without the panel driving.
+    const resolveTool = registerVideoResolveTool(context);
+
     // The host snapshots Agent MCP tools right after activation, so wait for the service
     // instead of returning early and racing that snapshot.
     try {
@@ -77,6 +81,7 @@ export default definePlugin({
 
     return () => {
       action?.dispose();
+      resolveTool?.dispose();
       tab.dispose();
       view.dispose();
       detail.dispose();

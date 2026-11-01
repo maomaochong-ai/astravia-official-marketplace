@@ -14,7 +14,7 @@ export type SiteCookie = "none" | "anonymous" | "session";
 export type SiteGroupKey = "global" | "china" | "screen" | "audio" | "live";
 
 /** Why the pinned engine cannot resolve a platform. Translated by the panel. */
-export type SiteReason = "engine-missing" | "upstream-broken" | "site-offline";
+export type SiteReason = "engine-missing" | "upstream-broken" | "site-offline" | "client-only";
 
 export interface SiteCapability {
   key: string;
@@ -76,6 +76,10 @@ export const SITE_CAPABILITIES: readonly SiteCapability[] = [
   // (it ships as a client-rendered shell) and `cache.m.iqiyi.com/jp/tmts` answers 502. The page
   // itself still exposes signed playlists to `window.playback`, so an Adapter can resolve it.
   { key: "iqiyi", label: "爱奇艺", group: "screen", hosts: ["iqiyi.com"], extractor: false, cookie: "none", reason: "upstream-broken" },
+  // The share link only opens a preview shell: the media is fetched by the WeChat client through
+  // its own JSAPI, and the page answers a browser visitor with "scan the QR code in WeChat". No
+  // stream URL exists in the page at all, so this is client-only rather than a broken extractor.
+  { key: "weixin-channels", label: "微信视频号", group: "china", hosts: ["weixin.qq.com", "channels.weixin.qq.com", "finder.video.qq.com"], extractor: false, cookie: "none", reason: "client-only" },
   { key: "qq-video", label: "腾讯视频", group: "screen", hosts: ["v.qq.com"], extractor: true, cookie: "none" },
   { key: "acfun", label: "AcFun", group: "screen", hosts: ["acfun.cn"], extractor: true, cookie: "none" },
   { key: "xinpianchang", label: "新片场", group: "screen", hosts: ["xinpianchang.com"], extractor: true, cookie: "none" },

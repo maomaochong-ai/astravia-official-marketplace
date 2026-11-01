@@ -20,6 +20,7 @@ import {
   firstYtdlpErrorLine,
 } from "../ytdlp/diagnostics.js";
 import { jsRuntimeArgs, proxyArgs } from "../ytdlp/engine-args.js";
+import { needsDirectRoute, proxyForUrl } from "../network/egress.js";
 import { flattenYtdlpEntries, normalizeYtdlpInfo } from "../ytdlp/normalize.js";
 import { YTDLP_VERSION, ytdlpBinaryName, ytdlpReleaseFor, ytdlpReleasePath } from "../ytdlp/ytdlp-release.js";
 import { YtdlpInstaller } from "../ytdlp/ytdlp-installer.js";
@@ -140,12 +141,34 @@ describe("yt-dlp engine arguments", () => {
     expect(proxyArgs("socks5://127.0.0.1:1080")).toEqual(["--proxy", "socks5://127.0.0.1:1080"]);
   });
 
-  it("disables the inherited proxy when a configured one is bypassed", () => {
+  it("disables the inherited proxy on a direct route", () => {
     // The OS proxy would otherwise still apply, and a foreign exit node makes domestic video
     // services drop the connection instead of serving the page.
     expect(proxyArgs("", true)).toEqual(["--proxy", ""]);
     expect(proxyArgs("   ", true)).toEqual(["--proxy", ""]);
     expect(proxyArgs("http://127.0.0.1:7897", true)).toEqual(["--proxy", "http://127.0.0.1:7897"]);
+  });
+
+  it("force-directs a domestic target even when no proxy is configured", () => {
+    // A user who only turns on a system-wide VPN never configures a proxy here, so the old
+    // `configured` flag was false and the engine inherited the VPN: every domestic platform
+    // failed with a geo block while the setting looked correct.
+    const settings = { proxy: "", proxyMode: "auto" as const };
+    expect(needsDirectRoute("https://www.iqiyi.com/v_1jm50v4hx7c.html", settings)).toBe(true);
+    expect(needsDirectRoute("https://www.youtube.com/watch?v=1", settings)).toBe(false);
+    expect(proxyArgs(proxyForUrl("https://www.bilibili.com/video/BV1", settings), needsDirectRoute("https://www.bilibili.com/video/BV1", settings))).toEqual([
+      "--proxy",
+      "",
+    ]);
+  });
+
+  it("leaves a foreign target on the configured proxy", () => {
+    const settings = { proxy: "http://127.0.0.1:7897", proxyMode: "auto" as const };
+    const url = "https://www.youtube.com/watch?v=1";
+    expect(proxyArgs(proxyForUrl(url, settings), needsDirectRoute(url, settings))).toEqual([
+      "--proxy",
+      "http://127.0.0.1:7897",
+    ]);
   });
 });
 

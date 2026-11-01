@@ -1,12 +1,13 @@
 # video-downloader 插件 ADR 索引
 
-这两份 ADR 记录「把 Tampermonkey 的页面内提取能力接进插件」这件事为什么这样做、为什么不做另外几种。
-它们都是**提议**状态：代码尚未落地，正文只代表 2026-11-01 的判断。
+这三份 ADR 记录「把 Tampermonkey 的页面内提取能力接进插件」这件事为什么这样做、为什么不做另外几种。
+0001 / 0002 是**提议**状态，正文只代表 2026-11-01 的判断；0003 已随 2.6.0 落地，并且超替 0001 §2 的「零内置站点脚本」。
 
 | ADR | 主题 | 状态 |
 | --- | --- | --- |
 | [0001](./0001-userscript-adapter-layer.md) | Adapter 层：解析路径三态化（`engine` / `adapter` / `direct`），Tampermonkey 20 个 GM API 只采纳 4 个 | 提议（2.5.0 目标） |
 | [0002](./0002-panel-information-architecture.md) | 面板三视图（Extract / Adapters / Settings）+ 状态分域，取代内联折叠 | 提议（2.5.0 目标） |
+| [0003](./0003-builtin-adapters-supersede-0001.md) | 三个内置只读适配器随插件发布，超替 0001 §2 的「零内置站点脚本」 | 已落地（2.6.0） |
 | [CONTEXT.md](./CONTEXT.md) | 术语表：Source URL、Media Item、Format、Extraction Path、Adapter、Coverage | 现行 |
 
 ## 读法

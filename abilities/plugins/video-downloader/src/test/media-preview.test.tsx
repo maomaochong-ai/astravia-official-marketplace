@@ -40,6 +40,11 @@ const item: MediaItem = {
 
 const previewProps = {
   items: [item],
+  preview: { loading: false, error: null, url: null, kind: null, retry: () => undefined },
+  canReplicate: true,
+  replicating: false,
+  onReplicate: () => undefined,
+
   activeIndex: 0,
   selectedFormatId: "1080",
   ffmpegAvailable: true,

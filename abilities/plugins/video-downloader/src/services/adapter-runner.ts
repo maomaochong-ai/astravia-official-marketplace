@@ -99,7 +99,7 @@ export async function runAdapter(
     }
     const extraction = normalizeExtraction(envelope.value);
     if (!extraction) {
-      throw new AdapterRunError("适配器没有给出可播地址", "directUrl 缺失或不是 http(s) 链接");
+      throw new AdapterRunError("适配器没有给出可播地址", "directUrl 缺失或不是 http(s) 链接，也没有标记 metadataOnly");
     }
     return { extraction, values: normalizeValues(envelope.values) };
   } catch (error) {

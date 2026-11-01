@@ -153,6 +153,21 @@ describe("adapter extraction", () => {
   });
 });
 
+describe("adapter selection", () => {
+  it("tries the site's own reader before a catch-all sniffer", () => {
+    const sniffer: Adapter = { ...ADAPTER, id: "sniff", meta: { ...ADAPTER.meta, name: "Sniffer", match: ["<all_urls>"] } };
+    const site: Adapter = { ...ADAPTER, id: "site", meta: { ...ADAPTER.meta, name: "Site", match: ["https://example.com/*"] } };
+    const maybe = matchingAdapters([sniffer, site], "https://example.com/watch");
+    expect(maybe.map((adapter) => adapter.id)).toEqual(["site", "sniff"]);
+    // A page the site reader does not claim still gets the sniffer.
+    expect(matchingAdapters([sniffer, site], "https://other.test/watch").map((adapter) => adapter.id)).toEqual(["sniff"]);
+  });
+
+  it("skips a disabled adapter even when it matches", () => {
+    expect(matchingAdapters([{ ...ADAPTER, enabled: false }], "https://example.com/watch")).toEqual([]);
+  });
+});
+
 describe("adapter values", () => {
   it("keeps a bounded snapshot and drops the rest", () => {
     expect(normalizeValues({ a: 1, b: "x" })).toEqual({ a: 1, b: "x" });

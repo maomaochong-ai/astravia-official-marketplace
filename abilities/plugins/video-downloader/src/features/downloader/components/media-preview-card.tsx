@@ -1,19 +1,25 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
 import { formatBytes, formatDuration } from "../../../domain/format-bytes";
 import type { MediaItem, ToolInstall } from "../../../domain/media-info";
+import type { PreviewController } from "../hooks/use-preview";
 import { siteLabel } from "../../../domain/site-catalog";
 import { SiteMonogram } from "../../../shared/components/site-monogram";
+import { MediaPlayer } from "./media-player";
 
 interface MediaPreviewCardProps {
   items: MediaItem[];
   activeIndex: number;
   selectedFormatId: string | null;
   ffmpegAvailable: boolean;
+  canReplicate: boolean;
+  replicating: boolean;
+  preview: PreviewController;
   ffmpegInstall: ToolInstall | null;
   ffmpegBusy: boolean;
   starting: boolean;
   onSelectItem(index: number): void;
   onSelectFormat(formatId: string): void;
+  onReplicate(): void;
   onStart(): void;
 }
 
@@ -23,8 +29,12 @@ export function MediaPreviewCard({
   selectedFormatId,
   ffmpegAvailable,
   ffmpegInstall,
+  preview,
   ffmpegBusy,
   starting,
+  canReplicate,
+  replicating,
+  onReplicate,
   onSelectItem,
   onSelectFormat,
   onStart,
@@ -62,7 +72,9 @@ export function MediaPreviewCard({
           <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">{item.title}</h3>
           <p className="mt-1 truncate text-[11px] text-muted-foreground">
             {siteLabel(item.site, item.sourceUrl, t("site.unknown"))} · {t(`kind.${item.kind}`)} ·{" "}
-            {t("preview.formatCount", { count: item.formats.length })}
+            {item.formats.length > 0
+              ? t("preview.formatCount", { count: item.formats.length })
+              : t("preview.metadataOnly")}
             {item.uploader ? ` · ${item.uploader}` : ""}
             {duration && !item.thumbnailUrl ? ` · ${duration}` : ""}
           </p>
@@ -81,6 +93,32 @@ export function MediaPreviewCard({
           </select>
         ) : null}
       </div>
+
+      {preview.url ? (
+        <div className="mt-3">
+          <MediaPlayer
+            url={preview.url}
+            kind={preview.kind}
+            poster={item.thumbnailUrl}
+            label={selected ? `${selected.quality} · ${selected.ext}` : item.title}
+            fullscreenLabel={t("preview.fullscreen")}
+          />
+        </div>
+      ) : preview.loading ? (
+        <div className="mt-3 flex h-24 items-center justify-center rounded-2xl border border-border bg-muted/40 text-[11px] text-muted-foreground">
+          {t("preview.preparing")}
+        </div>
+      ) : preview.error ? (
+        <div className="mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">{t("preview.unavailable")}</p>
+        </div>
+      ) : null}
+
+      {item.formats.length === 0 ? (
+        <p className="mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+          {t("preview.metadataNotice")}
+        </p>
+      ) : null}
 
       <div className="mt-3.5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {item.formats.map((format) => {
@@ -140,6 +178,21 @@ export function MediaPreviewCard({
             </p>
           )}
         </div>
+        {canReplicate ? (
+          <button
+            type="button"
+            disabled={replicating}
+            onClick={onReplicate}
+            title={t("chat.replicate.hint")}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+          >
+            <span
+              className={`${replicating ? "icon-[solar--refresh-linear] animate-spin" : "icon-[solar--magic-stick-3-linear]"} size-3.5`}
+              aria-hidden="true"
+            />
+            {t("action.replicate")}
+          </button>
+        ) : null}
         <button
           type="button"
           disabled={!selected || starting}

@@ -1,7 +1,13 @@
 # Adapter examples
 
 Every file here is a starting point you import into the panel (**Adapters → Import**). Nothing in
-this directory ships inside the plugin package: the runtime carries no site script of its own.
+this directory ships inside the plugin package; the three adapters that do ship are read-only and are
+listed in the panel with a `Built in` badge (`src/domain/builtin-adapters.ts`, decision record:
+[ADR 0003](../../../docs/adr/video-downloader/0003-builtin-adapters-supersede-0001.md)).
+
+> `iqiyi.example.json` is kept as a template and as the record of the extract point. Its job is done
+> by the built-in `iQIYI Player` adapter since 2.6.0, which walks the same `_mvInfo` tree without a
+> hand-imported file.
 
 An adapter is one function. It runs inside the target page, receives
 `{ url, document, window, fetch }`, and must resolve to `{ directUrl, title?, headers?, … }`.

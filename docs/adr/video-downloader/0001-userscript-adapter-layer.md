@@ -1,6 +1,7 @@
 # ADR 0001：把 Tampermonkey 的「页面内提取」收窄成 Adapter 层，解析路径三态化
 
 - 状态：提议（2026-11-01）
+- ⚠️ §2「插件不内置任何站点脚本」已由 [ADR 0003](./0003-builtin-adapters-supersede-0001.md) 超替（2.6.0 起随插件发布三个只读内置适配器）；其余章节仍然有效。
 - 决策对象：`abilities/plugins/video-downloader`（2.4.0 → 2.5.0）
 - 参照对象：Tampermonkey（Jan Biniok，GPLv3）`src/{parser,background,content,curtain,options,action,fire,notification}.js`、`src/cm/`、`i18n/`
 - 关联文档：[CONTEXT.md](./CONTEXT.md)（术语）、[ADR 0002](./0002-panel-information-architecture.md)（面板重构）、[hanshuang-pojia ADR 0002](../hanshuang-pojia/0002-external-process-bridge.md)（同一手法：先证明宿主通道存在，再决定取舍）

@@ -8,6 +8,7 @@ import type {
   ToolInstall,
 } from "../domain/media-info";
 import { normalizeCapabilities } from "../domain/capabilities";
+import type { PreviewOpenInput, PreviewSession } from "../domain/preview";
 import { SERVICE_ID } from "../plugin-ids";
 import type { ManagedPluginContext } from "../runtime-contract";
 
@@ -41,6 +42,10 @@ export interface DownloaderApi {
   revealTask(id: string): Promise<void>;
   settings(): Promise<ServiceSettings>;
   /** Coverage table the service derives from the pinned engine's extractor set. */
+  /** Loopback origin of this plugin's own service, used to build media URLs the panel can play. */
+  serviceBaseUrl(): Promise<string>;
+  previewOpen(input: PreviewOpenInput): Promise<PreviewSession>;
+  previewClose(key: string): Promise<void>;
   sites(): Promise<SiteCoverage>;
   saveSettings(patch: Partial<ServiceSettings>): Promise<ServiceSettings>;
 }
@@ -105,6 +110,20 @@ export function createDownloaderApi(ctx: ManagedPluginContext): DownloaderApi {
     revealTask: (id) => call<{ ok: boolean }>(`/api/v1/tasks/${id}/reveal`, { method: "POST" }).then(() => undefined),
 
     sites: () => call<SiteCoverage>("/api/v1/sites", { timeoutMs: 15_000 }),
+    serviceBaseUrl: async () => (await ctx.services.connection(SERVICE_ID)).baseUrl,
+
+    previewOpen: (input) =>
+      call<{ preview: PreviewSession }>("/api/v1/preview/open", {
+        method: "POST",
+        body: input,
+        timeoutMs: 30_000,
+      }).then((body) => body.preview),
+
+    previewClose: (key) =>
+      call<{ closed: boolean }>(`/api/v1/preview/${encodeURIComponent(key)}`, { method: "DELETE" }).then(
+        () => undefined,
+      ),
+
 
     settings: () => call<{ settings: ServiceSettings }>("/api/v1/settings").then((body) => body.settings),
 

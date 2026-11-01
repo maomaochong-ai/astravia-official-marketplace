@@ -9,7 +9,7 @@ import { codeOfYtdlpFailure, firstYtdlpErrorLine } from "../ytdlp/diagnostics.js
 import { cookieArgs, jsRuntimeArgs, proxyArgs } from "../ytdlp/engine-args.js";
 import { writeAnonymousCookieFile } from "../ytdlp/cookie-bootstrap.js";
 import { removeCookieFile, writeCookieFile } from "../ytdlp/cookies.js";
-import { proxyForUrl } from "../network/egress.js";
+import { needsDirectRoute, proxyForUrl } from "../network/egress.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import type { TaskStore } from "./task-store.js";
 import { ADAPTER_STREAM_ID, estimateRemaining, type DownloadTask } from "./types.js";
@@ -72,7 +72,7 @@ export function engineArguments(
   const target = adapter && task.directUrl ? task.directUrl : task.url;
   const args = ["--no-warnings", "--no-playlist", "--no-progress"];
   // Same engine flags as the probe: the stream id it resolved has to stay fetchable here.
-  args.push(...jsRuntimeArgs(), ...proxyArgs(proxyForUrl(target, settings), settings.proxy.trim() !== ""));
+  args.push(...jsRuntimeArgs(), ...proxyArgs(proxyForUrl(target, settings), needsDirectRoute(target, settings)));
   if (settings.multiThread) args.push("--concurrent-fragments", CONCURRENT_FRAGMENTS);
   args.push(...cookieArgs(cookieFile, settings.cookieBrowser));
   // The template lets the engine name the file; `moveProducedFiles` works on the directory.

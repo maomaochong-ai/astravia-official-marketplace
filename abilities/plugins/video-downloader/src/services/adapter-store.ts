@@ -1,5 +1,6 @@
 import type { PluginStorageApi } from "@astravia-org/plugin-sdk";
 import { adapterId, type Adapter, type AdapterGrant } from "../domain/adapter";
+import { BUILTIN_ADAPTERS, isBuiltinAdapter } from "../domain/builtin-adapters";
 
 const REGISTRY_PATH = "adapters/registry.json";
 const VALUES_PREFIX = "adapters/values/";
@@ -44,7 +45,12 @@ function asAdapter(value: unknown): Adapter | null {
 export class AdapterStore {
   constructor(private readonly storage: PluginStorageApi) {}
 
+  /** Built-ins first: they are always available and cannot be edited, removed or disabled. */
   async list(): Promise<Adapter[]> {
+    return [...BUILTIN_ADAPTERS, ...(await this.listUser())];
+  }
+
+  private async listUser(): Promise<Adapter[]> {
     const raw = await this.storage.readFile(REGISTRY_PATH, "utf8").catch(() => null);
     if (!raw) return [];
     try {
@@ -65,22 +71,26 @@ export class AdapterStore {
   }
 
   async upsert(adapter: Adapter): Promise<Adapter[]> {
-    const current = await this.list();
+    if (isBuiltinAdapter(adapter.id)) return this.list();
+    const current = await this.listUser();
     const next = current.some((entry) => entry.id === adapter.id)
       ? current.map((entry) => (entry.id === adapter.id ? adapter : entry))
       : [...current, adapter];
     await this.write(next);
-    return next;
+    return this.list();
   }
 
   async remove(id: string): Promise<Adapter[]> {
-    const next = (await this.list()).filter((entry) => entry.id !== id);
+    if (isBuiltinAdapter(id)) return this.list();
+    const next = (await this.listUser()).filter((entry) => entry.id !== id);
     await this.write(next);
     return next;
   }
 
   async setEnabled(id: string, enabled: boolean): Promise<Adapter[]> {
-    const next = (await this.list()).map((entry) => (entry.id === id ? { ...entry, enabled } : entry));
+    // A built-in adapter is part of the release; its enable state is not user data.
+    if (isBuiltinAdapter(id)) return this.list();
+    const next = (await this.listUser()).map((entry) => (entry.id === id ? { ...entry, enabled } : entry));
     await this.write(next);
     return next;
   }

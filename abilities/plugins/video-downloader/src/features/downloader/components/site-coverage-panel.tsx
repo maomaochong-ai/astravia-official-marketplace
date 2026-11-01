@@ -42,7 +42,7 @@ export function SiteCoveragePanel({
               {group.sites.map((site) => (
                 <span
                   key={site}
-                  className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[11px] text-foreground"
+                  className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-foreground"
                 >
                   {site}
                 </span>
@@ -53,7 +53,7 @@ export function SiteCoveragePanel({
       </div>
 
       {coverage.unsupported.length > 0 ? (
-        <div className="mt-3.5 border-t border-border pt-3">
+        <div className="mt-3.5 rounded-xl border border-border bg-background/60 p-3">
           <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {t("sites.unsupportedTitle")}
           </p>

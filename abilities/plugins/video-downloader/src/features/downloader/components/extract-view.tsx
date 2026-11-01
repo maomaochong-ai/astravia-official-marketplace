@@ -5,6 +5,9 @@ import type { ExtractController } from "../hooks/use-extract";
 import type { ServiceGate } from "../hooks/use-service-gate";
 import type { TaskQueue } from "../hooks/use-tasks";
 import type { AdapterController } from "../hooks/use-adapters";
+import { usePreview } from "../hooks/use-preview";
+import type { ReplicateController } from "../hooks/use-replicate";
+import type { DownloaderApi } from "../../../services/downloader-api";
 import { DownloadQueue } from "./download-queue";
 import { DownloaderEmptyState } from "./downloader-empty-state";
 import { MediaPreviewCard } from "./media-preview-card";
@@ -20,36 +23,46 @@ export function ExtractView({
   adapters,
   onOpenAdapters,
   onOpenSettings,
+  api,
+  replicate,
 }: {
   gate: ServiceGate;
   extract: ExtractController;
   tasks: TaskQueue;
   adapters: AdapterController;
+  api: DownloaderApi;
+  replicate: ReplicateController;
   onOpenAdapters(): void;
   onOpenSettings(section: "cookie" | "coverage"): void;
 }) {
   const { t } = useTranslation();
+  const activeItem = extract.result?.items[extract.activeItemIndex] ?? null;
+  const activeFormat = activeItem?.formats.find((format) => format.id === extract.selectedFormatId) ?? null;
+  const preview = usePreview(api, activeItem, activeFormat);
   const needsCookie = extract.probeErrorCode === "auth_required";
   const upstreamBroken = extract.probeErrorCode === "site_upstream_broken";
   const unsupported = extract.probeErrorCode === "site_unsupported";
-  const candidates = unsupported ? adapters.candidates(extract.url) : [];
+  // Computed for every address, not just the unsupported branch: a site the engine marks broken is
+  // exactly where an Adapter is the working path, and hiding the button there reads as "disabled".
+  const candidates = extract.url.trim() ? adapters.candidates(extract.url) : [];
   const probeError = failureMessageKey(extract.probeErrorCode);
 
+  // A missing cookie is the one fix the Adapter path cannot provide, so it stays first.
   const remedy = needsCookie
     ? { label: t("action.fillCookie"), run: () => onOpenSettings("cookie") }
-    : upstreamBroken
-      ? { label: t("action.coverage"), run: () => onOpenSettings("coverage") }
-      : candidates.length > 0
-        ? {
-            label: t("action.runAdapter"),
-            run: () => {
-              const adapter = candidates[0];
-              if (!adapter) return;
-              void adapters.run(adapter, extract.url).then((item) => {
-                if (item) extract.adoptItem(item);
-              });
-            },
-          }
+    : candidates.length > 0
+      ? {
+          label: t("action.runAdapter"),
+          run: () => {
+            const adapter = candidates[0];
+            if (!adapter) return;
+            void adapters.run(adapter, extract.url).then((item) => {
+              if (item) extract.adoptItem(item);
+            });
+          },
+        }
+      : upstreamBroken
+        ? { label: t("action.coverage"), run: () => onOpenSettings("coverage") }
         : unsupported
           ? { label: t("action.openAdapters"), run: onOpenAdapters }
           : undefined;
@@ -69,12 +82,43 @@ export function ExtractView({
         />
       </div>
 
+      {candidates.length > 0 && !extract.probing ? (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">{t("extract.adapterHint")}</span>
+          {candidates.map((adapter) => (
+            <button
+              key={adapter.id}
+              type="button"
+              disabled={Boolean(gate.bootError) || adapters.runningId !== null}
+              onClick={() => {
+                void adapters.run(adapter, extract.url).then((item) => {
+                  if (item) extract.adoptItem(item);
+                });
+              }}
+              className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-2.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span
+                className={`icon-[solar--magic-stick-3-linear] size-3 ${adapters.runningId === adapter.id ? "animate-pulse" : ""}`}
+                aria-hidden="true"
+              />
+              {adapter.meta.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {extract.result ? (
         <MediaPreviewCard
           items={extract.result.items}
           activeIndex={extract.activeItemIndex}
           selectedFormatId={extract.selectedFormatId}
           ffmpegAvailable={toolCapability(gate.capabilities, "ffmpeg").available}
+          preview={preview}
+          canReplicate={replicate.available}
+          replicating={replicate.sending}
+          onReplicate={() => {
+            if (activeItem) void replicate.send(activeItem, activeFormat);
+          }}
           ffmpegInstall={gate.ffmpegInstall}
           ffmpegBusy={gate.ffmpegBusy}
           starting={extract.starting}

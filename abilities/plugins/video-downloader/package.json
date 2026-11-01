@@ -1,6 +1,6 @@
 {
   "name": "@astravia-marketplace/video-downloader",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,9 @@
     "pretest": "npm --prefix service ci --ignore-scripts",
     "package:service": "node scripts/package-service.mjs"
   },
-  "dependencies": {},
+  "dependencies": {
+    "hls.js": "^1.7.4"
+  },
   "devDependencies": {
     "@astravia-org/plugin-sdk": "^0.3.2",
     "@astravia-org/plugin-vite": "^0.2.0",

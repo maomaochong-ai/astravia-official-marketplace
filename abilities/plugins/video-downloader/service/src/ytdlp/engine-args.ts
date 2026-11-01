@@ -28,15 +28,16 @@ export function jsRuntimeArgs(execPath: string = process.execPath): string[] {
 /**
  * `--proxy` for every engine request.
  *
- * `configured` says whether the user has a proxy at all. When they do but this request must take
- * the direct route (a domestic platform under `proxyMode: auto`), the empty value is passed
- * explicitly: without it the engine inherits the OS proxy and the direct route never happens. A
- * foreign exit node makes licensed video services drop the connection outright.
+ * `direct` says this request must not use a proxy at all. The empty value is then passed
+ * explicitly: without it the engine inherits whatever proxy the OS advertises through
+ * `HTTPS_PROXY`, so a user who merely turns on a system VPN loses every domestic platform even
+ * though the plugin already decided this target should go direct. A foreign exit node makes
+ * licensed video services drop the connection outright.
  */
-export function proxyArgs(proxy: string, configured = false): string[] {
+export function proxyArgs(proxy: string, direct = false): string[] {
   const trimmed = proxy.trim();
   if (trimmed) return ["--proxy", trimmed];
-  return configured ? ["--proxy", ""] : [];
+  return direct ? ["--proxy", ""] : [];
 }
 
 /**

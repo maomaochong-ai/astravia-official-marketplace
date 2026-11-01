@@ -9,6 +9,7 @@ import { useExtract } from "../hooks/use-extract";
 import { useServiceGate } from "../hooks/use-service-gate";
 import { useSettings } from "../hooks/use-settings";
 import { useTasks } from "../hooks/use-tasks";
+import { useReplicate } from "../hooks/use-replicate";
 import { AdaptersView } from "./adapters-view";
 import { ExtractView } from "./extract-view";
 import { SettingsView, type SettingsSection } from "./settings-view";
@@ -42,10 +43,16 @@ export function DownloaderView({
   const [view, setView] = useState<ViewKey>("extract");
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("preferences");
 
+  const replicate = useReplicate(ctx);
   const extract = useExtract(ctx, api, {
     ensureTool: gate.ensureTool,
     blocked: adapters.runningId !== null,
     onTaskCreated: tasks.reload,
+    resolveWithAdapter: async (target) => {
+      const adapter = adapters.candidates(target).find((entry) => entry.enabled);
+      if (!adapter || !adapters.available) return null;
+      return adapters.run(adapter, target);
+    },
   });
 
   const ffmpegAvailable = toolCapability(gate.capabilities, "ffmpeg").available;
@@ -160,6 +167,8 @@ export function DownloaderView({
                 extract={extract}
                 tasks={tasks}
                 adapters={adapters}
+                api={api}
+                replicate={replicate}
                 onOpenAdapters={openAdapters}
                 onOpenSettings={(section) => openSettings(section)}
               />

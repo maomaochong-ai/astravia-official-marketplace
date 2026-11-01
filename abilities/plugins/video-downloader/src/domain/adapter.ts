@@ -24,12 +24,15 @@ export interface Adapter {
    * and must resolve to an `AdapterExtraction`.
    */
   body: string;
+  /** True for the adapters that ship with the plugin; they cannot be edited or removed. */
+  builtin?: boolean;
   enabled: boolean;
   /** Epoch millis of the last import or edit. */
   updatedAt: number;
 }
 
 export interface AdapterExtraction {
+  /** Empty when `metadataOnly` is set: the page exposed no playable address. */
   directUrl: string;
   title?: string;
   thumbnailUrl?: string;
@@ -40,6 +43,12 @@ export interface AdapterExtraction {
   /** Human readable rendition, e.g. `1080P`. */
   quality?: string;
   headers?: Record<string, string>;
+  /**
+   * The site hands its stream only to its own client. The item still carries what the page does
+   * expose (title, author, cover), so it can be shown and copied into a conversation, but it has no
+   * format to download and the panel must not pretend otherwise.
+   */
+  metadataOnly?: boolean;
 }
 
 export interface AdapterRunResult {
@@ -147,8 +156,16 @@ export function adapterMatchesUrl(adapter: Adapter, url: string): boolean {
   });
 }
 
+/** `<all_urls>` accepts every page, so an adapter matching one is the fallback, not the first choice. */
+function isCatchAll(adapter: Adapter): boolean {
+  return adapter.meta.match.length === 1 && adapter.meta.match[0]?.trim() === "<all_urls>";
+}
+
 export function matchingAdapters(adapters: Adapter[], url: string): Adapter[] {
-  return adapters.filter((adapter) => adapter.enabled && adapterMatchesUrl(adapter, url));
+  const matched = adapters.filter((adapter) => adapter.enabled && adapterMatchesUrl(adapter, url));
+  // Site-specific first: a sniffer that runs before the site's own reader returns a worse address
+  // (a preview stream, or nothing at all) and the better one never gets a turn.
+  return matched.sort((left, right) => Number(isCatchAll(left)) - Number(isCatchAll(right)));
 }
 
 function safeHeaders(value: unknown): Record<string, string> {
@@ -176,11 +193,15 @@ export function normalizeExtraction(value: unknown): AdapterExtraction | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   const directUrl = asText(record.directUrl);
-  if (!isHttpUrl(directUrl)) return null;
+  // A metadata-only run succeeds without an address: it still has to carry a title to show.
+  const metadataOnly = record.metadataOnly === true && !isHttpUrl(directUrl);
+  if (!metadataOnly && !isHttpUrl(directUrl)) return null;
+  if (metadataOnly && !asText(record.title)) return null;
   const duration = typeof record.durationSeconds === "number" && Number.isFinite(record.durationSeconds)
     ? Math.max(0, record.durationSeconds)
     : 0;
   return {
+    metadataOnly: metadataOnly || undefined,
     directUrl,
     title: asText(record.title) || undefined,
     thumbnailUrl: isHttpUrl(asText(record.thumbnailUrl)) ? asText(record.thumbnailUrl) : undefined,
@@ -193,6 +214,7 @@ export function normalizeExtraction(value: unknown): AdapterExtraction | null {
 }
 
 export function adapterToItem(adapter: Adapter, sourceUrl: string, extraction: AdapterExtraction): MediaItem {
+  const metadataOnly = extraction.metadataOnly === true;
   const ext = extraction.ext || "mp4";
   const needsFfmpeg = needsFfmpegFor(extraction.directUrl);
   return {
@@ -201,21 +223,24 @@ export function adapterToItem(adapter: Adapter, sourceUrl: string, extraction: A
     site: adapter.meta.name,
     title: extraction.title || sourceUrl,
     kind: "video",
-    formats: [
-      {
-        id: ADAPTER_STREAM_ID,
-        label: extraction.quality || ext.toUpperCase(),
-        quality: extraction.quality || "",
-        ext,
-        sizeBytes: 0,
-        partCount: 1,
-        needsFfmpeg,
-        kind: "video",
-        directUrl: extraction.directUrl,
-        headers: extraction.headers,
-      },
-    ],
-    recommendedFormatId: ADAPTER_STREAM_ID,
+    // A metadata-only item has nothing to fetch: the download button keys off this list.
+    formats: metadataOnly
+      ? []
+      : [
+          {
+            id: ADAPTER_STREAM_ID,
+            label: extraction.quality || ext.toUpperCase(),
+            quality: extraction.quality || "",
+            ext,
+            sizeBytes: 0,
+            partCount: 1,
+            needsFfmpeg,
+            kind: "video",
+            directUrl: extraction.directUrl,
+            headers: extraction.headers,
+          },
+        ],
+    recommendedFormatId: metadataOnly ? null : ADAPTER_STREAM_ID,
     thumbnailUrl: extraction.thumbnailUrl || "",
     durationSeconds: extraction.durationSeconds || 0,
     uploader: extraction.uploader || "",

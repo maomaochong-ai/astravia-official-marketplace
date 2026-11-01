@@ -59,7 +59,7 @@ export interface SiteGroupCoverage {
 /** What the pinned engine cannot resolve, so the panel can explain the failure as a site fact. */
 export interface UnsupportedSite {
   label: string;
-  reason: "engine-missing" | "upstream-broken" | "site-offline";
+  reason: "engine-missing" | "upstream-broken" | "site-offline" | "client-only";
 }
 
 export interface SiteCoverage {

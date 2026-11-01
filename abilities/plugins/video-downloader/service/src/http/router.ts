@@ -6,9 +6,18 @@ import { callTool, MCP_TOOLS } from "../mcp/tool-catalog.js";
 import { isHttpUrl, type ServiceContext } from "../service-context.js";
 import type { ServiceSettings } from "../settings/settings-store.js";
 import { SERVICE_VERSION } from "../version.js";
+import { PreviewProxy } from "../preview/preview-proxy.js";
 
 const BODY_LIMIT_BYTES = 1024 * 1024;
 
+
+// The panel plays these routes from a different origin than the loopback service, and hls.js reads
+// both the playlist and the segments with fetch, so every preview response has to be readable.
+const PREVIEW_CORS: Record<string, string> = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "range",
+  "access-control-expose-headers": "content-type, content-length, content-range, accept-ranges",
+};
 interface JsonBody {
   [key: string]: unknown;
 }
@@ -91,6 +100,8 @@ function mcpText(id: unknown, text: string, isError = false): unknown {
 }
 
 export function createRouter(context: ServiceContext) {
+  // One proxy per service process: a preview session only lives as long as the player using it.
+  const preview = new PreviewProxy();
   const server = createServer((request, response) => {
     void route(request, response).catch((error: unknown) => {
       if (response.headersSent) {
@@ -344,6 +355,49 @@ export function createRouter(context: ServiceContext) {
       }
       sendJson(response, 200, { jsonrpc: "2.0", id, error: { code: -32601, message: "Unsupported MCP method" } });
       return;
+    }
+
+    if (method === "POST" && path === "/api/v1/preview/open") {
+      const body = await readJsonBody(request);
+      const target = asString(body.url);
+      if (!isHttpUrl(target)) {
+        sendError(response, 400, "invalid_url", "请输入以 http:// 或 https:// 开头的链接");
+        return;
+      }
+      const opened = await preview.open(target, asHeaders(body.headers));
+      sendJson(response, 201, { preview: opened });
+      return;
+    }
+
+    const previewMatch = /^\/api\/v1\/preview\/([^/]+)(\/index\.m3u8|\/media)?$/u.exec(path);
+    if (previewMatch && method === "OPTIONS") {
+      response.writeHead(204, { ...PREVIEW_CORS, "access-control-max-age": "600" });
+      response.end();
+      return;
+    }
+    if (previewMatch) {
+      const previewKey = decodeURIComponent(previewMatch[1] ?? "");
+      const previewAction = previewMatch[2] ?? "";
+      if (method === "GET" && previewAction === "/index.m3u8") {
+        const playlist = await preview.playlist(previewKey);
+        response.writeHead(200, {
+          ...PREVIEW_CORS,
+          "content-type": "application/vnd.apple.mpegurl; charset=utf-8",
+          "cache-control": "no-store",
+        });
+        response.end(playlist);
+        return;
+      }
+      if (method === "GET" && previewAction === "/media") {
+        // writeHead merges these with the passthrough headers the proxy sets; both are needed.
+        for (const [name, value] of Object.entries(PREVIEW_CORS)) response.setHeader(name, value);
+        await preview.proxyMedia(previewKey, url.searchParams.get("u") ?? "", request, response);
+        return;
+      }
+      if (method === "DELETE" && !previewAction) {
+        sendJson(response, 200, { closed: preview.close(previewKey) });
+        return;
+      }
     }
 
     sendError(response, 404, "not_found", "未知接口");

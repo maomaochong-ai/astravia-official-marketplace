@@ -102,7 +102,9 @@ export function useAdapters(ctx: ManagedPluginContext): AdapterController {
         adapterId: adapter.id,
         name: adapter.meta.name,
         ok: true,
-        message: result.extraction.quality || result.extraction.ext || "mp4",
+        message: result.extraction.metadataOnly
+          ? ctx.i18n.t("adapter.metadataOnly")
+          : result.extraction.quality || result.extraction.ext || "mp4",
         at: Date.now(),
       });
       return item;

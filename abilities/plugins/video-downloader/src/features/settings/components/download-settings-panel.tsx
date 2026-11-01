@@ -55,6 +55,11 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+/** One settings cluster: rounded blocks instead of hairline dividers, so a group reads as a unit. */
+function Group({ children }: { children: ReactNode }) {
+  return <div className="rounded-lg border border-border/60 bg-background/40 px-3">{children}</div>;
+}
+
 /** One line of the toolchain list: what is ready, and how far its download has come. */
 function ToolRow({ caption, detail, available }: { caption: string; detail?: string; available: boolean }) {
   return (
@@ -126,7 +131,8 @@ export function DownloadSettingsPanel({
   }
 
   return (
-    <section className="mt-4 rounded-xl border border-border bg-card px-4 py-2">
+    <section className="mt-4 space-y-1.5 rounded-xl border border-border bg-card p-2">
+      <Group>
       <Field label={t("settings.directory")} hint={t("settings.directoryHint")}>
         <input
           value={directory}
@@ -138,8 +144,8 @@ export function DownloadSettingsPanel({
           className="h-7 w-64 rounded-md border border-border bg-background px-2 text-[11px] text-foreground outline-none focus:border-primary/60"
         />
       </Field>
-
-      <div className="border-t border-border" />
+      </Group>
+      <Group>
 
       <Field label={t("settings.concurrent")} hint={t("settings.concurrentHint")}>
         <div className="flex gap-1">
@@ -159,8 +165,9 @@ export function DownloadSettingsPanel({
           ))}
         </div>
       </Field>
+      </Group>
 
-      <div className="border-t border-border" />
+      <Group>
 
       <Field label={t("settings.multiThread")} hint={t("settings.multiThreadHint")}>
         <Switch
@@ -169,8 +176,9 @@ export function DownloadSettingsPanel({
           onChange={(value) => onSave({ multiThread: value })}
         />
       </Field>
+      </Group>
 
-      <div className="border-t border-border" />
+      <Group>
 
       <Field label={t("settings.keepPartial")} hint={t("settings.keepPartialHint")}>
         <Switch
@@ -179,8 +187,9 @@ export function DownloadSettingsPanel({
           onChange={(value) => onSave({ keepPartialFiles: value })}
         />
       </Field>
+      </Group>
 
-      <div className="border-t border-border" />
+      <Group>
 
       <Field label={t("settings.cookie")} hint={t("settings.cookieHint")}>
         <textarea
@@ -196,8 +205,9 @@ export function DownloadSettingsPanel({
           className="w-64 resize-none rounded-md border border-border bg-background px-2 py-1 font-mono text-[11px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
         />
       </Field>
+      </Group>
 
-      <div className="border-t border-border" />
+      <Group>
 
       <Field label={t("settings.proxy")} hint={t("settings.proxyHint")}>
         <input
@@ -211,8 +221,9 @@ export function DownloadSettingsPanel({
           className="h-7 w-64 rounded-md border border-border bg-background px-2 font-mono text-[11px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/60"
         />
       </Field>
+      </Group>
 
-      <div className="border-t border-border" />
+      <Group>
 
       <Field label={t("settings.proxyMode")} hint={t("settings.proxyModeHint")}>
         <div className="flex gap-1">
@@ -233,8 +244,9 @@ export function DownloadSettingsPanel({
           ))}
         </div>
       </Field>
+      </Group>
 
-      <div className="border-t border-border" />
+      <Group>
 
       <Field label={t("settings.cookieBrowser")} hint={t("settings.cookieBrowserHint")}>
         <select
@@ -250,8 +262,9 @@ export function DownloadSettingsPanel({
           ))}
         </select>
       </Field>
+      </Group>
 
-      <div className="border-t border-border" />
+      <Group>
 
       <div className="flex items-start justify-between gap-4 py-2.5">
         <div className="min-w-0">
@@ -291,6 +304,7 @@ export function DownloadSettingsPanel({
           </button>
         </div>
       </div>
+      </Group>
     </section>
   );
 }

@@ -54,23 +54,27 @@ export function ServiceStatusSlot({ ctx }: { ctx: ManagedPluginContext }) {
   }, []);
 
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-2">
-      <StatusRow label={t("status.engine")} available={ytdlp.available} version={ytdlp.version} preparing />
-      <div className="border-t border-border" />
-      <StatusRow label="ffmpeg" available={ffmpeg.available} version={ffmpeg.version} preparing />
-      <div className="border-t border-border" />
-      <p className="py-2 text-[11px] leading-relaxed text-muted-foreground">
-        {error ?? (ffmpeg.available ? t("status.ffmpegReadyHint") : t("status.ffmpegMissingHint"))}
-      </p>
-      <div className="flex justify-end pb-2">
-        <button
-          type="button"
-          onClick={() => void load(true)}
-          className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
-          {t("settings.refresh")}
-        </button>
+    <div className="space-y-1.5 rounded-xl border border-border bg-card p-2">
+      <div className="rounded-lg border border-border/60 bg-background/40 px-3">
+        <StatusRow label={t("status.engine")} available={ytdlp.available} version={ytdlp.version} preparing />
+      </div>
+      <div className="rounded-lg border border-border/60 bg-background/40 px-3">
+        <StatusRow label="ffmpeg" available={ffmpeg.available} version={ffmpeg.version} preparing />
+      </div>
+      <div className="rounded-lg border border-border/60 bg-background/40 px-3">
+        <p className="py-2 text-[11px] leading-relaxed text-muted-foreground">
+          {error ?? (ffmpeg.available ? t("status.ffmpegReadyHint") : t("status.ffmpegMissingHint"))}
+        </p>
+        <div className="flex justify-end pb-2">
+          <button
+            type="button"
+            onClick={() => void load(true)}
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
+            {t("settings.refresh")}
+          </button>
+        </div>
       </div>
     </div>
   );

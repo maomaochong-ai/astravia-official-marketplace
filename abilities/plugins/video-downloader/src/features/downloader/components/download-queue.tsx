@@ -22,7 +22,7 @@ export function DownloadQueue({ tasks, onCancel, onRetry, onRemove, onReveal }: 
         <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{t("queue.title")}</h2>
         <span className="text-[11px] tabular-nums text-muted-foreground">{tasks.length}</span>
       </div>
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1.5 space-y-1.5">
         {ordered.map((task) => (
           <DownloadTaskRow
             key={task.id}

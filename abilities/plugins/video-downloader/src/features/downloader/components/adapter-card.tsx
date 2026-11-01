@@ -24,6 +24,10 @@ export function AdapterCard({
   onRemove(): void;
 }) {
   const { t } = useTranslation();
+  // Built-in adapters store an i18n key ("%key%") because they are shown in both languages;
+  // a user-authored adapter keeps its literal text.
+  const description = adapter.meta.description;
+  const descriptionText = description?.startsWith("%") ? t(description.replace(/^%|%$/gu, "")) : description;
   const [confirming, setConfirming] = useState(false);
 
   return (
@@ -35,12 +39,18 @@ export function AdapterCard({
             <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
               {adapter.meta.version}
             </span>
+            {adapter.builtin ? (
+              <span className="shrink-0 rounded border border-primary/40 px-1.5 py-0.5 text-[10px] text-primary">
+                {t("adapter.builtin")}
+              </span>
+            ) : null}
           </div>
           {adapter.meta.description ? (
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{adapter.meta.description}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{descriptionText}</p>
           ) : null}
           <p className="mt-1.5 truncate font-mono text-[10px] text-muted-foreground">{adapter.meta.match.join("  ")}</p>
         </div>
+        {adapter.builtin ? null : (
         <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
           <input
             type="checkbox"
@@ -50,6 +60,7 @@ export function AdapterCard({
           />
           {t("adapter.enabled")}
         </label>
+        )}
       </div>
 
       <div className="mt-3 flex items-center gap-1.5">
@@ -62,6 +73,7 @@ export function AdapterCard({
           <span className={`icon-[solar--play-linear] size-3 ${running ? "animate-pulse" : ""}`} aria-hidden="true" />
           {running ? t("adapter.running") : t("action.runAdapter")}
         </button>
+        {adapter.builtin ? null : (
         <button
           type="button"
           onClick={onEdit}
@@ -70,7 +82,8 @@ export function AdapterCard({
           <span className="icon-[solar--pen-linear] size-3" aria-hidden="true" />
           {t("action.edit")}
         </button>
-        {confirming ? (
+        )}
+        {adapter.builtin ? null : confirming ? (
           <button
             type="button"
             onClick={onRemove}

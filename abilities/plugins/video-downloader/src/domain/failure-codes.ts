@@ -13,6 +13,7 @@ const FAILURE_MESSAGE_KEYS: Record<string, string> = {
   site_unsupported: "error.siteUnsupported",
   site_upstream_broken: "error.siteUpstreamBroken",
   site_offline: "error.siteOffline",
+  site_client_only: "error.siteClientOnly",
 };
 
 export function failureMessageKey(code: string | null | undefined): string | null {

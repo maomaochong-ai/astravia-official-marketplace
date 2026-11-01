@@ -16,7 +16,7 @@ import { probeWithYtdlp } from "./ytdlp/probe.js";
 import { removeCookieFile, writeCookieFile } from "./ytdlp/cookies.js";
 import { YtdlpInstaller, type YtdlpInstallState } from "./ytdlp/ytdlp-installer.js";
 import { capabilityForUrl, isDirectMediaUrl, type SiteCapability, type SiteReason } from "./media/site-capabilities.js";
-import { proxyForUrl } from "./network/egress.js";
+import { needsDirectRoute, proxyForUrl } from "./network/egress.js";
 import { writeAnonymousCookieFile } from "./ytdlp/cookie-bootstrap.js";
 
 export interface ProbeSummary {
@@ -59,6 +59,7 @@ function enrichFailure(failure: string | null, code: string | null, capability: 
 export function unsupportedCode(reason: SiteReason | undefined): string {
   if (reason === "upstream-broken") return "site_upstream_broken";
   if (reason === "site-offline") return "site_offline";
+  if (reason === "client-only") return "site_client_only";
   return "site_unsupported";
 }
 
@@ -66,6 +67,8 @@ export function unsupportedCode(reason: SiteReason | undefined): string {
 function unsupportedMessage(label: string, reason: SiteReason | undefined): string {
   if (reason === "upstream-broken") return `${label}的解析器在上游被标记为已知损坏，暂时无法解析`;
   if (reason === "site-offline") return `${label}的站点服务不可达，暂时无法解析`;
+  if (reason === "client-only")
+    return `${label}的播放地址只由其客户端下发，网页端只能取到标题、作者与封面`;
   return `${label}没有可用的解析器，暂时无法下载`;
 }
 
@@ -214,7 +217,7 @@ export class ServiceContext {
         cookieFile,
         cookieBrowser: settings.cookieBrowser,
         proxy: proxyForUrl(url, settings),
-        proxyConfigured: settings.proxy.trim() !== "",
+        direct: needsDirectRoute(url, settings),
       });
       return {
         items: outcome.items,

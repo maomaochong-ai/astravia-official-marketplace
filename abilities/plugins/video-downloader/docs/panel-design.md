@@ -93,3 +93,25 @@ The panel deliberately lists unsupported platforms. A picker that silently omits
 reads as "we forgot", while a row saying `engine has no extractor` answers the question
 the user actually has, and the direct-link hint underneath gives them a way forward.
 
+## Grouping without rules (2.6.0)
+
+Settings rows and results used to be separated by hairline `border-t` dividers. A line answers
+"where does this end" but not "what belongs together", and with nine settings a page of rules reads
+as one long form. Each cluster is now its own rounded block instead: an outer
+`rounded-xl border border-border bg-card p-2` with `space-y-1.5`, and inner groups on
+`rounded-lg border border-border/60 bg-background/40`. The same shape carries the coverage panel,
+the service status slot, the adapter cards and the download queue (one rounded row per task, no
+`divide-y`). Site names are pills (`rounded-full`) because they are labels, not sections.
+
+## Play, then decide (2.6.0)
+
+The preview card used to be a still frame plus a download button. It now opens a real player, and
+the download button is no longer the first thing the eye lands on: a player confirms what the file is
+before anything is written to disk, which is the same order Stacher and Downie put the user in.
+Fullscreen is a button on the player, not a separate route. When a run produced metadata only (the
+Channels share page), the player is replaced by an explanation and the download button is disabled —
+a dead button with no reason is the one thing the card must never show.
+
+`Replicate` sits next to download and hands the observed facts to the conversation, so the user can
+ask for something the panel cannot do (a subtitle track, a different episode) without retyping a
+single value.

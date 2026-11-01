@@ -12,6 +12,12 @@ export interface ExtractOptions {
   /** True while an Adapter run owns the offscreen page; the two paths never run together. */
   blocked: boolean;
   onTaskCreated(): Promise<void>;
+  /**
+   * Last resort when the engine returns nothing: run a matching Adapter in the offscreen page.
+   * The Extract view is the only place a user asks for a link to be resolved, so a site that the
+   * engine cannot read must not require a detour through another tab to still produce a result.
+   */
+  resolveWithAdapter?(url: string): Promise<MediaItem | null>;
 }
 
 /**
@@ -73,6 +79,15 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
     setSelectedFormatId(first?.recommendedFormatId ?? first?.formats[0]?.id ?? null);
   }
 
+  function adoptItem(item: MediaItem): void {
+    setProbing(false);
+    setResult({ items: [item], failure: null, failureCode: null, elapsedMs: 0 });
+    setActiveItemIndex(0);
+    setSelectedFormatId(item.recommendedFormatId ?? item.formats[0]?.id ?? null);
+    setProbeError(null);
+    setProbeErrorCode(null);
+  }
+
   async function analyze(): Promise<void> {
     if (options.blocked) return;
     // A pasted share message wraps the link in prose, so the target is extracted first and
@@ -90,12 +105,17 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
     setProbeError(null);
     setProbeErrorCode(null);
     try {
-      const probed = await api.probe(target);
+      let probed = await api.probe(target);
       if (!probed.items.length && probed.failureCode === ENGINE_PREPARING) {
         // First run on a fresh install: wait for the engine the service is fetching, then look
         // once more. A second `engine_preparing` is surfaced as an error instead of looping.
-        if (await options.ensureTool("ytdlp")) {
-          applyProbeResult(await api.probe(target));
+        if (await options.ensureTool("ytdlp")) probed = await api.probe(target);
+      }
+      if (!probed.items.length && probed.failureCode !== ENGINE_PREPARING) {
+        const adopted = await options.resolveWithAdapter?.(target).catch(() => null) ?? null;
+        if (adopted) {
+          adoptItem(adopted);
+          setProbing(false);
           return;
         }
       }
@@ -199,12 +219,6 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
     selectItem,
     selectFormat: setSelectedFormatId,
     startDownload,
-    adoptItem: (item) => {
-      setResult({ items: [item], failure: null, failureCode: null, elapsedMs: 0 });
-      setActiveItemIndex(0);
-      setSelectedFormatId(item.recommendedFormatId ?? item.formats[0]?.id ?? null);
-      setProbeError(null);
-      setProbeErrorCode(null);
-    },
+    adoptItem,
   };
 }

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { isDomesticHost, isDomesticUrl } from "../network/domestic-hosts.js";
-import { proxyForUrl } from "../network/egress.js";
+import { needsDirectRoute, proxyForUrl } from "../network/egress.js";
 import { capabilityForUrl, isDirectMediaUrl, siteGroups, supportedSiteLabels, unsupportedSites } from "../media/site-capabilities.js";
 import { unsupportedCode } from "../service-context.js";
 import { ttwidSuffixFor, writeAnonymousCookieFile } from "../ytdlp/cookie-bootstrap.js";
@@ -37,6 +37,16 @@ describe("egress routing", () => {
     // The media itself comes off a CDN the extractor never names in advance.
     expect(isDomesticUrl("https://upos-sz-mirrorcos.bilivideo.com/x.flv")).toBe(true);
     expect(isDomesticUrl("https://v3-web.douyinvod.com/x.mp4")).toBe(true);
+  });
+
+  it("force-directs a domestic target even with no proxy configured", () => {
+    // The user only turned on a system-wide VPN: the plugin sees no proxy but the engine inherits
+    // `HTTPS_PROXY` and every domestic platform fails as if it were blocked.
+    const bare = { proxy: "", proxyMode: "auto" as const };
+    expect(needsDirectRoute("https://www.iqiyi.com/v_1jm50v4hx7c.html", bare)).toBe(true);
+    expect(needsDirectRoute("https://www.youtube.com/watch?v=abc", bare)).toBe(false);
+    expect(needsDirectRoute("https://www.youtube.com/watch?v=abc", { ...bare, proxyMode: "off" })).toBe(true);
+    expect(needsDirectRoute("https://www.bilibili.com/video/BV1", { ...settings, proxyMode: "always" })).toBe(false);
   });
 
   it("sends foreign platforms through the proxy under auto", () => {
@@ -107,7 +117,21 @@ describe("site capabilities", () => {
     expect(unsupportedCode("engine-missing")).toBe("site_unsupported");
     expect(unsupportedCode("upstream-broken")).toBe("site_upstream_broken");
     expect(unsupportedCode("site-offline")).toBe("site_offline");
+    expect(unsupportedCode("client-only")).toBe("site_client_only");
     expect(unsupportedCode(undefined)).toBe("site_unsupported");
+  });
+
+  it("records the WeChat channel preview as client-only", () => {
+    // The share link resolves to a preview shell that answers a browser with "scan in WeChat";
+    // the feed API only returns title, author and cover. Reporting it as a broken extractor
+    // would send people to retry something that can never succeed from a desktop.
+    const site = capabilityForUrl("https://weixin.qq.com/sph/AfDHNPBu7M");
+    expect(site?.key).toBe("weixin-channels");
+    expect(site?.reason).toBe("client-only");
+    expect(supportedSiteLabels()).not.toContain("微信视频号");
+    expect(capabilityForUrl("https://channels.weixin.qq.com/finder-preview/pages/sph?id=1")?.key).toBe(
+      "weixin-channels",
+    );
   });
 
   it("lets a direct media link bypass the platform table", () => {
