@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "type": "plugin",
   "slug": "mahua-writing-team",
-  "version": "0.4.25",
+  "version": "0.4.26",
   "icon": "assets/icon.svg",
   "detail": {
     "format": "blocks",

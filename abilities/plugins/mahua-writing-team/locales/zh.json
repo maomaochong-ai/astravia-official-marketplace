@@ -128,6 +128,11 @@
 	"book.briefNoPlan": "这一章还没有单页计划。",
 	"book.briefNoTitle": "未命名章节",
 	"book.continueAt": "继续阅读 · 第 {{chapter}} 章",
+	"book.delete": "删除这本书",
+	"book.deleteConfirm": "章节与评审一起删掉，找不回来",
+	"book.deleteFailed": "没删掉",
+	"book.deleteRun": "删除",
+	"book.deleting": "删除中…",
 	"book.index": "目录",
 	"book.indexCount": "共 {{count}} 章",
 	"book.ledger": "伏笔与决策",
@@ -498,6 +503,9 @@
 	"time.now": "刚刚",
 	"time.seconds": "{{count}} 秒前",
 	"view.studio.label": "麻花小说网",
+	"window.crashed": "工作台自己画崩了",
+	"window.crashedHint": "稿件没有被改动。重新载入工作台；如果反复出现，把下面这行留着。",
+	"window.crashedRetry": "重新载入工作台",
 	"window.error": "工作台读不出项目",
 	"window.exitFullscreen": "退出全屏",
 	"window.fullscreen": "全屏工作台",
@@ -507,7 +515,5 @@
 	"worker.architect": "架构师",
 	"worker.editor": "编辑",
 	"worker.engine": "引擎",
-	"worker.writer": "写作者",
-	"workspace.studio.description": "整页打开写作工作台：书架、章纲、阅读、运行台与伏笔账本。",
-	"workspace.studio.label": "麻花小说网"
+	"worker.writer": "写作者"
 }
