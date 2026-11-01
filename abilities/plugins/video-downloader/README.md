@@ -61,6 +61,11 @@ machine's own route and sends everything else through `proxy`, because a license
 service refuses a foreign exit while a foreign platform is unreachable without one — a single
 global switch fixes one audience by breaking the other. `always` and `off` cover the manual case.
 The mainland list is a suffix table (`service/src/network/domestic-hosts.ts`), not a site table:
+The same split decides the engine flag, not just the settings row: a domestic target gets
+`--proxy ""` whenever no proxy is configured, because an empty value is what tells yt-dlp to ignore
+`HTTPS_PROXY` — the variable a system-wide VPN sets. Without it a mainland site resolves through the
+foreign exit and fails, which is exactly the reported behaviour.
+
 media arrives from hosts such as `*.bilivideo.com` that no extractor names in advance.
 
 Sessions have three sources, checked in order: the pasted `cookie` (written to a per-request
@@ -86,6 +91,11 @@ The service is a small `node:http` server built with `tsc` only — no runtime d
 | `GET\|PUT /api/v1/settings` | Download folder, concurrency, cookie, cookie browser, proxy and proxy mode, threading, partial files |
 | `GET\|POST /api/v1/{ytdlp,ffmpeg}` | Read provisioning progress, or start it |
 | `GET /api/v1/sites` | Platform coverage: `{ groups: [{ key, sites }], unsupported: [{ label, reason }] }` |
+| `POST /api/v1/preview` | Open a playback session for one resolved address; returns the loopback entry URL and its kind (`hls` / `file`) |
+| `GET /api/v1/preview/:key/index.m3u8` | The playlist, rewritten so every line and every `URI="…"` points back at this proxy |
+| `GET /api/v1/preview/:key/media?...` | Segment or range passthrough, with the platform's `referer` / `user-agent` attached server-side |
+| `DELETE /api/v1/preview/:key` | Drop a session; it also expires on its own after 30 minutes |
+
 | `POST /mcp` | Hand-written JSON-RPC for the Agent (`video_probe`, `video_download`, `video_tasks`, `video_cancel`, `video_engine_status`, `video_supported_sites`) |
 
 Downloads run through the engine inside a per-task working directory that is also the process
@@ -108,11 +118,24 @@ into `<dataRoot>/bin/ffmpeg(.exe)`, verifies the digest, gunzips and renames ato
 
 ## Adapters
 
-An Adapter is user-imported JSON: metadata (`name`, `version`, `match`, `description`, `grant`)
-plus one extraction body. The plugin ships **no site scripts** — the Adapters tab starts empty and
-`ADAPTER_TEMPLATE` is the only built-in text, a generic `og:video` read. Design and the rejected
-alternatives (a full userscript runtime) are in
-[ADR 0001](../../../docs/adr/video-downloader/0001-userscript-adapter-layer.md).
+An Adapter is JSON: metadata (`name`, `version`, `match`, `description`, `grant`) plus one extraction
+body that runs in the page. Two kinds ship side by side.
+
+Three built-ins are read-only and always enabled, so a failing page has something to fall back to
+without the user writing a script first:
+
+| Adapter | Matches | Returns |
+| --- | --- | --- |
+| `Page Sniffer` | every page | the address the page already plays, ranked resource waterfall → `<video>`/`<source>` → `og:video` → JSON-LD |
+| `iQIYI Player` | `*.iqiyi.com` | the highest-bitrate `.m3u8` found in the player's `_mvInfo` state |
+| `WeChat Channels` | `weixin.qq.com/sph/*` | title, author and cover only — the share page never carries a stream address |
+
+They are read-only on purpose: a built-in is part of the release, so an edit or a toggle would be
+silently lost on the next update. The panel hides those controls and the store refuses the write.
+[ADR 0003](../../../docs/adr/video-downloader/0003-builtin-adapters-supersede-0001.md) supersedes
+ADR 0001 §2 ("no site scripts") and records why the assumption stopped holding; ADR 0001 still
+describes the run contract and the rejected alternatives.
+
 
 An Adapter never downloads. It runs in `ctx.capture.offscreen` against the page the user points it
 at and returns one playable address, which then travels the ordinary engine path:
@@ -132,18 +155,42 @@ rendered, and the panel reports `adapter.unavailable` instead of pretending the 
 
 ### Known unknowns
 
-ADR 0001 §5 records three assumptions the Adapter layer rests on. None of them is proven by this
-repository's tests, because they are properties of the host's offscreen window, not of this code:
+ADR 0001 §5 records three assumptions the Adapter layer rests on, and the preview/hand-off work added
+two more. None of them is proven by this repository's tests: the first three are properties of the
+host's offscreen window, the last two of the running panel and a real agent turn.
 
 | Assumption | How to settle it |
 | --- | --- |
 | The offscreen window shares the user's browser session, so a logged-in page resolves | Import the template adapter, open a page that requires a session, and run it. A `directUrl` means shared state; a login wall means it is not. |
 | The target site does not reject an offscreen user agent or headless fingerprint | Same run, on a site that serves anonymous traffic: a fetch error is the rejection, a resolved address is not. |
 | The playable address is readable from the DOM or a page global | Same run: the template reads `og:video` / `<video src>`. A hit confirms readability for that page, not for every page. |
+| CORS, mixed content and hls.js work in the real panel | Open a resolved HLS item and press play. The panel is not same-origin with the service, so this is the only way to confirm the headers are enough. |
+| `video_resolve` behaves as registered when an agent actually calls it | Ask the agent to resolve a link in a conversation. The registration shape is unit-tested; the call is not. |
+
 
 If the first two both fail, adapters only work on pages that never gate content, and the value
 estimate in ADR 0001 §8 has to be revised downward — the honest failure the panel already shows
 (`adapter.lastRunFailed`) is the signal, not a bug to patch around.
+
+## Preview and hand-off
+
+A resolved address is playable inside the panel before it is downloaded. It never plays directly
+from the platform: the panel asks the service to open a session, and both the playlist and every
+segment come back through the loopback proxy, because only the service holds the `referer` and
+`user-agent` the platform requires. HLS goes through `hls.js` — desktop Chromium has no native HLS,
+so a bare `<video>` pointed at an `.m3u8` fails silently. The proxy answers CORS preflights because
+hls.js reads the playlist with `fetch`; `service/src/preview/preview-proxy.ts` also refuses any
+address outside the session that was just opened, so the route cannot be used to fetch arbitrary URLs.
+
+The result can be handed to the conversation with one click. The prompt carries only what was
+observed — title, site, page, author, quality, direct address, and which layer resolved it — because
+the agent cannot re-read those values afterwards. `conversation.sendPrompt` queues it; if there is no
+active session the text is inserted into the composer instead of being dropped.
+
+The reverse direction is a registered Agent tool, `video_resolve`: `{ url, download?, formatId? }`.
+It resolves a link, can queue the download, and on failure returns the same failure code and the
+matching adapters the panel would show, so the agent can act on it rather than guess.
+
 
 ## Presentation
 

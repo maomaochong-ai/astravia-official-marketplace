@@ -42,6 +42,14 @@
           "title": "Files stay local",
           "description": "The engine runs on your machine and writes straight to your download folder; nothing is uploaded.",
           "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Play before you save",
+          "description": "A resolved link plays inside the panel, fullscreen included, through a local proxy that carries the platform headers for you."
+        },
+        {
+          "title": "Hand the facts to the agent",
+          "description": "One click passes title, site, quality and address into the conversation, so you can ask for what the panel does not do."
         }
       ]
     },
@@ -60,6 +68,10 @@
         {
           "title": "Paste a link and analyze",
           "description": "Paste a link or a whole share message: the link inside it is extracted and checked against the field, then the page is resolved into a title and a list of renditions."
+        },
+        {
+          "title": "Press play to check",
+          "description": "The player confirms it is the right video and the right rendition before anything is written."
         },
         {
           "title": "Pick a rendition and download",
