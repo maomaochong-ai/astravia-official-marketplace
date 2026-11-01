@@ -108,7 +108,8 @@ describe("preview sessions", () => {
     const segment = "https://cdn.example.com/hls/seg-1.ts";
     const response = fakeResponse();
     await proxy.proxyMedia(opened.key, segment, fakeRequest({ range: "bytes=0-4" }), response);
-    expect(calls[0]).toBe("bytes=0-4");
+    // calls[0] is the open-time probe of the first segment; the player's own request comes after.
+    expect(calls.at(-1)).toBe("bytes=0-4");
     expect(response.status).toBe(206);
     expect(response.headers["content-range"]).toBe("bytes 0-4/100");
   });
@@ -133,6 +134,51 @@ describe("preview sessions", () => {
     const opened = await proxy.open("https://cdn.example.com/hls/master.m3u8", {});
     expect(proxy.close(opened.key)).toBe(true);
     await expect(proxy.playlist(opened.key)).rejects.toThrow(/过期/);
+  });
+
+  it("marks a playlist unplayable when the platform refuses the first segment", async () => {
+    // The iQIYI shape: a valid playlist whose segments answer 405 with a JSON error body.
+    const proxy = new PreviewProxy(async (url) =>
+      url.endsWith(".m3u8")
+        ? new Response(MEDIA, { headers: { "content-type": "application/vnd.apple.mpegurl" } })
+        : new Response('{"code":"D2102"}', { status: 405, headers: { "content-type": "application/json" } }),
+    );
+    const opened = await proxy.open("https://cdn.example.com/hls/index.m3u8", {});
+    expect(opened.kind).toBe("hls");
+    expect(opened.playable).toBe(false);
+    expect(opened.detail).toBe("upstream_405");
+  });
+
+  it("reports an encrypted stream instead of probing it", async () => {
+    const drm = [
+      "#EXTM3U",
+      '#EXT-X-KEY:METHOD=SAMPLE-AES,URI="skd://key-id"',
+      "#EXTINF:4.0,",
+      "seg-1.ts",
+    ].join("\n");
+    let probed = 0;
+    const proxy = new PreviewProxy(async (url) => {
+      if (!url.endsWith(".m3u8")) probed += 1;
+      return new Response(drm, { headers: { "content-type": "application/vnd.apple.mpegurl" } });
+    });
+    const opened = await proxy.open("https://cdn.example.com/hls/drm.m3u8", {});
+    expect(opened.playable).toBe(false);
+    expect(opened.detail).toBe("drm");
+    expect(probed).toBe(0);
+  });
+
+  it("passes a segment refusal through as the real status", async () => {
+    // A blanket 200 here is what turns a platform refusal into a silent black frame.
+    const proxy = new PreviewProxy(async (url) =>
+      url.endsWith(".m3u8")
+        ? new Response(MEDIA, { headers: { "content-type": "application/vnd.apple.mpegurl" } })
+        : new Response('{"code":"D2102"}', { status: 403, headers: { "content-type": "application/json" } }),
+    );
+    const opened = await proxy.open("https://cdn.example.com/hls/index.m3u8", {});
+    const response = fakeResponse();
+    await proxy.proxyMedia(opened.key, "https://cdn.example.com/hls/seg-1.ts", fakeRequest(), response);
+    expect(response.status).toBe(403);
+    expect(response.body).toContain("D2102");
   });
 });
 

@@ -85,6 +85,11 @@
       "content": "High-resolution renditions on many sites ship video and audio separately and are merged with ffmpeg. The plugin downloads that build itself, so nothing needs to be installed by hand. Sites that require a signed-in session can be unlocked with a site cookie in settings; sites that sign their own API requests reject outside clients, and the panel tells you which of the two happened. If a site refuses that engine, the panel offers a retry with a second engine (yt-dlp), which also accepts a cookies.txt exported from your browser. Some sites — Douyin among them — check a signed-in browser session and cannot be resolved anonymously by either engine."
     },
     {
+      "type": "callout",
+      "tone": "warning",
+      "content": "Preview tells you the truth before you download. The plugin asks the platform for the first two bytes of a segment before it plays; if the answer is a refusal it names the status instead of leaving a black frame, and it says so when a stream is encrypted (SAMPLE-AES / skd) rather than pretending a picture will appear. Member-only renditions are decided on the platform's servers, so a trial clip or a paid stream may resolve to an address that plays nothing here — the panel reports that instead of working around it."
+    },
+    {
       "type": "links",
       "items": [
         {

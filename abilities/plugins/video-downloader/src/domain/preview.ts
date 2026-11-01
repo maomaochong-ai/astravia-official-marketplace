@@ -9,6 +9,9 @@ export interface PreviewSession {
   entry: string;
   contentType: string;
   bytes: number | null;
+  /** False when the service fetched a playlist but a segment was refused; `detail` says which. */
+  playable: boolean;
+  detail: string | null;
 }
 
 export interface PreviewOpenInput {

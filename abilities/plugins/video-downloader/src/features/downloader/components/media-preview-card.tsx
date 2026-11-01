@@ -1,4 +1,5 @@
 import { useTranslation } from "@astravia-org/plugin-sdk";
+import { useEffect, useState } from "react";
 import { formatBytes, formatDuration } from "../../../domain/format-bytes";
 import type { MediaItem, ToolInstall } from "../../../domain/media-info";
 import type { PreviewController } from "../hooks/use-preview";
@@ -23,6 +24,24 @@ interface MediaPreviewCardProps {
   onStart(): void;
 }
 
+/** `upstream_405` / `hls_network_405` both end with the status the platform answered with. */
+function statusOf(detail: string | null, failure: string | null): string | null {
+  return /(\d{3})$/u.exec(detail ?? failure ?? "")?.[1] ?? null;
+}
+
+/**
+ * Which sentence explains why no picture appeared. `detail` comes from the service probe, `failure`
+ * from the player itself; a session that opened cleanly can still fail on the second segment.
+ */
+function blockedKey(detail: string | null, failure: string | null): string {
+  const token = detail ?? failure ?? "";
+  if (token === "drm") return "preview.blocked.drm";
+  if (token === "empty_playlist") return "preview.blocked.empty";
+  if (statusOf(detail, failure)) return "preview.blocked.rejected";
+  if (token.startsWith("hls_") || token.startsWith("media_")) return "preview.playbackFailed";
+  return "preview.blocked.unknown";
+}
+
 export function MediaPreviewCard({
   items,
   activeIndex,
@@ -40,6 +59,9 @@ export function MediaPreviewCard({
   onStart,
 }: MediaPreviewCardProps) {
   const { t } = useTranslation();
+  const [failure, setFailure] = useState<string | null>(null);
+  // A new address deserves a clean slate, including when the user switches rendition.
+  useEffect(() => setFailure(null), [preview.url]);
   const item = items[activeIndex];
   if (!item) return null;
   const selected = item.formats.find((format) => format.id === selectedFormatId) ?? null;
@@ -94,7 +116,20 @@ export function MediaPreviewCard({
         ) : null}
       </div>
 
-      {preview.url ? (
+      {!preview.playable || failure ? (
+        <div className="mt-3 rounded-2xl border border-border bg-muted/40 px-3 py-2.5">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {t(blockedKey(preview.detail, failure), { status: statusOf(preview.detail, failure) ?? "?" })}
+          </p>
+          <button
+            type="button"
+            onClick={preview.retry}
+            className="mt-1.5 text-[11px] font-medium text-primary hover:underline"
+          >
+            {t("preview.retry")}
+          </button>
+        </div>
+      ) : preview.url ? (
         <div className="mt-3">
           <MediaPlayer
             url={preview.url}
@@ -102,6 +137,7 @@ export function MediaPreviewCard({
             poster={item.thumbnailUrl}
             label={selected ? `${selected.quality} · ${selected.ext}` : item.title}
             fullscreenLabel={t("preview.fullscreen")}
+            onError={setFailure}
           />
         </div>
       ) : preview.loading ? (

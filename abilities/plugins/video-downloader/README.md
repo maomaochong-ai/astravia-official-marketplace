@@ -166,6 +166,7 @@ host's offscreen window, the last two of the running panel and a real agent turn
 | The playable address is readable from the DOM or a page global | Same run: the template reads `og:video` / `<video src>`. A hit confirms readability for that page, not for every page. |
 | CORS, mixed content and hls.js work in the real panel | Open a resolved HLS item and press play. The panel is not same-origin with the service, so this is the only way to confirm the headers are enough. |
 | `video_resolve` behaves as registered when an agent actually calls it | Ask the agent to resolve a link in a conversation. The registration shape is unit-tested; the call is not. |
+| The open-time segment probe keeps its promise on a live platform | The probe is covered by fixtures only. On a real member-gated page it should come back `upstream_405` / `upstream_403`; if it comes back `playable: true` and the player still stalls, the platform gates on a later segment or on a token that expires mid-playlist. |
 
 
 If the first two both fail, adapters only work on pages that never gate content, and the value
@@ -181,6 +182,14 @@ segment come back through the loopback proxy, because only the service holds the
 so a bare `<video>` pointed at an `.m3u8` fails silently. The proxy answers CORS preflights because
 hls.js reads the playlist with `fetch`; `service/src/preview/preview-proxy.ts` also refuses any
 address outside the session that was just opened, so the route cannot be used to fetch arbitrary URLs.
+
+Opening a session is not the same as playing it. The service reads the playlist, stops at
+`SAMPLE-AES` / `skd://` key tags, and then asks upstream for two bytes of the first segment; the
+session comes back with `playable` and, when false, a `detail` such as `drm`, `empty_playlist` or
+`upstream_405`. Segments keep their real status through the proxy instead of being flattened to 200,
+so `hls.js` reports a refusal as a failure. The panel renders that reason and offers a reopen
+instead of showing a black frame — a platform that hands out a valid playlist and still refuses the
+segments is the normal case, not an exception.
 
 The result can be handed to the conversation with one click. The prompt carries only what was
 observed — title, site, page, author, quality, direct address, and which layer resolved it — because

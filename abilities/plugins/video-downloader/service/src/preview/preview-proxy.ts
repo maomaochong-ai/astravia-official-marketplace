@@ -39,6 +39,14 @@ export interface PreviewOpenResult {
   entry: string;
   contentType: string;
   bytes: number | null;
+  /**
+   * Whether a segment can actually be fetched. A playlist that loads proves nothing: a platform can
+   * hand out a valid `.m3u8` and still reject every segment, and the player then sits on a black
+   * frame with nothing to explain it.
+   */
+  playable: boolean;
+  /** `drm`, `empty_playlist`, `upstream_unreachable` or `upstream_<status>` when `playable` is false. */
+  detail: string | null;
 }
 
 /** How one media address is fetched, so tests can run without a network. */
@@ -46,6 +54,26 @@ export type PreviewFetch = (
   url: string,
   init: { headers: Record<string, string>; signal?: AbortSignal },
 ) => Promise<Response>;
+
+/** Segment encryption this service cannot and does not attempt to open. */
+const DRM_MARKER = /#EXT-X-(?:KEY|SESSION-KEY):[^\n]*?(?:METHOD=(?:SAMPLE-AES|SAMPLE-AES-CTR|SAMPLE-AES-CENC)|URI="skd:\/\/)/iu;
+
+/** The first address in a playlist that holds media bytes — a segment, or the init segment. */
+export function firstMediaUri(text: string, base: string): string | null {
+  for (const raw of text.split(/\r?\n/u)) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith("#")) {
+      if (!line.startsWith("#EXT-X-MAP")) continue;
+      const uri = /URI="([^"]+)"/u.exec(line)?.[1];
+      if (uri) return absoluteUrl(uri, base);
+      continue;
+    }
+    const resolved = absoluteUrl(line, base);
+    if (resolved) return resolved;
+  }
+  return null;
+}
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -140,6 +168,7 @@ export class PreviewProxy {
         entry: `/api/v1/preview/${key}/index.m3u8`,
         contentType,
         bytes: session.playlist.length,
+        ...(await this.checkPlayable(session, body, url)),
       };
     }
     // A single file: the player streams it through the media route so Range and headers survive.
@@ -152,6 +181,8 @@ export class PreviewProxy {
       entry: `/api/v1/preview/${key}/media?u=${encodeURIComponent(url)}`,
       contentType,
       bytes: Number.isFinite(length) ? length : null,
+      playable: true,
+      detail: null,
     };
   }
 
@@ -184,7 +215,10 @@ export class PreviewProxy {
       const value = upstream.headers.get(name);
       if (value) passthrough[name] = value;
     }
-    response.writeHead(upstream.status === 206 ? 206 : 200, { ...passthrough, "cache-control": "no-store" });
+    // The real status, not a blanket 200: a rejected segment has to reach the player as a failure,
+    // otherwise hls.js sees a successful response with a JSON body and stalls on a black frame.
+    const status = upstream.status >= 200 && upstream.status < 600 ? upstream.status : 502;
+    response.writeHead(status, { ...passthrough, "cache-control": "no-store", "x-preview-status": String(status) });
     if (!upstream.body) {
       response.end();
       return;
@@ -195,6 +229,24 @@ export class PreviewProxy {
       response.on("close", resolve);
       stream.pipe(response).on("finish", resolve);
     });
+  }
+
+  /**
+   * Answers the question the panel actually has: will a picture appear? Reads the encryption tags
+   * first (cheap, no request), then asks upstream for two bytes of the first segment.
+   */
+  private async checkPlayable(
+    session: PreviewSession,
+    playlist: string,
+    base: string,
+  ): Promise<{ playable: boolean; detail: string | null }> {
+    if (DRM_MARKER.test(playlist)) return { playable: false, detail: "drm" };
+    const segment = firstMediaUri(playlist, base);
+    if (!segment) return { playable: false, detail: "empty_playlist" };
+    const probe = await this.request(segment, session, { range: "bytes=0-1" }).catch(() => null);
+    if (!probe) return { playable: false, detail: "upstream_unreachable" };
+    if (probe.status < 400) return { playable: true, detail: null };
+    return { playable: false, detail: `upstream_${probe.status}` };
   }
 
   close(key: string): boolean {

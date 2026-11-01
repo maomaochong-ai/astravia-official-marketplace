@@ -10,6 +10,9 @@ export interface PreviewController {
   /** Absolute URL the player should open, already rewritten to the service proxy. */
   url: string | null;
   kind: "hls" | "file" | null;
+  /** `false` once the service proved a segment is refused; the player must not be offered. */
+  playable: boolean;
+  detail: string | null;
   retry(): void;
 }
 
@@ -83,6 +86,9 @@ export function usePreview(api: DownloaderApi, item: MediaItem | null, format: M
     error,
     url: item && url ? url : null,
     kind: session?.kind ?? null,
+    // A session that was never opened has nothing to report; only a fetched-but-refused one does.
+    playable: session?.playable ?? true,
+    detail: session?.detail ?? null,
     retry: () => setAttempt((value) => value + 1),
   };
 }

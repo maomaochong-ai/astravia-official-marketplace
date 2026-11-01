@@ -40,7 +40,7 @@ const item: MediaItem = {
 
 const previewProps = {
   items: [item],
-  preview: { loading: false, error: null, url: null, kind: null, retry: () => undefined },
+  preview: { loading: false, error: null, url: null, kind: null, playable: true, detail: null, retry: () => undefined },
   canReplicate: true,
   replicating: false,
   onReplicate: () => undefined,
@@ -72,6 +72,26 @@ describe("MediaPreviewCard", () => {
     expect(html).not.toContain("cover.jpg");
     // No cover means no overlay; the runtime still has to be visible somewhere.
     expect(html).toContain("1:02:05");
+  });
+
+  it("explains a refused segment instead of offering a player that would stay black", () => {
+    const html = renderToString(
+      <MediaPreviewCard
+        {...previewProps}
+        preview={{
+          loading: false,
+          error: null,
+          url: "http://127.0.0.1:9200/api/v1/preview/k/index.m3u8",
+          kind: "hls",
+          playable: false,
+          detail: "upstream_405",
+          retry: () => undefined,
+        }}
+      />,
+    );
+    expect(html).not.toContain("<video");
+    expect(html).toContain("405");
+    expect(html).toContain("Reopen preview");
   });
 });
 
