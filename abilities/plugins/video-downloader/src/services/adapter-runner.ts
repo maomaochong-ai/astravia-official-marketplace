@@ -1,5 +1,5 @@
 import type { PluginCaptureApi } from "@astravia-org/plugin-sdk";
-import { normalizeExtraction, normalizeValues, type Adapter, type AdapterExtraction } from "../domain/adapter";
+import { loginSignal, normalizeExtraction, normalizeValues, type Adapter, type AdapterExtraction } from "../domain/adapter";
 
 const RUN_TIMEOUT_MS = 25_000;
 const VIEWPORT = { width: 1280, height: 720 };
@@ -9,6 +9,10 @@ export class AdapterRunError extends Error {
   constructor(
     message: string,
     readonly detail = "",
+    /** Bitmap of the offscreen page at failure time: a login wall is a picture, not a string. */
+    readonly screenshot = "",
+    /** Set when the page wanted a human: the window stays open so the retry lands on the same page. */
+    readonly loginRequired = false,
   ) {
     super(message);
     this.name = "AdapterRunError";
@@ -81,6 +85,8 @@ export async function runAdapter(
   values: Record<string, unknown>,
 ): Promise<{ extraction: AdapterExtraction; values: Record<string, unknown> }> {
   const sessionKey = `adapter:${adapter.id}`;
+  let screenshot = "";
+  let keepWindow = false;
   try {
     const result = await capture.offscreen({
       url,
@@ -92,20 +98,31 @@ export async function runAdapter(
       settleMs: 120,
       timeoutMs: RUN_TIMEOUT_MS,
     });
+    screenshot = result.dataUrl || "";
     const envelope = readEnvelope(result.probe);
-    if (!envelope) throw new AdapterRunError("页面没有回传结果", "probe 为空或不可序列化");
+    if (!envelope) throw new AdapterRunError("页面没有回传结果", "probe 为空或不可序列化", screenshot);
     if (envelope.ok !== true) {
-      throw new AdapterRunError("适配器执行失败", typeof envelope.error === "string" ? envelope.error : "");
+      const signal = loginSignal(typeof envelope.error === "string" ? envelope.error : "");
+      if (signal.required) {
+        // Releasing here would drop the page (and its cookies) the user is about to sign in on.
+        keepWindow = true;
+        throw new AdapterRunError(signal.message, "", screenshot, true);
+      }
+      throw new AdapterRunError("适配器执行失败", signal.message, screenshot);
     }
     const extraction = normalizeExtraction(envelope.value);
     if (!extraction) {
-      throw new AdapterRunError("适配器没有给出可播地址", "directUrl 缺失或不是 http(s) 链接，也没有标记 metadataOnly");
+      throw new AdapterRunError(
+        "适配器没有给出可播地址",
+        "directUrl 缺失或不是 http(s) 链接，也没有标记 metadataOnly",
+        screenshot,
+      );
     }
     return { extraction, values: normalizeValues(envelope.values) };
   } catch (error) {
     if (error instanceof AdapterRunError) throw error;
-    throw new AdapterRunError(timeoutMessage(error), error instanceof Error ? error.message : "");
+    throw new AdapterRunError(timeoutMessage(error), error instanceof Error ? error.message : "", screenshot);
   } finally {
-    await capture.releaseOffscreen(sessionKey).catch(() => undefined);
+    if (!keepWindow) await capture.releaseOffscreen(sessionKey).catch(() => undefined);
   }
 }

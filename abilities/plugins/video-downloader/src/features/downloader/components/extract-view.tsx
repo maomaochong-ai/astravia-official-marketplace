@@ -56,8 +56,8 @@ export function ExtractView({
           run: () => {
             const adapter = candidates[0];
             if (!adapter) return;
-            void adapters.run(adapter, extract.url).then((item) => {
-              if (item) extract.adoptItem(item);
+            void adapters.run(adapter, extract.url).then((outcome) => {
+              if (outcome.ok) extract.adoptItem(outcome.item);
             });
           },
         }
@@ -91,8 +91,8 @@ export function ExtractView({
               type="button"
               disabled={Boolean(gate.bootError) || adapters.runningId !== null}
               onClick={() => {
-                void adapters.run(adapter, extract.url).then((item) => {
-                  if (item) extract.adoptItem(item);
+                void adapters.run(adapter, extract.url).then((outcome) => {
+                  if (outcome.ok) extract.adoptItem(outcome.item);
                 });
               }}
               className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border px-2.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
@@ -104,6 +104,30 @@ export function ExtractView({
               {adapter.meta.name}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {extract.adapterFailure ? (
+        <div className="mt-3 rounded-xl border border-border bg-card p-3">
+          <p className="text-[11px] leading-relaxed text-foreground">{extract.adapterFailure.message}</p>
+          {extract.adapterFailure.loginRequired ? (
+            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("extract.adapterLoginHint")}</p>
+          ) : null}
+          {extract.adapterFailure.screenshot ? (
+            <img
+              src={extract.adapterFailure.screenshot}
+              alt={t("extract.adapterScreenshot")}
+              className="mt-2 w-full rounded-lg border border-border"
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void extract.analyze()}
+            className="mt-2 inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <span className="icon-[solar--refresh-linear] size-3" aria-hidden="true" />
+            {t("status.retry")}
+          </button>
         </div>
       ) : null}
 

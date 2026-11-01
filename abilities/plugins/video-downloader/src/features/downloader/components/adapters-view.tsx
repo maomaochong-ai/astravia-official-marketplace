@@ -37,8 +37,8 @@ export function AdaptersView({
   }
 
   async function run(adapter: Adapter): Promise<void> {
-    const item = await adapters.run(adapter, pageUrl.trim());
-    if (item) onUseItem(item);
+    const outcome = await adapters.run(adapter, pageUrl.trim());
+    if (outcome.ok) onUseItem(outcome.item);
   }
 
   return (

@@ -12,5 +12,5 @@
     "typescript": "^5.9.2",
     "vitest": "^3.2.6"
   },
-  "version": "2.6.1"
+  "version": "2.7.0"
 }

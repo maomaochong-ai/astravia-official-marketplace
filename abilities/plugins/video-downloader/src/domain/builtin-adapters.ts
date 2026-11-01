@@ -14,65 +14,139 @@ import { adapterId, type Adapter } from "./adapter";
  */
 
 const SNIFFER_BODY = String.raw`async function extract(ctx) {
-  var found = [];
-  var isMedia = function (value) {
-    if (typeof value !== 'string') return false;
-    if (!/^https?:\/\//i.test(value)) return false;
-    return /\.(m3u8|mp4|m4v|webm|mov|m4a|mp3)(\?|#|$)/i.test(value);
+  var looksMedia = function (value) {
+    if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return false;
+    if (/\.(m3u8|mp4|m4v|webm|mov|m4a|mp3|flv|ts)(\?|#|$)/i.test(value)) return true;
+    if (/stodownload|encfilekey|videoplayback|getvideo|playurl|mime=video/i.test(value)) return true;
+    return /(m3u8|mp4|hls|dash)/i.test(value) && /\/(playlist|manifest|master|media|stream)(\/|\?|$)/i.test(value);
   };
-  var add = function (url, score) { if (isMedia(url)) found.push({ url: url, score: score }); };
 
-  var elements = document.querySelectorAll('video, audio, source');
-  for (var i = 0; i < elements.length; i += 1) {
-    add(elements[i].currentSrc, 5);
-    add(elements[i].getAttribute('src'), 4);
-  }
-
-  var metas = document.querySelectorAll('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]');
-  for (var j = 0; j < metas.length; j += 1) add(metas[j].getAttribute('content'), 3);
-
-  // What the page already fetched is the strongest signal: the player proved the address plays.
-  try {
-    var entries = performance.getEntriesByType('resource');
-    for (var k = 0; k < entries.length; k += 1) {
-      var name = entries[k].name;
-      add(name, /\.m3u8(\?|$)/i.test(name) ? 6 : 2);
+  var found = [];
+  var index = {};
+  var add = function (url, score, force) {
+    var value = typeof url === 'string' ? url.trim() : '';
+    if (!/^https?:\/\//i.test(value)) return;
+    if (!force && !looksMedia(value)) return;
+    var previous = index[value];
+    if (previous) {
+      if (score > previous.score) previous.score = score;
+      return;
     }
-  } catch (error) {
-    // An opaque frame may not expose performance; the element scan above still stands.
+    var entry = { url: value, score: score };
+    index[value] = entry;
+    found.push(entry);
+  };
+
+  // A userscript sees every request the page makes because it is inside that page. So is this:
+  // hooking the two request APIs turns the player itself into the oracle for the real address.
+  var originalFetch = window.fetch;
+  var XHR = window.XMLHttpRequest;
+  var originalOpen = XHR && XHR.prototype ? XHR.prototype.open : null;
+  if (typeof originalFetch === 'function') {
+    window.fetch = function (input, init) {
+      try { add(typeof input === 'string' ? input : input && input.url, 8); } catch (error) {}
+      return originalFetch.call(this, input, init);
+    };
+  }
+  if (typeof originalOpen === 'function') {
+    XHR.prototype.open = function (method, url) {
+      try { add(url, 8); } catch (error) {}
+      return originalOpen.apply(this, arguments);
+    };
   }
 
-  var scripts = document.querySelectorAll('script[type="application/ld+json"]');
-  for (var s = 0; s < scripts.length; s += 1) {
+  try {
+    var elements = document.querySelectorAll('video, audio, source');
+    for (var i = 0; i < elements.length; i += 1) {
+      // Whatever a media element is bound to is media by definition, extension or not.
+      add(elements[i].currentSrc, 9, true);
+      add(elements[i].getAttribute('src'), 9, true);
+    }
+
+    var metas = document.querySelectorAll('meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"], meta[name="twitter:player:stream"]');
+    for (var j = 0; j < metas.length; j += 1) add(metas[j].getAttribute('content'), 3);
+
+    // What the page already fetched is the next strongest signal: the player proved it plays.
     try {
-      var queue = [JSON.parse(scripts[s].textContent || '{}')];
-      while (queue.length > 0) {
-        var node = queue.shift();
-        if (!node || typeof node !== 'object') continue;
-        var values = Object.keys(node).map(function (key) { return node[key]; });
-        for (var v = 0; v < values.length; v += 1) {
-          if (typeof values[v] === 'string') add(values[v], 3);
-          else if (values[v] && typeof values[v] === 'object') queue.push(values[v]);
-        }
+      var entries = performance.getEntriesByType('resource');
+      for (var k = 0; k < entries.length; k += 1) {
+        var name = entries[k].name;
+        add(name, /\.m3u8(\?|$)/i.test(name) ? 6 : 4);
       }
     } catch (error) {
-      // A malformed JSON-LD block is not a reason to fail the whole run.
+      // An opaque frame may not expose performance; the element scan above still stands.
     }
+
+    var scripts = document.querySelectorAll('script[type="application/ld+json"]');
+    for (var s = 0; s < scripts.length; s += 1) {
+      try {
+        var queue = [JSON.parse(scripts[s].textContent || '{}')];
+        while (queue.length > 0) {
+          var node = queue.shift();
+          if (!node || typeof node !== 'object') continue;
+          var values = Object.keys(node).map(function (key) { return node[key]; });
+          for (var v = 0; v < values.length; v += 1) {
+            if (typeof values[v] === 'string') add(values[v], 3);
+            else if (values[v] && typeof values[v] === 'object') queue.push(values[v]);
+          }
+        }
+      } catch (error) {
+        // A malformed JSON-LD block is not a reason to fail the whole run.
+      }
+    }
+
+    // A player that has not started has not asked for anything yet: nudge it, then read the wire.
+    var settled = function () {
+      for (var f = 0; f < found.length; f += 1) {
+        if (found[f].score >= 8 || /\.m3u8(\?|#|$)/i.test(found[f].url)) return true;
+      }
+      return false;
+    };
+    if (!settled()) {
+      var videos = document.querySelectorAll('video');
+      for (var n = 0; n < videos.length; n += 1) {
+        try {
+          var played = videos[n].play();
+          if (played && typeof played.catch === 'function') played.catch(function () {});
+        } catch (error) {
+          // Autoplay policies may refuse; the hooks above still catch a later request.
+        }
+      }
+      if (videos.length === 0) {
+        var buttons = document.querySelectorAll('[class*="play"], [aria-label*="播放"], [title*="播放"]');
+        for (var b = 0; b < buttons.length && b < 3; b += 1) {
+          try { buttons[b].click(); } catch (error) {}
+        }
+      }
+      var deadline = Date.now() + 2500;
+      while (Date.now() < deadline && !settled()) {
+        await new Promise(function (resolve) { setTimeout(resolve, 200); });
+      }
+    }
+  } finally {
+    if (typeof originalFetch === 'function') window.fetch = originalFetch;
+    if (typeof originalOpen === 'function') XHR.prototype.open = originalOpen;
   }
 
-  if (found.length === 0) throw new Error('页面里没有发现可以直接播放的媒体地址');
-  found.sort(function (a, b) { return b.score - a.score; });
+  // A segment is the inside of a stream, never a stream: keep one only when nothing else exists.
+  var ranked = found.filter(function (entry) { return !/\.ts(\?|#|$)/i.test(entry.url); });
+  if (ranked.length === 0) ranked = found;
+  if (ranked.length === 0) throw new Error('页面里没有发现可以直接播放的媒体地址，可能需要先登录或播放几秒');
+  var weight = function (entry) {
+    return entry.score + (/\.m3u8(\?|#|$)/i.test(entry.url) ? 4 : 0);
+  };
+  ranked.sort(function (a, b) { return weight(b) - weight(a); });
 
   var content = function (selector) {
     var element = document.querySelector(selector);
     return element ? String(element.getAttribute('content') || '').trim() : '';
   };
   return {
-    directUrl: found[0].url,
+    directUrl: ranked[0].url,
     title: content('meta[property="og:title"]') || document.title,
     thumbnailUrl: content('meta[property="og:image"]'),
     uploader: content('meta[property="og:site_name"]'),
-    headers: { referer: location.href }
+    headers: { referer: location.href, 'user-agent': navigator.userAgent }
   };
 }`;
 
@@ -120,17 +194,72 @@ const WEIXIN_CHANNELS_BODY = String.raw`async function extract(ctx) {
     return element ? String(element.getAttribute('content') || element.textContent || '').trim() : '';
   };
   var title = content('meta[property="og:title"]') || content('h1') || document.title;
-  if (!title) throw new Error('预览页里没有可识别的标题');
+  var uploader = content('meta[property="og:site_name"]') || content('.nickname');
+  var cover = content('meta[property="og:image"]');
 
-  // The share link only opens a preview shell: the stream address is handed to the WeChat client
-  // through its own JSAPI and never appears in the page. Reporting the metadata is the honest
-  // ceiling here, so the run returns no address instead of inventing one.
-  return {
-    metadataOnly: true,
-    title: title,
-    thumbnailUrl: content('meta[property="og:image"]'),
-    uploader: content('meta[property="og:site_name"]') || content('.nickname')
+  var isMedia = function (value) {
+    if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return false;
+    return /stodownload|encfilekey|finder\.video\.qq\.com|\.(mp4|m3u8|m4v)(\?|#|$)/i.test(value);
   };
+
+  // A logged-in web player plays a plain <video>, so its address is in the DOM or already on the
+  // wire. The share shell never plays anything; that difference is the whole story of this site.
+  var pick = function () {
+    var videos = document.querySelectorAll('video');
+    for (var i = 0; i < videos.length; i += 1) {
+      if (isMedia(videos[i].currentSrc)) return videos[i].currentSrc;
+      var src = videos[i].getAttribute('src');
+      if (isMedia(src)) return src;
+    }
+    try {
+      var entries = performance.getEntriesByType('resource');
+      for (var k = entries.length - 1; k >= 0; k -= 1) {
+        if (isMedia(entries[k].name)) return entries[k].name;
+      }
+    } catch (error) {
+      // performance is a bonus signal here, never a precondition.
+    }
+    return '';
+  };
+
+  var url = pick();
+  if (!url) {
+    var videos = document.querySelectorAll('video');
+    for (var n = 0; n < videos.length; n += 1) {
+      try {
+        var played = videos[n].play();
+        if (played && typeof played.catch === 'function') played.catch(function () {});
+      } catch (error) {
+        // Refusing to autoplay is not a failure: the address may still arrive from the request.
+      }
+    }
+    var deadline = Date.now() + 2500;
+    while (Date.now() < deadline && !url) {
+      await new Promise(function (resolve) { setTimeout(resolve, 250); });
+      url = pick();
+    }
+  }
+
+  if (url) {
+    return {
+      directUrl: url,
+      title: title || '视频号',
+      thumbnailUrl: cover,
+      uploader: uploader,
+      headers: { referer: location.href, 'user-agent': navigator.userAgent }
+    };
+  }
+
+  // No address and a login prompt on screen means the user is one scan away. Saying so keeps the
+  // panel honest: a metadata-only answer here would read as "the plugin gave up for no reason".
+  var marks = document.querySelectorAll('img[src*="qrcode"], [class*="qrcode"], [class*="login"]');
+  var text = (document.body && document.body.textContent) || '';
+  if (marks.length > 0 || /扫码登录|微信扫码|登录后查看|请使用微信/.test(text)) {
+    throw new Error('NEEDS_LOGIN:视频号这一步需要登录：用手机微信扫描面板里的二维码，扫完点重试');
+  }
+
+  if (!title) throw new Error('预览页里没有可识别的标题');
+  return { metadataOnly: true, title: title, thumbnailUrl: cover, uploader: uploader };
 }`;
 
 function builtin(name: string, id: string, match: string[], description: string, body: string): Adapter {

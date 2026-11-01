@@ -56,6 +56,14 @@ export interface AdapterRunResult {
   elapsedMs: number;
 }
 
+/**
+ * What an Adapter run handed back to the panel. A failed run carries the offscreen page bitmap:
+ * a login wall, a QR code or a region block is a picture, and a message alone cannot be acted on.
+ */
+export type AdapterOutcome =
+  | { ok: true; item: MediaItem }
+  | { ok: false; message: string; detail: string; screenshot: string; loginRequired: boolean };
+
 export type AdapterImportResult =
   | { ok: true; adapter: Adapter }
   | { ok: false; error: string };
@@ -64,6 +72,27 @@ const MAX_BODY_LENGTH = 40_000;
 
 /** Header names the engine accepts through `--add-header`; mirrors the service whitelist. */
 const ALLOWED_HEADERS = new Set(["referer", "user-agent", "origin", "cookie", "accept", "x-requested-with"]);
+
+/**
+ * An Adapter that needs the user in the loop says so instead of failing quietly. The prefix is
+ * stripped before the message reaches the panel, and the run keeps its offscreen window open, so
+ * a scan or a login is still the same page when the user retries.
+ */
+export const NEEDS_LOGIN_PREFIX = "NEEDS_LOGIN:";
+
+export interface LoginSignal {
+  required: boolean;
+  message: string;
+}
+
+export function loginSignal(message: string): LoginSignal {
+  const text = message.trim();
+  if (!text.startsWith(NEEDS_LOGIN_PREFIX)) return { required: false, message: text };
+  return {
+    required: true,
+    message: text.slice(NEEDS_LOGIN_PREFIX.length).trim() || "需要先在这个页面完成登录",
+  };
+}
 
 export function adapterId(name: string): string {
   const slug = name

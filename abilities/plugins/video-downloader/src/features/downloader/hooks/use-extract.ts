@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { MediaItem, ProbeResult } from "../../../domain/media-info";
+import type { AdapterOutcome } from "../../../domain/adapter";
 import type { DownloaderApi, ServiceRequestError } from "../../../services/downloader-api";
 import type { ManagedPluginContext } from "../../../runtime-contract";
 import { extractTargetUrl } from "../../../domain/target-url";
@@ -17,7 +18,7 @@ export interface ExtractOptions {
    * The Extract view is the only place a user asks for a link to be resolved, so a site that the
    * engine cannot read must not require a detour through another tab to still produce a result.
    */
-  resolveWithAdapter?(url: string): Promise<MediaItem | null>;
+  resolveWithAdapter?(url: string): Promise<AdapterOutcome | null>;
 }
 
 /**
@@ -41,6 +42,14 @@ export interface ExtractController {
   startDownload(): Promise<void>;
   /** Adopt an item resolved by an Adapter, so it renders and downloads like any other item. */
   adoptItem(item: MediaItem): void;
+  /** Why the Adapter fallback produced nothing; the panel turns the bitmap into a next step. */
+  adapterFailure: AdapterFailure | null;
+}
+
+export interface AdapterFailure {
+  message: string;
+  screenshot: string;
+  loginRequired: boolean;
 }
 
 export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, options: ExtractOptions): ExtractController {
@@ -52,6 +61,7 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
   const [activeItemIndex, setActiveItemIndex] = useState(0);
   const [selectedFormatId, setSelectedFormatId] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
+  const [adapterFailure, setAdapterFailure] = useState<AdapterFailure | null>(null);
   const mounted = useRef(true);
 
   // No effect is used to set `mounted`; the panel owns the hook lifetime and React drops the
@@ -86,6 +96,7 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
     setSelectedFormatId(item.recommendedFormatId ?? item.formats[0]?.id ?? null);
     setProbeError(null);
     setProbeErrorCode(null);
+    setAdapterFailure(null);
   }
 
   async function analyze(): Promise<void> {
@@ -104,6 +115,7 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
     setProbing(true);
     setProbeError(null);
     setProbeErrorCode(null);
+    setAdapterFailure(null);
     try {
       let probed = await api.probe(target);
       if (!probed.items.length && probed.failureCode === ENGINE_PREPARING) {
@@ -112,11 +124,17 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
         if (await options.ensureTool("ytdlp")) probed = await api.probe(target);
       }
       if (!probed.items.length && probed.failureCode !== ENGINE_PREPARING) {
-        const adopted = await options.resolveWithAdapter?.(target).catch(() => null) ?? null;
-        if (adopted) {
-          adoptItem(adopted);
-          setProbing(false);
+        const outcome = (await options.resolveWithAdapter?.(target).catch(() => null)) ?? null;
+        if (outcome?.ok) {
+          adoptItem(outcome.item);
           return;
+        }
+        if (outcome) {
+          setAdapterFailure({
+            message: outcome.message,
+            screenshot: outcome.screenshot,
+            loginRequired: outcome.loginRequired,
+          });
         }
       }
       applyProbeResult(probed);
@@ -213,6 +231,7 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
     setUrl: (value) => {
       setUrlState(value);
       setProbeError(null);
+      setAdapterFailure(null);
     },
     analyze,
     useClipboard,
@@ -220,5 +239,6 @@ export function useExtract(ctx: ManagedPluginContext, api: DownloaderApi, option
     selectFormat: setSelectedFormatId,
     startDownload,
     adoptItem,
+    adapterFailure,
   };
 }

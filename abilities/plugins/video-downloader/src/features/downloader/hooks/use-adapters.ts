@@ -1,15 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import type { MediaItem } from "../../../domain/media-info";
-import { adapterMatchesUrl, adapterToItem, matchingAdapters, parseAdapterJson, type Adapter } from "../../../domain/adapter";
+import {
+  adapterMatchesUrl,
+  adapterToItem,
+  matchingAdapters,
+  parseAdapterJson,
+  type Adapter,
+  type AdapterOutcome,
+} from "../../../domain/adapter";
 import { AdapterStore } from "../../../services/adapter-store";
 import { AdapterRunError, runAdapter } from "../../../services/adapter-runner";
 import type { ManagedPluginContext } from "../../../runtime-contract";
+
+function failure(message: string, detail = "", screenshot = "", loginRequired = false): AdapterOutcome {
+  return { ok: false, message, detail, screenshot, loginRequired };
+}
 
 export interface AdapterRunSummary {
   adapterId: string;
   name: string;
   ok: boolean;
   message: string;
+  /** Failure only: the offscreen page bitmap, so a login wall can be seen rather than guessed. */
+  screenshot: string;
+  loginRequired: boolean;
   at: number;
 }
 
@@ -30,8 +43,8 @@ export interface AdapterController {
   importText(text: string): Promise<boolean>;
   remove(id: string): Promise<void>;
   toggle(id: string, enabled: boolean): Promise<void>;
-  /** Run one Adapter against `url`; resolves to the resolved item, or null on failure. */
-  run(adapter: Adapter, url: string): Promise<MediaItem | null>;
+  /** Run one Adapter against `url`; the outcome carries either the item or why there is none. */
+  run(adapter: Adapter, url: string): Promise<AdapterOutcome>;
 }
 
 export function useAdapters(ctx: ManagedPluginContext): AdapterController {
@@ -79,15 +92,17 @@ export function useAdapters(ctx: ManagedPluginContext): AdapterController {
     setAdapters(await store.current?.setEnabled(id, enabled) ?? []);
   }
 
-  async function run(adapter: Adapter, target: string): Promise<MediaItem | null> {
+  async function run(adapter: Adapter, target: string): Promise<AdapterOutcome> {
     const capture = ctx.capture;
     if (!capture?.offscreen) {
-      setError("当前版本不提供离屏页面能力，适配器无法运行");
-      return null;
+      const message = "当前版本不提供离屏页面能力，适配器无法运行";
+      setError(message);
+      return failure(message);
     }
     if (!adapterMatchesUrl(adapter, target)) {
-      setError(`${adapter.meta.name} 的 @match 不接受这个地址`);
-      return null;
+      const message = `${adapter.meta.name} 的 @match 不接受这个地址`;
+      setError(message);
+      return failure(message);
     }
     setRunningId(adapter.id);
     setError(null);
@@ -105,14 +120,21 @@ export function useAdapters(ctx: ManagedPluginContext): AdapterController {
         message: result.extraction.metadataOnly
           ? ctx.i18n.t("adapter.metadataOnly")
           : result.extraction.quality || result.extraction.ext || "mp4",
+        screenshot: "",
+        loginRequired: false,
         at: Date.now(),
       });
-      return item;
+      return { ok: true, item };
     } catch (runError) {
-      const message = runError instanceof AdapterRunError ? runError.message : String(runError);
+      const known = runError instanceof AdapterRunError ? runError : null;
+      const detail = known?.detail ?? (runError instanceof Error ? runError.message : String(runError));
+      // The page-side sentence says more than our own headline, so it is what the panel shows.
+      const message = detail || known?.message || String(runError);
+      const screenshot = known?.screenshot ?? "";
+      const loginRequired = known?.loginRequired ?? false;
       setError(message);
-      setLastRun({ adapterId: adapter.id, name: adapter.meta.name, ok: false, message, at: Date.now() });
-      return null;
+      setLastRun({ adapterId: adapter.id, name: adapter.meta.name, ok: false, message, screenshot, loginRequired, at: Date.now() });
+      return failure(message, detail, screenshot, loginRequired);
     } finally {
       setRunningId(null);
     }

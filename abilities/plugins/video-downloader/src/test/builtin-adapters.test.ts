@@ -167,4 +167,66 @@ describe("built-in adapters", () => {
     expect(result.uploader).toBe("青慕在云南");
     expect(result.title).toBe("视频号");
   });
+
+  it("takes a stream address that carries no file extension", async () => {
+    document.head.innerHTML = `<meta property="og:title" content="Channels clip" />`;
+    document.body.innerHTML = `<video src="https://finder.video.qq.com/251/20302/stodownload?encfilekey=abc"></video>`;
+
+    const result = (await run(sniffer)) as { directUrl: string };
+    expect(result.directUrl).toContain("stodownload");
+  });
+
+  it("keeps the playlist and drops the segment it fetched", async () => {
+    const events = [
+      { name: "https://cdn.example.com/hls/seg-1.ts", duration: 1 },
+      { name: "https://cdn.example.com/hls/index.m3u8", duration: 1 },
+    ];
+    const original = performance.getEntriesByType.bind(performance);
+    performance.getEntriesByType = ((type: string) =>
+      type === "resource" ? (events as unknown as PerformanceEntry[]) : original(type)) as typeof performance.getEntriesByType;
+
+    try {
+      const result = (await run(sniffer)) as { directUrl: string };
+      expect(result.directUrl).toContain("index.m3u8");
+    } finally {
+      performance.getEntriesByType = original;
+    }
+  });
+
+  it("catches the request a nudged player makes itself", async () => {
+    document.body.innerHTML = `<div id="player"></div><button class="play">play</button>`;
+    const button = document.querySelector("button") as HTMLButtonElement;
+    const fakeFetch = async () => ({ ok: true });
+    const target = window as unknown as { fetch?: unknown };
+    const hadFetch = "fetch" in target;
+    const previous = target.fetch;
+    target.fetch = fakeFetch;
+    button.addEventListener("click", () => {
+      void (window.fetch as unknown as (input: string) => Promise<unknown>)("https://cdn.example.com/live/index.m3u8?id=1");
+    });
+
+    try {
+      const result = (await run(sniffer)) as { directUrl: string };
+      expect(result.directUrl).toBe("https://cdn.example.com/live/index.m3u8?id=1");
+    } finally {
+      if (hadFetch) target.fetch = previous;
+      else delete target.fetch;
+    }
+  });
+
+  it("takes the stream when the Channels player is actually playing", async () => {
+    document.head.innerHTML = `<meta property="og:title" content="青慕在云南" />`;
+    document.body.innerHTML = `<video src="https://finder.video.qq.com/251/20302/stodownload?encfilekey=abc"></video>`;
+
+    const result = (await run(channels)) as { directUrl: string; metadataOnly?: boolean };
+    expect(result.metadataOnly).toBeUndefined();
+    expect(result.directUrl).toContain("stodownload");
+  });
+
+  it("asks for a sign-in instead of reporting empty metadata", async () => {
+    document.head.innerHTML = `<meta property="og:title" content="视频号" />`;
+    document.body.innerHTML = `<div class="qrcode"><img src="/qr.png" /></div><p>请使用微信扫码登录</p>`;
+
+    await expect(run(channels)).rejects.toThrow(/NEEDS_LOGIN/);
+  });
 });
