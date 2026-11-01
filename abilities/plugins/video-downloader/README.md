@@ -126,9 +126,9 @@ without the user writing a script first:
 
 | Adapter | Matches | Returns |
 | --- | --- | --- |
-| `Page Sniffer` | every page | the address the page already plays, ranked resource waterfall → `<video>`/`<source>` → `og:video` → JSON-LD |
+| `Page Sniffer` | every page | the address the page already plays, ranked `<video>`/`<source>` → hooked `fetch`/`XHR` → resource waterfall → `og:video` → JSON-LD. It does not require a file extension: CDN addresses like `…/stodownload?encfilekey=…` count as media |
 | `iQIYI Player` | `*.iqiyi.com` | the highest-bitrate `.m3u8` found in the player's `_mvInfo` state |
-| `WeChat Channels` | `weixin.qq.com/sph/*` | title, author and cover only — the share page never carries a stream address |
+| `WeChat Channels` | `weixin.qq.com/sph/*`, `channels.weixin.qq.com/*` | the stream the loaded player is bound to; when the page wants a sign-in it says so (`NEEDS_LOGIN:`) instead of returning metadata only |
 
 They are read-only on purpose: a built-in is part of the release, so an edit or a toggle would be
 silently lost on the next update. The panel hides those controls and the store refuses the write.
@@ -147,6 +147,17 @@ at and returns one playable address, which then travels the ordinary engine path
 | `MediaFormat.headers` | `referer` / `user-agent` / `origin` / `cookie` / `accept` / `x-requested-with` only, re-validated by `asHeaders` in the router |
 | `streamId` | `"adapter"` — a marker, not a format selector, so `engineArguments` omits `-f` |
 
+Inside the offscreen page the Adapter is not a passive reader. It replaces `window.fetch` and
+`XMLHttpRequest.prototype.open` for the length of the run, nudges the player (`.play()` or one click
+on a play control), waits at most 2.5 s for a request it can rank, and restores both hooks in
+`finally`. A userscript gets that signal for free by living in the tab it watches; an Adapter has to
+recreate it, which is why the sniffer prefers a request the player made over anything guessed from
+markup.
+
+A run that ends with a login wall keeps its window: `runAdapter` skips `releaseOffscreen`, so retrying
+the same Adapter on the same URL reuses the page the user just signed in on, and the panel shows the
+failure bitmap plus a retry button. Any other failure releases the window as before.
+
 The engine gains one flag for this path: every accepted header becomes `--add-header name: value`.
 `authorization` is deliberately not on the list, because the value would be visible in `ps`.
 
@@ -155,9 +166,9 @@ rendered, and the panel reports `adapter.unavailable` instead of pretending the 
 
 ### Known unknowns
 
-ADR 0001 §5 records three assumptions the Adapter layer rests on, and the preview/hand-off work added
-two more. None of them is proven by this repository's tests: the first three are properties of the
-host's offscreen window, the last two of the running panel and a real agent turn.
+ADR 0001 §5 records three assumptions the Adapter layer rests on, and the preview, hand-off and
+login work added six more. None of them is proven by this repository's tests: the first four are
+properties of the host's offscreen window, the rest of the running panel and a real agent turn.
 
 | Assumption | How to settle it |
 | --- | --- |
@@ -167,6 +178,8 @@ host's offscreen window, the last two of the running panel and a real agent turn
 | CORS, mixed content and hls.js work in the real panel | Open a resolved HLS item and press play. The panel is not same-origin with the service, so this is the only way to confirm the headers are enough. |
 | `video_resolve` behaves as registered when an agent actually calls it | Ask the agent to resolve a link in a conversation. The registration shape is unit-tested; the call is not. |
 | The open-time segment probe keeps its promise on a live platform | The probe is covered by fixtures only. On a real member-gated page it should come back `upstream_405` / `upstream_403`; if it comes back `playable: true` and the player still stalls, the platform gates on a later segment or on a token that expires mid-playlist. |
+| A signed-in Channels page really exposes its stream to the page | Log in inside the offscreen page, then run `WeChat Channels` again. A `directUrl` confirms the player state is readable; `NEEDS_LOGIN:` again means the gate is server-side and metadata is all the panel can offer. |
+| Skipping `releaseOffscreen` keeps the sign-in for the retry | The SDK only promises that a reused `sessionKey` with an unchanged URL skips the reload; the host may still recycle an idle window, and cookie ownership across runs is not documented. Settle it by signing in and retrying without touching the URL: a resolved item means the page survived, `NEEDS_LOGIN:` again means it did not. |
 
 
 If the first two both fail, adapters only work on pages that never gate content, and the value
