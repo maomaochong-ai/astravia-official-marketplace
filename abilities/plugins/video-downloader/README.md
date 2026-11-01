@@ -106,6 +106,45 @@ into `<dataRoot>/bin/ffmpeg(.exe)`, verifies the digest, gunzips and renames ato
 `spawn` prepends that directory to `PATH`, so the engine finds it without relying on the host's
 `PATH`. `GET /api/v1/ffmpeg` reports progress and `POST /api/v1/ffmpeg` starts the download.
 
+## Adapters
+
+An Adapter is user-imported JSON: metadata (`name`, `version`, `match`, `description`, `grant`)
+plus one extraction body. The plugin ships **no site scripts** — the Adapters tab starts empty and
+`ADAPTER_TEMPLATE` is the only built-in text, a generic `og:video` read. Design and the rejected
+alternatives (a full userscript runtime) are in
+[ADR 0001](../../../docs/adr/video-downloader/0001-userscript-adapter-layer.md).
+
+An Adapter never downloads. It runs in `ctx.capture.offscreen` against the page the user points it
+at and returns one playable address, which then travels the ordinary engine path:
+
+| Piece | Value |
+| --- | --- |
+| `MediaItem.extractionPath` | `"adapter"` — the item records which layer produced it |
+| `MediaFormat.directUrl` | the resolved address; the engine fetches this instead of the page URL |
+| `MediaFormat.headers` | `referer` / `user-agent` / `origin` / `cookie` / `accept` / `x-requested-with` only, re-validated by `asHeaders` in the router |
+| `streamId` | `"adapter"` — a marker, not a format selector, so `engineArguments` omits `-f` |
+
+The engine gains one flag for this path: every accepted header becomes `--add-header name: value`.
+`authorization` is deliberately not on the list, because the value would be visible in `ps`.
+
+`ctx.capture` is optional. Without it the Adapters tab and the `action.runAdapter` remedy are not
+rendered, and the panel reports `adapter.unavailable` instead of pretending the feature exists.
+
+### Known unknowns
+
+ADR 0001 §5 records three assumptions the Adapter layer rests on. None of them is proven by this
+repository's tests, because they are properties of the host's offscreen window, not of this code:
+
+| Assumption | How to settle it |
+| --- | --- |
+| The offscreen window shares the user's browser session, so a logged-in page resolves | Import the template adapter, open a page that requires a session, and run it. A `directUrl` means shared state; a login wall means it is not. |
+| The target site does not reject an offscreen user agent or headless fingerprint | Same run, on a site that serves anonymous traffic: a fetch error is the rejection, a resolved address is not. |
+| The playable address is readable from the DOM or a page global | Same run: the template reads `og:video` / `<video src>`. A hit confirms readability for that page, not for every page. |
+
+If the first two both fail, adapters only work on pages that never gate content, and the value
+estimate in ADR 0001 §8 has to be revised downward — the honest failure the panel already shows
+(`adapter.lastRunFailed`) is the signal, not a bug to patch around.
+
 ## Presentation
 
 `assets/` holds the icon and the ability detail blocks (`ability.json` → `assets/detail.json`,

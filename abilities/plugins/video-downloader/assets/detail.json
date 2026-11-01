@@ -46,6 +46,11 @@
       ]
     },
     {
+      "type": "callout",
+      "tone": "info",
+      "content": "Adapters extend coverage without shipping site scripts — this plugin includes none. You import a JSON adapter yourself; it runs in an offscreen page at the address you point it at and returns one playable address, which the same local engine saves. Adapters can be turned off entirely and are never fetched from the network."
+    },
+    {
       "type": "steps",
       "items": [
         {
