@@ -1,6 +1,6 @@
 {
   "name": "@astravia/plugin-open-ai-canvas",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,14 +18,15 @@
     "verify:canvas-catalog": "node scripts/verify-canvas-catalog.mjs",
     "verify:channel-projection": "node scripts/verify-channel-projection.mjs",
     "verify": "npm run check && npm run check:lifecycle && npm run check:build-workflow && npm run verify:workflow && npm run verify:bridge && npm run verify:web && npm run verify:payload-sources && npm run verify:origin && npm run verify:mcp-tools && npm run verify:canvas-catalog && npm run verify:channel-projection",
-    "test": "npm run check:service-layout && npm run check:service-fresh && npm run check:service-types && node scripts/check-plugin-lifecycle.mjs && node scripts/check-build-workflow.mjs && node scripts/verify-workflow.mjs && node scripts/verify-bridge.mjs && node scripts/verify-web-hosting.mjs && node scripts/verify-payload-sources.mjs && node scripts/verify-stable-origin.mjs && node scripts/verify-mcp-tools.mjs && node scripts/verify-canvas-catalog.mjs && node scripts/verify-channel-projection.mjs",
+    "test": "npm run check:service-layout && npm run check:service-fresh && npm run check:service-types && node scripts/check-locales.mjs && node scripts/check-plugin-lifecycle.mjs && node scripts/check-build-workflow.mjs && node scripts/verify-workflow.mjs && node scripts/verify-bridge.mjs && node scripts/verify-web-hosting.mjs && node scripts/verify-payload-sources.mjs && node scripts/verify-stable-origin.mjs && node scripts/verify-mcp-tools.mjs && node scripts/verify-canvas-catalog.mjs && node scripts/verify-channel-projection.mjs",
     "build:service": "node scripts/build-service-zip.mjs",
     "build": "npm run build:boot && npm run shim && npm run check:service-layout && npm run check:lifecycle && npm run check:platforms && npm run check:build-workflow && npm run check:service-types && npm run check:service-fresh && tsc --noEmit && vite build",
     "check": "tsc --noEmit",
     "build:boot": "node scripts/build-service.mjs",
     "check:service-fresh": "node scripts/check-service-fresh.mjs",
     "check:service-layout": "node scripts/check-service-layout.mjs",
-    "check:service-types": "tsc -p server"
+    "check:service-types": "tsc -p server",
+    "check:locales": "node scripts/check-locales.mjs"
   },
   "devDependencies": {
     "@astravia-org/plugin-sdk": "^0.3.10",
