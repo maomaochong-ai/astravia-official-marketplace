@@ -17,11 +17,16 @@ one-sentence premise with the team, and the architect lays out volumes and arcs 
 
 ## What you see after installing
 
-Nothing is added to your sidebar. The studio is **one tab of the activity panel**, already docked on
-the tab bar after install: click **Mahua Novels** (麻花小说网) to open the workspace. Use the tab's
-minus button to put it away — it moves back into the panel's **+** menu and can be added again at
-any time. The tab always exists: when the credential is not active it shows the activation panel
-instead of the shelf, so the same tab is both the way in and the way back.
+The studio is **one tab of the activity panel**, already docked on the tab bar after install: click
+**Mahua Novels** (麻花小说网) to open the workspace. Use the tab's minus button to put it away — it
+moves back into the panel's **+** menu and can be added again at any time. The tab always exists:
+when the credential is not active it shows the activation panel instead of the shelf, so the same tab
+is both the way in and the way back.
+
+The activity panel always keeps a chat column beside it, so no panel is ever truly full screen. The
+**fullscreen** button in the workbench header opens the same workbench on its own page instead, where
+the chat column gives its width back — press it again (or **Esc**) to return to the conversation. That
+page also gets a nav entry in your sidebar's **More** list, which you can pin or ignore.
 
 The workbench is **one tab** and **seven frames**, all read-only: the sidebar team writes, the frames
 follow what landed on disk. There is no input box and no button that dispatches work.

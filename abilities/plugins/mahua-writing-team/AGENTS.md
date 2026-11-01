@@ -91,22 +91,29 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
 前缀，`permissions` 精确等于实际用到的那 13 项（含 hook 两项、`ui.slot` 两枚：标签与回合卡片）。三份断言在
 `test/manifest-guards.test.ts`。
 
-## 入口形状（ADR 0025 补注四，2026-10 修订）
+## 入口形状（ADR 0025 补注四，2026-10 修订；2026-11 恢复第二枚）
 
-工作台**只注册一枚入口**：
+工作台**一张界面，两个宿主形态**：
 
 | 注册 | id | 权限 | 在宿主里长什么样 |
 | --- | --- | --- | --- |
 | `ctx.ui.registerActivityTab` | `studio` | `ui.slot.activity-tab` | 活动面板上的一枚标签，日常就在这里写 |
+| `ctx.ui.registerWorkspaceView` | `studio` | `ui.slot.workspace-view` | 同一界面的整页路由，报头「全屏工作台」的去处 |
 
-- 从前还有第二枚 `registerWorkspaceView`（宿主整页路由，`ui.slot.workspace-view`），2026-10 拆掉了。
-  那条路拿不到它承诺的东西：整页路由仍带宿主侧栏（`RootLayoutView` 的
-  `showSidebar = pageLayout !== "app"`），且 `DOMAIN_NAVIGATION_CAPABILITIES` 只有
-  `OPEN_HOSTED_ROUTE`——进得去、没有返回，用户只能自己摸到侧栏退出。
-- **「铺满」的正确实现点是宿主的面板宽度，不是盖一层蒙层。** 报头的放大键调
-  `ctx.ui.setActivityPanelWidth("max")`，收回时调回之前量到的 `offsetWidth`（量不到退
-  `560`）；宿主自己会在面板占满时收起侧栏。插件不该、也不需要碰宿主 DOM。
-- 不做 `fixed`、不 `createPortal`、不写七位以上 `z-index`：面板类 slot 里盖不住标签条，
+- **两个形态不是重复。** 活动面板有一条硬底线：`ACTIVITY_PANEL_MIN_CHAT_AREA = 384`，面板再宽
+  也要给会话区留 384px（`resolveActivityPanelWidth` 在 atom 层统一夹紧，插件传多大都无效）。
+  所以「全屏整个工作台」在面板里**物理上做不到**，只能落在宿主的整页路由上。两个入口共用
+  `WorkbenchSurface`，差别只有 `mode`：`"tab"` 下那枚键请求整页路由，`"page"` 下它变成退出。
+- `sidebar` 必须保持缺省（即 `true`）。写 `sidebar: false` 会被 `initialize-hosted-routes` 的
+  `createPluginRouterAdapter` 改道到「设置 → 扩展 → 更多选项」，比多一条侧栏入口更差。
+- **退出靠浏览器历史**：`openWorkspaceView` 是 `router.navigate`（push），宿主路由是
+  `createHashHistory()`，所以 `window.history.back()` 就回到用户刚才那一步。只在
+  「从标签页点进来的」情况下渲染退出键（`enteredFromTab`），从侧栏直接进来时一枚都不给——
+  那种情况下 `back()` 会把人送到无关页面，宿主侧栏才是出口。
+- **缺权限时不能静默**：没批 `ui.slot.workspace-view` 时 `openWorkspaceView` 抛（`require`），
+  太旧的宿主没有这个方法。两种都按「没跳成」处理：`FULLSCREEN_SETTLE_MS = 400` 后比对 hash，
+  没变就把面板拉到最宽——键按下去一定有事发生。
+- **仍然不做 `fixed`、不 `createPortal`、不写七位以上 `z-index`**：面板类 slot 里盖不住标签条，
   只会把宿主的菜单和侧栏留在原地，看起来更像没铺满。这几条现在是守卫断言。
 - `registerToolCallSlot` / `registerNewSessionContext` 仍为作废（ADR 0011）：对话里不再插入
   插件自己的卡片，团队的时间流统一进运行台。
@@ -115,18 +122,19 @@ npm run validate   # 用宿主自己的清单解析器校验 plugin.json
   这时「+」必定出现。取证与完整四条件见 ADR 0025 末尾补注。
 - 凭证判断不在注册处：未激活时同一枚标签渲染 `ActivationPage`，所以入口从装上开始就一直在。
 
-`test/manifest-guards.test.ts` 钉住入口形状（恰好一次 `registerActivityTab`、有 `scope_use`、
-`initiallyVisible: true`、走 `useStudioRuntimeReady` 闸门）与权限集合（`ui.slot.*` 恰好
-`ui.slot.activity-tab` 与 `ui.slot.turn-card` 两项）。
+`test/manifest-guards.test.ts` 钉住入口形状（`registerActivityTab` + `registerWorkspaceView` 各一次、
+有 `scope_use`、`initiallyVisible: true`、走 `useStudioRuntimeReady` 闸门、整页挂载器传 `mode="page"`）
+与权限集合（`ui.slot.*` 恰好 `ui.slot.activity-tab`、`ui.slot.turn-card`、`ui.slot.workspace-view` 三项）。
 
 ## 已知的宿主约束
 
 - 面板类 slot 不能用 `fixed`、超大 z-index、`createPortal(..., document.body)`——
-  宿主没有面向插件的全屏 API，编一个出来只会把标签条和侧栏留在原地。
+  蒙层只会把标签条与侧栏留在原地。要更大的地方只有整页路由那一条路（见上）。
 - 标签 `icon` 用 React 节点（`createElement("span", { className: STUDIO_TAB_ICON })`），因为 `iconUrl` 只对图片图标有值；
   iconify class 靠 `@plugin "@iconify/tailwind4";` 生成 CSS，写错了标签栏是空格子且无报错。
 - `src/style.css` 只导 `tailwindcss/theme.css` + `utilities.css`，**不写裸 `@theme`**：`plugin-vite` 会注入 `@astravia-org/plugin-sdk/tailwind-theme.css`。工作台另有一段 `@theme inline { … }`（ADR 0006 补注）：它只把取值内联成本插件的工具类、不向 `:root` 发射变量，并且**不重声明宿主占用的 `--color-*` 名**（改名表写在文件头：`card→raised`、`muted→ink-soft`、`accent→cinnabar`、`success→pass`、`danger→fail`）。
-- 菜单/视图 `label`、`description` 用 `%catalogKey%`；React 与工具侧用裸 key。
+- 菜单/视图 `label` 用 `%catalogKey%`（宿主侧 `resolvePluginText` 会翻）；**工作区视图的
+  `description` 不走翻译**——`useSidebarModel` 拿它直接拼侧栏标题，所以那里不写文案。
 - 清单未知字段 fail-closed：用到 `members[].instructionsPath` 就必须 `pluginApiVersion: ^2.3.0`。
 - 改了代码不 bump `version`，宿主不会重新加载。
 

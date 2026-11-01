@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { getStudioRuntime } from "../../../plugin-context.js";
 import { useConsoleTimeline } from "../console-timeline/use-console-timeline.js";
+import {
+	FULLSCREEN_SETTLE_MS,
+	canLeaveStudioFullscreen,
+	enterStudioFullscreen,
+	forgetStudioFullscreen,
+	fullscreenLanded,
+	leaveStudioFullscreen,
+} from "../fullscreen.js";
 import { useNarrowSurface } from "../hooks/use-narrow-surface";
 import { useRailCollapsed } from "../hooks/use-rail-collapsed";
 import { useStudioState } from "../hooks/use-studio-state";
@@ -32,10 +40,7 @@ const REFRESH_DEBOUNCE_MS = 300;
 /** 相对时间（「1 秒前」）得自己走；没有新数据也每 30 秒重画一次。 */
 const CLOCK_MS = 30_000;
 
-/**
- * 收回时用的宽度：量不到当前宽度（首帧、宿主隐藏）才用它。
- * 取 560 是因为工作台的两栏版面在这个宽度上刚好都不塌。
- */
+/** 收回时退到的宽度：量不到用户设的宽度时的兜底，也是宿主默认值。 */
 const RESTORE_FALLBACK_PX = 560;
 
 /**
@@ -45,23 +50,20 @@ const RESTORE_FALLBACK_PX = 560;
  * 事件流在 `use-console-timeline`。这里只把几样东西接起来，唯一的行为是「有新的落盘事件就
  * 重读一次」：同步只有这一个方向。
  *
- * 「铺满」= 让**宿主**把活动面板拉到最宽，而不是插件自己盖一层覆盖层。
+ * 一张界面，两个宿主形态，`mode` 是唯一的差别：
  *
- * 从前这里是 `createPortal` 到 `document.body` 的 `fixed inset-0` 覆盖层，理由是「宿主工作区
- * 视图做不到只有插件」。那条路有三个治不好的毛病，用户两个都撞上了：
+ * - `"tab"`（默认）——活动面板里的标签页。报头的键是「全屏工作台」，按下去跳整页视图。
+ * - `"page"`——整页路由。全屏在这里是**事实**，不是意图；键变成「退出全屏」。
  *
- * 1. 覆盖层盖住的只是**画面**，宿主的标签条与侧栏仍在原地——视觉上是「标签菜单残留在工作台
- *    上」，交互上侧栏并没有真的收起，只是被蒙住；
- * 2. 想把整窗铺满就得给自己一个极大的 `z-index`，而插件 CSS 编在 `@scope` 里，压不压得住宿主
- *    壳层取决于宿主的层叠上下文，宿主改一次外壳就可能翻车；
- * 3. 它违反本仓库的版面纪律：面板类 slot 不许 `fixed`、不许超大 `z-index`、不许 portal 到 body。
+ * 为什么「铺满」不能只靠拉宽面板：宿主的面板宽度模型有一条硬底线，面板再宽也要给会话区留
+ * `384px`（`ACTIVITY_PANEL_MIN_CHAT_AREA` 在 atom 层统一夹紧，插件传多大都无效）。所以
+ * `setActivityPanelWidth("max")` 拿到的是「窗口宽 − 384」，不是全屏。真正的全屏只有整页视图
+ * 这条路（`../fullscreen.ts` 里写着判定与退路）。
  *
- * 现在走宿主自己的宽度通道：`ctx.ui.setActivityPanelWidth("max")`。宿主的面板宽度模型在面板
- * 超过 `窗口宽 - 384` 时**自动收起左侧栏**（`useActivityPanelModel` 的 `reconcileSidebarForWidth`），
- * 退出时再把用户原来的意愿位还原——这正是「全屏时侧栏该让位」的正确实现点，由宿主做，
- * 插件不碰宿主的 DOM，也不需要额外权限。收回时把展开前量到的宽度原样还回去。
+ * 三条仍然成立的禁区：不许 `fixed`、不许超大 `z-index`、不许 portal 到 body。它们只把画面
+ * 蒙住，盖不住宿主的标签条与侧栏，还得赌宿主的层叠上下文——本条纪律由 `manifest-guards` 钉住。
  */
-export function WorkbenchSurface() {
+export function WorkbenchSurface({ mode = "tab" }: { mode?: "tab" | "page" }) {
 	const t = useTranslator();
 	const data = useStudioState();
 	const { route, navigate } = useWorkbenchRoute();
@@ -69,8 +71,12 @@ export function WorkbenchSurface() {
 	const { ref: surfaceRef, narrow, width } = useNarrowSurface();
 	const events = useConsoleTimeline();
 	const [now, setNow] = useState(() => Date.now());
+	// 面板这一形态里 `expanded` 是意图（用户按了全屏，面板已拉到最宽，但会话区仍在）；
+	// 整页这一形态里它是事实。界面不区分这两者的画法，只区分能不能再往外走一步。
 	const [expanded, setExpanded] = useState(false);
-	/** 展开前的面板宽度；收回时还回去，而不是塞一个写死的值。 */
+	const page = mode === "page";
+	const fullscreen = page || expanded;
+	/** 退回面板时要还的宽度；只在 `"tab"` 的退路里用得到。 */
 	const restoreRef = useRef<number | null>(null);
 
 	const landed = lastLandedStudioEvent(events);
@@ -102,21 +108,41 @@ export function WorkbenchSurface() {
 		setExpanded(false);
 	};
 
+	/**
+	 * 进全屏：先请求宿主的整页路由。
+	 *
+	 * 缺权限时 `openWorkspaceView` 直接抛（`require`），宿主太旧时它干脆不存在；两种情况
+	 * 都不会告诉我们「跳转失败」，所以隔一小段比对 hash：没跳成就在原地把面板拉到最宽——
+	 * 键按下去一定有事发生。
+	 */
 	const expand = () => {
 		restoreRef.current = width > 0 ? width : null;
-		setPanelWidth("max");
-		setExpanded(true);
+		const before = enterStudioFullscreen();
+		window.setTimeout(() => {
+			if (fullscreenLanded(before)) return;
+			// 没跳成：把「这次是从标签页进来的」也一并忘掉，否则下一次落到整页视图时
+			// 会多出一枚指向无关页面的退出键。
+			forgetStudioFullscreen();
+			setPanelWidth("max");
+			setExpanded(true);
+		}, FULLSCREEN_SETTLE_MS);
 	};
 
-	// 铺满之后 Esc 收回：这是模态化的唯一残留，键盘用户得有一条退路。
+	// 全屏之后 Esc 是第一退路：整页里退回上一个路由，面板里把宽度还回去。
 	useEffect(() => {
-		if (!expanded) return;
+		if (!fullscreen) return;
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") collapse();
+			if (event.key !== "Escape") return;
+			if (page) leaveStudioFullscreen();
+			else collapse();
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
 	});
+
+	// 整页形态没有「退出」可走时（从侧栏直接进来）就不给这枚键：按下历史后退只会
+	// 把人送到别的页面，宿主侧栏才是那种情况下的出口。
+	const toggle = page ? (canLeaveStudioFullscreen() ? leaveStudioFullscreen : undefined) : fullscreen ? collapse : expand;
 
 	const book = data.book;
 	const chapter = book?.progress.currentChapter ?? 0;
@@ -133,12 +159,12 @@ export function WorkbenchSurface() {
 		<div
 			ref={surfaceRef}
 			className="mahua-root flex h-full min-h-0 w-full flex-col overflow-hidden"
-			data-expanded={expanded ? "true" : "false"}
+			data-expanded={fullscreen ? "true" : "false"}
 		>
 			<StudioShell
 				active={route.page}
-				expanded={expanded}
-				onToggleExpanded={expanded ? collapse : expand}
+				expanded={fullscreen}
+				onToggleExpanded={toggle}
 				bare={isBarePage(route.page)}
 				sync={
 					isBarePage(route.page)
