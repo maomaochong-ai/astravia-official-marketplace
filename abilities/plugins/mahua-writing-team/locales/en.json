@@ -511,6 +511,8 @@
 	"window.fullscreen": "Fullscreen workbench",
 	"window.loading": "Reading the project…",
 	"window.retry": "Try again",
+	"window.starting": "The workbench is still starting",
+	"window.startingHint": "Its background services have not reported ready yet. If this stays, reload the plugin from Abilities and open this panel again.",
 	"worker.arbiter": "Arbiter",
 	"worker.architect": "Architect",
 	"worker.editor": "Editor",
