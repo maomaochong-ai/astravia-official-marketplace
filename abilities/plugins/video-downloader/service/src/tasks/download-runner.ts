@@ -72,7 +72,7 @@ export function engineArguments(
   const target = adapter && task.directUrl ? task.directUrl : task.url;
   const args = ["--no-warnings", "--no-playlist", "--no-progress"];
   // Same engine flags as the probe: the stream id it resolved has to stay fetchable here.
-  args.push(...jsRuntimeArgs(), ...proxyArgs(proxyForUrl(target, settings)));
+  args.push(...jsRuntimeArgs(), ...proxyArgs(proxyForUrl(target, settings), settings.proxy.trim() !== ""));
   if (settings.multiThread) args.push("--concurrent-fragments", CONCURRENT_FRAGMENTS);
   args.push(...cookieArgs(cookieFile, settings.cookieBrowser));
   // The template lets the engine name the file; `moveProducedFiles` works on the directory.

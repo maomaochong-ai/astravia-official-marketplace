@@ -139,6 +139,14 @@ describe("yt-dlp engine arguments", () => {
     expect(proxyArgs("   ")).toEqual([]);
     expect(proxyArgs("socks5://127.0.0.1:1080")).toEqual(["--proxy", "socks5://127.0.0.1:1080"]);
   });
+
+  it("disables the inherited proxy when a configured one is bypassed", () => {
+    // The OS proxy would otherwise still apply, and a foreign exit node makes domestic video
+    // services drop the connection instead of serving the page.
+    expect(proxyArgs("", true)).toEqual(["--proxy", ""]);
+    expect(proxyArgs("   ", true)).toEqual(["--proxy", ""]);
+    expect(proxyArgs("http://127.0.0.1:7897", true)).toEqual(["--proxy", "http://127.0.0.1:7897"]);
+  });
 });
 
 describe("yt-dlp normalisation", () => {

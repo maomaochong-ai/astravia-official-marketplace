@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "name": "iQIYI player instance",
+    "version": "0.1.0",
+    "description": "Read the signed playlist iQIYI's own player negotiated, since the pinned engine finds neither a tvid nor a working API.",
+    "match": [
+      "https://www.iqiyi.com/v_*.html",
+      "https://www.iqiyi.com/a_*.html"
+    ],
+    "grant": "none"
+  },
+  "body": "async function extract(ctx) {\n  // The shell page no longer carries `data-player-tvid`, so the engine has nothing to start from.\n  // The player instance does hold the signed playlist once it has negotiated playback.\n  const win = (ctx && ctx.window) || window;\n  const deadline = Date.now() + 12000;\n\n  function scan() {\n    const mv = win.playback && win.playback.msePlayback && win.playback.msePlayback._mvInfo;\n    if (!mv) return null;\n    let best = null;\n    for (const bucket of [mv.levelInfoArr, mv.videoList, mv.dolbyInfoArr, mv.hdrInfoArr]) {\n      if (!bucket) continue;\n      for (const entry of Object.values(bucket)) {\n        if (!entry || typeof entry.ml !== 'string') continue;\n        if (!/^https?:\\/\\/[^\"']+\\.m3u8/i.test(entry.ml)) continue;\n        const score = Number(entry.vf) || 0;\n        if (!best || score > best.score) best = { url: entry.ml, score, label: entry.vd || '' };\n      }\n    }\n    return best;\n  }\n\n  while (Date.now() < deadline) {\n    const hit = scan();\n    if (hit) {\n      return {\n        directUrl: hit.url,\n        title: String(document.title || '').split(/[-_|]/)[0].trim(),\n        quality: hit.label,\n        ext: 'mp4',\n        headers: { referer: location.href, 'user-agent': navigator.userAgent },\n      };\n    }\n    await new Promise((resolve) => setTimeout(resolve, 400));\n  }\n\n  throw new Error('播放器没有暴露播放地址：先确认页面能正常播放，再运行适配器');\n}"
+}

@@ -94,6 +94,15 @@ describe("site capabilities", () => {
     expect(capabilityForUrl("https://www.threads.net/@someone/post/1")?.reason).toBe("engine-missing");
   });
 
+  it("stops advertising iQIYI once its extractor stopped resolving", () => {
+    // Both of the pinned extractor's paths are gone: the shell page has no `data-player-tvid` and
+    // `cache.m.iqiyi.com/jp/tmts` answers 502. Claiming support would read as a plugin bug.
+    const iqiyi = capabilityForUrl("https://www.iqiyi.com/v_1jm50v4hx7c.html");
+    expect(iqiyi?.extractor).toBe(false);
+    expect(iqiyi?.reason).toBe("upstream-broken");
+    expect(supportedSiteLabels()).not.toContain("爱奇艺");
+  });
+
   it("maps each reason onto its own failure code", () => {
     expect(unsupportedCode("engine-missing")).toBe("site_unsupported");
     expect(unsupportedCode("upstream-broken")).toBe("site_upstream_broken");

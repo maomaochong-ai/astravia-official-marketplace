@@ -214,6 +214,7 @@ export class ServiceContext {
         cookieFile,
         cookieBrowser: settings.cookieBrowser,
         proxy: proxyForUrl(url, settings),
+        proxyConfigured: settings.proxy.trim() !== "",
       });
       return {
         items: outcome.items,

@@ -72,7 +72,10 @@ export const SITE_CAPABILITIES: readonly SiteCapability[] = [
 
   // Long form and anime
   { key: "youku", label: "优酷", group: "screen", hosts: ["youku.com"], extractor: true, cookie: "none" },
-  { key: "iqiyi", label: "爱奇艺", group: "screen", hosts: ["iqiyi.com"], extractor: true, cookie: "session" },
+  // Both paths the pinned extractor uses are gone: the page no longer carries `data-player-tvid`
+  // (it ships as a client-rendered shell) and `cache.m.iqiyi.com/jp/tmts` answers 502. The page
+  // itself still exposes signed playlists to `window.playback`, so an Adapter can resolve it.
+  { key: "iqiyi", label: "爱奇艺", group: "screen", hosts: ["iqiyi.com"], extractor: false, cookie: "none", reason: "upstream-broken" },
   { key: "qq-video", label: "腾讯视频", group: "screen", hosts: ["v.qq.com"], extractor: true, cookie: "none" },
   { key: "acfun", label: "AcFun", group: "screen", hosts: ["acfun.cn"], extractor: true, cookie: "none" },
   { key: "xinpianchang", label: "新片场", group: "screen", hosts: ["xinpianchang.com"], extractor: true, cookie: "none" },

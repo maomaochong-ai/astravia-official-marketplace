@@ -16,6 +16,11 @@ export interface YtdlpProbeOptions {
   cookieBrowser?: string;
   /** Normalised proxy URL; empty or absent means direct egress. */
   proxy?: string;
+  /**
+   * True when the user configured a proxy even though this URL bypasses it. The engine then gets
+   * an explicit empty `--proxy` so it does not silently inherit the OS proxy.
+   */
+  proxyConfigured?: boolean;
   timeoutMs?: number;
   signal?: AbortSignal;
 }
@@ -57,7 +62,7 @@ export async function probeWithYtdlp(
   // Warnings stay enabled on purpose: they carry the only actionable explanation for a page that
   // yields no usable rendition (missing session, unsupported client, blocked player response).
   const args = ["--dump-single-json", "--no-playlist", "--no-progress", "--socket-timeout", "25"];
-  args.push(...jsRuntimeArgs(), ...proxyArgs(options.proxy ?? ""));
+  args.push(...jsRuntimeArgs(), ...proxyArgs(options.proxy ?? "", options.proxyConfigured === true));
   args.push(...cookieArgs(options.cookieFile ?? null, options.cookieBrowser ?? ""));
   args.push(url);
 

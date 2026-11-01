@@ -25,10 +25,18 @@ export function jsRuntimeArgs(execPath: string = process.execPath): string[] {
   return ["--js-runtimes", NODE_BINARY.test(name) ? `node:${dirname(execPath)}` : "node"];
 }
 
-/** `--proxy` for every engine request, omitted when no proxy is configured. */
-export function proxyArgs(proxy: string): string[] {
+/**
+ * `--proxy` for every engine request.
+ *
+ * `configured` says whether the user has a proxy at all. When they do but this request must take
+ * the direct route (a domestic platform under `proxyMode: auto`), the empty value is passed
+ * explicitly: without it the engine inherits the OS proxy and the direct route never happens. A
+ * foreign exit node makes licensed video services drop the connection outright.
+ */
+export function proxyArgs(proxy: string, configured = false): string[] {
   const trimmed = proxy.trim();
-  return trimmed ? ["--proxy", trimmed] : [];
+  if (trimmed) return ["--proxy", trimmed];
+  return configured ? ["--proxy", ""] : [];
 }
 
 /**
