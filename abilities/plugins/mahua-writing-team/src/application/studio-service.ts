@@ -204,9 +204,16 @@ export class StudioService {
 		const id = typeof bookId === "string" ? bookId.trim() : "";
 		if (!id) return failure("invalid-input", "bookId is required");
 
-		const outcome = await this.repository.deleteBook(id);
-		if (!outcome.ok) return failure(outcome.error, outcome.detail);
-		return { ok: true, data: { id } };
+		try {
+			const outcome = await this.repository.deleteBook(id);
+			if (!outcome.ok) return failure(outcome.error, outcome.detail);
+			return { ok: true, data: { id } };
+		} catch (error) {
+			// 落盘失败在仓储里会收成 `DeleteOutcome`；能抛到这里的只有「索引或书的目录读不出来」
+			// 这一种。不接住它就是一个 unhandled rejection：调用方 `await` 的位置再也拿不到
+			// 结果，界面上的「删除中」会永远停在那里，看起来就像删除按钮没有生效。
+			return failure("storage-unavailable", error instanceof Error ? error.message : String(error));
+		}
 	}
 
 	async acceptBrief(bookId?: string): Promise<ServiceResult<NovelBook>> {

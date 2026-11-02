@@ -287,15 +287,19 @@
 		padding: var(--mahua-page-pad);
 	}
 
-	/* `@theme inline` 不向 :root 发射变量，只把取值内联进**本插件的工具类**。所以
-	 * `rounded-sheet` 这类 utility 一定有值，而手写 CSS 里的 `var(--radius-sheet)` 要靠
-	 * 构建器另外发射一份作用域变量——那一份一旦缺席，`border-radius` 就解析失败退回 0，
-	 * 卡片和凹槽全变成直角，而旁边的按钮仍是圆的。这里的字面量兜底让两种情形一样好看；
-	 * 变量在场时取值完全相同，不是两套设计。 */
+	/* 圆角与阴影直接写字面量，不写成 `var(--radius-sheet, 18px)`。
+	 *
+	 * `@theme inline` 把取值**内联进工具类**，不向 `:root` 发射变量。手写 CSS 里
+	 * `var(--radius-sheet)` 在当前构建下是未定义的，唯一让它有值的就是逗号后面那个 fallback——
+	 * 写下 fallback 就等于承认「这个变量可能不在」，这正是要删掉的东西。而删掉 fallback 只写字面量
+	 * 之外的 `var()` 会让卡片真的失去圆角，没有第三条路。
+	 *
+	 * 代价是刻度多了第二处。`test/style-tokens.test.ts` 把两处逐字绑住：改了 `@theme` 的
+	 * `--radius-*` 却忘记这里，测试会红。 */
 	.mahua-card {
-		border-radius: var(--radius-sheet, 18px);
+		border-radius: 18px;
 		background-color: var(--mahua-raised);
-		box-shadow: var(--shadow-raise, 0 1px 2px rgb(0 0 0 / 0.06));
+		box-shadow: 0 1px 2px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.4));
 		overflow: hidden;
 	}
 
@@ -305,7 +309,7 @@
 	}
 
 	.mahua-well {
-		border-radius: var(--radius-panel, 13px);
+		border-radius: 13px;
 		background-color: var(--mahua-well);
 	}
 
@@ -412,10 +416,14 @@
 	fill: var(--cover-band);
 }
 
-/* 封面字是这套界面的「题字」，拿不到时也要退到衬线，不能退回无衬线的界面字：
- * `var()` 解析失败会让整条 `font-family` 作废，那才真是观感突变。 */
+/* 封面字是这套界面的「题字」，拿不到 Fraunces 时也要退到衬线，不能退回无衬线的界面字。
+ *
+ * 字体栈同样直接写：`--font-display` 在 `@theme inline` 里，手写 CSS 引用它同样要赌那份
+ * 作用域变量存在，而 `var()` 解析失败会让整条 `font-family` 作废，那才真是观感突变。 */
 .mahua-cover .cover-glyph {
-	font-family: var(--font-display, "Fraunces Variable", ui-serif, "Songti SC", serif);
+	font-family:
+		"Fraunces Variable", "Fraunces", ui-serif, "Songti SC", "Source Han Serif SC",
+		"Noto Serif CJK SC", serif;
 }
 
 /* 纸纹底片：乘在纸底色上，只留纤维感。透明度与混合模式写在这里，

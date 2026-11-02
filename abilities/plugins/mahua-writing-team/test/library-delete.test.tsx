@@ -143,4 +143,36 @@ describe("the shelf can delete a book in place", () => {
 		await waitFor(() => expect(container.textContent).toContain("revision-conflict"));
 		expect(container.textContent).toContain(catalog["book.deleteFailed"]);
 	});
+
+	it("recovers the button when deleteBook rejects instead of parking on 'deleting'", async () => {
+		// 读索引或书目录失败会一路 reject 到这里。接不住的话 `removing` 收不回来，
+		// 按钮永久变灰、文案停在「删除中」——用户的描述就是「点了没反应」。
+		const deleteBook = vi.fn(async () => {
+			throw new Error("storage-unavailable: index.json is unreadable");
+		});
+		const { container } = mount([entry("b1", "长夜")], deleteBook as unknown as StudioState["deleteBook"]);
+
+		fireEvent.click(
+			(await waitFor(() => {
+				const found = container.querySelector<HTMLButtonElement>('button[aria-label="Delete 长夜"]');
+				expect(found).not.toBeNull();
+				return found as HTMLButtonElement;
+			})) as HTMLButtonElement,
+		);
+		const confirm = [...container.querySelectorAll("button")].find(
+			(node) => node.textContent?.trim() === catalog["book.deleteRun"],
+		);
+		fireEvent.click(confirm as HTMLButtonElement);
+
+		await waitFor(() => expect(container.textContent).toContain("storage-unavailable"));
+		// 失败后确认带留着（可以再试一次），那个按钮必须恢复可点：停在 disabled 上，
+		// 用户只能取消重来，而「点了没反应」正是这么来的。
+		expect(container.textContent).toContain(catalog["book.deleteFailed"]);
+		await waitFor(() => {
+			const retry = [...container.querySelectorAll("button")].find(
+				(node) => node.textContent?.trim() === catalog["book.deleteRun"],
+			);
+			expect((retry as HTMLButtonElement).disabled).toBe(false);
+		});
+	});
 });

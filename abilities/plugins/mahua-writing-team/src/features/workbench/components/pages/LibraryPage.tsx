@@ -10,14 +10,17 @@ import { Cover } from "../shell/Cover";
 import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
 import { PhaseBadge } from "../shell/PhaseBadge";
-import { COLUMNS, columnClassName, HEADER_CELLS } from "./library-columns";
+import { COLUMN_BOUNDS, tierCells, tierTemplate } from "./library-columns";
+import { useWidthTier } from "../../hooks/use-width-tier";
 
 const PAGE_SIZE = 9;
 
 /** 六列表头：书名 / 题材·篇幅 / 阶段 / 章数 / 字数 / 更新。
  *
  * 宽度不够时**丢列**（题材篇幅与字数 → 章数 → 更新），而不是把六列一起压到叠字。
- * 列模板、每格的隐藏档位都写在 `library-columns.ts`：表头与行共用同一组，守卫测试逐档
+ * 阶位由**表头自己的实测宽度**决定（`useWidthTier`），不交给 CSS 容器查询：查询参照的是
+ * 最近的一层 `container-type` 祖先，那层缺席时查询恒假，六列会原样塞进 300px。
+ * 列模板、每格的宽度下界都写在 `library-columns.ts`：表头与行共用同一组，守卫测试逐档
  * 核对「轨道数 = 可见单元格数」——多出来的子项会被 grid 塞进隐式第二行，那正是列错位的根因。 */
 
 // 与 `NovelPhase` 同序：落库的阶段一个都不能漏，否则筛选带会对某些书静默失灵
@@ -84,6 +87,9 @@ export function LibraryPage({
 	const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
 	const [removing, setRemoving] = useState(false);
 	const [removeError, setRemoveError] = useState<string | null>(null);
+	const { ref: tableRef, tier } = useWidthTier(COLUMN_BOUNDS);
+	const cells = tierCells(tier);
+	const template = tierTemplate(tier);
 
 	/**
 	 * 删书的失败原因要留在屏幕上：`deleteBook` 会把仓储的 detail（冲突、找不到、没凭证）
@@ -93,14 +99,20 @@ export function LibraryPage({
 		if (pendingDelete === null) return;
 		setRemoving(true);
 		setRemoveError(null);
-		const result = await data.deleteBook(pendingDelete.id);
-		setRemoving(false);
-		if (result.ok) {
-			// 行会随 `books` 一起消失；确认带也得跟着走，否则它指着一本已经不存在的书。
-			setPendingDelete(null);
-			return;
+		try {
+			const result = await data.deleteBook(pendingDelete.id);
+			if (result.ok) {
+				// 行会随 `books` 一起消失；确认带也得跟着走，否则它指着一本已经不存在的书。
+				setPendingDelete(null);
+				return;
+			}
+			setRemoveError(result.detail ?? result.error);
+		} catch (error) {
+			// 与书页同理：「删除中」收不回来才是真正的「点了没反应」。
+			setRemoveError(error instanceof Error ? error.message : String(error));
+		} finally {
+			setRemoving(false);
 		}
-		setRemoveError(result.detail ?? result.error);
 	};
 
 	const landed = lastLandedStudioEvent(events);
@@ -323,10 +335,12 @@ export function LibraryPage({
 				</div>
 
 				<div
-					className={`mx-2 mt-2 grid ${COLUMNS} shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint`}
+					ref={tableRef}
+					style={{ gridTemplateColumns: template }}
+					className="mx-2 mt-2 grid shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-ink-faint"
 				>
-					{HEADER_CELLS.map((cell) => (
-						<span key={cell.key} className={`min-w-0 truncate whitespace-nowrap ${columnClassName(cell)}`}>
+					{cells.map((cell) => (
+						<span key={cell.key} className={`min-w-0 truncate whitespace-nowrap ${cell.className}`}>
 							{t(cell.key)}
 						</span>
 					))}
@@ -337,7 +351,7 @@ export function LibraryPage({
 						<EmptySheet icon="icon-[solar--layers-bold]" title={t("library.empty")} />
 					</div>
 				) : (
-					<ul className="mahua-scroll mt-1 min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-1">
+					<ul className="mahua-scroll mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-1.5">
 						{rows.map((entry) => {
 							const ago = elapsedSince(entry.updatedAt, now);
 							const done = percent(entry.committedCount, entry.targetChapters);
@@ -351,62 +365,93 @@ export function LibraryPage({
 											onNavigate("book");
 										}}
 										aria-current={isCurrent ? "true" : undefined}
-										className={`group grid w-full ${COLUMNS} items-center gap-3 rounded-control px-3 py-2 text-left transition-colors ${
+										style={{ gridTemplateColumns: template }}
+										className={`group grid w-full items-center gap-3 rounded-control py-2 pl-3 pr-9 text-left transition-colors ${
 											isCurrent ? "bg-cinnabar-soft hover:bg-wash" : "hover:bg-wash"
 										}`}
 									>
-										<span className="flex min-w-0 items-center gap-2.5">
-											<Cover {...coverSeed(entry.title)} size="thumb" />
-											<span className="flex min-w-0 flex-1 flex-col gap-1">
-												<span
-													className={`block truncate font-display text-body-sm font-semibold ${
-														isCurrent ? "text-cinnabar-ink" : "text-ink"
-													}`}
-												>
-													{entry.title}
-												</span>
-												{/* 进度缩成书名下一根发丝：与竖栏书卡同一说法，数目字在「章数」列里。 */}
-												<span className="flex min-w-0 items-center">
-													<span className="h-[3px] min-w-0 max-w-[132px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
-														<span
-															className={`block h-full rounded-pill ${isCurrent ? "bg-cinnabar" : "bg-cinnabar/40"}`}
-															style={{ width: `${done}%` }}
-														/>
+										{cells.map((cell) => {
+											if (cell.key === "library.column.book") {
+												return (
+													<span key={cell.key} className="flex min-w-0 items-center gap-2.5">
+														<Cover {...coverSeed(entry.title)} size="thumb" />
+														<span className="flex min-w-0 flex-1 flex-col gap-1">
+															<span
+																className={`block truncate font-display text-body-sm font-semibold ${
+																	isCurrent ? "text-cinnabar-ink" : "text-ink"
+																}`}
+															>
+																{entry.title}
+															</span>
+															{/* 进度缩成书名下一根发丝：与竖栏书卡同一说法，数目字在「章数」列里。 */}
+															<span className="flex min-w-0 items-center">
+																<span className="h-[3px] min-w-0 max-w-[132px] flex-1 overflow-hidden rounded-pill bg-wash-strong">
+																	<span
+																		className={`block h-full rounded-pill ${isCurrent ? "bg-cinnabar" : "bg-cinnabar/40"}`}
+																		style={{ width: `${done}%` }}
+																	/>
+																</span>
+															</span>
+														</span>
 													</span>
+												);
+											}
+											if (cell.key === "library.column.genreLength") {
+												return (
+													<span key={cell.key} className={`flex min-w-0 flex-col gap-0.5 ${cell.className}`}>
+														<span className="truncate text-micro text-ink-soft">
+															{entry.genre ?? t("library.card.noGenre")}
+														</span>
+														<span className="truncate text-[10px] text-ink-faint">
+															{t(`library.size.${sizeOf(entry.targetChapters)}`)}
+														</span>
+													</span>
+												);
+											}
+											if (cell.key === "library.column.stage") {
+												return (
+													<span key={cell.key} className="min-w-0 truncate">
+														<PhaseBadge phase={entry.phase} />
+													</span>
+												);
+											}
+											if (cell.key === "library.column.chapters") {
+												return (
+													<span
+														key={cell.key}
+														className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink ${cell.className}`}
+													>
+														{entry.committedCount}
+														<span className="text-ink-faint">/{entry.targetChapters}</span>
+													</span>
+												);
+											}
+											if (cell.key === "library.column.words") {
+												return (
+													<span
+														key={cell.key}
+														className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink-soft ${cell.className}`}
+													>
+														{entry.words ? formatCount(entry.words) : "—"}
+													</span>
+												);
+											}
+											return (
+												<span
+													key={cell.key}
+													className={`shrink-0 truncate whitespace-nowrap text-right text-[10px] text-ink-faint ${cell.className}`}
+												>
+													{ago ? t(ago.key, { count: ago.count }) : "—"}
 												</span>
-											</span>
-										</span>
-										<span className={`flex min-w-0 flex-col gap-0.5 ${columnClassName(HEADER_CELLS[1])}`}>
-											<span className="truncate text-micro text-ink-soft">
-												{entry.genre ?? t("library.card.noGenre")}
-											</span>
-											<span className="truncate text-[10px] text-ink-faint">
-												{t(`library.size.${sizeOf(entry.targetChapters)}`)}
-											</span>
-										</span>
-										<span className="min-w-0 truncate">
-											<PhaseBadge phase={entry.phase} />
-										</span>
-										<span
-											className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink ${columnClassName(HEADER_CELLS[3])}`}
-										>
-											{entry.committedCount}
-											<span className="text-ink-faint">/{entry.targetChapters}</span>
-										</span>
-										<span
-											className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink-soft ${columnClassName(HEADER_CELLS[4])}`}
-										>
-											{entry.words ? formatCount(entry.words) : "—"}
-										</span>
-										<span
-											className={`shrink-0 truncate whitespace-nowrap text-right text-[10px] text-ink-faint ${columnClassName(HEADER_CELLS[5])}`}
-										>
-											{ago ? t(ago.key, { count: ago.count }) : "—"}
-										</span>
+											);
+										})}
 									</button>
 									{/* 行本身是整块 `<button>`（点行进书），所以删除只能是它的**兄弟**——嵌进去既不合
-									    HTML 也点不着。绝对定位意味着不占六列的宽度预算，hover 才浮出来；窄档下
-									    时间列已隐藏，常显也不会叠到字上。 */}
+									 * HTML 也点不着。绝对定位意味着不占轨道：行尾用 `pr-9` 把那一块留出来，
+									 * 它就不会压在最后一列的字上。
+									 *
+									 * 常显而不是 hover 才浮出：面板拖窄后行尾本来就没多少东西，而 `hover` 在
+									 * 触控板与键盘上都不算「看得见」——要删一本书得先把鼠标游过去猜哪里能点。 */}
 									<button
 										type="button"
 										onClick={() => {
@@ -415,7 +460,7 @@ export function LibraryPage({
 										}}
 										aria-label={t("library.deleteAria", { title: entry.title })}
 										title={t("library.deleteAria", { title: entry.title })}
-										className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-control bg-well text-ink-faint opacity-0 transition-opacity hover:bg-fail-soft hover:text-fail focus-visible:opacity-100 group-hover/row:opacity-100 @max-[760px]:opacity-100"
+										className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-control bg-well text-ink-faint opacity-55 transition-opacity hover:bg-fail-soft hover:text-fail hover:opacity-100 focus-visible:opacity-100 group-hover/row:opacity-100"
 									>
 										<span className="icon-[solar--trash-bin-trash-linear] size-3.5" />
 									</button>
@@ -425,7 +470,7 @@ export function LibraryPage({
 					</ul>
 				)}
 			{pendingDelete !== null && (
-				<div className="mx-2 mb-1 flex shrink-0 items-center gap-2 rounded-control bg-fail-soft px-3 py-1.5 text-micro text-fail">
+				<div className="mx-2 mt-1.5 mb-1.5 flex shrink-0 items-center gap-2 rounded-control bg-fail-soft px-3 py-1.5 text-micro text-fail">
 					<span className="min-w-0 flex-1 truncate">
 						{t("library.deleteAsk", { title: pendingDelete.title })}
 					</span>
@@ -451,12 +496,12 @@ export function LibraryPage({
 			)}
 
 			{removeError !== null && (
-				<p className="mx-2 mb-1 rounded-control bg-fail-soft px-3 py-1.5 text-[10px] leading-4 text-fail">
+				<p className="mx-2 mb-1.5 rounded-control bg-fail-soft px-3 py-1.5 text-[10px] leading-4 text-fail">
 					{t("book.deleteFailed")} · {removeError}
 				</p>
 			)}
 
-				<div className="m-2 mt-0 flex shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-micro text-ink-soft">
+				<div className="mx-2 mb-2 mt-1 flex shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-micro text-ink-soft">
 					<div className="flex shrink-0 items-center gap-1 whitespace-nowrap">
 						<button
 							type="button"

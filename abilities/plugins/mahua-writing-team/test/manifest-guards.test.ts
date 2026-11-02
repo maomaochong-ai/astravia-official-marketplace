@@ -2,7 +2,13 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
-import { COLUMNS_TIERS, HEADER_CELLS, visibleHeaderCells } from "../src/features/workbench/components/pages/library-columns.js";
+import {
+	COLUMN_BOUNDS,
+	COLUMN_TEMPLATES,
+	LIBRARY_CELLS,
+	tierCells,
+	tierTemplate,
+} from "../src/features/workbench/components/pages/library-columns.js";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -761,19 +767,32 @@ describe("the workbench frames stay honest about the domain", () => {
 
 	it("keeps the library grid tracks equal to the cells it still renders", () => {
 		// 一档模板少了一列、单元格却没少——多出来的子项会被 grid 自动排布塞进隐式第二行：
-		// 行高翻倍、字折成两行、右列错位。这条守卫把「轨道数 = 可见单元格数」钉在四个档位。
+		// 行高翻倍、字折成两行、右列错位。这条守卫把「轨道数 = 该档单元格数」钉在每一档，
+		// 并把阶梯边界本身也核一遍：边界与模板必须一一对应，否则档位会错一档。
 		const mismatched: string[] = [];
-		for (const tier of COLUMNS_TIERS) {
-			const visible = visibleHeaderCells(tier.tracks).length;
-			if (visible !== tier.tracks) mismatched.push(`${tier.tracks} tracks vs ${visible} cells`);
-			// 模板里的轨道数也不能自己说了算：把方括号里那串按 `_` 切开数一下有多少段。
-			const template = /grid-cols-\[([^\]]+)\]/.exec(tier.template)?.[1] ?? "";
-			const tracks = template.split("_").filter(Boolean).length;
-			if (tracks !== tier.tracks) mismatched.push(`${tier.tracks} declared vs ${tracks} in ${tier.template}`);
+		for (let tier = 0; tier < COLUMN_TEMPLATES.length; tier += 1) {
+			const cells = tierCells(tier).length;
+			const tracks = tierTemplate(tier)
+				.split(/\s+/)
+				.filter(Boolean).length;
+			if (tracks !== cells) mismatched.push(`tier ${tier}: ${cells} cells vs ${tracks} tracks`);
+		}
+		if (COLUMN_TEMPLATES.length !== COLUMN_BOUNDS.length + 1) {
+			mismatched.push(`${COLUMN_BOUNDS.length + 1} bounds imply ${COLUMN_BOUNDS.length + 1} tiers, got ${COLUMN_TEMPLATES.length}`);
 		}
 		expect(mismatched).toEqual([]);
+		// 档位边界从宽到窄递减：写反了 `findIndex` 会命中最窄那档，六列永远不出来。
+		expect([...COLUMN_BOUNDS].sort((left, right) => right - left)).toEqual([...COLUMN_BOUNDS]);
 		// 每格都得在语言文件里能查到，不然空表头比错位更难发现。
-		expect(HEADER_CELLS.filter((cell) => !(cell.key in en) || !(cell.key in zh))).toEqual([]);
+		expect(LIBRARY_CELLS.filter((cell) => !(cell.key in en) || !(cell.key in zh))).toEqual([]);
+	});
+
+	it("keeps the phase badge on one line at any column width", () => {
+		// 「写作」被挤成竖排两个字：徽章是个 `inline-flex` 的定高块，既没 `shrink-0`
+		// 也没 `whitespace-nowrap`，grid 一窄就把它压扁，字就落到第二行。
+		const source = read("src/features/workbench/components/shell/PhaseBadge.tsx");
+		expect(source).toContain("whitespace-nowrap");
+		expect(source).toContain("shrink-0");
 	});
 });
 

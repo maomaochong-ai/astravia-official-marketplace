@@ -19,7 +19,9 @@ export function PhaseBadge({ phase }: { phase: string }) {
 	const t = useTranslator();
 	const tone = PHASE_TONES[phase] ?? PHASE_TONES["planning"];
 	return (
-		<span className={`inline-flex h-[19px] items-center rounded-tile px-1.5 text-micro font-medium ${tone}`}>
+		<span
+			className={`inline-flex h-[19px] shrink-0 items-center whitespace-nowrap rounded-tile px-1.5 text-micro font-medium ${tone}`}
+		>
 			{t(`phase.${phase}`)}
 		</span>
 	);

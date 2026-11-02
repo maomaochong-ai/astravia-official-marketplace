@@ -58,14 +58,22 @@ export function BookPage({
 	const remove = async (bookId: string) => {
 		setRemoving(true);
 		setRemoveError(null);
-		const result = await data.deleteBook(bookId);
-		setRemoving(false);
-		if (result.ok) {
-			onNavigate("shelf");
-			return;
+		try {
+			const result = await data.deleteBook(bookId);
+			if (result.ok) {
+				onNavigate("shelf");
+				return;
+			}
+			setConfirming(false);
+			setRemoveError(result.detail ?? result.error);
+		} catch (error) {
+			// 删除本身失败必须看得见；但比失败更糟的是卡住——`removing` 收不回来，按钮就永久
+			// 变灰、文案永久停在「删除中」，用户只会说「点了没反应」。`finally` 是那条底线。
+			setConfirming(false);
+			setRemoveError(error instanceof Error ? error.message : String(error));
+		} finally {
+			setRemoving(false);
 		}
-		setConfirming(false);
-		setRemoveError(result.detail ?? result.error);
 	};
 	const book = data.book;
 
@@ -114,9 +122,6 @@ export function BookPage({
 					right={
 						confirming ? (
 							<div className="flex shrink-0 items-center gap-1.5">
-								<span className="hidden min-w-0 truncate text-[10px] text-ink-faint @min-[760px]:inline">
-									{t("book.deleteConfirm")}
-								</span>
 								<button
 									type="button"
 									onClick={() => setConfirming(false)}
@@ -128,7 +133,8 @@ export function BookPage({
 									type="button"
 									disabled={removing}
 									onClick={() => void remove(book.id)}
-									className="flex h-7 items-center rounded-control bg-fail-soft px-2.5 text-micro font-semibold text-fail transition-colors hover:bg-fail/12 disabled:opacity-60"
+									title={t("book.deleteConfirm")}
+									className="flex h-7 shrink-0 items-center whitespace-nowrap rounded-control bg-fail-soft px-2.5 text-micro font-semibold text-fail transition-colors hover:bg-fail/12 disabled:opacity-60"
 								>
 									{removing ? t("book.deleting") : t("book.deleteRun")}
 								</button>
@@ -138,10 +144,10 @@ export function BookPage({
 								type="button"
 								onClick={() => setConfirming(true)}
 								title={t("book.deleteConfirm")}
-								className="flex h-7 items-center gap-1.5 rounded-control bg-wash px-2.5 text-micro text-ink-soft transition-colors hover:bg-fail-soft hover:text-fail"
+								className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control bg-wash px-2.5 text-micro text-ink-soft transition-colors hover:bg-fail-soft hover:text-fail"
 							>
 								<span className="icon-[solar--trash-bin-trash-linear] size-3.5 shrink-0" />
-								<span className="hidden whitespace-nowrap @min-[760px]:inline">{t("book.delete")}</span>
+								<span className="whitespace-nowrap">{t("book.delete")}</span>
 							</button>
 						)
 					}
