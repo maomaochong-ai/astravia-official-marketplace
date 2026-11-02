@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "pdfcraft",
+  "version": "0.0.1",
+  "icon": "assets/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "meta": [
+      {
+        "key": "repository",
+        "value": "https://github.com/storytold/pdfcraft"
+      },
+      {
+        "key": "license",
+        "value": "MIT OR Apache-2.0"
+      }
+    ],
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json"
+      }
+    }
+  }
+}

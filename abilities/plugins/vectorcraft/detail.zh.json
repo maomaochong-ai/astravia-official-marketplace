@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "在活动面板里用 VectorCraft",
+      "eyebrow": "矢量插画",
+      "description": "路径、控制柄、填充——上游原版 VectorCraft 插画应用跑在 Astravia 里，打开的就是工作区里的那张图。",
+      "badges": [
+        "不改上游",
+        "本地运行",
+        "SVG"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "在这里打开 logo.svg。",
+        "assistant_reply": "VectorCraft 已打开。在资源管理器选中文件，再点打开，它会直接用这个文件。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "你能得到什么",
+      "items": [
+        {
+          "title": "原版插画应用",
+          "description": "面板逐字节送出 VectorCraft 官方 web 构建；上游 wasm 与 JavaScript 不打补丁，我们只在其外围加了两个薄文件。",
+          "icon": "solar:pen-new-square-linear"
+        },
+        {
+          "title": "在项目里打开与保存",
+          "description": "打开用资源管理器选中的文件，结果经 Astravia 写回，不落到下载文件夹。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "随时要一张当前画面",
+          "description": "截图工具把画布当前画面存成 PNG，在对话里就能审图。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "首次打开时下载约 31 MB（含排版字体），之后离线复用。"
+        },
+        {
+          "title": "打开 VectorCraft 标签页",
+          "description": "准备页就是 hub 在取 payload；之后从缓存启动。"
+        },
+        {
+          "title": "选中图形再打开",
+          "description": "在编辑器里按「文件 → 打开」，用的是 Astravia 里选中的文件，而不是系统对话框。"
+        },
+        {
+          "title": "把结果存回去",
+          "description": "输出经 Astravia 写回，可以覆盖原文件，也可以另存为新文件。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "上游自带一个 MCP server 供脚本调用，本插件不启用它。标签页里请用技能中列出的 Agent 工具，它们直接与运行中的页面通信。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "浏览器入口没有工作区绑定：那里打开文件走浏览器选择框，输出走浏览器下载。"
+    },
+    {
+      "type": "links",
+      "title": "出处",
+      "items": [
+        {
+          "label": "VectorCraft 源码",
+          "href": "https://github.com/storytold/vectorcraft"
+        },
+        {
+          "label": "VectorCraft 版本发布",
+          "href": "https://github.com/storytold/vectorcraft/releases"
+        }
+      ]
+    }
+  ]
+}

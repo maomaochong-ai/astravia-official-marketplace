@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "FilmCraft in the activity panel",
+      "eyebrow": "Video editing",
+      "description": "A timeline, clips, colour and sound — the upstream FilmCraft editor running inside Astravia, on your own machine, with the project you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "WebGL fallback"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Open cut.filmcraft here.",
+        "assistant_reply": "FilmCraft is open. Select the file in the Explorer, then press Open — it takes that file."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The real editor",
+          "description": "The panel serves the official FilmCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:clapperboard-edit-linear"
+        },
+        {
+          "title": "Open and render through the workspace",
+          "description": "Opening uses the file selected in the Explorer, and whatever the editor hands back is written through Astravia instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "It retries rendering instead of giving up",
+          "description": "If WebGPU is unavailable the tab reloads the page with upstream's own WebGL flag, then software, before it reports a failure.",
+          "icon": "solar:refresh-square-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 15 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the FilmCraft tab",
+          "description": "The preparation screen is the hub fetching its payload; later opens start from cache."
+        },
+        {
+          "title": "Select a project, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+        },
+        {
+          "title": "Render back through the workspace",
+          "description": "Output travels the same bridge as a save, so it lands where you chose."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Upstream reloads itself with a flag when it has to drop from WebGPU to WebGL; the tab survives that reload and reports which backend is active in the status line."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The browser entry points have no workspace binding: opening a file there uses the browser's picker and output downloads through the browser."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "FilmCraft on GitHub",
+          "href": "https://github.com/storytold/filmcraft"
+        },
+        {
+          "label": "FilmCraft releases",
+          "href": "https://github.com/storytold/filmcraft/releases"
+        }
+      ]
+    }
+  ]
+}

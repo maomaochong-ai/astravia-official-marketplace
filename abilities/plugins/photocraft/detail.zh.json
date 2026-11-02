@@ -5,90 +5,85 @@
       "type": "hero",
       "title": "在活动面板里用 Photocraft",
       "eyebrow": "图片编辑",
-      "description": "图层、蒙版、文字与真正的 PSD 文件——上游 Photocraft 编辑器直接跑在 Astravia 里，全部在本机运行，用的是你在工作区里选中的那个文件。",
-      "badges": ["未改分支", "本地", "PSD"]
+      "description": "图层、蒙版、文字与真实的 PSD 文件——上游原版 Photocraft 编辑器跑在 Astravia 里，在你自己的机器上，打开的就是工作区里选中的那个文件。",
+      "badges": [
+        "不改上游",
+        "本地运行",
+        "PSD"
+      ]
     },
     {
       "type": "showcase",
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "帮我在 Photocraft 面板里打开 assets/cover.png，改完存回去。",
-        "assistant_reply": "Photocraft 已经在右侧打开。在资源管理器里选中 cover.png，然后在编辑器里按 文件 → 打开——它会直接载入你选中的文件，不再弹一次选择框；改完按 文件 → 保存，就写回同一个路径。"
+        "user_prompt": "在这里打开 assets/cover.png。",
+        "assistant_reply": "Photocraft 已打开。在资源管理器选中文件，再点打开，它会直接用这个文件。"
       }
     },
     {
       "type": "feature-grid",
-      "title": "你会得到什么",
+      "title": "你能得到什么",
       "items": [
         {
-          "title": "原版编辑器，未作改动",
-          "description": "面板供的就是 Photocraft 官方 web 构建，逐字节一致。上游的 wasm 与 JavaScript 没有被改，我们只在外面加了自己写的两个薄文件。",
+          "title": "原版编辑器，一个字节都不改",
+          "description": "面板逐字节地把 Photocraft 官方 web 构建送进浏览器；上游的 wasm 与 JavaScript 不做任何补丁，我们自己只在其外围加了两个很薄的文件。",
           "icon": "solar:gallery-wide-linear"
         },
         {
-          "title": "在项目里打开与保存",
-          "description": "打开用的是你在资源管理器里选中的文件，保存经由 Astravia 落盘——字节进的是你的工作区，不是下载文件夹。",
+          "title": "在工作区里打开与保存",
+          "description": "打开用的是你在资源管理器选中的文件，保存经 Astravia 写回原路径——字节落在项目里，而不是下载文件夹。",
           "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "同一个编辑器也能在浏览器里用",
-          "description": "本地回环服务把编辑器发布在一个本机地址上，想开第二个窗口时可以直接用内置浏览器面板或系统浏览器打开。",
-          "icon": "solar:window-frame-linear"
+          "title": "在对话里直接指挥它",
+          "description": "要当前画面、把文件交给编辑器、或在浏览器里打开同一页——五个 Agent 工具，每一个的结果都由运行中的页面回答。",
+          "icon": "solar:chat-round-linear"
         }
       ]
     },
     {
       "type": "steps",
-      "title": "开始使用",
+      "title": "怎么开始",
       "items": [
         {
           "title": "安装插件",
-          "description": "在能力市场里添加即可，不需要另装任何东西——编辑器本体 11 MB，第一次打开时取一次、存进插件的数据目录，之后完全离线可用。"
+          "description": "从市场添加即可。编辑器自身的文件约 13 MB，首次打开时下载一次到插件数据目录，之后离线复用。"
         },
         {
           "title": "打开 Photocraft 标签页",
-          "description": "第一次会短暂显示准备界面，把编辑器取下来；之后再打开直接走缓存，不触网。"
+          "description": "首次打开会显示准备页，等编辑器文件到位；之后直接从缓存启动，不再访问网络。"
         },
         {
-          "title": "在资源管理器里选中一张图，再到编辑器里打开",
-          "description": "在 Photocraft 里按 文件 → 打开，取的是你在 Astravia 里选中的那个文件，不会再弹系统选择框。"
+          "title": "在资源管理器选中一张图，再打开",
+          "description": "在编辑器里按「文件 → 打开」，它会用你选中的那个文件，而不是弹系统对话框。"
         },
         {
-          "title": "按 文件 → 保存 存回去",
-          "description": "改动会写回同一个路径。要换位置就按 导出…，它会先问存到哪。"
-        },
-        {
-          "title": "可选：在浏览器里打开",
-          "description": "编辑器上方有内置浏览器面板与系统浏览器两个按钮，打开的是同一个本机地址。"
+          "title": "用「文件 → 保存」写回",
+          "description": "写回同一路径；「导出…」才是问你保存到哪里。"
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "浏览器入口没有工作区绑定：在那里打开文件用的是浏览器自带的选择框，保存走浏览器下载，因为这些页面拿不到你的项目。要在项目文件上干活，请用 Astravia 里的标签页。"
+      "content": "浏览器入口没有工作区绑定：在那里打开文件走浏览器自己的选择框，保存走浏览器下载。处理项目文件请用 Astravia 标签页。"
     },
     {
       "type": "callout",
       "tone": "warning",
-      "content": "Photocraft 无法告诉面板「文档是否有未保存的修改」。重载标签页或切换文档时，只有本次会话里保存过才会先问一句，所以关闭前请留意编辑器自己的标题栏。"
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "打不开 GitHub？插件不依赖任何一个主机。下载起不来时，准备界面会印出一个绝对路径：把 photocraft-web-0.19.0.zip 放到那里、重载标签页，它就直接拿来用——仍然要过那个钉住的 SHA-256。之前装过留下的缓存、用 PHOTOCRAFT_PAYLOAD_URL 指向自建副本、源清单里的镜像，对付的是同一件事。"
+      "content": "Photocraft 无法告诉面板文档有没有未保存的修改，所以重新载入标签页不会拦你。唯一的未保存提示在编辑器自己的标题栏上。"
     },
     {
       "type": "links",
-      "title": "相关链接",
+      "title": "出处",
       "items": [
         {
-          "label": "Photocraft 的 GitHub 仓库",
+          "label": "Photocraft 源码",
           "href": "https://github.com/storytold/photocraft"
         },
         {
-          "label": "Photocraft 的发布页",
+          "label": "Photocraft 版本发布",
           "href": "https://github.com/storytold/photocraft/releases"
         }
       ]

@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "在活动面板里用 DesignCraft",
+      "eyebrow": "版式设计",
+      "description": "页面、对页、串接文本框——上游原版 DesignCraft 出版编辑器跑在 Astravia 里，打开的就是工作区里的那份文档。",
+      "badges": [
+        "不改上游",
+        "本地运行",
+        "IDML"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "在这里打开 brochure.idml。",
+        "assistant_reply": "DesignCraft 已打开。在资源管理器选中文件，再点打开，它会直接用这个文件。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "你能得到什么",
+      "items": [
+        {
+          "title": "原版排版引擎",
+          "description": "面板逐字节送出 DesignCraft 官方 web 构建；上游 wasm 与 JavaScript 不打补丁，我们只在其外围加了两个薄文件。",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "在项目里打开与导出",
+          "description": "打开用资源管理器选中的文件，导出经 Astravia 写回，不落到下载文件夹。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "随时问它现在是什么样",
+          "description": "截图工具把画布当前画面存成 PNG，状态工具如实报告编辑器到底有没有启动完成。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "首次打开时下载约 26 MB 编辑器文件到插件数据目录，之后离线复用。"
+        },
+        {
+          "title": "打开 DesignCraft 标签页",
+          "description": "准备页就是 hub 在取 payload；之后从缓存启动。"
+        },
+        {
+          "title": "选中文档再打开",
+          "description": "在编辑器里按「文件 → 打开」，用的是 Astravia 里选中的文件，而不是系统对话框。"
+        },
+        {
+          "title": "导出同样走工作区",
+          "description": "导出与保存走同一条桥，结果落在你选的位置。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "DesignCraft 自述处于 pre-alpha：功能会缺、文件格式会变。插件只运行钉住的那个版本，不额外实现排版功能。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "浏览器入口没有工作区绑定：那里打开文件走浏览器选择框，导出走浏览器下载。"
+    },
+    {
+      "type": "links",
+      "title": "出处",
+      "items": [
+        {
+          "label": "DesignCraft 源码",
+          "href": "https://github.com/storytold/designcraft"
+        },
+        {
+          "label": "DesignCraft 版本发布",
+          "href": "https://github.com/storytold/designcraft/releases"
+        }
+      ]
+    }
+  ]
+}

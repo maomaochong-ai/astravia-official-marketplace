@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "VectorCraft in the activity panel",
+      "eyebrow": "Vector illustration",
+      "description": "Paths, handles and fills — the upstream VectorCraft illustration app running inside Astravia, on your own machine, with the drawing you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "SVG"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Open logo.svg here.",
+        "assistant_reply": "VectorCraft is open. Select the file in the Explorer, then press Open — it takes that file."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The real illustration app",
+          "description": "The panel serves the official VectorCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:pen-new-square-linear"
+        },
+        {
+          "title": "Open and save inside your project",
+          "description": "Opening uses the file selected in the Explorer, and output is written back through Astravia instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Ask for the current canvas",
+          "description": "A capture tool saves a PNG of what the canvas shows right now, so a drawing can be reviewed from the conversation.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 31 MB of editor files arrive on first open — including the layout fonts — and are reused offline after that."
+        },
+        {
+          "title": "Open the VectorCraft tab",
+          "description": "The preparation screen is the hub fetching its payload; later opens start from cache."
+        },
+        {
+          "title": "Select a drawing, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+        },
+        {
+          "title": "Save the result back",
+          "description": "The output goes through Astravia, so it can replace the source or become a new file."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Upstream ships an MCP server for scripted work; this plugin does not start it. In the tab, use the Agent tools that are listed in the skill — they talk to the running page."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The browser entry points have no workspace binding: opening a file there uses the browser's picker and output downloads through the browser."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "VectorCraft on GitHub",
+          "href": "https://github.com/storytold/vectorcraft"
+        },
+        {
+          "label": "VectorCraft releases",
+          "href": "https://github.com/storytold/vectorcraft/releases"
+        }
+      ]
+    }
+  ]
+}

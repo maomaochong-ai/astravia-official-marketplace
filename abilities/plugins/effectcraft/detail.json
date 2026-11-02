@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "EffectCraft in the activity panel",
+      "eyebrow": "Motion graphics",
+      "description": "Compositions, keyframes and a render queue — the upstream EffectCraft compositor running inside Astravia, on your own machine, with the project you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "WebGPU"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Open titles.ecraft here.",
+        "assistant_reply": "EffectCraft is open. Select the file in the Explorer, then press Open — it takes that file."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The real compositor",
+          "description": "The panel serves the official EffectCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:video-frame-play-horizontal-linear"
+        },
+        {
+          "title": "Open and render through the workspace",
+          "description": "Opening uses the file selected in the Explorer, and rendered output is written back through Astravia instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Ask for a frame",
+          "description": "A capture tool saves a PNG of what the canvas shows right now, so a composition can be checked from the conversation.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 22 MB of editor files arrive on first open and are reused offline after that — no GPU driver, Node or native app to install."
+        },
+        {
+          "title": "Open the EffectCraft tab",
+          "description": "The editor needs a WebGPU adapter. On a machine without one it fails at startup and the tab says so instead of showing a blank frame."
+        },
+        {
+          "title": "Select a project, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+        },
+        {
+          "title": "Render, then save through the workspace",
+          "description": "Rendered output travels the same bridge as a save, so it lands where you chose."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "This build renders through WebGPU. Without an adapter the editor cannot start, and the panel reports the boot failure — it does not retry in software."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Upstream cannot open After Effects project files. Compositions are built in EffectCraft itself; the browser entry points also have no workspace binding."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "EffectCraft on GitHub",
+          "href": "https://github.com/storytold/effectcraft"
+        },
+        {
+          "label": "EffectCraft releases",
+          "href": "https://github.com/storytold/effectcraft/releases"
+        }
+      ]
+    }
+  ]
+}

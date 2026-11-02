@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "PDFCraft in the activity panel",
+      "eyebrow": "PDF workbench",
+      "description": "Read, reorder, merge, split and secure — the upstream PDFCraft workbench running inside Astravia, on your own machine, with the document you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "No account"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "docs",
+        "user_prompt": "Open contract.pdf here.",
+        "assistant_reply": "PDFCraft is open. Select the file in the Explorer, then press Open — it takes that file."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The real workbench",
+          "description": "The panel serves the official PDFCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:document-text-linear"
+        },
+        {
+          "title": "Open and save inside your project",
+          "description": "Opening uses the file selected in the Explorer, and results are written back through Astravia instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Nothing leaves the machine",
+          "description": "The document is parsed locally in the tab. There is no account, no upload and no telemetry — the only network traffic is the one-time editor download.",
+          "icon": "solar:shield-check-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 17 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the PDFCraft tab",
+          "description": "The preparation screen is the hub fetching its payload; later opens start from cache."
+        },
+        {
+          "title": "Select a PDF, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+        },
+        {
+          "title": "Save the result back",
+          "description": "The output goes through Astravia, so it can replace the source or become a new file."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Encryption and page operations happen in the browser sandbox, on your machine. A password you type is handled by upstream's code, never sent to the plugin's hub."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The browser entry points have no workspace binding: opening a file there uses the browser's picker and output downloads through the browser."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "PDFCraft on GitHub",
+          "href": "https://github.com/storytold/pdfcraft"
+        },
+        {
+          "label": "PDFCraft releases",
+          "href": "https://github.com/storytold/pdfcraft/releases"
+        }
+      ]
+    }
+  ]
+}

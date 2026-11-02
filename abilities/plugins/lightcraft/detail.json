@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "LightCraft in the activity panel",
+      "eyebrow": "Photo library",
+      "description": "A catalog and a darkroom — the upstream LightCraft raw developer running inside Astravia, on your own machine, with the images you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "RAW"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Open shot.cr3 here.",
+        "assistant_reply": "LightCraft is open. Select the file in the Explorer, then press Open — it takes that file."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The real darkroom",
+          "description": "The panel serves the official LightCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:camera-linear"
+        },
+        {
+          "title": "Open and export through the workspace",
+          "description": "Opening uses the file selected in the Explorer, and exports are written back through Astravia instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "A large first download, once",
+          "description": "The payload is about 70 MB — the editor, its raw pipeline and a CJK interface font. It is fetched once into the plugin's data directory and reused offline.",
+          "icon": "solar:cloud-download-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "Nothing else to install: no desktop app, no camera codec pack, no account."
+        },
+        {
+          "title": "Open the LightCraft tab and let it fetch",
+          "description": "The first open downloads about 70 MB. The preparation screen reports progress; later opens start from cache."
+        },
+        {
+          "title": "Select an image, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+        },
+        {
+          "title": "Export back through the workspace",
+          "description": "Developed output travels the same bridge as a save, so it lands where you chose."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "The first open is a 70 MB download and the wasm module is large; on a slow connection expect a visible wait before the editor appears. This is the upstream build, not an extra package of ours."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The browser entry points have no workspace binding: opening a file there uses the browser's picker and exports download through the browser."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "LightCraft on GitHub",
+          "href": "https://github.com/storytold/lightcraft"
+        },
+        {
+          "label": "LightCraft releases",
+          "href": "https://github.com/storytold/lightcraft/releases"
+        }
+      ]
+    }
+  ]
+}
