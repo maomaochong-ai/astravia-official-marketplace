@@ -20,7 +20,7 @@ import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 
 // Filled by scripts/build-hub.mjs from payload/manifest.json.
-const PIN = {"schemaVersion":2,"archive":"zip","version":"0.2.0","size":10755523,"sha256":"a03e6118beed115eac25e6f0d11d3a3b3a3624538bf8a77dbaebf2352bf48e5f","sumsUrl":"https://github.com/storytold/photocraft/releases/download/v0.2.0/SHA256SUMS.txt","localFile":"photocraft-web-0.2.0.zip","sources":[{"id":"upstream","url":"https://github.com/storytold/photocraft/releases/download/v0.2.0/photocraft-web-0.2.0.zip"},{"id":"ghproxy","url":"https://ghproxy.net/https://github.com/storytold/photocraft/releases/download/v0.2.0/photocraft-web-0.2.0.zip"}],"upstream":"https://github.com/storytold/photocraft"};
+const PIN = {"schemaVersion":2,"archive":"zip","version":"0.19.0","size":13433636,"sha256":"74047f06da706c5b7c9dee77e05379a0928c52b5a7ea1e821e55c69851b0bd01","sumsUrl":"https://github.com/storytold/photocraft/releases/download/v0.19.0/SHA256SUMS.txt","localFile":"photocraft-web-0.19.0.zip","sources":[{"id":"upstream","url":"https://github.com/storytold/photocraft/releases/download/v0.19.0/photocraft-web-0.19.0.zip"},{"id":"ghproxy","url":"https://ghproxy.net/https://github.com/storytold/photocraft/releases/download/v0.19.0/photocraft-web-0.19.0.zip"}],"upstream":"https://github.com/storytold/photocraft"};
 // Filled by scripts/build-hub.mjs from src/bridge/host-bridge.js.
 const HOST_BRIDGE_JS = "/*\n * Photocraft host bridge — the only script we add to the upstream page.\n *\n * Rule zero: look at the shape first, and let anything we do not recognise go\n * straight through to the browser. If upstream changes how it opens or saves,\n * this script must degrade to the native behaviour, never corrupt bytes.\n *\n * It runs in two containers and must behave differently in each:\n *   docked     (host activity tab, `window.parent !== window`) -> take over the\n *              two seams and move bytes over postMessage to the host.\n *   standalone (host browser panel, system browser)            -> do nothing.\n *\n * Seams (ADR 0002):\n *   open  - rfd's wasm backend builds `<input type=file>` and calls click();\n *   save  - `web.rs::download()` builds `<a download href=\"blob:…\">` and clicks it.\n *\n * ADR: docs/adr/photocraft/0002-bytes-move-through-the-host.md\n */\n(function () {\n  \"use strict\";\n\n  var parentWindow = window.parent;\n  var docked = parentWindow && parentWindow !== window;\n  if (!docked) return;\n\n  var seq = 0;\n  var waiting = new Map();\n  var nativeInputClick = HTMLInputElement.prototype.click;\n  var nativeAnchorClick = HTMLAnchorElement.prototype.click;\n  var FALLBACK_MS = 60000;\n\n  function post(message, transfer) {\n    try {\n      parentWindow.postMessage(message, \"*\", transfer || []);\n    } catch (error) {\n      /* a dead parent is not our problem; upstream keeps working */\n    }\n  }\n\n  function describe(input) {\n    return {\n      accept: input.accept || \"\",\n      multiple: !!input.multiple,\n    };\n  }\n\n  function deliver(input, payload) {\n    var bytes = payload.bytes;\n    var file;\n    try {\n      file = new File([bytes], payload.name || \"document\", {\n        type: payload.mime || \"application/octet-stream\",\n      });\n    } catch (error) {\n      file = new Blob([bytes], { type: payload.mime || \"application/octet-stream\" });\n      try {\n        Object.defineProperty(file, \"name\", { value: payload.name || \"document\" });\n      } catch (ignored) {\n        /* rfd reads input.files, which we set below */\n      }\n    }\n    var data = new DataTransfer();\n    data.items.add(file);\n    input.files = data.files;\n    input.dispatchEvent(new Event(\"change\", { bubbles: true }));\n  }\n\n  function cancel(input) {\n    input.dispatchEvent(new Event(\"cancel\", { bubbles: true }));\n  }\n\n  // ------------------------------------------------------------- open seam\n\n  HTMLInputElement.prototype.click = function () {\n    var input = this;\n    if (!input || input.type !== \"file\") return nativeInputClick.apply(input, arguments);\n\n    var id = \"open-\" + ++seq;\n    waiting.set(id, input);\n    post({ type: \"pc:pickOpen\", id: id, accept: input.accept || \"\", multiple: !!input.multiple });\n\n    // If the host never answers (tab hidden, plugin reloading), fall back to the\n    // browser's own picker instead of leaving the editor stuck forever.\n    setTimeout(function () {\n      if (waiting.delete(id)) nativeInputClick.call(input);\n    }, FALLBACK_MS);\n  };\n\n  // ------------------------------------------------------------- save seam\n\n  HTMLAnchorElement.prototype.click = function () {\n    var anchor = this;\n    var args = arguments;\n    var href = anchor && anchor.getAttribute ? anchor.getAttribute(\"href\") || \"\" : \"\";\n    var isDownload = !!anchor && anchor.hasAttribute && anchor.hasAttribute(\"download\");\n    if (!anchor || !isDownload || href.slice(0, 5) !== \"blob:\") {\n      return nativeAnchorClick.apply(anchor, args);\n    }\n\n    var id = \"save-\" + ++seq;\n    var name = anchor.getAttribute(\"download\") || \"photocraft-export\";\n    fetch(href)\n      .then(function (response) {\n        return response.arrayBuffer();\n      })\n      .then(function (bytes) {\n        post(\n          {\n            type: \"pc:save\",\n            id: id,\n            name: name,\n            mime: anchor.getAttribute(\"type\") || \"\",\n            bytes: bytes,\n          },\n          [bytes],\n        );\n      })\n      .catch(function (error) {\n        post({ type: \"pc:error\", id: id, message: String((error && error.message) || error) });\n        nativeAnchorClick.apply(anchor, args);\n      });\n\n    // Never let the browser start its own download for a blob we are handling.\n    return undefined;\n  };\n\n  // ------------------------------------------------------------- messages\n\n  window.addEventListener(\"message\", function (event) {\n    if (event.source !== parentWindow) return;\n    var data = event.data;\n    if (!data || typeof data !== \"object\") return;\n\n    if (data.type === \"pc:open\") {\n      var input = waiting.get(data.id);\n      if (!input) return;\n      waiting.delete(data.id);\n      if (data.bytes) deliver(input, data);\n      else cancel(input);\n      return;\n    }\n\n    // The host has no single file selected: leave the choice to the browser.\n    if (data.type === \"pc:fallback\") {\n      var fallback = waiting.get(data.id);\n      if (!fallback) return;\n      waiting.delete(data.id);\n      nativeInputClick.call(fallback);\n      return;\n    }\n\n    if (data.type === \"pc:cancel\") {\n      var target = waiting.get(data.id);\n      if (!target) return;\n      waiting.delete(data.id);\n      cancel(target);\n    }\n  });\n\n  // ------------------------------------------------------------- boot watch\n\n  // \"ready\" must mean \"the editor started\", not \"this script ran\". Upstream\n  // removes `#photocraft_loading` on success and rewrites it with a failure\n  // sentence otherwise (`web.rs`), so that element is the only signal available.\n  var BOOT_MS = 30000;\n\n  function loaderText() {\n    var el = document.getElementById(\"photocraft_loading\");\n    return el ? (el.textContent || \"\") : null;\n  }\n\n  function announceBoot(backend) {\n    var started = Date.now();\n    var done = false;\n    var timer = setInterval(function () {\n      if (done) return clearInterval(timer);\n      var text = loaderText();\n      if (text === null) {\n        done = true;\n        clearInterval(timer);\n        post({ type: \"pc:ready\", backend: backend, href: location.href, secure: !!window.isSecureContext });\n        return;\n      }\n      var failed = /failed to start/i.test(text);\n      var waited = Date.now() - started > BOOT_MS;\n      if (failed || waited) {\n        done = true;\n        clearInterval(timer);\n        post({\n          type: \"pc:error\",\n          backend: backend,\n          message: text || (failed ? \"failed to start\" : \"boot-timeout\"),\n        });\n      }\n    }, 200);\n  }\n\n  function backend() {\n    if (!navigator.gpu) return Promise.resolve(\"cpu-or-gl\");\n    var timeout = new Promise(function (resolve) {\n      setTimeout(function () {\n        resolve(\"gpu-unknown\");\n      }, 2500);\n    });\n    var probe = navigator.gpu\n      .requestAdapter()\n      .then(function (adapter) {\n        return adapter ? \"gpu\" : \"cpu-or-gl\";\n      })\n      .catch(function () {\n        return \"cpu-or-gl\";\n      });\n    return Promise.race([probe, timeout]);\n  }\n\n  backend().then(announceBoot);\n\n  window.addEventListener(\"error\", function (event) {\n    post({ type: \"pc:error\", message: String((event && event.message) || \"script-error\") });\n  });\n  window.addEventListener(\"unhandledrejection\", function (event) {\n    post({ type: \"pc:error\", message: String((event && event.reason) || \"unhandled-rejection\") });\n  });\n})();\n";
 
@@ -28,6 +28,17 @@ const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT ?? 0);
 const DATA_DIR = process.env.ASTRAVIA_SERVICE_DATA_DIR ?? "";
 const BRIDGE_NAME = "host-bridge.js";
 const SCRIPT_TAG = '<script src="./' + BRIDGE_NAME + '"></script>';
+/**
+ * Preset preferences before the app module runs (ADR 0010): the web build never reads
+ * navigator.languages, so "auto" is always English. Only seeds an empty store, so a language
+ * picked later in Preferences is never overwritten.
+ */
+const LANGUAGE_SEED_NAME = "photocraft.preferences";
+const LANGUAGE_SEED_SCRIPT =
+  '<script>/* photocraft-language-seed */try{var k="' +
+  LANGUAGE_SEED_NAME +
+  '";if(!window.localStorage.getItem(k))window.localStorage.setItem(k,\'{"version":2,"interface":{"language":"zh-hans"}}\')}catch(e){}</script>';
+const SEED_MARK = "photocraft-language-seed";
 const MAX_REDIRECTS = 6;
 const READY_TIMEOUT_MS = 60_000;
 /** How long a failed payload waits before the network is walked again. */
@@ -536,7 +547,13 @@ function resolveEntry(rawPath) {
   name = name.replace(/^\/+/, "");
   if (name === "") name = "index.html";
   if (name.split("/").includes("..")) return null;
-  return index.get(name) ?? null;
+  const direct = index.get(name);
+  if (direct) return direct;
+  // Upstream 0.19.0's packaging puts the app glue in app/ but its wasm-bindgen snippet at the
+  // site root, so the glue's `./snippets/...` import would 404 (ADR 0010 D3). Serve the same
+  // bytes under the path the glue asks for.
+  if (name.startsWith("app/snippets/")) return index.get(name.slice("app/".length)) ?? null;
+  return null;
 }
 
 const server = http.createServer((req, res) => {
@@ -593,17 +610,20 @@ const server = http.createServer((req, res) => {
   }
 
   if (entry.name === "index.html") {
-    // The only place upstream bytes are rewritten (ADR 0005 D3).
+    // The only place upstream bytes are rewritten (ADR 0005 D3): a preference seed in <head>,
+    // before the app module runs, and the host bridge before </body>.
     const html = body.toString("utf8");
-    if (html.includes(SCRIPT_TAG)) return send(res, 200, MIME.get(".html"), body);
-    const at = html.lastIndexOf("</body>");
-    if (at < 0) {
-      state.injectMiss = true;
-      return send(res, 200, MIME.get(".html"), body);
-    }
-    state.injectMiss = false;
-    const patched = Buffer.from(html.slice(0, at) + SCRIPT_TAG + "\n" + html.slice(at), "utf8");
-    return send(res, 200, MIME.get(".html"), patched);
+    if (html.includes(SCRIPT_TAG) && html.includes(SEED_MARK)) return send(res, 200, MIME.get(".html"), body);
+    const headOpen = html.indexOf("<head");
+    const headAt = headOpen < 0 ? -1 : html.indexOf(">", headOpen) + 1;
+    const bodyEnd = html.lastIndexOf("</body>");
+    state.injectMiss = headAt <= 0 || bodyEnd < 0;
+    if (state.injectMiss) return send(res, 200, MIME.get(".html"), body);
+    let patched = html;
+    if (!patched.includes(SEED_MARK)) patched = patched.slice(0, headAt) + LANGUAGE_SEED_SCRIPT + patched.slice(headAt);
+    const at = patched.lastIndexOf("</body>");
+    if (!patched.includes(SCRIPT_TAG)) patched = patched.slice(0, at) + SCRIPT_TAG + "\n" + patched.slice(at);
+    return send(res, 200, MIME.get(".html"), Buffer.from(patched, "utf8"));
   }
 
   const type = MIME.get(path.extname(entry.name).toLowerCase()) ?? "application/octet-stream";

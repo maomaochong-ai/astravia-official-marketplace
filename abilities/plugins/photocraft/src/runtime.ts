@@ -5,7 +5,7 @@ import { bytesToBase64 } from "./shared/formatters/base64.ts";
 /** Service id as declared in `plugin.json#providers.services[0].id`. */
 export const SERVICE_ID = "photocraft-hub";
 /** Must match `runtime.version`; a stale install is replaced instead of adopted. */
-export const SERVICE_VERSION = "0.0.3";
+export const SERVICE_VERSION = "0.0.4";
 /** Must match `runtime.entry` and `platforms.<key>.artifacts[0].destination`. */
 export const SERVICE_ARTIFACT = "server/hub.mjs";
 

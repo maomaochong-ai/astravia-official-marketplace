@@ -34,10 +34,14 @@
 `state.sums = "unreachable"` 并在日志里留一行——**钉住的 sha256 是唯一门禁**，上游清单只是交叉核对。
 校验通过之前 `/` 只返回一个等待页，不会把未认证的字节当成编辑器发出去。
 
-**D3 我们唯一改写上游字节的地方是 `index.html` 的一行**：hub 响应 `/index.html` 时，在 `</body>` 前插入
-`<script src="./host-bridge.js"></script>`；`/host-bridge.js` 由 hub 提供。其余条目（`.wasm`、`.js` 胶水、
-`_headers`、`.htaccess`）逐字节就是 zip 里的字节。这一步是**确定性变换**：同一个 zip 加上这条注入规则，
-就足以描述页面看到的全部内容。找不到 `</body>` 时 hub 原样返回并在 `/api/state` 报 `inject-miss`——
+**D3 我们改写上游字节的地方只有 `index.html` 的两处插入**：hub 响应 `/index.html` 时，
+
+1. 在 `<head ...>` 之后插一段内联语言种子（只写 `localStorage["photocraft.preferences"]` 的空值，见 0011 D1/D2）；
+2. 在 `</body>` 之前插 `<script src="./host-bridge.js"></script>`（`/host-bridge.js` 由 hub 提供）。
+
+两处都是纯插入，不删不改原有字节，所以 `index.html` 上的 SRI 与分片顺序都不受影响。其余条目（`.wasm`、`.js` 胶水、
+`app/*.part-*`、`_headers`、`.htaccess`）逐字节就是 zip 里的字节。这一步是**确定性变换**：同一个 zip 加上这两条插入规则，
+就足以描述页面看到的全部内容。缺 `<head`、缺 `</body>` 时 hub 原样返回并在 `/api/state` 报 `inject-miss`——
 宁可降级也不能默默插到错位置。
 
 **D4 版本门是能力探测，不是版本号比较**。加载后由 `pc:ready` 报回真正可用的后端：

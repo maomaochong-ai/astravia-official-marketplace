@@ -72,7 +72,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "No reliable access to GitHub? The plugin never depends on one host. If the download cannot start, the preparation screen prints an absolute path: put photocraft-web-0.2.0.zip there, reload the tab, and it is used as is — the file is still checked against the pinned SHA-256. A cache from an earlier install, a self-hosted copy via PHOTOCRAFT_PAYLOAD_URL, and a proxy mirror in the source list cover the same case."
+      "content": "No reliable access to GitHub? The plugin never depends on one host. If the download cannot start, the preparation screen prints an absolute path: put photocraft-web-0.19.0.zip there, reload the tab, and it is used as is — the file is still checked against the pinned SHA-256. A cache from an earlier install, a self-hosted copy via PHOTOCRAFT_PAYLOAD_URL, and a proxy mirror in the source list cover the same case."
     },
     {
       "type": "callout",

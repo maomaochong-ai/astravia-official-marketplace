@@ -58,17 +58,23 @@ _Avoid_: 后端服务、本地服务器、代理
 
 **Fullscreen**：
 标签外壳容器自己进入的浏览器全屏（`requestFullscreen()`），不是把活动面板调宽。
-它由状态条上的一个按钮触发，退出靠同一个按钮或平台 Esc。
+入口是**顶部信息条**最右侧的那个按钮，退出靠同一个按钮或平台 Esc。
 _Avoid_: 最大化、满屏、面板展开
-
-插件自带的 host-node 服务，在 `127.0.0.1:<port>` 上把 Payload 当静态站点供出去。它不碰工作区、
-不落盘解包、没有写接口。
-_Avoid_: 后端服务、本地服务器、代理
 
 **Bridge**：
 插件注入到 Payload 里的那段同文档脚本（`host-bridge.js`），是两个 DOM 接缝与宿主之间唯一的代码。
 它跑在 iframe 里，和 Photocraft 同一个文档。
 _Avoid_: polyfill、shim、adapter、注入器
+
+**Locale Seed**：
+Hub 在响 `index.html` 时插在 `<head>` 里的一小段脚本：只在偏好键为空时写入默认语言（中文）。
+它是**初值**，不是强制值；用户在 Photocraft 的 Preferences 里选的语言优先。
+_Avoid_: 语言包、汉化、i18n 开关
+
+**Compat Alias**：
+Hub 对某个官方包里缺失路径的路径级别补位（现在只有 `app/snippets/*` → 根 `snippets/*`），
+字节取自同一个 zip、不改写内容，也不重打包。它存在是因为上游打包漏了一个目录。
+_Avoid_: 补丁、重打包、分叉
 
 ### 三个入口
 

@@ -26,6 +26,17 @@ const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT ?? 0);
 const DATA_DIR = process.env.ASTRAVIA_SERVICE_DATA_DIR ?? "";
 const BRIDGE_NAME = "host-bridge.js";
 const SCRIPT_TAG = '<script src="./' + BRIDGE_NAME + '"></script>';
+/**
+ * Preset preferences before the app module runs (ADR 0010): the web build never reads
+ * navigator.languages, so "auto" is always English. Only seeds an empty store, so a language
+ * picked later in Preferences is never overwritten.
+ */
+const LANGUAGE_SEED_NAME = "photocraft.preferences";
+const LANGUAGE_SEED_SCRIPT =
+  '<script>/* photocraft-language-seed */try{var k="' +
+  LANGUAGE_SEED_NAME +
+  '";if(!window.localStorage.getItem(k))window.localStorage.setItem(k,\'{"version":2,"interface":{"language":"zh-hans"}}\')}catch(e){}</script>';
+const SEED_MARK = "photocraft-language-seed";
 const MAX_REDIRECTS = 6;
 const READY_TIMEOUT_MS = 60_000;
 /** How long a failed payload waits before the network is walked again. */
@@ -534,7 +545,13 @@ function resolveEntry(rawPath) {
   name = name.replace(/^\/+/, "");
   if (name === "") name = "index.html";
   if (name.split("/").includes("..")) return null;
-  return index.get(name) ?? null;
+  const direct = index.get(name);
+  if (direct) return direct;
+  // Upstream 0.19.0's packaging puts the app glue in app/ but its wasm-bindgen snippet at the
+  // site root, so the glue's `./snippets/...` import would 404 (ADR 0010 D3). Serve the same
+  // bytes under the path the glue asks for.
+  if (name.startsWith("app/snippets/")) return index.get(name.slice("app/".length)) ?? null;
+  return null;
 }
 
 const server = http.createServer((req, res) => {
@@ -591,17 +608,20 @@ const server = http.createServer((req, res) => {
   }
 
   if (entry.name === "index.html") {
-    // The only place upstream bytes are rewritten (ADR 0005 D3).
+    // The only place upstream bytes are rewritten (ADR 0005 D3): a preference seed in <head>,
+    // before the app module runs, and the host bridge before </body>.
     const html = body.toString("utf8");
-    if (html.includes(SCRIPT_TAG)) return send(res, 200, MIME.get(".html"), body);
-    const at = html.lastIndexOf("</body>");
-    if (at < 0) {
-      state.injectMiss = true;
-      return send(res, 200, MIME.get(".html"), body);
-    }
-    state.injectMiss = false;
-    const patched = Buffer.from(html.slice(0, at) + SCRIPT_TAG + "\n" + html.slice(at), "utf8");
-    return send(res, 200, MIME.get(".html"), patched);
+    if (html.includes(SCRIPT_TAG) && html.includes(SEED_MARK)) return send(res, 200, MIME.get(".html"), body);
+    const headOpen = html.indexOf("<head");
+    const headAt = headOpen < 0 ? -1 : html.indexOf(">", headOpen) + 1;
+    const bodyEnd = html.lastIndexOf("</body>");
+    state.injectMiss = headAt <= 0 || bodyEnd < 0;
+    if (state.injectMiss) return send(res, 200, MIME.get(".html"), body);
+    let patched = html;
+    if (!patched.includes(SEED_MARK)) patched = patched.slice(0, headAt) + LANGUAGE_SEED_SCRIPT + patched.slice(headAt);
+    const at = patched.lastIndexOf("</body>");
+    if (!patched.includes(SCRIPT_TAG)) patched = patched.slice(0, at) + SCRIPT_TAG + "\n" + patched.slice(at);
+    return send(res, 200, MIME.get(".html"), Buffer.from(patched, "utf8"));
   }
 
   const type = MIME.get(path.extname(entry.name).toLowerCase()) ?? "application/octet-stream";

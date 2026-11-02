@@ -5,9 +5,9 @@
 > 文件字节只在标签页那条路径上经过宿主。
 
 - 插件目录：`abilities/plugins/photocraft`
-- 决策日期：2026-11-03（`0001`–`0006` 修订，新增 `0007`、`0008`、`0009`；同日根据 Astravia 0.5.86 取证回填证据）
-- 当前插件版本：`0.0.3`（`release/photocraft-0.0.3.astraviapkg`）
-- 上游：Photocraft `v0.2.0`，`apps/photocraft-web` + `packaging/web/package.sh`
+- 决策日期：2026-11-03（`0001`–`0006` 修订，新增 `0007`、`0008`、`0009`、`0010`、`0011`；同日根据 Astravia 0.5.86 取证回填证据）
+- 当前插件版本：`0.0.4`（`release/photocraft-0.0.4.astraviapkg`）
+- 上游：Photocraft `v0.19.0`（`0.19.0` 起为分片加载；官方包缺 `app/snippets/`，由 hub 补路径别名，见 0010 D3）
 - 宿主：`open-astravia` 的 `ui.slot.activity-tab`、`ctx.browser`、`ctx.ui.openExternal`
 
 ## 决策表
@@ -23,6 +23,8 @@
 | [0007](./0007-one-loopback-hub-three-entries.md) | 载体 | 一个 host-node 服务供三个入口共用一个 loopback URL |
 | [0008](./0008-payload-never-depends-on-one-host.md) | 来源解耦 | payload 取自有序列的 `sources[]` 加本地投放；sha256 是唯一信任锚 |
 | [0009](./0009-fullscreen-belongs-to-the-frame.md) | 全屏 | 全屏是标签外壳容器的 `requestFullscreen()`，不是把面板拉到最大 |
+| [0010](./0010-payload-moves-to-upstream-0-19-0.md) | 版本 | pin 换到上游 `v0.19.0`：箭头缺陷与中文 catalog 都是上游自带，不自建 wasm |
+| [0011](./0011-chinese-default-comes-from-the-shell.md) | 默认语言 | wasm 猜不到系统语言，所以 hub 在 `<head>` 里给上游偏好写一个空值种子 |
 
 术语见 [CONTEXT.md](./CONTEXT.md)。自定义协议那一路的探针见 [probe-embed.mjs](./probe-embed.mjs)。
 
@@ -44,8 +46,10 @@
 | 12 | 国内无代理网络也能用 | 缓存 → 投放 → `payload.json` 的 `localFile`/`sources[]` → 内置 `sources[]` | 已实现（0008 D2），回环侧逐项实测过 |
 | 13 | 失败时知道下一步做什么 | 等待页列源与错误、印绝对投放路径；落位即 `ready`，不重启 | 已实现（0008 D4） |
 | 14 | 换版本后不会继续跑旧 hub | `SERVICE_VERSION` 与 `runtime.version` 不一致就重装 | 已实现（`src/runtime.ts`） |
-| 15 | tab 打开后能全屏 | 对标签外壳容器 `requestFullscreen()`，状态条保留退出按钮 | 已实现（0009），本机类型检查通过，实机未验 |
+| 15 | tab 打开后能全屏 | 对标签外壳容器 `requestFullscreen()`，状态条保留退出按钮 | 已实现（0009），按钮在顶部信息条最右，本机类型检查通过，实机未验 |
 | 16 | 用户能自己指定 zip 或镜像 | 数据目录 `payload.json`（首启自写空壳，等待页印路径） | 已实现并实测（含非法源报错） |
+| 17 | 界面中文且为默认 | payload 换 `0.19.0`（官方 `zh-hans` catalog）+ `<head>` 里给偏好写空值种子 | 已实现并存回环侧验过（0010 D1、0011），宿主 iframe 内待验 |
+| 18 | 侧边栏箭头的展开不能异常 | 不用改代码：`0.2.0` 那个箭头是 `Sense::hover()`，`0.19.0` 改成真按钮 | 已实现（0010 §2 C），回环侧点一下已验 |
 
 ## 为什么不是看上去那样
 
@@ -67,9 +71,9 @@
 **5. 「需要 COOP/COEP 才能跑 wasm 应用」——不需要。**
 上游不使用 SharedArrayBuffer，HOSTING 明确写「No special isolation headers」。
 
-**6. 「插件不能带 20 MB 的二进制」——我们不带 wasm，只带 31 KB 服务脚本。**
-市场包里是几百行 React 加一份内联的 `hub.mjs`（31 KB，`import … ?raw`，因为打包器不收集 `runtime.entry`；
-见 0007 D1a）；10.76 MB 的 zip 与 25.8 MiB 的 wasm 始终留在上游 Release 与用户数据目录里。
+**6. 「插件不能带 20 MB 的二进制」——我们不带 wasm，只带 33 KB 服务脚本。**
+市场包里是几百行 React 加一份内联的 `hub.mjs`（32,637 B，`import … ?raw`，因为打包器不收集 `runtime.entry`；
+见 0007 D1a）；13.43 MB 的 zip 与 27/13 MB 的 wasm 始终留在上游 Release 与用户数据目录里。
 
 **7. 「Agent 能不能让 AI 修图」——不能，且卡片文案不许暗示能。**
 0004：没有面向编辑器的工具面。
@@ -108,8 +112,15 @@
 | 上游启动成功才移除 `#photocraft_loading`、失败改写它 | `apps/photocraft-web/src/web.rs`、`index.html` | 0005 降级梯子 |
 | `?webgl` / `?cpu` 是上游自带的开关，不传就只试 WebGPU | `web.rs` 的 `query()` 分支 | 0005 降级梯子 |
 | 打包器不收集 `runtime.entry` | `plugin-vite/dist/pack.js`、`plugin-sdk/src/manifest.ts::listPluginManifestResources` | 0007 D1a |
-| 内联字节与文件逐字节相同 | `server/hub.mjs` 31,202 B，`sha256 7905655e…4a6d`；反转义后重算 sha 相等 | 0007 D1a |
+| 内联字节与文件逐字节相同 | `server/hub.mjs` 32,637 B，`sha256 ab9ef17b…4fd9`；反转义后重算 sha 相等 | 0007 D1a |
 | hub 本机实测 | `/health` 200、`/..%2f..%2fetc/passwd` 404、`POST /` 405、wasm 200 `application/wasm` 27,072,762 B | 0007 D2、D5 |
+| 0.19.0 的官方 web 包 | `photocraft-web-0.19.0.zip` 13,433,636 B / `sha256 74047f06…bd01`；19 条目，分片 `app/*.part-aa` 13,328,607 B | 0010 D1、D4 |
+| 官方包自己起不来：缺 `app/snippets/` | 运行控制台 404 `/app/snippets/eframe-d31a8450ea12dfc1/inline0.js`；`packaging/web/package.sh:59-62` 只复制 glue | 0010 D3 |
+| 补别名后真启动 | `typeof window.wasmBindings === "object"`、canvas 2206×1152、界面中文 | 0010 D3、0011 D1 |
+| 工具条箭头现在是真按钮 | `0.2.0` `panels.rs:64-70` `Sense::hover()` vs `0.19.0` `panels/toolbar.rs:88-103` `Sense::click()`；点 (20,78) 后 `toolbar_double` false→true | 0010 §2 C |
+| 中文 catalog 存在且完整 | `crates/ui-egui/src/i18n/zh-hans.tsv` 125,869 B；`LANGUAGES` 27 项，`complete_menus: true` | 0010 §2 C、0011 |
+| wasm 侧不读系统语言 | `crates/ui-egui/src/i18n/system.rs` 的 `detect_system_tags() -> Vec::new()` | 0011 §1 |
+| 偏好键与容错 | `apps/photocraft-web/src/web.rs:472` `PREFS_KEY`、`engine/src/prefs.rs:1366 load_prefs_json()`；种子写入后上游把它补全为完整偏好且 `language` 不变 | 0011 D1/D2 |
 | 多源与投放逐项行为 | 缓存命中零网络、只放 `localFile` 即 `ready`、截断文件被 `sha256-mismatch` 拒、全源失败后投放自愈 | 0008 D2–D4 |
 | 镜像可用性与续传 | `ghproxy.net` / `gh-proxy.com` / `ghfast.top` 的 `SHA256SUMS.txt` 均 200、1,535 B；`ghproxy.net` 对 zip 回 `206` | 0008 D3、D6 |
 | 主窗口没有 CSP；唯一 CSP 属 markdown 预览隔离窗（自带 `frame-src 'none'`） | `renderer/index.html`、`main/main-Ces8nWEj.js`、`markdown/isolated-window.ts` | 0007 §5、0009 |
@@ -133,7 +144,7 @@
 3. 给 `<input type=file>.files` 赋值并派发 `change` 能否让 rfd 的 promise 正常 resolve。
 4. 覆盖 `HTMLAnchorElement.prototype.click` 能否拦住 `web.rs::download`。
 5. `ctx.fs.writeFile` 的 base64 单次上限（1/8/32/64 MB），决定 Save 的体积阈值与降级点。
-6. 27 MB 的 `.wasm` 从 hub 首次响应到浏览器流式编译完成的耗时（本地回环响应已实测 0.137 s，编译未测）。
+6. 13.3 MB 的 `app/*.part-aa` 从 hub 首次响应到浏览器实例化完成的耗时（本地回环响应已实测 0.137 s，编译未测）。
 7. `rfd 0.17` 是否与 0.16 同构（本机只有 0.16 源码）。
 8. 容器级全屏在真实 macOS 窗口下的观感，以及 Esc 退出后 iframe 不重载。
 
