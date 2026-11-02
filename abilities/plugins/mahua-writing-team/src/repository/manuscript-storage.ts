@@ -33,14 +33,52 @@ export interface ManuscriptStorage {
 	): Promise<{ revision: string; files: Record<string, string | null> }>;
 }
 
+/**
+ * 宿主 `listPluginFiles()` 在 prefix 非空时先过一遍 `normalizeStoragePath()`：空分段、`.`、`..`、
+ * 绝对路径都直接抛错。`books/<id>/` 的尾斜杠恰好切出一个空分段，于是这个看起来最自然的
+ * 「拿书名做前缀过滤」写法，在真宿主上必然失败——而内存替身原来只做 `startsWith`，比真宿主宽松，
+ * 所以这类错误一路穿到用户面前（0.4.33 的「删不掉」）。替身必须更严格，不能更宽松。
+ */
+function storagePathProblem(path: string): string | null {
+	const normalized = path.replaceAll("\\", "/");
+	if (!normalized) return "the path is empty";
+	if (normalized.includes("\0")) return "the path contains a NUL byte";
+	if (normalized.startsWith("/") || /^[a-zA-Z]:\//.test(normalized)) return "the path is absolute";
+	if (normalized.split("/").some((segment) => segment === "" || segment === "." || segment === ".."))
+		return "the path has an empty or relative segment";
+	return null;
+}
+
+/**
+ * 把存储层抛回来的错误压成一句人能读的话。
+ *
+ * Electron 会给 IPC 失败套一层 `Error invoking remote method '<channel>': `。那层壳里的通道名
+ * 对用户没有任何意义，却会把真正的信息（哪个能力、因为什么）挤到屏幕外。
+ */
+export function storageErrorText(error: unknown): string {
+	const raw = error instanceof Error ? error.message : String(error);
+	return raw.replace(/^Error invoking remote method '[^']*':\s*/, "");
+}
+
 /** 测试与本地预览用的内存实现。语义与宿主一致：commit 是唯一发布点。 */
 export class MemoryManuscriptStorage implements ManuscriptStorage {
 	private files = new Map<string, string>();
 	private revision = 0;
 
 	async list(prefix?: string): Promise<string[]> {
+		// 与宿主同款：空串走「整个命名空间」那条路（宿主写的是 `prefix ? … : ""`），
+		// 非空则必须先是一个合法的相对路径，匹配时按整段比较，而不是按字符前缀。
+		let normalizedPrefix = "";
+		if (prefix) {
+			const problem = storagePathProblem(prefix);
+			if (problem !== null) throw new Error(`Invalid plugin storage path: ${problem}`);
+			normalizedPrefix = prefix.replace(/\/$/, "");
+		}
 		const paths = [...this.files.keys()].sort();
-		return prefix ? paths.filter((path) => path.startsWith(prefix)) : paths;
+		return paths.filter(
+			(path) =>
+				!normalizedPrefix || path === normalizedPrefix || path.startsWith(`${normalizedPrefix}/`),
+		);
 	}
 
 	async readFile(path: string): Promise<string | null> {

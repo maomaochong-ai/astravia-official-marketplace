@@ -5,7 +5,7 @@
  */
 
 import type { NovelBook, ReviewReport, StoryThread } from "../domain/novel-types.js";
-import type { ManuscriptStorage, StorageChange } from "./manuscript-storage.js";
+import { storageErrorText, type ManuscriptStorage, type StorageChange } from "./manuscript-storage.js";
 
 export const BOOK_INDEX_PATH = "books/index.json";
 
@@ -62,7 +62,11 @@ export type SaveOutcome =
 
 export type DeleteOutcome =
 	| { ok: true; revision: string; removedPaths: number }
-	| { ok: false; error: "book-not-found" | "revision-conflict" | "write-failed"; detail: string };
+	| {
+			ok: false;
+			error: "book-not-found" | "revision-conflict" | "write-failed" | "storage-unavailable";
+			detail: string;
+	  };
 
 /**
  * 宿主一次 `commit()` 最多接受 128 条变更（`commitPluginStorage` 的硬上限），且同一路径不许出现两次。
@@ -291,6 +295,19 @@ export class ManuscriptRepository {
 	}
 
 	/**
+	 * 一本书自己的文件清单。
+	 *
+	 * **不把前缀交给宿主的 `list(prefix)`。** 宿主会先对前缀跑一遍路径校验，`books/<id>/` 这根
+	 * 尾斜杠会被切成一个空分段、直接报错——删除就是这样在真宿主上整条失败的（0.4.33）。
+	 * 前缀匹配本来只是字符串比较，放在这里做，宿主的入参形状就不再是删除能不能成功的前提；
+	 * `list()` 不带参数时宿主不会跑那段校验，返回值也涵盖整个命名空间。
+	 */
+	private async listUnder(prefix: string): Promise<string[]> {
+		const all = await this.storage.list();
+		return all.filter((path) => path.startsWith(prefix));
+	}
+
+	/**
 	 * 删掉一本书：它的全部文件、它的决策流水与伏笔台账，以及索引里的那一行。
 	 *
 	 * 两条顺序是刻意的：
@@ -310,7 +327,13 @@ export class ManuscriptRepository {
 		}
 
 		const meta = bookMetaPath(bookId);
-		const owned = await this.storage.list(`books/${bookId}/`);
+		let owned: string[];
+		try {
+			owned = await this.listUnder(`books/${bookId}/`);
+		} catch (error) {
+			// 读不出目录就不能假装删了，也不能把宿主的 IPC 错误整串抄到用户屏幕上。
+			return { ok: false, error: "storage-unavailable", detail: storageErrorText(error) };
+		}
 		const payload = owned.filter((path) => path !== meta);
 		const nextIndex = index.filter((entry) => entry.id !== bookId);
 

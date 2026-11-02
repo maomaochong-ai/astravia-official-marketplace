@@ -105,6 +105,23 @@ class NoisyFirstCommit extends StrictStorage {
 	}
 }
 
+/** 列举清单时失败：用来验证删除把「读不出目录」收成结果，而不是抛一个 unhandled rejection。 */
+class UnreadableDirectory extends StrictStorage {
+	private armed = false;
+
+	arm(): void {
+		this.armed = true;
+	}
+
+	override async list(prefix?: string): Promise<string[]> {
+		if (this.armed)
+			throw new Error(
+				"Error invoking remote method 'astravia:plugins:storage:list': CapabilityError: Capability provider failed: cap.foundation.astravia.storage.list",
+			);
+		return super.list(prefix);
+	}
+}
+
 async function studio(storage: ManuscriptStorage = new StrictStorage()) {
 	const gate = new EntitlementGate(storage, NOW);
 	await gate.load();
@@ -240,5 +257,46 @@ describe("deleting a book", () => {
 		const missing = await service.deleteBook("no-such-book");
 		expect(missing.ok).toBe(false);
 		if (!missing.ok) expect(missing.error).toBe("book-not-found");
+	});
+
+	it("reports an unreadable directory instead of rejecting", async () => {
+		// 读不出目录以前是在 `try` 之外抛的：异常直接冒到 IPC 层，界面上只剩一长串
+		// 「Error invoking remote method …」，而「删除中」永远不结束。
+		const storage = new UnreadableDirectory();
+		const { service, repository } = await studio(storage);
+		const bookId = await draftedBook(service);
+
+		storage.arm();
+		const failed = await service.deleteBook(bookId);
+		expect(failed.ok).toBe(false);
+		if (!failed.ok) {
+			expect(failed.error).toBe("storage-unavailable");
+			// 留能力名（谁拒的），剥掉 Electron 的通道外壳（对用户没有意义）。
+			expect(failed.detail).toBe(
+				"CapabilityError: Capability provider failed: cap.foundation.astravia.storage.list",
+			);
+			expect(failed.detail).not.toContain("Error invoking remote method");
+		}
+		// 没读成清单就等于一个文件都没动：不能把它报成半删，也不能留下残缺的书。
+		expect(await repository.loadBook(bookId)).not.toBeNull();
+		expect((await repository.listBooks()).map((entry) => entry.id)).toEqual([bookId]);
+	});
+});
+
+describe("the storage stand-in", () => {
+	it("rejects the same prefix shapes the host rejects", async () => {
+		// 替身比真宿主宽松时，`list("books/<id>/")` 在测试里全绿、装进宿主才炸。
+		// 宿主对非空前缀先跑路径校验：尾斜杠切出空分段，`.` / `..` 一律拒收。
+		const storage = new MemoryManuscriptStorage();
+		await storage.commit([
+			{ type: "write", path: "books/b1/chapters/1.md", data: "x", encoding: "utf8" },
+		]);
+		await expect(storage.list("books/b1/")).rejects.toThrow("Invalid plugin storage path");
+		await expect(storage.list("books/../b1")).rejects.toThrow("Invalid plugin storage path");
+		await expect(storage.list("/books")).rejects.toThrow("Invalid plugin storage path");
+		// 合法前缀按整段匹配，而不是按字符前缀：`books/b` 不该把 `books/b1` 捞进来。
+		expect(await storage.list("books/b1")).toEqual(["books/b1/chapters/1.md"]);
+		expect(await storage.list("books/b")).toEqual([]);
+		expect(await storage.list()).toEqual(["books/b1/chapters/1.md"]);
 	});
 });
