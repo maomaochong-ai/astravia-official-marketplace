@@ -8930,7 +8930,7 @@
       "slug": "mahua-writing-team",
       "name": "Mahua Novels",
       "description": "A multi-agent novel studio: a deterministic engine holds the schedule while an architect plans, a writer drafts, an editor judges and an arbiter rules — with a shelf, a reader, a foreshadowing ledger and continuity auditing behind them.",
-      "version": "0.4.31",
+      "version": "0.4.32",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -9763,6 +9763,32 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-mahua-writing-team/mahua-writing-team-0.4.31.astraviapkg",
             "sha256": "552d03b48e2fe8a529de2ef078b8c568ae1316b4dfdef886ee4d3953bd251ea0"
           }
+        },
+        {
+          "version": "0.4.32",
+          "minAppVersion": "0.5.60",
+          "pluginApiVersion": "^2.3.0",
+          "permissions": [
+            "agent.hookHandler.execute",
+            "agent.hooks.register",
+            "agent.session.read",
+            "agent.session.write",
+            "agent.skills.control",
+            "agent.systemPrompt.write",
+            "agent.toolHandler.execute",
+            "agent.tools.register",
+            "fs.read",
+            "fs.write",
+            "storage.read",
+            "storage.write",
+            "ui.slot.activity-tab",
+            "ui.slot.turn-card"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-mahua-writing-team/mahua-writing-team-0.4.32.astraviapkg",
+            "sha256": "ef61d753df556261093a5e0571703883d37421074ebea25e4f97645a82d0267e"
+          }
         }
       ]
     },
@@ -9804,8 +9830,67 @@
       "source": {
         "path": "abilities/mcp/baizhi-agent-toolkit"
       }
+    },
+    {
+      "type": "plugin",
+      "slug": "photocraft",
+      "name": "Photocraft",
+      "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor, also openable in a browser.",
+      "version": "0.0.3",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia / storytold",
+      "category": "Design",
+      "categoryI18n": {
+        "zh": "设计",
+        "en": "Design"
+      },
+      "tags": [
+        "image-editing",
+        "photoshop",
+        "psd",
+        "layers",
+        "design"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Photocraft",
+            "description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器，也可以改在浏览器里打开。",
+            "tags": [
+              "图片编辑",
+              "PSD",
+              "图层",
+              "设计"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/photocraft"
+      },
+      "releases": [
+        {
+          "version": "0.0.3",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "browser.open",
+            "shell.openExternal",
+            "fs.read",
+            "fs.write",
+            "workspace.read"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.3.astraviapkg",
+            "sha256": "efe438240a131bd72ef45172c011347f1ac07641583c9e6629e4415b49028d0d"
+          }
+        }
+      ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.02-4"
+  "marketplaceVersion": "2026.11.02-5"
 }
