@@ -14,11 +14,16 @@ import { useEffect, useState } from "react";
  * 交出去的是**档位下标**而不是像素。拖拽分隔条时宽度每帧都在变，下标只在跨过阈值时变一次，
  * 不会让整张表跟着每一帧重画。
  *
- * `bounds` 必须从宽到窄排列：第一个满足 `width >= bound` 的下标即命中，兜底是最窄的一档。
+ * `bounds` 必须从宽到窄排列：第一个满足 `width >= bound` 的下标即命中。
+ *
+ * 档位是 `bounds.length + 1` 档，不是 `bounds.length`：边界只画在档与档之间，
+ * 最宽的一档没有上界，最窄的一档没有下界。所以最窄档的下标是 `bounds.length` 而非
+ * `bounds.length - 1`——写成后者，量不到宽度时（挂载首帧、面板被隐藏）会停在倒数第二档，
+ * 极窄面板下本该只留书名，却还硬摆着一条固定列。
  */
 export function useWidthTier(bounds: readonly number[]) {
 	const [element, setElement] = useState<HTMLElement | null>(null);
-	const [tier, setTier] = useState(bounds.length - 1);
+	const [tier, setTier] = useState(bounds.length);
 
 	useEffect(() => {
 		if (!element) return;
@@ -26,7 +31,7 @@ export function useWidthTier(bounds: readonly number[]) {
 			// 宽度为 0 表示还没布局或宿主里被隐藏；此时写状态只会闪一帧窄档。
 			if (next <= 0) return;
 			const index = bounds.findIndex((bound) => next >= bound);
-			setTier(index === -1 ? bounds.length - 1 : index);
+			setTier(index === -1 ? bounds.length : index);
 		};
 		apply(element.getBoundingClientRect().width);
 		const observer = new ResizeObserver(() => {

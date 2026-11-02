@@ -3,9 +3,9 @@
  *
  * 一条硬约束贯穿全文件：**每一档的轨道数必须等于该档还留着的格子数**。`display: grid`
  * 会把模板里已经没有列的多余子项塞进隐式第二行——行高翻倍、字被挤成两行，看起来像渲染错位。
- * 所以这里不是「模板一列、隐藏一列」两份各自维护，而是「格自带 `minWidth`，模板按同一档位
- * 从格数派生出来」：`tierCells(tier).length` 就是模板的轨道数，两者没有分开改的机会。
- * `test/manifest-guards.test.ts` 逐档核对这条等式。
+ * 所以「格自带 `minWidth`」与「模板手写宽度」必须是同一套档位：`tierCells(tier).length`
+ * 要等于 `COLUMN_TEMPLATES[tier]` 的轨道数。这两份是分开写的，等式由
+ * `test/library-columns.test.ts` 逐档核对——改动任一边而忘了另一边，测试先红。
  *
  * 档位按**实测宽度**判定，不按 CSS 断点：活动面板可以被拖到 260，也可以拉到窗口减 384，
  * 同一块屏幕下这两个宽度差着一整条侧栏。测量与分档在 `hooks/use-width-tier.ts`。
@@ -16,9 +16,18 @@
  * 单独成文件而不是留在页面里，是因为守卫测试要 import 它——测试不该去正则解析 JSX。
  */
 
+/** 六格的稳定标识，同时是表头的语言键。收窄成联合类型，行里的分派才能编译期穷尽。 */
+export type LibraryCellKey =
+	| "library.column.book"
+	| "library.column.genreLength"
+	| "library.column.stage"
+	| "library.column.chapters"
+	| "library.column.words"
+	| "library.column.updated";
+
 export type LibraryColumn = {
 	/** 语言键：表头直接渲染它；行按同一个 key 分派单元格。 */
-	key: string;
+	key: LibraryCellKey;
 	/** 数字列右对齐一类只管外观的附加类。 */
 	className: string;
 	/** 行宽低于这个值时整格不渲染。0 = 任何宽度都留。 */
@@ -64,7 +73,12 @@ export const COLUMN_TEMPLATES = [
 	"minmax(0,1fr)",
 ] as const;
 
-/** 某一档还留着哪些格。档位越窄，`minWidth` 越高，留下的越少。 */
+/**
+ * 某一档还留着哪些格。档位越窄，`minWidth` 越高，留下的越少。
+ *
+ * 越界时用 `0`：那正是最窄一档的下界（只有书名的 `minWidth` 是 0），与 `tierTemplate`
+ * 退回最窄模板一致。别换成 `-Infinity`——那样连书名都会被滤掉，整行空白。
+ */
 export function tierCells(tier: number): LibraryColumn[] {
 	const bound = COLUMN_BOUNDS[tier] ?? 0;
 	return LIBRARY_CELLS.filter((cell) => bound >= cell.minWidth);

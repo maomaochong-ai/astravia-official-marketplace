@@ -11,6 +11,7 @@ import { EmptySheet } from "../shell/EmptySheet";
 import { PageHeader } from "../shell/PageHeader";
 import { PhaseBadge } from "../shell/PhaseBadge";
 import { COLUMN_BOUNDS, tierCells, tierTemplate } from "./library-columns";
+import { LibraryDeletePrompt } from "../shelf/library-delete-prompt";
 import { useWidthTier } from "../../hooks/use-width-tier";
 
 const PAGE_SIZE = 9;
@@ -19,7 +20,8 @@ const PAGE_SIZE = 9;
  *
  * 宽度不够时**丢列**（题材篇幅与字数 → 章数 → 更新），而不是把六列一起压到叠字。
  * 阶位由**表头自己的实测宽度**决定（`useWidthTier`），不交给 CSS 容器查询：查询参照的是
- * 最近的一层 `container-type` 祖先，那层缺席时查询恒假，六列会原样塞进 300px。
+ * 最近的一层 `container-type` 祖先，那是整个工作台外壳；侧栏一收一放，同一壳宽下表格
+ * 宽度差着一整条侧栏，按壳宽分档必然错位。
  * 列模板、每格的宽度下界都写在 `library-columns.ts`：表头与行共用同一组，守卫测试逐档
  * 核对「轨道数 = 可见单元格数」——多出来的子项会被 grid 塞进隐式第二行，那正是列错位的根因。 */
 
@@ -419,7 +421,7 @@ export function LibraryPage({
 												return (
 													<span
 														key={cell.key}
-														className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink ${cell.className}`}
+														className={`shrink-0 truncate whitespace-nowrap font-mono text-[11px] tabular-nums text-ink ${cell.className}`}
 													>
 														{entry.committedCount}
 														<span className="text-ink-faint">/{entry.targetChapters}</span>
@@ -430,16 +432,19 @@ export function LibraryPage({
 												return (
 													<span
 														key={cell.key}
-														className={`shrink-0 truncate whitespace-nowrap text-right font-mono text-[11px] tabular-nums text-ink-soft ${cell.className}`}
+														className={`shrink-0 truncate whitespace-nowrap font-mono text-[11px] tabular-nums text-ink-soft ${cell.className}`}
 													>
 														{entry.words ? formatCount(entry.words) : "—"}
 													</span>
 												);
 											}
+											// 只剩「更新」一格：`LibraryCellKey` 是联合类型，走到这里 TS 已经收窄成它。
+											// 早先这里是不带条件的 `return`，任何新加的 key 都会静默渲染成更新时间。
+											const updated: "library.column.updated" = cell.key;
 											return (
 												<span
-													key={cell.key}
-													className={`shrink-0 truncate whitespace-nowrap text-right text-[10px] text-ink-faint ${cell.className}`}
+													key={updated}
+													className={`shrink-0 truncate whitespace-nowrap text-[10px] text-ink-faint ${cell.className}`}
 												>
 													{ago ? t(ago.key, { count: ago.count }) : "—"}
 												</span>
@@ -469,36 +474,17 @@ export function LibraryPage({
 						})}
 					</ul>
 				)}
-			{pendingDelete !== null && (
-				<div className="mx-2 mt-1.5 mb-1.5 flex shrink-0 items-center gap-2 rounded-control bg-fail-soft px-3 py-1.5 text-micro text-fail">
-					<span className="min-w-0 flex-1 truncate">
-						{t("library.deleteAsk", { title: pendingDelete.title })}
-					</span>
-					<button
-						type="button"
-						onClick={() => {
-							setPendingDelete(null);
-							setRemoveError(null);
-						}}
-						className="shrink-0 whitespace-nowrap rounded-control px-2 py-0.5 text-ink-soft transition-colors hover:bg-wash hover:text-ink"
-					>
-						{t("library.deleteCancel")}
-					</button>
-					<button
-						type="button"
-						disabled={removing}
-						onClick={() => void confirmRemove()}
-						className="shrink-0 whitespace-nowrap rounded-control bg-fail px-2 py-0.5 font-semibold text-white transition-colors hover:bg-fail/90 disabled:opacity-60"
-					>
-						{removing ? t("book.deleting") : t("book.deleteRun")}
-					</button>
-				</div>
-			)}
-
-			{removeError !== null && (
-				<p className="mx-2 mb-1.5 rounded-control bg-fail-soft px-3 py-1.5 text-[10px] leading-4 text-fail">
-					{t("book.deleteFailed")} · {removeError}
-				</p>
+			{(pendingDelete !== null || removeError !== null) && (
+				<LibraryDeletePrompt
+					title={pendingDelete?.title ?? null}
+					removing={removing}
+					error={removeError}
+					onCancel={() => {
+						setPendingDelete(null);
+						setRemoveError(null);
+					}}
+					onConfirm={() => void confirmRemove()}
+				/>
 			)}
 
 				<div className="mx-2 mb-2 mt-1 flex shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-micro text-ink-soft">

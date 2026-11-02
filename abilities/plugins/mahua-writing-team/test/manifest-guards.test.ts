@@ -2,13 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
-import {
-	COLUMN_BOUNDS,
-	COLUMN_TEMPLATES,
-	LIBRARY_CELLS,
-	tierCells,
-	tierTemplate,
-} from "../src/features/workbench/components/pages/library-columns.js";
+import { LIBRARY_CELLS } from "../src/features/workbench/components/pages/library-columns.js";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
@@ -765,25 +759,10 @@ describe("the workbench frames stay honest about the domain", () => {
 		expect(missing).toEqual([]);
 	});
 
-	it("keeps the library grid tracks equal to the cells it still renders", () => {
-		// 一档模板少了一列、单元格却没少——多出来的子项会被 grid 自动排布塞进隐式第二行：
-		// 行高翻倍、字折成两行、右列错位。这条守卫把「轨道数 = 该档单元格数」钉在每一档，
-		// 并把阶梯边界本身也核一遍：边界与模板必须一一对应，否则档位会错一档。
-		const mismatched: string[] = [];
-		for (let tier = 0; tier < COLUMN_TEMPLATES.length; tier += 1) {
-			const cells = tierCells(tier).length;
-			const tracks = tierTemplate(tier)
-				.split(/\s+/)
-				.filter(Boolean).length;
-			if (tracks !== cells) mismatched.push(`tier ${tier}: ${cells} cells vs ${tracks} tracks`);
-		}
-		if (COLUMN_TEMPLATES.length !== COLUMN_BOUNDS.length + 1) {
-			mismatched.push(`${COLUMN_BOUNDS.length + 1} bounds imply ${COLUMN_BOUNDS.length + 1} tiers, got ${COLUMN_TEMPLATES.length}`);
-		}
-		expect(mismatched).toEqual([]);
-		// 档位边界从宽到窄递减：写反了 `findIndex` 会命中最窄那档，六列永远不出来。
-		expect([...COLUMN_BOUNDS].sort((left, right) => right - left)).toEqual([...COLUMN_BOUNDS]);
-		// 每格都得在语言文件里能查到，不然空表头比错位更难发现。
+	it("keeps every library cell key backed by a real translation", () => {
+		// 这一条只管**资源一致性**：格子的 key 同时是表头的语言键。
+		// 档位与轨道的等式在 `test/library-columns.test.ts`，别在这里再算一遍——
+		// 同一个等式两处断言，改档位时两处一起红，看不出是哪个契约破了。
 		expect(LIBRARY_CELLS.filter((cell) => !(cell.key in en) || !(cell.key in zh))).toEqual([]);
 	});
 
