@@ -79,6 +79,29 @@ export function LibraryPage({
 	const [size, setSize] = useState<SizeKey | null>(null);
 	const [sort, setSort] = useState<SortKey>("recent");
 	const [page, setPage] = useState(0);
+	// 书架里也能删。入口是行尾那一枚（不占列宽），确认落在列表下方一条窄带里：
+	// 不弹窗、不挤六列，删错了再点一次取消就行。
+	const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
+	const [removing, setRemoving] = useState(false);
+	const [removeError, setRemoveError] = useState<string | null>(null);
+
+	/**
+	 * 删书的失败原因要留在屏幕上：`deleteBook` 会把仓储的 detail（冲突、找不到、没凭证）
+	 * 原样带回来，只说一句「没删掉」等于让用户自己去猜。
+	 */
+	const confirmRemove = async () => {
+		if (pendingDelete === null) return;
+		setRemoving(true);
+		setRemoveError(null);
+		const result = await data.deleteBook(pendingDelete.id);
+		setRemoving(false);
+		if (result.ok) {
+			// 行会随 `books` 一起消失；确认带也得跟着走，否则它指着一本已经不存在的书。
+			setPendingDelete(null);
+			return;
+		}
+		setRemoveError(result.detail ?? result.error);
+	};
 
 	const landed = lastLandedStudioEvent(events);
 	const writing = landed && isWriting(events, now) ? landed : null;
@@ -320,7 +343,7 @@ export function LibraryPage({
 							const done = percent(entry.committedCount, entry.targetChapters);
 							const isCurrent = entry.id === data.book?.id;
 							return (
-								<li key={entry.id}>
+								<li key={entry.id} className="group/row relative">
 									<button
 										type="button"
 										onClick={() => {
@@ -381,11 +404,57 @@ export function LibraryPage({
 											{ago ? t(ago.key, { count: ago.count }) : "—"}
 										</span>
 									</button>
+									{/* 行本身是整块 `<button>`（点行进书），所以删除只能是它的**兄弟**——嵌进去既不合
+									    HTML 也点不着。绝对定位意味着不占六列的宽度预算，hover 才浮出来；窄档下
+									    时间列已隐藏，常显也不会叠到字上。 */}
+									<button
+										type="button"
+										onClick={() => {
+											setRemoveError(null);
+											setPendingDelete({ id: entry.id, title: entry.title });
+										}}
+										aria-label={t("library.deleteAria", { title: entry.title })}
+										title={t("library.deleteAria", { title: entry.title })}
+										className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-control bg-well text-ink-faint opacity-0 transition-opacity hover:bg-fail-soft hover:text-fail focus-visible:opacity-100 group-hover/row:opacity-100 @max-[760px]:opacity-100"
+									>
+										<span className="icon-[solar--trash-bin-trash-linear] size-3.5" />
+									</button>
 								</li>
 							);
 						})}
 					</ul>
 				)}
+			{pendingDelete !== null && (
+				<div className="mx-2 mb-1 flex shrink-0 items-center gap-2 rounded-control bg-fail-soft px-3 py-1.5 text-micro text-fail">
+					<span className="min-w-0 flex-1 truncate">
+						{t("library.deleteAsk", { title: pendingDelete.title })}
+					</span>
+					<button
+						type="button"
+						onClick={() => {
+							setPendingDelete(null);
+							setRemoveError(null);
+						}}
+						className="shrink-0 whitespace-nowrap rounded-control px-2 py-0.5 text-ink-soft transition-colors hover:bg-wash hover:text-ink"
+					>
+						{t("library.deleteCancel")}
+					</button>
+					<button
+						type="button"
+						disabled={removing}
+						onClick={() => void confirmRemove()}
+						className="shrink-0 whitespace-nowrap rounded-control bg-fail px-2 py-0.5 font-semibold text-white transition-colors hover:bg-fail/90 disabled:opacity-60"
+					>
+						{removing ? t("book.deleting") : t("book.deleteRun")}
+					</button>
+				</div>
+			)}
+
+			{removeError !== null && (
+				<p className="mx-2 mb-1 rounded-control bg-fail-soft px-3 py-1.5 text-[10px] leading-4 text-fail">
+					{t("book.deleteFailed")} · {removeError}
+				</p>
+			)}
 
 				<div className="m-2 mt-0 flex shrink-0 items-center gap-3 rounded-control bg-well px-3 py-1.5 text-micro text-ink-soft">
 					<div className="flex shrink-0 items-center gap-1 whitespace-nowrap">

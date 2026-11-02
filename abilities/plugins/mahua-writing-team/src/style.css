@@ -18,7 +18,7 @@
 
 @theme inline {
 	/* 标题字体：Fraunces 缺位时退到宋体，仍然是大字书的味道；界面字与等宽字沿用宿主/系统栈。 */
-	--font-display: "Fraunces Variable", ui-serif, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif;
+	--font-display: "Fraunces Variable", "Fraunces", ui-serif, "Songti SC", "Source Han Serif SC", "Noto Serif CJK SC", serif;
 
 	/* 颜色一律经由 `--mahua-*` 间接：这一层只负责把变量内联进本插件的工具类，
 	 * 真正的取值在下面 `.mahua-root` 一处（深浅两支写在同一个 `light-dark()` 里），
@@ -287,10 +287,15 @@
 		padding: var(--mahua-page-pad);
 	}
 
+	/* `@theme inline` 不向 :root 发射变量，只把取值内联进**本插件的工具类**。所以
+	 * `rounded-sheet` 这类 utility 一定有值，而手写 CSS 里的 `var(--radius-sheet)` 要靠
+	 * 构建器另外发射一份作用域变量——那一份一旦缺席，`border-radius` 就解析失败退回 0，
+	 * 卡片和凹槽全变成直角，而旁边的按钮仍是圆的。这里的字面量兜底让两种情形一样好看；
+	 * 变量在场时取值完全相同，不是两套设计。 */
 	.mahua-card {
-		border-radius: var(--radius-sheet);
+		border-radius: var(--radius-sheet, 18px);
 		background-color: var(--mahua-raised);
-		box-shadow: var(--shadow-raise);
+		box-shadow: var(--shadow-raise, 0 1px 2px rgb(0 0 0 / 0.06));
 		overflow: hidden;
 	}
 
@@ -300,7 +305,7 @@
 	}
 
 	.mahua-well {
-		border-radius: var(--radius-panel);
+		border-radius: var(--radius-panel, 13px);
 		background-color: var(--mahua-well);
 	}
 
@@ -407,8 +412,10 @@
 	fill: var(--cover-band);
 }
 
+/* 封面字是这套界面的「题字」，拿不到时也要退到衬线，不能退回无衬线的界面字：
+ * `var()` 解析失败会让整条 `font-family` 作废，那才真是观感突变。 */
 .mahua-cover .cover-glyph {
-	font-family: var(--font-display);
+	font-family: var(--font-display, "Fraunces Variable", ui-serif, "Songti SC", serif);
 }
 
 /* 纸纹底片：乘在纸底色上，只留纤维感。透明度与混合模式写在这里，

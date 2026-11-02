@@ -354,7 +354,15 @@ export class ManuscriptRepository {
 			const tailRemovals = tail.filter((change) => change.type === "remove").length;
 			return { ok: true, revision: result.revision, removedPaths: removed + tailRemovals };
 		} catch (error) {
-			return commitFailure(error);
+			const failure = commitFailure(error);
+			// 分批删到一半才撞上冲突：书已经少了一批文件，索引却还在，界面上仍是「完整的书」。
+			// 「没删掉」这三个字会把这种半删状态藏起来，所以把已删数目带回去——
+			// 至少下次重试或写报告时，看得出它不是一个干净的成功，也不是一个干净的不发生。
+			if (removed === 0) return failure;
+			return {
+				...failure,
+				detail: `${failure.detail} | stopped after removing ${removed} of ${payload.length + 3} file(s)`,
+			};
 		}
 	}
 
