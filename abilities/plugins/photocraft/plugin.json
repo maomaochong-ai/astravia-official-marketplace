@@ -1,0 +1,108 @@
+{
+  "id": "photocraft",
+  "name": "Photocraft",
+  "icon": "assets/icon.png",
+  "version": "0.0.3",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.4.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "photocraft",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "browser.open",
+    "shell.openExternal",
+    "fs.read",
+    "fs.write",
+    "workspace.read"
+  ],
+  "browser": {
+    "allowedHosts": [
+      "127.0.0.1"
+    ]
+  },
+  "providers": {
+    "services": [
+      {
+        "id": "photocraft-hub",
+        "runtime": {
+          "kind": "host-node",
+          "version": "0.0.3",
+          "entry": "server/hub.mjs",
+          "platforms": {
+            "win32-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "41e01bbdcb6d0f017914fbd004468c3d35aa0ba640655beb3e1c2a55a51b481e",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "41e01bbdcb6d0f017914fbd004468c3d35aa0ba640655beb3e1c2a55a51b481e",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "41e01bbdcb6d0f017914fbd004468c3d35aa0ba640655beb3e1c2a55a51b481e",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "41e01bbdcb6d0f017914fbd004468c3d35aa0ba640655beb3e1c2a55a51b481e",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "41e01bbdcb6d0f017914fbd004468c3d35aa0ba640655beb3e1c2a55a51b481e",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+          }
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 20000
+        }
+      }
+    ]
+  },
+  "description": "Upstream Photocraft served from a local loopback hub: edit images in the activity tab, or open the same editor in a browser.",
+  "author": "Astravia"
+}

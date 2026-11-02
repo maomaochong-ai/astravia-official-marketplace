@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "archive": "zip",
+  "version": "0.2.0",
+  "size": 10755523,
+  "sha256": "a03e6118beed115eac25e6f0d11d3a3b3a3624538bf8a77dbaebf2352bf48e5f",
+  "sumsUrl": "https://github.com/storytold/photocraft/releases/download/v0.2.0/SHA256SUMS.txt",
+  "localFile": "photocraft-web-0.2.0.zip",
+  "sources": [
+    {
+      "id": "upstream",
+      "url": "https://github.com/storytold/photocraft/releases/download/v0.2.0/photocraft-web-0.2.0.zip"
+    },
+    {
+      "id": "ghproxy",
+      "url": "https://ghproxy.net/https://github.com/storytold/photocraft/releases/download/v0.2.0/photocraft-web-0.2.0.zip"
+    }
+  ],
+  "upstream": "https://github.com/storytold/photocraft"
+}

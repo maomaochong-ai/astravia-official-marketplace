@@ -1187,6 +1187,46 @@
       "source": {
         "path": "abilities/mcp/baizhi-agent-toolkit"
       }
+    },
+    {
+      "type": "plugin",
+      "slug": "photocraft",
+      "name": "Photocraft",
+      "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor, also openable in a browser.",
+      "version": "0.0.3",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia / storytold",
+      "category": "Design",
+      "categoryI18n": {
+        "zh": "设计",
+        "en": "Design"
+      },
+      "tags": [
+        "image-editing",
+        "photoshop",
+        "psd",
+        "layers",
+        "design"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Photocraft",
+            "description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器，也可以改在浏览器里打开。",
+            "tags": [
+              "图片编辑",
+              "PSD",
+              "图层",
+              "设计"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/photocraft"
+      },
+      "minAppVersion": "0.5.59"
     }
   ],
   "version": "0.4.88"
