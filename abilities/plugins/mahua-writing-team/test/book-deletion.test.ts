@@ -83,12 +83,14 @@ class FailingAfterFirstBatch extends StrictStorage {
 	}
 }
 
-/** 第一次提交之前先让无关写入落地一次：活动流每 1.2 秒就干一次这件事。 */
+/** 第一次提交之前先让无关写入落地一次：活动流每 1.2 秒就干一次这件事。
+ * 噪声必须落在**同一个**存储上——写进另一个实例的话 revision 不会前进，
+ * 那条「刷新基线重放」的分支就永远不会被执行，用例名字却照样绿。 */
 class NoisyFirstCommit extends StrictStorage {
-	private armed = true;
+	private armed = false;
 
-	constructor(private readonly noise: MemoryManuscriptStorage) {
-		super();
+	arm(): void {
+		this.armed = true;
 	}
 
 	override async commit(
@@ -97,7 +99,7 @@ class NoisyFirstCommit extends StrictStorage {
 	): Promise<{ revision: string; changedPaths: string[] }> {
 		if (this.armed) {
 			this.armed = false;
-			await this.noise.commit([{ type: "write", path: "console/feed.json", data: "{}", encoding: "utf8" }]);
+			await super.commit([{ type: "write", path: "console/feed.json", data: "{}", encoding: "utf8" }]);
 		}
 		return super.commit(changes, options);
 	}
@@ -222,10 +224,11 @@ describe("deleting a book", () => {
 	it("retries the first batch when an unrelated write lands in the same window", async () => {
 		// 基线是在提交前几毫秒现读的，但活动流仍可以正好插在中间。
 		// 此时还一个文件都没删，刷新基线重放一次就好，用户不该看到一次冲突。
-		const noise = new MemoryManuscriptStorage();
-		const storage = new NoisyFirstCommit(noise);
+		const storage = new NoisyFirstCommit();
 		const { service, repository } = await studio(storage);
 		const bookId = await draftedBook(service);
+		// 建书那几批提交是同一件事，插噪声不算「无关写入」，所以到删书前才武装。
+		storage.arm();
 
 		const removed = await service.deleteBook(bookId);
 		expect(removed.ok).toBe(true);

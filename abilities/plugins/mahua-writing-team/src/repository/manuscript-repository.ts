@@ -350,7 +350,9 @@ export class ManuscriptRepository {
 				{ type: "write", path: BOOK_INDEX_PATH, data: JSON.stringify(nextIndex), encoding: "utf8" },
 			];
 			const result = await publish(tail);
-			return { ok: true, revision: result.revision, removedPaths: removed + 3 };
+			// 计数从 tail 派生：以后往 tail 里再加一条 remove，这里不会默不作声地少算。
+			const tailRemovals = tail.filter((change) => change.type === "remove").length;
+			return { ok: true, revision: result.revision, removedPaths: removed + tailRemovals };
 		} catch (error) {
 			return commitFailure(error);
 		}

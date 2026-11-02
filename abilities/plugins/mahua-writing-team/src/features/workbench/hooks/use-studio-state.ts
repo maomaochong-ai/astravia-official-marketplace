@@ -191,7 +191,9 @@ export function useStudioState(): StudioState {
 				decisions: nextDecisions,
 				findings: nextFindings,
 			};
+			if (!live) return;
 			// 读完顺手记下指纹：这一趟看到的盘面就是“已知”的盘面，心跳不该为它再刷一次。
+			// 写在存活检查之后：卸载中的旧读取不能把它算出来的指纹盖到新基线上。
 			memorySignature = await service.shelfSignature(next?.id);
 			if (!live) return;
 			setLoading(false);
