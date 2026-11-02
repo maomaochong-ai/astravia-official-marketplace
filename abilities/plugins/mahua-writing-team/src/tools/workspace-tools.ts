@@ -86,16 +86,15 @@ async function importChapters(
 	const entries = await ctx.fs.readDir(root);
 	const imported: { n: number; words: number }[] = [];
 	const unchanged: number[] = [];
-	const unmatched: string[] = [];
 	const failed: { file: string; error: string }[] = [];
 
-	const candidates = entries
+	const found = entries
 		.filter((entry) => !entry.isDirectory && /\.md$/i.test(entry.name))
-		.map((entry) => ({ entry, n: chapterNumberOf(entry.name) }))
-		.filter((item) => {
-			if (item.n === null) unmatched.push(item.entry.name);
-			return item.n !== null;
-		})
+		.map((entry) => ({ entry, n: chapterNumberOf(entry.name) }));
+
+	const unmatched = found.filter((item) => item.n === null).map((item) => item.entry.name);
+	const candidates = found
+		.filter((item) => item.n !== null)
 		.sort((left, right) => (left.n ?? 0) - (right.n ?? 0));
 
 	for (const { entry, n } of candidates) {
