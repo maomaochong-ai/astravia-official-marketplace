@@ -65,7 +65,7 @@ export function ConsolePage({
 			<PageHeader
 				title={t("page.console.title")}
 				meta={
-					<span className="min-w-0 truncate text-body-sm text-ink-soft">
+					<span className="block min-w-0 truncate text-body-sm text-ink-soft">
 						{book ? `${book.title} · ${book.genre}` : t("console.noBook")}
 					</span>
 				}

@@ -35,6 +35,13 @@ class StrictStorage implements ManuscriptStorage {
 		return this.inner.readFile(path);
 	}
 
+	async readSnapshot(
+		paths: readonly string[],
+		encoding: "utf8" | "base64",
+	): Promise<{ revision: string; files: Record<string, string | null> }> {
+		return this.inner.readSnapshot(paths, encoding);
+	}
+
 	async commit(
 		changes: readonly StorageChange[],
 		options?: { expectedRevision?: string },
@@ -71,6 +78,26 @@ class FailingAfterFirstBatch extends StrictStorage {
 		if (this.armed) {
 			if (this.allowed === 0) throw new Error("disk went away");
 			this.allowed -= 1;
+		}
+		return super.commit(changes, options);
+	}
+}
+
+/** 第一次提交之前先让无关写入落地一次：活动流每 1.2 秒就干一次这件事。 */
+class NoisyFirstCommit extends StrictStorage {
+	private armed = true;
+
+	constructor(private readonly noise: MemoryManuscriptStorage) {
+		super();
+	}
+
+	override async commit(
+		changes: readonly StorageChange[],
+		options?: { expectedRevision?: string },
+	): Promise<{ revision: string; changedPaths: string[] }> {
+		if (this.armed) {
+			this.armed = false;
+			await this.noise.commit([{ type: "write", path: "console/feed.json", data: "{}", encoding: "utf8" }]);
 		}
 		return super.commit(changes, options);
 	}
@@ -146,9 +173,9 @@ describe("deleting a book", () => {
 		const bookId = await draftedBook(service);
 		// 138 章正文 = 138 个文件，超过宿主 128 条的上限，一波删不完。
 		for (let n = 1; n <= 138; n += 1) {
-		const saved = await service.saveChapter({ n, content: PROSE }, bookId);
-		if (!saved.ok) throw new Error(`${n}: ${saved.error}`);
-	}
+			const saved = await service.saveChapter({ n, content: PROSE }, bookId);
+			if (!saved.ok) throw new Error(`${n}: ${saved.error}`);
+		}
 		storage.batches.length = 0;
 
 		const removed = await service.deleteBook(bookId);
@@ -157,7 +184,8 @@ describe("deleting a book", () => {
 		expect(storage.batches.length).toBeGreaterThan(1);
 		expect(Math.max(...storage.batches)).toBeLessThanOrEqual(MAX_CHANGES_PER_COMMIT);
 		expect(Math.min(...storage.batches)).toBeGreaterThan(0);
-	});
+		// 138 章要真的写一遍再删一遍；并行跑满 17 个测试文件时会碰到默认的 5 秒。
+	}, 30_000);
 
 	it("keeps the book readable when a later batch fails", async () => {
 		// `book.json` 是最后一批才删的，所以中途失败时这本书仍然读得出来、也仍然能再删一次。
@@ -166,9 +194,9 @@ describe("deleting a book", () => {
 		const { repository, service } = await studio(storage);
 		const bookId = await draftedBook(service);
 		for (let n = 1; n <= 138; n += 1) {
-		const saved = await service.saveChapter({ n, content: PROSE }, bookId);
-		if (!saved.ok) throw new Error(`${n}: ${saved.error}`);
-	}
+			const saved = await service.saveChapter({ n, content: PROSE }, bookId);
+			if (!saved.ok) throw new Error(`${n}: ${saved.error}`);
+		}
 
 		storage.arm();
 		const failed = await service.deleteBook(bookId);
@@ -177,21 +205,31 @@ describe("deleting a book", () => {
 
 		expect(await repository.loadBook(bookId)).not.toBeNull();
 		expect((await repository.listBooks()).map((entry) => entry.id)).toEqual([bookId]);
-	});
+	}, 30_000);
 
-	it("clears the stale revision so the retry is not the same conflict forever", async () => {
-		// 冲突时留着旧基线，用户点「重试」拿到的还是同一个冲突——他们会以为按钮坏了。
-		const { storage, service } = await studio();
+	it("is not blocked by a write that touched another file", async () => {
+		// 删书以前拿着服务缓存的 revision；活动流/凭证写一次就过期，用户点「删除」只会一直报冲突。
+		const { storage, service, repository } = await studio();
 		const bookId = await draftedBook(service);
-		// 绕过服务直接写一次存储：服务手里的 revision 立刻过期。
 		await storage.commit([{ type: "write", path: "probe.txt", data: "x", encoding: "utf8" }]);
 
-		const conflict = await service.deleteBook(bookId);
-		expect(conflict.ok).toBe(false);
-		if (!conflict.ok) expect(conflict.error).toBe("revision-conflict");
+		const removed = await service.deleteBook(bookId);
+		expect(removed.ok).toBe(true);
+		expect(await repository.loadBook(bookId)).toBeNull();
+		expect(await repository.listBooks()).toEqual([]);
+	});
 
-		const retry = await service.deleteBook(bookId);
-		expect(retry.ok).toBe(true);
+	it("retries the first batch when an unrelated write lands in the same window", async () => {
+		// 基线是在提交前几毫秒现读的，但活动流仍可以正好插在中间。
+		// 此时还一个文件都没删，刷新基线重放一次就好，用户不该看到一次冲突。
+		const noise = new MemoryManuscriptStorage();
+		const storage = new NoisyFirstCommit(noise);
+		const { service, repository } = await studio(storage);
+		const bookId = await draftedBook(service);
+
+		const removed = await service.deleteBook(bookId);
+		expect(removed.ok).toBe(true);
+		expect(await repository.loadBook(bookId)).toBeNull();
 	});
 
 	it("reports an unknown id instead of pretending it worked", async () => {

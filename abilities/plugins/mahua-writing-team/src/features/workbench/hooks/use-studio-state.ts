@@ -103,6 +103,18 @@ function rememberSelection(next: Selected): Selected {
  */
 let memorySnapshot: Snapshot | null = null;
 
+/**
+ * 盘上最后一次读到的指纹。
+ *
+ * 宿主没给插件存储的变更事件（SDK 只有目录 watch，且看不到 `commit()`），所以模型刚写完
+ * 的那几秒里，界面会停在旧事实上——“书写好了但工作台还说在简介阶段”就是这么来的。
+ * 用一次只读书文件的原子读当心跳，比重新挂载才能看到结果实用。
+ */
+let memorySignature = "";
+
+/** 心跳间隔：比活动流（1.2 秒）慢，比人察觉“界面卡住”快。 */
+const WATCH_MS = 2500;
+
 export function useStudioState(): StudioState {
 	const { service } = getStudioRuntime();
 	const [version, setVersion] = useState(0);
@@ -179,6 +191,9 @@ export function useStudioState(): StudioState {
 				decisions: nextDecisions,
 				findings: nextFindings,
 			};
+			// 读完顺手记下指纹：这一趟看到的盘面就是“已知”的盘面，心跳不该为它再刷一次。
+			memorySignature = await service.shelfSignature(next?.id);
+			if (!live) return;
 			setLoading(false);
 		};
 
@@ -192,6 +207,34 @@ export function useStudioState(): StudioState {
 			live = false;
 		};
 	}, [service, selected, version]);
+
+	/*
+	 * 心跳：模型在对话里把书改了，宿主不会告诉这张面板。只比指纹，不重读整本书，
+	 * 也不看宿主 revision（活动流每 1.2 秒就会推它一遍）。
+	 */
+	const watchId = book?.id ?? selected.bookId ?? undefined;
+
+	useEffect(() => {
+		let live = true;
+		const timer = setInterval(() => {
+			void service
+				.shelfSignature(watchId)
+				.then((signature) => {
+					if (!live || signature === memorySignature) return;
+					// 先认下这个指纹再重读：重读若失败（宿主正在写、凭证被清），下一跳不该又刷一次，
+					// 否则面板会以心跳频率无休止地空转。真正的下一次变更会再推进指纹。
+					memorySignature = signature;
+					refresh();
+				})
+				.catch(() => {
+					/* 读失败不该让工作台停摆：下一跳再试。 */
+				});
+		}, WATCH_MS);
+		return () => {
+			live = false;
+			clearInterval(timer);
+		};
+	}, [service, watchId, refresh]);
 
 	const selectBook = useCallback((bookId: string) => {
 		setSelected(rememberSelection({ bookId, chapter: null }));

@@ -57,7 +57,7 @@ export function LedgerPage({
 			<PageHeader
 				title={t("page.ledger.title")}
 				meta={
-					<span className="truncate text-body-sm text-ink-soft">
+					<span className="block min-w-0 truncate text-body-sm text-ink-soft">
 						{book ? t("ledger.subtitle", { title: book.title }) : t("ledger.subtitleEmpty")}
 					</span>
 				}

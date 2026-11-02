@@ -223,6 +223,12 @@ export interface NovelBook {
 		pendingRewrite: number[];
 	};
 	checkpoints: Checkpoint[];
+	/**
+	 * 这本书自己的写入计数，每次落盘 +1（旧书没有这个字段，按 0 读）。
+	 * 存储层的 revision 是整个插件命名空间的：凭证、活动流、另一本书都会推进它，
+	 * 拿它判断「这本书变了吗」必然误判，所以版本账得按书来记。
+	 */
+	rev?: number;
 	createdAt: string;
 	updatedAt: string;
 }

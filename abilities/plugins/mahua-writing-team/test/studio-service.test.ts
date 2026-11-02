@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { StudioService, countWords } from "../src/application/studio-service.js";
 import { EntitlementGate } from "../src/entitlement/entitlement-gate.js";
-import { MemoryManuscriptStorage } from "../src/repository/manuscript-storage.js";
-import { ManuscriptRepository } from "../src/repository/manuscript-repository.js";
+import {
+	MemoryManuscriptStorage,
+	type ManuscriptStorage,
+	type StorageChange,
+} from "../src/repository/manuscript-storage.js";
+import { ManuscriptRepository, bookMetaPath } from "../src/repository/manuscript-repository.js";
+import type { NovelBook } from "../src/domain/novel-types.js";
 import { COMMUNITY_CREDENTIAL } from "../src/entitlement/default-credential.js";
 import { decodeToken } from "../src/entitlement/credential-token.js";
 
@@ -135,7 +140,60 @@ describe("StudioService lifecycle", () => {
 		expect(status.data.currentWords).toBeGreaterThan(200);
 	});
 
-	it("surfaces a revision conflict instead of overwriting a concurrent write", async () => {
+	/*
+	 * 服务读完之后、提交之前，另一个写入方改了同一本书。
+	 * 这是唯一真正该报冲突的情形——必须和「活动流写了一次 console/feed.json」区分开。
+	 */
+	class ConcurrentBookWrite implements ManuscriptStorage {
+		watch = "";
+		private armed = true;
+
+		constructor(private readonly inner: MemoryManuscriptStorage) {}
+
+		list(prefix?: string) {
+			return this.inner.list(prefix);
+		}
+
+		readFile(path: string) {
+			return this.inner.readFile(path);
+		}
+
+		readSnapshot(paths: readonly string[], encoding: "utf8" | "base64") {
+			return this.inner.readSnapshot(paths, encoding);
+		}
+
+		async commit(changes: readonly StorageChange[], options?: { expectedRevision?: string }) {
+			if (this.armed && this.watch) {
+				this.armed = false;
+				const path = bookMetaPath(this.watch);
+				const raw = await this.inner.readFile(path);
+				const book = raw ? (JSON.parse(raw) as NovelBook) : null;
+				if (book) {
+					await this.inner.commit([
+						{ type: "write", path, data: JSON.stringify({ ...book, rev: (book.rev ?? 0) + 1 }), encoding: "utf8" },
+					]);
+				}
+			}
+			return this.inner.commit(changes, options);
+		}
+	}
+
+	it("heals a revision that moved because another file was written", async () => {
+		// 现场症状：`mahua_create_book` 成功、`mahua_accept_brief` 立刻报版本冲突，书目卡在 briefing。
+		// 直拨报错那一步：先建书，再让活动流写一次，然后才存简报。
+		const fresh = await studio();
+		const opened = await fresh.service.createBook({
+			title: "Salt of the Gate",
+			genre: "SF",
+			premise: "A city that forgets its own name",
+			targetChapters: 3,
+		});
+		if (!opened.ok) throw new Error(opened.error);
+		fresh.storage.bumpRevision();
+		const brief = await fresh.service.acceptBrief(opened.data.id);
+		expect(brief.ok).toBe(true);
+		if (brief.ok) expect(brief.data.phase).toBe("planning");
+		// 原因是活动流每 1.2 秒写一次 `console/feed.json`，把命名空间的 revision 推走，而这本书一个字没变。
 		const { service, storage, bookId } = await withBook();
 		await service.acceptBrief(bookId);
 		await service.savePlan(
@@ -144,8 +202,49 @@ describe("StudioService lifecycle", () => {
 		);
 		storage.bumpRevision();
 		const outlined = await service.saveOutlines({ chapters: [{ n: 1, title: "The gate" }] }, bookId);
+		expect(outlined.ok).toBe(true);
+	});
+
+	it("surfaces a conflict when another writer changed the same book", async () => {
+		const storage = new ConcurrentBookWrite(new MemoryManuscriptStorage());
+		const gate = new EntitlementGate(storage, NOW);
+		await gate.load();
+		const service = new StudioService(new ManuscriptRepository(storage, () => NOW().toISOString()), gate, NOW);
+
+		const created = await service.createBook({
+			title: "Salt",
+			genre: "SF",
+			premise: "A city that forgets",
+			targetChapters: 3,
+		});
+		if (!created.ok) throw new Error(created.error);
+		const bookId = created.data.id;
+		await service.acceptBrief(bookId);
+		await service.savePlan(
+			{ title: "V", goal: "g", hook: "h", arcs: [{ title: "A", goal: "g", from: 1, to: 3 }] },
+			bookId,
+		);
+
+		storage.watch = bookId;
+		const outlined = await service.saveOutlines({ chapters: [{ n: 1, title: "The gate" }] }, bookId);
 		expect(outlined.ok).toBe(false);
 		if (!outlined.ok) expect(outlined.error).toBe("revision-conflict");
+	});
+
+	it("keeps writing after one failed attempt instead of wedging on the old baseline", async () => {
+		const { service, storage, bookId } = await withBook();
+		await service.acceptBrief(bookId);
+		await service.savePlan(
+			{ title: "V", goal: "g", hook: "h", arcs: [{ title: "A", goal: "g", from: 1, to: 3 }] },
+			bookId,
+		);
+
+		// 连续多次无关写入：旧实现只在第一次失败时还拿着旧基线，之后每一次都撞同一个冲突。
+		for (let round = 0; round < 5; round += 1) {
+			storage.bumpRevision();
+			const outlined = await service.saveOutlines({ chapters: [{ n: 1, title: `Gate ${round}` }] }, bookId);
+			expect(outlined.ok).toBe(true);
+		}
 	});
 
 	it("does not invent a conflict when two books take turns writing", async () => {

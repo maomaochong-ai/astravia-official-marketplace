@@ -253,11 +253,14 @@ export function applyVersionBump({ root, slug, to }) {
 }
 
 
-export async function prepareMarketplace({ root, output, previous, sourceSha, buildPlugin, date = new Date().toISOString().slice(0, 10).replaceAll('-', '.'), strictSlugs }) {
+export async function prepareMarketplace({ root, output, previous, baseline, sourceSha, buildPlugin, date = new Date().toISOString().slice(0, 10).replaceAll('-', '.'), strictSlugs }) {
   if (existsSync(output)) throw new Error(`Output already exists: ${output}`);
   if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('A fixed source commit is required');
   const catalog = sourceCatalog(root);
-  const old = previous && existsSync(join(previous, '.astravia/marketplace.json')) ? readJson(join(previous, '.astravia/marketplace.json')) : undefined;
+  // `previous` 是一份完整的已发布站点目录；拿不到时用 `baseline`（同一份索引的 JSON）。
+  // 判断「这个版本是否已经发布过」只需要索引，不需要真把整棵树搬过来——本地因此不必为
+  // 一个已发布的插件重跑 npm ci / test / build。
+  const old = previous && existsSync(join(previous, '.astravia/marketplace.json')) ? readJson(join(previous, '.astravia/marketplace.json')) : baseline;
   if (old && old.repository !== catalog.repository) throw new Error('Published repository identity differs');
   const oldEntries = new Map(old ? entries(old).map(x => [x.slug, x]) : []);
   const site = join(output, 'site'), artifacts = join(output, 'artifacts');

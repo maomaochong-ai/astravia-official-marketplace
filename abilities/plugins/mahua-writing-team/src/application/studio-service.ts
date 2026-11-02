@@ -109,12 +109,11 @@ export function countWords(text: string): number {
 }
 
 export class StudioService {
-	/**
-	 * 存储层的**全局** revision（SDK：一次 commit 发布整个插件命名空间的一个 revision）。
-	 * 不是每本一个：写过书 B 之后书 A 的旧值就作废了，按书缓存会造出一次假冲突。
-	 * 会话第一次写之前它是 undefined，那一次不设基线；之后每一次都带上。
+	/*
+	 * 这里刻意不放 revision。宿主的 revision 是整个插件命名空间的，凭证、活动流、另一本书
+	 * 都会推进它；任何实例级缓存都会在 1 秒内变成假冲突，且失败后会一直拿着那个旧值，
+	 * 让「重试」永远撞同一个冲突。基线现在由 ManuscriptRepository 在每次写之前现读。
 	 */
-	private revision: string | undefined;
 
 	constructor(
 		private readonly repository: ManuscriptRepository,
@@ -128,6 +127,11 @@ export class StudioService {
 
 	async listBooks(): Promise<ServiceResult<BookIndexEntry[]>> {
 		return { ok: true, data: await this.repository.listBooks() };
+	}
+
+	/** 给工作台的轮询用：盘上的书变了才返回新指纹，活动流与凭证的写入不参与。 */
+	async shelfSignature(bookId?: string): Promise<string> {
+		return this.repository.shelfSignature(bookId);
 	}
 
 	async loadLatestBook(): Promise<NovelBook | null> {
@@ -192,8 +196,7 @@ export class StudioService {
 	 * 删掉一本书。
 	 *
 	 * 写入口只有一个，删除也是写：没有凭证不能删，和 `createBook` 同一个门禁。
-	 * 冲突时把全局 revision 清掉——留着旧基线的话，用户点一次重试还是同一个冲突，
-	 * 看起来就会像「这个键坏了」。
+	 * 并发基线与冲突重试全在仓储里：服务层不持有 revision，也不负责清。
 	 */
 	async deleteBook(bookId: string): Promise<ServiceResult<{ id: string }>> {
 		const denied = this.requireEntitlement<{ id: string }>();
@@ -201,12 +204,8 @@ export class StudioService {
 		const id = typeof bookId === "string" ? bookId.trim() : "";
 		if (!id) return failure("invalid-input", "bookId is required");
 
-		const outcome = await this.repository.deleteBook(id, this.revision);
-		if (!outcome.ok) {
-			if (outcome.error === "revision-conflict") this.revision = undefined;
-			return failure(outcome.error, outcome.detail);
-		}
-		this.revision = outcome.revision;
+		const outcome = await this.repository.deleteBook(id);
+		if (!outcome.ok) return failure(outcome.error, outcome.detail);
 		return { ok: true, data: { id } };
 	}
 
@@ -304,10 +303,8 @@ export class StudioService {
 		const outcome = await this.repository.save({
 			book: result.book,
 			decisions: [JSON.stringify(record)],
-			expectedRevision: this.revision,
 		});
 		if (!outcome.ok) return failure(outcome.error, outcome.detail);
-		this.revision = outcome.revision;
 		return { ok: true, data: { from, to, replaced: input.replacement.length, dropped } };
 	}
 
@@ -350,12 +347,10 @@ export class StudioService {
 		const outcome = await this.repository.save({
 			book: withFacts,
 			chapters: [{ n: input.n, text: input.content }],
-			expectedRevision: this.revision,
 		});
 		if (!outcome.ok) {
 			return failure(outcome.error, outcome.detail);
 		}
-		this.revision = outcome.revision;
 		return { ok: true, data: withFacts };
 	}
 
@@ -381,10 +376,8 @@ export class StudioService {
 		const outcome = await this.repository.save({
 			book: result.book,
 			reviews: [report],
-			expectedRevision: this.revision,
 		});
 		if (!outcome.ok) return failure(outcome.error, outcome.detail);
-		this.revision = outcome.revision;
 		return { ok: true, data: result.book };
 	}
 
@@ -433,14 +426,12 @@ export class StudioService {
 			decision: request.decision,
 			rationale: request.rationale ?? "",
 		};
-		// 与其它写路径保持一致：账面版本作为乐观并发基线，否则一次裁定会盖掉同时进行的章节推进。
+		// 并发保护在仓储里：它比对手里这本书的 rev 与盘上的一致，别的文件被写不算冲突。
 		const outcome = await this.repository.save({
 			book,
 			decisions: [JSON.stringify(record)],
-			expectedRevision: this.revision,
 		});
 		if (!outcome.ok) return failure(outcome.error, outcome.detail);
-		this.revision = outcome.revision;
 		return { ok: true, data: { record: JSON.stringify(record) } };
 	}
 
@@ -625,10 +616,8 @@ export class StudioService {
 		const outcome = await this.repository.save({
 			book: withFacts,
 			chapters: [{ n: input.n, text }],
-			expectedRevision: this.revision,
 		});
 		if (!outcome.ok) return failure(outcome.error, outcome.detail);
-		this.revision = outcome.revision;
 		return { ok: true, data: withFacts };
 	}
 
@@ -833,12 +822,8 @@ export class StudioService {
 	}
 
 	private async persist(book: NovelBook): Promise<ServiceResult<NovelBook>> {
-		const outcome = await this.repository.save({
-			book,
-			expectedRevision: this.revision,
-		});
+		const outcome = await this.repository.save({ book });
 		if (!outcome.ok) return failure(outcome.error, outcome.detail);
-		this.revision = outcome.revision;
 		return { ok: true, data: book };
 	}
 
@@ -847,9 +832,8 @@ export class StudioService {
 		book: NovelBook,
 		threads: StoryThread[],
 	): Promise<ServiceResult<StoryThread[]>> {
-		const outcome = await this.repository.save({ book, threads, expectedRevision: this.revision });
+		const outcome = await this.repository.save({ book, threads });
 		if (!outcome.ok) return failure(outcome.error, outcome.detail);
-		this.revision = outcome.revision;
 		return { ok: true, data: threads };
 	}
 

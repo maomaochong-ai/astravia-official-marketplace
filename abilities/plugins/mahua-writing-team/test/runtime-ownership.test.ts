@@ -51,7 +51,7 @@ describe("studio runtime ownership", () => {
 
 	it("keeps the newest translator so a stalled panel can still speak", () => {
 		const first = setStudioRuntime(fake("first"));
-		const second = setStudioRuntime(fake("second"));
+		setStudioRuntime(fake("second"));
 
 		clearStudioRuntime(first);
 

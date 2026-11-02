@@ -5,7 +5,7 @@
  * 也可以单独测。这里不产生任何"下一步""建议"，那是 `routeNovel` 的事——工作台不派活。
  */
 
-import type { Arc, NovelBook, StoryThread, Volume } from "../../domain/novel-types.js";
+import type { Arc, NovelBook, StoryThread } from "../../domain/novel-types.js";
 
 /** 章节在界面上的五态，与设计稿的圆点一一对应。 */
 export type ChapterState = "committed" | "reviewed" | "drafting" | "planned" | "blocked";

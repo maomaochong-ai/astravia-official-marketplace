@@ -22,6 +22,15 @@ export interface ManuscriptStorage {
 		changes: readonly StorageChange[],
 		options?: { expectedRevision?: string },
 	): Promise<{ revision: string; changedPaths: string[] }>;
+	/**
+	 * 原子读：同一 revision 下若干路径的内容。宿主的 `PluginStorageApi` 就有这个方法，
+	 * 结构上直接满足；写之前用它取新鲜基线，是「不再拿着秒级过期 revision 去写」的关键。
+	 * 缺席时（老宿主或精简替身）退回调用方传来的 `expectedRevision`。
+	 */
+	readSnapshot?(
+		paths: readonly string[],
+		encoding: "utf8" | "base64",
+	): Promise<{ revision: string; files: Record<string, string | null> }>;
 }
 
 /** 测试与本地预览用的内存实现。语义与宿主一致：commit 是唯一发布点。 */
@@ -54,6 +63,15 @@ export class MemoryManuscriptStorage implements ManuscriptStorage {
 		this.files = next;
 		this.revision += 1;
 		return { revision: `rev-${this.revision}`, changedPaths: changes.map((change) => change.path) };
+	}
+
+	async readSnapshot(
+		paths: readonly string[],
+		_encoding: "utf8" | "base64",
+	): Promise<{ revision: string; files: Record<string, string | null> }> {
+		const files: Record<string, string | null> = {};
+		for (const path of paths) files[path] = this.files.get(path) ?? null;
+		return { revision: `rev-${this.revision}`, files };
 	}
 
 	/** 仅测试用：故意制造落后 revision，验证冲突分支。 */

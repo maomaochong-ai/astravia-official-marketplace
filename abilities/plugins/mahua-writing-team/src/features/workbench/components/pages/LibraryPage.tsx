@@ -182,7 +182,7 @@ export function LibraryPage({
 				back={{ label: t("library.back"), onBack: () => onNavigate("shelf") }}
 				title={t("page.library.title")}
 				meta={
-					<span className="text-body-sm text-ink-soft">
+					<span className="block min-w-0 truncate text-body-sm text-ink-soft">
 						{t("library.meta", { count: filtered.length, words: wanWords(words) })}
 					</span>
 				}

@@ -44,6 +44,8 @@ export const GATED_TOOL_IDS: readonly string[] = [
 	// ADR 0021：台账的两条写入口。体检是读，放在上面那张不进来的名单里。
 	"mahua_flag_thread",
 	"mahua_close_thread",
+	// 工作区同步会覆写章节正文（import），也会写盘（export），和 `mahua_edit_chapter` 同级。
+	"mahua_sync_workspace",
 ];
 
 export function isGatedTool(toolId: string): boolean {

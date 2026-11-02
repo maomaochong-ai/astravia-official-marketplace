@@ -52,8 +52,8 @@ export interface SaveBundle {
 	decisions?: string[];
 	/** 台账整份写入（小、且每次变更都全量覆盖，避免追加式合并的竞态）。 */
 	threads?: StoryThread[];
-	/** 乐观并发：传入上一次读到的 revision，落后即失败（ADR 0005 规则三）。 */
-	expectedRevision?: string;
+	// 基线不由调用方传：宿主的 revision 属于整个插件命名空间，任何缓存下来的都会在被
+	// 凭证、活动流、另一本书推进后变成假冲突，所以只能由仓储在写前现读。
 }
 
 export type SaveOutcome =
@@ -69,6 +69,12 @@ export type DeleteOutcome =
  * 一本 120 章的书光正文就是 120 个文件，加上评审与目录，一次 commit 装不下——所以删书必须分批。
  */
 export const MAX_CHANGES_PER_COMMIT = 128;
+
+/**
+ * 一次保存最多试两遍。第一遍冲突先重读一遍确认：宿主的 revision 覆盖整个命名空间，
+ * 凭证、活动流、另一本书都会推进它，而它们跟这本书是否能写毫无关系。
+ */
+const SAVE_ATTEMPTS = 2;
 
 function chunk<T>(items: readonly T[], size: number): T[][] {
 	const out: T[][] = [];
@@ -106,6 +112,22 @@ function parseJson<T>(raw: string | null): T | null {
 	}
 }
 
+/** FNV-1a：只要「这次读到的内容是否还是上次那份」，不需要密码学强度。 */
+function fingerprint(paths: readonly string[], files: Record<string, string | null>): string {
+	let hash = 0x811c9dc5;
+	for (const path of paths) {
+		const content = files[path] ?? "";
+		for (let index = 0; index < path.length; index += 1) {
+			hash = Math.imul(hash ^ path.charCodeAt(index), 0x01000193);
+		}
+		hash = Math.imul(hash ^ content.length, 0x01000193);
+		for (let index = 0; index < content.length; index += 1) {
+			hash = Math.imul(hash ^ content.charCodeAt(index), 0x01000193);
+		}
+	}
+	return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
 export class ManuscriptRepository {
 	constructor(
 		private readonly storage: ManuscriptStorage,
@@ -119,10 +141,30 @@ export class ManuscriptRepository {
 	}
 
 	async loadBook(bookId: string): Promise<NovelBook | null> {
-		const raw = await this.storage.readFile(bookMetaPath(bookId), "utf8");
-		const book = parseJson<NovelBook>(raw);
-		if (!book) return null;
-		return book.schemaVersion === 1 ? book : migrate(book);
+		return this.parseBook(await this.storage.readFile(bookMetaPath(bookId), "utf8"));
+	}
+
+	/** 当前已发布的 revision。宿主不支持原子读时是 undefined，等于这次不设基线。 */
+	async currentRevision(): Promise<string | undefined> {
+		if (!this.storage.readSnapshot) return undefined;
+		return (await this.storage.readSnapshot([BOOK_INDEX_PATH], "utf8")).revision;
+	}
+
+	/**
+	 * 书架与某一本书在盘上的指纹，给界面轮询用。
+	 *
+	 * 这里刻意不用宿主的 revision：活动流每 1.2 秒写一次 `console/feed.json`，拿它当指纹
+	 * 会让界面无休止地重读。只有书自己的文件变了才算变，且一次原子读拿齐。
+	 */
+	async shelfSignature(bookId?: string): Promise<string> {
+		const paths = bookId ? [BOOK_INDEX_PATH, bookMetaPath(bookId)] : [BOOK_INDEX_PATH];
+		if (this.storage.readSnapshot) {
+			const snapshot = await this.storage.readSnapshot(paths, "utf8");
+			return fingerprint(paths, snapshot.files);
+		}
+		const files: Record<string, string | null> = {};
+		for (const path of paths) files[path] = await this.storage.readFile(path, "utf8");
+		return fingerprint(paths, files);
 	}
 
 	async readChapter(bookId: string, n: number): Promise<string> {
@@ -151,20 +193,68 @@ export class ManuscriptRepository {
 	 */
 	async save(bundle: SaveBundle): Promise<SaveOutcome> {
 		const { book } = bundle;
+		let failure: Extract<SaveOutcome, { ok: false }> | null = null;
+
+		for (let attempt = 0; attempt < SAVE_ATTEMPTS; attempt += 1) {
+			const observed = await this.observe(book.id);
+			const onDisk = observed.book?.rev ?? 0;
+			// 只有「这本书自己被改过」才是真冲突：手里的账本是旧的，盖回去会丢别人的改动。
+			if (observed.book && (book.rev ?? 0) !== onDisk) {
+				return {
+					ok: false,
+					error: "revision-conflict",
+					detail: `book ${book.id} was written by someone else (on disk rev ${onDisk}, in hand ${book.rev ?? 0})`,
+				};
+			}
+
+			const next: NovelBook = { ...book, rev: onDisk + 1 };
+			try {
+				const result = await this.storage.commit(await this.buildChanges(next, bundle), {
+					expectedRevision: observed.revision,
+				});
+				// 手里的账本跟着前进：调用方拿着返回值接着写，不该自带一个落后一版的 rev。
+				book.rev = next.rev;
+				return { ok: true, revision: result.revision };
+			} catch (error) {
+				failure = commitFailure(error);
+				if (failure.error !== "revision-conflict") return failure;
+				// 宿主没给基线时重读也拿不到新值，再试一次只会撞同一个冲突。
+				if (observed.revision === undefined) break;
+			}
+		}
+
+		return failure ?? { ok: false, error: "write-failed", detail: "commit was never attempted" };
+	}
+
+	/**
+	 * 原子读一次「这本书 + 当前 revision」。
+	 * 每次写之前都现读：这才是修掉「书库写入一直报版本冲突」的地方——
+	 * 之前把一次 commit 的 revision 当会话级账本用，而它 1.2 秒后就会被活动流写旧。
+	 */
+	private async observe(bookId: string): Promise<{ book: NovelBook | null; revision: string | undefined }> {
+		const meta = bookMetaPath(bookId);
+		if (!this.storage.readSnapshot) {
+			return { book: await this.loadBook(bookId), revision: undefined };
+		}
+		const snapshot = await this.storage.readSnapshot([meta], "utf8");
+		return { book: this.parseBook(snapshot.files[meta] ?? null), revision: snapshot.revision };
+	}
+
+	private parseBook(raw: string | null): NovelBook | null {
+		const book = parseJson<NovelBook>(raw);
+		if (!book) return null;
+		return book.schemaVersion === 1 ? book : migrate(book);
+	}
+
+	/** 一次推进 = 一次 commit 全部变更：正文、索引、台账同批发布，不存在写了一半的中间态。 */
+	private async buildChanges(book: NovelBook, bundle: SaveBundle): Promise<StorageChange[]> {
 		const index = await this.listBooks();
 		const others = index.filter((entry) => entry.id !== book.id);
-		const nextIndex = [toIndexEntry(book), ...others].sort((a, b) =>
-			b.updatedAt.localeCompare(a.updatedAt),
-		);
+		const nextIndex = [toIndexEntry(book), ...others].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
 		const changes: StorageChange[] = [
 			{ type: "write", path: bookMetaPath(book.id), data: JSON.stringify(book), encoding: "utf8" },
-			{
-				type: "write",
-				path: BOOK_INDEX_PATH,
-				data: JSON.stringify(nextIndex),
-				encoding: "utf8",
-			},
+			{ type: "write", path: BOOK_INDEX_PATH, data: JSON.stringify(nextIndex), encoding: "utf8" },
 		];
 
 		for (const chapter of bundle.chapters ?? []) {
@@ -197,14 +287,7 @@ export class ManuscriptRepository {
 			changes.push({ type: "write", path: decisionsPath(book.id), data: `${lines}\n`, encoding: "utf8" });
 		}
 
-		try {
-			const result = await this.storage.commit(changes, {
-				expectedRevision: bundle.expectedRevision,
-			});
-			return { ok: true, revision: result.revision };
-		} catch (error) {
-			return commitFailure(error);
-		}
+		return changes;
 	}
 
 	/**
@@ -217,9 +300,10 @@ export class ManuscriptRepository {
 	 *    反过来先删 `book.json` 会留下一个「索引里有、打开却什么都没有」的空壳。
 	 * 2. **索引最后写。** 它是唯一的人可见真相：索引里的那一行消失，就等于这本书没了。
 	 *
-	 * 每一批都带上一次的 revision，中途有别人写入就整件事失败（用户重来一次即可）。
+	 * 每一批都带上一次的 revision；撞上的是与这本书无关的写入（活动流、凭证）时，
+	 * 允许首次提交刷新一次基线重放——那时还一个文件都没删，`remove` 又幂等。
 	 */
-	async deleteBook(bookId: string, expectedRevision?: string): Promise<DeleteOutcome> {
+	async deleteBook(bookId: string): Promise<DeleteOutcome> {
 		const index = await this.listBooks();
 		if (!index.some((entry) => entry.id === bookId)) {
 			return { ok: false, error: "book-not-found", detail: bookId };
@@ -230,14 +314,30 @@ export class ManuscriptRepository {
 		const payload = owned.filter((path) => path !== meta);
 		const nextIndex = index.filter((entry) => entry.id !== bookId);
 
-		let revision = expectedRevision;
+		// 基线现读：缓存会给「第一次失败之后就永远是同一个冲突」。
+		let revision = await this.currentRevision();
 		let removed = 0;
+		// 第一次提交允许一次基线刷新重试：撞上的可能是与这本书无关的写入（活动流、凭证）。
+		// 此时还一个文件都没删，`remove` 又幂等，重放是安全的；之后再冲突就认账——
+		// 宁可让用户重来一次，也不能删了一半还报成功。
+		let canRefresh = true;
+		const publish = async (changes: StorageChange[]): Promise<{ revision: string }> => {
+			try {
+				return await this.storage.commit(changes, { expectedRevision: revision });
+			} catch (error) {
+				const failure = commitFailure(error);
+				if (!canRefresh || failure.error !== "revision-conflict") throw error;
+				const fresh = await this.currentRevision();
+				if (fresh === undefined) throw error;
+				canRefresh = false;
+				revision = fresh;
+				return await this.storage.commit(changes, { expectedRevision: fresh });
+			}
+		};
+
 		try {
 			for (const batch of chunk(payload, MAX_CHANGES_PER_COMMIT)) {
-				const result = await this.storage.commit(
-					batch.map((path) => ({ type: "remove" as const, path })),
-					{ expectedRevision: revision },
-				);
+				const result = await publish(batch.map((path) => ({ type: "remove" as const, path })));
 				revision = result.revision;
 				removed += batch.length;
 			}
@@ -249,7 +349,7 @@ export class ManuscriptRepository {
 				{ type: "remove", path: meta },
 				{ type: "write", path: BOOK_INDEX_PATH, data: JSON.stringify(nextIndex), encoding: "utf8" },
 			];
-			const result = await this.storage.commit(tail, { expectedRevision: revision });
+			const result = await publish(tail);
 			return { ok: true, revision: result.revision, removedPaths: removed + 3 };
 		} catch (error) {
 			return commitFailure(error);

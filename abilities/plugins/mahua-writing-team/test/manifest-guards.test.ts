@@ -566,10 +566,14 @@ describe("the plugin stands alone (ADR 0010)", () => {
 				"agent.systemPrompt.write",
 				"agent.toolHandler.execute",
 				"agent.tools.register",
+				// 工作区同步要在会话目录里读 `.md`，并把章节写回 `chapters/<n>.md`。
+				"fs.read",
+				"fs.write",
 				"storage.read",
 				"storage.write",
 				// 一个宿主形状：活动面板标签；落章卡片读对话的 turn 槽。
-				// `workspace.read` 随整页路由一起退了：没有一处代码读工作区文件。
+				// `workspace.read` 仍不需要：工作区文件走 `ctx.fs`（`fs.read` / `fs.write`），
+				// 不是侧栏浏览器那条工作区路由。
 				"ui.slot.activity-tab",
 				"ui.slot.turn-card",
 			].sort(),

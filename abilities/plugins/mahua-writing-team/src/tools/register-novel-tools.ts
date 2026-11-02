@@ -13,6 +13,7 @@ import { registerFoundationTools } from "./foundation-tools.js";
 import { registerLedgerTools } from "./ledger-tools.js";
 import { registerOutlineTools } from "./outline-tools.js";
 import { registerReadingTools } from "./reading-tools.js";
+import { registerWorkspaceTools } from "./workspace-tools.js";
 
 export function registerNovelTools(ctx: PluginContext, service: StudioService): void {
 	registerReadingTools(ctx, service);
@@ -20,4 +21,5 @@ export function registerNovelTools(ctx: PluginContext, service: StudioService): 
 	registerOutlineTools(ctx, service);
 	registerChapterTools(ctx, service);
 	registerLedgerTools(ctx, service);
+	registerWorkspaceTools(ctx, service);
 }

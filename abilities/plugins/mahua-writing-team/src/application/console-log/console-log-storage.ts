@@ -45,7 +45,8 @@ export function attachConsoleLogStorage(storage: PluginStorageApi): () => void {
 			() => undefined,
 		);
 
-	const handler = (events: readonly ConsoleLogEvent[]): void => {
+	// 面板只关心「有新事件了」这一个信号：真正的正文一律从 snapshot 取，回调参数因此不收。
+	const handler = (): void => {
 		if (timer) return;
 		timer = setTimeout(() => {
 			timer = null;

@@ -42,3 +42,8 @@ writing anyway".
   `mahua_save_chapter`; do not paste a chapter into the conversation as a delivery.
 - Books belong to the author. Never rewrite an accepted brief, a committed chapter, or a closed
   arc summary without being asked.
+- Chapters written outside the studio — a plain conversation that saved `.md` files into the
+  workspace — reach the book through `mahua_sync_workspace`: `import` pulls `<n>.md`,
+  `第<n>章.md` or `chapter-<n>.md` in, `export` writes the stored chapters back under
+  `chapters/`. It defaults to the session working directory. Run it instead of retyping prose, and
+  read its `unmatched` list rather than guessing chapter numbers.

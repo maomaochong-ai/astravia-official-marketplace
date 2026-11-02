@@ -353,7 +353,15 @@
  * 也就不需要给红绿灯让位——留着这两条只会让人以为报头可以拖。 */
 
 
-/* 稿纸正文：段落首行缩进两字，行距按纸的密度给。 */
+/* 稿纸正文：段落首行缩进两字，行距按纸的密度给。
+ *
+ * `overflow-wrap` 是给没有空格的长串的：链接、拼音、英文人名连着写会整块顶出纸面，
+ * 而 `.mahua-page` 是 `overflow: hidden`，顶出去的部分直接被裁掉、没有任何提示。
+ * 中文本身逐字断行，不受影响。 */
+.mahua-prose {
+	overflow-wrap: anywhere;
+}
+
 .mahua-prose p {
 	margin-block: 0 0.7em;
 	text-indent: 2em;

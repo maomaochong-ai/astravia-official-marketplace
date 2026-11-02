@@ -191,6 +191,11 @@ async function main() {
   if (command !== 'build') throw new Error('Usage: node scripts/marketplace.mjs check|build|verify|bump [--output DIR] [--previous DIR] [--tooling DIR] [--strict] [--slug SLUG] [--level patch] [--apply]');
   const settings = publicationSettings(root);
   const previous = option('--previous');
+  // 没给 `--previous` 时读一份发布索引当基线。只少了「同一份字节复用」这一个好处，
+  // `!existing` 判断因此不再把每个已发布插件都当成新版本——本地不必把一个已经发过的插件
+  // 重新 npm ci / test / build 一遍。
+  const baseline = previous ? undefined : publishedManifest(undefined);
+  if (baseline) console.log(`Baseline: published index with ${entries(baseline).filter(x => x.type === 'plugin').length} plugin release(s)`);
   // `--strict`：运行内容改过、版本号还停在已发布那一版，就拒绝构建（这种改动永远不会出现在市场上）。
   // 基线优先取分发分支的提交信息；没 fetch 过就回退到 `--previous` 指向的 worktree。
   // 两者都拿不到时**跳过**而不是全查：全查等于把每个已发布插件都当成改动过，红得没信息量。
@@ -206,7 +211,7 @@ async function main() {
   })() : undefined;
   const output = resolve(option('--output') ?? '.marketplace-build');
   const result = await prepareMarketplace({
-    root, output, previous: previous && resolve(previous), sourceSha: git('rev-parse', 'HEAD'), strictSlugs,
+    root, output, previous: previous && resolve(previous), baseline, sourceSha: git('rev-parse', 'HEAD'), strictSlugs,
     buildPlugin: directory => {
       const npmCli = join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
       const npmRun = args => {
