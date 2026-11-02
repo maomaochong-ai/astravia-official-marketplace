@@ -24,10 +24,11 @@ renderer (dist/assets/index-*.js)          host-node 服务 (server/hub.mjs)
   └─ <iframe src=baseUrl>     ─────────▶  GET /            改写 index.html，插一行 host-bridge.js
                                            GET /host-bridge.js
                                            GET /<zip 内任意条目>  按中央目录 inflate，wasm 用 application/wasm
+                                           GET /app/snippets/*   官方包缺这个目录，回到根 snippets/ 同字节作答
 ```
 
 hub 自己不落盘解包：zip 以整份文件缓存在数据目录（`payload-<sha12>.zip`），请求到了才对单个条目
-`inflateRaw` 并缓存。唯一被改写的响应是 `index.html`。
+`inflateRaw` 并缓存。改写过的响应只有 `index.html`（两处纯插入：`<head>` 后的语言种子、`</body>` 前的 bridge）。
 
 ## zip 从哪来（ADR 0008）
 
@@ -35,7 +36,7 @@ hub 自己不落盘解包：zip 以整份文件缓存在数据目录（`payload-
 
 1. 缓存 `payload-<sha12>.zip`；
 2. `payload.json` 里的 `localFile`（绝对路径，或数据目录内的文件名）；
-3. 数据目录及其上一级的 `photocraft-web-0.2.0.zip` 或 `payload.zip`；
+3. 数据目录及其上一级的 `photocraft-web-0.19.0.zip` 或 `payload.zip`；
 4. `PHOTOCRAFT_PAYLOAD_ZIP=<绝对路径>`（只在手动跑 `node server/hub.mjs` 时生效）；
 5. `PHOTOCRAFT_PAYLOAD_URL=<url>`（同上；唯一允许 `http:` 的入口）；
 6. `sources[]`：`payload.json` 里自己加的镜像，再是上游 Release 与内置代理镜像。
@@ -73,7 +74,7 @@ hub 自己不落盘解包：zip 以整份文件缓存在数据目录（`payload-
 ```bash
 npm install          # SDK / plugin-vite 走仓库内 file: 链接，不走公网 registry
 npm run check        # tsc --noEmit + hub 漂移检查
-npm run build        # 重建 hub → tsc → vite build → release/photocraft-0.0.3.astraviapkg
+npm run build        # 重建 hub → tsc → vite build → release/photocraft-0.0.4.astraviapkg
 ```
 
 ### 改了 hub 就要同步 sha256
@@ -103,10 +104,11 @@ shasum -a 256 server/hub.mjs
 
 ## 包体约束
 
-- 市场归档 ≤ 25 MB、解压 ≤ 100 MB。本插件不进 wasm：zip（10,755,523 B）与 wasm（27,072,762 B）都在
-  上游 Release 与用户数据目录里。
+- 市场归档 ≤ 25 MB、解压 ≤ 100 MB。本插件不进 wasm：zip（13,433,636 B）与拆开的 wasm（分片 13,328,607 B +
+  内核 102,668 B）都在上游 Release 与用户数据目录里。
 - 品牌图标 `assets/icon.png` 取自上游 `assets/app-icon/photocraft-1024.png`，不自绘近似商标。
 - 卡片与详情默认英文，中文在 `detail.zh.json`；分类译名在市场源条目里。
+- 界面语言默认中文：hub 在 `<head>` 里给上游偏好写一个空值种子（0011）；用户仍可在 Preferences 改回英文。
 
 ## 已知简化
 

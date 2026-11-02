@@ -9861,8 +9861,8 @@
       "type": "plugin",
       "slug": "photocraft",
       "name": "Photocraft",
-      "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor, also openable in a browser.",
-      "version": "0.0.3",
+      "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, also openable in a browser.",
+      "version": "0.0.4",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia / storytold",
@@ -9882,7 +9882,7 @@
         "i18n": {
           "zh": {
             "name": "Photocraft",
-            "description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器，也可以改在浏览器里打开。",
+            "description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器；界面默认中文，也可以改在浏览器里打开。",
             "tags": [
               "图片编辑",
               "PSD",
@@ -9913,10 +9913,28 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.3.astraviapkg",
             "sha256": "efe438240a131bd72ef45172c011347f1ac07641583c9e6629e4415b49028d0d"
           }
+        },
+        {
+          "version": "0.0.4",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "browser.open",
+            "shell.openExternal",
+            "fs.read",
+            "fs.write",
+            "workspace.read"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.4.astraviapkg",
+            "sha256": "cff442ec1675f820f5aafbb5714ef36461a699eda4dec4ce87b7d00458baaaa9"
+          }
         }
       ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.02-6"
+  "marketplaceVersion": "2026.11.02-7"
 }

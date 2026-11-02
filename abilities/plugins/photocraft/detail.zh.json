@@ -77,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "打不开 GitHub？插件不依赖任何一个主机。下载起不来时，准备界面会印出一个绝对路径：把 photocraft-web-0.2.0.zip 放到那里、重载标签页，它就直接拿来用——仍然要过那个钉住的 SHA-256。之前装过留下的缓存、用 PHOTOCRAFT_PAYLOAD_URL 指向自建副本、源清单里的镜像，对付的是同一件事。"
+      "content": "打不开 GitHub？插件不依赖任何一个主机。下载起不来时，准备界面会印出一个绝对路径：把 photocraft-web-0.19.0.zip 放到那里、重载标签页，它就直接拿来用——仍然要过那个钉住的 SHA-256。之前装过留下的缓存、用 PHOTOCRAFT_PAYLOAD_URL 指向自建副本、源清单里的镜像，对付的是同一件事。"
     },
     {
       "type": "links",
