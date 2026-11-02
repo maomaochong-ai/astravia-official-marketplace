@@ -1,0 +1,116 @@
+{
+  "id": "designcraft",
+  "name": "DesignCraft",
+  "icon": "assets/icon.png",
+  "version": "0.0.1",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.4.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "designcraft",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "browser.open",
+    "shell.openExternal",
+    "fs.read",
+    "fs.write",
+    "workspace.read",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "browser": {
+    "allowedHosts": [
+      "127.0.0.1"
+    ]
+  },
+  "providers": {
+    "services": [
+      {
+        "id": "designcraft-hub",
+        "runtime": {
+          "kind": "host-node",
+          "version": "0.0.1",
+          "entry": "server/hub.mjs",
+          "platforms": {
+            "win32-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2b367831663ccf13e5693a6225ba38eb7698be6a4a0fa19bf12cf498ffb97659",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2b367831663ccf13e5693a6225ba38eb7698be6a4a0fa19bf12cf498ffb97659",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2b367831663ccf13e5693a6225ba38eb7698be6a4a0fa19bf12cf498ffb97659",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2b367831663ccf13e5693a6225ba38eb7698be6a4a0fa19bf12cf498ffb97659",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2b367831663ccf13e5693a6225ba38eb7698be6a4a0fa19bf12cf498ffb97659",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+          }
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 20000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "skillPaths": [
+      "agent/skills/designcraft"
+    ]
+  },
+  "description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
+  "author": "Astravia"
+}

@@ -69,12 +69,12 @@ export async function readWorkspaceFile(
 /**
  * Write bytes the editor produced back to disk.
  *
- * Photocraft's web shell has no save dialog: `pick_save` echoes the document's
- * own name while an explicit Save As / Export returns a different one, so the
- * file name is the only signal that separates "save in place" from "save as".
- * The first successful save binds the path and later exports never steal it.
+ * The web shell has no save dialog: saving the open document echoes its own name
+ * while an explicit Save As / Export returns a different one, so the file name is
+ * the only signal that separates "save in place" from "save as". The first
+ * successful save binds the path and later exports never steal it.
  */
-export async function saveRenderedImage(
+export async function saveRenderedFile(
   ctx: PluginContext,
   request: { name: string; bytes: ArrayBuffer; current: WorkspaceFile | null },
 ): Promise<WorkspaceFile | null> {
@@ -88,7 +88,7 @@ export async function saveRenderedImage(
 
   const saved = await ctx.fs.saveAs(request.name, base64, "base64", {
     title: request.name,
-    filters: [{ name: "Image", extensions: [extensionOf(request.name) || "png"] }],
+    filters: [{ name: "File", extensions: [extensionOf(request.name) || "bin"] }],
   });
   return saved ? { path: saved, name: basename(saved) } : null;
 }

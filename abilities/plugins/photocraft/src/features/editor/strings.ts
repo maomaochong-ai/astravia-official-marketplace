@@ -1,6 +1,8 @@
+import { APP } from "../../app.config.ts";
+
 /**
  * UI strings live here rather than in `locales/`: the tab renders one status
- * line and three buttons, and the host locale is read synchronously from
+ * line and four buttons, and the host locale is read synchronously from
  * `ctx.i18n.locale`. A catalogue would add a resolution step for no gain.
  */
 export interface EditorStrings {
@@ -31,13 +33,13 @@ export interface EditorStrings {
 }
 
 const en: EditorStrings = {
-  tab: "Photocraft",
+  tab: APP.tabLabel,
   open: "Open",
   noFile: "No file",
   untitled: "Untitled",
-  preparing: "Starting Photocraft…",
+  preparing: `Starting ${APP.name}…`,
   ready: "Ready",
-  failed: "Photocraft did not start",
+  failed: `${APP.name} did not start`,
   reload: "Reload",
   builtinBrowser: "Built-in panel",
   systemBrowser: "System browser",
@@ -58,13 +60,13 @@ const en: EditorStrings = {
 };
 
 const zh: EditorStrings = {
-  tab: "Photocraft",
+  tab: APP.tabLabel,
   open: "打开",
   noFile: "未打开文件",
   untitled: "未命名",
-  preparing: "正在启动 Photocraft…",
+  preparing: `正在启动 ${APP.name}…`,
   ready: "已就绪",
-  failed: "Photocraft 未能启动",
+  failed: `${APP.name} 未能启动`,
   reload: "重新载入",
   builtinBrowser: "内置面板",
   systemBrowser: "系统浏览器",

@@ -1,14 +1,15 @@
 /**
- * Photocraft hub — the single origin all three entry points open.
+ * Craft hub — the single origin all three entry points open, for one ArtCraft app.
  *
- * It serves one thing: the upstream `photocraft-web-<version>.zip`, as a static
- * site, on loopback. It has no write endpoints, never touches the workspace and
- * never unpacks to disk (the archive is indexed in memory and inflated per file).
+ * It serves one thing: the upstream `<app>-web-<version>.zip`, as a static site, on
+ * loopback. It has no write endpoints, never touches the workspace and never unpacks
+ * to disk (the archive is indexed in memory and inflated per file).
  *
  * ADR: docs/adr/photocraft/0007-one-loopback-hub-three-entries.md
  *
- * This is the SOURCE file. `server/hub.mjs` next to it is generated from this by
- * scripts/build-hub.mjs, which fills the two `@inject:` markers below. Edit here.
+ * This is the SOURCE file and is identical in every craft plugin. `server/hub.mjs`
+ * next to it is generated from this by scripts/build-hub.mjs, which fills the two
+ * `@inject:` markers below from payload/manifest.json + src/bridge/host-bridge.js.
  */
 import { createHash } from "node:crypto";
 import { mkdir, open, readFile, rename, rm, stat } from "node:fs/promises";
@@ -22,25 +23,36 @@ const PIN = /* @inject:pin */ null;
 // Filled by scripts/build-hub.mjs from src/bridge/host-bridge.js.
 const HOST_BRIDGE_JS = /* @inject:bridge */ "";
 
+const APP = (PIN && PIN.app) || {};
+const APP_ID = APP.id || "craft";
+const APP_NAME = APP.name || "Craft";
+const TAG = "[" + APP_ID + "-hub] ";
+const SIZE_LABEL = APP.sizeLabel || "";
+
 const PORT = Number(process.env.ASTRAVIA_SERVICE_PORT ?? 0);
 const DATA_DIR = process.env.ASTRAVIA_SERVICE_DATA_DIR ?? "";
 const BRIDGE_NAME = "host-bridge.js";
 const SCRIPT_TAG = '<script src="./' + BRIDGE_NAME + '"></script>';
 /**
- * Preset preferences before the app module runs (ADR 0010): the web build never reads
- * navigator.languages, so "auto" is always English. Only seeds an empty store, so a language
- * picked later in Preferences is never overwritten.
+ * Preset preferences before the app module runs (ADR 0011): a web build that never
+ * reads navigator.languages keeps "auto" = English forever. Only seeds an empty
+ * store, so a language picked later in Preferences is never overwritten.
  */
-const LANGUAGE_SEED_NAME = "photocraft.preferences";
-const LANGUAGE_SEED_SCRIPT =
-  '<script>/* photocraft-language-seed */try{var k="' +
-  LANGUAGE_SEED_NAME +
-  '";if(!window.localStorage.getItem(k))window.localStorage.setItem(k,\'{"version":2,"interface":{"language":"zh-hans"}}\')}catch(e){}</script>';
-const SEED_MARK = "photocraft-language-seed";
+const LANGUAGE_SEED_NAME = APP.seedKey || "";
+const LANGUAGE_SEED_SCRIPT = LANGUAGE_SEED_NAME
+  ? "<script>/* craft-language-seed */try{var k=" +
+    JSON.stringify(LANGUAGE_SEED_NAME) +
+    ";if(!window.localStorage.getItem(k))window.localStorage.setItem(k," +
+    JSON.stringify(APP.seedValue || "") +
+    ")}catch(e){}</script>"
+  : "";
+const SEED_MARK = "craft-language-seed";
 const MAX_REDIRECTS = 6;
 const READY_TIMEOUT_MS = 60_000;
 /** How long a failed payload waits before the network is walked again. */
 const NETWORK_RETRY_MS = 60_000;
+const ENV_URL = (APP.envPrefix || "CRAFT") + "_PAYLOAD_URL";
+const ENV_ZIP = (APP.envPrefix || "CRAFT") + "_PAYLOAD_ZIP";
 
 const CACHED_NAME = PIN ? "payload-" + PIN.sha256.slice(0, 12) + ".zip" : "payload.zip";
 const DROP_NAME = PIN && PIN.localFile ? PIN.localFile : "payload.zip";
@@ -53,13 +65,19 @@ const MIME = new Map([
   [".wasm", "application/wasm"],
   [".css", "text/css; charset=utf-8"],
   [".json", "application/json; charset=utf-8"],
+  [".webmanifest", "application/manifest+json"],
   [".png", "image/png"],
   [".jpg", "image/jpeg"],
   [".jpeg", "image/jpeg"],
   [".gif", "image/gif"],
+  [".webp", "image/webp"],
+  [".avif", "image/avif"],
   [".svg", "image/svg+xml"],
   [".ico", "image/x-icon"],
+  [".woff", "font/woff"],
   [".woff2", "font/woff2"],
+  [".otf", "font/otf"],
+  [".ttf", "font/ttf"],
   [".txt", "text/plain; charset=utf-8"],
   [".map", "application/json; charset=utf-8"],
 ]);
@@ -89,7 +107,7 @@ const inflated = new Map();
 function fail(phase, message) {
   state.phase = phase;
   state.error = message;
-  process.stderr.write("[photocraft-hub] " + phase + ": " + message + "\n");
+  process.stderr.write(TAG + phase + ": " + message + "\n");
 }
 
 // ---------------------------------------------------------------- archive
@@ -141,7 +159,7 @@ function parseArchive(buf) {
     raw.push({ name, method, compSize, size, dataOffset });
   }
 
-  // Upstream ships `photocraft-web-<version>/…`; strip a single shared top folder
+  // Upstream ships `<app>-web-<version>/…`; strip a single shared top folder
   // so the site is served at the origin root.
   const first = raw.map((e) => e.name.split("/"));
   const shared = first.length > 0 && first.every((parts) => parts.length > 1 && parts[0] === first[0][0]);
@@ -173,7 +191,7 @@ function request(url, headers = {}, redirects = 0) {
     const client = target.protocol === "http:" ? http : https;
     const req = client.get(
       target,
-      { headers: { "user-agent": "astravia-photocraft-hub", "accept-encoding": "identity", ...headers } },
+      { headers: { "user-agent": "astravia-" + APP_ID + "-hub", "accept-encoding": "identity", ...headers } },
       (res) => {
         const status = res.statusCode ?? 0;
         if (status >= 300 && status < 400 && res.headers.location) {
@@ -253,8 +271,8 @@ async function downloadSource(source, zipPath) {
 
 /**
  * User-editable wiring, read once at boot. Under the host this file is the only
- * configurable surface: the service process gets a whitelisted environment, so
- * a parent-shell `export` never reaches it (ADR 0007 D1b, ADR 0008 D2-4).
+ * configurable surface: the service process gets a whitelisted environment, so a
+ * parent-shell `export` never reaches it (ADR 0007 D1b, ADR 0008 D2-4).
  */
 const config = { localFile: null, sources: [], error: null };
 
@@ -267,7 +285,9 @@ async function ensureConfigFile() {
   if (!DATA_DIR) return;
   const template = {
     _readme:
-      "Optional. localFile: absolute path of photocraft-web-<version>.zip, or a name inside this directory. " +
+      "Optional. localFile: absolute path of " +
+      DROP_NAME +
+      ", or a name inside this directory. " +
       "sources: extra mirrors tried before the built-in ones. Every byte is checked against the pinned sha256.",
     localFile: "",
     sources: [],
@@ -314,8 +334,8 @@ async function loadConfig() {
 /** Config sources first, then the env override, then the ordered list in the pin (ADR 0008 D1). */
 function payloadSources() {
   const list = [...config.sources];
-  const override = process.env.PHOTOCRAFT_PAYLOAD_URL;
-  if (override) list.push({ id: "env:PHOTOCRAFT_PAYLOAD_URL", url: override });
+  const override = process.env[ENV_URL];
+  if (override) list.push({ id: "env:" + ENV_URL, url: override });
   for (const source of PIN?.sources ?? []) list.push(source);
   return list;
 }
@@ -328,7 +348,7 @@ function localCandidates() {
   const names = [CACHED_NAME, DROP_NAME, "payload.zip"];
   const dirs = DATA_DIR ? [DATA_DIR, path.dirname(DATA_DIR)] : [];
   const list = [];
-  const override = process.env.PHOTOCRAFT_PAYLOAD_ZIP;
+  const override = process.env[ENV_ZIP];
   if (config.localFile) {
     list.push(path.isAbsolute(config.localFile) ? config.localFile : path.join(DATA_DIR, config.localFile));
   }
@@ -352,7 +372,7 @@ async function downloadAny(zipPath) {
     } catch (error) {
       const message = String((error && error.message) || error);
       state.attempts.push({ id: source.id || "source", error: message });
-      process.stderr.write("[photocraft-hub] source " + (source.id || "?") + " failed: " + message + "\n");
+      process.stderr.write(TAG + "source " + (source.id || "?") + " failed: " + message + "\n");
       await rm(zipPath + ".part", { force: true }).catch(() => undefined);
     }
   }
@@ -366,7 +386,7 @@ async function verifySums() {
   } catch (error) {
     // The pin is authoritative; the upstream manifest is a cross-check.
     state.sums = "unreachable";
-    process.stderr.write("[photocraft-hub] sums unreachable: " + String(error && error.message) + "\n");
+    process.stderr.write(TAG + "sums unreachable: " + String(error && error.message) + "\n");
     return;
   }
   const name = PIN.localFile || (PIN.sources?.[0]?.url ?? "").split("/").pop() || "";
@@ -386,16 +406,14 @@ function adopt(bytes) {
   state.total = bytes.length;
   state.error = null;
   state.phase = "ready";
-  process.stderr.write(
-    "[photocraft-hub] payload ready, " + index.size + " entries from " + state.source + "\n",
-  );
+  process.stderr.write(TAG + "payload ready, " + index.size + " entries from " + state.source + "\n");
 
   // Already-verified bytes are servable; the upstream manifest is only a
   // cross-check, so it must never gate readiness on a cached archive.
   if (state.sums === "unknown") {
     void verifySums().catch((error) => {
       state.sums = "mismatch";
-      process.stderr.write("[photocraft-hub] sums mismatch: " + String(error && error.message) + "\n");
+      process.stderr.write(TAG + "sums mismatch: " + String(error && error.message) + "\n");
     });
   }
 }
@@ -420,7 +438,7 @@ async function ensurePayload(allowNetwork) {
     const bytes = await readFile(candidate);
     if (sha256(bytes) !== want) {
       state.attempts.push({ id: "local:" + candidate, error: "sha256-mismatch" });
-      process.stderr.write("[photocraft-hub] local payload rejected: " + candidate + "\n");
+      process.stderr.write(TAG + "local payload rejected: " + candidate + "\n");
       continue;
     }
     state.source = candidate === cachedPath ? "cache" : "local";
@@ -483,8 +501,14 @@ function send(res, status, type, body, extra = {}) {
 function waitingPage() {
   const failed = state.phase === "failed";
   const label = failed
-    ? "Photocraft 的编辑器文件没有就绪。 / The editor payload is not ready."
-    : "正在准备 Photocraft（首次约 11 MB）。 / Preparing Photocraft (about 11 MB, first run only).";
+    ? APP_NAME + " 的编辑器文件没有就绪。 / The editor payload is not ready."
+    : "正在准备 " +
+      APP_NAME +
+      (SIZE_LABEL ? "（首次约 " + SIZE_LABEL + "）" : "") +
+      "。 / Preparing " +
+      APP_NAME +
+      (SIZE_LABEL ? " (" + SIZE_LABEL + ", first run only)" : "") +
+      ".";
 
   const error = state.error ? "<p><code>" + escapeHtml(state.error) + "</code></p>" : "";
   const attempts = state.attempts.length
@@ -511,7 +535,9 @@ function waitingPage() {
 
   return Buffer.from(
     "<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=1>" +
-      "<title>Photocraft</title><style>body{font:14px/1.6 system-ui;background:#141414;color:#e8e8e8;" +
+      "<title>" +
+      escapeHtml(APP_NAME) +
+      "</title><style>body{font:14px/1.6 system-ui;background:#141414;color:#e8e8e8;" +
       "display:grid;place-items:center;min-height:100vh;margin:0;padding:24px;box-sizing:border-box}" +
       "div{max-width:720px}code{color:#ff9f9f;word-break:break-all}ul{padding-left:18px}" +
       "li{margin:2px 0}</style>" +
@@ -547,9 +573,9 @@ function resolveEntry(rawPath) {
   if (name.split("/").includes("..")) return null;
   const direct = index.get(name);
   if (direct) return direct;
-  // Upstream 0.19.0's packaging puts the app glue in app/ but its wasm-bindgen snippet at the
-  // site root, so the glue's `./snippets/...` import would 404 (ADR 0010 D3). Serve the same
-  // bytes under the path the glue asks for.
+  // Upstream packaging puts the app glue in app/ but its wasm-bindgen snippet at the
+  // site root, so the glue's `./snippets/...` import would 404 (ADR 0010 D3). Serve
+  // the same bytes under the path the glue asks for.
   if (name.startsWith("app/snippets/")) return index.get(name.slice("app/".length)) ?? null;
   return null;
 }
@@ -565,6 +591,7 @@ const server = http.createServer((req, res) => {
   }
   if (url.startsWith("/api/state")) {
     const body = {
+      app: APP_ID,
       phase: state.phase,
       version: PIN?.version ?? null,
       sha256: PIN?.sha256 ?? null,
@@ -608,17 +635,21 @@ const server = http.createServer((req, res) => {
   }
 
   if (entry.name === "index.html") {
-    // The only place upstream bytes are rewritten (ADR 0005 D3): a preference seed in <head>,
-    // before the app module runs, and the host bridge before </body>.
+    // The only place upstream bytes are rewritten (ADR 0005 D3): a preference seed in
+    // <head>, before the app module runs, and the host bridge before </body>.
     const html = body.toString("utf8");
-    if (html.includes(SCRIPT_TAG) && html.includes(SEED_MARK)) return send(res, 200, MIME.get(".html"), body);
+    if (html.includes(SCRIPT_TAG) && (!SEED_MARK || html.includes(SEED_MARK))) {
+      return send(res, 200, MIME.get(".html"), body);
+    }
     const headOpen = html.indexOf("<head");
     const headAt = headOpen < 0 ? -1 : html.indexOf(">", headOpen) + 1;
     const bodyEnd = html.lastIndexOf("</body>");
     state.injectMiss = headAt <= 0 || bodyEnd < 0;
     if (state.injectMiss) return send(res, 200, MIME.get(".html"), body);
     let patched = html;
-    if (!patched.includes(SEED_MARK)) patched = patched.slice(0, headAt) + LANGUAGE_SEED_SCRIPT + patched.slice(headAt);
+    if (LANGUAGE_SEED_SCRIPT && !patched.includes(SEED_MARK)) {
+      patched = patched.slice(0, headAt) + LANGUAGE_SEED_SCRIPT + patched.slice(headAt);
+    }
     const at = patched.lastIndexOf("</body>");
     if (!patched.includes(SCRIPT_TAG)) patched = patched.slice(0, at) + SCRIPT_TAG + "\n" + patched.slice(at);
     return send(res, 200, MIME.get(".html"), Buffer.from(patched, "utf8"));
@@ -639,10 +670,10 @@ server.listen(PORT, "127.0.0.1", async () => {
   const address = server.address();
   const actual = typeof address === "object" && address ? address.port : PORT;
   state.phase = "loading";
-  process.stdout.write("[photocraft-hub] listening on http://127.0.0.1:" + actual + "\n");
+  process.stdout.write(TAG + "listening on http://127.0.0.1:" + actual + "\n");
   await ensureConfigFile();
   await loadConfig();
-  if (config.error) process.stderr.write("[photocraft-hub] config: " + config.error + "\n");
+  if (config.error) process.stderr.write(TAG + "config: " + config.error + "\n");
   scheduleEnsure(true);
 });
 

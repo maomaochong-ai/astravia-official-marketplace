@@ -1,13 +1,14 @@
 import type { PluginContext, PluginServiceStatus } from "@astravia-org/plugin-sdk";
 import hubSource from "../server/hub.mjs?raw";
+import { APP } from "./app.config.ts";
 import { bytesToBase64 } from "./shared/formatters/base64.ts";
 
 /** Service id as declared in `plugin.json#providers.services[0].id`. */
-export const SERVICE_ID = "photocraft-hub";
+export const SERVICE_ID = APP.serviceId;
 /** Must match `runtime.version`; a stale install is replaced instead of adopted. */
-export const SERVICE_VERSION = "0.0.4";
+export const SERVICE_VERSION = APP.serviceVersion;
 /** Must match `runtime.entry` and `platforms.<key>.artifacts[0].destination`. */
-export const SERVICE_ARTIFACT = "server/hub.mjs";
+export const SERVICE_ARTIFACT = APP.serviceArtifact;
 
 /**
  * The hub is inlined into this bundle rather than fetched from
@@ -23,8 +24,8 @@ const HUB_BASE64 = bytesToBase64(new TextEncoder().encode(hubSource));
 /**
  * Install (when missing or stale) and start the loopback hub, then return its
  * origin. Health is deliberately not checked here: the hub answers `/health`
- * before the editor payload is ready, and the tab renders the hub's own
- * waiting page in the meantime.
+ * before the app payload is ready, and the tab renders the hub's own waiting
+ * page in the meantime.
  */
 export async function ensureHub(ctx: PluginContext): Promise<string> {
   let status: PluginServiceStatus = await ctx.services.getStatus(SERVICE_ID);

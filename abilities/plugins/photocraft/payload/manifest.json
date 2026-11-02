@@ -16,5 +16,13 @@
       "url": "https://ghproxy.net/https://github.com/storytold/photocraft/releases/download/v0.19.0/photocraft-web-0.19.0.zip"
     }
   ],
-  "upstream": "https://github.com/storytold/photocraft"
+  "upstream": "https://github.com/storytold/photocraft",
+  "app": {
+    "id": "photocraft",
+    "name": "Photocraft",
+    "envPrefix": "PHOTOCRAFT",
+    "sizeLabel": "13 MB",
+    "seedKey": "photocraft.preferences",
+    "seedValue": "{\"version\":2,\"interface\":{\"language\":\"zh-hans\"}}"
+  }
 }

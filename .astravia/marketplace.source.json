@@ -1193,10 +1193,10 @@
       "slug": "photocraft",
       "name": "Photocraft",
       "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, also openable in a browser.",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
-      "author": "Astravia / storytold",
+      "author": "Astravia",
       "category": "Design",
       "categoryI18n": {
         "zh": "设计",
@@ -1225,6 +1225,247 @@
       },
       "source": {
         "path": "abilities/plugins/photocraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "designcraft",
+      "name": "DesignCraft",
+      "description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Design",
+      "categoryI18n": {
+        "zh": "设计",
+        "en": "Design"
+      },
+      "tags": [
+        "page-layout",
+        "desktop-publishing",
+        "indesign",
+        "idml",
+        "pdf"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "DesignCraft",
+            "description": "在 Astravia 里做版面：页面、对页、串接文本框，用的是上游原版 DesignCraft 出版编辑器，可导入 IDML，导出 PDF、PNG 与 EPUB。",
+            "tags": [
+              "排版",
+              "出版",
+              "IDML",
+              "PDF"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/designcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "effectcraft",
+      "name": "EffectCraft",
+      "description": "Build motion-graphics compositions inside Astravia — the upstream EffectCraft compositor with keyframes, 3D camera and lights, 308 effects and a render queue.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Media",
+      "categoryI18n": {
+        "zh": "媒体",
+        "en": "Media"
+      },
+      "tags": [
+        "motion-graphics",
+        "vfx",
+        "compositing",
+        "animation",
+        "after-effects"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "EffectCraft",
+            "description": "在 Astravia 里做动态图形：关键帧、3D 相机与灯光、308 个效果、渲染队列，用的是上游原版 EffectCraft 合成器。",
+            "tags": [
+              "动态图形",
+              "视觉特效",
+              "合成",
+              "动画"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/effectcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "filmcraft",
+      "name": "FilmCraft",
+      "description": "Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Media",
+      "categoryI18n": {
+        "zh": "媒体",
+        "en": "Media"
+      },
+      "tags": [
+        "video-editing",
+        "nle",
+        "timeline",
+        "color",
+        "audio"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "FilmCraft",
+            "description": "在 Astravia 里剪片子：真实时间线、调色与声音，用的是上游原版 FilmCraft 剪辑器，没有 WebGPU 的机器会自动退回 WebGL。",
+            "tags": [
+              "视频剪辑",
+              "时间线",
+              "调色",
+              "声音"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/filmcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "lightcraft",
+      "name": "LightCraft",
+      "description": "Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Media",
+      "categoryI18n": {
+        "zh": "媒体",
+        "en": "Media"
+      },
+      "tags": [
+        "photo-library",
+        "raw",
+        "lightroom",
+        "develop",
+        "photography"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "LightCraft",
+            "description": "在 Astravia 里管理照片库、显影 RAW：上游原版 LightCraft 的目录与暗房，支持相机 RAW 与 DNG。",
+            "tags": [
+              "照片库",
+              "RAW",
+              "显影",
+              "摄影"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/lightcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "pdfcraft",
+      "name": "PDFCraft",
+      "description": "Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Documents",
+      "categoryI18n": {
+        "zh": "文档",
+        "en": "Documents"
+      },
+      "tags": [
+        "pdf",
+        "reader",
+        "merge",
+        "split",
+        "encryption"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "PDFCraft",
+            "description": "在 Astravia 里读 PDF、重排页面：上游原版 PDFCraft 工作台，可合并、拆分、旋转与加密，不需要账号，也不上报数据。",
+            "tags": [
+              "PDF",
+              "阅读器",
+              "合并",
+              "拆分",
+              "加密"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/pdfcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "vectorcraft",
+      "name": "VectorCraft",
+      "description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Design",
+      "categoryI18n": {
+        "zh": "设计",
+        "en": "Design"
+      },
+      "tags": [
+        "vector",
+        "illustration",
+        "svg",
+        "bezier",
+        "design"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "VectorCraft",
+            "description": "在 Astravia 里画矢量、改路径：上游原版 VectorCraft 插画应用，贝塞尔曲线、填充与 SVG 输出。",
+            "tags": [
+              "矢量",
+              "插画",
+              "SVG",
+              "贝塞尔"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/vectorcraft"
       },
       "minAppVersion": "0.5.59"
     }

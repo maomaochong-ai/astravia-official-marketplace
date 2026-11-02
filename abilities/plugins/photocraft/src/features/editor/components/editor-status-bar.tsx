@@ -1,4 +1,4 @@
-import type { EditorSession } from "../hooks/use-photocraft-editor.ts";
+import type { EditorSession } from "../hooks/use-craft-editor.ts";
 
 /** The single 28 px line above the frame: state, binding, and the four actions. */
 export function EditorStatusBar({ session }: { session: EditorSession }): React.ReactElement {

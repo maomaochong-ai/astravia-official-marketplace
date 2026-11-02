@@ -17,6 +17,12 @@ export interface LinkMessage {
   backend?: string;
   message?: string;
   secure?: boolean;
+  ok?: boolean;
+  ready?: boolean;
+  staged?: string | null;
+  error?: string;
+  href?: string;
+  canvas?: { width: number; height: number } | null;
 }
 
 export function isLinkMessage(data: unknown): data is LinkMessage {

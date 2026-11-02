@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "DesignCraft in the activity panel",
+      "eyebrow": "Page layout",
+      "description": "Spreads, parent pages and threaded text frames — the upstream DesignCraft publishing editor running inside Astravia, with the document you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "IDML"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Open brochure.idml here.",
+        "assistant_reply": "DesignCraft is open. Select the file in the Explorer, then press Open — it takes that file."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The real layout engine",
+          "description": "The panel serves the official DesignCraft web build byte for byte; upstream's wasm and JavaScript are not patched, and only two thin files of ours are added around them.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "Open and export inside your project",
+          "description": "Opening uses the file selected in the Explorer, and exports are written back through Astravia instead of landing in a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Ask for the current page",
+          "description": "A capture tool saves a PNG of what the canvas is showing, and a status tool reports whether the editor actually finished starting.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 26 MB of editor files arrive on first open, into the plugin's data directory, and are reused offline after that."
+        },
+        {
+          "title": "Open the DesignCraft tab",
+          "description": "The preparation screen is the hub fetching its payload; later opens start from cache."
+        },
+        {
+          "title": "Select a document, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than showing a system dialog."
+        },
+        {
+          "title": "Export back through the workspace",
+          "description": "Exports travel the same bridge as saves, so the result lands where you chose."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "DesignCraft describes itself as pre-alpha: expect missing features and changing files. The plugin runs whatever the pinned release does — it does not add layout features of its own."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "In the browser entry points there is no workspace binding: opening a file there uses the browser's picker and exports download through the browser."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "DesignCraft on GitHub",
+          "href": "https://github.com/storytold/designcraft"
+        },
+        {
+          "label": "DesignCraft releases",
+          "href": "https://github.com/storytold/designcraft/releases"
+        }
+      ]
+    }
+  ]
+}

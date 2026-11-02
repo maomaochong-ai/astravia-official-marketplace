@@ -1,0 +1,116 @@
+{
+  "id": "effectcraft",
+  "name": "EffectCraft",
+  "icon": "assets/icon.png",
+  "version": "0.0.1",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.4.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "effectcraft",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "browser.open",
+    "shell.openExternal",
+    "fs.read",
+    "fs.write",
+    "workspace.read",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "browser": {
+    "allowedHosts": [
+      "127.0.0.1"
+    ]
+  },
+  "providers": {
+    "services": [
+      {
+        "id": "effectcraft-hub",
+        "runtime": {
+          "kind": "host-node",
+          "version": "0.0.1",
+          "entry": "server/hub.mjs",
+          "platforms": {
+            "win32-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2dfa6e0f212b19975004438dce3d35450e4957fdff4ecaa0894bf229276548ba",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2dfa6e0f212b19975004438dce3d35450e4957fdff4ecaa0894bf229276548ba",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2dfa6e0f212b19975004438dce3d35450e4957fdff4ecaa0894bf229276548ba",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2dfa6e0f212b19975004438dce3d35450e4957fdff4ecaa0894bf229276548ba",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "2dfa6e0f212b19975004438dce3d35450e4957fdff4ecaa0894bf229276548ba",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+          }
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 20000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "skillPaths": [
+      "agent/skills/effectcraft"
+    ]
+  },
+  "description": "Build motion-graphics compositions inside Astravia — the upstream EffectCraft compositor with keyframes, 3D camera and lights, 308 effects and a render queue.",
+  "author": "Astravia"
+}

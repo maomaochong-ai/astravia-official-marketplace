@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "archive": "zip",
+  "version": "0.17.0",
+  "size": 17417347,
+  "sha256": "393420ab35e25afc174cb6d1791098bb714099aca91cf6598b4553e57c48a835",
+  "sumsUrl": "https://github.com/storytold/pdfcraft/releases/download/v0.17.0/SHA256SUMS.txt",
+  "localFile": "pdfcraft-web-0.17.0.zip",
+  "sources": [
+    {
+      "id": "upstream",
+      "url": "https://github.com/storytold/pdfcraft/releases/download/v0.17.0/pdfcraft-web-0.17.0.zip"
+    },
+    {
+      "id": "ghproxy",
+      "url": "https://ghproxy.net/https://github.com/storytold/pdfcraft/releases/download/v0.17.0/pdfcraft-web-0.17.0.zip"
+    }
+  ],
+  "upstream": "https://github.com/storytold/pdfcraft",
+  "app": {
+    "id": "pdfcraft",
+    "name": "PDFCraft",
+    "envPrefix": "PDFCRAFT",
+    "sizeLabel": "17 MB"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "id": "vectorcraft",
+  "name": "VectorCraft",
+  "icon": "assets/icon.png",
+  "version": "0.0.1",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.4.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "vectorcraft",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "browser.open",
+    "shell.openExternal",
+    "fs.read",
+    "fs.write",
+    "workspace.read",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "browser": {
+    "allowedHosts": [
+      "127.0.0.1"
+    ]
+  },
+  "providers": {
+    "services": [
+      {
+        "id": "vectorcraft-hub",
+        "runtime": {
+          "kind": "host-node",
+          "version": "0.0.1",
+          "entry": "server/hub.mjs",
+          "platforms": {
+            "win32-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "579f627a27024adba3f3765495e2e661c6b0bea68b243ffc62fcbf2462308817",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "579f627a27024adba3f3765495e2e661c6b0bea68b243ffc62fcbf2462308817",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "579f627a27024adba3f3765495e2e661c6b0bea68b243ffc62fcbf2462308817",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "579f627a27024adba3f3765495e2e661c6b0bea68b243ffc62fcbf2462308817",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "579f627a27024adba3f3765495e2e661c6b0bea68b243ffc62fcbf2462308817",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+          }
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 20000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "skillPaths": [
+      "agent/skills/vectorcraft"
+    ]
+  },
+  "description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
+  "author": "Astravia"
+}

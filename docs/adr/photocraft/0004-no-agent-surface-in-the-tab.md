@@ -1,6 +1,9 @@
 # ADR 0004：标签页里的编辑器不对 Agent 开放
 
-- 状态：提议（2026-11-02，取代同一编号的「MCP 任务形状工具」草案）
+- 状态：**已被取代**（2026-11-03）：标签页现在有 Agent 工具，见
+  [craft/0002](../../craft/0002-agent-tools-talk-to-the-running-page.md)。本文仍然成立的那一半是
+  「工具不代替用户编辑」——它们只打开、观察、取图、投字节。
+- 关联文档：[0001](./0001-the-tab-runs-upstreams-web-build.md)、[0003](./0003-only-input-and-save-are-visible.md)
 - 关联文档：[0001](./0001-the-tab-runs-upstreams-web-build.md)、[0003](./0003-only-input-and-save-are-visible.md)
 
 ## 1. 背景

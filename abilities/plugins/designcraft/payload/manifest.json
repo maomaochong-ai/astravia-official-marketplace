@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "archive": "zip",
+  "version": "0.16.0",
+  "size": 26783459,
+  "sha256": "1e74074b32d59185210042f303f28041b49dd3cc1a70d4d378a75ef23e4b0186",
+  "sumsUrl": "https://github.com/storytold/designcraft/releases/download/v0.16.0/SHA256SUMS.txt",
+  "localFile": "designcraft-web-0.16.0.zip",
+  "sources": [
+    {
+      "id": "upstream",
+      "url": "https://github.com/storytold/designcraft/releases/download/v0.16.0/designcraft-web-0.16.0.zip"
+    },
+    {
+      "id": "ghproxy",
+      "url": "https://ghproxy.net/https://github.com/storytold/designcraft/releases/download/v0.16.0/designcraft-web-0.16.0.zip"
+    }
+  ],
+  "upstream": "https://github.com/storytold/designcraft",
+  "app": {
+    "id": "designcraft",
+    "name": "DesignCraft",
+    "envPrefix": "DESIGNCRAFT",
+    "sizeLabel": "26 MB"
+  }
+}

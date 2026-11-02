@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "在活动面板里用 LightCraft",
+      "eyebrow": "照片库",
+      "description": "一个目录加一间暗房——上游原版 LightCraft 显影器跑在 Astravia 里，打开的就是工作区里的那些照片。",
+      "badges": [
+        "不改上游",
+        "本地运行",
+        "RAW"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "在这里打开 shot.cr3。",
+        "assistant_reply": "LightCraft 已打开。在资源管理器选中文件，再点打开，它会直接用这个文件。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "你能得到什么",
+      "items": [
+        {
+          "title": "原版暗房",
+          "description": "面板逐字节送出 LightCraft 官方 web 构建；上游 wasm 与 JavaScript 不打补丁，我们只在其外围加了两个薄文件。",
+          "icon": "solar:camera-linear"
+        },
+        {
+          "title": "在项目里打开与导出",
+          "description": "打开用资源管理器选中的文件，导出经 Astravia 写回，不落到下载文件夹。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "首次下载大一些，只有一次",
+          "description": "payload 约 70 MB：编辑器、RAW 处理链和一套中文字体。首次取到插件数据目录后，之后离线复用。",
+          "icon": "solar:cloud-download-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "不需要再装桌面应用、相机编码包或注册账号。"
+        },
+        {
+          "title": "打开 LightCraft 标签页等它取文件",
+          "description": "首次打开会下载约 70 MB，准备页会显示进度；之后从缓存启动。"
+        },
+        {
+          "title": "选中照片再打开",
+          "description": "在编辑器里按「文件 → 打开」，用的是 Astravia 里选中的文件，而不是系统对话框。"
+        },
+        {
+          "title": "导出同样走工作区",
+          "description": "显影结果走与保存相同的桥，落在你选的位置。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "首次打开要下 70 MB，wasm 模块也大；网络慢时会明显等一会儿才出现界面。这是上游构建本身，不是我们额外加的包。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "浏览器入口没有工作区绑定：那里打开文件走浏览器选择框，导出走浏览器下载。"
+    },
+    {
+      "type": "links",
+      "title": "出处",
+      "items": [
+        {
+          "label": "LightCraft 源码",
+          "href": "https://github.com/storytold/lightcraft"
+        },
+        {
+          "label": "LightCraft 版本发布",
+          "href": "https://github.com/storytold/lightcraft/releases"
+        }
+      ]
+    }
+  ]
+}

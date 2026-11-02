@@ -1,0 +1,116 @@
+{
+  "id": "pdfcraft",
+  "name": "PDFCraft",
+  "icon": "assets/icon.png",
+  "version": "0.0.1",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.4.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "pdfcraft",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "browser.open",
+    "shell.openExternal",
+    "fs.read",
+    "fs.write",
+    "workspace.read",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "browser": {
+    "allowedHosts": [
+      "127.0.0.1"
+    ]
+  },
+  "providers": {
+    "services": [
+      {
+        "id": "pdfcraft-hub",
+        "runtime": {
+          "kind": "host-node",
+          "version": "0.0.1",
+          "entry": "server/hub.mjs",
+          "platforms": {
+            "win32-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "ac2a3049197b7120f8af0de0978aebe5f42463de517ac34457dbadbac0d7282a",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "ac2a3049197b7120f8af0de0978aebe5f42463de517ac34457dbadbac0d7282a",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "darwin-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "ac2a3049197b7120f8af0de0978aebe5f42463de517ac34457dbadbac0d7282a",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-x64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "ac2a3049197b7120f8af0de0978aebe5f42463de517ac34457dbadbac0d7282a",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            },
+            "linux-arm64": {
+              "executable": "server/hub.mjs",
+              "artifacts": [
+                {
+                  "sha256": "ac2a3049197b7120f8af0de0978aebe5f42463de517ac34457dbadbac0d7282a",
+                  "archive": "file",
+                  "destination": "server/hub.mjs"
+                }
+              ]
+            }
+          }
+        },
+        "process": {
+          "args": [],
+          "env": {
+            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
+            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
+            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
+            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
+          }
+        },
+        "health": {
+          "path": "/health",
+          "timeoutMs": 20000
+        }
+      }
+    ]
+  },
+  "agent": {
+    "skillPaths": [
+      "agent/skills/pdfcraft"
+    ]
+  },
+  "description": "Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.",
+  "author": "Astravia"
+}

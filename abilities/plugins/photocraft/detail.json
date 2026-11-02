@@ -6,20 +6,24 @@
       "title": "Photocraft in the activity panel",
       "eyebrow": "Image editing",
       "description": "Layers, masks, type and real PSD files — the upstream Photocraft editor running inside Astravia, on your own machine, with the file you opened in the workspace.",
-      "badges": ["No fork", "Local", "PSD"]
+      "badges": [
+        "No fork",
+        "Local",
+        "PSD"
+      ]
     },
     {
       "type": "showcase",
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open assets/cover.png in the Photocraft panel and save it back.",
-        "assistant_reply": "Photocraft is open on the right. Select cover.png in the Explorer, press File → Open inside the editor — it loads the selected file directly instead of asking again — then use File → Save to write it back to the same path."
+        "user_prompt": "Open assets/cover.png here.",
+        "assistant_reply": "Photocraft is open. Select the file in the Explorer, then press Open — it takes that file."
       }
     },
     {
       "type": "feature-grid",
-      "title": "What you get",
+      "title": "What it gives you",
       "items": [
         {
           "title": "The real editor, unmodified",
@@ -32,56 +36,47 @@
           "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "The same editor in a browser",
-          "description": "A local hub serves the editor on a loopback address, so you can also open it in the built-in browser panel or in your system browser when you want a second window.",
-          "icon": "solar:window-frame-linear"
+          "title": "Speak to it in the conversation",
+          "description": "Ask for the current view, hand the editor a file, or open the same page in a browser — five tools the Agent calls, each one answered by the running page.",
+          "icon": "solar:chat-round-linear"
         }
       ]
     },
     {
       "type": "steps",
-      "title": "Getting started",
+      "title": "How to start",
       "items": [
         {
           "title": "Install the plugin",
-          "description": "Add it from the marketplace. Nothing else needs to be installed — the editor's files are 11 MB, fetched once on first open into the plugin's data directory, and reused offline after that."
+          "description": "Add it from the marketplace. The editor's own files are about 13 MB, fetched once on first open into the plugin's data directory, and reused offline after that."
         },
         {
           "title": "Open the Photocraft tab",
-          "description": "The first open shows a preparation screen while the editor is fetched; after that it starts from cache without touching the network."
+          "description": "The first open shows a preparation screen while the editor arrives; after that it starts from cache without touching the network."
         },
         {
-          "title": "Select an image in the Explorer, then open it in the editor",
-          "description": "Inside Photocraft, File → Open takes the file you selected in Astravia instead of showing a system dialog."
+          "title": "Select an image in the Explorer, then open it",
+          "description": "Inside the editor, File → Open takes the file you selected instead of showing a dialog."
         },
         {
           "title": "Save back with File → Save",
           "description": "The working copy is written to the same path. Export… asks where to save instead."
-        },
-        {
-          "title": "Optional: open it in a browser",
-          "description": "The bar above the editor has two buttons — built-in browser panel and system browser — that open the same local address."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "In the browser entry points there is no workspace binding: opening a file there uses the browser's own picker and saving downloads through the browser, because those pages have no access to your project. Working on project files happens in the Astravia tab."
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "No reliable access to GitHub? The plugin never depends on one host. If the download cannot start, the preparation screen prints an absolute path: put photocraft-web-0.19.0.zip there, reload the tab, and it is used as is — the file is still checked against the pinned SHA-256. A cache from an earlier install, a self-hosted copy via PHOTOCRAFT_PAYLOAD_URL, and a proxy mirror in the source list cover the same case."
+      "content": "In the browser entry points there is no workspace binding: opening a file there uses the browser's own picker and saving downloads through the browser. Working on project files happens in the Astravia tab."
     },
     {
       "type": "callout",
       "tone": "warning",
-      "content": "Photocraft has no way to tell the panel whether a document has unsaved edits. Reloading the tab or switching documents asks for confirmation only when a save happened earlier in that session, so keep an eye on the editor's own title bar before closing."
+      "content": "Photocraft has no way to tell the panel whether a document has unsaved edits, so reloading the tab asks nothing. The editor's own title bar is the only unsaved marker."
     },
     {
       "type": "links",
-      "title": "Links",
+      "title": "Where it comes from",
       "items": [
         {
           "label": "Photocraft on GitHub",
