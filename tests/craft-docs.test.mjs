@@ -27,6 +27,8 @@ const FAMILY_DOCS = [
 	"craft-0006-the-skill-is-the-doorway.md",
 	"craft-0007-chinese-comes-from-the-shell.md",
 	"craft-0008-one-container-per-app.md",
+	"craft-0009-one-batch-and-a-text-map.md",
+	"craft-0010-the-manifest-speaks-the-shell-language.md",
 	"craft-CONTEXT.md",
 ];
 

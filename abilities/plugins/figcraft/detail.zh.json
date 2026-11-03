@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Add a settings screen to this design file.",
-        "assistant_reply": "FigCraft 已打开并载入文件。我可以用点击把画框和组件加上去；告诉我它该对齐哪个已有页面，我会复制那套布局而不是另发明一套。"
+        "user_prompt": "打开 FigCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
+        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "能指给人看的原型",
           "description": "截图工具显示画布当前画面，状态工具报告编辑器是否启动，原型是被核对过的，不是被描述出来的。",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "在对话里驱动",
+          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "FigCraft 尚未到 1.0：文件格式与部分编辑行为仍在变。插件跑 pinned 版本，不自己加设计功能。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
     },
     {
       "type": "links",

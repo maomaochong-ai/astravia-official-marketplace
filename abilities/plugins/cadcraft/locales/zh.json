@@ -1,0 +1,10 @@
+{
+  "plugin.name": "CADCraft",
+  "tab.label": "CADCraft",
+  "plugin.description": "在 Astravia 里画图、改图——上游 CADCraft 编辑器，带真正的命令行、对象捕捉、图层、标注、填充、块，以及 DXF 与 DWG 文件。",
+  "tool.open": "打开编辑器",
+  "tool.status": "编辑器状态",
+  "tool.act": "操作编辑器",
+  "tool.probe": "看画布",
+  "tool.document": "打开文件"
+}

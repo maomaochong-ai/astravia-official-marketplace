@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Turn outline.md into a deck.",
-        "assistant_reply": "DeckCraft is open. Open the outline in the tab, then ask me to walk the slides with you — I can click and type in the editor, but the layout choices are yours."
+        "user_prompt": "Open DeckCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "Ask which slide is on screen",
           "description": "A capture tool saves a PNG of what the canvas is showing and a status tool reports whether the editor finished starting.",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "DeckCraft is young: expect missing PowerPoint features and changing files. The plugin runs the pinned release and adds no slide features of its own."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
     },
     {
       "type": "links",

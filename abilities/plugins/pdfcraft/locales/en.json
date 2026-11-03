@@ -1,0 +1,10 @@
+{
+  "plugin.name": "PDFCraft",
+  "tab.label": "PDFCraft",
+  "plugin.description": "Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.",
+  "tool.open": "Open the editor",
+  "tool.status": "Editor status",
+  "tool.act": "Drive the editor",
+  "tool.probe": "Look at the canvas",
+  "tool.document": "Open a document"
+}

@@ -2,13 +2,13 @@ import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { useActivityTab } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { isBootFailure, isLinkMessage, nextDowngrade } from "../../../domain/link-protocol.ts";
+import { isBootFailure, isLinkMessage, isProgressMessage, nextDowngrade } from "../../../domain/link-protocol.ts";
 import type { Downgrade } from "../../../domain/link-protocol.ts";
 import { ensureHub } from "../../../runtime.ts";
 import { APP } from "../../../app.config.ts";
 import { editorStrings } from "../strings.ts";
 import type { EditorStrings } from "../strings.ts";
-import { setCraftFrame, settleCraftReply } from "../session-registry.ts";
+import { publishCraftProgress, setCraftFrame, settleCraftReply, subscribeCraftProgress } from "../session-registry.ts";
 import { readWorkspaceFile, saveRenderedFile, selectionAccess } from "../services/workspace-files.ts";
 import type { WorkspaceFile } from "../services/workspace-files.ts";
 import { useContainerFullscreen } from "./use-container-fullscreen.ts";
@@ -38,21 +38,25 @@ export interface EditorSession {
   candidate: WorkspaceFile | null;
   savedAt: number | null;
   notice: string | null;
+  /** "2/5 · 点击渐变工具" while an Agent batch runs in the page; null when idle. */
+  progress: string | null;
   iframeSrc: string | null;
   iframeKey: string;
   frameRef: RefObject<HTMLIFrameElement | null>;
   containerRef: RefObject<HTMLDivElement | null>;
   isFullscreen: boolean;
+  overlay: boolean;
   toggleFullscreen: () => void;
-  openEntry: (kind: "panel" | "system") => void;
   reload: () => void;
 }
 
 /**
  * Everything the tab does that is not markup: start the hub, speak the bridge
- * protocol, keep the save binding, and walk the WebGPU → WebGL2 → software
- * ladder. Upstream never retries by itself, so a machine without a WebGPU
- * adapter would otherwise only ever see "failed to start".
+ * protocol, keep the save binding, walk the WebGPU → WebGL2 → software ladder, and
+ * surface the step an Agent batch is on.
+ *
+ * Upstream never retries by itself, so a machine without a WebGPU adapter would
+ * otherwise only ever see "failed to start".
  */
 export function useCraftEditor(ctx: PluginContext): EditorSession {
   const strings = editorStrings(ctx.i18n.locale);
@@ -73,6 +77,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const [candidate, setCandidate] = useState<WorkspaceFile | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const [mode, setMode] = useState<Downgrade>("auto");
 
@@ -117,6 +122,24 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
       baseUrl: () => baseUrlRef.current,
     });
     return () => setCraftFrame(null);
+  }, []);
+
+  // --------------------------------------------------------- step progress
+
+  // The batch runs in the page and reports each step as it starts. Showing it here
+  // is the difference between "something happened in the tab" and "this is what is
+  // happening right now": the line names the step, the canvas shows its effect.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = subscribeCraftProgress((event) => {
+      setProgress(`${event.index + 1}/${event.total} · ${event.label}`);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setProgress(null), 4000);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   // --------------------------------------------------------------- pause gate
@@ -169,9 +192,14 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
       if (!isLinkMessage(event.data)) return;
       const data = event.data;
 
-      // Answers to requests sent by the Agent tools (inspect / capture / stage).
+      // Answers to requests sent by the Agent tools (act / look / stage).
       if (data.type === "craft:reply") {
         settleCraftReply(data);
+        return;
+      }
+
+      if (data.type === "craft:progress" && isProgressMessage(data)) {
+        publishCraftProgress(data);
         return;
       }
 
@@ -252,15 +280,6 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   );
   const fullscreen = useContainerFullscreen(reportFullscreenError);
 
-  const openEntry = useCallback(
-    (kind: "panel" | "system"): void => {
-      if (!baseUrl) return;
-      if (kind === "panel") ctx.browser.open(baseUrl);
-      else ctx.ui.openExternal(baseUrl);
-    },
-    [baseUrl, ctx],
-  );
-
   const reload = useCallback((): void => {
     // A reload is a fresh start: try WebGPU again before falling back.
     modeRef.current = "auto";
@@ -278,6 +297,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     candidate,
     savedAt,
     notice,
+    progress,
     // `?nosw` keeps a service worker from caching a previous hub origin's build; the
     // hub ignores unknown query strings, so a backend flag and this one coexist.
     iframeSrc: baseUrl ? `${baseUrl}/${frameQuery(mode, uiLang)}` : null,
@@ -285,9 +305,8 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     frameRef,
     containerRef: fullscreen.containerRef,
     isFullscreen: fullscreen.isFullscreen,
+    overlay: fullscreen.overlay,
     toggleFullscreen: fullscreen.toggle,
-    openEntry,
     reload,
   };
 }
-

@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open cut.filmcraft here.",
-        "assistant_reply": "FilmCraft is open. Select the file in the Explorer, then press Open — it takes that file."
+        "user_prompt": "Open FilmCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "It retries rendering instead of giving up",
           "description": "If WebGPU is unavailable the tab reloads the page with upstream's own WebGL flag, then software, before it reports a failure.",
           "icon": "solar:refresh-square-linear"
+        },
+        {
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -72,12 +77,12 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "The browser entry points have no workspace binding: opening a file there uses the browser's picker and output downloads through the browser."
+      "content": "Interface language: the editor itself is English only — upstream ships no other language. The tab shell, the preparation page and this page follow your Astravia language."
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "Interface language: the editor itself is English only — upstream ships no other language. The tab shell, the preparation page and this page follow your Astravia language."
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
     },
     {
       "type": "links",

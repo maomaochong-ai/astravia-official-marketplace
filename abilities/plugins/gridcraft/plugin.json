@@ -1,8 +1,8 @@
 {
   "id": "gridcraft",
-  "name": "GridCraft",
+  "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -15,8 +15,6 @@
   ],
   "permissions": [
     "ui.slot.activity-tab",
-    "browser.open",
-    "shell.openExternal",
     "fs.read",
     "fs.write",
     "workspace.read",
@@ -24,25 +22,20 @@
     "agent.toolHandler.execute",
     "agent.skills.control"
   ],
-  "browser": {
-    "allowedHosts": [
-      "127.0.0.1"
-    ]
-  },
   "providers": {
     "services": [
       {
         "id": "gridcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.2",
+          "version": "0.0.3",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "c848ff8d0ef87ab7d8672b5ca96cf036acd43f1d7dff3709ea04b99641989c3b",
+                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +45,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "c848ff8d0ef87ab7d8672b5ca96cf036acd43f1d7dff3709ea04b99641989c3b",
+                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +55,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "c848ff8d0ef87ab7d8672b5ca96cf036acd43f1d7dff3709ea04b99641989c3b",
+                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +65,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "c848ff8d0ef87ab7d8672b5ca96cf036acd43f1d7dff3709ea04b99641989c3b",
+                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +75,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "c848ff8d0ef87ab7d8672b5ca96cf036acd43f1d7dff3709ea04b99641989c3b",
+                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -118,6 +111,6 @@
       }
     }
   },
-  "description": "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.",
+  "description": "%plugin.description%",
   "author": "Astravia"
 }

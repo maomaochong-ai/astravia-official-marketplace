@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open assets/cover.png here.",
-        "assistant_reply": "Photocraft is open. Select the file in the Explorer, then press Open — it takes that file."
+        "user_prompt": "Open Photocraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "Speak to it in the conversation",
           "description": "Ask for the current view, hand the editor a file, or open the same page in a browser — five tools the Agent calls, each one answered by the running page.",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -66,13 +71,13 @@
     },
     {
       "type": "callout",
-      "tone": "info",
-      "content": "In the browser entry points there is no workspace binding: opening a file there uses the browser's own picker and saving downloads through the browser. Working on project files happens in the Astravia tab."
+      "tone": "warning",
+      "content": "Photocraft has no way to tell the panel whether a document has unsaved edits, so reloading the tab asks nothing. The editor's own title bar is the only unsaved marker."
     },
     {
       "type": "callout",
-      "tone": "warning",
-      "content": "Photocraft has no way to tell the panel whether a document has unsaved edits, so reloading the tab asks nothing. The editor's own title bar is the only unsaved marker."
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
     },
     {
       "type": "links",

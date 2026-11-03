@@ -1,0 +1,10 @@
+{
+  "plugin.name": "Craft Anything",
+  "tab.label": "Craft Anything",
+  "plugin.description": "拆解任意网站、应用或游戏并重建——Craft Anything 先研究原物，再驱动 AI 智能体按步骤复刻。",
+  "tool.open": "打开编辑器",
+  "tool.status": "编辑器状态",
+  "tool.act": "操作编辑器",
+  "tool.probe": "看画布",
+  "tool.document": "打开文件"
+}

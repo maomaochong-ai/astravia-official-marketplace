@@ -1,8 +1,8 @@
 {
   "id": "photocraft",
-  "name": "Photocraft",
+  "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -15,8 +15,6 @@
   ],
   "permissions": [
     "ui.slot.activity-tab",
-    "browser.open",
-    "shell.openExternal",
     "fs.read",
     "fs.write",
     "workspace.read",
@@ -24,25 +22,20 @@
     "agent.toolHandler.execute",
     "agent.skills.control"
   ],
-  "browser": {
-    "allowedHosts": [
-      "127.0.0.1"
-    ]
-  },
   "providers": {
     "services": [
       {
         "id": "photocraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.10",
+          "version": "0.0.11",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "d0d0b311ea60f633d9adbe91f4ba9253af09bec8af0fbc472155fb7e3e99a63e",
+                  "sha256": "a0ae17a303d05aa2f15d80bea8e1afaf72e45b8c04854c998ee07085705b23dc",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +45,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "d0d0b311ea60f633d9adbe91f4ba9253af09bec8af0fbc472155fb7e3e99a63e",
+                  "sha256": "a0ae17a303d05aa2f15d80bea8e1afaf72e45b8c04854c998ee07085705b23dc",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +55,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "d0d0b311ea60f633d9adbe91f4ba9253af09bec8af0fbc472155fb7e3e99a63e",
+                  "sha256": "a0ae17a303d05aa2f15d80bea8e1afaf72e45b8c04854c998ee07085705b23dc",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +65,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "d0d0b311ea60f633d9adbe91f4ba9253af09bec8af0fbc472155fb7e3e99a63e",
+                  "sha256": "a0ae17a303d05aa2f15d80bea8e1afaf72e45b8c04854c998ee07085705b23dc",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +75,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "d0d0b311ea60f633d9adbe91f4ba9253af09bec8af0fbc472155fb7e3e99a63e",
+                  "sha256": "a0ae17a303d05aa2f15d80bea8e1afaf72e45b8c04854c998ee07085705b23dc",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -118,6 +111,6 @@
       }
     }
   },
-  "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, also openable in a browser.",
+  "description": "%plugin.description%",
   "author": "Astravia"
 }

@@ -1,8 +1,8 @@
 {
   "id": "cadcraft",
-  "name": "CADCraft",
+  "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -15,8 +15,6 @@
   ],
   "permissions": [
     "ui.slot.activity-tab",
-    "browser.open",
-    "shell.openExternal",
     "fs.read",
     "fs.write",
     "workspace.read",
@@ -24,25 +22,20 @@
     "agent.toolHandler.execute",
     "agent.skills.control"
   ],
-  "browser": {
-    "allowedHosts": [
-      "127.0.0.1"
-    ]
-  },
   "providers": {
     "services": [
       {
         "id": "cadcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.2",
+          "version": "0.0.3",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "f31f5bcf24ab8d089e4d8389e9d3fae4798c45c19487662e92f9e72068a65dc8",
+                  "sha256": "92a0e3c994361bee791e223f1e14fef90ab19b60a81ed7fc8682fac12f2535ed",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +45,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "f31f5bcf24ab8d089e4d8389e9d3fae4798c45c19487662e92f9e72068a65dc8",
+                  "sha256": "92a0e3c994361bee791e223f1e14fef90ab19b60a81ed7fc8682fac12f2535ed",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +55,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "f31f5bcf24ab8d089e4d8389e9d3fae4798c45c19487662e92f9e72068a65dc8",
+                  "sha256": "92a0e3c994361bee791e223f1e14fef90ab19b60a81ed7fc8682fac12f2535ed",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +65,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "f31f5bcf24ab8d089e4d8389e9d3fae4798c45c19487662e92f9e72068a65dc8",
+                  "sha256": "92a0e3c994361bee791e223f1e14fef90ab19b60a81ed7fc8682fac12f2535ed",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +75,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "f31f5bcf24ab8d089e4d8389e9d3fae4798c45c19487662e92f9e72068a65dc8",
+                  "sha256": "92a0e3c994361bee791e223f1e14fef90ab19b60a81ed7fc8682fac12f2535ed",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -118,6 +111,6 @@
       }
     }
   },
-  "description": "Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files.",
+  "description": "%plugin.description%",
   "author": "Astravia"
 }

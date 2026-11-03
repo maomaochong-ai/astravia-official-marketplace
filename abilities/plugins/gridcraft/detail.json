@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Sum the revenue column by month in this sheet.",
-        "assistant_reply": "GridCraft is open with the workbook. Select the header row and I will walk the cells with you — say whether you want a pivot table or a SUMIFS column."
+        "user_prompt": "Open GridCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "Charts and pivot tables",
           "description": "Summary views are built from the same cells the sheets contain — the picture and the numbers cannot disagree.",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "GridCraft does not cover every Excel function, and macros do not run. The plugin runs the pinned release — check a formula's result in the sheet before quoting it."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
     },
     {
       "type": "links",

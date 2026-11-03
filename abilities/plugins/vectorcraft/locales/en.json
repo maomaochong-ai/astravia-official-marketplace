@@ -1,0 +1,10 @@
+{
+  "plugin.name": "VectorCraft",
+  "tab.label": "VectorCraft",
+  "plugin.description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
+  "tool.open": "Open the editor",
+  "tool.status": "Editor status",
+  "tool.act": "Drive the editor",
+  "tool.probe": "Look at the canvas",
+  "tool.document": "Open a document"
+}

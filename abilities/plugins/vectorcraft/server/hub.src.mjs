@@ -123,7 +123,29 @@ const state = {
 let index = null;
 /** @type {Buffer | null} */
 let archive = null;
+// Inflated entries are cached because the archive keeps compressed bytes: a 50 MB
+// wasm costs ~200 ms to inflate, and it is requested once per page load. The cache
+// is bounded (LRU + byte budget) because holding every asset of a 100 MB payload
+// resident is what a hub process must not do on a laptop with three editors open.
+const INFLATE_BUDGET = 96 * 1024 * 1024;
+const INFLATE_KEEP = 8;
 const inflated = new Map();
+let inflatedBytes = 0;
+const etags = new Map();
+
+function remember(name, bytes) {
+  inflated.delete(name);
+  inflated.set(name, bytes);
+  inflatedBytes += bytes.length;
+  while (inflated.size > INFLATE_KEEP || inflatedBytes > INFLATE_BUDGET) {
+    const oldest = inflated.keys().next();
+    if (oldest.done) break;
+    const victim = inflated.get(oldest.value);
+    inflated.delete(oldest.value);
+    inflatedBytes -= victim ? victim.length : 0;
+    if (inflated.size <= 1) break;
+  }
+}
 
 function fail(phase, message) {
   state.phase = phase;
@@ -196,12 +218,26 @@ function parseArchive(buf) {
 
 function entryBytes(entry) {
   const cached = inflated.get(entry.name);
-  if (cached) return cached;
+  if (cached) {
+    // Touch: Map keeps insertion order, so re-inserting is the LRU promotion.
+    remember(entry.name, cached);
+    return cached;
+  }
   const slice = archive.subarray(entry.dataOffset, entry.dataOffset + entry.compSize);
   const bytes = entry.method === 0 ? Buffer.from(slice) : inflateRawSync(slice);
   if (entry.size && bytes.length !== entry.size) throw new Error("zip-entry-size:" + entry.name);
-  inflated.set(entry.name, bytes);
+  remember(entry.name, bytes);
   return bytes;
+}
+
+/** Content hash of one entry, computed once: the ETag a reload revalidates against. */
+function etagOf(name, bytes) {
+  const known = etags.get(name);
+  if (known) return known;
+  const tag = '"' + sha256(bytes).slice(0, 32) + '"';
+  if (etags.size > 512) etags.clear();
+  etags.set(name, tag);
+  return tag;
 }
 
 // ---------------------------------------------------------------- download
@@ -527,6 +563,33 @@ function send(res, status, type, body, extra = {}) {
     ...extra,
   });
   if (res.req?.method === "HEAD") res.end();
+  else res.end(body);
+}
+
+/**
+ * A payload asset, as opposed to a page or an API answer.
+ *
+ * The archive never changes under a running hub — it is pinned by sha256 and
+ * inflated from one buffer — so an asset may be cached and revalidated instead of
+ * re-sent. Without this the browser re-downloads the whole wasm on every reload,
+ * which is the difference between a tab that returns instantly and one that spends
+ * half a minute on a spinner.
+ */
+function sendAsset(req, res, type, body, name) {
+  const etag = etagOf(name, body);
+  const headers = {
+    "content-type": type,
+    "content-length": String(body.length),
+    etag,
+    "cache-control": "public, max-age=86400, must-revalidate",
+  };
+  if (req.headers["if-none-match"] === etag) {
+    res.writeHead(304, { etag, "cache-control": "public, max-age=86400, must-revalidate" });
+    res.end();
+    return;
+  }
+  res.writeHead(200, headers);
+  if (req.method === "HEAD") res.end();
   else res.end(body);
 }
 
@@ -914,7 +977,9 @@ const server = http.createServer((req, res) => {
   }
 
   const type = MIME.get(path.extname(entry.name).toLowerCase()) ?? "application/octet-stream";
-  return send(res, 200, type, body);
+  // Not index.html: that one is rewritten per request with the locale seed, so it
+  // keeps the no-store default above.
+  return sendAsset(req, res, type, body, entry.name);
 });
 
 // ---------------------------------------------------------------- boot

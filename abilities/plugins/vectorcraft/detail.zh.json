@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "在这里打开 logo.svg。",
-        "assistant_reply": "VectorCraft 已打开。在资源管理器选中文件，再点打开，它会直接用这个文件。"
+        "user_prompt": "打开 VectorCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
+        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "随时要一张当前画面",
           "description": "截图工具把画布当前画面存成 PNG，在对话里就能审图。",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "在对话里驱动",
+          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -72,12 +77,12 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "浏览器入口没有工作区绑定：那里打开文件走浏览器选择框，输出走浏览器下载。"
+      "content": "界面语言：编辑器自身的界面只有英文（上游没有提供别的语言）。标签外壳、准备页与本页说明跟随 Astravia 的语言。"
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "界面语言：编辑器自身的界面只有英文（上游没有提供别的语言）。标签外壳、准备页与本页说明跟随 Astravia 的语言。"
+      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
     },
     {
       "type": "links",

@@ -1,8 +1,8 @@
 {
   "id": "deckcraft",
-  "name": "DeckCraft",
+  "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -15,8 +15,6 @@
   ],
   "permissions": [
     "ui.slot.activity-tab",
-    "browser.open",
-    "shell.openExternal",
     "fs.read",
     "fs.write",
     "workspace.read",
@@ -24,25 +22,20 @@
     "agent.toolHandler.execute",
     "agent.skills.control"
   ],
-  "browser": {
-    "allowedHosts": [
-      "127.0.0.1"
-    ]
-  },
   "providers": {
     "services": [
       {
         "id": "deckcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.2",
+          "version": "0.0.3",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "43b4a86c20f85a98bb5dc90240b9048e177495beabd03efb8c4aa27fa24771ca",
+                  "sha256": "0db6ba3fd83fe0c8f670a0456f8880eb035d22620799f103b74a1491e883ca94",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +45,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "43b4a86c20f85a98bb5dc90240b9048e177495beabd03efb8c4aa27fa24771ca",
+                  "sha256": "0db6ba3fd83fe0c8f670a0456f8880eb035d22620799f103b74a1491e883ca94",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +55,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "43b4a86c20f85a98bb5dc90240b9048e177495beabd03efb8c4aa27fa24771ca",
+                  "sha256": "0db6ba3fd83fe0c8f670a0456f8880eb035d22620799f103b74a1491e883ca94",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +65,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "43b4a86c20f85a98bb5dc90240b9048e177495beabd03efb8c4aa27fa24771ca",
+                  "sha256": "0db6ba3fd83fe0c8f670a0456f8880eb035d22620799f103b74a1491e883ca94",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +75,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "43b4a86c20f85a98bb5dc90240b9048e177495beabd03efb8c4aa27fa24771ca",
+                  "sha256": "0db6ba3fd83fe0c8f670a0456f8880eb035d22620799f103b74a1491e883ca94",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -118,6 +111,6 @@
       }
     }
   },
-  "description": "Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export.",
+  "description": "%plugin.description%",
   "author": "Astravia"
 }

@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Open the floor plan DXF from this workspace.",
-        "assistant_reply": "CADCraft is open. Select the file in the Explorer and press Open — the drawing arrives in model space."
+        "user_prompt": "Open CADCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "Ask what is on the drawing",
           "description": "A capture tool saves a PNG of what the canvas is showing and a status tool reports whether the editor finished starting, so the agent can check its own work instead of assuming.",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "CADCraft describes itself as early and fast-moving: entities it does not model yet are not kept on save. The plugin runs whatever the pinned release does — it adds no drawing features of its own."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
     },
     {
       "type": "links",

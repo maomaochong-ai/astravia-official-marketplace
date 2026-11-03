@@ -1,9 +1,11 @@
 import { APP } from "../../app.config.ts";
 
 /**
- * UI strings live here rather than in `locales/`: the tab renders one status
- * line and four buttons, and the host locale is read synchronously from
- * `ctx.i18n.locale`. A catalogue would add a resolution step for no gain.
+ * Strings for the tab itself live here rather than in `locales/`: they are read
+ * synchronously from `ctx.i18n.locale` for a 28-px status line, and a catalogue key
+ * would add a resolution step for no gain. The manifest-level strings that the host
+ * renders outside this component (plugin name, description, tab label, tool labels)
+ * do go through `locales/<locale>.json` — those are host-owned surfaces.
  */
 export interface EditorStrings {
   tab: string;
@@ -14,8 +16,6 @@ export interface EditorStrings {
   ready: string;
   failed: string;
   reload: string;
-  builtinBrowser: string;
-  systemBrowser: string;
   fullscreen: string;
   exitFullscreen: string;
   fullscreenFailed: string;
@@ -30,6 +30,13 @@ export interface EditorStrings {
   degradeCpu: string;
   noWorkspaceAccess: string;
   editing: string;
+  /** HUD prefix while a batch runs inside the page: "自动操作 2/5 · 点击渐变工具". */
+  acting: string;
+  actDone: string;
+  /** Step labels the tools send to the HUD for steps they add themselves. */
+  stepReady: string;
+  stepOpen: string;
+  stepWait: string;
 }
 
 const en: EditorStrings = {
@@ -41,8 +48,6 @@ const en: EditorStrings = {
   ready: "Ready",
   failed: `${APP.name} did not start`,
   reload: "Reload",
-  builtinBrowser: "Built-in panel",
-  systemBrowser: "System browser",
   fullscreen: "Full screen",
   exitFullscreen: "Exit full screen",
   fullscreenFailed: "Full screen unavailable",
@@ -57,6 +62,11 @@ const en: EditorStrings = {
   degradeCpu: "No WebGL2 either — retrying in software…",
   noWorkspaceAccess: "Workspace access was not granted, so opening from the Explorer is off.",
   editing: "edited since save",
+  acting: "Automating",
+  actDone: "Done",
+  stepReady: "Wait for the editor",
+  stepOpen: "Open the file",
+  stepWait: "Let it load",
 };
 
 const zh: EditorStrings = {
@@ -68,8 +78,6 @@ const zh: EditorStrings = {
   ready: "已就绪",
   failed: `${APP.name} 未能启动`,
   reload: "重新载入",
-  builtinBrowser: "内置面板",
-  systemBrowser: "系统浏览器",
   fullscreen: "全屏",
   exitFullscreen: "退出全屏",
   fullscreenFailed: "无法进入全屏",
@@ -84,6 +92,11 @@ const zh: EditorStrings = {
   degradeCpu: "WebGL2 也不可用，改用软件渲染重试…",
   noWorkspaceAccess: "没有获得工作区读取权限，暂时无法从资源管理器打开文件。",
   editing: "此后有输入",
+  acting: "自动操作",
+  actDone: "完成",
+  stepReady: "等待编辑器就绪",
+  stepOpen: "打开文件",
+  stepWait: "等它载入",
 };
 
 export function editorStrings(locale: string | undefined): EditorStrings {

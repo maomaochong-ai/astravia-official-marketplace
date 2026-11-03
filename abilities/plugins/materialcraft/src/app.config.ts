@@ -12,7 +12,7 @@ export const APP = {
   tabLabel: "MaterialCraft",
   tabOrder: 29,
   serviceId: "materialcraft-hub",
-  serviceVersion: "0.0.2",
+  serviceVersion: "0.0.3",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: false,

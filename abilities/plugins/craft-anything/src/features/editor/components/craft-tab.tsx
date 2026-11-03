@@ -12,10 +12,15 @@ import { EditorStatusBar } from "./editor-status-bar.tsx";
  */
 export function CraftTab({ ctx }: { ctx: PluginContext }): JSX.Element {
   const session = useCraftEditor(ctx);
-  const { strings, iframeSrc, iframeKey, frameRef, containerRef } = session;
+  const { strings, iframeSrc, iframeKey, frameRef, containerRef, overlay } = session;
+  // The Fullscreen API can be refused by the host frame. Then the shell itself
+  // covers the viewport — same element, same exit button, no lost status bar.
+  const shell = overlay
+    ? "fixed inset-0 z-[80] flex h-screen w-screen flex-col bg-neutral-950"
+    : "flex h-full min-h-0 w-full flex-col bg-neutral-950";
 
   return (
-    <div ref={containerRef} className="flex h-full min-h-0 w-full flex-col bg-neutral-950">
+    <div ref={containerRef} className={shell}>
       <EditorStatusBar session={session} />
 
       <div className="relative min-h-0 flex-1">

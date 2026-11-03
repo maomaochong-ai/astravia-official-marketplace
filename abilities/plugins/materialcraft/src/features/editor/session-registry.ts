@@ -1,4 +1,4 @@
-import type { LinkMessage } from "../../domain/link-protocol.ts";
+import type { CraftProgress, LinkMessage } from "../../domain/link-protocol.ts";
 
 /**
  * The live editor frame, addressable from outside React.
@@ -85,4 +85,22 @@ export function settleCraftReply(message: LinkMessage): void {
   if (!waiter) return;
   waiters.delete(message.id);
   waiter.settle(message.ok !== false, message);
+}
+
+/**
+ * The Agent tools run outside React, the tab renders inside it: a batch reports
+ * each step through here so the status line can say "2/5 · 点击渐变工具" while it
+ * runs, instead of the panel going quiet between two tool calls.
+ */
+const progressListeners = new Set<(progress: CraftProgress) => void>();
+
+export function subscribeCraftProgress(listener: (progress: CraftProgress) => void): () => void {
+  progressListeners.add(listener);
+  return () => {
+    progressListeners.delete(listener);
+  };
+}
+
+export function publishCraftProgress(progress: CraftProgress): void {
+  for (const listener of progressListeners) listener(progress);
 }

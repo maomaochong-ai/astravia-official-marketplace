@@ -1,0 +1,10 @@
+{
+  "plugin.name": "VectorCraft",
+  "tab.label": "VectorCraft",
+  "plugin.description": "在 Astravia 里画矢量、改路径：上游原版 VectorCraft 插画应用，贝塞尔曲线、填充与 SVG 输出。",
+  "tool.open": "打开编辑器",
+  "tool.status": "编辑器状态",
+  "tool.act": "操作编辑器",
+  "tool.probe": "看画布",
+  "tool.document": "打开文件"
+}
