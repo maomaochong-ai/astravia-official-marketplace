@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "活动面板里的 Craft Anything",
+      "eyebrow": "拆解与复刻",
+      "description": "选一个目标，先看清它是怎么搭起来的，再一步步重建——上游 Craft Anything 工作台跑在 Astravia 里。",
+      "badges": [
+        "No fork",
+        "Local",
+        "Agent-driven"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Rebuild the pricing page at this URL.",
+        "assistant_reply": "Craft Anything 已打开。先把范围定下来：只做一页还是整条流程，以及复刻要贴近到什么程度，然后我再开始点。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "它能给你什么",
+      "items": [
+        {
+          "title": "先研究，再动手",
+          "description": "工作从原物真实行为出发——布局、状态、交互——而不是只看一张截图去猜。",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "智能体跟得上的计划",
+          "description": "重建被拆成有进度可见的步骤，可以暂停、评审、继续，而不是一镜到底。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "每一步都留下画面",
+          "description": "截图工具记下工作台在每个阶段显示的内容，重建过程因此可被评审。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "装好插件",
+          "description": "首次打开下载约 3 MB 的编辑器文件，之后离线复用。"
+        },
+        {
+          "title": "打开 Craft Anything 标签页",
+          "description": "准备界面是 hub 正在取回 payload。"
+        },
+        {
+          "title": "说清目标与范围",
+          "description": "一个网址、一个应用，或工作区里的文件——并且说清要复刻到哪一步为止。"
+        },
+        {
+          "title": "按步骤推进并逐步核对",
+          "description": "进度在工作台里可见；智能体每个阶段都截图核对，而不是假定成功。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "复刻别人的产品会碰到插件回答不了的问题：只复刻你有权复刻的东西。插件跑 pinned 版本，不自己加研究功能。"
+    },
+    {
+      "type": "links",
+      "title": "它从哪来",
+      "items": [
+        {
+          "label": "上游仓库",
+          "href": "https://github.com/storytold/craft-anything"
+        }
+      ]
+    }
+  ]
+}

@@ -9,7 +9,7 @@
  *     a slow host);
  *   - a gesture the Agent asks for lands on the canvas as the events upstream reads.
  *
- * ADR: docs/adr/craft/0004-inactive-tabs-are-paused.md
+ * ADR: docs/adr/<plugin>/craft-0004-inactive-tabs-stop-drawing.md
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

@@ -35,7 +35,7 @@ JavaScript，没有分支、没有重新编译。插件自己只做上游不做�
 语言不会被覆盖（服务只改浏览器环境，不写应用偏好）。
 
 为什么不能只写偏好：hub 端口每次不同，origin 随之变，localStorage 按 origin 隔离；这些上游构建
-本来就是每次启动重算语言。详见 `docs/adr/craft/0003`。
+本来就是每次启动重算语言。详见 [`docs/adr/photocraft/craft-0003`](../../../../docs/adr/photocraft/craft-0003-first-open-is-a-preparation-not-a-failure.md)。
 
 
 ## 文件怎么进、怎么出
@@ -56,7 +56,7 @@ npm run build    # 重建 server/hub.mjs 并打包
 `src/**`、`server/hub.src.mjs` 与 `scripts/build-hub.mjs` 在七支 craft 插件（含 photocraft）之间逐字节相同，
 唯一按应用不同的是 `src/app.config.ts`。这里就是源码：改共享行为要在七支上做同样的改动，
 `tests/craft-parity.test.mjs` 会在漏改时失败。见
-[`docs/adr/craft/0001`](../../../../docs/adr/craft/0001-seven-copies-and-a-parity-test.md)。
+[`docs/adr/photocraft/craft-0001`](../../../../docs/adr/photocraft/craft-0001-seven-copies-and-a-parity-test.md)。
 
 ## 权限
 

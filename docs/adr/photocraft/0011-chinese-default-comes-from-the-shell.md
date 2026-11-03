@@ -1,6 +1,6 @@
 # ADR 0011：默认中文由外壳预置偏好，不是等 wasm 自己猜
 
-- 状态：已接受（2026-11-03）；原「默认中文由外壳预置偏好」的**作用范围**已被 [craft/0003](../craft/0003-first-open-is-a-preparation-not-a-failure.md) 收窄：偏好种子只在 photocraft 成立，其余五个 web 构建没有 CJK 字形，外部强行设中文只会得到一片空方框。
+- 状态：已接受（2026-11-03）；原「默认中文由外壳预置偏好」的**作用范围**已被 [craft-0003](./craft-0003-first-open-is-a-preparation-not-a-failure.md) 收窄：偏好种子只在 photocraft 成立，其余五个 web 构建没有 CJK 字形，外部强行设中文只会得到一片空方框。
 - 关联文档：[0010](./0010-payload-moves-to-upstream-0-19-0.md)、[0005](./0005-payload-provenance-and-runtime-gate.md)、[0007](./0007-one-loopback-hub-three-entries.md)
 
 ## 1. 背景

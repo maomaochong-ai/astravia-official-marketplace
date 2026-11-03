@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Craft Anything in the activity panel",
+      "eyebrow": "拆解与复刻",
+      "description": "Pick a target, study how it is put together, then rebuild it step by step — the upstream Craft Anything workbench running inside Astravia.",
+      "badges": [
+        "No fork",
+        "Local",
+        "Agent-driven"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Rebuild the pricing page at this URL.",
+        "assistant_reply": "Craft Anything is open. Let us settle the scope first: one page or the whole flow, and how close the copy has to be before I start clicking."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "Study before building",
+          "description": "The work starts from what the original actually does — layout, states, interactions — instead of a guess made from a screenshot.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "A plan the agent can follow",
+          "description": "The reconstruction is broken into steps with visible progress, so a rebuild can be paused, reviewed and resumed instead of run as one long shot.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Every step leaves a picture",
+          "description": "A capture tool records what the workbench is showing at each stage, which is what makes a rebuild reviewable at all.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 3 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the Craft Anything tab",
+          "description": "The preparation screen is the hub fetching its payload."
+        },
+        {
+          "title": "Name the target and the scope",
+          "description": "A URL, an app, or a file in the workspace — with the boundary of what has to be reproduced."
+        },
+        {
+          "title": "Work through the steps, checking each one",
+          "description": "Progress is visible in the workbench; the agent checks each stage with a capture rather than assuming."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Rebuilding someone else's product raises questions a plugin cannot answer: only reproduce what you have the right to. The plugin runs the pinned release and adds no study features of its own."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/craft-anything"
+        }
+      ]
+    }
+  ]
+}

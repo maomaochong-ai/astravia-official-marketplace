@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "archive": "zip",
+  "version": "0.17.0",
+  "size": 10803086,
+  "sha256": "161e9ca625a3d0616e36fe946c152534e4dae198194432541eb5bde349aa6ebe",
+  "sumsUrl": "https://github.com/storytold/cadcraft/releases/download/v0.17.0/SHA256SUMS.txt",
+  "localFile": "cadcraft-web-0.17.0.zip",
+  "sources": [
+    {
+      "id": "upstream",
+      "url": "https://github.com/storytold/cadcraft/releases/download/v0.17.0/cadcraft-web-0.17.0.zip"
+    },
+    {
+      "id": "ghproxy",
+      "url": "https://ghproxy.net/https://github.com/storytold/cadcraft/releases/download/v0.17.0/cadcraft-web-0.17.0.zip"
+    }
+  ],
+  "upstream": "https://github.com/storytold/cadcraft",
+  "app": {
+    "id": "cadcraft",
+    "name": "CADCraft",
+    "envPrefix": "CADCRAFT",
+    "sizeLabel": "11 MB",
+    "locale": null
+  }
+}

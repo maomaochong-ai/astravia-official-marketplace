@@ -7,7 +7,7 @@
  * match its plugin id, an icon path that does not exist, a digest left behind by an
  * earlier hub build. `node --test` is the cheap place to catch that.
  *
- * `docs/adr/craft/0006-the-skill-is-the-doorway.md` is why the skill assertions exist:
+ * `docs/adr/<plugin>/craft-0006-the-skill-is-the-doorway.md` is why the skill assertions exist:
  * the plugin is only reachable if the skill shows up in the picker with a name and an
  * icon, so that is a testable product requirement, not a cosmetic detail.
  */
@@ -27,6 +27,14 @@ const APPS = [
 	"pdfcraft",
 	"vectorcraft",
 	"photocraft",
+	"cadcraft",
+	"deckcraft",
+	"figcraft",
+	"gridcraft",
+	"wordcraft",
+	"texturecraft",
+	"materialcraft",
+	"craft-anything",
 ];
 
 /** The host's own manifest schema, reachable only where the vendored SDK is installed. */

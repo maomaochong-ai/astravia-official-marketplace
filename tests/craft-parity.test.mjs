@@ -2,7 +2,7 @@
  * The seven craft plugins ship the same engine under seven names.
  *
  * There used to be a generator that rewrote the shared copies; it was removed on
- * purpose (ADR docs/adr/craft/0001-seven-copies-and-a-parity-test.md). The copy model only holds
+ * purpose (ADR docs/adr/<plugin>/craft-0001-seven-copies-and-a-parity-test.md). The copy model only holds
  * if drift is visible, so this test fails the moment one plugin's copy of a shared
  * file differs from designcraft's. `app.config.ts` is the one file that is meant to
  * differ: it is the whole per-app surface.
@@ -14,7 +14,8 @@ import { join, relative } from "node:path";
 import { test } from "node:test";
 
 const ROOT = new URL("../abilities/plugins/", import.meta.url).pathname;
-const APPS = ["effectcraft", "filmcraft", "lightcraft", "pdfcraft", "vectorcraft", "photocraft"];
+const APPS = ["effectcraft", "filmcraft", "lightcraft", "pdfcraft", "vectorcraft", "photocraft",
+	"cadcraft", "deckcraft", "figcraft", "gridcraft", "wordcraft", "texturecraft", "materialcraft", "craft-anything"];
 const REFERENCE = "designcraft";
 
 /** Every file that is supposed to be byte-identical across the family. */

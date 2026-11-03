@@ -1,0 +1,27 @@
+{
+  "name": "@astravia/plugin-texturecraft",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:hub": "node scripts/build-hub.mjs",
+    "check:hub": "node scripts/build-hub.mjs --check",
+    "check": "tsc --noEmit && npm run check:hub",
+    "build": "npm run build:hub && tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@astravia-org/plugin-sdk": "^0.3.10",
+    "@astravia-org/plugin-vite": "^0.2.4",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.1.1",
+    "@types/react-dom": "^19.1.1",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7"
+  }
+}

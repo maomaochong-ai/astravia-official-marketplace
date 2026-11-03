@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "GridCraft in the activity panel",
+      "eyebrow": "电子表格",
+      "description": "Cells, formulas, charts and pivot tables — the upstream GridCraft spreadsheet running inside Astravia, on the workbook you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        ".xlsx"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Sum the revenue column by month in this sheet.",
+        "assistant_reply": "GridCraft is open with the workbook. Select the header row and I will walk the cells with you — say whether you want a pivot table or a SUMIFS column."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "A real calculation engine",
+          "description": "Formulas, references, number formats and error values behave the way a spreadsheet should, so a figure computed here still holds when the file goes back out.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": ".xlsx in and out",
+          "description": "Workbooks open from the workspace and export back to it, so the file keeps working in whatever tool the other people use.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Charts and pivot tables",
+          "description": "Summary views are built from the same cells the sheets contain — the picture and the numbers cannot disagree.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 10 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the GridCraft tab",
+          "description": "The preparation screen is the hub fetching its payload."
+        },
+        {
+          "title": "Select a workbook, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia."
+        },
+        {
+          "title": "Export the result back",
+          "description": "Exports travel the same bridge as saves."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "GridCraft does not cover every Excel function, and macros do not run. The plugin runs the pinned release — check a formula's result in the sheet before quoting it."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/gridcraft"
+        }
+      ]
+    }
+  ]
+}

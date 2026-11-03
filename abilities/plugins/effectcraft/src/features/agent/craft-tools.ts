@@ -13,7 +13,7 @@ import { askCraftFrame, craftFrame, waitForCraftFrame } from "../editor/session-
  * Tool names are prefixed with the app id because all craft plugins are installed
  * at once and the host keeps one flat tool namespace.
  *
- * ADR: docs/adr/craft/0005-the-agent-drives-the-canvas.md
+ * ADR: docs/adr/<slug>/craft-0005-the-agent-drives-the-canvas.md (each craft plugin carries its own copy)
  */
 const SCOPE = ["conversation", "project"] as const;
 

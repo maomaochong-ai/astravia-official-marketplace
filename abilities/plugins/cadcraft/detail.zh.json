@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "活动面板里的 CADCraft",
+      "eyebrow": "技术制图",
+      "description": "命令行、对象捕捉、图层、标注与填充——上游 CADCraft 制图编辑器跑在 Astravia 里，直接对着工作区里打开的图纸工作。",
+      "badges": [
+        "No fork",
+        "Local",
+        "DXF / DWG"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Open the floor plan DXF from this workspace.",
+        "assistant_reply": "CADCraft 已打开。在资源管理器里选中文件按「打开」，图纸就会进到模型空间。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "它能给你什么",
+      "items": [
+        {
+          "title": "沿用手上已有的制图习惯",
+          "description": "敲 L、点两个点、输 @5<45——LINE、PLINE、ARC、RECTANG、SPLINE、TRIM、OFFSET、FILLET 等命令都在命令行里应答，带提示、别名与直接距离输入。",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "图纸留在工程里",
+          "description": "DXF 读写（R12–2018，ASCII 与二进制），DWG 经开源 acadrust 打开；结果写回工作区，而不是下载目录。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "问它图纸上有什么",
+          "description": "截图工具把画布当前画面存成 PNG，状态工具报告编辑器是否启动完成，智能体因此能核对结果而不是靠猜。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "装好插件",
+          "description": "首次打开时下载约 11 MB 的编辑器文件，落在插件数据目录里，之后离线复用。"
+        },
+        {
+          "title": "打开 CADCraft 标签页",
+          "description": "准备界面是 hub 正在取回它的 payload；之后打开都走缓存。"
+        },
+        {
+          "title": "选中图纸再打开",
+          "description": "编辑器里的「文件 → 打开」取的是 Astravia 里选中的文件，不会弹系统对话框。"
+        },
+        {
+          "title": "打印或导出回到工作区",
+          "description": "SVG、PNG 与 PDF 打印走与保存相同的通道，结果落在你指定的位置。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "CADCraft 自称早期快速迭代版本：它尚未建模的实体在保存时不会被保留。插件跑的就是 pinned 版本的行为，不自己加制图功能。"
+    },
+    {
+      "type": "links",
+      "title": "它从哪来",
+      "items": [
+        {
+          "label": "上游仓库",
+          "href": "https://github.com/storytold/cadcraft"
+        }
+      ]
+    }
+  ]
+}

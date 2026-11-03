@@ -2,7 +2,7 @@
 
 这个目录是**手写源码**，不是产物。craft 家族七支插件（含 photocraft）共享同一份宿主侧代码，逐字节相同；
 一致性由 `tests/craft-parity.test.mjs` 守住，改一处就要改另外六处。
-理由与边界写在 [`docs/adr/craft/0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/craft/0001-seven-copies-and-a-parity-test.md)。
+理由与边界写在 [`docs/adr/pdfcraft/craft-0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/pdfcraft/craft-0001-seven-copies-and-a-parity-test.md)。
 
 ## 开工
 

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "DeckCraft in the activity panel",
+      "eyebrow": "演示文稿",
+      "description": "Themes, layouts, shapes and charts — the upstream DeckCraft editor running inside Astravia, with the deck you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        ".pptx"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Turn outline.md into a deck.",
+        "assistant_reply": "DeckCraft is open. Open the outline in the tab, then ask me to walk the slides with you — I can click and type in the editor, but the layout choices are yours."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "Slides, not a canvas",
+          "description": "Each slide is a real layout with placeholders, so text, images and charts arrive in the right frame instead of being dragged pixel by pixel.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "Decks that leave as .pptx",
+          "description": "A deck opens from the workspace and exports back to it as PowerPoint, so the file you hand over opens in the tool the audience already has.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Ask which slide is on screen",
+          "description": "A capture tool saves a PNG of what the canvas is showing and a status tool reports whether the editor finished starting.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 12 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the DeckCraft tab",
+          "description": "The preparation screen is the hub fetching its payload."
+        },
+        {
+          "title": "Open a deck or start one",
+          "description": "File → Open takes the file selected in Astravia; a new deck starts from a theme."
+        },
+        {
+          "title": "Export as .pptx through the workspace",
+          "description": "Exports travel the same bridge as saves."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "DeckCraft is young: expect missing PowerPoint features and changing files. The plugin runs the pinned release and adds no slide features of its own."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/deckcraft"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "FigCraft in the activity panel",
+      "eyebrow": "界面设计",
+      "description": "Frames, auto layout, components and variables — the upstream FigCraft editor running inside Astravia, on the file you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "Prototypes"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Add a settings screen to this design file.",
+        "assistant_reply": "FigCraft is open with the file. I can add the frame and the components with clicks; tell me which existing screen it should match and I will copy its layout instead of inventing one."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "Frames and auto layout",
+          "description": "Layout is a property of the frame, so a list stays a list when its text changes — the same model the file expects, not absolute pixels.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "Components and variables",
+          "description": "Components, variants and variables let one change reach every instance, which is what keeps a design file from drifting into fifteen near-copies.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Prototypes you can point at",
+          "description": "A capture tool shows what the canvas is displaying and a status tool reports whether the editor finished starting, so a prototype is checked, not described.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 10 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the FigCraft tab",
+          "description": "The preparation screen is the hub fetching its payload."
+        },
+        {
+          "title": "Select the design file, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia."
+        },
+        {
+          "title": "Export back through the workspace",
+          "description": "Exports travel the same bridge as saves."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "FigCraft is pre-1.0: the file format and some editing behaviour are still moving. The plugin runs the pinned release and adds no design features of its own."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/figcraft"
+        }
+      ]
+    }
+  ]
+}

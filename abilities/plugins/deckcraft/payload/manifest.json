@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "archive": "zip",
+  "version": "0.15.0",
+  "size": 11642045,
+  "sha256": "b617413b27514cc7f037877a1414a02bd4d4810a1b3f8d18cf7ab59cf97d5769",
+  "sumsUrl": "https://github.com/storytold/deckcraft/releases/download/v0.15.0/SHA256SUMS.txt",
+  "localFile": "deckcraft-web-0.15.0.zip",
+  "sources": [
+    {
+      "id": "upstream",
+      "url": "https://github.com/storytold/deckcraft/releases/download/v0.15.0/deckcraft-web-0.15.0.zip"
+    },
+    {
+      "id": "ghproxy",
+      "url": "https://ghproxy.net/https://github.com/storytold/deckcraft/releases/download/v0.15.0/deckcraft-web-0.15.0.zip"
+    }
+  ],
+  "upstream": "https://github.com/storytold/deckcraft",
+  "app": {
+    "id": "deckcraft",
+    "name": "DeckCraft",
+    "envPrefix": "DECKCRAFT",
+    "sizeLabel": "12 MB",
+    "locale": null
+  }
+}

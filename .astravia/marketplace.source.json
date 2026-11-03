@@ -1353,7 +1353,7 @@
       "slug": "lightcraft",
       "name": "LightCraft",
       "description": "Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -1466,6 +1466,327 @@
       },
       "source": {
         "path": "abilities/plugins/vectorcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "cadcraft",
+      "name": "CADCraft",
+      "description": "Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Design",
+      "categoryI18n": {
+        "zh": "设计",
+        "en": "Design"
+      },
+      "tags": [
+        "cad",
+        "drawing",
+        "dxf",
+        "dwg",
+        "drafting"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "CADCraft",
+            "description": "在 Astravia 里画图、改图——上游 CADCraft 编辑器，带真正的命令行、对象捕捉、图层、标注、填充、块，以及 DXF 与 DWG 文件。",
+            "tags": [
+              "制图",
+              "DXF",
+              "DWG",
+              "标注",
+              "图层"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/cadcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "deckcraft",
+      "name": "DeckCraft",
+      "description": "Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Documents",
+      "categoryI18n": {
+        "zh": "文档",
+        "en": "Documents"
+      },
+      "tags": [
+        "slides",
+        "presentation",
+        "pptx",
+        "deck",
+        "charts"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "DeckCraft",
+            "description": "在 Astravia 里做演示文稿——上游 DeckCraft 编辑器，带主题、版式、形状、图表、转场动画与 PowerPoint 导出。",
+            "tags": [
+              "演示文稿",
+              "幻灯片",
+              "PPTX",
+              "图表"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/deckcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "figcraft",
+      "name": "FigCraft",
+      "description": "Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Design",
+      "categoryI18n": {
+        "zh": "设计",
+        "en": "Design"
+      },
+      "tags": [
+        "ui-design",
+        "prototype",
+        "components",
+        "design-system",
+        "figma"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "FigCraft",
+            "description": "在 Astravia 里做界面设计与原型——上游 FigCraft 编辑器，带画框、自动布局、组件与变体、变量与可点击原型。",
+            "tags": [
+              "界面设计",
+              "原型",
+              "组件",
+              "设计系统"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/figcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "gridcraft",
+      "name": "GridCraft",
+      "description": "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Documents",
+      "categoryI18n": {
+        "zh": "文档",
+        "en": "Documents"
+      },
+      "tags": [
+        "spreadsheet",
+        "xlsx",
+        "formula",
+        "pivot-table",
+        "charts"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "GridCraft",
+            "description": "在 Astravia 里处理表格——上游 GridCraft 编辑器，带公式、数字格式、图表、透视表与 .xlsx 往返。",
+            "tags": [
+              "电子表格",
+              "XLSX",
+              "公式",
+              "透视表"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/gridcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "wordcraft",
+      "name": "WordCraft",
+      "description": "Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Documents",
+      "categoryI18n": {
+        "zh": "文档",
+        "en": "Documents"
+      },
+      "tags": [
+        "word-processor",
+        "docx",
+        "documents",
+        "track-changes",
+        "styles"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "WordCraft",
+            "description": "在 Astravia 里写文档、改文档——上游 WordCraft 编辑器，带功能区、样式、表格、修订与 .docx 往返。",
+            "tags": [
+              "文字处理",
+              "DOCX",
+              "文档",
+              "修订"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/wordcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "texturecraft",
+      "name": "TextureCraft",
+      "description": "Paint 3D textures inside Astravia — the upstream TextureCraft editor, with layered PBR painting, bakes and smart materials.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Media",
+      "categoryI18n": {
+        "zh": "媒体",
+        "en": "Media"
+      },
+      "tags": [
+        "texture",
+        "pbr",
+        "3d",
+        "painting",
+        "bake"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "TextureCraft",
+            "description": "在 Astravia 里画 3D 贴图——上游 TextureCraft 编辑器，带分层 PBR 绘制、烘焙与智能材质。",
+            "tags": [
+              "贴图",
+              "PBR",
+              "3D 绘制",
+              "烘焙"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/texturecraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "materialcraft",
+      "name": "MaterialCraft",
+      "description": "Build procedural materials node by node inside Astravia — the upstream MaterialCraft editor, from a first graph to a reusable material.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Media",
+      "categoryI18n": {
+        "zh": "媒体",
+        "en": "Media"
+      },
+      "tags": [
+        "material",
+        "procedural",
+        "node-graph",
+        "shader",
+        "3d"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "MaterialCraft",
+            "description": "在 Astravia 里用节点搭程序化材质——上游 MaterialCraft 编辑器，从第一张节点图到可复用材质。",
+            "tags": [
+              "材质",
+              "程序化",
+              "节点图",
+              "着色"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/materialcraft"
+      },
+      "minAppVersion": "0.5.59"
+    },
+    {
+      "type": "plugin",
+      "slug": "craft-anything",
+      "name": "Craft Anything",
+      "description": "Take apart any website, app or game and rebuild it — Craft Anything studies the original and drives an AI agent through the reconstruction.",
+      "version": "0.0.1",
+      "configVersion": 1,
+      "license": "MIT OR Apache-2.0",
+      "author": "Astravia",
+      "category": "Development",
+      "categoryI18n": {
+        "zh": "开发",
+        "en": "Development"
+      },
+      "tags": [
+        "reverse-engineering",
+        "rebuild",
+        "study",
+        "agent",
+        "ui"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Craft Anything",
+            "description": "拆解任意网站、应用或游戏并重建——Craft Anything 先研究原物，再驱动 AI 智能体按步骤复刻。",
+            "tags": [
+              "拆解复刻",
+              "研究原物",
+              "智能体",
+              "界面"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/craft-anything"
       },
       "minAppVersion": "0.5.59"
     }

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "archive": "zip",
+  "version": "0.15.0",
+  "size": 10338354,
+  "sha256": "b936b42ca6e49115f0c7fb1b5fe2cbe0de9317bc42ecd2b4cbba96333cfb59af",
+  "sumsUrl": "https://github.com/storytold/figcraft/releases/download/v0.15.0/SHA256SUMS.txt",
+  "localFile": "figcraft-web-0.15.0.zip",
+  "sources": [
+    {
+      "id": "upstream",
+      "url": "https://github.com/storytold/figcraft/releases/download/v0.15.0/figcraft-web-0.15.0.zip"
+    },
+    {
+      "id": "ghproxy",
+      "url": "https://ghproxy.net/https://github.com/storytold/figcraft/releases/download/v0.15.0/figcraft-web-0.15.0.zip"
+    }
+  ],
+  "upstream": "https://github.com/storytold/figcraft",
+  "app": {
+    "id": "figcraft",
+    "name": "FigCraft",
+    "envPrefix": "FIGCRAFT",
+    "sizeLabel": "10 MB",
+    "locale": null
+  }
+}

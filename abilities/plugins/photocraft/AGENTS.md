@@ -36,5 +36,5 @@ npm run build              # 打包
 - `build-hub.mjs` 用 JSON 注入，源码里的反引号会破坏它；hub 侧拼 HTML 一律用 `+`。
 - 上游字节一律保真：不改 wasm、不改 JS、不改 `index.html` 的 SRI，否则浏览器会拒绝加载。
 - 文件桥只认 `event.source === iframe.contentWindow`，不要放宽。
-- 家族决定在 [`docs/adr/craft/`](../../../../docs/adr/craft/README.md)：七份副本与一致性测试（001）、
-  非活动标签为何停手（004）、手势工具与能力边界（005）、中文的真实边界（007）。
+- 家族决定在 [`docs/adr/photocraft/`](../../../../docs/adr/photocraft/README.md)：七份副本与一致性测试（`craft-0001`）、
+  非活动标签为何停手（`craft-0004`）、手势工具与能力边界（`craft-0005`）、中文的真实边界（`craft-0007`）。
