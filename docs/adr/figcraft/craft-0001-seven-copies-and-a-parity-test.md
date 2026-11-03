@@ -1,5 +1,10 @@
 # 每支一份副本，一条一致性测试
 
+> **更新（本轮）**：家族现在是**十六支**（artcraft 为新建的一支），共享面只剩 `src/**`
+> （跳过 `src/app.config.ts`）。`server/hub.src.mjs` 与 `scripts/build-hub.mjs` 已随搬运架构
+> 一起删除，见 `craft-0011-the-engine-is-ours.md`。下文关于"七份副本""十五个 payload"的
+> 段落保留原文，数字与文件清单以本节为准。
+
 十四个 craft 插件加 photocraft 是**同一个程序**钉住十五个不同的上游 payload：`src/**`、`server/hub.src.mjs` 与
 `scripts/build-hub.mjs` 在各支之间逐字节相同，唯一按应用变化的是 `src/app.config.ts`、
 `plugin.json`、`payload/manifest.json` 和展示层文件。

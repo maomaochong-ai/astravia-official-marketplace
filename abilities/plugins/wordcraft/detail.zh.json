@@ -3,91 +3,73 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "活动面板里的 WordCraft",
-      "eyebrow": "文字处理",
-      "description": "功能区、样式、表格与修订——上游 WordCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的文档工作。",
+      "eyebrow": "Astravia 画布插件",
+      "title": "WordCraft：在 Astravia 里直接画，也能交给 Agent 改",
+      "description": "写长文档并排版：标题、段落、插图，导出 PNG 或 JSON。",
       "badges": [
-        "No fork",
-        "Local",
-        ".docx"
+        "默认中文",
+        "自动存档",
+        "对话可驱动"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "五种对象，一块画布",
+          "description": "矩形、椭圆、直线、文字、图片，都在同一份文档里，顺序就是层次。",
+          "icon": "solar:layers-minimalistic-bold"
+        },
+        {
+          "title": "吸附与对齐",
+          "description": "拖动时贴参考线，选中多个对象可以左对齐、居中、等距分布。",
+          "icon": "solar:ruler-cross-pen-bold"
+        },
+        {
+          "title": "导出 PNG 或文档 JSON",
+          "description": "图片按当前画布出图，文档存成 JSON 可以再打开接着改。",
+          "icon": "solar:export-bold"
+        },
+        {
+          "title": "对话能直接动手",
+          "description": "插图形、改属性、对齐、存图都是语义操作，不用靠点坐标。",
+          "icon": "solar:magic-stick-3-bold"
+        }
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-over-canvas",
-        "canvas": "generic",
-        "user_prompt": "打开 WordCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "template": "chat-thread",
+        "user_prompt": "用 WordCraft 开一块文档页，画三个标题块，左对齐，然后导出 PNG。",
+        "assistant_reply": "已经建好三个矩形并设为等宽、顶部对齐；导出用当前画布出图。要不要顺手把颜色换成主题蓝？"
       }
     },
     {
-      "type": "feature-grid",
-      "title": "它能给你什么",
-      "items": [
-        {
-          "title": "格式由样式承担",
-          "description": "标题、正文与题注都来自具名样式，换个人改也不会散架。",
-          "icon": "solar:layers-minimalistic-linear"
-        },
-        {
-          "title": ".docx 进、.docx 出",
-          "description": "文档从工作区打开、也导出回工作区成为 .docx，也就是别人实际在改的那个格式。",
-          "icon": "solar:folder-with-files-linear"
-        },
-        {
-          "title": "修订而不是暗改",
-          "description": "改动可以留成修订而不是静默生效，评审就变成对着可见标记的讨论。",
-          "icon": "solar:chat-round-linear"
-        },
-        {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
-          "icon": "solar:cursor-bold"
-        }
-      ]
-    },
-    {
       "type": "steps",
-      "title": "怎么开始",
       "items": [
         {
-          "title": "装好插件",
-          "description": "首次打开下载约 20 MB 的编辑器文件，之后离线复用。"
+          "title": "打开 {name} 标签",
+          "description": "在活动标签里新建一块文档页，默认就是中文界面。"
         },
         {
-          "title": "打开 WordCraft 标签页",
-          "description": "准备界面是 hub 正在取回 payload。"
+          "title": "从左侧工具轨选对象",
+          "description": "拖一个矩形、椭圆或文字上去，右侧属性面板改颜色与尺寸。"
         },
         {
-          "title": "选中文档再打开",
-          "description": "编辑器里的「文件 → 打开」取 Astravia 里选中的文件。"
+          "title": "在对话里接着说",
+          "description": "「把三个块左对齐」「加一行标题」「导出 PNG」，Agent 和你编同一份文档。"
         },
         {
-          "title": "经工作区导出",
-          "description": "导出走与保存相同的通道。"
+          "title": "需要文件时再导出",
+          "description": "自动存档留在插件里；PNG 与 JSON 由你选保存位置。"
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "WordCraft 覆盖它已建模的文档模型——邮件合并、文献管理等长文特性还没有。插件跑 pinned 版本。"
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
-    },
-    {
-      "type": "links",
-      "title": "它从哪来",
-      "items": [
-        {
-          "label": "上游仓库",
-          "href": "https://github.com/storytold/wordcraft"
-        }
-      ]
+      "content": "这是本插件自带的绘图内核，不下载也不加载任何外部应用；打开标签即用，关闭标签即停。"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "plugin.name": "TextureCraft",
   "tab.label": "TextureCraft",
-  "plugin.description": "在 Astravia 里画 3D 贴图——上游 TextureCraft 编辑器，带分层 PBR 绘制、烘焙与智能材质。",
+  "plugin.description": "做材质研究板：拼块、色卡、备注，整块导出。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

@@ -2,7 +2,7 @@
  * Every craft plugin carries the same family decisions under its own name.
  *
  * There is no shared `docs/adr/craft/` directory any more: a family decision lives
- * next to the app it governs, and each of the seven copies is byte-identical. That
+ * next to the app it governs, and each of the sixteen copies is byte-identical. That
  * only holds if drift is visible, so this test fails the moment one plugin's copy
  * differs, or a copy goes missing, or the old shared directory comes back.
  */
@@ -13,8 +13,9 @@ import { join } from "node:path";
 import { test } from "node:test";
 
 const ADR_ROOT = new URL("../docs/adr/", import.meta.url).pathname;
-const APPS = ["designcraft", "effectcraft", "filmcraft", "lightcraft", "pdfcraft", "vectorcraft", "photocraft",
-	"cadcraft", "deckcraft", "figcraft", "gridcraft", "wordcraft", "texturecraft", "materialcraft", "craft-anything"];
+const APPS = ["designcraft", "photocraft", "artcraft", "effectcraft", "filmcraft", "lightcraft", "pdfcraft",
+	"vectorcraft", "cadcraft", "deckcraft", "figcraft", "gridcraft", "wordcraft", "texturecraft",
+	"materialcraft", "craft-anything"];
 const REFERENCE = "designcraft";
 
 /** Family documents every craft app keeps its own copy of. */
@@ -29,6 +30,9 @@ const FAMILY_DOCS = [
 	"craft-0008-one-container-per-app.md",
 	"craft-0009-one-batch-and-a-text-map.md",
 	"craft-0010-the-manifest-speaks-the-shell-language.md",
+	"craft-0011-the-engine-is-ours.md",
+	"craft-0012-chinese-is-rendered-here.md",
+	"craft-0013-nothing-runs-in-the-background.md",
 	"craft-CONTEXT.md",
 ];
 
@@ -46,7 +50,7 @@ test("every craft app carries every family decision document", () => {
 	}
 });
 
-test("the family documents are byte-identical across the seven apps", () => {
+test("the family documents are byte-identical across the sixteen apps", () => {
 	for (const doc of FAMILY_DOCS) {
 		const reference = sha256(join(ADR_ROOT, REFERENCE, doc));
 		for (const app of APPS) {
@@ -68,7 +72,7 @@ test("the family documents do not link out of their own app directory", () => {
 		const targets = [...text.matchAll(/\]\(([^)]+)\)/g)].map((match) => match[1]);
 		for (const target of targets) {
 			assert.ok(
-				!/^\.\.\/(?!\.)/.test(target) || /\.\.\/(designcraft|effectcraft|filmcraft|lightcraft|pdfcraft|vectorcraft|photocraft|cadcraft|deckcraft|figcraft|gridcraft|wordcraft|texturecraft|materialcraft|craft-anything)\//.test(target),
+				!/^\.\.\/(?!\.)/.test(target) || /\.\.\/(designcraft|photocraft|artcraft|effectcraft|filmcraft|lightcraft|pdfcraft|vectorcraft|cadcraft|deckcraft|figcraft|gridcraft|wordcraft|texturecraft|materialcraft|craft-anything)\//.test(target),
 				`${doc} links to ${target}, which escapes the app-local copy`,
 			);
 			assert.ok(!target.includes("adr/craft"), `${doc} still links to the removed docs/adr/craft/`);

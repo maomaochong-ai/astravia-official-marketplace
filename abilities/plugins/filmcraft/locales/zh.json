@@ -1,7 +1,7 @@
 {
   "plugin.name": "FilmCraft",
   "tab.label": "FilmCraft",
-  "plugin.description": "在 Astravia 里剪片子：真实时间线、调色与声音，用的是上游原版 FilmCraft 剪辑器，没有 WebGPU 的机器会自动退回 WebGL。",
+  "plugin.description": "在深色舞台上排分镜：镜头格、说明文字、备注，导出 PNG 或 JSON。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

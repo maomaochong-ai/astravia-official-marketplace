@@ -2,17 +2,22 @@
  * What the host will accept, checked here rather than discovered after install.
  *
  * Each craft plugin is four things the host reads: a manifest, a skill package, an
- * icon and a service artifact pinned by sha256. All four can be wrong in ways that
- * `npm run build` does not notice — a bad surface key, a skill name that does not
- * match its plugin id, an icon path that does not exist, a digest left behind by an
- * earlier hub build. `node --test` is the cheap place to catch that.
+ * icon and a permission list matching what the code actually calls. All four can be
+ * wrong in ways that `npm run build` does not notice — a bad surface key, a skill name
+ * that does not match its plugin id, an icon path that does not exist, a permission
+ * the kernel needs but never asked for.
  *
- * `docs/adr/<plugin>/craft-0006-the-skill-is-the-doorway.md` is why the skill assertions exist:
- * the plugin is only reachable if the skill shows up in the picker with a name and an
- * icon, so that is a testable product requirement, not a cosmetic detail.
+ * `docs/adr/<plugin>/craft-0006-the-skill-is-the-doorway.md` is why the skill
+ * assertions exist: the plugin is only reachable if the skill shows up in the picker
+ * with a name and an icon, so that is a testable product requirement, not a cosmetic
+ * detail.
+ *
+ * Since the kernel replaced the pinned upstream bundles there is no service artifact
+ * and no digest to compare; what replaced those assertions is the permission check.
+ *
+ * ADR: docs/adr/<plugin>/craft-0011-the-engine-is-ours.md
  */
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -21,12 +26,13 @@ import { test } from "node:test";
 const ROOT = new URL("../abilities/plugins/", import.meta.url).pathname;
 const APPS = [
 	"designcraft",
+	"photocraft",
+	"artcraft",
 	"effectcraft",
 	"filmcraft",
 	"lightcraft",
 	"pdfcraft",
 	"vectorcraft",
-	"photocraft",
 	"cadcraft",
 	"deckcraft",
 	"figcraft",
@@ -110,26 +116,40 @@ test("each plugin ships the icon its manifest points at", () => {
 	}
 });
 
-test("every pinned sha256 is the hub the plugin actually ships", () => {
+test("each manifest asks for exactly what the kernel calls", () => {
+	const required = [
+		"ui.slot.activity-tab",
+		"fs.read",
+		"fs.write",
+		"storage.read",
+		"storage.write",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.skills.control",
+	];
 	for (const app of APPS) {
-		const manifestText = readFileSync(join(ROOT, app, "plugin.json"), "utf8");
-		const pinned = new Set(manifestText.match(/[0-9a-f]{64}/g) ?? []);
-		assert.equal(pinned.size, 1, `${app}: expected one digest across platforms, found ${pinned.size}`);
-		const actual = createHash("sha256")
-			.update(readFileSync(join(ROOT, app, "server/hub.mjs")))
-			.digest("hex");
-		assert.equal([...pinned][0], actual, `${app}: plugin.json pins a stale hub — run npm run build:hub`);
+		const granted = new Set(readManifest(app).permissions ?? []);
+		for (const permission of required) {
+			assert.ok(granted.has(permission), `${app}: missing permission ${permission}`);
+		}
 	}
 });
 
-test("the manifest, the service and the source agree on one version", () => {
+test("no manifest still pins an upstream artifact", () => {
 	for (const app of APPS) {
 		const manifest = readManifest(app);
-		const runtime = manifest.providers?.services?.[0]?.runtime;
-		assert.ok(runtime, `${app}: no service runtime`);
-		assert.equal(runtime.version, manifest.version, `${app}: runtime.version must equal the plugin version`);
+		const text = JSON.stringify(manifest);
+		assert.ok(!/[0-9a-f]{64}/.test(text), `${app}: plugin.json still carries a sha256`);
+		assert.equal(manifest.providers, undefined, `${app}: plugin.json still declares a provider`);
+	}
+});
+
+test("the manifest and the source agree on one version", () => {
+	for (const app of APPS) {
+		const manifest = readManifest(app);
+		const pkg = JSON.parse(readFileSync(join(ROOT, app, "package.json"), "utf8"));
+		assert.equal(pkg.version, manifest.version, `${app}: package.json is behind plugin.json`);
 		const config = readFileSync(join(ROOT, app, "src/app.config.ts"), "utf8");
-		const serviceVersion = /serviceVersion:\s*"([^"]+)"/.exec(config)?.[1];
-		assert.equal(serviceVersion, manifest.version, `${app}: app.config serviceVersion is behind plugin.json`);
+		assert.match(config, new RegExp(`id: "${app}"`), `${app}: app.config declares the wrong id`);
 	}
 });

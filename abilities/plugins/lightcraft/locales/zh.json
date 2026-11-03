@@ -1,7 +1,7 @@
 {
   "plugin.name": "LightCraft",
   "tab.label": "LightCraft",
-  "plugin.description": "在 Astravia 里管理照片库、显影 RAW：上游原版 LightCraft 的目录与暗房，支持相机 RAW 与 DNG。",
+  "plugin.description": "排灯光方案：主光、补光、轮廓光用色块标出来，加文字说明并导出。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

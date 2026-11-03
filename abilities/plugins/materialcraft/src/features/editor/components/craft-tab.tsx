@@ -1,45 +1,64 @@
+import { useEffect, useState } from "react";
 import type { PluginContext } from "@astravia-org/plugin-sdk";
-import type { JSX } from "react";
 import { APP } from "../../../app.config.ts";
 import { useCraftEditor } from "../hooks/use-craft-editor.ts";
+import { useContainerFullscreen } from "../hooks/use-container-fullscreen.ts";
+import { KernelCanvas, pickImage } from "../kernel/KernelCanvas.tsx";
+import { KernelInspector } from "../kernel/KernelInspector.tsx";
+import { KernelTopBar } from "../kernel/KernelTopBar.tsx";
+import { KernelToolRail } from "../kernel/KernelToolRail.tsx";
 import { EditorStatusBar } from "./editor-status-bar.tsx";
+import { subscribeCraftProgress } from "../session-registry.ts";
+import type { CraftProgress } from "../../../domain/agent-report.ts";
 
 /**
- * The activity tab: upstream's own web build in an iframe, one status line above
- * it, no second editor and no second theme.
- *
- * ADR: docs/adr/photocraft/0001-the-tab-runs-upstreams-web-build.md
+ * The tab: a layout, and three hooks. Everything it can do lives in the engine, so the
+ * file you are reading is the whole UI surface — there is no second renderer behind it.
  */
-export function CraftTab({ ctx }: { ctx: PluginContext }): JSX.Element {
-  const session = useCraftEditor(ctx);
-  const { strings, iframeSrc, iframeKey, frameRef, containerRef, overlay } = session;
-  // The Fullscreen API can be refused by the host frame. Then the shell itself
-  // covers the viewport — same element, same exit button, no lost status bar.
-  const shell = overlay
-    ? "fixed inset-0 z-[80] flex h-screen w-screen flex-col bg-neutral-950"
-    : "flex h-full min-h-0 w-full flex-col bg-neutral-950";
 
-  return (
-    <div ref={containerRef} className={shell}>
-      <EditorStatusBar session={session} />
+export function CraftTab({ ctx }: { ctx: PluginContext }) {
+	const editor = useCraftEditor(ctx, APP.kernel, APP.name);
+	const fullscreen = useContainerFullscreen();
+	const [progress, setProgress] = useState<CraftProgress | null>(null);
 
-      <div className="relative min-h-0 flex-1">
-        {iframeSrc ? (
-          <iframe
-            key={iframeKey}
-            ref={frameRef}
-            src={iframeSrc}
-            title={`${strings.tab} — ${APP.name}`}
-            className="h-full w-full border-0 bg-neutral-900"
-            sandbox="allow-scripts allow-same-origin allow-downloads allow-popups allow-forms allow-modals"
-            allow="clipboard-read; clipboard-write; fullscreen"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-xs text-neutral-500">
-            {strings.preparing}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+	useEffect(() => subscribeCraftProgress(setProgress), []);
+
+	const { engine, version, strings } = editor;
+
+	return (
+		<div
+			ref={fullscreen.ref}
+			className="flex h-full w-full flex-col overflow-hidden bg-white text-[13px] text-[#0f172a] antialiased"
+			style={{ fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif' }}
+		>
+			<KernelTopBar
+				engine={engine}
+				strings={strings}
+				title={APP.name}
+				onExportPng={() => void editor.exportPng()}
+				onExportJson={() => void editor.exportJson()}
+				onOpenDocument={() => void editor.restore()}
+				onInsertImage={() => void pickImage(engine, { x: engine.document().width / 2, y: engine.document().height / 2 })}
+			/>
+			<div className="flex min-h-0 flex-1">
+				<KernelToolRail engine={engine} strings={strings} />
+				<div className="relative min-w-0 flex-1">
+					<KernelCanvas engine={engine} version={version} strings={strings} />
+				</div>
+				<KernelInspector
+					engine={engine}
+					strings={strings}
+					onInsertImage={() => void pickImage(engine, { x: engine.document().width / 2, y: engine.document().height / 2 })}
+				/>
+			</div>
+			<EditorStatusBar
+				engine={engine}
+				strings={strings}
+				progress={progress}
+				note={editor.note}
+				fullscreen={fullscreen.fullscreen}
+				onToggleFullscreen={fullscreen.toggle}
+			/>
+		</div>
+	);
 }

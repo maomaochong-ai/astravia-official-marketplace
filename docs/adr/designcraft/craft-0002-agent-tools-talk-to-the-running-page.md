@@ -1,5 +1,9 @@
 # Agent 工具打到运行中的那个页面，不另开一条控制通道
 
+> **更新（本轮）**：`craft:*` 消息通道、iframe 与 `host-bridge.js` 已删除，工具改为直接调用内核
+> （`engine.act` / `engine.probe`），`_capture_canvas` 与 `_open_workspace_file` 由 `_act` 与
+> `_probe` 取代。见 `craft-0011-the-engine-is-ours.md`。下文保留原文。
+
 每个插件注册五个工具：`<id>_open_editor`、`<id>_editor_status`、`<id>_capture_canvas`、
 `<id>_open_workspace_file`、`<id>_open_in_browser`。它们不直接操作应用状态，而是把一条
 `craft:*` 消息投进 iframe，等页面回一条 `craft:reply`，再把结果作为 JSON 文本返回。

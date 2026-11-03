@@ -1,13 +1,11 @@
 {
   "name": "@astravia/plugin-filmcraft",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "private": true,
   "type": "module",
   "scripts": {
-    "build:hub": "node scripts/build-hub.mjs",
-    "check:hub": "node scripts/build-hub.mjs --check",
-    "check": "tsc --noEmit && npm run check:hub",
-    "build": "npm run build:hub && tsc --noEmit && vite build"
+    "check": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build"
   },
   "dependencies": {
     "react": "19.1.1",

@@ -1,7 +1,7 @@
 {
   "plugin.name": "PDFCraft",
   "tab.label": "PDFCraft",
-  "plugin.description": "在 Astravia 里读 PDF、重排页面：上游原版 PDFCraft 工作台，可合并、拆分、旋转与加密，不需要账号，也不上报数据。",
+  "plugin.description": "在接近 A4 的页面上排文档：文本块、分隔线、图片，导出 PNG 或文档 JSON。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

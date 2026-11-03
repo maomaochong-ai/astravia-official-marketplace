@@ -1,0 +1,10 @@
+{
+  "plugin.name": "ArtCraft",
+  "tab.label": "ArtCraft",
+  "plugin.description": "Build illustration boards in Astravia — shapes, colour blocks and type on a canvas the agent can edit with you.",
+  "tool.open": "Open the editor",
+  "tool.status": "Editor status",
+  "tool.act": "Drive the editor",
+  "tool.probe": "Look at the canvas",
+  "tool.document": "Open a document"
+}

@@ -3,91 +3,73 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "CADCraft in the activity panel",
-      "eyebrow": "技术制图",
-      "description": "A command line, object snaps, layers, dimensions and hatches — the upstream CADCraft drawing editor running inside Astravia, on the drawing you opened in the workspace.",
+      "eyebrow": "Astravia canvas plugin",
+      "title": "CadCraft: draw here, or let the agent draw with you",
+      "description": "Draft a plan view on a ruled sheet: walls, openings and dimensions, exported as PNG or JSON.",
       "badges": [
-        "No fork",
-        "Local",
-        "DXF / DWG"
+        "Chinese by default",
+        "Autosaved",
+        "Agent-ready"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "Five kinds of object, one canvas",
+          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
+          "icon": "solar:layers-minimalistic-bold"
+        },
+        {
+          "title": "Snapping and alignment",
+          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
+          "icon": "solar:ruler-cross-pen-bold"
+        },
+        {
+          "title": "Export PNG or document JSON",
+          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
+          "icon": "solar:export-bold"
+        },
+        {
+          "title": "The conversation edits it",
+          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
+          "icon": "solar:magic-stick-3-bold"
+        }
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-over-canvas",
-        "canvas": "design",
-        "user_prompt": "Open CADCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "template": "chat-thread",
+        "user_prompt": "Open a ruled sheet in CadCraft, draw three title blocks, left-align them and export a PNG.",
+        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
       }
     },
     {
-      "type": "feature-grid",
-      "title": "What it gives you",
-      "items": [
-        {
-          "title": "The drafting habits you already have",
-          "description": "Type L, click two points, type @5<45 — LINE, PLINE, ARC, RECTANG, SPLINE, TRIM, OFFSET, FILLET and the rest answer through the command line, with prompts, aliases and direct distance entry.",
-          "icon": "solar:layers-minimalistic-linear"
-        },
-        {
-          "title": "Drawings in your project",
-          "description": "DXF reads (R12–2018, ASCII and binary) and writes; DWG opens through the open-source acadrust library; the result goes back to the workspace instead of a downloads folder.",
-          "icon": "solar:folder-with-files-linear"
-        },
-        {
-          "title": "Ask what is on the drawing",
-          "description": "A capture tool saves a PNG of what the canvas is showing and a status tool reports whether the editor finished starting, so the agent can check its own work instead of assuming.",
-          "icon": "solar:chat-round-linear"
-        },
-        {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
-          "icon": "solar:cursor-bold"
-        }
-      ]
-    },
-    {
       "type": "steps",
-      "title": "How to start",
       "items": [
         {
-          "title": "Install the plugin",
-          "description": "About 11 MB of editor files arrive on first open, into the plugin's data directory, and are reused offline after that."
+          "title": "Open the {name} tab",
+          "description": "A new ruled sheet with a Chinese interface by default."
         },
         {
-          "title": "Open the CADCraft tab",
-          "description": "The preparation screen is the hub fetching its payload; later opens start from cache."
+          "title": "Pick an object from the left rail",
+          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
         },
         {
-          "title": "Select a drawing, then open it",
-          "description": "File → Open inside the editor takes the file selected in Astravia rather than showing a system dialog."
+          "title": "Keep talking in the conversation",
+          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
         },
         {
-          "title": "Plot or export back through the workspace",
-          "description": "SVG, PNG and PDF plotting travel the same bridge as saves, so the result lands where you chose."
+          "title": "Export when you need a file",
+          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "CADCraft describes itself as early and fast-moving: entities it does not model yet are not kept on save. The plugin runs whatever the pinned release does — it adds no drawing features of its own."
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
-    },
-    {
-      "type": "links",
-      "title": "Where it comes from",
-      "items": [
-        {
-          "label": "Upstream repository",
-          "href": "https://github.com/storytold/cadcraft"
-        }
-      ]
+      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
     }
   ]
 }

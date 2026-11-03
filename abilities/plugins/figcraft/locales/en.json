@@ -1,7 +1,7 @@
 {
-  "plugin.name": "FigCraft",
-  "tab.label": "FigCraft",
-  "plugin.description": "Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes.",
+  "plugin.name": "Figcraft",
+  "tab.label": "Figcraft",
+  "plugin.description": "Sketch interface frames: screens, panels and labels on a canvas, exported as PNG or JSON.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

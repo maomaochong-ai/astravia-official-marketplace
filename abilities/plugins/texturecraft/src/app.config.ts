@@ -1,9 +1,15 @@
 /**
  * The only app-specific source file in this plugin.
  *
- * Everything else under `src/` and `server/` is the same code in every craft plugin in
- * this marketplace. There is no generator any more: shared behaviour is changed in every
- * copy, and `tests/craft-parity.test.mjs` fails when one drifts.
+ * Everything else under `src/` is the same code in all sixteen craft plugins. There
+ * is no generator: shared behaviour is changed in every copy, and
+ * `tests/craft-parity.test.mjs` fails when one drifts.
+ *
+ * `kernel` is the whole difference between the plugins — which surface the page is
+ * ruled as, and which colour new objects arrive in. It is deliberately not a bundle
+ * of per-app components: sixteen drifting editors is how this family got expensive.
+ *
+ * ADR: docs/adr/<slug>/craft-0011-the-engine-is-ours.md
  */
 export const APP = {
   id: "texturecraft",
@@ -11,12 +17,12 @@ export const APP = {
   tabId: "texturecraft",
   tabLabel: "TextureCraft",
   tabOrder: 28,
-  serviceId: "texturecraft-hub",
-  serviceVersion: "0.0.3",
-  serviceArtifact: "server/hub.mjs",
-  /** Upstream registers a service worker, which outlives a hub restart. */
-  nosw: false,
-  upstream: "https://github.com/storytold/texturecraft",
+  kernel: {
+    mode: "canvas",
+    accent: "#a16207",
+  },
+  /** The editor is this repository's code; the name is the only nod to the original. */
+  homepage: "https://github.com/maomaochong-ai/astravia-official-marketplace",
 } as const;
 
 export type CraftApp = typeof APP;

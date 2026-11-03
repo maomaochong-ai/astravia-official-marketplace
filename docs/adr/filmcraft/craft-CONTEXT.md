@@ -6,48 +6,44 @@
 
 ```text
 Astravia 宿主（Electron 主进程 + 渲染进程）
-├─ 插件运行时（本插件的 MF 模块）
-│  ├─ craft-tab.tsx           活动标签的面板外壳
-│  ├─ use-craft-editor.ts     状态机：starting → ready → …，暂停闸门也在这里接线
-│  └─ craft-tools.ts          五个 Agent 工具，全部转向同一个 frame
-│
-├─ 活动标签
-│  └─ <iframe src="http://127.0.0.1:<port>/?…">
-│       └─ hub 返回的 HTML（上游 Web 构建 + 注入的 host-bridge.js）
-│
-└─ 主进程
-   └─ 服务运行时：node server/hub.mjs
-        ├─ 下载/校验 payload（按 payload/manifest.json 的 sha256）
-        ├─ 起一个 loopback HTTP 服务，把 payload 静态发出去
-        └─ 在发出的 HTML <head> 里注入 host-bridge.js
+└─ 插件运行时（本插件的 MF 模块）
+   ├─ craft-tab.tsx           活动标签：顶栏 + 工具轨 + 画布 + 属性面板 + 状态行
+   ├─ use-craft-editor.ts     创建引擎、恢复文档、防抖存盘、导出
+   ├─ craft-tools.ts          五个 Agent 工具，全部转向同一个引擎
+   └─ kernel/                 自研内核（见 0011）
+      ├─ engine.ts            文档状态 / 选中 / 撤销 / 批量执行
+      ├─ render.ts            绘制
+      ├─ probe.ts             页面 → 文字地图
+      └─ presets.ts           四种版面
 ```
+
+没有第二个进程，没有 `http://127.0.0.1:<port>`，没有 iframe。
 
 ## 词
 
-- **payload**：上游那个 Web 构建（`*.zip` / `*.tar.gz`），版本与 sha256 钉在 `payload/manifest.json`。
-  插件不编译上游代码，只搬运产物。
-- **hub**：`server/hub.mjs`，一个自包含的 Node 服务。它由 `server/hub.src.mjs` + `src/bridge/host-bridge.js`
-  + `payload/manifest.json` 生成，所以 `plugin.json` 里每个平台钉的是同一份文件的 sha256。
-- **bridge**：`src/bridge/host-bridge.js`，跑在 iframe 里面、上游 app 启动之前。它实现三件事：
-  拦截打开/保存对话框把字节交给宿主、报告启动失败、以及把宿主的暂停与手势消息变成页面里的事件。
-- **frame**：那个 iframe。所有 Agent 工具最终都是往 frame 里 `postMessage`，再等一条带 `id` 的回信。
-- **gesture**：投出去的一次输入。单发的 `craft:pointer` / `craft:key` 仍在，成批的走 `craft:act`。
-  它**不携带应用的解读**：回信只说"我派发了什么"，不说"应用做了什么"。
-- **act**：`craft:act`，一个 `steps[]` 在页面里一次跑完，每步之间按帧节流。见 0009。
-- **probe**：`craft:probe`，把画布压成 `columns × rows` 的字母地图 + 平均色 + 对比度。
-  这是 Agent 唯一能"看见"画布的通道，因为图片进不了工具结果。
-- **HUD**：iframe 里那条"自动操作 3/8 · …"的提示条，字面文案来自 `editorStrings(locale)`，
-  不能用 `%key%`（那只在宿主 UI 层解析）。
-- **pause gate**：`craft:pause` / `craft:resume`。暂停之后 bridge 拒绝再向页面申请动画帧，
-  于是应用自己的绘制循环停住，而 iframe 文档还活着。
-- **staged**：`open_workspace_file` 做完的状态——字节已经进了页面，但用户还没在应用里按"打开"。
+- **内核（kernel）**：`src/features/editor/kernel/` 与 `src/domain/kernel-document.ts`。
+  它是唯一引擎。十六支插件的内核逐字节相同。
+- **文档（document）**：`KernelDocument`，`{ schemaVersion: 1, mode, width, height,
+  background, shapes[] }`。`shapes` 按 back→front 排列。
+- **版面（mode）**：`canvas` / `sheet` / `doc` / `stage`。四种版面共用同一模型，
+  差别是参考线与默认尺寸（见 `presets.ts`）。
+- **形状（shape）**：`rect` / `ellipse` / `line` / `text` / `image`，统一用
+  `{id, x, y, w, h, fill, stroke, ...}` 描述。
+- **引擎实例（engine）**：`KernelEngine`。每个打开的标签一个，注册在
+  `session-registry.ts` 的单槽里，Agent 工具通过 `craftEngine()` 拿到同一个。
+- **act**：一次 `steps[]` 批量执行，每步之间 `await frame()` 并推一条进度。见 0009。
+- **probe**：把页面压成 `columns × rows` 的字母地图 + 平均色 + 对比度。
+  图片进不了工具结果，这是 Agent 唯一能"看见"页面的通道。
+- **HUD / 进度**：标签底部那条"自动操作 3/8 · …"，文案由工具的 `strings.acting` 提供。
+- **存档**：插件存储里的 `document.json`。导出 PNG / JSON 走用户选择的保存对话框。
 
 ## 谁负责什么
 
 | 关注点 | 归属 |
 | --- | --- |
-| 上游功能本身 | 上游项目，插件不碰 |
-| 文件进出工作区 | 宿主与 bridge 共同完成，字节不落在页面里 |
-| Agent 能不能动手 | 插件（手势工具）+ 上游是否读合成事件 |
-| 应用内界面语言 | 上游构建（见 0007 的真实边界） |
-| 插件外壳的文案 | `src/features/editor/strings.ts`，中英双语 |
+| 绘制与编辑 | 内核（本插件自己的代码） |
+| 文件进出 | 插件存储（自动存档）与 `ctx.fs.saveAs`（用户选路径） |
+| Agent 能不能动手 | 插件：`act` 直接调用语义操作，不靠像素寻址 |
+| 界面语言 | `strings.ts`（文案）与 `render.ts` 的 `FONT_STACK`（字形），见 0012 |
+| 常驻成本 | 零进程、零下载、无常驻循环，见 0013 |
+| 十六支的一致性 | `tests/craft-parity.test.mjs` |

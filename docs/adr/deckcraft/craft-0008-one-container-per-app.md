@@ -1,5 +1,9 @@
 # 一个应用一个容器名
 
+> **已被取代**：容器（hub 进程 + loopback HTTP + iframe）整体删除，见
+> `craft-0011-the-engine-is-ours.md` 与 `craft-0013-nothing-runs-in-the-background.md`。
+> 下文保留原文。
+
 > 这一条是整族共用的，每支 craft 插件都带一份逐字节相同的副本。
 > 起因是一个从模板复制过来的字符串，直到装上第二支才看得见。
 

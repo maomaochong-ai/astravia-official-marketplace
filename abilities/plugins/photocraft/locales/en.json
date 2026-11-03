@@ -1,7 +1,7 @@
 {
   "plugin.name": "Photocraft",
   "tab.label": "Photocraft",
-  "plugin.description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, driven from the conversation.",
+  "plugin.description": "Compose and annotate images in Astravia — crops, colour blocks, type and PNG export on a canvas the conversation can drive.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

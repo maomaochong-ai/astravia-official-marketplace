@@ -1,7 +1,7 @@
 {
   "plugin.name": "DesignCraft",
   "tab.label": "DesignCraft",
-  "plugin.description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
+  "plugin.description": "Lay out pages, frames and text on a canvas inside Astravia — snap, align, and export PNG or JSON, with the agent driving the same document.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

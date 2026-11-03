@@ -3,91 +3,73 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "GridCraft in the activity panel",
-      "eyebrow": "电子表格",
-      "description": "Cells, formulas, charts and pivot tables — the upstream GridCraft spreadsheet running inside Astravia, on the workbook you opened in the workspace.",
+      "eyebrow": "Astravia canvas plugin",
+      "title": "GridCraft: draw here, or let the agent draw with you",
+      "description": "Rule a sheet and fill it in: rows, columns, cell blocks and totals, exported as PNG or JSON.",
       "badges": [
-        "No fork",
-        "Local",
-        ".xlsx"
+        "Chinese by default",
+        "Autosaved",
+        "Agent-ready"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "Five kinds of object, one canvas",
+          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
+          "icon": "solar:layers-minimalistic-bold"
+        },
+        {
+          "title": "Snapping and alignment",
+          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
+          "icon": "solar:ruler-cross-pen-bold"
+        },
+        {
+          "title": "Export PNG or document JSON",
+          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
+          "icon": "solar:export-bold"
+        },
+        {
+          "title": "The conversation edits it",
+          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
+          "icon": "solar:magic-stick-3-bold"
+        }
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-over-canvas",
-        "canvas": "generic",
-        "user_prompt": "Open GridCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "template": "chat-thread",
+        "user_prompt": "Open a ruled sheet in GridCraft, draw three title blocks, left-align them and export a PNG.",
+        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
       }
     },
     {
-      "type": "feature-grid",
-      "title": "What it gives you",
-      "items": [
-        {
-          "title": "A real calculation engine",
-          "description": "Formulas, references, number formats and error values behave the way a spreadsheet should, so a figure computed here still holds when the file goes back out.",
-          "icon": "solar:layers-minimalistic-linear"
-        },
-        {
-          "title": ".xlsx in and out",
-          "description": "Workbooks open from the workspace and export back to it, so the file keeps working in whatever tool the other people use.",
-          "icon": "solar:folder-with-files-linear"
-        },
-        {
-          "title": "Charts and pivot tables",
-          "description": "Summary views are built from the same cells the sheets contain — the picture and the numbers cannot disagree.",
-          "icon": "solar:chat-round-linear"
-        },
-        {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
-          "icon": "solar:cursor-bold"
-        }
-      ]
-    },
-    {
       "type": "steps",
-      "title": "How to start",
       "items": [
         {
-          "title": "Install the plugin",
-          "description": "About 10 MB of editor files arrive on first open and are reused offline after that."
+          "title": "Open the {name} tab",
+          "description": "A new ruled sheet with a Chinese interface by default."
         },
         {
-          "title": "Open the GridCraft tab",
-          "description": "The preparation screen is the hub fetching its payload."
+          "title": "Pick an object from the left rail",
+          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
         },
         {
-          "title": "Select a workbook, then open it",
-          "description": "File → Open inside the editor takes the file selected in Astravia."
+          "title": "Keep talking in the conversation",
+          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
         },
         {
-          "title": "Export the result back",
-          "description": "Exports travel the same bridge as saves."
+          "title": "Export when you need a file",
+          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "GridCraft does not cover every Excel function, and macros do not run. The plugin runs the pinned release — check a formula's result in the sheet before quoting it."
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
-    },
-    {
-      "type": "links",
-      "title": "Where it comes from",
-      "items": [
-        {
-          "label": "Upstream repository",
-          "href": "https://github.com/storytold/gridcraft"
-        }
-      ]
+      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
     }
   ]
 }

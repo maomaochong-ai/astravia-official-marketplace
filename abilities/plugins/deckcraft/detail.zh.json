@@ -3,91 +3,73 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "活动面板里的 DeckCraft",
-      "eyebrow": "演示文稿",
-      "description": "主题、版式、形状与图表——上游 DeckCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的演示文稿工作。",
+      "eyebrow": "Astravia 画布插件",
+      "title": "DeckCraft：在 Astravia 里直接画，也能交给 Agent 改",
+      "description": "在 16:9 舞台上排幻灯片：框、标题、备注，导出 PNG。",
       "badges": [
-        "No fork",
-        "Local",
-        ".pptx"
+        "默认中文",
+        "自动存档",
+        "对话可驱动"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "五种对象，一块画布",
+          "description": "矩形、椭圆、直线、文字、图片，都在同一份文档里，顺序就是层次。",
+          "icon": "solar:layers-minimalistic-bold"
+        },
+        {
+          "title": "吸附与对齐",
+          "description": "拖动时贴参考线，选中多个对象可以左对齐、居中、等距分布。",
+          "icon": "solar:ruler-cross-pen-bold"
+        },
+        {
+          "title": "导出 PNG 或文档 JSON",
+          "description": "图片按当前画布出图，文档存成 JSON 可以再打开接着改。",
+          "icon": "solar:export-bold"
+        },
+        {
+          "title": "对话能直接动手",
+          "description": "插图形、改属性、对齐、存图都是语义操作，不用靠点坐标。",
+          "icon": "solar:magic-stick-3-bold"
+        }
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-over-canvas",
-        "canvas": "generic",
-        "user_prompt": "打开 DeckCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "template": "chat-thread",
+        "user_prompt": "用 DeckCraft 开一块舞台，画三个标题块，左对齐，然后导出 PNG。",
+        "assistant_reply": "已经建好三个矩形并设为等宽、顶部对齐；导出用当前画布出图。要不要顺手把颜色换成主题蓝？"
       }
     },
     {
-      "type": "feature-grid",
-      "title": "它能给你什么",
-      "items": [
-        {
-          "title": "是幻灯片，不是画布",
-          "description": "每页都是带占位符的真实版式，文字、图片、图表落在对应框里，而不是逐像素拖拽。",
-          "icon": "solar:layers-minimalistic-linear"
-        },
-        {
-          "title": "能交给别人的 .pptx",
-          "description": "演示文稿从工作区打开，也能导出回工作区成为 PowerPoint 文件，接手的人用现成工具就能打开。",
-          "icon": "solar:folder-with-files-linear"
-        },
-        {
-          "title": "问它现在第几页",
-          "description": "截图工具把画布当前画面存成 PNG，状态工具报告编辑器是否启动完成。",
-          "icon": "solar:chat-round-linear"
-        },
-        {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
-          "icon": "solar:cursor-bold"
-        }
-      ]
-    },
-    {
       "type": "steps",
-      "title": "怎么开始",
       "items": [
         {
-          "title": "装好插件",
-          "description": "首次打开下载约 12 MB 的编辑器文件，之后离线复用。"
+          "title": "打开 {name} 标签",
+          "description": "在活动标签里新建一块舞台，默认就是中文界面。"
         },
         {
-          "title": "打开 DeckCraft 标签页",
-          "description": "准备界面是 hub 正在取回 payload。"
+          "title": "从左侧工具轨选对象",
+          "description": "拖一个矩形、椭圆或文字上去，右侧属性面板改颜色与尺寸。"
         },
         {
-          "title": "打开或新建",
-          "description": "「文件 → 打开」取 Astravia 里选中的文件；新建从主题起步。"
+          "title": "在对话里接着说",
+          "description": "「把三个块左对齐」「加一行标题」「导出 PNG」，Agent 和你编同一份文档。"
         },
         {
-          "title": "经工作区导出 .pptx",
-          "description": "导出走与保存相同的通道。"
+          "title": "需要文件时再导出",
+          "description": "自动存档留在插件里；PNG 与 JSON 由你选保存位置。"
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "DeckCraft 还很年轻：PowerPoint 的部分特性缺失、文件格式仍在变。插件跑 pinned 版本，不自己加幻灯片功能。"
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
-    },
-    {
-      "type": "links",
-      "title": "它从哪来",
-      "items": [
-        {
-          "label": "上游仓库",
-          "href": "https://github.com/storytold/deckcraft"
-        }
-      ]
+      "content": "这是本插件自带的绘图内核，不下载也不加载任何外部应用；打开标签即用，关闭标签即停。"
     }
   ]
 }

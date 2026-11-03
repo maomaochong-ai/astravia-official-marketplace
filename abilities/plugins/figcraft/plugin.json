@@ -2,7 +2,7 @@
   "id": "figcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -18,87 +18,12 @@
     "fs.read",
     "fs.write",
     "workspace.read",
+    "storage.read",
+    "storage.write",
     "agent.tools.register",
     "agent.toolHandler.execute",
     "agent.skills.control"
   ],
-  "providers": {
-    "services": [
-      {
-        "id": "figcraft-hub",
-        "runtime": {
-          "kind": "host-node",
-          "version": "0.0.3",
-          "entry": "server/hub.mjs",
-          "platforms": {
-            "win32-x64": {
-              "executable": "server/hub.mjs",
-              "artifacts": [
-                {
-                  "sha256": "7933c7e430e4039d31061b6de89176b618e31d1d0761a328a0f5e1fcf2e106e0",
-                  "archive": "file",
-                  "destination": "server/hub.mjs"
-                }
-              ]
-            },
-            "darwin-x64": {
-              "executable": "server/hub.mjs",
-              "artifacts": [
-                {
-                  "sha256": "7933c7e430e4039d31061b6de89176b618e31d1d0761a328a0f5e1fcf2e106e0",
-                  "archive": "file",
-                  "destination": "server/hub.mjs"
-                }
-              ]
-            },
-            "darwin-arm64": {
-              "executable": "server/hub.mjs",
-              "artifacts": [
-                {
-                  "sha256": "7933c7e430e4039d31061b6de89176b618e31d1d0761a328a0f5e1fcf2e106e0",
-                  "archive": "file",
-                  "destination": "server/hub.mjs"
-                }
-              ]
-            },
-            "linux-x64": {
-              "executable": "server/hub.mjs",
-              "artifacts": [
-                {
-                  "sha256": "7933c7e430e4039d31061b6de89176b618e31d1d0761a328a0f5e1fcf2e106e0",
-                  "archive": "file",
-                  "destination": "server/hub.mjs"
-                }
-              ]
-            },
-            "linux-arm64": {
-              "executable": "server/hub.mjs",
-              "artifacts": [
-                {
-                  "sha256": "7933c7e430e4039d31061b6de89176b618e31d1d0761a328a0f5e1fcf2e106e0",
-                  "archive": "file",
-                  "destination": "server/hub.mjs"
-                }
-              ]
-            }
-          }
-        },
-        "process": {
-          "args": [],
-          "env": {
-            "ASTRAVIA_SERVICE_PORT": "${ASTRAVIA_SERVICE_PORT}",
-            "ASTRAVIA_SERVICE_DATA_DIR": "${ASTRAVIA_SERVICE_DATA_DIR}",
-            "ASTRAVIA_SERVICE_RUNTIME_DIR": "${ASTRAVIA_SERVICE_RUNTIME_DIR}",
-            "ASTRAVIA_SERVICE_CACHE_DIR": "${ASTRAVIA_SERVICE_CACHE_DIR}"
-          }
-        },
-        "health": {
-          "path": "/health",
-          "timeoutMs": 20000
-        }
-      }
-    ]
-  },
   "agent": {
     "skillPaths": [
       "agent/skills/figcraft"

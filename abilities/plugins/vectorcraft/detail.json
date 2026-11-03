@@ -3,100 +3,73 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "VectorCraft in the activity panel",
-      "eyebrow": "Vector illustration",
-      "description": "Paths, handles and fills — the upstream VectorCraft illustration app running inside Astravia, on your own machine, with the drawing you opened in the workspace.",
+      "eyebrow": "Astravia canvas plugin",
+      "title": "VectorCraft: draw here, or let the agent draw with you",
+      "description": "Build vector-style graphics from primitives — lines, boxes and ellipses — and export the result.",
       "badges": [
-        "No fork",
-        "Local",
-        "SVG"
+        "Chinese by default",
+        "Autosaved",
+        "Agent-ready"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "Five kinds of object, one canvas",
+          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
+          "icon": "solar:layers-minimalistic-bold"
+        },
+        {
+          "title": "Snapping and alignment",
+          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
+          "icon": "solar:ruler-cross-pen-bold"
+        },
+        {
+          "title": "Export PNG or document JSON",
+          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
+          "icon": "solar:export-bold"
+        },
+        {
+          "title": "The conversation edits it",
+          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
+          "icon": "solar:magic-stick-3-bold"
+        }
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-over-canvas",
-        "canvas": "design",
-        "user_prompt": "Open VectorCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "template": "chat-thread",
+        "user_prompt": "Open a canvas in VectorCraft, draw three title blocks, left-align them and export a PNG.",
+        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
       }
     },
     {
-      "type": "feature-grid",
-      "title": "What it gives you",
-      "items": [
-        {
-          "title": "The real illustration app",
-          "description": "The panel serves the official VectorCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
-          "icon": "solar:pen-new-square-linear"
-        },
-        {
-          "title": "Open and save inside your project",
-          "description": "Opening uses the file selected in the Explorer, and output is written back through Astravia instead of a downloads folder.",
-          "icon": "solar:folder-with-files-linear"
-        },
-        {
-          "title": "Ask for the current canvas",
-          "description": "A capture tool saves a PNG of what the canvas shows right now, so a drawing can be reviewed from the conversation.",
-          "icon": "solar:chat-round-linear"
-        },
-        {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
-          "icon": "solar:cursor-bold"
-        }
-      ]
-    },
-    {
       "type": "steps",
-      "title": "How to start",
       "items": [
         {
-          "title": "Install the plugin",
-          "description": "About 31 MB of editor files arrive on first open — including the layout fonts — and are reused offline after that."
+          "title": "Open the {name} tab",
+          "description": "A new canvas with a Chinese interface by default."
         },
         {
-          "title": "Open the VectorCraft tab",
-          "description": "The preparation screen is the hub fetching its payload; later opens start from cache."
+          "title": "Pick an object from the left rail",
+          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
         },
         {
-          "title": "Select a drawing, then open it",
-          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+          "title": "Keep talking in the conversation",
+          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
         },
         {
-          "title": "Save the result back",
-          "description": "The output goes through Astravia, so it can replace the source or become a new file."
+          "title": "Export when you need a file",
+          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "Upstream ships an MCP server for scripted work; this plugin does not start it. In the tab, use the Agent tools that are listed in the skill — they talk to the running page."
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "Interface language: the editor itself is English only — upstream ships no other language. The tab shell, the preparation page and this page follow your Astravia language."
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
-    },
-    {
-      "type": "links",
-      "title": "Where it comes from",
-      "items": [
-        {
-          "label": "VectorCraft on GitHub",
-          "href": "https://github.com/storytold/vectorcraft"
-        },
-        {
-          "label": "VectorCraft releases",
-          "href": "https://github.com/storytold/vectorcraft/releases"
-        }
-      ]
+      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
     }
   ]
 }

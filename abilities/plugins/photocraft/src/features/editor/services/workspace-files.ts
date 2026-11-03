@@ -1,94 +1,66 @@
-import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
-import { base64ToBytes, bytesToBase64 } from "../../../shared/formatters/base64.ts";
-import { basename, extensionOf } from "../../../shared/formatters/paths.ts";
-
-/** A file the editor is currently bound to; the host is the only owner of paths. */
-export interface WorkspaceFile {
-  path: string;
-  name: string;
-}
+import type { PluginContext } from "@astravia-org/plugin-sdk";
+import { emptyDocument, parse, serialize, type KernelDocument } from "../../../domain/kernel-document.ts";
 
 /**
- * Explorer access, permission-safe.
+ * Where the page lives.
  *
- * `ctx.fileExplorer.*` requires `workspace.read`. Without it every call throws,
- * and a throw inside a mount effect takes the whole tab down through the host's
- * error boundary — one missing permission must not blank the panel, so this
- * wrapper degrades to "no selection" and reports `denied` instead.
- */
-export interface SelectionAccess {
-  denied: boolean;
-  current(): WorkspaceFile | null;
-  onChange(listener: (file: WorkspaceFile | null) => void): Disposable | null;
-}
-
-export function selectionAccess(ctx: PluginContext): SelectionAccess {
-  const pick = (): WorkspaceFile | null => {
-    try {
-      const files = ctx.fileExplorer.getSelection().filter((entry) => !entry.isDirectory);
-      return files.length === 1 ? { path: files[0].path, name: files[0].name } : null;
-    } catch {
-      return null;
-    }
-  };
-
-  let denied = false;
-  try {
-    ctx.fileExplorer.getSelection();
-  } catch {
-    denied = true;
-  }
-
-  return {
-    denied,
-    current: pick,
-    onChange(listener) {
-      try {
-        return ctx.fileExplorer.onDidChangeSelection(() => listener(pick()));
-      } catch {
-        return null;
-      }
-    },
-  };
-}
-
-/** Read one workspace file as bytes; `null` when the host could not read it. */
-export async function readWorkspaceFile(
-  ctx: PluginContext,
-  file: WorkspaceFile,
-): Promise<{ bytes: ArrayBuffer; mimeType: string } | null> {
-  try {
-    const result = await ctx.fs.readBinaryFile(file.path);
-    const bytes = base64ToBytes(result.data);
-    return { bytes: bytes.buffer as ArrayBuffer, mimeType: result.mimeType };
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Write bytes the editor produced back to disk.
+ * Autosave goes to the plugin's own storage: it survives a restart, never asks the
+ * user for a location, and never writes into their project behind their back.
+ * Writing to disk is an explicit action (`导出`), which is why the only filesystem
+ * call here is `saveAs` — the one the user confirms in a native dialog.
  *
- * The web shell has no save dialog: saving the open document echoes its own name
- * while an explicit Save As / Export returns a different one, so the file name is
- * the only signal that separates "save in place" from "save as". The first
- * successful save binds the path and later exports never steal it.
+ * ADR: docs/adr/<slug>/craft-0011-the-engine-is-ours.md
  */
-export async function saveRenderedFile(
-  ctx: PluginContext,
-  request: { name: string; bytes: ArrayBuffer; current: WorkspaceFile | null },
-): Promise<WorkspaceFile | null> {
-  const base64 = bytesToBase64(new Uint8Array(request.bytes));
-  const current = request.current;
 
-  if (current && basename(request.name) === current.name) {
-    await ctx.fs.writeFile(current.path, base64, "base64");
-    return current;
-  }
+const DOCUMENT_PATH = "document.json";
 
-  const saved = await ctx.fs.saveAs(request.name, base64, "base64", {
-    title: request.name,
-    filters: [{ name: "File", extensions: [extensionOf(request.name) || "bin"] }],
-  });
-  return saved ? { path: saved, name: basename(saved) } : null;
+export interface CraftFiles {
+	load(): Promise<KernelDocument | null>;
+	save(document: KernelDocument): Promise<void>;
+	exportPng(base64: string, name: string): Promise<string | null>;
+	exportProject(document: KernelDocument, name: string): Promise<string | null>;
+	readProject(path: string): Promise<KernelDocument | null>;
+}
+
+export function craftFiles(ctx: PluginContext, fallback: KernelDocument): CraftFiles {
+	return {
+		async load() {
+			try {
+				const text = await ctx.storage.readFile(DOCUMENT_PATH, "utf8");
+				if (!text) return null;
+				return parse(text, fallback);
+			} catch {
+				return null;
+			}
+		},
+		async save(document) {
+			try {
+				await ctx.storage.writeFile(DOCUMENT_PATH, serialize(document), "utf8");
+			} catch {
+				// Storage is best effort: a full disk must not break the canvas.
+			}
+		},
+		async exportPng(base64, name) {
+			const payload = base64.replace(/^data:image\/png;base64,/, "");
+			return ctx.fs.saveAs(`${name}.png`, payload, "base64", {
+				title: "导出图片",
+				filters: [{ name: "PNG", extensions: ["png"] }],
+			});
+		},
+		async exportProject(document, name) {
+			return ctx.fs.saveAs(`${name}.json`, serialize(document), "utf8", {
+				title: "导出工程",
+				filters: [{ name: "JSON", extensions: ["json"] }],
+			});
+		},
+		async readProject(path) {
+			try {
+				const read = await ctx.fs.readFile(path);
+				const text = read.encoding === "base64" ? atob(read.content) : read.content;
+				return parse(text, emptyDocument(fallback.mode, fallback.width, fallback.height, fallback.background));
+			} catch {
+				return null;
+			}
+		},
+	};
 }
