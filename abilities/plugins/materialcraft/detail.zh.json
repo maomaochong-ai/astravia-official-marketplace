@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Make a scratched brass that reads at both scales.",
-        "assistant_reply": "MaterialCraft 已打开。先用一张噪声接到粗糙度起个头，剩下的我逐个节点接上——每接一根线就核对一次预览，而不是最后才看。"
+        "user_prompt": "打开 MaterialCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
+        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "预览就是证据",
           "description": "截图工具在每次改动后显示预览，这是唯一能确认节点真的做了它名字所说事情的办法。",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "在对话里驱动",
+          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "MaterialCraft 还在 0.1：节点库很小，版本之间会变。插件跑 pinned 版本，不自己加节点。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
     },
     {
       "type": "links",

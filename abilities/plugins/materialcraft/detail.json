@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Make a scratched brass that reads at both scales.",
-        "assistant_reply": "MaterialCraft is open. Start the graph with a noise into roughness and I will add the rest node by node — checking the preview after each connection rather than at the end."
+        "user_prompt": "Open MaterialCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "Preview as evidence",
           "description": "A capture tool shows the preview after each change, which is the only way to know a node actually did what its name promised.",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "MaterialCraft is at 0.1: the node library is small and changes between releases. The plugin runs the pinned release and adds no nodes of its own."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
     },
     {
       "type": "links",

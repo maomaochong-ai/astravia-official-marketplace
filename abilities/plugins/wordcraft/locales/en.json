@@ -1,0 +1,10 @@
+{
+  "plugin.name": "WordCraft",
+  "tab.label": "WordCraft",
+  "plugin.description": "Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping.",
+  "tool.open": "Open the editor",
+  "tool.status": "Editor status",
+  "tool.act": "Drive the editor",
+  "tool.probe": "Look at the canvas",
+  "tool.document": "Open a document"
+}

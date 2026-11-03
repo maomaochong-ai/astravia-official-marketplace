@@ -1,0 +1,10 @@
+{
+  "plugin.name": "EffectCraft",
+  "tab.label": "EffectCraft",
+  "plugin.description": "Build motion-graphics compositions inside Astravia — the upstream EffectCraft compositor with keyframes, 3D camera and lights, 308 effects and a render queue.",
+  "tool.open": "Open the editor",
+  "tool.status": "Editor status",
+  "tool.act": "Drive the editor",
+  "tool.probe": "Look at the canvas",
+  "tool.document": "Open a document"
+}

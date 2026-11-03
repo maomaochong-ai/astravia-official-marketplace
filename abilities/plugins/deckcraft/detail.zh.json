@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Turn outline.md into a deck.",
-        "assistant_reply": "DeckCraft 已打开。先在标签页里打开大纲，再让我陪你逐页过——我能在编辑器里点击和输入，但版式取舍由你定。"
+        "user_prompt": "打开 DeckCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
+        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "问它现在第几页",
           "description": "截图工具把画布当前画面存成 PNG，状态工具报告编辑器是否启动完成。",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "在对话里驱动",
+          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "DeckCraft 还很年轻：PowerPoint 的部分特性缺失、文件格式仍在变。插件跑 pinned 版本，不自己加幻灯片功能。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
     },
     {
       "type": "links",

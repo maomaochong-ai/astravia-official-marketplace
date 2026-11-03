@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Give the helmet a worn metal finish.",
-        "assistant_reply": "TextureCraft 已打开并载入模型。我可以加一层金属再在你指的位置画磨损；开工前告诉我底色要什么。"
+        "user_prompt": "打开 TextureCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
+        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
       }
     },
     {
@@ -39,6 +39,11 @@
           "title": "可复用的智能材质",
           "description": "智能材质自带通道与遮罩，一套观感可以复用而不是从头再画。",
           "icon": "solar:chat-round-linear"
+        },
+        {
+          "title": "在对话里驱动",
+          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "icon": "solar:cursor-bold"
         }
       ]
     },
@@ -68,6 +73,11 @@
       "type": "callout",
       "tone": "info",
       "content": "TextureCraft 是早期版本：笔刷与烘焙覆盖面仍在扩展。插件跑 pinned 版本，不自己加绘制功能。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
     },
     {
       "type": "links",
