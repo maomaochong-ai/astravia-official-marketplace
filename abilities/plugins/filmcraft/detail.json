@@ -75,6 +75,11 @@
       "content": "The browser entry points have no workspace binding: opening a file there uses the browser's picker and output downloads through the browser."
     },
     {
+      "type": "callout",
+      "tone": "info",
+      "content": "Interface language: the editor itself is English only — upstream ships no other language. The tab shell, the preparation page and this page follow your Astravia language."
+    },
+    {
       "type": "links",
       "title": "Where it comes from",
       "items": [
