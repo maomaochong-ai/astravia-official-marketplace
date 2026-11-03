@@ -1,7 +1,7 @@
 {
   "plugin.name": "LightCraft",
   "tab.label": "LightCraft",
-  "plugin.description": "Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.",
+  "plugin.description": "Plan a lighting setup: key, fill and rim blocks with labels on a canvas, exported as PNG.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

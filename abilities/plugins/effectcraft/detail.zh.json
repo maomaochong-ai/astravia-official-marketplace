@@ -3,100 +3,73 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "在活动面板里用 EffectCraft",
-      "eyebrow": "动态图形",
-      "description": "合成、关键帧与渲染队列——上游原版 EffectCraft 合成器跑在 Astravia 里，打开的就是工作区里的那个工程。",
+      "eyebrow": "Astravia 画布插件",
+      "title": "EffectCraft：在 Astravia 里直接画，也能交给 Agent 改",
+      "description": "画特效节拍：分层形状与文字铺在画布上，可导出，也可交给 Agent 继续改。",
       "badges": [
-        "不改上游",
-        "本地运行",
-        "WebGPU"
+        "默认中文",
+        "自动存档",
+        "对话可驱动"
+      ]
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "五种对象，一块画布",
+          "description": "矩形、椭圆、直线、文字、图片，都在同一份文档里，顺序就是层次。",
+          "icon": "solar:layers-minimalistic-bold"
+        },
+        {
+          "title": "吸附与对齐",
+          "description": "拖动时贴参考线，选中多个对象可以左对齐、居中、等距分布。",
+          "icon": "solar:ruler-cross-pen-bold"
+        },
+        {
+          "title": "导出 PNG 或文档 JSON",
+          "description": "图片按当前画布出图，文档存成 JSON 可以再打开接着改。",
+          "icon": "solar:export-bold"
+        },
+        {
+          "title": "对话能直接动手",
+          "description": "插图形、改属性、对齐、存图都是语义操作，不用靠点坐标。",
+          "icon": "solar:magic-stick-3-bold"
+        }
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-over-canvas",
-        "canvas": "generic",
-        "user_prompt": "打开 EffectCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "template": "chat-thread",
+        "user_prompt": "用 EffectCraft 开一块画布，画三个标题块，左对齐，然后导出 PNG。",
+        "assistant_reply": "已经建好三个矩形并设为等宽、顶部对齐；导出用当前画布出图。要不要顺手把颜色换成主题蓝？"
       }
     },
     {
-      "type": "feature-grid",
-      "title": "你能得到什么",
-      "items": [
-        {
-          "title": "原版合成器",
-          "description": "面板逐字节送出 EffectCraft 官方 web 构建；上游 wasm 与 JavaScript 不打补丁，我们只在其外围加了两个薄文件。",
-          "icon": "solar:video-frame-play-horizontal-linear"
-        },
-        {
-          "title": "在项目里打开与渲染",
-          "description": "打开用资源管理器选中的文件，渲染结果经 Astravia 写回，不落到下载文件夹。",
-          "icon": "solar:folder-with-files-linear"
-        },
-        {
-          "title": "随时要一帧看看",
-          "description": "截图工具把画布当前画面存成 PNG，在对话里就能核对合成效果。",
-          "icon": "solar:chat-round-linear"
-        },
-        {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
-          "icon": "solar:cursor-bold"
-        }
-      ]
-    },
-    {
       "type": "steps",
-      "title": "怎么开始",
       "items": [
         {
-          "title": "安装插件",
-          "description": "首次打开时下载约 22 MB 编辑器文件，之后离线复用；不需要装 GPU 驱动、Node 或桌面应用。"
+          "title": "打开 {name} 标签",
+          "description": "在活动标签里新建一块画布，默认就是中文界面。"
         },
         {
-          "title": "打开 EffectCraft 标签页",
-          "description": "编辑器需要可用的 WebGPU 适配器；没有的话启动就会失败，面板会如实报错，而不是给一张白屏。"
+          "title": "从左侧工具轨选对象",
+          "description": "拖一个矩形、椭圆或文字上去，右侧属性面板改颜色与尺寸。"
         },
         {
-          "title": "选中工程再打开",
-          "description": "在编辑器里按「文件 → 打开」，用的是 Astravia 里选中的文件，而不是系统对话框。"
+          "title": "在对话里接着说",
+          "description": "「把三个块左对齐」「加一行标题」「导出 PNG」，Agent 和你编同一份文档。"
         },
         {
-          "title": "渲染后经工作区保存",
-          "description": "渲染结果走与保存相同的桥，落在你选的位置。"
+          "title": "需要文件时再导出",
+          "description": "自动存档留在插件里；PNG 与 JSON 由你选保存位置。"
         }
       ]
     },
     {
       "type": "callout",
-      "tone": "warning",
-      "content": "这个构建走 WebGPU 渲染。没有适配器时编辑器无法启动，面板会报出启动失败，不会退回软件渲染重试。"
-    },
-    {
-      "type": "callout",
       "tone": "info",
-      "content": "界面语言：编辑器自身的界面只有英文（上游没有提供别的语言）。标签外壳、准备页与本页说明跟随 Astravia 的语言。"
-    },
-    {
-      "type": "callout",
-      "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
-    },
-    {
-      "type": "links",
-      "title": "出处",
-      "items": [
-        {
-          "label": "EffectCraft 源码",
-          "href": "https://github.com/storytold/effectcraft"
-        },
-        {
-          "label": "EffectCraft 版本发布",
-          "href": "https://github.com/storytold/effectcraft/releases"
-        }
-      ]
+      "content": "这是本插件自带的绘图内核，不下载也不加载任何外部应用；打开标签即用，关闭标签即停。"
     }
   ]
 }

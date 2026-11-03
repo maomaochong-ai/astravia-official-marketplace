@@ -1,7 +1,7 @@
 {
   "plugin.name": "Photocraft",
   "tab.label": "Photocraft",
-  "plugin.description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器；界面默认中文，也可以在对话里让它替你动手。",
+  "plugin.description": "在 Astravia 里给图片做构图与标注：裁切、色块、文字、导出 PNG，画布同样可以由对话驱动。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

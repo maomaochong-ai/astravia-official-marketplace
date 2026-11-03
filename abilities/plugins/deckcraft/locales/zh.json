@@ -1,7 +1,7 @@
 {
   "plugin.name": "DeckCraft",
   "tab.label": "DeckCraft",
-  "plugin.description": "在 Astravia 里做演示文稿——上游 DeckCraft 编辑器，带主题、版式、形状、图表、转场动画与 PowerPoint 导出。",
+  "plugin.description": "在 16:9 舞台上排幻灯片：框、标题、备注，导出 PNG。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

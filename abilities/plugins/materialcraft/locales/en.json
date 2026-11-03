@@ -1,7 +1,7 @@
 {
   "plugin.name": "MaterialCraft",
   "tab.label": "MaterialCraft",
-  "plugin.description": "Build procedural materials node by node inside Astravia — the upstream MaterialCraft editor, from a first graph to a reusable material.",
+  "plugin.description": "Collect material references on one board: swatches, labels and sample blocks, exported as PNG.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

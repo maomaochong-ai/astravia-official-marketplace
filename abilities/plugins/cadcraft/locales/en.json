@@ -1,7 +1,7 @@
 {
-  "plugin.name": "CADCraft",
-  "tab.label": "CADCraft",
-  "plugin.description": "Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files.",
+  "plugin.name": "CadCraft",
+  "tab.label": "CadCraft",
+  "plugin.description": "Draft a plan view on a ruled sheet: walls, openings and dimensions, exported as PNG or JSON.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

@@ -1,7 +1,7 @@
 {
   "plugin.name": "DeckCraft",
   "tab.label": "DeckCraft",
-  "plugin.description": "Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export.",
+  "plugin.description": "Build slide layouts on a 16:9 stage — frames, titles and notes — and export any board as PNG.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",
