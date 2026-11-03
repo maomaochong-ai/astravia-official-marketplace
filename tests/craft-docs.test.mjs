@@ -1,5 +1,5 @@
 /**
- * The seven craft plugins carry the same family decisions under seven names.
+ * Every craft plugin carries the same family decisions under its own name.
  *
  * There is no shared `docs/adr/craft/` directory any more: a family decision lives
  * next to the app it governs, and each of the seven copies is byte-identical. That
@@ -26,6 +26,7 @@ const FAMILY_DOCS = [
 	"craft-0005-the-agent-drives-the-canvas.md",
 	"craft-0006-the-skill-is-the-doorway.md",
 	"craft-0007-chinese-comes-from-the-shell.md",
+	"craft-0008-one-container-per-app.md",
 	"craft-CONTEXT.md",
 ];
 
