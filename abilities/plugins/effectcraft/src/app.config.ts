@@ -12,7 +12,7 @@ export const APP = {
   tabLabel: "EffectCraft",
   tabOrder: 18,
   serviceId: "effectcraft-hub",
-  serviceVersion: "0.0.4",
+  serviceVersion: "0.0.5",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: true,

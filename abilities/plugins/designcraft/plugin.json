@@ -2,7 +2,7 @@
   "id": "designcraft",
   "name": "DesignCraft",
   "icon": "assets/icon.png",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -35,7 +35,7 @@
         "id": "designcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.4",
+          "version": "0.0.5",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
