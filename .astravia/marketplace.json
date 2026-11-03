@@ -9887,8 +9887,8 @@
       "type": "plugin",
       "slug": "photocraft",
       "name": "Photocraft",
-      "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, also openable in a browser.",
-      "version": "0.0.11",
+      "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, driven from the conversation.",
+      "version": "0.0.12",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -9908,7 +9908,7 @@
         "i18n": {
           "zh": {
             "name": "Photocraft",
-            "description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器；界面默认中文，也可以改在浏览器里打开。",
+            "description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器；界面默认中文，也可以在对话里让它替你动手。",
             "tags": [
               "图片编辑",
               "PSD",
@@ -10101,6 +10101,25 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.11.astraviapkg",
             "sha256": "01c99531d7a7673fa99082bfa91f0df736cf309f369409b978b46a5453b667cc"
+          }
+        },
+        {
+          "version": "0.0.12",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.12.astraviapkg",
+            "sha256": "38ee4d97e053588d9146e5b0ee1728579b7889afb65cd1ca7b37160e81f15ad9"
           }
         }
       ]
@@ -12041,5 +12060,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.03-6"
+  "marketplaceVersion": "2026.11.03-7"
 }

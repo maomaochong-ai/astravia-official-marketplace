@@ -27,7 +27,7 @@
       "items": [
         {
           "title": "The real editor, unmodified",
-          "description": "The panel serves the official Photocraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "description": "The panel serves the official Photocraft web build byte for byte into the tab's iframe. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
           "icon": "solar:gallery-wide-linear"
         },
         {
@@ -37,7 +37,7 @@
         },
         {
           "title": "Speak to it in the conversation",
-          "description": "Ask for the current view, hand the editor a file, or open the same page in a browser — five tools the Agent calls, each one answered by the running page.",
+          "description": "Open the editor, read the canvas, run a batch of pointer and key steps, then read the canvas again to check — five tools the Agent calls, each one answered by the running page.",
           "icon": "solar:chat-round-linear"
         },
         {
