@@ -2,7 +2,7 @@
   "id": "photocraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -28,7 +28,7 @@
         "id": "photocraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.11",
+          "version": "0.0.12",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {

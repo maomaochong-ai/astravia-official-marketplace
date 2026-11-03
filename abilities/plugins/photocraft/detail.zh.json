@@ -27,7 +27,7 @@
       "items": [
         {
           "title": "原版编辑器，一个字节都不改",
-          "description": "面板逐字节地把 Photocraft 官方 web 构建送进浏览器；上游的 wasm 与 JavaScript 不做任何补丁，我们自己只在其外围加了两个很薄的文件。",
+          "description": "面板把 Photocraft 官方 web 构建逐字节地送进标签页里的 iframe；上游的 wasm 与 JavaScript 不做任何补丁，我们自己只在其外围加了两个很薄的文件。",
           "icon": "solar:gallery-wide-linear"
         },
         {
@@ -37,7 +37,7 @@
         },
         {
           "title": "在对话里直接指挥它",
-          "description": "要当前画面、把文件交给编辑器、或在浏览器里打开同一页——五个 Agent 工具，每一个的结果都由运行中的页面回答。",
+          "description": "开编辑器、读画布、把一批指针与键盘动作一次做完、再读一次画布核对——五个 Agent 工具，每一个的结果都由运行中的页面回答。",
           "icon": "solar:chat-round-linear"
         },
         {

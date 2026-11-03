@@ -12,7 +12,7 @@ export const APP = {
   tabLabel: "Photocraft",
   tabOrder: 16,
   serviceId: "photocraft-hub",
-  serviceVersion: "0.0.11",
+  serviceVersion: "0.0.12",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: false,
