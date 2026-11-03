@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "活动面板里的 MaterialCraft",
+      "eyebrow": "程序化材质",
+      "description": "一张解析成材质的节点图——上游 MaterialCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的图工作。",
+      "badges": [
+        "No fork",
+        "Local",
+        "Nodes"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Make a scratched brass that reads at both scales.",
+        "assistant_reply": "MaterialCraft 已打开。先用一张噪声接到粗糙度起个头，剩下的我逐个节点接上——每接一根线就核对一次预览，而不是最后才看。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "它能给你什么",
+      "items": [
+        {
+          "title": "一张图，所有通道",
+          "description": "颜色、粗糙度、金属度与高度出自同一张图，参数一动各通道仍然自洽。",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "可复用，不是一次性的",
+          "description": "材质是一张留得住的图：同一批节点接到另一个物体上，而不是手抄一遍。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "预览就是证据",
+          "description": "截图工具在每次改动后显示预览，这是唯一能确认节点真的做了它名字所说事情的办法。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "装好插件",
+          "description": "首次打开下载约 5 MB 的编辑器文件，之后离线复用。"
+        },
+        {
+          "title": "打开 MaterialCraft 标签页",
+          "description": "准备界面是 hub 正在取回 payload。"
+        },
+        {
+          "title": "打开或新建图",
+          "description": "「文件 → 打开」取 Astravia 里选中的文件；新建从空图开始。"
+        },
+        {
+          "title": "把材质导出回去",
+          "description": "导出走与保存相同的通道。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "MaterialCraft 还在 0.1：节点库很小，版本之间会变。插件跑 pinned 版本，不自己加节点。"
+    },
+    {
+      "type": "links",
+      "title": "它从哪来",
+      "items": [
+        {
+          "label": "上游仓库",
+          "href": "https://github.com/storytold/materialcraft"
+        }
+      ]
+    }
+  ]
+}

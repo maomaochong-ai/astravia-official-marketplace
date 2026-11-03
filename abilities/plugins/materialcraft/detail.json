@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "MaterialCraft in the activity panel",
+      "eyebrow": "程序化材质",
+      "description": "A node graph that resolves to a material — the upstream MaterialCraft editor running inside Astravia, on the graph you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "Nodes"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Make a scratched brass that reads at both scales.",
+        "assistant_reply": "MaterialCraft is open. Start the graph with a noise into roughness and I will add the rest node by node — checking the preview after each connection rather than at the end."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "One graph, every channel",
+          "description": "Colour, roughness, metalness and height come from the same graph, so the channels stay consistent when a parameter moves.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "Reusable, not one-off",
+          "description": "A material is a graph you keep: the same nodes drive another object instead of being rebuilt by hand.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Preview as evidence",
+          "description": "A capture tool shows the preview after each change, which is the only way to know a node actually did what its name promised.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 5 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the MaterialCraft tab",
+          "description": "The preparation screen is the hub fetching its payload."
+        },
+        {
+          "title": "Select a graph or start one",
+          "description": "File → Open takes the file selected in Astravia; a new graph starts empty."
+        },
+        {
+          "title": "Export the material back",
+          "description": "Exports travel the same bridge as saves."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "MaterialCraft is at 0.1: the node library is small and changes between releases. The plugin runs the pinned release and adds no nodes of its own."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/materialcraft"
+        }
+      ]
+    }
+  ]
+}

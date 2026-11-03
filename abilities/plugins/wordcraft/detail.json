@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "WordCraft in the activity panel",
+      "eyebrow": "文字处理",
+      "description": "A ribbon, styles, tables and tracked changes — the upstream WordCraft editor running inside Astravia, on the document you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        ".docx"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Tighten the second paragraph of report.docx and keep my changes tracked.",
+        "assistant_reply": "WordCraft is open with the document. Turn on track changes first, then I will edit in place — I would rather leave the wording to you and only touch what you point at."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "Styles carry the formatting",
+          "description": "Headings, body text and captions come from named styles, so a document holds its shape when it is edited by someone else.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": ".docx in and out",
+          "description": "Documents open from the workspace and export back to it as .docx, which is the format the rest of the world edits in.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Tracked changes, not silent edits",
+          "description": "Revisions can be recorded instead of applied quietly, so a review is a conversation about visible marks.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 20 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the WordCraft tab",
+          "description": "The preparation screen is the hub fetching its payload."
+        },
+        {
+          "title": "Select a document, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia."
+        },
+        {
+          "title": "Export back through the workspace",
+          "description": "Exports travel the same bridge as saves."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "WordCraft covers the document model it models — long-form features such as mail merge or citation managers are not there yet. The plugin runs the pinned release."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/wordcraft"
+        }
+      ]
+    }
+  ]
+}

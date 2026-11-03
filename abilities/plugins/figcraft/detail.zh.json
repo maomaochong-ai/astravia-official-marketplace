@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "活动面板里的 FigCraft",
+      "eyebrow": "界面设计",
+      "description": "画框、自动布局、组件与变量——上游 FigCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的文件工作。",
+      "badges": [
+        "No fork",
+        "Local",
+        "Prototypes"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Add a settings screen to this design file.",
+        "assistant_reply": "FigCraft 已打开并载入文件。我可以用点击把画框和组件加上去；告诉我它该对齐哪个已有页面，我会复制那套布局而不是另发明一套。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "它能给你什么",
+      "items": [
+        {
+          "title": "画框与自动布局",
+          "description": "布局是画框的属性，文字变了列表还是列表——用的是文件本身的模型，而不是绝对像素。",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "组件与变量",
+          "description": "组件、变体与变量让一次修改覆盖所有实例，设计文件不会退化成十几个近似副本。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "能指给人看的原型",
+          "description": "截图工具显示画布当前画面，状态工具报告编辑器是否启动，原型是被核对过的，不是被描述出来的。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "装好插件",
+          "description": "首次打开下载约 10 MB 的编辑器文件，之后离线复用。"
+        },
+        {
+          "title": "打开 FigCraft 标签页",
+          "description": "准备界面是 hub 正在取回 payload。"
+        },
+        {
+          "title": "选中设计文件再打开",
+          "description": "编辑器里的「文件 → 打开」取 Astravia 里选中的文件。"
+        },
+        {
+          "title": "经工作区导出",
+          "description": "导出走与保存相同的通道。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "FigCraft 尚未到 1.0：文件格式与部分编辑行为仍在变。插件跑 pinned 版本，不自己加设计功能。"
+    },
+    {
+      "type": "links",
+      "title": "它从哪来",
+      "items": [
+        {
+          "label": "上游仓库",
+          "href": "https://github.com/storytold/figcraft"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "TextureCraft in the activity panel",
+      "eyebrow": "3D 贴图",
+      "description": "Layered PBR painting, bakes and smart materials — the upstream TextureCraft editor running inside Astravia, on the mesh you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "PBR"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Give the helmet a worn metal finish.",
+        "assistant_reply": "TextureCraft is open with the mesh. I can add a metal layer and paint the scuffs where you point; tell me the base colour you want before I start."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "Paint on the model, not on a flat image",
+          "description": "Strokes land where the brush touches the surface, across UV seams, so a texture is authored on the thing it belongs to.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "Channels and bakes",
+          "description": "Base colour, roughness, metalness and the rest are separate channels that can be baked out to images and handed to a renderer.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Smart materials you can trust",
+          "description": "A smart material brings its own channels and masks, so a look is reused instead of repainted from scratch.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 9 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the TextureCraft tab",
+          "description": "The preparation screen is the hub fetching its payload."
+        },
+        {
+          "title": "Select a mesh, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia."
+        },
+        {
+          "title": "Bake and export back",
+          "description": "Bakes and exports travel the same bridge as saves."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "TextureCraft is an early release: brush engines and bake coverage are still growing. The plugin runs the pinned release and adds no painting features of its own."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/texturecraft"
+        }
+      ]
+    }
+  ]
+}

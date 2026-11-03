@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "活动面板里的 DeckCraft",
+      "eyebrow": "演示文稿",
+      "description": "主题、版式、形状与图表——上游 DeckCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的演示文稿工作。",
+      "badges": [
+        "No fork",
+        "Local",
+        ".pptx"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Turn outline.md into a deck.",
+        "assistant_reply": "DeckCraft 已打开。先在标签页里打开大纲，再让我陪你逐页过——我能在编辑器里点击和输入，但版式取舍由你定。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "它能给你什么",
+      "items": [
+        {
+          "title": "是幻灯片，不是画布",
+          "description": "每页都是带占位符的真实版式，文字、图片、图表落在对应框里，而不是逐像素拖拽。",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "能交给别人的 .pptx",
+          "description": "演示文稿从工作区打开，也能导出回工作区成为 PowerPoint 文件，接手的人用现成工具就能打开。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "问它现在第几页",
+          "description": "截图工具把画布当前画面存成 PNG，状态工具报告编辑器是否启动完成。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "装好插件",
+          "description": "首次打开下载约 12 MB 的编辑器文件，之后离线复用。"
+        },
+        {
+          "title": "打开 DeckCraft 标签页",
+          "description": "准备界面是 hub 正在取回 payload。"
+        },
+        {
+          "title": "打开或新建",
+          "description": "「文件 → 打开」取 Astravia 里选中的文件；新建从主题起步。"
+        },
+        {
+          "title": "经工作区导出 .pptx",
+          "description": "导出走与保存相同的通道。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "DeckCraft 还很年轻：PowerPoint 的部分特性缺失、文件格式仍在变。插件跑 pinned 版本，不自己加幻灯片功能。"
+    },
+    {
+      "type": "links",
+      "title": "它从哪来",
+      "items": [
+        {
+          "label": "上游仓库",
+          "href": "https://github.com/storytold/deckcraft"
+        }
+      ]
+    }
+  ]
+}

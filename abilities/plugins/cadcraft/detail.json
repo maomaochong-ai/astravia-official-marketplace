@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "CADCraft in the activity panel",
+      "eyebrow": "技术制图",
+      "description": "A command line, object snaps, layers, dimensions and hatches — the upstream CADCraft drawing editor running inside Astravia, on the drawing you opened in the workspace.",
+      "badges": [
+        "No fork",
+        "Local",
+        "DXF / DWG"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Open the floor plan DXF from this workspace.",
+        "assistant_reply": "CADCraft is open. Select the file in the Explorer and press Open — the drawing arrives in model space."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The drafting habits you already have",
+          "description": "Type L, click two points, type @5<45 — LINE, PLINE, ARC, RECTANG, SPLINE, TRIM, OFFSET, FILLET and the rest answer through the command line, with prompts, aliases and direct distance entry.",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "Drawings in your project",
+          "description": "DXF reads (R12–2018, ASCII and binary) and writes; DWG opens through the open-source acadrust library; the result goes back to the workspace instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Ask what is on the drawing",
+          "description": "A capture tool saves a PNG of what the canvas is showing and a status tool reports whether the editor finished starting, so the agent can check its own work instead of assuming.",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 11 MB of editor files arrive on first open, into the plugin's data directory, and are reused offline after that."
+        },
+        {
+          "title": "Open the CADCraft tab",
+          "description": "The preparation screen is the hub fetching its payload; later opens start from cache."
+        },
+        {
+          "title": "Select a drawing, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than showing a system dialog."
+        },
+        {
+          "title": "Plot or export back through the workspace",
+          "description": "SVG, PNG and PDF plotting travel the same bridge as saves, so the result lands where you chose."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "CADCraft describes itself as early and fast-moving: entities it does not model yet are not kept on save. The plugin runs whatever the pinned release does — it adds no drawing features of its own."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/cadcraft"
+        }
+      ]
+    }
+  ]
+}

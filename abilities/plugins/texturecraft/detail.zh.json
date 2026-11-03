@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "活动面板里的 TextureCraft",
+      "eyebrow": "3D 贴图",
+      "description": "分层 PBR 绘制、烘焙与智能材质——上游 TextureCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的模型工作。",
+      "badges": [
+        "No fork",
+        "Local",
+        "PBR"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Give the helmet a worn metal finish.",
+        "assistant_reply": "TextureCraft 已打开并载入模型。我可以加一层金属再在你指的位置画磨损；开工前告诉我底色要什么。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "它能给你什么",
+      "items": [
+        {
+          "title": "画在模型上，不是画在平面图上",
+          "description": "笔触落在笔刷真正碰到的曲面位置、跨过 UV 接缝，贴图是长在它所属的物体上的。",
+          "icon": "solar:layers-minimalistic-linear"
+        },
+        {
+          "title": "通道与烘焙",
+          "description": "底色、粗糙度、金属度等各自成通道，能烘焙成图片交给渲染器。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "可复用的智能材质",
+          "description": "智能材质自带通道与遮罩，一套观感可以复用而不是从头再画。",
+          "icon": "solar:chat-round-linear"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "装好插件",
+          "description": "首次打开下载约 9 MB 的编辑器文件，之后离线复用。"
+        },
+        {
+          "title": "打开 TextureCraft 标签页",
+          "description": "准备界面是 hub 正在取回 payload。"
+        },
+        {
+          "title": "选中模型再打开",
+          "description": "编辑器里的「文件 → 打开」取 Astravia 里选中的文件。"
+        },
+        {
+          "title": "烘焙后导出",
+          "description": "烘焙与导出走与保存相同的通道。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "TextureCraft 是早期版本：笔刷与烘焙覆盖面仍在扩展。插件跑 pinned 版本，不自己加绘制功能。"
+    },
+    {
+      "type": "links",
+      "title": "它从哪来",
+      "items": [
+        {
+          "label": "上游仓库",
+          "href": "https://github.com/storytold/texturecraft"
+        }
+      ]
+    }
+  ]
+}
