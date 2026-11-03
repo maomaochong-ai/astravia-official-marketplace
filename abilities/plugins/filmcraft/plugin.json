@@ -2,7 +2,7 @@
   "id": "filmcraft",
   "name": "FilmCraft",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -35,14 +35,14 @@
         "id": "filmcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.2",
+          "version": "0.0.3",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "4a9e6885aa4170ba2d68c561fa7fdeb39057c199a735c7123429ad305096476f",
+                  "sha256": "dbe445888ded8b37797ba6e441233940435ef8245f473958ad6f60fa761fce28",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +52,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "4a9e6885aa4170ba2d68c561fa7fdeb39057c199a735c7123429ad305096476f",
+                  "sha256": "dbe445888ded8b37797ba6e441233940435ef8245f473958ad6f60fa761fce28",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +62,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "4a9e6885aa4170ba2d68c561fa7fdeb39057c199a735c7123429ad305096476f",
+                  "sha256": "dbe445888ded8b37797ba6e441233940435ef8245f473958ad6f60fa761fce28",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +72,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "4a9e6885aa4170ba2d68c561fa7fdeb39057c199a735c7123429ad305096476f",
+                  "sha256": "dbe445888ded8b37797ba6e441233940435ef8245f473958ad6f60fa761fce28",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +82,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "4a9e6885aa4170ba2d68c561fa7fdeb39057c199a735c7123429ad305096476f",
+                  "sha256": "dbe445888ded8b37797ba6e441233940435ef8245f473958ad6f60fa761fce28",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -109,7 +109,14 @@
   "agent": {
     "skillPaths": [
       "agent/skills/filmcraft"
-    ]
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "commandPalette": "visible",
+        "skillPicker": "visible"
+      }
+    }
   },
   "description": "Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.",
   "author": "Astravia"

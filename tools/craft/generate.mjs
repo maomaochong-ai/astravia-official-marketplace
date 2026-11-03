@@ -165,12 +165,22 @@ function detailBlocks(app, lang) {
     lang === "zh"
       ? { features: "你能得到什么", steps: "怎么开始", links: "出处" }
       : { features: "What it gives you", steps: "How to start", links: "Where it comes from" };
+  // The tab shell speaks Chinese; the editor inside it may not. Say that here,
+  // next to the other limits, instead of letting it be discovered after a 40 MB
+  // download. Only apps whose upstream really has a Chinese UI skip the note.
+  const languageNote =
+    app.locale === "zh"
+      ? null
+      : lang === "zh"
+        ? "界面语言：编辑器自身的界面只有英文（上游没有提供别的语言）。标签外壳、准备页与本页说明跟随 Astravia 的语言。"
+        : "Interface language: the editor itself is English only — upstream ships no other language. The tab shell, the preparation page and this page follow your Astravia language.";
   return [
     { type: "hero", title: d.heroTitle, eyebrow: d.eyebrow, description: d.heroDescription, badges: d.badges },
     { type: "showcase", showcase: showcase(app, lang) },
     { type: "feature-grid", title: d.featuresTitle ?? titles.features, items: d.features },
     { type: "steps", title: d.stepsTitle ?? titles.steps, items: d.steps },
     ...d.callouts.map((callout) => ({ type: "callout", tone: callout.tone, content: callout.content })),
+    ...(languageNote ? [{ type: "callout", tone: "info", content: languageNote }] : []),
     { type: "links", title: d.linksTitle ?? titles.links, items: d.links },
   ];
 }
@@ -329,7 +339,17 @@ function pluginJson(app, hubSha) {
         },
       ],
     },
-    agent: { skillPaths: [`agent/skills/${app.id}`] },
+    // A plugin-provided skill is hidden from `/` and from the chat skill picker
+    // unless the manifest says otherwise: capability-sdk/domain/skill.ts falls back
+    // to "hidden" for `pluginProvided` entries. Saying "visible" here is what makes
+    // the seven skills reachable from the conversation, not just from this plugin.
+    agent: {
+      skillPaths: [`agent/skills/${app.id}`],
+      skillPresentation: {
+        defaultVisibility: "visible",
+        surfaces: { commandPalette: "visible", skillPicker: "visible" },
+      },
+    },
     description: app.summary,
     author: "Astravia",
   };
@@ -348,10 +368,10 @@ function readme(app) {
           "本来就是每次启动重算语言。详见 `docs/adr/craft/0003`。",
         ].join("\n")
       : [
-          "这个上游 web 构建没有内嵌中文字形（`unzip -l` 里只有 `OFL-noto-sans-cjk-sc.txt` 这类许可证",
-          "文本），强行切中文只会得到一屏空方框，所以界面保持英文。要支持中文需要上游把 CJK 字体加进",
-          "`theme::install` 并重编 wasm，那会产出 60–90 MB 的制品，超出 25 MB 包体上限。详见",
-          "`docs/adr/craft/0003`。",
+          "这个上游 web 构建既没有中文文案，也没有内嵌中文字形（`unzip -l` 里只有",
+          "`OFL-noto-sans-cjk-sc.txt` 这类许可证文本），强行切中文只会得到英文界面加一屏空方框。",
+          "所以界面保持英文；标签外壳、准备页与能力页说明是中文。要真正支持中文，需要上游自己",
+          "加语言表并重编 wasm，那会产出 60–90 MB 的制品。详见 `docs/adr/craft/0003`。",
         ].join("\n");
   return `# ${app.name}
 

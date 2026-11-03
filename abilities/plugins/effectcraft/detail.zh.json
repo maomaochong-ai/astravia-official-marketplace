@@ -75,6 +75,11 @@
       "content": "上游打不开 After Effects 工程文件，合成要在 EffectCraft 里搭；浏览器入口同样没有工作区绑定。"
     },
     {
+      "type": "callout",
+      "tone": "info",
+      "content": "界面语言：编辑器自身的界面只有英文（上游没有提供别的语言）。标签外壳、准备页与本页说明跟随 Astravia 的语言。"
+    },
+    {
       "type": "links",
       "title": "出处",
       "items": [

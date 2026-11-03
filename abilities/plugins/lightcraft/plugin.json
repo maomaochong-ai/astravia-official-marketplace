@@ -2,7 +2,7 @@
   "id": "lightcraft",
   "name": "LightCraft",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -35,14 +35,14 @@
         "id": "lightcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.2",
+          "version": "0.0.3",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "1aeee804290c2c3ee05d645b664ad6437bff7b5078417617977ee12a0242202b",
+                  "sha256": "21c5f5e98731430d3b4cedc608c827b0b7605a6aa1c78fc19cfaf801a61e1db2",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +52,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "1aeee804290c2c3ee05d645b664ad6437bff7b5078417617977ee12a0242202b",
+                  "sha256": "21c5f5e98731430d3b4cedc608c827b0b7605a6aa1c78fc19cfaf801a61e1db2",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +62,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "1aeee804290c2c3ee05d645b664ad6437bff7b5078417617977ee12a0242202b",
+                  "sha256": "21c5f5e98731430d3b4cedc608c827b0b7605a6aa1c78fc19cfaf801a61e1db2",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +72,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "1aeee804290c2c3ee05d645b664ad6437bff7b5078417617977ee12a0242202b",
+                  "sha256": "21c5f5e98731430d3b4cedc608c827b0b7605a6aa1c78fc19cfaf801a61e1db2",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +82,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "1aeee804290c2c3ee05d645b664ad6437bff7b5078417617977ee12a0242202b",
+                  "sha256": "21c5f5e98731430d3b4cedc608c827b0b7605a6aa1c78fc19cfaf801a61e1db2",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -109,7 +109,14 @@
   "agent": {
     "skillPaths": [
       "agent/skills/lightcraft"
-    ]
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "commandPalette": "visible",
+        "skillPicker": "visible"
+      }
+    }
   },
   "description": "Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.",
   "author": "Astravia"

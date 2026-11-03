@@ -21,7 +21,7 @@ import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 
 // Filled by scripts/build-hub.mjs from payload/manifest.json.
-const PIN = {"schemaVersion":2,"archive":"zip","version":"0.17.0","size":73311887,"sha256":"24df2d75857846ae3114293f3bef99a7b0fc83f09d329f178a76490622d389c0","sumsUrl":"https://github.com/storytold/lightcraft/releases/download/v0.17.0/SHA256SUMS.txt","localFile":"lightcraft-web-0.17.0.zip","sources":[{"id":"upstream","url":"https://github.com/storytold/lightcraft/releases/download/v0.17.0/lightcraft-web-0.17.0.zip"},{"id":"ghproxy","url":"https://ghproxy.net/https://github.com/storytold/lightcraft/releases/download/v0.17.0/lightcraft-web-0.17.0.zip"}],"upstream":"https://github.com/storytold/lightcraft","app":{"id":"lightcraft","name":"LightCraft","envPrefix":"LIGHTCRAFT","sizeLabel":"70 MB","locale":"zh"}};
+const PIN = {"schemaVersion":2,"archive":"zip","version":"0.17.0","size":73311887,"sha256":"24df2d75857846ae3114293f3bef99a7b0fc83f09d329f178a76490622d389c0","sumsUrl":"https://github.com/storytold/lightcraft/releases/download/v0.17.0/SHA256SUMS.txt","localFile":"lightcraft-web-0.17.0.zip","sources":[{"id":"upstream","url":"https://github.com/storytold/lightcraft/releases/download/v0.17.0/lightcraft-web-0.17.0.zip"},{"id":"ghproxy","url":"https://ghproxy.net/https://github.com/storytold/lightcraft/releases/download/v0.17.0/lightcraft-web-0.17.0.zip"}],"upstream":"https://github.com/storytold/lightcraft","app":{"id":"lightcraft","name":"LightCraft","envPrefix":"LIGHTCRAFT","sizeLabel":"70 MB","locale":null}};
 // Filled by scripts/build-hub.mjs from src/bridge/host-bridge.js.
 const HOST_BRIDGE_JS = "/*\n * Craft host bridge — the only script we add to the upstream page.\n *\n * Rule zero: look at the shape first, and let anything we do not recognise go\n * straight through to the browser. If upstream changes how it opens or saves,\n * this script must degrade to the native behaviour, never corrupt bytes.\n *\n * It runs in two containers and must behave differently in each:\n *   docked     (host activity tab, `window.parent !== window`) -> take over the\n *              two seams and move bytes over postMessage to the host.\n *   standalone (host browser panel, system browser)            -> do nothing.\n *\n * Seams (ADR 0002):\n *   open  - rfd's wasm backend builds `<input type=file>` and calls click();\n *   save  - the web shell builds `<a download href=\"blob:…\">` and clicks it.\n *\n * The same file is shipped by every craft plugin: it knows nothing about a\n * particular app, only about the shape of those two seams and of the loading\n * element (`<id>_loading`) upstream removes once the editor is up.\n *\n * ADR: docs/adr/photocraft/0002-bytes-move-through-the-host.md\n */\n(function () {\n  \"use strict\";\n\n  var parentWindow = window.parent;\n  var docked = parentWindow && parentWindow !== window;\n  if (!docked) return;\n\n  var seq = 0;\n  var waiting = new Map();\n  var staged = null;\n  var nativeInputClick = HTMLInputElement.prototype.click;\n  var nativeAnchorClick = HTMLAnchorElement.prototype.click;\n  var FALLBACK_MS = 60000;\n  var CAPTURE_NAME = \"canvas.png\";\n\n  function post(message, transfer) {\n    try {\n      parentWindow.postMessage(message, \"*\", transfer || []);\n    } catch (error) {\n      /* a dead parent is not our problem; upstream keeps working */\n    }\n  }\n\n  function reply(id, payload, transfer) {\n    var message = { type: \"craft:reply\", id: id };\n    if (payload) for (var key in payload) message[key] = payload[key];\n    post(message, transfer);\n  }\n\n  function describe(input) {\n    return {\n      accept: input.accept || \"\",\n      multiple: !!input.multiple,\n    };\n  }\n\n  function deliver(input, payload) {\n    var bytes = payload.bytes;\n    var file;\n    try {\n      file = new File([bytes], payload.name || \"document\", {\n        type: payload.mime || \"application/octet-stream\",\n      });\n    } catch (error) {\n      file = new Blob([bytes], { type: payload.mime || \"application/octet-stream\" });\n      try {\n        Object.defineProperty(file, \"name\", { value: payload.name || \"document\" });\n      } catch (ignored) {\n        /* rfd reads input.files, which we set below */\n      }\n    }\n    var data = new DataTransfer();\n    data.items.add(file);\n    input.files = data.files;\n    input.dispatchEvent(new Event(\"change\", { bubbles: true }));\n  }\n\n  function cancel(input) {\n    input.dispatchEvent(new Event(\"cancel\", { bubbles: true }));\n  }\n\n  /** `accept` is a comma list of extensions and MIME types; empty means anything. */\n  function accepts(input, name, mime) {\n    var accept = (input.accept || \"\").trim();\n    if (!accept) return true;\n    var ext = (name || \"\").slice(((name || \"\").lastIndexOf(\".\") >>> 0) + 1).toLowerCase();\n    var parts = accept.split(\",\");\n    for (var i = 0; i < parts.length; i++) {\n      var token = parts[i].trim().toLowerCase();\n      if (!token) continue;\n      if (token === \".\" + ext) return true;\n      if (token.slice(-2) === \"/*\" && mime && mime.toLowerCase().indexOf(token.slice(0, -1)) === 0) return true;\n      if (mime && token === mime.toLowerCase()) return true;\n    }\n    return false;\n  }\n\n  // ------------------------------------------------------------- open seam\n\n  HTMLInputElement.prototype.click = function () {\n    var input = this;\n    if (!input || input.type !== \"file\") return nativeInputClick.apply(input, arguments);\n\n    // A file the host staged (agent tool, or a selection handed over earlier) is\n    // handed straight to the app: the user already said which file is meant.\n    if (staged && accepts(input, staged.name, staged.mime)) {\n      var chosen = staged;\n      staged = null;\n      deliver(input, chosen);\n      return undefined;\n    }\n\n    var id = \"open-\" + ++seq;\n    waiting.set(id, input);\n    post({ type: \"craft:pickOpen\", id: id, accept: input.accept || \"\", multiple: !!input.multiple });\n\n    // If the host never answers (tab hidden, plugin reloading), fall back to the\n    // browser's own picker instead of leaving the editor stuck forever.\n    setTimeout(function () {\n      if (waiting.delete(id)) nativeInputClick.call(input);\n    }, FALLBACK_MS);\n    return undefined;\n  };\n\n  // ------------------------------------------------------------- save seam\n\n  HTMLAnchorElement.prototype.click = function () {\n    var anchor = this;\n    var args = arguments;\n    var href = anchor && anchor.getAttribute ? anchor.getAttribute(\"href\") || \"\" : \"\";\n    var isDownload = !!anchor && anchor.hasAttribute && anchor.hasAttribute(\"download\");\n    if (!anchor || !isDownload || href.slice(0, 5) !== \"blob:\") {\n      return nativeAnchorClick.apply(anchor, args);\n    }\n\n    var id = \"save-\" + ++seq;\n    var name = anchor.getAttribute(\"download\") || \"export\";\n    fetch(href)\n      .then(function (response) {\n        return response.arrayBuffer();\n      })\n      .then(function (bytes) {\n        post(\n          {\n            type: \"craft:save\",\n            id: id,\n            name: name,\n            mime: anchor.getAttribute(\"type\") || \"\",\n            bytes: bytes,\n          },\n          [bytes],\n        );\n      })\n      .catch(function (error) {\n        post({ type: \"craft:error\", id: id, message: String((error && error.message) || error) });\n        nativeAnchorClick.apply(anchor, args);\n      });\n\n    // Never let the browser start its own download for a blob we are handling.\n    return undefined;\n  };\n\n  // ------------------------------------------------------------- messages\n\n  window.addEventListener(\"message\", function (event) {\n    if (event.source !== parentWindow) return;\n    var data = event.data;\n    if (!data || typeof data !== \"object\") return;\n\n    if (data.type === \"craft:open\") {\n      var input = waiting.get(data.id);\n      if (!input) return;\n      waiting.delete(data.id);\n      if (data.bytes) deliver(input, data);\n      else cancel(input);\n      return;\n    }\n\n    // The host has no single file selected: leave the choice to the browser.\n    if (data.type === \"craft:fallback\") {\n      var fallback = waiting.get(data.id);\n      if (!fallback) return;\n      waiting.delete(data.id);\n      nativeInputClick.call(fallback);\n      return;\n    }\n\n    if (data.type === \"craft:cancel\") {\n      var target = waiting.get(data.id);\n      if (!target) return;\n      waiting.delete(data.id);\n      cancel(target);\n      return;\n    }\n\n    // Stage bytes for the next file the app asks for (host agent tool).\n    if (data.type === \"craft:stage\") {\n      if (!data.bytes) {\n        staged = null;\n        reply(data.id, { ok: true, staged: null });\n        return;\n      }\n      staged = { name: data.name || \"document\", mime: data.mime || \"\", bytes: data.bytes };\n      reply(data.id, { ok: true, staged: staged.name });\n      return;\n    }\n\n    if (data.type === \"craft:inspect\") {\n      var canvas = canvasNode();\n      reply(data.id, {\n        ok: true,\n        href: location.href,\n        secure: !!window.isSecureContext,\n        ready: loaderText() === null,\n        canvas: canvas ? { width: canvas.width, height: canvas.height } : null,\n        staged: staged ? staged.name : null,\n      });\n      return;\n    }\n\n    if (data.type === \"craft:capture\") {\n      capture(data);\n    }\n  });\n\n  function canvasNode() {\n    var canvas = document.querySelector(\"canvas\");\n    return canvas && canvas.width > 0 ? canvas : null;\n  }\n\n  /** PNG of whatever the app is showing. Tainted canvases fail loudly, not silently. */\n  function capture(data) {\n    var canvas = canvasNode();\n    if (!canvas) {\n      reply(data.id, { ok: false, error: \"no-canvas\" });\n      return;\n    }\n    var url;\n    try {\n      url = canvas.toDataURL(\"image/png\");\n    } catch (error) {\n      reply(data.id, { ok: false, error: String((error && error.message) || \"capture-failed\") });\n      return;\n    }\n    var comma = url.indexOf(\",\");\n    if (url.slice(0, 5) !== \"data:\" || comma < 0) {\n      reply(data.id, { ok: false, error: \"capture-empty\" });\n      return;\n    }\n    var binary = atob(url.slice(comma + 1));\n    var bytes = new Uint8Array(binary.length);\n    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);\n    reply(\n      data.id,\n      { ok: true, name: data.name || CAPTURE_NAME, mime: \"image/png\", bytes: bytes.buffer },\n      [bytes.buffer],\n    );\n  }\n\n  // ------------------------------------------------------------- boot watch\n\n  // \"ready\" must mean \"the editor started\", not \"this script ran\". Every web shell\n  // here removes its `#<app>_loading` element on success and rewrites it with a\n  // failure sentence otherwise, so that element is the only signal available; a\n  // shell without one is judged by its first non-empty canvas.\n  var BOOT_MS = 60000;\n\n  function loaderText() {\n    var el = document.querySelector('[id$=\"_loading\"]');\n    if (el) return el.textContent || \"\";\n    // No loading element at all: a drawn canvas means it made it, a visible\n    // \"stalled\" panel means it did not.\n    var stalled = document.querySelector('[id$=\"_stalled\"]');\n    if (stalled && !stalled.hidden) return stalled.textContent || \"failed to start\";\n    return canvasNode() ? null : \"\";\n  }\n\n  function announceBoot(backend) {\n    var started = Date.now();\n    var done = false;\n    var timer = setInterval(function () {\n      if (done) return clearInterval(timer);\n      var text = loaderText();\n      if (text === null) {\n        done = true;\n        clearInterval(timer);\n        post({ type: \"craft:ready\", backend: backend, href: location.href, secure: !!window.isSecureContext });\n        return;\n      }\n      var failed = /failed to start|failed to load|device lost/i.test(text);\n      var waited = Date.now() - started > BOOT_MS;\n      if (failed || waited) {\n        done = true;\n        clearInterval(timer);\n        post({\n          type: \"craft:error\",\n          backend: backend,\n          message: text || (failed ? \"failed to start\" : \"boot-timeout\"),\n        });\n      }\n    }, 200);\n  }\n\n  function backend() {\n    if (!navigator.gpu) return Promise.resolve(\"cpu-or-gl\");\n    var timeout = new Promise(function (resolve) {\n      setTimeout(function () {\n        resolve(\"gpu-unknown\");\n      }, 2500);\n    });\n    var probe = navigator.gpu\n      .requestAdapter()\n      .then(function (adapter) {\n        return adapter ? \"gpu\" : \"cpu-or-gl\";\n      })\n      .catch(function () {\n        return \"cpu-or-gl\";\n      });\n    return Promise.race([probe, timeout]);\n  }\n\n  backend().then(announceBoot);\n\n  window.addEventListener(\"error\", function (event) {\n    post({ type: \"craft:error\", message: String((event && event.message) || \"script-error\") });\n  });\n  window.addEventListener(\"unhandledrejection\", function (event) {\n    post({ type: \"craft:error\", message: String((event && event.reason) || \"unhandled-rejection\") });\n  });\n})();\n";
 
@@ -532,17 +532,26 @@ function send(res, status, type, body, extra = {}) {
   else res.end(body);
 }
 
+/**
+ * First-run copy. One promise (this happens once), one honest progress reading,
+ * four named steps. Diagnostics stay folded away until something really failed.
+ */
 const WAITING_COPY = {
   zh: {
-    /* First-run wording: one promise (it happens once), no diagnostics. */
+    firstOpen: "首次打开",
     preparing: "正在准备编辑器",
-    lede: "首次打开需要下载编辑器文件，只需要这一次；之后每次打开都是秒开的。",
+    lede: "第一次打开要先取回编辑器本体，只需要这一次；之后每次打开都能直接进入。",
     ledeSized: (size) =>
-      "首次打开需要下载约 " + size + " 的编辑器文件，只需要这一次；之后每次打开都是秒开的。",
+      "第一次打开要先取回约 " + size + " 的编辑器本体，只需要这一次；之后每次打开都能直接进入。",
+    steps: ["检查本机文件", "下载编辑器", "校验完整性", "启动"],
     checking: "正在检查本机已有的文件…",
-    hint: "准备完成后会自动进入编辑器，不需要刷新。",
+    verifying: "正在校验文件完整性…",
+    launching: "正在启动编辑器…",
+    unknown: "正在准备…",
+    waited: "已等待 {n} 秒",
+    hint: "准备完成后会自动进入编辑器，不需要刷新页面。",
     failedTitle: "暂时没能取到编辑器文件",
-    failedLede: "已经按顺序试过所有下载来源。网络恢复后会自动继续，也可以现在重试。",
+    failedLede: "所有下载来源都已依次试过。网络恢复后会自动继续，也可以现在重试。",
     retry: "立即重试",
     retrying: "正在重试…",
     details: "技术细节",
@@ -550,12 +559,19 @@ const WAITING_COPY = {
     config: "配置：",
   },
   en: {
-    /* Same promise in English; the sizing sentence is built by `ledeSized`. */
+    firstOpen: "First open",
     preparing: "Preparing the editor",
-    lede: "The first open downloads the editor files. It happens once; every later open is immediate.",
+    lede: "The first open fetches the editor itself. It happens once; every later open goes straight in.",
     ledeSized: (size) =>
-      "The first open downloads about " + size + " of editor files. It happens once; every later open is immediate.",
+      "The first open fetches about " +
+      size +
+      " of editor files. It happens once; every later open goes straight in.",
+    steps: ["Check local files", "Download", "Verify", "Launch"],
     checking: "Checking the files already on this machine…",
+    verifying: "Verifying the downloaded bytes…",
+    launching: "Starting the editor…",
+    unknown: "Preparing…",
+    waited: "Waiting {n}s",
     hint: "This window opens the editor as soon as it is ready. No refresh needed.",
     failedTitle: "Could not fetch the editor files",
     failedLede: "Every download source was tried in order. It resumes automatically, or try now.",
@@ -566,6 +582,19 @@ const WAITING_COPY = {
     config: "Config:",
   },
 };
+
+/**
+ * Which of the four steps the hub is on. The page polls the same phase the server
+ * already holds, so the steps and the bar never disagree with each other.
+ * `checking` covers both "look on disk first" and "hash what we fetched": the
+ * difference is whether the counters already reached the total.
+ */
+function stepOf(phase, received, total) {
+  if (phase === "ready") return 3;
+  if (phase === "downloading") return 1;
+  if (phase === "checking") return total > 0 && received >= total ? 2 : 0;
+  return 0;
+}
 
 /** The tab passes the host's UI locale as `hl=`; a direct hit falls back to the request header. */
 function pickLang(url, req) {
@@ -580,9 +609,10 @@ function waitingPage(lang) {
   const failed = state.phase === "failed";
   const total = state.total || 0;
   const received = state.received || 0;
-  const percent = total > 0 ? Math.min(100, Math.round((received * 100) / total)) : 0;
+  const known = total > 0;
+  const percent = known ? Math.min(100, Math.round((received * 100) / total)) : 0;
   const mb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
-  const meter = total > 0 ? percent + "% · " + mb(received) + " / " + mb(total) + " MB" : copy.checking;
+  const step = stepOf(state.phase, received, total);
   const lede = SIZE_LABEL && !failed ? copy.ledeSized(SIZE_LABEL) : copy.lede;
 
   const attempts = state.attempts.length
@@ -607,15 +637,49 @@ function waitingPage(lang) {
     ? "<p>" +
       copy.config +
       "<br><code>" +
-      escapeHtml(configPath()) +
-      (config.error ? "</code><br><code>" + escapeHtml(config.error) : "") +
-      "</code></p>"
+      escapeHtml(configPath() || "") +
+      "</code>" +
+      (config.error ? "<br><code>" + escapeHtml(config.error) + "</code>" : "") +
+      "</p>"
     : "";
 
-  const head = failed
-    ? "<h1>" + copy.failedTitle + "</h1><p class=lede>" + copy.failedLede + "</p>" +
-      "<p><button id=craft-retry>" + copy.retry + "</button></p>" +
-      "<details><summary>" +
+  const stepsHtml = copy.steps
+    .map(
+      (label, index) =>
+        "<li class=" + (index < step ? "done" : index === step ? "now" : "next") + ">" + label + "</li>",
+    )
+    .join("");
+
+  // A bar that is always on screen, whether or not the server advertised a size:
+  // a determinate fill when the total is known, a sliding one when it is not.
+  const progress =
+    "<div class=row><span class=pct id=craft-pct>" +
+    (known ? percent + "%" : "—") +
+    "</span><span class=bytes id=craft-bytes data-wait=\"" +
+    escapeHtml(copy.unknown) +
+    "\" data-verifying=\"" +
+    escapeHtml(copy.verifying) +
+    "\" data-launching=\"" +
+    escapeHtml(copy.launching) +
+    "\">" +
+    escapeHtml(known ? mb(received) + " / " + mb(total) + " MB" : copy.checking) +
+    "</span></div><div class=track><div class=\"fill" +
+    (known ? "" : " boot") +
+    "\" id=craft-bar" +
+    (known ? " style=\"width:" + percent + "%\"" : "") +
+    "></div></div><ol class=steps id=craft-steps>" +
+    stepsHtml +
+    "</ol>";
+
+  const body = failed
+    ? "<h1>" +
+      copy.failedTitle +
+      "</h1><p class=lede>" +
+      copy.failedLede +
+      "</p><p><button id=craft-retry>" +
+      copy.retry +
+      "</button></p>" +
+      "<div class=fail><details><summary>" +
       copy.details +
       "</summary>" +
       (state.error ? "<p><code>" + escapeHtml(state.error) + "</code></p>" : "") +
@@ -624,30 +688,42 @@ function waitingPage(lang) {
       configHint +
       "<p class=mono>Phase: " +
       escapeHtml(state.phase) +
-      " · /api/state</p></details>"
+      " · /api/state</p></details></div>"
     : "<h1>" +
       copy.preparing +
       "</h1><p class=lede>" +
       lede +
-      "</p><div class=track><div class=\"fill" +
-      (total > 0 ? "" : " boot") +
-      "\" id=craft-bar" +
-      (total > 0 ? " style=\"width:" + percent + "%\"" : "") +
-      "></div></div><p class=meter id=craft-meter data-wait=\"" +
-      escapeHtml(copy.checking) +
-      "\">" +
-      escapeHtml(meter) +
-      "</p><p class=hint>" +
+      "</p>" +
+      progress +
+      "<p class=hint>" +
       copy.hint +
-      "</p>";
+      "</p><p class=waited id=craft-waited></p>";
 
   const poll =
     "<script>(function(){" +
-    "var bar=document.getElementById('craft-bar'),meter=document.getElementById('craft-meter');" +
-    "function paint(s){var t=s.total||0,g=s.received||0;" +
+    "var bar=document.getElementById('craft-bar'),pct=document.getElementById('craft-pct')," +
+    "bytes=document.getElementById('craft-bytes'),steps=document.getElementById('craft-steps').children," +
+    "waited=document.getElementById('craft-waited'),fmt=" +
+    JSON.stringify(copy.waited) +
+    ",t0=Date.now(),n=0;" +
+    "function stepOf(s){var t=s.total||0,g=s.received||0;" +
+    "if(s.phase==='ready')return 3;if(s.phase==='downloading')return 1;" +
+    "if(s.phase==='checking')return(t>0&&g>=t)?2:0;return 0}" +
+    "function setSteps(at){for(var i=0;i<steps.length;i++){steps[i].className=i<at?'done':(i===at?'now':'next')}}" +
+    "function paint(s){var t=s.total||0,g=s.received||0,at=stepOf(s);" +
     "if(t>0){var p=Math.min(100,Math.round(g*100/t));" +
-    "if(bar){bar.style.width=p+'%'}if(meter){meter.textContent=p+'% · '+(g/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' MB'}}" +
-    "if(s.phase==='ready'){location.replace(location.pathname+location.search)}else if(s.phase==='failed'){location.reload()}}" +
+    "if(bar){bar.className='fill';bar.style.width=p+'%'}" +
+    "if(pct){pct.textContent=p+'%'}" +
+    "if(bytes){bytes.textContent=(g/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' MB'}" +
+    "if(bytes&&s.phase==='checking'&&g>=t){bytes.textContent=bytes.getAttribute('data-verifying')}}" +
+    "else if(bytes){" +
+    "if(bar&&bar.className.indexOf('boot')<0){bar.className='fill boot'}" +
+    "if(pct&&pct.textContent!=='—'){pct.textContent='—'}" +
+    "bytes.textContent=bytes.getAttribute('data-wait')}" +
+    "setSteps(at);" +
+    "if(s.phase==='ready'){location.replace(location.pathname+location.search)}" +
+    "else if(s.phase==='failed'){location.reload()}}" +
+    "setInterval(function(){waited.textContent=fmt.replace('{n}',++n)},1000);" +
     "setInterval(function(){fetch('/api/state',{cache:'no-store'}).then(function(r){return r.json()}).then(paint).catch(function(){})},700)" +
     "})()</script>";
 
@@ -658,45 +734,70 @@ function waitingPage(lang) {
     ";fetch('/api/retry',{cache:'no-store'}).then(function(){setTimeout(function(){location.reload()},900)})" +
     ".catch(function(){location.reload()})})})()</script>";
 
-  return Buffer.from(
+  const head =
     "<!doctype html><html lang=" +
-      lang +
-      "><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">" +
-      "<title>" +
-      escapeHtml(APP_NAME) +
-      "</title><style>" +
-      "*{box-sizing:border-box}" +
-      "body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px;" +
-      "background:radial-gradient(1200px 600px at 50% -10%,#1c2436 0%,#0d1015 60%);" +
-      "color:#e7eaf0;font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}" +
-      ".card{width:100%;max-width:560px}" +
-      ".brand{display:flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.08em;" +
-      "text-transform:uppercase;color:#8b97ad}" +
-      ".brand i{width:10px;height:10px;border-radius:50%;background:#7f9cf5;box-shadow:0 0 0 4px rgba(127,156,245,.16)}" +
-      "h1{margin:18px 0 10px;font-size:26px;line-height:1.3;font-weight:600;letter-spacing:-.01em}" +
-      ".lede{margin:0 0 26px;color:#a8b2c4}" +
-      ".track{height:6px;border-radius:99px;background:#232937;overflow:hidden}" +
-      ".fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#7f9cf5,#9d7bf0);transition:width .3s ease}" +
-      ".fill.boot{width:12%;animation:craft-boot 1.4s ease-in-out infinite}" +
-      "@keyframes craft-boot{0%{margin-left:-12%}100%{margin-left:100%}}" +
-      ".meter{margin:10px 0 0;font-variant-numeric:tabular-nums;font-size:13px;color:#8b97ad}" +
-      ".hint{margin:22px 0 0;font-size:13px;color:#6f7a8d}" +
-      "button{font:inherit;color:#0d1015;background:#7f9cf5;border:0;border-radius:8px;" +
-      "padding:9px 18px;font-weight:600;cursor:pointer}" +
-      "button[disabled]{opacity:.6;cursor:default}" +
-      "details{margin-top:26px;font-size:13px;color:#8b97ad}" +
-      "summary{cursor:pointer}" +
-      "code{color:#e2b3b3;word-break:break-all;font-size:12px}" +
-      "ul{padding-left:18px;margin:8px 0}li{margin:2px 0}" +
-      ".mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6f7a8d}" +
-      "</style><div class=card><div class=brand><i></i>" +
-      escapeHtml(APP_NAME) +
-      "</div>" +
-      head +
-      "</div>" +
-      (failed ? retry : poll),
-    "utf8",
-  );
+    lang +
+    "><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">" +
+    "<title>" +
+    escapeHtml(APP_NAME) +
+    "</title><style>" +
+    "*{box-sizing:border-box}" +
+    "body{margin:0;min-height:100vh;display:grid;place-items:center;padding:36px 28px;" +
+    "background:radial-gradient(900px 460px at 50% -6%,rgba(127,156,245,.13),transparent 68%),#0b0e14;" +
+    "color:#e8ecf4;font:15px/1.7 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;" +
+    "-webkit-font-smoothing:antialiased}" +
+    ".card{width:100%;max-width:600px;padding:30px 32px 28px;border-radius:16px;" +
+    "border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));" +
+    "box-shadow:0 24px 60px -26px rgba(0,0,0,.75)}" +
+    ".brand{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.12em;" +
+    "text-transform:uppercase;color:#8f9bb3}" +
+    ".brand i{width:9px;height:9px;border-radius:50%;background:#7f9cf5;box-shadow:0 0 0 4px rgba(127,156,245,.15)}" +
+    ".brand b{font-weight:600;color:#c9d3e6;letter-spacing:.06em}" +
+    ".tag{margin-left:auto;letter-spacing:.04em;text-transform:none;font-size:12px;color:#7f8ba3;" +
+    "border:1px solid #232a3a;border-radius:99px;padding:2px 10px}" +
+    "h1{margin:16px 0 8px;font-size:22px;line-height:1.35;font-weight:600;letter-spacing:-.01em}" +
+    ".lede{margin:0 0 24px;font-size:14px;color:#9aa6bb}" +
+    ".row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}" +
+    ".pct{font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#dfe6f3}" +
+    ".bytes{font-size:12.5px;color:#8b97ad;font-variant-numeric:tabular-nums}" +
+    ".track{height:8px;border-radius:99px;background:#1b2130;overflow:hidden}" +
+    ".fill{position:relative;height:100%;width:0;border-radius:99px;" +
+    "background:linear-gradient(90deg,#7f9cf5,#a78bfa);transition:width .45s cubic-bezier(.22,.61,.36,1)}" +
+    ".fill.boot{width:34%;animation:craft-boot 1.5s ease-in-out infinite}" +
+    "@keyframes craft-boot{0%{margin-left:-34%}100%{margin-left:100%}}" +
+    ".fill::after{content:'';position:absolute;inset:0;border-radius:99px;" +
+    "background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);" +
+    "animation:craft-shine 1.9s linear infinite}" +
+    "@keyframes craft-shine{from{transform:translateX(-100%)}to{transform:translateX(100%)}}" +
+    ".steps{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;padding:0;list-style:none;font-size:12px;color:#6b768c}" +
+    ".steps li{display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;" +
+    "border:1px solid #1e2433;background:#111620}" +
+    ".steps li::before{content:'';width:6px;height:6px;border-radius:50%;background:#39415a}" +
+    ".steps li.now{color:#cfd8ea;border-color:rgba(127,156,245,.45);background:rgba(127,156,245,.1)}" +
+    ".steps li.now::before{background:#7f9cf5;box-shadow:0 0 0 3px rgba(127,156,245,.18)}" +
+    ".steps li.done{color:#8b97ad}" +
+    ".steps li.done::before{background:#3f9d7a}" +
+    ".hint{margin:20px 0 0;font-size:12.5px;color:#66718a}" +
+    ".waited{margin:6px 0 0;font-size:12px;color:#4d576b;font-variant-numeric:tabular-nums;min-height:18px}" +
+    "button{font:inherit;color:#0b0e14;background:#7f9cf5;border:0;border-radius:9px;" +
+    "padding:9px 18px;font-weight:600;cursor:pointer}" +
+    "button[disabled]{opacity:.6;cursor:default}" +
+    ".fail{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06)}" +
+    "details{margin-top:0;font-size:12.5px;color:#8b97ad}" +
+    "summary{cursor:pointer}" +
+    "code{color:#e2b3b3;word-break:break-all;font-size:12px}" +
+    "ul{padding-left:18px;margin:8px 0}li{margin:2px 0}" +
+    ".mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#5a6478}" +
+    "</style><div class=card><div class=brand><i></i><b>" +
+    escapeHtml(APP_NAME) +
+    "</b>" +
+    (failed ? "" : "<span class=tag>" + escapeHtml(copy.firstOpen) + "</span>") +
+    "</div>" +
+    body +
+    "</div>" +
+    (failed ? retry : poll);
+
+  return Buffer.from(head, "utf8");
 }
 
 function escapeHtml(value) {

@@ -18,7 +18,7 @@ export const APPS = [
     name: "Photocraft",
     tabLabel: "Photocraft",
     tabOrder: 16,
-    pluginVersion: "0.0.6",
+    pluginVersion: "0.0.7",
     serviceId: "photocraft-hub",
     repo: "https://github.com/storytold/photocraft",
     license: "MIT OR Apache-2.0",
@@ -191,7 +191,7 @@ export const APPS = [
     name: "DesignCraft",
     tabLabel: "DesignCraft",
     tabOrder: 17,
-    pluginVersion: "0.0.2",
+    pluginVersion: "0.0.3",
     serviceId: "designcraft-hub",
     repo: "https://github.com/storytold/designcraft",
     license: "MIT OR Apache-2.0",
@@ -360,7 +360,7 @@ export const APPS = [
     name: "EffectCraft",
     tabLabel: "EffectCraft",
     tabOrder: 18,
-    pluginVersion: "0.0.2",
+    pluginVersion: "0.0.3",
     serviceId: "effectcraft-hub",
     repo: "https://github.com/storytold/effectcraft",
     license: "MIT OR Apache-2.0",
@@ -529,7 +529,7 @@ export const APPS = [
     name: "FilmCraft",
     tabLabel: "FilmCraft",
     tabOrder: 19,
-    pluginVersion: "0.0.2",
+    pluginVersion: "0.0.3",
     serviceId: "filmcraft-hub",
     repo: "https://github.com/storytold/filmcraft",
     license: "MIT OR Apache-2.0",
@@ -696,7 +696,7 @@ export const APPS = [
     name: "LightCraft",
     tabLabel: "LightCraft",
     tabOrder: 20,
-    pluginVersion: "0.0.2",
+    pluginVersion: "0.0.3",
     serviceId: "lightcraft-hub",
     repo: "https://github.com/storytold/lightcraft",
     license: "MIT OR Apache-2.0",
@@ -715,7 +715,9 @@ export const APPS = [
       sizeLabel: "70 MB",
     },
     seed: null,
-    locale: "zh",
+    // No Chinese UI upstream (`crates/ui-egui` has no i18n module at all), and a
+    // forced `zh` would only make the app fall back to its untranslated default.
+    locale: null,
     nosw: false,
     docs: { kind: "user", path: "docs/user" },
     skill: {
@@ -723,7 +725,7 @@ export const APPS = [
       description:
         "Catalog photos and develop raw files in LightCraft inside Astravia: import, cull, grade, and export. Use when the task is photo selection, raw development, or a batch of images that needs consistent treatment.",
       intro:
-        "LightCraft is a photo library and raw developer — the open-source alternative to Lightroom. The tab runs upstream's own web build unmodified; the payload is large because it carries the Chinese UI font and the raw pipeline.",
+        "LightCraft is a photo library and raw developer — the open-source alternative to Lightroom. The tab runs upstream's own web build unmodified; the payload is large because the raw pipeline and the CJK fonts it embeds for document text travel with it.",
     },
     detail: {
       en: {
@@ -865,7 +867,7 @@ export const APPS = [
     name: "PDFCraft",
     tabLabel: "PDFCraft",
     tabOrder: 21,
-    pluginVersion: "0.0.2",
+    pluginVersion: "0.0.3",
     serviceId: "pdfcraft-hub",
     repo: "https://github.com/storytold/pdfcraft",
     license: "MIT OR Apache-2.0",
@@ -1032,7 +1034,7 @@ export const APPS = [
     name: "VectorCraft",
     tabLabel: "VectorCraft",
     tabOrder: 22,
-    pluginVersion: "0.0.2",
+    pluginVersion: "0.0.3",
     serviceId: "vectorcraft-hub",
     repo: "https://github.com/storytold/vectorcraft",
     license: "MIT OR Apache-2.0",

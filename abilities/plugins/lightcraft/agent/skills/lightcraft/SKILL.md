@@ -6,7 +6,7 @@ description: Catalog photos and develop raw files in LightCraft inside Astravia:
 
 # LightCraft
 
-LightCraft is a photo library and raw developer — the open-source alternative to Lightroom. The tab runs upstream's own web build unmodified; the payload is large because it carries the Chinese UI font and the raw pipeline.
+LightCraft is a photo library and raw developer — the open-source alternative to Lightroom. The tab runs upstream's own web build unmodified; the payload is large because the raw pipeline and the CJK fonts it embeds for document text travel with it.
 
 ## 在对话里怎么用它
 

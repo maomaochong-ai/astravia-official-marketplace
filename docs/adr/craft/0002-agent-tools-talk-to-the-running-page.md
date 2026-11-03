@@ -20,5 +20,11 @@
 `agent.toolHandler.execute`，缺一个就静默不注册（`RootOverlayViews-B3o5AIhT.js`），所以
 两份权限都写进了 `plugin.json`；`agent.skillPaths` 会经 `listPluginManifestResources()`
 进包，实测 `.astraviapkg` 内含 `agent/skills/<id>/SKILL.md` 与 `references/**`。
+但进包不等于能被看见：`capability-sdk/domain/skill.ts` 对 `pluginProvided` 且没有 `presentation`
+的技能兜底成 `"hidden"`，于是 `/` 与对话里的技能按钮都不会列出来。`plugin.json` 的
+`agent.skillPresentation` 是唯一杠杆（宿主 `plugin-runtime-config-builder.ts:97-102` 只透传它），
+所以七份 manifest 都写 `{ defaultVisibility: "visible", surfaces: { commandPalette: "visible",
+skillPicker: "visible" } }`。`surfaces` 是 `additionalProperties: false` 的白名单，写错键名不会被忽略
+而是直接报错。
 Inferred：五个工具在真实对话里被模型选中的准确率没有测过；本仓库只证明了它们能被注册、
 参数合法、返回值可序列化。

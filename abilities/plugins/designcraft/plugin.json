@@ -2,7 +2,7 @@
   "id": "designcraft",
   "name": "DesignCraft",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -35,14 +35,14 @@
         "id": "designcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.2",
+          "version": "0.0.3",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbb2fd8fa6d368b49a26a74e2ca00e7325e569bfc1d115da176795e59f9f7abc",
+                  "sha256": "3626aea19f545608e4abe2393a123c6f1d94ce1443733eb81a4ddcc0fda08b0d",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +52,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbb2fd8fa6d368b49a26a74e2ca00e7325e569bfc1d115da176795e59f9f7abc",
+                  "sha256": "3626aea19f545608e4abe2393a123c6f1d94ce1443733eb81a4ddcc0fda08b0d",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +62,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbb2fd8fa6d368b49a26a74e2ca00e7325e569bfc1d115da176795e59f9f7abc",
+                  "sha256": "3626aea19f545608e4abe2393a123c6f1d94ce1443733eb81a4ddcc0fda08b0d",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +72,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbb2fd8fa6d368b49a26a74e2ca00e7325e569bfc1d115da176795e59f9f7abc",
+                  "sha256": "3626aea19f545608e4abe2393a123c6f1d94ce1443733eb81a4ddcc0fda08b0d",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +82,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "dbb2fd8fa6d368b49a26a74e2ca00e7325e569bfc1d115da176795e59f9f7abc",
+                  "sha256": "3626aea19f545608e4abe2393a123c6f1d94ce1443733eb81a4ddcc0fda08b0d",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -109,7 +109,14 @@
   "agent": {
     "skillPaths": [
       "agent/skills/designcraft"
-    ]
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "commandPalette": "visible",
+        "skillPicker": "visible"
+      }
+    }
   },
   "description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
   "author": "Astravia"

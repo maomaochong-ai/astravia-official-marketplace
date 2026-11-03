@@ -2,7 +2,7 @@
   "id": "vectorcraft",
   "name": "VectorCraft",
   "icon": "assets/icon.png",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -35,14 +35,14 @@
         "id": "vectorcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.2",
+          "version": "0.0.3",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "012ebb6856b42874f4c690fed617a7a65d4ab4a4756a44b9cb2b99e1864b8e93",
+                  "sha256": "f745f6a9376bad6e0bc480f151b78e3abd728a9cc0221b8b58176922081367fd",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -52,7 +52,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "012ebb6856b42874f4c690fed617a7a65d4ab4a4756a44b9cb2b99e1864b8e93",
+                  "sha256": "f745f6a9376bad6e0bc480f151b78e3abd728a9cc0221b8b58176922081367fd",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -62,7 +62,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "012ebb6856b42874f4c690fed617a7a65d4ab4a4756a44b9cb2b99e1864b8e93",
+                  "sha256": "f745f6a9376bad6e0bc480f151b78e3abd728a9cc0221b8b58176922081367fd",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -72,7 +72,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "012ebb6856b42874f4c690fed617a7a65d4ab4a4756a44b9cb2b99e1864b8e93",
+                  "sha256": "f745f6a9376bad6e0bc480f151b78e3abd728a9cc0221b8b58176922081367fd",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -82,7 +82,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "012ebb6856b42874f4c690fed617a7a65d4ab4a4756a44b9cb2b99e1864b8e93",
+                  "sha256": "f745f6a9376bad6e0bc480f151b78e3abd728a9cc0221b8b58176922081367fd",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -109,7 +109,14 @@
   "agent": {
     "skillPaths": [
       "agent/skills/vectorcraft"
-    ]
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "commandPalette": "visible",
+        "skillPicker": "visible"
+      }
+    }
   },
   "description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
   "author": "Astravia"

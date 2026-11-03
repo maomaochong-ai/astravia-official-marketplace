@@ -11,7 +11,7 @@ export const APP = {
   tabLabel: "DesignCraft",
   tabOrder: 17,
   serviceId: "designcraft-hub",
-  serviceVersion: "0.0.2",
+  serviceVersion: "0.0.3",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: false,

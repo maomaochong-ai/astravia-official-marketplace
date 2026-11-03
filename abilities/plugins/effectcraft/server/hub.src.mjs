@@ -530,17 +530,26 @@ function send(res, status, type, body, extra = {}) {
   else res.end(body);
 }
 
+/**
+ * First-run copy. One promise (this happens once), one honest progress reading,
+ * four named steps. Diagnostics stay folded away until something really failed.
+ */
 const WAITING_COPY = {
   zh: {
-    /* First-run wording: one promise (it happens once), no diagnostics. */
+    firstOpen: "首次打开",
     preparing: "正在准备编辑器",
-    lede: "首次打开需要下载编辑器文件，只需要这一次；之后每次打开都是秒开的。",
+    lede: "第一次打开要先取回编辑器本体，只需要这一次；之后每次打开都能直接进入。",
     ledeSized: (size) =>
-      "首次打开需要下载约 " + size + " 的编辑器文件，只需要这一次；之后每次打开都是秒开的。",
+      "第一次打开要先取回约 " + size + " 的编辑器本体，只需要这一次；之后每次打开都能直接进入。",
+    steps: ["检查本机文件", "下载编辑器", "校验完整性", "启动"],
     checking: "正在检查本机已有的文件…",
-    hint: "准备完成后会自动进入编辑器，不需要刷新。",
+    verifying: "正在校验文件完整性…",
+    launching: "正在启动编辑器…",
+    unknown: "正在准备…",
+    waited: "已等待 {n} 秒",
+    hint: "准备完成后会自动进入编辑器，不需要刷新页面。",
     failedTitle: "暂时没能取到编辑器文件",
-    failedLede: "已经按顺序试过所有下载来源。网络恢复后会自动继续，也可以现在重试。",
+    failedLede: "所有下载来源都已依次试过。网络恢复后会自动继续，也可以现在重试。",
     retry: "立即重试",
     retrying: "正在重试…",
     details: "技术细节",
@@ -548,12 +557,19 @@ const WAITING_COPY = {
     config: "配置：",
   },
   en: {
-    /* Same promise in English; the sizing sentence is built by `ledeSized`. */
+    firstOpen: "First open",
     preparing: "Preparing the editor",
-    lede: "The first open downloads the editor files. It happens once; every later open is immediate.",
+    lede: "The first open fetches the editor itself. It happens once; every later open goes straight in.",
     ledeSized: (size) =>
-      "The first open downloads about " + size + " of editor files. It happens once; every later open is immediate.",
+      "The first open fetches about " +
+      size +
+      " of editor files. It happens once; every later open goes straight in.",
+    steps: ["Check local files", "Download", "Verify", "Launch"],
     checking: "Checking the files already on this machine…",
+    verifying: "Verifying the downloaded bytes…",
+    launching: "Starting the editor…",
+    unknown: "Preparing…",
+    waited: "Waiting {n}s",
     hint: "This window opens the editor as soon as it is ready. No refresh needed.",
     failedTitle: "Could not fetch the editor files",
     failedLede: "Every download source was tried in order. It resumes automatically, or try now.",
@@ -564,6 +580,19 @@ const WAITING_COPY = {
     config: "Config:",
   },
 };
+
+/**
+ * Which of the four steps the hub is on. The page polls the same phase the server
+ * already holds, so the steps and the bar never disagree with each other.
+ * `checking` covers both "look on disk first" and "hash what we fetched": the
+ * difference is whether the counters already reached the total.
+ */
+function stepOf(phase, received, total) {
+  if (phase === "ready") return 3;
+  if (phase === "downloading") return 1;
+  if (phase === "checking") return total > 0 && received >= total ? 2 : 0;
+  return 0;
+}
 
 /** The tab passes the host's UI locale as `hl=`; a direct hit falls back to the request header. */
 function pickLang(url, req) {
@@ -578,9 +607,10 @@ function waitingPage(lang) {
   const failed = state.phase === "failed";
   const total = state.total || 0;
   const received = state.received || 0;
-  const percent = total > 0 ? Math.min(100, Math.round((received * 100) / total)) : 0;
+  const known = total > 0;
+  const percent = known ? Math.min(100, Math.round((received * 100) / total)) : 0;
   const mb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
-  const meter = total > 0 ? percent + "% · " + mb(received) + " / " + mb(total) + " MB" : copy.checking;
+  const step = stepOf(state.phase, received, total);
   const lede = SIZE_LABEL && !failed ? copy.ledeSized(SIZE_LABEL) : copy.lede;
 
   const attempts = state.attempts.length
@@ -605,15 +635,49 @@ function waitingPage(lang) {
     ? "<p>" +
       copy.config +
       "<br><code>" +
-      escapeHtml(configPath()) +
-      (config.error ? "</code><br><code>" + escapeHtml(config.error) : "") +
-      "</code></p>"
+      escapeHtml(configPath() || "") +
+      "</code>" +
+      (config.error ? "<br><code>" + escapeHtml(config.error) + "</code>" : "") +
+      "</p>"
     : "";
 
-  const head = failed
-    ? "<h1>" + copy.failedTitle + "</h1><p class=lede>" + copy.failedLede + "</p>" +
-      "<p><button id=craft-retry>" + copy.retry + "</button></p>" +
-      "<details><summary>" +
+  const stepsHtml = copy.steps
+    .map(
+      (label, index) =>
+        "<li class=" + (index < step ? "done" : index === step ? "now" : "next") + ">" + label + "</li>",
+    )
+    .join("");
+
+  // A bar that is always on screen, whether or not the server advertised a size:
+  // a determinate fill when the total is known, a sliding one when it is not.
+  const progress =
+    "<div class=row><span class=pct id=craft-pct>" +
+    (known ? percent + "%" : "—") +
+    "</span><span class=bytes id=craft-bytes data-wait=\"" +
+    escapeHtml(copy.unknown) +
+    "\" data-verifying=\"" +
+    escapeHtml(copy.verifying) +
+    "\" data-launching=\"" +
+    escapeHtml(copy.launching) +
+    "\">" +
+    escapeHtml(known ? mb(received) + " / " + mb(total) + " MB" : copy.checking) +
+    "</span></div><div class=track><div class=\"fill" +
+    (known ? "" : " boot") +
+    "\" id=craft-bar" +
+    (known ? " style=\"width:" + percent + "%\"" : "") +
+    "></div></div><ol class=steps id=craft-steps>" +
+    stepsHtml +
+    "</ol>";
+
+  const body = failed
+    ? "<h1>" +
+      copy.failedTitle +
+      "</h1><p class=lede>" +
+      copy.failedLede +
+      "</p><p><button id=craft-retry>" +
+      copy.retry +
+      "</button></p>" +
+      "<div class=fail><details><summary>" +
       copy.details +
       "</summary>" +
       (state.error ? "<p><code>" + escapeHtml(state.error) + "</code></p>" : "") +
@@ -622,30 +686,42 @@ function waitingPage(lang) {
       configHint +
       "<p class=mono>Phase: " +
       escapeHtml(state.phase) +
-      " · /api/state</p></details>"
+      " · /api/state</p></details></div>"
     : "<h1>" +
       copy.preparing +
       "</h1><p class=lede>" +
       lede +
-      "</p><div class=track><div class=\"fill" +
-      (total > 0 ? "" : " boot") +
-      "\" id=craft-bar" +
-      (total > 0 ? " style=\"width:" + percent + "%\"" : "") +
-      "></div></div><p class=meter id=craft-meter data-wait=\"" +
-      escapeHtml(copy.checking) +
-      "\">" +
-      escapeHtml(meter) +
-      "</p><p class=hint>" +
+      "</p>" +
+      progress +
+      "<p class=hint>" +
       copy.hint +
-      "</p>";
+      "</p><p class=waited id=craft-waited></p>";
 
   const poll =
     "<script>(function(){" +
-    "var bar=document.getElementById('craft-bar'),meter=document.getElementById('craft-meter');" +
-    "function paint(s){var t=s.total||0,g=s.received||0;" +
+    "var bar=document.getElementById('craft-bar'),pct=document.getElementById('craft-pct')," +
+    "bytes=document.getElementById('craft-bytes'),steps=document.getElementById('craft-steps').children," +
+    "waited=document.getElementById('craft-waited'),fmt=" +
+    JSON.stringify(copy.waited) +
+    ",t0=Date.now(),n=0;" +
+    "function stepOf(s){var t=s.total||0,g=s.received||0;" +
+    "if(s.phase==='ready')return 3;if(s.phase==='downloading')return 1;" +
+    "if(s.phase==='checking')return(t>0&&g>=t)?2:0;return 0}" +
+    "function setSteps(at){for(var i=0;i<steps.length;i++){steps[i].className=i<at?'done':(i===at?'now':'next')}}" +
+    "function paint(s){var t=s.total||0,g=s.received||0,at=stepOf(s);" +
     "if(t>0){var p=Math.min(100,Math.round(g*100/t));" +
-    "if(bar){bar.style.width=p+'%'}if(meter){meter.textContent=p+'% · '+(g/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' MB'}}" +
-    "if(s.phase==='ready'){location.replace(location.pathname+location.search)}else if(s.phase==='failed'){location.reload()}}" +
+    "if(bar){bar.className='fill';bar.style.width=p+'%'}" +
+    "if(pct){pct.textContent=p+'%'}" +
+    "if(bytes){bytes.textContent=(g/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' MB'}" +
+    "if(bytes&&s.phase==='checking'&&g>=t){bytes.textContent=bytes.getAttribute('data-verifying')}}" +
+    "else if(bytes){" +
+    "if(bar&&bar.className.indexOf('boot')<0){bar.className='fill boot'}" +
+    "if(pct&&pct.textContent!=='—'){pct.textContent='—'}" +
+    "bytes.textContent=bytes.getAttribute('data-wait')}" +
+    "setSteps(at);" +
+    "if(s.phase==='ready'){location.replace(location.pathname+location.search)}" +
+    "else if(s.phase==='failed'){location.reload()}}" +
+    "setInterval(function(){waited.textContent=fmt.replace('{n}',++n)},1000);" +
     "setInterval(function(){fetch('/api/state',{cache:'no-store'}).then(function(r){return r.json()}).then(paint).catch(function(){})},700)" +
     "})()</script>";
 
@@ -656,45 +732,70 @@ function waitingPage(lang) {
     ";fetch('/api/retry',{cache:'no-store'}).then(function(){setTimeout(function(){location.reload()},900)})" +
     ".catch(function(){location.reload()})})})()</script>";
 
-  return Buffer.from(
+  const head =
     "<!doctype html><html lang=" +
-      lang +
-      "><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">" +
-      "<title>" +
-      escapeHtml(APP_NAME) +
-      "</title><style>" +
-      "*{box-sizing:border-box}" +
-      "body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px;" +
-      "background:radial-gradient(1200px 600px at 50% -10%,#1c2436 0%,#0d1015 60%);" +
-      "color:#e7eaf0;font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}" +
-      ".card{width:100%;max-width:560px}" +
-      ".brand{display:flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.08em;" +
-      "text-transform:uppercase;color:#8b97ad}" +
-      ".brand i{width:10px;height:10px;border-radius:50%;background:#7f9cf5;box-shadow:0 0 0 4px rgba(127,156,245,.16)}" +
-      "h1{margin:18px 0 10px;font-size:26px;line-height:1.3;font-weight:600;letter-spacing:-.01em}" +
-      ".lede{margin:0 0 26px;color:#a8b2c4}" +
-      ".track{height:6px;border-radius:99px;background:#232937;overflow:hidden}" +
-      ".fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#7f9cf5,#9d7bf0);transition:width .3s ease}" +
-      ".fill.boot{width:12%;animation:craft-boot 1.4s ease-in-out infinite}" +
-      "@keyframes craft-boot{0%{margin-left:-12%}100%{margin-left:100%}}" +
-      ".meter{margin:10px 0 0;font-variant-numeric:tabular-nums;font-size:13px;color:#8b97ad}" +
-      ".hint{margin:22px 0 0;font-size:13px;color:#6f7a8d}" +
-      "button{font:inherit;color:#0d1015;background:#7f9cf5;border:0;border-radius:8px;" +
-      "padding:9px 18px;font-weight:600;cursor:pointer}" +
-      "button[disabled]{opacity:.6;cursor:default}" +
-      "details{margin-top:26px;font-size:13px;color:#8b97ad}" +
-      "summary{cursor:pointer}" +
-      "code{color:#e2b3b3;word-break:break-all;font-size:12px}" +
-      "ul{padding-left:18px;margin:8px 0}li{margin:2px 0}" +
-      ".mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6f7a8d}" +
-      "</style><div class=card><div class=brand><i></i>" +
-      escapeHtml(APP_NAME) +
-      "</div>" +
-      head +
-      "</div>" +
-      (failed ? retry : poll),
-    "utf8",
-  );
+    lang +
+    "><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">" +
+    "<title>" +
+    escapeHtml(APP_NAME) +
+    "</title><style>" +
+    "*{box-sizing:border-box}" +
+    "body{margin:0;min-height:100vh;display:grid;place-items:center;padding:36px 28px;" +
+    "background:radial-gradient(900px 460px at 50% -6%,rgba(127,156,245,.13),transparent 68%),#0b0e14;" +
+    "color:#e8ecf4;font:15px/1.7 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;" +
+    "-webkit-font-smoothing:antialiased}" +
+    ".card{width:100%;max-width:600px;padding:30px 32px 28px;border-radius:16px;" +
+    "border:1px solid rgba(255,255,255,.07);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));" +
+    "box-shadow:0 24px 60px -26px rgba(0,0,0,.75)}" +
+    ".brand{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.12em;" +
+    "text-transform:uppercase;color:#8f9bb3}" +
+    ".brand i{width:9px;height:9px;border-radius:50%;background:#7f9cf5;box-shadow:0 0 0 4px rgba(127,156,245,.15)}" +
+    ".brand b{font-weight:600;color:#c9d3e6;letter-spacing:.06em}" +
+    ".tag{margin-left:auto;letter-spacing:.04em;text-transform:none;font-size:12px;color:#7f8ba3;" +
+    "border:1px solid #232a3a;border-radius:99px;padding:2px 10px}" +
+    "h1{margin:16px 0 8px;font-size:22px;line-height:1.35;font-weight:600;letter-spacing:-.01em}" +
+    ".lede{margin:0 0 24px;font-size:14px;color:#9aa6bb}" +
+    ".row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}" +
+    ".pct{font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#dfe6f3}" +
+    ".bytes{font-size:12.5px;color:#8b97ad;font-variant-numeric:tabular-nums}" +
+    ".track{height:8px;border-radius:99px;background:#1b2130;overflow:hidden}" +
+    ".fill{position:relative;height:100%;width:0;border-radius:99px;" +
+    "background:linear-gradient(90deg,#7f9cf5,#a78bfa);transition:width .45s cubic-bezier(.22,.61,.36,1)}" +
+    ".fill.boot{width:34%;animation:craft-boot 1.5s ease-in-out infinite}" +
+    "@keyframes craft-boot{0%{margin-left:-34%}100%{margin-left:100%}}" +
+    ".fill::after{content:'';position:absolute;inset:0;border-radius:99px;" +
+    "background:linear-gradient(90deg,transparent,rgba(255,255,255,.32),transparent);" +
+    "animation:craft-shine 1.9s linear infinite}" +
+    "@keyframes craft-shine{from{transform:translateX(-100%)}to{transform:translateX(100%)}}" +
+    ".steps{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;padding:0;list-style:none;font-size:12px;color:#6b768c}" +
+    ".steps li{display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;" +
+    "border:1px solid #1e2433;background:#111620}" +
+    ".steps li::before{content:'';width:6px;height:6px;border-radius:50%;background:#39415a}" +
+    ".steps li.now{color:#cfd8ea;border-color:rgba(127,156,245,.45);background:rgba(127,156,245,.1)}" +
+    ".steps li.now::before{background:#7f9cf5;box-shadow:0 0 0 3px rgba(127,156,245,.18)}" +
+    ".steps li.done{color:#8b97ad}" +
+    ".steps li.done::before{background:#3f9d7a}" +
+    ".hint{margin:20px 0 0;font-size:12.5px;color:#66718a}" +
+    ".waited{margin:6px 0 0;font-size:12px;color:#4d576b;font-variant-numeric:tabular-nums;min-height:18px}" +
+    "button{font:inherit;color:#0b0e14;background:#7f9cf5;border:0;border-radius:9px;" +
+    "padding:9px 18px;font-weight:600;cursor:pointer}" +
+    "button[disabled]{opacity:.6;cursor:default}" +
+    ".fail{margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.06)}" +
+    "details{margin-top:0;font-size:12.5px;color:#8b97ad}" +
+    "summary{cursor:pointer}" +
+    "code{color:#e2b3b3;word-break:break-all;font-size:12px}" +
+    "ul{padding-left:18px;margin:8px 0}li{margin:2px 0}" +
+    ".mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#5a6478}" +
+    "</style><div class=card><div class=brand><i></i><b>" +
+    escapeHtml(APP_NAME) +
+    "</b>" +
+    (failed ? "" : "<span class=tag>" + escapeHtml(copy.firstOpen) + "</span>") +
+    "</div>" +
+    body +
+    "</div>" +
+    (failed ? retry : poll);
+
+  return Buffer.from(head, "utf8");
 }
 
 function escapeHtml(value) {

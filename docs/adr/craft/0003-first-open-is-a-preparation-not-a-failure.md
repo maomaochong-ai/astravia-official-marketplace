@@ -11,6 +11,13 @@
 `state.phase === "failed"` 时出现，且默认折叠。刷新从 `meta http-equiv=refresh` 改成
 700 ms 轮询 `/api/state`，因为整页刷新既丢失进度条动画，也在慢网络上制造"什么都没变"的错觉。
 
+**决定一（2026-11-03 补充）。** 上一条只解决了"不要报错"，没解决"看起来在动"：旧页在拿到
+`Content-Length` 之前只有一条 6 px 高的滑块，`total === 0` 时连百分比都没有，用户看到的是一个静止的
+灰条。现在进度区常驻：已知体积时是确定态（`received / total` 直接算出宽度与百分比，pin 里的
+`size` 就是初始分母，所以从 0% 开始就是真的），未知体积时是滑动 shimmer 且文字写"正在检查/校验"；
+下方四个步骤（检查本机文件 → 下载 → 校验 → 启动）由服务端按 phase 判定当前步，客户端 `paint()`
+每 700 ms 同步一次，两个视图不会互相矛盾。另外补一行已经等了多少秒——下载卡住时它比任何文案都诚实。
+
 **决定二：把冷启动成本从"首次打开"移到"插件激活"。** `warmHub(ctx)` 在 activate 阶段
 fire-and-forget 地 `start()` 已经安装且版本一致的服务；启动过程本身不再走网络
 （`scheduleEnsure(false)`，只认磁盘上已校验的缓存），网络只在页面真的请求应用时才发生。
@@ -18,14 +25,18 @@ fire-and-forget 地 `start()` 已经安装且版本一致的服务；启动过�
 省下的 200 ms 更重要。
 
 **决定三：界面语言按"这个构建能不能画出中文"逐应用开启，而不是统一改成中文。**
-本仓库七个上游 web 构建里只有 photocraft 与 lightcraft 带中文能力：lightcraft 的 web 端运行时
-fetch `lightcraft_zh_hans.otf` 再交给 egui；photocraft 的 27 种语言目录随 wasm 一起发布。
-其余五个的上游构建连 CJK 字形都没有（designcraft / pdfcraft / vectorcraft 只带
-`OFL-noto-sans-cjk-sc.txt` 许可证文本；effectcraft 的 `web_draws()` 与 filmcraft 的
-`chinese_font_available()` 更是显式把中日韩排除在外）。对这些构建强行切中文，用户得到的是
-一屏豆腐块——那比英文更糟。所以 `apps.mjs` 里每个应用有一个 `locale` 字段，只有
-`"zh"` 的应用才允许外壳改写 `navigator.languages`。要覆盖剩下五个，必须上游把 CJK face 加进
-`theme::install` 并重编 wasm；那会产出 60–90 MB 的制品，超出 25 MB 包体上限，需另行外置托管。
+逐应用复核七个上游源码后，结论是**只有 photocraft 有中文界面**：
+`photocraft-main/crates/ui-egui/src/i18n/mod.rs` 是七个仓库里唯一含 `中文` / `Chinese (Simplified)` /
+`zh-CN` 的文件。designcraft 有 i18n 表但 `crates/ui-egui/src/i18n.rs:5` 的 `LANGUAGES` 只有
+`English / Deutsch / Français / Español / 日本語`，没有 zh；filmcraft、printcraft、vectorcraft、
+lightcraft、effectcraft 连 UI i18n 模块都没有——它们代码里那些 `LANGUAGES` 常量分别是字幕语言、
+OCR 语言、文档引号风格，与界面无关。这些构建同时也没有 CJK 字形：
+`photocraft-main/crates/ui-egui/src/cjk_fonts.rs:34-41` 的 `wasm32` 分支
+`system() -> Self { Self { locale: || None, files: |_| Vec::new(), .. } }` 明确表示 web 端拿不到系统字体。
+所以 `apps.mjs` 里每个应用有一个 `locale` 字段，只有 `"zh"` 的应用才允许外壳改写
+`navigator.languages`；光切 `navigator` 切不出中文文案，只会让日期/数字格式换成 zh 而界面仍是英文，
+那是一种更隐蔽的错位。要覆盖剩下六个，必须上游先加语言表、再把 CJK face 加进 `theme::install`
+并重编 wasm；那会产出 60–90 MB 的制品，不再适合作为单文件 payload。
 
 **为什么改 `navigator` 而不是写偏好。** hub 监听 `127.0.0.1:0`，端口每次不同，origin 随之改变，
 localStorage 按 origin 隔离，所以"预置偏好"在非 photocraft 的构建上根本不成立；而这些构建的语言
@@ -33,12 +44,14 @@ localStorage 按 origin 隔离，所以"预置偏好"在非 photocraft 的构建
 `Object.defineProperty` 覆写 `navigator.language` / `navigator.languages` 才是唯一有效的杠杆。
 photocraft 仍然保留它的 localStorage 偏好种子，两者叠加，互不冲突。
 
-**证据与未验证。** Observed：`effectcraft/crates/ui-egui/src/i18n.rs:126-131` 的
-`web_draws()` 返回 `!matches!(language, "ja" | "zh-hans" | "zh-hant" | "ka")`；
-`filmcraft/crates/ui-egui/src/i18n.rs:480-489` 的 `chinese_font_available()` 在 web 上恒为假；
-`lightcraft/apps/lightcraft-web/src/web.rs:845-865` 把运行时取到的 `chinese_font` 传给
-`WebApp::new`；七个上游 zip 的 `unzip -l` 里只有 lightcraft 含 CJK 字体文件（16,437,364 B）。
-宿主的 `renderer/assets/*.js` 中没有任何主动启动插件服务的调用，因此预热只能由插件自己在
-activate 里发起。Inferred：`Object.defineProperty` 覆写对 `web_sys::window().navigator()`
-的读取路径是否 100% 生效，尚未在真实宿主里实测（需要桌面端跑一次 lightcraft 并 OCR 界面）；
-等待页的新文案与进度条只做了本地 hub 冒烟，未在真实宿主窗口里截图确认。
+**证据与未验证。** Observed：`photocraft-main/crates/ui-egui/src/i18n/mod.rs` 含 `zh-CN`；
+`designcraft-main/crates/ui-egui/src/i18n.rs:5` 的 `LANGUAGES` 五项无 zh；`filmcraft-main` 除
+`crates/engine/src/settings.rs:331-347` 的字幕语言（`default_language: "en"`）外无 UI i18n；
+`printcraft-main/crates/ocr/src/lib.rs:22`、`vectorcraft-main/crates/doc/src/setup.rs:140` 的
+`LANGUAGES` 分别是 OCR 与文档引号；`photocraft-main/crates/ui-egui/src/cjk_fonts.rs:38-41`
+的 wasm32 分支返回空字体表；七个上游 zip 的 `unzip -l` 里只有 lightcraft 含 CJK 字体文件
+（16,437,364 B），而那个字体是给图像/文档文本渲染用的。宿主的 `renderer/assets/*.js` 中没有任何
+主动启动插件服务的调用，因此预热只能由插件自己在 activate 里发起。Inferred：
+`Object.defineProperty` 覆写对 `web_sys::window().navigator()` 的读取路径是否 100% 生效，
+尚未在真实宿主里实测；等待页的新文案、进度条与四段步骤条只做了本地 hub 冒烟（`hl=zh` 5868 B /
+`hl=en` 5831 B / 失败态 4409 B），未在真实宿主窗口里截图确认。

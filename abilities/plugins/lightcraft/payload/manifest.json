@@ -22,6 +22,6 @@
     "name": "LightCraft",
     "envPrefix": "LIGHTCRAFT",
     "sizeLabel": "70 MB",
-    "locale": "zh"
+    "locale": null
   }
 }
