@@ -12,7 +12,7 @@ export const APP = {
   tabLabel: "FilmCraft",
   tabOrder: 19,
   serviceId: "filmcraft-hub",
-  serviceVersion: "0.0.5",
+  serviceVersion: "0.0.6",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: false,

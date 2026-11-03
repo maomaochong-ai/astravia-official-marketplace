@@ -2,12 +2,12 @@
   "id": "craft-anything",
   "name": "Craft Anything",
   "icon": "assets/icon.png",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
   "moduleFederation": {
-    "remoteName": "craftanything",
+    "remoteName": "craft-anything",
     "expose": "./plugin"
   },
   "styles": [
@@ -35,7 +35,7 @@
         "id": "craft-anything-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.1",
+          "version": "0.0.2",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
