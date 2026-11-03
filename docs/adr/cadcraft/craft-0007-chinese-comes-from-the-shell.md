@@ -42,13 +42,52 @@
 那份许可证文本**不能当证据**：materialcraft 根本没有中文语言表，它的包里照样有
 `OFL-noto-sans-cjk-sc.txt`。它由 `copy_font_licences` 统一复制，与字形有没有进包无关。
 
-所以 `app.locale: "zh"` 只有两支：photocraft（画布实测是中文）与 lightcraft（语言表 + 独立中文字体，
-且它的 web host 启动时用 `locale_from_tags(navigator.languages)` 决定 Auto，种子正好作用在这一层）。
-其余各支保持 `null`：没有字形时强切中文只会得到英文界面加一屏空方框，比英文更糟。
+第二轮又按**语言选择机制**逐个仓库看过（见下节），把六支能确认读 `navigator` 的应用一并开启，
+现在 `app.locale: "zh"` 有八支：photocraft、lightcraft、effectcraft、pdfcraft、vectorcraft、
+gridcraft、wordcraft、craft-anything。其余七支保持 `null`——不是保守，是它们的构建根本没有中文路径。
 
 **它们有可能本来就能显示中文**——字体也能编进 wasm，craft-anything 的 6.1 MB wasm 里查不到字形文件
 却带着 `zh-hans` 表。这件事只能看画布：确认文案变成中文且不出方框，再改该应用
 `payload/manifest.json` 的 `app.locale` 为 `"zh"`、`npm run build:hub`、抬版本。**没看过就不要改。**
+
+## 第二轮：语言选择机制决定命运
+
+上一轮按"包里有没有中文语言表"判断，把十一支都留在 `null`，理由是字形查不到。这一轮换了个更靠前的判据：
+**这个构建从哪里决定界面语言**。只有拿得到 `navigator.languages` 的构建，`headSeed` 那三行脚本才起作用；
+不读 `navigator` 的，种了也是空操作。逐个仓库查了源码（Observed）：
+
+| 应用 | 语言从哪来 | 中文表 | 结论 |
+| --- | --- | --- | --- |
+| effectcraft | `sys_locale`（wasm 侧即 `navigator.language`） | `zh-hans` | 开启 |
+| pdfcraft | `navigator.languages` 取前 31 个 tag | `zh-hans` | 开启 |
+| vectorcraft | web host 传 `navigator.languages` 进 `set_system_locales` | `zh-hans` | 开启 |
+| gridcraft | `Language::system()` 走 `sys_locale`；已存 `ui.json` 的 `language` 优先 | `zh` | 开启 |
+| wordcraft | `detect_system_lang` → `sys_locale::get_locales` | `zh-hans` | 开启 |
+| craft-anything | `sys_locale` | `zh-hans` | 开启 |
+| filmcraft | 宿主注入的 `hooks.system_languages` 闭包，web 侧没有赋值点 | `zh-cn` | **不开**：拿不到 tag，只会退英文 |
+| figcraft | `Services::system_language()` 返回 `None` | `zh-Hans.toml`（机器草稿，注明待母语审校） | **不开**：`system` 偏好落空 |
+| designcraft | `crates/ui-egui/src/i18n/` 只有 `ar cs de fr hu it ja ka pl pt_br ru sv uk` | 无 `zh*.rs` | **不开**：没有中文目录 |
+| cadcraft / deckcraft / materialcraft | 没有 i18n 层 | 无 | **不开** |
+| texturecraft | 没有 i18n 层 | 无 | **不开** |
+
+这里有一条容易踩的坑：`grep -l "简体中文\|zh-hans"` 会把 `theme.rs` 的 CJK 字形回退表和
+`crates/doc/attrs/language.rs` 的**文档语言属性**一起命中，看起来像"有中文"。designcraft 就是这么被骗过一轮——
+它的 `i18n/` 目录里根本没有中文文件。判据必须是**语言表目录里存在 zh 文件**，不是字符串出现在包里。
+
+### 仍然没有证据的那一半
+
+这一轮的验证停在"界面文字会走中文分支"，**没有**验证"字形画得出"。中文串配缺字形，结果是英文菜单旁边
+多出几个空方框，比纯英文更难看。能不能画，取决于该构建的 wasm 里有没有编进 CJK 字体——这件事只能看画布。
+
+所以这六支的开启是**可回滚的两行改动**：画面出现方框，就把对应 `payload/manifest.json` 的
+`app.locale` 改回 `null`、`npm run build:hub`、抬版本再发一版。插件侧不动上游一个字节，
+所以回滚也不会碰到 payload 的 sha256。
+
+### 为什么现在敢开
+
+因为种子只改 `navigator`，不改任何上游逻辑：上游照样走自己的"匹配系统语言"代码路径，只是它读到的
+系统语言是中文。英文界面的用户 `hl=en`，种子不注入，他们看到自己的系统语言。这不是翻译层，
+是让上游以为自己的宿主是中文系统——与 lightcraft 上一轮的做法完全同一条路。
 
 ## 为什么不做重编译
 
@@ -72,7 +111,7 @@
 | 插件标签标题、状态条、准备页、错误文案 | 中文（英文界面用户看到英文），`strings.ts` |
 | 技能的展示名与正文 | `SKILL.md` 的 `alias` 双语名 + 中文正文 |
 | 能力详情页 | `detail.json` / `detail.zh.json`，默认英文、中文覆盖 |
-| **画布内部的菜单与面板** | **上游自己的语言**（photocraft、lightcraft 是中文，其余是英文） |
+| **画布内部的菜单与面板** | **上游自己的语言**（八支开了中文种子，七支没有中文表） |
 
 ## 验证与未验证
 

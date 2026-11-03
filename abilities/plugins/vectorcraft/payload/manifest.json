@@ -22,6 +22,6 @@
     "name": "VectorCraft",
     "envPrefix": "VECTORCRAFT",
     "sizeLabel": "31 MB",
-    "locale": null
+    "locale": "zh"
   }
 }

@@ -22,6 +22,6 @@
     "name": "Craft Anything",
     "envPrefix": "CRAFTANYTHING",
     "sizeLabel": "3 MB",
-    "locale": null
+    "locale": "zh"
   }
 }

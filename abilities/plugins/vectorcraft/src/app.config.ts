@@ -12,7 +12,7 @@ export const APP = {
   tabLabel: "VectorCraft",
   tabOrder: 22,
   serviceId: "vectorcraft-hub",
-  serviceVersion: "0.0.7",
+  serviceVersion: "0.0.8",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: false,

@@ -22,6 +22,6 @@
     "name": "WordCraft",
     "envPrefix": "WORDCRAFT",
     "sizeLabel": "20 MB",
-    "locale": null
+    "locale": "zh"
   }
 }

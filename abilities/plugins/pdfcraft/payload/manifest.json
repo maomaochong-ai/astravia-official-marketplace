@@ -22,6 +22,6 @@
     "name": "PDFCraft",
     "envPrefix": "PDFCRAFT",
     "sizeLabel": "17 MB",
-    "locale": null
+    "locale": "zh"
   }
 }

@@ -12,7 +12,7 @@ export const APP = {
   tabLabel: "GridCraft",
   tabOrder: 26,
   serviceId: "gridcraft-hub",
-  serviceVersion: "0.0.3",
+  serviceVersion: "0.0.4",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: false,

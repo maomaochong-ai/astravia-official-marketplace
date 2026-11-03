@@ -2,7 +2,7 @@
   "id": "gridcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -28,14 +28,14 @@
         "id": "gridcraft-hub",
         "runtime": {
           "kind": "host-node",
-          "version": "0.0.3",
+          "version": "0.0.4",
           "entry": "server/hub.mjs",
           "platforms": {
             "win32-x64": {
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
+                  "sha256": "b57b53f83f0e475747cd864a7e35c29d0f5141c0886c9a053ba01c3fa49409eb",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -45,7 +45,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
+                  "sha256": "b57b53f83f0e475747cd864a7e35c29d0f5141c0886c9a053ba01c3fa49409eb",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -55,7 +55,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
+                  "sha256": "b57b53f83f0e475747cd864a7e35c29d0f5141c0886c9a053ba01c3fa49409eb",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -65,7 +65,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
+                  "sha256": "b57b53f83f0e475747cd864a7e35c29d0f5141c0886c9a053ba01c3fa49409eb",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
@@ -75,7 +75,7 @@
               "executable": "server/hub.mjs",
               "artifacts": [
                 {
-                  "sha256": "271f67cf4af4a363966e233661fcb8cc4679febdd107d168e3fdfe92978dbcfa",
+                  "sha256": "b57b53f83f0e475747cd864a7e35c29d0f5141c0886c9a053ba01c3fa49409eb",
                   "archive": "file",
                   "destination": "server/hub.mjs"
                 }
