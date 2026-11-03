@@ -11,7 +11,7 @@ export const APP = {
   tabLabel: "LightCraft",
   tabOrder: 20,
   serviceId: "lightcraft-hub",
-  serviceVersion: "0.0.1",
+  serviceVersion: "0.0.2",
   serviceArtifact: "server/hub.mjs",
   /** Upstream registers a service worker, which outlives a hub restart. */
   nosw: false,

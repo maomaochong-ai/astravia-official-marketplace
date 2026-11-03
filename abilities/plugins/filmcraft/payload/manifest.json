@@ -21,6 +21,7 @@
     "id": "filmcraft",
     "name": "FilmCraft",
     "envPrefix": "FILMCRAFT",
-    "sizeLabel": "15 MB"
+    "sizeLabel": "15 MB",
+    "locale": null
   }
 }

@@ -4,6 +4,7 @@ import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { APP } from "./app.config.ts";
 import { registerCraftTools } from "./features/agent/craft-tools.ts";
+import { warmHub } from "./runtime.ts";
 import { CraftTab } from "./features/editor/components/craft-tab.tsx";
 
 export const TAB_ID = APP.tabId;
@@ -46,6 +47,10 @@ export default definePlugin({
     // Tools are what make the plugin usable from the conversation; they fail closed
     // too, and a host build without the two tool permissions registers nothing.
     const tools = registerCraftTools(ctx);
+
+    // An already-installed hub may start now, so opening the tab later skips the
+    // cold spawn. Fire-and-forget: activation never waits on a preview.
+    void warmHub(ctx);
 
     const activation: Activation = { owned: [tab, ...tools], released: false };
     current = activation;

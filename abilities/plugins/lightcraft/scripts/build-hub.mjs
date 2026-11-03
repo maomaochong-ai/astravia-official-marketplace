@@ -11,8 +11,10 @@
  *   node scripts/build-hub.mjs           write server/hub.mjs
  *   node scripts/build-hub.mjs --check   fail if it is stale
  */
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,6 +63,20 @@ const output =
     .replace('/* @inject:bridge */ ""', JSON.stringify(bridge));
 
 if (output.includes("/* @inject:")) throw new Error("an @inject marker was not replaced");
+
+// `--check` compares bytes, so it would happily bless a stale file that does not
+// parse. Parse the generated module once with the Node that will run it.
+const probe = path.join(os.tmpdir(), "craft-hub-" + process.pid + ".mjs");
+await writeFile(probe, output);
+try {
+  execFileSync(process.execPath, ["--check", probe], { stdio: "pipe" });
+} catch (error) {
+  throw new Error(
+    "generated server/hub.mjs does not parse: " + String((error && error.stderr) || error),
+  );
+} finally {
+  await rm(probe, { force: true });
+}
 
 const target = path.join(root, "server/hub.mjs");
 const digest = createHash("sha256").update(output).digest("hex");

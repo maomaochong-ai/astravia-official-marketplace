@@ -21,6 +21,7 @@
     "id": "pdfcraft",
     "name": "PDFCraft",
     "envPrefix": "PDFCRAFT",
-    "sizeLabel": "17 MB"
+    "sizeLabel": "17 MB",
+    "locale": null
   }
 }

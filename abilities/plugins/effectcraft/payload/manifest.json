@@ -21,6 +21,7 @@
     "id": "effectcraft",
     "name": "EffectCraft",
     "envPrefix": "EFFECTCRAFT",
-    "sizeLabel": "21 MB"
+    "sizeLabel": "21 MB",
+    "locale": null
   }
 }

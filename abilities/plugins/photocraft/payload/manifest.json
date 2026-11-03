@@ -22,6 +22,7 @@
     "name": "Photocraft",
     "envPrefix": "PHOTOCRAFT",
     "sizeLabel": "13 MB",
+    "locale": "zh",
     "seedKey": "photocraft.preferences",
     "seedValue": "{\"version\":2,\"interface\":{\"language\":\"zh-hans\"}}"
   }

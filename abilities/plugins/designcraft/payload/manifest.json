@@ -21,6 +21,7 @@
     "id": "designcraft",
     "name": "DesignCraft",
     "envPrefix": "DESIGNCRAFT",
-    "sizeLabel": "26 MB"
+    "sizeLabel": "26 MB",
+    "locale": null
   }
 }

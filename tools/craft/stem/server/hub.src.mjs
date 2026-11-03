@@ -34,19 +34,40 @@ const DATA_DIR = process.env.ASTRAVIA_SERVICE_DATA_DIR ?? "";
 const BRIDGE_NAME = "host-bridge.js";
 const SCRIPT_TAG = '<script src="./' + BRIDGE_NAME + '"></script>';
 /**
- * Preset preferences before the app module runs (ADR 0011): a web build that never
- * reads navigator.languages keeps "auto" = English forever. Only seeds an empty
- * store, so a language picked later in Preferences is never overwritten.
+ * Two seeds, both written into `<head>` before the app module runs.
+ *
+ * The preference seed (ADR 0011) only fills an empty store, so a language chosen
+ * later in Preferences is never overwritten.
+ *
+ * The locale seed answers a different question: several web builds recompute their
+ * "Match System" language from `navigator.languages` on every load and persist
+ * nothing, and a loopback origin with a random port cannot keep storage anyway. So
+ * the browser's answer is replaced before the first frame, for the apps whose build
+ * ships glyphs for it (`APP.locale` in payload/manifest.json).
  */
 const LANGUAGE_SEED_NAME = APP.seedKey || "";
-const LANGUAGE_SEED_SCRIPT = LANGUAGE_SEED_NAME
-  ? "<script>/* craft-language-seed */try{var k=" +
+const APP_LOCALE = APP.locale || "";
+const SEED_MARK = "craft-language-seed";
+const PREFS_SEED_JS = LANGUAGE_SEED_NAME
+  ? "var k=" +
     JSON.stringify(LANGUAGE_SEED_NAME) +
     ";if(!window.localStorage.getItem(k))window.localStorage.setItem(k," +
     JSON.stringify(APP.seedValue || "") +
-    ")}catch(e){}</script>"
+    ");"
   : "";
-const SEED_MARK = "craft-language-seed";
+const LOCALE_SEED_JS =
+  'var t=["zh-CN","zh-Hans","zh","en-US"];var d=function(o,k,v){try{' +
+  'Object.defineProperty(o,k,{configurable:true,get:function(){return v}})}catch(e){}};' +
+  'd(navigator,"language",t[0]);d(navigator,"languages",t);';
+
+/** Per-request head seed: `hl=zh` from the tab, or the request header on a direct hit. */
+function headSeed(url, req) {
+  const body = [];
+  if (LANGUAGE_SEED_NAME) body.push(PREFS_SEED_JS);
+  if (APP_LOCALE && pickLang(url, req) === "zh") body.push(LOCALE_SEED_JS);
+  if (body.length === 0) return "";
+  return "<script>/* " + SEED_MARK + " */try{" + body.join("") + "}catch(e){}</script>";
+}
 const MAX_REDIRECTS = 6;
 const READY_TIMEOUT_MS = 60_000;
 /** How long a failed payload waits before the network is walked again. */
@@ -474,7 +495,18 @@ function scheduleEnsure(allowNetwork) {
   loading = true;
   if (allowNetwork) lastNetworkAt = Date.now();
   ensurePayload(allowNetwork)
-    .catch((error) => fail("failed", String((error && error.message) || error)))
+    .catch((error) => {
+      const message = String((error && error.message) || error);
+      // "Nothing on disk yet" is not a failure — it is what a first install looks
+      // like before the page asks for the app. Painting that red is exactly what
+      // made a slow first open read as a broken plugin.
+      if (message === "payload-not-on-disk") {
+        state.phase = "cold";
+        state.error = null;
+        return;
+      }
+      fail("failed", message);
+    })
     .finally(() => {
       loading = null;
     });
@@ -498,19 +530,59 @@ function send(res, status, type, body, extra = {}) {
   else res.end(body);
 }
 
-function waitingPage() {
-  const failed = state.phase === "failed";
-  const label = failed
-    ? APP_NAME + " 的编辑器文件没有就绪。 / The editor payload is not ready."
-    : "正在准备 " +
-      APP_NAME +
-      (SIZE_LABEL ? "（首次约 " + SIZE_LABEL + "）" : "") +
-      "。 / Preparing " +
-      APP_NAME +
-      (SIZE_LABEL ? " (" + SIZE_LABEL + ", first run only)" : "") +
-      ".";
+const WAITING_COPY = {
+  zh: {
+    /* First-run wording: one promise (it happens once), no diagnostics. */
+    preparing: "正在准备编辑器",
+    lede: "首次打开需要下载编辑器文件，只需要这一次；之后每次打开都是秒开的。",
+    ledeSized: (size) =>
+      "首次打开需要下载约 " + size + " 的编辑器文件，只需要这一次；之后每次打开都是秒开的。",
+    checking: "正在检查本机已有的文件…",
+    hint: "准备完成后会自动进入编辑器，不需要刷新。",
+    failedTitle: "暂时没能取到编辑器文件",
+    failedLede: "已经按顺序试过所有下载来源。网络恢复后会自动继续，也可以现在重试。",
+    retry: "立即重试",
+    retrying: "正在重试…",
+    details: "技术细节",
+    drop: "离线安装：把上游 zip 放到",
+    config: "配置：",
+  },
+  en: {
+    /* Same promise in English; the sizing sentence is built by `ledeSized`. */
+    preparing: "Preparing the editor",
+    lede: "The first open downloads the editor files. It happens once; every later open is immediate.",
+    ledeSized: (size) =>
+      "The first open downloads about " + size + " of editor files. It happens once; every later open is immediate.",
+    checking: "Checking the files already on this machine…",
+    hint: "This window opens the editor as soon as it is ready. No refresh needed.",
+    failedTitle: "Could not fetch the editor files",
+    failedLede: "Every download source was tried in order. It resumes automatically, or try now.",
+    retry: "Try again",
+    retrying: "Retrying…",
+    details: "Technical details",
+    drop: "Offline: put the upstream zip at",
+    config: "Config:",
+  },
+};
 
-  const error = state.error ? "<p><code>" + escapeHtml(state.error) + "</code></p>" : "";
+/** The tab passes the host's UI locale as `hl=`; a direct hit falls back to the request header. */
+function pickLang(url, req) {
+  const query = String(url).split("?")[1] || "";
+  const asked = /(?:^|&)hl=([^&]+)/.exec(query);
+  const raw = asked ? asked[1] : String((req && req.headers && req.headers["accept-language"]) || "");
+  return /^zh/i.test(raw) ? "zh" : "en";
+}
+
+function waitingPage(lang) {
+  const copy = lang === "zh" ? WAITING_COPY.zh : WAITING_COPY.en;
+  const failed = state.phase === "failed";
+  const total = state.total || 0;
+  const received = state.received || 0;
+  const percent = total > 0 ? Math.min(100, Math.round((received * 100) / total)) : 0;
+  const mb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
+  const meter = total > 0 ? percent + "% · " + mb(received) + " / " + mb(total) + " MB" : copy.checking;
+  const lede = SIZE_LABEL && !failed ? copy.ledeSized(SIZE_LABEL) : copy.lede;
+
   const attempts = state.attempts.length
     ? "<ul>" +
       state.attempts
@@ -520,38 +592,107 @@ function waitingPage() {
     : "";
   // The drop path is the offline escape hatch, so it is printed verbatim and
   // in full: nothing else in this page asks the reader to guess (ADR 0008 D4).
-  const drop = failed && DATA_DIR
-    ? "<p>离线安装 / Offline: 把上游 zip 放到 / put the upstream zip at<br><code>" +
-      escapeHtml(path.join(DATA_DIR, DROP_NAME)) +
-      "</code></p>"
-    : "";
+  const drop =
+    failed && DATA_DIR
+      ? "<p>" +
+        copy.drop +
+        "<br><code>" +
+        escapeHtml(path.join(DATA_DIR, DROP_NAME)) +
+        "</code></p>"
+      : "";
   // The config file is the manual-runnable escape hatch for names and mirrors.
   const configHint = DATA_DIR
-    ? "<p>配置 / Config（可指定本地 zip 路径与额外镜像）:<br><code>" +
+    ? "<p>" +
+      copy.config +
+      "<br><code>" +
       escapeHtml(configPath()) +
       (config.error ? "</code><br><code>" + escapeHtml(config.error) : "") +
       "</code></p>"
     : "";
 
-  return Buffer.from(
-    "<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=1>" +
-      "<title>" +
-      escapeHtml(APP_NAME) +
-      "</title><style>body{font:14px/1.6 system-ui;background:#141414;color:#e8e8e8;" +
-      "display:grid;place-items:center;min-height:100vh;margin:0;padding:24px;box-sizing:border-box}" +
-      "div{max-width:720px}code{color:#ff9f9f;word-break:break-all}ul{padding-left:18px}" +
-      "li{margin:2px 0}</style>" +
-      "<div><p>" +
-      label +
-      "</p>" +
-      error +
+  const head = failed
+    ? "<h1>" + copy.failedTitle + "</h1><p class=lede>" + copy.failedLede + "</p>" +
+      "<p><button id=craft-retry>" + copy.retry + "</button></p>" +
+      "<details><summary>" +
+      copy.details +
+      "</summary>" +
+      (state.error ? "<p><code>" + escapeHtml(state.error) + "</code></p>" : "") +
       attempts +
       drop +
       configHint +
-      "<p>Phase: " +
+      "<p class=mono>Phase: " +
       escapeHtml(state.phase) +
-      " · /api/state</p>" +
-      "</div>",
+      " · /api/state</p></details>"
+    : "<h1>" +
+      copy.preparing +
+      "</h1><p class=lede>" +
+      lede +
+      "</p><div class=track><div class=\"fill" +
+      (total > 0 ? "" : " boot") +
+      "\" id=craft-bar" +
+      (total > 0 ? " style=\"width:" + percent + "%\"" : "") +
+      "></div></div><p class=meter id=craft-meter data-wait=\"" +
+      escapeHtml(copy.checking) +
+      "\">" +
+      escapeHtml(meter) +
+      "</p><p class=hint>" +
+      copy.hint +
+      "</p>";
+
+  const poll =
+    "<script>(function(){" +
+    "var bar=document.getElementById('craft-bar'),meter=document.getElementById('craft-meter');" +
+    "function paint(s){var t=s.total||0,g=s.received||0;" +
+    "if(t>0){var p=Math.min(100,Math.round(g*100/t));" +
+    "if(bar){bar.style.width=p+'%'}if(meter){meter.textContent=p+'% · '+(g/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' MB'}}" +
+    "if(s.phase==='ready'){location.replace(location.pathname+location.search)}else if(s.phase==='failed'){location.reload()}}" +
+    "setInterval(function(){fetch('/api/state',{cache:'no-store'}).then(function(r){return r.json()}).then(paint).catch(function(){})},700)" +
+    "})()</script>";
+
+  const retry =
+    "<script>(function(){var b=document.getElementById('craft-retry');if(!b)return;" +
+    "b.addEventListener('click',function(){b.disabled=true;b.textContent=" +
+    JSON.stringify(copy.retrying) +
+    ";fetch('/api/retry',{cache:'no-store'}).then(function(){setTimeout(function(){location.reload()},900)})" +
+    ".catch(function(){location.reload()})})})()</script>";
+
+  return Buffer.from(
+    "<!doctype html><html lang=" +
+      lang +
+      "><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">" +
+      "<title>" +
+      escapeHtml(APP_NAME) +
+      "</title><style>" +
+      "*{box-sizing:border-box}" +
+      "body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px;" +
+      "background:radial-gradient(1200px 600px at 50% -10%,#1c2436 0%,#0d1015 60%);" +
+      "color:#e7eaf0;font:15px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}" +
+      ".card{width:100%;max-width:560px}" +
+      ".brand{display:flex;align-items:center;gap:10px;font-size:13px;letter-spacing:.08em;" +
+      "text-transform:uppercase;color:#8b97ad}" +
+      ".brand i{width:10px;height:10px;border-radius:50%;background:#7f9cf5;box-shadow:0 0 0 4px rgba(127,156,245,.16)}" +
+      "h1{margin:18px 0 10px;font-size:26px;line-height:1.3;font-weight:600;letter-spacing:-.01em}" +
+      ".lede{margin:0 0 26px;color:#a8b2c4}" +
+      ".track{height:6px;border-radius:99px;background:#232937;overflow:hidden}" +
+      ".fill{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#7f9cf5,#9d7bf0);transition:width .3s ease}" +
+      ".fill.boot{width:12%;animation:craft-boot 1.4s ease-in-out infinite}" +
+      "@keyframes craft-boot{0%{margin-left:-12%}100%{margin-left:100%}}" +
+      ".meter{margin:10px 0 0;font-variant-numeric:tabular-nums;font-size:13px;color:#8b97ad}" +
+      ".hint{margin:22px 0 0;font-size:13px;color:#6f7a8d}" +
+      "button{font:inherit;color:#0d1015;background:#7f9cf5;border:0;border-radius:8px;" +
+      "padding:9px 18px;font-weight:600;cursor:pointer}" +
+      "button[disabled]{opacity:.6;cursor:default}" +
+      "details{margin-top:26px;font-size:13px;color:#8b97ad}" +
+      "summary{cursor:pointer}" +
+      "code{color:#e2b3b3;word-break:break-all;font-size:12px}" +
+      "ul{padding-left:18px;margin:8px 0}li{margin:2px 0}" +
+      ".mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#6f7a8d}" +
+      "</style><div class=card><div class=brand><i></i>" +
+      escapeHtml(APP_NAME) +
+      "</div>" +
+      head +
+      "</div>" +
+      (failed ? retry : poll),
     "utf8",
   );
 }
@@ -582,14 +723,16 @@ function resolveEntry(rawPath) {
 
 const server = http.createServer((req, res) => {
   const url = req.url ?? "/";
+  // Path comparisons ignore the query: `/?hl=zh` is still the root page.
+  const route = url.split("?")[0];
   if (req.method !== "GET" && req.method !== "HEAD") {
     return send(res, 405, "text/plain; charset=utf-8", Buffer.from("read-only\n"), { allow: "GET, HEAD" });
   }
 
-  if (url === "/health") {
+  if (route === "/health") {
     return send(res, 200, "application/json; charset=utf-8", Buffer.from(JSON.stringify({ ok: true })));
   }
-  if (url.startsWith("/api/state")) {
+  if (route.startsWith("/api/state")) {
     const body = {
       app: APP_ID,
       phase: state.phase,
@@ -611,7 +754,18 @@ const server = http.createServer((req, res) => {
     };
     return send(res, 200, "application/json; charset=utf-8", Buffer.from(JSON.stringify(body)));
   }
-  if (url === "/" + BRIDGE_NAME) {
+  // The waiting page's retry button. It only re-walks the pinned sources the hub
+  // already allows; there is no upload and no arbitrary URL here (ADR craft/0003 D3).
+  if (route.startsWith("/api/retry")) {
+    scheduleEnsure(true);
+    return send(
+      res,
+      200,
+      "application/json; charset=utf-8",
+      Buffer.from(JSON.stringify({ ok: true, phase: state.phase })),
+    );
+  }
+  if (route === "/" + BRIDGE_NAME) {
     return send(res, 200, MIME.get(".js"), Buffer.from(HOST_BRIDGE_JS, "utf8"));
   }
 
@@ -619,7 +773,9 @@ const server = http.createServer((req, res) => {
     // A drop-in that appeared after boot is picked up here, so the reader never
     // has to restart anything (ADR 0008 D4). Network attempts stay throttled.
     scheduleEnsure(Date.now() - lastNetworkAt > NETWORK_RETRY_MS);
-    if (url === "/" || url === "/index.html") return send(res, 503, MIME.get(".html"), waitingPage());
+    if (route === "/" || route === "/index.html") {
+      return send(res, 503, MIME.get(".html"), waitingPage(pickLang(url, req)));
+    }
     return send(res, 503, "text/plain; charset=utf-8", Buffer.from("payload-not-ready:" + state.phase + "\n"));
   }
 
@@ -647,8 +803,9 @@ const server = http.createServer((req, res) => {
     state.injectMiss = headAt <= 0 || bodyEnd < 0;
     if (state.injectMiss) return send(res, 200, MIME.get(".html"), body);
     let patched = html;
-    if (LANGUAGE_SEED_SCRIPT && !patched.includes(SEED_MARK)) {
-      patched = patched.slice(0, headAt) + LANGUAGE_SEED_SCRIPT + patched.slice(headAt);
+    const seed = headSeed(url, req);
+    if (seed && !patched.includes(SEED_MARK)) {
+      patched = patched.slice(0, headAt) + seed + patched.slice(headAt);
     }
     const at = patched.lastIndexOf("</body>");
     if (!patched.includes(SCRIPT_TAG)) patched = patched.slice(0, at) + SCRIPT_TAG + "\n" + patched.slice(at);
@@ -674,7 +831,10 @@ server.listen(PORT, "127.0.0.1", async () => {
   await ensureConfigFile();
   await loadConfig();
   if (config.error) process.stderr.write(TAG + "config: " + config.error + "\n");
-  scheduleEnsure(true);
+  // Boot only re-checks what is already on disk. The network is walked when a page
+  // actually asks for the app, so a plugin the user never opens downloads nothing
+  // (activation-time warm-up calls this same boot, ADR craft/0003 D2).
+  scheduleEnsure(false);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

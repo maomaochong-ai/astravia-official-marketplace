@@ -132,6 +132,9 @@ function payloadPin(app) {
       name: app.name,
       envPrefix: app.id.toUpperCase().replace(/-/g, "_"),
       sizeLabel: payload.sizeLabel,
+      // Whether this build can draw a Chinese interface at all: only then may the
+      // hub replace navigator.languages (ADR craft/0003 D1).
+      locale: app.locale ?? null,
       ...(app.seed ? { seedKey: app.seed.key, seedValue: app.seed.value } : {}),
     },
   };
@@ -334,6 +337,22 @@ function pluginJson(app, hubSha) {
 
 function readme(app) {
   const { payload } = app;
+  const localeNote =
+    app.locale === "zh"
+      ? [
+          "这个构建自带中文字形，所以标签页会把宿主的界面语言作为 `hl` 传给服务：`hl=zh` 时服务在",
+          "`<head>` 里把 `navigator.languages` 换成中文，应用启动就是中文界面。用户在应用内自己选过的",
+          "语言不会被覆盖（服务只改浏览器环境，不写应用偏好）。",
+          "",
+          "为什么不能只写偏好：hub 端口每次不同，origin 随之变，localStorage 按 origin 隔离；这些上游构建",
+          "本来就是每次启动重算语言。详见 `docs/adr/craft/0003`。",
+        ].join("\n")
+      : [
+          "这个上游 web 构建没有内嵌中文字形（`unzip -l` 里只有 `OFL-noto-sans-cjk-sc.txt` 这类许可证",
+          "文本），强行切中文只会得到一屏空方框，所以界面保持英文。要支持中文需要上游把 CJK 字体加进",
+          "`theme::install` 并重编 wasm，那会产出 60–90 MB 的制品，超出 25 MB 包体上限。详见",
+          "`docs/adr/craft/0003`。",
+        ].join("\n");
   return `# ${app.name}
 
 ${app.summary}
@@ -358,10 +377,16 @@ JavaScript，没有分支、没有重新编译。插件自己只做上游不做�
 ## 一次打开会经过什么
 
 1. 插件起一个只监听 \`127.0.0.1\` 的服务（\`server/hub.mjs\`，由 \`hub.src.mjs\` 生成）。
-2. 服务从 \`${payload.version}\` 的发布包里取 web 构建；已缓存且 sha256 对得上就直接用，否则下载一次。
-3. 标签页的 iframe 指向这个服务；服务把 \`index.html\` 原样送出，只额外注入两个脚本：
-   语言种子（如果这个应用需要）和 \`host-bridge.js\`。
-4. 编辑器和面板之间只走 \`postMessage\`，消息前缀是 \`craft:\`。
+2. 服务从 ${payload.version} 的发布包里取 web 构建；已缓存且 sha256 对得上就直接用，否则下载一次。
+3. 下载期间标签页显示的是准备进度（应用名、一句说明、真实百分比），不是错误页；失败才展开诊断。
+4. 标签页的 iframe 指向这个服务；服务把 \`index.html\` 原样送出，只额外注入两个脚本：
+   语言预设（只有这个构建能画中文时才注入）和 \`host-bridge.js\`。
+5. 编辑器和面板之间只走 \`postMessage\`，消息前缀是 \`craft:\`。
+
+## 界面语言
+
+${localeNote}
+
 
 ## 文件怎么进、怎么出
 

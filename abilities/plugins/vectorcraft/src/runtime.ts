@@ -43,3 +43,21 @@ export async function ensureHub(ctx: PluginContext): Promise<string> {
   const connection = await ctx.services.connection(SERVICE_ID);
   return connection.baseUrl.replace(/\/$/, "");
 }
+
+/**
+ * Start the hub at plugin activation when it is already installed and current, so
+ * the first tab open does not pay for a cold process spawn.
+ *
+ * It deliberately never installs and never starts a download: a user who installed
+ * seven craft plugins and opened none of them would otherwise pull several hundred
+ * megabytes at launch. The hub only walks the network once a page asks for the app.
+ */
+export async function warmHub(ctx: PluginContext): Promise<void> {
+  try {
+    const status = await ctx.services.getStatus(SERVICE_ID);
+    if (!status.installed || status.version !== SERVICE_VERSION) return;
+    if (status.phase !== "ready") await ctx.services.start(SERVICE_ID);
+  } catch {
+    // A preview that cannot start must not break activation; the tab reports it.
+  }
+}

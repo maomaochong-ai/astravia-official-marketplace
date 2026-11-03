@@ -19,11 +19,14 @@ export type EditorPhase = "starting" | "ready" | "failed";
  * the lower rungs of the ladder; `nosw` is for a build that registers a service
  * worker, which would otherwise keep serving a previous hub origin's files.
  */
-function frameQuery(mode: Downgrade): string {
+function frameQuery(mode: Downgrade, uiLang: "zh" | "en"): string {
   const parts: string[] = [];
   if (mode !== "auto") parts.push(mode);
   if (APP.nosw) parts.push("nosw");
-  return parts.length > 0 ? `?${parts.join("&")}` : "";
+  // `hl` is the hub's, not upstream's: it picks the waiting page's language and is
+  // what the hub checks before it presets the app's interface language.
+  parts.push(`hl=${uiLang}`);
+  return `?${parts.join("&")}`;
 }
 
 export interface EditorSession {
@@ -52,6 +55,7 @@ export interface EditorSession {
  */
 export function useCraftEditor(ctx: PluginContext): EditorSession {
   const strings = editorStrings(ctx.i18n.locale);
+  const uiLang: "zh" | "en" = /^zh/i.test(ctx.i18n.locale || "") ? "zh" : "en";
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [phase, setPhase] = useState<EditorPhase>("starting");
   const [backend, setBackend] = useState("");
@@ -255,7 +259,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     notice,
     // `?nosw` keeps a service worker from caching a previous hub origin's build; the
     // hub ignores unknown query strings, so a backend flag and this one coexist.
-    iframeSrc: baseUrl ? `${baseUrl}/${frameQuery(mode)}` : null,
+    iframeSrc: baseUrl ? `${baseUrl}/${frameQuery(mode, uiLang)}` : null,
     iframeKey: `${baseUrl ?? ""}#${nonce}#${mode}`,
     frameRef,
     containerRef: fullscreen.containerRef,
