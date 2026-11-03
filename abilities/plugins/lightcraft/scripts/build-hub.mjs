@@ -81,14 +81,32 @@ try {
 const target = path.join(root, "server/hub.mjs");
 const digest = createHash("sha256").update(output).digest("hex");
 
+// plugin.json is what the host installs from: it lists the hub once per platform with
+// its sha256, and a digest that no longer matches the file is a broken install for
+// every one of them. Keeping the two in step by hand already went wrong once, so the
+// generator owns both directions — write and check.
+const manifestPath = path.join(root, "plugin.json");
+const manifestText = await readFile(manifestPath, "utf8");
+const pinned = new Set(manifestText.match(/[0-9a-f]{64}/g) ?? []);
+
 if (check) {
-  const current = await readFile(target, "utf8").catch(() => "");
-  if (current !== output) {
-    console.error("server/hub.mjs is stale — run `npm run build:hub`");
-    process.exit(1);
-  }
-  console.log("server/hub.mjs is fresh · sha256 " + digest);
+	const current = await readFile(target, "utf8").catch(() => "");
+	if (current !== output) {
+		console.error("server/hub.mjs is stale — run `npm run build:hub`");
+		process.exit(1);
+	}
+	const stale = [...pinned].filter((value) => value !== digest);
+	if (stale.length > 0) {
+		console.error("plugin.json pins a different hub sha256 — run `npm run build:hub`");
+		process.exit(1);
+	}
+	console.log("server/hub.mjs is fresh · sha256 " + digest);
 } else {
-  await writeFile(target, output);
-  console.log("wrote server/hub.mjs · " + output.length + " B · sha256 " + digest);
+	await writeFile(target, output);
+	if (pinned.size > 0) {
+		let next = manifestText;
+		for (const value of pinned) next = next.split(value).join(digest);
+		if (next !== manifestText) await writeFile(manifestPath, next);
+	}
+	console.log("wrote server/hub.mjs · " + output.length + " B · sha256 " + digest);
 }

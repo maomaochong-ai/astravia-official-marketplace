@@ -6,14 +6,14 @@ import { bytesToBase64, base64ToBytes } from "../../shared/formatters/base64.ts"
 import { askCraftFrame, craftFrame, waitForCraftFrame } from "../editor/session-registry.ts";
 
 /**
- * The natural-language surface: five tools the Agent can call to drive the same
+ * The natural-language surface: eight tools the Agent can call to drive the same
  * editor the tab shows. Every one of them goes through the real page over
  * postMessage — no tool reports a state it did not read back from the frame.
  *
  * Tool names are prefixed with the app id because all craft plugins are installed
  * at once and the host keeps one flat tool namespace.
  *
- * ADR: docs/adr/craft/0001-one-generator-seven-plugins.md
+ * ADR: docs/adr/craft/0005-the-agent-drives-the-canvas.md
  */
 const SCOPE = ["conversation", "project"] as const;
 
@@ -208,6 +208,119 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         }
         ctx.browser.open(url);
         return text({ ok: true, where: "panel", url });
+      },
+    }),
+  );
+
+  // --------------------------------------------------------------- gestures
+  //
+  // The page is a canvas, so "click the second toolbar button" is a coordinate and
+  // "name the document" is a keystroke. These three dispatch exactly what a pointer
+  // or keyboard would; none of them can see whether the app reacted. The loop the
+  // Agent is expected to run is capture → look → gesture → capture, and the second
+  // capture is the only evidence a gesture landed.
+
+  disposables.push(
+    ctx.agent.registerTool({
+      id: `${id}_click`,
+      label: `Click in ${APP.name}`,
+      description:
+        `Click a point in the ${APP.name} canvas, given as fractions of its width and height ` +
+        `(0.5, 0.5 is the centre) — the canvas size comes from \`${id}_editor_status\`. ` +
+        `Use it to press a toolbar control, pick a tool, or place something. It cannot tell you ` +
+        `what happened: call \`${id}_capture_canvas\` afterwards and look at the PNG.`,
+      parameters: {
+        type: "object",
+        properties: {
+          x: { type: "number", description: "Horizontal position, 0 (left) to 1 (right)." },
+          y: { type: "number", description: "Vertical position, 0 (top) to 1 (bottom)." },
+          double: { type: "boolean", description: "Send a double click instead of a single one." },
+        },
+        required: ["x", "y"],
+        additionalProperties: false,
+      },
+      scope_use: [...SCOPE],
+      timeoutMs: 20000,
+      async handler(context) {
+        const input = (context.trigger.input ?? {}) as { x?: number; y?: number; double?: boolean };
+        const frame = craftFrame();
+        if (!frame) return text({ ok: false, error: "editor-not-open" });
+        try {
+          const reply = await askCraftFrame(
+            "craft:pointer",
+            { x: input.x ?? 0.5, y: input.y ?? 0.5, double: input.double === true },
+            8000,
+          );
+          return text({ ok: reply.ok !== false, at: reply.at ?? null, error: reply.error ?? null });
+        } catch (error) {
+          return text({ ok: false, error: String((error as Error)?.message ?? error) });
+        }
+      },
+    }),
+  );
+
+  disposables.push(
+    ctx.agent.registerTool({
+      id: `${id}_type`,
+      label: `Type into ${APP.name}`,
+      description:
+        `Type text into whatever field has focus in ${APP.name} — call \`${id}_click\` on the ` +
+        `field first. Printable ASCII only: upstream reads keystrokes directly, so accented and ` +
+        `CJK characters do not arrive. Use it for names, numbers, paths and sizes.`,
+      parameters: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "Text to type, one key event per character." },
+        },
+        required: ["text"],
+        additionalProperties: false,
+      },
+      scope_use: [...SCOPE],
+      timeoutMs: 20000,
+      async handler(context) {
+        const input = (context.trigger.input ?? {}) as { text?: string };
+        if (!input.text) return text({ ok: false, error: "text-required" });
+        const frame = craftFrame();
+        if (!frame) return text({ ok: false, error: "editor-not-open" });
+        try {
+          const reply = await askCraftFrame("craft:key", { text: input.text }, 8000);
+          return text({ ok: reply.ok !== false, typed: reply.typed ?? 0, error: reply.error ?? null });
+        } catch (error) {
+          return text({ ok: false, error: String((error as Error)?.message ?? error) });
+        }
+      },
+    }),
+  );
+
+  disposables.push(
+    ctx.agent.registerTool({
+      id: `${id}_press_key`,
+      label: `Press a key in ${APP.name}`,
+      description:
+        `Press one key or chord in ${APP.name}: \`Enter\`, \`Escape\`, \`Tab\`, a single letter, or a ` +
+        `chord such as \`ctrl+s\` (also \`shift\`, \`alt\`, \`meta\`). Use it to confirm a dialog, ` +
+        `commit a value, or run a menu shortcut.`,
+      parameters: {
+        type: "object",
+        properties: {
+          key: { type: "string", description: `Key or chord, e.g. "Enter" or "ctrl+z".` },
+        },
+        required: ["key"],
+        additionalProperties: false,
+      },
+      scope_use: [...SCOPE],
+      timeoutMs: 20000,
+      async handler(context) {
+        const input = (context.trigger.input ?? {}) as { key?: string };
+        if (!input.key) return text({ ok: false, error: "key-required" });
+        const frame = craftFrame();
+        if (!frame) return text({ ok: false, error: "editor-not-open" });
+        try {
+          const reply = await askCraftFrame("craft:key", { key: input.key }, 8000);
+          return text({ ok: reply.ok !== false, key: reply.key ?? null, error: reply.error ?? null });
+        } catch (error) {
+          return text({ ok: false, error: String((error as Error)?.message ?? error) });
+        }
       },
     }),
   );

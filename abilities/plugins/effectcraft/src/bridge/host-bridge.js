@@ -35,6 +35,50 @@
   var FALLBACK_MS = 60000;
   var CAPTURE_NAME = "canvas.png";
 
+  // ------------------------------------------------------------- pause gate
+  //
+  // An inactive activity tab is hidden with `display: none` but stays mounted, so
+  // this document keeps running and upstream keeps drawing a canvas nobody can see
+  // — one of these per craft plugin, all at 60 fps, in the renderer that also draws
+  // the host UI. Chrome will not throttle a same-origin-scripted page for us.
+  //
+  // The app's own loop is the only thing asking for frames, so holding its request
+  // is exactly "stop drawing": nothing is dropped, the next frame just is not
+  // scheduled until the tab is visible again. Native ids stay untouched and ours are
+  // negative, so no cancel can ever reach the wrong callback.
+  var paused = false;
+  var heldFrames = new Map();
+  var heldSeq = 0;
+  var nativeRaf = window.requestAnimationFrame.bind(window);
+  var nativeCancelRaf = window.cancelAnimationFrame.bind(window);
+
+  window.requestAnimationFrame = function (callback) {
+    if (!paused) return nativeRaf(callback);
+    var id = -(++heldSeq);
+    heldFrames.set(id, callback);
+    return id;
+  };
+
+  window.cancelAnimationFrame = function (id) {
+    if (heldFrames.delete(id)) return undefined;
+    return nativeCancelRaf(id);
+  };
+
+  function pause() {
+    paused = true;
+  }
+
+  function resume() {
+    if (!paused) return;
+    paused = false;
+    var callbacks = [];
+    heldFrames.forEach(function (callback) {
+      callbacks.push(callback);
+    });
+    heldFrames.clear();
+    for (var i = 0; i < callbacks.length; i++) nativeRaf(callbacks[i]);
+  }
+
   function post(message, transfer) {
     try {
       parentWindow.postMessage(message, "*", transfer || []);
@@ -220,10 +264,160 @@
       return;
     }
 
+    if (data.type === "craft:pause") {
+      pause();
+      reply(data.id, { ok: true, paused: true });
+      return;
+    }
+
+    if (data.type === "craft:resume") {
+      resume();
+      reply(data.id, { ok: true, paused: false });
+      return;
+    }
+
+    if (data.type === "craft:pointer") {
+      pointer(data);
+      return;
+    }
+
+    if (data.type === "craft:key") {
+      keys(data);
+      return;
+    }
+
     if (data.type === "craft:capture") {
       capture(data);
+      return;
     }
   });
+
+  // ------------------------------------------------------- driving the editor
+  //
+  // The page is a canvas: there is no DOM to click, only coordinates and keys the
+  // app's own event listeners understand. Both helpers dispatch what a real
+  // pointer or keyboard would, on the canvas, after focusing it — upstream reads
+  // `offsetX/offsetY` and `event.key`, it does not care that the event is synthetic.
+  // Nothing here is app-specific, and nothing claims success: the only proof that a
+  // gesture landed is the next capture.
+
+  function pointer(data) {
+    var canvas = canvasNode();
+    if (!canvas) {
+      reply(data.id, { ok: false, error: "no-canvas" });
+      return;
+    }
+    resume(); // a hidden editor would queue the event into a frame that never runs
+    var box = canvas.getBoundingClientRect();
+    if (!box.width || !box.height) {
+      reply(data.id, { ok: false, error: "canvas-not-laid-out" });
+      return;
+    }
+    // Fractions of the canvas, not pixels: the agent reads the size from inspect and
+    // should not have to care whether the panel is 900 or 2400 px wide.
+    var fx = typeof data.x === "number" ? data.x : 0.5;
+    var fy = typeof data.y === "number" ? data.y : 0.5;
+    var clientX = box.left + Math.min(1, Math.max(0, fx)) * box.width;
+    var clientY = box.top + Math.min(1, Math.max(0, fy)) * box.height;
+    var button = typeof data.button === "number" ? data.button : 0;
+
+    try {
+      canvas.focus();
+    } catch (error) {
+      /* focus is best-effort */
+    }
+
+    var base = {
+      clientX: clientX,
+      clientY: clientY,
+      screenX: clientX,
+      screenY: clientY,
+      bubbles: true,
+      cancelable: true,
+      button: button,
+      buttons: 1,
+      pointerId: 1,
+      pointerType: "mouse",
+      isPrimary: true,
+    };
+
+    function fire(type) {
+      var init = {};
+      for (var key in base) init[key] = base[key];
+      var event;
+      try {
+        event = new PointerEvent(type, init);
+      } catch (error) {
+        event = new MouseEvent(type, init);
+      }
+      canvas.dispatchEvent(event);
+    }
+
+    fire("pointerdown");
+    fire("mousedown");
+    if (data.double) {
+      fire("pointerup");
+      fire("mouseup");
+      fire("click");
+      fire("pointerdown");
+      fire("mousedown");
+    }
+    fire("pointerup");
+    fire("mouseup");
+    fire("click");
+    reply(data.id, { ok: true, at: { x: fx, y: fy } });
+  }
+
+  function keys(data) {
+    var canvas = canvasNode();
+    if (!canvas) {
+      reply(data.id, { ok: false, error: "no-canvas" });
+      return;
+    }
+    resume();
+    var text = typeof data.text === "string" ? data.text : "";
+    var key = typeof data.key === "string" ? data.key : "";
+    try {
+      canvas.focus();
+    } catch (error) {
+      /* focus is best-effort */
+    }
+
+    // Modifier chords arrive as "ctrl+s"; plain keys as "Enter" or a single letter.
+    var parts = key ? key.split("+") : [];
+    var name = parts.length > 1 ? parts[parts.length - 1] : key;
+    var modifiers = parts.length > 1 ? parts.slice(0, -1) : [];
+
+    function keyEvent(type, value, withModifiers) {
+      var init = {
+        key: value,
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: withModifiers.indexOf("ctrl") >= 0,
+        shiftKey: withModifiers.indexOf("shift") >= 0,
+        altKey: withModifiers.indexOf("alt") >= 0,
+        metaKey: withModifiers.indexOf("meta") >= 0,
+      };
+      canvas.dispatchEvent(new KeyboardEvent(type, init));
+    }
+
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      keyEvent("keydown", ch, []);
+      keyEvent("keypress", ch, []);
+      keyEvent("keyup", ch, []);
+    }
+
+    if (name) {
+      for (var m = 0; m < modifiers.length; m++) keyEvent("keydown", modifiers[m], []);
+      keyEvent("keydown", name, modifiers);
+      keyEvent("keyup", name, modifiers);
+      for (var u = modifiers.length - 1; u >= 0; u--) keyEvent("keyup", modifiers[u], []);
+    }
+
+    reply(data.id, { ok: true, typed: text.length, key: name || null });
+  }
+
 
   function canvasNode() {
     var canvas = document.querySelector("canvas");

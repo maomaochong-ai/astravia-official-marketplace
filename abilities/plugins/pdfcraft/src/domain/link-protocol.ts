@@ -23,6 +23,11 @@ export interface LinkMessage {
   error?: string;
   href?: string;
   canvas?: { width: number; height: number } | null;
+  // Gesture replies. The bridge says what it dispatched, never what the app did
+  // with it — `at` is the fraction it used and `typed` the number of key events.
+  at?: { x: number; y: number } | null;
+  typed?: number;
+  key?: string | null;
 }
 
 export function isLinkMessage(data: unknown): data is LinkMessage {

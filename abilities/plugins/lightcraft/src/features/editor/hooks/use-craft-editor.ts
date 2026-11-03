@@ -1,4 +1,5 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
+import { useActivityTab } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { isBootFailure, isLinkMessage, nextDowngrade } from "../../../domain/link-protocol.ts";
@@ -55,6 +56,15 @@ export interface EditorSession {
  */
 export function useCraftEditor(ctx: PluginContext): EditorSession {
   const strings = editorStrings(ctx.i18n.locale);
+  // The host keeps this document alive while its tab is hidden (display:none) so that
+  // unsaved work survives a tab switch. Nothing on this side spins at 60 fps for a
+  // page nobody is looking at: the bridge holds the app's next frame instead.
+  // `active` defaults to false when the host provides no context, so a build that
+  // predates the hook never pauses a live editor — we only pause after seeing active.
+  const tab = useActivityTab();
+  const everActive = useRef(false);
+  if (tab.active) everActive.current = true;
+  const paused = everActive.current && !tab.active;
   const uiLang: "zh" | "en" = /^zh/i.test(ctx.i18n.locale || "") ? "zh" : "en";
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [phase, setPhase] = useState<EditorPhase>("starting");
@@ -108,6 +118,17 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     });
     return () => setCraftFrame(null);
   }, []);
+
+  // --------------------------------------------------------------- pause gate
+
+  // Re-sent on `phase`, so a reloaded frame (which starts with a fresh, unpaused
+  // bridge) inherits the current visibility instead of drawing forever in a
+  // hidden tab. postMessage is delivered to a display:none frame; frames are not.
+  useEffect(() => {
+    const target = frameRef.current?.contentWindow;
+    if (!target) return;
+    target.postMessage({ type: paused ? "craft:pause" : "craft:resume" }, "*");
+  }, [paused, phase]);
 
   // -------------------------------------------------------- explorer selection
 
