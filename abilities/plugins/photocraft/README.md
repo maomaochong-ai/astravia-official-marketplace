@@ -53,9 +53,10 @@ npm run check    # tsc --noEmit + build-hub --check
 npm run build    # 重建 server/hub.mjs 并打包
 ```
 
-`src/` 与 `server/` 是 `tools/craft/stem/` 的逐字节副本，唯一按应用不同的是
-`src/app.config.ts`。改共享代码要改 stem，再跑 `node tools/craft/generate.mjs photocraft`；
-直接改这里的副本会在下次生成时被覆盖。
+`src/**`、`server/hub.src.mjs` 与 `scripts/build-hub.mjs` 在七支 craft 插件（含 photocraft）之间逐字节相同，
+唯一按应用不同的是 `src/app.config.ts`。这里就是源码：改共享行为要在七支上做同样的改动，
+`tests/craft-parity.test.mjs` 会在漏改时失败。见
+[`docs/adr/craft/0001`](../../../../docs/adr/craft/0001-seven-copies-and-a-parity-test.md)。
 
 ## 权限
 

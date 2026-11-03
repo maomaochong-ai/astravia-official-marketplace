@@ -32,8 +32,10 @@ JavaScript，没有分支、没有重新编译。插件自己只做上游不做�
 
 这个上游 web 构建既没有中文文案，也没有内嵌中文字形（`unzip -l` 里只有
 `OFL-noto-sans-cjk-sc.txt` 这类许可证文本），强行切中文只会得到英文界面加一屏空方框。
-所以界面保持英文；标签外壳、准备页与能力页说明是中文。要真正支持中文，需要上游自己
-加语言表并重编 wasm，那会产出 60–90 MB 的制品。详见 `docs/adr/craft/0003`。
+所以画布里的界面保持英文；标签外壳、准备页与能力页说明是中文，`strings.ts` 中英双语，
+`hl` 参数按宿主语言透传给构建（上游若支持就生效）。要真正把画布翻成中文，需要上游自己
+加语言表并重编 wasm，那会产出 60–90 MB 的制品；那条重编译管线已经删除。
+详见 [`docs/adr/craft/0007`](../../../../docs/adr/craft/0007-chinese-comes-from-the-shell.md)。
 
 
 ## 文件怎么进、怎么出
@@ -51,9 +53,10 @@ npm run check    # tsc --noEmit + build-hub --check
 npm run build    # 重建 server/hub.mjs 并打包
 ```
 
-`src/` 与 `server/` 是 `tools/craft/stem/` 的逐字节副本，唯一按应用不同的是
-`src/app.config.ts`。改共享代码要改 stem，再跑 `node tools/craft/generate.mjs vectorcraft`；
-直接改这里的副本会在下次生成时被覆盖。
+`src/**`、`server/hub.src.mjs` 与 `scripts/build-hub.mjs` 在七支 craft 插件（含 photocraft）之间逐字节相同，
+唯一按应用不同的是 `src/app.config.ts`。这里就是源码：改共享行为要在七支上做同样的改动，
+`tests/craft-parity.test.mjs` 会在漏改时失败。见
+[`docs/adr/craft/0001`](../../../../docs/adr/craft/0001-seven-copies-and-a-parity-test.md)。
 
 ## 权限
 
