@@ -44,6 +44,11 @@
           "title": "Driven from the conversation",
           "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
           "icon": "solar:cursor-bold"
+        },
+        {
+          "title": "Reopen what you were editing",
+          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
+          "icon": "solar:clock-circle-linear"
         }
       ]
     },

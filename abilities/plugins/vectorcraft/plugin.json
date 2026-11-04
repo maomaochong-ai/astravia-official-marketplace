@@ -2,7 +2,7 @@
   "id": "vectorcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",
@@ -18,6 +18,8 @@
     "fs.read",
     "fs.write",
     "workspace.read",
+    "storage.read",
+    "storage.write",
     "agent.tools.register",
     "agent.toolHandler.execute",
     "agent.skills.control"

@@ -24,6 +24,12 @@ export interface EditorStrings {
   saved: string;
   saveFailed: string;
   openFailed: string;
+  /** Status-line prefix while a remembered file is being re-read and handed over. */
+  opening: string;
+  /** Recent-files menu in the status bar. */
+  recent: string;
+  recentEmpty: string;
+  recentHint: string;
   backendGpu: string;
   backendCpu: string;
   degradeGl: string;
@@ -37,6 +43,16 @@ export interface EditorStrings {
   stepReady: string;
   stepOpen: string;
   stepWait: string;
+  /** Boot cover: reading the package's site file. */
+  bootRead: string;
+  /** Boot cover: the engine module is loading and compiling. */
+  bootEngine: string;
+  /** Boot cover: the engine is up, the first frame is being drawn. */
+  bootDraw: string;
+  /** `{n}` is replaced with the elapsed seconds. */
+  bootSeconds: string;
+  /** Shown once a boot passes what a warm start needs. */
+  bootSlow: string;
 }
 
 const en: EditorStrings = {
@@ -56,6 +72,10 @@ const en: EditorStrings = {
   saved: "Saved",
   saveFailed: "Save failed",
   openFailed: "Could not read that file",
+  opening: "Opening",
+  recent: "Recent",
+  recentEmpty: "Nothing opened yet",
+  recentHint: "Files this tab opened or saved. They come from the workspace, so they open again here.",
   backendGpu: "GPU",
   backendCpu: "CPU",
   degradeGl: "No GPU — retrying with WebGL2…",
@@ -67,6 +87,12 @@ const en: EditorStrings = {
   stepReady: "Wait for the editor",
   stepOpen: "Open the file",
   stepWait: "Let it load",
+  bootRead: "Reading the editor",
+  bootEngine: "Starting the engine",
+  bootDraw: "Drawing the first frame",
+  bootSeconds: "{n}s",
+  bootSlow:
+    "A cold start compiles the whole engine in this frame — tens of seconds is normal the first time, and much faster afterwards.",
 };
 
 const zh: EditorStrings = {
@@ -86,6 +112,10 @@ const zh: EditorStrings = {
   saved: "已保存",
   saveFailed: "保存失败",
   openFailed: "读不到这个文件",
+  opening: "正在打开",
+  recent: "最近打开",
+  recentEmpty: "还没有打开过文件",
+  recentHint: "这里只列本标签页打开或保存过的文件，路径来自工作区，点一下就能重新打开。",
   backendGpu: "GPU",
   backendCpu: "CPU",
   degradeGl: "没有可用 GPU，改用 WebGL2 重试…",
@@ -97,6 +127,11 @@ const zh: EditorStrings = {
   stepReady: "等待编辑器就绪",
   stepOpen: "打开文件",
   stepWait: "等它载入",
+  bootRead: "读取编辑器",
+  bootEngine: "启动引擎",
+  bootDraw: "绘制首帧",
+  bootSeconds: "{n} 秒",
+  bootSlow: "首次启动要在这个框里编译整个引擎，十几秒到几十秒都算正常，之后会快得多。",
 };
 
 export function editorStrings(locale: string | undefined): EditorStrings {

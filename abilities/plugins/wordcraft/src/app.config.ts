@@ -22,8 +22,13 @@ export const APP = {
    * docs/adr/wordcraft/craft-0007-chinese-comes-from-the-shell.md.
    */
   locale: "zh",
-  /** Fill-only preference seed; empty when the app keeps no interface language there. */
-  seedKey: "",
-  seedValue: "",
+  /**
+   * Fill-only preference seed; empty when the app keeps no interface language there.
+   * WordCraft keeps its `UiState` in `localStorage["wordcraft.ui"]` and restores it leniently,
+   * so `{"language":"zh-hans"}` is enough: every other key falls back to its default and a
+   * language the user picks later wins, because this only fills an absent value.
+   */
+  seedKey: "wordcraft.ui",
+  seedValue: "{\"language\":\"zh-hans\"}",
   upstream: "https://github.com/storytold/wordcraft",
 } as const;

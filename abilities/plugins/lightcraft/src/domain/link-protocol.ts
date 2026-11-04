@@ -23,6 +23,11 @@ export interface LinkMessage {
   error?: string;
   href?: string;
   canvas?: { width: number; height: number } | null;
+  // `craft:boot` heartbeat: upstream's own loading line, whether the bridge has already
+  // called the boot slow, and how long it has been running.
+  loader?: string;
+  slow?: boolean;
+  waitedMs?: number;
   // Gesture replies. The bridge says what it dispatched, never what the app did
   // with it — `at` is the fraction it used and `typed` the number of key events.
   at?: { x: number; y: number } | null;

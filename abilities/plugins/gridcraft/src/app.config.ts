@@ -22,8 +22,13 @@ export const APP = {
    * docs/adr/gridcraft/craft-0007-chinese-comes-from-the-shell.md.
    */
   locale: "zh",
-  /** Fill-only preference seed; empty when the app keeps no interface language there. */
-  seedKey: "",
-  seedValue: "",
+  /**
+   * Fill-only preference seed; empty when the app keeps no interface language there.
+   * GridCraft reads `saved_language()` out of `localStorage["gridcraft.ui"]` and falls back to
+   * the browser's language only when that key has none, so this makes Chinese the default on a
+   * first visit and still loses to a language the user picks later.
+   */
+  seedKey: "gridcraft.ui",
+  seedValue: "{\"language\":\"zh\"}",
   upstream: "https://github.com/storytold/gridcraft",
 } as const;
