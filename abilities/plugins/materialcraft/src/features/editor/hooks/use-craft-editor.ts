@@ -1,6 +1,6 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
 import { useActivityTab } from "@astravia-org/plugin-sdk";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { isBootFailure, isLinkMessage, isProgressMessage, nextDowngrade } from "../../../domain/link-protocol.ts";
 import type { Downgrade } from "../../../domain/link-protocol.ts";
@@ -15,6 +15,18 @@ import { useContainerFullscreen } from "./use-container-fullscreen.ts";
 
 export type EditorPhase = "starting" | "ready" | "failed";
 
+/**
+ * What the boot cover needs, all of it observed rather than estimated: when this frame's
+ * document was handed to the iframe, the last line upstream painted into its own
+ * `*_loading` element, and whether the bridge has already reported the boot as slow.
+ */
+export interface BootState {
+  startedAt: number;
+  hasDocument: boolean;
+  line: string;
+  slow: boolean;
+}
+
 export interface EditorSession {
   strings: EditorStrings;
   phase: EditorPhase;
@@ -24,6 +36,9 @@ export interface EditorSession {
   savedAt: number | null;
   notice: string | null;
   /** "2/5 · 点击渐变工具" while an Agent batch runs in the page; null when idle. */
+  boot: BootState;
+  /** Package-relative icon for the boot cover; null when there is no package root. */
+  iconUrl: string | null;
   progress: string | null;
   /** Upstream's page as an inline document; null until the package file is read. */
   iframeDoc: string | null;
@@ -67,6 +82,12 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
+  const [boot, setBoot] = useState<BootState>(() => ({
+    startedAt: Date.now(),
+    hasDocument: false,
+    line: "",
+    slow: false,
+  }));
   const [nonce, setNonce] = useState(0);
   const [mode, setMode] = useState<Downgrade>("auto");
 
@@ -80,6 +101,18 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   selectionRef.current = candidate;
   baseUrlRef.current = baseUrl;
 
+  // The icon is a package file next to the site (`assets/`, the directory the marketplace
+  // card reads too), so the boot cover needs no per-plugin import and no second copy of
+  // the same PNG in the bundle. A dev link without that layout gets a monogram instead.
+  const iconUrl = useMemo(() => {
+    if (!baseUrl) return null;
+    try {
+      return new URL("../assets/icon.png", baseUrl).href;
+    } catch {
+      return null;
+    }
+  }, [baseUrl]);
+
   // ------------------------------------------------------------- page document
 
   // The site is a file in this package, so "starting" is a fetch and an inline
@@ -92,6 +125,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
         const doc = await buildSiteDocument({ mode, uiLang });
         if (cancelled) return;
         setIframeDoc(doc);
+        setBoot({ startedAt: Date.now(), hasDocument: true, line: "", slow: false });
       } catch (error) {
         if (cancelled) return;
         setIframeDoc(null);
@@ -198,6 +232,17 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
         return;
       }
 
+      // The bridge's boot heartbeat: upstream's own loading line (the only progress
+      // signal the page emits) plus its "this is slow" flag.
+      if (data.type === "craft:boot") {
+        const line = typeof data.loader === "string" ? data.loader.trim() : "";
+        const slow = !!data.slow;
+        setBoot((old) =>
+          old.line === line && old.slow === slow ? old : { ...old, line, slow: old.slow || slow },
+        );
+        return;
+      }
+
       if (data.type === "craft:ready") {
         setPhase("ready");
         setBackend(
@@ -282,6 +327,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     setPhase("starting");
     setNonce((value) => value + 1);
     setNotice(null);
+    setBoot({ startedAt: Date.now(), hasDocument: false, line: "", slow: false });
   }, []);
 
   return {
@@ -292,6 +338,8 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     candidate,
     savedAt,
     notice,
+    boot,
+    iconUrl,
     progress,
     iframeDoc,
     // Re-mounting the frame is what reloads the app: same document text, new key.

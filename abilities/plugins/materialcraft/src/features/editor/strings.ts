@@ -37,6 +37,16 @@ export interface EditorStrings {
   stepReady: string;
   stepOpen: string;
   stepWait: string;
+  /** Boot cover: reading the package's site file. */
+  bootRead: string;
+  /** Boot cover: the engine module is loading and compiling. */
+  bootEngine: string;
+  /** Boot cover: the engine is up, the first frame is being drawn. */
+  bootDraw: string;
+  /** `{n}` is replaced with the elapsed seconds. */
+  bootSeconds: string;
+  /** Shown once a boot passes what a warm start needs. */
+  bootSlow: string;
 }
 
 const en: EditorStrings = {
@@ -67,6 +77,12 @@ const en: EditorStrings = {
   stepReady: "Wait for the editor",
   stepOpen: "Open the file",
   stepWait: "Let it load",
+  bootRead: "Reading the editor",
+  bootEngine: "Starting the engine",
+  bootDraw: "Drawing the first frame",
+  bootSeconds: "{n}s",
+  bootSlow:
+    "A cold start compiles the whole engine in this frame — tens of seconds is normal the first time, and much faster afterwards.",
 };
 
 const zh: EditorStrings = {
@@ -97,6 +113,11 @@ const zh: EditorStrings = {
   stepReady: "等待编辑器就绪",
   stepOpen: "打开文件",
   stepWait: "等它载入",
+  bootRead: "读取编辑器",
+  bootEngine: "启动引擎",
+  bootDraw: "绘制首帧",
+  bootSeconds: "{n} 秒",
+  bootSlow: "首次启动要在这个框里编译整个引擎，十几秒到几十秒都算正常，之后会快得多。",
 };
 
 export function editorStrings(locale: string | undefined): EditorStrings {

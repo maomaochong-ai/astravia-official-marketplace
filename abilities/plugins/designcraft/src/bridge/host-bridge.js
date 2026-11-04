@@ -909,7 +909,13 @@
   // here removes its `#<app>_loading` element on success and rewrites it with a
   // failure sentence otherwise, so that element is the only signal available; a
   // shell without one is judged by its first non-empty canvas.
-  var BOOT_MS = 60000;
+  // Sixty seconds was the old ceiling, and it was wrong: a cold start of a 15–40 MB wasm
+  // build legitimately takes longer, and calling that "failed" walked the tab down the
+  // WebGPU → WebGL2 → software ladder and ended on "did not start" — three reloads and
+  // several minutes of nothing, for a boot that was merely slow. Report slow as slow and
+  // keep watching; only a real failure sentence, or five minutes, ends the watch.
+  var SLOW_MS = 25000;
+  var BOOT_LIMIT_MS = 300000;
 
   function loaderText() {
     var el = document.querySelector('[id$="_loading"]');
@@ -924,6 +930,8 @@
   function announceBoot(backend) {
     var started = Date.now();
     var done = false;
+    var slowSent = false;
+    var done = false;
     var timer = setInterval(function () {
       if (done) return clearInterval(timer);
       var text = loaderText();
@@ -933,18 +941,23 @@
         post({ type: "craft:ready", backend: backend, href: location.href, secure: !!window.isSecureContext });
         return;
       }
+      var waitedMs = Date.now() - started;
       var failed = /failed to start|failed to load|device lost/i.test(text);
-      var waited = Date.now() - started > BOOT_MS;
-      if (failed || waited) {
+      // Heartbeat: upstream's own loading line is the only live signal the page gives us.
+      post({ type: "craft:boot", loader: text, slow: slowSent, waitedMs: waitedMs });
+      if (failed) {
         done = true;
         clearInterval(timer);
-        post({
-          type: "craft:error",
-          backend: backend,
-          message: text || (failed ? "failed to start" : "boot-timeout"),
-        });
+        post({ type: "craft:error", backend: backend, message: text || "failed to start" });
+        return;
       }
-    }, 200);
+      if (!slowSent && waitedMs > SLOW_MS) slowSent = true;
+      if (waitedMs > BOOT_LIMIT_MS) {
+        done = true;
+        clearInterval(timer);
+        post({ type: "craft:error", backend: backend, message: "boot-timeout" });
+      }
+    }, 250);
   }
 
   function backend() {

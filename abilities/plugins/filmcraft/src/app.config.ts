@@ -21,7 +21,7 @@ export const APP = {
    * build's business (its own language table and glyphs); see
    * docs/adr/filmcraft/craft-0007-chinese-comes-from-the-shell.md.
    */
-  locale: "",
+  locale: "zh",
   /** Fill-only preference seed; empty when the app keeps no interface language there. */
   seedKey: "",
   seedValue: "",

@@ -186,6 +186,14 @@ function assertRelativeIndex(indexPath) {
 }
 
 /**
+ * Relative import specifiers inside a shipped module: `from "./x"`, `import("./x")`,
+ * `new URL("./x", import.meta.url)`. Only literals — a template string is not a specifier
+ * we can resolve without running the page.
+ */
+const RELATIVE_SPECIFIER =
+	/(?:\bfrom\s*|\bimport\s*\(\s*|new\s+URL\s*\(\s*)['"`](\.{1,2}\/[^'"`?#]+)['"`]/g;
+
+/**
  * The site ships precompressed twins (`x.wasm.gz`, `x.wasm.br`) for hosts that negotiate
  * Content-Encoding. The plugin protocol serves raw bytes and the page fetches the module
  * directly, so those copies are dead weight — and already-compressed bytes do not shrink
@@ -204,6 +212,47 @@ function dropPrecompressed(dir) {
 		dropped += 1;
 	}
 	return dropped;
+}
+
+function collectModules(dir, out = []) {
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const path = join(dir, entry.name);
+		if (entry.isDirectory()) collectModules(path, out);
+		else if (entry.isFile() && /\.m?js$/.test(entry.name)) out.push(path);
+	}
+	return out;
+}
+
+/**
+ * Upstream's chunked builds put the app module under `app/` while the `snippets/` it imports
+ * stay at the site root, so `app/<app>.js` asks for `app/snippets/…` and gets a 404 — a module
+ * graph that never finishes loading, which reads as "the editor does not open" and produces no
+ * error any Rust could report. Reproduce it by serving the unpacked release from a plain static
+ * server: the page sits on its own "taking longer than usual" notice forever.
+ *
+ * The bytes are theirs; only the missing copy is ours, and only when the file it means to load
+ * is already in the bundle at the same relative path from the site root.
+ */
+function repairModuleGraph(dir) {
+	const repaired = [];
+	const unresolved = [];
+	for (const file of collectModules(dir)) {
+		const text = readFileSync(file, "utf8");
+		for (const match of text.matchAll(RELATIVE_SPECIFIER)) {
+			const specifier = match[1];
+			const wanted = resolve(dirname(file), specifier);
+			if (existsSync(wanted)) continue;
+			const atRoot = resolve(dir, specifier);
+			if (existsSync(atRoot)) {
+				mkdirSync(dirname(wanted), { recursive: true });
+				cpSync(atRoot, wanted);
+				repaired.push(`${(file.slice(dir.length + 1))} → ${specifier}`);
+				continue;
+			}
+			unresolved.push(`${file.slice(dir.length + 1)} → ${specifier}`);
+		}
+	}
+	return { repaired: [...new Set(repaired)], unresolved: [...new Set(unresolved)] };
 }
 
 async function stageOne(slug) {
@@ -249,6 +298,17 @@ async function stageOne(slug) {
 		rmSync(target, { recursive: true, force: true });
 		mkdirSync(target, { recursive: true });
 		cpSync(from, target, { recursive: true });
+
+		const graph = repairModuleGraph(target);
+		if (graph.repaired.length > 0) {
+			process.stdout.write(
+				`[${slug}] rewired ${graph.repaired.length} module path(s) upstream's chunk layout leaves dangling:\n` +
+					graph.repaired.map((line) => `  ${line}\n`).join(""),
+			);
+		}
+		for (const line of graph.unresolved) {
+			process.stderr.write(`[${slug}] WARNING unresolved relative import: ${line}\n`);
+		}
 
 		if (pin.skipPrecompressed) {
 			const dropped = dropPrecompressed(target);

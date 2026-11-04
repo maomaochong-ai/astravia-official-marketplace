@@ -31,6 +31,7 @@ const FAMILY_DOCS = [
 	"craft-0010-the-manifest-speaks-the-shell-language.md",
 	"craft-0011-the-site-ships-in-the-package.md",
 	"craft-0012-the-site-is-upstreams-release-bundle.md",
+	"craft-0013-a-slow-boot-is-not-a-failure.md",
 	"craft-CONTEXT.md",
 ];
 

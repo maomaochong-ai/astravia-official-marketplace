@@ -2,6 +2,7 @@ import type { PluginContext } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { APP } from "../../../app.config.ts";
 import { useCraftEditor } from "../hooks/use-craft-editor.ts";
+import { BootCover } from "./boot-cover.tsx";
 import { EditorStatusBar } from "./editor-status-bar.tsx";
 
 /**
@@ -12,7 +13,8 @@ import { EditorStatusBar } from "./editor-status-bar.tsx";
  */
 export function CraftTab({ ctx }: { ctx: PluginContext }): JSX.Element {
   const session = useCraftEditor(ctx);
-  const { strings, iframeDoc, iframeKey, frameRef, containerRef, overlay } = session;
+  const { strings, iframeDoc, iframeKey, frameRef, containerRef, overlay, phase, boot, notice, iconUrl } =
+    session;
   // The Fullscreen API can be refused by the host frame. Then the shell itself
   // covers the viewport — same element, same exit button, no lost status bar.
   const shell = overlay
@@ -39,6 +41,18 @@ export function CraftTab({ ctx }: { ctx: PluginContext }): JSX.Element {
             {strings.preparing}
           </div>
         )}
+
+        {/* Covers the frame until the engine reports its first frame: upstream's own
+            loading line is one grey sentence on black, and its twenty-second "taking
+            longer than usual" notice reads as a fault. Same cover in all fifteen. */}
+        <BootCover
+          phase={phase}
+          boot={boot}
+          strings={strings}
+          notice={notice}
+          iconUrl={iconUrl}
+          onReload={session.reload}
+        />
       </div>
     </div>
   );
