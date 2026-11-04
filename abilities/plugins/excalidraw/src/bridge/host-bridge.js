@@ -620,12 +620,10 @@
   /**
    * PNG of whatever the app is showing — every painted layer composited in document
    * order — optionally one region of it, optionally enlarged. The enlargement is what
-   * makes a toolbar readable to a model: 4x zoom on the top strip turns 16-px icons into
+   * makes a toolbar readable to a model: 4× zoom on the top strip turns 16-px icons into
    * something a screenshot can be understood from, and it is cheaper than shipping a 4K
-   * full frame.
-   * enlarged. The enlargement is what makes a toolbar readable to a model: 8× zoom
-   * on the top strip turns 16-px icons into something a screenshot can be understood
-   * from, and it is cheaper than shipping a 4K full frame.
+   * full frame. Four is also the ceiling: the scale is clamped, so a larger request
+   * quietly yields 4× instead of a 20 MB PNG.
    */
   function pngBytes(canvas, region, scale) {
     var factor = typeof scale === "number" && scale > 0 ? Math.min(4, scale) : 1;
