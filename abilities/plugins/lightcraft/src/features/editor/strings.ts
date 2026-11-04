@@ -24,6 +24,12 @@ export interface EditorStrings {
   saved: string;
   saveFailed: string;
   openFailed: string;
+  /** Status-line prefix while a remembered file is being re-read and handed over. */
+  opening: string;
+  /** Recent-files menu in the status bar. */
+  recent: string;
+  recentEmpty: string;
+  recentHint: string;
   backendGpu: string;
   backendCpu: string;
   degradeGl: string;
@@ -66,6 +72,10 @@ const en: EditorStrings = {
   saved: "Saved",
   saveFailed: "Save failed",
   openFailed: "Could not read that file",
+  opening: "Opening",
+  recent: "Recent",
+  recentEmpty: "Nothing opened yet",
+  recentHint: "Files this tab opened or saved. They come from the workspace, so they open again here.",
   backendGpu: "GPU",
   backendCpu: "CPU",
   degradeGl: "No GPU — retrying with WebGL2…",
@@ -102,6 +112,10 @@ const zh: EditorStrings = {
   saved: "已保存",
   saveFailed: "保存失败",
   openFailed: "读不到这个文件",
+  opening: "正在打开",
+  recent: "最近打开",
+  recentEmpty: "还没有打开过文件",
+  recentHint: "这里只列本标签页打开或保存过的文件，路径来自工作区，点一下就能重新打开。",
   backendGpu: "GPU",
   backendCpu: "CPU",
   degradeGl: "没有可用 GPU，改用 WebGL2 重试…",

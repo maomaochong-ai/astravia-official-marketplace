@@ -75,5 +75,8 @@ description: Build slide decks inside Astravia — the upstream DeckCraft editor
 
 ## 上游文档
 
-`references/upstream.md` 指向上游 `storytold/deckcraft` 仓库与文档入口。这个插件只钉住上游的一个发布版本，
-上游的能力边界就是这里的能力边界；判断某个功能是否存在，以那份文档和编辑器里实际看得到的界面为准。
+`references/upstream.md` 是从上游 `deckcraft` 自己的 Rust 源码里导出的命令表：菜单路径、显示名、默认快捷键、
+命令 id，加上上游对这个应用的一句话定位。判断「有没有这个功能」「它叫什么」「上游给它配了什么键」以它为准，
+不要凭记忆描述上游功能。表里的名字取自上游菜单目录，所以在编辑器界面上真的存在。
+
+网页构建没有命令总线，表里的命令 id 只能当索引：动作仍然通过 `act` 的指针与按键步骤落到界面上。

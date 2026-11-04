@@ -1,4 +1,5 @@
 import type { EditorSession } from "../hooks/use-craft-editor.ts";
+import { RecentFilesMenu } from "./recent-files-menu.tsx";
 
 /**
  * The single 28 px line above the frame. Three controls, icons only, each with the
@@ -9,7 +10,8 @@ import type { EditorSession } from "../hooks/use-craft-editor.ts";
  * ADR: docs/adr/<slug>/craft-0010-icons-only-and-a-fullscreen-that-returns.md
  */
 export function EditorStatusBar({ session }: { session: EditorSession }): React.ReactElement {
-  const { strings, phase, backend, binding, candidate, savedAt, notice, isFullscreen, progress } = session;
+  const { strings, phase, backend, binding, candidate, savedAt, notice, isFullscreen, progress, recent } =
+    session;
   const status = phase === "failed" ? strings.failed : phase === "ready" ? strings.ready : strings.preparing;
   const tone =
     phase === "failed" ? "text-red-400" : phase === "ready" ? "text-emerald-400" : "text-amber-300";
@@ -45,6 +47,15 @@ export function EditorStatusBar({ session }: { session: EditorSession }): React.
       ) : notice ? (
         <span className="max-w-[40%] truncate text-neutral-400">{notice}</span>
       ) : null}
+
+      <RecentFilesMenu
+        entries={recent}
+        label={strings.recent}
+        empty={strings.recentEmpty}
+        hint={strings.recentHint}
+        disabled={disabled}
+        onPick={session.openRecent}
+      />
 
       <button
         type="button"

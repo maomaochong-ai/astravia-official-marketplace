@@ -75,7 +75,9 @@ description: Catalog photos and develop raw files in LightCraft inside Astravia:
 
 ## 上游文档
 
-`references/` 里是上游 `storytold/lightcraft` 自带的文档，随插件一起发布。按任务去读，不要凭记忆描述上游功能：
+`references/upstream.md` 是从上游 `lightcraft` 自己的 Rust 源码里导出的命令表：菜单路径、显示名、默认快捷键、命令 id。
+要确认「有没有这个功能」「它叫什么」「上游给它配了什么键」，先读它，不要凭记忆描述上游功能。
+`references/` 里另有上游自带的文档，按任务去读：
 
 | 目录 | 什么时候读 |
 | --- | --- |

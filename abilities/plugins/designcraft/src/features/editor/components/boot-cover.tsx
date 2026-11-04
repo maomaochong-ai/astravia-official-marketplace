@@ -21,6 +21,8 @@ import type { EditorStrings } from "../strings.ts";
  * boot's real phases (read the package, start the engine, first frame) and then climbs
  * slowly, so the difference between "working" and "wedged" comes from the phase text and
  * the elapsed seconds, never from a bar that stalls at 90 %.
+ *
+ * ADR: docs/adr/<slug>/craft-0013-a-slow-boot-is-not-a-failure.md
  */
 
 interface BootCoverProps {
@@ -85,48 +87,89 @@ export function BootCover({
 
   if (finished) return <></>;
 
+  const accent = failed ? "text-rose-300" : "text-sky-300";
+  const ring = failed ? "ring-rose-400/40" : "ring-white/10";
+  const live = !failed;
+
   return (
     <div
-      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-neutral-950 px-6 text-center"
+      data-craft-boot=""
+      className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 overflow-hidden px-6 text-center"
+      style={{
+        background: failed
+          ? "radial-gradient(120% 120% at 50% 0%, #2a1418 0%, #0d0a0b 58%, #050505 100%)"
+          : "radial-gradient(120% 120% at 50% 0%, #1a2430 0%, #0b0d10 58%, #050505 100%)",
+      }}
       role="status"
       aria-live="polite"
     >
-      {iconUrl && !iconBroken ? (
-        <img
-          src={iconUrl}
-          alt=""
-          onError={() => setIconBroken(true)}
-          className="h-14 w-14 rounded-2xl object-contain opacity-90"
-        />
-      ) : (
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-lg font-semibold text-neutral-300">
-          {APP.name.slice(0, 1)}
-        </div>
-      )}
+      {/* Mark: the plugin's own icon inside a tile, with an arc that turns only while
+          the engine is still starting. It is decoration, never the progress signal. */}
+      <div className="relative flex h-[74px] w-[74px] items-center justify-center">
+        {live ? (
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 animate-spin rounded-[26px] opacity-70 blur-[3px] [animation-duration:2.6s]"
+            style={{
+              background:
+                "conic-gradient(from 0deg, rgba(56,189,248,0) 0deg, rgba(56,189,248,0.55) 110deg, rgba(56,189,248,0) 250deg)",
+            }}
+          />
+        ) : null}
+        <span
+          className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] bg-neutral-900/90 ring-1 ${ring} shadow-[0_10px_30px_-12px_rgba(0,0,0,0.9)]`}
+        >
+          {iconUrl && !iconBroken ? (
+            <img
+              src={iconUrl}
+              alt=""
+              onError={() => setIconBroken(true)}
+              className="h-[46px] w-[46px] object-contain"
+            />
+          ) : (
+            <span className={`text-xl font-semibold ${failed ? "text-rose-200/80" : "text-neutral-300"}`}>
+              {APP.name.slice(0, 1)}
+            </span>
+          )}
+        </span>
+      </div>
 
-      <div className="text-sm font-medium text-neutral-200">{APP.name}</div>
+      <div className="flex flex-col items-center gap-1">
+        <div className="text-[13px] font-medium tracking-wide text-neutral-100">{APP.name}</div>
+        <div className={`text-[11px] ${accent}`}>{stage}</div>
+      </div>
 
-      <div className="h-[3px] w-56 overflow-hidden rounded-full bg-white/10">
+      <div className="relative h-[3px] w-60 overflow-hidden rounded-full bg-white/[0.08]">
         <div
           className={`h-full rounded-full transition-[width] duration-500 ease-out ${
-            failed ? "bg-rose-400/80" : "bg-sky-400/80"
+            failed
+              ? "bg-rose-400/80"
+              : "bg-gradient-to-r from-sky-400/70 to-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.55)]"
           }`}
           style={{ width: `${Math.round(ratio * 100)}%` }}
         />
+        {live ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/25 to-transparent"
+          />
+        ) : null}
       </div>
 
-      <div className="flex items-center gap-2 text-xs text-neutral-400">
-        <span className={failed ? "text-rose-300" : "text-neutral-300"}>{stage}</span>
-        <span className="text-neutral-600">·</span>
-        <span className="tabular-nums">{strings.bootSeconds.replace("{n}", String(seconds))}</span>
+      <div className="flex items-center gap-2 text-[11px] text-neutral-500">
+        <span className="tabular-nums text-neutral-400">
+          {strings.bootSeconds.replace("{n}", String(seconds))}
+        </span>
+        {boot.line ? (
+          <>
+            <span className="text-neutral-700">·</span>
+            {/* Upstream's own line, verbatim: the only sign of life the page emits. */}
+            <span className="max-w-[22rem] truncate" title={boot.line}>
+              {boot.line}
+            </span>
+          </>
+        ) : null}
       </div>
-
-      {/* Upstream's own line, verbatim: the only sign of life the page emits. */}
-      {boot.line ? (
-        <div className="max-w-md truncate text-[11px] text-neutral-500" title={boot.line}>
-          {boot.line}
-        </div>
-      ) : null}
 
       {failed && notice ? (
         <div className="max-w-md text-[11px] leading-relaxed text-rose-300/90">{notice}</div>

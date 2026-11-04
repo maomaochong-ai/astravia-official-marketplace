@@ -75,5 +75,7 @@ description: Draw vector artwork in VectorCraft inside Astravia: paths, bezier h
 
 ## 上游文档
 
-`references/` 里是上游 `storytold/vectorcraft` 文档的平铺副本，文件名就是主题（控制协议、性能、文件格式、路线图……）。
-按任务去读对应那几篇，不要凭记忆描述上游功能。它们是英文、偏工程口径；用户问「在 Astravia 里怎么操作」时看上面几节就够了。
+`references/upstream.md` 是从上游 `vectorcraft` 自己的 Rust 源码里导出的命令表：菜单路径、显示名、默认快捷键、
+命令 id。判断「有没有这个功能」「它叫什么」「上游给它配了什么键」以它为准，不要凭记忆描述上游功能。
+`references/` 里同目录还有上游文档的平铺副本，文件名就是主题（控制协议、性能、文件格式、路线图……），
+按任务去读那几篇；它们是英文、偏工程口径。网页构建没有命令总线，命令 id 只能当索引，动作用 `act` 落到界面上。

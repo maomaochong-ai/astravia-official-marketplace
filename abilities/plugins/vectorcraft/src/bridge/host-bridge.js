@@ -64,12 +64,19 @@
     return nativeCancelRaf(id);
   };
 
-  function pause() {
-    paused = true;
-  }
+  // Two reasons can stop the loop, and they end independently: the host hid the tab
+  // (`craft:pause`), or the whole window is minimised / behind another window, which
+  // only `visibilitychange` knows about. Either one is enough; both clearing resumes.
+  var hostPaused = false;
+  var hiddenPaused = false;
 
-  function resume() {
-    if (!paused) return;
+  function applyPaused() {
+    var want = hostPaused || hiddenPaused;
+    if (want === paused) return;
+    if (want) {
+      paused = true;
+      return;
+    }
     paused = false;
     var callbacks = [];
     heldFrames.forEach(function (callback) {
@@ -77,6 +84,26 @@
     });
     heldFrames.clear();
     for (var i = 0; i < callbacks.length; i++) nativeRaf(callbacks[i]);
+  }
+
+  function pause() {
+    hostPaused = true;
+    applyPaused();
+  }
+
+  function resume() {
+    hostPaused = false;
+    applyPaused();
+  }
+
+  // An occluded or minimised window keeps this document alive but paints nothing the
+  // user can see; upstream has no idea, so the loop stops here until it is visible.
+  // `document` is not a browser document in the harness, so the listener is optional.
+  if (typeof document.addEventListener === "function") {
+    document.addEventListener("visibilitychange", function () {
+      hiddenPaused = document.visibilityState === "hidden";
+      applyPaused();
+    });
   }
 
   function post(message, transfer) {
@@ -934,6 +961,9 @@
     var done = false;
     var timer = setInterval(function () {
       if (done) return clearInterval(timer);
+      // A paused document makes no progress and has no one watching it; four posts a
+      // second to a hidden parent is pure battery. The clock is read on the next tick.
+      if (paused) return undefined;
       var text = loaderText();
       if (text === null) {
         done = true;

@@ -22,11 +22,21 @@ import type { Downgrade } from "../../../domain/link-protocol.ts";
 
 const SEED_MARK = "craft-language-seed";
 
-/** `navigator.languages` replaced before the app module runs, for builds with Chinese glyphs. */
+/**
+ * Interface language, replaced before the app module runs.
+ *
+ * Every web build in this family picks its first-paint language from
+ * `navigator.languages`, so the frame has to look like a Chinese browser before its
+ * first line of JS runs. `documentElement.lang` is set as well: it is what upstream's
+ * own font fallback and any `<html lang>`-driven rule read, and what the page reports
+ * if someone inspects it. Neither is a stored preference: once the app writes its own
+ * language choice, that choice wins, because this only runs at document start.
+ */
 const LOCALE_SEED_JS =
   'var t=["zh-CN","zh-Hans","zh","en-US"];var d=function(o,k,v){try{' +
   "Object.defineProperty(o,k,{configurable:true,get:function(){return v}})}catch(e){}};" +
-  'd(navigator,"language",t[0]);d(navigator,"languages",t);';
+  'd(navigator,"language",t[0]);d(navigator,"languages",t);' +
+  'try{document.documentElement.lang="zh-Hans"}catch(e){}';
 
 /** Fill-only preference seed: a language the user picks later is never overwritten. */
 function preferencesSeed(): string {

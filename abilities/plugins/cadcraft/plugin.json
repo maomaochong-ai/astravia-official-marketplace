@@ -18,6 +18,8 @@
     "fs.read",
     "fs.write",
     "workspace.read",
+    "storage.read",
+    "storage.write",
     "agent.tools.register",
     "agent.toolHandler.execute",
     "agent.skills.control"
