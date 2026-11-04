@@ -1,7 +1,7 @@
 {
   "plugin.name": "TextureCraft",
   "tab.label": "TextureCraft",
-  "plugin.description": "Compose texture studies: tiled blocks, swatches and notes, exported as one board.",
+  "plugin.description": "Paint 3D textures inside Astravia — the upstream TextureCraft editor, with layered PBR painting, bakes and smart materials.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

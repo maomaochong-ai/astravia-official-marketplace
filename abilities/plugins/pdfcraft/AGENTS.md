@@ -1,43 +1,50 @@
-# PDFCraft 插件工作须知
+# pdfcraft 插件工作须知
 
-这个目录是**手写源码**，不是产物。craft 家族七支插件（含 photocraft）共享同一份宿主侧代码，逐字节相同；
-一致性由 `tests/craft-parity.test.mjs` 守住，改一处就要改另外六处。
+这个目录是**手写源码**，不是产物。craft 家族十五支插件共享同一份宿主侧代码，`src/**` 逐字节相同；
+一致性由 `tests/craft-parity.test.mjs` 守住，改一处就要改另外十四处。
 理由与边界写在 [`docs/adr/pdfcraft/craft-0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/pdfcraft/craft-0001-seven-copies-and-a-parity-test.md)。
+
+编辑器本体**不是我们写的**：`web/` 是 CI 用上游源码（`payload/manifest.json` 钉住的 commit）跑
+上游自己的 `trunk build --release` 得到的静态站点，随包分发。为什么不再下载上游 zip、为什么站点是
+`srcdoc` 而不是导航进去，见
+[`docs/adr/pdfcraft/craft-0011-the-site-ships-in-the-package.md`](../../../../docs/adr/pdfcraft/craft-0011-the-site-ships-in-the-package.md)。
 
 ## 开工
 
 ```bash
 cd abilities/plugins/pdfcraft
 npm install
-npm run build:hub          # 由 hub.src.mjs + bridge + payload 生成 server/hub.mjs，并写回 plugin.json 的 sha256
-npm run check:hub          # server/hub.mjs 与 plugin.json 两边是否都新鲜
-npm run check              # tsc --noEmit + 上面那条
-npm run build              # 打包
+npm run check      # tsc --noEmit
+npm run build      # dist/ 供本地预检，正式 .astraviapkg 由 CI 构建
+node ../../scripts/build-craft-web.mjs --slug pdfcraft   # 只在本地想跑真界面时需要；CI 会做
 ```
 
 ## 改东西的正确位置
 
 | 想改什么 | 改哪里 |
 | --- | --- |
-| 标签页、状态条、文件桥、Agent 工具的行为 | `src/features/**`、`src/bridge/**`（七支同步） |
-| hub 的取包、缓存、注入逻辑 | `server/hub.src.mjs`（七支同步） |
-| 页面里的 open/save 钩子、暂停闸门、手势注入 | `src/bridge/host-bridge.js`（七支同步） |
-| 这个应用的名字、版本、payload、文案 | `src/app.config.ts`、`plugin.json`、`payload/manifest.json`、`src/features/editor/strings.ts` |
+| 标签页、状态条、文件桥、Agent 工具的行为 | `src/features/**`、`src/bridge/**`（十五支同步） |
+| 帧文档的拼装：`<base>`、`replaceState`、语言种子、bridge 注入 | `src/features/editor/services/site-document.ts`（十五支同步） |
+| 页面里的 open/save 钩子、暂停闸门、手势注入 | `src/bridge/host-bridge.js`（十五支同步） |
+| 这个应用的名字、版本、站点目录、语言种子 | `src/app.config.ts`、`plugin.json`、`payload/manifest.json`、`locales/*.json` |
 | 技能的说明文字 | `agent/skills/pdfcraft/SKILL.md` |
+| 编辑器界面本身 | 不改；那是上游 `apps/pdfcraft-web` 的构建产物 |
 
 改完跑：
 
 ```bash
-node --test tests/craft-parity.test.mjs tests/craft-manifest.test.mjs   # 在仓库根
+node --test tests/craft-parity.test.mjs tests/craft-manifest.test.mjs tests/craft-docs.test.mjs   # 在仓库根
 npm run build
 ```
 
 ## 硬约束
 
-- **hub 每次重建 sha256 都会变**，`plugin.json` 里五个平台的 `artifacts[].sha256` 必须一起变。
-  `npm run build:hub` 现在既写 `server/hub.mjs` 也写这五条；`--check` 两个方向都校验，
-  所以不要手工改摘要。
-- `build-hub.mjs` 用 JSON 注入，源码里的反引号会破坏它；hub 侧拼 HTML 一律用 `+`。
-- 上游字节一律保真：不改 wasm、不改 JS、不改 `index.html` 的 SRI，否则浏览器会拒绝加载。
-  中文化的重编译管线已经删除，不要再把它引回插件目录（见 ADR 0007）。
-- 文件桥只认 `event.source === iframe.contentWindow`，不要放宽。
+- **`web/` 不进 git**：`abilities/plugins/*/web/` 在 .gitignore 里，CI 在打包前构建。手改会在下一次
+  构建时被覆盖，也不能提交。
+- **上游字节保真**：不改 wasm、不改 JS、不改 `index.html` 的 SRI。我们只在拼 `srcdoc` 时注入
+  `<base>`、一段垫 URL 的脚本、语言种子和 bridge。
+- **站点只能是相对路径**：页面要能在任意前缀下加载，`web/web/index.html` 里不允许
+  `src="/…"` 这种根绝对路径（`scripts/build-craft-web.mjs` 会直接拒绝）。
+- **文件桥只认 `event.source === iframe.contentWindow`**，不要放宽。
+- **改了 `src/**`、`plugin.json`、`locales/` 或 `scripts/` 就要抬版本**，否则 CI 的 `--strict` 会红。
+  `payload/manifest.json` 是构建期的来源声明，不进包也不触发这条门禁——但改了它通常意味着要重发一版站点。

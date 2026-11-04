@@ -1,9 +1,5 @@
 # 非活动标签停手，而不是让它继续画
 
-> **更新（本轮）**：暂停闸门（`craft:pause` / `craft:resume`）已随 iframe 一起删除。
-> 内核不含常驻绘制循环，没有需要暂停的对象，见
-> `craft-0013-nothing-runs-in-the-background.md`。下文保留原文。
-
 ## 症状
 
 装上一支 craft 插件、把它的编辑器打开过之后，宿主的对话切换和整个界面开始变卡；

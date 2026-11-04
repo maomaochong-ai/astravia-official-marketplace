@@ -1,7 +1,7 @@
 {
   "plugin.name": "MaterialCraft",
   "tab.label": "MaterialCraft",
-  "plugin.description": "把材质参考收在一张板上：色卡、标签、样块，导出 PNG。",
+  "plugin.description": "在 Astravia 里用节点搭程序化材质——上游 MaterialCraft 编辑器，从第一张节点图到可复用材质。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

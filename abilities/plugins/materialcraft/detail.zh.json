@@ -3,73 +3,91 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Astravia 画布插件",
-      "title": "MaterialCraft：在 Astravia 里直接画，也能交给 Agent 改",
-      "description": "把材质参考收在一张板上：色卡、标签、样块，导出 PNG。",
+      "title": "活动面板里的 MaterialCraft",
+      "eyebrow": "程序化材质",
+      "description": "一张解析成材质的节点图——上游 MaterialCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的图工作。",
       "badges": [
-        "默认中文",
-        "自动存档",
-        "对话可驱动"
-      ]
-    },
-    {
-      "type": "feature-grid",
-      "items": [
-        {
-          "title": "五种对象，一块画布",
-          "description": "矩形、椭圆、直线、文字、图片，都在同一份文档里，顺序就是层次。",
-          "icon": "solar:layers-minimalistic-bold"
-        },
-        {
-          "title": "吸附与对齐",
-          "description": "拖动时贴参考线，选中多个对象可以左对齐、居中、等距分布。",
-          "icon": "solar:ruler-cross-pen-bold"
-        },
-        {
-          "title": "导出 PNG 或文档 JSON",
-          "description": "图片按当前画布出图，文档存成 JSON 可以再打开接着改。",
-          "icon": "solar:export-bold"
-        },
-        {
-          "title": "对话能直接动手",
-          "description": "插图形、改属性、对齐、存图都是语义操作，不用靠点坐标。",
-          "icon": "solar:magic-stick-3-bold"
-        }
+        "No fork",
+        "Local",
+        "Nodes"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-thread",
-        "user_prompt": "用 MaterialCraft 开一块画布，画三个标题块，左对齐，然后导出 PNG。",
-        "assistant_reply": "已经建好三个矩形并设为等宽、顶部对齐；导出用当前画布出图。要不要顺手把颜色换成主题蓝？"
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "打开 MaterialCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
+        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
       }
     },
     {
-      "type": "steps",
+      "type": "feature-grid",
+      "title": "它能给你什么",
       "items": [
         {
-          "title": "打开 {name} 标签",
-          "description": "在活动标签里新建一块画布，默认就是中文界面。"
+          "title": "一张图，所有通道",
+          "description": "颜色、粗糙度、金属度与高度出自同一张图，参数一动各通道仍然自洽。",
+          "icon": "solar:layers-minimalistic-linear"
         },
         {
-          "title": "从左侧工具轨选对象",
-          "description": "拖一个矩形、椭圆或文字上去，右侧属性面板改颜色与尺寸。"
+          "title": "可复用，不是一次性的",
+          "description": "材质是一张留得住的图：同一批节点接到另一个物体上，而不是手抄一遍。",
+          "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "在对话里接着说",
-          "description": "「把三个块左对齐」「加一行标题」「导出 PNG」，Agent 和你编同一份文档。"
+          "title": "预览就是证据",
+          "description": "截图工具在每次改动后显示预览，这是唯一能确认节点真的做了它名字所说事情的办法。",
+          "icon": "solar:chat-round-linear"
         },
         {
-          "title": "需要文件时再导出",
-          "description": "自动存档留在插件里；PNG 与 JSON 由你选保存位置。"
+          "title": "在对话里驱动",
+          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "装好插件",
+          "description": "编辑器随插件一起安装，装完就能打开，不需要再下载。"
+        },
+        {
+          "title": "打开 MaterialCraft 标签页",
+          "description": "打开后直接就是编辑器本身：没有准备页，也没有取包过程。"
+        },
+        {
+          "title": "打开或新建图",
+          "description": "「文件 → 打开」取 Astravia 里选中的文件；新建从空图开始。"
+        },
+        {
+          "title": "把材质导出回去",
+          "description": "导出走与保存相同的通道。"
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "这是本插件自带的绘图内核，不下载也不加载任何外部应用；打开标签即用，关闭标签即停。"
+      "content": "MaterialCraft 还在 0.1：节点库很小，版本之间会变。插件跑 pinned 版本，不自己加节点。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+    },
+    {
+      "type": "links",
+      "title": "它从哪来",
+      "items": [
+        {
+          "label": "上游仓库",
+          "href": "https://github.com/storytold/materialcraft"
+        }
+      ]
     }
   ]
 }

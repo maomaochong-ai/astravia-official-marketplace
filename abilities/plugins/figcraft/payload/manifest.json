@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "figcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/figcraft",
+  "release": "0.15.0",
+  "commit": "35684eaa028e636d264073a666ef11881620fa0e",
+  "webApp": "apps/figcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "plugin.name": "Craft Anything",
   "tab.label": "Craft Anything",
-  "plugin.description": "A general-purpose board: shapes, text and images with snapping, undo and PNG or JSON export.",
+  "plugin.description": "Take apart any website, app or game and rebuild it — Craft Anything studies the original and drives an AI agent through the reconstruction.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

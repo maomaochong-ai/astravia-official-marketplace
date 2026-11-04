@@ -1,7 +1,7 @@
 {
   "plugin.name": "EffectCraft",
   "tab.label": "EffectCraft",
-  "plugin.description": "画特效节拍：分层形状与文字铺在画布上，可导出，也可交给 Agent 继续改。",
+  "plugin.description": "在 Astravia 里做动态图形：关键帧、3D 相机与灯光、308 个效果、渲染队列，用的是上游原版 EffectCraft 合成器。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

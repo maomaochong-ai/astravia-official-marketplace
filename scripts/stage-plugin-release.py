@@ -3,9 +3,9 @@
 The script prints the release record to copy into schema v3. It never edits the
 catalog or uploads a release asset. Run it after the plugin's build and tests.
 
-Note: This script is kept for source compatibility with the upstream publish pipeline.
-The actual prepare flow uses the Node.js implementation in scripts/static-marketplace.mjs
-(buildAstraviaPackage) — same ZIP format, same DEFLATED level 9, same fixed timestamps.
+Note: this script is the packager. scripts/static-marketplace.mjs (stagePackage) runs it
+for every plugin in the release, so the ZIP format, DEFLATE level and timestamps are the
+ones defined here.
 """
 
 import argparse
@@ -18,7 +18,9 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_FILES = {"plugin.json", "package.json", "README.md", "LICENSE", "runtime-lock.json", "upstream.json"}
-RUNTIME_DIRS = {"dist", "locales", "agent", "assets", "service"}
+# `web` is the static site a craft plugin ships: upstream's own web build, produced by
+# scripts/build-craft-web.mjs in CI. It is gitignored and only exists at packaging time.
+RUNTIME_DIRS = {"dist", "locales", "agent", "assets", "service", "web"}
 SKIP_DIRS = {"node_modules", "src", "test", "tests", "release", ".git", ".vite"}
 MAX_BYTES = 50 * 1024 * 1024
 

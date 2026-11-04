@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "cadcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/cadcraft",
+  "release": "0.17.0",
+  "commit": "6d3507f98d23624dd53daa804a86abd142a48ff6",
+  "webApp": "apps/cadcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

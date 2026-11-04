@@ -1,60 +1,89 @@
-import type { KernelEngine } from "../kernel/engine.ts";
-import type { EditorStrings } from "../strings.ts";
+import type { EditorSession } from "../hooks/use-craft-editor.ts";
 
 /**
- * One thin line: what is on the page, what is selected, whether it is saved.
- * It is also where a batch reports itself, so an agent run is visible while it runs
- * instead of appearing only when it finishes.
+ * The single 28 px line above the frame. Three controls, icons only, each with the
+ * platform tooltip (`title`) and an accessible name: readiness, full screen,
+ * reload. There is no "open in a browser" control any more — the tab *is* the
+ * editor, and a second window could not share the workspace binding.
+ *
+ * ADR: docs/adr/<slug>/craft-0010-icons-only-and-a-fullscreen-that-returns.md
  */
+export function EditorStatusBar({ session }: { session: EditorSession }): React.ReactElement {
+  const { strings, phase, backend, binding, candidate, savedAt, notice, isFullscreen, progress } = session;
+  const status = phase === "failed" ? strings.failed : phase === "ready" ? strings.ready : strings.preparing;
+  const tone =
+    phase === "failed" ? "text-red-400" : phase === "ready" ? "text-emerald-400" : "text-amber-300";
+  const dot = phase === "failed" ? "bg-red-400" : phase === "ready" ? "bg-emerald-400" : "bg-amber-300";
+  const disabled = session.iframeDoc === null;
 
-interface EditorStatusBarProps {
-	engine: KernelEngine;
-	strings: EditorStrings;
-	progress: { index: number; total: number; label: string } | null;
-	note: string | null;
-	fullscreen: boolean;
-	onToggleFullscreen: () => void;
-}
+  return (
+    <div className="flex h-7 shrink-0 items-center gap-2 border-b border-neutral-800 px-2 text-[11px] text-neutral-300">
+      <span
+        className="flex items-center gap-1.5"
+        title={status}
+        aria-label={status}
+        role="status"
+      >
+        <span className={`inline-block size-1.5 rounded-full ${dot}`} />
+        <span className={`truncate ${tone}`}>{status}</span>
+      </span>
+      {backend ? <span className="rounded bg-neutral-800 px-1 text-neutral-300">{backend}</span> : null}
+      <span className="h-3 w-px bg-neutral-700" />
+      <span className="truncate">
+        {binding
+          ? binding.name
+          : candidate
+            ? `${strings.open}: ${candidate.name}`
+            : strings.noFile}
+      </span>
+      {savedAt ? <span className="text-neutral-500">{new Date(savedAt).toLocaleTimeString()}</span> : null}
+      <span className="flex-1" />
+      {progress ? (
+        <span className="max-w-[38%] truncate text-amber-300/90" role="status">
+          {strings.acting} {progress}
+        </span>
+      ) : notice ? (
+        <span className="max-w-[40%] truncate text-neutral-400">{notice}</span>
+      ) : null}
 
-export function EditorStatusBar({
-	engine,
-	strings,
-	progress,
-	note,
-	fullscreen,
-	onToggleFullscreen,
-}: EditorStatusBarProps) {
-	const document = engine.document();
-	const shapes = document.shapes.filter((shape) => !shape.locked).length;
-	const selected = engine.selection().length;
-	const dirty = engine.dirty();
+      <button
+        type="button"
+        title={isFullscreen ? strings.exitFullscreen : strings.fullscreen}
+        aria-label={isFullscreen ? strings.exitFullscreen : strings.fullscreen}
+        disabled={disabled && !isFullscreen}
+        onClick={() => session.toggleFullscreen()}
+        className="flex size-5 items-center justify-center rounded text-neutral-300 hover:bg-neutral-800 disabled:opacity-40"
+      >
+        {isFullscreen ? (
+          <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 2v3a1 1 0 0 1-1 1H2" />
+            <path d="M10 2v3a1 1 0 0 0 1 1h3" />
+            <path d="M6 14v-3a1 1 0 0 0-1-1H2" />
+            <path d="M10 14v-3a1 1 0 0 1 1-1h3" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 2h5v5" />
+            <path d="M14 2 9.5 6.5" />
+            <path d="M7 14H2V9" />
+            <path d="M2 14l4.5-4.5" />
+          </svg>
+        )}
+      </button>
 
-	return (
-		<div className="flex h-7 shrink-0 items-center gap-3 border-t border-[#e6e9f2] bg-white px-3 text-[11px] text-[#64748b]">
-			<span className="tabular-nums">
-				{shapes} {strings.shapes}
-				{selected > 0 ? ` · ${selected} ${strings.selected}` : ""}
-			</span>
-
-			{progress ? (
-				<span className="flex items-center gap-1.5 text-[#2f6df6]">
-					<span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#2f6df6]" />
-					{progress.index}/{progress.total} · {progress.label}
-				</span>
-			) : (
-				<span className="truncate">{note ?? strings.hint}</span>
-			)}
-
-			<span className="ml-auto tabular-nums">{Math.round(engine.zoom() * 100)}%</span>
-			<button
-				type="button"
-				onClick={onToggleFullscreen}
-				className="rounded px-1 text-[11px] text-[#64748b] hover:bg-[#f1f4fb] hover:text-[#0f172a]"
-				title={fullscreen ? "退出全屏" : "全屏"}
-			>
-				{fullscreen ? "退出全屏" : "全屏"}
-			</button>
-			<span className={dirty ? "text-[#b45309]" : "text-[#16a34a]"}>{dirty ? strings.unsaved : strings.saved}</span>
-		</div>
-	);
+      <button
+        type="button"
+        title={strings.reload}
+        aria-label={strings.reload}
+        disabled={disabled}
+        onClick={() => session.reload()}
+        className="flex size-5 items-center justify-center rounded text-neutral-300 hover:bg-neutral-800 disabled:opacity-40"
+      >
+        <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M13.5 8a5.5 5.5 0 1 1-1.9-4.2" />
+          <path d="M13.5 2.5V6H10" />
+        </svg>
+      </button>
+    </div>
+  );
 }

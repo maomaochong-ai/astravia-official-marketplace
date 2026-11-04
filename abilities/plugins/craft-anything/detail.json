@@ -3,73 +3,91 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Astravia canvas plugin",
-      "title": "Craft Anything: draw here, or let the agent draw with you",
-      "description": "A general-purpose board: shapes, text and images with snapping, undo and PNG or JSON export.",
+      "title": "Craft Anything in the activity panel",
+      "eyebrow": "拆解与复刻",
+      "description": "Pick a target, study how it is put together, then rebuild it step by step — the upstream Craft Anything workbench running inside Astravia.",
       "badges": [
-        "Chinese by default",
-        "Autosaved",
-        "Agent-ready"
-      ]
-    },
-    {
-      "type": "feature-grid",
-      "items": [
-        {
-          "title": "Five kinds of object, one canvas",
-          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
-          "icon": "solar:layers-minimalistic-bold"
-        },
-        {
-          "title": "Snapping and alignment",
-          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
-          "icon": "solar:ruler-cross-pen-bold"
-        },
-        {
-          "title": "Export PNG or document JSON",
-          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
-          "icon": "solar:export-bold"
-        },
-        {
-          "title": "The conversation edits it",
-          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
-          "icon": "solar:magic-stick-3-bold"
-        }
+        "No fork",
+        "Local",
+        "Agent-driven"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-thread",
-        "user_prompt": "Open a canvas in Craft Anything, draw three title blocks, left-align them and export a PNG.",
-        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Open Craft Anything and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
-      "type": "steps",
+      "type": "feature-grid",
+      "title": "What it gives you",
       "items": [
         {
-          "title": "Open the {name} tab",
-          "description": "A new canvas with a Chinese interface by default."
+          "title": "Study before building",
+          "description": "The work starts from what the original actually does — layout, states, interactions — instead of a guess made from a screenshot.",
+          "icon": "solar:layers-minimalistic-linear"
         },
         {
-          "title": "Pick an object from the left rail",
-          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
+          "title": "A plan the agent can follow",
+          "description": "The reconstruction is broken into steps with visible progress, so a rebuild can be paused, reviewed and resumed instead of run as one long shot.",
+          "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "Keep talking in the conversation",
-          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
+          "title": "Every step leaves a picture",
+          "description": "A capture tool records what the workbench is showing at each stage, which is what makes a rebuild reviewable at all.",
+          "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Export when you need a file",
-          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 3 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the Craft Anything tab",
+          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+        },
+        {
+          "title": "Name the target and the scope",
+          "description": "A URL, an app, or a file in the workspace — with the boundary of what has to be reproduced."
+        },
+        {
+          "title": "Work through the steps, checking each one",
+          "description": "Progress is visible in the workbench; the agent checks each stage with a capture rather than assuming."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
+      "content": "Rebuilding someone else's product raises questions a plugin cannot answer: only reproduce what you have the right to. The plugin runs the pinned release and adds no study features of its own."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/craft-anything"
+        }
+      ]
     }
   ]
 }

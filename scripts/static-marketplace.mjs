@@ -163,7 +163,9 @@ export function reviewedSourceSha(message) {
 const RUNTIME_PATTERNS = [
   /^plugin\.json$/,
   /^package\.json$/,
-  /^(?:src|agent|cases|locales|assets|scripts)\//,
+  // `web/` is the craft site CI builds from upstream sources; a change there is a
+  // change to what the user actually runs, so it forces a version bump.
+  /^(?:src|agent|cases|locales|assets|scripts|web)\//,
 ];
 const PRESENTATION_ONLY = [/^src\/test\//, /^docs\//];
 

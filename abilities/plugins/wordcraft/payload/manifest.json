@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "wordcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/wordcraft",
+  "release": "0.15.0",
+  "commit": "ffb155a0321bba08da495efda66495104c1c8b9a",
+  "webApp": "apps/wordcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

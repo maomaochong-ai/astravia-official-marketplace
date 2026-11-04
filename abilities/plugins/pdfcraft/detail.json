@@ -3,73 +3,100 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Astravia canvas plugin",
-      "title": "PDFCraft: draw here, or let the agent draw with you",
-      "description": "Lay out a document on an A4-like page — text blocks, rules and images — and export PNG or the document JSON.",
+      "title": "PDFCraft in the activity panel",
+      "eyebrow": "PDF workbench",
+      "description": "Read, reorder, merge, split and secure — the upstream PDFCraft workbench running inside Astravia, on your own machine, with the document you opened in the workspace.",
       "badges": [
-        "Chinese by default",
-        "Autosaved",
-        "Agent-ready"
-      ]
-    },
-    {
-      "type": "feature-grid",
-      "items": [
-        {
-          "title": "Five kinds of object, one canvas",
-          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
-          "icon": "solar:layers-minimalistic-bold"
-        },
-        {
-          "title": "Snapping and alignment",
-          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
-          "icon": "solar:ruler-cross-pen-bold"
-        },
-        {
-          "title": "Export PNG or document JSON",
-          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
-          "icon": "solar:export-bold"
-        },
-        {
-          "title": "The conversation edits it",
-          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
-          "icon": "solar:magic-stick-3-bold"
-        }
+        "No fork",
+        "Local",
+        "No account"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-thread",
-        "user_prompt": "Open a document page in PDFCraft, draw three title blocks, left-align them and export a PNG.",
-        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
+        "template": "chat-over-canvas",
+        "canvas": "docs",
+        "user_prompt": "Open PDFCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
-      "type": "steps",
+      "type": "feature-grid",
+      "title": "What it gives you",
       "items": [
         {
-          "title": "Open the {name} tab",
-          "description": "A new document page with a Chinese interface by default."
+          "title": "The real workbench",
+          "description": "The tab runs the official PDFCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:document-text-linear"
         },
         {
-          "title": "Pick an object from the left rail",
-          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
+          "title": "Open and save inside your project",
+          "description": "Opening uses the file selected in the Explorer, and results are written back through Astravia instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "Keep talking in the conversation",
-          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
+          "title": "Nothing leaves the machine",
+          "description": "The document is parsed locally in the tab. There is no account, no upload and no telemetry — there is no network traffic at all.",
+          "icon": "solar:shield-check-linear"
         },
         {
-          "title": "Export when you need a file",
-          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 17 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the PDFCraft tab",
+          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+        },
+        {
+          "title": "Select a PDF, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+        },
+        {
+          "title": "Save the result back",
+          "description": "The output goes through Astravia, so it can replace the source or become a new file."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
+      "content": "Encryption and page operations happen in the browser sandbox, on your machine. A password you type is handled by upstream's code, never sent anywhere else."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Interface language: the editor itself is English only — upstream ships no other language. The tab shell and this page follow your Astravia language."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "PDFCraft on GitHub",
+          "href": "https://github.com/storytold/pdfcraft"
+        },
+        {
+          "label": "PDFCraft releases",
+          "href": "https://github.com/storytold/pdfcraft/releases"
+        }
+      ]
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "plugin.name": "PDFCraft",
   "tab.label": "PDFCraft",
-  "plugin.description": "Lay out a document on an A4-like page — text blocks, rules and images — and export PNG or the document JSON.",
+  "plugin.description": "Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "slug": "effectcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/effectcraft",
+  "release": "0.20.0",
+  "commit": "a646bdcc2e7b9684c40f0fc83bab77eb62fa645b",
+  "webApp": "apps/effectcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "xtask",
+    "out": "web/dist"
+  }
+}

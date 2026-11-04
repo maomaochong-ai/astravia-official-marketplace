@@ -3,73 +3,95 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Astravia canvas plugin",
-      "title": "Photocraft: draw here, or let the agent draw with you",
-      "description": "Compose and annotate images in Astravia — crops, colour blocks, type and PNG export on a canvas the conversation can drive.",
+      "title": "Photocraft in the activity panel",
+      "eyebrow": "Image editing",
+      "description": "Layers, masks, type and real PSD files — the upstream Photocraft editor running inside Astravia, on your own machine, with the file you opened in the workspace.",
       "badges": [
-        "Chinese by default",
-        "Autosaved",
-        "Agent-ready"
-      ]
-    },
-    {
-      "type": "feature-grid",
-      "items": [
-        {
-          "title": "Five kinds of object, one canvas",
-          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
-          "icon": "solar:layers-minimalistic-bold"
-        },
-        {
-          "title": "Snapping and alignment",
-          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
-          "icon": "solar:ruler-cross-pen-bold"
-        },
-        {
-          "title": "Export PNG or document JSON",
-          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
-          "icon": "solar:export-bold"
-        },
-        {
-          "title": "The conversation edits it",
-          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
-          "icon": "solar:magic-stick-3-bold"
-        }
+        "No fork",
+        "Local",
+        "PSD"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-thread",
-        "user_prompt": "Open a canvas in Photocraft, draw three title blocks, left-align them and export a PNG.",
-        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Open Photocraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
-      "type": "steps",
+      "type": "feature-grid",
+      "title": "What it gives you",
       "items": [
         {
-          "title": "Open the {name} tab",
-          "description": "A new canvas with a Chinese interface by default."
+          "title": "The real editor, unmodified",
+          "description": "The tab runs the official Photocraft web build byte for byte into the tab's iframe. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:gallery-wide-linear"
         },
         {
-          "title": "Pick an object from the left rail",
-          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
+          "title": "Open and save inside your project",
+          "description": "Opening uses the file you selected in the Explorer, and saving writes back through Astravia — so the bytes land in your workspace instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "Keep talking in the conversation",
-          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
+          "title": "Speak to it in the conversation",
+          "description": "Open the editor, read the canvas, run a batch of pointer and key steps, then read the canvas again to check — five tools the Agent calls, each one answered by the running page.",
+          "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Export when you need a file",
-          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "Add it from the marketplace. The editor ships inside the plugin, so there is nothing to fetch."
+        },
+        {
+          "title": "Open the Photocraft tab",
+          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+        },
+        {
+          "title": "Select an image in the Explorer, then open it",
+          "description": "Inside the editor, File → Open takes the file you selected instead of showing a dialog."
+        },
+        {
+          "title": "Save back with File → Save",
+          "description": "The working copy is written to the same path. Export… asks where to save instead."
         }
       ]
     },
     {
       "type": "callout",
+      "tone": "warning",
+      "content": "Photocraft has no way to tell the panel whether a document has unsaved edits, so reloading the tab asks nothing. The editor's own title bar is the only unsaved marker."
+    },
+    {
+      "type": "callout",
       "tone": "info",
-      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Photocraft on GitHub",
+          "href": "https://github.com/storytold/photocraft"
+        },
+        {
+          "label": "Photocraft releases",
+          "href": "https://github.com/storytold/photocraft/releases"
+        }
+      ]
     }
   ]
 }

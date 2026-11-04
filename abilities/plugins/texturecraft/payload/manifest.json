@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "texturecraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/texturecraft",
+  "release": "0.3.0",
+  "commit": "9dc33d894e9cd8e25ce84f6074fd1b476dad5698",
+  "webApp": "apps/texturecraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

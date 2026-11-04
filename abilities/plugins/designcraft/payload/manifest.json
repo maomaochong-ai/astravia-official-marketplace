@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "designcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/designcraft",
+  "release": "0.16.0",
+  "commit": "81cca513ba3120900b7f81a05df48b5672ee9a7b",
+  "webApp": "apps/designcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

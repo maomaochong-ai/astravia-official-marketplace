@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "deckcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/deckcraft",
+  "release": "0.15.0",
+  "commit": "82ec8137dc39f29b0f51b18630b409d655066fce",
+  "webApp": "apps/deckcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

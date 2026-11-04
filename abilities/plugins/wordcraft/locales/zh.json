@@ -1,7 +1,7 @@
 {
   "plugin.name": "WordCraft",
   "tab.label": "WordCraft",
-  "plugin.description": "写长文档并排版：标题、段落、插图，导出 PNG 或 JSON。",
+  "plugin.description": "在 Astravia 里写文档、改文档——上游 WordCraft 编辑器，带功能区、样式、表格、修订与 .docx 往返。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

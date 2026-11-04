@@ -1,171 +1,306 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import type { PluginContext } from "@astravia-org/plugin-sdk";
-import type { KernelDocument } from "../../../domain/kernel-document.ts";
-import { craftFiles, type CraftFiles } from "../services/workspace-files.ts";
-import { editorStrings, type EditorStrings } from "../strings.ts";
-import { useEngine, type KernelConfig } from "../kernel/useEngine.ts";
-import type { KernelEngine } from "../kernel/engine.ts";
+import { useActivityTab } from "@astravia-org/plugin-sdk";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
+import { isBootFailure, isLinkMessage, isProgressMessage, nextDowngrade } from "../../../domain/link-protocol.ts";
+import type { Downgrade } from "../../../domain/link-protocol.ts";
+import { buildSiteDocument, siteRoot } from "../services/site-document.ts";
+import { APP } from "../../../app.config.ts";
+import { editorStrings } from "../strings.ts";
+import type { EditorStrings } from "../strings.ts";
+import { publishCraftProgress, setCraftFrame, settleCraftReply, subscribeCraftProgress } from "../session-registry.ts";
+import { readWorkspaceFile, saveRenderedFile, selectionAccess } from "../services/workspace-files.ts";
+import type { WorkspaceFile } from "../services/workspace-files.ts";
+import { useContainerFullscreen } from "./use-container-fullscreen.ts";
 
-/**
- * Everything the tab needs that is not a component: restore, autosave, shortcuts,
- * export. Keeping it here means `craft-tab.tsx` stays a layout file and the hooks
- * stay testable without rendering.
- */
+export type EditorPhase = "starting" | "ready" | "failed";
 
-export interface CraftEditor {
-	engine: KernelEngine;
-	version: number;
-	strings: EditorStrings;
-	files: CraftFiles;
-	note: string | null;
-	exportPng: () => Promise<void>;
-	exportJson: () => Promise<void>;
-	restore: () => Promise<void>;
+export interface EditorSession {
+  strings: EditorStrings;
+  phase: EditorPhase;
+  backend: string;
+  binding: WorkspaceFile | null;
+  candidate: WorkspaceFile | null;
+  savedAt: number | null;
+  notice: string | null;
+  /** "2/5 · 点击渐变工具" while an Agent batch runs in the page; null when idle. */
+  progress: string | null;
+  /** Upstream's page as an inline document; null until the package file is read. */
+  iframeDoc: string | null;
+  iframeKey: string;
+  frameRef: RefObject<HTMLIFrameElement | null>;
+  containerRef: RefObject<HTMLDivElement | null>;
+  isFullscreen: boolean;
+  overlay: boolean;
+  toggleFullscreen: () => void;
+  reload: () => void;
 }
 
-const SAVE_DEBOUNCE = 900;
+/**
+ * Everything the tab does that is not markup: read the package's site, speak the
+ * bridge protocol, keep the save binding, walk the WebGPU → WebGL2 → software
+ * ladder, and
+ * surface the step an Agent batch is on.
+ *
+ * Upstream's own retry is a `location.replace` to `?webgl`, which works here because
+ * the frame document is given a real URL; this ladder only steps in when the page
+ * never reports anything at all.
+ */
+export function useCraftEditor(ctx: PluginContext): EditorSession {
+  const strings = editorStrings(ctx.i18n.locale);
+  // The host keeps this document alive while its tab is hidden (display:none) so that
+  // unsaved work survives a tab switch. Nothing on this side spins at 60 fps for a
+  // page nobody is looking at: the bridge holds the app's next frame instead.
+  // `active` defaults to false when the host provides no context, so a build that
+  // predates the hook never pauses a live editor — we only pause after seeing active.
+  const tab = useActivityTab();
+  const everActive = useRef(false);
+  if (tab.active) everActive.current = true;
+  const paused = everActive.current && !tab.active;
+  const uiLang: "zh" | "en" = /^zh/i.test(ctx.i18n.locale || "") ? "zh" : "en";
+  const [baseUrl, setBaseUrl] = useState<string | null>(null);
+  const [iframeDoc, setIframeDoc] = useState<string | null>(null);
+  const [phase, setPhase] = useState<EditorPhase>("starting");
+  const [backend, setBackend] = useState("");
+  const [binding, setBinding] = useState<WorkspaceFile | null>(null);
+  const [candidate, setCandidate] = useState<WorkspaceFile | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
+  const [mode, setMode] = useState<Downgrade>("auto");
 
-export function useCraftEditor(ctx: PluginContext, config: KernelConfig, title: string): CraftEditor {
-	const { engine, version } = useEngine(config);
-	const [locale, setLocale] = useState<string>(() => {
-		try {
-			return ctx.i18n.locale;
-		} catch {
-			return "zh";
-		}
-	});
-	const [note, setNote] = useState<string | null>(null);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const baseUrlRef = useRef<string | null>(null);
+  const bindingRef = useRef<WorkspaceFile | null>(null);
+  const modeRef = useRef<Downgrade>("auto");
+  const selectionRef = useRef<WorkspaceFile | null>(null);
+  modeRef.current = mode;
+  bindingRef.current = binding;
+  selectionRef.current = candidate;
+  baseUrlRef.current = baseUrl;
 
-	useEffect(() => {
-		let disposable: { dispose(): void } | undefined;
-		try {
-			disposable = ctx.i18n.onChange((next) => setLocale(next));
-		} catch {
-			disposable = undefined;
-		}
-		return () => disposable?.dispose();
-	}, [ctx]);
+  // ------------------------------------------------------------- page document
 
-	const strings = useMemo(() => editorStrings(locale), [locale]);
-	const files = useMemo(() => craftFiles(ctx, engine.document()), [ctx, engine]);
+  // The site is a file in this package, so "starting" is a fetch and an inline
+  // rewrite rather than a service spawn: no process, no first-open download.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        setBaseUrl(siteRoot());
+        const doc = await buildSiteDocument({ mode, uiLang });
+        if (cancelled) return;
+        setIframeDoc(doc);
+      } catch (error) {
+        if (cancelled) return;
+        setIframeDoc(null);
+        setPhase("failed");
+        setNotice(String((error as Error)?.message ?? error));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx, mode, uiLang, nonce]);
 
-	// Restore once per engine. A failure is silent on purpose: an empty page is a
-	// valid starting point, and a toast about a missing autosave would be noise.
-	const restored = useRef(false);
-	useEffect(() => {
-		if (restored.current) return;
-		restored.current = true;
-		void (async () => {
-			const stored = await files.load();
-			if (!stored || stored.shapes.length === 0) return;
-			engine.setDocument({ ...stored, mode: engine.document().mode });
-			engine.markSaved();
-		})();
-	}, [engine, files]);
+  // ------------------------------------------------------- frame handle (tools)
 
-	// Autosave: debounced while typing, flushed when the tab goes away. There is no
-	// timer left behind — the debounce is a timeout that the cleanup clears.
-	useEffect(() => {
-		let timer: ReturnType<typeof setTimeout> | null = null;
-		let pending: KernelDocument | null = null;
+  useEffect(() => {
+    setCraftFrame({
+      post(message, transfer) {
+        const target = frameRef.current?.contentWindow;
+        if (!target) return false;
+        target.postMessage(message, "*", transfer ?? []);
+        return true;
+      },
+      baseUrl: () => baseUrlRef.current,
+    });
+    return () => setCraftFrame(null);
+  }, []);
 
-		const flush = () => {
-			if (!pending) return;
-			const document = pending;
-			pending = null;
-			void files.save(document).then(() => engine.markSaved());
-		};
+  // --------------------------------------------------------- step progress
 
-		const unsubscribe = engine.subscribe(() => {
-			if (!engine.dirty()) return;
-			pending = engine.document();
-			if (timer) clearTimeout(timer);
-			timer = setTimeout(() => {
-				timer = null;
-				flush();
-			}, SAVE_DEBOUNCE);
-		});
+  // The batch runs in the page and reports each step as it starts. Showing it here
+  // is the difference between "something happened in the tab" and "this is what is
+  // happening right now": the line names the step, the canvas shows its effect.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = subscribeCraftProgress((event) => {
+      setProgress(`${event.index + 1}/${event.total} · ${event.label}`);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setProgress(null), 4000);
+    });
+    return () => {
+      if (timer) clearTimeout(timer);
+      unsubscribe();
+    };
+  }, []);
 
-		return () => {
-			unsubscribe();
-			if (timer) clearTimeout(timer);
-			flush();
-		};
-	}, [engine, files]);
+  // --------------------------------------------------------------- pause gate
 
-	// Shortcuts are bound to the window: the canvas is not the only focusable thing
-	// in a tab, and a canvas-only listener would stop working after a click on a panel.
-	useEffect(() => {
-		const onKey = (event: KeyboardEvent) => {
-			const target = event.target as HTMLElement | null;
-			const typing = !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
-			const mod = event.metaKey || event.ctrlKey;
+  // Re-sent on `phase`, so a reloaded frame (which starts with a fresh, unpaused
+  // bridge) inherits the current visibility instead of drawing forever in a
+  // hidden tab. postMessage is delivered to a display:none frame; frames are not.
+  useEffect(() => {
+    const target = frameRef.current?.contentWindow;
+    if (!target) return;
+    target.postMessage({ type: paused ? "craft:pause" : "craft:resume" }, "*");
+  }, [paused, phase]);
 
-			if (mod && event.key.toLowerCase() === "z") {
-				if (typing) return;
-				event.preventDefault();
-				if (event.shiftKey) engine.redo();
-				else engine.undo();
-				return;
-			}
-			if (mod && event.key.toLowerCase() === "a") {
-				if (typing) return;
-				event.preventDefault();
-				engine.selectAll();
-				return;
-			}
-			if (mod && event.key.toLowerCase() === "d") {
-				if (typing) return;
-				event.preventDefault();
-				engine.duplicateSelection();
-				return;
-			}
-			if (typing) return;
-			if (event.key === "Delete" || event.key === "Backspace") {
-				event.preventDefault();
-				engine.remove();
-				return;
-			}
-			if (event.key === "Escape") {
-				engine.clearSelection();
-				return;
-			}
-			const step = event.shiftKey ? 10 : 1;
-			if (event.key === "ArrowLeft") engine.nudge(-step, 0);
-			if (event.key === "ArrowRight") engine.nudge(step, 0);
-			if (event.key === "ArrowUp") engine.nudge(0, -step);
-			if (event.key === "ArrowDown") engine.nudge(0, step);
-		};
+  // -------------------------------------------------------- explorer selection
 
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, [engine]);
+  useEffect(() => {
+    const access = selectionAccess(ctx);
+    const read = (): void => setCandidate(access.current());
+    read();
+    if (access.denied) setNotice(strings.noWorkspaceAccess);
+    const disposable = access.onChange(read);
+    return () => disposable?.dispose();
+  }, [ctx, strings]);
 
-	const exportPng = async () => {
-		const png = engine.png();
-		if (!png) {
-			setNote("画布还没有准备好");
-			return;
-		}
-		const saved = await files.exportPng(png, title);
-		setNote(saved ? `已导出 ${saved}` : "已取消导出");
-	};
+  // ----------------------------------------------------------------- save path
 
-	const exportJson = async () => {
-		const saved = await files.exportProject(engine.document(), title);
-		setNote(saved ? `已导出 ${saved}` : "已取消导出");
-	};
+  const save = useCallback(
+    async (name: string, bytes: ArrayBuffer): Promise<void> => {
+      try {
+        const saved = await saveRenderedFile(ctx, { name, bytes, current: bindingRef.current });
+        if (!saved) return;
+        // Only the first save binds a path: an export must not steal the
+        // document's own save target.
+        if (!bindingRef.current) setBinding(saved);
+        setSavedAt(Date.now());
+        setNotice(`${strings.saved} · ${saved.name}`);
+      } catch (error) {
+        setNotice(`${strings.saveFailed}: ${String((error as Error)?.message ?? error)}`);
+      }
+    },
+    [ctx, strings],
+  );
 
-	const restore = async () => {
-		const stored = await files.load();
-		if (!stored) {
-			setNote("没有找到已保存的工程");
-			return;
-		}
-		engine.setDocument({ ...stored, mode: engine.document().mode });
-		engine.markSaved();
-		setNote("已恢复上次保存的工程");
-	};
+  // --------------------------------------------------------- message protocol
 
-	return { engine, version, strings, files, note, exportPng, exportJson, restore };
+  useEffect(() => {
+    const onMessage = (event: MessageEvent): void => {
+      const target = frameRef.current?.contentWindow;
+      if (!target || event.source !== target) return; // 0002 D3: identity, not origin
+      if (!isLinkMessage(event.data)) return;
+      const data = event.data;
+
+      // Answers to requests sent by the Agent tools (act / look / stage).
+      if (data.type === "craft:reply") {
+        settleCraftReply(data);
+        return;
+      }
+
+      if (data.type === "craft:progress" && isProgressMessage(data)) {
+        publishCraftProgress(data);
+        return;
+      }
+
+      if (data.type === "craft:ready") {
+        setPhase("ready");
+        setBackend(
+          data.backend === "gpu"
+            ? strings.backendGpu
+            : data.backend === "cpu-or-gl"
+              ? strings.backendCpu
+              : "",
+        );
+        return;
+      }
+
+      if (data.type === "craft:error") {
+        const message = String(data.message ?? "");
+        if (!isBootFailure(message)) {
+          if (message) setNotice(message);
+          return;
+        }
+        const next = nextDowngrade(modeRef.current);
+        if (!next) {
+          setPhase("failed");
+          setNotice(message || strings.failed);
+          return;
+        }
+        modeRef.current = next;
+        setMode(next);
+        setPhase("starting");
+        setNotice(next === "webgl" ? strings.degradeGl : strings.degradeCpu);
+        return;
+      }
+
+      if (data.type === "craft:pickOpen" && data.id) {
+        const id = data.id;
+        const reply = (message: unknown, transfer: Transferable[] = []): void => {
+          target.postMessage(message, "*", transfer);
+        };
+        const file = selectionRef.current;
+        if (!file) {
+          reply({ type: "craft:fallback", id });
+          setNotice(strings.selectInExplorer);
+          return;
+        }
+        void readWorkspaceFile(ctx, file).then((loaded) => {
+          if (!loaded) {
+            reply({ type: "craft:fallback", id });
+            setNotice(strings.openFailed);
+            return;
+          }
+          reply(
+            { type: "craft:open", id, name: file.name, mime: loaded.mimeType, bytes: loaded.bytes },
+            [loaded.bytes],
+          );
+          const next = { path: file.path, name: file.name };
+          setBinding(next);
+          bindingRef.current = next;
+          setSavedAt(null);
+        });
+        return;
+      }
+
+      if (data.type === "craft:save" && data.bytes) {
+        void save(data.name || strings.untitled, data.bytes);
+      }
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [ctx, save, strings]);
+
+  // ---------------------------------------------------------------- fullscreen
+
+  const reportFullscreenError = useCallback(
+    (message: string): void => setNotice(`${strings.fullscreenFailed}: ${message}`),
+    [strings],
+  );
+  const fullscreen = useContainerFullscreen(reportFullscreenError);
+
+  const reload = useCallback((): void => {
+    // A reload is a fresh start: try WebGPU again before falling back.
+    modeRef.current = "auto";
+    setMode("auto");
+    setPhase("starting");
+    setNonce((value) => value + 1);
+    setNotice(null);
+  }, []);
+
+  return {
+    strings,
+    phase,
+    backend,
+    binding,
+    candidate,
+    savedAt,
+    notice,
+    progress,
+    iframeDoc,
+    // Re-mounting the frame is what reloads the app: same document text, new key.
+    iframeKey: `${baseUrl ?? ""}#${nonce}#${mode}`,
+    frameRef,
+    containerRef: fullscreen.containerRef,
+    isFullscreen: fullscreen.isFullscreen,
+    overlay: fullscreen.overlay,
+    toggleFullscreen: fullscreen.toggle,
+    reload,
+  };
 }

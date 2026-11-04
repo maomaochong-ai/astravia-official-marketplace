@@ -3,73 +3,91 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Astravia canvas plugin",
-      "title": "TextureCraft: draw here, or let the agent draw with you",
-      "description": "Compose texture studies: tiled blocks, swatches and notes, exported as one board.",
+      "title": "TextureCraft in the activity panel",
+      "eyebrow": "3D 贴图",
+      "description": "Layered PBR painting, bakes and smart materials — the upstream TextureCraft editor running inside Astravia, on the mesh you opened in the workspace.",
       "badges": [
-        "Chinese by default",
-        "Autosaved",
-        "Agent-ready"
-      ]
-    },
-    {
-      "type": "feature-grid",
-      "items": [
-        {
-          "title": "Five kinds of object, one canvas",
-          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
-          "icon": "solar:layers-minimalistic-bold"
-        },
-        {
-          "title": "Snapping and alignment",
-          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
-          "icon": "solar:ruler-cross-pen-bold"
-        },
-        {
-          "title": "Export PNG or document JSON",
-          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
-          "icon": "solar:export-bold"
-        },
-        {
-          "title": "The conversation edits it",
-          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
-          "icon": "solar:magic-stick-3-bold"
-        }
+        "No fork",
+        "Local",
+        "PBR"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-thread",
-        "user_prompt": "Open a canvas in TextureCraft, draw three title blocks, left-align them and export a PNG.",
-        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Open TextureCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
-      "type": "steps",
+      "type": "feature-grid",
+      "title": "What it gives you",
       "items": [
         {
-          "title": "Open the {name} tab",
-          "description": "A new canvas with a Chinese interface by default."
+          "title": "Paint on the model, not on a flat image",
+          "description": "Strokes land where the brush touches the surface, across UV seams, so a texture is authored on the thing it belongs to.",
+          "icon": "solar:layers-minimalistic-linear"
         },
         {
-          "title": "Pick an object from the left rail",
-          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
+          "title": "Channels and bakes",
+          "description": "Base colour, roughness, metalness and the rest are separate channels that can be baked out to images and handed to a renderer.",
+          "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "Keep talking in the conversation",
-          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
+          "title": "Smart materials you can trust",
+          "description": "A smart material brings its own channels and masks, so a look is reused instead of repainted from scratch.",
+          "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Export when you need a file",
-          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "About 9 MB of editor files arrive on first open and are reused offline after that."
+        },
+        {
+          "title": "Open the TextureCraft tab",
+          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+        },
+        {
+          "title": "Select a mesh, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia."
+        },
+        {
+          "title": "Bake and export back",
+          "description": "Bakes and exports travel the same bridge as saves."
         }
       ]
     },
     {
       "type": "callout",
       "tone": "info",
-      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
+      "content": "TextureCraft is an early release: brush engines and bake coverage are still growing. The plugin runs the pinned release and adds no painting features of its own."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Upstream repository",
+          "href": "https://github.com/storytold/texturecraft"
+        }
+      ]
     }
   ]
 }
