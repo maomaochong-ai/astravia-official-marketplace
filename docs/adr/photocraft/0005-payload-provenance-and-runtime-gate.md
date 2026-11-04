@@ -1,5 +1,9 @@
 # ADR 0005：Payload 取上游发布的 web 包，版本门是运行期能力探测
 
+> **已作废**（2026-11-04）：站点不再从上游 Release 下载，改为由 CI 用上游源码构建并随包分发。
+> 现状见 [craft-0011](craft-0011-the-site-ships-in-the-package.md)。以下是当时的判断留痕。
+
+
 - 状态：已接受（2026-11-02 提出，2026-11-03 按 [0008](./0008-payload-never-depends-on-one-host.md) 把「单一上游 URL」换成有序源清单）
 - 关联文档：[0001](./0001-the-tab-runs-upstreams-web-build.md)、[0002](./0002-bytes-move-through-the-host.md)、[0007](./0007-one-loopback-hub-three-entries.md)、[0008](./0008-payload-never-depends-on-one-host.md)
 

@@ -1,5 +1,9 @@
 # ADR 0007：一个本地回环 hub 同时供三个入口使用
 
+> **已作废**（2026-11-04）：站点不再从上游 Release 下载，改为由 CI 用上游源码构建并随包分发。
+> 现状见 [craft-0011](craft-0011-the-site-ships-in-the-package.md)。以下是当时的判断留痕。
+
+
 - 状态：已接受（2026-11-03；同日补记 Astravia 0.5.86 宿主取证，见 §5）
 - 关联文档：[0001](./0001-the-tab-runs-upstreams-web-build.md)、[0002](./0002-bytes-move-through-the-host.md)、[0005](./0005-payload-provenance-and-runtime-gate.md)、[0006](./0006-tab-shell-not-a-second-app.md)、[CONTEXT.md](./CONTEXT.md)
 

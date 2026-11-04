@@ -1,8 +1,8 @@
 # DeckCraft 的决策记录
 
-这个目录属于 deckcraft 这一支 craft 插件。
+这个目录属于 DeckCraft 这一支 craft 插件。
 
-- `craft-0001` … `craft-0013` 与 `craft-CONTEXT.md`：整族共用，与其余 craft 插件逐字节相同，
-  由 `tests/craft-docs.test.mjs` 守护。其中 `craft-0011` … `craft-0013` 是本轮推翻上游
-  zip 依赖后的新决策，越靠后的文档优先级越高。
-- 本应用没有独有决策：`src/app.config.ts` 是唯一差异，其余源码逐字节相同。
+- `craft-0001` … `craft-0011` 与 `craft-CONTEXT.md`：整族共用，与其余 craft 插件逐字节相同，
+  由 `tests/craft-docs.test.mjs` 守护。
+- `0006-payload-pin.md`（本应用特有）：曾经钉住的上游 zip 与摘要；下载链路已被 `craft-0011` 取代。
+- 想看"站点为什么不再下载、而是随包分发"，直接读 `craft-0011-the-site-ships-in-the-package.md`。

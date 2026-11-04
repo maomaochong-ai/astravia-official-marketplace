@@ -27,3 +27,6 @@ docs/daily-reports/
 
 # 逆向产物（反编译的宿主 asar、探针脚本），永不入库
 .re/
+
+# Craft sites: upstream web builds, produced by scripts/build-craft-web.mjs in CI.
+abilities/plugins/*/web/

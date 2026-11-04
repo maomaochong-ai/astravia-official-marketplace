@@ -59,7 +59,7 @@
 - Observed：`build-apple-apps` 用同一套 `%plugin.name%` / `%tab.label%` 写法并在中文界面正确显示，
   本轮按它的形状照抄，没有自创格式。
 - Observed：`node scripts/marketplace.mjs check` 与 `node --test tests/*.test.mjs` 通过
-  （清单 schema、hub 摘要、版本一致性、家族逐字节一致）。
+  （清单 schema、包内站点、版本一致性、家族逐字节一致）。
 - Inferred：真实宿主里切换语言后卡片立即变化——需要在装有多支插件的宿主里目视确认一次，
   这一步本轮没有做（没有可复现的多插件会话）。
 

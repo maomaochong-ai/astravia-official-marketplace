@@ -1,14 +1,15 @@
 # 中文来自外壳，画布交给上游
 
-> **已被取代**：注入 `navigator.language` 的前提是上游自己带语言表，而十六支里有多支
-> 在 Web 端根本没有可选的语言。现行做法是自己渲染文案与字形，见
-> `craft-0012-chinese-is-rendered-here.md`。下文保留原文，用于说明当时为什么那样做。
+> **2026-11-04 修订**：站点不再从上游 release zip 下载，改由 CI 用上游源码构建并随包分发
+> （[craft-0011](craft-0011-the-site-ships-in-the-package.md)）。本文里"payload 的 sha256"「上游 zip」
+> 之类的说法按"上游源码/站点字节"理解；`app.locale` 的位置是 `src/app.config.ts`，不走 `payload/manifest.json`。
+> 结论——种子只改 `navigator`、画布语言由上游构建决定——不变。
 
 ## 问题
 
 用户要的是"编辑器默认中文，同时支持英文"。这句话里有两个完全不同的东西，混在一起就会做出错误承诺：
 
-- **插件的壳**：标签标题、状态条、准备页、能力详情、工具描述、报错文案。这些是我们的代码。
+- **插件的壳**：标签标题、状态条、能力详情、工具描述、报错文案。这些是我们的代码。
 - **画布里的界面**：菜单、面板、对话框。这些是上游的 Web 构建，我们一个字节都不改。
 
 ## 决定
@@ -22,14 +23,15 @@
 
 ### 画布：能透传的透传，不能的不假装
 
-`useCraftEditor` 把宿主语言拼进 URL：`?webgl|cpu&nosw&hl=zh|en`。hub 侧：
+`site-document.ts` 把宿主语言拼进帧文档的 URL：`?nosw&hl=zh|en[&webgl]`。注入侧：
 
-- `hl=zh` 时，如果 `payload/manifest.json` 的 `app.locale` 有值，就在返回的 HTML `<head>` 里种一段
+- `hl=zh` 时，如果 `src/app.config.ts` 的 `locale` 有值，就在帧文档的 `<head>` 里种一段
   极小的脚本，把 `navigator.language` / `navigator.languages` 换成中文。
-- `app.locale` 为空则什么都不注入。
+- `locale` 为空则什么都不注入。
 
-这条种子存在的原因是那些构建每次加载都会重算"匹配系统语言"并把结果**持久化**，
-而 hub 的端口每次不同、origin 随之变、localStorage 按 origin 隔离——不种，用户每次都要重新选一次。
+这条种子存在的原因是那些构建每次加载都会重算"匹配系统语言"，并把结果记进自己的偏好；
+在 `astravia-plugin://` 这个固定 origin 下偏好能存住，但首次打开仍是英文——不种，用户第一次看到的就是英文界面。
+种子只改 `navigator`，不碰上游一个字节。
 
 ### 判定依据：语言表 + 字形，逐个应用实测
 
@@ -46,13 +48,16 @@
 那份许可证文本**不能当证据**：materialcraft 根本没有中文语言表，它的包里照样有
 `OFL-noto-sans-cjk-sc.txt`。它由 `copy_font_licences` 统一复制，与字形有没有进包无关。
 
-第二轮又按**语言选择机制**逐个仓库看过（见下节），把六支能确认读 `navigator` 的应用一并开启，
-现在 `app.locale: "zh"` 有八支：photocraft、lightcraft、effectcraft、pdfcraft、vectorcraft、
-gridcraft、wordcraft、craft-anything。其余七支保持 `null`——不是保守，是它们的构建根本没有中文路径。
+第二轮又按**语言选择机制**逐个仓库看过（见下节），把六支能确认读 `navigator` 的应用一并开启。
+2026-11-04 站点改由 CI 从上游源码构建之后，`app.locale: "zh"` 仍是**八支**：photocraft、lightcraft、
+effectcraft、pdfcraft、vectorcraft、gridcraft、wordcraft、craft-anything。其余七支为 `""`——它们的构建
+根本没有中文路径。lightcraft 的中文字形不在 wasm 里，而在站点的一个独立字体文件中；CI 按上游自己的
+`packaging/fonts.sh` 取一个 pin 住的 craft-fonts checkout 来构建（见 `craft-0011`），所以它也开着。
+**不取字体就直接构建**是能过的，代价是界面文字变成缺字方框——这正是判据里"字形"那一列的意义。
 
 **它们有可能本来就能显示中文**——字体也能编进 wasm，craft-anything 的 6.1 MB wasm 里查不到字形文件
 却带着 `zh-hans` 表。这件事只能看画布：确认文案变成中文且不出方框，再改该应用
-`payload/manifest.json` 的 `app.locale` 为 `"zh"`、`npm run build:hub`、抬版本。**没看过就不要改。**
+`src/app.config.ts` 的 `locale` 为 `"zh"`、抬版本。**没看过就不要改。**
 
 ## 第二轮：语言选择机制决定命运
 
@@ -83,15 +88,15 @@ gridcraft、wordcraft、craft-anything。其余七支保持 `null`——不是�
 这一轮的验证停在"界面文字会走中文分支"，**没有**验证"字形画得出"。中文串配缺字形，结果是英文菜单旁边
 多出几个空方框，比纯英文更难看。能不能画，取决于该构建的 wasm 里有没有编进 CJK 字体——这件事只能看画布。
 
-所以这六支的开启是**可回滚的两行改动**：画面出现方框，就把对应 `payload/manifest.json` 的
-`app.locale` 改回 `null`、`npm run build:hub`、抬版本再发一版。插件侧不动上游一个字节，
-所以回滚也不会碰到 payload 的 sha256。
+所以这几支的开启是**可回滚的两行改动**：画面出现方框，就把该支 `src/app.config.ts` 的
+`locale` 改回 `""`、抬版本再发一版。插件侧不动上游一个字节，所以回滚只影响帧文档里那三行种子脚本，
+站点字节一个也不动。
 
 ### 为什么现在敢开
 
 因为种子只改 `navigator`，不改任何上游逻辑：上游照样走自己的"匹配系统语言"代码路径，只是它读到的
 系统语言是中文。英文界面的用户 `hl=en`，种子不注入，他们看到自己的系统语言。这不是翻译层，
-是让上游以为自己的宿主是中文系统——与 lightcraft 上一轮的做法完全同一条路。
+是让上游以为自己的宿主是中文系统。
 
 ## 为什么不做重编译
 
@@ -103,7 +108,7 @@ gridcraft、wordcraft、craft-anything。其余七支保持 `null`——不是�
 2. **字形进不去。** epaint 用 `ab_glyph`，它不读 CFF/OTF；`NotoSansSC-Regular.otf` 正是 CFF。
    要中文字形就得转 TTF 并打包进去，制品从 26 MB 涨到 60–90 MB。
 3. **成本不成比例。** 每支 × 每次 10–30 分钟编译，而收益只覆盖菜单文字。
-4. **它把"跑上游原样构建"这条底线破了。** 一旦开始重编，payload 的 sha256 就不再是上游发布的那个字节，
+4. **它把"跑上游原样构建"这条底线破了。** 一旦开始重编，站点就不是上游源码的那份产物，
    所有关于来源与可复现的说明都要重写。
 
 管线归档在仓库之外（`/tmp/craft-i18n`），**不要再把它引回插件目录**。这条写进了每个插件的 `AGENTS.md`。
@@ -112,17 +117,18 @@ gridcraft、wordcraft、craft-anything。其余七支保持 `null`——不是�
 
 | 位置 | 语言 |
 | --- | --- |
-| 插件标签标题、状态条、准备页、错误文案 | 中文（英文界面用户看到英文），`strings.ts` |
+| 插件标签标题、状态条、错误文案 | 中文（英文界面用户看到英文），`strings.ts` |
 | 技能的展示名与正文 | `SKILL.md` 的 `alias` 双语名 + 中文正文 |
 | 能力详情页 | `detail.json` / `detail.zh.json`，默认英文、中文覆盖 |
-| **画布内部的菜单与面板** | **上游自己的语言**（八支开了中文种子，七支没有中文表） |
+| **画布内部的菜单与面板** | **上游自己的语言**（七支开了中文种子，其余不种） |
 
 ## 验证与未验证
 
 - Observed：`strings.ts` 两份文案键完全对应，`npx tsc --noEmit` 通过。
-- Observed：`payload/manifest.json` 里 designcraft 的 `app.locale` 为 `null`，photocraft 与 lightcraft 为
-  `"zh"`；hub 只在有值时注入种子。
-- Observed：15 个 zip 的中央目录（HTTP Range 读 EOCD + 目录，未整包下载）：只有 lightcraft 含
-  `lightcraft_zh_hans.otf`；其余只有 `OFL-*.txt` 许可证。
+- Observed：`src/app.config.ts` 里 designcraft 的 `locale` 为空串，photocraft 为 `"zh"`；
+  `site-document.ts` 只在有值且宿主语言是中文时注入种子。
+- Observed（当时）：15 个上游 release zip 的中央目录（HTTP Range 读 EOCD + 目录，未整包下载）：只有
+  lightcraft 含 `lightcraft_zh_hans.otf`；其余只有 `OFL-*.txt` 许可证。这条证据来自旧的分发形式，
+  结论按源码仍然成立；现在包里的站点由 CI 构建，见 `craft-0011`。
 - Inferred：`hl=zh` 在没有语言表的构建上是空操作——**没有**逐个应用截图确认过
   "切英文之后界面变了吗"，因为预期就是不变。真要确认，改宿主语言后看画布文案是否变化即可。

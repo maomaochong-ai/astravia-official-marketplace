@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, unlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { prepareMarketplace, readJson, sourceCatalog, writeJson, digest, inside, entries, missingPackagedResources, planVersionBumps, applyVersionBump, runtimeSourcesChanged, reviewedSourceSha } from './static-marketplace.mjs';
 
@@ -262,6 +262,14 @@ async function main() {
       for (const args of [['run', 'check', '--if-present'], ['test', '--if-present'], ['run', 'build']]) {
         try { npmRun(args); }
         catch (e) { console.error(`[${args[0]}] failed for ${directory}, continuing...`); }
+      }
+      // The editor the plugin opens is upstream's own web build, and it is not committed (the repo
+      // archive limit forbids it). `payload/manifest.json` records which upstream commit and which of
+      // upstream's build recipes produce it, so it is built here — the same way upstream's
+      // `packaging/web/package.sh` assembles it — right before the package is packed. A failure is
+      // fatal: a craft package without its site would install and then show an empty editor.
+      if (existsSync(join(directory, 'payload/manifest.json'))) {
+        execFileSync(process.execPath, [join(root, 'scripts/build-craft-web.mjs'), '--slug', basename(directory), '--if-missing'], { cwd: root, stdio: 'inherit' });
       }
     },
   });

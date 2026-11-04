@@ -1,7 +1,10 @@
 # 首次打开是"准备"，不是"报错"；中文只在能画出中文的构建上打开
 
-> **更新（本轮）**：不再下载上游 payload，等待页、进度条与「首次打开要准备」整段随之删除；
-> 打开标签就有内核。见 `craft-0011-the-engine-is-ours.md`。下文保留原文。
+> **已被 [craft-0011](craft-0011-the-site-ships-in-the-package.md) 取代（2026-11-04）。**
+> 站点现在随包分发，第一次打开没有下载、没有进度页、也没有 `warmHub`：本文的"决定一"
+> （等待页）与"决定二"（把冷启动移到激活）都随 loopback hub 一起删掉了。
+> "决定三"（按构建能不能画出中文逐应用开 `app.locale`）仍然有效，实现从 hub 的 `<head>` 注入
+> 搬到了 `src/features/editor/services/site-document.ts`，判据与结论没变。
 
 插件第一次被打开时面板里没有应用：上游 payload 几十 MB，要从 Release 下载。旧实现的等待页把
 `Phase: downloading`、`payload-no-source`、`Error: connect ETIMEDOUT` 和配置文件的绝对路径原样

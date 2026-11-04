@@ -1,5 +1,9 @@
 # ADR 0010：payload 钉到上游 0.19.0，缺陷从上游修，不从我们这边补
 
+> **已作废**（2026-11-04）：站点不再从上游 Release 下载，改为由 CI 用上游源码构建并随包分发。
+> 现状见 [craft-0011](craft-0011-the-site-ships-in-the-package.md)。以下是当时的判断留痕。
+
+
 - 状态：已接受（2026-11-03）
 - 关联文档：[0005](./0005-payload-provenance-and-runtime-gate.md)、[0008](./0008-payload-never-depends-on-one-host.md)、[0011](./0011-chinese-default-comes-from-the-shell.md)
 

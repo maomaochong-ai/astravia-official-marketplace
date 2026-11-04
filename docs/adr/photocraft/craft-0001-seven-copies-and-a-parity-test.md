@@ -1,13 +1,8 @@
 # 每支一份副本，一条一致性测试
 
-> **更新（本轮）**：家族现在是**十六支**（artcraft 为新建的一支），共享面只剩 `src/**`
-> （跳过 `src/app.config.ts`）。`server/hub.src.mjs` 与 `scripts/build-hub.mjs` 已随搬运架构
-> 一起删除，见 `craft-0011-the-engine-is-ours.md`。下文关于"七份副本""十五个 payload"的
-> 段落保留原文，数字与文件清单以本节为准。
-
-十四个 craft 插件加 photocraft 是**同一个程序**钉住十五个不同的上游 payload：`src/**`、`server/hub.src.mjs` 与
-`scripts/build-hub.mjs` 在各支之间逐字节相同，唯一按应用变化的是 `src/app.config.ts`、
-`plugin.json`、`payload/manifest.json` 和展示层文件。
+十四个 craft 插件加 photocraft 是**同一个程序**钉住十五个不同的上游站点：`src/**` 在各支之间逐字节
+相同，唯一按应用变化的是 `src/app.config.ts`、`plugin.json`、`payload/manifest.json`（上游 commit
+与 crate，见 [craft-0011](craft-0011-the-site-ships-in-the-package.md)）和展示层文件。
 
 ## 为什么不是继续用生成器
 
@@ -28,8 +23,8 @@
 
 ## 守住什么
 
-`tests/craft-parity.test.mjs` 对整个家族递归取 `src/**`（跳过 `src/app.config.ts`）加上
-`server/hub.src.mjs`、`scripts/build-hub.mjs`，逐文件比 sha256；任何一处漂移都直接失败，并打印
+`tests/craft-parity.test.mjs` 对整个家族递归取 `src/**`（跳过 `src/app.config.ts`），
+逐文件比 sha256；任何一处漂移都直接失败，并打印
 是哪支插件、哪个文件、两份摘要各是什么。它另外断言两件事：每支插件只声明自己的 id，
 以及所有相对路径不越出插件目录。
 
@@ -41,8 +36,8 @@
 | 文件 | 为什么不共享 |
 | --- | --- |
 | `src/app.config.ts` | 应用的 id、名称、标签、服务 id 与版本、上游仓库 |
-| `plugin.json` | 包身份、权限、服务运行时、每个平台的 hub sha256 |
-| `payload/manifest.json` | 钉住的上游版本、sha256、下载源、应用在 payload 里的身份 |
+| `plugin.json` | 包身份、权限、Agent 技能路径 |
+| `payload/manifest.json` | 钉住的上游仓库、40 位 commit、`webApp` crate 与站点目录 |
 | `ABILITY.md` / `ability.json` / `detail*.json` / `README*.md` / `assets/` | 展示层 |
 
 `src/app.config.ts` 的头部注释写明了这条规矩，**并且**指向本文件；改动它之前先读这一篇。
@@ -50,11 +45,11 @@
 ## photocraft 是后来并进来的那一支
 
 photocraft 比这条家族线更早，曾经有自己的目录形状（`src/tab/`）和协议前缀（`pc:`）。这些都收敛了：
-现在它的 `src/**`、`server/hub.src.mjs`、`scripts/build-hub.mjs` 与其余各支逐字节相同，
+现在它的 `src/**` 与其余各支逐字节相同，
 `tests/craft-parity.test.mjs` 把它一并纳入。
 
 它为什么曾经被算作"外面的一支"：它的中文化很早、很多，服务运行时、全文屏、文件桥都是在它身上先做出来的。
-但那些决定现在都写进了共享代码，剩下按应用变化的东西与其余各支一样——payload 钉、清单、展示层。
+但那些决定现在都写进了共享代码，剩下按应用变化的东西与其余各支一样——来源钉、清单、展示层。
 
 **这就是把 photocraft 拉进一致性测试的理由**：暂停闸门与三个手势工具最初只落到了当时那几支，
 photocraft 因为"不属于这一套"被漏掉，症状是同一个宿主变卡、Agent 在它里面点不动。
