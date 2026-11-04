@@ -1,13 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "craft-anything",
   "site": "web",
   "upstream": "https://github.com/storytold/craft-anything",
   "release": "0.3.0",
   "commit": "472d061921d10099875071c69afae070c72eac07",
-  "webApp": "apps/craft-anything-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk"
-  }
+  "asset": "craft-anything-web-0.3.0.zip",
+  "sha256": "58af01db277a20444399df283f67c3c8ba8e8af64d36ebd1cdc6d57d2b8a0238",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

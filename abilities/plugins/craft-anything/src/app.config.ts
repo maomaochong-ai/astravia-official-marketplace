@@ -27,5 +27,3 @@ export const APP = {
   seedValue: "",
   upstream: "https://github.com/storytold/craft-anything",
 } as const;
-
-export type CraftApp = typeof APP;

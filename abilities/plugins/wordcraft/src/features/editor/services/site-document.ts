@@ -10,10 +10,11 @@
  *  2. `history.replaceState` — `about:srcdoc` carries no URL, so upstream's own
  *     `new URL("…_bg.wasm", location.href)` and its `?webgl` retry would break.
  *     This runs before any upstream script and gives the document a real URL;
- *  3. the seeds and the host bridge, in the same order the loopback hub used.
+ *  3. the seeds and the host bridge, last of the three, so upstream’s first paint
+ *     already sees the interface language and the host’s message port.
  *
- * Nothing here downloads anything: the bytes were built into the package by CI from
- * the upstream sources (docs/adr/photocraft/0001-the-tab-runs-upstreams-web-build.md).
+ * Nothing here downloads anything at runtime: the bytes in the package are the bundle
+ * upstream published for that release, staged by CI (craft-0012).
  */
 import bridgeSource from "../../../bridge/host-bridge.js?raw";
 import { APP } from "../../../app.config.ts";

@@ -3,23 +3,23 @@
 Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.
 
 插件把上游 LightCraft 的 web 应用放进活动面板的一个 iframe 里跑：同一份 wasm、同一份 JavaScript，
-没有分支、没有重新编译，也没有我们另写的编辑器界面。站点由 CI 用上游源码构建、随插件包分发——
-不是上游的发版 zip。
+没有分支、没有重新编译，也没有我们另写的编辑器界面。站点就是上游为这一版发出来的
+`lightcraft-web-0.17.0.zip`，打包前下载、校验 sha256 后原样装进包里——我们不重新编译它，也不改它一个字节。
 
 ## 上游钉在哪个 commit
 
 | | |
 | --- | --- |
 | 上游仓库 | https://github.com/storytold/lightcraft |
-| 构建目标 | `apps/lightcraft-web`（上游自己的 web crate） |
-| 构建配方 | 上游自己的 `cargo xtask web`（cargo → wasm-bindgen CLI → 可选 wasm-opt） |
+| 制品 | `lightcraft-web-0.17.0.zip` |
+| sha256 | `24df2d75857846ae3114293f3bef99a7b0fc83f09d329f178a76490622d389c0` |
 | commit | `ebe247710867f8c47512fab1ff488f17815161e5` |
 | 上游版本 | `0.17.0` |
-| 站点体积 | 由 CI 在打包前构建（`web/` 不进 git） |
+| 站点 | 打包时下载，`web/` 不进 git |
 
-`payload/manifest.json` 钉的就是这个 commit：CI 检出它、跑上游自己的 `cargo xtask web`，
-把产物放进 `abilities/plugins/lightcraft/web/`，然后才打包。源码级可复现，比钉一份 zip 的摘要更严，
-也让"上游还没发版"不再阻塞跟进。
+`payload/manifest.json` 钉住上游的版本、commit、包名与摘要：打包前按 pin 下载那份 zip，下载内容的
+sha256 与上游同版 `SHA256SUMS.txt` 里那一行必须同时对上，然后剥掉外层目录放进 `abilities/plugins/lightcraft/web/`。
+要跟进上游，就把 pin 换成新一版的资产与摘要。
 
 它的中文字形不在 wasm 里，而在站点的一个独立字体文件中：上游的 web 构建只在 `CRAFT_FONTS_DIR` 存在时才把它复制进站点，所以 `build.fonts` 钉了一个 craft-fonts 的 commit，构建脚本 checkout 它再构建。不取字体也能构建，代价是界面中文变成缺字方框。
 
@@ -67,7 +67,7 @@ node ../../scripts/build-craft-web.mjs --slug lightcraft        # 重建 web/web
 做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。见
 [`docs/adr/lightcraft/craft-0001`](../../../../docs/adr/lightcraft/craft-0001-seven-copies-and-a-parity-test.md)。
 
-`web/` 不要手改：它由 CI 从上游 commit 构建，下一次构建会覆盖。
+`web/` 不要手改：它是上游发的那份字节，下一次打包会重新覆盖。
 
 ## 权限
 

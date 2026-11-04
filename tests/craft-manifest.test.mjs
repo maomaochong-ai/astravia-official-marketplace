@@ -123,52 +123,22 @@ test("no craft plugin asks the host to run a service for it", () => {
 	}
 });
 
-test("the pin names an upstream commit, not a zip digest", () => {
+test("the pin names the upstream release, its bundle and that bundle's digest", () => {
 	for (const app of APPS) {
 		const pin = readPin(app);
-		assert.equal(pin.schemaVersion, 3, `${app}: payload/manifest.json must be schemaVersion 3`);
+		assert.equal(pin.schemaVersion, 4, `${app}: payload/manifest.json must be schemaVersion 4`);
 		assert.equal(pin.slug, app, `${app}: pin slug must equal the plugin id`);
 		assert.equal(pin.site, "web", `${app}: the site directory is web/`);
 		assert.equal(pin.upstream, `https://github.com/storytold/${app}`, `${app}: pin must point at the real upstream repository`);
+		assert.match(pin.release, /^\d+\.\d+\.\d+$/, `${app}: pin.release must be the upstream release tag`);
 		assert.match(pin.commit, /^[0-9a-f]{40}$/, `${app}: pin.commit must be a full 40-hex commit`);
-		assert.equal(pin.webApp, `apps/${app}-web`, `${app}: pin.webApp must name the web crate`);
-		assert.equal(pin.builtBy, "scripts/build-craft-web.mjs", `${app}: pin must name the script that builds the site`);
-		assert.equal(pin.sha256, undefined, `${app}: a binary digest belongs to the removed zip download path`);
+		assert.equal(pin.asset, `${app}-web-${pin.release}.zip`, `${app}: pin.asset must be the bundle that release published`);
+		assert.match(pin.sha256, /^[0-9a-f]{64}$/, `${app}: pin.sha256 must be the bundle digest build-craft-web.mjs verifies`);
+		assert.equal(pin.builtBy, "scripts/build-craft-web.mjs", `${app}: pin must name the script that stages the site`);
 	}
 });
 
-test("the pin names one of upstream's three web build recipes", () => {
-	for (const app of APPS) {
-		const { build } = readPin(app);
-		assert.ok(build, `${app}: payload/manifest.json must say how upstream builds this site`);
-		const recipes = ["trunk", "trunk-boot", "xtask"];
-		assert.ok(recipes.includes(build.recipe), `${app}: unknown build recipe ${build.recipe}`);
-		if (build.recipe === "xtask") {
-			// `cargo xtask web` writes under CARGO_TARGET_DIR, not next to the crate.
-			assert.match(build.out, /^web(?:\/dist|-site)$/, `${app}: xtask recipe must name its output inside the target dir`);
-		} else {
-			assert.equal(build.out, undefined, `${app}: only the xtask recipe reads from the target dir`);
-		}
-		if (build.recipe === "trunk-boot") {
-			assert.ok(build.boot && build.boot !== readPin(app).webApp, `${app}: the boot crate must be a second crate, not the app itself`);
-		} else {
-			assert.equal(build.boot, undefined, `${app}: only photocraft ships a boot page`);
-		}
-	}
-});
-
-test("a recipe that needs build-time assets pins them to a commit", () => {
-	for (const app of APPS) {
-		const { build } = readPin(app);
-		if (!build.fonts) continue;
-		assert.match(build.fonts.repo, /^https:\/\/github\.com\/storytold\//, `${app}: the fonts checkout must be a real upstream repository`);
-		assert.match(build.fonts.commit, /^[0-9a-f]{40}$/, `${app}: the fonts checkout must be pinned to a full commit`);
-	}
-	const lightcraft = readPin("lightcraft");
-	assert.equal(lightcraft.build.fonts?.commit, "b076417b5880bd4154bd22f00695b1d28c6bea83", "lightcraft: the CJK face comes from this exact craft-fonts commit");
-});
-
-test("a built site, when present, is a relative-loading trunk build", (t) => {
+test("a staged site, when present, loads only relative paths", (t) => {
 	let seen = 0;
 	for (const app of APPS) {
 		const index = join(ROOT, app, "web/index.html");
@@ -176,10 +146,10 @@ test("a built site, when present, is a relative-loading trunk build", (t) => {
 		seen += 1;
 		const html = readFileSync(index, "utf8");
 		assert.ok(html.trim().length > 0, `${app}: web/index.html is empty`);
-		assert.ok(!/(?:src|href)="\//.test(html), `${app}: web/index.html loads an absolute path — Trunk public_url must be "./"`);
+		assert.ok(!/(?:src|href)="\//.test(html), `${app}: web/index.html loads an absolute path — the site lives in a package directory, not at a domain root`);
 		assert.doesNotMatch(html, /127\.0\.0\.1|localhost/, `${app}: web/index.html still points at the removed loopback hub`);
 	}
-	if (seen === 0) t.skip("no site built in this checkout (CI builds web/ before packaging)");
+	if (seen === 0) t.skip("no site staged in this checkout (CI downloads upstream's bundle before packaging)");
 });
 
 test("the site directory is git-ignored so it never lands in the repository", () => {

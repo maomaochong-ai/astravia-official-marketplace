@@ -1,13 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "pdfcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/pdfcraft",
   "release": "0.17.0",
   "commit": "168a3cb91e90333a7069f2bac63835140c6d0f5b",
-  "webApp": "apps/pdfcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk"
-  }
+  "asset": "pdfcraft-web-0.17.0.zip",
+  "sha256": "393420ab35e25afc174cb6d1791098bb714099aca91cf6598b4553e57c48a835",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

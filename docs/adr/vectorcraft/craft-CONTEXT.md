@@ -18,15 +18,15 @@ Astravia 宿主（Electron 主进程 + 渲染进程）
 │          （上游 Web 构建 + 注入的 base、URL 垫片、语言种子、host-bridge.js）
 │
 └─ 包里
-   └─ web/                    CI 用上游源码按上游配方构建的静态站点，git 里没有
+   └─ web/                    上游发布的那份 web 包，校验 sha256 后装进包，git 里没有
 ```
 
 ## 词
 
-- **site**：`web/`，CI 用上游自己的 web 构建配方（多数是 `trunk build --release`，photocraft 是 boot+分包，三支是 `cargo xtask web`）产出的静态站点，
-  随插件包分发。git 里没有它，`abilities/plugins/*/web/` 在 .gitignore 里。
-- **pin**：`payload/manifest.json`（schemaVersion 3）——上游仓库、40 位 commit、
-  `webApp` 是哪个 crate。它不再是二进制制品的摘要，而是"这份站点由哪一版源码构建"。
+- **site**：`web/`，上游发布的那份 web 包（`<app>-web-<version>.zip`）解出来的静态站点，随插件包分发。
+  git 里没有它，`abilities/plugins/*/web/` 在 .gitignore 里。
+- **pin**：`payload/manifest.json`（schemaVersion 4）——上游仓库、版本、40 位 commit、
+  包名与它的 sha256。它说明"这份站点来自上游哪一次发布"，不是我们自己构建出来的产物。
 - **bridge**：`src/bridge/host-bridge.js`，跑在 iframe 里面、上游 app 启动之前。它实现三件事：
   拦截打开/保存对话框把字节交给宿主、报告启动失败、以及把宿主的暂停与手势消息变成页面里的事件。
 - **frame**：那个 iframe。所有 Agent 工具最终都是往 frame 里 `postMessage`，再等一条带 `id` 的回信。
@@ -46,7 +46,7 @@ Astravia 宿主（Electron 主进程 + 渲染进程）
 | 关注点 | 归属 |
 | --- | --- |
 | 上游功能本身 | 上游项目，插件不碰 |
-| 站点的字节 | 上游源码 + 上游自己的构建配方，由 CI 装进包（见 craft-0011） |
+| 站点的字节 | 上游发布的那份 web 包，校验 sha256 后由 CI 装进包（见 craft-0012） |
 | 文件进出工作区 | 宿主与 bridge 共同完成，字节不落在页面里 |
 | Agent 能不能动手 | 插件（手势工具）+ 上游是否读合成事件 |
 | 应用内界面语言 | 上游构建（见 0007 的真实边界） |

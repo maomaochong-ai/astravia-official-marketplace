@@ -3,23 +3,23 @@
 Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes.
 
 插件把上游 FigCraft 的 web 应用放进活动面板的一个 iframe 里跑：同一份 wasm、同一份 JavaScript，
-没有分支、没有重新编译，也没有我们另写的编辑器界面。站点由 CI 用上游源码构建、随插件包分发——
-不是上游的发版 zip。
+没有分支、没有重新编译，也没有我们另写的编辑器界面。站点就是上游为这一版发出来的
+`figcraft-web-0.15.0.zip`，打包前下载、校验 sha256 后原样装进包里——我们不重新编译它，也不改它一个字节。
 
 ## 上游钉在哪个 commit
 
 | | |
 | --- | --- |
 | 上游仓库 | https://github.com/storytold/figcraft |
-| 构建目标 | `apps/figcraft-web`（上游自己的 web crate） |
-| 构建配方 | 上游自己的 `trunk build --release` |
+| 制品 | `figcraft-web-0.15.0.zip` |
+| sha256 | `b936b42ca6e49115f0c7fb1b5fe2cbe0de9317bc42ecd2b4cbba96333cfb59af` |
 | commit | `35684eaa028e636d264073a666ef11881620fa0e` |
 | 上游版本 | `0.15.0` |
-| 站点体积 | 由 CI 在打包前构建（`web/` 不进 git） |
+| 站点 | 打包时下载，`web/` 不进 git |
 
-`payload/manifest.json` 钉的就是这个 commit：CI 检出它、跑上游自己的 `trunk build --release`，
-把产物放进 `abilities/plugins/figcraft/web/`，然后才打包。源码级可复现，比钉一份 zip 的摘要更严，
-也让"上游还没发版"不再阻塞跟进。
+`payload/manifest.json` 钉住上游的版本、commit、包名与摘要：打包前按 pin 下载那份 zip，下载内容的
+sha256 与上游同版 `SHA256SUMS.txt` 里那一行必须同时对上，然后剥掉外层目录放进 `abilities/plugins/figcraft/web/`。
+要跟进上游，就把 pin 换成新一版的资产与摘要。
 
 ## 一次打开会经过什么
 
@@ -54,7 +54,7 @@ Design interfaces and prototypes inside Astravia — the upstream FigCraft edito
 npm install
 npm run check                                            # tsc --noEmit
 npm run build                                            # tsc --noEmit && vite build
-node ../../scripts/build-craft-web.mjs --slug figcraft        # 重建 web/web/（需要 rust、`wasm32-unknown-unknown` 目标和 trunk）
+node ../../scripts/build-craft-web.mjs --slug figcraft        # 下载并校验上游站点（加 --if-missing 可跳过已就位的）
 ```
 
 `src/**` 在十五支 craft 插件之间逐字节相同，唯一按应用不同的是 `src/app.config.ts`（还有
@@ -62,7 +62,7 @@ node ../../scripts/build-craft-web.mjs --slug figcraft        # 重建 web/web/�
 做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。见
 [`docs/adr/figcraft/craft-0001`](../../../../docs/adr/figcraft/craft-0001-seven-copies-and-a-parity-test.md)。
 
-`web/` 不要手改：它由 CI 从上游 commit 构建，下一次构建会覆盖。
+`web/` 不要手改：它是上游发的那份字节，下一次打包会重新覆盖。
 
 ## 权限
 

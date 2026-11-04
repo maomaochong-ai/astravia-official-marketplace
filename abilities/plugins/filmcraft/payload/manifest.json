@@ -1,14 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "filmcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/filmcraft",
   "release": "0.16.0",
   "commit": "68919ed87aa6a097a4d21414ec7c438883f5fe22",
-  "webApp": "apps/filmcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "xtask",
-    "out": "web/dist"
-  }
+  "asset": "filmcraft-web-0.16.0.zip",
+  "sha256": "79da0f879f86f4520c1721d8296dfa61220c33eb0e39bf8e58fd883388800431",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

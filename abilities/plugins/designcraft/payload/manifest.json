@@ -1,13 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "designcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/designcraft",
   "release": "0.16.0",
   "commit": "81cca513ba3120900b7f81a05df48b5672ee9a7b",
-  "webApp": "apps/designcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk"
-  }
+  "asset": "designcraft-web-0.16.0.zip",
+  "sha256": "1e74074b32d59185210042f303f28041b49dd3cc1a70d4d378a75ef23e4b0186",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

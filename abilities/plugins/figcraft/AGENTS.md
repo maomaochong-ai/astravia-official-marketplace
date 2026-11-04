@@ -4,10 +4,11 @@
 一致性由 `tests/craft-parity.test.mjs` 守住，改一处就要改另外十四处。
 理由与边界写在 [`docs/adr/figcraft/craft-0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/figcraft/craft-0001-seven-copies-and-a-parity-test.md)。
 
-编辑器本体**不是我们写的**：`web/` 是 CI 用上游源码（`payload/manifest.json` 钉住的 commit）跑
-上游自己的 `trunk build --release` 得到的静态站点，随包分发。为什么不再下载上游 zip、为什么站点是
-`srcdoc` 而不是导航进去，见
-[`docs/adr/figcraft/craft-0011-the-site-ships-in-the-package.md`](../../../../docs/adr/figcraft/craft-0011-the-site-ships-in-the-package.md)。
+编辑器本体**不是我们写的**：`web/` 就是上游为 `payload/manifest.json` 钉住的那一版发出来的
+`<app>-web-<version>.zip`——打包前下载、校验 sha256、剥掉外层目录后原样装进包里。我们不编译它，
+也不改它一个字节。为什么站点走 `srcdoc` 而不是导航进去，见
+[`docs/adr/figcraft/craft-0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/figcraft/craft-0001-seven-copies-and-a-parity-test.md)、
+[`docs/adr/figcraft/craft-0012-the-site-is-upstreams-release-bundle.md`](../../../../docs/adr/figcraft/craft-0012-the-site-is-upstreams-release-bundle.md)。
 
 ## 开工
 
@@ -16,7 +17,7 @@ cd abilities/plugins/figcraft
 npm install
 npm run check      # tsc --noEmit
 npm run build      # dist/ 供本地预检，正式 .astraviapkg 由 CI 构建
-node ../../scripts/build-craft-web.mjs --slug figcraft   # 只在本地想跑真界面时需要；CI 会做
+node ../../scripts/build-craft-web.mjs --slug figcraft   # 下载并校验上游站点；--if-missing 跳过已就位的
 ```
 
 ## 改东西的正确位置
@@ -39,8 +40,8 @@ npm run build
 
 ## 硬约束
 
-- **`web/` 不进 git**：`abilities/plugins/*/web/` 在 .gitignore 里，CI 在打包前构建。手改会在下一次
-  构建时被覆盖，也不能提交。
+- **`web/` 不进 git**：`abilities/plugins/*/web/` 在 .gitignore 里，CI 在打包前从上游 release 下载。
+  手改会在下一次打包时被覆盖，也不能提交；要换版本就改 pin，别改字节。
 - **上游字节保真**：不改 wasm、不改 JS、不改 `index.html` 的 SRI。我们只在拼 `srcdoc` 时注入
   `<base>`、一段垫 URL 的脚本、语言种子和 bridge。
 - **站点只能是相对路径**：页面要能在任意前缀下加载，`web/web/index.html` 里不允许

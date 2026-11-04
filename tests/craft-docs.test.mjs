@@ -30,6 +30,7 @@ const FAMILY_DOCS = [
 	"craft-0009-one-batch-and-a-text-map.md",
 	"craft-0010-the-manifest-speaks-the-shell-language.md",
 	"craft-0011-the-site-ships-in-the-package.md",
+	"craft-0012-the-site-is-upstreams-release-bundle.md",
 	"craft-CONTEXT.md",
 ];
 

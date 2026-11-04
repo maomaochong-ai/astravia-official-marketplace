@@ -1,14 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "photocraft",
   "site": "web",
   "upstream": "https://github.com/storytold/photocraft",
   "release": "0.19.0",
   "commit": "b957878f3f4d80426cc4bf8d1db8774b57cc8af0",
-  "webApp": "apps/photocraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk-boot",
-    "boot": "apps/photocraft-web-boot"
-  }
+  "asset": "photocraft-web-0.19.0.zip",
+  "sha256": "74047f06da706c5b7c9dee77e05379a0928c52b5a7ea1e821e55c69851b0bd01",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

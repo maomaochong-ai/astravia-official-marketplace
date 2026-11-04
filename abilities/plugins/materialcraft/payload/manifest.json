@@ -1,13 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "materialcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/materialcraft",
   "release": "0.1.0",
   "commit": "fc98b115f0584aca9540baa4899cfb6176f5ba2e",
-  "webApp": "apps/materialcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk"
-  }
+  "asset": "materialcraft-web-0.1.0.zip",
+  "sha256": "b9362c39f0d5523aa5c7d34eac49dd314a5ca19c21722b49f953b909bc766b38",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

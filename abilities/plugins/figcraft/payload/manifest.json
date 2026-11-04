@@ -1,13 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "figcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/figcraft",
   "release": "0.15.0",
   "commit": "35684eaa028e636d264073a666ef11881620fa0e",
-  "webApp": "apps/figcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk"
-  }
+  "asset": "figcraft-web-0.15.0.zip",
+  "sha256": "b936b42ca6e49115f0c7fb1b5fe2cbe0de9317bc42ecd2b4cbba96333cfb59af",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

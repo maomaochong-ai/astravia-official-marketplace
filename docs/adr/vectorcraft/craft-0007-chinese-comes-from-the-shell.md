@@ -1,8 +1,9 @@
 # 中文来自外壳，画布交给上游
 
-> **2026-11-04 修订**：站点不再从上游 release zip 下载，改由 CI 用上游源码构建并随包分发
-> （[craft-0011](craft-0011-the-site-ships-in-the-package.md)）。本文里"payload 的 sha256"「上游 zip」
-> 之类的说法按"上游源码/站点字节"理解；`app.locale` 的位置是 `src/app.config.ts`，不走 `payload/manifest.json`。
+> **2026-11-04 修订**：站点来自上游发布的那份 web 包（`<app>-web-<ver>.zip`），打包时下载、
+> 校验 sha256 后装进包里，运行时不再下载任何东西（[craft-0012](craft-0012-the-site-is-upstreams-release-bundle.md)，
+> 取代 [craft-0011](craft-0011-the-site-ships-in-the-package.md) 的源码构建路线）。本文里"payload 的 sha256"「上游 zip」
+> 之类的说法按"上游发布的站点字节"理解；`app.locale` 的位置是 `src/app.config.ts`，不走 `payload/manifest.json`。
 > 结论——种子只改 `navigator`、画布语言由上游构建决定——不变。
 
 ## 问题

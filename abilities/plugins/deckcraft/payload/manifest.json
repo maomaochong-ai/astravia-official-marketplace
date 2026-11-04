@@ -1,13 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "deckcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/deckcraft",
   "release": "0.15.0",
   "commit": "82ec8137dc39f29b0f51b18630b409d655066fce",
-  "webApp": "apps/deckcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk"
-  }
+  "asset": "deckcraft-web-0.15.0.zip",
+  "sha256": "b617413b27514cc7f037877a1414a02bd4d4810a1b3f8d18cf7ab59cf97d5769",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

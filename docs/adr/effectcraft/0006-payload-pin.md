@@ -1,12 +1,17 @@
 # 0006 · designcraft 钉在哪一版，以及为什么不改它
 
-- 状态：**已取代**（2026-11-04，见 [craft-0011](craft-0011-the-site-ships-in-the-package.md)）
+- 状态：**部分复活**（2026-11-04）：钉二进制这件事回来了，执行时机从"首次打开"挪到"打包时"。
+  见 [craft-0012](craft-0012-the-site-is-upstreams-release-bundle.md)。
 - 日期：2026-11-03
 - 相关：[craft-0003](craft-0003-first-open-is-a-preparation-not-a-failure.md)、[craft-0007](craft-0007-chinese-comes-from-the-shell.md)
 
-> 本文描述的"下载上游 zip、校验 sha256、解压进内存"链路已经不存在。现在钉住的是一个
-> 上游 **commit**，站点由 CI 用 `trunk build --release` 现场构建并随包分发；`payload/manifest.json`
-> 升到 schemaVersion 3，字段与含义见 craft-0011。保留本文是为了记住为什么曾经要钉二进制。
+> 本文描述的"首次打开时下载上游 zip、校验 sha256、解压进内存、由 `server/hub.mjs` 发文件"这条
+> 链路已经不存在：[craft-0011](craft-0011-the-site-ships-in-the-package.md) 换成了 CI 用上游源码构建，
+> [craft-0012](craft-0012-the-site-is-upstreams-release-bundle.md) 又把站点换回上游发布的那份 web 包——
+> 下载与校验都发生在打包时，摘要钉在 `payload/manifest.json`（schemaVersion 4），运行时不再下载任何东西。
+> 保留本文是为了记住为什么当初要钉二进制。
+> 注意：这是整族共用的历史记录，主体写的是 designcraft 那一次；本应用钉在哪一版，以
+> `payload/manifest.json` 为准。
 
 ## 背景
 

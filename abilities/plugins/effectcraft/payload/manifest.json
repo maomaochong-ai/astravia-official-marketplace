@@ -1,14 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "effectcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/effectcraft",
   "release": "0.20.0",
   "commit": "a646bdcc2e7b9684c40f0fc83bab77eb62fa645b",
-  "webApp": "apps/effectcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "xtask",
-    "out": "web/dist"
-  }
+  "asset": "effectcraft-web-0.20.0.zip",
+  "sha256": "24189ed0dc8e9b5ed893dbd65b27f4f130ce5294b4a4f6b4cd506746f916c13e",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

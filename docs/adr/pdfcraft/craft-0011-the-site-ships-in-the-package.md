@@ -1,5 +1,9 @@
 # 站点随包分发：用上游自己的源码构建，不用上游的 zip
 
+> **已作废**（2026-11-04）：CI 不再用上游源码现编站点，改为直接取上游发布的那份 web 包（十五支全部具备），
+> 并把摘要钉进 manifest。
+> 现状见 [craft-0012](craft-0012-the-site-is-upstreams-release-bundle.md)。以下是当时的判断留痕。
+
 - 状态：已采纳（2026-11-04）。取代 [0006-payload-pin](0006-payload-pin.md) 与
   [craft-0003](craft-0003-first-open-is-a-preparation-not-a-failure.md) 里的下载链路。
 - 相关：[craft-0001](craft-0001-seven-copies-and-a-parity-test.md)、

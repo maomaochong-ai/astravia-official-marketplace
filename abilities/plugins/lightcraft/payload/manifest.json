@@ -1,19 +1,12 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "lightcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/lightcraft",
   "release": "0.17.0",
   "commit": "ebe247710867f8c47512fab1ff488f17815161e5",
-  "webApp": "apps/lightcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "xtask",
-    "out": "web-site",
-    "fonts": {
-      "repo": "https://github.com/storytold/craft-fonts",
-      "commit": "b076417b5880bd4154bd22f00695b1d28c6bea83"
-    },
-    "skipPrecompressed": true
-  }
+  "asset": "lightcraft-web-0.17.0.zip",
+  "sha256": "24df2d75857846ae3114293f3bef99a7b0fc83f09d329f178a76490622d389c0",
+  "skipPrecompressed": true,
+  "builtBy": "scripts/build-craft-web.mjs"
 }

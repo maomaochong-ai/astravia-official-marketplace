@@ -263,11 +263,11 @@ async function main() {
         try { npmRun(args); }
         catch (e) { console.error(`[${args[0]}] failed for ${directory}, continuing...`); }
       }
-      // The editor the plugin opens is upstream's own web build, and it is not committed (the repo
-      // archive limit forbids it). `payload/manifest.json` records which upstream commit and which of
-      // upstream's build recipes produce it, so it is built here — the same way upstream's
-      // `packaging/web/package.sh` assembles it — right before the package is packed. A failure is
-      // fatal: a craft package without its site would install and then show an empty editor.
+            // The editor the plugin opens is upstream's own web build, and it is not committed (the repo
+            // archive limit forbids it). `payload/manifest.json` records which upstream release published
+            // that bundle and what its sha256 is, so the bundle itself is fetched and verified here — right
+            // before the package is packed. A failure is fatal: a craft package without its site would
+            // install and then show an empty editor.
       if (existsSync(join(directory, 'payload/manifest.json'))) {
         execFileSync(process.execPath, [join(root, 'scripts/build-craft-web.mjs'), '--slug', basename(directory), '--if-missing'], { cwd: root, stdio: 'inherit' });
       }

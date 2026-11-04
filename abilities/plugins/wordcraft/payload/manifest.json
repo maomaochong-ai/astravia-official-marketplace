@@ -1,13 +1,11 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "slug": "wordcraft",
   "site": "web",
   "upstream": "https://github.com/storytold/wordcraft",
   "release": "0.15.0",
   "commit": "ffb155a0321bba08da495efda66495104c1c8b9a",
-  "webApp": "apps/wordcraft-web",
-  "builtBy": "scripts/build-craft-web.mjs",
-  "build": {
-    "recipe": "trunk"
-  }
+  "asset": "wordcraft-web-0.15.0.zip",
+  "sha256": "c5a02d4e4f1d3e59288da4647d2d734296fd31e39ccd060a83ac2d2faa12a79a",
+  "builtBy": "scripts/build-craft-web.mjs"
 }

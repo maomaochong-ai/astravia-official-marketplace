@@ -1,369 +1,293 @@
 #!/usr/bin/env node
 /**
- * Build the web site each craft plugin ships inside its own package.
+ * Put the site each craft plugin ships inside its own package.
  *
  *   node scripts/build-craft-web.mjs --slug photocraft
  *   node scripts/build-craft-web.mjs --all
- *   node scripts/build-craft-web.mjs --slug photocraft --source-root ~/craft/code-clone
+ *   node scripts/build-craft-web.mjs --all --if-missing
  *
- * Every plugin carries `payload/manifest.json` — the upstream repository, the exact
- * commit, which crate inside it is the web build, and which of upstream's own build
- * recipes produces that crate's site:
+ * Every plugin carries `payload/manifest.json` (schemaVersion 4): which upstream
+ * repository, which of its releases, the 40-hex commit that release points at, the name
+ * of the web bundle that release published, and that bundle's sha256.
  *
- *   trunk       `trunk build --release` in the web crate            (eleven apps)
- *   trunk-boot  two trunk crates, the app shipped as gzip'd parts   (photocraft)
- *   xtask       `cargo xtask web` → wasm-bindgen CLI                (effectcraft, filmcraft, lightcraft)
+ * Nothing is compiled here. The site is the archive upstream's own releaser produced —
+ * their `packaging/web/package.sh` output, attached to the release: the editor they
+ * ship, byte for byte, including the `integrity` hashes their `index.html` carries for
+ * their own glue. This script downloads it, checks it against the pinned digest and
+ * against upstream's `SHA256SUMS.txt`, strips the archive's single top-level directory,
+ * and stages the result at `abilities/plugins/<slug>/web/`.
  *
- * This script checks the pin out of the checkout, runs that recipe, and copies the
- * result to `abilities/plugins/<slug>/<site>/`.
+ * Why not rebuild upstream's recipe: fifteen Rust/wasm release builds take tens of
+ * minutes each, which is a single-point-of-failure CI job rather than a two-minute
+ * download, and a rebuild is our reading of their recipe — the release archive is not.
  *
- * The result is upstream's own build output, assembled the way upstream's
- * `packaging/web/package.sh` assembles it — just not delivered as their release zip.
- * (Photocraft's gzip framing is produced here instead of by shelling out to `gzip -9 -n`,
- * so those bytes are a valid gzip of the same wasm, not the identical stream.)
- * The site is NOT committed: `web/` is gitignored and CI builds it before packaging.
+ * The site is NOT committed: `web/` is gitignored and only exists between CI's build
+ * step and its packaging step.
  */
 import { createHash } from "node:crypto";
-import { gzipSync } from "node:zlib";
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { cpSync } from "node:fs";
-import { homedir } from "node:os";
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGINS = join(ROOT, "abilities/plugins");
-
-/**
- * Environment every child build sees. `~/.cargo/bin` is prepended once rustup has run, so the
- * recipe commands resolve even though no shell profile was re-sourced.
- */
-let BASE_ENV = process.env;
+/** Generous: the largest pinned bundle is ~70 MiB and release downloads are throttled. */
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
 function hasCommand(command) {
-  return spawnSync("sh", ["-c", `command -v ${command} >/dev/null 2>&1`], { stdio: "ignore" }).status === 0;
+	return spawnSync("sh", ["-c", `command -v ${command} >/dev/null 2>&1`], { stdio: "ignore" }).status === 0;
 }
 
 function step(title) {
-  process.stdout.write(`\n== ${title}\n`);
-}
-
-/**
- * The publishing workflow installs nothing for Rust: it was written for a JavaScript-only build and
- * is deliberately left alone. So this script provisions what upstream's recipe needs, once per run,
- * and only when the tool is actually missing (a developer machine or a warm runner skips all of it).
- *
- * `wasm-bindgen` is needed by the three `cargo xtask web` apps; the eleven trunk apps get the
- * equivalent from trunk's own bundle, so that install is skipped for them.
- */
-function ensureToolchain({ needsWasmBindgen }) {
-  const missing = [];
-  if (!hasCommand("cargo")) missing.push("cargo");
-  if (!hasCommand("trunk")) missing.push("trunk");
-  if (!hasCommand("wasm-opt")) missing.push("wasm-opt");
-  if (needsWasmBindgen && !hasCommand("wasm-bindgen")) missing.push("wasm-bindgen");
-  if (missing.length === 0) return;
-
-  step(`toolchain: installing ${missing.join(", ")}`);
-
-  if (!hasCommand("cargo")) {
-    if (process.platform === "win32") throw new Error("install Rust from https://rustup.rs, then rerun");
-    run("sh", [
-      "-c",
-      "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target wasm32-unknown-unknown --no-modify-path",
-    ]);
-  } else {
-    run("rustup", ["target", "add", "wasm32-unknown-unknown"]);
-  }
-  BASE_ENV = { ...process.env, PATH: `${join(homedir(), ".cargo", "bin")}${process.platform === "win32" ? ";" : ":"}${process.env.PATH}` };
-
-  if (!hasCommand("trunk")) run("cargo", ["install", "trunk", "--locked"]);
-  // Every upstream `index.html` carries `data-wasm-opt="z"`, so trunk wants wasm-opt even when the
-  // build is not minified. Trunk can fetch its own copy; a package-managed one removes that step.
-  if (!hasCommand("wasm-opt")) {
-    if (process.platform === "darwin") run("brew", ["install", "binaryen"]);
-    else if (hasCommand("apt-get")) run("sh", ["-c", "sudo apt-get update -qq && sudo apt-get install -y binaryen"]);
-    else throw new Error("install binaryen (wasm-opt) from https://github.com/WebAssembly/binaryen/releases, then rerun");
-  }
-  // `cargo xtask web` calls the bindgen CLI directly, and the crate refuses a version mismatch.
-  if (needsWasmBindgen && !hasCommand("wasm-bindgen")) run("cargo", ["install", "wasm-bindgen-cli", "--version", "0.2.129", "--locked"]);
+	process.stdout.write(`\n== ${title}\n`);
 }
 
 function parseArgs(argv) {
-  const options = { slugs: [], sourceRoot: process.env.CRAFT_SOURCE_ROOT || "", all: false, jobs: 1, ifMissing: false };
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (arg === "--all") options.all = true;
-    else if (arg === "--slug") options.slugs.push(argv[++i]);
-    else if (arg === "--source-root") options.sourceRoot = argv[++i];
-    else if (arg === "--jobs") options.jobs = Number(argv[++i]) || 1;
-    else if (arg === "--if-missing") options.ifMissing = true;
-    else throw new Error(`unknown argument: ${arg}`);
-  }
-  if (!options.all && options.slugs.length === 0) throw new Error("pass --slug <slug> or --all");
-  return options;
+	const options = { slugs: [], all: false, ifMissing: false };
+	for (let i = 0; i < argv.length; i += 1) {
+		const arg = argv[i];
+		if (arg === "--all") options.all = true;
+		else if (arg === "--slug") options.slugs.push(argv[++i]);
+		else if (arg === "--if-missing") options.ifMissing = true;
+		else throw new Error(`unknown argument: ${arg}`);
+	}
+	if (!options.all && options.slugs.length === 0) throw new Error("pass --slug <slug> or --all");
+	return options;
 }
 
-/** Every plugin that carries a v3 provenance manifest. */
+/** Every plugin that carries a v4 provenance manifest. */
 function pluginsWithSites() {
-  return readdirSync(PLUGINS)
-    .filter((slug) => existsSync(join(PLUGINS, slug, "payload/manifest.json")))
-    .filter((slug) => {
-      const manifest = JSON.parse(readFileSync(join(PLUGINS, slug, "payload/manifest.json"), "utf8"));
-      return manifest.schemaVersion === 3;
-    });
+	return readdirSync(PLUGINS)
+		.filter((slug) => existsSync(join(PLUGINS, slug, "payload/manifest.json")))
+		.filter((slug) => {
+			const manifest = JSON.parse(readFileSync(join(PLUGINS, slug, "payload/manifest.json"), "utf8"));
+			return manifest.schemaVersion === 4;
+		});
 }
 
-function run(command, args, options) {
-  const printable = [command, ...args].join(" ");
-  process.stdout.write(`  $ ${printable}\n`);
-  execFileSync(command, args, { stdio: "inherit", env: BASE_ENV, ...options });
-}
-
-function capture(command, args, options) {
-  return execFileSync(command, args, { encoding: "utf8", ...options }).trim();
-}
-
-/**
- * The checkout this build reads from. A missing one is cloned; an existing one is
- * never pulled — the pin decides what gets built, not whatever main is today.
- */
-function ensureCheckout(name, upstream, commit, sourceRoot) {
-  const repoDir = join(sourceRoot, name);
-  if (!existsSync(join(repoDir, ".git"))) {
-    mkdirSync(sourceRoot, { recursive: true });
-    run("git", ["clone", "--filter=blob:none", "--no-checkout", upstream, repoDir]);
-  }
-  const head = (() => {
-    try {
-      return capture("git", ["-C", repoDir, "rev-parse", "HEAD"]);
-    } catch {
-      return "";
-    }
-  })();
-  if (head !== commit) {
-    run("git", ["-C", repoDir, "fetch", "--depth", "1", "origin", commit]);
-    run("git", ["-C", repoDir, "checkout", "--force", commit]);
-  }
-  const actual = capture("git", ["-C", repoDir, "rev-parse", "HEAD"]);
-  if (actual !== commit) {
-    throw new Error(`${name}: checkout is at ${actual}, the pin says ${commit}`);
-  }
-  return repoDir;
-}
-
-function duBytes(dir) {
-  let total = 0;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) total += duBytes(path);
-    else if (entry.isFile()) total += statSync(path).size;
-  }
-  return total;
+function readPin(slug) {
+	return JSON.parse(readFileSync(join(PLUGINS, slug, "payload/manifest.json"), "utf8"));
 }
 
 function hashFile(path) {
-  return createHash("sha256").update(readFileSync(path)).digest("hex");
+	return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function duBytes(dir) {
+	let total = 0;
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const path = join(dir, entry.name);
+		if (entry.isDirectory()) total += duBytes(path);
+		else if (entry.isFile()) total += statSync(path).size;
+	}
+	return total;
+}
+
+/** `https://github.com/storytold/cadcraft` + release `0.17.0` + asset name. */
+function releaseAssetUrl(pin, asset) {
+	return `${pin.upstream}/releases/download/v${pin.release}/${asset}`;
 }
 
 /**
- * Upstream's package script refuses a root-absolute URL, because the site is served
- * from a package directory rather than a domain root. Same rule here, before the
- * copy, so a broken build never reaches the packager.
+ * `CRAFT_WEB_CACHE=<dir>` reads `<dir>/<slug>/<asset>` and `<dir>/<slug>/SHA256SUMS.txt`
+ * instead of the network. Cached bytes go through the same two checks below, so a stale or
+ * edited copy in there still fails.
+ */
+async function fetchAsset(url, cachedPath) {
+	if (cachedPath && existsSync(cachedPath)) {
+		process.stdout.write(`  ${url.split("/").pop()} from ${dirname(cachedPath)}\n`);
+		return readFileSync(cachedPath);
+	}
+	const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+	if (!response.ok) throw new Error(`GET ${url} → ${response.status} ${response.statusText}`);
+	return Buffer.from(await response.arrayBuffer());
+}
+
+/**
+ * The digest the pin records must survive both checks: it is what we downloaded, and it is
+ * what upstream's own `SHA256SUMS.txt` says that asset was when they published it. A
+ * release asset republished under the same tag would pass the second and fail the first —
+ * which is exactly the case worth failing loudly on rather than silently shipping new bytes.
+ */
+function verifyBundle(pin, bundle, sums) {
+	const actual = createHash("sha256").update(bundle).digest("hex");
+	if (actual !== pin.sha256) {
+		throw new Error(`${pin.slug}: downloaded sha256 ${actual} does not match the pinned ${pin.sha256}`);
+	}
+	const listed = new RegExp(`^([0-9a-f]{64})  ${pin.asset.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m").exec(sums);
+	if (!listed) throw new Error(`${pin.slug}: upstream's SHA256SUMS.txt lists no ${pin.asset}`);
+	if (listed[1] !== pin.sha256) {
+		throw new Error(`${pin.slug}: upstream now lists ${listed[1]} for ${pin.asset}, the pin says ${pin.sha256}`);
+	}
+}
+
+/** Entry names inside the archive, without extracting it. */
+function archiveEntries(zipPath) {
+	if (hasCommand("unzip")) {
+		const listed = spawnSync("unzip", ["-Z1", zipPath], { encoding: "utf8" });
+		if (listed.status === 0) return listed.stdout.split("\n").filter(Boolean);
+	}
+	if (hasCommand("python3")) {
+		const listed = spawnSync("python3", ["-c", "import sys,zipfile;print('\\n'.join(zipfile.ZipFile(sys.argv[1]).namelist()))", zipPath], { encoding: "utf8" });
+		if (listed.status === 0) return listed.stdout.split("\n").filter(Boolean);
+		throw new Error(listed.stderr.trim() || "python3 could not list the archive");
+	}
+	throw new Error("need unzip or python3 to read a zip archive");
+}
+
+/**
+ * Upstream's releaser wraps the site in `<app>-web-<version>/`; the plugin needs the files
+ * themselves at `web/`. An archive that already has `index.html` at its root is taken as is.
+ * Names are validated first: the plugin protocol resolves paths inside the package, so an
+ * absolute path or a `..` segment in the archive would land somewhere it must not.
+ */
+function topLevelDir(entries) {
+	const tops = new Set(entries.map((name) => name.split("/")[0]));
+	if (tops.size !== 1) return "";
+	const [top] = tops;
+	if (!entries.includes(`${top}/`)) return "";
+	if (!entries.every((name) => name === `${top}/` || name.startsWith(`${top}/`))) return "";
+	return top;
+}
+
+function extract(zipPath, into) {
+	if (hasCommand("unzip")) {
+		const result = spawnSync("unzip", ["-q", "-o", zipPath, "-d", into], { stdio: "inherit" });
+		if (result.status === 0) return;
+		throw new Error(`unzip failed with status ${result.status}`);
+	}
+	if (hasCommand("python3")) {
+		const result = spawnSync("python3", ["-c", "import sys,zipfile;zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])", zipPath, into], { stdio: "inherit" });
+		if (result.status === 0) return;
+		throw new Error(`python3 -m zipfile failed with status ${result.status}`);
+	}
+	throw new Error("need unzip or python3 to read a zip archive");
+}
+
+/** No symlinks: the packager walks the site and the host must not follow a link out of it. */
+function assertNoSymlinks(dir) {
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const path = join(dir, entry.name);
+		if (lstatSync(path).isSymbolicLink()) throw new Error(`${path} is a symlink`);
+		if (entry.isDirectory()) assertNoSymlinks(path);
+	}
+}
+
+/**
+ * Upstream's package script refuses a root-absolute URL, because the site is served from a
+ * package directory rather than a domain root. Same rule here, before the copy.
  */
 function assertRelativeIndex(indexPath) {
-  const html = readFileSync(indexPath, "utf8");
-  const absolute = /(?:src|href)="\/(?!\/)/.exec(html);
-  if (absolute) throw new Error(`index.html has a root-absolute URL: ${absolute[0]}`);
+	const html = readFileSync(indexPath, "utf8");
+	const absolute = /(?:src|href)="\/(?!\/)/.exec(html);
+	if (absolute) throw new Error(`index.html has a root-absolute URL: ${absolute[0]}`);
 }
 
 /**
- * Where trunk / xtask write their artifacts. One directory for every app keeps the dependency
- * graph warm: fifteen Rust crates that share egui and wgpu rebuild only their own object files.
+ * The site ships precompressed twins (`x.wasm.gz`, `x.wasm.br`) for hosts that negotiate
+ * Content-Encoding. The plugin protocol serves raw bytes and the page fetches the module
+ * directly, so those copies are dead weight — and already-compressed bytes do not shrink
+ * again inside the package, which is where the 50 MB archive limit bites.
  */
-function cargoTarget(options) {
-  return process.env.CARGO_TARGET_DIR || join(options.sourceRoot, ".cargo-target-web");
+function dropPrecompressed(dir) {
+	let dropped = 0;
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const path = join(dir, entry.name);
+		if (entry.isDirectory()) {
+			dropped += dropPrecompressed(path);
+			continue;
+		}
+		if (!entry.isFile() || !/\.(?:gz|br)$/.test(entry.name)) continue;
+		rmSync(path);
+		dropped += 1;
+	}
+	return dropped;
 }
 
-/**
- * The directory a crate's own `Trunk.toml` publishes to, resolved against that crate. Reading it
- * instead of assuming `dist/web` matters for photocraft: its app goes to `dist/web` and its boot
- * page to `dist/web-boot`, and a hardcoded path fails the second build.
- */
-function trunkDist(repoDir, crate) {
-  const declared = /^\s*dist\s*=\s*"([^"]+)"/m.exec(readFileSync(join(repoDir, crate, "Trunk.toml"), "utf8"));
-  if (!declared) throw new Error(`${crate}/Trunk.toml declares no dist`);
-  return resolve(repoDir, crate, declared[1]);
+async function stageOne(slug) {
+	const pin = readPin(slug);
+	const site = pin.site || "web";
+	process.stdout.write(`\n[${slug}] ${pin.upstream} v${pin.release} → ${pin.asset}\n`);
+
+	step(`${slug}: download`);
+	const cacheDir = process.env.CRAFT_WEB_CACHE ? join(resolve(process.env.CRAFT_WEB_CACHE), slug) : "";
+	const bundle = await fetchAsset(releaseAssetUrl(pin, pin.asset), cacheDir ? join(cacheDir, pin.asset) : "");
+	const sums = (await fetchAsset(releaseAssetUrl(pin, "SHA256SUMS.txt"), cacheDir ? join(cacheDir, "SHA256SUMS.txt") : "")).toString("utf8");
+	verifyBundle(pin, bundle, sums);
+	process.stdout.write(`  ${(bundle.length / 1024 / 1024).toFixed(1)} MiB, sha256 ${pin.sha256.slice(0, 12)} matches the pin and upstream's sums\n`);
+
+	const work = join(tmpdir(), `craft-site-${slug}-${process.pid}`);
+	rmSync(work, { recursive: true, force: true });
+	mkdirSync(work, { recursive: true });
+	try {
+		const zipPath = join(work, pin.asset);
+		writeFileSync(zipPath, bundle);
+
+		const entries = archiveEntries(zipPath);
+		if (entries.length === 0) throw new Error(`${slug}: ${pin.asset} is empty`);
+		for (const name of entries) {
+			if (name.startsWith("/") || name.includes("\\") || name.split("/").includes("..")) {
+				throw new Error(`${slug}: ${pin.asset} contains an unusable path: ${name}`);
+			}
+		}
+
+		const unpacked = join(work, "unpacked");
+		mkdirSync(unpacked, { recursive: true });
+		extract(zipPath, unpacked);
+		assertNoSymlinks(unpacked);
+
+		const top = topLevelDir(entries);
+		const from = top ? join(unpacked, top) : unpacked;
+		if (!existsSync(join(from, "index.html"))) {
+			throw new Error(`${slug}: ${pin.asset} has no index.html${top ? ` under ${top}/` : ""}`);
+		}
+		assertRelativeIndex(join(from, "index.html"));
+
+		const target = join(PLUGINS, slug, site);
+		rmSync(target, { recursive: true, force: true });
+		mkdirSync(target, { recursive: true });
+		cpSync(from, target, { recursive: true });
+
+		if (pin.skipPrecompressed) {
+			const dropped = dropPrecompressed(target);
+			process.stdout.write(`[${slug}] dropped ${dropped} precompressed file(s) the plugin protocol cannot use\n`);
+		}
+
+		const bytes = duBytes(target);
+		process.stdout.write(
+			`[${slug}] ${site}/ ${(bytes / 1024 / 1024).toFixed(1)} MiB, index.html sha256 ${hashFile(join(target, "index.html")).slice(0, 12)}\n`,
+		);
+		return { slug, bytes };
+	} finally {
+		rmSync(work, { recursive: true, force: true });
+	}
 }
 
-/** Upstream's own `trunk build --release` for one crate, then the directory that crate publishes. */
-function buildTrunk(repoDir, crate, options) {
-  if (!existsSync(join(repoDir, crate, "Trunk.toml"))) {
-    throw new Error(`${crate} has no Trunk.toml — is this the web crate?`);
-  }
-  const outDir = trunkDist(repoDir, crate);
-  rmSync(outDir, { recursive: true, force: true });
-  run("trunk", ["build", "--release"], {
-    cwd: join(repoDir, crate),
-    env: { ...process.env, CARGO_TARGET_DIR: cargoTarget(options) },
-  });
-  if (!existsSync(join(outDir, "index.html"))) throw new Error(`trunk produced no index.html in ${outDir}`);
-  return outDir;
+async function main() {
+	const options = parseArgs(process.argv.slice(2));
+	const unknown = options.all ? [] : options.slugs.filter((slug) => !existsSync(join(PLUGINS, slug, "payload/manifest.json")));
+	if (unknown.length > 0) throw new Error(`no provenance manifest for: ${unknown.join(", ")}`);
+	let slugs = options.all ? pluginsWithSites() : options.slugs;
+
+	// `--if-missing` is what the package build passes: a site already on disk came from the
+	// same pin, and re-downloading it would only add time to every packaging run.
+	if (options.ifMissing) {
+		const present = slugs.filter((slug) => existsSync(join(PLUGINS, slug, readPin(slug).site || "web", "index.html")));
+		if (present.length > 0) process.stdout.write(`already staged, skipping: ${present.join(", ")}\n`);
+		slugs = slugs.filter((slug) => !present.includes(slug));
+		if (slugs.length === 0) return;
+	}
+
+	process.stdout.write(`staging ${slugs.length} site(s) from the pinned upstream releases\n`);
+	const done = [];
+	for (const slug of slugs) done.push(await stageOne(slug));
+	const total = done.reduce((sum, entry) => sum + entry.bytes, 0);
+	process.stdout.write(`\n${done.length} site(s), ${(total / 1024 / 1024).toFixed(1)} MiB total\n`);
 }
 
-/**
- * Upstream's `cargo xtask web`: cargo → wasm-bindgen CLI (pinned by the crate) → optional
- * wasm-opt, with the page and its worker files copied in as they are. Same recipe the repo's
- * `packaging/web/package.sh` runs, so the bytes are the ones upstream would ship.
- */
-function buildXtask(repoDir, manifest, options) {
-  const env = { ...process.env, CARGO_TARGET_DIR: cargoTarget(options) };
-  if (manifest.build.fonts) {
-    // Upstream's packaging sources `packaging/fonts.sh`, which checks out craft-fonts at a pinned
-    // commit and exports CRAFT_FONTS_DIR; `cargo xtask web` then copies the CJK face into the site.
-    // Without it the build still succeeds and the UI falls back to missing-glyph boxes.
-    const { repo, commit } = manifest.build.fonts;
-    env.CRAFT_FONTS_DIR = ensureCheckout("craft-fonts", repo, commit, options.sourceRoot);
-    env.CRAFT_FONTS_REQUIRED = "1";
-  }
-  run("cargo", ["xtask", "web"], { cwd: repoDir, env });
-  const outDir = join(cargoTarget(options), manifest.build.out);
-  if (!existsSync(join(outDir, "index.html"))) {
-    throw new Error(`cargo xtask web produced no index.html in ${outDir}`);
-  }
-  return outDir;
-}
-
-/** Split one gzip stream into `part-aa`, `part-ab`, … — photocraft's own 20 MiB framing. */
-function writeParts(gz, appDir, stem) {
-  const PART_BYTES = 20 * 1024 * 1024;
-  const names = [];
-  for (let offset = 0, index = 0; offset < gz.length; offset += PART_BYTES, index += 1) {
-    const name = `${stem}.part-${String.fromCharCode(97 + Math.floor(index / 26))}${String.fromCharCode(97 + (index % 26))}`;
-    writeFileSync(join(appDir, name), gz.subarray(offset, offset + PART_BYTES));
-    names.push(name);
-  }
-  writeFileSync(join(appDir, "parts.txt"), ["photocraft-parts 1", ...names, ""].join("\n"));
-  return names;
-}
-
-/**
- * Photocraft does not ship `dist/web` directly: its page is a small boot module that fetches the
- * app in gzip'd parts (the app's wasm is over the per-file cap some hosts enforce). Rebuild that
- * layout exactly as `packaging/web/package.sh` does — boot page at the root, app glue and parts
- * under `app/`.
- */
-function buildTrunkBoot(repoDir, manifest, options, stage) {
-  const appDir = buildTrunk(repoDir, manifest.webApp, options);
-  const bootDir = buildTrunk(repoDir, manifest.build.boot, options);
-  cpSync(bootDir, stage, { recursive: true });
-  mkdirSync(join(stage, "app"), { recursive: true });
-
-  const wasm = readdirSync(appDir).filter((name) => name.endsWith("_bg.wasm"));
-  if (wasm.length !== 1) throw new Error(`expected one *_bg.wasm in ${appDir}, found ${wasm.length}`);
-  const stem = wasm[0].slice(0, -"_bg.wasm".length);
-  cpSync(join(appDir, `${stem}.js`), join(stage, "app", `${manifest.slug}-web.js`));
-  const parts = writeParts(gzipSync(readFileSync(join(appDir, wasm[0])), { level: 9 }), join(stage, "app"), stem);
-  process.stdout.write(`[${manifest.slug}] app wasm split into ${parts.length} part(s)\n`);
-  return join(stage, "index.html");
-}
-
-function buildOne(slug, options) {
-  const pluginDir = join(PLUGINS, slug);
-  const manifestPath = join(pluginDir, "payload/manifest.json");
-  const manifest = { slug, ...JSON.parse(readFileSync(manifestPath, "utf8")) };
-  const site = manifest.site || "web";
-  const recipe = manifest.build?.recipe ?? "trunk";
-  process.stdout.write(`\n[${slug}] upstream ${manifest.upstream} @ ${manifest.commit.slice(0, 12)} (${recipe})\n`);
-
-  const repoDir = ensureCheckout(manifest.slug, manifest.upstream, manifest.commit, options.sourceRoot);
-  const stage = join(repoDir, `dist/${site}-package`);
-  rmSync(stage, { recursive: true, force: true });
-  mkdirSync(stage, { recursive: true });
-
-  let index;
-  if (recipe === "trunk") {
-    const outDir = buildTrunk(repoDir, manifest.webApp, options);
-    cpSync(outDir, stage, { recursive: true });
-    index = join(stage, "index.html");
-  } else if (recipe === "trunk-boot") {
-    index = buildTrunkBoot(repoDir, manifest, options, stage);
-  } else if (recipe === "xtask") {
-    const outDir = buildXtask(repoDir, manifest, options);
-    cpSync(outDir, stage, { recursive: true });
-    index = join(stage, "index.html");
-  } else {
-    throw new Error(`${slug}: unknown build recipe ${recipe}`);
-  }
-
-  assertRelativeIndex(index);
-
-  if (manifest.build?.skipPrecompressed) {
-    // The site ships precompressed twins (`x.wasm.gz`, `x.wasm.br`) for hosts that negotiate
-    // Content-Encoding. The plugin protocol serves raw bytes and the page fetches the module
-    // directly, so those copies are dead weight — and they do not recompress inside the package.
-    let dropped = 0;
-    for (const dir of [stage]) {
-      for (const name of readdirSync(dir, { withFileTypes: true })) {
-        if (!name.isFile() || !/\.(?:gz|br)$/.test(name.name)) continue;
-        rmSync(join(dir, name.name));
-        dropped += 1;
-      }
-    }
-    process.stdout.write(`[${slug}] dropped ${dropped} precompressed file(s) the plugin protocol cannot use\n`);
-  }
-
-  const target = join(pluginDir, site);
-  rmSync(target, { recursive: true, force: true });
-  mkdirSync(target, { recursive: true });
-  cpSync(stage, target, { recursive: true });
-
-  const bytes = duBytes(target);
-  process.stdout.write(
-    `[${slug}] ${site}/ ${(bytes / 1024 / 1024).toFixed(1)} MiB, index.html sha256 ${hashFile(join(target, "index.html")).slice(0, 12)}\n`,
-  );
-  return { slug, bytes };
-}
-
-function main() {
-  const options = parseArgs(process.argv.slice(2));
-  // A runner has no checkout of the upstream repositories; `RUNNER_TEMP` is the one directory
-  // guaranteed to exist, be writable and be discarded after the job.
-  const fallbackRoot = process.env.RUNNER_TEMP
-    ? join(process.env.RUNNER_TEMP, "craft-src")
-    : join(ROOT, "..", "craft", "code-clone");
-  const sourceRoot = resolve(options.sourceRoot || fallbackRoot);
-  let slugs = options.all ? pluginsWithSites() : options.slugs;
-  const unknown = slugs.filter((slug) => !existsSync(join(PLUGINS, slug, "payload/manifest.json")));
-  if (unknown.length > 0) throw new Error(`no provenance manifest for: ${unknown.join(", ")}`);
-
-  // `--if-missing` is what the package build passes: a site that is already on disk is the same
-  // site this pin would produce, and rebuilding it would add half an hour per app for nothing.
-  if (options.ifMissing) {
-    const present = slugs.filter((slug) => {
-      const manifest = JSON.parse(readFileSync(join(PLUGINS, slug, "payload/manifest.json"), "utf8"));
-      return existsSync(join(PLUGINS, slug, manifest.site || "web", "index.html"));
-    });
-    if (present.length > 0) process.stdout.write(`already built, skipping: ${present.join(", ")}\n`);
-    slugs = slugs.filter((slug) => !present.includes(slug));
-    if (slugs.length === 0) return;
-  }
-
-  const needsWasmBindgen = slugs.some((slug) => {
-    const manifest = JSON.parse(readFileSync(join(PLUGINS, slug, "payload/manifest.json"), "utf8"));
-    return (manifest.build?.recipe ?? "trunk") === "xtask";
-  });
-  ensureToolchain({ needsWasmBindgen });
-
-  process.stdout.write(
-    `building ${slugs.length} site(s) from ${sourceRoot}\n` +
-      `cargo target: ${process.env.CARGO_TARGET_DIR || join(sourceRoot, ".cargo-target-web")}\n`,
-  );
-  const done = [];
-  for (const slug of slugs) done.push(buildOne(slug, { ...options, sourceRoot }));
-  const total = done.reduce((sum, entry) => sum + entry.bytes, 0);
-  process.stdout.write(`\n${done.length} site(s), ${(total / 1024 / 1024).toFixed(1)} MiB total\n`);
-}
-
-main();
+main().catch((error) => {
+	process.stderr.write(`${error.message}\n`);
+	process.exitCode = 1;
+});

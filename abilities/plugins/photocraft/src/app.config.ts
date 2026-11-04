@@ -27,5 +27,3 @@ export const APP = {
   seedValue: "{\"version\":2,\"interface\":{\"language\":\"zh-hans\"}}",
   upstream: "https://github.com/storytold/photocraft",
 } as const;
-
-export type CraftApp = typeof APP;
