@@ -51,7 +51,11 @@ export function useEditorSession(ctx: PluginContext): EditorSession {
   // predates the hook never pauses a live editor — we only pause after seeing active.
   const tab = useActivityTab();
   const everActive = useRef(false);
-  if (tab.active) everActive.current = true;
+  // Latched in an effect, not during render: a render React throws away must not be
+  // what decides the tab has been looked at.
+  useEffect(() => {
+    if (tab.active) everActive.current = true;
+  }, [tab.active]);
   const paused = everActive.current && !tab.active;
   const uiLang: "zh" | "en" = /^zh/i.test(ctx.i18n.locale || "") ? "zh" : "en";
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
