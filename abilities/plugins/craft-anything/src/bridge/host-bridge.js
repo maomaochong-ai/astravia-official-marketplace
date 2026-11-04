@@ -958,7 +958,6 @@
     var started = Date.now();
     var done = false;
     var slowSent = false;
-    var done = false;
     var timer = setInterval(function () {
       if (done) return clearInterval(timer);
       // A paused document makes no progress and has no one watching it; four posts a

@@ -1,7 +1,7 @@
 ---
 name: effectcraft
 alias: EffectCraft 动态图形
-description: Animate compositions in EffectCraft inside Astravia: layers, keyframes, 3D camera and lights, effects and the render queue. Use when the task is motion graphics, an animated title, a visual effect, or rendering a frame range.
+description: "Animate compositions in EffectCraft inside Astravia: layers, keyframes, 3D camera and lights, effects and the render queue. Use when the task is motion graphics, an animated title, a visual effect, or rendering a frame range."
 ---
 # EffectCraft 动态图形
 

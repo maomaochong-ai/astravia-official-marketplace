@@ -1,7 +1,7 @@
 ---
 name: photocraft
 alias: Photocraft 图片编辑
-description: Work on raster images in Photocraft inside Astravia: layers, masks, selections, type, adjustment layers and PSD files. Use when the task is editing a photo or a layered image, opening or saving a .psd, or handing an image from the workspace to the editor and back.
+description: "Work on raster images in Photocraft inside Astravia: layers, masks, selections, type, adjustment layers and PSD files. Use when the task is editing a photo or a layered image, opening or saving a .psd, or handing an image from the workspace to the editor and back."
 ---
 # Photocraft 图片编辑
 

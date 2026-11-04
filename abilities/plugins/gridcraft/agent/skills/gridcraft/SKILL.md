@@ -1,7 +1,7 @@
 ---
 name: gridcraft
 alias: GridCraft 电子表格
-description: Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.
+description: "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping."
 ---
 # GridCraft 电子表格
 

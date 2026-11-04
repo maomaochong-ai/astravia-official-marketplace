@@ -1,7 +1,7 @@
 ---
 name: craft-anything
 alias: Craft Anything 拆解复刻
-description: Take apart any website, app or game and rebuild it — Craft Anything studies the original and drives an AI agent through the reconstruction.
+description: "Take apart any website, app or game and rebuild it — Craft Anything studies the original and drives an AI agent through the reconstruction."
 ---
 # Craft Anything 拆解复刻
 

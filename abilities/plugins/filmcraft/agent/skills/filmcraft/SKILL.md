@@ -1,7 +1,7 @@
 ---
 name: filmcraft
 alias: FilmCraft 视频剪辑
-description: Edit video in FilmCraft inside Astravia: a non-linear timeline, clips, colour, and sound. Use when the task is cutting, trimming or assembling video, or when a project has to be opened from the workspace and rendered back.
+description: "Edit video in FilmCraft inside Astravia: a non-linear timeline, clips, colour, and sound. Use when the task is cutting, trimming or assembling video, or when a project has to be opened from the workspace and rendered back."
 ---
 # FilmCraft 视频剪辑
 

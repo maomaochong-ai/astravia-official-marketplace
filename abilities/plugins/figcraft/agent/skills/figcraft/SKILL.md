@@ -1,7 +1,7 @@
 ---
 name: figcraft
 alias: FigCraft 界面设计
-description: Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes.
+description: "Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes."
 ---
 # FigCraft 界面设计
 

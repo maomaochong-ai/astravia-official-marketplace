@@ -1,7 +1,7 @@
 ---
 name: deckcraft
 alias: DeckCraft 演示文稿
-description: Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export.
+description: "Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export."
 ---
 # DeckCraft 演示文稿
 

@@ -1,7 +1,7 @@
 ---
 name: pdfcraft
 alias: PDFCraft PDF 工作台
-description: Work on PDFs in PDFCraft inside Astravia: read, reorder, merge, split, rotate and secure documents. Use when the task is assembling or fixing a PDF, extracting pages, or applying encryption.
+description: "Work on PDFs in PDFCraft inside Astravia: read, reorder, merge, split, rotate and secure documents. Use when the task is assembling or fixing a PDF, extracting pages, or applying encryption."
 ---
 # PDFCraft PDF 工作台
 

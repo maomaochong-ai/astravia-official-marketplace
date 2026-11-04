@@ -1,7 +1,7 @@
 ---
 name: vectorcraft
 alias: VectorCraft 矢量插画
-description: Draw vector artwork in VectorCraft inside Astravia: paths, bezier handles, fills, strokes and SVG output. Use when the task is a logo, an icon, a diagram or any illustration that has to stay sharp at every size.
+description: "Draw vector artwork in VectorCraft inside Astravia: paths, bezier handles, fills, strokes and SVG output. Use when the task is a logo, an icon, a diagram or any illustration that has to stay sharp at every size."
 ---
 # VectorCraft 矢量插画
 

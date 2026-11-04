@@ -1,7 +1,7 @@
 ---
 name: lightcraft
 alias: LightCraft 照片库与显影
-description: Catalog photos and develop raw files in LightCraft inside Astravia: import, cull, grade, and export. Use when the task is photo selection, raw development, or a batch of images that needs consistent treatment.
+description: "Catalog photos and develop raw files in LightCraft inside Astravia: import, cull, grade, and export. Use when the task is photo selection, raw development, or a batch of images that needs consistent treatment."
 ---
 # LightCraft 照片库与显影
 

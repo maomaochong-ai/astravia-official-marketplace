@@ -33,6 +33,7 @@ const FAMILY_DOCS = [
 	"craft-0012-the-site-is-upstreams-release-bundle.md",
 	"craft-0013-a-slow-boot-is-not-a-failure.md",
 	"craft-0014-recent-files-are-the-hosts-not-the-apps.md",
+	"craft-0015-a-skill-must-survive-a-strict-yaml-parse.md",
 	"craft-CONTEXT.md",
 ];
 

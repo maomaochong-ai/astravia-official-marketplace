@@ -1,7 +1,7 @@
 ---
 name: wordcraft
 alias: WordCraft 文字处理
-description: Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping.
+description: "Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping."
 ---
 # WordCraft 文字处理
 

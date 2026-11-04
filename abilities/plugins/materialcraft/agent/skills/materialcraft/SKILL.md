@@ -1,7 +1,7 @@
 ---
 name: materialcraft
 alias: MaterialCraft 材质
-description: Build procedural materials node by node inside Astravia — the upstream MaterialCraft editor, from a first graph to a reusable material.
+description: "Build procedural materials node by node inside Astravia — the upstream MaterialCraft editor, from a first graph to a reusable material."
 ---
 # MaterialCraft 材质
 

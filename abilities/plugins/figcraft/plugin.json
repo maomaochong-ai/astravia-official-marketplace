@@ -2,7 +2,7 @@
   "id": "figcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",

@@ -1,7 +1,7 @@
 ---
 name: texturecraft
 alias: TextureCraft 贴图
-description: Paint 3D textures inside Astravia — the upstream TextureCraft editor, with layered PBR painting, bakes and smart materials.
+description: "Paint 3D textures inside Astravia — the upstream TextureCraft editor, with layered PBR painting, bakes and smart materials."
 ---
 # TextureCraft 贴图
 

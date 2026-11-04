@@ -2,7 +2,7 @@
   "id": "gridcraft",
   "name": "%plugin.name%",
   "icon": "assets/icon.png",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "defaultLocale": "en",
   "pluginApiVersion": "^2.4.0",
   "entry": "dist/mf-manifest.json",

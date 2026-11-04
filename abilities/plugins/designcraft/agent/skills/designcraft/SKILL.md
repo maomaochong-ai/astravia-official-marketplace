@@ -1,7 +1,7 @@
 ---
 name: designcraft
 alias: DesignCraft 排版出版
-description: Lay out pages in DesignCraft inside Astravia: spreads, parent pages, text frames, styles, and export to PDF, PNG or EPUB. Use when the task is a brochure, report, poster or book layout, or when an IDML file has to be opened, edited and exported.
+description: "Lay out pages in DesignCraft inside Astravia: spreads, parent pages, text frames, styles, and export to PDF, PNG or EPUB. Use when the task is a brochure, report, poster or book layout, or when an IDML file has to be opened, edited and exported."
 ---
 # DesignCraft 排版出版
 

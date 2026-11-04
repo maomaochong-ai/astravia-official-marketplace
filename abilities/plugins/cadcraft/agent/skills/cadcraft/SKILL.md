@@ -1,7 +1,7 @@
 ---
 name: cadcraft
 alias: CADCraft 制图
-description: Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files.
+description: "Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files."
 ---
 # CADCraft 制图
 
