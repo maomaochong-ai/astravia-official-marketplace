@@ -6,5 +6,6 @@
   "tool.status": "Whiteboard status",
   "tool.act": "Drive the whiteboard",
   "tool.probe": "Look at the canvas",
-  "tool.document": "Open a drawing"
+  "tool.document": "Open a drawing",
+  "tool.scene": "Read or write the drawing"
 }

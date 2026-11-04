@@ -6,5 +6,6 @@
   "tool.status": "白板状态",
   "tool.act": "操作白板",
   "tool.probe": "查看画布内容",
-  "tool.document": "打开画图文件"
+  "tool.document": "打开画图文件",
+  "tool.scene": "读写画面内容"
 }
