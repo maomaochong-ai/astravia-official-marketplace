@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "在活动面板里用 Excalidraw",
+      "eyebrow": "白板",
+      "description": "手绘风格的流程图、草图和示意图 —— 运行官方 Excalidraw 编辑器，直接打开工作区里的绘图文件。",
+      "badges": ["上游构建", "可离线", "MIT"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "把这张草图整理成流程图",
+        "assistant_reply": "已连好 6 个节点，保存到工作区。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "它能做什么",
+      "items": [
+        {
+          "title": "就是那个编辑器",
+          "description": "面板加载的是 Excalidraw 从自己的源码发布的网页构建：同一套画布、工具栏、菜单与导出弹窗，不是模仿出来的界面。",
+          "icon": "solar:pen-new-square-linear"
+        },
+        {
+          "title": "保存到你的项目里",
+          "description": "绘图以 .excalidraw 文件通过 Astravia 落盘，不进下载目录；打开时用的也是资源管理器里选中的那个文件。",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "不离开面板就导出",
+          "description": "PNG、SVG 与 .excalidraw 导出在编辑器内部完成，结果沿保存同一条通道回到工作区。",
+          "icon": "solar:export-linear"
+        },
+        {
+          "title": "从对话里驱动",
+          "description": "在对话里说一句，面板照着做：指针与键盘步骤依次作用在画布上，每一步都在页面上标出名字。",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "站点随插件一起分发，第一次打开不需要联网下载，之后离线也能用。"
+        },
+        {
+          "title": "打开 Excalidraw 标签页",
+          "description": "面板直接显示白板，没有准备页。"
+        },
+        {
+          "title": "自己画，或让它改",
+          "description": "照常用工具栏；也可以描述想要的图，让 Agent 把方框摆上去。"
+        },
+        {
+          "title": "保存回工作区",
+          "description": "菜单里的保存会把 .excalidraw 文件写回工作区，下次可以再打开。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "编辑器是 Excalidraw 自己的构建，发布时从上游仓库一个固定提交（MIT）现场编译。插件只加了外面这层面板，并把页面的资源路径调成能在包内运行；绘图引擎、字体和界面均未改动。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "界面语言：Excalidraw 自带包括简体中文在内的数十种翻译，这个标签页跟随 Astravia 的界面语言。"
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "协作链接、云端素材库同步与 Excalidraw+ 属于上游功能，需要它们自己的网络服务；本插件没有配置这些，绘图默认留在本地，除非你主动导出。"
+    },
+    {
+      "type": "links",
+      "title": "来源",
+      "items": [
+        {
+          "label": "Excalidraw 源码仓库",
+          "href": "https://github.com/excalidraw/excalidraw"
+        },
+        {
+          "label": "Excalidraw 文档",
+          "href": "https://docs.excalidraw.com"
+        }
+      ]
+    }
+  ]
+}

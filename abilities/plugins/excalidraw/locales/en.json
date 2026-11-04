@@ -1,0 +1,10 @@
+{
+  "plugin.name": "Excalidraw",
+  "tab.label": "Excalidraw",
+  "plugin.description": "Sketch diagrams, flowcharts and whiteboards inside Astravia — the official Excalidraw editor, saving into your workspace.",
+  "tool.open": "Open the whiteboard",
+  "tool.status": "Whiteboard status",
+  "tool.act": "Drive the whiteboard",
+  "tool.probe": "Look at the canvas",
+  "tool.document": "Open a drawing"
+}
