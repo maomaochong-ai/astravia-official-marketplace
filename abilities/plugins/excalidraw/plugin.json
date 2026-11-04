@@ -1,0 +1,39 @@
+{
+  "id": "excalidraw",
+  "name": "%plugin.name%",
+  "icon": "assets/icon.png",
+  "version": "0.1.0",
+  "defaultLocale": "en",
+  "pluginApiVersion": "^2.4.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "excalidraw",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "fs.read",
+    "fs.write",
+    "workspace.read",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "agent": {
+    "skillPaths": [
+      "agent/skills/excalidraw"
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "commandPalette": "visible",
+        "skillPicker": "visible"
+      }
+    }
+  },
+  "description": "%plugin.description%",
+  "author": "Astravia"
+}
