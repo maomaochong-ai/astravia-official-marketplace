@@ -186,12 +186,23 @@ function cargoTarget(options) {
   return process.env.CARGO_TARGET_DIR || join(options.sourceRoot, ".cargo-target-web");
 }
 
-/** Upstream's own `trunk build --release` for one crate, then its `dist/web`. */
+/**
+ * The directory a crate's own `Trunk.toml` publishes to, resolved against that crate. Reading it
+ * instead of assuming `dist/web` matters for photocraft: its app goes to `dist/web` and its boot
+ * page to `dist/web-boot`, and a hardcoded path fails the second build.
+ */
+function trunkDist(repoDir, crate) {
+  const declared = /^\s*dist\s*=\s*"([^"]+)"/m.exec(readFileSync(join(repoDir, crate, "Trunk.toml"), "utf8"));
+  if (!declared) throw new Error(`${crate}/Trunk.toml declares no dist`);
+  return resolve(repoDir, crate, declared[1]);
+}
+
+/** Upstream's own `trunk build --release` for one crate, then the directory that crate publishes. */
 function buildTrunk(repoDir, crate, options) {
   if (!existsSync(join(repoDir, crate, "Trunk.toml"))) {
     throw new Error(`${crate} has no Trunk.toml — is this the web crate?`);
   }
-  const outDir = join(repoDir, "dist/web");
+  const outDir = trunkDist(repoDir, crate);
   rmSync(outDir, { recursive: true, force: true });
   run("trunk", ["build", "--release"], {
     cwd: join(repoDir, crate),
