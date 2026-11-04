@@ -36,6 +36,11 @@ export interface LinkMessage {
   /** `craft:probe`: a text map of the canvas plus its average colour, so a tool can
    * hand the model something to reason about without carrying pixels. */
   probe?: CraftProbe;
+  /** `craft:scene` replies. `scene` is what the editor held after the call; `applied`
+   * says what the write did; `exported` describes the bytes carried in `bytes`. */
+  scene?: CraftScene;
+  applied?: { mode: string; added: number; total: number };
+  exported?: { name: string; mime: string; bytes: number };
 }
 
 /** What a batch did — not what the app made of it. */
@@ -71,6 +76,24 @@ export interface CraftProbe {
   contrast: number;
   width: number;
   height: number;
+}
+
+/** One element as the editor holds it, with the volatile fields dropped. */
+export interface CraftSceneElement {
+  id?: string;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  [key: string]: unknown;
+}
+
+export interface CraftScene {
+  count: number;
+  truncated: boolean;
+  appState: { theme: string; zoom: number | null; viewBackgroundColor: string; gridSize: number | null };
+  elements: CraftSceneElement[];
 }
 
 /** `craft:progress`: the bridge narrating a batch while it runs. */

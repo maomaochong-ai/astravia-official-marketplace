@@ -12,7 +12,7 @@ import { EditorStatusBar } from "./editor-status-bar.tsx";
  */
 export function EditorTab({ ctx }: { ctx: PluginContext }): JSX.Element {
   const session = useEditorSession(ctx);
-  const { strings, iframeDoc, iframeKey, frameRef, containerRef, overlay } = session;
+  const { strings, iframeDoc, iframeKey, frameRef, containerRef, overlay, iconUrl } = session;
   // The Fullscreen API can be refused by the host frame. Then the shell itself
   // covers the viewport — same element, same exit button, no lost status bar.
   const shell = overlay
@@ -35,8 +35,13 @@ export function EditorTab({ ctx }: { ctx: PluginContext }): JSX.Element {
             allow="clipboard-read; clipboard-write; fullscreen"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-neutral-500">
-            {strings.preparing}
+          // One second of black before an app appears reads as a hang. The mark is
+          // the package's own icon, so the waiting frame and the tab agree.
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-xs text-neutral-500">
+            {iconUrl ? (
+              <img src={iconUrl} alt="" aria-hidden="true" className="h-12 w-12 rounded-xl object-contain opacity-90" />
+            ) : null}
+            <span>{strings.preparing}</span>
           </div>
         )}
       </div>

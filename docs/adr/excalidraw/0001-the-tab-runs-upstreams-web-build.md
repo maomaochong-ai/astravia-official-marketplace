@@ -17,7 +17,8 @@
 
 1. `payload/manifest.json` 钉住上游仓库与一个 40 位 commit
    （`https://github.com/excalidraw/excalidraw`，当前 `dd2f8fc32b92cbf56f4abee6a0cf3b14681b4b55`）；
-2. `scripts/build-excalidraw-web.mjs` 从那个 commit 取源码、装依赖、用一份**包装配置**
+2. `abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs`（配方归插件自己所有，不放在仓库根的
+   `scripts/`）从那个 commit 取源码、装依赖、用一份**包装配置**
    （`vite.astravia.config.mts`：import 上游默认导出、摘掉 PWA / sitemap / checker 三个插件、
    `base: "./"`、关掉 sourcemap）跑一次上游自己的 `vite build`；
 3. 产物落到 `abilities/plugins/<slug>/web/`（gitignore，只在构建/打包期间存在）；
@@ -34,12 +35,17 @@
 
 ## 我们对上游字节做了什么
 
-只有两件，都能在 `scripts/build-excalidraw-web.mjs` 里逐条读到：
+只有下面几件，都能在 `abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs` 里逐条读到：
 
 - **构建期**：包装配置替换掉上游的 vite 配置（`base: "./"`、去掉 PWA/sitemap/checker、
   sourcemap 关、把 `browser-fs-access` 别名到 legacy 实现——原因见
   [0002](0002-bytes-move-through-the-host.md)）。上游源码一行不改；`web/` 里的 JS 就是它
   自己编译出来的 JS。
+- **构建期（API 接缝）**：`@excalidraw/excalidraw` 的包根被别名到配方生成的
+  `astravia-excalidraw-api.tsx`。那个文件 `export *` 上游包根，只包一层
+  `ExcalidrawAPIProvider`，把应用自己创建的 API 对象发布到页面全局——因为上游从不把这个对象
+  放到 `window` 上（细节见 [0005](0005-the-agent-drives-the-canvas.md)）。配方断言产物里
+  必须出现那个全局名，没接上就失败。
 - **后处理**：`index.html` 里 `EXCALIDRAW_ASSET_PATH` 指向 CDN 的那段被改成
   `document.baseURI`，CDN 的 preload 与 CSS 里的 CDN `url()` 改回包内相对路径；删掉
   `_headers`、`sw.js`、`manifest.webmanifest`、`workbox-*`；整段删掉 Simple Analytics 的

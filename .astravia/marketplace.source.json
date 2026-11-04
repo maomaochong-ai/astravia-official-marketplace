@@ -1233,7 +1233,7 @@
       "slug": "excalidraw",
       "name": "Excalidraw",
       "description": "Sketch diagrams, wireframes and flowcharts on an infinite hand-drawn canvas inside Astravia — the upstream Excalidraw editor, driven from the conversation.",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",

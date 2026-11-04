@@ -12,15 +12,37 @@ arrow 的 `points` 相对坐标——错一个字段，用户打开就是空白�
 
 ## 决定
 
-Agent 工具驱动**标签页里那一页真实页面**，通过 `host-bridge.js` 派发真实事件：
+Agent 工具驱动**标签页里那一页真实页面**。分两种手段，按对象选：
+
+- **结构**（图元、节点、连线、文字）走上游自己的命令式 API：`<id>_scene`。
+- **界面与像素**（菜单、面板、工具栏、属性面板）走真实事件：`<id>_act`。
 
 | 工具 | 做什么 |
 | --- | --- |
 | `<id>_open_editor` | 打开标签页，等页面 `craft:ready`，回一份初读（URL、是否就绪、画布尺寸、文字地图） |
 | `<id>_editor_status` | 只读：是否打开、是否就绪、URL、画布尺寸、暂存文件、文字地图与平均色 |
+| `<id>_scene` | 读 / 写 / 导出场景：`read`、`apply`、`export` |
 | `<id>_act` | 一批手势：click / move / drag / scroll / type / key / wait / ready / capture / label |
 | `<id>_probe` | 看画布：区域文字地图 + 平均色 + 对比度 |
 | `<id>_open_document` | 把一个工作区文件真正交给编辑器打开 |
+
+### 结构为什么不经手势
+
+拖出八个方框意味着八次拖拽、八次命中测试、八次几何误差。编辑器本来就接受元素：
+`convertToExcalidrawElements` 把骨架补成完整元素（`packages/element/src/transform.ts:680`），
+`updateScene` 把它们交给跟手绘完全相同的更新管线（带 `CaptureUpdateAction.IMMEDIATELY`，撤销栈照常记录）。
+所以结构走 API 不是“绕过编辑器”，而是**用它公开的那条路**。
+
+### API 从哪里来，为什么要一个 shim
+
+`ExcalidrawImperativeAPI` 只经 React context 传递（`packages/excalidraw/index.tsx:52` 的
+`ExcalidrawAPIProvider`、`:467-480` 的 `ExcalidrawAPIContext`），上游从不把它放到 `window` 上。
+构建配方因此把包根别名到一个生成的 shim（`astravia-excalidraw-api.tsx`）：它 `export *` 上游包根，
+只包一层 `ExcalidrawAPIProvider`，在 Provider 内部用 `useContext` 取到 api 并发布到
+`window.__ASTRAVIA_EXCALIDRAW__`。上游源码一行不改，应用自己创建的 api 对象原样被取到。
+
+导出同一条路：`exportScene`（`packages/excalidraw/scene/export.ts:1354`）拿到的字节回给工具，
+由「另存为」落盘——**不进**文档的保存通道，否则一张导出的 PNG 会变成那张图的保存目标。
 
 工具 id 带插件 id 前缀（`excalidraw_act`），因为同时装几个画布类插件时工具名是一个扁平命名空间。
 
@@ -54,21 +76,26 @@ Excalidraw 把画面拆在多个 canvas 上：`canvas.excalidraw__canvas.static`
 基本透明），叠层后是 60，`mean` 从 `#ffffff` 变为 `#cacaca`。只读一层的话，Agent 会一直
 以为画面是空白的。
 
-## 为什么用真实事件而不是直接改 store
+## 为什么手势走真实事件，结构走公开 API
 
 直接改 Excalidraw 的 store 需要拿到它的模块实例——那是内部 API，`excalidraw-app` 打包后
-未必暴露，而且一旦改动就绕过了选择、撤销栈、绑定重算。派发真实指针/键盘事件走的是上游自己的
-处理链，撤销栈、吸附、文本编辑全都在，行为和用户手动操作一致。
+未必暴露，而且一旦改动就绕过了选择、撤销栈、绑定重算。所以两种手段都不是“直接改状态”：
+
+- 手势派发真实指针/键盘事件，走的是上游自己的处理链，撤销栈、吸附、文本编辑全都在；
+- 结构调的是**有文档的**命令式 API（`updateScene` 等），它进的是同一条更新管线，
+  `CaptureUpdateAction.IMMEDIATELY` 让这次变更进历史。
 
 ## 代价
 
-- 慢：一批手势按帧步进，不是一次同步调用。这是刻意的——看得见的过程才好纠错。
-- 依赖画布的命中区域：某些控件（素材库、菜单）需要先点开再用，不能用"直接写入"跳过。
-- 比"生成 JSON"更容易受布局影响：窗口太窄时菜单会折叠。SKILL.md 里写清了先 `open_editor`
-  读一次文字地图再动手。
+- 手势慢：一批步骤按帧步进，不是一次同步调用。这是刻意的——看得见的过程才好纠错；也正因为慢，
+  结构改动不该走手势。
+- 手势依赖画布的命中区域：某些控件（素材库、菜单）需要先点开再用，不能用“直接写入”跳过。
+- 结构访问依赖 shim：站点一旦没经过本插件的构建配方，`window.__ASTRAVIA_EXCALIDRAW__` 不存在，
+  `<id>_scene` 只能回 `no-scene-api`（配方断言产物里有这个全局名，就是为了不让它静默退化）。
+- 比“生成 JSON 直接写盘”仍然更容易观察：每步都有 `probe`/`scene` 可对账，错了能改。
 
 ## 不做的事
 
-- 不让模型手写 `.excalidraw` JSON 当主要路径。
-- 不从截图里猜状态；状态来自页面自己回的 `probe`。
+- 不让模型手写 `.excalidraw` 文件当主要路径：要写就写骨架，交给上游的 transform。
+- 不从截图里猜状态；状态来自页面自己回的 `probe` 或 `scene`。
 - 不在工具结果里报告没有读回过的结论。

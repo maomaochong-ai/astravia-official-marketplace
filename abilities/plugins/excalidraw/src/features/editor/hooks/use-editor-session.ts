@@ -7,7 +7,7 @@ import { buildSiteDocument, siteRoot } from "../services/site-document.ts";
 import { APP } from "../../../app.config.ts";
 import { editorStrings } from "../strings.ts";
 import type { EditorStrings } from "../strings.ts";
-import { publishCraftProgress, setCraftFrame, settleCraftReply, subscribeCraftProgress } from "../session-registry.ts";
+import { askCraftFrame, publishCraftProgress, setCraftFrame, settleCraftReply, subscribeCraftProgress } from "../session-registry.ts";
 import { readWorkspaceFile, saveRenderedFile, selectionAccess } from "../services/workspace-files.ts";
 import type { WorkspaceFile } from "../services/workspace-files.ts";
 import { useContainerFullscreen } from "./use-container-fullscreen.ts";
@@ -32,6 +32,11 @@ export interface EditorSession {
   overlay: boolean;
   toggleFullscreen: () => void;
   reload: () => void;
+  /** Absolute URL of the package's own icon, for the pre-boot placeholder. */
+  iconUrl: string | null;
+  /** What the site's UI is in right now; the status bar shows the other one. */
+  uiLang: "zh" | "en";
+  toggleLanguage: () => void;
 }
 
 /**
@@ -57,7 +62,14 @@ export function useEditorSession(ctx: PluginContext): EditorSession {
     if (tab.active) everActive.current = true;
   }, [tab.active]);
   const paused = everActive.current && !tab.active;
-  const uiLang: "zh" | "en" = /^zh/i.test(ctx.i18n.locale || "") ? "zh" : "en";
+  // Chinese by default, not "whatever the host is in". This plugin is published
+  // for a Chinese-first audience, and a host started with `--lang=en-US` should
+  // not decide the editor's language; the status bar offers English instead.
+  const [uiLang, setUiLang] = useState<"zh" | "en">("zh");
+  // Read by the document builder on every rebuild (reload, first mount), so a
+  // switch survives Reload without putting `uiLang` in that effect's deps — a
+  // dependency there would remount the frame and discard unsaved work.
+  const uiLangRef = useRef<"zh" | "en">("zh");
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
   const [iframeDoc, setIframeDoc] = useState<string | null>(null);
   const [phase, setPhase] = useState<EditorPhase>("starting");
@@ -89,7 +101,7 @@ export function useEditorSession(ctx: PluginContext): EditorSession {
     void (async () => {
       try {
         setBaseUrl(siteRoot());
-        const doc = await buildSiteDocument({ uiLang });
+        const doc = await buildSiteDocument({ uiLang: uiLangRef.current });
         if (cancelled) return;
         setIframeDoc(doc);
       } catch (error) {
@@ -102,7 +114,7 @@ export function useEditorSession(ctx: PluginContext): EditorSession {
     return () => {
       cancelled = true;
     };
-  }, [ctx, uiLang, nonce]);
+  }, [ctx, nonce]);
 
   // ------------------------------------------------------- frame handle (tools)
 
@@ -268,6 +280,22 @@ export function useEditorSession(ctx: PluginContext): EditorSession {
     setNotice(null);
   }, []);
 
+  // The site's own atom, written through the shell published by the build shim:
+  // remounting the frame would reload a page and lose the unsaved scene.
+  const toggleLanguage = useCallback((): void => {
+    const next = uiLang === "zh" ? "en" : "zh";
+    const code = next === "zh" ? "zh-CN" : "en";
+    uiLangRef.current = next;
+    setUiLang(next);
+    void askCraftFrame("craft:locale", { langCode: code }, 4000).catch(() => {
+      setNotice(strings.languageFailed);
+    });
+  }, [strings, uiLang]);
+
+  // The placeholder is what the user looks at for the first second; it should be
+  // the same mark as the tab, not a spinner with a product name.
+  const iconUrl = baseUrl ? new URL("../assets/icon.png", baseUrl).href : null;
+
   return {
     strings,
     phase,
@@ -285,5 +313,8 @@ export function useEditorSession(ctx: PluginContext): EditorSession {
     overlay: fullscreen.overlay,
     toggleFullscreen: fullscreen.toggle,
     reload,
+    iconUrl,
+    uiLang,
+    toggleLanguage,
   };
 }

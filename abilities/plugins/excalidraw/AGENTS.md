@@ -19,7 +19,7 @@ cd abilities/plugins/excalidraw
 npm install
 npm run check      # tsc --noEmit
 npm run build      # dist/ 供本地预检，正式 .astraviapkg 由 CI 构建
-node ../../scripts/build-excalidraw-web.mjs --slug excalidraw   # 下载上游 commit、构建并 staging web/；--if-missing 跳过已就位的
+node scripts/build-excalidraw-web.mjs --slug excalidraw   # 下载上游 commit、构建并 staging web/；--if-missing 跳过已就位的
 ```
 
 `--source <dir>` 可以指向一份已经装好依赖的上游源码树，省掉重复下载与安装（本地验证时用）。
@@ -33,7 +33,7 @@ node ../../scripts/build-excalidraw-web.mjs --slug excalidraw   # 下载上游 c
 | 页面里的 open/save 钩子、暂停闸门、手势注入 | `src/bridge/host-bridge.js` |
 | 这个应用的名字、版本、站点目录、语言种子 | `src/app.config.ts`、`plugin.json`、`payload/manifest.json`、`locales/*.json` |
 | 技能的说明文字 | `agent/skills/excalidraw/SKILL.md` |
-| 站点怎么从源码构建出来 | `scripts/build-excalidraw-web.mjs`（仓库根） |
+| 站点怎么从源码构建出来 | `scripts/build-excalidraw-web.mjs`（就在本插件目录里） |
 | 编辑器界面本身 | 不改；那是上游 `excalidraw-app` 的构建产物 |
 
 改完跑：
@@ -64,4 +64,10 @@ npm run build
 - **事件发 `.interactive`，读回要合层**：场景画在 `canvas.excalidraw__canvas.static` 上，
   `probe` / `capture` 必须按 DOM 顺序合成所有 `canvas.excalidraw__canvas`，否则画满的页面会读成空白。
 - **改了 `src/**`、`plugin.json`、`locales/`、`agent/` 就要抬版本**，否则 CI 的 `--strict` 会红。
+- **API 接缝不是可选项**：站点里的 `window.__ASTRAVIA_EXCALIDRAW__` 由配方生成的
+  `astravia-excalidraw-api.tsx` 发布，它把 `@excalidraw/excalidraw` 的包根整个 re-export，只包一层
+  Provider 取出应用自己创建的 API 对象。没有它，`excalidraw_scene` 只能回 `no-scene-api`，
+  Agent 就只能靠拖鼠标画图。配方断言产物里出现这个全局名。
+- **场景读写不经过保存路径**：`excalidraw_scene` 的 `export` 把字节交回工具、由「另存为」落盘；
+  不要把它改回 `craft:save`，那会把导出的图片绑成文档的保存目标。
   `payload/manifest.json` 是构建期的来源声明，不进包也不触发这条门禁——但改它通常意味着要重发一版站点。
