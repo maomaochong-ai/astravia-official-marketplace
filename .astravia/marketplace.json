@@ -10187,6 +10187,67 @@
     },
     {
       "type": "plugin",
+      "slug": "excalidraw",
+      "name": "Excalidraw",
+      "description": "Sketch diagrams, wireframes and flowcharts on an infinite hand-drawn canvas inside Astravia — the upstream Excalidraw editor, driven from the conversation.",
+      "version": "0.1.0",
+      "configVersion": 1,
+      "license": "MIT",
+      "author": "Astravia",
+      "category": "Diagrams",
+      "categoryI18n": {
+        "zh": "图表",
+        "en": "Diagrams"
+      },
+      "tags": [
+        "diagram",
+        "flowchart",
+        "wireframe",
+        "whiteboard",
+        "sketch"
+      ],
+      "detail": {
+        "i18n": {
+          "zh": {
+            "name": "Excalidraw",
+            "description": "在 Astravia 里画手绘图：流程图、线框图、架构草图，用的是上游原版 Excalidraw 画布，也可以直接在对话里让它替你画。",
+            "tags": [
+              "图表",
+              "流程图",
+              "线框图",
+              "白板",
+              "手绘"
+            ]
+          }
+        }
+      },
+      "source": {
+        "path": "abilities/plugins/excalidraw"
+      },
+      "releases": [
+        {
+          "version": "0.1.0",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-excalidraw/excalidraw-0.1.0.astraviapkg",
+            "sha256": "2234c77f211714a20ded6c0a21260dc65876f5c65fb96a8ca0c2531b8c4671e5"
+          }
+        }
+      ]
+    },
+    {
+      "type": "plugin",
       "slug": "designcraft",
       "name": "DesignCraft",
       "description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
@@ -13131,5 +13192,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.04-3"
+  "marketplaceVersion": "2026.11.04-4"
 }

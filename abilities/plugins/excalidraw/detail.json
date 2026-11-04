@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "title": "Excalidraw in the activity panel",
+      "eyebrow": "Whiteboard",
+      "description": "Hand-drawn flowcharts, sketches and diagrams — the official Excalidraw editor running inside Astravia, with the drawing you opened in the workspace.",
+      "badges": ["Upstream build", "Offline", "MIT"]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-over-canvas",
+        "canvas": "design",
+        "user_prompt": "Turn this sketch into a flowchart.",
+        "assistant_reply": "Six boxes connected. Saved to the workspace."
+      }
+    },
+    {
+      "type": "feature-grid",
+      "title": "What it gives you",
+      "items": [
+        {
+          "title": "The editor itself",
+          "description": "The tab runs the web build Excalidraw publishes from its own source: the same canvas, toolbars, menus and export dialogs, not an imitation of them.",
+          "icon": "solar:pen-new-square-linear"
+        },
+        {
+          "title": "Saves into your project",
+          "description": "A drawing arrives as a .excalidraw file through Astravia rather than a downloads folder, and opening one uses the file selected in the Explorer.",
+          "icon": "solar:folder-with-files-linear"
+        },
+        {
+          "title": "Export without leaving the tab",
+          "description": "PNG, SVG and .excalidraw export run inside the editor; the file comes back through the same bridge as a save.",
+          "icon": "solar:export-linear"
+        },
+        {
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps arrive in the canvas one after another, each named while it happens.",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "The site ships inside the plugin, so the first open needs no download and later opens work offline."
+        },
+        {
+          "title": "Open the Excalidraw tab",
+          "description": "The panel shows the whiteboard straight away — no preparation screen."
+        },
+        {
+          "title": "Draw, or ask for a change",
+          "description": "Use the toolbar as usual, or describe the diagram you want and let the agent place the boxes."
+        },
+        {
+          "title": "Save back to the workspace",
+          "description": "Menu → Save returns the .excalidraw file to the workspace, where the next session can open it again."
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "The editor is Excalidraw's own build, produced at publish time from a pinned commit of the upstream repository (MIT). The plugin adds the panel around it and adjusts the page's asset paths so it can run from inside the package; the drawing engine, fonts and interface are unmodified."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Interface language: Excalidraw ships dozens of translations and the tab follows your Astravia language, so a Chinese interface stays Chinese here."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Collaboration links, cloud library sync and Excalidraw+ are upstream features that need their own network service; they are not configured by this plugin, and a drawing stays local unless you export it."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "Excalidraw on GitHub",
+          "href": "https://github.com/excalidraw/excalidraw"
+        },
+        {
+          "label": "Excalidraw documentation",
+          "href": "https://docs.excalidraw.com"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "plugin.name": "Excalidraw",
+  "tab.label": "Excalidraw",
+  "plugin.description": "在 Astravia 里画手绘风格的流程图、示意图与白板 —— 运行官方 Excalidraw 编辑器，文件保存到你的工作区。",
+  "tool.open": "打开白板",
+  "tool.status": "白板状态",
+  "tool.act": "操作白板",
+  "tool.probe": "查看画布内容",
+  "tool.document": "打开画图文件"
+}
