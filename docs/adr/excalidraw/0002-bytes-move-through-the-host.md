@@ -88,6 +88,13 @@ Excalidraw 通过 `i18next-browser-languagedetector` 解析语言，查询参数
   不是给文件用的；两者共用一条通道，但**回复里从不声称应用做了什么**，只说桥派发了什么
   （见 [0005](0005-the-agent-drives-the-canvas.md)）。
 
+## 名字里的 `craft`
+
+消息名（`craft:ready` / `craft:pickOpen` / `craft:save` / `craft:act` …）与面板侧的几个 `CraftFrame` /
+`CraftProgress` 类型是这套外壳自带的，不是这个插件发明的。改名要同时动桥、会话、工具层和
+已跑过的探针证据，而两端总在同一个包里发布、外部没有人按这些名字对接 —— 所以保留，代价只是读代码
+时多一层转译。
+
 ## 不做的事
 
 - 不让 iframe 持有文件路径或句柄。

@@ -43,10 +43,12 @@ pin 写在 `payload/manifest.json`（`schemaVersion: 5`、`build.kind: "source-b
 1. 面板从包里取 `web/index.html` 的**文本**（导航到 `.html` 只会触发下载，不会执行脚本）。
 2. 在 `<head>` 后注入 `<base href>`：站点因此能在任意前缀下加载，`EXCALIDRAW_ASSET_PATH` 取
    `document.baseURI` 也才有意义。
-3. 紧跟一段 `history.replaceState` 补一个 URL，再按键把语言写进 `?lng=zh-CN|en`
-   （上游 `i18next-browser-languagedetector` 的第一优先级）。
-4. 末尾注入 `host-bridge.js`：open / save 走宿主，手势与探测走同一条 `postMessage`。
-5. 页面发 `craft:ready` 后面板才允许 `craft:open`，状态条从"准备中"变成"就绪"。
+3. 紧跟一段 `history.replaceState` 补一个 URL，紧接着把 `document.referrer` 定义成恒为 `""`：
+   上游开头有一段自嵌入防护，比对 `referrer` 与 `location.href` 的 origin；`about:srcdoc` 与打包页面的
+   origin 都是 `"null"`，不清空就会命中，页面会直接渲染 `I'm not a pretzel!`（见 ADR 0001）。
+4. 再按键把语言写进 `?lng=zh-CN|en`（上游 `i18next-browser-languagedetector` 的第一优先级）。
+5. 末尾注入 `host-bridge.js`：open / save 走宿主，手势与探测走同一条 `postMessage`。
+6. 页面发 `craft:ready` 后面板才允许 `craft:open`，状态条从"准备中"变成"就绪"。
 
 ## 目录里有什么
 

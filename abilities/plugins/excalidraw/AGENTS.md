@@ -56,5 +56,12 @@ npm run build
 - **PWA 用构建期剥离**：`about:srcdoc` + `astravia-plugin://` 下 `navigator.serviceWorker.register` 必然
   失败，所以在包装配置里摘掉 `vite-plugin-pwa`，不要在运行期兜这个错。
 - **文件桥只认 `event.source === iframe.contentWindow`**，不要放宽。
+- **打开接缝要拦两个 API**：`browser-fs-access` 的 legacy 路径写的是
+  `"showPicker" in HTMLInputElement.prototype ? showPicker() : click()`，Chromium 上永远走前者。
+  只 hook `click` 时暂存文件永远投不进去（实测 `showPicker` 1 次、`click` 0 次）。
+- **投递前判 `accept` 时，“零个有效 token”等于“什么都要”**：上游 `loadFromJSON` 用
+  `fileOpen({})`，输入框上的 `accept` 会落成 `","`。把它读成“不匹配”会让应用一遍遍重新要文件。
+- **事件发 `.interactive`，读回要合层**：场景画在 `canvas.excalidraw__canvas.static` 上，
+  `probe` / `capture` 必须按 DOM 顺序合成所有 `canvas.excalidraw__canvas`，否则画满的页面会读成空白。
 - **改了 `src/**`、`plugin.json`、`locales/`、`agent/` 就要抬版本**，否则 CI 的 `--strict` 会红。
   `payload/manifest.json` 是构建期的来源声明，不进包也不触发这条门禁——但改它通常意味着要重发一版站点。
