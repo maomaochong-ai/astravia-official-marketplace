@@ -1,15 +1,12 @@
 /**
  * The only app-specific source file in this plugin.
  *
- * Everything else under `src/` is the same code in all sixteen craft plugins. There
- * is no generator: shared behaviour is changed in every copy, and
+ * Everything else under `src/` is the same code in all fifteen craft plugins.
+ * There is no generator any more: shared behaviour is changed in every copy, and
  * `tests/craft-parity.test.mjs` fails when one drifts.
  *
- * `kernel` is the whole difference between the plugins — which surface the page is
- * ruled as, and which colour new objects arrive in. It is deliberately not a bundle
- * of per-app components: sixteen drifting editors is how this family got expensive.
- *
- * ADR: docs/adr/<slug>/craft-0011-the-engine-is-ours.md
+ * `site` names the package directory CI filled with upstream's own web build;
+ * `locale` / `seedKey` / `seedValue` are the shell's seeds for it.
  */
 export const APP = {
   id: "vectorcraft",
@@ -17,12 +14,18 @@ export const APP = {
   tabId: "vectorcraft",
   tabLabel: "VectorCraft",
   tabOrder: 22,
-  kernel: {
-    mode: "canvas",
-    accent: "#4f46e5",
-  },
-  /** The editor is this repository's code; the name is the only nod to the original. */
-  homepage: "https://github.com/maomaochong-ai/astravia-official-marketplace",
+  /** Package directory holding the static site CI built from the upstream sources. */
+  site: "web",
+  /**
+   * Interface-language seed. Whether the canvas actually renders Chinese is the upstream
+   * build's business (its own language table and glyphs); see
+   * docs/adr/vectorcraft/craft-0007-chinese-comes-from-the-shell.md.
+   */
+  locale: "zh",
+  /** Fill-only preference seed; empty when the app keeps no interface language there. */
+  seedKey: "",
+  seedValue: "",
+  upstream: "https://github.com/storytold/vectorcraft",
 } as const;
 
 export type CraftApp = typeof APP;

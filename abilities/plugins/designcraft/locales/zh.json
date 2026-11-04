@@ -1,7 +1,7 @@
 {
   "plugin.name": "DesignCraft",
   "tab.label": "DesignCraft",
-  "plugin.description": "在 Astravia 的画布上排页面：方框、图片、文字、对齐吸附，导出 PNG 或 JSON；对话里也能让它动手。",
+  "plugin.description": "在 Astravia 里做版面：页面、对页、串接文本框，用的是上游原版 DesignCraft 出版编辑器，可导入 IDML，导出 PDF、PNG 与 EPUB。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

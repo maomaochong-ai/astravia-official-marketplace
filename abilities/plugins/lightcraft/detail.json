@@ -3,73 +3,100 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Astravia canvas plugin",
-      "title": "LightCraft: draw here, or let the agent draw with you",
-      "description": "Plan a lighting setup: key, fill and rim blocks with labels on a canvas, exported as PNG.",
+      "title": "LightCraft in the activity panel",
+      "eyebrow": "Photo library",
+      "description": "A catalog and a darkroom — the upstream LightCraft raw developer running inside Astravia, on your own machine, with the images you opened in the workspace.",
       "badges": [
-        "Chinese by default",
-        "Autosaved",
-        "Agent-ready"
-      ]
-    },
-    {
-      "type": "feature-grid",
-      "items": [
-        {
-          "title": "Five kinds of object, one canvas",
-          "description": "Rectangles, ellipses, lines, text and images live in one document; the order is the stacking.",
-          "icon": "solar:layers-minimalistic-bold"
-        },
-        {
-          "title": "Snapping and alignment",
-          "description": "Drag along the guides, and align, centre or distribute a multi-selection in one click.",
-          "icon": "solar:ruler-cross-pen-bold"
-        },
-        {
-          "title": "Export PNG or document JSON",
-          "description": "Render the current canvas to an image, or save the document so it can be reopened later.",
-          "icon": "solar:export-bold"
-        },
-        {
-          "title": "The conversation edits it",
-          "description": "Inserting shapes, changing properties, aligning and saving are semantic operations, not pixel hunting.",
-          "icon": "solar:magic-stick-3-bold"
-        }
+        "No fork",
+        "Local",
+        "RAW"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-thread",
-        "user_prompt": "Open a canvas in LightCraft, draw three title blocks, left-align them and export a PNG.",
-        "assistant_reply": "Three rectangles are in place, equal width and top-aligned. Export renders the current canvas — want the fill switched to the theme blue first?"
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "Open LightCraft and turn the background of @assets/cover.png into a blue gradient.",
+        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
       }
     },
     {
-      "type": "steps",
+      "type": "feature-grid",
+      "title": "What it gives you",
       "items": [
         {
-          "title": "Open the {name} tab",
-          "description": "A new canvas with a Chinese interface by default."
+          "title": "The real darkroom",
+          "description": "The tab runs the official LightCraft web build byte for byte. Upstream's wasm and JavaScript are not patched; only two thin files of ours are added around them.",
+          "icon": "solar:camera-linear"
         },
         {
-          "title": "Pick an object from the left rail",
-          "description": "Drop a rectangle, ellipse or text, then adjust colour and size in the inspector."
+          "title": "Open and export through the workspace",
+          "description": "Opening uses the file selected in the Explorer, and exports are written back through Astravia instead of a downloads folder.",
+          "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "Keep talking in the conversation",
-          "description": "\"align the three blocks left\", \"add a heading\", \"export a PNG\" — the agent edits the same document."
+          "title": "The largest site in the family",
+          "description": "The site is about 70 MB — the editor, its raw pipeline and a CJK interface font — and ships inside the plugin, so there is nothing to fetch.",
+          "icon": "solar:database-linear"
         },
         {
-          "title": "Export when you need a file",
-          "description": "Autosave stays inside the plugin; PNG and JSON go wherever you choose."
+          "title": "Driven from the conversation",
+          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "How to start",
+      "items": [
+        {
+          "title": "Install the plugin",
+          "description": "Nothing else to install: no desktop app, no camera codec pack, no account."
+        },
+        {
+          "title": "Open the LightCraft tab",
+          "description": "Opening the tab shows the editor itself — no preparation screen, no package to fetch."
+        },
+        {
+          "title": "Select an image, then open it",
+          "description": "File → Open inside the editor takes the file selected in Astravia rather than a system dialog."
+        },
+        {
+          "title": "Export back through the workspace",
+          "description": "Developed output travels the same bridge as a save, so it lands where you chose."
         }
       ]
     },
     {
       "type": "callout",
+      "tone": "warning",
+      "content": "This is the largest build in the family (about 70 MB of wasm and fonts). It ships inside the plugin, so the tab opens straight into the editor; the first paint of such a large wasm module is the only thing you may notice."
+    },
+    {
+      "type": "callout",
       "tone": "info",
-      "content": "This plugin ships its own drawing engine: nothing is downloaded and no external app is loaded. Open the tab and it is there; close it and it stops."
+      "content": "Interface language: the editor itself is English only — upstream ships no other language. The tab shell and this page follow your Astravia language."
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+    },
+    {
+      "type": "links",
+      "title": "Where it comes from",
+      "items": [
+        {
+          "label": "LightCraft on GitHub",
+          "href": "https://github.com/storytold/lightcraft"
+        },
+        {
+          "label": "LightCraft releases",
+          "href": "https://github.com/storytold/lightcraft/releases"
+        }
+      ]
     }
   ]
 }

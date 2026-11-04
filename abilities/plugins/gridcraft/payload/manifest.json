@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "gridcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/gridcraft",
+  "release": "0.16.0",
+  "commit": "92cdc2a975b6e014da6ff25477232b500e3c1cf6",
+  "webApp": "apps/gridcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

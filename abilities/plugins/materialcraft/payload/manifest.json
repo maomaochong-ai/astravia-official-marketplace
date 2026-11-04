@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "materialcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/materialcraft",
+  "release": "0.1.0",
+  "commit": "fc98b115f0584aca9540baa4899cfb6176f5ba2e",
+  "webApp": "apps/materialcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "slug": "vectorcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/vectorcraft",
+  "release": "0.20.0",
+  "commit": "4ee0ef231aa31f50192f0072554fa390957532bf",
+  "webApp": "apps/vectorcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "trunk"
+  }
+}

@@ -1,7 +1,7 @@
 {
   "plugin.name": "GridCraft",
   "tab.label": "GridCraft",
-  "plugin.description": "Rule a sheet and fill it in: rows, columns, cell blocks and totals, exported as PNG or JSON.",
+  "plugin.description": "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

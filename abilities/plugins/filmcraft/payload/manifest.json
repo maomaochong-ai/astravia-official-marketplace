@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "slug": "filmcraft",
+  "site": "web",
+  "upstream": "https://github.com/storytold/filmcraft",
+  "release": "0.16.0",
+  "commit": "68919ed87aa6a097a4d21414ec7c438883f5fe22",
+  "webApp": "apps/filmcraft-web",
+  "builtBy": "scripts/build-craft-web.mjs",
+  "build": {
+    "recipe": "xtask",
+    "out": "web/dist"
+  }
+}

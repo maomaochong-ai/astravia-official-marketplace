@@ -1,7 +1,7 @@
 {
   "plugin.name": "GridCraft",
   "tab.label": "GridCraft",
-  "plugin.description": "排表格并填内容：行列、单元格块、合计，导出 PNG 或 JSON。",
+  "plugin.description": "在 Astravia 里处理表格——上游 GridCraft 编辑器，带公式、数字格式、图表、透视表与 .xlsx 往返。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

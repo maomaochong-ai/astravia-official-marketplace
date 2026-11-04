@@ -1,7 +1,7 @@
 {
   "plugin.name": "FilmCraft",
   "tab.label": "FilmCraft",
-  "plugin.description": "Storyboard a scene on a dark stage: shot frames, captions and notes, exported as PNG or JSON.",
+  "plugin.description": "Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

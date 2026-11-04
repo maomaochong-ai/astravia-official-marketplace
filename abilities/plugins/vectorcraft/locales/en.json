@@ -1,7 +1,7 @@
 {
   "plugin.name": "VectorCraft",
   "tab.label": "VectorCraft",
-  "plugin.description": "Build vector-style graphics from primitives — lines, boxes and ellipses — and export the result.",
+  "plugin.description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
   "tool.open": "Open the editor",
   "tool.status": "Editor status",
   "tool.act": "Drive the editor",

@@ -1,34 +1,50 @@
-# FigCraft 插件工作须知
+# figcraft 插件工作须知
 
-这份目录是一支 craft 插件，属于「开放能力市场」官方源。开工前先读仓库根的 `AGENTS.md`。
+这个目录是**手写源码**，不是产物。craft 家族十五支插件共享同一份宿主侧代码，`src/**` 逐字节相同；
+一致性由 `tests/craft-parity.test.mjs` 守住，改一处就要改另外十四处。
+理由与边界写在 [`docs/adr/figcraft/craft-0001-seven-copies-and-a-parity-test.md`](../../../../docs/adr/figcraft/craft-0001-seven-copies-and-a-parity-test.md)。
 
-## 你要改哪一层
+编辑器本体**不是我们写的**：`web/` 是 CI 用上游源码（`payload/manifest.json` 钉住的 commit）跑
+上游自己的 `trunk build --release` 得到的静态站点，随包分发。为什么不再下载上游 zip、为什么站点是
+`srcdoc` 而不是导航进去，见
+[`docs/adr/figcraft/craft-0011-the-site-ships-in-the-package.md`](../../../../docs/adr/figcraft/craft-0011-the-site-ships-in-the-package.md)。
 
-- **共享层**（`src/` 除 `app.config.ts`、`server/`、`scripts/`）：与其余 craft 插件逐字节相同。
-  改一处就要改全部副本，`tests/craft-parity.test.mjs` 会在漂移时报错。不要在这里引入「只对
-  FigCraft 生效」的分支——那正是 parity 测试要防的事。
-- **应用层**（`src/app.config.ts`）：这个应用的 id、标签页、hub 服务名与上游地址。这是唯一的
-  按应用不同的源码。
-- **制品层**（`payload/manifest.json`）：钉住的上游 release、大小与 sha256。升级上游时改这里，
-  然后 `npm run build:hub`。
-- **文案层**（`agent/skills/figcraft/`、`detail.json`、`detail.zh.json`）：给用户和 Agent 读的东西。
-  默认英文、中文放在 `zh` 覆盖里。
-
-## 不许做的事
-
-- 不改 `server/hub.mjs`：它是 `scripts/build-hub.mjs` 的产物。改 `hub.src.mjs` 后重新生成。
-- 不改上游字节：`payload/manifest.json` 的摘要就是承诺，改包会让所有已安装用户校验失败。
-- 不假装中文画布：本插件的编辑器界面语言来自上游构建，`app.locale` 保持 `null`
-  （理由见 `docs/adr/figcraft/craft-0007-chinese-comes-from-the-shell.md`）。外壳文案是中文的，
-  画布是上游的——不要把两者混为一谈。
-- 不把 `dist/`、`release/` 提交进源码。
-
-## 开工命令
+## 开工
 
 ```bash
+cd abilities/plugins/figcraft
 npm install
-npm run build:hub      # 生成 server/hub.mjs 并同步 plugin.json 摘要
-npm run check:hub      # 只检查 hub 是否过期
-npm run check          # tsc --noEmit + check:hub
-npm run build          # 本地预检；正式 .astraviapkg 由 CI 构建
+npm run check      # tsc --noEmit
+npm run build      # dist/ 供本地预检，正式 .astraviapkg 由 CI 构建
+node ../../scripts/build-craft-web.mjs --slug figcraft   # 只在本地想跑真界面时需要；CI 会做
 ```
+
+## 改东西的正确位置
+
+| 想改什么 | 改哪里 |
+| --- | --- |
+| 标签页、状态条、文件桥、Agent 工具的行为 | `src/features/**`、`src/bridge/**`（十五支同步） |
+| 帧文档的拼装：`<base>`、`replaceState`、语言种子、bridge 注入 | `src/features/editor/services/site-document.ts`（十五支同步） |
+| 页面里的 open/save 钩子、暂停闸门、手势注入 | `src/bridge/host-bridge.js`（十五支同步） |
+| 这个应用的名字、版本、站点目录、语言种子 | `src/app.config.ts`、`plugin.json`、`payload/manifest.json`、`locales/*.json` |
+| 技能的说明文字 | `agent/skills/figcraft/SKILL.md` |
+| 编辑器界面本身 | 不改；那是上游 `apps/figcraft-web` 的构建产物 |
+
+改完跑：
+
+```bash
+node --test tests/craft-parity.test.mjs tests/craft-manifest.test.mjs tests/craft-docs.test.mjs   # 在仓库根
+npm run build
+```
+
+## 硬约束
+
+- **`web/` 不进 git**：`abilities/plugins/*/web/` 在 .gitignore 里，CI 在打包前构建。手改会在下一次
+  构建时被覆盖，也不能提交。
+- **上游字节保真**：不改 wasm、不改 JS、不改 `index.html` 的 SRI。我们只在拼 `srcdoc` 时注入
+  `<base>`、一段垫 URL 的脚本、语言种子和 bridge。
+- **站点只能是相对路径**：页面要能在任意前缀下加载，`web/web/index.html` 里不允许
+  `src="/…"` 这种根绝对路径（`scripts/build-craft-web.mjs` 会直接拒绝）。
+- **文件桥只认 `event.source === iframe.contentWindow`**，不要放宽。
+- **改了 `src/**`、`plugin.json`、`locales/` 或 `scripts/` 就要抬版本**，否则 CI 的 `--strict` 会红。
+  `payload/manifest.json` 是构建期的来源声明，不进包也不触发这条门禁——但改了它通常意味着要重发一版站点。

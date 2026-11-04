@@ -2,41 +2,44 @@
 
 Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.
 
-插件把上游 FilmCraft 的**官方 web 构建**放进活动面板的一个 iframe 里跑：同一份 wasm、同一份
-JavaScript，没有分支、没有重新编译。插件自己只做上游不做的事——把文件供给进去、把面板和编辑器
-连起来、把这些能力交给 Agent。
+插件把上游 FilmCraft 的 web 应用放进活动面板的一个 iframe 里跑：同一份 wasm、同一份 JavaScript，
+没有分支、没有重新编译，也没有我们另写的编辑器界面。站点由 CI 用上游源码构建、随插件包分发——
+不是上游的发版 zip。
 
-## 上游钉在哪个版本
+## 上游钉在哪个 commit
 
 | | |
 | --- | --- |
 | 上游仓库 | https://github.com/storytold/filmcraft |
-| 发布的 web 包 | `filmcraft-web-0.16.0.zip` |
-| 版本 | `0.16.0` |
-| 大小 | 15,097,399 B（15 MB） |
-| sha256 | `79da0f879f86f4520c1721d8296dfa61220c33eb0e39bf8e58fd883388800431` |
+| 构建目标 | `apps/filmcraft-web`（上游自己的 web crate） |
+| 构建配方 | 上游自己的 `cargo xtask web`（cargo → wasm-bindgen CLI → 可选 wasm-opt） |
+| commit | `68919ed87aa6a097a4d21414ec7c438883f5fe22` |
+| 上游版本 | `0.16.0` |
+| 站点体积 | 由 CI 在打包前构建（`web/` 不进 git） |
 
-这些数字来自实际下载的发布包，不是从 README 抄的；`payload/manifest.json` 里的 `sha256`
-是唯一信任锚，下载来的包对不上就拒绝使用（ADR 0008）。
+`payload/manifest.json` 钉的就是这个 commit：CI 检出它、跑上游自己的 `cargo xtask web`，
+把产物放进 `abilities/plugins/filmcraft/web/`，然后才打包。源码级可复现，比钉一份 zip 的摘要更严，
+也让"上游还没发版"不再阻塞跟进。
 
 ## 一次打开会经过什么
 
-1. 插件起一个只监听 `127.0.0.1` 的服务（`server/hub.mjs`，由 `hub.src.mjs` 生成）。
-2. 服务从 0.16.0 的发布包里取 web 构建；已缓存且 sha256 对得上就直接用，否则下载一次。
-3. 下载期间标签页显示的是准备进度（应用名、一句说明、真实百分比），不是错误页；失败才展开诊断。
-4. 标签页的 iframe 指向这个服务；服务把 `index.html` 原样送出，只额外注入两个脚本：
-   语言预设（只有这个构建能画中文时才注入）和 `host-bridge.js`。
-5. 编辑器和面板之间只走 `postMessage`，消息前缀是 `craft:`。
+1. 面板从包里取 `web/index.html` 的**文本**。宿主给 `.html` 的 MIME 是 `application/octet-stream`，
+   把 iframe 直接导航过去只会下载文件，不会执行脚本。
+2. 在 `<head>` 前注入 `<base href>`——相对路径的 `./app.js` 与 `./*_bg.wasm` 才落在包里。
+3. 紧跟一段 `history.replaceState`：`about:srcdoc` 本身没有 URL，而上游用
+   `new URL("…_bg.wasm", location.href)` 找 wasm、用 `location.search` 读渲染降级标志。
+   垫上之后 `location.href` 就是真实的插件 URL，`location.search` 是 `?nosw&hl=zh` 这样的真参数。
+4. 宿主语言是中文、且这个构建允许时，注入界面语言种子。
+5. `</body>` 前内联 `host-bridge.js`。
+6. 拼好的文档交给 `srcdoc`。没有进程、没有端口、没有首次下载，也没有准备页。
+
+编辑器和面板之间只走 `postMessage`，消息前缀是 `craft:`。
 
 ## 界面语言
 
-这个上游 web 构建既没有中文文案，也没有内嵌中文字形（`unzip -l` 里只有
-`OFL-noto-sans-cjk-sc.txt` 这类许可证文本），强行切中文只会得到英文界面加一屏空方框。
-所以画布里的界面保持英文；标签外壳、准备页与能力页说明是中文，`strings.ts` 中英双语，
-`hl` 参数按宿主语言透传给构建（上游若支持就生效）。要真正把画布翻成中文，需要上游自己
-加语言表并重编 wasm，那会产出 60–90 MB 的制品；那条重编译管线已经删除。
-详见 [`docs/adr/filmcraft/craft-0007`](../../../../docs/adr/filmcraft/craft-0007-chinese-comes-from-the-shell.md)。
-
+这个上游构建只有英文界面，画布因此保持英文。硬切中文只会得到英文文案加中文日期与数字格式，那是更隐蔽的错位，所以语言种子留空。
+外壳（标签标题、状态条、本页说明）仍是中英双语，跟随 Astravia 语言。
+边界与判据见 [`docs/adr/filmcraft/craft-0007-chinese-comes-from-the-shell.md`](../../../../docs/adr/filmcraft/craft-0007-chinese-comes-from-the-shell.md)。
 
 ## 文件怎么进、怎么出
 
@@ -49,17 +52,19 @@ JavaScript，没有分支、没有重新编译。插件自己只做上游不做�
 
 ```bash
 npm install
-npm run check    # tsc --noEmit + build-hub --check
-npm run build    # 重建 server/hub.mjs 并打包
+npm run check                                            # tsc --noEmit
+npm run build                                            # tsc --noEmit && vite build
+node ../../scripts/build-craft-web.mjs --slug filmcraft        # 重建 web/web/（需要 rust、`wasm32-unknown-unknown` 目标、cargo 与 `wasm-bindgen` CLI（版本见上游 `Cargo.lock`；装了 binaryen 会多一道 `wasm-opt -O2`））
 ```
 
-`src/**`、`server/hub.src.mjs` 与 `scripts/build-hub.mjs` 在七支 craft 插件（含 photocraft）之间逐字节相同，
-唯一按应用不同的是 `src/app.config.ts`。这里就是源码：改共享行为要在七支上做同样的改动，
-`tests/craft-parity.test.mjs` 会在漏改时失败。见
+`src/**` 在十五支 craft 插件之间逐字节相同，唯一按应用不同的是 `src/app.config.ts`（还有
+`plugin.json`、`payload/manifest.json`、`locales/` 与展示层文件）。这里就是源码：改共享行为要在十五支上
+做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。见
 [`docs/adr/filmcraft/craft-0001`](../../../../docs/adr/filmcraft/craft-0001-seven-copies-and-a-parity-test.md)。
+
+`web/` 不要手改：它由 CI 从上游 commit 构建，下一次构建会覆盖。
 
 ## 权限
 
-见 `plugin.json` 的 `permissions`：活动面板槽位、浏览器打开、外部打开、文件读写、
-工作区读取、Agent 工具注册与执行、技能控制。服务不需要额外权限——它只监听回环地址，
-文件读写都由渲染侧经宿主完成。
+见 `plugin.json` 的 `permissions`：活动面板槽位、文件读写、工作区读取、Agent 工具注册与执行、技能控制。
+没有服务权限——站点跑在面板的 iframe 里，不需要常驻进程，也没有回环端口。
