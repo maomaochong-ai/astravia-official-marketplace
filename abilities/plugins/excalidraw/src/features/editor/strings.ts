@@ -33,6 +33,9 @@ export interface EditorStrings {
   stepReady: string;
   stepOpen: string;
   stepWait: string;
+  /** Status-bar switch between the site's Chinese and English UI. */
+  language: string;
+  languageFailed: string;
 }
 
 const en: EditorStrings = {
@@ -59,6 +62,8 @@ const en: EditorStrings = {
   stepReady: "Wait for the editor",
   stepOpen: "Open the file",
   stepWait: "Let it load",
+  language: "中文",
+  languageFailed: "Could not switch the editor language",
 };
 
 const zh: EditorStrings = {
@@ -85,6 +90,8 @@ const zh: EditorStrings = {
   stepReady: "等待编辑器就绪",
   stepOpen: "打开文件",
   stepWait: "等它载入",
+  language: "EN",
+  languageFailed: "没能切换编辑器语言",
 };
 
 export function editorStrings(locale: string | undefined): EditorStrings {

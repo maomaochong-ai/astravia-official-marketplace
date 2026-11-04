@@ -1,15 +1,17 @@
 import type { EditorSession } from "../hooks/use-editor-session.ts";
 
 /**
- * The single 28 px line above the frame. Three controls, icons only, each with the
- * platform tooltip (`title`) and an accessible name: readiness, full screen,
- * reload. There is no "open in a browser" control any more — the tab *is* the
- * editor, and a second window could not share the workspace binding.
+ * The single 28 px line above the frame. Readiness, the file name, then the controls:
+ * language, full screen, reload. Everything is an icon with the platform tooltip (`title`)
+ * and an accessible name, except the language switch — that one is a word, because an
+ * icon for "which language will this give me" is a guessing game. There is no "open in a
+ * browser" control any more — the tab *is* the editor, and a second window could not
+ * share the workspace binding.
  *
  * ADR: docs/adr/excalidraw/0004-icons-only-and-a-fullscreen-that-returns.md
  */
 export function EditorStatusBar({ session }: { session: EditorSession }): React.ReactElement {
-  const { strings, phase, binding, candidate, savedAt, notice, isFullscreen, progress } = session;
+  const { strings, phase, binding, candidate, savedAt, notice, isFullscreen, progress, uiLang } = session;
   const status = phase === "failed" ? strings.failed : phase === "ready" ? strings.ready : strings.preparing;
   const tone =
     phase === "failed" ? "text-red-400" : phase === "ready" ? "text-emerald-400" : "text-amber-300";
@@ -44,6 +46,20 @@ export function EditorStatusBar({ session }: { session: EditorSession }): React.
       ) : notice ? (
         <span className="max-w-[40%] truncate text-neutral-400">{notice}</span>
       ) : null}
+
+      {/* A word, not a glyph: "中文" and "EN" are what a reader recognises, and an
+          icon for a language is a guessing game. It names the one you switch to. */}
+      <button
+        type="button"
+        title={strings.language}
+        aria-label={strings.language}
+        disabled={disabled}
+        onClick={() => session.toggleLanguage()}
+        className="flex h-5 items-center rounded px-1 text-[11px] text-neutral-300 hover:bg-neutral-800 disabled:opacity-40"
+        data-lang={uiLang}
+      >
+        {strings.language}
+      </button>
 
       <button
         type="button"

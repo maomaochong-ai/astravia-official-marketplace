@@ -335,6 +335,18 @@
       void probeMessage(data);
       return;
     }
+
+    // Structural access, as opposed to pointer gestures: the editor's own API.
+    if (data.type === "craft:scene") {
+      void sceneMessage(data);
+      return;
+    }
+
+    // Language, which is app state rather than scene content.
+    if (data.type === "craft:locale") {
+      localeMessage(data);
+      return;
+    }
   });
 
   // ------------------------------------------------------- driving the editor
@@ -978,7 +990,168 @@
     }
   }
 
-  // ------------------------------------------------------------- boot watch
+  // --------------------------------------------------------- scene, not gestures
+  //
+  // Panning, dragging and clicking can only approximate a diagram; they cannot tell
+  // an Agent what is on the canvas, and a flowchart drawn by dragging eight boxes is
+  // both slow and wrong. The editor already exposes the thing that matters — its
+  // imperative API and its element transform — so this section calls those, and
+  // nothing here reconstructs element state by hand.
+  //
+  // The API is not on `window`: upstream reaches it through React context. The build
+  // recipe aliases the package entry to a shim that publishes `{ api, … }` as
+  // `window.__ASTRAVIA_EXCALIDRAW__`; if that shim is absent (a site built before it
+  // existed), every operation below answers `no-scene-api` and the gesture path still
+  // works.
+  var SCENE_LIMIT = 300;
+  var SCENE_NOISE = ["seed", "version", "versionNonce", "updated", "index"];
+
+  function sceneKit() {
+    var kit = window.__ASTRAVIA_EXCALIDRAW__;
+    return kit && kit.api ? kit : null;
+  }
+
+  function round1(value) {
+    return typeof value === "number" ? Math.round(value * 10) / 10 : value;
+  }
+
+  // Volatile fields carry no meaning for a reader and cost more tokens than the
+  // geometry does; coordinates are rounded because sub-pixel precision is noise.
+  function compactElement(element) {
+    var out = {};
+    for (var key in element) {
+      if (SCENE_NOISE.indexOf(key) >= 0) continue;
+      out[key] = element[key];
+    }
+    out.x = round1(out.x);
+    out.y = round1(out.y);
+    out.width = round1(out.width);
+    out.height = round1(out.height);
+    return out;
+  }
+
+  function readScene(kit) {
+    var elements = kit.api.getSceneElements();
+    var state = kit.api.getAppState();
+    var shown = elements.slice(0, SCENE_LIMIT).map(compactElement);
+    return {
+      count: elements.length,
+      truncated: elements.length > shown.length,
+      appState: {
+        theme: state.theme,
+        zoom: round1(state.zoom && state.zoom.value),
+        viewBackgroundColor: state.viewBackgroundColor,
+        gridSize: state.gridSize === null ? null : state.gridSize,
+      },
+      elements: shown,
+    };
+  }
+
+  function writeScene(kit, payload) {
+    var incoming = Array.isArray(payload.elements) ? payload.elements : [];
+    if (!incoming.length) throw new Error("no-elements");
+    // Skeletons are upstream's authoring format: ids, seeds, versions and text
+    // metrics are derived (packages/element/src/transform.ts:680), so the caller
+    // writes only what it means. Full elements from an earlier `read` go through
+    // the same restore the app runs on load. Appending keeps the caller's own ids,
+    // which is what lets an arrow in the batch bind to a shape already on canvas.
+    var mode = payload.mode === "insert" ? "insert" : "replace";
+    var elements =
+      payload.skeleton === false
+        ? kit.restoreElements(incoming, null)
+        : kit.convertToExcalidrawElements(
+            incoming,
+            mode === "insert" ? { regenerateIds: false } : undefined,
+          );
+    var next = mode === "insert" ? kit.api.getSceneElements().concat(elements) : elements;
+    kit.api.updateScene({ elements: next, captureUpdate: kit.CaptureUpdateAction.IMMEDIATELY });
+    if (payload.fit !== false && typeof kit.api.scrollToContent === "function") {
+      kit.api.scrollToContent(elements, { fitToViewport: true, viewportZoomFactor: 0.9 });
+    }
+    return { mode: mode, added: elements.length, total: next.length };
+  }
+
+  async function exportScene(kit, payload) {
+    var api = kit.api;
+    var elements = api.getSceneElements();
+    var appState = api.getAppState();
+    var files = typeof api.getFiles === "function" ? api.getFiles() : {};
+    var format = payload.format === "svg" || payload.format === "excalidraw" ? payload.format : "png";
+    var name = payload.name || "scene." + (format === "excalidraw" ? "excalidraw" : format);
+    var mime =
+      format === "png" ? "image/png" : format === "svg" ? "image/svg+xml" : "application/json";
+    var buffer;
+
+    if (format === "excalidraw") {
+      buffer = new TextEncoder().encode(
+        kit.serializeAsJSON(elements, appState, files, "local"),
+      ).buffer;
+    } else {
+      var config = {
+        canvasBackgroundColor: payload.background === false ? false : appState.viewBackgroundColor,
+        scale: payload.scale,
+      };
+      if (format === "svg") {
+        var node = await kit.exportScene({ data: { elements: elements, appState: appState, files: files }, type: "svg", config: config });
+        buffer = new TextEncoder().encode(new XMLSerializer().serializeToString(node)).buffer;
+      } else {
+        var blob = await kit.exportScene({ data: { elements: elements, appState: appState, files: files }, type: "png", config: config });
+        buffer = await blob.arrayBuffer();
+      }
+    }
+
+    // Handed straight back to the caller, not to the document's save path: an
+    // exported PNG is not the drawing's file, and binding it would make the next
+    // save overwrite the picture instead of the document.
+    return { name: name, mime: mime, bytes: buffer };
+  }
+
+  async function sceneMessage(data) {
+    var kit = sceneKit();
+    // Reported, not guessed: the Agent then knows to fall back to gestures.
+    if (!kit) {
+      reply(data.id, { ok: false, error: "no-scene-api" });
+      return;
+    }
+    try {
+      if (data.operation === "apply") {
+        var written = writeScene(kit, data);
+        await frames(2);
+        reply(data.id, { ok: true, applied: written, scene: readScene(kit) });
+        return;
+      }
+      if (data.operation === "export") {
+        var exported = await exportScene(kit, data);
+        var bytes = exported.bytes;
+        reply(
+          data.id,
+          { ok: true, exported: { name: exported.name, mime: exported.mime, bytes: bytes.byteLength } },
+          [bytes],
+        );
+        return;
+      }
+      reply(data.id, { ok: true, scene: readScene(kit) });
+    } catch (error) {
+      reply(data.id, { ok: false, error: String((error && error.message) || error) });
+    }
+  }
+
+  // The status bar switches the site's language without reloading the frame: a
+  // reload would throw away the unsaved scene, which is not a language question.
+  function localeMessage(data) {
+    var kit = sceneKit();
+    var code = typeof data.langCode === "string" ? data.langCode : "";
+    if (!kit || !code) {
+      reply(data.id, { ok: false, error: kit ? "no-lang-code" : "no-scene-api" });
+      return;
+    }
+    try {
+      kit.setLangCode(code);
+      reply(data.id, { ok: true, langCode: code });
+    } catch (error) {
+      reply(data.id, { ok: false, error: String((error && error.message) || error) });
+    }
+  }
 
   // "ready" must mean "the editor started", not "this script ran". Every web shell
   // here removes its `#<app>_loading` element on success and rewrites it with a

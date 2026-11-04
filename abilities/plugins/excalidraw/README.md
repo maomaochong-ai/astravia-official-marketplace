@@ -14,7 +14,7 @@ Sketch diagrams, wireframes and flowcharts on an infinite hand-drawn canvas insi
 | commit | `dd2f8fc32b92cbf56f4abee6a0cf3b14681b4b55` |
 | 应用包 | `excalidraw-app` |
 | 许可证 | MIT |
-| 构建配方 | `scripts/build-excalidraw-web.mjs`（`recipeVersion: 1`） |
+| 构建配方 | `abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs`（`recipeVersion: 2`） |
 | 站点 | 打包时构建，`web/` 不进 git |
 
 pin 写在 `payload/manifest.json`（`schemaVersion: 5`、`build.kind: "source-build"`）。要跟进上游，就换
@@ -22,7 +22,7 @@ pin 写在 `payload/manifest.json`（`schemaVersion: 5`、`build.kind: "source-b
 
 ## 站点是怎么来的
 
-`node scripts/build-excalidraw-web.mjs --slug excalidraw` 做这几件事：
+`node abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs --slug excalidraw` 做这几件事：
 
 1. 按 pin 取那个 commit 的源码（`--source <dir>` 可以复用一份已经装好依赖的树）；
 2. 用 `npx -y yarn@1.22.22` 按 `yarn.lock` 装依赖（CI 走 `--frozen-lockfile`）；
@@ -69,7 +69,7 @@ pin 写在 `payload/manifest.json`（`schemaVersion: 5`、`build.kind: "source-b
 cd abilities/plugins/excalidraw
 npm install
 npm run check                                   # tsc --noEmit
-node ../../scripts/build-excalidraw-web.mjs --slug excalidraw   # 构建站点到 web/
+node scripts/build-excalidraw-web.mjs --slug excalidraw   # 构建站点到 web/
 npm run build                                   # dist/ 本地预检
 ```
 

@@ -85,11 +85,18 @@ test("the skill package names itself after the plugin", () => {
 test("the skill documents exactly the tools the plugin registers", () => {
 	const tools = readText("src/features/agent/editor-tools.ts");
 	const registered = [...tools.matchAll(/id: `\$\{id\}_([a-z_]+)`/g)].map((match) => `${manifest.id}_${match[1]}`);
-	assert.equal(registered.length, 5, `expected five tools, found ${registered.join(", ")}`);
+	assert.equal(registered.length, 6, `expected six tools, found ${registered.join(", ")}`);
 	const skill = readText("agent/skills/excalidraw/SKILL.md");
 	for (const name of registered) {
 		assert.ok(skill.includes(name), `SKILL.md never mentions ${name} — the agent cannot find it`);
 	}
+	// The scene tool is the one that writes elements; a skill that only teaches
+	// gestures would push the model back into synthetic drags.
+	for (const reference of ["references/scene-format.md", "references/tools.md", "references/shortcuts.md"]) {
+		assert.ok(skill.includes(reference), `SKILL.md does not point at ${reference}`);
+		assert.ok(existsSync(join(APP, "agent/skills/excalidraw", reference)), `${reference} is missing`);
+	}
+	assert.match(skill, /convertToExcalidrawElements/, "the skill must name the format it writes");
 });
 
 test("the icon is Excalidraw's own bitmap, not a placeholder", () => {
@@ -114,7 +121,11 @@ test("the pin is a source-build pin that names a real recipe", () => {
 	assert.equal(pin.build?.upstream, "https://github.com/excalidraw/excalidraw", "pin must point at the real upstream repository");
 	assert.match(pin.build?.commit ?? "", /^[0-9a-f]{40}$/, "pin.build.commit must be a full 40-hex commit");
 	assert.equal(pin.build?.package, "excalidraw-app", "the pinned workspace package is excalidraw-app");
-	assert.equal(pin.build?.recipe, "scripts/build-excalidraw-web.mjs", "pin must name the script that stages the site");
+	assert.equal(
+		pin.build?.recipe,
+		"abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs",
+		"pin must name the script that stages the site, and the recipe belongs to the plugin that owns it",
+	);
 	assert.ok(existsSync(join(ROOT, pin.build.recipe)), `${pin.build.recipe} does not exist`);
 	assert.equal(typeof pin.build?.recipeVersion, "number", "recipeVersion is what a recipe change bumps");
 });
@@ -123,7 +134,7 @@ test("the marketplace tooling dispatches this pin to its recipe", () => {
 	const tooling = readFileSync(join(ROOT, "scripts/marketplace.mjs"), "utf8");
 	assert.match(tooling, /source-build/, "marketplace.mjs never looks at build.kind");
 	assert.ok(tooling.includes("pin.build?.recipe") || tooling.includes("build.recipe"), "marketplace.mjs never reads the pin's recipe");
-	const recipe = readFileSync(join(ROOT, "scripts/build-excalidraw-web.mjs"), "utf8");
+	const recipe = readFileSync(join(ROOT, "abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs"), "utf8");
 	assert.match(recipe, /--slug/, "the recipe must take a slug so it can be run for one plugin");
 	assert.ok(!/https:\/\/raw\.githubusercontent\.com/.test(recipe), "the recipe should clone the pinned commit, not fetch moving branch files");
 });
@@ -225,7 +236,7 @@ test("the site is built, not committed", () => {
 });
 
 test("the recipe strips the beacon and keeps the file seams on the legacy path", () => {
-	const recipe = readFileSync(join(ROOT, "scripts/build-excalidraw-web.mjs"), "utf8");
+	const recipe = readFileSync(join(ROOT, "abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs"), "utf8");
 	// The beacon is removed at build time: a runtime stub cannot stop a script that
 	// has already been appended, and its iframe branch throws `action is not defined`.
 	assert.match(recipe, /simpleanalyticscdn/, "the recipe no longer removes the analytics loader");

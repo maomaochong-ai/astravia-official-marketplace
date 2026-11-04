@@ -7,22 +7,24 @@ import { editorStrings } from "../editor/strings.ts";
 import type { CraftProbe, LinkMessage } from "../../domain/link-protocol.ts";
 
 /**
- * The natural-language surface: five tools, one of which (`act`) carries the whole
- * gesture vocabulary. The Agent drives the same page the tab shows, through the
- * bridge, and never reports a state it did not read back from the frame.
+ * The natural-language surface: six tools, one of which (`act`) carries the whole
+ * gesture vocabulary and another (`scene`) bypasses it for structural work. The
+ * Agent drives the same page the tab shows, through the bridge, and never reports
+ * a state it did not read back from the frame.
  *
- * Why five and not eleven: every canvas plugin installed at once shares one flat tool
+ * Why six and not eleven: every canvas plugin installed at once shares one flat tool
  * namespace, and the model's prompt pays for each name. Eleven tools per app across a
  * family of apps is a menu nobody reads — `click`, `type` and `press_key` became the
  * `click` / `type` / `key` steps of one batch, and the batch is also what makes the
  * driving visible: it runs inside the page, paced by frames, with the shell narrating
  * each step, instead of one synchronous jump per round trip.
  *
- * How the Agent is expected to work: `act` → read the returned text map and colour →
- * `act` again. A plugin tool result reaches the model as text only, so pixels are
- * useless as an answer: the page describes itself instead (see `craft:probe`), and a
- * batch always reports the canvas before and after so a change is measurable rather
- * than assumed.
+ * How the Agent is expected to work: read the scene, write the scene, then look at
+ * the canvas (`act` → text map and colour → `act` again) only when the picture's
+ * appearance is the question. A plugin tool result reaches the model as text only,
+ * so pixels are useless as an answer: the page describes itself instead (see
+ * `craft:probe` and `craft:scene`), and a batch always reports the canvas before
+ * and after so a change is measurable rather than assumed.
  *
  * Tool names are prefixed with the app id because several canvas plugins can be
  * installed at once. `label` is a `%catalogKey%` so the tool headers follow the host
@@ -165,7 +167,7 @@ export function registerEditorTools(ctx: PluginContext): Disposable[] {
             probe,
             next:
               reply.ready === true
-                ? `The editor is up. Call ${id}_act to drive it; read the returned text map after each batch.`
+                ? `The editor is up. Build or change diagrams with ${id}_scene; use ${id}_act for menus, panels and tools, and read the returned text map after each batch.`
                 : `Still booting. Call ${id}_open_editor again or ${id}_editor_status before acting.`,
           });
         } catch (error) {
@@ -349,6 +351,134 @@ export function registerEditorTools(ctx: PluginContext): Disposable[] {
         });
         if (!saved) return text({ ok: false, probe, error: "save-cancelled" });
         return text({ ok: true, probe, path: saved, name: basename(saved) });
+      },
+    }),
+  );
+
+  // ------------------------------------------------------------------ the scene
+  //
+  // Gestures are for things a canvas has no API for. A diagram is not one of them:
+  // the editor can be handed elements directly, read back, and exported, and doing
+  // that avoids both the slowness and the geometric error of dragging eight boxes.
+
+  disposables.push(
+    ctx.agent.registerTool({
+      id: `${id}_scene`,
+      label: "%tool.scene%",
+      description:
+        `Read, write or export the ${APP.name} scene through the editor's own API — no synthetic mouse work. ` +
+        `\`read\` returns every element with its geometry (volatile fields dropped) plus the view state. ` +
+        `\`apply\` takes elements in upstream's skeleton form, the format the Excalidraw docs teach: ` +
+        `{"type":"rectangle","x":0,"y":0,"width":180,"height":120,"label":{"text":"Start"}}. Ids, seeds, ` +
+        `versions and text metrics are derived by the editor, so text only needs \`text\`; a container ` +
+        `auto-fits its \`label\`; an arrow binds with \`start\`/\`end\` ({"id":"box-1"}) and a frame takes ` +
+        `\`children\` ids. \`mode\` is replace (default) or insert — insert keeps the ids you supply so a ` +
+        `new arrow can bind to a shape already on canvas; \`fit\` zooms to what was written. ` +
+        `\`export\` renders the scene to PNG, SVG or an .excalidraw file and saves it where the user chooses. ` +
+        `Prefer this over \`${id}_act\` for building or reading diagrams; use \`${id}_act\` for anything ` +
+        `outside the scene (menus, panels, tools).`,
+      parameters: {
+        type: "object",
+        properties: {
+          operation: {
+            type: "string",
+            enum: ["read", "apply", "export"],
+            description: "read the scene, apply elements to it, or export it as a file.",
+          },
+          elements: {
+            type: "array",
+            description:
+              "apply: element skeletons, or full elements from an earlier read (those must carry width and height).",
+            items: { type: "object" },
+          },
+          skeleton: {
+            type: "boolean",
+            description:
+              "apply: true (default) treats `elements` as skeletons; false restores them as complete elements.",
+          },
+          mode: {
+            type: "string",
+            enum: ["replace", "insert"],
+            description: "apply: replace the scene (default) or append to it.",
+          },
+          fit: { type: "boolean", description: "apply: zoom to the new elements. Defaults to true." },
+          format: {
+            type: "string",
+            enum: ["png", "svg", "excalidraw"],
+            description: "export: file format. Defaults to png.",
+          },
+          scale: { type: "number", description: "export: pixel density for png/svg. Defaults to the app's own." },
+          background: {
+            type: "boolean",
+            description: "export: draw the scene's background colour. Defaults to true.",
+          },
+          file_name: { type: "string", description: `export: file name, e.g. "diagram.png".` },
+        },
+        required: ["operation"],
+        additionalProperties: false,
+      },
+      scope_use: [...SCOPE],
+      timeoutMs: 60000,
+      async handler(context) {
+        const input = (context.trigger.input ?? {}) as {
+          operation?: string;
+          elements?: unknown[];
+          skeleton?: boolean;
+          mode?: string;
+          fit?: boolean;
+          format?: string;
+          scale?: number;
+          background?: boolean;
+          file_name?: string;
+        };
+        if (!craftFrame()) return text({ ok: false, error: "editor-not-open" });
+
+        let reply: LinkMessage;
+        try {
+          reply = await askCraftFrame(
+            "craft:scene",
+            {
+              operation: input.operation ?? "read",
+              elements: input.elements,
+              skeleton: input.skeleton,
+              mode: input.mode,
+              fit: input.fit,
+              format: input.format,
+              scale: input.scale,
+              background: input.background,
+              name: input.file_name,
+            },
+            45000,
+          );
+        } catch (error) {
+          return text({ ok: false, error: String((error as Error)?.message ?? error) });
+        }
+        if (reply.ok === false) return text({ ok: false, error: reply.error ?? "scene-failed" });
+
+        if (input.operation !== "export") {
+          return text({ ok: true, applied: reply.applied ?? null, scene: reply.scene ?? null });
+        }
+
+        const exported = reply.exported;
+        if (!reply.bytes) return text({ ok: false, error: "empty-export" });
+        const name = input.file_name || exported?.name || `${id}-scene.png`;
+        // A name without a dot would otherwise hand the save dialog an extension equal
+        // to the whole file name; fall back to the mime the bridge reported.
+        const dotted = name.includes(".");
+        const extension = dotted
+          ? name.split(".").pop() ?? "png"
+          : exported?.mime === "image/svg+xml"
+            ? "svg"
+            : exported?.mime === "application/json"
+              ? "excalidraw"
+              : "png";
+        const base64 = bytesToBase64(new Uint8Array(reply.bytes));
+        const saved = await ctx.fs.saveAs(name, base64, "base64", {
+          title: name,
+          filters: [{ name: `${extension.toUpperCase()} file`, extensions: [extension] }],
+        });
+        if (!saved) return text({ ok: false, error: "save-cancelled" });
+        return text({ ok: true, path: saved, name: basename(saved), mime: exported?.mime ?? null });
       },
     }),
   );

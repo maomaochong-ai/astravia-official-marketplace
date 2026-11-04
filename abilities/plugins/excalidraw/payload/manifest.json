@@ -7,7 +7,7 @@
     "upstream": "https://github.com/excalidraw/excalidraw",
     "commit": "dd2f8fc32b92cbf56f4abee6a0cf3b14681b4b55",
     "package": "excalidraw-app",
-    "recipe": "scripts/build-excalidraw-web.mjs",
-    "recipeVersion": 1
+    "recipe": "abilities/plugins/excalidraw/scripts/build-excalidraw-web.mjs",
+    "recipeVersion": 2
   }
 }
