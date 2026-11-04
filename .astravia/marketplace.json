@@ -12220,7 +12220,7 @@
       "slug": "gridcraft",
       "name": "GridCraft",
       "description": "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12394,6 +12394,27 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-gridcraft/gridcraft-0.0.7.astraviapkg",
             "sha256": "bb57dd4907d2d92d070f81e3dc5638aacdeb4a0a3266d3206e6ca8bf3012b221"
           }
+        },
+        {
+          "version": "0.0.8",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "storage.read",
+            "storage.write",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-gridcraft/gridcraft-0.0.8.astraviapkg",
+            "sha256": "02335f2ed14e91d4c36732addf17cf79196f248484ff865ee719fd285aa6d445"
+          }
         }
       ]
     },
@@ -12402,7 +12423,7 @@
       "slug": "wordcraft",
       "name": "WordCraft",
       "description": "Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping.",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12575,6 +12596,27 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-wordcraft/wordcraft-0.0.7.astraviapkg",
             "sha256": "e493b0a9c99b715ab4f48777b8723b6ef15e94722f94d5bc706c9a83afc067e1"
+          }
+        },
+        {
+          "version": "0.0.8",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "storage.read",
+            "storage.write",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-wordcraft/wordcraft-0.0.8.astraviapkg",
+            "sha256": "14ead4382f2e46efc3f1db77e05429cc8bb0c691aaee5ec099be31ccf3bd02fc"
           }
         }
       ]
@@ -13089,5 +13131,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.04-2"
+  "marketplaceVersion": "2026.11.04-3"
 }
