@@ -25,23 +25,80 @@
  */
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { cpSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGINS = join(ROOT, "abilities/plugins");
 
+/**
+ * Environment every child build sees. `~/.cargo/bin` is prepended once rustup has run, so the
+ * recipe commands resolve even though no shell profile was re-sourced.
+ */
+let BASE_ENV = process.env;
+
+function hasCommand(command) {
+  return spawnSync("sh", ["-c", `command -v ${command} >/dev/null 2>&1`], { stdio: "ignore" }).status === 0;
+}
+
+function step(title) {
+  process.stdout.write(`\n== ${title}\n`);
+}
+
+/**
+ * The publishing workflow installs nothing for Rust: it was written for a JavaScript-only build and
+ * is deliberately left alone. So this script provisions what upstream's recipe needs, once per run,
+ * and only when the tool is actually missing (a developer machine or a warm runner skips all of it).
+ *
+ * `wasm-bindgen` is needed by the three `cargo xtask web` apps; the eleven trunk apps get the
+ * equivalent from trunk's own bundle, so that install is skipped for them.
+ */
+function ensureToolchain({ needsWasmBindgen }) {
+  const missing = [];
+  if (!hasCommand("cargo")) missing.push("cargo");
+  if (!hasCommand("trunk")) missing.push("trunk");
+  if (!hasCommand("wasm-opt")) missing.push("wasm-opt");
+  if (needsWasmBindgen && !hasCommand("wasm-bindgen")) missing.push("wasm-bindgen");
+  if (missing.length === 0) return;
+
+  step(`toolchain: installing ${missing.join(", ")}`);
+
+  if (!hasCommand("cargo")) {
+    if (process.platform === "win32") throw new Error("install Rust from https://rustup.rs, then rerun");
+    run("sh", [
+      "-c",
+      "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable --target wasm32-unknown-unknown --no-modify-path",
+    ]);
+  } else {
+    run("rustup", ["target", "add", "wasm32-unknown-unknown"]);
+  }
+  BASE_ENV = { ...process.env, PATH: `${join(homedir(), ".cargo", "bin")}${process.platform === "win32" ? ";" : ":"}${process.env.PATH}` };
+
+  if (!hasCommand("trunk")) run("cargo", ["install", "trunk", "--locked"]);
+  // Every upstream `index.html` carries `data-wasm-opt="z"`, so trunk wants wasm-opt even when the
+  // build is not minified. Trunk can fetch its own copy; a package-managed one removes that step.
+  if (!hasCommand("wasm-opt")) {
+    if (process.platform === "darwin") run("brew", ["install", "binaryen"]);
+    else if (hasCommand("apt-get")) run("sh", ["-c", "sudo apt-get update -qq && sudo apt-get install -y binaryen"]);
+    else throw new Error("install binaryen (wasm-opt) from https://github.com/WebAssembly/binaryen/releases, then rerun");
+  }
+  // `cargo xtask web` calls the bindgen CLI directly, and the crate refuses a version mismatch.
+  if (needsWasmBindgen && !hasCommand("wasm-bindgen")) run("cargo", ["install", "wasm-bindgen-cli", "--version", "0.2.129", "--locked"]);
+}
+
 function parseArgs(argv) {
-  const options = { slugs: [], sourceRoot: process.env.CRAFT_SOURCE_ROOT || "", all: false, jobs: 1 };
+  const options = { slugs: [], sourceRoot: process.env.CRAFT_SOURCE_ROOT || "", all: false, jobs: 1, ifMissing: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--all") options.all = true;
     else if (arg === "--slug") options.slugs.push(argv[++i]);
     else if (arg === "--source-root") options.sourceRoot = argv[++i];
     else if (arg === "--jobs") options.jobs = Number(argv[++i]) || 1;
+    else if (arg === "--if-missing") options.ifMissing = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
   if (!options.all && options.slugs.length === 0) throw new Error("pass --slug <slug> or --all");
@@ -61,7 +118,7 @@ function pluginsWithSites() {
 function run(command, args, options) {
   const printable = [command, ...args].join(" ");
   process.stdout.write(`  $ ${printable}\n`);
-  execFileSync(command, args, { stdio: "inherit", ...options });
+  execFileSync(command, args, { stdio: "inherit", env: BASE_ENV, ...options });
 }
 
 function capture(command, args, options) {
@@ -260,12 +317,33 @@ function buildOne(slug, options) {
 
 function main() {
   const options = parseArgs(process.argv.slice(2));
-  const sourceRoot = resolve(
-    options.sourceRoot || join(ROOT, "..", "craft", "code-clone"),
-  );
-  const slugs = options.all ? pluginsWithSites() : options.slugs;
+  // A runner has no checkout of the upstream repositories; `RUNNER_TEMP` is the one directory
+  // guaranteed to exist, be writable and be discarded after the job.
+  const fallbackRoot = process.env.RUNNER_TEMP
+    ? join(process.env.RUNNER_TEMP, "craft-src")
+    : join(ROOT, "..", "craft", "code-clone");
+  const sourceRoot = resolve(options.sourceRoot || fallbackRoot);
+  let slugs = options.all ? pluginsWithSites() : options.slugs;
   const unknown = slugs.filter((slug) => !existsSync(join(PLUGINS, slug, "payload/manifest.json")));
   if (unknown.length > 0) throw new Error(`no provenance manifest for: ${unknown.join(", ")}`);
+
+  // `--if-missing` is what the package build passes: a site that is already on disk is the same
+  // site this pin would produce, and rebuilding it would add half an hour per app for nothing.
+  if (options.ifMissing) {
+    const present = slugs.filter((slug) => {
+      const manifest = JSON.parse(readFileSync(join(PLUGINS, slug, "payload/manifest.json"), "utf8"));
+      return existsSync(join(PLUGINS, slug, manifest.site || "web", "index.html"));
+    });
+    if (present.length > 0) process.stdout.write(`already built, skipping: ${present.join(", ")}\n`);
+    slugs = slugs.filter((slug) => !present.includes(slug));
+    if (slugs.length === 0) return;
+  }
+
+  const needsWasmBindgen = slugs.some((slug) => {
+    const manifest = JSON.parse(readFileSync(join(PLUGINS, slug, "payload/manifest.json"), "utf8"));
+    return (manifest.build?.recipe ?? "trunk") === "xtask";
+  });
+  ensureToolchain({ needsWasmBindgen });
 
   process.stdout.write(
     `building ${slugs.length} site(s) from ${sourceRoot}\n` +

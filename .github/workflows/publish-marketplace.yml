@@ -13,91 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # 每支 craft 插件的编辑器就是上游那个 web 应用本身：由 CI 用 `payload/manifest.json` 钉住的 commit
-  # 跑上游自己的构建配方（多数 `trunk build --release`，见 docs/adr/*/craft-0011-the-site-ships-in-the-package.md），
-  # 产物放进 `abilities/plugins/<slug>/web/`（不进 git）。所以打包前必须先有这个 job。
-  #
-  # 一支一个 runner：十五支钉的上游版本各自带自己那套 egui/wgpu 依赖，串行跑等于十五次近乎全量重编；
-  # 并行之后墙钟时间就是最慢那一支，而不是十五支之和。
-  sites:
-    if: github.ref == 'refs/heads/main'
-    strategy:
-      fail-fast: false
-      matrix:
-        slug:
-          - cadcraft
-          - craft-anything
-          - deckcraft
-          - designcraft
-          - effectcraft
-          - figcraft
-          - filmcraft
-          - gridcraft
-          - lightcraft
-          - materialcraft
-          - pdfcraft
-          - photocraft
-          - texturecraft
-          - vectorcraft
-          - wordcraft
-    runs-on: ubuntu-24.04
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22.21.1
-      # 上游没有 rust-toolchain.toml，靠 Cargo.toml 的 rust-version（当前 1.95 / edition 2024）。
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: trunk
-      # 上游每个 web crate 的 index.html 都写了 `data-wasm-opt="z"`，缺 wasm-opt 时 trunk 会尝试自行下载，
-      # 一旦下载不成就直接报错；装上 binaryen 让这一步确定可行。
-      - name: Install wasm-opt (every upstream web crate asks for it)
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y binaryen
-      # effectcraft / filmcraft / lightcraft 走上游的 `cargo xtask web`，它自己调 wasm-bindgen CLI，
-      # 三个仓库都钉 0.2.129；trunk 的自动下载覆盖不到这条路径。
-      - name: Install the wasm-bindgen CLI upstream's xtask recipe calls
-        if: contains(fromJSON('["effectcraft","filmcraft","lightcraft"]'), matrix.slug)
-        run: cargo install wasm-bindgen-cli --version 0.2.129 --locked
-      # 只为 registry 建缓存：target 目录一支一份、体积以 GB 计，超出缓存配额只会把 job 拖红。
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: craft-web-registry-${{ hashFiles('abilities/plugins/*/payload/manifest.json') }}
-          restore-keys: craft-web-registry-
-      - name: Build ${{ matrix.slug }} from its pinned upstream commit
-        env:
-          CRAFT_SOURCE_ROOT: ${{ runner.temp }}/craft-src
-          CARGO_TARGET_DIR: ${{ runner.temp }}/craft-target
-        run: |
-          node scripts/build-craft-web.mjs --slug ${{ matrix.slug }}
-          df -h / /tmp
-          du -sh "$CARGO_TARGET_DIR" || true
-      # 一支一个 tar：artifact 之间不能合并目录，包在 tar 里才能保住 <slug>/web/… 这条路径。
-      - name: Pack the built site
-        run: |
-          tar -cf "$RUNNER_TEMP/craft-site-${{ matrix.slug }}.tar" -C "abilities/plugins/${{ matrix.slug }}" web
-          ls -lh "$RUNNER_TEMP/craft-site-${{ matrix.slug }}.tar"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: craft-site-${{ matrix.slug }}
-          path: ${{ runner.temp }}/craft-site-${{ matrix.slug }}.tar
-          if-no-files-found: error
-
   build:
     if: github.ref == 'refs/heads/main'
-    needs: sites
     runs-on: ubuntu-24.04
     outputs:
       tooling: ${{ steps.tooling.outputs.commit }}
@@ -109,22 +26,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22.21.1
-      # 站点 artifact 一支一个 tar，tar 里的结构是 web/…；解到 abilities/plugins/<slug> 才对上
-      # scripts/stage-plugin-release.py 的 RUNTIME_DIRS（web）。
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: craft-site-*
-          path: ${{ runner.temp }}/craft-sites
-          merge-multiple: true
-      - name: Unpack every craft site into its plugin directory
-        run: |
-          for f in "$RUNNER_TEMP"/craft-sites/craft-site-*.tar; do
-            slug="$(basename "$f" .tar)"
-            slug="${slug#craft-site-}"
-            mkdir -p "abilities/plugins/$slug"
-            tar -xf "$f" -C "abilities/plugins/$slug"
-            echo "$slug: $(du -sh "abilities/plugins/$slug/web" | cut -f1)"
-          done
       - run: node scripts/marketplace.mjs check
       - name: Resolve publication tool revision
         id: tooling
