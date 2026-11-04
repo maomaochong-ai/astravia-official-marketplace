@@ -1,7 +1,7 @@
 {
   "plugin.name": "VectorCraft",
   "tab.label": "VectorCraft",
-  "plugin.description": "用图元画矢量图形：线条、矩形、椭圆组合，导出成图。",
+  "plugin.description": "在 Astravia 里画矢量、改路径：上游原版 VectorCraft 插画应用，贝塞尔曲线、填充与 SVG 输出。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

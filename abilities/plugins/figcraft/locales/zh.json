@@ -1,7 +1,7 @@
 {
-  "plugin.name": "Figcraft",
-  "tab.label": "Figcraft",
-  "plugin.description": "画界面草图：屏幕、面板、标签，导出 PNG 或 JSON。",
+  "plugin.name": "FigCraft",
+  "tab.label": "FigCraft",
+  "plugin.description": "在 Astravia 里做界面设计与原型——上游 FigCraft 编辑器，带画框、自动布局、组件与变体、变量与可点击原型。",
   "tool.open": "打开编辑器",
   "tool.status": "编辑器状态",
   "tool.act": "操作编辑器",

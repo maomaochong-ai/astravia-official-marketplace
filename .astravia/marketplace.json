@@ -9887,8 +9887,8 @@
       "type": "plugin",
       "slug": "photocraft",
       "name": "Photocraft",
-      "description": "Compose and annotate images in Astravia — crops, colour blocks, type and PNG export on a canvas the conversation can drive.",
-      "version": "0.0.13",
+      "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, driven from the conversation.",
+      "version": "0.0.14",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -9898,19 +9898,22 @@
         "en": "Design"
       },
       "tags": [
-        "image",
-        "annotation",
-        "canvas"
+        "image-editing",
+        "photoshop",
+        "psd",
+        "layers",
+        "design"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "Photocraft",
-            "description": "在 Astravia 里给图片做构图与标注：裁切、色块、文字、导出 PNG，画布同样可以由对话驱动。",
+            "description": "在 Astravia 里编辑图片：图层、蒙版、文字与真实的 PSD 文件，用的是上游原版 Photocraft 编辑器；界面默认中文，也可以在对话里让它替你动手。",
             "tags": [
-              "image",
-              "annotation",
-              "canvas"
+              "图片编辑",
+              "PSD",
+              "图层",
+              "设计"
             ]
           }
         }
@@ -10139,6 +10142,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.13.astraviapkg",
             "sha256": "29d09f5257c135e1eb1b09044c315899f7aac7045820ee4d9966d9fd3bbeb7bc"
           }
+        },
+        {
+          "version": "0.0.14",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.14.astraviapkg",
+            "sha256": "cdbac75c7412b366034556a93be7c807e7876ba59d0203958aa069270a520de9"
+          }
         }
       ]
     },
@@ -10146,8 +10168,8 @@
       "type": "plugin",
       "slug": "designcraft",
       "name": "DesignCraft",
-      "description": "Lay out pages, frames and text on a canvas inside Astravia — snap, align, and export PNG or JSON, with the agent driving the same document.",
-      "version": "0.0.8",
+      "description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
+      "version": "0.0.9",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10157,19 +10179,22 @@
         "en": "Design"
       },
       "tags": [
-        "layout",
-        "page-design",
-        "canvas"
+        "page-layout",
+        "desktop-publishing",
+        "indesign",
+        "idml",
+        "pdf"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "DesignCraft",
-            "description": "在 Astravia 的画布上排页面：方框、图片、文字、对齐吸附，导出 PNG 或 JSON；对话里也能让它动手。",
+            "description": "在 Astravia 里做版面：页面、对页、串接文本框，用的是上游原版 DesignCraft 出版编辑器，可导入 IDML，导出 PDF、PNG 与 EPUB。",
             "tags": [
-              "layout",
-              "page-design",
-              "canvas"
+              "排版",
+              "出版",
+              "IDML",
+              "PDF"
             ]
           }
         }
@@ -10343,6 +10368,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-designcraft/designcraft-0.0.8.astraviapkg",
             "sha256": "3c59acf31f55423120b484a967e2b3e3d22d3723711b7bfa1edf660c569940b1"
           }
+        },
+        {
+          "version": "0.0.9",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-designcraft/designcraft-0.0.9.astraviapkg",
+            "sha256": "b2b0a49dbb415b80838da13641c62c2caf19732ae4839b608461cd7c83e25735"
+          }
         }
       ]
     },
@@ -10350,8 +10394,8 @@
       "type": "plugin",
       "slug": "effectcraft",
       "name": "EffectCraft",
-      "description": "Sketch effect beats as layered shapes and type on a canvas, ready to export or hand to the agent.",
-      "version": "0.0.9",
+      "description": "Build motion-graphics compositions inside Astravia — the upstream EffectCraft compositor with keyframes, 3D camera and lights, 308 effects and a render queue.",
+      "version": "0.0.10",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10361,19 +10405,22 @@
         "en": "Media"
       },
       "tags": [
-        "effects",
-        "motion-design",
-        "canvas"
+        "motion-graphics",
+        "vfx",
+        "compositing",
+        "animation",
+        "after-effects"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "EffectCraft",
-            "description": "画特效节拍：分层形状与文字铺在画布上，可导出，也可交给 Agent 继续改。",
+            "description": "在 Astravia 里做动态图形：关键帧、3D 相机与灯光、308 个效果、渲染队列，用的是上游原版 EffectCraft 合成器。",
             "tags": [
-              "effects",
-              "motion-design",
-              "canvas"
+              "动态图形",
+              "视觉特效",
+              "合成",
+              "动画"
             ]
           }
         }
@@ -10566,6 +10613,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-effectcraft/effectcraft-0.0.9.astraviapkg",
             "sha256": "3227be732f1cd8aedf33210d89fbe2e6deaccdcc2204e13c1980dc41cb88dd13"
           }
+        },
+        {
+          "version": "0.0.10",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-effectcraft/effectcraft-0.0.10.astraviapkg",
+            "sha256": "247299ffd3446a618f945d49f89752c0ec206cc5fecde20ac58347bd105aa667"
+          }
         }
       ]
     },
@@ -10573,8 +10639,8 @@
       "type": "plugin",
       "slug": "filmcraft",
       "name": "FilmCraft",
-      "description": "Storyboard a scene on a dark stage: shot frames, captions and notes, exported as PNG or JSON.",
-      "version": "0.0.8",
+      "description": "Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.",
+      "version": "0.0.9",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10584,19 +10650,22 @@
         "en": "Media"
       },
       "tags": [
-        "storyboard",
-        "film",
-        "stage"
+        "video-editing",
+        "nle",
+        "timeline",
+        "color",
+        "audio"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "FilmCraft",
-            "description": "在深色舞台上排分镜：镜头格、说明文字、备注，导出 PNG 或 JSON。",
+            "description": "在 Astravia 里剪片子：真实时间线、调色与声音，用的是上游原版 FilmCraft 剪辑器，没有 WebGPU 的机器会自动退回 WebGL。",
             "tags": [
-              "storyboard",
-              "film",
-              "stage"
+              "视频剪辑",
+              "时间线",
+              "调色",
+              "声音"
             ]
           }
         }
@@ -10770,6 +10839,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-filmcraft/filmcraft-0.0.8.astraviapkg",
             "sha256": "d83abc9c4a612a1068332ab29f99d9d75f71b574dcc2ec8ff69e0161745f2354"
           }
+        },
+        {
+          "version": "0.0.9",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-filmcraft/filmcraft-0.0.9.astraviapkg",
+            "sha256": "f5c2b44774c07a172c7191a309d1228ef363cbc70bc30422b348aa2c1e59d5c8"
+          }
         }
       ]
     },
@@ -10777,8 +10865,8 @@
       "type": "plugin",
       "slug": "lightcraft",
       "name": "LightCraft",
-      "description": "Plan a lighting setup: key, fill and rim blocks with labels on a canvas, exported as PNG.",
-      "version": "0.0.8",
+      "description": "Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.",
+      "version": "0.0.9",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10788,19 +10876,22 @@
         "en": "Media"
       },
       "tags": [
-        "lighting",
-        "photography",
-        "canvas"
+        "photo-library",
+        "raw",
+        "lightroom",
+        "develop",
+        "photography"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "LightCraft",
-            "description": "排灯光方案：主光、补光、轮廓光用色块标出来，加文字说明并导出。",
+            "description": "在 Astravia 里管理照片库、显影 RAW：上游原版 LightCraft 的目录与暗房，支持相机 RAW 与 DNG。",
             "tags": [
-              "lighting",
-              "photography",
-              "canvas"
+              "照片库",
+              "RAW",
+              "显影",
+              "摄影"
             ]
           }
         }
@@ -10974,6 +11065,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-lightcraft/lightcraft-0.0.8.astraviapkg",
             "sha256": "efcf310a67bfc19c99dbd13c3fdf2ed864075db27e88ed4faee2e166ee893aea"
           }
+        },
+        {
+          "version": "0.0.9",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-lightcraft/lightcraft-0.0.9.astraviapkg",
+            "sha256": "85501adcdf5de458b91a2ca177d8046683f3f854ed2502458c87003b1e958eb9"
+          }
         }
       ]
     },
@@ -10981,8 +11091,8 @@
       "type": "plugin",
       "slug": "pdfcraft",
       "name": "PDFCraft",
-      "description": "Lay out a document on an A4-like page — text blocks, rules and images — and export PNG or the document JSON.",
-      "version": "0.0.9",
+      "description": "Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.",
+      "version": "0.0.10",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10992,19 +11102,23 @@
         "en": "Documents"
       },
       "tags": [
-        "document",
-        "layout",
-        "print"
+        "pdf",
+        "reader",
+        "merge",
+        "split",
+        "encryption"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "PDFCraft",
-            "description": "在接近 A4 的页面上排文档：文本块、分隔线、图片，导出 PNG 或文档 JSON。",
+            "description": "在 Astravia 里读 PDF、重排页面：上游原版 PDFCraft 工作台，可合并、拆分、旋转与加密，不需要账号，也不上报数据。",
             "tags": [
-              "document",
-              "layout",
-              "print"
+              "PDF",
+              "阅读器",
+              "合并",
+              "拆分",
+              "加密"
             ]
           }
         }
@@ -11197,6 +11311,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-pdfcraft/pdfcraft-0.0.9.astraviapkg",
             "sha256": "cafb1ec2b8090cf83278118fd0aba1add3f29934203a7d8c2c137f55011ec66d"
           }
+        },
+        {
+          "version": "0.0.10",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-pdfcraft/pdfcraft-0.0.10.astraviapkg",
+            "sha256": "a53f94d9b8a6f10ac11447e25608ae45db5d00057eb7ff5f382cd84a6823b10f"
+          }
         }
       ]
     },
@@ -11204,8 +11337,8 @@
       "type": "plugin",
       "slug": "vectorcraft",
       "name": "VectorCraft",
-      "description": "Build vector-style graphics from primitives — lines, boxes and ellipses — and export the result.",
-      "version": "0.0.9",
+      "description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
+      "version": "0.0.10",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11216,18 +11349,21 @@
       },
       "tags": [
         "vector",
-        "graphics",
-        "canvas"
+        "illustration",
+        "svg",
+        "bezier",
+        "design"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "VectorCraft",
-            "description": "用图元画矢量图形：线条、矩形、椭圆组合，导出成图。",
+            "description": "在 Astravia 里画矢量、改路径：上游原版 VectorCraft 插画应用，贝塞尔曲线、填充与 SVG 输出。",
             "tags": [
-              "vector",
-              "graphics",
-              "canvas"
+              "矢量",
+              "插画",
+              "SVG",
+              "贝塞尔"
             ]
           }
         }
@@ -11420,6 +11556,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-vectorcraft/vectorcraft-0.0.9.astraviapkg",
             "sha256": "f23b68779a844ef8444c9c76cf6da7afd8deb0e22a69c23b4327a2ce29fef7b1"
           }
+        },
+        {
+          "version": "0.0.10",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-vectorcraft/vectorcraft-0.0.10.astraviapkg",
+            "sha256": "96073e155526839e3d3f6f5bb33523ae27e5595dc55888914256b985a036eb65"
+          }
         }
       ]
     },
@@ -11427,8 +11582,8 @@
       "type": "plugin",
       "slug": "cadcraft",
       "name": "CADCraft",
-      "description": "Draft a plan view on a ruled sheet: walls, openings and dimensions, exported as PNG or JSON.",
-      "version": "0.0.4",
+      "description": "Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files.",
+      "version": "0.0.5",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11439,18 +11594,22 @@
       },
       "tags": [
         "cad",
-        "floor-plan",
+        "drawing",
+        "dxf",
+        "dwg",
         "drafting"
       ],
       "detail": {
         "i18n": {
           "zh": {
-            "name": "CadCraft",
-            "description": "在网格版面上画平面图：墙体、开口、标注，导出 PNG 或 JSON。",
+            "name": "CADCraft",
+            "description": "在 Astravia 里画图、改图——上游 CADCraft 编辑器，带真正的命令行、对象捕捉、图层、标注、填充、块，以及 DXF 与 DWG 文件。",
             "tags": [
-              "cad",
-              "floor-plan",
-              "drafting"
+              "制图",
+              "DXF",
+              "DWG",
+              "标注",
+              "图层"
             ]
           }
         }
@@ -11540,6 +11699,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-cadcraft/cadcraft-0.0.4.astraviapkg",
             "sha256": "e495ebd16d123b04503aed9cbe3813bcdfcd9c69b2af68e175c726d1f794ad2b"
           }
+        },
+        {
+          "version": "0.0.5",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-cadcraft/cadcraft-0.0.5.astraviapkg",
+            "sha256": "eab23c22251843f58e8ed8bc706d5cfdf40a207831f4770e0a19855cce056a78"
+          }
         }
       ]
     },
@@ -11547,8 +11725,8 @@
       "type": "plugin",
       "slug": "deckcraft",
       "name": "DeckCraft",
-      "description": "Build slide layouts on a 16:9 stage — frames, titles and notes — and export any board as PNG.",
-      "version": "0.0.4",
+      "description": "Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export.",
+      "version": "0.0.5",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11560,17 +11738,20 @@
       "tags": [
         "slides",
         "presentation",
-        "stage"
+        "pptx",
+        "deck",
+        "charts"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "DeckCraft",
-            "description": "在 16:9 舞台上排幻灯片：框、标题、备注，导出 PNG。",
+            "description": "在 Astravia 里做演示文稿——上游 DeckCraft 编辑器，带主题、版式、形状、图表、转场动画与 PowerPoint 导出。",
             "tags": [
-              "slides",
-              "presentation",
-              "stage"
+              "演示文稿",
+              "幻灯片",
+              "PPTX",
+              "图表"
             ]
           }
         }
@@ -11660,6 +11841,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-deckcraft/deckcraft-0.0.4.astraviapkg",
             "sha256": "f1ebd8f0cb40c6ea0975995c0781853cc2050fad31b91ab2720ce691e12b5516"
           }
+        },
+        {
+          "version": "0.0.5",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-deckcraft/deckcraft-0.0.5.astraviapkg",
+            "sha256": "2e84fc0e28a18db72dfabb041f587aacb6b660e835168b6f0559472c7dcb9319"
+          }
         }
       ]
     },
@@ -11667,8 +11867,8 @@
       "type": "plugin",
       "slug": "figcraft",
       "name": "FigCraft",
-      "description": "Sketch interface frames: screens, panels and labels on a canvas, exported as PNG or JSON.",
-      "version": "0.0.4",
+      "description": "Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes.",
+      "version": "0.0.5",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11678,19 +11878,22 @@
         "en": "Design"
       },
       "tags": [
-        "ui",
-        "wireframe",
-        "canvas"
+        "ui-design",
+        "prototype",
+        "components",
+        "design-system",
+        "figma"
       ],
       "detail": {
         "i18n": {
           "zh": {
-            "name": "Figcraft",
-            "description": "画界面草图：屏幕、面板、标签，导出 PNG 或 JSON。",
+            "name": "FigCraft",
+            "description": "在 Astravia 里做界面设计与原型——上游 FigCraft 编辑器，带画框、自动布局、组件与变体、变量与可点击原型。",
             "tags": [
-              "ui",
-              "wireframe",
-              "canvas"
+              "界面设计",
+              "原型",
+              "组件",
+              "设计系统"
             ]
           }
         }
@@ -11780,6 +11983,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-figcraft/figcraft-0.0.4.astraviapkg",
             "sha256": "75111239632fdb85fbe7d5456045fb6b2669c3e3d445cc3b2231183b6613bdb7"
           }
+        },
+        {
+          "version": "0.0.5",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-figcraft/figcraft-0.0.5.astraviapkg",
+            "sha256": "65ebf1116fd415d66f7292f479a941d8a10fff805555c9684e08c081dc17028e"
+          }
         }
       ]
     },
@@ -11787,8 +12009,8 @@
       "type": "plugin",
       "slug": "gridcraft",
       "name": "GridCraft",
-      "description": "Rule a sheet and fill it in: rows, columns, cell blocks and totals, exported as PNG or JSON.",
-      "version": "0.0.5",
+      "description": "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.",
+      "version": "0.0.6",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11798,19 +12020,22 @@
         "en": "Documents"
       },
       "tags": [
-        "table",
         "spreadsheet",
-        "sheet"
+        "xlsx",
+        "formula",
+        "pivot-table",
+        "charts"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "GridCraft",
-            "description": "排表格并填内容：行列、单元格块、合计，导出 PNG 或 JSON。",
+            "description": "在 Astravia 里处理表格——上游 GridCraft 编辑器，带公式、数字格式、图表、透视表与 .xlsx 往返。",
             "tags": [
-              "table",
-              "spreadsheet",
-              "sheet"
+              "电子表格",
+              "XLSX",
+              "公式",
+              "透视表"
             ]
           }
         }
@@ -11919,6 +12144,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-gridcraft/gridcraft-0.0.5.astraviapkg",
             "sha256": "727fdfe9b1ad8ddb26e24cc0b7f971736d83a7b69d124ff08de6d564309d8dc1"
           }
+        },
+        {
+          "version": "0.0.6",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-gridcraft/gridcraft-0.0.6.astraviapkg",
+            "sha256": "dcbe6771bcccca6089e0697689e0fbf82c95a31d23fbc5475177df94e562efdd"
+          }
         }
       ]
     },
@@ -11926,8 +12170,8 @@
       "type": "plugin",
       "slug": "wordcraft",
       "name": "WordCraft",
-      "description": "Write and arrange a long document: headings, paragraphs and images on a page, exported as PNG or JSON.",
-      "version": "0.0.5",
+      "description": "Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping.",
+      "version": "0.0.6",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11937,19 +12181,22 @@
         "en": "Documents"
       },
       "tags": [
-        "writing",
-        "document",
-        "long-form"
+        "word-processor",
+        "docx",
+        "documents",
+        "track-changes",
+        "styles"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "WordCraft",
-            "description": "写长文档并排版：标题、段落、插图，导出 PNG 或 JSON。",
+            "description": "在 Astravia 里写文档、改文档——上游 WordCraft 编辑器，带功能区、样式、表格、修订与 .docx 往返。",
             "tags": [
-              "writing",
-              "document",
-              "long-form"
+              "文字处理",
+              "DOCX",
+              "文档",
+              "修订"
             ]
           }
         }
@@ -12058,6 +12305,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-wordcraft/wordcraft-0.0.5.astraviapkg",
             "sha256": "d3cb8c16fee8cc17c3d83dcc8a3e5239ddffa2ff2c4b8b1e244954fd5406d82c"
           }
+        },
+        {
+          "version": "0.0.6",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-wordcraft/wordcraft-0.0.6.astraviapkg",
+            "sha256": "3c63b6524109fc3b7ff989f68d5526e50b50d87980cd6a0cf6bc260a4879aa1b"
+          }
         }
       ]
     },
@@ -12065,8 +12331,8 @@
       "type": "plugin",
       "slug": "texturecraft",
       "name": "TextureCraft",
-      "description": "Compose texture studies: tiled blocks, swatches and notes, exported as one board.",
-      "version": "0.0.4",
+      "description": "Paint 3D textures inside Astravia — the upstream TextureCraft editor, with layered PBR painting, bakes and smart materials.",
+      "version": "0.0.5",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12077,18 +12343,21 @@
       },
       "tags": [
         "texture",
-        "material",
-        "canvas"
+        "pbr",
+        "3d",
+        "painting",
+        "bake"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "TextureCraft",
-            "description": "做材质研究板：拼块、色卡、备注，整块导出。",
+            "description": "在 Astravia 里画 3D 贴图——上游 TextureCraft 编辑器，带分层 PBR 绘制、烘焙与智能材质。",
             "tags": [
-              "texture",
-              "material",
-              "canvas"
+              "贴图",
+              "PBR",
+              "3D 绘制",
+              "烘焙"
             ]
           }
         }
@@ -12178,6 +12447,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-texturecraft/texturecraft-0.0.4.astraviapkg",
             "sha256": "9e52760925be79904b2722c14de0876d7375fe517b093793329fdd2fcaea218b"
           }
+        },
+        {
+          "version": "0.0.5",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-texturecraft/texturecraft-0.0.5.astraviapkg",
+            "sha256": "7c8a30495d9ff67ed8408c410ce6a42728050aa799666db9745468010f6b4678"
+          }
         }
       ]
     },
@@ -12185,8 +12473,8 @@
       "type": "plugin",
       "slug": "materialcraft",
       "name": "MaterialCraft",
-      "description": "Collect material references on one board: swatches, labels and sample blocks, exported as PNG.",
-      "version": "0.0.4",
+      "description": "Build procedural materials node by node inside Astravia — the upstream MaterialCraft editor, from a first graph to a reusable material.",
+      "version": "0.0.5",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12197,18 +12485,21 @@
       },
       "tags": [
         "material",
-        "reference",
-        "canvas"
+        "procedural",
+        "node-graph",
+        "shader",
+        "3d"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "MaterialCraft",
-            "description": "把材质参考收在一张板上：色卡、标签、样块，导出 PNG。",
+            "description": "在 Astravia 里用节点搭程序化材质——上游 MaterialCraft 编辑器，从第一张节点图到可复用材质。",
             "tags": [
-              "material",
-              "reference",
-              "canvas"
+              "材质",
+              "程序化",
+              "节点图",
+              "着色"
             ]
           }
         }
@@ -12298,6 +12589,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-materialcraft/materialcraft-0.0.4.astraviapkg",
             "sha256": "20e80082ae1302c81b0487f300bc4fc8f3f1fedd0baa8bddd83f0e06ef720e67"
           }
+        },
+        {
+          "version": "0.0.5",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-materialcraft/materialcraft-0.0.5.astraviapkg",
+            "sha256": "b9dc670d461fe2260a10a1f98c2f54fe3c0147142108e6202a3735f3a412709a"
+          }
         }
       ]
     },
@@ -12305,8 +12615,8 @@
       "type": "plugin",
       "slug": "craft-anything",
       "name": "Craft Anything",
-      "description": "A general-purpose board: shapes, text and images with snapping, undo and PNG or JSON export.",
-      "version": "0.0.5",
+      "description": "Take apart any website, app or game and rebuild it — Craft Anything studies the original and drives an AI agent through the reconstruction.",
+      "version": "0.0.6",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12316,19 +12626,22 @@
         "en": "Development"
       },
       "tags": [
-        "canvas",
-        "general",
-        "design"
+        "reverse-engineering",
+        "rebuild",
+        "study",
+        "agent",
+        "ui"
       ],
       "detail": {
         "i18n": {
           "zh": {
             "name": "Craft Anything",
-            "description": "一块通用版面：形状、文字、图片，带吸附与撤销，导出 PNG 或 JSON。",
+            "description": "拆解任意网站、应用或游戏并重建——Craft Anything 先研究原物，再驱动 AI 智能体按步骤复刻。",
             "tags": [
-              "canvas",
-              "general",
-              "design"
+              "拆解复刻",
+              "研究原物",
+              "智能体",
+              "界面"
             ]
           }
         }
@@ -12437,47 +12750,9 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-craft-anything/craft-anything-0.0.5.astraviapkg",
             "sha256": "91b78a741fc45276d3f22fbc7bdc884f429133cbe7dabd7d149c6ee7351492fd"
           }
-        }
-      ]
-    },
-    {
-      "type": "plugin",
-      "slug": "artcraft",
-      "name": "ArtCraft",
-      "description": "Build illustration boards in Astravia — shapes, colour blocks and type on a canvas the agent can edit with you.",
-      "version": "0.0.1",
-      "configVersion": 1,
-      "license": "MIT OR Apache-2.0",
-      "author": "Astravia",
-      "category": "Design",
-      "categoryI18n": {
-        "zh": "设计",
-        "en": "Design"
-      },
-      "tags": [
-        "illustration",
-        "drawing",
-        "canvas"
-      ],
-      "detail": {
-        "i18n": {
-          "zh": {
-            "name": "ArtCraft",
-            "description": "在 Astravia 里搭插画版面：形状、色块、文字，Agent 可以和你编同一份文档。",
-            "tags": [
-              "illustration",
-              "drawing",
-              "canvas"
-            ]
-          }
-        }
-      },
-      "source": {
-        "path": "abilities/plugins/artcraft"
-      },
-      "releases": [
+        },
         {
-          "version": "0.0.1",
+          "version": "0.0.6",
           "minAppVersion": "0.5.59",
           "pluginApiVersion": "^2.4.0",
           "permissions": [
@@ -12485,21 +12760,19 @@
             "fs.read",
             "fs.write",
             "workspace.read",
-            "storage.read",
-            "storage.write",
             "agent.tools.register",
             "agent.toolHandler.execute",
             "agent.skills.control"
           ],
           "commands": [],
           "artifact": {
-            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-artcraft/artcraft-0.0.1.astraviapkg",
-            "sha256": "188fd36810a5c46620bb5fbbf28a6880a3c09e5d2a9bcf6ec0a21860f9081861"
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-craft-anything/craft-anything-0.0.6.astraviapkg",
+            "sha256": "7c69cc0bb292830b639305d98c82d915b4bbcdaa1848363b0c5ab04d77df1ee5"
           }
         }
       ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.03-9"
+  "marketplaceVersion": "2026.11.04-1"
 }

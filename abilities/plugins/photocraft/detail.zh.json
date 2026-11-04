@@ -3,73 +3,95 @@
   "blocks": [
     {
       "type": "hero",
-      "eyebrow": "Astravia 画布插件",
-      "title": "Photocraft：在 Astravia 里直接画，也能交给 Agent 改",
-      "description": "在 Astravia 里给图片做构图与标注：裁切、色块、文字、导出 PNG，画布同样可以由对话驱动。",
+      "title": "在活动面板里用 Photocraft",
+      "eyebrow": "图片编辑",
+      "description": "图层、蒙版、文字与真实的 PSD 文件——上游原版 Photocraft 编辑器跑在 Astravia 里，在你自己的机器上，打开的就是工作区里选中的那个文件。",
       "badges": [
-        "默认中文",
-        "自动存档",
-        "对话可驱动"
-      ]
-    },
-    {
-      "type": "feature-grid",
-      "items": [
-        {
-          "title": "五种对象，一块画布",
-          "description": "矩形、椭圆、直线、文字、图片，都在同一份文档里，顺序就是层次。",
-          "icon": "solar:layers-minimalistic-bold"
-        },
-        {
-          "title": "吸附与对齐",
-          "description": "拖动时贴参考线，选中多个对象可以左对齐、居中、等距分布。",
-          "icon": "solar:ruler-cross-pen-bold"
-        },
-        {
-          "title": "导出 PNG 或文档 JSON",
-          "description": "图片按当前画布出图，文档存成 JSON 可以再打开接着改。",
-          "icon": "solar:export-bold"
-        },
-        {
-          "title": "对话能直接动手",
-          "description": "插图形、改属性、对齐、存图都是语义操作，不用靠点坐标。",
-          "icon": "solar:magic-stick-3-bold"
-        }
+        "不改上游",
+        "本地运行",
+        "PSD"
       ]
     },
     {
       "type": "showcase",
       "showcase": {
-        "template": "chat-thread",
-        "user_prompt": "用 Photocraft 开一块画布，画三个标题块，左对齐，然后导出 PNG。",
-        "assistant_reply": "已经建好三个矩形并设为等宽、顶部对齐；导出用当前画布出图。要不要顺手把颜色换成主题蓝？"
+        "template": "chat-over-canvas",
+        "canvas": "generic",
+        "user_prompt": "打开 Photocraft，用 @素材/封面.png 把背景换成渐变蓝色。",
+        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
       }
     },
     {
-      "type": "steps",
+      "type": "feature-grid",
+      "title": "你能得到什么",
       "items": [
         {
-          "title": "打开 {name} 标签",
-          "description": "在活动标签里新建一块画布，默认就是中文界面。"
+          "title": "原版编辑器，一个字节都不改",
+          "description": "面板把 Photocraft 官方 web 构建逐字节地送进标签页里的 iframe；上游的 wasm 与 JavaScript 不做任何补丁，我们自己只在其外围加了两个很薄的文件。",
+          "icon": "solar:gallery-wide-linear"
         },
         {
-          "title": "从左侧工具轨选对象",
-          "description": "拖一个矩形、椭圆或文字上去，右侧属性面板改颜色与尺寸。"
+          "title": "在工作区里打开与保存",
+          "description": "打开用的是你在资源管理器选中的文件，保存经 Astravia 写回原路径——字节落在项目里，而不是下载文件夹。",
+          "icon": "solar:folder-with-files-linear"
         },
         {
-          "title": "在对话里接着说",
-          "description": "「把三个块左对齐」「加一行标题」「导出 PNG」，Agent 和你编同一份文档。"
+          "title": "在对话里直接指挥它",
+          "description": "开编辑器、读画布、把一批指针与键盘动作一次做完、再读一次画布核对——五个 Agent 工具，每一个的结果都由运行中的页面回答。",
+          "icon": "solar:chat-round-linear"
         },
         {
-          "title": "需要文件时再导出",
-          "description": "自动存档留在插件里；PNG 与 JSON 由你选保存位置。"
+          "title": "在对话里驱动",
+          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "icon": "solar:cursor-bold"
+        }
+      ]
+    },
+    {
+      "type": "steps",
+      "title": "怎么开始",
+      "items": [
+        {
+          "title": "安装插件",
+          "description": "从市场添加即可。编辑器随插件一起安装，装好就能用，不需要再下载。"
+        },
+        {
+          "title": "打开 Photocraft 标签页",
+          "description": "打开后直接就是编辑器本身：没有准备页，也没有取包过程。"
+        },
+        {
+          "title": "在资源管理器选中一张图，再打开",
+          "description": "在编辑器里按「文件 → 打开」，它会用你选中的那个文件，而不是弹系统对话框。"
+        },
+        {
+          "title": "用「文件 → 保存」写回",
+          "description": "写回同一路径；「导出…」才是问你保存到哪里。"
         }
       ]
     },
     {
       "type": "callout",
+      "tone": "warning",
+      "content": "Photocraft 无法告诉面板文档有没有未保存的修改，所以重新载入标签页不会拦你。唯一的未保存提示在编辑器自己的标题栏上。"
+    },
+    {
+      "type": "callout",
       "tone": "info",
-      "content": "这是本插件自带的绘图内核，不下载也不加载任何外部应用；打开标签即用，关闭标签即停。"
+      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+    },
+    {
+      "type": "links",
+      "title": "出处",
+      "items": [
+        {
+          "label": "Photocraft 源码",
+          "href": "https://github.com/storytold/photocraft"
+        },
+        {
+          "label": "Photocraft 版本发布",
+          "href": "https://github.com/storytold/photocraft/releases"
+        }
+      ]
     }
   ]
 }

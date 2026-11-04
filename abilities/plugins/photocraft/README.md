@@ -1,42 +1,46 @@
 # Photocraft
 
-Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, also openable in a browser.
+Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, driven from the conversation.
 
-插件把上游 Photocraft 的**官方 web 构建**放进活动面板的一个 iframe 里跑：同一份 wasm、同一份
-JavaScript，没有分支、没有重新编译。插件自己只做上游不做的事——把文件供给进去、把面板和编辑器
-连起来、把这些能力交给 Agent。
+插件把上游 Photocraft 的 web 应用放进活动面板的一个 iframe 里跑：同一份 wasm、同一份 JavaScript，
+没有分支、没有重新编译，也没有我们另写的编辑器界面。站点就是上游为这一版发出来的
+`photocraft-web-0.19.0.zip`，打包前下载、校验 sha256 后原样装进包里——我们不重新编译它，也不改它一个字节。
 
-## 上游钉在哪个版本
+## 上游钉在哪个 commit
 
 | | |
 | --- | --- |
 | 上游仓库 | https://github.com/storytold/photocraft |
-| 发布的 web 包 | `photocraft-web-0.19.0.zip` |
-| 版本 | `0.19.0` |
-| 大小 | 13,433,636 B（13 MB） |
+| 制品 | `photocraft-web-0.19.0.zip` |
 | sha256 | `74047f06da706c5b7c9dee77e05379a0928c52b5a7ea1e821e55c69851b0bd01` |
+| commit | `b957878f3f4d80426cc4bf8d1db8774b57cc8af0` |
+| 上游版本 | `0.19.0` |
+| 站点 | 打包时下载，`web/` 不进 git |
 
-这些数字来自实际下载的发布包，不是从 README 抄的；`payload/manifest.json` 里的 `sha256`
-是唯一信任锚，下载来的包对不上就拒绝使用（ADR 0008）。
+`payload/manifest.json` 钉住上游的版本、commit、包名与摘要：打包前按 pin 下载那份 zip，下载内容的
+sha256 与上游同版 `SHA256SUMS.txt` 里那一行必须同时对上，然后剥掉外层目录放进 `abilities/plugins/photocraft/web/`。
+要跟进上游，就把 pin 换成新一版的资产与摘要。
 
 ## 一次打开会经过什么
 
-1. 插件起一个只监听 `127.0.0.1` 的服务（`server/hub.mjs`，由 `hub.src.mjs` 生成）。
-2. 服务从 0.19.0 的发布包里取 web 构建；已缓存且 sha256 对得上就直接用，否则下载一次。
-3. 下载期间标签页显示的是准备进度（应用名、一句说明、真实百分比），不是错误页；失败才展开诊断。
-4. 标签页的 iframe 指向这个服务；服务把 `index.html` 原样送出，只额外注入两个脚本：
-   语言预设（只有这个构建能画中文时才注入）和 `host-bridge.js`。
-5. 编辑器和面板之间只走 `postMessage`，消息前缀是 `craft:`。
+1. 面板从包里取 `web/index.html` 的**文本**。宿主给 `.html` 的 MIME 是 `application/octet-stream`，
+   把 iframe 直接导航过去只会下载文件，不会执行脚本。
+2. 在 `<head>` 前注入 `<base href>`——相对路径的 `./app.js` 与 `./*_bg.wasm` 才落在包里。
+3. 紧跟一段 `history.replaceState`：`about:srcdoc` 本身没有 URL，而上游用
+   `new URL("…_bg.wasm", location.href)` 找 wasm、用 `location.search` 读渲染降级标志。
+   垫上之后 `location.href` 就是真实的插件 URL，`location.search` 是 `?nosw&hl=zh` 这样的真参数。
+4. 宿主语言是中文、且这个构建允许时，注入界面语言种子。
+5. `</body>` 前内联 `host-bridge.js`。
+6. 拼好的文档交给 `srcdoc`。没有进程、没有端口、没有首次下载，也没有准备页。
+
+编辑器和面板之间只走 `postMessage`，消息前缀是 `craft:`。
 
 ## 界面语言
 
-这个构建自带中文字形，所以标签页会把宿主的界面语言作为 `hl` 传给服务：`hl=zh` 时服务在
-`<head>` 里把 `navigator.languages` 换成中文，应用启动就是中文界面。用户在应用内自己选过的
-语言不会被覆盖（服务只改浏览器环境，不写应用偏好）。
-
-为什么不能只写偏好：hub 端口每次不同，origin 随之变，localStorage 按 origin 隔离；这些上游构建
-本来就是每次启动重算语言。详见 [`docs/adr/photocraft/craft-0003`](../../../../docs/adr/photocraft/craft-0003-first-open-is-a-preparation-not-a-failure.md)。
-
+画布里的界面语言由上游构建自己决定：它有自己的中文语言表就跟着变，没有就还是英文。
+面板在宿主语言是中文时把 `navigator.language` / `navigator.languages` 换成中文，再交给上游；这只改“它读到的系统语言”，不替上游翻译，也不保证字形存在。
+外壳（标签标题、状态条、本页说明）是另一回事：`src/features/editor/strings.ts` 中英双语，跟随 Astravia 语言。
+边界与判据见 [`docs/adr/photocraft/craft-0007-chinese-comes-from-the-shell.md`](../../../../docs/adr/photocraft/craft-0007-chinese-comes-from-the-shell.md)。
 
 ## 文件怎么进、怎么出
 
@@ -49,17 +53,19 @@ JavaScript，没有分支、没有重新编译。插件自己只做上游不做�
 
 ```bash
 npm install
-npm run check    # tsc --noEmit + build-hub --check
-npm run build    # 重建 server/hub.mjs 并打包
+npm run check                                            # tsc --noEmit
+npm run build                                            # tsc --noEmit && vite build
+node ../../scripts/build-craft-web.mjs --slug photocraft        # 下载并校验上游站点（加 --if-missing 可跳过已就位的）
 ```
 
-`src/**`、`server/hub.src.mjs` 与 `scripts/build-hub.mjs` 在七支 craft 插件（含 photocraft）之间逐字节相同，
-唯一按应用不同的是 `src/app.config.ts`。这里就是源码：改共享行为要在七支上做同样的改动，
-`tests/craft-parity.test.mjs` 会在漏改时失败。见
+`src/**` 在十五支 craft 插件之间逐字节相同，唯一按应用不同的是 `src/app.config.ts`（还有
+`plugin.json`、`payload/manifest.json`、`locales/` 与展示层文件）。这里就是源码：改共享行为要在十五支上
+做同样的改动，`tests/craft-parity.test.mjs` 会在漏改时失败。见
 [`docs/adr/photocraft/craft-0001`](../../../../docs/adr/photocraft/craft-0001-seven-copies-and-a-parity-test.md)。
+
+`web/` 不要手改：它是上游发的那份字节，下一次打包会重新覆盖。
 
 ## 权限
 
-见 `plugin.json` 的 `permissions`：活动面板槽位、浏览器打开、外部打开、文件读写、
-工作区读取、Agent 工具注册与执行、技能控制。服务不需要额外权限——它只监听回环地址，
-文件读写都由渲染侧经宿主完成。
+见 `plugin.json` 的 `permissions`：活动面板槽位、文件读写、工作区读取、Agent 工具注册与执行、技能控制。
+没有服务权限——站点跑在面板的 iframe 里，不需要常驻进程，也没有回环端口。
