@@ -10190,7 +10190,7 @@
       "slug": "excalidraw",
       "name": "Excalidraw",
       "description": "Sketch diagrams, wireframes and flowcharts on an infinite hand-drawn canvas inside Astravia — the upstream Excalidraw editor, driven from the conversation.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "configVersion": 1,
       "license": "MIT",
       "author": "Astravia",
@@ -10242,6 +10242,25 @@
           "artifact": {
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-excalidraw/excalidraw-0.1.0.astraviapkg",
             "sha256": "2234c77f211714a20ded6c0a21260dc65876f5c65fb96a8ca0c2531b8c4671e5"
+          }
+        },
+        {
+          "version": "0.1.1",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-excalidraw/excalidraw-0.1.1.astraviapkg",
+            "sha256": "3f12a43735a2e89eb91018bc93334b506c1ed8717dea31f112bbcc01bfba4743"
           }
         }
       ]
@@ -13192,5 +13211,5 @@
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.04-4"
+  "marketplaceVersion": "2026.11.04-5"
 }
