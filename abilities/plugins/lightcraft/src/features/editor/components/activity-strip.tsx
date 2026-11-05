@@ -20,6 +20,9 @@ import type { EditorStrings } from "../strings.ts";
  */
 const HOLD_MS = 6000;
 const ROWS = 3;
+// An intent is cleared by `tool-call-end`. If that event never arrives (the turn was
+// aborted mid-stream), the hint must not sit there claiming work is queued.
+const INTENT_TTL_MS = 120_000;
 
 const TONE: Record<string, string> = {
 	notice: "text-amber-300",
@@ -54,14 +57,24 @@ export function ActivityStrip({
 		return () => clearTimeout(timer);
 	}, [last]);
 
+	// Same for the queued hint: it is the only thing on screen when nothing has run yet,
+	// so its expiry has to wake the component or it never fades.
+	useEffect(() => {
+		if (!intent) return;
+		const wait = Math.max(0, intent.at + INTENT_TTL_MS - Date.now()) + 20;
+		const timer = setTimeout(() => setNow(Date.now()), wait);
+		return () => clearTimeout(timer);
+	}, [intent]);
+
 	// A notice is an instruction ("use File › Open; your selection is waiting"), not a
 	// transient event, so it stays until the page does something else.
 	const pinned = last?.kind === "notice";
+	const queued = intent !== null && intent.at + INTENT_TTL_MS > now;
 	const visible =
-		progress !== null || intent !== null || (last !== null && (pinned || last.at + HOLD_MS > now));
+		progress !== null || queued || (last !== null && (pinned || last.at + HOLD_MS > now));
 	if (!visible) return null;
 
-	const pending = progress === null && intent !== null;
+	const pending = progress === null && queued;
 
 	const rows = notes.slice(-ROWS);
 
