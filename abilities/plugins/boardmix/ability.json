@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "type": "plugin",
+  "slug": "boardmix",
+  "version": "0.0.1",
+  "icon": "assets/icon.png",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "i18n": {
+      "zh": {
+        "path": "detail.zh.json"
+      }
+    },
+    "meta": [
+      {
+        "key": "homepage",
+        "value": "https://boardmix.cn/"
+      },
+      {
+        "key": "docs",
+        "value": "https://boardmix.cn/help-center/"
+      },
+      {
+        "key": "license",
+        "value": "Proprietary"
+      }
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "id": "boardmix",
+  "name": "%name%",
+  "description": "%description%",
+  "icon": "assets/icon.png",
+  "version": "0.0.1",
+  "pluginApiVersion": "^2.0.0",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "boardmix",
+    "expose": "./plugin"
+  },
+  "styles": [
+    "dist/style.css"
+  ],
+  "permissions": [
+    "ui.slot.activity-tab",
+    "storage.read",
+    "storage.write",
+    "shell.openExternal",
+    "agent.tools.register",
+    "agent.toolHandler.execute",
+    "agent.skills.control"
+  ],
+  "agent": {
+    "skillPaths": [
+      "agent/skills/boardmix",
+      "agent/skills/boardmix-canvas",
+      "agent/skills/boardmix-collaboration",
+      "agent/skills/boardmix-ai",
+      "agent/skills/boardmix-io"
+    ],
+    "skillPresentation": {
+      "defaultVisibility": "visible",
+      "surfaces": {
+        "commandPalette": "visible",
+        "skillPicker": "visible"
+      },
+      "skills": {
+        "boardmix": {
+          "displayName": "%skill.boardmix.name%",
+          "displayDescription": "%skill.boardmix.description%"
+        },
+        "boardmix-canvas": {
+          "displayName": "%skill.boardmix-canvas.name%",
+          "displayDescription": "%skill.boardmix-canvas.description%"
+        },
+        "boardmix-collaboration": {
+          "displayName": "%skill.boardmix-collaboration.name%",
+          "displayDescription": "%skill.boardmix-collaboration.description%"
+        },
+        "boardmix-ai": {
+          "displayName": "%skill.boardmix-ai.name%",
+          "displayDescription": "%skill.boardmix-ai.description%"
+        },
+        "boardmix-io": {
+          "displayName": "%skill.boardmix-io.name%",
+          "displayDescription": "%skill.boardmix-io.description%"
+        }
+      }
+    },
+    "agents": [
+      {
+        "id": "boardmix-guide",
+        "name": "%agent.boardmix-guide.name%",
+        "description": "%agent.boardmix-guide.description%",
+        "mentionHandle": "boardmix",
+        "avatar": "assets/icon.png",
+        "systemPromptPath": "agent/agents/boardmix-guide.md",
+        "abilities": "all"
+      }
+    ]
+  }
+}

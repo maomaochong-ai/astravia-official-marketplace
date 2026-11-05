@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "hero",
+      "eyebrow": "Boardmix 白板",
+      "title": "真正的 boardmix 白板，就在对话旁边的面板里",
+      "description": "登录一次，就能不离开 Astravia 地画你的白板：面板里跑的是 boardmix 自己的网页应用，不是照着它重做的简化版。",
+      "badges": [
+        "boardmix 原生界面",
+        "登录态留在面板里",
+        "可被 Agent 打开与跳转"
+      ]
+    },
+    {
+      "type": "showcase",
+      "showcase": {
+        "template": "chat-thread",
+        "user_prompt": "打开 Boardmix，带我去 AI 流程图那个入口，我想画一版注册流程。",
+        "assistant_reply": "已打开 Boardmix 面板并切到 AI 流程图入口。还没登录的话在那里登录一下；画布由你来操作，我按你说的跟着一起推。"
+      }
+    },
+    {
+      "type": "feature-grid",
+      "items": [
+        {
+          "title": "是产品本身，不是仿制",
+          "description": "画布、模板、AI 生成、评论与导出都是 boardmix 官方那一套；它上线新版本，面板里立刻就是新版。",
+          "icon": "solar:widget-5-linear"
+        },
+        {
+          "title": "登录由你掌握",
+          "description": "在面板里 boardmix 自己的登录页上登录，登录态存在这个面板；插件不索取也不保存你的密码。",
+          "icon": "solar:lock-keyhole-minimalistic-linear"
+        },
+        {
+          "title": "下次回到原处",
+          "description": "面板记住上次真正落地的 boardmix 地址（限定在 boardmix 站内），下次打开直接回去。",
+          "icon": "solar:history-2-linear"
+        },
+        {
+          "title": "Agent 能把面板带到位置",
+          "description": "六个工具让 Agent 打开面板、跳到工作台 / 最近文件 / 新建白板 / AI 入口，并报告当前落点。",
+          "icon": "solar:routing-2-linear"
+        },
+        {
+          "title": "打不开就降级，不是黑屏",
+          "description": "记住的地址失效时，面板依次退到工作台根地址、站点根地址；全都失败才给出重试和用浏览器打开。",
+          "icon": "solar:refresh-circle-linear"
+        },
+        {
+          "title": "外链交给浏览器",
+          "description": "跳出 boardmix 的链接按站点本意打开，不会被闷在面板里。",
+          "icon": "solar:square-top-down-linear"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "info",
+      "content": "这个插件是一个「窗口」，产品在 boardmix 的服务器上。白板内容、素材与 AI 生成都在它那边处理，不在你本机；断网时面板打不开任何东西。"
+    },
+    {
+      "type": "steps",
+      "items": [
+        {
+          "title": "打开 Boardmix 标签页",
+          "description": "点 Boardmix 标签页，或者直接让 Agent 帮你打开。"
+        },
+        {
+          "title": "在 boardmix 的页面上登录",
+          "description": "首次进入看到的是 boardmix 自己的登录页，在那里注册或登录；之后面板会保持这个登录态。"
+        },
+        {
+          "title": "开始画",
+          "description": "从工作台打开已有白板、从模板起步，或走 AI 入口先生成一版草稿。"
+        },
+        {
+          "title": "让 Agent 带路",
+          "description": "说清你要 boardmix 的哪一块——工作台、最近文件、新建白板、AI PPT、AI 流程图或 AI 对话——它会帮你把面板切过去。"
+        }
+      ]
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "Agent 做不到的事：它读不到画布内容，不能在 boardmix 里点击，也不能替你生成图片或演示文稿、导出文件。这些都在 boardmix 服务器上、走它自己的界面完成，所以实际操作由你在面板里做，Agent 在外围配合。"
+    },
+    {
+      "type": "callout",
+      "tone": "warning",
+      "content": "boardmix 免费版有限制：目前是 3 个文件、150 个图元、标清导出带水印。付费方案由 boardmix 出售，本插件既不包含也不绕过它们。"
+    },
+    {
+      "type": "links",
+      "items": [
+        {
+          "label": "boardmix 官网",
+          "href": "https://boardmix.cn/"
+        },
+        {
+          "label": "帮助中心",
+          "href": "https://boardmix.cn/help-center/"
+        },
+        {
+          "label": "版本与价格",
+          "href": "https://boardmix.cn/price/"
+        }
+      ]
+    }
+  ]
+}
