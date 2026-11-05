@@ -20,6 +20,10 @@ export interface LinkMessage {
   ok?: boolean;
   ready?: boolean;
   staged?: string | null;
+  /** How long a stage has been waiting, so a stale one is visible instead of assumed fresh. */
+  stagedAgeMs?: number | null;
+  /** `craft:drop`: how many files the page was handed. */
+  dropped?: number;
   error?: string;
   href?: string;
   canvas?: { width: number; height: number } | null;

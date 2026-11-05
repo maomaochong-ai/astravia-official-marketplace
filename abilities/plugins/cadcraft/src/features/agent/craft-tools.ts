@@ -3,8 +3,16 @@ import { APP } from "../../app.config.ts";
 import { basename } from "../../shared/formatters/paths.ts";
 import { bytesToBase64, base64ToBytes } from "../../shared/formatters/base64.ts";
 import { askCraftFrame, craftFrame, waitForCraftFrame } from "../editor/session-registry.ts";
+import {
+  describeDelta,
+  openDocument,
+  readCanvas,
+  releaseStage,
+  type ProbeOptions,
+} from "../editor/services/open-document.ts";
+import { readWorkspaceFile, selectionAccess } from "../editor/services/workspace-files.ts";
 import { editorStrings } from "../editor/strings.ts";
-import type { CraftProbe, LinkMessage } from "../../domain/link-protocol.ts";
+import type { LinkMessage } from "../../domain/link-protocol.ts";
 
 /**
  * The natural-language surface: five tools, one of which (`act`) carries the whole
@@ -80,27 +88,6 @@ const STEP_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-interface ProbeOptions {
-  region?: { x: number; y: number; w: number; h: number };
-  columns?: number;
-  rows?: number;
-}
-
-function delta(before: CraftProbe | undefined, after: CraftProbe | undefined): Record<string, unknown> | null {
-  if (!before || !after) return null;
-  const [r0, g0, b0] = before.meanRgb;
-  const [r1, g1, b1] = after.meanRgb;
-  const distance = Math.round(Math.hypot(r1 - r0, g1 - g0, b1 - b0));
-  return {
-    meanBefore: before.mean,
-    meanAfter: after.mean,
-    rgbDelta: [r1 - r0, g1 - g0, b1 - b0],
-    /** 0–441 (the RGB cube diagonal); ~0 means the canvas did not change at all. */
-    distance,
-    changed: distance > 6,
-  };
-}
-
 export function registerCraftTools(ctx: PluginContext): Disposable[] {
   const id = APP.id;
   // The HUD lives inside the page and has no locale of its own: the tab tells it
@@ -108,20 +95,6 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
   const strings = editorStrings(ctx.i18n.locale);
   const hud = { prefix: strings.acting, done: strings.actDone };
   const disposables: Disposable[] = [];
-
-  const probeCanvas = async (options: ProbeOptions = {}): Promise<CraftProbe | null> => {
-    try {
-      const reply: LinkMessage = await askCraftFrame(
-        "craft:probe",
-        { region: options.region, columns: options.columns ?? 32, rows: options.rows ?? 18 },
-        8000,
-      );
-      return reply.probe ?? null;
-    } catch {
-      return null;
-    }
-  };
-
   // --------------------------------------------------------------- open + read
 
   disposables.push(
@@ -131,8 +104,9 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
       description:
         `Open the ${APP.name} editor in an Astravia activity tab and report whether it started. ` +
         `Use this first when the user asks to work on ${APP.name} material; every other ${APP.name} tool ` +
-        `needs this tab open. Opening does not touch the user's selection. Returns the page URL, whether ` +
-        `the editor finished booting, the canvas size, and a text map of what is on screen.`,
+        `needs this tab open. If exactly one file is selected in the Explorer it is offered to the editor ` +
+        `and \`opened\` says whether the canvas took it; \`attempts\` lists what was tried. Returns the page ` +
+        `URL, whether the editor finished booting, the canvas size, and a text map of what is on screen.`,
       parameters: { type: "object", properties: {}, additionalProperties: false },
       scope_use: [...SCOPE],
       timeoutMs: 60000,
@@ -142,19 +116,34 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         if (!frame) return text({ open: false, error: "tab-did-not-mount" });
         try {
           const reply = await askCraftFrame("craft:inspect", {}, 20000);
-          const probe = reply.ready === true ? await probeCanvas() : null;
+          const ready = reply.ready === true;
+          // A selected file is the user's intent; offering it here is what makes opening the
+          // panel with a document selected do the obvious thing.
+          const file = ready ? selectionAccess(ctx).current() : null;
+          const loaded = file ? await readWorkspaceFile(ctx, file) : null;
+          const opened =
+            loaded && file
+              ? await openDocument({ bytes: loaded.bytes, name: file.name, mime: loaded.mimeType })
+              : null;
+          const probe = ready ? await readCanvas() : null;
           return text({
             open: true,
             url: reply.href ?? frame.baseUrl(),
-            ready: reply.ready === true,
+            ready,
             canvas: reply.canvas ?? null,
             secure: reply.secure === true,
             staged: reply.staged ?? null,
+            file: file?.name ?? null,
+            opened: opened?.opened ?? null,
+            attempts: opened?.attempts ?? null,
             probe,
-            next:
-              reply.ready === true
-                ? `The editor is up. Call ${id}_act to drive it; read the returned text map after each batch.`
-                : `Still booting. Call ${id}_open_editor again or ${id}_editor_status before acting.`,
+            next: !ready
+              ? `Still booting. Call ${id}_open_editor again or ${id}_editor_status before acting.`
+              : opened && !opened.opened
+                ? `The editor is up but did not take "${file?.name}" automatically: use its own ` +
+                  `File › Open, where the selection is already waiting.`
+                : `The editor is up${opened?.opened ? ` with "${file?.name}"` : ""}. Call ${id}_act to ` +
+                  `drive it; read the returned text map after each batch.`,
           });
         } catch (error) {
           return text({ open: true, ready: false, error: String((error as Error)?.message ?? error) });
@@ -190,7 +179,7 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
           const reply = await askCraftFrame("craft:inspect", {}, 8000);
           const probe =
             reply.ready === true
-              ? await probeCanvas({ region: input.region, columns: input.columns, rows: input.rows })
+              ? await readCanvas({ region: input.region, columns: input.columns, rows: input.rows })
               : null;
           return text({
             open: true,
@@ -253,7 +242,7 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         }
         const frame = craftFrame();
         if (!frame) return text({ ok: false, error: "editor-not-open" });
-        const before = await probeCanvas();
+        const before = await readCanvas();
         let reply: LinkMessage;
         try {
           reply = await askCraftFrame(
@@ -271,12 +260,12 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         if (reply.ok === false && !reply.steps) {
           return text({ ok: false, error: reply.error ?? "act-failed" });
         }
-        const after = input.probe === false ? null : await probeCanvas();
+        const after = input.probe === false ? null : await readCanvas();
         return text({
           ok: reply.ok !== false,
           steps: reply.steps ?? [],
           elapsedMs: reply.elapsedMs ?? null,
-          change: delta(before ?? undefined, after ?? undefined),
+          change: describeDelta(before, after),
           probe: after,
         });
       },
@@ -315,7 +304,7 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
           scale?: number;
         };
         if (!craftFrame()) return text({ ok: false, error: "editor-not-open" });
-        const probe = await probeCanvas({ region: input.region, columns: input.columns, rows: input.rows });
+        const probe = await readCanvas({ region: input.region, columns: input.columns, rows: input.rows });
         if (!probe) return text({ ok: false, error: "probe-failed" });
         if (!input.save) return text({ ok: true, probe });
         const name = input.file_name || `${id}-view.png`;
@@ -348,18 +337,15 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
       id: `${id}_open_document`,
       label: "%tool.document%",
       description:
-        `Open a workspace file in ${APP.name} for real: the bytes are staged, then the app's own open shortcut ` +
-        `is pressed so the staged file is handed over instead of a picker appearing. Wait for \`opened: true\` ` +
-        `before acting on it. Use this whenever the user names a file to work on; ` +
-        `\`${id}_act\` alone cannot load a document.`,
+        `Open a workspace file in ${APP.name} for real: the bytes are handed to the app through its own ` +
+        `file input, and if the app does not take them the tool tries a drop, then the platform's open ` +
+        `chord, then the menu mnemonics — reporting every attempt. \`opened\` is true only when the canvas ` +
+        `measurably changed, so treat false as "not loaded" and let the user open it once by hand. ` +
+        `Use this whenever the user names a file to work on; \`${id}_act\` alone cannot load a document.`,
       parameters: {
         type: "object",
         properties: {
           path: { type: "string", description: "Workspace-relative or absolute path of the file to open." },
-          shortcut: {
-            type: "string",
-            description: `Key chord the app opens files with. Defaults to "ctrl+o".`,
-          },
         },
         required: ["path"],
         additionalProperties: false,
@@ -367,10 +353,9 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
       scope_use: [...SCOPE],
       timeoutMs: 120000,
       async handler(context) {
-        const input = (context.trigger.input ?? {}) as { path?: string; shortcut?: string };
+        const input = (context.trigger.input ?? {}) as { path?: string };
         if (!input.path) return text({ ok: false, error: "path-required" });
-        const frame = craftFrame();
-        if (!frame) return text({ ok: false, error: "editor-not-open" });
+        if (!craftFrame()) return text({ ok: false, error: "editor-not-open" });
         let read;
         try {
           read = await ctx.fs.readBinaryFile(input.path);
@@ -379,51 +364,25 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
         }
         const bytes = base64ToBytes(read.data);
         const name = basename(input.path);
-        try {
-          const staged = await askCraftFrame(
-            "craft:stage",
-            { name, mime: read.mimeType || "", bytes: bytes.buffer },
-            15000,
-          );
-          if (staged.ok === false) return text({ ok: false, error: staged.error ?? "stage-failed" });
-        } catch (error) {
-          return text({ ok: false, error: String((error as Error)?.message ?? error) });
-        }
-        const before = await probeCanvas();
-        let reply: LinkMessage;
-        try {
-          reply = await askCraftFrame(
-            "craft:act",
-            {
-              stopOnError: true,
-              hud,
-              steps: [
-                { op: "ready", timeoutMs: 60000, label: strings.stepReady },
-                { op: "key", key: input.shortcut || "ctrl+o", label: strings.stepOpen },
-                { op: "wait", ms: 1200, label: strings.stepWait },
-                { op: "ready", timeoutMs: 30000, label: strings.stepReady },
-              ],
-            },
-            90000,
-          );
-        } catch (error) {
-          return text({ ok: false, staged: name, error: String((error as Error)?.message ?? error) });
-        }
-        const after = await probeCanvas();
-        const change = delta(before ?? undefined, after ?? undefined);
+        const result = await openDocument({
+          bytes: bytes.buffer as ArrayBuffer,
+          name,
+          mime: read.mimeType || "",
+        });
         return text({
-          ok: reply.ok !== false,
-          staged: name,
+          ok: result.opened,
+          opened: result.opened,
+          step: result.step ?? null,
           bytes: bytes.byteLength,
-          steps: reply.steps ?? [],
-          change,
-          probe: after,
-          opened: change?.changed === true,
-          next:
-            change?.changed === true
-              ? `The canvas changed, so the file is most likely loaded. Call ${id}_act for the next editing step.`
-              : `The canvas did not change. Check that the app is ready and that "${input.shortcut || "ctrl+o"}" ` +
-                `is its open shortcut; then retry or ask the user to open the file once by hand.`,
+          attempts: result.attempts,
+          /** Still staged in the frame: the app's own File › Open will take it. */
+          staged: result.staged,
+          probe: await readCanvas(),
+          next: result.opened
+            ? `The canvas changed, so the file is loaded. Call ${id}_act for the next editing step.`
+            : `Nothing the tool tried moved the canvas. The bytes are still staged, so the app's own ` +
+              `File › Open (or a drop onto the canvas) will load this exact file; otherwise check that ` +
+              `the editor has finished booting and retry.`,
         });
       },
     }),

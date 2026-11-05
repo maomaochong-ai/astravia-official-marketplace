@@ -24,6 +24,8 @@ export interface EditorStrings {
   saved: string;
   saveFailed: string;
   openFailed: string;
+  /** The ladder reached the end without a measurable change: the app's own Open still works. */
+  openManual: string;
   backendGpu: string;
   backendCpu: string;
   degradeGl: string;
@@ -34,9 +36,6 @@ export interface EditorStrings {
   acting: string;
   actDone: string;
   /** Step labels the tools send to the HUD for steps they add themselves. */
-  stepReady: string;
-  stepOpen: string;
-  stepWait: string;
   /** Boot cover: reading the package's site file. */
   bootRead: string;
   /** Boot cover: the engine module is loading and compiling. */
@@ -66,6 +65,7 @@ const en: EditorStrings = {
   saved: "Saved",
   saveFailed: "Save failed",
   openFailed: "Could not read that file",
+  openManual: "The editor did not take the file automatically — use its own File › Open; your selection is already waiting there.",
   backendGpu: "GPU",
   backendCpu: "CPU",
   degradeGl: "No GPU — retrying with WebGL2…",
@@ -74,9 +74,6 @@ const en: EditorStrings = {
   editing: "edited since save",
   acting: "Automating",
   actDone: "Done",
-  stepReady: "Wait for the editor",
-  stepOpen: "Open the file",
-  stepWait: "Let it load",
   bootRead: "Reading the editor",
   bootEngine: "Starting the engine",
   bootDraw: "Drawing the first frame",
@@ -102,6 +99,7 @@ const zh: EditorStrings = {
   saved: "已保存",
   saveFailed: "保存失败",
   openFailed: "读不到这个文件",
+  openManual: "编辑器没有接住这个文件——用它自己的「文件 › 打开」，选中项已经等在那边了。",
   backendGpu: "GPU",
   backendCpu: "CPU",
   degradeGl: "没有可用 GPU，改用 WebGL2 重试…",
@@ -110,9 +108,6 @@ const zh: EditorStrings = {
   editing: "此后有输入",
   acting: "自动操作",
   actDone: "完成",
-  stepReady: "等待编辑器就绪",
-  stepOpen: "打开文件",
-  stepWait: "等它载入",
   bootRead: "读取编辑器",
   bootEngine: "启动引擎",
   bootDraw: "绘制首帧",

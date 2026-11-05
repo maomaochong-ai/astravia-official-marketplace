@@ -37,7 +37,13 @@ export function craftFrame(): CraftFrameHandle | null {
   return handle;
 }
 
-/** The tab is mounted lazily; a tool that opens it first waits for the handle. */
+/**
+ * The tab is mounted lazily; a tool that opens it first waits for the handle.
+ *
+ * A handle is not the same thing as a listening page: it exists as soon as the tab's
+ * hook mounts, while the frame's `srcdoc` may still be parsing. Delivery is therefore
+ * `askCraftFrame`'s problem, not this function's.
+ */
 export async function waitForCraftFrame(timeoutMs = 5000): Promise<CraftFrameHandle | null> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -47,34 +53,64 @@ export async function waitForCraftFrame(timeoutMs = 5000): Promise<CraftFrameHan
   return handle;
 }
 
+/**
+ * Requests that can be re-sent without consequence. A failed `post` only means the
+ * page was not listening yet (the iframe had not been inserted, or its inline script
+ * had not run), so for a read it is worth trying again. Gestures are deliberately
+ * absent: sending a click twice is a different request.
+ */
+const REPEATABLE = new Set(["craft:inspect", "craft:stage", "craft:unstage", "craft:probe", "craft:capture"]);
+
+/** How long a repeatable request waits before trying delivery again. */
+const RETRY_STEP_MS = 50;
+
 /** Ask the page a question and wait for its `craft:reply`. */
 export function askCraftFrame(
   type: string,
   payload: Record<string, unknown> = {},
   timeoutMs = 8000,
 ): Promise<LinkMessage> {
-  const frame = handle;
-  if (!frame) return Promise.reject(new Error("tab-not-open"));
-
   const id = `${type}-${++seq}`;
+  const repeatable = REPEATABLE.has(type);
   return new Promise<LinkMessage>((resolve, reject) => {
-    const timer = setTimeout(() => {
+    let done = false;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    const timer = setTimeout(() => finish("frame-timeout"), timeoutMs);
+
+    function finish(error?: string, message?: LinkMessage): void {
+      if (done) return;
+      done = true;
       waiters.delete(id);
-      reject(new Error("frame-timeout"));
-    }, timeoutMs);
+      clearTimeout(timer);
+      if (retryTimer) clearTimeout(retryTimer);
+      if (error) reject(new Error(error));
+      else resolve(message as LinkMessage);
+    }
+
     waiters.set(id, {
       timer,
       settle(ok, message) {
-        clearTimeout(timer);
-        if (ok) resolve(message);
-        else reject(new Error(message.error || "frame-failed"));
+        if (ok) finish(undefined, message);
+        else finish(message.error || "frame-failed");
       },
     });
-    if (!frame.post({ ...payload, type, id })) {
-      waiters.delete(id);
-      clearTimeout(timer);
-      reject(new Error("frame-gone"));
-    }
+
+    const deadline = Date.now() + timeoutMs;
+    const attempt = (): void => {
+      if (done) return;
+      const frame = handle;
+      if (!frame) {
+        finish("tab-not-open");
+        return;
+      }
+      if (frame.post({ ...payload, type, id })) return;
+      if (!repeatable || Date.now() + RETRY_STEP_MS >= deadline) {
+        finish("frame-gone");
+        return;
+      }
+      retryTimer = setTimeout(attempt, RETRY_STEP_MS);
+    };
+    attempt();
   });
 }
 

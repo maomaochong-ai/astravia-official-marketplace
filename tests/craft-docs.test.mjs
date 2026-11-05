@@ -35,6 +35,7 @@ const FAMILY_DOCS = [
 	"craft-0014-recent-files-are-the-hosts-not-the-apps.md",
 	"craft-0015-a-skill-must-survive-a-strict-yaml-parse.md",
 	"craft-0016-three-controls-and-a-status-glyph.md",
+	"craft-0017-the-selection-is-offered-through-the-apps-own-open.md",
 	"craft-CONTEXT.md",
 ];
 

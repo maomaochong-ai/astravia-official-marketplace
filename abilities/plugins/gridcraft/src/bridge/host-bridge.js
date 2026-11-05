@@ -32,6 +32,10 @@
   var staged = null;
   var nativeInputClick = HTMLInputElement.prototype.click;
   var nativeAnchorClick = HTMLAnchorElement.prototype.click;
+  // A staged file answers the app's *next* open. If the app never opens anything, the
+  // bytes would otherwise sit here and be handed to an unrelated open minutes later, so
+  // a stage grows stale and is dropped: the host re-stages when it needs to.
+  var STAGE_TTL_MS = 120000;
   var FALLBACK_MS = 60000;
   var CAPTURE_NAME = "canvas.png";
 
@@ -126,28 +130,43 @@
       multiple: !!input.multiple,
     };
   }
+  /** The staged file, if it is still worth handing over. */
+  function stagedNow() {
+    if (!staged) return null;
+    if (Date.now() - staged.at <= STAGE_TTL_MS) return staged;
+    staged = null;
+    return null;
+  }
+
+  /** Same, but a handed-over file is consumed exactly once. */
+  function takeStaged() {
+    var chosen = stagedNow();
+    staged = null;
+    return chosen;
+  }
+
+  /** One `File` for the bytes the host sent, whether or not `File` takes options. */
+  function fileOf(payload) {
+    var type = payload.mime || "application/octet-stream";
+    try {
+      return new File([payload.bytes], payload.name || "document", { type: type });
+    } catch (error) {
+      var blob = new Blob([payload.bytes], { type: type });
+      try {
+        Object.defineProperty(blob, "name", { value: payload.name || "document" });
+      } catch (ignored) {
+        /* a Blob without a name still carries the bytes */
+      }
+      return blob;
+    }
+  }
 
   function deliver(input, payload) {
-    var bytes = payload.bytes;
-    var file;
-    try {
-      file = new File([bytes], payload.name || "document", {
-        type: payload.mime || "application/octet-stream",
-      });
-    } catch (error) {
-      file = new Blob([bytes], { type: payload.mime || "application/octet-stream" });
-      try {
-        Object.defineProperty(file, "name", { value: payload.name || "document" });
-      } catch (ignored) {
-        /* rfd reads input.files, which we set below */
-      }
-    }
     var data = new DataTransfer();
-    data.items.add(file);
+    data.items.add(fileOf(payload));
     input.files = data.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }
-
   function cancel(input) {
     input.dispatchEvent(new Event("cancel", { bubbles: true }));
   }
@@ -168,6 +187,57 @@
     return false;
   }
 
+  // ------------------------------------------------ drop seam (no dialog at all)
+  //
+  // The picker is not the only way in. Upstream reads `raw.dropped_files`
+  // (`crates/ui-egui/src/app/frame.rs`) and hands each one to `file_open`, so a drop
+  // opens the document the same way the menu does — and unlike a menu command it needs
+  // no key binding and no focus. Eframe's web runner fills that list from the canvas's
+  // own `drop` event, which is what this dispatches.
+
+  /** Hand files to the app as if the pointer had dropped them on the canvas. */
+  async function dropFiles(payloads) {
+    var canvas = canvasNode();
+    if (!canvas) throw new Error("no-canvas");
+    if (typeof DataTransfer !== "function") throw new Error("no-datatransfer");
+    var data = new DataTransfer();
+    if (!data.items || typeof data.items.add !== "function") throw new Error("no-datatransfer");
+    for (var i = 0; i < payloads.length; i++) data.items.add(fileOf(payloads[i]));
+    var box = canvas.getBoundingClientRect();
+    var point = {
+      clientX: box.left + box.width / 2,
+      clientY: box.top + box.height / 2,
+    };
+    focusCanvas(canvas);
+    var types = ["dragenter", "dragover", "drop"];
+    for (var t = 0; t < types.length; t++) {
+      var init = {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: data,
+        clientX: point.clientX,
+        clientY: point.clientY,
+        screenX: point.clientX,
+        screenY: point.clientY,
+      };
+      var event;
+      try {
+        event = new DragEvent(types[t], init);
+      } catch (error) {
+        event = new Event(types[t], init);
+        try {
+          Object.defineProperty(event, "dataTransfer", { value: data });
+        } catch (ignored) {
+          /* a drop without dataTransfer carries no files */
+        }
+      }
+      canvas.dispatchEvent(event);
+      await frames(1);
+    }
+    await frames(2);
+    return payloads.length;
+  }
+
   // ------------------------------------------------------------- open seam
 
   HTMLInputElement.prototype.click = function () {
@@ -175,11 +245,11 @@
     if (!input || input.type !== "file") return nativeInputClick.apply(input, arguments);
 
     // A file the host staged (agent tool, or a selection handed over earlier) is
-    // handed straight to the app: the user already said which file is meant.
-    if (staged && accepts(input, staged.name, staged.mime)) {
-      var chosen = staged;
-      staged = null;
-      deliver(input, chosen);
+    // handed straight to the app: the user already said which file is meant. A stage
+    // that outlived STAGE_TTL_MS is not handed over — it answered an open that never came.
+    var stagedFile = stagedNow();
+    if (stagedFile && accepts(input, stagedFile.name, stagedFile.mime)) {
+      deliver(input, takeStaged());
       return undefined;
     }
 
@@ -273,20 +343,35 @@
         reply(data.id, { ok: true, staged: null });
         return;
       }
-      staged = { name: data.name || "document", mime: data.mime || "", bytes: data.bytes };
+      staged = { name: data.name || "document", mime: data.mime || "", bytes: data.bytes, at: Date.now() };
       reply(data.id, { ok: true, staged: staged.name });
+      return;
+    }
+
+    // Drop a stage the host no longer needs, so it cannot answer a later open.
+    if (data.type === "craft:unstage") {
+      staged = null;
+      reply(data.id, { ok: true, staged: null });
+      return;
+    }
+
+    // Hand the staged file to the app as a dropped file: no picker, no key binding.
+    if (data.type === "craft:drop") {
+      void dropMessage(data);
       return;
     }
 
     if (data.type === "craft:inspect") {
       var canvas = canvasNode();
+      var current = stagedNow();
       reply(data.id, {
         ok: true,
         href: location.href,
         secure: !!window.isSecureContext,
         ready: loaderText() === null,
         canvas: canvas ? { width: canvas.width, height: canvas.height } : null,
-        staged: staged ? staged.name : null,
+        staged: current ? current.name : null,
+        stagedAgeMs: current ? Date.now() - current.at : null,
       });
       return;
     }
@@ -534,21 +619,21 @@
   async function pressCombo(canvas, key) {
     focusCanvas(canvas);
     // Modifier chords arrive as "ctrl+s"; plain keys as "Enter" or a single letter.
+    // A modifier pressed on its own ("alt") is a key in its own right: upstream reads
+    // menu mnemonics from `Event::Key { modifiers }`, so the flag has to be set on the
+    // modifier's own event too, and cleared again on its release. Dialogs and menus
+    // that watch `modifiers.alt` transitions see a real press and a real release.
     var parts = typeof key === "string" && key ? key.split("+") : [];
     var name = parts.length > 1 ? parts[parts.length - 1] : key;
     var modifiers = parts.length > 1 ? parts.slice(0, -1) : [];
+    var flags = { ctrl: "ctrlKey", shift: "shiftKey", alt: "altKey", meta: "metaKey" };
     function emit(type, value, withModifiers) {
-      canvas.dispatchEvent(
-        new KeyboardEvent(type, {
-          key: value,
-          bubbles: true,
-          cancelable: true,
-          ctrlKey: withModifiers.indexOf("ctrl") >= 0,
-          shiftKey: withModifiers.indexOf("shift") >= 0,
-          altKey: withModifiers.indexOf("alt") >= 0,
-          metaKey: withModifiers.indexOf("meta") >= 0,
-        }),
-      );
+      var init = { key: value, bubbles: true, cancelable: true };
+      for (var flag in flags) {
+        // A modifier's own event carries its own state: down on its press, up on its release.
+        init[flags[flag]] = flag === value ? type === "keydown" : withModifiers.indexOf(flag) >= 0;
+      }
+      canvas.dispatchEvent(new KeyboardEvent(type, init));
     }
     if (name) {
       for (var m = 0; m < modifiers.length; m++) emit("keydown", modifiers[m], []);
@@ -745,6 +830,21 @@
       await frames(1);
       var result = probe(canvas, data.region, data.columns, data.rows);
       reply(data.id, { ok: true, probe: result });
+    } catch (error) {
+      reply(data.id, { ok: false, error: String((error && error.message) || error) });
+    }
+  }
+  /** Drop the file the host just staged on the canvas — the app opens what it is given. */
+  async function dropMessage(data) {
+    var payload = stagedNow();
+    if (!payload && !data.bytes) {
+      reply(data.id, { ok: false, error: "nothing-staged" });
+      return;
+    }
+    var file = payload || { name: data.name || "document", mime: data.mime || "", bytes: data.bytes };
+    try {
+      var dropped = await dropFiles([file]);
+      reply(data.id, { ok: true, dropped: dropped, name: file.name });
     } catch (error) {
       reply(data.id, { ok: false, error: String((error && error.message) || error) });
     }

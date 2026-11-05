@@ -26,7 +26,7 @@ const BRIDGE = new URL(
 	import.meta.url,
 );
 
-function makeEnv() {
+function makeEnv(options = {}) {
 	const posted = [];
 	const windowListeners = new Map();
 	const canvasEvents = [];
@@ -140,9 +140,12 @@ function makeEnv() {
 		PointerEvent: FakeEvent,
 		KeyboardEvent: FakeEvent,
 		WheelEvent: FakeEvent,
-		File: class {},
+		File: options.File ?? class {},
 		Blob: class {},
-		DataTransfer: class {},
+		DataTransfer: options.DataTransfer ?? class {},
+		// Upstream reads `raw.dropped_files`: a drop is dragenter → dragover → drop, and
+		// each one has to carry the transfer or the app never sees a file.
+		DragEvent: FakeEvent,
 		setInterval: () => 0,
 		clearInterval: () => {},
 		// Real timers: the bridge paces itself with `setTimeout` between a press and
@@ -331,4 +334,77 @@ test("a probe describes the canvas in text and measures its colour", async () =>
 	const dark = await env.settle("q2");
 	assert.equal(dark.probe.cells.split("\n")[0], "KKKK");
 	assert.equal(dark.probe.contrast, 0, "a flat fill has no contrast");
+});
+
+test("staged bytes are reported with their age and can be dropped", async () => {
+	const env = makeEnv();
+	env.send({ type: "craft:stage", id: "s1", name: "poster.png", mime: "image/png", bytes: new Uint8Array([1, 2, 3]) });
+	assert.equal((await env.settle("s1")).ok, true);
+
+	env.send({ type: "craft:inspect", id: "s2" });
+	const seen = await env.settle("s2");
+	assert.equal(seen.staged, "poster.png", "the host can see what is waiting");
+	assert.equal(typeof seen.stagedAgeMs, "number", "and how long it has been waiting");
+
+	env.send({ type: "craft:unstage", id: "s3" });
+	await env.settle("s3");
+	env.send({ type: "craft:inspect", id: "s4" });
+	assert.equal((await env.settle("s4")).staged, null, "unstage really clears it");
+});
+
+test("a drop without a transfer reports why, and with one it carries the file", async () => {
+	// The stock sandbox `DataTransfer` is an empty stub: the only honest answer is a refusal.
+	const bare = makeEnv();
+	bare.send({ type: "craft:stage", id: "d0", name: "a.png", mime: "image/png", bytes: new Uint8Array([1]) });
+	await bare.settle("d0");
+	bare.send({ type: "craft:drop", id: "d1" });
+	const refused = await bare.settle("d1");
+	assert.equal(refused.ok, false);
+	assert.equal(refused.error, "no-datatransfer");
+	assert.equal(bare.canvasEvents.length, 0, "no half a gesture is dispatched either");
+
+	class DroppedFile {
+		constructor(parts, name, init = {}) {
+			this.name = name;
+			this.type = init.type ?? "";
+			this.parts = parts;
+		}
+	}
+	class Transfer {
+		constructor() {
+			this.files = [];
+			const files = this.files;
+			this.items = { add: (file) => files.push(file) };
+		}
+	}
+
+	const env = makeEnv({ File: DroppedFile, DataTransfer: Transfer });
+	env.send({ type: "craft:stage", id: "d2", name: "poster.png", mime: "image/png", bytes: new Uint8Array([1, 2]) });
+	await env.settle("d2");
+	env.send({ type: "craft:drop", id: "d3" });
+	const reply = await env.settle("d3");
+
+	assert.equal(reply.ok, true, `drop refused: ${reply.error}`);
+	assert.equal(reply.dropped, 1);
+	const types = env.canvasEvents.map((event) => event.type);
+	assert.deepEqual(types, ["dragenter", "dragover", "drop"], "the sequence upstream listens for");
+	const drop = env.canvasEvents[2];
+	assert.equal(drop.dataTransfer.files[0].name, "poster.png", "the staged file, not a placeholder");
+});
+
+test("a modifier's own key event carries its state", async () => {
+	const env = makeEnv();
+	// `alt+f` then a bare `o` is how upstream's menus are opened without a pointer.
+	env.send({ type: "craft:key", id: "m1", key: "alt+f" });
+	await env.settle("m1");
+
+	const alt = env.canvasEvents.filter((event) => event.key === "alt");
+	assert.deepEqual(
+		alt.map((event) => [event.type, event.altKey]),
+		[["keydown", true], ["keyup", false]],
+		"a press and a real release — egui watches `modifiers.alt` transitions",
+	);
+	const f = env.canvasEvents.find((event) => event.type === "keydown" && event.key === "f");
+	assert.equal(f.altKey, true);
+	assert.equal(f.ctrlKey, false, "alt must not drag ctrl along");
 });

@@ -15,6 +15,7 @@ import {
   subscribeCraftProgress,
 } from "../session-registry.ts";
 import { readWorkspaceFile, saveRenderedFile, selectionAccess } from "../services/workspace-files.ts";
+import { openDocument } from "../services/open-document.ts";
 import type { WorkspaceFile } from "../services/workspace-files.ts";
 import { useContainerFullscreen } from "./use-container-fullscreen.ts";
 
@@ -127,6 +128,8 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const bindingRef = useRef<WorkspaceFile | null>(null);
   const modeRef = useRef<Downgrade>("auto");
   const selectionRef = useRef<WorkspaceFile | null>(null);
+  /** The selection is offered once per wake-up, not on every selection change. */
+  const autoOpenRef = useRef(false);
   modeRef.current = mode;
   bindingRef.current = binding;
   selectionRef.current = candidate;
@@ -226,6 +229,43 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     const disposable = access.onChange(read);
     return () => disposable?.dispose();
   }, [ctx, strings]);
+
+  // ---------------------------------------------------- opening the selection
+
+  // The selection belongs to the host, the document to the app. A user who selects a
+  // file and then shows the panel means "open this one" — that is the whole point of
+  // opening the panel with a file selected. The tab cannot hand a path to the page (the
+  // page is upstream's own build and has no command channel), so the bytes are staged in
+  // the bridge and offered through the app's own drop / picker path; see
+  // `services/open-document.ts` for the ladder and for what "opened" is allowed to mean.
+  //
+  // Once per wake-up, and only on the transition into ready: a selection that changes
+  // later is just a selection, and pushing it into whichever editor happens to be
+  // visible would replace the document the user is working on.
+  useEffect(() => {
+    if (!awake || phase !== "ready" || autoOpenRef.current) return;
+    autoOpenRef.current = true;
+    const file = selectionRef.current;
+    if (!file) return;
+    // Already the document on screen (a reload, or a tab re-shown): nothing to fetch.
+    if (bindingRef.current?.path === file.path) return;
+    void (async () => {
+      const loaded = await readWorkspaceFile(ctx, file);
+      if (!loaded) {
+        setNotice(strings.openFailed);
+        return;
+      }
+      const result = await openDocument({ bytes: loaded.bytes, name: file.name, mime: loaded.mimeType });
+      if (result.opened) {
+        const next = { path: file.path, name: file.name };
+        setBinding(next);
+        bindingRef.current = next;
+        setSavedAt(null);
+        return;
+      }
+      setNotice(strings.openManual);
+    })();
+  }, [awake, phase, ctx, strings]);
 
   // ----------------------------------------------------------------- save path
 
