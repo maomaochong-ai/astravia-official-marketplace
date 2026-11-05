@@ -3,6 +3,7 @@ import type { Disposable, PluginContext } from "@astravia-org/plugin-sdk";
 import { definePlugin } from "@astravia-org/plugin-sdk";
 import type { JSX } from "react";
 import { APP } from "./app.config.ts";
+import { ActTimeline } from "./features/agent/act-timeline.tsx";
 import { registerCraftTools } from "./features/agent/craft-tools.ts";
 import { CraftTab } from "./features/editor/components/craft-tab.tsx";
 
@@ -47,8 +48,16 @@ export default definePlugin({
     // too, and a host build without the two tool permissions registers nothing.
     const tools = registerCraftTools(ctx);
 
-    const activation: Activation = { owned: [tab, ...tools], released: false };
-    current = activation;
+    // A batch is the one tool whose result is a list of things that happened, and the
+    // host would print it as JSON. This renders the same result as a timeline in the
+    // transcript — the label of each step, what it did, and how far the canvas moved.
+    const timeline = ctx.ui.registerToolCallSlot({
+      id: `${APP.id}:act-timeline`,
+      toolName: `${APP.id}_act`,
+      component: ActTimeline,
+    });
+
+    const activation: Activation = { owned: [tab, ...tools, timeline], released: false };
     return () => release(activation);
   },
   deactivate() {},

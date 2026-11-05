@@ -1,4 +1,4 @@
-import type { CraftProgress, LinkMessage } from "../../domain/link-protocol.ts";
+import type { CraftNote, CraftProgress, LinkMessage } from "../../domain/link-protocol.ts";
 
 /**
  * The live editor frame, addressable from outside React.
@@ -59,7 +59,14 @@ export async function waitForCraftFrame(timeoutMs = 5000): Promise<CraftFrameHan
  * had not run), so for a read it is worth trying again. Gestures are deliberately
  * absent: sending a click twice is a different request.
  */
-const REPEATABLE = new Set(["craft:inspect", "craft:stage", "craft:unstage", "craft:probe", "craft:capture"]);
+const REPEATABLE = new Set([
+  "craft:inspect",
+  "craft:stage",
+  "craft:unstage",
+  "craft:probe",
+  "craft:capture",
+  "craft:activity",
+]);
 
 /** How long a repeatable request waits before trying delivery again. */
 const RETRY_STEP_MS = 50;
@@ -139,4 +146,39 @@ export function subscribeCraftProgress(listener: (progress: CraftProgress) => vo
 
 export function publishCraftProgress(progress: CraftProgress): void {
   for (const listener of progressListeners) listener(progress);
+}
+
+/**
+ * What the page has done lately, held here rather than in the tab.
+ *
+ * Three readers need the same short history: the tab draws it, the prompt
+ * attachment tells the model about it, and a tool reports it back. Keeping it in one
+ * module-level ring means a tool call made while the tab is unmounted still sees the
+ * last thing that happened, instead of an empty list that reads like "nothing yet".
+ */
+const NOTE_MAX = 24;
+let notes: CraftNote[] = [];
+const noteListeners = new Set<(notes: CraftNote[]) => void>();
+
+export function craftNotes(): CraftNote[] {
+  return notes.slice();
+}
+
+export function resetCraftNotes(): void {
+  notes = [];
+  for (const listener of noteListeners) listener([]);
+}
+
+/** Merge one entry from `craft:note`, or a whole list from `craft:activity`. */
+export function publishCraftNote(entry: CraftNote): void {
+  notes = [...notes, entry].slice(-NOTE_MAX);
+  for (const listener of noteListeners) listener(notes);
+}
+
+export function subscribeCraftNotes(listener: (notes: CraftNote[]) => void): () => void {
+  noteListeners.add(listener);
+  listener(notes);
+  return () => {
+    noteListeners.delete(listener);
+  };
 }

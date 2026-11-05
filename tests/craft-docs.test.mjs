@@ -36,6 +36,7 @@ const FAMILY_DOCS = [
 	"craft-0015-a-skill-must-survive-a-strict-yaml-parse.md",
 	"craft-0016-three-controls-and-a-status-glyph.md",
 	"craft-0017-the-selection-is-offered-through-the-apps-own-open.md",
+	"craft-0018-the-header-became-a-corner.md",
 	"craft-CONTEXT.md",
 ];
 

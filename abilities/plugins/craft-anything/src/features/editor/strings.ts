@@ -9,18 +9,18 @@ import { APP } from "../../app.config.ts";
  */
 export interface EditorStrings {
   tab: string;
-  open: string;
-  noFile: string;
   untitled: string;
   preparing: string;
-  ready: string;
   failed: string;
   reload: string;
   fullscreen: string;
   exitFullscreen: string;
   fullscreenFailed: string;
+  /** Accessible name for the two floating controls that replaced the header. */
+  controls: string;
+  /** Name for the strip that lists what the page just did. */
+  activity: string;
   selectInExplorer: string;
-  saving: string;
   saved: string;
   saveFailed: string;
   openFailed: string;
@@ -31,7 +31,6 @@ export interface EditorStrings {
   degradeGl: string;
   degradeCpu: string;
   noWorkspaceAccess: string;
-  editing: string;
   /** HUD prefix while a batch runs inside the page: "自动操作 2/5 · 点击渐变工具". */
   acting: string;
   actDone: string;
@@ -50,18 +49,16 @@ export interface EditorStrings {
 
 const en: EditorStrings = {
   tab: APP.tabLabel,
-  open: "Open",
-  noFile: "No file",
   untitled: "Untitled",
   preparing: `Starting ${APP.name}…`,
-  ready: "Ready",
   failed: `${APP.name} did not start`,
   reload: "Reload",
   fullscreen: "Full screen",
   exitFullscreen: "Exit full screen",
   fullscreenFailed: "Full screen unavailable",
+  controls: "Editor controls",
+  activity: "Recent actions",
   selectInExplorer: "Select one file in the Explorer, then press Open.",
-  saving: "Saving…",
   saved: "Saved",
   saveFailed: "Save failed",
   openFailed: "Could not read that file",
@@ -71,7 +68,6 @@ const en: EditorStrings = {
   degradeGl: "No GPU — retrying with WebGL2…",
   degradeCpu: "No WebGL2 either — retrying in software…",
   noWorkspaceAccess: "Workspace access was not granted, so opening from the Explorer is off.",
-  editing: "edited since save",
   acting: "Automating",
   actDone: "Done",
   bootRead: "Reading the editor",
@@ -84,18 +80,16 @@ const en: EditorStrings = {
 
 const zh: EditorStrings = {
   tab: APP.tabLabel,
-  open: "打开",
-  noFile: "未打开文件",
   untitled: "未命名",
   preparing: `正在启动 ${APP.name}…`,
-  ready: "已就绪",
   failed: `${APP.name} 未能启动`,
   reload: "重新载入",
   fullscreen: "全屏",
   exitFullscreen: "退出全屏",
   fullscreenFailed: "无法进入全屏",
+  controls: "编辑器控件",
+  activity: "最近动作",
   selectInExplorer: "先在左侧资源管理器选中一个文件，再点打开。",
-  saving: "正在保存…",
   saved: "已保存",
   saveFailed: "保存失败",
   openFailed: "读不到这个文件",
@@ -105,7 +99,6 @@ const zh: EditorStrings = {
   degradeGl: "没有可用 GPU，改用 WebGL2 重试…",
   degradeCpu: "WebGL2 也不可用，改用软件渲染重试…",
   noWorkspaceAccess: "没有获得工作区读取权限，暂时无法从资源管理器打开文件。",
-  editing: "此后有输入",
   acting: "自动操作",
   actDone: "完成",
   bootRead: "读取编辑器",

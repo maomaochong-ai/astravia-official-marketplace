@@ -11,7 +11,8 @@ export interface ContainerFullscreen {
 
 /**
  * Fullscreen on the tab's own shell element, not on the panel and not on the
- * frame: the status bar stays visible so the exit control never disappears, and
+ * frame: the corner dock lives inside the same shell, so the exit control never
+ * disappears, and
  * the state follows `fullscreenchange` so the platform's Esc key resets it.
  *
  * The Fullscreen API is not always available to us: a desktop host may mount the

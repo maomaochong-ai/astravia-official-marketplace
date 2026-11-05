@@ -12,7 +12,8 @@ import {
 } from "../editor/services/open-document.ts";
 import { readWorkspaceFile, selectionAccess } from "../editor/services/workspace-files.ts";
 import { editorStrings } from "../editor/strings.ts";
-import type { LinkMessage } from "../../domain/link-protocol.ts";
+import { isCraftNote } from "../../domain/link-protocol.ts";
+import type { CraftNote, LinkMessage } from "../../domain/link-protocol.ts";
 
 /**
  * The natural-language surface: five tools, one of which (`act`) carries the whole
@@ -42,6 +43,19 @@ const SCOPE = ["conversation", "project"] as const;
 
 function text(payload: unknown): string {
   return JSON.stringify(payload, null, 2);
+}
+
+/**
+ * The page's own log of what it just did, or an empty list when the frame cannot
+ * answer. Never throws: a missing history is a smaller problem than a failed status.
+ */
+async function readActivity(limit = 8): Promise<CraftNote[]> {
+  try {
+    const reply = await askCraftFrame("craft:activity", { limit }, 5000);
+    return Array.isArray(reply.notes) ? reply.notes.filter(isCraftNote).slice(-limit) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Steps the bridge understands; the schema below is the contract the model sees. */
@@ -158,8 +172,9 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
       label: "%tool.status%",
       description:
         `Report the current ${APP.name} tab without changing it: whether it is open, whether the editor ` +
-        `finished booting, the page URL, the canvas size, whether a file is staged for the next open, and a ` +
-        `coarse text map of the canvas with its average colour. Read-only — it never opens, clicks or reloads.`,
+        `finished booting, the page URL, the canvas size, whether a file is staged for the next open, the ` +
+        `last few things the page did, and a coarse text map of the canvas with its average colour. ` +
+        `Read-only — it never opens, clicks or reloads.`,
       parameters: {
         type: "object",
         properties: {
@@ -181,12 +196,16 @@ export function registerCraftTools(ctx: PluginContext): Disposable[] {
             reply.ready === true
               ? await readCanvas({ region: input.region, columns: input.columns, rows: input.rows })
               : null;
+          // The page keeps its own short log; asking it is the only way to know what
+          // happened before this call without guessing from the picture.
+          const recent = reply.ready === true ? await readActivity() : [];
           return text({
             open: true,
             url: reply.href ?? frame.baseUrl(),
             ready: reply.ready === true,
             canvas: reply.canvas ?? null,
             staged: reply.staged ?? null,
+            recent,
             probe,
           });
         } catch (error) {

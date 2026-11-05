@@ -408,3 +408,40 @@ test("a modifier's own key event carries its state", async () => {
 	assert.equal(f.altKey, true);
 	assert.equal(f.ctrlKey, false, "alt must not drag ctrl along");
 });
+
+// The page is asked "what have you been doing?" by both the tab (to draw it) and the
+// status tool (to report it). It has to answer from its own memory, because the host
+// cannot see inside the frame — and it has to push the same entries as they happen, so
+// the strip and the answer never disagree.
+test("the page keeps its own log of what it did, and pushes it as it happens", async () => {
+	const env = makeEnv();
+
+	env.send({ type: "craft:stage", id: "n1", name: "poster.png", mime: "image/png", bytes: new Uint8Array([1]) });
+	await env.settle("n1");
+	env.send({ type: "craft:key", id: "n2", key: "alt+f" });
+	await env.settle("n2");
+
+	const pushed = env.posted.filter((message) => message.type === "craft:note");
+	assert.deepEqual(
+		pushed.map((message) => message.entry.kind),
+		["stage", "key"],
+		"one message per action, in order",
+	);
+	assert.equal(pushed[0].entry.detail, "poster.png", "the raw subject travels, not a sentence");
+
+	env.send({ type: "craft:activity", id: "n3" });
+	const reply = await env.settle("n3");
+	assert.deepEqual(
+		[...reply.notes.map((entry) => entry.kind)],
+		["stage", "key"],
+		"the log survives until the page is reloaded",
+	);
+
+	env.send({ type: "craft:activity", id: "n4", limit: 1 });
+	const one = await env.settle("n4");
+	assert.deepEqual(
+		[...one.notes.map((entry) => entry.kind)],
+		["key"],
+		"a caller asking for the last entry gets the last entry",
+	);
+});

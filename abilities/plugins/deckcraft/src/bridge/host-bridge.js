@@ -124,6 +124,22 @@
     post(message, transfer);
   }
 
+  // The page keeps the short history it just lived through, because the tab and the
+  // Agent both need it and neither can reconstruct it from pixels afterwards: which
+  // file was handed over, which key chord was pressed, which step of a batch landed.
+  // Entries carry a `kind` and the raw `detail` rather than a sentence — the page has
+  // no locale of its own, so the tab words it and the model reads the data.
+  var NOTE_MAX = 40;
+  var notes = [];
+
+  function note(kind, detail, ok) {
+    var entry = { at: Date.now(), kind: String(kind), detail: String(detail == null ? "" : detail), ok: ok !== false };
+    notes.push(entry);
+    if (notes.length > NOTE_MAX) notes.splice(0, notes.length - NOTE_MAX);
+    post({ type: "craft:note", entry: entry });
+    return entry;
+  }
+
   function describe(input) {
     return {
       accept: input.accept || "",
@@ -314,8 +330,13 @@
       var input = waiting.get(data.id);
       if (!input) return;
       waiting.delete(data.id);
-      if (data.bytes) deliver(input, data);
-      else cancel(input);
+      if (data.bytes) {
+        deliver(input, data);
+        note("open", String(data.name || ""));
+      } else {
+        cancel(input);
+        note("open", "", false);
+      }
       return;
     }
 
@@ -345,6 +366,7 @@
       }
       staged = { name: data.name || "document", mime: data.mime || "", bytes: data.bytes, at: Date.now() };
       reply(data.id, { ok: true, staged: staged.name });
+      note("stage", staged.name);
       return;
     }
 
@@ -361,6 +383,15 @@
       return;
     }
 
+    // What the page just did, in the order it happened. `notes` is the page's own
+    // memory: the tab renders it, the Agent reads it, and neither has to infer it
+    // from a picture afterwards.
+    if (data.type === "craft:activity") {
+      var limit = typeof data.limit === "number" ? Math.max(1, Math.min(NOTE_MAX, data.limit)) : NOTE_MAX;
+      reply(data.id, { ok: true, notes: notes.slice(-limit) });
+      return;
+    }
+
     if (data.type === "craft:inspect") {
       var canvas = canvasNode();
       var current = stagedNow();
@@ -372,6 +403,7 @@
         canvas: canvas ? { width: canvas.width, height: canvas.height } : null,
         staged: current ? current.name : null,
         stagedAgeMs: current ? Date.now() - current.at : null,
+        noteCount: notes.length,
       });
       return;
     }
@@ -845,8 +877,10 @@
     try {
       var dropped = await dropFiles([file]);
       reply(data.id, { ok: true, dropped: dropped, name: file.name });
+      note("drop", file.name, dropped > 0);
     } catch (error) {
       reply(data.id, { ok: false, error: String((error && error.message) || error) });
+      note("drop", file.name, false);
     }
   }
 
@@ -926,6 +960,7 @@
           throw new Error("unknown-step:" + op);
         }
         results.push({ index: index, op: op, label: label, ok: true, outcome: outcome });
+        note("step", label, true);
       } catch (error) {
         results.push({
           index: index,
@@ -934,6 +969,7 @@
           ok: false,
           error: String((error && error.message) || error),
         });
+        note("step", label, false);
         if (stopOnError) {
           for (var rest = index + 1; rest < steps.length; rest++) {
             results.push({ index: rest, op: String((steps[rest] || {}).op || ""), label: String((steps[rest] || {}).label || ""), ok: false, error: "skipped" });
@@ -943,6 +979,11 @@
       }
     }
     hud(doneText, false);
+    note(
+      "done",
+      String(results.filter(function (item) { return item.ok; }).length) + "/" + String(steps.length),
+      results.every(function (item) { return item.ok; }),
+    );
     var transfer = [];
     for (var c = 0; c < captures.length; c++) transfer.push(captures[c].bytes);
     reply(
@@ -999,6 +1040,9 @@
       var typed = await typeText(canvas, data.text);
       var pressed = data.key ? await pressCombo(canvas, data.key) : null;
       reply(data.id, { ok: true, typed: typed, key: pressed });
+      // Whitespace and long runs would drown the log; the chord is the useful part.
+      if (data.key) note("key", String(data.key));
+      else if (typed) note("type", String(typed) + " chars");
     } catch (error) {
       reply(data.id, { ok: false, error: String((error && error.message) || error) });
     }

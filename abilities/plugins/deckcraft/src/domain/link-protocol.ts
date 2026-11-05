@@ -45,9 +45,13 @@ export interface LinkMessage {
   elapsedMs?: number;
   width?: number;
   height?: number;
-  /** `craft:probe`: a text map of the canvas plus its average colour, so a tool can
-   * hand the model something to reason about without carrying pixels. */
+  // `craft:probe`: a text map of the canvas plus its average colour, so a tool can
+  // hand the model something to reason about without carrying pixels.
   probe?: CraftProbe;
+  /** `craft:activity`: the page's own history, oldest first. */
+  notes?: CraftNote[];
+  /** `craft:inspect`: how many entries that history holds, without carrying them. */
+  noteCount?: number;
 }
 
 /** What a batch did — not what the app made of it. */
@@ -86,6 +90,42 @@ export interface CraftProbe {
 }
 
 /** `craft:progress`: the bridge narrating a batch while it runs. */
+export interface CraftProgress {
+  id?: string;
+  index: number;
+  total: number;
+  label: string;
+}
+
+/**
+ * One thing the page did, as the page saw it. `kind` is the verb (`stage`, `drop`,
+ * `open`, `key`, `type`, `step`, `done`) and `detail` is the raw subject — a file
+ * name, a chord, a step label. No sentence is built here: the frame has no locale,
+ * so the tab words it and the model reads the data.
+ */
+export interface CraftNote {
+  at: number;
+  kind: string;
+  detail: string;
+  ok: boolean;
+}
+
+export function isNoteMessage(data: unknown): data is { entry: CraftNote } {
+  if (typeof data !== "object" || data === null) return false;
+  const entry = (data as { entry?: unknown }).entry;
+  return isCraftNote(entry);
+}
+
+export function isCraftNote(value: unknown): value is CraftNote {
+  if (typeof value !== "object" || value === null) return false;
+  const note = value as CraftNote;
+  return (
+    typeof note.at === "number" &&
+    typeof note.kind === "string" &&
+    typeof note.detail === "string" &&
+    typeof note.ok === "boolean"
+  );
+}
 export interface CraftProgress {
   id?: string;
   index: number;

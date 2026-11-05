@@ -1,17 +1,27 @@
 import type { PluginContext } from "@astravia-org/plugin-sdk";
-import { useActivityTab } from "@astravia-org/plugin-sdk";
+import { definePluginPromptContext, useActivityTab } from "@astravia-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { isBootFailure, isLinkMessage, isProgressMessage, nextDowngrade } from "../../../domain/link-protocol.ts";
-import type { Downgrade } from "../../../domain/link-protocol.ts";
+import {
+  isBootFailure,
+  isLinkMessage,
+  isNoteMessage,
+  isProgressMessage,
+  nextDowngrade,
+} from "../../../domain/link-protocol.ts";
+import type { CraftNote, Downgrade } from "../../../domain/link-protocol.ts";
 import { buildSiteDocument, siteRoot } from "../services/site-document.ts";
 import { APP } from "../../../app.config.ts";
 import { editorStrings } from "../strings.ts";
 import type { EditorStrings } from "../strings.ts";
 import {
+  craftNotes,
+  publishCraftNote,
   publishCraftProgress,
+  resetCraftNotes,
   setCraftFrame,
   settleCraftReply,
+  subscribeCraftNotes,
   subscribeCraftProgress,
 } from "../session-registry.ts";
 import { readWorkspaceFile, saveRenderedFile, selectionAccess } from "../services/workspace-files.ts";
@@ -55,6 +65,8 @@ export interface EditorSession {
   /** Package-relative icon for the boot cover; null when there is no package root. */
   iconUrl: string | null;
   progress: string | null;
+  /** What the page has done lately, oldest first — the strip under the frame. */
+  notes: CraftNote[];
   /** Upstream's page as an inline document; null until the package file is read. */
   iframeDoc: string | null;
   iframeKey: string;
@@ -97,6 +109,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
+  const [notes, setNotes] = useState<CraftNote[]>([]);
   const [boot, setBoot] = useState<BootState>(() => ({
     startedAt: Date.now(),
     hasDocument: false,
@@ -130,10 +143,15 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
   const selectionRef = useRef<WorkspaceFile | null>(null);
   /** The selection is offered once per wake-up, not on every selection change. */
   const autoOpenRef = useRef(false);
+  /** Read by the shortcut gate, which is registered once and re-checked per keydown. */
+  const awakeRef = useRef(false);
+  const reloadRef = useRef<() => void>(() => {});
+  const toggleRef = useRef<() => void>(() => {});
   modeRef.current = mode;
   bindingRef.current = binding;
   selectionRef.current = candidate;
   baseUrlRef.current = baseUrl;
+  awakeRef.current = awake;
 
   // The icon is a package file next to the site (`assets/`, the directory the marketplace
   // card reads too), so the boot cover needs no per-plugin import and no second copy of
@@ -207,6 +225,20 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
       unsubscribe();
     };
   }, []);
+
+  // ------------------------------------------------------------ activity log
+
+  // The page reports what it did (`craft:note`); the registry keeps the last twenty-four
+  // so a tool can ask for them while this hook is unmounted. The strip renders the tail.
+  useEffect(() => subscribeCraftNotes(setNotes), []);
+
+  // A notice is the tab's own voice — a failed read, a save that landed, the rendering
+  // ladder stepping down. It used to live in the header, which no longer exists, so it
+  // joins the same history instead of being said once and lost.
+  useEffect(() => {
+    if (!notice) return;
+    publishCraftNote({ at: Date.now(), kind: "notice", detail: notice, ok: false });
+  }, [notice]);
 
   // --------------------------------------------------------------- pause gate
 
@@ -306,6 +338,14 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
         return;
       }
 
+      // One line of the page's own log: a file it was handed, a chord it received, a
+      // step that landed. Pushed as it happens so the strip and the attachment agree
+      // with the picture.
+      if (data.type === "craft:note" && isNoteMessage(data)) {
+        publishCraftNote(data.entry);
+        return;
+      }
+
       // The bridge's boot heartbeat: upstream's own loading line (the only progress
       // signal the page emits) plus its "this is slow" flag.
       if (data.type === "craft:boot") {
@@ -401,9 +441,70 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     setPhase("starting");
     setNonce((value) => value + 1);
     setNotice(null);
+    // The new frame starts with an empty log; keeping the old one would describe a
+    // page that no longer exists.
+    resetCraftNotes();
     setBoot({ startedAt: Date.now(), hasDocument: false, line: "", slow: false });
   }, []);
 
+  reloadRef.current = reload;
+  toggleRef.current = fullscreen.toggle;
+
+  // ------------------------------------------------- what the model should know
+
+  // The state of this tab is attached to every prompt the user sends while it is
+  // mounted: which document is in the frame, whether the engine came up on the GPU,
+  // and the last few things the page did. It is `sticky` because a canvas app stays
+  // the subject of the conversation until it is closed — a one-shot attachment would
+  // make the agent forget the artwork between two messages.
+  //
+  // This is structured `context`, not `instructions`: the host renders the payload as
+  // data (`<plugin_prompt_contexts>`) and the model is told to treat it as state, so a
+  // file name can never read as an order.
+  useEffect(() => {
+    if (!awake) return;
+    ctx.ui.setPromptAttachment({
+      id: `${APP.id}:editor`,
+      label: APP.name,
+      labels: binding ? [binding.name] : undefined,
+      lifecycle: "sticky",
+      context: definePluginPromptContext({
+        schema: "astravia.craft.editor-state",
+        version: 1,
+        payload: {
+          app: APP.id,
+          document: binding?.name ?? null,
+          path: binding?.path ?? null,
+          phase,
+          backend: backend || null,
+          recent: craftNotes()
+            .slice(-6)
+            .map((note) => ({ kind: note.kind, detail: note.detail, ok: note.ok })),
+        },
+      }),
+    });
+  }, [awake, binding, phase, backend, notes, ctx]);
+
+  // A closed tab must not leave a chip in the input bar pointing at nothing.
+  useEffect(() => () => ctx.ui.setPromptAttachment(null), [ctx]);
+
+  // ------------------------------------------------------------- shortcuts
+
+  // `mod+shift+r` / `mod+shift+f` are the header's two buttons after the header left.
+  // A `surface` scope is what the host offers a panel; it is gated rather than
+  // unregistered so a hidden tab cannot answer for the editor that is on screen.
+  useEffect(() => {
+    const scope = ctx.ui.registerShortcutScope({
+      id: `${APP.id}:editor`,
+      kind: "surface",
+      enabled: () => (everActive.current ? tab.active === true : awakeRef.current),
+      bindings: [
+        { key: "mod+shift+r", run: () => reloadRef.current() },
+        { key: "mod+shift+f", run: () => toggleRef.current() },
+      ],
+    });
+    return () => scope.dispose();
+  }, [ctx]);
   return {
     strings,
     phase,
@@ -416,6 +517,7 @@ export function useCraftEditor(ctx: PluginContext): EditorSession {
     boot,
     iconUrl,
     progress,
+    notes,
     iframeDoc,
     // Re-mounting the frame is what reloads the app: same document text, new key.
     iframeKey: `${baseUrl ?? ""}#${nonce}#${mode}`,
