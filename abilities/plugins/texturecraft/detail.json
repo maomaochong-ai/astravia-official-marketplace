@@ -3,8 +3,8 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "TextureCraft in the activity panel",
-      "eyebrow": "3D 贴图",
+      "title": "Paint on the model, bake the map",
+      "eyebrow": "3D texturing",
       "description": "Layered PBR painting, bakes and smart materials — the upstream TextureCraft editor running inside Astravia, on the mesh you opened in the workspace.",
       "badges": [
         "No fork",
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "Open TextureCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "In TextureCraft, paint wear along the edges of @assets/helmet.fbx and bake the roughness channel out.",
+        "assistant_reply": "Edge wear painted across the UV seams and roughness baked to a 2K map beside the mesh. Base colour is untouched, so the bake can be redone."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "Wear that lands where it looks right",
+          "description": "Strokes are painted straight onto the model, the channel is switched and the viewport is captured, so wear is placed by eye on the surface rather than on a flat map.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "It paints strokes on the model and switches channels the way a hand would. Each pass ends with a capture of the viewport, so wear is reported from what the surface looks like rather than from a brush preset."
     },
     {
       "type": "links",

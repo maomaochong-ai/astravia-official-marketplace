@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "活动面板里的 GridCraft",
+      "title": "能往返 .xlsx 的表格",
       "eyebrow": "电子表格",
       "description": "单元格、公式、图表与透视表——上游 GridCraft 表格编辑器跑在 Astravia 里，直接对着工作区里打开的工作簿工作。",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "打开 GridCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "在 GridCraft 里打开 @素材/预算.xlsx，在 C 列下面加一行合计，隐藏的行不算进去。",
+        "assistant_reply": "合计加在 C 列下面，用的是 SUBTOTAL(109, …)，筛选和隐藏的行都不计。已存回 预算.xlsx。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "屏幕上那个数，就是存下去的数",
+          "description": "往单元格里打字、把区域往下填充，然后把画布读回来核一遍——数字是在表上确认过的，才写回工作簿。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "它点单元格、打字、往下填充、按回车。报合计之前会把表读回来，所以答案里的数就是表格上的数。"
     },
     {
       "type": "links",

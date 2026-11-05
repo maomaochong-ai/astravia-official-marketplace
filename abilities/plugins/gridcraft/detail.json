@@ -3,8 +3,8 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "GridCraft in the activity panel",
-      "eyebrow": "电子表格",
+      "title": "A spreadsheet that round-trips .xlsx",
+      "eyebrow": "Spreadsheets",
       "description": "Cells, formulas, charts and pivot tables — the upstream GridCraft spreadsheet running inside Astravia, on the workbook you opened in the workspace.",
       "badges": [
         "No fork",
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open GridCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "Open @assets/budget.xlsx in GridCraft and put a total under column C that leaves hidden rows out.",
+        "assistant_reply": "Total sits under C using SUBTOTAL(109, …), so filtered and hidden rows stay out of it. Saved back to budget.xlsx."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "The number on screen is the number saved",
+          "description": "Cells are typed into and ranges filled down, then the canvas is read back — a figure is confirmed on the sheet before the workbook is written.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "It clicks a cell, types, fills down and presses Enter. Before quoting a total it reads the sheet back, so the number in the answer is the number on the grid."
     },
     {
       "type": "links",

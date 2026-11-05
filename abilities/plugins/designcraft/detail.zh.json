@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "在活动面板里用 DesignCraft",
+      "title": "对页、母版页、串接正文",
       "eyebrow": "版式设计",
       "description": "页面、对页、串接文本框——上游原版 DesignCraft 出版编辑器跑在 Astravia 里，打开的就是工作区里的那份文档。",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "design",
-        "user_prompt": "打开 DesignCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "在 DesignCraft 里打开 @素材/画册.idml，把第 3 页溢出的正文接到第 4 页。",
+        "assistant_reply": "第 4 页已打开，文本框和第 3 页接上了，溢出的正文已经流进来。整个跨页截了图，导出前可以先看断在哪。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "溢出看得见",
+          "description": "文字从一栏接到下一栏，接完截整个跨页——正文断在哪里是看得见的，不用靠那个红色小加号猜。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "画框是摆上去的，正文是像手那样点进框里的。接完文字它把跨页读回来核溢出，所以“现在装得下了”是一次读数，不是一句许愿。"
     },
     {
       "type": "links",

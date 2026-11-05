@@ -9888,7 +9888,7 @@
       "slug": "photocraft",
       "name": "Photocraft",
       "description": "Edit images with layers, masks, type and real PSD files inside Astravia — the upstream Photocraft editor with a Chinese interface by default, driven from the conversation.",
-      "version": "0.0.16",
+      "version": "0.0.17",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10203,6 +10203,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.16.astraviapkg",
             "sha256": "e3ecbdd0bcd5f44ca47cb83ff84fa12df1c8ee51fbf7242743ee9b70d2344049"
           }
+        },
+        {
+          "version": "0.0.17",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-photocraft/photocraft-0.0.17.astraviapkg",
+            "sha256": "f2b5e9f5fc6ee26ac9b3d054ade123cd40a4d01a26acd9660e2e64216a854a51"
+          }
         }
       ]
     },
@@ -10310,7 +10329,7 @@
       "slug": "designcraft",
       "name": "DesignCraft",
       "description": "Lay out pages, spreads and threaded text inside Astravia — the upstream DesignCraft publishing editor, with IDML import and PDF, PNG and EPUB export.",
-      "version": "0.0.11",
+      "version": "0.0.12",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10570,6 +10589,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-designcraft/designcraft-0.0.11.astraviapkg",
             "sha256": "340e8171db1a22b70bdc94240810fffebcfb7feb99fa43d72b84be986cd4441f"
           }
+        },
+        {
+          "version": "0.0.12",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-designcraft/designcraft-0.0.12.astraviapkg",
+            "sha256": "8bd2eacacd124594835a2be36f2431bfa543145f7b1e29c66e20efdd73362efd"
+          }
         }
       ]
     },
@@ -10578,7 +10616,7 @@
       "slug": "effectcraft",
       "name": "EffectCraft",
       "description": "Build motion-graphics compositions inside Astravia — the upstream EffectCraft compositor with keyframes, 3D camera and lights, 308 effects and a render queue.",
-      "version": "0.0.12",
+      "version": "0.0.13",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -10857,6 +10895,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-effectcraft/effectcraft-0.0.12.astraviapkg",
             "sha256": "42ee798aa8a40a892fc4e0f7f5eea9a7097ae7d97842e881cafaf0d11068b63b"
           }
+        },
+        {
+          "version": "0.0.13",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-effectcraft/effectcraft-0.0.13.astraviapkg",
+            "sha256": "e708a21286fece5a76ccd0489265496ee6584270bd76e43a51ab12a116c5f830"
+          }
         }
       ]
     },
@@ -10865,7 +10922,7 @@
       "slug": "filmcraft",
       "name": "FilmCraft",
       "description": "Cut video on a real timeline inside Astravia — the upstream FilmCraft non-linear editor with colour, sound and a WebGL fallback for machines without WebGPU.",
-      "version": "0.0.11",
+      "version": "0.0.12",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11125,6 +11182,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-filmcraft/filmcraft-0.0.11.astraviapkg",
             "sha256": "3c6f1b347ba2fb50e8f565a95f667553188b64b635a03ed9304d360725417ec3"
           }
+        },
+        {
+          "version": "0.0.12",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-filmcraft/filmcraft-0.0.12.astraviapkg",
+            "sha256": "93502498cb78c7ae26affad88d00d93f632dec2f3eb7f0190ea0e0dda3539ae1"
+          }
         }
       ]
     },
@@ -11133,7 +11209,7 @@
       "slug": "lightcraft",
       "name": "LightCraft",
       "description": "Browse a photo library and develop raw files inside Astravia — the upstream LightCraft catalog and darkroom, with camera raw and DNG support.",
-      "version": "0.0.11",
+      "version": "0.0.12",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11393,6 +11469,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-lightcraft/lightcraft-0.0.11.astraviapkg",
             "sha256": "a60c950277d6df7caed75e5b1e2e7dfc6e1d9fe1cd20302e78b53462742c967e"
           }
+        },
+        {
+          "version": "0.0.12",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-lightcraft/lightcraft-0.0.12.astraviapkg",
+            "sha256": "8ed80478bca834a0cec7e2f4206cc30f067ff279d328d4ddfd444a843b164ae5"
+          }
         }
       ]
     },
@@ -11401,7 +11496,7 @@
       "slug": "pdfcraft",
       "name": "PDFCraft",
       "description": "Read and rearrange PDFs inside Astravia — the upstream PDFCraft workbench for merging, splitting, rotating and securing documents, with no account and no telemetry.",
-      "version": "0.0.12",
+      "version": "0.0.13",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11681,6 +11776,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-pdfcraft/pdfcraft-0.0.12.astraviapkg",
             "sha256": "16ff1c3e1e0442c759b696e0d695cf6546d1a50da88866a9f259dc25ab7caa94"
           }
+        },
+        {
+          "version": "0.0.13",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-pdfcraft/pdfcraft-0.0.13.astraviapkg",
+            "sha256": "ac6a2bfcc566d76260025ee1a88b0b4bb2f40d31e0818d0c02b30d9267e01e16"
+          }
         }
       ]
     },
@@ -11689,7 +11803,7 @@
       "slug": "vectorcraft",
       "name": "VectorCraft",
       "description": "Draw and edit vectors inside Astravia — the upstream VectorCraft illustration app with bezier paths, fills and SVG output.",
-      "version": "0.0.12",
+      "version": "0.0.13",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -11968,6 +12082,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-vectorcraft/vectorcraft-0.0.12.astraviapkg",
             "sha256": "23026034d2c290be9fdbcac1631ceff5c6c34bfc409f5dc7f992e74cdf34ec3e"
           }
+        },
+        {
+          "version": "0.0.13",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-vectorcraft/vectorcraft-0.0.13.astraviapkg",
+            "sha256": "ba7441b74aa0790f0ac7230a056aaed950f711d619f1946aac28a0b79de1fbe8"
+          }
         }
       ]
     },
@@ -11976,7 +12109,7 @@
       "slug": "cadcraft",
       "name": "CADCraft",
       "description": "Draft and edit drawings inside Astravia — the upstream CADCraft editor, with a real command line, object snaps, layers, dimensions, hatches, blocks, and DXF and DWG files.",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12153,6 +12286,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-cadcraft/cadcraft-0.0.7.astraviapkg",
             "sha256": "fe629d4d62980e1eb3ff7e392278a3fec1cef4a5fdcfb5e08f77b013fd445e21"
           }
+        },
+        {
+          "version": "0.0.8",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-cadcraft/cadcraft-0.0.8.astraviapkg",
+            "sha256": "b4af8c1ef897effed3579b874bc7e42bffd3c6377ceaf74aa160b8ed434ab17f"
+          }
         }
       ]
     },
@@ -12161,7 +12313,7 @@
       "slug": "deckcraft",
       "name": "DeckCraft",
       "description": "Build slide decks inside Astravia — the upstream DeckCraft editor, with themes, layouts, shapes, charts, transitions and PowerPoint export.",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12337,6 +12489,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-deckcraft/deckcraft-0.0.7.astraviapkg",
             "sha256": "8e5c7ea7a32e610ea4f3ced7959216780b9ce6c4d817a7072125ee9618d73f2d"
           }
+        },
+        {
+          "version": "0.0.8",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-deckcraft/deckcraft-0.0.8.astraviapkg",
+            "sha256": "86f4ffa3ca48c095b2be1d599c68b28ddb2ef7d88abc3c90600e608b5f56458e"
+          }
         }
       ]
     },
@@ -12345,7 +12516,7 @@
       "slug": "figcraft",
       "name": "FigCraft",
       "description": "Design interfaces and prototypes inside Astravia — the upstream FigCraft editor, with frames, auto layout, components and variants, variables and click-through prototypes.",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12521,6 +12692,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-figcraft/figcraft-0.0.7.astraviapkg",
             "sha256": "d407c77b05cabd3e1fbd76a15073dbbed4748a5fe757d9d80301e9c0d04b706f"
           }
+        },
+        {
+          "version": "0.0.8",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-figcraft/figcraft-0.0.8.astraviapkg",
+            "sha256": "53e9da97373798af689ae151e6b5409387f156490a6660e941707a02e6730944"
+          }
         }
       ]
     },
@@ -12529,7 +12719,7 @@
       "slug": "gridcraft",
       "name": "GridCraft",
       "description": "Work through spreadsheets inside Astravia — the upstream GridCraft editor, with formulas, number formats, charts, pivot tables and .xlsx round-tripping.",
-      "version": "0.0.9",
+      "version": "0.0.10",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12745,6 +12935,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-gridcraft/gridcraft-0.0.9.astraviapkg",
             "sha256": "ff5ec8eb67a70e5f7e819d6a4ae3d438c3d084506eda7482172924a13c43df9d"
           }
+        },
+        {
+          "version": "0.0.10",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-gridcraft/gridcraft-0.0.10.astraviapkg",
+            "sha256": "1b9cb35ae9ad171cacdbaa4deaadec2f30f05e4ec3b765044b8b290cea9157c8"
+          }
         }
       ]
     },
@@ -12753,7 +12962,7 @@
       "slug": "wordcraft",
       "name": "WordCraft",
       "description": "Write and revise documents inside Astravia — the upstream WordCraft editor, with a ribbon, styles, tables, tracked changes and .docx round-tripping.",
-      "version": "0.0.9",
+      "version": "0.0.10",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -12969,6 +13178,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-wordcraft/wordcraft-0.0.9.astraviapkg",
             "sha256": "95a1877e261175c77a41df00c1438d56d352637afa37e3a062eb5053511d9140"
           }
+        },
+        {
+          "version": "0.0.10",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-wordcraft/wordcraft-0.0.10.astraviapkg",
+            "sha256": "4d0b1e1f374f2ea268fe2708c0a37879bcbb52319e7ff103f204b4400286d589"
+          }
         }
       ]
     },
@@ -12977,7 +13205,7 @@
       "slug": "texturecraft",
       "name": "TextureCraft",
       "description": "Paint 3D textures inside Astravia — the upstream TextureCraft editor, with layered PBR painting, bakes and smart materials.",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -13153,6 +13381,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-texturecraft/texturecraft-0.0.7.astraviapkg",
             "sha256": "848917a251a3ec43a19f106b3621df86fa372f33f57f4f1525597af533792d95"
           }
+        },
+        {
+          "version": "0.0.8",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-texturecraft/texturecraft-0.0.8.astraviapkg",
+            "sha256": "feaf8880311f14ce775ebed7e38cbe54d692212efb19e2e78aa80f53c9421441"
+          }
         }
       ]
     },
@@ -13161,7 +13408,7 @@
       "slug": "materialcraft",
       "name": "MaterialCraft",
       "description": "Build procedural materials node by node inside Astravia — the upstream MaterialCraft editor, from a first graph to a reusable material.",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -13337,6 +13584,25 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-materialcraft/materialcraft-0.0.7.astraviapkg",
             "sha256": "a98efdc82b31ca0aafe4fc03ee891fcb4f3df2bf964c10d8a42de46545dd6cfb"
           }
+        },
+        {
+          "version": "0.0.8",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-materialcraft/materialcraft-0.0.8.astraviapkg",
+            "sha256": "dd9c3629eaa0a9e1ed2e9bb9bc00dba0a792d353c40a63360f9793383b708a56"
+          }
         }
       ]
     },
@@ -13345,7 +13611,7 @@
       "slug": "craft-anything",
       "name": "Craft Anything",
       "description": "Take apart any website, app or game and rebuild it — Craft Anything studies the original and drives an AI agent through the reconstruction.",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "configVersion": 1,
       "license": "MIT OR Apache-2.0",
       "author": "Astravia",
@@ -13540,10 +13806,29 @@
             "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-craft-anything/craft-anything-0.0.8.astraviapkg",
             "sha256": "1879a46d734c2a6ce7155497387b80fea7d61894458c188269c411c1156b9514"
           }
+        },
+        {
+          "version": "0.0.9",
+          "minAppVersion": "0.5.59",
+          "pluginApiVersion": "^2.4.0",
+          "permissions": [
+            "ui.slot.activity-tab",
+            "fs.read",
+            "fs.write",
+            "workspace.read",
+            "agent.tools.register",
+            "agent.toolHandler.execute",
+            "agent.skills.control"
+          ],
+          "commands": [],
+          "artifact": {
+            "url": "https://github.com/maomaochong-ai/astravia-official-marketplace/releases/download/plugin-craft-anything/craft-anything-0.0.9.astraviapkg",
+            "sha256": "879d30b4b3082836580617674ec6ff719d136b73a167adac7a719c0a5124c354"
+          }
         }
       ]
     }
   ],
   "version": "0.4.88",
-  "marketplaceVersion": "2026.11.04-7"
+  "marketplaceVersion": "2026.11.05-1"
 }

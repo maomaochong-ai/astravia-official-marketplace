@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "FilmCraft in the activity panel",
+      "title": "A timeline in the side panel",
       "eyebrow": "Video editing",
       "description": "A timeline, clips, colour and sound — the upstream FilmCraft editor running inside Astravia, on your own machine, with the project you opened in the workspace.",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open FilmCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "In FilmCraft, cut @assets/teaser.mp4 down to 20 seconds and warm the grade on the opening shot.",
+        "assistant_reply": "Trimmed to 20 s on the timeline and warmed the first shot's grade. Nothing has been rendered; the project is saved so the next cut can start from here."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:refresh-square-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "A cut, reviewed before rendering",
+          "description": "Clips are trimmed on the timeline, the playhead is moved and the frame is captured, so a cut is judged on a real frame instead of being discovered after a render.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -87,7 +82,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "It trims on the timeline and moves the playhead the way you would. A cut is reported only after the frame at the new in-point has been captured — nothing is rendered to find out whether the cut is right."
     },
     {
       "type": "links",

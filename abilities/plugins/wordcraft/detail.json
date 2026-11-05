@@ -3,8 +3,8 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "WordCraft in the activity panel",
-      "eyebrow": "文字处理",
+      "title": "Long documents with tracked changes",
+      "eyebrow": "Word processing",
       "description": "A ribbon, styles, tables and tracked changes — the upstream WordCraft editor running inside Astravia, on the document you opened in the workspace.",
       "badges": [
         "No fork",
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "Open WordCraft and turn the background of @assets/cover.png into a blue gradient.",
-        "assistant_reply": "Cover loaded. Turning the background into a blue gradient now."
+        "user_prompt": "In WordCraft, turn track changes on in @assets/contract.docx and accept only the date corrections.",
+        "assistant_reply": "Tracking is on and the date corrections are accepted; every other mark is still pending your review. Captured the page so you can see what is left."
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "Driven from the conversation",
-          "description": "Ask in chat and the panel carries it out: pointer and keyboard steps run inside the editor one after another, each one named on the canvas while it happens.",
+          "title": "Tracked changes, then a capture",
+          "description": "Text is typed into the document, named styles are applied and tracking is toggled, then the page is captured — an edit is reviewed as visible marks, not as a claim.",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "Reopen what you were editing",
-          "description": "The status bar remembers the last files you opened and takes you back to one through the same bridge the editor already uses. The upstream Recent list cannot reopen a workspace path in the browser build, so this list is the plugin’s own.",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "Automation is an ordinary operation, not a macro player: a batch is a list of pointer and key steps the editor receives exactly as if they came from a hand, paced by frames so a press lasts a press. The canvas reports a text map and its average colour back, which is how the agent checks that a change really happened before reporting it."
+      "content": "It types at the cursor, applies styles from the ribbon and toggles tracking. An edit is reported after the page has been captured, so you are given the marks rather than a summary of them."
     },
     {
       "type": "links",

@@ -3,7 +3,7 @@
   "blocks": [
     {
       "type": "hero",
-      "title": "活动面板里的 DeckCraft",
+      "title": "能导出 .pptx 的演示文稿",
       "eyebrow": "演示文稿",
       "description": "主题、版式、形状与图表——上游 DeckCraft 编辑器跑在 Astravia 里，直接对着工作区里打开的演示文稿工作。",
       "badges": [
@@ -17,8 +17,8 @@
       "showcase": {
         "template": "chat-over-canvas",
         "canvas": "generic",
-        "user_prompt": "打开 DeckCraft，用 @素材/封面.png 把背景换成渐变蓝色。",
-        "assistant_reply": "已载入封面，正在把背景换成渐变蓝。"
+        "user_prompt": "在 DeckCraft 里给 @素材/q3-review.pptx 套上深色主题，再把营收图表放到第 4 页。",
+        "assistant_reply": "深色主题已经铺满全篇，营收图表放到了第 4 页，数据直接取文件里现有的。第 4 页截了图，尺寸你可以过一眼。"
       }
     },
     {
@@ -41,14 +41,9 @@
           "icon": "solar:chat-round-linear"
         },
         {
-          "title": "在对话里驱动",
-          "description": "在对话里说要做什么，面板里就跟着做：指针与键盘动作依次落在编辑器里，每一步都在画布上写着正在做什么。",
+          "title": "改完的那一页，直接看",
+          "description": "在占位符里改文字、加形状和图表，改完截那一页——看的是渲染出来的幻灯片，不是大纲。",
           "icon": "solar:cursor-bold"
-        },
-        {
-          "title": "上次编辑的文件，一点就回来",
-          "description": "状态栏记住最近打开过的文件，用编辑器同一条桥送回去。上游自带的「最近」列表在网页构建里打不开工作区路径，所以这条列表由插件自己维护。",
-          "icon": "solar:clock-circle-linear"
         }
       ]
     },
@@ -82,7 +77,7 @@
     {
       "type": "callout",
       "tone": "info",
-      "content": "自动化走的是正常操作路径，不是宏播放器：一批动作就是一段指针与按键序列，编辑器收到的与手做时完全一样，并且按帧节流——按下真的是一次按下。画布会回一份文字地图与平均色，agent 靠它确认改动真的发生了，再向你汇报。"
+      "content": "它在幻灯片之间移动、在占位符里改字、拖形状，跟手做的一样。改完把那一页读回来——文字地图与平均色——所以汇报的改动是你能看着发生的。"
     },
     {
       "type": "links",
